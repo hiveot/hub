@@ -1,0 +1,28 @@
+# HiveOT Hub systemd service
+# Save this as /etc/systemd/system/hivehub.service
+
+[Unit]
+Description=HiveOT service to launch the hub and plugins
+Wants=network-online.target
+After=network.target network-online.target
+PartOf=hiveot.target
+
+[Service]
+#PIDFile=/run/hub.%i.pid
+PIDFile=/run/hivehub.pid
+Nice=10
+
+# When the service runs globally, make it run as a particular user for added security
+User=hiveot
+Group=hiveot
+
+# Auto restart the service after 1 minute when it aborts
+# NOTE: change the home folder to the appropriate folder when running locally
+WorkingDirectory=/opt/hivehub
+#ExecStart=/home/hiveot/bin/hivehub/bin/hub
+ExecStart=/opt/hivehub/bin/launcher
+Restart=on-failure
+RestartSec=60
+
+#[Install]
+#WantedBy=hivehub.target

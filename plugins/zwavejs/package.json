@@ -1,0 +1,51 @@
+{
+  "name": "zwavebinding",
+  "version": "0.2-alpha",
+  "description": "HiveOT Zwave binding using zwave-js",
+  "license": "MIT",
+  "main": "src/main.ts",
+  "type": "commonjs",
+  "scripts": {
+    "dist": "yarn run wasm && tsc && pkg --compress GZip package.json",
+    "wasm": "GOOS=js GOARCH=wasm go build -o build/hapi.wasm cmd/hapi/main.go",
+    "dev": "tsc && ZWAVEJS_EXTERNAL_CONFIG=dist/cache node build/main.js --home ~/bin/hiveot",
+    "version": "node --version"
+  },
+  "bin": "build/main.js",
+  "pkg": {
+    "scripts": [
+    ],
+    "compress": "GZip",
+    "assets": [
+      "build/hapi.wasm",
+      "node_modules/@serialport"
+    ],
+    "targets": [
+      "node18.5-linux"
+    ],
+    "outputPath": "dist"
+  },
+  "dependencies": {
+    "@zwave-js/config": "^10.4.0",
+    "@zwave-js/core": "^10.4.0",
+    "bonjour-service": "^1.1.0",
+    "commander": "^10.0.0",
+    "md5": "^2.3.0",
+    "serialport": "^10.5.0",
+    "ws": "^8.12.0",
+    "yaml": "^2.2.1",
+    "zwave-js": "^10.4.0"
+  },
+  "devDependencies": {
+    "@tsconfig/node18": "^1.0.1",
+    "@types/golang-wasm-exec": "^1.15.0",
+    "@types/md5": "^2.3.2",
+    "@types/node": "^18.11.18",
+    "@types/ws": "^8.5.4",
+    "pkg": "^5.8.1",
+    "types": "^0.1.1",
+    "typescript": "^5.0.2"
+  },
+  "readme": "readme - todo",
+  "_id": "zwavejs-binding"
+}

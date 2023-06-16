@@ -1,0 +1,40 @@
+import type { RequestEvent, ServerLoadEvent } from '@sveltejs/kit';
+import { hapi } from '$lib/hapi/HubAPI.js';
+import { fail, redirect } from '@sveltejs/kit';
+
+/** @type {import("./$types").PageServerLoad} */
+export async function load(ev: ServerLoadEvent) {
+	// load cookie value for login name
+	const loginID = ev.cookies.get('loginID') || '';
+	const rememberMe = ev.cookies.get('rememberMe');
+	return { loginID: loginID, rememberMe: rememberMe };
+}
+
+/** @type {import("./$types").Actions} */
+export const actions = {
+	dologin: async (ev: RequestEvent) => {
+		const data = await ev.request.formData();
+		const loginID = data.get('loginID') as string;
+		const rememberMe = data.get('rememberMe') as string;
+		const password = data.get('password') as string;
+
+		if (!loginID) {
+			return fail(400, { loginID, incorrect: true });
+		}
+		const resp = await hapi.login(loginID, password);
+		ev.cookies.set('loginID', loginID);
+		ev.cookies.set('rememberMe', rememberMe);
+		ev.cookies.set('refreshToken', resp);
+		if (!resp) {
+			console.error('Login as %s failed', loginID);
+			return fail(404, { password, incorrect: true });
+		}
+		throw redirect(300, '/');
+		// return { loginID: loginID, success: true };
+	}
+	// login: async ({ cookies, request }) => {
+	// 	const data = await request.formData();
+	// 	// TODO log the user in
+	// 	console.log('submitting welcome', data.get('email'));
+	// }
+};

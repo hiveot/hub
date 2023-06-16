@@ -1,0 +1,41 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Attach to Chrome",
+            "request": "attach",
+            "type": "chrome",
+            "port": 9222,
+            "webRoot": "${workspaceFolder}",
+        },
+        {
+            // "type": "pwa-chrome",
+            "name": "Launch Chrome",
+            "request": "launch",
+            "type": "chrome",
+            "port": 9222,
+            "webRoot": "${workspaceFolder}/src",
+            "url": "http://localhost:3000",
+        },
+        {
+            "name": "Launch FF localhost:3000",
+            "request": "launch",
+            "type": "firefox",
+            "reAttach": true,
+            "webRoot": "${workspaceFolder}",
+            "url": "http://localhost:3000",
+            "tmpDir": "${workspaceFolder}"   // prevent FF profile error
+        },
+        // debug svelte serverside by launching this and run chrome manually
+        {
+			"name": "Debug SvelteKit",
+            "command": "yarn vavite-loader vite dev --port 3000",
+			"request": "launch",
+			"type": "node-terminal",
+			// "cwd": "${workspaceFolder}"
+        }
+    ]
+}

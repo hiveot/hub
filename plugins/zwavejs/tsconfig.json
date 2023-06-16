@@ -1,0 +1,57 @@
+{
+  // typescript should generate JS files that support nodejs type loading
+  "extends": "@tsconfig/node18/tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "baseUrl": "build",
+    "checkJs": false,
+    "declaration": true,
+    "declarationMap": true,
+    "emitDecoratorMetadata": false,
+    "esModuleInterop": true,
+    //    "experimentalDecorators": true,
+    "isolatedModules": true,
+    // Avoid runtime imports that are unnecessary
+    "inlineSourceMap": false,
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "noEmitOnError": false,
+    "noErrorTruncation": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "outDir": "build",
+    "paths": {
+      "@binding/*": [
+        "../binding/*"
+      ],
+      "@lib/*": [
+        "../lib/*"
+      ]
+    },
+    "preserveSymlinks": true,
+    /* Necessary to support yarn portals with the node-modules linker, used by yarn link (berry) */
+    "pretty": true,
+    "resolveJsonModule": true,
+    "rootDir": "./src",
+    "skipLibCheck": true,
+    "sourceMap": true,
+    //    "target": "ES2018",
+    //    "types": [
+    //      "node"
+    //    ],
+    "typeRoots": [
+      // for use with websocket and wasm globals
+      "src/lib/global.d.ts"
+    ],
+    // watch=true breaks CI build steps
+    "watch": false
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.js"
+  ],
+  "exclude": [
+    "build/**",
+    "dist/**"
+  ]
+}

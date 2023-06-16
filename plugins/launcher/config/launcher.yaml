@@ -1,0 +1,31 @@
+# Launcher configuration
+
+# log launcher to stdout/stderr at level info (default is warning)
+loglevel: info
+
+# log launcher to file at level info (default is true)
+#logfile: true  #
+
+# write service stdout and stderr to logfile at logs/{servicename}.log (default is true)
+#logservices: true
+
+# logfile permissions. default is 0640
+#logperm: 0640  TODO
+
+# attach to service stderr for logging and testing (default is true)
+#attachstderr: true
+
+# attach to service stdout for logging and testing (default if false)
+#attachstdout: false
+
+# automatically restart services when they stop
+#autorestart: false    # enable the auto-restart feature (default is disabled)
+
+# Order of services to start
+autostart:
+  - certs
+  - authn           # user authentication service
+  - authz           # user authorization service
+#  - directory       # directory service
+#  - owserver        # 1-wire owserver service
+#  - provisioning    # IoT device provisioning service
