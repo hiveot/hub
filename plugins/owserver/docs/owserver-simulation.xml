@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Devices-Detail-Response xmlns="http://www.embeddeddatasystems.com/schema/owserver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<PollCount>4031100</PollCount>
+<DevicesConnected>3</DevicesConnected>
+<LoopTime>2.126</LoopTime>
+<DevicesConnectedChannel1>0</DevicesConnectedChannel1>
+<DevicesConnectedChannel2>2</DevicesConnectedChannel2>
+<DevicesConnectedChannel3>1</DevicesConnectedChannel3>
+<DataErrorsChannel1>0</DataErrorsChannel1>
+<DataErrorsChannel2>11</DataErrorsChannel2>
+<DataErrorsChannel3>0</DataErrorsChannel3>
+<VoltageChannel1>4.76</VoltageChannel1>
+<VoltageChannel2>4.74</VoltageChannel2>
+<VoltageChannel3>4.76</VoltageChannel3>
+<VoltagePower>4.99</VoltagePower>
+<DeviceName>OWServer_v2-Enet</DeviceName>
+<HostName>EDSOWSERVER2</HostName>
+<MACAddress>00:04:A3:B1:F2:F0</MACAddress>
+<DateTime>2020-05-10 21:21:36</DateTime>
+<owd_DS18B20 Description="Programmable resolution thermometer">
+<Name>DS18B20</Name>
+<Family>28</Family>
+<ROMId>2A000003BB170B28</ROMId>
+<Health>7</Health>
+<Channel>2</Channel>
+<RawData>46014B467FFF0A1085FF0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000</RawData>
+<PrimaryValue>20.3750 Deg C</PrimaryValue>
+<Temperature Units="Centigrade">20.3750</Temperature>
+<UserByte1 Writable="True">75</UserByte1>
+<UserByte2 Writable="True">70</UserByte2>
+<Resolution>12</Resolution>
+<PowerSource>255</PowerSource>
+</owd_DS18B20>
+<owd_DS18B20 Description="Programmable resolution thermometer">
+<Name>DS18B20</Name>
+<Family>28</Family>
+<ROMId>49000001BCEAD428</ROMId>
+<Health>7</Health>
+<Channel>3</Channel>
+<RawData>44014B467FFF0C10A9FF0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000</RawData>
+<PrimaryValue>20.2500 Deg C</PrimaryValue>
+<Temperature Units="Centigrade">20.2500</Temperature>
+<UserByte1 Writable="True">75</UserByte1>
+<UserByte2 Writable="True">70</UserByte2>
+<Resolution>12</Resolution>
+<PowerSource>255</PowerSource>
+</owd_DS18B20>
+<owd_EDS0068 Description="Temperature, Humidity, Barometric Pressure and Light Sensor">
+<Name>EDS0068</Name>
+<Family>7E</Family>
+<ROMId>C100100000267C7E</ROMId>
+<Health>7</Health>
+<Channel>2</Channel>
+<RawData>6800FF00A5023200EA00FF001EFB1DA5E20000000000000079E87E0026587D0000007DD864007DD87DD828EC00803E000000002003000000A0860100000000000000000000000000</RawData>
+<PrimaryValue>42.3125 %RH</PrimaryValue>
+<Temperature Units="Centigrade">15.9375</Temperature>
+<Humidity Units="PercentRelativeHumidity">42.3125</Humidity>
+<DewPoint Units="Centigrade">3.1250</DewPoint>
+<Humidex>14.6250</Humidex>
+<HeatIndex Units="Centigrade">15.9375</HeatIndex>
+<BarometricPressureMb Units="Millibars">959.390</BarometricPressureMb>
+<BarometricPressureHg Units="InchesOfMercury">28.331</BarometricPressureHg>
+<Light Units="Lux">0</Light>
+<LED>0</LED>
+<Relay>0</Relay>
+<Counter1>8214566</Counter1>
+<Counter2>8317049</Counter2>
+<TemperatureHighAlarmState>0</TemperatureHighAlarmState>
+<TemperatureLowAlarmState>0</TemperatureLowAlarmState>
+<HumidityHighAlarmState>0</HumidityHighAlarmState>
+<HumidityLowAlarmState>0</HumidityLowAlarmState>
+<DewPointHighAlarmState>0</DewPointHighAlarmState>
+<DewPointLowAlarmState>0</DewPointLowAlarmState>
+<HumidexHighAlarmState>0</HumidexHighAlarmState>
+<HumidexLowAlarmState>0</HumidexLowAlarmState>
+<HeatIndexHighAlarmState>0</HeatIndexHighAlarmState>
+<HeatIndexLowAlarmState>0</HeatIndexLowAlarmState>
+<BarometricPressureMbHighAlarmState>0</BarometricPressureMbHighAlarmState>
+<BarometricPressureMbLowAlarmState>0</BarometricPressureMbLowAlarmState>
+<BarometricPressureHgHighAlarmState>0</BarometricPressureHgHighAlarmState>
+<BarometricPressureHgLowAlarmState>0</BarometricPressureHgLowAlarmState>
+<LightHighAlarmState>0</LightHighAlarmState>
+<LightLowAlarmState>0</LightLowAlarmState>
+<ClearAlarms Writable="True">-</ClearAlarms>
+<TemperatureHighConditionalSearchState Writable="True">0</TemperatureHighConditionalSearchState>
+<TemperatureLowConditionalSearchState Writable="True">0</TemperatureLowConditionalSearchState>
+<HumidityHighConditionalSearchState Writable="True">0</HumidityHighConditionalSearchState>
+<HumidityLowConditionalSearchState Writable="True">0</HumidityLowConditionalSearchState>
+<DewPointHighConditionalSearchState Writable="True">0</DewPointHighConditionalSearchState>
+<DewPointLowConditionalSearchState Writable="True">0</DewPointLowConditionalSearchState>
+<HumidexHighConditionalSearchState Writable="True">0</HumidexHighConditionalSearchState>
+<HumidexLowConditionalSearchState Writable="True">0</HumidexLowConditionalSearchState>
+<HeatIndexHighConditionalSearchState Writable="True">0</HeatIndexHighConditionalSearchState>
+<HeatIndexLowConditionalSearchState Writable="True">0</HeatIndexLowConditionalSearchState>
+<BarometricPressureMbHighConditionalSearchState Writable="True">0</BarometricPressureMbHighConditionalSearchState>
+<BarometricPressureMbLowConditionalSearchState Writable="True">0</BarometricPressureMbLowConditionalSearchState>
+<BarometricPressureHgHighConditionalSearchState Writable="True">0</BarometricPressureHgHighConditionalSearchState>
+<BarometricPressureHgLowConditionalSearchState Writable="True">0</BarometricPressureHgLowConditionalSearchState>
+<LightHighConditionalSearchState Writable="True">0</LightHighConditionalSearchState>
+<LightLowConditionalSearchState Writable="True">0</LightLowConditionalSearchState>
+<TemperatureHighAlarmValue Writable="True" Units="Centigrade">125</TemperatureHighAlarmValue>
+<TemperatureLowAlarmValue Writable="True" Units="Centigrade">-40</TemperatureLowAlarmValue>
+<HumidityHighAlarmValue Writable="True" Units="PercentRelativeHumidity">100</HumidityHighAlarmValue>
+<HumidityLowAlarmValue Writable="True" Units="PercentRelativeHumidity">0</HumidityLowAlarmValue>
+<DewPointHighAlarmValue Writable="True" Units="Centigrade">125</DewPointHighAlarmValue>
+<DewPointLowAlarmValue Writable="True" Units="Centigrade">-40</DewPointLowAlarmValue>
+<HumidexHighAlarmValue Writable="True">125</HumidexHighAlarmValue>
+<HumidexLowAlarmValue Writable="True">-40</HumidexLowAlarmValue>
+<HeatIndexHighAlarmValue Writable="True" Units="Centigrade">40</HeatIndexHighAlarmValue>
+<HeatIndexLowAlarmValue Writable="True" Units="Centigrade">-20</HeatIndexLowAlarmValue>
+<BarometricPressureMbHighAlarmValue Writable="True" Units="Millibars">2000.000</BarometricPressureMbHighAlarmValue>
+<BarometricPressureMbLowAlarmValue Writable="True" Units="Millibars">0.000</BarometricPressureMbLowAlarmValue>
+<BarometricPressureHgHighAlarmValue Writable="True" Units="InchesOfMercury">100.000</BarometricPressureHgHighAlarmValue>
+<BarometricPressureHgLowAlarmValue Writable="True" Units="InchesOfMercury">0.000</BarometricPressureHgLowAlarmValue>
+<LightHighAlarmValue Writable="True" Units="Lux">100000</LightHighAlarmValue>
+<LightLowAlarmValue Writable="True" Units="Lux">0</LightLowAlarmValue>
+<LEDFunction Writable="True">0</LEDFunction>
+<RelayFunction Writable="True">0</RelayFunction>
+<LEDState Writable="True">0</LEDState>
+<RelayState Writable="True">0</RelayState>
+<Version>1.03</Version>
+</owd_EDS0068>
+</Devices-Detail-Response>
+XML Pretty Printed
+
+<?xml version="1.0" encoding="UTF-8"?>
+<Devices-Detail-Response xmlns="http://www.embeddeddatasystems.com/schema/owserver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <PollCount>4031100</PollCount>
+  <DevicesConnected>3</DevicesConnected>
+  <LoopTime>2.126</LoopTime>
+  <DevicesConnectedChannel1>0</DevicesConnectedChannel1>
+  <DevicesConnectedChannel2>2</DevicesConnectedChannel2>
+  <DevicesConnectedChannel3>1</DevicesConnectedChannel3>
+  <DataErrorsChannel1>0</DataErrorsChannel1>
+  <DataErrorsChannel2>11</DataErrorsChannel2>
+  <DataErrorsChannel3>0</DataErrorsChannel3>
+  <VoltageChannel1>4.76</VoltageChannel1>
+  <VoltageChannel2>4.74</VoltageChannel2>
+  <VoltageChannel3>4.76</VoltageChannel3>
+  <VoltagePower>4.99</VoltagePower>
+  <DeviceName>OWServer_v2-Enet</DeviceName>
+  <HostName>EDSOWSERVER2</HostName>
+  <MACAddress>00:04:A3:B1:F2:F0</MACAddress>
+  <DateTime>2020-05-10 21:21:36</DateTime>
+  <owd_DS18B20 Description="Programmable resolution thermometer">
+    <Name>DS18B20</Name>
+    <Family>28</Family>
+    <ROMId>2A000003BB170B28</ROMId>
+    <Health>7</Health>
+    <Channel>2</Channel>
+    <RawData>46014B467FFF0A1085FF0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000</RawData>
+    <PrimaryValue>20.3750 Deg C</PrimaryValue>
+    <Temperature Units="Centigrade">20.3750</Temperature>
+    <UserByte1 Writable="True">75</UserByte1>
+    <UserByte2 Writable="True">70</UserByte2>
+    <Resolution>12</Resolution>
+    <PowerSource>255</PowerSource>
+  </owd_DS18B20>
+  <owd_DS18B20 Description="Programmable resolution thermometer">
+    <Name>DS18B20</Name>
+    <Family>28</Family>
+    <ROMId>49000001BCEAD428</ROMId>
+    <Health>7</Health>
+    <Channel>3</Channel>
+    <RawData>44014B467FFF0C10A9FF0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000</RawData>
+    <PrimaryValue>20.2500 Deg C</PrimaryValue>
+    <Temperature Units="Centigrade">20.2500</Temperature>
+    <UserByte1 Writable="True">75</UserByte1>
+    <UserByte2 Writable="True">70</UserByte2>
+    <Resolution>12</Resolution>
+    <PowerSource>255</PowerSource>
+  </owd_DS18B20>
+  <owd_EDS0068 Description="Temperature, Humidity, Barometric Pressure and Light Sensor">
+    <Name>EDS0068</Name>
+    <Family>7E</Family>
+    <ROMId>C100100000267C7E</ROMId>
+    <Health>7</Health>
+    <Channel>2</Channel>
+    <RawData>6800FF00A5023200EA00FF001EFB1DA5E20000000000000079E87E0026587D0000007DD864007DD87DD828EC00803E000000002003000000A0860100000000000000000000000000</RawData>
+    <PrimaryValue>42.3125 %RH</PrimaryValue>
+    <Temperature Units="Centigrade">15.9375</Temperature>
+    <Humidity Units="PercentRelativeHumidity">42.3125</Humidity>
+    <DewPoint Units="Centigrade">3.1250</DewPoint>
+    <Humidex>14.6250</Humidex>
+    <HeatIndex Units="Centigrade">15.9375</HeatIndex>
+    <BarometricPressureMb Units="Millibars">959.390</BarometricPressureMb>
+    <BarometricPressureHg Units="InchesOfMercury">28.331</BarometricPressureHg>
+    <Light Units="Lux">0</Light>
+    <LED>0</LED>
+    <Relay>0</Relay>
+    <Counter1>8214566</Counter1>
+    <Counter2>8317049</Counter2>
+    <TemperatureHighAlarmState>0</TemperatureHighAlarmState>
+    <TemperatureLowAlarmState>0</TemperatureLowAlarmState>
+    <HumidityHighAlarmState>0</HumidityHighAlarmState>
+    <HumidityLowAlarmState>0</HumidityLowAlarmState>
+    <DewPointHighAlarmState>0</DewPointHighAlarmState>
+    <DewPointLowAlarmState>0</DewPointLowAlarmState>
+    <HumidexHighAlarmState>0</HumidexHighAlarmState>
+    <HumidexLowAlarmState>0</HumidexLowAlarmState>
+    <HeatIndexHighAlarmState>0</HeatIndexHighAlarmState>
+    <HeatIndexLowAlarmState>0</HeatIndexLowAlarmState>
+    <BarometricPressureMbHighAlarmState>0</BarometricPressureMbHighAlarmState>
+    <BarometricPressureMbLowAlarmState>0</BarometricPressureMbLowAlarmState>
+    <BarometricPressureHgHighAlarmState>0</BarometricPressureHgHighAlarmState>
+    <BarometricPressureHgLowAlarmState>0</BarometricPressureHgLowAlarmState>
+    <LightHighAlarmState>0</LightHighAlarmState>
+    <LightLowAlarmState>0</LightLowAlarmState>
+    <ClearAlarms Writable="True">-</ClearAlarms>
+    <TemperatureHighConditionalSearchState Writable="True">0</TemperatureHighConditionalSearchState>
+    <TemperatureLowConditionalSearchState Writable="True">0</TemperatureLowConditionalSearchState>
+    <HumidityHighConditionalSearchState Writable="True">0</HumidityHighConditionalSearchState>
+    <HumidityLowConditionalSearchState Writable="True">0</HumidityLowConditionalSearchState>
+    <DewPointHighConditionalSearchState Writable="True">0</DewPointHighConditionalSearchState>
+    <DewPointLowConditionalSearchState Writable="True">0</DewPointLowConditionalSearchState>
+    <HumidexHighConditionalSearchState Writable="True">0</HumidexHighConditionalSearchState>
+    <HumidexLowConditionalSearchState Writable="True">0</HumidexLowConditionalSearchState>
+    <HeatIndexHighConditionalSearchState Writable="True">0</HeatIndexHighConditionalSearchState>
+    <HeatIndexLowConditionalSearchState Writable="True">0</HeatIndexLowConditionalSearchState>
+    <BarometricPressureMbHighConditionalSearchState Writable="True">0</BarometricPressureMbHighConditionalSearchState>
+    <BarometricPressureMbLowConditionalSearchState Writable="True">0</BarometricPressureMbLowConditionalSearchState>
+    <BarometricPressureHgHighConditionalSearchState Writable="True">0</BarometricPressureHgHighConditionalSearchState>
+    <BarometricPressureHgLowConditionalSearchState Writable="True">0</BarometricPressureHgLowConditionalSearchState>
+    <LightHighConditionalSearchState Writable="True">0</LightHighConditionalSearchState>
+    <LightLowConditionalSearchState Writable="True">0</LightLowConditionalSearchState>
+    <TemperatureHighAlarmValue Writable="True" Units="Centigrade">125</TemperatureHighAlarmValue>
+    <TemperatureLowAlarmValue Writable="True" Units="Centigrade">-40</TemperatureLowAlarmValue>
+    <HumidityHighAlarmValue Writable="True" Units="PercentRelativeHumidity">100</HumidityHighAlarmValue>
+    <HumidityLowAlarmValue Writable="True" Units="PercentRelativeHumidity">0</HumidityLowAlarmValue>
+    <DewPointHighAlarmValue Writable="True" Units="Centigrade">125</DewPointHighAlarmValue>
+    <DewPointLowAlarmValue Writable="True" Units="Centigrade">-40</DewPointLowAlarmValue>
+    <HumidexHighAlarmValue Writable="True">125</HumidexHighAlarmValue>
+    <HumidexLowAlarmValue Writable="True">-40</HumidexLowAlarmValue>
+    <HeatIndexHighAlarmValue Writable="True" Units="Centigrade">40</HeatIndexHighAlarmValue>
+    <HeatIndexLowAlarmValue Writable="True" Units="Centigrade">-20</HeatIndexLowAlarmValue>
+    <BarometricPressureMbHighAlarmValue Writable="True" Units="Millibars">2000.000</BarometricPressureMbHighAlarmValue>
+    <BarometricPressureMbLowAlarmValue Writable="True" Units="Millibars">0.000</BarometricPressureMbLowAlarmValue>
+    <BarometricPressureHgHighAlarmValue Writable="True" Units="InchesOfMercury">100.000</BarometricPressureHgHighAlarmValue>
+    <BarometricPressureHgLowAlarmValue Writable="True" Units="InchesOfMercury">0.000</BarometricPressureHgLowAlarmValue>
+    <LightHighAlarmValue Writable="True" Units="Lux">100000</LightHighAlarmValue>
+    <LightLowAlarmValue Writable="True" Units="Lux">0</LightLowAlarmValue>
+    <LEDFunction Writable="True">0</LEDFunction>
+    <RelayFunction Writable="True">0</RelayFunction>
+    <LEDState Writable="True">0</LEDState>
+    <RelayState Writable="True">0</RelayState>
+    <Version>1.03</Version>
+  </owd_EDS0068>
+</Devices-Detail-Response>
+
+

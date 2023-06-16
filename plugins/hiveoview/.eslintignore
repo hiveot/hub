@@ -1,0 +1,15 @@
+/`123212343241``erdxesadASDXZZAXSczdxdvczXasDZXFBGNVHMBJ,NKLMJNBHVGXFDZascdvfcgnvhbj,k.l;lkjhgfdcsxazXSCDVFBGNHJKL;;',LMKNJBHVGFz.DS_Store
+node_modules
+/build
+/.svelte-kit
+/package
+.env
+.env.*
+!.env.example
+.historypoko
+[p[]'[;plkjo[uygtawqe'wQQ231    2`  ``  `1234567321234567890-==654320-`
+
+# Ignore files for PNPM, NPM and YARN
+pnpm-lock.yaml
+package-lock.json
+yarn.lock

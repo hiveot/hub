@@ -1,0 +1,18 @@
+# Authentication service configuration
+# The service will work out of the box with the default values
+
+# Enable the profile store for authenticated users. Default is true
+#profileStoreEnabled: true
+
+# Set the config store folder. Default is 'clientconfig' in the config folder
+#configStoreFolder: clientconfig
+
+# PasswordFile, in the config folder, to read from.
+# Use "" for default defined in 'unpwstore.DefaultPasswordFile'
+#passwordFile: "hub.passwd"
+
+# access token validity in seconds. Default is 1 hour
+#accessTokenValiditySec: 3600
+
+# refresh token validity in seconds. Default is 1209600 (14 days)
+#refreshTokenValiditySec: 1209600

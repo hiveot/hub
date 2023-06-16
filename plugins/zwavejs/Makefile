@@ -1,0 +1,42 @@
+# Makefile to build the zwave protocol binding
+DIST_FOLDER=./dist
+BUILD_FOLDER=./build
+INSTALL_HOME=~/bin/hiveot
+PLUGINS_HOME=$(INSTALL_HOME)/bin/plugins
+.DEFAULT_GOAL := help
+
+.FORCE:
+
+all: dist
+
+js: .FORCE  ## Compile typescript
+	tsc
+
+dist: .FORCE ## Build binary app using pkg and esbuild
+	tsc
+	pkg --compress GZip .
+
+clean: ## Clear build and cache
+	rm -rf node_modules
+	rm -rf dist/*
+	rm -rf build/*
+	go clean
+	go mod tidy
+	yarn
+
+help: ## Show this help
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+install:   ## Install the plugin into $(PLUGINS_HOME)
+	mkdir -p $(PLUGINS_HOME)
+	cp $(DIST_FOLDER)/* $(PLUGINS_HOME)
+
+run:  js ## Compile and run the app
+	node ${BUILD_FOLDER}/main.js  ~/bin/hiveot/certs
+
+test: ## Run tests
+	GOOS=js GOARCH=wasm go test -failfast  -cover ./...
+
+upgrade: ## Upgrade packages (use with care)
+	go get -u all
+	go mod tidy

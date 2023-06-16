@@ -1,0 +1,73 @@
+# OWServer configuration
+
+# Binding publisher ID. Default is 'owserver'.
+# Recommended is to add a '-1' in case of multiple instances.
+#bindingID: "owserver"
+
+# hubURL optional hub address to connect to.
+# Default "" for auto discovery.
+# * "unix://path/to/socket"    for UDS
+# * "tcp://address:8443/"      for TCP/TLS
+# * "wss://address:8444/ws"    for Websocket
+#hubUrl: ""
+
+# owserverAddress address of the EDS OWServer-V2 gateway.
+# Default "" is auto-discover using DNS-SD
+# Override by providing http://address:port
+#owserverAddress: ""
+
+# Optional loginName and password to the EDS OWserver using Basic Auth.
+#loginName: admin
+#password: password
+
+# TDInterval optional override interval of republishing the full TD, in seconds.
+# Default is 12 hours
+#tdInterval: 43200
+
+# PollInterval optional override interval of polling Thing values, in seconds.
+# Default is 60 seconds
+#pollInterval:60
+
+# RepublishInterval optional override interval that unmodified Thing values are republished, in seconds.
+# Default is 3600 seconds
+#republishInterval: 3600
+
+
+# map of 1-wire device family code to HiveOT vocab DeviceTypeXYZ
+# see also: http://owfs.sourceforge.net/simple_family.html
+#deviceTypeMap:        # Family: vocab.DeviceTypeXyz    device (iButton) description
+#  01: "serialNumber"  # 2401,2411 (1990A): Silicon Serial Number
+#  02: "securityKey"   # 1425 (1991): multikey 1153bit secure
+#  04: "time"          # 2404 (1994): econoram time chip
+#  05: "switch"        # 2405: Addresable Switch
+#  06: "memoryButton"  # (1993) 4K memory ibutton
+#  08: "memoryButton"  # (1992) 1K memory ibutton
+#  0A: "memoryButton"  # (1995) 16K memory ibutton
+#  0C: "memoryButton"  # (1996) 64K memory ibutton
+#  10: "thermometer"   # 18S20: high precision digital thermometer
+#  12: "switch"        # 2406:  dual addressable switch plus 1k memory
+#  14: "eeprom"        # 2430A (1971): 256 EEPROM
+#  1A: "eeprom"        # (1963L) 4K Monetary
+#  1C: "eeprom"        # 28E04-100: 4K EEPROM with PIO
+#  1D: "ram"           # 2423:  4K RAM with counter
+#  1F: "coupler"       # 2409:  Microlan coupler?
+#  20: "adconverter"   # 2450:  Quad A/D convert
+#  21: "thermometer"   # 1921:  Thermochron iButton device
+#  22: "thermometer"   # 1822:  Econo digital thermometer
+#  24: "time"          # 2415:  time chip
+#  26: "battery"       # 2438:  smart battery monitor
+#  27: "time"          # 2417:  time chip with interrupt
+#  28: "thermometer"   # 18B20: programmable resolution digital thermometer
+#  29: "switch"        # 2408:  8-channel addressable switch
+#  2C: "sensor"        # 2890:  digital potentiometer"
+#  2D: "eeprom"        # 2431:  1k eeprom
+#  2E: "battery"       # 2770:  battery monitor and charge controller
+#  30: "battery"       # 2760, 2761, 2762:  high-precision li+ battery monitor
+#  31: "battery"       # 2720: efficient addressable single-cell rechargable lithium protection ic
+#  33: "eeprom"        # 2432 (1961S): 1k protected eeprom with SHA-1
+#  36: "sensor"        # 2740: high precision coulomb counter
+#  37: "eeprom"        # (1977): Password protected 32k eeprom
+#  41: "sensor"        # 2422: Temperature Logger 8k mem
+#  51: "indicator"     # 2751: multi chemistry battery fuel gauge
+#  84: "time"          # 2404S: dual port plus time
+#  7E: "multisensor"   # EDS0068: Temperature, Humidity, Barometric Pressure and Light Sensor
