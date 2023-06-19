@@ -29,7 +29,7 @@ type AppFolders struct {
 //	home
 //	  |- bin                Application cli and launcher binaries
 //	      |- plugins        Plugin binaries
-//	  |- config             Service and binding configuration yaml files
+//	  |- config             Service configuration yaml files
 //	  |- certs              CA and service certificates
 //	  |- logs               Logging output
 //	  |- run                PID files and sockets
@@ -39,8 +39,7 @@ type AppFolders struct {
 // The system based folder structure is:
 //
 //	/opt/hiveot/bin            Application binaries, cli and launcher
-//	             |-- bindings  Protocol binding binaries
-//	             |-- services  Service binaries
+//	             |-- plugins   Plugin binaries
 //	/etc/hiveot/conf.d         Service configuration yaml files
 //	/etc/hiveot/certs          CA and service certificates
 //	/var/log/hiveot            Logging output

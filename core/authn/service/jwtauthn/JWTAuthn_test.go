@@ -3,6 +3,7 @@ package jwtauthn_test
 import (
 	"github.com/hiveot/hub/core/authn/service/jwtauthn"
 	"testing"
+	"time"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/stretchr/testify/assert"
@@ -98,7 +99,7 @@ func TestExpired(t *testing.T) {
 	const user1 = "user1"
 
 	// issue the tokens
-	issuer := jwtauthn.NewJWTAuthn(nil, -1, 0)
+	issuer := jwtauthn.NewJWTAuthn(nil, 1, 0)
 	at1, rt1, err := issuer.CreateTokens(user1)
 	assert.NotEmpty(t, at1)
 	assert.NotEmpty(t, rt1)
@@ -107,6 +108,7 @@ func TestExpired(t *testing.T) {
 	_, _, err = issuer.RefreshTokens(user1, rt1)
 	assert.NoError(t, err)
 	// access token is expired
+	time.Sleep(time.Second * 2)
 	_, _, err = issuer.ValidateToken(user1, at1)
 	assert.Error(t, err)
 }

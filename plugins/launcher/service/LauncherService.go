@@ -35,7 +35,7 @@ type LauncherService struct {
 
 	// mutex to keep things safe
 	mux sync.Mutex
-	// watch service and binding folders for updates
+	// watch plugin folders for updates
 	serviceWatcher *fsnotify.Watcher
 	// service is running
 	isRunning atomic.Bool
@@ -102,8 +102,7 @@ func (svc *LauncherService) List(onlyRunning bool) ([]launcher.ServiceInfo, erro
 	return res, nil
 }
 
-// ScanServices scans the service and bindings folders for changes and updates the
-// services list
+// ScanServices scans the plugin folder for changes and updates the services list
 func (svc *LauncherService) ScanServices() error {
 	err := svc.findServices(svc.f.Plugins)
 	if err != nil {
@@ -344,7 +343,7 @@ func (svc *LauncherService) updateStatus(svcInfo *launcher.ServiceInfo) {
 }
 
 // WatchServices watches the bin and plugins folder for changes and reloads
-// This will detect adding new services or bindings without requiring a restart.
+// This will detect adding new services without requiring a restart.
 func (svc *LauncherService) WatchServices() error {
 	svc.serviceWatcher, _ = fsnotify.NewWatcher()
 	err := svc.serviceWatcher.Add(svc.f.Bin)

@@ -46,9 +46,9 @@ type TestCerts struct {
 //	this returns the x509 and tls certificates
 func CreateCertBundle() TestCerts {
 	testCerts := TestCerts{
-		DeviceID: "device1",
-		ServerID: "service1",
-		UserID:   "user1",
+		DeviceID: "test-device",
+		ServerID: "test-service",
+		UserID:   "test-user",
 	}
 	testCerts.CaCert, testCerts.CaKey = CreateCA()
 	testCerts.ServerKey = certsclient.CreateECDSAKeys()
@@ -131,12 +131,12 @@ func CreateTlsCert(cn string, ou string, isServer bool, clientKey *ecdsa.Private
 // CreateX509Cert generates a x509 certificate with keys, signed by the CA, valid for 127.0.0.1
 // intended for testing, not for production
 //
-//	cn is the certificate common name, usually the client ID or server hostname
+//	clientID is the certificate common name, usually the client ID or server hostname
 //	ou the organization
 //	isServer if set allow key usage of ServerAuth instead of ClientAuth
 //	pubKey is the owner public key for this certificate
 //	caCert and caKey is the signing CA
-func CreateX509Cert(cn string, ou string, isServer bool, pubKey *ecdsa.PublicKey,
+func CreateX509Cert(clientID string, ou string, isServer bool, pubKey *ecdsa.PublicKey,
 	caCert *x509.Certificate, caKey *ecdsa.PrivateKey) (cert *x509.Certificate, derBytes []byte, err error) {
 	validity := time.Hour
 
@@ -156,13 +156,20 @@ func CreateX509Cert(cn string, ou string, isServer bool, pubKey *ecdsa.PublicKey
 			Locality:           []string{"hiveot"},
 			Organization:       []string{"Testing"},
 			OrganizationalUnit: []string{ou},
-			CommonName:         cn,
+			CommonName:         clientID,
 			Names:              make([]pkix.AttributeTypeAndValue, 0),
 		},
 		NotBefore:   time.Now().Add(-10 * time.Second),
 		NotAfter:    time.Now().Add(validity),
 		KeyUsage:    keyUsage,
 		ExtKeyUsage: extkeyUsage,
+
+		// TODO test this: Add the clientID to the SAN for mapping to a user in NATS
+		// source: https://stackoverflow.com/questions/26441547/go-how-do-i-add-an-extension-subjectaltname-to-a-x509-certificate
+		// and: https://docs.nats.io/running-a-nats-service/configuration/securing_nats/auth_intro/tls_mutual_auth
+		// one of these solutions:
+		//DNSNames: []string{clientID},
+		EmailAddresses: []string{clientID},
 
 		BasicConstraintsValid: true,
 		IsCA:                  false,

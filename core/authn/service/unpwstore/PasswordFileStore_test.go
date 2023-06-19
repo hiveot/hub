@@ -1,7 +1,6 @@
 package unpwstore_test
 
 import (
-	"context"
 	"fmt"
 	"github.com/hiveot/hub/core/authn/service/unpwstore"
 	"golang.org/x/exp/slog"
@@ -41,13 +40,12 @@ func TestMain(m *testing.M) {
 }
 
 func TestOpenClosePWFile(t *testing.T) {
-	ctx := context.Background()
 	unpwStore := unpwstore.NewPasswordFileStore(unpwFilePath)
-	err := unpwStore.Open(ctx)
+	err := unpwStore.Open()
 	assert.NoError(t, err)
 
 	// open twice should provide error
-	err2 := unpwStore.Open(ctx)
+	err2 := unpwStore.Open()
 	assert.Error(t, err2)
 
 	time.Sleep(time.Millisecond * 100)
@@ -55,20 +53,18 @@ func TestOpenClosePWFile(t *testing.T) {
 }
 
 func TestOpenBadData(t *testing.T) {
-	ctx := context.Background()
 	// /bin/yes cannot be read
 	unpwStore := unpwstore.NewPasswordFileStore("/bin/yes")
-	err := unpwStore.Open(ctx)
+	err := unpwStore.Open()
 	assert.Error(t, err)
 
 }
 
 func TestGetMissingEntry(t *testing.T) {
 	const user1 = "user1"
-	ctx := context.Background()
 	// create 2 separate stores
 	pwStore1 := unpwstore.NewPasswordFileStore(unpwFilePath)
-	err := pwStore1.Open(ctx)
+	err := pwStore1.Open()
 	require.NoError(t, err)
 	defer pwStore1.Close()
 
@@ -82,10 +78,9 @@ func TestGetMissingEntry(t *testing.T) {
 func TestVerify(t *testing.T) {
 	const user1 = "user1"
 	const pass1 = "pass1"
-	ctx := context.Background()
 	os.Remove(unpwFilePath)
 	pwStore1 := unpwstore.NewPasswordFileStore(unpwFilePath)
-	err := pwStore1.Open(ctx)
+	err := pwStore1.Open()
 	require.NoError(t, err)
 	defer pwStore1.Close()
 
@@ -118,10 +113,9 @@ func TestVerify(t *testing.T) {
 func TestName(t *testing.T) {
 	const user1 = "user1"
 	const name1 = "user one"
-	ctx := context.Background()
 	os.Remove(unpwFilePath)
 	pwStore1 := unpwstore.NewPasswordFileStore(unpwFilePath)
-	err := pwStore1.Open(ctx)
+	err := pwStore1.Open()
 	require.NoError(t, err)
 	defer pwStore1.Close()
 
@@ -140,14 +134,13 @@ func TestSetPasswordTwoStores(t *testing.T) {
 	const user2 = "user2"
 	const hash1 = "hash1"
 	const hash2 = "hash2"
-	ctx := context.Background()
 
 	// create 2 separate stores
 	pwStore1 := unpwstore.NewPasswordFileStore(unpwFilePath)
-	err := pwStore1.Open(ctx)
+	err := pwStore1.Open()
 	assert.NoError(t, err)
 	pwStore2 := unpwstore.NewPasswordFileStore(unpwFilePath)
-	err = pwStore2.Open(ctx)
+	err = pwStore2.Open()
 	assert.NoError(t, err)
 
 	// set hash in store 1, should appear in store 2
@@ -163,7 +156,7 @@ func TestSetPasswordTwoStores(t *testing.T) {
 
 	// read back
 	// force reload. Don't want to wait
-	err = pwStore2.Reload(ctx)
+	err = pwStore2.Reload()
 	assert.NoError(t, err)
 
 	// must exist
@@ -193,7 +186,6 @@ func TestSetPasswordTwoStores(t *testing.T) {
 func TestConcurrentReadWrite(t *testing.T) {
 	var wg sync.WaitGroup
 	var i int
-	ctx := context.Background()
 
 	// start with empty file
 	fp, _ := os.Create(unpwFilePath)
@@ -201,10 +193,10 @@ func TestConcurrentReadWrite(t *testing.T) {
 
 	// two stores in parallel
 	pwStore1 := unpwstore.NewPasswordFileStore(unpwFilePath)
-	err := pwStore1.Open(ctx)
+	err := pwStore1.Open()
 	assert.NoError(t, err)
 	pwStore2 := unpwstore.NewPasswordFileStore(unpwFilePath)
-	err = pwStore2.Open(ctx)
+	err = pwStore2.Open()
 	assert.NoError(t, err)
 
 	wg.Add(1)
@@ -233,10 +225,9 @@ func TestConcurrentReadWrite(t *testing.T) {
 }
 
 func TestWritePwToBadTempFolder(t *testing.T) {
-	ctx := context.Background()
 	pws := make(map[string]unpwstore.PasswordEntry)
 	pwStore1 := unpwstore.NewPasswordFileStore(unpwFilePath)
-	err := pwStore1.Open(ctx)
+	err := pwStore1.Open()
 	assert.NoError(t, err)
 	_, err = unpwstore.WritePasswordsToTempFile("/badfolder", pws)
 	assert.Error(t, err)
@@ -246,10 +237,9 @@ func TestWritePwToBadTempFolder(t *testing.T) {
 func TestWritePwToReadonlyFile(t *testing.T) {
 	const user1 = "user1"
 	const pass1 = "pass1"
-	ctx := context.Background()
 	// bin/yes cannot be written to
 	pwStore1 := unpwstore.NewPasswordFileStore("/bin/yes")
-	err := pwStore1.Open(ctx)
+	err := pwStore1.Open()
 	assert.Error(t, err)
 	err = pwStore1.SetPassword(user1, pass1)
 	assert.Error(t, err)

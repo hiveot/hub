@@ -11,14 +11,19 @@ This service is reworked for use with NATS.
 
 ## Scope
 
-In-scope is to provide identity management for users on the local network. Login to the authn service will provide tokens required to authorize access to Thing resources. 
-
+In-scope is to provide identity management for users on the local network. Login to the authn service will provide tokens required to authorize access to Thing resources.
 
 ## Summary
 
-This core service manages HiveOT users and their credentials. It issues JWT tokens to authenticate with the NATS server.
+This core service manages HiveOT users and their credentials. It issues signed JWT tokens to authenticate with the NATS server.
 
-Administrators manage users and passwords through the 'hubcli' commandline utility or through the authn management API. Creating users or resetting passwords requires an 'admin' client certificate.
+Administrators manage users and passwords through the 'hubcli' commandline utility or through the authn management API. Creating users or resetting passwords requires an 'admin' key.
+
+The authn service performs tasks similar to the nats nsc tool but somewhat simplified. Its primary objective is to manage user tokens. As a core service it identifies itself using its operator token.
+
+A note on nsc. Nats has a companion tool called 'nsc'. This tool is used to manage NATS operators, accounts and users, and authorization using the commandline.  It is separate from the nats server itself and interact with the server through the nats client.
+
+
 
 #### **Password Storage**
 

@@ -2,9 +2,8 @@ package main
 
 import (
 	"github.com/hiveot/hub/lib/utils"
+	"golang.org/x/exp/slog"
 	"os"
-
-	"github.com/sirupsen/logrus"
 
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/svcconfig"
@@ -12,8 +11,13 @@ import (
 	"github.com/hiveot/hub/plugins/owserver/internal"
 )
 
+// ServiceName is the default instance ID of this service.
+// Used to name the configuration file, the certificate ID and as the
+// publisher ID.
+const ServiceName = "owserver"
+
 func main() {
-	f, bindingCert, caCert := svcconfig.SetupFolderConfig(internal.DefaultID)
+	f, clientCert, caCert := svcconfig.SetupFolderConfig(ServiceName)
 	config := internal.NewConfig()
 	_ = f.LoadConfig(&config)
 
@@ -21,10 +25,11 @@ func main() {
 	if fullUrl == "" {
 		fullUrl = hubclient.LocateHub(0)
 	}
-	hc := hubclient.NewHubClient(config.ID) // <-
-	err := hc.ConnectWithCert(fullUrl, bindingCert, caCert)
+	hc := hubclient.NewHubClient(config.ID)
+	err := hc.ConnectWithCert(fullUrl, config.ID, clientCert, caCert)
 	if err != nil {
-		logrus.Fatalf("unable to connect to Hub on %s: %s", fullUrl, err)
+		slog.Error("unable to connect to Hub", "url", fullUrl, "err", err)
+		panic("hub not found")
 	}
 
 	// start the service
@@ -35,7 +40,7 @@ func main() {
 	err = binding.Start()
 
 	if err != nil {
-		logrus.Errorf("%s: Failed to start: %s", internal.DefaultID, err)
+		slog.Error("Failed to start", "err", err, "service", ServiceName)
 		os.Exit(1)
 	}
 	os.Exit(0)

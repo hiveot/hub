@@ -47,11 +47,9 @@ func (hc *HubClient) ConnectWithCert(url string, clientID string, clientCert *tl
 	if url == "" {
 		url = nats.DefaultURL
 	}
-	var checkServerCert = false
 
 	caCertPool := x509.NewCertPool()
 	if caCert != nil {
-		checkServerCert = true
 		caCertPool.AddCert(caCert)
 	}
 	opts := x509.VerifyOptions{
@@ -64,7 +62,7 @@ func (hc *HubClient) ConnectWithCert(url string, clientID string, clientCert *tl
 	tlsConfig := &tls.Config{
 		RootCAs:            caCertPool,
 		Certificates:       clientCertList,
-		InsecureSkipVerify: !checkServerCert,
+		InsecureSkipVerify: caCert == nil,
 	}
 	hc.clientID = clientID
 	hc.nc, err = nats.Connect(url,
@@ -78,13 +76,27 @@ func (hc *HubClient) ConnectWithCert(url string, clientID string, clientCert *tl
 	return err
 }
 
-// ConnectWithPassword connects to the Hub server using a login ID and password
-func (hc *HubClient) ConnectWithPassword(url string, loginID string, password string) (err error) {
+// ConnectWithPassword connects to the Hub server using a login ID and password.
+//
+// Provide a CA certificate if available. If nil then the connection will still
+// use TLS but no server verification will be used (InsecureSkipVerify=true)
+func (hc *HubClient) ConnectWithPassword(
+	url string, loginID string, password string, caCert *x509.Certificate) (err error) {
 	if url == "" {
 		url = nats.DefaultURL
 	}
+	caCertPool := x509.NewCertPool()
+	if caCert != nil {
+		caCertPool.AddCert(caCert)
+	}
+	tlsConfig := &tls.Config{
+		RootCAs: caCertPool,
+		//Certificates:       clientCertList,
+		InsecureSkipVerify: caCert == nil,
+	}
 	hc.nc, err = nats.Connect(url,
 		nats.Name(hc.instanceName),
+		nats.Secure(tlsConfig),
 		nats.UserInfo(loginID, password),
 		nats.Timeout(time.Second*time.Duration(hc.timeoutSec)))
 	return err

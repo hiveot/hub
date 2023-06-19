@@ -2,10 +2,6 @@ package internal
 
 import "os"
 
-// DefaultID is the default instance ID of this service. Used to name the configuration file
-// and as the publisher ID portion of the Thing ID (zoneID:publisherID:deviceID:deviceType)
-const DefaultID = "owserver"
-
 // OWServerConfig contains the plugin configuration
 type OWServerConfig struct {
 	// ID optional override of the instance ID of the binding in case of multiple instances.
@@ -47,7 +43,7 @@ func NewConfig() OWServerConfig {
 
 	// ensure valid defaults
 	hostName, _ := os.Hostname()
-	cfg.ID = DefaultID + "-" + hostName
+	cfg.ID = "owserver-" + hostName
 	cfg.TDInterval = 3600 * 12
 	cfg.PollInterval = 60
 	cfg.RepublishInterval = 3600

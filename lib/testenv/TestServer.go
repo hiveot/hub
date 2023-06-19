@@ -23,8 +23,10 @@ func (svr *TestServer) Start() (clientURL string, err error) {
 		caCertPool.AddCert(svr.caCert)
 		clientCertList := []tls.Certificate{*svr.serverCert}
 		tlsConfig := &tls.Config{
+			ClientCAs:    caCertPool,
 			RootCAs:      caCertPool,
 			Certificates: clientCertList,
+			ClientAuth:   tls.VerifyClientCertIfGiven,
 		}
 		opts.TLSConfig = tlsConfig
 	}
