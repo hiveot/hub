@@ -2,7 +2,6 @@ package internal
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
@@ -25,7 +24,7 @@ type OWServerBinding struct {
 	edsAPI *eds.EdsAPI
 
 	// Hub CA certificate to validate gateway connection
-	caCert *x509.Certificate
+	//caCert *x509.Certificate
 
 	// Client certificate of this binding
 	bindingCert *tls.Certificate

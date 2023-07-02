@@ -45,7 +45,7 @@ func startServer() (svc *testenv.TestServer) {
 // All tests are run using the simulation file.
 func TestMain(m *testing.M) {
 	// setup environment
-	testCerts = testenv.CreateCertBundle()
+	testCerts = testenv.CreateAuthBundle()
 	tempFolder = path.Join(os.TempDir(), "test-owserver")
 	cwd, _ := os.Getwd()
 	homeFolder := path.Join(cwd, "../docs")

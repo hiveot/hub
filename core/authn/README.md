@@ -2,7 +2,7 @@
 
 ## Objective
 
-Provide user authentication on the local network. 
+Provide authentication keys to clients on the local network. 
 
 ## Status
 
@@ -11,7 +11,7 @@ This service is reworked for use with NATS.
 
 ## Scope
 
-In-scope is to provide identity management for users on the local network. Login to the authn service will provide tokens required to authorize access to Thing resources.
+In-scope is to provide identity management for clients on the local network. Login to the authn service will provide tokens required to authorize access to Thing resources.
 
 ## Summary
 
@@ -56,11 +56,11 @@ Code below is pseudocode and needs to be updated.
 
 Using the authn CLI. This utility should only be accessible to admin users:
 ```bash
- bin/hubcli authn adduser {userID}      # this will prompt for a password
+ bin/hubcore authn adduser {userID}      # this will prompt for a password
  
- bin/hubcli authn deleteuser {userID}
+ bin/hubcore authn deleteuser {userID}
 
- bin/hubcli authn setpasswd             # this will prompt for a password
+ bin/hubcore authn setpasswd             # this will prompt for a password
 ```
 
 Using the service API:

@@ -1,44 +1,101 @@
 package service
 
 import (
-	"crypto/ecdsa"
+	"errors"
 	"fmt"
-	"github.com/hiveot/hub/core/authn"
-	"github.com/hiveot/hub/core/authn/config"
-	"github.com/hiveot/hub/core/authn/service/jwtauthn"
+	"github.com/hiveot/hub/api/go/hub"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/core/authn/service/unpwstore"
+	"github.com/nats-io/jwt/v2"
+	"github.com/nats-io/nkeys"
 	"golang.org/x/exp/rand"
 	"golang.org/x/exp/slog"
 	"strings"
 	"time"
-
-	"github.com/hiveot/hub/lib/certsclient"
 )
 
 // AuthnService provides the capabilities to manage and use authentication services
 // This implements the IAuthnService interface
 type AuthnService struct {
-	config config.AuthnConfig
-	// key used for signing of JWT tokens
-	signingKey *ecdsa.PrivateKey
+	// client used to receive requests via the messaging server
+	// the account key used for issuing of JWT user tokens
+	accountKP nkeys.KeyPair
 	// password storage
 	pwStore unpwstore.IUnpwStore
-	//
-	jwtAuthn *jwtauthn.JWTAuthn
 }
 
+// AddDevice adds a device
+//func (svc *AuthnService) AddDevice(clientID string, name string) (token string, err error) {
+//
+//	exists := svc.pwStore.Exists(clientID)
+//	if exists {
+//		return "", fmt.Errorf("device with clientID '%s' already exists", clientID)
+//	}
+//	err = svc.pwStore.SetName(clientID, name)
+//	return err
+//}
+
+// AddService adds a service
+//func (svc *AuthnService) AddService(clientID string, name string) (token string, err error) {
+//
+//	exists := svc.pwStore.Exists(clientID)
+//	if exists {
+//		return "", fmt.Errorf("service with clientID '%s' already exists", clientID)
+//	}
+//	err = svc.pwStore.SetName(clientID, name)
+//	return err
+//}
+
 // AddUser adds a new user and returns a generated password
-func (svc *AuthnService) AddUser(clientID string, newPassword string) (password string, err error) {
+func (svc *AuthnService) AddUser(clientID string, password string) (err error) {
 
 	exists := svc.pwStore.Exists(clientID)
 	if exists {
-		return "", fmt.Errorf("user with clientID '%s' already exists", clientID)
+		return fmt.Errorf("user with clientID '%s' already exists", clientID)
 	}
-	if newPassword == "" {
-		newPassword = svc.GeneratePassword(0, false)
+	err = svc.pwStore.SetPassword(clientID, password)
+	return err
+}
+
+// CreateUserToken create a new user token signed by the account
+func (svc *AuthnService) CreateUserToken(userID string, userName string, validity uint) (string, error) {
+
+	// when valid, provide the tokens
+	userKP, _ := nkeys.CreateUser()
+	userPub, _ := userKP.PublicKey()
+	userSeed, _ := userKP.Seed()
+	userClaims := jwt.NewUserClaims(userPub)
+	userClaims.ID = userID
+	userClaims.Name = userName
+	userClaims.IssuedAt = time.Now().Unix()
+	userClaims.Expires = time.Now().Add(time.Duration(validity) * time.Second).Unix()
+
+	// default size
+	userClaims.Limits.Data = 1024 * 1024 * 1024 // max data this client can ... do?
+	// users can publish actions
+	userClaims.Permissions.Pub.Allow.Add("groups.*.*.action.>")
+	// users can subscribe to group events
+	userClaims.Permissions.Sub.Allow.Add("groups.*.*.event.>")
+	// users can receive replies in their inbox
+	userClaims.Permissions.Sub.Allow.Add("_INBOX.>")
+
+	userJWT, err := userClaims.Encode(svc.accountKP)
+	creds, _ := jwt.FormatUserConfig(userJWT, userSeed)
+	return string(creds), err
+}
+
+// GetProfile returns the user's profile
+func (svc *AuthnService) GetProfile(clientID string) (profile hub.ClientProfile, err error) {
+	//upa.profileStore[profile.LoginID] = profile
+	entry, err := svc.pwStore.GetEntry(clientID)
+	if err == nil {
+		updatedStr := time.Unix(entry.Updated, 0).Format(vocab.ISO8601Format)
+		profile.ClientID = entry.LoginID
+		profile.Name = entry.UserName
+		profile.Updated = updatedStr
 	}
-	err = svc.pwStore.SetPassword(clientID, newPassword)
-	return newPassword, err
+	return profile, err
+
 }
 
 // GeneratePassword with upper, lower, numbers and special characters
@@ -67,103 +124,94 @@ func (svc *AuthnService) GeneratePassword(length int, useSpecial bool) (password
 	return password
 }
 
-// ListUsers provide a list of users and their info
-func (svc *AuthnService) ListUsers() (profiles []authn.UserProfile, err error) {
+// ListClients provide a list of users and their info
+func (svc *AuthnService) ListClients() (profiles []hub.ClientProfile, err error) {
 	pwEntries, err := svc.pwStore.List()
-	profiles = make([]authn.UserProfile, len(pwEntries))
+	profiles = make([]hub.ClientProfile, len(pwEntries))
 	for i, entry := range pwEntries {
-		profile := authn.UserProfile{
-			LoginID: entry.LoginID,
-			Name:    entry.UserName,
-			Updated: entry.Updated,
+		updatedStr := time.Unix(entry.Updated, 0).Format(vocab.ISO8601Format)
+		profile := hub.ClientProfile{
+			ClientID: entry.LoginID,
+			Name:     entry.UserName,
+			Updated:  updatedStr,
 		}
 		profiles[i] = profile
 	}
 	return profiles, err
 }
 
-// GetProfile returns the user's profile
-// User must be authenticated first
-func (svc *AuthnService) GetProfile(clientID string) (profile authn.UserProfile, err error) {
-	//upa.profileStore[profile.LoginID] = profile
-	entry, err := svc.pwStore.GetEntry(clientID)
-	if err == nil {
-		profile.LoginID = entry.LoginID
-		profile.Name = entry.UserName
-		profile.Updated = entry.Updated
-	}
-	return profile, err
-
-}
-
 // Login to authenticate a user
-// This returns a short lived auth token for use with the HTTP api,
-// and a medium lived refresh token used to obtain a new auth token.
-func (svc *AuthnService) Login(clientID string, password string) (
-	authToken, refreshToken string, err error) {
-	err = svc.pwStore.VerifyPassword(clientID, password)
+// This returns a short-lived auth token that can be used to connect to the message server
+// The token can be refreshed to extend it without requiring a login password.
+func (svc *AuthnService) Login(clientID string, password string) (authToken string, err error) {
+	entry, err := svc.pwStore.VerifyPassword(clientID, password)
 	if err != nil {
-		return "", "", fmt.Errorf("invalid login as '%s'", clientID)
+		return "", err
 	}
 	// when valid, provide the tokens
-	at, rt, err := svc.jwtAuthn.CreateTokens(clientID)
-	return at, rt, err
+	authToken, err = svc.CreateUserToken(clientID, entry.UserName, hub.DefaultUserTokenValiditySec)
+
+	//newToken, err := svc.jwtAuthn.CreateTokens(clientID)
+	return authToken, err
 }
 
-// Logout invalidates the refresh token
-func (svc *AuthnService) Logout(clientID string, refreshToken string) (err error) {
-
-	svc.jwtAuthn.InvalidateToken(clientID, refreshToken)
+// Logout invalidates the token
+func (svc *AuthnService) Logout(clientID string, token string) (err error) {
+	// TODO
+	//svc.jwtAuthn.InvalidateToken(clientID, refreshToken)
 	return nil
 }
 
 // Refresh an authentication token
-// refreshToken must be a valid refresh token obtained at login
-// This returns a short lived auth token and medium lived refresh token
-func (svc *AuthnService) Refresh(clientID string, refreshToken string) (
-	newAuthToken, newRefreshToken string, err error) {
+// This returns a refreshed token that can be used to connect to the messaging server
+// the old token must be a valid jwt token
+func (svc *AuthnService) Refresh(clientID string, oldToken string) (newToken string, err error) {
 
-	at, rt, err := svc.jwtAuthn.RefreshTokens(clientID, refreshToken)
-	return at, rt, err
+	// verify the token
+	entry, err := svc.ValidateToken(clientID, oldToken)
+	if err != nil {
+		return "", err
+	}
+	newToken, err = svc.CreateUserToken(clientID, entry.UserName, hub.DefaultUserTokenValiditySec)
+	return newToken, err
 }
 
-// SetPassword changes the client password
-func (svc *AuthnService) SetPassword(clientID, newPassword string) error {
+// RemoveClient removes a user and disables login
+// Existing tokens are immediately expired (tbd)
+func (svc *AuthnService) RemoveClient(clientID string) (err error) {
+	err = svc.pwStore.Remove(clientID)
+	return err
+}
+
+// ResetPassword sets the client password
+func (svc *AuthnService) ResetPassword(clientID, newPassword string) error {
 	return svc.pwStore.SetPassword(clientID, newPassword)
 }
 
-// SetProfile replaces the user profile
-func (svc *AuthnService) SetProfile(profile authn.UserProfile) error {
-	return svc.pwStore.SetName(profile.LoginID, profile.Name)
-}
+// Start the service, open the password store and start listening for requests on the service topic
 func (svc *AuthnService) Start() error {
-	slog.Info("starting authn service ", "passwordfile", svc.config.PasswordFile)
-	return svc.pwStore.Open()
+
+	//authKey, err := svc.config.GetAuthKey()
+	//if err != nil {
+	//	return err
+	//}
+
+	err := svc.pwStore.Open()
+	if err != nil {
+		return err
+	}
+	//err = svc.hc.ConnectWithJWT(svc.config.ServerURL, []byte(authKey), svc.caCert)
+	return err
 }
+
 func (svc *AuthnService) Stop() error {
 	slog.Info("stopping service")
 	svc.pwStore.Close()
 	return nil
 }
 
-// RemoveUser removes a user and disables login
-// Existing tokens are immediately expired (tbd)
-func (svc *AuthnService) RemoveUser(loginID string) (err error) {
-	err = svc.pwStore.Remove(loginID)
-	return err
-}
-
-// ResetPassword reset a user's password and returns a new temporary password
-func (svc *AuthnService) ResetPassword(clientID string, newPassword string) (password string, err error) {
-	if newPassword == "" {
-		newPassword = svc.GeneratePassword(8, false)
-	}
-	err = svc.pwStore.SetPassword(clientID, newPassword)
-	return newPassword, err
-}
-
-// UpdateUser updates a user's name
-func (svc *AuthnService) UpdateUser(clientID string, name string) (err error) {
+// UpdateName updates a user's name
+func (svc *AuthnService) UpdateName(clientID string, name string) (err error) {
 	exists := svc.pwStore.Exists(clientID)
 	if !exists {
 		return fmt.Errorf("user with loginID '%s' does not exist", clientID)
@@ -172,19 +220,57 @@ func (svc *AuthnService) UpdateUser(clientID string, name string) (err error) {
 	return err
 }
 
-// NewAuthnService creates new instance of the service.
-// Call Connect before using the service.
-func NewAuthnService(cfg config.AuthnConfig) *AuthnService {
-	signingKey := certsclient.CreateECDSAKeys()
-	pwStore := unpwstore.NewPasswordFileStore(cfg.PasswordFile)
-	jwtAuthn := jwtauthn.NewJWTAuthn(
-		signingKey, uint(cfg.AccessTokenValiditySec), uint(cfg.RefreshTokenValiditySec))
+// UpdatePassword changes the client password
+func (svc *AuthnService) UpdatePassword(clientID, newPassword string) error {
+	return svc.pwStore.SetPassword(clientID, newPassword)
+}
+
+// ValidateToken checks if the given token belongs the the user ID and is valid
+func (svc *AuthnService) ValidateToken(clientID string, token string) (entry unpwstore.PasswordEntry, err error) {
+	entry, err = svc.pwStore.GetEntry(clientID)
+	_ = entry
+	if err != nil {
+		return entry, err
+	}
+	claims, err := jwt.Decode(token)
+	if err != nil {
+		return entry, errors.New("Invalid token of client " + clientID)
+	}
+	if claims.ClaimType() != jwt.UserClaim {
+		return entry, errors.New("Token is not a user token of client " + clientID)
+	}
+	cd := claims.Claims()
+	if cd.ID != clientID {
+		slog.Warn("Refresh attempt on token from different user",
+			"token ID", cd.ID, "token name", cd.Name, "clientID", clientID)
+		return entry, errors.New("Token is from a different client, not" + clientID)
+	}
+	vr := jwt.ValidationResults{}
+	cd.Validate(&vr)
+	if !vr.IsEmpty() {
+		err = errors.New("Invalid token: " + vr.Errors()[0].Error())
+		return entry, err
+	}
+	return entry, nil
+}
+
+// NewManageAuthnService creates new instance of the service
+// Call 'Start' to start the service and 'Stop' to end it.
+//
+//	cfg contains the service configuration
+//	hc is the client connected to the messaging service to receive authn requests
+func NewManageAuthnService(
+	pwStore unpwstore.IUnpwStore, accountKP nkeys.KeyPair) *AuthnService {
+
+	//pwStore := unpwstore.NewPasswordFileStore(cfg.PasswordFile)
+	//jwtAuthn := jwtauthn.NewJWTAuthn(
+	//	signingKey, uint(cfg.AccessTokenValiditySec), uint(cfg.RefreshTokenValiditySec))
 
 	svc := &AuthnService{
-		config:     cfg,
-		pwStore:    pwStore,
-		signingKey: signingKey,
-		jwtAuthn:   jwtAuthn,
+		hc:        hc,
+		pwStore:   pwStore,
+		accountKP: accountKP,
+		//jwtAuthn:   jwtAuthn,
 	}
 	return svc
 }

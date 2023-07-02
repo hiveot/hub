@@ -11,9 +11,25 @@ This service is being reworked for use with NATS
 
 ## Summary
 
-This Hub service provides authorization of users, services and IoT devices. Clients are identified by their client-ID provides by authn service.  
+This Hub service provides authorization for users, services and IoT devices using a group role based access model. 
 
-Authenticated clients have a role in each group they are a member of. Authorization to an IoT resource in the same group is granted based on the role of the client.
+IoT devices have the device role that allows them to publish TD documents, events and subscribe to actions. Access is limited to the subject:
+> pub/sub: "things.{publisherID}.>"
+
+Services have a broad access to things and groups. Their access is defined in jwt tokens issued based on their purpose. The default access is defined as:
+> pub/sub: ">"
+
+Users don't subscribe directly to things, but to group streams instead. Each group has a stream defined that members of that group can access. Users can publish actions to the group:
+> sub: "{groupID}.>"
+> pub: "{groupID}.*.*.action.>"
+
+The authorization service handles:
+1. defining group streams for all defined groups
+2. define subject mapping from thingID to group ID for all things in the group
+3. define mapping of group actions to thing actions for all things in the group
+
+
+
 
 * Clients can be users, services, and IoT devices. They must be authenticated using a valid certificate or access token.
 * Groups contain resources and clients. Clients can access resources in the same group based on their role. A client only has a single role.

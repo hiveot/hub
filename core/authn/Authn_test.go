@@ -2,8 +2,7 @@ package authn_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/authn"
-	"github.com/hiveot/hub/core/authn/config"
+	"github.com/hiveot/hub/api/go/hub"
 	"github.com/hiveot/hub/core/authn/service"
 	"os"
 	"path"
@@ -25,9 +24,9 @@ var testpass1 = "secret11" // set at start
 
 // create a new authn service and set the password for testuser1
 // containing a password for testuser1
-func startTestAuthnService() (authSvc authn.IAuthnService, stopFn func(), err error) {
+func startTestAuthnService() (authSvc hub.IAuthnService, stopFn func(), err error) {
 	_ = os.Remove(passwordFile)
-	cfg := config.AuthnConfig{
+	cfg := service.AuthnConfig{
 		PasswordFile:            passwordFile,
 		AccessTokenValiditySec:  10,
 		RefreshTokenValiditySec: 120,

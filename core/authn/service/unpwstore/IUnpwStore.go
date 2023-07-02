@@ -11,10 +11,14 @@ const DefaultPasswordFile = "hub.passwd"
 
 // PasswordEntry containing hash and other user info
 type PasswordEntry struct {
-	LoginID      string
-	PasswordHash string // argon2id or bcrypt
-	UserName     string
-	Updated      int64 // unix time
+	// User login email
+	LoginID string
+	// password encrypted with argon2id or bcrypt
+	PasswordHash string
+	// user friendly name
+	UserName string
+	// timestamp password was last updated in seconds since epoch
+	Updated int64
 }
 
 // IUnpwStore defined the interface for accessing the username-password store
@@ -57,6 +61,6 @@ type IUnpwStore interface {
 	SetPassword(loginID string, password string) error
 
 	// VerifyPassword verifies the given password against the stored hash
-	// Returns an error if the verification fails.
-	VerifyPassword(loginID, password string) error
+	// Returns the password entry for the login and an error if the verification fails.
+	VerifyPassword(loginID, password string) (PasswordEntry, error)
 }

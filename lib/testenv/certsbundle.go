@@ -2,204 +2,135 @@
 package testenv
 
 import (
-	"bytes"
 	"crypto/ecdsa"
-	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
-	"golang.org/x/exp/slog"
-	"math/big"
-	"net"
-	"time"
-
-	"github.com/hiveot/hub/lib/certsclient"
+	"github.com/hiveot/hub/lib/certs"
+	"github.com/nats-io/jwt/v2"
+	"github.com/nats-io/nkeys"
 )
 
+const TestServerID = "server1"
 const ServerAddress = "127.0.0.1"
-const AuthTypeDevice = "device"
-const AuthTypeService = "service"
-const AuthTypeUser = "user"
+const TestDeviceID = "device1"
+const TestUserID = "user1"
 
-// TestCerts contain test certificates for CA, server and plugin (client)
+// TestCerts contain test certificates for CA and server
 type TestCerts struct {
 	CaCert *x509.Certificate
 	CaKey  *ecdsa.PrivateKey
 
-	DeviceCert *tls.Certificate
-	DeviceID   string
-	DeviceKey  *ecdsa.PrivateKey
+	// Operator
+	OperatorNKey nkeys.KeyPair
+	AccountNKey  nkeys.KeyPair
 
-	ServerCert *tls.Certificate
-	ServerID   string
-	ServerKey  *ecdsa.PrivateKey
+	// Nats server certificate and keys
+	ServerCert  *tls.Certificate
+	ServerID    string
+	ServerKey   *ecdsa.PrivateKey
+	ServerNKey  nkeys.KeyPair // For use by nats server
+	ServerJWT   string
+	ServerCreds []byte
 
-	UserCert *tls.Certificate
-	UserID   string
-	UserKey  *ecdsa.PrivateKey
+	// tbd operator or account key for server?
+	// Service, device and user keys
+	//ServiceNKey  nkeys.KeyPair // application services
+	//ServiceJWT   string
+	//ServiceCreds []byte
+
+	// Devices and services
+	DeviceID    string
+	DeviceNKey  nkeys.KeyPair // IoT device key
+	DeviceJWT   string
+	DeviceCreds []byte
+
+	UserID    string
+	UserNKey  nkeys.KeyPair // end user key
+	UserJWT   string
+	UserCreds []byte
 }
 
-// CreateCertBundle creates new certificates for CA, Server, Plugin and Thing Device testing
-// The server cert is valid for localhost only
-//
-//	this returns the x509 and tls certificates
-func CreateCertBundle() TestCerts {
+// CreateAuthBundle creates a bundle of ca, server certificates and client keys for testing.
+// The server cert is valid for ServerAddress only.
+func CreateAuthBundle() TestCerts {
 	testCerts := TestCerts{
-		DeviceID: "test-device",
-		ServerID: "test-service",
-		UserID:   "test-user",
+		ServerID: TestServerID,
+		DeviceID: TestDeviceID,
+		UserID:   TestUserID,
 	}
-	testCerts.CaCert, testCerts.CaKey = CreateCA()
-	testCerts.ServerKey = certsclient.CreateECDSAKeys()
-	testCerts.UserKey = certsclient.CreateECDSAKeys()
-	testCerts.DeviceKey = certsclient.CreateECDSAKeys()
-	testCerts.ServerCert = CreateTlsCert(testCerts.ServerID, AuthTypeService, true,
-		testCerts.ServerKey, testCerts.CaCert, testCerts.CaKey)
-	testCerts.UserCert = CreateTlsCert(testCerts.UserID, AuthTypeUser, false,
-		testCerts.UserKey, testCerts.CaCert, testCerts.CaKey)
-	testCerts.DeviceCert = CreateTlsCert(testCerts.DeviceID, AuthTypeDevice, false,
-		testCerts.DeviceKey, testCerts.CaCert, testCerts.CaKey)
+	testCerts.CaCert, testCerts.CaKey, _ = certs.CreateCA("testing", 1)
+	testCerts.ServerKey = certs.CreateECDSAKeys()
+
+	names := []string{ServerAddress}
+	serverCert, err := certs.CreateServerCert(
+		testCerts.ServerID, "server",
+		&testCerts.ServerKey.PublicKey,
+		names, 1,
+		testCerts.CaCert, testCerts.CaKey)
+	if err == nil {
+		testCerts.ServerCert = certs.X509CertToTLS(serverCert, testCerts.ServerKey)
+	}
+
+	// NATS authentication using nkeys and JWT claims
+	testCerts.OperatorNKey, _ = nkeys.CreateOperator()
+	testCerts.AccountNKey, _ = nkeys.CreateAccount()
+	//operatorPub, _ := testCerts.OperatorNKey.PublicKey()
+	//operatorSeed, _ := testCerts.OperatorNKey.Seed()
+
+	// The server (account?) created by the operator
+	testCerts.ServerNKey, _ = nkeys.CreateServer()
+	serverPub, _ := testCerts.ServerNKey.PublicKey()
+	serverSeed, _ := testCerts.ServerNKey.Seed()
+	serverClaims := jwt.NewAccountClaims(serverPub)
+	// FIXME: what?
+	serverClaims.Subject, _ = testCerts.AccountNKey.PublicKey()
+	serverClaims.Name = testCerts.ServerID
+	serverClaims.Limits.JetStreamLimits.DiskStorage = 1024 * 1024 * 1024  // 1GB disk for testing
+	serverClaims.Limits.JetStreamLimits.MemoryStorage = 1024 * 1024 * 100 // 100MB memory for testing
+	testCerts.ServerJWT, err = serverClaims.Encode(testCerts.AccountNKey)
+	if err != nil {
+		panic(err.Error())
+	}
+	testCerts.ServerCreds, _ = jwt.FormatUserConfig(testCerts.ServerJWT, serverSeed)
+
+	// Services keys created by the server (account)
+	//testCerts.ServiceNKey, _ = nkeys.CreateUser()
+	//servicePub, _ := testCerts.ServerNKey.PublicKey()
+	//serviceSeed, _ := testCerts.ServerNKey.Seed()
+	//serviceClaims := jwt.NewAccountClaims(servicePub)
+	//serviceClaims.Name = "service1"
+	//testCerts.ServiceJWT, _ = serviceClaims.Encode(testCerts.ServerNKey)
+	//testCerts.ServiceCreds, _ = jwt.FormatUserConfig(testCerts.ServiceJWT, serviceSeed)
+
+	// device keys created by the server (account)
+	testCerts.DeviceNKey, _ = nkeys.CreateUser()
+	devicePub, _ := testCerts.DeviceNKey.PublicKey()
+	deviceSeed, _ := testCerts.DeviceNKey.Seed()
+	deviceClaims := jwt.NewAccountClaims(devicePub)
+	// FIXME: what?
+	//deviceClaims.Subject = devicePub
+	deviceClaims.Subject, _ = testCerts.AccountNKey.PublicKey()
+	deviceClaims.Name = testCerts.DeviceID
+	testCerts.DeviceJWT, err = deviceClaims.Encode(testCerts.AccountNKey)
+	if err != nil {
+		panic("cant create device jwt key:" + err.Error())
+	}
+	testCerts.DeviceCreds, _ = jwt.FormatUserConfig(testCerts.DeviceJWT, deviceSeed)
+
+	// add identification and authorization to user
+	// see also: https://natsbyexample.com/examples/auth/nkeys-jwts/go
+	testCerts.UserNKey, _ = nkeys.CreateUser()
+	userPub, _ := testCerts.UserNKey.PublicKey()
+	userClaims := jwt.NewUserClaims(userPub)
+	userClaims.Name = testCerts.UserID   // name vs ID?
+	userClaims.Limits.Data = 1024 * 1024 // not sure how this is used
+	userClaims.Permissions.Pub.Allow.Add(">")
+	userClaims.Permissions.Sub.Allow.Add("_INBOX.>")
+	// sign the JWT by the server (operator?) and produce the decorated credentials that can be written to a file
+	// what does 'decorated' mean?
+	testCerts.UserJWT, _ = userClaims.Encode(testCerts.ServerNKey)
+	userSeed, _ := testCerts.UserNKey.Seed()
+	testCerts.UserCreds, _ = jwt.FormatUserConfig(testCerts.UserJWT, userSeed)
+
 	return testCerts
 }
-
-// CreateCA generates the CA keys with certificate for testing
-// not intended for production
-func CreateCA() (caCert *x509.Certificate, caKey *ecdsa.PrivateKey) {
-	validity := time.Hour
-
-	caKey = certsclient.CreateECDSAKeys()
-
-	// set up our CA certificate
-	// see also: https://superuser.com/questions/738612/openssl-ca-keyusage-extension
-	template := &x509.Certificate{
-		SerialNumber: big.NewInt(2021),
-		Subject: pkix.Name{
-			Country:      []string{"CA"},
-			Organization: []string{"Testing"},
-			Province:     []string{"BC"},
-			Locality:     []string{"hiveot"},
-			CommonName:   "HiveOT Test CA",
-		},
-		NotBefore: time.Now().Add(-10 * time.Second),
-		NotAfter:  time.Now().Add(validity),
-		// CA cert can be used to sign certificate and revocation lists
-		KeyUsage:    x509.KeyUsageCertSign | x509.KeyUsageCRLSign | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-
-		// This hub cert is the only CA. No intermediate CAs
-		BasicConstraintsValid: true,
-		IsCA:                  true,
-		MaxPathLen:            0,
-		MaxPathLenZero:        true,
-	}
-
-	// create the CA
-	certDerBytes, _ := x509.CreateCertificate(rand.Reader, template, template, &caKey.PublicKey, caKey)
-	// certPEMBuffer := new(bytes.Buffer)
-	// pem.Encode(certPEMBuffer, &pem.Block{Type: "CERTIFICATE", Bytes: certDerBytes})
-
-	caCert, _ = x509.ParseCertificate(certDerBytes)
-	return caCert, caKey
-}
-
-// CreateTlsCert generates the certificate with keys, signed by the CA, valid for 127.0.0.1
-// intended for testing, not for production
-//
-//	cn is the certificate common name, usually the client ID or server hostname
-//	ou the organization
-//	isServer if set allow key usage of ServerAuth instead of ClientAuth
-//	clientKey is the client's private key for this certificate
-//	caCert and caKey is the signing CA
-func CreateTlsCert(cn string, ou string, isServer bool, clientKey *ecdsa.PrivateKey,
-	caCert *x509.Certificate, caKey *ecdsa.PrivateKey) (tlscert *tls.Certificate) {
-
-	_, derBytes, err := CreateX509Cert(cn, ou, isServer, &clientKey.PublicKey, caCert, caKey)
-	if err == nil {
-		// A TLS certificate is a wrapper around x509 with private key
-		tlscert = &tls.Certificate{}
-		tlscert.Certificate = append(tlscert.Certificate, derBytes)
-		tlscert.PrivateKey = clientKey
-	}
-	if err != nil {
-		slog.Error("CreateSignedCert. Failed creating cert", "err", err)
-		return nil
-	}
-	return tlscert
-}
-
-// CreateX509Cert generates a x509 certificate with keys, signed by the CA, valid for 127.0.0.1
-// intended for testing, not for production
-//
-//	clientID is the certificate common name, usually the client ID or server hostname
-//	ou the organization
-//	isServer if set allow key usage of ServerAuth instead of ClientAuth
-//	pubKey is the owner public key for this certificate
-//	caCert and caKey is the signing CA
-func CreateX509Cert(clientID string, ou string, isServer bool, pubKey *ecdsa.PublicKey,
-	caCert *x509.Certificate, caKey *ecdsa.PrivateKey) (cert *x509.Certificate, derBytes []byte, err error) {
-	validity := time.Hour
-
-	keyUsage := x509.KeyUsageDigitalSignature
-	extkeyUsage := []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
-	if isServer {
-		extkeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
-		keyUsage = x509.KeyUsageDigitalSignature | x509.KeyUsageDataEncipherment | x509.KeyUsageKeyEncipherment
-	}
-	serial := time.Now().Unix() - 2
-
-	template := &x509.Certificate{
-		SerialNumber: big.NewInt(serial),
-		Subject: pkix.Name{
-			Country:            []string{"CA"},
-			Province:           []string{"BC"},
-			Locality:           []string{"hiveot"},
-			Organization:       []string{"Testing"},
-			OrganizationalUnit: []string{ou},
-			CommonName:         clientID,
-			Names:              make([]pkix.AttributeTypeAndValue, 0),
-		},
-		NotBefore:   time.Now().Add(-10 * time.Second),
-		NotAfter:    time.Now().Add(validity),
-		KeyUsage:    keyUsage,
-		ExtKeyUsage: extkeyUsage,
-
-		// TODO test this: Add the clientID to the SAN for mapping to a user in NATS
-		// source: https://stackoverflow.com/questions/26441547/go-how-do-i-add-an-extension-subjectaltname-to-a-x509-certificate
-		// and: https://docs.nats.io/running-a-nats-service/configuration/securing_nats/auth_intro/tls_mutual_auth
-		// one of these solutions:
-		//DNSNames: []string{clientID},
-		EmailAddresses: []string{clientID},
-
-		BasicConstraintsValid: true,
-		IsCA:                  false,
-		IPAddresses:           []net.IP{net.ParseIP(ServerAddress)},
-	}
-
-	// Not for production. Ignore all but the first error. Testing would fail if this fails.
-	certDerBytes, err := x509.CreateCertificate(rand.Reader, template, caCert, pubKey, caKey)
-	certPEMBuffer := new(bytes.Buffer)
-	_ = pem.Encode(certPEMBuffer, &pem.Block{Type: "CERTIFICATE", Bytes: certDerBytes})
-	cert, _ = x509.ParseCertificate(certDerBytes)
-	if err != nil {
-		slog.Error("CreateSignedCert. Failed creating cert", "err", err)
-	}
-	return cert, certDerBytes, err
-}
-
-// SaveCerts saves the given CA and mosquitto server key and certificates as PEM files
-// If the certFolder doesn't exist it will be created with permissions 700
-//func SaveCerts(testCerts *TestCerts, certFolder string) {
-//	if _, err := os.Stat(certFolder); err != nil {
-//		os.MkdirAll(certFolder, 0700)
-//	}
-//	slog.Infof("Saving test certs into: %s", certFolder)
-//	certsclient.SaveX509CertToPEM(testCerts.CaCert, path.Join(certFolder, caCertFile))
-//	certsclient.SaveKeysToPEM(testCerts.CaKey, path.Join(certFolder, caKeyFile))
-//	certsclient.SaveTLSCertToPEM(testCerts.ServerCert,
-//		path.Join(certFolder, serverCertFile),
-//		path.Join(certFolder, serverKeyFile))
-//	certsclient.SaveTLSCertToPEM(testCerts.UserCert,
-//		path.Join(certFolder, pluginCertFile),
-//		path.Join(certFolder, pluginKeyFile))
-//}

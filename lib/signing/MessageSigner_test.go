@@ -10,7 +10,7 @@ import (
 
 	"gopkg.in/square/go-jose.v2"
 
-	"github.com/hiveot/hub/lib/certsclient"
+	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/signing"
 
 	"github.com/stretchr/testify/assert"
@@ -44,7 +44,7 @@ var testObject2 = TestObjectNoSender{
 }
 
 func TestEcdsaSigning(t *testing.T) {
-	privKey := certsclient.CreateECDSAKeys()
+	privKey := certs.CreateECDSAKeys()
 	payload, _ := json.Marshal(testObject)
 
 	sig := signing.CreateEcdsaSignature(payload, privKey)
@@ -64,14 +64,14 @@ func TestEcdsaSigning(t *testing.T) {
 	sig = signing.CreateEcdsaSignature(payload, privKey)
 	err = signing.VerifyEcdsaSignature(payload, sig, nil)
 	assert.Error(t, err)
-	newKey := certsclient.CreateECDSAKeys()
+	newKey := certs.CreateECDSAKeys()
 	err = signing.VerifyEcdsaSignature(payload, sig, &newKey.PublicKey)
 	assert.Error(t, err)
 
 }
 
 func TestJWSSigning(t *testing.T) {
-	privKey := certsclient.CreateECDSAKeys()
+	privKey := certs.CreateECDSAKeys()
 
 	payload1, err := json.Marshal(testObject)
 	assert.NoErrorf(t, err, "Serializing node1 failed")
@@ -86,7 +86,7 @@ func TestJWSSigning(t *testing.T) {
 }
 
 func TestSigningPerformance(t *testing.T) {
-	privKey := certsclient.CreateECDSAKeys()
+	privKey := certs.CreateECDSAKeys()
 
 	payload1, err := json.Marshal(testObject)
 	assert.NoErrorf(t, err, "Serializing node1 failed")
@@ -147,7 +147,7 @@ func TestSigningPerformance(t *testing.T) {
 
 // Test the sender verification
 func TestVerifySender(t *testing.T) {
-	privKey := certsclient.CreateECDSAKeys()
+	privKey := certs.CreateECDSAKeys()
 
 	payload1, err := json.Marshal(testObject)
 	assert.NoErrorf(t, err, "Serializing node1 failed")
@@ -225,7 +225,7 @@ func TestVerifySender(t *testing.T) {
 	assert.Errorf(t, err, "Verification with non json payload should not succeed")
 
 	// different public key
-	newKeys := certsclient.CreateECDSAKeys()
+	newKeys := certs.CreateECDSAKeys()
 	_, err = signing.VerifySenderJWSSignature(sig2, &received, func(address string) *ecdsa.PublicKey {
 		// return the public key of this publisher
 		return &newKeys.PublicKey

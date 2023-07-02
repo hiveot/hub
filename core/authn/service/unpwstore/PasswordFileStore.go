@@ -231,7 +231,8 @@ func (pwStore *PasswordFileStore) SetPasswordHash(loginID string, hash string) (
 }
 
 // VerifyPassword verifies the given password with the stored hash
-func (pwStore *PasswordFileStore) VerifyPassword(loginID, password string) error {
+// This returns the matching user's entry or an error if the password doesn't match
+func (pwStore *PasswordFileStore) VerifyPassword(loginID, password string) (PasswordEntry, error) {
 	isValid := false
 	pwStore.mutex.Lock()
 	defer pwStore.mutex.Unlock()
@@ -247,9 +248,9 @@ func (pwStore *PasswordFileStore) VerifyPassword(loginID, password string) error
 		isValid = err == nil
 	}
 	if !isValid {
-		return fmt.Errorf("invalid login as '%s'", loginID)
+		return entry, fmt.Errorf("invalid login as '%s'", loginID)
 	}
-	return nil
+	return entry, nil
 }
 
 // WritePasswordsToTempFile write the given entries to temp file in the given folder

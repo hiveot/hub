@@ -3,7 +3,7 @@ package aclstore
 import (
 	"bufio"
 	"fmt"
-	"github.com/hiveot/hub/core/authz"
+	"github.com/hiveot/hub/api/go/hub"
 	"golang.org/x/exp/slog"
 	"os"
 	"path"
@@ -18,7 +18,7 @@ type AclFileStore struct {
 
 	// Groups is an index of ACL groups by their name. Stored
 	// map[groupName]Group
-	groups map[string]authz.Group `yaml:"groups"`
+	groups map[string]hub.Group `yaml:"groups"`
 
 	// state store
 	//store     state.IClientState
@@ -27,7 +27,7 @@ type AclFileStore struct {
 	// index of clients and their group roles. Updated on load.
 	// intended for fast lookup of roles
 	//map[clientID]map[groupName]role
-	clientGroupRoles map[string]authz.RoleMap
+	clientGroupRoles map[string]hub.RoleMap
 	mutex            sync.RWMutex
 }
 
@@ -43,7 +43,7 @@ func (aclStore *AclFileStore) Close() {
 }
 
 // GetGroup returns the group of the given name
-func (aclStore *AclFileStore) GetGroup(groupName string) (authz.Group, error) {
+func (aclStore *AclFileStore) GetGroup(groupName string) (hub.Group, error) {
 
 	aclStore.mutex.RLock()
 	defer aclStore.mutex.RUnlock()
@@ -56,7 +56,7 @@ func (aclStore *AclFileStore) GetGroup(groupName string) (authz.Group, error) {
 }
 
 // GetGroupRoles returns the roles a thing or user has in various groups
-func (aclStore *AclFileStore) GetGroupRoles(clientID string) authz.RoleMap {
+func (aclStore *AclFileStore) GetGroupRoles(clientID string) hub.RoleMap {
 
 	aclStore.mutex.RLock()
 	defer aclStore.mutex.RUnlock()
@@ -82,7 +82,7 @@ func (aclStore *AclFileStore) GetSharedGroups(clientID string, thingID string) [
 		// client is a member of this group, check if the thingID is also a member
 		_, thingIsMember := aclStore.clientGroupRoles[thingID]
 		// all things are a member of the all group
-		if thingIsMember || groupName == authz.AllGroupName {
+		if thingIsMember || groupName == hub.AllGroupName {
 			sharedGroups = append(sharedGroups, groupName)
 		}
 	}
@@ -100,7 +100,7 @@ func (aclStore *AclFileStore) GetRole(clientID string, thingID string) string {
 // GetHighestRole returns the highest role of a user has in a list of group
 // Intended to get client permissions in case of overlapping groups
 func (aclStore *AclFileStore) GetHighestRole(clientID string, groupIDs []string) string {
-	highestRole := authz.ClientRoleNone
+	highestRole := hub.ClientRoleNone
 
 	aclStore.mutex.RLock()
 	defer aclStore.mutex.RUnlock()
@@ -119,13 +119,13 @@ func (aclStore *AclFileStore) GetHighestRole(clientID string, groupIDs []string)
 // IsRoleGreaterEqual returns true if a user role has same or greater permissions
 // than the minimum role.
 func IsRoleGreaterEqual(role string, minRole string) bool {
-	if minRole == authz.ClientRoleNone || role == minRole {
+	if minRole == hub.ClientRoleNone || role == minRole {
 		return true
 	}
-	if minRole == authz.ClientRoleViewer && role != authz.ClientRoleNone {
+	if minRole == hub.ClientRoleViewer && role != hub.ClientRoleNone {
 		return true
 	}
-	if minRole == authz.ClientRoleOperator && (role == authz.ClientRoleManager) {
+	if minRole == hub.ClientRoleOperator && (role == hub.ClientRoleManager) {
 		return true
 	}
 	return false
@@ -133,8 +133,8 @@ func IsRoleGreaterEqual(role string, minRole string) bool {
 
 // ListGroups return ... a list of all groups
 // TODO: apply limit and offset.
-func (aclStore *AclFileStore) ListGroups(limit int, offset int) []authz.Group {
-	groups := make([]authz.Group, 0, len(aclStore.groups))
+func (aclStore *AclFileStore) ListGroups(limit int, offset int) []hub.Group {
+	groups := make([]hub.Group, 0, len(aclStore.groups))
 	for _, group := range aclStore.groups {
 		groups = append(groups, group)
 	}
@@ -189,7 +189,7 @@ func (aclStore *AclFileStore) Reload() error {
 	}
 
 	// build the client index for each client in the groups
-	clientGroupRoles := make(map[string]authz.RoleMap)
+	clientGroupRoles := make(map[string]hub.RoleMap)
 	// for each group, add its members to the client index
 	for groupName, group := range aclStore.groups {
 		// iterate the group members and add them to the client index along with its group role
@@ -198,7 +198,7 @@ func (aclStore *AclFileStore) Reload() error {
 			groupRoles, found := clientGroupRoles[memberID]
 			if !found {
 				// Need to add the set of group roles for this client
-				groupRoles = make(authz.RoleMap)
+				groupRoles = make(hub.RoleMap)
 				clientGroupRoles[memberID] = groupRoles
 			}
 			groupRoles[groupName] = memberRole
@@ -265,7 +265,7 @@ func (aclStore *AclFileStore) SetRole(clientID string, groupName string, role st
 	// update the group
 	aclGroup, found := aclStore.groups[groupName]
 	if !found {
-		aclGroup = authz.NewGroup(groupName)
+		aclGroup = hub.NewGroup(groupName)
 		aclStore.groups[groupName] = aclGroup
 	}
 	aclGroup.MemberRoles[clientID] = role
@@ -273,7 +273,7 @@ func (aclStore *AclFileStore) SetRole(clientID string, groupName string, role st
 	// update the index
 	groupRoles, found := aclStore.clientGroupRoles[clientID]
 	if !found {
-		groupRoles = make(authz.RoleMap)
+		groupRoles = make(hub.RoleMap)
 		aclStore.clientGroupRoles[clientID] = groupRoles
 	}
 	groupRoles[groupName] = role
@@ -325,8 +325,8 @@ func (aclStore *AclFileStore) Save() error {
 func NewAclFileStore(filepath string, serviceID string) *AclFileStore {
 	store := &AclFileStore{
 		serviceID:        serviceID,
-		groups:           make(map[string]authz.Group),
-		clientGroupRoles: make(map[string]authz.RoleMap),
+		groups:           make(map[string]hub.Group),
+		clientGroupRoles: make(map[string]hub.RoleMap),
 
 		storePath: filepath,
 	}

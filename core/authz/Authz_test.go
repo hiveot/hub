@@ -1,7 +1,7 @@
 package authz_test
 
 import (
-	"github.com/hiveot/hub/core/authz"
+	"github.com/hiveot/hub/api/go/hub"
 	"github.com/hiveot/hub/core/authz/service"
 	"os"
 	"path"
@@ -21,7 +21,7 @@ var aclFilePath string
 var tempFolder string
 
 // Create a new authz service with empty acl list
-func startTestAuthzService() (svc authz.IAuthz, closeFn func()) {
+func startTestAuthzService() (svc hub.IAuthz, closeFn func()) {
 
 	_ = os.Remove(aclFilePath)
 	authSvc := service.NewAuthzService(aclFilePath)
@@ -85,21 +85,21 @@ func TestDeviceAuthorization(t *testing.T) {
 	defer stopFn()
 
 	// FIXME: the device ID is normally not a member of the group
-	err := svc.SetClientRole(device1ID, group1ID, authz.ClientRoleIotDevice)
+	err := svc.SetClientRole(device1ID, group1ID, hub.ClientRoleIotDevice)
 	assert.NoError(t, err)
-	err = svc.SetClientRole(thingID1, group1ID, authz.ClientRoleIotDevice)
+	err = svc.SetClientRole(thingID1, group1ID, hub.ClientRoleIotDevice)
 	assert.NoError(t, err)
-	err = svc.SetClientRole(thingID2, group1ID, authz.ClientRoleIotDevice)
+	err = svc.SetClientRole(thingID2, group1ID, hub.ClientRoleIotDevice)
 	assert.NoError(t, err)
 
 	// this test makes no sense as devices have authz but are not in ACLs
 	perms, err := svc.GetPermissions(device1ID, thingID1)
 	assert.NoError(t, err)
-	assert.Contains(t, perms, authz.PermPubTD)
-	assert.Contains(t, perms, authz.PermPubEvent)
-	assert.Contains(t, perms, authz.PermReadAction)
-	assert.NotContains(t, perms, authz.PermWriteProperty)
-	assert.NotContains(t, perms, authz.PermEmitAction)
+	assert.Contains(t, perms, hub.PermPubTD)
+	assert.Contains(t, perms, hub.PermPubEvent)
+	assert.Contains(t, perms, hub.PermReadAction)
+	assert.NotContains(t, perms, hub.PermWriteProperty)
+	assert.NotContains(t, perms, hub.PermEmitAction)
 }
 
 func TestManagerAuthorization(t *testing.T) {
@@ -113,21 +113,21 @@ func TestManagerAuthorization(t *testing.T) {
 	svc, stopFn := startTestAuthzService()
 	defer stopFn()
 
-	_ = svc.SetClientRole(thingID1, group1ID, authz.ClientRoleIotDevice)
-	_ = svc.SetClientRole(thingID2, group1ID, authz.ClientRoleIotDevice)
+	_ = svc.SetClientRole(thingID1, group1ID, hub.ClientRoleIotDevice)
+	_ = svc.SetClientRole(thingID2, group1ID, hub.ClientRoleIotDevice)
 
 	// services can do whatever as a manager in the all group
 	// the manager in the allgroup takes precedence over the operator role in group1
-	_ = svc.SetClientRole(client1ID, group1ID, authz.ClientRoleOperator)
-	_ = svc.SetClientRole(client1ID, authz.AllGroupName, authz.ClientRoleManager)
+	_ = svc.SetClientRole(client1ID, group1ID, hub.ClientRoleOperator)
+	_ = svc.SetClientRole(client1ID, hub.AllGroupName, hub.ClientRoleManager)
 	perms, _ := svc.GetPermissions(client1ID, thingID1)
 
-	assert.Contains(t, perms, authz.PermReadTD)
-	assert.Contains(t, perms, authz.PermReadEvent)
-	assert.Contains(t, perms, authz.PermEmitAction)
-	assert.Contains(t, perms, authz.PermWriteProperty)
-	assert.NotContains(t, perms, authz.PermPubTD)
-	assert.NotContains(t, perms, authz.PermPubEvent)
+	assert.Contains(t, perms, hub.PermReadTD)
+	assert.Contains(t, perms, hub.PermReadEvent)
+	assert.Contains(t, perms, hub.PermEmitAction)
+	assert.Contains(t, perms, hub.PermWriteProperty)
+	assert.NotContains(t, perms, hub.PermPubTD)
+	assert.NotContains(t, perms, hub.PermPubEvent)
 
 }
 
@@ -143,22 +143,22 @@ func TestOperatorAuthorization(t *testing.T) {
 	svc, stopFn := startTestAuthzService()
 	defer stopFn()
 
-	err := svc.SetClientRole(thingID1, group1ID, authz.ClientRoleIotDevice)
+	err := svc.SetClientRole(thingID1, group1ID, hub.ClientRoleIotDevice)
 	assert.NoError(t, err)
-	_ = svc.SetClientRole(thingID2, group1ID, authz.ClientRoleIotDevice)
-	_ = svc.SetClientRole(deviceID, group1ID, authz.ClientRoleIotDevice)
-	_ = svc.SetClientRole(client1ID, group1ID, authz.ClientRoleOperator)
+	_ = svc.SetClientRole(thingID2, group1ID, hub.ClientRoleIotDevice)
+	_ = svc.SetClientRole(deviceID, group1ID, hub.ClientRoleIotDevice)
+	_ = svc.SetClientRole(client1ID, group1ID, hub.ClientRoleOperator)
 
 	// operators can readTD, readEvent, emitAction
-	_ = svc.SetClientRole(client1ID, group1ID, authz.ClientRoleOperator)
+	_ = svc.SetClientRole(client1ID, group1ID, hub.ClientRoleOperator)
 	perms, _ := svc.GetPermissions(client1ID, thingID1)
 
-	assert.Contains(t, perms, authz.PermReadTD)
-	assert.Contains(t, perms, authz.PermReadEvent)
-	assert.Contains(t, perms, authz.PermEmitAction)
-	assert.NotContains(t, perms, authz.PermPubEvent)
-	assert.NotContains(t, perms, authz.PermPubTD)
-	assert.NotContains(t, perms, authz.PermWriteProperty)
+	assert.Contains(t, perms, hub.PermReadTD)
+	assert.Contains(t, perms, hub.PermReadEvent)
+	assert.Contains(t, perms, hub.PermEmitAction)
+	assert.NotContains(t, perms, hub.PermPubEvent)
+	assert.NotContains(t, perms, hub.PermPubTD)
+	assert.NotContains(t, perms, hub.PermWriteProperty)
 
 }
 
@@ -173,20 +173,20 @@ func TestViewerAuthorization(t *testing.T) {
 	svc, stopFn := startTestAuthzService()
 	defer stopFn()
 
-	err := svc.SetClientRole(thingID1, group1ID, authz.ClientRoleIotDevice)
+	err := svc.SetClientRole(thingID1, group1ID, hub.ClientRoleIotDevice)
 	assert.NoError(t, err)
-	_ = svc.SetClientRole(thingID2, group1ID, authz.ClientRoleIotDevice)
+	_ = svc.SetClientRole(thingID2, group1ID, hub.ClientRoleIotDevice)
 
 	// viewers role can read TD
-	_ = svc.SetClientRole(user1ID, group1ID, authz.ClientRoleViewer)
+	_ = svc.SetClientRole(user1ID, group1ID, hub.ClientRoleViewer)
 	perms, _ := svc.GetPermissions(user1ID, thingID1)
 
-	assert.Contains(t, perms, authz.PermReadTD)
-	assert.Contains(t, perms, authz.PermReadEvent)
-	assert.NotContains(t, perms, authz.PermEmitAction)
-	assert.NotContains(t, perms, authz.PermPubEvent)
-	assert.NotContains(t, perms, authz.PermPubTD)
-	assert.NotContains(t, perms, authz.PermWriteProperty)
+	assert.Contains(t, perms, hub.PermReadTD)
+	assert.Contains(t, perms, hub.PermReadEvent)
+	assert.NotContains(t, perms, hub.PermEmitAction)
+	assert.NotContains(t, perms, hub.PermPubEvent)
+	assert.NotContains(t, perms, hub.PermPubTD)
+	assert.NotContains(t, perms, hub.PermWriteProperty)
 }
 
 func TestNoAuthorization(t *testing.T) {
@@ -229,8 +229,8 @@ func TestListGroups(t *testing.T) {
 	_ = svc.AddThing(thingID1, group2ID)
 	_ = svc.AddThing(thingID2, group2ID)
 	_ = svc.AddThing(thingID3, group3ID)
-	_ = svc.SetClientRole(user1ID, group1ID, authz.ClientRoleViewer)
-	_ = svc.SetClientRole(user1ID, group2ID, authz.ClientRoleViewer)
+	_ = svc.SetClientRole(user1ID, group1ID, hub.ClientRoleViewer)
+	_ = svc.SetClientRole(user1ID, group2ID, hub.ClientRoleViewer)
 
 	// 3 groups must exist
 	groups, err := svc.ListGroups(0, 0)
@@ -271,10 +271,10 @@ func TestAddRemoveRoles(t *testing.T) {
 	defer stopFn()
 
 	// user1 is a member of 3 groups
-	err := svc.SetClientRole(user1ID, group1ID, authz.ClientRoleOperator)
+	err := svc.SetClientRole(user1ID, group1ID, hub.ClientRoleOperator)
 	assert.NoError(t, err)
-	_ = svc.SetClientRole(user1ID, group2ID, authz.ClientRoleOperator)
-	_ = svc.SetClientRole(user1ID, group3ID, authz.ClientRoleOperator)
+	_ = svc.SetClientRole(user1ID, group2ID, hub.ClientRoleOperator)
+	_ = svc.SetClientRole(user1ID, group3ID, hub.ClientRoleOperator)
 
 	// thing1 is a member of 3 groups
 	// adding a thing twice should not fail
@@ -330,22 +330,22 @@ func TestClientPermissions(t *testing.T) {
 	_ = svc.AddThing(thing1ID, group1ID)
 	_ = svc.AddThing(thing1ID, group2ID)
 	_ = svc.AddThing(thing1ID, group3ID)
-	_ = svc.SetClientRole(user1ID, group1ID, authz.ClientRoleViewer)
-	_ = svc.SetClientRole(user1ID, group2ID, authz.ClientRoleManager)
-	_ = svc.SetClientRole(user1ID, group3ID, authz.ClientRoleOperator)
+	_ = svc.SetClientRole(user1ID, group1ID, hub.ClientRoleViewer)
+	_ = svc.SetClientRole(user1ID, group2ID, hub.ClientRoleManager)
+	_ = svc.SetClientRole(user1ID, group3ID, hub.ClientRoleOperator)
 
 	// as a manager, permissions to read and emit actions
 	perms, err := svc.GetPermissions(thing1ID, "")
 	assert.NoError(t, err)
-	assert.Contains(t, perms, authz.PermEmitAction)
-	assert.Contains(t, perms, authz.PermWriteProperty)
+	assert.Contains(t, perms, hub.PermEmitAction)
+	assert.Contains(t, perms, hub.PermWriteProperty)
 
 	// after removing the manager role write property permissions no longer apply
 	err = svc.RemoveThing(user1ID, group2ID)
 	assert.NoError(t, err)
 	perms, err = svc.GetPermissions(thing1ID, "")
 	assert.NoError(t, err)
-	assert.Contains(t, perms, authz.PermEmitAction)
-	assert.NotContains(t, perms, authz.PermWriteProperty)
+	assert.Contains(t, perms, hub.PermEmitAction)
+	assert.NotContains(t, perms, hub.PermWriteProperty)
 
 }

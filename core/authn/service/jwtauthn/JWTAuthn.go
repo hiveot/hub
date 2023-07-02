@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
-	"github.com/hiveot/hub/lib/certsclient"
+	"github.com/hiveot/hub/lib/certs"
 )
 
 // JWTAuthn provides creation and verification of JWT access and refresh tokens.
@@ -158,7 +158,7 @@ func (jwtauthn *JWTAuthn) ValidateToken(userID, tokenString string) (
 //	refreshTokenValidity in seconds. Use 0 for default.
 func NewJWTAuthn(signingKey *ecdsa.PrivateKey, accessTokenValidity uint, refreshTokenValidity uint) *JWTAuthn {
 	if signingKey == nil {
-		signingKey = certsclient.CreateECDSAKeys()
+		signingKey = certs.CreateECDSAKeys()
 	}
 	if accessTokenValidity == 0 {
 		accessTokenValidity = uint(authn.DefaultAccessTokenValiditySec)

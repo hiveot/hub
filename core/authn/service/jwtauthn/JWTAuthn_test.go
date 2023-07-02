@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hub/lib/certsclient"
+	"github.com/hiveot/hub/lib/certs"
 )
 
 // JWT token creation and verification test cases
@@ -48,7 +48,7 @@ func TestJWTIncorrectVerificationKey(t *testing.T) {
 	user1 := "user1"
 
 	// issue the tokens
-	privKey1 := certsclient.CreateECDSAKeys()
+	privKey1 := certs.CreateECDSAKeys()
 	issuer := jwtauthn.NewJWTAuthn(privKey1, 60, 60)
 	at1, rt1, err := issuer.CreateTokens(user1)
 	assert.NoError(t, err)
@@ -64,7 +64,7 @@ func TestJWTIncorrectVerificationKey(t *testing.T) {
 	assert.Error(t, err)
 
 	// verification should fail using someone else's key
-	privKey2 := certsclient.CreateECDSAKeys()
+	privKey2 := certs.CreateECDSAKeys()
 	issuer2 := jwtauthn.NewJWTAuthn(privKey2, 60, 60)
 	decodedToken2, claims2, err := issuer2.ValidateToken(user1, at1)
 	assert.Error(t, err)
@@ -76,7 +76,7 @@ func TestRefresh(t *testing.T) {
 	const user1 = "user1"
 
 	// issue the tokens
-	privKey := certsclient.CreateECDSAKeys()
+	privKey := certs.CreateECDSAKeys()
 	issuer := jwtauthn.NewJWTAuthn(privKey, 0, 0)
 	at1, rt1, err := issuer.CreateTokens(user1)
 	assert.NotEmpty(t, at1)
@@ -117,7 +117,7 @@ func TestValidateWrongToken(t *testing.T) {
 	const user1 = "user1"
 
 	// issue the tokens
-	privKey := certsclient.CreateECDSAKeys()
+	privKey := certs.CreateECDSAKeys()
 	issuer := jwtauthn.NewJWTAuthn(privKey, 60, 60)
 	at1, rt1, err := issuer.CreateTokens(user1)
 	assert.NotEmpty(t, at1)
@@ -125,7 +125,7 @@ func TestValidateWrongToken(t *testing.T) {
 	assert.NoError(t, err)
 
 	// token validation with different issuer fails
-	privKey2 := certsclient.CreateECDSAKeys()
+	privKey2 := certs.CreateECDSAKeys()
 	issuer2 := jwtauthn.NewJWTAuthn(privKey2, 60, 60)
 	_, _, err2 := issuer2.ValidateToken(user1, rt1)
 	assert.Error(t, err2)
@@ -141,7 +141,7 @@ func TestInvalidateToken(t *testing.T) {
 	const user1 = "user1"
 
 	// issue the tokens
-	privKey := certsclient.CreateECDSAKeys()
+	privKey := certs.CreateECDSAKeys()
 	issuer := jwtauthn.NewJWTAuthn(privKey, 60, 60)
 	_, rt1, err := issuer.CreateTokens(user1)
 	assert.NoError(t, err)

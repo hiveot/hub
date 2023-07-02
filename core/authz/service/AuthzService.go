@@ -1,10 +1,12 @@
 package service
 
 import (
-	"github.com/hiveot/hub/core/authz"
+	"github.com/hiveot/hub/api/go/hub"
 	"github.com/hiveot/hub/core/authz/service/aclstore"
+	"github.com/nats-io/nats.go"
 	"golang.org/x/exp/slog"
 	"strings"
+	"time"
 )
 
 // AuthzService handles client management and authorization for access to Things.
@@ -23,10 +25,47 @@ type AuthzService struct {
 //	return authzService.GetPermissions(clientID, thingID)
 //}
 
-// AddThing adds a Thing to a group
-func (authzService *AuthzService) AddThing(thingID string, groupName string) error {
+// AddGroup adds a new group and creates a stream for it.
+//
+// publish to the connected stream.
+func (svc *AuthzService) AddGroup(groupName string, retention time.Duration) error {
+	//slog.Info("Adding stream", "name", groupName, "source", sourceStream, "filters", subjects)
 
-	err := authzService.aclStore.SetRole(thingID, groupName, authz.ClientRoleThing)
+	// sources that produce events and are a member of the group
+	sources := make([]*nats.StreamSource, 0)
+
+	// add a stream source per subject
+	//for i, subject := range subjects {
+	//	streamSource := &nats.StreamSource{
+	//		Name:          sourceStream,
+	//		FilterSubject: subject,
+	//	}
+	//	sources[i] = streamSource
+	//}
+	cfg := &nats.StreamConfig{
+		Name:      groupName,
+		Retention: nats.LimitsPolicy,
+		Sources:   sources,
+		//Subjects:  subjects,
+	}
+	strmInfo, err := svc.hc.js.AddStream(cfg)
+	_ = strmInfo
+	//
+	//cfg := &nats.ConsumerConfig{
+	//	Name:          name,
+	//	FilterSubject: "",
+	//	//Durable:
+	//
+	//}
+	//cinfo, err := hc.js.AddConsumer(name, cfg)
+	//_ = cinfo
+	return err
+}
+
+// AddThing adds a Thing to a group
+func (svc *AuthzService) AddThing(groupName string, thingID string) error {
+
+	err := svc.aclStore.SetRole(thingID, groupName, hub.ClientRoleThing)
 	return err
 }
 
@@ -35,15 +74,22 @@ func (authzService *AuthzService) GetPermissions(clientID string, thingAddr stri
 
 	clientRole := authzService.aclStore.GetRole(clientID, thingAddr)
 	switch clientRole {
-	case authz.ClientRoleIotDevice:
-		permissions = []string{authz.PermReadAction, authz.PermPubEvent, authz.PermPubTD}
-	case authz.ClientRoleManager:
-		permissions = []string{authz.PermEmitAction, authz.PermReadEvent, authz.PermReadAction,
-			authz.PermReadTD, authz.PermWriteProperty}
-	case authz.ClientRoleOperator:
-		permissions = []string{authz.PermEmitAction, authz.PermReadEvent, authz.PermReadAction, authz.PermReadTD}
-	case authz.ClientRoleViewer:
-		permissions = []string{authz.PermReadEvent, authz.PermReadAction, authz.PermReadTD}
+	case hub.ClientRoleIotDevice:
+	case hub.ClientRoleThing:
+		permissions = []string{hub.PermPubEvents, hub.PermReadActions}
+		break
+	case hub.ClientRoleService:
+		permissions = []string{hub.PermPubActions, hub.PermPubEvents, hub.PermReadActions, hub.PermReadEvents}
+		break
+	case hub.ClientRoleManager:
+		permissions = []string{hub.PermPubActions, hub.PermReadEvents}
+		break
+	case hub.ClientRoleOperator:
+		permissions = []string{hub.PermPubActions, hub.PermReadEvents}
+		break
+	case hub.ClientRoleViewer:
+		permissions = []string{hub.PermReadEvents}
+		break
 	default:
 		permissions = []string{}
 	}
@@ -53,7 +99,7 @@ func (authzService *AuthzService) GetPermissions(clientID string, thingAddr stri
 // IsPublisher checks if the deviceID is the publisher of the thingAddr.
 // This requires that the thingAddr is formatted as publisherID/thingID
 // Returns true if the deviceID is the publisher of the thingID, false if not.
-func (authzService *AuthzService) IsPublisher(deviceID string, thingAddr string) (bool, error) {
+func (svc *AuthzService) IsPublisher(deviceID string, thingAddr string) (bool, error) {
 
 	// FIXME use a helper for this so the domain knownledge is concentraged
 	addrParts := strings.Split(thingAddr, "/")
@@ -62,61 +108,61 @@ func (authzService *AuthzService) IsPublisher(deviceID string, thingAddr string)
 
 // GetGroup returns the group with the given name, or an error if group is not found.
 // GroupName must not be empty
-func (authzService *AuthzService) GetGroup(groupName string) (group authz.Group, err error) {
+func (svc *AuthzService) GetGroup(groupName string) (group hub.Group, err error) {
 
-	group, err = authzService.aclStore.GetGroup(groupName)
+	group, err = svc.aclStore.GetGroup(groupName)
 	return group, err
 }
 
 // GetGroupRoles returns a list of roles in groups the client is a member of.
-func (authzService *AuthzService) GetGroupRoles(clientID string) (roles authz.RoleMap, err error) {
+func (svc *AuthzService) GetGroupRoles(clientID string) (roles hub.RoleMap, err error) {
 
 	// simple pass through
-	roles = authzService.aclStore.GetGroupRoles(clientID)
+	roles = svc.aclStore.GetGroupRoles(clientID)
 	return roles, nil
 }
 
 // ListGroups returns the list of known groups
-func (authzService *AuthzService) ListGroups(limit int, offset int) (groups []authz.Group, err error) {
+func (svc *AuthzService) ListGroups(limit int, offset int) (groups []hub.Group, err error) {
 
-	groups = authzService.aclStore.ListGroups(limit, offset)
+	groups = svc.aclStore.ListGroups(limit, offset)
 	return groups, nil
 }
 
 // RemoveAll from all groups
-func (authzService *AuthzService) RemoveAll(clientID string) error {
-	err := authzService.aclStore.RemoveAll(clientID)
+func (svc *AuthzService) RemoveAll(clientID string) error {
+	err := svc.aclStore.RemoveAll(clientID)
 	return err
 }
 
 // RemoveClient from a group
-func (authzService *AuthzService) RemoveClient(clientID string, groupName string) error {
-	err := authzService.aclStore.Remove(clientID, groupName)
+func (svc *AuthzService) RemoveClient(clientID string, groupName string) error {
+	err := svc.aclStore.Remove(clientID, groupName)
 	return err
 }
 
 // RemoveThing removes a Thing from a group
-func (authzService *AuthzService) RemoveThing(thingID string, groupName string) error {
+func (svc *AuthzService) RemoveThing(thingID string, groupName string) error {
 
-	err := authzService.aclStore.Remove(thingID, groupName)
+	err := svc.aclStore.Remove(thingID, groupName)
 	return err
 }
 
 // SetClientRole sets the role for the client in a group
-func (authzService *AuthzService) SetClientRole(clientID string, groupName string, role string) error {
-	err := authzService.aclStore.SetRole(clientID, groupName, role)
+func (svc *AuthzService) SetClientRole(clientID string, groupName string, role string) error {
+	err := svc.aclStore.SetRole(clientID, groupName, role)
 	return err
 }
 
 // Stop closes the service and release resources
-func (authzService *AuthzService) Stop() {
-	authzService.aclStore.Close()
+func (svc *AuthzService) Stop() {
+	svc.aclStore.Close()
 }
 
 // Start the ACL store for reading
-func (authzService *AuthzService) Start() error {
+func (svc *AuthzService) Start() error {
 	slog.Info("Opening ACL store")
-	err := authzService.aclStore.Open()
+	err := svc.aclStore.Open()
 	if err != nil {
 		return err
 	}
@@ -127,7 +173,7 @@ func (authzService *AuthzService) Start() error {
 //
 //	aclStore provides the functions to read and write authorization rules
 func NewAuthzService(aclStorePath string) *AuthzService {
-	aclStore := aclstore.NewAclFileStore(aclStorePath, authz.ServiceName)
+	aclStore := aclstore.NewAclFileStore(aclStorePath, hub.AuthzServiceName)
 
 	authzService := AuthzService{
 		aclStore: aclStore,

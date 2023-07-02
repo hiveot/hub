@@ -4,8 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
-	"github.com/hiveot/hub/core/certs"
-	"github.com/hiveot/hub/lib/certsclient"
+	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
 	"path"
 	"path/filepath"
@@ -88,11 +87,11 @@ func SetupFolderConfig(serviceName string) (f AppFolders, svcCert *tls.Certifica
 	}
 
 	// load the certificates if available
-	caCertPath := path.Join(f2.Certs, certs.DefaultCaCertFile)
-	caCert, _ = certsclient.LoadX509CertFromPEM(caCertPath)
+	caCertPath := path.Join(f2.Certs, "caCert.pem")
+	caCert, _ = certs.LoadX509CertFromPEM(caCertPath)
 	svcCertPath := path.Join(f2.Certs, serviceName+"Cert.pem")
 	svcKeyPath := path.Join(f2.Certs, serviceName+"Key.pem")
-	svcCert, _ = certsclient.LoadTLSCertFromPEM(svcCertPath, svcKeyPath)
+	svcCert, _ = certs.LoadTLSCertFromPEM(svcCertPath, svcKeyPath)
 
 	return f2, svcCert, caCert
 }

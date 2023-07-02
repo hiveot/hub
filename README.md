@@ -171,7 +171,7 @@ Generate the CA certificate using the CLI:
 
 ```sh
 cd ~/bin/hiveot        # when installed locally
-bin/hubcli ca create   # or simply "hubcli ca create" when the path is set 
+bin/hubcore ca create   # or simply "hubcore ca create" when the path is set 
 ```
 
 ### Service Autostart Configuration

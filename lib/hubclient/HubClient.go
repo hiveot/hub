@@ -4,37 +4,21 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"errors"
-	"fmt"
+	"github.com/hiveot/hub/api/go/hub"
 	"github.com/hiveot/hub/api/go/thing"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nkeys"
 	"golang.org/x/exp/slog"
-	"strings"
 	"time"
 )
 
 type HubClient struct {
-	instanceName string
-	clientID     string
-	nc           *nats.Conn
-	js           nats.JetStreamContext
-	timeoutSec   int
-}
-
-// publish to NATS
-func (hc *HubClient) publish(topic string, payload []byte) error {
-	slog.Info("publish", "subject", topic)
-	err := hc.nc.Publish(topic, payload)
-	return err
-}
-
-// subscribe to NATS
-func (hc *HubClient) subscribe(topic string, cb func(msg *nats.Msg)) error {
-	slog.Info("subscribe", "subject", topic)
-	subscription, err := hc.nc.Subscribe(topic, cb)
-	_ = subscription
-	return err
+	//instanceName string
+	clientID   string
+	nc         *nats.Conn
+	js         nats.JetStreamContext
+	timeoutSec int
 }
 
 // ConnectWithCert to the Hub server
@@ -66,11 +50,10 @@ func (hc *HubClient) ConnectWithCert(url string, clientID string, clientCert *tl
 	}
 	hc.clientID = clientID
 	hc.nc, err = nats.Connect(url,
-		nats.Name(hc.instanceName),
+		nats.Name(hc.clientID),
 		nats.Secure(tlsConfig),
 		nats.Timeout(time.Second*time.Duration(hc.timeoutSec)))
 	if err == nil {
-		// jetstream client
 		hc.js, err = hc.nc.JetStream()
 	}
 	return err
@@ -90,52 +73,136 @@ func (hc *HubClient) ConnectWithPassword(
 		caCertPool.AddCert(caCert)
 	}
 	tlsConfig := &tls.Config{
-		RootCAs: caCertPool,
-		//Certificates:       clientCertList,
+		RootCAs:            caCertPool,
 		InsecureSkipVerify: caCert == nil,
 	}
 	hc.nc, err = nats.Connect(url,
-		nats.Name(hc.instanceName),
+		nats.Name(hc.clientID),
 		nats.Secure(tlsConfig),
 		nats.UserInfo(loginID, password),
 		nats.Timeout(time.Second*time.Duration(hc.timeoutSec)))
+	if err == nil {
+		hc.js, err = hc.nc.JetStream()
+	}
 	return err
 }
 
-// ConnectWithToken connects to the Hub server using a shared secret
-func (hc *HubClient) ConnectWithToken(url string, token string) (err error) {
+// ConnectWithJWT connects to the Hub server using a user JWT credentials secret
+func (hc *HubClient) ConnectWithJWT(url string, token string, caCert *x509.Certificate) (err error) {
 	if url == "" {
 		url = nats.DefaultURL
 	}
+
+	caCertPool := x509.NewCertPool()
+	if caCert != nil {
+		caCertPool.AddCert(caCert)
+	}
+	tlsConfig := &tls.Config{
+		RootCAs:            caCertPool,
+		InsecureSkipVerify: caCert == nil,
+	}
+	// TODO. how is this supposed to work?
+	// The user's JWT signed token
+	userJWTHandler := func() (string, error) {
+		jwtPortion, err := nkeys.ParseDecoratedJWT([]byte(token))
+		return jwtPortion, err
+	}
+	// The handler to sign the server issued challenge
+	sigCB := func(nonce []byte) ([]byte, error) {
+		kp, err := nkeys.ParseDecoratedNKey([]byte(token))
+		sig, _ := kp.Sign(nonce)
+		return sig, err
+	}
 	hc.nc, err = nats.Connect(url,
-		nats.Name(hc.instanceName),
-		nats.Token(token),
+		nats.Name(hc.clientID),
+		nats.Secure(tlsConfig),
+		nats.UserJWT(userJWTHandler, sigCB),
 		nats.Timeout(time.Second*time.Duration(hc.timeoutSec)))
+	if err == nil {
+		hc.js, err = hc.nc.JetStream()
+	}
 	return err
 }
 
-// DisConnect from the Hub server
-func (hc *HubClient) DisConnect() {
+// ConnectUnauthenticated connects to the Hub server as an unauthenticated user
+func (hc *HubClient) ConnectUnauthenticated(url string, caCert *x509.Certificate) (err error) {
+	if url == "" {
+		url = nats.DefaultURL
+	}
+	caCertPool := x509.NewCertPool()
+	if caCert != nil {
+		caCertPool.AddCert(caCert)
+	}
+	tlsConfig := &tls.Config{
+		RootCAs:            caCertPool,
+		InsecureSkipVerify: caCert == nil,
+	}
+	hc.nc, err = nats.Connect(url,
+		//nats.Name(hc.clientID),
+		nats.Secure(tlsConfig),
+		//nats.UserInfo(loginID, password),
+		nats.Timeout(time.Second*time.Duration(hc.timeoutSec)))
+	if err == nil {
+		hc.js, err = hc.nc.JetStream()
+	}
+	return err
+
+}
+
+// ConnectWithNKey connects to the Hub server using an nkey secret
+//func (hc *HubClient) ConnectWithNKey(url string, userKey nkeys.KeyPair, caCert *x509.Certificate) (err error) {
+//	if url == "" {
+//		url = nats.DefaultURL
+//	}
+//
+//	caCertPool := x509.NewCertPool()
+//	if caCert != nil {
+//		caCertPool.AddCert(caCert)
+//	}
+//	tlsConfig := &tls.Config{
+//		RootCAs:            caCertPool,
+//		InsecureSkipVerify: caCert == nil,
+//	}
+//	// The handler to sign the server issued challenge
+//	sigCB := func(nonce []byte) ([]byte, error) {
+//		return userKey.Sign(nonce)
+//	}
+//	pubKey, _ := userKey.PublicKey()
+//	hc.nc, err = nats.Connect(url,
+//		nats.Name(hc.clientID),
+//		nats.Secure(tlsConfig),
+//		nats.Nkey(pubKey, sigCB),
+//		nats.Timeout(time.Second*time.Duration(hc.timeoutSec)))
+//	if err == nil {
+//		hc.js, err = hc.nc.JetStream()
+//	}
+//	return err
+//}
+
+// Disconnect from the Hub server
+func (hc *HubClient) Disconnect() {
 	hc.nc.Close()
 }
 
-// Login to the hub with userID and password
-func (hc *HubClient) Login(userID, password string) (err error) {
-	hc.clientID = userID
-	return nil
+// Publish to NATS
+func (hc *HubClient) Publish(subject string, payload []byte) error {
+	slog.Info("publish", "subject", subject)
+	err := hc.nc.Publish(subject, payload)
+	return err
 }
 
-// PubAction sends an action request to the hub
-func (hc *HubClient) PubAction(publisherID string, thingID string, actionID string, payload []byte) error {
+// PubAction sends an action request to the hub and receives a response
+// Returns the response or an error if the request fails or timed out
+func (hc *HubClient) PubAction(publisherID string, thingID string, actionID string, payload []byte) ([]byte, error) {
 	subject := MakeSubject(publisherID, thingID, vocab.VocabActionTopic, actionID)
-	err := hc.publish(subject, payload)
-	return err
+	resp, err := hc.nc.Request(subject, payload, time.Second)
+	return resp.Data, err
 }
 
 // PubEvent sends the event value to the hub
 func (hc *HubClient) PubEvent(thingID string, eventID string, payload []byte) error {
 	subject := MakeSubject(hc.clientID, thingID, vocab.VocabEventTopic, eventID)
-	err := hc.publish(subject, payload)
+	err := hc.Publish(subject, payload)
 	return err
 }
 
@@ -143,16 +210,16 @@ func (hc *HubClient) PubEvent(thingID string, eventID string, payload []byte) er
 func (hc *HubClient) PubTD(td *thing.TD) error {
 	payload, _ := json.Marshal(td)
 	subject := MakeSubject(hc.clientID, td.ID, vocab.VocabEventTopic, vocab.EventNameTD)
-	err := hc.publish(subject, payload)
+	err := hc.Publish(subject, payload)
 	return err
 }
 
 // SubActions subscribes to actions for this device
-func (hc *HubClient) SubActions(cb func(tv *thing.ThingValue)) error {
+func (hc *HubClient) SubActions(cb func(msg *hub.ActionMessage) ([]byte, error)) error {
 
 	subject := MakeSubject(hc.clientID, "", vocab.VocabActionTopic, "")
 
-	err := hc.subscribe(subject, func(msg *nats.Msg) {
+	err := hc.Subscribe(subject, func(msg *nats.Msg) {
 		md, _ := msg.Metadata()
 		timeStamp := time.Now()
 		if md != nil {
@@ -165,101 +232,73 @@ func (hc *HubClient) SubActions(cb func(tv *thing.ThingValue)) error {
 			slog.Error("unable to handle subject", "err", err, "subject", msg.Subject)
 			return
 		}
-		tv := &thing.ThingValue{
-			ID:          name,
+		action := &hub.ActionMessage{
+			//SenderID: msg.Header.
+			ActionID:    name,
 			PublisherID: pubID,
 			ThingID:     thID,
-			Created:     timeStamp.Format(vocab.ISO8601Format),
-			Data:        payload,
+			Timestamp:   timeStamp.Unix(),
+			Payload:     payload,
 		}
-		cb(tv)
+		resp, err := cb(action)
+		if err == nil {
+			err = msg.Respond(resp)
+			if err != nil {
+			}
+		}
 	})
 	return err
 }
 
-// SubEvent subscribes to an event on subject things.{publisherID}.{thingID}.event.{eventName}, where . is the separator.
+// SubGroup subscribes to an event on subject things.{publisherID}.{thingID}.event.{eventName}, where . is the separator.
 // leave publisherID, thingID and/or eventName empty to use wildcards.
 //
 // This will likely be replaced with subscribing to events in a group instead of a publisher/thing
-func (hc *HubClient) SubEvent(
-	publisherID, thingID, eventName string, cb func(tv *thing.ThingValue)) error {
+func (hc *HubClient) SubGroup(
+	groupName, thingID, eventID string, cb func(msg *hub.EventMessage)) error {
 
-	subject := MakeSubject(publisherID, thingID, vocab.VocabEventTopic, eventName)
+	//subject := MakeSubject(publisherID, thingID, vocab.VocabEventTopic, eventName)
+	subject := groupName
 
-	err := hc.subscribe(subject, func(msg *nats.Msg) {
-		md, _ := msg.Metadata()
+	err := hc.Subscribe(subject, func(natsMsg *nats.Msg) {
+		md, _ := natsMsg.Metadata()
 		timeStamp := time.Now()
 		if md != nil {
 			timeStamp = md.Timestamp
 
 		}
-		pubID, thID, _, name, err := SplitSubject(msg.Subject)
+		pubID, thID, _, name, err := SplitSubject(natsMsg.Subject)
 		if err != nil {
-			slog.Error("unable to handle subject", "err", err, "subject", msg.Subject)
+			slog.Error("unable to handle subject", "err", err,
+				"subject", natsMsg.Subject)
 			return
 		}
-		payload := msg.Data
-		tv := &thing.ThingValue{
-			ID:          name,
+		msg := &hub.EventMessage{
+			//SenderID: msg.Header.
+			EventID:     name,
 			PublisherID: pubID,
 			ThingID:     thID,
-			Data:        payload,
-			Created:     timeStamp.Format(vocab.ISO8601Format),
+			Timestamp:   timeStamp.Unix(),
+			Payload:     natsMsg.Data,
 		}
-		cb(tv)
+		cb(msg)
 	})
+	return err
+}
+
+// Subscribe to NATS
+func (hc *HubClient) Subscribe(subject string, cb func(msg *nats.Msg)) error {
+	slog.Info("subscribe", "subject", subject)
+	subscription, err := hc.nc.Subscribe(subject, cb)
+	_ = subscription
 	return err
 }
 
 // NewHubClient instantiates a client for connecting to the Hub
-func NewHubClient(instanceName string) *HubClient {
+func NewHubClient(instanceName string) hub.IHubClient {
 	hc := &HubClient{
-		instanceName: instanceName,
-		timeoutSec:   10,
+		clientID:   instanceName,
+		timeoutSec: 10,
 	}
 	return hc
-}
-
-// MakeSubject creates an nats subject optionally with nats wildcards
-//
-//	pubID is the publisher of the subject. Use "" for wildcard
-//	thingID is the thing of the subject. Use "" for wildcard
-//	stype is the subject type, eg event or action. Use "" for default "event"
-func MakeSubject(pubID, thingID, stype, name string) string {
-	if pubID == "" {
-		pubID = "*"
-	}
-	if thingID == "" {
-		thingID = "*" // nats uses *
-	}
-	if stype == "" {
-		stype = vocab.VocabEventTopic
-	}
-	if name == "" {
-		name = "*" // nats uses *
-	}
-	subj := fmt.Sprintf("things.%s.%s.%s.%s",
-		pubID, thingID, stype, name)
-	return subj
-}
-
-// SplitSubject separates a subject into its components
-//
-// subject is a nats subject. eg: things.publisherID.thingID.type.name
-//
-//		pubID is the publisher of the subject. Use "" for wildcard
-//		thingID is the thing of the subject. Use "" for wildcard
-//		stype is the subject type, eg event or action. Use "" for default "event"
-//	 name is the event or action name
-func SplitSubject(subject string) (pubID, thingID, stype, name string, err error) {
-	parts := strings.Split(subject, ".")
-	if len(parts) < 5 {
-		err = errors.New("incomplete subject")
-		return
-	}
-	pubID = parts[1]
-	thingID = parts[2]
-	stype = parts[3]
-	name = parts[4]
-	return
 }
