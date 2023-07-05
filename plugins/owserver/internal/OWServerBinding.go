@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"golang.org/x/exp/slog"
 	"sync"
 	"sync/atomic"
@@ -30,7 +29,7 @@ type OWServerBinding struct {
 	bindingCert *tls.Certificate
 
 	// client to publish TDs and values and receive actions
-	hubClient *hubclient.HubClient
+	hubClient *hubconn.HubConnNats
 
 	// track the last value for change detection
 	// map of [node/device ID] [attribute name] value
@@ -112,7 +111,7 @@ func (binding *OWServerBinding) Stop() {
 //
 //	config holds the configuration of the service
 //	devicePubSub holds the publish/subscribe service to use. It will be released on stop.
-func NewOWServerBinding(config OWServerConfig, hubClient *hubclient.HubClient) *OWServerBinding {
+func NewOWServerBinding(config OWServerConfig, hubClient *hubconn.HubConnNats) *OWServerBinding {
 
 	// these are from hub configuration
 	pb := &OWServerBinding{

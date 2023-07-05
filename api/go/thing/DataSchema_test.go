@@ -1,8 +1,8 @@
 package thing
 
 import (
-	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/ser"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,11 +15,11 @@ func TestStringSchema(t *testing.T) {
 		Type:            vocab.WoTDataTypeString,
 		StringMinLength: 10,
 	}
-	enc1, err := json.Marshal(ss)
+	enc1, err := ser.Marshal(ss)
 	assert.NoError(t, err)
 	//
 	ds := DataSchema{}
-	err = json.Unmarshal(enc1, &ds)
+	err = ser.Unmarshal(enc1, &ds)
 	assert.NoError(t, err)
 }
 
@@ -37,15 +37,15 @@ func TestObjectSchema(t *testing.T) {
 		NumberMinimum: 10,
 		NumberMaximum: 20,
 	}
-	enc1, err := json.Marshal(os)
+	enc1, err := ser.Marshal(os)
 	assert.NoError(t, err)
 	//
 	var ds map[string]interface{}
-	err = json.Unmarshal(enc1, &ds)
+	err = ser.Unmarshal(enc1, &ds)
 	assert.NoError(t, err)
 
 	var as DataSchema
-	err = json.Unmarshal(enc1, &as)
+	err = ser.Unmarshal(enc1, &as)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 10, int(as.Properties["intProp"].NumberMinimum))

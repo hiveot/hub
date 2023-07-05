@@ -6,7 +6,6 @@ import (
 	"golang.org/x/exp/slog"
 	"os"
 
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/svcconfig"
 
 	"github.com/hiveot/hub/plugins/owserver/internal"
@@ -26,7 +25,7 @@ func main() {
 	if fullUrl == "" {
 		fullUrl = discovery.LocateHub(0)
 	}
-	hc := hubclient.NewHubClient(config.ID)
+	hc := hubconn.NewHubClient(config.ID)
 	err := hc.ConnectWithCert(fullUrl, config.ID, clientCert, caCert)
 	if err != nil {
 		slog.Error("unable to connect to Hub", "url", fullUrl, "err", err)

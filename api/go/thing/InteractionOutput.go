@@ -4,6 +4,7 @@ package thing
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hiveot/hub/lib/ser"
 	"golang.org/x/exp/slog"
 
 	"github.com/hiveot/hub/api/go/vocab"
@@ -15,7 +16,7 @@ type InteractionOutput struct {
 	// Schema describing the data from property, event or action affordance
 	Schema *DataSchema
 	// raw data from the interaction as described by the Schema
-	jsonEncoded []byte
+	serEncoded []byte
 	// decoded data in its native format, eg string, int, array, object
 	Value interface{} `json:"value"`
 }
@@ -36,17 +37,17 @@ type InteractionOutput struct {
 //	string: returns a single element with string
 func (io *InteractionOutput) ValueAsArray() []interface{} {
 	obj := make([]interface{}, 0)
-	_ = json.Unmarshal(io.jsonEncoded, &obj)
+	_ = ser.Unmarshal(io.serEncoded, &obj)
 	return obj
 }
 
 // ValueAsString returns the value as a string
 func (io *InteractionOutput) ValueAsString() string {
-	var s interface{} = io.Value //"" //string(io.jsonEncoded)
-	if io.jsonEncoded != nil {
-		err := json.Unmarshal(io.jsonEncoded, &s)
+	var s interface{} = io.Value //"" //string(io.serEncoded)
+	if io.serEncoded != nil {
+		err := ser.Unmarshal(io.serEncoded, &s)
 		if err != nil {
-			slog.Error("Can't convert value to a string", "value", io.jsonEncoded)
+			slog.Error("Can't convert value to a string", "value", io.serEncoded)
 		}
 	}
 	asString := fmt.Sprint(s)
@@ -56,9 +57,9 @@ func (io *InteractionOutput) ValueAsString() string {
 // ValueAsBoolean returns the value as a boolean
 func (io *InteractionOutput) ValueAsBoolean() bool {
 	b := false
-	err := json.Unmarshal(io.jsonEncoded, &b)
+	err := ser.Unmarshal(io.serEncoded, &b)
 	if err != nil {
-		slog.Error("Can't convert value to a boolean", "value", io.jsonEncoded)
+		slog.Error("Can't convert value to a boolean", "value", io.serEncoded)
 	}
 	return b
 }
@@ -72,9 +73,9 @@ func (io *InteractionOutput) ValueAsInt() int {
 	} else if io.Value == "false" || io.Value == false {
 		i = 0
 	} else {
-		err := json.Unmarshal(io.jsonEncoded, &i)
+		err := ser.Unmarshal(io.serEncoded, &i)
 		if err != nil {
-			slog.Error("Can't convert value to a int", "value", io.jsonEncoded)
+			slog.Error("Can't convert value to a int", "value", io.serEncoded)
 		}
 	}
 	return i
@@ -84,15 +85,15 @@ func (io *InteractionOutput) ValueAsInt() int {
 // Returns nil if no data was provided.
 func (io *InteractionOutput) ValueAsMap() map[string]interface{} {
 	o := make(map[string]interface{})
-	err := json.Unmarshal(io.jsonEncoded, &o)
+	err := ser.Unmarshal(io.serEncoded, &o)
 	if err != nil {
-		slog.Error("Can't convert value to a map", "value", io.jsonEncoded)
+		slog.Error("Can't convert value to a map", "value", io.serEncoded)
 	}
 	return o
 }
 
 // NewInteractionOutputFromJson creates a new interaction output for reading output data
-// @param jsonEncoded is raw data that will be json parsed using the given Schema
+// @param serEncoded is raw data that will be ser parsed using the given Schema
 // @param Schema describes the value. nil in case of unknown Schema
 func NewInteractionOutputFromJson(jsonEncoded []byte, schema *DataSchema) *InteractionOutput {
 	var err error
@@ -115,25 +116,25 @@ func NewInteractionOutputFromJson(jsonEncoded []byte, schema *DataSchema) *Inter
 		slog.Error("Error unmarshalling", "err", err)
 	}
 	io := &InteractionOutput{
-		jsonEncoded: jsonEncoded,
-		Schema:      schema,
-		Value:       val,
+		serEncoded: jsonEncoded,
+		Schema:     schema,
+		Value:      val,
 	}
 	return io
 }
 
 // NewInteractionOutput creates a new interaction output from object data
-// data is native that will be json encoded using the given Schema
+// data is native that will be ser encoded using the given Schema
 // Schema describes the value. nil in case of unknown Schema
 func NewInteractionOutput(data interface{}, schema *DataSchema) *InteractionOutput {
-	jsonEncoded, err := json.Marshal(data)
+	serEncoded, err := ser.Marshal(data)
 	if err != nil {
 		slog.Error("Unable to marshal data", data)
 	}
 	io := &InteractionOutput{
-		jsonEncoded: jsonEncoded,
-		Schema:      schema,
-		Value:       data,
+		serEncoded: serEncoded,
+		Schema:     schema,
+		Value:      data,
 	}
 	return io
 }

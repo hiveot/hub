@@ -1,8 +1,8 @@
 package thing
 
 import (
-	"encoding/json"
 	vocab2 "github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/ser"
 	"sync"
 	"time"
 )
@@ -163,8 +163,8 @@ func (tdoc *TD) AsMap() map[string]interface{} {
 	defer tdoc.updateMutex.RUnlock()
 
 	var asMap map[string]interface{}
-	asJSON, _ := json.Marshal(tdoc)
-	_ = json.Unmarshal(asJSON, &asMap)
+	asJSON, _ := ser.Marshal(tdoc)
+	_ = ser.Unmarshal(asJSON, &asMap)
 	return asMap
 }
 

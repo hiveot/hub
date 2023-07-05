@@ -1,8 +1,8 @@
 package thing
 
 import (
-	"encoding/json"
 	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/ser"
 	"golang.org/x/exp/slog"
 	"testing"
 
@@ -80,7 +80,7 @@ func TestObjectFromJson(t *testing.T) {
 		LastLoginAt string
 	}
 	u1 := User{Name: "Bob", Age: 10, Active: true, LastLoginAt: "today"}
-	u1json, _ := json.Marshal(u1)
+	u1json, _ := ser.Marshal(u1)
 	io := NewInteractionOutputFromJson(u1json, schema)
 	asObject := io.ValueAsMap()
 	assert.Equal(t, u1.Name, asObject["Name"])

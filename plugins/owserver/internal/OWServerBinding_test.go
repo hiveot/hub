@@ -2,7 +2,6 @@ package internal_test
 
 import (
 	"encoding/json"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/testenv"
 	"golang.org/x/exp/slog"
 	"os"
@@ -73,7 +72,7 @@ func TestMain(m *testing.M) {
 func TestStartStop(t *testing.T) {
 	slog.Info("--- TestStartStop ---")
 
-	hc := hubclient.NewHubClient(owsConfig.ID)
+	hc := hubconn.NewHubClient(owsConfig.ID)
 	err := hc.ConnectWithCert(testUrl, testCerts.DeviceID, testCerts.DeviceCert, testCerts.CaCert)
 	require.NoError(t, err)
 	svc := internal.NewOWServerBinding(owsConfig, hc)
@@ -89,7 +88,7 @@ func TestPoll(t *testing.T) {
 	var tdCount atomic.Int32
 
 	slog.Info("--- TestPoll ---")
-	hc := hubclient.NewHubClient(owsConfig.ID)
+	hc := hubconn.NewHubClient(owsConfig.ID)
 	err := hc.ConnectWithCert(testUrl, testCerts.DeviceID, testCerts.DeviceCert, testCerts.CaCert)
 	require.NoError(t, err)
 	svc := internal.NewOWServerBinding(owsConfig, hc)
@@ -131,7 +130,7 @@ func TestPoll(t *testing.T) {
 func TestPollInvalidEDSAddress(t *testing.T) {
 	slog.Info("--- TestPollInvalidEDSAddress ---")
 
-	hc := hubclient.NewHubClient(owsConfig.ID)
+	hc := hubconn.NewHubClient(owsConfig.ID)
 	err := hc.ConnectWithCert(testUrl, testCerts.DeviceID, testCerts.DeviceCert, testCerts.CaCert)
 	require.NoError(t, err)
 	svc := internal.NewOWServerBinding(owsConfig, hc)
@@ -157,7 +156,7 @@ func TestAction(t *testing.T) {
 	var actionName = vocab.VocabRelay
 	var actionValue = ([]byte)("1")
 
-	hc := hubclient.NewHubClient(owsConfig.ID)
+	hc := hubconn.NewHubClient(owsConfig.ID)
 	err := hc.ConnectWithCert(testUrl, testCerts.DeviceID, testCerts.DeviceCert, testCerts.CaCert)
 	require.NoError(t, err)
 

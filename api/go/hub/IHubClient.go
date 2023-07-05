@@ -43,6 +43,16 @@ type ActionMessage struct {
 	Payload []byte `yaml:"payload,omitempty"`
 	// Timestamp the action was issued
 	Timestamp int64 `yaml:"timestamp"`
+
+	// Reply to the received action
+	// This can be called multiple times to send multiple batches.
+	SendReply func(payload []byte)
+}
+
+// ErrorMessage payload
+// Embed this in response messages as it will be used to respond with an error
+type ErrorMessage struct {
+	Error string `json:"error,omitempty"`
 }
 
 // IHubClient interface of the golang hub messaging client
@@ -71,17 +81,24 @@ type IHubClient interface {
 	//  "address"  when using an address with the default port
 	//  "schema://address:port/path for the full url
 	//
+	// The pubKey is the client's ECDSA public key. The private key stays with the client
+	// and will be used in signing the server challenge when connecting with token.
+	//
 	// Provide a CA certificate if available. If nil then the connection will still
 	// use TLS but no server verification will be used (InsecureSkipVerify=true)
 	ConnectWithPassword(url string, loginID string, password string, caCert *x509.Certificate) (err error)
 
-	// ConnectWithJWT connects to the Hub server using a user JWT credentials token
+	// ConnectWithJWT connects to the Hub server using a user JWT credentials
+	// JWT credentials include the JWT portion and the NKey public/private key pair.
+	// The private key is needed to sign the answer to a server challenge.
+	//
+	// To obtain jwtCreds, sign the jwtToken result from login or refresh with the private key.
 	//
 	// The url supports various formats. Use "schema://address:port/path for the full url.
 	//
 	// Provide a CA certificate if available. If nil then the connection will still
 	// use TLS but no server verification will be used (InsecureSkipVerify=true)
-	ConnectWithJWT(url string, token string, caCert *x509.Certificate) (err error)
+	ConnectWithJWT(url string, jwtCreds string, caCert *x509.Certificate) (err error)
 
 	// ConnectUnauthenticated connects to the Hub server as an unauthenticated user.
 	// Unauthenticated users can only use methods that explicitly describe they are for unauthorized users,
@@ -130,8 +147,8 @@ type IHubClient interface {
 	// SubActions subscribes to actions directed requested of this client.
 	// The supported actions are defined in the TD document of the things this client
 	// has published.
-	// Returns optional response payload that is sent as a reply
-	SubActions(cb func(msg *ActionMessage) ([]byte, error)) error
+	// If the callback returns an error, an error reply message is send.
+	SubActions(cb func(msg *ActionMessage) error) error
 
 	// SubEvent subscribes to events send by a publisher and/or thing
 	// At least one publisherID, or thingID or eventID must be provided.
@@ -149,5 +166,5 @@ type IHubClient interface {
 	//  groupName is the group to subscribe to.
 	//  thingID optional ID of the Thing generating the event, or "" for any
 	//  eventID optional ID of the event to subscribe to, or "" for any.
-	SubGroup(groupName string, thingID string, eventID string, cb func(msg *EventMessage)) error
+	SubGroup(groupName string, cb func(msg *EventMessage)) error
 }
