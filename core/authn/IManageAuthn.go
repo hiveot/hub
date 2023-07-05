@@ -1,8 +1,6 @@
-package hub
+package authn
 
-import (
-	"time"
-)
+import "github.com/hiveot/hub/api/go/hub"
 
 // AuthnServiceName default ID of the service
 const AuthnServiceName = "authn"
@@ -52,6 +50,60 @@ type ClientProfile struct {
 	Updated string
 }
 
+// Authentication management request/response messages
+
+// AddUserAction defines the action to add a user with password
+const AddUserAction = "addUser"
+
+// AddUserReq request message to add a user.
+// The caller must be an administrator or service.
+type AddUserReq struct {
+	UserID   string `json:"userID"`
+	Name     string `json:"name"`
+	Password string `json:"password"`
+}
+
+// GetProfileAction defines the action to get a user's profile
+const GetProfileAction = "getProfile"
+
+// GetProfileReq request message to get a client's profile.
+// Users can only get their own profile.
+// Managers can get other clients profiles.
+type GetProfileReq struct {
+	ClientID string `json:"clientID"`
+}
+type GetProfileResp struct {
+	hub.ErrorMessage
+	Profile ClientProfile `json:"profile"`
+}
+
+// ListClientsAction defines the action to get a list of clients
+const ListClientsAction = "listClients"
+
+// ListClientsResp response to listClient actions
+type ListClientsResp struct {
+	hub.ErrorMessage
+	Profiles []ClientProfile `json:"profiles"`
+}
+
+// RemoveClientAction defines the action to remove a client
+// The caller must be an administrator or service.
+const RemoveClientAction = "removeClient"
+
+type RemoveClientReq struct {
+	ClientID string `json:"clientID"`
+}
+
+// ResetPasswordAction defines the action to reset a user's password
+// The caller must be an administrator or service.
+// The clientID must be that of a user.
+const ResetPasswordAction = "resetPassword"
+
+type ResetPasswordReq struct {
+	ClientID string `json:"clientID"`
+	Password string `json:"password"`
+}
+
 // IManageAuthn defines the capabilities for managing authenticating clients.
 // This capability is only available to administrators that connect with a valid admin
 // client certificate or with an admin user token.
@@ -80,19 +132,21 @@ type IManageAuthn interface {
 	// This returns a new service authentication token
 	//AddService(serviceID string, name string, validity time.Duration) (token string, err error)
 
-	// AddUser adds a user
+	// AddUser adds a user.
+	// The caller must be an administrator or service.
 	// If the userID already exists then an error is returned
 	//  userID is the login ID of the user, typically their email
 	//  name of the user for presentation
 	//  password the user can login with if their token has expired.
-	//  validity is duration the token is valid for. 0 for the default DefaultUserTokenValiditySec
-	// This returns a short lived authentication token for login without requiring a password.
-	AddUser(userID string, name string, password string, validity time.Duration) (err error)
+	AddUser(userID string, name string, password string) (err error)
 
 	// GetProfile returns a client's profile
+	// Users can only get their own profile.
+	// Managers can get other clients profiles.
 	GetProfile(clientID string) (profile ClientProfile, err error)
 
-	// ListClients provide a list of known clients and their info
+	// ListClients provide a list of known clients and their info.
+	// The caller must be an administrator or service.
 	ListClients() (profiles []ClientProfile, err error)
 
 	// RemoveClient removes a client and disables authentication
@@ -101,33 +155,4 @@ type IManageAuthn interface {
 
 	// ResetPassword reset a user's login password
 	ResetPassword(clientID string, password string) (err error)
-}
-
-// IClientAuthn defines the capabilities for use by authenticating clients
-type IClientAuthn interface {
-	// Login to obtain an auth token
-	Login(clientID string, password string) (authToken string, err error)
-
-	// Logout invalidates the authentication token and requires a login
-	Logout(userID string, refreshToken string) (err error)
-
-	// Refresh a short lived authentication token.
-	//
-	//  clientID is the userID, deviceID or serviceID whose token to refresh.
-	//  oldToken must be a valid token obtained at login or refresh
-	//
-	// This returns a short lived auth token that can be used to authenticate with the hub
-	// This fails if the token has expired or does not belong to the clientID
-	Refresh(clientID string, oldToken string) (newToken string, err error)
-
-	// UpdateName updates a user's name
-	UpdateName(clientID string, name string) (err error)
-
-	// UpdatePassword changes the client password
-	// Login or Refresh must be called successfully first.
-	UpdatePassword(clientID string, newPassword string) error
-
-	// SetProfile updates the user profile
-	// Login or Refresh must be called successfully first.
-	//SetProfile(profile ClientProfile) error
 }

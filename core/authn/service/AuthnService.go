@@ -3,8 +3,8 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/api/go/hub"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/core/authn"
 	"github.com/hiveot/hub/core/authn/service/unpwstore"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nkeys"
@@ -47,26 +47,32 @@ type AuthnService struct {
 //}
 
 // AddUser adds a new user and returns a generated password
-func (svc *AuthnService) AddUser(clientID string, password string) (err error) {
+func (svc *AuthnService) AddUser(userID string, userName string, password string) (err error) {
 
-	exists := svc.pwStore.Exists(clientID)
+	exists := svc.pwStore.Exists(userID)
 	if exists {
-		return fmt.Errorf("user with clientID '%s' already exists", clientID)
+		return fmt.Errorf("user with clientID '%s' already exists", userID)
 	}
-	err = svc.pwStore.SetPassword(clientID, password)
+	err = svc.pwStore.SetPassword(userID, password)
+	_ = svc.pwStore.SetName(userID, userName)
 	return err
 }
 
 // CreateUserToken create a new user token signed by the account
+// This token must be kept secret.
+// TODO: should the client provide its public key and keep its seed to itself?
 func (svc *AuthnService) CreateUserToken(userID string, userName string, validity uint) (string, error) {
 
-	// when valid, provide the tokens
+	// first create a new private key
 	userKP, _ := nkeys.CreateUser()
 	userPub, _ := userKP.PublicKey()
-	userSeed, _ := userKP.Seed()
+	userSeed, _ := userKP.Seed() // just call it private key
+
+	// create jwt claims that identifies the user and its permissions
 	userClaims := jwt.NewUserClaims(userPub)
-	userClaims.ID = userID
-	userClaims.Name = userName
+	// can't use claim ID as it is replaced by a hash by Encode(kp)
+	userClaims.Name = userID
+	userClaims.User.Tags = append(userClaims.User.Tags, "userName:"+userName)
 	userClaims.IssuedAt = time.Now().Unix()
 	userClaims.Expires = time.Now().Add(time.Duration(validity) * time.Second).Unix()
 
@@ -79,13 +85,18 @@ func (svc *AuthnService) CreateUserToken(userID string, userName string, validit
 	// users can receive replies in their inbox
 	userClaims.Permissions.Sub.Allow.Add("_INBOX.>")
 
+	// sign the claims with the client's private key
 	userJWT, err := userClaims.Encode(svc.accountKP)
+
+	// create a decorated jwt/nkey pair for future use.
+	// TODO: change this to just the jwt token using a given public key
+	// the caller must first be authenticated before giving it a jwt token.
 	creds, _ := jwt.FormatUserConfig(userJWT, userSeed)
 	return string(creds), err
 }
 
 // GetProfile returns the user's profile
-func (svc *AuthnService) GetProfile(clientID string) (profile hub.ClientProfile, err error) {
+func (svc *AuthnService) GetProfile(clientID string) (profile authn.ClientProfile, err error) {
 	//upa.profileStore[profile.LoginID] = profile
 	entry, err := svc.pwStore.GetEntry(clientID)
 	if err == nil {
@@ -125,12 +136,12 @@ func (svc *AuthnService) GeneratePassword(length int, useSpecial bool) (password
 }
 
 // ListClients provide a list of users and their info
-func (svc *AuthnService) ListClients() (profiles []hub.ClientProfile, err error) {
+func (svc *AuthnService) ListClients() (profiles []authn.ClientProfile, err error) {
 	pwEntries, err := svc.pwStore.List()
-	profiles = make([]hub.ClientProfile, len(pwEntries))
+	profiles = make([]authn.ClientProfile, len(pwEntries))
 	for i, entry := range pwEntries {
 		updatedStr := time.Unix(entry.Updated, 0).Format(vocab.ISO8601Format)
-		profile := hub.ClientProfile{
+		profile := authn.ClientProfile{
 			ClientID: entry.LoginID,
 			Name:     entry.UserName,
 			Updated:  updatedStr,
@@ -140,26 +151,17 @@ func (svc *AuthnService) ListClients() (profiles []hub.ClientProfile, err error)
 	return profiles, err
 }
 
-// Login to authenticate a user
+// NewToken creates a new jwt auth token based on userName, password and public key
 // This returns a short-lived auth token that can be used to connect to the message server
 // The token can be refreshed to extend it without requiring a login password.
-func (svc *AuthnService) Login(clientID string, password string) (authToken string, err error) {
+func (svc *AuthnService) NewToken(clientID string, password string, pubKey string) (jwtToken string, err error) {
 	entry, err := svc.pwStore.VerifyPassword(clientID, password)
 	if err != nil {
 		return "", err
 	}
 	// when valid, provide the tokens
-	authToken, err = svc.CreateUserToken(clientID, entry.UserName, hub.DefaultUserTokenValiditySec)
-
-	//newToken, err := svc.jwtAuthn.CreateTokens(clientID)
-	return authToken, err
-}
-
-// Logout invalidates the token
-func (svc *AuthnService) Logout(clientID string, token string) (err error) {
-	// TODO
-	//svc.jwtAuthn.InvalidateToken(clientID, refreshToken)
-	return nil
+	jwtToken, err = svc.CreateUserToken(clientID, entry.UserName, authn.DefaultUserTokenValiditySec)
+	return jwtToken, err
 }
 
 // Refresh an authentication token
@@ -172,7 +174,7 @@ func (svc *AuthnService) Refresh(clientID string, oldToken string) (newToken str
 	if err != nil {
 		return "", err
 	}
-	newToken, err = svc.CreateUserToken(clientID, entry.UserName, hub.DefaultUserTokenValiditySec)
+	newToken, err = svc.CreateUserToken(clientID, entry.UserName, authn.DefaultUserTokenValiditySec)
 	return newToken, err
 }
 
@@ -226,13 +228,13 @@ func (svc *AuthnService) UpdatePassword(clientID, newPassword string) error {
 }
 
 // ValidateToken checks if the given token belongs the the user ID and is valid
-func (svc *AuthnService) ValidateToken(clientID string, token string) (entry unpwstore.PasswordEntry, err error) {
+func (svc *AuthnService) ValidateToken(clientID string, jwtToken string) (entry unpwstore.PasswordEntry, err error) {
 	entry, err = svc.pwStore.GetEntry(clientID)
 	_ = entry
 	if err != nil {
 		return entry, err
 	}
-	claims, err := jwt.Decode(token)
+	claims, err := jwt.Decode(jwtToken)
 	if err != nil {
 		return entry, errors.New("Invalid token of client " + clientID)
 	}
@@ -240,7 +242,7 @@ func (svc *AuthnService) ValidateToken(clientID string, token string) (entry unp
 		return entry, errors.New("Token is not a user token of client " + clientID)
 	}
 	cd := claims.Claims()
-	if cd.ID != clientID {
+	if cd.Name != clientID {
 		slog.Warn("Refresh attempt on token from different user",
 			"token ID", cd.ID, "token name", cd.Name, "clientID", clientID)
 		return entry, errors.New("Token is from a different client, not" + clientID)
@@ -254,23 +256,16 @@ func (svc *AuthnService) ValidateToken(clientID string, token string) (entry unp
 	return entry, nil
 }
 
-// NewManageAuthnService creates new instance of the service
+// NewAuthnService creates new instance of the service
 // Call 'Start' to start the service and 'Stop' to end it.
 //
-//	cfg contains the service configuration
-//	hc is the client connected to the messaging service to receive authn requests
-func NewManageAuthnService(
+//	pwStore is the store for users and encrypted passwords
+func NewAuthnService(
 	pwStore unpwstore.IUnpwStore, accountKP nkeys.KeyPair) *AuthnService {
 
-	//pwStore := unpwstore.NewPasswordFileStore(cfg.PasswordFile)
-	//jwtAuthn := jwtauthn.NewJWTAuthn(
-	//	signingKey, uint(cfg.AccessTokenValiditySec), uint(cfg.RefreshTokenValiditySec))
-
 	svc := &AuthnService{
-		hc:        hc,
 		pwStore:   pwStore,
 		accountKP: accountKP,
-		//jwtAuthn:   jwtAuthn,
 	}
 	return svc
 }

@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/hiveot/hub/api/go/hub"
+	"github.com/hiveot/hub/core/authn"
 	"github.com/hiveot/hub/core/authn/service/unpwstore"
 	"path"
 )
@@ -61,11 +61,11 @@ func NewAuthnConfig(storeFolder string) AuthnConfig {
 	cfg := AuthnConfig{
 		//AuthKeyFile:          authKeyFile,
 		//CaCertFile:           caCertFile,
-		PasswordFile:         path.Join(storeFolder, hub.AuthnServiceName, unpwstore.DefaultPasswordFile),
-		ServiceID:            hub.AuthnServiceName,
-		DeviceTokenValidity:  hub.DefaultDeviceTokenValiditySec,
-		ServiceTokenValidity: hub.DefaultServiceTokenValiditySec,
-		UserTokenValidity:    hub.DefaultUserTokenValiditySec,
+		PasswordFile:         path.Join(storeFolder, authn.AuthnServiceName, unpwstore.DefaultPasswordFile),
+		ServiceID:            authn.AuthnServiceName,
+		DeviceTokenValidity:  authn.DefaultDeviceTokenValiditySec,
+		ServiceTokenValidity: authn.DefaultServiceTokenValiditySec,
+		UserTokenValidity:    authn.DefaultUserTokenValiditySec,
 	}
 	return cfg
 }

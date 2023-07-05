@@ -1,4 +1,4 @@
-package jwtauthn
+package jwtauthn_old
 
 import (
 	"crypto/ecdsa"

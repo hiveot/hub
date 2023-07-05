@@ -2,6 +2,7 @@ package authz_test
 
 import (
 	"github.com/hiveot/hub/api/go/hub"
+	"github.com/hiveot/hub/core/authz"
 	"github.com/hiveot/hub/core/authz/service"
 	"os"
 	"path"
@@ -21,7 +22,7 @@ var aclFilePath string
 var tempFolder string
 
 // Create a new authz service with empty acl list
-func startTestAuthzService() (svc hub.IAuthz, closeFn func()) {
+func startTestAuthzService() (svc authz.IAuthz, closeFn func()) {
 
 	_ = os.Remove(aclFilePath)
 	authSvc := service.NewAuthzService(aclFilePath)
@@ -85,11 +86,11 @@ func TestDeviceAuthorization(t *testing.T) {
 	defer stopFn()
 
 	// FIXME: the device ID is normally not a member of the group
-	err := svc.SetClientRole(device1ID, group1ID, hub.ClientRoleIotDevice)
+	err := svc.SetClientRole(device1ID, group1ID, authz.ClientRoleIotDevice)
 	assert.NoError(t, err)
-	err = svc.SetClientRole(thingID1, group1ID, hub.ClientRoleIotDevice)
+	err = svc.SetClientRole(thingID1, group1ID, authz.ClientRoleIotDevice)
 	assert.NoError(t, err)
-	err = svc.SetClientRole(thingID2, group1ID, hub.ClientRoleIotDevice)
+	err = svc.SetClientRole(thingID2, group1ID, authz.ClientRoleIotDevice)
 	assert.NoError(t, err)
 
 	// this test makes no sense as devices have authz but are not in ACLs
@@ -113,13 +114,13 @@ func TestManagerAuthorization(t *testing.T) {
 	svc, stopFn := startTestAuthzService()
 	defer stopFn()
 
-	_ = svc.SetClientRole(thingID1, group1ID, hub.ClientRoleIotDevice)
-	_ = svc.SetClientRole(thingID2, group1ID, hub.ClientRoleIotDevice)
+	_ = svc.SetClientRole(thingID1, group1ID, authz.ClientRoleIotDevice)
+	_ = svc.SetClientRole(thingID2, group1ID, authz.ClientRoleIotDevice)
 
 	// services can do whatever as a manager in the all group
 	// the manager in the allgroup takes precedence over the operator role in group1
-	_ = svc.SetClientRole(client1ID, group1ID, hub.ClientRoleOperator)
-	_ = svc.SetClientRole(client1ID, hub.AllGroupName, hub.ClientRoleManager)
+	_ = svc.SetClientRole(client1ID, group1ID, authz.ClientRoleOperator)
+	_ = svc.SetClientRole(client1ID, authz.AllGroupName, authz.ClientRoleManager)
 	perms, _ := svc.GetPermissions(client1ID, thingID1)
 
 	assert.Contains(t, perms, hub.PermReadTD)
@@ -143,14 +144,14 @@ func TestOperatorAuthorization(t *testing.T) {
 	svc, stopFn := startTestAuthzService()
 	defer stopFn()
 
-	err := svc.SetClientRole(thingID1, group1ID, hub.ClientRoleIotDevice)
+	err := svc.SetClientRole(thingID1, group1ID, authz.ClientRoleIotDevice)
 	assert.NoError(t, err)
-	_ = svc.SetClientRole(thingID2, group1ID, hub.ClientRoleIotDevice)
-	_ = svc.SetClientRole(deviceID, group1ID, hub.ClientRoleIotDevice)
-	_ = svc.SetClientRole(client1ID, group1ID, hub.ClientRoleOperator)
+	_ = svc.SetClientRole(thingID2, group1ID, authz.ClientRoleIotDevice)
+	_ = svc.SetClientRole(deviceID, group1ID, authz.ClientRoleIotDevice)
+	_ = svc.SetClientRole(client1ID, group1ID, authz.ClientRoleOperator)
 
 	// operators can readTD, readEvent, emitAction
-	_ = svc.SetClientRole(client1ID, group1ID, hub.ClientRoleOperator)
+	_ = svc.SetClientRole(client1ID, group1ID, authz.ClientRoleOperator)
 	perms, _ := svc.GetPermissions(client1ID, thingID1)
 
 	assert.Contains(t, perms, hub.PermReadTD)
@@ -173,12 +174,12 @@ func TestViewerAuthorization(t *testing.T) {
 	svc, stopFn := startTestAuthzService()
 	defer stopFn()
 
-	err := svc.SetClientRole(thingID1, group1ID, hub.ClientRoleIotDevice)
+	err := svc.SetClientRole(thingID1, group1ID, authz.ClientRoleIotDevice)
 	assert.NoError(t, err)
-	_ = svc.SetClientRole(thingID2, group1ID, hub.ClientRoleIotDevice)
+	_ = svc.SetClientRole(thingID2, group1ID, authz.ClientRoleIotDevice)
 
 	// viewers role can read TD
-	_ = svc.SetClientRole(user1ID, group1ID, hub.ClientRoleViewer)
+	_ = svc.SetClientRole(user1ID, group1ID, authz.ClientRoleViewer)
 	perms, _ := svc.GetPermissions(user1ID, thingID1)
 
 	assert.Contains(t, perms, hub.PermReadTD)
@@ -229,8 +230,8 @@ func TestListGroups(t *testing.T) {
 	_ = svc.AddThing(thingID1, group2ID)
 	_ = svc.AddThing(thingID2, group2ID)
 	_ = svc.AddThing(thingID3, group3ID)
-	_ = svc.SetClientRole(user1ID, group1ID, hub.ClientRoleViewer)
-	_ = svc.SetClientRole(user1ID, group2ID, hub.ClientRoleViewer)
+	_ = svc.SetClientRole(user1ID, group1ID, authz.ClientRoleViewer)
+	_ = svc.SetClientRole(user1ID, group2ID, authz.ClientRoleViewer)
 
 	// 3 groups must exist
 	groups, err := svc.ListGroups(0, 0)
@@ -271,10 +272,10 @@ func TestAddRemoveRoles(t *testing.T) {
 	defer stopFn()
 
 	// user1 is a member of 3 groups
-	err := svc.SetClientRole(user1ID, group1ID, hub.ClientRoleOperator)
+	err := svc.SetClientRole(user1ID, group1ID, authz.ClientRoleOperator)
 	assert.NoError(t, err)
-	_ = svc.SetClientRole(user1ID, group2ID, hub.ClientRoleOperator)
-	_ = svc.SetClientRole(user1ID, group3ID, hub.ClientRoleOperator)
+	_ = svc.SetClientRole(user1ID, group2ID, authz.ClientRoleOperator)
+	_ = svc.SetClientRole(user1ID, group3ID, authz.ClientRoleOperator)
 
 	// thing1 is a member of 3 groups
 	// adding a thing twice should not fail
@@ -330,9 +331,9 @@ func TestClientPermissions(t *testing.T) {
 	_ = svc.AddThing(thing1ID, group1ID)
 	_ = svc.AddThing(thing1ID, group2ID)
 	_ = svc.AddThing(thing1ID, group3ID)
-	_ = svc.SetClientRole(user1ID, group1ID, hub.ClientRoleViewer)
-	_ = svc.SetClientRole(user1ID, group2ID, hub.ClientRoleManager)
-	_ = svc.SetClientRole(user1ID, group3ID, hub.ClientRoleOperator)
+	_ = svc.SetClientRole(user1ID, group1ID, authz.ClientRoleViewer)
+	_ = svc.SetClientRole(user1ID, group2ID, authz.ClientRoleManager)
+	_ = svc.SetClientRole(user1ID, group3ID, authz.ClientRoleOperator)
 
 	// as a manager, permissions to read and emit actions
 	perms, err := svc.GetPermissions(thing1ID, "")

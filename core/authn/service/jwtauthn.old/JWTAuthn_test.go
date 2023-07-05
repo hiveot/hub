@@ -1,7 +1,6 @@
-package jwtauthn_test
+package jwtauthn_old_test
 
 import (
-	"github.com/hiveot/hub/core/authn/service/jwtauthn"
 	"testing"
 	"time"
 
@@ -17,7 +16,7 @@ func TestCreateValidateJWTToken(t *testing.T) {
 	user1 := "user1"
 
 	// pub/private key for signing tokens
-	issuer := jwtauthn.NewJWTAuthn(nil, 0, 0)
+	issuer := jwtauthn_old.NewJWTAuthn(nil, 0, 0)
 
 	accessToken, refreshToken, err := issuer.CreateTokens(user1)
 	require.NoError(t, err)
@@ -37,7 +36,7 @@ func TestCreateValidateJWTToken(t *testing.T) {
 }
 func TestJWTMissingUserID(t *testing.T) {
 	// issue the tokens
-	issuer := jwtauthn.NewJWTAuthn(nil, 60, 60)
+	issuer := jwtauthn_old.NewJWTAuthn(nil, 60, 60)
 	at1, rt1, err := issuer.CreateTokens("")
 	assert.Error(t, err)
 	assert.Empty(t, at1)
@@ -49,7 +48,7 @@ func TestJWTIncorrectVerificationKey(t *testing.T) {
 
 	// issue the tokens
 	privKey1 := certs.CreateECDSAKeys()
-	issuer := jwtauthn.NewJWTAuthn(privKey1, 60, 60)
+	issuer := jwtauthn_old.NewJWTAuthn(privKey1, 60, 60)
 	at1, rt1, err := issuer.CreateTokens(user1)
 	assert.NoError(t, err)
 
@@ -65,7 +64,7 @@ func TestJWTIncorrectVerificationKey(t *testing.T) {
 
 	// verification should fail using someone else's key
 	privKey2 := certs.CreateECDSAKeys()
-	issuer2 := jwtauthn.NewJWTAuthn(privKey2, 60, 60)
+	issuer2 := jwtauthn_old.NewJWTAuthn(privKey2, 60, 60)
 	decodedToken2, claims2, err := issuer2.ValidateToken(user1, at1)
 	assert.Error(t, err)
 	assert.NotEmpty(t, decodedToken2)
@@ -77,7 +76,7 @@ func TestRefresh(t *testing.T) {
 
 	// issue the tokens
 	privKey := certs.CreateECDSAKeys()
-	issuer := jwtauthn.NewJWTAuthn(privKey, 0, 0)
+	issuer := jwtauthn_old.NewJWTAuthn(privKey, 0, 0)
 	at1, rt1, err := issuer.CreateTokens(user1)
 	assert.NotEmpty(t, at1)
 	assert.NotEmpty(t, rt1)
@@ -99,7 +98,7 @@ func TestExpired(t *testing.T) {
 	const user1 = "user1"
 
 	// issue the tokens
-	issuer := jwtauthn.NewJWTAuthn(nil, 1, 0)
+	issuer := jwtauthn_old.NewJWTAuthn(nil, 1, 0)
 	at1, rt1, err := issuer.CreateTokens(user1)
 	assert.NotEmpty(t, at1)
 	assert.NotEmpty(t, rt1)
@@ -118,7 +117,7 @@ func TestValidateWrongToken(t *testing.T) {
 
 	// issue the tokens
 	privKey := certs.CreateECDSAKeys()
-	issuer := jwtauthn.NewJWTAuthn(privKey, 60, 60)
+	issuer := jwtauthn_old.NewJWTAuthn(privKey, 60, 60)
 	at1, rt1, err := issuer.CreateTokens(user1)
 	assert.NotEmpty(t, at1)
 	assert.NotEmpty(t, rt1)
@@ -126,7 +125,7 @@ func TestValidateWrongToken(t *testing.T) {
 
 	// token validation with different issuer fails
 	privKey2 := certs.CreateECDSAKeys()
-	issuer2 := jwtauthn.NewJWTAuthn(privKey2, 60, 60)
+	issuer2 := jwtauthn_old.NewJWTAuthn(privKey2, 60, 60)
 	_, _, err2 := issuer2.ValidateToken(user1, rt1)
 	assert.Error(t, err2)
 
@@ -142,7 +141,7 @@ func TestInvalidateToken(t *testing.T) {
 
 	// issue the tokens
 	privKey := certs.CreateECDSAKeys()
-	issuer := jwtauthn.NewJWTAuthn(privKey, 60, 60)
+	issuer := jwtauthn_old.NewJWTAuthn(privKey, 60, 60)
 	_, rt1, err := issuer.CreateTokens(user1)
 	assert.NoError(t, err)
 	//

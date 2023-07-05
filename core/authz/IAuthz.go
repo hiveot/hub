@@ -1,7 +1,9 @@
 package authz
 
-// ServiceName of the service used for logging and connection
-const ServiceName = "authz"
+import "time"
+
+// AuthzServiceName default name of the service, used for logging and identification
+const AuthzServiceName = "authz"
 
 // Client roles set permissions for operations on Things that are members of the same group
 // The mapping of roles to operations is currently hard coded aimed at managing Things
@@ -16,23 +18,29 @@ const (
 	// IoT Devices can publish events and updates for Things it the publisher of. This is determined
 	// by the deviceID that is included in the thingID.
 	//  Read permissions: readActions
-	//  Write permissions: pubTD, pubEvent, emitAction
+	//  Write permissions: pubEvents, pubActions
 	ClientRoleIotDevice = "iotdevice"
 
 	// ClientRoleManager lets a client subscribe to Thing TD, events, publish actions and update configuration
-	//  Read permissions: readTDs, readEvents, readActions
-	//  Write permissions: emitAction, writeProperty
+	//  Read permissions: readEvents
+	//  Write permissions: pubActions
 	ClientRoleManager = "manager"
 
 	// ClientRoleOperator lets a client subscribe to Thing TD, events and publish actions
-	//  Read permissions: readTDs, readEvents, readActions
-	//  Write permissions: emitAction
+	//  Read permissions: readEvents, readActions
+	//  Write permissions: pubActions
 	ClientRoleOperator = "operator"
+
+	// ClientRoleService identifies the client as a service
+	// Services can subscribe to and publish actions and events
+	//  Read permissions: readActions, readEvents
+	//  Write permissions: pubEvents, pubActions
+	ClientRoleService = "service"
 
 	// ClientRoleThing identifies the client as a Thing
 	// Things can publish events and updates for themselves.
-	//  Read permissions: readActions
-	//  Write permissions: pubTD, pubEvent, emitAction
+	//  Read permissions: readAction
+	//  Write permissions: pubEvents, pubActions
 	ClientRoleThing = "thing"
 
 	// ClientRoleViewer lets a client subscribe to Thing TD and Thing Events
@@ -45,30 +53,27 @@ const (
 // The list of permissions is currently hard coded aimed at managing Things
 // It is expected that future services will add permissions but that is for later.
 const (
-	// PermEmitAction permission of emitting an action
-	PermEmitAction = "permEmitAction"
+	// PermPubActions permission of publishing actions
+	PermPubActions = "permPubActions"
 
-	// PermPubEvent permission to publish events, including property value events
-	PermPubEvent = "permPubEvent"
+	// PermPubEvents permission to publish events, including property value events
+	PermPubEvents = "permPubEvents"
 
-	// PermPubTD permission to publish a TD document
-	PermPubTD = "permPubTD"
-
-	// PermReadAction permission of read/subscribe to actions
-	PermReadAction = "permReadAction"
+	// PermReadActions permission of read/subscribe to actions
+	PermReadActions = "permReadActions"
 
 	// PermReadEvents permission to read/subscribe to events
-	PermReadEvent = "permReadEvent"
-
-	// PermReadTD permission to read TD documents
-	PermReadTD = "permReadTD"
-
-	// PermWriteProperty permission to write a property (configuration) value
-	PermWriteProperty = "permWriteProperty"
+	PermReadEvents = "permReadEvents"
 )
 
-// AllGroupName is the built-in group containing all resources
-const AllGroupName = "all"
+// predefined group names
+const (
+	// NoAuthGroupName is the built-in group for unauthenticated clients
+	NoAuthGroupName = "unauthenticated"
+
+	// AllGroupName is the built-in group containing all resources
+	AllGroupName = "all"
+)
 
 // RoleMap for members or memberships
 type RoleMap map[string]string // clientID:role, groupName:role
@@ -88,39 +93,200 @@ func NewGroup(groupName string) Group {
 	}
 }
 
-// IAuthz defines the interface of the authorization service
+// IAuthz defines the capabilities of the authorization service
 type IAuthz interface {
 
+	// AddGroup adds a new group
+	AddGroup(groupName string, retention time.Duration) error
+
+	// AddService adds a service to a group
+	AddService(groupName string, serviceID string) error
+
 	// AddThing adds a Thing to a group
-	AddThing(thingAddr string, groupName string) error
+	AddThing(groupName string, thingID string) error
+
+	// AddUser adds a user to a group with the user role manager, operator or viewer
+	// See ClientRole...
+	AddUser(groupName string, userID string, role string) error
+
+	DeleteGroup(groupName string) error
 
 	// GetGroup returns the group with the given name, or an error if group is not found.
 	// GroupName must not be empty and must be an existing group
 	// Returns an error if the group does not exist.
-	GetGroup(groupName string) (group Group, err error)
+	GetGroup(groupName string) (group *Group, err error)
 
 	// GetGroupRoles returns a map of group:role for groups the client is a member of.
-	GetGroupRoles(clientID string) (roles RoleMap, err error)
+	//GetGroupRoles(clientID string) (roles RoleMap, err error)
 
-	// GetPermissions returns the permissions the client has for a Thing
-	// Returns an array of permissions, eg PermEmitAction, etc
-	GetPermissions(clientID string, thingID string) (permissions []string, err error)
+	// GetPermissions returns the permissions the client has for Things.
+	// clientID is optional. The default is to use the connecting client's ID.
+	// Only managers and services are allowed to choose a clientID different from their own.
+	// Returns an map of permissions for each thing, eg PermEmitAction, etc
+	GetPermissions(clientID string, thingIDs []string) (permissions map[string][]string, err error)
 
 	// ListGroups returns the list of known groups
-	ListGroups(limit int, offset int) (groups []Group, err error)
+	ListGroups() (groups []Group, err error)
 
-	// RemoveAll removes a client or thing from all groups
-	RemoveAll(clientID string) error
-
-	// RemoveClient removes a client from a group
+	// RemoveClient removes a client from a group.
+	// An empty groupName removes the client from all groups.
+	// The caller must be an administrator or service.
 	RemoveClient(clientID string, groupName string) error
 
-	// RemoveThing removes a Thing from a group
-	RemoveThing(thingAddr string, groupName string) error
-
-	// SetClientRole sets the role for the client in a group.
-	// Note that 'things' are also clients. Things are added to groups with the role ClientRoleThing
+	// SetUserRole sets the role for the user in a group.
+	//
 	// If the client is not a member of a group the client will be added.
-	// If the client is already a member of the group, its role will be replaced by the given role.
-	SetClientRole(clientID string, groupName string, role string) error
+	// The role must be one of the user roles
+	SetUserRole(userID string, groupName string, userRole string) error
+}
+
+// Authorization management request/response messages
+// This requires administrator permissions.
+
+// AddGroupAction defines the action to add a group with a retention period
+const AddGroupAction = "addGroup"
+
+// AddGroupReq request message to add a group.
+// The caller must be an administrator or service.
+type AddGroupReq struct {
+	// unique name of the group
+	GroupName string `json:"groupName"`
+	// retention period in seconds of events in this group
+	Retention uint64 `json:"retention"`
+}
+
+// AddThingAction defines the action to add a Thing to a group
+const AddThingAction = "addThing"
+
+// AddThingReq request message to add a Thing to a group
+// The caller must be an administrator or service.
+type AddThingReq struct {
+	// name of existing group
+	GroupName string `json:"groupName"`
+	// the thingID to add in the IoT device role
+	ThingID string `json:"thingID"`
+}
+
+// AddServiceAction defines the action to add a service to a group
+const AddServiceAction = "addService"
+
+// AddServiceReq request message to add a Service to a group
+// The caller must be an administrator or service.
+type AddServiceReq struct {
+	// name of existing group
+	GroupName string `json:"groupName"`
+	// serviceID to add in the service role
+	ServiceID string `json:"serviceID"`
+}
+
+// AddUserAction defines the action to add a user to a group
+const AddUserAction = "addUser"
+
+// AddUserReq request message to add a User to a group
+// The caller must be an administrator or service.
+type AddUserReq struct {
+	// name of existing group
+	GroupName string `json:"groupName"`
+	// user to add
+	UserID string `json:"userID"`
+	// role the user is added in: viewer, operator or manager
+	Role string `json:"role"`
+}
+
+// DeleteGroupAction defines the action to delete the group with the given name
+const DeleteGroupAction = "deleteGroup"
+
+// DeleteGroupReq request message to delete a group and its archived messages
+// The caller must be an administrator or service.
+type DeleteGroupReq struct {
+	// group to delete
+	GroupName string `json:"groupName"`
+}
+
+// GetClientRolesAction defines the action to request a list of clients and their roles of a group
+const GetClientRolesAction = "getClientRoles"
+
+// GetClientRolesReq request message to get a list of group clients and their roles
+// The caller must be an administrator or service.
+type GetClientRolesReq struct {
+	GroupName string `json:"groupName"`
+}
+
+// GetClientRolesResp response with a list of group clients and their roles
+type GetClientRolesResp struct {
+	Roles RoleMap `json:"roles"`
+}
+
+// GetGroupAction defines the action to request the content of a group
+const GetGroupAction = "getGroup"
+
+// GetGroupReq requests the group and its members
+// The caller must be an administrator or service.
+type GetGroupReq struct {
+	GroupName string `json:"groupName"`
+}
+
+// GetGroupResp returns the group and its members
+type GetGroupResp struct {
+	Group Group `json:"group"`
+}
+
+// GetPermissionsAction defines the action to get the permissions a client has on one or more things
+const GetPermissionsAction = "getPermissions"
+
+// GetPermissionsReq requests the permissions a user has for one or more Things
+// Intended to determine what operations a user can perform on Things.
+// Administrator or service can use any client ID.
+// Other callers can only request their own permissions.
+type GetPermissionsReq struct {
+	// Client whose permissions to obtain
+	ClientID string `json:"clientID"`
+	// List of things whose permissions to get
+	ThingIDs []string `json:"thingID"`
+}
+
+// GetPermissionsResp returns a list of permissions the client has on a thing
+// Returns a map of permissions by thingID, eg PermPubAction, etc
+type GetPermissionsResp struct {
+	// List of permissions for each requested thing
+	Permissions map[string][]string `json:"permissions"`
+}
+
+// ListGroupsAction defines the action to list defined groups
+const ListGroupsAction = "listGroups"
+
+// ListGroupsReq requests a list of groups available to the client
+// Administrators and services can provide a clientID other than their own,
+// or use "" for clientID to get all groups
+// Any other user must supply their own clientID
+type ListGroupsReq struct {
+	ClientID string `json:"clientID"`
+}
+
+// ListGroupsResp returns a list of groups
+type ListGroupsResp struct {
+	Groups []Group `json:"groups"`
+}
+
+// RemoveClientAction defines the action to remove a client from a group
+const RemoveClientAction = "removeClient"
+
+// RemoveClientReq requests removal of a client from a group
+// If GroupName is omitted, the client is removed from all groups and effectively deleted.
+// The caller must be an administrator or service.
+type RemoveClientReq struct {
+	ClientID  string `json:"clientID"`
+	GroupName string `json:"groupName,omitempty"`
+}
+
+// SetUserRoleAction updates the role of a user in a group
+const SetUserRoleAction = "setClientRole"
+
+// SetUserRoleReq requests update of a user role in a group
+// If the user is not a member of a group, the user will be added.
+// The role must be one of the user roles.
+type SetUserRoleReq struct {
+	UserID    string `json:"userID"`
+	GroupName string `json:"groupName"`
+	UserRole  string `json:"userRole"`
 }

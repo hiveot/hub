@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/hiveot/hub/api/go/hub"
+	"github.com/hiveot/hub/core/authz"
 	"github.com/hiveot/hub/core/authz/service/aclstore"
 	"github.com/nats-io/nats.go"
 	"golang.org/x/exp/slog"
@@ -17,6 +17,7 @@ import (
 // regardless of how they are authenticated.
 type AuthzService struct {
 	aclStore *aclstore.AclFileStore
+	nc       *nats.Conn
 }
 
 // GetPermissions returns a list of permissions a client has for a Thing
@@ -48,7 +49,14 @@ func (svc *AuthzService) AddGroup(groupName string, retention time.Duration) err
 		Sources:   sources,
 		//Subjects:  subjects,
 	}
-	strmInfo, err := svc.hc.js.AddStream(cfg)
+	js, err := svc.nc.JetStream()
+	if err != nil {
+		return err
+	}
+	strmInfo, err := js.AddStream(cfg)
+	if err != nil {
+		return err
+	}
 	_ = strmInfo
 	//
 	//cfg := &nats.ConsumerConfig{
@@ -65,7 +73,7 @@ func (svc *AuthzService) AddGroup(groupName string, retention time.Duration) err
 // AddThing adds a Thing to a group
 func (svc *AuthzService) AddThing(groupName string, thingID string) error {
 
-	err := svc.aclStore.SetRole(thingID, groupName, hub.ClientRoleThing)
+	err := svc.aclStore.SetRole(thingID, groupName, authz.ClientRoleThing)
 	return err
 }
 
@@ -74,21 +82,21 @@ func (authzService *AuthzService) GetPermissions(clientID string, thingAddr stri
 
 	clientRole := authzService.aclStore.GetRole(clientID, thingAddr)
 	switch clientRole {
-	case hub.ClientRoleIotDevice:
-	case hub.ClientRoleThing:
-		permissions = []string{hub.PermPubEvents, hub.PermReadActions}
+	case authz.ClientRoleIotDevice:
+	case authz.ClientRoleThing:
+		permissions = []string{authz.PermPubEvents, authz.PermReadActions}
 		break
-	case hub.ClientRoleService:
-		permissions = []string{hub.PermPubActions, hub.PermPubEvents, hub.PermReadActions, hub.PermReadEvents}
+	case authz.ClientRoleService:
+		permissions = []string{authz.PermPubActions, authz.PermPubEvents, authz.PermReadActions, authz.PermReadEvents}
 		break
-	case hub.ClientRoleManager:
-		permissions = []string{hub.PermPubActions, hub.PermReadEvents}
+	case authz.ClientRoleManager:
+		permissions = []string{authz.PermPubActions, authz.PermReadEvents}
 		break
-	case hub.ClientRoleOperator:
-		permissions = []string{hub.PermPubActions, hub.PermReadEvents}
+	case authz.ClientRoleOperator:
+		permissions = []string{authz.PermPubActions, authz.PermReadEvents}
 		break
-	case hub.ClientRoleViewer:
-		permissions = []string{hub.PermReadEvents}
+	case authz.ClientRoleViewer:
+		permissions = []string{authz.PermReadEvents}
 		break
 	default:
 		permissions = []string{}
@@ -108,14 +116,14 @@ func (svc *AuthzService) IsPublisher(deviceID string, thingAddr string) (bool, e
 
 // GetGroup returns the group with the given name, or an error if group is not found.
 // GroupName must not be empty
-func (svc *AuthzService) GetGroup(groupName string) (group hub.Group, err error) {
+func (svc *AuthzService) GetGroup(groupName string) (group authz.Group, err error) {
 
 	group, err = svc.aclStore.GetGroup(groupName)
 	return group, err
 }
 
 // GetGroupRoles returns a list of roles in groups the client is a member of.
-func (svc *AuthzService) GetGroupRoles(clientID string) (roles hub.RoleMap, err error) {
+func (svc *AuthzService) GetGroupRoles(clientID string) (roles authz.RoleMap, err error) {
 
 	// simple pass through
 	roles = svc.aclStore.GetGroupRoles(clientID)
@@ -123,7 +131,7 @@ func (svc *AuthzService) GetGroupRoles(clientID string) (roles hub.RoleMap, err 
 }
 
 // ListGroups returns the list of known groups
-func (svc *AuthzService) ListGroups(limit int, offset int) (groups []hub.Group, err error) {
+func (svc *AuthzService) ListGroups(limit int, offset int) (groups []authz.Group, err error) {
 
 	groups = svc.aclStore.ListGroups(limit, offset)
 	return groups, nil
@@ -173,7 +181,7 @@ func (svc *AuthzService) Start() error {
 //
 //	aclStore provides the functions to read and write authorization rules
 func NewAuthzService(aclStorePath string) *AuthzService {
-	aclStore := aclstore.NewAclFileStore(aclStorePath, hub.AuthzServiceName)
+	aclStore := aclstore.NewAclFileStore(aclStorePath, authz.AuthzServiceName)
 
 	authzService := AuthzService{
 		aclStore: aclStore,

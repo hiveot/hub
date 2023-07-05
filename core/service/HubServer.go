@@ -3,7 +3,6 @@ package service
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/hiveot/hub/api/go/hub"
 	"github.com/hiveot/hub/core/authn"
 	"github.com/hiveot/hub/core/authz"
 	"github.com/hiveot/hub/core/nats"
@@ -16,8 +15,8 @@ type HubServer struct {
 	serverCert *tls.Certificate
 	caCert     *x509.Certificate
 	hubImpl    nats.HubNats
-	authn      hub.IManageAuthn
-	authz      hub.IManageAuthz
+	authn      authn.IManageAuthn
+	authz      authz.IAuthz
 }
 
 // Start the Hub messaging server
@@ -34,8 +33,8 @@ func (hs *HubServer) Stop() {
 func NewHubServer() *HubServer {
 	hs := &HubServer{
 		hubImpl: nats.HubNats{},
-		authn:   authn.NewAuthn(),
-		authz:   authz.NewAuthz(),
+		authn:   authn.NewAuthnService(),
+		authz:   authz.NewAuthzService(),
 	}
 	return hs
 }

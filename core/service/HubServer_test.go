@@ -3,7 +3,6 @@ package service_test
 import (
 	"github.com/hiveot/hub/api/go/thing"
 	"github.com/hiveot/hub/core/service"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/nats-server/v2/server"
@@ -39,7 +38,7 @@ func TestHubServer_Start(t *testing.T) {
 	require.NotEmpty(t, clientURL)
 	time.Sleep(time.Second * 2)
 
-	hc := hubclient.NewHubClient("test1")
+	hc := hubconn.NewHubClient("test1")
 	err = hc.ConnectWithCert(clientURL, testCerts.ServerID, testCerts.ServerCert, testCerts.CaCert)
 	assert.NoError(t, err)
 	hc.DisConnect()
@@ -59,7 +58,7 @@ func TestPubSub_AuthNKey(t *testing.T) {
 	assert.NoError(t, err)
 	defer srv.Stop()
 
-	hc := hubclient.NewHubClient("test1")
+	hc := hubconn.NewHubClient("test1")
 	err = hc.ConnectWithNKey(clientURL, testCerts.DeviceNKey, testCerts.CaCert)
 	defer hc.DisConnect()
 
@@ -86,7 +85,7 @@ func TestPubSub_AuthPassword(t *testing.T) {
 	defer srv.Stop()
 	require.NoError(t, err)
 
-	hc := hubclient.NewHubClient("test1")
+	hc := hubconn.NewHubClient("test1")
 	defer hc.DisConnect()
 	err = hc.ConnectWithPassword(
 		clientURL, "user1", "pass1", testCerts.CaCert)
@@ -116,7 +115,7 @@ func TestPubSub_AuthJWT(t *testing.T) {
 	assert.NoError(t, err)
 	defer srv.Stop()
 
-	hc := hubclient.NewHubClient("test1")
+	hc := hubconn.NewHubClient("test1")
 	err = hc.ConnectWithJWT(clientURL, testCerts.DeviceCreds, testCerts.CaCert)
 	defer hc.DisConnect()
 
@@ -155,7 +154,7 @@ func TestHubServer_Groups(t *testing.T) {
 	assert.NoError(t, err)
 	defer srv.Stop()
 
-	hc := hubclient.NewHubClient("test1")
+	hc := hubconn.NewHubClient("test1")
 	err = hc.ConnectWithNKey(clientURL, testCerts.DeviceNKey, testCerts.CaCert)
 	require.NoError(t, err)
 	defer hc.DisConnect()

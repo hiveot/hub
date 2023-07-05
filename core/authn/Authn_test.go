@@ -2,8 +2,11 @@ package authn_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/hub"
+	"github.com/hiveot/hub/core/authn"
 	"github.com/hiveot/hub/core/authn/service"
+	"github.com/hiveot/hub/core/authn/service/unpwstore"
+	"github.com/hiveot/hub/lib/testenv"
+	"github.com/nats-io/jwt/v2"
 	"os"
 	"path"
 	"testing"
@@ -16,31 +19,33 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 )
 
+var storeFolder string  // set in TestMain
 var passwordFile string // set in TestMain
 
 var tempFolder string
-var testuser1 = "testuser1"
+
+// var testuser1 = "testuser1"
 var testpass1 = "secret11" // set at start
+var testCerts testenv.TestCerts
 
 // create a new authn service and set the password for testuser1
 // containing a password for testuser1
-func startTestAuthnService() (authSvc hub.IAuthnService, stopFn func(), err error) {
+func startTestAuthnService() (mngAuthn authn.IManageAuthn, clientAuthn authn.IClientAuthn, stopFn func(), err error) {
 	_ = os.Remove(passwordFile)
-	cfg := service.AuthnConfig{
-		PasswordFile:            passwordFile,
-		AccessTokenValiditySec:  10,
-		RefreshTokenValiditySec: 120,
-	}
-	svc := service.NewAuthnService(cfg)
+	cfg := service.NewAuthnConfig(storeFolder)
+	cfg.PasswordFile = passwordFile
+	cfg.DeviceTokenValidity = 10
+	pwStore := unpwstore.NewPasswordFileStore(passwordFile)
+	svc := service.NewAuthnService(pwStore, testCerts.AccountNKey)
 	err = svc.Start()
 	if err == nil {
-		testpass1, err = svc.AddUser(testuser1, "")
+		err = svc.AddUser(testCerts.UserID, "test user 1", testpass1)
 	}
 	if err != nil {
 		logrus.Panicf("cant start test authn service: %s", err)
 	}
 
-	return svc, func() {
+	return svc, svc, func() {
 		_ = svc.Stop()
 	}, err
 }
@@ -53,6 +58,7 @@ func TestMain(m *testing.M) {
 	// a working folder for the data
 	tempFolder = path.Join(os.TempDir(), "test-authn")
 	_ = os.MkdirAll(tempFolder, 0700)
+	testCerts = testenv.CreateAuthBundle()
 
 	// the password file to use
 	passwordFile = path.Join(tempFolder, "test.passwd")
@@ -68,18 +74,21 @@ func TestMain(m *testing.M) {
 
 // Create and verify a JWT token
 func TestStartStop(t *testing.T) {
-	srv, stopFn, err := startTestAuthnService()
+	mng, cl, stopFn, err := startTestAuthnService()
 	require.NoError(t, err)
-	assert.NotNil(t, srv)
+	assert.NotNil(t, mng)
+	assert.NotNil(t, cl)
 	time.Sleep(time.Millisecond * 10)
 	stopFn()
 }
 
 // Create and verify a JWT token
 func TestStartTwice(t *testing.T) {
-	svc, stopFn, err := startTestAuthnService()
+	mng, cl, stopFn, err := startTestAuthnService()
 	require.NoError(t, err)
-	require.NotNil(t, svc)
+	require.NotNil(t, mng)
+	require.NotNil(t, cl)
+	// todo
 
 	stopFn()
 }
@@ -87,110 +96,102 @@ func TestStartTwice(t *testing.T) {
 // Create manage users
 func TestManageUser(t *testing.T) {
 
-	svc, stopFn, err := startTestAuthnService()
+	mng, _, stopFn, err := startTestAuthnService()
 	defer stopFn()
 	require.NoError(t, err)
 
 	// expect the test user
-	userList, err := svc.ListUsers()
+	userList, err := mng.ListClients()
 	assert.NoError(t, err)
 	require.Equal(t, 1, len(userList))
 
 	profile1 := userList[0]
-	assert.Equal(t, testuser1, profile1.LoginID)
+	assert.Equal(t, testCerts.UserID, profile1.ClientID)
 
 	// remove user
-	err = svc.RemoveUser(testuser1)
+	err = mng.RemoveClient(testCerts.UserID)
 	assert.NoError(t, err)
-	userList, err = svc.ListUsers()
+	userList, err = mng.ListClients()
 	assert.NoError(t, err)
 	require.Equal(t, 0, len(userList))
 
 	// reset password adds the user again
-	newpw, err := svc.ResetPassword(testuser1, "")
+	newPw := "newpass"
+	err = mng.ResetPassword(testCerts.UserID, newPw)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, newpw)
-	userList, err = svc.ListUsers()
+	assert.NotEmpty(t, newPw)
+	userList, err = mng.ListClients()
 	assert.NoError(t, err)
 	require.Equal(t, 1, len(userList))
 
 	// add existing user should fail
-	_, err = svc.AddUser(testuser1, "")
+	err = mng.AddUser(testCerts.UserID, "", "")
 	assert.Error(t, err)
-
 }
 
-func TestLoginRefreshLogout(t *testing.T) {
-	var at1 string
-	var rt1 string
-	var at2 string
-	var rt2 string
+func TestLoginRefresh(t *testing.T) {
+	var authToken1 string
+	var authToken2 string
 	count := 100
-	svc, stopFn, err := startTestAuthnService()
+	_, cl, stopFn, err := startTestAuthnService()
 	defer stopFn()
 	require.NoError(t, err)
 
 	// login and get tokens
 	t1 := time.Now()
 	for i := 0; i < count; i++ {
-		at1, rt1, err = svc.Login(testuser1, testpass1)
+		pubKey, _ := testCerts.UserNKey.PublicKey()
+		authToken1, err = cl.NewToken(testCerts.UserID, testpass1, pubKey)
 	}
 	d1 := time.Now().Sub(t1)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, at1)
-	assert.NotEmpty(t, rt1)
+	assert.NotEmpty(t, authToken1)
 
 	// refresh token
 	t2 := time.Now()
+	signedJWT, err := jwt.ParseDecoratedJWT([]byte(authToken1))
 	for i := 0; i < count; i++ {
-		at2, rt2, err = svc.Refresh(testuser1, rt1)
+		authToken2, err = cl.Refresh(testCerts.UserID, signedJWT)
 	}
 	d2 := time.Now().Sub(t2)
 	fmt.Printf("Time to login   %d times: %d msec\n", count, d1.Milliseconds())
 	fmt.Printf("Time to refresh %d times: %d msec\n", count, d2.Milliseconds())
 	assert.NoError(t, err)
-	assert.NotEmpty(t, at2)
-	assert.NotEmpty(t, rt2)
+	assert.NotEmpty(t, authToken2)
 
-	// logout
-	err = svc.Logout(testuser1, rt2)
-	assert.NoError(t, err)
-	// second logout should not give an error
-	err = svc.Logout(testuser1, rt2)
-	assert.NoError(t, err)
 }
 
 func TestLoginFail(t *testing.T) {
-	svc, stopFn, err := startTestAuthnService()
+	_, cl, stopFn, err := startTestAuthnService()
 	defer stopFn()
 	require.NoError(t, err)
 
 	// login and get tokens
-	accessToken, refreshToken, err := svc.Login(testuser1, "badpass")
+	pubKey, _ := testCerts.UserNKey.PublicKey()
+	authToken, err := cl.NewToken(testCerts.UserID, "badpass", pubKey)
 	assert.Error(t, err)
-	assert.Empty(t, accessToken)
-	assert.Empty(t, refreshToken)
+	assert.Empty(t, authToken)
 }
 
 func TestProfile(t *testing.T) {
-	svc, stopFn, err := startTestAuthnService()
+	mng, cl, stopFn, err := startTestAuthnService()
 	defer stopFn()
 	require.NoError(t, err)
 
 	// after authentication get/set profile and get password should succeed
-	at, rt, err := svc.Login(testuser1, testpass1)
+	pubKey, _ := testCerts.UserNKey.PublicKey()
+	authToken, err := cl.NewToken(testCerts.UserID, testpass1, pubKey)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, at)
-	assert.NotEmpty(t, rt)
+	assert.NotEmpty(t, authToken)
 
-	prof1, err := svc.GetProfile(testuser1)
+	prof1, err := mng.GetProfile(testCerts.UserID)
 	assert.NoError(t, err)
-	assert.Equal(t, testuser1, prof1.LoginID)
+	assert.Equal(t, testCerts.UserID, prof1.ClientID)
 
 	prof1.Name = "new name"
-	err = svc.SetProfile(prof1)
+	err = cl.UpdateName(testCerts.UserID, prof1.Name)
 	assert.NoError(t, err)
-	err = svc.SetPassword(testuser1, "newpass")
+	err = cl.UpdatePassword(testCerts.UserID, "newpass")
 	assert.NoError(t, err)
 
 }
