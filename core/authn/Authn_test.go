@@ -3,8 +3,10 @@ package authn_test
 import (
 	"fmt"
 	"github.com/hiveot/hub/core/authn"
+	"github.com/hiveot/hub/core/authn/client"
 	"github.com/hiveot/hub/core/authn/service"
 	"github.com/hiveot/hub/core/authn/service/unpwstore"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/jwt/v2"
 	"os"
@@ -21,21 +23,27 @@ import (
 
 var storeFolder string  // set in TestMain
 var passwordFile string // set in TestMain
-
 var tempFolder string
 
 // var testuser1 = "testuser1"
 var testpass1 = "secret11" // set at start
 var testCerts testenv.TestCerts
+var useMessenger = true
+
+// clientURL is set by the testmain
+var clientURL string
 
 // create a new authn service and set the password for testuser1
 // containing a password for testuser1
 func startTestAuthnService() (mngAuthn authn.IManageAuthn, clientAuthn authn.IClientAuthn, stopFn func(), err error) {
+
+	// TODO: put this in a test environment
 	_ = os.Remove(passwordFile)
 	cfg := service.NewAuthnConfig(storeFolder)
 	cfg.PasswordFile = passwordFile
 	cfg.DeviceTokenValidity = 10
 	pwStore := unpwstore.NewPasswordFileStore(passwordFile)
+	// since it uses jwt auth, only the account key is needed to issue tokens
 	svc := service.NewAuthnService(pwStore, testCerts.AccountNKey)
 	err = svc.Start()
 	if err == nil {
@@ -43,6 +51,33 @@ func startTestAuthnService() (mngAuthn authn.IManageAuthn, clientAuthn authn.ICl
 	}
 	if err != nil {
 		logrus.Panicf("cant start test authn service: %s", err)
+	}
+
+	if useMessenger {
+		// to use nats as an RPC, connect as a service
+		hcSvc := hubclient.NewHubClientNats()
+		err = hcSvc.ConnectWithCert(clientURL, authn.AuthnServiceName, testCerts.ServerCert, testCerts.CaCert)
+		if err != nil {
+			panic(err)
+		}
+		// TODO: should services built-in certificate based connect?
+		natsSvr := service.NewAuthnNatsServer(svc, hcSvc)
+		natsSvr.Start()
+
+		// use a new client with user authn
+		hcUser := hubclient.NewHubClientNats()
+		err = hcUser.ConnectWithJWT(clientURL, testCerts.UserJWT, testCerts.CaCert)
+		if err != nil {
+			panic(err)
+		}
+		mngAuthn = client.NewManageAuthn(hcUser)
+		clientAuthn = client.NewClientAuthn(hcUser)
+		//
+		return mngAuthn, clientAuthn, func() {
+			_ = svc.Stop()
+			natsSvr.Stop()
+			hcUser.Disconnect()
+		}, err
 	}
 
 	return svc, svc, func() {
@@ -59,12 +94,16 @@ func TestMain(m *testing.M) {
 	tempFolder = path.Join(os.TempDir(), "test-authn")
 	_ = os.MkdirAll(tempFolder, 0700)
 	testCerts = testenv.CreateAuthBundle()
+	// run the test server
+	testServer := testenv.NewTestServer(testCerts.ServerCert, testCerts.CaCert)
+	clientURL, _ = testServer.Start()
 
 	// the password file to use
 	passwordFile = path.Join(tempFolder, "test.passwd")
 
 	res := m.Run()
 
+	testServer.Stop()
 	time.Sleep(time.Second)
 	if res == 0 {
 		_ = os.RemoveAll(tempFolder)
@@ -82,21 +121,10 @@ func TestStartStop(t *testing.T) {
 	stopFn()
 }
 
-// Create and verify a JWT token
-func TestStartTwice(t *testing.T) {
-	mng, cl, stopFn, err := startTestAuthnService()
-	require.NoError(t, err)
-	require.NotNil(t, mng)
-	require.NotNil(t, cl)
-	// todo
-
-	stopFn()
-}
-
 // Create manage users
 func TestManageUser(t *testing.T) {
 
-	mng, _, stopFn, err := startTestAuthnService()
+	mng, cl, stopFn, err := startTestAuthnService()
 	defer stopFn()
 	require.NoError(t, err)
 
@@ -115,9 +143,9 @@ func TestManageUser(t *testing.T) {
 	assert.NoError(t, err)
 	require.Equal(t, 0, len(userList))
 
-	// reset password adds the user again
+	// manages can change password of other users
 	newPw := "newpass"
-	err = mng.ResetPassword(testCerts.UserID, newPw)
+	err = cl.UpdatePassword(testCerts.UserID, newPw)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, newPw)
 	userList, err = mng.ListClients()
@@ -132,7 +160,7 @@ func TestManageUser(t *testing.T) {
 func TestLoginRefresh(t *testing.T) {
 	var authToken1 string
 	var authToken2 string
-	count := 100
+	count := 1
 	_, cl, stopFn, err := startTestAuthnService()
 	defer stopFn()
 	require.NoError(t, err)

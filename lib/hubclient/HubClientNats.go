@@ -11,8 +11,36 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
 	"golang.org/x/exp/slog"
+	"strings"
 	"time"
 )
+
+// ParseResponse helper message to parse response and detect the error response message
+func ParseResponse(data []byte, err error, resp interface{}) error {
+	if err != nil {
+		return err
+	}
+	if resp != nil {
+		err = ser.Unmarshal(data, resp)
+	} else if string(data) == "+ACK" {
+		// nats ack without data
+		err = nil
+	} else if len(data) > 0 {
+		err = errors.New("unexpected response")
+	}
+	// if an error is detect see if it is an error response
+	// An error response message has the format: {"error":"message"}
+	// TODO: find a more idiomatic way to detect an error
+	prefix := "{\"error\":"
+	if err != nil || strings.HasPrefix(string(data), prefix) {
+		errResp := hub.ErrorMessage{}
+		err2 := ser.Unmarshal(data, &errResp)
+		if err2 == nil && errResp.Error != "" {
+			err = errors.New(errResp.Error)
+		}
+	}
+	return err
+}
 
 // HubClientNats manages the hub server connection with nats based pub/sub messaging
 // This implements the IHubClient interface.
@@ -205,6 +233,9 @@ func (hc *HubClientNats) Publish(subject string, payload []byte) error {
 func (hc *HubClientNats) PubAction(publisherID string, thingID string, actionID string, payload []byte) ([]byte, error) {
 	subject := MakeSubject(publisherID, thingID, vocab.VocabActionTopic, actionID)
 	resp, err := hc.nc.Request(subject, payload, time.Second)
+	if resp == nil {
+		return nil, err
+	}
 	return resp.Data, err
 }
 
@@ -263,6 +294,9 @@ func (hc *HubClientNats) SubActions(cb func(msg *hub.ActionMessage) error) error
 			SendReply: func(payload []byte) {
 				_ = natsMsg.Respond(payload)
 			},
+			SendAck: func() {
+				_ = natsMsg.Ack()
+			},
 		}
 		err = cb(actionMsg)
 		if err != nil {
@@ -296,11 +330,11 @@ func (hc *HubClientNats) SubGroup(groupName string, cb func(msg *hub.EventMessag
 		}
 		msg := &hub.EventMessage{
 			//SenderID: msg.Header.
-			EventID:     name,
-			PublisherID: pubID,
-			ThingID:     thID,
-			Timestamp:   timeStamp.Unix(),
-			Payload:     natsMsg.Data,
+			EventID:   name,
+			BindingID: pubID,
+			ThingID:   thID,
+			Timestamp: timeStamp.Unix(),
+			Payload:   natsMsg.Data,
 		}
 		cb(msg)
 	})
@@ -329,13 +363,9 @@ func (hc *HubClientNats) UpdatePassword(clientID string, newPassword string) err
 }
 
 // NewHubClientNats instantiates a client for connecting to the Hub using NATS/Jetstream
-func NewHubClientNats(instanceName string, nc *nats.Conn) hub.IHubClient {
-	js, _ := nc.JetStream()
+func NewHubClientNats() hub.IHubClient {
 	hc := &HubClientNats{
-		clientID:   instanceName,
 		timeoutSec: 10,
-		nc:         nc,
-		js:         js,
 	}
 	return hc
 }

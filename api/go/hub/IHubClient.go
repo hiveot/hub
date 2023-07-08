@@ -18,7 +18,7 @@ const (
 // EventMessage for subscribers
 type EventMessage struct {
 	// Authenticated ClientID of the device or service publishing the event
-	PublisherID string `yaml:"publisherID"`
+	BindingID string `yaml:"bindingID"`
 	// Optional ThingID of the Thing that generated the event
 	ThingID string `yaml:"thingID,omitempty"`
 	// EventID of the event as defined in the TD document
@@ -31,12 +31,13 @@ type EventMessage struct {
 
 // ActionMessage for subscribers
 type ActionMessage struct {
-	// Authenticated ClientID of the user or service publishing the action
-	PublisherID string `yaml:"senderID"`
-	// ClientID of the device or service receiving the message
-	DestinationID string `yaml:"destinationID"`
-	// Optional ThingID of the Thing handling the action
-	ThingID string `yaml:"thingID,omitempty"`
+	// Authenticated ClientID of the Thing's binding that handles the action
+	BindingID string `yaml:"senderID"`
+	// ClientID of the user publishing the action
+	ClientID string `yaml:"destinationID"`
+	// ThingID of the Thing handling the action.
+	// For services this is the name of the capability that handles the action.
+	ThingID string `yaml:"thingID"`
 	// ActionID of the action as defined in the TD document
 	ActionID string `yaml:"actionID"`
 	// Optional action payload as defined in the TD document
@@ -47,6 +48,8 @@ type ActionMessage struct {
 	// Reply to the received action
 	// This can be called multiple times to send multiple batches.
 	SendReply func(payload []byte)
+	// Acknowledge the action
+	SendAck func()
 }
 
 // ErrorMessage payload
@@ -149,14 +152,6 @@ type IHubClient interface {
 	// has published.
 	// If the callback returns an error, an error reply message is send.
 	SubActions(cb func(msg *ActionMessage) error) error
-
-	// SubEvent subscribes to events send by a publisher and/or thing
-	// At least one publisherID, or thingID or eventID must be provided.
-	//
-	//  publisherID optional ID of the device or service publishing the event, or "" for any
-	//  thingID ID of the Thing generating the event, or "" for any
-	//  eventID optional ID of the event to subscribe to, or "" for any.
-	//SubEvent(publisherID string, thingID string, eventID string, cb func(msg EventMessage)) error
 
 	// SubGroup subscribes to events from things in a group the client is a member of.
 	//

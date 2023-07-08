@@ -1,7 +1,9 @@
 package client
 
 import (
+	"github.com/hiveot/hub/api/go/hub"
 	"github.com/hiveot/hub/core/authn"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 )
 
@@ -11,7 +13,7 @@ import (
 type ClientAuthn struct {
 	// ID of the authn service
 	serviceID string
-	hc        *hubconn.HubConnNats
+	hc        hub.IHubClient
 }
 
 // helper for publishing an action request to the authz service
@@ -19,30 +21,21 @@ func (clientAuthn *ClientAuthn) pubReq(action string, msg []byte) ([]byte, error
 	return clientAuthn.hc.PubAction(clientAuthn.serviceID, "", action, msg)
 }
 
-// Login to obtain an auth token
-func (clientAuthn *ClientAuthn) Login(clientID string, password string) (authToken string, err error) {
-	req := authn.LoginReq{
+// NewToken obtains an auth token based on loginID and password
+func (clientAuthn *ClientAuthn) NewToken(clientID string, password string, pubKey string) (authToken string, err error) {
+	req := authn.NewTokenReq{
 		ClientID: clientID,
+		PubKey:   pubKey,
 		Password: password,
 	}
 	msg, _ := ser.Marshal(req)
-	data, err := clientAuthn.pubReq(authn.LoginAction, msg)
+	data, err := clientAuthn.pubReq(authn.NewTokenAction, msg)
+	resp := &authn.NewTokenResp{}
+	err = hubclient.ParseResponse(data, err, resp)
 	if err != nil {
-		return authToken, err
+		authToken = resp.JwtToken
 	}
-	resp := &authn.LoginResp{}
-	err = ser.Unmarshal(data, &resp)
-	return resp.AuthToken, err
-}
-
-// Logout logs out the user and invalidates the authentication token
-func (clientAuthn *ClientAuthn) Logout(authToken string) error {
-	req := authn.LogoutReq{
-		AuthToken: authToken,
-	}
-	msg, _ := ser.Marshal(req)
-	_, err := clientAuthn.pubReq(authn.LogoutAction, msg)
-	return err
+	return authToken, err
 }
 
 // Refresh a short-lived authentication token.
@@ -53,26 +46,27 @@ func (clientAuthn *ClientAuthn) Refresh(clientID string, oldToken string) (authT
 	}
 	msg, _ := ser.Marshal(req)
 	data, err := clientAuthn.pubReq(authn.RefreshAction, msg)
-	if err != nil {
-		return authToken, err
-	}
 	resp := &authn.RefreshResp{}
-	err = ser.Unmarshal(data, &resp)
-	return resp.AuthToken, err
+	err = hubclient.ParseResponse(data, err, resp)
+	if err == nil {
+		authToken = resp.JwtToken
+	}
+	return authToken, err
 }
 
-// UpdateName updates a user's display name
+// UpdateName updates a client's display name
 func (clientAuthn *ClientAuthn) UpdateName(clientID string, newName string) error {
 	req := authn.UpdateNameReq{
 		ClientID: clientID,
 		NewName:  newName,
 	}
 	msg, _ := ser.Marshal(req)
-	_, err := clientAuthn.pubReq(authn.UpdateNameAction, msg)
+	data, err := clientAuthn.pubReq(authn.UpdateNameAction, msg)
+	err = hubclient.ParseResponse(data, err, nil)
 	return err
 }
 
-// UpdatePassword changes the client password
+// UpdatePassword changes the user password
 // Login or Refresh must be called successfully first.
 func (clientAuthn *ClientAuthn) UpdatePassword(clientID string, newPassword string) error {
 	req := authn.UpdatePasswordReq{
@@ -80,12 +74,13 @@ func (clientAuthn *ClientAuthn) UpdatePassword(clientID string, newPassword stri
 		NewPassword: newPassword,
 	}
 	msg, _ := ser.Marshal(req)
-	_, err := clientAuthn.pubReq(authn.UpdatePasswordAction, msg)
+	data, err := clientAuthn.pubReq(authn.UpdatePasswordAction, msg)
+	err = hubclient.ParseResponse(data, err, nil)
 	return err
 }
 
 // NewClientAuthn returns an authn client for the given hubclient connection
-func NewClientAuthn(hc *hubconn.HubConnNats) authn.IClientAuthn {
+func NewClientAuthn(hc hub.IHubClient) authn.IClientAuthn {
 	cl := ClientAuthn{
 		hc:        hc,
 		serviceID: "authn",

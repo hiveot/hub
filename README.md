@@ -16,10 +16,11 @@ Status: The status of the Hub is in early development (June 2023)
 ### Short Term Road Map
 ```
 1. Hub launcher for use on small devices
-2. Manage NATS configuration for Hub clients and groups
-3. Hub CLI using NATS client
-4. OWServer 1-wire test binding 
-5. Directory service using NATS kv or object store (tbd)
+2. Nats service for managing NATS account, configuration, starting and stopping
+3. Authentication Service for obtaining/refreshing jwt tokens
+4. Authorization service for managing groups
+5. OWServer 1-wire test binding 
+6. Directory service using NATS kv or object store (tbd)
 ```
 
 

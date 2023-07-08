@@ -1,7 +1,9 @@
 package client
 
 import (
+	"github.com/hiveot/hub/api/go/hub"
 	"github.com/hiveot/hub/core/authn"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 )
 
@@ -10,7 +12,7 @@ import (
 type ManageAuthn struct {
 	// ID of the authn service
 	serviceID string
-	hc        *hubconn.HubConnNats
+	hc        hub.IHubClient
 }
 
 // helper for publishing an action request to the authz service
@@ -32,7 +34,8 @@ func (mngAuthn *ManageAuthn) AddUser(userID string, name string, password string
 		Password: password,
 	}
 	msg, _ := ser.Marshal(req)
-	_, err := mngAuthn.pubReq(authn.AddUserAction, msg)
+	data, err := mngAuthn.pubReq(authn.AddUserAction, msg)
+	err = hubclient.ParseResponse(data, err, nil)
 	return err
 }
 
@@ -45,24 +48,24 @@ func (mngAuthn *ManageAuthn) GetProfile(clientID string) (profile authn.ClientPr
 	}
 	msg, _ := ser.Marshal(req)
 	data, err := mngAuthn.pubReq(authn.GetProfileAction, msg)
-	if err != nil {
-		return profile, err
-	}
 	resp := &authn.GetProfileResp{}
-	err = ser.Unmarshal(data, &resp)
-	return resp.Profile, err
+	err = hubclient.ParseResponse(data, err, resp)
+	if err == nil {
+		profile = resp.Profile
+	}
+	return profile, err
 }
 
 // ListClients provide a list of known clients and their info.
 // The caller must be an administrator or service.
 func (mngAuthn *ManageAuthn) ListClients() (profiles []authn.ClientProfile, err error) {
 	data, err := mngAuthn.pubReq(authn.ListClientsAction, nil)
-	if err != nil {
-		return nil, err
-	}
 	resp := &authn.ListClientsResp{}
-	err = ser.Unmarshal(data, &resp)
-	return resp.Profiles, err
+	err = hubclient.ParseResponse(data, err, resp)
+	if err == nil {
+		profiles = resp.Profiles
+	}
+	return profiles, err
 }
 
 // RemoveClient removes a client and disables authentication
@@ -72,24 +75,14 @@ func (mngAuthn *ManageAuthn) RemoveClient(clientID string) error {
 		ClientID: clientID,
 	}
 	msg, _ := ser.Marshal(req)
-	_, err := mngAuthn.pubReq(authn.RemoveClientAction, msg)
-	return err
-}
-
-// ResetPassword reset a user's login password
-func (mngAuthn *ManageAuthn) ResetPassword(clientID string, newPassword string) error {
-	req := authn.ResetPasswordReq{
-		ClientID: clientID,
-		Password: newPassword,
-	}
-	msg, _ := ser.Marshal(req)
-	_, err := mngAuthn.pubReq(authn.ResetPasswordAction, msg)
+	data, err := mngAuthn.pubReq(authn.RemoveClientAction, msg)
+	err = hubclient.ParseResponse(data, err, nil)
 	return err
 }
 
 // NewManageAuthn returns an authn management client for the given hubclient connection
-func NewManageAuthn(hc *hubconn.HubConnNats) authn.IClientAuthn {
-	cl := ClientAuthn{
+func NewManageAuthn(hc hub.IHubClient) authn.IManageAuthn {
+	cl := ManageAuthn{
 		hc:        hc,
 		serviceID: "authn",
 	}

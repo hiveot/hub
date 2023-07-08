@@ -11,39 +11,51 @@ This service is being reworked for use with NATS
 
 ## Summary
 
-This Hub service provides authorization for users, services and IoT devices using a group role based access model. 
+This core service provides authorization for users and Things using a group role based access model.
 
-IoT devices have the device role that allows them to publish TD documents, events and subscribe to actions. Access is limited to the subject:
-> pub/sub: "things.{publisherID}.>"
+The authz service manages a list of groups, the members of each group and their role in the group. 
+The service is responsible for configuring NATS JetStream streams subject subscription to Things and access control to users.  
 
-Services have a broad access to things and groups. Their access is defined in jwt tokens issued based on their purpose. The default access is defined as:
-> pub/sub: ">"
+### Events
 
-Users don't subscribe directly to things, but to group streams instead. Each group has a stream defined that members of that group can access. Users can publish actions to the group:
-> sub: "{groupID}.>"
-> pub: "{groupID}.*.*.action.>"
+The authz services configures JetStream to receive events in group streams. Each group is defined as a stream. Users or services that are a member of the group can subscribe to the stream to receive events that are collected in the stream.
 
-The authorization service handles:
-1. defining group streams for all defined groups
-2. define subject mapping from thingID to group ID for all things in the group
-3. define mapping of group actions to thing actions for all things in the group
+To collect events, the authz service creates a central $events stream that subscribes to all events on subject:
+> "things.*.*.event.>"
 
+For each group stream, a series of stream sources are defined with $events as the source stream and subject for the Thing that is a member of the group. Therefore for 100 things in a group, the stream will have 100 source stream instances, all with $events as the source and "things.{bindingID}.{thingID}.event.> as the subject. The reason for the extra $events stream is that JetStream currently does not support overlapping subscriptions in streams, which would prohibit adding a Thing to multiple groups. NATS 2.10 is required for this setup to work.
 
+The bindingID is not required per-se but considered good practice in case duplicate thingIDs happen to occur in larger networks.
+The thingID is required. Only events are captured in the stream groups. 
 
+Users and services subscribe to JetStream streams to receive events from a group. 
+>  "{groupID}"
 
-* Clients can be users, services, and IoT devices. They must be authenticated using a valid certificate or access token.
-* Groups contain resources and clients. Clients can access resources in the same group based on their role. A client only has a single role.
-  * The 'all' group includes all resources without need to add them explicitly. Use with care. 
-* role. Clients have a role in a group. The role determines the action the client is allowed on the resource ('Things'). Roles are:
-  * viewer: allows read-only access to the resource attributes such as Thing properties and output values
-  * operator: in addition to viewer, allows operating the resource inputs such as a Thing switch
-  * manager: in addition to operator, allows changing the resource configuration
-  * administrator: in addition to manager, can manage users to the group
-  * thing: role is for use by IoT devices only and identifies it as the resource to access. Thing publishers are devices that have full access to the Things they publish. They are identified by their publisher ID in the device client certificate. 
+The authz service has a listGroups action to allow a client to list the groups they are a member of. 
+
+In summary, the above setup accomplishes the following:
+1. Authorization to receive events only for Things that are in the same group(s) as the user
+2. Archiving of events for each group with its own retention period
+3. Users can retrieve historical events
+4. Users only need to subscribe to a group to receive relevant events. No need to subscribe to individual things.
+
+### Actions
+
+Actions follow a similar pattern as events but in reverse direction. 
+A single '$actions' stream captures all actions by subscribing to the subject:
+> things.*.*.action.>
+
+Bindings that listen to actions for their Things, subscribe to the actions stream. Each binding has a view on the action stream filtered on the "things.{bindingID}.>" subject. Bindings therefore only receive actions aimed at themselves. 
+
+In case of intermittent connectivity, the Thing binding receives the actions that were missed from the stream on reconnect.
+
+To prevent unauthorized publication of actions, each user is only authorized to publish in the group they are a member of and only if their role is operator or manager, and the thingID is a member of the group. Instead of using the subject prefix 'things', The groupID must be used. Publish: 
+> {groupID}.{bindingID}.{thingID}.{actionID}.{clientID}
+
+Authz subscribes to all actions of the groups and checks if the thingID is a member of that group. When passed, the action is republished with the "things" prefix, which is captured by the actions stream.
   
-The 'all' group is built-in and automatically includes all Things. To allow a user to view all Things, the loginID is added to the all group with the 'view' role.
+The 'all' group is built-in and automatically includes all Things. To allow a user to view all Things, the loginID is added to the all group with the 'viewer' role.
 
-In addition to manual groups, groups are automatically created for each Thing type. For example a group of temperature sensors. Clients in this group will automatically have access to new sensors of type temperature.
 
 ### Group Management
 
@@ -77,7 +89,7 @@ groupName:
 ```
 Where:
 * groupName can be any name. The 'all' group is predefined and implies to contain all Thing IDs as client. Only end-user IDs need to be added. 
-* clientID is either the user-IDs or Thing IDs.
+* clientID is the ID of the user, service or Thing.
 * role is the client's role as described in the previous paragraph.
 
 
@@ -88,6 +100,6 @@ all:
 
 temperature:
   user1: viewer
-  urn:zone1:publisher1:thing1: thing
-  urn:zone1:publisher1:thing2: thing
+  urn:things:binding1:thing1: thing
+  urn:things:binding1:thing2: thing
 ```

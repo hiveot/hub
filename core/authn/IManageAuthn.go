@@ -1,7 +1,5 @@
 package authn
 
-import "github.com/hiveot/hub/api/go/hub"
-
 // AuthnServiceName default ID of the service
 const AuthnServiceName = "authn"
 
@@ -35,7 +33,7 @@ type AuthnConfig struct {
 type ClientProfile struct {
 	// The client ID.
 	//  for users this is their email
-	//  for publishers the publisherID
+	//  for IoT devices or binding services, use the bindingID
 	//  for services the service instance ID
 	ClientID string
 	// ClientType identifies the client as a device, service or user
@@ -73,7 +71,6 @@ type GetProfileReq struct {
 	ClientID string `json:"clientID"`
 }
 type GetProfileResp struct {
-	hub.ErrorMessage
 	Profile ClientProfile `json:"profile"`
 }
 
@@ -82,7 +79,6 @@ const ListClientsAction = "listClients"
 
 // ListClientsResp response to listClient actions
 type ListClientsResp struct {
-	hub.ErrorMessage
 	Profiles []ClientProfile `json:"profiles"`
 }
 
@@ -92,16 +88,6 @@ const RemoveClientAction = "removeClient"
 
 type RemoveClientReq struct {
 	ClientID string `json:"clientID"`
-}
-
-// ResetPasswordAction defines the action to reset a user's password
-// The caller must be an administrator or service.
-// The clientID must be that of a user.
-const ResetPasswordAction = "resetPassword"
-
-type ResetPasswordReq struct {
-	ClientID string `json:"clientID"`
-	Password string `json:"password"`
 }
 
 // IManageAuthn defines the capabilities for managing authenticating clients.
@@ -152,7 +138,4 @@ type IManageAuthn interface {
 	// RemoveClient removes a client and disables authentication
 	// Existing tokens are immediately expired (tbd)
 	RemoveClient(clientID string) error
-
-	// ResetPassword reset a user's login password
-	ResetPassword(clientID string, password string) (err error)
 }
