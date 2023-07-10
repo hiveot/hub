@@ -38,7 +38,7 @@ func (natsrv *AuthnNatsServer) handleClientActions(action *hub.ActionMessage) er
 			return err
 		}
 		newToken, err := natsrv.service.NewToken(
-			action.PublisherID, req.Password, req.PubKey)
+			action.BindingID, req.Password, req.PubKey)
 		if err == nil {
 			resp := authn.NewTokenResp{JwtToken: newToken}
 			reply, _ := ser.Marshal(resp)
@@ -52,7 +52,7 @@ func (natsrv *AuthnNatsServer) handleClientActions(action *hub.ActionMessage) er
 		if err != nil {
 			return err
 		}
-		newToken, err := natsrv.service.Refresh(action.PublisherID, req.OldToken)
+		newToken, err := natsrv.service.Refresh(action.BindingID, req.OldToken)
 		if err == nil {
 			resp := authn.RefreshResp{JwtToken: newToken}
 			reply, _ := ser.Marshal(resp)
@@ -141,8 +141,8 @@ func (natsrv *AuthnNatsServer) handleManageActions(action *hub.ActionMessage) er
 
 // Start subscribes to the actions
 func (natsrv *AuthnNatsServer) Start() {
-	_ = natsrv.hc.SubActions(natsrv.handleManageActions)
-	_ = natsrv.hc.SubActions(natsrv.handleClientActions)
+	_ = natsrv.hc.SubActions("", natsrv.handleManageActions)
+	_ = natsrv.hc.SubActions("", natsrv.handleClientActions)
 }
 
 // Stop removes subscriptions

@@ -32,9 +32,9 @@ type EventMessage struct {
 // ActionMessage for subscribers
 type ActionMessage struct {
 	// Authenticated ClientID of the Thing's binding that handles the action
-	BindingID string `yaml:"senderID"`
+	BindingID string `yaml:"bindingID"`
 	// ClientID of the user publishing the action
-	ClientID string `yaml:"destinationID"`
+	ClientID string `yaml:"clientID"`
 	// ThingID of the Thing handling the action.
 	// For services this is the name of the capability that handles the action.
 	ThingID string `yaml:"thingID"`
@@ -147,19 +147,22 @@ type IHubClient interface {
 	// The client's authentication ID will be included as the publisher ID of the event.
 	PubTD(td *thing.TD) error
 
-	// SubActions subscribes to actions directed requested of this client.
-	// The supported actions are defined in the TD document of the things this client
-	// has published.
+	// SubActions subscribes to actions requested of this binding.
+	// The supported actions are defined in the TD document of the things this binding has published.
+	//  thingID is the device thing or service capability to subscribe to, or "" for wildcard
+	//  cb is the callback to invoke
 	// If the callback returns an error, an error reply message is send.
-	SubActions(cb func(msg *ActionMessage) error) error
+	SubActions(thingID string, cb func(msg *ActionMessage) error) error
 
 	// SubGroup subscribes to events from things in a group the client is a member of.
 	//
 	// Groups are backed by a store that retains messages for a limited duration.
 	// This is a JetStream stream in NATS.
 	//
+	// ReceiveLatest is handy to be up to date on all event instead of quering them separately. Only use this if
+	// you're going to retrieve them anyways.
+	//
 	//  groupName is the group to subscribe to.
-	//  thingID optional ID of the Thing generating the event, or "" for any
-	//  eventID optional ID of the event to subscribe to, or "" for any.
-	SubGroup(groupName string, cb func(msg *EventMessage)) error
+	//	receiveLatest to immediately receive the latest event for each event instance
+	SubGroup(groupName string, receiveLatest bool, cb func(msg *EventMessage)) error
 }

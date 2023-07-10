@@ -13,48 +13,55 @@ This service is being reworked for use with NATS
 
 This core service provides authorization for users and Things using a group role based access model.
 
-The authz service manages a list of groups, the members of each group and their role in the group. 
-The service is responsible for configuring NATS JetStream streams subject subscription to Things and access control to users.  
+The use-cases for using groups are:
+1. Avoid the need to subscribe to individual related Things. Instead subscribe to the group that is formed based on the similarity.
+2. Control access to certain Things to the group. For example, a security group can contain motion sensors that non-security users should not have access to. 
+  - configure which Things are captured in the group
+  - configure which users can access events in the group
+3. differentiate who can control and configure Things using roles 
+4. manage retention of events. For example, track environmental sensors for years while security sensor are tracked for only a couple of months.  This assumes that the need for retention aligns with the purpose of the group.
 
-### Events
+The authz service manages the groups, the members of each group and their role in the group. The service is responsible for configuring NATS JetStream streams subject subscription to Things and access control to users.  
 
-The authz services configures JetStream to receive events in group streams. Each group is defined as a stream. Users or services that are a member of the group can subscribe to the stream to receive events that are collected in the stream.
+## Mapping Groups To Streams
 
-To collect events, the authz service creates a central $events stream that subscribes to all events on subject:
-> "things.*.*.event.>"
+Groups are simulated in nats using streams and ephemeral consumers. 
 
-For each group stream, a series of stream sources are defined with $events as the source stream and subject for the Thing that is a member of the group. Therefore for 100 things in a group, the stream will have 100 source stream instances, all with $events as the source and "things.{bindingID}.{thingID}.event.> as the subject. The reason for the extra $events stream is that JetStream currently does not support overlapping subscriptions in streams, which would prohibit adding a Thing to multiple groups. NATS 2.10 is required for this setup to work.
+Bindings publish Thing events using the subject format: 
+> things.{bindingID}.{thingID}.event.{eventType}.{instance}
 
-The bindingID is not required per-se but considered good practice in case duplicate thingIDs happen to occur in larger networks.
-The thingID is required. Only events are captured in the stream groups. 
+These events are captured in a central '$events' stream.
 
-Users and services subscribe to JetStream streams to receive events from a group. 
->  "{groupID}"
+When a group is created by the administrator, the associated stream is created using the group name. 
+
+When a Thing is added to the group by the group manager, its subject is added as a stream source using $events as the source stream.
+
+A group streams have a source defined for each Thing that is a member of the group. Each source is the combination of $events stream and the subject of the events captured in the stream. 
+
+To access a group stream, the user creates an ephemeral consumer for the stream. Under the hood this uses the subject $JS.API.CONSUMER.CREATE.{groupName}. Only members of the group can publish to this subject. Similar for DELETE, INFO.
+
+To read from a group stream, users also need permission for $JS.API.CONSUMER.MSG.NEXT.{groupName}.>
+
 
 The authz service has a listGroups action to allow a client to list the groups they are a member of. 
 
 In summary, the above setup accomplishes the following:
 1. Authorization to receive events only for Things that are in the same group(s) as the user
 2. Archiving of events for each group with its own retention period
-3. Users can retrieve historical events
-4. Users only need to subscribe to a group to receive relevant events. No need to subscribe to individual things.
+3. Users can retrieve the latest value of each event
+4Users can retrieve historical events
+5Users only need to subscribe to a group to receive relevant events. No need to subscribe to individual things.
 
 ### Actions
 
-Actions follow a similar pattern as events but in reverse direction. 
-A single '$actions' stream captures all actions by subscribing to the subject:
-> things.*.*.action.>
+Users can publish actions by writing them to the group stream on subject:
+> things.{bindingID}.{thingID}.action.{actionID}.{clientID}
 
-Bindings that listen to actions for their Things, subscribe to the actions stream. Each binding has a view on the action stream filtered on the "things.{bindingID}.>" subject. Bindings therefore only receive actions aimed at themselves. 
+TBD: this requires that the published subject are constrained to to those defined with the stream. 
 
-In case of intermittent connectivity, the Thing binding receives the actions that were missed from the stream on reconnect.
+The $actions stream has a source for each group stream using subject "things.*.*.action.>". 
 
-To prevent unauthorized publication of actions, each user is only authorized to publish in the group they are a member of and only if their role is operator or manager, and the thingID is a member of the group. Instead of using the subject prefix 'things', The groupID must be used. Publish: 
-> {groupID}.{bindingID}.{thingID}.{actionID}.{clientID}
-
-Authz subscribes to all actions of the groups and checks if the thingID is a member of that group. When passed, the action is republished with the "things" prefix, which is captured by the actions stream.
-  
-The 'all' group is built-in and automatically includes all Things. To allow a user to view all Things, the loginID is added to the all group with the 'viewer' role.
+Bindings subscribe to the $actions stream using a durable consumer to receive requests. If multiple actions with the same ID are received after a reconnect, then only the last one should be applied by the binding.
 
 
 ### Group Management
@@ -100,6 +107,6 @@ all:
 
 temperature:
   user1: viewer
-  urn:things:binding1:thing1: thing
-  urn:things:binding1:thing2: thing
+  things.binding1:thing1.event.>: thing  # only events  from thing1
+  things.binding1.thing2: thing          # all events and actions of thing 2
 ```

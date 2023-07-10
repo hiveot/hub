@@ -266,10 +266,12 @@ func (hc *HubClientNats) Refresh(clientID string, oldToken string) (newToken str
 
 }
 
-// SubActions subscribes to actions for this client
-func (hc *HubClientNats) SubActions(cb func(msg *hub.ActionMessage) error) error {
+// SubActions subscribes to actions for this binding
+//
+//	thingID is the device thing or service capability to subscribe to, or "" for wildcard
+func (hc *HubClientNats) SubActions(thingID string, cb func(msg *hub.ActionMessage) error) error {
 
-	subject := MakeSubject(hc.clientID, "", vocab.VocabActionTopic, "")
+	subject := MakeSubject(hc.clientID, thingID, vocab.VocabActionTopic, "")
 
 	err := hc.Subscribe(subject, func(natsMsg *nats.Msg) {
 		md, _ := natsMsg.Metadata()
@@ -279,18 +281,18 @@ func (hc *HubClientNats) SubActions(cb func(msg *hub.ActionMessage) error) error
 
 		}
 		payload := natsMsg.Data
-		pubID, thID, _, name, err := SplitSubject(natsMsg.Subject)
+		bindingID, thID, _, name, err := SplitSubject(natsMsg.Subject)
 		if err != nil {
 			slog.Error("unable to handle subject", "err", err, "subject", natsMsg.Subject)
 			return
 		}
 		actionMsg := &hub.ActionMessage{
 			//SenderID: natsMsg.Header.
-			ActionID:    name,
-			PublisherID: pubID,
-			ThingID:     thID,
-			Timestamp:   timeStamp.Unix(),
-			Payload:     payload,
+			ActionID:  name,
+			BindingID: bindingID,
+			ThingID:   thID,
+			Timestamp: timeStamp.Unix(),
+			Payload:   payload,
 			SendReply: func(payload []byte) {
 				_ = natsMsg.Respond(payload)
 			},
@@ -308,14 +310,37 @@ func (hc *HubClientNats) SubActions(cb func(msg *hub.ActionMessage) error) error
 	return err
 }
 
-// SubGroup subscribes to an event on subject things.{publisherID}.{thingID}.event.{eventName}, where . is the separator.
-// leave publisherID, thingID and/or eventName empty to use wildcards.
-func (hc *HubClientNats) SubGroup(groupName string, cb func(msg *hub.EventMessage)) error {
+// SubGroup subscribes to events received by a group.
+// The client must be a member of the group to be able to create the consumer that receives the events.
+// This creates an ephemeral pull consumer.
+// ReceiveLatest is handy to be up to date on all event instead of quering them separately. Only use this if
+// you're going to retrieve them anyways.
+//
+//	groupName name of the stream to receive events from.
+//	receiveLatest to immediately receive the latest event for each event instance
+func (hc *HubClientNats) SubGroup(groupName string, receiveLatest bool, cb func(msg *hub.EventMessage)) error {
+	deliverPolicy := nats.DeliverNewPolicy
+	if receiveLatest {
+		deliverPolicy = nats.DeliverLastPerSubjectPolicy
+	}
+
+	// Group event subscription does not need acknowledgements. This will speed up processing.
+	// When first connecting, the latest event per subject is received,
+	consumerConfig := &nats.ConsumerConfig{
+		//Durable: "", // an ephemeral consumer has no name
+		//FilterSubject: ">",  // get all events
+		AckPolicy:     nats.AckNonePolicy,
+		DeliverPolicy: deliverPolicy,
+		//DeliverSubject: groupName+"."+hc.clientID,  // is this how this is supposed to be used?
+		Description: "group consumer for client " + hc.clientID,
+		RateLimit:   1000000, // TODO: configure somewhere. Is 1Mbps kbps a good number?
+	}
+	consumerInfo, err := hc.js.AddConsumer(groupName, consumerConfig)
 
 	//subject := MakeSubject(publisherID, thingID, vocab.VocabEventTopic, eventName)
-	subject := groupName
-
-	sub, err := hc.js.Subscribe(subject, func(natsMsg *nats.Msg) {
+	//subject := groupName
+	// bind this consumer to all messages in this group stream (see at the end of the Subscribe)
+	sub, err := hc.js.Subscribe(">", func(natsMsg *nats.Msg) {
 		md, _ := natsMsg.Metadata()
 		timeStamp := time.Now()
 		if md != nil {
@@ -337,7 +362,8 @@ func (hc *HubClientNats) SubGroup(groupName string, cb func(msg *hub.EventMessag
 			Payload:   natsMsg.Data,
 		}
 		cb(msg)
-	})
+	}, nats.OrderedConsumer(), nats.Bind(groupName, consumerInfo.Name))
+
 	// todo unsubscribe
 	_ = sub
 	return err

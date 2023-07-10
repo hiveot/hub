@@ -36,17 +36,17 @@ func MakeSubject(pubID, thingID, stype, name string) string {
 //
 // subject is a hiveot nats subject. eg: things.publisherID.thingID.type.name
 //
-//	pubID is the publisher of the subject.
-//	thingID is the thing of the subject.
+//	bindingID is the device or service that handles the subject.
+//	thingID is the thing of the subject, or capability for services.
 //	stype is the subject type, eg event or action.
 //	name is the event or action name
-func SplitSubject(subject string) (pubID, thingID, stype, name string, err error) {
+func SplitSubject(subject string) (bindingID, thingID, stype, name string, err error) {
 	parts := strings.Split(subject, ".")
 	if len(parts) < 5 {
 		err = errors.New("incomplete subject")
 		return
 	}
-	pubID = parts[1]
+	bindingID = parts[1]
 	thingID = parts[2]
 	stype = parts[3]
 	name = parts[4]

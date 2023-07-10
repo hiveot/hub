@@ -28,7 +28,7 @@ type HubNats struct {
 }
 
 // Start the Hub and NATS servers
-// This configures an admin user
+// This configures an account and admin user
 //
 //	host to listen on or "" for all interfaces
 //	port to listen or 0 for default port
