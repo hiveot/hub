@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/api/go/hub"
 	"github.com/hiveot/hub/core/authn"
 	"github.com/hiveot/hub/lib/ser"
@@ -37,22 +38,35 @@ func (natsrv *AuthnNatsServer) handleClientActions(action *hub.ActionMessage) er
 		if err != nil {
 			return err
 		}
+		// extra check, the sender's clientID must match the requested token client
+		if action.ClientID != req.ClientID {
+			err = fmt.Errorf("Client '%s' cannot request token for user '%s'", action.ClientID, req.ClientID)
+			return err
+		}
 		newToken, err := natsrv.service.NewToken(
-			action.BindingID, req.Password, req.PubKey)
+			action.ClientID, req.Password, req.PubKey)
 		if err == nil {
 			resp := authn.NewTokenResp{JwtToken: newToken}
 			reply, _ := ser.Marshal(resp)
 			action.SendReply(reply)
 		}
 		return err
-
+	case authn.GetProfileAction:
+		// use the current client
+		profile, err := natsrv.service.GetClientProfile(action.ClientID)
+		if err == nil {
+			resp := authn.GetProfileResp{Profile: profile}
+			reply, _ := ser.Marshal(&resp)
+			action.SendReply(reply)
+		}
+		return err
 	case authn.RefreshAction:
 		req := &authn.RefreshReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
-		newToken, err := natsrv.service.Refresh(action.BindingID, req.OldToken)
+		newToken, err := natsrv.service.Refresh(action.ClientID, req.OldToken)
 		if err == nil {
 			resp := authn.RefreshResp{JwtToken: newToken}
 			reply, _ := ser.Marshal(resp)
@@ -87,7 +101,10 @@ func (natsrv *AuthnNatsServer) handleClientActions(action *hub.ActionMessage) er
 }
 
 func (natsrv *AuthnNatsServer) handleManageActions(action *hub.ActionMessage) error {
-	slog.Info("handleManageActions", slog.String("actionID", action.ActionID))
+	slog.Info("handleManageActions",
+		slog.String("actionID", action.ActionID),
+		"my addr", natsrv)
+
 	// TODO: doublecheck the caller is an admin or service
 	switch action.ActionID {
 	case authn.AddUserAction:
@@ -101,13 +118,13 @@ func (natsrv *AuthnNatsServer) handleManageActions(action *hub.ActionMessage) er
 			action.SendAck()
 		}
 		return err
-	case authn.GetProfileAction:
-		req := authn.GetProfileReq{}
+	case authn.GetClientProfileAction:
+		req := authn.GetClientProfileReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
-		profile, err := natsrv.service.GetProfile(req.ClientID)
+		profile, err := natsrv.service.GetClientProfile(req.ClientID)
 		if err == nil {
 			resp := authn.GetProfileResp{Profile: profile}
 			reply, _ := ser.Marshal(&resp)
@@ -139,15 +156,15 @@ func (natsrv *AuthnNatsServer) handleManageActions(action *hub.ActionMessage) er
 	}
 }
 
-// Start subscribes to the actions
+// Start subscribes to the actions for management and client capabilities
 func (natsrv *AuthnNatsServer) Start() {
-	_ = natsrv.hc.SubActions("", natsrv.handleManageActions)
-	_ = natsrv.hc.SubActions("", natsrv.handleClientActions)
+	_ = natsrv.hc.SubActions(authn.ManageAuthnCapability, natsrv.handleManageActions)
+	_ = natsrv.hc.SubActions(authn.ClientAuthnCapability, natsrv.handleClientActions)
 }
 
 // Stop removes subscriptions
 func (natsrv *AuthnNatsServer) Stop() {
-
+	//natsrv.hc.UnSubscribeAll()
 }
 
 // NewAuthnNatsServer create a nats binding for the authn service

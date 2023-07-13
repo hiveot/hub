@@ -1,7 +1,10 @@
 package authn
 
-// AuthnServiceName default ID of the service
+// AuthnServiceName default ID of the service (bindingID)
 const AuthnServiceName = "authn"
+
+// ManageAuthnCapability is the name of the Thing/Capability that handles management requests
+const ManageAuthnCapability = "manage"
 
 // Types of clients that are issued authentication tokens
 const (
@@ -61,16 +64,14 @@ type AddUserReq struct {
 	Password string `json:"password"`
 }
 
-// GetProfileAction defines the action to get a user's profile
-const GetProfileAction = "getProfile"
+// GetClientProfileAction defines the action to get a client's profile
+const GetClientProfileAction = "getClientProfile"
 
-// GetProfileReq request message to get a client's profile.
-// Users can only get their own profile.
-// Managers can get other clients profiles.
-type GetProfileReq struct {
+// GetClientProfileReq request message to get a client's profile.
+type GetClientProfileReq struct {
 	ClientID string `json:"clientID"`
 }
-type GetProfileResp struct {
+type GetClientProfileResp struct {
 	Profile ClientProfile `json:"profile"`
 }
 
@@ -126,10 +127,10 @@ type IManageAuthn interface {
 	//  password the user can login with if their token has expired.
 	AddUser(userID string, name string, password string) (err error)
 
-	// GetProfile returns a client's profile
+	// GetClientProfile returns a client's profile
 	// Users can only get their own profile.
 	// Managers can get other clients profiles.
-	GetProfile(clientID string) (profile ClientProfile, err error)
+	GetClientProfile(clientID string) (profile ClientProfile, err error)
 
 	// ListClients provide a list of known clients and their info.
 	// The caller must be an administrator or service.

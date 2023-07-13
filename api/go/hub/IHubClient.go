@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"github.com/hiveot/hub/api/go/thing"
+	"github.com/nats-io/nkeys"
 )
 
 // predefined event IDs start with '$'
@@ -76,6 +77,8 @@ type IHubClient interface {
 	//	caCert of the server
 	ConnectWithCert(url string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate) (err error)
 
+	ConnectWithNKey(url string, userKey nkeys.KeyPair, caCert *x509.Certificate) (err error)
+
 	// ConnectWithPassword connects to the Hub server using a login ID and password.
 	//
 	// The url supports various formats.
@@ -92,6 +95,7 @@ type IHubClient interface {
 	ConnectWithPassword(url string, loginID string, password string, caCert *x509.Certificate) (err error)
 
 	// ConnectWithJWT connects to the Hub server using a user JWT credentials
+	//
 	// JWT credentials include the JWT portion and the NKey public/private key pair.
 	// The private key is needed to sign the answer to a server challenge.
 	//
@@ -101,7 +105,7 @@ type IHubClient interface {
 	//
 	// Provide a CA certificate if available. If nil then the connection will still
 	// use TLS but no server verification will be used (InsecureSkipVerify=true)
-	ConnectWithJWT(url string, jwtCreds string, caCert *x509.Certificate) (err error)
+	ConnectWithJWT(url string, jwtCreds []byte, caCert *x509.Certificate) (err error)
 
 	// ConnectUnauthenticated connects to the Hub server as an unauthenticated user.
 	// Unauthenticated users can only use methods that explicitly describe they are for unauthorized users,
@@ -120,7 +124,7 @@ type IHubClient interface {
 	//
 	// The client's authentication ID will be included as the publisher ID of the action.
 	//
-	//	destinationID is the deviceID or serviceID that handles the action
+	//	bindingID is the deviceID or serviceID that handles the action
 	//	thingID is the destination thingID that handles the action
 	//  actionID is the ID of the action as described in the Thing's TD
 	//  payload is the optional payload of the action as described in the Thing's TD
@@ -148,6 +152,8 @@ type IHubClient interface {
 	PubTD(td *thing.TD) error
 
 	// SubActions subscribes to actions requested of this binding.
+	// All prior sent actions are ignored. This is intentional to avoid side effects on restart.
+	//
 	// The supported actions are defined in the TD document of the things this binding has published.
 	//  thingID is the device thing or service capability to subscribe to, or "" for wildcard
 	//  cb is the callback to invoke

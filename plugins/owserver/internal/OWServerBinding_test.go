@@ -23,7 +23,7 @@ import (
 // var homeFolder string
 var testUrl = "" // client connect url
 
-var testCerts testenv.TestCerts
+var testCerts testenv.TestAuthBundle
 
 var tempFolder string
 var owsConfig internal.OWServerConfig
@@ -44,7 +44,7 @@ func startServer() (svc *testenv.TestServer) {
 // All tests are run using the simulation file.
 func TestMain(m *testing.M) {
 	// setup environment
-	testCerts = testenv.CreateAuthBundle()
+	testCerts = testenv.CreateTestAuthBundle()
 	tempFolder = path.Join(os.TempDir(), "test-owserver")
 	cwd, _ := os.Getwd()
 	homeFolder := path.Join(cwd, "../docs")

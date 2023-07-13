@@ -11,7 +11,7 @@ import (
 // Default permissions for new users
 var defaultPermissions = &server.Permissions{
 	Publish:   &server.SubjectPermission{Allow: []string{"guest.>"}, Deny: []string{">"}},
-	Subscribe: &server.SubjectPermission{Allow: []string{"guest.>"}, Deny: []string{">"}},
+	Subscribe: &server.SubjectPermission{Allow: []string{"guest.>", "_INBOX.>"}, Deny: []string{">"}},
 }
 
 var adminPermissions = &server.Permissions{
@@ -66,7 +66,12 @@ func (srv *HubNats) Start(host string, port int, serverCert *tls.Certificate, ca
 				Permissions: defaultPermissions,
 			}, {
 				Username:    "admin",
-				Password:    "pass1",
+				Password:    "",
+				Permissions: adminPermissions,
+			},
+			{
+				Username:    "authn",
+				Password:    "",
 				Permissions: adminPermissions,
 			},
 		},

@@ -83,6 +83,8 @@ func (svc *AuthnService) CreateUserToken(userID string, userName string, pubKey 
 	userClaims.Permissions.Sub.Allow.Add("groups.*.*.event.>")
 	// users can receive replies in their inbox
 	userClaims.Permissions.Sub.Allow.Add("_INBOX.>")
+	// the subject MUST be the public key
+	userClaims.Subject = pubKey
 
 	// sign the claims with the client's private key
 	userJWT, err := userClaims.Encode(svc.accountKP)
@@ -95,8 +97,25 @@ func (svc *AuthnService) CreateUserToken(userID string, userName string, pubKey 
 	return userJWT, err
 }
 
-// GetProfile returns the user's profile
+// GetProfile returns the current connected user's profile
+// technically the same as GetClientProfile, except that the latter can provide
+// different info for managers. Not making assum
 func (svc *AuthnService) GetProfile(clientID string) (profile authn.ClientProfile, err error) {
+	//upa.profileStore[profile.LoginID] = profile
+	entry, err := svc.pwStore.GetEntry(clientID)
+	if err != nil {
+		return profile, fmt.Errorf("can't get profile from %s: %w", clientID, err)
+	}
+	updatedStr := time.Unix(entry.Updated, 0).Format(vocab.ISO8601Format)
+	profile.ClientID = entry.LoginID
+	profile.Name = entry.UserName
+	profile.Updated = updatedStr
+	return profile, err
+
+}
+
+// GetClientProfile returns a client's profile
+func (svc *AuthnService) GetClientProfile(clientID string) (profile authn.ClientProfile, err error) {
 	//upa.profileStore[profile.LoginID] = profile
 	entry, err := svc.pwStore.GetEntry(clientID)
 	if err != nil {
@@ -152,6 +171,7 @@ func (svc *AuthnService) ListClients() (profiles []authn.ClientProfile, err erro
 		}
 		profiles[i] = profile
 	}
+	slog.Info("ListClients", "nr clients", len(profiles))
 	return profiles, err
 }
 
@@ -172,7 +192,7 @@ func (svc *AuthnService) NewToken(clientID string, password string, pubKey strin
 
 // Refresh an authentication token
 // This returns a refreshed token that can be used to connect to the messaging server
-// the old token must be a valid jwt token
+// the old token must be a valid jwt token belonging to the clientID
 func (svc *AuthnService) Refresh(clientID string, oldToken string) (newToken string, err error) {
 	slog.Info("refresh token", "clientID", clientID)
 	// verify the token
@@ -180,7 +200,7 @@ func (svc *AuthnService) Refresh(clientID string, oldToken string) (newToken str
 	if err != nil {
 		return "", fmt.Errorf("error validating oldToken of client %s: %w", clientID, err)
 	}
-	pubKey := claims.Claims().ID
+	pubKey := claims.Claims().Subject
 	newToken, err = svc.CreateUserToken(clientID, entry.UserName, pubKey, authn.DefaultUserTokenValiditySec)
 	return newToken, err
 }
@@ -252,7 +272,7 @@ func (svc *AuthnService) ValidateToken(clientID string, jwtToken string) (
 	}
 	claims, err = jwt.Decode(jwtToken)
 	if err != nil {
-		return entry, nil, errors.New("Invalid token of client " + clientID)
+		return entry, nil, fmt.Errorf("invalid token of client %s: %w", clientID, err)
 	}
 	if claims.ClaimType() != jwt.UserClaim {
 		return entry, nil, errors.New("Token is not a user token of client " + clientID)

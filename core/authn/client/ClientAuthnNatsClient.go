@@ -11,14 +11,31 @@ import (
 // This is intended for clients to authenticate themselves and refresh auth tokens.
 // This uses the default serializer to marshal and unmarshal messages.
 type ClientAuthn struct {
-	// ID of the authn service
+	// ID of the authn service that handles the requests
 	serviceID string
 	hc        hub.IHubClient
 }
 
 // helper for publishing an action request to the authz service
 func (clientAuthn *ClientAuthn) pubReq(action string, msg []byte) ([]byte, error) {
-	return clientAuthn.hc.PubAction(clientAuthn.serviceID, "", action, msg)
+	return clientAuthn.hc.PubAction(clientAuthn.serviceID, authn.ClientAuthnCapability, action, msg)
+}
+
+// GetProfile returns a client's profile
+// Users can only get their own profile.
+// Managers can get other clients profiles.
+func (clientAuthn *ClientAuthn) GetProfile(clientID string) (profile authn.ClientProfile, err error) {
+	req := authn.GetProfileReq{
+		ClientID: clientID,
+	}
+	msg, _ := ser.Marshal(req)
+	data, err := clientAuthn.pubReq(authn.GetProfileAction, msg)
+	resp := &authn.GetProfileResp{}
+	err = hubclient.ParseResponse(data, err, resp)
+	if err == nil {
+		profile = resp.Profile
+	}
+	return profile, err
 }
 
 // NewToken obtains an auth token based on loginID and password
@@ -32,7 +49,7 @@ func (clientAuthn *ClientAuthn) NewToken(clientID string, password string, pubKe
 	data, err := clientAuthn.pubReq(authn.NewTokenAction, msg)
 	resp := &authn.NewTokenResp{}
 	err = hubclient.ParseResponse(data, err, resp)
-	if err != nil {
+	if err == nil {
 		authToken = resp.JwtToken
 	}
 	return authToken, err
@@ -80,10 +97,13 @@ func (clientAuthn *ClientAuthn) UpdatePassword(clientID string, newPassword stri
 }
 
 // NewClientAuthn returns an authn client for the given hubclient connection
-func NewClientAuthn(hc hub.IHubClient) authn.IClientAuthn {
+func NewClientAuthn(bindingID string, hc hub.IHubClient) *ClientAuthn {
+	if bindingID == "" {
+		bindingID = authn.AuthnServiceName
+	}
 	cl := ClientAuthn{
 		hc:        hc,
-		serviceID: "authn",
+		serviceID: bindingID,
 	}
 	return &cl
 }

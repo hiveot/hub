@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/core/authn"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/ser"
+	"golang.org/x/exp/slog"
 )
 
 // ManageAuthn is a client for the authn service for administrators and services that manage authentication
@@ -17,7 +18,8 @@ type ManageAuthn struct {
 
 // helper for publishing an action request to the authz service
 func (mngAuthn *ManageAuthn) pubReq(action string, msg []byte) ([]byte, error) {
-	return mngAuthn.hc.PubAction(mngAuthn.serviceID, "", action, msg)
+	return mngAuthn.hc.PubAction(
+		mngAuthn.serviceID, authn.ManageAuthnCapability, action, msg)
 }
 
 // AddUser adds a user.
@@ -28,6 +30,7 @@ func (mngAuthn *ManageAuthn) pubReq(action string, msg []byte) ([]byte, error) {
 //	name of the user for presentation
 //	password the user can login with if their token has expired.
 func (mngAuthn *ManageAuthn) AddUser(userID string, name string, password string) error {
+	slog.Info("AddUser", "userID", userID)
 	req := authn.AddUserReq{
 		UserID:   userID,
 		Name:     name,
@@ -39,15 +42,15 @@ func (mngAuthn *ManageAuthn) AddUser(userID string, name string, password string
 	return err
 }
 
-// GetProfile returns a client's profile
+// GetClientProfile returns a client's profile
 // Users can only get their own profile.
 // Managers can get other clients profiles.
-func (mngAuthn *ManageAuthn) GetProfile(clientID string) (profile authn.ClientProfile, err error) {
-	req := authn.GetProfileReq{
+func (mngAuthn *ManageAuthn) GetClientProfile(clientID string) (profile authn.ClientProfile, err error) {
+	req := authn.GetClientProfileReq{
 		ClientID: clientID,
 	}
 	msg, _ := ser.Marshal(req)
-	data, err := mngAuthn.pubReq(authn.GetProfileAction, msg)
+	data, err := mngAuthn.pubReq(authn.GetClientProfileAction, msg)
 	resp := &authn.GetProfileResp{}
 	err = hubclient.ParseResponse(data, err, resp)
 	if err == nil {
@@ -81,10 +84,13 @@ func (mngAuthn *ManageAuthn) RemoveClient(clientID string) error {
 }
 
 // NewManageAuthn returns an authn management client for the given hubclient connection
-func NewManageAuthn(hc hub.IHubClient) authn.IManageAuthn {
+func NewManageAuthn(bindingID string, hc hub.IHubClient) authn.IManageAuthn {
+	if bindingID == "" {
+		bindingID = authn.AuthnServiceName
+	}
 	cl := ManageAuthn{
 		hc:        hc,
-		serviceID: "authn",
+		serviceID: bindingID,
 	}
 	return &cl
 }

@@ -10,33 +10,38 @@ import (
 	"github.com/nats-io/nkeys"
 )
 
-const TestServerID = "server1"
 const ServerAddress = "127.0.0.1"
+const TestServiceID = "service1"
 const TestDeviceID = "device1"
 const TestUserID = "user1"
 
-// TestCerts contain test certificates for CA and server
-type TestCerts struct {
+// TestAuthBundle contain test certificates for CA and server
+type TestAuthBundle struct {
 	CaCert *x509.Certificate
 	CaKey  *ecdsa.PrivateKey
 
-	// Operator
-	OperatorNKey nkeys.KeyPair
-	AccountNKey  nkeys.KeyPair
+	// Nats server certificate
+	ServerKey  *ecdsa.PrivateKey
+	ServerCert *tls.Certificate
+	// operator and account keys
+	OperatorNKey      nkeys.KeyPair
+	OperatorJWT       string
+	SystemAccountNKey nkeys.KeyPair
+	SystemAccountJWT  string
+	SystemSigningNKey nkeys.KeyPair
+	SystemUserNKey    nkeys.KeyPair
+	SystemUserJWT     string
+	SystemUserCreds   []byte
+	//
+	AppAccountNKey nkeys.KeyPair
+	AppSigningNKey nkeys.KeyPair
+	AppAccountJWT  string
 
-	// Nats server certificate and keys
-	ServerCert  *tls.Certificate
-	ServerID    string
-	ServerKey   *ecdsa.PrivateKey
-	ServerNKey  nkeys.KeyPair // For use by nats server
-	ServerJWT   string
-	ServerCreds []byte
-
-	// tbd operator or account key for server?
-	// Service, device and user keys
-	//ServiceNKey  nkeys.KeyPair // application services
-	//ServiceJWT   string
-	//ServiceCreds []byte
+	// test service
+	ServiceID    string
+	ServiceNKey  nkeys.KeyPair // application services
+	ServiceJWT   string
+	ServiceCreds []byte
 
 	// Devices and services
 	DeviceID    string
@@ -50,87 +55,201 @@ type TestCerts struct {
 	UserCreds []byte
 }
 
-// CreateAuthBundle creates a bundle of ca, server certificates and client keys for testing.
-// The server cert is valid for ServerAddress only.
-func CreateAuthBundle() TestCerts {
-	testCerts := TestCerts{
-		ServerID: TestServerID,
-		DeviceID: TestDeviceID,
-		UserID:   TestUserID,
-	}
-	testCerts.CaCert, testCerts.CaKey, _ = certs.CreateCA("testing", 1)
-	testCerts.ServerKey = certs.CreateECDSAKeys()
+// CreateTestAuthBundle creates a bundle of ca, server certificates and user keys for testing.
+// The server cert is valid for the 127.0.0.1 ServerAddress only.
+func CreateTestAuthBundle() TestAuthBundle {
+	authBundle := TestAuthBundle{}
+	// Setup CA and server TLS certificates
+	authBundle.CaCert, authBundle.CaKey, _ = certs.CreateCA("testing", 1)
+	authBundle.ServerKey = certs.CreateECDSAKeys()
 
 	names := []string{ServerAddress}
 	serverCert, err := certs.CreateServerCert(
-		testCerts.ServerID, "server",
-		&testCerts.ServerKey.PublicKey,
+		TestServiceID, "server",
+		&authBundle.ServerKey.PublicKey,
 		names, 1,
-		testCerts.CaCert, testCerts.CaKey)
-	if err == nil {
-		testCerts.ServerCert = certs.X509CertToTLS(serverCert, testCerts.ServerKey)
-	}
-
-	// NATS authentication using nkeys and JWT claims
-	testCerts.OperatorNKey, _ = nkeys.CreateOperator()
-	testCerts.AccountNKey, _ = nkeys.CreateAccount()
-	//operatorPub, _ := testCerts.OperatorNKey.PublicKey()
-	//operatorSeed, _ := testCerts.OperatorNKey.Seed()
-
-	// The server (account?) created by the operator
-	testCerts.ServerNKey, _ = nkeys.CreateServer()
-	serverPub, _ := testCerts.ServerNKey.PublicKey()
-	serverSeed, _ := testCerts.ServerNKey.Seed()
-	serverClaims := jwt.NewAccountClaims(serverPub)
-	// FIXME: what?
-	serverClaims.Subject, _ = testCerts.AccountNKey.PublicKey()
-	serverClaims.Name = testCerts.ServerID
-	serverClaims.Limits.JetStreamLimits.DiskStorage = 1024 * 1024 * 1024  // 1GB disk for testing
-	serverClaims.Limits.JetStreamLimits.MemoryStorage = 1024 * 1024 * 100 // 100MB memory for testing
-	testCerts.ServerJWT, err = serverClaims.Encode(testCerts.AccountNKey)
+		authBundle.CaCert, authBundle.CaKey)
 	if err != nil {
-		panic(err.Error())
+		panic("unable to create server cert: " + err.Error())
 	}
-	testCerts.ServerCreds, _ = jwt.FormatUserConfig(testCerts.ServerJWT, serverSeed)
+	authBundle.ServerCert = certs.X509CertToTLS(serverCert, authBundle.ServerKey)
 
-	// Services keys created by the server (account)
-	//testCerts.ServiceNKey, _ = nkeys.CreateUser()
-	//servicePub, _ := testCerts.ServerNKey.PublicKey()
-	//serviceSeed, _ := testCerts.ServerNKey.Seed()
-	//serviceClaims := jwt.NewAccountClaims(servicePub)
-	//serviceClaims.Name = "service1"
-	//testCerts.ServiceJWT, _ = serviceClaims.Encode(testCerts.ServerNKey)
-	//testCerts.ServiceCreds, _ = jwt.FormatUserConfig(testCerts.ServiceJWT, serviceSeed)
+	// life starts with the operator
+	// the operator is signing the account keys
+	// https://gist.github.com/renevo/8fa7282d441b46752c9151644a2e911a
+	operatorNKey, _ := nkeys.CreateOperator()
+	operatorPub, _ := operatorNKey.PublicKey()
+	operatorClaims := jwt.NewOperatorClaims(operatorPub)
+	operatorClaims.Name = "hiveotop"
+	// use a separate operator signing key that can be revoked without compromising the operator keys
+	operatorSigningNKey, _ := nkeys.CreateOperator()
+	operatorSigningPub, _ := operatorSigningNKey.PublicKey()
+	operatorClaims.SigningKeys.Add(operatorSigningPub)
+	authBundle.OperatorNKey = operatorNKey
+	authBundle.OperatorJWT, _ = operatorClaims.Encode(operatorNKey)
+
+	// the system account is used for monitoring
+	systemAccountNKey, _ := nkeys.CreateAccount()
+	systemAccountPub, _ := systemAccountNKey.PublicKey()
+	systemSigningNKey, _ := nkeys.CreateAccount()
+	systemSigningPub, _ := systemSigningNKey.PublicKey()
+	systemAccountClaims := jwt.NewAccountClaims(systemAccountPub)
+	systemAccountClaims.Name = "SYS"
+	systemAccountClaims.SigningKeys.Add(systemSigningPub)
+	systemAccountClaims.Exports = jwt.Exports{
+		&jwt.Export{
+			Name:                 "account-monitoring-services",
+			Subject:              "$SYS.REQ.ACCOUNT.*.*",
+			Type:                 jwt.Service,
+			ResponseType:         jwt.ResponseTypeStream,
+			AccountTokenPosition: 4,
+			Info: jwt.Info{
+				Description: "Custom account made by conservator",
+				InfoURL:     "https://github.com/renevo/conservator",
+			},
+		},
+		&jwt.Export{
+			Name:                 "account-monitoring-streams",
+			Subject:              "$SYS.ACCOUNT.*.>",
+			Type:                 jwt.Stream,
+			AccountTokenPosition: 3,
+			Info: jwt.Info{
+				Description: "Custom account made by conservator",
+				InfoURL:     "https://github.com/renevo/conservator",
+			},
+		},
+	}
+	systemAccountJWT, _ := systemAccountClaims.Encode(operatorSigningNKey)
+	authBundle.SystemSigningNKey = systemSigningNKey
+	authBundle.SystemAccountNKey = systemAccountNKey
+	authBundle.SystemAccountJWT = systemAccountJWT
+
+	// A user for the system account
+
+	systemUserNKey, _ := nkeys.CreateUser()
+	systemUserPub, _ := systemUserNKey.PublicKey()
+	systemUserPriv, _ := systemUserNKey.Seed()
+	systemUserClaims := jwt.NewUserClaims(systemUserPub)
+	systemUserClaims.Name = "sys"
+	systemUserClaims.IssuerAccount = systemAccountPub
+	systemUserJWT, _ := systemUserClaims.Encode(systemSigningNKey)
+	systemUserCreds, _ := jwt.FormatUserConfig(systemUserJWT, systemUserPriv)
+	authBundle.SystemUserNKey = systemUserNKey
+	authBundle.SystemUserJWT = systemUserJWT
+	authBundle.SystemUserCreds = systemUserCreds
+
+	// system account
+	operatorClaims.SystemAccount = systemAccountPub
+
+	// the application uses a separate account key
+	appAccountNKey, _ := nkeys.CreateAccount()
+	appAccountPub, _ := appAccountNKey.PublicKey()
+	appSigningNKey, _ := nkeys.CreateAccount()
+	appSigningPub, _ := appSigningNKey.PublicKey()
+	appAccountClaims := jwt.NewAccountClaims(appAccountPub)
+	appAccountClaims.Name = "AppAccount"
+	appAccountClaims.SigningKeys.Add(appSigningPub)
+	// Enabling JetStream requires setting storage limits
+	appAccountClaims.Limits.JetStreamLimits.DiskStorage = 1024 * 1024 * 1024
+	appAccountClaims.Limits.JetStreamLimits.MemoryStorage = 100 * 1024 * 1024
+	//appAccountClaims.Subject = appAccountPub
+	appAccountClaims.Exports = jwt.Exports{
+		&jwt.Export{
+			Name:                 "account-monitoring-services",
+			Subject:              "$SYS.REQ.ACCOUNT.*.*",
+			Type:                 jwt.Service,
+			ResponseType:         jwt.ResponseTypeStream,
+			AccountTokenPosition: 4,
+			Info: jwt.Info{
+				Description: "Custom account made by conservator",
+				InfoURL:     "https://github.com/renevo/conservator",
+			},
+		},
+		&jwt.Export{
+			Name:                 "account-monitoring-streams",
+			Subject:              "$SYS.ACCOUNT.*.>",
+			Type:                 jwt.Stream,
+			AccountTokenPosition: 3,
+			Info: jwt.Info{
+				Description: "Custom account made by conservator",
+				InfoURL:     "https://github.com/renevo/conservator",
+			},
+		},
+	}
+	appAccountJWT, _ := appAccountClaims.Encode(operatorSigningNKey)
+	authBundle.AppAccountNKey = appAccountNKey
+	authBundle.AppSigningNKey = appSigningNKey
+	authBundle.AppAccountJWT = appAccountJWT
+
+	// test service keys created by the server account
+	serviceNKey, _ := nkeys.CreateUser()
+	servicePub := []string{">"}
+	serviceSub := []string{">"}
+	serviceJWT, serviceCreds := CreateUserCreds(
+		TestServiceID, serviceNKey, appSigningNKey, appAccountPub, servicePub, serviceSub)
+	authBundle.ServiceID = TestServiceID
+	authBundle.ServiceNKey = serviceNKey
+	authBundle.ServiceJWT = serviceJWT
+	authBundle.ServiceCreds = serviceCreds
+
+	// test device keys created by the server (account)
+	deviceNKey, _ := nkeys.CreateUser()
+	devicePub := []string{"things." + TestDeviceID + ".*.event.>"}
+	deviceSub := []string{"_INBOX.>", "things." + TestDeviceID + ".*.action.>"}
+	deviceJWT, deviceCreds := CreateUserCreds(
+		TestDeviceID, deviceNKey, appSigningNKey, appAccountPub, devicePub, deviceSub)
+	authBundle.DeviceID = TestDeviceID
+	authBundle.DeviceNKey = deviceNKey
+	authBundle.DeviceJWT = deviceJWT
+	authBundle.DeviceCreds = deviceCreds
+
+	// regular end-users can publish and subscribe to inbox and things
+	userNKey, _ := nkeys.CreateUser()
+	userPub := []string{"things.*.*.action.>"}
+	userSub := []string{"_INBOX.>", "things.>"}
+	userJWT, userCreds := CreateUserCreds(
+		TestUserID, userNKey, appSigningNKey, appAccountPub, userPub, userSub)
+	authBundle.UserID = TestUserID
+	authBundle.UserNKey = userNKey
+	authBundle.UserJWT = userJWT
+	authBundle.UserCreds = userCreds
+
+	return authBundle
+}
+
+// CreateUserCreds create a signed user JWT token and private credentials with pub/sub permissions
+//
+//	id is the client's authentication ID
+//	nkey is the client's key pair
+//	signer is the nkey of the signer, eg the account key
+//	pub is the list of subjects allowed to publish or nil if not set here
+//	sub is the list of subjects allowed to subscribe or nil if not set here
+//
+// This returns the public signed jwt token containing user claims, and the full credentials to be kept secret
+func CreateUserCreds(id string, keys nkeys.KeyPair,
+	signer nkeys.KeyPair, appAccountPub string,
+	pub []string, sub []string) (
+	jwtToken string, creds []byte) {
 
 	// device keys created by the server (account)
-	testCerts.DeviceNKey, _ = nkeys.CreateUser()
-	devicePub, _ := testCerts.DeviceNKey.PublicKey()
-	deviceSeed, _ := testCerts.DeviceNKey.Seed()
-	deviceClaims := jwt.NewAccountClaims(devicePub)
-	// FIXME: what?
-	//deviceClaims.Subject = devicePub
-	deviceClaims.Subject, _ = testCerts.AccountNKey.PublicKey()
-	deviceClaims.Name = testCerts.DeviceID
-	testCerts.DeviceJWT, err = deviceClaims.Encode(testCerts.AccountNKey)
-	if err != nil {
-		panic("cant create device jwt key:" + err.Error())
-	}
-	testCerts.DeviceCreds, _ = jwt.FormatUserConfig(testCerts.DeviceJWT, deviceSeed)
-
+	pubKey, _ := keys.PublicKey()
+	privKey, _ := keys.Seed()
+	claims := jwt.NewUserClaims(pubKey)
+	claims.Subject = pubKey
+	claims.IssuerAccount = appAccountPub
+	claims.Name = id
 	// add identification and authorization to user
 	// see also: https://natsbyexample.com/examples/auth/nkeys-jwts/go
-	testCerts.UserNKey, _ = nkeys.CreateUser()
-	userPub, _ := testCerts.UserNKey.PublicKey()
-	userClaims := jwt.NewUserClaims(userPub)
-	userClaims.Name = testCerts.UserID   // name vs ID?
-	userClaims.Limits.Data = 1024 * 1024 // not sure how this is used
-	userClaims.Permissions.Pub.Allow.Add(">")
-	userClaims.Permissions.Sub.Allow.Add("_INBOX.>")
-	// sign the JWT by the server (operator?) and produce the decorated credentials that can be written to a file
-	// what does 'decorated' mean?
-	testCerts.UserJWT, _ = userClaims.Encode(testCerts.ServerNKey)
-	userSeed, _ := testCerts.UserNKey.Seed()
-	testCerts.UserCreds, _ = jwt.FormatUserConfig(testCerts.UserJWT, userSeed)
-
-	return testCerts
+	if pub != nil {
+		claims.Pub.Allow.Add(pub...)
+	}
+	if sub != nil {
+		claims.Sub.Allow.Add(sub...)
+	}
+	jwtToken, err := claims.Encode(signer)
+	if err != nil {
+		panic("cant create jwt key:" + err.Error())
+	}
+	creds, _ = jwt.FormatUserConfig(jwtToken, privKey)
+	return jwtToken, creds
 }

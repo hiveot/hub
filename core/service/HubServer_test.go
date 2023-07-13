@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-var testCerts = testenv.CreateAuthBundle()
+var testCerts = testenv.CreateTestAuthBundle()
 
 var thingsPermissions = &server.Permissions{
 	Publish:   &server.SubjectPermission{Allow: []string{"things.>"}, Deny: []string{"other.>"}},
@@ -39,7 +39,7 @@ func TestHubServer_Start(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	hc := hubconn.NewHubClient("test1")
-	err = hc.ConnectWithCert(clientURL, testCerts.ServerID, testCerts.ServerCert, testCerts.CaCert)
+	err = hc.ConnectWithCert(clientURL, testCerts.ServiceID, testCerts.ServerCert, testCerts.CaCert)
 	assert.NoError(t, err)
 	hc.DisConnect()
 

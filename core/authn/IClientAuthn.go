@@ -1,5 +1,23 @@
 package authn
 
+// ClientAuthnCapability is the name of the Thing/Capability that handles client requests
+const ClientAuthnCapability = "client"
+
+// below a list of actions and their payload
+
+// GetProfileAction defines the action to get the client's profile
+const GetProfileAction = "getProfile"
+
+// GetProfileReq request message to get a client's profile.
+type GetProfileReq struct {
+	// must match the login ID
+	ClientID string `json:"clientID"`
+}
+type GetProfileResp struct {
+	Profile ClientProfile `json:"profile"`
+}
+
+// NewTokenAction requests a new jwt token for password based login
 const NewTokenAction = "newToken"
 
 type NewTokenReq struct {
@@ -42,6 +60,10 @@ type UpdatePasswordReq struct {
 
 // IClientAuthn defines the capabilities for use by authenticating clients
 type IClientAuthn interface {
+
+	// GetProfile returns a client's profile
+	GetProfile(clientID string) (profile ClientProfile, err error)
+
 	// NewToken creates a new jwt auth token based on password and public key.
 	// The client must already be authenticated as a user with a valid login.
 	// This returns a short-lived auth token that can be used to connect to the message server

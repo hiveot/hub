@@ -33,8 +33,8 @@ func (hs *HubServer) Stop() {
 func NewHubServer() *HubServer {
 	hs := &HubServer{
 		hubImpl: nats.HubNats{},
-		authn:   authn.NewAuthnService(),
-		authz:   authz.NewAuthzService(),
+		//authn:   service.NewAuthnService(),
+		//authz:   service2.NewAuthzService(),
 	}
 	return hs
 }
