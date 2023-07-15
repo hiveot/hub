@@ -8,29 +8,24 @@ import (
 	"time"
 )
 
-// Default permissions for new users
-var defaultPermissions = &server.Permissions{
-	Publish:   &server.SubjectPermission{Allow: []string{"guest.>"}, Deny: []string{">"}},
-	Subscribe: &server.SubjectPermission{Allow: []string{"guest.>", "_INBOX.>"}, Deny: []string{">"}},
-}
-
-var adminPermissions = &server.Permissions{
-	Publish:   &server.SubjectPermission{Allow: []string{">"}},
-	Subscribe: &server.SubjectPermission{Allow: []string{">"}},
-}
-
-// TestServer is an embedded NATS test messaging server
-type TestServer struct {
+// TestJWTServer is an embedded NATS test messaging server using JWT in operator mode.
+// Issues:
+//   - can't use password authentication when jwt is active
+//   - can't use auth callout in operator mode
+//   - is operator mode required
+type TestJWTServer struct {
 	account    *server.Account
 	caCert     *x509.Certificate
 	serverCert *tls.Certificate
 	ns         *server.Server
+	//
 }
 
 // Start the server, listening on 127.0.0.1
 // setup accounts provided with the given bundle
-func (svr *TestServer) Start(bundle TestAuthBundle) (clientURL string, err error) {
+func (svr *TestJWTServer) Start(bundle TestAuthBundle) (clientURL string, err error) {
 	operatorClaim, _ := jwt.DecodeOperatorClaims(bundle.OperatorJWT)
+	_ = operatorClaim
 	systemClaims, _ := jwt.DecodeAccountClaims(bundle.SystemAccountJWT)
 
 	memoryResolver := &server.MemAccResolver{}
@@ -43,6 +38,9 @@ func (svr *TestServer) Start(bundle TestAuthBundle) (clientURL string, err error
 	if err != nil {
 		panic(err)
 	}
+	systemAccountPub, err := bundle.SystemAccountNKey.PublicKey()
+	//systemAccount := server.NewAccount("SYS")
+	//_ = systemAccount
 	//appAccount := server.NewAccount("AppAccount")
 
 	//servicePub, _ := bundle.ServiceNKey.PublicKey()
@@ -50,32 +48,12 @@ func (svr *TestServer) Start(bundle TestAuthBundle) (clientURL string, err error
 		Host:            "127.0.0.1", // must match the address on the generated cert
 		Port:            9998,        // some random test port that doesn't interfere
 		AccountResolver: memoryResolver,
-		SystemAccount:   systemClaims.Subject,
+		SystemAccount:   systemAccountPub, //"SYS",
+		//Accounts:        []*server.Account{systemAccount, appAccount},
 
 		JetStream:          true,
 		TrustedOperators:   []*jwt.OperatorClaims{operatorClaim},
 		JetStreamMaxMemory: 10 * 1024 * 1024,
-		//NoAuthUser:         "unauthenticated",
-		//Accounts: []*server.Account{appAccount},
-		//Nkeys: []*server.NkeyUser{
-		//	{
-		//		Nkey:                   bundle.ServiceNKey,
-		//		Permissions:            adminPermissions,
-		//		Account:                hubAccount,
-		//		SigningKey:             "",
-		//		AllowedConnectionTypes: nil,
-		//	},
-		//},
-
-		// can't include users in operator mode
-		//Users: []*server.User{
-		//	{
-		//		Username: "unauthenticated",
-		//		Password: "",
-		//		//Permissions: defaultPermissions,
-		//		//Account:     svr.account,
-		//	},
-		//},
 	}
 
 	if svr.caCert != nil {
@@ -106,17 +84,17 @@ func (svr *TestServer) Start(bundle TestAuthBundle) (clientURL string, err error
 	return clientURL, nil
 }
 
-func (svr *TestServer) Stop() {
+func (svr *TestJWTServer) Stop() {
 	if svr.ns != nil {
 		svr.ns.Shutdown()
 	}
 }
 
-// NewTestServer create a new test server instance
+// NewTestJWTServer create a new test server instance
 //
 //	serverCert optional cert for 127.0.0.1
-func NewTestServer(serverCert *tls.Certificate, caCert *x509.Certificate) *TestServer {
-	ts := &TestServer{
+func NewTestJWTServer(serverCert *tls.Certificate, caCert *x509.Certificate) *TestJWTServer {
+	ts := &TestJWTServer{
 		serverCert: serverCert,
 		caCert:     caCert,
 	}

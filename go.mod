@@ -10,7 +10,7 @@ require (
 	github.com/grandcat/zeroconf v1.0.0
 	github.com/lmittmann/tint v0.3.4
 	github.com/nats-io/jwt/v2 v2.4.1
-	github.com/nats-io/nats-server/v2 v2.9.19
+	github.com/nats-io/nats-server/v2 v2.9.20
 	github.com/nats-io/nats.go v1.27.1
 	github.com/nats-io/nkeys v0.4.4
 	github.com/samber/lo v1.38.1
@@ -19,7 +19,7 @@ require (
 	github.com/struCoder/pidusage v0.2.1
 	github.com/urfave/cli/v2 v2.25.7
 	golang.org/x/crypto v0.11.0
-	golang.org/x/exp v0.0.0-20230711153332-06a737ee72cb
+	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1
 	gopkg.in/square/go-jose.v2 v2.6.0
 	gopkg.in/yaml.v3 v3.0.1
 )

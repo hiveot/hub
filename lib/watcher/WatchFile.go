@@ -25,7 +25,7 @@ func WatchFile(path string,
 	watcher, _ := fsnotify.NewWatcher()
 	// The callback timer debounces multiple changes to the config file
 	callbackTimer := time.AfterFunc(0, func() {
-		slog.Info("WatchFile.Watch: trigger, invoking callback...")
+		//slog.Info("WatchFile.Watch: trigger, invoking callback...")
 		_ = handler()
 
 		// file renames change the inode of the filename, resubscribe
@@ -39,10 +39,10 @@ func WatchFile(path string,
 
 	err := watcher.Add(path)
 	if err != nil {
-		slog.Info("unable to watch for changes", "err", err)
+		slog.Error("unable to watch for changes", "err", err)
 		return watcher, err
 	}
-	slog.Info("WatchFile added", "path", path)
+	//slog.Info("WatchFile added", "path", path)
 
 	go func() {
 		for {
@@ -54,7 +54,7 @@ func WatchFile(path string,
 					return
 				}
 				// don't really care what the change it, 50msec after the last event the file will reload
-				slog.Info("File Event", "event", event.String(), "file", event.Name)
+				//slog.Info("File Event", "event", event.String(), "file", event.Name)
 				callbackTimer.Reset(time.Millisecond * watcherDebounceDelay)
 			case err2, ok := <-watcher.Errors:
 				if !ok && err2 != nil {

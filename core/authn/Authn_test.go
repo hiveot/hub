@@ -24,7 +24,7 @@ import (
 var storeFolder string // set in TestMain
 var tempFolder string
 
-var testCerts testenv.TestAuthBundle
+var authBundle testenv.TestAuthBundle
 
 // clientURL is set by the testmain
 var clientURL string
@@ -43,27 +43,36 @@ func startTestAuthnService() (mngAuthn authn.IManageAuthn, clientAuthn authn.ICl
 	cfg.DeviceTokenValidity = 10
 	pwStore := unpwstore.NewPasswordFileStore(passwordFile)
 	// since it uses jwt auth, only the account key is needed to issue tokens
-	svc := service.NewAuthnService(pwStore, testCerts.AppAccountNKey)
+	svc := service.NewAuthnService(pwStore, authBundle.AppSigningNKey)
 	err = svc.Start()
 	if err != nil {
 		logrus.Panicf("cant start test authn service: %s", err)
 	}
-
-	// to use nats as an RPC, connect as a service
-	hcSvc := hubclient.NewHubClientNats()
-	err = hcSvc.ConnectWithJWT(clientURL, testCerts.ServiceCreds, testCerts.CaCert)
-	//err = hcSvc.ConnectWithCert(clientURL, authn.AuthnServiceName, testCerts.ServerCert, testCerts.CaCert)
-	//err = hcSvc.ConnectWithNKey(clientURL, testCerts.ServiceNKey, testCerts.CaCert)
+	//
+	//// Create the authn service for authentication requests
+	hcSvc := hubclient.NewHubClient()
+	////err = hcSvc.ConnectWithJWT(clientURL, authBundle.ServiceCreds, authBundle.CaCert)
+	////err = hcSvc.ConnectWithCert(clientURL, authn.AuthnServiceName, authBundle.ServerCert, authBundle.CaCert)
+	//err = hcSvc.ConnectWithNKey(clientURL, authBundle.ServiceID, authBundle.ServiceNKey, authBundle.CaCert)
+	err = hcSvc.ConnectWithNKey(clientURL, authBundle.ServiceID, authBundle.AppSigningNKey, authBundle.CaCert)
 	if err != nil {
 		panic(err)
 	}
-
-	natsSvr := service.NewAuthnNatsServer(svc, hcSvc)
+	natsSvr := service.NewAuthnNatsServer(authBundle.AppSigningNKey, svc, hcSvc)
 	natsSvr.Start()
+	//
+	//// hook the callout authentication handler
+	//err = hcSvc.Subscribe(server.AuthCalloutSubject, natsSvr.HandleCallOut)
+	//if err != nil {
+	//	panic(err)
+	//}
+	////--- temp
 
-	// use the client API with admin credentials to take the place of the direct service API
-	hcUser := hubclient.NewHubClientNats()
-	err = hcUser.ConnectWithJWT(clientURL, testCerts.UserCreds, testCerts.CaCert)
+	// create an hub client for the authn client and management api's
+	hcUser := hubclient.NewHubClient()
+	//err = hcUser.ConnectWithJWT(clientURL, authBundle.UserCreds, authBundle.CaCert)
+	err = hcUser.ConnectWithNKey(clientURL, authBundle.UserID, authBundle.UserNKey, authBundle.CaCert)
+	//err = hcUser.ConnectWithPassword(clientURL, authBundle.UserID, "somepass", authBundle.CaCert)
 	if err != nil {
 		panic(err)
 	}
@@ -88,11 +97,16 @@ func TestMain(m *testing.M) {
 	// a working folder for the data
 	tempFolder = path.Join(os.TempDir(), "test-authn")
 	_ = os.MkdirAll(tempFolder, 0700)
-	testCerts = testenv.CreateTestAuthBundle()
+	authBundle = testenv.CreateTestAuthBundle()
 	// run the test server
-	testServer := testenv.NewTestServer(testCerts.ServerCert, testCerts.CaCert)
+	testServer := testenv.NewTestCalloutServer(
+		authBundle.AppAccountNKey,
+		authBundle.SystemSigningNKey,
+		authBundle.SystemUserNKey,
+		authBundle.ServerCert, authBundle.CaCert)
+	//testServer := testenv.NewTestNKeyServer(authBundle.ServerCert, authBundle.CaCert)
 	// oddly enough the err is not assigned if it is an existing variable
-	cURL, err := testServer.Start(testCerts)
+	cURL, err := testServer.Start()
 	clientURL = cURL
 	if err != nil {
 		panic(err)
@@ -207,27 +221,76 @@ func TestLoginRefresh(t *testing.T) {
 	defer stopFn()
 	require.NoError(t, err)
 
-	// add a user to test with
-	err = mng.AddUser(testuser1, "user 1", testpass1)
+	// add users to test with
+	err = mng.AddUser(testuser1, "testuser 1", testpass1)
 	require.NoError(t, err)
-	// login and get tokens
-	hc := hubclient.NewHubClientNats()
-	err = hc.ConnectWithPassword(clientURL, testuser1, testpass1, testCerts.CaCert)
+	err = mng.AddUser(authBundle.UserID, "user one", "")
 	require.NoError(t, err)
-	cl := client.NewClientAuthn("service1", hc)
-	pubKey, _ := testCerts.UserNKey.PublicKey()
-	authToken1, err = cl.NewToken(testuser1, testpass1, pubKey)
 
+	// login and get profile
+	hc1 := hubclient.NewHubClient()
+	cl1 := client.NewClientAuthn(authBundle.ServiceID, hc1)
+	defer hc1.Disconnect()
+	err = hc1.ConnectWithPassword(clientURL, testuser1, testpass1, authBundle.CaCert)
+	require.NoError(t, err)
+	prof1, err := cl1.GetProfile("")
+	require.NoError(t, err)
+	require.NotEmpty(t, prof1)
+
+	// request a new login token
+	userPub, _ := authBundle.UserNKey.PublicKey()
+	userSeed, _ := authBundle.UserNKey.Seed()
+	authToken1, err = cl1.NewToken(testuser1, testpass1, userPub)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, authToken1)
 
+	// login with the new token
+	hc2 := hubclient.NewHubClient()
+	cl2 := client.NewClientAuthn(authBundle.ServiceID, hc2)
+	defer hc2.Disconnect()
+	authToken1Cred, err := jwt.FormatUserConfig(authToken1, userSeed)
+	_ = authToken1Cred
+	require.NoError(t, err)
+	err = hc2.ConnectWithJWT(clientURL, authBundle.UserCreds, authBundle.CaCert)
+	//err = hc2.ConnectWithJWT(clientURL, authToken1Cred, authBundle.CaCert)
+	require.NoError(t, err)
+	prof2, err := cl2.GetProfile("")
+	require.NoError(t, err)
+	require.NotEmpty(t, prof2)
+
 	// refresh token
 	signedJWT, err := jwt.ParseDecoratedJWT([]byte(authToken1))
-	authToken2, err = cl.Refresh(testCerts.UserID, signedJWT)
+	authToken2, err = cl1.Refresh(authBundle.UserID, signedJWT)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, authToken2)
-	slog.Info("--- TestLoginRefresh end")
 
+	//--- just testing, remove after
+	// ??? WHY DOES THIS WORK?
+	//hc5 := hubclient.NewHubClient()
+	//err = hc5.ConnectWithJWT(clientURL, authBundle.DeviceCreds, authBundle.CaCert)
+	//require.NoError(t, err)
+	//at5b,err := authBundle.DeviceJWT
+	//authToken3, err := cl.Refresh(authBundle.UserID, authToken2)
+	//require.NoError(t, err)
+	//hc5.Disconnect()
+
+	//--- just testing end
+
+	// login with new token and get profile
+	//hc2 = hubclient.NewHubClient()
+	//defer hc2.Disconnect()
+	//seed2, _ := authBundle.UserNKey.Seed()
+	//authToken2Cred, err := jwt.FormatUserConfig(authToken2, seed2)
+	//require.NoError(t, err)
+	//err = hc2.ConnectWithJWT(clientURL, authToken2Cred, authBundle.CaCert)
+	//require.NoError(t, err)
+	//cl2 := client.NewClientAuthn(authBundle.ServiceID, hc2)
+	//prof2, err := cl2.GetProfile(authBundle.UserID)
+	//
+	//require.NoError(t, err)
+	//require.NotEmpty(t, prof2)
+
+	slog.Info("--- TestLoginRefresh end")
 }
 
 func TestLoginFail(t *testing.T) {
@@ -245,11 +308,11 @@ func TestLoginFail(t *testing.T) {
 	require.NoError(t, err)
 
 	// login and get tokens
-	hc := hubclient.NewHubClientNats()
-	err = hc.ConnectWithPassword(clientURL, testuser1, "badpass", testCerts.CaCert)
+	hc := hubclient.NewHubClient()
+	err = hc.ConnectWithPassword(clientURL, testuser1, "badpass", authBundle.CaCert)
 
-	//pubKey, _ := testCerts.UserNKey.PublicKey()
-	//authToken, err := cl.NewToken(testCerts.UserID, "badpass", pubKey)
+	//pubKey, _ := authBundle.UserNKey.PublicKey()
+	//authToken, err := cl.NewToken(authBundle.UserID, "badpass", pubKey)
 	assert.Error(t, err)
 	//assert.Empty(t, authToken)
 	slog.Info("--- TestLoginFail end")
@@ -274,11 +337,10 @@ func TestGetProfile(t *testing.T) {
 	assert.Equal(t, "user 1", prof1.Name)
 
 	// login and get profile as a user
-	hc := hubclient.NewHubClientNats()
-	//err = hc.ConnectWithPassword(clientURL, testuser1, testpass1, testCerts.CaCert)
-	err = hc.ConnectUnauthenticated(clientURL, testCerts.CaCert)
+	hc := hubclient.NewHubClient()
+	err = hc.ConnectWithPassword(clientURL, testuser1, testpass1, authBundle.CaCert)
 	require.NoError(t, err)
-	cl := client.NewClientAuthn("service1", hc)
+	cl := client.NewClientAuthn(authBundle.ServiceID, hc)
 
 	prof2, err := cl.GetProfile(testuser1)
 	require.NoError(t, err)

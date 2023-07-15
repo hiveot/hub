@@ -30,7 +30,7 @@ var owsConfig internal.OWServerConfig
 var owsSimulationFile string // simulation file
 
 // launch the hub
-func startServer() (svc *testenv.TestServer) {
+func startServer() (svc *testenv.TestJWTServer) {
 	svc = testenv.NewTestServer(testCerts.ServerCert, testCerts.CaCert)
 	clientURL, err := svc.Start()
 	testUrl = clientURL

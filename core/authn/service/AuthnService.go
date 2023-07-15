@@ -18,9 +18,9 @@ import (
 // This implements the IAuthnService interface
 // TODO: should this use action messages directly to allow additional validation of the caller???
 type AuthnService struct {
-	// client used to receive requests via the messaging server
-	// the account key used for issuing of JWT user tokens
-	accountKP nkeys.KeyPair
+	// the signingKey key used for signing JWT user tokens
+	// This must be a key known to the server for validation
+	signingKey nkeys.KeyPair
 	// password storage
 	pwStore unpwstore.IUnpwStore
 }
@@ -60,7 +60,7 @@ func (svc *AuthnService) AddUser(userID string, userName string, password string
 }
 
 // CreateUserToken create a new user jwt token signed by the account
-func (svc *AuthnService) CreateUserToken(userID string, userName string, pubKey string, validity uint) (string, error) {
+func (svc *AuthnService) CreateUserToken(userID string, userName string, pubKey string, validitySec uint) (string, error) {
 
 	// first create a new private key
 	//userKP, _ := nkeys.CreateUser()
@@ -73,7 +73,7 @@ func (svc *AuthnService) CreateUserToken(userID string, userName string, pubKey 
 	userClaims.Name = userID
 	userClaims.User.Tags = append(userClaims.User.Tags, "userName:"+userName)
 	userClaims.IssuedAt = time.Now().Unix()
-	userClaims.Expires = time.Now().Add(time.Duration(validity) * time.Second).Unix()
+	userClaims.Expires = time.Now().Add(time.Duration(validitySec) * time.Second).Unix()
 
 	// default size
 	userClaims.Limits.Data = 1024 * 1024 * 1024 // max data this client can ... do?
@@ -87,7 +87,7 @@ func (svc *AuthnService) CreateUserToken(userID string, userName string, pubKey 
 	userClaims.Subject = pubKey
 
 	// sign the claims with the client's private key
-	userJWT, err := userClaims.Encode(svc.accountKP)
+	userJWT, err := userClaims.Encode(svc.signingKey)
 
 	// create a decorated jwt/nkey pair for future use.
 	// TODO: change this to just the jwt token using a given public key
@@ -296,12 +296,13 @@ func (svc *AuthnService) ValidateToken(clientID string, jwtToken string) (
 // Call 'Start' to start the service and 'Stop' to end it.
 //
 //	pwStore is the store for users and encrypted passwords
+//	signingKey is the key used to sign the new token. This must be known to the server.
 func NewAuthnService(
-	pwStore unpwstore.IUnpwStore, accountKP nkeys.KeyPair) *AuthnService {
+	pwStore unpwstore.IUnpwStore, signingKey nkeys.KeyPair) *AuthnService {
 
 	svc := &AuthnService{
-		pwStore:   pwStore,
-		accountKP: accountKP,
+		pwStore:    pwStore,
+		signingKey: signingKey,
 	}
 	return svc
 }

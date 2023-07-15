@@ -100,20 +100,20 @@ func (pwStore *PasswordFileStore) Open() (err error) {
 // If the file does not exist, it will be created.
 // Returns an error if the file could not be opened/created.
 func (pwStore *PasswordFileStore) Reload() error {
-	slog.Info("Reloading passwords", "file", pwStore.storePath)
+	//slog.Info("Reloading passwords", "file", pwStore.storePath)
 	pwStore.mutex.Lock()
 	defer pwStore.mutex.Unlock()
 
 	entries := make(map[string]PasswordEntry)
 	dataBytes, err := os.ReadFile(pwStore.storePath)
 	if errors.Is(err, os.ErrNotExist) {
-		slog.Info("password file doesn't yet exist. Creating empty file for the watcher.")
+		//slog.Info("password file doesn't yet exist. Creating empty file for the watcher.")
 		err = pwStore.save()
 	} else if err != nil {
 		err = fmt.Errorf("error reading password file: %s", err)
 		slog.Error(err.Error())
 	} else if len(dataBytes) == 0 {
-		slog.Info("password file exists but is empty", "filename", pwStore.storePath)
+		//slog.Info("password file exists but is empty", "filename", pwStore.storePath)
 		// nothing to do
 	} else {
 
@@ -124,7 +124,7 @@ func (pwStore *PasswordFileStore) Reload() error {
 			return err
 		}
 		pwStore.entries = entries
-		slog.Info("Reload: loaded passwords", "N", len(entries))
+		//slog.Info("Reload: loaded passwords", "N", len(entries))
 	}
 	return err
 }
@@ -225,7 +225,7 @@ func (pwStore *PasswordFileStore) SetPasswordHash(loginID string, hash string) (
 	entry.Updated = time.Now().Unix()
 	pwStore.entries[loginID] = entry
 
-	slog.Info("password hash updated", "loginID", loginID)
+	//slog.Info("password hash updated", "loginID", loginID)
 	err = pwStore.save()
 	return err
 }
@@ -267,7 +267,7 @@ func WritePasswordsToTempFile(
 		return "", err
 	}
 	tempFileName = file.Name()
-	slog.Info("Write passwords to tempfile", "filename", tempFileName)
+	//slog.Info("Write passwords to tempfile", "filename", tempFileName)
 
 	defer file.Close()
 	pwData, err := json.Marshal(entries)

@@ -77,7 +77,7 @@ type IHubClient interface {
 	//	caCert of the server
 	ConnectWithCert(url string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate) (err error)
 
-	ConnectWithNKey(url string, userKey nkeys.KeyPair, caCert *x509.Certificate) (err error)
+	ConnectWithNKey(url string, clientID string, clientKey nkeys.KeyPair, caCert *x509.Certificate) (err error)
 
 	// ConnectWithPassword connects to the Hub server using a login ID and password.
 	//

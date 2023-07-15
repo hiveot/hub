@@ -12,13 +12,13 @@ import (
 // This uses the default serializer to marshal and unmarshal messages.
 type ClientAuthn struct {
 	// ID of the authn service that handles the requests
-	serviceID string
+	bindingID string
 	hc        hub.IHubClient
 }
 
 // helper for publishing an action request to the authz service
 func (clientAuthn *ClientAuthn) pubReq(action string, msg []byte) ([]byte, error) {
-	return clientAuthn.hc.PubAction(clientAuthn.serviceID, authn.ClientAuthnCapability, action, msg)
+	return clientAuthn.hc.PubAction(clientAuthn.bindingID, authn.ClientAuthnCapability, action, msg)
 }
 
 // GetProfile returns a client's profile
@@ -97,13 +97,15 @@ func (clientAuthn *ClientAuthn) UpdatePassword(clientID string, newPassword stri
 }
 
 // NewClientAuthn returns an authn client for the given hubclient connection
+//
+//	bindingID is the ID of the authn service. Use "" for default.
 func NewClientAuthn(bindingID string, hc hub.IHubClient) *ClientAuthn {
 	if bindingID == "" {
 		bindingID = authn.AuthnServiceName
 	}
 	cl := ClientAuthn{
 		hc:        hc,
-		serviceID: bindingID,
+		bindingID: bindingID,
 	}
 	return &cl
 }
