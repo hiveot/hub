@@ -44,10 +44,10 @@ func ParseResponse(data []byte, err error, resp interface{}) error {
 	return err
 }
 
-// HubClientNats manages the hub server connection with nats based pub/sub messaging
+// HubNatsClient manages the hub server connection with nats based pub/sub messaging
 // This implements the IHubClient interface.
 // This implementation is based on the NATS/Jetstream messaging system.
-type HubClientNats struct {
+type HubNatsClient struct {
 	//instanceName string
 	clientID   string
 	nc         *nats.Conn
@@ -56,7 +56,7 @@ type HubClientNats struct {
 }
 
 // ClientID the client is authenticated as to the server
-func (hc *HubClientNats) ClientID() string {
+func (hc *HubNatsClient) ClientID() string {
 	return hc.clientID
 }
 
@@ -66,7 +66,7 @@ func (hc *HubClientNats) ClientID() string {
 //	clientID to connect as
 //	clientCert for certificate based authentication
 //	caCert of the server
-func (hc *HubClientNats) ConnectWithCert(url string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate) (err error) {
+func (hc *HubNatsClient) ConnectWithCert(url string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate) (err error) {
 	if url == "" {
 		url = nats.DefaultURL
 	}
@@ -100,7 +100,7 @@ func (hc *HubClientNats) ConnectWithCert(url string, clientID string, clientCert
 
 // ConnectWithJWT connects to the Hub server using a user JWT credentials secret
 // This seems (?) to also work when using jwt with static server setup using nkeys
-func (hc *HubClientNats) ConnectWithJWT(url string, jwtCreds []byte, caCert *x509.Certificate) (err error) {
+func (hc *HubNatsClient) ConnectWithJWT(url string, jwtCreds []byte, caCert *x509.Certificate) (err error) {
 	if url == "" {
 		url = nats.DefaultURL
 	}
@@ -148,7 +148,7 @@ func (hc *HubClientNats) ConnectWithJWT(url string, jwtCreds []byte, caCert *x50
 
 // ConnectWithNKey connects to the Hub server using an nkey secret
 // ClientID is used for publishing actions
-func (hc *HubClientNats) ConnectWithNKey(url string, clientID string, userKey nkeys.KeyPair, caCert *x509.Certificate) (err error) {
+func (hc *HubNatsClient) ConnectWithNKey(url string, clientID string, userKey nkeys.KeyPair, caCert *x509.Certificate) (err error) {
 	if url == "" {
 		url = nats.DefaultURL
 	}
@@ -179,7 +179,7 @@ func (hc *HubClientNats) ConnectWithNKey(url string, clientID string, userKey nk
 }
 
 // ConnectWithPassword connects to the Hub server using a login ID and password.
-func (hc *HubClientNats) ConnectWithPassword(
+func (hc *HubNatsClient) ConnectWithPassword(
 	url string, loginID string, password string, caCert *x509.Certificate) (err error) {
 	if url == "" {
 		url = nats.DefaultURL
@@ -208,7 +208,7 @@ func (hc *HubClientNats) ConnectWithPassword(
 }
 
 // ConnectUnauthenticated connects to the Hub server as an unauthenticated user
-func (hc *HubClientNats) ConnectUnauthenticated(url string, caCert *x509.Certificate) (err error) {
+func (hc *HubNatsClient) ConnectUnauthenticated(url string, caCert *x509.Certificate) (err error) {
 	if url == "" {
 		url = nats.DefaultURL
 	}
@@ -233,12 +233,12 @@ func (hc *HubClientNats) ConnectUnauthenticated(url string, caCert *x509.Certifi
 }
 
 // Disconnect from the Hub server and release all subscriptions
-func (hc *HubClientNats) Disconnect() {
+func (hc *HubNatsClient) Disconnect() {
 	hc.nc.Close()
 }
 
 // Publish to NATS
-func (hc *HubClientNats) Publish(subject string, payload []byte) error {
+func (hc *HubNatsClient) Publish(subject string, payload []byte) error {
 	slog.Info("publish", "subject", subject)
 	err := hc.nc.Publish(subject, payload)
 	return err
@@ -246,7 +246,7 @@ func (hc *HubClientNats) Publish(subject string, payload []byte) error {
 
 // PubAction sends an action request to the hub and receives a response
 // Returns the response or an error if the request fails or timed out
-func (hc *HubClientNats) PubAction(bindingID string, thingID string, actionID string, payload []byte) ([]byte, error) {
+func (hc *HubNatsClient) PubAction(bindingID string, thingID string, actionID string, payload []byte) ([]byte, error) {
 	subject := MakeActionSubject(bindingID, thingID, actionID, hc.clientID)
 	slog.Info("PubAction", "subject", subject)
 	resp, err := hc.nc.Request(subject, payload, time.Second*time.Duration(hc.timeoutSec))
@@ -257,7 +257,7 @@ func (hc *HubClientNats) PubAction(bindingID string, thingID string, actionID st
 }
 
 // PubEvent sends the event value to the hub
-func (hc *HubClientNats) PubEvent(thingID string, eventID string, payload []byte) error {
+func (hc *HubNatsClient) PubEvent(thingID string, eventID string, payload []byte) error {
 	subject := MakeSubject(hc.clientID, thingID, vocab.VocabEventTopic, eventID)
 	slog.Info("PubEvent", "subject", subject)
 	err := hc.Publish(subject, payload)
@@ -265,7 +265,7 @@ func (hc *HubClientNats) PubEvent(thingID string, eventID string, payload []byte
 }
 
 // PubTD sends the TD document to the hub
-func (hc *HubClientNats) PubTD(td *thing.TD) error {
+func (hc *HubNatsClient) PubTD(td *thing.TD) error {
 	payload, _ := ser.Marshal(td)
 	subject := MakeSubject(hc.clientID, td.ID, vocab.VocabEventTopic, vocab.EventNameTD)
 	slog.Info("PubTD", "subject", subject)
@@ -280,7 +280,7 @@ func (hc *HubClientNats) PubTD(td *thing.TD) error {
 //
 // This returns a short lived auth token that can be used to authenticate with the hub
 // This fails if the token has expired or does not belong to the clientID
-func (hc *HubClientNats) Refresh(clientID string, oldToken string) (newToken string, err error) {
+func (hc *HubNatsClient) Refresh(clientID string, oldToken string) (newToken string, err error) {
 	return "", errors.New("not implemented")
 
 }
@@ -288,7 +288,7 @@ func (hc *HubClientNats) Refresh(clientID string, oldToken string) (newToken str
 // SubActions subscribes to actions for this binding
 //
 //	thingID is the device thing or service capability to subscribe to, or "" for wildcard
-func (hc *HubClientNats) SubActions(thingID string, cb func(msg *hub.ActionMessage) error) error {
+func (hc *HubNatsClient) SubActions(thingID string, cb func(msg *hub.ActionMessage) error) error {
 
 	subject := MakeActionSubject(hc.clientID, thingID, "", "")
 
@@ -338,7 +338,7 @@ func (hc *HubClientNats) SubActions(thingID string, cb func(msg *hub.ActionMessa
 //
 //	groupName name of the stream to receive events from.
 //	receiveLatest to immediately receive the latest event for each event instance
-func (hc *HubClientNats) SubGroup(groupName string, receiveLatest bool, cb func(msg *hub.EventMessage)) error {
+func (hc *HubNatsClient) SubGroup(groupName string, receiveLatest bool, cb func(msg *hub.EventMessage)) error {
 	deliverPolicy := nats.DeliverNewPolicy
 	if receiveLatest {
 		deliverPolicy = nats.DeliverLastPerSubjectPolicy
@@ -390,7 +390,7 @@ func (hc *HubClientNats) SubGroup(groupName string, receiveLatest bool, cb func(
 }
 
 // Subscribe to NATS
-func (hc *HubClientNats) Subscribe(subject string, cb func(msg *nats.Msg)) (err error) {
+func (hc *HubNatsClient) Subscribe(subject string, cb func(msg *nats.Msg)) (err error) {
 	slog.Info("subscribe", "subject", subject)
 	subscription, err := hc.nc.Subscribe(subject, cb)
 	isValid := subscription.IsValid()
@@ -402,19 +402,19 @@ func (hc *HubClientNats) Subscribe(subject string, cb func(msg *nats.Msg)) (err 
 }
 
 // UpdateName updates a user's name
-func (hc *HubClientNats) UpdateName(clientID string, name string) (err error) {
+func (hc *HubNatsClient) UpdateName(clientID string, name string) (err error) {
 	return errors.New("not implemented")
 }
 
 // UpdatePassword changes the client password
 // Login or Refresh must be called successfully first.
-func (hc *HubClientNats) UpdatePassword(clientID string, newPassword string) error {
+func (hc *HubNatsClient) UpdatePassword(clientID string, newPassword string) error {
 	return errors.New("not implemented")
 }
 
 // NewHubClient instantiates a client for connecting to the Hub using NATS/Jetstream
-func NewHubClient() *HubClientNats {
-	hc := &HubClientNats{
+func NewHubClient() *HubNatsClient {
+	hc := &HubNatsClient{
 		timeoutSec: 30, // 30sec for debugging. TODO: change to use config
 	}
 	return hc

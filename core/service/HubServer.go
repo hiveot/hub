@@ -14,7 +14,7 @@ import (
 type HubServer struct {
 	serverCert *tls.Certificate
 	caCert     *x509.Certificate
-	hubImpl    nats.HubNats
+	hubImpl    nats.HubNatsServer
 	authn      authn.IManageAuthn
 	authz      authz.IAuthz
 }
@@ -32,7 +32,7 @@ func (hs *HubServer) Stop() {
 // NewHubServer creates a server instance using a certificate
 func NewHubServer() *HubServer {
 	hs := &HubServer{
-		hubImpl: nats.HubNats{},
+		hubImpl: nats.HubNatsServer{},
 		//authn:   service.NewAuthnService(),
 		//authz:   service2.NewAuthzService(),
 	}

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
@@ -23,6 +25,8 @@ type AuthnService struct {
 	signingKey nkeys.KeyPair
 	// password storage
 	pwStore unpwstore.IUnpwStore
+	// ca certificate for cert validation
+	caCert *x509.Certificate
 }
 
 // AddDevice adds a device
@@ -223,7 +227,7 @@ func (svc *AuthnService) ResetPassword(clientID, newPassword string) error {
 
 // Start the service, open the password store and start listening for requests on the service topic
 func (svc *AuthnService) Start() error {
-	slog.Info("starting authn service")
+	slog.Info("starting svc service")
 
 	//authKey, err := svc.config.GetAuthKey()
 	//if err != nil {
@@ -232,7 +236,7 @@ func (svc *AuthnService) Start() error {
 
 	err := svc.pwStore.Open()
 	if err != nil {
-		return fmt.Errorf("error starting authn service: %w", err)
+		return fmt.Errorf("error starting svc service: %w", err)
 	}
 	//err = svc.hc.ConnectWithJWT(svc.config.ServerURL, []byte(authKey), svc.caCert)
 	return err
@@ -292,15 +296,59 @@ func (svc *AuthnService) ValidateToken(clientID string, jwtToken string) (
 	return entry, claims, nil
 }
 
+// ValidatePassword verifies the given username password is valid
+func (svc *AuthnService) ValidatePassword(clientID string, password string) error {
+	_, err := svc.pwStore.VerifyPassword(clientID, password)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// ValidateCert verifies that the given certificate belongs to the client
+// and is signed by our CA.
+// - CN is clientID (todo: other means?)
+// - Cert validates against the service CA
+// This is intended for a local setup that use a self-signed CA.
+// The use of JWT keys is recommended over certs as this isn't a domain name validation problem.
+func (svc *AuthnService) ValidateCert(clientID string, clientCertPEM string) error {
+	certBlock, _ := pem.Decode([]byte(clientCertPEM))
+	if certBlock == nil {
+		return fmt.Errorf("invalid cert pem for client '%s. decode failed", clientID)
+	}
+	clientCert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return err
+	}
+	// verify the cert against the CA
+	caCertPool := x509.NewCertPool()
+	caCertPool.AddCert(svc.caCert)
+	verifyOpts := x509.VerifyOptions{
+		Roots:     caCertPool,
+		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	}
+
+	_, err = clientCert.Verify(verifyOpts)
+
+	// verify the certs belongs to the clientID
+	certUser := clientCert.Subject.CommonName
+	if certUser != clientID {
+		return fmt.Errorf("cert user '%s' doesnt match client '%s'", certUser, clientID)
+	}
+	return nil
+}
+
 // NewAuthnService creates new instance of the service
 // Call 'Start' to start the service and 'Stop' to end it.
 //
 //	pwStore is the store for users and encrypted passwords
 //	signingKey is the key used to sign the new token. This must be known to the server.
+//	caCert is the CA certificate used to validate certs
 func NewAuthnService(
-	pwStore unpwstore.IUnpwStore, signingKey nkeys.KeyPair) *AuthnService {
+	pwStore unpwstore.IUnpwStore, signingKey nkeys.KeyPair, caCert *x509.Certificate) *AuthnService {
 
 	svc := &AuthnService{
+		caCert:     caCert,
 		pwStore:    pwStore,
 		signingKey: signingKey,
 	}

@@ -6,7 +6,7 @@ import (
 	"path"
 )
 
-// AuthnConfig contains the authn service configuration
+// AuthnConfig contains the svc service configuration
 type AuthnConfig struct {
 	//// AuthKey is the service authentication token for connecting to the server
 	//// This takes precedence over AuthKeyFile. If omitted then AuthKeyFile is used.
@@ -17,7 +17,7 @@ type AuthnConfig struct {
 	//AuthKeyFile string `yaml:"authKeyFile,omitempty"`
 
 	// ID of the service for use in password file store and subject: (things.{serviceID}.*.action.{name}
-	// The default ID for single instances is authn-{hostname}
+	// The default ID for single instances is svc-{hostname}
 	ServiceID string `yaml:"serviceID,omitempty"`
 
 	// Messaging server URL. Default is "tcp://localhost:4222"
@@ -52,7 +52,7 @@ type AuthnConfig struct {
 //	return cfg.AuthKey, nil
 //}
 
-// NewAuthnConfig returns a new instance of authn service configuration with defaults
+// NewAuthnConfig returns a new instance of svc service configuration with defaults
 //
 //	storeFolder is the default directory for the stores
 //

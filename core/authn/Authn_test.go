@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/core/authn/client"
 	"github.com/hiveot/hub/core/authn/service"
 	"github.com/hiveot/hub/core/authn/service/unpwstore"
+	"github.com/hiveot/hub/core/nats"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/jwt/v2"
@@ -29,6 +30,8 @@ var authBundle testenv.TestAuthBundle
 // clientURL is set by the testmain
 var clientURL string
 
+var hubServer *nats.HubNatsServer
+
 // create a new authn service and set the password for testuser1
 // containing a password for testuser1
 func startTestAuthnService() (mngAuthn authn.IManageAuthn, clientAuthn authn.IClientAuthn, stopFn func(), err error) {
@@ -41,25 +44,31 @@ func startTestAuthnService() (mngAuthn authn.IManageAuthn, clientAuthn authn.ICl
 	cfg := service.NewAuthnConfig(storeFolder)
 	cfg.PasswordFile = passwordFile
 	cfg.DeviceTokenValidity = 10
+
 	pwStore := unpwstore.NewPasswordFileStore(passwordFile)
 	// since it uses jwt auth, only the account key is needed to issue tokens
-	svc := service.NewAuthnService(pwStore, authBundle.AppSigningNKey)
+	svc := service.NewAuthnService(pwStore, authBundle.AppSigningNKey, authBundle.CaCert)
 	err = svc.Start()
 	if err != nil {
 		logrus.Panicf("cant start test authn service: %s", err)
 	}
 	//
-	//// Create the authn service for authentication requests
+	// Create the authn service for authentication requests
+	// This must be an app-account client as it subscribes to app authn messages
+	// It can use in-proc connections to reduce latency
+	// options: static nkey - added to the server
 	hcSvc := hubclient.NewHubClient()
 	////err = hcSvc.ConnectWithJWT(clientURL, authBundle.ServiceCreds, authBundle.CaCert)
 	////err = hcSvc.ConnectWithCert(clientURL, authn.AuthnServiceName, authBundle.ServerCert, authBundle.CaCert)
 	//err = hcSvc.ConnectWithNKey(clientURL, authBundle.ServiceID, authBundle.ServiceNKey, authBundle.CaCert)
-	err = hcSvc.ConnectWithNKey(clientURL, authBundle.ServiceID, authBundle.AppSigningNKey, authBundle.CaCert)
+	err = hcSvc.ConnectWithNKey(clientURL, authBundle.ServiceID, authBundle.ServiceNKey, authBundle.CaCert)
 	if err != nil {
 		panic(err)
 	}
-	natsSvr := service.NewAuthnNatsServer(authBundle.AppSigningNKey, svc, hcSvc)
+	natsSvr := service.NewAuthnNatsBinding(authBundle.AppSigningNKey, svc, hcSvc)
 	natsSvr.Start()
+	verifier := service.NewAuthnNatsVerify(svc)
+	hubServer.SetAuthnVerifier(verifier.VerifyAuthnReq)
 	//
 	//// hook the callout authentication handler
 	//err = hcSvc.Subscribe(server.AuthCalloutSubject, natsSvr.HandleCallOut)
@@ -85,7 +94,7 @@ func startTestAuthnService() (mngAuthn authn.IManageAuthn, clientAuthn authn.ICl
 		hcSvc.Disconnect()
 		hcUser.Disconnect()
 		// let background tasks finish
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond * 10)
 	}, err
 }
 
@@ -99,14 +108,22 @@ func TestMain(m *testing.M) {
 	_ = os.MkdirAll(tempFolder, 0700)
 	authBundle = testenv.CreateTestAuthBundle()
 	// run the test server
-	testServer := testenv.NewTestCalloutServer(
+	hubServer = nats.NewHubNatsServer(
+		"AppAccount",
 		authBundle.AppAccountNKey,
-		authBundle.SystemSigningNKey,
-		authBundle.SystemUserNKey,
-		authBundle.ServerCert, authBundle.CaCert)
-	//testServer := testenv.NewTestNKeyServer(authBundle.ServerCert, authBundle.CaCert)
-	// oddly enough the err is not assigned if it is an existing variable
-	cURL, err := testServer.Start()
+		"/tmp/nats-server",
+		"127.0.0.1", 9990,
+		authBundle.ServerCert, authBundle.CaCert,
+		nil)
+
+	//cURL, err := testServer.Start("", 9999, authBundle.ServerCert, authBundle.CaCert)
+	//testServer := testenv.NewTestCalloutServer(
+	//	authBundle.AppAccountNKey,
+	//	authBundle.SystemSigningNKey,
+	//	authBundle.SystemUserNKey,
+	//	authBundle.ServerCert, authBundle.CaCert)
+
+	cURL, err := hubServer.Start()
 	clientURL = cURL
 	if err != nil {
 		panic(err)
@@ -114,7 +131,7 @@ func TestMain(m *testing.M) {
 
 	res := m.Run()
 
-	testServer.Stop()
+	hubServer.Stop()
 	time.Sleep(time.Second)
 	if res == 0 {
 		_ = os.RemoveAll(tempFolder)
@@ -132,6 +149,28 @@ func TestStartStop(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 	stopFn()
 	slog.Info("--- TestStartStop end")
+}
+
+func TestLoginWithPassword(t *testing.T) {
+	const testuser2 = "user2"
+	const testpass2 = "pass2"
+	slog.Info("--- TestLoginWithPassword start")
+	mng, _, stopFn, err := startTestAuthnService()
+	require.NoError(t, err)
+
+	err = mng.AddUser(testuser2, "another user", testpass2)
+	assert.NoError(t, err)
+
+	hc1 := hubclient.NewHubClient()
+	err = hc1.ConnectWithPassword(clientURL, testuser2, testpass2, authBundle.CaCert)
+	require.NoError(t, err)
+	hc1.Disconnect()
+
+	err = hc1.ConnectWithPassword(clientURL, testuser2, "wrongpass", authBundle.CaCert)
+	require.Error(t, err)
+	hc1.Disconnect()
+
+	stopFn()
 }
 
 // Create manage users
