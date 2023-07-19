@@ -1,8 +1,7 @@
-package service_test
+package hub_test
 
 import (
 	"github.com/hiveot/hub/api/go/thing"
-	"github.com/hiveot/hub/core/service"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/nats-server/v2/server"
@@ -32,7 +31,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestHubServer_Start(t *testing.T) {
-	srv := service.NewHubServer()
+	srv := hub.NewHubServer()
 	clientURL, err := srv.Start("", 0, testCerts.ServerCert, testCerts.CaCert)
 	require.NoError(t, err)
 	require.NotEmpty(t, clientURL)
@@ -48,7 +47,7 @@ func TestHubServer_Start(t *testing.T) {
 
 func TestPubSub_AuthNKey(t *testing.T) {
 	rxchan := make(chan int)
-	srv := service.NewHubServer()
+	srv := hub.NewHubServer()
 	clientURL, err := srv.Start("", 0, testCerts.ServerCert, testCerts.CaCert)
 	require.NoError(t, err)
 
@@ -80,7 +79,7 @@ func TestPubSub_AuthNKey(t *testing.T) {
 
 func TestPubSub_AuthPassword(t *testing.T) {
 	rxchan := make(chan int)
-	srv := service.NewHubServer()
+	srv := hub.NewHubServer()
 	clientURL, err := srv.Start("", 0, testCerts.ServerCert, testCerts.CaCert)
 	defer srv.Stop()
 	require.NoError(t, err)
@@ -105,7 +104,7 @@ func TestPubSub_AuthPassword(t *testing.T) {
 
 func TestPubSub_AuthJWT(t *testing.T) {
 	rxchan := make(chan int)
-	srv := service.NewHubServer()
+	srv := hub.NewHubServer()
 	clientURL, err := srv.Start("", 0, testCerts.ServerCert, testCerts.CaCert)
 	require.NoError(t, err)
 
@@ -141,7 +140,7 @@ func TestHubServer_Groups(t *testing.T) {
 	rxchan1 := make(chan int)
 	rxchan2 := make(chan int)
 
-	srv := service.NewHubServer()
+	srv := hub.NewHubServer()
 	clientURL, err := srv.Start("", 0, testCerts.ServerCert, testCerts.CaCert)
 	defer srv.Stop()
 	require.NoError(t, err)

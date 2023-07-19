@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hub/api/go/hub"
 	"github.com/hiveot/hub/core/authn"
 	"github.com/hiveot/hub/lib/ser"
-	"github.com/nats-io/nkeys"
 	"golang.org/x/exp/slog"
 )
 
@@ -23,18 +22,29 @@ import (
 //	ActionUpdatePassword = "updatePassword"
 //)
 
-// AuthnNatsBinding is a NATS binding for handling Authn requests
+// AuthnBinding is a binding for handling Authn messaging requests
 // Subjects: things.svc.*.{action}
-type AuthnNatsBinding struct {
-	service *AuthnService
-	hc      hub.IHubClient
+type AuthnBinding struct {
+	svc *AuthnService
+	//hc      hub.IHubClient
 	//signingKey nkeys.KeyPair
+	mngSub hub.ISubscription
+	clSub  hub.ISubscription
 }
 
 // handle action requests published by hub clients
-func (natsrv *AuthnNatsBinding) handleClientActions(action *hub.ActionMessage) error {
+func (binding *AuthnBinding) handleClientActions(action *hub.ActionMessage) error {
 	slog.Info("handleClientActions", slog.String("actionID", action.ActionID))
 	switch action.ActionID {
+	case authn.GetProfileAction:
+		// use the current client
+		profile, err := binding.svc.GetClientProfile(action.ClientID)
+		if err == nil {
+			resp := authn.GetProfileResp{Profile: profile}
+			reply, _ := ser.Marshal(&resp)
+			action.SendReply(reply)
+		}
+		return err
 	case authn.NewTokenAction:
 		req := &authn.NewTokenReq{}
 		err := ser.Unmarshal(action.Payload, &req)
@@ -46,20 +56,11 @@ func (natsrv *AuthnNatsBinding) handleClientActions(action *hub.ActionMessage) e
 			err = fmt.Errorf("Client '%s' cannot request token for user '%s'", action.ClientID, req.ClientID)
 			return err
 		}
-		newToken, err := natsrv.service.NewToken(
+		newToken, err := binding.svc.NewToken(
 			action.ClientID, req.Password, req.PubKey)
 		if err == nil {
 			resp := authn.NewTokenResp{JwtToken: newToken}
 			reply, _ := ser.Marshal(resp)
-			action.SendReply(reply)
-		}
-		return err
-	case authn.GetProfileAction:
-		// use the current client
-		profile, err := natsrv.service.GetClientProfile(action.ClientID)
-		if err == nil {
-			resp := authn.GetProfileResp{Profile: profile}
-			reply, _ := ser.Marshal(&resp)
 			action.SendReply(reply)
 		}
 		return err
@@ -69,7 +70,7 @@ func (natsrv *AuthnNatsBinding) handleClientActions(action *hub.ActionMessage) e
 		if err != nil {
 			return err
 		}
-		newToken, err := natsrv.service.Refresh(action.ClientID, req.OldToken)
+		newToken, err := binding.svc.Refresh(action.ClientID, req.OldToken)
 		if err == nil {
 			resp := authn.RefreshResp{JwtToken: newToken}
 			reply, _ := ser.Marshal(resp)
@@ -82,7 +83,7 @@ func (natsrv *AuthnNatsBinding) handleClientActions(action *hub.ActionMessage) e
 		if err != nil {
 			return err
 		}
-		err = natsrv.service.UpdateName(req.ClientID, req.NewName)
+		err = binding.svc.UpdateName(req.ClientID, req.NewName)
 		if err == nil {
 			action.SendAck()
 		}
@@ -93,7 +94,7 @@ func (natsrv *AuthnNatsBinding) handleClientActions(action *hub.ActionMessage) e
 		if err != nil {
 			return err
 		}
-		err = natsrv.service.ResetPassword(req.ClientID, req.NewPassword)
+		err = binding.svc.ResetPassword(req.ClientID, req.NewPassword)
 		if err == nil {
 			action.SendAck()
 		}
@@ -104,12 +105,12 @@ func (natsrv *AuthnNatsBinding) handleClientActions(action *hub.ActionMessage) e
 }
 
 // handle authn management requests published by a hub manager
-func (natsrv *AuthnNatsBinding) handleManageActions(action *hub.ActionMessage) error {
+func (binding *AuthnBinding) handleManageActions(action *hub.ActionMessage) error {
 	slog.Info("handleManageActions",
 		slog.String("actionID", action.ActionID),
-		"my addr", natsrv)
+		"my addr", binding)
 
-	// TODO: doublecheck the caller is an admin or service
+	// TODO: doublecheck the caller is an admin or svc
 	switch action.ActionID {
 	case authn.AddUserAction:
 		req := authn.AddUserReq{}
@@ -117,7 +118,7 @@ func (natsrv *AuthnNatsBinding) handleManageActions(action *hub.ActionMessage) e
 		if err != nil {
 			return err
 		}
-		err = natsrv.service.AddUser(req.UserID, req.Name, req.Password)
+		err = binding.svc.AddUser(req.UserID, req.Name, req.Password)
 		if err == nil {
 			action.SendAck()
 		}
@@ -128,7 +129,7 @@ func (natsrv *AuthnNatsBinding) handleManageActions(action *hub.ActionMessage) e
 		if err != nil {
 			return err
 		}
-		profile, err := natsrv.service.GetClientProfile(req.ClientID)
+		profile, err := binding.svc.GetClientProfile(req.ClientID)
 		if err == nil {
 			resp := authn.GetProfileResp{Profile: profile}
 			reply, _ := ser.Marshal(&resp)
@@ -136,7 +137,7 @@ func (natsrv *AuthnNatsBinding) handleManageActions(action *hub.ActionMessage) e
 		}
 		return err
 	case authn.ListClientsAction:
-		clientList, err := natsrv.service.ListClients()
+		clientList, err := binding.svc.ListClients()
 		if err == nil {
 			resp := authn.ListClientsResp{Profiles: clientList}
 			reply, _ := ser.Marshal(resp)
@@ -149,7 +150,7 @@ func (natsrv *AuthnNatsBinding) handleManageActions(action *hub.ActionMessage) e
 		if err != nil {
 			return err
 		}
-		err = natsrv.service.RemoveClient(req.ClientID)
+		err = binding.svc.RemoveClient(req.ClientID)
 		if err == nil {
 			action.SendAck()
 		}
@@ -161,26 +162,26 @@ func (natsrv *AuthnNatsBinding) handleManageActions(action *hub.ActionMessage) e
 }
 
 // Start subscribes to the actions for management and client capabilities
-func (natsrv *AuthnNatsBinding) Start() {
-	_ = natsrv.hc.SubActions(authn.ManageAuthnCapability, natsrv.handleManageActions)
-	_ = natsrv.hc.SubActions(authn.ClientAuthnCapability, natsrv.handleClientActions)
-	//_ = natsrv.hc.Subscribe(server.AuthCalloutSubject, )
+// Register the binding subscription using the given connection
+func (binding *AuthnBinding) Start(hc hub.IHubClient) {
+	binding.mngSub, _ = hc.SubActions(authn.ManageAuthnCapability, binding.handleManageActions)
+	binding.clSub, _ = hc.SubActions(authn.ClientAuthnCapability, binding.handleClientActions)
+	//_ = binding.hc.Subscribe(server.AuthCalloutSubject, )
 }
 
 // Stop removes subscriptions
-func (natsrv *AuthnNatsBinding) Stop() {
-	//natsrv.hc.UnSubscribeAll()
+func (binding *AuthnBinding) Stop() {
+	binding.clSub.Unsubscribe()
+	binding.mngSub.Unsubscribe()
 }
 
-// NewAuthnNatsBinding create a nats binding for the svc service
+// NewAuthnNatsBinding create a nats binding for the svc svc
 //
-//	svc is the svc service to bind to.
-//	hc is the hub client, connected using the service credentials
-func NewAuthnNatsBinding(signingKey nkeys.KeyPair, svc *AuthnService, hc hub.IHubClient) *AuthnNatsBinding {
-	an := &AuthnNatsBinding{
-		service: svc,
-		hc:      hc,
-		//signingKey: signingKey,
+//	svc is the svc svc to bind to.
+//	hc is the hub client, connected using the svc credentials
+func NewAuthnNatsBinding(svc *AuthnService) *AuthnBinding {
+	an := &AuthnBinding{
+		svc: svc,
 	}
 	return an
 }

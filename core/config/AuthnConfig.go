@@ -1,13 +1,20 @@
-package service
+package config
 
 import (
 	"github.com/hiveot/hub/core/authn"
 	"github.com/hiveot/hub/core/authn/service/unpwstore"
+	"os"
 	"path"
 )
 
 // AuthnConfig contains the svc service configuration
 type AuthnConfig struct {
+	// The default account to create tokens for
+	//AccountName string `yaml:"accountName"`
+
+	// the account key file used to sign generated tokens
+	//AccountKeyFile string `yaml:"accountKeyFile"`
+
 	//// AuthKey is the service authentication token for connecting to the server
 	//// This takes precedence over AuthKeyFile. If omitted then AuthKeyFile is used.
 	//AuthKey string `yaml:"authKey,omitempty"`
@@ -20,10 +27,9 @@ type AuthnConfig struct {
 	// The default ID for single instances is svc-{hostname}
 	ServiceID string `yaml:"serviceID,omitempty"`
 
-	// Messaging server URL. Default is "tcp://localhost:4222"
-	//ServerURL string `yaml:"address,omitempty"`
-
-	// PasswordFile with the file based password store. Use "" for default defined in 'unpwstore.DefaultPasswordFile'
+	// PasswordFile with the file based password store.
+	// Use a relative path for using the default stores folder $HOME/stores/authn
+	// Use "" for default defined in 'unpwstore.DefaultPasswordFile'
 	PasswordFile string `yaml:"passwordFile,omitempty"`
 
 	// Auth token validity for devices in seconds
@@ -34,35 +40,23 @@ type AuthnConfig struct {
 	UserTokenValidity int `yaml:"userTokenValidity"`
 }
 
-// GetAuthKey returns the authentication key
-// If needed load it from file
-//func (cfg *AuthnConfig) GetAuthKey() (string, error) {
-//	// load the authentication key to connect to the messaging server
-//	if cfg.AuthKey == "" {
-//		if cfg.AuthKeyFile == "" {
-//			return "", errors.New("missing authentication key file")
-//		}
-//		authKeyBytes, err := os.ReadFile(cfg.AuthKeyFile)
-//		if err != nil {
-//			err2 := fmt.Errorf("error reading the authentication key file: %w", err)
-//			return "", err2
-//		}
-//		cfg.AuthKey = string(authKeyBytes)
-//	}
-//	return cfg.AuthKey, nil
-//}
+// LoadConfig loads the files used in the configuration
+func (cfg *AuthnConfig) LoadConfig() (err error) {
+	return err
+}
 
 // NewAuthnConfig returns a new instance of svc service configuration with defaults
 //
-//	storeFolder is the default directory for the stores
+//	accountName is the default application account name
+//	certsDir is the default location of CA and server certificates
+//	storesDir is the default location of the storage root (services will each have a subdir)
 //
 // func NewAuthnConfig(authKeyFile string, caCertFile string, storeFolder string) AuthnConfig {
-func NewAuthnConfig(storeFolder string) AuthnConfig {
-	cfg := AuthnConfig{
-		//AuthKeyFile:          authKeyFile,
-		//CaCertFile:           caCertFile,
-		PasswordFile:         path.Join(storeFolder, authn.AuthnServiceName, unpwstore.DefaultPasswordFile),
-		ServiceID:            authn.AuthnServiceName,
+func NewAuthnConfig(storesDir string) *AuthnConfig {
+	hostName, _ := os.Hostname()
+	cfg := &AuthnConfig{
+		PasswordFile:         path.Join(storesDir, authn.AuthnServiceName, unpwstore.DefaultPasswordFile),
+		ServiceID:            authn.AuthnServiceName + "-" + hostName,
 		DeviceTokenValidity:  authn.DefaultDeviceTokenValiditySec,
 		ServiceTokenValidity: authn.DefaultServiceTokenValiditySec,
 		UserTokenValidity:    authn.DefaultUserTokenValiditySec,

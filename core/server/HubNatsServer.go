@@ -1,10 +1,11 @@
-package nats
+package server
 
 import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/core/config"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
@@ -15,8 +16,20 @@ import (
 
 // Default permissions for new users
 var defaultPermissions = &server.Permissions{
-	Publish:   &server.SubjectPermission{Allow: []string{"guest.>"}, Deny: []string{">"}},
-	Subscribe: &server.SubjectPermission{Allow: []string{"guest.>", "_INBOX.>"}, Deny: []string{">"}},
+	Publish:   &server.SubjectPermission{Allow: []string{"guest.>"}},
+	Subscribe: &server.SubjectPermission{Allow: []string{"guest.>", "_INBOX.>"}},
+}
+
+// Authn service permissions
+var authnPermissions = &server.Permissions{
+	Publish:   &server.SubjectPermission{Allow: []string{"_INBOX.>"}},
+	Subscribe: &server.SubjectPermission{Allow: []string{"things.authn.*.action.>"}},
+}
+
+// Authz service permissions
+var authzPermissions = &server.Permissions{
+	Publish:   &server.SubjectPermission{Allow: []string{"_INBOX.>"}},
+	Subscribe: &server.SubjectPermission{Allow: []string{"things.authz.*.action.>"}},
 }
 
 //var adminPermissions = &server.Permissions{
@@ -28,17 +41,12 @@ var defaultPermissions = &server.Permissions{
 // This configures the server to use a separate callout account
 // This configures the server for publishing  provides a static configuration for the server for authn, authz, directory, and history streaming
 type HubNatsServer struct {
-	// hostname must match that of the server certificate
-	hostName   string
-	port       int
-	caCert     *x509.Certificate
-	serverCert *tls.Certificate
-	// message storage directory
-	storeDir string
+	// hub server configuration
+	cfg *config.ServerConfig
 
 	// The application account all generated tokens belong to.
-	appAccountKey  nkeys.KeyPair
-	appAccountName string
+	appAccount *server.Account
+
 	// The account that the callout handler belongs to
 	calloutAccountKey  nkeys.KeyPair
 	calloutAccountName string
@@ -54,37 +62,63 @@ type HubNatsServer struct {
 	verifyAuthn func(req *jwt.AuthorizationRequestClaims) error
 }
 
-// Connect to the server in-process. Intended for the callout client.
-func (srv HubNatsServer) connectToServer(clientKey nkeys.KeyPair) (*nats.Conn, error) {
+// AddServiceKey adds an nkey to the static server config and exclude it from the callout.
+// Intended to work around having implement nkey auth ourselves as it aint pretty.
+// No pubsub restrictions are set.
+// This takes effect immediately.
+func (srv HubNatsServer) AddServiceKey(nkey nkeys.KeyPair) error {
+	// add static service nkeys
+	nkeyPub, _ := nkey.PublicKey()
+	//allow := fmt.Sprintf("things.%s.>",name)
+	//p := &server.Permissions{
+	//			Publish: &server.SubjectPermission{
+	//				Allow: []string{allow},
+	//			},
+	//			Subscribe: []string{">"},
+	//		}
+	srv.serverOpts.Nkeys = append(srv.serverOpts.Nkeys, &server.NkeyUser{
+		Nkey:    nkeyPub,
+		Account: srv.appAccount,
+		//Permissions: p,
+	})
+	srv.serverOpts.AuthCallout.AuthUsers = append(srv.serverOpts.AuthCallout.AuthUsers, nkeyPub)
+	err := srv.ns.ReloadOptions(srv.serverOpts)
+	return err
+}
+
+// ConnectInProc connects to the server in-process. Intended for the core services.
+// The client NKey must have been added using AddServiceKey.
+func (srv HubNatsServer) ConnectInProc(clientID string, clientKey nkeys.KeyPair) (*nats.Conn, error) {
 	// The handler to sign the server issued challenge
 	sigCB := func(nonce []byte) ([]byte, error) {
 		return clientKey.Sign(nonce)
 	}
 	// If the server uses TLS then the in-process pipe connection is also upgrade to TLS.
 	caCertPool := x509.NewCertPool()
-	if srv.caCert != nil {
-		caCertPool.AddCert(srv.caCert)
+	if srv.cfg.CaCert != nil {
+		caCertPool.AddCert(srv.cfg.CaCert)
 	}
 	tlsConfig := &tls.Config{
 		RootCAs:            caCertPool,
-		InsecureSkipVerify: srv.caCert == nil,
+		InsecureSkipVerify: srv.cfg.CaCert == nil,
 	}
 	clientKeyPub, _ := clientKey.PublicKey()
-	cl, err := nats.Connect("", // don't need a URL for in-process connection
-		nats.Name("callout-client"), // connection name for logging
+	cl, err := nats.Connect(srv.ns.ClientURL(), // don't need a URL for in-process connection
+		nats.Name(clientID), // connection name for validation
 		nats.Secure(tlsConfig),
 		nats.Nkey(clientKeyPub, sigCB),
+		nats.Timeout(time.Minute),
 		nats.InProcessServer(srv.ns),
 	)
 
 	return cl, err
 }
 
-// create a new user authn token
+// create a new user jwt token
 //
 //	clientID is the client's login ID which is added as the token Name
 //	clientPub is the client's public key
-func (srv *HubNatsServer) createNewAuthToken(clientID string, clientPub string) (newToken string, err error) {
+func (srv *HubNatsServer) createUserJWTToken(clientID string, clientPub string) (newToken string, err error) {
 	validitySec := 3600 // the testing validity
 
 	// build an jwt response; user_nkey (clientPub) is the subject
@@ -101,7 +135,7 @@ func (srv *HubNatsServer) createNewAuthToken(clientID string, clientPub string) 
 	// however, auth_callout.go does a lookup by name instead
 	// see also: https://github.com/nats-io/nats-server/issues/4313
 	//uc.Audience, _ = svr.appAccountKey.PublicKey()
-	uc.Audience = srv.appAccountName
+	uc.Audience = srv.cfg.AppAccountName
 	uc.Expires = time.Now().Add(time.Duration(validitySec) * time.Second).Unix()
 
 	//uc.UserPermissionLimits = *limits // todo
@@ -168,7 +202,7 @@ func (srv *HubNatsServer) handleCallOutReq(msg *nats.Msg) {
 	newToken := ""
 	if err == nil {
 		clientID := connectOpts.Name // client identification
-		newToken, err = srv.createNewAuthToken(clientID, userNKeyPub)
+		newToken, err = srv.createUserJWTToken(clientID, userNKeyPub)
 	}
 	resp, err := srv.createSignedResponse(userNKeyPub, server.ID, newToken, err)
 
@@ -177,51 +211,46 @@ func (srv *HubNatsServer) handleCallOutReq(msg *nats.Msg) {
 }
 
 // SetAuthnVerifier sets a new authentication verifier method
-// Intended for testing
+// This will be invoked by the callout auth handler.
+// Install before starting the server.
 func (srv *HubNatsServer) SetAuthnVerifier(authnVerifier func(request *jwt.AuthorizationRequestClaims) error) {
 	srv.verifyAuthn = authnVerifier
 }
 
-// Start the NATS server using
-//
-// This configures an account and admin user
-//
-//	host to listen on or "" for all interfaces
-//	port to listen or 0 for default port
-//	serverCert is the CA signed server certificate for the given host
-//	caCert is the certificate of the CA that signed the server crt
+// Start the NATS server
+// This creates a auth callout and application account.
 func (srv *HubNatsServer) Start() (clientURL string, err error) {
 
 	// Configure and Start the server
-	appAccountPub, _ := srv.appAccountKey.PublicKey()
-	appAccount := server.NewAccount(srv.appAccountName)
-	appAccount.Nkey = appAccountPub
+	// Two accounts and several static NKeys for core clients
+	appAccountPub, _ := srv.cfg.AppAccountKey.PublicKey()
+	srv.appAccount = server.NewAccount(srv.cfg.AppAccountName)
+	srv.appAccount.Nkey = appAccountPub
 
-	// the callout account handler runs in a separate internal account
+	// the callout authentication handler runs in a separate internal account
 	srv.calloutAccountKey, _ = nkeys.CreateAccount()
 	srv.calloutAccountName = "CalloutAccount"
 	calloutAccountPub, _ := srv.calloutAccountKey.PublicKey()
 	calloutAccount := server.NewAccount(srv.calloutAccountName)
 	calloutAccount.Nkey = calloutAccountPub
-
 	srv.calloutUserKey, _ = nkeys.CreateUser()
 	calloutUserPub, _ := srv.calloutUserKey.PublicKey()
 
 	// run the server with
 	srv.serverOpts = &server.Options{
-		Host:      srv.hostName,
-		Port:      srv.port,
+		Host:      srv.cfg.Host,
+		Port:      srv.cfg.Port,
 		JetStream: true,
 		//JetStreamMaxMemory: 1*1024*1024*1024,
 
-		Accounts: []*server.Account{calloutAccount, appAccount},
+		Accounts: []*server.Account{calloutAccount, srv.appAccount},
 		AuthCallout: &server.AuthCallout{
 			Issuer:    calloutAccountPub,
 			Account:   srv.calloutAccountName,
 			AuthUsers: []string{calloutUserPub},
 		},
 
-		// Predefined internal users for internal the callout user is the only predefined user
+		// Predefined internal users for
 		Nkeys: []*server.NkeyUser{
 			// callout user in its own account for use by callout handler, authn and authz
 			{
@@ -232,10 +261,10 @@ func (srv *HubNatsServer) Start() (clientURL string, err error) {
 		Users: []*server.User{},
 	}
 
-	if srv.caCert != nil && srv.serverCert != nil {
+	if srv.cfg.CaCert != nil && srv.cfg.ServerCert != nil {
 		caCertPool := x509.NewCertPool()
-		caCertPool.AddCert(srv.caCert)
-		clientCertList := []tls.Certificate{*srv.serverCert}
+		caCertPool.AddCert(srv.cfg.CaCert)
+		clientCertList := []tls.Certificate{*srv.cfg.ServerCert}
 		tlsConfig := &tls.Config{
 			ServerName:   "HiveOT Hub",
 			ClientCAs:    caCertPool,
@@ -244,7 +273,7 @@ func (srv *HubNatsServer) Start() (clientURL string, err error) {
 			ClientAuth:   tls.VerifyClientCertIfGiven,
 			MinVersion:   tls.VersionTLS13,
 		}
-		srv.serverOpts.TLSTimeout = 10000 // for debugging auth
+		srv.serverOpts.TLSTimeout = 1000 // for debugging auth
 		srv.serverOpts.TLSConfig = tlsConfig
 	}
 	// start nats
@@ -261,18 +290,7 @@ func (srv *HubNatsServer) Start() (clientURL string, err error) {
 			clientURL = srv.ns.ClientURL()
 		}
 	}
-	//srv.ns.Reload()
-	// start JetStream
-	//if err == nil {
-	//	jsConfig := server.JetStreamConfig{
-	//		MaxMemory:  1 * 1024 * 1024 * 1024,
-	//		MaxStore:   0,
-	//		StoreDir:   "/tmp/hiveot/store",
-	//		Domain:     "",
-	//		CompressOK: false,
-	//	}
-	//	err = srv.ns.EnableJetStream(&jsConfig)
-	//}
+
 	if err == nil {
 		// start discovery
 	}
@@ -280,11 +298,10 @@ func (srv *HubNatsServer) Start() (clientURL string, err error) {
 	// install the callout handler
 	// todo: use the in-process connection provider
 	// should use a different client key from signing key. moot point after using inproc
-	nc, err := srv.connectToServer(srv.calloutUserKey)
+	nc, err := srv.ConnectInProc("authn-callout", srv.calloutUserKey)
 	if err != nil {
 		return clientURL, err
 	}
-
 	srv.calloutSub, err = nc.Subscribe(server.AuthCalloutSubject, srv.handleCallOutReq)
 	return clientURL, err
 }
@@ -296,49 +313,15 @@ func (srv *HubNatsServer) Stop() {
 }
 
 // NewHubNatsServer creates a new instance of the Hub NATS server
+// The given configuration is optional. The server will run with production settings out of the box.
 //
-// appAcctName and key are optional. A default will be generated on start.
-// If not provided then a new account key will be generated on restart.
-// While great for testing, it also invalidates all issued keys.
+// Use SetAuthnVerifier function to install the callout authn handler.
 //
-//		appAcctName is the name of the hub's account. Default is 'hiveot-{hostname}'
-//	 appAcctKey is the key to protect the application account with.
-//		storeDir directory to store jetstream data
-//		hostName to match the server certificate
-//		port to listen on. 0 for default (4222)
-//		serverCert TLS certificate to present to clients
-//		caCert the server is signed by
-//	 verifyer function that verifies the credentials
-//
-// storeDir is the location for message storage.
-func NewHubNatsServer(
-	appAcctName string,
-	appAcctKey nkeys.KeyPair,
-	storeDir string,
-	hostName string,
-	port int,
-	serverCert *tls.Certificate, caCert *x509.Certificate,
-	verifyAuthn func(authReq *jwt.AuthorizationRequestClaims) error,
-) *HubNatsServer {
+// cfg contains an initialized server configuration for use as hiveot hub
+func NewHubNatsServer(cfg *config.ServerConfig) *HubNatsServer {
 
-	if appAcctName == "" {
-		appAcctName = "hiveot-" + hostName
-	}
-	if appAcctKey == nil {
-		appAcctKey, _ = nkeys.CreateAccount()
-	}
-	if storeDir == "" {
-		storeDir = "/tmp/nats/jetstream"
-	}
 	srv := &HubNatsServer{
-		hostName:       hostName,
-		port:           port,
-		caCert:         caCert,
-		serverCert:     serverCert,
-		appAccountKey:  appAcctKey,
-		appAccountName: appAcctName,
-		storeDir:       storeDir,
-		verifyAuthn:    verifyAuthn,
+		cfg: cfg,
 	}
 	return srv
 }

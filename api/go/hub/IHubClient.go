@@ -16,6 +16,11 @@ const (
 	EventIDTD = "$td"
 )
 
+// ISubscription interface to underlying subscription mechanism
+type ISubscription interface {
+	Unsubscribe()
+}
+
 // EventMessage for subscribers
 type EventMessage struct {
 	// Authenticated ClientID of the device or service publishing the event
@@ -158,7 +163,7 @@ type IHubClient interface {
 	//  thingID is the device thing or service capability to subscribe to, or "" for wildcard
 	//  cb is the callback to invoke
 	// If the callback returns an error, an error reply message is send.
-	SubActions(thingID string, cb func(msg *ActionMessage) error) error
+	SubActions(thingID string, cb func(msg *ActionMessage) error) (subsc ISubscription, err error)
 
 	// SubGroup subscribes to events from things in a group the client is a member of.
 	//

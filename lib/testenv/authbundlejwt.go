@@ -24,18 +24,19 @@ type TestAuthBundle struct {
 	ServerKey  *ecdsa.PrivateKey
 	ServerCert *tls.Certificate
 	// operator and account keys
-	OperatorNKey      nkeys.KeyPair
-	OperatorJWT       string
+	//OperatorNKey      nkeys.KeyPair
+	//OperatorJWT       string
 	SystemAccountNKey nkeys.KeyPair
-	SystemAccountJWT  string
-	SystemSigningNKey nkeys.KeyPair
-	SystemUserNKey    nkeys.KeyPair
-	SystemUserJWT     string
-	SystemUserCreds   []byte
+	//SystemAccountJWT  string
+	//SystemSigningNKey nkeys.KeyPair
+	SystemUserNKey  nkeys.KeyPair
+	SystemUserJWT   string
+	SystemUserCreds []byte
 	//
+	AppAccountName string
 	AppAccountNKey nkeys.KeyPair
-	AppSigningNKey nkeys.KeyPair
-	AppAccountJWT  string
+	//AppSigningNKey nkeys.KeyPair
+	//AppAccountJWT  string
 
 	// test service
 	ServiceID    string
@@ -77,16 +78,16 @@ func CreateTestAuthBundle() TestAuthBundle {
 	// life starts with the operator
 	// the operator is signing the account keys
 	// https://gist.github.com/renevo/8fa7282d441b46752c9151644a2e911a
-	operatorNKey, _ := nkeys.CreateOperator()
-	operatorPub, _ := operatorNKey.PublicKey()
-	operatorClaims := jwt.NewOperatorClaims(operatorPub)
-	operatorClaims.Name = "hiveotop"
-	// use a separate operator signing key that can be revoked without compromising the operator keys
-	operatorSigningNKey, _ := nkeys.CreateOperator()
-	operatorSigningPub, _ := operatorSigningNKey.PublicKey()
-	operatorClaims.SigningKeys.Add(operatorSigningPub)
-	authBundle.OperatorNKey = operatorNKey
-	authBundle.OperatorJWT, _ = operatorClaims.Encode(operatorNKey)
+	//operatorNKey, _ := nkeys.CreateOperator()
+	//operatorPub, _ := operatorNKey.PublicKey()
+	//operatorClaims := jwt.NewOperatorClaims(operatorPub)
+	//operatorClaims.Name = "hiveotop"
+	//// use a separate operator signing key that can be revoked without compromising the operator keys
+	//operatorSigningNKey, _ := nkeys.CreateOperator()
+	//operatorSigningPub, _ := operatorSigningNKey.PublicKey()
+	//operatorClaims.SigningKeys.Add(operatorSigningPub)
+	//authBundle.OperatorNKey = operatorNKey
+	//authBundle.OperatorJWT, _ = operatorClaims.Encode(operatorNKey)
 
 	// the system account is used for monitoring
 	systemAccountNKey, _ := nkeys.CreateAccount()
@@ -119,10 +120,10 @@ func CreateTestAuthBundle() TestAuthBundle {
 			},
 		},
 	}
-	systemAccountJWT, _ := systemAccountClaims.Encode(operatorSigningNKey)
-	authBundle.SystemSigningNKey = systemSigningNKey
+	//systemAccountJWT, _ := systemAccountClaims.Encode(operatorSigningNKey)
+	//authBundle.SystemSigningNKey = systemSigningNKey
 	authBundle.SystemAccountNKey = systemAccountNKey
-	authBundle.SystemAccountJWT = systemAccountJWT
+	//authBundle.SystemAccountJWT = systemAccountJWT
 
 	// A user for the system account
 
@@ -139,16 +140,17 @@ func CreateTestAuthBundle() TestAuthBundle {
 	authBundle.SystemUserCreds = systemUserCreds
 
 	// system account
-	operatorClaims.SystemAccount = systemAccountPub
+	//operatorClaims.SystemAccount = systemAccountPub
 
 	// the application uses a separate account key
+	appAccountName := "AppAccount"
 	appAccountNKey, _ := nkeys.CreateAccount()
 	appAccountPub, _ := appAccountNKey.PublicKey()
-	appSigningNKey, _ := nkeys.CreateAccount()
-	appSigningPub, _ := appSigningNKey.PublicKey()
+	//appSigningNKey, _ := nkeys.CreateAccount()
+	//appSigningPub, _ := appSigningNKey.PublicKey()
 	appAccountClaims := jwt.NewAccountClaims(appAccountPub)
-	appAccountClaims.Name = "AppAccount"
-	appAccountClaims.SigningKeys.Add(appSigningPub)
+	appAccountClaims.Name = appAccountName
+	//appAccountClaims.SigningKeys.Add(appSigningPub)
 	// Enabling JetStream requires setting storage limits
 	appAccountClaims.Limits.JetStreamLimits.DiskStorage = 1024 * 1024 * 1024
 	appAccountClaims.Limits.JetStreamLimits.MemoryStorage = 100 * 1024 * 1024
@@ -176,17 +178,18 @@ func CreateTestAuthBundle() TestAuthBundle {
 			},
 		},
 	}
-	appAccountJWT, _ := appAccountClaims.Encode(operatorSigningNKey)
+	//appAccountJWT, _ := appAccountClaims.Encode(operatorSigningNKey)
+	authBundle.AppAccountName = appAccountName
 	authBundle.AppAccountNKey = appAccountNKey
-	authBundle.AppSigningNKey = appSigningNKey
-	authBundle.AppAccountJWT = appAccountJWT
+	//authBundle.AppSigningNKey = appSigningNKey
+	//authBundle.AppAccountJWT = appAccountJWT
 
 	// test service keys created by the server account
 	serviceNKey, _ := nkeys.CreateUser()
 	servicePub := []string{">"}
 	serviceSub := []string{">"}
 	serviceJWT, serviceCreds := CreateUserCreds(
-		TestServiceID, serviceNKey, appSigningNKey, appAccountPub, servicePub, serviceSub)
+		TestServiceID, serviceNKey, appAccountNKey, appAccountPub, appAccountName, servicePub, serviceSub)
 	authBundle.ServiceID = TestServiceID
 	authBundle.ServiceNKey = serviceNKey
 	authBundle.ServiceJWT = serviceJWT
@@ -197,7 +200,7 @@ func CreateTestAuthBundle() TestAuthBundle {
 	devicePub := []string{"things." + TestDeviceID + ".*.event.>"}
 	deviceSub := []string{"_INBOX.>", "things." + TestDeviceID + ".*.action.>"}
 	deviceJWT, deviceCreds := CreateUserCreds(
-		TestDeviceID, deviceNKey, appSigningNKey, appAccountPub, devicePub, deviceSub)
+		TestDeviceID, deviceNKey, appAccountNKey, appAccountPub, appAccountName, devicePub, deviceSub)
 	authBundle.DeviceID = TestDeviceID
 	authBundle.DeviceNKey = deviceNKey
 	authBundle.DeviceJWT = deviceJWT
@@ -208,7 +211,7 @@ func CreateTestAuthBundle() TestAuthBundle {
 	userPub := []string{"things.*.*.action.>"}
 	userSub := []string{"_INBOX.>", "things.>"}
 	userJWT, userCreds := CreateUserCreds(
-		TestUserID, userNKey, appSigningNKey, appAccountPub, userPub, userSub)
+		TestUserID, userNKey, appAccountNKey, appAccountPub, appAccountName, userPub, userSub)
 	authBundle.UserID = TestUserID
 	authBundle.UserNKey = userNKey
 	authBundle.UserJWT = userJWT
@@ -227,7 +230,7 @@ func CreateTestAuthBundle() TestAuthBundle {
 //
 // This returns the public signed jwt token containing user claims, and the full credentials to be kept secret
 func CreateUserCreds(id string, keys nkeys.KeyPair,
-	signer nkeys.KeyPair, appAccountPub string,
+	signer nkeys.KeyPair, appAccountPub string, appAccountName string,
 	pub []string, sub []string) (
 	jwtToken string, creds []byte) {
 
@@ -236,7 +239,11 @@ func CreateUserCreds(id string, keys nkeys.KeyPair,
 	privKey, _ := keys.Seed()
 	claims := jwt.NewUserClaims(pubKey)
 	claims.Subject = pubKey
+	//-- in server mode this might work differently from operator mode
+	// should appAccountName or public key be used???
+	//claims.Audience = appAccountName
 	claims.IssuerAccount = appAccountPub
+	//
 	claims.Name = id
 	// add identification and authorization to user
 	// see also: https://natsbyexample.com/examples/auth/nkeys-jwts/go

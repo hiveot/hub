@@ -20,18 +20,6 @@ const (
 	DefaultUserTokenValiditySec    = 30 * 24 * 3600  // 30 days
 )
 
-// AuthnConfig defines the authn service configuration
-type AuthnConfig struct {
-
-	// PasswordFile to read from. Use "" for default defined in 'unpwstore.DefaultPasswordFile'
-	PasswordFile string `yaml:"passwordFile"`
-
-	// optional override of the default token validity periods
-	DeviceTokenValiditySec  int `yaml:"deviceTokenValiditySec"`
-	ServiceTokenValiditySec int `yaml:"serviceTokenValiditySec"`
-	UserTokenValiditySec    int `yaml:"userTokenValiditySec"`
-}
-
 // ClientProfile contains client information
 type ClientProfile struct {
 	// The client ID.

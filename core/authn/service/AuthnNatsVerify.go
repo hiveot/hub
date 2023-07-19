@@ -30,7 +30,7 @@ func (v *AuthnNatsVerify) VerifyClientCert(claims *jwt.AuthorizationRequestClaim
 
 // VerifyJWT claim
 //
-//	FIXME: Does this do the nonce check?
+//	FIXME: how?
 func (v *AuthnNatsVerify) VerifyJWT(claims *jwt.AuthorizationRequestClaims) error {
 	juc, err := jwt.DecodeUserClaims(claims.ConnectOptions.JWT)
 	if err != nil {
@@ -135,7 +135,9 @@ func (v *AuthnNatsVerify) VerifyToken(claims *jwt.AuthorizationRequestClaims) er
 // For use by the nats server
 // claims contains various possible svc methods: password, nkey, jwt, certs
 func (v *AuthnNatsVerify) VerifyAuthnReq(claims *jwt.AuthorizationRequestClaims) error {
-	slog.Info("VerifyAuthnReq")
+	slog.Info("VerifyAuthnReq",
+		slog.String("name", claims.ConnectOptions.Name),
+		slog.String("host", claims.ClientInformation.Host))
 	if claims.ConnectOptions.Nkey != "" {
 		return v.VerifyNKey(claims)
 	} else if claims.ConnectOptions.JWT != "" {
@@ -148,7 +150,7 @@ func (v *AuthnNatsVerify) VerifyAuthnReq(claims *jwt.AuthorizationRequestClaims)
 		return v.VerifyClientCert(claims)
 	} else {
 		// unsupported
-		return fmt.Errorf("unknown auth for '%s' from host '%s'",
+		return fmt.Errorf("no auth credentials provided by user '%s' from host '%s'",
 			claims.ClientInformation.Name, claims.ClientInformation.Host)
 	}
 }

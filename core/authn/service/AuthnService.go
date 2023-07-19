@@ -20,6 +20,7 @@ import (
 // This implements the IAuthnService interface
 // TODO: should this use action messages directly to allow additional validation of the caller???
 type AuthnService struct {
+	accountName string
 	// the signingKey key used for signing JWT user tokens
 	// This must be a key known to the server for validation
 	signingKey nkeys.KeyPair
@@ -40,12 +41,12 @@ type AuthnService struct {
 //	return err
 //}
 
-// AddService adds a service
+// AddService adds a svc
 //func (svc *AuthnService) AddService(clientID string, name string) (token string, err error) {
 //
 //	exists := svc.pwStore.Exists(clientID)
 //	if exists {
-//		return "", fmt.Errorf("service with clientID '%s' already exists", clientID)
+//		return "", fmt.Errorf("svc with clientID '%s' already exists", clientID)
 //	}
 //	err = svc.pwStore.SetName(clientID, name)
 //	return err
@@ -225,9 +226,9 @@ func (svc *AuthnService) ResetPassword(clientID, newPassword string) error {
 	return svc.pwStore.SetPassword(clientID, newPassword)
 }
 
-// Start the service, open the password store and start listening for requests on the service topic
+// Start the svc, open the password store and start listening for requests on the svc topic
 func (svc *AuthnService) Start() error {
-	slog.Info("starting svc service")
+	slog.Info("starting svc svc")
 
 	//authKey, err := svc.config.GetAuthKey()
 	//if err != nil {
@@ -236,14 +237,14 @@ func (svc *AuthnService) Start() error {
 
 	err := svc.pwStore.Open()
 	if err != nil {
-		return fmt.Errorf("error starting svc service: %w", err)
+		return fmt.Errorf("error starting svc svc: %w", err)
 	}
 	//err = svc.hc.ConnectWithJWT(svc.config.ServerURL, []byte(authKey), svc.caCert)
 	return err
 }
 
 func (svc *AuthnService) Stop() error {
-	slog.Info("stopping service")
+	slog.Info("stopping svc")
 	svc.pwStore.Close()
 	return nil
 }
@@ -266,29 +267,38 @@ func (svc *AuthnService) UpdatePassword(clientID, newPassword string) error {
 }
 
 // ValidateToken checks if the given token belongs the the user ID and is valid
+// TODO: verify issuer
 func (svc *AuthnService) ValidateToken(clientID string, jwtToken string) (
 	entry unpwstore.PasswordEntry, claims jwt.Claims, err error) {
 	//slog.Info("validate token", slog.String("clientID",clientID))
 	entry, err = svc.pwStore.GetEntry(clientID)
 	_ = entry
 	if err != nil {
-		return entry, nil, err
+		return entry, nil, fmt.Errorf("unknown user %s", clientID)
 	}
 	claims, err = jwt.Decode(jwtToken)
 	if err != nil {
 		return entry, nil, fmt.Errorf("invalid token of client %s: %w", clientID, err)
 	}
-	if claims.ClaimType() != jwt.UserClaim {
-		return entry, nil, errors.New("Token is not a user token of client " + clientID)
-	}
 	cd := claims.Claims()
+	//claims, err = jwt.DecodeGeneric(jwtToken)
+	// issuer must be known
+	signingPub, _ := svc.signingKey.PublicKey()
+	if cd.Issuer != signingPub {
+		return entry, claims, errors.New("unknown issuer")
+	}
+	if claims.ClaimType() != jwt.UserClaim {
+		return entry, claims, errors.New("Token is not a user token of client " + clientID)
+	}
 	if cd.Name != clientID {
-		slog.Warn("Refresh attempt on token from different user",
+		slog.Warn("Token from different user",
 			"token ID", cd.ID, "token name", cd.Name, "clientID", clientID)
 		return entry, nil, errors.New("Token is from a different client, not" + clientID)
 	}
+	// TODO: validate issuer and subject (user pub key)
 	vr := jwt.ValidationResults{}
 	cd.Validate(&vr)
+
 	if !vr.IsEmpty() {
 		err = errors.New("Invalid token: " + vr.Errors()[0].Error())
 		return entry, nil, err
@@ -308,7 +318,7 @@ func (svc *AuthnService) ValidatePassword(clientID string, password string) erro
 // ValidateCert verifies that the given certificate belongs to the client
 // and is signed by our CA.
 // - CN is clientID (todo: other means?)
-// - Cert validates against the service CA
+// - Cert validates against the svc CA
 // This is intended for a local setup that use a self-signed CA.
 // The use of JWT keys is recommended over certs as this isn't a domain name validation problem.
 func (svc *AuthnService) ValidateCert(clientID string, clientCertPEM string) error {
@@ -338,19 +348,22 @@ func (svc *AuthnService) ValidateCert(clientID string, clientCertPEM string) err
 	return nil
 }
 
-// NewAuthnService creates new instance of the service
-// Call 'Start' to start the service and 'Stop' to end it.
+// NewAuthnService creates new instance of the svc
+// Call 'Start' to start the svc and 'Stop' to end it.
+// The signingkey is usually the application account key
 //
+//	accountName from the server of the account used to sign the issued tokens
+//	accountKey used by the server
 //	pwStore is the store for users and encrypted passwords
-//	signingKey is the key used to sign the new token. This must be known to the server.
 //	caCert is the CA certificate used to validate certs
 func NewAuthnService(
-	pwStore unpwstore.IUnpwStore, signingKey nkeys.KeyPair, caCert *x509.Certificate) *AuthnService {
+	accountName string, accountKey nkeys.KeyPair, pwStore unpwstore.IUnpwStore, caCert *x509.Certificate) *AuthnService {
 
 	svc := &AuthnService{
-		caCert:     caCert,
-		pwStore:    pwStore,
-		signingKey: signingKey,
+		accountName: accountName,
+		caCert:      caCert,
+		pwStore:     pwStore,
+		signingKey:  accountKey,
 	}
 	return svc
 }

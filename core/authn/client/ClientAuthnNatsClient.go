@@ -12,13 +12,13 @@ import (
 // This uses the default serializer to marshal and unmarshal messages.
 type ClientAuthn struct {
 	// ID of the authn service that handles the requests
-	bindingID string
+	serviceID string
 	hc        hub.IHubClient
 }
 
 // helper for publishing an action request to the authz service
 func (clientAuthn *ClientAuthn) pubReq(action string, msg []byte) ([]byte, error) {
-	return clientAuthn.hc.PubAction(clientAuthn.bindingID, authn.ClientAuthnCapability, action, msg)
+	return clientAuthn.hc.PubAction(clientAuthn.serviceID, authn.ClientAuthnCapability, action, msg)
 }
 
 // GetProfile returns a client's profile
@@ -30,6 +30,9 @@ func (clientAuthn *ClientAuthn) GetProfile(clientID string) (profile authn.Clien
 	}
 	msg, _ := ser.Marshal(req)
 	data, err := clientAuthn.pubReq(authn.GetProfileAction, msg)
+	if err != nil {
+		return profile, err
+	}
 	resp := &authn.GetProfileResp{}
 	err = hubclient.ParseResponse(data, err, resp)
 	if err == nil {
@@ -47,6 +50,9 @@ func (clientAuthn *ClientAuthn) NewToken(clientID string, password string, pubKe
 	}
 	msg, _ := ser.Marshal(req)
 	data, err := clientAuthn.pubReq(authn.NewTokenAction, msg)
+	if err != nil {
+		return "", err
+	}
 	resp := &authn.NewTokenResp{}
 	err = hubclient.ParseResponse(data, err, resp)
 	if err == nil {
@@ -63,6 +69,9 @@ func (clientAuthn *ClientAuthn) Refresh(clientID string, oldToken string) (authT
 	}
 	msg, _ := ser.Marshal(req)
 	data, err := clientAuthn.pubReq(authn.RefreshAction, msg)
+	if err != nil {
+		return "", err
+	}
 	resp := &authn.RefreshResp{}
 	err = hubclient.ParseResponse(data, err, resp)
 	if err == nil {
@@ -98,14 +107,15 @@ func (clientAuthn *ClientAuthn) UpdatePassword(clientID string, newPassword stri
 
 // NewClientAuthn returns an authn client for the given hubclient connection
 //
-//	bindingID is the ID of the authn service. Use "" for default.
-func NewClientAuthn(bindingID string, hc hub.IHubClient) *ClientAuthn {
-	if bindingID == "" {
-		bindingID = authn.AuthnServiceName
+//	serviceID is the ID of the authn service. Use "" for default.
+//	hc is the hub client connection to use
+func NewClientAuthn(serviceID string, hc hub.IHubClient) *ClientAuthn {
+	if serviceID == "" {
+		serviceID = authn.AuthnServiceName
 	}
 	cl := ClientAuthn{
 		hc:        hc,
-		bindingID: bindingID,
+		serviceID: serviceID,
 	}
 	return &cl
 }

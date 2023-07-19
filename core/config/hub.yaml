@@ -1,0 +1,44 @@
+# hub.yaml contains the hiveot hub core configuration
+
+
+# messaging server configuration
+server:
+  # specific listening address, default is 127.0.0.1
+  #host: "127.0.0.1"
+
+  # default listening TLS port is 4222 and 4223 for websocket
+  #port: 4222
+  #wsPort: 4223
+
+  # Storage location. Default is $HOME/stores/server
+  #storesDir: "$HOME/stores/server"
+
+  # path to TLS server certificate and key file
+  #serverCertFile: "serverCert.pem"
+  #serverKeyFile: "serverKey.pem"
+  # path to x509 CA certificate file that signed the server cert
+  #caCertFile: "caCert.pem"
+
+  # Name of application account. Default is hiveot
+  #appAccountName: "hiveot"
+
+
+# authn service configuration
+authn:
+  # password file to store bcrypted passwords
+  # Default is $HOME/stores/authn/hub.passwd
+  #passwordFile "hub.passwd"
+
+  # optional override of the renewed auth token validity in days
+  # for devices, services and users.
+  #  0 for default; -1 for indefinitely
+  #deviceTokenValidityDays: 90
+  #serviceTokenValidityDays: 366
+  #userTokenValidityDays: 30
+
+
+# authz service configuration
+authz:
+  #groupsDir         # directory to store groups. Default is $HOME/stores/authz
+
+

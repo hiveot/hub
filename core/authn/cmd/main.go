@@ -4,6 +4,7 @@ import (
 	"github.com/hiveot/hub/core/authn"
 	"github.com/hiveot/hub/core/authn/service"
 	"github.com/hiveot/hub/core/authn/service/unpwstore"
+	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/lib/svcconfig"
 	"golang.org/x/exp/slog"
 )
@@ -12,7 +13,7 @@ import (
 func main() {
 	// get defaults
 	f, _, _ := svcconfig.SetupFolderConfig(authn.AuthnServiceName)
-	authServiceConfig := service.NewAuthnConfig(f.Stores)
+	authServiceConfig := config.NewAuthnConfig(f.Stores)
 	_ = f.LoadConfig(&authServiceConfig)
 
 	pwStore := unpwstore.NewPasswordFileStore(authServiceConfig.PasswordFile)

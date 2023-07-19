@@ -44,6 +44,18 @@ func ParseResponse(data []byte, err error, resp interface{}) error {
 	return err
 }
 
+// HubSubscription nats subscription helper
+type HubSubscription struct {
+	nsub *nats.Subscription
+}
+
+func (ns *HubSubscription) Unsubscribe() {
+	err := ns.nsub.Unsubscribe()
+	if err != nil {
+		slog.Error("Unsubscribe error", "error", err)
+	}
+}
+
 // HubNatsClient manages the hub server connection with nats based pub/sub messaging
 // This implements the IHubClient interface.
 // This implementation is based on the NATS/Jetstream messaging system.
@@ -114,8 +126,10 @@ func (hc *HubNatsClient) ConnectWithJWT(url string, jwtCreds []byte, caCert *x50
 		InsecureSkipVerify: caCert == nil,
 	}
 	// TODO. how is this supposed to work?
-	// The user's JWT signed token
+	// Get the userID from the token
 	jwtToken, err := jwt.ParseDecoratedJWT(jwtCreds)
+	userKP, err := jwt.ParseDecoratedUserNKey(jwtCreds)
+	jwtSeed, err := userKP.Seed()
 	claims, err := jwt.Decode(jwtToken)
 	if err != nil {
 		err = fmt.Errorf("invalid jwt token: %w", err)
@@ -124,26 +138,24 @@ func (hc *HubNatsClient) ConnectWithJWT(url string, jwtCreds []byte, caCert *x50
 	clientID := claims.Claims().Name
 	hc.clientID = clientID
 
-	userJWTHandler := func() (string, error) {
-		jwtPortion, err := nkeys.ParseDecoratedJWT(jwtCreds)
-		return jwtPortion, err
-	}
-	// The handler to sign the server issued challenge
-	sigCB := func(nonce []byte) ([]byte, error) {
-		kp, err := nkeys.ParseDecoratedNKey(jwtCreds)
-		sig, _ := kp.Sign(nonce)
-		return sig, err
-	}
 	hc.nc, err = nats.Connect(url,
 		nats.Name(hc.clientID), // connection name for logging, debugging
 		nats.Secure(tlsConfig),
-		nats.UserJWT(userJWTHandler, sigCB),
+		nats.UserJWTAndSeed(jwtToken, string(jwtSeed)), // does this help?
+		nats.Token(jwtToken),                           // for testing
 		nats.Timeout(time.Second*time.Duration(hc.timeoutSec)))
 
 	if err == nil {
 		hc.js, err = hc.nc.JetStream()
 	}
 	return err
+}
+
+// ConnectWithNC connects using the given nats connection
+func (hc *HubNatsClient) ConnectWithNC(nc *nats.Conn, clientID string) (err error) {
+	hc.clientID = clientID
+	hc.nc = nc
+	return nil
 }
 
 // ConnectWithNKey connects to the Hub server using an nkey secret
@@ -194,18 +206,71 @@ func (hc *HubNatsClient) ConnectWithPassword(
 	}
 	hc.clientID = loginID
 	hc.nc, err = nats.Connect(url,
-		//nats.Name(hc.clientID),
+		nats.Name(hc.clientID),
 		nats.Secure(tlsConfig),
-		nats.UserInfo(loginID, password),
+		nats.UserInfo(hc.clientID, password),
 		nats.Timeout(time.Second*time.Duration(hc.timeoutSec)))
 	if err != nil {
 		slog.Warn("Login attempt failed", "loginID", loginID)
 		return err
 	}
 	hc.js, err = hc.nc.JetStream()
-
+	if err != nil {
+		slog.Warn("ConnectWithPassword. JetStream not available")
+	}
+	//
 	return err
 }
+
+// ConnectWithToken connects to the Hub server using a JWT token.
+// NOTE: This differs from NATS JWT.
+// The token can be obtained by NewToken and Refresh functions.
+//
+// Token will be signed by the user public key
+//func (hc *HubNatsClient) ConnectWithToken(url string, token []byte, caCert *x509.Certificate) (err error) {
+//	if url == "" {
+//		url = nats.DefaultURL
+//	}
+//
+//	caCertPool := x509.NewCertPool()
+//	if caCert != nil {
+//		caCertPool.AddCert(caCert)
+//	}
+//	tlsConfig := &tls.Config{
+//		RootCAs:            caCertPool,
+//		InsecureSkipVerify: caCert == nil,
+//	}
+//	// Get the userID from the token
+//	claims, err := jwt.Decode(string(token))
+//	if err != nil {
+//		err = fmt.Errorf("invalid jwt token: %w", err)
+//		return err
+//	}
+//	clientID := claims.Claims().Name
+//	hc.clientID = clientID
+//
+//	userJWTHandler := func() (string, error) {
+//		jwtPortion, err := nkeys.ParseDecoratedJWT(jwtCreds)
+//		return jwtPortion, err
+//	}
+//	// The handler to sign the server issued challenge
+//	sigCB := func(nonce []byte) ([]byte, error) {
+//		kp, err := nkeys.ParseDecoratedNKey(jwtCreds)
+//		sig, _ := kp.Sign(nonce)
+//		return sig, err
+//	}
+//	hc.nc, err = nats.Connect(url,
+//		nats.Name(hc.clientID),                 // connection name for logging, debugging
+//		nats.UserJWTAndSeed("myjwt", "myseed"), // does this help?
+//		nats.Secure(tlsConfig),
+//		nats.UserJWT(userJWTHandler, sigCB),
+//		nats.Timeout(time.Second*time.Duration(hc.timeoutSec)))
+//
+//	if err == nil {
+//		hc.js, err = hc.nc.JetStream()
+//	}
+//	return err
+//}
 
 // ConnectUnauthenticated connects to the Hub server as an unauthenticated user
 func (hc *HubNatsClient) ConnectUnauthenticated(url string, caCert *x509.Certificate) (err error) {
@@ -273,26 +338,38 @@ func (hc *HubNatsClient) PubTD(td *thing.TD) error {
 	return err
 }
 
-// Refresh a short lived authentication token.
+// Refresh an authentication token.
 //
 //	clientID is the userID, deviceID or serviceID whose token to refresh.
 //	oldToken must be a valid token obtained at login or refresh
 //
 // This returns a short lived auth token that can be used to authenticate with the hub
 // This fails if the token has expired or does not belong to the clientID
-func (hc *HubNatsClient) Refresh(clientID string, oldToken string) (newToken string, err error) {
-	return "", errors.New("not implemented")
-
-}
+//func (hc *HubNatsClient) Refresh(clientID string, oldToken string) (newToken string, err error) {
+//	req := &authn.RefreshReq{
+//		ClientID: clientID,
+//		OldToken: oldToken,
+//	}
+//	msg, _ := ser.Marshal(req)
+//	subject := MakeSubject(hc.clientID, td.ID, vocab.VocabEventTopic, vocab.EventNameTD)
+//	slog.Info("PubTD", "subject", subject)
+//	err := hc.Publish(subject, payload)
+//	resp := &authn.RefreshResp{}
+//	err = hubclient.ParseResponse(data, err, resp)
+//	if err == nil {
+//		authToken = resp.JwtToken
+//	}
+//	return err
+//}
 
 // SubActions subscribes to actions for this binding
 //
 //	thingID is the device thing or service capability to subscribe to, or "" for wildcard
-func (hc *HubNatsClient) SubActions(thingID string, cb func(msg *hub.ActionMessage) error) error {
+func (hc *HubNatsClient) SubActions(thingID string, cb func(msg *hub.ActionMessage) error) (hub.ISubscription, error) {
 
 	subject := MakeActionSubject(hc.clientID, thingID, "", "")
 
-	err := hc.Subscribe(subject, func(natsMsg *nats.Msg) {
+	sub, err := hc.Subscribe(subject, func(natsMsg *nats.Msg) {
 		md, _ := natsMsg.Metadata()
 		timeStamp := time.Now()
 		if md != nil {
@@ -327,7 +404,7 @@ func (hc *HubNatsClient) SubActions(thingID string, cb func(msg *hub.ActionMessa
 			_ = natsMsg.Respond(errPayload)
 		}
 	})
-	return err
+	return sub, err
 }
 
 // SubGroup subscribes to events received by a group.
@@ -390,26 +467,15 @@ func (hc *HubNatsClient) SubGroup(groupName string, receiveLatest bool, cb func(
 }
 
 // Subscribe to NATS
-func (hc *HubNatsClient) Subscribe(subject string, cb func(msg *nats.Msg)) (err error) {
+func (hc *HubNatsClient) Subscribe(subject string, cb func(msg *nats.Msg)) (sub hub.ISubscription, err error) {
 	slog.Info("subscribe", "subject", subject)
-	subscription, err := hc.nc.Subscribe(subject, cb)
-	isValid := subscription.IsValid()
+	nsub, err := hc.nc.Subscribe(subject, cb)
+	isValid := nsub.IsValid()
 	if !isValid {
 		err = errors.New("subject " + subject + " not valid")
 	}
-	// TODO: track subscriptions in order to unsubscribe.
-	return err
-}
-
-// UpdateName updates a user's name
-func (hc *HubNatsClient) UpdateName(clientID string, name string) (err error) {
-	return errors.New("not implemented")
-}
-
-// UpdatePassword changes the client password
-// Login or Refresh must be called successfully first.
-func (hc *HubNatsClient) UpdatePassword(clientID string, newPassword string) error {
-	return errors.New("not implemented")
+	sub = &HubSubscription{nsub: nsub}
+	return sub, err
 }
 
 // NewHubClient instantiates a client for connecting to the Hub using NATS/Jetstream
