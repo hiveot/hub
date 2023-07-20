@@ -86,7 +86,7 @@ func (srv HubNatsServer) AddServiceKey(nkey nkeys.KeyPair) error {
 	return err
 }
 
-// ConnectInProc connects to the server in-process. Intended for the core services.
+// ConnectInProc connects to the server in-process using nkey. Intended for the core services.
 // The client NKey must have been added using AddServiceKey.
 func (srv HubNatsServer) ConnectInProc(clientID string, clientKey nkeys.KeyPair) (*nats.Conn, error) {
 	// The handler to sign the server issued challenge
@@ -279,6 +279,7 @@ func (srv *HubNatsServer) Start() (clientURL string, err error) {
 	// start nats
 	srv.ns, err = server.NewServer(srv.serverOpts)
 	srv.ns.ConfigureLogger()
+
 	//if err == nil {
 	//	srv.hubAccount = srv.ns.GlobalAccount()
 	//}

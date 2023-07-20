@@ -2,6 +2,7 @@ package service
 
 import (
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -226,7 +227,7 @@ func (svc *AuthnService) ResetPassword(clientID, newPassword string) error {
 	return svc.pwStore.SetPassword(clientID, newPassword)
 }
 
-// Start the svc, open the password store and start listening for requests on the svc topic
+// Start the svc, open the password store
 func (svc *AuthnService) Start() error {
 	slog.Info("starting svc svc")
 
@@ -266,55 +267,6 @@ func (svc *AuthnService) UpdatePassword(clientID, newPassword string) error {
 	return svc.pwStore.SetPassword(clientID, newPassword)
 }
 
-// ValidateToken checks if the given token belongs the the user ID and is valid
-// TODO: verify issuer
-func (svc *AuthnService) ValidateToken(clientID string, jwtToken string) (
-	entry unpwstore.PasswordEntry, claims jwt.Claims, err error) {
-	//slog.Info("validate token", slog.String("clientID",clientID))
-	entry, err = svc.pwStore.GetEntry(clientID)
-	_ = entry
-	if err != nil {
-		return entry, nil, fmt.Errorf("unknown user %s", clientID)
-	}
-	claims, err = jwt.Decode(jwtToken)
-	if err != nil {
-		return entry, nil, fmt.Errorf("invalid token of client %s: %w", clientID, err)
-	}
-	cd := claims.Claims()
-	//claims, err = jwt.DecodeGeneric(jwtToken)
-	// issuer must be known
-	signingPub, _ := svc.signingKey.PublicKey()
-	if cd.Issuer != signingPub {
-		return entry, claims, errors.New("unknown issuer")
-	}
-	if claims.ClaimType() != jwt.UserClaim {
-		return entry, claims, errors.New("Token is not a user token of client " + clientID)
-	}
-	if cd.Name != clientID {
-		slog.Warn("Token from different user",
-			"token ID", cd.ID, "token name", cd.Name, "clientID", clientID)
-		return entry, nil, errors.New("Token is from a different client, not" + clientID)
-	}
-	// TODO: validate issuer and subject (user pub key)
-	vr := jwt.ValidationResults{}
-	cd.Validate(&vr)
-
-	if !vr.IsEmpty() {
-		err = errors.New("Invalid token: " + vr.Errors()[0].Error())
-		return entry, nil, err
-	}
-	return entry, claims, nil
-}
-
-// ValidatePassword verifies the given username password is valid
-func (svc *AuthnService) ValidatePassword(clientID string, password string) error {
-	_, err := svc.pwStore.VerifyPassword(clientID, password)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // ValidateCert verifies that the given certificate belongs to the client
 // and is signed by our CA.
 // - CN is clientID (todo: other means?)
@@ -348,22 +300,167 @@ func (svc *AuthnService) ValidateCert(clientID string, clientCertPEM string) err
 	return nil
 }
 
+// ValidateNatsJWT checks if the given token belongs the the user ID and is valid
+//   - verify if jwtToken is a valid token
+//   - validate the token isn't expired
+//   - verify the user's public key's nonce based signature
+//     this can only be signed when the user has its private key
+//   - verify the issuer is the signing/account key.
+func (svc *AuthnService) ValidateNatsJWT(
+	clientID string, jwtToken string, signedNonce string, nonce string) (err error) {
+
+	// the jwt token is not in the JWT field. Workaround by storing it in the token field.
+	juc, err := jwt.DecodeUserClaims(jwtToken)
+	if err != nil {
+		return fmt.Errorf("unable to decode jwt token:%w", err)
+	}
+	// validate the jwt user claims (not expired)
+	vr := jwt.CreateValidationResults()
+	juc.Validate(vr)
+	if len(vr.Errors()) > 0 {
+		return fmt.Errorf("jwt svc failed: %w", vr.Errors()[0])
+	}
+
+	// Verify the nonce based token signature
+	sig, err := base64.RawURLEncoding.DecodeString(signedNonce)
+	if err != nil {
+		// Allow fallback to normal base64.
+		sig, err = base64.StdEncoding.DecodeString(signedNonce)
+		if err != nil {
+			return fmt.Errorf("signature not valid base64: %w", err)
+		}
+	}
+	// the subject contains the public user nkey
+	userPub, err := nkeys.FromPublicKey(juc.Subject)
+	if err != nil {
+		return fmt.Errorf("user nkey not valid: %w", err)
+	}
+	// verify the signature of the public key using the nonce
+	// this tells us the user public key is not forged
+	if err = userPub.Verify([]byte(nonce), sig); err != nil {
+		return fmt.Errorf("signature not verified")
+	}
+	// verify issuer account matches
+	accPub, _ := svc.signingKey.PublicKey()
+	if juc.Issuer != accPub {
+		return fmt.Errorf("JWT issuer is not known")
+	}
+	// clientID must match the user
+	if juc.Name != clientID {
+		return fmt.Errorf("clientID doesn't match user")
+	}
+
+	// do we know this user?
+	entry, err := svc.pwStore.GetEntry(clientID)
+	if err != nil {
+		return fmt.Errorf("unknown user %s", clientID)
+	}
+	// todo, store user's public key
+	_ = entry
+	//if entry.PubKey != userPub {
+	//	return fmt.Errorf("user %s public key mismatch", clientID)
+	//}
+
+	//acc, err := svc.ns.LookupAccount(juc.IssuerAccount)
+	//if err != nil {
+	//	return fmt.Errorf("JWT issuer is not known")
+	//}
+	//if acc.IsExpired() {
+	//	return fmt.Errorf("Account JWT has expired")
+	//}
+	// no access to account revocation list
+	//if acc.checkUserRevoked(juc.Subject, juc.IssuedAt) {
+	//	return fmt.Errorf("User authentication revoked")
+	//}
+
+	//if !validateSrc(juc, c.host) {
+	//	return fmt.Errorf("Bad src Ip %s", c.host)
+	//	return false
+	//}
+	return nil
+}
+
+// ValidatePassword verifies the given username password is valid
+func (svc *AuthnService) ValidatePassword(clientID string, password string) error {
+	_, err := svc.pwStore.VerifyPassword(clientID, password)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// ValidateToken validates whether a valid jwt token was given
+// This validates:
+// - if the token is a JWT token
+// - if the token's ID matches the clientID
+// - if the claims issuer is the public signing key
+// - if the token is signed by the signing key on record
+// - if the token contains the client public key (subject)
+// - if the token claim type is a user claim
+// - if the token isn't expired
+// - if the user exists
+// TODO: verify issuer
+func (svc *AuthnService) ValidateToken(clientID string, jwtToken string) (
+	entry unpwstore.PasswordEntry, claims jwt.Claims, err error) {
+	//slog.Info("validate token", slog.String("clientID",clientID))
+
+	entry, err = svc.pwStore.GetEntry(clientID)
+	_ = entry
+	if err != nil {
+		return entry, nil, fmt.Errorf("unknown user %s", clientID)
+	}
+	claims, err = jwt.Decode(jwtToken)
+	if err != nil {
+		return entry, nil, fmt.Errorf("invalid token of client %s: %w", clientID, err)
+	}
+	cd := claims.Claims()
+	//claims, err = jwt.DecodeGeneric(jwtToken)
+	// issuer must be known
+	signingPub, _ := svc.signingKey.PublicKey()
+	if cd.Issuer != signingPub {
+		return entry, claims, errors.New("unknown issuer")
+	}
+	if claims.ClaimType() != jwt.UserClaim {
+		return entry, claims, errors.New("Token is not a user token of client " + clientID)
+	}
+	if cd.Name != clientID {
+		slog.Warn("Token from different user",
+			"token ID", cd.ID, "token name", cd.Name, "clientID", clientID)
+		return entry, nil, errors.New("Token is from a different client, not" + clientID)
+	}
+	// TODO: check if the token public key matches that of the claimed user
+	//if cd.Subject != entry.PubKey {
+	//}
+	//FIXME: validate that the jwt token is properly signed
+	//if !validateSignature() {
+	//}
+	vr := jwt.ValidationResults{}
+	cd.Validate(&vr)
+
+	if !vr.IsEmpty() {
+		err = errors.New("Invalid token: " + vr.Errors()[0].Error())
+		return entry, nil, err
+	}
+	return entry, claims, nil
+}
+
 // NewAuthnService creates new instance of the svc
 // Call 'Start' to start the svc and 'Stop' to end it.
 // The signingkey is usually the application account key
 //
 //	accountName from the server of the account used to sign the issued tokens
-//	accountKey used by the server
+//	signingKey used for signing JWT tokens by the server
 //	pwStore is the store for users and encrypted passwords
 //	caCert is the CA certificate used to validate certs
 func NewAuthnService(
-	accountName string, accountKey nkeys.KeyPair, pwStore unpwstore.IUnpwStore, caCert *x509.Certificate) *AuthnService {
+	accountName string, signingKey nkeys.KeyPair, pwStore unpwstore.IUnpwStore,
+	caCert *x509.Certificate) *AuthnService {
 
 	svc := &AuthnService{
 		accountName: accountName,
 		caCert:      caCert,
 		pwStore:     pwStore,
-		signingKey:  accountKey,
+		signingKey:  signingKey,
 	}
 	return svc
 }

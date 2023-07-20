@@ -52,7 +52,8 @@ func startTestAuthnService() (mng authn.IManageAuthn, stopFn func(), err error) 
 		authBundle.AppAccountName,
 		authBundle.AppAccountNKey,
 		pwStore,
-		authBundle.CaCert)
+		authBundle.CaCert,
+	)
 	err = svc.Start()
 	if err != nil {
 		logrus.Panicf("cant start test authn service: %s", err)
@@ -281,68 +282,65 @@ func TestLoginRefresh(t *testing.T) {
 	err = mng.AddUser(authBundle.UserID, "user one", "")
 	require.NoError(t, err)
 
-	// login and get profile
+	// 1. login with password
 	hc1 := hubclient.NewHubClient()
-	cl1 := client.NewClientAuthn(authBundle.ServiceID, hc1)
 	defer hc1.Disconnect()
 	err = hc1.ConnectWithPassword(clientURL, testuser1, testpass1, authBundle.CaCert)
 	require.NoError(t, err)
-	prof1, err := cl1.GetProfile("")
-	require.NoError(t, err)
-	require.NotEmpty(t, prof1)
 
-	// request a new login token
-	userPub, _ := authBundle.UserNKey.PublicKey()
-	userSeed, _ := authBundle.UserNKey.Seed()
+	// 2. request a new login token
+	// use the authentication client to request a new token
+	cl1 := client.NewClientAuthn(authBundle.ServiceID, hc1)
+	userKey, _ := nkeys.CreateUser()
+	userPub, _ := userKey.PublicKey()
 	authToken1, err = cl1.NewToken(testuser1, testpass1, userPub)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, authToken1)
 
-	// login with the new token
+	// 3. login with the new token
+	userSeed, _ := userKey.Seed()
 	hc2 := hubclient.NewHubClient()
 	cl2 := client.NewClientAuthn(authBundle.ServiceID, hc2)
 	defer hc2.Disconnect()
+
+	// create a new key pair using the returned token and private key
 	authToken1Cred, err := jwt.FormatUserConfig(authToken1, userSeed)
-	_ = authToken1Cred
 	require.NoError(t, err)
-	err = hc2.ConnectWithJWT(clientURL, authBundle.UserCreds, authBundle.CaCert)
-	//err = hc2.ConnectWithJWT(clientURL, authToken1Cred, authBundle.CaCert)
+	err = hc2.ConnectWithJWT(clientURL, authToken1Cred, authBundle.CaCert)
 	require.NoError(t, err)
 	prof2, err := cl2.GetProfile("")
 	require.NoError(t, err)
-	require.NotEmpty(t, prof2)
+	require.Equal(t, testuser1, prof2.ClientID)
 
-	// refresh token
-	signedJWT, err := jwt.ParseDecoratedJWT([]byte(authToken1))
-	authToken2, err = cl1.Refresh(authBundle.UserID, signedJWT)
+	// 4. Obtain a refresh token using the new token
+	authToken2, err = cl2.Refresh(authBundle.UserID, authToken1)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, authToken2)
 
-	//--- just testing, remove after
-	// ??? WHY DOES THIS WORK?
-	//hc5 := hubclient.NewHubClient()
-	//err = hc5.ConnectWithJWT(clientURL, authBundle.DeviceCreds, authBundle.CaCert)
-	//require.NoError(t, err)
-	//at5b,err := authBundle.DeviceJWT
-	//authToken3, err := cl.Refresh(authBundle.UserID, authToken2)
-	//require.NoError(t, err)
-	//hc5.Disconnect()
+	// 5. login with the refresh token
+	cl3 := hubclient.NewHubClient()
+	authToken2Cred, err := jwt.FormatUserConfig(authToken2, userSeed)
+	err = cl3.ConnectWithJWT(clientURL, authToken2Cred, authBundle.CaCert)
+	require.NoError(t, err)
+	prof3, err := client.NewClientAuthn(authBundle.ServiceID, cl3).GetProfile(authBundle.UserID)
+	cl3.Disconnect()
+	require.NoError(t, err)
+	require.NotEmpty(t, prof3)
+	require.Equal(t, testuser1, prof3.ClientID)
 
-	//--- just testing end
+	// 6. login with a forged token should fail
+	cl4 := hubclient.NewHubClient()
+	appAcctPub, _ := authBundle.AppAccountNKey.PublicKey()
+	fakeAcct, _ := nkeys.CreateAccount()
+	forgedClaims := jwt.NewUserClaims(userPub)
+	forgedClaims.Subject = userPub
+	forgedClaims.Issuer = appAcctPub
+	forgedJWT, err := forgedClaims.Encode(fakeAcct) // <- forged
+	require.NoError(t, err)
+	forgedCred, err := jwt.FormatUserConfig(forgedJWT, userSeed)
 
-	// login with new token and get profile
-	//hc2 = hubclient.NewHubClient()
-	//defer hc2.Disconnect()
-	//seed2, _ := authBundle.UserNKey.Seed()
-	//authToken2Cred, err := jwt.FormatUserConfig(authToken2, seed2)
-	//require.NoError(t, err)
-	//err = hc2.ConnectWithJWT(clientURL, authToken2Cred, authBundle.CaCert)
-	//require.NoError(t, err)
-	//cl2 := client.NewClientAuthn(authBundle.ServiceID, hc2)
-	//prof2, err := cl2.GetProfile(authBundle.UserID)
-	//
-	//require.NoError(t, err)
-	//require.NotEmpty(t, prof2)
+	err = cl4.ConnectWithJWT(clientURL, forgedCred, authBundle.CaCert)
+	require.Error(t, err)
 
 	slog.Info("--- TestLoginRefresh end")
 }

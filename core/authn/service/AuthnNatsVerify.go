@@ -28,50 +28,16 @@ func (v *AuthnNatsVerify) VerifyClientCert(claims *jwt.AuthorizationRequestClaim
 	return fmt.Errorf("client cert svc not yet supported")
 }
 
-// VerifyJWT claim
-//
-//	FIXME: how?
-func (v *AuthnNatsVerify) VerifyJWT(claims *jwt.AuthorizationRequestClaims) error {
-	juc, err := jwt.DecodeUserClaims(claims.ConnectOptions.JWT)
-	if err != nil {
-		return fmt.Errorf("unable to decode jwt token:%w", err)
-	}
-	vr := jwt.CreateValidationResults()
-	juc.Validate(vr)
-	if len(vr.Errors()) > 0 {
-		return fmt.Errorf("jwt svc failed: %w", vr.Errors()[0])
-	}
-	// verify account as done in auth.go:863?
-	//acc, err = s.LookupAccount(juc.IssuerAccount)
-	//if scope, ok := acc.hasIssuer(juc.Issuer); !ok {
-	//	return fmt.Errorf("User JWT issuer is not known")
-	//}
-	//if err := scope.ValidateScopedSigner(juc); err != nil {
-	//	return fmt.Errorf("User JWT is not valid: %w", err)
-	//}
-	//if acc.IsExpired() {
-	//	return fmt.Errorf("Account JWT has expired")
-	//}
-	//pub, err := nkeys.FromPublicKey(juc.Subject)
-	//if err != nil {
-	//	return fmt.Errorf("User nkey not valid: %w", err)
-	//}
-	//sig, err := base64.RawURLEncoding.DecodeString(c.opts.Sig)
-	//if err := pub.Verify(c.nonce, sig); err != nil {
-	//	return fmt.Errorf("Signature not verified: %w", err)
-	//}
-	//if acc.checkUserRevoked(juc.Subject, juc.IssuedAt) {
-	//	return fmt.Errorf("User authentication revoked")
-	//}
-	//if !validateSrc(juc, c.host) {
-	//	return fmt.Errorf("Bad src Ip %s", c.host)
-	//	return false
-	//}
-	//nkey = buildInternalNkeyUser(juc, allowedConnTypes, acc)
-	//if err := c.RegisterNkeyUser(nkey); err != nil {
-	//	return false
-	//}
-	return fmt.Errorf("jwt svc not yet supported")
+// VerifyNatsJWT verififies the NATS JWT token that is signed by the account
+func (v *AuthnNatsVerify) VerifyNatsJWT(claims *jwt.AuthorizationRequestClaims) error {
+
+	err := v.svc.ValidateNatsJWT(
+		claims.ClientInformation.Name,
+		claims.ConnectOptions.Token,
+		claims.ConnectOptions.SignedNonce,
+		claims.ClientInformation.Nonce)
+	//
+	return err
 }
 
 // VerifyNKey claim
@@ -120,6 +86,8 @@ func (v *AuthnNatsVerify) VerifyPassword(claims *jwt.AuthorizationRequestClaims)
 	err := v.svc.ValidatePassword(loginName, passwd)
 	return err
 }
+
+// VerifyToken verifies a standard JWT token
 func (v *AuthnNatsVerify) VerifyToken(claims *jwt.AuthorizationRequestClaims) error {
 	token := claims.ConnectOptions.Token
 	clientID := claims.ConnectOptions.Name
@@ -140,8 +108,9 @@ func (v *AuthnNatsVerify) VerifyAuthnReq(claims *jwt.AuthorizationRequestClaims)
 		slog.String("host", claims.ClientInformation.Host))
 	if claims.ConnectOptions.Nkey != "" {
 		return v.VerifyNKey(claims)
-	} else if claims.ConnectOptions.JWT != "" {
-		return v.VerifyJWT(claims)
+	} else if claims.ConnectOptions.SignedNonce != "" {
+		// JWT field is empty so we're using the Token field and expect a signed nonce
+		return v.VerifyNatsJWT(claims)
 	} else if claims.ConnectOptions.Password != "" {
 		return v.VerifyPassword(claims)
 	} else if claims.ConnectOptions.Token != "" {

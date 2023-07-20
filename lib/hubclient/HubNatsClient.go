@@ -110,7 +110,7 @@ func (hc *HubNatsClient) ConnectWithCert(url string, clientID string, clientCert
 	return err
 }
 
-// ConnectWithJWT connects to the Hub server using a user JWT credentials secret
+// ConnectWithJWT connects to the Hub server using a NATS user JWT credentials secret
 // This seems (?) to also work when using jwt with static server setup using nkeys
 func (hc *HubNatsClient) ConnectWithJWT(url string, jwtCreds []byte, caCert *x509.Certificate) (err error) {
 	if url == "" {
@@ -125,10 +125,15 @@ func (hc *HubNatsClient) ConnectWithJWT(url string, jwtCreds []byte, caCert *x50
 		RootCAs:            caCertPool,
 		InsecureSkipVerify: caCert == nil,
 	}
-	// TODO. how is this supposed to work?
 	// Get the userID from the token
 	jwtToken, err := jwt.ParseDecoratedJWT(jwtCreds)
+	if err != nil {
+		return fmt.Errorf("can't get jwt from jwtCreds: %w", err)
+	}
 	userKP, err := jwt.ParseDecoratedUserNKey(jwtCreds)
+	if err != nil {
+		return fmt.Errorf("can't get keys from jwtCreds: %w", err)
+	}
 	jwtSeed, err := userKP.Seed()
 	claims, err := jwt.Decode(jwtToken)
 	if err != nil {
@@ -142,7 +147,9 @@ func (hc *HubNatsClient) ConnectWithJWT(url string, jwtCreds []byte, caCert *x50
 		nats.Name(hc.clientID), // connection name for logging, debugging
 		nats.Secure(tlsConfig),
 		nats.UserJWTAndSeed(jwtToken, string(jwtSeed)), // does this help?
-		nats.Token(jwtToken),                           // for testing
+		// since nats doesnt pass a jwt token to the callout, include it as a regular token
+		// the downside is that nonce signing isn't used
+		nats.Token(jwtToken),
 		nats.Timeout(time.Second*time.Duration(hc.timeoutSec)))
 
 	if err == nil {

@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/ser"
 )
 
-// ClientAuthn is a marshaller for messaging with the authn service using the hub client connection.
+// ClientAuthn is a marshaller for messaging with the authn service using a provided hub connection.
 // This is intended for clients to authenticate themselves and refresh auth tokens.
 // This uses the default serializer to marshal and unmarshal messages.
 type ClientAuthn struct {
