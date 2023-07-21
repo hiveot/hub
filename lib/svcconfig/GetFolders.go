@@ -1,20 +1,17 @@
 package svcconfig
 
 import (
-	"golang.org/x/exp/slog"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 )
 
 type AppFolders struct {
-	Bin        string // Application binary folder, eg launcher, cli, ...
-	Plugins    string // Plugin folder
-	Home       string // Home folder, default this is the parent of bin, config, certs and logs
-	Config     string // Config folder with application and service yaml configuration files
-	ConfigFile string
+	Bin     string // Application binary folder, eg launcher, cli, ...
+	Plugins string // Plugin folder
+	Home    string // Home folder, default this is the parent of bin, config, certs and logs
+	Config  string // Config folder with application and service yaml configuration files
+	//ConfigFile string
 	Certs      string // Certificates and keys
 	Logs       string // Logging output
 	Run        string // PID and sockets folder.
@@ -55,7 +52,7 @@ func GetFolders(homeFolder string, useSystem bool) AppFolders {
 	if homeFolder == "" {
 		cwd := filepath.Dir(os.Args[0])
 		if strings.HasSuffix(cwd, "plugins") {
-			homeFolder = filepath.Join(cwd, "..", "..")
+			homeFolder = filepath.Join(cwd, "..")
 		} else if strings.HasSuffix(cwd, "bin") {
 			homeFolder = filepath.Join(cwd, "..")
 		} else {
@@ -65,7 +62,7 @@ func GetFolders(homeFolder string, useSystem bool) AppFolders {
 	}
 	//slog.Infof("homeFolder is '%s", homeFolder)
 	binFolder := filepath.Join(homeFolder, "bin")
-	pluginsFolder := filepath.Join(binFolder, "plugins")
+	pluginsFolder := filepath.Join(homeFolder, "plugins")
 	configFolder := filepath.Join(homeFolder, "config")
 	certsFolder := filepath.Join(homeFolder, "certs")
 	logsFolder := filepath.Join(homeFolder, "logs")
@@ -95,19 +92,21 @@ func GetFolders(homeFolder string, useSystem bool) AppFolders {
 	}
 }
 
-// LoadConfig loads a configuration file from the config folder
-func (f *AppFolders) LoadConfig(cfg interface{}) error {
-	cfgData, err := os.ReadFile(f.ConfigFile)
-	if err == nil {
-		slog.Info("Loaded configuration file", "filename", f.ConfigFile)
-		err = yaml.Unmarshal(cfgData, cfg)
-		if err != nil {
-			slog.Error("Loading configuration file failed", "err", err, "configFile", f.ConfigFile)
-		}
-	} else {
-		slog.Info("Configuration file not found. Ignored.", "filename", f.ConfigFile)
-		err = nil
-	}
-
-	return err
-}
+//
+//// LoadConfig loads a configuration file from the config folder
+//func (f *AppFolders) LoadConfig(name string, cfg interface{}) error {
+//	configFile := path.Join(f.Config, name)
+//	cfgData, err := os.ReadFile(configFile)
+//	if err == nil {
+//		slog.Info("Loaded configuration file", "configFile", configFile)
+//		err = yaml.Unmarshal(cfgData, cfg)
+//		if err != nil {
+//			slog.Error("Loading configuration file failed", "err", err, "configFile", configFile)
+//		}
+//	} else {
+//		slog.Info("Configuration file not found. Ignored.", "configFile", configFile)
+//		err = nil
+//	}
+//
+//	return err
+//}

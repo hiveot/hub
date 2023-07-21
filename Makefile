@@ -9,7 +9,8 @@ INSTALL_HOME=~/bin/hiveot
 
 all: core plugins hubcli  ## Build APIs, CLI, Hub services
 
-core:
+hubcore: ## Build the core binary
+	go build -o $(DIST_FOLDER)/bin/$@ core/cmd/$@/main.go
 
 plugins: directory launcher owserver provisioning zwavejs
 

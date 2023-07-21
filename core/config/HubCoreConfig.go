@@ -1,7 +1,8 @@
 package config
 
 import (
-	"github.com/nats-io/nkeys"
+	"fmt"
+	"github.com/hiveot/hub/lib/svcconfig"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path"
@@ -10,50 +11,49 @@ import (
 // HubCoreConfig with Hub core configuration
 // Use NewHubCoreConfig to create a default config
 type HubCoreConfig struct {
-	Server *ServerConfig `yaml:"server"`
-	Authn  *AuthnConfig  `yaml:"authn"`
-	//Authz  authz.AuthZConfig `yaml:"authz"`
-}
-
-// LoadConfig loads the hub core configuration from the given yaml file
-// This only replaces the values that are defined in the config file
-func (cfg *HubCoreConfig) LoadConfig(yamlFile string) error {
-	data, err := os.ReadFile(yamlFile)
-	if err != nil {
-		return err
-	}
-	err = yaml.Unmarshal(data, cfg)
-	if err != nil {
-		return err
-	}
-	// load the files defined in the server config
-	err = cfg.Server.LoadConfig()
-	if err != nil {
-		return err
-	}
-	// load the files defined in the authn config
-	err = cfg.Authn.LoadConfig()
-
-	return err
+	Server ServerConfig `yaml:"server"`
+	Authn  AuthnConfig  `yaml:"authn"`
+	Authz  AuthzConfig  `yaml:"authz"`
 }
 
 // NewHubCoreConfig creates a configuration for the hub server and core services
 //
-//	accountName is the default application account name. Use "" for default
-//	accountKey is the default application key for creating auth tokens. Use nil for default.
-//	certsDir is the default location of CA and server certificates
-//	storesDir is the default location of the storage root (services will each have a subdir)
-func NewHubCoreConfig(accountName string, accountKey nkeys.KeyPair, certsDir string, storesDir string) *HubCoreConfig {
-	binDir := path.Base(path.Base(os.Args[0]))
-	if certsDir == "" {
-		path.Join(binDir, "..", "certs")
+//	home dir of the application home. Default is the parent of the application bin folder
+//	configfile with the name of the config file or "" to not load a config
+func NewHubCoreConfig(home string, configFile string) (*HubCoreConfig, error) {
+	f := svcconfig.GetFolders(home, false)
+	if home == "" {
+		home = path.Base(path.Base(os.Args[0]))
 	}
-	if storesDir == "" {
-		path.Join(binDir, "..", "stores")
+	hubCfg := &HubCoreConfig{}
+	// load config file
+	if _, err := os.Stat(configFile); err == nil {
+		data, err := os.ReadFile(configFile)
+		if err != nil {
+			return hubCfg, fmt.Errorf("unable to load config: %w", err)
+		}
+		err = yaml.Unmarshal(data, hubCfg)
+		if err != nil {
+			return hubCfg, fmt.Errorf("unable to parse config: %w", err)
+		}
 	}
-	hCfg := &HubCoreConfig{
-		Server: NewServerConfig(accountName, accountKey, certsDir, storesDir),
-		Authn:  NewAuthnConfig(storesDir),
+	// initialize the config by loading certificates and keys
+	// load the files defined in the server config
+	err := hubCfg.Server.InitConfig(f.Certs, f.Stores)
+	if err != nil {
+		return hubCfg, fmt.Errorf("server config error: %w", err)
 	}
-	return hCfg
+	// load the files defined in the authn config
+	err = hubCfg.Authn.InitConfig(f.Certs, f.Stores)
+	if err != nil {
+		return hubCfg, fmt.Errorf("authn config error: %w", err)
+	}
+
+	// load the files defined in the authz config
+	err = hubCfg.Authz.InitConfig(f.Stores)
+	if err != nil {
+		return hubCfg, fmt.Errorf("authz config error: %w", err)
+	}
+
+	return hubCfg, nil
 }

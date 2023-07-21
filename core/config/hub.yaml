@@ -1,32 +1,46 @@
 # hub.yaml contains the hiveot hub core configuration
 
 
-# messaging server configuration
+# Messaging server configuration
 server:
   # specific listening address, default is 127.0.0.1
+  # the host name or IP must match that of the certificate for TLS to work
   #host: "127.0.0.1"
 
   # default listening TLS port is 4222 and 4223 for websocket
   #port: 4222
-  #wsPort: 4223
+  #wsPort: 8222
 
-  # Storage location. Default is $HOME/stores/server
-  #storesDir: "$HOME/stores/server"
+  # logging level for server: debug, info, warn (default), error
+  #logLevel: "warn"
+  # logfile to write to in the logging folder. Default is stderr
+  #logFile: "hubcore.log"
 
-  # path to TLS server certificate and key file
+  # Data location. Default is "$HOME/stores/server"
+  #dataDir: "$HOME/stores/server"
+
+  # names or paths to server TLS server certificate and key file
+  # the default dir is "$HOME/certs"
   #serverCertFile: "serverCert.pem"
   #serverKeyFile: "serverKey.pem"
+
   # path to x509 CA certificate file that signed the server cert
   #caCertFile: "caCert.pem"
+  #caKeyFile: "caKey.pem"
 
   # Name of application account. Default is hiveot
   #appAccountName: "hiveot"
+  # name or path to the application account key file. The default dir is "$HOME/certs"
+  #appAccountKeyFile: "hiveotAcct.nkey"
 
+  # disable running the embedded messaging server
+  #noAutoStart: true     # dont start the embedded server
 
-# authn service configuration
+# Authentication service configuration
 authn:
-  # password file to store bcrypted passwords
-  # Default is $HOME/stores/authn/hub.passwd
+  # name or path to password file, with stored bcrypted passwords
+  # Default dir is "$HOME/stores/authn"
+  # This contains sensitive information and should only be readable by the core process
   #passwordFile "hub.passwd"
 
   # optional override of the renewed auth token validity in days
@@ -36,9 +50,17 @@ authn:
   #serviceTokenValidityDays: 366
   #userTokenValidityDays: 30
 
+  # Don't start the embedded authentication service
+  # Use this for testing or when authn is running stand-alone
+  #noAutoStart: true
 
-# authz service configuration
+# Authorization service configuration
 authz:
-  #groupsDir         # directory to store groups. Default is $HOME/stores/authz
+  # directory to store groups. Default is $HOME/stores/authz
+  # This contains sensitive information and should only be readable by the core process
+  #groupsDir: "$HOME/stores/authz"
 
+  # Do not auto-start the embedded authorization service
+  # Use this for testing or when authz is running stand-alone
+  #noAutoStart: true
 

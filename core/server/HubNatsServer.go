@@ -45,15 +45,17 @@ type HubNatsServer struct {
 	cfg *config.ServerConfig
 
 	// The application account all generated tokens belong to.
+	appAcctKey nkeys.KeyPair
 	appAccount *server.Account
 
-	// The account that the callout handler belongs to
+	// The account that the callout handler uses
 	calloutAccountKey  nkeys.KeyPair
 	calloutAccountName string
-	// The callout handler client key
-	calloutUserKey nkeys.KeyPair
+	calloutUserKey     nkeys.KeyPair
 
 	//hubAccount *server.Account
+	caCert     *x509.Certificate
+	serverCert *tls.Certificate
 	serverOpts *server.Options
 	ns         *server.Server
 	calloutSub *nats.Subscription
@@ -66,7 +68,7 @@ type HubNatsServer struct {
 // Intended to work around having implement nkey auth ourselves as it aint pretty.
 // No pubsub restrictions are set.
 // This takes effect immediately.
-func (srv HubNatsServer) AddServiceKey(nkey nkeys.KeyPair) error {
+func (srv *HubNatsServer) AddServiceKey(nkey nkeys.KeyPair) error {
 	// add static service nkeys
 	nkeyPub, _ := nkey.PublicKey()
 	//allow := fmt.Sprintf("things.%s.>",name)
@@ -88,19 +90,19 @@ func (srv HubNatsServer) AddServiceKey(nkey nkeys.KeyPair) error {
 
 // ConnectInProc connects to the server in-process using nkey. Intended for the core services.
 // The client NKey must have been added using AddServiceKey.
-func (srv HubNatsServer) ConnectInProc(clientID string, clientKey nkeys.KeyPair) (*nats.Conn, error) {
+func (srv *HubNatsServer) ConnectInProc(clientID string, clientKey nkeys.KeyPair) (*nats.Conn, error) {
 	// The handler to sign the server issued challenge
 	sigCB := func(nonce []byte) ([]byte, error) {
 		return clientKey.Sign(nonce)
 	}
 	// If the server uses TLS then the in-process pipe connection is also upgrade to TLS.
 	caCertPool := x509.NewCertPool()
-	if srv.cfg.CaCert != nil {
-		caCertPool.AddCert(srv.cfg.CaCert)
+	if srv.caCert != nil {
+		caCertPool.AddCert(srv.caCert)
 	}
 	tlsConfig := &tls.Config{
 		RootCAs:            caCertPool,
-		InsecureSkipVerify: srv.cfg.CaCert == nil,
+		InsecureSkipVerify: srv.caCert == nil,
 	}
 	clientKeyPub, _ := clientKey.PublicKey()
 	cl, err := nats.Connect(srv.ns.ClientURL(), // don't need a URL for in-process connection
@@ -131,7 +133,7 @@ func (srv *HubNatsServer) createUserJWTToken(clientID string, clientPub string) 
 	// not sure why this is an issue...
 	//uc.IssuerAccount,_ = svr.calloutAcctKey.PublicKey()
 	uc.IssuedAt = time.Now().Unix()
-	// FIXME: doc says aud should be public account key of the user
+	// note: doc says aud should be public account key of the user
 	// however, auth_callout.go does a lookup by name instead
 	// see also: https://github.com/nats-io/nats-server/issues/4313
 	//uc.Audience, _ = svr.appAccountKey.PublicKey()
@@ -185,7 +187,7 @@ func (srv *HubNatsServer) handleCallOutReq(msg *nats.Msg) {
 
 	slog.Info("received authcallout", slog.String("userID", reqClaims.ConnectOptions.Name))
 	userNKeyPub := reqClaims.UserNkey
-	server := reqClaims.Server
+	serverID := reqClaims.Server
 	client := reqClaims.ClientInformation
 	connectOpts := reqClaims.ConnectOptions
 	tlsInfo := reqClaims.TLS
@@ -204,7 +206,7 @@ func (srv *HubNatsServer) handleCallOutReq(msg *nats.Msg) {
 		clientID := connectOpts.Name // client identification
 		newToken, err = srv.createUserJWTToken(clientID, userNKeyPub)
 	}
-	resp, err := srv.createSignedResponse(userNKeyPub, server.ID, newToken, err)
+	resp, err := srv.createSignedResponse(userNKeyPub, serverID.ID, newToken, err)
 
 	err = msg.Respond(resp)
 	_ = err
@@ -223,7 +225,7 @@ func (srv *HubNatsServer) Start() (clientURL string, err error) {
 
 	// Configure and Start the server
 	// Two accounts and several static NKeys for core clients
-	appAccountPub, _ := srv.cfg.AppAccountKey.PublicKey()
+	appAccountPub, _ := srv.appAcctKey.PublicKey()
 	srv.appAccount = server.NewAccount(srv.cfg.AppAccountName)
 	srv.appAccount.Nkey = appAccountPub
 
@@ -261,10 +263,10 @@ func (srv *HubNatsServer) Start() (clientURL string, err error) {
 		Users: []*server.User{},
 	}
 
-	if srv.cfg.CaCert != nil && srv.cfg.ServerCert != nil {
+	if srv.caCert != nil && srv.serverCert != nil {
 		caCertPool := x509.NewCertPool()
-		caCertPool.AddCert(srv.cfg.CaCert)
-		clientCertList := []tls.Certificate{*srv.cfg.ServerCert}
+		caCertPool.AddCert(srv.caCert)
+		clientCertList := []tls.Certificate{*srv.serverCert}
 		tlsConfig := &tls.Config{
 			ServerName:   "HiveOT Hub",
 			ClientCAs:    caCertPool,
@@ -318,11 +320,17 @@ func (srv *HubNatsServer) Stop() {
 //
 // Use SetAuthnVerifier function to install the callout authn handler.
 //
-// cfg contains an initialized server configuration for use as hiveot hub
-func NewHubNatsServer(cfg *config.ServerConfig) *HubNatsServer {
+//	cfg contains an initialized server configuration for use as hiveot hub
+//	appAcctKey is the application account nkey
+//	serverCert tls certificate to run the server with
+//	caCert CA the server runs with
+func NewHubNatsServer(cfg *config.ServerConfig, appAcctKey nkeys.KeyPair, serverCert *tls.Certificate, caCert *x509.Certificate) *HubNatsServer {
 
 	srv := &HubNatsServer{
-		cfg: cfg,
+		cfg:        cfg,
+		appAcctKey: appAcctKey,
+		caCert:     caCert,
+		serverCert: serverCert,
 	}
 	return srv
 }

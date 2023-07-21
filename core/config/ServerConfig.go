@@ -1,10 +1,7 @@
 package config
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/nats-io/nkeys"
 	"os"
 	"path"
 )
@@ -14,82 +11,92 @@ type ServerConfig struct {
 	// Host is the server Hostname must match the name in the server certificate
 	Host string `yaml:"host"`
 	// Port, default is 4222
-	Port int `yaml:"port"`
+	Port   int `yaml:"port"`
+	WSPort int `yaml:"WSPort"`
 	//
-	WSPort         int    `yaml:"WSPort"`
+	LogLevel string `yaml:"logLevel"`
+	LogFile  string `yaml:"logFile"`
+	//
 	ServerCertFile string `yaml:"serverCertFile"`
 	ServerKeyFile  string `yaml:"serverKeyFile"`
-	StoresDir      string `yaml:"storesDir"`
+	DataDir        string `yaml:"dataDir"`
 	CaCertFile     string `yaml:"caCertFile"`
+	CaKeyFile      string `yaml:"caKeyFile"`
 	// application account name and key for issued tokens
 	AppAccountName    string `yaml:"appAccountName"`
 	AppAccountKeyFile string `yaml:"appAccountKeyFile"`
 
-	// after LoadConfig
-	AppAccountKey nkeys.KeyPair
-	CaCert        *x509.Certificate
-	ServerCert    *tls.Certificate
+	NoAutoStart bool `yaml:"noAutoStart"`
+
+	// Loaded by InitConfig
+	//AppAccountKey nkeys.KeyPair `yaml:"-"`
+	//CaCert        *x509.Certificate `yaml:"-"`
+	//ServerCert *tls.Certificate `yaml:"-"`
 }
 
-// LoadConfig loads the files used in the configuration
-// If no account key file is given or the account key does exist, it will be generated
-func (cfg *ServerConfig) LoadConfig() (err error) {
-	if cfg.CaCert == nil && cfg.CaCertFile != "" {
-		cfg.CaCert, err = certs.LoadX509CertFromPEM(cfg.CaCertFile)
-	}
-	if err != nil {
-		return err
-	}
-	if cfg.ServerCert == nil && cfg.ServerCertFile != "" {
-		cfg.ServerCert, err = certs.LoadTLSCertFromPEM(cfg.ServerCertFile, cfg.ServerKeyFile)
-	}
-	if err != nil {
-		return err
-	}
-	// load a key if a keyfile name was given
-	if cfg.AppAccountKey == nil {
-		if cfg.AppAccountKeyFile != "" {
-			data, err := os.ReadFile(cfg.AppAccountKeyFile)
-			if err != nil {
-				return err
-			}
-			cfg.AppAccountKey, err = nkeys.ParseDecoratedNKey(data)
-			if err != nil {
-				return err
-			}
-		} else {
-			cfg.AppAccountKey, err = nkeys.CreateAccount()
-		}
-	}
-	return err
-}
+// InitConfig ensures all fields are valid.
+// Any values already set will be kept as-is.
+//
+//	certsDir path to the certificate directory with certs and keys
+//	storesDir path to the storage root directory. Server will use 'server' subdir.
+func (cfg *ServerConfig) InitConfig(certsDir string, storesDir string) (err error) {
 
-// NewServerConfig creates a new server configuration with default values
-//
-//	accountName is the application account name to use or "" for default
-//	accountKey is the application account key or nil to get from config file or auto-generate
-//	certsDir is the directory for loading certificate files, default is $HOME/certs
-//	storesDir is the directory for storing hub data, default is $HOME/stores
-//
-// Default is $HOME/stores
-func NewServerConfig(accountName string, accountKey nkeys.KeyPair, certsDir string, storesDir string) *ServerConfig {
 	hostName, _ := os.Hostname()
-	if accountName == "" {
-		accountName = "hiveot-" + hostName
+
+	if cfg.Host == "" {
+		cfg.Host = "127.0.0.1"
 	}
-	if accountKey == nil {
-		accountKey, _ = nkeys.CreateAccount()
+	if cfg.Port == 0 {
+		cfg.Port = 4222
 	}
-	srvCfg := &ServerConfig{
-		Host:           "127.0.0.1",
-		Port:           4222,
-		WSPort:         4223,
-		StoresDir:      path.Join(storesDir, "server"),
-		ServerKeyFile:  path.Join(certsDir, "serverKey.pem"),
-		ServerCertFile: path.Join(certsDir, "serverCert.pem"),
-		CaCertFile:     path.Join(certsDir, "caCert.pem"),
-		AppAccountName: accountName,
-		AppAccountKey:  accountKey,
+	if cfg.WSPort == 0 {
+		cfg.WSPort = 8222
 	}
-	return srvCfg
+
+	if cfg.DataDir == "" {
+		cfg.DataDir = "server"
+	}
+	if !path.IsAbs(cfg.DataDir) {
+		cfg.DataDir = path.Join(storesDir, cfg.DataDir)
+	}
+
+	if cfg.CaCertFile == "" {
+		cfg.CaCertFile = certs.DefaultCaCertFile
+	}
+	if !path.IsAbs(cfg.ServerCertFile) {
+		cfg.CaCertFile = path.Join(certsDir, cfg.CaCertFile)
+	}
+
+	if cfg.CaKeyFile == "" {
+		cfg.CaKeyFile = certs.DefaultCaKeyFile
+	}
+	if !path.IsAbs(cfg.CaKeyFile) {
+		cfg.CaKeyFile = path.Join(certsDir, cfg.CaKeyFile)
+	}
+
+	if cfg.ServerKeyFile == "" {
+		cfg.ServerKeyFile = "serverKey.pem"
+	}
+	if !path.IsAbs(cfg.ServerKeyFile) {
+		cfg.ServerKeyFile = path.Join(certsDir, cfg.ServerKeyFile)
+	}
+
+	if cfg.ServerCertFile == "" {
+		cfg.ServerCertFile = "serverCert.pem"
+	}
+	if !path.IsAbs(cfg.ServerCertFile) {
+		cfg.ServerCertFile = path.Join(certsDir, cfg.ServerCertFile)
+	}
+
+	if cfg.AppAccountName == "" {
+		cfg.AppAccountName = "hiveot-" + hostName
+	}
+	if cfg.AppAccountKeyFile == "" {
+		cfg.AppAccountKeyFile = cfg.AppAccountName + "Acct.nkey"
+	}
+	if !path.IsAbs(cfg.AppAccountKeyFile) {
+		cfg.AppAccountKeyFile = path.Join(certsDir, cfg.AppAccountKeyFile)
+	}
+
+	return err
 }

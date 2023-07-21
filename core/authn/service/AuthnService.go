@@ -453,7 +453,8 @@ func (svc *AuthnService) ValidateToken(clientID string, jwtToken string) (
 //	pwStore is the store for users and encrypted passwords
 //	caCert is the CA certificate used to validate certs
 func NewAuthnService(
-	accountName string, signingKey nkeys.KeyPair, pwStore unpwstore.IUnpwStore,
+	pwStore unpwstore.IUnpwStore,
+	accountName string, signingKey nkeys.KeyPair,
 	caCert *x509.Certificate) *AuthnService {
 
 	svc := &AuthnService{
