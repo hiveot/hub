@@ -245,7 +245,7 @@ func (svc *AuthnService) Start() error {
 }
 
 func (svc *AuthnService) Stop() error {
-	slog.Info("stopping svc")
+	slog.Info("stopping AuthnService")
 	svc.pwStore.Close()
 	return nil
 }

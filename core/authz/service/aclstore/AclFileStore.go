@@ -13,6 +13,7 @@ import (
 )
 
 // AclFileStore is an in-memory ACL store based on the state store
+// This tracks client groups in two indexes, one by group and one by clientID
 type AclFileStore struct {
 	serviceID string
 
@@ -31,6 +32,22 @@ type AclFileStore struct {
 	mutex            sync.RWMutex
 }
 
+// AddGroup adds a new group to the store
+func (aclStore *AclFileStore) AddGroup(groupName string) error {
+	aclStore.mutex.Lock()
+	defer aclStore.mutex.Unlock()
+	_, exists := aclStore.groups[groupName]
+	if exists {
+		return fmt.Errorf("Group '%s' already exists", groupName)
+	}
+	aclStore.groups[groupName] = authz.Group{
+		Name:        groupName,
+		MemberRoles: authz.RoleMap{},
+	}
+	err := aclStore.Save()
+	return err
+}
+
 // Close the store
 func (aclStore *AclFileStore) Close() {
 	slog.Info("AclFileStore.Release", "serviceID", aclStore.serviceID)
@@ -40,6 +57,17 @@ func (aclStore *AclFileStore) Close() {
 	//	_ = aclStore.watcher.Close()
 	//	aclStore.watcher = nil
 	//}
+}
+
+// DeleteGroup deletes the given group from the store
+func (aclStore *AclFileStore) DeleteGroup(groupName string) error {
+	aclStore.mutex.Lock()
+	defer aclStore.mutex.Unlock()
+	delete(aclStore.groups, groupName)
+	err := aclStore.Save()
+
+	slog.Info("group removed", "groupName", groupName)
+	return err
 }
 
 // GetGroup returns the group of the given name
@@ -55,13 +83,12 @@ func (aclStore *AclFileStore) GetGroup(groupName string) (authz.Group, error) {
 	return group, nil
 }
 
-// GetGroupRoles returns the roles a thing or user has in various groups
-func (aclStore *AclFileStore) GetGroupRoles(clientID string) authz.RoleMap {
+// GetClientRoles returns the roles a thing or user has in various groups
+func (aclStore *AclFileStore) GetClientRoles(clientID string) authz.RoleMap {
 
 	aclStore.mutex.RLock()
 	defer aclStore.mutex.RUnlock()
 
-	// change map of group->clientrole to list
 	roles := aclStore.clientGroupRoles[clientID]
 
 	return roles
@@ -131,12 +158,16 @@ func IsRoleGreaterEqual(role string, minRole string) bool {
 	return false
 }
 
-// ListGroups return ... a list of all groups
-// TODO: apply limit and offset.
-func (aclStore *AclFileStore) ListGroups(limit int, offset int) []authz.Group {
+// ListGroups return ... a list of all groups available to the client
+//
+//	clientID client that is a member of the groups to return, or "" for all groups
+func (aclStore *AclFileStore) ListGroups(clientID string) []authz.Group {
 	groups := make([]authz.Group, 0, len(aclStore.groups))
 	for _, group := range aclStore.groups {
-		groups = append(groups, group)
+		_, found := group.MemberRoles[clientID]
+		if found || clientID == "" {
+			groups = append(groups, group)
+		}
 	}
 	return groups
 }
@@ -209,13 +240,13 @@ func (aclStore *AclFileStore) Reload() error {
 	return nil
 }
 
-// Remove removes a client from a group and update the store.
+// RemoveClient removes a client from a group and update the store.
 //
 //	serviceID login name to assign the role
 //	groupID  group where the role applies.
 //
 // returns an error if the group doesn't exist or saving the update fails
-func (aclStore *AclFileStore) Remove(clientID string, groupID string) error {
+func (aclStore *AclFileStore) RemoveClient(clientID string, groupID string) error {
 
 	// Prevent concurrently running Reload and SetRole
 	aclStore.mutex.Lock()
@@ -239,24 +270,42 @@ func (aclStore *AclFileStore) Remove(clientID string, groupID string) error {
 	return err
 }
 
-// RemoveAll removes a client from all groups and update the store.
+// RemoveClientAll removes a client from all groups and update the store.
 //
-//	clientID user or thingID to remove from all groups
-func (aclStore *AclFileStore) RemoveAll(clientID string) error {
+//	clientID client to remove
+//
+// this succeeds unless the store cannot be written
+func (aclStore *AclFileStore) RemoveClientAll(clientID string) error {
 
-	for key := range aclStore.groups {
-		aclStore.Remove(clientID, key)
+	// Prevent concurrently running Reload and SetRole
+	aclStore.mutex.Lock()
+	defer aclStore.mutex.Unlock()
+
+	// remove the client from each individual group
+	groupRoles := aclStore.clientGroupRoles[clientID]
+	for groupID, _ := range groupRoles {
+		aclGroup, found := aclStore.groups[groupID]
+		if found {
+			delete(aclGroup.MemberRoles, clientID)
+		}
 	}
-	return nil
+
+	// remove all the group roles of the client
+	delete(aclStore.clientGroupRoles, clientID)
+
+	err := aclStore.Save()
+
+	slog.Info("client removed from all groups", "clientID", clientID)
+	return err
 }
 
 // SetRole sets a user ACL and update the store.
 // This updates the user's role, saves it to a temp file and move the result to the store file.
 //
 //	clientID   client to assign the role
-//	groupName  group where the role applies
 //	role     one of ClientRoleViewer, ClientRoleOperator, ClientRoleManager, ClientRoleThing or ClientRoleNone to remove the role
-func (aclStore *AclFileStore) SetRole(clientID string, groupName string, role string) error {
+//	groupName  group where the role applies
+func (aclStore *AclFileStore) SetRole(clientID string, role string, groupName string) error {
 
 	// Prevent concurrently running Reload and SetRole
 	aclStore.mutex.Lock()
@@ -265,7 +314,10 @@ func (aclStore *AclFileStore) SetRole(clientID string, groupName string, role st
 	// update the group
 	aclGroup, found := aclStore.groups[groupName]
 	if !found {
-		aclGroup = authz.NewGroup(groupName)
+		aclGroup = authz.Group{
+			Name:        groupName,
+			MemberRoles: authz.RoleMap{},
+		}
 		aclStore.groups[groupName] = aclGroup
 	}
 	aclGroup.MemberRoles[clientID] = role

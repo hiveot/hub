@@ -24,7 +24,7 @@ type HubCore struct {
 	//serverCert *tls.Certificate
 	//caCert     *x509.Certificate
 	server *server.HubNatsServer
-	authn  *service.AuthnBinding
+	authn  *service.AuthnNatsBinding
 	authz  authz.IAuthz
 	//dir        directory.IDirectory
 	//hist       history.IHistory

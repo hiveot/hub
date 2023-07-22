@@ -67,6 +67,9 @@ type ErrorMessage struct {
 // IHubClient interface of the golang hub messaging client
 type IHubClient interface {
 
+	// ClientID of the current connection
+	ClientID() string
+
 	// ConnectWithCert to the Hub with a client certificate.
 	//
 	// The client certificate must be signed by the hub CA.
