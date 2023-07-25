@@ -8,18 +8,16 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-// AuthnNatsBinding is a NATS binding for handling Authn messaging requests
-// Subjects: things.authn.*.{action}
-type AuthnNatsBinding struct {
-	svc *AuthnService
-	//hc      hub.IHubClient
-	//signingKey nkeys.KeyPair
+// AuthnMsgBinding is a binding for handling Authn messaging requests
+// The purpose of the binding is to unmarshal request and marshal responses.
+type AuthnMsgBinding struct {
+	svc    *AuthnService
 	mngSub hub.ISubscription
 	clSub  hub.ISubscription
 }
 
 // handle action requests published by hub clients
-func (binding *AuthnNatsBinding) handleClientActions(action *hub.ActionMessage) error {
+func (binding *AuthnMsgBinding) handleClientActions(action *hub.ActionMessage) error {
 	slog.Info("handleClientActions", slog.String("actionID", action.ActionID))
 	switch action.ActionID {
 	case authn.GetProfileAction:
@@ -91,7 +89,7 @@ func (binding *AuthnNatsBinding) handleClientActions(action *hub.ActionMessage) 
 }
 
 // handle authn management requests published by a hub manager
-func (binding *AuthnNatsBinding) handleManageActions(action *hub.ActionMessage) error {
+func (binding *AuthnMsgBinding) handleManageActions(action *hub.ActionMessage) error {
 	slog.Info("handleManageActions",
 		slog.String("actionID", action.ActionID),
 		"my addr", binding)
@@ -149,24 +147,25 @@ func (binding *AuthnNatsBinding) handleManageActions(action *hub.ActionMessage) 
 
 // Start subscribes to the actions for management and client capabilities
 // Register the binding subscription using the given connection
-func (binding *AuthnNatsBinding) Start(hc hub.IHubClient) {
-	binding.mngSub, _ = hc.SubActions(authn.ManageAuthnCapability, binding.handleManageActions)
+func (binding *AuthnMsgBinding) Start(hc hub.IHubClient) (err error) {
+	// if the first succeeds then 2nd will succeed as well
+	binding.mngSub, err = hc.SubActions(authn.ManageAuthnCapability, binding.handleManageActions)
 	binding.clSub, _ = hc.SubActions(authn.ClientAuthnCapability, binding.handleClientActions)
-	//_ = binding.hc.Subscribe(server.AuthCalloutSubject, )
+	return err
 }
 
 // Stop removes subscriptions
-func (binding *AuthnNatsBinding) Stop() {
+func (binding *AuthnMsgBinding) Stop() {
 	binding.clSub.Unsubscribe()
 	binding.mngSub.Unsubscribe()
 }
 
-// NewAuthnNatsBinding create a nats binding for the svc svc
+// NewAuthnMsgBinding create a messaging binding for the authn service
 //
-//	svc is the svc svc to bind to.
+//	svc is the authn svc to bind to.
 //	hc is the hub client, connected using the svc credentials
-func NewAuthnNatsBinding(svc *AuthnService) *AuthnNatsBinding {
-	an := &AuthnNatsBinding{
+func NewAuthnMsgBinding(svc *AuthnService) *AuthnMsgBinding {
+	an := &AuthnMsgBinding{
 		svc: svc,
 	}
 	return an

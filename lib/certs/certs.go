@@ -88,7 +88,7 @@ func PublicKeyFromCert(cert *x509.Certificate) *ecdsa.PublicKey {
 func SaveTLSCertToPEM(cert *tls.Certificate, certPEMPath, keyPEMPath string) error {
 	b := pem.Block{Type: "CERTIFICATE", Bytes: cert.Certificate[0]}
 	certPEM := pem.EncodeToMemory(&b)
-	err := os.WriteFile(certPEMPath, certPEM, 0644)
+	err := os.WriteFile(certPEMPath, certPEM, 0444)
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func SaveTLSCertToPEM(cert *tls.Certificate, certPEMPath, keyPEMPath string) err
 func SaveX509CertToPEM(cert *x509.Certificate, pemPath string) error {
 	b := pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}
 	certPEM := pem.EncodeToMemory(&b)
-	err := os.WriteFile(pemPath, certPEM, 0644)
+	err := os.WriteFile(pemPath, certPEM, 0444)
 	return err
 }
 

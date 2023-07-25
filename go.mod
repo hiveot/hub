@@ -11,7 +11,7 @@ require (
 	github.com/lmittmann/tint v0.3.4
 	github.com/nats-io/jwt/v2 v2.4.1
 	github.com/nats-io/nats-server/v2 v2.9.20
-	github.com/nats-io/nats.go v1.27.1
+	github.com/nats-io/nats.go v1.28.0
 	github.com/nats-io/nkeys v0.4.4
 	github.com/samber/lo v1.38.1
 	github.com/sirupsen/logrus v1.9.3

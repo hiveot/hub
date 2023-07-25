@@ -8,18 +8,16 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-// AuthzNatsBinding is a NATS binding for handling Authz messaging requests
-// Subjects: things.authz.*.{action}
-type AuthzNatsBinding struct {
-	svc *AuthzService
-	//hc      hub.IHubClient
-	//signingKey nkeys.KeyPair
+// AuthzMsgBinding is messaging binding for handling Authz messaging requests
+// The underlying communication protocol in implemented by the hubclient
+type AuthzMsgBinding struct {
+	svc    *AuthzService
+	hc     hub.IHubClient
 	mngSub hub.ISubscription
-	clSub  hub.ISubscription
 }
 
 // handle authz management requests published by a hub manager
-func (binding *AuthzNatsBinding) handleManageActions(action *hub.ActionMessage) error {
+func (binding *AuthzMsgBinding) handleManageActions(action *hub.ActionMessage) error {
 	slog.Info("handleManageActions",
 		slog.String("actionID", action.ActionID),
 		"my addr", binding)
@@ -168,4 +166,33 @@ func (binding *AuthzNatsBinding) handleManageActions(action *hub.ActionMessage) 
 		return err
 	}
 	return errors.New("unknown action: " + action.ActionID)
+}
+
+// Start subscribes to authz message requests
+func (binding *AuthzMsgBinding) Start() error {
+	sub, err := binding.hc.SubActions(authz.ManageAuthzCapability, binding.handleManageActions)
+	binding.mngSub = sub
+	return err
+}
+
+// Stop unsubscribes from authz message requests
+func (binding *AuthzMsgBinding) Stop() {
+	if binding.mngSub != nil {
+		binding.mngSub.Unsubscribe()
+	}
+}
+
+// NewAuthzMsgBinding creates a new instance of the messaging binding
+// This uses an existing client connection to the server to subscribe and unsubscribe.
+// opening and closing this connection is the responsibility of the caller.
+//
+//	svc is the messaging service that handles the requests
+//	hc is an existing client connection to the messaging server
+func NewAuthzMsgBinding(svc *AuthzService, hc hub.IHubClient) *AuthzMsgBinding {
+	binding := &AuthzMsgBinding{
+		svc:    svc,
+		hc:     hc,
+		mngSub: nil,
+	}
+	return binding
 }

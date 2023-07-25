@@ -2,7 +2,6 @@ package config
 
 import (
 	"github.com/hiveot/hub/lib/certs"
-	"os"
 	"path"
 )
 
@@ -28,10 +27,8 @@ type ServerConfig struct {
 
 	NoAutoStart bool `yaml:"noAutoStart"`
 
-	// Loaded by InitConfig
-	//AppAccountKey nkeys.KeyPair `yaml:"-"`
-	//CaCert        *x509.Certificate `yaml:"-"`
-	//ServerCert *tls.Certificate `yaml:"-"`
+	// Maximum data memory RAM usage. 0 for default 100MB
+	MaxDataMemoryMB int `json:"maxDataMemoryMB"`
 }
 
 // InitConfig ensures all fields are valid.
@@ -40,8 +37,6 @@ type ServerConfig struct {
 //	certsDir path to the certificate directory with certs and keys
 //	storesDir path to the storage root directory. Server will use 'server' subdir.
 func (cfg *ServerConfig) InitConfig(certsDir string, storesDir string) (err error) {
-
-	hostName, _ := os.Hostname()
 
 	if cfg.Host == "" {
 		cfg.Host = "127.0.0.1"
@@ -88,8 +83,12 @@ func (cfg *ServerConfig) InitConfig(certsDir string, storesDir string) (err erro
 		cfg.ServerCertFile = path.Join(certsDir, cfg.ServerCertFile)
 	}
 
+	if cfg.MaxDataMemoryMB == 0 {
+		cfg.MaxDataMemoryMB = 100
+	}
+
 	if cfg.AppAccountName == "" {
-		cfg.AppAccountName = "hiveot-" + hostName
+		cfg.AppAccountName = "hiveotapp"
 	}
 	if cfg.AppAccountKeyFile == "" {
 		cfg.AppAccountKeyFile = cfg.AppAccountName + "Acct.nkey"

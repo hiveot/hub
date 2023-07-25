@@ -111,7 +111,7 @@ func SaveKeysToPEM(privateKey interface{}, pemPath string) error {
 	x509Encoded, err := x509.MarshalPKCS8PrivateKey(privateKey)
 	pemEncoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: x509Encoded})
 	if err == nil {
-		err = os.WriteFile(pemPath, pemEncoded, 0600)
+		err = os.WriteFile(pemPath, pemEncoded, 0400)
 	}
 	return err
 }

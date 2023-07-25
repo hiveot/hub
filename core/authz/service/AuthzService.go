@@ -1,13 +1,8 @@
 package service
 
 import (
-	"crypto/x509"
-	"fmt"
 	"github.com/hiveot/hub/core/authz"
-	"github.com/hiveot/hub/core/authz/service/aclstore"
 	"github.com/nats-io/nats.go"
-	"golang.org/x/exp/slog"
-	"strings"
 )
 
 // AuthzService handles client management and authorization for access to Things.
@@ -17,10 +12,9 @@ import (
 // is authorized to receive or post a message. This applies to all users of the message bus,
 // regardless of how they are authenticated.
 type AuthzService struct {
-	aclStore *aclstore.AclFileStore
-	nc       *nats.Conn
-	// ca certificate for connection validation
-	caCert *x509.Certificate
+	aclStore  authz.IAuthz
+	authzNats *AuthzJetStream // todo IAuthz api
+	nc        *nats.Conn
 }
 
 // GetPermissions returns a list of permissions a client has for a Thing
@@ -33,90 +27,54 @@ type AuthzService struct {
 //
 // publish to the connected stream.
 func (svc *AuthzService) AddGroup(groupName string, retention uint64) error {
-	//slog.Info("Adding stream", "name", groupName, "source", sourceStream, "filters", subjects)
-
-	err := svc.aclStore.AddGroup(groupName)
-	if err != nil {
-		return err
+	err := svc.aclStore.AddGroup(groupName, retention)
+	if err == nil {
+		err = svc.authzNats.AddGroup(groupName, retention)
 	}
-
-	// sources that produce events and are a member of the group
-	sources := make([]*nats.StreamSource, 0)
-
-	// TODO add a stream source per subject
-	//for i, subject := range subjects {
-	//	streamSource := &nats.StreamSource{
-	//		Name:          sourceStream,
-	//		FilterSubject: subject,
-	//	}
-	//	sources[i] = streamSource
-	//}
-	cfg := &nats.StreamConfig{
-		Name:      groupName,
-		Retention: nats.LimitsPolicy,
-		Sources:   sources,
-		//Subjects:  subjects,
-	}
-	js, err := svc.nc.JetStream()
-	if err != nil {
-		return err
-	}
-	strmInfo, err := js.AddStream(cfg)
-	if err != nil {
-		return err
-	}
-	_ = strmInfo
-	//
-	//cfg := &nats.ConsumerConfig{
-	//	Name:          name,
-	//	FilterSubject: "",
-	//	//Durable:
-	//
-	//}
-	//cinfo, err := hc.js.AddConsumer(name, cfg)
-	//_ = cinfo
 	return err
 }
 
 // AddService adds a client with the service role to a group
 func (svc *AuthzService) AddService(serviceID string, groupName string) error {
 
-	err := svc.aclStore.SetRole(serviceID, authz.ClientRoleService, groupName)
+	err := svc.aclStore.AddService(serviceID, groupName)
+	if err == nil && svc.authzNats != nil {
+		err = svc.authzNats.AddService(serviceID, groupName)
+	}
 	return err
 }
 
 // AddThing adds a client with the thing role to a group
 func (svc *AuthzService) AddThing(thingID string, groupName string) error {
 
-	err := svc.aclStore.SetRole(thingID, authz.ClientRoleThing, groupName)
+	err := svc.aclStore.AddThing(thingID, groupName)
+	if err == nil && svc.authzNats != nil {
+		err = svc.authzNats.AddThing(thingID, groupName)
+	}
 	return err
 }
 
 // AddUser adds a client with the user role to a group
 func (svc *AuthzService) AddUser(userID string, role string, groupName string) (err error) {
-
-	if role == authz.ClientRoleViewer ||
-		role == authz.ClientRoleManager ||
-		role == authz.ClientRoleOperator {
-
-		err = svc.aclStore.SetRole(userID, role, groupName)
-	} else {
-		err = fmt.Errorf("role '%s' doesn't apply to users", role)
+	err = svc.aclStore.AddUser(userID, role, groupName)
+	if err == nil && svc.authzNats != nil {
+		err = svc.authzNats.AddUser(userID, role, groupName)
 	}
 	return err
 }
 
 // DeleteGroup deletes the group and associated resources. Use with care
 func (svc *AuthzService) DeleteGroup(groupName string) error {
-	return svc.aclStore.DeleteGroup(groupName)
+	err := svc.aclStore.DeleteGroup(groupName)
+	if err == nil && svc.authzNats != nil {
+		err = svc.authzNats.DeleteGroup(groupName)
+	}
+	return err
 }
 
 // GetClientRoles returns a map of [group]role for a client
 func (svc *AuthzService) GetClientRoles(clientID string) (roles authz.RoleMap, err error) {
-
-	// simple pass through
-	roles = svc.aclStore.GetClientRoles(clientID)
-	return roles, nil
+	return svc.aclStore.GetClientRoles(clientID)
 }
 
 // GetGroup returns the group with the given name, or an error if group is not found.
@@ -160,72 +118,55 @@ func (svc *AuthzService) GetPermissions(clientID string, thingIDs []string) (per
 	return permissions, nil
 }
 
-// IsPublisher checks if the deviceID is the publisher of the thingAddr.
-// This requires that the thingAddr is formatted as publisherID/thingID
-// Returns true if the deviceID is the publisher of the thingID, false if not.
-func (svc *AuthzService) IsPublisher(deviceID string, thingAddr string) (bool, error) {
-
-	// FIXME use a helper for this so the domain knownledge is concentraged
-	addrParts := strings.Split(thingAddr, "/")
-	return addrParts[0] == deviceID, nil
+// GetRole returns the highest role of a user has in groups shared with the thingID
+// Intended to get client permissions in case of overlapping groups
+func (svc *AuthzService) GetRole(clientID string, thingID string) string {
+	return svc.aclStore.GetRole(clientID, thingID)
 }
 
 // ListGroups returns the list of known groups available to the client
 func (svc *AuthzService) ListGroups(clientID string) (groups []authz.Group, err error) {
-
-	groups = svc.aclStore.ListGroups(clientID)
-	return groups, nil
+	groups, err = svc.aclStore.ListGroups(clientID)
+	return groups, err
 }
 
 // RemoveClient from a group
 func (svc *AuthzService) RemoveClient(clientID string, groupName string) error {
 	err := svc.aclStore.RemoveClient(clientID, groupName)
+	if err == nil && svc.authzNats != nil {
+		err = svc.authzNats.RemoveClient(clientID, groupName)
+	}
 	return err
 }
 
 // RemoveClientAll from all groups
 func (svc *AuthzService) RemoveClientAll(clientID string) error {
 	err := svc.aclStore.RemoveClientAll(clientID)
+	if err == nil && svc.authzNats != nil {
+		err = svc.authzNats.RemoveClientAll(clientID)
+	}
 	return err
 }
 
 // SetUserRole sets the role for the user in a group
 func (svc *AuthzService) SetUserRole(userID string, role string, groupName string) (err error) {
-	if role == authz.ClientRoleViewer ||
-		role == authz.ClientRoleManager ||
-		role == authz.ClientRoleOperator {
-		err = svc.aclStore.SetRole(userID, role, groupName)
-	} else {
-		err = fmt.Errorf("role '%s' doesn't apply to users", role)
+	err = svc.aclStore.SetUserRole(userID, role, groupName)
+	if err == nil && svc.authzNats != nil {
+		err = svc.authzNats.SetUserRole(userID, role, groupName)
 	}
 	return err
 }
 
-// Start the ACL store for reading
-func (svc *AuthzService) Start() error {
-	slog.Info("Opening ACL store")
-	err := svc.aclStore.Open()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// Stop closes the service and release resources
-func (svc *AuthzService) Stop() {
-	slog.Info("stopping AuthzService")
-	svc.aclStore.Close()
-}
-
 // NewAuthzService creates a new instance of the authorization service.
+// The aclStore and authzNats must be started separately.
 //
 //	aclStore provides the functions to read and write authorization rules
-func NewAuthzService(aclStorePath string, caCert *x509.Certificate) *AuthzService {
-	aclStore := aclstore.NewAclFileStore(aclStorePath, authz.AuthzServiceName)
+//	authzNats configures NATS jetstream accordingly. Use nil to ignore (for testing)
+func NewAuthzService(aclStore *AclFileStore, authzNats *AuthzJetStream) *AuthzService {
 
 	authzService := AuthzService{
-		aclStore: aclStore,
-		caCert:   caCert,
+		aclStore:  aclStore,
+		authzNats: authzNats,
 	}
 	return &authzService
 }

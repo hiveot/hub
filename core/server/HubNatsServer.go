@@ -46,7 +46,6 @@ type HubNatsServer struct {
 
 	// The application account all generated tokens belong to.
 	appAcctKey nkeys.KeyPair
-	appAccount *server.Account
 
 	// The account that the callout handler uses
 	calloutAccountKey  nkeys.KeyPair
@@ -64,11 +63,54 @@ type HubNatsServer struct {
 	verifyAuthn func(req *jwt.AuthorizationRequestClaims) error
 }
 
-// AddServiceKey adds an nkey to the static server config and exclude it from the callout.
+// AddAccount to the server and enable JetStream with the given memory
+// This returns the account. If an account already exists it is updated.
+//
+//	name is the account name. Used also in auth
+//	acctNKey is the account's key. Used also in auth
+//	maxMB is the maximum memory the account can use. -1 for unlimited. 0 to not use JetStream
+func (srv *HubNatsServer) AddAccount(name string, acctNKey nkeys.KeyPair, maxMB int) (acct *server.Account, err error) {
+	// Configure and Start the server
+	// Two accounts and several static NKeys for core clients
+
+	//srv.appAccount = server.NewAccount(srv.cfg.AppAccountName)
+	//srv.appAccount.Nkey = appAccountPub
+
+	acct, err = srv.ns.LookupAccount(name)
+	if err != nil {
+		acct = server.NewAccount(name)
+		srv.serverOpts.Accounts = append(srv.serverOpts.Accounts, acct)
+		// ReloadOptions will register the account
+		err = srv.ns.ReloadOptions(srv.serverOpts)
+		acct, err = srv.ns.LookupAccount(name)
+	}
+	acct.Nkey, _ = acctNKey.PublicKey()
+
+	// this seems unnecessarily complicated. also not documented :(
+	if maxMB != 0 {
+		limits := server.JetStreamAccountLimits{
+			MaxMemory:        int64(maxMB) * 1024 * 1024,
+			MaxBytesRequired: false,
+			MaxStore:         -1,
+			MaxStreams:       -1,
+			MaxConsumers:     -1,
+		}
+		accLimits := map[string]server.JetStreamAccountLimits{
+			"": limits,
+		}
+
+		err = acct.EnableJetStream(accLimits)
+	}
+
+	return acct, err
+}
+
+// AddAppAcctServiceKey adds a user nkey to the server config on the application account,
+// and exclude it from the callout.
 // Intended to work around having implement nkey auth ourselves as it aint pretty.
 // No pubsub restrictions are set.
 // This takes effect immediately.
-func (srv *HubNatsServer) AddServiceKey(nkey nkeys.KeyPair) error {
+func (srv *HubNatsServer) AddAppAcctServiceKey(nkey nkeys.KeyPair) (err error) {
 	// add static service nkeys
 	nkeyPub, _ := nkey.PublicKey()
 	//allow := fmt.Sprintf("things.%s.>",name)
@@ -78,18 +120,19 @@ func (srv *HubNatsServer) AddServiceKey(nkey nkeys.KeyPair) error {
 	//			},
 	//			Subscribe: []string{">"},
 	//		}
+	appAcct, err := srv.ns.LookupAccount(srv.cfg.AppAccountName)
 	srv.serverOpts.Nkeys = append(srv.serverOpts.Nkeys, &server.NkeyUser{
 		Nkey:    nkeyPub,
-		Account: srv.appAccount,
+		Account: appAcct,
 		//Permissions: p,
 	})
 	srv.serverOpts.AuthCallout.AuthUsers = append(srv.serverOpts.AuthCallout.AuthUsers, nkeyPub)
-	err := srv.ns.ReloadOptions(srv.serverOpts)
+	err = srv.ns.ReloadOptions(srv.serverOpts)
 	return err
 }
 
 // ConnectInProc connects to the server in-process using nkey. Intended for the core services.
-// The client NKey must have been added using AddServiceKey.
+// The client NKey must have been added using AddAppAcctServiceKey.
 func (srv *HubNatsServer) ConnectInProc(clientID string, clientKey nkeys.KeyPair) (*nats.Conn, error) {
 	// The handler to sign the server issued challenge
 	sigCB := func(nonce []byte) ([]byte, error) {
@@ -132,11 +175,12 @@ func (srv *HubNatsServer) createUserJWTToken(clientID string, clientPub string) 
 	//   "Error non operator mode account %q: attempted to use issuer_account"
 	// not sure why this is an issue...
 	//uc.IssuerAccount,_ = svr.calloutAcctKey.PublicKey()
+	//uc.Issuer, _ = srv.appAcctKey.PublicKey()
 	uc.IssuedAt = time.Now().Unix()
 	// note: doc says aud should be public account key of the user
 	// however, auth_callout.go does a lookup by name instead
 	// see also: https://github.com/nats-io/nats-server/issues/4313
-	//uc.Audience, _ = svr.appAccountKey.PublicKey()
+	//uc.Audience, _ = srv.appAcctKey.PublicKey()
 	uc.Audience = srv.cfg.AppAccountName
 	uc.Expires = time.Now().Add(time.Duration(validitySec) * time.Second).Unix()
 
@@ -147,7 +191,9 @@ func (srv *HubNatsServer) createUserJWTToken(clientID string, clientPub string) 
 	if len(vr.Errors()) != 0 {
 		err = fmt.Errorf("validation error: %w", vr.Errors()[0])
 	}
-	newToken, err = uc.Encode(srv.calloutAccountKey)
+	// encode sets the issuer field to the public key
+	newToken, err = uc.Encode(srv.appAcctKey)
+	//newToken, err = uc.Encode(srv.calloutAccountKey)
 	return newToken, err
 }
 
@@ -160,11 +206,10 @@ func (srv *HubNatsServer) createUserJWTToken(clientID string, clientPub string) 
 func (srv *HubNatsServer) createSignedResponse(
 	userPub string, serverPub string, userJWT string, rerr error) ([]byte, error) {
 
-	calloutAcctPub, err := srv.calloutAccountKey.PublicKey()
 	// create and send the response
 	respClaims := jwt.NewAuthorizationResponseClaims(userPub)
 	respClaims.Audience = serverPub
-	respClaims.Issuer = calloutAcctPub
+	//respClaims.Audience = srv.cfg.AppAccountName
 	respClaims.Jwt = userJWT
 	if rerr != nil {
 		respClaims.Error = rerr.Error()
@@ -172,8 +217,8 @@ func (srv *HubNatsServer) createSignedResponse(
 
 	respClaims.IssuedAt = time.Now().Unix()
 	respClaims.Expires = time.Now().Add(time.Duration(100) * time.Second).Unix()
-	// signingKey must be the issuer keys
 	response, err := respClaims.Encode(srv.calloutAccountKey)
+	//response, err := respClaims.Encode(srv.appAcctKey)
 	return []byte(response), err
 }
 
@@ -185,7 +230,7 @@ func (srv *HubNatsServer) handleCallOutReq(msg *nats.Msg) {
 		return
 	}
 
-	slog.Info("received authcallout", slog.String("userID", reqClaims.ConnectOptions.Name))
+	slog.Info("handleCallOutReq", slog.String("userID", reqClaims.ConnectOptions.Name))
 	userNKeyPub := reqClaims.UserNkey
 	serverID := reqClaims.Server
 	client := reqClaims.ClientInformation
@@ -195,20 +240,33 @@ func (srv *HubNatsServer) handleCallOutReq(msg *nats.Msg) {
 	_ = client
 	_ = tlsInfo
 
-	err = nil
 	if srv.verifyAuthn != nil {
 		err = srv.verifyAuthn(reqClaims)
 	} else {
 		err = fmt.Errorf("authcallout invoked without a verifier")
 	}
+	if err != nil {
+		slog.Info("error verifying authn", "err", err)
+		return
+	}
 	newToken := ""
-	if err == nil {
-		clientID := connectOpts.Name // client identification
-		newToken, err = srv.createUserJWTToken(clientID, userNKeyPub)
+	clientID := connectOpts.Name // client identification
+	newToken, err = srv.createUserJWTToken(clientID, userNKeyPub)
+	if err != nil {
+		slog.Error("error creating JWT token", "err", err)
+		return
 	}
 	resp, err := srv.createSignedResponse(userNKeyPub, serverID.ID, newToken, err)
+	if err != nil {
+		slog.Error("error creating signed response", "err", err)
+		return
+	}
 
 	err = msg.Respond(resp)
+	if err != nil {
+		slog.Error("error sending response", "err", err)
+		return
+	}
 	_ = err
 }
 
@@ -225,9 +283,9 @@ func (srv *HubNatsServer) Start() (clientURL string, err error) {
 
 	// Configure and Start the server
 	// Two accounts and several static NKeys for core clients
-	appAccountPub, _ := srv.appAcctKey.PublicKey()
-	srv.appAccount = server.NewAccount(srv.cfg.AppAccountName)
-	srv.appAccount.Nkey = appAccountPub
+	//appAccountPub, _ := srv.appAcctKey.PublicKey()
+	//srv.appAccount.Nkey = appAccountPub
+	//srv.appAccount = server.NewAccount(srv.cfg.AppAccountName)
 
 	// the callout authentication handler runs in a separate internal account
 	srv.calloutAccountKey, _ = nkeys.CreateAccount()
@@ -238,14 +296,14 @@ func (srv *HubNatsServer) Start() (clientURL string, err error) {
 	srv.calloutUserKey, _ = nkeys.CreateUser()
 	calloutUserPub, _ := srv.calloutUserKey.PublicKey()
 
-	// run the server with
+	// run the server with a callout and app account
 	srv.serverOpts = &server.Options{
-		Host:      srv.cfg.Host,
-		Port:      srv.cfg.Port,
-		JetStream: true,
-		//JetStreamMaxMemory: 1*1024*1024*1024,
+		Host:               srv.cfg.Host,
+		Port:               srv.cfg.Port,
+		JetStream:          true,
+		JetStreamMaxMemory: int64(srv.cfg.MaxDataMemoryMB) * 1024 * 1024,
 
-		Accounts: []*server.Account{calloutAccount, srv.appAccount},
+		Accounts: []*server.Account{calloutAccount}, // srv.appAccount},
 		AuthCallout: &server.AuthCallout{
 			Issuer:    calloutAccountPub,
 			Account:   srv.calloutAccountName,
@@ -261,6 +319,9 @@ func (srv *HubNatsServer) Start() (clientURL string, err error) {
 			},
 		},
 		Users: []*server.User{},
+		// logging
+		Debug:   true,
+		Logtime: true,
 	}
 
 	if srv.caCert != nil && srv.serverCert != nil {
@@ -280,22 +341,31 @@ func (srv *HubNatsServer) Start() (clientURL string, err error) {
 	}
 	// start nats
 	srv.ns, err = server.NewServer(srv.serverOpts)
+	if err != nil {
+		return "", err
+	}
 	srv.ns.ConfigureLogger()
 
 	//if err == nil {
 	//	srv.hubAccount = srv.ns.GlobalAccount()
 	//}
-	if err == nil {
-		go srv.ns.Start()
-		if !srv.ns.ReadyForConnections(3 * time.Second) {
-			err = errors.New("nats: not ready for connection")
-		} else {
-			clientURL = srv.ns.ClientURL()
-		}
+	// startup and wait
+	go srv.ns.Start()
+	if !srv.ns.ReadyForConnections(3 * time.Second) {
+		err = errors.New("nats: not ready for connection")
+		return "", err
 	}
+	clientURL = srv.ns.ClientURL()
 
-	if err == nil {
-		// start discovery
+	// add the app account to use
+	if srv.appAcctKey == nil {
+		//srv.appAcctKey =
+		return "", fmt.Errorf("missing app account")
+	}
+	_, err = srv.AddAccount(srv.cfg.AppAccountName, srv.appAcctKey, srv.cfg.MaxDataMemoryMB)
+	if err != nil {
+		srv.Stop()
+		return "", err
 	}
 
 	// install the callout handler

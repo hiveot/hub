@@ -6,7 +6,7 @@ Provide authentication keys to clients on the local network.
 
 ## Status
 
-This service is reworked for use with NATS.
+This service is alpha but functional.  
 
 
 ## Scope
@@ -18,8 +18,6 @@ In-scope is to provide identity management for clients on the local network. Log
 This core service manages HiveOT users and their credentials. It issues signed JWT tokens to authenticate with the NATS server.
 
 Administrators manage users and passwords through the 'hubcli' commandline utility or through the authn management API. Creating users or resetting passwords requires an 'admin' key.
-
-The authn service performs tasks similar to the nats nsc tool but somewhat simplified. Its primary objective is to manage user tokens. As a core service it identifies itself using its operator token.
 
 A note on nsc. Nats has a companion tool called 'nsc'. This tool is used to manage NATS operators, accounts and users, and authorization using the commandline.  It is separate from the nats server itself and interact with the server through the nats client.
 
@@ -48,7 +46,8 @@ In short, services that accept access tokens perform stateless verification of t
 Weakness 1: Access to the tokens is the achilles heel of this approach. If a bad actor obtains an access token while it is still valid, and can spoof its IP address to that of the token, then security is compromised. This is somewhat mitigated by using TLS and requiring a valid server certificate, signed by the CA.
 
 
-## Usage
+## Usage - old - still to be updated 
+
 
 Code below is pseudocode and needs to be updated.
 
@@ -56,11 +55,11 @@ Code below is pseudocode and needs to be updated.
 
 Using the authn CLI. This utility should only be accessible to admin users:
 ```bash
- bin/hubcore authn adduser {userID}      # this will prompt for a password
+ bin/hubcli authn adduser {userID}      # this will prompt for a password
  
- bin/hubcore authn deleteuser {userID}
+ bin/hubcli authn deleteuser {userID}
 
- bin/hubcore authn setpasswd             # this will prompt for a password
+ bin/hubcli authn setpasswd             # this will prompt for a password
 ```
 
 Using the service API:

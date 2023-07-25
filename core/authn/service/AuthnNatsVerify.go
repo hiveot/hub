@@ -28,7 +28,7 @@ func (v *AuthnNatsVerify) VerifyClientCert(claims *jwt.AuthorizationRequestClaim
 	return fmt.Errorf("client cert svc not yet supported")
 }
 
-// VerifyNatsJWT verififies the NATS JWT token that is signed by the account
+// VerifyNatsJWT verifies the NATS JWT token that is signed by the account
 func (v *AuthnNatsVerify) VerifyNatsJWT(claims *jwt.AuthorizationRequestClaims) error {
 
 	err := v.svc.ValidateNatsJWT(
@@ -64,12 +64,12 @@ func (v *AuthnNatsVerify) VerifyNKey(claims *jwt.AuthorizationRequestClaims) err
 
 	//sig, err := base64.RawURLEncoding.DecodeString(c.opts.Sig)
 	//if err != nil {
-	//	return fmt.Errorf("Signature not valid")
+	//	return fmt.Errorf("signature not valid")
 	//}
 	pub, err := nkeys.FromPublicKey(nkey)
 	_ = pub
 	if err != nil {
-		return fmt.Errorf("User nkey not valid: %v", err)
+		return fmt.Errorf("user nkey not valid: %v", err)
 	}
 	// FIXME: where does sig come from?
 	sig := []byte("")
@@ -102,26 +102,27 @@ func (v *AuthnNatsVerify) VerifyToken(claims *jwt.AuthorizationRequestClaims) er
 // VerifyAuthnReq the authentication request
 // For use by the nats server
 // claims contains various possible svc methods: password, nkey, jwt, certs
-func (v *AuthnNatsVerify) VerifyAuthnReq(claims *jwt.AuthorizationRequestClaims) error {
+func (v *AuthnNatsVerify) VerifyAuthnReq(claims *jwt.AuthorizationRequestClaims) (err error) {
 	slog.Info("VerifyAuthnReq",
 		slog.String("name", claims.ConnectOptions.Name),
 		slog.String("host", claims.ClientInformation.Host))
 	if claims.ConnectOptions.Nkey != "" {
-		return v.VerifyNKey(claims)
+		err = v.VerifyNKey(claims)
 	} else if claims.ConnectOptions.SignedNonce != "" {
 		// JWT field is empty so we're using the Token field and expect a signed nonce
-		return v.VerifyNatsJWT(claims)
+		err = v.VerifyNatsJWT(claims)
 	} else if claims.ConnectOptions.Password != "" {
-		return v.VerifyPassword(claims)
+		err = v.VerifyPassword(claims)
 	} else if claims.ConnectOptions.Token != "" {
-		return v.VerifyToken(claims)
+		err = v.VerifyToken(claims)
 	} else if claims.TLS != nil && claims.TLS.Certs != nil {
-		return v.VerifyClientCert(claims)
+		err = v.VerifyClientCert(claims)
 	} else {
 		// unsupported
-		return fmt.Errorf("no auth credentials provided by user '%s' from host '%s'",
+		err = fmt.Errorf("no auth credentials provided by user '%s' from host '%s'",
 			claims.ClientInformation.Name, claims.ClientInformation.Host)
 	}
+	return err
 }
 
 func NewAuthnNatsVerify(svc *AuthnService) *AuthnNatsVerify {

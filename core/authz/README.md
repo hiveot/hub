@@ -7,7 +7,7 @@ Provide authorization to access resources based on the client role and group.
 
 ## Status
 
-This service is being reworked for use with NATS
+This service is being reworked for use with NATS JetStream
 
 ## Summary
 

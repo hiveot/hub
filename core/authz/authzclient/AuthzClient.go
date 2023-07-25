@@ -1,4 +1,4 @@
-package client
+package authzclient
 
 import (
 	"github.com/hiveot/hub/api/go/hub"

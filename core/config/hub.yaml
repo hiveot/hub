@@ -16,6 +16,9 @@ server:
   # logfile to write to in the logging folder. Default is stderr
   #logFile: "hubcore.log"
 
+  # maximum in-memory RAM usage. Default (0) is 100MB. -1 for maximum
+  #maxDataMemoryMB: 100
+
   # Data location. Default is "$HOME/stores/server"
   #dataDir: "$HOME/stores/server"
 
@@ -28,8 +31,8 @@ server:
   #caCertFile: "caCert.pem"
   #caKeyFile: "caKey.pem"
 
-  # Name of application account. Default is hiveot
-  #appAccountName: "hiveot"
+  # Name of application account. Default is hiveotapp
+  #appAccountName: "hiveotapp"
   # name or path to the application account key file. The default dir is "$HOME/certs"
   #appAccountKeyFile: "hiveotAcct.nkey"
 

@@ -26,8 +26,13 @@ var tempFolder string
 func startTestAuthzService() (svc authz.IAuthz, closeFn func()) {
 
 	_ = os.Remove(aclFilePath)
-	authSvc := service.NewAuthzService(aclFilePath, authBundle.CaCert)
-	err := authSvc.Start()
+	aclStore := service.NewAuthzFileStore(aclFilePath, authz.AuthzServiceName)
+	err := aclStore.Open()
+	if err != nil {
+		panic(err)
+	}
+	authSvc := service.NewAuthzService(aclStore, authBundle.CaCert)
+	err = authSvc.Start()
 	if err != nil {
 		return nil, nil
 	}
@@ -62,15 +67,19 @@ func TestAuthzServiceStartStop(t *testing.T) {
 func TestAuthzServiceBadStart(t *testing.T) {
 	logrus.Infof("---TestAuthzServiceBadStart---")
 	badAclFilePath := "/bad/aclstore/path"
-	svc := service.NewAuthzService(badAclFilePath, authBundle.CaCert)
+	aclStore := service.NewAuthzFileStore(badAclFilePath, authz.AuthzServiceName)
 
 	// opening the acl store should fail
-	err := svc.Start()
-	assert.Error(t, err)
+	err := aclStore.Open()
+	require.Error(t, err)
+	svc := service.NewAuthzService(aclStore, authBundle.CaCert)
+
+	// service opening the acl store should fail
+	err = svc.Start()
 	svc.Stop()
 
 	// missing store should not panic
-	svc = service.NewAuthzService("", authBundle.CaCert)
+	svc = service.NewAuthzService(nil, authBundle.CaCert)
 	err = svc.Start()
 	assert.Error(t, err)
 }

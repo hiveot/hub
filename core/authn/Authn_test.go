@@ -43,32 +43,32 @@ func startTestAuthnService() (mng authn.IManageAuthn, stopFn func(), err error) 
 
 	// TODO: put this in a test environment
 	_ = os.Remove(passwordFile)
-	cfg := config.NewAuthnConfig(storeFolder)
+	cfg := config.AuthnConfig{}
+	_ = cfg.InitConfig("", storeFolder)
 	cfg.PasswordFile = passwordFile
 	cfg.DeviceTokenValidity = 10
 
 	pwStore := unpwstore.NewPasswordFileStore(passwordFile)
 	svc := service.NewAuthnService(
+		pwStore,
 		authBundle.AppAccountName,
 		authBundle.AppAccountNKey,
-		pwStore,
 		authBundle.CaCert,
 	)
 	err = svc.Start()
 	if err != nil {
 		logrus.Panicf("cant start test authn service: %s", err)
 	}
-	// Create the authn service for authentication requests
-	// This must be an app-account client as it subscribes to app authn messages
+	// Create the authn binding for handling authentication requests
+	// This uses an app-account client as it subscribes to app authn messages
 	// It can use in-proc connections to reduce latency
-	// the binding service needs a server connection
-	hcSvc := hubclient.NewHubClient()
-	err = hcSvc.ConnectWithNKey(clientURL, authBundle.ServiceID, authBundle.ServiceNKey, authBundle.CaCert)
+	hcBinding := hubclient.NewHubClient()
+	err = hcBinding.ConnectWithNKey(clientURL, authBundle.ServiceID, authBundle.ServiceNKey, authBundle.CaCert)
 	if err != nil {
 		panic("can't connect authn to server: " + err.Error())
 	}
-	authnBinding := service.NewAuthnNatsBinding(svc)
-	authnBinding.Start(hcSvc)
+	authnBinding := service.NewAuthnMsgBinding(svc)
+	authnBinding.Start(hcBinding)
 	verifier := service.NewAuthnNatsVerify(svc)
 	hubServer.SetAuthnVerifier(verifier.VerifyAuthnReq)
 
@@ -84,7 +84,7 @@ func startTestAuthnService() (mng authn.IManageAuthn, stopFn func(), err error) 
 	return mngAuthn, func() {
 		_ = svc.Stop()
 		authnBinding.Stop()
-		hcSvc.Disconnect()
+		hcBinding.Disconnect()
 		hcAuthn.Disconnect()
 		// let background tasks finish
 		time.Sleep(time.Millisecond * 10)
@@ -102,23 +102,24 @@ func TestMain(m *testing.M) {
 	_ = os.MkdirAll(tempFolder, 0700)
 	authBundle = testenv.CreateTestAuthBundle()
 	// run the test server
+	serverCfg := &config.ServerConfig{
+		Host:           "127.0.0.1",
+		Port:           9990,
+		AppAccountName: authBundle.AppAccountName,
+	}
+	serverCfg.InitConfig("", storeFolder)
 	hubServer = server.NewHubNatsServer(
-		&config.ServerConfig{
-			Host:           "127.0.0.1",
-			Port:           9990,
-			StoresDir:      "/tmp/nats-server",
-			AppAccountName: authBundle.AppAccountName,
-			AppAccountKey:  authBundle.AppAccountNKey,
-			CaCert:         authBundle.CaCert,
-			ServerCert:     authBundle.ServerCert,
-		})
-
+		serverCfg,
+		authBundle.AppAccountNKey,
+		authBundle.ServerCert,
+		authBundle.CaCert,
+	)
 	clientURL, err = hubServer.Start()
 	if err != nil {
 		panic(err)
 	}
 	// authn service uses the service key to connect
-	err = hubServer.AddServiceKey(authBundle.ServiceNKey)
+	err = hubServer.AddAppAcctServiceKey(authBundle.ServiceNKey)
 	if err != nil {
 		panic(err)
 	}

@@ -2,6 +2,7 @@ package authz
 
 // AuthzServiceName default name of the service, used for logging and identification
 const AuthzServiceName = "authz"
+const DefaultAclFilename = "authz-groups.acl"
 
 // Client roles set permissions for operations on Things that are members of the same group
 // The mapping of roles to operations is currently hard coded aimed at managing Things
@@ -81,6 +82,8 @@ type Group struct {
 	Name string
 	// map of clients and their role in this group
 	MemberRoles RoleMap
+	// data retention period in seconds
+	Retention uint64
 }
 
 //// NewGroup creates an instance of a group with member roles
@@ -207,6 +210,19 @@ type GetPermissionsResp struct {
 	Permissions map[string][]string `json:"permissions"`
 }
 
+// GetRoleAction defines the action to request the role of a client for a Thing
+const GetRoleAction = "getRole"
+
+// GetRolesReq request message to get the role of a client for a thing
+type GetRolesReq struct {
+	ClientID string `json:"clientID"`
+}
+
+// GetRoleResp response with the role
+type GetRoleResp struct {
+	Role string `json:"role"`
+}
+
 // ListGroupsAction defines the action to list defined groups
 const ListGroupsAction = "listGroups"
 
@@ -285,6 +301,10 @@ type IAuthz interface {
 
 	// GetClientRoles returns a map of [groupID]role for groups the client is a member of.
 	GetClientRoles(clientID string) (roles RoleMap, err error)
+
+	// GetRole determines the highest role a client has for a thing
+	// If the client is a member of multiple groups each group role is checked.
+	GetRole(clientID string, thingID string) string
 
 	// GetPermissions returns the permissions the client has for Things.
 	// clientID is optional. The default is to use the connecting client's ID.

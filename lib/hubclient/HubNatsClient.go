@@ -159,10 +159,9 @@ func (hc *HubNatsClient) ConnectWithJWT(url string, jwtCreds []byte, caCert *x50
 }
 
 // ConnectWithNC connects using the given nats connection
-func (hc *HubNatsClient) ConnectWithNC(nc *nats.Conn, clientID string) (err error) {
+func (hc *HubNatsClient) ConnectWithNC(nc *nats.Conn, clientID string) {
 	hc.clientID = clientID
 	hc.nc = nc
-	return nil
 }
 
 // ConnectWithNKey connects to the Hub server using an nkey secret
@@ -440,6 +439,9 @@ func (hc *HubNatsClient) SubGroup(groupName string, receiveLatest bool, cb func(
 		RateLimit:   1000000, // TODO: configure somewhere. Is 1Mbps kbps a good number?
 	}
 	consumerInfo, err := hc.js.AddConsumer(groupName, consumerConfig)
+	if err != nil {
+		return fmt.Errorf("error subscribing to group '%s': %w", groupName, err)
+	}
 
 	//subject := MakeSubject(publisherID, thingID, vocab.VocabEventTopic, eventName)
 	//subject := groupName
