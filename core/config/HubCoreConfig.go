@@ -8,6 +8,7 @@ import (
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/certsclient"
 	"github.com/hiveot/hub/lib/svcconfig"
+	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nkeys"
 	"golang.org/x/exp/slog"
 	"gopkg.in/yaml.v3"
@@ -25,22 +26,157 @@ type HubCoreConfig struct {
 	Authz   AuthzConfig  `yaml:"authz"`
 }
 
+// SetupCerts creates and loads CA and server certificates
+func (cfg *HubCoreConfig) SetupCerts(new bool) (
+	serverTLS *tls.Certificate,
+	caCert *x509.Certificate,
+	caKey *ecdsa.PrivateKey,
+) {
+	var alwaysNewServerCert = false
+	var err error
+
+	// 1: Load or create the CA certificate
+	certsDir := path.Dir(cfg.Server.CaCertFile)
+	if err2 := os.MkdirAll(certsDir, 0755); err2 != nil && err != os.ErrExist {
+		errMsg := fmt.Errorf("unable to create certs directory '%s': %w", certsDir, err.Error())
+		panic(errMsg)
+	}
+	if _, err2 := os.Stat(cfg.Server.CaKeyFile); err2 == nil && !new {
+		slog.Info("loading CA certificate and key")
+		// load the CA cert and key
+		caKey, err = certsclient.LoadKeysFromPEM(cfg.Server.CaKeyFile)
+		if err == nil {
+			caCert, err = certsclient.LoadX509CertFromPEM(cfg.Server.CaCertFile)
+		}
+		if err != nil {
+			panic("unable to CA certificate: " + err.Error())
+		}
+	} else {
+		slog.Info("creating new CA certificate and key")
+		caCert, caKey, err = certs.CreateCA("hiveot", 365*3)
+		if err != nil {
+			panic("Unable to create a CA cert: " + err.Error())
+		}
+		err = certsclient.SaveKeysToPEM(caKey, cfg.Server.CaKeyFile)
+		if err == nil {
+			err = certsclient.SaveX509CertToPEM(caCert, cfg.Server.CaCertFile)
+		}
+		// and delete the certs that are based on the key
+		_ = os.Remove(cfg.Server.ServerKeyFile)
+		_ = os.Remove(cfg.Server.ServerCertFile)
+	}
+	// 3: Create the Server private key
+	if _, err2 := os.Stat(cfg.Server.ServerKeyFile); err2 != nil || new || alwaysNewServerCert {
+		// create a new server cert private key and cert
+		slog.Warn("Creating new server key")
+		serverKey := certsclient.CreateECDSAKeys()
+		err = certs.SaveKeysToPEM(serverKey, cfg.Server.ServerKeyFile)
+		if err != nil {
+			panic("Unable to save server key: " + err.Error())
+		}
+		// with a new key any old cert is useless
+		err = os.Remove(cfg.Server.ServerCertFile)
+	}
+	// 4: Create the Server cert
+	if _, err2 := os.Stat(cfg.Server.ServerCertFile); err2 != nil || new {
+		slog.Info("Creating new server cert")
+		serverKey, _ := certs.LoadKeysFromPEM(cfg.Server.ServerKeyFile)
+		hostName, _ := os.Hostname()
+		serverID := "nats-" + hostName
+		ou := "hiveot"
+		names := []string{"localhost", "127.0.0.1", cfg.Server.Host}
+		serverCert, err := certs.CreateServerCert(
+			serverID, ou, &serverKey.PublicKey, names, 365, caCert, caKey)
+		if err != nil {
+			panic("Unable to create a server cert: " + err.Error())
+		}
+		err = certs.SaveX509CertToPEM(serverCert, cfg.Server.ServerCertFile)
+		if err != nil {
+			panic("Unable to save server cert")
+		}
+	}
+	// 5: Finally load the server TLS cert
+	serverTLS, err = certs.LoadTLSCertFromPEM(cfg.Server.ServerCertFile, cfg.Server.ServerKeyFile)
+	if err != nil {
+		panic("Unable to load server TLS cert. Is it malformed?: " + err.Error())
+	}
+	return serverTLS, caCert, caKey
+}
+
+func (cfg *HubCoreConfig) SetupOperator() (opKP nkeys.KeyPair, opJWT string, err error) {
+
+	// Load/Create operator key
+	if _, err2 := os.Stat(cfg.Server.OperatorKeyFile); err2 != nil {
+		slog.Warn("Creating operator key file: " + cfg.Server.OperatorKeyFile)
+		opKP, _ = nkeys.CreateOperator()
+		operatorSeed, _ := opKP.Seed()
+		err = os.WriteFile(cfg.Server.OperatorKeyFile, operatorSeed, 0400)
+	} else {
+		operatorSeed, _ := os.ReadFile(cfg.Server.OperatorKeyFile)
+		opKP, err = nkeys.FromSeed(operatorSeed)
+	}
+	if err != nil {
+		err = fmt.Errorf("error creating appOperatorKey: %w", err)
+		return
+	}
+	operatorPub, _ := opKP.PublicKey()
+	operatorClaims := jwt.NewOperatorClaims(operatorPub)
+	operatorClaims.Name = "hiveotop"
+	operatorClaims.SigningKeys.Add(operatorPub)
+	opJWT, _ = operatorClaims.Encode(opKP)
+
+	return opKP, opJWT, err
+}
+
+func (cfg *HubCoreConfig) SetupAppAccount(opKP nkeys.KeyPair) (
+	appKP nkeys.KeyPair, appJWT string, err error) {
+
+	// App Account
+	if _, err2 := os.Stat(cfg.Server.AccountKeyFile); err2 != nil {
+		slog.Info("Creating server account key file: " + cfg.Server.AccountKeyFile)
+		appKP, _ = nkeys.CreateAccount()
+		accountSeed, _ := appKP.Seed()
+		err = os.WriteFile(cfg.Server.AccountKeyFile, accountSeed, 0400)
+	} else {
+		accountSeed, _ := os.ReadFile(cfg.Server.AccountKeyFile)
+		appKP, err = nkeys.FromSeed(accountSeed)
+	}
+	if err != nil {
+		err = fmt.Errorf("error creating appAcctKey: %w", err)
+		return
+	}
+	appAccountKeyPub, _ := appKP.PublicKey()
+	appAccountClaims := jwt.NewAccountClaims(appAccountKeyPub)
+	appAccountClaims.Name = "AppAccount"
+	// Enabling JetStream requires setting storage limits
+	appAccountClaims.Limits.JetStreamLimits.DiskStorage = 1024 * 1024 * 1024
+	appAccountClaims.Limits.JetStreamLimits.MemoryStorage = 100 * 1024 * 1024
+	appJWT, _ = appAccountClaims.Encode(opKP)
+	return appKP, appJWT, err
+}
+
 // Setup creates and loads certificate and key files
 // if new is false then re-use existing certificate and key files.
 // if new is true then create a whole new empty environment in the home directory
 func (cfg *HubCoreConfig) Setup(new bool) (
-	appAcctKey nkeys.KeyPair,
 	serverTLS *tls.Certificate,
 	caCert *x509.Certificate,
-	caKey *ecdsa.PrivateKey) {
+	caKey *ecdsa.PrivateKey,
+	operatorNKey nkeys.KeyPair,
+	operatorJWT string,
+	systemJWT string,
+	appAccountNKey nkeys.KeyPair,
+	appAccountJWT string,
+	serviceNKey nkeys.KeyPair,
+	serviceJWT string,
+) {
 	var err error
-	var alwaysNewServerCert = false
 
 	slog.Info("running setup",
 		slog.Bool("--new", new), slog.String("home", cfg.HomeDir))
 
-	// 1. in a new environment, clear the home directory
-	// this is very destructive
+	// 1: in a new environment, clear the home directory
+	// This is very destructive!
 	// do a sanity check on home
 	base := path.Base(cfg.HomeDir)
 	_ = base
@@ -65,73 +201,10 @@ func (cfg *HubCoreConfig) Setup(new bool) (
 		panic("unable to create home directory: " + cfg.HomeDir)
 	}
 
-	// 2: handle the CA certificate
-	certsDir := path.Dir(cfg.Server.CaCertFile)
-	if err2 := os.MkdirAll(certsDir, 0755); err2 != nil && err != os.ErrExist {
-		errMsg := fmt.Errorf("unable to create certs directory '%s': %w", certsDir, err.Error())
-		panic(errMsg)
-	}
-	if _, err2 := os.Stat(cfg.Server.CaKeyFile); err2 == nil && !new {
-		slog.Info("loading CA certificate and key")
-		// load the CA cert and key
-		caKey, err = certsclient.LoadKeysFromPEM(cfg.Server.CaKeyFile)
-		if err == nil {
-			caCert, err = certsclient.LoadX509CertFromPEM(cfg.Server.CaCertFile)
-		}
-		if err != nil {
-			panic("unable to CA certificate: " + err.Error())
-		}
-	} else {
-		slog.Warn("creating new CA certificate and key")
-		caCert, caKey, err = certs.CreateCA("hiveot", 365*3)
-		if err != nil {
-			panic("Unable to create a CA cert: " + err.Error())
-		}
-		err = certsclient.SaveKeysToPEM(caKey, cfg.Server.CaKeyFile)
-		if err == nil {
-			err = certsclient.SaveX509CertToPEM(caCert, cfg.Server.CaCertFile)
-		}
-		// and delete the certs that are based on the key
-		_ = os.Remove(cfg.Server.ServerKeyFile)
-		_ = os.Remove(cfg.Server.ServerCertFile)
-	}
-	// 3: handle the Server key
-	if _, err2 := os.Stat(cfg.Server.ServerKeyFile); err2 != nil || new || alwaysNewServerCert {
-		// create a new server cert private key and cert
-		slog.Warn("Creating new server key")
-		serverKey := certsclient.CreateECDSAKeys()
-		err = certs.SaveKeysToPEM(serverKey, cfg.Server.ServerKeyFile)
-		if err != nil {
-			panic("Unable to save server key: " + err.Error())
-		}
-		// with a new key any old cert is useless
-		err = os.Remove(cfg.Server.ServerCertFile)
-	}
-	// 4: handle the Server cert
-	if _, err2 := os.Stat(cfg.Server.ServerCertFile); err2 != nil || new {
-		slog.Warn("Creating new server cert")
-		serverKey, _ := certs.LoadKeysFromPEM(cfg.Server.ServerKeyFile)
-		hostName, _ := os.Hostname()
-		serverID := "nats-" + hostName
-		ou := "hiveot"
-		names := []string{"localhost", "127.0.0.1", cfg.Server.Host}
-		serverCert, err := certs.CreateServerCert(
-			serverID, ou, &serverKey.PublicKey, names, 365, caCert, caKey)
-		if err != nil {
-			panic("Unable to create a server cert: " + err.Error())
-		}
-		err = certs.SaveX509CertToPEM(serverCert, cfg.Server.ServerCertFile)
-		if err != nil {
-			panic("Unable to save server cert")
-		}
-	}
-	// 5: finally load the server TLS
-	serverTLS, err = certs.LoadTLSCertFromPEM(cfg.Server.ServerCertFile, cfg.Server.ServerKeyFile)
-	if err != nil {
-		panic("Unable to load server TLS cert. Is it malformed?: " + err.Error())
-	}
+	// 2: Create/Load the certificates
+	serverTLS, caCert, caKey = cfg.SetupCerts(new)
 
-	// 6: make sure the server storage dir exists
+	// 3: Make sure the server storage dir exists
 	if cfg.Server.DataDir == "" {
 		panic("config is missing server data directory")
 	}
@@ -146,21 +219,48 @@ func (cfg *HubCoreConfig) Setup(new bool) (
 		panic("error creating data directory: " + err.Error())
 	}
 
-	// 7: App account key
-	if _, err2 := os.Stat(cfg.Server.AppAccountKeyFile); err2 != nil {
-		slog.Warn("Creating application account key file: " + cfg.Server.AppAccountKeyFile)
-		appAcctKey, _ = nkeys.CreateAccount()
-		appSeed, _ := appAcctKey.Seed()
-		err = os.WriteFile(cfg.Server.AppAccountKeyFile, appSeed, 0400)
-	} else {
-		appSeed, _ := os.ReadFile(cfg.Server.AppAccountKeyFile)
-		appAcctKey, err = nkeys.FromSeed(appSeed)
-	}
+	// 4: Setup operator, system and account key chain
+	operatorNKey, operatorJWT, err = cfg.SetupOperator()
 	if err != nil {
-		panic("error creating appAcctKey: " + err.Error())
+		panic(err)
 	}
 
-	// 8: authn directories
+	// System account key and JWT claims
+	systemAccountNKey, _ := nkeys.CreateAccount()
+	systemAccountPub, _ := systemAccountNKey.PublicKey()
+	systemAccountClaims := jwt.NewAccountClaims(systemAccountPub)
+	systemAccountClaims.Name = "SYS"
+	//systemAccountClaims.SigningKeys.Add(systemSigningPub)
+	systemAccountJWT, err := systemAccountClaims.Encode(operatorNKey)
+	if err != nil {
+		panic("error creating systemAccountJWT: " + err.Error())
+	}
+
+	// App Account
+	appAccountNKey, appAccountJWT, err = cfg.SetupAppAccount(operatorNKey)
+
+	// 8: Load/Create key for core services
+	if _, err2 := os.Stat(cfg.Server.ServiceKeyFile); err2 != nil {
+		slog.Info("Creating core services auth key file: " + cfg.Server.ServiceKeyFile)
+		serviceNKey, _ = nkeys.CreateUser()
+		serviceSeed, _ := serviceNKey.Seed()
+		err = os.WriteFile(cfg.Server.ServiceKeyFile, serviceSeed, 0400)
+	} else {
+		serviceSeed, _ := os.ReadFile(cfg.Server.ServiceKeyFile)
+		serviceNKey, err = nkeys.FromSeed(serviceSeed)
+	}
+	if err != nil {
+		panic("error creating appServiceKey: " + err.Error())
+	}
+	serviceNKeyPub, _ := serviceNKey.PublicKey()
+	serviceClaims := jwt.NewUserClaims(serviceNKeyPub)
+	serviceClaims.Name = "hiveot-core-service"
+	serviceClaims.IssuerAccount, _ = appAccountNKey.PublicKey()
+	serviceJWT, err = serviceClaims.Encode(appAccountNKey)
+	if err != nil {
+		panic(err)
+	}
+	// 9: authn directories
 	if _, err2 := os.Stat(cfg.Authn.CertsDir); err2 != nil {
 		err = os.MkdirAll(cfg.Authn.CertsDir, 0755)
 	}
@@ -171,7 +271,7 @@ func (cfg *HubCoreConfig) Setup(new bool) (
 		panic("error creating authn directories: " + err.Error())
 	}
 
-	// 9: authz directories
+	// 10: authz directories
 	if _, err2 := os.Stat(cfg.Authz.GroupsDir); err2 != nil {
 		err = os.MkdirAll(cfg.Authz.GroupsDir, 0700)
 	}
@@ -179,7 +279,7 @@ func (cfg *HubCoreConfig) Setup(new bool) (
 		panic("error creating authz directory: " + err.Error())
 	}
 	slog.Info("setup completed successfully")
-	return appAcctKey, serverTLS, caCert, caKey
+	return serverTLS, caCert, caKey, operatorNKey, operatorJWT, systemAccountJWT, appAccountNKey, appAccountJWT, serviceNKey, serviceJWT
 }
 
 // NewHubCoreConfig creates and initalizes a configuration for the hub server and core services.

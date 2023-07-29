@@ -14,6 +14,7 @@ type AuthnMsgBinding struct {
 	svc    *AuthnService
 	mngSub hub.ISubscription
 	clSub  hub.ISubscription
+	hc     hub.IHubClient
 }
 
 // handle action requests published by hub clients
@@ -147,10 +148,10 @@ func (binding *AuthnMsgBinding) handleManageActions(action *hub.ActionMessage) e
 
 // Start subscribes to the actions for management and client capabilities
 // Register the binding subscription using the given connection
-func (binding *AuthnMsgBinding) Start(hc hub.IHubClient) (err error) {
+func (binding *AuthnMsgBinding) Start() (err error) {
 	// if the first succeeds then 2nd will succeed as well
-	binding.mngSub, err = hc.SubActions(authn.ManageAuthnCapability, binding.handleManageActions)
-	binding.clSub, _ = hc.SubActions(authn.ClientAuthnCapability, binding.handleClientActions)
+	binding.mngSub, err = binding.hc.SubActions(authn.ManageAuthnCapability, binding.handleManageActions)
+	binding.clSub, _ = binding.hc.SubActions(authn.ClientAuthnCapability, binding.handleClientActions)
 	return err
 }
 
@@ -164,9 +165,10 @@ func (binding *AuthnMsgBinding) Stop() {
 //
 //	svc is the authn svc to bind to.
 //	hc is the hub client, connected using the svc credentials
-func NewAuthnMsgBinding(svc *AuthnService) *AuthnMsgBinding {
+func NewAuthnMsgBinding(svc *AuthnService, hc hub.IHubClient) *AuthnMsgBinding {
 	an := &AuthnMsgBinding{
 		svc: svc,
+		hc:  hc,
 	}
 	return an
 }

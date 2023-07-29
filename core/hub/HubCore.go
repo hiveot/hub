@@ -10,7 +10,7 @@ import (
 	"github.com/hiveot/hub/core/authz"
 	service2 "github.com/hiveot/hub/core/authz/service"
 	"github.com/hiveot/hub/core/config"
-	"github.com/hiveot/hub/core/server"
+	"github.com/hiveot/hub/core/hubnats"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/nats-io/nkeys"
 	"path"
@@ -21,14 +21,21 @@ type HubCore struct {
 	config *config.HubCoreConfig
 
 	// Server keys and certs. These are readonly
-	AppAcctName string
-	AppAcctKey  nkeys.KeyPair
-	CaCert      *x509.Certificate
-	CaKey       *ecdsa.PrivateKey
-	ServerCert  *tls.Certificate
+	//AppAcctName string
+	//AppAcctKey  nkeys.KeyPair
+	CaCert        *x509.Certificate
+	CaKey         *ecdsa.PrivateKey
+	ServerCert    *tls.Certificate
+	OperatorKey   nkeys.KeyPair
+	OperatorJWT   string
+	SystemJWT     string
+	AppAccountKey nkeys.KeyPair
+	AppAccountJWT string
+	ServiceKey    nkeys.KeyPair
+	ServiceJWT    string
 
 	// Server runtime
-	Server *server.HubNatsServer
+	Server *hubnats.HubNatsServer
 
 	// authn runtime
 	authnBinding *service.AuthnMsgBinding
@@ -48,15 +55,22 @@ func (core *HubCore) Start() (clientURL string) {
 	var err error
 	cfg := core.config
 
-	core.AppAcctKey, core.ServerCert, core.CaCert, core.CaKey =
-		core.config.Setup(false)
-	core.AppAcctName = core.config.Server.AppAccountName
+	core.ServerCert, core.CaCert, core.CaKey,
+		core.OperatorKey, core.OperatorJWT, core.SystemJWT,
+		core.AppAccountKey, core.AppAccountJWT,
+		core.ServiceKey, core.ServiceJWT = core.config.Setup(false)
 
 	// start the embedded NATS messaging Server
 	if !cfg.Server.NoAutoStart {
-		core.Server = server.NewHubNatsServer(
-			&cfg.Server, core.AppAcctKey, core.ServerCert, core.CaCert)
-		clientURL, err = core.Server.Start()
+		// nats server configurator handles proper server config settings
+		natsConfigurator := hubnats.NewNatsConfigurator(
+			&cfg.Server, core.ServerCert, core.CaCert,
+			core.OperatorJWT, core.SystemJWT, core.AppAccountJWT, core.ServiceKey)
+
+		core.Server = hubnats.NewHubNatsServer(
+			core.ServerCert, core.CaCert, core.ServiceKey, core.ServiceJWT)
+
+		clientURL, err = core.Server.Start(natsConfigurator.GetServerOpts())
 		if err != nil {
 			panic(err.Error())
 		}
@@ -66,37 +80,36 @@ func (core *HubCore) Start() (clientURL string) {
 	if !cfg.Authn.NoAutoStart {
 		pwStore := unpwstore.NewPasswordFileStore(core.config.Authn.PasswordFile)
 		core.AuthnSvc = service.NewAuthnService(
-			pwStore,
-			core.config.Server.AppAccountName,
-			core.AppAcctKey,
-			core.CaCert)
+			pwStore, core.CaCert, core.AppAccountKey)
 
 		err = core.AuthnSvc.Start()
 		if err != nil {
 			panic(err.Error())
 		}
 		// use an adhoc nkey to connect to the nats Server
-		authnNKey, _ := nkeys.CreateUser()
-		err = core.Server.AddAppAcctServiceKey(authnNKey)
-		if err != nil {
-			panic(err.Error())
-		}
-		nc, err := core.Server.ConnectInProc(authn.AuthnServiceName, authnNKey)
+		//authnServiceKey, _ := nkeys.CreateUser()
+		//authnServiceKeyPub, _ := authnServiceKey.PublicKey()
+		//err = core.Server.AddServiceKey(authnServiceKeyPub)
+		//if err != nil {
+		//	panic(err.Error())
+		//}
+		//nc, err := core.Server.ConnectInProc(authn.AuthnServiceName, authnServiceKey)
+		nc, err := core.Server.ConnectInProc(authn.AuthnServiceName)
 		if err != nil {
 			panic(err.Error())
 		}
 		hc := hubclient.NewHubClient()
 		hc.ConnectWithNC(nc, authn.AuthnServiceName)
 		// AuthnMsgBinding connects to the message bus and (un)marshals messages
-		core.authnBinding = service.NewAuthnMsgBinding(core.AuthnSvc)
-		err = core.authnBinding.Start(hc)
+		core.authnBinding = service.NewAuthnMsgBinding(core.AuthnSvc, hc)
+		err = core.authnBinding.Start()
 		if err != nil {
 			panic(err.Error())
 		}
 
 		// Hook into the nats service callout authentication
-		authnVerifier := service.NewAuthnNatsVerify(core.AuthnSvc)
-		core.Server.SetAuthnVerifier(authnVerifier.VerifyAuthnReq)
+		//authnVerifier := service.NewAuthnNatsVerify(core.AuthnSvc)
+		//core.Server.InitCalloutHook(authnVerifier.VerifyAuthnReq)
 	}
 	// start the authz service
 	if !cfg.Authz.NoAutoStart {
@@ -108,12 +121,13 @@ func (core *HubCore) Start() (clientURL string) {
 			panic("Failed to open the authz store: " + err.Error())
 		}
 		// AuthzJetStream applies groups to nats jetstream using an adhoc service connection
-		authzNKey, _ := nkeys.CreateUser()
-		err = core.Server.AddAppAcctServiceKey(authzNKey)
-		if err != nil {
-			panic(err.Error())
-		}
-		nc, err := core.Server.ConnectInProc(authz.AuthzServiceName, authzNKey)
+		//authzNKey, _ := nkeys.CreateUser()
+		//authzNKeyPub, _ := authzNKey.PublicKey()
+		//err = core.Server.AddServiceKey(authzNKeyPub)
+		//if err != nil {
+		//	panic(err.Error())
+		//}
+		nc, err := core.Server.ConnectInProc(authz.AuthzServiceName)
 		if err != nil {
 			panic("Failed to open the connection to the nats Server: " + err.Error())
 		}

@@ -413,6 +413,35 @@ func (hc *HubNatsClient) SubActions(thingID string, cb func(msg *hub.ActionMessa
 	return sub, err
 }
 
+func (hc *HubNatsClient) SubEvents(thingID string, cb func(msg *hub.EventMessage)) (hub.ISubscription, error) {
+
+	subject := MakeSubject(hc.clientID, thingID, "event", "")
+
+	sub, err := hc.Subscribe(subject, func(natsMsg *nats.Msg) {
+		md, _ := natsMsg.Metadata()
+		timeStamp := time.Now()
+		if md != nil {
+			timeStamp = md.Timestamp
+
+		}
+		payload := natsMsg.Data
+		bindingID, thID, _, name, err := SplitSubject(natsMsg.Subject)
+		if err != nil {
+			slog.Error("unable to handle subject", "err", err, "subject", natsMsg.Subject)
+			return
+		}
+		eventMsg := &hub.EventMessage{
+			BindingID: bindingID,
+			ThingID:   thID,
+			EventID:   name,
+			Timestamp: timeStamp.Unix(),
+			Payload:   payload,
+		}
+		cb(eventMsg)
+	})
+	return sub, err
+}
+
 // SubGroup subscribes to events received by a group.
 // The client must be a member of the group to be able to create the consumer that receives the events.
 // This creates an ephemeral pull consumer.

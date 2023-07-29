@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/core/authn/service"
 	"github.com/hiveot/hub/core/authn/service/unpwstore"
 	"github.com/hiveot/hub/core/config"
-	"github.com/hiveot/hub/core/server"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/jwt/v2"
@@ -32,7 +31,7 @@ var authBundle testenv.TestAuthBundle
 // clientURL is set by the testmain
 var clientURL string
 
-var hubServer *server.HubNatsServer
+var hubServer *natsserver.HubNatsServer
 
 // create a new authn service and set the password for testuser1
 // containing a password for testuser1
@@ -108,7 +107,7 @@ func TestMain(m *testing.M) {
 		AppAccountName: authBundle.AppAccountName,
 	}
 	serverCfg.InitConfig("", storeFolder)
-	hubServer = server.NewHubNatsServer(
+	hubServer = natsserver.NewHubNatsServer(
 		serverCfg,
 		authBundle.AppAccountNKey,
 		authBundle.ServerCert,

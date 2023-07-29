@@ -22,8 +22,15 @@ type ServerConfig struct {
 	CaCertFile     string `yaml:"caCertFile"`
 	CaKeyFile      string `yaml:"caKeyFile"`
 	// application account name and key for issued tokens
-	AppAccountName    string `yaml:"appAccountName"`
-	AppAccountKeyFile string `yaml:"appAccountKeyFile"`
+	//AppAccountName    string `yaml:"appAccountName"`
+	//AppAccountKeyFile string `yaml:"appAccountKeyFile"`
+
+	// The operator key signs the account key
+	OperatorKeyFile string `yaml:"operatorKeyFile,omitempty"`
+	// The account key signs the JWT token
+	AccountKeyFile string `yaml:"accountKeyFile,omitempty"`
+	// The service key is intended for use by services to connect
+	ServiceKeyFile string `yaml:"serviceKeyFile,omitempty"`
 
 	NoAutoStart bool `yaml:"noAutoStart"`
 
@@ -87,15 +94,27 @@ func (cfg *ServerConfig) InitConfig(certsDir string, storesDir string) (err erro
 		cfg.MaxDataMemoryMB = 100
 	}
 
-	if cfg.AppAccountName == "" {
-		cfg.AppAccountName = "hiveotapp"
+	// operator sign jwt
+	if cfg.OperatorKeyFile == "" {
+		cfg.OperatorKeyFile = "operator.nkey"
 	}
-	if cfg.AppAccountKeyFile == "" {
-		cfg.AppAccountKeyFile = cfg.AppAccountName + "Acct.nkey"
-	}
-	if !path.IsAbs(cfg.AppAccountKeyFile) {
-		cfg.AppAccountKeyFile = path.Join(certsDir, cfg.AppAccountKeyFile)
+	if !path.IsAbs(cfg.OperatorKeyFile) {
+		cfg.OperatorKeyFile = path.Join(certsDir, cfg.OperatorKeyFile)
 	}
 
+	// account signing key
+	if cfg.AccountKeyFile == "" {
+		cfg.AccountKeyFile = "appaccount.nkey"
+	}
+	if !path.IsAbs(cfg.AccountKeyFile) {
+		cfg.AccountKeyFile = path.Join(certsDir, cfg.AccountKeyFile)
+	}
+	// services login key
+	if cfg.ServiceKeyFile == "" {
+		cfg.ServiceKeyFile = "services.nkey"
+	}
+	if !path.IsAbs(cfg.ServiceKeyFile) {
+		cfg.ServiceKeyFile = path.Join(certsDir, cfg.ServiceKeyFile)
+	}
 	return err
 }

@@ -6,9 +6,12 @@ import (
 	"github.com/hiveot/hub/core/hub"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
+	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
+	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slog"
 	"os"
 	"path"
 	"testing"
@@ -82,72 +85,79 @@ func TestHubServer_StartStop(t *testing.T) {
 //	//time.Sleep(time.Second * 1)
 //}
 
-func TestPubSub_AuthPassword(t *testing.T) {
-	clientURL := ""
-	rxchan := make(chan int)
-	user1ID := "user1"
-	user1Pass := "pass1"
-	group1Name := "group1"
-
-	// launch the core services
-	core := hub.NewHubCore(hubCfg)
-	require.NotPanics(t, func() { clientURL = core.Start() })
-	defer core.Stop()
-
-	// add a user to test with
-	err := core.AuthnSvc.AddUser(user1ID, "user 1", user1Pass)
-	assert.NoError(t, err)
-
-	// connect the user
-	hc := hubclient.NewHubClient()
-	err = hc.ConnectWithPassword(clientURL, user1ID, user1Pass, core.CaCert)
-	require.NoError(t, err)
-	defer hc.Disconnect()
-
-	// listen for events
-	err = hc.SubGroup(group1Name, true, func(msg *hub2.EventMessage) {
-		rxchan <- 1
-	})
-	require.NoError(t, err)
-
-	err = hc.PubEvent("thing1", "event1", []byte("hello"))
-	assert.NoError(t, err)
-
-	rxdata := <-rxchan
-	assert.Equal(t, 1, rxdata)
-}
-
-//func TestPubSub_AuthJWT(t *testing.T) {
+//func TestPubSub_AuthPassword(t *testing.T) {
+//	clientURL := ""
 //	rxchan := make(chan int)
-//	srv := hub.NewHubServer()
-//	clientURL, err := srv.Start("", 0, testCerts.ServerCert, testCerts.CaCert)
+//	user1ID := "user1"
+//	user1Pass := "pass1"
+//	group1Name := "group1"
+//
+//	// launch the core services
+//	core := hub.NewHubCore(hubCfg)
+//	require.NotPanics(t, func() { clientURL = core.Start() })
+//	defer core.Stop()
+//
+//	// add a user to test with
+//	err := core.AuthnSvc.AddUser(user1ID, "user 1", user1Pass)
+//	assert.NoError(t, err)
+//
+//	// connect the user
+//	hc := hubclient.NewHubClient()
+//	err = hc.ConnectWithPassword(clientURL, user1ID, user1Pass, core.CaCert)
 //	require.NoError(t, err)
+//	defer hc.Disconnect()
 //
-//	// add the device using its nkey public key
-//	//deviceUser, _ := testCerts.DeviceNKey.PublicKey()
-//	//err = srv.AddUser(deviceUser)
-//	assert.NoError(t, err)
-//	defer srv.Stop()
-//
-//	hc := hubconn.NewHubClient("test1")
-//	err = hc.ConnectWithJWT(clientURL, testCerts.DeviceCreds, testCerts.CaCert)
-//	defer hc.DisConnect()
-//
-//	assert.NoError(t, err)
-//
-//	err = hc.SubEvent("", "", "", func(tv *thing.ThingValue) {
-//		slog.Info("received event", "id", tv.ID)
+//	// listen for events
+//	err = hc.SubGroup(group1Name, true, func(msg *hub2.EventMessage) {
 //		rxchan <- 1
 //	})
-//	assert.NoError(t, err)
+//	require.NoError(t, err)
 //
 //	err = hc.PubEvent("thing1", "event1", []byte("hello"))
 //	assert.NoError(t, err)
 //
 //	rxdata := <-rxchan
 //	assert.Equal(t, 1, rxdata)
-//	//time.Sleep(time.Second * 1)
 //}
+
+func TestPubSub_AuthJWT(t *testing.T) {
+	rxchan := make(chan int)
+	clientURL := ""
+
+	// launch the core services
+	core := hub.NewHubCore(hubCfg)
+	require.NotPanics(t, func() { clientURL = core.Start() })
+	defer core.Stop()
+
+	// use the authn service to create a service token
+	serviceID := "service1"
+	serviceKey, _ := nkeys.CreateUser()
+	serviceKeyPub, _ := serviceKey.PublicKey()
+	serviceJWT, err := core.AuthnSvc.CreateServiceToken(serviceID, serviceKeyPub, 0)
+	require.NoError(t, err)
+	serviceSeed, _ := serviceKey.Seed()
+	serviceCreds, _ := jwt.FormatUserConfig(serviceJWT, serviceSeed)
+
+	hc := hubclient.NewHubClient()
+	err = hc.ConnectWithJWT(clientURL, serviceCreds, core.CaCert)
+	defer hc.Disconnect()
+
+	assert.NoError(t, err)
+
+	sub, err := hc.SubEvents("", func(msg *hub2.EventMessage) {
+		slog.Info("received event", "eventID", msg.EventID)
+		rxchan <- 1
+	})
+	assert.NotEmpty(t, sub)
+	assert.NoError(t, err)
+
+	err = hc.PubEvent("thing1", "event1", []byte("hello"))
+	assert.NoError(t, err)
+
+	rxdata := <-rxchan
+	assert.Equal(t, 1, rxdata)
+	//time.Sleep(time.Second * 1)
+}
 
 //func TestHubServer_Groups(t *testing.T) {
 //	var rxcount1 atomic.Int32

@@ -21,10 +21,12 @@ import (
 // This implements the IAuthnService interface
 // TODO: should this use action messages directly to allow additional validation of the caller???
 type AuthnService struct {
-	accountName string
-	// the signingKey key used for signing JWT user tokens
+	//accountName string
+
+	signingKP nkeys.KeyPair
+	// the signingJWT claims used for signing JWT user tokens
 	// This must be a key known to the server for validation
-	signingKey nkeys.KeyPair
+	//signingJWT string
 	// password storage
 	pwStore unpwstore.IUnpwStore
 	// ca certificate for cert validation
@@ -53,7 +55,7 @@ type AuthnService struct {
 //	return err
 //}
 
-// AddUser adds a new user and returns a generated password
+// AddUser adds a new user for password authentication
 func (svc *AuthnService) AddUser(userID string, userName string, password string) (err error) {
 
 	exists := svc.pwStore.Exists(userID)
@@ -65,18 +67,17 @@ func (svc *AuthnService) AddUser(userID string, userName string, password string
 	return err
 }
 
-// CreateUserToken create a new user jwt token signed by the account
+// CreateUserToken create a new jwt token for connecting to the server
 func (svc *AuthnService) CreateUserToken(userID string, userName string, pubKey string, validitySec uint) (string, error) {
-
-	// first create a new private key
-	//userKP, _ := nkeys.CreateUser()
-	//userPub, _ := userKP.PublicKey()
-	//userSeed, _ := userKP.Seed() // just call it private key
+	if validitySec == 0 {
+		validitySec = authn.DefaultUserTokenValiditySec
+	}
 
 	// create jwt claims that identifies the user and its permissions
 	userClaims := jwt.NewUserClaims(pubKey)
 	// can't use claim ID as it is replaced by a hash by Encode(kp)
 	userClaims.Name = userID
+	userClaims.Type = authn.ClientTypeUser
 	userClaims.User.Tags = append(userClaims.User.Tags, "userName:"+userName)
 	userClaims.IssuedAt = time.Now().Unix()
 	userClaims.Expires = time.Now().Add(time.Duration(validitySec) * time.Second).Unix()
@@ -93,10 +94,80 @@ func (svc *AuthnService) CreateUserToken(userID string, userName string, pubKey 
 	userClaims.Subject = pubKey
 
 	// sign the claims with the client's private key
-	userJWT, err := userClaims.Encode(svc.signingKey)
+	userJWT, err := userClaims.Encode(svc.signingKP)
 
 	// create a decorated jwt/nkey pair for future use.
-	// TODO: change this to just the jwt token using a given public key
+	// the caller must first be authenticated before giving it a jwt token.
+	//creds, _ := jwt.FormatUserConfig(userJWT, userSeed)
+	//return string(creds), err
+	return userJWT, err
+}
+
+// CreateDeviceToken create a new jwt token for connecting IoT devices to the server
+func (svc *AuthnService) CreateDeviceToken(deviceID string, pubKey string, validitySec uint) (string, error) {
+	if validitySec == 0 {
+		validitySec = authn.DefaultDeviceTokenValiditySec
+	}
+	// create jwt claims that identifies the user and its permissions
+	userClaims := jwt.NewUserClaims(pubKey)
+	// can't use claim ID as it is replaced by a hash by Encode(kp)
+	userClaims.Name = deviceID
+	userClaims.Type = authn.ClientTypeDevice
+	userClaims.IssuedAt = time.Now().Unix()
+	userClaims.Expires = time.Now().Add(time.Duration(validitySec) * time.Second).Unix()
+
+	// default size
+	userClaims.Limits.Data = 1 * 1024 * 1024 // max data this client can ... do what?
+	// devices can publish events of which they are the publisher
+	userClaims.Permissions.Pub.Allow.Add("things." + deviceID + ".*.event.>")
+	// devices can subscribe to actions aimed at them
+	userClaims.Permissions.Sub.Allow.Add("things." + deviceID + ".*.action.>")
+	// devices can publish replies to user inbox  - TBD: is this needed?
+	userClaims.Permissions.Pub.Allow.Add("_INBOX.>")
+	// the claims subject MUST be the device public key
+	userClaims.Subject = pubKey
+
+	// sign the claims with the service signing key
+	userJWT, err := userClaims.Encode(svc.signingKP)
+
+	// create a decorated jwt/nkey pair for future use.
+	// the caller must first be authenticated before giving it a jwt token.
+	//creds, _ := jwt.FormatUserConfig(userJWT, userSeed)
+	//return string(creds), err
+	return userJWT, err
+}
+
+// CreateServiceToken create a new jwt token for connecting services to the server
+func (svc *AuthnService) CreateServiceToken(serviceID string, pubKey string, validitySec uint) (string, error) {
+	if validitySec == 0 {
+		validitySec = authn.DefaultServiceTokenValiditySec
+	}
+
+	// create jwt claims that identifies the service and its permissions
+	userClaims := jwt.NewUserClaims(pubKey)
+	// can't use claim ID as it is replaced by a hash by Encode(kp)
+	userClaims.Name = serviceID
+	userClaims.Type = authn.ClientTypeService
+	userClaims.IssuedAt = time.Now().Unix()
+	userClaims.Expires = time.Now().Add(time.Duration(validitySec) * time.Second).Unix()
+
+	// default size
+	userClaims.Limits.Data = 1 * 1024 * 1024 // max data this client can ... do what?
+	// services can publish events of which they are the publisher
+	userClaims.Permissions.Pub.Allow.Add("things." + serviceID + ".*.event.>")
+	// services can subscribe to any events
+	userClaims.Permissions.Sub.Allow.Add("things.*.*.event.>")
+	// services can subscribe to actions aimed at them
+	userClaims.Permissions.Sub.Allow.Add("things." + serviceID + ".*.action.>")
+	// devices can publish replies to user inbox  - TBD: is this needed?
+	userClaims.Permissions.Pub.Allow.Add("_INBOX.>")
+	// the claims subject MUST be the device public key
+	userClaims.Subject = pubKey
+
+	// sign the claims with the service signing key
+	userJWT, err := userClaims.Encode(svc.signingKP)
+
+	// create a decorated jwt/nkey pair for future use.
 	// the caller must first be authenticated before giving it a jwt token.
 	//creds, _ := jwt.FormatUserConfig(userJWT, userSeed)
 	//return string(creds), err
@@ -229,7 +300,7 @@ func (svc *AuthnService) ResetPassword(clientID, newPassword string) error {
 
 // Start the svc, open the password store
 func (svc *AuthnService) Start() error {
-	slog.Info("starting svc svc")
+	slog.Info("starting authn svc")
 
 	//authKey, err := svc.config.GetAuthKey()
 	//if err != nil {
@@ -238,7 +309,7 @@ func (svc *AuthnService) Start() error {
 
 	err := svc.pwStore.Open()
 	if err != nil {
-		return fmt.Errorf("error starting svc svc: %w", err)
+		return fmt.Errorf("error starting authn svc: %w", err)
 	}
 	//err = svc.hc.ConnectWithJWT(svc.config.ServerURL, []byte(authKey), svc.caCert)
 	return err
@@ -318,7 +389,7 @@ func (svc *AuthnService) ValidateNatsJWT(
 	vr := jwt.CreateValidationResults()
 	juc.Validate(vr)
 	if len(vr.Errors()) > 0 {
-		return fmt.Errorf("jwt svc failed: %w", vr.Errors()[0])
+		return fmt.Errorf("jwt authn failed: %w", vr.Errors()[0])
 	}
 
 	// Verify the nonce based token signature
@@ -341,7 +412,7 @@ func (svc *AuthnService) ValidateNatsJWT(
 		return fmt.Errorf("signature not verified")
 	}
 	// verify issuer account matches
-	accPub, _ := svc.signingKey.PublicKey()
+	accPub, _ := svc.signingKP.PublicKey()
 	if juc.Issuer != accPub {
 		return fmt.Errorf("JWT issuer is not known")
 	}
@@ -416,7 +487,7 @@ func (svc *AuthnService) ValidateToken(clientID string, jwtToken string) (
 	cd := claims.Claims()
 	//claims, err = jwt.DecodeGeneric(jwtToken)
 	// issuer must be known
-	signingPub, _ := svc.signingKey.PublicKey()
+	signingPub, _ := svc.signingKP.PublicKey()
 	if cd.Issuer != signingPub {
 		return entry, claims, errors.New("unknown issuer")
 	}
@@ -445,23 +516,23 @@ func (svc *AuthnService) ValidateToken(clientID string, jwtToken string) (
 }
 
 // NewAuthnService creates new instance of the svc
-// Call 'Start' to start the svc and 'Stop' to end it.
+// Call 'Start' to start the service and 'Stop' to end it.
 // The signingkey is usually the application account key
 //
-//	accountName from the server of the account used to sign the issued tokens
-//	signingKey used for signing JWT tokens by the server
 //	pwStore is the store for users and encrypted passwords
 //	caCert is the CA certificate used to validate certs
+//	signingKP used for signing JWT tokens by the server. usually the account key.
 func NewAuthnService(
 	pwStore unpwstore.IUnpwStore,
-	accountName string, signingKey nkeys.KeyPair,
-	caCert *x509.Certificate) *AuthnService {
+	caCert *x509.Certificate,
+	signingKP nkeys.KeyPair,
+) *AuthnService {
 
 	svc := &AuthnService{
-		accountName: accountName,
-		caCert:      caCert,
-		pwStore:     pwStore,
-		signingKey:  signingKey,
+		//accountName,
+		caCert:    caCert,
+		pwStore:   pwStore,
+		signingKP: signingKP,
 	}
 	return svc
 }

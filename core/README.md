@@ -51,3 +51,15 @@ The main messaging protocol used by the Hub is NATS/JetStream. See the nats/READ
 Support for mqtt can be added through the NATS mqtt bridge. 
 
 Additional support for plain http, redis streams, rabbitmq, and others are considered for the future.
+
+
+## Security
+
+All connections require TLS to ensure encrypted communication.
+
+IoT devices, Hub services and users use JWT tokens for authentication. The tokens are issued by the authn service. 
+
+Web password based login is handled by via a REST service which uses the authn service to obtain a token.
+
+Once authenticated, users use the token to access 'groups' and receive information from Things that are in the groups they are a member of. All communication goes through the nats server. There is never a direct connection to an IoT device by a user.
+
