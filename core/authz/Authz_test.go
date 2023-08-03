@@ -2,7 +2,6 @@ package authz_test
 
 import (
 	"github.com/hiveot/hub/core/authz"
-	"github.com/hiveot/hub/core/authz/service"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -16,22 +15,32 @@ import (
 )
 
 var testFolder = path.Join(os.TempDir(), "test-authz")
-var testSocket = "authz.socket"
 var aclFilename = "authz.acl"
 var aclFilePath string
 var authBundle testenv.TestAuthBundle
 var tempFolder string
 
+// run the test for different cores
+var useCore = "nats" // nats vs mqtt
+
 // Create a new authz service with empty acl list
 func startTestAuthzService() (svc authz.IAuthz, closeFn func()) {
+	var authzAppl authz.IAuthz
 
 	_ = os.Remove(aclFilePath)
-	aclStore := service.NewAuthzFileStore(aclFilePath, authz.AuthzServiceName)
+	aclStore := authz.NewAuthzFileStore(aclFilePath)
 	err := aclStore.Open()
 	if err != nil {
 		panic(err)
 	}
-	authSvc := service.NewAuthzService(aclStore, authBundle.CaCert)
+	if useCore == "nats" {
+		//nc := natshubclient.NewHubClient()
+		//authzAppl = natsauthz.NewNatsAuthzAppl(nc)
+	} else if useCore == "mqtt" {
+		//hc = NewMqttHubClient()
+		//authzAll = mqttauthz.NewMqttAuthzAppl(hc)
+	}
+	authSvc := authz.NewAuthzService(aclStore, authzAppl)
 	err = authSvc.Start()
 	if err != nil {
 		return nil, nil
@@ -67,19 +76,19 @@ func TestAuthzServiceStartStop(t *testing.T) {
 func TestAuthzServiceBadStart(t *testing.T) {
 	logrus.Infof("---TestAuthzServiceBadStart---")
 	badAclFilePath := "/bad/aclstore/path"
-	aclStore := service.NewAuthzFileStore(badAclFilePath, authz.AuthzServiceName)
+	aclStore := authz.NewAuthzFileStore(badAclFilePath)
 
 	// opening the acl store should fail
 	err := aclStore.Open()
 	require.Error(t, err)
-	svc := service.NewAuthzService(aclStore, authBundle.CaCert)
+	svc := authz.NewAuthzService(aclStore, nil)
 
 	// service opening the acl store should fail
 	err = svc.Start()
 	svc.Stop()
 
 	// missing store should not panic
-	svc = service.NewAuthzService(nil, authBundle.CaCert)
+	svc = authz.NewAuthzService(nil, nil)
 	err = svc.Start()
 	assert.Error(t, err)
 }

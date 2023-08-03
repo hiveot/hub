@@ -1,0 +1,325 @@
+package authnstore
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/vocab"
+	"os"
+	"path"
+	"sync"
+	"time"
+
+	"github.com/alexedwards/argon2id"
+	"github.com/fsnotify/fsnotify"
+	"golang.org/x/crypto/bcrypt"
+
+	"github.com/hiveot/hub/lib/watcher"
+)
+
+// AuthnFileStore stores client data, including users, devices and services.
+// User passwords are stored using ARGON2id hash
+// It includes a file watcher to automatically reload on update.
+type AuthnFileStore struct {
+	entries   map[string]AuthnEntry // map [loginID]"loginID:hash:userName:updated:
+	storePath string
+	hashAlgo  string // hashing algorithm PWHASH_ARGON2id
+	watcher   *fsnotify.Watcher
+	mutex     sync.RWMutex
+}
+
+// Add a new client.
+// clientID, clientType are required, the rest is optional
+func (authnStore *AuthnFileStore) Add(clientID string, profile authn.ClientProfile) error {
+
+	authnStore.mutex.Lock()
+	defer authnStore.mutex.Unlock()
+
+	entry, found := authnStore.entries[clientID]
+	if found {
+		return fmt.Errorf("client '%s' already exists", clientID)
+	} else if clientID == "" || clientID != profile.ClientID {
+		return fmt.Errorf("clientID or clientType are missing")
+	} else if profile.ClientType != authn.ClientTypeDevice &&
+		profile.ClientType != authn.ClientTypeUser &&
+		profile.ClientType != authn.ClientTypeService {
+		return fmt.Errorf("invalid clientType '%s'", profile.ClientType)
+	}
+	if profile.ValiditySec == 0 {
+		if profile.ClientType == authn.ClientTypeDevice {
+			profile.ValiditySec = authn.DefaultDeviceTokenValiditySec
+		} else if profile.ClientType == authn.ClientTypeService {
+			profile.ValiditySec = authn.DefaultServiceTokenValiditySec
+		} else if profile.ClientType == authn.ClientTypeUser {
+			profile.ValiditySec = authn.DefaultUserTokenValiditySec
+		}
+	}
+	entry = AuthnEntry{ClientProfile: profile}
+	entry.PasswordHash = ""
+	entry.Updated = time.Now().Format(vocab.ISO8601Format)
+
+	authnStore.entries[clientID] = entry
+
+	err := authnStore.save()
+	return err
+}
+
+// Close the store
+func (authnStore *AuthnFileStore) Close() {
+	authnStore.mutex.Lock()
+	defer authnStore.mutex.Unlock()
+	if authnStore.watcher != nil {
+		_ = authnStore.watcher.Close()
+		authnStore.watcher = nil
+	}
+}
+
+// Count nr of entries in the store
+func (authnStore *AuthnFileStore) Count() int {
+	authnStore.mutex.RLock()
+	defer authnStore.mutex.RUnlock()
+
+	return len(authnStore.entries)
+}
+
+// Exists returns if loginID already exists
+func (authnStore *AuthnFileStore) Exists(loginID string) bool {
+	authnStore.mutex.RLock()
+	defer authnStore.mutex.RUnlock()
+
+	_, found := authnStore.entries[loginID]
+	return found
+}
+
+// Get user the user info of the loginID
+func (authnStore *AuthnFileStore) Get(clientID string) (profile authn.ClientProfile, err error) {
+	authnStore.mutex.RLock()
+	defer authnStore.mutex.RUnlock()
+	// user must exist
+	entry, found := authnStore.entries[clientID]
+	if !found {
+		err = fmt.Errorf("clientID '%s' does not exist", clientID)
+	}
+	return entry.ClientProfile, err
+}
+
+// List returns a list of users in the store
+func (authnStore *AuthnFileStore) List() (profiles []authn.ClientProfile, err error) {
+	profiles = make([]authn.ClientProfile, 0, len(authnStore.entries))
+	for _, entry := range authnStore.entries {
+		profiles = append(profiles, entry.ClientProfile)
+	}
+	return profiles, nil
+}
+
+// Open the store
+// This reads the password file and subscribes to file changes
+func (authnStore *AuthnFileStore) Open() (err error) {
+	if authnStore.watcher != nil {
+		err = fmt.Errorf("password file store '%s' is already open", authnStore.storePath)
+	}
+	if err == nil {
+		err = authnStore.Reload()
+	}
+	if err == nil {
+		authnStore.watcher, err = watcher.WatchFile(authnStore.storePath, authnStore.Reload)
+	}
+	if err != nil {
+		err = fmt.Errorf("Open failed %w", err)
+	}
+	return err
+}
+
+// Reload the password store from file and subscribe to file changes
+//
+// If the file does not exist, it will be created.
+// Returns an error if the file could not be opened/created.
+func (authnStore *AuthnFileStore) Reload() error {
+	authnStore.mutex.Lock()
+	defer authnStore.mutex.Unlock()
+
+	entries := make(map[string]AuthnEntry)
+	dataBytes, err := os.ReadFile(authnStore.storePath)
+	if errors.Is(err, os.ErrNotExist) {
+		err = authnStore.save()
+	} else if err != nil {
+		err = fmt.Errorf("error reading password file: %w", err)
+		return err
+	} else if len(dataBytes) == 0 {
+		// nothing to do
+	} else {
+
+		err = json.Unmarshal(dataBytes, &entries)
+		if err != nil {
+			err := fmt.Errorf("error while parsing password file: %w", err)
+			return err
+		}
+		authnStore.entries = entries
+	}
+	return err
+}
+
+// Remove a client from the store
+func (authnStore *AuthnFileStore) Remove(clientID string) (err error) {
+	authnStore.mutex.Lock()
+	defer authnStore.mutex.Unlock()
+
+	_, found := authnStore.entries[clientID]
+	if found {
+		delete(authnStore.entries, clientID)
+	}
+	err = authnStore.save()
+	return err
+}
+
+// save the password data to file
+// if the storage folder doesn't exist it will be created
+// not concurrent save
+func (authnStore *AuthnFileStore) save() error {
+
+	folder := path.Dir(authnStore.storePath)
+	// ensure the location exists
+	err := os.MkdirAll(folder, 0700)
+	if err != nil {
+		return err
+	}
+	tmpPath, err := WritePasswordsToTempFile(folder, authnStore.entries)
+	if err != nil {
+		err = fmt.Errorf("writing password file to temp failed: %w", err)
+		return err
+	}
+
+	err = os.Rename(tmpPath, authnStore.storePath)
+	if err != nil {
+		err = fmt.Errorf("rename to password file failed: %w", err)
+		return err
+	}
+	return err
+}
+
+// SetPassword generates and stores the user's password hash
+func (authnStore *AuthnFileStore) SetPassword(loginID string, password string) (err error) {
+	var hash string
+	if len(password) < 5 {
+		return fmt.Errorf("password too short (%d chars)", len(password))
+	}
+	// TODO: tweak to something reasonable and test timing. default of 64MB is not suitable for small systems
+	params := argon2id.DefaultParams
+	params.Memory = 16 * 1024
+	params.Iterations = 2
+	params.Parallelism = 4 // what happens with fewer cores?
+	hash, _ = argon2id.CreateHash(password, params)
+	return authnStore.SetPasswordHash(loginID, hash)
+}
+
+// SetPasswordHash adds/updates the password hash for the given login ID
+// Intended for use by administrators to add a new user or clients to update their password
+func (authnStore *AuthnFileStore) SetPasswordHash(loginID string, hash string) (err error) {
+	authnStore.mutex.Lock()
+	defer authnStore.mutex.Unlock()
+
+	entry, found := authnStore.entries[loginID]
+	if !found {
+		return fmt.Errorf("Client '%s' not found", loginID)
+	}
+	entry.PasswordHash = hash
+	entry.Updated = time.Now().Format(vocab.ISO8601Format)
+	authnStore.entries[loginID] = entry
+
+	err = authnStore.save()
+	return err
+}
+
+// Update updates the client profile.
+func (authnStore *AuthnFileStore) Update(clientID string, profile authn.ClientProfile) error {
+	authnStore.mutex.Lock()
+	defer authnStore.mutex.Unlock()
+
+	entry, found := authnStore.entries[clientID]
+	if !found {
+		return fmt.Errorf("Client '%s' not found", clientID)
+	}
+	if profile.ClientID != clientID {
+		return fmt.Errorf("clientID '%s' mismatch in profile as '%s'", clientID, profile.ClientID)
+	}
+	if profile.ClientType != "" {
+		entry.ClientType = profile.ClientType
+	}
+	if profile.DisplayName != "" {
+		entry.DisplayName = profile.DisplayName
+	}
+	if profile.ValiditySec != 0 {
+		entry.ValiditySec = profile.ValiditySec
+	}
+	if profile.PubKey != "" {
+		entry.PubKey = profile.PubKey
+	}
+	entry.Updated = time.Now().Format(vocab.ISO8601Format)
+	authnStore.entries[clientID] = entry
+
+	err := authnStore.save()
+	return err
+}
+
+// VerifyPassword verifies the given password with the stored hash
+// This returns the matching user's entry or an error if the password doesn't match
+func (authnStore *AuthnFileStore) VerifyPassword(loginID, password string) (profile authn.ClientProfile, err error) {
+	isValid := false
+	authnStore.mutex.Lock()
+	defer authnStore.mutex.Unlock()
+
+	entry, found := authnStore.entries[loginID]
+	if !found {
+		// unknown user
+		isValid = false
+	} else if authnStore.hashAlgo == PWHASH_ARGON2id {
+		isValid, _ = argon2id.ComparePasswordAndHash(password, entry.PasswordHash)
+	} else if authnStore.hashAlgo == PWHASH_BCRYPT {
+		err := bcrypt.CompareHashAndPassword([]byte(entry.PasswordHash), []byte(password))
+		isValid = err == nil
+	}
+	if !isValid {
+		return profile, fmt.Errorf("invalid login as '%s'", loginID)
+	}
+	profile = entry.ClientProfile
+	return profile, nil
+}
+
+// WritePasswordsToTempFile write the given entries to temp file in the given folder
+// This returns the name of the new temp file.
+func WritePasswordsToTempFile(
+	folder string, entries map[string]AuthnEntry) (tempFileName string, err error) {
+
+	file, err := os.CreateTemp(folder, "hub-pwfilestore")
+
+	// file, err := os.OpenFile(path, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		err := fmt.Errorf("failed open temp password file: %s", err)
+		return "", err
+	}
+	tempFileName = file.Name()
+
+	defer file.Close()
+	pwData, err := json.Marshal(entries)
+	if err == nil {
+		_, err = file.Write(pwData)
+	}
+
+	return tempFileName, err
+}
+
+// NewAuthnFileStore creates a new instance of a file based identity store.
+// Call Open/Release to start/stop using this store.
+// Note: this store is intended for one writer and many readers.
+// Multiple concurrent writes are not supported and might lead to one write being ignored.
+//
+//	filepath location of the file store. See also DefaultPasswordFile for the recommended name
+func NewAuthnFileStore(filepath string) *AuthnFileStore {
+	store := &AuthnFileStore{
+		storePath: filepath,
+		hashAlgo:  PWHASH_ARGON2id,
+		entries:   make(map[string]AuthnEntry),
+	}
+	return store
+}

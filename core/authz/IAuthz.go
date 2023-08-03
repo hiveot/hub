@@ -213,9 +213,10 @@ type GetPermissionsResp struct {
 // GetRoleAction defines the action to request the role of a client for a Thing
 const GetRoleAction = "getRole"
 
-// GetRolesReq request message to get the role of a client for a thing
-type GetRolesReq struct {
+// GetRoleReq request message to get the role of a client for a thing
+type GetRoleReq struct {
 	ClientID string `json:"clientID"`
+	ThingID  string `json:"thingID"`
 }
 
 // GetRoleResp response with the role
@@ -304,7 +305,7 @@ type IAuthz interface {
 
 	// GetRole determines the highest role a client has for a thing
 	// If the client is a member of multiple groups each group role is checked.
-	GetRole(clientID string, thingID string) string
+	GetRole(clientID string, thingID string) (role string, err error)
 
 	// GetPermissions returns the permissions the client has for Things.
 	// clientID is optional. The default is to use the connecting client's ID.

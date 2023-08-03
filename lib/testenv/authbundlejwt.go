@@ -25,9 +25,9 @@ type TestAuthBundle struct {
 	ServerCert *tls.Certificate
 	// operator and account keys
 	//OperatorNKey      nkeys.KeyPair
-	//OperatorJWT       string
+	OperatorJWT       string
 	SystemAccountNKey nkeys.KeyPair
-	//SystemAccountJWT  string
+	SystemAccountJWT  string
 	//SystemSigningNKey nkeys.KeyPair
 	SystemUserNKey  nkeys.KeyPair
 	SystemUserJWT   string
@@ -36,7 +36,7 @@ type TestAuthBundle struct {
 	AppAccountName string
 	AppAccountNKey nkeys.KeyPair
 	//AppSigningNKey nkeys.KeyPair
-	//AppAccountJWT  string
+	AppAccountJWT string
 
 	// test service
 	ServiceID    string
@@ -78,16 +78,16 @@ func CreateTestAuthBundle() TestAuthBundle {
 	// life starts with the operator
 	// the operator is signing the account keys
 	// https://gist.github.com/renevo/8fa7282d441b46752c9151644a2e911a
-	//operatorNKey, _ := nkeys.CreateOperator()
-	//operatorPub, _ := operatorNKey.PublicKey()
-	//operatorClaims := jwt.NewOperatorClaims(operatorPub)
-	//operatorClaims.Name = "hiveotop"
+	operatorNKey, _ := nkeys.CreateOperator()
+	operatorPub, _ := operatorNKey.PublicKey()
+	operatorClaims := jwt.NewOperatorClaims(operatorPub)
+	operatorClaims.Name = "hiveotop"
 	//// use a separate operator signing key that can be revoked without compromising the operator keys
 	//operatorSigningNKey, _ := nkeys.CreateOperator()
 	//operatorSigningPub, _ := operatorSigningNKey.PublicKey()
 	//operatorClaims.SigningKeys.Add(operatorSigningPub)
 	//authBundle.OperatorNKey = operatorNKey
-	//authBundle.OperatorJWT, _ = operatorClaims.Encode(operatorNKey)
+	authBundle.OperatorJWT, _ = operatorClaims.Encode(operatorNKey)
 
 	// the system account is used for monitoring
 	systemAccountNKey, _ := nkeys.CreateAccount()
@@ -120,10 +120,10 @@ func CreateTestAuthBundle() TestAuthBundle {
 			},
 		},
 	}
-	//systemAccountJWT, _ := systemAccountClaims.Encode(operatorSigningNKey)
+	systemAccountJWT, _ := systemAccountClaims.Encode(operatorNKey)
 	//authBundle.SystemSigningNKey = systemSigningNKey
 	authBundle.SystemAccountNKey = systemAccountNKey
-	//authBundle.SystemAccountJWT = systemAccountJWT
+	authBundle.SystemAccountJWT = systemAccountJWT
 
 	// A user for the system account
 
@@ -152,37 +152,37 @@ func CreateTestAuthBundle() TestAuthBundle {
 	appAccountClaims.Name = appAccountName
 	//appAccountClaims.SigningKeys.Add(appSigningPub)
 	// Enabling JetStream requires setting storage limits
-	appAccountClaims.Limits.JetStreamLimits.DiskStorage = 1024 * 1024 * 1024
-	appAccountClaims.Limits.JetStreamLimits.MemoryStorage = 100 * 1024 * 1024
+	appAccountClaims.Limits.JetStreamLimits.DiskStorage = -1
+	appAccountClaims.Limits.JetStreamLimits.MemoryStorage = -1
 	//appAccountClaims.Subject = appAccountPub
-	appAccountClaims.Exports = jwt.Exports{
-		&jwt.Export{
-			Name:                 "account-monitoring-services",
-			Subject:              "$SYS.REQ.ACCOUNT.*.*",
-			Type:                 jwt.Service,
-			ResponseType:         jwt.ResponseTypeStream,
-			AccountTokenPosition: 4,
-			Info: jwt.Info{
-				Description: "Custom account made by conservator",
-				InfoURL:     "https://github.com/renevo/conservator",
-			},
-		},
-		&jwt.Export{
-			Name:                 "account-monitoring-streams",
-			Subject:              "$SYS.ACCOUNT.*.>",
-			Type:                 jwt.Stream,
-			AccountTokenPosition: 3,
-			Info: jwt.Info{
-				Description: "Custom account made by conservator",
-				InfoURL:     "https://github.com/renevo/conservator",
-			},
-		},
-	}
-	//appAccountJWT, _ := appAccountClaims.Encode(operatorSigningNKey)
+	//appAccountClaims.Exports = jwt.Exports{
+	//	&jwt.Export{
+	//		Name:                 "account-monitoring-services",
+	//		Subject:              "$SYS.REQ.ACCOUNT.*.*",
+	//		Type:                 jwt.Service,
+	//		ResponseType:         jwt.ResponseTypeStream,
+	//		AccountTokenPosition: 4,
+	//		Info: jwt.Info{
+	//			Description: "Custom account made by conservator",
+	//			InfoURL:     "https://github.com/renevo/conservator",
+	//		},
+	//	},
+	//	&jwt.Export{
+	//		Name:                 "account-monitoring-streams",
+	//		Subject:              "$SYS.ACCOUNT.*.>",
+	//		Type:                 jwt.Stream,
+	//		AccountTokenPosition: 3,
+	//		Info: jwt.Info{
+	//			Description: "Custom account made by conservator",
+	//			InfoURL:     "https://github.com/renevo/conservator",
+	//		},
+	//	},
+	//}
+	appAccountJWT, _ := appAccountClaims.Encode(operatorNKey)
 	authBundle.AppAccountName = appAccountName
 	authBundle.AppAccountNKey = appAccountNKey
 	//authBundle.AppSigningNKey = appSigningNKey
-	//authBundle.AppAccountJWT = appAccountJWT
+	authBundle.AppAccountJWT = appAccountJWT
 
 	// test service keys created by the server account
 	serviceNKey, _ := nkeys.CreateUser()
