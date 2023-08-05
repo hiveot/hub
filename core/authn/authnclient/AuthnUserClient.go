@@ -40,18 +40,18 @@ func (clientAuthn *AuthnUserClient) GetProfile(clientID string) (profile authn.C
 	return profile, err
 }
 
-// Login obtains an auth token based on loginID and password
-func (clientAuthn *AuthnUserClient) Login(clientID string, password string) (authToken string, err error) {
-	req := authn.LoginReq{
+// NewToken obtains an auth token based on loginID and password
+func (clientAuthn *AuthnUserClient) NewToken(clientID string, password string) (authToken string, err error) {
+	req := authn.NewTokenReq{
 		ClientID: clientID,
 		Password: password,
 	}
 	msg, _ := ser.Marshal(req)
-	data, err := clientAuthn.pubReq(authn.LoginAction, msg)
+	data, err := clientAuthn.pubReq(authn.NewTokenAction, msg)
 	if err != nil {
 		return "", err
 	}
-	resp := &authn.LoginResp{}
+	resp := &authn.NewTokenResp{}
 	err = clientAuthn.hc.ParseResponse(data, err, resp)
 	if err == nil {
 		authToken = resp.Token
@@ -118,12 +118,9 @@ func (clientAuthn *AuthnUserClient) UpdatePubKey(clientID string, newPubKey stri
 
 // NewAuthnUserClient returns an authn client for the given hubclient connection
 //
-//	serviceID is the ID of the authn service. Use "" for default.
 //	hc is the hub client connection to use
-func NewAuthnUserClient(serviceID string, hc hubclient.IHubClient) *AuthnUserClient {
-	if serviceID == "" {
-		serviceID = authn.AuthnServiceName
-	}
+func NewAuthnUserClient(hc hubclient.IHubClient) *AuthnUserClient {
+	serviceID := authn.AuthnServiceName
 	cl := AuthnUserClient{
 		hc:        hc,
 		serviceID: serviceID,

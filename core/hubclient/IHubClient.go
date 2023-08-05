@@ -98,7 +98,7 @@ type IHubClient interface {
 	//
 	// This returns a time limited authentication token that can be used
 	// with ConnectWithJWT without requiring a password.
-	ConnectWithPassword(url string, loginID string, password string, caCert *x509.Certificate) (token string, err error)
+	//ConnectWithPassword(url string, loginID string, password string, caCert *x509.Certificate) (token string, err error)
 
 	// ConnectWithJWT connects to the Hub server using a user JWT token issued by the server.
 	//
@@ -116,7 +116,7 @@ type IHubClient interface {
 	//
 	// Provide a CA certificate if available. If nil then the connection will still
 	// use TLS but no server verification will be used (InsecureSkipVerify=true)
-	ConnectUnauthenticated(url string, caCert *x509.Certificate) (err error)
+	//ConnectUnauthenticated(url string, caCert *x509.Certificate) (err error)
 
 	// Disconnect from the hub server
 	Disconnect()

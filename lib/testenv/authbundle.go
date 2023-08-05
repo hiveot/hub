@@ -20,40 +20,48 @@ type TestAuthBundle struct {
 	CaCert *x509.Certificate
 	CaKey  *ecdsa.PrivateKey
 
-	// Nats server certificate
+	// server certificate
 	ServerKey  *ecdsa.PrivateKey
 	ServerCert *tls.Certificate
+
+	// client cert auth
+	ClientKey  *ecdsa.PrivateKey
+	ClientCert *tls.Certificate
+
 	// operator and account keys
 	//OperatorNKey      nkeys.KeyPair
-	OperatorJWT       string
-	SystemAccountNKey nkeys.KeyPair
-	SystemAccountJWT  string
+	OperatorJWT      string
+	SystemAccountKey nkeys.KeyPair
+	SystemAccountJWT string
 	//SystemSigningNKey nkeys.KeyPair
 	SystemUserNKey  nkeys.KeyPair
 	SystemUserJWT   string
 	SystemUserCreds []byte
 	//
 	AppAccountName string
-	AppAccountNKey nkeys.KeyPair
+	AppAccountKey  nkeys.KeyPair
 	//AppSigningNKey nkeys.KeyPair
 	AppAccountJWT string
 
 	// test service
-	ServiceID    string
-	ServiceNKey  nkeys.KeyPair // application services
-	ServiceJWT   string
-	ServiceCreds []byte
+	ServiceID     string
+	ServiceKey    nkeys.KeyPair // application services
+	ServiceKeyPub string
+	ServiceJWT    string
+	ServiceCreds  []byte
 
 	// Devices and services
-	DeviceID    string
-	DeviceNKey  nkeys.KeyPair // IoT device key
-	DeviceJWT   string
-	DeviceCreds []byte
+	DeviceID     string
+	DeviceKey    nkeys.KeyPair // IoT device key
+	DeviceKeyPub string
+	DeviceJWT    string
+	DeviceCreds  []byte
 
-	UserID    string
-	UserNKey  nkeys.KeyPair // end user key
-	UserJWT   string
-	UserCreds []byte
+	UserID     string
+	UserKey    nkeys.KeyPair // end user key
+	UserKeyPub string
+	UserJWT    string
+	UserCreds  []byte
 }
 
 // CreateTestAuthBundle creates a bundle of ca, server certificates and user keys for testing.
@@ -63,6 +71,7 @@ func CreateTestAuthBundle() TestAuthBundle {
 	// Setup CA and server TLS certificates
 	authBundle.CaCert, authBundle.CaKey, _ = certs.CreateCA("testing", 1)
 	authBundle.ServerKey = certs.CreateECDSAKeys()
+	authBundle.ClientKey = certs.CreateECDSAKeys()
 
 	names := []string{ServerAddress}
 	serverCert, err := certs.CreateServerCert(
@@ -74,6 +83,14 @@ func CreateTestAuthBundle() TestAuthBundle {
 		panic("unable to create server cert: " + err.Error())
 	}
 	authBundle.ServerCert = certs.X509CertToTLS(serverCert, authBundle.ServerKey)
+
+	clientCert, _, err := certs.CreateClientCert(TestServiceID, "service",
+		&authBundle.ClientKey.PublicKey,
+		authBundle.CaCert, authBundle.CaKey, 1)
+	if err != nil {
+		panic("unable to create client cert: " + err.Error())
+	}
+	authBundle.ClientCert = certs.X509CertToTLS(clientCert, authBundle.ClientKey)
 
 	// life starts with the operator
 	// the operator is signing the account keys
@@ -122,7 +139,7 @@ func CreateTestAuthBundle() TestAuthBundle {
 	}
 	systemAccountJWT, _ := systemAccountClaims.Encode(operatorNKey)
 	//authBundle.SystemSigningNKey = systemSigningNKey
-	authBundle.SystemAccountNKey = systemAccountNKey
+	authBundle.SystemAccountKey = systemAccountNKey
 	authBundle.SystemAccountJWT = systemAccountJWT
 
 	// A user for the system account
@@ -144,8 +161,8 @@ func CreateTestAuthBundle() TestAuthBundle {
 
 	// the application uses a separate account key
 	appAccountName := "AppAccount"
-	appAccountNKey, _ := nkeys.CreateAccount()
-	appAccountPub, _ := appAccountNKey.PublicKey()
+	appAccountKey, _ := nkeys.CreateAccount()
+	appAccountPub, _ := appAccountKey.PublicKey()
 	//appSigningNKey, _ := nkeys.CreateAccount()
 	//appSigningPub, _ := appSigningNKey.PublicKey()
 	appAccountClaims := jwt.NewAccountClaims(appAccountPub)
@@ -180,7 +197,7 @@ func CreateTestAuthBundle() TestAuthBundle {
 	//}
 	appAccountJWT, _ := appAccountClaims.Encode(operatorNKey)
 	authBundle.AppAccountName = appAccountName
-	authBundle.AppAccountNKey = appAccountNKey
+	authBundle.AppAccountKey = appAccountKey
 	//authBundle.AppSigningNKey = appSigningNKey
 	authBundle.AppAccountJWT = appAccountJWT
 
@@ -189,9 +206,10 @@ func CreateTestAuthBundle() TestAuthBundle {
 	servicePub := []string{">"}
 	serviceSub := []string{">"}
 	serviceJWT, serviceCreds := CreateUserCreds(
-		TestServiceID, serviceNKey, appAccountNKey, appAccountPub, appAccountName, servicePub, serviceSub)
+		TestServiceID, serviceNKey, appAccountKey, servicePub, serviceSub)
 	authBundle.ServiceID = TestServiceID
-	authBundle.ServiceNKey = serviceNKey
+	authBundle.ServiceKey = serviceNKey
+	authBundle.ServiceKeyPub, _ = serviceNKey.PublicKey()
 	authBundle.ServiceJWT = serviceJWT
 	authBundle.ServiceCreds = serviceCreds
 
@@ -200,9 +218,10 @@ func CreateTestAuthBundle() TestAuthBundle {
 	devicePub := []string{"things." + TestDeviceID + ".*.event.>"}
 	deviceSub := []string{"_INBOX.>", "things." + TestDeviceID + ".*.action.>"}
 	deviceJWT, deviceCreds := CreateUserCreds(
-		TestDeviceID, deviceNKey, appAccountNKey, appAccountPub, appAccountName, devicePub, deviceSub)
+		TestDeviceID, deviceNKey, appAccountKey, devicePub, deviceSub)
 	authBundle.DeviceID = TestDeviceID
-	authBundle.DeviceNKey = deviceNKey
+	authBundle.DeviceKey = deviceNKey
+	authBundle.DeviceKeyPub, _ = deviceNKey.PublicKey()
 	authBundle.DeviceJWT = deviceJWT
 	authBundle.DeviceCreds = deviceCreds
 
@@ -211,9 +230,10 @@ func CreateTestAuthBundle() TestAuthBundle {
 	userPub := []string{"things.*.*.action.>"}
 	userSub := []string{"_INBOX.>", "things.>"}
 	userJWT, userCreds := CreateUserCreds(
-		TestUserID, userNKey, appAccountNKey, appAccountPub, appAccountName, userPub, userSub)
+		TestUserID, userNKey, appAccountKey, userPub, userSub)
 	authBundle.UserID = TestUserID
-	authBundle.UserNKey = userNKey
+	authBundle.UserKey = userNKey
+	authBundle.UserKeyPub, _ = userNKey.PublicKey()
 	authBundle.UserJWT = userJWT
 	authBundle.UserCreds = userCreds
 
@@ -223,26 +243,26 @@ func CreateTestAuthBundle() TestAuthBundle {
 // CreateUserCreds create a signed user JWT token and private credentials with pub/sub permissions
 //
 //	id is the client's authentication ID
-//	nkey is the client's key pair
-//	signer is the nkey of the signer, eg the account key
+//	userKey is the client's key pair
+//	acctKey is the nkey of the signer, eg the account key
 //	pub is the list of subjects allowed to publish or nil if not set here
 //	sub is the list of subjects allowed to subscribe or nil if not set here
 //
 // This returns the public signed jwt token containing user claims, and the full credentials to be kept secret
-func CreateUserCreds(id string, keys nkeys.KeyPair,
-	signer nkeys.KeyPair, appAccountPub string, appAccountName string,
+func CreateUserCreds(id string, userKey nkeys.KeyPair,
+	acctKey nkeys.KeyPair,
 	pub []string, sub []string) (
 	jwtToken string, creds []byte) {
 
 	// device keys created by the server (account)
-	pubKey, _ := keys.PublicKey()
-	privKey, _ := keys.Seed()
+	pubKey, _ := userKey.PublicKey()
+	privKey, _ := userKey.Seed()
 	claims := jwt.NewUserClaims(pubKey)
 	claims.Subject = pubKey
 	//-- in server mode this might work differently from operator mode
 	// should appAccountName or public key be used???
 	//claims.Audience = appAccountName
-	claims.IssuerAccount = appAccountPub
+	claims.IssuerAccount, _ = acctKey.PublicKey()
 	//
 	claims.Name = id
 	// add identification and authorization to user
@@ -253,7 +273,7 @@ func CreateUserCreds(id string, keys nkeys.KeyPair,
 	if sub != nil {
 		claims.Sub.Allow.Add(sub...)
 	}
-	jwtToken, err := claims.Encode(signer)
+	jwtToken, err := claims.Encode(acctKey)
 	if err != nil {
 		panic("cant create jwt key:" + err.Error())
 	}

@@ -21,12 +21,13 @@ import (
 // PublicUnauthenticatedNKey is the public seed of the unaunthenticated user
 const PublicUnauthenticatedNKey = "SUAOXRE662WSIGIMSIFVQNCCIWG673K7GZMB3ZUUIF45BWGMYKECEQQJZE"
 
-// HubSubscription nats subscription helper
-type HubSubscription struct {
+// NatsHubSubscription nats subscription helper
+// This implements ISubscription
+type NatsHubSubscription struct {
 	nsub *nats.Subscription
 }
 
-func (ns *HubSubscription) Unsubscribe() {
+func (ns *NatsHubSubscription) Unsubscribe() {
 	err := ns.nsub.Unsubscribe()
 	if err != nil {
 		slog.Error("Unsubscribe error", "error", err)
@@ -92,8 +93,7 @@ func (hc *HubNatsClient) ClientID() string {
 //}
 
 // ConnectWithJWT connects to the Hub server using a NATS user JWT credentials secret
-//
-// This seems (?) to also work when using jwt with static server setup using nkeys
+// The connection uses the client ID in the JWT token.
 //
 //	url is the server URL to connect to. Eg tls://addr:port/ for tcp or wss://addr:port/ for websockets
 //	jwtToken is the token obtained with login or refresh. This is not a decorated token.
@@ -110,15 +110,7 @@ func (hc *HubNatsClient) ConnectWithJWT(url string, jwtToken string, caCert *x50
 		RootCAs:            caCertPool,
 		InsecureSkipVerify: caCert == nil,
 	}
-	// Get the userID from the token
-	//jwtToken, err := jwt.ParseDecoratedJWT(jwtCreds)
-	//if err != nil {
-	//	return fmt.Errorf("can't get jwt from jwtCreds: %w", err)
-	//}
-	//userKP, err := jwt.ParseDecoratedUserNKey(jwtCreds)
-	//if err != nil {
-	//	return fmt.Errorf("can't get keys from jwtCreds: %w", err)
-	//}
+
 	claims, err := jwt.Decode(jwtToken)
 	if err != nil {
 		err = fmt.Errorf("invalid jwt token: %w", err)
@@ -131,6 +123,7 @@ func (hc *HubNatsClient) ConnectWithJWT(url string, jwtToken string, caCert *x50
 	hc.nc, err = nats.Connect(url,
 		nats.Name(hc.clientID), // connection name for logging, debugging
 		nats.Secure(tlsConfig),
+		nats.CustomInboxPrefix("_INBOX."+hc.clientID),
 		nats.UserJWTAndSeed(jwtToken, string(jwtSeed)), // does this help?
 		nats.Timeout(time.Second*time.Duration(hc.timeoutSec)))
 
@@ -192,17 +185,17 @@ func (hc *HubNatsClient) ConnectWithPassword(
 		return "", err
 	}
 
-	req := authn.LoginReq{
+	req := authn.NewTokenReq{
 		ClientID: loginID,
 		Password: password,
 	}
 	msg, _ := ser.Marshal(req)
-	data, err := hc.PubAction(loginID, authn.ClientAuthnCapability, authn.LoginAction, msg)
+	data, err := hc.PubAction(loginID, authn.ClientAuthnCapability, authn.NewTokenAction, msg)
 
 	if err != nil {
 		return "", err
 	}
-	resp := &authn.LoginResp{}
+	resp := &authn.NewTokenResp{}
 	err = hc.ParseResponse(data, err, resp)
 	if err != nil {
 		return "", err
@@ -487,7 +480,7 @@ func (hc *HubNatsClient) Subscribe(subject string, cb func(msg *nats.Msg)) (sub 
 	if !isValid {
 		err = errors.New("subject " + subject + " not valid")
 	}
-	sub = &HubSubscription{nsub: nsub}
+	sub = &NatsHubSubscription{nsub: nsub}
 	return sub, err
 }
 

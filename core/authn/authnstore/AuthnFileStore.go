@@ -83,15 +83,6 @@ func (authnStore *AuthnFileStore) Count() int {
 	return len(authnStore.entries)
 }
 
-// Exists returns if loginID already exists
-func (authnStore *AuthnFileStore) Exists(loginID string) bool {
-	authnStore.mutex.RLock()
-	defer authnStore.mutex.RUnlock()
-
-	_, found := authnStore.entries[loginID]
-	return found
-}
-
 // Get user the user info of the loginID
 func (authnStore *AuthnFileStore) Get(clientID string) (profile authn.ClientProfile, err error) {
 	authnStore.mutex.RLock()

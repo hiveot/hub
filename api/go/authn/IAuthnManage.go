@@ -48,7 +48,7 @@ const AddDeviceAction = "addDevice"
 // The caller must be an administrator or service.
 type AddDeviceReq struct {
 	DeviceID    string `json:"deviceID"`
-	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
 	PubKey      string `json:"pubKey"`
 	ValiditySec int    `json:"validitySec"`
 }
@@ -63,7 +63,7 @@ const AddServiceAction = "addService"
 // The caller must be an administrator or service.
 type AddServiceReq struct {
 	ServiceID   string `json:"serviceID"`
-	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
 	PubKey      string `json:"pubKey"`
 	ValiditySec int    `json:"validitySec"`
 }
@@ -77,9 +77,10 @@ const AddUserAction = "addUser"
 // AddUserReq request message to add a user.
 // The caller must be an administrator or service.
 type AddUserReq struct {
-	UserID   string `json:"userID"`
-	Name     string `json:"name"`
-	Password string `json:"password"`
+	UserID      string `json:"userID"`
+	DisplayName string `json:"DisplayName,omitempty"`
+	Password    string `json:"password,omitempty"`
+	PubKey      string `json:"pubKey,omitempty"`
 }
 type AddUserResp struct {
 	Token string `json:"token"`
@@ -94,6 +95,12 @@ type GetClientProfileReq struct {
 }
 type GetClientProfileResp struct {
 	Profile ClientProfile `json:"profile"`
+}
+
+const GetCountAction = "getCount"
+
+type GetCountResp struct {
+	N int `json:"n"`
 }
 
 // ListClientsAction defines the action to get a list of clients
@@ -133,11 +140,11 @@ type IAuthnManage interface {
 	// If the device already exists then this returns an error.
 	//
 	//  deviceID is the thingID of the device, used for publishing things by this device.
-	//  name of the service for presentation
+	//  displayName of the service for presentation
 	//  pubKey ECDSA public key of the device
 	//  validitySec is duration the device token is valid for. 0 for the default DefaultDeviceTokenValiditySec
 	// This returns a new device authentication token
-	AddDevice(deviceID string, name string, pubKey string, validitySec int) (token string, err error)
+	AddDevice(deviceID string, displayName string, pubKey string, validitySec int) (token string, err error)
 
 	// AddService adds a new service and generates a service token.
 	// The service must periodically refresh its token for it to remain valid.
@@ -145,23 +152,30 @@ type IAuthnManage interface {
 	// If the serviceID already exists then an error is returned
 	//
 	//  serviceID is the instance ID of the service on the network.
-	//  name of the service for presentation
+	//  displayName of the service for presentation
 	//  pubKey ECDSA public key of the service
 	//  validitySec is duration the service token is valid for. 0 for the default DefaultServiceTokenValiditySec
 	// This returns a new service authentication token
-	AddService(serviceID string, name string, pubKey string, validitySec int) (token string, err error)
+	AddService(serviceID string, displayName string, pubKey string, validitySec int) (token string, err error)
 
 	// AddUser adds a user.
 	// The caller must be an administrator or service.
 	// If the userID already exists then an error is returned
 	//  userID is the login ID of the user, typically their email
 	//  displayName of the user for presentation
-	//  password the user can login with if their token has expired.
-	AddUser(userID string, displayName string, password string) (err error)
+	//  password the user can login with if their token has expired. Optional.
+	//  pubKey the public key to receive a signed token
+	//  validitySec is duration the token is valid for. 0 for the default DefaultServiceTokenValiditySec
+	// This returns a new user authentication token if pubKey was provided.
+	AddUser(userID string, displayName string, password string, pubKey string) (token string, err error)
+
+	// GetCount returns the number of clients in the store
+	GetCount() (int, error)
 
 	// GetClientProfile returns a client's profile
 	// Users can only get their own profile.
 	// Managers can get other clients profiles.
+	// This returns an error if the client does not exist
 	GetClientProfile(clientID string) (profile ClientProfile, err error)
 
 	// ListClients provide a list of known clients and their info.

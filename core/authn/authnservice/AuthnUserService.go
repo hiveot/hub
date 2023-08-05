@@ -2,13 +2,9 @@ package authnservice
 
 import (
 	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/core/authn/authnstore"
-	"golang.org/x/exp/rand"
-	"strings"
-	"time"
 )
 
 // AuthnUserService handles authentication user requests
@@ -33,30 +29,30 @@ func (svc *AuthnUserService) CreateToken(clientID string, clientType string, pub
 }
 
 // GeneratePassword with upper, lower, numbers and special characters
-func (svc *AuthnUserService) GeneratePassword(length int, useSpecial bool) (password string) {
-	const charsLow = "abcdefghijklmnopqrstuvwxyz"
-	const charsUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	const charsSpecial = "!#$%&*+-./:=?@^_"
-	const numbers = "0123456789"
-	var pool = []rune(charsLow + numbers + charsUpper)
-
-	if length < 2 {
-		length = 8
-	}
-	if useSpecial {
-		pool = append(pool, []rune(charsSpecial)...)
-	}
-	rand.Seed(uint64(time.Now().Unix()))
-	//pwchars := make([]string, length)
-	pwchars := strings.Builder{}
-
-	for i := 0; i < length; i++ {
-		pos := rand.Intn(len(pool))
-		pwchars.WriteRune(pool[pos])
-	}
-	password = pwchars.String()
-	return password
-}
+//func (svc *AuthnUserService) GeneratePassword(length int, useSpecial bool) (password string) {
+//	const charsLow = "abcdefghijklmnopqrstuvwxyz"
+//	const charsUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+//	const charsSpecial = "!#$%&*+-./:=?@^_"
+//	const numbers = "0123456789"
+//	var pool = []rune(charsLow + numbers + charsUpper)
+//
+//	if length < 2 {
+//		length = 8
+//	}
+//	if useSpecial {
+//		pool = append(pool, []rune(charsSpecial)...)
+//	}
+//	rand.Seed(uint64(time.Now().Unix()))
+//	//pwchars := make([]string, length)
+//	pwchars := strings.Builder{}
+//
+//	for i := 0; i < length; i++ {
+//		pos := rand.Intn(len(pool))
+//		pwchars.WriteRune(pool[pos])
+//	}
+//	password = pwchars.String()
+//	return password
+//}
 
 // GetProfile returns a client's profile
 func (svc *AuthnUserService) GetProfile(clientID string) (profile authn.ClientProfile, err error) {
@@ -64,8 +60,8 @@ func (svc *AuthnUserService) GetProfile(clientID string) (profile authn.ClientPr
 	return entry, err
 }
 
-// Login validates a password and issues an authn token
-func (svc *AuthnUserService) Login(clientID string, password string) (newToken string, err error) {
+// NewToken validates a password and issues an authn token
+func (svc *AuthnUserService) NewToken(clientID string, password string) (newToken string, err error) {
 	entry, err := svc.store.VerifyPassword(clientID, password)
 	if err != nil {
 		return "", err
@@ -87,7 +83,7 @@ func (svc *AuthnUserService) Refresh(clientID string, oldToken string) (newToken
 	if err != nil {
 		return "", fmt.Errorf("error validating oldToken of client %s: %w", clientID, err)
 	}
-	newToken, err = svc.CreateToken(clientID, entry.DisplayName, entry.PubKey, entry.ValiditySec)
+	newToken, err = svc.CreateToken(clientID, entry.ClientType, entry.PubKey, entry.ValiditySec)
 	return newToken, err
 }
 
@@ -112,16 +108,16 @@ func (svc *AuthnUserService) UpdatePubKey(clientID string, newPubKey string) (er
 }
 
 // ValidateToken verifies if the token is valid and belongs to the claimed user
-func (svc *AuthnUserService) ValidateToken(clientID string, oldToken string) (err error) {
-	// verify the token
-	entry, err := svc.store.Get(clientID)
-	if err != nil {
-		return err
-	}
-	_ = entry
-	err = svc.tokenizer.ValidateToken(clientID, oldToken, "", "")
-	return err
-}
+//func (svc *AuthnUserService) ValidateToken(clientID string, oldToken string) (err error) {
+//	// verify the token
+//	entry, err := svc.store.Get(clientID)
+//	if err != nil {
+//		return err
+//	}
+//	_ = entry
+//	err = svc.tokenizer.ValidateToken(clientID, oldToken, "", "")
+//	return err
+//}
 
 // ValidateCert verifies that the given certificate belongs to the client
 // and is signed by our CA.
@@ -129,36 +125,36 @@ func (svc *AuthnUserService) ValidateToken(clientID string, oldToken string) (er
 // - Cert validates against the svc CA
 // This is intended for a local setup that use a self-signed CA.
 // The use of JWT keys is recommended over certs as this isn't a domain name validation problem.
-func (svc *AuthnUserService) ValidateCert(clientID string, clientCertPEM string) error {
-
-	if svc.caCert == nil {
-		return fmt.Errorf("no CA on file")
-	}
-	certBlock, _ := pem.Decode([]byte(clientCertPEM))
-	if certBlock == nil {
-		return fmt.Errorf("invalid cert pem for client '%s. decode failed", clientID)
-	}
-	clientCert, err := x509.ParseCertificate(certBlock.Bytes)
-	if err != nil {
-		return err
-	}
-	// verify the cert against the CA
-	caCertPool := x509.NewCertPool()
-	caCertPool.AddCert(svc.caCert)
-	verifyOpts := x509.VerifyOptions{
-		Roots:     caCertPool,
-		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-	}
-
-	_, err = clientCert.Verify(verifyOpts)
-
-	// verify the certs belongs to the clientID
-	certUser := clientCert.Subject.CommonName
-	if certUser != clientID {
-		return fmt.Errorf("cert user '%s' doesnt match client '%s'", certUser, clientID)
-	}
-	return nil
-}
+//func (svc *AuthnUserService) ValidateCert(clientID string, clientCertPEM string) error {
+//
+//	if svc.caCert == nil {
+//		return fmt.Errorf("no CA on file")
+//	}
+//	certBlock, _ := pem.Decode([]byte(clientCertPEM))
+//	if certBlock == nil {
+//		return fmt.Errorf("invalid cert pem for client '%s. decode failed", clientID)
+//	}
+//	clientCert, err := x509.ParseCertificate(certBlock.Bytes)
+//	if err != nil {
+//		return err
+//	}
+//	// verify the cert against the CA
+//	caCertPool := x509.NewCertPool()
+//	caCertPool.AddCert(svc.caCert)
+//	verifyOpts := x509.VerifyOptions{
+//		Roots:     caCertPool,
+//		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+//	}
+//
+//	_, err = clientCert.Verify(verifyOpts)
+//
+//	// verify the certs belongs to the clientID
+//	certUser := clientCert.Subject.CommonName
+//	if certUser != clientID {
+//		return fmt.Errorf("cert user '%s' doesnt match client '%s'", certUser, clientID)
+//	}
+//	return nil
+//}
 
 // NewAuthnUserService returns a user authentication service instance.
 //

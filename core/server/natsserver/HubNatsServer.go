@@ -77,11 +77,12 @@ func (srv *HubNatsServer) CreateServerConfig(
 	appAccountJWT string,
 	serviceKey nkeys.KeyPair,
 ) *server.Options {
-
+	var err error
 	// JWT needs an account resolver.
 	// Use the simple in-memory resolver as there is only one account.
 	memoryResolver := &server.MemAccResolver{}
 	operatorClaim, err := jwt.DecodeOperatorClaims(operatorJWT)
+	_ = operatorClaim
 	if err != nil {
 		panic(err)
 	}
@@ -99,13 +100,23 @@ func (srv *HubNatsServer) CreateServerConfig(
 	}
 	serviceKeyPub, _ := serviceKey.PublicKey()
 	_ = serviceKeyPub
-	//systemAccountPub, err := systemAccountNKey.PublicKey()
+	//noAuthKey, _ := nkeys.FromSeed([]byte(natshubclient.PublicUnauthenticatedNKey))
+
+	//noAuthKeyPub, _ := noAuthKey.PublicKey()
 	natsOpts := &server.Options{
 		Host:             hubcfg.Host,
 		Port:             hubcfg.Port,
 		AccountResolver:  memoryResolver,
 		SystemAccount:    systemAccountPub, //"SYS",
 		TrustedOperators: []*jwt.OperatorClaims{operatorClaim},
+
+		//TrustedKeys: []string{operatorClaim.Subject},
+		//Nkeys: []*server.NkeyUser{
+		//	{Nkey: serviceKeyPub},
+		//	{Nkey: noAuthKeyPub}}, //Permissions:            noAuthPermissions,
+		//Account:                appAccountClaims.Subject,
+		//SigningKey:             "",
+		//AllowedConnectionTypes: nil,
 
 		JetStream:          true,
 		JetStreamMaxMemory: int64(hubcfg.MaxDataMemoryMB) * 1024 * 1024,

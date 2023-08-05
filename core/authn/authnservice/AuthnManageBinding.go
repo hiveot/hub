@@ -1,6 +1,7 @@
 package authnservice
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/core/hubclient"
 	"github.com/hiveot/hub/lib/ser"
@@ -23,16 +24,50 @@ func (binding *AuthnManageBinding) handleManageActions(action *hubclient.ActionM
 
 	// TODO: doublecheck the caller is an admin or svc
 	switch action.ActionID {
+	case authn.AddDeviceAction:
+		req := authn.AddDeviceReq{}
+		err := ser.Unmarshal(action.Payload, &req)
+		if err != nil {
+			return err
+		}
+		token, err := binding.svc.AddDevice(req.DeviceID, req.DisplayName, req.PubKey, req.ValiditySec)
+		if err == nil {
+			resp := authn.AddDeviceResp{Token: token}
+			reply, _ := ser.Marshal(&resp)
+			action.SendReply(reply)
+		}
+		return err
+	case authn.AddServiceAction:
+		req := authn.AddServiceReq{}
+		err := ser.Unmarshal(action.Payload, &req)
+		if err != nil {
+			return err
+		}
+		token, err := binding.svc.AddService(req.ServiceID, req.DisplayName, req.PubKey, req.ValiditySec)
+		if err == nil {
+			resp := authn.AddServiceResp{Token: token}
+			reply, _ := ser.Marshal(&resp)
+			action.SendReply(reply)
+		}
+		return err
 	case authn.AddUserAction:
 		req := authn.AddUserReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
-		err = binding.svc.AddUser(req.UserID, req.Name, req.Password)
+		token, err := binding.svc.AddUser(req.UserID, req.DisplayName, req.Password, req.PubKey)
 		if err == nil {
-			action.SendAck()
+			resp := authn.AddUserResp{Token: token}
+			reply, _ := ser.Marshal(&resp)
+			action.SendReply(reply)
 		}
+		return err
+	case authn.GetCountAction:
+		n, err := binding.svc.GetCount()
+		resp := authn.GetCountResp{N: n}
+		reply, _ := ser.Marshal(&resp)
+		action.SendReply(reply)
 		return err
 	case authn.GetClientProfileAction:
 		req := authn.GetClientProfileReq{}
@@ -78,8 +113,7 @@ func (binding *AuthnManageBinding) handleManageActions(action *hubclient.ActionM
 		}
 		return err
 	default:
-		//err := errors.New("invalid action '" + action.ActionID + "'")
-		return nil
+		return fmt.Errorf("Unknown manage action '%s' for client '%s'", action.ActionID, action.ClientID)
 	}
 }
 

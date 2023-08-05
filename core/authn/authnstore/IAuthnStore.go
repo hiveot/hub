@@ -31,11 +31,8 @@ type IAuthnStore interface {
 	// Close the store
 	Close()
 
-	// Exists returns whether the given clientID already exists
-	Exists(clientID string) bool
-
-	// GetPasswordHash returns the password hash for the user, or "" if the user is not found
-	//GetPasswordHash(username string) string
+	// Count returns the number of clients in the store
+	Count() int
 
 	// Get returns the client's profile
 	// Returns an error if the clientID doesn't exist

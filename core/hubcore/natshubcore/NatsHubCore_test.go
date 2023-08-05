@@ -60,13 +60,13 @@ func TestHubServer_StartStop(t *testing.T) {
 //	require.NotPanics(t, func() { clientURL = core.Start() })
 //
 //	// add the device using its nkey public key
-//	deviceUser, _ := testCerts.DeviceNKey.PublicKey()
+//	deviceUser, _ := testCerts.DeviceKey.PublicKey()
 //	err = srv.AddUser(deviceUser, thingsPermissions)
 //	assert.NoError(t, err)
 //	defer srv.Stop()
 //
 //	hc := hubconn.NewHubClient("test1")
-//	err = hc.ConnectWithNKey(clientURL, testCerts.DeviceNKey, testCerts.CaCert)
+//	err = hc.ConnectWithNKey(clientURL, testCerts.DeviceKey, testCerts.CaCert)
 //	defer hc.DisConnect()
 //
 //	assert.NoError(t, err)
@@ -173,13 +173,13 @@ func TestPubSub_AuthJWT(t *testing.T) {
 //	time.Sleep(time.Millisecond * 100)
 //
 //	// add the device using its nkey public key
-//	deviceUser, _ := testCerts.DeviceNKey.PublicKey()
+//	deviceUser, _ := testCerts.DeviceKey.PublicKey()
 //	err = srv.AddUser(deviceUser, allPermissions)
 //	assert.NoError(t, err)
 //	defer srv.Stop()
 //
 //	hc := hubconn.NewHubClient("test1")
-//	err = hc.ConnectWithNKey(clientURL, testCerts.DeviceNKey, testCerts.CaCert)
+//	err = hc.ConnectWithNKey(clientURL, testCerts.DeviceKey, testCerts.CaCert)
 //	require.NoError(t, err)
 //	defer hc.DisConnect()
 //

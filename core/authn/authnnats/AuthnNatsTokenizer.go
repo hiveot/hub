@@ -1,4 +1,4 @@
-package natsauthn
+package authnnats
 
 import (
 	"encoding/base64"
@@ -9,10 +9,10 @@ import (
 	"time"
 )
 
-// NatsAuthnTokenizer generates and validates NATS tokens.
+// AuthnNatsTokenizer generates and validates NATS tokens.
 // This implements the IAuthnTokenizer interface
-type NatsAuthnTokenizer struct {
-	signingKP nkeys.KeyPair
+type AuthnNatsTokenizer struct {
+	accountKey nkeys.KeyPair
 }
 
 // CreateToken for authentication and authorization with NATS server and JetStream
@@ -26,37 +26,46 @@ type NatsAuthnTokenizer struct {
 //   - Issuer and Subject must match specific NKey roles
 //     NKey Roles are operators, accounts and users,
 //     Operator is the issuer of account, account issuer of users.
-func (svc *NatsAuthnTokenizer) CreateToken(
+func (svc *AuthnNatsTokenizer) CreateToken(
 	clientID string, clientType string, pubKey string, validitySec int) (token string, err error) {
 
 	// create jwt claims that identifies the user and its permissions
 	userClaims := jwt.NewUserClaims(pubKey)
+	// the token must be issued by a known account
+	userClaims.IssuerAccount, _ = svc.accountKey.PublicKey()
 	// can't use claim ID as it is replaced by a hash by Encode(kp)
 	userClaims.Name = clientID
 	userClaims.Tags.Add("clientType", clientType)
 	userClaims.IssuedAt = time.Now().Unix()
 	userClaims.Expires = time.Now().Add(time.Duration(validitySec) * time.Second).Unix()
+
+	// everyone can subscribe to actions aimed at them
+	userClaims.Permissions.Sub.Allow.Add("things." + clientID + ".*.action.>")
+	// everyone can publish events from themselves
+	userClaims.Permissions.Pub.Allow.Add("things." + clientID + ".*.event.>")
+	// everyone can publish authn client requests
+	userClaims.Permissions.Pub.Allow.Add("things." + authn.AuthnServiceName + "." + authn.ClientAuthnCapability + ".action.>")
+	// everyone can sub to their inbox (using inbox prefix)
+	userClaims.Permissions.Sub.Allow.Add("_INBOX." + clientID + ".>")
+
 	if clientType == authn.ClientTypeDevice {
-		// devices can subscribe to actions aimed at them
-		// devices can publish events of which they are the publisher
-		// devices can receive replies in their inbox
 		//userClaims.Limits.Data = 1 * 1024 * 1024 // max message size???
-		userClaims.Permissions.Sub.Allow.Add("things." + clientID + ".*.action.>")
-		userClaims.Permissions.Pub.Allow.Add("things." + clientID + ".*.event.>")
+		// devices can publish to any inbox (to respond to action requests)
 		userClaims.Permissions.Pub.Allow.Add("_INBOX.>")
 	} else if clientType == authn.ClientTypeService {
-		// services can subscribe to any event and to actions aimed at them
-		// services can publish events of which they are the publisher
 		//userClaims.Limits.Data = 1 * 1024 * 1024 // limit of what???
+		// services can subscribe to any event
 		userClaims.Permissions.Sub.Allow.Add("things.*.*.event.>")
-		userClaims.Permissions.Sub.Allow.Add("things." + clientID + ".*.action.>")
+		// services can publish to any inbox to respond to actions
 		userClaims.Permissions.Pub.Allow.Add("_INBOX.>")
+		// services can interact with groups
+		userClaims.Permissions.Sub.Allow.Add("groups.>")
+		userClaims.Permissions.Pub.Allow.Add("groups.>")
 	} else if clientType == authn.ClientTypeUser {
 		// users can publish actions and subscribe to group events
 		//userClaims.Limits.Data = 1 * 1024 * 1024 // max data this client can ... do?
-		userClaims.Permissions.Pub.Allow.Add("groups.*.*.action.>")
 		userClaims.Permissions.Sub.Allow.Add("groups.*.*.event.>")
-		userClaims.Permissions.Sub.Allow.Add("_INBOX.>")
+		userClaims.Permissions.Pub.Allow.Add("groups.*.*.action.>")
 	} else {
 		userClaims.Limits.Subs = 0 // ??? no subscription allowed
 		userClaims.Permissions.Pub.Deny.Add(">")
@@ -64,7 +73,10 @@ func (svc *NatsAuthnTokenizer) CreateToken(
 	}
 
 	// sign the claims with the service signing key
-	token, err = userClaims.Encode(svc.signingKP)
+	token, err = userClaims.Encode(svc.accountKey)
+	if err != nil {
+		err = fmt.Errorf("failed creating new token: %w", err)
+	}
 	return token, err
 }
 
@@ -74,7 +86,9 @@ func (svc *NatsAuthnTokenizer) CreateToken(
 //   - verify the user's public key's nonce based signature
 //     this can only be signed when the user has its private key
 //   - verify the issuer is the signing/account key.
-func (svc *NatsAuthnTokenizer) ValidateToken(
+//
+// Verifying the signedNonce is optional. Use "" to ignore.
+func (svc *AuthnNatsTokenizer) ValidateToken(
 	clientID string, jwtToken string, signedNonce string, nonce string) (err error) {
 
 	// the jwt token is not in the JWT field. Workaround by storing it in the token field.
@@ -88,28 +102,30 @@ func (svc *NatsAuthnTokenizer) ValidateToken(
 	if len(vr.Errors()) > 0 {
 		return fmt.Errorf("jwt authn failed: %w", vr.Errors()[0])
 	}
-
-	// Verify the nonce based token signature
-	sig, err := base64.RawURLEncoding.DecodeString(signedNonce)
-	if err != nil {
-		// Allow fallback to normal base64.
-		sig, err = base64.StdEncoding.DecodeString(signedNonce)
-		if err != nil {
-			return fmt.Errorf("signature not valid base64: %w", err)
-		}
-	}
 	// the subject contains the public user nkey
 	userPub, err := nkeys.FromPublicKey(juc.Subject)
 	if err != nil {
 		return fmt.Errorf("user nkey not valid: %w", err)
 	}
-	// verify the signature of the public key using the nonce
-	// this tells us the user public key is not forged
-	if err = userPub.Verify([]byte(nonce), sig); err != nil {
-		return fmt.Errorf("signature not verified")
+
+	// Verify the nonce based token signature
+	if signedNonce != "" {
+		sig, err := base64.RawURLEncoding.DecodeString(signedNonce)
+		if err != nil {
+			// Allow fallback to normal base64.
+			sig, err = base64.StdEncoding.DecodeString(signedNonce)
+			if err != nil {
+				return fmt.Errorf("signature not valid base64: %w", err)
+			}
+		}
+		// verify the signature of the public key using the nonce
+		// this tells us the user public key is not forged
+		if err = userPub.Verify([]byte(nonce), sig); err != nil {
+			return fmt.Errorf("signature not verified")
+		}
 	}
 	// verify issuer account matches
-	accPub, _ := svc.signingKP.PublicKey()
+	accPub, _ := svc.accountKey.PublicKey()
 	if juc.Issuer != accPub {
 		return fmt.Errorf("JWT issuer is not known")
 	}
@@ -141,14 +157,13 @@ func (svc *NatsAuthnTokenizer) ValidateToken(
 	return nil
 }
 
-// NewNatsTokenizer handles token generation and verification for the NATS messaging server
+// NewAuthnNatsTokenizer handles token generation and verification for the NATS messaging server
 // Call 'Start' to start the service and 'Stop' to end it.
-// The signingkey is usually the application account key
 //
 //	caCert is the CA certificate used to validate certs
-//	signingKP used for signing JWT tokens by the server. usually the account key.
-func NewNatsTokenizer(signingKP nkeys.KeyPair) *NatsAuthnTokenizer {
+//	accountKey used for signing JWT tokens by the server. usually the application account or its signing key
+func NewAuthnNatsTokenizer(accountKey nkeys.KeyPair) *AuthnNatsTokenizer {
 
-	tokenizer := &NatsAuthnTokenizer{signingKP: signingKP}
+	tokenizer := &AuthnNatsTokenizer{accountKey: accountKey}
 	return tokenizer
 }

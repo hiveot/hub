@@ -17,16 +17,16 @@ type GetProfileResp struct {
 	Profile ClientProfile `json:"profile"`
 }
 
-// LoginAction requests a new jwt token for password based login
-const LoginAction = "login"
+// NewTokenAction requests a new jwt token for password based login
+const NewTokenAction = "newToken"
 
-type LoginReq struct {
+type NewTokenReq struct {
 	// ClientID is the authentication ID of the client publishing the action
 	ClientID string `json:"clientID"`
 	// Password to verify identity
 	Password string `json:"password"`
 }
-type LoginResp struct {
+type NewTokenResp struct {
 	Token string `json:"Token"`
 }
 
@@ -69,11 +69,11 @@ type IAuthnUser interface {
 	// GetProfile returns a client's profile
 	GetProfile(clientID string) (profile ClientProfile, err error)
 
-	// Login validates a password and returns an auth token.
+	// NewToken validates a password and returns a new auth token.
 	// This returns a short-lived auth token that can be used to connect to the message server
 	// The token can be refreshed to extend it without requiring a login password.
 	// A public key must be on file for this to work.
-	Login(clientID string, password string) (jwtToken string, err error)
+	NewToken(clientID string, password string) (jwtToken string, err error)
 
 	// Refresh a short-lived authentication token.
 	//

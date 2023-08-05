@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/core/authn/authnstore"
+	"golang.org/x/exp/slog"
 )
 
 // AuthnManageService handles authentication management and user requests
@@ -18,8 +19,13 @@ type AuthnManageService struct {
 
 // AddDevice adds an IoT device and generates an authentication token
 // This is handled by the underlying messaging core.
-func (svc *AuthnManageService) AddDevice(deviceID string, name string, pubKey string, validitySec int) (token string, err error) {
-	// store/update device. This does not create a token.
+func (svc *AuthnManageService) AddDevice(
+	deviceID string, name string, pubKey string, validitySec int) (token string, err error) {
+
+	if deviceID == "" {
+		return "", fmt.Errorf("AddDevice: missing device ID")
+	}
+	// store/update device.
 	err = svc.store.Add(deviceID, authn.ClientProfile{
 		ClientID:    deviceID,
 		ClientType:  authn.ClientTypeDevice,
@@ -31,16 +37,21 @@ func (svc *AuthnManageService) AddDevice(deviceID string, name string, pubKey st
 		return "", err
 	}
 	// create the token for the underlying messaging core
-	token, err = svc.tokenizer.CreateToken(deviceID, authn.ClientTypeDevice, pubKey, validitySec)
+	if pubKey != "" {
+		token, err = svc.tokenizer.CreateToken(deviceID, authn.ClientTypeDevice, pubKey, validitySec)
+		if err != nil {
+			return token, fmt.Errorf("device '%s' added, but: %w", deviceID, err)
+		}
+	}
 	return token, err
 }
 
 // AddService adds or updates a service
-func (svc *AuthnManageService) AddService(serviceID string, name string, pubKey string, validitySec int) (token string, err error) {
+func (svc *AuthnManageService) AddService(
+	serviceID string, name string, pubKey string, validitySec int) (token string, err error) {
 
-	exists := svc.store.Exists(serviceID)
-	if exists {
-		return "", fmt.Errorf("service with ID '%s' already exists", serviceID)
+	if serviceID == "" {
+		return "", fmt.Errorf("missing service ID")
 	}
 	err = svc.store.Add(serviceID, authn.ClientProfile{
 		ClientID:    serviceID,
@@ -53,34 +64,57 @@ func (svc *AuthnManageService) AddService(serviceID string, name string, pubKey 
 		return "", err
 	}
 	// create the token for the underlying messaging core
-	token, err = svc.tokenizer.CreateToken(serviceID, authn.ClientTypeService, pubKey, validitySec)
+	if pubKey != "" {
+		token, err = svc.tokenizer.CreateToken(serviceID, authn.ClientTypeService, pubKey, validitySec)
+		if err != nil {
+			return token, fmt.Errorf("service '%s' added, but: %w", serviceID, err)
+		}
+	}
 	return token, err
 }
 
 // AddUser adds a new user for password authentication
-func (svc *AuthnManageService) AddUser(userID string, userName string, password string) (err error) {
-
+// If a public key is provided a signed token will be returned
+func (svc *AuthnManageService) AddUser(
+	userID string, userName string, password string, pubKey string) (token string, err error) {
+	if userID == "" {
+		return "", fmt.Errorf("missing user ID")
+	}
 	err = svc.store.Add(userID, authn.ClientProfile{
 		ClientID:    userID,
 		ClientType:  authn.ClientTypeUser,
 		DisplayName: userName,
+		PubKey:      pubKey,
 	})
 	if err != nil {
-		return fmt.Errorf("user with clientID '%s' already exists", userID)
+		return "", fmt.Errorf("user with clientID '%s' already exists", userID)
 	}
 	if password != "" {
 		err = svc.store.SetPassword(userID, password)
+		if err != nil {
+			err = fmt.Errorf("AddUser: user '%s' added, but: %w. Continuing", userID, err)
+			slog.Error(err.Error())
+		}
 	}
-	if err != nil {
-		return err
+	// create the token for the underlying messaging core
+	if pubKey != "" {
+		token, err = svc.tokenizer.CreateToken(userID, authn.ClientTypeUser, pubKey, authn.DefaultUserTokenValiditySec)
+		if err != nil {
+			err = fmt.Errorf("AddUser: user '%s' added, but: %w. Continuing", userID, err)
+			slog.Error(err.Error())
+		}
 	}
-	return err
+	return token, err
 }
 
 // GetClientProfile returns a client's profile
 func (svc *AuthnManageService) GetClientProfile(clientID string) (profile authn.ClientProfile, err error) {
 	entry, err := svc.store.Get(clientID)
 	return entry, err
+}
+
+func (svc *AuthnManageService) GetCount() (int, error) {
+	return svc.store.Count(), nil
 }
 
 // ListClients provide a list of known clients and their info.

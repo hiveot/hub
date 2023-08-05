@@ -27,11 +27,11 @@ func (mngAuthn *AuthnManageClient) pubReq(action string, req interface{}) ([]byt
 }
 
 // AddDevice adds an IoT device and generates an authentication token
-func (mngAuthn *AuthnManageClient) AddDevice(deviceID string, name string, pubKey string, validitySec int) (string, error) {
+func (mngAuthn *AuthnManageClient) AddDevice(deviceID string, displayName string, pubKey string, validitySec int) (string, error) {
 	slog.Info("AddDevice", "deviceID", deviceID)
 	req := &authn.AddDeviceReq{
 		DeviceID:    deviceID,
-		Name:        name,
+		DisplayName: displayName,
 		PubKey:      pubKey,
 		ValiditySec: validitySec,
 	}
@@ -42,11 +42,11 @@ func (mngAuthn *AuthnManageClient) AddDevice(deviceID string, name string, pubKe
 }
 
 // AddService adds a service.
-func (mngAuthn *AuthnManageClient) AddService(serviceID string, name string, pubKey string, validitySec int) (string, error) {
+func (mngAuthn *AuthnManageClient) AddService(serviceID string, displayName string, pubKey string, validitySec int) (string, error) {
 	slog.Info("AddService", "serviceID", serviceID)
 	req := &authn.AddServiceReq{
 		ServiceID:   serviceID,
-		Name:        name,
+		DisplayName: displayName,
 		PubKey:      pubKey,
 		ValiditySec: validitySec,
 	}
@@ -63,16 +63,30 @@ func (mngAuthn *AuthnManageClient) AddService(serviceID string, name string, pub
 //	userID is the login ID of the user, typically their email
 //	name of the user for presentation
 //	password the user can login with if their token has expired.
-func (mngAuthn *AuthnManageClient) AddUser(userID string, name string, password string) error {
+//	pubKey is the user's public key string, needed to connect with JWT
+func (mngAuthn *AuthnManageClient) AddUser(userID string, displayName string, password string, pubKey string) (string, error) {
 	slog.Info("AddUser", "userID", userID)
 	req := &authn.AddUserReq{
-		UserID:   userID,
-		Name:     name,
-		Password: password,
+		UserID:      userID,
+		DisplayName: displayName,
+		Password:    password,
+		PubKey:      pubKey,
 	}
 	data, err := mngAuthn.pubReq(authn.AddUserAction, req)
-	err = mngAuthn.hc.ParseResponse(data, err, nil)
-	return err
+	resp := authn.AddUserResp{}
+	err = mngAuthn.hc.ParseResponse(data, err, &resp)
+	return resp.Token, err
+}
+
+// GetCount returns the number of clients in the store
+func (mngAuthn *AuthnManageClient) GetCount() (n int, err error) {
+	data, err := mngAuthn.pubReq(authn.GetCountAction, nil)
+	resp := &authn.GetCountResp{}
+	err = mngAuthn.hc.ParseResponse(data, err, resp)
+	if err == nil {
+		n = resp.N
+	}
+	return n, err
 }
 
 // GetClientProfile returns a client's profile
@@ -126,10 +140,9 @@ func (mngAuthn *AuthnManageClient) UpdateClient(clientID string, prof authn.Clie
 }
 
 // NewAuthnManageClient returns an authn management client for the given hubclient connection
-func NewAuthnManageClient(bindingID string, hc hubclient.IHubClient) authn.IAuthnManage {
-	if bindingID == "" {
-		bindingID = authn.AuthnServiceName
-	}
+func NewAuthnManageClient(hc hubclient.IHubClient) authn.IAuthnManage {
+	bindingID := authn.AuthnServiceName
+
 	cl := AuthnManageClient{
 		hc:        hc,
 		serviceID: bindingID,

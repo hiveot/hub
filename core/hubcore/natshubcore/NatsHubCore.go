@@ -6,13 +6,12 @@ import (
 	"crypto/x509"
 	authn2 "github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/core/authn"
-	"github.com/hiveot/hub/core/authn/natsauthn"
+	"github.com/hiveot/hub/core/authn/authnservice"
 	"github.com/hiveot/hub/core/authz"
 	"github.com/hiveot/hub/core/authz/natsauthz"
 	"github.com/hiveot/hub/core/config/natsconfig"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/server/natsserver"
-	"github.com/hiveot/hub/core/unpwstore"
 	"github.com/nats-io/nkeys"
 	"path"
 )
@@ -39,8 +38,8 @@ type HubCore struct {
 	Server *natsserver.HubNatsServer
 
 	// authn runtime
-	authnBinding *authn.AuthnServiceBinding
-	AuthnSvc     *natsauthn.NatsAuthnService
+	//authnBinding *AuthnServiceBinding
+	AuthnSvc *authnservice.AuthnService
 
 	// authz runtime
 	authzStore      *authz.AclFileStore
@@ -83,7 +82,7 @@ func (core *HubCore) Start() (clientURL string) {
 	// start the authnBinding service
 	if !cfg.Authn.NoAutoStart {
 		pwStore := unpwstore.NewPasswordFileStore(core.config.Authn.PasswordFile)
-		core.AuthnSvc = natsauthn.NewNatsAuthnService(
+		core.AuthnSvc = authnnats.NewNatsAuthnService(
 			pwStore, core.CaCert, core.AppAccountKey)
 
 		err = core.AuthnSvc.Start()

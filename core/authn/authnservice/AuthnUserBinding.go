@@ -29,8 +29,8 @@ func (binding *AuthnUserBinding) handleClientActions(action *hubclient.ActionMes
 			action.SendReply(reply)
 		}
 		return err
-	case authn.LoginAction:
-		req := &authn.LoginReq{}
+	case authn.NewTokenAction:
+		req := &authn.NewTokenReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -40,9 +40,9 @@ func (binding *AuthnUserBinding) handleClientActions(action *hubclient.ActionMes
 			err = fmt.Errorf("Client '%s' cannot request token for user '%s'", action.ClientID, req.ClientID)
 			return err
 		}
-		newToken, err := binding.svc.Login(action.ClientID, req.Password)
+		newToken, err := binding.svc.NewToken(action.ClientID, req.Password)
 		if err == nil {
-			resp := authn.LoginResp{Token: newToken}
+			resp := authn.NewTokenResp{Token: newToken}
 			reply, _ := ser.Marshal(resp)
 			action.SendReply(reply)
 		}
@@ -82,8 +82,19 @@ func (binding *AuthnUserBinding) handleClientActions(action *hubclient.ActionMes
 			action.SendAck()
 		}
 		return err
+	case authn.UpdatePubKeyAction:
+		req := &authn.UpdatePubKeyReq{}
+		err := ser.Unmarshal(action.Payload, &req)
+		if err != nil {
+			return err
+		}
+		err = binding.svc.UpdatePubKey(req.ClientID, req.NewPubKey)
+		if err == nil {
+			action.SendAck()
+		}
+		return err
 	default:
-		return nil
+		return fmt.Errorf("Unknown user action '%s' for client '%s'", action.ActionID, action.ClientID)
 	}
 }
 

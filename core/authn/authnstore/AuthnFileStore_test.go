@@ -212,8 +212,8 @@ func TestSetPasswordTwoStores(t *testing.T) {
 	assert.NoError(t, err)
 
 	// must exist
-	exists := pwStore2.Exists(user1)
-	assert.True(t, exists)
+	_, err = pwStore2.Get(user1)
+	assert.NoError(t, err)
 
 	profile1, err := pwStore2.Get(user1)
 	assert.NoError(t, err)

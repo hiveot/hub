@@ -4,9 +4,10 @@ import (
 	authn2 "github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/core/authn"
 	"github.com/hiveot/hub/core/authn/authnclient"
+	"github.com/hiveot/hub/core/authn/authnnats"
 	"github.com/hiveot/hub/core/authn/authnservice"
 	"github.com/hiveot/hub/core/authn/authnstore"
-	"github.com/hiveot/hub/core/authn/natsauthn"
+	"github.com/hiveot/hub/core/hubclient"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/server"
 	"github.com/hiveot/hub/core/server/natsserver"
@@ -39,9 +40,23 @@ var hubServer *natsserver.HubNatsServer
 // run the test for different cores
 var useCore = "nats" // nats vs mqtt
 
+// add new user to test with
+func addNewUser(userID string, displayName string, mng authn2.IAuthnManage) (token string, key nkeys.KeyPair, err error) {
+	tu1Key, _ := nkeys.CreateUser()
+	tu1KeyPub, _ := tu1Key.PublicKey()
+	tu1Token, err := mng.AddUser(userID, displayName, "", tu1KeyPub)
+	return tu1Token, tu1Key, err
+}
+func connectUser(key nkeys.KeyPair, token string) (hc hubclient.IHubClient, err error) {
+	// 1. connect with the added user token
+	hc = natshubclient.NewHubClient(key)
+	err = hc.ConnectWithJWT(clientURL, token, authBundle.CaCert)
+	return hc, err
+}
+
 // launch the authn service and return a client for using and managing it.
 func startTestAuthnService() (cl authn2.IAuthnUser, mng authn2.IAuthnManage, stopFn func(), err error) {
-
+	slog.Info(">>> startTestAuthnService -- begin")
 	// the password file to use
 	passwordFile := path.Join(tempFolder, "test.passwd")
 
@@ -53,13 +68,18 @@ func startTestAuthnService() (cl authn2.IAuthnUser, mng authn2.IAuthnManage, sto
 	cfg.DeviceTokenValidity = 10
 
 	// setup the authn service
-	authStore := authnstore.NewAuthnFileStore(passwordFile)
-	tokenizer := natsauthn.NewNatsTokenizer(authBundle.AppAccountNKey)
-	hcSvc := natshubclient.NewHubClient(authBundle.ServiceNKey)
-	err = hcSvc.ConnectWithJWT(clientURL, authBundle.ServiceJWT, authBundle.CaCert)
+	tokenizer := authnnats.NewAuthnNatsTokenizer(authBundle.AppAccountKey)
+	//hcSvc := natshubclient.NewHubClient(authBundle.ServiceKey)
+	authnKey, _ := nkeys.CreateUser()
+	authnKeyPub, _ := authnKey.PublicKey()
+	authnJWT, _ := tokenizer.CreateToken(authn2.AuthnServiceName, authn2.ClientTypeService, authnKeyPub, authn2.DefaultServiceTokenValiditySec)
+	hcSvc := natshubclient.NewHubClient(authnKey)
+	// from here on this is generic, eg non nats specific
+	err = hcSvc.ConnectWithJWT(clientURL, authnJWT, authBundle.CaCert)
 	if err != nil {
 		panic("can't connect authn to server: " + err.Error())
 	}
+	authStore := authnstore.NewAuthnFileStore(passwordFile)
 	authnSvc := authnservice.NewAuthnService(authStore, tokenizer, hcSvc)
 	err = authnSvc.Start()
 	if err != nil {
@@ -67,21 +87,26 @@ func startTestAuthnService() (cl authn2.IAuthnUser, mng authn2.IAuthnManage, sto
 	}
 
 	//--- create a hub client for the authn client and management api's
-	hcClient := natshubclient.NewHubClient(authBundle.ServiceNKey)
-	//err = hcAuthn.ConnectWithNKey(clientURL, authBundle.ServiceID, authBundle.ServiceNKey, authBundle.CaCert)
+	hcClient := natshubclient.NewHubClient(authBundle.ServiceKey)
+
+	//noAuthKey, _ := nkeys.FromSeed([]byte(natshubclient.PublicUnauthenticatedNKey))
+
 	err = hcClient.ConnectWithJWT(clientURL, authBundle.ServiceJWT, authBundle.CaCert)
 	if err != nil {
 		panic(err)
 	}
-	mngAuthn := authnclient.NewAuthnManageClient(authBundle.ServiceID, hcClient)
-	clientAuthn := authnclient.NewAuthnUserClient(authBundle.ServiceID, hcClient)
+	mngAuthn := authnclient.NewAuthnManageClient(hcClient)
+	clientAuthn := authnclient.NewAuthnUserClient(hcClient)
 	//
 	return clientAuthn, mngAuthn, func() {
 		authnSvc.Stop()
 		hcSvc.Disconnect()
 		hcClient.Disconnect()
+		authStore.Close()
+		slog.Info("<<< startTestAuthnService - stopped")
+
 		// let background tasks finish
-		time.Sleep(time.Millisecond * 10)
+		time.Sleep(time.Millisecond * 100)
 	}, err
 }
 
@@ -107,9 +132,11 @@ func TestMain(m *testing.M) {
 		authBundle.ServerCert, authBundle.CaCert)
 
 	serverOpts := hubServer.CreateServerConfig(
-		serverCfg, authBundle.OperatorJWT, authBundle.SystemAccountJWT,
-		authBundle.AppAccountJWT, authBundle.ServiceNKey)
-
+		serverCfg, authBundle.OperatorJWT,
+		authBundle.SystemAccountJWT,
+		authBundle.AppAccountJWT,
+		authBundle.ServiceKey)
+	serverOpts.Debug = false
 	clientURL, err = hubServer.Start(serverOpts)
 	if err != nil {
 		panic(err)
@@ -134,136 +161,156 @@ func TestStartStop(t *testing.T) {
 	slog.Info("--- TestStartStop end")
 }
 
-func TestLoginWithPassword(t *testing.T) {
-	const testuser2 = "user2"
-	const testpass2 = "pass2"
-	slog.Info("--- TestLoginWithPassword start")
-	_, mng, stopFn, err := startTestAuthnService()
-	require.NoError(t, err)
-
-	err = mng.AddUser(testuser2, "another user", testpass2)
-	assert.NoError(t, err)
-
-	//token, err := cl.Login(testuser2, testpass2)
-	hc1 := natshubclient.NewHubClient(nil)
-	token, err := hc1.ConnectWithPassword(clientURL, testuser2, testpass2, authBundle.CaCert)
-	err = hc1.ConnectWithJWT(clientURL, token, authBundle.CaCert)
-	require.NoError(t, err)
-	hc1.Disconnect()
-
-	_, err = hc1.ConnectWithPassword(clientURL, testuser2, "wrongpass", authBundle.CaCert)
-	require.Error(t, err)
-	hc1.Disconnect()
-
-	stopFn()
-}
+//
+//func TestLoginWithPassword(t *testing.T) {
+//	const tu2ID = "user2"
+//	const tu2Pass = "pass2"
+//	slog.Info("--- TestLoginWithPassword start")
+//	_, mng, stopFn, err := startTestAuthnService()
+//	defer stopFn()
+//	require.NoError(t, err)
+//
+//	tu2Key, _ := nkeys.CreateUser()
+//	tu2KeyPub, _ := tu2Key.PublicKey()
+//	tu2Token, err := mng.AddUser(tu2ID, "another user", tu2Pass, tu2KeyPub)
+//	assert.NoError(t, err)
+//	assert.NotEmpty(t, tu2Token)
+//
+//	hc1 := natshubclient.NewHubClient(tu2Key)
+//	// FIXME: support for ConnectWithPassword
+//	tu2Token2, err := hc1.ConnectWithPassword(clientURL, tu2ID, tu2Pass, authBundle.CaCert)
+//	require.NoError(t, err)
+//	//
+//	err = hc1.ConnectWithJWT(clientURL, tu2Token2, authBundle.CaCert)
+//	require.NoError(t, err)
+//	hc1.Disconnect()
+//
+//	_, err = hc1.ConnectWithPassword(clientURL, tu2ID, "wrongpass", authBundle.CaCert)
+//	require.Error(t, err)
+//	hc1.Disconnect()
+//}
 
 func TestLoginWithJWT(t *testing.T) {
 	slog.Info("--- TestLoginWithJWT start")
-	_, mng, stopFn, err := startTestAuthnService()
+	_, _, stopFn, err := startTestAuthnService()
 	require.NoError(t, err)
+	defer stopFn()
 
-	err = mng.AddUser(authBundle.UserID, "a jwt user", "")
-	assert.NoError(t, err)
-
-	hc1 := natshubclient.NewHubClient(nil)
-	err = hc1.ConnectWithJWT(clientURL, authBundle.UserJWT, authBundle.CaCert)
-	assert.NoError(t, err)
+	// raw generate a jwt token
+	userKey, _ := nkeys.CreateUser()
+	userPub, _ := userKey.PublicKey()
+	userClaims := jwt.NewUserClaims(userPub)
+	userClaims.IssuerAccount, _ = authBundle.AppAccountKey.PublicKey()
+	userClaims.Name = "user1"
+	token, _ := userClaims.Encode(authBundle.AppAccountKey)
+	hc1 := natshubclient.NewHubClient(userKey)
+	err = hc1.ConnectWithJWT(clientURL, token, authBundle.CaCert)
+	require.NoError(t, err)
 	hc1.Disconnect()
 
-	// improper signed token should fail
-	appAcctPub, _ := authBundle.AppAccountNKey.PublicKey()
-	signerKey, _ := nkeys.CreateAccount()
-	_, badCreds := testenv.CreateUserCreds(
-		authBundle.UserID,
-		authBundle.UserNKey,
-		signerKey,
-		appAcctPub,
-		authBundle.AppAccountName, nil, nil) // sign itself
-	token, _ := nkeys.ParseDecoratedJWT(badCreds)
-	err = hc1.ConnectWithJWT(clientURL, token, authBundle.CaCert)
-	require.Error(t, err)
-
-	stopFn()
 	slog.Info("--- TestLoginWithJWT end")
 }
 
-// Create manage users
-func TestMultiRequests(t *testing.T) {
-	slog.Info("--- TestMultiRequests start")
-	_, mng, stopFn, err := startTestAuthnService()
+func TestLoginWithInvalidJWT(t *testing.T) {
+	slog.Info("--- TestLoginWithInvalidJWT start")
+	_, _, stopFn, err := startTestAuthnService()
 	require.NoError(t, err)
+	defer stopFn()
 
-	err = mng.AddUser("user1", "user 1", "pass1")
-	assert.NoError(t, err)
-	err = mng.AddUser("user2", "user 2", "pass2")
-	assert.NoError(t, err)
-	err = mng.AddUser("user3", "user 3", "pass3")
-	assert.NoError(t, err)
-	err = mng.AddUser("user4", "user 4", "pass4")
-	assert.NoError(t, err)
+	// token signed by fake account should fail
+	fakeAccountKey, _ := nkeys.CreateAccount()
+	userKey := authBundle.UserKey
+	userPub, _ := userKey.PublicKey()
+	userClaims := jwt.NewUserClaims(userPub)
+	userClaims.IssuerAccount, _ = fakeAccountKey.PublicKey()
+	badToken, _ := userClaims.Encode(fakeAccountKey)
+	hc1 := natshubclient.NewHubClient(userKey)
+	err = hc1.ConnectWithJWT(clientURL, badToken, authBundle.CaCert)
+	require.Error(t, err)
 
-	stopFn()
-
-	_, err = mng.ListClients()
-	assert.Error(t, err)
-
-	_, mng, stopFn, err = startTestAuthnService()
-	require.NoError(t, err)
-	clList, err := mng.ListClients()
-	assert.Equal(t, 0, len(clList))
-
-	err = mng.AddUser("user1", "user 1", "pass1")
-	assert.NoError(t, err)
-	err = mng.AddUser("user2", "user 2", "pass2")
-	assert.NoError(t, err)
-
-	stopFn()
-	slog.Info("--- TestMultiRequests stop")
+	slog.Info("--- TestLoginWithInvalidJWT end")
 }
 
 // Create manage users
-func TestManageUser(t *testing.T) {
-	slog.Info("--- TestManageUser start")
-	var testuser1 = "testuser1"
-	var testuser2 = "testuser2"
-	var testpass1 = "testpass1"
-	var testpass2 = "testpass2"
-
+func TestAddRemoveClients(t *testing.T) {
+	slog.Info("--- TestAddRemoveClients start")
 	_, mng, stopFn, err := startTestAuthnService()
+	require.NoError(t, err)
 	defer stopFn()
-	require.NoError(t, err)
 
-	userList, err := mng.ListClients()
-	require.NoError(t, err)
-	assert.Equal(t, 0, len(userList))
-
-	// add two users
-	err = mng.AddUser(testuser1, "user 1", testpass1)
-	require.NoError(t, err)
-	err = mng.AddUser(testuser2, "user 2", testpass2)
-	require.NoError(t, err)
-	userList, err = mng.ListClients()
+	_, err = mng.AddUser("user1", "user 1", "pass1", "")
 	assert.NoError(t, err)
-	require.Equal(t, 2, len(userList))
-
-	// remove one user
-	err = mng.RemoveClient(testuser1)
-	assert.NoError(t, err)
-	userList, err = mng.ListClients()
-	assert.NoError(t, err)
-	require.Equal(t, 1, len(userList))
-
-	// add existing user should fail
-	err = mng.AddUser(testuser2, "", testpass2)
+	// duplicate fail
+	_, err = mng.AddUser("user1", "user 1", "pass1", "") // should fail
 	assert.Error(t, err)
-	slog.Info("--- TestManageUser end")
+	// missing userID
+	_, err = mng.AddUser("", "user 1", "pass1", "") // should fail
+	assert.Error(t, err)
+
+	_, err = mng.AddUser("user2", "user 2", "pass2", "")
+	assert.NoError(t, err)
+	_, err = mng.AddUser("user3", "user 3", "pass3", "")
+	assert.NoError(t, err)
+	_, err = mng.AddUser("user4", "user 4", "pass4", "")
+	assert.NoError(t, err)
+
+	_, err = mng.AddDevice(authBundle.DeviceID, "device 1", authBundle.DeviceKeyPub, 100)
+	assert.NoError(t, err)
+	// duplicate fail
+	_, err = mng.AddDevice(authBundle.DeviceID, "", "", 100) // should fail
+	assert.Error(t, err)
+	// missing userID
+	_, err = mng.AddDevice("", "", "", 100) // should fail
+	assert.Error(t, err)
+
+	_, err = mng.AddService(authBundle.ServiceID, "service 1", authBundle.ServiceKeyPub, 100)
+	assert.NoError(t, err)
+	// duplicate fail
+	_, err = mng.AddService(authBundle.ServiceID, "", "", 100) // should fail
+	assert.Error(t, err)
+	// missing userID
+	_, err = mng.AddService("", "", "", 100) // should fail
+	assert.Error(t, err)
+
+	clList, err := mng.ListClients()
+	assert.NoError(t, err)
+	assert.Equal(t, 6, len(clList))
+	cnt, _ := mng.GetCount()
+	assert.Equal(t, 6, cnt)
+
+	err = mng.RemoveClient("user1")
+	assert.NoError(t, err)
+	err = mng.RemoveClient("user1") // remove is idempotent
+	assert.NoError(t, err)
+	err = mng.RemoveClient("user2")
+	assert.NoError(t, err)
+	err = mng.RemoveClient(authBundle.DeviceID)
+	assert.NoError(t, err)
+	err = mng.RemoveClient(authBundle.ServiceID)
+	assert.NoError(t, err)
+
+	require.NoError(t, err)
+	clList, err = mng.ListClients()
+	assert.Equal(t, 2, len(clList))
+
+	_, err = mng.AddUser("user1", "user 1", "", "")
+	assert.NoError(t, err)
+	_, err = mng.AddUser("user2", "user 2", "", "badkey")
+	assert.Error(t, err)
+
+	// missing public key
+	_, err = mng.AddDevice("device66", "", "badkey", 0)
+	assert.Error(t, err)
+	_, err = mng.AddService("service66", "", "badkey", 0)
+	assert.Error(t, err)
+
+	slog.Info("--- TestAddRemoveClients stop")
 }
 
 func TestLoginRefresh(t *testing.T) {
 	slog.Info("--- TestLoginRefresh start")
-	var testuser1 = "testuser1"
-	var testpass1 = "testpass1"
+	var tu1ID = "tu1ID"
+	var tu1Pass = "tu1Pass"
 	var authToken1 string
 	var authToken2 string
 
@@ -271,75 +318,108 @@ func TestLoginRefresh(t *testing.T) {
 	defer stopFn()
 	require.NoError(t, err)
 
-	// add users to test with
-	err = mng.AddUser(testuser1, "testuser 1", testpass1)
+	// add user to test with
+	tu1Key, _ := nkeys.CreateUser()
+	tu1KeyPub, _ := tu1Key.PublicKey()
+	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, tu1KeyPub)
 	require.NoError(t, err)
-	err = mng.AddUser(authBundle.UserID, "user one", "")
-	require.NoError(t, err)
+	require.NotEmpty(t, tu1Token)
 
-	// 1. login with password
-	key1, _ := nkeys.CreateUser()
-	hc1 := natshubclient.NewHubClient(key1)
+	// 1. connect with the added user token
+	hc1 := natshubclient.NewHubClient(tu1Key)
 	defer hc1.Disconnect()
-	token, err := hc1.ConnectWithPassword(clientURL, testuser1, testpass1, authBundle.CaCert)
+	err = hc1.ConnectWithJWT(clientURL, tu1Token, authBundle.CaCert)
 	require.NoError(t, err)
-	require.NotEmpty(t, token)
 
-	// 2. request a new login token
+	// 2. Request a new token
 	// use the authentication client to request a new token
-	cl1 := authnclient.NewAuthnUserClient(authBundle.ServiceID, hc1)
-	userKey, _ := nkeys.CreateUser()
-	userPub, _ := userKey.PublicKey()
-	authToken1, err = cl1.Login(testuser1, testpass1)
+	cl1 := authnclient.NewAuthnUserClient(hc1)
+	authToken1, err = cl1.NewToken(tu1ID, tu1Pass)
 	require.NoError(t, err)
 	assert.NotEmpty(t, authToken1)
+	// wrong ID should fail
+	_, err = cl1.NewToken("nottu1", "badpass")
+	require.Error(t, err)
+	// bad pass should fail
+	_, err = cl1.NewToken(tu1ID, "badpass")
+	require.Error(t, err)
 
 	// 3. login with the new token
-	hc2 := natshubclient.NewHubClient(key1)
-	cl2 := authnclient.NewAuthnUserClient(authBundle.ServiceID, hc2)
-	defer hc2.Disconnect()
-
-	// create a new key pair using the returned token and private key
-	//userSeed, _ := userKey.Seed()
-	//authToken1Cred, err := jwt.FormatUserConfig(authToken1, userSeed)
-	require.NoError(t, err)
+	hc2 := natshubclient.NewHubClient(tu1Key)
 	err = hc2.ConnectWithJWT(clientURL, authToken1, authBundle.CaCert)
 	require.NoError(t, err)
-	prof2, err := cl2.GetProfile("")
+	cl2 := authnclient.NewAuthnUserClient(hc2)
+	prof2, err := cl2.GetProfile(authBundle.UserID)
 	require.NoError(t, err)
-	require.Equal(t, testuser1, prof2.ClientID)
+	require.Equal(t, tu1ID, prof2.ClientID)
+	defer hc2.Disconnect()
 
 	// 4. Obtain a refresh token using the new token
-	authToken2, err = cl2.Refresh(authBundle.UserID, authToken1)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, authToken2)
+	authToken2, err = cl1.Refresh(tu1ID, authToken1)
+	require.NoError(t, err)
+	require.NotEmpty(t, authToken2)
 
-	// 5. login with the refresh token
-	cl3 := natshubclient.NewHubClient(key1)
-	//authToken2Cred, err := jwt.FormatUserConfig(authToken2, userSeed)
-	err = cl3.ConnectWithJWT(clientURL, authToken2, authBundle.CaCert)
+	// 5. login with the refreshed token
+	hc3 := natshubclient.NewHubClient(tu1Key)
+	err = hc3.ConnectWithJWT(clientURL, authToken2, authBundle.CaCert)
 	require.NoError(t, err)
-	prof3, err := authnclient.NewAuthnUserClient(authBundle.ServiceID, cl3).GetProfile(authBundle.UserID)
-	cl3.Disconnect()
+	hc3.Disconnect()
 	require.NoError(t, err)
-	require.NotEmpty(t, prof3)
-	require.Equal(t, testuser1, prof3.ClientID)
 
 	// 6. login with a forged token should fail
-	cl4 := natshubclient.NewHubClient(key1)
-	appAcctPub, _ := authBundle.AppAccountNKey.PublicKey()
+	cl4 := natshubclient.NewHubClient(tu1Key)
+	appAcctPub, _ := authBundle.AppAccountKey.PublicKey()
 	fakeAcct, _ := nkeys.CreateAccount()
-	forgedClaims := jwt.NewUserClaims(userPub)
-	forgedClaims.Subject = userPub
+	forgedClaims := jwt.NewUserClaims(tu1KeyPub)
 	forgedClaims.Issuer = appAcctPub
 	forgedJWT, err := forgedClaims.Encode(fakeAcct) // <- forged
 	require.NoError(t, err)
-	//forgedCred, err := jwt.FormatUserConfig(forgedJWT, userSeed)
 
 	err = cl4.ConnectWithJWT(clientURL, forgedJWT, authBundle.CaCert)
 	require.Error(t, err)
 
 	slog.Info("--- TestLoginRefresh end")
+}
+
+func TestRefreshFakeToken(t *testing.T) {
+	slog.Info("--- TestRefreshFakeToken start")
+	var tu1ID = "tu1ID"
+	var tu1Pass = "tu1Pass"
+	var authToken1 string
+
+	_, mng, stopFn, err := startTestAuthnService()
+	defer stopFn()
+	require.NoError(t, err)
+
+	// add user to test with
+	tu1Key, _ := nkeys.CreateUser()
+	tu1KeyPub, _ := tu1Key.PublicKey()
+	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, tu1KeyPub)
+	require.NoError(t, err)
+	require.NotEmpty(t, tu1Token)
+
+	// 1. connect with the added user token
+	hc1 := natshubclient.NewHubClient(tu1Key)
+	defer hc1.Disconnect()
+	err = hc1.ConnectWithJWT(clientURL, tu1Token, authBundle.CaCert)
+	require.NoError(t, err)
+
+	// 2. Refresh a fake token from another service
+	cl1 := authnclient.NewAuthnUserClient(hc1)
+	fakeToken := authBundle.ServiceJWT
+	authToken1, err = cl1.Refresh(tu1ID, fakeToken)
+	require.Error(t, err)
+	assert.Empty(t, authToken1)
+
+	// 3. Refresh a self generated fake token
+	appAcctPub, _ := authBundle.AppAccountKey.PublicKey()
+	fakeAcct, _ := nkeys.CreateAccount()
+	forgedClaims := jwt.NewUserClaims(tu1KeyPub)
+	forgedClaims.Issuer = appAcctPub
+	forgedJWT, err := forgedClaims.Encode(fakeAcct) // <- forged
+	authToken1, err = cl1.Refresh(tu1ID, forgedJWT)
+	require.Error(t, err)
+	assert.Empty(t, authToken1)
 }
 
 func TestLoginFail(t *testing.T) {
@@ -353,48 +433,57 @@ func TestLoginFail(t *testing.T) {
 
 	// add a user to test with
 	time.Sleep(time.Second)
-	err = mng.AddUser(testuser1, "user 1", testpass1)
+	_, err = mng.AddUser(testuser1, "user 1", testpass1, "")
 	require.NoError(t, err)
 
 	// login and get tokens
 	hc := natshubclient.NewHubClient(nil)
 	_, err = hc.ConnectWithPassword(clientURL, testuser1, "badpass", authBundle.CaCert)
 
-	//pubKey, _ := authBundle.UserNKey.PublicKey()
+	//pubKey, _ := authBundle.UserKey.PublicKey()
 	//authToken, err := cl.NewToken(authBundle.UserID, "badpass", pubKey)
 	assert.Error(t, err)
 	//assert.Empty(t, authToken)
 	slog.Info("--- TestLoginFail end")
 }
 
-func TestGetProfile(t *testing.T) {
-	slog.Info("--- TestGetProfile start")
-	var testuser1 = "testuser1"
-	var testpass1 = "testpass1"
+func TestUpdate(t *testing.T) {
+	slog.Info("--- TestRefreshFakeToken start")
+	var tu1ID = "tu1ID"
+	var tu1Name = "test user 1"
+
 	_, mng, stopFn, err := startTestAuthnService()
 	defer stopFn()
 	require.NoError(t, err)
 
-	// add a user to test with
-	err = mng.AddUser(testuser1, "user 1", testpass1)
+	// add user to test with and connect
+	tu1Token, tu1Key, err := addNewUser(tu1ID, tu1Name, mng)
+	hc, err := connectUser(tu1Key, tu1Token)
 	require.NoError(t, err)
+	defer hc.Disconnect()
 
-	// after authentication get/set profile and get password should succeed
-	prof1, err := mng.GetClientProfile(testuser1)
+	// update display name, password and public key
+	const newDisplayName = "new display name"
+	newPK, _ := nkeys.CreateUser()
+	newPKPub, _ := newPK.PublicKey()
+	cl := authnclient.NewAuthnUserClient(hc)
+	err = cl.UpdateName(tu1ID, newDisplayName)
 	assert.NoError(t, err)
-	assert.Equal(t, testuser1, prof1.ClientID)
-	assert.Equal(t, "user 1", prof1.DisplayName)
+	err = cl.UpdatePassword(tu1ID, "new password")
+	assert.NoError(t, err)
+	err = cl.UpdatePubKey(tu1ID, newPKPub)
+	assert.NoError(t, err)
 
-	// login and get profile as a user
-	hc := natshubclient.NewHubClient(nil)
-	_, err = hc.ConnectWithPassword(clientURL, testuser1, testpass1, authBundle.CaCert)
-	require.NoError(t, err)
+	prof, err := cl.GetProfile(tu1ID)
+	assert.Equal(t, newDisplayName, prof.DisplayName)
+	assert.Equal(t, newPKPub, prof.PubKey)
 
-	cl := authnclient.NewAuthnUserClient(authBundle.ServiceID, hc)
+	prof2, err := mng.GetClientProfile(tu1ID)
+	assert.Equal(t, prof, prof2)
+	prof2.DisplayName = "after update"
+	err = mng.UpdateClient(tu1ID, prof2)
+	assert.NoError(t, err)
 
-	prof2, err := cl.GetProfile(testuser1)
-	require.NoError(t, err)
-	assert.Equal(t, prof1.ClientID, prof2.ClientID)
-	assert.Equal(t, prof1.DisplayName, prof2.DisplayName)
-	slog.Info("--- TestGetProfile end")
+	prof, err = cl.GetProfile(tu1ID)
+	assert.Equal(t, prof2.DisplayName, prof.DisplayName)
 }
