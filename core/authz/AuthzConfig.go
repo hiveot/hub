@@ -1,6 +1,7 @@
 package authz
 
 import (
+	"github.com/hiveot/hub/api/go/authz"
 	"path"
 )
 
@@ -17,7 +18,7 @@ type AuthzConfig struct {
 func (cfg *AuthzConfig) InitConfig(storesDir string) error {
 	// ensure all fields are properly set
 	if cfg.GroupsDir == "" {
-		cfg.GroupsDir = path.Join(storesDir, AuthzServiceName)
+		cfg.GroupsDir = path.Join(storesDir, authz.AuthzServiceName)
 	}
 	return nil
 }

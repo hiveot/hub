@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+const SubjectTypeEvent = vocab.VocabEventTopic
+const SubjectTypeAction = vocab.VocabActionTopic
+
 // MakeSubject creates a nats subject optionally with nats wildcards
 // This uses the hiveot nats subject format: things.{pubID}.{thingID}.{type}.{name}
 //

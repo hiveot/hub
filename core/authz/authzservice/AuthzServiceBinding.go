@@ -1,7 +1,8 @@
-package authz
+package authzservice
 
 import (
 	"errors"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/core/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 	"golang.org/x/exp/slog"
@@ -9,7 +10,7 @@ import (
 
 // AuthzServiceBinding is a messaging binding for marshalling Authz service messages.
 type AuthzServiceBinding struct {
-	svc    IAuthz
+	svc    authz.IAuthz
 	hc     hubclient.IHubClient
 	mngSub hubclient.ISubscription
 }
@@ -22,8 +23,8 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 
 	// TODO: doublecheck the caller is an admin or svc
 	switch action.ActionID {
-	case AddGroupAction:
-		req := AddGroupReq{}
+	case authz.AddGroupAction:
+		req := authz.AddGroupReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -33,8 +34,8 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 			action.SendAck()
 		}
 		return err
-	case AddServiceAction:
-		req := AddServiceReq{}
+	case authz.AddServiceAction:
+		req := authz.AddServiceReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -44,8 +45,8 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 			action.SendAck()
 		}
 		return err
-	case AddThingAction:
-		req := AddThingReq{}
+	case authz.AddThingAction:
+		req := authz.AddThingReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -55,8 +56,8 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 			action.SendAck()
 		}
 		return err
-	case AddUserAction:
-		req := AddUserReq{}
+	case authz.AddUserAction:
+		req := authz.AddUserReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -66,8 +67,8 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 			action.SendAck()
 		}
 		return err
-	case DeleteGroupAction:
-		req := DeleteGroupReq{}
+	case authz.DeleteGroupAction:
+		req := authz.DeleteGroupReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -77,60 +78,60 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 			action.SendAck()
 		}
 		return err
-	case GetClientRolesAction:
-		req := GetClientRolesReq{}
+	case authz.GetClientRolesAction:
+		req := authz.GetClientRolesReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
 		roles, err := binding.svc.GetClientRoles(req.ClientID)
 		if err == nil {
-			resp := GetClientRolesResp{Roles: roles}
+			resp := authz.GetClientRolesResp{Roles: roles}
 			reply, _ := ser.Marshal(&resp)
 			action.SendReply(reply)
 		}
 		return err
-	case GetGroupAction:
-		req := GetGroupReq{}
+	case authz.GetGroupAction:
+		req := authz.GetGroupReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
 		group, err := binding.svc.GetGroup(req.GroupName)
 		if err == nil {
-			resp := GetGroupResp{Group: group}
+			resp := authz.GetGroupResp{Group: group}
 			reply, _ := ser.Marshal(&resp)
 			action.SendReply(reply)
 		}
 		return err
-	case GetPermissionsAction:
-		req := GetPermissionsReq{}
+	case authz.GetPermissionsAction:
+		req := authz.GetPermissionsReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
 		perms, err := binding.svc.GetPermissions(req.ClientID, req.ThingIDs)
 		if err == nil {
-			resp := GetPermissionsResp{Permissions: perms}
+			resp := authz.GetPermissionsResp{Permissions: perms}
 			reply, _ := ser.Marshal(&resp)
 			action.SendReply(reply)
 		}
 		return err
-	case ListGroupsAction:
-		req := ListGroupsReq{}
+	case authz.ListGroupsAction:
+		req := authz.ListGroupsReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
 		groups, err := binding.svc.ListGroups(req.ClientID)
 		if err == nil {
-			resp := ListGroupsResp{Groups: groups}
+			resp := authz.ListGroupsResp{Groups: groups}
 			reply, _ := ser.Marshal(&resp)
 			action.SendReply(reply)
 		}
 		return err
-	case RemoveClientAction:
-		req := RemoveClientReq{}
+	case authz.RemoveClientAction:
+		req := authz.RemoveClientReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -140,8 +141,8 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 			action.SendAck()
 		}
 		return err
-	case RemoveClientAllAction:
-		req := RemoveClientAllReq{}
+	case authz.RemoveClientAllAction:
+		req := authz.RemoveClientAllReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -151,8 +152,8 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 			action.SendAck()
 		}
 		return err
-	case SetUserRoleAction:
-		req := SetUserRoleReq{}
+	case authz.SetUserRoleAction:
+		req := authz.SetUserRoleReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -168,7 +169,7 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 
 // Start subscribes to authz message requests
 func (binding *AuthzServiceBinding) Start() error {
-	sub, err := binding.hc.SubActions(ManageAuthzCapability, binding.handleManageActions)
+	sub, err := binding.hc.SubActions(authz.ManageAuthzCapability, binding.handleManageActions)
 	binding.mngSub = sub
 	return err
 }
@@ -186,7 +187,7 @@ func (binding *AuthzServiceBinding) Stop() {
 //
 //	svc is the authz service that handles the requests
 //	hc is an existing client connection to the messaging server used to subscribe to actions
-func NewAuthzMsgBinding(svc IAuthz, hc hubclient.IHubClient) *AuthzServiceBinding {
+func NewAuthzMsgBinding(svc authz.IAuthz, hc hubclient.IHubClient) *AuthzServiceBinding {
 	binding := &AuthzServiceBinding{
 		svc:    svc,
 		hc:     hc,

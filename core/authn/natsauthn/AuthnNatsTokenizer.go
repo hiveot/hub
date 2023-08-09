@@ -1,4 +1,4 @@
-package authnnats
+package natsauthn
 
 import (
 	"encoding/base64"
@@ -16,7 +16,7 @@ type AuthnNatsTokenizer struct {
 }
 
 // CreateToken for authentication and authorization with NATS server and JetStream
-// TODO: determine what the Limits value does
+// FIXME: remove authorization from authentication tokens. This is bad design.
 //
 // https://docs.nats.io/running-a-nats-service/configuration/securing_nats/auth_intro/jwt:
 // NATS further restricts JWTs by requiring that JWTs be:
@@ -58,14 +58,15 @@ func (svc *AuthnNatsTokenizer) CreateToken(
 		userClaims.Permissions.Sub.Allow.Add("things.*.*.event.>")
 		// services can publish to any inbox to respond to actions
 		userClaims.Permissions.Pub.Allow.Add("_INBOX.>")
-		// services can interact with groups
-		userClaims.Permissions.Sub.Allow.Add("groups.>")
-		userClaims.Permissions.Pub.Allow.Add("groups.>")
+		// services can publish to manage streams
+		userClaims.Permissions.Pub.Allow.Add("$JS.API.STREAM.>")
+		//// services can subscribe to groups
+		//userClaims.Permissions.Sub.Allow.Add("groups.>")
+		//userClaims.Permissions.Pub.Allow.Add("groups.>")
 	} else if clientType == authn.ClientTypeUser {
-		// users can publish actions and subscribe to group events
+		// users can subscribe to the built-in all group
 		//userClaims.Limits.Data = 1 * 1024 * 1024 // max data this client can ... do?
-		userClaims.Permissions.Sub.Allow.Add("groups.*.*.event.>")
-		userClaims.Permissions.Pub.Allow.Add("groups.*.*.action.>")
+		userClaims.Permissions.Sub.Allow.Add("$JS.API.STREAM.ALL.>")
 	} else {
 		userClaims.Limits.Subs = 0 // ??? no subscription allowed
 		userClaims.Permissions.Pub.Deny.Add(">")

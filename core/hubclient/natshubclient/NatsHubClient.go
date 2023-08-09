@@ -312,6 +312,11 @@ func (hc *HubNatsClient) PubTD(td *thing.TD) error {
 	return err
 }
 
+// JS Returns the JetStream client (nats specific)
+func (hc *HubNatsClient) JS() nats.JetStreamContext {
+	return hc.js
+}
+
 // Refresh an authentication token.
 //
 //	clientID is the userID, deviceID or serviceID whose token to refresh.

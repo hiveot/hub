@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	server2 "github.com/hiveot/hub/core/server"
+	"github.com/hiveot/hub/core/msgserver"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
@@ -31,7 +31,8 @@ type HubNatsServer struct {
 // ConnectInProc connects to the server in-process using the service key.
 // Intended for the core services to connect to the server.
 // func (srv *HubNatsServer) ConnectInProc(clientID string) (*nats.Conn, error) {
-func (srv *HubNatsServer) ConnectInProc(clientCreds []byte) (*nats.Conn, error) {
+func (srv *HubNatsServer) ConnectInProc(clientJWT string, clientKP nkeys.KeyPair) (*nats.Conn, error) {
+	//func (srv *HubNatsServer) ConnectInProc(clientCreds []byte) (*nats.Conn, error) {
 	// The handler to sign the server issued challenge
 	//sigCB := func(nonce []byte) ([]byte, error) {
 	//	return srv.serviceKey.Sign(nonce)
@@ -46,15 +47,15 @@ func (srv *HubNatsServer) ConnectInProc(clientCreds []byte) (*nats.Conn, error) 
 		InsecureSkipVerify: srv.caCert == nil,
 	}
 
-	clientJWT, err := jwt.ParseDecoratedJWT(clientCreds)
-	claims, _ := jwt.DecodeUserClaims(clientJWT)
+	//clientJWT, err := jwt.ParseDecoratedJWT(clientCreds)
+	claims, err := jwt.DecodeUserClaims(clientJWT)
 	if err != nil {
 		return nil, err
 	}
-	clientKP, err := jwt.ParseDecoratedUserNKey(clientCreds)
-	if err != nil {
-		return nil, err
-	}
+	//clientKP, err := jwt.ParseDecoratedUserNKey(clientCreds)
+	//if err != nil {
+	//	return nil, err
+	//}
 	clientSeed, _ := clientKP.Seed()
 	cl, err := nats.Connect(srv.ns.ClientURL(), // don't need a URL for in-process connection
 		nats.Name(claims.Name), // connection name for validation
@@ -71,7 +72,7 @@ func (srv *HubNatsServer) ConnectInProc(clientCreds []byte) (*nats.Conn, error) 
 // CreateServerConfig create the for managing the NATS server configuration
 // This returns the nats server configuration based on the parameters.
 func (srv *HubNatsServer) CreateServerConfig(
-	hubcfg *server2.ServerConfig,
+	hubcfg *msgserver.MsgServerConfig,
 	operatorJWT string,
 	systemAccountJWT string,
 	appAccountJWT string,
@@ -120,6 +121,7 @@ func (srv *HubNatsServer) CreateServerConfig(
 
 		JetStream:          true,
 		JetStreamMaxMemory: int64(hubcfg.MaxDataMemoryMB) * 1024 * 1024,
+		StoreDir:           hubcfg.DataDir,
 
 		// logging
 		Debug:   true,

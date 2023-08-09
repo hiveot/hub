@@ -1,8 +1,9 @@
-package authz
+package authzservice
 
 import (
 	"bufio"
 	"fmt"
+	"github.com/hiveot/hub/api/go/authz"
 	"golang.org/x/exp/slog"
 	"os"
 	"path"
@@ -18,7 +19,7 @@ type AclFileStore struct {
 
 	// Groups is an index of ACL groups by their name. Stored
 	// map[groupName]Group
-	groups map[string]Group `yaml:"groups"`
+	groups map[string]authz.Group `yaml:"groups"`
 
 	// state store file
 	storePath string
@@ -26,7 +27,7 @@ type AclFileStore struct {
 	// index of clients and their group roles. Updated on load.
 	// intended for fast lookup of roles
 	//map[clientID]map[groupName]role
-	clientGroupRoles map[string]RoleMap
+	clientGroupRoles map[string]authz.RoleMap
 	mutex            sync.RWMutex
 }
 
@@ -37,11 +38,11 @@ func (aclStore *AclFileStore) AddGroup(groupName string, retention uint64) error
 	defer aclStore.mutex.Unlock()
 	_, exists := aclStore.groups[groupName]
 	if exists {
-		return fmt.Errorf("Group '%s' already exists", groupName)
+		return nil
 	}
-	aclStore.groups[groupName] = Group{
+	aclStore.groups[groupName] = authz.Group{
 		Name:        groupName,
-		MemberRoles: RoleMap{},
+		MemberRoles: authz.RoleMap{},
 		Retention:   retention,
 	}
 	err := aclStore.Save()
@@ -50,22 +51,22 @@ func (aclStore *AclFileStore) AddGroup(groupName string, retention uint64) error
 
 // AddService adds a client with the service role to a group
 func (aclStore *AclFileStore) AddService(serviceID string, groupName string) error {
-	err := aclStore.setRole(serviceID, ClientRoleService, groupName)
+	err := aclStore.setRole(serviceID, authz.GroupRoleService, groupName)
 	return err
 }
 
 // AddThing adds a client with the thing role to a group
 func (aclStore *AclFileStore) AddThing(thingID string, groupName string) error {
-	err := aclStore.setRole(thingID, ClientRoleThing, groupName)
+	err := aclStore.setRole(thingID, authz.GroupRoleThing, groupName)
 	return err
 }
 
 // AddUser adds a client with the user role to a group
 func (aclStore *AclFileStore) AddUser(userID string, role string, groupName string) (err error) {
 
-	if role == ClientRoleViewer ||
-		role == ClientRoleManager ||
-		role == ClientRoleOperator {
+	if role == authz.GroupRoleViewer ||
+		role == authz.GroupRoleManager ||
+		role == authz.GroupRoleOperator {
 
 		err = aclStore.setRole(userID, role, groupName)
 	} else {
@@ -97,7 +98,7 @@ func (aclStore *AclFileStore) DeleteGroup(groupName string) error {
 }
 
 // GetClientRoles returns the roles a thing or user has in various groups
-func (aclStore *AclFileStore) GetClientRoles(clientID string) (RoleMap, error) {
+func (aclStore *AclFileStore) GetClientRoles(clientID string) (authz.RoleMap, error) {
 
 	aclStore.mutex.RLock()
 	defer aclStore.mutex.RUnlock()
@@ -108,7 +109,7 @@ func (aclStore *AclFileStore) GetClientRoles(clientID string) (RoleMap, error) {
 }
 
 // GetGroup returns the group of the given name
-func (aclStore *AclFileStore) GetGroup(groupName string) (Group, error) {
+func (aclStore *AclFileStore) GetGroup(groupName string) (authz.Group, error) {
 
 	aclStore.mutex.RLock()
 	defer aclStore.mutex.RUnlock()
@@ -123,7 +124,7 @@ func (aclStore *AclFileStore) GetGroup(groupName string) (Group, error) {
 // GetHighestRole returns the highest role of a user has in a list of group
 // Intended to get client permissions in case of overlapping groups
 func (aclStore *AclFileStore) GetHighestRole(clientID string, groupIDs []string) string {
-	highestRole := ClientRoleNone
+	highestRole := authz.GroupRoleNone
 
 	aclStore.mutex.RLock()
 	defer aclStore.mutex.RUnlock()
@@ -146,23 +147,23 @@ func (aclStore *AclFileStore) GetPermissions(clientID string, thingIDs []string)
 		var thingPerm []string
 		clientRole, _ := aclStore.GetRole(clientID, thingID)
 		switch clientRole {
-		case ClientRoleIotDevice:
-		case ClientRoleThing:
-			thingPerm = []string{PermPubEvents, PermReadActions}
+		case authz.GroupRoleIotDevice:
+		case authz.GroupRoleThing:
+			thingPerm = []string{authz.PermPubEvents, authz.PermReadActions}
 			break
-		case ClientRoleService:
-			thingPerm = []string{PermPubActions, PermPubEvents, PermReadActions, PermReadEvents}
+		case authz.GroupRoleService:
+			thingPerm = []string{authz.PermPubActions, authz.PermPubEvents, authz.PermReadActions, authz.PermReadEvents}
 			break
-		case ClientRoleManager:
+		case authz.GroupRoleManager:
 			// managers are operators but can also change configuration
 			// TODO: is publishing configuration changes a separate permission?
-			thingPerm = []string{PermPubActions, PermReadEvents}
+			thingPerm = []string{authz.PermPubActions, authz.PermReadEvents}
 			break
-		case ClientRoleOperator:
-			thingPerm = []string{PermPubActions, PermReadEvents}
+		case authz.GroupRoleOperator:
+			thingPerm = []string{authz.PermPubActions, authz.PermReadEvents}
 			break
-		case ClientRoleViewer:
-			thingPerm = []string{PermReadEvents}
+		case authz.GroupRoleViewer:
+			thingPerm = []string{authz.PermReadEvents}
 			break
 		default:
 			thingPerm = []string{}
@@ -195,7 +196,7 @@ func (aclStore *AclFileStore) GetSharedGroups(clientID string, thingID string) [
 		// client is a member of this group, check if the thingID is also a member
 		_, thingIsMember := aclStore.clientGroupRoles[thingID]
 		// all things are a member of the all group
-		if thingIsMember || groupName == AllGroupName {
+		if thingIsMember || groupName == authz.AllGroupName {
 			sharedGroups = append(sharedGroups, groupName)
 		}
 	}
@@ -205,13 +206,13 @@ func (aclStore *AclFileStore) GetSharedGroups(clientID string, thingID string) [
 // IsRoleGreaterEqual returns true if a user role has same or greater permissions
 // than the minimum role.
 func IsRoleGreaterEqual(role string, minRole string) bool {
-	if minRole == ClientRoleNone || role == minRole {
+	if minRole == authz.GroupRoleNone || role == minRole {
 		return true
 	}
-	if minRole == ClientRoleViewer && role != ClientRoleNone {
+	if minRole == authz.GroupRoleViewer && role != authz.GroupRoleNone {
 		return true
 	}
-	if minRole == ClientRoleOperator && (role == ClientRoleManager) {
+	if minRole == authz.GroupRoleOperator && (role == authz.GroupRoleManager) {
 		return true
 	}
 	return false
@@ -220,8 +221,8 @@ func IsRoleGreaterEqual(role string, minRole string) bool {
 // ListGroups return ... a list of all groups available to the client
 //
 //	clientID client that is a member of the groups to return, or "" for all groups
-func (aclStore *AclFileStore) ListGroups(clientID string) ([]Group, error) {
-	groups := make([]Group, 0, len(aclStore.groups))
+func (aclStore *AclFileStore) ListGroups(clientID string) ([]authz.Group, error) {
+	groups := make([]authz.Group, 0, len(aclStore.groups))
 	for _, group := range aclStore.groups {
 		_, found := group.MemberRoles[clientID]
 		if found || clientID == "" {
@@ -284,7 +285,7 @@ func (aclStore *AclFileStore) Reload() error {
 	}
 
 	// build the client index for each client in the groups
-	clientGroupRoles := make(map[string]RoleMap)
+	clientGroupRoles := make(map[string]authz.RoleMap)
 	// for each group, add its members to the client index
 	for groupName, group := range aclStore.groups {
 		// iterate the group members and add them to the client index along with its group role
@@ -293,7 +294,7 @@ func (aclStore *AclFileStore) Reload() error {
 			groupRoles, found := clientGroupRoles[memberID]
 			if !found {
 				// Need to add the set of group roles for this client
-				groupRoles = make(RoleMap)
+				groupRoles = make(authz.RoleMap)
 				clientGroupRoles[memberID] = groupRoles
 			}
 			groupRoles[groupName] = memberRole
@@ -367,7 +368,7 @@ func (aclStore *AclFileStore) RemoveClientAll(clientID string) error {
 // This add/updates the client's role, saves it to a temp file and move the result to the store file.
 //
 //	clientID   client to assign the role
-//	role       one of ClientRoleViewer, ClientRoleOperator, ClientRoleManager, ClientRoleThing or ClientRoleNone to remove the role
+//	role       one of GroupRoleViewer, GroupRoleOperator, GroupRoleManager, GroupRoleThing or GroupRoleNone to remove the role
 //	groupName  group where the role applies
 func (aclStore *AclFileStore) setRole(clientID string, role string, groupName string) (err error) {
 
@@ -378,9 +379,9 @@ func (aclStore *AclFileStore) setRole(clientID string, role string, groupName st
 	// update the group
 	aclGroup, found := aclStore.groups[groupName]
 	if !found {
-		aclGroup = Group{
+		aclGroup = authz.Group{
 			Name:        groupName,
-			MemberRoles: RoleMap{},
+			MemberRoles: authz.RoleMap{},
 		}
 		aclStore.groups[groupName] = aclGroup
 	}
@@ -389,7 +390,7 @@ func (aclStore *AclFileStore) setRole(clientID string, role string, groupName st
 	// update the index
 	groupRoles, found := aclStore.clientGroupRoles[clientID]
 	if !found {
-		groupRoles = make(RoleMap)
+		groupRoles = make(authz.RoleMap)
 		aclStore.clientGroupRoles[clientID] = groupRoles
 	}
 	groupRoles[groupName] = role
@@ -405,12 +406,12 @@ func (aclStore *AclFileStore) setRole(clientID string, role string, groupName st
 // This updates the user's role, saves it to a temp file and move the result to the store file.
 //
 //	userID   client to assign the role
-//	role     one of ClientRoleViewer, ClientRoleOperator, ClientRoleManager, ClientRoleThing or ClientRoleNone to remove the role
+//	role     one of GroupRoleViewer, GroupRoleOperator, GroupRoleManager, GroupRoleThing or GroupRoleNone to remove the role
 //	groupName  group where the role applies
 func (aclStore *AclFileStore) SetUserRole(userID string, role string, groupName string) (err error) {
-	isUserRole := role == ClientRoleViewer ||
-		role == ClientRoleManager ||
-		role == ClientRoleOperator
+	isUserRole := role == authz.GroupRoleViewer ||
+		role == authz.GroupRoleManager ||
+		role == authz.GroupRoleOperator
 	if !isUserRole {
 		return fmt.Errorf("role '%s' doesn't apply to users", role)
 	}
@@ -455,9 +456,9 @@ func (aclStore *AclFileStore) Save() error {
 //	filepath is the location of the store file. See also DefaultAclFilename for the recommended name.
 func NewAuthzFileStore(filepath string) *AclFileStore {
 	store := &AclFileStore{
-		serviceID:        AuthzServiceName,
-		groups:           make(map[string]Group),
-		clientGroupRoles: make(map[string]RoleMap),
+		serviceID:        authz.AuthzServiceName,
+		groups:           make(map[string]authz.Group),
+		clientGroupRoles: make(map[string]authz.RoleMap),
 
 		storePath: filepath,
 	}

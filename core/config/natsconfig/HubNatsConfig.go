@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/core/authn"
 	"github.com/hiveot/hub/core/authz"
-	"github.com/hiveot/hub/core/server"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/certsclient"
 	"github.com/hiveot/hub/lib/svcconfig"
@@ -23,10 +22,10 @@ import (
 // Use NewHubNatsConfig to create a default config
 type HubNatsConfig struct {
 	// The home directory used in init and setup
-	HomeDir string              `json:"homeDir,omitempty"`
-	Server  server.ServerConfig `yaml:"server"`
-	Authn   authn.AuthnConfig   `yaml:"authn"`
-	Authz   authz.AuthzConfig   `yaml:"authz"`
+	HomeDir string                 `json:"homeDir,omitempty"`
+	Server  msgserver.ServerConfig `yaml:"server"`
+	Authn   authn.AuthnConfig      `yaml:"authn"`
+	Authz   authz.AuthzConfig      `yaml:"authz"`
 }
 
 // SetupCerts creates and loads CA and server certificates

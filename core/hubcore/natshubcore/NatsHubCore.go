@@ -5,9 +5,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	authn2 "github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/core/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/core/authn/authnservice"
-	"github.com/hiveot/hub/core/authz"
+	"github.com/hiveot/hub/core/authn/authnstore"
+	"github.com/hiveot/hub/core/authn/natsauthn"
+	"github.com/hiveot/hub/core/authz/authzservice"
 	"github.com/hiveot/hub/core/authz/natsauthz"
 	"github.com/hiveot/hub/core/config/natsconfig"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
@@ -42,10 +44,10 @@ type HubCore struct {
 	AuthnSvc *authnservice.AuthnService
 
 	// authz runtime
-	authzStore      *authz.AclFileStore
-	authzJetStream  *natsauthz.NatsAuthzAppl
-	authzMsgBinding *authz.AuthzServiceBinding
-	AuthzSvc        *authz.AuthzService
+	authzStore *authzservice.AclFileStore
+	//authzJetStream *natsauthz.NatsAuthzAppl
+	//authzMsgBinding *authzservice.AuthzServiceBinding
+	AuthzSvc *authzservice.AuthzService
 }
 
 // Start the Hub messaging Server and core services
@@ -81,85 +83,55 @@ func (core *HubCore) Start() (clientURL string) {
 
 	// start the authnBinding service
 	if !cfg.Authn.NoAutoStart {
-		pwStore := unpwstore.NewPasswordFileStore(core.config.Authn.PasswordFile)
-		core.AuthnSvc = authnnats.NewNatsAuthnService(
-			pwStore, core.CaCert, core.AppAccountKey)
+		authnStore := authnstore.NewAuthnFileStore(core.config.Authn.PasswordFile)
+		tokenizer := natsauthn.NewAuthnNatsTokenizer(core.AppAccountKey)
+		nc, err := core.Server.ConnectInProc(core.ServiceJWT, core.ServiceKey)
+		if err != nil {
+			panic(err.Error())
+		}
+		hc := natshubclient.NewHubClient(core.ServiceKey)
+		hc.ConnectWithNC(nc, authn2.AuthnServiceName)
+		core.AuthnSvc = authnservice.NewAuthnService(authnStore, tokenizer, hc)
 
 		err = core.AuthnSvc.Start()
 		if err != nil {
 			panic(err.Error())
 		}
-		// use an adhoc nkey to connect to the nats Server
-		//authnServiceKey, _ := nkeys.CreateUser()
-		//authnServiceKeyPub, _ := authnServiceKey.PublicKey()
-		//err = core.Server.AddServiceKey(authnServiceKeyPub)
-		//if err != nil {
-		//	panic(err.Error())
-		//}
-		//nc, err := core.Server.ConnectInProc(authn.AuthnServiceName, authnServiceKey)
-		nc, err := core.Server.ConnectInProc(authn2.AuthnServiceName)
-		if err != nil {
-			panic(err.Error())
-		}
-		hc := natshubclient.NewHubClient()
-		hc.ConnectWithNC(nc, authn2.AuthnServiceName)
-		// AuthnServiceBinding connects to the message bus and (un)marshals messages
-		core.authnBinding = authn.NewAuthnMsgBinding(core.AuthnSvc, hc)
-		err = core.authnBinding.Start()
-		if err != nil {
-			panic(err.Error())
-		}
-
-		// Hook into the nats service callout authentication
-		//authnVerifier := service.NewAuthnNatsVerify(core.AuthnSvc)
-		//core.Server.InitCalloutHook(authnVerifier.VerifyAuthnReq)
 	}
 	// start the authz service
 	if !cfg.Authz.NoAutoStart {
 		// AuthzFileStore stores passwords in file
 		authzFile := path.Join(cfg.Authz.GroupsDir, authz.DefaultAclFilename)
-		core.authzStore = authz.NewAuthzFileStore(authzFile)
+		core.authzStore = authzservice.NewAuthzFileStore(authzFile)
 		err = core.authzStore.Open()
 		if err != nil {
 			panic("Failed to open the authz store: " + err.Error())
 		}
-		// NatsAuthzAppl applies groups to nats jetstream using an adhoc service connection
-		//authzNKey, _ := nkeys.CreateUser()
-		//authzNKeyPub, _ := authzNKey.PublicKey()
-		//err = core.Server.AddServiceKey(authzNKeyPub)
-		//if err != nil {
-		//	panic(err.Error())
-		//}
-		nc, err := core.Server.ConnectInProc(authz.AuthzServiceName)
+		// establish another service connection
+		nc, err := core.Server.ConnectInProc(core.ServiceJWT, core.ServiceKey)
 		if err != nil {
-			panic("Failed to open the connection to the nats Server: " + err.Error())
+			panic(err.Error())
 		}
-		core.authzJetStream = natsauthz.NewNatsAuthzAppl(nc)
-		// The service forwards requests to the store and jetstream
-		core.AuthzSvc = authz.NewAuthzService(core.authzStore, core.authzJetStream)
-		// AuthzServiceBinding connects authz to the message bus and (un)marshals messages
-		hc := natshubclient.NewHubClient()
+		hc := natshubclient.NewHubClient(core.ServiceKey)
 		hc.ConnectWithNC(nc, authz.AuthzServiceName)
-		core.authzMsgBinding = authz.NewAuthzMsgBinding(core.AuthzSvc, hc)
-		err = core.authzMsgBinding.Start()
-		if err != nil {
-			panic("Unable to bind to the messaging Server: " + err.Error())
-		}
+		// apply authz changes to nats jetstream
+		authzJetStream := natsauthz.NewNatsAuthzAppl(hc.JS())
+		core.AuthzSvc = authzservice.NewAuthzService(core.authzStore, authzJetStream, hc)
 	}
 	return clientURL
 }
 
 // Stop the Server
 func (core *HubCore) Stop() {
-	if core.authnBinding != nil {
-		core.authnBinding.Stop()
+	if core.AuthnSvc != nil {
+		core.AuthnSvc.Stop()
 	}
-	if core.authzMsgBinding != nil {
-		core.authzMsgBinding.Stop()
+	if core.AuthzSvc != nil {
+		core.AuthzSvc.Stop()
 	}
-	if core.authzJetStream != nil {
-		core.authzJetStream.Stop()
-	}
+	//if core.authzJetStream != nil {
+	//	core.authzJetStream.Stop()
+	//}
 	if core.authzStore != nil {
 		core.authzStore.Close()
 	}

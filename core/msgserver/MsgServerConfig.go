@@ -1,12 +1,12 @@
-package server
+package msgserver
 
 import (
 	"github.com/hiveot/hub/lib/certs"
 	"path"
 )
 
-// ServerConfig configuration of the messaging server
-type ServerConfig struct {
+// MsgServerConfig configuration of the messaging server
+type MsgServerConfig struct {
 	// Host is the server Hostname must match the name in the server certificate
 	Host string `yaml:"host"`
 	// Port, default is 4222
@@ -43,7 +43,7 @@ type ServerConfig struct {
 //
 //	certsDir path to the certificate directory with certs and keys
 //	storesDir path to the storage root directory. Server will use 'server' subdir.
-func (cfg *ServerConfig) InitConfig(certsDir string, storesDir string) (err error) {
+func (cfg *MsgServerConfig) InitConfig(certsDir string, storesDir string) (err error) {
 
 	if cfg.Host == "" {
 		cfg.Host = "127.0.0.1"

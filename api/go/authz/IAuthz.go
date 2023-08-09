@@ -4,48 +4,48 @@ package authz
 const AuthzServiceName = "authz"
 const DefaultAclFilename = "authz-groups.acl"
 
-// Client roles set permissions for operations on Things that are members of the same group
+// Group roles set permissions for operations on Things that are members of the same group
 // The mapping of roles to operations is currently hard coded aimed at managing Things
 const (
-	// ClientRoleNone indicates that the client has no particular role. It can not do anything until
+	// GroupRoleNone indicates that the client has no particular role. It can not do anything until
 	// the role is upgraded to viewer or better.
 	//  Read permissions: none
 	//  Write permissions: none
-	ClientRoleNone = "none"
+	GroupRoleNone = "none"
 
-	// ClientRoleIotDevice for IoT devices that read/write for things it is the publisher of.
+	// GroupRoleIotDevice for IoT devices that read/write for things it is the publisher of.
 	// IoT Devices can publish events and updates for Things it the publisher of. This is determined
 	// by the deviceID that is included in the thingID.
 	//  Read permissions: readActions
 	//  Write permissions: pubEvents, pubActions
-	ClientRoleIotDevice = "iotdevice"
+	GroupRoleIotDevice = "iotdevice"
 
-	// ClientRoleManager lets a client subscribe to Thing TD, events, publish actions and update configuration
+	// GroupRoleManager lets a client subscribe to Thing TD, events, publish actions and update configuration
 	//  Read permissions: readEvents
 	//  Write permissions: pubActions
-	ClientRoleManager = "manager"
+	GroupRoleManager = "manager"
 
-	// ClientRoleOperator lets a client subscribe to Thing TD, events and publish actions
+	// GroupRoleOperator lets a client subscribe to Thing TD, events and publish actions
 	//  Read permissions: readEvents, readActions
 	//  Write permissions: pubActions
-	ClientRoleOperator = "operator"
+	GroupRoleOperator = "operator"
 
-	// ClientRoleService identifies the client as a service
+	// GroupRoleService identifies the client as a service
 	// Services can subscribe to and publish actions and events
 	//  Read permissions: readActions, readEvents
 	//  Write permissions: pubEvents, pubActions
-	ClientRoleService = "service"
+	GroupRoleService = "service"
 
-	// ClientRoleThing identifies the client as a Thing
+	// GroupRoleThing identifies the client as a Thing
 	// Things can publish events and updates for themselves.
 	//  Read permissions: readAction
 	//  Write permissions: pubEvents, pubActions
-	ClientRoleThing = "thing"
+	GroupRoleThing = "thing"
 
-	// ClientRoleViewer lets a client subscribe to Thing TD and Thing Events
+	// GroupRoleViewer lets a client subscribe to Thing TD and Thing Events
 	//  Read permissions: readTDs, readEvents
 	//  Write permissions: none
-	ClientRoleViewer = "viewer"
+	GroupRoleViewer = "viewer"
 )
 
 // Permissions that can be authorized
@@ -73,6 +73,9 @@ const (
 	// AllGroupName is the built-in group containing all resources
 	AllGroupName = "all"
 )
+
+// default group retention is 1 day
+const DefaultGroupRetention = 3600 * 24
 
 // RoleMap for members or memberships
 type RoleMap map[string]string // clientID:role, groupName:role
@@ -111,6 +114,7 @@ type AddGroupReq struct {
 	// unique name of the group
 	GroupName string `json:"groupName"`
 	// retention period in seconds of events in this group
+	// use 0 for default
 	Retention uint64 `json:"retention"`
 }
 
@@ -275,24 +279,28 @@ type SetUserRoleReq struct {
 type IAuthz interface {
 
 	// AddGroup adds a new group
-	// This fails if the groupName already exists
+	// If the group exists this returns without error
 	// Use retention 0 to retain messages indefinitely
 	//
 	//	groupName unique name of the group
-	//	retention period in seconds of events in this group
+	//	retention period in seconds of events in this group. 0 for DefaultGroupRetention.
 	AddGroup(groupName string, retention uint64) error
 
 	// AddService adds a client with the service role to a group
+	// If the client is already in the group this returns without error
 	AddService(serviceID string, groupName string) error
 
 	// AddThing adds a client with the thing role to a group
+	// If the client is already in the group this returns without error
 	AddThing(thingID string, groupName string) error
 
 	// AddUser adds a user to a group with the user role manager, operator or viewer
+	// If the client is already in the group this returns without error
 	// See ClientRole...
 	AddUser(userID string, role string, groupName string) error
 
 	// DeleteGroup deletes the group and all its resources. This is not recoverable.
+	// If the client doesn't exist then returns without error
 	DeleteGroup(groupName string) error
 
 	// GetGroup returns the group with the given name, or an error if group is not found.
@@ -318,10 +326,12 @@ type IAuthz interface {
 	ListGroups(clientID string) (groups []Group, err error)
 
 	// RemoveClient removes a client from a group
+	// If the client doesn't exist then returns without error
 	// The caller must be an administrator or service.
 	RemoveClient(clientID string, groupName string) error
 
 	// RemoveClientAll removes a client from all groups.
+	// If the client doesn't exist then returns without error
 	// The caller must be an administrator or service.
 	RemoveClientAll(clientID string) error
 

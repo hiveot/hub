@@ -37,7 +37,7 @@ The protocol binding uses the serializer 'ser' to serialize requests and respons
 The NATS specific portion consists of the tokenizer (see [AuthnNatsTokenizer.go](authnnats/AuthnNatsTokenizer.go)). 
 
 NATS JWT tokens differ from plain old JWT in the following ways:
-* token keys use es2519.
+* token keys use edd2519.
 * use of signed nonce in the authentication process
 * use of authorization subjects (topics) in the JWT token
 

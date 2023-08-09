@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nkeys"
@@ -171,30 +172,6 @@ func CreateTestAuthBundle() TestAuthBundle {
 	// Enabling JetStream requires setting storage limits
 	appAccountClaims.Limits.JetStreamLimits.DiskStorage = -1
 	appAccountClaims.Limits.JetStreamLimits.MemoryStorage = -1
-	//appAccountClaims.Subject = appAccountPub
-	//appAccountClaims.Exports = jwt.Exports{
-	//	&jwt.Export{
-	//		Name:                 "account-monitoring-services",
-	//		Subject:              "$SYS.REQ.ACCOUNT.*.*",
-	//		Type:                 jwt.Service,
-	//		ResponseType:         jwt.ResponseTypeStream,
-	//		AccountTokenPosition: 4,
-	//		Info: jwt.Info{
-	//			Description: "Custom account made by conservator",
-	//			InfoURL:     "https://github.com/renevo/conservator",
-	//		},
-	//	},
-	//	&jwt.Export{
-	//		Name:                 "account-monitoring-streams",
-	//		Subject:              "$SYS.ACCOUNT.*.>",
-	//		Type:                 jwt.Stream,
-	//		AccountTokenPosition: 3,
-	//		Info: jwt.Info{
-	//			Description: "Custom account made by conservator",
-	//			InfoURL:     "https://github.com/renevo/conservator",
-	//		},
-	//	},
-	//}
 	appAccountJWT, _ := appAccountClaims.Encode(operatorNKey)
 	authBundle.AppAccountName = appAccountName
 	authBundle.AppAccountKey = appAccountKey
@@ -242,14 +219,15 @@ func CreateTestAuthBundle() TestAuthBundle {
 
 // CreateUserCreds create a signed user JWT token and private credentials with pub/sub permissions
 //
-//	id is the client's authentication ID
+//	clientID is the client's authentication ID
 //	userKey is the client's key pair
 //	acctKey is the nkey of the signer, eg the account key
 //	pub is the list of subjects allowed to publish or nil if not set here
 //	sub is the list of subjects allowed to subscribe or nil if not set here
 //
 // This returns the public signed jwt token containing user claims, and the full credentials to be kept secret
-func CreateUserCreds(id string, userKey nkeys.KeyPair,
+func CreateUserCreds(clientID string,
+	userKey nkeys.KeyPair,
 	acctKey nkeys.KeyPair,
 	pub []string, sub []string) (
 	jwtToken string, creds []byte) {
@@ -263,15 +241,15 @@ func CreateUserCreds(id string, userKey nkeys.KeyPair,
 	// should appAccountName or public key be used???
 	//claims.Audience = appAccountName
 	claims.IssuerAccount, _ = acctKey.PublicKey()
-	//
-	claims.Name = id
+	claims.Name = clientID
+	claims.Tags.Add("clientType", authn.ClientTypeUser)
 	// add identification and authorization to user
 	// see also: https://natsbyexample.com/examples/auth/nkeys-jwts/go
 	if pub != nil {
-		claims.Pub.Allow.Add(pub...)
+		claims.Permissions.Pub.Allow.Add(pub...)
 	}
 	if sub != nil {
-		claims.Sub.Allow.Add(sub...)
+		claims.Permissions.Sub.Allow.Add(sub...)
 	}
 	jwtToken, err := claims.Encode(acctKey)
 	if err != nil {

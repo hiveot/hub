@@ -1,6 +1,10 @@
-package authz
+package authzservice
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/hiveot/hub/api/go/authz"
+	"github.com/hiveot/hub/core/hubclient"
+)
 
 // AuthzService handles client management and authorization for access to Things.
 // This implements the IAuthz interface
@@ -9,8 +13,9 @@ import "fmt"
 // is authorized to receive or post a message. This applies to all users of the message bus,
 // regardless of how they are authenticated.
 type AuthzService struct {
-	aclStore  *AclFileStore
-	authzAppl IAuthz
+	aclStore     *AclFileStore
+	authzAppl    authz.IAuthz
+	authzBinding *AuthzServiceBinding
 }
 
 // GetPermissions returns a list of permissions a client has for a Thing
@@ -23,6 +28,9 @@ type AuthzService struct {
 //
 // publish to the connected stream.
 func (svc *AuthzService) AddGroup(groupName string, retention uint64) error {
+	if retention == 0 {
+		retention = authz.DefaultGroupRetention
+	}
 	err := svc.aclStore.AddGroup(groupName, retention)
 	if err == nil {
 		err = svc.authzAppl.AddGroup(groupName, retention)
@@ -69,13 +77,13 @@ func (svc *AuthzService) DeleteGroup(groupName string) error {
 }
 
 // GetClientRoles returns a map of [group]role for a client
-func (svc *AuthzService) GetClientRoles(clientID string) (roles RoleMap, err error) {
+func (svc *AuthzService) GetClientRoles(clientID string) (roles authz.RoleMap, err error) {
 	return svc.aclStore.GetClientRoles(clientID)
 }
 
 // GetGroup returns the group with the given name, or an error if group is not found.
 // GroupName must not be empty
-func (svc *AuthzService) GetGroup(groupName string) (group Group, err error) {
+func (svc *AuthzService) GetGroup(groupName string) (group authz.Group, err error) {
 
 	group, err = svc.aclStore.GetGroup(groupName)
 	return group, err
@@ -88,23 +96,23 @@ func (svc *AuthzService) GetPermissions(clientID string, thingIDs []string) (per
 		var thingPerm []string
 		clientRole, _ := svc.aclStore.GetRole(clientID, thingID)
 		switch clientRole {
-		case ClientRoleIotDevice:
-		case ClientRoleThing:
-			thingPerm = []string{PermPubEvents, PermReadActions}
+		case authz.GroupRoleIotDevice:
+		case authz.GroupRoleThing:
+			thingPerm = []string{authz.PermPubEvents, authz.PermReadActions}
 			break
-		case ClientRoleService:
-			thingPerm = []string{PermPubActions, PermPubEvents, PermReadActions, PermReadEvents}
+		case authz.GroupRoleService:
+			thingPerm = []string{authz.PermPubActions, authz.PermPubEvents, authz.PermReadActions, authz.PermReadEvents}
 			break
-		case ClientRoleManager:
+		case authz.GroupRoleManager:
 			// managers are operators but can also change configuration
 			// TODO: is publishing configuration changes a separate permission?
-			thingPerm = []string{PermPubActions, PermReadEvents}
+			thingPerm = []string{authz.PermPubActions, authz.PermReadEvents}
 			break
-		case ClientRoleOperator:
-			thingPerm = []string{PermPubActions, PermReadEvents}
+		case authz.GroupRoleOperator:
+			thingPerm = []string{authz.PermPubActions, authz.PermReadEvents}
 			break
-		case ClientRoleViewer:
-			thingPerm = []string{PermReadEvents}
+		case authz.GroupRoleViewer:
+			thingPerm = []string{authz.PermReadEvents}
 			break
 		default:
 			thingPerm = []string{}
@@ -121,7 +129,7 @@ func (svc *AuthzService) GetRole(clientID string, thingID string) (string, error
 }
 
 // ListGroups returns the list of known groups available to the client
-func (svc *AuthzService) ListGroups(clientID string) (groups []Group, err error) {
+func (svc *AuthzService) ListGroups(clientID string) (groups []authz.Group, err error) {
 	groups, err = svc.aclStore.ListGroups(clientID)
 	return groups, err
 }
@@ -154,10 +162,17 @@ func (svc *AuthzService) SetUserRole(userID string, role string, groupName strin
 }
 
 // Start returns an error if the store is missing
+// This creates the 'all' group if it doesn't yet exist
 func (svc *AuthzService) Start() (err error) {
 	if svc.aclStore == nil {
 		return fmt.Errorf("Start: missing acl store")
 	}
+	// ensure that the all group exists
+	_, err = svc.GetGroup(authz.AllGroupName)
+	if err != nil {
+		svc.AddGroup(authz.AllGroupName, 0)
+	}
+
 	return nil
 }
 func (svc *AuthzService) Stop() {
@@ -168,11 +183,17 @@ func (svc *AuthzService) Stop() {
 //
 //	aclStore persists the authorization rules
 //	authzAppl applies the authorization configuration to the underlying messaging system. Use nil to ignore (for testing)
-func NewAuthzService(aclStore *AclFileStore, authzAppl IAuthz) *AuthzService {
+//	hc is the server connection used to subscribe
+func NewAuthzService(aclStore *AclFileStore, authzAppl authz.IAuthz, hc hubclient.IHubClient) *AuthzService {
 
-	authzService := AuthzService{
+	authzService := &AuthzService{
 		aclStore:  aclStore,
 		authzAppl: authzAppl,
 	}
-	return &authzService
+	// the binding subscribes and (un)marshals action messages and applies it
+	// to the authz service.
+	authzBinding := NewAuthzMsgBinding(authzService, hc)
+	authzService.authzBinding = authzBinding
+
+	return authzService
 }

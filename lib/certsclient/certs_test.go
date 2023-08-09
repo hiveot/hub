@@ -13,7 +13,7 @@ import (
 // ! These tests use the TestMain of main_test.go !
 
 func TestX509ToFromPem(t *testing.T) {
-	testCerts := testenv.CreateCertBundle()
+	testCerts := testenv.CreateTestAuthBundle()
 	asPem := certsclient.X509CertToPEM(testCerts.CaCert)
 	assert.NotEmpty(t, asPem)
 	asX509, err := certsclient.X509CertFromPEM(asPem)
@@ -25,7 +25,7 @@ func TestSaveLoadX509Cert(t *testing.T) {
 	// hostnames := []string{"localhost"}
 	caPemFile := path.Join(TestCertFolder, "caCert.pem")
 
-	testCerts := testenv.CreateCertBundle()
+	testCerts := testenv.CreateTestAuthBundle()
 
 	// save the test x509 cert
 	err := certsclient.SaveX509CertToPEM(testCerts.CaCert, caPemFile)
@@ -37,7 +37,7 @@ func TestSaveLoadX509Cert(t *testing.T) {
 }
 
 func TestPublicKeyFromCert(t *testing.T) {
-	testCerts := testenv.CreateCertBundle()
+	testCerts := testenv.CreateTestAuthBundle()
 	pubKey := certsclient.PublicKeyFromCert(testCerts.CaCert)
 	assert.NotEmpty(t, pubKey)
 }
@@ -47,10 +47,10 @@ func TestSaveLoadTLSCert(t *testing.T) {
 	certFile := path.Join(TestCertFolder, "tlscert.pem")
 	keyFile := path.Join(TestCertFolder, "tlskey.pem")
 
-	testCerts := testenv.CreateCertBundle()
+	testCerts := testenv.CreateTestAuthBundle()
 
 	// save the test x509 part of the TLS cert
-	err := certsclient.SaveTLSCertToPEM(testCerts.DeviceCert, certFile, keyFile)
+	err := certsclient.SaveTLSCertToPEM(testCerts.ClientCert, certFile, keyFile)
 	assert.NoError(t, err)
 
 	// load back the x509 part of the TLS cert
@@ -62,7 +62,7 @@ func TestSaveLoadTLSCert(t *testing.T) {
 func TestSaveLoadCertNoFile(t *testing.T) {
 	certFile := "/root/notavalidcert.pem"
 	keyFile := "/root/notavalidkey.pem"
-	testCerts := testenv.CreateCertBundle()
+	testCerts := testenv.CreateTestAuthBundle()
 	// save the test x509 cert
 	err := certsclient.SaveX509CertToPEM(testCerts.CaCert, certFile)
 	assert.Error(t, err)
@@ -71,7 +71,7 @@ func TestSaveLoadCertNoFile(t *testing.T) {
 	assert.Error(t, err)
 
 	// save the test x509 part of the TLS cert
-	err = certsclient.SaveTLSCertToPEM(testCerts.DeviceCert, certFile, keyFile)
+	err = certsclient.SaveTLSCertToPEM(testCerts.ClientCert, certFile, keyFile)
 	assert.Error(t, err)
 
 	// load back the x509 part of the TLS cert

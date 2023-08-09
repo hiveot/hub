@@ -4,13 +4,12 @@ import (
 	authn2 "github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/core/authn"
 	"github.com/hiveot/hub/core/authn/authnclient"
-	"github.com/hiveot/hub/core/authn/authnnats"
 	"github.com/hiveot/hub/core/authn/authnservice"
 	"github.com/hiveot/hub/core/authn/authnstore"
+	"github.com/hiveot/hub/core/authn/natsauthn"
 	"github.com/hiveot/hub/core/hubclient"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
-	"github.com/hiveot/hub/core/server"
-	"github.com/hiveot/hub/core/server/natsserver"
+	"github.com/hiveot/hub/core/msgserver/natsserver"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nkeys"
@@ -27,15 +26,12 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 )
 
-var storeFolder string // set in TestMain
-var tempFolder string
+var authBundle = testenv.CreateTestAuthBundle()
+var testDir = path.Join(os.TempDir(), "test-authn")
 
-var authBundle testenv.TestAuthBundle
-
-// clientURL is set by the testmain
+// the following are set by the testmain
 var clientURL string
-
-var hubServer *natsserver.HubNatsServer
+var msgServer *natsserver.HubNatsServer
 
 // run the test for different cores
 var useCore = "nats" // nats vs mqtt
@@ -58,23 +54,24 @@ func connectUser(key nkeys.KeyPair, token string) (hc hubclient.IHubClient, err 
 func startTestAuthnService() (cl authn2.IAuthnUser, mng authn2.IAuthnManage, stopFn func(), err error) {
 	slog.Info(">>> startTestAuthnService -- begin")
 	// the password file to use
-	passwordFile := path.Join(tempFolder, "test.passwd")
+	passwordFile := path.Join(testDir, "test.passwd")
 
 	// TODO: put this in a test environment
 	_ = os.Remove(passwordFile)
 	cfg := authn.AuthnConfig{}
-	_ = cfg.InitConfig("", storeFolder)
+	_ = cfg.InitConfig("", testDir)
 	cfg.PasswordFile = passwordFile
 	cfg.DeviceTokenValidity = 10
 
 	// setup the authn service
-	tokenizer := authnnats.NewAuthnNatsTokenizer(authBundle.AppAccountKey)
-	//hcSvc := natshubclient.NewHubClient(authBundle.ServiceKey)
-	authnKey, _ := nkeys.CreateUser()
-	authnKeyPub, _ := authnKey.PublicKey()
-	authnJWT, _ := tokenizer.CreateToken(authn2.AuthnServiceName, authn2.ClientTypeService, authnKeyPub, authn2.DefaultServiceTokenValiditySec)
-	hcSvc := natshubclient.NewHubClient(authnKey)
-	// from here on this is generic, eg non nats specific
+	tokenizer := natsauthn.NewAuthnNatsTokenizer(authBundle.AppAccountKey)
+	hcSvc := natshubclient.NewHubClient(authBundle.ServiceKey)
+
+	authnJWT, _ := tokenizer.CreateToken(
+		authn2.AuthnServiceName,
+		authn2.ClientTypeService,
+		authBundle.ServiceKeyPub,
+		authn2.DefaultServiceTokenValiditySec)
 	err = hcSvc.ConnectWithJWT(clientURL, authnJWT, authBundle.CaCert)
 	if err != nil {
 		panic("can't connect authn to server: " + err.Error())
@@ -113,40 +110,21 @@ func startTestAuthnService() (cl authn2.IAuthnUser, mng authn2.IAuthnManage, sto
 // TestMain creates a test environment
 // Used for all test cases in this package
 func TestMain(m *testing.M) {
-	logging.SetLogging("info", "")
 	var err error
+	logging.SetLogging("info", "")
+	_ = os.RemoveAll(testDir)
+	_ = os.MkdirAll(testDir, 0700)
 
-	// a working folder for the data
-	tempFolder = path.Join(os.TempDir(), "test-authn")
-	_ = os.MkdirAll(tempFolder, 0700)
-	authBundle = testenv.CreateTestAuthBundle()
-	// run the test server
-	serverCfg := &server.ServerConfig{
-		Host: "127.0.0.1",
-		Port: 9990,
-		//AppAccountName: authBundle.AppAccountName,
-	}
-
-	serverCfg.InitConfig("", storeFolder)
-	hubServer = natsserver.NewHubNatsServer(
-		authBundle.ServerCert, authBundle.CaCert)
-
-	serverOpts := hubServer.CreateServerConfig(
-		serverCfg, authBundle.OperatorJWT,
-		authBundle.SystemAccountJWT,
-		authBundle.AppAccountJWT,
-		authBundle.ServiceKey)
-	serverOpts.Debug = false
-	clientURL, err = hubServer.Start(serverOpts)
+	clientURL, msgServer, err = testenv.StartTestServer(testDir, &authBundle)
 	if err != nil {
 		panic(err)
 	}
 	res := m.Run()
 
-	hubServer.Stop()
+	msgServer.Stop()
 	time.Sleep(time.Second)
 	if res == 0 {
-		_ = os.RemoveAll(tempFolder)
+		_ = os.RemoveAll(testDir)
 	}
 	os.Exit(res)
 }
