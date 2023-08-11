@@ -35,36 +35,6 @@ type NatsCalloutHook struct {
 	authnVerifier func(*jwt.AuthorizationRequestClaims) error
 }
 
-// AddServiceKey adds a user nkey to the server config on the application account,
-// and exclude it from the callout account.
-// Intended to work around having implement nkey auth ourselves.
-// No pubsub restrictions are set.
-// The caller must reload the server config for it to take effect.
-//
-//	nkey is the service key to add
-//	account is an existing account the service operators under. Use ns.LookupAccount(name)
-func (chook *NatsCalloutHook) AddServiceKey(nkeyPub string, appAccount *server.Account) (err error) {
-	//allow := fmt.Sprintf("things.%s.>",name)
-	//p := &server.Permissions{
-	//			Publish: &server.SubjectPermission{
-	//				Allow: []string{allow},
-	//			},
-	//			Subscribe: []string{">"},
-	//		}
-
-	//Add the key to the NKey configuration section
-	//appAcct, err := chook.ns.LookupAccount(chook.cfg.AppAccountName)
-	chook.serverOpts.Nkeys = append(chook.serverOpts.Nkeys, &server.NkeyUser{
-		Nkey:    nkeyPub,
-		Account: appAccount,
-		//Permissions: p,
-	})
-	// Prevent usage of the key from invoking the callout handler
-	chook.serverOpts.AuthCallout.AuthUsers = append(chook.serverOpts.AuthCallout.AuthUsers, nkeyPub)
-	//err = chook.ns.ReloadOptions(chook.serverOpts)
-	return err
-}
-
 // createSignedResponse generates a callout response
 //
 //	userPub is the public key of the user from the request
@@ -83,6 +53,7 @@ func (chook *NatsCalloutHook) createSignedResponse(
 		respClaims.Error = rerr.Error()
 	}
 
+	// TODO: add token validity config
 	respClaims.IssuedAt = time.Now().Unix()
 	respClaims.Expires = time.Now().Add(time.Duration(100) * time.Second).Unix()
 	response, err := respClaims.Encode(chook.calloutAccountKey)
@@ -160,7 +131,11 @@ func (chook *NatsCalloutHook) handleCallOutReq(msg *nats.Msg) {
 		err = fmt.Errorf("authcallout invoked without a verifier")
 	}
 	if err != nil {
-		slog.Info("error verifying authn", "err", err)
+		// note: if the client isn't know the caller will not receive this error
+		slog.Warn("Invalid authn", "err", err,
+			slog.String("userID", reqClaims.ConnectOptions.Name))
+		resp, _ := chook.createSignedResponse(userNKeyPub, serverID.ID, "", err)
+		_ = msg.Respond(resp)
 		return
 	}
 	// on success, create a user JWT token, signed by the application account key,
@@ -169,13 +144,11 @@ func (chook *NatsCalloutHook) handleCallOutReq(msg *nats.Msg) {
 	newToken := ""
 	clientID := connectOpts.Name // client identification
 	newToken, err = chook.createUserJWTToken(clientID, userNKeyPub)
-	if err != nil {
-		slog.Error("error creating JWT token", "err", err)
-		return
-	}
+
 	resp, err := chook.createSignedResponse(userNKeyPub, serverID.ID, newToken, err)
 	if err != nil {
 		slog.Error("error creating signed response", "err", err)
+		err = msg.Respond(nil)
 		return
 	}
 
@@ -221,16 +194,17 @@ func (chook *NatsCalloutHook) start() error {
 }
 
 // ConnectNatsCalloutHook create a new instance of the NATS callout hook
+// for use with NKey based configuration options.
 // This configures the server to use callout hooks and subscribes to requests
 // using the given connection.
 //
 // Reload the server options for it to take effect.
 //
-//	serverOpts is the server mode options struct to update
-//	issuerAccountName is the name of the account used to issue the JWT tokens
-//	issuerAccountKey is the key-pair of the account used to issue the JWT tokens
-//	nc is the nats connection to use
-//	authnVerifier is the callback handler to verify an authn request
+//   - serverOpts is the server mode options struct to update
+//   - issuerAccountName is the name of the account used to issue the JWT tokens
+//   - issuerAccountKey is the key-pair of the account used to issue the JWT tokens
+//   - nc is the nats connection to use
+//   - authnVerifier is the callback handler to verify an authn request
 func ConnectNatsCalloutHook(
 	serverOpts *server.Options,
 	issuerAccountName string,
