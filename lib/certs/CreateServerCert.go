@@ -1,13 +1,11 @@
 package certs
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/pem"
 	"fmt"
 	"math/big"
 	"net"
@@ -25,17 +23,18 @@ const DefaultServerCertValidityDays = 100
 //
 //	  certPEM = certs.X509CertToPEM(cert)
 //
-//	serviceID is the unique service ID used as the CN. for example hostname-serviceName
-//	ou is the organizational unit of the certificate
-//	pubkeyPEM is the server's public key
-//	names are the SAN names to include with the certificate, typically the service IP address or host names
-//	validityDays is the duration the cert is valid for. Use 0 for default.
-//	caCert is the CA certificate used to sign the certificate
-//	caKey is the CA private key used to sign certificate
+//	* serviceID is the unique service ID used as the CN. for example hostname-serviceName
+//	* ou is the organizational unit of the certificate
+//	* validityDays is the duration the cert is valid for. Use 0 for default.
+//	* serverPubKey is the server's public key
+//	* names are the SAN names to include with the certificate, typically the service IP address or host names
+//	* caCert is the CA certificate used to sign the certificate
+//	* caKey is the CA private key used to sign certificate
 func CreateServerCert(
-	serverID string, ou string, serverPubKey *ecdsa.PublicKey, names []string, validityDays int,
+	serverID string, ou string, validityDays int,
+	serverPubKey *ecdsa.PublicKey, names []string,
 	caCert *x509.Certificate, caKey *ecdsa.PrivateKey) (
-	cert *x509.Certificate, err error) {
+	x509Cert *x509.Certificate, err error) {
 
 	if serverID == "" || serverPubKey == nil || names == nil {
 		err := fmt.Errorf("missing argument serviceID, servicePubKey, or names")
@@ -92,81 +91,22 @@ func CreateServerCert(
 	// Create the service private key
 	//certKey := certs.CreateECDSAKeys()
 	// and the certificate itself
-	certDer, err := x509.CreateCertificate(
+	certDerBytes, err := x509.CreateCertificate(
 		rand.Reader, template, caCert, serverPubKey, caKey)
 	if err == nil {
-		cert, err = x509.ParseCertificate(certDer)
+		x509Cert, err = x509.ParseCertificate(certDerBytes)
 	}
-
-	// TODO: send Thing event (services are things too)
-	return cert, err
+	return x509Cert, err
 }
 
-// CreateClientCert generates a x509 client certificate with keys, signed by the CA
-// intended for testing, not for production
-//
-//		cn is the certificate common name, usually the client ID
-//		ou the organization.
-//		pubKey is the owner public key for this certificate
-//		caCert and caKey is the signing CA
-//	 validityDays
-func CreateClientCert(cn string, ou string, pubKey *ecdsa.PublicKey,
-	caCert *x509.Certificate, caKey *ecdsa.PrivateKey, validityDays int) (cert *x509.Certificate, derBytes []byte, err error) {
-	validity := time.Hour * time.Duration(24*validityDays)
-
-	extkeyUsage := x509.ExtKeyUsageClientAuth
-	keyUsage := x509.KeyUsageDigitalSignature
-	serial := time.Now().Unix() - 2
-
-	template := &x509.Certificate{
-		SerialNumber: big.NewInt(serial),
-		Subject: pkix.Name{
-			Country:            []string{"CA"},
-			Organization:       []string{"hiveot"},
-			Province:           []string{"BC"},
-			Locality:           []string{"local"},
-			CommonName:         cn,
-			OrganizationalUnit: []string{ou},
-			Names:              make([]pkix.AttributeTypeAndValue, 0),
-		},
-		NotBefore:   time.Now().Add(-10 * time.Second),
-		NotAfter:    time.Now().Add(validity),
-		KeyUsage:    keyUsage,
-		ExtKeyUsage: []x509.ExtKeyUsage{extkeyUsage},
-
-		BasicConstraintsValid: true,
-		IsCA:                  false,
-	}
-
-	// Not for production. Ignore all but the first error. Testing would fail if this fails.
-	certDerBytes, err := x509.CreateCertificate(rand.Reader, template, caCert, pubKey, caKey)
-	certPEMBuffer := new(bytes.Buffer)
-	_ = pem.Encode(certPEMBuffer, &pem.Block{Type: "CERTIFICATE", Bytes: certDerBytes})
-	cert, _ = x509.ParseCertificate(certDerBytes)
-	if err != nil {
-		panic("CreateClientCert. Failed creating cert: " + err.Error())
-	}
-	return cert, certDerBytes, err
-}
-
-// CreateClientTLSCert generates a TLS client certificate with keys, signed by the CA
-// intended for testing, not for production
-//
-//	cn is the certificate common name, usually the client ID
-//	ou the organization.
-//	clientKey is the owner private key for this certificate
-//	caCert and caKey is the signing CA
-//	validityDays of the client certificate
-func CreateClientTLSCert(cn string, ou string, clientKey *ecdsa.PrivateKey,
-	caCert *x509.Certificate, caKey *ecdsa.PrivateKey, validityDays int) (
-	cert *tls.Certificate, err error) {
-
-	_, certDer, err := CreateClientCert(
-		cn, ou, &clientKey.PublicKey, caCert, caKey, validityDays)
+// CreateTLSCert generates a TLS certificate from x509 and key
+func CreateTLSCert(x509Cert *x509.Certificate, key ecdsa.PrivateKey) (
+	tlsCert *tls.Certificate, err error) {
+	certDer := x509Cert.Raw
 
 	// combined them into a TLS certificate
-	tlsCert := &tls.Certificate{}
+	tlsCert = &tls.Certificate{}
 	tlsCert.Certificate = append(tlsCert.Certificate, certDer)
-	tlsCert.PrivateKey = clientKey
+	tlsCert.PrivateKey = key
 	return tlsCert, err
 }

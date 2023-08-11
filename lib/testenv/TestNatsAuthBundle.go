@@ -2,11 +2,7 @@
 package testenv
 
 import (
-	"crypto/ecdsa"
-	"crypto/tls"
-	"crypto/x509"
 	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/lib/certs"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nkeys"
 )
@@ -16,19 +12,8 @@ const TestServiceID = "service1"
 const TestDeviceID = "device1"
 const TestUserID = "user1"
 
-// TestAuthBundle contain test certificates for CA and server
-type TestAuthBundle struct {
-	CaCert *x509.Certificate
-	CaKey  *ecdsa.PrivateKey
-
-	// server certificate
-	ServerKey  *ecdsa.PrivateKey
-	ServerCert *tls.Certificate
-
-	// client cert auth
-	ClientKey  *ecdsa.PrivateKey
-	ClientCert *tls.Certificate
-
+// TestNatsAuthBundle contains Nats test authentication keys and tokens
+type TestNatsAuthBundle struct {
 	// operator and account keys
 	//OperatorNKey      nkeys.KeyPair
 	OperatorJWT      string
@@ -67,32 +52,8 @@ type TestAuthBundle struct {
 
 // CreateTestAuthBundle creates a bundle of ca, server certificates and user keys for testing.
 // The server cert is valid for the 127.0.0.1 ServerAddress only.
-func CreateTestAuthBundle() TestAuthBundle {
-	authBundle := TestAuthBundle{}
-	// Setup CA and server TLS certificates
-	authBundle.CaCert, authBundle.CaKey, _ = certs.CreateCA("testing", 1)
-	authBundle.ServerKey = certs.CreateECDSAKeys()
-	authBundle.ClientKey = certs.CreateECDSAKeys()
-
-	names := []string{ServerAddress}
-	serverCert, err := certs.CreateServerCert(
-		TestServiceID, "server",
-		&authBundle.ServerKey.PublicKey,
-		names, 1,
-		authBundle.CaCert, authBundle.CaKey)
-	if err != nil {
-		panic("unable to create server cert: " + err.Error())
-	}
-	authBundle.ServerCert = certs.X509CertToTLS(serverCert, authBundle.ServerKey)
-
-	clientCert, _, err := certs.CreateClientCert(TestServiceID, "service",
-		&authBundle.ClientKey.PublicKey,
-		authBundle.CaCert, authBundle.CaKey, 1)
-	if err != nil {
-		panic("unable to create client cert: " + err.Error())
-	}
-	authBundle.ClientCert = certs.X509CertToTLS(clientCert, authBundle.ClientKey)
-
+func CreateTestNatsAuthBundle() TestNatsAuthBundle {
+	authBundle := TestNatsAuthBundle{}
 	// life starts with the operator
 	// the operator is signing the account keys
 	// https://gist.github.com/renevo/8fa7282d441b46752c9151644a2e911a
@@ -144,7 +105,6 @@ func CreateTestAuthBundle() TestAuthBundle {
 	authBundle.SystemAccountJWT = systemAccountJWT
 
 	// A user for the system account
-
 	systemUserNKey, _ := nkeys.CreateUser()
 	systemUserPub, _ := systemUserNKey.PublicKey()
 	systemUserPriv, _ := systemUserNKey.Seed()
@@ -236,7 +196,7 @@ func CreateUserCreds(clientID string,
 	pubKey, _ := userKey.PublicKey()
 	privKey, _ := userKey.Seed()
 	claims := jwt.NewUserClaims(pubKey)
-	claims.Subject = pubKey
+	//claims.Subject = pubKey
 	//-- in server mode this might work differently from operator mode
 	// should appAccountName or public key be used???
 	//claims.Audience = appAccountName

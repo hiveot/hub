@@ -14,27 +14,26 @@ import (
 const DefaultCaCertFile = "caCert.pem"
 const DefaultCaKeyFile = "caKey.pem"
 
-//
-//// Certificate Organization Unit for client certificate based authorization
-//const (
-//	//OUAdmin lets a client approve thing provisioning (postOOB), add and remove users
-//	// Provision API permissions: GetDirectory, ProvisionRequest, GetStatus, PostOOB
-//	OUAdmin = "admin"
-//
-//	// OUNone is the default OU with no API access permissions
-//	OUNone = "unauth"
-//
-//	// OUUser for consumers with mutual authentication
-//	OUUser = "user"
-//
-//	// OUIoTDevice for IoT devices with mutual authentication
-//	OUIoTDevice = "device"
-//
-//	// OUService for Hub services with mutual authentication
-//	// By default, services have access to other services
-//	// Provision API permissions: Any
-//	OUService = "service"
-//)
+// Certificate Organization Unit for client certificate based authorization
+const (
+	//OUAdmin lets a client approve thing provisioning (postOOB), add and remove users
+	// Provision API permissions: GetDirectory, ProvisionRequest, GetStatus, PostOOB
+	OUAdmin = "admin"
+
+	// OUNone is the default OU with no API access permissions
+	OUNone = "unauth"
+
+	// OUUser for consumers with mutual authentication
+	OUUser = "user"
+
+	// OUIoTDevice for IoT devices with mutual authentication
+	OUIoTDevice = "device"
+
+	// OUService for Hub services with mutual authentication
+	// By default, services have access to other services
+	// Provision API permissions: Any
+	OUService = "service"
+)
 
 // LoadX509CertFromPEM loads the x509 certificate from a PEM file format.
 //
