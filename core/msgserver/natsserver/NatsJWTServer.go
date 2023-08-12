@@ -14,17 +14,9 @@ import (
 // This configures the server to use a separate callout account
 // This configures the server for publishing  provides a static configuration for the server for authn, authz, directory, and history streaming
 type NatsJWTServer struct {
-	cfg        NatsJWTConfig
-	caCert     *x509.Certificate
-	serverCert *tls.Certificate
-	natsOpts   server.Options
-	// predefined authn key for connecting core services
-	//serviceKey nkeys.KeyPair
-	//serviceJWT string
-	ns *server.Server
-
-	// the handler to verify authentication requests, or nil to accept any
-	//verifyAuthn func(req *jwt.AuthorizationRequestClaims) error
+	cfg      NatsServerConfig
+	natsOpts server.Options
+	ns       *server.Server
 }
 
 // ConnectInProc connects to the server in-process using the service key.
@@ -35,17 +27,17 @@ func (srv *NatsJWTServer) ConnectInProc(clientID string) (*nats.Conn, error) {
 	//sigCB := func(nonce []byte) ([]byte, error) {
 	//	return srv.serviceKey.Sign(nonce)
 	//}
-	clientJWT := srv.cfg.AppServiceJWT
-	clientKP := srv.cfg.AppServiceKP
+	clientJWT := srv.cfg.CoreServiceJWT
+	clientKP := srv.cfg.CoreServiceKP
 
 	// If the server uses TLS then the in-process pipe connection is also upgrade to TLS.
 	caCertPool := x509.NewCertPool()
-	if srv.caCert != nil {
-		caCertPool.AddCert(srv.caCert)
+	if srv.cfg.CaCert != nil {
+		caCertPool.AddCert(srv.cfg.CaCert)
 	}
 	tlsConfig := &tls.Config{
 		RootCAs:            caCertPool,
-		InsecureSkipVerify: srv.caCert == nil,
+		InsecureSkipVerify: srv.cfg.CaCert == nil,
 	}
 
 	//clientJWT, err := jwt.ParseDecoratedJWT(clientCreds)
@@ -70,10 +62,12 @@ func (srv *NatsJWTServer) ConnectInProc(clientID string) (*nats.Conn, error) {
 	return cl, err
 }
 
-// Start the NATS server
-func (srv *NatsJWTServer) Start(cfg NatsJWTConfig) (clientURL string, err error) {
-
-	srv.natsOpts, srv.cfg = CreateNatsJWTOptions(cfg)
+// Start the NATS server with the given configuration
+//
+//	cfg.Setup() must have been called first.
+func (srv *NatsJWTServer) Start(cfg NatsServerConfig) (clientURL string, err error) {
+	srv.cfg = cfg
+	srv.natsOpts = cfg.CreateNatsJWTOptions()
 
 	// start nats
 	srv.ns, err = server.NewServer(&srv.natsOpts)
@@ -99,27 +93,9 @@ func (srv *NatsJWTServer) Stop() {
 	srv.ns.Shutdown()
 }
 
-// NewNatsJWTServer creates a new instance of the Hub NATS server
-// The given configuration is optional. The server will run with production settings out of the box.
-//
-// Use SetAuthnVerifier function to install the callout authn handler.
-//
-//	cfg contains an initialized server configuration for use as hiveot hub
-//	serverCert is the TLS certificate of the server signed by the CA
-//	caCert is the CA certificate
-//	serviceNKey is the services nkey
-func NewNatsJWTServer(
-	serverCert *tls.Certificate,
-	caCert *x509.Certificate,
-	// serviceKey nkeys.KeyPair,
-	// serviceJWT string,
-) *NatsJWTServer {
+// NewNatsJWTServer creates a new instance of the Hub NATS server using JWT authentication
+func NewNatsJWTServer() *NatsJWTServer {
 
-	srv := &NatsJWTServer{
-		caCert:     caCert,
-		serverCert: serverCert,
-		//serviceKey: serviceKey,
-		//serviceJWT: serviceJWT,
-	}
+	srv := &NatsJWTServer{}
 	return srv
 }

@@ -31,7 +31,7 @@ var testDir = path.Join(os.TempDir(), "test-authn")
 
 // the following are set by the testmain
 var clientURL string
-var msgServer *natsserver.HubNatsServer
+var msgServer *natsserver.NatsJWTServer
 
 // run the test for different cores
 var useCore = "nats" // nats vs mqtt
@@ -59,7 +59,7 @@ func startTestAuthnService() (cl authn2.IAuthnUser, mng authn2.IAuthnManage, sto
 	// TODO: put this in a test environment
 	_ = os.Remove(passwordFile)
 	cfg := authn.AuthnConfig{}
-	_ = cfg.InitConfig("", testDir)
+	_ = cfg.Setup("", testDir)
 	cfg.PasswordFile = passwordFile
 	cfg.DeviceTokenValidity = 10
 

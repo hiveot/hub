@@ -1,24 +1,23 @@
 package authz
 
-import (
-	"github.com/hiveot/hub/api/go/authz"
-	"path"
-)
+import "path"
 
 // AuthzConfig contains the authorization service configuration
 type AuthzConfig struct {
-	// location of the group storage. Default is $HOME/stores/authz
-	GroupsDir string `yaml:"groupsDir,omitempty"`
+	// location of the authz data storage. Default is $HOME/stores/authz
+	DataDir string `yaml:"dataDir,omitempty"`
 
 	// Do not auto-start the service. Intended for testing or custom implementation.
 	NoAutoStart bool `yaml:"noAutoStart,omitempty"`
 }
 
-// InitConfig loads/creates missing files or folder if needed
-func (cfg *AuthzConfig) InitConfig(storesDir string) error {
+// Setup loads/creates missing files or folder if needed
+//
+//	storesDir is the default storage root directory ($HOME/stores)
+func (cfg *AuthzConfig) Setup(storesDir string) error {
 	// ensure all fields are properly set
-	if cfg.GroupsDir == "" {
-		cfg.GroupsDir = path.Join(storesDir, authz.AuthzServiceName)
+	if cfg.DataDir == "" {
+		cfg.DataDir = path.Join(storesDir, "authz")
 	}
 	return nil
 }

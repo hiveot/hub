@@ -5,18 +5,24 @@ import (
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"os"
+	"path"
 	"testing"
 )
 
 func TestStartStopNKeys(t *testing.T) {
 	certBundle := certs.CreateTestCertBundle()
+	homeDir := path.Join(os.TempDir(), "nats-server-test")
 
-	s := NewNatsNKeyServer(certBundle.ServerCert, certBundle.CaCert)
-	cfg := NatsNKeysConfig{
-		Port:       9990,
-		ServerCert: certBundle.ServerCert,
-		CaCert:     certBundle.CaCert,
+	s := NewNatsNKeyServer()
+	cfg := NatsServerConfig{
+		Port: 9990,
+		//ServerCert: certBundle.ServerCert, //auto generate
+		CaCert: certBundle.CaCert,
+		CaKey:  certBundle.CaKey,
 	}
+	err := cfg.Setup(homeDir, false)
+	require.NoError(t, err)
 	clientURL, err := s.Start(cfg)
 	require.NoError(t, err)
 	defer s.Stop()

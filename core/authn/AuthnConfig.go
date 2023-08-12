@@ -9,12 +9,9 @@ import (
 // AuthnConfig contains the authn service configuration
 type AuthnConfig struct {
 	// PasswordFile with the file based password store.
-	// Use a relative path for using the default stores folder $HOME/stores/authn
-	// Use "" for default defined in 'unpwstore.DefaultPasswordFile'
+	// Use a relative path for using the default $HOME/stores/authn location
+	// Use "" for default defined in 'authnstore.DefaultPasswordFile'
 	PasswordFile string `yaml:"passwordFile"`
-
-	// Folder with CA certificate for client cert based authn
-	CertsDir string `yaml:"certsDir"`
 
 	// Auth token validity for devices in seconds
 	DeviceTokenValidity int `yaml:"deviceTokenValidity"`
@@ -27,14 +24,16 @@ type AuthnConfig struct {
 	NoAutoStart bool `yaml:"noAutoStart"`
 }
 
-// InitConfig loads/creates missing files or folder if needed
-func (cfg *AuthnConfig) InitConfig(certsDir string, storesDir string) error {
+// Setup ensures config is valid
+//
+//	storesDir is the default storage root directory ($HOME/stores)
+func (cfg *AuthnConfig) Setup(storesDir string) error {
 
-	if cfg.CertsDir == "" {
-		cfg.CertsDir = certsDir
-	}
 	if cfg.PasswordFile == "" {
-		cfg.PasswordFile = path.Join(storesDir, authn.AuthnServiceName, authnstore.DefaultPasswordFile)
+		cfg.PasswordFile = authnstore.DefaultPasswordFile
+	}
+	if !path.IsAbs(cfg.PasswordFile) {
+		cfg.PasswordFile = path.Join(storesDir, "authn", cfg.PasswordFile)
 	}
 	if cfg.DeviceTokenValidity == 0 {
 		cfg.DeviceTokenValidity = authn.DefaultDeviceTokenValiditySec

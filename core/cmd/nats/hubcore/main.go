@@ -2,13 +2,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
-	config "github.com/hiveot/hub/core/config/natsconfig"
+	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/core/hubcore/natshubcore"
 	"github.com/hiveot/hub/lib/svcconfig"
 	"github.com/hiveot/hub/lib/utils"
 	"gopkg.in/yaml.v3"
+	"os"
 )
 
 const DefaultCfg = "hub.yaml"
@@ -20,8 +22,8 @@ const DefaultCfg = "hub.yaml"
 //
 // commands:
 //
-//	setup    setup the core from scratch. Generate missing certs and account tokens.
-//	run      run the hub core. core must have been setup before it can run
+//	setup    generate missing directories and files.
+//	run      start the hub core. core must have been setup before it can run
 //	config   show the config that would be used and exit
 //
 // options:
@@ -60,7 +62,7 @@ func main() {
 	homeDir := f.Home
 	flag.StringVar(&f.Home, "home", f.Home, "Application home directory")
 	flag.StringVar(&cfgFile, "c", cfgFile, "Service config file")
-	flag.BoolVar(&newSetup, "new", newSetup, "Overwrite existing config with setup")
+	flag.BoolVar(&newSetup, "new", newSetup, "Overwrite existing config (use with care!)")
 	flag.Usage = func() {
 		fmt.Println("Usage: hub [options] config|run|setup\n")
 		fmt.Println("Options (before command):")
@@ -77,46 +79,54 @@ func main() {
 	if homeDir != f.Home {
 		f = svcconfig.GetFolders(f.Home, false)
 	}
-	hubCfg, err := config.NewHubNatsConfig(f.Home, cfgFile)
+	// setup the configuration
+	hubCfg := config.NewHubCoreConfig()
+	err := hubCfg.Setup(f.Home, cfgFile, newSetup)
 	cmd := ""
 	if len(flag.Args()) > 0 {
 		cmd = flag.Arg(0)
 	}
+
 	// only report error if not running setup
 	if err != nil && cmd != "setup" {
 		fmt.Println("ERROR:", err.Error())
+		os.Exit(1)
 	}
 
 	if cmd == "config" {
 		cfgJson, _ := yaml.Marshal(hubCfg)
 		fmt.Println("Configuration:\n", string(cfgJson))
 	} else if cmd == "setup" {
-		hubCfg.Setup(newSetup)
+		//hubCfg.Setup(f.Home, cfgFile, newSetup)
+		// already done
 	} else if err != nil {
 		// do nothing
 	} else if cmd == "run" {
-		run(hubCfg)
+		err = run(hubCfg)
 	} else {
-		fmt.Println("unknown command: ", cmd)
+		err = errors.New("unknown command: " + cmd)
+	}
+	if err != nil {
+		_, _ = fmt.Fprint(os.Stderr, err.Error()+"\n")
+		os.Exit(1)
 	}
 
 }
 
 // run starts the server and core services
 // This does not return until a signal is received
-func run(cfg *config.HubNatsConfig) {
+func run(cfg *config.HubCoreConfig) error {
 	var err error
 
-	// run the core and make sure all required certs and folders are available
-	cfg.Setup(false)
 	core := natshubcore.NewHubCore(cfg)
 	clientURL := core.Start()
 
 	if err != nil {
-		panic("unable to start server:" + err.Error())
+		return fmt.Errorf("unable to start server: %w", err)
 	}
 
 	// wait until signal
 	fmt.Println("Hub started. ClientURL=" + clientURL)
 	utils.WaitForSignal(context.Background())
+	return nil
 }

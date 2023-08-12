@@ -1,8 +1,6 @@
 package natsserver
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"github.com/nats-io/jwt/v2"
 )
@@ -54,20 +52,11 @@ func (srv *NatsCalloutServer) SetCalloutHandler(
 // external callout authn.
 //
 // Use SetAuthnVerifier function to install the callout authn handler.
-//
-//	serverCert is the TLS certificate of the server signed by the CA
-//	caCert is the CA certificate
-func NewNatsCalloutServer(
-	serverCert *tls.Certificate,
-	caCert *x509.Certificate,
-) *NatsCalloutServer {
+func NewNatsCalloutServer() *NatsCalloutServer {
 
 	srv := &NatsCalloutServer{
-		NatsNKeyServer: NatsNKeyServer{
-			caCert:     caCert,
-			serverCert: serverCert,
-		},
-		chook: nil,
+		NatsNKeyServer: NatsNKeyServer{},
+		chook:          nil,
 	}
 	return srv
 }

@@ -8,20 +8,27 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slog"
+	"os"
+	"path"
 	"sync/atomic"
 	"testing"
 )
 
 func TestStartStopCallout(t *testing.T) {
+	homeDir := path.Join(os.TempDir(), "nats-server-test")
+
 	var coCount atomic.Int32
 	certBundle := certs.CreateTestCertBundle()
 
-	s := NewNatsCalloutServer(certBundle.ServerCert, certBundle.CaCert)
-	cfg := NatsNKeysConfig{
+	s := NewNatsCalloutServer()
+	cfg := NatsServerConfig{
 		Port:       9990,
 		ServerCert: certBundle.ServerCert,
 		CaCert:     certBundle.CaCert,
+		CaKey:      certBundle.CaKey,
 	}
+	err := cfg.Setup(homeDir, false)
+	require.NoError(t, err)
 	clientURL, err := s.Start(cfg)
 	require.NoError(t, err)
 	defer s.Stop()
@@ -45,15 +52,25 @@ func TestStartStopCallout(t *testing.T) {
 	assert.Equal(t, int32(0), coCount.Load())
 	c.Close()
 
+	// a new service should not invoke the callout handler
+	newkey1, _ := nkeys.CreateUser()
+	newkey1Pub, _ := newkey1.PublicKey()
+	s.AddService("newservice", newkey1Pub)
+	c, err = s.ConnectInProc("user1", newkey1)
+	require.NoError(t, err)
+	c.Close()
+	assert.Equal(t, int32(0), coCount.Load())
+
 	// invoke callout by connecting with a valid user
-	newkey, _ := nkeys.CreateUser()
-	c, err = s.ConnectInProc("validuser", newkey)
+	newkey2, _ := nkeys.CreateUser()
+	c, err = s.ConnectInProc("validuser", newkey2)
 	require.NoError(t, err)
 	c.Close()
 	assert.Equal(t, int32(1), coCount.Load())
 
 	// invoke callout by connecting with an invalid user
-	c, err = s.ConnectInProc("invaliduser", newkey)
+	// this will timeout as an unknown user has no inbox
+	c, err = s.ConnectInProc("invaliduser", newkey2)
 	require.Error(t, err)
 	assert.Equal(t, int32(2), coCount.Load())
 }

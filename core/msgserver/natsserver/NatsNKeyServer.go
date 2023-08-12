@@ -8,17 +8,14 @@ import (
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
-	"golang.org/x/exp/slog"
 	"time"
 )
 
 // NatsNKeyServer runs an embedded NATS server using nkeys for authentication.
 type NatsNKeyServer struct {
-	cfg        NatsNKeysConfig
-	natsOpts   server.Options
-	caCert     *x509.Certificate
-	serverCert *tls.Certificate
-	ns         *server.Server
+	cfg      NatsServerConfig
+	natsOpts server.Options
+	ns       *server.Server
 }
 
 // AddService adds a core service authn key to the app account and reloads the options.
@@ -26,7 +23,6 @@ type NatsNKeyServer struct {
 func (srv *NatsNKeyServer) AddService(serviceID string, serviceKeyPub string) error {
 	appAcct, err := srv.ns.LookupAccount(srv.cfg.AppAccountName)
 	if err != nil {
-		slog.Error("lookup account unexpectedly missing", "appAccountName", srv.cfg.AppAccountName)
 		return fmt.Errorf("missing app account: %w", err)
 	}
 	srv.natsOpts.Nkeys = append(srv.natsOpts.Nkeys, &server.NkeyUser{
@@ -47,12 +43,12 @@ func (srv *NatsNKeyServer) ConnectInProc(serviceID string, clientKey nkeys.KeyPa
 
 	// If the server uses TLS then the in-process pipe connection is also upgrade to TLS.
 	caCertPool := x509.NewCertPool()
-	if srv.caCert != nil {
-		caCertPool.AddCert(srv.caCert)
+	if srv.cfg.CaCert != nil {
+		caCertPool.AddCert(srv.cfg.CaCert)
 	}
 	tlsConfig := &tls.Config{
 		RootCAs:            caCertPool,
-		InsecureSkipVerify: srv.caCert == nil,
+		InsecureSkipVerify: srv.cfg.CaCert == nil,
 	}
 	if clientKey == nil {
 		clientKey = srv.cfg.CoreServiceKP
@@ -72,10 +68,13 @@ func (srv *NatsNKeyServer) ConnectInProc(serviceID string, clientKey nkeys.KeyPa
 	return cl, err
 }
 
-// Start the NATS server
-func (srv *NatsNKeyServer) Start(cfg NatsNKeysConfig) (clientURL string, err error) {
+// Start the NATS server with the given configuration
+//
+//	cfg.Setup must have been called first.
+func (srv *NatsNKeyServer) Start(cfg NatsServerConfig) (clientURL string, err error) {
 
-	srv.natsOpts, srv.cfg = CreateNatsNKeyOptions(cfg)
+	srv.cfg = cfg
+	srv.natsOpts = cfg.CreateNatsNKeyOptions()
 	// start nats
 	srv.ns, err = server.NewServer(&srv.natsOpts)
 	if err != nil {
@@ -92,6 +91,8 @@ func (srv *NatsNKeyServer) Start(cfg NatsNKeysConfig) (clientURL string, err err
 	}
 	clientURL = srv.ns.ClientURL()
 
+	// how to enable jetstream for account?
+
 	// add the core service account
 	coreServicePub, _ := srv.cfg.CoreServiceKP.PublicKey()
 	err = srv.AddService("core-service", coreServicePub)
@@ -105,21 +106,8 @@ func (srv *NatsNKeyServer) Stop() {
 }
 
 // NewNatsNKeyServer creates a new instance of the Hub NATS server for NKey authn.
-//
-//	serverCert is the TLS certificate of the server signed by the CA
-//	caCert is the CA certificate
-func NewNatsNKeyServer(
-	serverCert *tls.Certificate,
-	caCert *x509.Certificate,
-	// serviceKey nkeys.KeyPair,
-	// serviceJWT string,
-) *NatsNKeyServer {
+func NewNatsNKeyServer() *NatsNKeyServer {
 
-	srv := &NatsNKeyServer{
-		caCert:     caCert,
-		serverCert: serverCert,
-		//serviceKey: serviceKey,
-		//serviceJWT: serviceJWT,
-	}
+	srv := &NatsNKeyServer{}
 	return srv
 }

@@ -30,7 +30,7 @@ var authBundle = testenv.CreateTestAuthBundle()
 
 // the following are set by the testmain
 var clientURL string
-var msgServer *natsserver.HubNatsServer
+var msgServer *natsserver.NatsJWTServer
 
 // run the test for different cores
 var useCore = "nats" // nats vs mqtt

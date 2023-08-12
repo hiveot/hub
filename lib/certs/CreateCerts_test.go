@@ -26,8 +26,7 @@ func TestCreateCerts(t *testing.T) {
 	assert.NoError(t, err)
 
 	// create a server TLS cert
-	tlsCert, err := certs.CreateTLSCert(serverCert, *serverKeys)
-	assert.NoError(t, err)
+	tlsCert := certs.X509CertToTLS(serverCert, serverKeys)
 	assert.NotEmpty(t, tlsCert)
 
 	// create a client cert

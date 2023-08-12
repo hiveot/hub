@@ -1,6 +1,7 @@
 package natshubcore_test
 
 import (
+	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/core/config/natsconfig"
 	"github.com/hiveot/hub/core/hubclient"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
@@ -32,7 +33,7 @@ var thingsPermissions = &server.Permissions{
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
 	tempFolder = path.Join(os.TempDir(), "test-core")
-	hubCfg, _ = natsconfig.NewHubNatsConfig(tempFolder, "")
+	hubCfg, _ = config.NewHubNatsConfig(tempFolder, "")
 	// clear all existing data if any
 	hubCfg.Setup(true)
 

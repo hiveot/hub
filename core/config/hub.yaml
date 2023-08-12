@@ -1,29 +1,32 @@
 # hub.yaml contains the hiveot hub core configuration
 
+# run the core using nats or mqtt
+core: "nats"
 
-# Messaging server configuration
-server:
+
+# Nats Messaging server configuration
+natsserver:
   # specific listening address, default is 127.0.0.1
   # the host name or IP must match that of the certificate for TLS to work
   #host: "127.0.0.1"
 
-  # default listening TLS port is 4222 and 4223 for websocket
+  # default listening TLS port is 4222 and 8222 for websocket
   #port: 4222
-  #wsPort: 8222
+  #wsPort: 8222   # default disabled
 
   # logging level for server: debug, info, warn (default), error
   #logLevel: "warn"
   # logfile to write to in the logging folder. Default is stderr
   #logFile: "hubcore.log"
 
-  # maximum in-memory RAM usage. Default (0) is 100MB. -1 for maximum
-  #maxDataMemoryMB: 100
+  # maximum in-memory RAM usage. Default (0) is 1024. -1 for maximum
+  #maxDataMemoryMB: 1024
 
-  # Data location. Default is "$HOME/stores/server"
-  #dataDir: "$HOME/stores/server"
+  # Data location. Default is "$STORES/natsserver"
+  #dataDir: "$STORES/natsserver"
 
   # names or paths to server TLS server certificate and key file
-  # the default dir is "$HOME/certs"
+  # the default dir is "$CERTS"
   #serverCertFile: "serverCert.pem"
   #serverKeyFile: "serverKey.pem"
 
@@ -31,20 +34,27 @@ server:
   #caCertFile: "caCert.pem"
   #caKeyFile: "caKey.pem"
 
-  # Name of application account. Default is hiveotapp
-  #appAccountName: "hiveotapp"
+  # Name of application account. Default is hiveot
+  #appAccountName: "hiveot"
   # name or path to the application account key file. The default dir is "$HOME/certs"
   #appAccountKeyFile: "hiveotAcct.nkey"
+
+  # Enable server debug in logging. Default is false
+  #Debug: false
 
   # disable running the embedded messaging server
   #noAutoStart: true     # dont start the embedded server
 
+# Mqtt Messaging server configuration
+mqttserver:
+
+
 # Authentication service configuration
 authn:
   # name or path to password file, with stored bcrypted passwords
-  # Default dir is "$HOME/stores/authn"
+  # default location is $HOME/stores/authn.
   # This contains sensitive information and should only be readable by the core process
-  #passwordFile "hub.passwd"
+  #passwordFile: "hub.passwd"
 
   # optional override of the renewed auth token validity in days
   # for devices, services and users.
@@ -59,9 +69,9 @@ authn:
 
 # Authorization service configuration
 authz:
-  # directory to store groups. Default is $HOME/stores/authz
+  # directory to store authz data. Default is $STORES/authz
   # This contains sensitive information and should only be readable by the core process
-  #groupsDir: "$HOME/stores/authz"
+  #dataDir: "$STORES/authz"
 
   # Do not auto-start the embedded authorization service
   # Use this for testing or when authz is running stand-alone

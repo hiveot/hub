@@ -3,7 +3,6 @@ package certs
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
-	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
@@ -27,7 +26,7 @@ const DefaultServerCertValidityDays = 100
 //	* ou is the organizational unit of the certificate
 //	* validityDays is the duration the cert is valid for. Use 0 for default.
 //	* serverPubKey is the server's public key
-//	* names are the SAN names to include with the certificate, typically the service IP address or host names
+//	* names are the SAN names to include with the certificate, localhost and 127.0.0.1 are always added
 //	* caCert is the CA certificate used to sign the certificate
 //	* caKey is the CA private key used to sign certificate
 func CreateServerCert(
@@ -36,14 +35,19 @@ func CreateServerCert(
 	caCert *x509.Certificate, caKey *ecdsa.PrivateKey) (
 	x509Cert *x509.Certificate, err error) {
 
-	if serverID == "" || serverPubKey == nil || names == nil {
-		err := fmt.Errorf("missing argument serviceID, servicePubKey, or names")
+	if serverID == "" || serverPubKey == nil {
+		err := fmt.Errorf("missing argument serviceID, servicePubKey")
 		logrus.Error(err)
 		return nil, err
 	}
 	if validityDays == 0 {
 		validityDays = DefaultServerCertValidityDays
 	}
+	if names == nil {
+		names = []string{}
+	}
+	names = append(names, "127.0.0.1")
+	names = append(names, "localhost")
 
 	// firefox complains if serial is the same as that of the CA. So generate a unique one based on timestamp.
 	serial := time.Now().Unix() - 3
@@ -97,16 +101,4 @@ func CreateServerCert(
 		x509Cert, err = x509.ParseCertificate(certDerBytes)
 	}
 	return x509Cert, err
-}
-
-// CreateTLSCert generates a TLS certificate from x509 and key
-func CreateTLSCert(x509Cert *x509.Certificate, key ecdsa.PrivateKey) (
-	tlsCert *tls.Certificate, err error) {
-	certDer := x509Cert.Raw
-
-	// combined them into a TLS certificate
-	tlsCert = &tls.Certificate{}
-	tlsCert.Certificate = append(tlsCert.Certificate, certDer)
-	tlsCert.PrivateKey = key
-	return tlsCert, err
 }
