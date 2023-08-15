@@ -20,24 +20,26 @@ const NoAuthUserID = "unauthenticated"
 // NatsServerConfig holds the configuration for nkeys and jwt based servers
 type NatsServerConfig struct {
 	// configurable settings
-	Host            string `yaml:"host"`            // default: localhost
-	Port            int    `yaml:"port"`            // default: 4222
-	WSPort          int    `yaml:"wsPort"`          // default: 0 (disabled)
-	MaxDataMemoryMB int    `yaml:"maxDataMemoryMB"` // default: 1024
-	DataDir         string `yaml:"dataDir"`         // default is server default
-	AppAccountName  string `yaml:"appAccountName"`  // default: hiveot
-	Debug           bool   `yaml:"debug"`           // default: false
-	LogLevel        string `yaml:"logLevel"`        // default: warn
-	LogFile         string `yaml:"logFile"`         // default: no logfile
+	Host            string `yaml:"host,omitempty"`            // default: localhost
+	Port            int    `yaml:"port,omitempty"`            // default: 4222
+	WSPort          int    `yaml:"wsPort,omitempty"`          // default: 0 (disabled)
+	MaxDataMemoryMB int    `yaml:"maxDataMemoryMB,omitempty"` // default: 1024
+	DataDir         string `yaml:"dataDir,omitempty"`         // default is server default
+	AppAccountName  string `yaml:"appAccountName,omitempty"`  // default: hiveot
+	Debug           bool   `yaml:"debug,omitempty"`           // default: false
+	LogLevel        string `yaml:"logLevel,omitempty"`        // default: warn
+	LogFile         string `yaml:"logFile,omitempty"`         // default: no logfile
+	// Do not autostart the server when run by the hub core. Default False
+	NoAutoStart bool `yaml:"noAutoStart,omitempty"`
 
 	// optional files that persist cert and keys
-	CaCertFile     string `yaml:"caCertFile"`     // default: caCert.pem
-	CaKeyFile      string `yaml:"caKeyFile"`      // default: caKey.pem
-	ServerCertFile string `yaml:"serverCertFile"` // default: hubCert.pem
-	ServerKeyFile  string `yaml:"serverKeyFile"`  // default: kubKey.pem
+	CaCertFile     string `yaml:"caCertFile,omitempty"`     // default: caCert.pem
+	CaKeyFile      string `yaml:"caKeyFile,omitempty"`      // default: caKey.pem
+	ServerCertFile string `yaml:"serverCertFile,omitempty"` // default: hubCert.pem
+	ServerKeyFile  string `yaml:"serverKeyFile,omitempty"`  // default: kubKey.pem
 	//
-	OperatorKeyFile   string `yaml:"operatorKeyFile"`   // default: operator.nkey (jwt only)
-	AppAccountKeyFile string `yaml:"appAccountKeyFile"` // default: appAcct.nkey
+	OperatorKeyFile   string `yaml:"operatorKeyFile,omitempty"`   // default: operator.nkey (jwt only)
+	AppAccountKeyFile string `yaml:"appAccountKeyFile,omitempty"` // default: appAcct.nkey
 
 	// The certs and keys can be set directly or loaded from above files
 	CaCert          *x509.Certificate `yaml:"-"` // preset, load, or error
@@ -289,27 +291,27 @@ var noAuthPermissions = &server.Permissions{
 // Note that Setup() must have been called first.
 func (cfg *NatsServerConfig) CreateNatsNKeyOptions() server.Options {
 
-	//systemAccountPub, _ := cfg.SystemAccountKP.PublicKey()
-	appAccountPub, _ := cfg.AppAccountKP.PublicKey()
-	//coreServiceKeyPub, _ := cfg.CoreServiceKP.PublicKey()
+	systemAcct := server.NewAccount("SYS")
+	systemAccountPub, _ := cfg.SystemAccountKP.PublicKey()
+	systemAcct.Nkey = systemAccountPub
 
-	//systemAcct := server.NewAccount("$SYS")
-	//systemAcct.Nkey = systemAccountPub
 	// NewAccount creates a limitless account. There is no way to set a limit though :/
 	appAcct := server.NewAccount(cfg.AppAccountName)
+	appAccountPub, _ := cfg.AppAccountKP.PublicKey()
 	appAcct.Nkey = appAccountPub
 
 	natsOpts := server.Options{
 		Host: cfg.Host,
 		Port: cfg.Port,
 
-		//SystemAccount: "$SYS",
-		Accounts: []*server.Account{appAcct},
-		//Accounts:      []*server.Account{systemAcct, appAcct},
-		NoAuthUser: NoAuthUserID,
+		SystemAccount: "SYS",
+		Accounts:      []*server.Account{systemAcct, appAcct},
+		NoAuthUser:    NoAuthUserID,
+		// Undocumented: setting a trusted key switches the server to JWT-only
+		//TrustedKeys: []string{operatorPub},
 
 		Nkeys: []*server.NkeyUser{},
-		// login without password is needed to obtain a token using a password
+		// login without password is needed for out-of-band provisioning
 		Users: []*server.User{
 			{
 				Username:    NoAuthUserID,

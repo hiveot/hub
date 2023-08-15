@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
@@ -13,14 +14,41 @@ import (
 
 // NatsNKeyServer runs an embedded NATS server using nkeys for authentication.
 type NatsNKeyServer struct {
-	cfg      NatsServerConfig
+	cfg      *NatsServerConfig
 	natsOpts server.Options
 	ns       *server.Server
+	// enable callout authn with EnableCalloutHandler. nil to just use nkeys
+	chook *NatsCalloutHook
+}
+
+// AddDevice adds a IoT device authn key to the app account and reloads the options.
+// Devices can pub/sub on their own subject, eg: things.{deviceID}.>
+func (srv *NatsNKeyServer) AddDevice(deviceID string, deviceKeyPub string) error {
+	// if callout has been activated then exclude the key from invoking callout
+	if srv.natsOpts.AuthCallout != nil {
+		srv.natsOpts.AuthCallout.AuthUsers = append(srv.natsOpts.AuthCallout.AuthUsers, deviceKeyPub)
+	}
+
+	appAcct, err := srv.ns.LookupAccount(srv.cfg.AppAccountName)
+	if err != nil {
+		return fmt.Errorf("missing app account: %w", err)
+	}
+	srv.natsOpts.Nkeys = append(srv.natsOpts.Nkeys, &server.NkeyUser{
+		Nkey:    deviceKeyPub,
+		Account: appAcct,
+	})
+	err = srv.ns.ReloadOptions(&srv.natsOpts)
+	return err
 }
 
 // AddService adds a core service authn key to the app account and reloads the options.
 // Services can pub/sub to all things subjects
 func (srv *NatsNKeyServer) AddService(serviceID string, serviceKeyPub string) error {
+	// if callout has been activated then exclude the key from invoking callout
+	if srv.natsOpts.AuthCallout != nil {
+		srv.natsOpts.AuthCallout.AuthUsers = append(srv.natsOpts.AuthCallout.AuthUsers, serviceKeyPub)
+	}
+
 	appAcct, err := srv.ns.LookupAccount(srv.cfg.AppAccountName)
 	if err != nil {
 		return fmt.Errorf("missing app account: %w", err)
@@ -29,6 +57,37 @@ func (srv *NatsNKeyServer) AddService(serviceID string, serviceKeyPub string) er
 		Nkey:    serviceKeyPub,
 		Account: appAcct,
 	})
+	err = srv.ns.ReloadOptions(&srv.natsOpts)
+	return err
+}
+
+// AddUser adds a user login/pw to the app account and reloads the options.
+// Users can pub to inboxes
+func (srv *NatsNKeyServer) AddUser(userID string, password string, userKeyPub string) error {
+	// if callout has been activated then exclude the key from callout
+	if srv.natsOpts.AuthCallout != nil && userKeyPub != "" {
+		srv.natsOpts.AuthCallout.AuthUsers = append(srv.natsOpts.AuthCallout.AuthUsers, userKeyPub)
+	}
+
+	appAcct, err := srv.ns.LookupAccount(srv.cfg.AppAccountName)
+	if err != nil {
+		return fmt.Errorf("missing app account: %w", err)
+	}
+	if userKeyPub != "" {
+		srv.natsOpts.Nkeys = append(srv.natsOpts.Nkeys, &server.NkeyUser{
+			Nkey:    userKeyPub,
+			Account: appAcct,
+			// todo: permissions
+		})
+	}
+	if password != "" {
+		srv.natsOpts.Users = append(srv.natsOpts.Users, &server.User{
+			Username:    userID,
+			Password:    password,
+			Permissions: nil, // TODO
+			Account:     appAcct,
+		})
+	}
 	err = srv.ns.ReloadOptions(&srv.natsOpts)
 	return err
 }
@@ -65,16 +124,45 @@ func (srv *NatsNKeyServer) ConnectInProc(serviceID string, clientKey nkeys.KeyPa
 		nats.Timeout(time.Minute),
 		nats.InProcessServer(srv.ns),
 	)
+	if err == nil {
+		js, err2 := cl.JetStream()
+		err = err2
+		_ = js
+	}
 	return cl, err
+}
+
+// EnableCalloutHandler reconfigures the server for external callout authn
+// The authn callout handler will issue tokens for the application account.
+// Invoke this after successfully starting the server
+func (srv *NatsNKeyServer) EnableCalloutHandler(
+	authnVerifier func(request *jwt.AuthorizationRequestClaims) error) error {
+
+	// Ideally the callout handler uses a separate callout account.
+	// Apparently this isn't allowed so it runs in the application account.
+	nc, err := srv.ConnectInProc("callout", nil)
+	if err != nil {
+		return fmt.Errorf("unable to connect callout handler: %w", err)
+	}
+	if err == nil {
+		srv.chook, err = ConnectNatsCalloutHook(
+			&srv.natsOpts,
+			srv.cfg.AppAccountName, // issuerAcctName,
+			srv.cfg.AppAccountKP,
+			nc,
+			authnVerifier)
+	}
+	return err
 }
 
 // Start the NATS server with the given configuration
 //
 //	cfg.Setup must have been called first.
-func (srv *NatsNKeyServer) Start(cfg NatsServerConfig) (clientURL string, err error) {
+func (srv *NatsNKeyServer) Start(cfg *NatsServerConfig) (clientURL string, err error) {
 
 	srv.cfg = cfg
 	srv.natsOpts = cfg.CreateNatsNKeyOptions()
+
 	// start nats
 	srv.ns, err = server.NewServer(&srv.natsOpts)
 	if err != nil {

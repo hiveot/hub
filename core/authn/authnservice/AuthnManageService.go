@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/core/authn/authnstore"
+	"github.com/hiveot/hub/core/msgserver/natsserver"
 	"golang.org/x/exp/slog"
 )
 
@@ -15,12 +16,18 @@ type AuthnManageService struct {
 	store authnstore.IAuthnStore
 	// tokenizer for handling tokens
 	tokenizer authn.IAuthnTokenizer
+	// server for updating nkeys and users
+	msgServer *natsserver.NatsNKeyServer
 }
 
 // AddDevice adds an IoT device and generates an authentication token
 // This is handled by the underlying messaging core.
 func (svc *AuthnManageService) AddDevice(
 	deviceID string, name string, pubKey string, validitySec int) (token string, err error) {
+	slog.Info("AddDevice",
+		slog.String("deviceID", deviceID),
+		slog.String("name", name),
+		slog.String("pubKey", pubKey))
 
 	if deviceID == "" {
 		return "", fmt.Errorf("AddDevice: missing device ID")
@@ -42,6 +49,7 @@ func (svc *AuthnManageService) AddDevice(
 		if err != nil {
 			return token, fmt.Errorf("device '%s' added, but: %w", deviceID, err)
 		}
+		err = svc.msgServer.AddDevice(deviceID, pubKey)
 	}
 	return token, err
 }
@@ -49,6 +57,10 @@ func (svc *AuthnManageService) AddDevice(
 // AddService adds or updates a service
 func (svc *AuthnManageService) AddService(
 	serviceID string, name string, pubKey string, validitySec int) (token string, err error) {
+	slog.Info("AddService",
+		slog.String("serviceID", serviceID),
+		slog.String("name", name),
+		slog.String("pubKey", pubKey))
 
 	if serviceID == "" {
 		return "", fmt.Errorf("missing service ID")
@@ -69,6 +81,7 @@ func (svc *AuthnManageService) AddService(
 		if err != nil {
 			return token, fmt.Errorf("service '%s' added, but: %w", serviceID, err)
 		}
+		err = svc.msgServer.AddService(serviceID, pubKey)
 	}
 	return token, err
 }
@@ -77,6 +90,12 @@ func (svc *AuthnManageService) AddService(
 // If a public key is provided a signed token will be returned
 func (svc *AuthnManageService) AddUser(
 	userID string, userName string, password string, pubKey string) (token string, err error) {
+
+	slog.Info("AddUser",
+		slog.String("userID", userID),
+		slog.String("userName", userName),
+		slog.String("pubKey", pubKey))
+
 	if userID == "" {
 		return "", fmt.Errorf("missing user ID")
 	}
@@ -87,7 +106,7 @@ func (svc *AuthnManageService) AddUser(
 		PubKey:      pubKey,
 	})
 	if err != nil {
-		return "", fmt.Errorf("user with clientID '%s' already exists", userID)
+		return "", err
 	}
 	if password != "" {
 		err = svc.store.SetPassword(userID, password)
@@ -100,9 +119,10 @@ func (svc *AuthnManageService) AddUser(
 	if pubKey != "" {
 		token, err = svc.tokenizer.CreateToken(userID, authn.ClientTypeUser, pubKey, authn.DefaultUserTokenValiditySec)
 		if err != nil {
-			err = fmt.Errorf("AddUser: user '%s' added, but: %w. Continuing", userID, err)
+			err = fmt.Errorf("AddUser: user '%s' added, but: '%w'... continuing... ", userID, err)
 			slog.Error(err.Error())
 		}
+		err = svc.msgServer.AddUser(userID, password, pubKey)
 	}
 	return token, err
 }
@@ -137,10 +157,15 @@ func (svc *AuthnManageService) UpdateClient(clientID string, prof authn.ClientPr
 // NewAuthnManageService creates the service to manage authentication clients
 //
 //	store for storing clients
+//	natsServer to update with keys and users
 //	tokenizer to generate tokens for authentication with the underlying messaging service
-func NewAuthnManageService(store authnstore.IAuthnStore, tokenizer authn.IAuthnTokenizer) *AuthnManageService {
+func NewAuthnManageService(
+	store authnstore.IAuthnStore,
+	msgServer *natsserver.NatsNKeyServer,
+	tokenizer authn.IAuthnTokenizer) *AuthnManageService {
 	svc := &AuthnManageService{
 		store:     store,
+		msgServer: msgServer,
 		tokenizer: tokenizer,
 	}
 	return svc

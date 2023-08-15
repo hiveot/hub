@@ -3,7 +3,7 @@ package authnservice
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/core/hubclient"
+	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 	"golang.org/x/exp/slog"
 )

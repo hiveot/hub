@@ -3,12 +3,13 @@ package authz_test
 import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
+	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/core/authn/natsauthn"
 	"github.com/hiveot/hub/core/authz/authzservice"
 	"github.com/hiveot/hub/core/authz/natsauthz"
-	"github.com/hiveot/hub/core/hubclient"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/msgserver/natsserver"
+	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -26,7 +27,8 @@ import (
 var testDir = path.Join(os.TempDir(), "test-authz")
 var aclFilename = "authz.acl"
 var aclFilePath = path.Join(testDir, aclFilename)
-var authBundle = testenv.CreateTestAuthBundle()
+var authBundle testenv.TestNatsAuthBundle
+var certBundle certs.TestCertBundle
 
 // the following are set by the testmain
 var clientURL string
@@ -48,14 +50,15 @@ func startTestAuthzService() (svc authz.IAuthz, closeFn func()) {
 	}
 	if useCore == "nats" {
 		tokenizer := natsauthn.NewAuthnNatsTokenizer(authBundle.AppAccountKey)
-		hc := natshubclient.NewHubClient(authBundle.ServiceKey)
 		authzJWT, _ := tokenizer.CreateToken(
 			authz.AuthzServiceName,
 			authn.ClientTypeService,
 			authBundle.ServiceKeyPub,
 			authn.DefaultServiceTokenValiditySec)
-		err = hc.ConnectWithJWT(clientURL, authzJWT, authBundle.CaCert)
-		authzAppl = natsauthz.NewNatsAuthzAppl(hc.JS())
+		hcNats, err2 := natshubclient.ConnectWithJWT(clientURL, authBundle.ServiceKey, authzJWT, certBundle.CaCert)
+		hc = hcNats
+		err = err2
+		authzAppl = natsauthz.NewNatsAuthzAppl(hcNats.JS())
 	} else if useCore == "mqtt" {
 		//hc = NewMqttHubClient()
 		//authzAll = mqttauthz.NewMqttAuthzAppl(hc)
@@ -81,7 +84,7 @@ func TestMain(m *testing.M) {
 	_ = os.RemoveAll(testDir)
 	_ = os.MkdirAll(testDir, 0700)
 
-	clientURL, msgServer, err = testenv.StartTestServer(testDir, &authBundle)
+	clientURL, msgServer, certBundle, authBundle, err = testenv.StartNatsTestServer()
 	if err != nil {
 		panic(err)
 	}

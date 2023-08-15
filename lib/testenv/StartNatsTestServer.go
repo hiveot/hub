@@ -7,18 +7,21 @@ import (
 
 // StartNatsTestServer generate a test configuration and starts a NKeys based nats test server
 func StartNatsTestServer() (
-	clientURL string, server *natsserver.NatsNKeyServer, certBundle certs.TestCertBundle, err error) {
+	clientURL string, server *natsserver.NatsNKeyServer, certBundle certs.TestCertBundle, config *natsserver.NatsServerConfig, err error) {
 
 	certBundle = certs.CreateTestCertBundle()
-	hubNatsServer := natsserver.NewNatsNKeyServer(
-		certBundle.ServerCert, certBundle.CaCert)
+	hubNatsServer := natsserver.NewNatsNKeyServer()
 
-	appCfg := natsserver.NatsNKeysConfig{
-		Port:       9990,
-		CaCert:     certBundle.CaCert,
-		ServerCert: certBundle.ServerCert,
-		Debug:      true,
+	serverCfg := &natsserver.NatsServerConfig{
+		Port:   9990,
+		CaCert: certBundle.CaCert,
+		CaKey:  certBundle.CaKey,
+		//ServerCert: certBundle.ServerCert, // auto generate
+		Debug: true,
 	}
-	clientURL, err = hubNatsServer.Start(appCfg)
-	return clientURL, hubNatsServer, certBundle, err
+	err = serverCfg.Setup("", "", false)
+	if err == nil {
+		clientURL, err = hubNatsServer.Start(serverCfg)
+	}
+	return clientURL, hubNatsServer, certBundle, serverCfg, err
 }

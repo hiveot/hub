@@ -136,37 +136,38 @@ type IAuthnManage interface {
 
 	// AddDevice adds an IoT device and generates an authentication token
 	// The device must periodically refresh its token for it to remain valid.
+	// This returns a new device authentication token
 	//
-	// If the device already exists then this returns an error.
+	// If the device already exists or the pubKey is invalid then an error is returned.
 	//
 	//  deviceID is the thingID of the device, used for publishing things by this device.
 	//  displayName of the service for presentation
 	//  pubKey ECDSA public key of the device
 	//  validitySec is duration the device token is valid for. 0 for the default DefaultDeviceTokenValiditySec
-	// This returns a new device authentication token
 	AddDevice(deviceID string, displayName string, pubKey string, validitySec int) (token string, err error)
 
 	// AddService adds a new service and generates a service token.
 	// The service must periodically refresh its token for it to remain valid.
+	// This returns a new service authentication token
 	//
-	// If the serviceID already exists then an error is returned
+	// If the serviceID already exists or the public key is invalid then an error is returned
 	//
 	//  serviceID is the instance ID of the service on the network.
 	//  displayName of the service for presentation
 	//  pubKey ECDSA public key of the service
 	//  validitySec is duration the service token is valid for. 0 for the default DefaultServiceTokenValiditySec
-	// This returns a new service authentication token
 	AddService(serviceID string, displayName string, pubKey string, validitySec int) (token string, err error)
 
-	// AddUser adds a user.
+	// AddUser adds a user with a password, public key or neither.
 	// The caller must be an administrator or service.
-	// If the userID already exists then an error is returned
+	// If the userID already exists or the pubKye is invalid then an error is returned
+	// This returns a new user authentication token if a valid pubKey is provided.
+	//
 	//  userID is the login ID of the user, typically their email
 	//  displayName of the user for presentation
 	//  password the user can login with if their token has expired. Optional.
-	//  pubKey the public key to receive a signed token
+	//  pubKey the public key to receive a signed token. Ignored if not a valid key.
 	//  validitySec is duration the token is valid for. 0 for the default DefaultServiceTokenValiditySec
-	// This returns a new user authentication token if pubKey was provided.
 	AddUser(userID string, displayName string, password string, pubKey string) (token string, err error)
 
 	// GetCount returns the number of clients in the store

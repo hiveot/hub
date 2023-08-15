@@ -1,13 +1,13 @@
 package natshubcore_test
 
 import (
+	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/hubclient"
+	"github.com/hiveot/hub/core/authn/natsauthn"
 	"github.com/hiveot/hub/core/config"
-	"github.com/hiveot/hub/core/config/natsconfig"
-	"github.com/hiveot/hub/core/hubclient"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/hubcore/natshubcore"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
@@ -20,8 +20,9 @@ import (
 )
 
 // var authBundle = testenv.CreateTestAuthBundle()
-var tempFolder = ""
-var hubCfg *natsconfig.HubNatsConfig
+// var tempFolder = ""
+var hubCfg *config.HubCoreConfig
+var core = "nats"
 
 var thingsPermissions = &server.Permissions{
 	Publish:   &server.SubjectPermission{Allow: []string{"things.>"}, Deny: []string{"other.>"}},
@@ -32,10 +33,14 @@ var thingsPermissions = &server.Permissions{
 
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
-	tempFolder = path.Join(os.TempDir(), "test-core")
-	hubCfg, _ = config.NewHubNatsConfig(tempFolder, "")
+	homeDir := path.Join(os.TempDir(), "test-core")
+
+	hubCfg = config.NewHubCoreConfig()
 	// clear all existing data if any
-	hubCfg.Setup(true)
+	err := hubCfg.Setup(homeDir, "", true)
+	if err != nil {
+		slog.Error(err.Error())
+	}
 
 	res := m.Run()
 	os.Exit(res)
@@ -43,48 +48,49 @@ func TestMain(m *testing.M) {
 
 func TestHubServer_StartStop(t *testing.T) {
 	clientURL := ""
-	core := natshubcore.NewHubCore(hubCfg)
-	require.NotPanics(t, func() { clientURL = core.Start() })
+	hub := natshubcore.NewHubCore()
+	require.NotPanics(t, func() { clientURL = hub.Start(hubCfg) })
 	require.NotEmpty(t, clientURL)
 	time.Sleep(time.Second * 1)
 
-	core.Stop()
+	hub.Stop()
 }
 
-//func TestPubSub_ConnectAuthNKey(t *testing.T) {
-//	rxchan := make(chan int)
-//	clientURL := ""
-//
-//	hubCfg, err := config.NewHubNatsConfig(tempFolder, "")
-//	require.NoError(t, err)
-//	core := hub.NewHubCore(hubCfg)
-//	require.NotPanics(t, func() { clientURL = core.Start() })
-//
-//	// add the device using its nkey public key
-//	deviceUser, _ := testCerts.DeviceKey.PublicKey()
-//	err = srv.AddUser(deviceUser, thingsPermissions)
-//	assert.NoError(t, err)
-//	defer srv.Stop()
-//
-//	hc := hubconn.NewHubClient("test1")
-//	err = hc.ConnectWithNKey(clientURL, testCerts.DeviceKey, testCerts.CaCert)
-//	defer hc.DisConnect()
-//
-//	assert.NoError(t, err)
-//
-//	err = hc.SubEvent("", "", "", func(tv *thing.ThingValue) {
-//		slog.Info("received event", "id", tv.ID)
-//		rxchan <- 1
-//	})
-//	assert.NoError(t, err)
-//
-//	err = hc.PubEvent("thing1", "event1", []byte("hello"))
-//	assert.NoError(t, err)
-//
-//	rxdata := <-rxchan
-//	assert.Equal(t, 1, rxdata)
-//	//time.Sleep(time.Second * 1)
-//}
+func TestPubSub_ConnectAuthNKey(t *testing.T) {
+	deviceID := "device1"
+	rxchan := make(chan int)
+	clientURL := ""
+
+	hub := natshubcore.NewHubCore()
+	require.NotPanics(t, func() { clientURL = hub.Start(hubCfg) })
+	defer hub.Stop()
+
+	// add a device using its nkey public key
+	deviceKP, _ := nkeys.CreateUser()
+	devicePub, _ := deviceKP.PublicKey()
+	token, err := hub.AuthnSvc.MngService.AddDevice(deviceID, "device1", devicePub, 0)
+	assert.NoError(t, err)
+	_ = token
+
+	hc, err := natshubclient.ConnectWithNKey(clientURL, deviceID, deviceKP, hubCfg.NatsServer.CaCert)
+	defer hc.Disconnect()
+
+	assert.NoError(t, err)
+
+	sub, err := hc.SubEvents("", func(msg *hubclient.EventMessage) {
+		slog.Info("received event", "id", msg.EventID)
+		rxchan <- 1
+	})
+	require.NoError(t, err)
+	defer sub.Unsubscribe()
+
+	err = hc.PubEvent("thing1", "event1", []byte("hello"))
+	assert.NoError(t, err)
+
+	rxdata := <-rxchan
+	assert.Equal(t, 1, rxdata)
+	//time.Sleep(time.Second * 1)
+}
 
 //func TestPubSub_AuthPassword(t *testing.T) {
 //	clientURL := ""
@@ -126,21 +132,20 @@ func TestPubSub_AuthJWT(t *testing.T) {
 	clientURL := ""
 
 	// launch the core services
-	core := natshubcore.NewHubCore(hubCfg)
-	require.NotPanics(t, func() { clientURL = core.Start() })
+	core := natshubcore.NewHubCore()
+	require.NotPanics(t, func() { clientURL = core.Start(hubCfg) })
 	defer core.Stop()
 
-	// use the authn service to create a service token
+	// use the tokenizer to create a service token
 	serviceID := "service1"
 	serviceKey, _ := nkeys.CreateUser()
 	serviceKeyPub, _ := serviceKey.PublicKey()
-	serviceJWT, err := core.AuthnSvc.CreateServiceToken(serviceID, serviceKeyPub, 0)
+	tokenizer := natsauthn.NewAuthnNatsTokenizer(hubCfg.NatsServer.AppAccountKP)
+	serviceJWT, err := tokenizer.CreateToken(serviceID, authn.ClientTypeService, serviceKeyPub, 0)
 	require.NoError(t, err)
-	serviceSeed, _ := serviceKey.Seed()
-	serviceCreds, _ := jwt.FormatUserConfig(serviceJWT, serviceSeed)
 
-	hc := natshubclient.NewHubClient()
-	err = hc.ConnectWithJWT(clientURL, serviceCreds, core.CaCert)
+	// connect using the JWT token
+	hc, err := natshubclient.ConnectWithJWT(clientURL, serviceKey, serviceJWT, hubCfg.NatsServer.CaCert)
 	defer hc.Disconnect()
 
 	assert.NoError(t, err)

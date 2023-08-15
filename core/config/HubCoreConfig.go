@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/core/authn"
 	"github.com/hiveot/hub/core/authz"
-	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/core/msgserver/natsserver"
+	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/svcconfig"
 	"golang.org/x/exp/slog"
 	"gopkg.in/yaml.v3"
@@ -89,7 +89,7 @@ func (cfg *HubCoreConfig) Setup(homeDir string, configFile string, new bool) err
 	}
 
 	// 4: Create/Load the certificates
-	serverTLS, caCert, caKey := msgserver.SetupCerts(
+	serverTLS, caCert, caKey := certs.SetupCerts(
 		f.Certs, cfg.NatsServer.CaCertFile, cfg.NatsServer.CaKeyFile)
 	cfg.NatsServer.CaCert = caCert
 	cfg.NatsServer.CaKey = caKey

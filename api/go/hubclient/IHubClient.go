@@ -1,7 +1,6 @@
 package hubclient
 
 import (
-	"crypto/x509"
 	"github.com/hiveot/hub/api/go/thing"
 )
 
@@ -67,46 +66,6 @@ type IHubClient interface {
 
 	// ClientID of the current connection
 	ClientID() string
-
-	// ConnectWithCert to the Hub with a client certificate.
-	//
-	// The client certificate must be signed by the hub CA.
-	// The url supports various formats.
-	//  "" for the default address and port, eg localhost:port
-	//  ":port" when using a specific port
-	//  "address"  when using an address with the default port
-	//  "schema://address:port/path for the full url
-	//
-	//	url of the Hub. Use "" for the default url.
-	//	clientID to connect as
-	//	clientCert for certificate based authentication
-	//	caCert of the server
-	//ConnectWithCert(url string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate) (err error)
-
-	//ConnectWithNKey(url string, clientID string, clientKey nkeys.KeyPair, caCert *x509.Certificate) (err error)
-
-	// ConnectWithPassword connects to the Hub server using a login ID and password.
-	//
-	// The url supports various formats.
-	//  "" for the default address and port, eg localhost:defaultport
-	//  ":port" when using a specific port on localhost
-	//  "address"  when using an address with the default port
-	//  "schema://address:port/path for the full url
-	//
-	// Provide a CA certificate if available. If nil then the connection will still
-	// use TLS but no server verification will be used (InsecureSkipVerify=true)
-	//
-	// This returns a time limited authentication token that can be used
-	// with ConnectWithJWT without requiring a password.
-	//ConnectWithPassword(url string, loginID string, password string, caCert *x509.Certificate) (token string, err error)
-
-	// ConnectWithJWT connects to the Hub server using a user JWT token issued by the server.
-	//
-	// The url supports various formats. Use "schema://address:port/path for the full url.
-	//
-	// Provide a CA certificate if available. If nil then the connection will still
-	// use TLS but no server verification will be used (InsecureSkipVerify=true)
-	ConnectWithJWT(url string, jwtToken string, caCert *x509.Certificate) (err error)
 
 	// ConnectUnauthenticated connects to the Hub server as an unauthenticated user.
 	// Unauthenticated users can only use methods that explicitly describe they are for unauthorized users,

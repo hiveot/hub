@@ -12,15 +12,17 @@ import (
 	"time"
 )
 
-// AuthnServiceTokenizer is the built-in tokenizer to generate and validate JWT authentication tokens.
+// AuthnJWTTokenizer is the built-in JWT tokenizer to generate and validate JWT authentication tokens.
+// These tokens are not compatible with NATS JWT tokens. NATS adds permission subject
+// claims and requires signing with an account key.
 // This implements the IAuthnTokenizer interface
-type AuthnServiceTokenizer struct {
+type AuthnJWTTokenizer struct {
 	signingKey    ecdsa.PrivateKey
 	signingKeyPub string
 }
 
 // CreateToken creates a signed authentication JWT token
-func (svc *AuthnServiceTokenizer) CreateToken(
+func (svc *AuthnJWTTokenizer) CreateToken(
 	clientID string, clientType string, pubKey string, validitySec int) (newToken string, err error) {
 
 	// see also: https://golang-jwt.github.io/jwt/usage/create/
@@ -67,7 +69,7 @@ func (svc *AuthnServiceTokenizer) CreateToken(
 //   - if signedNonce is provided, verify against the client public key from token
 //
 // if signedNonce is provided then nonce is required.
-func (svc *AuthnServiceTokenizer) ValidateToken(
+func (svc *AuthnJWTTokenizer) ValidateToken(
 	clientID string, tokenString string, signedNonce string, nonce string) (
 	err error) {
 
@@ -140,11 +142,11 @@ func (svc *AuthnServiceTokenizer) ValidateToken(
 // NewAuthnServiceTokenizer provides the default built-in JWT tokenizer for authentication.
 //
 //	signingKP used for signing and verifying JWT tokens
-func NewAuthnServiceTokenizer(signingKey ecdsa.PrivateKey) *AuthnServiceTokenizer {
+func NewAuthnServiceTokenizer(signingKey ecdsa.PrivateKey) *AuthnJWTTokenizer {
 	signingKeyPub, _ := x509.MarshalPKIXPublicKey(signingKey.PublicKey)
 	signingKeyStr := base64.StdEncoding.EncodeToString(signingKeyPub)
 
-	tokenizer := &AuthnServiceTokenizer{
+	tokenizer := &AuthnJWTTokenizer{
 		signingKey:    signingKey,
 		signingKeyPub: signingKeyStr,
 	}

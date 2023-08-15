@@ -10,9 +10,7 @@ import (
 	"time"
 )
 
-// NatsJWTServer runs an embedded NATS server using callout for authentication.
-// This configures the server to use a separate callout account
-// This configures the server for publishing  provides a static configuration for the server for authn, authz, directory, and history streaming
+// NatsJWTServer runs an embedded NATS server using JWT for authentication.
 type NatsJWTServer struct {
 	cfg      NatsServerConfig
 	natsOpts server.Options

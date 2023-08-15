@@ -1,4 +1,4 @@
-package msgserver
+package certs
 
 import (
 	"crypto/ecdsa"
@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/lib/certs"
 	"golang.org/x/exp/slog"
 	"os"
 )
@@ -34,9 +33,9 @@ func SetupCerts(certsDir string, caCertFile string, caKeyFile string) (
 	if _, err2 := os.Stat(caKeyFile); err2 == nil {
 		slog.Info("loading CA certificate and key")
 		// load the CA cert and key
-		caKey, err = certs.LoadKeysFromPEM(caKeyFile)
+		caKey, err = LoadKeysFromPEM(caKeyFile)
 		if err == nil {
-			caCert, err = certs.LoadX509CertFromPEM(caCertFile)
+			caCert, err = LoadX509CertFromPEM(caCertFile)
 		}
 		if err != nil {
 			panic("unable to load CA certificate: " + err.Error())
@@ -44,26 +43,26 @@ func SetupCerts(certsDir string, caCertFile string, caKeyFile string) (
 	} else {
 		slog.Info("creating a self-signed CA certificate and key")
 		//
-		caCert, caKey, err = certs.CreateCA("hiveot", 365*10)
+		caCert, caKey, err = CreateCA("hiveot", 365*10)
 		if err != nil {
 			panic("Unable to create a CA cert: " + err.Error())
 		}
-		err = certs.SaveKeysToPEM(caKey, caKeyFile)
+		err = SaveKeysToPEM(caKey, caKeyFile)
 		if err == nil {
-			err = certs.SaveX509CertToPEM(caCert, caCertFile)
+			err = SaveX509CertToPEM(caCert, caCertFile)
 		}
 	}
 	// 3: Always create a new Server cert and private key
-	serverKey := certs.CreateECDSAKeys()
+	serverKey := CreateECDSAKeys()
 	hostName, _ := os.Hostname()
 	serverID := "nats-" + hostName
 	ou := "hiveot"
 	names := []string{"localhost", "127.0.0.1", hostName}
-	serverCert, err := certs.CreateServerCert(
+	serverCert, err := CreateServerCert(
 		serverID, ou, 365, &serverKey.PublicKey, names, caCert, caKey)
 	if err != nil {
 		panic("Unable to create a server cert: " + err.Error())
 	}
-	serverTLS = certs.X509CertToTLS(serverCert, serverKey)
+	serverTLS = X509CertToTLS(serverCert, serverKey)
 	return serverTLS, caCert, caKey
 }

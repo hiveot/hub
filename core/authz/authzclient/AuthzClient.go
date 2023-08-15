@@ -2,7 +2,6 @@ package authzclient
 
 import (
 	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/core/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 )
 

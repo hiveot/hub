@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-// AuthnNatsTokenizer generates and validates NATS tokens.
+// AuthnNatsJWTTokenizer generates and validates NATS tokens.
 // This implements the IAuthnTokenizer interface
-type AuthnNatsTokenizer struct {
+type AuthnNatsJWTTokenizer struct {
 	accountKey nkeys.KeyPair
 }
 
@@ -26,7 +26,7 @@ type AuthnNatsTokenizer struct {
 //   - Issuer and Subject must match specific NKey roles
 //     NKey Roles are operators, accounts and users,
 //     Operator is the issuer of account, account issuer of users.
-func (svc *AuthnNatsTokenizer) CreateToken(
+func (svc *AuthnNatsJWTTokenizer) CreateToken(
 	clientID string, clientType string, pubKey string, validitySec int) (token string, err error) {
 
 	// create jwt claims that identifies the user and its permissions
@@ -89,7 +89,7 @@ func (svc *AuthnNatsTokenizer) CreateToken(
 //   - verify the issuer is the signing/account key.
 //
 // Verifying the signedNonce is optional. Use "" to ignore.
-func (svc *AuthnNatsTokenizer) ValidateToken(
+func (svc *AuthnNatsJWTTokenizer) ValidateToken(
 	clientID string, jwtToken string, signedNonce string, nonce string) (err error) {
 
 	// the jwt token is not in the JWT field. Workaround by storing it in the token field.
@@ -163,8 +163,8 @@ func (svc *AuthnNatsTokenizer) ValidateToken(
 //
 //	caCert is the CA certificate used to validate certs
 //	accountKey used for signing JWT tokens by the server. usually the application account or its signing key
-func NewAuthnNatsTokenizer(accountKey nkeys.KeyPair) *AuthnNatsTokenizer {
+func NewAuthnNatsTokenizer(accountKey nkeys.KeyPair) *AuthnNatsJWTTokenizer {
 
-	tokenizer := &AuthnNatsTokenizer{accountKey: accountKey}
+	tokenizer := &AuthnNatsJWTTokenizer{accountKey: accountKey}
 	return tokenizer
 }
