@@ -3,9 +3,12 @@ package testenv
 import (
 	"github.com/hiveot/hub/core/msgserver/natsserver"
 	"github.com/hiveot/hub/lib/certs"
+	"os"
+	"path"
 )
 
 // StartNatsTestServer generate a test configuration and starts a NKeys based nats test server
+// A new temporary storage directory is used.
 func StartNatsTestServer() (
 	clientURL string, server *natsserver.NatsNKeyServer, certBundle certs.TestCertBundle, config *natsserver.NatsServerConfig, err error) {
 
@@ -19,7 +22,10 @@ func StartNatsTestServer() (
 		//ServerCert: certBundle.ServerCert, // auto generate
 		Debug: true,
 	}
-	err = serverCfg.Setup("", "", false)
+	//
+	tmpDir := path.Join(os.TempDir(), "nats-testserver")
+	_ = os.RemoveAll(tmpDir)
+	err = serverCfg.Setup("", tmpDir, false)
 	if err == nil {
 		clientURL, err = hubNatsServer.Start(serverCfg)
 	}

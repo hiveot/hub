@@ -172,10 +172,9 @@ func (chook *NatsCalloutHook) start() error {
 
 	// create an internal nkey for the callout handler and add it to the config
 	issuerAccountPub, _ := chook.calloutAccountKey.PublicKey()
-	calloutServiceKey := chook.nc.Opts.Nkey // this is the client's connection public key
 
-	// exclude the callout service user key and existing nkeys.
-	ignoreKeys := []string{calloutServiceKey}
+	// exclude the existing nkeys (which includes the callout handler nkey)
+	ignoreKeys := []string{}
 	for _, nk := range chook.serverOpts.Nkeys {
 		ignoreKeys = append(ignoreKeys, nk.Nkey)
 	}
@@ -185,6 +184,11 @@ func (chook *NatsCalloutHook) start() error {
 		AuthUsers: ignoreKeys,
 		XKey:      "",
 	}
+	// remove users as password will be handled by callout.
+	// Also, callout errors when handler has a nkey connection which doesn't
+	// exist in the users section. (probably a bug) auth.go:288
+	chook.serverOpts.Users = []*server.User{}
+	chook.serverOpts.NoAuthUser = ""
 	// adopt existing nkeys
 
 	calloutSub, err := chook.nc.Subscribe(server.AuthCalloutSubject, chook.handleCallOutReq)

@@ -24,5 +24,5 @@ type IAuthnTokenizer interface {
 	//  token to verify
 	//  signedNonce base64 encoded signature generated from private key and nonce field
 	//  nonce the server provided field used to sign the token.
-	ValidateToken(clientID string, token string, signedNonce string, nonce string) error
+	ValidateToken(clientID string, pubKey string, token string, signedNonce string, nonce string) error
 }

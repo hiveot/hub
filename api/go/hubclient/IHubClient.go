@@ -83,11 +83,15 @@ type IHubClient interface {
 	// ParseResponse parses response message
 	ParseResponse(data []byte, err error, resp interface{}) error
 
+	// Pub allows publication on any topic.
+	// Intended for testing or for publishing to special topics.
+	Pub(topic string, payload []byte) error
+
 	// PubAction publishes a request for action.
 	//
-	// The client's authentication ID will be included as the publisher ID of the action.
+	// The client's ID is used as the publisher ID of the action.
 	//
-	//	bindingID is the deviceID or serviceID that handles the action
+	//	destinationID is the deviceID or serviceID that handles the action for the thing or service capability
 	//	thingID is the destination thingID that handles the action
 	//  actionID is the ID of the action as described in the Thing's TD
 	//  payload is the optional payload of the action as described in the Thing's TD
@@ -114,6 +118,10 @@ type IHubClient interface {
 	// The client's authentication ID will be included as the publisher ID of the event.
 	PubTD(td *thing.TD) error
 
+	// Sub allows subscribing to any topic that the client is authorized to.
+	// Intended for testing or special topics.
+	Sub(topic string, cb func(topic string, data []byte)) (ISubscription, error)
+
 	// SubActions subscribes to actions requested of this binding.
 	// All prior sent actions are ignored. This is intentional to avoid side effects on restart.
 	//
@@ -121,7 +129,7 @@ type IHubClient interface {
 	//  thingID is the device thing or service capability to subscribe to, or "" for wildcard
 	//  cb is the callback to invoke
 	// If the callback returns an error, an error reply message is send.
-	SubActions(thingID string, cb func(msg *ActionMessage) error) (subsc ISubscription, err error)
+	SubActions(thingID string, cb func(msg *ActionMessage) error) (ISubscription, error)
 
 	// SubGroup subscribes to events from things in a group the client is a member of.
 	//

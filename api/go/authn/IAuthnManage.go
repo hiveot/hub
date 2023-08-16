@@ -138,6 +138,9 @@ type IAuthnManage interface {
 	// The device must periodically refresh its token for it to remain valid.
 	// This returns a new device authentication token
 	//
+	// The format of the token depends on the server configuration. NKey servers return
+	// the public key, jwt servers return a jwt based token.
+	//
 	// If the device already exists or the pubKey is invalid then an error is returned.
 	//
 	//  deviceID is the thingID of the device, used for publishing things by this device.
@@ -149,6 +152,9 @@ type IAuthnManage interface {
 	// AddService adds a new service and generates a service token.
 	// The service must periodically refresh its token for it to remain valid.
 	// This returns a new service authentication token
+	//
+	// The format of the token depends on the server configuration. NKey servers return
+	// the public key, jwt servers return a jwt based token.
 	//
 	// If the serviceID already exists or the public key is invalid then an error is returned
 	//
@@ -162,6 +168,9 @@ type IAuthnManage interface {
 	// The caller must be an administrator or service.
 	// If the userID already exists or the pubKye is invalid then an error is returned
 	// This returns a new user authentication token if a valid pubKey is provided.
+	//
+	// The format of the token depends on the server configuration. NKey servers return
+	// the public key, jwt servers return a jwt based token.
 	//
 	//  userID is the login ID of the user, typically their email
 	//  displayName of the user for presentation

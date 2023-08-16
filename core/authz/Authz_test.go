@@ -1,10 +1,9 @@
 package authz_test
 
 import (
-	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/hubclient"
-	"github.com/hiveot/hub/core/authn/natsauthn"
+	"github.com/hiveot/hub/core/authz/authzclient"
 	"github.com/hiveot/hub/core/authz/authzservice"
 	"github.com/hiveot/hub/core/authz/natsauthz"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
@@ -27,12 +26,12 @@ import (
 var testDir = path.Join(os.TempDir(), "test-authz")
 var aclFilename = "authz.acl"
 var aclFilePath = path.Join(testDir, aclFilename)
-var authBundle testenv.TestNatsAuthBundle
+var serverCfg *natsserver.NatsServerConfig
 var certBundle certs.TestCertBundle
 
 // the following are set by the testmain
 var clientURL string
-var msgServer *natsserver.NatsJWTServer
+var msgServer *natsserver.NatsNKeyServer
 
 // run the test for different cores
 var useCore = "nats" // nats vs mqtt
@@ -40,7 +39,7 @@ var useCore = "nats" // nats vs mqtt
 // Create a new authz service with empty acl list
 func startTestAuthzService() (svc authz.IAuthz, closeFn func()) {
 	var authzAppl authz.IAuthz
-	var hc hubclient.IHubClient
+	var hc1 hubclient.IHubClient
 
 	_ = os.Remove(aclFilePath)
 	aclStore := authzservice.NewAuthzFileStore(aclFilePath)
@@ -49,16 +48,20 @@ func startTestAuthzService() (svc authz.IAuthz, closeFn func()) {
 		panic(err)
 	}
 	if useCore == "nats" {
-		tokenizer := natsauthn.NewAuthnNatsTokenizer(authBundle.AppAccountKey)
-		authzJWT, _ := tokenizer.CreateToken(
-			authz.AuthzServiceName,
-			authn.ClientTypeService,
-			authBundle.ServiceKeyPub,
-			authn.DefaultServiceTokenValiditySec)
-		hcNats, err2 := natshubclient.ConnectWithJWT(clientURL, authBundle.ServiceKey, authzJWT, certBundle.CaCert)
-		hc = hcNats
-		err = err2
-		authzAppl = natsauthz.NewNatsAuthzAppl(hcNats.JS())
+		nc1, err := msgServer.ConnectInProc("authz", nil)
+		hc1, _ = natshubclient.ConnectWithNC(nc1, "authz")
+		if err != nil {
+			panic("can't connect authz to server: " + err.Error())
+		}
+		authzJS, err := nc1.JetStream()
+		if err != nil {
+			panic("can't get jetstream api: " + err.Error())
+		}
+		authzAppl, err = natsauthz.NewNatsAuthzAppl(authzJS)
+
+		if err != nil {
+			panic("can't initialize nats authz binding: " + err.Error())
+		}
 	} else if useCore == "mqtt" {
 		//hc = NewMqttHubClient()
 		//authzAll = mqttauthz.NewMqttAuthzAppl(hc)
@@ -66,13 +69,25 @@ func startTestAuthzService() (svc authz.IAuthz, closeFn func()) {
 	if err != nil {
 		panic("unable to connect: " + err.Error())
 	}
-	authSvc := authzservice.NewAuthzService(aclStore, authzAppl, hc)
+	authSvc := authzservice.NewAuthzService(aclStore, authzAppl, hc1)
 	err = authSvc.Start()
 	if err != nil {
 		return nil, nil
 	}
 
-	return authSvc, func() {
+	//--- create a hub client for the authz management
+	nc2, err := msgServer.ConnectInProc("authz-client", nil)
+	if err != nil {
+		panic("unable to connect authz client")
+	}
+	hc2, err := natshubclient.ConnectWithNC(nc2, "authz-client")
+	if err != nil {
+		panic("unable to connect authz client to JS")
+	}
+	mngAuthz := authzclient.NewAuthzClient(hc2)
+
+	return mngAuthz, func() {
+		hc2.Disconnect()
 		authSvc.Stop()
 	}
 }
@@ -84,7 +99,7 @@ func TestMain(m *testing.M) {
 	_ = os.RemoveAll(testDir)
 	_ = os.MkdirAll(testDir, 0700)
 
-	clientURL, msgServer, certBundle, authBundle, err = testenv.StartNatsTestServer()
+	clientURL, msgServer, certBundle, serverCfg, err = testenv.StartNatsTestServer()
 	if err != nil {
 		panic(err)
 	}

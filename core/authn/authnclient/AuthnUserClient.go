@@ -41,6 +41,7 @@ func (clientAuthn *AuthnUserClient) GetProfile(clientID string) (profile authn.C
 }
 
 // NewToken obtains an auth token based on loginID and password
+// The user must have a public key set (using updatePubKey)
 func (clientAuthn *AuthnUserClient) NewToken(clientID string, password string) (authToken string, err error) {
 	req := authn.NewTokenReq{
 		ClientID: clientID,
@@ -103,7 +104,8 @@ func (clientAuthn *AuthnUserClient) UpdatePassword(clientID string, newPassword 
 	return err
 }
 
-// UpdatePubKey updates the user's public key
+// UpdatePubKey updates the user's public key.
+// This takes effect immediately. Existing connection must be closed and re-established.
 // Login or Refresh must be called successfully first.
 func (clientAuthn *AuthnUserClient) UpdatePubKey(clientID string, newPubKey string) error {
 	req := authn.UpdatePubKeyReq{

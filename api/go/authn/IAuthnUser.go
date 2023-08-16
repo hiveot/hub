@@ -92,5 +92,6 @@ type IAuthnUser interface {
 
 	// UpdatePubKey changes the public key on file
 	// This requires a valid login as the client.
+	// This takes effect immediately. Existing connection must be closed and re-established.
 	UpdatePubKey(clientID string, newPubKey string) error
 }

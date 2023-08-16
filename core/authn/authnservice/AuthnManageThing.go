@@ -8,10 +8,10 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-// AuthnManageService handles authentication management and user requests
+// AuthnManageThing handles authentication management and user requests
 //
 // This applies the request to the store and the underlying core service.
-type AuthnManageService struct {
+type AuthnManageThing struct {
 	// clients storage
 	store authnstore.IAuthnStore
 	// tokenizer for handling tokens
@@ -22,7 +22,7 @@ type AuthnManageService struct {
 
 // AddDevice adds an IoT device and generates an authentication token
 // This is handled by the underlying messaging core.
-func (svc *AuthnManageService) AddDevice(
+func (svc *AuthnManageThing) AddDevice(
 	deviceID string, name string, pubKey string, validitySec int) (token string, err error) {
 	slog.Info("AddDevice",
 		slog.String("deviceID", deviceID),
@@ -55,7 +55,7 @@ func (svc *AuthnManageService) AddDevice(
 }
 
 // AddService adds or updates a service
-func (svc *AuthnManageService) AddService(
+func (svc *AuthnManageThing) AddService(
 	serviceID string, name string, pubKey string, validitySec int) (token string, err error) {
 	slog.Info("AddService",
 		slog.String("serviceID", serviceID),
@@ -88,7 +88,7 @@ func (svc *AuthnManageService) AddService(
 
 // AddUser adds a new user for password authentication
 // If a public key is provided a signed token will be returned
-func (svc *AuthnManageService) AddUser(
+func (svc *AuthnManageThing) AddUser(
 	userID string, userName string, password string, pubKey string) (token string, err error) {
 
 	slog.Info("AddUser",
@@ -122,36 +122,49 @@ func (svc *AuthnManageService) AddUser(
 			err = fmt.Errorf("AddUser: user '%s' added, but: '%w'... continuing... ", userID, err)
 			slog.Error(err.Error())
 		}
-		err = svc.msgServer.AddUser(userID, password, pubKey)
 	}
+	err = svc.msgServer.AddUser(userID, password, pubKey)
 	return token, err
 }
 
 // GetClientProfile returns a client's profile
-func (svc *AuthnManageService) GetClientProfile(clientID string) (profile authn.ClientProfile, err error) {
+func (svc *AuthnManageThing) GetClientProfile(clientID string) (profile authn.ClientProfile, err error) {
 	entry, err := svc.store.Get(clientID)
 	return entry, err
 }
 
-func (svc *AuthnManageService) GetCount() (int, error) {
+func (svc *AuthnManageThing) GetCount() (int, error) {
 	return svc.store.Count(), nil
 }
 
 // ListClients provide a list of known clients and their info.
-func (svc *AuthnManageService) ListClients() (profiles []authn.ClientProfile, err error) {
+func (svc *AuthnManageThing) ListClients() (profiles []authn.ClientProfile, err error) {
 	profiles, err = svc.store.List()
 	return profiles, err
 }
 
 // RemoveClient removes a client and disables authentication
-func (svc *AuthnManageService) RemoveClient(clientID string) (err error) {
+func (svc *AuthnManageThing) RemoveClient(clientID string) (err error) {
 	err = svc.store.Remove(clientID)
 	return err
 }
 
-func (svc *AuthnManageService) UpdateClient(clientID string, prof authn.ClientProfile) (err error) {
+func (svc *AuthnManageThing) UpdateClient(clientID string, prof authn.ClientProfile) (err error) {
 	err = svc.store.Update(clientID, prof)
 	return err
+}
+
+// ApplyToServer applies the users and keys to the server
+func (svc *AuthnManageThing) ApplyToServer() error {
+	clients, err := svc.store.List()
+	if err != nil {
+		return err
+	}
+	// convert to users and keys and change server options
+	// FIXME: push clients nkeys and pw to server on startup
+	//svc.msgServer.ApplyUsers(clients)
+	_ = clients
+	return nil
 }
 
 // NewAuthnManageService creates the service to manage authentication clients
@@ -162,8 +175,8 @@ func (svc *AuthnManageService) UpdateClient(clientID string, prof authn.ClientPr
 func NewAuthnManageService(
 	store authnstore.IAuthnStore,
 	msgServer *natsserver.NatsNKeyServer,
-	tokenizer authn.IAuthnTokenizer) *AuthnManageService {
-	svc := &AuthnManageService{
+	tokenizer authn.IAuthnTokenizer) *AuthnManageThing {
+	svc := &AuthnManageThing{
 		store:     store,
 		msgServer: msgServer,
 		tokenizer: tokenizer,

@@ -167,6 +167,10 @@ func (svc *AuthzService) Start() (err error) {
 	if svc.aclStore == nil {
 		return fmt.Errorf("Start: missing acl store")
 	}
+	err = svc.authzBinding.Start()
+	if err != nil {
+		return err
+	}
 	// ensure that the all group exists
 	_, err = svc.GetGroup(authz.AllGroupName)
 	if err != nil {
@@ -176,6 +180,7 @@ func (svc *AuthzService) Start() (err error) {
 	return nil
 }
 func (svc *AuthzService) Stop() {
+	svc.authzBinding.Stop()
 }
 
 // NewAuthzService creates a new instance of the authorization service.

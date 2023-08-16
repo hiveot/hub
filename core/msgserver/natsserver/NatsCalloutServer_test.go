@@ -102,6 +102,11 @@ func TestValidCalloutAuthn(t *testing.T) {
 	newkey2, _ := nkeys.CreateUser()
 	c, err = s.ConnectInProc(knownUser, newkey2)
 	require.NoError(t, err)
+
+	hasJS, err := c.JetStream()
+	assert.NoError(t, err)
+	assert.NotNil(t, hasJS)
+
 	c.Close()
 	assert.Equal(t, int32(1), coCount.Load())
 }

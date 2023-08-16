@@ -88,6 +88,26 @@ func (hc *NatsHubClient) ClientID() string {
 //	return err
 //}
 
+// Connect connects to a nats server using automatic detection of the given token.
+//
+// This does not use server tokens.
+// * If token is empty or the public key, use NKeys
+// * If token is a JWT token, using JWT
+// * Otherwise assume it is a password
+//
+// ClientID is used for publishing actions
+func Connect(url string, clientID string, myKey nkeys.KeyPair, token string, caCert *x509.Certificate) (hc *NatsHubClient, err error) {
+	pubKey, _ := myKey.PublicKey()
+	if token == "" || token == pubKey {
+		return ConnectWithNKey(url, clientID, myKey, caCert)
+	}
+	claims, err := jwt.DecodeUserClaims(token)
+	if err == nil && claims.Name == clientID {
+		return ConnectWithJWT(url, myKey, token, caCert)
+	}
+	return ConnectWithPassword(url, clientID, token, caCert)
+}
+
 // ConnectWithJWT connects to the Hub server using a NATS user JWT credentials secret
 // The connection uses the client ID in the JWT token.
 //
@@ -143,6 +163,7 @@ func ConnectWithNC(nc *nats.Conn, clientID string) (hc *NatsHubClient, err error
 }
 
 // ConnectWithNKey connects to the Hub server using an nkey secret
+//
 // ClientID is used for publishing actions
 func ConnectWithNKey(url string, clientID string, myKey nkeys.KeyPair, caCert *x509.Certificate) (hc *NatsHubClient, err error) {
 	if url == "" {
@@ -230,7 +251,6 @@ func ConnectUnauthenticated(url string, caCert *x509.Certificate) (hc *NatsHubCl
 		hc.js, err = hc.nc.JetStream()
 	}
 	return hc, err
-
 }
 
 // Disconnect from the Hub server and release all subscriptions
@@ -265,9 +285,9 @@ func (hc *NatsHubClient) ParseResponse(data []byte, err error, resp interface{})
 	return err
 }
 
-// Publish to NATS
-func (hc *NatsHubClient) Publish(subject string, payload []byte) error {
-	slog.Info("publish", "subject", subject)
+// Pub low level publish to NATS
+func (hc *NatsHubClient) Pub(subject string, payload []byte) error {
+	slog.Info("Pub", "subject", subject)
 	err := hc.nc.Publish(subject, payload)
 	return err
 }
@@ -288,7 +308,7 @@ func (hc *NatsHubClient) PubAction(bindingID string, thingID string, actionID st
 func (hc *NatsHubClient) PubEvent(thingID string, eventID string, payload []byte) error {
 	subject := MakeSubject(hc.clientID, thingID, vocab.VocabEventTopic, eventID)
 	slog.Info("PubEvent", "subject", subject)
-	err := hc.Publish(subject, payload)
+	err := hc.nc.Publish(subject, payload)
 	return err
 }
 
@@ -297,7 +317,7 @@ func (hc *NatsHubClient) PubTD(td *thing.TD) error {
 	payload, _ := ser.Marshal(td)
 	subject := MakeSubject(hc.clientID, td.ID, vocab.VocabEventTopic, vocab.EventNameTD)
 	slog.Info("PubTD", "subject", subject)
-	err := hc.Publish(subject, payload)
+	err := hc.nc.Publish(subject, payload)
 	return err
 }
 
@@ -329,6 +349,16 @@ func (hc *NatsHubClient) JS() nats.JetStreamContext {
 //	}
 //	return err
 //}
+
+// Sub is a low level subscription to a subject
+// Primarily intended for testing
+func (hc *NatsHubClient) Sub(subject string, cb func(topic string, data []byte)) (hubclient.ISubscription, error) {
+
+	sub, err := hc.Subscribe(subject, func(natsMsg *nats.Msg) {
+		cb(natsMsg.Subject, natsMsg.Data)
+	})
+	return sub, err
+}
 
 // SubActions subscribes to actions for this binding
 //

@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
@@ -19,6 +20,11 @@ type NatsNKeyServer struct {
 	ns       *server.Server
 	// enable callout authn with EnableCalloutHandler. nil to just use nkeys
 	chook *NatsCalloutHook
+}
+
+// ApplyAuthn applies a new list of users to the static configuration
+func (srv *NatsNKeyServer) ApplyAuthn(clients []authn.IAuthnUser) error {
+	return fmt.Errorf("todo")
 }
 
 // AddDevice adds a IoT device authn key to the app account and reloads the options.
@@ -92,6 +98,40 @@ func (srv *NatsNKeyServer) AddUser(userID string, password string, userKeyPub st
 	return err
 }
 
+// UpdateKey changes the public key of a user login and reload options
+// This fails if oldKey doesn't exist. The caller should have added it first to ensure proper permissions
+// This returns an error if the old key is not found
+//
+// WARNING: changing the public key of the connected account can cause an authentication failure when
+// sending the reply. The workaround is to delay the reload.
+func (srv *NatsNKeyServer) UpdateKey(oldKey string, newKey string) error {
+	for _, n := range srv.natsOpts.Nkeys {
+		if n.Nkey == oldKey {
+			n.Nkey = newKey
+			// sending a reply after changing the key of the caller causes an authentication error
+			// therefore apply after returning
+			go func() {
+				_ = srv.ns.ReloadOptions(&srv.natsOpts)
+			}()
+			return nil
+		}
+	}
+	return fmt.Errorf("can't update key  '%s' is not found", oldKey)
+}
+
+// UpdatePassword changes the password of a user login and reload options
+// This returns an error if the user is not found
+func (srv *NatsNKeyServer) UpdatePassword(userID string, password string) error {
+	for _, u := range srv.natsOpts.Users {
+		if u.Username == userID {
+			u.Password = password
+			err := srv.ns.ReloadOptions(&srv.natsOpts)
+			return err
+		}
+	}
+	return fmt.Errorf("can't update password as user '%s' is not found", userID)
+}
+
 // ConnectInProc connects to the server in-process using the service key.
 // Intended for the core services to connect to the server.
 // A custom clientKey can be used to authn which must have been added first with AddClient
@@ -161,7 +201,10 @@ func (srv *NatsNKeyServer) EnableCalloutHandler(
 func (srv *NatsNKeyServer) Start(cfg *NatsServerConfig) (clientURL string, err error) {
 
 	srv.cfg = cfg
-	srv.natsOpts = cfg.CreateNatsNKeyOptions()
+	srv.natsOpts, err = cfg.CreateNatsNKeyOptions()
+	if err != nil {
+		return "", err
+	}
 
 	// start nats
 	srv.ns, err = server.NewServer(&srv.natsOpts)
@@ -184,6 +227,20 @@ func (srv *NatsNKeyServer) Start(cfg *NatsServerConfig) (clientURL string, err e
 	// add the core service account
 	coreServicePub, _ := srv.cfg.CoreServiceKP.PublicKey()
 	err = srv.AddService("core-service", coreServicePub)
+	if err != nil {
+		return clientURL, err
+	}
+	// app account must have JS enabled
+	ac, _ := srv.ns.LookupAccount(srv.cfg.AppAccountName)
+	err = ac.EnableJetStream(nil) //use defaults
+	if err != nil {
+		return clientURL, fmt.Errorf("can't enable JS for app account: %w", err)
+	}
+
+	hasJS := ac.JetStreamEnabled()
+	if !hasJS {
+		return clientURL, fmt.Errorf("JS not enabled for app account '%s'", srv.cfg.AppAccountName)
+	}
 
 	return clientURL, err
 }

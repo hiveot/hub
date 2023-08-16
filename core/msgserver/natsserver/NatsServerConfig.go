@@ -289,46 +289,70 @@ var noAuthPermissions = &server.Permissions{
 
 // CreateNatsNKeyOptions create a Nats options struct for use with NKey authentication.
 // Note that Setup() must have been called first.
-func (cfg *NatsServerConfig) CreateNatsNKeyOptions() server.Options {
+func (cfg *NatsServerConfig) CreateNatsNKeyOptions() (server.Options, error) {
+	natsOpts := server.Options{}
+	tmpFile := path.Join(os.TempDir(), "natsserver.conf")
 
-	systemAcct := server.NewAccount("SYS")
-	systemAccountPub, _ := cfg.SystemAccountKP.PublicKey()
-	systemAcct.Nkey = systemAccountPub
+	// create the config to load
+	// Frustratingly, this is the only way to enable jetstream on an account that persists after options reload
+	cfgContent := ` 
+accounts { 
+	hiveot: {
+		jetstream: enabled
+	}
+}`
+
+	err := os.WriteFile(tmpFile, []byte(cfgContent), 0600)
+	if err != nil {
+		return natsOpts, err
+	}
+
+	// load the file
+	err = natsOpts.ProcessConfigFile(tmpFile)
+	_ = os.Remove(tmpFile)
+	if err != nil {
+		return natsOpts, err
+	}
+	//return opts, err
+
+	//systemAcct := server.NewAccount("SYS")
+	//systemAccountPub, _ := cfg.SystemAccountKP.PublicKey()
+	//systemAcct.Nkey = systemAccountPub
 
 	// NewAccount creates a limitless account. There is no way to set a limit though :/
 	appAcct := server.NewAccount(cfg.AppAccountName)
 	appAccountPub, _ := cfg.AppAccountKP.PublicKey()
 	appAcct.Nkey = appAccountPub
 
-	natsOpts := server.Options{
-		Host: cfg.Host,
-		Port: cfg.Port,
+	natsOpts.Host = cfg.Host
+	natsOpts.Port = cfg.Port
 
-		SystemAccount: "SYS",
-		Accounts:      []*server.Account{systemAcct, appAcct},
-		NoAuthUser:    NoAuthUserID,
-		// Undocumented: setting a trusted key switches the server to JWT-only
-		//TrustedKeys: []string{operatorPub},
+	//SystemAccount: "SYS",
+	//natsOpts.Accounts =      []*server.Account{systemAcct, appAcct},
+	//natsOpts.Accounts =   []*server.Account{appAcct},
+	natsOpts.NoAuthUser = NoAuthUserID
+	// Undocumented: setting a trusted key switches the server to JWT-only
+	//TrustedKeys: []string{operatorPub},
 
-		Nkeys: []*server.NkeyUser{},
-		// login without password is needed for out-of-band provisioning
-		Users: []*server.User{
-			{
-				Username:    NoAuthUserID,
-				Password:    "",
-				Permissions: noAuthPermissions,
-				Account:     appAcct,
-				//InboxPrefix: "_INBOX." + NoAuthUserID,
-			},
+	natsOpts.Nkeys = []*server.NkeyUser{}
+
+	// login without password is needed for out-of-band provisioning
+	natsOpts.Users = []*server.User{
+		{
+			Username:    NoAuthUserID,
+			Password:    "",
+			Permissions: noAuthPermissions,
+			Account:     appAcct,
+			//InboxPrefix: "_INBOX." + NoAuthUserID,
 		},
-		JetStream:          true,
-		JetStreamMaxMemory: int64(cfg.MaxDataMemoryMB) * 1024 * 1024,
-		StoreDir:           cfg.DataDir,
-
-		// logging
-		Debug:   cfg.Debug,
-		Logtime: true,
 	}
+	natsOpts.JetStream = true
+	natsOpts.JetStreamMaxMemory = int64(cfg.MaxDataMemoryMB) * 1024 * 1024
+	natsOpts.StoreDir = cfg.DataDir
+
+	// logging
+	natsOpts.Debug = cfg.Debug
+	natsOpts.Logtime = true
 
 	if cfg.CaCert != nil && cfg.ServerCert != nil {
 		caCertPool := x509.NewCertPool()
@@ -346,7 +370,7 @@ func (cfg *NatsServerConfig) CreateNatsNKeyOptions() server.Options {
 		natsOpts.TLSTimeout = 100  // for debugging auth
 		natsOpts.TLSConfig = tlsConfig
 	}
-	return natsOpts
+	return natsOpts, err
 }
 
 // CreateNatsJWTOptions create a Nats options struct for use with JWT.

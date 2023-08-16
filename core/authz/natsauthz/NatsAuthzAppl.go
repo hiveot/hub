@@ -194,7 +194,7 @@ func (svc *NatsAuthzAppl) SetUserRole(userID string, role string, groupName stri
 func (svc *NatsAuthzAppl) init() error {
 	// return if the stream exists
 	_, err := svc.js.StreamInfo(GroupSourceStreamName)
-	if err == nil {
+	if err != nil {
 		return err
 	}
 
@@ -213,11 +213,11 @@ func (svc *NatsAuthzAppl) init() error {
 
 // NewNatsAuthzAppl applies authz to NATS JetStream streams
 // This implements the IAuthz interface
-func NewNatsAuthzAppl(js nats.JetStreamContext) *NatsAuthzAppl {
+func NewNatsAuthzAppl(js nats.JetStreamContext) (*NatsAuthzAppl, error) {
 	svc := &NatsAuthzAppl{
 		js: js,
 	}
-	svc.init()
+	err := svc.init()
 
-	return svc
+	return svc, err
 }

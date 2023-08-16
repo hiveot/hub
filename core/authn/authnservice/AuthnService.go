@@ -10,9 +10,9 @@ import (
 // AuthnService creates a service handling both manage and user requests.
 type AuthnService struct {
 	mngBinding *AuthnManageBinding
-	MngService *AuthnManageService
+	MngService *AuthnManageThing
 	usrBinding *AuthnUserBinding
-	UsrService *AuthnUserService
+	UsrService *AuthnUserThing
 }
 
 // Start the service and activate the binding to handle requests
@@ -40,10 +40,14 @@ func (svc *AuthnService) Stop() {
 //	tokenizer is the method of creating and validating JWT tokens
 //	hc is the message bus connection used to subscribe to using bindings
 func NewAuthnService(
-	store authnstore.IAuthnStore, msgServer *natsserver.NatsNKeyServer, tokenizer authn.IAuthnTokenizer, hc hubclient.IHubClient) *AuthnService {
+	store authnstore.IAuthnStore,
+	msgServer *natsserver.NatsNKeyServer,
+	tokenizer authn.IAuthnTokenizer,
+	hc hubclient.IHubClient) *AuthnService {
+
 	mngSvc := NewAuthnManageService(store, msgServer, tokenizer)
 	mngBinding := NewAuthnManageBinding(mngSvc, hc)
-	userSvc := NewAuthnUserService(store, tokenizer, nil)
+	userSvc := NewAuthnUserService(store, msgServer, tokenizer, nil)
 	userBinding := NewAuthnUserBinding(userSvc, hc)
 
 	authnSvc := &AuthnService{

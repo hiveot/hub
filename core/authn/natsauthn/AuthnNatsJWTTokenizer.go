@@ -9,13 +9,15 @@ import (
 	"time"
 )
 
-// AuthnNatsJWTTokenizer generates and validates NATS tokens.
+// AuthnNatsJWTTokenizer generates and validates NATS NKey or JWT tokens.
 // This implements the IAuthnTokenizer interface
 type AuthnNatsJWTTokenizer struct {
 	accountKey nkeys.KeyPair
+	// use nkey or jwt for tokens
+	useNKeyToken bool
 }
 
-// CreateToken for authentication and authorization with NATS server and JetStream
+// CreateJWTToken for authentication and authorization with NATS server and JetStream.
 // FIXME: remove authorization from authentication tokens. This is bad design.
 //
 // https://docs.nats.io/running-a-nats-service/configuration/securing_nats/auth_intro/jwt:
@@ -26,7 +28,7 @@ type AuthnNatsJWTTokenizer struct {
 //   - Issuer and Subject must match specific NKey roles
 //     NKey Roles are operators, accounts and users,
 //     Operator is the issuer of account, account issuer of users.
-func (svc *AuthnNatsJWTTokenizer) CreateToken(
+func (svc *AuthnNatsJWTTokenizer) CreateJWTToken(
 	clientID string, clientType string, pubKey string, validitySec int) (token string, err error) {
 
 	// create jwt claims that identifies the user and its permissions
@@ -81,7 +83,15 @@ func (svc *AuthnNatsJWTTokenizer) CreateToken(
 	return token, err
 }
 
-// ValidateToken checks if the given token belongs the clientID and is valid.
+func (svc *AuthnNatsJWTTokenizer) CreateToken(
+	clientID string, clientType string, pubKey string, validitySec int) (token string, err error) {
+	if svc.useNKeyToken {
+		return pubKey, nil
+	}
+	return svc.CreateJWTToken(clientID, clientType, pubKey, validitySec)
+}
+
+// ValidateJWTToken checks if the given token belongs the clientID and is valid.
 //   - verify if jwtToken is a valid token
 //   - validate the token isn't expired
 //   - verify the user's public key's nonce based signature
@@ -89,8 +99,8 @@ func (svc *AuthnNatsJWTTokenizer) CreateToken(
 //   - verify the issuer is the signing/account key.
 //
 // Verifying the signedNonce is optional. Use "" to ignore.
-func (svc *AuthnNatsJWTTokenizer) ValidateToken(
-	clientID string, jwtToken string, signedNonce string, nonce string) (err error) {
+func (svc *AuthnNatsJWTTokenizer) ValidateJWTToken(
+	clientID string, pubKey string, jwtToken string, signedNonce string, nonce string) (err error) {
 
 	// the jwt token is not in the JWT field. Workaround by storing it in the token field.
 	juc, err := jwt.DecodeUserClaims(jwtToken)
@@ -158,13 +168,31 @@ func (svc *AuthnNatsJWTTokenizer) ValidateToken(
 	return nil
 }
 
-// NewAuthnNatsTokenizer handles token generation and verification for the NATS messaging server
-// Call 'Start' to start the service and 'Stop' to end it.
+// ValidateToken checks if the given token belongs the clientID and is valid.
+// When keys is used this returns success
+// When nkeys is not used this validates the JWT token
 //
-//	caCert is the CA certificate used to validate certs
-//	accountKey used for signing JWT tokens by the server. usually the application account or its signing key
-func NewAuthnNatsTokenizer(accountKey nkeys.KeyPair) *AuthnNatsJWTTokenizer {
+// Verifying the signedNonce is optional. Use "" to ignore.
+func (svc *AuthnNatsJWTTokenizer) ValidateToken(
+	clientID string, pubKey string, oldToken string, signedNonce string, nonce string) (err error) {
+	if svc.useNKeyToken {
+		if oldToken == "" || pubKey != oldToken {
+			return fmt.Errorf("invalid old token for client '%s'", clientID)
+		}
+		return nil
+	}
+	return svc.ValidateJWTToken(clientID, pubKey, oldToken, signedNonce, nonce)
+}
 
-	tokenizer := &AuthnNatsJWTTokenizer{accountKey: accountKey}
+// NewAuthnNatsTokenizer handles token generation and verification for the NATS messaging server
+//
+//	accountKey is used to sign JWT tokens
+//	useNKeyTokens to not use JWT and return public key as token
+func NewAuthnNatsTokenizer(accountKey nkeys.KeyPair, useNKeyTokens bool) *AuthnNatsJWTTokenizer {
+
+	tokenizer := &AuthnNatsJWTTokenizer{
+		accountKey:   accountKey,
+		useNKeyToken: useNKeyTokens,
+	}
 	return tokenizer
 }

@@ -19,8 +19,7 @@ type AuthnManageBinding struct {
 // handle authn management requests published by a hub manager
 func (binding *AuthnManageBinding) handleManageActions(action *hubclient.ActionMessage) error {
 	slog.Info("handleManageActions",
-		slog.String("actionID", action.ActionID),
-		"my addr", binding)
+		slog.String("actionID", action.ActionID))
 
 	// TODO: doublecheck the caller is an admin or svc
 	switch action.ActionID {
