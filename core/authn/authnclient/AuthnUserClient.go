@@ -16,8 +16,15 @@ type AuthnUserClient struct {
 }
 
 // helper for publishing an action request to the authz service
-func (clientAuthn *AuthnUserClient) pubReq(action string, msg []byte) ([]byte, error) {
-	return clientAuthn.hc.PubAction(clientAuthn.serviceID, authn.ClientAuthnCapability, action, msg)
+func (clientAuthn *AuthnUserClient) pubReq(action string, req interface{}, resp interface{}) error {
+	var msg []byte
+	if req != nil {
+		msg, _ = ser.Marshal(req)
+	}
+
+	data, err := clientAuthn.hc.PubAction(clientAuthn.serviceID, authn.ClientAuthnCapability, action, msg)
+	err = clientAuthn.hc.ParseResponse(data, err, resp)
+	return err
 }
 
 // GetProfile returns a client's profile
@@ -27,17 +34,9 @@ func (clientAuthn *AuthnUserClient) GetProfile(clientID string) (profile authn.C
 	req := authn.GetProfileReq{
 		ClientID: clientID,
 	}
-	msg, _ := ser.Marshal(req)
-	data, err := clientAuthn.pubReq(authn.GetProfileAction, msg)
-	if err != nil {
-		return profile, err
-	}
-	resp := &authn.GetProfileResp{}
-	err = clientAuthn.hc.ParseResponse(data, err, resp)
-	if err == nil {
-		profile = resp.Profile
-	}
-	return profile, err
+	resp := authn.GetProfileResp{}
+	err = clientAuthn.pubReq(authn.GetProfileAction, &req, &resp)
+	return resp.Profile, err
 }
 
 // NewToken obtains an auth token based on loginID and password
@@ -47,17 +46,9 @@ func (clientAuthn *AuthnUserClient) NewToken(clientID string, password string) (
 		ClientID: clientID,
 		Password: password,
 	}
-	msg, _ := ser.Marshal(req)
-	data, err := clientAuthn.pubReq(authn.NewTokenAction, msg)
-	if err != nil {
-		return "", err
-	}
-	resp := &authn.NewTokenResp{}
-	err = clientAuthn.hc.ParseResponse(data, err, resp)
-	if err == nil {
-		authToken = resp.Token
-	}
-	return authToken, err
+	resp := authn.NewTokenResp{}
+	err = clientAuthn.pubReq(authn.NewTokenAction, &req, &resp)
+	return resp.Token, err
 }
 
 // Refresh a short-lived authentication token.
@@ -66,17 +57,9 @@ func (clientAuthn *AuthnUserClient) Refresh(clientID string, oldToken string) (a
 		ClientID: clientID,
 		OldToken: oldToken,
 	}
-	msg, _ := ser.Marshal(req)
-	data, err := clientAuthn.pubReq(authn.RefreshAction, msg)
-	if err != nil {
-		return "", err
-	}
-	resp := &authn.RefreshResp{}
-	err = clientAuthn.hc.ParseResponse(data, err, resp)
-	if err == nil {
-		authToken = resp.JwtToken
-	}
-	return authToken, err
+	resp := authn.RefreshResp{}
+	err = clientAuthn.pubReq(authn.RefreshAction, &req, &resp)
+	return resp.NewToken, err
 }
 
 // UpdateName updates a client's display name
@@ -85,9 +68,7 @@ func (clientAuthn *AuthnUserClient) UpdateName(clientID string, newName string) 
 		ClientID: clientID,
 		NewName:  newName,
 	}
-	msg, _ := ser.Marshal(req)
-	data, err := clientAuthn.pubReq(authn.UpdateNameAction, msg)
-	err = clientAuthn.hc.ParseResponse(data, err, nil)
+	err := clientAuthn.pubReq(authn.UpdateNameAction, &req, nil)
 	return err
 }
 
@@ -98,9 +79,7 @@ func (clientAuthn *AuthnUserClient) UpdatePassword(clientID string, newPassword 
 		ClientID:    clientID,
 		NewPassword: newPassword,
 	}
-	msg, _ := ser.Marshal(req)
-	data, err := clientAuthn.pubReq(authn.UpdatePasswordAction, msg)
-	err = clientAuthn.hc.ParseResponse(data, err, nil)
+	err := clientAuthn.pubReq(authn.UpdatePasswordAction, &req, nil)
 	return err
 }
 
@@ -112,9 +91,7 @@ func (clientAuthn *AuthnUserClient) UpdatePubKey(clientID string, newPubKey stri
 		ClientID:  clientID,
 		NewPubKey: newPubKey,
 	}
-	msg, _ := ser.Marshal(req)
-	data, err := clientAuthn.pubReq(authn.UpdatePubKeyAction, msg)
-	err = clientAuthn.hc.ParseResponse(data, err, nil)
+	err := clientAuthn.pubReq(authn.UpdatePubKeyAction, &req, nil)
 	return err
 }
 

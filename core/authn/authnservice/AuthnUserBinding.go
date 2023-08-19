@@ -55,7 +55,7 @@ func (binding *AuthnUserBinding) handleClientActions(action *hubclient.ActionMes
 		}
 		newToken, err := binding.svc.Refresh(action.ClientID, req.OldToken)
 		if err == nil {
-			resp := authn.RefreshResp{JwtToken: newToken}
+			resp := authn.RefreshResp{NewToken: newToken}
 			reply, _ := ser.Marshal(resp)
 			action.SendReply(reply)
 		}

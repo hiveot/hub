@@ -1,5 +1,7 @@
 package authz
 
+import "time"
+
 // AuthzServiceName default name of the service, used for logging and identification
 const AuthzServiceName = "authz"
 const DefaultAclFilename = "authz-groups.acl"
@@ -86,7 +88,7 @@ type Group struct {
 	// map of clients and their role in this group
 	MemberRoles RoleMap
 	// data retention period in seconds
-	Retention uint64
+	Retention time.Duration
 }
 
 //// NewGroup creates an instance of a group with member roles
@@ -114,7 +116,7 @@ type AddGroupReq struct {
 	// unique name of the group
 	GroupName string `json:"groupName"`
 	// retention period in seconds of events in this group
-	// use 0 for default
+	// use 0 for indefinitely
 	Retention uint64 `json:"retention"`
 }
 
@@ -283,8 +285,8 @@ type IAuthz interface {
 	// Use retention 0 to retain messages indefinitely
 	//
 	//	groupName unique name of the group
-	//	retention period in seconds of events in this group. 0 for DefaultGroupRetention.
-	AddGroup(groupName string, retention uint64) error
+	//	retention period of events in this group. 0 for indefinite
+	AddGroup(groupName string, retention time.Duration) error
 
 	// AddService adds a client with the service role to a group
 	// If the client is already in the group this returns without error
@@ -340,4 +342,10 @@ type IAuthz interface {
 	// If the client is not a member of a group the client will be added.
 	// The role must be one of the user roles viewer, operator, manager
 	SetUserRole(userID string, userRole string, groupName string) error
+
+	// Start the service, open the store, starts listening for action requests
+	Start() error
+
+	// Stop the service. close connections
+	Stop()
 }

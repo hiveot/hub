@@ -141,5 +141,5 @@ type IHubClient interface {
 	//
 	//  groupName is the group to subscribe to.
 	//	receiveLatest to immediately receive the latest event for each event instance
-	SubGroup(groupName string, receiveLatest bool, cb func(msg *EventMessage)) error
+	SubGroup(groupName string, receiveLatest bool, cb func(msg *EventMessage)) (ISubscription, error)
 }

@@ -3,7 +3,7 @@ package natshubcore_test
 import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/hubclient"
-	"github.com/hiveot/hub/core/authn/natsauthn"
+	"github.com/hiveot/hub/core/authn/authnadapter"
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/hubcore/natshubcore"
@@ -92,40 +92,40 @@ func TestPubSub_ConnectAuthNKey(t *testing.T) {
 	//time.Sleep(time.Second * 1)
 }
 
-//func TestPubSub_AuthPassword(t *testing.T) {
-//	clientURL := ""
-//	rxchan := make(chan int)
-//	user1ID := "user1"
-//	user1Pass := "pass1"
-//	group1Name := "group1"
-//
-//	// launch the core services
-//	core := hub.NewHubCore(hubCfg)
-//	require.NotPanics(t, func() { clientURL = core.Start() })
-//	defer core.Stop()
-//
-//	// add a user to test with
-//	err := core.AuthnSvc.AddUser(user1ID, "user 1", user1Pass)
-//	assert.NoError(t, err)
-//
-//	// connect the user
-//	hc := hubclient.NewHubClient()
-//	err = hc.ConnectWithPassword(clientURL, user1ID, user1Pass, core.CaCert)
-//	require.NoError(t, err)
-//	defer hc.Disconnect()
-//
-//	// listen for events
-//	err = hc.SubGroup(group1Name, true, func(msg *hub2.EventMessage) {
-//		rxchan <- 1
-//	})
-//	require.NoError(t, err)
-//
-//	err = hc.PubEvent("thing1", "event1", []byte("hello"))
-//	assert.NoError(t, err)
-//
-//	rxdata := <-rxchan
-//	assert.Equal(t, 1, rxdata)
-//}
+func TestPubSub_AuthPassword(t *testing.T) {
+	clientURL := ""
+	rxchan := make(chan int)
+	user1ID := "user1"
+	user1Pass := "pass1"
+	group1Name := "group1"
+
+	// launch the core services
+	core := natshubcore.NewHubCore()
+	require.NotPanics(t, func() { clientURL = core.Start(hubCfg) })
+	defer core.Stop()
+
+	// add a user to test with
+	token, err := core.AuthnSvc.MngService.AddUser(user1ID, "user 1", user1Pass, "")
+	assert.NoError(t, err)
+	_ = token
+
+	// connect the user
+	hc, err := natshubclient.ConnectWithPassword(clientURL, user1ID, user1Pass, hubCfg.NatsServer.CaCert)
+	require.NoError(t, err)
+	defer hc.Disconnect()
+
+	// listen for events
+	err = hc.SubGroup(group1Name, true, func(msg *hubclient.EventMessage) {
+		rxchan <- 1
+	})
+	require.NoError(t, err)
+
+	err = hc.PubEvent("thing1", "event1", []byte("hello"))
+	assert.NoError(t, err)
+
+	rxdata := <-rxchan
+	assert.Equal(t, 1, rxdata)
+}
 
 func TestPubSub_AuthJWT(t *testing.T) {
 	rxchan := make(chan int)
@@ -140,15 +140,14 @@ func TestPubSub_AuthJWT(t *testing.T) {
 	serviceID := "service1"
 	serviceKey, _ := nkeys.CreateUser()
 	serviceKeyPub, _ := serviceKey.PublicKey()
-	tokenizer := natsauthn.NewAuthnNatsTokenizer(hubCfg.NatsServer.AppAccountKP)
+	tokenizer := authnadapter.NewNatsAuthnTokenizer(hubCfg.NatsServer.AppAccountKP, true)
 	serviceJWT, err := tokenizer.CreateToken(serviceID, authn.ClientTypeService, serviceKeyPub, 0)
 	require.NoError(t, err)
 
 	// connect using the JWT token
 	hc, err := natshubclient.ConnectWithJWT(clientURL, serviceKey, serviceJWT, hubCfg.NatsServer.CaCert)
+	require.NoError(t, err)
 	defer hc.Disconnect()
-
-	assert.NoError(t, err)
 
 	sub, err := hc.SubEvents("", func(msg *hubclient.EventMessage) {
 		slog.Info("received event", "eventID", msg.EventID)

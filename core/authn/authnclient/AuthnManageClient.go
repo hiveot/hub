@@ -17,42 +17,44 @@ type AuthnManageClient struct {
 }
 
 // helper for publishing an action request to the authz service
-func (mngAuthn *AuthnManageClient) pubReq(action string, req interface{}) ([]byte, error) {
+func (mngAuthn *AuthnManageClient) pubReq(action string, req interface{}, resp interface{}) error {
 	var msg []byte
 	if req != nil {
 		msg, _ = ser.Marshal(req)
 	}
-	return mngAuthn.hc.PubAction(
+	data, err := mngAuthn.hc.PubAction(
 		mngAuthn.serviceID, authn.ManageAuthnCapability, action, msg)
+
+	err = mngAuthn.hc.ParseResponse(data, err, resp)
+
+	return err
 }
 
 // AddDevice adds an IoT device and generates an authentication token
 func (mngAuthn *AuthnManageClient) AddDevice(deviceID string, displayName string, pubKey string, validitySec int) (string, error) {
 	slog.Info("AddDevice", "deviceID", deviceID)
-	req := &authn.AddDeviceReq{
+	req := authn.AddDeviceReq{
 		DeviceID:    deviceID,
 		DisplayName: displayName,
 		PubKey:      pubKey,
 		ValiditySec: validitySec,
 	}
-	data, err := mngAuthn.pubReq(authn.AddDeviceAction, req)
 	resp := authn.AddDeviceResp{}
-	err = mngAuthn.hc.ParseResponse(data, err, &resp)
+	err := mngAuthn.pubReq(authn.AddDeviceAction, &req, &resp)
 	return resp.Token, err
 }
 
 // AddService adds a service.
 func (mngAuthn *AuthnManageClient) AddService(serviceID string, displayName string, pubKey string, validitySec int) (string, error) {
 	slog.Info("AddService", "serviceID", serviceID)
-	req := &authn.AddServiceReq{
+	req := authn.AddServiceReq{
 		ServiceID:   serviceID,
 		DisplayName: displayName,
 		PubKey:      pubKey,
 		ValiditySec: validitySec,
 	}
-	data, err := mngAuthn.pubReq(authn.AddServiceAction, req)
 	resp := authn.AddServiceResp{}
-	err = mngAuthn.hc.ParseResponse(data, err, &resp)
+	err := mngAuthn.pubReq(authn.AddServiceAction, &req, &resp)
 	return resp.Token, err
 }
 
@@ -66,27 +68,22 @@ func (mngAuthn *AuthnManageClient) AddService(serviceID string, displayName stri
 //	pubKey is the user's public key string, needed to connect with JWT
 func (mngAuthn *AuthnManageClient) AddUser(userID string, displayName string, password string, pubKey string) (string, error) {
 	slog.Info("AddUser", "userID", userID)
-	req := &authn.AddUserReq{
+	req := authn.AddUserReq{
 		UserID:      userID,
 		DisplayName: displayName,
 		Password:    password,
 		PubKey:      pubKey,
 	}
-	data, err := mngAuthn.pubReq(authn.AddUserAction, req)
 	resp := authn.AddUserResp{}
-	err = mngAuthn.hc.ParseResponse(data, err, &resp)
+	err := mngAuthn.pubReq(authn.AddUserAction, &req, &resp)
 	return resp.Token, err
 }
 
 // GetCount returns the number of clients in the store
 func (mngAuthn *AuthnManageClient) GetCount() (n int, err error) {
-	data, err := mngAuthn.pubReq(authn.GetCountAction, nil)
-	resp := &authn.GetCountResp{}
-	err = mngAuthn.hc.ParseResponse(data, err, resp)
-	if err == nil {
-		n = resp.N
-	}
-	return n, err
+	resp := authn.GetCountResp{}
+	err = mngAuthn.pubReq(authn.GetCountAction, nil, &resp)
+	return resp.N, err
 }
 
 // GetClientProfile returns a client's profile
@@ -96,35 +93,26 @@ func (mngAuthn *AuthnManageClient) GetClientProfile(clientID string) (profile au
 	req := authn.GetClientProfileReq{
 		ClientID: clientID,
 	}
-	data, err := mngAuthn.pubReq(authn.GetClientProfileAction, req)
-	resp := &authn.GetProfileResp{}
-	err = mngAuthn.hc.ParseResponse(data, err, resp)
-	if err == nil {
-		profile = resp.Profile
-	}
-	return profile, err
+	resp := authn.GetProfileResp{}
+	err = mngAuthn.pubReq(authn.GetClientProfileAction, &req, &resp)
+	return resp.Profile, err
 }
 
 // ListClients provide a list of known clients and their info.
 // The caller must be an administrator or service.
 func (mngAuthn *AuthnManageClient) ListClients() (profiles []authn.ClientProfile, err error) {
-	data, err := mngAuthn.pubReq(authn.ListClientsAction, nil)
-	resp := &authn.ListClientsResp{}
-	err = mngAuthn.hc.ParseResponse(data, err, resp)
-	if err == nil {
-		profiles = resp.Profiles
-	}
-	return profiles, err
+	resp := authn.ListClientsResp{}
+	err = mngAuthn.pubReq(authn.ListClientsAction, nil, &resp)
+	return resp.Profiles, err
 }
 
 // RemoveClient removes a client and disables authentication
 // Existing tokens are immediately expired (tbd)
 func (mngAuthn *AuthnManageClient) RemoveClient(clientID string) error {
-	req := &authn.RemoveClientReq{
+	req := authn.RemoveClientReq{
 		ClientID: clientID,
 	}
-	data, err := mngAuthn.pubReq(authn.RemoveClientAction, req)
-	err = mngAuthn.hc.ParseResponse(data, err, nil)
+	err := mngAuthn.pubReq(authn.RemoveClientAction, &req, nil)
 	return err
 }
 
@@ -134,8 +122,7 @@ func (mngAuthn *AuthnManageClient) UpdateClient(clientID string, prof authn.Clie
 		ClientID: clientID,
 		Profile:  prof,
 	}
-	data, err := mngAuthn.pubReq(authn.UpdateClientAction, req)
-	err = mngAuthn.hc.ParseResponse(data, err, nil)
+	err := mngAuthn.pubReq(authn.UpdateClientAction, req, nil)
 	return err
 }
 

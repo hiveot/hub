@@ -81,8 +81,9 @@ func (srv *NatsNKeyServer) AddUser(userID string, password string, userKeyPub st
 	}
 	if userKeyPub != "" {
 		srv.natsOpts.Nkeys = append(srv.natsOpts.Nkeys, &server.NkeyUser{
-			Nkey:    userKeyPub,
-			Account: appAcct,
+			Nkey:        userKeyPub,
+			Account:     appAcct,
+			Permissions: noAuthPermissions,
 			// todo: permissions
 		})
 	}
@@ -193,6 +194,26 @@ func (srv *NatsNKeyServer) EnableCalloutHandler(
 			authnVerifier)
 	}
 	return err
+}
+
+// SetAclRules sets the subjects the clientID has access to.
+func (srv *NatsNKeyServer) SetAclRules(clientID string, subjects []string) error {
+	subjectPerm := server.SubjectPermission{
+		Allow: subjects,
+		Deny:  nil,
+	}
+	newPermissions := server.Permissions{
+		Publish:   nil,
+		Subscribe: &subjectPerm,
+		Response:  nil,
+	}
+	for _, user := range srv.natsOpts.Users {
+		if clientID == user.Username {
+			user.Permissions = &newPermissions
+			break
+		}
+	}
+	return nil
 }
 
 // Start the NATS server with the given configuration

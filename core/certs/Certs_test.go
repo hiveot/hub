@@ -4,11 +4,11 @@ import (
 	"crypto/x509"
 	"github.com/hiveot/hub/core/certs"
 	"github.com/hiveot/hub/core/certs/service/selfsigned"
+	certs2 "github.com/hiveot/hub/lib/certs"
 	"os"
 	"path"
 	"testing"
 
-	"github.com/hiveot/hub/lib/certsclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,17 +61,17 @@ func TestCreateDeviceCert(t *testing.T) {
 
 	svc, cancelFunc := NewService()
 	defer cancelFunc()
-	keys := certsclient.CreateECDSAKeys()
-	pubKeyPEM, _ := certsclient.PublicKeyToPEM(&keys.PublicKey)
+	keys := certs2.CreateECDSAKeys()
+	pubKeyPEM, _ := certs2.PublicKeyToPEM(&keys.PublicKey)
 
 	deviceCertPEM, caCertPEM, err := svc.CreateDeviceCert(
 		deviceID, pubKeyPEM, 1)
 	require.NoError(t, err)
 
-	deviceCert, err := certsclient.X509CertFromPEM(deviceCertPEM)
+	deviceCert, err := certs2.X509CertFromPEM(deviceCertPEM)
 	require.NoError(t, err)
 	require.NotNil(t, deviceCert)
-	caCert2, err := certsclient.X509CertFromPEM(caCertPEM)
+	caCert2, err := certs2.X509CertFromPEM(caCertPEM)
 	require.NoError(t, err)
 	require.NotNil(t, caCert2)
 
@@ -100,8 +100,8 @@ func TestDeviceCertBadParms(t *testing.T) {
 	svc, cancelFunc := NewService()
 	defer cancelFunc()
 
-	keys := certsclient.CreateECDSAKeys()
-	pubKeyPEM, _ := certsclient.PublicKeyToPEM(&keys.PublicKey)
+	keys := certs2.CreateECDSAKeys()
+	pubKeyPEM, _ := certs2.PublicKeyToPEM(&keys.PublicKey)
 
 	// missing device ID
 	certPEM, _, err := svc.CreateDeviceCert("", pubKeyPEM, 0)
@@ -122,15 +122,15 @@ func TestCreateServiceCert(t *testing.T) {
 
 	svc, cancelFunc := NewService()
 	defer cancelFunc()
-	keys := certsclient.CreateECDSAKeys()
-	pubKeyPEM, _ := certsclient.PublicKeyToPEM(&keys.PublicKey)
+	keys := certs2.CreateECDSAKeys()
+	pubKeyPEM, _ := certs2.PublicKeyToPEM(&keys.PublicKey)
 
 	serviceCertPEM, caCertPEM, err := svc.CreateServiceCert(
 		serviceID, pubKeyPEM, names, 0)
 	require.NoError(t, err)
-	serviceCert, err := certsclient.X509CertFromPEM(serviceCertPEM)
+	serviceCert, err := certs2.X509CertFromPEM(serviceCertPEM)
 	require.NoError(t, err)
-	caCert2, err := certsclient.X509CertFromPEM(caCertPEM)
+	caCert2, err := certs2.X509CertFromPEM(caCertPEM)
 	require.NoError(t, err)
 
 	// verify service certificate against CA
@@ -153,8 +153,8 @@ func TestServiceCertBadParms(t *testing.T) {
 	hostnames := []string{"127.0.0.1"}
 
 	caCert, caKey, _ := selfsigned.CreateHubCA(1)
-	keys := certsclient.CreateECDSAKeys()
-	pubKeyPEM, _ := certsclient.PublicKeyToPEM(&keys.PublicKey)
+	keys := certs2.CreateECDSAKeys()
+	pubKeyPEM, _ := certs2.PublicKeyToPEM(&keys.PublicKey)
 
 	// Bad CA certificate
 	badCa := x509.Certificate{}
@@ -188,16 +188,16 @@ func TestCreateUserCert(t *testing.T) {
 	// test creating hub certificate
 	svc, cancelFunc := NewService()
 	defer cancelFunc()
-	keys := certsclient.CreateECDSAKeys()
-	pubKeyPEM, _ := certsclient.PublicKeyToPEM(&keys.PublicKey)
+	keys := certs2.CreateECDSAKeys()
+	pubKeyPEM, _ := certs2.PublicKeyToPEM(&keys.PublicKey)
 
 	userCertPEM, caCertPEM, err := svc.CreateUserCert(userID, pubKeyPEM, 0)
 	require.NoError(t, err)
 
-	userCert, err := certsclient.X509CertFromPEM(userCertPEM)
+	userCert, err := certs2.X509CertFromPEM(userCertPEM)
 	require.NoError(t, err)
 	require.NotNil(t, userCert)
-	caCert2, err := certsclient.X509CertFromPEM(caCertPEM)
+	caCert2, err := certs2.X509CertFromPEM(caCertPEM)
 	require.NoError(t, err)
 	require.NotNil(t, caCert2)
 

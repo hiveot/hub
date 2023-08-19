@@ -43,15 +43,15 @@ func (svc *AuthnManageThing) AddDevice(
 	if err != nil {
 		return "", err
 	}
-	// create the token for the underlying messaging core
+	// apply the token to the underlying messaging core
 	if pubKey != "" {
-		token, err = svc.tokenizer.CreateToken(deviceID, authn.ClientTypeDevice, pubKey, validitySec)
-		if err != nil {
-			return token, fmt.Errorf("device '%s' added, but: %w", deviceID, err)
-		}
+		//	token, err = svc.tokenizer.CreateToken(deviceID, authn.ClientTypeDevice, pubKey, validitySec)
+		//	if err != nil {
+		//		return token, fmt.Errorf("device '%s' added, but: %w", deviceID, err)
+		//	}
 		err = svc.msgServer.AddDevice(deviceID, pubKey)
 	}
-	return token, err
+	return pubKey, err
 }
 
 // AddService adds or updates a service
@@ -75,14 +75,15 @@ func (svc *AuthnManageThing) AddService(
 	if err != nil {
 		return "", err
 	}
-	// create the token for the underlying messaging core
+	// apply the token for the underlying messaging core
 	if pubKey != "" {
-		token, err = svc.tokenizer.CreateToken(serviceID, authn.ClientTypeService, pubKey, validitySec)
-		if err != nil {
-			return token, fmt.Errorf("service '%s' added, but: %w", serviceID, err)
-		}
+		//	token, err = svc.tokenizer.CreateToken(serviceID, authn.ClientTypeService, pubKey, validitySec)
+		//	if err != nil {
+		//		return token, fmt.Errorf("service '%s' added, but: %w", serviceID, err)
+		//	}
 		err = svc.msgServer.AddService(serviceID, pubKey)
 	}
+	token = pubKey
 	return token, err
 }
 
@@ -115,14 +116,15 @@ func (svc *AuthnManageThing) AddUser(
 			slog.Error(err.Error())
 		}
 	}
-	// create the token for the underlying messaging core
-	if pubKey != "" {
-		token, err = svc.tokenizer.CreateToken(userID, authn.ClientTypeUser, pubKey, authn.DefaultUserTokenValiditySec)
-		if err != nil {
-			err = fmt.Errorf("AddUser: user '%s' added, but: '%w'... continuing... ", userID, err)
-			slog.Error(err.Error())
-		}
-	}
+	// apply the token for the underlying messaging server
+	//if pubKey != "" {
+	//token, err = svc.tokenizer.CreateToken(userID, authn.ClientTypeUser, pubKey, authn.DefaultUserTokenValiditySec)
+	//if err != nil {
+	//	err = fmt.Errorf("AddUser: user '%s' added, but: '%w'... continuing... ", userID, err)
+	//	slog.Error(err.Error())
+	//}
+	token = pubKey
+	//}
 	err = svc.msgServer.AddUser(userID, password, pubKey)
 	return token, err
 }
@@ -167,12 +169,12 @@ func (svc *AuthnManageThing) ApplyToServer() error {
 	return nil
 }
 
-// NewAuthnManageService creates the service to manage authentication clients
+// NewAuthnManageThing creates the capability to manage authentication clients
 //
 //	store for storing clients
 //	natsServer to update with keys and users
 //	tokenizer to generate tokens for authentication with the underlying messaging service
-func NewAuthnManageService(
+func NewAuthnManageThing(
 	store authnstore.IAuthnStore,
 	msgServer *natsserver.NatsNKeyServer,
 	tokenizer authn.IAuthnTokenizer) *AuthnManageThing {

@@ -7,7 +7,7 @@ import (
 	"crypto/x509/pkix"
 	"fmt"
 	"github.com/hiveot/hub/core/certs"
-	"github.com/hiveot/hub/lib/certsclient"
+	certs2 "github.com/hiveot/hub/lib/certs"
 	"math/big"
 	"net"
 	"time"
@@ -41,7 +41,7 @@ func (srv *SelfSignedCertsService) _createDeviceCert(
 
 	cert, err = createClientCert(
 		deviceID,
-		certsclient.OUIoTDevice,
+		certs2.OUIoTDevice,
 		pubKey,
 		srv.caCert,
 		srv.caKey,
@@ -74,7 +74,7 @@ func (srv *SelfSignedCertsService) _createServiceCert(
 			Province:           []string{"BC"},
 			Locality:           []string{CertOrgLocality},
 			Organization:       []string{CertOrgName},
-			OrganizationalUnit: []string{certsclient.OUService},
+			OrganizationalUnit: []string{certs2.OUService},
 			CommonName:         serviceID,
 		},
 		NotBefore: time.Now().Add(-time.Second),
@@ -100,7 +100,7 @@ func (srv *SelfSignedCertsService) _createServiceCert(
 		}
 	}
 	// Create the service private key
-	//certKey := certsclient.CreateECDSAKeys()
+	//certKey := certs2.CreateECDSAKeys()
 	// and the certificate itself
 	certDer, err := x509.CreateCertificate(rand.Reader, template,
 		srv.caCert, servicePubKey, srv.caKey)
@@ -121,7 +121,7 @@ func (srv *SelfSignedCertsService) _createUserCert(userID string, pubKey *ecdsa.
 
 	cert, err = createClientCert(
 		userID,
-		certsclient.OUUser,
+		certs2.OUUser,
 		pubKey,
 		srv.caCert,
 		srv.caKey,
@@ -137,14 +137,14 @@ func (srv *SelfSignedCertsService) CreateDeviceCert(
 	var cert *x509.Certificate
 
 	logrus.Infof("deviceID='%s' pubKey='%s'", deviceID, pubKeyPEM)
-	pubKey, err := certsclient.PublicKeyFromPEM(pubKeyPEM)
+	pubKey, err := certs2.PublicKeyFromPEM(pubKeyPEM)
 	if err != nil {
 		err = fmt.Errorf("public key for '%s' is invalid: %s", deviceID, err)
 	} else {
 		cert, err = srv._createDeviceCert(deviceID, pubKey, durationDays)
 	}
 	if err == nil {
-		certPEM = certsclient.X509CertToPEM(cert)
+		certPEM = certs2.X509CertToPEM(cert)
 	}
 	return certPEM, srv.caCertPEM, err
 }
@@ -156,7 +156,7 @@ func (srv *SelfSignedCertsService) CreateServiceCert(
 	var cert *x509.Certificate
 
 	logrus.Infof("Creating service certificate: serviceID='%s', names='%s'", serviceID, names)
-	pubKey, err := certsclient.PublicKeyFromPEM(pubKeyPEM)
+	pubKey, err := certs2.PublicKeyFromPEM(pubKeyPEM)
 	if err == nil {
 		cert, err = srv._createServiceCert(
 			serviceID,
@@ -166,7 +166,7 @@ func (srv *SelfSignedCertsService) CreateServiceCert(
 		)
 	}
 	if err == nil {
-		certPEM = certsclient.X509CertToPEM(cert)
+		certPEM = certs2.X509CertToPEM(cert)
 	}
 	// TODO: send Thing event (services are things too)
 	return certPEM, srv.caCertPEM, err
@@ -179,7 +179,7 @@ func (srv *SelfSignedCertsService) CreateUserCert(
 	var cert *x509.Certificate
 
 	logrus.Infof("userID='%s' pubKey='%s'", userID, pubKeyPEM)
-	pubKey, err := certsclient.PublicKeyFromPEM(pubKeyPEM)
+	pubKey, err := certs2.PublicKeyFromPEM(pubKeyPEM)
 	if err == nil {
 
 		cert, err = srv._createUserCert(
@@ -188,7 +188,7 @@ func (srv *SelfSignedCertsService) CreateUserCert(
 			validityDays)
 	}
 	if err == nil {
-		certPEM = certsclient.X509CertToPEM(cert)
+		certPEM = certs2.X509CertToPEM(cert)
 	}
 
 	// TODO: send Thing event (services are things too)
@@ -215,7 +215,7 @@ func (srv *SelfSignedCertsService) VerifyCert(
 		Roots:     srv.caCertPool,
 		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}
-	cert, err := certsclient.X509CertFromPEM(certPEM)
+	cert, err := certs2.X509CertFromPEM(certPEM)
 	if err == nil {
 		if cert.Subject.CommonName != clientID {
 			err = fmt.Errorf("client ID '%s' doesn't match certificate name '%s'", clientID, cert.Subject.CommonName)
@@ -246,7 +246,7 @@ func NewSelfSignedCertsService(caCert *x509.Certificate, caKey *ecdsa.PrivateKey
 	service := &SelfSignedCertsService{
 		caCert:     caCert,
 		caKey:      caKey,
-		caCertPEM:  certsclient.X509CertToPEM(caCert),
+		caCertPEM:  certs2.X509CertToPEM(caCert),
 		caCertPool: caCertPool,
 	}
 	if caCert == nil || caKey == nil || caCert.PublicKey == nil {

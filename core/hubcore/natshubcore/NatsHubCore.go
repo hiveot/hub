@@ -3,11 +3,11 @@ package natshubcore
 import (
 	authn2 "github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
+	"github.com/hiveot/hub/core/authn/authnadapter"
 	"github.com/hiveot/hub/core/authn/authnservice"
 	"github.com/hiveot/hub/core/authn/authnstore"
-	"github.com/hiveot/hub/core/authn/natsauthn"
+	"github.com/hiveot/hub/core/authz/authzadapter"
 	"github.com/hiveot/hub/core/authz/authzservice"
-	"github.com/hiveot/hub/core/authz/natsauthz"
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/msgserver/natsserver"
@@ -51,7 +51,7 @@ func (core *HubCore) Start(cfg *config.HubCoreConfig) (clientURL string) {
 	// start the authn store, service and binding
 	if !cfg.Authn.NoAutoStart {
 		authnStore := authnstore.NewAuthnFileStore(cfg.Authn.PasswordFile)
-		tokenizer := natsauthn.NewAuthnNatsTokenizer(cfg.NatsServer.AppAccountKP)
+		tokenizer := authnadapter.NewNatsAuthnTokenizer(cfg.NatsServer.AppAccountKP, true)
 		nc, err := core.Server.ConnectInProc(authn2.AuthnServiceName, nil)
 		if err != nil {
 			panic(err.Error())
@@ -60,7 +60,7 @@ func (core *HubCore) Start(cfg *config.HubCoreConfig) (clientURL string) {
 		if err != nil {
 			panic(err.Error())
 		}
-		core.AuthnSvc = authnservice.NewAuthnService(authnStore, tokenizer, hc)
+		core.AuthnSvc = authnservice.NewAuthnService(authnStore, core.Server, tokenizer, hc)
 
 		err = core.AuthnSvc.Start()
 		if err != nil {
@@ -87,7 +87,7 @@ func (core *HubCore) Start(cfg *config.HubCoreConfig) (clientURL string) {
 		}
 		js := hc.JS()
 		// apply authz changes to nats jetstream
-		authzJetStream := natsauthz.NewNatsAuthzAppl(js)
+		authzJetStream, err := authzadapter.NewNatsAuthzAdapter(js)
 		core.AuthzSvc = authzservice.NewAuthzService(core.authzStore, authzJetStream, hc)
 	}
 	return clientURL

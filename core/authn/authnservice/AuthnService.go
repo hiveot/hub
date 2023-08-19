@@ -45,9 +45,9 @@ func NewAuthnService(
 	tokenizer authn.IAuthnTokenizer,
 	hc hubclient.IHubClient) *AuthnService {
 
-	mngSvc := NewAuthnManageService(store, msgServer, tokenizer)
+	mngSvc := NewAuthnManageThing(store, msgServer, tokenizer)
 	mngBinding := NewAuthnManageBinding(mngSvc, hc)
-	userSvc := NewAuthnUserService(store, msgServer, tokenizer, nil)
+	userSvc := NewAuthnUserThing(store, msgServer, tokenizer, nil)
 	userBinding := NewAuthnUserBinding(userSvc, hc)
 
 	authnSvc := &AuthnService{

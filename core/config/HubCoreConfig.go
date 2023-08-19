@@ -18,7 +18,8 @@ import (
 type HubCoreConfig struct {
 	// The home directory used in init and setup
 	HomeDir string `yaml:"homeDir,omitempty"`
-	////
+
+	// TODO: certs at this level
 	//CaCertFile     string `yaml:"caCertFile"`     // default: caCert.pem
 	//CaKeyFile      string `yaml:"caKeyFile"`      // default: caKey.pem
 	//ServerCertFile string `yaml:"serverCertFile"` // default: hubCert.pem

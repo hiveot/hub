@@ -11,51 +11,34 @@ This core service is alpha but functional. Breaking changes can be expected.
 
 Roadmap Items:
 1. update documentation
-2. integrate with authorization (NATS only)
+2. integrate with authorization service as needed
 3. startup selector for NATS and MQTT 
 
 ## Scope
 
-In-scope is to provide identity management for clients on the local network.
-
-The use of a password for login depends on the underlying messaging service. The server can use the Authn client to validate the password and obtain a token.
-
+In-scope is to provide identity management for users, devices, and services on the local network, with support for password, static key, and token based authentication.
 
 ## Summary
 
 This service provides the following capabilities:
-1. Manage Hub clients such as IoT devices, services and users for use by managers. This provides CRUD capabilities for clients that is persisted in the file store.
 
-2. Client authentication token creation and refresh for use by clients. This creates a new token and validates issued tokens.
+1. Manage capability to add and remove Hub clients such as IoT devices, services and users. Client information is persisted in an authentication store. Storage is a plugin that implements the storage API.
 
-The method of token handling depends on the underlying messaging service. The tokenizer generates new tokens when clients are added, and validates old tokens when they are refreshed.
+2. Client authentication token creation and refresh. This is intended for clients to refresh authentication tokens and update their profile.
 
-The protocol binding uses the serializer 'ser' to serialize requests and responses. The default is JSON.
+Authentication itself depends on the underlying messaging server and is provided through a so-called adapter. A Nats and mochi-mqtt adapter are included.
 
-### NATS
+The NATS server supports NKey and password based authentication. While JWT is supported it requires --muddling-- that authorization is included which causes several problems.  
 
-The NATS specific portion consists of the tokenizer (see [AuthnNatsTokenizer.go](authnnats/AuthnNatsTokenizer.go)). 
+Communication with the service takes place using a protocol binding that serializes and deserializes messages. 
 
-NATS JWT tokens differ from plain old JWT in the following ways:
-* token keys use edd2519.
-* use of signed nonce in the authentication process
-* use of authorization subjects (topics) in the JWT token
+An optional golang client for both management and client capability is included and support for other languages is planned.
 
-This service receives action requests by subscribing to the subjects: 
-* things.authn.manage.action.>
-* things.authn.client.action.>
+## Password Storage
 
-The subjects are created by the NATS version of the HubClient implementation.
+Passwords are stored by the service using argon2id hashing. This is chosen as it is one of the strongest hash algorithms that is resistant to GPU cracking attacks and side channel attacks. [See wikipedia](https://en.wikipedia.org/wiki/Argon2). In future other algorithms can be supported as needed.
 
-When NATS tokens are issued they contain restrictions on the subject (topics) that can be published and subscribed to. By default this includes events, actions and an inbox, depending on the client type. Inbox prefix is used to prevent snooping of other clients inboxes.
-
-Still TBD is the JetStream authorization and how this affects the token limits.
-
-Tokens do not include limits for use with JetStream. Global limits for memory size and disk space are set centrally on the server.  
-
-### MQTT
-
-The MQTT server uses the [built-in JWT tokenizer](authnservice/AuthnServiceTokenizer.go). 
+NATS prefers storing password in its options using bcrypt. To support this, it might be required to storage password in this format so it can be applied to NATS.  
 
 ## Usage
 This service is included and launcher by the Hub core.

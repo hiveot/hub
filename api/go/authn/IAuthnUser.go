@@ -38,7 +38,7 @@ type RefreshReq struct {
 	OldToken string `json:"oldToken"`
 }
 type RefreshResp struct {
-	JwtToken string `json:"jwtToken"`
+	NewToken string `json:"newToken"`
 }
 
 const UpdateNameAction = "updateName"

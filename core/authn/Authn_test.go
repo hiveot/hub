@@ -4,10 +4,10 @@ import (
 	authn2 "github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/core/authn"
+	"github.com/hiveot/hub/core/authn/authnadapter"
 	"github.com/hiveot/hub/core/authn/authnclient"
 	"github.com/hiveot/hub/core/authn/authnservice"
 	"github.com/hiveot/hub/core/authn/authnstore"
-	"github.com/hiveot/hub/core/authn/natsauthn"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/msgserver/natsserver"
 	"github.com/hiveot/hub/lib/certs"
@@ -66,7 +66,7 @@ func startTestAuthnService() (mng authn2.IAuthnManage, stopFn func(), err error)
 
 	// setup the authn service
 	// TODO: support JWT tokens
-	tokenizer := natsauthn.NewAuthnNatsTokenizer(serverCfg.AppAccountKP, true)
+	tokenizer := authnadapter.NewNatsAuthnTokenizer(serverCfg.AppAccountKP, true)
 	nc1, err := msgServer.ConnectInProc("authn", nil)
 	hc1, _ := natshubclient.ConnectWithNC(nc1, "authn")
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"sync"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -32,8 +33,8 @@ type AclFileStore struct {
 }
 
 // AddGroup adds a new group to the store
-// retention is the time data is kept in the group
-func (aclStore *AclFileStore) AddGroup(groupName string, retention uint64) error {
+// retention is the time data is kept in the group, 0 for indefinitely
+func (aclStore *AclFileStore) AddGroup(groupName string, retention time.Duration) error {
 	aclStore.mutex.Lock()
 	defer aclStore.mutex.Unlock()
 	_, exists := aclStore.groups[groupName]

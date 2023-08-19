@@ -3,17 +3,21 @@ package authz_test
 import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/hubclient"
+	"github.com/hiveot/hub/core/authz/authzadapter"
 	"github.com/hiveot/hub/core/authz/authzclient"
 	"github.com/hiveot/hub/core/authz/authzservice"
-	"github.com/hiveot/hub/core/authz/natsauthz"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/msgserver/natsserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slog"
 	"os"
 	"path"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -37,42 +41,24 @@ var msgServer *natsserver.NatsNKeyServer
 var useCore = "nats" // nats vs mqtt
 
 // Create a new authz service with empty acl list
+// Returns the authz and authn services for use in testing
 func startTestAuthzService() (svc authz.IAuthz, closeFn func()) {
-	var authzAppl authz.IAuthz
+	var authzAdpt authz.IAuthz
 	var hc1 hubclient.IHubClient
 
 	_ = os.Remove(aclFilePath)
 	aclStore := authzservice.NewAuthzFileStore(aclFilePath)
-	err := aclStore.Open()
+	// setup for the authz service
+	nc1, err := msgServer.ConnectInProc("authz", nil)
+	hc1, _ = natshubclient.ConnectWithNC(nc1, "authz")
 	if err != nil {
-		panic(err)
+		panic("can't connect to server: " + err.Error())
 	}
-	if useCore == "nats" {
-		nc1, err := msgServer.ConnectInProc("authz", nil)
-		hc1, _ = natshubclient.ConnectWithNC(nc1, "authz")
-		if err != nil {
-			panic("can't connect authz to server: " + err.Error())
-		}
-		authzJS, err := nc1.JetStream()
-		if err != nil {
-			panic("can't get jetstream api: " + err.Error())
-		}
-		authzAppl, err = natsauthz.NewNatsAuthzAppl(authzJS)
-
-		if err != nil {
-			panic("can't initialize nats authz binding: " + err.Error())
-		}
-	} else if useCore == "mqtt" {
-		//hc = NewMqttHubClient()
-		//authzAll = mqttauthz.NewMqttAuthzAppl(hc)
-	}
+	authzAdpt = authzadapter.NewNatsAuthzAdapter(aclStore, msgServer)
+	authzSvc := authzservice.NewAuthzService(aclStore, authzAdpt, hc1)
+	err = authzSvc.Start()
 	if err != nil {
-		panic("unable to connect: " + err.Error())
-	}
-	authSvc := authzservice.NewAuthzService(aclStore, authzAppl, hc1)
-	err = authSvc.Start()
-	if err != nil {
-		return nil, nil
+		panic("failed to start authz service: " + err.Error())
 	}
 
 	//--- create a hub client for the authz management
@@ -84,11 +70,11 @@ func startTestAuthzService() (svc authz.IAuthz, closeFn func()) {
 	if err != nil {
 		panic("unable to connect authz client to JS")
 	}
-	mngAuthz := authzclient.NewAuthzClient(hc2)
+	authzMng := authzclient.NewAuthzClient(hc2)
 
-	return mngAuthz, func() {
+	return authzMng, func() {
 		hc2.Disconnect()
-		authSvc.Stop()
+		authzSvc.Stop()
 	}
 }
 
@@ -112,6 +98,142 @@ func TestMain(m *testing.M) {
 	os.Exit(res)
 }
 
+// Test the all group
+func TestEventsStream(t *testing.T) {
+	logrus.Infof("---TestEventsStream start---")
+	defer logrus.Infof("---TestEventsStream end---")
+	const device1ID = "device1"
+	const thing1ID = "thing1"
+	const service1ID = "service1"
+	const eventMsg = "hello world"
+	var rxMsg string
+	var err error
+
+	// setup
+	svc, stopFn := startTestAuthzService()
+	defer stopFn()
+	_ = svc
+
+	// add devices that publish things
+	device1Key, _ := nkeys.CreateUser()
+	device1Pub, _ := device1Key.PublicKey()
+	err = msgServer.AddDevice(device1ID, device1Pub)
+	require.NoError(t, err)
+
+	// create the service that will subscribe to the event
+	service1Key, _ := nkeys.CreateUser()
+	service1Pub, _ := service1Key.PublicKey()
+	err = msgServer.AddService(service1ID, service1Pub)
+	require.NoError(t, err)
+	hc1, err := natshubclient.ConnectWithNKey(clientURL, service1ID, service1Key, certBundle.CaCert)
+	require.NoError(t, err)
+	defer hc1.Disconnect()
+
+	// the stream must exist
+	si, err := hc1.JS().StreamInfo(authzadapter.EventsIntakeStreamName)
+	require.NoError(t, err)
+	slog.Info("stream $events:",
+		slog.Uint64("count", si.State.Msgs),
+		slog.Int("consumers", si.State.Consumers))
+	//
+
+	// create the stream consumer and listen for events
+	sub, err := hc1.SubGroup(authzadapter.EventsIntakeStreamName, false,
+		func(msg *hubclient.EventMessage) {
+			slog.Info("received event", "eventID", msg.EventID)
+			rxMsg = string(msg.Payload)
+		})
+	assert.NoError(t, err)
+	defer sub.Unsubscribe()
+
+	// connect as the device and publish a thing event
+	hc2, err := natshubclient.ConnectWithNKey(clientURL, device1ID, device1Key, certBundle.CaCert)
+	require.NoError(t, err)
+	defer hc2.Disconnect()
+
+	err = hc2.PubEvent(thing1ID, "event1", []byte(eventMsg))
+	require.NoError(t, err)
+
+	// read the events stream for
+	si, err = hc1.JS().StreamInfo(authzadapter.EventsIntakeStreamName)
+	slog.Info("stream $events:",
+		slog.Uint64("count", si.State.Msgs),
+		slog.Int("consumers", si.State.Consumers))
+	//
+	time.Sleep(time.Millisecond * 1000)
+
+	// check the result
+	assert.Equal(t, eventMsg, rxMsg)
+}
+
+// Test the all group
+func TestAllGroup(t *testing.T) {
+	logrus.Infof("---TestAllGroup start---")
+	defer logrus.Infof("---TestAllGroup end---")
+	const device1ID = "device1"
+	const thing1ID = "thing1"
+	const user1ID = "user1"
+	const eventMsg = "hello world"
+	var rxMsg string
+	var rxCount atomic.Int32
+	var err error
+	// setup
+	svc, stopFn := startTestAuthzService()
+	require.NotNil(t, svc)
+	defer stopFn()
+
+	// the 'all' group must exist
+	grp, err := svc.GetGroup(authz.AllGroupName)
+	require.NoError(t, err)
+	assert.Equal(t, authz.AllGroupName, grp.Name)
+
+	// add devices that publish things
+	device1Key, _ := nkeys.CreateUser()
+	device1Pub, _ := device1Key.PublicKey()
+	err = msgServer.AddDevice(device1ID, device1Pub)
+	require.NoError(t, err)
+
+	// add an all-group viewer
+	// only all group members can view
+	user1Key, _ := nkeys.CreateUser()
+	user1Pub, _ := user1Key.PublicKey()
+	err = msgServer.AddUser(device1ID, "", user1Pub)
+	require.NoError(t, err)
+	hc1, err := natshubclient.ConnectWithNKey(clientURL, user1ID, user1Key, certBundle.CaCert)
+	require.NoError(t, err)
+	defer hc1.Disconnect()
+
+	// thing events should be received by all group subscribers
+	// test with $events stream
+	sub1, err := hc1.SubGroup(authz.AllGroupName, false, func(msg *hubclient.EventMessage) {
+		slog.Info("received event",
+			"id", msg.EventID, "publisher", msg.BindingID, "thing", msg.ThingID)
+		rxMsg = string(msg.Payload)
+		rxCount.Add(1)
+	})
+	assert.NoError(t, err)
+	defer sub1.Unsubscribe()
+
+	// connect as a device and publish a thing event
+	hc2, err := natshubclient.ConnectWithNKey(clientURL, device1ID, device1Key, certBundle.CaCert)
+	require.NoError(t, err)
+	defer hc2.Disconnect()
+	err = hc2.PubEvent(thing1ID, "event1", []byte(eventMsg))
+	require.NoError(t, err)
+	assert.Equal(t, int32(0), rxCount.Load())
+
+	// add the user to the all group
+	err = svc.AddUser(authz.AllGroupName, authz.GroupRoleViewer, user1Pub)
+	require.NoError(t, err)
+
+	// publish a second event. should be received now
+	err = hc2.PubEvent(thing1ID, "event2", []byte(eventMsg))
+	require.NoError(t, err)
+	time.Sleep(time.Millisecond * 10)
+	assert.Equal(t, eventMsg, rxMsg)
+	assert.Equal(t, int32(1), rxCount.Load())
+}
+
 // Test that devices have authorization to publish TDs and events
 func TestDeviceAuthorization(t *testing.T) {
 	logrus.Infof("---TestDeviceAuthorization---")
@@ -127,7 +249,7 @@ func TestDeviceAuthorization(t *testing.T) {
 	// the all group must exist
 	err := svc.AddThing(device1ID, authz.AllGroupName)
 	require.NoError(t, err)
-	err = svc.AddGroup(group1ID, 0)
+	err = svc.AddGroup(group1ID, -1)
 	require.NoError(t, err)
 	err = svc.AddThing(thingID1, group1ID)
 	assert.NoError(t, err)

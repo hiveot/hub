@@ -5,12 +5,11 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	certs2 "github.com/hiveot/hub/lib/certs"
 	"math/big"
 	"time"
 
 	"github.com/sirupsen/logrus"
-
-	"github.com/hiveot/hub/lib/certsclient"
 )
 
 const CertOrgName = "HiveOT"
@@ -56,7 +55,7 @@ func CreateHubCA(validityDays int) (cert *x509.Certificate, key *ecdsa.PrivateKe
 	}
 
 	// Create the CA private key
-	privKey := certsclient.CreateECDSAKeys()
+	privKey := certs2.CreateECDSAKeys()
 
 	// create the CA
 	caCertDer, err := x509.CreateCertificate(rand.Reader, rootTemplate, rootTemplate, &privKey.PublicKey, privKey)

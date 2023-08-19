@@ -405,33 +405,85 @@ func (hc *NatsHubClient) SubActions(thingID string, cb func(msg *hubclient.Actio
 	return sub, err
 }
 
-func (hc *NatsHubClient) SubEvents(thingID string, cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
+// SubEvents subscribe to event
+//func (hc *NatsHubClient) SubEvents(thingID string, cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
+//
+//	subject := MakeSubject(hc.clientID, thingID, "event", "")
+//
+//	sub, err := hc.Subscribe(subject, func(natsMsg *nats.Msg) {
+//		md, _ := natsMsg.Metadata()
+//		timeStamp := time.Now()
+//		if md != nil {
+//			timeStamp = md.Timestamp
+//
+//		}
+//		payload := natsMsg.Data
+//		bindingID, thID, _, name, err := SplitSubject(natsMsg.Subject)
+//		if err != nil {
+//			slog.Error("unable to handle subject", "err", err, "subject", natsMsg.Subject)
+//			return
+//		}
+//		eventMsg := &hubclient.EventMessage{
+//			BindingID: bindingID,
+//			ThingID:   thID,
+//			EventID:   name,
+//			Timestamp: timeStamp.Unix(),
+//			Payload:   payload,
+//		}
+//		cb(eventMsg)
+//	})
+//	return sub, err
+//}
 
-	subject := MakeSubject(hc.clientID, thingID, "event", "")
+// doEventSubscriber listens for incoming event messages and invoke a callback handler
+// this returns when the subscription is no longer valid
+func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *hubclient.EventMessage)) error {
+	ci, err := nsub.ConsumerInfo()
+	if err != nil {
+		slog.Error(err.Error())
+		return err
+	}
+	go func() {
+		for nsub.IsValid() {
 
-	sub, err := hc.Subscribe(subject, func(natsMsg *nats.Msg) {
-		md, _ := natsMsg.Metadata()
-		timeStamp := time.Now()
-		if md != nil {
-			timeStamp = md.Timestamp
+			//natsMsg, err := nsub.NextMsg(time.Second)// invalid subscription type???
+			natsMsgs, err := nsub.Fetch(1)
+			if err != nil {
+				// it is only an error if the subscription hasn't closed
+				if nsub.IsValid() {
+					slog.Error("nsub.Fetch failed", "err", err.Error())
+				}
+				break
+			}
+			natsMsg := natsMsgs[0]
+			slog.Info("received event msg from group ",
+				slog.String("group", ci.Name),
+				slog.String("subject", natsMsg.Subject),
+			)
+			md, _ := natsMsg.Metadata()
+			timeStamp := time.Now()
+			if md != nil {
+				timeStamp = md.Timestamp
+			}
+			pubID, thID, _, name, err := SplitSubject(natsMsg.Subject)
+			if err != nil {
+				slog.Error("unable to handle subject", "err", err,
+					"subject", natsMsg.Subject)
+				return
+			}
+			msg := &hubclient.EventMessage{
+				//SenderID: msg.Header.
+				EventID:   name,
+				BindingID: pubID,
+				ThingID:   thID,
+				Timestamp: timeStamp.Unix(),
+				Payload:   natsMsg.Data,
+			}
+			cb(msg)
 
 		}
-		payload := natsMsg.Data
-		bindingID, thID, _, name, err := SplitSubject(natsMsg.Subject)
-		if err != nil {
-			slog.Error("unable to handle subject", "err", err, "subject", natsMsg.Subject)
-			return
-		}
-		eventMsg := &hubclient.EventMessage{
-			BindingID: bindingID,
-			ThingID:   thID,
-			EventID:   name,
-			Timestamp: timeStamp.Unix(),
-			Payload:   payload,
-		}
-		cb(eventMsg)
-	})
-	return sub, err
+	}()
+	return nil
 }
 
 // SubGroup subscribes to events received by a group.
@@ -442,7 +494,7 @@ func (hc *NatsHubClient) SubEvents(thingID string, cb func(msg *hubclient.EventM
 //
 //	groupName name of the stream to receive events from.
 //	receiveLatest to immediately receive the latest event for each event instance
-func (hc *NatsHubClient) SubGroup(groupName string, receiveLatest bool, cb func(msg *hubclient.EventMessage)) error {
+func (hc *NatsHubClient) SubGroup(groupName string, receiveLatest bool, cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
 	deliverPolicy := nats.DeliverNewPolicy
 	if receiveLatest {
 		deliverPolicy = nats.DeliverLastPerSubjectPolicy
@@ -451,49 +503,29 @@ func (hc *NatsHubClient) SubGroup(groupName string, receiveLatest bool, cb func(
 	// Group event subscription does not need acknowledgements. This will speed up processing.
 	// When first connecting, the latest event per subject is received,
 	consumerConfig := &nats.ConsumerConfig{
-		//Durable: "", // an ephemeral consumer has no name
+		Durable: "", // an ephemeral consumer has no name
 		//FilterSubject: ">",  // get all events
 		AckPolicy:     nats.AckNonePolicy,
 		DeliverPolicy: deliverPolicy,
 		//DeliverSubject: groupName+"."+hc.clientID,  // is this how this is supposed to be used?
 		Description: "group consumer for client " + hc.clientID,
-		RateLimit:   1000000, // TODO: configure somewhere. Is 1Mbps kbps a good number?
+		//RateLimit:   1000000, // consumers in poll mode cannot have rate limit set
 	}
-	consumerInfo, err := hc.js.AddConsumer(groupName, consumerConfig)
+	_, err := hc.js.AddConsumer(groupName, consumerConfig)
 	if err != nil {
-		return fmt.Errorf("error subscribing to group '%s': %w", groupName, err)
+		return nil, fmt.Errorf("error subscribing to group '%s': %w", groupName, err)
 	}
 
-	//subject := MakeSubject(publisherID, thingID, vocab.VocabEventTopic, eventName)
-	//subject := groupName
 	// bind this consumer to all messages in this group stream (see at the end of the Subscribe)
-	sub, err := hc.js.Subscribe(">", func(natsMsg *nats.Msg) {
-		md, _ := natsMsg.Metadata()
-		timeStamp := time.Now()
-		if md != nil {
-			timeStamp = md.Timestamp
+	// Ephemeral consumer
+	// must have permissions to $JS.{AllStream}
+	nsub, err := hc.js.PullSubscribe(">", "") //nats.Bind(groupName, consumerInfo.Name),
 
-		}
-		pubID, thID, _, name, err := SplitSubject(natsMsg.Subject)
-		if err != nil {
-			slog.Error("unable to handle subject", "err", err,
-				"subject", natsMsg.Subject)
-			return
-		}
-		msg := &hubclient.EventMessage{
-			//SenderID: msg.Header.
-			EventID:   name,
-			BindingID: pubID,
-			ThingID:   thID,
-			Timestamp: timeStamp.Unix(),
-			Payload:   natsMsg.Data,
-		}
-		cb(msg)
-	}, nats.OrderedConsumer(), nats.Bind(groupName, consumerInfo.Name))
-
-	// todo unsubscribe
-	_ = sub
-	return err
+	if err == nil {
+		err = startEventMessageHandler(nsub, cb)
+	}
+	sub := &NatsHubSubscription{nsub: nsub}
+	return sub, err
 }
 
 // Subscribe to NATS

@@ -2,10 +2,12 @@ package authzservice
 
 import (
 	"errors"
+	"fmt"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 	"golang.org/x/exp/slog"
+	"time"
 )
 
 // AuthzServiceBinding is a messaging binding for marshalling Authz service messages.
@@ -18,8 +20,7 @@ type AuthzServiceBinding struct {
 // handle authz management requests published by a hub manager
 func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.ActionMessage) error {
 	slog.Info("handleManageActions",
-		slog.String("actionID", action.ActionID),
-		"my addr", binding)
+		slog.String("actionID", action.ActionID))
 
 	// TODO: doublecheck the caller is an admin or svc
 	switch action.ActionID {
@@ -29,7 +30,7 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 		if err != nil {
 			return err
 		}
-		err = binding.svc.AddGroup(req.GroupName, req.Retention)
+		err = binding.svc.AddGroup(req.GroupName, time.Second*time.Duration(req.Retention))
 		if err == nil {
 			action.SendAck()
 		}
@@ -62,7 +63,7 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 		if err != nil {
 			return err
 		}
-		err = binding.svc.AddThing(req.UserID, req.GroupName)
+		err = binding.svc.AddUser(req.UserID, req.Role, req.GroupName)
 		if err == nil {
 			action.SendAck()
 		}
@@ -169,6 +170,12 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 
 // Start subscribes to authz message requests
 func (binding *AuthzServiceBinding) Start() error {
+	if binding.hc == nil {
+		return fmt.Errorf("HubClient is nil")
+	} else if binding.svc == nil {
+		return fmt.Errorf("authz service not provided to binding")
+	}
+
 	sub, err := binding.hc.SubActions(authz.ManageAuthzCapability, binding.handleManageActions)
 	binding.mngSub = sub
 	return err

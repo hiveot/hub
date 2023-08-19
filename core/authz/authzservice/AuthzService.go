@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/hubclient"
+	"time"
 )
 
 // AuthzService handles client management and authorization for access to Things.
@@ -14,7 +15,7 @@ import (
 // regardless of how they are authenticated.
 type AuthzService struct {
 	aclStore     *AclFileStore
-	authzAppl    authz.IAuthz
+	authzAdpt    authz.IAuthz
 	authzBinding *AuthzServiceBinding
 }
 
@@ -25,15 +26,15 @@ type AuthzService struct {
 //}
 
 // AddGroup adds a new group and creates a stream for it.
-//
+// if groupName is the all group then it events from all things are added
 // publish to the connected stream.
-func (svc *AuthzService) AddGroup(groupName string, retention uint64) error {
+func (svc *AuthzService) AddGroup(groupName string, retention time.Duration) error {
 	if retention == 0 {
 		retention = authz.DefaultGroupRetention
 	}
 	err := svc.aclStore.AddGroup(groupName, retention)
 	if err == nil {
-		err = svc.authzAppl.AddGroup(groupName, retention)
+		err = svc.authzAdpt.AddGroup(groupName, retention)
 	}
 	return err
 }
@@ -42,8 +43,8 @@ func (svc *AuthzService) AddGroup(groupName string, retention uint64) error {
 func (svc *AuthzService) AddService(serviceID string, groupName string) error {
 
 	err := svc.aclStore.AddService(serviceID, groupName)
-	if err == nil && svc.authzAppl != nil {
-		err = svc.authzAppl.AddService(serviceID, groupName)
+	if err == nil && svc.authzAdpt != nil {
+		err = svc.authzAdpt.AddService(serviceID, groupName)
 	}
 	return err
 }
@@ -52,8 +53,8 @@ func (svc *AuthzService) AddService(serviceID string, groupName string) error {
 func (svc *AuthzService) AddThing(thingID string, groupName string) error {
 
 	err := svc.aclStore.AddThing(thingID, groupName)
-	if err == nil && svc.authzAppl != nil {
-		err = svc.authzAppl.AddThing(thingID, groupName)
+	if err == nil && svc.authzAdpt != nil {
+		err = svc.authzAdpt.AddThing(thingID, groupName)
 	}
 	return err
 }
@@ -61,8 +62,8 @@ func (svc *AuthzService) AddThing(thingID string, groupName string) error {
 // AddUser adds a client with the user role to a group
 func (svc *AuthzService) AddUser(userID string, role string, groupName string) (err error) {
 	err = svc.aclStore.AddUser(userID, role, groupName)
-	if err == nil && svc.authzAppl != nil {
-		err = svc.authzAppl.AddUser(userID, role, groupName)
+	if err == nil && svc.authzAdpt != nil {
+		err = svc.authzAdpt.AddUser(userID, role, groupName)
 	}
 	return err
 }
@@ -70,8 +71,8 @@ func (svc *AuthzService) AddUser(userID string, role string, groupName string) (
 // DeleteGroup deletes the group and associated resources. Use with care
 func (svc *AuthzService) DeleteGroup(groupName string) error {
 	err := svc.aclStore.DeleteGroup(groupName)
-	if err == nil && svc.authzAppl != nil {
-		err = svc.authzAppl.DeleteGroup(groupName)
+	if err == nil && svc.authzAdpt != nil {
+		err = svc.authzAdpt.DeleteGroup(groupName)
 	}
 	return err
 }
@@ -137,8 +138,8 @@ func (svc *AuthzService) ListGroups(clientID string) (groups []authz.Group, err 
 // RemoveClient from a group
 func (svc *AuthzService) RemoveClient(clientID string, groupName string) error {
 	err := svc.aclStore.RemoveClient(clientID, groupName)
-	if err == nil && svc.authzAppl != nil {
-		err = svc.authzAppl.RemoveClient(clientID, groupName)
+	if err == nil && svc.authzAdpt != nil {
+		err = svc.authzAdpt.RemoveClient(clientID, groupName)
 	}
 	return err
 }
@@ -146,8 +147,8 @@ func (svc *AuthzService) RemoveClient(clientID string, groupName string) error {
 // RemoveClientAll from all groups
 func (svc *AuthzService) RemoveClientAll(clientID string) error {
 	err := svc.aclStore.RemoveClientAll(clientID)
-	if err == nil && svc.authzAppl != nil {
-		err = svc.authzAppl.RemoveClientAll(clientID)
+	if err == nil && svc.authzAdpt != nil {
+		err = svc.authzAdpt.RemoveClientAll(clientID)
 	}
 	return err
 }
@@ -155,17 +156,28 @@ func (svc *AuthzService) RemoveClientAll(clientID string) error {
 // SetUserRole sets the role for the user in a group
 func (svc *AuthzService) SetUserRole(userID string, role string, groupName string) (err error) {
 	err = svc.aclStore.SetUserRole(userID, role, groupName)
-	if err == nil && svc.authzAppl != nil {
-		err = svc.authzAppl.SetUserRole(userID, role, groupName)
+	if err == nil && svc.authzAdpt != nil {
+		err = svc.authzAdpt.SetUserRole(userID, role, groupName)
 	}
 	return err
 }
 
-// Start returns an error if the store is missing
-// This creates the 'all' group if it doesn't yet exist
+// Start the service. This:
+// 1. opens the acl store for group persistence
+// 2. starts the server adapter for applying changes to the server
+// 3. creates the 'all' group if it doesn't yet exist
+// 4. starts the messaging binding to listen for action requests
 func (svc *AuthzService) Start() (err error) {
 	if svc.aclStore == nil {
-		return fmt.Errorf("Start: missing acl store")
+		return fmt.Errorf("start: missing acl store")
+	}
+	err = svc.aclStore.Open()
+	if err != nil {
+		return err
+	}
+	err = svc.authzAdpt.Start()
+	if err != nil {
+		return err
 	}
 	err = svc.authzBinding.Start()
 	if err != nil {
@@ -174,29 +186,34 @@ func (svc *AuthzService) Start() (err error) {
 	// ensure that the all group exists
 	_, err = svc.GetGroup(authz.AllGroupName)
 	if err != nil {
-		svc.AddGroup(authz.AllGroupName, 0)
+		// TBD: best retention for the all group
+		// the all group subscribes to all events
+		err = svc.AddGroup(authz.AllGroupName, time.Hour*24*31)
 	}
 
-	return nil
+	return err
 }
+
 func (svc *AuthzService) Stop() {
 	svc.authzBinding.Stop()
+	svc.authzAdpt.Stop()
+	svc.aclStore.Close()
 }
 
 // NewAuthzService creates a new instance of the authorization service.
-// Both store and application are provided to support dependency injection for other messaging systems.
+// The provided store and adapter instances will be started on Start() and ended on Stop()
 //
 //	aclStore persists the authorization rules
-//	authzAppl applies the authorization configuration to the underlying messaging system. Use nil to ignore (for testing)
+//	authzAdpt applies the authorization configuration to the underlying messaging system. Use nil to ignore (for testing)
 //	hc is the server connection used to subscribe
-func NewAuthzService(aclStore *AclFileStore, authzAppl authz.IAuthz, hc hubclient.IHubClient) *AuthzService {
+func NewAuthzService(aclStore *AclFileStore, authzAdpt authz.IAuthz, hc hubclient.IHubClient) *AuthzService {
 
 	authzService := &AuthzService{
 		aclStore:  aclStore,
-		authzAppl: authzAppl,
+		authzAdpt: authzAdpt,
 	}
-	// the binding subscribes and (un)marshals action messages and applies it
-	// to the authz service.
+	// the binding subscribes to the message bus to receive action requests,
+	// (un)marshals action messages and invokes the authz service with requests.
 	authzBinding := NewAuthzMsgBinding(authzService, hc)
 	authzService.authzBinding = authzBinding
 

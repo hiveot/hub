@@ -1,4 +1,4 @@
-package natsauthn
+package authnadapter
 
 import (
 	"encoding/base64"
@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-// AuthnNatsJWTTokenizer generates and validates NATS NKey or JWT tokens.
+// NatsAuthnTokenizer generates and validates NATS NKey or JWT tokens.
 // This implements the IAuthnTokenizer interface
-type AuthnNatsJWTTokenizer struct {
+type NatsAuthnTokenizer struct {
 	accountKey nkeys.KeyPair
 	// use nkey or jwt for tokens
 	useNKeyToken bool
@@ -28,7 +28,7 @@ type AuthnNatsJWTTokenizer struct {
 //   - Issuer and Subject must match specific NKey roles
 //     NKey Roles are operators, accounts and users,
 //     Operator is the issuer of account, account issuer of users.
-func (svc *AuthnNatsJWTTokenizer) CreateJWTToken(
+func (svc *NatsAuthnTokenizer) CreateJWTToken(
 	clientID string, clientType string, pubKey string, validitySec int) (token string, err error) {
 
 	// create jwt claims that identifies the user and its permissions
@@ -83,7 +83,7 @@ func (svc *AuthnNatsJWTTokenizer) CreateJWTToken(
 	return token, err
 }
 
-func (svc *AuthnNatsJWTTokenizer) CreateToken(
+func (svc *NatsAuthnTokenizer) CreateToken(
 	clientID string, clientType string, pubKey string, validitySec int) (token string, err error) {
 	if svc.useNKeyToken {
 		return pubKey, nil
@@ -99,7 +99,7 @@ func (svc *AuthnNatsJWTTokenizer) CreateToken(
 //   - verify the issuer is the signing/account key.
 //
 // Verifying the signedNonce is optional. Use "" to ignore.
-func (svc *AuthnNatsJWTTokenizer) ValidateJWTToken(
+func (svc *NatsAuthnTokenizer) ValidateJWTToken(
 	clientID string, pubKey string, jwtToken string, signedNonce string, nonce string) (err error) {
 
 	// the jwt token is not in the JWT field. Workaround by storing it in the token field.
@@ -173,7 +173,7 @@ func (svc *AuthnNatsJWTTokenizer) ValidateJWTToken(
 // When nkeys is not used this validates the JWT token
 //
 // Verifying the signedNonce is optional. Use "" to ignore.
-func (svc *AuthnNatsJWTTokenizer) ValidateToken(
+func (svc *NatsAuthnTokenizer) ValidateToken(
 	clientID string, pubKey string, oldToken string, signedNonce string, nonce string) (err error) {
 	if svc.useNKeyToken {
 		if oldToken == "" || pubKey != oldToken {
@@ -184,13 +184,13 @@ func (svc *AuthnNatsJWTTokenizer) ValidateToken(
 	return svc.ValidateJWTToken(clientID, pubKey, oldToken, signedNonce, nonce)
 }
 
-// NewAuthnNatsTokenizer handles token generation and verification for the NATS messaging server
+// NewNatsAuthnTokenizer handles token generation and verification for the NATS messaging server
 //
 //	accountKey is used to sign JWT tokens
 //	useNKeyTokens to not use JWT and return public key as token
-func NewAuthnNatsTokenizer(accountKey nkeys.KeyPair, useNKeyTokens bool) *AuthnNatsJWTTokenizer {
+func NewNatsAuthnTokenizer(accountKey nkeys.KeyPair, useNKeyTokens bool) *NatsAuthnTokenizer {
 
-	tokenizer := &AuthnNatsJWTTokenizer{
+	tokenizer := &NatsAuthnTokenizer{
 		accountKey:   accountKey,
 		useNKeyToken: useNKeyTokens,
 	}

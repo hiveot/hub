@@ -193,12 +193,12 @@ func (svc *AuthnUserThing) UpdatePubKey(clientID string, newPubKey string) (err 
 //	return nil
 //}
 
-// NewAuthnUserService returns a user authentication service instance.
+// NewAuthnUserThing returns a user authentication capability.
 //
 //	store holds the authentication client records
 //	tokenizer is an optional alternative implementation of token issue and verification
 //	caCert is an optional CA used to verify certificates. Use nil to not authn using client certs
-func NewAuthnUserService(
+func NewAuthnUserThing(
 	store authnstore.IAuthnStore,
 	msgServer *natsserver.NatsNKeyServer,
 	tokenizer authn.IAuthnTokenizer,
