@@ -1,6 +1,4 @@
-package authnstore
-
-import "github.com/hiveot/hub/api/go/authn"
+package authn
 
 // supported password hashes
 const (
@@ -15,7 +13,7 @@ const DefaultPasswordFile = "hub.passwd"
 // For internal use.
 type AuthnEntry struct {
 	// Client's profile
-	authn.ClientProfile
+	ClientProfile
 
 	// password encrypted with argon2id or bcrypt
 	PasswordHash string
@@ -26,7 +24,7 @@ type IAuthnStore interface {
 	// Add add a device, service or user to the store with authn settings
 	//  clientID is the client's identity
 	//  profile to add. Empty fields can receive valid defaults.
-	Add(clientID string, profile authn.ClientProfile) error
+	Add(clientID string, profile ClientProfile) error
 
 	// Close the store
 	Close()
@@ -36,10 +34,15 @@ type IAuthnStore interface {
 
 	// Get returns the client's profile
 	// Returns an error if the clientID doesn't exist
-	Get(clientID string) (profile authn.ClientProfile, err error)
+	Get(clientID string) (profile ClientProfile, err error)
 
 	// List profiles in the store
-	List() (entries []authn.ClientProfile, err error)
+	List() (entries []ClientProfile, err error)
+
+	// ListEntries returns a map of client profiles including the password hash
+	// Intended to obtain user info to apply to the messaging server
+	// For internal auth usage only.
+	ListEntries() (entryList map[string]AuthnEntry, err error)
 
 	// Open the store
 	Open() error
@@ -60,9 +63,9 @@ type IAuthnStore interface {
 	// Update updates client information
 	// If the clientID doesn't exist, this returns an error.
 	// This fails if the client doesn't exist.
-	Update(clientID string, entry authn.ClientProfile) error
+	Update(clientID string, entry ClientProfile) error
 
 	// VerifyPassword verifies the given password against the stored hash
 	// Returns the client profile and an error if the verification fails.
-	VerifyPassword(loginID, password string) (authn.ClientProfile, error)
+	VerifyPassword(loginID, password string) (ClientProfile, error)
 }

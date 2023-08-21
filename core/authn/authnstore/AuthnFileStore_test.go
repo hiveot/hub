@@ -287,7 +287,7 @@ func TestConcurrentReadWrite(t *testing.T) {
 }
 
 func TestWritePwToBadTempFolder(t *testing.T) {
-	pws := make(map[string]authnstore.AuthnEntry)
+	pws := make(map[string]authn.AuthnEntry)
 	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath)
 	err := pwStore1.Open()
 	assert.NoError(t, err)

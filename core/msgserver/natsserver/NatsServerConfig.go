@@ -55,6 +55,9 @@ type NatsServerConfig struct {
 	SystemAccountJWT string        `yaml:"-"` // generated
 	AppAccountJWT    string        `yaml:"-"` // generated from AppAccountKP
 	CoreServiceJWT   string        `yaml:"-"` // generated
+
+	// appAccount to use with users and nkeys
+	appAcct *server.Account
 }
 
 // Setup the nats server config.
@@ -297,7 +300,7 @@ func (cfg *NatsServerConfig) CreateNatsNKeyOptions() (server.Options, error) {
 	// Frustratingly, this is the only way to enable jetstream on an account that persists after options reload
 	cfgContent := ` 
 accounts { 
-	hiveot: {
+	` + cfg.AppAccountName + `: {
 		jetstream: enabled
 	}
 }`
@@ -309,42 +312,50 @@ accounts {
 
 	// load the file
 	err = natsOpts.ProcessConfigFile(tmpFile)
+	natsOpts.ConfigFile = "" // it was just temporary
 	_ = os.Remove(tmpFile)
 	if err != nil {
 		return natsOpts, err
 	}
-	//return opts, err
+	natsOpts.Host = cfg.Host
+	natsOpts.Port = cfg.Port
 
 	//systemAcct := server.NewAccount("SYS")
 	//systemAccountPub, _ := cfg.SystemAccountKP.PublicKey()
 	//systemAcct.Nkey = systemAccountPub
 
 	// NewAccount creates a limitless account. There is no way to set a limit though :/
-	appAcct := server.NewAccount(cfg.AppAccountName)
+	cfg.appAcct = server.NewAccount(cfg.AppAccountName)
 	appAccountPub, _ := cfg.AppAccountKP.PublicKey()
-	appAcct.Nkey = appAccountPub
-
-	natsOpts.Host = cfg.Host
-	natsOpts.Port = cfg.Port
+	cfg.appAcct.Nkey = appAccountPub
 
 	//SystemAccount: "SYS",
 	//natsOpts.Accounts =      []*server.Account{systemAcct, appAcct},
 	//natsOpts.Accounts =   []*server.Account{appAcct},
-	natsOpts.NoAuthUser = NoAuthUserID
-	// Undocumented: setting a trusted key switches the server to JWT-only
+
+	// no need for unauthenticated user. provisioning can add a special provisioning user
+	//natsOpts.NoAuthUser = NoAuthUserID
+	// WARNING: Undocumented. setting a trusted key switches the server to JWT-only
 	//TrustedKeys: []string{operatorPub},
 
-	natsOpts.Nkeys = []*server.NkeyUser{}
+	coreServicePub, _ := cfg.CoreServiceKP.PublicKey()
+	natsOpts.Nkeys = []*server.NkeyUser{
+		{
+			Nkey:        coreServicePub,
+			Permissions: nil, // unlimited
+			Account:     cfg.appAcct,
+		},
+	}
 
 	// login without password is needed for out-of-band provisioning
 	natsOpts.Users = []*server.User{
-		{
-			Username:    NoAuthUserID,
-			Password:    "",
-			Permissions: noAuthPermissions,
-			Account:     appAcct,
-			//InboxPrefix: "_INBOX." + NoAuthUserID,
-		},
+		//{
+		//	Username:    NoAuthUserID,
+		//	Password:    "",
+		//	Permissions: noAuthPermissions,
+		//	Account:     cfg.appAcct,
+		//	//InboxPrefix: "_INBOX." + NoAuthUserID,
+		//},
 	}
 	natsOpts.JetStream = true
 	natsOpts.JetStreamMaxMemory = int64(cfg.MaxDataMemoryMB) * 1024 * 1024

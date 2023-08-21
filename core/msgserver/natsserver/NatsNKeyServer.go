@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
+	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
@@ -20,117 +22,6 @@ type NatsNKeyServer struct {
 	ns       *server.Server
 	// enable callout authn with EnableCalloutHandler. nil to just use nkeys
 	chook *NatsCalloutHook
-}
-
-// ApplyAuthn applies a new list of users to the static configuration
-func (srv *NatsNKeyServer) ApplyAuthn(clients []authn.IAuthnUser) error {
-	return fmt.Errorf("todo")
-}
-
-// AddDevice adds a IoT device authn key to the app account and reloads the options.
-// Devices can pub/sub on their own subject, eg: things.{deviceID}.>
-func (srv *NatsNKeyServer) AddDevice(deviceID string, deviceKeyPub string) error {
-	// if callout has been activated then exclude the key from invoking callout
-	if srv.natsOpts.AuthCallout != nil {
-		srv.natsOpts.AuthCallout.AuthUsers = append(srv.natsOpts.AuthCallout.AuthUsers, deviceKeyPub)
-	}
-
-	appAcct, err := srv.ns.LookupAccount(srv.cfg.AppAccountName)
-	if err != nil {
-		return fmt.Errorf("missing app account: %w", err)
-	}
-	srv.natsOpts.Nkeys = append(srv.natsOpts.Nkeys, &server.NkeyUser{
-		Nkey:    deviceKeyPub,
-		Account: appAcct,
-	})
-	err = srv.ns.ReloadOptions(&srv.natsOpts)
-	return err
-}
-
-// AddService adds a core service authn key to the app account and reloads the options.
-// Services can pub/sub to all things subjects
-func (srv *NatsNKeyServer) AddService(serviceID string, serviceKeyPub string) error {
-	// if callout has been activated then exclude the key from invoking callout
-	if srv.natsOpts.AuthCallout != nil {
-		srv.natsOpts.AuthCallout.AuthUsers = append(srv.natsOpts.AuthCallout.AuthUsers, serviceKeyPub)
-	}
-
-	appAcct, err := srv.ns.LookupAccount(srv.cfg.AppAccountName)
-	if err != nil {
-		return fmt.Errorf("missing app account: %w", err)
-	}
-	srv.natsOpts.Nkeys = append(srv.natsOpts.Nkeys, &server.NkeyUser{
-		Nkey:    serviceKeyPub,
-		Account: appAcct,
-	})
-	err = srv.ns.ReloadOptions(&srv.natsOpts)
-	return err
-}
-
-// AddUser adds a user login/pw to the app account and reloads the options.
-// Users can pub to inboxes
-func (srv *NatsNKeyServer) AddUser(userID string, password string, userKeyPub string) error {
-	// if callout has been activated then exclude the key from callout
-	if srv.natsOpts.AuthCallout != nil && userKeyPub != "" {
-		srv.natsOpts.AuthCallout.AuthUsers = append(srv.natsOpts.AuthCallout.AuthUsers, userKeyPub)
-	}
-
-	appAcct, err := srv.ns.LookupAccount(srv.cfg.AppAccountName)
-	if err != nil {
-		return fmt.Errorf("missing app account: %w", err)
-	}
-	if userKeyPub != "" {
-		srv.natsOpts.Nkeys = append(srv.natsOpts.Nkeys, &server.NkeyUser{
-			Nkey:        userKeyPub,
-			Account:     appAcct,
-			Permissions: noAuthPermissions,
-			// todo: permissions
-		})
-	}
-	if password != "" {
-		srv.natsOpts.Users = append(srv.natsOpts.Users, &server.User{
-			Username:    userID,
-			Password:    password,
-			Permissions: nil, // TODO
-			Account:     appAcct,
-		})
-	}
-	err = srv.ns.ReloadOptions(&srv.natsOpts)
-	return err
-}
-
-// UpdateKey changes the public key of a user login and reload options
-// This fails if oldKey doesn't exist. The caller should have added it first to ensure proper permissions
-// This returns an error if the old key is not found
-//
-// WARNING: changing the public key of the connected account can cause an authentication failure when
-// sending the reply. The workaround is to delay the reload.
-func (srv *NatsNKeyServer) UpdateKey(oldKey string, newKey string) error {
-	for _, n := range srv.natsOpts.Nkeys {
-		if n.Nkey == oldKey {
-			n.Nkey = newKey
-			// sending a reply after changing the key of the caller causes an authentication error
-			// therefore apply after returning
-			go func() {
-				_ = srv.ns.ReloadOptions(&srv.natsOpts)
-			}()
-			return nil
-		}
-	}
-	return fmt.Errorf("can't update key  '%s' is not found", oldKey)
-}
-
-// UpdatePassword changes the password of a user login and reload options
-// This returns an error if the user is not found
-func (srv *NatsNKeyServer) UpdatePassword(userID string, password string) error {
-	for _, u := range srv.natsOpts.Users {
-		if u.Username == userID {
-			u.Password = password
-			err := srv.ns.ReloadOptions(&srv.natsOpts)
-			return err
-		}
-	}
-	return fmt.Errorf("can't update password as user '%s' is not found", userID)
 }
 
 // ConnectInProc connects to the server in-process using the service key.
@@ -196,24 +87,113 @@ func (srv *NatsNKeyServer) EnableCalloutHandler(
 	return err
 }
 
-// SetAclRules sets the subjects the clientID has access to.
-func (srv *NatsNKeyServer) SetAclRules(clientID string, subjects []string) error {
-	subjectPerm := server.SubjectPermission{
-		Allow: subjects,
+// construct a permissions object for a client and its group memberships
+func (srv *NatsNKeyServer) makePermissions(clientProf *authn.ClientProfile, groupsRole authz.RoleMap) *server.Permissions {
+	subPerm := server.SubjectPermission{
+		Allow: []string{},
 		Deny:  nil,
 	}
-	newPermissions := server.Permissions{
+	pubPerm := server.SubjectPermission{
+		Allow: []string{},
+		Deny:  nil,
+	}
+	perm := &server.Permissions{
 		Publish:   nil,
-		Subscribe: &subjectPerm,
+		Subscribe: nil,
 		Response:  nil,
 	}
-	for _, user := range srv.natsOpts.Users {
-		if clientID == user.Username {
-			user.Permissions = &newPermissions
-			break
+	// all clients can use their inbox, using inbox prefix
+	subInbox := "_INBOX." + clientProf.ClientID + ".>"
+	subPerm.Allow = append(subPerm.Allow, subInbox)
+
+	// services can pub actions and subscribe
+	if clientProf.ClientType == authn.ClientTypeService {
+		pubService := natshubclient.MakeSubject("", "", "action", ">")
+		pubPerm.Allow = append(subPerm.Allow, pubService)
+		subService := natshubclient.MakeSubject("", "", "event", ">")
+		subPerm.Allow = append(subPerm.Allow, subService)
+	}
+	// users and services can subscribe to streams (groups)
+	if clientProf.ClientType == authn.ClientTypeUser || clientProf.ClientType == authn.ClientTypeService {
+		for groupName, role := range groupsRole {
+			// group members can read from the stream
+			readSubj := "$JS.API.CONSUMER.CREATE." + groupName
+			subPerm.Allow = append(subPerm.Allow, readSubj)
+
+			// TODO: operators and managers can publish actions for all things in the group
+			// Can we use a stream publish that mapped back to the thing?
+			// eg: {groupName}.{publisher}.{thing}.action.>
+			// maps to things.{publisher}.{thing}.action.>
+			// where the stream has a filter on all things added to the stream?
+			if role == authz.GroupRoleOperator || role == authz.GroupRoleManager {
+				actionSubj := groupName + ".*.*.action.>"
+				pubPerm.Allow = append(pubPerm.Allow, actionSubj)
+			}
 		}
 	}
-	return nil
+	if clientProf.ClientType == authn.ClientTypeDevice {
+		// devices can pub/sub on their own address and their inbox
+		pubDevice := natshubclient.MakeSubject(clientProf.ClientID, "", "event", ">")
+		pubPerm.Allow = append(subPerm.Allow, pubDevice)
+		subDevice := natshubclient.MakeSubject(clientProf.ClientID, "", "action", ">")
+		subPerm.Allow = append(subPerm.Allow, subDevice)
+	}
+	return perm
+}
+
+// ReloadClients loads the authn and authz from the stores and applies
+// then to the static nats server config.
+//
+//	clients is a list of user, device and service identities
+func (srv *NatsNKeyServer) ReloadClients(
+	clients []authn.AuthnEntry, userGroupRoles map[string]authz.RoleMap) error {
+
+	pwUsers := []*server.User{}
+	nkeyUsers := []*server.NkeyUser{}
+
+	// keep the core service that was added on server start
+	coreServicePub, _ := srv.cfg.CoreServiceKP.PublicKey()
+	nkeyUsers = append(nkeyUsers, &server.NkeyUser{
+		Nkey:        coreServicePub,
+		Permissions: nil, // unlimited access
+		Account:     srv.cfg.appAcct,
+	})
+	// keep the 'unauthenticated' user
+	// TODO: make this optional. provisioning should use a special provisioning user
+	//pwUsers = append(pwUsers, &server.User{
+	//	Username:    NoAuthUserID,
+	//	Password:    "",
+	//	Permissions: noAuthPermissions,
+	//	Account:     srv.cfg.appAcct,
+	//})
+
+	// apply all clients
+	for _, entry := range clients {
+		clientRoles := userGroupRoles[entry.ClientID]
+		userPermissions := srv.makePermissions(&entry.ClientProfile, clientRoles)
+
+		if entry.PasswordHash != "" {
+			pwUsers = append(pwUsers, &server.User{
+				Username:    entry.ClientID,
+				Password:    entry.PasswordHash,
+				Permissions: userPermissions,
+				Account:     srv.cfg.appAcct,
+			})
+		}
+
+		if entry.PubKey != "" {
+			// add an nkey entry
+			nkeyUsers = append(nkeyUsers, &server.NkeyUser{
+				Nkey:        entry.PubKey,
+				Permissions: userPermissions,
+				Account:     srv.cfg.appAcct,
+			})
+		}
+	}
+	srv.natsOpts.Users = pwUsers
+	srv.natsOpts.Nkeys = nkeyUsers
+	err := srv.ns.ReloadOptions(&srv.natsOpts)
+	return err
 }
 
 // Start the NATS server with the given configuration
@@ -243,15 +223,7 @@ func (srv *NatsNKeyServer) Start(cfg *NatsServerConfig) (clientURL string, err e
 	}
 	clientURL = srv.ns.ClientURL()
 
-	// how to enable jetstream for account?
-
-	// add the core service account
-	coreServicePub, _ := srv.cfg.CoreServiceKP.PublicKey()
-	err = srv.AddService("core-service", coreServicePub)
-	if err != nil {
-		return clientURL, err
-	}
-	// app account must have JS enabled
+	// the app account must have JS enabled
 	ac, _ := srv.ns.LookupAccount(srv.cfg.AppAccountName)
 	err = ac.EnableJetStream(nil) //use defaults
 	if err != nil {

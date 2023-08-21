@@ -1,7 +1,6 @@
 package authzadapter
 
 import (
-	"fmt"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/core/authz/authzservice"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
@@ -75,65 +74,66 @@ func (svc *NatsAuthzAdapter) AddGroup(groupName string, retention time.Duration)
 	_ = strmInfo
 	return err
 }
-func (svc *NatsAuthzAdapter) AddService(serviceID string, groupName string) error {
-	//return fmt.Errorf("not yet implemented")
-	// todo: access control for the service. Not sure how.
-	return nil
-}
+
+//func (svc *NatsAuthzAdapter) AddService(serviceID string, groupName string) error {
+//	//return fmt.Errorf("not yet implemented")
+//	// todo: access control for the service. Not sure how.
+//	return nil
+//}
 
 // AddThing adds the thing's subject as a stream source
-func (svc *NatsAuthzAdapter) AddThing(thingID string, groupName string) error {
-	slog.Info("AddThing",
-		slog.String("thingID", thingID),
-		slog.String("groupName", groupName),
-	)
-	// TODO: protect against duplicates
-	streamInfo, err := svc.js.StreamInfo(groupName)
-	if err != nil {
-		return fmt.Errorf("AddThing adding thing '%s' to group '%s' failed: %w",
-			thingID, groupName, err)
-	}
-	thingSubject := natshubclient.MakeSubject("", thingID, "event", "")
-	// the 'EventsIntakeStreamName' stream receives all events
-	newSource := &nats.StreamSource{
-		Name:          EventsIntakeStreamName,
-		FilterSubject: thingSubject,
-	}
-	streamInfo.Config.Sources = append(streamInfo.Config.Sources, newSource)
-	newInfo, err := svc.js.UpdateStream(&streamInfo.Config)
-	_ = newInfo
-	return err
-}
-func (svc *NatsAuthzAdapter) AddUser(userID string, role string, groupName string) (err error) {
-	// todo: access control for the service. Not sure how.
-	// user has permission to create an ephemeral consumer for this stream
+//func (svc *NatsAuthzAdapter) AddThing(thingID string, groupName string) error {
+//	slog.Info("AddThing",
+//		slog.String("thingID", thingID),
+//		slog.String("groupName", groupName),
+//	)
+//	// TODO: protect against duplicates
+//	streamInfo, err := svc.js.StreamInfo(groupName)
+//	if err != nil {
+//		return fmt.Errorf("AddThing adding thing '%s' to group '%s' failed: %w",
+//			thingID, groupName, err)
+//	}
+//	thingSubject := natshubclient.MakeSubject("", thingID, "event", "")
+//	// the 'EventsIntakeStreamName' stream receives all events
+//	newSource := &nats.StreamSource{
+//		Name:          EventsIntakeStreamName,
+//		FilterSubject: thingSubject,
+//	}
+//	streamInfo.Config.Sources = append(streamInfo.Config.Sources, newSource)
+//	newInfo, err := svc.js.UpdateStream(&streamInfo.Config)
+//	_ = newInfo
+//	return err
+//}
+//func (svc *NatsAuthzAdapter) AddUser(userID string, role string, groupName string) (err error) {
+//	// todo: access control for the service. Not sure how.
+//	// user has permission to create an ephemeral consumer for this stream
+//
+//	//
+//	subjects := svc.createAclRules(userID)
+//	err = svc.msgServer.SetAclRules(userID, subjects)
+//	return err
+//}
 
-	//
-	subjects := svc.createAclRules(userID)
-	err = svc.msgServer.SetAclRules(userID, subjects)
-	return err
-}
-
-// create the subjects the user is authorized for based on group membership
-func (svc *NatsAuthzAdapter) createAclRules(userID string) []string {
-	rules := make([]string, 0)
-	roles, _ := svc.aclStore.GetClientRoles(userID)
-	for groupName, role := range roles {
-		readSubj := "$JS.API.CONSUMER.CREATE." + groupName
-		rules = append(rules, readSubj)
-
-		// TODO: operators and managers can publish actions for all things in the group
-		// Can we use a stream publish that mapped back to the thing?
-		// eg: {groupName}.{publisher}.{thing}.action.>
-		// maps to things.{publisher}.{thing}.action.>
-		// where the stream has a filter on all things added to the stream?
-		if role == authz.GroupRoleOperator || role == authz.GroupRoleManager {
-			actionSubj := groupName + ".*.*.action.>"
-			rules = append(rules, actionSubj)
-		}
-	}
-	return rules
-}
+//// create the subjects the user is authorized for based on group membership
+//func (svc *NatsAuthzAdapter) createAclRules(userID string) []string {
+//	rules := make([]string, 0)
+//	roles, _ := svc.aclStore.GetClientRoles(userID)
+//	for groupName, role := range roles {
+//		readSubj := "$JS.API.CONSUMER.CREATE." + groupName
+//		rules = append(rules, readSubj)
+//
+//		// TODO: operators and managers can publish actions for all things in the group
+//		// Can we use a stream publish that mapped back to the thing?
+//		// eg: {groupName}.{publisher}.{thing}.action.>
+//		// maps to things.{publisher}.{thing}.action.>
+//		// where the stream has a filter on all things added to the stream?
+//		if role == authz.GroupRoleOperator || role == authz.GroupRoleManager {
+//			actionSubj := groupName + ".*.*.action.>"
+//			rules = append(rules, actionSubj)
+//		}
+//	}
+//	return rules
+//}
 
 func (svc *NatsAuthzAdapter) DeleteGroup(groupName string) error {
 	slog.Info("DeleteGroup", "groupName", groupName)
@@ -141,50 +141,19 @@ func (svc *NatsAuthzAdapter) DeleteGroup(groupName string) error {
 	return err
 }
 
-func (svc *NatsAuthzAdapter) GetGroup(groupName string) (grp authz.Group, err error) {
-	// intended for verifying during testing
-	sInfo, err := svc.js.StreamInfo(groupName)
-	if err != nil {
-		return grp, err
-	}
-	grp.Name = groupName
-	// each source is a thing
-	for _, s := range sInfo.Sources {
-		_, thingID, _, _, err := natshubclient.SplitSubject(s.FilterSubject)
-		if err != nil {
-			grp.MemberRoles[thingID] = authz.GroupRoleThing
-		}
-	}
-	// sorry, the stream doesn't contain other permissions
-	// TODO: determine other members roles from the stream. Not sure how.
-	return grp, nil
-}
+//func (svc *NatsAuthzAdapter) ListGroups(clientID string) (groups []authz.Group, err error) {
+//	names := svc.js.StreamNames()
+//	groups = make([]authz.Group, 0, len(names))
+//	for name := range names {
+//		groups = append(groups, authz.Group{Name: name})
+//	}
+//	return groups, err
+//}
 
-func (svc *NatsAuthzAdapter) GetRole(clientID string, thingID string) (role string, err error) {
-	// intended for verifying during testing
-	err = fmt.Errorf("not implemented here")
-	return
-}
-func (svc *NatsAuthzAdapter) GetClientRoles(clientID string) (roles authz.RoleMap, err error) {
-	err = fmt.Errorf("not implemented here")
-	return
-}
-func (svc *NatsAuthzAdapter) GetPermissions(clientID string, thingIDs []string) (permissions map[string][]string, err error) {
-	err = fmt.Errorf("not implemented here")
-	return
-}
-func (svc *NatsAuthzAdapter) ListGroups(clientID string) (groups []authz.Group, err error) {
-	names := svc.js.StreamNames()
-	groups = make([]authz.Group, 0, len(names))
-	for name := range names {
-		groups = append(groups, authz.Group{Name: name})
-	}
-	return groups, err
-}
-
-func (svc *NatsAuthzAdapter) RemoveClient(clientID string, groupName string) error {
+// RemoveThing removes a thing as a stream source
+func (svc *NatsAuthzAdapter) RemoveThing(clientID string, groupName string) error {
 	// remove things
-	slog.Info("RemoveClient",
+	slog.Info("RemoveThing",
 		slog.String("clientID", clientID),
 		slog.String("groupName", groupName),
 	)
@@ -207,22 +176,20 @@ func (svc *NatsAuthzAdapter) RemoveClient(clientID string, groupName string) err
 	_, err = svc.js.UpdateStream(&sInfo.Config)
 	return err
 }
-func (svc *NatsAuthzAdapter) RemoveClientAll(clientID string) error {
+
+// RemoveThingAll a Thing as a source from all its streams
+func (svc *NatsAuthzAdapter) RemoveThingAll(clientID string) error {
 	names := svc.js.StreamNames()
 	for name := range names {
-		err := svc.RemoveClient(clientID, name)
+		err := svc.RemoveThing(clientID, name)
 		if err != nil {
 			return err
 		}
 	}
-	slog.Info("RemoveClientAll",
+	slog.Info("RemoveThingAll",
 		slog.String("clientID", clientID),
 	)
 	return nil
-}
-
-func (svc *NatsAuthzAdapter) SetUserRole(userID string, role string, groupName string) (err error) {
-	return fmt.Errorf("not implemented here")
 }
 
 //// Start synchronizes the authorization groups with the JetStream configuraiton

@@ -1,4 +1,4 @@
-package authnadapter
+package natsserver
 
 import (
 	"encoding/base64"

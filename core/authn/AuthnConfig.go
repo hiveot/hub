@@ -2,7 +2,6 @@ package authn
 
 import (
 	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/core/authn/authnstore"
 	"path"
 )
 
@@ -30,7 +29,7 @@ type AuthnConfig struct {
 func (cfg *AuthnConfig) Setup(storesDir string) error {
 
 	if cfg.PasswordFile == "" {
-		cfg.PasswordFile = authnstore.DefaultPasswordFile
+		cfg.PasswordFile = authn.DefaultPasswordFile
 	}
 	if !path.IsAbs(cfg.PasswordFile) {
 		cfg.PasswordFile = path.Join(storesDir, "authn", cfg.PasswordFile)

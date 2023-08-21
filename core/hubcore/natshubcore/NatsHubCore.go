@@ -3,7 +3,6 @@ package natshubcore
 import (
 	authn2 "github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/core/authn/authnadapter"
 	"github.com/hiveot/hub/core/authn/authnservice"
 	"github.com/hiveot/hub/core/authn/authnstore"
 	"github.com/hiveot/hub/core/authz/authzadapter"
@@ -51,7 +50,7 @@ func (core *HubCore) Start(cfg *config.HubCoreConfig) (clientURL string) {
 	// start the authn store, service and binding
 	if !cfg.Authn.NoAutoStart {
 		authnStore := authnstore.NewAuthnFileStore(cfg.Authn.PasswordFile)
-		tokenizer := authnadapter.NewNatsAuthnTokenizer(cfg.NatsServer.AppAccountKP, true)
+		tokenizer := natsserver.NewNatsAuthnTokenizer(cfg.NatsServer.AppAccountKP, true)
 		nc, err := core.Server.ConnectInProc(authn2.AuthnServiceName, nil)
 		if err != nil {
 			panic(err.Error())

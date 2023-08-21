@@ -3,16 +3,15 @@ package authnservice
 import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/hubclient"
-	"github.com/hiveot/hub/core/authn/authnstore"
 	"github.com/hiveot/hub/core/msgserver/natsserver"
 )
 
 // AuthnService creates a service handling both manage and user requests.
 type AuthnService struct {
 	mngBinding *AuthnManageBinding
-	MngService *AuthnManageThing
+	MngService *ManageAuthnService
 	usrBinding *AuthnUserBinding
-	UsrService *AuthnUserThing
+	UsrService *UserAuthnService
 }
 
 // Start the service and activate the binding to handle requests
@@ -40,14 +39,14 @@ func (svc *AuthnService) Stop() {
 //	tokenizer is the method of creating and validating JWT tokens
 //	hc is the message bus connection used to subscribe to using bindings
 func NewAuthnService(
-	store authnstore.IAuthnStore,
+	store authn.IAuthnStore,
 	msgServer *natsserver.NatsNKeyServer,
 	tokenizer authn.IAuthnTokenizer,
 	hc hubclient.IHubClient) *AuthnService {
 
-	mngSvc := NewAuthnManageThing(store, msgServer, tokenizer)
+	mngSvc := NewManageAuthnService(store)
 	mngBinding := NewAuthnManageBinding(mngSvc, hc)
-	userSvc := NewAuthnUserThing(store, msgServer, tokenizer, nil)
+	userSvc := NewUserAuthnService(store, msgServer, tokenizer, nil)
 	userBinding := NewAuthnUserBinding(userSvc, hc)
 
 	authnSvc := &AuthnService{

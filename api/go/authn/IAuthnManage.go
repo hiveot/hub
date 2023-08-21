@@ -24,7 +24,7 @@ const (
 type ClientProfile struct {
 	// The client ID.
 	//  for users this is their email
-	//  for IoT devices or binding services, use the bindingID
+	//  for IoT devices or services, use the bindingID
 	//  for services the service instance ID
 	ClientID string
 	// ClientType identifies the client as a ClientTypeDevice, ClientTypeService or ClientTypeUser

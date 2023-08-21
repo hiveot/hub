@@ -21,47 +21,7 @@ The use-cases for using groups are:
 3. differentiate who can control and configure Things using roles 
 4. manage retention of events. For example, track environmental sensors for years while security sensor are tracked for only a couple of months.  This assumes that the need for retention aligns with the purpose of the group.
 
-The authz service manages the groups, the members of each group and their role in the group. The service is responsible for configuring NATS JetStream streams subject subscription to Things and access control to users.  
-
-## Mapping Groups To Streams
-
-Groups are simulated in nats using streams and ephemeral consumers. 
-
-Bindings publish Thing events using the subject format: 
-> things.{bindingID}.{thingID}.event.{eventType}.{instance}
-
-These events are captured in a central '$events' stream.
-
-When a group is created by the administrator, the associated stream is created using the group name. 
-
-When a Thing is added to the group by the group manager, its subject is added as a stream source using $events as the source stream.
-
-A group streams have a source defined for each Thing that is a member of the group. Each source is the combination of $events stream and the subject of the events captured in the stream. 
-
-To access a group stream, the user creates an ephemeral consumer for the stream. Under the hood this uses the subject $JS.API.CONSUMER.CREATE.{groupName}. Only members of the group can publish to this subject. Similar for DELETE, INFO.
-
-To read from a group stream, users also need permission for $JS.API.CONSUMER.MSG.NEXT.{groupName}.>
-
-
-The authz service has a listGroups action to allow a client to list the groups they are a member of. 
-
-In summary, the above setup accomplishes the following:
-1. Authorization to receive events only for Things that are in the same group(s) as the user
-2. Archiving of events for each group with its own retention period
-3. Users can retrieve the latest value of each event
-4Users can retrieve historical events
-5Users only need to subscribe to a group to receive relevant events. No need to subscribe to individual things.
-
-### Actions
-
-Users can publish actions by writing them to the group stream on subject:
-> things.{bindingID}.{thingID}.action.{actionID}.{clientID}
-
-TBD: this requires that the published subject are constrained to to those defined with the stream. 
-
-The $actions stream has a source for each group stream using subject "things.*.*.action.>". 
-
-Bindings subscribe to the $actions stream using a durable consumer to receive requests. If multiple actions with the same ID are received after a reconnect, then only the last one should be applied by the binding.
+The authz service manages the groups, the members of each group and their role in the group.  
 
 
 ### Group Management

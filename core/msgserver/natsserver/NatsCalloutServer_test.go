@@ -1,37 +1,21 @@
-package natsserver
+package natsserver_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/svcconfig"
+	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slog"
-	"os"
-	"path"
 	"sync/atomic"
 	"testing"
 )
 
 func TestStartStopCallout(t *testing.T) {
-	homeDir := path.Join(os.TempDir(), "nats-server-test")
-	f := svcconfig.GetFolders(homeDir, false)
-
 	var coCount atomic.Int32
-	certBundle := certs.CreateTestCertBundle()
-
-	s := NewNatsNKeyServer()
-	cfg := &NatsServerConfig{
-		Port:       9990,
-		ServerCert: certBundle.ServerCert,
-		CaCert:     certBundle.CaCert,
-		CaKey:      certBundle.CaKey,
-	}
-	err := cfg.Setup(f.Certs, f.Stores, false)
-	require.NoError(t, err)
-	clientURL, err := s.Start(cfg)
+	// defined in NatsNKeyServer_test.go
+	clientURL, s, _, _, err := testenv.StartNatsTestServer()
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, clientURL)
@@ -56,26 +40,16 @@ func TestStartStopCallout(t *testing.T) {
 }
 
 func TestValidCalloutAuthn(t *testing.T) {
-	const knownUser = "knownuser"
-	homeDir := path.Join(os.TempDir(), "nats-server-test")
-	f := svcconfig.GetFolders(homeDir, false)
-
 	var coCount atomic.Int32
-	certBundle := certs.CreateTestCertBundle()
+	var knownUser = "knownUser"
 
-	s := NewNatsNKeyServer()
-	cfg := &NatsServerConfig{
-		Port:       9990,
-		ServerCert: certBundle.ServerCert,
-		CaCert:     certBundle.CaCert,
-		CaKey:      certBundle.CaKey,
-	}
-	err := cfg.Setup(f.Certs, f.Stores, false)
-	require.NoError(t, err)
-	clientURL, err := s.Start(cfg)
+	clientURL, s, _, _, err := testenv.StartNatsTestServer()
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, clientURL)
+
+	// add several predefined users, service and devices that don't need callout
+	err = s.ReloadClients(TestClients, TestRoles)
 
 	// this callout handler only accepts 'knownUser' request
 	err = s.EnableCalloutHandler(func(request *jwt.AuthorizationRequestClaims) error {
@@ -89,11 +63,8 @@ func TestValidCalloutAuthn(t *testing.T) {
 	assert.NoError(t, err)
 
 	// a directly added service should not invoke the callout handler
-	newkey1, _ := nkeys.CreateUser()
-	newkey1Pub, _ := newkey1.PublicKey()
-	err = s.AddService("newservice", newkey1Pub)
-	assert.NoError(t, err)
-	c, err := s.ConnectInProc("user1", newkey1)
+	// (added by nkey server test)
+	c, err := s.ConnectInProc(service1ID, service1Key)
 	require.NoError(t, err)
 	c.Close()
 	assert.Equal(t, int32(0), coCount.Load())
@@ -103,35 +74,21 @@ func TestValidCalloutAuthn(t *testing.T) {
 	c, err = s.ConnectInProc(knownUser, newkey2)
 	require.NoError(t, err)
 
-	hasJS, err := c.JetStream()
-	assert.NoError(t, err)
-	assert.NotNil(t, hasJS)
-
 	c.Close()
 	assert.Equal(t, int32(1), coCount.Load())
 }
 
 func TestInValidCalloutAuthn(t *testing.T) {
 	const knownUser = "knownuser"
-	homeDir := path.Join(os.TempDir(), "nats-server-test")
-	f := svcconfig.GetFolders(homeDir, false)
 
 	var coCount atomic.Int32
-	certBundle := certs.CreateTestCertBundle()
 
-	s := NewNatsNKeyServer()
-	cfg := &NatsServerConfig{
-		Port:       9990,
-		ServerCert: certBundle.ServerCert,
-		CaCert:     certBundle.CaCert,
-		CaKey:      certBundle.CaKey,
-	}
-	err := cfg.Setup(f.Certs, f.Stores, false)
-	require.NoError(t, err)
-	clientURL, err := s.Start(cfg)
+	clientURL, s, _, _, err := testenv.StartNatsTestServer()
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, clientURL)
+	// add several predefined users, service and devices that don't need callout
+	err = s.ReloadClients(TestClients, TestRoles)
 
 	// this callout handler only accepts 'knownUser' request
 	err = s.EnableCalloutHandler(func(request *jwt.AuthorizationRequestClaims) error {
@@ -144,7 +101,7 @@ func TestInValidCalloutAuthn(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// invoke callout by connecting with a invalid user
+	// invoke callout by connecting with an invalid user
 	newkey2, _ := nkeys.CreateUser()
 	c, err := s.ConnectInProc("unknownuser", newkey2)
 	require.Error(t, err)

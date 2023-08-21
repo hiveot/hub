@@ -22,7 +22,7 @@ import (
 // User passwords are stored using ARGON2id hash
 // It includes a file watcher to automatically reload on update.
 type AuthnFileStore struct {
-	entries   map[string]AuthnEntry // map [loginID]"loginID:hash:userName:updated:
+	entries   map[string]authn.AuthnEntry // map [loginID]"loginID:hash:userName:updated:
 	storePath string
 	hashAlgo  string // hashing algorithm PWHASH_ARGON2id
 	watcher   *fsnotify.Watcher
@@ -55,7 +55,7 @@ func (authnStore *AuthnFileStore) Add(clientID string, profile authn.ClientProfi
 			profile.ValiditySec = authn.DefaultUserTokenValiditySec
 		}
 	}
-	entry = AuthnEntry{ClientProfile: profile}
+	entry = authn.AuthnEntry{ClientProfile: profile}
 	entry.PasswordHash = ""
 	entry.Updated = time.Now().Format(vocab.ISO8601Format)
 
@@ -104,6 +104,11 @@ func (authnStore *AuthnFileStore) List() (profiles []authn.ClientProfile, err er
 	return profiles, nil
 }
 
+// ListEntries returns a list of all user profiles with their hashed passwords
+func (authnStore *AuthnFileStore) ListEntries() (entries map[string]authn.AuthnEntry, err error) {
+	return authnStore.entries, nil
+}
+
 // Open the store
 // This reads the password file and subscribes to file changes
 func (authnStore *AuthnFileStore) Open() (err error) {
@@ -130,7 +135,7 @@ func (authnStore *AuthnFileStore) Reload() error {
 	authnStore.mutex.Lock()
 	defer authnStore.mutex.Unlock()
 
-	entries := make(map[string]AuthnEntry)
+	entries := make(map[string]authn.AuthnEntry)
 	dataBytes, err := os.ReadFile(authnStore.storePath)
 	if errors.Is(err, os.ErrNotExist) {
 		err = authnStore.save()
@@ -264,9 +269,9 @@ func (authnStore *AuthnFileStore) VerifyPassword(loginID, password string) (prof
 	if !found {
 		// unknown user
 		isValid = false
-	} else if authnStore.hashAlgo == PWHASH_ARGON2id {
+	} else if authnStore.hashAlgo == authn.PWHASH_ARGON2id {
 		isValid, _ = argon2id.ComparePasswordAndHash(password, entry.PasswordHash)
-	} else if authnStore.hashAlgo == PWHASH_BCRYPT {
+	} else if authnStore.hashAlgo == authn.PWHASH_BCRYPT {
 		err := bcrypt.CompareHashAndPassword([]byte(entry.PasswordHash), []byte(password))
 		isValid = err == nil
 	}
@@ -280,7 +285,7 @@ func (authnStore *AuthnFileStore) VerifyPassword(loginID, password string) (prof
 // WritePasswordsToTempFile write the given entries to temp file in the given folder
 // This returns the name of the new temp file.
 func WritePasswordsToTempFile(
-	folder string, entries map[string]AuthnEntry) (tempFileName string, err error) {
+	folder string, entries map[string]authn.AuthnEntry) (tempFileName string, err error) {
 
 	file, err := os.CreateTemp(folder, "hub-pwfilestore")
 
@@ -309,8 +314,8 @@ func WritePasswordsToTempFile(
 func NewAuthnFileStore(filepath string) *AuthnFileStore {
 	store := &AuthnFileStore{
 		storePath: filepath,
-		hashAlgo:  PWHASH_ARGON2id,
-		entries:   make(map[string]AuthnEntry),
+		hashAlgo:  authn.PWHASH_ARGON2id,
+		entries:   make(map[string]authn.AuthnEntry),
 	}
 	return store
 }
