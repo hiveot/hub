@@ -5,11 +5,9 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/core/authn/authnservice"
 	"github.com/hiveot/hub/core/authn/authnstore"
-	"github.com/hiveot/hub/core/authz/authzadapter"
 	"github.com/hiveot/hub/core/authz/authzservice"
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
-	"github.com/hiveot/hub/core/msgserver/natsserver"
 	"path"
 )
 
@@ -18,12 +16,12 @@ type HubCore struct {
 	config *config.HubCoreConfig
 
 	// Runtimes
-	Server     *natsserver.NatsNKeyServer
+	Server     *nkeyserver.NatsNKeyServer
 	AuthnSvc   *authnservice.AuthnService
 	authzStore *authzservice.AclFileStore
 
 	//authzJetStream *natsauthz.NatsAuthzAppl
-	//authzMsgBinding *authzservice.AuthzServiceBinding
+	//authzMsgBinding *authzservice.AuthzBinding
 	AuthzSvc *authzservice.AuthzService
 }
 
@@ -40,7 +38,7 @@ func (core *HubCore) Start(cfg *config.HubCoreConfig) (clientURL string) {
 		//	&cfg.Server, core.ServerCert, core.CaCert,
 		//	core.OperatorJWT, core.SystemJWT, core.AppAccountJWT, core.ServiceKey)
 
-		core.Server = natsserver.NewNatsNKeyServer()
+		core.Server = nkeyserver.NewNatsNKeyServer()
 		clientURL, err = core.Server.Start(&core.config.NatsServer)
 		if err != nil {
 			panic(err.Error())
@@ -50,7 +48,7 @@ func (core *HubCore) Start(cfg *config.HubCoreConfig) (clientURL string) {
 	// start the authn store, service and binding
 	if !cfg.Authn.NoAutoStart {
 		authnStore := authnstore.NewAuthnFileStore(cfg.Authn.PasswordFile)
-		tokenizer := natsserver.NewNatsAuthnTokenizer(cfg.NatsServer.AppAccountKP, true)
+		tokenizer := nkeyserver.NewNatsAuthnTokenizer(cfg.NatsServer.AppAccountKP, true)
 		nc, err := core.Server.ConnectInProc(authn2.AuthnServiceName, nil)
 		if err != nil {
 			panic(err.Error())
@@ -86,7 +84,7 @@ func (core *HubCore) Start(cfg *config.HubCoreConfig) (clientURL string) {
 		}
 		js := hc.JS()
 		// apply authz changes to nats jetstream
-		authzJetStream, err := authzadapter.NewNatsAuthzAdapter(js)
+		authzJetStream, err := nkeyserver.NewNatsAuthzAdapter(js)
 		core.AuthzSvc = authzservice.NewAuthzService(core.authzStore, authzJetStream, hc)
 	}
 	return clientURL

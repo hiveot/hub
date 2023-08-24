@@ -2,9 +2,8 @@ package config
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/authn"
-	"github.com/hiveot/hub/core/authz"
-	"github.com/hiveot/hub/core/msgserver/natsserver"
+	"github.com/hiveot/hub/core/authn/authnservice"
+	"github.com/hiveot/hub/core/authz/authzservice"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/svcconfig"
 	"golang.org/x/exp/slog"
@@ -27,10 +26,10 @@ type HubCoreConfig struct {
 
 	Core string `yaml:"core"` // nats or mqtt
 
-	NatsServer natsserver.NatsServerConfig `yaml:"natsserver"`
+	NatsServer nkeyserver.NatsServerConfig `yaml:"natsserver"`
 	//MqttServer  mqttserver.MqttServerConfig `yaml:"mqttserver"`
-	Authn authn.AuthnConfig `yaml:"authn"`
-	Authz authz.AuthzConfig `yaml:"authz"`
+	Authn authnservice.AuthnConfig `yaml:"authn"`
+	Authz authzservice.AuthzConfig `yaml:"authz"`
 }
 
 // Setup creates and loads certificate and key files

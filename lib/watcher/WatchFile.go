@@ -54,7 +54,7 @@ func WatchFile(path string,
 					return
 				}
 				// don't really care what the change it, 50msec after the last event the file will reload
-				//slog.Info("File Event", "event", event.String(), "file", event.Name)
+				//slog.Info("File Event", "event", event.String(), "file", event.ID)
 				callbackTimer.Reset(time.Millisecond * watcherDebounceDelay)
 			case err2, ok := <-watcher.Errors:
 				if !ok && err2 != nil {

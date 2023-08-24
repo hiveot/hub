@@ -68,23 +68,23 @@ func (binding *AuthnManageBinding) handleManageActions(action *hubclient.ActionM
 		reply, _ := ser.Marshal(&resp)
 		action.SendReply(reply)
 		return err
-	case authn.GetClientProfileAction:
-		req := authn.GetClientProfileReq{}
+	case authn.GetProfileAction:
+		req := authn.GetProfileReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
-		profile, err := binding.svc.GetClientProfile(req.ClientID)
+		profile, err := binding.svc.GetProfile(req.ClientID)
 		if err == nil {
 			resp := authn.GetProfileResp{Profile: profile}
 			reply, _ := ser.Marshal(&resp)
 			action.SendReply(reply)
 		}
 		return err
-	case authn.ListClientsAction:
-		clientList, err := binding.svc.ListClients()
+	case authn.GetProfilesAction:
+		clientList, err := binding.svc.GetProfiles()
 		if err == nil {
-			resp := authn.ListClientsResp{Profiles: clientList}
+			resp := authn.GetProfilesResp{Profiles: clientList}
 			reply, _ := ser.Marshal(resp)
 			action.SendReply(reply)
 		}

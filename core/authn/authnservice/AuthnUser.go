@@ -4,20 +4,18 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/core/msgserver/natsserver"
+	"github.com/hiveot/hub/api/go/msgserver"
 )
 
-// UserAuthnService handles authentication user requests
+// AuthnUser handles authentication user requests
 // This implements the IAuthnUser interface.
 //
 // This implements the IAuthnUser interface.
-type UserAuthnService struct {
+type AuthnUser struct {
 	// Client record persistence
 	store authn.IAuthnStore
-	// Tokenizer to use
-	tokenizer authn.IAuthnTokenizer
 	// message server for updating authn
-	msgServer *natsserver.NatsNKeyServer
+	msgServer msgserver.IMsgServer
 	// CA certificate for validating cert
 	caCert *x509.Certificate
 }
@@ -26,12 +24,12 @@ type UserAuthnService struct {
 // the built-in tokenizer.
 // This invokes the external tokenizer if provided and falls-back to the built-in
 // tokenizer.
-func (svc *UserAuthnService) CreateToken(clientID string, clientType string, pubKey string, validitySec int) (newToken string, err error) {
-	return svc.tokenizer.CreateToken(clientID, clientType, pubKey, validitySec)
+func (svc *AuthnUser) CreateToken(clientID string, clientType string, pubKey string, validitySec int) (newToken string, err error) {
+	return svc.msgServer.CreateToken(clientID, clientType, pubKey, validitySec)
 }
 
 // GeneratePassword with upper, lower, numbers and special characters
-//func (svc *UserAuthnService) GeneratePassword(length int, useSpecial bool) (password string) {
+//func (svc *AuthnUser) GeneratePassword(length int, useSpecial bool) (password string) {
 //	const charsLow = "abcdefghijklmnopqrstuvwxyz"
 //	const charsUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 //	const charsSpecial = "!#$%&*+-./:=?@^_"
@@ -57,51 +55,58 @@ func (svc *UserAuthnService) CreateToken(clientID string, clientType string, pub
 //}
 
 // GetProfile returns a client's profile
-func (svc *UserAuthnService) GetProfile(clientID string) (profile authn.ClientProfile, err error) {
-	entry, err := svc.store.Get(clientID)
-	return entry, err
+func (svc *AuthnUser) GetProfile(clientID string) (profile authn.ClientProfile, err error) {
+	clientProfile, err := svc.store.GetProfile(clientID)
+	return clientProfile, err
 }
 
 // NewToken validates a password and issues an authn token
-func (svc *UserAuthnService) NewToken(clientID string, password string) (newToken string, err error) {
-	entry, err := svc.store.VerifyPassword(clientID, password)
+func (svc *AuthnUser) NewToken(clientID string, password string) (newToken string, err error) {
+	clientProfile, err := svc.store.VerifyPassword(clientID, password)
 	if err != nil {
 		return "", err
 	}
-	if entry.PubKey == "" {
+	if clientProfile.PubKey == "" {
 		return "", fmt.Errorf("no public key on file for '%s'", clientID)
 	}
-	newToken, err = svc.CreateToken(clientID, entry.ClientType, entry.PubKey, entry.ValiditySec)
+	newToken, err = svc.CreateToken(clientID, clientProfile.ClientType, clientProfile.PubKey, clientProfile.ValiditySec)
 	return newToken, err
+}
+
+// notification handler invoked when clients have been updated
+// this invokes a reload of server authn
+func (svc *AuthnUser) onChange() {
+	_ = svc.msgServer.ApplyAuthn(svc.store.GetEntries())
 }
 
 // Refresh issues a new token if the given token is valid
 // This returns a refreshed token that can be used to connect to the messaging server
 // the old token must be a valid jwt token belonging to the clientID
-func (svc *UserAuthnService) Refresh(clientID string, oldToken string) (newToken string, err error) {
+func (svc *AuthnUser) Refresh(clientID string, oldToken string) (newToken string, err error) {
 	// verify the token
-	entry, err := svc.store.Get(clientID)
+	clientProfile, err := svc.store.GetProfile(clientID)
 	if err != nil {
 		return "", err
 	}
-	err = svc.tokenizer.ValidateToken(clientID, entry.PubKey, oldToken, "", "")
+	err = svc.msgServer.ValidateToken(clientID, clientProfile.PubKey, oldToken, "", "")
 	if err != nil {
 		return "", fmt.Errorf("error validating oldToken of client %s: %w", clientID, err)
 	}
-	newToken, err = svc.CreateToken(clientID, entry.ClientType, entry.PubKey, entry.ValiditySec)
+	newToken, err = svc.CreateToken(clientID, clientProfile.ClientType, clientProfile.PubKey, clientProfile.ValiditySec)
 	return newToken, err
 }
 
 // UpdateName
-func (svc *UserAuthnService) UpdateName(clientID string, displayName string) (err error) {
-	entry, err := svc.store.Get(clientID)
-	entry.DisplayName = displayName
-	err = svc.store.Update(clientID, entry)
+func (svc *AuthnUser) UpdateName(clientID string, displayName string) (err error) {
+	clientProfile, err := svc.store.GetProfile(clientID)
+	clientProfile.DisplayName = displayName
+	err = svc.store.Update(clientID, clientProfile)
+	// this doesn't affect authentication
 	return err
 }
 
-func (svc *UserAuthnService) UpdatePassword(clientID string, newPassword string) (err error) {
-	entry, err := svc.GetProfile(clientID)
+func (svc *AuthnUser) UpdatePassword(clientID string, newPassword string) (err error) {
+	_, err = svc.GetProfile(clientID)
 	if err != nil {
 		return err
 	}
@@ -109,26 +114,27 @@ func (svc *UserAuthnService) UpdatePassword(clientID string, newPassword string)
 	if err != nil {
 		return err
 	}
-	_ = entry
+	svc.onChange()
 	return err
 }
 
-func (svc *UserAuthnService) UpdatePubKey(clientID string, newPubKey string) (err error) {
-	entry, err := svc.store.Get(clientID)
+func (svc *AuthnUser) UpdatePubKey(clientID string, newPubKey string) (err error) {
+	clientProfile, err := svc.store.GetProfile(clientID)
 	if err != nil {
 		return err
 	}
-	entry.PubKey = newPubKey
-	err = svc.store.Update(clientID, entry)
+	clientProfile.PubKey = newPubKey
+	err = svc.store.Update(clientID, clientProfile)
 	if err != nil {
 		return err
 	}
-
+	// run in the background so a response can be sent
+	go svc.onChange()
 	return err
 }
 
 // ValidateToken verifies if the token is valid and belongs to the claimed user
-//func (svc *UserAuthnService) ValidateToken(clientID string, oldToken string) (err error) {
+//func (svc *AuthnUser) ValidateToken(clientID string, oldToken string) (err error) {
 //	// verify the token
 //	entry, err := svc.store.Get(clientID)
 //	if err != nil {
@@ -145,7 +151,7 @@ func (svc *UserAuthnService) UpdatePubKey(clientID string, newPubKey string) (er
 // - Cert validates against the svc CA
 // This is intended for a local setup that use a self-signed CA.
 // The use of JWT keys is recommended over certs as this isn't a domain name validation problem.
-//func (svc *UserAuthnService) ValidateCert(clientID string, clientCertPEM string) error {
+//func (svc *AuthnUser) ValidateCert(clientID string, clientCertPEM string) error {
 //
 //	if svc.caCert == nil {
 //		return fmt.Errorf("no CA on file")
@@ -176,21 +182,18 @@ func (svc *UserAuthnService) UpdatePubKey(clientID string, newPubKey string) (er
 //	return nil
 //}
 
-// NewUserAuthnService returns a user authentication capability.
+// NewAuthnUserService returns a user authentication capability.
 //
 //	store holds the authentication client records
-//	tokenizer is an optional alternative implementation of token issue and verification
 //	caCert is an optional CA used to verify certificates. Use nil to not authn using client certs
-func NewUserAuthnService(
+func NewAuthnUserService(
 	store authn.IAuthnStore,
-	msgServer *natsserver.NatsNKeyServer,
-	tokenizer authn.IAuthnTokenizer,
-	caCert *x509.Certificate) *UserAuthnService {
+	msgServer msgserver.IMsgServer,
+	caCert *x509.Certificate) *AuthnUser {
 
-	svc := &UserAuthnService{
+	svc := &AuthnUser{
 		store:     store,
 		msgServer: msgServer,
-		tokenizer: tokenizer,
 		caCert:    caCert,
 	}
 	return svc

@@ -19,7 +19,7 @@ type AclFileStore struct {
 	serviceID string
 
 	// Groups is an index of ACL groups by their name. Stored
-	// map[groupName]Group
+	// map[groupID]Group
 	groups map[string]authz.Group `yaml:"groups"`
 
 	// state store file
@@ -27,22 +27,23 @@ type AclFileStore struct {
 
 	// index of clients and their group roles. Updated on load.
 	// intended for fast lookup of roles
-	//map[clientID]map[groupName]role
+	//map[clientID]map[groupID]role
 	clientGroupRoles map[string]authz.RoleMap
 	mutex            sync.RWMutex
 }
 
 // AddGroup adds a new group to the store
 // retention is the time data is kept in the group, 0 for indefinitely
-func (aclStore *AclFileStore) AddGroup(groupName string, retention time.Duration) error {
+func (aclStore *AclFileStore) AddGroup(groupID string, displayName string, retention time.Duration) error {
 	aclStore.mutex.Lock()
 	defer aclStore.mutex.Unlock()
-	_, exists := aclStore.groups[groupName]
+	_, exists := aclStore.groups[groupID]
 	if exists {
 		return nil
 	}
-	aclStore.groups[groupName] = authz.Group{
-		Name:        groupName,
+	aclStore.groups[groupID] = authz.Group{
+		ID:          groupID,
+		DisplayName: displayName,
 		MemberRoles: authz.RoleMap{},
 		Retention:   retention,
 	}
@@ -51,25 +52,25 @@ func (aclStore *AclFileStore) AddGroup(groupName string, retention time.Duration
 }
 
 // AddService adds a client with the service role to a group
-func (aclStore *AclFileStore) AddService(serviceID string, groupName string) error {
-	err := aclStore.setRole(serviceID, authz.GroupRoleService, groupName)
+func (aclStore *AclFileStore) AddService(serviceID string, groupID string) error {
+	err := aclStore.setRole(serviceID, authz.GroupRoleService, groupID)
 	return err
 }
 
 // AddThing adds a client with the thing role to a group
-func (aclStore *AclFileStore) AddThing(thingID string, groupName string) error {
-	err := aclStore.setRole(thingID, authz.GroupRoleThing, groupName)
+func (aclStore *AclFileStore) AddThing(thingID string, groupID string) error {
+	err := aclStore.setRole(thingID, authz.GroupRoleThing, groupID)
 	return err
 }
 
 // AddUser adds a client with the user role to a group
-func (aclStore *AclFileStore) AddUser(userID string, role string, groupName string) (err error) {
+func (aclStore *AclFileStore) AddUser(userID string, role string, groupID string) (err error) {
 
 	if role == authz.GroupRoleViewer ||
 		role == authz.GroupRoleManager ||
 		role == authz.GroupRoleOperator {
 
-		err = aclStore.setRole(userID, role, groupName)
+		err = aclStore.setRole(userID, role, groupID)
 	} else {
 		err = fmt.Errorf("role '%s' doesn't apply to users", role)
 	}
@@ -88,13 +89,13 @@ func (aclStore *AclFileStore) Close() {
 }
 
 // DeleteGroup deletes the given group from the store
-func (aclStore *AclFileStore) DeleteGroup(groupName string) error {
+func (aclStore *AclFileStore) DeleteGroup(groupID string) error {
 	aclStore.mutex.Lock()
 	defer aclStore.mutex.Unlock()
-	delete(aclStore.groups, groupName)
+	delete(aclStore.groups, groupID)
 	err := aclStore.Save()
 
-	slog.Info("group removed", "groupName", groupName)
+	slog.Info("group removed", "groupID", groupID)
 	return err
 }
 
@@ -109,14 +110,30 @@ func (aclStore *AclFileStore) GetClientRoles(clientID string) (authz.RoleMap, er
 	return roles, nil
 }
 
+// GetClientsGroupsRole returns the roles clients have in each group
+// This returns a map of clients with their groups and role in that group
+func (aclStore *AclFileStore) GetClientsGroupsRole() map[string]authz.RoleMap {
+	shallowCopy := make(map[string]authz.RoleMap)
+	aclStore.mutex.RLock()
+	defer aclStore.mutex.RUnlock()
+
+	aclStore.mutex.RLock()
+	for clientID, roles := range aclStore.clientGroupRoles {
+		shallowCopy[clientID] = roles
+	}
+	aclStore.mutex.RUnlock()
+
+	return shallowCopy
+}
+
 // GetGroup returns the group of the given name
-func (aclStore *AclFileStore) GetGroup(groupName string) (authz.Group, error) {
+func (aclStore *AclFileStore) GetGroup(groupID string) (authz.Group, error) {
 
 	aclStore.mutex.RLock()
 	defer aclStore.mutex.RUnlock()
-	group, found := aclStore.groups[groupName]
+	group, found := aclStore.groups[groupID]
 	if !found {
-		err := fmt.Errorf("group '%s' does not exist", groupName)
+		err := fmt.Errorf("group '%s' does not exist", groupID)
 		return group, err
 	}
 	return group, nil
@@ -193,12 +210,12 @@ func (aclStore *AclFileStore) GetSharedGroups(clientID string, thingID string) [
 	if !clientHasMemberships {
 		return sharedGroups
 	}
-	for groupName := range groupRoles {
+	for groupID := range groupRoles {
 		// client is a member of this group, check if the thingID is also a member
 		_, thingIsMember := aclStore.clientGroupRoles[thingID]
 		// all things are a member of the all group
-		if thingIsMember || groupName == authz.AllGroupName {
-			sharedGroups = append(sharedGroups, groupName)
+		if thingIsMember || groupID == authz.AllGroupID {
+			sharedGroups = append(sharedGroups, groupID)
 		}
 	}
 	return sharedGroups
@@ -288,7 +305,7 @@ func (aclStore *AclFileStore) Reload() error {
 	// build the client index for each client in the groups
 	clientGroupRoles := make(map[string]authz.RoleMap)
 	// for each group, add its members to the client index
-	for groupName, group := range aclStore.groups {
+	for groupID, group := range aclStore.groups {
 		// iterate the group members and add them to the client index along with its group role
 		for memberID, memberRole := range group.MemberRoles {
 			//
@@ -298,7 +315,7 @@ func (aclStore *AclFileStore) Reload() error {
 				groupRoles = make(authz.RoleMap)
 				clientGroupRoles[memberID] = groupRoles
 			}
-			groupRoles[groupName] = memberRole
+			groupRoles[groupID] = memberRole
 		}
 	}
 	slog.Info("AclFileStore.Reload complete", "serviceID", aclStore.serviceID, "groups", len(clientGroupRoles))
@@ -370,21 +387,21 @@ func (aclStore *AclFileStore) RemoveClientAll(clientID string) error {
 //
 //	clientID   client to assign the role
 //	role       one of GroupRoleViewer, GroupRoleOperator, GroupRoleManager, GroupRoleThing or GroupRoleNone to remove the role
-//	groupName  group where the role applies
-func (aclStore *AclFileStore) setRole(clientID string, role string, groupName string) (err error) {
+//	groupID  group where the role applies
+func (aclStore *AclFileStore) setRole(clientID string, role string, groupID string) (err error) {
 
 	// Prevent concurrently running Reload and SetRole
 	aclStore.mutex.Lock()
 	defer aclStore.mutex.Unlock()
 
 	// update the group
-	aclGroup, found := aclStore.groups[groupName]
+	aclGroup, found := aclStore.groups[groupID]
 	if !found {
 		aclGroup = authz.Group{
-			Name:        groupName,
+			ID:          groupID,
 			MemberRoles: authz.RoleMap{},
 		}
-		aclStore.groups[groupName] = aclGroup
+		aclStore.groups[groupID] = aclGroup
 	}
 	aclGroup.MemberRoles[clientID] = role
 
@@ -394,12 +411,12 @@ func (aclStore *AclFileStore) setRole(clientID string, role string, groupName st
 		groupRoles = make(authz.RoleMap)
 		aclStore.clientGroupRoles[clientID] = groupRoles
 	}
-	groupRoles[groupName] = role
+	groupRoles[groupID] = role
 
 	// save
 	err = aclStore.Save()
 
-	slog.Info("AclFileStore.SetRole", "clientID", clientID, "role", role, "group", groupName)
+	slog.Info("AclFileStore.SetRole", "clientID", clientID, "role", role, "group", groupID)
 	return err
 }
 
@@ -408,15 +425,15 @@ func (aclStore *AclFileStore) setRole(clientID string, role string, groupName st
 //
 //	userID   client to assign the role
 //	role     one of GroupRoleViewer, GroupRoleOperator, GroupRoleManager, GroupRoleThing or GroupRoleNone to remove the role
-//	groupName  group where the role applies
-func (aclStore *AclFileStore) SetUserRole(userID string, role string, groupName string) (err error) {
+//	groupID  group where the role applies
+func (aclStore *AclFileStore) SetUserRole(userID string, role string, groupID string) (err error) {
 	isUserRole := role == authz.GroupRoleViewer ||
 		role == authz.GroupRoleManager ||
 		role == authz.GroupRoleOperator
 	if !isUserRole {
 		return fmt.Errorf("role '%s' doesn't apply to users", role)
 	}
-	return aclStore.setRole(userID, role, groupName)
+	return aclStore.setRole(userID, role, groupID)
 }
 
 // Save the store to file

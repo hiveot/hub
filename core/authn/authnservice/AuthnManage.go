@@ -3,24 +3,26 @@ package authnservice
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/msgserver"
 	"golang.org/x/exp/slog"
 )
 
-// ManageAuthnService handles authentication management requests
+// AuthnManage handles authentication management requests
 // This applies the request to the store.
 //
 // Note: To apply authn to the messaging server, authz has to be set.
 // Note: Unfortunately authn and authz are tightly coupled in NATS. To set
-// authn, permissions must be known. So for dependencies sake,
-// authz will invoke msgServer.ReloadClients(authnStore, authzStore)
-type ManageAuthnService struct {
+// authn, permissions must be known. So for dependencies sake.
+type AuthnManage struct {
 	// clients storage
 	store authn.IAuthnStore
+	// message server to apply changes to
+	msgServer msgserver.IMsgServer
 }
 
 // AddDevice adds an IoT device and generates an authentication token
 // This is handled by the underlying messaging core.
-func (svc *ManageAuthnService) AddDevice(
+func (svc *AuthnManage) AddDevice(
 	deviceID string, name string, pubKey string, validitySec int) (token string, err error) {
 	slog.Info("AddDevice",
 		slog.String("deviceID", deviceID),
@@ -42,11 +44,12 @@ func (svc *ManageAuthnService) AddDevice(
 		return "", err
 	}
 	// the token will be applied when authorization (group membership) is set
+	svc.onChange()
 	return pubKey, err
 }
 
 // AddService adds or updates a service
-func (svc *ManageAuthnService) AddService(
+func (svc *AuthnManage) AddService(
 	serviceID string, name string, pubKey string, validitySec int) (token string, err error) {
 	slog.Info("AddService",
 		slog.String("serviceID", serviceID),
@@ -68,12 +71,13 @@ func (svc *ManageAuthnService) AddService(
 	}
 	// the token will be applied when authorization (group membership) is set
 	token = pubKey
+	svc.onChange()
 	return token, err
 }
 
 // AddUser adds a new user for password authentication
 // If a public key is provided a signed token will be returned
-func (svc *ManageAuthnService) AddUser(
+func (svc *AuthnManage) AddUser(
 	userID string, userName string, password string, pubKey string) (token string, err error) {
 
 	slog.Info("AddUser",
@@ -102,43 +106,56 @@ func (svc *ManageAuthnService) AddUser(
 	}
 	// the token will be applied when authorization (group membership) is set
 	token = pubKey
+	svc.onChange()
 	return token, err
 }
 
-// GetClientProfile returns a client's profile
-func (svc *ManageAuthnService) GetClientProfile(clientID string) (profile authn.ClientProfile, err error) {
-	entry, err := svc.store.Get(clientID)
-	return entry, err
-}
-
-func (svc *ManageAuthnService) GetCount() (int, error) {
+func (svc *AuthnManage) GetCount() (int, error) {
 	return svc.store.Count(), nil
 }
 
-// ListClients provide a list of known clients and their info.
-func (svc *ManageAuthnService) ListClients() (profiles []authn.ClientProfile, err error) {
-	profiles, err = svc.store.List()
+// GetProfile returns a client's profile
+func (svc *AuthnManage) GetProfile(clientID string) (profile authn.ClientProfile, err error) {
+	entry, err := svc.store.GetProfile(clientID)
+	return entry, err
+}
+
+// GetProfiles provide a list of known clients and their info.
+func (svc *AuthnManage) GetProfiles() (profiles []authn.ClientProfile, err error) {
+	profiles, err = svc.store.GetProfiles()
 	return profiles, err
 }
 
+// GetEntries provide a list of known clients and their info including bcrypted passwords
+func (svc *AuthnManage) GetEntries() (entries []authn.AuthnEntry) {
+	return svc.store.GetEntries()
+}
+
+// notification handler invoked when clients have been added, removed or updated
+// this invokes a reload of server authn
+func (svc *AuthnManage) onChange() {
+	_ = svc.msgServer.ApplyAuthn(svc.store.GetEntries())
+}
+
 // RemoveClient removes a client and disables authentication
-func (svc *ManageAuthnService) RemoveClient(clientID string) (err error) {
+func (svc *AuthnManage) RemoveClient(clientID string) (err error) {
 	err = svc.store.Remove(clientID)
+	svc.onChange()
 	return err
 }
 
-func (svc *ManageAuthnService) UpdateClient(clientID string, prof authn.ClientProfile) (err error) {
+func (svc *AuthnManage) UpdateClient(clientID string, prof authn.ClientProfile) (err error) {
 	err = svc.store.Update(clientID, prof)
 	return err
 }
 
-// NewManageAuthnService creates the capability to manage authentication clients
+// NewAuthnManage creates the capability to manage authentication clients
 //
 //	store for storing clients
-func NewManageAuthnService(
-	store authn.IAuthnStore) *ManageAuthnService {
-	svc := &ManageAuthnService{
-		store: store,
+func NewAuthnManage(store authn.IAuthnStore, msgServer msgserver.IMsgServer) *AuthnManage {
+	svc := &AuthnManage{
+		store:     store,
+		msgServer: msgServer,
 	}
 	return svc
 }

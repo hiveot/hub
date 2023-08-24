@@ -75,15 +75,15 @@ func main() {
 
 	// Show the arguments in the command line
 	cli.AppHelpTemplate = `NAME:
-  {{.Name}} - {{.Usage}}
+  {{.ID}} - {{.Usage}}
 USAGE:
   {{.HelpName}} {{if .VisibleFlags}}[global options]{{end}}{{if .Commands}} command [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}
   {{if len .Authors}}
 AUTHOR:
   {{range .Authors}}{{ . }}{{end}}
   {{end}}{{if .Commands}}
-COMMANDS: {{range .VisibleCategories}}{{if .Name}}
-   {{.Name }}:{{"\t"}}{{range .VisibleCommands}}
+COMMANDS: {{range .VisibleCategories}}{{if .ID}}
+   {{.ID }}:{{"\t"}}{{range .VisibleCommands}}
       {{join .Names ", "}} {{.ArgsUsage}} {{"\t"}}{{.Usage}}{{end}}{{else}}{{template "visibleCommandTemplate" .}}{{end}}{{end}}
 
 GLOBAL OPTIONS:

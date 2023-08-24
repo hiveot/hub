@@ -1,6 +1,7 @@
-package authn
+package authnservice
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"path"
 )
@@ -10,17 +11,19 @@ type AuthnConfig struct {
 	// PasswordFile with the file based password store.
 	// Use a relative path for using the default $HOME/stores/authn location
 	// Use "" for default defined in 'authnstore.DefaultPasswordFile'
-	PasswordFile string `yaml:"passwordFile"`
+	PasswordFile string `yaml:"passwordFile,omitempty"`
+	// Encryption of passwords: "argon2id" (default) or "bcrypt"
+	Encryption string `yaml:"encryption,omitempty"`
 
 	// Auth token validity for devices in seconds
-	DeviceTokenValidity int `yaml:"deviceTokenValidity"`
+	DeviceTokenValidity int `yaml:"deviceTokenValidity,omitempty"`
 	// Auth token validity for services in seconds
-	ServiceTokenValidity int `yaml:"serviceTokenValidity"`
+	ServiceTokenValidity int `yaml:"serviceTokenValidity,omitempty"`
 	// Auth token validity for users in seconds
-	UserTokenValidity int `yaml:"userTokenValidity"`
+	UserTokenValidity int `yaml:"userTokenValidity,omitempty"`
 
 	// NoAutoStart prevents the authn service for auto starting. Intended for testing or custom implementation.
-	NoAutoStart bool `yaml:"noAutoStart"`
+	NoAutoStart bool `yaml:"noAutoStart,omitempty"`
 }
 
 // Setup ensures config is valid
@@ -34,6 +37,14 @@ func (cfg *AuthnConfig) Setup(storesDir string) error {
 	if !path.IsAbs(cfg.PasswordFile) {
 		cfg.PasswordFile = path.Join(storesDir, "authn", cfg.PasswordFile)
 	}
+
+	if cfg.Encryption == "" {
+		cfg.Encryption = authn.PWHASH_ARGON2id
+	}
+	if cfg.Encryption != authn.PWHASH_BCRYPT && cfg.Encryption != authn.PWHASH_ARGON2id {
+		return fmt.Errorf("unknown password encryption method: %s", cfg.Encryption)
+	}
+
 	if cfg.DeviceTokenValidity == 0 {
 		cfg.DeviceTokenValidity = authn.DefaultDeviceTokenValiditySec
 	}

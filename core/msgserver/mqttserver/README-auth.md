@@ -1,3 +1,6 @@
+# MQTT server
+
+The HiveOT MQTT messaging server uses mochi-co' embedded mqtt as the built-in broker. 
 
 ## Mochi-co MQTT Authentication (planned)
 

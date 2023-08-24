@@ -32,17 +32,17 @@ type IAuthnStore interface {
 	// Count returns the number of clients in the store
 	Count() int
 
-	// Get returns the client's profile
+	// GetProfile returns the client's profile
 	// Returns an error if the clientID doesn't exist
-	Get(clientID string) (profile ClientProfile, err error)
+	GetProfile(clientID string) (profile ClientProfile, err error)
 
-	// List profiles in the store
-	List() (entries []ClientProfile, err error)
+	// GetProfiles returns all client profiles in the store
+	GetProfiles() (entries []ClientProfile, err error)
 
-	// ListEntries returns a map of client profiles including the password hash
-	// Intended to obtain user info to apply to the messaging server
+	// GetEntries returns a list of client profiles including the password hash
+	// Intended to obtain auth info to apply to the messaging server
 	// For internal auth usage only.
-	ListEntries() (entryList map[string]AuthnEntry, err error)
+	GetEntries() (entries []AuthnEntry)
 
 	// Open the store
 	Open() error

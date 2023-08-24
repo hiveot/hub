@@ -86,23 +86,23 @@ func (mngAuthn *AuthnManageClient) GetCount() (n int, err error) {
 	return resp.N, err
 }
 
-// GetClientProfile returns a client's profile
+// GetProfile returns a client's profile
 // Users can only get their own profile.
 // Managers can get other clients profiles.
-func (mngAuthn *AuthnManageClient) GetClientProfile(clientID string) (profile authn.ClientProfile, err error) {
-	req := authn.GetClientProfileReq{
+func (mngAuthn *AuthnManageClient) GetProfile(clientID string) (profile authn.ClientProfile, err error) {
+	req := authn.GetProfileReq{
 		ClientID: clientID,
 	}
 	resp := authn.GetProfileResp{}
-	err = mngAuthn.pubReq(authn.GetClientProfileAction, &req, &resp)
+	err = mngAuthn.pubReq(authn.GetProfileAction, &req, &resp)
 	return resp.Profile, err
 }
 
-// ListClients provide a list of known clients and their info.
+// GetProfiles provide a list of known clients and their info.
 // The caller must be an administrator or service.
-func (mngAuthn *AuthnManageClient) ListClients() (profiles []authn.ClientProfile, err error) {
-	resp := authn.ListClientsResp{}
-	err = mngAuthn.pubReq(authn.ListClientsAction, nil, &resp)
+func (mngAuthn *AuthnManageClient) GetProfiles() (profiles []authn.ClientProfile, err error) {
+	resp := authn.GetProfilesResp{}
+	err = mngAuthn.pubReq(authn.GetProfilesAction, nil, &resp)
 	return resp.Profiles, err
 }
 

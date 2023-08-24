@@ -22,18 +22,20 @@ func (authzClient *AuthzClient) pubReq(action string, msg []byte, resp interface
 	return err
 }
 
-func (authzClient *AuthzClient) AddGroup(groupName string, retention time.Duration) error {
+func (authzClient *AuthzClient) AddGroup(
+	groupID string, displayName string, retention time.Duration) error {
 	req := authz.AddGroupReq{
-		GroupName: groupName,
-		Retention: uint64(retention.Seconds()),
+		GroupID:     groupID,
+		DisplayName: displayName,
+		Retention:   uint64(retention.Seconds()),
 	}
 	msg, _ := ser.Marshal(req)
 	err := authzClient.pubReq(authz.AddGroupAction, msg, nil)
 	return err
 }
-func (authzClient *AuthzClient) AddService(serviceID string, groupName string) error {
+func (authzClient *AuthzClient) AddService(serviceID string, groupID string) error {
 	req := authz.AddServiceReq{
-		GroupName: groupName,
+		GroupID:   groupID,
 		ServiceID: serviceID,
 	}
 	msg, _ := ser.Marshal(req)
@@ -41,10 +43,10 @@ func (authzClient *AuthzClient) AddService(serviceID string, groupName string) e
 	return err
 }
 
-func (authzClient *AuthzClient) AddThing(thingID string, groupName string) error {
+func (authzClient *AuthzClient) AddThing(thingID string, groupID string) error {
 	req := authz.AddThingReq{
-		GroupName: groupName,
-		ThingID:   thingID,
+		GroupID: groupID,
+		ThingID: thingID,
 	}
 	msg, _ := ser.Marshal(req)
 	err := authzClient.pubReq(authz.AddThingAction, msg, nil)
@@ -52,11 +54,11 @@ func (authzClient *AuthzClient) AddThing(thingID string, groupName string) error
 }
 
 // AddUser adds a user to a group
-func (authzClient *AuthzClient) AddUser(userID string, role string, groupName string) error {
+func (authzClient *AuthzClient) AddUser(userID string, role string, groupID string) error {
 	req := authz.AddUserReq{
-		GroupName: groupName,
-		UserID:    userID,
-		Role:      role,
+		GroupID: groupID,
+		UserID:  userID,
+		Role:    role,
 	}
 	msg, _ := ser.Marshal(req)
 	err := authzClient.pubReq(authz.AddUserAction, msg, nil)
@@ -66,9 +68,9 @@ func (authzClient *AuthzClient) AddUser(userID string, role string, groupName st
 // DeleteGroup deletes a group stream from the default account
 //
 //	name of the group
-func (authzClient *AuthzClient) DeleteGroup(groupName string) error {
+func (authzClient *AuthzClient) DeleteGroup(groupID string) error {
 	req := authz.DeleteGroupReq{
-		GroupName: groupName,
+		GroupID: groupID,
 	}
 	msg, _ := ser.Marshal(req)
 	err := authzClient.pubReq(authz.DeleteGroupAction, msg, nil)
@@ -88,9 +90,9 @@ func (authzClient *AuthzClient) GetClientRoles(clientID string) (grp authz.RoleM
 	return resp.Roles, err
 }
 
-func (authzClient *AuthzClient) GetGroup(groupName string) (grp authz.Group, err error) {
+func (authzClient *AuthzClient) GetGroup(groupID string) (grp authz.Group, err error) {
 	req := authz.GetGroupReq{
-		GroupName: groupName,
+		GroupID: groupID,
 	}
 	msg, _ := ser.Marshal(req)
 	resp := &authz.GetGroupResp{}
@@ -140,7 +142,7 @@ func (authzClient *AuthzClient) GetRole(clientID string, thingID string) (string
 }
 
 // ListGroups returns a list of groups available to the client
-func (authzClient *AuthzClient) ListGroups(clientID string) (groups []authz.Group, err error) {
+func (authzClient *AuthzClient) GetClientGroups(clientID string) (groups []authz.Group, err error) {
 
 	req := authz.ListGroupsReq{
 		ClientID: clientID,
@@ -156,11 +158,11 @@ func (authzClient *AuthzClient) ListGroups(clientID string) (groups []authz.Grou
 
 // RemoveClient removes a client from a group or all groups
 // The caller must be an administrator or service
-func (authzClient *AuthzClient) RemoveClient(clientID string, groupName string) error {
+func (authzClient *AuthzClient) RemoveClient(clientID string, groupID string) error {
 
 	req := authz.RemoveClientReq{
-		ClientID:  clientID,
-		GroupName: groupName,
+		ClientID: clientID,
+		GroupID:  groupID,
 	}
 	msg, _ := ser.Marshal(req)
 	err := authzClient.pubReq(authz.RemoveClientAction, msg, nil)
@@ -178,12 +180,12 @@ func (authzClient *AuthzClient) RemoveClientAll(clientID string) error {
 	err := authzClient.pubReq(authz.RemoveClientAllAction, msg, nil)
 	return err
 }
-func (authzClient *AuthzClient) SetUserRole(userID string, userRole string, groupName string) error {
+func (authzClient *AuthzClient) SetUserRole(userID string, userRole string, groupID string) error {
 
 	req := authz.SetUserRoleReq{
-		UserID:    userID,
-		GroupName: groupName,
-		UserRole:  userRole,
+		UserID:   userID,
+		GroupID:  groupID,
+		UserRole: userRole,
 	}
 	msg, _ := ser.Marshal(req)
 	err := authzClient.pubReq(authz.SetUserRoleAction, msg, nil)

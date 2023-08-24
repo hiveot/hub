@@ -79,7 +79,7 @@ func (hc *NatsHubClient) ClientID() string {
 //	}
 //	hc.clientID = clientID
 //	hc.nc, err = nats.Connect(url,
-//		nats.Name(hc.clientID),
+//		nats.ID(hc.clientID),
 //		nats.Secure(tlsConfig),
 //		nats.Timeout(time.Second*time.Duration(hc.timeoutSec)))
 //	if err == nil {
@@ -450,14 +450,16 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *hubclient.Ev
 			natsMsgs, err := nsub.Fetch(1)
 			if err != nil {
 				// it is only an error if the subscription hasn't closed
+				// error is given when remote side closes connection before the client
 				if nsub.IsValid() {
 					slog.Error("nsub.Fetch failed", "err", err.Error())
 				}
 				break
 			}
 			natsMsg := natsMsgs[0]
-			slog.Info("received event msg from group ",
-				slog.String("group", ci.Name),
+			slog.Info("received event msg from consumer ",
+				slog.String("consumer", ci.Name),
+				slog.String("stream", ci.Stream),
 				slog.String("subject", natsMsg.Subject),
 			)
 			md, _ := natsMsg.Metadata()
@@ -511,19 +513,20 @@ func (hc *NatsHubClient) SubGroup(groupName string, receiveLatest bool, cb func(
 		Description: "group consumer for client " + hc.clientID,
 		//RateLimit:   1000000, // consumers in poll mode cannot have rate limit set
 	}
-	_, err := hc.js.AddConsumer(groupName, consumerConfig)
+	consumerInfo, err := hc.js.AddConsumer(groupName, consumerConfig)
 	if err != nil {
-		return nil, fmt.Errorf("error subscribing to group '%s': %w", groupName, err)
+		return nil, fmt.Errorf("error creating consumer for group '%s': %w", groupName, err)
+	}
+	// bind this ephemeral consumer to all messages in this group stream
+	// (see at the end of the Subscribe)
+	nsub, err := hc.js.PullSubscribe("", "",
+		nats.Bind(groupName, consumerInfo.Name),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error to PullSubscribe to stream %s: %w", groupName, err)
 	}
 
-	// bind this consumer to all messages in this group stream (see at the end of the Subscribe)
-	// Ephemeral consumer
-	// must have permissions to $JS.{AllStream}
-	nsub, err := hc.js.PullSubscribe(">", "") //nats.Bind(groupName, consumerInfo.Name),
-
-	if err == nil {
-		err = startEventMessageHandler(nsub, cb)
-	}
+	err = startEventMessageHandler(nsub, cb)
 	sub := &NatsHubSubscription{nsub: nsub}
 	return sub, err
 }

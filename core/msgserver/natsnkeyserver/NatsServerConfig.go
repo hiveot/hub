@@ -1,4 +1,4 @@
-package natsserver
+package natsnkeyserver
 
 import (
 	"crypto/ecdsa"

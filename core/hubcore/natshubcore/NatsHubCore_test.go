@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/hubcore/natshubcore"
-	"github.com/hiveot/hub/core/msgserver/natsserver"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nkeys"
@@ -140,7 +139,7 @@ func TestPubSub_AuthJWT(t *testing.T) {
 	serviceID := "service1"
 	serviceKey, _ := nkeys.CreateUser()
 	serviceKeyPub, _ := serviceKey.PublicKey()
-	tokenizer := natsserver.NewNatsAuthnTokenizer(hubCfg.NatsServer.AppAccountKP, true)
+	tokenizer := nkeyserver.NewNatsAuthnTokenizer(hubCfg.NatsServer.AppAccountKP, true)
 	serviceJWT, err := tokenizer.CreateToken(serviceID, authn.ClientTypeService, serviceKeyPub, 0)
 	require.NoError(t, err)
 

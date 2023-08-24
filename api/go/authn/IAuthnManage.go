@@ -86,28 +86,17 @@ type AddUserResp struct {
 	Token string `json:"token"`
 }
 
-// GetClientProfileAction defines the action to get a client's profile
-const GetClientProfileAction = "getClientProfile"
-
-// GetClientProfileReq request message to get a client's profile.
-type GetClientProfileReq struct {
-	ClientID string `json:"clientID"`
-}
-type GetClientProfileResp struct {
-	Profile ClientProfile `json:"profile"`
-}
-
 const GetCountAction = "getCount"
 
 type GetCountResp struct {
 	N int `json:"n"`
 }
 
-// ListClientsAction defines the action to get a list of clients
-const ListClientsAction = "listClients"
+// GetProfilesAction defines the action to get a list of all client profiles
+const GetProfilesAction = "getProfiles"
 
-// ListClientsResp response to listClient actions
-type ListClientsResp struct {
+// GetProfilesResp response to listClient actions
+type GetProfilesResp struct {
 	Profiles []ClientProfile `json:"profiles"`
 }
 
@@ -182,15 +171,15 @@ type IAuthnManage interface {
 	// GetCount returns the number of clients in the store
 	GetCount() (int, error)
 
-	// GetClientProfile returns a client's profile
+	// GetProfile returns a client's profile
 	// Users can only get their own profile.
 	// Managers can get other clients profiles.
 	// This returns an error if the client does not exist
-	GetClientProfile(clientID string) (profile ClientProfile, err error)
+	GetProfile(clientID string) (profile ClientProfile, err error)
 
-	// ListClients provide a list of known clients and their info.
+	// GetProfiles provide a list of known clients and their info.
 	// The caller must be an administrator or service.
-	ListClients() (profiles []ClientProfile, err error)
+	GetProfiles() (profiles []ClientProfile, err error)
 
 	// RemoveClient removes a client and disables authentication
 	// Existing tokens are immediately expired (tbd)

@@ -83,8 +83,8 @@ func (authnStore *AuthnFileStore) Count() int {
 	return len(authnStore.entries)
 }
 
-// Get user the user info of the loginID
-func (authnStore *AuthnFileStore) Get(clientID string) (profile authn.ClientProfile, err error) {
+// GetProfile returns the client's profile
+func (authnStore *AuthnFileStore) GetProfile(clientID string) (profile authn.ClientProfile, err error) {
 	authnStore.mutex.RLock()
 	defer authnStore.mutex.RUnlock()
 	// user must exist
@@ -95,8 +95,8 @@ func (authnStore *AuthnFileStore) Get(clientID string) (profile authn.ClientProf
 	return entry.ClientProfile, err
 }
 
-// List returns a list of users in the store
-func (authnStore *AuthnFileStore) List() (profiles []authn.ClientProfile, err error) {
+// GetProfiles returns a list of all client profiles in the store
+func (authnStore *AuthnFileStore) GetProfiles() (profiles []authn.ClientProfile, err error) {
 	profiles = make([]authn.ClientProfile, 0, len(authnStore.entries))
 	for _, entry := range authnStore.entries {
 		profiles = append(profiles, entry.ClientProfile)
@@ -104,9 +104,13 @@ func (authnStore *AuthnFileStore) List() (profiles []authn.ClientProfile, err er
 	return profiles, nil
 }
 
-// ListEntries returns a list of all user profiles with their hashed passwords
-func (authnStore *AuthnFileStore) ListEntries() (entries map[string]authn.AuthnEntry, err error) {
-	return authnStore.entries, nil
+// GetEntries returns a list of all profiles with their hashed passwords
+func (authnStore *AuthnFileStore) GetEntries() (entries []authn.AuthnEntry) {
+	entries = make([]authn.AuthnEntry, len(authnStore.entries))
+	for _, entry := range authnStore.entries {
+		entries = append(entries, entry)
+	}
+	return entries
 }
 
 // Open the store
@@ -195,17 +199,29 @@ func (authnStore *AuthnFileStore) save() error {
 }
 
 // SetPassword generates and stores the user's password hash
+// bcrypt limits max password length to 72 bytes
 func (authnStore *AuthnFileStore) SetPassword(loginID string, password string) (err error) {
 	var hash string
 	if len(password) < 5 {
 		return fmt.Errorf("password too short (%d chars)", len(password))
 	}
-	// TODO: tweak to something reasonable and test timing. default of 64MB is not suitable for small systems
-	params := argon2id.DefaultParams
-	params.Memory = 16 * 1024
-	params.Iterations = 2
-	params.Parallelism = 4 // what happens with fewer cores?
-	hash, _ = argon2id.CreateHash(password, params)
+	if authnStore.hashAlgo == authn.PWHASH_ARGON2id {
+		// TODO: tweak to something reasonable and test timing. default of 64MB is not suitable for small systems
+		params := argon2id.DefaultParams
+		params.Memory = 16 * 1024
+		params.Iterations = 2
+		params.Parallelism = 4 // what happens with fewer cores?
+		hash, err = argon2id.CreateHash(password, params)
+	} else if authnStore.hashAlgo == authn.PWHASH_BCRYPT {
+		hashBytes, err2 := bcrypt.GenerateFromPassword([]byte(password), 0)
+		err = err2
+		hash = string(hashBytes)
+	} else {
+		err = fmt.Errorf("unknown password hash: %s", authnStore.hashAlgo)
+	}
+	if err != nil {
+		return err
+	}
 	return authnStore.SetPasswordHash(loginID, hash)
 }
 
@@ -311,10 +327,17 @@ func WritePasswordsToTempFile(
 // Multiple concurrent writes are not supported and might lead to one write being ignored.
 //
 //	filepath location of the file store. See also DefaultPasswordFile for the recommended name
-func NewAuthnFileStore(filepath string) *AuthnFileStore {
+//	hashAlgo PWHASH_ARGON2id (default) or PWHASH_BCRYPT
+func NewAuthnFileStore(filepath string, hashAlgo string) *AuthnFileStore {
+	if hashAlgo == "" {
+		hashAlgo = authn.PWHASH_ARGON2id
+	}
+	if hashAlgo != authn.PWHASH_ARGON2id && hashAlgo != authn.PWHASH_BCRYPT {
+		panic("unknown hash algorithm: " + hashAlgo)
+	}
 	store := &AuthnFileStore{
 		storePath: filepath,
-		hashAlgo:  authn.PWHASH_ARGON2id,
+		hashAlgo:  hashAlgo,
 		entries:   make(map[string]authn.AuthnEntry),
 	}
 	return store

@@ -1,18 +1,24 @@
-package natsserver
+package natsjwtserver
 
 import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"time"
 )
 
+// NOT READY FOR USE. TOO MANY PROBLEMS. Most importantly:
+// - no password or nkey login. how do web users get their token?
+// - need a new token when permissions change. How to know?
+// -
+
 // NatsJWTServer runs an embedded NATS server using JWT for authentication.
 type NatsJWTServer struct {
-	cfg      NatsServerConfig
+	cfg      natsnkeyserver.NatsServerConfig
 	natsOpts server.Options
 	ns       *server.Server
 }
@@ -63,7 +69,7 @@ func (srv *NatsJWTServer) ConnectInProc(clientID string) (*nats.Conn, error) {
 // Start the NATS server with the given configuration
 //
 //	cfg.Setup() must have been called first.
-func (srv *NatsJWTServer) Start(cfg NatsServerConfig) (clientURL string, err error) {
+func (srv *NatsJWTServer) Start(cfg natsnkeyserver.NatsServerConfig) (clientURL string, err error) {
 	srv.cfg = cfg
 	srv.natsOpts = cfg.CreateNatsJWTOptions()
 

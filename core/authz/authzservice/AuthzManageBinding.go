@@ -10,15 +10,15 @@ import (
 	"time"
 )
 
-// AuthzServiceBinding is a messaging binding for marshalling Authz service messages.
-type AuthzServiceBinding struct {
+// AuthzBinding is a messaging binding for marshalling Authz service messages.
+type AuthzBinding struct {
 	svc    authz.IAuthz
 	hc     hubclient.IHubClient
 	mngSub hubclient.ISubscription
 }
 
-// handle authz management requests published by a hub manager
-func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.ActionMessage) error {
+// handle authz requests published by a hub manager
+func (binding *AuthzBinding) handleManageActions(action *hubclient.ActionMessage) error {
 	slog.Info("handleManageActions",
 		slog.String("actionID", action.ActionID))
 
@@ -30,7 +30,7 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 		if err != nil {
 			return err
 		}
-		err = binding.svc.AddGroup(req.GroupName, time.Second*time.Duration(req.Retention))
+		err = binding.svc.AddGroup(req.GroupID, req.DisplayName, time.Second*time.Duration(req.Retention))
 		if err == nil {
 			action.SendAck()
 		}
@@ -41,7 +41,7 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 		if err != nil {
 			return err
 		}
-		err = binding.svc.AddService(req.ServiceID, req.GroupName)
+		err = binding.svc.AddService(req.ServiceID, req.GroupID)
 		if err == nil {
 			action.SendAck()
 		}
@@ -52,7 +52,7 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 		if err != nil {
 			return err
 		}
-		err = binding.svc.AddThing(req.ThingID, req.GroupName)
+		err = binding.svc.AddThing(req.ThingID, req.GroupID)
 		if err == nil {
 			action.SendAck()
 		}
@@ -63,7 +63,7 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 		if err != nil {
 			return err
 		}
-		err = binding.svc.AddUser(req.UserID, req.Role, req.GroupName)
+		err = binding.svc.AddUser(req.UserID, req.Role, req.GroupID)
 		if err == nil {
 			action.SendAck()
 		}
@@ -74,7 +74,7 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 		if err != nil {
 			return err
 		}
-		err = binding.svc.DeleteGroup(req.GroupName)
+		err = binding.svc.DeleteGroup(req.GroupID)
 		if err == nil {
 			action.SendAck()
 		}
@@ -98,7 +98,7 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 		if err != nil {
 			return err
 		}
-		group, err := binding.svc.GetGroup(req.GroupName)
+		group, err := binding.svc.GetGroup(req.GroupID)
 		if err == nil {
 			resp := authz.GetGroupResp{Group: group}
 			reply, _ := ser.Marshal(&resp)
@@ -124,7 +124,7 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 		if err != nil {
 			return err
 		}
-		groups, err := binding.svc.ListGroups(req.ClientID)
+		groups, err := binding.svc.GetClientGroups(req.ClientID)
 		if err == nil {
 			resp := authz.ListGroupsResp{Groups: groups}
 			reply, _ := ser.Marshal(&resp)
@@ -137,7 +137,7 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 		if err != nil {
 			return err
 		}
-		err = binding.svc.RemoveClient(req.ClientID, req.GroupName)
+		err = binding.svc.RemoveClient(req.ClientID, req.GroupID)
 		if err == nil {
 			action.SendAck()
 		}
@@ -159,7 +159,7 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 		if err != nil {
 			return err
 		}
-		err = binding.svc.SetUserRole(req.UserID, req.UserRole, req.GroupName)
+		err = binding.svc.SetUserRole(req.UserID, req.UserRole, req.GroupID)
 		if err == nil {
 			action.SendAck()
 		}
@@ -169,7 +169,7 @@ func (binding *AuthzServiceBinding) handleManageActions(action *hubclient.Action
 }
 
 // Start subscribes to authz message requests
-func (binding *AuthzServiceBinding) Start() error {
+func (binding *AuthzBinding) Start() error {
 	if binding.hc == nil {
 		return fmt.Errorf("HubClient is nil")
 	} else if binding.svc == nil {
@@ -182,20 +182,20 @@ func (binding *AuthzServiceBinding) Start() error {
 }
 
 // Stop unsubscribes from authz message requests
-func (binding *AuthzServiceBinding) Stop() {
+func (binding *AuthzBinding) Stop() {
 	if binding.mngSub != nil {
 		binding.mngSub.Unsubscribe()
 	}
 }
 
-// NewAuthzMsgBinding creates a new instance of the messaging binding
+// NewAuthzBinding creates a new instance of the authz messaging binding
 // This uses an existing client connection to the server to subscribe and unsubscribe.
 // opening and closing this connection is the responsibility of the caller.
 //
 //	svc is the authz service that handles the requests
 //	hc is an existing client connection to the messaging server used to subscribe to actions
-func NewAuthzMsgBinding(svc authz.IAuthz, hc hubclient.IHubClient) *AuthzServiceBinding {
-	binding := &AuthzServiceBinding{
+func NewAuthzBinding(svc authz.IAuthz, hc hubclient.IHubClient) AuthzBinding {
+	binding := AuthzBinding{
 		svc:    svc,
 		hc:     hc,
 		mngSub: nil,

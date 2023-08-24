@@ -1,13 +1,11 @@
 package authn_test
 
 import (
-	authn2 "github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/core/authn"
+	authnapi "github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/core/authn/authnclient"
 	"github.com/hiveot/hub/core/authn/authnservice"
-	"github.com/hiveot/hub/core/authn/authnstore"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
-	"github.com/hiveot/hub/core/msgserver/natsserver"
+	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/jwt/v2"
@@ -26,18 +24,18 @@ import (
 )
 
 var certBundle certs.TestCertBundle
-var serverCfg *natsserver.NatsServerConfig
+var serverCfg *natsnkeyserver.NatsServerConfig
 var testDir = path.Join(os.TempDir(), "test-authn")
 
 // the following are set by the testmain
 var clientURL string
-var msgServer *natsserver.NatsNKeyServer
+var msgServer *natsnkeyserver.NatsNKeyServer
 
 // run the test for different cores
-var useCore = "natsnkey" // natsnkey, natsjwt, natscallout, mqtt
+//var useCore = "natsnkey" // natsnkey, natsjwt, natscallout, mqtt
 
 // add new user to test with
-func addNewUser(userID string, displayName string, pass string, mng authn2.IAuthnManage) (token string, key nkeys.KeyPair, err error) {
+func addNewUser(userID string, displayName string, pass string, mng authnapi.IAuthnManage) (token string, key nkeys.KeyPair, err error) {
 	userKey, _ := nkeys.CreateUser()
 	userKeyPub, _ := userKey.PublicKey()
 	// FIXME: must set a password in order to update it later
@@ -46,56 +44,34 @@ func addNewUser(userID string, displayName string, pass string, mng authn2.IAuth
 }
 
 // launch the authn service and return a client for using and managing it.
-func startTestAuthnService() (mng authn2.IAuthnManage, stopFn func(), err error) {
+// the messaging server is already running (see TestMain)
+func startTestAuthnService() (authnSvc *authnservice.AuthnService, mng authnapi.IAuthnManage, stopFn func(), err error) {
 	// the password file to use
 	passwordFile := path.Join(testDir, "test.passwd")
 
 	// TODO: put this in a test environment
 	_ = os.Remove(passwordFile)
-	cfg := authn.AuthnConfig{}
+	cfg := authnservice.AuthnConfig{}
 	_ = cfg.Setup(testDir)
 	cfg.PasswordFile = passwordFile
 	cfg.DeviceTokenValidity = 10
+	cfg.Encryption = authnapi.PWHASH_BCRYPT // nats requires bcrypt
 
-	// setup the authn service
-	// TODO: support JWT tokens
-	tokenizer := natsserver.NewNatsAuthnTokenizer(serverCfg.AppAccountKP, true)
-	nc1, err := msgServer.ConnectInProc("authn", nil)
-	hc1, _ := natshubclient.ConnectWithNC(nc1, "authn")
-	if err != nil {
-		panic("can't connect authn to server: " + err.Error())
-	}
-	// check js access
-	js, err := nc1.JetStream()
-	if err != nil {
-		panic("no js")
-	}
-	ai, err := js.AccountInfo()
-	_ = ai
-	if err != nil {
-		panic("no js")
-	}
-
-	authStore := authnstore.NewAuthnFileStore(passwordFile)
-	authnSvc := authnservice.NewAuthnService(authStore, msgServer, tokenizer, hc1)
-	err = authnSvc.Start()
+	authnSvc, err = authnservice.StartAuthnService(cfg, msgServer)
 	if err != nil {
 		logrus.Panicf("cant start test authn service: %s", err)
 	}
 
-	//--- create a hub client for the authn management
-	nc2, err := msgServer.ConnectInProc("authn-client", nil)
-	hc2, err := natshubclient.ConnectWithNC(nc2, "authn-client")
+	//--- connect the authn management client for managing clients
+	hc2, err := msgServer.ConnectInProc("authn-client")
 	if err != nil {
 		panic(err)
 	}
 	mngAuthn := authnclient.NewAuthnManageClient(hc2)
-	//
-	return mngAuthn, func() {
-		authnSvc.Stop()
-		hc1.Disconnect()
+
+	return authnSvc, mngAuthn, func() {
 		hc2.Disconnect()
-		authStore.Close()
+		authnSvc.Stop()
 
 		// let background tasks finish
 		time.Sleep(time.Millisecond * 100)
@@ -124,19 +100,19 @@ func TestMain(m *testing.M) {
 	os.Exit(res)
 }
 
-// Create and verify a JWT token
+// Start the authn service and list clients
 func TestStartStop(t *testing.T) {
 	slog.Info("--- TestStartStop start")
 	defer slog.Info("--- TestStartStop end")
 
-	mng, stopFn, err := startTestAuthnService()
+	_, mngAuthn, stopFn, err := startTestAuthnService()
 	require.NoError(t, err)
 	defer stopFn()
 	time.Sleep(time.Millisecond * 10)
-	clList, err := mng.ListClients()
+
+	clList, err := mngAuthn.GetProfiles()
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(clList))
-
 }
 
 // Create manage users
@@ -151,7 +127,7 @@ func TestAddRemoveClients(t *testing.T) {
 	serviceKP, _ := nkeys.CreateUser()
 	serviceKeyPub, _ := serviceKP.PublicKey()
 
-	mng, stopFn, err := startTestAuthnService()
+	svc, mng, stopFn, err := startTestAuthnService()
 	require.NoError(t, err)
 	defer stopFn()
 
@@ -189,7 +165,12 @@ func TestAddRemoveClients(t *testing.T) {
 	_, err = mng.AddService("", "", "", 100) // should fail
 	assert.Error(t, err)
 
-	clList, err := mng.ListClients()
+	// update the server. users can connect and have unlimited access
+	authnEntries := svc.MngService.GetEntries()
+	err = msgServer.ApplyAuthn(authnEntries)
+	require.NoError(t, err)
+
+	clList, err := mng.GetProfiles()
 	assert.NoError(t, err)
 	assert.Equal(t, 6, len(clList))
 	cnt, _ := mng.GetCount()
@@ -207,7 +188,7 @@ func TestAddRemoveClients(t *testing.T) {
 	assert.NoError(t, err)
 
 	require.NoError(t, err)
-	clList, err = mng.ListClients()
+	clList, err = mng.GetProfiles()
 	assert.Equal(t, 2, len(clList))
 
 	_, err = mng.AddUser("user1", "user 1", "", "")
@@ -234,7 +215,7 @@ func TestLoginRefresh(t *testing.T) {
 	var authToken1 string
 	var authToken2 string
 
-	mng, stopFn, err := startTestAuthnService()
+	svc, mng, stopFn, err := startTestAuthnService()
 	defer stopFn()
 	require.NoError(t, err)
 
@@ -245,6 +226,11 @@ func TestLoginRefresh(t *testing.T) {
 	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, "")
 	require.NoError(t, err)
 	assert.Empty(t, tu1Token)
+
+	// apply changes without authz. users can connect and have unlimited access
+	authnEntries := svc.MngService.GetEntries()
+	err = msgServer.ApplyAuthn(authnEntries)
+	require.NoError(t, err)
 
 	// 1. connect to the added user using its password
 	hc1, err := natshubclient.ConnectWithPassword(clientURL, tu1ID, tu1Pass, certBundle.CaCert)
@@ -257,11 +243,13 @@ func TestLoginRefresh(t *testing.T) {
 	authToken1, err = cl1.NewToken(tu1ID, tu1Pass)
 	assert.Error(t, err)
 
-	// use the authentication client to request a new token
+	// use the authentication client to request a new token and reload
 	err = cl1.UpdatePubKey(tu1ID, tu1KeyPub)
 	authToken1, err = cl1.NewToken(tu1ID, tu1Pass)
 	require.NoError(t, err)
-	assert.NotEmpty(t, authToken1)
+	authnEntries = svc.MngService.GetEntries()
+	_ = msgServer.ApplyAuthn(authnEntries)
+
 	// wrong ID should fail
 	_, err = cl1.NewToken("nottu1", "badpass")
 	require.Error(t, err)
@@ -270,6 +258,7 @@ func TestLoginRefresh(t *testing.T) {
 	require.Error(t, err)
 
 	// 3. login with the new token
+	// (nkeys and callout auth doesn't need a server reload)
 	hc2, err := natshubclient.Connect(clientURL, tu1ID, tu1Key, authToken1, certBundle.CaCert)
 	require.NoError(t, err)
 	cl2 := authnclient.NewAuthnUserClient(hc2)
@@ -310,17 +299,20 @@ func TestRefreshFakeToken(t *testing.T) {
 	var tu1Pass = "tu1Pass"
 	var authToken1 string
 
-	mng, stopFn, err := startTestAuthnService()
+	srv, mng, stopFn, err := startTestAuthnService()
 	defer stopFn()
 	require.NoError(t, err)
 
-	// add user to test with. no password and no public key
+	// add user to test with. password and no public key
 	tu1Key, _ := nkeys.CreateUser()
 	tu1KeyPub, _ := tu1Key.PublicKey()
 	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, "")
 	_ = tu1Token
 	require.NoError(t, err)
 	//require.NotEmpty(t, tu1Token)
+
+	entries := srv.MngService.GetEntries()
+	err = msgServer.ApplyAuthn(entries)
 
 	// 1. connect with the added user token
 	//hc1, err := connectUser(tu1ID, tu1Key, tu1Token)
@@ -361,32 +353,28 @@ func TestRefreshFakeToken(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	slog.Info("--- TestRefreshFakeToken start")
-	defer slog.Info("--- TestRefreshFakeToken end")
+	slog.Info("--- TestUpdate start")
+	defer slog.Info("--- TestUpdate end")
 	var tu1ID = "tu1ID"
 	var tu1Name = "test user 1"
 
-	// make sure JS is enabled for account
-	hc0, err := msgServer.ConnectInProc("test", nil)
-	require.NoError(t, err)
-	js, err := hc0.JetStream()
-	require.NoError(t, err)
-	ai, err := js.AccountInfo()
-	require.NoError(t, err)
-	_ = ai
-	hc0.Close()
-
-	mng, stopFn, err := startTestAuthnService()
+	srv, mng, stopFn, err := startTestAuthnService()
 	defer stopFn()
 	require.NoError(t, err)
 
 	// add user to test with and connect
 	tu1Token, tu1Key, err := addNewUser(tu1ID, tu1Name, "pass0", mng)
+	require.NoError(t, err)
+
+	entries := srv.MngService.GetEntries()
+	err = msgServer.ApplyAuthn(entries)
+	require.NoError(t, err)
+
 	hc, err := natshubclient.Connect(clientURL, tu1ID, tu1Key, tu1Token, certBundle.CaCert)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 
-	// update display name, password and public key
+	// update display name, password and public key and reload
 	const newDisplayName = "new display name"
 	newPK, _ := nkeys.CreateUser()
 	newPKPub, _ := newPK.PublicKey()
@@ -398,6 +386,9 @@ func TestUpdate(t *testing.T) {
 	err = cl.UpdatePubKey(tu1ID, newPKPub)
 	assert.NoError(t, err)
 
+	entries = srv.MngService.GetEntries()
+	err = msgServer.ApplyAuthn(entries)
+
 	//reconnect using the new key
 	hc, err = natshubclient.Connect(clientURL, tu1ID, newPK, newPKPub, certBundle.CaCert)
 	require.NoError(t, err)
@@ -408,7 +399,7 @@ func TestUpdate(t *testing.T) {
 	assert.Equal(t, newDisplayName, prof.DisplayName)
 	assert.Equal(t, newPKPub, prof.PubKey)
 
-	prof2, err := mng.GetClientProfile(tu1ID)
+	prof2, err := mng.GetProfile(tu1ID)
 	assert.Equal(t, prof, prof2)
 	prof2.DisplayName = "after update"
 	err = mng.UpdateClient(tu1ID, prof2)
@@ -416,12 +407,4 @@ func TestUpdate(t *testing.T) {
 
 	prof, err = cl.GetProfile(tu1ID)
 	assert.Equal(t, prof2.DisplayName, prof.DisplayName)
-
-	hc0, err = msgServer.ConnectInProc("test", nil)
-	require.NoError(t, err)
-	js, err = hc0.JetStream()
-	require.NoError(t, err)
-	ai, err = js.AccountInfo()
-	require.NoError(t, err)
-	_ = ai
 }

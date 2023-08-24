@@ -11,7 +11,7 @@ import (
 )
 
 // Authz manage tests
-// This uses TestMain from Authz_test
+// This uses TestMain from AuthzPermissions_test
 
 func TestAuthzServiceStartStop(t *testing.T) {
 	logrus.Infof("---TestAuthzServiceStartStop---")
@@ -28,14 +28,14 @@ func TestAuthzServiceBadStart(t *testing.T) {
 	// opening the acl store should fail
 	err := aclStore.Open()
 	require.Error(t, err)
-	svc := authzservice.NewAuthzService(aclStore, nil, nil)
+	svc := authzservice.NewAuthzService(aclStore, nil)
 
 	// service opening the acl store should fail
 	err = svc.Start()
 	svc.Stop()
 
 	// missing store should not panic
-	svc = authzservice.NewAuthzService(nil, nil, nil)
+	svc = authzservice.NewAuthzService(nil, nil)
 	err = svc.Start()
 	assert.Error(t, err)
 }
@@ -50,16 +50,16 @@ func TestCreateDeleteGroups(t *testing.T) {
 	defer stopFn()
 
 	// the all group must exist
-	ag, err := svc.GetGroup(authz.AllGroupName)
+	ag, err := svc.GetGroup(authz.AllGroupID)
 	require.NoError(t, err)
-	assert.Equal(t, authz.AllGroupName, ag.Name)
+	assert.Equal(t, authz.AllGroupID, ag.ID)
 
 	// add a new group
-	err = svc.AddGroup(group1ID, 0)
+	err = svc.AddGroup(group1ID, "group 1", 0)
 	require.NoError(t, err)
 	ag, err = svc.GetGroup(group1ID)
 	require.NoError(t, err)
-	assert.Equal(t, group1ID, ag.Name)
+	assert.Equal(t, group1ID, ag.ID)
 
 	// remove
 	err = svc.DeleteGroup(group1ID)
@@ -75,9 +75,9 @@ func TestAddRemoveThings(t *testing.T) {
 	svc, stopFn := startTestAuthzService()
 	defer stopFn()
 
-	err := svc.AddGroup(group1ID, 0)
+	err := svc.AddGroup(group1ID, "group 1", 0)
 	require.NoError(t, err)
-	_ = svc.AddGroup(group2ID, 0)
+	_ = svc.AddGroup(group2ID, "group 2", 0)
 
 	// group1 has thing1
 	err = svc.AddThing(thingID1, group1ID)
@@ -121,9 +121,9 @@ func TestAddRemoveServices(t *testing.T) {
 	svc, stopFn := startTestAuthzService()
 	defer stopFn()
 
-	err := svc.AddGroup(group1ID, 0)
+	err := svc.AddGroup(group1ID, "group 1", 0)
 	require.NoError(t, err)
-	_ = svc.AddGroup(group2ID, 0)
+	_ = svc.AddGroup(group2ID, "group 2", 0)
 
 	// group1 has service1
 	err = svc.AddService(serviceID1, group1ID)
@@ -162,9 +162,9 @@ func TestAddRemoveUsers(t *testing.T) {
 	svc, stopFn := startTestAuthzService()
 	defer stopFn()
 
-	err := svc.AddGroup(group1ID, 0)
+	err := svc.AddGroup(group1ID, "group 1", 0)
 	require.NoError(t, err)
-	_ = svc.AddGroup(group2ID, 0)
+	_ = svc.AddGroup(group2ID, "group 2", 0)
 
 	// group1 has user1
 	err = svc.AddUser(userID1, authz.GroupRoleViewer, group1ID)
@@ -207,11 +207,11 @@ func TestListGroups(t *testing.T) {
 	svc, stopFn := startTestAuthzService()
 	defer stopFn()
 
-	err := svc.AddGroup(group1ID, 0)
+	err := svc.AddGroup(group1ID, "group 1", 0)
 	require.NoError(t, err)
-	err = svc.AddGroup(group2ID, 0)
+	err = svc.AddGroup(group2ID, "group 2", 0)
 	require.NoError(t, err)
-	err = svc.AddGroup(group3ID, 0)
+	err = svc.AddGroup(group3ID, "group 3", 0)
 	require.NoError(t, err)
 
 	err = svc.AddThing(thingID1, group1ID)
@@ -224,14 +224,14 @@ func TestListGroups(t *testing.T) {
 	_ = svc.AddUser(user1ID, authz.GroupRoleViewer, group2ID)
 
 	// 3+1 groups must exist (+all group)
-	groups, err := svc.ListGroups("")
+	groups, err := svc.GetClientGroups("")
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(groups))
 
 	// group 2 has 3 members, 2 things and 1 user
 	group, err := svc.GetGroup(group2ID)
 	assert.NoError(t, err)
-	assert.Equal(t, group2ID, group.Name)
+	assert.Equal(t, group2ID, group.ID)
 	assert.Equal(t, 3, len(group.MemberRoles))
 	assert.Contains(t, group.MemberRoles, thingID1)
 	assert.Contains(t, group.MemberRoles, thingID2)
@@ -261,9 +261,9 @@ func TestAddRemoveRoles(t *testing.T) {
 	svc, stopFn := startTestAuthzService()
 	defer stopFn()
 
-	_ = svc.AddGroup(group1ID, 0)
-	_ = svc.AddGroup(group2ID, 0)
-	_ = svc.AddGroup(group3ID, 0)
+	_ = svc.AddGroup(group1ID, "group 1", 0)
+	_ = svc.AddGroup(group2ID, "group 2", 0)
+	_ = svc.AddGroup(group3ID, "group 3", 0)
 	// user1 is a member of 3 groups
 	err := svc.AddUser(user1ID, authz.GroupRoleOperator, group1ID)
 	assert.NoError(t, err)

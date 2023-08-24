@@ -69,22 +69,22 @@ const (
 
 // predefined group names
 const (
-	// NoAuthGroupName is the built-in group for unauthenticated clients
-	NoAuthGroupName = "unauthenticated"
-
-	// AllGroupName is the built-in group containing all resources
-	AllGroupName = "all"
+	// AllGroupID is the built-in group containing all resources
+	AllGroupID = "all"
 )
 
 // default group retention is 1 day
 const DefaultGroupRetention = 3600 * 24
 
 // RoleMap for members or memberships
-type RoleMap map[string]string // clientID:role, groupName:role
+type RoleMap map[string]string // clientID:role, groupID:role
 
 // Group is a map of clientID:role
 type Group struct {
-	Name string
+	// Unique ID of the group. This is immutable.
+	ID string
+	// Group presentation name
+	DisplayName string
 	// map of clients and their role in this group
 	MemberRoles RoleMap
 	// data retention period in seconds
@@ -92,9 +92,9 @@ type Group struct {
 }
 
 //// NewGroup creates an instance of a group with member roles
-//func NewGroup(groupName string) Group {
+//func NewGroup(groupID string) Group {
 //	return Group{
-//		Name:        groupName,
+//		ID:        groupID,
 //		MemberRoles: make(RoleMap),
 //	}
 //}
@@ -114,7 +114,9 @@ const AddGroupAction = "addGroup"
 // The caller must be an administrator or service.
 type AddGroupReq struct {
 	// unique name of the group
-	GroupName string `json:"groupName"`
+	GroupID string `json:"groupID"`
+	// presentation name
+	DisplayName string `json:"displayName"`
 	// retention period in seconds of events in this group
 	// use 0 for indefinitely
 	Retention uint64 `json:"retention"`
@@ -127,7 +129,7 @@ const AddThingAction = "addThing"
 // The caller must be an administrator or service.
 type AddThingReq struct {
 	// name of existing group
-	GroupName string `json:"groupName"`
+	GroupID string `json:"groupID"`
 	// the thingID to add in the IoT device role
 	ThingID string `json:"thingID"`
 }
@@ -138,8 +140,8 @@ const AddServiceAction = "addService"
 // AddServiceReq request message to add a Service to a group
 // The caller must be an administrator or service.
 type AddServiceReq struct {
-	// name of existing group
-	GroupName string `json:"groupName"`
+	// ID of existing group
+	GroupID string `json:"groupID"`
 	// serviceID to add in the service role
 	ServiceID string `json:"serviceID"`
 }
@@ -151,7 +153,7 @@ const AddUserAction = "addUser"
 // The caller must be an administrator or service.
 type AddUserReq struct {
 	// name of existing group
-	GroupName string `json:"groupName"`
+	GroupID string `json:"groupID"`
 	// user to add
 	UserID string `json:"userID"`
 	// role the user is added in: viewer, operator or manager
@@ -165,7 +167,7 @@ const DeleteGroupAction = "deleteGroup"
 // The caller must be an administrator or service.
 type DeleteGroupReq struct {
 	// group to delete
-	GroupName string `json:"groupName"`
+	GroupID string `json:"groupID"`
 }
 
 // GetClientRolesAction defines the action to request a list of clients and their roles of a group
@@ -187,7 +189,7 @@ const GetGroupAction = "getGroup"
 // GetGroupReq requests the group and its members
 // The caller must be an administrator or service.
 type GetGroupReq struct {
-	GroupName string `json:"groupName"`
+	GroupID string `json:"groupID"`
 }
 
 // GetGroupResp returns the group and its members
@@ -252,8 +254,8 @@ const RemoveClientAction = "removeClient"
 // RemoveClientReq requests removal of a client from a group
 // The caller must be an administrator or service.
 type RemoveClientReq struct {
-	ClientID  string `json:"clientID"`
-	GroupName string `json:"groupName,omitempty"`
+	ClientID string `json:"clientID"`
+	GroupID  string `json:"groupID,omitempty"`
 }
 
 // RemoveClientAllAction defines the action to remove a client from all groups
@@ -272,9 +274,9 @@ const SetUserRoleAction = "setClientRole"
 // If the user is not a member of a group, the user will be added.
 // The role must be one of the user roles.
 type SetUserRoleReq struct {
-	UserID    string `json:"userID"`
-	GroupName string `json:"groupName"`
-	UserRole  string `json:"userRole"`
+	UserID   string `json:"userID"`
+	GroupID  string `json:"groupID"`
+	UserRole string `json:"userRole"`
 }
 
 // IAuthz defines the capabilities of the authorization service
@@ -284,34 +286,39 @@ type IAuthz interface {
 	// If the group exists this returns without error
 	// Use retention 0 to retain messages indefinitely
 	//
-	//	groupName unique name of the group
+	//	groupID unique ID of the group
+	//  displayName of the group
 	//	retention period of events in this group. 0 for indefinite
-	AddGroup(groupName string, retention time.Duration) error
+	AddGroup(groupID string, displayName string, retention time.Duration) error
 
 	// AddService adds a client with the service role to a group
 	// If the client is already in the group this returns without error
-	AddService(serviceID string, groupName string) error
+	AddService(serviceID string, groupID string) error
 
 	// AddThing adds a client with the thing role to a group
 	// If the client is already in the group this returns without error
-	AddThing(thingID string, groupName string) error
+	AddThing(thingID string, groupID string) error
 
 	// AddUser adds a user to a group with the user role manager, operator or viewer
 	// If the client is already in the group this returns without error
 	// See ClientRole...
-	AddUser(userID string, role string, groupName string) error
+	AddUser(userID string, role string, groupID string) error
 
 	// DeleteGroup deletes the group and all its resources. This is not recoverable.
 	// If the client doesn't exist then returns without error
-	DeleteGroup(groupName string) error
+	DeleteGroup(groupID string) error
 
-	// GetGroup returns the group with the given name, or an error if group is not found.
-	// GroupName must not be empty and must be an existing group
-	// Returns an error if the group does not exist.
-	GetGroup(groupName string) (group Group, err error)
+	// GetClientGroups returns the list of groups available to clientID
+	// If clientID is "" then all groups are returned.
+	GetClientGroups(clientID string) (groups []Group, err error)
 
 	// GetClientRoles returns a map of [groupID]role for groups the client is a member of.
 	GetClientRoles(clientID string) (roles RoleMap, err error)
+
+	// GetGroup returns the group with the given name, or an error if group is not found.
+	// groupID must not be empty and must be an existing group
+	// Returns an error if the group does not exist.
+	GetGroup(groupID string) (group Group, err error)
 
 	// GetRole determines the highest role a client has for a thing
 	// If the client is a member of multiple groups each group role is checked.
@@ -323,14 +330,10 @@ type IAuthz interface {
 	// Returns an map of permissions for each thing, eg PermEmitAction, etc
 	GetPermissions(clientID string, thingIDs []string) (permissions map[string][]string, err error)
 
-	// ListGroups returns the list of groups available to clientID
-	// If clientID is "" then all groups are returned.
-	ListGroups(clientID string) (groups []Group, err error)
-
 	// RemoveClient removes a client from a group
 	// If the client doesn't exist then returns without error
 	// The caller must be an administrator or service.
-	RemoveClient(clientID string, groupName string) error
+	RemoveClient(clientID string, groupID string) error
 
 	// RemoveClientAll removes a client from all groups.
 	// If the client doesn't exist then returns without error
@@ -341,7 +344,7 @@ type IAuthz interface {
 	//
 	// If the client is not a member of a group the client will be added.
 	// The role must be one of the user roles viewer, operator, manager
-	SetUserRole(userID string, userRole string, groupName string) error
+	SetUserRole(userID string, userRole string, groupID string) error
 
 	// Start the service, open the store, starts listening for action requests
 	Start() error

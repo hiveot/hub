@@ -22,6 +22,7 @@ const unpwFileName = "testunpwstore.passwd"
 var unpwFilePath string
 
 var tempFolder string
+var algo = authn.PWHASH_ARGON2id
 
 // TestMain for all authn tests, setup of default folders and filenames
 func TestMain(m *testing.M) {
@@ -42,7 +43,7 @@ func TestMain(m *testing.M) {
 
 func TestOpenClosePWFile(t *testing.T) {
 	_ = os.Remove(unpwFilePath)
-	unpwStore := authnstore.NewAuthnFileStore(unpwFilePath)
+	unpwStore := authnstore.NewAuthnFileStore(unpwFilePath, "")
 	err := unpwStore.Open()
 	assert.NoError(t, err)
 
@@ -56,7 +57,7 @@ func TestOpenClosePWFile(t *testing.T) {
 
 func TestOpenBadData(t *testing.T) {
 	// /bin/yes cannot be read
-	unpwStore := authnstore.NewAuthnFileStore("/bin/yes")
+	unpwStore := authnstore.NewAuthnFileStore("/bin/yes", "")
 	err := unpwStore.Open()
 	assert.Error(t, err)
 
@@ -66,13 +67,13 @@ func TestGetMissingEntry(t *testing.T) {
 	const user1 = "user1"
 	_ = os.Remove(unpwFilePath)
 	// create 2 separate stores
-	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath)
+	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath, "")
 	err := pwStore1.Open()
 	require.NoError(t, err)
 	defer pwStore1.Close()
 
 	// entry doesn't yet exist
-	entry, err := pwStore1.Get("iddoesn'texist")
+	entry, err := pwStore1.GetProfile("iddoesn'texist")
 	assert.Error(t, err)
 	assert.Empty(t, entry)
 }
@@ -84,7 +85,7 @@ func TestAdd(t *testing.T) {
 	const user2 = "user2"
 	const pass2 = "pass2"
 	_ = os.Remove(unpwFilePath)
-	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath)
+	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath, "")
 	err := pwStore1.Open()
 	require.NoError(t, err)
 	defer pwStore1.Close()
@@ -105,13 +106,14 @@ func TestAdd(t *testing.T) {
 }
 
 // verify password
-func TestVerify(t *testing.T) {
+func TestVerifyHashAlgo(t *testing.T) {
 	const user1 = "user1"
 	const pass1 = "pass1"
 	const user2 = "user2"
 	const pass2 = "pass2"
+
 	_ = os.Remove(unpwFilePath)
-	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath)
+	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath, algo)
 	err := pwStore1.Open()
 	require.NoError(t, err)
 	defer pwStore1.Close()
@@ -120,7 +122,7 @@ func TestVerify(t *testing.T) {
 	err = pwStore1.Add(user2, authn.ClientProfile{ClientID: user2, ClientType: authn.ClientTypeUser})
 	err = pwStore1.SetPassword(user1, pass1)
 	require.NoError(t, err)
-	profile1, err := pwStore1.Get(user1)
+	profile1, err := pwStore1.GetProfile(user1)
 	require.NoError(t, err)
 	profile2, err2 := pwStore1.VerifyPassword(user1, pass1)
 	require.NoError(t, err2, "password verification failed")
@@ -155,18 +157,25 @@ func TestVerify(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// verify password
+func TestVerifyBCryptAlgo(t *testing.T) {
+	algo = authn.PWHASH_BCRYPT
+	TestVerifyHashAlgo(t)
+	algo = authn.PWHASH_ARGON2id
+}
+
 func TestName(t *testing.T) {
 	const user1 = "user1"
 	const name1 = "user one"
 
 	_ = os.Remove(unpwFilePath)
-	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath)
+	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath, "")
 	err := pwStore1.Open()
 	require.NoError(t, err)
 	defer pwStore1.Close()
 	err = pwStore1.Add(user1, authn.ClientProfile{ClientID: user1, ClientType: authn.ClientTypeUser, DisplayName: name1})
 
-	entry, err := pwStore1.Get(user1)
+	entry, err := pwStore1.GetProfile(user1)
 	assert.NoError(t, err)
 	assert.Equal(t, user1, entry.ClientID)
 	assert.Equal(t, name1, entry.DisplayName)
@@ -181,13 +190,13 @@ func TestSetPasswordTwoStores(t *testing.T) {
 
 	// create 2 separate stores
 	_ = os.Remove(unpwFilePath)
-	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath)
+	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath, "")
 	err := pwStore1.Open()
 	require.NoError(t, err)
 	err = pwStore1.Add(user1, authn.ClientProfile{ClientID: user1, ClientType: authn.ClientTypeUser})
 	require.NoError(t, err)
 	//
-	pwStore2 := authnstore.NewAuthnFileStore(unpwFilePath)
+	pwStore2 := authnstore.NewAuthnFileStore(unpwFilePath, "")
 	err = pwStore2.Open()
 	require.NoError(t, err)
 	err = pwStore2.Add(user2, authn.ClientProfile{ClientID: user2, ClientType: authn.ClientTypeUser})
@@ -212,10 +221,10 @@ func TestSetPasswordTwoStores(t *testing.T) {
 	assert.NoError(t, err)
 
 	// must exist
-	_, err = pwStore2.Get(user1)
+	_, err = pwStore2.GetProfile(user1)
 	assert.NoError(t, err)
 
-	profile1, err := pwStore2.Get(user1)
+	profile1, err := pwStore2.GetProfile(user1)
 	assert.NoError(t, err)
 	profile2, err := pwStore2.VerifyPassword(user1, pass1)
 	assert.NoError(t, err)
@@ -228,7 +237,7 @@ func TestSetPasswordTwoStores(t *testing.T) {
 	assert.NoError(t, err)
 	time.Sleep(time.Millisecond * 100)
 
-	prof2, err := pwStore1.Get(user2)
+	prof2, err := pwStore1.GetProfile(user2)
 	assert.NoError(t, err)
 	assert.Equal(t, prof2.ClientID, user2)
 	prof3, err := pwStore1.VerifyPassword(user2, pass2)
@@ -250,10 +259,10 @@ func TestConcurrentReadWrite(t *testing.T) {
 	_ = fp.Close()
 
 	// two stores in parallel
-	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath)
+	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath, "")
 	err := pwStore1.Open()
 	assert.NoError(t, err)
-	pwStore2 := authnstore.NewAuthnFileStore(unpwFilePath)
+	pwStore2 := authnstore.NewAuthnFileStore(unpwFilePath, "")
 	err = pwStore2.Open()
 	assert.NoError(t, err)
 
@@ -273,7 +282,7 @@ func TestConcurrentReadWrite(t *testing.T) {
 	// time to catch up the file watcher debouncing
 	time.Sleep(time.Second * 1)
 
-	profiles, err := pwStore1.List()
+	profiles, err := pwStore1.GetProfiles()
 	assert.NoError(t, err)
 
 	// both stores should be fully up to date
@@ -288,7 +297,7 @@ func TestConcurrentReadWrite(t *testing.T) {
 
 func TestWritePwToBadTempFolder(t *testing.T) {
 	pws := make(map[string]authn.AuthnEntry)
-	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath)
+	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath, "")
 	err := pwStore1.Open()
 	assert.NoError(t, err)
 	_, err = authnstore.WritePasswordsToTempFile("/badfolder", pws)
@@ -300,7 +309,7 @@ func TestWritePwToReadonlyFile(t *testing.T) {
 	const user1 = "user1"
 	const pass1 = "pass1"
 	// bin/yes cannot be written to
-	pwStore1 := authnstore.NewAuthnFileStore("/bin/yes")
+	pwStore1 := authnstore.NewAuthnFileStore("/bin/yes", "")
 	err := pwStore1.Open()
 	assert.Error(t, err)
 	err = pwStore1.SetPassword(user1, pass1)
@@ -316,7 +325,7 @@ func TestUpdate(t *testing.T) {
 	const name2 = "name2"
 
 	_ = os.Remove(unpwFilePath)
-	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath)
+	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath, "")
 	err := pwStore1.Open()
 	require.NoError(t, err)
 	err = pwStore1.Add(user1, authn.ClientProfile{ClientID: user1, ClientType: authn.ClientTypeUser, DisplayName: name1})
@@ -331,7 +340,7 @@ func TestUpdate(t *testing.T) {
 		ClientID: user1, ClientType: authn.ClientTypeUser, DisplayName: name2, PubKey: key1, ValiditySec: 1,
 	})
 	assert.NoError(t, err)
-	prof, err := pwStore1.Get(user1)
+	prof, err := pwStore1.GetProfile(user1)
 	assert.NoError(t, err)
 	assert.Equal(t, name2, prof.DisplayName)
 	assert.Equal(t, key1, prof.PubKey)

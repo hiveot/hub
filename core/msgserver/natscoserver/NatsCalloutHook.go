@@ -1,4 +1,4 @@
-package natsserver
+package natscoserver
 
 import (
 	"fmt"
@@ -10,9 +10,14 @@ import (
 	"time"
 )
 
-// NatsCalloutHook provides an easy to use hook to enable callout in the nats server.
-// Its combines the various parts needed to function, such as account, nkeys,
-// Authrequest handler and auth response creator.
+// This is not ready for use. Callout is undocumented and integrating subject authorization
+// is a still a question.
+// Does callout expect permissions in a generated JWT? Does that mean that on each connection a JWT token
+// must be generated? Does this effect performance compared to regular JWT which only needs to verify the token?
+
+// NatsCalloutHook provides an easy-to-use hook to enable callout in the NATS server.
+// It combines the various parts needed to function, such as account, nkeys, auth request
+// handler and auth response creator.
 // Intended for handling callouts in server mode. Not for use in operator mode.
 // (that is a lot of work just to get your own authn handler called)
 type NatsCalloutHook struct {
@@ -66,7 +71,7 @@ func (chook *NatsCalloutHook) createSignedResponse(
 // The token is signed by the issuer account. In server mode this must be the same
 // account as the account the callout client belongs to.
 //
-//	clientID is the user's login/connect ID which is added as the token Name
+//	clientID is the user's login/connect ID which is added as the token ID
 //	clientPub is the users's public key which goes into the subject field of the jwt token
 func (chook *NatsCalloutHook) createUserJWTToken(clientID string, clientPub string) (newToken string, err error) {
 	validitySec := 3600 // the testing validity
