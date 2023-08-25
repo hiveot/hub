@@ -9,77 +9,7 @@ import (
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nkeys"
-	"time"
 )
-
-// CreateJWTToken for authentication and authorization with NATS server and JetStream.
-// FIXME: use the same permissions as for the static server clients
-//
-// https://docs.nats.io/running-a-nats-service/configuration/securing_nats/auth_intro/jwt:
-// NATS further restricts JWTs by requiring that JWTs be:
-//
-//   - Digitally signed always and only using Ed25519
-//   - All Issuer and Subject fields in a JWT must be a public NKEY
-//   - Issuer and Subject must match specific NKey roles
-//     NKey Roles are operators, accounts and users,
-//     Operator is the issuer of account, account issuer of users.
-func (srv *NatsNKeyServer) CreateJWTToken(
-	clientID string, clientType string, pubKey string, validitySec int) (token string, err error) {
-
-	// create jwt claims that identifies the user and its permissions
-	userClaims := jwt.NewUserClaims(pubKey)
-	// the token must be issued by a known account
-	userClaims.IssuerAccount, _ = srv.cfg.AppAccountKP.PublicKey()
-	// can't use claim ID as it is replaced by a hash by Encode(kp)
-	userClaims.Name = clientID
-	userClaims.Tags.Add("clientType", clientType)
-	userClaims.IssuedAt = time.Now().Unix()
-	userClaims.Expires = time.Now().Add(time.Duration(validitySec) * time.Second).Unix()
-
-	//permissions := srv.makePermissions(clientProf, groupRole)
-	//userClaims.Permissions = permissions
-
-	// everyone can subscribe to actions aimed at them
-	userClaims.Permissions.Sub.Allow.Add("things." + clientID + ".*.action.>")
-	// everyone can publish events from themselves
-	userClaims.Permissions.Pub.Allow.Add("things." + clientID + ".*.event.>")
-	// everyone can publish authn client requests
-	userClaims.Permissions.Pub.Allow.Add("things." + authn.AuthnServiceName + "." + authn.ClientAuthnCapability + ".action.>")
-	// everyone can sub to their inbox (using inbox prefix)
-	userClaims.Permissions.Sub.Allow.Add("_INBOX." + clientID + ".>")
-
-	if clientType == authn.ClientTypeDevice {
-		//userClaims.Limits.Data = 1 * 1024 * 1024 // max message size???
-		// devices can publish to any inbox (to respond to action requests)
-		userClaims.Permissions.Pub.Allow.Add("_INBOX.>")
-	} else if clientType == authn.ClientTypeService {
-		//userClaims.Limits.Data = 1 * 1024 * 1024 // limit of what???
-		// services can subscribe to any event
-		userClaims.Permissions.Sub.Allow.Add("things.*.*.event.>")
-		// services can publish to any inbox to respond to actions
-		userClaims.Permissions.Pub.Allow.Add("_INBOX.>")
-		// services can publish to manage streams
-		userClaims.Permissions.Pub.Allow.Add("$JS.API.STREAM.>")
-		//// services can subscribe to groups
-		//userClaims.Permissions.Sub.Allow.Add("groups.>")
-		//userClaims.Permissions.Pub.Allow.Add("groups.>")
-	} else if clientType == authn.ClientTypeUser {
-		// users can subscribe to the built-in all group
-		//userClaims.Limits.Data = 1 * 1024 * 1024 // max data this client can ... do?
-		userClaims.Permissions.Sub.Allow.Add("$JS.API.STREAM.ALL.>")
-	} else {
-		userClaims.Limits.Subs = 0 // ??? no subscription allowed
-		userClaims.Permissions.Pub.Deny.Add(">")
-		userClaims.Permissions.Sub.Deny.Add(">")
-	}
-
-	// sign the claims with the service signing key
-	token, err = userClaims.Encode(srv.cfg.AppAccountKP)
-	if err != nil {
-		err = fmt.Errorf("failed creating new token: %w", err)
-	}
-	return token, err
-}
 
 // CreateKeyPair returns a new user nkey with its public key string
 //func (srv *NatsNKeyServer) CreateKeyPair() (interface{}, string) {
@@ -88,56 +18,86 @@ func (srv *NatsNKeyServer) CreateJWTToken(
 //	return kp, pubKey
 //}
 
+// CreateToken uses the public key as token when using nkeys
 func (srv *NatsNKeyServer) CreateToken(
 	clientID string, clientType string, pubKey string, validitySec int) (token string, err error) {
 	if srv.chook == nil {
 		return pubKey, nil
 	}
-	return srv.CreateJWTToken(clientID, clientType, pubKey, validitySec)
+	return pubKey, nil
 }
 
 // construct a permissions object for a client and its group memberships
-// if groupRoles is nil then nil permissions is returned (eg unlimited)
+// if groupRoles is nil or empty then the user has permissions denied to pub/sub
+// to "$JS.API.CONSUMER.>".
 func (srv *NatsNKeyServer) makePermissions(
 	clientProf *authn.ClientProfile, groupsRole authz.RoleMap) *server.Permissions {
-	if groupsRole == nil {
-		return nil
-	}
+
 	subPerm := server.SubjectPermission{
 		Allow: []string{},
-		Deny:  nil,
+		Deny:  []string{},
 	}
 	pubPerm := server.SubjectPermission{
 		Allow: []string{},
-		Deny:  nil,
+		Deny:  []string{},
 	}
 	perm := &server.Permissions{
-		Publish:   nil,
-		Subscribe: nil,
+		Publish:   &pubPerm,
+		Subscribe: &subPerm,
 		Response:  nil,
 	}
 	// all clients can use their inbox, using inbox prefix
 	subInbox := "_INBOX." + clientProf.ClientID + ".>"
 	subPerm.Allow = append(subPerm.Allow, subInbox)
 
-	// services can pub actions and subscribe
+	// services can pub/sub actions and events
 	if clientProf.ClientType == authn.ClientTypeService {
+		// publish actions to any thing
+		// subscribe events from any thing
 		pubService := natshubclient.MakeSubject("", "", "action", ">")
 		pubPerm.Allow = append(subPerm.Allow, pubService)
 		subService := natshubclient.MakeSubject("", "", "event", ">")
 		subPerm.Allow = append(subPerm.Allow, subService)
+		// publish events from the service
+		// subscribe to actions send to this service
+		mySubject := natshubclient.MakeSubject("", clientProf.ClientID, "", ">")
+		subPerm.Allow = append(subPerm.Allow, mySubject)
+		pubPerm.Allow = append(subPerm.Allow, mySubject)
+	} else if clientProf.ClientType == authn.ClientTypeDevice {
+		// devices can pub/sub on their own address
+		mySubject := natshubclient.MakeSubject(clientProf.ClientID, "", "", ">")
+		pubPerm.Allow = append(subPerm.Allow, mySubject)
+		subPerm.Allow = append(subPerm.Allow, mySubject)
+	} else if clientProf.ClientType == authn.ClientTypeUser {
+		// when users have no roles, they cannot use consumers or streams
+		if groupsRole == nil || len(groupsRole) == 0 {
+			pubPerm.Deny = append(pubPerm.Deny, "$JS.API.CONSUMER.>")
+			pubPerm.Deny = append(pubPerm.Deny, "$JS.API.STREAM.>")
+		}
+		// FIXME: server shouldn't give access to services.
+		// how to manage this access?
+		subject := natshubclient.MakeSubject(
+			authn.AuthnServiceName,
+			authn.ClientAuthnCapability,
+			natshubclient.SubjectTypeAction, ">")
+		pubPerm.Allow = append(pubPerm.Allow, subject)
 	}
-	// users and services can subscribe to streams (groups)
-	if clientProf.ClientType == authn.ClientTypeUser || clientProf.ClientType == authn.ClientTypeService {
+
+	// users and services can subscribe to streams (groups) they are a member of.
+	if groupsRole != nil &&
+		(clientProf.ClientType == authn.ClientTypeUser || clientProf.ClientType == authn.ClientTypeService) {
 		for groupName, role := range groupsRole {
 			// group members can read from the stream
 			// FIXME: is any of this needed?
-			subPerm.Allow = append(subPerm.Allow, []string{}...)
+			subPerm.Allow = append(subPerm.Allow, []string{
+				"$JS.API.>",
+			}...)
 			pubPerm.Allow = append(pubPerm.Allow, []string{
-				//"$JS.API.CONSUMER.CREATE." + groupName,
-				//"$JS.API.CONSUMER.LIST." + groupName,
-				//"$JS.API.CONSUMER.INFO." + groupName + ">",     // to get consumer info?
-				//"$JS.API.CONSUMER.MSG.NEXT." + groupName + ">", // to get consumer info?
+				"$JS.API.>",
+				"$JS.API.CONSUMER.CREATE." + groupName,
+				"$JS.API.CONSUMER.LIST." + groupName,
+				"$JS.API.CONSUMER.INFO." + groupName + ".>",     // to get consumer info?
+				"$JS.API.CONSUMER.MSG.NEXT." + groupName + ".>", // to get consumer info?
 			}...)
 
 			// TODO: operators and managers can publish actions for all things in the group
@@ -151,13 +111,7 @@ func (srv *NatsNKeyServer) makePermissions(
 			}
 		}
 	}
-	if clientProf.ClientType == authn.ClientTypeDevice {
-		// devices can pub/sub on their own address and their inbox
-		pubDevice := natshubclient.MakeSubject(clientProf.ClientID, "", "event", ">")
-		pubPerm.Allow = append(subPerm.Allow, pubDevice)
-		subDevice := natshubclient.MakeSubject(clientProf.ClientID, "", "action", ">")
-		subPerm.Allow = append(subPerm.Allow, subDevice)
-	}
+
 	return perm
 }
 

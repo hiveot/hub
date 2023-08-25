@@ -339,7 +339,7 @@ func TestRefreshFakeToken(t *testing.T) {
 	require.Error(t, err)
 	assert.Empty(t, authToken1)
 
-	// 5. Refresh a self generated fake token
+	// 5. Refresh a self generated token
 	err = cl1.UpdatePubKey(tu1ID, tu1KeyPub)
 	require.NoError(t, err)
 	appAcctPub, _ := serverCfg.AppAccountKP.PublicKey()

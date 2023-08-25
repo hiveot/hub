@@ -82,7 +82,7 @@ func StartNatsTestServer() (
 		CaCert: certBundle.CaCert,
 		CaKey:  certBundle.CaKey,
 		//ServerCert: certBundle.ServerCert, // auto generate
-		Debug: true,
+		//Debug: true,
 	}
 	//
 	tmpDir := path.Join(os.TempDir(), "nats-testserver")

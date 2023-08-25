@@ -273,23 +273,6 @@ func (cfg *NatsServerConfig) Setup(certsDir, storesDir string, writeChanges bool
 	return nil
 }
 
-// TODO use inbox prefix
-// unauthenticated users are allowed to login and receive a token
-var noAuthPermissions = &server.Permissions{
-	Publish:   &server.SubjectPermission{Allow: []string{"things.authn.client.action.login.>"}, Deny: []string{">"}},
-	Subscribe: &server.SubjectPermission{Allow: []string{"_INBOX.unauthenticated.>"}, Deny: []string{">"}},
-}
-
-//var adminPermissions = &server.Permissions{
-//	Publish:   &server.SubjectPermission{Allow: []string{">"}},
-//	Subscribe: &server.SubjectPermission{Allow: []string{">"}},
-//}
-//
-//var userPermissions = &server.Permissions{
-//	Publish:   &server.SubjectPermission{Allow: []string{"things.>"}},
-//	Subscribe: &server.SubjectPermission{Allow: []string{"_INBOX.>"}},
-//}
-
 // CreateNatsNKeyOptions create a Nats options struct for use with NKey authentication.
 // Note that Setup() must have been called first.
 func (cfg *NatsServerConfig) CreateNatsNKeyOptions() (server.Options, error) {

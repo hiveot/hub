@@ -85,7 +85,7 @@ func (srv *NatsNKeyServer) ConnectInProc(serviceID string) (hubclient.IHubClient
 	if err != nil {
 		return nil, err
 	}
-	hc, err := natshubclient.ConnectWithNC(nc, serviceID)
+	hc, err := natshubclient.ConnectWithNC(nc)
 	return hc, err
 }
 

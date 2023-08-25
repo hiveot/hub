@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/exp/slog"
 	"time"
 )
 
@@ -53,6 +54,9 @@ func (svc *AuthzService) AddThing(thingID string, groupID string) error {
 
 	err := svc.aclStore.AddThing(thingID, groupID)
 	svc.onChange()
+	// FIXME: this doesn't belong here.
+	// in NATS things are added as a group source so the group needs to be reloaded
+	svc.onGroupsChange()
 	return err
 }
 
@@ -171,6 +175,9 @@ func (svc *AuthzService) SetUserRole(userID string, role string, groupName strin
 // 4. starts the messaging binding to listen for action requests
 func (svc *AuthzService) Start() (err error) {
 
+	if svc.msgServer == nil || svc.aclStore == nil {
+		return fmt.Errorf("missing acl store or message server")
+	}
 	svc.hc, err = svc.msgServer.ConnectInProc("authz")
 	if err != nil {
 		return fmt.Errorf("can't connect authz to server: %w", err)
@@ -191,9 +198,14 @@ func (svc *AuthzService) Start() (err error) {
 	if err != nil {
 		return err
 	}
-	// ensure that the all group exists
+	// ensure that the all group exists and all devices are a member
 	_, err = svc.GetGroup(authz.AllGroupID)
 	if err != nil {
+		// add all things to the group. this can be done before adding the group itself
+		err = svc.AddThing("", authz.AllGroupID)
+		if err != nil {
+			slog.Error("failed adding things to all group", "err", err.Error())
+		}
 		// TBD: best retention for the all group
 		// the all group subscribes to all events
 		err = svc.AddGroup(authz.AllGroupID, "All Things Group", time.Hour*24*31)
@@ -204,8 +216,12 @@ func (svc *AuthzService) Start() (err error) {
 
 func (svc *AuthzService) Stop() {
 	svc.authzBinding.Stop()
-	svc.aclStore.Close()
-	svc.hc.Disconnect()
+	if svc.aclStore != nil {
+		svc.aclStore.Close()
+	}
+	if svc.hc != nil {
+		svc.hc.Disconnect()
+	}
 }
 
 // NewAuthzService creates a new instance of the authorization service.

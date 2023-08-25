@@ -74,24 +74,26 @@ func TestConnectWithNKey(t *testing.T) {
 	err = s.ApplyAuthz(testenv.TestRoles)
 	require.NoError(t, err)
 
+	// services can subscribe to things (users cannot)
 	hc1, err := natshubclient.ConnectWithNKey(
-		clientURL, testenv.TestUser2ID, testenv.TestUser2Key, certBundle.CaCert)
+		clientURL, testenv.TestServiceID, testenv.TestService1Key, certBundle.CaCert)
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 
-	_, err = hc1.Subscribe("things.>", func(msg *nats.Msg) {
+	subj1 := natshubclient.MakeSubject("", "", "", ">")
+	_, err = hc1.Subscribe(subj1, func(msg *nats.Msg) {
 		rxMsg = string(msg.Data)
 		slog.Info("received message", "msg", rxMsg)
 	})
 	assert.NoError(t, err)
-	err = hc1.Pub("things.service1.event", []byte("hello world"))
+	subj2 := natshubclient.MakeSubject(testenv.TestServiceID, "thing1", "event", "test")
+	err = hc1.Pub(subj2, []byte("hello world"))
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond)
 	assert.Equal(t, "hello world", rxMsg)
 
 }
 func TestConnectWithPassword(t *testing.T) {
-	var rxMsg string
 	slog.Info("--- TestConnectWithPassword start")
 	defer slog.Info("--- TestConnectWithPassword end")
 
@@ -110,16 +112,7 @@ func TestConnectWithPassword(t *testing.T) {
 		clientURL, testenv.TestUser1ID, testenv.TestUser1Pass, certBundle.CaCert)
 	require.NoError(t, err)
 	defer hc1.Disconnect()
-
-	_, err = hc1.Subscribe("things.>", func(msg *nats.Msg) {
-		rxMsg = string(msg.Data)
-		slog.Info("received message", "msg", rxMsg)
-	})
-	assert.NoError(t, err)
-	err = hc1.Pub("things.service1.event", []byte("hello world"))
-	require.NoError(t, err)
 	time.Sleep(time.Millisecond)
-	assert.Equal(t, "hello world", rxMsg)
 }
 
 func TestLoginFail(t *testing.T) {
@@ -162,17 +155,22 @@ func TestEventsStream(t *testing.T) {
 	require.NoError(t, err)
 	defer msgServer.Stop()
 	_ = cfg
+	// the main service can access $JS
 	// add devices that publish things, eg TestDevice1ID and TestService1ID
 	err = msgServer.ApplyAuthn(testenv.TestClients)
+
 	require.NoError(t, err)
 
-	hc1, err := natshubclient.ConnectWithNKey(
-		clientURL, testenv.TestService1ID, testenv.TestService1Key, certBundle.CaCert)
+	//hc1, err := natshubclient.ConnectWithNKey(
+	//	clientURL, testenv.TestService1ID, testenv.TestService1Key, certBundle.CaCert)
+	nc1, err := msgServer.ConnectInProcNC("core-test", nil)
+	hc1, _ := natshubclient.ConnectWithNC(nc1)
 	require.NoError(t, err)
-	defer hc1.Disconnect()
+	defer nc1.Close()
 
 	// the events stream must exist
-	si, err := hc1.JS().StreamInfo(natsnkeyserver.EventsIntakeStreamName)
+	js, _ := nc1.JetStream()
+	si, err := js.StreamInfo(natsnkeyserver.EventsIntakeStreamName)
 	require.NoError(t, err)
 	slog.Info("stream $events:",
 		slog.Uint64("count", si.State.Msgs),
@@ -220,23 +218,30 @@ func TestAddGroup(t *testing.T) {
 		{
 			ID:          testenv.TestGroup1ID,
 			DisplayName: "group 1",
-			MemberRoles: authz.RoleMap{
-				testenv.TestThing1ID: authz.GroupRoleThing,
+			MemberRoles: map[string]string{
 				testenv.TestUser1ID:  authz.GroupRoleViewer,
+				testenv.TestThing1ID: authz.GroupRoleThing,
 			},
 		},
+	}
+	var TestRoles = map[string]authz.RoleMap{
+		testenv.TestUser1ID:  {testenv.TestGroup1ID: authz.GroupRoleViewer},
+		testenv.TestThing1ID: {testenv.TestGroup1ID: authz.GroupRoleThing},
 	}
 	// setup, add devices and a group
 	clientURL, msgServer, certBundle, _, err := testenv.StartNatsTestServer()
 	// add devices that publish things, eg TestDevice1ID and TestService1ID
 	err = msgServer.ApplyAuthn(testenv.TestClients)
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	err = msgServer.ApplyAuthz(TestRoles)
+	require.NoError(t, err)
 	err = msgServer.ApplyGroups(TestGroups)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// setup user1 to receive events
-	require.NoError(t, err)
-	hc1, err := natshubclient.ConnectWithNKey(clientURL, testenv.TestService1ID, testenv.TestService1Key, certBundle.CaCert)
+	//hc1, err := natshubclient.ConnectWithNKey(clientURL, testenv.TestService1ID, testenv.TestService1Key, certBundle.CaCert)
+	hc1, err := natshubclient.ConnectWithPassword(
+		clientURL, testenv.TestUser1ID, string(testenv.TestUser1Pass), certBundle.CaCert)
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 

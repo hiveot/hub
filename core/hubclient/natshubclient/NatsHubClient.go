@@ -153,7 +153,11 @@ func ConnectWithJWT(url string, myKey nkeys.KeyPair, jwtToken string, caCert *x5
 }
 
 // ConnectWithNC connects using the given nats connection
-func ConnectWithNC(nc *nats.Conn, clientID string) (hc *NatsHubClient, err error) {
+func ConnectWithNC(nc *nats.Conn) (hc *NatsHubClient, err error) {
+	clientID := nc.Opts.Name
+	if clientID == "" {
+		return nil, fmt.Errorf("NATS connection has no client ID in opts.Name")
+	}
 	hc = &NatsHubClient{
 		clientID: clientID,
 		nc:       nc,
@@ -187,6 +191,8 @@ func ConnectWithNKey(url string, clientID string, myKey nkeys.KeyPair, caCert *x
 		nats.Name(clientID), // connection name for logging
 		nats.Secure(tlsConfig),
 		nats.Nkey(pubKey, sigCB),
+		// client permissions allow this inbox prefix
+		nats.CustomInboxPrefix("_INBOX."+clientID),
 		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSect)))
 	if err == nil {
 		hc = &NatsHubClient{
@@ -216,6 +222,8 @@ func ConnectWithPassword(
 	nc, err := nats.Connect(url,
 		nats.UserInfo(loginID, password),
 		nats.Secure(tlsConfig),
+		// client permissions allow this inbox prefix
+		nats.CustomInboxPrefix("_INBOX."+loginID),
 		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSect)))
 	if err == nil {
 		hc = &NatsHubClient{
@@ -243,6 +251,8 @@ func ConnectUnauthenticated(url string, caCert *x509.Certificate) (hc *NatsHubCl
 	}
 	nc, err := nats.Connect(url,
 		nats.Secure(tlsConfig),
+		// client permissions allow this inbox prefix
+		nats.CustomInboxPrefix("_INBOX.unauthenticated"),
 	)
 	if err == nil {
 		hc = &NatsHubClient{

@@ -43,6 +43,8 @@ func (srv *NatsNKeyServer) applyAuth() error {
 				Nkey:        entry.PubKey,
 				Permissions: userPermissions,
 				Account:     srv.cfg.appAcct,
+				//	//InboxPrefix: "_INBOX." + NoAuthUserID,
+
 			})
 		}
 	}
@@ -71,8 +73,11 @@ func (srv *NatsNKeyServer) ApplyAuthz(userGroupRoles map[string]authz.RoleMap) e
 }
 
 // ApplyGroups synchronizes the groups with jetstream streams
+// this adds all 'things' group members as event sources to the stream, so
+// it must be called after chages to Things in a group.
 func (srv *NatsNKeyServer) ApplyGroups(groups []authz.Group) error {
 	remainingStreams := map[string]string{}
+	// FIXME: use a dedicated connection, don't reconnect all the time
 	nc, err := srv.ConnectInProcNC("applygroups", srv.cfg.CoreServiceKP)
 	if err != nil {
 		return err
@@ -103,7 +108,7 @@ func (srv *NatsNKeyServer) ApplyGroups(groups []authz.Group) error {
 			}
 			_, err = js.AddStream(&cfg)
 		} else {
-			slog.Info("ApplyGroups. Updating stream", "name", group.ID)
+			slog.Info("ID = {string} \"group1\"ApplyGroups. Updating stream", "name", group.ID)
 			// update stream
 			//if group.Retention != si.Config.MaxAge {
 			cfg := si.Config
