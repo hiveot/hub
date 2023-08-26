@@ -16,6 +16,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/hiveot/hub/lib/logging"
 )
@@ -86,11 +87,14 @@ var authzTestClients = []authn.AuthnEntry{
 // Create a new authz service with empty acl list
 // Returns the authz and authn services for use in testing
 func startTestAuthzService() (svc authz.IAuthz, closeFn func()) {
-	_ = os.Remove(aclFilePath)
 	cfg := authzservice.AuthzConfig{
 		DataDir: "",
 	}
 	_ = cfg.Setup(testDir)
+	if cfg.DataDir == "" {
+		panic("missing data dir")
+	}
+	_ = os.RemoveAll(cfg.DataDir)
 	authzSvc, err := authzservice.StartAuthzService(cfg, msgServer)
 	if err != nil {
 		panic("failed to start authz service: " + err.Error())
@@ -106,6 +110,7 @@ func startTestAuthzService() (svc authz.IAuthz, closeFn func()) {
 	return authzMng, func() {
 		hc.Disconnect()
 		authzSvc.Stop()
+		time.Sleep(time.Millisecond * 100)
 	}
 }
 
@@ -130,7 +135,7 @@ func TestMain(m *testing.M) {
 	os.Exit(res)
 }
 
-// Test that devices have authorization to publish TDs and events
+// Test that devices have permissions to publish TDs and events
 func TestDevicePermissions(t *testing.T) {
 	logrus.Infof("---TestDevicePermissions---")
 	const group1ID = "group1"
@@ -251,7 +256,7 @@ func TestViewerPermissions(t *testing.T) {
 	assert.NotContains(t, thingPerm, authz.PermPubEvents)
 }
 
-func TestNoAuthorization(t *testing.T) {
+func TestNoPermission(t *testing.T) {
 	logrus.Infof("---TestNoAuthorization---")
 	const user1ID = "viewer1"
 	const group1ID = "group1"

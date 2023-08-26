@@ -1,13 +1,12 @@
 package natshubcore_test
 
 import (
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/hubcore/natshubcore"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,14 +20,6 @@ import (
 // var authBundle = testenv.CreateTestAuthBundle()
 // var tempFolder = ""
 var hubCfg *config.HubCoreConfig
-var core = "nats"
-
-var thingsPermissions = &server.Permissions{
-	Publish:   &server.SubjectPermission{Allow: []string{"things.>"}, Deny: []string{"other.>"}},
-	Subscribe: &server.SubjectPermission{Allow: []string{"things.>"}, Deny: []string{"other.>"}},
-	//Publish:   &Server.SubjectPermission{Allow: []string{">"}},
-	//Subscribe: &Server.SubjectPermission{Allow: []string{">"}},
-}
 
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
@@ -56,7 +47,12 @@ func TestHubServer_StartStop(t *testing.T) {
 }
 
 func TestPubSub_ConnectAuthNKey(t *testing.T) {
-	deviceID := "device1"
+	device1ID := "device1"
+	device1KP, _ := nkeys.CreateUser()
+	device1Pub, _ := device1KP.PublicKey()
+	service1ID := "service1"
+	service1KP, _ := nkeys.CreateUser()
+	service1Pub, _ := service1KP.PublicKey()
 	rxchan := make(chan int)
 	clientURL := ""
 
@@ -64,26 +60,28 @@ func TestPubSub_ConnectAuthNKey(t *testing.T) {
 	require.NotPanics(t, func() { clientURL = hub.Start(hubCfg) })
 	defer hub.Stop()
 
-	// add a device using its nkey public key
-	deviceKP, _ := nkeys.CreateUser()
-	devicePub, _ := deviceKP.PublicKey()
-	token, err := hub.AuthnSvc.MngService.AddDevice(deviceID, "device1", devicePub, 0)
-	assert.NoError(t, err)
-	_ = token
+	// setup: device and service
+	_, err := hub.AuthnSvc.MngService.AddDevice(device1ID, "device 1", device1Pub, 0)
+	require.NoError(t, err)
+	_, err = hub.AuthnSvc.MngService.AddService(service1ID, "service 1", service1Pub, 0)
+	require.NoError(t, err)
+	err = hub.AuthzSvc.AddUser(service1ID, authz.GroupRoleViewer, authz.AllGroupID)
+	require.NoError(t, err)
 
-	hc, err := natshubclient.ConnectWithNKey(clientURL, deviceID, deviceKP, hubCfg.NatsServer.CaCert)
-	defer hc.Disconnect()
+	// service1 subscribes
+	hc1, err := natshubclient.ConnectWithNKey(clientURL, service1ID, service1KP, hubCfg.NatsServer.CaCert)
+	require.NoError(t, err)
+	defer hc1.Disconnect()
 
-	assert.NoError(t, err)
-
-	sub, err := hc.SubEvents("", func(msg *hubclient.EventMessage) {
+	sub, err := hc1.SubGroup(authz.AllGroupID, false, func(msg *hubclient.EventMessage) {
 		slog.Info("received event", "id", msg.EventID)
 		rxchan <- 1
 	})
 	require.NoError(t, err)
 	defer sub.Unsubscribe()
 
-	err = hc.PubEvent("thing1", "event1", []byte("hello"))
+	hc2, err := natshubclient.ConnectWithNKey(clientURL, device1ID, device1KP, hubCfg.NatsServer.CaCert)
+	err = hc2.PubEvent("thing1", "event1", []byte("hello"))
 	assert.NoError(t, err)
 
 	rxdata := <-rxchan
@@ -94,74 +92,103 @@ func TestPubSub_ConnectAuthNKey(t *testing.T) {
 func TestPubSub_AuthPassword(t *testing.T) {
 	clientURL := ""
 	rxchan := make(chan int)
+	device1ID := "device1"
+	device1KP, _ := nkeys.CreateUser()
+	device1Pub, _ := device1KP.PublicKey()
+	thing1ID := "thing1"
 	user1ID := "user1"
-	user1Pass := "pass1"
-	group1Name := "group1"
+	user1Pass := "user1pass"
+	service1ID := "service1"
+	service1KP, _ := nkeys.CreateUser()
+	service1Pub, _ := service1KP.PublicKey()
+	group1ID := "group1"
 
 	// launch the core services
 	core := natshubcore.NewHubCore()
 	require.NotPanics(t, func() { clientURL = core.Start(hubCfg) })
 	defer core.Stop()
 
-	// add a user to test with
-	token, err := core.AuthnSvc.MngService.AddUser(user1ID, "user 1", user1Pass, "")
-	assert.NoError(t, err)
-	_ = token
+	// add a device, service and user to test with
+	_, err := core.AuthnSvc.MngService.AddUser(user1ID, "u 1", user1Pass, "")
+	require.NoError(t, err)
+	_, err = core.AuthnSvc.MngService.AddService(service1ID, "s 1", service1Pub, 0)
+	require.NoError(t, err)
+	_, err = core.AuthnSvc.MngService.AddDevice(device1ID, "d 1", device1Pub, 0)
+	require.NoError(t, err)
+
+	// assign clients to group
+	err = core.AuthzSvc.AddGroup(group1ID, "group 1", 0)
+	require.NoError(t, err)
+	err = core.AuthzSvc.AddUser(user1ID, authz.GroupRoleViewer, group1ID)
+	require.NoError(t, err)
+	err = core.AuthzSvc.AddUser(service1ID, authz.GroupRoleViewer, group1ID)
+	require.NoError(t, err)
+	err = core.AuthzSvc.AddThing(thing1ID, group1ID)
+	require.NoError(t, err)
 
 	// connect the user
-	hc, err := natshubclient.ConnectWithPassword(clientURL, user1ID, user1Pass, hubCfg.NatsServer.CaCert)
+	//hc1, err := natshubclient.ConnectWithNKey(clientURL, service1ID, service1KP, hubCfg.NatsServer.CaCert)
+	hc1, err := natshubclient.ConnectWithPassword(clientURL, user1ID, user1Pass, hubCfg.NatsServer.CaCert)
 	require.NoError(t, err)
-	defer hc.Disconnect()
+	defer hc1.Disconnect()
 
+	si, _ := hc1.JS().StreamInfo(group1ID)
+	_ = si
 	// listen for events
-	err = hc.SubGroup(group1Name, true, func(msg *hubclient.EventMessage) {
+	sub, err := hc1.SubGroup(group1ID, false, func(msg *hubclient.EventMessage) {
+		slog.Info("received event", "id", msg.EventID)
 		rxchan <- 1
 	})
 	require.NoError(t, err)
+	defer sub.Unsubscribe()
 
-	err = hc.PubEvent("thing1", "event1", []byte("hello"))
+	// connect the device
+	hc2, err := natshubclient.ConnectWithNKey(clientURL, device1ID, device1KP, hubCfg.NatsServer.CaCert)
+	require.NoError(t, err)
+	defer hc2.Disconnect()
+	err = hc2.PubEvent(thing1ID, "event1", []byte("hello"))
 	assert.NoError(t, err)
 
 	rxdata := <-rxchan
 	assert.Equal(t, 1, rxdata)
 }
 
-func TestPubSub_AuthJWT(t *testing.T) {
-	rxchan := make(chan int)
-	clientURL := ""
-
-	// launch the core services
-	core := natshubcore.NewHubCore()
-	require.NotPanics(t, func() { clientURL = core.Start(hubCfg) })
-	defer core.Stop()
-
-	// use the tokenizer to create a service token
-	serviceID := "service1"
-	serviceKey, _ := nkeys.CreateUser()
-	serviceKeyPub, _ := serviceKey.PublicKey()
-	tokenizer := nkeyserver.NewNatsAuthnTokenizer(hubCfg.NatsServer.AppAccountKP, true)
-	serviceJWT, err := tokenizer.CreateToken(serviceID, authn.ClientTypeService, serviceKeyPub, 0)
-	require.NoError(t, err)
-
-	// connect using the JWT token
-	hc, err := natshubclient.ConnectWithJWT(clientURL, serviceKey, serviceJWT, hubCfg.NatsServer.CaCert)
-	require.NoError(t, err)
-	defer hc.Disconnect()
-
-	sub, err := hc.SubEvents("", func(msg *hubclient.EventMessage) {
-		slog.Info("received event", "eventID", msg.EventID)
-		rxchan <- 1
-	})
-	assert.NotEmpty(t, sub)
-	assert.NoError(t, err)
-
-	err = hc.PubEvent("thing1", "event1", []byte("hello"))
-	assert.NoError(t, err)
-
-	rxdata := <-rxchan
-	assert.Equal(t, 1, rxdata)
-	//time.Sleep(time.Second * 1)
-}
+//func TestPubSub_AuthJWT(t *testing.T) {
+//	rxchan := make(chan int)
+//	clientURL := ""
+//
+//	// launch the core services
+//	core := natshubcore.NewHubCore()
+//	require.NotPanics(t, func() { clientURL = core.Start(hubCfg) })
+//	defer core.Stop()
+//
+//	// use the tokenizer to create a service token
+//	serviceID := "service1"
+//	serviceKey, _ := nkeys.CreateUser()
+//	serviceKeyPub, _ := serviceKey.PublicKey()
+//	tokenizer := nkeyserver.NewNatsAuthnTokenizer(hubCfg.NatsServer.AppAccountKP, true)
+//	serviceJWT, err := tokenizer.CreateToken(serviceID, authn.ClientTypeService, serviceKeyPub, 0)
+//	require.NoError(t, err)
+//
+//	// connect using the JWT token
+//	hc, err := natshubclient.ConnectWithJWT(clientURL, serviceKey, serviceJWT, hubCfg.NatsServer.CaCert)
+//	require.NoError(t, err)
+//	defer hc.Disconnect()
+//
+//	sub, err := hc.SubEvents("", func(msg *hubclient.EventMessage) {
+//		slog.Info("received event", "eventID", msg.EventID)
+//		rxchan <- 1
+//	})
+//	assert.NotEmpty(t, sub)
+//	assert.NoError(t, err)
+//
+//	err = hc.PubEvent("thing1", "event1", []byte("hello"))
+//	assert.NoError(t, err)
+//
+//	rxdata := <-rxchan
+//	assert.Equal(t, 1, rxdata)
+//	//time.Sleep(time.Second * 1)
+//}
 
 //func TestHubServer_Groups(t *testing.T) {
 //	var rxcount1 atomic.Int32

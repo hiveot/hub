@@ -51,13 +51,20 @@ func (aclStore *AclFileStore) AddGroup(groupID string, displayName string, reten
 	return err
 }
 
+// AddDevice adds all things from a publishing device or service as a group source
+func (aclStore *AclFileStore) AddDevice(deviceID string, groupID string) error {
+	err := aclStore.setRole(deviceID, authz.GroupRoleIotDevice, groupID)
+	return err
+}
+
 // AddService adds a client with the service role to a group
 func (aclStore *AclFileStore) AddService(serviceID string, groupID string) error {
 	err := aclStore.setRole(serviceID, authz.GroupRoleService, groupID)
 	return err
 }
 
-// AddThing adds a client with the thing role to a group
+// AddThing adds a thing as a group source
+// FIXME: shouldn't this include the publisher?
 func (aclStore *AclFileStore) AddThing(thingID string, groupID string) error {
 	err := aclStore.setRole(thingID, authz.GroupRoleThing, groupID)
 	return err

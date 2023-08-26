@@ -239,7 +239,6 @@ func TestAddGroup(t *testing.T) {
 	require.NoError(t, err)
 
 	// setup user1 to receive events
-	//hc1, err := natshubclient.ConnectWithNKey(clientURL, testenv.TestService1ID, testenv.TestService1Key, certBundle.CaCert)
 	hc1, err := natshubclient.ConnectWithPassword(
 		clientURL, testenv.TestUser1ID, string(testenv.TestUser1Pass), certBundle.CaCert)
 	require.NoError(t, err)

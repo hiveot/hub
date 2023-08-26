@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/core/authn/authnstore"
 	"github.com/hiveot/hub/core/authz/authzservice"
 	"github.com/hiveot/hub/core/config"
-	"github.com/hiveot/hub/core/hubclient/natshubclient"
+	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
 	"path"
 )
 
@@ -16,7 +16,7 @@ type HubCore struct {
 	config *config.HubCoreConfig
 
 	// Runtimes
-	Server     *nkeyserver.NatsNKeyServer
+	Server     *natsnkeyserver.NatsNKeyServer
 	AuthnSvc   *authnservice.AuthnService
 	authzStore *authzservice.AclFileStore
 
@@ -38,8 +38,8 @@ func (core *HubCore) Start(cfg *config.HubCoreConfig) (clientURL string) {
 		//	&cfg.Server, core.ServerCert, core.CaCert,
 		//	core.OperatorJWT, core.SystemJWT, core.AppAccountJWT, core.ServiceKey)
 
-		core.Server = nkeyserver.NewNatsNKeyServer()
-		clientURL, err = core.Server.Start(&core.config.NatsServer)
+		core.Server = natsnkeyserver.NewNatsNKeyServer(&core.config.NatsServer)
+		clientURL, err = core.Server.Start()
 		if err != nil {
 			panic(err.Error())
 		}
@@ -47,17 +47,9 @@ func (core *HubCore) Start(cfg *config.HubCoreConfig) (clientURL string) {
 
 	// start the authn store, service and binding
 	if !cfg.Authn.NoAutoStart {
-		authnStore := authnstore.NewAuthnFileStore(cfg.Authn.PasswordFile)
-		tokenizer := nkeyserver.NewNatsAuthnTokenizer(cfg.NatsServer.AppAccountKP, true)
-		nc, err := core.Server.ConnectInProc(authn2.AuthnServiceName, nil)
-		if err != nil {
-			panic(err.Error())
-		}
-		hc, err := natshubclient.ConnectWithNC(nc, authn2.AuthnServiceName)
-		if err != nil {
-			panic(err.Error())
-		}
-		core.AuthnSvc = authnservice.NewAuthnService(authnStore, core.Server, tokenizer, hc)
+		// nats requires brcypt passwords
+		authnStore := authnstore.NewAuthnFileStore(cfg.Authn.PasswordFile, authn2.PWHASH_BCRYPT)
+		core.AuthnSvc = authnservice.NewAuthnService(authnStore, core.Server)
 
 		err = core.AuthnSvc.Start()
 		if err != nil {
@@ -73,19 +65,11 @@ func (core *HubCore) Start(cfg *config.HubCoreConfig) (clientURL string) {
 		if err != nil {
 			panic("Failed to open the authz store: " + err.Error())
 		}
-		// establish another service connection
-		nc, err := core.Server.ConnectInProc(authz.AuthzServiceName, nil)
+		core.AuthzSvc = authzservice.NewAuthzService(core.authzStore, core.Server)
+		err = core.AuthzSvc.Start()
 		if err != nil {
 			panic(err.Error())
 		}
-		hc, err := natshubclient.ConnectWithNC(nc, authz.AuthzServiceName)
-		if err != nil {
-			panic(err.Error())
-		}
-		js := hc.JS()
-		// apply authz changes to nats jetstream
-		authzJetStream, err := nkeyserver.NewNatsAuthzAdapter(js)
-		core.AuthzSvc = authzservice.NewAuthzService(core.authzStore, authzJetStream, hc)
 	}
 	return clientURL
 }

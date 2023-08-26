@@ -73,8 +73,8 @@ const (
 	AllGroupID = "all"
 )
 
-// default group retention is 1 day
-const DefaultGroupRetention = 3600 * 24
+// DefaultGroupRetention default group data retention in seconds is 7 days
+const DefaultGroupRetention = 3600 * 24 * 7
 
 // RoleMap for members or memberships
 type RoleMap map[string]string // clientID:role, groupID:role

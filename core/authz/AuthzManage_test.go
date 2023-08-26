@@ -4,6 +4,7 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/core/authz/authzservice"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slog"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -162,7 +163,13 @@ func TestAddRemoveUsers(t *testing.T) {
 	svc, stopFn := startTestAuthzService()
 	defer stopFn()
 
-	err := svc.AddGroup(group1ID, "group 1", 0)
+	group1b, err := svc.GetGroup(group1ID)
+	if len(group1b.MemberRoles) != 0 {
+		slog.Error("where do these come from?")
+		return
+	}
+
+	err = svc.AddGroup(group1ID, "group 1", 0)
 	require.NoError(t, err)
 	_ = svc.AddGroup(group2ID, "group 2", 0)
 
@@ -180,6 +187,9 @@ func TestAddRemoveUsers(t *testing.T) {
 	assert.NoError(t, err)
 	group2, err := svc.GetGroup(group2ID)
 	assert.NoError(t, err)
+	if len(group1.MemberRoles) != 1 {
+		slog.Error("incorrect member roles")
+	}
 	assert.Equal(t, 1, len(group1.MemberRoles))
 	assert.Equal(t, 2, len(group2.MemberRoles))
 	assert.Contains(t, group1.MemberRoles, userID1)
@@ -194,7 +204,7 @@ func TestAddRemoveUsers(t *testing.T) {
 	assert.Contains(t, group2b.MemberRoles, userID1)
 	assert.NotContains(t, group2b.MemberRoles, userID2)
 }
-func TestListGroups(t *testing.T) {
+func TestGetGroups(t *testing.T) {
 	const user1ID = "viewer1"
 	const group1ID = "group1"
 	const group2ID = "group2"

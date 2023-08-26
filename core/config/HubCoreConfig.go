@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/core/authn/authnservice"
 	"github.com/hiveot/hub/core/authz/authzservice"
+	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/svcconfig"
 	"golang.org/x/exp/slog"
@@ -26,7 +27,7 @@ type HubCoreConfig struct {
 
 	Core string `yaml:"core"` // nats or mqtt
 
-	NatsServer nkeyserver.NatsServerConfig `yaml:"natsserver"`
+	NatsServer natsnkeyserver.NatsServerConfig `yaml:"natsserver"`
 	//MqttServer  mqttserver.MqttServerConfig `yaml:"mqttserver"`
 	Authn authnservice.AuthnConfig `yaml:"authn"`
 	Authz authzservice.AuthzConfig `yaml:"authz"`

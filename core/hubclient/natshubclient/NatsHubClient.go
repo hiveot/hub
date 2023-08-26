@@ -509,6 +509,8 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *hubclient.Ev
 func (hc *NatsHubClient) SubGroup(groupName string, receiveLatest bool, cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
 	deliverPolicy := nats.DeliverNewPolicy
 	if receiveLatest {
+		// FIXME: deliver has error: "optional filter subject is not set"
+		// you'd think optional means its ... well, optional
 		deliverPolicy = nats.DeliverLastPerSubjectPolicy
 	}
 

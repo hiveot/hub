@@ -26,7 +26,7 @@ The HiveOT core consists of a thin abstraction layer on top of a messaging platf
    2. Each user account is also its own group 
 3. Services/Applications can act as a device and user
 4. Authorization 
-   1. Authorization is provided through group membership
+   1. Authorization is managed through group membership
    2. Users subscribe to groups, not things
    3. Things and users are added to groups.
    4. Events published are send to the groups based on thing membership
@@ -34,7 +34,7 @@ The HiveOT core consists of a thin abstraction layer on top of a messaging platf
    1. Each group has its own message store with retention policy
    2. Users can request to play back historical events
 6. Directory
-   1. The directory of Things is obtained by replaying the latest unique TD messages.
+   1. The directory of Things is obtained by replaying the latest unique TD events.
 7. History
    1. The history is obtained by replaying the requested thing event for a given time range.
 
@@ -46,20 +46,55 @@ Each message platform plugin has a messaging definition for common tasks. Client
 
 ## Support for Messaging Protocols
 
-The main messaging protocol used by the Hub is NATS/JetStream. See the nats/README-nats.md for details on the subject definitions.
+The Hub's core is implemented for multiple messaging servers:
+- NATS/Jetstream embedded server using NKeys and passwords for authentication
+- NATS/Jetstream embedded server using callouts for JWT/password authentication
+- MQTT using mochi-co embedded server using JWT/password authentication
 
-Support for mqtt can be added through the NATS mqtt bridge. 
+Support for other messaging servers can be added. Only a single messaging core can be used at the same time.
 
 Additional support for plain http, redis streams, rabbitmq, and others are considered for the future.
 
 
-## Security
+## Authentication
 
 All connections require TLS to ensure encrypted communication.
 
-IoT devices, Hub services and users use JWT tokens for authentication. The tokens are issued by the authn service. 
+IoT devices, Hub services and users use keys, tokens or passwords for authentication. The tokens are issued by the authn service. 
 
-Web password based login is handled by via a REST service which uses the authn service to obtain a token.
 
-Once authenticated, users use the token to access 'groups' and receive information from Things that are in the groups they are a member of. All communication goes through the nats server. There is never a direct connection to an IoT device by a user.
+## Authorization
+
+Authorization allows clients to receive events and publish actions based on their group roles. A group consists of IoT Things as source and Users as consumers. Services can act as both Thing or User.
+
+IoT devices publish their Things on the 'things' address. Authz ensures that these addresses are mapped to the group address.
+
+The group address format is: {groupID}.{publisherID}.{thingID}.{messageType}.{name},
+where '.' is the separator for nats, or '/' is the separator for mqtt.
+
+All Group members have subscribe permissions to all events in the group. Operators and managers can also publish actions to the group.
+
+The method of mapping thing events to groups depends on the underlying messaging service used.
+
+## Services
+
+Authorization to use services depend on the service type.
+Services use the serviceID as the publisherID and a service capability as ThingID.
+
+
+
+## NATS
+
+Nats groups are implemented using streams. When subscribing to a group a consumer is created for that group. Group members must have permissions to create a consumer and read messages.
+* Pub: $JS.API.CONSUMER.CREATE.{groupID}
+* Pub: $JS.API.CONSUMER.LIST.{groupID}
+* Pub: $JS.API.CONSUMER.INFO.{groupID}
+
+To receive events:
+* Sub {groupID}.*.*.event.*
+
+To send actions:
+* Pub {groupID}.*.*.action.*.{senderID}  (where senderID is the clientID)
+
+The stream has a single source, being: {groupID}.>
 

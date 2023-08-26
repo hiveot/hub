@@ -15,7 +15,8 @@ import (
 )
 
 var testFolder = path.Join(os.TempDir(), "test-certs")
-var testSocket = path.Join(testFolder, "certs.socket")
+
+//var testSocket = path.Join(testFolder, "certs.socket")
 
 // removeCerts easy cleanup for existing device certificate
 //func removeServerCerts() {

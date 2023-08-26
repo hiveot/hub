@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slog"
+	"path"
 	"time"
 )
 
@@ -32,9 +33,10 @@ type AuthzService struct {
 // AddGroup adds a new group and creates a stream for it.
 // if groupName is the all group then it events from all things are added
 // publish to the connected stream.
+// if retention is less than 1 second, it is set to  DefaultGroupRetention
 func (svc *AuthzService) AddGroup(groupID string, DisplayName string, retention time.Duration) error {
-	if retention == 0 {
-		retention = authz.DefaultGroupRetention
+	if retention <= time.Second {
+		retention = time.Duration(authz.DefaultGroupRetention * time.Second)
 	}
 	err := svc.aclStore.AddGroup(groupID, DisplayName, retention)
 	svc.onGroupsChange()
@@ -53,6 +55,17 @@ func (svc *AuthzService) AddService(serviceID string, groupID string) error {
 func (svc *AuthzService) AddThing(thingID string, groupID string) error {
 
 	err := svc.aclStore.AddThing(thingID, groupID)
+	svc.onChange()
+	// FIXME: this doesn't belong here.
+	// in NATS things are added as a group source so the group needs to be reloaded
+	svc.onGroupsChange()
+	return err
+}
+
+// AddDevice adds all things from a device to a group
+func (svc *AuthzService) AddDevice(deviceID string, groupID string) error {
+
+	err := svc.aclStore.AddDevice(deviceID, groupID)
 	svc.onChange()
 	// FIXME: this doesn't belong here.
 	// in NATS things are added as a group source so the group needs to be reloaded
@@ -242,7 +255,8 @@ func NewAuthzService(aclStore *AclFileStore, msgServer msgserver.IMsgServer) *Au
 // StartAuthzService creates and launch the authz service with the given config
 // This creates a password store using the config file and password encryption method.
 func StartAuthzService(cfg AuthzConfig, msgServer msgserver.IMsgServer) (*AuthzService, error) {
-	aclStore := NewAuthzFileStore(cfg.DataDir)
+	aclFile := path.Join(cfg.DataDir, authz.DefaultAclFilename)
+	aclStore := NewAuthzFileStore(aclFile)
 	authzSvc := NewAuthzService(aclStore, msgServer)
 	err := authzSvc.Start()
 	if err != nil {
