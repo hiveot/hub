@@ -59,12 +59,12 @@ var TestClients = []authn.AuthnEntry{
 		PubKey:      TestService1Pub,
 	}},
 }
-var TestRoles = map[string]authz.RoleMap{
-	TestUser1ID:    {TestGroup1ID: authz.GroupRoleViewer},
-	TestUser2ID:    {TestGroup1ID: authz.GroupRoleOperator},
-	TestService1ID: {TestGroup1ID: authz.GroupRoleManager, TestGroup2ID: authz.GroupRoleViewer},
-	TestDevice1ID:  {TestGroup1ID: authz.GroupRoleIotDevice, TestGroup2ID: authz.GroupRoleIotDevice},
-	TestThing1ID:   {TestGroup1ID: authz.GroupRoleThing, TestGroup2ID: authz.GroupRoleThing},
+var TestRoles = map[string]authz.UserRoleMap{
+	TestUser1ID:    {TestGroup1ID: authz.UserRoleViewer},
+	TestUser2ID:    {TestGroup1ID: authz.UserRoleOperator},
+	TestService1ID: {TestGroup1ID: authz.UserRoleManager, TestGroup2ID: authz.UserRoleViewer},
+	//TestDevice1ID:  {TestGroup1ID: authz.GroupRoleIotDevice, TestGroup2ID: authz.GroupRoleIotDevice},
+	//TestThing1ID:   {TestGroup1ID: authz.GroupRoleThing, TestGroup2ID: authz.GroupRoleThing},
 }
 
 // StartNatsTestServer generate a test configuration and starts a NKeys based nats test server

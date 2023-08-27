@@ -20,7 +20,7 @@ type ISubscription interface {
 
 // EventMessage for subscribers
 type EventMessage struct {
-	// Authenticated ClientID of the device or service publishing the event
+	// Authenticated UserID of the device or service publishing the event
 	BindingID string `yaml:"bindingID"`
 	// Optional ThingID of the Thing that generated the event
 	ThingID string `yaml:"thingID,omitempty"`

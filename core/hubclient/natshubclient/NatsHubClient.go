@@ -95,7 +95,7 @@ func (hc *NatsHubClient) ClientID() string {
 // * If token is a JWT token, using JWT
 // * Otherwise assume it is a password
 //
-// ClientID is used for publishing actions
+// UserID is used for publishing actions
 func Connect(url string, clientID string, myKey nkeys.KeyPair, token string, caCert *x509.Certificate) (hc *NatsHubClient, err error) {
 	pubKey, _ := myKey.PublicKey()
 	if token == "" || token == pubKey {
@@ -168,7 +168,7 @@ func ConnectWithNC(nc *nats.Conn) (hc *NatsHubClient, err error) {
 
 // ConnectWithNKey connects to the Hub server using an nkey secret
 //
-// ClientID is used for publishing actions
+// UserID is used for publishing actions
 func ConnectWithNKey(url string, clientID string, myKey nkeys.KeyPair, caCert *x509.Certificate) (hc *NatsHubClient, err error) {
 	if url == "" {
 		url = nats.DefaultURL
@@ -345,7 +345,7 @@ func (hc *NatsHubClient) JS() nats.JetStreamContext {
 // This fails if the token has expired or does not belong to the clientID
 //func (hc *NatsHubClient) Refresh(clientID string, oldToken string) (newToken string, err error) {
 //	req := &authn.RefreshReq{
-//		ClientID: clientID,
+//		UserID: clientID,
 //		OldToken: oldToken,
 //	}
 //	msg, _ := ser.Marshal(req)
@@ -545,7 +545,7 @@ func (hc *NatsHubClient) SubGroup(groupName string, receiveLatest bool, cb func(
 
 // Subscribe to NATS
 func (hc *NatsHubClient) Subscribe(subject string, cb func(msg *nats.Msg)) (sub hubclient.ISubscription, err error) {
-	slog.Info("subscribe", "subject", subject)
+	slog.Info("subscribe", "subject", subject, "clientID", hc.clientID)
 	nsub, err := hc.nc.Subscribe(subject, cb)
 	isValid := nsub.IsValid()
 	if err != nil || !isValid {

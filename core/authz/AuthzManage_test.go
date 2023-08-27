@@ -56,7 +56,7 @@ func TestCreateDeleteGroups(t *testing.T) {
 	assert.Equal(t, authz.AllGroupID, ag.ID)
 
 	// add a new group
-	err = svc.AddGroup(group1ID, "group 1", 0)
+	err = svc.CreateGroup(group1ID, "group 1", 0)
 	require.NoError(t, err)
 	ag, err = svc.GetGroup(group1ID)
 	require.NoError(t, err)
@@ -76,19 +76,19 @@ func TestAddRemoveThings(t *testing.T) {
 	svc, stopFn := startTestAuthzService()
 	defer stopFn()
 
-	err := svc.AddGroup(group1ID, "group 1", 0)
+	err := svc.CreateGroup(group1ID, "group 1", 0)
 	require.NoError(t, err)
-	_ = svc.AddGroup(group2ID, "group 2", 0)
+	_ = svc.CreateGroup(group2ID, "group 2", 0)
 
 	// group1 has thing1
-	err = svc.AddThing(thingID1, group1ID)
+	err = svc.AddSource(device1ID, thingID1, group1ID)
 	require.NoError(t, err)
 	// group2 has thing1-3
-	err = svc.AddThing(thingID1, group2ID)
+	err = svc.AddSource(device1ID, thingID1, group2ID)
 	require.NoError(t, err)
-	err = svc.AddThing(thingID2, group2ID)
+	err = svc.AddSource(device1ID, thingID2, group2ID)
 	require.NoError(t, err)
-	err = svc.AddThing(thingID3, group2ID)
+	err = svc.AddSource(device1ID, thingID3, group2ID)
 	require.NoError(t, err)
 
 	// check memberships
@@ -96,22 +96,23 @@ func TestAddRemoveThings(t *testing.T) {
 	assert.NoError(t, err)
 	group2, err := svc.GetGroup(group2ID)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(group1.MemberRoles))
-	assert.Equal(t, 3, len(group2.MemberRoles))
-	assert.Contains(t, group1.MemberRoles, thingID1)
-	assert.NotContains(t, group1.MemberRoles, thingID2)
-	assert.NotContains(t, group1.MemberRoles, thingID3)
-	assert.Contains(t, group2.MemberRoles, thingID1)
-	assert.Contains(t, group2.MemberRoles, thingID2)
-	assert.Contains(t, group2.MemberRoles, thingID3)
+	assert.Equal(t, 1, len(group1.Sources))
+	assert.Equal(t, 3, len(group2.Sources))
+	assert.Contains(t, group1.Sources, authz.EventSource{device1ID, thingID1})
+	assert.NotContains(t, group1.Sources, authz.EventSource{device1ID, thingID2})
+	assert.NotContains(t, group1.Sources, authz.EventSource{device1ID, thingID3})
+
+	assert.Contains(t, group2.Sources, authz.EventSource{device1ID, thingID1})
+	assert.Contains(t, group2.Sources, authz.EventSource{device1ID, thingID2})
+	assert.Contains(t, group2.Sources, authz.EventSource{device1ID, thingID3})
 
 	// remove thing
-	err = svc.RemoveClient(thingID3, group2ID)
+	err = svc.RemoveSource(device1ID, thingID3, group2ID)
 	require.NoError(t, err)
 	group2b, err := svc.GetGroup(group2ID)
-	assert.Contains(t, group2b.MemberRoles, thingID1)
-	assert.Contains(t, group2b.MemberRoles, thingID2)
-	assert.NotContains(t, group2b.MemberRoles, thingID3)
+	assert.Contains(t, group2b.Sources, authz.EventSource{device1ID, thingID1})
+	assert.Contains(t, group2b.Sources, authz.EventSource{device1ID, thingID2})
+	assert.NotContains(t, group2b.Sources, authz.EventSource{device1ID, thingID3})
 }
 func TestAddRemoveServices(t *testing.T) {
 	const group1ID = "group1"
@@ -122,17 +123,17 @@ func TestAddRemoveServices(t *testing.T) {
 	svc, stopFn := startTestAuthzService()
 	defer stopFn()
 
-	err := svc.AddGroup(group1ID, "group 1", 0)
+	err := svc.CreateGroup(group1ID, "group 1", 0)
 	require.NoError(t, err)
-	_ = svc.AddGroup(group2ID, "group 2", 0)
+	_ = svc.CreateGroup(group2ID, "group 2", 0)
 
 	// group1 has service1
-	err = svc.AddService(serviceID1, group1ID)
+	err = svc.AddUser(serviceID1, authz.UserRoleService, group1ID)
 	require.NoError(t, err)
 	// group2 has service1-2
-	err = svc.AddService(serviceID1, group2ID)
+	err = svc.AddUser(serviceID1, authz.UserRoleService, group2ID)
 	require.NoError(t, err)
-	err = svc.AddService(serviceID2, group2ID)
+	err = svc.AddUser(serviceID2, authz.UserRoleService, group2ID)
 	require.NoError(t, err)
 
 	// check memberships
@@ -148,7 +149,7 @@ func TestAddRemoveServices(t *testing.T) {
 	assert.Contains(t, group2.MemberRoles, serviceID2)
 
 	// remove service
-	err = svc.RemoveClient(serviceID2, group2ID)
+	err = svc.RemoveUser(serviceID2, group2ID)
 	require.NoError(t, err)
 	group2b, err := svc.GetGroup(group2ID)
 	assert.Contains(t, group2b.MemberRoles, serviceID1)
@@ -169,17 +170,17 @@ func TestAddRemoveUsers(t *testing.T) {
 		return
 	}
 
-	err = svc.AddGroup(group1ID, "group 1", 0)
+	err = svc.CreateGroup(group1ID, "group 1", 0)
 	require.NoError(t, err)
-	_ = svc.AddGroup(group2ID, "group 2", 0)
+	_ = svc.CreateGroup(group2ID, "group 2", 0)
 
 	// group1 has user1
-	err = svc.AddUser(userID1, authz.GroupRoleViewer, group1ID)
+	err = svc.AddUser(userID1, authz.UserRoleViewer, group1ID)
 	require.NoError(t, err)
 	// group2 has user1-2
-	err = svc.AddUser(userID1, authz.GroupRoleManager, group2ID)
+	err = svc.AddUser(userID1, authz.UserRoleManager, group2ID)
 	require.NoError(t, err)
-	err = svc.AddUser(userID2, authz.GroupRoleOperator, group2ID)
+	err = svc.AddUser(userID2, authz.UserRoleOperator, group2ID)
 	require.NoError(t, err)
 
 	// check memberships
@@ -198,7 +199,7 @@ func TestAddRemoveUsers(t *testing.T) {
 	assert.Contains(t, group2.MemberRoles, userID2)
 
 	// remove user
-	err = svc.RemoveClient(userID2, group2ID)
+	err = svc.RemoveUser(userID2, group2ID)
 	require.NoError(t, err)
 	group2b, err := svc.GetGroup(group2ID)
 	assert.Contains(t, group2b.MemberRoles, userID1)
@@ -217,38 +218,41 @@ func TestGetGroups(t *testing.T) {
 	svc, stopFn := startTestAuthzService()
 	defer stopFn()
 
-	err := svc.AddGroup(group1ID, "group 1", 0)
+	err := svc.CreateGroup(group1ID, "group 1", 0)
 	require.NoError(t, err)
-	err = svc.AddGroup(group2ID, "group 2", 0)
+	err = svc.CreateGroup(group2ID, "group 2", 0)
 	require.NoError(t, err)
-	err = svc.AddGroup(group3ID, "group 3", 0)
-	require.NoError(t, err)
-
-	err = svc.AddThing(thingID1, group1ID)
+	err = svc.CreateGroup(group3ID, "group 3", 0)
 	require.NoError(t, err)
 
-	_ = svc.AddThing(thingID1, group2ID)
-	_ = svc.AddThing(thingID2, group2ID)
-	_ = svc.AddThing(thingID3, group3ID)
-	_ = svc.AddUser(user1ID, authz.GroupRoleViewer, group1ID)
-	_ = svc.AddUser(user1ID, authz.GroupRoleViewer, group2ID)
+	err = svc.AddSource(device1ID, thingID1, group1ID)
+	require.NoError(t, err)
+
+	_ = svc.AddSource(device1ID, thingID1, group2ID)
+	_ = svc.AddSource(device1ID, thingID2, group2ID)
+	_ = svc.AddSource(device1ID, thingID3, group3ID)
+	_ = svc.AddUser(user1ID, authz.UserRoleViewer, group1ID)
+	_ = svc.AddUser(user1ID, authz.UserRoleViewer, group2ID)
 
 	// 3+1 groups must exist (+all group)
-	groups, err := svc.GetClientGroups("")
+	groups, err := svc.GetUserGroups("")
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(groups))
 
-	// group 2 has 3 members, 2 things and 1 user
+	// group 2 has 2 sources and 1 user
 	group, err := svc.GetGroup(group2ID)
 	assert.NoError(t, err)
 	assert.Equal(t, group2ID, group.ID)
-	assert.Equal(t, 3, len(group.MemberRoles))
-	assert.Contains(t, group.MemberRoles, thingID1)
-	assert.Contains(t, group.MemberRoles, thingID2)
+	assert.Equal(t, 1, len(group.MemberRoles))
+	assert.Equal(t, 2, len(group.Sources))
 	assert.Contains(t, group.MemberRoles, user1ID)
+	assert.Contains(t, group.Sources,
+		authz.EventSource{PublisherID: device1ID, ThingID: thingID1})
+	assert.Contains(t, group.Sources,
+		authz.EventSource{PublisherID: device1ID, ThingID: thingID2})
 
 	// viewer1 is a member of 2 groups
-	roles, err := svc.GetClientRoles(thingID1)
+	roles, err := svc.GetUserRoles(user1ID)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(roles))
 	assert.Contains(t, roles, group1ID)
@@ -264,59 +268,46 @@ func TestAddRemoveRoles(t *testing.T) {
 	const group1ID = "group1"
 	const group2ID = "group2"
 	const group3ID = "group3"
-	const thingID1 = "urn:pub1:device1:sensor1"
-	const thingID2 = "urn:pub2:device2:sensor2"
-	//const thingID3 = "urn:pub2:device3:sensor1"
+
 	// setup
 	svc, stopFn := startTestAuthzService()
 	defer stopFn()
 
-	_ = svc.AddGroup(group1ID, "group 1", 0)
-	_ = svc.AddGroup(group2ID, "group 2", 0)
-	_ = svc.AddGroup(group3ID, "group 3", 0)
+	_ = svc.CreateGroup(group1ID, "group 1", 0)
+	_ = svc.CreateGroup(group2ID, "group 2", 0)
+	_ = svc.CreateGroup(group3ID, "group 3", 0)
 	// user1 is a member of 3 groups
-	err := svc.AddUser(user1ID, authz.GroupRoleOperator, group1ID)
+	err := svc.AddUser(user1ID, authz.UserRoleOperator, group1ID)
 	assert.NoError(t, err)
-	_ = svc.AddUser(user1ID, authz.GroupRoleOperator, group2ID)
-	_ = svc.AddUser(user1ID, authz.GroupRoleOperator, group3ID)
+	_ = svc.AddUser(user1ID, authz.UserRoleOperator, group2ID)
+	_ = svc.AddUser(user1ID, authz.UserRoleOperator, group3ID)
 
-	// thing1 is a member of 3 groups
-	// adding a thing twice should not fail
-	err = svc.AddThing(thingID1, group1ID)
-	assert.NoError(t, err)
-	_ = svc.AddThing(thingID1, group1ID)
-	_ = svc.AddThing(thingID1, group2ID)
-	_ = svc.AddThing(thingID1, group3ID)
-	roles, err := svc.GetClientRoles(thingID1)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, len(roles))
-
-	// verify remove thing1 from group 2
-	err = svc.RemoveClient(thingID1, group2ID)
+	// verify remove user1 from group 2
+	err = svc.RemoveUser(user1ID, group2ID)
 	assert.NoError(t, err)
 	group2, err := svc.GetGroup(group2ID)
 	assert.NoError(t, err)
-	assert.NotContains(t, group2.MemberRoles, thingID1)
+	assert.NotContains(t, group2.MemberRoles, user1ID)
 
-	roles, err = svc.GetClientRoles(thingID1)
+	roles, err := svc.GetUserRoles(user1ID)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(roles))
 	assert.NotContains(t, roles, group2ID)
 
 	// remove is idempotent.
-	err = svc.RemoveClient(thingID1, group2ID)
+	err = svc.RemoveUser(user1ID, group2ID)
 	assert.NoError(t, err)
-	// thingID2 is not a member
-	err = svc.RemoveClient(thingID2, group2ID)
+	// userID2 is not a member
+	err = svc.RemoveUser(user2ID, group2ID)
 	assert.NoError(t, err)
-	err = svc.RemoveClient(thingID2, group2ID)
+	err = svc.RemoveUser(user2ID, group2ID)
 	assert.NoError(t, err)
-	err = svc.RemoveClient(thingID2, "notagroup")
+	err = svc.RemoveUser(user2ID, "notagroup")
 	assert.Error(t, err)
 
 	// removing all should remove user from all groups
-	err = svc.RemoveClientAll(user1ID)
-	roles, err = svc.GetClientRoles(user1ID)
+	err = svc.RemoveUserAll(user1ID)
+	roles, err = svc.GetUserRoles(user1ID)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(roles))
 }

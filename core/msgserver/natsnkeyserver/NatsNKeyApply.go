@@ -9,6 +9,35 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+// groupActionSources [groupName][]subjects is set when groups are updated.
+// intended to speed up setting user permissions for operator and managers
+var groupActionSources = map[string][]string{}
+
+// _getStreamSources returns a list of stream sources for the given group
+// All sources use the $events intake stream as their stream and a device/thing as subject
+func _getStreamSources(group authz.Group) []*nats.StreamSource {
+	sources := []*nats.StreamSource{}
+	actionSources := make([]string, 0, len(group.Sources))
+	for _, source := range group.Sources {
+		// each thing is a source
+		// once multi-subscriptions is supported this can just be a list of subjects
+		evSubj := natshubclient.MakeSubject(
+			source.PublisherID, source.ThingID, natshubclient.SubjectTypeEvent, "")
+		sources = append(sources, &nats.StreamSource{
+			Name:          EventsIntakeStreamName,
+			FilterSubject: evSubj,
+		})
+		// each source has a corresponding action subject that group operators
+		// can publish on.
+		actSubj := natshubclient.MakeSubject(
+			source.PublisherID, source.ThingID, natshubclient.SubjectTypeAction, ">")
+		actionSources = append(actionSources, actSubj)
+	}
+	// update cached list of sources for sending actions
+	groupActionSources[group.ID] = actionSources
+	return sources
+}
+
 // apply update authn/z settings
 func (srv *NatsNKeyServer) applyAuth() error {
 
@@ -67,14 +96,14 @@ func (srv *NatsNKeyServer) ApplyAuthn(clients []authn.AuthnEntry) error {
 //
 //	clients is a list of user, device and service identities
 //	userGroupRoles is a map of users and their group roles
-func (srv *NatsNKeyServer) ApplyAuthz(userGroupRoles map[string]authz.RoleMap) error {
+func (srv *NatsNKeyServer) ApplyAuthz(userGroupRoles map[string]authz.UserRoleMap) error {
 	srv.userGroupRoles = userGroupRoles
 	return srv.applyAuth()
 }
 
-// ApplyGroups synchronizes the groups with jetstream streams
-// this adds all 'things' group members as event sources to the stream, so
-// it must be called after changes to Things in a group.
+// ApplyGroups synchronizes the groups with JetStream streams
+// this uses the group sources as the stream sources, so it must be called
+// after each source change.
 func (srv *NatsNKeyServer) ApplyGroups(groups []authz.Group) error {
 	remainingStreams := map[string]string{}
 	// FIXME: use a dedicated connection, don't reconnect all the time
@@ -94,6 +123,7 @@ func (srv *NatsNKeyServer) ApplyGroups(groups []authz.Group) error {
 	// add missing streams
 	for _, group := range groups {
 		delete(remainingStreams, group.ID)
+
 		// create stream
 		si, err := js.StreamInfo(group.ID)
 		if err != nil {
@@ -104,7 +134,7 @@ func (srv *NatsNKeyServer) ApplyGroups(groups []authz.Group) error {
 				Description: group.DisplayName,
 				Retention:   nats.LimitsPolicy,
 				MaxAge:      group.Retention,
-				Sources:     getStreamSources(group),
+				Sources:     _getStreamSources(group),
 			}
 			_, err = js.AddStream(&cfg)
 		} else {
@@ -114,7 +144,7 @@ func (srv *NatsNKeyServer) ApplyGroups(groups []authz.Group) error {
 			cfg := si.Config
 			cfg.MaxAge = group.Retention
 			cfg.Subjects = nil // nats sets subjects to stream name if no sources were defined
-			cfg.Sources = getStreamSources(group)
+			cfg.Sources = _getStreamSources(group)
 			si2, err2 := js.UpdateStream(&cfg)
 			_ = si2
 			err = err2
@@ -141,37 +171,12 @@ func (srv *NatsNKeyServer) ApplyGroups(groups []authz.Group) error {
 	return nil
 }
 
-// getStreamSources returns a list of stream sources for the given group
-func getStreamSources(group authz.Group) []*nats.StreamSource {
-	sources := []*nats.StreamSource{}
-	for clientID, memberRole := range group.MemberRoles {
-		if memberRole == authz.GroupRoleThing {
-			// each thing is a source
-			// once multi-subscriptions is supported this can just be a list of subjects
-			subject := natshubclient.MakeSubject("", clientID, natshubclient.SubjectTypeEvent, "")
-			sources = append(sources, &nats.StreamSource{
-				Name:          EventsIntakeStreamName,
-				FilterSubject: subject,
-			})
-		} else if memberRole == authz.GroupRoleIotDevice {
-			// each publisher is a source
-			// once multi-subscriptions is supported this can just be a list of subjects
-			subject := natshubclient.MakeSubject(clientID, "", natshubclient.SubjectTypeEvent, "")
-			sources = append(sources, &nats.StreamSource{
-				Name:          EventsIntakeStreamName,
-				FilterSubject: subject,
-			})
-		}
-		// ignore non-device/things
-	}
-	return sources
-}
-
 // construct a permissions object for a client and its group memberships
 // if groupRoles is nil or empty then the user has no permissions for
 // "$JS.API.CONSUMER.>".
 func (srv *NatsNKeyServer) makePermissions(
-	clientProf *authn.ClientProfile, groupsRole authz.RoleMap) *server.Permissions {
+	clientProf *authn.ClientProfile,
+	groupsRole authz.UserRoleMap) *server.Permissions {
 
 	subPerm := server.SubjectPermission{
 		Allow: []string{},
@@ -196,17 +201,19 @@ func (srv *NatsNKeyServer) makePermissions(
 		// subscribe events from any thing in the group
 		pubService := natshubclient.MakeSubject("", "", "action", ">")
 		pubPerm.Allow = append(subPerm.Allow, pubService)
+		pubPerm.Allow = append(subPerm.Allow, "_INBOX.>") // to reply to inboxes
 		subService := natshubclient.MakeSubject("", "", "event", ">")
 		subPerm.Allow = append(subPerm.Allow, subService)
 		// publish events from the service
 		// subscribe to actions send to this service
-		mySubject := natshubclient.MakeSubject("", clientProf.ClientID, "", ">")
+		mySubject := natshubclient.MakeSubject("", clientProf.ClientID, "*", ">")
 		subPerm.Allow = append(subPerm.Allow, mySubject)
 		pubPerm.Allow = append(subPerm.Allow, mySubject)
 	} else if clientProf.ClientType == authn.ClientTypeDevice {
 		// devices can pub/sub on their own address
-		mySubject := natshubclient.MakeSubject(clientProf.ClientID, "", "", ">")
+		mySubject := natshubclient.MakeSubject(clientProf.ClientID, "", "*", ">")
 		pubPerm.Allow = append(subPerm.Allow, mySubject)
+		pubPerm.Allow = append(subPerm.Allow, "_INBOX.>") // to reply to inboxes
 		subPerm.Allow = append(subPerm.Allow, mySubject)
 	} else if clientProf.ClientType == authn.ClientTypeUser {
 		// when users have no roles, they cannot use consumers or streams
@@ -230,24 +237,26 @@ func (srv *NatsNKeyServer) makePermissions(
 			// group members can read from the stream
 			// FIXME: is any of this needed?
 			subPerm.Allow = append(subPerm.Allow, []string{
-				"$JS.API.>", // todo: remove after things start to work
+				//"$JS.API.>", // FIXME: remove after things start to work
 			}...)
 			pubPerm.Allow = append(pubPerm.Allow, []string{
-				"$JS.API.>", // todo: remove after things start to work
+				//"$JS.API.>", // FIXME: remove after things start to work
 				"$JS.API.CONSUMER.CREATE." + groupName,
 				"$JS.API.CONSUMER.LIST." + groupName,
 				"$JS.API.CONSUMER.INFO." + groupName + ".>",     // to get consumer info?
 				"$JS.API.CONSUMER.MSG.NEXT." + groupName + ".>", // to get consumer info?
 			}...)
 
-			// TODO: operators and managers can publish actions for all things in the group
-			// Can we use a stream publish that mapped back to the thing?
-			// eg: {groupName}.{publisher}.{thing}.action.>
-			// maps to things.{publisher}.{thing}.action.>
-			// where the stream has a filter on all things added to the stream?
-			if role == authz.GroupRoleOperator || role == authz.GroupRoleManager {
-				actionSubj := groupName + ".*.*.action.>"
-				pubPerm.Allow = append(pubPerm.Allow, actionSubj)
+			// Operators and managers can publish actions for all things in the group
+			// This uses a previously created list of source action subjects to
+			// include in the user permissions.
+			// Seems rather inefficient, but oh well...
+			if role == authz.UserRoleOperator || role == authz.UserRoleManager {
+				//actionSubj := groupName + ".*.*.action.>"
+				actionSubj, found := groupActionSources[groupName]
+				if found {
+					pubPerm.Allow = append(pubPerm.Allow, actionSubj...)
+				}
 			}
 		}
 	}

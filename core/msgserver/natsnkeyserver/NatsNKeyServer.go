@@ -30,8 +30,8 @@ type NatsNKeyServer struct {
 	chook *natscoserver.NatsCalloutHook
 	// the clients that can authenticate
 	clients []authn.AuthnEntry
-	// authorization of clients
-	userGroupRoles map[string]authz.RoleMap
+	// authorization of clients [userID] map[groupID]role
+	userGroupRoles map[string]authz.UserRoleMap
 }
 
 // ConnectInProcNC establishes a nats connection to the server for core services.

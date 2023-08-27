@@ -22,7 +22,7 @@ type IMsgServer interface {
 	// as it sees fit.
 	// The server implements the server specific portion. This is intended for use
 	// by core services to apply configuration changes.
-	ApplyAuthz(userGroupRoles map[string]authz.RoleMap) error
+	ApplyAuthz(userGroupRoles map[string]authz.UserRoleMap) error
 
 	// ApplyGroups is invoked after changes to groups
 	// The server synchronizes its groups with the given list

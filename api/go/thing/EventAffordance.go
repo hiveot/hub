@@ -2,7 +2,7 @@
 package thing
 
 // EventAffordance with metadata that describes an event source, which asynchronously pushes
-// event data to Consumers (e.g., overheating alerts).
+// event data to MemberRoles (e.g., overheating alerts).
 type EventAffordance struct {
 	//---InteractionAffordance starts
 

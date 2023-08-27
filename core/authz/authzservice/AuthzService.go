@@ -30,123 +30,8 @@ type AuthzService struct {
 //	return authzService.GetPermissions(clientID, thingID)
 //}
 
-// AddGroup adds a new group and creates a stream for it.
-// if groupName is the all group then it events from all things are added
-// publish to the connected stream.
-// if retention is less than 1 second, it is set to  DefaultGroupRetention
-func (svc *AuthzService) AddGroup(groupID string, DisplayName string, retention time.Duration) error {
-	if retention <= time.Second {
-		retention = time.Duration(authz.DefaultGroupRetention * time.Second)
-	}
-	err := svc.aclStore.AddGroup(groupID, DisplayName, retention)
-	svc.onGroupsChange()
-	return err
-}
-
-// AddService adds a client with the service role to a group
-func (svc *AuthzService) AddService(serviceID string, groupID string) error {
-
-	err := svc.aclStore.AddService(serviceID, groupID)
-	svc.onChange()
-	return err
-}
-
-// AddThing adds a client with the thing role to a group
-func (svc *AuthzService) AddThing(thingID string, groupID string) error {
-
-	err := svc.aclStore.AddThing(thingID, groupID)
-	svc.onChange()
-	// FIXME: this doesn't belong here.
-	// in NATS things are added as a group source so the group needs to be reloaded
-	svc.onGroupsChange()
-	return err
-}
-
-// AddDevice adds all things from a device to a group
-func (svc *AuthzService) AddDevice(deviceID string, groupID string) error {
-
-	err := svc.aclStore.AddDevice(deviceID, groupID)
-	svc.onChange()
-	// FIXME: this doesn't belong here.
-	// in NATS things are added as a group source so the group needs to be reloaded
-	svc.onGroupsChange()
-	return err
-}
-
-// AddUser adds a client with the user role to a group
-func (svc *AuthzService) AddUser(userID string, role string, groupID string) (err error) {
-	err = svc.aclStore.AddUser(userID, role, groupID)
-	svc.onChange()
-	return err
-}
-
-// DeleteGroup deletes the group and associated resources. Use with care
-func (svc *AuthzService) DeleteGroup(groupID string) error {
-	err := svc.aclStore.DeleteGroup(groupID)
-	svc.onGroupsChange()
-	return err
-}
-
-// GetClientGroups returns the list of known groups available to the client
-func (svc *AuthzService) GetClientGroups(clientID string) (groups []authz.Group, err error) {
-	groups, err = svc.aclStore.ListGroups(clientID)
-	return groups, err
-}
-
-// GetClientRoles returns a map of [group]role for a client
-func (svc *AuthzService) GetClientRoles(clientID string) (roles authz.RoleMap, err error) {
-	return svc.aclStore.GetClientRoles(clientID)
-}
-
-// GetGroup returns the group with the given name, or an error if group is not found.
-// GroupName must not be empty
-func (svc *AuthzService) GetGroup(groupID string) (group authz.Group, err error) {
-
-	group, err = svc.aclStore.GetGroup(groupID)
-	return group, err
-}
-
-// GetPermissions returns a list of permissions a client has for Things
-func (svc *AuthzService) GetPermissions(clientID string, thingIDs []string) (permissions map[string][]string, err error) {
-	permissions = make(map[string][]string)
-	for _, thingID := range thingIDs {
-		var thingPerm []string
-		clientRole, _ := svc.aclStore.GetRole(clientID, thingID)
-		switch clientRole {
-		case authz.GroupRoleIotDevice:
-		case authz.GroupRoleThing:
-			thingPerm = []string{authz.PermPubEvents, authz.PermReadActions}
-			break
-		case authz.GroupRoleService:
-			thingPerm = []string{authz.PermPubActions, authz.PermPubEvents, authz.PermReadActions, authz.PermReadEvents}
-			break
-		case authz.GroupRoleManager:
-			// managers are operators but can also change configuration
-			// TODO: is publishing configuration changes a separate permission?
-			thingPerm = []string{authz.PermPubActions, authz.PermReadEvents}
-			break
-		case authz.GroupRoleOperator:
-			thingPerm = []string{authz.PermPubActions, authz.PermReadEvents}
-			break
-		case authz.GroupRoleViewer:
-			thingPerm = []string{authz.PermReadEvents}
-			break
-		default:
-			thingPerm = []string{}
-		}
-		permissions[thingID] = thingPerm
-	}
-	return permissions, nil
-}
-
-// GetRole returns the highest role of a user has in groups shared with the thingID
-// Intended to get client permissions in case of overlapping groups
-func (svc *AuthzService) GetRole(clientID string, thingID string) (string, error) {
-	return svc.aclStore.GetRole(clientID, thingID)
-}
-
 // notification handler invoked when groups have changed
-func (svc *AuthzService) onGroupsChange() {
+func (svc *AuthzService) _onGroupsChange() {
 	groupList := make([]authz.Group, 0, len(svc.aclStore.groups))
 	for _, grp := range svc.aclStore.groups {
 		groupList = append(groupList, grp)
@@ -156,28 +41,177 @@ func (svc *AuthzService) onGroupsChange() {
 
 // notification handler invoked when client permissions have changed
 // this invokes a reload of server authz
-func (svc *AuthzService) onChange() {
-	_ = svc.msgServer.ApplyAuthz(svc.aclStore.clientGroupRoles)
+func (svc *AuthzService) _onChange() {
+	_ = svc.msgServer.ApplyAuthz(svc.aclStore.userGroupRoles)
 }
 
-// RemoveClient from a group
-func (svc *AuthzService) RemoveClient(clientID string, groupName string) error {
-	err := svc.aclStore.RemoveClient(clientID, groupName)
-	svc.onChange()
+// AddSource adds an event source with the thing role to a group
+//
+//	publisherID is the device or service that publishes the events
+//	thingID is the Thing whose info is published or "" for all things of the publisher
+func (svc *AuthzService) AddSource(publisherID string, thingID string, groupID string) error {
+
+	slog.Info("AddSource",
+		slog.String("publisherID", publisherID),
+		slog.String("thingID", thingID),
+		slog.String("groupID", groupID))
+	err := svc.aclStore.AddSource(publisherID, thingID, groupID)
+	//svc._onChange()
+	svc._onGroupsChange()
 	return err
 }
 
-// RemoveClientAll from all groups
-func (svc *AuthzService) RemoveClientAll(clientID string) error {
-	err := svc.aclStore.RemoveClientAll(clientID)
-	svc.onChange()
+// AddUser adds a consumer to a group with the user role:
+//
+//	manager, operator viewer or service.
+//
+// If the client is already in the group this returns without error
+// See ClientRole...
+func (svc *AuthzService) AddUser(userID string, role string, groupID string) (err error) {
+	slog.Info("AddUser",
+		slog.String("userID", userID),
+		slog.String("role", role),
+		slog.String("groupID", groupID))
+	err = svc.aclStore.AddUser(userID, role, groupID)
+	svc._onChange()
+	return err
+}
+
+// CreateGroup adds a new group
+// If the group exists this returns without error
+// Use retention 0 to retain messages indefinitely
+//
+//	groupID unique ID of the group
+//	displayName of the group
+//	retention period of events in this group. 0 for DefaultGroupRetention
+func (svc *AuthzService) CreateGroup(groupID string, displayName string, retention time.Duration) error {
+	slog.Info("CreateGroup",
+		slog.String("displayName", displayName),
+		slog.String("groupID", groupID),
+		slog.Duration("retention", retention),
+	)
+	if retention <= time.Second {
+		retention = time.Duration(authz.DefaultGroupRetention * time.Second)
+	}
+	err := svc.aclStore.AddGroup(groupID, displayName, retention)
+	svc._onGroupsChange()
+	return err
+}
+
+// DeleteGroup deletes the group and associated resources. Use with care
+func (svc *AuthzService) DeleteGroup(groupID string) error {
+	slog.Info("DeleteGroup", slog.String("groupID", groupID))
+	err := svc.aclStore.DeleteGroup(groupID)
+	svc._onGroupsChange()
+	return err
+}
+
+// GetGroup returns the group with the given name, or an error if group is not found.
+// groupID must not be empty and must be an existing group
+// Returns an error if the group does not exist.
+func (svc *AuthzService) GetGroup(groupID string) (group authz.Group, err error) {
+	group, err = svc.aclStore.GetGroup(groupID)
+	return group, err
+}
+
+// GetUserGroups returns the list of groups the user is a member of
+// If userID is "" then all groups are returned.
+func (svc *AuthzService) GetUserGroups(clientID string) (groups []authz.Group, err error) {
+	groups, err = svc.aclStore.GetUserGroups(clientID)
+	return groups, err
+}
+
+// GetUserRoles returns a map of [group]role for a client
+func (svc *AuthzService) GetUserRoles(userID string) (roles authz.UserRoleMap, err error) {
+	return svc.aclStore.GetUserRoles(userID)
+}
+
+// GetPermissions returns a list of permissions a client has for Things
+//func (svc *AuthzService) GetPermissions(clientID string, thingIDs []string) (permissions map[string][]string, err error) {
+//	permissions = make(map[string][]string)
+//	for _, thingID := range thingIDs {
+//		var thingPerm []string
+//		clientRole, _ := svc.aclStore.GetRole(clientID, thingID)
+//		switch clientRole {
+//		case authz.GroupRoleIotDevice:
+//		case authz.GroupRoleThing:
+//			thingPerm = []string{authz.PermPubEvents, authz.PermReadActions}
+//			break
+//		case authz.UserRoleService:
+//			thingPerm = []string{authz.PermPubActions, authz.PermPubEvents, authz.PermReadActions, authz.PermReadEvents}
+//			break
+//		case authz.UserRoleManager:
+//			// managers are operators but can also change configuration
+//			// TODO: is publishing configuration changes a separate permission?
+//			thingPerm = []string{authz.PermPubActions, authz.PermReadEvents}
+//			break
+//		case authz.UserRoleOperator:
+//			thingPerm = []string{authz.PermPubActions, authz.PermReadEvents}
+//			break
+//		case authz.UserRoleViewer:
+//			thingPerm = []string{authz.PermReadEvents}
+//			break
+//		default:
+//			thingPerm = []string{}
+//		}
+//		permissions[thingID] = thingPerm
+//	}
+//	return permissions, nil
+//}
+
+//// GetRole returns the highest role of a user has in groups shared with the thingID
+//// Intended to get client permissions in case of overlapping groups
+//func (svc *AuthzService) GetRole(clientID string, thingID string) (string, error) {
+//	return svc.aclStore.GetRole(clientID, thingID)
+//}
+
+// RemoveSource removes a source from a group
+// If the source doesn't exist then returns without error
+// The caller must be an administrator or service.
+//
+//	publisherID is required and identifies the publisher of the event
+//	thingID is optional and identifies a specific Thing, "" for all things of the publisher
+func (svc *AuthzService) RemoveSource(publisherID, thingID string, groupID string) error {
+	slog.Info("RemoveSource",
+		slog.String("publisherID", publisherID),
+		slog.String("thingID", thingID),
+		slog.String("groupID", groupID))
+	err := svc.aclStore.RemoveSource(publisherID, thingID, groupID)
+	svc._onChange()
+	return err
+}
+
+// RemoveUser removes a user from a group
+// If the user doesn't exist then returns without error
+// The caller must be an administrator or service.
+func (svc *AuthzService) RemoveUser(userID string, groupID string) error {
+	slog.Info("RemoveUser",
+		slog.String("userID", userID),
+		slog.String("groupID", groupID))
+	err := svc.aclStore.RemoveUser(userID, groupID)
+	svc._onChange()
+	return err
+}
+
+// RemoveUserAll removes a user from all groups.
+// If the user doesn't exist then returns without error
+// The caller must be an administrator or service.
+func (svc *AuthzService) RemoveUserAll(userID string) error {
+	slog.Info("RemoveUserAll", slog.String("userID", userID))
+	err := svc.aclStore.RemoveUserAll(userID)
+	svc._onChange()
 	return err
 }
 
 // SetUserRole sets the role for the user in a group
-func (svc *AuthzService) SetUserRole(userID string, role string, groupName string) (err error) {
-	err = svc.aclStore.SetUserRole(userID, role, groupName)
-	svc.onChange()
+func (svc *AuthzService) SetUserRole(userID string, role string, groupID string) (err error) {
+	slog.Info("SetUserRole",
+		slog.String("userID", userID),
+		slog.String("role", role),
+		slog.String("groupID", groupID),
+	)
+	err = svc.aclStore.SetUserRole(userID, role, groupID)
+	svc._onChange()
 	return err
 }
 
@@ -214,14 +248,15 @@ func (svc *AuthzService) Start() (err error) {
 	// ensure that the all group exists and all devices are a member
 	_, err = svc.GetGroup(authz.AllGroupID)
 	if err != nil {
-		// add all things to the group. this can be done before adding the group itself
-		err = svc.AddThing("", authz.AllGroupID)
+		// Add all devices and things to the group.
+		// This can be done before adding the group itself
+		err = svc.AddSource("", "", authz.AllGroupID)
 		if err != nil {
 			slog.Error("failed adding things to all group", "err", err.Error())
 		}
 		// TBD: best retention for the all group
 		// the all group subscribes to all events
-		err = svc.AddGroup(authz.AllGroupID, "All Things Group", time.Hour*24*31)
+		err = svc.CreateGroup(authz.AllGroupID, "All Things Group", time.Hour*24*31)
 	}
 
 	return err

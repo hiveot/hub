@@ -75,7 +75,7 @@ func TestAllGroup(t *testing.T) {
 
 	// add an all-group viewer (user was already created in startTestAuthzService)
 	// devices are implicitly included
-	err = svc.AddUser(user1ID, authz.GroupRoleViewer, authz.AllGroupID)
+	err = svc.AddUser(user1ID, authz.UserRoleViewer, authz.AllGroupID)
 
 	testSub(t, false, authz.AllGroupID, user1ID, user1Pass, device1ID, device1Key, thing1ID)
 }
@@ -91,11 +91,11 @@ func TestGroup1(t *testing.T) {
 	defer stopFn()
 
 	// add the group with thing and user
-	err := svc.AddGroup(group1ID, "g 1", 0)
+	err := svc.CreateGroup(group1ID, "g 1", 0)
 	require.NoError(t, err)
-	err = svc.AddThing(thing1ID, group1ID)
+	err = svc.AddSource(device1ID, thing1ID, group1ID)
 	require.NoError(t, err)
-	err = svc.AddUser(user1ID, authz.GroupRoleViewer, group1ID)
+	err = svc.AddUser(user1ID, authz.UserRoleViewer, group1ID)
 	require.NoError(t, err)
 
 	testSub(t, false, group1ID, user1ID, user1Pass, device1ID, device1Key, thing1ID)
@@ -112,11 +112,11 @@ func TestGroup1NoThing(t *testing.T) {
 	defer stopFn()
 
 	// add the group with thing and user
-	err := svc.AddGroup(group1ID, "g 1", 0)
+	err := svc.CreateGroup(group1ID, "g 1", 0)
 	require.NoError(t, err)
-	err = svc.AddThing(thing1ID, group1ID)
+	err = svc.AddSource(device1ID, thing1ID, group1ID)
 	require.NoError(t, err)
-	err = svc.AddUser(user1ID, authz.GroupRoleViewer, group1ID)
+	err = svc.AddUser(user1ID, authz.UserRoleViewer, group1ID)
 	require.NoError(t, err)
 
 	// this should fail
@@ -133,12 +133,13 @@ func TestGroup2NotAMember(t *testing.T) {
 	require.NotNil(t, svc)
 	defer stopFn()
 
-	// add the group with thing and user
-	err := svc.AddGroup(group1ID, "g 1", 0)
+	// add the group with thing
+	err := svc.CreateGroup(group1ID, "g 1", 0)
 	require.NoError(t, err)
-	err = svc.AddThing(thing1ID, group1ID)
+	err = svc.AddSource(device1ID, thing1ID, group1ID)
 	require.NoError(t, err)
-	//err = svc.AddUser(user1ID, authz.GroupRoleViewer, group2ID) // group2, not group1
+	// user is a member of a different group
+	err = svc.AddUser(user1ID, authz.UserRoleViewer, group2ID)
 	require.NoError(t, err)
 
 	// this should fail

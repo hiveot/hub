@@ -219,14 +219,19 @@ func TestAddGroup(t *testing.T) {
 			ID:          testenv.TestGroup1ID,
 			DisplayName: "group 1",
 			MemberRoles: map[string]string{
-				testenv.TestUser1ID:  authz.GroupRoleViewer,
-				testenv.TestThing1ID: authz.GroupRoleThing,
+				testenv.TestUser1ID: authz.UserRoleViewer,
+			},
+			Sources: []authz.EventSource{
+				{
+					PublisherID: testenv.TestDevice1ID,
+					ThingID:     testenv.TestThing1ID,
+				},
 			},
 		},
 	}
-	var TestRoles = map[string]authz.RoleMap{
-		testenv.TestUser1ID:  {testenv.TestGroup1ID: authz.GroupRoleViewer},
-		testenv.TestThing1ID: {testenv.TestGroup1ID: authz.GroupRoleThing},
+	var TestRoles = map[string]authz.UserRoleMap{
+		testenv.TestUser1ID: {testenv.TestGroup1ID: authz.UserRoleViewer},
+		//testenv.TestThing1ID: {testenv.TestGroup1ID: authz.GroupRoleThing},
 	}
 	// setup, add devices and a group
 	clientURL, msgServer, certBundle, _, err := testenv.StartNatsTestServer()

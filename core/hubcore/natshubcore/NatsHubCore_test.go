@@ -65,7 +65,7 @@ func TestPubSub_ConnectAuthNKey(t *testing.T) {
 	require.NoError(t, err)
 	_, err = hub.AuthnSvc.MngService.AddService(service1ID, "service 1", service1Pub, 0)
 	require.NoError(t, err)
-	err = hub.AuthzSvc.AddUser(service1ID, authz.GroupRoleViewer, authz.AllGroupID)
+	err = hub.AuthzSvc.AddUser(service1ID, authz.UserRoleViewer, authz.AllGroupID)
 	require.NoError(t, err)
 
 	// service1 subscribes
@@ -117,11 +117,11 @@ func TestPubSub_AuthPassword(t *testing.T) {
 	require.NoError(t, err)
 
 	// assign clients to group
-	err = core.AuthzSvc.AddGroup(group1ID, "group 1", 0)
+	err = core.AuthzSvc.CreateGroup(group1ID, "group 1", 0)
 	require.NoError(t, err)
-	err = core.AuthzSvc.AddUser(user1ID, authz.GroupRoleViewer, group1ID)
+	err = core.AuthzSvc.AddUser(user1ID, authz.UserRoleViewer, group1ID)
 	require.NoError(t, err)
-	err = core.AuthzSvc.AddUser(service1ID, authz.GroupRoleViewer, group1ID)
+	err = core.AuthzSvc.AddUser(service1ID, authz.UserRoleViewer, group1ID)
 	require.NoError(t, err)
 	err = core.AuthzSvc.AddThing(thing1ID, group1ID)
 	require.NoError(t, err)
@@ -225,11 +225,11 @@ func TestPubSub_AuthPassword(t *testing.T) {
 //
 //	// add two group streams that receives events from from the ingress stream
 //	// each group has a filter on the things that are a member of the group
-//	err = hc.AddGroup("group1", "events",
+//	err = hc.CreateGroup("group1", "events",
 //		[]string{"things.*.thing1.event.>"})
 //	assert.NoError(t, err)
 //
-//	err = hc.AddGroup("group2", "events",
+//	err = hc.CreateGroup("group2", "events",
 //		[]string{"things.*.thing2.event.>", "things.*.thing3.event.>"})
 //	assert.NoError(t, err)
 //
