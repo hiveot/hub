@@ -3,6 +3,7 @@ package authzservice
 import (
 	"bufio"
 	"fmt"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/authz"
 	"golang.org/x/exp/slog"
 	"os"
@@ -117,9 +118,9 @@ func (aclStore *AclFileStore) AddSource(
 // AddUser adds a client with the user role to a group
 func (aclStore *AclFileStore) AddUser(userID string, role string, groupID string) (err error) {
 
-	if role == authz.UserRoleViewer ||
-		role == authz.UserRoleManager ||
-		role == authz.UserRoleOperator ||
+	if role == auth.ClientRoleViewer ||
+		role == auth.ClientRoleManager ||
+		role == auth.ClientRoleOperator ||
 		role == authz.UserRoleService {
 
 		err = aclStore.setUserRole(userID, role, groupID)
@@ -170,7 +171,7 @@ func (aclStore *AclFileStore) GetGroup(groupID string) (authz.Group, error) {
 //// GetHighestRole returns the highest role of a user has in a list of group
 //// Intended to get client permissions in case of overlapping groups
 //func (aclStore *AclFileStore) GetHighestRole(clientID string, groupIDs []string) string {
-//	highestRole := authz.UserRoleNone
+//	highestRole := authz.ClientRoleNone
 //
 //	aclStore.mutex.RLock()
 //	defer aclStore.mutex.RUnlock()
@@ -258,15 +259,15 @@ func (aclStore *AclFileStore) GetUserRoles(clientID string) (authz.UserRoleMap, 
 //		case authz.UserRoleService:
 //			thingPerm = []string{authz.PermPubActions, authz.PermPubEvents, authz.PermReadActions, authz.PermReadEvents}
 //			break
-//		case authz.UserRoleManager:
+//		case authz.ClientRoleManager:
 //			// managers are operators but can also change configuration
 //			// TODO: is publishing configuration changes a separate permission?
 //			thingPerm = []string{authz.PermPubActions, authz.PermReadEvents}
 //			break
-//		case authz.UserRoleOperator:
+//		case authz.ClientRoleOperator:
 //			thingPerm = []string{authz.PermPubActions, authz.PermReadEvents}
 //			break
-//		case authz.UserRoleViewer:
+//		case authz.ClientRoleViewer:
 //			thingPerm = []string{authz.PermReadEvents}
 //			break
 //		default:
@@ -310,13 +311,13 @@ func (aclStore *AclFileStore) GetUserRoles(clientID string) (authz.UserRoleMap, 
 // IsRoleGreaterEqual returns true if a user role has same or greater permissions
 // than the minimum role.
 func IsRoleGreaterEqual(role string, minRole string) bool {
-	if minRole == authz.UserRoleNone || role == minRole {
+	if minRole == auth.ClientRoleNone || role == minRole {
 		return true
 	}
-	if minRole == authz.UserRoleViewer && role != authz.UserRoleNone {
+	if minRole == auth.ClientRoleViewer && role != auth.ClientRoleNone {
 		return true
 	}
-	if minRole == authz.UserRoleOperator && (role == authz.UserRoleManager) {
+	if minRole == auth.ClientRoleOperator && (role == auth.ClientRoleManager) {
 		return true
 	}
 	return false
@@ -480,7 +481,7 @@ func (aclStore *AclFileStore) RemoveUserAll(userID string) error {
 // This add/updates the client's role, saves it to a temp file and move the result to the store file.
 //
 //	userID   user to assign the role
-//	role     one of UserRoleViewer, UserRoleOperator, UserRoleManager or GroupRoleNone to remove the role
+//	role     one of ClientRoleViewer, ClientRoleOperator, ClientRoleManager or GroupRoleNone to remove the role
 //	groupID  group where the role applies
 func (aclStore *AclFileStore) setUserRole(userID string, role string, groupID string) (err error) {
 
@@ -518,12 +519,12 @@ func (aclStore *AclFileStore) setUserRole(userID string, role string, groupID st
 // This updates the user's role, saves it to a temp file and move the result to the store file.
 //
 //	userID   client to assign the role
-//	role     one of UserRoleViewer, UserRoleOperator, UserRoleManager, or UserRoleService
+//	role     one of ClientRoleViewer, ClientRoleOperator, ClientRoleManager, or UserRoleService
 //	groupID  group where the role applies
 func (aclStore *AclFileStore) SetUserRole(userID string, role string, groupID string) (err error) {
-	isUserRole := role == authz.UserRoleViewer ||
-		role == authz.UserRoleManager ||
-		role == authz.UserRoleOperator
+	isUserRole := role == auth.ClientRoleViewer ||
+		role == auth.ClientRoleManager ||
+		role == auth.ClientRoleOperator
 	if !isUserRole {
 		return fmt.Errorf("role '%s' doesn't apply to users", role)
 	}
@@ -568,7 +569,7 @@ func (aclStore *AclFileStore) Save() error {
 //	filepath is the location of the store file. See also DefaultAclFilename for the recommended name.
 func NewAuthzFileStore(filepath string) *AclFileStore {
 	store := &AclFileStore{
-		serviceID:      authz.AuthzServiceName,
+		serviceID:      auth.AuthzServiceName,
 		groups:         make(map[string]authz.Group),
 		userGroupRoles: make(map[string]authz.UserRoleMap),
 

@@ -1,7 +1,7 @@
 package authnclient
 
 import (
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 )
@@ -22,7 +22,7 @@ func (clientAuthn *AuthnUserClient) pubReq(action string, req interface{}, resp 
 		msg, _ = ser.Marshal(req)
 	}
 
-	data, err := clientAuthn.hc.PubAction(clientAuthn.serviceID, authn.ClientAuthnCapability, action, msg)
+	data, err := clientAuthn.hc.PubAction(clientAuthn.serviceID, auth.ClientAuthnCapability, action, msg)
 	err = clientAuthn.hc.ParseResponse(data, err, resp)
 	return err
 }
@@ -30,56 +30,56 @@ func (clientAuthn *AuthnUserClient) pubReq(action string, req interface{}, resp 
 // GetProfile returns a client's profile
 // Users can only get their own profile.
 // Managers can get other clients profiles.
-func (clientAuthn *AuthnUserClient) GetProfile(clientID string) (profile authn.ClientProfile, err error) {
-	req := authn.GetProfileReq{
+func (clientAuthn *AuthnUserClient) GetProfile(clientID string) (profile auth.ClientProfile, err error) {
+	req := auth.GetProfileReq{
 		ClientID: clientID,
 	}
-	resp := authn.GetProfileResp{}
-	err = clientAuthn.pubReq(authn.GetProfileAction, &req, &resp)
+	resp := auth.GetProfileResp{}
+	err = clientAuthn.pubReq(auth.GetProfileAction, &req, &resp)
 	return resp.Profile, err
 }
 
 // NewToken obtains an auth token based on loginID and password
 // The user must have a public key set (using updatePubKey)
 func (clientAuthn *AuthnUserClient) NewToken(clientID string, password string) (authToken string, err error) {
-	req := authn.NewTokenReq{
+	req := auth.NewTokenReq{
 		ClientID: clientID,
 		Password: password,
 	}
-	resp := authn.NewTokenResp{}
-	err = clientAuthn.pubReq(authn.NewTokenAction, &req, &resp)
+	resp := auth.NewTokenResp{}
+	err = clientAuthn.pubReq(auth.NewTokenAction, &req, &resp)
 	return resp.Token, err
 }
 
 // Refresh a short-lived authentication token.
 func (clientAuthn *AuthnUserClient) Refresh(clientID string, oldToken string) (authToken string, err error) {
-	req := authn.RefreshReq{
+	req := auth.RefreshReq{
 		ClientID: clientID,
 		OldToken: oldToken,
 	}
-	resp := authn.RefreshResp{}
-	err = clientAuthn.pubReq(authn.RefreshAction, &req, &resp)
+	resp := auth.RefreshResp{}
+	err = clientAuthn.pubReq(auth.RefreshAction, &req, &resp)
 	return resp.NewToken, err
 }
 
 // UpdateName updates a client's display name
 func (clientAuthn *AuthnUserClient) UpdateName(clientID string, newName string) error {
-	req := authn.UpdateNameReq{
+	req := auth.UpdateNameReq{
 		ClientID: clientID,
 		NewName:  newName,
 	}
-	err := clientAuthn.pubReq(authn.UpdateNameAction, &req, nil)
+	err := clientAuthn.pubReq(auth.UpdateNameAction, &req, nil)
 	return err
 }
 
 // UpdatePassword changes the user password
 // Login or Refresh must be called successfully first.
 func (clientAuthn *AuthnUserClient) UpdatePassword(clientID string, newPassword string) error {
-	req := authn.UpdatePasswordReq{
+	req := auth.UpdatePasswordReq{
 		ClientID:    clientID,
 		NewPassword: newPassword,
 	}
-	err := clientAuthn.pubReq(authn.UpdatePasswordAction, &req, nil)
+	err := clientAuthn.pubReq(auth.UpdatePasswordAction, &req, nil)
 	return err
 }
 
@@ -87,11 +87,11 @@ func (clientAuthn *AuthnUserClient) UpdatePassword(clientID string, newPassword 
 // This takes effect immediately. Existing connection must be closed and re-established.
 // Login or Refresh must be called successfully first.
 func (clientAuthn *AuthnUserClient) UpdatePubKey(clientID string, newPubKey string) error {
-	req := authn.UpdatePubKeyReq{
+	req := auth.UpdatePubKeyReq{
 		ClientID:  clientID,
 		NewPubKey: newPubKey,
 	}
-	err := clientAuthn.pubReq(authn.UpdatePubKeyAction, &req, nil)
+	err := clientAuthn.pubReq(auth.UpdatePubKeyAction, &req, nil)
 	return err
 }
 
@@ -99,7 +99,7 @@ func (clientAuthn *AuthnUserClient) UpdatePubKey(clientID string, newPubKey stri
 //
 //	hc is the hub client connection to use
 func NewAuthnUserClient(hc hubclient.IHubClient) *AuthnUserClient {
-	serviceID := authn.AuthnServiceName
+	serviceID := auth.AuthServiceName
 	cl := AuthnUserClient{
 		hc:        hc,
 		serviceID: serviceID,

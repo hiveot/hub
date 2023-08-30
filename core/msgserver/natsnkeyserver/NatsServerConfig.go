@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
@@ -264,7 +264,7 @@ func (cfg *NatsServerConfig) Setup(certsDir, storesDir string, writeChanges bool
 		coreServicePub, _ := cfg.CoreServiceKP.PublicKey()
 		claims := jwt.NewUserClaims(coreServicePub)
 		claims.Name = "HiveOTCoreService"
-		claims.Tags.Add("clientType", authn.ClientTypeUser)
+		claims.Tags.Add("clientType", auth.ClientTypeUser)
 		cfg.CoreServiceJWT, err = claims.Encode(cfg.AppAccountKP)
 		if err != nil {
 			return fmt.Errorf("CoreServiceJWT error: %w", err)

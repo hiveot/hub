@@ -1,7 +1,7 @@
 package authn_test
 
 import (
-	authnapi "github.com/hiveot/hub/api/go/authn"
+	authapi "github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/core/authn/authnclient"
 	"github.com/hiveot/hub/core/authn/authnservice"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
@@ -35,7 +35,7 @@ var msgServer *natsnkeyserver.NatsNKeyServer
 //var useCore = "natsnkey" // natsnkey, natsjwt, natscallout, mqtt
 
 // add new user to test with
-func addNewUser(userID string, displayName string, pass string, mng authnapi.IAuthnManage) (token string, key nkeys.KeyPair, err error) {
+func addNewUser(userID string, displayName string, pass string, mng authapi.IAuthnManage) (token string, key nkeys.KeyPair, err error) {
 	userKey, _ := nkeys.CreateUser()
 	userKeyPub, _ := userKey.PublicKey()
 	// FIXME: must set a password in order to update it later
@@ -45,7 +45,7 @@ func addNewUser(userID string, displayName string, pass string, mng authnapi.IAu
 
 // launch the authn service and return a client for using and managing it.
 // the messaging server is already running (see TestMain)
-func startTestAuthnService() (authnSvc *authnservice.AuthnService, mng authnapi.IAuthnManage, stopFn func(), err error) {
+func startTestAuthnService() (authnSvc *authnservice.AuthnService, mng authapi.IAuthnManage, stopFn func(), err error) {
 	// the password file to use
 	passwordFile := path.Join(testDir, "test.passwd")
 
@@ -55,7 +55,7 @@ func startTestAuthnService() (authnSvc *authnservice.AuthnService, mng authnapi.
 	_ = cfg.Setup(testDir)
 	cfg.PasswordFile = passwordFile
 	cfg.DeviceTokenValidity = 10
-	cfg.Encryption = authnapi.PWHASH_BCRYPT // nats requires bcrypt
+	cfg.Encryption = authapi.PWHASH_BCRYPT // nats requires bcrypt
 
 	authnSvc, err = authnservice.StartAuthnService(cfg, msgServer)
 	if err != nil {
@@ -128,6 +128,7 @@ func TestAddRemoveClients(t *testing.T) {
 	serviceKeyPub, _ := serviceKP.PublicKey()
 
 	svc, mng, stopFn, err := startTestAuthnService()
+	_ = svc
 	require.NoError(t, err)
 	defer stopFn()
 
@@ -166,8 +167,8 @@ func TestAddRemoveClients(t *testing.T) {
 	assert.Error(t, err)
 
 	// update the server. users can connect and have unlimited access
-	authnEntries := svc.MngService.GetEntries()
-	err = msgServer.ApplyAuthn(authnEntries)
+	authnEntries := svc.MngService.GetAuthClientList()
+	err = msgServer.ApplyAuth(authnEntries)
 	require.NoError(t, err)
 
 	clList, err := mng.GetProfiles()
@@ -176,15 +177,15 @@ func TestAddRemoveClients(t *testing.T) {
 	cnt, _ := mng.GetCount()
 	assert.Equal(t, 6, cnt)
 
-	err = mng.RemoveClient("user1")
+	err = mng.RemoveUser("user1")
 	assert.NoError(t, err)
-	err = mng.RemoveClient("user1") // remove is idempotent
+	err = mng.RemoveUser("user1") // remove is idempotent
 	assert.NoError(t, err)
-	err = mng.RemoveClient("user2")
+	err = mng.RemoveUser("user2")
 	assert.NoError(t, err)
-	err = mng.RemoveClient(deviceID)
+	err = mng.RemoveUser(deviceID)
 	assert.NoError(t, err)
-	err = mng.RemoveClient(serviceID)
+	err = mng.RemoveUser(serviceID)
 	assert.NoError(t, err)
 
 	require.NoError(t, err)
@@ -228,8 +229,8 @@ func TestLoginRefresh(t *testing.T) {
 	assert.Empty(t, tu1Token)
 
 	// apply changes without authz. users can connect and have unlimited access
-	authnEntries := svc.MngService.GetEntries()
-	err = msgServer.ApplyAuthn(authnEntries)
+	authnEntries := svc.MngService.GetAuthClientList()
+	err = msgServer.ApplyAuth(authnEntries)
 	require.NoError(t, err)
 
 	// 1. connect to the added user using its password
@@ -247,8 +248,8 @@ func TestLoginRefresh(t *testing.T) {
 	err = cl1.UpdatePubKey(tu1ID, tu1KeyPub)
 	authToken1, err = cl1.NewToken(tu1ID, tu1Pass)
 	require.NoError(t, err)
-	authnEntries = svc.MngService.GetEntries()
-	_ = msgServer.ApplyAuthn(authnEntries)
+	authnEntries = svc.MngService.GetAuthClientList()
+	_ = msgServer.ApplyAuth(authnEntries)
 
 	// wrong ID should fail
 	_, err = cl1.NewToken("nottu1", "badpass")
@@ -299,7 +300,7 @@ func TestRefreshFakeToken(t *testing.T) {
 	var tu1Pass = "tu1Pass"
 	var authToken1 string
 
-	srv, mng, stopFn, err := startTestAuthnService()
+	svc, mng, stopFn, err := startTestAuthnService()
 	defer stopFn()
 	require.NoError(t, err)
 
@@ -311,8 +312,8 @@ func TestRefreshFakeToken(t *testing.T) {
 	require.NoError(t, err)
 	//require.NotEmpty(t, tu1Token)
 
-	entries := srv.MngService.GetEntries()
-	err = msgServer.ApplyAuthn(entries)
+	entries := svc.MngService.GetAuthClientList()
+	err = msgServer.ApplyAuth(entries)
 
 	// 1. connect with the added user token
 	//hc1, err := connectUser(tu1ID, tu1Key, tu1Token)
@@ -358,7 +359,7 @@ func TestUpdate(t *testing.T) {
 	var tu1ID = "tu1ID"
 	var tu1Name = "test user 1"
 
-	srv, mng, stopFn, err := startTestAuthnService()
+	svc, mng, stopFn, err := startTestAuthnService()
 	defer stopFn()
 	require.NoError(t, err)
 
@@ -366,8 +367,8 @@ func TestUpdate(t *testing.T) {
 	tu1Token, tu1Key, err := addNewUser(tu1ID, tu1Name, "pass0", mng)
 	require.NoError(t, err)
 
-	entries := srv.MngService.GetEntries()
-	err = msgServer.ApplyAuthn(entries)
+	entries := svc.MngService.GetAuthClientList()
+	err = msgServer.ApplyAuth(entries)
 	require.NoError(t, err)
 
 	hc, err := natshubclient.Connect(clientURL, tu1ID, tu1Key, tu1Token, certBundle.CaCert)
@@ -386,8 +387,8 @@ func TestUpdate(t *testing.T) {
 	err = cl.UpdatePubKey(tu1ID, newPKPub)
 	assert.NoError(t, err)
 
-	entries = srv.MngService.GetEntries()
-	err = msgServer.ApplyAuthn(entries)
+	entries = svc.MngService.GetAuthClientList()
+	err = msgServer.ApplyAuth(entries)
 
 	//reconnect using the new key
 	hc, err = natshubclient.Connect(clientURL, tu1ID, newPK, newPKPub, certBundle.CaCert)
@@ -402,7 +403,7 @@ func TestUpdate(t *testing.T) {
 	prof2, err := mng.GetProfile(tu1ID)
 	assert.Equal(t, prof, prof2)
 	prof2.DisplayName = "after update"
-	err = mng.UpdateClient(tu1ID, prof2)
+	err = mng.UpdateUser(tu1ID, prof2)
 	assert.NoError(t, err)
 
 	prof, err = cl.GetProfile(tu1ID)

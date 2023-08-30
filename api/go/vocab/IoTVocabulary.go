@@ -45,10 +45,11 @@ const (
 
 // reserved event and action names
 const (
-	VocabActionTopic = "action"
-	VocabEventTopic  = "event"
-	EventNameTD      = "$td"
-	EventNameProps   = "$properties"
+	MessageTypeAction = "action"
+	MessageTypeConfig = "config"
+	MessageTypeEvent  = "event"
+	EventNameTD       = "$td"
+	EventNameProps    = "$properties"
 )
 
 // property and event name vocabulary

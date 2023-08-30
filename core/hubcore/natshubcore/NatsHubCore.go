@@ -1,8 +1,8 @@
 package natshubcore
 
 import (
+	"github.com/hiveot/hub/api/go/auth"
 	authn2 "github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/core/authn/authnservice"
 	"github.com/hiveot/hub/core/authn/authnstore"
 	"github.com/hiveot/hub/core/authz/authzservice"
@@ -59,7 +59,7 @@ func (core *HubCore) Start(cfg *config.HubCoreConfig) (clientURL string) {
 	// start the authz service
 	if !cfg.Authz.NoAutoStart {
 		// AuthzFileStore stores passwords in file
-		authzFile := path.Join(cfg.Authz.DataDir, authz.DefaultAclFilename)
+		authzFile := path.Join(cfg.Authz.DataDir, auth.DefaultAclFilename)
 		core.authzStore = authzservice.NewAuthzFileStore(authzFile)
 		err = core.authzStore.Open()
 		if err != nil {

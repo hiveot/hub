@@ -2,6 +2,7 @@ package authzservice
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
@@ -140,15 +141,15 @@ func (svc *AuthzService) GetUserRoles(userID string) (roles authz.UserRoleMap, e
 //		case authz.UserRoleService:
 //			thingPerm = []string{authz.PermPubActions, authz.PermPubEvents, authz.PermReadActions, authz.PermReadEvents}
 //			break
-//		case authz.UserRoleManager:
+//		case authz.ClientRoleManager:
 //			// managers are operators but can also change configuration
 //			// TODO: is publishing configuration changes a separate permission?
 //			thingPerm = []string{authz.PermPubActions, authz.PermReadEvents}
 //			break
-//		case authz.UserRoleOperator:
+//		case authz.ClientRoleOperator:
 //			thingPerm = []string{authz.PermPubActions, authz.PermReadEvents}
 //			break
-//		case authz.UserRoleViewer:
+//		case authz.ClientRoleViewer:
 //			thingPerm = []string{authz.PermReadEvents}
 //			break
 //		default:
@@ -290,7 +291,7 @@ func NewAuthzService(aclStore *AclFileStore, msgServer msgserver.IMsgServer) *Au
 // StartAuthzService creates and launch the authz service with the given config
 // This creates a password store using the config file and password encryption method.
 func StartAuthzService(cfg AuthzConfig, msgServer msgserver.IMsgServer) (*AuthzService, error) {
-	aclFile := path.Join(cfg.DataDir, authz.DefaultAclFilename)
+	aclFile := path.Join(cfg.DataDir, auth.DefaultAclFilename)
 	aclStore := NewAuthzFileStore(aclFile)
 	authzSvc := NewAuthzService(aclStore, msgServer)
 	err := authzSvc.Start()

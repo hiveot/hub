@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/lib/certs"
 	"golang.org/x/exp/slog"
 	"time"
@@ -109,9 +109,9 @@ func (svc *AuthnJWTTokenizer) ValidateToken(
 
 	clientType, _ := claims.GetAudience()
 	validClientType := len(clientType) > 0 &&
-		(clientType[0] == authn.ClientTypeDevice ||
-			clientType[0] == authn.ClientTypeService ||
-			clientType[0] == authn.ClientTypeUser)
+		(clientType[0] == auth.ClientTypeDevice ||
+			clientType[0] == auth.ClientTypeService ||
+			clientType[0] == auth.ClientTypeUser)
 
 	clientPubKey, _ := claims.GetSubject()
 	if len(clientType) == 0 || !validClientType || clientPubKey == "" {

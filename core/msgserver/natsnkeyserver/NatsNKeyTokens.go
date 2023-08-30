@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nkeys"
+	"time"
 )
 
 // CreateKeyPair returns a new user nkey with its public key string
@@ -16,7 +17,7 @@ import (
 
 // CreateToken uses the public key as token when using nkeys
 func (srv *NatsNKeyServer) CreateToken(
-	clientID string, clientType string, pubKey string, validitySec int) (token string, err error) {
+	clientID string, clientType string, pubKey string, tokenValidity time.Duration) (token string, err error) {
 	if srv.chook == nil {
 		return pubKey, nil
 	}

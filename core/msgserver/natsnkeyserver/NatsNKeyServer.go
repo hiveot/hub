@@ -5,9 +5,8 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/hubclient"
+	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/msgserver/natscoserver"
 	"github.com/nats-io/jwt/v2"
@@ -28,10 +27,9 @@ type NatsNKeyServer struct {
 	ns       *server.Server
 	// enable callout authn with EnableCalloutHandler. nil to just use nkeys
 	chook *natscoserver.NatsCalloutHook
-	// the clients that can authenticate
-	clients []authn.AuthnEntry
-	// authorization of clients [userID] map[groupID]role
-	userGroupRoles map[string]authz.UserRoleMap
+
+	// map of role to role permissions
+	rolePermissions map[string]msgserver.RolePermissions
 }
 
 // ConnectInProcNC establishes a nats connection to the server for core services.
@@ -162,7 +160,7 @@ func (srv *NatsNKeyServer) Start() (clientURL string, err error) {
 	_, err = js.StreamInfo(EventsIntakeStreamName)
 	if err != nil {
 		// The intake stream receives events from all publishers and things
-		subj := natshubclient.MakeSubject("", "", natshubclient.SubjectTypeEvent, ">")
+		subj := natshubclient.MakeThingsSubject("", "", natshubclient.MessageTypeEvent, ">")
 		cfg := &nats.StreamConfig{
 			Name:        EventsIntakeStreamName,
 			Description: "HiveOT Events Intake Stream",
@@ -185,6 +183,6 @@ func (srv *NatsNKeyServer) Stop() {
 // NewNatsNKeyServer creates a new instance of the Hub NATS server for NKey authn.
 func NewNatsNKeyServer(cfg *NatsServerConfig) *NatsNKeyServer {
 
-	srv := &NatsNKeyServer{cfg: cfg}
+	srv := &NatsNKeyServer{cfg: cfg, rolePermissions: DefaultRolePermissions}
 	return srv
 }

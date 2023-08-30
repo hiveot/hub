@@ -2,7 +2,7 @@ package authnservice
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/authn/authnstore"
@@ -11,7 +11,7 @@ import (
 
 // AuthnService creates a service handling both manage and user requests.
 type AuthnService struct {
-	store     authn.IAuthnStore
+	store     auth.IAuthnStore
 	msgServer msgserver.IMsgServer
 
 	// the hub client connection to listen to requests
@@ -26,7 +26,7 @@ type AuthnService struct {
 // Start the service and activate the binding to handle requests
 func (svc *AuthnService) Start() (err error) {
 
-	svc.hc, err = svc.msgServer.ConnectInProc("authn")
+	svc.hc, err = svc.msgServer.ConnectInProc(auth.AuthServiceName)
 	if err != nil {
 		return fmt.Errorf("can't connect authn to server: %w", err)
 	}
@@ -62,7 +62,7 @@ func (svc *AuthnService) Stop() {
 //
 //	store is the client store to store authentication clients
 //	msgServer used to apply changes to users, devices and services
-func NewAuthnService(store authn.IAuthnStore, msgServer msgserver.IMsgServer) *AuthnService {
+func NewAuthnService(store auth.IAuthnStore, msgServer msgserver.IMsgServer) *AuthnService {
 
 	authnSvc := &AuthnService{
 		store:     store,

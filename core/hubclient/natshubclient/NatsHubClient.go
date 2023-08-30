@@ -316,7 +316,7 @@ func (hc *NatsHubClient) PubAction(bindingID string, thingID string, actionID st
 
 // PubEvent sends the event value to the hub
 func (hc *NatsHubClient) PubEvent(thingID string, eventID string, payload []byte) error {
-	subject := MakeSubject(hc.clientID, thingID, vocab.VocabEventTopic, eventID)
+	subject := MakeThingsSubject(hc.clientID, thingID, vocab.MessageTypeEvent, eventID)
 	slog.Info("PubEvent", "subject", subject)
 	err := hc.nc.Publish(subject, payload)
 	return err
@@ -325,7 +325,7 @@ func (hc *NatsHubClient) PubEvent(thingID string, eventID string, payload []byte
 // PubTD sends the TD document to the hub
 func (hc *NatsHubClient) PubTD(td *thing.TD) error {
 	payload, _ := ser.Marshal(td)
-	subject := MakeSubject(hc.clientID, td.ID, vocab.VocabEventTopic, vocab.EventNameTD)
+	subject := MakeThingsSubject(hc.clientID, td.ID, vocab.MessageTypeEvent, vocab.EventNameTD)
 	slog.Info("PubTD", "subject", subject)
 	err := hc.nc.Publish(subject, payload)
 	return err
@@ -349,7 +349,7 @@ func (hc *NatsHubClient) JS() nats.JetStreamContext {
 //		OldToken: oldToken,
 //	}
 //	msg, _ := ser.Marshal(req)
-//	subject := MakeSubject(hc.clientID, td.ID, vocab.VocabEventTopic, vocab.EventNameTD)
+//	subject := MakeThingsSubject(hc.clientID, td.ID, vocab.MessageTypeEvent, vocab.EventNameTD)
 //	slog.Info("PubTD", "subject", subject)
 //	err := hc.Publish(subject, payload)
 //	resp := &authn.RefreshResp{}
@@ -418,7 +418,7 @@ func (hc *NatsHubClient) SubActions(thingID string, cb func(msg *hubclient.Actio
 // SubEvents subscribe to event
 //func (hc *NatsHubClient) SubEvents(thingID string, cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
 //
-//	subject := MakeSubject(hc.clientID, thingID, "event", "")
+//	subject := MakeThingsSubject(hc.clientID, thingID, "event", "")
 //
 //	sub, err := hc.Subscribe(subject, func(natsMsg *nats.Msg) {
 //		md, _ := natsMsg.Metadata()
@@ -445,7 +445,7 @@ func (hc *NatsHubClient) SubActions(thingID string, cb func(msg *hubclient.Actio
 //	return sub, err
 //}
 
-// doEventSubscriber listens for incoming event messages and invoke a callback handler
+// startEventMessageHandler listens for incoming event messages and invoke a callback handler
 // this returns when the subscription is no longer valid
 func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *hubclient.EventMessage)) error {
 	ci, err := nsub.ConsumerInfo()
@@ -477,7 +477,7 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *hubclient.Ev
 			if md != nil {
 				timeStamp = md.Timestamp
 			}
-			pubID, thID, _, name, err := SplitSubject(natsMsg.Subject)
+			_, pubID, thID, _, name, err := SplitSubject(natsMsg.Subject)
 			if err != nil {
 				slog.Error("unable to handle subject", "err", err,
 					"subject", natsMsg.Subject)

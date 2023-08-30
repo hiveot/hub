@@ -3,8 +3,9 @@ package authnservice
 import (
 	"crypto/x509"
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
+	"time"
 )
 
 // AuthnUser handles authentication user requests
@@ -13,7 +14,7 @@ import (
 // This implements the IAuthnUser interface.
 type AuthnUser struct {
 	// Client record persistence
-	store authn.IAuthnStore
+	store auth.IAuthnStore
 	// message server for updating authn
 	msgServer msgserver.IMsgServer
 	// CA certificate for validating cert
@@ -24,8 +25,11 @@ type AuthnUser struct {
 // the built-in tokenizer.
 // This invokes the external tokenizer if provided and falls-back to the built-in
 // tokenizer.
-func (svc *AuthnUser) CreateToken(clientID string, clientType string, pubKey string, validitySec int) (newToken string, err error) {
-	return svc.msgServer.CreateToken(clientID, clientType, pubKey, validitySec)
+func (svc *AuthnUser) CreateToken(
+	clientID string, clientType string, pubKey string, tokenValidity time.Duration) (
+	newToken string, err error) {
+
+	return svc.msgServer.CreateToken(clientID, clientType, pubKey, tokenValidity)
 }
 
 // GeneratePassword with upper, lower, numbers and special characters
@@ -55,7 +59,7 @@ func (svc *AuthnUser) CreateToken(clientID string, clientType string, pubKey str
 //}
 
 // GetProfile returns a client's profile
-func (svc *AuthnUser) GetProfile(clientID string) (profile authn.ClientProfile, err error) {
+func (svc *AuthnUser) GetProfile(clientID string) (profile auth.ClientProfile, err error) {
 	clientProfile, err := svc.store.GetProfile(clientID)
 	return clientProfile, err
 }
@@ -69,14 +73,15 @@ func (svc *AuthnUser) NewToken(clientID string, password string) (newToken strin
 	if clientProfile.PubKey == "" {
 		return "", fmt.Errorf("no public key on file for '%s'", clientID)
 	}
-	newToken, err = svc.CreateToken(clientID, clientProfile.ClientType, clientProfile.PubKey, clientProfile.ValiditySec)
+	newToken, err = svc.CreateToken(
+		clientID, clientProfile.ClientType, clientProfile.PubKey, clientProfile.TokenValidity)
 	return newToken, err
 }
 
 // notification handler invoked when clients have been updated
 // this invokes a reload of server authn
 func (svc *AuthnUser) onChange() {
-	_ = svc.msgServer.ApplyAuthn(svc.store.GetEntries())
+	_ = svc.msgServer.ApplyAuth(svc.store.GetAuthClientList())
 }
 
 // Refresh issues a new token if the given token is valid
@@ -88,11 +93,13 @@ func (svc *AuthnUser) Refresh(clientID string, oldToken string) (newToken string
 	if err != nil {
 		return "", err
 	}
-	err = svc.msgServer.ValidateToken(clientID, clientProfile.PubKey, oldToken, "", "")
+	err = svc.msgServer.ValidateToken(
+		clientID, clientProfile.PubKey, oldToken, "", "")
 	if err != nil {
 		return "", fmt.Errorf("error validating oldToken of client %s: %w", clientID, err)
 	}
-	newToken, err = svc.CreateToken(clientID, clientProfile.ClientType, clientProfile.PubKey, clientProfile.ValiditySec)
+	newToken, err = svc.CreateToken(
+		clientID, clientProfile.ClientType, clientProfile.PubKey, clientProfile.TokenValidity)
 	return newToken, err
 }
 
@@ -187,7 +194,7 @@ func (svc *AuthnUser) UpdatePubKey(clientID string, newPubKey string) (err error
 //	store holds the authentication client records
 //	caCert is an optional CA used to verify certificates. Use nil to not authn using client certs
 func NewAuthnUserService(
-	store authn.IAuthnStore,
+	store auth.IAuthnStore,
 	msgServer msgserver.IMsgServer,
 	caCert *x509.Certificate) *AuthnUser {
 

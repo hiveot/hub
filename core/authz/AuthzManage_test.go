@@ -1,6 +1,7 @@
 package authz_test
 
 import (
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/core/authz/authzservice"
 	"github.com/stretchr/testify/require"
@@ -175,12 +176,12 @@ func TestAddRemoveUsers(t *testing.T) {
 	_ = svc.CreateGroup(group2ID, "group 2", 0)
 
 	// group1 has user1
-	err = svc.AddUser(userID1, authz.UserRoleViewer, group1ID)
+	err = svc.AddUser(userID1, auth.ClientRoleViewer, group1ID)
 	require.NoError(t, err)
 	// group2 has user1-2
-	err = svc.AddUser(userID1, authz.UserRoleManager, group2ID)
+	err = svc.AddUser(userID1, auth.ClientRoleManager, group2ID)
 	require.NoError(t, err)
-	err = svc.AddUser(userID2, authz.UserRoleOperator, group2ID)
+	err = svc.AddUser(userID2, auth.ClientRoleOperator, group2ID)
 	require.NoError(t, err)
 
 	// check memberships
@@ -231,8 +232,8 @@ func TestGetGroups(t *testing.T) {
 	_ = svc.AddSource(device1ID, thingID1, group2ID)
 	_ = svc.AddSource(device1ID, thingID2, group2ID)
 	_ = svc.AddSource(device1ID, thingID3, group3ID)
-	_ = svc.AddUser(user1ID, authz.UserRoleViewer, group1ID)
-	_ = svc.AddUser(user1ID, authz.UserRoleViewer, group2ID)
+	_ = svc.AddUser(user1ID, auth.ClientRoleViewer, group1ID)
+	_ = svc.AddUser(user1ID, auth.ClientRoleViewer, group2ID)
 
 	// 3+1 groups must exist (+all group)
 	groups, err := svc.GetUserGroups("")
@@ -277,10 +278,10 @@ func TestAddRemoveRoles(t *testing.T) {
 	_ = svc.CreateGroup(group2ID, "group 2", 0)
 	_ = svc.CreateGroup(group3ID, "group 3", 0)
 	// user1 is a member of 3 groups
-	err := svc.AddUser(user1ID, authz.UserRoleOperator, group1ID)
+	err := svc.AddUser(user1ID, auth.ClientRoleOperator, group1ID)
 	assert.NoError(t, err)
-	_ = svc.AddUser(user1ID, authz.UserRoleOperator, group2ID)
-	_ = svc.AddUser(user1ID, authz.UserRoleOperator, group3ID)
+	_ = svc.AddUser(user1ID, auth.ClientRoleOperator, group2ID)
+	_ = svc.AddUser(user1ID, auth.ClientRoleOperator, group3ID)
 
 	// verify remove user1 from group 2
 	err = svc.RemoveUser(user1ID, group2ID)

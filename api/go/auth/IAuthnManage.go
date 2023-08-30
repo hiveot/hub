@@ -1,7 +1,11 @@
-package authn
+package auth
 
-// AuthnServiceName default ID of the service (bindingID)
-const AuthnServiceName = "authn"
+import (
+	"time"
+)
+
+// AuthnServiceName default ID of the authentication and authorization service
+const AuthServiceName = "auth"
 
 // ManageAuthnCapability is the name of the Thing/Capability that handles management requests
 const ManageAuthnCapability = "manage"
@@ -15,12 +19,12 @@ const (
 
 // Authentication token validity for client types
 const (
-	DefaultDeviceTokenValiditySec  = 90 * 24 * 3600  // 90 days
-	DefaultServiceTokenValiditySec = 365 * 24 * 3600 // 1 year
-	DefaultUserTokenValiditySec    = 30 * 24 * 3600  // 30 days
+	DefaultDeviceTokenValidity  = time.Hour * 24 * 90  // 90 days
+	DefaultServiceTokenValidity = time.Hour * 24 * 365 // 1 year
+	DefaultUserTokenValidity    = time.Hour * 24 * 30  // 30 days
 )
 
-// ClientProfile contains client information
+// ClientProfile contains client information of sources and users
 type ClientProfile struct {
 	// The client ID.
 	//  for users this is their email
@@ -35,8 +39,10 @@ type ClientProfile struct {
 	PubKey string
 	// timestamp in ISO8601 format, the entry was last updated
 	Updated string
-	// ValiditySec time that issued authn tokens are valid for or 0 for default
-	ValiditySec int
+	// TokenValidity time that issued JWT tokens are valid for or 0 for default
+	TokenValidity time.Duration
+	// The client's role
+	Role string
 }
 
 // Authentication management request/response messages
@@ -47,10 +53,10 @@ const AddDeviceAction = "addDevice"
 // AddDeviceReq request message to add a device.
 // The caller must be an administrator or service.
 type AddDeviceReq struct {
-	DeviceID    string `json:"deviceID"`
-	DisplayName string `json:"displayName"`
-	PubKey      string `json:"pubKey"`
-	ValiditySec int    `json:"validitySec"`
+	DeviceID      string        `json:"deviceID"`
+	DisplayName   string        `json:"displayName"`
+	PubKey        string        `json:"pubKey"`
+	TokenValidity time.Duration `json:"tokenValidity"`
 }
 type AddDeviceResp struct {
 	Token string `json:"token"`
@@ -62,10 +68,10 @@ const AddServiceAction = "addService"
 // AddServiceReq request message to add a service.
 // The caller must be an administrator or service.
 type AddServiceReq struct {
-	ServiceID   string `json:"serviceID"`
-	DisplayName string `json:"displayName"`
-	PubKey      string `json:"pubKey"`
-	ValiditySec int    `json:"validitySec"`
+	ServiceID     string        `json:"serviceID"`
+	DisplayName   string        `json:"displayName"`
+	PubKey        string        `json:"pubKey"`
+	TokenValidity time.Duration `json:"tokenValidity"`
 }
 type AddServiceResp struct {
 	Token string `json:"token"`
@@ -118,8 +124,7 @@ type UpdateClientReq struct {
 }
 
 // IAuthnManage defines the capabilities for managing authenticating clients.
-// This capability is only available to administrators that connect with a valid admin
-// client certificate or with an admin user token.
+// This capability is only available to administrators.
 // Authentication is based on JWT tokens with claims for client type, validity and role.
 type IAuthnManage interface {
 
@@ -135,12 +140,12 @@ type IAuthnManage interface {
 	//  deviceID is the thingID of the device, used for publishing things by this device.
 	//  displayName of the service for presentation
 	//  pubKey ECDSA public key of the device
-	//  validitySec is duration the device token is valid for. 0 for the default DefaultDeviceTokenValiditySec
-	AddDevice(deviceID string, displayName string, pubKey string, validitySec int) (token string, err error)
+	//  tokenValidity is duration the device token is valid for. 0 for the default DefaultDeviceTokenValiditySec
+	AddDevice(deviceID string, displayName string, pubKey string, tokenValidity time.Duration) (token string, err error)
 
 	// AddService adds a new service and generates a service token.
 	// The service must periodically refresh its token for it to remain valid.
-	// This returns a new service authentication token
+	// This returns a new service authentication token.
 	//
 	// The format of the token depends on the server configuration. NKey servers return
 	// the public key, jwt servers return a jwt based token.
@@ -150,8 +155,8 @@ type IAuthnManage interface {
 	//  serviceID is the instance ID of the service on the network.
 	//  displayName of the service for presentation
 	//  pubKey ECDSA public key of the service
-	//  validitySec is duration the service token is valid for. 0 for the default DefaultServiceTokenValiditySec
-	AddService(serviceID string, displayName string, pubKey string, validitySec int) (token string, err error)
+	//  tokenValidity is duration the service token is valid for. 0 for the default DefaultServiceTokenValiditySec
+	AddService(serviceID string, displayName string, pubKey string, tokenValidity time.Duration) (token string, err error)
 
 	// AddUser adds a user with a password, public key or neither.
 	// The caller must be an administrator or service.
@@ -165,26 +170,26 @@ type IAuthnManage interface {
 	//  displayName of the user for presentation
 	//  password the user can login with if their token has expired. Optional.
 	//  pubKey the public key to receive a signed token. Ignored if not a valid key.
-	//  validitySec is duration the token is valid for. 0 for the default DefaultServiceTokenValiditySec
 	AddUser(userID string, displayName string, password string, pubKey string) (token string, err error)
 
-	// GetCount returns the number of clients in the store
+	// GetAuthClientList provides a list of clients to apply to the message server
+	//GetAuthClientList() []msgserver.AuthClient
+
+	// GetCount returns the number of users in the store
 	GetCount() (int, error)
 
-	// GetProfile returns a client's profile
-	// Users can only get their own profile.
-	// Managers can get other clients profiles.
-	// This returns an error if the client does not exist
+	// GetProfile returns a user's profile
+	// This returns an error if the user does not exist
 	GetProfile(clientID string) (profile ClientProfile, err error)
 
 	// GetProfiles provide a list of known clients and their info.
 	// The caller must be an administrator or service.
 	GetProfiles() (profiles []ClientProfile, err error)
 
-	// RemoveClient removes a client and disables authentication
+	// RemoveUser removes a user and disables authentication
 	// Existing tokens are immediately expired (tbd)
-	RemoveClient(clientID string) error
+	RemoveUser(userID string) error
 
-	// UpdateClient updates a client's profile
-	UpdateClient(clientID string, prof ClientProfile) error
+	// UpdateUser updates a user's profile
+	UpdateUser(userID string, prof ClientProfile) error
 }

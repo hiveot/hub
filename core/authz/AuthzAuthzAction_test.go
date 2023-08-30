@@ -1,7 +1,7 @@
 package authz_test
 
 import (
-	"github.com/hiveot/hub/api/go/authz"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/sirupsen/logrus"
@@ -36,7 +36,7 @@ func TestSubActions(t *testing.T) {
 	require.NoError(t, err)
 	err = svc.AddSource(device1ID, thing1ID, group1ID)
 	require.NoError(t, err)
-	err = svc.AddUser(user1ID, authz.UserRoleOperator, group1ID)
+	err = svc.AddUser(user1ID, auth.ClientRoleOperator, group1ID)
 	require.NoError(t, err)
 
 	// connect as a device and listen for action requests

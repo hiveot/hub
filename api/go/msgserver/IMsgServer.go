@@ -1,32 +1,48 @@
 package msgserver
 
 import (
-	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/hubclient"
+	"time"
 )
+
+type AuthClient struct {
+	// UserID, ServiceID or DeviceID of the client
+	ClientID string
+
+	// ClientType identifies the client as a ClientTypeDevice, ClientTypeService or ClientTypeUser
+	ClientType string
+
+	// The client's public key, if any
+	PubKey string
+
+	// password encrypted with argon2id or bcrypt
+	PasswordHash string
+
+	// The client's role
+	Role string // Name of user's role
+}
+
+// RolePermissions defines a list of authorization for a role.
+// Each permission defines the source/thing the user can pub/sub to.
+type RolePermissions []struct {
+	Prefix   string // things (default) or "svc" for service
+	SourceID string // source or "" for all sources
+	ThingID  string // thingID or "" for all things
+	MsgType  string // event or action, or "" for all message types
+	MsgName  string // action name or "" for all actions
+	AllowPub bool   // allow publishing of this message
+	AllowSub bool   // allow subscribing to this message
+}
 
 // IMsgServer defines the interface of the messaging server
 type IMsgServer interface {
-	// ApplyAuthn applies updated authentication configuration to the server config.
+	// ApplyAuth applies authentication configuration to the server config.
 	// As messaging servers have widely different ways of handling authentication and
-	// authorization this simply gives all users and groups to the server to apply
-	// as it sees fit.
-	// The server implements the server specific portion. This is intended for use
-	// by core services to apply configuration changes.
-	ApplyAuthn(clients []authn.AuthnEntry) error
-
-	// ApplyAuthz applies updated authorization configuration to the server config.
-	// As messaging servers have widely different ways of handling authentication and
-	// authorization this simply gives all users and groups to the server to apply
-	// as it sees fit.
-	// The server implements the server specific portion. This is intended for use
-	// by core services to apply configuration changes.
-	ApplyAuthz(userGroupRoles map[string]authz.UserRoleMap) error
-
-	// ApplyGroups is invoked after changes to groups
-	// The server synchronizes its groups with the given list
-	ApplyGroups(groups []authz.Group) error
+	// authorization this simply gives all users and roles to the server to apply
+	// as it sees fit. The server implements the server specific portion.
+	//
+	//  clients is the list of registered users and sources with their credentials
+	ApplyAuth(clients []AuthClient) error
 
 	// ConnectInProc creates an in-process client connection to the server.
 	//
@@ -47,8 +63,16 @@ type IMsgServer interface {
 	//  clientID with the identity of the device, service or user
 	//  clientType ClientTypeDevice, ClientTypeService or ClientTypeUser
 	//  pubKey public key string to use with the token
-	//  validitySec with the lifespan in seconds (if supported)
-	CreateToken(clientID string, clientType string, pubKey string, validitySec int) (newToken string, err error)
+	//  tokenValidity with the lifespan of the issued token (JWT only)
+	CreateToken(clientID string, clientType string, pubKey string, tokenValidity time.Duration) (newToken string, err error)
+
+	// SetRolePermissions sets the roles used in authorization.
+	// As messaging servers have widely different ways of handling authentication and
+	// authorization this simply gives all users and roles to the server to apply
+	// as it sees fit. The server implements the server specific portion.
+	//
+	//  rolePerm is a map of [role]permissions. Use nil to revert back to the default role permissions.
+	SetRolePermissions(rolePerm map[string]RolePermissions)
 
 	// Start the server.
 	// This returns the primary connection address for use in discovery.

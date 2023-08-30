@@ -2,7 +2,7 @@ package authnstore_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/core/authn/authnstore"
 	"golang.org/x/exp/slog"
 	"os"
@@ -22,7 +22,7 @@ const unpwFileName = "testunpwstore.passwd"
 var unpwFilePath string
 
 var tempFolder string
-var algo = authn.PWHASH_ARGON2id
+var algo = auth.PWHASH_ARGON2id
 
 // TestMain for all authn tests, setup of default folders and filenames
 func TestMain(m *testing.M) {
@@ -91,16 +91,20 @@ func TestAdd(t *testing.T) {
 	defer pwStore1.Close()
 
 	// add should succeed
-	err = pwStore1.Add(user1, authn.ClientProfile{ClientID: user1, ClientType: authn.ClientTypeUser})
+	err = pwStore1.Add(user1, auth.ClientProfile{
+		ClientID: user1, ClientType: auth.ClientTypeUser, Role: auth.ClientRoleNone})
 	require.NoError(t, err)
 	// adding existing user should fail
-	err = pwStore1.Add(user1, authn.ClientProfile{ClientID: user1, ClientType: authn.ClientTypeUser})
+	err = pwStore1.Add(user1, auth.ClientProfile{
+		ClientID: user1, ClientType: auth.ClientTypeUser, Role: auth.ClientRoleNone})
 	assert.Error(t, err)
 	// adding missing client should fail
-	err = pwStore1.Add(user2, authn.ClientProfile{ClientID: "", ClientType: authn.ClientTypeUser})
+	err = pwStore1.Add(user2, auth.ClientProfile{
+		ClientID: "", ClientType: auth.ClientTypeUser, Role: auth.ClientRoleNone})
 	assert.Error(t, err)
 	// adding missing type should fail
-	err = pwStore1.Add(user2, authn.ClientProfile{ClientID: user2, ClientType: ""})
+	err = pwStore1.Add(user2, auth.ClientProfile{
+		ClientID: user2, ClientType: "", Role: auth.ClientRoleViewer})
 	assert.Error(t, err)
 
 }
@@ -118,8 +122,10 @@ func TestVerifyHashAlgo(t *testing.T) {
 	require.NoError(t, err)
 	defer pwStore1.Close()
 
-	err = pwStore1.Add(user1, authn.ClientProfile{ClientID: user1, ClientType: authn.ClientTypeUser})
-	err = pwStore1.Add(user2, authn.ClientProfile{ClientID: user2, ClientType: authn.ClientTypeUser})
+	err = pwStore1.Add(user1, auth.ClientProfile{
+		ClientID: user1, ClientType: auth.ClientTypeUser, Role: auth.ClientRoleNone})
+	err = pwStore1.Add(user2, auth.ClientProfile{
+		ClientID: user2, ClientType: auth.ClientTypeUser, Role: auth.ClientRoleNone})
 	err = pwStore1.SetPassword(user1, pass1)
 	require.NoError(t, err)
 	profile1, err := pwStore1.GetProfile(user1)
@@ -159,9 +165,9 @@ func TestVerifyHashAlgo(t *testing.T) {
 
 // verify password
 func TestVerifyBCryptAlgo(t *testing.T) {
-	algo = authn.PWHASH_BCRYPT
+	algo = auth.PWHASH_BCRYPT
 	TestVerifyHashAlgo(t)
-	algo = authn.PWHASH_ARGON2id
+	algo = auth.PWHASH_ARGON2id
 }
 
 func TestName(t *testing.T) {
@@ -173,7 +179,8 @@ func TestName(t *testing.T) {
 	err := pwStore1.Open()
 	require.NoError(t, err)
 	defer pwStore1.Close()
-	err = pwStore1.Add(user1, authn.ClientProfile{ClientID: user1, ClientType: authn.ClientTypeUser, DisplayName: name1})
+	err = pwStore1.Add(user1, auth.ClientProfile{
+		ClientID: user1, ClientType: auth.ClientTypeUser, DisplayName: name1, Role: auth.ClientRoleNone})
 
 	entry, err := pwStore1.GetProfile(user1)
 	assert.NoError(t, err)
@@ -193,13 +200,15 @@ func TestSetPasswordTwoStores(t *testing.T) {
 	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath, "")
 	err := pwStore1.Open()
 	require.NoError(t, err)
-	err = pwStore1.Add(user1, authn.ClientProfile{ClientID: user1, ClientType: authn.ClientTypeUser})
+	err = pwStore1.Add(user1,
+		auth.ClientProfile{ClientID: user1, ClientType: auth.ClientTypeUser, Role: auth.ClientRoleNone})
 	require.NoError(t, err)
 	//
 	pwStore2 := authnstore.NewAuthnFileStore(unpwFilePath, "")
 	err = pwStore2.Open()
 	require.NoError(t, err)
-	err = pwStore2.Add(user2, authn.ClientProfile{ClientID: user2, ClientType: authn.ClientTypeUser})
+	err = pwStore2.Add(user2,
+		auth.ClientProfile{ClientID: user2, ClientType: auth.ClientTypeUser, Role: auth.ClientRoleNone})
 	require.NoError(t, err)
 	pwStore1.Reload()
 	time.Sleep(time.Millisecond)
@@ -270,7 +279,8 @@ func TestConcurrentReadWrite(t *testing.T) {
 	go func() {
 		for i = 0; i < 30; i++ {
 			thingID := fmt.Sprintf("thing-%d", i)
-			err = pwStore1.Add(thingID, authn.ClientProfile{ClientID: thingID, ClientType: authn.ClientTypeUser})
+			err = pwStore1.Add(thingID,
+				auth.ClientProfile{ClientID: thingID, ClientType: auth.ClientTypeUser, Role: auth.ClientRoleNone})
 			time.Sleep(time.Millisecond * 1)
 			if err != nil {
 				assert.NoError(t, err)
@@ -296,7 +306,7 @@ func TestConcurrentReadWrite(t *testing.T) {
 }
 
 func TestWritePwToBadTempFolder(t *testing.T) {
-	pws := make(map[string]authn.AuthnEntry)
+	pws := make(map[string]auth.AuthnEntry)
 	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath, "")
 	err := pwStore1.Open()
 	assert.NoError(t, err)
@@ -328,25 +338,28 @@ func TestUpdate(t *testing.T) {
 	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath, "")
 	err := pwStore1.Open()
 	require.NoError(t, err)
-	err = pwStore1.Add(user1, authn.ClientProfile{ClientID: user1, ClientType: authn.ClientTypeUser, DisplayName: name1})
+	err = pwStore1.Add(user1, auth.ClientProfile{ClientID: user1,
+		ClientType: auth.ClientTypeUser, DisplayName: name1, Role: auth.ClientRoleNone})
 	require.NoError(t, err)
 
 	// update must be of the same user
-	err = pwStore1.Update(user1, authn.ClientProfile{ClientID: user2, ClientType: authn.ClientTypeUser})
+	err = pwStore1.Update(user1, auth.ClientProfile{ClientID: user2, ClientType: auth.ClientTypeUser})
 	assert.Error(t, err)
 
 	// update must succeed
-	err = pwStore1.Update(user1, authn.ClientProfile{
-		ClientID: user1, ClientType: authn.ClientTypeUser, DisplayName: name2, PubKey: key1, ValiditySec: 1,
+	err = pwStore1.Update(user1, auth.ClientProfile{
+		ClientID: user1, ClientType: auth.ClientTypeUser, DisplayName: name2, PubKey: key1,
+		TokenValidity: time.Second,
 	})
 	assert.NoError(t, err)
 	prof, err := pwStore1.GetProfile(user1)
 	assert.NoError(t, err)
 	assert.Equal(t, name2, prof.DisplayName)
 	assert.Equal(t, key1, prof.PubKey)
-	assert.Equal(t, 1, prof.ValiditySec)
+	assert.Equal(t, time.Second, prof.TokenValidity)
 
 	// update of non-existing user should fail
-	err = pwStore1.Update("notauser", authn.ClientProfile{ClientID: user1, ClientType: authn.ClientTypeUser})
+	err = pwStore1.Update(
+		"notauser", auth.ClientProfile{ClientID: user1, ClientType: auth.ClientTypeUser})
 	assert.Error(t, err)
 }

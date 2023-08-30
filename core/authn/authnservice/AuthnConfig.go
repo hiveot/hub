@@ -2,8 +2,9 @@ package authnservice
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/auth"
 	"path"
+	"time"
 )
 
 // AuthnConfig contains the authn service configuration
@@ -16,11 +17,11 @@ type AuthnConfig struct {
 	Encryption string `yaml:"encryption,omitempty"`
 
 	// Auth token validity for devices in seconds
-	DeviceTokenValidity int `yaml:"deviceTokenValidity,omitempty"`
+	DeviceTokenValidity time.Duration `yaml:"deviceTokenValidity,omitempty"`
 	// Auth token validity for services in seconds
-	ServiceTokenValidity int `yaml:"serviceTokenValidity,omitempty"`
+	ServiceTokenValidity time.Duration `yaml:"serviceTokenValidity,omitempty"`
 	// Auth token validity for users in seconds
-	UserTokenValidity int `yaml:"userTokenValidity,omitempty"`
+	UserTokenValidity time.Duration `yaml:"userTokenValidity,omitempty"`
 
 	// NoAutoStart prevents the authn service for auto starting. Intended for testing or custom implementation.
 	NoAutoStart bool `yaml:"noAutoStart,omitempty"`
@@ -32,27 +33,27 @@ type AuthnConfig struct {
 func (cfg *AuthnConfig) Setup(storesDir string) error {
 
 	if cfg.PasswordFile == "" {
-		cfg.PasswordFile = authn.DefaultPasswordFile
+		cfg.PasswordFile = auth.DefaultPasswordFile
 	}
 	if !path.IsAbs(cfg.PasswordFile) {
 		cfg.PasswordFile = path.Join(storesDir, "authn", cfg.PasswordFile)
 	}
 
 	if cfg.Encryption == "" {
-		cfg.Encryption = authn.PWHASH_ARGON2id
+		cfg.Encryption = auth.PWHASH_ARGON2id
 	}
-	if cfg.Encryption != authn.PWHASH_BCRYPT && cfg.Encryption != authn.PWHASH_ARGON2id {
+	if cfg.Encryption != auth.PWHASH_BCRYPT && cfg.Encryption != auth.PWHASH_ARGON2id {
 		return fmt.Errorf("unknown password encryption method: %s", cfg.Encryption)
 	}
 
 	if cfg.DeviceTokenValidity == 0 {
-		cfg.DeviceTokenValidity = authn.DefaultDeviceTokenValiditySec
+		cfg.DeviceTokenValidity = auth.DefaultDeviceTokenValidity
 	}
 	if cfg.ServiceTokenValidity == 0 {
-		cfg.ServiceTokenValidity = authn.DefaultServiceTokenValiditySec
+		cfg.ServiceTokenValidity = auth.DefaultServiceTokenValidity
 	}
 	if cfg.UserTokenValidity == 0 {
-		cfg.UserTokenValidity = authn.DefaultUserTokenValiditySec
+		cfg.UserTokenValidity = auth.DefaultUserTokenValidity
 	}
 
 	return nil

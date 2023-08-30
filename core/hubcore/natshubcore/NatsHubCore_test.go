@@ -1,6 +1,7 @@
 package natshubcore_test
 
 import (
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/core/config"
@@ -65,7 +66,7 @@ func TestPubSub_ConnectAuthNKey(t *testing.T) {
 	require.NoError(t, err)
 	_, err = hub.AuthnSvc.MngService.AddService(service1ID, "service 1", service1Pub, 0)
 	require.NoError(t, err)
-	err = hub.AuthzSvc.AddUser(service1ID, authz.UserRoleViewer, authz.AllGroupID)
+	err = hub.AuthzSvc.AddUser(service1ID, auth.ClientRoleViewer, authz.AllGroupID)
 	require.NoError(t, err)
 
 	// service1 subscribes
@@ -119,9 +120,9 @@ func TestPubSub_AuthPassword(t *testing.T) {
 	// assign clients to group
 	err = core.AuthzSvc.CreateGroup(group1ID, "group 1", 0)
 	require.NoError(t, err)
-	err = core.AuthzSvc.AddUser(user1ID, authz.UserRoleViewer, group1ID)
+	err = core.AuthzSvc.AddUser(user1ID, auth.ClientRoleViewer, group1ID)
 	require.NoError(t, err)
-	err = core.AuthzSvc.AddUser(service1ID, authz.UserRoleViewer, group1ID)
+	err = core.AuthzSvc.AddUser(service1ID, auth.ClientRoleViewer, group1ID)
 	require.NoError(t, err)
 	err = core.AuthzSvc.AddThing(thing1ID, group1ID)
 	require.NoError(t, err)

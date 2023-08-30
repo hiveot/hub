@@ -2,7 +2,7 @@ package authnservice
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 	"golang.org/x/exp/slog"
@@ -11,7 +11,7 @@ import (
 // AuthnUserBinding binds the service to a message based API
 // This unmarshal requests and marshals responses
 type AuthnUserBinding struct {
-	svc   authn.IAuthnUser
+	svc   auth.IAuthnUser
 	clSub hubclient.ISubscription
 	hc    hubclient.IHubClient
 }
@@ -20,17 +20,17 @@ type AuthnUserBinding struct {
 func (binding *AuthnUserBinding) handleClientActions(action *hubclient.ActionMessage) error {
 	slog.Info("handleClientActions", slog.String("actionID", action.ActionID))
 	switch action.ActionID {
-	case authn.GetProfileAction:
+	case auth.GetProfileAction:
 		// use the current client
 		profile, err := binding.svc.GetProfile(action.ClientID)
 		if err == nil {
-			resp := authn.GetProfileResp{Profile: profile}
+			resp := auth.GetProfileResp{Profile: profile}
 			reply, _ := ser.Marshal(&resp)
 			action.SendReply(reply)
 		}
 		return err
-	case authn.NewTokenAction:
-		req := &authn.NewTokenReq{}
+	case auth.NewTokenAction:
+		req := &auth.NewTokenReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -42,26 +42,26 @@ func (binding *AuthnUserBinding) handleClientActions(action *hubclient.ActionMes
 		}
 		newToken, err := binding.svc.NewToken(action.ClientID, req.Password)
 		if err == nil {
-			resp := authn.NewTokenResp{Token: newToken}
+			resp := auth.NewTokenResp{Token: newToken}
 			reply, _ := ser.Marshal(resp)
 			action.SendReply(reply)
 		}
 		return err
-	case authn.RefreshAction:
-		req := &authn.RefreshReq{}
+	case auth.RefreshAction:
+		req := &auth.RefreshReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
 		newToken, err := binding.svc.Refresh(action.ClientID, req.OldToken)
 		if err == nil {
-			resp := authn.RefreshResp{NewToken: newToken}
+			resp := auth.RefreshResp{NewToken: newToken}
 			reply, _ := ser.Marshal(resp)
 			action.SendReply(reply)
 		}
 		return err
-	case authn.UpdateNameAction:
-		req := &authn.UpdateNameReq{}
+	case auth.UpdateNameAction:
+		req := &auth.UpdateNameReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -71,8 +71,8 @@ func (binding *AuthnUserBinding) handleClientActions(action *hubclient.ActionMes
 			action.SendAck()
 		}
 		return err
-	case authn.UpdatePasswordAction:
-		req := &authn.UpdatePasswordReq{}
+	case auth.UpdatePasswordAction:
+		req := &auth.UpdatePasswordReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -82,8 +82,8 @@ func (binding *AuthnUserBinding) handleClientActions(action *hubclient.ActionMes
 			action.SendAck()
 		}
 		return err
-	case authn.UpdatePubKeyAction:
-		req := &authn.UpdatePubKeyReq{}
+	case auth.UpdatePubKeyAction:
+		req := &auth.UpdatePubKeyReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -102,7 +102,7 @@ func (binding *AuthnUserBinding) handleClientActions(action *hubclient.ActionMes
 // Register the binding subscription using the given connection
 func (binding *AuthnUserBinding) Start() (err error) {
 	// if the first succeeds then 2nd will succeed as well
-	binding.clSub, _ = binding.hc.SubActions(authn.ClientAuthnCapability, binding.handleClientActions)
+	binding.clSub, _ = binding.hc.SubActions(auth.ClientAuthnCapability, binding.handleClientActions)
 	return err
 }
 
@@ -115,7 +115,7 @@ func (binding *AuthnUserBinding) Stop() {
 //
 //	svc is the authn svc to bind to.
 //	hc is the hub client, connected using the svc credentials
-func NewAuthnUserBinding(svc authn.IAuthnUser, hc hubclient.IHubClient) *AuthnUserBinding {
+func NewAuthnUserBinding(svc auth.IAuthnUser, hc hubclient.IHubClient) *AuthnUserBinding {
 	an := &AuthnUserBinding{
 		svc: svc,
 		hc:  hc,

@@ -1,10 +1,11 @@
 package authnclient
 
 import (
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 	"golang.org/x/exp/slog"
+	"time"
 )
 
 // AuthnManageClient is a client for the authn service for administrators
@@ -23,7 +24,7 @@ func (mngAuthn *AuthnManageClient) pubReq(action string, req interface{}, resp i
 		msg, _ = ser.Marshal(req)
 	}
 	data, err := mngAuthn.hc.PubAction(
-		mngAuthn.serviceID, authn.ManageAuthnCapability, action, msg)
+		mngAuthn.serviceID, auth.ManageAuthnCapability, action, msg)
 
 	err = mngAuthn.hc.ParseResponse(data, err, resp)
 
@@ -31,30 +32,34 @@ func (mngAuthn *AuthnManageClient) pubReq(action string, req interface{}, resp i
 }
 
 // AddDevice adds an IoT device and generates an authentication token
-func (mngAuthn *AuthnManageClient) AddDevice(deviceID string, displayName string, pubKey string, validitySec int) (string, error) {
+func (mngAuthn *AuthnManageClient) AddDevice(
+	deviceID string, displayName string, pubKey string, tokenValidity time.Duration) (string, error) {
+
 	slog.Info("AddDevice", "deviceID", deviceID)
-	req := authn.AddDeviceReq{
-		DeviceID:    deviceID,
-		DisplayName: displayName,
-		PubKey:      pubKey,
-		ValiditySec: validitySec,
+	req := auth.AddDeviceReq{
+		DeviceID:      deviceID,
+		DisplayName:   displayName,
+		PubKey:        pubKey,
+		TokenValidity: tokenValidity,
 	}
-	resp := authn.AddDeviceResp{}
-	err := mngAuthn.pubReq(authn.AddDeviceAction, &req, &resp)
+	resp := auth.AddDeviceResp{}
+	err := mngAuthn.pubReq(auth.AddDeviceAction, &req, &resp)
 	return resp.Token, err
 }
 
 // AddService adds a service.
-func (mngAuthn *AuthnManageClient) AddService(serviceID string, displayName string, pubKey string, validitySec int) (string, error) {
+func (mngAuthn *AuthnManageClient) AddService(
+	serviceID string, displayName string, pubKey string, tokenValidity time.Duration) (string, error) {
+
 	slog.Info("AddService", "serviceID", serviceID)
-	req := authn.AddServiceReq{
-		ServiceID:   serviceID,
-		DisplayName: displayName,
-		PubKey:      pubKey,
-		ValiditySec: validitySec,
+	req := auth.AddServiceReq{
+		ServiceID:     serviceID,
+		DisplayName:   displayName,
+		PubKey:        pubKey,
+		TokenValidity: tokenValidity,
 	}
-	resp := authn.AddServiceResp{}
-	err := mngAuthn.pubReq(authn.AddServiceAction, &req, &resp)
+	resp := auth.AddServiceResp{}
+	err := mngAuthn.pubReq(auth.AddServiceAction, &req, &resp)
 	return resp.Token, err
 }
 
@@ -68,67 +73,72 @@ func (mngAuthn *AuthnManageClient) AddService(serviceID string, displayName stri
 //	pubKey is the user's public key string, needed to connect with JWT
 func (mngAuthn *AuthnManageClient) AddUser(userID string, displayName string, password string, pubKey string) (string, error) {
 	slog.Info("AddUser", "userID", userID)
-	req := authn.AddUserReq{
+	req := auth.AddUserReq{
 		UserID:      userID,
 		DisplayName: displayName,
 		Password:    password,
 		PubKey:      pubKey,
 	}
-	resp := authn.AddUserResp{}
-	err := mngAuthn.pubReq(authn.AddUserAction, &req, &resp)
+	resp := auth.AddUserResp{}
+	err := mngAuthn.pubReq(auth.AddUserAction, &req, &resp)
 	return resp.Token, err
 }
 
 // GetCount returns the number of clients in the store
 func (mngAuthn *AuthnManageClient) GetCount() (n int, err error) {
-	resp := authn.GetCountResp{}
-	err = mngAuthn.pubReq(authn.GetCountAction, nil, &resp)
+	resp := auth.GetCountResp{}
+	err = mngAuthn.pubReq(auth.GetCountAction, nil, &resp)
 	return resp.N, err
 }
+
+// GetAuthClientList provides a list of clients to apply to the message server
+//func (mngAuthn *AuthnManageClient) GetAuthClientList() []msgserver.AuthClient {
+//	//FIXME
+//}
 
 // GetProfile returns a client's profile
 // Users can only get their own profile.
 // Managers can get other clients profiles.
-func (mngAuthn *AuthnManageClient) GetProfile(clientID string) (profile authn.ClientProfile, err error) {
-	req := authn.GetProfileReq{
+func (mngAuthn *AuthnManageClient) GetProfile(clientID string) (profile auth.ClientProfile, err error) {
+	req := auth.GetProfileReq{
 		ClientID: clientID,
 	}
-	resp := authn.GetProfileResp{}
-	err = mngAuthn.pubReq(authn.GetProfileAction, &req, &resp)
+	resp := auth.GetProfileResp{}
+	err = mngAuthn.pubReq(auth.GetProfileAction, &req, &resp)
 	return resp.Profile, err
 }
 
 // GetProfiles provide a list of known clients and their info.
 // The caller must be an administrator or service.
-func (mngAuthn *AuthnManageClient) GetProfiles() (profiles []authn.ClientProfile, err error) {
-	resp := authn.GetProfilesResp{}
-	err = mngAuthn.pubReq(authn.GetProfilesAction, nil, &resp)
+func (mngAuthn *AuthnManageClient) GetProfiles() (profiles []auth.ClientProfile, err error) {
+	resp := auth.GetProfilesResp{}
+	err = mngAuthn.pubReq(auth.GetProfilesAction, nil, &resp)
 	return resp.Profiles, err
 }
 
 // RemoveClient removes a client and disables authentication
 // Existing tokens are immediately expired (tbd)
-func (mngAuthn *AuthnManageClient) RemoveClient(clientID string) error {
-	req := authn.RemoveClientReq{
+func (mngAuthn *AuthnManageClient) RemoveUser(clientID string) error {
+	req := auth.RemoveClientReq{
 		ClientID: clientID,
 	}
-	err := mngAuthn.pubReq(authn.RemoveClientAction, &req, nil)
+	err := mngAuthn.pubReq(auth.RemoveClientAction, &req, nil)
 	return err
 }
 
 // UpdateClient updates a client's profile
-func (mngAuthn *AuthnManageClient) UpdateClient(clientID string, prof authn.ClientProfile) error {
-	req := &authn.UpdateClientReq{
+func (mngAuthn *AuthnManageClient) UpdateUser(clientID string, prof auth.ClientProfile) error {
+	req := &auth.UpdateClientReq{
 		ClientID: clientID,
 		Profile:  prof,
 	}
-	err := mngAuthn.pubReq(authn.UpdateClientAction, req, nil)
+	err := mngAuthn.pubReq(auth.UpdateClientAction, req, nil)
 	return err
 }
 
 // NewAuthnManageClient returns an authn management client for the given hubclient connection
-func NewAuthnManageClient(hc hubclient.IHubClient) authn.IAuthnManage {
-	bindingID := authn.AuthnServiceName
+func NewAuthnManageClient(hc hubclient.IHubClient) auth.IAuthnManage {
+	bindingID := auth.AuthServiceName
 
 	cl := AuthnManageClient{
 		hc:        hc,

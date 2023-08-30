@@ -1,4 +1,4 @@
-package authn
+package auth
 
 // IAuthnTokenizer is the interface of the token generator and validator for the
 // underlying messaging authentication.

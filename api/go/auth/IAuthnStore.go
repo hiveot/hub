@@ -1,4 +1,6 @@
-package authn
+package auth
+
+import "github.com/hiveot/hub/api/go/msgserver"
 
 // supported password hashes
 const (
@@ -15,7 +17,7 @@ type AuthnEntry struct {
 	// Client's profile
 	ClientProfile
 
-	// password encrypted with argon2id or bcrypt
+	// PasswordHash password encrypted with argon2id or bcrypt
 	PasswordHash string
 }
 
@@ -32,17 +34,21 @@ type IAuthnStore interface {
 	// Count returns the number of clients in the store
 	Count() int
 
+	// GetAuthClientList provides a list of clients in a format that can
+	// directly be applied to the message server.
+	GetAuthClientList() []msgserver.AuthClient
+
+	// GetEntries returns a list of client profiles including the password hash
+	// Intended to obtain auth info to apply to the messaging server
+	// For internal auth usage only.
+	GetEntries() (entries []AuthnEntry)
+
 	// GetProfile returns the client's profile
 	// Returns an error if the clientID doesn't exist
 	GetProfile(clientID string) (profile ClientProfile, err error)
 
 	// GetProfiles returns all client profiles in the store
 	GetProfiles() (entries []ClientProfile, err error)
-
-	// GetEntries returns a list of client profiles including the password hash
-	// Intended to obtain auth info to apply to the messaging server
-	// For internal auth usage only.
-	GetEntries() (entries []AuthnEntry)
 
 	// Open the store
 	Open() error

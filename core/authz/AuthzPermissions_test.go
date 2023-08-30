@@ -1,8 +1,7 @@
 package authz_test
 
 import (
-	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/authz"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/core/authz/authzclient"
 	"github.com/hiveot/hub/core/authz/authzservice"
 	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
@@ -54,28 +53,28 @@ var group1ID = "group1"
 var group2ID = "group2"
 
 // test users
-var authzTestClients = []authn.AuthnEntry{
-	{ClientProfile: authn.ClientProfile{
+var authzTestClients = []auth.AuthnEntry{
+	{ClientProfile: auth.ClientProfile{
 		ClientID:    device1ID,
-		ClientType:  authn.ClientTypeDevice,
+		ClientType:  auth.ClientTypeDevice,
 		DisplayName: "device1 1",
 		PubKey:      device1Pub,
 	}},
-	{ClientProfile: authn.ClientProfile{
+	{ClientProfile: auth.ClientProfile{
 		ClientID:    user1ID,
-		ClientType:  authn.ClientTypeUser,
+		ClientType:  auth.ClientTypeUser,
 		DisplayName: "user 1",
 	}, PasswordHash: string(user1bcrypt),
 	},
-	{ClientProfile: authn.ClientProfile{
+	{ClientProfile: auth.ClientProfile{
 		ClientID:    user2ID,
-		ClientType:  authn.ClientTypeUser,
+		ClientType:  auth.ClientTypeUser,
 		DisplayName: "user 2",
 		PubKey:      user2Pub,
 	}},
-	{ClientProfile: authn.ClientProfile{
+	{ClientProfile: auth.ClientProfile{
 		ClientID:    service1ID,
-		ClientType:  authn.ClientTypeService,
+		ClientType:  auth.ClientTypeService,
 		DisplayName: "service 1",
 		PubKey:      service1Pub,
 	}},
@@ -83,7 +82,7 @@ var authzTestClients = []authn.AuthnEntry{
 
 // Create a new authz service with empty acl list
 // Returns the authz and authn services for use in testing
-func startTestAuthzService() (svc authz.IAuthz, closeFn func()) {
+func startTestAuthzService() (svc auth.IAuthz, closeFn func()) {
 	cfg := authzservice.AuthzConfig{
 		DataDir: "",
 	}
@@ -183,8 +182,8 @@ func TestMain(m *testing.M) {
 //
 //	// services can do whatever as a manager in the all group
 //	// the manager in the allgroup takes precedence over the operator role in group1
-//	_ = svc.SetUserRole(client1ID, authz.UserRoleOperator, group1ID)
-//	_ = svc.SetUserRole(client1ID, authz.UserRoleManager, authz.AllGroupID)
+//	_ = svc.SetUserRole(client1ID, authz.ClientRoleOperator, group1ID)
+//	_ = svc.SetUserRole(client1ID, authz.ClientRoleManager, authz.AllGroupID)
 //	perms, _ := svc.GetPermissions(client1ID, []string{thingID1})
 //	thingPerm := perms[thingID1]
 //
@@ -212,10 +211,10 @@ func TestMain(m *testing.M) {
 //	require.NoError(t, err)
 //	_ = svc.AddSource(device1ID, thingID2, group1ID)
 //	_ = svc.AddSource(device1ID, deviceID, group1ID)
-//	_ = svc.AddUser(client1ID, authz.UserRoleOperator, group1ID)
+//	_ = svc.AddUser(client1ID, authz.ClientRoleOperator, group1ID)
 //
 //	// operators can readTD, readEvent, emitAction
-//	_ = svc.SetUserRole(client1ID, authz.UserRoleOperator, group1ID)
+//	_ = svc.SetUserRole(client1ID, authz.ClientRoleOperator, group1ID)
 //	perms, _ := svc.GetPermissions(client1ID, []string{thingID1})
 //	thingPerm := perms[thingID1]
 //
@@ -243,7 +242,7 @@ func TestMain(m *testing.M) {
 //	_ = svc.AddSource(device1ID, thingID2, group1ID)
 //
 //	// viewers role can read TD
-//	_ = svc.AddUser(user1ID, authz.UserRoleViewer, group1ID)
+//	_ = svc.AddUser(user1ID, authz.ClientRoleViewer, group1ID)
 //	perms, _ := svc.GetPermissions(user1ID, []string{thingID1})
 //	thingPerm := perms[thingID1]
 //
@@ -293,9 +292,9 @@ func TestMain(m *testing.M) {
 //	_ = svc.AddSource(device1ID, thing1ID, group1ID)
 //	_ = svc.AddSource(device1ID, thing1ID, group2ID)
 //	_ = svc.AddSource(device1ID, thing1ID, group3ID)
-//	_ = svc.AddUser(user1ID, authz.UserRoleViewer, group1ID)
-//	_ = svc.AddUser(user1ID, authz.UserRoleManager, group2ID)
-//	_ = svc.AddUser(user1ID, authz.UserRoleOperator, group3ID)
+//	_ = svc.AddUser(user1ID, authz.ClientRoleViewer, group1ID)
+//	_ = svc.AddUser(user1ID, authz.ClientRoleManager, group2ID)
+//	_ = svc.AddUser(user1ID, authz.ClientRoleOperator, group3ID)
 //
 //	// as a manager, permissions to read events and emit actions
 //	perms, err := svc.GetPermissions(user1ID, []string{thing1ID})

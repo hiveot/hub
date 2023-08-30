@@ -1,7 +1,7 @@
-package authn
+package auth
 
 // ClientAuthnCapability is the name of the Thing/Capability that handles client requests
-const ClientAuthnCapability = "client"
+const ClientAuthnCapability = "user"
 
 // below a list of actions and their payload
 

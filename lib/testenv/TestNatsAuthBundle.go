@@ -2,7 +2,7 @@
 package testenv
 
 import (
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nkeys"
 )
@@ -202,7 +202,7 @@ func CreateUserCreds(clientID string,
 	//claims.Audience = appAccountName
 	claims.IssuerAccount, _ = acctKey.PublicKey()
 	claims.Name = clientID
-	claims.Tags.Add("clientType", authn.ClientTypeUser)
+	claims.Tags.Add("clientType", auth.ClientTypeUser)
 	// add identification and authorization to user
 	// see also: https://natsbyexample.com/examples/auth/nkeys-jwts/go
 	if pub != nil {

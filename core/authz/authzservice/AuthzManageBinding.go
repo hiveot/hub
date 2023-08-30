@@ -3,6 +3,7 @@ package authzservice
 import (
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/lib/ser"
@@ -11,7 +12,7 @@ import (
 
 // AuthzBinding is a messaging binding for marshalling Authz service messages.
 type AuthzBinding struct {
-	svc    authz.IAuthz
+	svc    auth.IAuthz
 	hc     hubclient.IHubClient
 	mngSub hubclient.ISubscription
 }
@@ -200,7 +201,7 @@ func (binding *AuthzBinding) Start() error {
 		return fmt.Errorf("authz service not provided to binding")
 	}
 
-	sub, err := binding.hc.SubActions(authz.ManageAuthzCapability, binding.handleManageActions)
+	sub, err := binding.hc.SubActions(auth.ManageAuthzCapability, binding.handleManageActions)
 	binding.mngSub = sub
 	return err
 }
@@ -218,7 +219,7 @@ func (binding *AuthzBinding) Stop() {
 //
 //	svc is the authz service that handles the requests
 //	hc is an existing client connection to the messaging server used to subscribe to actions
-func NewAuthzBinding(svc authz.IAuthz, hc hubclient.IHubClient) AuthzBinding {
+func NewAuthzBinding(svc auth.IAuthz, hc hubclient.IHubClient) AuthzBinding {
 	binding := AuthzBinding{
 		svc:    svc,
 		hc:     hc,

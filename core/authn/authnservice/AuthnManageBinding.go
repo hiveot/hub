@@ -2,7 +2,7 @@ package authnservice
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 	"golang.org/x/exp/slog"
@@ -11,7 +11,7 @@ import (
 // AuthnManageBinding binds message api to the management service
 // This unmarshal requests and marshals responses
 type AuthnManageBinding struct {
-	svc    authn.IAuthnManage
+	svc    auth.IAuthnManage
 	mngSub hubclient.ISubscription
 	hc     hubclient.IHubClient
 }
@@ -23,90 +23,93 @@ func (binding *AuthnManageBinding) handleManageActions(action *hubclient.ActionM
 
 	// TODO: doublecheck the caller is an admin or svc
 	switch action.ActionID {
-	case authn.AddDeviceAction:
-		req := authn.AddDeviceReq{}
+	case auth.AddDeviceAction:
+		req := auth.AddDeviceReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
-		token, err := binding.svc.AddDevice(req.DeviceID, req.DisplayName, req.PubKey, req.ValiditySec)
+		token, err := binding.svc.AddDevice(
+			req.DeviceID, req.DisplayName, req.PubKey, req.TokenValidity)
 		if err == nil {
-			resp := authn.AddDeviceResp{Token: token}
+			resp := auth.AddDeviceResp{Token: token}
 			reply, _ := ser.Marshal(&resp)
 			action.SendReply(reply)
 		}
 		return err
-	case authn.AddServiceAction:
-		req := authn.AddServiceReq{}
+	case auth.AddServiceAction:
+		req := auth.AddServiceReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
-		token, err := binding.svc.AddService(req.ServiceID, req.DisplayName, req.PubKey, req.ValiditySec)
+		token, err := binding.svc.AddService(
+			req.ServiceID, req.DisplayName, req.PubKey, req.TokenValidity)
 		if err == nil {
-			resp := authn.AddServiceResp{Token: token}
+			resp := auth.AddServiceResp{Token: token}
 			reply, _ := ser.Marshal(&resp)
 			action.SendReply(reply)
 		}
 		return err
-	case authn.AddUserAction:
-		req := authn.AddUserReq{}
+	case auth.AddUserAction:
+		req := auth.AddUserReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
-		token, err := binding.svc.AddUser(req.UserID, req.DisplayName, req.Password, req.PubKey)
+		token, err := binding.svc.AddUser(
+			req.UserID, req.DisplayName, req.Password, req.PubKey)
 		if err == nil {
-			resp := authn.AddUserResp{Token: token}
+			resp := auth.AddUserResp{Token: token}
 			reply, _ := ser.Marshal(&resp)
 			action.SendReply(reply)
 		}
 		return err
-	case authn.GetCountAction:
+	case auth.GetCountAction:
 		n, err := binding.svc.GetCount()
-		resp := authn.GetCountResp{N: n}
+		resp := auth.GetCountResp{N: n}
 		reply, _ := ser.Marshal(&resp)
 		action.SendReply(reply)
 		return err
-	case authn.GetProfileAction:
-		req := authn.GetProfileReq{}
+	case auth.GetProfileAction:
+		req := auth.GetProfileReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
 		profile, err := binding.svc.GetProfile(req.ClientID)
 		if err == nil {
-			resp := authn.GetProfileResp{Profile: profile}
+			resp := auth.GetProfileResp{Profile: profile}
 			reply, _ := ser.Marshal(&resp)
 			action.SendReply(reply)
 		}
 		return err
-	case authn.GetProfilesAction:
+	case auth.GetProfilesAction:
 		clientList, err := binding.svc.GetProfiles()
 		if err == nil {
-			resp := authn.GetProfilesResp{Profiles: clientList}
+			resp := auth.GetProfilesResp{Profiles: clientList}
 			reply, _ := ser.Marshal(resp)
 			action.SendReply(reply)
 		}
 		return err
-	case authn.RemoveClientAction:
-		req := &authn.RemoveClientReq{}
+	case auth.RemoveClientAction:
+		req := &auth.RemoveClientReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
-		err = binding.svc.RemoveClient(req.ClientID)
+		err = binding.svc.RemoveUser(req.ClientID)
 		if err == nil {
 			action.SendAck()
 		}
 		return err
-	case authn.UpdateClientAction:
-		req := &authn.UpdateClientReq{}
+	case auth.UpdateClientAction:
+		req := &auth.UpdateClientReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
-		err = binding.svc.UpdateClient(req.ClientID, req.Profile)
+		err = binding.svc.UpdateUser(req.ClientID, req.Profile)
 		if err == nil {
 			action.SendAck()
 		}
@@ -120,7 +123,7 @@ func (binding *AuthnManageBinding) handleManageActions(action *hubclient.ActionM
 // Register the binding subscription using the given connection
 func (binding *AuthnManageBinding) Start() (err error) {
 	// if the first succeeds then 2nd will succeed as well
-	binding.mngSub, err = binding.hc.SubActions(authn.ManageAuthnCapability, binding.handleManageActions)
+	binding.mngSub, err = binding.hc.SubActions(auth.ManageAuthnCapability, binding.handleManageActions)
 	return err
 }
 
@@ -133,7 +136,7 @@ func (binding *AuthnManageBinding) Stop() {
 //
 //	svc is the manage authn svc to bind to.
 //	hc is the hub client, connected using the svc credentials
-func NewAuthnManageBinding(svc authn.IAuthnManage, hc hubclient.IHubClient) *AuthnManageBinding {
+func NewAuthnManageBinding(svc auth.IAuthnManage, hc hubclient.IHubClient) *AuthnManageBinding {
 	an := &AuthnManageBinding{
 		svc: svc,
 		hc:  hc,

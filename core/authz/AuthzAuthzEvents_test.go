@@ -1,6 +1,7 @@
 package authz_test
 
 import (
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
@@ -75,7 +76,7 @@ func TestAllGroup(t *testing.T) {
 
 	// add an all-group viewer (user was already created in startTestAuthzService)
 	// devices are implicitly included
-	err = svc.AddUser(user1ID, authz.UserRoleViewer, authz.AllGroupID)
+	err = svc.AddUser(user1ID, auth.ClientRoleViewer, authz.AllGroupID)
 
 	testSub(t, false, authz.AllGroupID, user1ID, user1Pass, device1ID, device1Key, thing1ID)
 }
@@ -95,7 +96,7 @@ func TestGroup1(t *testing.T) {
 	require.NoError(t, err)
 	err = svc.AddSource(device1ID, thing1ID, group1ID)
 	require.NoError(t, err)
-	err = svc.AddUser(user1ID, authz.UserRoleViewer, group1ID)
+	err = svc.AddUser(user1ID, auth.ClientRoleViewer, group1ID)
 	require.NoError(t, err)
 
 	testSub(t, false, group1ID, user1ID, user1Pass, device1ID, device1Key, thing1ID)
@@ -116,7 +117,7 @@ func TestGroup1NoThing(t *testing.T) {
 	require.NoError(t, err)
 	err = svc.AddSource(device1ID, thing1ID, group1ID)
 	require.NoError(t, err)
-	err = svc.AddUser(user1ID, authz.UserRoleViewer, group1ID)
+	err = svc.AddUser(user1ID, auth.ClientRoleViewer, group1ID)
 	require.NoError(t, err)
 
 	// this should fail
@@ -139,7 +140,7 @@ func TestGroup2NotAMember(t *testing.T) {
 	err = svc.AddSource(device1ID, thing1ID, group1ID)
 	require.NoError(t, err)
 	// user is a member of a different group
-	err = svc.AddUser(user1ID, authz.UserRoleViewer, group2ID)
+	err = svc.AddUser(user1ID, auth.ClientRoleViewer, group2ID)
 	require.NoError(t, err)
 
 	// this should fail

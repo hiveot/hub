@@ -1,6 +1,7 @@
 package authzclient
 
 import (
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/lib/ser"
@@ -17,7 +18,7 @@ type AuthzClient struct {
 // helper for publishing an action request to the authz service
 func (authzClient *AuthzClient) pubReq(action string, msg []byte, resp interface{}) error {
 	// FIXME: identify the calling client in the request
-	data, err := authzClient.hc.PubAction(authz.AuthzServiceName, authz.ManageAuthzCapability, action, msg)
+	data, err := authzClient.hc.PubAction(auth.AuthzServiceName, auth.ManageAuthzCapability, action, msg)
 	err = authzClient.hc.ParseResponse(data, err, resp)
 	return err
 }
@@ -219,7 +220,7 @@ func (authzClient *AuthzClient) Start() error {
 func (authzClient *AuthzClient) Stop() {}
 
 // NewAuthzClient creates a new authz client for use with the hub
-func NewAuthzClient(hc hubclient.IHubClient) authz.IAuthz {
+func NewAuthzClient(hc hubclient.IHubClient) auth.IAuthz {
 	authzClient := &AuthzClient{
 		hc: hc,
 	}
