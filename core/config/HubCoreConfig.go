@@ -2,8 +2,7 @@ package config
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/authn/authnservice"
-	"github.com/hiveot/hub/core/authz/authzservice"
+	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/svcconfig"
@@ -29,8 +28,8 @@ type HubCoreConfig struct {
 
 	NatsServer natsnkeyserver.NatsServerConfig `yaml:"natsserver"`
 	//MqttServer  mqttserver.MqttServerConfig `yaml:"mqttserver"`
-	Authn authnservice.AuthnConfig `yaml:"authn"`
-	Authz authzservice.AuthzConfig `yaml:"authz"`
+
+	Auth authservice.AuthConfig `yaml:"auth"`
 }
 
 // Setup creates and loads certificate and key files
@@ -114,11 +113,7 @@ func (cfg *HubCoreConfig) Setup(homeDir string, configFile string, new bool) err
 	}
 
 	// 4: setup authn config
-	err = cfg.Authn.Setup(f.Stores)
-	if err != nil {
-		return err
-	}
-	err = cfg.Authz.Setup(f.Stores)
+	err = cfg.Auth.Setup(f.Stores)
 	if err != nil {
 		return err
 	}

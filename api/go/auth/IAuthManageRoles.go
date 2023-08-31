@@ -2,8 +2,8 @@ package auth
 
 const DefaultAclFilename = "authz.acl"
 
-// AuthzCapability is the name of the Thing/Capability that handles authorization requests
-const AuthzCapability = "authz"
+// AuthManageRolesCapability is the name of the Thing/Capability that handles role requests
+const AuthManageRolesCapability = "manageRoles"
 
 // Predefined user roles.
 const (
@@ -35,20 +35,41 @@ const (
 	ClientRoleViewer = "viewer"
 )
 
-// IAuthz defines the capability to authorize users
-type IAuthz interface {
-	// RegisterRole defines a new role with custom permissions
-	RegisterRole(roleName string)
+// capability address part used in sending messages
+const AuthRolesCapability = "roles"
 
-	// RegisterService authorizes the use of the service to select roles.
-	// This is invoked by a service on startup to ensure the right users can access it.
-	// capRoles is a map of the service capability to the roles that can use it.
-	//
-	//  sourceID is the device/service ID of the source
-	//  capRoles is a map of capabilityID:roles that can use the service capability
-	RegisterService(sourceID string, capRoles map[string][]string)
+// CreateRoleAction defines the service action to create a new custom role
+const CreateRoleAction = "createRole"
 
-	// SetRole updates the role for the user.
+type CreateRoleReq struct {
+	Role string `json:"role"`
+}
+
+// DeleteRoleAction defines the service action to delete a custom role.
+const DeleteRoleAction = "deleteRole"
+
+type DeleteRoleReq struct {
+	Role string `json:"role"`
+}
+
+// SetRoleAction defines the service action to change a client's role
+const SetRoleAction = "setRole"
+
+type SetRoleReq struct {
+	ClientID string `json:"clientID"`
+	Role     string `json:"role"`
+}
+
+// IAuthManageRoles defines the capability to manage roles
+type IAuthManageRoles interface {
+	// CreateRole defines a new role with custom permissions
+	// This returns an error if the role already exists
+	CreateRole(roleName string) error
+
+	// DeleteRole deletes the previously created custom role
+	DeleteRole(roleName string) error
+
+	// SetRole updates the role for the client.
 	// If the role does not exist, this returns an error.
 	SetRole(userID string, role string) error
 }

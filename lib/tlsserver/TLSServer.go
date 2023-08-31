@@ -18,7 +18,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// TLSServer is a simple TLS Server supporting BASIC, Jwt and client certificate authentication
+// TLSServer is a simple TLS MsgServer supporting BASIC, Jwt and client certificate authentication
 type TLSServer struct {
 	address           string
 	port              uint
@@ -119,7 +119,7 @@ func (srv *TLSServer) EnableJwtAuth(verificationKey *ecdsa.PublicKey) {
 	srv.httpAuthenticator.EnableJwtAuth(verificationKey)
 }
 
-// Start the TLS server using the provided CA and Server certificates.
+// Start the TLS server using the provided CA and MsgServer certificates.
 // If a client certificate is provided it must be valid.
 // This configures handling of CORS requests to allow:
 //   - any origin by returning the requested origin (not using wildcard '*').
@@ -209,7 +209,7 @@ func (srv *TLSServer) Stop() {
 	}
 }
 
-// NewTLSServer creates a new TLS Server instance with authentication support.
+// NewTLSServer creates a new TLS MsgServer instance with authentication support.
 // Use AddHandler to handle incoming requests for the given route and indicate if authentication is required.
 //
 // The following authentication methods are supported:
@@ -220,7 +220,7 @@ func (srv *TLSServer) Stop() {
 //
 //	address        server listening address
 //	port           listening port
-//	serverCert     Server TLS certificate
+//	serverCert     MsgServer TLS certificate
 //	caCert         CA certificate to verify client certificates
 //
 // returns TLS server for handling requests

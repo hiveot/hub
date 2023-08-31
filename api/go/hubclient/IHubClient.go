@@ -87,18 +87,29 @@ type IHubClient interface {
 	// Intended for testing or for publishing to special topics.
 	Pub(topic string, payload []byte) error
 
-	// PubAction publishes a request for action.
+	// PubServiceAction publishes a request for action from a service.
 	//
 	// The client's ID is used as the publisher ID of the action.
 	//
 	//	destinationID is the deviceID or serviceID that handles the action for the thing or service capability
+	//	capability is the capability to invoke
+	//  actionID is the name of capability action to invoke
+	//  payload is the optional payload of the action
+	// This returns a response payload if successful and a response is given.
+	PubServiceAction(serviceID string, capability string, actionID string, payload []byte) ([]byte, error)
+
+	// PubThingAction publishes a request for action from a thing.
+	//
+	// The client's ID is used as the publisher ID of the action.
+	//
+	//	sourceID is the deviceID or serviceID that handles the action for the thing or service capability
 	//	thingID is the destination thingID that handles the action
 	//  actionID is the ID of the action as described in the Thing's TD
 	//  payload is the optional payload of the action as described in the Thing's TD
 	// This returns a response payload if successful and a response is given.
-	PubAction(destinationID string, thingID string, actionID string, payload []byte) ([]byte, error)
+	PubThingAction(sourceID string, thingID string, actionID string, payload []byte) ([]byte, error)
 
-	// PubEvent publishes the given event. The payload is an event value as per TD document.
+	// PubEvent publishes the given things event. The payload is an event value as per TD document.
 	//
 	// The client's authentication ID will be included as the publisher ID of the event.
 	//
@@ -122,7 +133,7 @@ type IHubClient interface {
 	// Intended for testing or special topics.
 	Sub(topic string, cb func(topic string, data []byte)) (ISubscription, error)
 
-	// SubActions subscribes to actions requested of this binding.
+	// SubActions subscribes to actions requested of a Thing .
 	// All prior sent actions are ignored. This is intentional to avoid side effects on restart.
 	//
 	// The supported actions are defined in the TD document of the things this binding has published.
@@ -131,15 +142,18 @@ type IHubClient interface {
 	// If the callback returns an error, an error reply message is send.
 	SubActions(thingID string, cb func(msg *ActionMessage) error) (ISubscription, error)
 
-	// SubGroup subscribes to events from things in a group the client is a member of.
+	// SubServiceCapability subscribes a service to a requested capability
+	SubServiceCapability(capability string, cb func(msg *ActionMessage) error) (ISubscription, error)
+
+	// SubStream subscribes to events from things
 	//
-	// Groups are backed by a store that retains messages for a limited duration.
+	// The events stream is backed by a store that retains messages for a limited duration.
 	// This is a JetStream stream in NATS.
 	//
 	// ReceiveLatest is handy to be up to date on all event instead of quering them separately. Only use this if
 	// you're going to retrieve them anyways.
 	//
-	//  groupName is the group to subscribe to.
+	//  name is the stream to subscribe to or "" for the default events stream
 	//	receiveLatest to immediately receive the latest event for each event instance
-	SubGroup(groupName string, receiveLatest bool, cb func(msg *EventMessage)) (ISubscription, error)
+	SubStream(name string, receiveLatest bool, cb func(msg *EventMessage)) (ISubscription, error)
 }

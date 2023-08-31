@@ -1,44 +1,49 @@
 package natsnkeyserver
 
 import (
+	"encoding/base64"
+	"fmt"
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
+	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
+	"github.com/nats-io/nkeys"
 	"golang.org/x/exp/slog"
+	"time"
 )
 
 // viewers can subscribe to all things
-var viewerPermissions = msgserver.RolePermissions{{
+var viewerPermissions = []msgserver.RolePermission{{
 	Prefix:   "things",
 	MsgType:  natshubclient.MessageTypeEvent,
 	AllowSub: true,
 }}
 
 // operators can also publish thing actions
-var operatorPermissions = append(viewerPermissions, msgserver.RolePermissions{{
+var operatorPermissions = append(viewerPermissions, msgserver.RolePermission{
 	Prefix:   "things",
 	MsgType:  natshubclient.MessageTypeAction,
 	AllowPub: true,
-}}...)
+})
 
 // managers can also publish configuration
-var managerPermissions = append(operatorPermissions, msgserver.RolePermissions{{
+var managerPermissions = append(operatorPermissions, msgserver.RolePermission{
 	Prefix:   "things",
 	MsgType:  natshubclient.MessageTypeConfig,
 	AllowPub: true,
-}}...)
+})
 
 // administrators can do all and publish to services
-var adminPermissions = append(managerPermissions, msgserver.RolePermissions{{
+var adminPermissions = append(managerPermissions, msgserver.RolePermission{
 	Prefix:   "svc",
 	MsgType:  natshubclient.MessageTypeAction,
 	AllowPub: true,
 	AllowSub: true,
-}}...)
+})
 
 // DefaultRolePermissions contains the default pub/sub permissions for each user role
-var DefaultRolePermissions = map[string]msgserver.RolePermissions{
+var DefaultRolePermissions = map[string][]msgserver.RolePermission{
 	auth.ClientRoleViewer:   viewerPermissions,
 	auth.ClientRoleOperator: operatorPermissions,
 	auth.ClientRoleManager:  managerPermissions,
@@ -46,10 +51,18 @@ var DefaultRolePermissions = map[string]msgserver.RolePermissions{
 	auth.ClientRoleNone:     nil,
 }
 
-// ApplyAuth reconfigures the server for the given clients and authorization
-// if rolePermissions is nil, use the default role permissions
+// ServicePermissions defines for each role the service capability that can be used
+var ServicePermissions = map[string][]msgserver.RolePermission{}
+
+// ApplyAuth reconfigures the server for authentication and authorization.
+// For each client this applies the permissions associated with the client type and role.
+//
+//	Role permissions can be changed with 'SetRolePermissions'.
+//	Service permissions can be set with 'SetServicePermissions'
 func (srv *NatsNKeyServer) ApplyAuth(clients []msgserver.AuthClient) error {
 
+	// password users authenticate with password while nkey users authenticate with key-pairs.
+	// clients can use both.
 	pwUsers := []*server.User{}
 	nkeyUsers := []*server.NkeyUser{}
 
@@ -90,12 +103,21 @@ func (srv *NatsNKeyServer) ApplyAuth(clients []msgserver.AuthClient) error {
 	return err
 }
 
+// CreateToken uses the public key as token when using nkeys
+func (srv *NatsNKeyServer) CreateToken(
+	clientID string, clientType string, pubKey string, tokenValidity time.Duration) (token string, err error) {
+	if srv.chook == nil {
+		return pubKey, nil
+	}
+	return pubKey, nil
+}
+
 // MakePermissions constructs a permissions object for a client
 // Clients that are sources (device,service) receive hard-coded permissions, while users (user,service) permissions
 // are based on their role.
 func (srv *NatsNKeyServer) MakePermissions(
 	clientInfo msgserver.AuthClient,
-	authzRoles map[string]msgserver.RolePermissions) *server.Permissions {
+	authzRoles map[string][]msgserver.RolePermission) *server.Permissions {
 
 	subPerm := server.SubjectPermission{
 		Allow: []string{},
@@ -148,6 +170,16 @@ func (srv *NatsNKeyServer) MakePermissions(
 		pubPerm.Deny = append(pubPerm.Deny, "$JS.API.STREAM.>")
 	}
 
+	// user role might be allowed to use a service capability
+	sp, found := ServicePermissions[clientInfo.Role]
+	if found && sp != nil {
+		for _, perm := range sp {
+			subject := natshubclient.MakeServiceSubject(
+				perm.SourceID, perm.ThingID, natshubclient.MessageTypeAction, "")
+			pubPerm.Allow = append(pubPerm.Allow, subject)
+		}
+	}
+
 	// devices and services are sources that can publish events and subscribe to actions and config requests
 	if clientInfo.ClientType == auth.ClientTypeDevice || clientInfo.ClientType == auth.ClientTypeService {
 		subject1 := natshubclient.MakeThingsSubject(
@@ -160,7 +192,7 @@ func (srv *NatsNKeyServer) MakePermissions(
 		subPerm.Allow = append(subPerm.Allow, subject2, subject3)
 	}
 
-	// services can also receive action requests on the svc prefix
+	// services can also subscribe to actions on the svc prefix
 	if clientInfo.ClientType == auth.ClientTypeService {
 		subject1 := natshubclient.MakeServiceSubject(
 			clientInfo.ClientID, "", natshubclient.MessageTypeEvent, "")
@@ -176,6 +208,125 @@ func (srv *NatsNKeyServer) MakePermissions(
 }
 
 // SetRolePermissions sets a custom map of user role->[]permissions
-func (srv *NatsNKeyServer) SetRolePermissions(rolePerms map[string]msgserver.RolePermissions) {
+func (srv *NatsNKeyServer) SetRolePermissions(
+	rolePerms map[string][]msgserver.RolePermission) {
 	srv.rolePermissions = rolePerms
+}
+
+// SetServicePermissions adds the service permissions to the roles
+func (srv *NatsNKeyServer) SetServicePermissions(
+	serviceID string, capability string, roles []string) {
+
+	for _, role := range roles {
+		// add the role if needed
+		rp := ServicePermissions[role]
+		if rp == nil {
+			rp = []msgserver.RolePermission{}
+		}
+		rp = append(rp, msgserver.RolePermission{
+			Prefix:   "svc",
+			SourceID: serviceID,
+			ThingID:  capability,
+			MsgType:  natshubclient.MessageTypeAction,
+			MsgName:  "", // all methods of the capability can be used
+			AllowPub: true,
+			AllowSub: false,
+		})
+		ServicePermissions[role] = rp
+	}
+
+}
+
+// ValidateJWTToken checks if the given token belongs the clientID and is valid.
+//   - verify if jwtToken is a valid token
+//   - validate the token isn't expired
+//   - verify the user's public key's nonce based signature
+//     this can only be signed when the user has its private key
+//   - verify the issuer is the signing/account key.
+//
+// Verifying the signedNonce is optional. Use "" to ignore.
+func (srv *NatsNKeyServer) ValidateJWTToken(
+	clientID string, pubKey string, jwtToken string, signedNonce string, nonce string) (err error) {
+
+	// the jwt token is not in the JWT field. Workaround by storing it in the token field.
+	juc, err := jwt.DecodeUserClaims(jwtToken)
+	if err != nil {
+		return fmt.Errorf("unable to decode jwt token:%w", err)
+	}
+	// validate the jwt user claims (not expired)
+	vr := jwt.CreateValidationResults()
+	juc.Validate(vr)
+	if len(vr.Errors()) > 0 {
+		return fmt.Errorf("jwt authn failed: %w", vr.Errors()[0])
+	}
+	// the subject contains the public user nkey
+	userPub, err := nkeys.FromPublicKey(juc.Subject)
+	if err != nil {
+		return fmt.Errorf("user nkey not valid: %w", err)
+	}
+
+	// Verify the nonce based token signature
+	if signedNonce != "" {
+		sig, err := base64.RawURLEncoding.DecodeString(signedNonce)
+		if err != nil {
+			// Allow fallback to normal base64.
+			sig, err = base64.StdEncoding.DecodeString(signedNonce)
+			if err != nil {
+				return fmt.Errorf("signature not valid base64: %w", err)
+			}
+		}
+		// verify the signature of the public key using the nonce
+		// this tells us the user public key is not forged
+		if err = userPub.Verify([]byte(nonce), sig); err != nil {
+			return fmt.Errorf("signature not verified")
+		}
+	}
+	// verify issuer account matches
+	accPub, _ := srv.cfg.AppAccountKP.PublicKey()
+	if juc.Issuer != accPub {
+		return fmt.Errorf("JWT issuer is not known")
+	}
+	// clientID must match the user
+	if juc.Name != clientID {
+		return fmt.Errorf("clientID doesn't match user")
+	}
+
+	//if entry.PubKey != userPub {
+	//	return fmt.Errorf("user %s public key mismatch", clientID)
+	//}
+
+	//acc, err := svc.ns.LookupAccount(juc.IssuerAccount)
+	//if err != nil {
+	//	return fmt.Errorf("JWT issuer is not known")
+	//}
+	//if acc.IsExpired() {
+	//	return fmt.Errorf("Account JWT has expired")
+	//}
+	// no access to account revocation list
+	//if acc.checkUserRevoked(juc.Subject, juc.IssuedAt) {
+	//	return fmt.Errorf("User authentication revoked")
+	//}
+
+	//if !validateSrc(juc, c.host) {
+	//	return fmt.Errorf("Bad src Ip %s", c.host)
+	//	return false
+	//}
+	return nil
+}
+
+// ValidateToken checks if the given token belongs the clientID and is valid.
+// When keys is used this returns success
+// When nkeys is not used this validates the JWT token
+//
+// Verifying the signedNonce is optional. Use "" to ignore.
+func (srv *NatsNKeyServer) ValidateToken(
+	clientID string, pubKey string, oldToken string, signedNonce string, nonce string) (err error) {
+	if srv.chook == nil {
+		// nkeys only
+		if oldToken == "" || pubKey != oldToken {
+			return fmt.Errorf("invalid old token for client '%s'", clientID)
+		}
+		return nil
+	}
+	return srv.ValidateJWTToken(clientID, pubKey, oldToken, signedNonce, nonce)
 }

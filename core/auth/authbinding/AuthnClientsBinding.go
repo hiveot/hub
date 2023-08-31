@@ -1,4 +1,4 @@
-package authnservice
+package authbinding
 
 import (
 	"fmt"
@@ -8,16 +8,16 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-// AuthnManageBinding binds message api to the management service
+// AuthClientsBinding binds message api to the management service
 // This unmarshal requests and marshals responses
-type AuthnManageBinding struct {
-	svc    auth.IAuthnManage
+type AuthClientsBinding struct {
+	svc    auth.IAuthnManageClients
 	mngSub hubclient.ISubscription
 	hc     hubclient.IHubClient
 }
 
 // handle authn management requests published by a hub manager
-func (binding *AuthnManageBinding) handleManageActions(action *hubclient.ActionMessage) error {
+func (binding *AuthClientsBinding) handleManageActions(action *hubclient.ActionMessage) error {
 	slog.Info("handleManageActions",
 		slog.String("actionID", action.ActionID))
 
@@ -58,7 +58,7 @@ func (binding *AuthnManageBinding) handleManageActions(action *hubclient.ActionM
 			return err
 		}
 		token, err := binding.svc.AddUser(
-			req.UserID, req.DisplayName, req.Password, req.PubKey)
+			req.UserID, req.DisplayName, req.Password, req.PubKey, req.Role)
 		if err == nil {
 			resp := auth.AddUserResp{Token: token}
 			reply, _ := ser.Marshal(&resp)
@@ -98,7 +98,7 @@ func (binding *AuthnManageBinding) handleManageActions(action *hubclient.ActionM
 		if err != nil {
 			return err
 		}
-		err = binding.svc.RemoveUser(req.ClientID)
+		err = binding.svc.RemoveClient(req.ClientID)
 		if err == nil {
 			action.SendAck()
 		}
@@ -109,7 +109,7 @@ func (binding *AuthnManageBinding) handleManageActions(action *hubclient.ActionM
 		if err != nil {
 			return err
 		}
-		err = binding.svc.UpdateUser(req.ClientID, req.Profile)
+		err = binding.svc.UpdateClient(req.ClientID, req.Profile)
 		if err == nil {
 			action.SendAck()
 		}
@@ -121,23 +121,23 @@ func (binding *AuthnManageBinding) handleManageActions(action *hubclient.ActionM
 
 // Start subscribes to the actions for management and client capabilities
 // Register the binding subscription using the given connection
-func (binding *AuthnManageBinding) Start() (err error) {
+func (binding *AuthClientsBinding) Start() (err error) {
 	// if the first succeeds then 2nd will succeed as well
-	binding.mngSub, err = binding.hc.SubActions(auth.ManageAuthnCapability, binding.handleManageActions)
+	binding.mngSub, err = binding.hc.SubServiceCapability(auth.AuthManageClientsCapability, binding.handleManageActions)
 	return err
 }
 
 // Stop removes subscriptions
-func (binding *AuthnManageBinding) Stop() {
+func (binding *AuthClientsBinding) Stop() {
 	binding.mngSub.Unsubscribe()
 }
 
-// NewAuthnManageBinding create a messaging binding for the authn management service
+// NewAuthnClientsBinding create a messaging binding to manage clients
 //
 //	svc is the manage authn svc to bind to.
 //	hc is the hub client, connected using the svc credentials
-func NewAuthnManageBinding(svc auth.IAuthnManage, hc hubclient.IHubClient) *AuthnManageBinding {
-	an := &AuthnManageBinding{
+func NewAuthnClientsBinding(svc auth.IAuthnManageClients, hc hubclient.IHubClient) *AuthClientsBinding {
+	an := &AuthClientsBinding{
 		svc: svc,
 		hc:  hc,
 	}

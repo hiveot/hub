@@ -1,4 +1,4 @@
-package authnservice
+package authservice
 
 import (
 	"fmt"
@@ -8,13 +8,13 @@ import (
 	"time"
 )
 
-// AuthnManage handles authentication management requests
+// AuthClientsCapability handles management of devices,users and service clients
 // This applies the request to the store.
 //
 // Note: To apply authn to the messaging server, authz has to be set.
 // Note: Unfortunately authn and authz are tightly coupled in NATS. To set
 // authn, permissions must be known. So for dependencies sake.
-type AuthnManage struct {
+type AuthClientsCapability struct {
 	// clients storage
 	store auth.IAuthnStore
 	// message server to apply changes to
@@ -23,7 +23,7 @@ type AuthnManage struct {
 
 // AddDevice adds an IoT device and generates an authentication token
 // This is handled by the underlying messaging core.
-func (svc *AuthnManage) AddDevice(
+func (svc *AuthClientsCapability) AddDevice(
 	deviceID string, name string, pubKey string, tokenValidity time.Duration) (token string, err error) {
 	slog.Info("AddDevice",
 		slog.String("deviceID", deviceID),
@@ -39,6 +39,7 @@ func (svc *AuthnManage) AddDevice(
 		ClientType:    auth.ClientTypeDevice,
 		DisplayName:   name,
 		PubKey:        pubKey,
+		Role:          auth.ClientRoleNone,
 		TokenValidity: tokenValidity,
 	})
 	if err != nil {
@@ -49,8 +50,8 @@ func (svc *AuthnManage) AddDevice(
 	return pubKey, err
 }
 
-// AddService adds or updates a service
-func (svc *AuthnManage) AddService(
+// AddService adds or updates a service with the admin role
+func (svc *AuthClientsCapability) AddService(
 	serviceID string, name string, pubKey string, tokenValidity time.Duration) (token string, err error) {
 	slog.Info("AddService",
 		slog.String("serviceID", serviceID),
@@ -65,6 +66,7 @@ func (svc *AuthnManage) AddService(
 		ClientType:    auth.ClientTypeService,
 		DisplayName:   name,
 		PubKey:        pubKey,
+		Role:          auth.ClientRoleAdmin,
 		TokenValidity: tokenValidity,
 	})
 	if err != nil {
@@ -78,13 +80,14 @@ func (svc *AuthnManage) AddService(
 
 // AddUser adds a new user for password authentication
 // If a public key is provided a signed token will be returned
-func (svc *AuthnManage) AddUser(
-	userID string, userName string, password string, pubKey string) (token string, err error) {
+func (svc *AuthClientsCapability) AddUser(
+	userID string, userName string, password string, pubKey string, role string) (token string, err error) {
 
 	slog.Info("AddUser",
 		slog.String("userID", userID),
 		slog.String("userName", userName),
-		slog.String("pubKey", pubKey))
+		slog.String("pubKey", pubKey),
+		slog.String("role", role))
 
 	if userID == "" {
 		return "", fmt.Errorf("missing user ID")
@@ -94,6 +97,7 @@ func (svc *AuthnManage) AddUser(
 		ClientType:    auth.ClientTypeUser,
 		DisplayName:   userName,
 		PubKey:        pubKey,
+		Role:          role,
 		TokenValidity: auth.DefaultUserTokenValidity,
 	})
 	if err != nil {
@@ -112,65 +116,65 @@ func (svc *AuthnManage) AddUser(
 	return token, err
 }
 
-func (svc *AuthnManage) GetCount() (int, error) {
+func (svc *AuthClientsCapability) GetCount() (int, error) {
 	return svc.store.Count(), nil
 }
 
-func (svc *AuthnManage) GetAuthClientList() []msgserver.AuthClient {
+func (svc *AuthClientsCapability) GetAuthClientList() []msgserver.AuthClient {
 	return svc.store.GetAuthClientList()
 }
 
 // GetProfile returns a client's profile
-func (svc *AuthnManage) GetProfile(clientID string) (profile auth.ClientProfile, err error) {
+func (svc *AuthClientsCapability) GetProfile(clientID string) (profile auth.ClientProfile, err error) {
 	entry, err := svc.store.GetProfile(clientID)
 	return entry, err
 }
 
 // GetProfiles provide a list of known clients and their info.
-func (svc *AuthnManage) GetProfiles() (profiles []auth.ClientProfile, err error) {
+func (svc *AuthClientsCapability) GetProfiles() (profiles []auth.ClientProfile, err error) {
 	profiles, err = svc.store.GetProfiles()
 	return profiles, err
 }
 
 // GetEntries provide a list of known clients and their info including bcrypted passwords
-func (svc *AuthnManage) GetEntries() (entries []auth.AuthnEntry) {
+func (svc *AuthClientsCapability) GetEntries() (entries []auth.AuthnEntry) {
 	return svc.store.GetEntries()
 }
 
 // notification handler invoked when clients have been added, removed or updated
 // this invokes a reload of server authn
-func (svc *AuthnManage) onChange() {
+func (svc *AuthClientsCapability) onChange() {
 	entries := svc.store.GetEntries()
 	clients := make([]msgserver.AuthClient, 0, len(entries))
-	for _, c := range clients {
+	for _, e := range entries {
 		clients = append(clients, msgserver.AuthClient{
-			ClientID:     c.ClientID,
-			ClientType:   c.ClientType,
-			PubKey:       c.PubKey,
-			PasswordHash: c.PasswordHash,
-			Role:         c.Role,
+			ClientID:     e.ClientID,
+			ClientType:   e.ClientType,
+			PubKey:       e.PubKey,
+			PasswordHash: e.PasswordHash,
+			Role:         e.Role,
 		})
 	}
 	_ = svc.msgServer.ApplyAuth(clients)
 }
 
 // RemoveClient removes a client and disables authentication
-func (svc *AuthnManage) RemoveUser(clientID string) (err error) {
+func (svc *AuthClientsCapability) RemoveClient(clientID string) (err error) {
 	err = svc.store.Remove(clientID)
 	svc.onChange()
 	return err
 }
 
-func (svc *AuthnManage) UpdateUser(clientID string, prof auth.ClientProfile) (err error) {
+func (svc *AuthClientsCapability) UpdateClient(clientID string, prof auth.ClientProfile) (err error) {
 	err = svc.store.Update(clientID, prof)
 	return err
 }
 
-// NewAuthnManage creates the capability to manage authentication clients
+// NewAuthClientsCapability creates the capability to manage authentication clients
 //
 //	store for storing clients
-func NewAuthnManage(store auth.IAuthnStore, msgServer msgserver.IMsgServer) *AuthnManage {
-	svc := &AuthnManage{
+func NewAuthClientsCapability(store auth.IAuthnStore, msgServer msgserver.IMsgServer) *AuthClientsCapability {
+	svc := &AuthClientsCapability{
 		store:     store,
 		msgServer: msgServer,
 	}

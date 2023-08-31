@@ -1,7 +1,7 @@
 package auth
 
-// ClientAuthnCapability is the name of the Thing/Capability that handles client requests
-const ClientAuthnCapability = "user"
+// AuthManageProfileCapability is the name of the Thing/Capability that handles client requests
+const AuthManageProfileCapability = "manageProfile"
 
 // below a list of actions and their payload
 
@@ -63,8 +63,9 @@ type UpdatePubKeyReq struct {
 	NewPubKey string `json:"newPubKey"`
 }
 
-// IAuthnUser defines the authentication capabilities for use by clients
-type IAuthnUser interface {
+// IAuthManageProfile defines the auth capability for use by hub clients.
+// Regular clients have permissions to manage their profile and get new auth tokens.
+type IAuthManageProfile interface {
 
 	// GetProfile returns a client's profile
 	GetProfile(clientID string) (profile ClientProfile, err error)

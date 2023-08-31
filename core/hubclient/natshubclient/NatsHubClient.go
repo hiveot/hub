@@ -20,8 +20,8 @@ import (
 // PublicUnauthenticatedNKey is the public seed of the unaunthenticated user
 const PublicUnauthenticatedNKey = "SUAOXRE662WSIGIMSIFVQNCCIWG673K7GZMB3ZUUIF45BWGMYKECEQQJZE"
 
-// DefaultTimeoutSect with timeout for connecting and publishing.
-const DefaultTimeoutSect = 3 // 100 for testing
+// DefaultTimeoutSec with timeout for connecting and publishing.
+const DefaultTimeoutSec = 3 // 100 for testing
 
 // NatsHubSubscription nats subscription helper
 // This implements ISubscription
@@ -43,6 +43,7 @@ type NatsHubClient struct {
 	clientID string
 	nc       *nats.Conn
 	js       nats.JetStreamContext
+	timeout  time.Duration
 }
 
 // ClientID the client is authenticated as to the server
@@ -139,15 +140,10 @@ func ConnectWithJWT(url string, myKey nkeys.KeyPair, jwtToken string, caCert *x5
 		nats.Secure(tlsConfig),
 		nats.CustomInboxPrefix("_INBOX."+clientID),
 		nats.UserJWTAndSeed(jwtToken, string(jwtSeed)), // does this help?
-		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSect)))
+		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSec)))
 
 	if err == nil {
-		hc = &NatsHubClient{
-			clientID: clientID,
-			nc:       nc,
-		}
-
-		hc.js, err = hc.nc.JetStream()
+		hc, err = NewHubClient(clientID, nc)
 	}
 	return hc, err
 }
@@ -158,11 +154,7 @@ func ConnectWithNC(nc *nats.Conn) (hc *NatsHubClient, err error) {
 	if clientID == "" {
 		return nil, fmt.Errorf("NATS connection has no client ID in opts.Name")
 	}
-	hc = &NatsHubClient{
-		clientID: clientID,
-		nc:       nc,
-	}
-	hc.js, err = nc.JetStream()
+	hc, err = NewHubClient(clientID, nc)
 	return hc, err
 }
 
@@ -193,13 +185,9 @@ func ConnectWithNKey(url string, clientID string, myKey nkeys.KeyPair, caCert *x
 		nats.Nkey(pubKey, sigCB),
 		// client permissions allow this inbox prefix
 		nats.CustomInboxPrefix("_INBOX."+clientID),
-		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSect)))
+		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSec)))
 	if err == nil {
-		hc = &NatsHubClient{
-			clientID: clientID,
-			nc:       nc,
-		}
-		hc.js, err = hc.nc.JetStream()
+		hc, err = NewHubClient(clientID, nc)
 	}
 	return hc, err
 }
@@ -224,13 +212,9 @@ func ConnectWithPassword(
 		nats.Secure(tlsConfig),
 		// client permissions allow this inbox prefix
 		nats.CustomInboxPrefix("_INBOX."+loginID),
-		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSect)))
+		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSec)))
 	if err == nil {
-		hc = &NatsHubClient{
-			clientID: loginID,
-			nc:       nc,
-		}
-		hc.js, err = hc.nc.JetStream()
+		hc, err = NewHubClient(loginID, nc)
 	}
 	return hc, err
 }
@@ -255,10 +239,7 @@ func ConnectUnauthenticated(url string, caCert *x509.Certificate) (hc *NatsHubCl
 		nats.CustomInboxPrefix("_INBOX.unauthenticated"),
 	)
 	if err == nil {
-		hc = &NatsHubClient{
-			nc: nc,
-		}
-		hc.js, err = hc.nc.JetStream()
+		hc, err = NewHubClient("", nc)
 	}
 	return hc, err
 }
@@ -302,12 +283,24 @@ func (hc *NatsHubClient) Pub(subject string, payload []byte) error {
 	return err
 }
 
-// PubAction sends an action request to the hub and receives a response
+// PubThingAction sends an action request to the hub and receives a response
 // Returns the response or an error if the request fails or timed out
-func (hc *NatsHubClient) PubAction(bindingID string, thingID string, actionID string, payload []byte) ([]byte, error) {
-	subject := MakeActionSubject(bindingID, thingID, actionID, hc.clientID)
-	slog.Info("PubAction", "subject", subject)
-	resp, err := hc.nc.Request(subject, payload, time.Second*time.Duration(DefaultTimeoutSect))
+func (hc *NatsHubClient) PubThingAction(bindingID string, thingID string, actionID string, payload []byte) ([]byte, error) {
+	subject := MakeThingActionSubject(bindingID, thingID, actionID, hc.clientID)
+	slog.Info("PubThingAction", "subject", subject)
+	resp, err := hc.nc.Request(subject, payload, hc.timeout)
+	if resp == nil {
+		return nil, err
+	}
+	return resp.Data, err
+}
+
+// PubServiceAction sends an action request to a Hub Service on the svc prefix
+// Returns the response or an error if the request fails or timed out
+func (hc *NatsHubClient) PubServiceAction(serviceID string, capability string, actionID string, payload []byte) ([]byte, error) {
+	subject := MakeServiceActionSubject(serviceID, capability, actionID, hc.clientID)
+	slog.Info("PubServiceAction", "subject", subject)
+	resp, err := hc.nc.Request(subject, payload, hc.timeout)
 	if resp == nil {
 		return nil, err
 	}
@@ -370,12 +363,10 @@ func (hc *NatsHubClient) Sub(subject string, cb func(topic string, data []byte))
 	return sub, err
 }
 
-// SubActions subscribes to actions for this binding
+// SubActions subscribes to actions on the given subject
 //
 //	thingID is the device thing or service capability to subscribe to, or "" for wildcard
-func (hc *NatsHubClient) SubActions(thingID string, cb func(msg *hubclient.ActionMessage) error) (hubclient.ISubscription, error) {
-
-	subject := MakeActionSubject(hc.clientID, thingID, "", "")
+func (hc *NatsHubClient) SubActions(subject string, cb func(msg *hubclient.ActionMessage) error) (hubclient.ISubscription, error) {
 
 	sub, err := hc.Subscribe(subject, func(natsMsg *nats.Msg) {
 		md, _ := natsMsg.Metadata()
@@ -385,7 +376,7 @@ func (hc *NatsHubClient) SubActions(thingID string, cb func(msg *hubclient.Actio
 
 		}
 		payload := natsMsg.Data
-		bindingID, thID, name, clientID, err := SplitActionSubject(natsMsg.Subject)
+		sourceID, thID, name, clientID, err := SplitActionSubject(natsMsg.Subject)
 		if err != nil {
 			slog.Error("unable to handle subject", "err", err, "subject", natsMsg.Subject)
 			return
@@ -394,7 +385,7 @@ func (hc *NatsHubClient) SubActions(thingID string, cb func(msg *hubclient.Actio
 			//SenderID: natsMsg.Header.
 			ClientID:  clientID,
 			ActionID:  name,
-			BindingID: bindingID,
+			BindingID: sourceID,
 			ThingID:   thID,
 			Timestamp: timeStamp.Unix(),
 			Payload:   payload,
@@ -413,6 +404,24 @@ func (hc *NatsHubClient) SubActions(thingID string, cb func(msg *hubclient.Actio
 		}
 	})
 	return sub, err
+}
+
+// SubThingActions subscribes to actions for this device or service on the things prefix
+//
+//	thingID is the device thing or service capability to subscribe to, or "" for wildcard
+func (hc *NatsHubClient) SubThingActions(thingID string, cb func(msg *hubclient.ActionMessage) error) (hubclient.ISubscription, error) {
+
+	subject := MakeThingActionSubject(hc.clientID, thingID, "", "")
+	return hc.SubActions(subject, cb)
+}
+
+// SubServiceCapability subscribes to action requests of a service capability
+//
+//	capability is the name of the capability (thingID) to handle
+func (hc *NatsHubClient) SubServiceCapability(capability string, cb func(msg *hubclient.ActionMessage) error) (hubclient.ISubscription, error) {
+
+	subject := MakeServiceSubject(hc.clientID, capability, MessageTypeAction, "")
+	return hc.SubActions(subject, cb)
 }
 
 // SubEvents subscribe to event
@@ -498,15 +507,18 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *hubclient.Ev
 	return nil
 }
 
-// SubGroup subscribes to events received by a group.
-// The client must be a member of the group to be able to create the consumer that receives the events.
+// SubStream subscribes to events received by the event stream.
+//
 // This creates an ephemeral pull consumer.
 // ReceiveLatest is handy to be up to date on all event instead of quering them separately. Only use this if
 // you're going to retrieve them anyways.
 //
-//	groupName name of the stream to receive events from.
-//	receiveLatest to immediately receive the latest event for each event instance
-func (hc *NatsHubClient) SubGroup(groupName string, receiveLatest bool, cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
+//	 name of the event stream. "" for default
+//		receiveLatest to immediately receive the latest event for each event instance
+func (hc *NatsHubClient) SubStream(name string, receiveLatest bool, cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
+	if name == "" {
+		//name = natsnkeyserver.EventsIntakeStreamName
+	}
 	deliverPolicy := nats.DeliverNewPolicy
 	if receiveLatest {
 		// FIXME: deliver has error: "optional filter subject is not set"
@@ -525,17 +537,17 @@ func (hc *NatsHubClient) SubGroup(groupName string, receiveLatest bool, cb func(
 		Description: "group consumer for client " + hc.clientID,
 		//RateLimit:   1000000, // consumers in poll mode cannot have rate limit set
 	}
-	consumerInfo, err := hc.js.AddConsumer(groupName, consumerConfig)
+	consumerInfo, err := hc.js.AddConsumer(name, consumerConfig)
 	if err != nil {
-		return nil, fmt.Errorf("error creating consumer for group '%s': %w", groupName, err)
+		return nil, fmt.Errorf("error creating consumer for stream '%s': %w", name, err)
 	}
 	// bind this ephemeral consumer to all messages in this group stream
 	// (see at the end of the Subscribe)
 	nsub, err := hc.js.PullSubscribe("", "",
-		nats.Bind(groupName, consumerInfo.Name),
+		nats.Bind(name, consumerInfo.Name),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error to PullSubscribe to stream %s: %w", groupName, err)
+		return nil, fmt.Errorf("error to PullSubscribe to stream %s: %w", name, err)
 	}
 
 	err = startEventMessageHandler(nsub, cb)
@@ -556,8 +568,14 @@ func (hc *NatsHubClient) Subscribe(subject string, cb func(msg *nats.Msg)) (sub 
 }
 
 // NewHubClient instantiates a client for connecting to the Hub using NATS/Jetstream
-func NewHubClient() *NatsHubClient {
+func NewHubClient(clientID string, nc *nats.Conn) (hc *NatsHubClient, err error) {
 
-	hc := &NatsHubClient{}
-	return hc
+	hc = &NatsHubClient{
+		clientID: clientID,
+		nc:       nc,
+		timeout:  time.Duration(DefaultTimeoutSec) * time.Second,
+	}
+	hc.js, err = hc.nc.JetStream()
+	hc.timeout = time.Duration(10) * time.Second // for testing
+	return hc, err
 }

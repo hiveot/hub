@@ -68,7 +68,7 @@ func TestConnectWithNKey(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several users, service and devices
-	err = s.ApplyAuth(testenv.TestClients, nil)
+	err = s.ApplyAuth(testenv.TestClients)
 	require.NoError(t, err)
 
 	// users subscribe to things
@@ -77,7 +77,7 @@ func TestConnectWithNKey(t *testing.T) {
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 
-	subj1 := natshubclient.MakeThingsSubject("", "", natshubclient.MessageTypeEvent, ">")
+	subj1 := natshubclient.MakeThingsSubject("", "", natshubclient.MessageTypeEvent, "")
 	_, err = hc1.Subscribe(subj1, func(msg *nats.Msg) {
 		rxMsg = string(msg.Data)
 		slog.Info("received message", "msg", rxMsg)
@@ -100,7 +100,7 @@ func TestConnectWithPassword(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several users, service and devices
-	err = s.ApplyAuth(testenv.TestClients, nil)
+	err = s.ApplyAuth(testenv.TestClients)
 	require.NoError(t, err)
 
 	hc1, err := natshubclient.ConnectWithPassword(
@@ -120,7 +120,7 @@ func TestLoginFail(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several users, service and devices
-	err = s.ApplyAuth(testenv.TestClients, nil)
+	err = s.ApplyAuth(testenv.TestClients)
 	require.NoError(t, err)
 
 	hc1, err := natshubclient.ConnectWithPassword(
@@ -150,7 +150,7 @@ func TestEventsStream(t *testing.T) {
 	_ = cfg
 	// the main service can access $JS
 	// add devices that publish things, eg TestDevice1ID and TestService1ID
-	err = s.ApplyAuth(testenv.TestClients, nil)
+	err = s.ApplyAuth(testenv.TestClients)
 	require.NoError(t, err)
 
 	//hc1, err := natshubclient.ConnectWithNKey(

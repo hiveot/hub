@@ -1,4 +1,4 @@
-package authnservice
+package authservice
 
 import (
 	"crypto/x509"
@@ -8,11 +8,11 @@ import (
 	"time"
 )
 
-// AuthnUser handles authentication user requests
-// This implements the IAuthnUser interface.
+// AuthProfileCapability is the capability for clients to view and update their own profile.
+// This implements the IClientProfile interface.
 //
-// This implements the IAuthnUser interface.
-type AuthnUser struct {
+// This implements the IAuthManageProfile interface.
+type AuthProfileCapability struct {
 	// Client record persistence
 	store auth.IAuthnStore
 	// message server for updating authn
@@ -25,7 +25,7 @@ type AuthnUser struct {
 // the built-in tokenizer.
 // This invokes the external tokenizer if provided and falls-back to the built-in
 // tokenizer.
-func (svc *AuthnUser) CreateToken(
+func (svc *AuthProfileCapability) CreateToken(
 	clientID string, clientType string, pubKey string, tokenValidity time.Duration) (
 	newToken string, err error) {
 
@@ -33,7 +33,7 @@ func (svc *AuthnUser) CreateToken(
 }
 
 // GeneratePassword with upper, lower, numbers and special characters
-//func (svc *AuthnUser) GeneratePassword(length int, useSpecial bool) (password string) {
+//func (svc *AuthProfileCapability) GeneratePassword(length int, useSpecial bool) (password string) {
 //	const charsLow = "abcdefghijklmnopqrstuvwxyz"
 //	const charsUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 //	const charsSpecial = "!#$%&*+-./:=?@^_"
@@ -59,13 +59,13 @@ func (svc *AuthnUser) CreateToken(
 //}
 
 // GetProfile returns a client's profile
-func (svc *AuthnUser) GetProfile(clientID string) (profile auth.ClientProfile, err error) {
+func (svc *AuthProfileCapability) GetProfile(clientID string) (profile auth.ClientProfile, err error) {
 	clientProfile, err := svc.store.GetProfile(clientID)
 	return clientProfile, err
 }
 
 // NewToken validates a password and issues an authn token
-func (svc *AuthnUser) NewToken(clientID string, password string) (newToken string, err error) {
+func (svc *AuthProfileCapability) NewToken(clientID string, password string) (newToken string, err error) {
 	clientProfile, err := svc.store.VerifyPassword(clientID, password)
 	if err != nil {
 		return "", err
@@ -80,14 +80,14 @@ func (svc *AuthnUser) NewToken(clientID string, password string) (newToken strin
 
 // notification handler invoked when clients have been updated
 // this invokes a reload of server authn
-func (svc *AuthnUser) onChange() {
+func (svc *AuthProfileCapability) onChange() {
 	_ = svc.msgServer.ApplyAuth(svc.store.GetAuthClientList())
 }
 
 // Refresh issues a new token if the given token is valid
 // This returns a refreshed token that can be used to connect to the messaging server
 // the old token must be a valid jwt token belonging to the clientID
-func (svc *AuthnUser) Refresh(clientID string, oldToken string) (newToken string, err error) {
+func (svc *AuthProfileCapability) Refresh(clientID string, oldToken string) (newToken string, err error) {
 	// verify the token
 	clientProfile, err := svc.store.GetProfile(clientID)
 	if err != nil {
@@ -104,7 +104,7 @@ func (svc *AuthnUser) Refresh(clientID string, oldToken string) (newToken string
 }
 
 // UpdateName
-func (svc *AuthnUser) UpdateName(clientID string, displayName string) (err error) {
+func (svc *AuthProfileCapability) UpdateName(clientID string, displayName string) (err error) {
 	clientProfile, err := svc.store.GetProfile(clientID)
 	clientProfile.DisplayName = displayName
 	err = svc.store.Update(clientID, clientProfile)
@@ -112,7 +112,7 @@ func (svc *AuthnUser) UpdateName(clientID string, displayName string) (err error
 	return err
 }
 
-func (svc *AuthnUser) UpdatePassword(clientID string, newPassword string) (err error) {
+func (svc *AuthProfileCapability) UpdatePassword(clientID string, newPassword string) (err error) {
 	_, err = svc.GetProfile(clientID)
 	if err != nil {
 		return err
@@ -125,7 +125,7 @@ func (svc *AuthnUser) UpdatePassword(clientID string, newPassword string) (err e
 	return err
 }
 
-func (svc *AuthnUser) UpdatePubKey(clientID string, newPubKey string) (err error) {
+func (svc *AuthProfileCapability) UpdatePubKey(clientID string, newPubKey string) (err error) {
 	clientProfile, err := svc.store.GetProfile(clientID)
 	if err != nil {
 		return err
@@ -141,7 +141,7 @@ func (svc *AuthnUser) UpdatePubKey(clientID string, newPubKey string) (err error
 }
 
 // ValidateToken verifies if the token is valid and belongs to the claimed user
-//func (svc *AuthnUser) ValidateToken(clientID string, oldToken string) (err error) {
+//func (svc *AuthProfileCapability) ValidateToken(clientID string, oldToken string) (err error) {
 //	// verify the token
 //	entry, err := svc.store.Get(clientID)
 //	if err != nil {
@@ -158,7 +158,7 @@ func (svc *AuthnUser) UpdatePubKey(clientID string, newPubKey string) (err error
 // - Cert validates against the svc CA
 // This is intended for a local setup that use a self-signed CA.
 // The use of JWT keys is recommended over certs as this isn't a domain name validation problem.
-//func (svc *AuthnUser) ValidateCert(clientID string, clientCertPEM string) error {
+//func (svc *AuthProfileCapability) ValidateCert(clientID string, clientCertPEM string) error {
 //
 //	if svc.caCert == nil {
 //		return fmt.Errorf("no CA on file")
@@ -189,16 +189,16 @@ func (svc *AuthnUser) UpdatePubKey(clientID string, newPubKey string) (err error
 //	return nil
 //}
 
-// NewAuthnUserService returns a user authentication capability.
+// NewAuthProfileCapability returns a user profile management capability.
 //
 //	store holds the authentication client records
 //	caCert is an optional CA used to verify certificates. Use nil to not authn using client certs
-func NewAuthnUserService(
+func NewAuthProfileCapability(
 	store auth.IAuthnStore,
 	msgServer msgserver.IMsgServer,
-	caCert *x509.Certificate) *AuthnUser {
+	caCert *x509.Certificate) *AuthProfileCapability {
 
-	svc := &AuthnUser{
+	svc := &AuthProfileCapability{
 		store:     store,
 		msgServer: msgServer,
 		caCert:    caCert,

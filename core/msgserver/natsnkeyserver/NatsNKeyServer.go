@@ -29,7 +29,7 @@ type NatsNKeyServer struct {
 	chook *natscoserver.NatsCalloutHook
 
 	// map of role to role permissions
-	rolePermissions map[string]msgserver.RolePermissions
+	rolePermissions map[string][]msgserver.RolePermission
 }
 
 // ConnectInProcNC establishes a nats connection to the server for core services.
@@ -160,7 +160,7 @@ func (srv *NatsNKeyServer) Start() (clientURL string, err error) {
 	_, err = js.StreamInfo(EventsIntakeStreamName)
 	if err != nil {
 		// The intake stream receives events from all publishers and things
-		subj := natshubclient.MakeThingsSubject("", "", natshubclient.MessageTypeEvent, ">")
+		subj := natshubclient.MakeThingsSubject("", "", natshubclient.MessageTypeEvent, "")
 		cfg := &nats.StreamConfig{
 			Name:        EventsIntakeStreamName,
 			Description: "HiveOT Events Intake Stream",

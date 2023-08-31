@@ -49,8 +49,8 @@ natsserver:
 mqttserver:
 
 
-# Authentication service configuration
-authn:
+# Authentication and authorization configuration
+auth:
   # name or path to password file, with stored bcrypted passwords
   # default location is $HOME/stores/authn.
   # This contains sensitive information and should only be readable by the core process
@@ -67,13 +67,5 @@ authn:
   # Use this for testing or when authn is running stand-alone
   #noAutoStart: true
 
-# Authorization service configuration
-authz:
-  # directory to store authz data. Default is $STORES/authz
-  # This contains sensitive information and should only be readable by the core process
-  #dataDir: "$STORES/authz"
-
-  # Do not auto-start the embedded authorization service
-  # Use this for testing or when authz is running stand-alone
-  #noAutoStart: true
-
+  # service roles to register which service capabilities are available to what roles
+  # todo. this is currently hard coded

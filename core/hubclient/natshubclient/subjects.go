@@ -29,7 +29,7 @@ func MakeThingsSubject(pubID, thingID, stype, name string) string {
 		stype = vocab.MessageTypeEvent
 	}
 	if name == "" {
-		name = "*" // nats uses *
+		name = ">" // anything after is fine
 	}
 	subj := fmt.Sprintf("things.%s.%s.%s.%s",
 		pubID, thingID, stype, name)
@@ -54,7 +54,7 @@ func MakeServiceSubject(serviceID, capID, stype, name string) string {
 		stype = vocab.MessageTypeEvent
 	}
 	if name == "" {
-		name = "*" // nats uses *
+		name = ">" // anything after is fine
 	}
 	subj := fmt.Sprintf("svc.%s.%s.%s.%s",
 		serviceID, capID, stype, name)
@@ -84,14 +84,14 @@ func SplitSubject(subject string) (prefix, bindingID, thingID, stype, name strin
 	return
 }
 
-// MakeActionSubject creates a nats subject for submitting actions
+// MakeThingActionSubject creates a nats subject for submitting actions
 // This uses the hiveot nats subject format: things.{bindingID}.{thingID}.action.{name}.{clientID}
 //
 //	pubID is the publisher of the subject. Use "" for wildcard
 //	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
 //	name is the event or action name. Use "" for wildcard.
 //	clientID is the loginID of the user submitting the action
-func MakeActionSubject(pubID, thingID, name string, clientID string) string {
+func MakeThingActionSubject(pubID, thingID, name string, clientID string) string {
 	if pubID == "" {
 		pubID = "*"
 	}
@@ -105,6 +105,31 @@ func MakeActionSubject(pubID, thingID, name string, clientID string) string {
 		clientID = "*"
 	}
 	subj := fmt.Sprintf("things.%s.%s.%s.%s.%s",
+		pubID, thingID, vocab.MessageTypeAction, name, clientID)
+	return subj
+}
+
+// MakeServiceActionSubject creates a nats subject for submitting service requests
+// This uses the hiveot nats subject format: things.{bindingID}.{thingID}.action.{name}.{clientID}
+//
+//	pubID is the publisher of the subject. Use "" for wildcard
+//	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
+//	name is the event or action name. Use "" for wildcard.
+//	clientID is the loginID of the user submitting the action
+func MakeServiceActionSubject(pubID, thingID, name string, clientID string) string {
+	if pubID == "" {
+		pubID = "*"
+	}
+	if thingID == "" {
+		thingID = "*" // nats uses *
+	}
+	if name == "" {
+		name = "*" // nats uses *
+	}
+	if clientID == "" {
+		clientID = "*"
+	}
+	subj := fmt.Sprintf("svc.%s.%s.%s.%s.%s",
 		pubID, thingID, vocab.MessageTypeAction, name, clientID)
 	return subj
 }

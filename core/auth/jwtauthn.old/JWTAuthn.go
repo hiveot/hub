@@ -3,7 +3,6 @@ package jwtauthn_old
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"github.com/hiveot/hub/core/authn"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -161,10 +160,10 @@ func NewJWTAuthn(signingKey *ecdsa.PrivateKey, accessTokenValidity uint, refresh
 		signingKey = certs.CreateECDSAKeys()
 	}
 	if accessTokenValidity == 0 {
-		accessTokenValidity = uint(authn.DefaultAccessTokenValiditySec)
+		accessTokenValidity = uint(auth.DefaultAccessTokenValiditySec)
 	}
 	if refreshTokenValidity == 0 {
-		refreshTokenValidity = uint(authn.DefaultRefreshTokenValiditySec)
+		refreshTokenValidity = uint(auth.DefaultRefreshTokenValiditySec)
 	}
 
 	jwtauthn := &JWTAuthn{

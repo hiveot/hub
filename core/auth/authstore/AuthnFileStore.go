@@ -1,4 +1,4 @@
-package authnstore
+package authstore
 
 import (
 	"encoding/json"
@@ -124,7 +124,7 @@ func (authnStore *AuthnFileStore) GetProfiles() (profiles []auth.ClientProfile, 
 
 // GetEntries returns a list of all profiles with their hashed passwords
 func (authnStore *AuthnFileStore) GetEntries() (entries []auth.AuthnEntry) {
-	entries = make([]auth.AuthnEntry, len(authnStore.entries))
+	entries = make([]auth.AuthnEntry, 0, len(authnStore.entries))
 	for _, entry := range authnStore.entries {
 		entries = append(entries, entry)
 	}

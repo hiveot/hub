@@ -52,7 +52,7 @@ func SetupCerts(certsDir string, caCertFile string, caKeyFile string) (
 			err = SaveX509CertToPEM(caCert, caCertFile)
 		}
 	}
-	// 3: Always create a new Server cert and private key
+	// 3: Always create a new MsgServer cert and private key
 	serverKey := CreateECDSAKeys()
 	hostName, _ := os.Hostname()
 	serverID := "nats-" + hostName

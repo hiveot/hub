@@ -2,13 +2,10 @@ package natshubcore
 
 import (
 	"github.com/hiveot/hub/api/go/auth"
-	authn2 "github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/core/authn/authnservice"
-	"github.com/hiveot/hub/core/authn/authnstore"
-	"github.com/hiveot/hub/core/authz/authzservice"
+	"github.com/hiveot/hub/core/auth/authservice"
+	"github.com/hiveot/hub/core/auth/authstore"
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
-	"path"
 )
 
 // HubCore with core services for authnBinding, authz, directory and history
@@ -16,57 +13,37 @@ type HubCore struct {
 	config *config.HubCoreConfig
 
 	// Runtimes
-	Server     *natsnkeyserver.NatsNKeyServer
-	AuthnSvc   *authnservice.AuthnService
-	authzStore *authzservice.AclFileStore
-
-	//authzJetStream *natsauthz.NatsAuthzAppl
-	//authzMsgBinding *authzservice.AuthzBinding
-	AuthzSvc *authzservice.AuthzService
+	MsgServer   *natsnkeyserver.NatsNKeyServer
+	AuthService *authservice.AuthService
 }
 
-// Start the Hub messaging Server and core services with the given config
+// Start the Hub messaging MsgServer and core services with the given config
 // This panics if anything goes wrong
 func (core *HubCore) Start(cfg *config.HubCoreConfig) (clientURL string) {
 	var err error
 	core.config = cfg
 
-	// start the embedded NATS messaging Server
+	// start the embedded NATS messaging MsgServer
 	if !cfg.NatsServer.NoAutoStart {
 		//// nats server configurator handles proper server config settings
 		//natsConfigurator := natsserver.NewNatsConfigurator(
-		//	&cfg.Server, core.ServerCert, core.CaCert,
+		//	&cfg.MsgServer, core.ServerCert, core.CaCert,
 		//	core.OperatorJWT, core.SystemJWT, core.AppAccountJWT, core.ServiceKey)
 
-		core.Server = natsnkeyserver.NewNatsNKeyServer(&core.config.NatsServer)
-		clientURL, err = core.Server.Start()
+		core.MsgServer = natsnkeyserver.NewNatsNKeyServer(&core.config.NatsServer)
+		clientURL, err = core.MsgServer.Start()
 		if err != nil {
 			panic(err.Error())
 		}
 	}
 
 	// start the authn store, service and binding
-	if !cfg.Authn.NoAutoStart {
+	if !cfg.Auth.NoAutoStart {
 		// nats requires brcypt passwords
-		authnStore := authnstore.NewAuthnFileStore(cfg.Authn.PasswordFile, authn2.PWHASH_BCRYPT)
-		core.AuthnSvc = authnservice.NewAuthnService(authnStore, core.Server)
+		authStore := authstore.NewAuthnFileStore(cfg.Auth.PasswordFile, auth.PWHASH_BCRYPT)
+		core.AuthService = authservice.NewAuthnService(authStore, core.MsgServer)
 
-		err = core.AuthnSvc.Start()
-		if err != nil {
-			panic(err.Error())
-		}
-	}
-	// start the authz service
-	if !cfg.Authz.NoAutoStart {
-		// AuthzFileStore stores passwords in file
-		authzFile := path.Join(cfg.Authz.DataDir, auth.DefaultAclFilename)
-		core.authzStore = authzservice.NewAuthzFileStore(authzFile)
-		err = core.authzStore.Open()
-		if err != nil {
-			panic("Failed to open the authz store: " + err.Error())
-		}
-		core.AuthzSvc = authzservice.NewAuthzService(core.authzStore, core.Server)
-		err = core.AuthzSvc.Start()
+		err = core.AuthService.Start()
 		if err != nil {
 			panic(err.Error())
 		}
@@ -74,27 +51,19 @@ func (core *HubCore) Start(cfg *config.HubCoreConfig) (clientURL string) {
 	return clientURL
 }
 
-// Stop the Server
+// Stop the MsgServer
 func (core *HubCore) Stop() {
-	if core.AuthnSvc != nil {
-		core.AuthnSvc.Stop()
+	if core.AuthService != nil {
+		core.AuthService.Stop()
 	}
-	if core.AuthzSvc != nil {
-		core.AuthzSvc.Stop()
-	}
-	//if core.authzJetStream != nil {
-	//	core.authzJetStream.Stop()
-	//}
-	if core.authzStore != nil {
-		core.authzStore.Close()
-	}
-	if core.Server != nil {
-		core.Server.Stop()
+
+	if core.MsgServer != nil {
+		core.MsgServer.Stop()
 	}
 }
 
 // NewHubCore creates the hub core instance.
-// This creates the messaging Server and core services.
+// This creates the messaging MsgServer and core services.
 // config must have been loaded
 func NewHubCore() *HubCore {
 	hs := &HubCore{}

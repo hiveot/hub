@@ -22,9 +22,9 @@ type AuthClient struct {
 	Role string // Name of user's role
 }
 
-// RolePermissions defines a list of authorization for a role.
+// RolePermission defines authorization for a role.
 // Each permission defines the source/thing the user can pub/sub to.
-type RolePermissions []struct {
+type RolePermission struct {
 	Prefix   string // things (default) or "svc" for service
 	SourceID string // source or "" for all sources
 	ThingID  string // thingID or "" for all things
@@ -72,7 +72,12 @@ type IMsgServer interface {
 	// as it sees fit. The server implements the server specific portion.
 	//
 	//  rolePerm is a map of [role]permissions. Use nil to revert back to the default role permissions.
-	SetRolePermissions(rolePerm map[string]RolePermissions)
+	SetRolePermissions(rolePerm map[string][]RolePermission)
+
+	// SetServicePermissions sets the roles that are allowed to use a service capability.
+	// This amends the role permissions with the service capabilities.
+	// Intended for registering services.
+	SetServicePermissions(serviceID string, capability string, roles []string)
 
 	// Start the server.
 	// This returns the primary connection address for use in discovery.

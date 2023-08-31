@@ -4,11 +4,11 @@ import (
 	"time"
 )
 
-// AuthnServiceName default ID of the authentication and authorization service
+// AuthServiceName default ID of the authentication and authorization service
 const AuthServiceName = "auth"
 
-// ManageAuthnCapability is the name of the Thing/Capability that handles management requests
-const ManageAuthnCapability = "manage"
+// AuthManageClientsCapability is the name of the Thing/Capability that handles management requests
+const AuthManageClientsCapability = "manageClients"
 
 // Types of clients that are issued authentication tokens
 const (
@@ -47,7 +47,7 @@ type ClientProfile struct {
 
 // Authentication management request/response messages
 
-// AddDeviceAction defines the action to add a device with public key
+// AddDeviceAction defines the service action to add a device with public key
 const AddDeviceAction = "addDevice"
 
 // AddDeviceReq request message to add a device.
@@ -62,7 +62,7 @@ type AddDeviceResp struct {
 	Token string `json:"token"`
 }
 
-// AddServiceAction defines the action to add a service with public key
+// AddServiceAction defines the service  action to add a service with public key
 const AddServiceAction = "addService"
 
 // AddServiceReq request message to add a service.
@@ -77,7 +77,7 @@ type AddServiceResp struct {
 	Token string `json:"token"`
 }
 
-// AddUserAction defines the action to add a user with password
+// AddUserAction defines the service action to add a user with password
 const AddUserAction = "addUser"
 
 // AddUserReq request message to add a user.
@@ -87,6 +87,7 @@ type AddUserReq struct {
 	DisplayName string `json:"DisplayName,omitempty"`
 	Password    string `json:"password,omitempty"`
 	PubKey      string `json:"pubKey,omitempty"`
+	Role        string `json:"role,omitempty"`
 }
 type AddUserResp struct {
 	Token string `json:"token"`
@@ -98,7 +99,7 @@ type GetCountResp struct {
 	N int `json:"n"`
 }
 
-// GetProfilesAction defines the action to get a list of all client profiles
+// GetProfilesAction defines the service action to get a list of all client profiles
 const GetProfilesAction = "getProfiles"
 
 // GetProfilesResp response to listClient actions
@@ -106,7 +107,7 @@ type GetProfilesResp struct {
 	Profiles []ClientProfile `json:"profiles"`
 }
 
-// RemoveClientAction defines the action to remove a client
+// RemoveClientAction defines the service action to remove a client
 // The caller must be an administrator or service.
 const RemoveClientAction = "removeClient"
 
@@ -114,7 +115,7 @@ type RemoveClientReq struct {
 	ClientID string `json:"clientID"`
 }
 
-// UpdateClientAction defines the action to update a client's profile
+// UpdateClientAction defines the service action to update a client's profile
 // The caller must be an administrator or service.
 const UpdateClientAction = "updateClient"
 
@@ -123,10 +124,10 @@ type UpdateClientReq struct {
 	Profile  ClientProfile `json:"profile"`
 }
 
-// IAuthnManage defines the capabilities for managing authenticating clients.
+// IAuthnManageClients defines the capabilities for managing authenticating clients.
 // This capability is only available to administrators.
 // Authentication is based on JWT tokens with claims for client type, validity and role.
-type IAuthnManage interface {
+type IAuthnManageClients interface {
 
 	// AddDevice adds an IoT device and generates an authentication token
 	// The device must periodically refresh its token for it to remain valid.
@@ -170,7 +171,7 @@ type IAuthnManage interface {
 	//  displayName of the user for presentation
 	//  password the user can login with if their token has expired. Optional.
 	//  pubKey the public key to receive a signed token. Ignored if not a valid key.
-	AddUser(userID string, displayName string, password string, pubKey string) (token string, err error)
+	AddUser(userID string, displayName string, password string, pubKey string, role string) (token string, err error)
 
 	// GetAuthClientList provides a list of clients to apply to the message server
 	//GetAuthClientList() []msgserver.AuthClient
@@ -186,10 +187,10 @@ type IAuthnManage interface {
 	// The caller must be an administrator or service.
 	GetProfiles() (profiles []ClientProfile, err error)
 
-	// RemoveUser removes a user and disables authentication
+	// RemoveClient removes a user and disables authentication
 	// Existing tokens are immediately expired (tbd)
-	RemoveUser(userID string) error
+	RemoveClient(userID string) error
 
-	// UpdateUser updates a user's profile
-	UpdateUser(userID string, prof ClientProfile) error
+	// UpdateClient updates a client's profile
+	UpdateClient(userID string, prof ClientProfile) error
 }

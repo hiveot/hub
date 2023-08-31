@@ -1,4 +1,4 @@
-package authnservice
+package authservice
 
 import (
 	"fmt"
@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-// AuthnConfig contains the authn service configuration
-type AuthnConfig struct {
+// AuthConfig contains the auth service configuration
+type AuthConfig struct {
 	// PasswordFile with the file based password store.
 	// Use a relative path for using the default $HOME/stores/authn location
 	// Use "" for default defined in 'authnstore.DefaultPasswordFile'
@@ -23,14 +23,14 @@ type AuthnConfig struct {
 	// Auth token validity for users in seconds
 	UserTokenValidity time.Duration `yaml:"userTokenValidity,omitempty"`
 
-	// NoAutoStart prevents the authn service for auto starting. Intended for testing or custom implementation.
+	// NoAutoStart prevents the auth service for auto starting. Intended for testing or custom implementation.
 	NoAutoStart bool `yaml:"noAutoStart,omitempty"`
 }
 
 // Setup ensures config is valid
 //
 //	storesDir is the default storage root directory ($HOME/stores)
-func (cfg *AuthnConfig) Setup(storesDir string) error {
+func (cfg *AuthConfig) Setup(storesDir string) error {
 
 	if cfg.PasswordFile == "" {
 		cfg.PasswordFile = auth.DefaultPasswordFile

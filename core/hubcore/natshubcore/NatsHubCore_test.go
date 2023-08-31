@@ -2,11 +2,11 @@ package natshubcore_test
 
 import (
 	"github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/hubcore/natshubcore"
+	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
@@ -62,19 +62,17 @@ func TestPubSub_ConnectAuthNKey(t *testing.T) {
 	defer hub.Stop()
 
 	// setup: device and service
-	_, err := hub.AuthnSvc.MngService.AddDevice(device1ID, "device 1", device1Pub, 0)
+	_, err := hub.AuthService.MngService.AddDevice(device1ID, "device 1", device1Pub, 0)
 	require.NoError(t, err)
-	_, err = hub.AuthnSvc.MngService.AddService(service1ID, "service 1", service1Pub, 0)
-	require.NoError(t, err)
-	err = hub.AuthzSvc.AddUser(service1ID, auth.ClientRoleViewer, authz.AllGroupID)
+	_, err = hub.AuthService.MngService.AddService(service1ID, "service 1", service1Pub, 0)
 	require.NoError(t, err)
 
-	// service1 subscribes
+	// service1 subscribes to events
 	hc1, err := natshubclient.ConnectWithNKey(clientURL, service1ID, service1KP, hubCfg.NatsServer.CaCert)
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 
-	sub, err := hc1.SubGroup(authz.AllGroupID, false, func(msg *hubclient.EventMessage) {
+	sub, err := hc1.SubStream(natsnkeyserver.EventsIntakeStreamName, false, func(msg *hubclient.EventMessage) {
 		slog.Info("received event", "id", msg.EventID)
 		rxchan <- 1
 	})
@@ -102,7 +100,6 @@ func TestPubSub_AuthPassword(t *testing.T) {
 	service1ID := "service1"
 	service1KP, _ := nkeys.CreateUser()
 	service1Pub, _ := service1KP.PublicKey()
-	group1ID := "group1"
 
 	// launch the core services
 	core := natshubcore.NewHubCore()
@@ -110,21 +107,11 @@ func TestPubSub_AuthPassword(t *testing.T) {
 	defer core.Stop()
 
 	// add a device, service and user to test with
-	_, err := core.AuthnSvc.MngService.AddUser(user1ID, "u 1", user1Pass, "")
+	_, err := core.AuthService.MngService.AddUser(user1ID, "u 1", user1Pass, "", auth.ClientRoleViewer)
 	require.NoError(t, err)
-	_, err = core.AuthnSvc.MngService.AddService(service1ID, "s 1", service1Pub, 0)
+	_, err = core.AuthService.MngService.AddService(service1ID, "s 1", service1Pub, 0)
 	require.NoError(t, err)
-	_, err = core.AuthnSvc.MngService.AddDevice(device1ID, "d 1", device1Pub, 0)
-	require.NoError(t, err)
-
-	// assign clients to group
-	err = core.AuthzSvc.CreateGroup(group1ID, "group 1", 0)
-	require.NoError(t, err)
-	err = core.AuthzSvc.AddUser(user1ID, auth.ClientRoleViewer, group1ID)
-	require.NoError(t, err)
-	err = core.AuthzSvc.AddUser(service1ID, auth.ClientRoleViewer, group1ID)
-	require.NoError(t, err)
-	err = core.AuthzSvc.AddThing(thing1ID, group1ID)
+	_, err = core.AuthService.MngService.AddDevice(device1ID, "d 1", device1Pub, 0)
 	require.NoError(t, err)
 
 	// connect the user
@@ -133,10 +120,10 @@ func TestPubSub_AuthPassword(t *testing.T) {
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 
-	si, _ := hc1.JS().StreamInfo(group1ID)
+	si, _ := hc1.JS().StreamInfo(natsnkeyserver.EventsIntakeStreamName)
 	_ = si
 	// listen for events
-	sub, err := hc1.SubGroup(group1ID, false, func(msg *hubclient.EventMessage) {
+	sub, err := hc1.SubStream(natsnkeyserver.EventsIntakeStreamName, false, func(msg *hubclient.EventMessage) {
 		slog.Info("received event", "id", msg.EventID)
 		rxchan <- 1
 	})

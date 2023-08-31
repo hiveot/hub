@@ -1,4 +1,4 @@
-package authnservice
+package authbinding
 
 import (
 	"fmt"
@@ -8,16 +8,16 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-// AuthnUserBinding binds the service to a message based API
+// AuthProfileBinding binds the service to a message based API
 // This unmarshal requests and marshals responses
-type AuthnUserBinding struct {
-	svc   auth.IAuthnUser
+type AuthProfileBinding struct {
+	svc   auth.IAuthManageProfile
 	clSub hubclient.ISubscription
 	hc    hubclient.IHubClient
 }
 
 // handle action requests published by hub clients
-func (binding *AuthnUserBinding) handleClientActions(action *hubclient.ActionMessage) error {
+func (binding *AuthProfileBinding) handleClientActions(action *hubclient.ActionMessage) error {
 	slog.Info("handleClientActions", slog.String("actionID", action.ActionID))
 	switch action.ActionID {
 	case auth.GetProfileAction:
@@ -100,23 +100,23 @@ func (binding *AuthnUserBinding) handleClientActions(action *hubclient.ActionMes
 
 // Start subscribes to the actions for management and client capabilities
 // Register the binding subscription using the given connection
-func (binding *AuthnUserBinding) Start() (err error) {
+func (binding *AuthProfileBinding) Start() (err error) {
 	// if the first succeeds then 2nd will succeed as well
-	binding.clSub, _ = binding.hc.SubActions(auth.ClientAuthnCapability, binding.handleClientActions)
+	binding.clSub, _ = binding.hc.SubServiceCapability(auth.AuthManageProfileCapability, binding.handleClientActions)
 	return err
 }
 
 // Stop removes subscriptions
-func (binding *AuthnUserBinding) Stop() {
+func (binding *AuthProfileBinding) Stop() {
 	binding.clSub.Unsubscribe()
 }
 
-// NewAuthnMsgBinding create a messaging binding for the authn service
+// NewAuthProfileBinding create a messaging binding for the auth profile management
 //
-//	svc is the authn svc to bind to.
+//	svc is the client service to bind to.
 //	hc is the hub client, connected using the svc credentials
-func NewAuthnUserBinding(svc auth.IAuthnUser, hc hubclient.IHubClient) *AuthnUserBinding {
-	an := &AuthnUserBinding{
+func NewAuthProfileBinding(svc auth.IAuthManageProfile, hc hubclient.IHubClient) *AuthProfileBinding {
+	an := &AuthProfileBinding{
 		svc: svc,
 		hc:  hc,
 	}

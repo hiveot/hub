@@ -1,9 +1,9 @@
-package authn_test
+package auth_test
 
 import (
 	authapi "github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/core/authn/authnclient"
-	"github.com/hiveot/hub/core/authn/authnservice"
+	"github.com/hiveot/hub/core/auth/authclient"
+	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
 	"github.com/hiveot/hub/lib/certs"
@@ -35,29 +35,29 @@ var msgServer *natsnkeyserver.NatsNKeyServer
 //var useCore = "natsnkey" // natsnkey, natsjwt, natscallout, mqtt
 
 // add new user to test with
-func addNewUser(userID string, displayName string, pass string, mng authapi.IAuthnManage) (token string, key nkeys.KeyPair, err error) {
+func addNewUser(userID string, displayName string, pass string, mng authapi.IAuthnManageClients) (token string, key nkeys.KeyPair, err error) {
 	userKey, _ := nkeys.CreateUser()
 	userKeyPub, _ := userKey.PublicKey()
 	// FIXME: must set a password in order to update it later
-	userToken, err := mng.AddUser(userID, displayName, pass, userKeyPub)
+	userToken, err := mng.AddUser(userID, displayName, pass, userKeyPub, authapi.ClientRoleViewer)
 	return userToken, userKey, err
 }
 
 // launch the authn service and return a client for using and managing it.
 // the messaging server is already running (see TestMain)
-func startTestAuthnService() (authnSvc *authnservice.AuthnService, mng authapi.IAuthnManage, stopFn func(), err error) {
+func startTestAuthnService() (authnSvc *authservice.AuthService, mng authapi.IAuthnManageClients, stopFn func(), err error) {
 	// the password file to use
 	passwordFile := path.Join(testDir, "test.passwd")
 
 	// TODO: put this in a test environment
 	_ = os.Remove(passwordFile)
-	cfg := authnservice.AuthnConfig{}
+	cfg := authservice.AuthConfig{}
 	_ = cfg.Setup(testDir)
 	cfg.PasswordFile = passwordFile
 	cfg.DeviceTokenValidity = 10
 	cfg.Encryption = authapi.PWHASH_BCRYPT // nats requires bcrypt
 
-	authnSvc, err = authnservice.StartAuthnService(cfg, msgServer)
+	authnSvc, err = authservice.StartAuthService(cfg, msgServer)
 	if err != nil {
 		logrus.Panicf("cant start test authn service: %s", err)
 	}
@@ -67,7 +67,7 @@ func startTestAuthnService() (authnSvc *authnservice.AuthnService, mng authapi.I
 	if err != nil {
 		panic(err)
 	}
-	mngAuthn := authnclient.NewAuthnManageClient(hc2)
+	mngAuthn := authclient.NewAuthClientsClient(hc2)
 
 	return authnSvc, mngAuthn, func() {
 		hc2.Disconnect()
@@ -132,20 +132,20 @@ func TestAddRemoveClients(t *testing.T) {
 	require.NoError(t, err)
 	defer stopFn()
 
-	_, err = mng.AddUser("user1", "user 1", "pass1", "")
+	_, err = mng.AddUser("user1", "user 1", "pass1", "", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
 	// duplicate fail
-	_, err = mng.AddUser("user1", "user 1", "pass1", "") // should fail
+	_, err = mng.AddUser("user1", "user 1", "pass1", "", authapi.ClientRoleViewer) // should fail
 	assert.Error(t, err)
 	// missing userID
-	_, err = mng.AddUser("", "user 1", "pass1", "") // should fail
+	_, err = mng.AddUser("", "user 1", "pass1", "", authapi.ClientRoleViewer) // should fail
 	assert.Error(t, err)
 
-	_, err = mng.AddUser("user2", "user 2", "pass2", "")
+	_, err = mng.AddUser("user2", "user 2", "pass2", "", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
-	_, err = mng.AddUser("user3", "user 3", "pass3", "")
+	_, err = mng.AddUser("user3", "user 3", "pass3", "", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
-	_, err = mng.AddUser("user4", "user 4", "pass4", "")
+	_, err = mng.AddUser("user4", "user 4", "pass4", "", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
 
 	_, err = mng.AddDevice(deviceID, "device 1", deviceKeyPub, 100)
@@ -177,25 +177,25 @@ func TestAddRemoveClients(t *testing.T) {
 	cnt, _ := mng.GetCount()
 	assert.Equal(t, 6, cnt)
 
-	err = mng.RemoveUser("user1")
+	err = mng.RemoveClient("user1")
 	assert.NoError(t, err)
-	err = mng.RemoveUser("user1") // remove is idempotent
+	err = mng.RemoveClient("user1") // remove is idempotent
 	assert.NoError(t, err)
-	err = mng.RemoveUser("user2")
+	err = mng.RemoveClient("user2")
 	assert.NoError(t, err)
-	err = mng.RemoveUser(deviceID)
+	err = mng.RemoveClient(deviceID)
 	assert.NoError(t, err)
-	err = mng.RemoveUser(serviceID)
+	err = mng.RemoveClient(serviceID)
 	assert.NoError(t, err)
 
 	require.NoError(t, err)
 	clList, err = mng.GetProfiles()
 	assert.Equal(t, 2, len(clList))
 
-	_, err = mng.AddUser("user1", "user 1", "", "")
+	_, err = mng.AddUser("user1", "user 1", "", "", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
 	// a bad key
-	_, err = mng.AddUser("user2", "user 2", "", "badkey")
+	_, err = mng.AddUser("user2", "user 2", "", "badkey", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
 
 	// bad public key
@@ -224,7 +224,7 @@ func TestLoginRefresh(t *testing.T) {
 	tu1Key, _ := nkeys.CreateUser()
 	tu1KeyPub, _ := tu1Key.PublicKey()
 	// AddUser returns a token. JWT or Nkey public key depending on server
-	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, "")
+	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, "", authapi.ClientRoleViewer)
 	require.NoError(t, err)
 	assert.Empty(t, tu1Token)
 
@@ -239,8 +239,10 @@ func TestLoginRefresh(t *testing.T) {
 	defer hc1.Disconnect()
 
 	// 2. Request a new token
-	cl1 := authnclient.NewAuthnUserClient(hc1)
+	cl1 := authclient.NewAuthProfileClient(hc1)
 	// without a pubkey NewToken should fail
+	// FIXME: users have permission to get a new token - how?
+	// ? register auth permissions things.authn.user.action.newToken.{id}   - or use the svc prefix?
 	authToken1, err = cl1.NewToken(tu1ID, tu1Pass)
 	assert.Error(t, err)
 
@@ -262,7 +264,7 @@ func TestLoginRefresh(t *testing.T) {
 	// (nkeys and callout auth doesn't need a server reload)
 	hc2, err := natshubclient.Connect(clientURL, tu1ID, tu1Key, authToken1, certBundle.CaCert)
 	require.NoError(t, err)
-	cl2 := authnclient.NewAuthnUserClient(hc2)
+	cl2 := authclient.NewAuthProfileClient(hc2)
 	prof2, err := cl2.GetProfile(tu1ID)
 	require.NoError(t, err)
 	require.Equal(t, tu1ID, prof2.ClientID)
@@ -307,7 +309,7 @@ func TestRefreshFakeToken(t *testing.T) {
 	// add user to test with. password and no public key
 	tu1Key, _ := nkeys.CreateUser()
 	tu1KeyPub, _ := tu1Key.PublicKey()
-	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, "")
+	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, "", authapi.ClientRoleViewer)
 	_ = tu1Token
 	require.NoError(t, err)
 	//require.NotEmpty(t, tu1Token)
@@ -320,7 +322,7 @@ func TestRefreshFakeToken(t *testing.T) {
 	hc1, err := natshubclient.ConnectWithPassword(clientURL, tu1ID, tu1Pass, certBundle.CaCert)
 	defer hc1.Disconnect()
 	require.NoError(t, err)
-	cl1 := authnclient.NewAuthnUserClient(hc1)
+	cl1 := authclient.NewAuthProfileClient(hc1)
 
 	// 2: test refresh without any token
 	authToken1, err = cl1.Refresh(tu1ID, "")
@@ -379,7 +381,7 @@ func TestUpdate(t *testing.T) {
 	const newDisplayName = "new display name"
 	newPK, _ := nkeys.CreateUser()
 	newPKPub, _ := newPK.PublicKey()
-	cl := authnclient.NewAuthnUserClient(hc)
+	cl := authclient.NewAuthProfileClient(hc)
 	err = cl.UpdateName(tu1ID, newDisplayName)
 	assert.NoError(t, err)
 	err = cl.UpdatePassword(tu1ID, "new password")
@@ -394,7 +396,7 @@ func TestUpdate(t *testing.T) {
 	hc, err = natshubclient.Connect(clientURL, tu1ID, newPK, newPKPub, certBundle.CaCert)
 	require.NoError(t, err)
 	defer hc.Disconnect()
-	cl = authnclient.NewAuthnUserClient(hc)
+	cl = authclient.NewAuthProfileClient(hc)
 
 	prof, err := cl.GetProfile(tu1ID)
 	assert.Equal(t, newDisplayName, prof.DisplayName)
@@ -403,7 +405,7 @@ func TestUpdate(t *testing.T) {
 	prof2, err := mng.GetProfile(tu1ID)
 	assert.Equal(t, prof, prof2)
 	prof2.DisplayName = "after update"
-	err = mng.UpdateUser(tu1ID, prof2)
+	err = mng.UpdateClient(tu1ID, prof2)
 	assert.NoError(t, err)
 
 	prof, err = cl.GetProfile(tu1ID)
