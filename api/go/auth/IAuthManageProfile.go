@@ -1,7 +1,7 @@
 package auth
 
-// AuthManageProfileCapability is the name of the Thing/Capability that handles client requests
-const AuthManageProfileCapability = "manageProfile"
+// AuthProfileCapability is the name of the Thing/Capability that handles client requests
+const AuthProfileCapability = "profile"
 
 // below a list of actions and their payload
 

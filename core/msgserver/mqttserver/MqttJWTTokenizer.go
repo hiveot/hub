@@ -1,4 +1,4 @@
-package authservice
+package mqttserver
 
 import (
 	"crypto/ecdsa"
@@ -12,17 +12,17 @@ import (
 	"time"
 )
 
-// AuthnJWTTokenizer is the built-in JWT tokenizer to generate and validate JWT authentication tokens.
+// MqttJWTTokenizer is the JWT tokenizer used by the MQTT message server.
 // These tokens are not compatible with NATS JWT tokens. NATS adds permission subject
 // claims and requires signing with an account key.
 // This implements the IAuthnTokenizer interface
-type AuthnJWTTokenizer struct {
-	signingKey    ecdsa.PrivateKey
+type MqttJWTTokenizer struct {
+	signingKey    ecdsa.PrivateKey // todo is edd2519 a better choice?
 	signingKeyPub string
 }
 
 // CreateToken creates a signed authentication JWT token
-func (svc *AuthnJWTTokenizer) CreateToken(
+func (svc *MqttJWTTokenizer) CreateToken(
 	clientID string, clientType string, pubKey string, validitySec int) (newToken string, err error) {
 
 	// see also: https://golang-jwt.github.io/jwt/usage/create/
@@ -32,7 +32,7 @@ func (svc *AuthnJWTTokenizer) CreateToken(
 		return
 	}
 
-	// Create the JWT claims, which includes the username and expiry time
+	// Create the JWT claims, which includes the username, clientType and expiry time
 	claims := jwt.MapClaims{
 		"alg":  "ES256",
 		"type": "JWT",
@@ -69,13 +69,13 @@ func (svc *AuthnJWTTokenizer) CreateToken(
 //   - if signedNonce is provided, verify against the client public key from token
 //
 // if signedNonce is provided then nonce is required.
-func (svc *AuthnJWTTokenizer) ValidateToken(
+func (svc *MqttJWTTokenizer) ValidateToken(
 	clientID string, tokenString string, signedNonce string, nonce string) (
-	err error) {
+	claims jwt.MapClaims, err error) {
 
 	// see also: https://golang-jwt.github.io/jwt/usage/parse/
 	//claims := jwt.RegisteredClaims{}
-	claims := jwt.MapClaims{}
+	claims = jwt.MapClaims{}
 
 	// TODO: TBD if "kid" (key identifier) can be used, in case of multiple signing keys
 
@@ -95,7 +95,7 @@ func (svc *AuthnJWTTokenizer) ValidateToken(
 		})
 
 	if err != nil || jwtToken == nil || !jwtToken.Valid {
-		return fmt.Errorf("invalid JWT token of client %s: %w", clientID, err)
+		return claims, fmt.Errorf("invalid JWT token of client %s: %w", clientID, err)
 	}
 
 	claimedClientID := claims["clientID"].(string)
@@ -104,7 +104,7 @@ func (svc *AuthnJWTTokenizer) ValidateToken(
 			slog.String("token ID", claimedClientID),
 			slog.String("clientID", clientID))
 		err = fmt.Errorf("token from different user")
-		return err
+		return claims, err
 	}
 
 	clientType, _ := claims.GetAudience()
@@ -115,19 +115,19 @@ func (svc *AuthnJWTTokenizer) ValidateToken(
 
 	clientPubKey, _ := claims.GetSubject()
 	if len(clientType) == 0 || !validClientType || clientPubKey == "" {
-		return fmt.Errorf("missing client type (aud) or public key (sub) for client %s", clientID)
+		return claims, fmt.Errorf("missing client type (aud) or public key (sub) for client %s", clientID)
 	}
 
 	// verify the nonce signature
 	// TODO: not sure if this is the right way. Where is the client public key
-	// supposed to come from? (we use subject here)
+	// supposed to come from? (we use subject here which can be spoofed)
 	if signedNonce != "" {
 		sig, err := base64.RawURLEncoding.DecodeString(signedNonce)
 		if err != nil {
 			// Allow fallback to normal base64.
 			sig, err = base64.StdEncoding.DecodeString(signedNonce)
 			if err != nil {
-				return fmt.Errorf("signature not valid base64: %w", err)
+				return claims, fmt.Errorf("signature not valid base64: %w", err)
 			}
 		}
 		// Verify that the signature is signed by the public key in the token
@@ -136,17 +136,17 @@ func (svc *AuthnJWTTokenizer) ValidateToken(
 		//ed25519.Verify(pubKey, []byte(nonce), sig)
 	}
 
-	return nil
+	return claims, nil
 }
 
-// NewAuthnServiceTokenizer provides the default built-in JWT tokenizer for authentication.
+// NewMqttJWTTokenizer provides the default built-in JWT tokenizer for authentication.
 //
 //	signingKP used for signing and verifying JWT tokens
-func NewAuthnServiceTokenizer(signingKey ecdsa.PrivateKey) *AuthnJWTTokenizer {
+func NewMqttJWTTokenizer(signingKey ecdsa.PrivateKey) *MqttJWTTokenizer {
 	signingKeyPub, _ := x509.MarshalPKIXPublicKey(signingKey.PublicKey)
 	signingKeyStr := base64.StdEncoding.EncodeToString(signingKeyPub)
 
-	tokenizer := &AuthnJWTTokenizer{
+	tokenizer := &MqttJWTTokenizer{
 		signingKey:    signingKey,
 		signingKeyPub: signingKeyStr,
 	}

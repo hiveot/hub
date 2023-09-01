@@ -139,7 +139,8 @@ func ConnectWithJWT(url string, myKey nkeys.KeyPair, jwtToken string, caCert *x5
 		nats.Name(clientID), // connection name for logging, debugging
 		nats.Secure(tlsConfig),
 		nats.CustomInboxPrefix("_INBOX."+clientID),
-		nats.UserJWTAndSeed(jwtToken, string(jwtSeed)), // does this help?
+		nats.UserJWTAndSeed(jwtToken, string(jwtSeed)),
+		nats.Token(jwtToken), // JWT token isn't passed through
 		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSec)))
 
 	if err == nil {

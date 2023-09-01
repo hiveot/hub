@@ -1,11 +1,11 @@
-package natshubcore_test
+package hubcore_test
 
 import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
+	"github.com/hiveot/hub/core/cmd/natshub/hubcore"
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
-	"github.com/hiveot/hub/core/hubcore/natshubcore"
 	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/nats-io/nkeys"
@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 
 func TestHubServer_StartStop(t *testing.T) {
 	clientURL := ""
-	hub := natshubcore.NewHubCore()
+	hub := hubcore.NewHubCore()
 	require.NotPanics(t, func() { clientURL = hub.Start(hubCfg) })
 	require.NotEmpty(t, clientURL)
 	time.Sleep(time.Second * 1)
@@ -57,7 +57,7 @@ func TestPubSub_ConnectAuthNKey(t *testing.T) {
 	rxchan := make(chan int)
 	clientURL := ""
 
-	hub := natshubcore.NewHubCore()
+	hub := hubcore.NewHubCore()
 	require.NotPanics(t, func() { clientURL = hub.Start(hubCfg) })
 	defer hub.Stop()
 
@@ -102,7 +102,7 @@ func TestPubSub_AuthPassword(t *testing.T) {
 	service1Pub, _ := service1KP.PublicKey()
 
 	// launch the core services
-	core := natshubcore.NewHubCore()
+	core := hubcore.NewHubCore()
 	require.NotPanics(t, func() { clientURL = core.Start(hubCfg) })
 	defer core.Stop()
 

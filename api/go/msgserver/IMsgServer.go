@@ -86,7 +86,12 @@ type IMsgServer interface {
 	// Stop the server
 	Stop()
 
-	// ValidateToken verifies whether the token is valid
+	// VerifyPassword verifies the password for the user using the ApplyAuth users
+	//  loginID is the client ID of the user
+	//  password is the bcrypt encoded password???
+	VerifyPassword(loginID string, password string) error
+
+	// VerifyToken verifies whether the token is valid
 	// The token must contain the public key of the client for verification.
 	// NATS uses the 'sub' field for example. The provided public key on record can
 	// be used as an extra verification step.
@@ -97,5 +102,5 @@ type IMsgServer interface {
 	//  token to verify
 	//  signedNonce base64 encoded signature generated from private key and nonce field
 	//  nonce the server provided field used to sign the token.
-	ValidateToken(clientID string, pubKey string, token string, signedNonce string, nonce string) error
+	VerifyToken(clientID string, token string, signedNonce string, nonce string) error
 }

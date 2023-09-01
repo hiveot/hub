@@ -1,7 +1,8 @@
-package natscoserver
+package natsnkeyserver
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
@@ -35,6 +36,8 @@ type NatsCalloutHook struct {
 	// the nats connection used to subscribe and receive callout requests
 	nc *nats.Conn
 
+	tokenizer *NatsJWTTokenizer
+
 	// the application handler to verify authentication requests
 	// this is doing the actual work
 	authnVerifier func(*jwt.AuthorizationRequestClaims) error
@@ -63,50 +66,6 @@ func (chook *NatsCalloutHook) createSignedResponse(
 	respClaims.Expires = time.Now().Add(time.Duration(100) * time.Second).Unix()
 	response, err := respClaims.Encode(chook.calloutAccountKey)
 	return []byte(response), err
-}
-
-// createUserJWTToken returns a new user jwt token using the issuer account
-// This is invoked after the verification callback returns with success
-//
-// The token is signed by the issuer account. In server mode this must be the same
-// account as the account the callout client belongs to.
-//
-//	clientID is the user's login/connect ID which is added as the token ID
-//	clientPub is the users's public key which goes into the subject field of the jwt token
-func (chook *NatsCalloutHook) createUserJWTToken(clientID string, clientPub string) (newToken string, err error) {
-	validitySec := 3600 // the testing validity
-
-	// build an jwt response; user_nkey (clientPub) is the subject
-	uc := jwt.NewUserClaims(clientPub)
-
-	uc.Name = clientID
-	// Note: In server mode do not set issuer account. This is for operator mode only.
-	// Using IssuerAccount in server mode is unnecessary and fails with:
-	//   "Error non operator mode account %q: attempted to use issuer_account"
-	// not sure why this is an issue...
-	//uc.IssuerAccount,_ = svr.calloutAcctKey.PublicKey()
-	//uc.Issuer, _ = chook.appAcctKey.PublicKey()
-
-	uc.IssuedAt = time.Now().Unix()
-
-	// Note: in server mode 'aud' should contain the account name. In operator mode it expects
-	// the account key.
-	// see also: https://github.com/nats-io/nats-server/issues/4313
-	//uc.Audience, _ = chook.appAcctKey.PublicKey()
-	uc.Audience = chook.issuerAccountName
-	uc.Expires = time.Now().Add(time.Duration(validitySec) * time.Second).Unix()
-
-	//uc.UserPermissionLimits = *limits // todo
-
-	vr := jwt.CreateValidationResults()
-	uc.Validate(vr)
-	if len(vr.Errors()) != 0 {
-		err = fmt.Errorf("validation error: %w", vr.Errors()[0])
-	}
-	// encode sets the issuer field to the public key
-	newToken, err = uc.Encode(chook.issuerAccountKey)
-	//newToken, err = uc.Encode(chook.calloutAccountKey)
-	return newToken, err
 }
 
 // callout handler invoked by the callout subscription.
@@ -148,7 +107,12 @@ func (chook *NatsCalloutHook) handleCallOutReq(msg *nats.Msg) {
 	// Note that in server mode these keys must be the same.
 	newToken := ""
 	clientID := connectOpts.Name // client identification
-	newToken, err = chook.createUserJWTToken(clientID, userNKeyPub)
+	// FIXME: where is ClientInformation documented?
+	//clientType := reqClaims.Tags.ClientInformation.Tags["clientType"]
+	clientType := "" // TODO
+	// FIXME: get validity from config
+	validity := auth.DefaultUserTokenValidity
+	newToken, err = chook.tokenizer.CreateToken(clientID, clientType, userNKeyPub, validity)
 
 	resp, err := chook.createSignedResponse(userNKeyPub, serverID.ID, newToken, err)
 	if err != nil {
@@ -202,7 +166,7 @@ func (chook *NatsCalloutHook) start() error {
 	return err
 }
 
-// ConnectNatsCalloutHook create a new instance of the NATS callout hook
+// EnableNatsCalloutHook create an instance of the NATS callout hook
 // for use with NKey based configuration options.
 // This configures the server to use callout hooks and subscribes to requests
 // using the given connection.
@@ -214,24 +178,35 @@ func (chook *NatsCalloutHook) start() error {
 //   - issuerAccountKey is the key-pair of the account used to issue the JWT tokens
 //   - nc is the nats connection to use
 //   - authnVerifier is the callback handler to verify an authn request
-func ConnectNatsCalloutHook(
-	serverOpts *server.Options,
-	issuerAccountName string,
-	issuerAccountKey nkeys.KeyPair,
-	nc *nats.Conn,
+func EnableNatsCalloutHook(
+	//serverOpts *server.Options,
+	//issuerAccountName string,
+	//issuerAccountKey nkeys.KeyPair,
+	//nc *nats.Conn,
+	srv *NatsNKeyServer,
 	authnVerifier func(request *jwt.AuthorizationRequestClaims) error,
 ) (*NatsCalloutHook, error) {
 
+	// Ideally the callout handler uses a separate callout account.
+	// Apparently this isn't allowed so it runs in the application account.
+	nc, err := srv.ConnectInProcNC("callout", nil)
+	if err != nil {
+		return nil, fmt.Errorf("unable to connect callout handler: %w", err)
+	}
+	// tokenizer is needed to create a JWT auth token after verification succeeds
+	tokenizer := NewNatsJWTTokenizer(srv.cfg.AppAccountName, srv.cfg.AppAccountKP)
+
 	hook := &NatsCalloutHook{
-		serverOpts:        serverOpts,
-		issuerAccountName: issuerAccountName,
-		issuerAccountKey:  issuerAccountKey,
-		calloutAccountKey: issuerAccountKey, // currently must be the issuer for server mode
+		serverOpts:        &srv.natsOpts,
+		issuerAccountName: srv.cfg.AppAccountName,
+		issuerAccountKey:  srv.cfg.AppAccountKP,
+		calloutAccountKey: srv.cfg.AppAccountKP, // must be the issuer for server mode
 		nc:                nc,
+		tokenizer:         tokenizer,
 		authnVerifier:     authnVerifier,
 	}
 
-	err := hook.start()
+	err = hook.start()
 
 	return hook, err
 }

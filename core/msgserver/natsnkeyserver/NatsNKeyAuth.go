@@ -1,14 +1,12 @@
 package natsnkeyserver
 
 import (
-	"encoding/base64"
 	"fmt"
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
-	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
-	"github.com/nats-io/nkeys"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/exp/slog"
 	"time"
 )
@@ -106,10 +104,14 @@ func (srv *NatsNKeyServer) ApplyAuth(clients []msgserver.AuthClient) error {
 // CreateToken uses the public key as token when using nkeys
 func (srv *NatsNKeyServer) CreateToken(
 	clientID string, clientType string, pubKey string, tokenValidity time.Duration) (token string, err error) {
-	if srv.chook == nil {
-		return pubKey, nil
+	//
+	if srv.natsOpts.AuthCallout != nil {
+		token, err = srv.tokenizer.CreateToken(clientID, clientType, pubKey, tokenValidity)
+	} else {
+		// not using callout sso use public key as token
+		token = pubKey
 	}
-	return pubKey, nil
+	return token, err
 }
 
 // MakePermissions constructs a permissions object for a client
@@ -237,83 +239,6 @@ func (srv *NatsNKeyServer) SetServicePermissions(
 
 }
 
-// ValidateJWTToken checks if the given token belongs the clientID and is valid.
-//   - verify if jwtToken is a valid token
-//   - validate the token isn't expired
-//   - verify the user's public key's nonce based signature
-//     this can only be signed when the user has its private key
-//   - verify the issuer is the signing/account key.
-//
-// Verifying the signedNonce is optional. Use "" to ignore.
-func (srv *NatsNKeyServer) ValidateJWTToken(
-	clientID string, pubKey string, jwtToken string, signedNonce string, nonce string) (err error) {
-
-	// the jwt token is not in the JWT field. Workaround by storing it in the token field.
-	juc, err := jwt.DecodeUserClaims(jwtToken)
-	if err != nil {
-		return fmt.Errorf("unable to decode jwt token:%w", err)
-	}
-	// validate the jwt user claims (not expired)
-	vr := jwt.CreateValidationResults()
-	juc.Validate(vr)
-	if len(vr.Errors()) > 0 {
-		return fmt.Errorf("jwt authn failed: %w", vr.Errors()[0])
-	}
-	// the subject contains the public user nkey
-	userPub, err := nkeys.FromPublicKey(juc.Subject)
-	if err != nil {
-		return fmt.Errorf("user nkey not valid: %w", err)
-	}
-
-	// Verify the nonce based token signature
-	if signedNonce != "" {
-		sig, err := base64.RawURLEncoding.DecodeString(signedNonce)
-		if err != nil {
-			// Allow fallback to normal base64.
-			sig, err = base64.StdEncoding.DecodeString(signedNonce)
-			if err != nil {
-				return fmt.Errorf("signature not valid base64: %w", err)
-			}
-		}
-		// verify the signature of the public key using the nonce
-		// this tells us the user public key is not forged
-		if err = userPub.Verify([]byte(nonce), sig); err != nil {
-			return fmt.Errorf("signature not verified")
-		}
-	}
-	// verify issuer account matches
-	accPub, _ := srv.cfg.AppAccountKP.PublicKey()
-	if juc.Issuer != accPub {
-		return fmt.Errorf("JWT issuer is not known")
-	}
-	// clientID must match the user
-	if juc.Name != clientID {
-		return fmt.Errorf("clientID doesn't match user")
-	}
-
-	//if entry.PubKey != userPub {
-	//	return fmt.Errorf("user %s public key mismatch", clientID)
-	//}
-
-	//acc, err := svc.ns.LookupAccount(juc.IssuerAccount)
-	//if err != nil {
-	//	return fmt.Errorf("JWT issuer is not known")
-	//}
-	//if acc.IsExpired() {
-	//	return fmt.Errorf("Account JWT has expired")
-	//}
-	// no access to account revocation list
-	//if acc.checkUserRevoked(juc.Subject, juc.IssuedAt) {
-	//	return fmt.Errorf("User authentication revoked")
-	//}
-
-	//if !validateSrc(juc, c.host) {
-	//	return fmt.Errorf("Bad src Ip %s", c.host)
-	//	return false
-	//}
-	return nil
-}
-
 // ValidateToken checks if the given token belongs the clientID and is valid.
 // When keys is used this returns success
 // When nkeys is not used this validates the JWT token
@@ -321,12 +246,27 @@ func (srv *NatsNKeyServer) ValidateJWTToken(
 // Verifying the signedNonce is optional. Use "" to ignore.
 func (srv *NatsNKeyServer) ValidateToken(
 	clientID string, pubKey string, oldToken string, signedNonce string, nonce string) (err error) {
-	if srv.chook == nil {
+	if srv.natsOpts.AuthCallout == nil {
 		// nkeys only
 		if oldToken == "" || pubKey != oldToken {
 			return fmt.Errorf("invalid old token for client '%s'", clientID)
 		}
 		return nil
 	}
-	return srv.ValidateJWTToken(clientID, pubKey, oldToken, signedNonce, nonce)
+	return srv.tokenizer.ValidateToken(clientID, pubKey, oldToken, signedNonce, nonce)
+}
+
+// ValidatePassword checks if the given password matches the user
+func (srv *NatsNKeyServer) ValidatePassword(loginID string, password string) error {
+	if loginID == "" || password == "" {
+		return fmt.Errorf("Password validation failed for user '%s'", loginID)
+	}
+	// don't expect many users so loop is okay
+	for _, u := range srv.natsOpts.Users {
+		if u.Username == loginID {
+			err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
+			return err
+		}
+	}
+	return fmt.Errorf("unknown client '%s'", loginID)
 }

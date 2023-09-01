@@ -5,11 +5,10 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
-	"github.com/hiveot/hub/core/msgserver/natscoserver"
-	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
@@ -25,8 +24,8 @@ type NatsNKeyServer struct {
 	cfg      *NatsServerConfig
 	natsOpts server.Options
 	ns       *server.Server
-	// enable callout authn with EnableCalloutHandler. nil to just use nkeys
-	chook *natscoserver.NatsCalloutHook
+	// tokenizer for generating JWT tokens, when used
+	tokenizer auth.IAuthnTokenizer
 
 	// map of role to role permissions
 	rolePermissions map[string][]msgserver.RolePermission
@@ -87,29 +86,6 @@ func (srv *NatsNKeyServer) ConnectInProc(serviceID string) (hubclient.IHubClient
 	return hc, err
 }
 
-// EnableCalloutHandler reconfigures the server for external callout authn
-// The authn callout handler will issue tokens for the application account.
-// Invoke this after successfully starting the server
-func (srv *NatsNKeyServer) EnableCalloutHandler(
-	authnVerifier func(request *jwt.AuthorizationRequestClaims) error) error {
-
-	// Ideally the callout handler uses a separate callout account.
-	// Apparently this isn't allowed so it runs in the application account.
-	nc, err := srv.ConnectInProcNC("callout", nil)
-	if err != nil {
-		return fmt.Errorf("unable to connect callout handler: %w", err)
-	}
-	if err == nil {
-		srv.chook, err = natscoserver.ConnectNatsCalloutHook(
-			&srv.natsOpts,
-			srv.cfg.AppAccountName, // issuerAcctName,
-			srv.cfg.AppAccountKP,
-			nc,
-			authnVerifier)
-	}
-	return err
-}
-
 // Start the NATS server with the given configuration and create an event ingress stream
 //
 //	cfg.Setup must have been called first.
@@ -147,6 +123,10 @@ func (srv *NatsNKeyServer) Start() (clientURL string, err error) {
 	if !hasJS {
 		return clientURL, fmt.Errorf("JS not enabled for app account '%s'", srv.cfg.AppAccountName)
 	}
+
+	// tokenizer
+	srv.tokenizer = NewNatsJWTTokenizer(
+		srv.cfg.AppAccountName, srv.cfg.AppAccountKP)
 
 	// ensure the events intake stream exists
 	nc, err := srv.ConnectInProcNC("jetsetup", nil)

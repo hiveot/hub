@@ -1,5 +1,7 @@
 package auth
 
+import "time"
+
 // IAuthnTokenizer is the interface of the token generator and validator for the
 // underlying messaging authentication.
 type IAuthnTokenizer interface {
@@ -10,8 +12,8 @@ type IAuthnTokenizer interface {
 	//  clientID with the identity of the device, service or user
 	//  clientType ClientTypeDevice, ClientTypeService or ClientTypeUser
 	//  pubKey public key string to include in the token
-	//  validitySec with the lifespan in seconds
-	CreateToken(clientID string, clientType string, pubKey string, validitySec int) (newToken string, err error)
+	//  validitySec with the token lifespan
+	CreateToken(clientID string, clientType string, pubKey string, validity time.Duration) (newToken string, err error)
 
 	// ValidateToken verifies whether the token is valid
 	// The token must contain the public key of the client for verification.

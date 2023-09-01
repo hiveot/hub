@@ -170,7 +170,7 @@ func TestEventsStream(t *testing.T) {
 	//
 
 	// create the stream consumer and listen for events
-	sub, err := hc1.SubGroup(natsnkeyserver.EventsIntakeStreamName, false,
+	sub, err := hc1.SubStream(natsnkeyserver.EventsIntakeStreamName, false,
 		func(msg *hubclient.EventMessage) {
 			slog.Info("received event", "eventID", msg.EventID)
 			rxMsg = string(msg.Payload)

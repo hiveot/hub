@@ -1,4 +1,4 @@
-package jwtauthn_old
+package mqttserver
 
 import (
 	"crypto/ecdsa"

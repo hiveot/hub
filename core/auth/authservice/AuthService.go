@@ -63,7 +63,7 @@ func (svc *AuthService) Start() (err error) {
 		[]string{auth.ClientRoleAdmin})
 	svc.msgServer.SetServicePermissions(auth.AuthServiceName, auth.AuthManageRolesCapability,
 		[]string{auth.ClientRoleAdmin})
-	svc.msgServer.SetServicePermissions(auth.AuthServiceName, auth.AuthManageProfileCapability,
+	svc.msgServer.SetServicePermissions(auth.AuthServiceName, auth.AuthProfileCapability,
 		[]string{auth.ClientRoleViewer, auth.ClientRoleOperator, auth.ClientRoleManager, auth.ClientRoleAdmin})
 	return err
 }

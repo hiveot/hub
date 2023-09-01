@@ -102,7 +102,7 @@ func (binding *AuthProfileBinding) handleClientActions(action *hubclient.ActionM
 // Register the binding subscription using the given connection
 func (binding *AuthProfileBinding) Start() (err error) {
 	// if the first succeeds then 2nd will succeed as well
-	binding.clSub, _ = binding.hc.SubServiceCapability(auth.AuthManageProfileCapability, binding.handleClientActions)
+	binding.clSub, _ = binding.hc.SubServiceCapability(auth.AuthProfileCapability, binding.handleClientActions)
 	return err
 }
 

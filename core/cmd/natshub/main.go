@@ -5,8 +5,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/hiveot/hub/core/cmd/natshub/hubcore"
 	"github.com/hiveot/hub/core/config"
-	"github.com/hiveot/hub/core/hubcore/natshubcore"
 	"github.com/hiveot/hub/lib/svcconfig"
 	"github.com/hiveot/hub/lib/utils"
 	"gopkg.in/yaml.v3"
@@ -110,7 +110,6 @@ func main() {
 		_, _ = fmt.Fprint(os.Stderr, err.Error()+"\n")
 		os.Exit(1)
 	}
-
 }
 
 // run starts the server and core services
@@ -118,8 +117,7 @@ func main() {
 func run(cfg *config.HubCoreConfig) error {
 	var err error
 
-	core := natshubcore.NewHubCore(cfg)
-	clientURL := core.Start()
+	clientURL, err := hubcore.StartCore(cfg)
 
 	if err != nil {
 		return fmt.Errorf("unable to start server: %w", err)
@@ -128,5 +126,7 @@ func run(cfg *config.HubCoreConfig) error {
 	// wait until signal
 	fmt.Println("Hub started. ClientURL=" + clientURL)
 	utils.WaitForSignal(context.Background())
+
+	hubcore.StopCore()
 	return nil
 }
