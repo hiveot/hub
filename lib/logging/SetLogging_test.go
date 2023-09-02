@@ -1,12 +1,11 @@
 package logging_test
 
 import (
+	"golang.org/x/exp/slog"
 	"os"
 	"testing"
 
 	"github.com/hiveot/hub/lib/logging"
-
-	"github.com/sirupsen/logrus"
 )
 
 func TestLogging(t *testing.T) {
@@ -16,13 +15,13 @@ func TestLogging(t *testing.T) {
 
 	os.Remove(logFile)
 	logging.SetLogging("info", logFile)
-	logrus.Info("Hello info")
+	slog.Info("Hello info")
 	logging.SetLogging("debug", logFile)
-	logrus.Debug("Hello debug")
+	slog.Debug("Hello debug")
 	logging.SetLogging("warn", logFile)
-	logrus.Warn("Hello warn")
+	slog.Warn("Hello warn")
 	logging.SetLogging("error", logFile)
-	logrus.Error("Hello error")
+	slog.Error("Hello error")
 	//assert.FileExists(t, logFile)
 	//os.Remove(logFile)
 }

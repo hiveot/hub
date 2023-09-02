@@ -83,15 +83,16 @@ func (cl *AuthProfileClient) UpdatePassword(clientID string, newPassword string)
 	return err
 }
 
-// UpdatePubKey updates the user's public key.
-// This takes effect immediately. Existing connection must be closed and re-established.
-// Login or Refresh must be called successfully first.
+// UpdatePubKey updates the user's public key and close the connection.
+// This takes effect immediately. The client must reconnect to continue.
 func (cl *AuthProfileClient) UpdatePubKey(clientID string, newPubKey string) error {
 	req := auth.UpdatePubKeyReq{
 		ClientID:  clientID,
 		NewPubKey: newPubKey,
 	}
 	err := cl.pubReq(auth.UpdatePubKeyAction, &req, nil)
+	// as the connection is no longer valid, might as well disconnect it to avoid confusion.
+	cl.hc.Disconnect()
 	return err
 }
 

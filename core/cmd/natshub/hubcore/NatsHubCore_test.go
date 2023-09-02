@@ -38,13 +38,13 @@ func TestMain(m *testing.M) {
 }
 
 func TestHubServer_StartStop(t *testing.T) {
-	clientURL := ""
-	hub := hubcore.NewHubCore()
-	require.NotPanics(t, func() { clientURL = hub.Start(hubCfg) })
-	require.NotEmpty(t, clientURL)
-	time.Sleep(time.Second * 1)
+	_ = os.Remove(hubCfg.Auth.PasswordFile)
+	clientURL, err := hubcore.StartCore(hubCfg)
+	require.NoError(t, err)
+	defer hubcore.StopCore()
 
-	hub.Stop()
+	assert.NotEmpty(t, clientURL)
+	time.Sleep(time.Second * 1)
 }
 
 func TestPubSub_ConnectAuthNKey(t *testing.T) {
@@ -57,14 +57,15 @@ func TestPubSub_ConnectAuthNKey(t *testing.T) {
 	rxchan := make(chan int)
 	clientURL := ""
 
-	hub := hubcore.NewHubCore()
-	require.NotPanics(t, func() { clientURL = hub.Start(hubCfg) })
-	defer hub.Stop()
+	_ = os.Remove(hubCfg.Auth.PasswordFile)
+	clientURL, err := hubcore.StartCore(hubCfg)
+	require.NoError(t, err)
+	defer hubcore.StopCore()
 
 	// setup: device and service
-	_, err := hub.AuthService.MngService.AddDevice(device1ID, "device 1", device1Pub, 0)
+	_, err = hubcore.AuthService.MngService.AddDevice(device1ID, "device 1", device1Pub, 0)
 	require.NoError(t, err)
-	_, err = hub.AuthService.MngService.AddService(service1ID, "service 1", service1Pub, 0)
+	_, err = hubcore.AuthService.MngService.AddService(service1ID, "service 1", service1Pub, 0)
 	require.NoError(t, err)
 
 	// service1 subscribes to events
@@ -102,16 +103,17 @@ func TestPubSub_AuthPassword(t *testing.T) {
 	service1Pub, _ := service1KP.PublicKey()
 
 	// launch the core services
-	core := hubcore.NewHubCore()
-	require.NotPanics(t, func() { clientURL = core.Start(hubCfg) })
-	defer core.Stop()
+	_ = os.Remove(hubCfg.Auth.PasswordFile)
+	clientURL, err := hubcore.StartCore(hubCfg)
+	require.NoError(t, err)
+	defer hubcore.StopCore()
 
 	// add a device, service and user to test with
-	_, err := core.AuthService.MngService.AddUser(user1ID, "u 1", user1Pass, "", auth.ClientRoleViewer)
+	_, err = hubcore.AuthService.MngService.AddUser(user1ID, "u 1", user1Pass, "", auth.ClientRoleViewer)
 	require.NoError(t, err)
-	_, err = core.AuthService.MngService.AddService(service1ID, "s 1", service1Pub, 0)
+	_, err = hubcore.AuthService.MngService.AddService(service1ID, "s 1", service1Pub, time.Minute)
 	require.NoError(t, err)
-	_, err = core.AuthService.MngService.AddDevice(device1ID, "d 1", device1Pub, 0)
+	_, err = hubcore.AuthService.MngService.AddDevice(device1ID, "d 1", device1Pub, time.Minute)
 	require.NoError(t, err)
 
 	// connect the user
@@ -120,8 +122,10 @@ func TestPubSub_AuthPassword(t *testing.T) {
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 
-	si, _ := hc1.JS().StreamInfo(natsnkeyserver.EventsIntakeStreamName)
-	_ = si
+	si, err := hc1.JS().StreamInfo(natsnkeyserver.EventsIntakeStreamName)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, si)
+
 	// listen for events
 	sub, err := hc1.SubStream(natsnkeyserver.EventsIntakeStreamName, false, func(msg *hubclient.EventMessage) {
 		slog.Info("received event", "id", msg.EventID)

@@ -2,10 +2,10 @@ package msgserver
 
 import (
 	"github.com/hiveot/hub/api/go/hubclient"
-	"time"
 )
 
-type AuthClient struct {
+// ClientAuthInfo defines client authentication and authorization information
+type ClientAuthInfo struct {
 	// UserID, ServiceID or DeviceID of the client
 	ClientID string
 
@@ -42,7 +42,7 @@ type IMsgServer interface {
 	// as it sees fit. The server implements the server specific portion.
 	//
 	//  clients is the list of registered users and sources with their credentials
-	ApplyAuth(clients []AuthClient) error
+	ApplyAuth(clients []ClientAuthInfo) error
 
 	// ConnectInProc creates an in-process client connection to the server.
 	//
@@ -60,11 +60,8 @@ type IMsgServer interface {
 	//  NATS nkey server simply returns the public key for connecting with nkey
 	//  NATS callout server returns a JWT token for connecting with JWT
 	//
-	//  clientID with the identity of the device, service or user
-	//  clientType ClientTypeDevice, ClientTypeService or ClientTypeUser
-	//  pubKey public key string to use with the token
-	//  tokenValidity with the lifespan of the issued token (JWT only)
-	CreateToken(clientID string, clientType string, pubKey string, tokenValidity time.Duration) (newToken string, err error)
+	//  clientID of a known client
+	CreateToken(clientID string) (newToken string, err error)
 
 	// SetRolePermissions sets the roles used in authorization.
 	// As messaging servers have widely different ways of handling authentication and
@@ -86,21 +83,22 @@ type IMsgServer interface {
 	// Stop the server
 	Stop()
 
-	// VerifyPassword verifies the password for the user using the ApplyAuth users
+	// ValidatePassword verifies the password for the user using the ApplyAuth users
 	//  loginID is the client ID of the user
 	//  password is the bcrypt encoded password???
-	VerifyPassword(loginID string, password string) error
+	ValidatePassword(loginID string, password string) error
 
-	// VerifyToken verifies whether the token is valid
+	// ValidateToken verifies whether the token is valid
 	// The token must contain the public key of the client for verification.
-	// NATS uses the 'sub' field for example. The provided public key on record can
+	// NATS uses the 'sub' field for its public key. The provided public key on record can
 	// be used as an extra verification step.
 	// The use of nonce in signing and verification is optional but recommended. It depends
 	// on availability of the underlying messaging system.
 	//
 	//  clientID to whom the token is issued
+	//  pubKey of the client for extra verification
 	//  token to verify
 	//  signedNonce base64 encoded signature generated from private key and nonce field
 	//  nonce the server provided field used to sign the token.
-	VerifyToken(clientID string, token string, signedNonce string, nonce string) error
+	ValidateToken(clientID string, pubKey string, token string, signedNonce string, nonce string) error
 }

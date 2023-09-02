@@ -8,11 +8,10 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/core/certs"
 	certs2 "github.com/hiveot/hub/lib/certs"
+	"golang.org/x/exp/slog"
 	"math/big"
 	"net"
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
 // SelfSignedCertsService creates certificates for use by services, devices and admin users.
@@ -58,7 +57,7 @@ func (srv *SelfSignedCertsService) _createServiceCert(
 
 	if serviceID == "" || servicePubKey == nil || names == nil {
 		err := fmt.Errorf("missing argument serviceID, servicePubKey, or names")
-		logrus.Error(err)
+		slog.Error(err.Error())
 		return nil, err
 	}
 	if validityDays == 0 {
@@ -136,7 +135,7 @@ func (srv *SelfSignedCertsService) CreateDeviceCert(
 	certPEM string, caCertPEM string, err error) {
 	var cert *x509.Certificate
 
-	logrus.Infof("deviceID='%s' pubKey='%s'", deviceID, pubKeyPEM)
+	slog.Info("CreateDeviceCert", "deviceID", deviceID, "pubKey", pubKeyPEM)
 	pubKey, err := certs2.PublicKeyFromPEM(pubKeyPEM)
 	if err != nil {
 		err = fmt.Errorf("public key for '%s' is invalid: %s", deviceID, err)
@@ -155,7 +154,7 @@ func (srv *SelfSignedCertsService) CreateServiceCert(
 	certPEM string, caCertPEM string, err error) {
 	var cert *x509.Certificate
 
-	logrus.Infof("Creating service certificate: serviceID='%s', names='%s'", serviceID, names)
+	slog.Info("Creating service certificate", "serviceID", serviceID, "names", names)
 	pubKey, err := certs2.PublicKeyFromPEM(pubKeyPEM)
 	if err == nil {
 		cert, err = srv._createServiceCert(
@@ -178,7 +177,7 @@ func (srv *SelfSignedCertsService) CreateUserCert(
 	certPEM string, caCertPEM string, err error) {
 	var cert *x509.Certificate
 
-	logrus.Infof("userID='%s' pubKey='%s'", userID, pubKeyPEM)
+	slog.Info("CreateUserCert", "userID", userID, "pubKey", pubKeyPEM)
 	pubKey, err := certs2.PublicKeyFromPEM(pubKeyPEM)
 	if err == nil {
 
@@ -250,7 +249,7 @@ func NewSelfSignedCertsService(caCert *x509.Certificate, caKey *ecdsa.PrivateKey
 		caCertPool: caCertPool,
 	}
 	if caCert == nil || caKey == nil || caCert.PublicKey == nil {
-		logrus.Panic("Missing CA certificate or key")
+		panic("Missing CA certificate or key")
 	}
 
 	return service

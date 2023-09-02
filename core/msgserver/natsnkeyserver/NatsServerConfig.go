@@ -61,7 +61,7 @@ type NatsServerConfig struct {
 }
 
 // Setup the nats server config.
-// This applies sensible defaults to cfg.
+// This applies sensible defaults to Config.
 //
 // Any existing values that are previously set remain unchanged.
 // Missing values are created.
@@ -304,7 +304,7 @@ accounts {
 	natsOpts.Port = cfg.Port
 
 	//systemAcct := server.NewAccount("SYS")
-	//systemAccountPub, _ := cfg.SystemAccountKP.PublicKey()
+	//systemAccountPub, _ := Config.SystemAccountKP.PublicKey()
 	//systemAcct.Nkey = systemAccountPub
 
 	// NewAccount creates a limitless account. There is no way to set a limit though :/
@@ -313,11 +313,11 @@ accounts {
 	cfg.appAcct.Nkey = appAccountPub
 
 	//SystemAccount: "SYS",
-	//natsOpts.Accounts =      []*server.Account{systemAcct, appAcct},
-	//natsOpts.Accounts =   []*server.Account{appAcct},
+	//NatsOpts.Accounts =      []*server.Account{systemAcct, appAcct},
+	//NatsOpts.Accounts =   []*server.Account{appAcct},
 
 	// no need for unauthenticated user. provisioning can add a special provisioning user
-	//natsOpts.NoAuthUser = NoAuthUserID
+	//NatsOpts.NoAuthUser = NoAuthUserID
 	// WARNING: Undocumented. setting a trusted key switches the server to JWT-only
 	//TrustedKeys: []string{operatorPub},
 
@@ -336,7 +336,7 @@ accounts {
 		//	Username:    NoAuthUserID,
 		//	Password:    "",
 		//	Permissions: noAuthPermissions,
-		//	Account:     cfg.appAcct,
+		//	Account:     Config.appAcct,
 		//	//InboxPrefix: "_INBOX." + NoAuthUserID,
 		//},
 	}

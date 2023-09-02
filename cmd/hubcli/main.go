@@ -6,8 +6,8 @@ import (
 	"github.com/hiveot/hub/cmd/hubcli/launchercli"
 	"github.com/hiveot/hub/lib/svcconfig"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/exp/slog"
 	"os"
 	"path"
 )
@@ -94,7 +94,7 @@ GLOBAL OPTIONS:
 	app.Suggest = true
 	app.HideHelpCommand = true
 	if err := app.Run(os.Args); err != nil {
-		logrus.Error("ERROR: ", err)
+		slog.Error("ERROR: ", "err", err)
 		helpArgs := append(os.Args, "-h")
 		_ = app.Run(helpArgs)
 	}

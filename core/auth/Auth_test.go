@@ -16,7 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -30,6 +29,7 @@ var testDir = path.Join(os.TempDir(), "test-authn")
 // the following are set by the testmain
 var clientURL string
 var msgServer *natsnkeyserver.NatsNKeyServer
+var useCallout = true
 
 // run the test for different cores
 //var useCore = "natsnkey" // natsnkey, natsjwt, natscallout, mqtt
@@ -59,7 +59,7 @@ func startTestAuthnService() (authnSvc *authservice.AuthService, mng authapi.IAu
 
 	authnSvc, err = authservice.StartAuthService(cfg, msgServer)
 	if err != nil {
-		logrus.Panicf("cant start test authn service: %s", err)
+		panic("cant start test authn service: " + err.Error())
 	}
 
 	//--- connect the authn management client for managing clients
@@ -89,6 +89,15 @@ func TestMain(m *testing.M) {
 	clientURL, msgServer, certBundle, serverCfg, err = testenv.StartNatsTestServer()
 	if err != nil {
 		panic(err)
+	}
+
+	// use the callout server to enable for JWT
+	if useCallout {
+		verifier := natscallouthook.NewNatsCoVerifier(msgServer, certBundle.CaCert)
+		_, err = natscallouthook.EnableNatsCalloutHook(msgServer, verifier.VerifyAuthnReq)
+		if err != nil {
+			panic(err)
+		}
 	}
 	res := m.Run()
 
@@ -206,6 +215,34 @@ func TestAddRemoveClients(t *testing.T) {
 
 }
 
+func TestUpdatePubKey(t *testing.T) {
+	slog.Info("--- TestUpdatePubKey start")
+	defer slog.Info("--- TestUpdatePubKey end")
+
+	var tu1ID = "tu1ID"
+	var tu1Pass = "tu1Pass"
+
+	_, mng, stopFn, err := startTestAuthnService()
+	defer stopFn()
+	require.NoError(t, err)
+
+	// add user to test with
+	_, err = mng.AddUser(tu1ID, "testuser 1", tu1Pass, "", authapi.ClientRoleViewer)
+	require.NoError(t, err)
+
+	// 1. connect to the added user using its password
+	hc1, err := natshubclient.ConnectWithPassword(clientURL, tu1ID, tu1Pass, certBundle.CaCert)
+	require.NoError(t, err)
+	defer hc1.Disconnect()
+
+	// 2. update the public key and reconnect
+	tu1Key, _ := nkeys.CreateUser()
+	tu1KeyPub, _ := tu1Key.PublicKey()
+	cl1 := authclient.NewAuthProfileClient(hc1)
+	err = cl1.UpdatePubKey(tu1ID, tu1KeyPub)
+	assert.NoError(t, err)
+}
+
 // this requires the JWT server. It cannot be used together with NKeys :/
 func TestLoginRefresh(t *testing.T) {
 	slog.Info("--- TestLoginRefresh start")
@@ -243,11 +280,6 @@ func TestLoginRefresh(t *testing.T) {
 	// without a pubkey NewToken should fail
 	// FIXME: users have permission to get a new token - how?
 	// ? register auth permissions things.authn.user.action.newToken.{id}   - or use the svc prefix?
-	authToken1, err = cl1.NewToken(tu1ID, tu1Pass)
-	assert.Error(t, err)
-
-	// use the authentication client to request a new token and reload
-	err = cl1.UpdatePubKey(tu1ID, tu1KeyPub)
 	authToken1, err = cl1.NewToken(tu1ID, tu1Pass)
 	require.NoError(t, err)
 	authnEntries = svc.MngService.GetAuthClientList()

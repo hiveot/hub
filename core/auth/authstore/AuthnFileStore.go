@@ -86,11 +86,11 @@ func (authnStore *AuthnFileStore) Count() int {
 }
 
 // GetAuthClientList provides a list of clients to apply to the message server
-func (authnStore *AuthnFileStore) GetAuthClientList() []msgserver.AuthClient {
+func (authnStore *AuthnFileStore) GetAuthClientList() []msgserver.ClientAuth {
 	entries := authnStore.GetEntries()
-	clients := make([]msgserver.AuthClient, 0, len(entries))
+	clients := make([]msgserver.ClientAuth, 0, len(entries))
 	for _, e := range entries {
-		clients = append(clients, msgserver.AuthClient{
+		clients = append(clients, msgserver.ClientAuth{
 			ClientID:     e.ClientID,
 			ClientType:   e.ClientType,
 			PubKey:       e.PubKey,

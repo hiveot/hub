@@ -1,13 +1,14 @@
-package natsnkeyserver
+package natscallouthook
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/auth"
+	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
 	"golang.org/x/exp/slog"
+	"sync/atomic"
 	"time"
 )
 
@@ -25,6 +26,9 @@ type NatsCalloutHook struct {
 	// the server to configure
 	serverOpts *server.Options
 
+	successCount atomic.Int32 // nr of successful callout requests
+	failCount    atomic.Int32 // nr of failed callout requests
+
 	// The account used to issue the tokens.
 	// Due to a limitation of nats callout, this must be the same as the callout account itself.
 	// See also https://github.com/nats-io/nats-server/issues/4335
@@ -36,22 +40,25 @@ type NatsCalloutHook struct {
 	// the nats connection used to subscribe and receive callout requests
 	nc *nats.Conn
 
-	tokenizer *NatsJWTTokenizer
+	msgServer *natsnkeyserver.NatsNKeyServer
+	// token factory for a known client with the given public key
+	//createJWTToken func(clientID string, pubKey string) (newToken string, err error)
 
 	// the application handler to verify authentication requests
-	// this is doing the actual work
-	authnVerifier func(*jwt.AuthorizationRequestClaims) error
+	// this returns the client that is connecting
+	authnVerifier func(*jwt.AuthorizationRequestClaims) (clientID string, err error)
 }
 
 // createSignedResponse generates a callout response
 //
-//	userPub is the public key of the user from the request
+//	userPub is the public key of the user from the request (not the signin user)
 //	serverPub is the public key of the signing server (server.ID from the req)
 //	userJWT is the generated user jwt token to include in the response
 //	err set if the response indicates an auth error
 func (chook *NatsCalloutHook) createSignedResponse(
 	userPub string, serverPub string, userJWT string, rerr error) ([]byte, error) {
 
+	slog.Info("createSignedResponse", "pub", userPub)
 	// create and send the response
 	respClaims := jwt.NewAuthorizationResponseClaims(userPub)
 	respClaims.Audience = serverPub
@@ -68,6 +75,13 @@ func (chook *NatsCalloutHook) createSignedResponse(
 	return []byte(response), err
 }
 
+// GetCounters return the number of success and failed callout requests
+func (chook *NatsCalloutHook) GetCounters() (int, int) {
+	successCount := int(chook.successCount.Load())
+	failCount := int(chook.failCount.Load())
+	return successCount, failCount
+}
+
 // callout handler invoked by the callout subscription.
 // This invokes the custom authentication callback to verify the users' authenticity,
 // then on success it creates a JWT token and submits an AuthorizationResultClaim response
@@ -82,22 +96,19 @@ func (chook *NatsCalloutHook) handleCallOutReq(msg *nats.Msg) {
 	slog.Info("handleCallOutReq", slog.String("userID", reqClaims.ConnectOptions.Name))
 	userNKeyPub := reqClaims.UserNkey
 	serverID := reqClaims.Server
-	client := reqClaims.ClientInformation
-	connectOpts := reqClaims.ConnectOptions
-	tlsInfo := reqClaims.TLS
-
-	_ = client
-	_ = tlsInfo
+	clientID := ""
 
 	if chook.authnVerifier != nil {
-		err = chook.authnVerifier(reqClaims)
+		clientID, err = chook.authnVerifier(reqClaims)
 	} else {
 		err = fmt.Errorf("authcallout invoked without a verifier")
 	}
-	if err != nil {
+	if err != nil || clientID == "" {
+		chook.failCount.Add(1)
 		// note: if the client isn't know the caller will not receive this error
 		slog.Warn("Invalid authn", "err", err,
-			slog.String("userID", reqClaims.ConnectOptions.Name))
+			slog.String("clientID", clientID),
+			slog.String("reqClaims.Name", reqClaims.Name))
 		resp, _ := chook.createSignedResponse(userNKeyPub, serverID.ID, "", err)
 		_ = msg.Respond(resp)
 		return
@@ -106,16 +117,21 @@ func (chook *NatsCalloutHook) handleCallOutReq(msg *nats.Msg) {
 	// and put the token in a ResponseClaim, signed by the callout account key.
 	// Note that in server mode these keys must be the same.
 	newToken := ""
-	clientID := connectOpts.Name // client identification
+
 	// FIXME: where is ClientInformation documented?
 	//clientType := reqClaims.Tags.ClientInformation.Tags["clientType"]
-	clientType := "" // TODO
-	// FIXME: get validity from config
-	validity := auth.DefaultUserTokenValidity
-	newToken, err = chook.tokenizer.CreateToken(clientID, clientType, userNKeyPub, validity)
+
+	// note that callouts generates a new key on the fly and expects the token to use this key.
+	// Why is unknown.
+	newToken, err = chook.msgServer.CreateJWTToken(clientID, userNKeyPub)
+
+	chookPub := chook.nc.Opts.Nkey
+	slog.Info("* chookpub", "pub", chookPub)
+	slog.Info("* chookpub", "usernkey", reqClaims.UserNkey, "subject", reqClaims.Subject)
 
 	resp, err := chook.createSignedResponse(userNKeyPub, serverID.ID, newToken, err)
 	if err != nil {
+		chook.failCount.Add(1)
 		slog.Error("error creating signed response", "err", err)
 		err = msg.Respond(nil)
 		return
@@ -123,9 +139,11 @@ func (chook *NatsCalloutHook) handleCallOutReq(msg *nats.Msg) {
 
 	err = msg.Respond(resp)
 	if err != nil {
+		chook.failCount.Add(1)
 		slog.Error("error sending response", "err", err)
 		return
 	}
+	chook.successCount.Add(1)
 	_ = err
 }
 
@@ -173,19 +191,22 @@ func (chook *NatsCalloutHook) start() error {
 //
 // Reload the server options for it to take effect.
 //
+// NOTE: If password users are defined, server will report an error "Authorization callout user %q not valid".
+// This is because auth.go:291 which does a check but skips nkeys if any user is defined in natsOpts.
+// As this is a check only, it can be ignored. However it would be better to let the callout validator to handle
+// the password auth and not apply these in nats users options.
+//
 //   - serverOpts is the server mode options struct to update
 //   - issuerAccountName is the name of the account used to issue the JWT tokens
 //   - issuerAccountKey is the key-pair of the account used to issue the JWT tokens
 //   - nc is the nats connection to use
 //   - authnVerifier is the callback handler to verify an authn request
 func EnableNatsCalloutHook(
-	//serverOpts *server.Options,
-	//issuerAccountName string,
-	//issuerAccountKey nkeys.KeyPair,
-	//nc *nats.Conn,
-	srv *NatsNKeyServer,
-	authnVerifier func(request *jwt.AuthorizationRequestClaims) error,
+	srv *natsnkeyserver.NatsNKeyServer,
+	// authnVerifier func(request *jwt.AuthorizationRequestClaims) (clientID string, err error),
 ) (*NatsCalloutHook, error) {
+
+	authnVerifier := NewNatsCoVerifier(srv, srv.Config.CaCert)
 
 	// Ideally the callout handler uses a separate callout account.
 	// Apparently this isn't allowed so it runs in the application account.
@@ -194,16 +215,17 @@ func EnableNatsCalloutHook(
 		return nil, fmt.Errorf("unable to connect callout handler: %w", err)
 	}
 	// tokenizer is needed to create a JWT auth token after verification succeeds
-	tokenizer := NewNatsJWTTokenizer(srv.cfg.AppAccountName, srv.cfg.AppAccountKP)
+	//tokenizer := NewNatsJWTTokenizer(srv.cfg.AppAccountName, srv.cfg.AppAccountKP)
 
 	hook := &NatsCalloutHook{
-		serverOpts:        &srv.natsOpts,
-		issuerAccountName: srv.cfg.AppAccountName,
-		issuerAccountKey:  srv.cfg.AppAccountKP,
-		calloutAccountKey: srv.cfg.AppAccountKP, // must be the issuer for server mode
+		serverOpts:        &srv.NatsOpts,
+		issuerAccountName: srv.Config.AppAccountName,
+		issuerAccountKey:  srv.Config.AppAccountKP,
+		calloutAccountKey: srv.Config.AppAccountKP, // must be the issuer for server mode
 		nc:                nc,
-		tokenizer:         tokenizer,
-		authnVerifier:     authnVerifier,
+		msgServer:         srv,
+		//createJWTToken:    srv.CreateJWTToken,
+		authnVerifier: authnVerifier.VerifyAuthnReq,
 	}
 
 	err = hook.start()

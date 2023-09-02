@@ -1,7 +1,7 @@
 package tlsserver
 
 import (
-	"github.com/hiveot/hub/lib/certsclient"
+	"github.com/hiveot/hub/lib/certs"
 	"net/http"
 )
 
@@ -32,7 +32,7 @@ func (hauth *CertAuthenticator) AuthenticateRequest(resp http.ResponseWriter, re
 // Returns OUNone if the request has no client certificate or the certificate has no OU
 // client certificate.
 func (hauth *CertAuthenticator) GetClientOU(request *http.Request) (certOU string) {
-	certOU = certsclient.OUNone
+	certOU = certs.OUNone
 	if len(request.TLS.PeerCertificates) > 0 {
 		cert := request.TLS.PeerCertificates[0]
 		if len(cert.Subject.OrganizationalUnit) > 0 {

@@ -6,11 +6,10 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
+	"golang.org/x/exp/slog"
 	"math/big"
 	"net"
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
 // DefaultServerCertValidityDays with validity of generated service certificates
@@ -37,7 +36,7 @@ func CreateServerCert(
 
 	if serverID == "" || serverPubKey == nil {
 		err := fmt.Errorf("missing argument serviceID, servicePubKey")
-		logrus.Error(err)
+		slog.Error(err.Error())
 		return nil, err
 	}
 	if validityDays == 0 {

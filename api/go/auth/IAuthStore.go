@@ -36,7 +36,7 @@ type IAuthnStore interface {
 
 	// GetAuthClientList provides a list of clients in a format that can
 	// directly be applied to the message server.
-	GetAuthClientList() []msgserver.AuthClient
+	GetAuthClientList() []msgserver.ClientAuthInfo
 
 	// GetEntries returns a list of client profiles including the password hash
 	// Intended to obtain auth info to apply to the messaging server

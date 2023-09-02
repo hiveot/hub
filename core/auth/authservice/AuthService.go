@@ -7,7 +7,6 @@ import (
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/auth/authbinding"
 	"github.com/hiveot/hub/core/auth/authstore"
-	"github.com/sirupsen/logrus"
 )
 
 // AuthService creates a service handling both manage and user requests.
@@ -107,7 +106,7 @@ func StartAuthService(cfg AuthConfig, msgServer msgserver.IMsgServer) (*AuthServ
 	authnSvc := NewAuthnService(authStore, msgServer)
 	err := authnSvc.Start()
 	if err != nil {
-		logrus.Panicf("cant start test authn service: %s", err)
+		panic("cant start test authn service: " + err.Error())
 	}
 	return authnSvc, err
 }

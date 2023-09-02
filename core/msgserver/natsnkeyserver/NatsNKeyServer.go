@@ -12,6 +12,7 @@ import (
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
+	"golang.org/x/exp/slog"
 	"time"
 )
 
@@ -21,11 +22,14 @@ const EventsIntakeStreamName = "$events"
 // NatsNKeyServer runs an embedded NATS server using nkeys for authentication.
 // this implements the IMsgServer interface
 type NatsNKeyServer struct {
-	cfg      *NatsServerConfig
-	natsOpts server.Options
+	Config   *NatsServerConfig
+	NatsOpts server.Options
 	ns       *server.Server
 	// tokenizer for generating JWT tokens, when used
 	tokenizer auth.IAuthnTokenizer
+
+	// map of known clients by ID for quick lookup during auth
+	authClients map[string]msgserver.ClientAuthInfo
 
 	// map of role to role permissions
 	rolePermissions map[string][]msgserver.RolePermission
@@ -40,16 +44,16 @@ type NatsNKeyServer struct {
 func (srv *NatsNKeyServer) ConnectInProcNC(serviceID string, clientKey nkeys.KeyPair) (*nats.Conn, error) {
 
 	if clientKey == nil {
-		clientKey = srv.cfg.CoreServiceKP
+		clientKey = srv.Config.CoreServiceKP
 	}
 	// If the server uses TLS then the in-process pipe connection is also upgrade to TLS.
 	caCertPool := x509.NewCertPool()
-	if srv.cfg.CaCert != nil {
-		caCertPool.AddCert(srv.cfg.CaCert)
+	if srv.Config.CaCert != nil {
+		caCertPool.AddCert(srv.Config.CaCert)
 	}
 	tlsConfig := &tls.Config{
 		RootCAs:            caCertPool,
-		InsecureSkipVerify: srv.cfg.CaCert == nil,
+		InsecureSkipVerify: srv.Config.CaCert == nil,
 	}
 	sigCB := func(nonce []byte) ([]byte, error) {
 		sig, _ := clientKey.Sign(nonce)
@@ -63,6 +67,7 @@ func (srv *NatsNKeyServer) ConnectInProcNC(serviceID string, clientKey nkeys.Key
 		nats.Timeout(time.Minute),
 		nats.InProcessServer(srv.ns),
 	)
+	slog.Info("ConnectInProc", "serviceID", serviceID, "nkeyPub", serviceKeyPub)
 	if err == nil {
 		js, err2 := nc.JetStream()
 		err = err2
@@ -88,16 +93,16 @@ func (srv *NatsNKeyServer) ConnectInProc(serviceID string) (hubclient.IHubClient
 
 // Start the NATS server with the given configuration and create an event ingress stream
 //
-//	cfg.Setup must have been called first.
+//	Config.Setup must have been called first.
 func (srv *NatsNKeyServer) Start() (clientURL string, err error) {
 
-	srv.natsOpts, err = srv.cfg.CreateNatsNKeyOptions()
+	srv.NatsOpts, err = srv.Config.CreateNatsNKeyOptions()
 	if err != nil {
 		return "", err
 	}
 
 	// start nats
-	srv.ns, err = server.NewServer(&srv.natsOpts)
+	srv.ns, err = server.NewServer(&srv.NatsOpts)
 	if err != nil {
 		return "", err
 	}
@@ -113,7 +118,7 @@ func (srv *NatsNKeyServer) Start() (clientURL string, err error) {
 	clientURL = srv.ns.ClientURL()
 
 	// the app account must have JS enabled
-	ac, _ := srv.ns.LookupAccount(srv.cfg.AppAccountName)
+	ac, _ := srv.ns.LookupAccount(srv.Config.AppAccountName)
 	err = ac.EnableJetStream(nil) //use defaults
 	if err != nil {
 		return clientURL, fmt.Errorf("can't enable JS for app account: %w", err)
@@ -121,12 +126,12 @@ func (srv *NatsNKeyServer) Start() (clientURL string, err error) {
 
 	hasJS := ac.JetStreamEnabled()
 	if !hasJS {
-		return clientURL, fmt.Errorf("JS not enabled for app account '%s'", srv.cfg.AppAccountName)
+		return clientURL, fmt.Errorf("JS not enabled for app account '%s'", srv.Config.AppAccountName)
 	}
 
 	// tokenizer
-	srv.tokenizer = NewNatsJWTTokenizer(
-		srv.cfg.AppAccountName, srv.cfg.AppAccountKP)
+	//srv.tokenizer = NewNatsJWTTokenizer(
+	//	srv.Config.AppAccountName, srv.Config.AppAccountKP)
 
 	// ensure the events intake stream exists
 	nc, err := srv.ConnectInProcNC("jetsetup", nil)
@@ -163,6 +168,6 @@ func (srv *NatsNKeyServer) Stop() {
 // NewNatsNKeyServer creates a new instance of the Hub NATS server for NKey authn.
 func NewNatsNKeyServer(cfg *NatsServerConfig) *NatsNKeyServer {
 
-	srv := &NatsNKeyServer{cfg: cfg, rolePermissions: DefaultRolePermissions}
+	srv := &NatsNKeyServer{Config: cfg, rolePermissions: DefaultRolePermissions}
 	return srv
 }

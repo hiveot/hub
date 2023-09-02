@@ -2,7 +2,7 @@ package tlsserver_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/tlsserver"
 	"golang.org/x/exp/slog"
@@ -18,7 +18,7 @@ import (
 var serverAddress string
 var serverPort uint = 4444
 var clientHostPort string
-var testCerts testenv.TestAuthBundle
+var testCerts certs.TestCertBundle
 
 // TestMain runs a http server
 // Used for all test cases in this package
@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 	// hostnames := []string{serverAddress}
 	clientHostPort = fmt.Sprintf("%s:%d", serverAddress, serverPort)
 
-	testCerts = testenv.CreateTestAuthBundle()
+	testCerts = certs.CreateTestCertBundle()
 	res := m.Run()
 
 	time.Sleep(time.Second)

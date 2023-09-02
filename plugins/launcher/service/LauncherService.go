@@ -184,7 +184,7 @@ func (svc *LauncherService) StartService(name string) (info launcher.ServiceInfo
 		return *serviceInfo, err
 	}
 	svc.cmds = append(svc.cmds, svcCmd)
-	//logrus.Warningf("Service '%s' has started", name)
+	//slog.Warning("Service has started", "serviceName",name)
 
 	serviceInfo.StartTime = time.Now().Format(time.RFC3339)
 	serviceInfo.PID = svcCmd.Process.Pid

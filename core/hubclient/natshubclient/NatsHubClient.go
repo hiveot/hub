@@ -212,6 +212,7 @@ func ConnectWithPassword(
 		nats.UserInfo(loginID, password),
 		nats.Secure(tlsConfig),
 		// client permissions allow this inbox prefix
+		nats.Name(loginID),
 		nats.CustomInboxPrefix("_INBOX."+loginID),
 		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSec)))
 	if err == nil {

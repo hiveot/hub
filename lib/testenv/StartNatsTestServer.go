@@ -33,7 +33,7 @@ var TestGroup1ID = "group1"
 var TestGroup2ID = "group2"
 
 // test users and devices
-var TestClients = []msgserver.AuthClient{
+var TestClients = []msgserver.ClientAuthInfo{
 	{
 		ClientID:   TestDevice1ID,
 		ClientType: auth.ClientTypeDevice,

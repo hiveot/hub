@@ -27,7 +27,7 @@ var testFolder = path.Join(os.TempDir(), "test-certs")
 func NewService() (svc certs.ICerts, stopFunc func()) {
 	// use selfsigned to create a new CA for these tests
 	//ctx, cancelFunc := context.WithCancel(context.Background())
-	caCert, caKey, _ := selfsigned.CreateHubCA(1)
+	caCert, caKey, _ := certs2.CreateCA("Hub CA", 1)
 	certSvc := selfsigned.NewSelfSignedCertsService(caCert, caKey)
 
 	return certSvc, func() {
@@ -153,7 +153,7 @@ func TestServiceCertBadParms(t *testing.T) {
 	const serviceID = "testService"
 	hostnames := []string{"127.0.0.1"}
 
-	caCert, caKey, _ := selfsigned.CreateHubCA(1)
+	caCert, caKey, _ := certs2.CreateCA("Test CA", 1)
 	keys := certs2.CreateECDSAKeys()
 	pubKeyPEM, _ := certs2.PublicKeyToPEM(&keys.PublicKey)
 

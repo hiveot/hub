@@ -6,8 +6,8 @@ import (
 )
 
 // VerifyCert verifies whether the given certificate is a valid client certificate
-func VerifyCert(
-	clientID string, certPEM string, caCert *x509.Certificate) error {
+// This returns the certificate CN as the clientID
+func VerifyCert(certPEM string, caCert *x509.Certificate) (string, error) {
 	caCertPool := x509.NewCertPool()
 	caCertPool.AddCert(caCert)
 
@@ -17,8 +17,8 @@ func VerifyCert(
 	}
 	cert, err := X509CertFromPEM(certPEM)
 	if err == nil {
-		if cert.Subject.CommonName != clientID {
-			err = fmt.Errorf("client ID '%s' doesn't match certificate name '%s'", clientID, cert.Subject.CommonName)
+		if cert.Subject.CommonName == "" {
+			err = fmt.Errorf("cert has no CommonName")
 		}
 	}
 	//if err == nil {
@@ -29,5 +29,5 @@ func VerifyCert(
 		// why? Is the certpool invalid? Yet the test succeeds
 		_, err = cert.Verify(opts)
 	}
-	return err
+	return cert.Subject.CommonName, err
 }

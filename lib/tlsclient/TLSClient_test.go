@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"golang.org/x/exp/slog"
 	"io"
@@ -25,7 +24,7 @@ import (
 var testAddress string
 
 // CA, server and plugin test certificate
-var authBundle testenv.TestAuthBundle
+var authBundle certs.TestCertBundle
 var serverTLSConf *tls.Config
 
 func startTestServer(mux *http.ServeMux) (*http.Server, error) {
@@ -54,7 +53,7 @@ func TestMain(m *testing.M) {
 	testAddress = "127.0.0.1:9888"
 	// hostnames := []string{testAddress}
 
-	authBundle = testenv.CreateTestAuthBundle()
+	authBundle = certs.CreateTestCertBundle()
 
 	caCertPool := x509.NewCertPool()
 	caCertPool.AddCert(authBundle.CaCert)
@@ -177,11 +176,12 @@ func TestBadClientCert(t *testing.T) {
 
 	// use cert not signed by the CA
 	otherCA, otherKey, err := certs.CreateCA("test", 1)
-	otherCert, err := certs.CreateClientTLSCert("name", "ou",
-		authBundle.ClientKey, otherCA, otherKey, 1)
+	otherCert, err := certs.CreateClientCert("name", "ou", 1,
+		&authBundle.ClientKey.PublicKey, otherCA, otherKey)
+	otherTLS := certs.X509CertToTLS(otherCert, authBundle.ClientKey)
 	assert.NoError(t, err)
 
-	err = cl.ConnectWithClientCert(otherCert)
+	err = cl.ConnectWithClientCert(otherTLS)
 	assert.Error(t, err)
 	cl.Close()
 }

@@ -3,7 +3,7 @@ package corecli
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/sirupsen/logrus"
+	"golang.org/x/exp/slog"
 	"os"
 	"path"
 	"time"
@@ -103,7 +103,7 @@ func HandleCreateCACert(certsFolder string, validityDays int, force bool) error 
 		err = certs.SaveKeysToPEM(privKey, caKeyPath)
 	}
 
-	logrus.Infof("Generated CA certificate '%s' and key '%s'\n", caCertPath, caKeyPath)
+	slog.Info("Generated CA certificate", "caCertPath", caCertPath, "caKeyPath", caKeyPath)
 	return err
 }
 
@@ -113,7 +113,7 @@ func HandleViewCACert(certsFolder string) error {
 
 	caCert, err := certs.LoadX509CertFromPEM(caCertPath)
 	if err != nil {
-		logrus.Errorf("Unable to load the CA certificate: %s", err)
+		slog.Error("Unable to load the CA certificate", "err", err)
 		return err
 	}
 	fmt.Println("CA certificate path: ", caCertPath)

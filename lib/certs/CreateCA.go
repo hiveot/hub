@@ -5,10 +5,9 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"golang.org/x/exp/slog"
 	"math/big"
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
 const CertOrgName = "HiveOT"
@@ -57,7 +56,7 @@ func CreateCA(cn string, validityDays int) (cert *x509.Certificate, key *ecdsa.P
 	caCertDer, err := x509.CreateCertificate(rand.Reader, rootTemplate, rootTemplate, &privKey.PublicKey, privKey)
 	if err != nil {
 		// normally this never happens
-		logrus.Fatalf("unable to create HiveHub CA cert: %s", err)
+		slog.Error("unable to create CA cert", "err", err)
 	}
 	caCert, _ := x509.ParseCertificate(caCertDer)
 	return caCert, privKey, nil

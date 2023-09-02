@@ -6,11 +6,10 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
+	"golang.org/x/exp/slog"
 	"math/big"
 	"net"
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
 // createClientCert is the internal function to create a client certificate
@@ -38,7 +37,7 @@ func createClientCert(
 
 	if clientID == "" || ownerPubKey == nil {
 		err := fmt.Errorf("missing clientID or client public key")
-		logrus.Error(err)
+		slog.Error(err.Error())
 		return nil, err
 	}
 	// firefox complains if serial is the same as that of the CA. So generate a unique one based on timestamp.

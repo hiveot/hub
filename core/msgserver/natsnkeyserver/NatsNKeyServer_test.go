@@ -7,7 +7,6 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/nats.go"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slog"
@@ -137,8 +136,8 @@ func TestLoginFail(t *testing.T) {
 
 // test if the $events ingress stream captures events
 func TestEventsStream(t *testing.T) {
-	logrus.Infof("---TestEventsStream start---")
-	defer logrus.Infof("---TestEventsStream end---")
+	t.Log("---TestEventsStream start---")
+	defer t.Log("---TestEventsStream end---")
 	const eventMsg = "hello world"
 	var rxMsg string
 	var err error

@@ -120,7 +120,7 @@ func (svc *AuthClientsCapability) GetCount() (int, error) {
 	return svc.store.Count(), nil
 }
 
-func (svc *AuthClientsCapability) GetAuthClientList() []msgserver.AuthClient {
+func (svc *AuthClientsCapability) GetAuthClientList() []msgserver.ClientAuth {
 	return svc.store.GetAuthClientList()
 }
 
@@ -145,9 +145,9 @@ func (svc *AuthClientsCapability) GetEntries() (entries []auth.AuthnEntry) {
 // this invokes a reload of server authn
 func (svc *AuthClientsCapability) onChange() {
 	entries := svc.store.GetEntries()
-	clients := make([]msgserver.AuthClient, 0, len(entries))
+	clients := make([]msgserver.ClientAuth, 0, len(entries))
 	for _, e := range entries {
-		clients = append(clients, msgserver.AuthClient{
+		clients = append(clients, msgserver.ClientAuth{
 			ClientID:     e.ClientID,
 			ClientType:   e.ClientType,
 			PubKey:       e.PubKey,
