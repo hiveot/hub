@@ -21,7 +21,7 @@ import (
 const PublicUnauthenticatedNKey = "SUAOXRE662WSIGIMSIFVQNCCIWG673K7GZMB3ZUUIF45BWGMYKECEQQJZE"
 
 // DefaultTimeoutSec with timeout for connecting and publishing.
-const DefaultTimeoutSec = 3 // 100 for testing
+const DefaultTimeoutSec = 100 //3 // 100 for testing
 
 // NatsHubSubscription nats subscription helper
 // This implements ISubscription

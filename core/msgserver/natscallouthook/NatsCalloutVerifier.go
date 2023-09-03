@@ -3,10 +3,9 @@ package natscallouthook
 import (
 	"crypto/x509"
 	"fmt"
-	"github.com/hiveot/hub/api/go/msgserver"
+	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/nats-io/jwt/v2"
-	"github.com/nats-io/nkeys"
 	"golang.org/x/exp/slog"
 )
 
@@ -19,7 +18,7 @@ import (
 // To use, provide 'VerifyAuthnReq' to EnableNatsCalloutHook(), which determines
 // the authn method to use.
 type NatsCalloutVerifier struct {
-	msgServer msgserver.IMsgServer // use to get client list?
+	msgServer *natsnkeyserver.NatsNKeyServer
 	caCert    *x509.Certificate
 }
 
@@ -43,37 +42,23 @@ func (v *NatsCalloutVerifier) VerifyClientCert(claims *jwt.AuthorizationRequestC
 // embedded deep into its auth code and can't be easily separated.
 // Workaround: let server handle NKeys through static config.
 //
-// FIXME: How to perform a nonce check with the remote client?
 // See also nats-server auth.go:990 for dealing with nkeys. It aint pretty.
 func (v *NatsCalloutVerifier) VerifyNKey(claims *jwt.AuthorizationRequestClaims) (string, error) {
+	slog.Warn("use of nkey auth. Shouldn't the key be in the server opts nkeys?")
+
 	host := claims.ClientInformation.Host
 	nonce := claims.ClientInformation.Nonce
 	userPub := claims.ClientInformation.User
 	clientID := claims.ConnectOptions.Name
-	nkey := claims.ConnectOptions.Nkey
+	pubKey := claims.ConnectOptions.Nkey
 	signedNonce := claims.ConnectOptions.SignedNonce
 	_ = nonce
 	_ = signedNonce
 	_ = host
 	_ = userPub
 
-	slog.Warn("use of nkey auth")
-
-	//sig, err := base64.RawURLEncoding.DecodeString(c.opts.Sig)
-	//if err != nil {
-	//	return fmt.Errorf("signature not valid")
-	//}
-	pub, err := nkeys.FromPublicKey(nkey)
-	_ = pub
-	if err != nil {
-		return clientID, fmt.Errorf("user nkey not valid: %v", err)
-	}
-	// FIXME: where does sig come from?
-	sig := []byte("")
-	if err := pub.Verify([]byte(nonce), sig); err != nil {
-		return clientID, fmt.Errorf("signature not verified")
-	}
-	return clientID, fmt.Errorf("nkey svc not supported")
+	err := v.msgServer.ValidateNKey(clientID, pubKey, signedNonce, nonce)
+	return clientID, err
 }
 
 // VerifyPassword checks the password claim
@@ -128,7 +113,7 @@ func (v *NatsCalloutVerifier) VerifyAuthnReq(claims *jwt.AuthorizationRequestCla
 }
 
 func NewNatsCoVerifier(
-	msgServer msgserver.IMsgServer, caCert *x509.Certificate) *NatsCalloutVerifier {
+	msgServer *natsnkeyserver.NatsNKeyServer, caCert *x509.Certificate) *NatsCalloutVerifier {
 
 	v := &NatsCalloutVerifier{
 		msgServer: msgServer,

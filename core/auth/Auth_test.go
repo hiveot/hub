@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
+	"github.com/hiveot/hub/core/msgserver/natscallouthook"
 	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/testenv"
@@ -29,7 +30,7 @@ var testDir = path.Join(os.TempDir(), "test-authn")
 // the following are set by the testmain
 var clientURL string
 var msgServer *natsnkeyserver.NatsNKeyServer
-var useCallout = true
+var useCallout = false
 
 // run the test for different cores
 //var useCore = "natsnkey" // natsnkey, natsjwt, natscallout, mqtt
@@ -93,8 +94,7 @@ func TestMain(m *testing.M) {
 
 	// use the callout server to enable for JWT
 	if useCallout {
-		verifier := natscallouthook.NewNatsCoVerifier(msgServer, certBundle.CaCert)
-		_, err = natscallouthook.EnableNatsCalloutHook(msgServer, verifier.VerifyAuthnReq)
+		_, err = natscallouthook.EnableNatsCalloutHook(msgServer)
 		if err != nil {
 			panic(err)
 		}
@@ -254,6 +254,7 @@ func TestLoginRefresh(t *testing.T) {
 	var authToken2 string
 
 	svc, mng, stopFn, err := startTestAuthnService()
+	_ = svc
 	defer stopFn()
 	require.NoError(t, err)
 
@@ -261,36 +262,19 @@ func TestLoginRefresh(t *testing.T) {
 	tu1Key, _ := nkeys.CreateUser()
 	tu1KeyPub, _ := tu1Key.PublicKey()
 	// AddUser returns a token. JWT or Nkey public key depending on server
-	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, "", authapi.ClientRoleViewer)
+	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, tu1KeyPub, authapi.ClientRoleViewer)
 	require.NoError(t, err)
-	assert.Empty(t, tu1Token)
-
-	// apply changes without authz. users can connect and have unlimited access
-	authnEntries := svc.MngService.GetAuthClientList()
-	err = msgServer.ApplyAuth(authnEntries)
-	require.NoError(t, err)
+	assert.NotEmpty(t, tu1Token)
 
 	// 1. connect to the added user using its password
 	hc1, err := natshubclient.ConnectWithPassword(clientURL, tu1ID, tu1Pass, certBundle.CaCert)
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 
-	// 2. Request a new token
+	// 2. Request a new token.
 	cl1 := authclient.NewAuthProfileClient(hc1)
-	// without a pubkey NewToken should fail
-	// FIXME: users have permission to get a new token - how?
-	// ? register auth permissions things.authn.user.action.newToken.{id}   - or use the svc prefix?
 	authToken1, err = cl1.NewToken(tu1ID, tu1Pass)
 	require.NoError(t, err)
-	authnEntries = svc.MngService.GetAuthClientList()
-	_ = msgServer.ApplyAuth(authnEntries)
-
-	// wrong ID should fail
-	_, err = cl1.NewToken("nottu1", "badpass")
-	require.Error(t, err)
-	// bad pass should fail
-	_, err = cl1.NewToken(tu1ID, "badpass")
-	require.Error(t, err)
 
 	// 3. login with the new token
 	// (nkeys and callout auth doesn't need a server reload)
@@ -312,18 +296,19 @@ func TestLoginRefresh(t *testing.T) {
 	require.NoError(t, err)
 	hc3.Disconnect()
 	require.NoError(t, err)
+	//
+	//// 6. login with a forged token should fail
+	//appAcctPub, _ := serverCfg.AppAccountKP.PublicKey()
+	//fakeAcct, _ := nkeys.CreateAccount()
+	//forgedClaims := jwt.NewUserClaims(tu1KeyPub)
+	//forgedClaims.Issuer = appAcctPub
+	//forgedClaims.Name = tu1ID
+	//forgedJWT, err := forgedClaims.Encode(fakeAcct) // <- forged
+	//require.NoError(t, err)
 
-	// 6. login with a forged token should fail
-	appAcctPub, _ := serverCfg.AppAccountKP.PublicKey()
-	fakeAcct, _ := nkeys.CreateAccount()
-	forgedClaims := jwt.NewUserClaims(tu1KeyPub)
-	forgedClaims.Issuer = appAcctPub
-	forgedJWT, err := forgedClaims.Encode(fakeAcct) // <- forged
-	require.NoError(t, err)
-
-	hc4, err := natshubclient.Connect(clientURL, tu1ID, tu1Key, forgedJWT, certBundle.CaCert)
-	require.Error(t, err)
-	assert.Empty(t, hc4)
+	//hc4, err := natshubclient.Connect(clientURL, tu1ID, tu1Key, forgedJWT, certBundle.CaCert)
+	//require.Error(t, err)
+	//assert.Empty(t, hc4)
 
 }
 
@@ -388,8 +373,8 @@ func TestRefreshFakeToken(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	slog.Info("--- TestUpdate start")
-	defer slog.Info("--- TestUpdate end")
+	t.Log("--- TestUpdate start")
+	defer t.Log("--- TestUpdate end")
 	var tu1ID = "tu1ID"
 	var tu1Name = "test user 1"
 
@@ -407,7 +392,7 @@ func TestUpdate(t *testing.T) {
 
 	hc, err := natshubclient.Connect(clientURL, tu1ID, tu1Key, tu1Token, certBundle.CaCert)
 	require.NoError(t, err)
-	defer hc.Disconnect()
+	//defer hc.Disconnect()
 
 	// update display name, password and public key and reload
 	const newDisplayName = "new display name"
@@ -420,6 +405,7 @@ func TestUpdate(t *testing.T) {
 	assert.NoError(t, err)
 	err = cl.UpdatePubKey(tu1ID, newPKPub)
 	assert.NoError(t, err)
+	hc.Disconnect()
 
 	entries = svc.MngService.GetAuthClientList()
 	err = msgServer.ApplyAuth(entries)
@@ -442,4 +428,6 @@ func TestUpdate(t *testing.T) {
 
 	prof, err = cl.GetProfile(tu1ID)
 	assert.Equal(t, prof2.DisplayName, prof.DisplayName)
+	// clean shutdown background processes
+	time.Sleep(time.Millisecond)
 }

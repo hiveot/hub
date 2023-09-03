@@ -88,7 +88,7 @@ type IMsgServer interface {
 	//  password is the bcrypt encoded password???
 	ValidatePassword(loginID string, password string) error
 
-	// ValidateToken verifies whether the token is valid
+	// ValidateToken verifies whether the JWT token is valid
 	// The token must contain the public key of the client for verification.
 	// NATS uses the 'sub' field for its public key. The provided public key on record can
 	// be used as an extra verification step.

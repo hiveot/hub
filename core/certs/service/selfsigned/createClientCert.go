@@ -47,8 +47,8 @@ func createClientCert(
 		Subject: pkix.Name{
 			Country:            []string{"CA"},
 			Province:           []string{"BC"},
-			Locality:           []string{CertOrgLocality},
-			Organization:       []string{CertOrgName},
+			Locality:           []string{"local"},
+			Organization:       []string{"HiveOT"},
 			OrganizationalUnit: []string{ouRole},
 			CommonName:         clientID,
 			Names:              make([]pkix.AttributeTypeAndValue, 0),

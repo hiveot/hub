@@ -342,23 +342,6 @@ func (srv *NatsNKeyServer) SetServicePermissions(
 
 }
 
-// ValidateToken checks if the given token belongs the clientID and is valid.
-// When keys is used this returns success
-// When nkeys is not used this validates the JWT token
-//
-// Verifying the signedNonce is optional. Use "" to ignore.
-func (srv *NatsNKeyServer) ValidateToken(
-	clientID string, pubKey string, oldToken string, signedNonce string, nonce string) (err error) {
-	if srv.NatsOpts.AuthCallout == nil {
-		// nkeys only
-		if oldToken == "" || pubKey != oldToken {
-			return fmt.Errorf("invalid old token for client '%s'", clientID)
-		}
-		return nil
-	}
-	return srv.ValidateJWTToken(clientID, pubKey, oldToken, signedNonce, nonce)
-}
-
 // ValidateJWTToken verifies a NATS JWT token
 //   - verify if jwtToken is a valid token
 //   - validate the token isn't expired
@@ -450,4 +433,48 @@ func (srv *NatsNKeyServer) ValidatePassword(loginID string, password string) err
 		err = bcrypt.CompareHashAndPassword([]byte(cAuth.PasswordHash), []byte(password))
 	}
 	return err
+}
+
+// ValidateNKey checks if the given nkey and nounce belongs the clientID and is valid.
+// Intended for use by callout to verify nkey with nonce.
+//
+// Verifying the signedNonce is optional. Use "" to ignore.
+func (srv *NatsNKeyServer) ValidateNKey(
+	clientID string, pubKey string, signedNonce string, nonce string) (err error) {
+
+	sig, err := base64.RawURLEncoding.DecodeString(signedNonce)
+	pub, err := nkeys.FromPublicKey(pubKey)
+	if err != nil {
+		return fmt.Errorf("user nkey not valid: %v", err)
+	}
+	if err := pub.Verify([]byte(nonce), sig); err != nil {
+		// invalid signature
+		return err
+	}
+
+	prof, err := srv.getClientAuth(clientID)
+	if err != nil {
+		return err
+	}
+	if prof.PubKey != pubKey {
+		return fmt.Errorf("ValidateNKey public key not on file")
+	}
+	return nil
+}
+
+// ValidateToken checks if the given token belongs the clientID and is valid.
+// When keys is used this returns success
+// When nkeys is not used this validates the JWT token
+//
+// Verifying the signedNonce is optional. Use "" to ignore.
+func (srv *NatsNKeyServer) ValidateToken(
+	clientID string, pubKey string, oldToken string, signedNonce string, nonce string) (err error) {
+	if srv.NatsOpts.AuthCallout == nil {
+		// nkeys only
+		if oldToken == "" || pubKey != oldToken {
+			return fmt.Errorf("invalid old token for client '%s'", clientID)
+		}
+		return nil
+	}
+	return srv.ValidateJWTToken(clientID, pubKey, oldToken, signedNonce, nonce)
 }

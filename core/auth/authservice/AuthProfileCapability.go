@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
-	"time"
+	"golang.org/x/exp/slog"
 )
 
 // AuthProfileCapability is the capability for clients to view and update their own profile.
@@ -21,42 +21,12 @@ type AuthProfileCapability struct {
 	caCert *x509.Certificate
 }
 
-// CreateToken creates an authentication token using the external tokenizer or
-// the built-in tokenizer.
-// This invokes the external tokenizer if provided and falls-back to the built-in
-// tokenizer.
-func (svc *AuthProfileCapability) CreateToken(
-	clientID string, clientType string, pubKey string, tokenValidity time.Duration) (
+// CreateToken creates an authentication token using server.
+func (svc *AuthProfileCapability) CreateToken(clientID string) (
 	newToken string, err error) {
 
-	return svc.msgServer.CreateToken(clientID, clientType, pubKey, tokenValidity)
+	return svc.msgServer.CreateToken(clientID)
 }
-
-// GeneratePassword with upper, lower, numbers and special characters
-//func (svc *AuthProfileCapability) GeneratePassword(length int, useSpecial bool) (password string) {
-//	const charsLow = "abcdefghijklmnopqrstuvwxyz"
-//	const charsUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-//	const charsSpecial = "!#$%&*+-./:=?@^_"
-//	const numbers = "0123456789"
-//	var pool = []rune(charsLow + numbers + charsUpper)
-//
-//	if length < 2 {
-//		length = 8
-//	}
-//	if useSpecial {
-//		pool = append(pool, []rune(charsSpecial)...)
-//	}
-//	rand.Seed(uint64(time.Now().Unix()))
-//	//pwchars := make([]string, length)
-//	pwchars := strings.Builder{}
-//
-//	for i := 0; i < length; i++ {
-//		pos := rand.Intn(len(pool))
-//		pwchars.WriteRune(pool[pos])
-//	}
-//	password = pwchars.String()
-//	return password
-//}
 
 // GetProfile returns a client's profile
 func (svc *AuthProfileCapability) GetProfile(clientID string) (profile auth.ClientProfile, err error) {
@@ -64,7 +34,7 @@ func (svc *AuthProfileCapability) GetProfile(clientID string) (profile auth.Clie
 	return clientProfile, err
 }
 
-// NewToken validates a password and issues an authn token
+// NewToken validates a password and issues an authn token. A public key must be on file.
 func (svc *AuthProfileCapability) NewToken(clientID string, password string) (newToken string, err error) {
 	clientProfile, err := svc.store.VerifyPassword(clientID, password)
 	if err != nil {
@@ -73,15 +43,15 @@ func (svc *AuthProfileCapability) NewToken(clientID string, password string) (ne
 	if clientProfile.PubKey == "" {
 		return "", fmt.Errorf("no public key on file for '%s'", clientID)
 	}
-	newToken, err = svc.CreateToken(
-		clientID, clientProfile.ClientType, clientProfile.PubKey, clientProfile.TokenValidity)
+	newToken, err = svc.CreateToken(clientID)
 	return newToken, err
 }
 
 // notification handler invoked when clients have been updated
 // this invokes a reload of server authn
 func (svc *AuthProfileCapability) onChange() {
-	_ = svc.msgServer.ApplyAuth(svc.store.GetAuthClientList())
+	// wait with applying credential changes as it requires a new login
+	go svc.msgServer.ApplyAuth(svc.store.GetAuthClientList())
 }
 
 // Refresh issues a new token if the given token is valid
@@ -98,8 +68,7 @@ func (svc *AuthProfileCapability) Refresh(clientID string, oldToken string) (new
 	if err != nil {
 		return "", fmt.Errorf("error validating oldToken of client %s: %w", clientID, err)
 	}
-	newToken, err = svc.CreateToken(
-		clientID, clientProfile.ClientType, clientProfile.PubKey, clientProfile.TokenValidity)
+	newToken, err = svc.CreateToken(clientID)
 	return newToken, err
 }
 
@@ -113,6 +82,7 @@ func (svc *AuthProfileCapability) UpdateName(clientID string, displayName string
 }
 
 func (svc *AuthProfileCapability) UpdatePassword(clientID string, newPassword string) (err error) {
+	slog.Info("UpdatePassword", "clientID", clientID)
 	_, err = svc.GetProfile(clientID)
 	if err != nil {
 		return err
@@ -126,6 +96,7 @@ func (svc *AuthProfileCapability) UpdatePassword(clientID string, newPassword st
 }
 
 func (svc *AuthProfileCapability) UpdatePubKey(clientID string, newPubKey string) (err error) {
+	slog.Info("UpdatePubKey", "clientID", clientID)
 	clientProfile, err := svc.store.GetProfile(clientID)
 	if err != nil {
 		return err

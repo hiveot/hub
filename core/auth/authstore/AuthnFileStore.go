@@ -86,11 +86,11 @@ func (authnStore *AuthnFileStore) Count() int {
 }
 
 // GetAuthClientList provides a list of clients to apply to the message server
-func (authnStore *AuthnFileStore) GetAuthClientList() []msgserver.ClientAuth {
+func (authnStore *AuthnFileStore) GetAuthClientList() []msgserver.ClientAuthInfo {
 	entries := authnStore.GetEntries()
-	clients := make([]msgserver.ClientAuth, 0, len(entries))
+	clients := make([]msgserver.ClientAuthInfo, 0, len(entries))
 	for _, e := range entries {
-		clients = append(clients, msgserver.ClientAuth{
+		clients = append(clients, msgserver.ClientAuthInfo{
 			ClientID:     e.ClientID,
 			ClientType:   e.ClientType,
 			PubKey:       e.PubKey,
@@ -244,21 +244,21 @@ func (authnStore *AuthnFileStore) SetPassword(loginID string, password string) (
 }
 
 // SetRole updates the client's role
-func (authnStore *AuthnFileStore) SetRole(clientID string, role string) (err error) {
-	authnStore.mutex.Lock()
-	defer authnStore.mutex.Unlock()
-
-	entry, found := authnStore.entries[clientID]
-	if !found {
-		return fmt.Errorf("Client '%s' not found", clientID)
-	}
-	entry.Role = role
-	entry.Updated = time.Now().Format(vocab.ISO8601Format)
-	authnStore.entries[clientID] = entry
-
-	err = authnStore.save()
-	return err
-}
+//func (authnStore *AuthnFileStore) SetRole(clientID string, role string) (err error) {
+//	authnStore.mutex.Lock()
+//	defer authnStore.mutex.Unlock()
+//
+//	entry, found := authnStore.entries[clientID]
+//	if !found {
+//		return fmt.Errorf("Client '%s' not found", clientID)
+//	}
+//	entry.Role = role
+//	entry.Updated = time.Now().Format(vocab.ISO8601Format)
+//	authnStore.entries[clientID] = entry
+//
+//	err = authnStore.save()
+//	return err
+//}
 
 // SetPasswordHash adds/updates the password hash for the given login ID
 // Intended for use by administrators to add a new user or clients to update their password
@@ -278,7 +278,7 @@ func (authnStore *AuthnFileStore) SetPasswordHash(loginID string, hash string) (
 	return err
 }
 
-// Update updates the client profile.
+// Update updates the client profile, except
 func (authnStore *AuthnFileStore) Update(clientID string, profile auth.ClientProfile) error {
 	authnStore.mutex.Lock()
 	defer authnStore.mutex.Unlock()

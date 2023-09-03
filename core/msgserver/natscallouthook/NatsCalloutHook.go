@@ -58,7 +58,7 @@ type NatsCalloutHook struct {
 func (chook *NatsCalloutHook) createSignedResponse(
 	userPub string, serverPub string, userJWT string, rerr error) ([]byte, error) {
 
-	slog.Info("createSignedResponse", "pub", userPub)
+	//slog.Info("createSignedResponse", "pub", userPub)
 	// create and send the response
 	respClaims := jwt.NewAuthorizationResponseClaims(userPub)
 	respClaims.Audience = serverPub
@@ -124,10 +124,6 @@ func (chook *NatsCalloutHook) handleCallOutReq(msg *nats.Msg) {
 	// note that callouts generates a new key on the fly and expects the token to use this key.
 	// Why is unknown.
 	newToken, err = chook.msgServer.CreateJWTToken(clientID, userNKeyPub)
-
-	chookPub := chook.nc.Opts.Nkey
-	slog.Info("* chookpub", "pub", chookPub)
-	slog.Info("* chookpub", "usernkey", reqClaims.UserNkey, "subject", reqClaims.Subject)
 
 	resp, err := chook.createSignedResponse(userNKeyPub, serverID.ID, newToken, err)
 	if err != nil {
