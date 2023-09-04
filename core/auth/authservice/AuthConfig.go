@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/auth"
 	"path"
-	"time"
 )
 
 // AuthConfig contains the auth service configuration
@@ -16,12 +15,12 @@ type AuthConfig struct {
 	// Encryption of passwords: "argon2id" (default) or "bcrypt"
 	Encryption string `yaml:"encryption,omitempty"`
 
-	// Auth token validity for devices in seconds
-	DeviceTokenValidity time.Duration `yaml:"deviceTokenValidity,omitempty"`
-	// Auth token validity for services in seconds
-	ServiceTokenValidity time.Duration `yaml:"serviceTokenValidity,omitempty"`
-	// Auth token validity for users in seconds
-	UserTokenValidity time.Duration `yaml:"userTokenValidity,omitempty"`
+	// Auth token validity for devices in days
+	DeviceTokenValidityDays int `yaml:"deviceTokenValidityDays,omitempty"`
+	// Auth token validity for services in days
+	ServiceTokenValidityDays int `yaml:"serviceTokenValidityDays,omitempty"`
+	// Auth token validity for users in days
+	UserTokenValidityDays int `yaml:"userTokenValidityDays,omitempty"`
 
 	// NoAutoStart prevents the auth service for auto starting. Intended for testing or custom implementation.
 	NoAutoStart bool `yaml:"noAutoStart,omitempty"`
@@ -46,14 +45,14 @@ func (cfg *AuthConfig) Setup(storesDir string) error {
 		return fmt.Errorf("unknown password encryption method: %s", cfg.Encryption)
 	}
 
-	if cfg.DeviceTokenValidity == 0 {
-		cfg.DeviceTokenValidity = auth.DefaultDeviceTokenValidity
+	if cfg.DeviceTokenValidityDays == 0 {
+		cfg.DeviceTokenValidityDays = auth.DefaultDeviceTokenValidityDays
 	}
-	if cfg.ServiceTokenValidity == 0 {
-		cfg.ServiceTokenValidity = auth.DefaultServiceTokenValidity
+	if cfg.ServiceTokenValidityDays == 0 {
+		cfg.ServiceTokenValidityDays = auth.DefaultServiceTokenValidityDays
 	}
-	if cfg.UserTokenValidity == 0 {
-		cfg.UserTokenValidity = auth.DefaultUserTokenValidity
+	if cfg.UserTokenValidityDays == 0 {
+		cfg.UserTokenValidityDays = auth.DefaultUserTokenValidityDays
 	}
 
 	return nil

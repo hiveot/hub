@@ -7,9 +7,9 @@ INSTALL_HOME=~/bin/hiveot
 
 .FORCE: 
 
-all: core plugins hubcli  ## Build APIs, CLI, Hub services
+all: natshub plugins hubcli  ## Build APIs, CLI, Hub services
 
-hubcore: ## Build the core binary
+natscore: ## Build the hub binary for nats messaging
 	go build -o $(DIST_FOLDER)/bin/$@ core/cmd/$@/main.go
 
 plugins: directory launcher owserver provisioning zwavejs

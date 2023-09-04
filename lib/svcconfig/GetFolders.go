@@ -70,8 +70,8 @@ func GetFolders(homeFolder string, useSystem bool) AppFolders {
 	storesFolder := filepath.Join(homeFolder, "stores")
 
 	if useSystem {
-		homeFolder = filepath.Join("/opt", "hiveot")
-		binFolder = homeFolder
+		homeFolder = filepath.Join("/var", "lib", "hiveot")
+		binFolder = filepath.Join("/opt", "hiveot")
 		pluginsFolder = filepath.Join(binFolder, "plugins")
 		configFolder = filepath.Join("/etc", "hiveot", "conf.d")
 		certsFolder = filepath.Join("/etc", "hiveot", "certs")

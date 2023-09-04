@@ -41,7 +41,7 @@ func SetupCerts(certsDir string, caCertFile string, caKeyFile string) (
 			panic("unable to load CA certificate: " + err.Error())
 		}
 	} else {
-		slog.Info("creating a self-signed CA certificate and key")
+		slog.Info("creating a self-signed CA certificate and key", "caCertFile", caCertFile)
 		//
 		caCert, caKey, err = CreateCA("hiveot", 365*10)
 		if err != nil {

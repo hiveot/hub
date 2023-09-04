@@ -1,9 +1,5 @@
 package auth
 
-import (
-	"time"
-)
-
 // AuthServiceName default ID of the authentication and authorization service
 const AuthServiceName = "auth"
 
@@ -19,9 +15,9 @@ const (
 
 // Authentication token validity for client types
 const (
-	DefaultDeviceTokenValidity  = time.Hour * 24 * 90  // 90 days
-	DefaultServiceTokenValidity = time.Hour * 24 * 365 // 1 year
-	DefaultUserTokenValidity    = time.Hour * 24 * 30  // 30 days
+	DefaultDeviceTokenValidityDays  = 90  // 90 days
+	DefaultServiceTokenValidityDays = 365 // 1 year
+	DefaultUserTokenValidityDays    = 30  // 30 days
 )
 
 // ClientProfile contains client information of sources and users
@@ -39,8 +35,8 @@ type ClientProfile struct {
 	PubKey string
 	// timestamp in ISO8601 format, the entry was last updated
 	Updated string
-	// TokenValidity time that issued JWT tokens are valid for or 0 for default
-	TokenValidity time.Duration
+	// TokenValidityDays nr of days that issued JWT tokens are valid for or 0 for default
+	TokenValidityDays int
 	// The client's role
 	Role string
 }
@@ -53,10 +49,9 @@ const AddDeviceAction = "addDevice"
 // AddDeviceReq request message to add a device.
 // The caller must be an administrator or service.
 type AddDeviceReq struct {
-	DeviceID      string        `json:"deviceID"`
-	DisplayName   string        `json:"displayName"`
-	PubKey        string        `json:"pubKey"`
-	TokenValidity time.Duration `json:"tokenValidity"`
+	DeviceID    string `json:"deviceID"`
+	DisplayName string `json:"displayName"`
+	PubKey      string `json:"pubKey"`
 }
 type AddDeviceResp struct {
 	Token string `json:"token"`
@@ -68,10 +63,9 @@ const AddServiceAction = "addService"
 // AddServiceReq request message to add a service.
 // The caller must be an administrator or service.
 type AddServiceReq struct {
-	ServiceID     string        `json:"serviceID"`
-	DisplayName   string        `json:"displayName"`
-	PubKey        string        `json:"pubKey"`
-	TokenValidity time.Duration `json:"tokenValidity"`
+	ServiceID   string `json:"serviceID"`
+	DisplayName string `json:"displayName"`
+	PubKey      string `json:"pubKey"`
 }
 type AddServiceResp struct {
 	Token string `json:"token"`
@@ -141,8 +135,7 @@ type IAuthnManageClients interface {
 	//  deviceID is the thingID of the device, used for publishing things by this device.
 	//  displayName of the service for presentation
 	//  pubKey ECDSA public key of the device
-	//  tokenValidity is duration the device token is valid for. 0 for the default DefaultDeviceTokenValiditySec
-	AddDevice(deviceID string, displayName string, pubKey string, tokenValidity time.Duration) (token string, err error)
+	AddDevice(deviceID string, displayName string, pubKey string) (token string, err error)
 
 	// AddService adds a new service and generates a service token.
 	// The service must periodically refresh its token for it to remain valid.
@@ -156,8 +149,7 @@ type IAuthnManageClients interface {
 	//  serviceID is the instance ID of the service on the network.
 	//  displayName of the service for presentation
 	//  pubKey ECDSA public key of the service
-	//  tokenValidity is duration the service token is valid for. 0 for the default DefaultServiceTokenValiditySec
-	AddService(serviceID string, displayName string, pubKey string, tokenValidity time.Duration) (token string, err error)
+	AddService(serviceID string, displayName string, pubKey string) (token string, err error)
 
 	// AddUser adds a user with a password, public key or neither.
 	// The caller must be an administrator or service.

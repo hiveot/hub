@@ -1,23 +1,23 @@
-package hubcore
+package natscore
 
 import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/core/config"
-	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
+	"github.com/hiveot/hub/core/natsmsgserver"
 	"time"
 )
 
 // Runtimes
-var MsgServer *natsnkeyserver.NatsNKeyServer
+var MsgServer *natsmsgserver.NatsMsgServer
 var AuthService *authservice.AuthService
 
-// StartCore starts the Hub messaging core services with the given config.
+// StartCore starts the Hub messaging core with the given config.
 func StartCore(cfg *config.HubCoreConfig) (clientURL string, err error) {
 
 	// start the embedded NATS messaging MsgServer
 	if !cfg.NatsServer.NoAutoStart {
-		MsgServer = natsnkeyserver.NewNatsNKeyServer(&cfg.NatsServer)
+		MsgServer = natsmsgserver.NewNatsMsgServer(&cfg.NatsServer)
 		clientURL, err = MsgServer.Start()
 		if err != nil {
 			return "", err

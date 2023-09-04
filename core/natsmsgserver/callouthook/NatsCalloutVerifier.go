@@ -1,9 +1,9 @@
-package natscallouthook
+package callouthook
 
 import (
 	"crypto/x509"
 	"fmt"
-	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
+	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/nats-io/jwt/v2"
 	"golang.org/x/exp/slog"
@@ -18,7 +18,7 @@ import (
 // To use, provide 'VerifyAuthnReq' to EnableNatsCalloutHook(), which determines
 // the authn method to use.
 type NatsCalloutVerifier struct {
-	msgServer *natsnkeyserver.NatsNKeyServer
+	msgServer *natsmsgserver.NatsMsgServer
 	caCert    *x509.Certificate
 }
 
@@ -113,7 +113,7 @@ func (v *NatsCalloutVerifier) VerifyAuthnReq(claims *jwt.AuthorizationRequestCla
 }
 
 func NewNatsCoVerifier(
-	msgServer *natsnkeyserver.NatsNKeyServer, caCert *x509.Certificate) *NatsCalloutVerifier {
+	msgServer *natsmsgserver.NatsMsgServer, caCert *x509.Certificate) *NatsCalloutVerifier {
 
 	v := &NatsCalloutVerifier{
 		msgServer: msgServer,

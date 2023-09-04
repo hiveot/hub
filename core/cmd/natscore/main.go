@@ -5,8 +5,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/hiveot/hub/core/cmd/natshub/hubcore"
 	"github.com/hiveot/hub/core/config"
+	"github.com/hiveot/hub/core/natscore"
 	"github.com/hiveot/hub/lib/svcconfig"
 	"github.com/hiveot/hub/lib/utils"
 	"gopkg.in/yaml.v3"
@@ -75,6 +75,7 @@ func main() {
 		fmt.Println()
 	}
 	flag.Parse()
+	fmt.Println("home: ", f.Home)
 	// reload f if home changed
 	if homeDir != f.Home {
 		f = svcconfig.GetFolders(f.Home, false)
@@ -117,7 +118,7 @@ func main() {
 func run(cfg *config.HubCoreConfig) error {
 	var err error
 
-	clientURL, err := hubcore.StartCore(cfg)
+	clientURL, err := natscore.StartCore(cfg)
 
 	if err != nil {
 		return fmt.Errorf("unable to start server: %w", err)
@@ -127,6 +128,6 @@ func run(cfg *config.HubCoreConfig) error {
 	fmt.Println("Hub started. ClientURL=" + clientURL)
 	utils.WaitForSignal(context.Background())
 
-	hubcore.StopCore()
+	natscore.StopCore()
 	return nil
 }

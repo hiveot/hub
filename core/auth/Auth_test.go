@@ -5,8 +5,8 @@ import (
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
-	"github.com/hiveot/hub/core/msgserver/natscallouthook"
-	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
+	"github.com/hiveot/hub/core/natsmsgserver"
+	"github.com/hiveot/hub/core/natsmsgserver/callouthook"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/jwt/v2"
@@ -24,12 +24,12 @@ import (
 )
 
 var certBundle certs.TestCertBundle
-var serverCfg *natsnkeyserver.NatsServerConfig
+var serverCfg *natsmsgserver.NatsServerConfig
 var testDir = path.Join(os.TempDir(), "test-authn")
 
 // the following are set by the testmain
 var clientURL string
-var msgServer *natsnkeyserver.NatsNKeyServer
+var msgServer *natsmsgserver.NatsMsgServer
 var useCallout = false
 
 // run the test for different cores
@@ -55,7 +55,7 @@ func startTestAuthnService() (authnSvc *authservice.AuthService, mng authapi.IAu
 	cfg := authservice.AuthConfig{}
 	_ = cfg.Setup(testDir)
 	cfg.PasswordFile = passwordFile
-	cfg.DeviceTokenValidity = 10
+	cfg.DeviceTokenValidityDays = 10
 	cfg.Encryption = authapi.PWHASH_BCRYPT // nats requires bcrypt
 
 	authnSvc, err = authservice.StartAuthService(cfg, msgServer)
@@ -94,7 +94,7 @@ func TestMain(m *testing.M) {
 
 	// use the callout server to enable for JWT
 	if useCallout {
-		_, err = natscallouthook.EnableNatsCalloutHook(msgServer)
+		_, err = callouthook.EnableNatsCalloutHook(msgServer)
 		if err != nil {
 			panic(err)
 		}
@@ -157,26 +157,26 @@ func TestAddRemoveClients(t *testing.T) {
 	_, err = mng.AddUser("user4", "user 4", "pass4", "", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
 
-	_, err = mng.AddDevice(deviceID, "device 1", deviceKeyPub, 100)
+	_, err = mng.AddDevice(deviceID, "device 1", deviceKeyPub)
 	assert.NoError(t, err)
 	// duplicate fail
-	_, err = mng.AddDevice(deviceID, "", "", 100) // should fail
+	_, err = mng.AddDevice(deviceID, "", "") // should fail
 	assert.Error(t, err)
 	// missing userID
-	_, err = mng.AddDevice("", "", "", 100) // should fail
+	_, err = mng.AddDevice("", "", "") // should fail
 	assert.Error(t, err)
 
-	_, err = mng.AddService(serviceID, "service 1", serviceKeyPub, 100)
+	_, err = mng.AddService(serviceID, "service 1", serviceKeyPub)
 	assert.NoError(t, err)
 	// duplicate fail
-	_, err = mng.AddService(serviceID, "", "", 100) // should fail
+	_, err = mng.AddService(serviceID, "", "") // should fail
 	assert.Error(t, err)
 	// missing userID
-	_, err = mng.AddService("", "", "", 100) // should fail
+	_, err = mng.AddService("", "", "") // should fail
 	assert.Error(t, err)
 
 	// update the server. users can connect and have unlimited access
-	authnEntries := svc.MngService.GetAuthClientList()
+	authnEntries := svc.MngClients.GetAuthClientList()
 	err = msgServer.ApplyAuth(authnEntries)
 	require.NoError(t, err)
 
@@ -329,9 +329,10 @@ func TestRefreshFakeToken(t *testing.T) {
 	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, "", authapi.ClientRoleViewer)
 	_ = tu1Token
 	require.NoError(t, err)
-	//require.NotEmpty(t, tu1Token)
+	_, err = mng.AddUser(testenv.TestUser2ID, "user 2", "", testenv.TestUser2Pub, authapi.ClientRoleViewer)
+	require.NoError(t, err)
 
-	entries := svc.MngService.GetAuthClientList()
+	entries := svc.MngClients.GetAuthClientList()
 	err = msgServer.ApplyAuth(entries)
 
 	// 1. connect with the added user token
@@ -347,7 +348,7 @@ func TestRefreshFakeToken(t *testing.T) {
 	assert.Empty(t, authToken1)
 
 	// 3. Use a fake jwt token, eg from another user
-	fakeToken := serverCfg.CoreServiceJWT
+	fakeToken, err := msgServer.CreateJWTToken(testenv.TestUser2ID, testenv.TestUser2Pub)
 	authToken1, err = cl1.Refresh(tu1ID, fakeToken)
 	require.Error(t, err)
 	assert.Empty(t, authToken1)
@@ -386,7 +387,7 @@ func TestUpdate(t *testing.T) {
 	tu1Token, tu1Key, err := addNewUser(tu1ID, tu1Name, "pass0", mng)
 	require.NoError(t, err)
 
-	entries := svc.MngService.GetAuthClientList()
+	entries := svc.MngClients.GetAuthClientList()
 	err = msgServer.ApplyAuth(entries)
 	require.NoError(t, err)
 
@@ -407,7 +408,7 @@ func TestUpdate(t *testing.T) {
 	assert.NoError(t, err)
 	hc.Disconnect()
 
-	entries = svc.MngService.GetAuthClientList()
+	entries = svc.MngClients.GetAuthClientList()
 	err = msgServer.ApplyAuth(entries)
 
 	//reconnect using the new key

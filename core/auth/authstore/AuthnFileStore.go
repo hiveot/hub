@@ -47,13 +47,13 @@ func (authnStore *AuthnFileStore) Add(clientID string, profile auth.ClientProfil
 		profile.ClientType != auth.ClientTypeService {
 		return fmt.Errorf("invalid clientType '%s'", profile.ClientType)
 	}
-	if profile.TokenValidity == 0 {
+	if profile.TokenValidityDays == 0 {
 		if profile.ClientType == auth.ClientTypeDevice {
-			profile.TokenValidity = auth.DefaultDeviceTokenValidity
+			profile.TokenValidityDays = auth.DefaultDeviceTokenValidityDays
 		} else if profile.ClientType == auth.ClientTypeService {
-			profile.TokenValidity = auth.DefaultServiceTokenValidity
+			profile.TokenValidityDays = auth.DefaultServiceTokenValidityDays
 		} else if profile.ClientType == auth.ClientTypeUser {
-			profile.TokenValidity = auth.DefaultUserTokenValidity
+			profile.TokenValidityDays = auth.DefaultUserTokenValidityDays
 		}
 	}
 	entry = auth.AuthnEntry{ClientProfile: profile}
@@ -296,8 +296,8 @@ func (authnStore *AuthnFileStore) Update(clientID string, profile auth.ClientPro
 	if profile.DisplayName != "" {
 		entry.DisplayName = profile.DisplayName
 	}
-	if profile.TokenValidity != 0 {
-		entry.TokenValidity = profile.TokenValidity
+	if profile.TokenValidityDays != 0 {
+		entry.TokenValidityDays = profile.TokenValidityDays
 	}
 	if profile.PubKey != "" {
 		entry.PubKey = profile.PubKey

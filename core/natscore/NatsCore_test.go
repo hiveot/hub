@@ -1,12 +1,12 @@
-package hubcore_test
+package natscore_test
 
 import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
-	"github.com/hiveot/hub/core/cmd/natshub/hubcore"
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
-	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
+	"github.com/hiveot/hub/core/natscore"
+	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
@@ -27,6 +27,7 @@ func TestMain(m *testing.M) {
 	homeDir := path.Join(os.TempDir(), "test-core")
 
 	hubCfg = config.NewHubCoreConfig()
+	hubCfg.NatsServer.Port = 9998
 	// clear all existing data if any
 	err := hubCfg.Setup(homeDir, "", true)
 	if err != nil {
@@ -39,9 +40,9 @@ func TestMain(m *testing.M) {
 
 func TestHubServer_StartStop(t *testing.T) {
 	_ = os.Remove(hubCfg.Auth.PasswordFile)
-	clientURL, err := hubcore.StartCore(hubCfg)
+	clientURL, err := natscore.StartCore(hubCfg)
 	require.NoError(t, err)
-	defer hubcore.StopCore()
+	defer natscore.StopCore()
 
 	assert.NotEmpty(t, clientURL)
 	time.Sleep(time.Second * 1)
@@ -58,14 +59,14 @@ func TestPubSub_ConnectAuthNKey(t *testing.T) {
 	clientURL := ""
 
 	_ = os.Remove(hubCfg.Auth.PasswordFile)
-	clientURL, err := hubcore.StartCore(hubCfg)
+	clientURL, err := natscore.StartCore(hubCfg)
 	require.NoError(t, err)
-	defer hubcore.StopCore()
+	defer natscore.StopCore()
 
 	// setup: device and service
-	_, err = hubcore.AuthService.MngService.AddDevice(device1ID, "device 1", device1Pub, 0)
+	_, err = natscore.AuthService.MngClients.AddDevice(device1ID, "device 1", device1Pub)
 	require.NoError(t, err)
-	_, err = hubcore.AuthService.MngService.AddService(service1ID, "service 1", service1Pub, 0)
+	_, err = natscore.AuthService.MngClients.AddService(service1ID, "service 1", service1Pub)
 	require.NoError(t, err)
 
 	// service1 subscribes to events
@@ -73,7 +74,7 @@ func TestPubSub_ConnectAuthNKey(t *testing.T) {
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 
-	sub, err := hc1.SubStream(natsnkeyserver.EventsIntakeStreamName, false, func(msg *hubclient.EventMessage) {
+	sub, err := hc1.SubStream(natsmsgserver.EventsIntakeStreamName, false, func(msg *hubclient.EventMessage) {
 		slog.Info("received event", "id", msg.EventID)
 		rxchan <- 1
 	})
@@ -104,30 +105,30 @@ func TestPubSub_AuthPassword(t *testing.T) {
 
 	// launch the core services
 	_ = os.Remove(hubCfg.Auth.PasswordFile)
-	clientURL, err := hubcore.StartCore(hubCfg)
+	clientURL, err := natscore.StartCore(hubCfg)
 	require.NoError(t, err)
-	defer hubcore.StopCore()
+	defer natscore.StopCore()
 
 	// add a device, service and user to test with
-	_, err = hubcore.AuthService.MngService.AddUser(user1ID, "u 1", user1Pass, "", auth.ClientRoleViewer)
+	_, err = natscore.AuthService.MngClients.AddUser(user1ID, "u 1", user1Pass, "", auth.ClientRoleViewer)
 	require.NoError(t, err)
-	_, err = hubcore.AuthService.MngService.AddService(service1ID, "s 1", service1Pub, time.Minute)
+	_, err = natscore.AuthService.MngClients.AddService(service1ID, "s 1", service1Pub)
 	require.NoError(t, err)
-	_, err = hubcore.AuthService.MngService.AddDevice(device1ID, "d 1", device1Pub, time.Minute)
+	_, err = natscore.AuthService.MngClients.AddDevice(device1ID, "d 1", device1Pub)
 	require.NoError(t, err)
 
 	// connect the user
-	//hc1, err := natshubclient.ConnectWithNKey(clientURL, service1ID, service1KP, hubCfg.NatsServer.CaCert)
+	//hc1, err := natscoreclient.ConnectWithNKey(clientURL, service1ID, service1KP, hubCfg.NatsServer.CaCert)
 	hc1, err := natshubclient.ConnectWithPassword(clientURL, user1ID, user1Pass, hubCfg.NatsServer.CaCert)
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 
-	si, err := hc1.JS().StreamInfo(natsnkeyserver.EventsIntakeStreamName)
+	si, err := hc1.JS().StreamInfo(natsmsgserver.EventsIntakeStreamName)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, si)
 
 	// listen for events
-	sub, err := hc1.SubStream(natsnkeyserver.EventsIntakeStreamName, false, func(msg *hubclient.EventMessage) {
+	sub, err := hc1.SubStream(natsmsgserver.EventsIntakeStreamName, false, func(msg *hubclient.EventMessage) {
 		slog.Info("received event", "id", msg.EventID)
 		rxchan <- 1
 	})
@@ -150,7 +151,7 @@ func TestPubSub_AuthPassword(t *testing.T) {
 //	clientURL := ""
 //
 //	// launch the core services
-//	core := natshubcore.NewHubCore()
+//	core := natscorecore.NewHubCore()
 //	require.NotPanics(t, func() { clientURL = core.Start(hubCfg) })
 //	defer core.Stop()
 //
@@ -163,7 +164,7 @@ func TestPubSub_AuthPassword(t *testing.T) {
 //	require.NoError(t, err)
 //
 //	// connect using the JWT token
-//	hc, err := natshubclient.ConnectWithJWT(clientURL, serviceKey, serviceJWT, hubCfg.NatsServer.CaCert)
+//	hc, err := natscoreclient.ConnectWithJWT(clientURL, serviceKey, serviceJWT, hubCfg.NatsServer.CaCert)
 //	require.NoError(t, err)
 //	defer hc.Disconnect()
 //

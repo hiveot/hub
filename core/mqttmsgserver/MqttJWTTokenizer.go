@@ -1,4 +1,4 @@
-package mqttserver
+package mqttmsgserver
 
 import (
 	"crypto/ecdsa"

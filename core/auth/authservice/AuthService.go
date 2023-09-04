@@ -5,23 +5,19 @@ import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
-	"github.com/hiveot/hub/core/auth/authbinding"
 	"github.com/hiveot/hub/core/auth/authstore"
 )
 
-// AuthService creates a service handling both manage and user requests.
+// AuthService handles authentication and authorization requests
 type AuthService struct {
 	store     auth.IAuthnStore
 	msgServer msgserver.IMsgServer
 
 	// the hub client connection to listen to requests
-	hc           hubclient.IHubClient
-	mngBinding   *authbinding.AuthClientsBinding
-	MngService   *AuthClientsCapability
-	rolesBinding *authbinding.AuthRolesBinding
-	RolesService *AuthRolesCapability
-	usrBinding   *authbinding.AuthProfileBinding
-	UsrService   *AuthProfileCapability
+	hc         hubclient.IHubClient
+	MngClients *AuthManageClients
+	MngRoles   *AuthManageRoles
+	MngProfile *AuthManageProfile
 }
 
 // Start the service and activate the binding to handle requests
@@ -36,24 +32,21 @@ func (svc *AuthService) Start() (err error) {
 	if err != nil {
 		return fmt.Errorf("can't connect authn to server: %w", err)
 	}
-	svc.MngService = NewAuthClientsCapability(svc.store, svc.msgServer)
-	svc.mngBinding = authbinding.NewAuthnClientsBinding(svc.MngService, svc.hc)
-	svc.UsrService = NewAuthProfileCapability(svc.store, svc.msgServer, nil)
-	svc.usrBinding = authbinding.NewAuthProfileBinding(svc.UsrService, svc.hc)
-	svc.RolesService = NewAuthRolesCapability(svc.store, svc.msgServer)
-	svc.rolesBinding = authbinding.NewAuthRolesBinding(svc.RolesService, svc.hc)
+	svc.MngClients = NewAuthManageClients(svc.store, svc.hc, svc.msgServer)
+	svc.MngProfile = NewAuthManageProfile(svc.store, nil, svc.hc, svc.msgServer)
+	svc.MngRoles = NewAuthManageRoles(svc.store, svc.hc, svc.msgServer)
 
-	err = svc.mngBinding.Start()
+	err = svc.MngClients.Start()
 	if err == nil {
-		err = svc.rolesBinding.Start()
+		err = svc.MngRoles.Start()
 	}
 	if err == nil {
-		err = svc.usrBinding.Start()
+		err = svc.MngProfile.Start()
 	}
 	if err != nil {
-		svc.mngBinding.Stop()
-		svc.usrBinding.Stop()
-		svc.rolesBinding.Stop()
+		svc.MngClients.Stop()
+		svc.MngRoles.Stop()
+		svc.MngProfile.Stop()
 		svc.hc.Disconnect()
 		return
 	}
@@ -69,14 +62,15 @@ func (svc *AuthService) Start() (err error) {
 
 // Stop the service, unsubscribe and disconnect from the server
 func (svc *AuthService) Stop() {
-	if svc.mngBinding != nil {
-		svc.mngBinding.Stop()
+	if svc.MngClients != nil {
+		svc.MngClients.Stop()
+		svc.MngClients = nil
 	}
-	if svc.usrBinding != nil {
-		svc.usrBinding.Stop()
+	if svc.MngProfile != nil {
+		svc.MngProfile.Stop()
 	}
-	if svc.rolesBinding != nil {
-		svc.rolesBinding.Stop()
+	if svc.MngRoles != nil {
+		svc.MngRoles.Stop()
 	}
 	if svc.hc != nil {
 		svc.hc.Disconnect()

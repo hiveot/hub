@@ -5,11 +5,10 @@ import (
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 	"golang.org/x/exp/slog"
-	"time"
 )
 
 // AuthClientsClient is a message (de)serializer for managing clients.
-// This uses the default serializer to marshal and unmarshal messages.
+// This uses the default serializer 'ser' to marshal and unmarshal messages.
 type AuthClientsClient struct {
 	// ID of the authn service
 	serviceID string
@@ -32,14 +31,13 @@ func (cl *AuthClientsClient) pubReq(action string, req interface{}, resp interfa
 
 // AddDevice adds an IoT device and generates an authentication token
 func (cl *AuthClientsClient) AddDevice(
-	deviceID string, displayName string, pubKey string, tokenValidity time.Duration) (string, error) {
+	deviceID string, displayName string, pubKey string) (string, error) {
 
 	slog.Info("AddDevice", "deviceID", deviceID)
 	req := auth.AddDeviceReq{
-		DeviceID:      deviceID,
-		DisplayName:   displayName,
-		PubKey:        pubKey,
-		TokenValidity: tokenValidity,
+		DeviceID:    deviceID,
+		DisplayName: displayName,
+		PubKey:      pubKey,
 	}
 	resp := auth.AddDeviceResp{}
 	err := cl.pubReq(auth.AddDeviceAction, &req, &resp)
@@ -48,15 +46,13 @@ func (cl *AuthClientsClient) AddDevice(
 
 // AddService adds a service.
 func (cl *AuthClientsClient) AddService(
-	serviceID string, displayName string, pubKey string, tokenValidity time.Duration) (string, error) {
+	serviceID string, displayName string, pubKey string) (string, error) {
 
 	slog.Info("AddService", "serviceID", serviceID)
 	req := auth.AddServiceReq{
 		ServiceID:   serviceID,
 		DisplayName: displayName,
 		PubKey:      pubKey,
-
-		TokenValidity: tokenValidity,
 	}
 	resp := auth.AddServiceResp{}
 	err := cl.pubReq(auth.AddServiceAction, &req, &resp)

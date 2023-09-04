@@ -1,4 +1,4 @@
-package natsnkeyserver
+package natsmsgserver
 
 import (
 	"crypto/tls"
@@ -19,9 +19,10 @@ import (
 // EventsIntakeStreamName all group streams use this stream as their source
 const EventsIntakeStreamName = "$events"
 
-// NatsNKeyServer runs an embedded NATS server using nkeys for authentication.
+// NatsMsgServer runs an embedded NATS server using nkeys for authentication.
 // this implements the IMsgServer interface
-type NatsNKeyServer struct {
+// See also the callouthook addon for adding JWT token support using nats callouts.
+type NatsMsgServer struct {
 	Config   *NatsServerConfig
 	NatsOpts server.Options
 	ns       *server.Server
@@ -41,7 +42,7 @@ type NatsNKeyServer struct {
 //
 //	serviceID of the connecting service
 //	clientKey is optional alternate key or nil to use the built-in core service ID
-func (srv *NatsNKeyServer) ConnectInProcNC(serviceID string, clientKey nkeys.KeyPair) (*nats.Conn, error) {
+func (srv *NatsMsgServer) ConnectInProcNC(serviceID string, clientKey nkeys.KeyPair) (*nats.Conn, error) {
 
 	if clientKey == nil {
 		clientKey = srv.Config.CoreServiceKP
@@ -81,7 +82,7 @@ func (srv *NatsNKeyServer) ConnectInProcNC(serviceID string, clientKey nkeys.Key
 // Intended for the core services to connect to the server.
 //
 //	serviceID of the connecting service
-func (srv *NatsNKeyServer) ConnectInProc(serviceID string) (hubclient.IHubClient, error) {
+func (srv *NatsMsgServer) ConnectInProc(serviceID string) (hubclient.IHubClient, error) {
 
 	nc, err := srv.ConnectInProcNC(serviceID, nil)
 	if err != nil {
@@ -94,7 +95,7 @@ func (srv *NatsNKeyServer) ConnectInProc(serviceID string) (hubclient.IHubClient
 // Start the NATS server with the given configuration and create an event ingress stream
 //
 //	Config.Setup must have been called first.
-func (srv *NatsNKeyServer) Start() (clientURL string, err error) {
+func (srv *NatsMsgServer) Start() (clientURL string, err error) {
 
 	srv.NatsOpts, err = srv.Config.CreateNatsNKeyOptions()
 	if err != nil {
@@ -161,13 +162,13 @@ func (srv *NatsNKeyServer) Start() (clientURL string, err error) {
 }
 
 // Stop the server
-func (srv *NatsNKeyServer) Stop() {
+func (srv *NatsMsgServer) Stop() {
 	srv.ns.Shutdown()
 }
 
-// NewNatsNKeyServer creates a new instance of the Hub NATS server for NKey authn.
-func NewNatsNKeyServer(cfg *NatsServerConfig) *NatsNKeyServer {
+// NewNatsMsgServer creates a new instance of the Hub NATS server for NKey authn.
+func NewNatsMsgServer(cfg *NatsServerConfig) *NatsMsgServer {
 
-	srv := &NatsNKeyServer{Config: cfg, rolePermissions: DefaultRolePermissions}
+	srv := &NatsMsgServer{Config: cfg, rolePermissions: DefaultRolePermissions}
 	return srv
 }

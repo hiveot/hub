@@ -1,8 +1,19 @@
 # hub.yaml contains the hiveot hub core configuration
 
-# run the core using nats or mqtt
-core: "nats"
+# run the core using nats or mqtt (currently only nats)
+#core: "nats"
 
+# Alternative home directory. default is the parent of the application binary
+#homeDir: ""
+
+# filename of the x509 CA certificate file in the certs directory
+#caCertFile: "caCert.pem"
+#caKeyFile: "caKey.pem"
+
+# names or paths to server TLS server certificate and key file
+# the default dir is "$CERTS"
+#serverCertFile: "serverCert.pem"
+#serverKeyFile: "serverKey.pem"
 
 # Nats Messaging server configuration
 natsserver:
@@ -16,37 +27,36 @@ natsserver:
 
   # logging level for server: debug, info, warn (default), error
   #logLevel: "warn"
-  # logfile to write to in the logging folder. Default is stderr
+  # logfile to write to in the logging folder. (default stderr)
   #logFile: "hubcore.log"
+  # enable server debug output (default falseO0
+  #debug: false
 
   # maximum in-memory RAM usage. Default (0) is 1024. -1 for maximum
   #maxDataMemoryMB: 1024
 
-  # Data location. Default is "$STORES/natsserver"
-  #dataDir: "$STORES/natsserver"
-
-  # names or paths to server TLS server certificate and key file
-  # the default dir is "$CERTS"
-  #serverCertFile: "serverCert.pem"
-  #serverKeyFile: "serverKey.pem"
-
-  # path to x509 CA certificate file that signed the server cert
-  #caCertFile: "caCert.pem"
-  #caKeyFile: "caKey.pem"
+  # Data location. Default is "$Home/stores/natsserver"
+  #dataDir: "$HOME/stores/natsserver"
 
   # Name of application account. Default is hiveot
   #appAccountName: "hiveot"
-  # name or path to the application account key file. The default dir is "$HOME/certs"
-  #appAccountKeyFile: "hiveotAcct.nkey"
+  # name or path to the application account key file. Default appAcct.nkey
+  #appAccountKeyFile: "appAcct.nkey"
+  #adminUserKeyFile: "admin.nkey"
+  #systemUserKeyFile: "systemUser.nkey"
 
-  # Enable server debug in logging. Default is false
-  #Debug: false
-
-  # disable running the embedded messaging server
+  # Disable running the embedded messaging server
   #noAutoStart: true     # dont start the embedded server
 
 # Mqtt Messaging server configuration
 mqttserver:
+  # specific listening address, default is 127.0.0.1
+  # the host name or IP must match that of the certificate for TLS to work
+  #host: "127.0.0.1"
+
+  # default listening TLS port is 4222 and 8222 for websocket
+  #port: 8333
+  #wsPort: 9001   # default disabled
 
 
 # Authentication and authorization configuration
@@ -55,6 +65,9 @@ auth:
   # default location is $HOME/stores/authn.
   # This contains sensitive information and should only be readable by the core process
   #passwordFile: "hub.passwd"
+
+  # password hash format. argon2id or bcrypt. Nats requires bcrypt.
+  #encryption: bcrypt
 
   # optional override of the renewed auth token validity in days
   # for devices, services and users.

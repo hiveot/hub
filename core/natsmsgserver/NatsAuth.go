@@ -1,4 +1,4 @@
-package natsnkeyserver
+package natsmsgserver
 
 import (
 	"encoding/base64"
@@ -60,7 +60,7 @@ var ServicePermissions = map[string][]msgserver.RolePermission{}
 //
 //	Role permissions can be changed with 'SetRolePermissions'.
 //	Service permissions can be set with 'SetServicePermissions'
-func (srv *NatsNKeyServer) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
+func (srv *NatsMsgServer) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
 
 	// password users authenticate with password while nkey users authenticate with key-pairs.
 	// clients can use both.
@@ -68,13 +68,23 @@ func (srv *NatsNKeyServer) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
 	nkeyUsers := []*server.NkeyUser{}
 	authClients := map[string]msgserver.ClientAuthInfo{}
 
-	// keep the core service that was added on server start
+	// keep the core, admin and system users
 	coreServicePub, _ := srv.Config.CoreServiceKP.PublicKey()
-	nkeyUsers = append(nkeyUsers, &server.NkeyUser{
-		Nkey:        coreServicePub,
-		Permissions: nil, // unlimited access
-		Account:     srv.Config.appAcct,
-	})
+	adminUserPub, _ := srv.Config.AdminUserKP.PublicKey()
+	systemUserPub, _ := srv.Config.SystemUserKP.PublicKey()
+	nkeyUsers = append(nkeyUsers, []*server.NkeyUser{
+		{Nkey: adminUserPub,
+			Permissions: nil, // unlimited access
+			Account:     srv.Config.appAcct,
+		}, {Nkey: coreServicePub,
+			Permissions: nil, // unlimited access
+			Account:     srv.Config.appAcct,
+		}, {
+			Nkey:        systemUserPub,
+			Permissions: nil, // unlimited access
+			Account:     srv.ns.SystemAccount(),
+		},
+	}...)
 
 	// apply authn all clients
 	// FIXME: when using callouts, don't apply users and have the callout verifier handle them.
@@ -111,7 +121,7 @@ func (srv *NatsNKeyServer) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
 // CreateToken create a new authentication token for a client
 // In NKey mode this returns the public key.
 // In Callout mode this returns a JWT token with permissions.
-func (srv *NatsNKeyServer) CreateToken(clientID string) (token string, err error) {
+func (srv *NatsMsgServer) CreateToken(clientID string) (token string, err error) {
 	//
 	if srv.NatsOpts.AuthCallout != nil {
 		token, err = srv.CreateJWTToken(clientID, "")
@@ -134,16 +144,17 @@ func (srv *NatsNKeyServer) CreateToken(clientID string) (token string, err error
 //
 //	clientID is the user's login/connect ID which is added as the token ID
 //	pubKey is the users's public key which goes into the subject field of the jwt token, use "" for client on record
-func (srv *NatsNKeyServer) CreateJWTToken(clientID string, pubKey string) (newToken string, err error) {
+func (srv *NatsMsgServer) CreateJWTToken(clientID string, pubKey string) (newToken string, err error) {
 	clientAuth, err := srv.getClientAuth(clientID)
 	if err != nil {
 		return "", err
 	}
-	validity := auth.DefaultUserTokenValidity
+	// TODO: use validity period from profile
+	validity := auth.DefaultUserTokenValidityDays
 	if clientAuth.ClientType == auth.ClientTypeDevice {
-		validity = auth.DefaultDeviceTokenValidity
+		validity = auth.DefaultDeviceTokenValidityDays
 	} else if clientAuth.ClientType == auth.ClientTypeService {
-		validity = auth.DefaultServiceTokenValidity
+		validity = auth.DefaultServiceTokenValidityDays
 	}
 
 	// build a jwt response; user_nkey (clientPub) is the subject
@@ -156,7 +167,7 @@ func (srv *NatsNKeyServer) CreateJWTToken(clientID string, pubKey string) (newTo
 	uc.Name = clientAuth.ClientID
 	uc.Tags.Add("clientType", clientAuth.ClientType)
 	uc.IssuedAt = time.Now().Unix()
-	uc.Expires = time.Now().Add(validity).Unix()
+	uc.Expires = time.Now().Add(time.Duration(validity) * time.Hour * 24).Unix()
 
 	// Note: In server mode do not set issuer account. This is for operator mode only.
 	// Using IssuerAccount in server mode is unnecessary and fails with:
@@ -190,7 +201,7 @@ func (srv *NatsNKeyServer) CreateJWTToken(clientID string, pubKey string) (newTo
 }
 
 // getClientAuth returns the client auth info for the given ID
-func (srv *NatsNKeyServer) getClientAuth(clientID string) (msgserver.ClientAuthInfo, error) {
+func (srv *NatsMsgServer) getClientAuth(clientID string) (msgserver.ClientAuthInfo, error) {
 	clientAuth, found := srv.authClients[clientID]
 	if !found {
 		return clientAuth, fmt.Errorf("client %s not known", clientID)
@@ -200,7 +211,7 @@ func (srv *NatsNKeyServer) getClientAuth(clientID string) (msgserver.ClientAuthI
 
 // MakeJWTPermissions constructs a permissions object for use in a JWT token.
 // Nats calllout doesn't use the nats server permissions so convert it to JWT perm.
-func (srv *NatsNKeyServer) MakeJWTPermissions(
+func (srv *NatsMsgServer) MakeJWTPermissions(
 	clientInfo msgserver.ClientAuthInfo,
 	authzRoles map[string][]msgserver.RolePermission) jwt.Permissions {
 
@@ -220,7 +231,7 @@ func (srv *NatsNKeyServer) MakeJWTPermissions(
 // MakePermissions constructs a permissions object for a client
 // Clients that are sources (device,service) receive hard-coded permissions, while users (user,service) permissions
 // are based on their role.
-func (srv *NatsNKeyServer) MakePermissions(
+func (srv *NatsMsgServer) MakePermissions(
 	clientInfo msgserver.ClientAuthInfo,
 	authzRoles map[string][]msgserver.RolePermission) *server.Permissions {
 
@@ -313,13 +324,13 @@ func (srv *NatsNKeyServer) MakePermissions(
 }
 
 // SetRolePermissions sets a custom map of user role->[]permissions
-func (srv *NatsNKeyServer) SetRolePermissions(
+func (srv *NatsMsgServer) SetRolePermissions(
 	rolePerms map[string][]msgserver.RolePermission) {
 	srv.rolePermissions = rolePerms
 }
 
 // SetServicePermissions adds the service permissions to the roles
-func (srv *NatsNKeyServer) SetServicePermissions(
+func (srv *NatsMsgServer) SetServicePermissions(
 	serviceID string, capability string, roles []string) {
 
 	for _, role := range roles {
@@ -350,7 +361,7 @@ func (srv *NatsNKeyServer) SetServicePermissions(
 //   - verify the issuer is the signing/account key.
 //
 // Verifying the signedNonce is optional. Use "" to ignore.
-func (srv *NatsNKeyServer) ValidateJWTToken(
+func (srv *NatsMsgServer) ValidateJWTToken(
 	clientID string, pubKey string, tokenString string, signedNonce string, nonce string) error {
 
 	arc, err := jwt.DecodeUserClaims(tokenString)
@@ -424,7 +435,7 @@ func (srv *NatsNKeyServer) ValidateJWTToken(
 }
 
 // ValidatePassword checks if the given password matches the user
-func (srv *NatsNKeyServer) ValidatePassword(loginID string, password string) error {
+func (srv *NatsMsgServer) ValidatePassword(loginID string, password string) error {
 	if loginID == "" || password == "" {
 		return fmt.Errorf("password validation failed for user '%s'", loginID)
 	}
@@ -439,7 +450,7 @@ func (srv *NatsNKeyServer) ValidatePassword(loginID string, password string) err
 // Intended for use by callout to verify nkey with nonce.
 //
 // Verifying the signedNonce is optional. Use "" to ignore.
-func (srv *NatsNKeyServer) ValidateNKey(
+func (srv *NatsMsgServer) ValidateNKey(
 	clientID string, pubKey string, signedNonce string, nonce string) (err error) {
 
 	sig, err := base64.RawURLEncoding.DecodeString(signedNonce)
@@ -467,7 +478,7 @@ func (srv *NatsNKeyServer) ValidateNKey(
 // When nkeys is not used this validates the JWT token
 //
 // Verifying the signedNonce is optional. Use "" to ignore.
-func (srv *NatsNKeyServer) ValidateToken(
+func (srv *NatsMsgServer) ValidateToken(
 	clientID string, pubKey string, oldToken string, signedNonce string, nonce string) (err error) {
 	if srv.NatsOpts.AuthCallout == nil {
 		// nkeys only

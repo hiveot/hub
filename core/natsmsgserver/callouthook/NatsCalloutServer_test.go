@@ -1,8 +1,8 @@
-package natscallouthook_test
+package callouthook_test
 
 import (
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
-	"github.com/hiveot/hub/core/msgserver/natscallouthook"
+	"github.com/hiveot/hub/core/natsmsgserver/callouthook"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/nkeys"
@@ -27,7 +27,7 @@ func TestStartStopCallout(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// enabling callout should succeed
-	_, err = natscallouthook.EnableNatsCalloutHook(s)
+	_, err = callouthook.EnableNatsCalloutHook(s)
 	assert.NoError(t, err)
 
 	// core services do not use the callout handler
@@ -52,7 +52,7 @@ func TestValidateToken(t *testing.T) {
 	assert.NoError(t, err)
 
 	// enable callout so a jwt token is generated
-	_, err = natscallouthook.EnableNatsCalloutHook(s)
+	_, err = callouthook.EnableNatsCalloutHook(s)
 	assert.NoError(t, err)
 
 	token, err := s.CreateToken(testenv.TestUser2ID)
@@ -73,7 +73,7 @@ func TestCalloutPassword(t *testing.T) {
 	assert.NoError(t, err)
 
 	// this callout handler only accepts 'user2' request
-	chook, err := natscallouthook.EnableNatsCalloutHook(s)
+	chook, err := callouthook.EnableNatsCalloutHook(s)
 	assert.NoError(t, err)
 
 	hc, err := natshubclient.ConnectWithPassword(clientURL, testenv.TestUser1ID, testenv.TestUser1Pass, certBundle.CaCert)
@@ -95,7 +95,7 @@ func TestCalloutJWT(t *testing.T) {
 	assert.NoError(t, err)
 
 	// this callout handler only accepts 'user2' request
-	chook, err := natscallouthook.EnableNatsCalloutHook(s)
+	chook, err := callouthook.EnableNatsCalloutHook(s)
 	assert.NoError(t, err)
 
 	jwtToken, err := s.CreateJWTToken(testenv.TestUser2ID, testenv.TestUser2Pub)
@@ -119,7 +119,7 @@ func TestNoCalloutForExistingNKey(t *testing.T) {
 	assert.NoError(t, err)
 
 	// a directly added service should not invoke the callout handler
-	chook, err := natscallouthook.EnableNatsCalloutHook(s)
+	chook, err := callouthook.EnableNatsCalloutHook(s)
 	assert.NoError(t, err)
 
 	// (added by nkey server test)
@@ -143,7 +143,7 @@ func TestInValidCalloutAuthn(t *testing.T) {
 	err = s.ApplyAuth(testenv.TestClients)
 
 	// this callout handler only accepts 'knownUser' request
-	chook, err := natscallouthook.EnableNatsCalloutHook(s)
+	chook, err := callouthook.EnableNatsCalloutHook(s)
 	_ = chook
 	assert.NoError(t, err)
 

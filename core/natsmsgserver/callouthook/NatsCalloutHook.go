@@ -1,8 +1,8 @@
-package natscallouthook
+package callouthook
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
+	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
@@ -12,10 +12,9 @@ import (
 	"time"
 )
 
-// This is not ready for use. Callout is undocumented and integrating subject authorization
-// is a still a question.
-// Does callout expect permissions in a generated JWT? Does that mean that on each connection a JWT token
-// must be generated? Does this effect performance compared to regular JWT which only needs to verify the token?
+// This is not ready for use. Callout is undocumented and not released for production.
+// TODO: when applying fixed NKEY and regular users, add them to the callout exclude list.
+// Ugh, 750 lines of code total to deal with NATS auth. All I want for xmas is jwt working with password auth.
 
 // NatsCalloutHook provides an easy-to-use hook to enable callout in the NATS server.
 // It combines the various parts needed to function, such as account, nkeys, auth request
@@ -40,7 +39,7 @@ type NatsCalloutHook struct {
 	// the nats connection used to subscribe and receive callout requests
 	nc *nats.Conn
 
-	msgServer *natsnkeyserver.NatsNKeyServer
+	msgServer *natsmsgserver.NatsMsgServer
 	// token factory for a known client with the given public key
 	//createJWTToken func(clientID string, pubKey string) (newToken string, err error)
 
@@ -198,7 +197,7 @@ func (chook *NatsCalloutHook) start() error {
 //   - nc is the nats connection to use
 //   - authnVerifier is the callback handler to verify an authn request
 func EnableNatsCalloutHook(
-	srv *natsnkeyserver.NatsNKeyServer,
+	srv *natsmsgserver.NatsMsgServer,
 	// authnVerifier func(request *jwt.AuthorizationRequestClaims) (clientID string, err error),
 ) (*NatsCalloutHook, error) {
 

@@ -4,17 +4,24 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/hiveot/hub/api/go/auth"
+	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
+	"github.com/hiveot/hub/lib/ser"
 	"golang.org/x/exp/slog"
 )
 
-// AuthProfileCapability is the capability for clients to view and update their own profile.
-// This implements the IClientProfile interface.
+// AuthManageProfile is the capability for clients to view and update their own profile.
+// This implements the IManageProfile interface.
 //
 // This implements the IAuthManageProfile interface.
-type AuthProfileCapability struct {
+type AuthManageProfile struct {
 	// Client record persistence
 	store auth.IAuthnStore
+	// hub client for subscribing to requests
+	hc hubclient.IHubClient
+	// action subscription
+	actionSub hubclient.ISubscription
+
 	// message server for updating authn
 	msgServer msgserver.IMsgServer
 	// CA certificate for validating cert
@@ -22,20 +29,102 @@ type AuthProfileCapability struct {
 }
 
 // CreateToken creates an authentication token using server.
-func (svc *AuthProfileCapability) CreateToken(clientID string) (
+func (svc *AuthManageProfile) CreateToken(clientID string) (
 	newToken string, err error) {
 
 	return svc.msgServer.CreateToken(clientID)
 }
 
 // GetProfile returns a client's profile
-func (svc *AuthProfileCapability) GetProfile(clientID string) (profile auth.ClientProfile, err error) {
+func (svc *AuthManageProfile) GetProfile(clientID string) (profile auth.ClientProfile, err error) {
 	clientProfile, err := svc.store.GetProfile(clientID)
 	return clientProfile, err
 }
 
+// HandleActions unmarshal and invoke requests published by hub clients
+func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionMessage) error {
+	slog.Info("handleClientActions", slog.String("actionID", action.ActionID))
+	switch action.ActionID {
+	case auth.GetProfileAction:
+		// use the current client
+		profile, err := svc.GetProfile(action.ClientID)
+		if err == nil {
+			resp := auth.GetProfileResp{Profile: profile}
+			reply, _ := ser.Marshal(&resp)
+			action.SendReply(reply)
+		}
+		return err
+	case auth.NewTokenAction:
+		req := &auth.NewTokenReq{}
+		err := ser.Unmarshal(action.Payload, &req)
+		if err != nil {
+			return err
+		}
+		// extra check, the sender's clientID must match the requested token client
+		if action.ClientID != req.ClientID {
+			err = fmt.Errorf("Client '%s' cannot request token for user '%s'", action.ClientID, req.ClientID)
+			return err
+		}
+		newToken, err := svc.NewToken(action.ClientID, req.Password)
+		if err == nil {
+			resp := auth.NewTokenResp{Token: newToken}
+			reply, _ := ser.Marshal(resp)
+			action.SendReply(reply)
+		}
+		return err
+	case auth.RefreshAction:
+		req := &auth.RefreshReq{}
+		err := ser.Unmarshal(action.Payload, &req)
+		if err != nil {
+			return err
+		}
+		newToken, err := svc.Refresh(action.ClientID, req.OldToken)
+		if err == nil {
+			resp := auth.RefreshResp{NewToken: newToken}
+			reply, _ := ser.Marshal(resp)
+			action.SendReply(reply)
+		}
+		return err
+	case auth.UpdateNameAction:
+		req := &auth.UpdateNameReq{}
+		err := ser.Unmarshal(action.Payload, &req)
+		if err != nil {
+			return err
+		}
+		err = svc.UpdateName(req.ClientID, req.NewName)
+		if err == nil {
+			action.SendAck()
+		}
+		return err
+	case auth.UpdatePasswordAction:
+		req := &auth.UpdatePasswordReq{}
+		err := ser.Unmarshal(action.Payload, &req)
+		if err != nil {
+			return err
+		}
+		err = svc.UpdatePassword(req.ClientID, req.NewPassword)
+		if err == nil {
+			action.SendAck()
+		}
+		return err
+	case auth.UpdatePubKeyAction:
+		req := &auth.UpdatePubKeyReq{}
+		err := ser.Unmarshal(action.Payload, &req)
+		if err != nil {
+			return err
+		}
+		err = svc.UpdatePubKey(req.ClientID, req.NewPubKey)
+		if err == nil {
+			action.SendAck()
+		}
+		return err
+	default:
+		return fmt.Errorf("Unknown user action '%s' for client '%s'", action.ActionID, action.ClientID)
+	}
+}
+
 // NewToken validates a password and issues an authn token. A public key must be on file.
-func (svc *AuthProfileCapability) NewToken(clientID string, password string) (newToken string, err error) {
+func (svc *AuthManageProfile) NewToken(clientID string, password string) (newToken string, err error) {
 	clientProfile, err := svc.store.VerifyPassword(clientID, password)
 	if err != nil {
 		return "", err
@@ -49,15 +138,15 @@ func (svc *AuthProfileCapability) NewToken(clientID string, password string) (ne
 
 // notification handler invoked when clients have been updated
 // this invokes a reload of server authn
-func (svc *AuthProfileCapability) onChange() {
-	// wait with applying credential changes as it requires a new login
+func (svc *AuthManageProfile) onChange() {
+	// wait with applying credential changes to allow a response to be send
 	go svc.msgServer.ApplyAuth(svc.store.GetAuthClientList())
 }
 
 // Refresh issues a new token if the given token is valid
 // This returns a refreshed token that can be used to connect to the messaging server
 // the old token must be a valid jwt token belonging to the clientID
-func (svc *AuthProfileCapability) Refresh(clientID string, oldToken string) (newToken string, err error) {
+func (svc *AuthManageProfile) Refresh(clientID string, oldToken string) (newToken string, err error) {
 	// verify the token
 	clientProfile, err := svc.store.GetProfile(clientID)
 	if err != nil {
@@ -72,8 +161,26 @@ func (svc *AuthProfileCapability) Refresh(clientID string, oldToken string) (new
 	return newToken, err
 }
 
+// Start subscribes to the actions for management and client capabilities
+// Register the binding subscription using the given connection
+func (svc *AuthManageProfile) Start() (err error) {
+	if svc.hc != nil {
+		svc.actionSub, _ = svc.hc.SubServiceCapability(
+			auth.AuthProfileCapability, svc.HandleActions)
+	}
+	return err
+}
+
+// Stop removes subscriptions
+func (svc *AuthManageProfile) Stop() {
+	if svc.actionSub != nil {
+		svc.actionSub.Unsubscribe()
+		svc.actionSub = nil
+	}
+}
+
 // UpdateName
-func (svc *AuthProfileCapability) UpdateName(clientID string, displayName string) (err error) {
+func (svc *AuthManageProfile) UpdateName(clientID string, displayName string) (err error) {
 	clientProfile, err := svc.store.GetProfile(clientID)
 	clientProfile.DisplayName = displayName
 	err = svc.store.Update(clientID, clientProfile)
@@ -81,7 +188,7 @@ func (svc *AuthProfileCapability) UpdateName(clientID string, displayName string
 	return err
 }
 
-func (svc *AuthProfileCapability) UpdatePassword(clientID string, newPassword string) (err error) {
+func (svc *AuthManageProfile) UpdatePassword(clientID string, newPassword string) (err error) {
 	slog.Info("UpdatePassword", "clientID", clientID)
 	_, err = svc.GetProfile(clientID)
 	if err != nil {
@@ -95,7 +202,7 @@ func (svc *AuthProfileCapability) UpdatePassword(clientID string, newPassword st
 	return err
 }
 
-func (svc *AuthProfileCapability) UpdatePubKey(clientID string, newPubKey string) (err error) {
+func (svc *AuthManageProfile) UpdatePubKey(clientID string, newPubKey string) (err error) {
 	slog.Info("UpdatePubKey", "clientID", clientID)
 	clientProfile, err := svc.store.GetProfile(clientID)
 	if err != nil {
@@ -112,7 +219,7 @@ func (svc *AuthProfileCapability) UpdatePubKey(clientID string, newPubKey string
 }
 
 // ValidateToken verifies if the token is valid and belongs to the claimed user
-//func (svc *AuthProfileCapability) ValidateToken(clientID string, oldToken string) (err error) {
+//func (svc *AuthManageProfile) ValidateToken(clientID string, oldToken string) (err error) {
 //	// verify the token
 //	entry, err := svc.store.Get(clientID)
 //	if err != nil {
@@ -129,7 +236,7 @@ func (svc *AuthProfileCapability) UpdatePubKey(clientID string, newPubKey string
 // - Cert validates against the svc CA
 // This is intended for a local setup that use a self-signed CA.
 // The use of JWT keys is recommended over certs as this isn't a domain name validation problem.
-//func (svc *AuthProfileCapability) ValidateCert(clientID string, clientCertPEM string) error {
+//func (svc *AuthManageProfile) ValidateCert(clientID string, clientCertPEM string) error {
 //
 //	if svc.caCert == nil {
 //		return fmt.Errorf("no CA on file")
@@ -160,17 +267,20 @@ func (svc *AuthProfileCapability) UpdatePubKey(clientID string, newPubKey string
 //	return nil
 //}
 
-// NewAuthProfileCapability returns a user profile management capability.
+// NewAuthManageProfile returns a user profile management capability.
 //
 //	store holds the authentication client records
 //	caCert is an optional CA used to verify certificates. Use nil to not authn using client certs
-func NewAuthProfileCapability(
+func NewAuthManageProfile(
 	store auth.IAuthnStore,
+	caCert *x509.Certificate,
+	hc hubclient.IHubClient,
 	msgServer msgserver.IMsgServer,
-	caCert *x509.Certificate) *AuthProfileCapability {
+) *AuthManageProfile {
 
-	svc := &AuthProfileCapability{
+	svc := &AuthManageProfile{
 		store:     store,
+		hc:        hc,
 		msgServer: msgServer,
 		caCert:    caCert,
 	}

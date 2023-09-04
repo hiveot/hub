@@ -3,7 +3,7 @@ package testenv
 import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
-	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
+	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/nats-io/nkeys"
 	"golang.org/x/crypto/bcrypt"
@@ -64,13 +64,13 @@ var TestClients = []msgserver.ClientAuthInfo{
 // A new temporary storage directory is used.
 func StartNatsTestServer() (
 	clientURL string,
-	hubNatsServer *natsnkeyserver.NatsNKeyServer,
+	hubNatsServer *natsmsgserver.NatsMsgServer,
 	certBundle certs.TestCertBundle,
-	config *natsnkeyserver.NatsServerConfig, err error) {
+	config *natsmsgserver.NatsServerConfig, err error) {
 
 	certBundle = certs.CreateTestCertBundle()
 
-	serverCfg := &natsnkeyserver.NatsServerConfig{
+	serverCfg := &natsmsgserver.NatsServerConfig{
 		Port:   9990,
 		CaCert: certBundle.CaCert,
 		CaKey:  certBundle.CaKey,
@@ -80,9 +80,9 @@ func StartNatsTestServer() (
 	//
 	tmpDir := path.Join(os.TempDir(), "nats-testserver")
 	_ = os.RemoveAll(tmpDir)
-	err = serverCfg.Setup("", tmpDir, false)
+	err = serverCfg.Setup(tmpDir, tmpDir, false)
 	if err == nil {
-		hubNatsServer = natsnkeyserver.NewNatsNKeyServer(serverCfg)
+		hubNatsServer = natsmsgserver.NewNatsMsgServer(serverCfg)
 		clientURL, err = hubNatsServer.Start()
 	}
 	return clientURL, hubNatsServer, certBundle, serverCfg, err

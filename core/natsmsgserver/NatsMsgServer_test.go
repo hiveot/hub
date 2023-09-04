@@ -1,9 +1,9 @@
-package natsnkeyserver_test
+package natsmsgserver_test
 
 import (
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
-	"github.com/hiveot/hub/core/msgserver/natsnkeyserver"
+	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/nats.go"
@@ -161,7 +161,7 @@ func TestEventsStream(t *testing.T) {
 
 	// the events stream must exist
 	js, _ := nc1.JetStream()
-	si, err := js.StreamInfo(natsnkeyserver.EventsIntakeStreamName)
+	si, err := js.StreamInfo(natsmsgserver.EventsIntakeStreamName)
 	require.NoError(t, err)
 	slog.Info("stream $events:",
 		slog.Uint64("count", si.State.Msgs),
@@ -169,7 +169,7 @@ func TestEventsStream(t *testing.T) {
 	//
 
 	// create the stream consumer and listen for events
-	sub, err := hc1.SubStream(natsnkeyserver.EventsIntakeStreamName, false,
+	sub, err := hc1.SubStream(natsmsgserver.EventsIntakeStreamName, false,
 		func(msg *hubclient.EventMessage) {
 			slog.Info("received event", "eventID", msg.EventID)
 			rxMsg = string(msg.Payload)
@@ -186,7 +186,7 @@ func TestEventsStream(t *testing.T) {
 	require.NoError(t, err)
 
 	// read the events stream for
-	si, err = hc1.JS().StreamInfo(natsnkeyserver.EventsIntakeStreamName)
+	si, err = hc1.JS().StreamInfo(natsmsgserver.EventsIntakeStreamName)
 	slog.Info("stream $events:",
 		slog.Uint64("count", si.State.Msgs),
 		slog.Int("consumers", si.State.Consumers))

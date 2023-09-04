@@ -5,9 +5,10 @@
 Manage certificates for authentication of hub services, IoT devices and consumers.
 
 ## Status
+
 This service is functional and can issue IoT device certificates, service certificates and end-user certificates.
 
-For consideration:
+Future:
 - Support for lets encrypt to obtain service certificates
 
 ## Summary
