@@ -11,13 +11,13 @@ import "github.com/urfave/cli/v2"
 //
 // commands:
 //
-//	init     initialize the core from scratch
-//	run      run the hub core. core must have been initialized before it can run
+//	setup     setup missing directory
+//	run       run the hub core. core must have been initialized before it can run
 //
 // options:
 //
 //	--config=file   use the given config file. This defines the folder structure.
-//	--force         use with init, force overwriting existing configuration and data
+//	--new           use with setup, force overwriting existing configuration and data
 //	--home=folder   use the given home folder instead of the base of the application binary
 //
 // init:
@@ -44,7 +44,7 @@ import "github.com/urfave/cli/v2"
 // RunCommand runs the Hub core services
 //
 //	hubcli run [--certs=CertFolder]  [--hostname=hostname]
-func RunCommand(certsFolder string) *cli.Command {
+func RunCommand(certsFolder *string) *cli.Command {
 
 	return &cli.Command{
 		Name:     "run",
@@ -54,7 +54,7 @@ func RunCommand(certsFolder string) *cli.Command {
 			if cCtx.NArg() > 0 {
 				return fmt.Errorf("unexpected argument(s) '%s'", cCtx.Args().First())
 			}
-			err := HandleRunCore(certsFolder)
+			err := HandleRunCore(*certsFolder)
 			return err
 		},
 	}

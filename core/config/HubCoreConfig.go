@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/core/auth/authservice"
+	"github.com/hiveot/hub/core/mqttmsgserver"
 	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/svcconfig"
@@ -35,8 +36,9 @@ type HubCoreConfig struct {
 	ServerTLS      *tls.Certificate  `yaml:"-"`              // preset, load, or generate
 	ServerKey      *ecdsa.PrivateKey `yaml:"-"`
 
+	// use either nats or mqtt.
 	NatsServer natsmsgserver.NatsServerConfig `yaml:"natsserver"`
-	//MqttServer  mqttserver.MqttServerConfig `yaml:"mqttserver"`
+	MqttServer mqttmsgserver.MqttServerConfig `yaml:"mqttserver"`
 
 	Auth authservice.AuthConfig `yaml:"auth"`
 }
@@ -50,14 +52,18 @@ type HubCoreConfig struct {
 //	new to initialize a new environment and delete existing data (careful!)
 func (cfg *HubCoreConfig) Setup(homeDir string, configFile string, new bool) error {
 	var err error
-
+	cwd, _ := os.Getwd()
 	slog.Info("running setup",
-		slog.Bool("--new", new), slog.String("home", cfg.HomeDir))
+		slog.Bool("--new", new),
+		slog.String("home", homeDir),
+		slog.String("cwd", cwd))
 
 	// 1: Determine directories
 	// default to the parent folder of the application binary
 	if homeDir == "" {
 		homeDir = path.Base(path.Base(os.Args[0]))
+	} else if !path.IsAbs(homeDir) {
+		homeDir = path.Join(cwd, homeDir)
 	}
 	f := svcconfig.GetFolders(homeDir, false)
 	cfg.HomeDir = f.Home
@@ -66,9 +72,7 @@ func (cfg *HubCoreConfig) Setup(homeDir string, configFile string, new bool) err
 	// In a new environment, clear the home directory
 	// This is very destructive!
 	// do a sanity check on home
-	if cfg.HomeDir == "" || !path.IsAbs(cfg.HomeDir) {
-		panic("home directory is not an absolute path")
-	} else if path.Clean(cfg.HomeDir) == "/etc" {
+	if path.Clean(cfg.HomeDir) == "/etc" {
 		panic("Home cannot be /etc")
 	} else if path.Clean(cfg.HomeDir) == "/tmp" {
 		panic("Home cannot be /tmp. Choose a subdir")

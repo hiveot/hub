@@ -1,7 +1,7 @@
 package service_test
 
 import (
-	"github.com/hiveot/hub/plugins/launcher/service"
+	"github.com/hiveot/hub/core/launcher/service"
 	"os"
 	"sync"
 	"syscall"

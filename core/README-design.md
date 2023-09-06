@@ -136,18 +136,17 @@ To differentiate between access control of services from regular Sources, the Se
 
 Services are configured in the authz configuration. Each service capability is assigned to a role required to access them. For example:
 
-| service   | capability | required role | purpose                       |
-|-----------|------------|---------------|-------------------------------|
-| authn     | client     | viewer        | renew tokens                  | 
-| authn     | manage     | admin         | add/remove users and sources  |
-| authz     | manage     | admin         | assign roles                  |
-| certs     | manage     | admin         | create client cert            |
-| provision | client     | norole        | request provisioning          |
-| directory | client     | viewer        | view sources and thing values |
+| service   | capability | required role | purpose                                |
+|-----------|------------|---------------|----------------------------------------|
+| auth      | client     | admin         | manage devices, users and services     | 
+| auth      | profile    | viewer        | assign/renew tokens                    | 
+| auth      | roles      | admin         | manage and assign roles                |
+| certs     | manage     | admin         | create client cert                     |
+| provision | client     | norole        | request provisioning                   |
+| directory | read       | viewer        | read things and their last known value |
+| history   | read       | viewer        | read thing value history           |
 
 The roles provide both publish action and subscribe event access on the service address.
-
-As an extra security feature, a service that receives a request can verify the role of the user from the authn service.  If a bad actor gains unlimited access to the message bus, all actions will still be denied as the userID doesn't pass the second security factor.
 
 Services actions are not queued and always confirmed with a response. If it fails the user should retry.
 

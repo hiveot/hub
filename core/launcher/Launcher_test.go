@@ -1,9 +1,9 @@
 package launcher_test
 
 import (
-	"github.com/hiveot/hub/plugins/launcher"
-	"github.com/hiveot/hub/plugins/launcher/config"
-	"github.com/hiveot/hub/plugins/launcher/service"
+	"github.com/hiveot/hub/core/launcher"
+	"github.com/hiveot/hub/core/launcher/config"
+	"github.com/hiveot/hub/core/launcher/service"
 	"golang.org/x/exp/slog"
 	"os"
 	"path"

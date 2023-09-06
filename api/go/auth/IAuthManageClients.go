@@ -4,7 +4,7 @@ package auth
 const AuthServiceName = "auth"
 
 // AuthManageClientsCapability is the name of the Thing/Capability that handles management requests
-const AuthManageClientsCapability = "manageClients"
+const AuthManageClientsCapability = "clients"
 
 // Types of clients that are issued authentication tokens
 const (

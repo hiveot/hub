@@ -1,11 +1,11 @@
-package natscore_test
+package runcore_test
 
 import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
+	"github.com/hiveot/hub/core/cmd/runcore"
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
-	"github.com/hiveot/hub/core/natscore"
 	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/nats-io/nkeys"
@@ -40,9 +40,9 @@ func TestMain(m *testing.M) {
 
 func TestHubServer_StartStop(t *testing.T) {
 	_ = os.Remove(hubCfg.Auth.PasswordFile)
-	clientURL, err := natscore.StartCore(hubCfg)
+	clientURL, err := runcore.Start(hubCfg)
 	require.NoError(t, err)
-	defer natscore.StopCore()
+	defer runcore.Stop()
 
 	assert.NotEmpty(t, clientURL)
 	time.Sleep(time.Second * 1)
@@ -59,14 +59,14 @@ func TestPubSub_ConnectAuthNKey(t *testing.T) {
 	clientURL := ""
 
 	_ = os.Remove(hubCfg.Auth.PasswordFile)
-	clientURL, err := natscore.StartCore(hubCfg)
+	clientURL, err := runcore.Start(hubCfg)
 	require.NoError(t, err)
-	defer natscore.StopCore()
+	defer runcore.Stop()
 
 	// setup: device and service
-	_, err = natscore.AuthService.MngClients.AddDevice(device1ID, "device 1", device1Pub)
+	_, err = runcore.AuthService.MngClients.AddDevice(device1ID, "device 1", device1Pub)
 	require.NoError(t, err)
-	_, err = natscore.AuthService.MngClients.AddService(service1ID, "service 1", service1Pub)
+	_, err = runcore.AuthService.MngClients.AddService(service1ID, "service 1", service1Pub)
 	require.NoError(t, err)
 
 	// service1 subscribes to events
@@ -105,16 +105,16 @@ func TestPubSub_AuthPassword(t *testing.T) {
 
 	// launch the core services
 	_ = os.Remove(hubCfg.Auth.PasswordFile)
-	clientURL, err := natscore.StartCore(hubCfg)
+	clientURL, err := runcore.Start(hubCfg)
 	require.NoError(t, err)
-	defer natscore.StopCore()
+	defer runcore.Stop()
 
 	// add a device, service and user to test with
-	_, err = natscore.AuthService.MngClients.AddUser(user1ID, "u 1", user1Pass, "", auth.ClientRoleViewer)
+	_, err = runcore.AuthService.MngClients.AddUser(user1ID, "u 1", user1Pass, "", auth.ClientRoleViewer)
 	require.NoError(t, err)
-	_, err = natscore.AuthService.MngClients.AddService(service1ID, "s 1", service1Pub)
+	_, err = runcore.AuthService.MngClients.AddService(service1ID, "s 1", service1Pub)
 	require.NoError(t, err)
-	_, err = natscore.AuthService.MngClients.AddDevice(device1ID, "d 1", device1Pub)
+	_, err = runcore.AuthService.MngClients.AddDevice(device1ID, "d 1", device1Pub)
 	require.NoError(t, err)
 
 	// connect the user

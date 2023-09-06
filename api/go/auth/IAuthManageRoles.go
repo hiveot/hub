@@ -3,7 +3,7 @@ package auth
 const DefaultAclFilename = "authz.acl"
 
 // AuthManageRolesCapability is the name of the Thing/Capability that handles role requests
-const AuthManageRolesCapability = "manageRoles"
+const AuthManageRolesCapability = "roles"
 
 // Predefined user roles.
 const (

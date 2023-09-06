@@ -24,8 +24,6 @@ loglevel: info
 # Order of services to start
 autostart:
   - certs
-  - authn           # user authentication service
-  - authz           # user authorization service
 #  - directory       # directory service
 #  - owserver        # 1-wire owserver service
 #  - provisioning    # IoT device provisioning service

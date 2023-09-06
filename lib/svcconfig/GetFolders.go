@@ -1,7 +1,11 @@
 package svcconfig
 
 import (
+	"fmt"
+	"golang.org/x/exp/slog"
+	"gopkg.in/yaml.v3"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -92,21 +96,23 @@ func GetFolders(homeFolder string, useSystem bool) AppFolders {
 	}
 }
 
-//
-//// LoadConfig loads a configuration file from the config folder
-//func (f *AppFolders) LoadConfig(name string, cfg interface{}) error {
-//	configFile := path.Join(f.Config, name)
-//	cfgData, err := os.ReadFile(configFile)
-//	if err == nil {
-//		slog.Info("Loaded configuration file", "configFile", configFile)
-//		err = yaml.Unmarshal(cfgData, cfg)
-//		if err != nil {
-//			slog.Error("Loading configuration file failed", "err", err, "configFile", configFile)
-//		}
-//	} else {
-//		slog.Info("Configuration file not found. Ignored.", "configFile", configFile)
-//		err = nil
-//	}
-//
-//	return err
-//}
+// LoadConfig loads a configuration file from the config folder
+// This returns an error if loading or parsing the config file fails.
+// Returns nil if the config file doesn't exist or is loaded successfully.
+func (f *AppFolders) LoadConfig(name string, cfg interface{}) error {
+	configFile := path.Join(f.Config, name)
+	if _, err := os.Stat(configFile); err != nil {
+		slog.Info("Configuration file not found. Ignored.", "configFile", configFile)
+		return nil
+	}
+
+	cfgData, err := os.ReadFile(configFile)
+	if err != nil {
+		err = fmt.Errorf("loading config failed: %w", err)
+		return err
+	} else {
+		slog.Info("Loaded configuration file", "configFile", configFile)
+		err = yaml.Unmarshal(cfgData, cfg)
+	}
+	return err
+}

@@ -2,9 +2,8 @@ package launchercli
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/core/launcher"
 	"github.com/urfave/cli/v2"
-
-	"github.com/hiveot/hub/plugins/launcher"
 )
 
 func LauncherListCommand(runFolder *string) *cli.Command {

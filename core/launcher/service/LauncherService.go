@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/fsnotify/fsnotify"
-	"github.com/hiveot/hub/plugins/launcher"
-	"github.com/hiveot/hub/plugins/launcher/config"
+	"github.com/hiveot/hub/core/launcher"
+	"github.com/hiveot/hub/core/launcher/config"
 	"golang.org/x/exp/slog"
 	"io"
 	"os"
@@ -376,8 +376,8 @@ func (svc *LauncherService) WatchServices() error {
 	return err
 }
 
-// Start the launcher service
-// Closing the context ends it
+// Start the launcher service in the background
+// Call stop to end.
 func (svc *LauncherService) Start() error {
 	svc.isRunning.Store(true)
 

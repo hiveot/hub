@@ -21,7 +21,7 @@ func CreateCACommand(certsFolder *string) *cli.Command {
 	var validityDays = 365 * 5
 
 	return &cli.Command{
-		Name:     "createca",
+		Name:     "cca",
 		Usage:    "Create a new Hub CA certificate",
 		Category: "core",
 		Flags: []cli.Flag{
@@ -54,8 +54,8 @@ func CreateCACommand(certsFolder *string) *cli.Command {
 func ViewCACommand(certsFolder *string) *cli.Command {
 
 	return &cli.Command{
-		Name:     "lca",
-		Category: "certs",
+		Name:     "vca",
+		Category: "core",
 		Usage:    "View CA certificate info",
 
 		Action: func(cCtx *cli.Context) error {
