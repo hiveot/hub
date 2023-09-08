@@ -6,6 +6,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/hiveot/hub/core/launcher"
 	"github.com/hiveot/hub/core/launcher/config"
+	"github.com/hiveot/hub/lib/utils"
 	"golang.org/x/exp/slog"
 	"io"
 	"os"
@@ -16,7 +17,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hiveot/hub/lib/svcconfig"
 	"github.com/samber/lo"
 	"github.com/struCoder/pidusage"
 )
@@ -26,7 +26,7 @@ import (
 type LauncherService struct {
 	// service configuration
 	cfg config.LauncherConfig
-	f   svcconfig.AppFolders
+	f   utils.AppFolders
 
 	// map of service name to running status
 	services map[string]*launcher.ServiceInfo
@@ -406,7 +406,7 @@ func (svc *LauncherService) Stop() error {
 // NewLauncherService returns a new launcher instance for the services in the given services folder.
 // This scans the folder for executables, adds these to the list of available services and autostarts services
 // Logging will be enabled based on LauncherConfig.
-func NewLauncherService(f svcconfig.AppFolders, cfg config.LauncherConfig) *LauncherService {
+func NewLauncherService(f utils.AppFolders, cfg config.LauncherConfig) *LauncherService {
 
 	ls := &LauncherService{
 		f:        f,

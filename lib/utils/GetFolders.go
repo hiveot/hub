@@ -1,4 +1,4 @@
-package svcconfig
+package utils
 
 import (
 	"fmt"

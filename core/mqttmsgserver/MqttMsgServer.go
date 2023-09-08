@@ -85,8 +85,8 @@ func (srv *MqttMsgServer) Stop() {
 }
 
 // NewMqttMsgServer creates a new instance of the Hub MQTT broker.
-func NewMqttMsgServer(cfg *MqttServerConfig) *MqttMsgServer {
+func NewMqttMsgServer(cfg *MqttServerConfig, perms map[string][]msgserver.RolePermission) *MqttMsgServer {
 
-	srv := &MqttMsgServer{Config: cfg, rolePermissions: DefaultRolePermissions}
+	srv := &MqttMsgServer{Config: cfg, rolePermissions: perms}
 	return srv
 }

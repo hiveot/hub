@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
@@ -13,44 +14,6 @@ import (
 	"golang.org/x/exp/slog"
 	"time"
 )
-
-// viewers can subscribe to all things
-var viewerPermissions = []msgserver.RolePermission{{
-	Prefix:   "things",
-	MsgType:  natshubclient.MessageTypeEvent,
-	AllowSub: true,
-}}
-
-// operators can also publish thing actions
-var operatorPermissions = append(viewerPermissions, msgserver.RolePermission{
-	Prefix:   "things",
-	MsgType:  natshubclient.MessageTypeAction,
-	AllowPub: true,
-})
-
-// managers can also publish configuration
-var managerPermissions = append(operatorPermissions, msgserver.RolePermission{
-	Prefix:   "things",
-	MsgType:  natshubclient.MessageTypeConfig,
-	AllowPub: true,
-})
-
-// administrators can do all and publish to services
-var adminPermissions = append(managerPermissions, msgserver.RolePermission{
-	Prefix:   "svc",
-	MsgType:  natshubclient.MessageTypeAction,
-	AllowPub: true,
-	AllowSub: true,
-})
-
-// DefaultRolePermissions contains the default pub/sub permissions for each user role
-var DefaultRolePermissions = map[string][]msgserver.RolePermission{
-	auth.ClientRoleViewer:   viewerPermissions,
-	auth.ClientRoleOperator: operatorPermissions,
-	auth.ClientRoleManager:  managerPermissions,
-	auth.ClientRoleAdmin:    adminPermissions,
-	auth.ClientRoleNone:     nil,
-}
 
 // ServicePermissions defines for each role the service capability that can be used
 var ServicePermissions = map[string][]msgserver.RolePermission{}
@@ -291,7 +254,7 @@ func (srv *NatsMsgServer) MakePermissions(
 	if found && sp != nil {
 		for _, perm := range sp {
 			subject := natshubclient.MakeServiceSubject(
-				perm.SourceID, perm.ThingID, natshubclient.MessageTypeAction, "")
+				perm.SourceID, perm.ThingID, vocab.MessageTypeAction, "")
 			pubPerm.Allow = append(pubPerm.Allow, subject)
 		}
 	}
@@ -299,11 +262,11 @@ func (srv *NatsMsgServer) MakePermissions(
 	// devices and services are sources that can publish events and subscribe to actions and config requests
 	if clientInfo.ClientType == auth.ClientTypeDevice || clientInfo.ClientType == auth.ClientTypeService {
 		subject1 := natshubclient.MakeThingsSubject(
-			clientInfo.ClientID, "", natshubclient.MessageTypeEvent, "")
+			clientInfo.ClientID, "", vocab.MessageTypeEvent, "")
 		subject2 := natshubclient.MakeThingsSubject(
-			clientInfo.ClientID, "", natshubclient.MessageTypeAction, "")
+			clientInfo.ClientID, "", vocab.MessageTypeAction, "")
 		subject3 := natshubclient.MakeThingsSubject(
-			clientInfo.ClientID, "", natshubclient.MessageTypeConfig, "")
+			clientInfo.ClientID, "", vocab.MessageTypeConfig, "")
 		pubPerm.Allow = append(pubPerm.Allow, subject1)
 		subPerm.Allow = append(subPerm.Allow, subject2, subject3)
 	}
@@ -311,11 +274,11 @@ func (srv *NatsMsgServer) MakePermissions(
 	// services can also subscribe to actions on the svc prefix
 	if clientInfo.ClientType == auth.ClientTypeService {
 		subject1 := natshubclient.MakeServiceSubject(
-			clientInfo.ClientID, "", natshubclient.MessageTypeEvent, "")
+			clientInfo.ClientID, "", vocab.MessageTypeEvent, "")
 		subject2 := natshubclient.MakeServiceSubject(
-			clientInfo.ClientID, "", natshubclient.MessageTypeAction, "")
+			clientInfo.ClientID, "", vocab.MessageTypeAction, "")
 		subject3 := natshubclient.MakeServiceSubject(
-			clientInfo.ClientID, "", natshubclient.MessageTypeConfig, "")
+			clientInfo.ClientID, "", vocab.MessageTypeConfig, "")
 		pubPerm.Allow = append(pubPerm.Allow, subject1)
 		subPerm.Allow = append(subPerm.Allow, subject2, subject3)
 	}
@@ -343,7 +306,7 @@ func (srv *NatsMsgServer) SetServicePermissions(
 			Prefix:   "svc",
 			SourceID: serviceID,
 			ThingID:  capability,
-			MsgType:  natshubclient.MessageTypeAction,
+			MsgType:  vocab.MessageTypeAction,
 			MsgName:  "", // all methods of the capability can be used
 			AllowPub: true,
 			AllowSub: false,

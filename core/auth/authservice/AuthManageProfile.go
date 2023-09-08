@@ -42,7 +42,7 @@ func (svc *AuthManageProfile) GetProfile(clientID string) (profile auth.ClientPr
 }
 
 // HandleActions unmarshal and invoke requests published by hub clients
-func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionMessage) error {
+func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) error {
 	slog.Info("handleClientActions", slog.String("actionID", action.ActionID))
 	switch action.ActionID {
 	case auth.GetProfileAction:
@@ -165,7 +165,7 @@ func (svc *AuthManageProfile) Refresh(clientID string, oldToken string) (newToke
 // Register the binding subscription using the given connection
 func (svc *AuthManageProfile) Start() (err error) {
 	if svc.hc != nil {
-		svc.actionSub, _ = svc.hc.SubServiceCapability(
+		svc.actionSub, _ = svc.hc.SubServiceActions(
 			auth.AuthProfileCapability, svc.HandleActions)
 	}
 	return err

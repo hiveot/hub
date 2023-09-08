@@ -4,6 +4,7 @@ import (
 	"github.com/hiveot/hub/core/launcher"
 	"github.com/hiveot/hub/core/launcher/config"
 	"github.com/hiveot/hub/core/launcher/service"
+	"github.com/hiveot/hub/lib/utils"
 	"golang.org/x/exp/slog"
 	"os"
 	"path"
@@ -12,8 +13,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/hiveot/hub/lib/svcconfig"
 
 	"github.com/hiveot/hub/lib/logging"
 )
@@ -26,7 +25,7 @@ func newServer() (l launcher.ILauncher, stopFn func()) {
 	launcherConfig.AttachStderr = true
 	launcherConfig.AttachStdout = false
 	launcherConfig.LogServices = true
-	var f = svcconfig.GetFolders(homeFolder, false)
+	var f = utils.GetFolders(homeFolder, false)
 	f.Plugins = "/bin" // for /bin/yes
 	f.Logs = logFolder
 

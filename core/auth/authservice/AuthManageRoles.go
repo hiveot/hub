@@ -39,7 +39,7 @@ func (svc *AuthManageRoles) DeleteRole(role string) error {
 }
 
 // HandleActions unmarshal and apply action requests
-func (svc *AuthManageRoles) HandleActions(action *hubclient.ActionMessage) error {
+func (svc *AuthManageRoles) HandleActions(action *hubclient.ActionRequest) error {
 
 	slog.Info("handleActions", slog.String("actionID", action.ActionID))
 	switch action.ActionID {
@@ -97,8 +97,7 @@ func (svc *AuthManageRoles) SetRole(clientID string, role string) error {
 // Register the binding subscription using the given connection
 func (svc *AuthManageRoles) Start() (err error) {
 	if svc.hc != nil {
-		svc.actionSub, _ = svc.hc.SubServiceCapability(
-			auth.AuthRolesCapability, svc.HandleActions)
+		svc.actionSub, _ = svc.hc.SubServiceActions(auth.AuthRolesCapability, svc.HandleActions)
 	}
 	return err
 }

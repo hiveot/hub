@@ -2,6 +2,7 @@ package natsmsgserver_test
 
 import (
 	"github.com/hiveot/hub/api/go/hubclient"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/hiveot/hub/lib/logging"
@@ -76,7 +77,7 @@ func TestConnectWithNKey(t *testing.T) {
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 
-	subj1 := natshubclient.MakeThingsSubject("", "", natshubclient.MessageTypeEvent, "")
+	subj1 := natshubclient.MakeThingsSubject("", "", vocab.MessageTypeEvent, "")
 	_, err = hc1.Subscribe(subj1, func(msg *nats.Msg) {
 		rxMsg = string(msg.Data)
 		slog.Info("received message", "msg", rxMsg)

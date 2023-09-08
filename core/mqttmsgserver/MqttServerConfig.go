@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/certs"
 	"golang.org/x/exp/slog"
-	"path"
 )
 
 // MqttServerConfig holds the mqtt broker configuration
@@ -20,8 +19,8 @@ type MqttServerConfig struct {
 	LogFile  string `yaml:"logFile,omitempty"`  // default: no logfile
 	Debug    bool   `yaml:"debug,omitempty"`    // default: false
 
-	AdminUserKeyFile  string `yaml:"adminUserKeyFile,omitempty"`  // default: admin.nkey
-	SystemUserKeyFile string `yaml:"systemUserKeyFile,omitempty"` // default: systemUser.nkey
+	//AdminUserKeyFile  string `yaml:"adminUserKeyFile,omitempty"`  // default: admin.jwt
+	//SystemUserKeyFile string `yaml:"systemUserKeyFile,omitempty"` // default: systemUser.jwt
 
 	// Disable running the embedded messaging server. Default False
 	NoAutoStart bool `yaml:"noAutoStart,omitempty"`
@@ -64,12 +63,12 @@ func (cfg *MqttServerConfig) Setup(certsDir, storesDir string, writeChanges bool
 	if cfg.LogLevel == "" {
 		cfg.LogLevel = "warn"
 	}
-	if cfg.AdminUserKeyFile == "" {
-		cfg.AdminUserKeyFile = path.Join(certsDir, "admin.pem")
-	}
-	if cfg.SystemUserKeyFile == "" {
-		cfg.SystemUserKeyFile = path.Join(certsDir, "systemUser.pem")
-	}
+	//if cfg.AdminUserKeyFile == "" {
+	//	cfg.AdminUserKeyFile = path.Join(certsDir, "admin.pem")
+	//}
+	//if cfg.SystemUserKeyFile == "" {
+	//	cfg.SystemUserKeyFile = path.Join(certsDir, "systemUser.pem")
+	//}
 
 	// Step 2: generate missing certificates
 	// These are typically set directly before running setup so this is intended
@@ -93,15 +92,15 @@ func (cfg *MqttServerConfig) Setup(certsDir, storesDir string, writeChanges bool
 	}
 
 	// Step 4: generate derived keys
-	if cfg.AdminUserKP == nil {
-		cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(cfg.AdminUserKeyFile, writeChanges)
-	}
-	if cfg.CoreServiceKP == nil {
-		cfg.CoreServiceKP, _ = cfg.LoadCreateUserKP(cfg.CoreServiceKeyFile, writeChanges)
-	}
-	if cfg.AdminUserKeyFile != "" && writeChanges {
-		cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(cfg.AdminUserKeyFile, writeChanges)
-	}
+	//if cfg.AdminUserKP == nil {
+	//	cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(cfg.AdminUserKeyFile, writeChanges)
+	//}
+	//if cfg.CoreServiceKP == nil {
+	//	cfg.CoreServiceKP, _ = cfg.LoadCreateUserKP(cfg.CoreServiceKeyFile, writeChanges)
+	//}
+	//if cfg.AdminUserKeyFile != "" && writeChanges {
+	//	cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(cfg.AdminUserKeyFile, writeChanges)
+	//}
 	// Step 5: generate the JWT tokens -
 	// disables as callouts are stable
 	//if cfg.OperatorJWT == "" {

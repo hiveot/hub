@@ -4,7 +4,6 @@ import (
 	"fmt"
 	corecli2 "github.com/hiveot/hub/cmd/hubcli/corecli"
 	"github.com/hiveot/hub/cmd/hubcli/launchercli"
-	"github.com/hiveot/hub/lib/svcconfig"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
 	"os"
@@ -29,7 +28,7 @@ func main() {
 	binDir = path.Dir(os.Args[0])
 	homeDir = path.Dir(binDir)
 	nowrap = false
-	f := svcconfig.GetFolders(homeDir, false)
+	f := utils.GetFolders(homeDir, false)
 	certsDir = f.Certs
 	configDir = f.Config
 
@@ -54,7 +53,7 @@ func main() {
 			},
 		},
 		Before: func(c *cli.Context) error {
-			f = svcconfig.GetFolders(homeDir, false)
+			f = utils.GetFolders(homeDir, false)
 			certsDir = f.Certs
 			runDir = f.Run
 			homeDir = f.Home

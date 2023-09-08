@@ -8,6 +8,7 @@ import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
@@ -146,7 +147,7 @@ func (srv *NatsMsgServer) Start() (clientURL string, err error) {
 	_, err = js.StreamInfo(EventsIntakeStreamName)
 	if err != nil {
 		// The intake stream receives events from all publishers and things
-		subj := natshubclient.MakeThingsSubject("", "", natshubclient.MessageTypeEvent, "")
+		subj := natshubclient.MakeThingsSubject("", "", vocab.MessageTypeEvent, "")
 		cfg := &nats.StreamConfig{
 			Name:        EventsIntakeStreamName,
 			Description: "HiveOT Events Intake Stream",
@@ -167,8 +168,9 @@ func (srv *NatsMsgServer) Stop() {
 }
 
 // NewNatsMsgServer creates a new instance of the Hub NATS server for NKey authn.
-func NewNatsMsgServer(cfg *NatsServerConfig) *NatsMsgServer {
+func NewNatsMsgServer(
+	cfg *NatsServerConfig, rolePermissions map[string][]msgserver.RolePermission) *NatsMsgServer {
 
-	srv := &NatsMsgServer{Config: cfg, rolePermissions: DefaultRolePermissions}
+	srv := &NatsMsgServer{Config: cfg, rolePermissions: rolePermissions}
 	return srv
 }

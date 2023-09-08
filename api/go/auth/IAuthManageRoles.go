@@ -1,5 +1,10 @@
 package auth
 
+import (
+	"github.com/hiveot/hub/api/go/msgserver"
+	"github.com/hiveot/hub/api/go/vocab"
+)
+
 const DefaultAclFilename = "authz.acl"
 
 // AuthManageRolesCapability is the name of the Thing/Capability that handles role requests
@@ -34,6 +39,44 @@ const (
 	//  Write permissions: none
 	ClientRoleViewer = "viewer"
 )
+
+// viewers can subscribe to all things
+var viewerPermissions = []msgserver.RolePermission{{
+	Prefix:   "things",
+	MsgType:  vocab.MessageTypeEvent,
+	AllowSub: true,
+}}
+
+// operators can also publish thing actions
+var operatorPermissions = append(viewerPermissions, msgserver.RolePermission{
+	Prefix:   "things",
+	MsgType:  vocab.MessageTypeAction,
+	AllowPub: true,
+})
+
+// managers can also publish configuration
+var managerPermissions = append(operatorPermissions, msgserver.RolePermission{
+	Prefix:   "things",
+	MsgType:  vocab.MessageTypeConfig,
+	AllowPub: true,
+})
+
+// administrators can do all and publish to services
+var adminPermissions = append(managerPermissions, msgserver.RolePermission{
+	Prefix:   "svc",
+	MsgType:  vocab.MessageTypeAction,
+	AllowPub: true,
+	AllowSub: true,
+})
+
+// DefaultRolePermissions contains the default pub/sub permissions for each user role
+var DefaultRolePermissions = map[string][]msgserver.RolePermission{
+	ClientRoleViewer:   viewerPermissions,
+	ClientRoleOperator: operatorPermissions,
+	ClientRoleManager:  managerPermissions,
+	ClientRoleAdmin:    adminPermissions,
+	ClientRoleNone:     nil,
+}
 
 // capability address part used in sending messages
 const AuthRolesCapability = "roles"

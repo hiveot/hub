@@ -7,10 +7,6 @@ import (
 	"strings"
 )
 
-const MessageTypeEvent = vocab.MessageTypeEvent
-const MessageTypeAction = vocab.MessageTypeAction
-const MessageTypeConfig = vocab.MessageTypeConfig
-
 // MakeThingsTopic creates a nats topic optionally with nats wildcards
 // This uses the hiveot nats topic format: things.{pubID}.{thingID}.{type}.{name}
 //
@@ -90,8 +86,8 @@ func SplitTopic(topic string) (prefix, bindingID, thingID, stype, name string, e
 //	pubID is the publisher of the topic. Use "" for wildcard
 //	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
 //	name is the event or action name. Use "" for wildcard.
-//	clientID is the loginID of the user submitting the action
-func MakeThingActionTopic(pubID, thingID, name string, clientID string) string {
+//	senderID is the loginID of the user submitting the action
+func MakeThingActionTopic(pubID, thingID, name string, senderID string) string {
 	if pubID == "" {
 		pubID = "*"
 	}
@@ -101,11 +97,11 @@ func MakeThingActionTopic(pubID, thingID, name string, clientID string) string {
 	if name == "" {
 		name = "*" // nats uses *
 	}
-	if clientID == "" {
-		clientID = "*"
+	if senderID == "" {
+		senderID = "*"
 	}
 	topic := fmt.Sprintf("things/%s/%s/%s/%s/%s",
-		pubID, thingID, vocab.MessageTypeAction, name, clientID)
+		pubID, thingID, vocab.MessageTypeAction, name, senderID)
 	return topic
 }
 
@@ -115,8 +111,8 @@ func MakeThingActionTopic(pubID, thingID, name string, clientID string) string {
 //	pubID is the publisher of the topic. Use "" for wildcard
 //	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
 //	name is the event or action name. Use "" for wildcard.
-//	clientID is the loginID of the user submitting the action
-func MakeServiceActionTopic(pubID, thingID, name string, clientID string) string {
+//	senderID is the loginID of the user submitting the action
+func MakeServiceActionTopic(pubID, thingID, name string, senderID string) string {
 	if pubID == "" {
 		pubID = "*"
 	}
@@ -126,11 +122,11 @@ func MakeServiceActionTopic(pubID, thingID, name string, clientID string) string
 	if name == "" {
 		name = "*" // nats uses *
 	}
-	if clientID == "" {
-		clientID = "*"
+	if senderID == "" {
+		senderID = "*"
 	}
 	topic := fmt.Sprintf("svc/%s/%s/%s/%s/%s",
-		pubID, thingID, vocab.MessageTypeAction, name, clientID)
+		pubID, thingID, vocab.MessageTypeAction, name, senderID)
 	return topic
 }
 

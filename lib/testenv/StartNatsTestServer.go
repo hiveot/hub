@@ -82,7 +82,7 @@ func StartNatsTestServer() (
 	_ = os.RemoveAll(tmpDir)
 	err = serverCfg.Setup(tmpDir, tmpDir, false)
 	if err == nil {
-		hubNatsServer = natsmsgserver.NewNatsMsgServer(serverCfg)
+		hubNatsServer = natsmsgserver.NewNatsMsgServer(serverCfg, auth.DefaultRolePermissions)
 		clientURL, err = hubNatsServer.Start()
 	}
 	return clientURL, hubNatsServer, certBundle, serverCfg, err

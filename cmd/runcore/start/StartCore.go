@@ -1,4 +1,4 @@
-package runcore
+package start
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ func Start(cfg *config.HubCoreConfig) (clientURL string, err error) {
 	if cfg.Core == "nats" || cfg.Core == "" {
 		// start the embedded NATS messaging MsgServer
 		if !cfg.NatsServer.NoAutoStart {
-			MsgServer = natsmsgserver.NewNatsMsgServer(&cfg.NatsServer)
+			MsgServer = natsmsgserver.NewNatsMsgServer(&cfg.NatsServer, auth.DefaultRolePermissions)
 			clientURL, err = MsgServer.Start()
 			if err != nil {
 				return "", err
@@ -35,7 +35,7 @@ func Start(cfg *config.HubCoreConfig) (clientURL string, err error) {
 		}
 	} else if cfg.Core == "mqtt" {
 		if !cfg.MqttServer.NoAutoStart {
-			MsgServer = mqttmsgserver.NewMqttMsgServer(&cfg.MqttServer)
+			MsgServer = mqttmsgserver.NewMqttMsgServer(&cfg.MqttServer, auth.DefaultRolePermissions)
 			clientURL, err = MsgServer.Start()
 			if err != nil {
 				return "", err

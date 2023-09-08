@@ -7,10 +7,6 @@ import (
 	"strings"
 )
 
-const MessageTypeEvent = vocab.MessageTypeEvent
-const MessageTypeAction = vocab.MessageTypeAction
-const MessageTypeConfig = vocab.MessageTypeConfig
-
 // MakeThingsSubject creates a nats subject optionally with nats wildcards
 // This uses the hiveot nats subject format: things.{pubID}.{thingID}.{type}.{name}
 //

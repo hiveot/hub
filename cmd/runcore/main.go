@@ -5,10 +5,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/hiveot/hub/core/cmd/runcore"
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/svcconfig"
 	"github.com/hiveot/hub/lib/utils"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -60,7 +58,7 @@ func main() {
 	newSetup := false
 	logging.SetLogging("info", "")
 
-	f := svcconfig.GetFolders("", false)
+	f := utils.GetFolders("", false)
 	homeDir := f.Home
 	flag.StringVar(&f.Home, "home", f.Home, "Application home directory")
 	flag.StringVar(&cfgFile, "c", cfgFile, "Service config file")
@@ -79,7 +77,7 @@ func main() {
 	flag.Parse()
 	// reload f if home changed
 	if homeDir != f.Home {
-		f = svcconfig.GetFolders(f.Home, false)
+		f = utils.GetFolders(f.Home, false)
 	}
 	fmt.Println("home: ", f.Home)
 	// setup the configuration
@@ -120,7 +118,7 @@ func main() {
 func run(cfg *config.HubCoreConfig) error {
 	var err error
 
-	clientURL, err := runcore.Start(cfg)
+	clientURL, err := start.Start(cfg)
 
 	if err != nil {
 		return fmt.Errorf("unable to start server: %w", err)
@@ -130,6 +128,6 @@ func run(cfg *config.HubCoreConfig) error {
 	fmt.Println("Hub started. ClientURL=" + clientURL)
 	utils.WaitForSignal(context.Background())
 
-	runcore.Stop()
+	start.Stop()
 	return nil
 }

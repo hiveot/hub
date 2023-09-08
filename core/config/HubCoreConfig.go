@@ -10,7 +10,7 @@ import (
 	"github.com/hiveot/hub/core/mqttmsgserver"
 	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/svcconfig"
+	"github.com/hiveot/hub/lib/utils"
 	"golang.org/x/exp/slog"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -65,7 +65,7 @@ func (cfg *HubCoreConfig) Setup(homeDir string, configFile string, new bool) err
 	} else if !path.IsAbs(homeDir) {
 		homeDir = path.Join(cwd, homeDir)
 	}
-	f := svcconfig.GetFolders(homeDir, false)
+	f := utils.GetFolders(homeDir, false)
 	cfg.HomeDir = f.Home
 
 	// 2: Setup files and folders

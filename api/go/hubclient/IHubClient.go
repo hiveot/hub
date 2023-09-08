@@ -32,12 +32,12 @@ type EventMessage struct {
 	Timestamp int64 `yaml:"timestamp"`
 }
 
-// ActionMessage for subscribers
-type ActionMessage struct {
-	// Authenticated ClientID of the Thing's binding that handles the action
-	BindingID string `yaml:"bindingID"`
-	// ClientID of the user publishing the action
+// ActionRequest message for thing or service subscribers
+type ActionRequest struct {
+	// ClientID of the user publishing the request
 	ClientID string `yaml:"clientID"`
+	// Authenticated ClientID of the device or service that handles the action
+	DeviceID string `yaml:"deviceID"`
 	// ThingID of the Thing handling the action.
 	// For services this is the name of the capability that handles the action.
 	ThingID string `yaml:"thingID"`
@@ -129,21 +129,34 @@ type IHubClient interface {
 	// The client's authentication ID will be included as the publisher ID of the event.
 	PubTD(td *thing.TD) error
 
-	// Sub allows subscribing to any topic that the client is authorized to.
+	// Sub allows subscribing to any topic/subject address that the client is authorized to.
 	// Intended for testing or special topics.
-	Sub(topic string, cb func(topic string, data []byte)) (ISubscription, error)
+	Sub(addr string, cb func(addr string, data []byte)) (ISubscription, error)
 
-	// SubActions subscribes to actions requested of a Thing .
-	// All prior sent actions are ignored. This is intentional to avoid side effects on restart.
+	// SubThingActions subscribes to actions requested of a Thing.
+	// Intended for use by devices to receive requests for its things.
+	//
+	// The handler receives an action request message with request payload and returns
+	// an optional reply or an error when the request wasn't accepted.
 	//
 	// The supported actions are defined in the TD document of the things this binding has published.
 	//  thingID is the device thing or service capability to subscribe to, or "" for wildcard
 	//  cb is the callback to invoke
-	// If the callback returns an error, an error reply message is send.
-	SubActions(thingID string, cb func(msg *ActionMessage) error) (ISubscription, error)
+	//
+	// The handler receives an action request message with request payload and
+	// must reply withwith msg.Reply or msg.Ack, or return an error
+	SubThingActions(thingID string,
+		handler func(msg *ActionRequest) error) (ISubscription, error)
 
-	// SubServiceCapability subscribes a service to a requested capability
-	SubServiceCapability(capability string, cb func(msg *ActionMessage) error) (ISubscription, error)
+	// SubServiceActions subscribes a service to a requested action.
+	// Intended for use by services to receive requests for its capabilities.
+	//
+	// The handler receives an action request message with request payload and
+	// must reply withwith msg.Reply or msg.Ack, or return an error
+	//
+	// The supported requests are defined in the TD document that the service has published.
+	SubServiceActions(capability string,
+		handler func(msg *ActionRequest) (err error)) (ISubscription, error)
 
 	// SubStream subscribes to events from things
 	//

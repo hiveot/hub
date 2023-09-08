@@ -140,7 +140,7 @@ func (svc *AuthManageClients) GetEntries() (entries []auth.AuthnEntry) {
 }
 
 // handle authn management requests published by a hub manager
-func (svc *AuthManageClients) HandleActions(action *hubclient.ActionMessage) error {
+func (svc *AuthManageClients) HandleActions(action *hubclient.ActionRequest) error {
 	slog.Info("handleActions",
 		slog.String("actionID", action.ActionID))
 
@@ -268,7 +268,7 @@ func (svc *AuthManageClients) RemoveClient(clientID string) (err error) {
 // Register the binding subscription using the given connection
 func (svc *AuthManageClients) Start() (err error) {
 	if svc.hc != nil {
-		svc.mngSub, err = svc.hc.SubServiceCapability(
+		svc.mngSub, err = svc.hc.SubServiceActions(
 			auth.AuthManageClientsCapability, svc.HandleActions)
 	}
 	return err
