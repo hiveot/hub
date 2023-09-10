@@ -9,7 +9,7 @@ func (srv *MqttMsgServer) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
 	return fmt.Errorf("not yet implemented")
 }
 
-func (srv *MqttMsgServer) CreateToken(clientID string) (token string, err error) {
+func (srv *MqttMsgServer) CreateToken(clientID string, pubKey string) (token string, err error) {
 	return "", fmt.Errorf("not yet implemented")
 }
 

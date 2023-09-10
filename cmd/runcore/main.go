@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/hiveot/hub/cmd/runcore/startcore"
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
@@ -118,7 +119,7 @@ func main() {
 func run(cfg *config.HubCoreConfig) error {
 	var err error
 
-	clientURL, err := start.Start(cfg)
+	clientURL, err := startcore.Start(cfg)
 
 	if err != nil {
 		return fmt.Errorf("unable to start server: %w", err)
@@ -128,6 +129,6 @@ func run(cfg *config.HubCoreConfig) error {
 	fmt.Println("Hub started. ClientURL=" + clientURL)
 	utils.WaitForSignal(context.Background())
 
-	start.Stop()
+	startcore.Stop()
 	return nil
 }

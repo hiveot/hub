@@ -350,14 +350,14 @@ func TestUpdate(t *testing.T) {
 	// update must succeed
 	err = pwStore1.Update(user1, auth.ClientProfile{
 		ClientID: user1, ClientType: auth.ClientTypeUser, DisplayName: name2, PubKey: key1,
-		TokenValidity: time.Second,
+		TokenValidityDays: 1,
 	})
 	assert.NoError(t, err)
 	prof, err := pwStore1.GetProfile(user1)
 	assert.NoError(t, err)
 	assert.Equal(t, name2, prof.DisplayName)
 	assert.Equal(t, key1, prof.PubKey)
-	assert.Equal(t, time.Second, prof.TokenValidity)
+	assert.Equal(t, 1, prof.TokenValidityDays)
 
 	// update of non-existing user should fail
 	err = pwStore1.Update(

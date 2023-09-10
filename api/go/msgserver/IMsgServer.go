@@ -61,7 +61,8 @@ type IMsgServer interface {
 	//  NATS callout server returns a JWT token for connecting with JWT
 	//
 	//  clientID of a known client
-	CreateToken(clientID string) (newToken string, err error)
+	//  pubKey public key of the client
+	CreateToken(clientID string, pubKey string) (newToken string, err error)
 
 	// SetRolePermissions sets the roles used in authorization.
 	// As messaging servers have widely different ways of handling authentication and

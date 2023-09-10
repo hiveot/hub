@@ -48,11 +48,11 @@ type ActionRequest struct {
 	// Timestamp the action was issued
 	Timestamp int64 `yaml:"timestamp"`
 
-	// Reply to the received action
+	// Reply to the received action with optional payload or error
 	// This can be called multiple times to send multiple batches.
-	SendReply func(payload []byte)
-	// Acknowledge the action
-	SendAck func()
+	SendReply func(payload []byte, err error) error
+	// Acknowledge completion of the action
+	SendAck func() error
 }
 
 // ErrorMessage payload
@@ -81,7 +81,8 @@ type IHubClient interface {
 	Disconnect()
 
 	// ParseResponse parses response message
-	ParseResponse(data []byte, err error, resp interface{}) error
+	// This is a convenience function
+	ParseResponse(data []byte, resp interface{}) error
 
 	// Pub allows publication on any topic.
 	// Intended for testing or for publishing to special topics.

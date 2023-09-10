@@ -2,11 +2,11 @@ package auth_test
 
 import (
 	authapi "github.com/hiveot/hub/api/go/auth"
+	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/natsmsgserver"
-	"github.com/hiveot/hub/core/natsmsgserver/callouthook"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/jwt/v2"
@@ -24,16 +24,16 @@ import (
 )
 
 var certBundle certs.TestCertBundle
+
 var serverCfg *natsmsgserver.NatsServerConfig
 var testDir = path.Join(os.TempDir(), "test-authn")
 
 // the following are set by the testmain
 var clientURL string
-var msgServer *natsmsgserver.NatsMsgServer
-var useCallout = false
 
-// run the test for different cores
-//var useCore = "natsnkey" // natsnkey, natsjwt, natscallout, mqtt
+var msgServer msgserver.IMsgServer
+
+//var useCallout = false
 
 // add new user to test with
 func addNewUser(userID string, displayName string, pass string, mng authapi.IAuthnManageClients) (token string, key nkeys.KeyPair, err error) {
@@ -87,18 +87,12 @@ func TestMain(m *testing.M) {
 	_ = os.RemoveAll(testDir)
 	_ = os.MkdirAll(testDir, 0700)
 
-	clientURL, msgServer, certBundle, serverCfg, err = testenv.StartNatsTestServer()
+	//clientURL, msgServer, certBundle, err = testenv.StartTestServer("nats")
+	clientURL, msgServer, certBundle, serverCfg, err = testenv.StartNatsTestServer(false)
 	if err != nil {
 		panic(err)
 	}
 
-	// use the callout server to enable for JWT
-	if useCallout {
-		_, err = callouthook.EnableNatsCalloutHook(msgServer)
-		if err != nil {
-			panic(err)
-		}
-	}
 	res := m.Run()
 
 	msgServer.Stop()
@@ -348,13 +342,12 @@ func TestRefreshFakeToken(t *testing.T) {
 	assert.Empty(t, authToken1)
 
 	// 3. Use a fake jwt token, eg from another user
-	fakeToken, err := msgServer.CreateJWTToken(testenv.TestUser2ID, testenv.TestUser2Pub)
+	fakeToken, err := msgServer.CreateToken(testenv.TestUser2ID, testenv.TestUser2Pub)
 	authToken1, err = cl1.Refresh(tu1ID, fakeToken)
 	require.Error(t, err)
 	assert.Empty(t, authToken1)
 
 	// 4. Use a fake public key, eg from another user
-	//fakeToken := serverCfg.CoreServiceJWT
 	fakeToken, _ = serverCfg.CoreServiceKP.PublicKey()
 	authToken1, err = cl1.Refresh(tu1ID, fakeToken)
 	require.Error(t, err)

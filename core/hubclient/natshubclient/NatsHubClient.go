@@ -120,11 +120,15 @@ func (hc *NatsHubClient) SubActions(
 			ThingID:   thID,
 			Timestamp: timeStamp.Unix(),
 			Payload:   payload,
-			SendReply: func(payload []byte) {
-				_ = natsMsg.Respond(payload)
+			SendReply: func(payload []byte, err error) error {
+				if err != nil {
+					errMsg := hubclient.ErrorMessage{Error: err.Error()}
+					payload, _ = ser.Marshal(errMsg)
+				}
+				return natsMsg.Respond(payload)
 			},
-			SendAck: func() {
-				_ = natsMsg.Ack()
+			SendAck: func() error {
+				return natsMsg.Ack()
 			},
 		}
 		err = cb(actionMsg)

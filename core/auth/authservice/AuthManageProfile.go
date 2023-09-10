@@ -29,10 +29,10 @@ type AuthManageProfile struct {
 }
 
 // CreateToken creates an authentication token using server.
-func (svc *AuthManageProfile) CreateToken(clientID string) (
+func (svc *AuthManageProfile) CreateToken(clientID string, pubKey string) (
 	newToken string, err error) {
 
-	return svc.msgServer.CreateToken(clientID)
+	return svc.msgServer.CreateToken(clientID, pubKey)
 }
 
 // GetProfile returns a client's profile
@@ -51,7 +51,7 @@ func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) err
 		if err == nil {
 			resp := auth.GetProfileResp{Profile: profile}
 			reply, _ := ser.Marshal(&resp)
-			action.SendReply(reply)
+			err = action.SendReply(reply, nil)
 		}
 		return err
 	case auth.NewTokenAction:
@@ -69,7 +69,7 @@ func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) err
 		if err == nil {
 			resp := auth.NewTokenResp{Token: newToken}
 			reply, _ := ser.Marshal(resp)
-			action.SendReply(reply)
+			err = action.SendReply(reply, nil)
 		}
 		return err
 	case auth.RefreshAction:
@@ -82,7 +82,7 @@ func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) err
 		if err == nil {
 			resp := auth.RefreshResp{NewToken: newToken}
 			reply, _ := ser.Marshal(resp)
-			action.SendReply(reply)
+			err = action.SendReply(reply, nil)
 		}
 		return err
 	case auth.UpdateNameAction:
@@ -93,7 +93,7 @@ func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) err
 		}
 		err = svc.UpdateName(req.ClientID, req.NewName)
 		if err == nil {
-			action.SendAck()
+			err = action.SendAck()
 		}
 		return err
 	case auth.UpdatePasswordAction:
@@ -104,7 +104,7 @@ func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) err
 		}
 		err = svc.UpdatePassword(req.ClientID, req.NewPassword)
 		if err == nil {
-			action.SendAck()
+			err = action.SendAck()
 		}
 		return err
 	case auth.UpdatePubKeyAction:
@@ -115,7 +115,7 @@ func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) err
 		}
 		err = svc.UpdatePubKey(req.ClientID, req.NewPubKey)
 		if err == nil {
-			action.SendAck()
+			err = action.SendAck()
 		}
 		return err
 	default:
@@ -132,7 +132,7 @@ func (svc *AuthManageProfile) NewToken(clientID string, password string) (newTok
 	if clientProfile.PubKey == "" {
 		return "", fmt.Errorf("no public key on file for '%s'", clientID)
 	}
-	newToken, err = svc.CreateToken(clientID)
+	newToken, err = svc.CreateToken(clientID, clientProfile.PubKey)
 	return newToken, err
 }
 
@@ -157,7 +157,7 @@ func (svc *AuthManageProfile) Refresh(clientID string, oldToken string) (newToke
 	if err != nil {
 		return "", fmt.Errorf("error validating oldToken of client %s: %w", clientID, err)
 	}
-	newToken, err = svc.CreateToken(clientID)
+	newToken, err = svc.CreateToken(clientID, clientProfile.PubKey)
 	return newToken, err
 }
 

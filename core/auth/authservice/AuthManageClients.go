@@ -156,7 +156,7 @@ func (svc *AuthManageClients) HandleActions(action *hubclient.ActionRequest) err
 		if err == nil {
 			resp := auth.AddDeviceResp{Token: token}
 			reply, _ := ser.Marshal(&resp)
-			action.SendReply(reply)
+			err = action.SendReply(reply, nil)
 		}
 		return err
 	case auth.AddServiceAction:
@@ -169,7 +169,7 @@ func (svc *AuthManageClients) HandleActions(action *hubclient.ActionRequest) err
 		if err == nil {
 			resp := auth.AddServiceResp{Token: token}
 			reply, _ := ser.Marshal(&resp)
-			action.SendReply(reply)
+			err = action.SendReply(reply, nil)
 		}
 		return err
 	case auth.AddUserAction:
@@ -183,14 +183,14 @@ func (svc *AuthManageClients) HandleActions(action *hubclient.ActionRequest) err
 		if err == nil {
 			resp := auth.AddUserResp{Token: token}
 			reply, _ := ser.Marshal(&resp)
-			action.SendReply(reply)
+			err = action.SendReply(reply, nil)
 		}
 		return err
 	case auth.GetCountAction:
 		n, err := svc.GetCount()
 		resp := auth.GetCountResp{N: n}
 		reply, _ := ser.Marshal(&resp)
-		action.SendReply(reply)
+		err = action.SendReply(reply, nil)
 		return err
 	case auth.GetProfileAction:
 		req := auth.GetProfileReq{}
@@ -202,7 +202,7 @@ func (svc *AuthManageClients) HandleActions(action *hubclient.ActionRequest) err
 		if err == nil {
 			resp := auth.GetProfileResp{Profile: profile}
 			reply, _ := ser.Marshal(&resp)
-			action.SendReply(reply)
+			err = action.SendReply(reply, nil)
 		}
 		return err
 	case auth.GetProfilesAction:
@@ -210,7 +210,7 @@ func (svc *AuthManageClients) HandleActions(action *hubclient.ActionRequest) err
 		if err == nil {
 			resp := auth.GetProfilesResp{Profiles: clientList}
 			reply, _ := ser.Marshal(resp)
-			action.SendReply(reply)
+			err = action.SendReply(reply, nil)
 		}
 		return err
 	case auth.RemoveClientAction:
@@ -221,7 +221,7 @@ func (svc *AuthManageClients) HandleActions(action *hubclient.ActionRequest) err
 		}
 		err = svc.RemoveClient(req.ClientID)
 		if err == nil {
-			action.SendAck()
+			err = action.SendAck()
 		}
 		return err
 	case auth.UpdateClientAction:
@@ -232,7 +232,7 @@ func (svc *AuthManageClients) HandleActions(action *hubclient.ActionRequest) err
 		}
 		err = svc.UpdateClient(req.ClientID, req.Profile)
 		if err == nil {
-			action.SendAck()
+			err = action.SendAck()
 		}
 		return err
 	default:

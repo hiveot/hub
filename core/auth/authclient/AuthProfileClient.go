@@ -23,7 +23,10 @@ func (cl *AuthProfileClient) pubReq(action string, req interface{}, resp interfa
 	}
 
 	data, err := cl.hc.PubServiceAction(cl.serviceID, auth.AuthProfileCapability, action, msg)
-	err = cl.hc.ParseResponse(data, err, resp)
+	if err != nil {
+		return err
+	}
+	err = cl.hc.ParseResponse(data, resp)
 	return err
 }
 

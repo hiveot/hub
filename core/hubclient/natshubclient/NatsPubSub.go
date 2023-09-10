@@ -32,10 +32,8 @@ func (hc *NatsHubClient) JS() nats.JetStreamContext {
 }
 
 // ParseResponse helper message to parse response and detect the error response message
-func (hc *NatsHubClient) ParseResponse(data []byte, err error, resp interface{}) error {
-	if err != nil {
-		return err
-	}
+func (hc *NatsHubClient) ParseResponse(data []byte, resp interface{}) error {
+	var err error
 	if resp != nil {
 		err = ser.Unmarshal(data, resp)
 	} else if string(data) == "+ACK" {
@@ -44,6 +42,7 @@ func (hc *NatsHubClient) ParseResponse(data []byte, err error, resp interface{})
 	} else if len(data) > 0 {
 		err = errors.New("unexpected response")
 	}
+
 	// if an error is detect see if it is an error response
 	// An error response message has the format: {"error":"message"}
 	// TODO: find a more idiomatic way to detect an error

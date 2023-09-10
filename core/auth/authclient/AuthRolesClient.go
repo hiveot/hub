@@ -17,7 +17,10 @@ type AuthRolesClient struct {
 func (cl *AuthRolesClient) pubReq(action string, msg []byte, resp interface{}) error {
 	data, err := cl.hc.PubServiceAction(
 		auth.AuthServiceName, auth.AuthRolesCapability, action, msg)
-	err = cl.hc.ParseResponse(data, err, resp)
+	if err != nil {
+		return err
+	}
+	err = cl.hc.ParseResponse(data, resp)
 	return err
 }
 

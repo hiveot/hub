@@ -61,19 +61,19 @@ func MakeServiceTopic(serviceID, capID, stype, name string) string {
 //
 // topic is a hiveot nats topic. eg: things.publisherID.thingID.type.name
 //
-//	 prefix of things or services
-//		bindingID is the device or service that handles the topic.
-//		thingID is the thing of the topic, or capability for services.
-//		stype is the topic type, eg event or action.
-//		name is the event or action name
-func SplitTopic(topic string) (prefix, bindingID, thingID, stype, name string, err error) {
+//	prefix of things or services
+//	deviceID is the device or service that handles the topic.
+//	thingID is the thing of the topic, or capability for services.
+//	stype is the topic type, eg event or action.
+//	name is the event or action name
+func SplitTopic(topic string) (prefix, deviceID, thingID, stype, name string, err error) {
 	parts := strings.Split(topic, "/")
 	if len(parts) < 5 {
 		err = errors.New("incomplete topic")
 		return
 	}
 	prefix = parts[0]
-	bindingID = parts[1]
+	deviceID = parts[1]
 	thingID = parts[2]
 	stype = parts[3]
 	name = parts[4]
@@ -83,13 +83,13 @@ func SplitTopic(topic string) (prefix, bindingID, thingID, stype, name string, e
 // MakeThingActionTopic creates a nats topic for submitting actions
 // This uses the hiveot nats topic format: things.{bindingID}.{thingID}.action.{name}.{clientID}
 //
-//	pubID is the publisher of the topic. Use "" for wildcard
+//	deviceID is the publisher of the topic. Use "" for wildcard
 //	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
 //	name is the event or action name. Use "" for wildcard.
 //	senderID is the loginID of the user submitting the action
-func MakeThingActionTopic(pubID, thingID, name string, senderID string) string {
-	if pubID == "" {
-		pubID = "*"
+func MakeThingActionTopic(deviceID, thingID, name string, senderID string) string {
+	if deviceID == "" {
+		deviceID = "*"
 	}
 	if thingID == "" {
 		thingID = "*" // nats uses *
@@ -101,20 +101,20 @@ func MakeThingActionTopic(pubID, thingID, name string, senderID string) string {
 		senderID = "*"
 	}
 	topic := fmt.Sprintf("things/%s/%s/%s/%s/%s",
-		pubID, thingID, vocab.MessageTypeAction, name, senderID)
+		deviceID, thingID, vocab.MessageTypeAction, name, senderID)
 	return topic
 }
 
 // MakeServiceActionTopic creates a nats topic for submitting service requests
 // This uses the hiveot nats topic format: things.{bindingID}.{thingID}.action.{name}.{clientID}
 //
-//	pubID is the publisher of the topic. Use "" for wildcard
+//	serviceID is the publisher of the topic. Use "" for wildcard
 //	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
 //	name is the event or action name. Use "" for wildcard.
 //	senderID is the loginID of the user submitting the action
-func MakeServiceActionTopic(pubID, thingID, name string, senderID string) string {
-	if pubID == "" {
-		pubID = "*"
+func MakeServiceActionTopic(serviceID, thingID, name string, senderID string) string {
+	if serviceID == "" {
+		serviceID = "*"
 	}
 	if thingID == "" {
 		thingID = "*" // nats uses *
@@ -126,7 +126,7 @@ func MakeServiceActionTopic(pubID, thingID, name string, senderID string) string
 		senderID = "*"
 	}
 	topic := fmt.Sprintf("svc/%s/%s/%s/%s/%s",
-		pubID, thingID, vocab.MessageTypeAction, name, senderID)
+		serviceID, thingID, vocab.MessageTypeAction, name, senderID)
 	return topic
 }
 

@@ -3,15 +3,12 @@ package mqtthubclient
 import (
 	"errors"
 	"fmt"
-	"github.com/eclipse/paho.golang/autopaho"
 	"github.com/eclipse/paho.golang/paho"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/thing"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/ser"
 	"golang.org/x/exp/slog"
-	"strings"
-	"time"
 )
 
 // higher level Hub event and action functions
@@ -21,18 +18,7 @@ import (
 type MqttHubSubscription struct {
 	topic   string
 	handler func(topic string, payload []byte)
-	client  *paho.Client
-}
-
-// MqttHubClient manages the hub server connection with hub event and action messaging
-// This implements the IHubClient interface.
-// This implementation is based on the Mqtt messaging system.
-type MqttHubClient struct {
-	clientID string
-	hostName string
-	port     int
-	cm       *autopaho.ConnectionManager
-	router   paho.Router
+	pcl     *paho.Client
 }
 
 // ClientID the client is authenticated as to the server
@@ -41,26 +27,45 @@ func (hc *MqttHubClient) ClientID() string {
 }
 
 // ParseResponse helper message to parse response and detect the error response message
-func (hc *MqttHubClient) ParseResponse(data []byte, err error, resp interface{}) error {
-	if err != nil {
-		return err
-	}
-	if resp != nil {
-		err = ser.Unmarshal(data, resp)
-	} else if string(data) == "+ACK" {
-		err = nil
-	} else if len(data) > 0 {
-		err = errors.New("unexpected response")
-	}
-	// if an error is detect see if it is an error response
-	// An error response message has the format: {"error":"message"}
-	// TODO: find a more idiomatic way to detect an error
-	prefix := "{\"error\":"
-	if err != nil || strings.HasPrefix(string(data), prefix) {
-		errResp := hubclient.ErrorMessage{}
-		err2 := ser.Unmarshal(data, &errResp)
-		if err2 == nil && errResp.Error != "" {
-			err = errors.New(errResp.Error)
+//func (hc *MqttHubClient) ParseResponse(data []byte, err error, resp interface{}) error {
+//	if err != nil {
+//		return err
+//	}
+//	if resp != nil {
+//		err = ser.Unmarshal(data, resp)
+//	} else if string(data) == "+ACK" {
+//		err = nil
+//	} else if len(data) > 0 {
+//		err = errors.New("unexpected response")
+//	}
+//	// if an error is detect see if it is an error response
+//	// An error response message has the format: {"error":"message"}
+//	// TODO: find a more idiomatic way to detect an error
+//	prefix := "{\"error\":"
+//	if err != nil || strings.HasPrefix(string(data), prefix) {
+//		errResp := hubclient.ErrorMessage{}
+//		err2 := ser.Unmarshal(data, &errResp)
+//		if err2 == nil && errResp.Error != "" {
+//			err = errors.New(errResp.Error)
+//		}
+//	}
+//	return err
+//}
+
+// ParseResponse helper message to parse response and check for errors
+func (hc *MqttHubClient) ParseResponse(data []byte, resp interface{}) error {
+	var err error
+	if data == nil || len(data) == 0 {
+		if resp != nil {
+			err = errors.New("expected response but none received")
+		} else {
+			err = nil // all good
+		}
+	} else {
+		if resp == nil {
+			err = errors.New("unexpected response")
+		} else {
+			err = ser.Unmarshal(data, resp)
 		}
 	}
 	return err
@@ -152,41 +157,6 @@ func (hc *MqttHubClient) PubTD(td *thing.TD) error {
 //	return err
 //}
 
-// SubActions subscribes to actions on the given topic
-//
-//	thingID is the device thing or service capability to subscribe to, or "" for wildcard
-func (hc *MqttHubClient) SubActions(
-	thingID string, cb func(msg *hubclient.ActionRequest) error,
-) (hubclient.ISubscription, error) {
-
-	topic := MakeThingActionTopic(hc.clientID, thingID, "", "")
-	sub, err := hc.SubRequest(topic, func(pahoMsg *PahoMsg) error {
-		timeStamp := time.Now()
-		deviceID, thID, name, clientID, err := SplitActionTopic(topic)
-		if err != nil {
-			slog.Error("unable to handle topic", "err", err, "topic", topic)
-			return err
-		}
-		actionMsg := &hubclient.ActionRequest{
-			ClientID:  clientID,
-			ActionID:  name,
-			DeviceID:  deviceID,
-			ThingID:   thID,
-			Timestamp: timeStamp.Unix(),
-			Payload:   pahoMsg.Payload,
-			SendReply: func(payload []byte) {
-				pahoMsg.SendReply(payload)
-			},
-			SendAck: func() {
-				pahoMsg.SendReply(nil)
-			},
-		}
-		err = cb(actionMsg)
-		return err
-	})
-	return sub, err
-}
-
 func (hc *MqttHubClient) SubStream(
 	name string, receiveLatest bool, cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
 	return nil, fmt.Errorf("not implemented")
@@ -225,11 +195,3 @@ func (hc *MqttHubClient) SubServiceActions(
 //func (hc *MqttHubClient) SubStream(name string, receiveLatest bool, cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
 //
 //}
-
-// NewMqttHubClient instantiates a client for connecting to the Hub using MQTT
-// Intended for use by the 'ConnectXyz' methods that define the authentication options
-func NewMqttHubClient() *MqttHubClient {
-
-	hc := &MqttHubClient{}
-	return hc
-}

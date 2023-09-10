@@ -55,7 +55,7 @@ func (cfg *MqttServerConfig) Setup(certsDir, storesDir string, writeChanges bool
 		cfg.Host = "localhost"
 	}
 	if cfg.Port == 0 {
-		cfg.Port = 4222
+		cfg.Port = 8441
 	}
 	if cfg.WSPort == 0 {
 		//appCfg.WSPort = 8222

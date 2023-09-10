@@ -5,11 +5,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/eclipse/paho.golang/autopaho"
 	"github.com/eclipse/paho.golang/paho"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"golang.org/x/exp/slog"
-	"log"
+	"net"
 	"net/url"
 	"os"
 	"time"
@@ -18,25 +17,76 @@ import (
 // lower level autopaho functions with connect, pub and sub
 
 const keepAliveInterval = 10 // seconds
-const reconnectDelay = 10    // seconds
+const reconnectDelay = 10 * time.Second
 const withDebug = false
+
+// MqttHubClient manages the hub server connection with hub event and action messaging
+// This implements the IHubClient interface.
+// This implementation is based on the Mqtt messaging system.
+type MqttHubClient struct {
+	clientID string
+	hostName string
+	port     int
+	pcl      *paho.Client
+}
 
 // ConnectWithCert to the Hub server
 //
-//	url of the server.
+//	brokerURL of the server.
 //	clientID to connect as
 //	clientCert for certificate based authentication
 //	caCert of the server
 func ConnectWithCert(
-	url string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate) (
-	hubclient.IHubClient, error) {
+	brokerURL string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate) (
+	hc hubclient.IHubClient, err error) {
 
-	if url == "" {
+	conn, err := CreateTLSConnection(brokerURL, clientCert, caCert)
+	if err == nil {
+		hc, err = ConnectToBroker(clientID, "", conn)
+	}
+	return hc, err
+}
+
+// CreateTLSConnection creates a TLS connection to a MQTT broker, optionally using a client certificate.
+//
+//	brokerURL full URL:  tls://host:8883, ssl://host:8883,  wss://host:9001, tcps://awshost:8883/mqtt
+//	clientCert to login with. Nil to not use client certs
+//	caCert of the server to connect to (recommended). Nil to not verify the server connection.
+func CreateTLSConnection(
+	brokerURL string, clientCert *tls.Certificate, caCert *x509.Certificate) (*tls.Conn, error) {
+
+	// connect always uses TLS
+	caCertPool := x509.NewCertPool()
+	if caCert != nil {
+		caCertPool.AddCert(caCert)
+	}
+	tlsOpts := x509.VerifyOptions{
+		Roots:     caCertPool,
+		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	}
+	// if a client certificate is given then include it
+	clientCertList := make([]tls.Certificate, 0)
+	if clientCert != nil {
+		x509Cert, _ := x509.ParseCertificate(clientCert.Certificate[0])
+		clientCertList = append(clientCertList, *clientCert)
+		_, err := x509Cert.Verify(tlsOpts)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	hc := NewMqttHubClient()
-	err := hc.connect(url, clientID, "", "", clientCert, caCert)
-	return hc, err
+	tlsConfig := &tls.Config{
+		RootCAs:            caCertPool,
+		ClientAuth:         tls.RequireAndVerifyClientCert,
+		Certificates:       clientCertList,
+		InsecureSkipVerify: caCert == nil,
+	}
+	broker, err := url.Parse(brokerURL)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := tls.Dial(broker.Scheme, broker.Host, tlsConfig)
+	return conn, err
 }
 
 // ConnectWithJWT connects to the Hub server using a user JWT credentials secret
@@ -76,221 +126,90 @@ func ConnectWithCert(
 //	return hc, err
 //}
 
-// ConnectWithNC connects using the given TLS connection
-func ConnectWithNC(nc *tls.Conn) (hc *MqttHubClient, err error) {
-	hc = NewMqttHubClient()
+// ConnectToBroker connects to a mqtt broker using the pre-established network connection
+// This allows creating connections with any available means including tcp/tls/wss/uds/pipes
+func ConnectToBroker(loginID string, password string, conn net.Conn) (*MqttHubClient, error) {
 	ctx := context.Background()
-	clCfg := autopaho.ClientConfig{
-		//BrokerUrls:        []*url.URL{broker},
-		//TlsCfg:            tlsConfig,
-		KeepAlive:         keepAliveInterval,
-		ConnectRetryDelay: reconnectDelay,
-		ConnectTimeout:    0,
-		//WebSocketCfg:      nil,
-		OnConnectionUp: nil,
-		OnConnectError: nil,
-		Debug:          paho.NOOPLogger{},
-		//PahoDebug:         nil,
-		//PahoErrors:        nil,
-		ClientConfig: paho.ClientConfig{
-			//ClientID: loginID,
-			Router: hc.router,
-			Conn:   nc,
-		},
-	}
-	hc.cm, err = autopaho.NewConnection(ctx, clCfg)
-	return hc, err
-}
 
-// ConnectWithKey connects to the Hub server using a key secret with signed nonce
-//
-// UserID is used for publishing actions
-//func ConnectWithKey(url string, clientID string, myKey *ecdsa.PrivateKey, caCert *x509.Certificate) (hc *MqttHubClient, err error) {
-//
-//	caCertPool := x509.NewCertPool()
-//	if caCert != nil {
-//		caCertPool.AddCert(caCert)
-//	}
-//	tlsConfig := &tls.Config{
-//		RootCAs:            caCertPool,
-//		InsecureSkipVerify: caCert == nil,
-//	}
-//	// The handler to sign the server issued challenge
-//	sigCB := func(nonce []byte) ([]byte, error) {
-//		return myKey.Sign(nonce)
-//	}
-//	nc, err := tls.Dial("tcp", url, tlsConfig)
-//	// TODO: implement
-//	if err == nil {
-//		hc, err = NewHubClient(clientID, nc)
-//	}
-//	return hc, err
-//}
-
-// ConnectWithPassword connects to the Hub server using a login ID and password.
-func ConnectWithPassword(
-	url string, loginID string, password string, caCert *x509.Certificate) (hc *MqttHubClient, err error) {
-
-	hc = NewMqttHubClient()
-	err = hc.connect(url, loginID, password, "", nil, caCert)
-	return hc, err
-}
-
-// ConnectUnauthenticated connects to the Hub server as an unauthenticated user
-// Intended for use by IoT devices to perform out-of-band provisioning.
-//func ConnectUnauthenticated(url string, caCert *x509.Certificate) (hc *MqttHubClient, err error) {
-//	caCertPool := x509.NewCertPool()
-//	if caCert != nil {
-//		caCertPool.AddCert(caCert)
-//	}
-//	tlsConfig := &tls.Config{
-//		RootCAs:            caCertPool,
-//		InsecureSkipVerify: caCert == nil,
-//	}
-//	// TODO
-//	if err == nil {
-//		hc, err = NewMqttHubClient("", nc)
-//	}
-//	return hc, err
-//}
-
-// Connect to the MQTT broker using one of the given authentication methods: password, JWT token or client certificate
-// Connect always uses TLS. If no CA cert is provided then any server cert will be accepted (for testing only)
-//
-//	brokerURL full URL:  tls://host:8883, ssl://host:8883,  wss://host:9001, tcps://awshost:8883/mqtt
-//	loginID to identify as using password. Required.
-//	password to login with. Empty to not use password auth.
-//	jwt token to login with. Empty to not use jwt auth
-//	clientCert to login with. Nil to not use client certs
-//	caCert of the server to connect to (recommended). Nil to not verify the server connection.
-func (hc *MqttHubClient) connect(
-	brokerURL string, loginID string,
-	password string, jwt string, clientCert *tls.Certificate,
-	caCert *x509.Certificate) (err error) {
-
-	// set config defaults
+	// checks
 	if loginID == "" {
 		err := fmt.Errorf("connect - Missing Login ID")
-		return err
-	}
-	hc.clientID = loginID
-
-	// connect always uses TLS
-	caCertPool := x509.NewCertPool()
-	if caCert != nil {
-		caCertPool.AddCert(caCert)
-	}
-	tlsOpts := x509.VerifyOptions{
-		Roots:     caCertPool,
-		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-	}
-	// if a client certificate is given then include it
-	clientCertList := make([]tls.Certificate, 0)
-	if clientCert != nil {
-		x509Cert, _ := x509.ParseCertificate(clientCert.Certificate[0])
-		clientCertList = append(clientCertList, *clientCert)
-		_, err := x509Cert.Verify(tlsOpts)
-		if err != nil {
-			return err
-		}
+		return nil, err
+	} else if conn == nil {
+		err := fmt.Errorf("connect - missing connection")
+		return nil, err
 	}
 
-	tlsConfig := &tls.Config{
-		RootCAs:            caCertPool,
-		Certificates:       clientCertList,
-		InsecureSkipVerify: caCert == nil,
+	pahoCfg := paho.ClientConfig{
+		ClientID: loginID,
+		Conn:     conn,
 	}
-	broker, err := url.Parse(brokerURL)
-	if err != nil {
-		return err
+	pahoCfg.OnClientError = func(err error) {
+		slog.Warn("ConnectWithNC:OnClientError", "err", err.Error())
 	}
-	hc.router = paho.NewSingleHandlerRouter(func(m *paho.Publish) {
-		log.Printf("todo: dispatch this message to subscribers:%v+", m)
-	})
-	clCfg := autopaho.ClientConfig{
-		BrokerUrls:        []*url.URL{broker},
-		TlsCfg:            tlsConfig,
-		KeepAlive:         keepAliveInterval,
-		ConnectRetryDelay: reconnectDelay,
-		ConnectTimeout:    0,
-		//WebSocketCfg:      nil,
-		OnConnectionUp: nil,
-		OnConnectError: nil,
-		Debug:          paho.NOOPLogger{},
-		//PahoDebug:         nil,
-		//PahoErrors:        nil,
-		ClientConfig: paho.ClientConfig{
-			ClientID: loginID,
-			Router:   hc.router,
-		},
-	}
-	clCfg.OnConnectionUp = func(cmgr *autopaho.ConnectionManager, cack *paho.Connack) {
-		slog.Info("mqtt:onConnect: Connected to broker", "url", brokerURL, "loginID", loginID)
-		// does paho re-establishes the session?
-		// Subscribe to topics already registered by the app on connect or reconnect
-		//mqttClient.resubscribe()
-	}
-	clCfg.OnConnectError = func(err error) {
-		fmt.Printf("error whilst attempting connection: %s\n", err)
-	}
-
-	clCfg.OnServerDisconnect = func(d *paho.Disconnect) {
-		slog.Warn("mqtt:onConnectionLost: Disconnected from broker", "url", brokerURL,
+	pahoCfg.OnServerDisconnect = func(d *paho.Disconnect) {
+		slog.Warn("ConnectWithNC:OnServerDisconnect: Disconnected from broker",
 			"code", d.ReasonCode,
 			"loginID", loginID)
 	}
-	if withDebug {
-		clCfg.Debug = log.New(os.Stdout, "autoPaho", log.Ldate|log.Ltime)
-		clCfg.PahoDebug = log.New(os.Stdout, "paho", log.Ldate|log.Ltime)
+	pcl := paho.NewClient(pahoCfg)
+	hostName, _ := os.Hostname()
+	cp := &paho.Connect{
+		Password:     []byte(password),
+		Username:     loginID,
+		ClientID:     fmt.Sprintf("%s-%s-%d", loginID, hostName, time.Now().Unix()/int64(time.Second)),
+		Properties:   nil,
+		KeepAlive:    30,
+		CleanStart:   true,
+		UsernameFlag: true,
+		PasswordFlag: password != "",
 	}
-	ctx := context.Background()
-	hc.cm, err = autopaho.NewConnection(ctx, clCfg)
+	ctx, cancelFn := context.WithTimeout(context.Background(), time.Second*100)
+	defer cancelFn()
+	connAck, err := pcl.Connect(ctx, cp)
+	_ = connAck
+
 	if err != nil {
-		return err
+		err = fmt.Errorf("failed to connect. Reason: %d - %s",
+			connAck.ReasonCode, connAck.Properties.ReasonString)
+		return nil, err
 	}
+	hc := NewMqttHubClient(pcl)
+	return hc, err
+}
 
-	slog.Info("mqtt:Connect: Connecting to MQTT broker. AutoReconnect and CleanSession are set.",
-		"url", brokerURL, "clientID", loginID)
+// ConnectWithPassword connects to the Hub server using a login ID and password.
+func ConnectWithPassword(
+	brokerURL string, loginID string, password string, caCert *x509.Certificate) (hc *MqttHubClient, err error) {
 
-	// start listening for messages
-	//hc.isRunning = true
-	//go mqttClient.messageChanLoop()
-
-	// Auto reconnect doesn't work for initial attempt: https://github.com/eclipse/paho.mqtt.golang/issues/77
-	//retryDelaySec := 1
-	//for {
-	//	token := pahoClient.Connect()
-	//	token.Wait()
-	//	// Wait to give connection time to settle. Sending a lot of messages causes the connection to fail. Bug?
-	//	time.Sleep(1000 * time.Millisecond)
-	//	err := token.Error()
-	//	if err == nil {
-	//		break
-	//	}
-	//
-	//	slog.Error("mqtt:Connect: Connecting to broker failed. Retrying...",
-	//		"url", brokerURL, "err", token.Error(), "retryDelaySec", retryDelaySec)
-	//	time.Sleep(time.Duration(retryDelaySec) * time.Second)
-	//	// slowly increment wait time
-	//	if retryDelaySec < 120 {
-	//		retryDelaySec++
-	//	}
-	//}
-	return nil
+	conn, err := CreateTLSConnection(brokerURL, nil, caCert)
+	if err == nil {
+		hc, err = ConnectToBroker(loginID, password, conn)
+	}
+	return hc, err
 }
 
 // Disconnect from the MQTT broker and unsubscribe from all topics and set
 // device state to disconnected
 func (mqttClient *MqttHubClient) Disconnect() {
-	if mqttClient.cm != nil {
-		slog.Warn("Disconnect: Set state to disconnected and close connection")
+	if mqttClient.pcl != nil {
+
+		slog.Info("Disconnect", "clientID", mqttClient.clientID)
 		//mqttClient.publish("$state", "disconnected")
 		time.Sleep(time.Second / 10) // Disconnect doesn't seem to wait for all messages. A small delay ahead helps
-		ctx := context.Background()
-		_ = mqttClient.cm.Disconnect(ctx)
-		mqttClient.cm = nil
+		_ = mqttClient.pcl.Disconnect(&paho.Disconnect{ReasonCode: 0})
+		mqttClient.pcl = nil
 
 		//mqttClient.subscriptions = nil
 		//close(mqttClient.messageChannel)     // end the message handler loop
 	}
+}
+
+// NewMqttHubClient creates a new instance of the hub client using the connected paho client
+func NewMqttHubClient(pcl *paho.Client) *MqttHubClient {
+	hc := &MqttHubClient{
+		clientID: pcl.ClientID,
+		pcl:      pcl,
+	}
+	return hc
 }

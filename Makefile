@@ -12,7 +12,7 @@ all: core plugins hubcli  ## Build APIs, CLI, Hub services
 core: natscore
 
 natscore: ## Build the hub core binary using nats messaging
-	go build -o $(DIST_FOLDER)/bin/$@ core/cmd/$@/main.go
+	go build -o $(DIST_FOLDER)/bin/$@ cmd/runcore/main.go
 
 plugins: certs directory launcher owserver provisioning zwavejs
 

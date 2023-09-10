@@ -84,17 +84,13 @@ func (srv *NatsMsgServer) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
 // CreateToken create a new authentication token for a client
 // In NKey mode this returns the public key.
 // In Callout mode this returns a JWT token with permissions.
-func (srv *NatsMsgServer) CreateToken(clientID string) (token string, err error) {
+func (srv *NatsMsgServer) CreateToken(clientID string, pubKey string) (token string, err error) {
 	//
 	if srv.NatsOpts.AuthCallout != nil {
-		token, err = srv.CreateJWTToken(clientID, "")
+		token, err = srv.CreateJWTToken(clientID, pubKey)
 	} else {
 		// not using callout sso use public key as token
-		var clientAuth msgserver.ClientAuthInfo
-		clientAuth, err = srv.getClientAuth(clientID)
-		if err == nil {
-			token = clientAuth.PubKey
-		}
+		token = pubKey
 	}
 	return token, err
 }

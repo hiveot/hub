@@ -13,7 +13,7 @@ func TestPermissions(t *testing.T) {
 	defer t.Log("---TestPermissions end---")
 
 	// setup
-	clientURL, s, certBundle, cfg, err := testenv.StartNatsTestServer()
+	clientURL, s, certBundle, cfg, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	_ = certBundle
@@ -29,7 +29,7 @@ func TestToken(t *testing.T) {
 	defer t.Log("---TestToken end---")
 
 	// setup
-	clientURL, s, certBundle, cfg, err := testenv.StartNatsTestServer()
+	clientURL, s, certBundle, cfg, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	err = s.ApplyAuth(testenv.TestClients)
@@ -38,7 +38,7 @@ func TestToken(t *testing.T) {
 	_ = certBundle
 	_ = clientURL
 	_ = cfg
-	user2Token, err := s.CreateToken(testenv.TestUser2ID)
+	user2Token, err := s.CreateToken(testenv.TestUser2ID, testenv.TestUser2Pub)
 	require.NoError(t, err)
 
 	err = s.ValidateToken(testenv.TestUser2ID, testenv.TestUser2Pub, user2Token, "", "")

@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+const withCallout = false
+
 // TestMain for all authn tests, setup of default folders and filenames
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
@@ -26,7 +28,7 @@ func TestMain(m *testing.M) {
 func TestStartStopNKeysServer(t *testing.T) {
 	var rxMsg string
 
-	clientURL, s, _, _, err := testenv.StartNatsTestServer()
+	clientURL, s, _, _, err := testenv.StartNatsTestServer(withCallout)
 
 	require.NoError(t, err)
 	defer s.Stop()
@@ -62,7 +64,7 @@ func TestConnectWithNKey(t *testing.T) {
 	defer slog.Info("--- TestConnectWithNKey end")
 	var rxMsg string
 
-	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer()
+	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, clientURL)
@@ -73,7 +75,7 @@ func TestConnectWithNKey(t *testing.T) {
 
 	// users subscribe to things
 	hc1, err := natshubclient.ConnectWithNKey(
-		clientURL, testenv.TestServiceID, testenv.TestService1Key, certBundle.CaCert)
+		clientURL, testenv.TestService1ID, testenv.TestService1Key, certBundle.CaCert)
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 
@@ -83,7 +85,8 @@ func TestConnectWithNKey(t *testing.T) {
 		slog.Info("received message", "msg", rxMsg)
 	})
 	assert.NoError(t, err)
-	subj2 := natshubclient.MakeThingsSubject(testenv.TestServiceID, "thing1", "event", "test")
+	subj2 := natshubclient.MakeThingsSubject(
+		testenv.TestService1ID, "thing1", "event", "test")
 	err = hc1.Pub(subj2, []byte("hello world"))
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond)
@@ -94,7 +97,7 @@ func TestConnectWithPassword(t *testing.T) {
 	slog.Info("--- TestConnectWithPassword start")
 	defer slog.Info("--- TestConnectWithPassword end")
 
-	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer()
+	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, clientURL)
@@ -114,7 +117,7 @@ func TestLoginFail(t *testing.T) {
 	slog.Info("--- TestLoginFail start")
 	defer slog.Info("--- TestLoginFail end")
 
-	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer()
+	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, clientURL)
@@ -144,7 +147,7 @@ func TestEventsStream(t *testing.T) {
 	var err error
 
 	// setup
-	clientURL, s, certBundle, cfg, err := testenv.StartNatsTestServer()
+	clientURL, s, certBundle, cfg, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	_ = cfg
