@@ -81,16 +81,28 @@ func (srv *NatsMsgServer) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
 	return err
 }
 
+// CreateKP creates a keypair for use in connecting or signing.
+// This returns the key pair and its public key string.
+func (srv *NatsMsgServer) CreateKP() (interface{}, string) {
+	kp, _ := nkeys.CreateUser()
+	pubStr, _ := kp.PublicKey()
+	return kp, pubStr
+}
+
 // CreateToken create a new authentication token for a client
 // In NKey mode this returns the public key.
 // In Callout mode this returns a JWT token with permissions.
-func (srv *NatsMsgServer) CreateToken(clientID string, pubKey string) (token string, err error) {
+func (srv *NatsMsgServer) CreateToken(clientID string) (token string, err error) {
 	//
 	if srv.NatsOpts.AuthCallout != nil {
-		token, err = srv.CreateJWTToken(clientID, pubKey)
+		token, err = srv.CreateJWTToken(clientID, "")
 	} else {
 		// not using callout sso use public key as token
-		token = pubKey
+		var clientAuth msgserver.ClientAuthInfo
+		clientAuth, err = srv.getClientAuth(clientID)
+		if err == nil {
+			token = clientAuth.PubKey
+		}
 	}
 	return token, err
 }

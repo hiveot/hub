@@ -50,19 +50,20 @@ type IMsgServer interface {
 	// the provided keypair is that of a server generated keypair. See CreateKeys()
 	ConnectInProc(serviceID string) (hubclient.IHubClient, error)
 
-	// CreateKP creates a keypair for use in connecting or signing. This can be used
-	// with ConnectInProc.
-	// This returns the key pair and public key string.
-	//CreateKP() (interface{}, string)
+	// CreateKP creates a keypair for use in connecting or signing.
+	// This returns the key pair and its public key string.
+	CreateKP() (interface{}, string)
 
-	// CreateToken creates a new authentication token that can be used to connect.
+	// CreateToken creates a new authentication token for a known client.
+	// The client must have been added with ApplyAuth and have a public key.
+	//
 	// The type of token created depends on the server configuration.
-	//  NATS nkey server simply returns the public key for connecting with nkey
-	//  NATS callout server returns a JWT token for connecting with JWT
+	//  NATS nkey server simply returns the public key for connecting with nkey.
+	//  NATS callout server returns a JWT token containing authorization.
+	//  MQTT uses a JWT token.
 	//
 	//  clientID of a known client
-	//  pubKey public key of the client
-	CreateToken(clientID string, pubKey string) (newToken string, err error)
+	CreateToken(clientID string) (newToken string, err error)
 
 	// SetRolePermissions sets the roles used in authorization.
 	// As messaging servers have widely different ways of handling authentication and

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/hubclient"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/ser"
 	"github.com/nats-io/nats.go"
 	"golang.org/x/exp/slog"
@@ -74,6 +75,45 @@ func (hc *NatsHubClient) Sub(subject string, cb func(topic string, data []byte))
 	return sub, err
 }
 
+// Subscribe to NATS
+func (hc *NatsHubClient) Subscribe(subject string, cb func(msg *nats.Msg)) (sub hubclient.ISubscription, err error) {
+	slog.Info("subscribe", "subject", subject, "clientID", hc.clientID)
+	nsub, err := hc.nc.Subscribe(subject, cb)
+	isValid := nsub.IsValid()
+	if err != nil || !isValid {
+		err = fmt.Errorf("subscribe to '%s' failed: %w", subject, err)
+	}
+	sub = &NatsHubSubscription{nsub: nsub}
+	return sub, err
+}
+
+func (hc *NatsHubClient) SubThingEvents(
+	deviceID string, thingID string,
+	cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
+
+	subject := MakeThingsSubject(deviceID, thingID, vocab.MessageTypeEvent, "")
+	nsub, err := hc.nc.Subscribe(subject, func(msg *nats.Msg) {
+
+		_, deviceID, thingID, _, name, err := SplitSubject(msg.Subject)
+		if err != nil {
+			return
+		}
+		md, _ := msg.Metadata()
+		timeStamp := md.Timestamp.Unix()
+		evmsg := &hubclient.EventMessage{
+			//SenderID: msg.Header.
+			EventID:   name,
+			DeviceID:  deviceID,
+			ThingID:   thingID,
+			Timestamp: timeStamp,
+			Payload:   msg.Data,
+		}
+		cb(evmsg)
+	})
+	sub := &NatsHubSubscription{nsub: nsub}
+	return sub, err
+}
+
 // startEventMessageHandler listens for incoming event messages and invoke a callback handler
 // this returns when the subscription is no longer valid
 func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *hubclient.EventMessage)) error {
@@ -115,7 +155,7 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *hubclient.Ev
 			msg := &hubclient.EventMessage{
 				//SenderID: msg.Header.
 				EventID:   name,
-				BindingID: pubID,
+				DeviceID:  pubID,
 				ThingID:   thID,
 				Timestamp: timeStamp.Unix(),
 				Payload:   natsMsg.Data,
@@ -172,17 +212,5 @@ func (hc *NatsHubClient) SubStream(name string, receiveLatest bool, cb func(msg 
 
 	err = startEventMessageHandler(nsub, cb)
 	sub := &NatsHubSubscription{nsub: nsub}
-	return sub, err
-}
-
-// Subscribe to NATS
-func (hc *NatsHubClient) Subscribe(subject string, cb func(msg *nats.Msg)) (sub hubclient.ISubscription, err error) {
-	slog.Info("subscribe", "subject", subject, "clientID", hc.clientID)
-	nsub, err := hc.nc.Subscribe(subject, cb)
-	isValid := nsub.IsValid()
-	if err != nil || !isValid {
-		err = fmt.Errorf("subscribe to '%s' failed: %w", subject, err)
-	}
-	sub = &NatsHubSubscription{nsub: nsub}
 	return sub, err
 }

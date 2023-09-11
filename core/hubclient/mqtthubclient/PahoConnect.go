@@ -16,20 +16,6 @@ import (
 
 // lower level autopaho functions with connect, pub and sub
 
-const keepAliveInterval = 10 // seconds
-const reconnectDelay = 10 * time.Second
-const withDebug = false
-
-// MqttHubClient manages the hub server connection with hub event and action messaging
-// This implements the IHubClient interface.
-// This implementation is based on the Mqtt messaging system.
-type MqttHubClient struct {
-	clientID string
-	hostName string
-	port     int
-	pcl      *paho.Client
-}
-
 // ConnectWithCert to the Hub server
 //
 //	brokerURL of the server.
@@ -131,6 +117,8 @@ func CreateTLSConnection(
 func ConnectToBroker(loginID string, password string, conn net.Conn) (*MqttHubClient, error) {
 	ctx := context.Background()
 
+	slog.Info("ConnectToBroker", "loginID", loginID, "url", conn.RemoteAddr())
+
 	// checks
 	if loginID == "" {
 		err := fmt.Errorf("connect - Missing Login ID")
@@ -174,7 +162,7 @@ func ConnectToBroker(loginID string, password string, conn net.Conn) (*MqttHubCl
 			connAck.ReasonCode, connAck.Properties.ReasonString)
 		return nil, err
 	}
-	hc := NewMqttHubClient(pcl)
+	hc := NewMqttHubClient(loginID, pcl)
 	return hc, err
 }
 
@@ -203,13 +191,4 @@ func (mqttClient *MqttHubClient) Disconnect() {
 		//mqttClient.subscriptions = nil
 		//close(mqttClient.messageChannel)     // end the message handler loop
 	}
-}
-
-// NewMqttHubClient creates a new instance of the hub client using the connected paho client
-func NewMqttHubClient(pcl *paho.Client) *MqttHubClient {
-	hc := &MqttHubClient{
-		clientID: pcl.ClientID,
-		pcl:      pcl,
-	}
-	return hc
 }

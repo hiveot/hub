@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/certs"
 	"golang.org/x/exp/slog"
+	"path"
 )
 
 // MqttServerConfig holds the mqtt broker configuration
@@ -19,6 +20,8 @@ type MqttServerConfig struct {
 	LogFile  string `yaml:"logFile,omitempty"`  // default: no logfile
 	Debug    bool   `yaml:"debug,omitempty"`    // default: false
 
+	DataDir string `yaml:"dataDir,omitempty"` // default is server default
+
 	//AdminUserKeyFile  string `yaml:"adminUserKeyFile,omitempty"`  // default: admin.jwt
 	//SystemUserKeyFile string `yaml:"systemUserKeyFile,omitempty"` // default: systemUser.jwt
 
@@ -28,7 +31,8 @@ type MqttServerConfig struct {
 	// The certs and keys can be set directly or loaded from above files
 	CaCert        *x509.Certificate `yaml:"-"` // preset, load, or error
 	CaKey         *ecdsa.PrivateKey `yaml:"-"` // preset, load, or error
-	ServerTLS     *tls.Certificate  `yaml:"-"` // preset, load, or generate
+	ServerKey     *ecdsa.PrivateKey `yaml:"-"` // generated
+	ServerTLS     *tls.Certificate  `yaml:"-"` // generated
 	AdminUserKP   *ecdsa.PrivateKey `yaml:"-"` // generated
 	CoreServiceKP *ecdsa.PrivateKey `yaml:"-"` // generated
 
@@ -46,9 +50,11 @@ type MqttServerConfig struct {
 //
 // Set 'writeChanges' to persist generated server cert, operator and account keys
 //
-//	certsDir is the default certificate and key location
-//	storesDir is the data storage root (default $HOME/stores)
-func (cfg *MqttServerConfig) Setup(certsDir, storesDir string, writeChanges bool) (err error) {
+//		keysDir is the default key location
+//		storesDir is the data storage root (default $HOME/stores)
+//	 writeChanges writes generated account key to the keysDir
+func (cfg *MqttServerConfig) Setup(
+	keysDir, storesDir string, writeChanges bool) (err error) {
 
 	// Step 1: Apply defaults parameters
 	if cfg.Host == "" {
@@ -59,6 +65,9 @@ func (cfg *MqttServerConfig) Setup(certsDir, storesDir string, writeChanges bool
 	}
 	if cfg.WSPort == 0 {
 		//appCfg.WSPort = 8222
+	}
+	if cfg.DataDir == "" {
+		cfg.DataDir = path.Join(storesDir, "natsserver")
 	}
 	if cfg.LogLevel == "" {
 		cfg.LogLevel = "warn"
@@ -76,18 +85,20 @@ func (cfg *MqttServerConfig) Setup(certsDir, storesDir string, writeChanges bool
 	if cfg.CaCert == nil || cfg.CaKey == nil {
 		cfg.CaCert, cfg.CaKey, err = certs.CreateCA("hiveot", 365)
 	}
+	if cfg.ServerKey == nil {
+		cfg.ServerKey = certs.CreateECDSAKeys()
+	}
 	if cfg.ServerTLS == nil && cfg.CaKey != nil {
-		serverKeys := certs.CreateECDSAKeys()
 		names := []string{cfg.Host}
 		serverX509, err := certs.CreateServerCert(
 			"hiveot", "server",
 			365, // validity matches the CA
-			&serverKeys.PublicKey,
+			&cfg.ServerKey.PublicKey,
 			names, cfg.CaCert, cfg.CaKey)
 		if err != nil {
 			slog.Error("unable to generate server cert. Not using TLS.", "err", err)
 		} else {
-			cfg.ServerTLS = certs.X509CertToTLS(serverX509, serverKeys)
+			cfg.ServerTLS = certs.X509CertToTLS(serverX509, cfg.ServerKey)
 		}
 	}
 

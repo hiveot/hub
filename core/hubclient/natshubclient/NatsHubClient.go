@@ -182,7 +182,7 @@ func (hc *NatsHubClient) SubServiceActions(
 //			return
 //		}
 //		eventMsg := &hubclient.EventMessage{
-//			BindingID: bindingID,
+//			DeviceID: bindingID,
 //			ThingID:   thID,
 //			EventID:   name,
 //			Timestamp: timeStamp.Unix(),

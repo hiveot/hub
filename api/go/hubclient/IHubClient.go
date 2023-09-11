@@ -21,7 +21,7 @@ type ISubscription interface {
 // EventMessage for subscribers
 type EventMessage struct {
 	// Authenticated UserID of the device or service publishing the event
-	BindingID string `yaml:"bindingID"`
+	DeviceID string `yaml:"deviceID"`
 	// Optional ThingID of the Thing that generated the event
 	ThingID string `yaml:"thingID,omitempty"`
 	// EventID of the event as defined in the TD document
@@ -92,7 +92,7 @@ type IHubClient interface {
 	//
 	// The client's ID is used as the publisher ID of the action.
 	//
-	//	destinationID is the deviceID or serviceID that handles the action for the thing or service capability
+	//	destinationID is the serviceID that handles the action for the thing or service capability
 	//	capability is the capability to invoke
 	//  actionID is the name of capability action to invoke
 	//  payload is the optional payload of the action
@@ -103,12 +103,12 @@ type IHubClient interface {
 	//
 	// The client's ID is used as the publisher ID of the action.
 	//
-	//	sourceID is the deviceID or serviceID that handles the action for the thing or service capability
+	//	deviceID is the deviceID that handles the action for the thing or service capability
 	//	thingID is the destination thingID that handles the action
 	//  actionID is the ID of the action as described in the Thing's TD
 	//  payload is the optional payload of the action as described in the Thing's TD
 	// This returns a response payload if successful and a response is given.
-	PubThingAction(sourceID string, thingID string, actionID string, payload []byte) ([]byte, error)
+	PubThingAction(deviceID string, thingID string, actionID string, payload []byte) ([]byte, error)
 
 	// PubEvent publishes the given things event. The payload is an event value as per TD document.
 	//
@@ -133,6 +133,21 @@ type IHubClient interface {
 	// Sub allows subscribing to any topic/subject address that the client is authorized to.
 	// Intended for testing or special topics.
 	Sub(addr string, cb func(addr string, data []byte)) (ISubscription, error)
+
+	// SubThingEvents subscribes to events sent by a Thing's device.
+	// Intended for use by devices to receive requests for its things.
+	//
+	// The handler receives an action request message with request payload and returns
+	// an optional reply or an error when the request wasn't accepted.
+	//
+	// The supported actions are defined in the TD document of the things this binding has published.
+	//  thingID is the device thing or service capability to subscribe to, or "" for wildcard
+	//  cb is the callback to invoke
+	//
+	// The handler receives an action request message with request payload and
+	// must reply withwith msg.Reply or msg.Ack, or return an error
+	SubThingEvents(deviceID string, thingID string,
+		handler func(msg *EventMessage)) (ISubscription, error)
 
 	// SubThingActions subscribes to actions requested of a Thing.
 	// Intended for use by devices to receive requests for its things.

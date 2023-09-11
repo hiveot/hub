@@ -15,8 +15,9 @@ import (
 	"os"
 )
 
-// var inProcAddr = "@/mqttinproc"
-var inProcAddr = "/tmp/mqttinproc"
+var inProcAddr = "@/mqttinproc"
+
+//var inProcAddr = "/tmp/mqttinproc"
 
 // MqttMsgServer runs a MQTT broker using the Mochi-co embedded mqtt server.
 // this implements the IMsgServer interface
@@ -78,6 +79,9 @@ func (srv *MqttMsgServer) ConnectInProcNC() (net.Conn, error) {
 func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hubclient.IHubClient, error) {
 
 	conn, err := net.Dial("unix", inProcAddr)
+	if err != nil {
+		return nil, err
+	}
 	safeConn := packets.NewThreadSafeConn(conn)
 	hc, err := mqtthubclient.ConnectToBroker(serviceID, "", safeConn)
 
@@ -137,7 +141,7 @@ func (srv *MqttMsgServer) Start() (clientURL string, err error) {
 		}
 	}
 	// listen on UDS for local connections
-	// @/path prefix creates an in-memory pipe
+	// todo: does @/path prefix creates an in-memory pipe
 	inmemLis := listeners.NewUnixSock("inmem", inProcAddr)
 	err = srv.ms.AddListener(inmemLis)
 	if err != nil {

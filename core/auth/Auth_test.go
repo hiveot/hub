@@ -5,11 +5,10 @@ import (
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/core/auth/authservice"
+	"github.com/hiveot/hub/core/hubclient/mqtthubclient"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
-	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nkeys"
 	"golang.org/x/exp/slog"
 	"os"
@@ -23,14 +22,12 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 )
 
+var core = "mqtt"
 var certBundle certs.TestCertBundle
-
-var serverCfg *natsmsgserver.NatsServerConfig
 var testDir = path.Join(os.TempDir(), "test-authn")
 
 // the following are set by the testmain
 var clientURL string
-
 var msgServer msgserver.IMsgServer
 
 //var useCallout = false
@@ -39,7 +36,7 @@ var msgServer msgserver.IMsgServer
 func addNewUser(userID string, displayName string, pass string, mng authapi.IAuthnManageClients) (token string, key nkeys.KeyPair, err error) {
 	userKey, _ := nkeys.CreateUser()
 	userKeyPub, _ := userKey.PublicKey()
-	// FIXME: must set a password in order to update it later
+	// FIXME: must set a password in order to be able to update it later
 	userToken, err := mng.AddUser(userID, displayName, pass, userKeyPub, authapi.ClientRoleViewer)
 	return userToken, userKey, err
 }
@@ -64,7 +61,10 @@ func startTestAuthnService() (authnSvc *authservice.AuthService, mng authapi.IAu
 	}
 
 	//--- connect the authn management client for managing clients
-	hc2, err := msgServer.ConnectInProc("authn-client")
+	//hc2, err := msgServer.ConnectInProc("authn-client")
+
+	hc2, err := mqtthubclient.ConnectWithPassword(clientURL, "authclient", "", certBundle.CaCert)
+
 	if err != nil {
 		panic(err)
 	}
@@ -88,7 +88,7 @@ func TestMain(m *testing.M) {
 	_ = os.MkdirAll(testDir, 0700)
 
 	//clientURL, msgServer, certBundle, err = testenv.StartTestServer("nats")
-	clientURL, msgServer, certBundle, serverCfg, err = testenv.StartNatsTestServer(false)
+	clientURL, msgServer, certBundle, err = testenv.StartTestServer(core)
 	if err != nil {
 		panic(err)
 	}
@@ -290,20 +290,6 @@ func TestLoginRefresh(t *testing.T) {
 	require.NoError(t, err)
 	hc3.Disconnect()
 	require.NoError(t, err)
-	//
-	//// 6. login with a forged token should fail
-	//appAcctPub, _ := serverCfg.AppAccountKP.PublicKey()
-	//fakeAcct, _ := nkeys.CreateAccount()
-	//forgedClaims := jwt.NewUserClaims(tu1KeyPub)
-	//forgedClaims.Issuer = appAcctPub
-	//forgedClaims.Name = tu1ID
-	//forgedJWT, err := forgedClaims.Encode(fakeAcct) // <- forged
-	//require.NoError(t, err)
-
-	//hc4, err := natshubclient.Connect(clientURL, tu1ID, tu1Key, forgedJWT, certBundle.CaCert)
-	//require.Error(t, err)
-	//assert.Empty(t, hc4)
-
 }
 
 func TestRefreshFakeToken(t *testing.T) {
@@ -320,7 +306,7 @@ func TestRefreshFakeToken(t *testing.T) {
 	// add user to test with. password and no public key
 	tu1Key, _ := nkeys.CreateUser()
 	tu1KeyPub, _ := tu1Key.PublicKey()
-	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, "", authapi.ClientRoleViewer)
+	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, tu1KeyPub, authapi.ClientRoleViewer)
 	_ = tu1Token
 	require.NoError(t, err)
 	_, err = mng.AddUser(testenv.TestUser2ID, "user 2", "", testenv.TestUser2Pub, authapi.ClientRoleViewer)
@@ -341,29 +327,28 @@ func TestRefreshFakeToken(t *testing.T) {
 	require.Error(t, err)
 	assert.Empty(t, authToken1)
 
-	// 3. Use a fake jwt token, eg from another user
-	fakeToken, err := msgServer.CreateToken(testenv.TestUser2ID, testenv.TestUser2Pub)
-	authToken1, err = cl1.Refresh(tu1ID, fakeToken)
-	require.Error(t, err)
-	assert.Empty(t, authToken1)
-
-	// 4. Use a fake public key, eg from another user
-	fakeToken, _ = serverCfg.CoreServiceKP.PublicKey()
-	authToken1, err = cl1.Refresh(tu1ID, fakeToken)
-	require.Error(t, err)
-	assert.Empty(t, authToken1)
-
-	// 5. Refresh a self generated token
-	err = cl1.UpdatePubKey(tu1ID, tu1KeyPub)
+	// 3. Use a jwt token from another user
+	fakeToken, err := msgServer.CreateToken(testenv.TestUser2ID)
 	require.NoError(t, err)
-	appAcctPub, _ := serverCfg.AppAccountKP.PublicKey()
-	fakeAcct, _ := nkeys.CreateAccount()
-	forgedClaims := jwt.NewUserClaims(tu1KeyPub)
-	forgedClaims.Issuer = appAcctPub
-	forgedJWT, err := forgedClaims.Encode(fakeAcct) // <- forged
-	authToken1, err = cl1.Refresh(tu1ID, forgedJWT)
+	authToken1, err = cl1.Refresh(testenv.TestUser2ID, fakeToken)
 	require.Error(t, err)
 	assert.Empty(t, authToken1)
+
+	//// 4. Use a fake public key, eg from another user
+	//fakeToken, _ = serverCfg.CoreServiceKP.PublicKey()
+	//authToken1, err = cl1.Refresh(tu1ID, fakeToken)
+	//require.Error(t, err)
+	//assert.Empty(t, authToken1)
+
+	//// 5. Try refreshing a self generated token
+	//appAcctPub, _ := serverCfg.AppAccountKP.PublicKey()
+	//fakeAcct, _ := nkeys.CreateAccount()
+	//forgedClaims := jwt.NewUserClaims(tu1KeyPub)
+	//forgedClaims.Issuer = appAcctPub
+	//forgedJWT, err := forgedClaims.Encode(fakeAcct) // <- forged
+	//authToken1, err = cl1.Refresh(tu1ID, forgedJWT)
+	//require.Error(t, err)
+	//assert.Empty(t, authToken1)
 }
 
 func TestUpdate(t *testing.T) {

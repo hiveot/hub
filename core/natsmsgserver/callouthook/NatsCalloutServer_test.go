@@ -21,7 +21,7 @@ func TestMain(m *testing.M) {
 
 func TestStartStopCallout(t *testing.T) {
 	// defined in NatsNKeyServer_test.go
-	clientURL, s, _, _, err := testenv.StartNatsTestServer()
+	clientURL, s, _, _, err := testenv.StartNatsTestServer(true)
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, clientURL)
@@ -42,7 +42,7 @@ func TestValidateToken(t *testing.T) {
 	defer t.Log("---TestToken end---")
 
 	// setup
-	clientURL, s, _, _, err := testenv.StartNatsTestServer()
+	clientURL, s, _, _, err := testenv.StartNatsTestServer(true)
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, clientURL)
@@ -63,7 +63,7 @@ func TestValidateToken(t *testing.T) {
 }
 
 func TestCalloutPassword(t *testing.T) {
-	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer()
+	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer(true)
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, clientURL)
@@ -85,7 +85,7 @@ func TestCalloutPassword(t *testing.T) {
 }
 
 func TestCalloutJWT(t *testing.T) {
-	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer()
+	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer(true)
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, clientURL)
@@ -109,7 +109,7 @@ func TestCalloutJWT(t *testing.T) {
 }
 
 func TestNoCalloutForExistingNKey(t *testing.T) {
-	clientURL, s, _, _, err := testenv.StartNatsTestServer()
+	clientURL, s, _, _, err := testenv.StartNatsTestServer(true)
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, clientURL)
@@ -135,7 +135,7 @@ func TestNoCalloutForExistingNKey(t *testing.T) {
 func TestInValidCalloutAuthn(t *testing.T) {
 	const knownUser = "knownuser"
 
-	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer()
+	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer(true)
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, clientURL)

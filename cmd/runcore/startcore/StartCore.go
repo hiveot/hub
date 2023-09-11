@@ -12,7 +12,6 @@ import (
 )
 
 // Runtimes
-// var MsgServer *natsmsgserver.NatsMsgServer
 var MsgServer msgserver.IMsgServer
 var AuthService *authservice.AuthService
 

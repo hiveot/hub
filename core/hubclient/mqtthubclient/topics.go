@@ -16,16 +16,16 @@ import (
 //	name is the event or action name. Use "" for wildcard.
 func MakeThingsTopic(pubID, thingID, stype, name string) string {
 	if pubID == "" {
-		pubID = "*"
+		pubID = "+"
 	}
 	if thingID == "" {
-		thingID = "*" // nats uses *
+		thingID = "+" // nats uses *
 	}
 	if stype == "" {
 		stype = vocab.MessageTypeEvent
 	}
 	if name == "" {
-		name = ">" // anything after is fine
+		name = "#" // anything after is fine
 	}
 	subj := fmt.Sprintf("things/%s/%s/%s/%s",
 		pubID, thingID, stype, name)
@@ -41,43 +41,20 @@ func MakeThingsTopic(pubID, thingID, stype, name string) string {
 //	name is the event or action name. Use "" for wildcard.
 func MakeServiceTopic(serviceID, capID, stype, name string) string {
 	if serviceID == "" {
-		serviceID = "*"
+		serviceID = "+"
 	}
 	if capID == "" {
-		capID = "*" // nats uses *
+		capID = "+"
 	}
 	if stype == "" {
 		stype = vocab.MessageTypeEvent
 	}
 	if name == "" {
-		name = ">" // anything after is fine
+		name = "#" // anything after is fine
 	}
 	topic := fmt.Sprintf("svc/%s/%s/%s/%s",
 		serviceID, capID, stype, name)
 	return topic
-}
-
-// SplitTopic separates a topic into its components
-//
-// topic is a hiveot nats topic. eg: things.publisherID.thingID.type.name
-//
-//	prefix of things or services
-//	deviceID is the device or service that handles the topic.
-//	thingID is the thing of the topic, or capability for services.
-//	stype is the topic type, eg event or action.
-//	name is the event or action name
-func SplitTopic(topic string) (prefix, deviceID, thingID, stype, name string, err error) {
-	parts := strings.Split(topic, "/")
-	if len(parts) < 5 {
-		err = errors.New("incomplete topic")
-		return
-	}
-	prefix = parts[0]
-	deviceID = parts[1]
-	thingID = parts[2]
-	stype = parts[3]
-	name = parts[4]
-	return
 }
 
 // MakeThingActionTopic creates a nats topic for submitting actions
@@ -89,16 +66,16 @@ func SplitTopic(topic string) (prefix, deviceID, thingID, stype, name string, er
 //	senderID is the loginID of the user submitting the action
 func MakeThingActionTopic(deviceID, thingID, name string, senderID string) string {
 	if deviceID == "" {
-		deviceID = "*"
+		deviceID = "+"
 	}
 	if thingID == "" {
-		thingID = "*" // nats uses *
+		thingID = "+"
 	}
 	if name == "" {
-		name = "*" // nats uses *
+		name = "+"
 	}
 	if senderID == "" {
-		senderID = "*"
+		senderID = "+"
 	}
 	topic := fmt.Sprintf("things/%s/%s/%s/%s/%s",
 		deviceID, thingID, vocab.MessageTypeAction, name, senderID)
@@ -114,16 +91,16 @@ func MakeThingActionTopic(deviceID, thingID, name string, senderID string) strin
 //	senderID is the loginID of the user submitting the action
 func MakeServiceActionTopic(serviceID, thingID, name string, senderID string) string {
 	if serviceID == "" {
-		serviceID = "*"
+		serviceID = "+"
 	}
 	if thingID == "" {
-		thingID = "*" // nats uses *
+		thingID = "+"
 	}
 	if name == "" {
-		name = "*" // nats uses *
+		name = "+"
 	}
 	if senderID == "" {
-		senderID = "*"
+		senderID = "+"
 	}
 	topic := fmt.Sprintf("svc/%s/%s/%s/%s/%s",
 		serviceID, thingID, vocab.MessageTypeAction, name, senderID)
@@ -154,5 +131,28 @@ func SplitActionTopic(topic string) (bindingID, thingID, name string, clientID s
 	thingID = parts[2]
 	name = parts[4]
 	clientID = parts[5]
+	return
+}
+
+// SplitTopic separates a topic into its components
+//
+// topic is a hiveot nats topic. eg: things.publisherID.thingID.type.name
+//
+//	prefix of things or services
+//	deviceID is the device or service that handles the topic.
+//	thingID is the thing of the topic, or capability for services.
+//	stype is the topic type, eg event or action.
+//	name is the event or action name
+func SplitTopic(topic string) (prefix, deviceID, thingID, stype, name string, err error) {
+	parts := strings.Split(topic, "/")
+	if len(parts) < 5 {
+		err = errors.New("incomplete topic")
+		return
+	}
+	prefix = parts[0]
+	deviceID = parts[1]
+	thingID = parts[2]
+	stype = parts[3]
+	name = parts[4]
 	return
 }

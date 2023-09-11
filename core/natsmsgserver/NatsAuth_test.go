@@ -38,7 +38,7 @@ func TestToken(t *testing.T) {
 	_ = certBundle
 	_ = clientURL
 	_ = cfg
-	user2Token, err := s.CreateToken(testenv.TestUser2ID, testenv.TestUser2Pub)
+	user2Token, err := s.CreateToken(testenv.TestUser2ID)
 	require.NoError(t, err)
 
 	err = s.ValidateToken(testenv.TestUser2ID, testenv.TestUser2Pub, user2Token, "", "")

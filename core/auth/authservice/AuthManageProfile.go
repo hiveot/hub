@@ -28,13 +28,6 @@ type AuthManageProfile struct {
 	caCert *x509.Certificate
 }
 
-// CreateToken creates an authentication token using server.
-func (svc *AuthManageProfile) CreateToken(clientID string, pubKey string) (
-	newToken string, err error) {
-
-	return svc.msgServer.CreateToken(clientID, pubKey)
-}
-
 // GetProfile returns a client's profile
 func (svc *AuthManageProfile) GetProfile(clientID string) (profile auth.ClientProfile, err error) {
 	clientProfile, err := svc.store.GetProfile(clientID)
@@ -125,14 +118,11 @@ func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) err
 
 // NewToken validates a password and issues an authn token. A public key must be on file.
 func (svc *AuthManageProfile) NewToken(clientID string, password string) (newToken string, err error) {
-	clientProfile, err := svc.store.VerifyPassword(clientID, password)
+	_, err = svc.store.VerifyPassword(clientID, password)
 	if err != nil {
 		return "", err
 	}
-	if clientProfile.PubKey == "" {
-		return "", fmt.Errorf("no public key on file for '%s'", clientID)
-	}
-	newToken, err = svc.CreateToken(clientID, clientProfile.PubKey)
+	newToken, err = svc.msgServer.CreateToken(clientID)
 	return newToken, err
 }
 
@@ -157,7 +147,7 @@ func (svc *AuthManageProfile) Refresh(clientID string, oldToken string) (newToke
 	if err != nil {
 		return "", fmt.Errorf("error validating oldToken of client %s: %w", clientID, err)
 	}
-	newToken, err = svc.CreateToken(clientID, clientProfile.PubKey)
+	newToken, err = svc.msgServer.CreateToken(clientID)
 	return newToken, err
 }
 

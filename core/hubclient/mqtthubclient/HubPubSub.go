@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/ser"
 	"golang.org/x/exp/slog"
+	"time"
 )
 
 // higher level Hub event and action functions
@@ -74,7 +75,7 @@ func (hc *MqttHubClient) ParseResponse(data []byte, resp interface{}) error {
 // PubThingAction sends an action request to the hub and receives a response
 // Returns the response or an error if the request fails or timed out
 func (hc *MqttHubClient) PubThingAction(bindingID string, thingID string, actionID string, payload []byte) ([]byte, error) {
-	topic := MakeThingsTopic(bindingID, thingID, actionID, hc.clientID)
+	topic := MakeThingActionTopic(bindingID, thingID, actionID, hc.clientID)
 	slog.Info("PubThingAction", "topic", topic)
 	resp, err := hc.Request(topic, payload)
 	if resp == nil {
@@ -156,6 +157,30 @@ func (hc *MqttHubClient) PubTD(td *thing.TD) error {
 //	}
 //	return err
 //}
+
+func (hc *MqttHubClient) SubThingEvents(
+	deviceID string, thingID string,
+	cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
+
+	topic := MakeThingsTopic(deviceID, thingID, vocab.MessageTypeEvent, "")
+
+	return hc.Sub(topic, func(topic string, payload []byte) {
+
+		_, deviceID, thingID, _, name, err := SplitTopic(topic)
+		if err != nil {
+			slog.Info("splittopic fail", "topic", topic, "err", err)
+			return
+		}
+		eventMsg := &hubclient.EventMessage{
+			DeviceID:  deviceID,
+			ThingID:   thingID,
+			EventID:   name,
+			Payload:   payload,
+			Timestamp: time.Now().Unix(),
+		}
+		cb(eventMsg)
+	})
+}
 
 func (hc *MqttHubClient) SubStream(
 	name string, receiveLatest bool, cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {

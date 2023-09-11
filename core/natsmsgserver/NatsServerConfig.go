@@ -65,9 +65,10 @@ type NatsServerConfig struct {
 //
 // Set 'writeChanges' to persist generated server cert, operator and account keys
 //
-//	certsDir is the default certificate and key location
-//	storesDir is the data storage root (default $HOME/stores)
-func (cfg *NatsServerConfig) Setup(certsDir, storesDir string, writeChanges bool) (err error) {
+//		keysDir is the default key location
+//		storesDir is the data storage root (default $HOME/stores)
+//	 writeChanges writes generated account key to the keysDir
+func (cfg *NatsServerConfig) Setup(keysDir, storesDir string, writeChanges bool) (err error) {
 
 	// Step 1: Apply defaults parameters
 	if cfg.Host == "" {
@@ -89,16 +90,16 @@ func (cfg *NatsServerConfig) Setup(certsDir, storesDir string, writeChanges bool
 		cfg.LogLevel = "warn"
 	}
 	if cfg.AdminUserKeyFile == "" {
-		cfg.AdminUserKeyFile = path.Join(certsDir, "admin.nkey")
+		cfg.AdminUserKeyFile = path.Join(keysDir, "admin.nkey")
 	}
 	if cfg.AppAccountName == "" {
 		cfg.AppAccountName = "hiveot"
 	}
 	if cfg.AppAccountKeyFile == "" {
-		cfg.AppAccountKeyFile = path.Join(certsDir, "appAcct.nkey")
+		cfg.AppAccountKeyFile = path.Join(keysDir, "appAcct.nkey")
 	}
 	if cfg.SystemUserKeyFile == "" {
-		cfg.SystemUserKeyFile = path.Join(certsDir, "systemUser.nkey")
+		cfg.SystemUserKeyFile = path.Join(keysDir, "systemUser.nkey")
 	}
 
 	// Step 2: generate missing certificates
@@ -126,7 +127,7 @@ func (cfg *NatsServerConfig) Setup(certsDir, storesDir string, writeChanges bool
 	if cfg.AppAccountKP == nil {
 		kpPath := cfg.AppAccountKeyFile
 		if !path.IsAbs(kpPath) {
-			kpPath = path.Join(certsDir, kpPath)
+			kpPath = path.Join(keysDir, kpPath)
 		}
 		kpSeed, err := os.ReadFile(kpPath)
 		if err == nil {
