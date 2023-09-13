@@ -76,12 +76,13 @@ func TestCalloutPassword(t *testing.T) {
 	chook, err := callouthook.EnableNatsCalloutHook(s)
 	assert.NoError(t, err)
 
-	hc, err := natshubclient.ConnectWithPassword(clientURL, testenv.TestUser1ID, testenv.TestUser1Pass, certBundle.CaCert)
+	hc1 := natshubclient.NewNatsHubClient(testenv.TestUser1ID, nil)
+	err = hc1.ConnectWithPassword(clientURL, testenv.TestUser1Pass, certBundle.CaCert)
 	require.NoError(t, err)
 	successCount, _ := chook.GetCounters()
 	assert.Equal(t, 1, successCount)
 
-	hc.Disconnect()
+	hc1.Disconnect()
 }
 
 func TestCalloutJWT(t *testing.T) {
@@ -100,12 +101,13 @@ func TestCalloutJWT(t *testing.T) {
 
 	jwtToken, err := s.CreateJWTToken(testenv.TestUser2ID, testenv.TestUser2Pub)
 	require.NoError(t, err)
-	hc, err := natshubclient.ConnectWithJWT(clientURL, testenv.TestUser2Key, jwtToken, certBundle.CaCert)
+	hc2 := natshubclient.NewNatsHubClient(testenv.TestUser2ID, testenv.TestUser2Key)
+	err = hc2.ConnectWithJWT(clientURL, jwtToken, certBundle.CaCert)
 	require.NoError(t, err)
 	successCount, _ := chook.GetCounters()
 	assert.Equal(t, 1, successCount)
 
-	hc.Disconnect()
+	hc2.Disconnect()
 }
 
 func TestNoCalloutForExistingNKey(t *testing.T) {
@@ -149,7 +151,8 @@ func TestInValidCalloutAuthn(t *testing.T) {
 
 	// invoke callout by connecting with an invalid user
 	newkey2, _ := nkeys.CreateUser()
-	_, err = natshubclient.ConnectWithNKey(clientURL, "unknownuser", newkey2, certBundle.CaCert)
+	hc2 := natshubclient.NewNatsHubClient("unknownuser", newkey2)
+	err = hc2.ConnectWithKey(clientURL, certBundle.CaCert)
 	require.Error(t, err)
 
 	_, failCount := chook.GetCounters()

@@ -4,6 +4,7 @@ import (
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/core/mqttmsgserver"
 	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slog"
@@ -96,4 +97,21 @@ func TestMqttServerRequest(t *testing.T) {
 	time.Sleep(time.Millisecond)
 
 	assert.Equal(t, msg, rxMsg)
+}
+
+func TestToken(t *testing.T) {
+
+	// setup
+	_, srv, _, err := testenv.StartTestServer("mqtt")
+	require.NoError(t, err)
+	defer srv.Stop()
+	err = srv.ApplyAuth(testenv.TestClients)
+	require.NoError(t, err)
+
+	// user2 is in the test clients with a public key
+	token2, err := srv.CreateToken(testenv.TestUser2ID)
+	require.NoError(t, err)
+	err = srv.ValidateToken(testenv.TestUser2ID, testenv.TestUser2Pub, token2, "", "")
+	require.NoError(t, err)
+
 }

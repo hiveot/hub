@@ -13,11 +13,12 @@ import (
 	"github.com/mochi-mqtt/server/v2/listeners"
 	"net"
 	"os"
+	"sync"
 )
 
-var inProcAddr = "@/mqttinproc"
+var inMemConnAddr = "@/mqttinproc"
 
-//var inProcAddr = "/tmp/mqttinproc"
+//var inMemConnAddr = "/tmp/mqttinproc"
 
 // MqttMsgServer runs a MQTT broker using the Mochi-co embedded mqtt server.
 // this implements the IMsgServer interface
@@ -33,8 +34,8 @@ type MqttMsgServer struct {
 	// clientURL the server is listening on
 	clientURL string
 
-	//
-	ms *mqtt.Server
+	ms      *mqtt.Server
+	authMux sync.RWMutex
 }
 
 // ClientURL is the URL used to connect to this server. This is set on Start
@@ -67,7 +68,7 @@ func (srv *MqttMsgServer) ConnectInProcNC() (net.Conn, error) {
 	nc, err := tls.Dial("tcp", clientURL, tlsConfig)
 	//slog.Info("ConnectInProc", "serviceID", serviceID, "pubkey", serviceKeyPub)
 
-	//nc, err := net.Dial("unix", inProcAddr)
+	//nc, err := net.Dial("unix", inMemConnAddr)
 	return nc, err
 }
 
@@ -76,16 +77,18 @@ func (srv *MqttMsgServer) ConnectInProcNC() (net.Conn, error) {
 // Intended for the core services to connect to the server.
 //
 //	serviceID of the connecting service
-func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hubclient.IHubClient, error) {
+func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hc hubclient.IHubClient, err error) {
 
-	conn, err := net.Dial("unix", inProcAddr)
+	mqttClient := mqtthubclient.NewMqttHubClient(serviceID, nil)
+
+	conn, err := net.Dial("unix", inMemConnAddr)
 	if err != nil {
 		return nil, err
 	}
 	safeConn := packets.NewThreadSafeConn(conn)
-	hc, err := mqtthubclient.ConnectToBroker(serviceID, "", safeConn)
+	err = mqttClient.ConnectWithConn("", safeConn)
 
-	return hc, err
+	return mqttClient, err
 }
 
 // Start the NATS server with the given configuration and create an event ingress stream
@@ -99,7 +102,7 @@ func (srv *MqttMsgServer) Start() (clientURL string, err error) {
 		return "", fmt.Errorf("missing server or CA certificate")
 	}
 
-	_ = os.Remove(inProcAddr)
+	_ = os.Remove(inMemConnAddr)
 
 	caCertPool := x509.NewCertPool()
 	caCertPool.AddCert(srv.Config.CaCert)
@@ -142,7 +145,7 @@ func (srv *MqttMsgServer) Start() (clientURL string, err error) {
 	}
 	// listen on UDS for local connections
 	// todo: does @/path prefix creates an in-memory pipe
-	inmemLis := listeners.NewUnixSock("inmem", inProcAddr)
+	inmemLis := listeners.NewUnixSock("inmem", inMemConnAddr)
 	err = srv.ms.AddListener(inmemLis)
 	if err != nil {
 		return "", err

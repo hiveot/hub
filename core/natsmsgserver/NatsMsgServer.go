@@ -89,7 +89,8 @@ func (srv *NatsMsgServer) ConnectInProc(serviceID string) (hubclient.IHubClient,
 	if err != nil {
 		return nil, err
 	}
-	hc, err := natshubclient.ConnectWithNC(nc)
+	hc := natshubclient.NewNatsHubClient(serviceID, srv.Config.CoreServiceKP)
+	err = hc.ConnectWithConn("", nc)
 	return hc, err
 }
 

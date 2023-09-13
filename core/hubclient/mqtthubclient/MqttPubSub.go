@@ -2,6 +2,7 @@ package mqtthubclient
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/eclipse/paho.golang/paho"
 	"github.com/hiveot/hub/api/go/hubclient"
@@ -83,6 +84,10 @@ func (hc *MqttHubClient) Request(topic string, payload []byte) (resp []byte, err
 	if err != nil {
 		return nil, err
 	}
+	errResp := respMsg.Properties.User.Get("error")
+	if errResp != "" {
+		return nil, errors.New(errResp)
+	}
 	return respMsg.Payload, err
 }
 
@@ -160,9 +165,13 @@ func (hc *MqttHubClient) SubActions(
 	suback, err := hc.pcl.Subscribe(context.Background(), spacket)
 	_ = suback
 	hc.pcl.Router.RegisterHandler(topic, func(m *paho.Publish) {
-		// FIXME: get clientID from topic
-		clientID := m.Properties.User.Get("clientID") // experimental
-		_, deviceID, thingID, _, name, err := SplitTopic(m.Topic)
+
+		_, deviceID, thingID, _, name, clientID, err := SplitTopic(m.Topic)
+		// action requests MUST contain clientID
+		if clientID == "" {
+			slog.Warn("Ignored action request without clientID", "topic", m.Topic)
+			return
+		}
 		actionMsg := &hubclient.ActionRequest{
 			ClientID:  clientID,
 			DeviceID:  deviceID,

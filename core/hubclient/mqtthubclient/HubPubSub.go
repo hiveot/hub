@@ -166,9 +166,9 @@ func (hc *MqttHubClient) SubThingEvents(
 
 	return hc.Sub(topic, func(topic string, payload []byte) {
 
-		_, deviceID, thingID, _, name, err := SplitTopic(topic)
+		_, deviceID, thingID, _, name, _, err := SplitTopic(topic)
 		if err != nil {
-			slog.Info("splittopic fail", "topic", topic, "err", err)
+			slog.Info("SplitTopic fail", "topic", topic, "err", err)
 			return
 		}
 		eventMsg := &hubclient.EventMessage{

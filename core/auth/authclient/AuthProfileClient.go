@@ -33,20 +33,16 @@ func (cl *AuthProfileClient) pubReq(action string, req interface{}, resp interfa
 // GetProfile returns a client's profile
 // Users can only get their own profile.
 // Managers can get other clients profiles.
-func (cl *AuthProfileClient) GetProfile(clientID string) (profile auth.ClientProfile, err error) {
-	req := auth.GetProfileReq{
-		ClientID: clientID,
-	}
+func (cl *AuthProfileClient) GetProfile() (profile auth.ClientProfile, err error) {
 	resp := auth.GetProfileResp{}
-	err = cl.pubReq(auth.GetProfileAction, &req, &resp)
+	err = cl.pubReq(auth.GetProfileAction, nil, &resp)
 	return resp.Profile, err
 }
 
 // NewToken obtains an auth token based on loginID and password
 // The user must have a public key set (using updatePubKey)
-func (cl *AuthProfileClient) NewToken(clientID string, password string) (authToken string, err error) {
+func (cl *AuthProfileClient) NewToken(password string) (authToken string, err error) {
 	req := auth.NewTokenReq{
-		ClientID: clientID,
 		Password: password,
 	}
 	resp := auth.NewTokenResp{}
@@ -55,9 +51,8 @@ func (cl *AuthProfileClient) NewToken(clientID string, password string) (authTok
 }
 
 // Refresh a short-lived authentication token.
-func (cl *AuthProfileClient) Refresh(clientID string, oldToken string) (authToken string, err error) {
+func (cl *AuthProfileClient) Refresh(oldToken string) (authToken string, err error) {
 	req := auth.RefreshReq{
-		ClientID: clientID,
 		OldToken: oldToken,
 	}
 	resp := auth.RefreshResp{}
@@ -66,10 +61,9 @@ func (cl *AuthProfileClient) Refresh(clientID string, oldToken string) (authToke
 }
 
 // UpdateName updates a client's display name
-func (cl *AuthProfileClient) UpdateName(clientID string, newName string) error {
+func (cl *AuthProfileClient) UpdateName(newName string) error {
 	req := auth.UpdateNameReq{
-		ClientID: clientID,
-		NewName:  newName,
+		NewName: newName,
 	}
 	err := cl.pubReq(auth.UpdateNameAction, &req, nil)
 	return err
@@ -77,9 +71,8 @@ func (cl *AuthProfileClient) UpdateName(clientID string, newName string) error {
 
 // UpdatePassword changes the user password
 // Login or Refresh must be called successfully first.
-func (cl *AuthProfileClient) UpdatePassword(clientID string, newPassword string) error {
+func (cl *AuthProfileClient) UpdatePassword(newPassword string) error {
 	req := auth.UpdatePasswordReq{
-		ClientID:    clientID,
 		NewPassword: newPassword,
 	}
 	err := cl.pubReq(auth.UpdatePasswordAction, &req, nil)
@@ -88,14 +81,13 @@ func (cl *AuthProfileClient) UpdatePassword(clientID string, newPassword string)
 
 // UpdatePubKey updates the user's public key and close the connection.
 // This takes effect immediately. The client must reconnect to continue.
-func (cl *AuthProfileClient) UpdatePubKey(clientID string, newPubKey string) error {
+func (cl *AuthProfileClient) UpdatePubKey(newPubKey string) error {
 	req := auth.UpdatePubKeyReq{
-		ClientID:  clientID,
 		NewPubKey: newPubKey,
 	}
 	err := cl.pubReq(auth.UpdatePubKeyAction, &req, nil)
 	// as the connection is no longer valid, might as well disconnect it to avoid confusion.
-	cl.hc.Disconnect()
+	//cl.hc.Disconnect()
 	return err
 }
 

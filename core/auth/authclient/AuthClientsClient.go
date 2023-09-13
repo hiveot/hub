@@ -101,7 +101,7 @@ func (cl *AuthClientsClient) GetCount() (n int, err error) {
 // Users can only get their own profile.
 // Managers can get other clients profiles.
 func (cl *AuthClientsClient) GetProfile(clientID string) (profile auth.ClientProfile, err error) {
-	req := auth.GetProfileReq{
+	req := auth.GetMngProfileReq{
 		ClientID: clientID,
 	}
 	resp := auth.GetProfileResp{}

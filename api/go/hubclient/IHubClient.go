@@ -1,6 +1,8 @@
 package hubclient
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"github.com/hiveot/hub/api/go/thing"
 )
 
@@ -67,15 +69,19 @@ type IHubClient interface {
 	// ClientID of the current connection
 	ClientID() string
 
-	// ConnectUnauthenticated connects to the Hub server as an unauthenticated user.
-	// Unauthenticated users can only use methods that explicitly describe they are for unauthorized users,
-	// and can only subscribe to the "unauthenticated" group.
-	//
-	// The url supports various formats. Use "schema://address:port/path for the full url.
-	//
-	// Provide a CA certificate if available. If nil then the connection will still
-	// use TLS but no server verification will be used (InsecureSkipVerify=true)
-	//ConnectUnauthenticated(url string, caCert *x509.Certificate) (err error)
+	// ConnectWithCert connects to the messaging server using client certificate authentication
+	// Support for client cert auth depends on the server setup.
+	ConnectWithCert(brokerURL string,
+		clientCert *tls.Certificate, caCert *x509.Certificate) error
+
+	// ConnectWithToken connects to the messaging server using an authentication token obtained with login or refresh
+	// The token type depends on the underlying messaging server.
+	// The MQTT and NATS callout server uses short lived JWT tokens.
+	// If Nats nkey setup is used, this authenticates using nkeys (effectively ignoring the token)
+	ConnectWithToken(brokerURL string, token string, caCert *x509.Certificate) error
+
+	// ConnectWithPassword connects to the messaging server using password authentication
+	ConnectWithPassword(connectURL string, password string, caCert *x509.Certificate) error
 
 	// Disconnect from the hub server
 	Disconnect()

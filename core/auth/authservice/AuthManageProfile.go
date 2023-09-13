@@ -36,6 +36,9 @@ func (svc *AuthManageProfile) GetProfile(clientID string) (profile auth.ClientPr
 
 // HandleActions unmarshal and invoke requests published by hub clients
 func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) error {
+	if action.ClientID == "" {
+		return fmt.Errorf("missing clientID in action request", "deviceID", action.DeviceID, "thingID", action.ThingID)
+	}
 	slog.Info("handleClientActions", slog.String("actionID", action.ActionID))
 	switch action.ActionID {
 	case auth.GetProfileAction:
@@ -51,11 +54,6 @@ func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) err
 		req := &auth.NewTokenReq{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
-			return err
-		}
-		// extra check, the sender's clientID must match the requested token client
-		if action.ClientID != req.ClientID {
-			err = fmt.Errorf("Client '%s' cannot request token for user '%s'", action.ClientID, req.ClientID)
 			return err
 		}
 		newToken, err := svc.NewToken(action.ClientID, req.Password)
@@ -84,7 +82,7 @@ func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) err
 		if err != nil {
 			return err
 		}
-		err = svc.UpdateName(req.ClientID, req.NewName)
+		err = svc.UpdateName(action.ClientID, req.NewName)
 		if err == nil {
 			err = action.SendAck()
 		}
@@ -95,7 +93,7 @@ func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) err
 		if err != nil {
 			return err
 		}
-		err = svc.UpdatePassword(req.ClientID, req.NewPassword)
+		err = svc.UpdatePassword(action.ClientID, req.NewPassword)
 		if err == nil {
 			err = action.SendAck()
 		}
@@ -106,7 +104,7 @@ func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) err
 		if err != nil {
 			return err
 		}
-		err = svc.UpdatePubKey(req.ClientID, req.NewPubKey)
+		err = svc.UpdatePubKey(action.ClientID, req.NewPubKey)
 		if err == nil {
 			err = action.SendAck()
 		}

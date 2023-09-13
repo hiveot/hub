@@ -45,8 +45,7 @@ func (svc *AuthManageClients) AddDevice(
 	if err != nil {
 		return "", err
 	}
-	// the token will be applied when authorization (group membership) is set
-	svc.onChange()
+	err = svc.onChange()
 	return pubKey, err
 }
 
@@ -73,7 +72,7 @@ func (svc *AuthManageClients) AddService(
 	}
 	// the token will be applied when authorization (group membership) is set
 	token = pubKey
-	svc.onChange()
+	err = svc.onChange()
 	return token, err
 }
 
@@ -110,7 +109,9 @@ func (svc *AuthManageClients) AddUser(
 	}
 	// the token will be applied when authorization (group membership) is set
 	token = pubKey
-	svc.onChange()
+	if err == nil {
+		err = svc.onChange()
+	}
 	return token, err
 }
 
@@ -139,7 +140,7 @@ func (svc *AuthManageClients) GetEntries() (entries []auth.AuthnEntry) {
 	return svc.store.GetEntries()
 }
 
-// handle authn management requests published by a hub manager
+// HandleActions handle incoming action request for managing clients
 func (svc *AuthManageClients) HandleActions(action *hubclient.ActionRequest) error {
 	slog.Info("handleActions",
 		slog.String("actionID", action.ActionID))
@@ -193,12 +194,7 @@ func (svc *AuthManageClients) HandleActions(action *hubclient.ActionRequest) err
 		err = action.SendReply(reply, nil)
 		return err
 	case auth.GetProfileAction:
-		req := auth.GetProfileReq{}
-		err := ser.Unmarshal(action.Payload, &req)
-		if err != nil {
-			return err
-		}
-		profile, err := svc.GetProfile(req.ClientID)
+		profile, err := svc.GetProfile(action.ClientID)
 		if err == nil {
 			resp := auth.GetProfileResp{Profile: profile}
 			reply, _ := ser.Marshal(&resp)
@@ -242,7 +238,7 @@ func (svc *AuthManageClients) HandleActions(action *hubclient.ActionRequest) err
 
 // notification handler invoked when clients have been added, removed or updated
 // this invokes a reload of server authn
-func (svc *AuthManageClients) onChange() {
+func (svc *AuthManageClients) onChange() error {
 	entries := svc.store.GetEntries()
 	clients := make([]msgserver.ClientAuthInfo, 0, len(entries))
 	for _, e := range entries {
@@ -254,13 +250,16 @@ func (svc *AuthManageClients) onChange() {
 			Role:         e.Role,
 		})
 	}
-	_ = svc.msgServer.ApplyAuth(clients)
+	err := svc.msgServer.ApplyAuth(clients)
+	return err
 }
 
 // RemoveClient removes a client and disables authentication
 func (svc *AuthManageClients) RemoveClient(clientID string) (err error) {
 	err = svc.store.Remove(clientID)
-	svc.onChange()
+	if err == nil {
+		err = svc.onChange()
+	}
 	return err
 }
 

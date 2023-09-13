@@ -93,6 +93,19 @@ type GetCountResp struct {
 	N int `json:"n"`
 }
 
+// GetMngProfileAction defines the action to get any client's profile
+const GetMngProfileAction = "getMngProfile"
+
+type GetMngProfileReq struct {
+	ClientID string `json:"clientID"`
+}
+
+//// GetProfileReq request message to get a client's profile.
+//// The message address MUST contain the client sending the action to whom this applies
+//type GetProfileResp struct {
+//	Profile ClientProfile `json:"profile"`
+//}
+
 // GetProfilesAction defines the service action to get a list of all client profiles
 const GetProfilesAction = "getProfiles"
 
