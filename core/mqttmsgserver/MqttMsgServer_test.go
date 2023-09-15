@@ -59,14 +59,23 @@ func TestMqttServerPubSub(t *testing.T) {
 func TestMqttServerRequest(t *testing.T) {
 	var rxMsg string
 	msg := "hello world"
-	cfg := mqttmsgserver.MqttServerConfig{}
-	err := cfg.Setup("", "", false)
+	//cfg := mqttmsgserver.MqttServerConfig{}
+	//err := cfg.Setup("", "", false)
+	//require.NoError(t, err)
+	//srv := mqttmsgserver.NewMqttMsgServer(&cfg, nil)
+	//clientURL, err := srv.Start()
+	//require.NoError(t, err)
+
+	// setup the server with test clients
+	clientURL, srv, certBundle, err := testenv.StartTestServer("mqtt")
+	_ = certBundle
 	require.NoError(t, err)
-	srv := mqttmsgserver.NewMqttMsgServer(&cfg, nil)
-	clientURL, err := srv.Start()
 	require.NoError(t, err)
 	defer srv.Stop()
 	assert.NotEmpty(t, clientURL)
+
+	err = srv.ApplyAuth(testenv.TestClients)
+	require.NoError(t, err)
 
 	// create a key pair
 	kp, pubKey := srv.CreateKP()
@@ -74,7 +83,7 @@ func TestMqttServerRequest(t *testing.T) {
 	assert.NotEmpty(t, pubKey)
 
 	// connect and perform a pub/sub
-	hc, err := srv.ConnectInProc("device1")
+	hc, err := srv.ConnectInProc(testenv.TestDevice1ID)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 

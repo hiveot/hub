@@ -19,7 +19,7 @@ import (
 
 // InboxTopicFormat is the INBOX subscription topic used by the client
 // Used to send replies to requests.
-const InboxTopicFormat = "_INBOX.%s"
+const InboxTopicFormat = "_INBOX/%s"
 
 // Handler is the struct providing a request/response functionality for the paho
 // MQTT v5 client

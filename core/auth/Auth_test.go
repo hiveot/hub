@@ -24,7 +24,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 )
 
-var core = "nats"
+var core = "mqtt"
 var certBundle certs.TestCertBundle
 var testDir = path.Join(os.TempDir(), "test-authn")
 
@@ -79,6 +79,9 @@ func startTestAuthnService() (authnSvc *authservice.AuthService, mng authapi.IAu
 	}
 
 	//--- connect the authn management client for managing clients
+	authClientKey, authClientPub := msgServer.CreateKP()
+	_ = authClientKey
+	authnSvc.MngClients.AddUser("authn-client", "authn client", "", authClientPub, authapi.ClientRoleAdmin)
 	hc2, err := msgServer.ConnectInProc("authn-client")
 
 	if err != nil {
@@ -130,7 +133,8 @@ func TestStartStop(t *testing.T) {
 
 	clList, err := mngAuthn.GetProfiles()
 	require.NoError(t, err)
-	assert.Equal(t, 0, len(clList))
+	// auth service and the admin user are 2 existing clients
+	assert.Equal(t, 2, len(clList))
 }
 
 // Create manage users
@@ -191,9 +195,9 @@ func TestAddRemoveClients(t *testing.T) {
 
 	clList, err := mng.GetProfiles()
 	assert.NoError(t, err)
-	assert.Equal(t, 6, len(clList))
+	assert.Equal(t, 6+2, len(clList))
 	cnt, _ := mng.GetCount()
-	assert.Equal(t, 6, cnt)
+	assert.Equal(t, 6+2, cnt)
 
 	err = mng.RemoveClient("user1")
 	assert.NoError(t, err)
@@ -208,7 +212,7 @@ func TestAddRemoveClients(t *testing.T) {
 
 	require.NoError(t, err)
 	clList, err = mng.GetProfiles()
-	assert.Equal(t, 2, len(clList))
+	assert.Equal(t, 2+2, len(clList))
 
 	_, err = mng.AddUser("user1", "user 1", "", "", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
@@ -305,8 +309,8 @@ func TestLoginRefresh(t *testing.T) {
 	require.Equal(t, tu1ID, prof2.ClientID)
 	defer hc2.Disconnect()
 
-	// 4. Obtain a refresh token using the new token
-	authToken2, err = cl1.Refresh(authToken1)
+	// 4. Refresh the token
+	authToken2, err = cl1.Refresh()
 	require.NoError(t, err)
 	require.NotEmpty(t, authToken2)
 
@@ -352,32 +356,10 @@ func TestRefreshFakeToken(t *testing.T) {
 	cl1 := authclient.NewAuthProfileClient(hc1)
 
 	// 2: test refresh without any token
-	authToken1, err = cl1.Refresh("")
+	authToken1, err = cl1.Refresh()
 	require.Error(t, err)
 	assert.Empty(t, authToken1)
 
-	// 3. Use a jwt token from another user
-	fakeToken, err := msgServer.CreateToken(testenv.TestUser2ID)
-	require.NoError(t, err)
-	authToken1, err = cl1.Refresh(fakeToken)
-	require.Error(t, err)
-	assert.Empty(t, authToken1)
-
-	//// 4. Use a fake public key, eg from another user
-	//fakeToken, _ = serverCfg.CoreServiceKP.PublicKey()
-	//authToken1, err = cl1.Refresh(tu1ID, fakeToken)
-	//require.Error(t, err)
-	//assert.Empty(t, authToken1)
-
-	//// 5. Try refreshing a self generated token
-	//appAcctPub, _ := serverCfg.AppAccountKP.PublicKey()
-	//fakeAcct, _ := nkeys.CreateAccount()
-	//forgedClaims := jwt.NewUserClaims(tu1KeyPub)
-	//forgedClaims.Issuer = appAcctPub
-	//forgedJWT, err := forgedClaims.Encode(fakeAcct) // <- forged
-	//authToken1, err = cl1.Refresh(tu1ID, forgedJWT)
-	//require.Error(t, err)
-	//assert.Empty(t, authToken1)
 }
 
 func TestUpdateProfile(t *testing.T) {
@@ -430,6 +412,10 @@ func TestUpdatePassword(t *testing.T) {
 	require.NoError(t, err)
 	hc1.Disconnect()
 	time.Sleep(time.Millisecond)
+
+	// login with old password should now fail
+	err = hc1.ConnectWithPassword(clientURL, "pass0", certBundle.CaCert)
+	require.Error(t, err)
 
 	// re-login with new password
 	err = hc1.ConnectWithPassword(clientURL, "pass1", certBundle.CaCert)

@@ -64,12 +64,7 @@ func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) err
 		}
 		return err
 	case auth.RefreshAction:
-		req := &auth.RefreshReq{}
-		err := ser.Unmarshal(action.Payload, &req)
-		if err != nil {
-			return err
-		}
-		newToken, err := svc.Refresh(action.ClientID, req.OldToken)
+		newToken, err := svc.Refresh(action.ClientID)
 		if err == nil {
 			resp := auth.RefreshResp{NewToken: newToken}
 			reply, _ := ser.Marshal(resp)
@@ -116,11 +111,17 @@ func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) err
 
 // NewToken validates a password and issues an authn token. A public key must be on file.
 func (svc *AuthManageProfile) NewToken(clientID string, password string) (newToken string, err error) {
-	_, err = svc.store.VerifyPassword(clientID, password)
+	clientProfile, err := svc.store.VerifyPassword(clientID, password)
 	if err != nil {
 		return "", err
 	}
-	newToken, err = svc.msgServer.CreateToken(clientID)
+	authInfo := msgserver.ClientAuthInfo{
+		ClientID:   clientProfile.ClientID,
+		ClientType: clientProfile.ClientType,
+		PubKey:     clientProfile.PubKey,
+		Role:       clientProfile.Role,
+	}
+	newToken, err = svc.msgServer.CreateToken(authInfo)
 	return newToken, err
 }
 
@@ -131,21 +132,27 @@ func (svc *AuthManageProfile) onChange() {
 	go svc.msgServer.ApplyAuth(svc.store.GetAuthClientList())
 }
 
-// Refresh issues a new token if the given token is valid
+// Refresh issues a new token for the authenticated user.
 // This returns a refreshed token that can be used to connect to the messaging server
 // the old token must be a valid jwt token belonging to the clientID
-func (svc *AuthManageProfile) Refresh(clientID string, oldToken string) (newToken string, err error) {
+func (svc *AuthManageProfile) Refresh(clientID string) (newToken string, err error) {
 	// verify the token
 	clientProfile, err := svc.store.GetProfile(clientID)
 	if err != nil {
 		return "", err
 	}
-	err = svc.msgServer.ValidateToken(
-		clientID, clientProfile.PubKey, oldToken, "", "")
-	if err != nil {
-		return "", fmt.Errorf("error validating oldToken of client %s: %w", clientID, err)
+	//err = svc.msgServer.ValidateToken(
+	//	clientID, clientProfile.PubKey, oldToken, "", "")
+	//if err != nil {
+	//	return "", fmt.Errorf("error validating oldToken of client %s: %w", clientID, err)
+	//}
+	authInfo := msgserver.ClientAuthInfo{
+		ClientID:   clientProfile.ClientID,
+		ClientType: clientProfile.ClientType,
+		PubKey:     clientProfile.PubKey,
+		Role:       clientProfile.Role,
 	}
-	newToken, err = svc.msgServer.CreateToken(clientID)
+	newToken, err = svc.msgServer.CreateToken(authInfo)
 	return newToken, err
 }
 

@@ -22,7 +22,7 @@ type ISubscription interface {
 
 // EventMessage for subscribers
 type EventMessage struct {
-	// Authenticated UserID of the device or service publishing the event
+	// ClientID of the device or service publishing the event
 	DeviceID string `yaml:"deviceID"`
 	// Optional ThingID of the Thing that generated the event
 	ThingID string `yaml:"thingID,omitempty"`
@@ -36,7 +36,7 @@ type EventMessage struct {
 
 // ActionRequest message for thing or service subscribers
 type ActionRequest struct {
-	// ClientID of the user publishing the request
+	// ClientID of the authenticated client publishing the request
 	ClientID string `yaml:"clientID"`
 	// Authenticated ClientID of the device or service that handles the action
 	DeviceID string `yaml:"deviceID"`

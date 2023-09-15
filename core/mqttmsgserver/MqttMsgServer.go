@@ -3,13 +3,14 @@ package mqttmsgserver
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"fmt"
 	"github.com/eclipse/paho.golang/packets"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/hubclient/mqtthubclient"
 	mqtt "github.com/mochi-mqtt/server/v2"
-	"github.com/mochi-mqtt/server/v2/hooks/auth"
 	"github.com/mochi-mqtt/server/v2/listeners"
 	"net"
 	"os"
@@ -23,13 +24,17 @@ var inMemConnAddr = "@/mqttinproc"
 // MqttMsgServer runs a MQTT broker using the Mochi-co embedded mqtt server.
 // this implements the IMsgServer interface
 type MqttMsgServer struct {
+	// authhook handles authentication and authorization for the server and mochi-co
+	// this carries the mochi auth hook
+	MqttAuthHook
+
 	Config *MqttServerConfig
 
-	// map of known clients by ID for quick lookup during auth
-	authClients map[string]msgserver.ClientAuthInfo
-
-	// map of role to role permissions
-	rolePermissions map[string][]msgserver.RolePermission
+	//// map of known clients by ID for quick lookup during auth
+	//authClients map[string]msgserver.ClientAuthInfo
+	//
+	//// map of role to role permissions
+	//rolePermissions map[string][]msgserver.RolePermission
 
 	// clientURL the server is listening on
 	clientURL string
@@ -43,40 +48,12 @@ func (srv *MqttMsgServer) ClientURL() string {
 	return srv.clientURL
 }
 
-// ConnectInProcNC establishes a connection to the server for core services.
-// This connects in-process using the service key.
-// Intended for the core services to connect to the server.
-//
-//	serviceID of the connecting service
-//	clientKey is optional alternate key or nil to use the built-in core service ID
-func (srv *MqttMsgServer) ConnectInProcNC() (net.Conn, error) {
-
-	//if clientKey == nil {
-	//	clientKey = srv.Config.CoreServiceKP
-	//}
-	//// If the server uses TLS then the in-process pipe connection is also upgrade to TLS.
-	caCertPool := x509.NewCertPool()
-	if srv.Config.CaCert != nil {
-		caCertPool.AddCert(srv.Config.CaCert)
-	}
-	tlsConfig := &tls.Config{
-		RootCAs:            caCertPool,
-		InsecureSkipVerify: srv.Config.CaCert == nil,
-	}
-	//serviceKeyPub := &clientKey.PublicKey
-	clientURL := "localhost:8441"
-	nc, err := tls.Dial("tcp", clientURL, tlsConfig)
-	//slog.Info("ConnectInProc", "serviceID", serviceID, "pubkey", serviceKeyPub)
-
-	//nc, err := net.Dial("unix", inMemConnAddr)
-	return nc, err
-}
-
 // ConnectInProc establishes a connection to the server for core services.
 // This connects in-process using the service key.
 // Intended for the core services to connect to the server.
 //
 //	serviceID of the connecting service
+//	token is the service authentication token
 func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hc hubclient.IHubClient, err error) {
 
 	mqttClient := mqtthubclient.NewMqttHubClient(serviceID, nil)
@@ -86,7 +63,17 @@ func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hc hubclient.IHubClie
 		return nil, err
 	}
 	safeConn := packets.NewThreadSafeConn(conn)
-	err = mqttClient.ConnectWithConn("", safeConn)
+	token, err := srv.CreateToken(msgserver.ClientAuthInfo{
+		ClientID:     serviceID,
+		ClientType:   auth.ClientTypeService,
+		PubKey:       srv.Config.CoreServicePub,
+		PasswordHash: "",
+		Role:         auth.ClientRoleAdmin,
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = mqttClient.ConnectWithConn(token, safeConn)
 
 	return mqttClient, err
 }
@@ -117,7 +104,8 @@ func (srv *MqttMsgServer) Start() (clientURL string, err error) {
 	}
 
 	srv.ms = mqtt.New(nil)
-	_ = srv.ms.AddHook(new(auth.AllowHook), nil)
+	_ = srv.ms.AddHook(&srv.MqttAuthHook, nil)
+
 	// server listens on TCP with TLS
 	if srv.Config.Port != 0 {
 		tcpLis := listeners.NewTCP("tcp1",
@@ -168,7 +156,19 @@ func (srv *MqttMsgServer) Stop() {
 
 // NewMqttMsgServer creates a new instance of the Hub MQTT broker.
 func NewMqttMsgServer(cfg *MqttServerConfig, perms map[string][]msgserver.RolePermission) *MqttMsgServer {
-
-	srv := &MqttMsgServer{Config: cfg, rolePermissions: perms}
+	signingKeyPub, _ := x509.MarshalPKIXPublicKey(&cfg.ServerKey.PublicKey)
+	signingKeyPubStr := base64.StdEncoding.EncodeToString(signingKeyPub)
+	srv := &MqttMsgServer{
+		MqttAuthHook: MqttAuthHook{
+			HookBase:        mqtt.HookBase{},
+			authClients:     nil,
+			rolePermissions: nil,
+			authMux:         sync.RWMutex{},
+			signingKey:      cfg.ServerKey,
+			signingKeyPub:   signingKeyPubStr,
+		},
+		Config: cfg,
+	}
+	srv.MqttAuthHook.SetRolePermissions(perms)
 	return srv
 }

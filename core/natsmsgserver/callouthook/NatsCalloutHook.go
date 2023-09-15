@@ -100,12 +100,12 @@ func (chook *NatsCalloutHook) handleCallOutReq(msg *nats.Msg) {
 	if chook.authnVerifier != nil {
 		clientID, err = chook.authnVerifier(reqClaims)
 	} else {
-		err = fmt.Errorf("authcallout invoked without a verifier")
+		err = fmt.Errorf("handleCallOutReq: invoked without a verifier")
 	}
 	if err != nil || clientID == "" {
 		chook.failCount.Add(1)
 		// note: if the client isn't know the caller will not receive this error
-		slog.Warn("Invalid authn", "err", err,
+		slog.Warn("handleCallOutReq: Invalid authn", "err", err,
 			slog.String("clientID", clientID),
 			slog.String("reqClaims.Name", reqClaims.Name))
 		resp, _ := chook.createSignedResponse(userNKeyPub, serverID.ID, "", err)
@@ -120,10 +120,13 @@ func (chook *NatsCalloutHook) handleCallOutReq(msg *nats.Msg) {
 	// FIXME: where is ClientInformation documented?
 	//clientType := reqClaims.Tags.ClientInformation.Tags["clientType"]
 
-	// note that callouts generates a new key on the fly and expects the token to use this key.
-	// Why is unknown.
-	newToken, err = chook.msgServer.CreateJWTToken(clientID, userNKeyPub)
-
+	// note that callouts generates a new key on the fly and expects the token
+	// to use this key. Why is unknown...
+	authInfo, err := chook.msgServer.GetClientAuth(clientID)
+	authInfo.PubKey = userNKeyPub
+	if err == nil {
+		newToken, err = chook.msgServer.CreateJWTToken(authInfo)
+	}
 	resp, err := chook.createSignedResponse(userNKeyPub, serverID.ID, newToken, err)
 	if err != nil {
 		chook.failCount.Add(1)

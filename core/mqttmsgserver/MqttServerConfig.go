@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"github.com/hiveot/hub/lib/certs"
 	"golang.org/x/exp/slog"
 	"path"
@@ -29,16 +30,18 @@ type MqttServerConfig struct {
 	NoAutoStart bool `yaml:"noAutoStart,omitempty"`
 
 	// The certs and keys can be set directly or loaded from above files
-	CaCert        *x509.Certificate `yaml:"-"` // preset, load, or error
-	CaKey         *ecdsa.PrivateKey `yaml:"-"` // preset, load, or error
-	ServerKey     *ecdsa.PrivateKey `yaml:"-"` // generated
-	ServerTLS     *tls.Certificate  `yaml:"-"` // generated
-	AdminUserKP   *ecdsa.PrivateKey `yaml:"-"` // generated
-	CoreServiceKP *ecdsa.PrivateKey `yaml:"-"` // generated
+	CaCert    *x509.Certificate `yaml:"-"` // preset, load, or error
+	CaKey     *ecdsa.PrivateKey `yaml:"-"` // preset, load, or error
+	ServerKey *ecdsa.PrivateKey `yaml:"-"` // generated
+	ServerTLS *tls.Certificate  `yaml:"-"` // generated
+	//AdminUserKP   *ecdsa.PrivateKey `yaml:"-"` // generated
+
+	CoreServiceKP  *ecdsa.PrivateKey `yaml:"-"` // generated
+	CoreServicePub string            `yaml:"-"` // generated
 
 	// The following options are JWT specific
-	SystemAccountJWT string `yaml:"-"` // generated
-	CoreServiceJWT   string `yaml:"-"` // generated
+	//SystemAccountJWT string `yaml:"-"` // generated
+	//CoreServiceJWT   string `yaml:"-"` // generated
 }
 
 // Setup the nats server config.
@@ -106,9 +109,12 @@ func (cfg *MqttServerConfig) Setup(
 	//if cfg.AdminUserKP == nil {
 	//	cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(cfg.AdminUserKeyFile, writeChanges)
 	//}
-	//if cfg.CoreServiceKP == nil {
-	//	cfg.CoreServiceKP, _ = cfg.LoadCreateUserKP(cfg.CoreServiceKeyFile, writeChanges)
-	//}
+	if cfg.CoreServiceKP == nil {
+		cfg.CoreServiceKP = certs.CreateECDSAKeys()
+	}
+	coreServicePub, _ := x509.MarshalPKIXPublicKey(&cfg.CoreServiceKP.PublicKey)
+	cfg.CoreServicePub = base64.StdEncoding.EncodeToString(coreServicePub)
+
 	//if cfg.AdminUserKeyFile != "" && writeChanges {
 	//	cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(cfg.AdminUserKeyFile, writeChanges)
 	//}

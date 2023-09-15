@@ -89,7 +89,7 @@ func (v *NatsCalloutVerifier) VerifyToken(claims *jwt.AuthorizationRequestClaims
 // claims contains various possible svc methods: password, nkey, jwt, certs
 //
 // Note that NATS server can already authenticate password, nkey, cert, and jwt tokens.
-// However, it can't do multiple methods of password, nkey,cert and jwt. This verifier does them all.
+// However, NATS doesn't do multiple methods of password, nkey,cert and jwt. This verifier does them all.
 // Since the server is updated with client auth info, actual verification goes back to the server.
 // effectively a very roundabout way of doing what the server should have been able to.
 func (v *NatsCalloutVerifier) VerifyAuthnReq(claims *jwt.AuthorizationRequestClaims) (clientID string, err error) {

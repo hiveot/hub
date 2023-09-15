@@ -57,8 +57,9 @@ func (mqttClient *MqttHubClient) ConnectWithConn(
 	}
 
 	pahoCfg := paho.ClientConfig{
-		ClientID: mqttClient.clientID,
-		Conn:     conn,
+		ClientID:      mqttClient.clientID,
+		Conn:          conn,
+		PacketTimeout: mqttClient.timeout,
 	}
 	pahoCfg.OnClientError = func(err error) {
 		slog.Warn("ConnectWithNC:OnClientError", "err", err.Error())
@@ -85,8 +86,9 @@ func (mqttClient *MqttHubClient) ConnectWithConn(
 	_ = connAck
 
 	if err != nil {
-		err = fmt.Errorf("failed to connect. Reason: %d - %s",
-			connAck.ReasonCode, connAck.Properties.ReasonString)
+		err = fmt.Errorf("failed to connect. Reason: %w", err)
+		//err = fmt.Errorf("failed to connect. Reason: %d - %s",
+		//	connAck.ReasonCode, connAck.Properties.ReasonString)
 		return err
 	}
 	mqttClient.conn = conn

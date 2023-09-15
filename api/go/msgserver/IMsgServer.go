@@ -44,7 +44,8 @@ type IMsgServer interface {
 	//  clients is the list of registered users and sources with their credentials
 	ApplyAuth(clients []ClientAuthInfo) error
 
-	// ConnectInProc creates an in-process client connection to the server.
+	// ConnectInProc creates an in-process client connection to the server
+	// using built-in credentials.
 	//
 	// Optionally provide an alternative key-pair, or use nil for the predefined core service key.
 	// the provided keypair is that of a server generated keypair. See CreateKeys()
@@ -62,8 +63,8 @@ type IMsgServer interface {
 	//  NATS callout server returns a JWT token containing authorization.
 	//  MQTT uses a JWT token.
 	//
-	//  clientID of a known client
-	CreateToken(clientID string) (newToken string, err error)
+	//  authInfo with client info used to create and verify the token
+	CreateToken(authInfo ClientAuthInfo) (token string, err error)
 
 	// SetRolePermissions sets the roles used in authorization.
 	// As messaging servers have widely different ways of handling authentication and
@@ -88,7 +89,8 @@ type IMsgServer interface {
 	// ValidatePassword verifies the password for the user using the ApplyAuth users
 	//  loginID is the client ID of the user
 	//  password is the bcrypt encoded password???
-	ValidatePassword(loginID string, password string) error
+	// On success this returns the client auth information useful for creating tokens
+	//ValidatePassword(loginID string, password string) (ClientAuthInfo,error)
 
 	// ValidateToken verifies whether the given authentication token is valid
 	//
@@ -101,5 +103,6 @@ type IMsgServer interface {
 	//  token to verify
 	//  signedNonce base64 encoded signature generated from private key and nonce field
 	//  nonce the server provided field used to sign the token.
-	ValidateToken(clientID string, pubKey string, token string, signedNonce string, nonce string) error
+	//ValidateToken(clientID string, pubKey string,
+	//	token string, signedNonce string, nonce string) (ClientAuthInfo,error)
 }

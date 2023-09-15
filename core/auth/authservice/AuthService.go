@@ -21,11 +21,32 @@ type AuthService struct {
 }
 
 // Start the service and activate the binding to handle requests
+// This adds an 'auth' service client.
 func (svc *AuthService) Start() (err error) {
 
 	err = svc.store.Open()
 	if err != nil {
 		return err
+	}
+
+	// before being able to connect, the AuthServiceName must be known
+	myKey, myKeyPub := svc.msgServer.CreateKP()
+	_ = myKey
+	err = svc.store.Add(auth.AuthServiceName, auth.ClientProfile{
+		ClientID:          auth.AuthServiceName,
+		ClientType:        auth.ClientTypeService,
+		DisplayName:       "Auth",
+		PubKey:            myKeyPub,
+		TokenValidityDays: 0,
+		Role:              auth.ClientRoleAdmin,
+	})
+	if err != nil {
+		return err
+	}
+	// setup the server with the initial client list
+	err = svc.msgServer.ApplyAuth(svc.store.GetAuthClientList())
+	if err != nil {
+		return fmt.Errorf("auth failed to setup the server: %w", err)
 	}
 
 	svc.hc, err = svc.msgServer.ConnectInProc(auth.AuthServiceName)
@@ -50,7 +71,8 @@ func (svc *AuthService) Start() (err error) {
 		svc.hc.Disconnect()
 		return
 	}
-	// set the roles required to use the capabilities
+
+	// set the client roles required to use the service capabilities
 	svc.msgServer.SetServicePermissions(auth.AuthServiceName, auth.AuthManageClientsCapability,
 		[]string{auth.ClientRoleAdmin})
 	svc.msgServer.SetServicePermissions(auth.AuthServiceName, auth.AuthManageRolesCapability,

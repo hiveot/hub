@@ -62,7 +62,7 @@ func (hc *MqttHubClient) Request(topic string, payload []byte) (resp []byte, err
 	//hopts := rpc.HandlerOpts{
 	//	Conn:             hc.cm,
 	//	Router:           hc.router,
-	//	ResponseTopicFmt: "_INBOX.%s", // private inbox for
+	//	ResponseTopicFmt: "_INBOX/%s", // private inbox for
 	//	ClientID:         hc.clientID,
 	//}
 	// rpc handler locks up if no response is received. autopaho's handler does better

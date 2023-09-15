@@ -38,12 +38,31 @@ const (
 	//  Read permissions: subTDs, subEvents
 	//  Write permissions: none
 	ClientRoleViewer = "viewer"
+
+	// ClientRoleDevice lets a client publish thing events and subscribe to device actions
+	//  Read permissions: subActions
+	//  Write permissions: pubTDs, pubEvents
+	ClientRoleDevice = "device"
 )
 
 // viewers can subscribe to all things
 var viewerPermissions = []msgserver.RolePermission{{
 	Prefix:   "things",
 	MsgType:  vocab.MessageTypeEvent,
+	AllowPub: false,
+	AllowSub: true,
+}}
+
+// devices can publish events and subscribe to actions
+var devicePermissions = []msgserver.RolePermission{{
+	Prefix:   "things",
+	MsgType:  vocab.MessageTypeEvent,
+	AllowPub: true,
+	AllowSub: true,
+}, {
+	Prefix:   "things",
+	MsgType:  vocab.MessageTypeAction,
+	AllowPub: false,
 	AllowSub: true,
 }}
 
@@ -75,6 +94,7 @@ var DefaultRolePermissions = map[string][]msgserver.RolePermission{
 	ClientRoleOperator: operatorPermissions,
 	ClientRoleManager:  managerPermissions,
 	ClientRoleAdmin:    adminPermissions,
+	ClientRoleDevice:   devicePermissions,
 	ClientRoleNone:     nil,
 }
 

@@ -51,12 +51,9 @@ func (cl *AuthProfileClient) NewToken(password string) (authToken string, err er
 }
 
 // Refresh a short-lived authentication token.
-func (cl *AuthProfileClient) Refresh(oldToken string) (authToken string, err error) {
-	req := auth.RefreshReq{
-		OldToken: oldToken,
-	}
+func (cl *AuthProfileClient) Refresh() (authToken string, err error) {
 	resp := auth.RefreshResp{}
-	err = cl.pubReq(auth.RefreshAction, &req, &resp)
+	err = cl.pubReq(auth.RefreshAction, nil, &resp)
 	return resp.NewToken, err
 }
 

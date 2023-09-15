@@ -29,10 +29,6 @@ type NewTokenResp struct {
 // The message address MUST contain the client sending the action to whom this applies
 const RefreshAction = "refresh"
 
-type RefreshReq struct {
-	// old token must match clientID
-	OldToken string `json:"oldToken"`
-}
 type RefreshResp struct {
 	NewToken string `json:"newToken"`
 }
@@ -77,7 +73,7 @@ type IAuthManageProfile interface {
 	//
 	// This returns a new short-lived auth token that can be used to authenticate with the hub
 	// This fails if the token has expired or does not belong to the clientID
-	Refresh(oldToken string) (JwtToken string, err error)
+	Refresh() (JwtToken string, err error)
 
 	// UpdateName updates a user's display name
 	UpdateName(newName string) (err error)

@@ -34,7 +34,7 @@ var TestClients = []msgserver.ClientAuthInfo{
 		ClientID:   TestDevice1ID,
 		ClientType: auth.ClientTypeDevice,
 		PubKey:     TestDevice1Pub,
-		Role:       auth.ClientRoleNone,
+		Role:       auth.ClientRoleDevice,
 	},
 	{
 		ClientID:     TestUser1ID,

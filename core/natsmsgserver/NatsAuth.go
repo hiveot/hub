@@ -92,14 +92,14 @@ func (srv *NatsMsgServer) CreateKP() (interface{}, string) {
 // CreateToken create a new authentication token for a client
 // In NKey mode this returns the public key.
 // In Callout mode this returns a JWT token with permissions.
-func (srv *NatsMsgServer) CreateToken(clientID string) (token string, err error) {
+func (srv *NatsMsgServer) CreateToken(authInfo msgserver.ClientAuthInfo) (token string, err error) {
 	//
 	if srv.NatsOpts.AuthCallout != nil {
-		token, err = srv.CreateJWTToken(clientID, "")
+		token, err = srv.CreateJWTToken(authInfo)
 	} else {
-		// not using callout sso use public key as token
+		// not using callout sso use public key on file as token
 		var clientAuth msgserver.ClientAuthInfo
-		clientAuth, err = srv.getClientAuth(clientID)
+		clientAuth, err = srv.GetClientAuth(authInfo.ClientID)
 		if err == nil {
 			token = clientAuth.PubKey
 		}
@@ -115,28 +115,25 @@ func (srv *NatsMsgServer) CreateToken(clientID string) (token string, err error)
 //
 //	clientID is the user's login/connect ID which is added as the token ID
 //	pubKey is the users's public key which goes into the subject field of the jwt token, use "" for client on record
-func (srv *NatsMsgServer) CreateJWTToken(clientID string, pubKey string) (newToken string, err error) {
-	clientAuth, err := srv.getClientAuth(clientID)
-	if err != nil {
-		return "", err
+func (srv *NatsMsgServer) CreateJWTToken(authInfo msgserver.ClientAuthInfo) (newToken string, err error) {
+	if authInfo.ClientID == "" || authInfo.PubKey == "" ||
+		authInfo.Role == "" || authInfo.ClientType == "" {
+		return "", fmt.Errorf("invalid auth info")
 	}
 	// TODO: use validity period from profile
 	validity := auth.DefaultUserTokenValidityDays
-	if clientAuth.ClientType == auth.ClientTypeDevice {
+	if authInfo.ClientType == auth.ClientTypeDevice {
 		validity = auth.DefaultDeviceTokenValidityDays
-	} else if clientAuth.ClientType == auth.ClientTypeService {
+	} else if authInfo.ClientType == auth.ClientTypeService {
 		validity = auth.DefaultServiceTokenValidityDays
 	}
 
 	// build a jwt response; user_nkey (clientPub) is the subject
-	if pubKey == "" {
-		pubKey = clientAuth.PubKey
-	}
-	uc := jwt.NewUserClaims(pubKey)
+	uc := jwt.NewUserClaims(authInfo.PubKey)
 
 	// can't use claim ID as it is replaced by a hash by Encode(kp)
-	uc.Name = clientAuth.ClientID
-	uc.Tags.Add("clientType", clientAuth.ClientType)
+	uc.Name = authInfo.ClientID
+	uc.Tags.Add("clientType", authInfo.ClientType)
 	uc.IssuedAt = time.Now().Unix()
 	uc.Expires = time.Now().Add(time.Duration(validity) * time.Hour * 24).Unix()
 
@@ -157,7 +154,7 @@ func (srv *NatsMsgServer) CreateJWTToken(clientID string, pubKey string) (newTok
 
 	//uc.UserPermissionLimits = *limits // todo
 
-	uc.Permissions = srv.MakeJWTPermissions(clientAuth, srv.rolePermissions)
+	uc.Permissions = srv.MakeJWTPermissions(authInfo, srv.rolePermissions)
 
 	// check things are valid
 	vr := jwt.CreateValidationResults()
@@ -171,8 +168,8 @@ func (srv *NatsMsgServer) CreateJWTToken(clientID string, pubKey string) (newTok
 	return newToken, err
 }
 
-// getClientAuth returns the client auth info for the given ID
-func (srv *NatsMsgServer) getClientAuth(clientID string) (msgserver.ClientAuthInfo, error) {
+// GetClientAuth returns the client auth info for the given ID
+func (srv *NatsMsgServer) GetClientAuth(clientID string) (msgserver.ClientAuthInfo, error) {
 	clientAuth, found := srv.authClients[clientID]
 	if !found {
 		return clientAuth, fmt.Errorf("client %s not known", clientID)
@@ -349,7 +346,7 @@ func (srv *NatsMsgServer) ValidateJWTToken(
 		err = fmt.Errorf("jwt auth failed: %s", warns[0])
 	}
 	// the subject contains the public user nkey
-	userAuth, err := srv.getClientAuth(clientID)
+	userAuth, err := srv.GetClientAuth(clientID)
 	if err != nil || arc.Subject != userAuth.PubKey {
 		return fmt.Errorf("user public key on file doesn't match token")
 	}
@@ -410,7 +407,7 @@ func (srv *NatsMsgServer) ValidatePassword(loginID string, password string) erro
 	if loginID == "" || password == "" {
 		return fmt.Errorf("password validation failed for user '%s'", loginID)
 	}
-	cAuth, err := srv.getClientAuth(loginID)
+	cAuth, err := srv.GetClientAuth(loginID)
 	if err == nil {
 		err = bcrypt.CompareHashAndPassword([]byte(cAuth.PasswordHash), []byte(password))
 	}
@@ -434,7 +431,7 @@ func (srv *NatsMsgServer) ValidateNKey(
 		return err
 	}
 
-	prof, err := srv.getClientAuth(clientID)
+	prof, err := srv.GetClientAuth(clientID)
 	if err != nil {
 		return err
 	}
