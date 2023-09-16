@@ -24,7 +24,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 )
 
-var core = "mqtt"
+var core = "nats"
 var certBundle certs.TestCertBundle
 var testDir = path.Join(os.TempDir(), "test-authn")
 
@@ -322,44 +322,54 @@ func TestLoginRefresh(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestRefreshFakeToken(t *testing.T) {
-	slog.Info("--- TestRefreshFakeToken start")
-	defer slog.Info("--- TestRefreshFakeToken end")
+func TestRefreshNoPubKey(t *testing.T) {
+	slog.Info("--- TestRefreshNoPubKey start")
+	defer slog.Info("--- TestRefreshNoPubKey end")
 	var tu1ID = "tu1ID"
 	var tu1Pass = "tu1Pass"
 	var authToken1 string
 
 	svc, mng, stopFn, err := startTestAuthnService()
+	_ = svc
 	defer stopFn()
 	require.NoError(t, err)
 
 	// add user to test with. password and no public key
-	//tu1Key, _ := nkeys.CreateUser()
-	//tu1KeyPub, _ := tu1Key.PublicKey()
-	tu1Key, tu1KeyPub := msgServer.CreateKP()
-	_ = tu1Key
-	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, tu1KeyPub, authapi.ClientRoleViewer)
-	_ = tu1Token
+	// a token is not returned when no pubkey is provided
+	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, "", authapi.ClientRoleViewer)
 	require.NoError(t, err)
-	_, err = mng.AddUser(testenv.TestUser2ID, "user 2", "", testenv.TestUser2Pub, authapi.ClientRoleViewer)
-	require.NoError(t, err)
+	assert.Empty(t, tu1Token)
 
-	entries := svc.MngClients.GetAuthClientList()
-	err = msgServer.ApplyAuth(entries)
-
-	// 1. connect with the added user token
+	// connect with the added user token
 	//hc1, err := connectUser(tu1ID, tu1Key, tu1Token)
+	// connect, and refresh should fail
 	hc1 := newClient(tu1ID, nil)
 	err = hc1.ConnectWithPassword(clientURL, tu1Pass, certBundle.CaCert)
 	defer hc1.Disconnect()
 	require.NoError(t, err)
 	cl1 := authclient.NewAuthProfileClient(hc1)
 
-	// 2: test refresh without any token
+	//  refresh fails without a public key
 	authToken1, err = cl1.Refresh()
 	require.Error(t, err)
 	assert.Empty(t, authToken1)
 
+	// after setting pub key refresh should succeed
+	tu1Key, tu1Pub := msgServer.CreateKP()
+	_ = tu1Key
+	t.Log("set public key and refresh should succeed")
+	err = cl1.UpdatePubKey(tu1Pub)
+	require.NoError(t, err)
+	authToken1, err = cl1.Refresh()
+	require.NoError(t, err)
+	assert.NotEmpty(t, authToken1)
+	t.Log("connecting with token")
+	hc2 := newClient(tu1ID, tu1Key)
+	err = hc2.ConnectWithToken(clientURL, authToken1, certBundle.CaCert)
+	require.NoError(t, err)
+	time.Sleep(time.Millisecond * 10)
+	hc2.Disconnect()
+	t.Log("done")
 }
 
 func TestUpdateProfile(t *testing.T) {

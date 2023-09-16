@@ -118,11 +118,10 @@ func (hc *MqttHubClient) sendReply(req *paho.Publish, payload []byte, errResp er
 	if errResp != nil {
 		replyMsg.Properties.User.Add("error", errResp.Error())
 	}
-	pubResp, err := hc.pcl.Publish(context.Background(), replyMsg)
+	_, err := hc.pcl.Publish(context.Background(), replyMsg)
 	if err != nil {
 		slog.Warn("SubRequest. Error publishing response",
-			slog.String("err", err.Error()),
-			slog.Int("reasonCode", int(pubResp.ReasonCode)))
+			slog.String("err", err.Error()))
 	}
 	return err
 }

@@ -136,16 +136,25 @@ func SplitActionTopic(topic string) (bindingID, thingID, name string, clientID s
 
 // SplitTopic separates a topic into its components
 //
-// topic is a hiveot nats topic. eg: things.publisherID.thingID.type.name
+// topic is a hiveot mqtt topic. eg: things/deviceID/thingID/type/name/clientID
 //
-//		prefix of things or services
-//		deviceID is the device or service that handles the topic.
-//		thingID is the thing of the topic, or capability for services.
-//		stype is the topic type, eg event or action.
-//		name is the event or action name
-//	 clientID is the ID in the address suffix. This is used in actions, not in events
+//	prefix of "things", "services" or "_INBOX"
+//	deviceID is the device or service that handles the topic.
+//	thingID is the thing of the topic, or capability for services.
+//	stype is the topic type, eg event or action.
+//	name is the event or action name
+//	clientID is the client publishing the request. used in actions.
 func SplitTopic(topic string) (prefix, deviceID, thingID, stype, name string, clientID string, err error) {
 	parts := strings.Split(topic, "/")
+
+	// inbox topics are short
+	if len(parts) >= 1 && parts[0] == "_INBOX" {
+		prefix = parts[0]
+		if len(parts) >= 2 {
+			deviceID = parts[1]
+		}
+		return
+	}
 	if len(parts) < 5 {
 		err = errors.New("incomplete topic")
 		return

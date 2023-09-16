@@ -33,7 +33,6 @@ type MqttHubClient struct {
 }
 
 // ConnectWithConn connects to a mqtt broker using the pre-established network connection
-//
 // This allows creating connections with any available means including tcp/tls/wss/uds/pipes
 //
 //	loginID is required and used for authentication
@@ -75,12 +74,12 @@ func (mqttClient *MqttHubClient) ConnectWithConn(
 		Username:     mqttClient.clientID,
 		ClientID:     connectID,
 		Properties:   nil,
-		KeepAlive:    30,
+		KeepAlive:    60,
 		CleanStart:   true,
 		UsernameFlag: true,
 		PasswordFlag: password != "",
 	}
-	ctx, cancelFn := context.WithTimeout(context.Background(), time.Second*100)
+	ctx, cancelFn := context.WithTimeout(context.Background(), mqttClient.timeout)
 	defer cancelFn()
 	connAck, err := pcl.Connect(ctx, cp)
 	_ = connAck
@@ -94,6 +93,7 @@ func (mqttClient *MqttHubClient) ConnectWithConn(
 	mqttClient.conn = conn
 	mqttClient.brokerURL = conn.RemoteAddr().String()
 	mqttClient.pcl = pcl
+
 	return err
 }
 

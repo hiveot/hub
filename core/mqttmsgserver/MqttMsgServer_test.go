@@ -1,6 +1,7 @@
 package mqttmsgserver_test
 
 import (
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/core/mqttmsgserver"
 	"github.com/hiveot/hub/lib/logging"
@@ -26,11 +27,13 @@ func TestMqttServerPubSub(t *testing.T) {
 	cfg := mqttmsgserver.MqttServerConfig{}
 	err := cfg.Setup("", "", false)
 	require.NoError(t, err)
-	srv := mqttmsgserver.NewMqttMsgServer(&cfg, nil)
+	srv := mqttmsgserver.NewMqttMsgServer(&cfg, auth.DefaultRolePermissions)
 	clientURL, err := srv.Start()
 	require.NoError(t, err)
 	defer srv.Stop()
 	assert.NotEmpty(t, clientURL)
+	err = srv.ApplyAuth(testenv.TestClients)
+	require.NoError(t, err)
 
 	// create a key pair
 	kp, pubKey := srv.CreateKP()
@@ -38,18 +41,18 @@ func TestMqttServerPubSub(t *testing.T) {
 	assert.NotEmpty(t, pubKey)
 
 	// connect and perform a pub/sub
-	hc, err := srv.ConnectInProc("test")
+	hc, err := srv.ConnectInProc(testenv.TestAdminUserID)
 	require.NoError(t, err)
 	defer hc.Disconnect()
-
-	sub1, err := hc.Sub("test", func(addr string, data []byte) {
+	topic1 := "things/d1/t1/event/test"
+	sub1, err := hc.Sub(topic1, func(addr string, data []byte) {
 		slog.Info("received msg", "addr", addr, "data", string(data))
 		rxMsg = string(data)
 	})
 	require.NoError(t, err)
 	defer sub1.Unsubscribe()
 
-	err = hc.Pub("test", []byte(msg))
+	err = hc.Pub(topic1, []byte(msg))
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond)
 
@@ -112,15 +115,18 @@ func TestToken(t *testing.T) {
 
 	// setup
 	_, srv, _, err := testenv.StartTestServer("mqtt")
+	msrv := srv.(*mqttmsgserver.MqttMsgServer)
 	require.NoError(t, err)
 	defer srv.Stop()
 	err = srv.ApplyAuth(testenv.TestClients)
 	require.NoError(t, err)
 
 	// user2 is in the test clients with a public key
-	token2, err := srv.CreateToken(testenv.TestUser2ID)
+	user2Info, err := msrv.GetClientAuth(testenv.TestAdminUserID)
 	require.NoError(t, err)
-	err = srv.ValidateToken(testenv.TestUser2ID, testenv.TestUser2Pub, token2, "", "")
+	token2, err := msrv.CreateToken(user2Info)
+	require.NoError(t, err)
+	_, err = msrv.ValidateToken(testenv.TestAdminUserID, token2, "", "")
 	require.NoError(t, err)
 
 }

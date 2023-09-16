@@ -9,6 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/core/hubclient/mqtthubclient"
 	"github.com/hiveot/hub/lib/certs"
 	mqtt "github.com/mochi-mqtt/server/v2"
@@ -39,6 +40,9 @@ type MqttAuthHook struct {
 
 	// optionally require that the JWT token ID is that of a known user
 	//jwtTokenMustBeKnownUser bool
+
+	// ServicePermissions defines for each role the service capability that can be used
+	servicePermissions map[string][]msgserver.RolePermission
 }
 
 // ApplyAuth apply update user authentication and authorization settings
@@ -194,7 +198,7 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 	cid := cl.ID
 	clientID := string(cl.Properties.Username)
 
-	// todo: store role permissions in client session
+	// todo: on connect, store role permissions in client session
 	prof, err := hook.GetClientAuth(clientID)
 	if err != nil {
 		slog.Info("OnACLCheck: Unknown client",
@@ -204,11 +208,11 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 	}
 
 	// devices and services can publish a reply to any inbox
-	if write && strings.HasPrefix(topic, "_INBOX/") {
-		if prof.ClientType == auth.ClientTypeDevice || prof.ClientType == auth.ClientTypeService {
-			return true
-		}
-	}
+	//if write && strings.HasPrefix(topic, "_INBOX/") {
+	//	if prof.ClientType == auth.ClientTypeDevice || prof.ClientType == auth.ClientTypeService {
+	//		return true
+	//	}
+	//}
 	// all clients can subscribe to their own inbox
 	if !write && strings.HasPrefix(topic, "_INBOX/"+clientID) {
 		return true
@@ -220,10 +224,6 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 		return false
 	}
 	_ = prefix
-	_ = deviceID
-	_ = thingID
-	_ = stype
-	_ = name
 	_ = senderID
 
 	//err := hook.hasRolePermissions(prof, topic)
@@ -247,26 +247,21 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 		return false
 	}
 
-	// lookup the permission for the message type
-	var hasPerm *msgserver.RolePermission
+	// include role permissions for individual services
+	sp, found := hook.servicePermissions[prof.Role]
+	if found {
+		rolePerm = append(rolePerm, sp...)
+	}
 	for _, perm := range rolePerm {
 		// when write, must allow pub, otherwise must allow sub
-		if ((write || perm.AllowPub) || (perm.AllowSub)) &&
+		if ((write && perm.AllowPub) || (!write && perm.AllowSub)) &&
 			(perm.MsgType == "" || perm.MsgType == stype) &&
 			(perm.SourceID == "" || perm.SourceID == deviceID) &&
 			(perm.ThingID == "" || perm.ThingID == thingID) &&
-			(perm.MsgName == "" || perm.MsgName == name) {
-			hasPerm = &perm
-			break
+			(perm.MsgName == "" || perm.MsgName == name) &&
+			(perm.Prefix == "" || perm.Prefix == prefix) {
+			return true
 		}
-	}
-	if hasPerm == nil {
-		slog.Info("OnACLCheck. User has no permission for topic",
-			slog.String("clientID", clientID),
-			slog.String("topic", topic),
-			slog.Bool("write", write),
-			slog.String("cid", cl.ID))
-		return false
 	}
 
 	// customized perm
@@ -281,8 +276,10 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 	}
 
 	slog.Info("OnAclCheck. success",
+		slog.String("clientID", clientID),
 		slog.String("CID", cl.ID),
-		slog.String("topic", topic))
+		slog.String("topic", topic),
+		slog.Bool("pub", write))
 	return true
 }
 
@@ -303,7 +300,27 @@ func (hook *MqttAuthHook) SetRolePermissions(
 
 func (hook *MqttAuthHook) SetServicePermissions(
 	serviceID string, capability string, roles []string) {
-	slog.Error("SetServicePermissions: not implemented")
+	slog.Info("SetServicePermissions",
+		slog.String("serviceID", serviceID),
+		slog.String("capability", capability))
+
+	for _, role := range roles {
+		// add the role if needed
+		rp := hook.servicePermissions[role]
+		if rp == nil {
+			rp = []msgserver.RolePermission{}
+		}
+		rp = append(rp, msgserver.RolePermission{
+			Prefix:   "svc",
+			SourceID: serviceID,
+			ThingID:  capability,
+			MsgType:  vocab.MessageTypeAction,
+			MsgName:  "", // all methods of the capability can be used
+			AllowPub: true,
+			AllowSub: false,
+		})
+		hook.servicePermissions[role] = rp
+	}
 }
 
 // ValidateToken verifies the given JWT token and returns its claims.

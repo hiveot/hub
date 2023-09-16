@@ -17,19 +17,22 @@ var TestUser1ID = "user1"
 var TestUser1Pass = "pass1"
 var TestUser1bcrypt, _ = bcrypt.GenerateFromPassword([]byte(TestUser1Pass), 0)
 
-var TestUser2ID = "user2"
-var TestUser2Key, _ = nkeys.CreateUser()
-var TestUser2Pub, _ = TestUser2Key.PublicKey()
+var TestAdminUserID = "admin"
+var TestAdminUserKey, _ = nkeys.CreateUser()
+var TestAdminUserPub, _ = TestAdminUserKey.PublicKey()
 
 var TestService1ID = "service1"
 var TestService1Key, _ = nkeys.CreateUser()
 var TestService1Pub, _ = TestService1Key.PublicKey()
 
-var TestGroup1ID = "group1"
-var TestGroup2ID = "group2"
-
-// test users and devices
+// TestClients contains test users and devices
 var TestClients = []msgserver.ClientAuthInfo{
+	{
+		ClientID:   TestAdminUserID,
+		ClientType: auth.ClientTypeUser,
+		PubKey:     TestAdminUserPub,
+		Role:       auth.ClientRoleAdmin,
+	},
 	{
 		ClientID:   TestDevice1ID,
 		ClientType: auth.ClientTypeDevice,
@@ -41,12 +44,6 @@ var TestClients = []msgserver.ClientAuthInfo{
 		ClientType:   auth.ClientTypeUser,
 		PasswordHash: string(TestUser1bcrypt),
 		Role:         auth.ClientRoleViewer,
-	},
-	{
-		ClientID:   TestUser2ID,
-		ClientType: auth.ClientTypeUser,
-		PubKey:     TestUser2Pub,
-		Role:       auth.ClientRoleOperator,
 	},
 	{
 		ClientID:   TestService1ID,

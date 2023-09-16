@@ -160,12 +160,13 @@ func NewMqttMsgServer(cfg *MqttServerConfig, perms map[string][]msgserver.RolePe
 	signingKeyPubStr := base64.StdEncoding.EncodeToString(signingKeyPub)
 	srv := &MqttMsgServer{
 		MqttAuthHook: MqttAuthHook{
-			HookBase:        mqtt.HookBase{},
-			authClients:     nil,
-			rolePermissions: nil,
-			authMux:         sync.RWMutex{},
-			signingKey:      cfg.ServerKey,
-			signingKeyPub:   signingKeyPubStr,
+			HookBase:           mqtt.HookBase{},
+			authClients:        nil,
+			rolePermissions:    nil,
+			authMux:            sync.RWMutex{},
+			signingKey:         cfg.ServerKey,
+			signingKeyPub:      signingKeyPubStr,
+			servicePermissions: make(map[string][]msgserver.RolePermission),
 		},
 		Config: cfg,
 	}

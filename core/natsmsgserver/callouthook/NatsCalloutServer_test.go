@@ -1,6 +1,8 @@
 package callouthook_test
 
 import (
+	"github.com/hiveot/hub/api/go/auth"
+	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/natsmsgserver/callouthook"
 	"github.com/hiveot/hub/lib/logging"
@@ -54,11 +56,18 @@ func TestValidateToken(t *testing.T) {
 	// enable callout so a jwt token is generated
 	_, err = callouthook.EnableNatsCalloutHook(s)
 	assert.NoError(t, err)
-
-	token, err := s.CreateToken(testenv.TestUser2ID)
+	user1Key, user1KeyPub := s.CreateKP()
+	_ = user1Key
+	token, err := s.CreateToken(msgserver.ClientAuthInfo{
+		ClientID:     testenv.TestUser1ID,
+		ClientType:   auth.ClientTypeUser,
+		PubKey:       user1KeyPub,
+		PasswordHash: "",
+		Role:         auth.ClientRoleManager,
+	})
 	require.NoError(t, err)
 
-	err = s.ValidateToken(testenv.TestUser2ID, testenv.TestUser2Pub, token, "", "")
+	err = s.ValidateToken(testenv.TestUser1ID, user1KeyPub, token, "", "")
 	assert.NoError(t, err)
 }
 
@@ -99,9 +108,15 @@ func TestCalloutJWT(t *testing.T) {
 	chook, err := callouthook.EnableNatsCalloutHook(s)
 	assert.NoError(t, err)
 
-	jwtToken, err := s.CreateJWTToken(testenv.TestUser2ID, testenv.TestUser2Pub)
+	jwtToken, err := s.CreateJWTToken(msgserver.ClientAuthInfo{
+		ClientID:     testenv.TestAdminUserID,
+		ClientType:   auth.ClientTypeUser,
+		PubKey:       testenv.TestAdminUserPub,
+		PasswordHash: "",
+		Role:         auth.ClientRoleManager,
+	})
 	require.NoError(t, err)
-	hc2 := natshubclient.NewNatsHubClient(testenv.TestUser2ID, testenv.TestUser2Key)
+	hc2 := natshubclient.NewNatsHubClient(testenv.TestAdminUserID, testenv.TestAdminUserKey)
 	err = hc2.ConnectWithJWT(clientURL, jwtToken, certBundle.CaCert)
 	require.NoError(t, err)
 	successCount, _ := chook.GetCounters()

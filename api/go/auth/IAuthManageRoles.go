@@ -13,65 +13,101 @@ const AuthManageRolesCapability = "roles"
 // Predefined user roles.
 const (
 
-	// ClientRoleAdmin lets a client publish and subscribe to any sources and invoke all services
-	//  Read permissions: subEvents, subActions
-	//  Write permissions: pubEvents, pubActions, pubConfig
-	ClientRoleAdmin = "admin"
-
-	// ClientRoleManager lets a client subscribe to Thing TD, events, publish actions and update configuration
-	//  Read permissions: subEvents
-	//  Write permissions: pubActions, pubConfig
-	ClientRoleManager = "manager"
-
 	// ClientRoleNone indicates that the user has no particular role. It can not do anything until
 	// the role is upgraded to viewer or better.
 	//  Read permissions: none
 	//  Write permissions: none
 	ClientRoleNone = ""
 
-	// ClientRoleOperator lets a client subscribe to Thing TD, events and publish actions
-	//  Read permissions: subEvents
-	//  Write permissions: pubActions
-	ClientRoleOperator = "operator"
-
-	// ClientRoleViewer lets a client subscribe to Thing TD and Thing Events
-	//  Read permissions: subTDs, subEvents
-	//  Write permissions: none
-	ClientRoleViewer = "viewer"
+	// ClientRoleAdmin lets a client publish and subscribe to any sources and invoke all services
+	//  Read permissions: subEvents, subActions
+	//  Write permissions: pubEvents, pubActions, pubConfig
+	ClientRoleAdmin = "admin"
 
 	// ClientRoleDevice lets a client publish thing events and subscribe to device actions
 	//  Read permissions: subActions
 	//  Write permissions: pubTDs, pubEvents
 	ClientRoleDevice = "device"
+
+	// ClientRoleManager lets a client subscribe to Thing TD, events, publish actions and update configuration
+	//  Read permissions: subEvents
+	//  Write permissions: pubActions, pubConfig
+	ClientRoleManager = "manager"
+
+	// ClientRoleOperator lets a client subscribe to events and publish actions
+	//  Read permissions: subEvents
+	//  Write permissions: pubActions
+	ClientRoleOperator = "operator"
+
+	// ClientRoleService lets a client acts as an admin user and a device
+	//  Read permissions: subEvents, subActions, subConfig
+	//  Write permissions: pubEvents, pubActions, pubConfig
+	ClientRoleService = "service"
+
+	// ClientRoleViewer lets a client subscribe to Thing TD and Thing Events
+	//  Read permissions: subEvents
+	//  Write permissions: none
+	ClientRoleViewer = "viewer"
 )
 
-// viewers can subscribe to all things
+// Role based ACL matrix example
+// -----------------------------
+// role       pub/sub   prefix  deviceID    thingID   stype     clientID
+//
+// *	      sub       _INBOX  {clientID}   -        -         -
+// *          sub       things  -            -        event     -
+// *	      pub       svc     auth         profile  action    {clientID}
+//
+// viewer     sub       things  -            -        event     n/a
+// operator   pub       things  -            -        action    {clientID}
+// manager    pub       things  -            -        action    {clientID}
+//            pub       things  -            -        config    {clientID}
+// admin      pub       -       -            -        -         {clientID}
+// device     pub       things  {deviceID}   -        event     -
+//            sub       things  {deviceID}   -        action    -
+// service    pub       -       -            -        -         {serviceID}
+//            sub       things  {serviceID}  -        action    -
+//            sub       svc     {serviceID}  -        action    -
+
+// devices can publish events, replies and subscribe to actions
+var devicePermissions = []msgserver.RolePermission{
+	{
+		Prefix:   "things",
+		MsgType:  vocab.MessageTypeEvent,
+		AllowPub: true,
+		AllowSub: true,
+	}, {
+		Prefix:   "things",
+		MsgType:  vocab.MessageTypeAction,
+		AllowPub: false,
+		AllowSub: true,
+	}, {
+		// publish replies to any inbox
+		Prefix:   "_INBOX",
+		AllowPub: true,
+	},
+}
+
+// viewers can subscribe to all things and their inbox
 var viewerPermissions = []msgserver.RolePermission{{
 	Prefix:   "things",
 	MsgType:  vocab.MessageTypeEvent,
 	AllowPub: false,
 	AllowSub: true,
-}}
-
-// devices can publish events and subscribe to actions
-var devicePermissions = []msgserver.RolePermission{{
-	Prefix:   "things",
-	MsgType:  vocab.MessageTypeEvent,
-	AllowPub: true,
-	AllowSub: true,
 }, {
-	Prefix:   "things",
-	MsgType:  vocab.MessageTypeAction,
-	AllowPub: false,
+	Prefix:   "_INBOX",
+	SourceID: "${clientID}",
 	AllowSub: true,
 }}
 
-// operators can also publish thing actions
-var operatorPermissions = append(viewerPermissions, msgserver.RolePermission{
-	Prefix:   "things",
-	MsgType:  vocab.MessageTypeAction,
-	AllowPub: true,
-})
+// operators can also publish thing actions and receive replies on their inbox
+var operatorPermissions = append(viewerPermissions, []msgserver.RolePermission{
+	{
+		Prefix:   "things",
+		MsgType:  vocab.MessageTypeAction,
+		AllowPub: true,
+	},
+}...)
 
 // managers can also publish configuration
 var managerPermissions = append(operatorPermissions, msgserver.RolePermission{
@@ -88,14 +124,18 @@ var adminPermissions = append(managerPermissions, msgserver.RolePermission{
 	AllowSub: true,
 })
 
+// services can act as admin and devices
+var servicePermissions = append(adminPermissions, devicePermissions...)
+
 // DefaultRolePermissions contains the default pub/sub permissions for each user role
 var DefaultRolePermissions = map[string][]msgserver.RolePermission{
+	ClientRoleNone:     nil,
+	ClientRoleDevice:   devicePermissions,
+	ClientRoleService:  servicePermissions,
 	ClientRoleViewer:   viewerPermissions,
 	ClientRoleOperator: operatorPermissions,
 	ClientRoleManager:  managerPermissions,
 	ClientRoleAdmin:    adminPermissions,
-	ClientRoleDevice:   devicePermissions,
-	ClientRoleNone:     nil,
 }
 
 // capability address part used in sending messages

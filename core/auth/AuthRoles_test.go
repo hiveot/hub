@@ -17,7 +17,8 @@ func TestCRUDRole(t *testing.T) {
 	slog.Info("--- TestGetRole start")
 	defer slog.Info("--- TestGetRole end")
 
-	_, mng, stopFn, err := startTestAuthnService()
+	svc, mng, stopFn, err := startTestAuthnService()
+	_ = svc
 	require.NoError(t, err)
 	defer stopFn()
 	time.Sleep(time.Millisecond * 10)
@@ -25,19 +26,19 @@ func TestCRUDRole(t *testing.T) {
 	_, err = mng.AddUser(testenv.TestUser1ID, "u 1", testenv.TestUser1Pass, "", authapi.ClientRoleViewer)
 	require.NoError(t, err)
 
-	hc, err := msgServer.ConnectInProc("test")
-	roles := authclient.NewAuthRolesClient(hc)
+	hc, err := msgServer.ConnectInProc(testenv.TestUser1ID)
+	roleMng := authclient.NewAuthRolesClient(hc)
 
-	err = roles.CreateRole(role1Name)
+	err = roleMng.CreateRole(role1Name)
 	require.NoError(t, err)
 
-	err = roles.SetRole(testenv.TestUser1ID, authapi.ClientRoleViewer)
+	err = roleMng.SetRole(testenv.TestUser1ID, authapi.ClientRoleViewer)
 	require.NoError(t, err)
 
-	// user2 hasn't been added yet
-	err = roles.SetRole(testenv.TestUser2ID, authapi.ClientRoleViewer)
+	// admin user hasn't been added yet
+	err = roleMng.SetRole(testenv.TestAdminUserID, authapi.ClientRoleAdmin)
 	require.Error(t, err)
 
-	err = roles.DeleteRole(role1Name)
+	err = roleMng.DeleteRole(role1Name)
 	require.NoError(t, err)
 }
