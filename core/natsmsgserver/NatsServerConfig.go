@@ -109,7 +109,7 @@ func (cfg *NatsServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 		cfg.CaCert, cfg.CaKey, err = certs.CreateCA("hiveot", 365)
 	}
 	if cfg.ServerTLS == nil && cfg.CaKey != nil {
-		serverKeys := certs.CreateECDSAKeys()
+		serverKeys, _ := certs.CreateECDSAKeys()
 		names := []string{cfg.Host}
 		serverX509, err := certs.CreateServerCert(
 			cfg.AppAccountName, "server",
@@ -159,9 +159,7 @@ func (cfg *NatsServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 	if cfg.SystemUserKP == nil {
 		cfg.SystemUserKP, _ = cfg.LoadCreateUserKP(cfg.SystemUserKeyFile, writeChanges)
 	}
-	if cfg.AdminUserKeyFile != "" && writeChanges {
-		cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(cfg.AdminUserKeyFile, writeChanges)
-	}
+
 	// Step 5: generate the JWT tokens -
 	// disables as callouts are stable
 	//if cfg.OperatorJWT == "" {

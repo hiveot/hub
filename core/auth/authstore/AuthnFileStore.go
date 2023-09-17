@@ -115,6 +115,8 @@ func (authnStore *AuthnFileStore) GetProfile(clientID string) (profile auth.Clie
 
 // GetProfiles returns a list of all client profiles in the store
 func (authnStore *AuthnFileStore) GetProfiles() (profiles []auth.ClientProfile, err error) {
+	authnStore.mutex.RLock()
+	defer authnStore.mutex.RUnlock()
 	profiles = make([]auth.ClientProfile, 0, len(authnStore.entries))
 	for _, entry := range authnStore.entries {
 		profiles = append(profiles, entry.ClientProfile)
@@ -124,6 +126,8 @@ func (authnStore *AuthnFileStore) GetProfiles() (profiles []auth.ClientProfile, 
 
 // GetEntries returns a list of all profiles with their hashed passwords
 func (authnStore *AuthnFileStore) GetEntries() (entries []auth.AuthnEntry) {
+	authnStore.mutex.RLock()
+	defer authnStore.mutex.RUnlock()
 	entries = make([]auth.AuthnEntry, 0, len(authnStore.entries))
 	for _, entry := range authnStore.entries {
 		entries = append(entries, entry)

@@ -147,7 +147,7 @@ func (cfg *HubCoreConfig) SetupCerts(certsDir string, writeChanges bool) {
 	// setup files and folders
 	if _, err = os.Stat(certsDir); err != nil {
 		if err2 := os.MkdirAll(certsDir, 0755); err2 != nil && errors.Is(err, os.ErrExist) {
-			errMsg := fmt.Errorf("unable to create certs directory '%s': %w", certsDir, err.Error())
+			errMsg := fmt.Errorf("unable to create certs directory '%s': %w", certsDir, err)
 			panic(errMsg)
 		}
 	}
@@ -199,7 +199,7 @@ func (cfg *HubCoreConfig) SetupCerts(certsDir string, writeChanges bool) {
 	if !path.IsAbs(serverKeyPath) {
 		serverKeyPath = path.Join(certsDir, serverKeyPath)
 	}
-	cfg.ServerKey = certs.CreateECDSAKeys()
+	cfg.ServerKey, _ = certs.CreateECDSAKeys()
 	hostName, _ := os.Hostname()
 	serverID := "nats-" + hostName
 	ou := "hiveot"

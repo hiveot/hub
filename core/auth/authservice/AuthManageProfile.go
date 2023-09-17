@@ -37,7 +37,8 @@ func (svc *AuthManageProfile) GetProfile(clientID string) (profile auth.ClientPr
 // HandleActions unmarshal and invoke requests published by hub clients
 func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) error {
 	if action.ClientID == "" {
-		return fmt.Errorf("missing clientID in action request", "deviceID", action.DeviceID, "thingID", action.ThingID)
+		return fmt.Errorf("missing clientID in action request. deviceID='%s', thingID='%s'",
+			action.DeviceID, action.ThingID)
 	}
 	slog.Info("handleClientActions", slog.String("actionID", action.ActionID))
 	switch action.ActionID {
@@ -212,55 +213,6 @@ func (svc *AuthManageProfile) UpdatePubKey(clientID string, newPubKey string) (e
 	go svc.onChange()
 	return err
 }
-
-// ValidateToken verifies if the token is valid and belongs to the claimed user
-//func (svc *AuthManageProfile) ValidateToken(clientID string, oldToken string) (err error) {
-//	// verify the token
-//	entry, err := svc.store.Get(clientID)
-//	if err != nil {
-//		return err
-//	}
-//	_ = entry
-//	err = svc.tokenizer.ValidateToken(clientID, oldToken, "", "")
-//	return err
-//}
-
-// ValidateCert verifies that the given certificate belongs to the client
-// and is signed by our CA.
-// - CN is clientID (todo: other means?)
-// - Cert validates against the svc CA
-// This is intended for a local setup that use a self-signed CA.
-// The use of JWT keys is recommended over certs as this isn't a domain name validation problem.
-//func (svc *AuthManageProfile) ValidateCert(clientID string, clientCertPEM string) error {
-//
-//	if svc.caCert == nil {
-//		return fmt.Errorf("no CA on file")
-//	}
-//	certBlock, _ := pem.Decode([]byte(clientCertPEM))
-//	if certBlock == nil {
-//		return fmt.Errorf("invalid cert pem for client '%s. decode failed", clientID)
-//	}
-//	clientCert, err := x509.ParseCertificate(certBlock.Bytes)
-//	if err != nil {
-//		return err
-//	}
-//	// verify the cert against the CA
-//	caCertPool := x509.NewCertPool()
-//	caCertPool.AddCert(svc.caCert)
-//	verifyOpts := x509.VerifyOptions{
-//		Roots:     caCertPool,
-//		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-//	}
-//
-//	_, err = clientCert.Verify(verifyOpts)
-//
-//	// verify the certs belongs to the clientID
-//	certUser := clientCert.Subject.CommonName
-//	if certUser != clientID {
-//		return fmt.Errorf("cert user '%s' doesnt match client '%s'", certUser, clientID)
-//	}
-//	return nil
-//}
 
 // NewAuthManageProfile returns a user profile management capability.
 //

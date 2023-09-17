@@ -3,6 +3,7 @@ package mqttmsgserver_test
 import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
+	"github.com/hiveot/hub/core/hubclient/mqtthubclient"
 	"github.com/hiveot/hub/core/mqttmsgserver"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
@@ -22,7 +23,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestMqttServerPubSub(t *testing.T) {
-	var rxMsg string
+	rxChan := make(chan string, 1)
 	msg := "hello world"
 	cfg := mqttmsgserver.MqttServerConfig{}
 	err := cfg.Setup("", "", false)
@@ -32,7 +33,7 @@ func TestMqttServerPubSub(t *testing.T) {
 	require.NoError(t, err)
 	defer srv.Stop()
 	assert.NotEmpty(t, clientURL)
-	err = srv.ApplyAuth(testenv.TestClients)
+	err = srv.ApplyAuth(testenv.CreateTestClients("mqtt"))
 	require.NoError(t, err)
 
 	// create a key pair
@@ -47,27 +48,21 @@ func TestMqttServerPubSub(t *testing.T) {
 	topic1 := "things/d1/t1/event/test"
 	sub1, err := hc.Sub(topic1, func(addr string, data []byte) {
 		slog.Info("received msg", "addr", addr, "data", string(data))
-		rxMsg = string(data)
+		rxChan <- string(data)
 	})
 	require.NoError(t, err)
 	defer sub1.Unsubscribe()
 
 	err = hc.Pub(topic1, []byte(msg))
 	require.NoError(t, err)
-	time.Sleep(time.Millisecond)
+	rxMsg := <-rxChan
 
 	assert.Equal(t, msg, rxMsg)
 }
 
 func TestMqttServerRequest(t *testing.T) {
-	var rxMsg string
+	rxChan := make(chan string, 1)
 	msg := "hello world"
-	//cfg := mqttmsgserver.MqttServerConfig{}
-	//err := cfg.Setup("", "", false)
-	//require.NoError(t, err)
-	//srv := mqttmsgserver.NewMqttMsgServer(&cfg, nil)
-	//clientURL, err := srv.Start()
-	//require.NoError(t, err)
 
 	// setup the server with test clients
 	clientURL, srv, certBundle, err := testenv.StartTestServer("mqtt")
@@ -77,7 +72,7 @@ func TestMqttServerRequest(t *testing.T) {
 	defer srv.Stop()
 	assert.NotEmpty(t, clientURL)
 
-	err = srv.ApplyAuth(testenv.TestClients)
+	err = srv.ApplyAuth(testenv.CreateTestClients("mqtt"))
 	require.NoError(t, err)
 
 	// create a key pair
@@ -92,41 +87,43 @@ func TestMqttServerRequest(t *testing.T) {
 
 	sub2, err := hc.SubThingActions("thing1", func(ar *hubclient.ActionRequest) error {
 		slog.Info("received action", "name", ar.ActionID)
-		rxMsg = string(ar.Payload)
+		rxChan <- string(ar.Payload)
 		err2 := ar.SendReply(ar.Payload, nil)
 		assert.NoError(t, err2)
 		return nil
 	})
 	defer sub2.Unsubscribe()
 
-	//topic2 := mqtthubclient.MakeThingActionTopic("device1", "thing1", "action1", "itsme")
-	//reply := ""
-	//err = hc.Pub(topic2, []byte(msg))
 	reply, err := hc.PubThingAction("device1", "thing1", "action1", []byte(msg))
 	require.NoError(t, err)
 	assert.Equal(t, msg, string(reply))
-	time.Sleep(time.Second)
-	time.Sleep(time.Millisecond)
 
+	rxMsg := <-rxChan
 	assert.Equal(t, msg, rxMsg)
 }
 
 func TestToken(t *testing.T) {
 
 	// setup
-	_, srv, _, err := testenv.StartTestServer("mqtt")
+	serverURL, srv, certBundle, err := testenv.StartTestServer("mqtt")
 	msrv := srv.(*mqttmsgserver.MqttMsgServer)
 	require.NoError(t, err)
 	defer srv.Stop()
-	err = srv.ApplyAuth(testenv.TestClients)
+	err = srv.ApplyAuth(testenv.CreateTestClients("mqtt"))
 	require.NoError(t, err)
 
-	// user2 is in the test clients with a public key
-	user2Info, err := msrv.GetClientAuth(testenv.TestAdminUserID)
+	// admin is in the test clients with a public key
+	adminInfo, err := msrv.GetClientAuth(testenv.TestAdminUserID)
 	require.NoError(t, err)
-	token2, err := msrv.CreateToken(user2Info)
+	adminToken, err := msrv.CreateToken(adminInfo)
 	require.NoError(t, err)
-	_, err = msrv.ValidateToken(testenv.TestAdminUserID, token2, "", "")
+	_, err = msrv.ValidateToken(testenv.TestAdminUserID, adminToken, "", "")
 	require.NoError(t, err)
 
+	// login with token should succeed
+	hc1 := mqtthubclient.NewMqttHubClient(testenv.TestAdminUserID, testenv.TestAdminUserKey)
+	err = hc1.ConnectWithToken(serverURL, adminToken, certBundle.CaCert)
+	require.NoError(t, err)
+	time.Sleep(time.Millisecond)
+	hc1.Disconnect()
 }

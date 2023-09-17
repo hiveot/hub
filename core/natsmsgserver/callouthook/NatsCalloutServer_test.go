@@ -50,24 +50,22 @@ func TestValidateToken(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several predefined users, service and devices that don't need callout
-	err = s.ApplyAuth(testenv.TestClients)
+	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
 	assert.NoError(t, err)
 
-	// enable callout so a jwt token is generated
+	// enable callout so a jwt token can be generated
 	_, err = callouthook.EnableNatsCalloutHook(s)
 	assert.NoError(t, err)
-	user1Key, user1KeyPub := s.CreateKP()
-	_ = user1Key
 	token, err := s.CreateToken(msgserver.ClientAuthInfo{
-		ClientID:     testenv.TestUser1ID,
-		ClientType:   auth.ClientTypeUser,
-		PubKey:       user1KeyPub,
+		ClientID:     testenv.TestDevice1ID,
+		ClientType:   auth.ClientTypeDevice,
+		PubKey:       testenv.TestDevice1NPub,
 		PasswordHash: "",
 		Role:         auth.ClientRoleManager,
 	})
 	require.NoError(t, err)
 
-	err = s.ValidateToken(testenv.TestUser1ID, user1KeyPub, token, "", "")
+	err = s.ValidateToken(testenv.TestDevice1ID, testenv.TestDevice1NPub, token, "", "")
 	assert.NoError(t, err)
 }
 
@@ -78,7 +76,7 @@ func TestCalloutPassword(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several predefined users, service and devices that don't need callout
-	err = s.ApplyAuth(testenv.TestClients)
+	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
 	assert.NoError(t, err)
 
 	// this callout handler only accepts 'user2' request
@@ -101,7 +99,7 @@ func TestCalloutJWT(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several predefined users, service and devices that don't need callout
-	err = s.ApplyAuth(testenv.TestClients)
+	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
 	assert.NoError(t, err)
 
 	// this callout handler only accepts 'user2' request
@@ -111,12 +109,12 @@ func TestCalloutJWT(t *testing.T) {
 	jwtToken, err := s.CreateJWTToken(msgserver.ClientAuthInfo{
 		ClientID:     testenv.TestAdminUserID,
 		ClientType:   auth.ClientTypeUser,
-		PubKey:       testenv.TestAdminUserPub,
+		PubKey:       testenv.TestAdminUserNPub,
 		PasswordHash: "",
 		Role:         auth.ClientRoleManager,
 	})
 	require.NoError(t, err)
-	hc2 := natshubclient.NewNatsHubClient(testenv.TestAdminUserID, testenv.TestAdminUserKey)
+	hc2 := natshubclient.NewNatsHubClient(testenv.TestAdminUserID, testenv.TestAdminUserNKey)
 	err = hc2.ConnectWithJWT(clientURL, jwtToken, certBundle.CaCert)
 	require.NoError(t, err)
 	successCount, _ := chook.GetCounters()
@@ -132,7 +130,7 @@ func TestNoCalloutForExistingNKey(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several predefined users, service and devices that don't need callout
-	err = s.ApplyAuth(testenv.TestClients)
+	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
 	assert.NoError(t, err)
 
 	// a directly added service should not invoke the callout handler
@@ -157,7 +155,7 @@ func TestInValidCalloutAuthn(t *testing.T) {
 	defer s.Stop()
 	assert.NotEmpty(t, clientURL)
 	// add several predefined users, service and devices that don't need callout
-	err = s.ApplyAuth(testenv.TestClients)
+	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
 
 	// this callout handler only accepts 'knownUser' request
 	chook, err := callouthook.EnableNatsCalloutHook(s)

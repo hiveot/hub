@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"github.com/hiveot/hub/lib/certs"
 	"golang.org/x/exp/slog"
 	"path"
@@ -89,7 +88,7 @@ func (cfg *MqttServerConfig) Setup(
 		cfg.CaCert, cfg.CaKey, err = certs.CreateCA("hiveot", 365)
 	}
 	if cfg.ServerKey == nil {
-		cfg.ServerKey = certs.CreateECDSAKeys()
+		cfg.ServerKey, _ = certs.CreateECDSAKeys()
 	}
 	if cfg.ServerTLS == nil && cfg.CaKey != nil {
 		names := []string{cfg.Host}
@@ -110,10 +109,8 @@ func (cfg *MqttServerConfig) Setup(
 	//	cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(cfg.AdminUserKeyFile, writeChanges)
 	//}
 	if cfg.CoreServiceKP == nil {
-		cfg.CoreServiceKP = certs.CreateECDSAKeys()
+		cfg.CoreServiceKP, cfg.CoreServicePub = certs.CreateECDSAKeys()
 	}
-	coreServicePub, _ := x509.MarshalPKIXPublicKey(&cfg.CoreServiceKP.PublicKey)
-	cfg.CoreServicePub = base64.StdEncoding.EncodeToString(coreServicePub)
 
 	//if cfg.AdminUserKeyFile != "" && writeChanges {
 	//	cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(cfg.AdminUserKeyFile, writeChanges)

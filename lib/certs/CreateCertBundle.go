@@ -31,8 +31,8 @@ func CreateTestCertBundle() TestCertBundle {
 	certBundle := TestCertBundle{}
 	// Setup CA and server TLS certificates
 	certBundle.CaCert, certBundle.CaKey, _ = CreateCA("testing", 1)
-	certBundle.ServerKey = CreateECDSAKeys()
-	certBundle.ClientKey = CreateECDSAKeys()
+	certBundle.ServerKey, _ = CreateECDSAKeys()
+	certBundle.ClientKey, _ = CreateECDSAKeys()
 
 	names := []string{ServerAddress, "localhost"}
 	serverCert, err := CreateServerCert(

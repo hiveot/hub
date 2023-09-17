@@ -53,6 +53,8 @@ type IMsgServer interface {
 
 	// CreateKP creates a keypair for use in connecting or signing.
 	// This returns the key pair and its public key string.
+	// The key type depends on the server implementation. The public key is always
+	// a string representation of nkey or ecdsa key.
 	CreateKP() (interface{}, string)
 
 	// CreateToken creates a new authentication token for a known client.

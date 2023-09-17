@@ -2,6 +2,7 @@ package natsmsgserver_test
 
 import (
 	"github.com/hiveot/hub/api/go/auth"
+	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,15 +33,24 @@ func TestToken(t *testing.T) {
 	clientURL, s, certBundle, cfg, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
-	err = s.ApplyAuth(testenv.TestClients)
+	//err = s.ApplyAuth(testenv.TestClients)
 	require.NoError(t, err)
+	user2ID := "user2"
+	user2Key, user2Pub := s.CreateKP()
+	_ = user2Key
 
 	_ = certBundle
 	_ = clientURL
 	_ = cfg
-	user2Token, err := s.CreateToken(testenv.TestUser2ID)
+	clInfo := msgserver.ClientAuthInfo{
+		ClientID:   user2ID,
+		ClientType: auth.ClientTypeUser,
+		PubKey:     user2Pub,
+		Role:       auth.ClientRoleViewer,
+	}
+	user2Token, err := s.CreateToken(clInfo)
 	require.NoError(t, err)
 
-	err = s.ValidateToken(testenv.TestUser2ID, testenv.TestUser2Pub, user2Token, "", "")
+	err = s.ValidateToken(user2ID, user2Pub, user2Token, "", "")
 	assert.NoError(t, err)
 }

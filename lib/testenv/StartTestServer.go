@@ -13,7 +13,7 @@ import (
 // StartTestServer creates a NATS or MQTT test server depending on the requested type
 // core is either "nats", or "mqtt" (default)
 func StartTestServer(core string) (
-	clientURL string,
+	serverURL string,
 	msgServer msgserver.IMsgServer,
 	certBundle certs.TestCertBundle,
 	err error) {
@@ -34,7 +34,7 @@ func StartTestServer(core string) (
 		err = serverCfg.Setup(tmpDir, tmpDir, false)
 		if err == nil {
 			natsServer := natsmsgserver.NewNatsMsgServer(serverCfg, auth.DefaultRolePermissions)
-			clientURL, err = natsServer.Start()
+			serverURL, err = natsServer.Start()
 			msgServer = natsServer
 		}
 	} else {
@@ -50,9 +50,9 @@ func StartTestServer(core string) (
 		err = serverCfg.Setup(tmpDir, tmpDir, false)
 		if err == nil {
 			mqttServer := mqttmsgserver.NewMqttMsgServer(serverCfg, auth.DefaultRolePermissions)
-			clientURL, err = mqttServer.Start()
+			serverURL, err = mqttServer.Start()
 			msgServer = mqttServer
 		}
 	}
-	return clientURL, msgServer, certBundle, err
+	return serverURL, msgServer, certBundle, err
 }

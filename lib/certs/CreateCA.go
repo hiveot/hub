@@ -50,7 +50,7 @@ func CreateCA(cn string, validityDays int) (cert *x509.Certificate, key *ecdsa.P
 	}
 
 	// Create the CA private key
-	privKey := CreateECDSAKeys()
+	privKey, _ := CreateECDSAKeys()
 
 	// create the CA
 	caCertDer, err := x509.CreateCertificate(rand.Reader, rootTemplate, rootTemplate, &privKey.PublicKey, privKey)

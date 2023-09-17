@@ -173,7 +173,7 @@ func (chook *NatsCalloutHook) start() error {
 	// Also, callout errors when handler has a nkey connection which doesn't
 	// exist in the users section. (probably a bug) auth.go:288
 	chook.serverOpts.Users = []*server.User{}
-	chook.serverOpts.NoAuthUser = ""
+	//chook.serverOpts.NoAuthUser = ""
 	// adopt existing nkeys
 
 	calloutSub, err := chook.nc.Subscribe(server.AuthCalloutSubject, chook.handleCallOutReq)

@@ -97,11 +97,10 @@ func (srv *NatsMsgServer) CreateToken(authInfo msgserver.ClientAuthInfo) (token 
 	if srv.NatsOpts.AuthCallout != nil {
 		token, err = srv.CreateJWTToken(authInfo)
 	} else {
-		// not using callout sso use public key on file as token
-		var clientAuth msgserver.ClientAuthInfo
-		clientAuth, err = srv.GetClientAuth(authInfo.ClientID)
-		if err == nil {
-			token = clientAuth.PubKey
+		// not using callout so use the given public key as token
+		token = authInfo.PubKey
+		if authInfo.PubKey == "" {
+			err = fmt.Errorf("CreateToken requires a public key for client '%s'", authInfo.ClientID)
 		}
 	}
 	return token, err
@@ -346,6 +345,7 @@ func (srv *NatsMsgServer) ValidateJWTToken(
 		err = fmt.Errorf("jwt auth failed: %s", warns[0])
 	}
 	// the subject contains the public user nkey
+	// TBD: does requiring the client to be on file improve security?
 	userAuth, err := srv.GetClientAuth(clientID)
 	if err != nil || arc.Subject != userAuth.PubKey {
 		return fmt.Errorf("user public key on file doesn't match token")
@@ -405,7 +405,7 @@ func (srv *NatsMsgServer) ValidateJWTToken(
 // ValidatePassword checks if the given password matches the user
 func (srv *NatsMsgServer) ValidatePassword(loginID string, password string) error {
 	if loginID == "" || password == "" {
-		return fmt.Errorf("password validation failed for user '%s'", loginID)
+		return fmt.Errorf("ValidatePassword: failed for user '%s'", loginID)
 	}
 	cAuth, err := srv.GetClientAuth(loginID)
 	if err == nil {
@@ -424,7 +424,7 @@ func (srv *NatsMsgServer) ValidateNKey(
 	sig, err := base64.RawURLEncoding.DecodeString(signedNonce)
 	pub, err := nkeys.FromPublicKey(pubKey)
 	if err != nil {
-		return fmt.Errorf("user nkey not valid: %v", err)
+		return fmt.Errorf("ValidateNKey: user nkey not valid: %v", err)
 	}
 	if err := pub.Verify([]byte(nonce), sig); err != nil {
 		// invalid signature
@@ -436,7 +436,7 @@ func (srv *NatsMsgServer) ValidateNKey(
 		return err
 	}
 	if prof.PubKey != pubKey {
-		return fmt.Errorf("ValidateNKey public key not on file")
+		return fmt.Errorf("ValidateNKey: public key not on file")
 	}
 	return nil
 }
@@ -447,13 +447,13 @@ func (srv *NatsMsgServer) ValidateNKey(
 //
 // Verifying the signedNonce is optional. Use "" to ignore.
 func (srv *NatsMsgServer) ValidateToken(
-	clientID string, pubKey string, oldToken string, signedNonce string, nonce string) (err error) {
+	clientID string, pubKey string, token string, signedNonce string, nonce string) (err error) {
 	if srv.NatsOpts.AuthCallout == nil {
 		// nkeys only
-		if oldToken == "" || pubKey != oldToken {
-			return fmt.Errorf("invalid old token for client '%s'", clientID)
+		if token == "" || pubKey != token {
+			return fmt.Errorf("invalid token for client '%s'", clientID)
 		}
 		return nil
 	}
-	return srv.ValidateJWTToken(clientID, pubKey, oldToken, signedNonce, nonce)
+	return srv.ValidateJWTToken(clientID, pubKey, token, signedNonce, nonce)
 }

@@ -61,7 +61,7 @@ func (hook *MqttAuthHook) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
 // CreateKP creates a keypair for use in connecting or signing.
 // This returns the key pair and its public key string.
 func (hook *MqttAuthHook) CreateKP() (interface{}, string) {
-	kp := certs.CreateECDSAKeys()
+	kp, _ := certs.CreateECDSAKeys()
 
 	x509EncodedPub, _ := x509.MarshalPKIXPublicKey(&kp.PublicKey)
 

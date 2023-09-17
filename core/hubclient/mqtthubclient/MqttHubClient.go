@@ -61,7 +61,10 @@ func (mqttClient *MqttHubClient) ConnectWithConn(
 		PacketTimeout: mqttClient.timeout,
 	}
 	pahoCfg.OnClientError = func(err error) {
-		slog.Warn("ConnectWithNC:OnClientError", "err", err.Error())
+		// connection closing?
+		slog.Info("OnClientError - connection closing",
+			slog.String("err", err.Error()),
+			slog.String("clientID", pahoCfg.ClientID))
 	}
 	pahoCfg.OnServerDisconnect = func(d *paho.Disconnect) {
 		slog.Warn("ConnectWithNC:OnServerDisconnect: Disconnected from broker",

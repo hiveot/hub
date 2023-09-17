@@ -26,7 +26,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStopNKeysServer(t *testing.T) {
-	var rxMsg string
+	rxChan := make(chan string, 1)
 
 	clientURL, s, _, _, err := testenv.StartNatsTestServer(withCallout)
 
@@ -40,13 +40,13 @@ func TestStartStopNKeysServer(t *testing.T) {
 	nc, err := s.ConnectInProcNC("testnkeysservice", nil)
 	require.NoError(t, err)
 	_, err = nc.Subscribe("things.>", func(msg *nats.Msg) {
-		rxMsg = string(msg.Data)
-		slog.Info("received message", "msg", rxMsg)
+		rxChan <- string(msg.Data)
+		slog.Info("received message", slog.String("msg", string(msg.Data)))
 	})
 	require.NoError(t, err)
 	err = nc.Publish("things.service1.event", []byte("hello world"))
 	require.NoError(t, err)
-	time.Sleep(time.Millisecond)
+	rxMsg := <-rxChan
 	assert.Equal(t, "hello world", rxMsg)
 
 	// make sure jetstream is enabled for account
@@ -62,7 +62,7 @@ func TestConnectWithNKey(t *testing.T) {
 
 	slog.Info("--- TestConnectWithNKey start")
 	defer slog.Info("--- TestConnectWithNKey end")
-	var rxMsg string
+	rxChan := make(chan string, 1)
 
 	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
@@ -70,26 +70,26 @@ func TestConnectWithNKey(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several users, service and devices
-	err = s.ApplyAuth(testenv.TestClients)
+	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
 	require.NoError(t, err)
 
 	// users subscribe to things
-	hc1 := natshubclient.NewNatsHubClient(testenv.TestService1ID, testenv.TestService1Key)
+	hc1 := natshubclient.NewNatsHubClient(testenv.TestService1ID, testenv.TestService1NKey)
 	err = hc1.ConnectWithKey(clientURL, certBundle.CaCert)
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 
 	subj1 := natshubclient.MakeThingsSubject("", "", vocab.MessageTypeEvent, "")
 	_, err = hc1.Sub(subj1, func(addr string, payload []byte) {
-		rxMsg = string(payload)
-		slog.Info("received message", "msg", rxMsg)
+		rxChan <- string(payload)
+		slog.Info("received message", "msg", string(payload))
 	})
 	assert.NoError(t, err)
 	subj2 := natshubclient.MakeThingsSubject(
 		testenv.TestService1ID, "thing1", "event", "test")
 	err = hc1.Pub(subj2, []byte("hello world"))
 	require.NoError(t, err)
-	time.Sleep(time.Millisecond)
+	rxMsg := <-rxChan
 	assert.Equal(t, "hello world", rxMsg)
 
 }
@@ -103,7 +103,7 @@ func TestConnectWithPassword(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several users, service and devices
-	err = s.ApplyAuth(testenv.TestClients)
+	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
 	require.NoError(t, err)
 
 	hc1 := natshubclient.NewNatsHubClient(testenv.TestUser1ID, nil)
@@ -123,7 +123,7 @@ func TestLoginFail(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several users, service and devices
-	err = s.ApplyAuth(testenv.TestClients)
+	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
 	require.NoError(t, err)
 
 	hc1 := natshubclient.NewNatsHubClient(testenv.TestUser1ID, nil)
@@ -133,7 +133,7 @@ func TestLoginFail(t *testing.T) {
 
 	// key doesn't belong to user
 	//hc1, err = natshubclient.ConnectWithNKey(
-	//	clientURL, user1ID, TestService1Key, certBundle.CaCert)
+	//	clientURL, user1ID, TestService1NKey, certBundle.CaCert)
 	//require.Error(t, err)
 
 	_ = hc1
@@ -144,7 +144,7 @@ func TestEventsStream(t *testing.T) {
 	t.Log("---TestEventsStream start---")
 	defer t.Log("---TestEventsStream end---")
 	const eventMsg = "hello world"
-	var rxMsg string
+	rxChan := make(chan string, 1)
 	var err error
 
 	// setup
@@ -154,11 +154,11 @@ func TestEventsStream(t *testing.T) {
 	_ = cfg
 	// the main service can access $JS
 	// add devices that publish things, eg TestDevice1ID and TestService1ID
-	err = s.ApplyAuth(testenv.TestClients)
+	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
 	require.NoError(t, err)
 
 	//hc1, err := natshubclient.ConnectWithNKey(
-	//	clientURL, testenv.TestService1ID, testenv.TestService1Key, certBundle.CaCert)
+	//	clientURL, testenv.TestService1ID, testenv.TestService1NKey, certBundle.CaCert)
 	nc1, err := s.ConnectInProcNC("core-test", nil)
 	hc1 := natshubclient.NewNatsHubClient("core-test", nil)
 	err = hc1.ConnectWithConn("", nc1)
@@ -178,13 +178,13 @@ func TestEventsStream(t *testing.T) {
 	sub, err := hc1.SubStream(natsmsgserver.EventsIntakeStreamName, false,
 		func(msg *hubclient.EventMessage) {
 			slog.Info("received event", "eventID", msg.EventID)
-			rxMsg = string(msg.Payload)
+			rxChan <- string(msg.Payload)
 		})
 	assert.NoError(t, err)
 	defer sub.Unsubscribe()
 
 	// connect as the device and publish a thing event
-	hc2 := natshubclient.NewNatsHubClient(testenv.TestDevice1ID, testenv.TestDevice1Key)
+	hc2 := natshubclient.NewNatsHubClient(testenv.TestDevice1ID, testenv.TestDevice1NKey)
 	err = hc2.ConnectWithKey(clientURL, certBundle.CaCert)
 	require.NoError(t, err)
 	defer hc2.Disconnect()
@@ -197,9 +197,8 @@ func TestEventsStream(t *testing.T) {
 	slog.Info("stream $events:",
 		slog.Uint64("count", si.State.Msgs),
 		slog.Int("consumers", si.State.Consumers))
-	//
-	time.Sleep(time.Millisecond * 1000)
 
 	// check the result
+	rxMsg := <-rxChan
 	assert.Equal(t, eventMsg, rxMsg)
 }

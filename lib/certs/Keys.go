@@ -6,22 +6,27 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"errors"
 	"os"
 )
 
-// CreateECDSAKeys creates a asymmetric key set
-// Clients save the private key locally, not to be shared with anyone and freely share
-//
-//	the public key. The keys are needed in client certificate creation.
-//
-// Returns a private key that contains its associated public key
-func CreateECDSAKeys() *ecdsa.PrivateKey {
+// CreateECDSAKeys creates a asymmetric key set.
+// This returns the private key and a base64 encoded public key string.
+func CreateECDSAKeys() (*ecdsa.PrivateKey, string) {
 	rng := rand.Reader
 	curve := elliptic.P256()
-	privKey, _ := ecdsa.GenerateKey(curve, rng)
-	return privKey
+	privKey, err := ecdsa.GenerateKey(curve, rng)
+	if err != nil {
+		return nil, ""
+	}
+	x509Pub, err := x509.MarshalPKIXPublicKey(&privKey.PublicKey)
+	if err != nil {
+		return nil, ""
+	}
+	x509Str := base64.StdEncoding.EncodeToString(x509Pub)
+	return privKey, x509Str
 }
 
 // LoadKeysFromPEM loads ECDSA public/private key pair from PEM file

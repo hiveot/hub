@@ -62,7 +62,7 @@ func TestCreateDeviceCert(t *testing.T) {
 
 	svc, cancelFunc := NewService()
 	defer cancelFunc()
-	keys := certs2.CreateECDSAKeys()
+	keys, _ := certs2.CreateECDSAKeys()
 	pubKeyPEM, _ := certs2.PublicKeyToPEM(&keys.PublicKey)
 
 	deviceCertPEM, caCertPEM, err := svc.CreateDeviceCert(
@@ -101,7 +101,7 @@ func TestDeviceCertBadParms(t *testing.T) {
 	svc, cancelFunc := NewService()
 	defer cancelFunc()
 
-	keys := certs2.CreateECDSAKeys()
+	keys, _ := certs2.CreateECDSAKeys()
 	pubKeyPEM, _ := certs2.PublicKeyToPEM(&keys.PublicKey)
 
 	// missing device ID
@@ -123,7 +123,7 @@ func TestCreateServiceCert(t *testing.T) {
 
 	svc, cancelFunc := NewService()
 	defer cancelFunc()
-	keys := certs2.CreateECDSAKeys()
+	keys, _ := certs2.CreateECDSAKeys()
 	pubKeyPEM, _ := certs2.PublicKeyToPEM(&keys.PublicKey)
 
 	serviceCertPEM, caCertPEM, err := svc.CreateServiceCert(
@@ -154,7 +154,7 @@ func TestServiceCertBadParms(t *testing.T) {
 	hostnames := []string{"127.0.0.1"}
 
 	caCert, caKey, _ := certs2.CreateCA("Test CA", 1)
-	keys := certs2.CreateECDSAKeys()
+	keys, _ := certs2.CreateECDSAKeys()
 	pubKeyPEM, _ := certs2.PublicKeyToPEM(&keys.PublicKey)
 
 	// Bad CA certificate
@@ -189,7 +189,7 @@ func TestCreateUserCert(t *testing.T) {
 	// test creating hub certificate
 	svc, cancelFunc := NewService()
 	defer cancelFunc()
-	keys := certs2.CreateECDSAKeys()
+	keys, _ := certs2.CreateECDSAKeys()
 	pubKeyPEM, _ := certs2.PublicKeyToPEM(&keys.PublicKey)
 
 	userCertPEM, caCertPEM, err := svc.CreateUserCert(userID, pubKeyPEM, 0)

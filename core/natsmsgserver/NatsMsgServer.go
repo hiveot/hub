@@ -43,10 +43,10 @@ type NatsMsgServer struct {
 //
 //	serviceID of the connecting service
 //	clientKey is optional alternate key or nil to use the built-in core service ID
-func (srv *NatsMsgServer) ConnectInProcNC(serviceID string, clientKey nkeys.KeyPair) (*nats.Conn, error) {
+func (srv *NatsMsgServer) ConnectInProcNC(serviceID string, clientKP nkeys.KeyPair) (*nats.Conn, error) {
 
-	if clientKey == nil {
-		clientKey = srv.Config.CoreServiceKP
+	if clientKP == nil {
+		clientKP = srv.Config.CoreServiceKP
 	}
 	// If the server uses TLS then the in-process pipe connection is also upgrade to TLS.
 	caCertPool := x509.NewCertPool()
@@ -58,10 +58,10 @@ func (srv *NatsMsgServer) ConnectInProcNC(serviceID string, clientKey nkeys.KeyP
 		InsecureSkipVerify: srv.Config.CaCert == nil,
 	}
 	sigCB := func(nonce []byte) ([]byte, error) {
-		sig, _ := clientKey.Sign(nonce)
+		sig, _ := clientKP.Sign(nonce)
 		return sig, nil
 	}
-	serviceKeyPub, _ := clientKey.PublicKey()
+	serviceKeyPub, _ := clientKP.PublicKey()
 	nc, err := nats.Connect(srv.ns.ClientURL(), // don't need a URL for in-process connection
 		nats.Name(serviceID),
 		nats.Secure(tlsConfig),

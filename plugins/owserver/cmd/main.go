@@ -6,8 +6,6 @@ import (
 	"golang.org/x/exp/slog"
 	"os"
 
-	"github.com/hiveot/hub/lib/svcconfig"
-
 	"github.com/hiveot/hub/plugins/owserver/internal"
 )
 
@@ -17,15 +15,15 @@ import (
 const ServiceName = "owserver"
 
 func main() {
-	f, clientCert, caCert := svcconfig.SetupFolderConfig(ServiceName)
+	f := utils.GetFolders("", false)
 	config := internal.NewConfig()
-	_ = f.LoadConfig(&config)
+	_ = f.LoadConfig(ServiceName, &config)
 
 	fullUrl := config.HubURL
 	if fullUrl == "" {
 		fullUrl = discovery.LocateHub(0)
 	}
-	hc := hubconn.NewHubClient(config.ID)
+	hc := NewHubClient(config.ID)
 	err := hc.ConnectWithCert(fullUrl, config.ID, clientCert, caCert)
 	if err != nil {
 		slog.Error("unable to connect to Hub", "url", fullUrl, "err", err)
