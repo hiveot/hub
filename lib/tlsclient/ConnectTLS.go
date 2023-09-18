@@ -6,8 +6,6 @@ import (
 	"net/url"
 )
 
-// lower level autopaho functions with connect, pub and sub
-
 // ConnectTLS creates a TLS connection to a server, optionally using a client certificate.
 //
 //	serverURL full URL:  tls://host:8883, ssl://host:8883,  wss://host:9001, tcps://awshost:8883/mqtt

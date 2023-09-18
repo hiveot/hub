@@ -3,8 +3,8 @@ package mqttmsgserver_test
 import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
-	"github.com/hiveot/hub/core/hubclient/mqtthubclient"
 	"github.com/hiveot/hub/core/mqttmsgserver"
+	"github.com/hiveot/hub/lib/hubcl"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/stretchr/testify/assert"
@@ -121,8 +121,8 @@ func TestToken(t *testing.T) {
 	require.NoError(t, err)
 
 	// login with token should succeed
-	hc1 := mqtthubclient.NewMqttHubClient(testenv.TestAdminUserID, testenv.TestAdminUserKey)
-	err = hc1.ConnectWithToken(serverURL, adminToken, certBundle.CaCert)
+	hc1 := hubcl.NewHubClient(serverURL, testenv.TestAdminUserID, testenv.TestAdminUserKey, certBundle.CaCert, "mqtt")
+	err = hc1.ConnectWithToken(adminToken)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond)
 	hc1.Disconnect()

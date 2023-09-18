@@ -10,8 +10,8 @@ import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/core/hubclient/mqtthubclient"
 	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/hubcl/mqtthubclient"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/packets"
 	"golang.org/x/crypto/bcrypt"
@@ -218,7 +218,8 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 		return true
 	}
 
-	prefix, deviceID, thingID, stype, name, senderID, err := mqtthubclient.SplitTopic(topic)
+	prefix, deviceID, thingID, stype, name, senderID, err :=
+		mqtthubclient.SplitTopic(topic)
 	if err != nil {
 		// invalid topic format.
 		return false
@@ -248,7 +249,9 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 	}
 
 	// include role permissions for individual services
+	hook.authMux.RLock()
 	sp, found := hook.servicePermissions[prof.Role]
+	hook.authMux.RUnlock()
 	if found {
 		rolePerm = append(rolePerm, sp...)
 	}
@@ -304,6 +307,7 @@ func (hook *MqttAuthHook) SetServicePermissions(
 		slog.String("serviceID", serviceID),
 		slog.String("capability", capability))
 
+	hook.authMux.Lock()
 	for _, role := range roles {
 		// add the role if needed
 		rp := hook.servicePermissions[role]
@@ -321,6 +325,7 @@ func (hook *MqttAuthHook) SetServicePermissions(
 		})
 		hook.servicePermissions[role] = rp
 	}
+	hook.authMux.Unlock()
 }
 
 // ValidateToken verifies the given JWT token and returns its claims.

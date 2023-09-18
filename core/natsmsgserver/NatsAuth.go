@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/core/hubclient/natshubclient"
+	"github.com/hiveot/hub/lib/hubcl/natshubclient"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nkeys"

@@ -80,7 +80,12 @@ func (cfg *HubCoreConfig) Setup(homeDir string, configFile string, new bool) err
 		panic("application home directory cannot be someone's home directory")
 	}
 	if _, err2 := os.Stat(cfg.HomeDir); err2 == nil && new {
-		_ = os.RemoveAll(cfg.HomeDir)
+		slog.Warn("setup new. Removing ",
+			"config", f.Config, "certs", f.Certs, "", "stores", f.Stores, "logs", f.Logs)
+		_ = os.RemoveAll(f.Config)
+		_ = os.RemoveAll(f.Certs)
+		_ = os.RemoveAll(f.Stores)
+		_ = os.RemoveAll(f.Logs)
 	}
 	if _, err2 := os.Stat(cfg.HomeDir); err2 != nil {
 		err = os.MkdirAll(cfg.HomeDir, 0755)

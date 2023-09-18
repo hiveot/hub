@@ -68,7 +68,7 @@ func TestObject(t *testing.T) {
 	u1 := User{Name: "Bob", Age: 10, Active: true, LastLoginAt: "today"}
 	io := NewInteractionOutput(u1, schema)
 	asMap := io.ValueAsMap()
-	assert.Equal(t, u1.Name, asMap["ID"])
+	assert.Equal(t, u1.Name, asMap["Name"])
 }
 
 func TestObjectFromJson(t *testing.T) {
@@ -83,7 +83,7 @@ func TestObjectFromJson(t *testing.T) {
 	u1json, _ := ser.Marshal(u1)
 	io := NewInteractionOutputFromJson(u1json, schema)
 	asObject := io.ValueAsMap()
-	assert.Equal(t, u1.Name, asObject["ID"])
+	assert.Equal(t, u1.Name, asObject["Name"])
 }
 
 func TestNilData(t *testing.T) {

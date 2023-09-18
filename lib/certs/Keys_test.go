@@ -12,7 +12,7 @@ import (
 )
 
 func TestSaveLoadPrivKey(t *testing.T) {
-	privKey := certs.CreateECDSAKeys()
+	privKey, _ := certs.CreateECDSAKeys()
 	err := certs.SaveKeysToPEM(privKey, testPrivKeyPemFile)
 	assert.NoError(t, err)
 
@@ -22,7 +22,7 @@ func TestSaveLoadPrivKey(t *testing.T) {
 }
 
 func TestSaveLoadPubkey(t *testing.T) {
-	privKey := certs.CreateECDSAKeys()
+	privKey, _ := certs.CreateECDSAKeys()
 	err := certs.SavePublicKeyToPEM(&privKey.PublicKey, testPubKeyPemFile)
 	require.NoError(t, err)
 
@@ -32,7 +32,7 @@ func TestSaveLoadPubkey(t *testing.T) {
 }
 
 func TestSaveLoadPrivKeyNotFound(t *testing.T) {
-	privKey := certs.CreateECDSAKeys()
+	privKey, _ := certs.CreateECDSAKeys()
 	// no access
 	err := certs.SaveKeysToPEM(privKey, "/root")
 	assert.Error(t, err)
@@ -50,7 +50,7 @@ func TestSaveLoadPubKeyNotFound(t *testing.T) {
 }
 
 func TestPublicKeyPEM(t *testing.T) {
-	privKey := certs.CreateECDSAKeys()
+	privKey, _ := certs.CreateECDSAKeys()
 
 	pem, err := certs.PublicKeyToPEM(&privKey.PublicKey)
 
@@ -66,7 +66,7 @@ func TestPublicKeyPEM(t *testing.T) {
 }
 
 func TestPrivateKeyPEM(t *testing.T) {
-	privKey := certs.CreateECDSAKeys()
+	privKey, _ := certs.CreateECDSAKeys()
 
 	pem, err := certs.PrivateKeyToPEM(privKey)
 
@@ -91,7 +91,7 @@ func TestInvalidPEM(t *testing.T) {
 	assert.Nil(t, pubKey)
 
 	//- part 2 switches public/private pem
-	keys := certs.CreateECDSAKeys()
+	keys, _ := certs.CreateECDSAKeys()
 	privPEM, err := certs.PrivateKeyToPEM(keys)
 	assert.NoError(t, err)
 	_, err = certs.PublicKeyFromPEM(privPEM)

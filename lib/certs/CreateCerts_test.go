@@ -16,13 +16,13 @@ func TestCreateCerts(t *testing.T) {
 
 	caCert, caKey, _ := certs.CreateCA("testca", 1)
 
-	serverKeys := certs.CreateECDSAKeys()
+	serverKeys, _ := certs.CreateECDSAKeys()
 	serverCert, err := certs.CreateServerCert(
 		serverID, "myou", 0, &serverKeys.PublicKey, names, caCert, caKey)
 
 	serverCertPEM := certs.X509CertToPEM(serverCert)
 	// verify service certificate against CA
-	err = certs.VerifyCert(serverID, serverCertPEM, caCert)
+	_, err = certs.VerifyCert(serverCertPEM, caCert)
 	assert.NoError(t, err)
 
 	// create a server TLS cert
@@ -30,7 +30,7 @@ func TestCreateCerts(t *testing.T) {
 	assert.NotEmpty(t, tlsCert)
 
 	// create a client cert
-	clientKeys := certs.CreateECDSAKeys()
+	clientKeys, _ := certs.CreateECDSAKeys()
 	clientCert, err := certs.CreateClientCert(clientID, "", 0, &clientKeys.PublicKey, caCert, caKey)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, clientCert)
@@ -42,7 +42,7 @@ func TestServerCertBadParms(t *testing.T) {
 	names := []string{"127.0.0.1", "localhost"}
 
 	caCert, caKey, _ := certs.CreateCA("testca", 1)
-	serverKeys := certs.CreateECDSAKeys()
+	serverKeys, _ := certs.CreateECDSAKeys()
 
 	// Missing CA certificate
 	assert.Panics(t, func() {

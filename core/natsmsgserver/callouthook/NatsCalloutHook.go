@@ -92,7 +92,9 @@ func (chook *NatsCalloutHook) handleCallOutReq(msg *nats.Msg) {
 		return
 	}
 
-	slog.Info("handleCallOutReq", slog.String("userID", reqClaims.ConnectOptions.Name))
+	slog.Info("handleCallOutReq",
+		slog.String("userID", reqClaims.ConnectOptions.Name),
+		slog.String("cid", reqClaims.ID))
 	userNKeyPub := reqClaims.UserNkey
 	serverID := reqClaims.Server
 	clientID := ""
@@ -142,6 +144,10 @@ func (chook *NatsCalloutHook) handleCallOutReq(msg *nats.Msg) {
 		return
 	}
 	chook.successCount.Add(1)
+	//slog.Info("callout success",
+	//	"clientID", clientID,
+	//	"successCount", chook.successCount.Load(),
+	//)
 	_ = err
 }
 

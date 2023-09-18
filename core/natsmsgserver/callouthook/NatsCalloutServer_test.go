@@ -3,8 +3,8 @@ package callouthook_test
 import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
-	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/natsmsgserver/callouthook"
+	natshubclient "github.com/hiveot/hub/lib/hubcl/natshubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/nkeys"
@@ -70,7 +70,7 @@ func TestValidateToken(t *testing.T) {
 }
 
 func TestCalloutPassword(t *testing.T) {
-	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer(true)
+	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer(false)
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, clientURL)
@@ -83,12 +83,12 @@ func TestCalloutPassword(t *testing.T) {
 	chook, err := callouthook.EnableNatsCalloutHook(s)
 	assert.NoError(t, err)
 
-	hc1 := natshubclient.NewNatsHubClient(testenv.TestUser1ID, nil)
-	err = hc1.ConnectWithPassword(clientURL, testenv.TestUser1Pass, certBundle.CaCert)
+	user1Key, _ := nkeys.CreateUser()
+	hc1 := natshubclient.NewNatsHubClient(clientURL, testenv.TestUser1ID, user1Key, certBundle.CaCert)
+	err = hc1.ConnectWithPassword(testenv.TestUser1Pass)
 	require.NoError(t, err)
 	successCount, _ := chook.GetCounters()
 	assert.Equal(t, 1, successCount)
-
 	hc1.Disconnect()
 }
 
@@ -114,8 +114,8 @@ func TestCalloutJWT(t *testing.T) {
 		Role:         auth.ClientRoleManager,
 	})
 	require.NoError(t, err)
-	hc2 := natshubclient.NewNatsHubClient(testenv.TestAdminUserID, testenv.TestAdminUserNKey)
-	err = hc2.ConnectWithJWT(clientURL, jwtToken, certBundle.CaCert)
+	hc2 := natshubclient.NewNatsHubClient(clientURL, testenv.TestAdminUserID, testenv.TestAdminUserNKey, certBundle.CaCert)
+	err = hc2.ConnectWithJWT(jwtToken)
 	require.NoError(t, err)
 	successCount, _ := chook.GetCounters()
 	assert.Equal(t, 1, successCount)
@@ -164,8 +164,8 @@ func TestInValidCalloutAuthn(t *testing.T) {
 
 	// invoke callout by connecting with an invalid user
 	newkey2, _ := nkeys.CreateUser()
-	hc2 := natshubclient.NewNatsHubClient("unknownuser", newkey2)
-	err = hc2.ConnectWithKey(clientURL, certBundle.CaCert)
+	hc2 := natshubclient.NewNatsHubClient(clientURL, "unknownuser", newkey2, certBundle.CaCert)
+	err = hc2.ConnectWithKey()
 	require.Error(t, err)
 
 	_, failCount := chook.GetCounters()

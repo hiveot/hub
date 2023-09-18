@@ -9,7 +9,7 @@ import (
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/core/hubclient/natshubclient"
+	"github.com/hiveot/hub/lib/hubcl/natshubclient"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
@@ -89,7 +89,7 @@ func (srv *NatsMsgServer) ConnectInProc(serviceID string) (hubclient.IHubClient,
 	if err != nil {
 		return nil, err
 	}
-	hc := natshubclient.NewNatsHubClient(serviceID, srv.Config.CoreServiceKP)
+	hc := natshubclient.NewNatsHubClient("", serviceID, srv.Config.CoreServiceKP, nil)
 	err = hc.ConnectWithConn("", nc)
 	return hc, err
 }

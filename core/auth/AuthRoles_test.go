@@ -27,6 +27,8 @@ func TestCRUDRole(t *testing.T) {
 	require.NoError(t, err)
 
 	hc, err := msgServer.ConnectInProc(testenv.TestUser1ID)
+	defer hc.Disconnect()
+
 	roleMng := authclient.NewAuthRolesClient(hc)
 
 	err = roleMng.CreateRole(role1Name)

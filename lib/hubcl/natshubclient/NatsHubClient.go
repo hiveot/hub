@@ -11,23 +11,24 @@ import (
 	"time"
 )
 
-// PublicUnauthenticatedNKey is the public seed of the unaunthenticated user
-const PublicUnauthenticatedNKey = "SUAOXRE662WSIGIMSIFVQNCCIWG673K7GZMB3ZUUIF45BWGMYKECEQQJZE"
+//// PublicUnauthenticatedNKey is the public seed of the unaunthenticated user
+//const PublicUnauthenticatedNKey = "SUAOXRE662WSIGIMSIFVQNCCIWG673K7GZMB3ZUUIF45BWGMYKECEQQJZE"
 
 // DefaultTimeoutSec with timeout for connecting and publishing.
 const DefaultTimeoutSec = 100 //3 // 100 for testing
-
-// Higher level Hub event and action functions
 
 // NatsHubClient manages the hub server connection with hub event and action messaging
 // This implements the IHubClient interface.
 // This implementation is based on the NATS/Jetstream messaging system.
 type NatsHubClient struct {
-	clientID string
-	myKey    nkeys.KeyPair
-	nc       *nats.Conn
-	js       nats.JetStreamContext
-	timeout  time.Duration
+	clientID  string
+	myKey     nkeys.KeyPair
+	nc        *nats.Conn
+	js        nats.JetStreamContext
+	serverURL string
+	timeout   time.Duration
+	// TLS configuration to use in connecting
+	tlsConfig *tls.Config
 }
 
 // ClientID the client is authenticated as to the server
@@ -61,27 +62,15 @@ func (hc *NatsHubClient) ConnectWithConn(password string, nconn *nats.Conn) (err
 //	clientID to connect as
 //	clientCert for certificate based authentication
 //	caCert of the server
-func (hc *NatsHubClient) ConnectWithCert(url string, clientCert *tls.Certificate, caCert *x509.Certificate) (err error) {
+func (hc *NatsHubClient) ConnectWithCert(clientCert *tls.Certificate) (err error) {
 
-	caCertPool := x509.NewCertPool()
-	if caCert != nil {
-		caCertPool.AddCert(caCert)
-	}
-	opts := x509.VerifyOptions{
-		Roots:     caCertPool,
-		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-	}
-	x509Cert, _ := x509.ParseCertificate(clientCert.Certificate[0])
-	_, err = x509Cert.Verify(opts)
+	// include the client certificate in the TLS config to authenticate as
 	clientCertList := []tls.Certificate{*clientCert}
-	tlsConfig := &tls.Config{
-		RootCAs:            caCertPool,
-		Certificates:       clientCertList,
-		InsecureSkipVerify: caCert == nil,
-	}
-	hc.nc, err = nats.Connect(url,
+	hc.tlsConfig.Certificates = clientCertList
+
+	hc.nc, err = nats.Connect(hc.serverURL,
 		nats.Name(hc.clientID),
-		nats.Secure(tlsConfig),
+		nats.Secure(hc.tlsConfig),
 		nats.Timeout(hc.timeout))
 	if err == nil {
 		hc.js, err = hc.nc.JetStream()
@@ -94,21 +83,8 @@ func (hc *NatsHubClient) ConnectWithCert(url string, clientCert *tls.Certificate
 //
 //	serverURL is the server URL to connect to. Eg tls://addr:port/ for tcp or wss://addr:port/ for websockets
 //	jwtToken is the token obtained with login or refresh. This is not a decorated token.
-func (hc *NatsHubClient) ConnectWithJWT(
-	serverURL string, jwtToken string, caCert *x509.Certificate) (err error) {
-	if serverURL == "" {
-		serverURL = nats.DefaultURL
-	}
+func (hc *NatsHubClient) ConnectWithJWT(jwtToken string) (err error) {
 
-	caCertPool := x509.NewCertPool()
-	if caCert != nil {
-		caCertPool.AddCert(caCert)
-	}
-	tlsConfig := &tls.Config{
-		RootCAs:            caCertPool,
-		InsecureSkipVerify: caCert == nil,
-	}
-	//
 	//claims, err := jwt.Decode(jwtToken)
 	//if err != nil {
 	//	err = fmt.Errorf("invalid jwt token: %w", err)
@@ -116,9 +92,9 @@ func (hc *NatsHubClient) ConnectWithJWT(
 	//}
 	//clientID := claims.Claims().Name
 	jwtSeed, _ := hc.myKey.Seed()
-	hc.nc, err = nats.Connect(serverURL,
+	hc.nc, err = nats.Connect(hc.serverURL,
 		nats.Name(hc.clientID), // connection name for logging, debugging
-		nats.Secure(tlsConfig),
+		nats.Secure(hc.tlsConfig),
 		nats.CustomInboxPrefix("_INBOX."+hc.clientID),
 		nats.UserJWTAndSeed(jwtToken, string(jwtSeed)),
 		nats.Token(jwtToken), // JWT token isn't passed through in callout
@@ -133,20 +109,17 @@ func (hc *NatsHubClient) ConnectWithJWT(
 //
 //	serverURL is the server URL to connect to. Eg tls://addr:port/ for tcp or wss://addr:port/ for websockets
 //	token is the token obtained with login or refresh.
-func (hc *NatsHubClient) ConnectWithToken(
-	serverURL string, token string, caCert *x509.Certificate) (err error) {
-	if serverURL == "" {
-		serverURL = nats.DefaultURL
-	}
+func (hc *NatsHubClient) ConnectWithToken(token string) (err error) {
+
 	_, err = jwt.Decode(token)
 	// if this isn't a valid JWT, try the nkey login and ignore the token
 	// TODO: remove this once JWT is properly supported using callouts
 	if err != nil {
-		err = hc.ConnectWithKey(serverURL, caCert)
+		err = hc.ConnectWithKey()
 		//	err = fmt.Errorf("invalid jwt token: %w", err)
 		//	return err
 	} else {
-		err = hc.ConnectWithJWT(serverURL, token, caCert)
+		err = hc.ConnectWithJWT(token)
 	}
 	return err
 }
@@ -162,28 +135,17 @@ func (hc *NatsHubClient) ConnectWithToken(
 //}
 
 // ConnectWithKey connects to the Hub server using the client's nkey secret
-func (hc *NatsHubClient) ConnectWithKey(url string, caCert *x509.Certificate) error {
+func (hc *NatsHubClient) ConnectWithKey() error {
 	var err error
-	if url == "" {
-		url = nats.DefaultURL
-	}
 
-	caCertPool := x509.NewCertPool()
-	if caCert != nil {
-		caCertPool.AddCert(caCert)
-	}
-	tlsConfig := &tls.Config{
-		RootCAs:            caCertPool,
-		InsecureSkipVerify: caCert == nil,
-	}
 	// The handler to sign the server issued challenge
 	sigCB := func(nonce []byte) ([]byte, error) {
 		return hc.myKey.Sign(nonce)
 	}
 	pubKey, _ := hc.myKey.PublicKey()
-	hc.nc, err = nats.Connect(url,
+	hc.nc, err = nats.Connect(hc.serverURL,
 		nats.Name(hc.clientID), // connection name for logging
-		nats.Secure(tlsConfig),
+		nats.Secure(hc.tlsConfig),
 		nats.Nkey(pubKey, sigCB),
 		// client permissions allow this inbox prefix
 		nats.CustomInboxPrefix("_INBOX."+hc.clientID),
@@ -196,23 +158,11 @@ func (hc *NatsHubClient) ConnectWithKey(url string, caCert *x509.Certificate) er
 }
 
 // ConnectWithPassword connects to the Hub server using a login ID and password.
-func (hc *NatsHubClient) ConnectWithPassword(
-	url string, password string, caCert *x509.Certificate) (err error) {
+func (hc *NatsHubClient) ConnectWithPassword(password string) (err error) {
 
-	if url == "" {
-		url = nats.DefaultURL
-	}
-	caCertPool := x509.NewCertPool()
-	if caCert != nil {
-		caCertPool.AddCert(caCert)
-	}
-	tlsConfig := &tls.Config{
-		RootCAs:            caCertPool,
-		InsecureSkipVerify: caCert == nil,
-	}
-	hc.nc, err = nats.Connect(url,
+	hc.nc, err = nats.Connect(hc.serverURL,
 		nats.UserInfo(hc.clientID, password),
-		nats.Secure(tlsConfig),
+		nats.Secure(hc.tlsConfig),
 		// client permissions allow this inbox prefix
 		nats.Name(hc.clientID),
 		nats.CustomInboxPrefix("_INBOX."+hc.clientID),
@@ -279,12 +229,31 @@ func (hc *NatsHubClient) Disconnect() {
 
 // NewNatsHubClient creates a new instance of the hub client for use
 // with the NATS messaging server
-func NewNatsHubClient(clientID string, myKey nkeys.KeyPair) *NatsHubClient {
+//
+//	url starts with "nats://" schema for using tcp.
+//	clientID to connect as
+//	myKey for connecting with Key or JWT, and possibly encryption (future)
+//	caCert of the server to validate the server or nil to not check the server cert
+func NewNatsHubClient(url string, clientID string, myKey nkeys.KeyPair, caCert *x509.Certificate) *NatsHubClient {
+
+	if url == "" {
+		url = nats.DefaultURL
+	}
+	caCertPool := x509.NewCertPool()
+	if caCert != nil {
+		caCertPool.AddCert(caCert)
+	}
+	tlsConfig := &tls.Config{
+		RootCAs:            caCertPool,
+		InsecureSkipVerify: caCert == nil,
+	}
 
 	hc := &NatsHubClient{
-		clientID: clientID,
-		myKey:    myKey,
-		timeout:  time.Duration(DefaultTimeoutSec) * time.Second,
+		serverURL: url,
+		clientID:  clientID,
+		myKey:     myKey,
+		timeout:   time.Duration(DefaultTimeoutSec) * time.Second,
+		tlsConfig: tlsConfig,
 	}
 	return hc
 }

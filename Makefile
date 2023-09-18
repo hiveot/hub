@@ -9,10 +9,13 @@ INSTALL_HOME=~/bin/hiveot
 
 all: core plugins hubcli  ## Build APIs, CLI, Hub services
 
-core: natscore
+core: natscore mqttcore
 
-natscore: ## Build the hub core binary using nats messaging
-	go build -o $(DIST_FOLDER)/bin/$@ cmd/runcore/main.go
+natscore: ## Build the hub nats core binary
+	go build -o $(DIST_FOLDER)/bin/$@ cmd/$@/main.go
+
+mqttcore: ## Build the hub mqtt core binary
+	go build -o $(DIST_FOLDER)/bin/$@ cmd/$@/main.go
 
 plugins: certs directory launcher owserver provisioning zwavejs
 
@@ -26,8 +29,8 @@ hubcli: .FORCE ## Build Hub CLI
 	go build -o $(BIN_FOLDER)/$@ cmd/$@/main.go
 
 launcher: .FORCE ## Build the hub plugin launcher
-	go build -o $(BIN_FOLDER)/$@ plugins/$@/cmd/main.go
-	cp plugins/$@/config/*.yaml $(DIST_FOLDER)/config
+	go build -o $(BIN_FOLDER)/$@ core/$@/cmd/main.go
+	cp core/$@/config/*.yaml $(DIST_FOLDER)/config
 
 owserver: .FORCE ## Build the Thing directory store
 	go build -o $(PLUGINS_FOLDER)/$@  plugins/$@/cmd/main.go
@@ -66,7 +69,7 @@ install:  ## core plugins ## build and install the services
 	cp -ar $(BIN_FOLDER)/* $(INSTALL_HOME)/bin
 	cp -n $(DIST_FOLDER)/config/*.yaml $(INSTALL_HOME)/config/
 
-test: hub  ## Run tests (stop on first error, don't run parallel)
+test: core  ## Run tests (stop on first error, don't run parallel)
 	go test -race -failfast -p 1 ./...
 
 upgrade:

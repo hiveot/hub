@@ -3,8 +3,8 @@ package natsmsgserver_test
 import (
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/core/hubclient/natshubclient"
 	"github.com/hiveot/hub/core/natsmsgserver"
+	"github.com/hiveot/hub/lib/hubcl/natshubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/nats.go"
@@ -74,8 +74,8 @@ func TestConnectWithNKey(t *testing.T) {
 	require.NoError(t, err)
 
 	// users subscribe to things
-	hc1 := natshubclient.NewNatsHubClient(testenv.TestService1ID, testenv.TestService1NKey)
-	err = hc1.ConnectWithKey(clientURL, certBundle.CaCert)
+	hc1 := natshubclient.NewNatsHubClient(clientURL, testenv.TestService1ID, testenv.TestService1NKey, certBundle.CaCert)
+	err = hc1.ConnectWithKey()
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 
@@ -106,8 +106,8 @@ func TestConnectWithPassword(t *testing.T) {
 	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
 	require.NoError(t, err)
 
-	hc1 := natshubclient.NewNatsHubClient(testenv.TestUser1ID, nil)
-	err = hc1.ConnectWithPassword(clientURL, testenv.TestUser1Pass, certBundle.CaCert)
+	hc1 := natshubclient.NewNatsHubClient(clientURL, testenv.TestUser1ID, nil, certBundle.CaCert)
+	err = hc1.ConnectWithPassword(testenv.TestUser1Pass)
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 	time.Sleep(time.Millisecond)
@@ -126,9 +126,8 @@ func TestLoginFail(t *testing.T) {
 	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
 	require.NoError(t, err)
 
-	hc1 := natshubclient.NewNatsHubClient(testenv.TestUser1ID, nil)
-	err = hc1.ConnectWithPassword(
-		clientURL, "wrongpassword", certBundle.CaCert)
+	hc1 := natshubclient.NewNatsHubClient(clientURL, testenv.TestUser1ID, nil, certBundle.CaCert)
+	err = hc1.ConnectWithPassword("wrongpassword")
 	require.Error(t, err)
 
 	// key doesn't belong to user
@@ -160,7 +159,7 @@ func TestEventsStream(t *testing.T) {
 	//hc1, err := natshubclient.ConnectWithNKey(
 	//	clientURL, testenv.TestService1ID, testenv.TestService1NKey, certBundle.CaCert)
 	nc1, err := s.ConnectInProcNC("core-test", nil)
-	hc1 := natshubclient.NewNatsHubClient("core-test", nil)
+	hc1 := natshubclient.NewNatsHubClient("", "core-test", nil, nil)
 	err = hc1.ConnectWithConn("", nc1)
 	require.NoError(t, err)
 	defer nc1.Close()
@@ -184,8 +183,8 @@ func TestEventsStream(t *testing.T) {
 	defer sub.Unsubscribe()
 
 	// connect as the device and publish a thing event
-	hc2 := natshubclient.NewNatsHubClient(testenv.TestDevice1ID, testenv.TestDevice1NKey)
-	err = hc2.ConnectWithKey(clientURL, certBundle.CaCert)
+	hc2 := natshubclient.NewNatsHubClient(clientURL, testenv.TestDevice1ID, testenv.TestDevice1NKey, certBundle.CaCert)
+	err = hc2.ConnectWithKey()
 	require.NoError(t, err)
 	defer hc2.Disconnect()
 

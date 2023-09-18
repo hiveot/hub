@@ -5,12 +5,15 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/hiveot/hub/cmd/runcore/startcore"
+	"github.com/hiveot/hub/api/go/auth"
+	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/core/config"
+	"github.com/hiveot/hub/core/mqttmsgserver"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
 	"gopkg.in/yaml.v3"
 	"os"
+	"time"
 )
 
 const DefaultCfg = "hub.yaml"
@@ -65,7 +68,8 @@ func main() {
 	flag.StringVar(&cfgFile, "c", cfgFile, "Service config file")
 	flag.BoolVar(&newSetup, "new", newSetup, "Overwrite existing config (use with care!)")
 	flag.Usage = func() {
-		fmt.Println("Usage: hub [options] config|run|setup\n")
+		fmt.Println("Usage: mqttcore [options] config|run|setup")
+		fmt.Println()
 		fmt.Println("Options (before command):")
 		flag.PrintDefaults()
 
@@ -119,16 +123,26 @@ func main() {
 func run(cfg *config.HubCoreConfig) error {
 	var err error
 
-	clientURL, err := startcore.Start(cfg)
-
+	msgServer := mqttmsgserver.NewMqttMsgServer(&cfg.MqttServer, auth.DefaultRolePermissions)
+	clientURL, err := msgServer.Start()
 	if err != nil {
 		return fmt.Errorf("unable to start server: %w", err)
 	}
 
+	// mqtt can use either argon2id or brcypt passwords
+	cfg.Auth.Encryption = auth.PWHASH_BCRYPT
+	authSvc, err := authservice.StartAuthService(cfg.Auth, msgServer)
+	if err != nil {
+		return err
+	}
+
 	// wait until signal
-	fmt.Println("Hub started. ClientURL=" + clientURL)
+	fmt.Println("MQTT Hub core started. ClientURL=" + clientURL)
 	utils.WaitForSignal(context.Background())
 
-	startcore.Stop()
+	authSvc.Stop()
+	msgServer.Stop()
+	// give background tasks time to stop
+	time.Sleep(time.Millisecond * 100)
 	return nil
 }

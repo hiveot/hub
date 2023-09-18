@@ -38,7 +38,7 @@ import (
 // }
 
 func TestEncryptDecrypt(t *testing.T) {
-	privKey := certs.CreateECDSAKeys()
+	privKey, _ := certs.CreateECDSAKeys()
 	const msg1 = "Message1"
 	// encrypt using my own public key
 	serialized, err := signing.EncryptMessage(msg1, &privKey.PublicKey)
@@ -52,7 +52,7 @@ func TestEncryptDecrypt(t *testing.T) {
 }
 
 func TestSignAndEncrypt(t *testing.T) {
-	privKey := certs.CreateECDSAKeys()
+	privKey, _ := certs.CreateECDSAKeys()
 	payload, _ := json.Marshal(testObject)
 
 	msg, err := signing.SignAndEncrypt(payload, privKey, &privKey.PublicKey)

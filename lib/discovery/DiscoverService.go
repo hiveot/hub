@@ -79,6 +79,6 @@ func LocateHub(searchTime int) (fullURL string) {
 		// failed, nothing to be found
 		return ""
 	}
-	fullURL = fmt.Sprintf("nats://%s:%s%s", addr, port, params["path"])
+	fullURL = fmt.Sprintf("nats://%s:%d%s", addr, port, params["path"])
 	return
 }

@@ -2,7 +2,6 @@ package hubclient
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"github.com/hiveot/hub/api/go/thing"
 )
 
@@ -71,17 +70,16 @@ type IHubClient interface {
 
 	// ConnectWithCert connects to the messaging server using client certificate authentication
 	// Support for client cert auth depends on the server setup.
-	ConnectWithCert(brokerURL string,
-		clientCert *tls.Certificate, caCert *x509.Certificate) error
+	ConnectWithCert(clientCert *tls.Certificate) error
 
-	// ConnectWithToken connects to the messaging server using an authentication token obtained with login or refresh
-	// The token type depends on the underlying messaging server.
-	// The MQTT and NATS callout server uses short lived JWT tokens.
-	// If Nats nkey setup is used, this authenticates using nkeys (effectively ignoring the token)
-	ConnectWithToken(brokerURL string, token string, caCert *x509.Certificate) error
+	// ConnectWithToken connects to the messaging server using an authentication token obtained with login or refresh.
+	// The token format depends on the underlying messaging server.
+	//
+	// If Nats nkey-only setup is used, this authenticates using nkeys (effectively ignoring the token)
+	ConnectWithToken(token string) error
 
 	// ConnectWithPassword connects to the messaging server using password authentication
-	ConnectWithPassword(connectURL string, password string, caCert *x509.Certificate) error
+	ConnectWithPassword(password string) error
 
 	// Disconnect from the hub server
 	Disconnect()

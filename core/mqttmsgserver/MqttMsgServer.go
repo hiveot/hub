@@ -9,7 +9,7 @@ import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
-	"github.com/hiveot/hub/core/hubclient/mqtthubclient"
+	"github.com/hiveot/hub/lib/hubcl/mqtthubclient"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/listeners"
 	"net"
@@ -50,13 +50,14 @@ func (srv *MqttMsgServer) ClientURL() string {
 
 // ConnectInProc establishes a connection to the server for core services.
 // This connects in-process using the service key.
-// Intended for the core services to connect to the server.
+// Intended for the core services to connect to the local server.
 //
 //	serviceID of the connecting service
 //	token is the service authentication token
 func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hc hubclient.IHubClient, err error) {
 
-	mqttClient := mqtthubclient.NewMqttHubClient(serviceID, nil)
+	hubCl := mqtthubclient.NewMqttHubClient(
+		"", serviceID, srv.Config.CoreServiceKP, nil)
 
 	conn, err := net.Dial("unix", inMemConnAddr)
 	if err != nil {
@@ -73,9 +74,9 @@ func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hc hubclient.IHubClie
 	if err != nil {
 		return nil, err
 	}
-	err = mqttClient.ConnectWithConn(token, safeConn)
+	err = hubCl.ConnectWithConn(token, safeConn)
 
-	return mqttClient, err
+	return hubCl, err
 }
 
 // Start the NATS server with the given configuration and create an event ingress stream
