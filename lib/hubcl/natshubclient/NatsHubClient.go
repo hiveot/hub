@@ -8,6 +8,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
 	"golang.org/x/exp/slog"
+	"os"
 	"time"
 )
 
@@ -121,6 +122,23 @@ func (hc *NatsHubClient) ConnectWithToken(token string) (err error) {
 	} else {
 		err = hc.ConnectWithJWT(token)
 	}
+	return err
+}
+
+// ConnectWithTokenFile is a convenience function to read token and key from file and connect to the server
+func (hc *NatsHubClient) ConnectWithTokenFile(tokenFile string, keyFile string) error {
+	token, err := os.ReadFile(tokenFile)
+	if err == nil && keyFile != "" {
+		var keyData []byte
+		keyData, err = os.ReadFile(keyFile)
+		if err == nil {
+			hc.myKey, err = nkeys.ParseDecoratedUserNKey(keyData)
+		}
+	}
+	if err != nil {
+		return err
+	}
+	err = hc.ConnectWithToken(string(token))
 	return err
 }
 

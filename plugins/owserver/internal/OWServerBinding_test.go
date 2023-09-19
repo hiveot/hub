@@ -2,6 +2,8 @@ package internal_test
 
 import (
 	"encoding/json"
+	"github.com/hiveot/hub/api/go/hubclient"
+	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/lib/testenv"
 	"golang.org/x/exp/slog"
 	"os"
@@ -13,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hub/api/go/thing"
 	"github.com/hiveot/hub/lib/logging"
 
 	"github.com/hiveot/hub/api/go/vocab"
@@ -21,30 +22,28 @@ import (
 )
 
 // var homeFolder string
-var testUrl = "" // client connect url
-
-var testCerts testenv.TestAuthBundle
+var core = "nats"
 
 var tempFolder string
 var owsConfig internal.OWServerConfig
 var owsSimulationFile string // simulation file
 
+var msgServer msgserver.IMsgServer
+
 // launch the hub
-func startServer() (svc *testenv.TestJWTServer) {
-	svc = testenv.NewTestServer(testCerts.ServerCert, testCerts.CaCert)
-	clientURL, err := svc.Start()
-	testUrl = clientURL
+func startServer() (msgServer msgserver.IMsgServer) {
+	var err error
+	_, msgServer, _, err = testenv.StartTestServer(core, true)
 	if err != nil {
 		panic("unable to start test server")
 	}
-	return svc
+	return msgServer
 }
 
 // TestMain run mosquitto and use the project test folder as the home folder.
 // All tests are run using the simulation file.
 func TestMain(m *testing.M) {
 	// setup environment
-	testCerts = testenv.CreateTestAuthBundle()
 	tempFolder = path.Join(os.TempDir(), "test-owserver")
 	cwd, _ := os.Getwd()
 	homeFolder := path.Join(cwd, "../docs")
@@ -52,16 +51,16 @@ func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
 
 	owsConfig = internal.NewConfig()
-	owsConfig.ID = testCerts.DeviceID
-	owsConfig.OWServerAddress = owsSimulationFile
+	owsConfig.BindingID = testenv.TestDevice1ID
+	owsConfig.OWServerURL = owsSimulationFile
 
 	//
-	srv := startServer()
+	msgServer = startServer()
 
 	result := m.Run()
 	time.Sleep(time.Second)
 
-	srv.Stop()
+	msgServer.Stop()
 	if result == 0 {
 		_ = os.RemoveAll(tempFolder)
 	}
@@ -72,33 +71,32 @@ func TestMain(m *testing.M) {
 func TestStartStop(t *testing.T) {
 	slog.Info("--- TestStartStop ---")
 
-	hc := hubconn.NewHubClient(owsConfig.ID)
-	err := hc.ConnectWithCert(testUrl, testCerts.DeviceID, testCerts.DeviceCert, testCerts.CaCert)
+	hc, err := msgServer.ConnectInProc(owsConfig.BindingID)
 	require.NoError(t, err)
+	defer hc.Disconnect()
 	svc := internal.NewOWServerBinding(owsConfig, hc)
-	go func() {
-		err := svc.Start()
-		assert.NoError(t, err)
-	}()
+	err = svc.Start()
+	assert.NoError(t, err)
+	defer svc.Stop()
 	time.Sleep(time.Second)
-	svc.Stop()
 }
 
 func TestPoll(t *testing.T) {
 	var tdCount atomic.Int32
 
 	slog.Info("--- TestPoll ---")
-	hc := hubconn.NewHubClient(owsConfig.ID)
-	err := hc.ConnectWithCert(testUrl, testCerts.DeviceID, testCerts.DeviceCert, testCerts.CaCert)
+	hc, err := msgServer.ConnectInProc(owsConfig.BindingID)
 	require.NoError(t, err)
+	defer hc.Disconnect()
 	svc := internal.NewOWServerBinding(owsConfig, hc)
 
 	// Count the number of received TD events
-	err = hc.SubEvent("", "", vocab.EventNameTD,
-		func(ev *thing.ThingValue) {
-			if ev.ID == vocab.EventNameProps {
+	sub, err := hc.SubThingEvents("", "",
+		func(ev *hubclient.EventMessage) {
+			slog.Info("received event", "id", ev.EventID)
+			if ev.EventID == vocab.EventNameProps {
 				var value map[string][]byte
-				err2 := json.Unmarshal(ev.Data, &value)
+				err2 := json.Unmarshal(ev.Payload, &value)
 				assert.NoError(t, err2)
 				//for propName, propValue := range value {
 				//	pv := string(propValue)
@@ -106,46 +104,43 @@ func TestPoll(t *testing.T) {
 				//}
 			} else {
 				var value interface{}
-				err2 := json.Unmarshal(ev.Data, &value)
+				err2 := json.Unmarshal(ev.Payload, &value)
 				assert.NoError(t, err2)
 			}
 			tdCount.Add(1)
 		})
 	assert.NoError(t, err)
+	defer sub.Unsubscribe()
 
 	// start the service which publishes TDs
-	go func() {
-		err := svc.Start()
-		assert.NoError(t, err)
-	}()
+	err = svc.Start()
+	require.NoError(t, err)
+	defer svc.Stop()
 
 	// wait until startup poll completed
 	time.Sleep(time.Millisecond * 1000)
 
 	// the simulation file contains 3 things. The service is 1 thing.
 	assert.GreaterOrEqual(t, tdCount.Load(), int32(4))
-	svc.Stop()
 }
 
 func TestPollInvalidEDSAddress(t *testing.T) {
 	slog.Info("--- TestPollInvalidEDSAddress ---")
 
-	hc := hubconn.NewHubClient(owsConfig.ID)
-	err := hc.ConnectWithCert(testUrl, testCerts.DeviceID, testCerts.DeviceCert, testCerts.CaCert)
+	hc, err := msgServer.ConnectInProc(owsConfig.BindingID)
 	require.NoError(t, err)
-	svc := internal.NewOWServerBinding(owsConfig, hc)
-	svc.Config.OWServerAddress = "http://invalidAddress/"
+	defer hc.Disconnect()
 
-	go func() {
-		err := svc.Start()
-		assert.NoError(t, err)
-	}()
+	svc := internal.NewOWServerBinding(owsConfig, hc)
+	svc.Config.OWServerURL = "http://invalidAddress/"
+	err = svc.Start()
+	assert.NoError(t, err)
+	defer svc.Stop()
 
 	time.Sleep(time.Millisecond * 10)
 
 	_, err = svc.PollNodes()
 	assert.Error(t, err)
-	svc.Stop()
 }
 
 func TestAction(t *testing.T) {
@@ -156,22 +151,22 @@ func TestAction(t *testing.T) {
 	var actionName = vocab.VocabRelay
 	var actionValue = ([]byte)("1")
 
-	hc := hubconn.NewHubClient(owsConfig.ID)
-	err := hc.ConnectWithCert(testUrl, testCerts.DeviceID, testCerts.DeviceCert, testCerts.CaCert)
+	hc, err := msgServer.ConnectInProc(owsConfig.BindingID)
 	require.NoError(t, err)
+	defer hc.Disconnect()
 
 	svc := internal.NewOWServerBinding(owsConfig, hc)
-	go func() {
-		err := svc.Start()
-		assert.NoError(t, err)
-	}()
+	err = svc.Start()
+	require.NoError(t, err)
+	defer svc.Stop()
+
 	// give Start time to run
 	time.Sleep(time.Millisecond * 10)
 
-	// This will log an error as the simulation file doesn't accept writes
-	err = hc.PubAction(owsConfig.ID, nodeID, actionName, actionValue)
-	assert.NoError(t, err)
+	// note that the simulation file doesn't support writes so this logs an error
+	reply, err := hc.PubThingAction(owsConfig.BindingID, nodeID, actionName, actionValue)
+	assert.Error(t, err)
+	_ = reply
 
-	time.Sleep(time.Second * 3)
-	svc.Stop()
+	time.Sleep(time.Second)
 }

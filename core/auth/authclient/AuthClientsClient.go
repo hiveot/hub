@@ -26,7 +26,10 @@ func (cl *AuthClientsClient) pubReq(action string, req interface{}, resp interfa
 	if err != nil {
 		return err
 	}
-	err = cl.hc.ParseResponse(data, resp)
+	if data.ErrorReply != nil {
+		return data.ErrorReply
+	}
+	err = cl.hc.ParseResponse(data.Payload, resp)
 
 	return err
 }

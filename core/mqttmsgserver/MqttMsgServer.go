@@ -17,9 +17,7 @@ import (
 	"sync"
 )
 
-var inMemConnAddr = "@/mqttinproc"
-
-//var inMemConnAddr = "/tmp/mqttinproc"
+var MqttInMemUDS = "@/mqttinmemuds"
 
 // MqttMsgServer runs a MQTT broker using the Mochi-co embedded mqtt server.
 // this implements the IMsgServer interface
@@ -59,7 +57,7 @@ func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hc hubclient.IHubClie
 	hubCl := mqtthubclient.NewMqttHubClient(
 		"", serviceID, srv.Config.CoreServiceKP, nil)
 
-	conn, err := net.Dial("unix", inMemConnAddr)
+	conn, err := net.Dial("unix", MqttInMemUDS)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +88,7 @@ func (srv *MqttMsgServer) Start() (clientURL string, err error) {
 		return "", fmt.Errorf("missing server or CA certificate")
 	}
 
-	_ = os.Remove(inMemConnAddr)
+	_ = os.Remove(MqttInMemUDS)
 
 	caCertPool := x509.NewCertPool()
 	caCertPool.AddCert(srv.Config.CaCert)
@@ -134,7 +132,7 @@ func (srv *MqttMsgServer) Start() (clientURL string, err error) {
 	}
 	// listen on UDS for local connections
 	// todo: does @/path prefix creates an in-memory pipe
-	inmemLis := listeners.NewUnixSock("inmem", inMemConnAddr)
+	inmemLis := listeners.NewUnixSock("inmem", MqttInMemUDS)
 	err = srv.ms.AddListener(inmemLis)
 	if err != nil {
 		return "", err

@@ -1,24 +1,23 @@
 # OWServer configuration
 
-# Binding publisher ID. Default is 'owserver'.
-# Recommended is to add a '-1' in case of multiple instances.
-#bindingID: "owserver"
+# Binding publisher ID. Default is 'owserver-{hostName}'.
+#bindingID: "owserver-myhost"
 
-# hubURL optional hub address to connect to.
+# serverUrl optional messaging server address to connect to.
 # Default "" for auto discovery.
 # * "unix://path/to/socket"    for UDS
 # * "tcp://address:8443/"      for TCP/TLS
 # * "wss://address:8444/ws"    for Websocket
-#hubUrl: ""
+#serverUrl: ""
 
-# owserverAddress address of the EDS OWServer-V2 gateway.
+# owServerURL with URL of the EDS OWServer-V2 gateway.
 # Default "" is auto-discover using DNS-SD
 # Override by providing http://address:port
-#owserverAddress: ""
+#owServerURL: ""
 
-# Optional loginName and password to the EDS OWserver using Basic Auth.
-#loginName: admin
-#password: password
+# Optional loginName and password to the EDS OWServer using Basic Auth.
+#owServerLogin: admin
+#owServerPassword: password
 
 # TDInterval optional override interval of republishing the full TD, in seconds.
 # Default is 12 hours

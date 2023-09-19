@@ -90,7 +90,7 @@ func (binding *OWServerBinding) PollNodes() ([]*eds.OneWireNode, error) {
 func (binding *OWServerBinding) PublishThings(nodes []*eds.OneWireNode) (err error) {
 	for _, node := range nodes {
 		td := binding.CreateTDFromNode(node)
-		err2 := binding.hubClient.PubTD(td)
+		err2 := binding.hc.PubTD(td)
 		if err2 != nil {
 			err = err2
 		}

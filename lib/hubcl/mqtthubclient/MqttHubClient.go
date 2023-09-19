@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/eclipse/paho.golang/paho"
+	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"golang.org/x/exp/slog"
 	"net"
@@ -31,6 +32,11 @@ type MqttHubClient struct {
 	conn    net.Conn
 	pcl     *paho.Client
 	timeout time.Duration // request timeout
+}
+
+// ClientID the client is authenticated as to the server
+func (hc *MqttHubClient) ClientID() string {
+	return hc.clientID
 }
 
 // ConnectWithConn connects to a mqtt broker using the pre-established network connection
@@ -129,6 +135,19 @@ func (hc *MqttHubClient) ConnectWithToken(jwtToken string) error {
 		return err
 	}
 	err = hc.ConnectWithConn(jwtToken, conn)
+	return err
+}
+
+// ConnectWithTokenFile is a convenience function to read token and key from file and connect to the server
+func (hc *MqttHubClient) ConnectWithTokenFile(tokenFile string, keyFile string) error {
+	token, err := os.ReadFile(tokenFile)
+	if err == nil && keyFile != "" {
+		hc.privKey, err = certs.LoadKeysFromPEM(keyFile)
+	}
+	if err != nil {
+		return err
+	}
+	err = hc.ConnectWithToken(string(token))
 	return err
 }
 

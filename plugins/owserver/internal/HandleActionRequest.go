@@ -2,49 +2,54 @@
 package internal
 
 import (
+	"fmt"
+	"github.com/hiveot/hub/api/go/hubclient"
 	"golang.org/x/exp/slog"
 	"time"
 
-	"github.com/hiveot/hub/api/go/thing"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/plugins/owserver/internal/eds"
 )
 
 // HandleActionRequest handles requests to activate inputs
-func (binding *OWServerBinding) HandleActionRequest(action *thing.ThingValue) {
+func (binding *OWServerBinding) HandleActionRequest(action *hubclient.ActionRequest) error {
 	var attr eds.OneWireAttr
-	slog.Info("action", "pubID", action.PublisherID, "thingID", action.ThingID, "action", action.ID, "payload", action.Data)
+	slog.Info("HandleActionRequest",
+		slog.String("deviceID", action.DeviceID),
+		slog.String("thingID", action.ThingID),
+		slog.String("action", action.ActionID),
+		slog.String("payload", string(action.Payload)))
 
 	// If the action name is converted to a standardized vocabulary then convert the name
 	// to the EDS writable property name.
 
 	// which node is this action for?
 	deviceID := action.ThingID
-	rawActionID := action.ID
+	rawActionID := action.ActionID
 	for actID, actType := range eds.ActuatorTypeVocab {
 		// check both the 'raw' attribute ID and the vocab ID
-		if actID == action.ID || actType.ActuatorType == action.ID {
+		if actID == action.ActionID || actType.ActuatorType == action.ActionID {
 			rawActionID = actID
 			break
 		}
 	}
 
 	// TODO: lookup the action name used by the EDS
-	edsName := action.ID
+	edsName := action.ActionID
 
 	// determine the value. Booleans are submitted as integers
-	actionValue := action.Data
+	actionValue := action.Payload
 
 	node, found := binding.nodes[deviceID]
 	if found {
 		attr, found = node.Attr[rawActionID]
 	}
 	if !found {
-		slog.Warn("action on unknown attribute", "actionID", action.ID, "attrName", attr.Name)
-		return
+		err := fmt.Errorf("action '%s' on unknown attribute '%s'", action.ActionID, attr.Name)
+		return err
 	} else if !attr.Writable {
-		slog.Warn("action on read-only attribute", "actionID", action.ID, "attrName", attr.Name)
-		return
+		err := fmt.Errorf("action '%s' on read-only attribute '%s'", action.ActionID, attr.Name)
+		return err
 	}
 	// TODO: type conversions needed?
 	if attr.DataType == vocab.WoTDataTypeBool {
@@ -61,6 +66,9 @@ func (binding *OWServerBinding) HandleActionRequest(action *thing.ThingValue) {
 	_ = binding.RefreshPropertyValues()
 
 	if err != nil {
-		slog.Warn("action failed", "err", err.Error(), "actionID", action.ID)
+		err = fmt.Errorf("action '%s' failed: %w", action.ActionID, err)
+		return err
 	}
+	_ = action.SendAck()
+	return nil
 }

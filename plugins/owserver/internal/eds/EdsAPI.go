@@ -50,7 +50,7 @@ var deviceTypeMap = map[string]string{
 	"31": vocab.DeviceTypeBatteryMon,   // 2720: efficient addressable single-cell rechargable lithium protection ic
 	"33": vocab.DeviceTypeEeprom,       // 2432 (1961S): 1k protected eeprom with SHA-1
 	"36": vocab.DeviceTypeSensor,       // 2740: high precision coulomb counter
-	"37": vocab.DeviceTypeEeprom,       // (1977): Password protected 32k eeprom
+	"37": vocab.DeviceTypeEeprom,       // (1977): OWServerPassword protected 32k eeprom
 	"3B": vocab.DeviceTypeThermometer,  // DS1825: programmable digital thermometer (https://www.analog.com/media/en/technical-documentation/data-sheets/ds1825.pdf)
 	"41": vocab.DeviceTypeSensor,       // 2422: Temperature Logger 8k mem
 	"42": vocab.DeviceTypeThermometer,  // DS28EA00: digital thermometer with PIO (https://www.analog.com/media/en/technical-documentation/data-sheets/ds28ea00.pdf)

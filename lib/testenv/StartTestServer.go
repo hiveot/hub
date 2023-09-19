@@ -12,7 +12,11 @@ import (
 
 // StartTestServer creates a NATS or MQTT test server depending on the requested type
 // core is either "nats", or "mqtt" (default)
-func StartTestServer(core string) (
+// applyTestClients registers the test client with the server for direct usage.
+//
+// Note that test clients will be replaced when the 'auth' core service is started,
+// so only use it instead of 'auth'.
+func StartTestServer(core string, applyTestClients bool) (
 	serverURL string,
 	msgServer msgserver.IMsgServer,
 	certBundle certs.TestCertBundle,
@@ -36,6 +40,9 @@ func StartTestServer(core string) (
 			natsServer := natsmsgserver.NewNatsMsgServer(serverCfg, auth.DefaultRolePermissions)
 			serverURL, err = natsServer.Start()
 			msgServer = natsServer
+			if applyTestClients {
+				_ = natsServer.ApplyAuth(NatsTestClients)
+			}
 		}
 	} else {
 		serverCfg := &mqttmsgserver.MqttServerConfig{
@@ -52,6 +59,9 @@ func StartTestServer(core string) (
 			mqttServer := mqttmsgserver.NewMqttMsgServer(serverCfg, auth.DefaultRolePermissions)
 			serverURL, err = mqttServer.Start()
 			msgServer = mqttServer
+			if applyTestClients {
+				_ = mqttServer.ApplyAuth(MqttTestClients)
+			}
 		}
 	}
 	return serverURL, msgServer, certBundle, err

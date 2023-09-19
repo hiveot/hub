@@ -1,4 +1,4 @@
-# OWServer
+# OWServer Binding
 
 HiveOT 1-wire protocol binding for OWServer-v2 gateway.
 
@@ -37,6 +37,6 @@ This binding:
 
 ## Usage
 
-This binding plugin runs out of the box. Build and install with the hub services into the installation bin/plugins folder and start it using the launcher.
+This binding plugin runs out of the box. Build and install with the hub plugins into the installation bin/plugins folder and start it using the launcher.
 
 Out of the box it will use MDNS discovery to locate an owserver gateway on the network. Once started, the binding is added to the directory, as is the discovered owserver gateway. It can be viewed using the cli or hiveoview web server.

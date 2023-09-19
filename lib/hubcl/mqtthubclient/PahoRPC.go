@@ -1,8 +1,8 @@
 // Package mqtthubclient.
-// This is a copy of paho's rpc.go with a fix in Handler.Request
+// This is a copy of paho's rpc.go with a fix in Handler.PubAction
 // See also: https://github.com/eclipse/paho.golang/pull/111/
 //
-// To prevent lockup if Request is not responded to, this adds the
+// To prevent lockup if PubAction is not responded to, this adds the
 // fix applied in autopaho.rpc
 
 package mqtthubclient

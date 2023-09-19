@@ -58,7 +58,7 @@ func (binding *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err
 			if !skip {
 				binding.setPrevValue(node.NodeID, attrName, attr.Value)
 				if attr.IsSensor {
-					err = binding.hubClient.PubEvent(thingID, attrName, []byte(attr.Value))
+					err = binding.hc.PubEvent(thingID, attrName, []byte(attr.Value))
 				} else {
 					// attribute to be included in the properties event
 					attrMap[attrName] = []byte(attr.Value)
@@ -67,7 +67,7 @@ func (binding *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err
 		}
 		if len(attrMap) > 0 {
 			attrMapJSON, _ := json.Marshal(attrMap)
-			err = binding.hubClient.PubEvent(thingID, vocab.EventNameProps, attrMapJSON)
+			err = binding.hc.PubEvent(thingID, vocab.EventNameProps, attrMapJSON)
 		}
 	}
 	return err

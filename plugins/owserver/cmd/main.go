@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
+	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/discovery"
 	"github.com/hiveot/hub/lib/hubcl"
 	"github.com/hiveot/hub/lib/utils"
 	"golang.org/x/exp/slog"
 	"os"
+	"path"
 
 	"github.com/hiveot/hub/plugins/owserver/internal"
 )
@@ -18,14 +21,23 @@ const ServiceName = "owserver"
 func main() {
 	f := utils.GetFolders("", false)
 	config := internal.NewConfig()
-	_ = f.LoadConfig(ServiceName, &config)
+	_ = f.LoadConfig(ServiceName+".yaml", &config)
 
-	fullUrl := config.HubURL
+	// This service uses pre-generated keys and auth token for authentication & authorization.
+	// These are generated in by the hubcli or the service launcher. The file names
+	// match the serviceID from the config.
+	fullUrl := config.ServerURL
 	if fullUrl == "" {
 		fullUrl = discovery.LocateHub(0)
 	}
-	hc := hubcl.NewHubClient(fullUrl, config.ID, key, caCert, "")
-	err := hc.ConnectWithCert(config.clientCert)
+	caCertFile := path.Join(f.Certs, certs.DefaultCaCertFile)
+	caCert, err := certs.LoadX509CertFromPEM(caCertFile)
+	if err != nil {
+		slog.Error("Unable to load CA cert", "err", err, "caCertFile", caCertFile)
+	}
+	hc := hubcl.NewHubClient(fullUrl, config.BindingID, nil, caCert, "")
+	err = hc.ConnectWithTokenFile(config.AuthTokenFile, config.KeyFile)
+
 	if err != nil {
 		slog.Error("unable to connect to Hub", "url", fullUrl, "err", err)
 		panic("hub not found")
@@ -33,14 +45,13 @@ func main() {
 
 	// start the service
 	binding := internal.NewOWServerBinding(config, hc)
-	utils.ExitOnSignal(func() {
-		binding.Stop()
-	})
 	err = binding.Start()
-
 	if err != nil {
-		slog.Error("Failed to start", "err", err, "service", ServiceName)
+		slog.Error("failed starting owserver", "err", err.Error())
 		os.Exit(1)
 	}
+	utils.WaitForSignal(context.Background())
+	binding.Stop()
+
 	os.Exit(0)
 }

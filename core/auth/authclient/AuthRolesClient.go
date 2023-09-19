@@ -20,7 +20,10 @@ func (cl *AuthRolesClient) pubReq(action string, msg []byte, resp interface{}) e
 	if err != nil {
 		return err
 	}
-	err = cl.hc.ParseResponse(data, resp)
+	if data.ErrorReply != nil {
+		return data.ErrorReply
+	}
+	err = cl.hc.ParseResponse(data.Payload, resp)
 	return err
 }
 

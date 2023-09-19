@@ -13,8 +13,8 @@ import (
 type MqttServerConfig struct {
 	// configurable settings
 	Host   string `yaml:"host,omitempty"`   // default: localhost
-	Port   int    `yaml:"port,omitempty"`   // default: 8441
-	WSPort int    `yaml:"wsPort,omitempty"` // default: 0 (disabled)
+	Port   int    `yaml:"port,omitempty"`   // 0 default: 8883
+	WSPort int    `yaml:"wsPort,omitempty"` // 0 default: 8884
 
 	LogLevel string `yaml:"logLevel,omitempty"` // default: warn
 	LogFile  string `yaml:"logFile,omitempty"`  // default: no logfile
@@ -63,10 +63,10 @@ func (cfg *MqttServerConfig) Setup(
 		cfg.Host = "localhost"
 	}
 	if cfg.Port == 0 {
-		cfg.Port = 8441
+		cfg.Port = 8883
 	}
 	if cfg.WSPort == 0 {
-		//appCfg.WSPort = 8222
+		cfg.WSPort = 8884
 	}
 	if cfg.DataDir == "" {
 		cfg.DataDir = path.Join(storesDir, "natsserver")

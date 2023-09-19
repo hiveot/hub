@@ -28,12 +28,13 @@ func TestMqttServerPubSub(t *testing.T) {
 	cfg := mqttmsgserver.MqttServerConfig{}
 	err := cfg.Setup("", "", false)
 	require.NoError(t, err)
+
 	srv := mqttmsgserver.NewMqttMsgServer(&cfg, auth.DefaultRolePermissions)
 	clientURL, err := srv.Start()
 	require.NoError(t, err)
 	defer srv.Stop()
 	assert.NotEmpty(t, clientURL)
-	err = srv.ApplyAuth(testenv.CreateTestClients("mqtt"))
+	err = srv.ApplyAuth(testenv.MqttTestClients)
 	require.NoError(t, err)
 
 	// create a key pair
@@ -65,15 +66,12 @@ func TestMqttServerRequest(t *testing.T) {
 	msg := "hello world"
 
 	// setup the server with test clients
-	clientURL, srv, certBundle, err := testenv.StartTestServer("mqtt")
+	clientURL, srv, certBundle, err := testenv.StartTestServer("mqtt", true)
 	_ = certBundle
 	require.NoError(t, err)
 	require.NoError(t, err)
 	defer srv.Stop()
 	assert.NotEmpty(t, clientURL)
-
-	err = srv.ApplyAuth(testenv.CreateTestClients("mqtt"))
-	require.NoError(t, err)
 
 	// create a key pair
 	kp, pubKey := srv.CreateKP()
@@ -96,7 +94,7 @@ func TestMqttServerRequest(t *testing.T) {
 
 	reply, err := hc.PubThingAction("device1", "thing1", "action1", []byte(msg))
 	require.NoError(t, err)
-	assert.Equal(t, msg, string(reply))
+	assert.Equal(t, msg, string(reply.Payload))
 
 	rxMsg := <-rxChan
 	assert.Equal(t, msg, rxMsg)
@@ -105,12 +103,10 @@ func TestMqttServerRequest(t *testing.T) {
 func TestToken(t *testing.T) {
 
 	// setup
-	serverURL, srv, certBundle, err := testenv.StartTestServer("mqtt")
+	serverURL, srv, certBundle, err := testenv.StartTestServer("mqtt", true)
 	msrv := srv.(*mqttmsgserver.MqttMsgServer)
 	require.NoError(t, err)
 	defer srv.Stop()
-	err = srv.ApplyAuth(testenv.CreateTestClients("mqtt"))
-	require.NoError(t, err)
 
 	// admin is in the test clients with a public key
 	adminInfo, err := msrv.GetClientAuth(testenv.TestAdminUserID)

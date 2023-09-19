@@ -21,7 +21,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 )
 
-var core = "mqtt"
+var core = "nats"
 var certBundle certs.TestCertBundle
 var testDir = path.Join(os.TempDir(), "test-authn")
 
@@ -103,7 +103,7 @@ func TestMain(m *testing.M) {
 	_ = os.RemoveAll(testDir)
 	_ = os.MkdirAll(testDir, 0700)
 
-	clientURL, msgServer, certBundle, err = testenv.StartTestServer(core)
+	clientURL, msgServer, certBundle, err = testenv.StartTestServer(core, false)
 	if err != nil {
 		panic(err)
 	}
@@ -286,7 +286,7 @@ func TestLoginRefresh(t *testing.T) {
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 
-	// 2. Request a new token.
+	// 2. PubAction a new token.
 	cl1 := authclient.NewAuthProfileClient(hc1)
 	authToken1, err = cl1.NewToken(tu1Pass)
 	require.NoError(t, err)

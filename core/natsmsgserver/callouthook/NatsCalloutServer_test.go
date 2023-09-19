@@ -4,7 +4,7 @@ import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/natsmsgserver/callouthook"
-	natshubclient "github.com/hiveot/hub/lib/hubcl/natshubclient"
+	"github.com/hiveot/hub/lib/hubcl/natshubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/nkeys"
@@ -50,7 +50,7 @@ func TestValidateToken(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several predefined users, service and devices that don't need callout
-	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
+	err = s.ApplyAuth(testenv.NatsTestClients)
 	assert.NoError(t, err)
 
 	// enable callout so a jwt token can be generated
@@ -76,7 +76,7 @@ func TestCalloutPassword(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several predefined users, service and devices that don't need callout
-	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
+	err = s.ApplyAuth(testenv.NatsTestClients)
 	assert.NoError(t, err)
 
 	// this callout handler only accepts 'user2' request
@@ -99,7 +99,7 @@ func TestCalloutJWT(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several predefined users, service and devices that don't need callout
-	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
+	err = s.ApplyAuth(testenv.NatsTestClients)
 	assert.NoError(t, err)
 
 	// this callout handler only accepts 'user2' request
@@ -130,7 +130,7 @@ func TestNoCalloutForExistingNKey(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several predefined users, service and devices that don't need callout
-	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
+	err = s.ApplyAuth(testenv.NatsTestClients)
 	assert.NoError(t, err)
 
 	// a directly added service should not invoke the callout handler
@@ -155,7 +155,7 @@ func TestInValidCalloutAuthn(t *testing.T) {
 	defer s.Stop()
 	assert.NotEmpty(t, clientURL)
 	// add several predefined users, service and devices that don't need callout
-	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
+	err = s.ApplyAuth(testenv.NatsTestClients)
 
 	// this callout handler only accepts 'knownUser' request
 	chook, err := callouthook.EnableNatsCalloutHook(s)

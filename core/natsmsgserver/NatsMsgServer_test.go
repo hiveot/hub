@@ -70,7 +70,7 @@ func TestConnectWithNKey(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several users, service and devices
-	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
+	err = s.ApplyAuth(testenv.NatsTestClients)
 	require.NoError(t, err)
 
 	// users subscribe to things
@@ -103,7 +103,7 @@ func TestConnectWithPassword(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several users, service and devices
-	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
+	err = s.ApplyAuth(testenv.NatsTestClients)
 	require.NoError(t, err)
 
 	hc1 := natshubclient.NewNatsHubClient(clientURL, testenv.TestUser1ID, nil, certBundle.CaCert)
@@ -123,7 +123,7 @@ func TestLoginFail(t *testing.T) {
 	assert.NotEmpty(t, clientURL)
 
 	// add several users, service and devices
-	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
+	err = s.ApplyAuth(testenv.NatsTestClients)
 	require.NoError(t, err)
 
 	hc1 := natshubclient.NewNatsHubClient(clientURL, testenv.TestUser1ID, nil, certBundle.CaCert)
@@ -153,7 +153,7 @@ func TestEventsStream(t *testing.T) {
 	_ = cfg
 	// the main service can access $JS
 	// add devices that publish things, eg TestDevice1ID and TestService1ID
-	err = s.ApplyAuth(testenv.CreateTestClients("nats"))
+	err = s.ApplyAuth(testenv.NatsTestClients)
 	require.NoError(t, err)
 
 	//hc1, err := natshubclient.ConnectWithNKey(
