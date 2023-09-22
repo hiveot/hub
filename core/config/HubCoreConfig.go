@@ -11,8 +11,8 @@ import (
 	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/utils"
-	"golang.org/x/exp/slog"
 	"gopkg.in/yaml.v3"
+	"log/slog"
 	"os"
 	"path"
 )
@@ -40,7 +40,11 @@ type HubCoreConfig struct {
 	NatsServer natsmsgserver.NatsServerConfig `yaml:"natsserver"`
 	MqttServer mqttmsgserver.MqttServerConfig `yaml:"mqttserver"`
 
+	// auth service config
 	Auth authservice.AuthConfig `yaml:"auth"`
+
+	// enable mDNS discovery
+	EnableMDNS bool `yaml:"enableMDNS"`
 }
 
 // Setup creates and loads certificate and key files

@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/nats-io/jwt/v2"
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 // NatsCalloutVerifier provides client verification using callout hooks.

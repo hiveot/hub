@@ -2,8 +2,8 @@ package utils
 
 import (
 	"fmt"
-	"golang.org/x/exp/slog"
 	"gopkg.in/yaml.v3"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"

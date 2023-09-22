@@ -9,7 +9,7 @@ import (
 	"github.com/eclipse/paho.golang/paho"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/tlsclient"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"net"
 	"os"
 	"time"
@@ -68,8 +68,8 @@ func (hc *MqttHubClient) ConnectWithConn(
 		PacketTimeout: hc.timeout,
 	}
 	pahoCfg.OnClientError = func(err error) {
-		// connection closing?
-		slog.Info("OnClientError - connection closing",
+		// connection closing can cause this error.
+		slog.Debug("OnClientError - connection closing",
 			slog.String("err", err.Error()),
 			slog.String("clientID", pahoCfg.ClientID))
 	}
@@ -80,10 +80,11 @@ func (hc *MqttHubClient) ConnectWithConn(
 	}
 	pcl := paho.NewClient(pahoCfg)
 	cp := &paho.Connect{
-		Password:     []byte(password),
-		Username:     hc.clientID,
-		ClientID:     connectID,
-		Properties:   nil,
+		Password: []byte(password),
+		Username: hc.clientID,
+		ClientID: connectID,
+		// TODO: consider including a signed nonce when connecting with key
+		Properties:   &paho.ConnectProperties{},
 		KeepAlive:    60,
 		CleanStart:   true,
 		UsernameFlag: true,
@@ -171,8 +172,9 @@ func (hc *MqttHubClient) Disconnect() {
 	if hc.pcl != nil {
 
 		slog.Info("Disconnect", "clientID", hc.clientID)
-		time.Sleep(time.Second / 10) // Disconnect doesn't seem to wait for all messages. A small delay ahead helps
+		//time.Sleep(time.Millisecond * 10) // Disconnect doesn't seem to wait for all messages. A small delay ahead helps
 		_ = hc.pcl.Disconnect(&paho.Disconnect{ReasonCode: 0})
+		//time.Sleep(time.Millisecond * 10) // Disconnect doesn't seem to wait for all messages. A small delay ahead helps
 		hc.pcl = nil
 
 		//hc.subscriptions = nil

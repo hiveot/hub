@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/lib/discovery"
 	"github.com/hiveot/hub/lib/hubcl"
 	"github.com/hiveot/hub/lib/utils"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"os"
 	"path"
 

@@ -15,7 +15,7 @@ import (
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/packets"
 	"golang.org/x/crypto/bcrypt"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -127,7 +127,7 @@ func (hook *MqttAuthHook) GetClientAuth(clientID string) (msgserver.ClientAuthIn
 	clientAuth, found := hook.authClients[clientID]
 	hook.authMux.RUnlock()
 	if !found {
-		return clientAuth, fmt.Errorf("client %s not known", clientID)
+		return clientAuth, fmt.Errorf("client '%s' not known", clientID)
 	}
 	return clientAuth, nil
 }
@@ -143,11 +143,15 @@ func (hook *MqttAuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Pack
 	// Multiple sessions by the same user will have different cid's.
 	cid := pk.Connect.ClientIdentifier
 
+	slog.Info("OnConnectAuthenticate",
+		slog.String("clientID", clientID),
+		slog.String("cid", cid),
+		slog.Int("protocolVersion", int(cl.Properties.ProtocolVersion)))
+
 	// verify authentication using password or token
 	// step 1: credentials must be provided
 	if pk.Connect.PasswordFlag == false || len(pk.Connect.Password) == 0 {
 		slog.Info("OnConnectAuthenticate: missing authn credentials",
-			slog.String("clientID", clientID),
 			slog.String("cid", cid))
 		return false
 	}
@@ -165,7 +169,6 @@ func (hook *MqttAuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Pack
 	authInfo, found := hook.authClients[clientID]
 	if !found {
 		slog.Info("OnConnectAuthenticate: unknown user",
-			slog.String("clientID", clientID),
 			slog.String("cid", cid))
 		return false
 	}
@@ -174,18 +177,18 @@ func (hook *MqttAuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Pack
 		err := bcrypt.CompareHashAndPassword([]byte(authInfo.PasswordHash), pk.Connect.Password)
 		if err != nil {
 			slog.Info("OnConnectAuthenticate: invalid password",
-				"clientID", clientID,
+				"cid", cid,
 				"net.remote", cl.Net.Remote)
 			return false
 		}
 		slog.Info("OnConnectAuthenticate: password login success",
-			"clientID", clientID,
+			"cid", cid,
 			"net.remote", cl.Net.Remote)
 		return true
 	}
 	// credentials provided but unable to match it
 	slog.Info("OnConnectAuthenticate: invalid credentials",
-		"clientID", clientID,
+		"cid", cid,
 		"net.remote", cl.Net.Remote)
 	//cl.Properties.Props.
 	return false
@@ -218,13 +221,13 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 		return true
 	}
 
-	prefix, deviceID, thingID, stype, name, senderID, err :=
+	msgType, deviceID, thingID, name, senderID, err :=
 		mqtthubclient.SplitTopic(topic)
 	if err != nil {
 		// invalid topic format.
 		return false
 	}
-	_ = prefix
+	_ = msgType
 	_ = senderID
 
 	//err := hook.hasRolePermissions(prof, topic)
@@ -258,11 +261,10 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 	for _, perm := range rolePerm {
 		// when write, must allow pub, otherwise must allow sub
 		if ((write && perm.AllowPub) || (!write && perm.AllowSub)) &&
-			(perm.MsgType == "" || perm.MsgType == stype) &&
+			(perm.MsgType == "" || perm.MsgType == msgType) &&
 			(perm.SourceID == "" || perm.SourceID == deviceID) &&
 			(perm.ThingID == "" || perm.ThingID == thingID) &&
-			(perm.MsgName == "" || perm.MsgName == name) &&
-			(perm.Prefix == "" || perm.Prefix == prefix) {
+			(perm.MsgName == "" || perm.MsgName == name) {
 			return true
 		}
 	}

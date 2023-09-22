@@ -9,7 +9,7 @@ import (
 	"github.com/hiveot/hub/api/go/thing"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/ser"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"time"
 )
 
@@ -82,9 +82,9 @@ func (hc *MqttHubClient) Pub(topic string, payload []byte) (err error) {
 	return err
 }
 
-// PubAction publishes a request message and waits for an answer or until timeout
-func (hc *MqttHubClient) PubAction(topic string, payload []byte) (ar hubclient.ActionResponse, err error) {
-	slog.Info("PubAction", "topic", topic)
+// PubRequest publishes a request message and waits for an answer or until timeout
+func (hc *MqttHubClient) PubRequest(topic string, payload []byte) (ar hubclient.ActionResponse, err error) {
+	slog.Info("PubRequest start:", "topic", topic)
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), hc.timeout)
 	defer cancelFn()
@@ -105,65 +105,92 @@ func (hc *MqttHubClient) PubAction(topic string, payload []byte) (ar hubclient.A
 		return ar, err
 	}
 	pubMsg := &paho.Publish{
-		QoS:        withQos,
-		Retain:     false,
-		Topic:      topic,
-		Payload:    payload,
-		Properties: &paho.PublishProperties{},
+		QoS:     withQos,
+		Retain:  false,
+		Topic:   topic,
+		Payload: payload,
+		Properties: &paho.PublishProperties{
+			ContentType: "json",
+			User: paho.UserProperties{{
+				Key:   "test",
+				Value: "test",
+			}},
+		},
 	}
 	// use the inbox as the custom response for this client instance
-	//pubMsg.Properties.ResponseTopic = fmt.Sprintf(InboxTopicFormat, hc.clientID)
 	// clone of rpc.go to workaround hangup when no response is received #111
 	respMsg, err := handler.Request(ctx, pubMsg)
+	ar.Duration = time.Now().Sub(t1)
 	if err != nil {
 		return ar, err
 	}
 	ar.SentSuccess = true
-	ar.Duration = time.Now().Sub(t1)
 	ar.Payload = respMsg.Payload
 	ar.ReceivedReply = len(respMsg.Payload) > 0
 
-	errResp := respMsg.Properties.User.Get("error")
-	if errResp != "" {
-		ar.ErrorReply = errors.New(errResp)
+	// test alternative to handling errors since User properties aren't
+	// passed through for some reason.
+	if respMsg.Properties.ContentType == "error" {
+		ar.ErrorReply = errors.New(string(respMsg.Payload))
+		err = ar.ErrorReply
 	}
+	//errResp := respMsg.Properties.User.Get("error")
+	//if errResp != "" {
+	//	ar.ErrorReply = errors.New(errResp)
+	//	err = ar.ErrorReply
+	//}
+	slog.Info("PubRequest end:",
+		slog.String("topic", topic),
+		slog.String("ContentType (if any)", respMsg.Properties.ContentType),
+		slog.Duration("duration", ar.Duration))
 	return ar, err
+}
+
+// PubAction sends an action request to the hub and receives a response
+// Returns the response or an error if the request fails or timed out
+func (hc *MqttHubClient) PubAction(
+	deviceID string, thingID string, actionID string, payload []byte) (
+	hubclient.ActionResponse, error) {
+
+	topic := MakeTopic(vocab.MessageTypeAction, deviceID, thingID, actionID, hc.clientID)
+	//slog.Info("PubAction", "topic", topic)
+	return hc.PubRequest(topic, payload)
+}
+
+// PubConfig sends an configuration update request to the hub and receives a response
+// Returns the response or an error if the request fails or timed out
+func (hc *MqttHubClient) PubConfig(
+	deviceID string, thingID string, propID string, payload []byte) (
+	hubclient.ActionResponse, error) {
+
+	topic := MakeTopic(vocab.MessageTypeConfig, deviceID, thingID, propID, hc.clientID)
+	//slog.Info("PubConfig", "topic", topic)
+	return hc.PubRequest(topic, payload)
 }
 
 // PubEvent sends the event value to the hub
 func (hc *MqttHubClient) PubEvent(thingID string, eventID string, payload []byte) error {
-	topic := MakeThingsTopic(hc.clientID, thingID, vocab.MessageTypeEvent, eventID)
+	topic := MakeTopic(vocab.MessageTypeEvent, hc.clientID, thingID, eventID, "")
 	//slog.Info("PubEvent", "topic", topic)
 	err := hc.Pub(topic, payload)
 	return err
 }
 
-// PubThingAction sends an action request to the hub and receives a response
+// PubServiceRPC sends an RPC request to a Hub Service
 // Returns the response or an error if the request fails or timed out
-func (hc *MqttHubClient) PubThingAction(
-	deviceID string, thingID string, actionID string, payload []byte) (
-	hubclient.ActionResponse, error) {
-
-	topic := MakeThingActionTopic(deviceID, thingID, actionID, hc.clientID)
-	//slog.Info("PubThingAction", "topic", topic)
-	return hc.PubAction(topic, payload)
-}
-
-// PubServiceAction sends an action request to a Hub Service on the svc prefix
-// Returns the response or an error if the request fails or timed out
-func (hc *MqttHubClient) PubServiceAction(
+func (hc *MqttHubClient) PubServiceRPC(
 	serviceID string, capability string, actionID string, payload []byte) (
 	hubclient.ActionResponse, error) {
 
-	topic := MakeServiceActionTopic(serviceID, capability, actionID, hc.clientID)
+	topic := MakeTopic(vocab.MessageTypeRPC, serviceID, capability, actionID, hc.clientID)
 	//slog.Info("PubServiceAction", "topic", topic)
-	return hc.PubAction(topic, payload)
+	return hc.PubRequest(topic, payload)
 }
 
-// PubTD sends the TD document to the hub
+// PubTD publishes an event containing a TD document
 func (hc *MqttHubClient) PubTD(td *thing.TD) error {
 	payload, _ := ser.Marshal(td)
-	topic := MakeThingsTopic(hc.clientID, td.ID, vocab.MessageTypeEvent, vocab.EventNameTD)
+	topic := MakeTopic(vocab.MessageTypeEvent, hc.clientID, td.ID, vocab.EventNameTD, "")
 	//slog.Info("PubTD", "topic", topic)
 	err := hc.Pub(topic, payload)
 	return err
@@ -191,13 +218,20 @@ func (hc *MqttHubClient) sendReply(req *paho.Publish, payload []byte, errResp er
 		Properties: &paho.PublishProperties{
 			CorrelationData: req.Properties.CorrelationData,
 			User:            req.Properties.User,
+			PayloadFormat:   req.Properties.PayloadFormat,
+			ContentType:     req.Properties.ContentType,
 		},
 		Payload: payload,
 	}
 	if errResp != nil {
+		replyMsg.Properties.ContentType = "error" // payload is an error message
 		replyMsg.Properties.User.Add("error", errResp.Error())
+		// for testing, somehow properties.user is not transferred
+		replyMsg.Payload = []byte(errResp.Error())
 	}
-	_, err := hc.pcl.Publish(context.Background(), replyMsg)
+	ctx, cancelFn := context.WithTimeout(context.Background(), time.Second)
+	defer cancelFn()
+	_, err := hc.pcl.Publish(ctx, replyMsg)
 	if err != nil {
 		slog.Warn("SubRequest. Error publishing response",
 			slog.String("err", err.Error()))
@@ -228,12 +262,13 @@ func (hc *MqttHubClient) Sub(topic string, cb func(topic string, msg []byte)) (h
 	return hcSub, err
 }
 
-// SubActions subscribes to action requests and support sending a response
-func (hc *MqttHubClient) SubActions(
-	topic string, cb func(actionMsg *hubclient.ActionRequest) error) (
+// SubRequest subscribes to a requests and sends a response
+// Intended for actions, config and rpc requests
+func (hc *MqttHubClient) SubRequest(
+	topic string, cb func(actionMsg *hubclient.RequestMessage) error) (
 	hubclient.ISubscription, error) {
 
-	slog.Info("SubActions", "topic", topic)
+	slog.Info("SubRequest", "topic", topic)
 
 	spacket := &paho.Subscribe{
 		Properties: nil,
@@ -246,13 +281,13 @@ func (hc *MqttHubClient) SubActions(
 	hc.pcl.Router.RegisterHandler(topic, func(m *paho.Publish) {
 
 		timeStamp := time.Now()
-		_, deviceID, thingID, _, name, clientID, err := SplitTopic(m.Topic)
-		// action requests MUST contain clientID
+		_, deviceID, thingID, name, clientID, err := SplitTopic(m.Topic)
+		// requests MUST contain clientID
 		if clientID == "" {
-			slog.Warn("Ignored action request without clientID", "topic", m.Topic)
+			slog.Warn("SubRequest: Ignored request without clientID", "topic", m.Topic)
 			return
 		}
-		actionMsg := &hubclient.ActionRequest{
+		requestMsg := &hubclient.RequestMessage{
 			ClientID:  clientID,
 			DeviceID:  deviceID,
 			ThingID:   thingID,
@@ -260,9 +295,6 @@ func (hc *MqttHubClient) SubActions(
 			Payload:   m.Payload,
 			Timestamp: timeStamp.Unix(),
 			SendReply: func(payload []byte, err error) error {
-				if err != nil {
-					m.Properties.User.Add("error", err.Error())
-				}
 				return hc.sendReply(m, payload, err)
 			},
 			SendAck: func() error {
@@ -270,10 +302,9 @@ func (hc *MqttHubClient) SubActions(
 			},
 		}
 		m.Properties.User.Add("received", timeStamp.Format(time.StampMicro))
-		err = cb(actionMsg)
+		err = cb(requestMsg)
 		if err != nil {
-			m.Properties.User.Add("error", err.Error())
-			slog.Error("handle request failed",
+			slog.Error("SubRequest: handle request failed",
 				slog.String("err", err.Error()),
 				slog.String("topic", topic))
 
@@ -289,26 +320,37 @@ func (hc *MqttHubClient) SubActions(
 	return hcSub, err
 }
 
-// SubThingActions subscribes to actions for this device or service on the things prefix
+// SubActions subscribes to actions for this device or service
 //
 //	thingID is the device thing or service capability to subscribe to, or "" for wildcard
-func (hc *MqttHubClient) SubThingActions(
-	thingID string, cb func(msg *hubclient.ActionRequest) error,
+func (hc *MqttHubClient) SubActions(
+	thingID string, cb func(msg *hubclient.RequestMessage) error,
 ) (hubclient.ISubscription, error) {
 
-	topic := MakeThingActionTopic(hc.clientID, thingID, "", "")
-	return hc.SubActions(topic, cb)
+	topic := MakeTopic(vocab.MessageTypeAction, hc.clientID, thingID, "", "")
+	return hc.SubRequest(topic, cb)
 }
 
-func (hc *MqttHubClient) SubThingEvents(
+// SubConfig subscribes to configuration request for this device or service
+//
+//	thingID is the device thing or service capability to subscribe to, or "" for wildcard
+func (hc *MqttHubClient) SubConfig(
+	thingID string, cb func(msg *hubclient.RequestMessage) error,
+) (hubclient.ISubscription, error) {
+
+	topic := MakeTopic(vocab.MessageTypeConfig, hc.clientID, thingID, "", "")
+	return hc.SubRequest(topic, cb)
+}
+
+func (hc *MqttHubClient) SubEvents(
 	deviceID string, thingID string,
 	cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
 
-	topic := MakeThingsTopic(deviceID, thingID, vocab.MessageTypeEvent, "")
+	topic := MakeTopic(vocab.MessageTypeEvent, deviceID, thingID, "", "")
 
 	return hc.Sub(topic, func(topic string, payload []byte) {
 
-		_, deviceID, thingID, _, name, _, err := SplitTopic(topic)
+		_, deviceID, thingID, name, _, err := SplitTopic(topic)
 		if err != nil {
 			slog.Info("SplitTopic fail", "topic", topic, "err", err)
 			return
@@ -324,15 +366,15 @@ func (hc *MqttHubClient) SubThingEvents(
 	})
 }
 
-// SubServiceActions subscribes to action requests of a service capability
+// SubServiceRPC subscribes to RPC requests for a service capability
 //
 //	capability is the name of the capability (thingID) to handle
-func (hc *MqttHubClient) SubServiceActions(
-	capability string, cb func(msg *hubclient.ActionRequest) error,
+func (hc *MqttHubClient) SubServiceRPC(
+	capability string, cb func(msg *hubclient.RequestMessage) error,
 ) (hubclient.ISubscription, error) {
 
-	topic := MakeServiceActionTopic(hc.clientID, capability, "", "")
-	return hc.SubActions(topic, cb)
+	topic := MakeTopic(vocab.MessageTypeRPC, hc.clientID, capability, "", "")
+	return hc.SubRequest(topic, cb)
 }
 
 // SubStream subscribes to events received by the event stream.

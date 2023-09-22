@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"math/big"
 	"net"
 	"time"

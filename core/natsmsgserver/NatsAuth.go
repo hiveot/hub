@@ -11,7 +11,7 @@ import (
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nkeys"
 	"golang.org/x/crypto/bcrypt"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"time"
 )
 
@@ -225,7 +225,7 @@ func (srv *NatsMsgServer) MakePermissions(
 	} else if found {
 		// apply role permissions
 		for _, rp := range rolePerm {
-			subj := natshubclient.MakeThingsSubject(rp.SourceID, rp.ThingID, rp.MsgType, rp.MsgName)
+			subj := natshubclient.MakeSubject(rp.MsgType, rp.SourceID, rp.ThingID, rp.MsgName, "")
 			if rp.AllowPub {
 				pubPerm.Allow = append(pubPerm.Allow, subj)
 			}
@@ -257,32 +257,32 @@ func (srv *NatsMsgServer) MakePermissions(
 	sp, found := ServicePermissions[clientInfo.Role]
 	if found && sp != nil {
 		for _, perm := range sp {
-			subject := natshubclient.MakeServiceSubject(
-				perm.SourceID, perm.ThingID, vocab.MessageTypeAction, "")
+			subject := natshubclient.MakeSubject(
+				vocab.MessageTypeRPC, perm.SourceID, perm.ThingID, "", "")
 			pubPerm.Allow = append(pubPerm.Allow, subject)
 		}
 	}
 
 	// devices and services are sources that can publish events and subscribe to actions and config requests
 	if clientInfo.ClientType == auth.ClientTypeDevice || clientInfo.ClientType == auth.ClientTypeService {
-		subject1 := natshubclient.MakeThingsSubject(
-			clientInfo.ClientID, "", vocab.MessageTypeEvent, "")
-		subject2 := natshubclient.MakeThingsSubject(
-			clientInfo.ClientID, "", vocab.MessageTypeAction, "")
-		subject3 := natshubclient.MakeThingsSubject(
-			clientInfo.ClientID, "", vocab.MessageTypeConfig, "")
+		subject1 := natshubclient.MakeSubject(
+			vocab.MessageTypeEvent, clientInfo.ClientID, "", "", "")
+		subject2 := natshubclient.MakeSubject(
+			vocab.MessageTypeAction, clientInfo.ClientID, "", "", "")
+		subject3 := natshubclient.MakeSubject(
+			vocab.MessageTypeConfig, clientInfo.ClientID, "", "", "")
 		pubPerm.Allow = append(pubPerm.Allow, subject1)
 		subPerm.Allow = append(subPerm.Allow, subject2, subject3)
 	}
 
-	// services can also subscribe to actions on the svc prefix
+	// services can also subscribe to actions on the rpc prefix
 	if clientInfo.ClientType == auth.ClientTypeService {
-		subject1 := natshubclient.MakeServiceSubject(
-			clientInfo.ClientID, "", vocab.MessageTypeEvent, "")
-		subject2 := natshubclient.MakeServiceSubject(
-			clientInfo.ClientID, "", vocab.MessageTypeAction, "")
-		subject3 := natshubclient.MakeServiceSubject(
-			clientInfo.ClientID, "", vocab.MessageTypeConfig, "")
+		subject1 := natshubclient.MakeSubject(
+			vocab.MessageTypeRPC, clientInfo.ClientID, "", "", "")
+		subject2 := natshubclient.MakeSubject(
+			vocab.MessageTypeRPC, clientInfo.ClientID, "", "", "")
+		subject3 := natshubclient.MakeSubject(
+			vocab.MessageTypeRPC, clientInfo.ClientID, "", "", "")
 		pubPerm.Allow = append(pubPerm.Allow, subject1)
 		subPerm.Allow = append(subPerm.Allow, subject2, subject3)
 	}

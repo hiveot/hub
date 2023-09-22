@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"time"
 )
 

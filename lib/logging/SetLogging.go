@@ -3,7 +3,7 @@ package logging
 
 import (
 	"github.com/lmittmann/tint"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"os"
 	"strings"
 )
@@ -34,10 +34,13 @@ func SetLogging(levelName string, logFile string) *slog.Logger {
 		Level:      logLevel,
 		TimeFormat: "Jan _2 15:04:05.0000",
 	}
-	//handler := slog.NewTextHandler(os.Stdout, opts)
 	handler := tint.NewHandler(os.Stdout, opts)
+	//opts := &slog.HandlerOptions{
+	//	AddSource: true,
+	//	Level:     logLevel,
+	//}
+	//handler := slog.NewTextHandler(os.Stdout, opts)
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
-
 	return logger
 }

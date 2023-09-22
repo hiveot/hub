@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/vocab"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 
@@ -66,7 +66,8 @@ func (binding *OWServerBinding) CreateBindingTD() *thing.TD {
 }
 
 // Start the OWServer protocol binding
-// This connects to the hub, publishes a TD for this binding, starts a background heartbeat.
+// This publishes a TD for this binding, starts a background heartbeat.
+// This uses the given hub client connection.
 func (binding *OWServerBinding) Start() error {
 
 	// Create the adapter for the OWServer 1-wire gateway
@@ -97,6 +98,7 @@ func (binding *OWServerBinding) Start() error {
 }
 
 // Stop the heartbeat and remove subscriptions
+// This does NOTE close the given hubclient connection.
 func (binding *OWServerBinding) Stop() {
 	binding.isRunning.Store(false)
 	if binding.actionSub != nil {

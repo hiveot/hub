@@ -2,7 +2,7 @@
 package watcher
 
 import (
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"time"
 
 	"github.com/fsnotify/fsnotify"

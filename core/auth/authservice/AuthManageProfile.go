@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/lib/ser"
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 // AuthManageProfile is the capability for clients to view and update their own profile.
@@ -34,8 +34,8 @@ func (svc *AuthManageProfile) GetProfile(clientID string) (profile auth.ClientPr
 	return clientProfile, err
 }
 
-// HandleActions unmarshal and invoke requests published by hub clients
-func (svc *AuthManageProfile) HandleActions(action *hubclient.ActionRequest) error {
+// HandleRequest unmarshal and invoke requests published by hub clients
+func (svc *AuthManageProfile) HandleRequest(action *hubclient.RequestMessage) error {
 	if action.ClientID == "" {
 		return fmt.Errorf("missing clientID in action request. deviceID='%s', thingID='%s'",
 			action.DeviceID, action.ThingID)
@@ -161,8 +161,8 @@ func (svc *AuthManageProfile) Refresh(clientID string) (newToken string, err err
 // Register the binding subscription using the given connection
 func (svc *AuthManageProfile) Start() (err error) {
 	if svc.hc != nil {
-		svc.actionSub, _ = svc.hc.SubServiceActions(
-			auth.AuthProfileCapability, svc.HandleActions)
+		svc.actionSub, _ = svc.hc.SubServiceRPC(
+			auth.AuthProfileCapability, svc.HandleRequest)
 	}
 	return err
 }

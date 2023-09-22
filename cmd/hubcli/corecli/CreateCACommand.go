@@ -3,7 +3,7 @@ package corecli
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/certs"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"os"
 	"path"
 	"time"

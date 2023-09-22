@@ -41,7 +41,7 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:        "home",
-				Usage:       "Path to home `folder`",
+				Usage:       "Path to application home directory",
 				Value:       homeDir,
 				Destination: &homeDir,
 			},

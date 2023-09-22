@@ -3,7 +3,7 @@ package discovery
 
 import (
 	"context"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -14,8 +14,9 @@ import (
 // The zeroconf library does not support browsing of all services, but a workaround is
 // to search the service types with "_services._dns-sd._udp" then query each of the service types.
 //
-//	serviceType to look for in format "_name._tcp", or "" to discover all service types (not all services)
-func DnsSDScan(serviceType string, waitSec int) ([]*zeroconf.ServiceEntry, error) {
+//		serviceType to look for in format "_name._tcp", or "" to discover all service types (not all services)
+//	 waitTime with duration to wait while collecting results
+func DnsSDScan(serviceType string, waitTime time.Duration) ([]*zeroconf.ServiceEntry, error) {
 	sdDomain := "local"
 	mu := &sync.Mutex{}
 
@@ -45,8 +46,7 @@ func DnsSDScan(serviceType string, waitSec int) ([]*zeroconf.ServiceEntry, error
 		slog.Info("No more entries.")
 	}(entries)
 
-	duration := time.Second * time.Duration(waitSec)
-	ctx, cancel := context.WithTimeout(context.Background(), duration)
+	ctx, cancel := context.WithTimeout(context.Background(), waitTime)
 	defer cancel()
 
 	err = resolver.Browse(ctx, serviceType, sdDomain, entries)

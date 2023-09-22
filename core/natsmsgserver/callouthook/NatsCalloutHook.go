@@ -7,7 +7,7 @@ import (
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"sync/atomic"
 	"time"
 )

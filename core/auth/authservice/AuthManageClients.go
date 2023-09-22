@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/lib/ser"
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 // AuthManageClients handles management of devices,users and service clients
@@ -140,10 +140,9 @@ func (svc *AuthManageClients) GetEntries() (entries []auth.AuthnEntry) {
 	return svc.store.GetEntries()
 }
 
-// HandleActions handle incoming action request for managing clients
-func (svc *AuthManageClients) HandleActions(action *hubclient.ActionRequest) error {
-	slog.Info("handleActions",
-		slog.String("actionID", action.ActionID))
+// HandleRequest handle incoming RPC requests for managing clients
+func (svc *AuthManageClients) HandleRequest(action *hubclient.RequestMessage) error {
+	slog.Info("HandleRequest", slog.String("actionID", action.ActionID))
 
 	// TODO: doublecheck the caller is an admin or svc
 	switch action.ActionID {
@@ -267,8 +266,8 @@ func (svc *AuthManageClients) RemoveClient(clientID string) (err error) {
 // Register the binding subscription using the given connection
 func (svc *AuthManageClients) Start() (err error) {
 	if svc.hc != nil {
-		svc.mngSub, err = svc.hc.SubServiceActions(
-			auth.AuthManageClientsCapability, svc.HandleActions)
+		svc.mngSub, err = svc.hc.SubServiceRPC(
+			auth.AuthManageClientsCapability, svc.HandleRequest)
 	}
 	return err
 }

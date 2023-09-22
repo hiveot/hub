@@ -22,7 +22,7 @@ func (cl *AuthProfileClient) pubReq(action string, req interface{}, resp interfa
 		msg, _ = ser.Marshal(req)
 	}
 
-	data, err := cl.hc.PubServiceAction(cl.serviceID, auth.AuthProfileCapability, action, msg)
+	data, err := cl.hc.PubServiceRPC(cl.serviceID, auth.AuthProfileCapability, action, msg)
 	if err != nil {
 		return err
 	}

@@ -15,7 +15,7 @@ type AuthRolesClient struct {
 
 // helper for publishing an action service request to the auth service
 func (cl *AuthRolesClient) pubReq(action string, msg []byte, resp interface{}) error {
-	data, err := cl.hc.PubServiceAction(
+	data, err := cl.hc.PubServiceRPC(
 		auth.AuthServiceName, auth.AuthRolesCapability, action, msg)
 	if err != nil {
 		return err

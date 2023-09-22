@@ -4,7 +4,7 @@ import (
 	authapi "github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/lib/testenv"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"testing"
 	"time"
 

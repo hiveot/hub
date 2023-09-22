@@ -5,7 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/core/auth/authstore"
 
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"os"
 	"path"
 	"sync"

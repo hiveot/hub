@@ -1,7 +1,7 @@
 package logging_test
 
 import (
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"os"
 	"testing"
 

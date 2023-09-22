@@ -9,7 +9,7 @@ import (
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"os"
 	"testing"
 	"time"
@@ -83,7 +83,7 @@ func TestMqttServerRequest(t *testing.T) {
 	require.NoError(t, err)
 	defer hc.Disconnect()
 
-	sub2, err := hc.SubThingActions("thing1", func(ar *hubclient.ActionRequest) error {
+	sub2, err := hc.SubActions("thing1", func(ar *hubclient.RequestMessage) error {
 		slog.Info("received action", "name", ar.ActionID)
 		rxChan <- string(ar.Payload)
 		err2 := ar.SendReply(ar.Payload, nil)
@@ -92,7 +92,7 @@ func TestMqttServerRequest(t *testing.T) {
 	})
 	defer sub2.Unsubscribe()
 
-	reply, err := hc.PubThingAction("device1", "thing1", "action1", []byte(msg))
+	reply, err := hc.PubAction("device1", "thing1", "action1", []byte(msg))
 	require.NoError(t, err)
 	assert.Equal(t, msg, string(reply.Payload))
 

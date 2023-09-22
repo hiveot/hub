@@ -2,9 +2,6 @@
 // Unfortunately capnp does generate POGS types so we need to duplicate them
 package certs
 
-const DefaultCaCertFile = "caCert.pem"
-const DefaultCaKeyFile = "caKey.pem"
-
 // DefaultServiceCertValidityDays with validity of generated service certificates
 const DefaultServiceCertValidityDays = 100
 
@@ -17,11 +14,50 @@ const DefaultDeviceCertValidityDays = 100
 // ServiceName to connect to the service
 const ServiceName = "certs"
 
-// ICerts defines a POGS based capability API of the cert service
+// CertsManageCertsCapability is the name of the Thing/Capability that handles management requests
+const CertsManageCertsCapability = "manage"
+
+const CreateDeviceCertAction = "createDeviceCert"
+
+type CreateDeviceCertReq struct {
+	DeviceID     string `json:"deviceID"`
+	PubKeyPEM    string `json:"pubKeyPEM"`
+	ValidityDays int    `json:"validityDays"`
+}
+type CreateCertResp struct {
+	CertPEM   string
+	CaCertPEM string
+}
+
+const CreateServiceCertAction = "createServiceCert"
+
+type CreateServiceCertReq struct {
+	ServiceID    string   `json:"serviceID"`
+	PubKeyPEM    string   `json:"pubKeyPEM"`
+	Names        []string `json:"names"`
+	ValidityDays int      `json:"validityDays"`
+}
+
+const CreateUserCertAction = "createUserCert"
+
+type CreateUserCertReq struct {
+	UserID       string `json:"userID"`
+	PubKeyPEM    string `json:"pubKeyPEM"`
+	ValidityDays int    `json:"validityDays"`
+}
+
+const VerifyCertAction = "verifyCert"
+
+type VerifyCertReq struct {
+	ClientID string `json:"clientID"`
+	CertPEM  string `json:"certPEM"`
+}
+
+// ICertService defines the capability of managing certs
 // This interface aggregates all certificate capabilities.
 // This approach is experimental and intended to improve security by providing capabilities based on
 // user credentials, enforced by the capnp protocol.
-type ICerts interface {
+type ICertService interface {
 
 	// CreateDeviceCert generates or renews IoT device certificate for access hub IoT gateway
 	//  deviceID is the unique device's ID

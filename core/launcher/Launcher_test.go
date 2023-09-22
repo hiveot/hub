@@ -5,7 +5,7 @@ import (
 	"github.com/hiveot/hub/core/launcher/config"
 	"github.com/hiveot/hub/core/launcher/service"
 	"github.com/hiveot/hub/lib/utils"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"os"
 	"path"
 	"testing"

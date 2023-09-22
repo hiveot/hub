@@ -7,7 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"

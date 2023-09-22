@@ -10,7 +10,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"os"
 	"testing"
 	"time"
@@ -79,14 +79,15 @@ func TestConnectWithNKey(t *testing.T) {
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 
-	subj1 := natshubclient.MakeThingsSubject("", "", vocab.MessageTypeEvent, "")
+	subj1 := natshubclient.MakeSubject(
+		vocab.MessageTypeEvent, "", "", "", "")
 	_, err = hc1.Sub(subj1, func(addr string, payload []byte) {
 		rxChan <- string(payload)
 		slog.Info("received message", "msg", string(payload))
 	})
 	assert.NoError(t, err)
-	subj2 := natshubclient.MakeThingsSubject(
-		testenv.TestService1ID, "thing1", "event", "test")
+	subj2 := natshubclient.MakeSubject(
+		vocab.MessageTypeEvent, testenv.TestService1ID, "thing1", "test", "")
 	err = hc1.Pub(subj2, []byte("hello world"))
 	require.NoError(t, err)
 	rxMsg := <-rxChan

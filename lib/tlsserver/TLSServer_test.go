@@ -5,7 +5,7 @@ import (
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/tlsserver"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"net/http"
 	"os"
 	"testing"

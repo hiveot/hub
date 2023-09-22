@@ -9,10 +9,13 @@ import (
 	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/core/natsmsgserver"
+	"github.com/hiveot/hub/lib/discovery"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
 	"gopkg.in/yaml.v3"
+	"net/url"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -124,7 +127,7 @@ func run(cfg *config.HubCoreConfig) error {
 	var err error
 
 	msgServer := natsmsgserver.NewNatsMsgServer(&cfg.NatsServer, auth.DefaultRolePermissions)
-	clientURL, err := msgServer.Start()
+	serverURL, err := msgServer.Start()
 
 	if err != nil {
 		return fmt.Errorf("unable to start server: %w", err)
@@ -134,8 +137,24 @@ func run(cfg *config.HubCoreConfig) error {
 	cfg.Auth.Encryption = auth.PWHASH_BCRYPT
 	authSvc, err := authservice.StartAuthService(cfg.Auth, msgServer)
 
+	// start discovery
+	if cfg.EnableMDNS {
+		urlInfo, err := url.Parse(serverURL)
+		if err != nil {
+			return err
+		}
+		port, _ := strconv.Atoi(urlInfo.Port())
+		svc, err := discovery.ServeDiscovery(
+			"mqttcore", "hiveot", urlInfo.Host, port, map[string]string{
+				"rawurl": serverURL,
+				"core":   "mqtt",
+			})
+		_ = svc
+		_ = err
+	}
+
 	// wait until signal
-	fmt.Println("Hub started. ClientURL=" + clientURL)
+	fmt.Println("Hub started. ClientURL=" + serverURL)
 	utils.WaitForSignal(context.Background())
 
 	authSvc.Stop()

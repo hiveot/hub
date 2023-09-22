@@ -3,7 +3,7 @@ package thing
 import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/ser"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

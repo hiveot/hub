@@ -48,6 +48,7 @@ const (
 	MessageTypeAction = "action"
 	MessageTypeConfig = "config"
 	MessageTypeEvent  = "event"
+	MessageTypeRPC    = "rpc"
 	EventNameTD       = "$td"
 	EventNameProps    = "$properties"
 )

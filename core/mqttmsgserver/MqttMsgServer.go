@@ -103,6 +103,7 @@ func (srv *MqttMsgServer) Start() (clientURL string, err error) {
 	}
 
 	srv.ms = mqtt.New(nil)
+	srv.ms.Options.Capabilities.MinimumProtocolVersion = 5
 	_ = srv.ms.AddHook(&srv.MqttAuthHook, nil)
 
 	// server listens on TCP with TLS

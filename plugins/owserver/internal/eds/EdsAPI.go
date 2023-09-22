@@ -4,7 +4,7 @@ package eds
 import (
 	"encoding/xml"
 	"fmt"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"math"
 	"net"
 	"net/http"

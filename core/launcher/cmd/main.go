@@ -6,7 +6,7 @@ import (
 	service2 "github.com/hiveot/hub/core/launcher/service"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"os"
 )
 

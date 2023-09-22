@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/lib/ser"
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 // AuthManageRoles manages roles.
@@ -38,8 +38,8 @@ func (svc *AuthManageRoles) DeleteRole(role string) error {
 	return nil
 }
 
-// HandleActions unmarshal and apply action requests
-func (svc *AuthManageRoles) HandleActions(action *hubclient.ActionRequest) error {
+// HandleRequest unmarshal and apply action requests
+func (svc *AuthManageRoles) HandleRequest(action *hubclient.RequestMessage) error {
 
 	slog.Info("handleActions", slog.String("actionID", action.ActionID))
 	switch action.ActionID {
@@ -97,7 +97,7 @@ func (svc *AuthManageRoles) SetRole(clientID string, role string) error {
 // Register the binding subscription using the given connection
 func (svc *AuthManageRoles) Start() (err error) {
 	if svc.hc != nil {
-		svc.actionSub, _ = svc.hc.SubServiceActions(auth.AuthRolesCapability, svc.HandleActions)
+		svc.actionSub, _ = svc.hc.SubServiceRPC(auth.AuthRolesCapability, svc.HandleRequest)
 	}
 	return err
 }

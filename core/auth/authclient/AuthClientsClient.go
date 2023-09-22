@@ -4,7 +4,7 @@ import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/lib/ser"
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 // AuthClientsClient is a message (de)serializer for managing clients.
@@ -15,13 +15,13 @@ type AuthClientsClient struct {
 	hc        hubclient.IHubClient
 }
 
-// helper for publishing an action request to the authz service
+// helper for publishing an rpc request to the auth service
 func (cl *AuthClientsClient) pubReq(action string, req interface{}, resp interface{}) error {
 	var msg []byte
 	if req != nil {
 		msg, _ = ser.Marshal(req)
 	}
-	data, err := cl.hc.PubServiceAction(
+	data, err := cl.hc.PubServiceRPC(
 		cl.serviceID, auth.AuthManageClientsCapability, action, msg)
 	if err != nil {
 		return err

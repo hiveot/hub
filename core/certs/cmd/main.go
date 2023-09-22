@@ -1,0 +1,66 @@
+package main
+
+import (
+	"context"
+	"crypto/ecdsa"
+	"crypto/x509"
+	certs2 "github.com/hiveot/hub/api/go/certs"
+	"github.com/hiveot/hub/core/certs/service/selfsigned"
+	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/hubcl"
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/utils"
+	"log/slog"
+	"os"
+	"path"
+)
+
+// Connect the certs service
+//
+//	commandline options:
+//	--certs <certificate folder>
+func main() {
+	var caCert *x509.Certificate
+	var caKey *ecdsa.PrivateKey
+	var err error
+
+	logging.SetLogging("info", "")
+	f := utils.GetFolders("", false)
+
+	// This service needs the CA certificate and key to operate
+	caCertPath := path.Join(f.Certs, certs.DefaultCaCertFile)
+	caKeyPath := path.Join(f.Certs, certs.DefaultCaKeyFile)
+
+	slog.Info("Loading CA certificate and key", "dir", f.Certs)
+	caCert, err = certs.LoadX509CertFromPEM(caCertPath)
+	if err != nil {
+		slog.Error("Failed loading CA certificate",
+			"caCertPath", caCertPath, "err", err)
+		os.Exit(1)
+	}
+	caKey, err = certs.LoadKeysFromPEM(caKeyPath)
+	if err != nil {
+		slog.Error("Error loading CA key",
+			"caKeyPath", caKeyPath, "err", err)
+		os.Exit(1)
+	}
+
+	// this: locates the hub, load certificate, load service tokens and connect
+	hc, err := hubcl.ConnectToHub("", certs2.ServiceName, f.Certs, "")
+	if err != nil {
+		slog.Error("Failed connecting to the Hub", "err", err)
+		os.Exit(1)
+	}
+	// startup
+	svc := selfsigned.NewSelfSignedCertsService(caCert, caKey, hc)
+	err = svc.Start()
+	if err != nil {
+		slog.Error("Failed starting service", "err", err)
+		os.Exit(1)
+	}
+	utils.WaitForSignal(context.Background())
+	err = svc.Stop()
+	if err != nil {
+		os.Exit(2)
+	}
+}

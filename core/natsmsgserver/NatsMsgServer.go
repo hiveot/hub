@@ -13,7 +13,7 @@ import (
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"time"
 )
 
@@ -148,7 +148,7 @@ func (srv *NatsMsgServer) Start() (clientURL string, err error) {
 	_, err = js.StreamInfo(EventsIntakeStreamName)
 	if err != nil {
 		// The intake stream receives events from all publishers and things
-		subj := natshubclient.MakeThingsSubject("", "", vocab.MessageTypeEvent, "")
+		subj := natshubclient.MakeSubject(vocab.MessageTypeEvent, "", "", "", "")
 		cfg := &nats.StreamConfig{
 			Name:        EventsIntakeStreamName,
 			Description: "HiveOT Events Intake Stream",

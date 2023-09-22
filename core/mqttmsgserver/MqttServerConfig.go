@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/certs"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"path"
 )
 

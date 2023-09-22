@@ -7,64 +7,18 @@ import (
 	"strings"
 )
 
-// MakeThingsTopic creates a nats topic optionally with nats wildcards
-// This uses the hiveot nats topic format: things.{pubID}.{thingID}.{type}.{name}
+// MakeTopic creates a mqtt message  topic optionally with wildcards
+// This uses the hiveot topic format: {msgType}/{deviceID}/{thingID}/{name}[/{clientID}]
 //
-//	pubID is the publisher of the topic. Use "" for wildcard
-//	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
-//	stype is the topic type: "event" or "action".
-//	name is the event or action name. Use "" for wildcard.
-func MakeThingsTopic(pubID, thingID, stype, name string) string {
-	if pubID == "" {
-		pubID = "+"
-	}
-	if thingID == "" {
-		thingID = "+" // nats uses *
-	}
-	if stype == "" {
-		stype = vocab.MessageTypeEvent
-	}
-	if name == "" {
-		name = "#" // anything after is fine
-	}
-	subj := fmt.Sprintf("things/%s/%s/%s/%s",
-		pubID, thingID, stype, name)
-	return subj
-}
-
-// MakeServiceTopic creates a nats topic optionally with nats wildcards
-// This uses the hiveot nats topic format: svc.{serviceID}.{capName}.{type}.{name}
-//
-//	serviceID is the publisher ID of the service
-//	capID is the capabilities ID provided by the service. Use "" for wildcard
-//	stype is the topic type: "event" or "action".
-//	name is the event or action name. Use "" for wildcard.
-func MakeServiceTopic(serviceID, capID, stype, name string) string {
-	if serviceID == "" {
-		serviceID = "+"
-	}
-	if capID == "" {
-		capID = "+"
-	}
-	if stype == "" {
-		stype = vocab.MessageTypeEvent
-	}
-	if name == "" {
-		name = "#" // anything after is fine
-	}
-	topic := fmt.Sprintf("svc/%s/%s/%s/%s",
-		serviceID, capID, stype, name)
-	return topic
-}
-
-// MakeThingActionTopic creates a nats topic for submitting actions
-// This uses the hiveot nats topic format: things.{bindingID}.{thingID}.action.{name}.{clientID}
-//
-//	deviceID is the publisher of the topic. Use "" for wildcard
+//	msgType is the message type: "event", "action", "config" or "rpc".
+//	deviceID is the device being addressed. Use "" for wildcard
 //	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
 //	name is the event or action name. Use "" for wildcard.
-//	senderID is the loginID of the user submitting the action
-func MakeThingActionTopic(deviceID, thingID, name string, senderID string) string {
+//	clientID is required for publishing action and rpc requests.
+func MakeTopic(msgType, deviceID, thingID, name string, clientID string) string {
+	if msgType == "" {
+		msgType = vocab.MessageTypeEvent
+	}
 	if deviceID == "" {
 		deviceID = "+"
 	}
@@ -72,100 +26,69 @@ func MakeThingActionTopic(deviceID, thingID, name string, senderID string) strin
 		thingID = "+"
 	}
 	if name == "" {
-		name = "+"
+		// sub only. wildcard depends if a clientID follows
+		if clientID == "" {
+			name = "#"
+		} else {
+			name = "+"
+		}
 	}
-	if senderID == "" {
-		senderID = "+"
+	topic := fmt.Sprintf("%s/%s/%s/%s", msgType, deviceID, thingID, name)
+	if clientID != "" {
+		topic = topic + "/" + clientID
 	}
-	topic := fmt.Sprintf("things/%s/%s/%s/%s/%s",
-		deviceID, thingID, vocab.MessageTypeAction, name, senderID)
 	return topic
 }
 
-// MakeServiceActionTopic creates a nats topic for submitting service requests
-// This uses the hiveot nats topic format: things.{bindingID}.{thingID}.action.{name}.{clientID}
+// SplitActionTopic separates an action topic into its components
 //
-//	serviceID is the publisher of the topic. Use "" for wildcard
-//	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
-//	name is the event or action name. Use "" for wildcard.
-//	senderID is the loginID of the user submitting the action
-func MakeServiceActionTopic(serviceID, thingID, name string, senderID string) string {
-	if serviceID == "" {
-		serviceID = "+"
-	}
-	if thingID == "" {
-		thingID = "+"
-	}
-	if name == "" {
-		name = "+"
-	}
-	if senderID == "" {
-		senderID = "+"
-	}
-	topic := fmt.Sprintf("svc/%s/%s/%s/%s/%s",
-		serviceID, thingID, vocab.MessageTypeAction, name, senderID)
-	return topic
-}
-
-// SplitActionTopic separates a topic into its components
+// topic is a hiveot mqtt topic. eg: msgType/deviceID/thingID/name/clientID
 //
-// topic is a hiveot nats topic. eg: things.bindingID.thingID.stype.name.clientID
-//
-//	bindingID is the device or service that handles the topic.
+//	msgType is the topic type, eg "action"
+//	deviceID is the device or service that handles the topic.
 //	thingID is the thing of the topic, or capability for services.
-//	stype is the topic type, eg event or action.
 //	name is the action name
-//	clientID is the client that publishes the action. This identifies the publisher.
-func SplitActionTopic(topic string) (bindingID, thingID, name string, clientID string, err error) {
-	parts := strings.Split(topic, "/")
-	if len(parts) < 6 {
-		err = errors.New("incomplete topic")
-		return
-	}
-	stype := parts[3]
-	if stype != "action" {
+//	clientID is the client that publishes the action.
+func SplitActionTopic(topic string) (deviceID, thingID, name string, clientID string, err error) {
+	var msgType string
+	msgType, deviceID, thingID, name, clientID, err = SplitTopic(topic)
+	if msgType != "action" {
 		err = fmt.Errorf("topic %s is not an action", topic)
 		return
 	}
-	bindingID = parts[1]
-	thingID = parts[2]
-	name = parts[4]
-	clientID = parts[5]
 	return
 }
 
 // SplitTopic separates a topic into its components
 //
-// topic is a hiveot mqtt topic. eg: things/deviceID/thingID/type/name/clientID
+// topic is a hiveot mqtt topic. eg: msgType/things/deviceID/thingID/name/clientID
 //
-//	prefix of "things", "services" or "_INBOX"
+//	msgType of "things", "rpc" or "_INBOX"
 //	deviceID is the device or service that handles the topic.
 //	thingID is the thing of the topic, or capability for services.
-//	stype is the topic type, eg event or action.
 //	name is the event or action name
-//	clientID is the client publishing the request. used in actions.
-func SplitTopic(topic string) (prefix, deviceID, thingID, stype, name string, clientID string, err error) {
+//	senderID is the client publishing the request. used in actions.
+func SplitTopic(topic string) (msgType, deviceID, thingID, name string, senderID string, err error) {
 	parts := strings.Split(topic, "/")
 
 	// inbox topics are short
 	if len(parts) >= 1 && parts[0] == "_INBOX" {
-		prefix = parts[0]
+		msgType = parts[0]
 		if len(parts) >= 2 {
 			deviceID = parts[1]
 		}
 		return
 	}
-	if len(parts) < 5 {
+	if len(parts) < 4 {
 		err = errors.New("incomplete topic")
 		return
 	}
-	prefix = parts[0]
+	msgType = parts[0]
 	deviceID = parts[1]
 	thingID = parts[2]
-	stype = parts[3]
-	name = parts[4]
-	if len(parts) > 5 {
-		clientID = parts[5]
+	name = parts[3]
+	if len(parts) > 4 {
+		senderID = parts[4]
 	}
 	return
 }

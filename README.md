@@ -1,34 +1,53 @@
 # Hive-Of-Things Hub
 
-The Hub for the *Hive of Things* provides a simple and secure base to view and operate IoT devices. The Hub securely mediates between consumers and IoT device 'Things' using a hub-and-spokes architecture. Consumers interact with Things via the Hub without connecting directly to the IoT devices or services. The Hub is based on the [W3C WoT TD 1.1 specification](https://www.w3.org/TR/wot-thing-description11/) and uses the [cap'n proto](https://capnproto.org/) for Capabilities based secure 
-communication.
+HiveOT stands for the "Hive of Things". It provides the means to collect and share sensor data and other information between its users.
+
+The Hub for the *Hive of Things* provides a secure core and plugins to view and operate IoT devices. The Hub securely mediates between IoT device 'Things', services, and users using a hub-and-spokes architecture. Users interact with Things via the Hub without connecting directly to the IoT devices or services. The Hub is based on the [W3C WoT TD 1.1 specification](https://www.w3.org/TR/wot-thing-description11/) and uses a NATS or MQTT message bus for secure communication.
 
 
 ## Project Status
 
-This project has moved on from the microservice/RPC iteration and is now being converted to a messaging based approach using NATS. 
+This project has moved on from the microservice/RPC iteration and is now being converted to a messaging based approach using NATS and MQTT. 
 
-The choice for using NATS over MQTT is that NATS improves on capabilities such as topic mapping, filtering, rate limiting, reconnection handling, queuing of message streams, as well as providing request-response  capabilities. 
+Status: The status of the Hub is pre-alpha development (Sept 2023). 
 
-Status: The status of the Hub is in early development (June 2023)
+### Pre-Alpha Road Map - Messaging Core 
+1. ~~Core using nats message bus~~ [completed]
+2. ~~Core using mqtt message bus~~ [completed]
+3. ~~Authentication management of devices, services and users~~ [completed]
+4. ~~Authorization for message bus access~~ [completed]
+5. ~~Golang client library~~ [completed]
+6. HubCLI for Hub administration [in progress]
+7. Launcher service for running and monitoring plugins [in progress]
+8. ~~Update documentation~~ [completed]
+   * [HiveOT Overview](https://hiveot.github.io/)
+   * [HiveOT design overview](docs/hiveot-design-overview.md) 
+   * [Thing TDs](docs/README-TD.md)
 
+### Alpha Releases Feature Road Map - Core Services
+1. ~~Certificate management for CA and server certificates~~ [completed]
+2. Directory service for serving TDs (Thing Descriptions) to users
+3. History service for serving event history
+4. Provisioning service for dynamic provisioning Thing devices
+5. Dashboard viewer for web browsers (hiveoview)
 
-### Short Term Road Map
-```
-1. Hub launcher for use on small devices
-2. Nats service for managing NATS account, configuration, starting and stopping
-3. Authentication Service for obtaining/refreshing jwt tokens
-4. Authorization service for managing groups
-5. OWServer 1-wire test binding 
-6. Directory service using NATS kv or object store (tbd)
-```
+### Beta Releases Feature Road Map - Protocol Binding Plugins
+1. ~~OWServer 1-wire protocol binding~~ [completed]
+2. ZWave protocol binding (zwavejs) 
+3. ISY99 legacy Insteon protocol binding (isy99x)
+4. Weather service protocol binding (openweathermap)
+5. Location tracking service
 
-
-Additional Documention (old, to be updated):
-* [HiveOT Overview](https://hiveot.github.io/)
-* [HiveOT design](docs/hiveot-design.md)
-* [Thing TDs](docs/README-TD.md)
-
+### Future Releases Road Map  
+1. Automation rules service
+1. Notification service using email, SMS, VoIP
+1. CoAP protocol binding
+1. Zigbee protocol binding
+1. LetsEncrypt certificate management integration
+1. Bridge service to connect Hubs
+1. Android native application
+1. Camera motion detection service
+1. HiveAI service applying learning to IoT data
 
 ## Audience
 
@@ -72,26 +91,25 @@ HiveOT follows the 'WoT' (Web of Things) open standard developed by the W3C orga
 
 Integration with 3rd party IoT devices is supported through the use of protocol bindings. These protocol bindings translate between the 3rd device protocol and WoT defined messages.  
 
-The communication infrastructure of the Hub is provided by 'Cap'n Proto', or capnp for short. Capnp provides a Capabilities based RPC for service invocation that is inherently secure. Only clients which have obtained a valid 'Capability' can invoke that capability, eg read a sensor or control a switch. The RPC will only pass requests that are valid, so the device does not have to concern itself with authentication and authorization. 
+The communication infrastructure of the Hub is provided through a message bus. The core initially supports the NATS and MQTT message bus protocols through embedded servers.  
 
 Since the Hub acts as the intermediary, it is responsible for features such as authentication, logging, resiliency, pub/sub and other protocol integration. The Hub can dynamically delegate some of these services to devices that are capable of doing so, potentially creating a decentralized solution that can scale as needed and recover from device failure. As a minimum the Hub manages service discovery acts as a proxy for capabilities. 
 
-Last but not least, the 'hive' can be expanded by connecting hubs to each other through a 'bridge'. The bridge lets the Hub owner share select IoT information with other hubs.
+Last but not least, the 'hive' can be expanded by connecting hubs to each other through a 'bridge'. The bridge lets the Hub owner share select IoT information with other hubs. (future feature)
 
 
 ## Build From Source
 
-To build the hub and bindings from source, a Linux system with golang and make tools must be available on the target system. 3rd party plugins are out of scope for these instructions and can require nodejs, python and golang.
+To build the hub and bindings from source, a Linux system with golang 1.21 or newer must be available for the target system. To build the dashboard viewer, nodejs is used.
 
 Prerequisites:
 
 1. An x86 or arm based Linuxsystem. Ubuntu, Debian, Raspberrian 
-2. Golang 1.19 or newer (with GOPATH set)
+2. Golang 1.21 or newer (with GOPATH set)
 3. GCC Make any 2020+ version
 4. NATS server and NATS-go developement library v2.10+
 
 ### Build Hub And CLI
-
 
 1. Download source code:
 ```sh
@@ -104,18 +122,29 @@ cd hub
 make hub
 ```
 
-After the build is successful, the distribution files can be found in the 'dist' folder. 
+After the build is successful, the distribution files can be found in the 'dist' folder that can be deployed to the installation directory.
+
+```md
+dist / bin             - application binaries
+dist / bin / plugins   - plugin binaries
+dist / certs           - CA and server certificate; authentication private keys
+dist / config          - core and plugin configuration files
+dist / stores          - plugin data storage directory
+```
 
 
 ## Install To User 
 
+When installed to user, the hub is installed into a user bin directory and runs under that user's permissions.
+
+For example, for a user named 'hub' the installation home is '/home/hub/bin/hiveot'
 To install and run the Hub as the current user to ~/bin/hiveot.
 
 ```sh
 make install
 ```
 
-This copies the distribution files to ~/bin/hiveot. The method can also be used to upgrade an existing installation. Executables are always replaced but only new configuration files are installed. Existing configuration remains untouched to prevent wrecking your working setup.
+This copies the distribution files to ~/bin/hiveot. The method can also be used to upgrade an existing installation. Executables are always replaced but only new configuration files are installed. Existing configuration remains untouched to prevent wrecking your working setup. 
 
 
 ### Uninstall:
@@ -150,6 +179,7 @@ Add /opt/hiveot/bin to the path
 
 2. Setup the system user and permissions
 
+Create a user 'hiveot' and set permissions.
 ```sh
 sudo adduser --system --no-create-home --home /opt/hiveot --shell /usr/sbin/nologin --group hiveot
 sudo chown -R hiveot:hiveot /etc/hiveot
@@ -159,24 +189,24 @@ sudo chown -R hiveot:hiveot /var/lib/hiveot
 
 ## Docker Installation
 
-This is planned for the future with the beta release.
+This is planned for the future.
 
 ## Configuration
 
 All Hub services will run out of the box with their default configuration. Service can use an optional yaml based configuration file found in the config folder.
 
 ### Generate a CA certificate
-Before starting the hub, a CA certificate must be created. By default, the hub uses a self-signed CA certificate. It is possible to use a CA certificate from a 3rd party source, but this isn't needed as the certificates are used for client authentication, not for domain verification.
+Before starting the hub, a CA certificate must be created. By default, the hub generates a self-signed CA certificate. It is possible to use a CA certificate from a 3rd party source, but this isn't needed when used on the local network.
 
 Generate the CA certificate using the CLI:
 
 ```sh
 cd ~/bin/hiveot        # when installed locally
-bin/hubcore ca create   # or simply "hubcore ca create" when the path is set 
+bin/hubcli ca create    
 ```
 
 ### Service Autostart Configuration
-To configure autostart of services edit the provided launcher.yaml and add the services to the autostart section.
+To configure autostart of services and protocol binding plugins, edit the provided launcher.yaml and add the plugins to the autostart section.
 > vi config/launcher.yaml
 
 ### Systemd Configuration

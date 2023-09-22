@@ -9,7 +9,7 @@ import (
 	"github.com/hiveot/hub/lib/hubcl"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/nkeys"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"os"
 	"path"
 	"testing"
@@ -28,24 +28,6 @@ var testDir = path.Join(os.TempDir(), "test-authn")
 // the following are set by the testmain
 var clientURL string
 var msgServer msgserver.IMsgServer
-
-//var useCallout = false
-
-//func newClient(id string, kp interface{}) hubclient.IHubClient {
-//	if core == "nats" {
-//		var nkp nkeys.KeyPair
-//		if kp != nil {
-//			nkp = kp.(nkeys.KeyPair)
-//		}
-//		return natshubclient.NewNatsHubClient(id, nkp)
-//	} else {
-//		var ekp *ecdsa.PrivateKey
-//		if kp != nil {
-//			ekp = kp.(*ecdsa.PrivateKey)
-//		}
-//		return mqtthubclient.NewMqttHubClient(id, ekp)
-//	}
-//}
 
 // add new user to test with
 func addNewUser(userID string, displayName string, pass string, mng authapi.IAuthnManageClients) (token string, key nkeys.KeyPair, err error) {

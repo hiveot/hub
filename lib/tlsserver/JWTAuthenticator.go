@@ -4,7 +4,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"net/http"
 )
 

@@ -8,7 +8,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/ser"
 	"github.com/nats-io/nats.go"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"strings"
 	"time"
 )
@@ -66,79 +66,77 @@ func (hc *NatsHubClient) Pub(subject string, payload []byte) error {
 	return err
 }
 
-// PubTD sends the TD document to the hub
-func (hc *NatsHubClient) PubTD(td *thing.TD) error {
-	payload, _ := ser.Marshal(td)
-	subject := MakeThingsSubject(hc.clientID, td.ID, vocab.MessageTypeEvent, vocab.EventNameTD)
-	slog.Info("PubTD", "subject", subject)
-	err := hc.nc.Publish(subject, payload)
-	return err
-}
-
-// PubEvent sends the event value to the hub
-func (hc *NatsHubClient) PubEvent(thingID string, eventID string, payload []byte) error {
-	subject := MakeThingsSubject(hc.clientID, thingID, vocab.MessageTypeEvent, eventID)
-	slog.Info("PubEvent", "subject", subject)
-	err := hc.nc.Publish(subject, payload)
-	return err
-}
-
 // PubServiceAction sends an action request to a Hub Service on the svc prefix
 // Returns the response or an error if the request fails or timed out
-func (hc *NatsHubClient) pubAction(subject string, payload []byte) (
+func (hc *NatsHubClient) pubRequest(subject string, payload []byte) (
 	ar hubclient.ActionResponse, err error) {
 
 	t1 := time.Now()
 	ar.Address = subject
 	resp, err := hc.nc.Request(subject, payload, hc.timeout)
 	ar.Duration = time.Now().Sub(t1)
-	if err == nil {
-		ar.SentSuccess = true
-		// todo: an ack is also a reply but has no data
-		ar.ReceivedReply = resp.Data != nil
-		ar.Payload = resp.Data
-		// FIXME: detect an error
-		if resp.Header != nil {
-			errMsg := resp.Header.Get("error")
-			if errMsg != "" {
-				ar.ErrorReply = errors.New(errMsg)
-			}
+	if err != nil {
+		return ar, err
+	}
+	ar.SentSuccess = true
+	ar.ReceivedReply = resp.Data != nil
+	ar.Payload = resp.Data
+	// error responses are stored in the header
+	if resp.Header != nil {
+		errMsg := resp.Header.Get("error")
+		if errMsg != "" {
+			ar.ErrorReply = errors.New(errMsg)
+			err = ar.ErrorReply
 		}
-
 	}
 	return ar, err
 }
 
-// PubServiceAction sends an action request to a Hub Service on the svc prefix
+// PubAction sends an action request to the hub and receives a response
 // Returns the response or an error if the request fails or timed out
-func (hc *NatsHubClient) PubServiceAction(
-	serviceID string, capability string, actionID string, payload []byte) (hubclient.ActionResponse, error) {
-
-	subject := MakeServiceActionSubject(serviceID, capability, actionID, hc.clientID)
-	slog.Info("PubServiceAction", "subject", subject)
-	return hc.pubAction(subject, payload)
-}
-
-// PubThingAction sends an action request to the hub and receives a response
-// Returns the response or an error if the request fails or timed out
-func (hc *NatsHubClient) PubThingAction(
+func (hc *NatsHubClient) PubAction(
 	bindingID string, thingID string, actionID string, payload []byte) (hubclient.ActionResponse, error) {
 
-	subject := MakeThingActionSubject(bindingID, thingID, actionID, hc.clientID)
-	slog.Info("PubThingAction", "subject", subject)
-	return hc.pubAction(subject, payload)
+	subject := MakeSubject(vocab.MessageTypeAction, bindingID, thingID, actionID, hc.clientID)
+	slog.Info("PubAction", "subject", subject)
+	return hc.pubRequest(subject, payload)
 }
 
-// Sub is a low level subscription to a subject
-func (hc *NatsHubClient) _NSub(subject string, cb func(msg *nats.Msg)) (sub hubclient.ISubscription, err error) {
-	slog.Info("subscribe", "subject", subject, "clientID", hc.clientID)
-	nsub, err := hc.nc.Subscribe(subject, cb)
-	isValid := nsub.IsValid()
-	if err != nil || !isValid {
-		err = fmt.Errorf("subscribe to '%s' failed: %w", subject, err)
-	}
-	sub = &NatsHubSubscription{nsub: nsub}
-	return sub, err
+// PubConfig sends an configuration request to the hub and receives a response
+// Returns the response or an error if the request fails or timed out
+func (hc *NatsHubClient) PubConfig(
+	bindingID string, thingID string, actionID string, payload []byte) (hubclient.ActionResponse, error) {
+
+	subject := MakeSubject(vocab.MessageTypeConfig, bindingID, thingID, actionID, hc.clientID)
+	slog.Info("PubConfig", "subject", subject)
+	return hc.pubRequest(subject, payload)
+}
+
+// PubEvent sends the event value to the hub
+func (hc *NatsHubClient) PubEvent(thingID string, eventID string, payload []byte) error {
+	subject := MakeSubject(vocab.MessageTypeEvent, hc.clientID, thingID, eventID, "")
+	slog.Info("PubEvent", "subject", subject)
+	err := hc.nc.Publish(subject, payload)
+	return err
+}
+
+// PubTD sends the TD document to the hub
+func (hc *NatsHubClient) PubTD(td *thing.TD) error {
+	payload, _ := ser.Marshal(td)
+	subject := MakeSubject(vocab.MessageTypeEvent, hc.clientID, td.ID, vocab.EventNameTD, "")
+	slog.Info("PubTD", "subject", subject)
+	err := hc.nc.Publish(subject, payload)
+	return err
+}
+
+// PubServiceRPC sends an rpc request to a Hub Service
+// Returns the response or an error if the request fails or timed out
+func (hc *NatsHubClient) PubServiceRPC(
+	serviceID string, capability string, actionID string, payload []byte) (hubclient.ActionResponse, error) {
+
+	subject := MakeSubject(vocab.MessageTypeRPC, serviceID, capability, actionID, hc.clientID)
+	slog.Info("PubServiceAction", "subject", subject)
+	return hc.pubRequest(subject, payload)
 }
 
 // startEventMessageHandler listens for incoming event messages and invoke a callback handler
@@ -194,24 +192,91 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *hubclient.Ev
 	return nil
 }
 
+// Sub is a low level subscription to a subject
+func (hc *NatsHubClient) _sub(subject string, cb func(msg *nats.Msg)) (sub hubclient.ISubscription, err error) {
+	slog.Info("_sub",
+		slog.String("subject", subject),
+		slog.String("clientID", hc.clientID))
+	nsub, err := hc.nc.Subscribe(subject, cb)
+	isValid := nsub.IsValid()
+	if err != nil || !isValid {
+		err = fmt.Errorf("subscribe to '%s' failed: %w", subject, err)
+	}
+	sub = &NatsHubSubscription{nsub: nsub}
+	return sub, err
+}
+
 // Sub subscribe to an address.
 // Primarily intended for testing
 func (hc *NatsHubClient) Sub(subject string, cb func(topic string, data []byte)) (hubclient.ISubscription, error) {
 
-	sub, err := hc._NSub(subject, func(natsMsg *nats.Msg) {
+	sub, err := hc._sub(subject, func(natsMsg *nats.Msg) {
 		cb(natsMsg.Subject, natsMsg.Data)
 	})
 	return sub, err
 }
 
-// SubActions subscribes to actions on the given subject
+// SubActions subscribes to action requests of a device's Thing.
+// Intended for use by device implementors to receive requests for its things.
 //
 //	thingID is the device thing or service capability to subscribe to, or "" for wildcard
 func (hc *NatsHubClient) SubActions(
-	subject string, cb func(msg *hubclient.ActionRequest) error) (
+	thingID string, cb func(msg *hubclient.RequestMessage) error) (hubclient.ISubscription, error) {
+
+	subject := MakeSubject(vocab.MessageTypeAction, hc.clientID, thingID, "", "")
+	return hc.SubRequest(subject, cb)
+}
+
+// SubConfig subscribes to config requests of a device's Thing.
+// Intended for use by device implementors to receive requests for its things.
+//
+//	thingID is the device thing or service capability to subscribe to, or "" for wildcard
+func (hc *NatsHubClient) SubConfig(
+	thingID string, cb func(msg *hubclient.RequestMessage) error) (hubclient.ISubscription, error) {
+
+	subject := MakeSubject(vocab.MessageTypeConfig, hc.clientID, thingID, "", "")
+	return hc.SubRequest(subject, cb)
+}
+
+func (hc *NatsHubClient) SubEvents(
+	deviceID string, thingID string,
+	cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
+
+	subject := MakeSubject(vocab.MessageTypeEvent, deviceID, thingID, "", "")
+	nsub, err := hc.nc.Subscribe(subject, func(msg *nats.Msg) {
+
+		_, deviceID, thingID, name, _, err := SplitSubject(msg.Subject)
+		if err != nil {
+			return
+		}
+		timeStamp := time.Now().Unix()
+		md, _ := msg.Metadata()
+		if md != nil {
+			timeStamp = md.Timestamp.Unix()
+		}
+		evmsg := &hubclient.EventMessage{
+			//SenderID: msg.Header.
+			EventID:   name,
+			DeviceID:  deviceID,
+			ThingID:   thingID,
+			Timestamp: timeStamp,
+			Payload:   msg.Data,
+		}
+		cb(evmsg)
+	})
+	sub := &NatsHubSubscription{nsub: nsub}
+	return sub, err
+}
+
+// SubRequest subscribes to request messages on the given subject and
+// sends a reply.
+//
+//	thingID is the device thing or service capability to subscribe to, or "" for wildcard
+func (hc *NatsHubClient) SubRequest(
+	subject string, cb func(msg *hubclient.RequestMessage) error) (
 	hubclient.ISubscription, error) {
 
-	sub, err := hc._NSub(subject, func(natsMsg *nats.Msg) {
+	sub, err := hc._sub(subject, func(natsMsg *nats.Msg) {
 		md, _ := natsMsg.Metadata()
 		timeStamp := time.Now()
 		if md != nil {
@@ -219,12 +284,12 @@ func (hc *NatsHubClient) SubActions(
 
 		}
 		payload := natsMsg.Data
-		deviceID, thID, name, clientID, err := SplitActionSubject(natsMsg.Subject)
+		_, deviceID, thID, name, clientID, err := SplitSubject(natsMsg.Subject)
 		if err != nil {
 			slog.Error("unable to handle subject", "err", err, "subject", natsMsg.Subject)
 			return
 		}
-		actionMsg := &hubclient.ActionRequest{
+		actionMsg := &hubclient.RequestMessage{
 			//SenderID: natsMsg.Header.
 			ClientID:  clientID,
 			ActionID:  name,
@@ -251,65 +316,26 @@ func (hc *NatsHubClient) SubActions(
 		err = cb(actionMsg)
 		if err != nil {
 			errMsg := hubclient.ErrorMessage{Error: err.Error()}
-			slog.Error("action error", "subject", subject, "err", err.Error())
+			slog.Error("request error",
+				"subject", natsMsg.Subject, "err", err.Error())
 			natsMsg.Header.Set("error", err.Error())
 			errPayload, _ := ser.Marshal(errMsg)
-			_ = natsMsg.Respond(errPayload)
+			natsMsg.Data = errPayload
+			_ = natsMsg.RespondMsg(natsMsg)
 		}
 	})
 	return sub, err
 }
 
-// SubServiceActions subscribes to service RPC requests.
+// SubServiceRPC subscribes to service RPC requests.
 // Intended for use by services to receive requests.
 //
 //	capability is the name of the capability (thingID) to handle
-func (hc *NatsHubClient) SubServiceActions(
-	capability string, cb func(msg *hubclient.ActionRequest) error) (hubclient.ISubscription, error) {
+func (hc *NatsHubClient) SubServiceRPC(
+	capability string, cb func(msg *hubclient.RequestMessage) error) (hubclient.ISubscription, error) {
 
-	subject := MakeServiceActionSubject(hc.clientID, capability, "", "")
-	return hc.SubActions(subject, cb)
-}
-
-// SubThingActions subscribes to action requests of a device's Thing.
-// Intended for use by device implementors to receive requests for its things.
-//
-//	thingID is the device thing or service capability to subscribe to, or "" for wildcard
-func (hc *NatsHubClient) SubThingActions(
-	thingID string, cb func(msg *hubclient.ActionRequest) error) (hubclient.ISubscription, error) {
-
-	subject := MakeThingActionSubject(hc.clientID, thingID, "", "")
-	return hc.SubActions(subject, cb)
-}
-
-func (hc *NatsHubClient) SubThingEvents(
-	deviceID string, thingID string,
-	cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
-
-	subject := MakeThingsSubject(deviceID, thingID, vocab.MessageTypeEvent, "")
-	nsub, err := hc.nc.Subscribe(subject, func(msg *nats.Msg) {
-
-		_, deviceID, thingID, _, name, err := SplitSubject(msg.Subject)
-		if err != nil {
-			return
-		}
-		timeStamp := time.Now().Unix()
-		md, _ := msg.Metadata()
-		if md != nil {
-			timeStamp = md.Timestamp.Unix()
-		}
-		evmsg := &hubclient.EventMessage{
-			//SenderID: msg.Header.
-			EventID:   name,
-			DeviceID:  deviceID,
-			ThingID:   thingID,
-			Timestamp: timeStamp,
-			Payload:   msg.Data,
-		}
-		cb(evmsg)
-	})
-	sub := &NatsHubSubscription{nsub: nsub}
-	return sub, err
+	subject := MakeSubject(vocab.MessageTypeRPC, hc.clientID, capability, "", "")
+	return hc.SubRequest(subject, cb)
 }
 
 // SubStream subscribes to events received by the event stream.

@@ -9,36 +9,36 @@ INSTALL_HOME=~/bin/hiveot
 
 all: core plugins hubcli  ## Build APIs, CLI, Hub services
 
-core: natscore mqttcore
+core: natscore mqttcore   ## Build core services including mqttcore and natscore
 
-natscore: ## Build the hub nats core binary
+natscore:
 	go build -o $(DIST_FOLDER)/bin/$@ cmd/$@/main.go
 
-mqttcore: ## Build the hub mqtt core binary
+mqttcore:
 	go build -o $(DIST_FOLDER)/bin/$@ cmd/$@/main.go
-
-plugins: certs directory launcher owserver provisioning zwavejs
 
 certs: .FORCE ## Build the certificate management service
 	go build -o $(PLUGINS_FOLDER)/$@ $@/cmd/main.go
-
-directory: .FORCE ## Build the directory service
-	go build -o $(PLUGINS_FOLDER)/$@ $@/cmd/main.go
-
-hubcli: .FORCE ## Build Hub CLI
-	go build -o $(BIN_FOLDER)/$@ cmd/$@/main.go
 
 launcher: .FORCE ## Build the hub plugin launcher
 	go build -o $(BIN_FOLDER)/$@ core/$@/cmd/main.go
 	cp core/$@/config/*.yaml $(DIST_FOLDER)/config
 
-owserver: .FORCE ## Build the Thing directory store
-	go build -o $(PLUGINS_FOLDER)/$@  plugins/$@/cmd/main.go
-
-provisioning: .FORCE ## Build Hub provisioning service
+provisioning: .FORCE ## Build device provisioning service
 	go build -o $(PLUGINS_FOLDER)/$@ plugins/$@/cmd/main.go
 
-zwavejs: .FORCE ## Build Hub provisioning service
+plugins: certs directory launcher owserver provisioning zwavejs
+
+directory: .FORCE ## Build the directory service (mqtt core)
+	go build -o $(PLUGINS_FOLDER)/$@ $@/cmd/main.go
+
+hubcli: .FORCE ## Build Hub CLI
+	go build -o $(BIN_FOLDER)/$@ cmd/$@/main.go
+
+owserver: .FORCE ## Build the 1-wire owserver protocol binding
+	go build -o $(PLUGINS_FOLDER)/$@  plugins/$@/cmd/main.go
+
+zwavejs: .FORCE ## Build the zwave protocol binding
 	go build -o $(PLUGINS_FOLDER)/$@ plugins/$@/cmd/main.go
 
 

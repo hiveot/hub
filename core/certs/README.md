@@ -2,14 +2,14 @@
 
 ## Objective
 
-Manage certificates for authentication of hub services, IoT devices and consumers.
+Manage certificates for authentication of hub clients.
 
 ## Status
 
-This service is functional and can issue IoT device certificates, service certificates and end-user certificates.
+This service is functional and can issue IoT device certificates, service certificates and end-user certificates using a self-signed CA.
 
 Future:
-- Support for lets encrypt to obtain service certificates
+- Support for lets encrypt to obtain client certificates
 
 ## Summary
 

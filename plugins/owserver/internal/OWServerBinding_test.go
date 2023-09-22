@@ -5,7 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/lib/testenv"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"os"
 	"path"
 	"sync/atomic"
@@ -22,7 +22,7 @@ import (
 )
 
 // var homeFolder string
-var core = "nats"
+var core = "mqtt"
 
 var tempFolder string
 var owsConfig internal.OWServerConfig
@@ -98,10 +98,6 @@ func TestPoll(t *testing.T) {
 				var value map[string][]byte
 				err2 := json.Unmarshal(ev.Payload, &value)
 				assert.NoError(t, err2)
-				//for propName, propValue := range value {
-				//	pv := string(propValue)
-				//slog.Infof("%s: %s", propName, pv)
-				//}
 			} else {
 				var value interface{}
 				err2 := json.Unmarshal(ev.Payload, &value)
@@ -118,7 +114,7 @@ func TestPoll(t *testing.T) {
 	defer svc.Stop()
 
 	// wait until startup poll completed
-	time.Sleep(time.Millisecond * 1000)
+	time.Sleep(time.Millisecond * 100)
 
 	// the simulation file contains 3 things. The service is 1 thing.
 	assert.GreaterOrEqual(t, tdCount.Load(), int32(4))
@@ -168,5 +164,5 @@ func TestAction(t *testing.T) {
 	assert.Error(t, err)
 	_ = reply
 
-	time.Sleep(time.Second)
+	//time.Sleep(time.Second*10)  // debugging delay
 }

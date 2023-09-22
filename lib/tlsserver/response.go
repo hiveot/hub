@@ -1,7 +1,7 @@
 package tlsserver
 
 import (
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"net/http"
 )
 

@@ -4,7 +4,7 @@ package internal
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/hubclient"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"time"
 
 	"github.com/hiveot/hub/api/go/vocab"
@@ -12,7 +12,7 @@ import (
 )
 
 // HandleActionRequest handles requests to activate inputs
-func (binding *OWServerBinding) HandleActionRequest(action *hubclient.ActionRequest) error {
+func (binding *OWServerBinding) HandleActionRequest(action *hubclient.RequestMessage) error {
 	var attr eds.OneWireAttr
 	slog.Info("HandleActionRequest",
 		slog.String("deviceID", action.DeviceID),
