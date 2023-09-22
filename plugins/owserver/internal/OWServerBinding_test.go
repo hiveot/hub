@@ -91,7 +91,7 @@ func TestPoll(t *testing.T) {
 	svc := internal.NewOWServerBinding(owsConfig, hc)
 
 	// Count the number of received TD events
-	sub, err := hc.SubThingEvents("", "",
+	sub, err := hc.SubEvents("", "",
 		func(ev *hubclient.EventMessage) {
 			slog.Info("received event", "id", ev.EventID)
 			if ev.EventID == vocab.EventNameProps {
@@ -160,7 +160,7 @@ func TestAction(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	reply, err := hc.PubThingAction(owsConfig.BindingID, nodeID, actionName, actionValue)
+	reply, err := hc.PubAction(owsConfig.BindingID, nodeID, actionName, actionValue)
 	assert.Error(t, err)
 	_ = reply
 

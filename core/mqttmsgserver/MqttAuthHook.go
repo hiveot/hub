@@ -3,6 +3,7 @@ package mqttmsgserver
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -147,6 +148,20 @@ func (hook *MqttAuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Pack
 		slog.String("clientID", clientID),
 		slog.String("cid", cid),
 		slog.Int("protocolVersion", int(cl.Properties.ProtocolVersion)))
+
+	// Accept auth if a TLS connection with client cert is provided
+	// The cert CN must be the clientID
+	tlsConn, ok := cl.Net.Conn.(*tls.Conn)
+	if ok {
+		cState := tlsConn.ConnectionState()
+		peerCerts := cState.PeerCertificates
+		if len(peerCerts) > 0 {
+			certID := peerCerts[0].Subject.CommonName
+			if certID == clientID {
+				return true
+			}
+		}
+	}
 
 	// verify authentication using password or token
 	// step 1: credentials must be provided
@@ -296,8 +311,12 @@ func (hook *MqttAuthHook) Provides(b byte) bool {
 	}, []byte{b})
 }
 
+// SetRolePermissions applies the given permissions.
+// rolePerms is a map of [role] to a list of permissions that role has.
+// A default set of permissions for predefined roles is available in the auth api.
 func (hook *MqttAuthHook) SetRolePermissions(
 	rolePerms map[string][]msgserver.RolePermission) {
+
 	hook.authMux.Lock()
 	hook.rolePermissions = rolePerms
 	hook.authMux.Unlock()

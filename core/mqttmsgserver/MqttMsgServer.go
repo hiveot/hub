@@ -34,8 +34,8 @@ type MqttMsgServer struct {
 	//// map of role to role permissions
 	//rolePermissions map[string][]msgserver.RolePermission
 
-	// clientURL the server is listening on
-	clientURL string
+	// serverURL the server is listening on
+	serverURL string
 
 	ms      *mqtt.Server
 	authMux sync.RWMutex
@@ -43,14 +43,14 @@ type MqttMsgServer struct {
 
 // ClientURL is the URL used to connect to this server. This is set on Start
 func (srv *MqttMsgServer) ClientURL() string {
-	return srv.clientURL
+	return srv.serverURL
 }
 
 // ConnectInProc establishes a connection to the server for core services.
 // This connects in-process using the service key.
 // Intended for the core services to connect to the local server.
 //
-//	serviceID of the connecting service
+//	serviceID of the connecting service. The ID must be a known ID
 //	token is the service authentication token
 func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hc hubclient.IHubClient, err error) {
 
@@ -62,6 +62,7 @@ func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hc hubclient.IHubClie
 		return nil, err
 	}
 	safeConn := packets.NewThreadSafeConn(conn)
+	// use an on-the-fly created token for the connection
 	token, err := srv.CreateToken(msgserver.ClientAuthInfo{
 		ClientID:     serviceID,
 		ClientType:   auth.ClientTypeService,
@@ -77,11 +78,10 @@ func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hc hubclient.IHubClie
 	return hubCl, err
 }
 
-// Start the NATS server with the given configuration and create an event ingress stream
-//
-//	Config.Setup must have been called first.
-func (srv *MqttMsgServer) Start() (clientURL string, err error) {
-	srv.clientURL = "not implemented"
+// Start the MQTT server using the configuration provided with NewMqttMsgServer().
+// This returns the URL to connect to the server or an error if startup failed.
+func (srv *MqttMsgServer) Start() (serverURL string, err error) {
+	srv.serverURL = "not started"
 
 	// Require TLS for tcp and wss listeners
 	if srv.Config.CaCert == nil || srv.Config.ServerTLS == nil {
@@ -98,7 +98,7 @@ func (srv *MqttMsgServer) Start() (clientURL string, err error) {
 		ClientCAs:    caCertPool,
 		RootCAs:      caCertPool,
 		Certificates: clientCertList,
-		ClientAuth:   tls.VerifyClientCertIfGiven,
+		ClientAuth:   tls.VerifyClientCertIfGiven, // allow client cert auth
 		MinVersion:   tls.VersionTLS13,
 	}
 
@@ -118,8 +118,8 @@ func (srv *MqttMsgServer) Start() (clientURL string, err error) {
 		if err != nil {
 			return "", err
 		}
-		//srv.clientURL = fmt.Sprintf("tls://localhost:%d", srv.Config.Port)
-		srv.clientURL = fmt.Sprintf("tcp://localhost:%d", srv.Config.Port)
+		//srv.serverURL = fmt.Sprintf("tls://localhost:%d", srv.Config.Port)
+		srv.serverURL = fmt.Sprintf("tcp://localhost:%d", srv.Config.Port)
 	}
 	// server listens on Websocket with TLS
 	if srv.Config.WSPort != 0 {
@@ -143,7 +143,7 @@ func (srv *MqttMsgServer) Start() (clientURL string, err error) {
 	if err != nil {
 		return "", err
 	}
-	return srv.clientURL, nil
+	return srv.serverURL, nil
 }
 
 // Stop the server
@@ -155,6 +155,9 @@ func (srv *MqttMsgServer) Stop() {
 }
 
 // NewMqttMsgServer creates a new instance of the Hub MQTT broker.
+//
+//	cfg contains the server configuration. Setup must have been called successfully first.
+//	perms contain the map of roles and permissions. See SetRolePermissions for more detail.
 func NewMqttMsgServer(cfg *MqttServerConfig, perms map[string][]msgserver.RolePermission) *MqttMsgServer {
 	signingKeyPub, _ := x509.MarshalPKIXPublicKey(&cfg.ServerKey.PublicKey)
 	signingKeyPubStr := base64.StdEncoding.EncodeToString(signingKeyPub)

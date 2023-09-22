@@ -76,7 +76,6 @@ func GetOutboundInterface(address string) (interfaceName string, macAddress stri
 
 				// only interested in the name with current IP address
 				if strings.Contains(addr.String(), ipAddr.String()) {
-					slog.Debug("use name : ", interf.Name)
 					interfaceName = interf.Name
 					macAddress = fmt.Sprint(interf.HardwareAddr)
 					break

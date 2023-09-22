@@ -22,19 +22,25 @@ type NatsCalloutVerifier struct {
 	caCert    *x509.Certificate
 }
 
+// VerifyClientCert checks that a client certificate is used to connect and is
+// that of the claimed clientID.
+// There is no documentation on how to use this so this uses the
+// claims.TLS.VerifiedChains field, as the claims.TLS.Cert field is empty.
 func (v *NatsCalloutVerifier) VerifyClientCert(claims *jwt.AuthorizationRequestClaims) (string, error) {
 	clientID := claims.ConnectOptions.Name
-	if claims.TLS == nil || len(claims.TLS.Certs) == 0 {
+	if claims.TLS == nil || len(claims.TLS.VerifiedChains) == 0 {
 		return clientID, fmt.Errorf("client doesn't have cert")
 	}
-	clientCertPEM := claims.TLS.Certs[0]
+	clientCertPEM := claims.TLS.VerifiedChains[0][0]
 
 	// validate issuer, verify with CA
-	clientID, err := certs.VerifyCert(clientCertPEM, v.caCert)
+	certClientID, err := certs.VerifyCert(clientCertPEM, v.caCert)
 	if err != nil {
 		return clientID, fmt.Errorf("invalid client cert: %w", err)
+	} else if certClientID != clientID {
+		return clientID, fmt.Errorf("cert CN '%s' differs from clientID '%s'", certClientID, clientID)
 	}
-	return clientID, fmt.Errorf("client cert svc not yet supported")
+	return clientID, nil
 }
 
 // VerifyNKey claim
@@ -102,7 +108,7 @@ func (v *NatsCalloutVerifier) VerifyAuthnReq(claims *jwt.AuthorizationRequestCla
 		clientID, err = v.VerifyPassword(claims)
 	} else if claims.ConnectOptions.Token != "" {
 		clientID, err = v.VerifyToken(claims)
-	} else if claims.TLS != nil && claims.TLS.Certs != nil {
+	} else if claims.TLS != nil && len(claims.TLS.VerifiedChains) > 0 {
 		clientID, err = v.VerifyClientCert(claims)
 	} else {
 		// unsupported

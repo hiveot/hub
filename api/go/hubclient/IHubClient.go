@@ -1,6 +1,7 @@
 package hubclient
 
 import (
+	"crypto/tls"
 	"github.com/hiveot/hub/api/go/thing"
 	"time"
 )
@@ -86,7 +87,8 @@ type IHubClient interface {
 
 	// ConnectWithCert connects to the messaging server using client certificate authentication
 	// Support for client cert auth depends on the server setup.
-	//ConnectWithCert(clientCert *tls.Certificate) error
+	// The certificate CN must match the clientID
+	ConnectWithCert(clientCert tls.Certificate) error
 
 	// ConnectWithToken connects to the messaging server using an authentication token
 	// and pub/private keys provided when creating an instance of the hub client.

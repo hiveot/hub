@@ -4,7 +4,9 @@ import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/core/mqttmsgserver"
+	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubcl"
+	"github.com/hiveot/hub/lib/hubcl/mqtthubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/stretchr/testify/assert"
@@ -20,6 +22,64 @@ func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
 	res := m.Run()
 	os.Exit(res)
+}
+
+func TestConnectWithCert(t *testing.T) {
+	slog.Info("--- TestConnectWithCert start")
+	defer slog.Info("--- TestConnectWithCert end")
+
+	serverURL, srv, certBundle, err := testenv.StartTestServer("mqtt", true)
+	require.NoError(t, err)
+	defer srv.Stop()
+
+	key, _ := certs.CreateECDSAKeys()
+	clientCert, err := certs.CreateClientCert(testenv.TestUser1ID, auth.ClientRoleAdmin,
+		1, &key.PublicKey, certBundle.CaCert, certBundle.CaKey)
+	require.NoError(t, err)
+	cl := mqtthubclient.NewMqttHubClient(serverURL, testenv.TestUser1ID, key, certBundle.CaCert)
+	clientTLS := certs.X509CertToTLS(clientCert, key)
+	err = cl.ConnectWithCert(*clientTLS)
+	assert.NoError(t, err)
+	defer cl.Disconnect()
+}
+
+func TestConnectWithPassword(t *testing.T) {
+	slog.Info("--- TestConnectWithPassword start")
+	defer slog.Info("--- TestConnectWithPassword end")
+
+	serverURL, srv, certBundle, err := testenv.StartTestServer("mqtt", true)
+	require.NoError(t, err)
+	defer srv.Stop()
+
+	key, _ := certs.CreateECDSAKeys()
+	cl := hubcl.NewHubClient(serverURL, testenv.TestUser1ID, key, certBundle.CaCert, "mqtt")
+	err = cl.ConnectWithPassword(testenv.TestUser1Pass)
+	assert.NoError(t, err)
+	defer cl.Disconnect()
+}
+
+func TestConnectWithToken(t *testing.T) {
+
+	// setup
+	serverURL, srv, certBundle, err := testenv.StartTestServer("mqtt", true)
+	msrv := srv.(*mqttmsgserver.MqttMsgServer)
+	require.NoError(t, err)
+	defer srv.Stop()
+
+	// admin is in the test clients with a public key
+	adminInfo, err := msrv.GetClientAuth(testenv.TestAdminUserID)
+	require.NoError(t, err)
+	adminToken, err := msrv.CreateToken(adminInfo)
+	require.NoError(t, err)
+	_, err = msrv.ValidateToken(testenv.TestAdminUserID, adminToken, "", "")
+	require.NoError(t, err)
+
+	// login with token should succeed
+	hc1 := hubcl.NewHubClient(serverURL, testenv.TestAdminUserID, testenv.TestAdminUserKey, certBundle.CaCert, "mqtt")
+	err = hc1.ConnectWithToken(adminToken)
+	require.NoError(t, err)
+	time.Sleep(time.Millisecond)
+	hc1.Disconnect()
 }
 
 func TestMqttServerPubSub(t *testing.T) {
@@ -98,28 +158,4 @@ func TestMqttServerRequest(t *testing.T) {
 
 	rxMsg := <-rxChan
 	assert.Equal(t, msg, rxMsg)
-}
-
-func TestToken(t *testing.T) {
-
-	// setup
-	serverURL, srv, certBundle, err := testenv.StartTestServer("mqtt", true)
-	msrv := srv.(*mqttmsgserver.MqttMsgServer)
-	require.NoError(t, err)
-	defer srv.Stop()
-
-	// admin is in the test clients with a public key
-	adminInfo, err := msrv.GetClientAuth(testenv.TestAdminUserID)
-	require.NoError(t, err)
-	adminToken, err := msrv.CreateToken(adminInfo)
-	require.NoError(t, err)
-	_, err = msrv.ValidateToken(testenv.TestAdminUserID, adminToken, "", "")
-	require.NoError(t, err)
-
-	// login with token should succeed
-	hc1 := hubcl.NewHubClient(serverURL, testenv.TestAdminUserID, testenv.TestAdminUserKey, certBundle.CaCert, "mqtt")
-	err = hc1.ConnectWithToken(adminToken)
-	require.NoError(t, err)
-	time.Sleep(time.Millisecond)
-	hc1.Disconnect()
 }

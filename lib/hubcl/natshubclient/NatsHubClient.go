@@ -57,22 +57,20 @@ func (hc *NatsHubClient) ConnectWithConn(password string, nconn *nats.Conn) (err
 	return err
 }
 
-// ConnectWithCert to the Hub server
+// ConnectWithCert to the Hub NATS server.
+// This only works when callout is enabled on the server.
 //
-//	url of the nats server. "" uses the nats default url
-//	clientID to connect as
-//	clientCert for certificate based authentication
-//	caCert of the server
-func (hc *NatsHubClient) ConnectWithCert(clientCert *tls.Certificate) (err error) {
-
+//	clientCert for certificate based authentication. CN field must match the clientID.
+func (hc *NatsHubClient) ConnectWithCert(clientCert tls.Certificate) (err error) {
 	// include the client certificate in the TLS config to authenticate as
-	clientCertList := []tls.Certificate{*clientCert}
+	clientCertList := []tls.Certificate{clientCert}
 	hc.tlsConfig.Certificates = clientCertList
 
 	hc.nc, err = nats.Connect(hc.serverURL,
 		nats.Name(hc.clientID),
 		nats.Secure(hc.tlsConfig),
 		nats.Timeout(hc.timeout))
+
 	if err == nil {
 		hc.js, err = hc.nc.JetStream()
 	}

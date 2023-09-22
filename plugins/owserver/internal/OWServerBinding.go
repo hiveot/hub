@@ -83,7 +83,7 @@ func (binding *OWServerBinding) Start() error {
 		return err
 	}
 
-	binding.actionSub, err = binding.hc.SubThingActions(
+	binding.actionSub, err = binding.hc.SubActions(
 		"", binding.HandleActionRequest)
 	if err != nil {
 		return err

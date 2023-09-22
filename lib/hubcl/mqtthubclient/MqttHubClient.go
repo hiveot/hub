@@ -113,9 +113,9 @@ func (hc *MqttHubClient) ConnectWithConn(
 //	clientID to connect as
 //	clientCert for certificate based authentication
 //	caCert of the server
-func (hc *MqttHubClient) ConnectWithCert(clientCert *tls.Certificate) error {
+func (hc *MqttHubClient) ConnectWithCert(clientCert tls.Certificate) error {
 
-	conn, err := tlsclient.ConnectTLS(hc.serverURL, clientCert, hc.caCert)
+	conn, err := tlsclient.ConnectTLS(hc.serverURL, &clientCert, hc.caCert)
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,7 @@ func (hc *MqttHubClient) Disconnect() {
 		//time.Sleep(time.Millisecond * 10) // Disconnect doesn't seem to wait for all messages. A small delay ahead helps
 		_ = hc.pcl.Disconnect(&paho.Disconnect{ReasonCode: 0})
 		//time.Sleep(time.Millisecond * 10) // Disconnect doesn't seem to wait for all messages. A small delay ahead helps
-		hc.pcl = nil
+		//hc.pcl = nil
 
 		//hc.subscriptions = nil
 		//close(hc.messageChannel)     // end the message handler loop

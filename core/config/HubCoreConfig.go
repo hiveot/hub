@@ -85,7 +85,10 @@ func (cfg *HubCoreConfig) Setup(homeDir string, configFile string, new bool) err
 	}
 	if _, err2 := os.Stat(cfg.HomeDir); err2 == nil && new {
 		slog.Warn("setup new. Removing ",
-			"config", f.Config, "certs", f.Certs, "", "stores", f.Stores, "logs", f.Logs)
+			slog.String("config", f.Config),
+			slog.String("certs", f.Certs),
+			slog.String("stores", f.Stores),
+			slog.String("logs", f.Logs))
 		_ = os.RemoveAll(f.Config)
 		_ = os.RemoveAll(f.Certs)
 		_ = os.RemoveAll(f.Stores)
