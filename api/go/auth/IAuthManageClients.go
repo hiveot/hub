@@ -160,7 +160,7 @@ type IAuthnManageClients interface {
 
 	// AddUser adds a user with a password, public key or neither.
 	// The caller must be an administrator or service.
-	// If the userID already exists or the pubKye is invalid then an error is returned
+	// If the userID already exists the the user is updated.
 	// This returns a new user authentication token if a valid pubKey is provided.
 	//
 	// The format of the token depends on the server configuration. NKey servers return

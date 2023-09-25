@@ -14,9 +14,10 @@ import (
 // The zeroconf library does not support browsing of all services, but a workaround is
 // to search the service types with "_services._dns-sd._udp" then query each of the service types.
 //
-//		serviceType to look for in format "_name._tcp", or "" to discover all service types (not all services)
-//	 waitTime with duration to wait while collecting results
-func DnsSDScan(serviceType string, waitTime time.Duration) ([]*zeroconf.ServiceEntry, error) {
+//	serviceType to look for in format "_name._tcp", or "" to discover all service types (not all services)
+//	waitTime with duration to wait while collecting results. 0 means exit on the first result.
+//	firstResult return immediatel
+func DnsSDScan(serviceType string, waitTime time.Duration, firstResult bool) ([]*zeroconf.ServiceEntry, error) {
 	sdDomain := "local"
 	mu := &sync.Mutex{}
 
@@ -30,28 +31,30 @@ func DnsSDScan(serviceType string, waitTime time.Duration) ([]*zeroconf.ServiceE
 		slog.Error("Failed to create DNS-SD resolver", "err", err)
 		return nil, err
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), waitTime)
+	defer cancel()
 
 	// 'records' channel captures the result
 	entries := make(chan *zeroconf.ServiceEntry)
 	go func(results <-chan *zeroconf.ServiceEntry) {
 		for entry := range results {
 			rec := entry.ServiceRecord
-			slog.Info("Found service",
+			slog.Info("DnsSDScan: Found service",
 				"instance", rec.Instance, "type", rec.ServiceName(),
 				"domain", rec.Domain, "ip4", entry.AddrIPv4, slog.Int("port", entry.Port))
 			mu.Lock()
 			records = append(records, entry)
 			mu.Unlock()
+			if firstResult {
+				cancel()
+			}
 		}
-		slog.Info("No more entries.")
+		slog.Debug("DnsSDScan: No more entries.")
 	}(entries)
-
-	ctx, cancel := context.WithTimeout(context.Background(), waitTime)
-	defer cancel()
 
 	err = resolver.Browse(ctx, serviceType, sdDomain, entries)
 	if err != nil {
-		slog.Error("Failed to browse", "err", err)
+		slog.Error("DnsSDScan: Failed to browse", "err", err)
 	}
 	<-ctx.Done()
 	mu.Lock()

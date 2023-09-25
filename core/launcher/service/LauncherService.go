@@ -4,7 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/fsnotify/fsnotify"
-	"github.com/hiveot/hub/core/launcher"
+	"github.com/hiveot/hub/api/go/hubclient"
+	"github.com/hiveot/hub/api/go/launcher"
 	"github.com/hiveot/hub/core/launcher/config"
 	"github.com/hiveot/hub/lib/utils"
 	"io"
@@ -26,12 +27,17 @@ import (
 type LauncherService struct {
 	// service configuration
 	cfg config.LauncherConfig
-	f   utils.AppFolders
+	f   utils.AppDirs
 
 	// map of service name to running status
 	services map[string]*launcher.ServiceInfo
 	// list of started commands in startup order
 	cmds []*exec.Cmd
+
+	// messaging client for receiving requests
+	hc hubclient.IHubClient
+	// subscription to receive requests
+	mngSub hubclient.ISubscription
 
 	// mutex to keep things safe
 	mux sync.Mutex
@@ -394,11 +400,20 @@ func (svc *LauncherService) Start() error {
 			err = err2
 		}
 	}
+	// for testing, hc can be nil
+	if svc.hc != nil {
+		svc.mngSub, err = svc.hc.SubServiceRPC(
+			launcher.LauncherManageCapability, svc.HandleRequest)
+	}
 	return err
 }
 
 // Stop the launcher and all running services
 func (svc *LauncherService) Stop() error {
+	if svc.mngSub != nil {
+		svc.mngSub.Unsubscribe()
+		svc.mngSub = nil
+	}
 	svc.isRunning.Store(false)
 	return svc.StopAll()
 }
@@ -406,13 +421,18 @@ func (svc *LauncherService) Stop() error {
 // NewLauncherService returns a new launcher instance for the services in the given services folder.
 // This scans the folder for executables, adds these to the list of available services and autostarts services
 // Logging will be enabled based on LauncherConfig.
-func NewLauncherService(f utils.AppFolders, cfg config.LauncherConfig) *LauncherService {
+func NewLauncherService(
+	f utils.AppDirs,
+	cfg config.LauncherConfig,
+	hc hubclient.IHubClient,
+) *LauncherService {
 
 	ls := &LauncherService{
 		f:        f,
 		cfg:      cfg,
 		services: make(map[string]*launcher.ServiceInfo),
 		cmds:     make([]*exec.Cmd, 0),
+		hc:       hc,
 	}
 
 	return ls

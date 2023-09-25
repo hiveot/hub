@@ -93,12 +93,21 @@ func TestAdd(t *testing.T) {
 
 	// add should succeed
 	err = pwStore1.Add(user1, auth.ClientProfile{
-		ClientID: user1, ClientType: auth.ClientTypeUser, Role: auth.ClientRoleNone})
+		ClientID:   user1,
+		ClientType: auth.ClientTypeUser,
+		Role:       auth.ClientRoleNone})
 	require.NoError(t, err)
-	// adding existing user should fail
+
+	// adding existing user should update it
 	err = pwStore1.Add(user1, auth.ClientProfile{
-		ClientID: user1, ClientType: auth.ClientTypeUser, Role: auth.ClientRoleNone})
-	assert.Error(t, err)
+		ClientID:    user1,
+		ClientType:  auth.ClientTypeUser,
+		DisplayName: "updated user 1",
+		Role:        auth.ClientRoleNone})
+	assert.NoError(t, err)
+	prof1, _ := pwStore1.GetProfile(user1)
+	assert.Equal(t, "updated user 1", prof1.DisplayName)
+
 	// adding missing client should fail
 	err = pwStore1.Add(user2, auth.ClientProfile{
 		ClientID: "", ClientType: auth.ClientTypeUser, Role: auth.ClientRoleNone})

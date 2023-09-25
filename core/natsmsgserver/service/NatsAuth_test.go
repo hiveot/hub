@@ -1,4 +1,4 @@
-package natsmsgserver_test
+package service_test
 
 import (
 	"github.com/hiveot/hub/api/go/auth"
@@ -14,7 +14,7 @@ func TestPermissions(t *testing.T) {
 	defer t.Log("---TestPermissions end---")
 
 	// setup
-	clientURL, s, certBundle, cfg, err := testenv.StartNatsTestServer(withCallout)
+	clientURL, s, certBundle, cfg, err := testenv.StartNatsTestServer(false, withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	_ = certBundle
@@ -30,7 +30,7 @@ func TestToken(t *testing.T) {
 	defer t.Log("---TestToken end---")
 
 	// setup
-	clientURL, s, certBundle, cfg, err := testenv.StartNatsTestServer(withCallout)
+	clientURL, s, certBundle, cfg, err := testenv.StartNatsTestServer(false, withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	//err = s.ApplyAuth(testenv.TestClients)

@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/hiveot/hub/core/launcher"
+	"github.com/hiveot/hub/api/go/launcher"
 	"github.com/hiveot/hub/core/launcher/config"
 	service2 "github.com/hiveot/hub/core/launcher/service"
+	"github.com/hiveot/hub/lib/hubcl"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
@@ -21,7 +22,13 @@ func main() {
 		slog.Error("Failed loading launcher config: ", "err", err)
 		os.Exit(1)
 	}
-	svc := service2.NewLauncherService(f, cfg)
+	// this locates the hub, load certificate, load service tokens and connect
+	hc, err := hubcl.ConnectToHub("", launcher.ServiceName, f.Certs, "")
+	if err != nil {
+		slog.Error("Failed connecting to the Hub", "err", err)
+		os.Exit(1)
+	}
+	svc := service2.NewLauncherService(f, cfg, hc)
 	err = svc.Start()
 	if err != nil {
 		slog.Error("Failed starting launcher: ", "err", err)

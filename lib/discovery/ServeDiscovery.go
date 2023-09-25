@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/grandcat/zeroconf"
 )
@@ -28,7 +29,7 @@ import (
 //	serviceName is the discover name. For example "hiveot"
 //	address service listening IP address
 //	port service listing port
-//	params is a map of key-value pairs to include in discovery
+//	params is a map of key-value pairs to include in discovery, eg rawURL
 //
 // Returns the discovery service instance. Use Shutdown() when done.
 func ServeDiscovery(instanceID string, serviceName string,
@@ -55,7 +56,8 @@ func ServeDiscovery(instanceID string, serviceName string,
 	if net.ParseIP(address) == nil {
 		// was a hostname provided instead IP?
 		hostname = address
-		actualIP, err := net.LookupIP(address)
+		parts := strings.Split(address, ":") // remove port
+		actualIP, err := net.LookupIP(parts[0])
 		if err != nil {
 			// can't continue without a valid address
 			slog.Error("Provided address is not an IP and cannot be resolved",

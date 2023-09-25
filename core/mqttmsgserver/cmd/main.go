@@ -8,7 +8,7 @@ import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/core/config"
-	"github.com/hiveot/hub/core/natsmsgserver"
+	"github.com/hiveot/hub/core/mqttmsgserver/service"
 	"github.com/hiveot/hub/lib/discovery"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
@@ -21,10 +21,10 @@ import (
 
 const DefaultCfg = "hub.yaml"
 
-// Launch the hub NATS core
+// Launch the hub core
 // This starts the embedded messaging service and in-process core services.
 //
-// commandline:  natscore command options
+// commandline:  hubcore command options
 //
 // commands:
 //
@@ -71,7 +71,7 @@ func main() {
 	flag.StringVar(&cfgFile, "c", cfgFile, "Service config file")
 	flag.BoolVar(&newSetup, "new", newSetup, "Overwrite existing config (use with care!)")
 	flag.Usage = func() {
-		fmt.Println("Usage: natscore [options] config|run|setup")
+		fmt.Println("Usage: mqttcore [options] config|run|setup")
 		fmt.Println()
 		fmt.Println("Options (before command):")
 		flag.PrintDefaults()
@@ -90,13 +90,13 @@ func main() {
 	fmt.Println("home: ", f.Home)
 	// setup the configuration
 	hubCfg := config.NewHubCoreConfig()
-	err := hubCfg.Setup(f.Home, cfgFile, newSetup)
+	err := hubCfg.Setup(f.Home, cfgFile, "mqtt", newSetup)
 	cmd := ""
 	if len(flag.Args()) > 0 {
 		cmd = flag.Arg(0)
 	}
 
-	// only report error if not running setup
+	// an error is allowed when running setup
 	if err != nil && cmd != "setup" {
 		fmt.Println("ERROR:", err.Error())
 		os.Exit(1)
@@ -126,16 +126,18 @@ func main() {
 func run(cfg *config.HubCoreConfig) error {
 	var err error
 
-	msgServer := natsmsgserver.NewNatsMsgServer(&cfg.NatsServer, auth.DefaultRolePermissions)
+	msgServer := service.NewMqttMsgServer(&cfg.MqttServer, auth.DefaultRolePermissions)
 	serverURL, err := msgServer.Start()
-
 	if err != nil {
 		return fmt.Errorf("unable to start server: %w", err)
 	}
 
-	// nats requires brcypt passwords
+	// mqtt can use either argon2id or brcypt passwords
 	cfg.Auth.Encryption = auth.PWHASH_BCRYPT
 	authSvc, err := authservice.StartAuthService(cfg.Auth, msgServer)
+	if err != nil {
+		return err
+	}
 
 	// start discovery
 	if cfg.EnableMDNS {
@@ -154,7 +156,7 @@ func run(cfg *config.HubCoreConfig) error {
 	}
 
 	// wait until signal
-	fmt.Println("Hub started. ClientURL=" + serverURL)
+	fmt.Println("MQTT Hub core started. serverURL=" + serverURL)
 	utils.WaitForSignal(context.Background())
 
 	authSvc.Stop()

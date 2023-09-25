@@ -45,7 +45,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// this: locates the hub, load certificate, load service tokens and connect
+	// this locates the hub, load certificate, load service tokens and connect
 	hc, err := hubcl.ConnectToHub("", certs2.ServiceName, f.Certs, "")
 	if err != nil {
 		slog.Error("Failed connecting to the Hub", "err", err)

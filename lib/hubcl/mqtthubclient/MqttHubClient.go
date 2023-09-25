@@ -18,6 +18,8 @@ import (
 const keepAliveInterval = 30 // seconds
 const reconnectDelay = 10 * time.Second
 const withDebug = false
+const MqttInMemUDSProd = "@/MqttInMemUDSProd" // production name
+const MqttInMemUDSTest = "@/MqttInMemUDSTest" // test server name
 
 // MqttHubClient manages the hub server connection with hub event and action messaging
 // This implements the IHubClient interface.
@@ -190,7 +192,7 @@ func (hc *MqttHubClient) Disconnect() {
 //	caCert of the server to validate the server or nil to not check the server cert
 func NewMqttHubClient(url string, id string, privKey *ecdsa.PrivateKey, caCert *x509.Certificate) *MqttHubClient {
 	if url == "" {
-		url = "mqtts://localhost:"
+		url = "unix://" + MqttInMemUDSProd
 	}
 	hc := &MqttHubClient{
 		serverURL: url,

@@ -135,10 +135,10 @@ func TestAddRemoveClients(t *testing.T) {
 
 	_, err = mng.AddUser("user1", "user 1", "pass1", "", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
-	// duplicate fail
-	_, err = mng.AddUser("user1", "user 1", "pass1", "", authapi.ClientRoleViewer) // should fail
-	assert.Error(t, err)
-	// missing userID
+	// duplicate should update
+	_, err = mng.AddUser("user1", "user 1 updated", "pass1", "", authapi.ClientRoleViewer) // should fail
+	assert.NoError(t, err)
+	// missing userID should fail
 	_, err = mng.AddUser("", "user 1", "pass1", "", authapi.ClientRoleViewer) // should fail
 	assert.Error(t, err)
 
@@ -151,18 +151,12 @@ func TestAddRemoveClients(t *testing.T) {
 
 	_, err = mng.AddDevice(deviceID, "device 1", deviceKeyPub)
 	assert.NoError(t, err)
-	// duplicate fail
-	_, err = mng.AddDevice(deviceID, "", "") // should fail
-	assert.Error(t, err)
-	// missing userID
+	// missing deviceID should fail
 	_, err = mng.AddDevice("", "", "") // should fail
 	assert.Error(t, err)
 
 	_, err = mng.AddService(serviceID, "service 1", serviceKeyPub)
 	assert.NoError(t, err)
-	// duplicate fail
-	_, err = mng.AddService(serviceID, "", "") // should fail
-	assert.Error(t, err)
 	// missing userID
 	_, err = mng.AddService("", "", "") // should fail
 	assert.Error(t, err)

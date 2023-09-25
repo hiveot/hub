@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/auth/authstore"
+	"log/slog"
 )
 
 // AuthService handles authentication and authorization requests
@@ -24,6 +25,7 @@ type AuthService struct {
 // This adds an 'auth' service client.
 func (svc *AuthService) Start() (err error) {
 
+	slog.Info("starting AuthService")
 	err = svc.store.Open()
 	if err != nil {
 		return err
@@ -122,7 +124,7 @@ func StartAuthService(cfg AuthConfig, msgServer msgserver.IMsgServer) (*AuthServ
 	authnSvc := NewAuthnService(authStore, msgServer)
 	err := authnSvc.Start()
 	if err != nil {
-		panic("cant start test authn service: " + err.Error())
+		panic("cant start Auth service: " + err.Error())
 	}
 	return authnSvc, err
 }

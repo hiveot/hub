@@ -1,13 +1,8 @@
 package testenv
 
 import (
-	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
-	"github.com/hiveot/hub/core/mqttmsgserver"
-	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/hiveot/hub/lib/certs"
-	"os"
-	"path"
 )
 
 // StartTestServer creates a NATS or MQTT test server depending on the requested type
@@ -25,44 +20,11 @@ func StartTestServer(core string, applyTestClients bool) (
 	certBundle = certs.CreateTestCertBundle()
 	if core == "nats" {
 
-		serverCfg := &natsmsgserver.NatsServerConfig{
-			Port:   9990,
-			CaCert: certBundle.CaCert,
-			CaKey:  certBundle.CaKey,
-			//ServerCert: certBundle.ServerCert, // auto generate
-			//Debug: true,
-		}
-		//
-		tmpDir := path.Join(os.TempDir(), "nats-testserver")
-		_ = os.RemoveAll(tmpDir)
-		err = serverCfg.Setup(tmpDir, tmpDir, false)
-		if err == nil {
-			natsServer := natsmsgserver.NewNatsMsgServer(serverCfg, auth.DefaultRolePermissions)
-			serverURL, err = natsServer.Start()
-			msgServer = natsServer
-			if applyTestClients {
-				_ = natsServer.ApplyAuth(NatsTestClients)
-			}
-		}
+		serverURL, msgServer, certBundle, _, err = StartNatsTestServer(applyTestClients, false)
+
 	} else {
-		serverCfg := &mqttmsgserver.MqttServerConfig{
-			Host:   "",
-			Port:   9990,
-			CaCert: certBundle.CaCert,
-			CaKey:  certBundle.CaKey,
-			Debug:  true,
-		}
-		tmpDir := path.Join(os.TempDir(), "mqtt-testserver")
-		_ = os.RemoveAll(tmpDir)
-		err = serverCfg.Setup(tmpDir, tmpDir, false)
-		if err == nil {
-			mqttServer := mqttmsgserver.NewMqttMsgServer(serverCfg, auth.DefaultRolePermissions)
-			serverURL, err = mqttServer.Start()
-			msgServer = mqttServer
-			if applyTestClients {
-				_ = mqttServer.ApplyAuth(MqttTestClients)
-			}
-		}
+		serverURL, msgServer, certBundle, err = StartMqttTestServer(applyTestClients)
+
 	}
 	return serverURL, msgServer, certBundle, err
 }

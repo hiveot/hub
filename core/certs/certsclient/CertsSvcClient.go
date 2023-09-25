@@ -14,7 +14,7 @@ type CertsSvcClient struct {
 	hc        hubclient.IHubClient
 }
 
-// helper for publishing an action request to the certs service
+// helper for publishing a rpc request to the certs service
 func (cl *CertsSvcClient) pubReq(action string, req interface{}, resp interface{}) error {
 	var msg []byte
 	if req != nil {

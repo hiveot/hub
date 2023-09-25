@@ -1,4 +1,4 @@
-package natsmsgserver
+package service
 
 import (
 	"encoding/base64"
@@ -38,10 +38,10 @@ func (srv *NatsMsgServer) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
 	nkeyUsers = append(nkeyUsers, []*server.NkeyUser{
 		{Nkey: adminUserPub,
 			Permissions: nil, // unlimited access
-			Account:     srv.Config.appAcct,
+			Account:     srv.Config.AppAcct,
 		}, {Nkey: coreServicePub,
 			Permissions: nil, // unlimited access
-			Account:     srv.Config.appAcct,
+			Account:     srv.Config.AppAcct,
 		}, {
 			Nkey:        systemUserPub,
 			Permissions: nil, // unlimited access
@@ -60,7 +60,7 @@ func (srv *NatsMsgServer) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
 				Username:    clientInfo.ClientID,
 				Password:    clientInfo.PasswordHash,
 				Permissions: userPermissions,
-				Account:     srv.Config.appAcct,
+				Account:     srv.Config.AppAcct,
 			})
 		}
 
@@ -69,7 +69,7 @@ func (srv *NatsMsgServer) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
 			nkeyUsers = append(nkeyUsers, &server.NkeyUser{
 				Nkey:        clientInfo.PubKey,
 				Permissions: userPermissions,
-				Account:     srv.Config.appAcct,
+				Account:     srv.Config.AppAcct,
 			})
 		}
 	}

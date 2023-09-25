@@ -4,6 +4,7 @@ import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/hiveot/hub/core/natsmsgserver/callouthook"
+	"github.com/hiveot/hub/core/natsmsgserver/service"
 	"github.com/hiveot/hub/lib/certs"
 	"os"
 	"path"
@@ -11,9 +12,9 @@ import (
 
 // StartNatsTestServer generate a test configuration and starts a NKeys based nats test server
 // A new temporary storage directory is used.
-func StartNatsTestServer(withCallout bool) (
+func StartNatsTestServer(applyTestClients bool, withCallout bool) (
 	clientURL string,
-	hubNatsServer *natsmsgserver.NatsMsgServer,
+	hubNatsServer *service.NatsMsgServer,
 	certBundle certs.TestCertBundle,
 	config *natsmsgserver.NatsServerConfig, err error) {
 
@@ -31,7 +32,7 @@ func StartNatsTestServer(withCallout bool) (
 	_ = os.RemoveAll(tmpDir)
 	err = serverCfg.Setup(tmpDir, tmpDir, false)
 	if err == nil {
-		hubNatsServer = natsmsgserver.NewNatsMsgServer(serverCfg, auth.DefaultRolePermissions)
+		hubNatsServer = service.NewNatsMsgServer(serverCfg, auth.DefaultRolePermissions)
 		clientURL, err = hubNatsServer.Start()
 	}
 	if err == nil && withCallout {
@@ -41,6 +42,9 @@ func StartNatsTestServer(withCallout bool) (
 		if err != nil {
 			panic(err)
 		}
+	}
+	if applyTestClients {
+		_ = hubNatsServer.ApplyAuth(NatsTestClients)
 	}
 	return clientURL, hubNatsServer, certBundle, serverCfg, err
 }

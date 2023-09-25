@@ -1,9 +1,9 @@
-package mqttmsgserver_test
+package service_test
 
 import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
-	"github.com/hiveot/hub/core/mqttmsgserver"
+	"github.com/hiveot/hub/core/mqttmsgserver/service"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubcl"
 	"github.com/hiveot/hub/lib/hubcl/mqtthubclient"
@@ -28,7 +28,7 @@ func TestConnectWithCert(t *testing.T) {
 	slog.Info("--- TestConnectWithCert start")
 	defer slog.Info("--- TestConnectWithCert end")
 
-	serverURL, srv, certBundle, err := testenv.StartTestServer("mqtt", true)
+	serverURL, srv, certBundle, err := testenv.StartMqttTestServer(true)
 	require.NoError(t, err)
 	defer srv.Stop()
 
@@ -47,7 +47,7 @@ func TestConnectWithPassword(t *testing.T) {
 	slog.Info("--- TestConnectWithPassword start")
 	defer slog.Info("--- TestConnectWithPassword end")
 
-	serverURL, srv, certBundle, err := testenv.StartTestServer("mqtt", true)
+	serverURL, srv, certBundle, err := testenv.StartMqttTestServer(true)
 	require.NoError(t, err)
 	defer srv.Stop()
 
@@ -61,8 +61,8 @@ func TestConnectWithPassword(t *testing.T) {
 func TestConnectWithToken(t *testing.T) {
 
 	// setup
-	serverURL, srv, certBundle, err := testenv.StartTestServer("mqtt", true)
-	msrv := srv.(*mqttmsgserver.MqttMsgServer)
+	serverURL, srv, certBundle, err := testenv.StartMqttTestServer(true)
+	msrv := srv.(*service.MqttMsgServer)
 	require.NoError(t, err)
 	defer srv.Stop()
 
@@ -85,15 +85,15 @@ func TestConnectWithToken(t *testing.T) {
 func TestMqttServerPubSub(t *testing.T) {
 	rxChan := make(chan string, 1)
 	msg := "hello world"
-	cfg := mqttmsgserver.MqttServerConfig{}
-	err := cfg.Setup("", "", false)
+	serverURL, srv, certBundle, err := testenv.StartMqttTestServer(false)
+	_ = certBundle
 	require.NoError(t, err)
 
-	srv := mqttmsgserver.NewMqttMsgServer(&cfg, auth.DefaultRolePermissions)
-	clientURL, err := srv.Start()
+	//srv := service.NewMqttMsgServer(&cfg, auth.DefaultRolePermissions)
+	//clientURL, err := srv.Start()
 	require.NoError(t, err)
 	defer srv.Stop()
-	assert.NotEmpty(t, clientURL)
+	assert.NotEmpty(t, serverURL)
 	err = srv.ApplyAuth(testenv.MqttTestClients)
 	require.NoError(t, err)
 
@@ -126,12 +126,12 @@ func TestMqttServerRequest(t *testing.T) {
 	msg := "hello world"
 
 	// setup the server with test clients
-	clientURL, srv, certBundle, err := testenv.StartTestServer("mqtt", true)
+	serverURL, srv, certBundle, err := testenv.StartMqttTestServer(true)
 	_ = certBundle
 	require.NoError(t, err)
 	require.NoError(t, err)
 	defer srv.Stop()
-	assert.NotEmpty(t, clientURL)
+	assert.NotEmpty(t, serverURL)
 
 	// create a key pair
 	kp, pubKey := srv.CreateKP()

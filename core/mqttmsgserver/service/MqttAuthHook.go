@@ -1,16 +1,17 @@
-package mqttmsgserver
+package service
 
 import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/core/mqttmsgserver/jwtauth"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubcl/mqtthubclient"
 	mqtt "github.com/mochi-mqtt/server/v2"
@@ -19,7 +20,6 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
-	"time"
 )
 
 // MqttAuthHook mochi-co MQTT broker authentication hook with
@@ -73,52 +73,8 @@ func (hook *MqttAuthHook) CreateKP() (interface{}, string) {
 
 // CreateToken creates a new JWT authtoken for a client.
 func (hook *MqttAuthHook) CreateToken(authInfo msgserver.ClientAuthInfo) (token string, err error) {
-
-	if authInfo.ClientID == "" || authInfo.ClientType == "" {
-		err = fmt.Errorf("CreateToken: Missing client ID or type")
-		return "", err
-	} else if authInfo.PubKey == "" {
-		err = fmt.Errorf("CreateToken: client has no public key")
-		return "", err
-	} else if authInfo.Role == "" {
-		err = fmt.Errorf("CreateToken: client has no role")
-		return "", err
-	}
-
-	// see also: https://golang-jwt.github.io/jwt/usage/create/
-	// TBD: use validity period from profile
-	// default validity period depends on client type (why?)
-	validity := auth.DefaultUserTokenValidityDays
-	if authInfo.ClientType == auth.ClientTypeDevice {
-		validity = auth.DefaultDeviceTokenValidityDays
-	} else if authInfo.ClientType == auth.ClientTypeService {
-		validity = auth.DefaultServiceTokenValidityDays
-	}
-	expiryTime := time.Now().Add(time.Duration(validity) * time.Hour * 24)
-	// Create the JWT claims, which includes the username, clientType and expiry time
-	claims := jwt.MapClaims{
-		//"alg": "ES256", // jwt.SigningMethodES256,
-		"typ": "JWT",
-		"aud": authInfo.ClientType, //
-		"sub": authInfo.PubKey,     // public key of client (same as nats)
-		"iss": hook.signingKeyPub,
-		"exp": expiryTime.Unix(), // expiry time. Seconds since epoch
-		"iat": time.Now().Unix(), // issued at. Seconds since epoch
-
-		// custom claim fields
-		"clientID":   authInfo.ClientID,
-		"clientType": authInfo.ClientType,
-		"role":       authInfo.Role,
-	}
-
-	// Declare the token with the algorithm used for signing, and the claims
-	claimsToken := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
-	authToken, err := claimsToken.SignedString(hook.signingKey)
-	if err != nil {
-		return "", err
-	}
-
-	return authToken, nil
+	token, err = jwtauth.CreateToken(authInfo, hook.signingKey)
+	return token, err
 }
 
 // GetClientAuth returns the client auth info for the given ID
@@ -356,50 +312,7 @@ func (hook *MqttAuthHook) ValidateToken(
 	clientID string, token string, signedNonce string, nonce string) (
 	authInfo msgserver.ClientAuthInfo, err error) {
 
-	claims := jwt.MapClaims{}
-	jwtToken, err := jwt.ParseWithClaims(token, &claims,
-		func(token *jwt.Token) (interface{}, error) {
-			return &hook.signingKey.PublicKey, nil
-		}, jwt.WithValidMethods([]string{
-			jwt.SigningMethodES256.Name,
-			jwt.SigningMethodES384.Name,
-			jwt.SigningMethodES512.Name,
-			"EdDSA",
-		}),
-		jwt.WithIssuer(hook.signingKeyPub), // url encoded string
-	)
-	if err != nil || jwtToken == nil || !jwtToken.Valid {
-		return authInfo, fmt.Errorf("invalid JWT token: %s", err)
-	}
-
-	pubKey, _ := claims.GetSubject()
-	authInfo.PubKey = pubKey
-	if pubKey == "" {
-		return authInfo, fmt.Errorf("token has no public key")
-	}
-
-	jwtClientType, _ := claims["clientType"]
-	authInfo.ClientType = jwtClientType.(string)
-	if authInfo.ClientType == "" {
-		return authInfo, fmt.Errorf("token has no client type")
-	}
-
-	authInfo.ClientID = clientID
-	jwtClientID, _ := claims["clientID"]
-	if jwtClientID != clientID {
-		// while this doesn't provide much extra security it might help
-		// prevent bugs. Potentially also useful as second factor auth check if
-		// clientID is obtained through a different means.
-		return authInfo, fmt.Errorf("token belongs to different clientID")
-	}
-
-	jwtRole, _ := claims["role"]
-	authInfo.Role = jwtRole.(string)
-	if authInfo.Role == "" {
-		return authInfo, fmt.Errorf("token has no role")
-	}
-
-	return authInfo, nil
+	return jwtauth.ValidateToken(clientID, token, hook.signingKey, signedNonce, nonce)
 }
 
 func (hook *MqttAuthHook) ValidatePassword(
@@ -415,5 +328,19 @@ func (hook *MqttAuthHook) ValidatePassword(
 	// verify password
 	err = bcrypt.CompareHashAndPassword([]byte(cinfo.PasswordHash), []byte(password))
 	return cinfo, err
+}
 
+func NewMqttAuthHook(signingKey *ecdsa.PrivateKey) *MqttAuthHook {
+	signingKeyPub, _ := x509.MarshalPKIXPublicKey(&signingKey.PublicKey)
+	signingKeyPubStr := base64.StdEncoding.EncodeToString(signingKeyPub)
+	hook := &MqttAuthHook{
+		HookBase:           mqtt.HookBase{},
+		authClients:        nil,
+		rolePermissions:    nil,
+		authMux:            sync.RWMutex{},
+		signingKey:         signingKey,
+		signingKeyPub:      signingKeyPubStr,
+		servicePermissions: make(map[string][]msgserver.RolePermission),
+	}
+	return hook
 }

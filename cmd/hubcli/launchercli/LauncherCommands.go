@@ -2,11 +2,12 @@ package launchercli
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/launcher"
+	"github.com/hiveot/hub/api/go/hubclient"
+	"github.com/hiveot/hub/core/launcher/launcherclient"
 	"github.com/urfave/cli/v2"
 )
 
-func LauncherListCommand(runFolder *string) *cli.Command {
+func LauncherListCommand(hc *hubclient.IHubClient) *cli.Command {
 
 	return &cli.Command{
 		Name: "ls",
@@ -18,13 +19,13 @@ func LauncherListCommand(runFolder *string) *cli.Command {
 			if cCtx.NArg() != 0 {
 				return fmt.Errorf("no arguments expected")
 			}
-			err := HandleListServices(*runFolder)
+			err := HandleListServices(*hc)
 			return err
 		},
 	}
 }
 
-func LauncherStartCommand(runFolder *string) *cli.Command {
+func LauncherStartCommand(hc *hubclient.IHubClient) *cli.Command {
 
 	return &cli.Command{
 		Name: "start",
@@ -37,13 +38,13 @@ func LauncherStartCommand(runFolder *string) *cli.Command {
 			if cCtx.NArg() != 1 {
 				return fmt.Errorf("expected service name")
 			}
-			err := HandleStartService(*runFolder, cCtx.Args().First())
+			err := HandleStartService(cCtx.Args().First(), *hc)
 			return err
 		},
 	}
 }
 
-func LauncherStopCommand(runFolder *string) *cli.Command {
+func LauncherStopCommand(hc *hubclient.IHubClient) *cli.Command {
 
 	return &cli.Command{
 		Name: "stop",
@@ -55,24 +56,23 @@ func LauncherStopCommand(runFolder *string) *cli.Command {
 			if cCtx.NArg() != 1 {
 				return fmt.Errorf("expected service name")
 			}
-			err := HandleStopService(*runFolder, cCtx.Args().First())
+			err := HandleStopService(cCtx.Args().First(), *hc)
 			return err
 		},
 	}
 }
 
 // HandleListServices prints a list of available services
-func HandleListServices(runFolder string) error {
-	var ls launcher.ILauncher
-	var err error
+func HandleListServices(hc hubclient.IHubClient) error {
 
-	if err != nil {
-		return err
+	if hc == nil {
+		return fmt.Errorf("no Hub connection")
 	}
+	lc := launcherclient.NewLauncherClient(hc)
 
 	fmt.Println("Service                      Size   Starts       PID    CPU   Memory   Status    Last Error")
 	fmt.Println("-------                      ----   ------   -------   ----   ------   -------   -----------")
-	entries, _ := ls.List(false)
+	entries, _ := lc.List(false)
 	for _, entry := range entries {
 		status := "stopped"
 		cpu := ""
@@ -98,12 +98,15 @@ func HandleListServices(runFolder string) error {
 }
 
 // HandleStartService starts a service
-func HandleStartService(runFolder string, serviceName string) error {
-	var ls launcher.ILauncher
+func HandleStartService(serviceName string, hc hubclient.IHubClient) error {
 	var err error
+	if hc == nil {
+		return fmt.Errorf("no Hub connection")
+	}
+	lc := launcherclient.NewLauncherClient(hc)
 
 	if serviceName == "all" {
-		err := ls.StartAll()
+		err := lc.StartAll()
 
 		if err != nil {
 			//fmt.Println("Connect all failed with: ", err)
@@ -111,7 +114,7 @@ func HandleStartService(runFolder string, serviceName string) error {
 		}
 		fmt.Printf("All services started\n")
 	} else {
-		info, err2 := ls.StartService(serviceName)
+		info, err2 := lc.StartService(serviceName)
 
 		if err2 != nil {
 			//fmt.Println("Connect failed:", err2)
@@ -120,21 +123,21 @@ func HandleStartService(runFolder string, serviceName string) error {
 		fmt.Printf("Service '%s' started\n", info.Name)
 	}
 	// last, show a list of running services
-	err = HandleListServices(runFolder)
+	err = HandleListServices(hc)
 	return err
 }
 
 // HandleStopService stops a service
-func HandleStopService(runFolder string, serviceName string) error {
-	var ls launcher.ILauncher
+func HandleStopService(serviceName string, hc hubclient.IHubClient) error {
 	var err error
 
-	if err != nil {
-		return err
+	if hc == nil {
+		return fmt.Errorf("no Hub connection")
 	}
+	lc := launcherclient.NewLauncherClient(hc)
 
 	if serviceName == "all" {
-		err := ls.StopAll()
+		err := lc.StopAll()
 
 		if err != nil {
 			fmt.Println("Stop all failed:", err)
@@ -143,7 +146,7 @@ func HandleStopService(runFolder string, serviceName string) error {
 		fmt.Printf("All services stopped\n")
 
 	} else {
-		info, err := ls.StopService(serviceName)
+		info, err := lc.StopService(serviceName)
 		if err != nil {
 			fmt.Printf("Stop %s failed: %s\n", serviceName, err)
 			return err
@@ -151,6 +154,6 @@ func HandleStopService(runFolder string, serviceName string) error {
 		fmt.Printf("Service '%s' stopped\n", info.Name)
 	}
 	// last, show a list of running services
-	err = HandleListServices(runFolder)
+	err = HandleListServices(hc)
 	return err
 }

@@ -21,6 +21,9 @@ loglevel: info
 # automatically restart services when they stop
 #autorestart: false    # enable the auto-restart feature (default is disabled)
 
+# createClientCert generates a client certificate with the plugin ID before start
+#createClientCert: true    (default true)
+
 # Order of services to start
 autostart:
   - certs

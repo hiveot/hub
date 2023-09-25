@@ -29,7 +29,8 @@ func TestDiscover(t *testing.T) {
 	assert.NotNil(t, discoServer)
 
 	// Test if it is discovered
-	address, port, discoParams, records, err := discovery.DiscoverService(testServiceName, time.Second)
+	address, port, discoParams, records, err := discovery.DiscoverService(
+		testServiceName, time.Second, true)
 	require.NoError(t, err)
 	rec0 := records[0]
 	assert.Equal(t, testServiceID, rec0.Instance)
@@ -51,7 +52,8 @@ func TestDiscoViaDomainName(t *testing.T) {
 	assert.NotNil(t, discoServer)
 
 	// Test if it is discovered
-	discoAddress, discoPort, _, records, err := discovery.DiscoverService(testServiceName, time.Second)
+	discoAddress, discoPort, _, records, err := discovery.DiscoverService(
+		testServiceName, time.Second, true)
 	require.NoError(t, err)
 	require.True(t, len(records) > 0)
 	rec0 := records[0]
@@ -97,7 +99,8 @@ func TestDiscoverNotFound(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test if it is discovered
-	discoAddress, discoPort, _, records, err := discovery.DiscoverService("wrongname", time.Second)
+	discoAddress, discoPort, _, records, err := discovery.DiscoverService(
+		"wrongname", time.Second, true)
 	_ = discoAddress
 	_ = discoPort
 	_ = records
@@ -132,7 +135,7 @@ func TestExternalAddress(t *testing.T) {
 
 func TestDNSSDScan(t *testing.T) {
 
-	records, err := discovery.DnsSDScan("", time.Second*2)
+	records, err := discovery.DnsSDScan("", time.Second*2, false)
 	fmt.Printf("Found %d records in scan", len(records))
 
 	assert.NoError(t, err)

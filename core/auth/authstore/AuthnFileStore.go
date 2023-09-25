@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/api/go/vocab"
+	"log/slog"
 	"os"
 	"path"
 	"sync"
@@ -38,9 +39,7 @@ func (authnStore *AuthnFileStore) Add(clientID string, profile auth.ClientProfil
 	defer authnStore.mutex.Unlock()
 
 	entry, found := authnStore.entries[clientID]
-	if found {
-		return fmt.Errorf("client '%s' already exists", clientID)
-	} else if clientID == "" || clientID != profile.ClientID {
+	if clientID == "" || clientID != profile.ClientID {
 		return fmt.Errorf("clientID or clientType are missing")
 	} else if profile.ClientType != auth.ClientTypeDevice &&
 		profile.ClientType != auth.ClientTypeUser &&
@@ -56,9 +55,13 @@ func (authnStore *AuthnFileStore) Add(clientID string, profile auth.ClientProfil
 			profile.TokenValidityDays = auth.DefaultUserTokenValidityDays
 		}
 	}
-	entry = auth.AuthnEntry{ClientProfile: profile}
-	entry.PasswordHash = ""
-	entry.Role = profile.Role
+	if !found {
+		slog.Info("Adding client " + clientID)
+		entry = auth.AuthnEntry{ClientProfile: profile}
+	} else {
+		slog.Info("Updating client " + clientID)
+		entry.ClientProfile = profile
+	}
 	entry.Updated = time.Now().Format(vocab.ISO8601Format)
 
 	authnStore.entries[clientID] = entry

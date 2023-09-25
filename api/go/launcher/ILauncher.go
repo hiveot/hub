@@ -4,6 +4,9 @@ package launcher
 // ServiceName used to connect to this service
 const ServiceName = "launcher"
 
+// LauncherManageCapability is the name of the Thing/Capability that handles management requests
+const LauncherManageCapability = "manage"
+
 // ServiceInfo contains the running status of a service
 type ServiceInfo struct {
 	// CPU usage in %. 0 when not running
@@ -45,6 +48,40 @@ type ServiceInfo struct {
 	// uptime time the service is running in seconds.
 	Uptime int
 }
+
+const LauncherListRPC = "list"
+
+type LauncherListReq struct {
+	OnlyRunning bool `json:"onlyRunning"`
+}
+type LauncherListResp struct {
+	ServiceInfoList []ServiceInfo `json:"serviceInfo"`
+}
+
+const LauncherStartServiceRPC = "startService"
+
+type LauncherStartServiceReq struct {
+	Name string `json:"name"`
+}
+
+type LauncherStartServiceResp struct {
+	ServiceInfo ServiceInfo `json:"info"`
+}
+
+const LauncherStartAllRPC = "startAll"
+
+// StartAll has no arguments
+
+const LauncherStopServiceRPC = "stop"
+
+type LauncherStopServiceReq struct {
+	Name string `json:"name"`
+}
+type LauncherStopServiceResp struct {
+	ServiceInfo ServiceInfo `json:"info"`
+}
+
+const LauncherStopAllRPC = "stopAll"
 
 // ILauncher defines the POGS based interface of the launcher service
 type ILauncher interface {

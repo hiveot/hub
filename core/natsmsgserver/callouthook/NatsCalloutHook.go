@@ -2,7 +2,7 @@ package callouthook
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/natsmsgserver"
+	"github.com/hiveot/hub/core/natsmsgserver/service"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
@@ -39,7 +39,7 @@ type NatsCalloutHook struct {
 	// the nats connection used to subscribe and receive callout requests
 	nc *nats.Conn
 
-	msgServer *natsmsgserver.NatsMsgServer
+	msgServer *service.NatsMsgServer
 	// token factory for a known client with the given public key
 	//createJWTToken func(clientID string, pubKey string) (newToken string, err error)
 
@@ -206,7 +206,7 @@ func (chook *NatsCalloutHook) start() error {
 //   - nc is the nats connection to use
 //   - authnVerifier is the callback handler to verify an authn request
 func EnableNatsCalloutHook(
-	srv *natsmsgserver.NatsMsgServer,
+	srv *service.NatsMsgServer,
 	// authnVerifier func(request *jwt.AuthorizationRequestClaims) (clientID string, err error),
 ) (*NatsCalloutHook, error) {
 

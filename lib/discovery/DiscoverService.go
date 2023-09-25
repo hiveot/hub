@@ -20,21 +20,22 @@ const HIVEOT_DNSSD_TYPE = "_hiveot._tcp"
 //
 // Returns the first instance address, port and discovery parameters, plus records of additional discoveries,
 // or an error if nothing is found
-func DiscoverService(serviceType string, waitTime time.Duration) (
+func DiscoverService(serviceType string, waitTime time.Duration, firstResult bool) (
 	address string, port int, params map[string]string,
 	records []*zeroconf.ServiceEntry, err error) {
+
 	params = make(map[string]string)
 
 	serviceProtocol := "_" + serviceType + "._tcp"
 	if serviceType == "" {
 		serviceProtocol = HIVEOT_DNSSD_TYPE
 	}
-	records, err = DnsSDScan(serviceProtocol, waitTime)
+	records, err = DnsSDScan(serviceProtocol, waitTime, firstResult)
 	if err != nil {
 		return "", 0, nil, nil, err
 	}
 	if len(records) == 0 {
-		err = fmt.Errorf("no service of type '%s' found after %d seconds",
+		err = fmt.Errorf("DiscoverService: no service of type '%s' found after %d seconds",
 			serviceProtocol, int(waitTime/time.Second))
 		return "", 0, nil, nil, err
 	}
@@ -55,7 +56,7 @@ func DiscoverService(serviceType string, waitTime time.Duration) (
 	for _, txtRecord := range rec0.Text {
 		kv := strings.Split(txtRecord, "=")
 		if len(kv) != 2 {
-			slog.Info("Ignoring non key-value in TXT record", "key", txtRecord)
+			slog.Info("DiscoverService: Ignoring non key-value in TXT record", "key", txtRecord)
 		} else {
 			params[kv[0]] = kv[1]
 		}
@@ -66,7 +67,8 @@ func DiscoverService(serviceType string, waitTime time.Duration) (
 // LocateHub determines the nats URL to use.
 // This first checks if a local connection can be made on the default port.
 // Secondly, perform a DNS-SD search.
-func LocateHub(searchTime time.Duration) (fullURL string) {
+// If firstResult is set then return immediately after the first result or searchTime
+func LocateHub(searchTime time.Duration, firstResult bool) (fullURL string, core string) {
 	if searchTime <= 0 {
 		searchTime = time.Second * 3
 	}
@@ -74,13 +76,20 @@ func LocateHub(searchTime time.Duration) (fullURL string) {
 	// discover the service and determine the best matching record
 	// yes, this seems like a bit of a pain
 	// default is the hiveot service
-	addr, port, params, records, err := DiscoverService("hiveot", searchTime)
-	slog.Info("LocateHub", "Nr records", len(records))
+	addr, port, params, records, err := DiscoverService("hiveot", searchTime, firstResult)
 	if err != nil {
 		// failed, nothing to be found
-		return ""
+		slog.Warn("LocateHub: Hub not found")
+		return "", ""
 	}
-	// FIXME: support both nats and mqtt
-	fullURL = fmt.Sprintf("nats://%s:%d%s", addr, port, params["path"])
-	return
+	core = params["core"]
+	fullURL, found := params["rawurl]"]
+	if !found {
+		fullURL = fmt.Sprintf("tls://%s:%d%s", addr, port, params["path"])
+	}
+	slog.Info("LocateHub",
+		slog.Int("Nr records", len(records)),
+		slog.String("fullURL", fullURL),
+		slog.String("core", core))
+	return fullURL, core
 }

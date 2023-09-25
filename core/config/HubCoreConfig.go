@@ -48,13 +48,16 @@ type HubCoreConfig struct {
 }
 
 // Setup creates and loads certificate and key files
+// The core selection determines the type of auth keys to generated for core service and admin.
 // if new is false then re-use existing certificate and key files.
 // if new is true then create a whole new empty environment in the home directory
 //
 //	homeDir is the default data home directory ($HOME)
 //	configFile to load or "" to use defaults
+//	core to setup, "nats" or "mqtt"
 //	new to initialize a new environment and delete existing data (careful!)
-func (cfg *HubCoreConfig) Setup(homeDir string, configFile string, new bool) error {
+func (cfg *HubCoreConfig) Setup(
+	homeDir string, configFile string, core string, new bool) error {
 	var err error
 	cwd, _ := os.Getwd()
 	slog.Info("running setup",
@@ -118,29 +121,19 @@ func (cfg *HubCoreConfig) Setup(homeDir string, configFile string, new bool) err
 	}
 
 	// 4: Create/Load the CA and server certificates
-	cfg.SetupCerts(f.Certs, true)
-	cfg.NatsServer.CaCert = cfg.CaCert
-	cfg.NatsServer.CaKey = cfg.CaKey
-	cfg.NatsServer.ServerTLS = cfg.ServerTLS
+	cfg.SetupCerts(f.Certs)
 
-	// 5: Setup messaging server config
-	err = cfg.NatsServer.Setup(f.Certs, f.Stores, true)
-
-	if cfg.NatsServer.DataDir == "" {
-		panic("config is missing server data directory")
+	// 5: Setup nats config
+	if core == "nats" {
+		err = cfg.SetupNatsCore(f)
+	} else {
+		// 6: Setup mqtt config
+		cfg.MqttServer.CaCert = cfg.CaCert
+		cfg.MqttServer.CaKey = cfg.CaKey
+		cfg.MqttServer.ServerTLS = cfg.ServerTLS
+		err = cfg.MqttServer.Setup(f.Certs, f.Stores, true)
 	}
-	if new {
-		_ = os.RemoveAll(cfg.NatsServer.DataDir)
-	}
-	if _, err2 := os.Stat(cfg.NatsServer.DataDir); err2 != nil {
-		slog.Warn("Creating server data directory: " + cfg.NatsServer.DataDir)
-		err = os.MkdirAll(cfg.NatsServer.DataDir, 0700)
-	}
-	if err != nil {
-		panic("error creating data directory: " + err.Error())
-	}
-
-	// 4: setup authn config
+	// 7: setup authn config
 	err = cfg.Auth.Setup(f.Stores)
 	if err != nil {
 		return err
@@ -153,7 +146,7 @@ func (cfg *HubCoreConfig) Setup(homeDir string, configFile string, new bool) err
 // If a CA doesn't exist then generate and save a new self-signed cert.
 // The server certificates is always regenerated and saved.
 // This panics if certs cannot be setup.
-func (cfg *HubCoreConfig) SetupCerts(certsDir string, writeChanges bool) {
+func (cfg *HubCoreConfig) SetupCerts(certsDir string) {
 	var err error
 
 	// setup files and folders
@@ -190,15 +183,13 @@ func (cfg *HubCoreConfig) SetupCerts(certsDir string, writeChanges bool) {
 		if err != nil {
 			panic("Unable to create a CA cert: " + err.Error())
 		}
-		if writeChanges {
 
-			err = certs.SaveKeysToPEM(cfg.CaKey, caKeyPath)
-			if err == nil {
-				err = certs.SaveX509CertToPEM(cfg.CaCert, caCertPath)
-			}
-			if err != nil {
-				panic("Unable to save the CA cert or key: " + err.Error())
-			}
+		err = certs.SaveKeysToPEM(cfg.CaKey, caKeyPath)
+		if err == nil {
+			err = certs.SaveX509CertToPEM(cfg.CaCert, caCertPath)
+		}
+		if err != nil {
+			panic("Unable to save the CA cert or key: " + err.Error())
 		}
 	}
 
@@ -224,13 +215,34 @@ func (cfg *HubCoreConfig) SetupCerts(certsDir string, writeChanges bool) {
 	}
 	cfg.ServerTLS = certs.X509CertToTLS(serverCert, cfg.ServerKey)
 
-	if writeChanges {
-		err = certs.SaveTLSCertToPEM(cfg.ServerTLS, serverCertPath, serverKeyPath)
+	err = certs.SaveTLSCertToPEM(cfg.ServerTLS, serverCertPath, serverKeyPath)
+}
+
+// SetupNatsCore load or generate nats service and admin keys.
+func (cfg *HubCoreConfig) SetupNatsCore(f utils.AppDirs) error {
+	var err error
+	cfg.NatsServer.CaCert = cfg.CaCert
+	cfg.NatsServer.CaKey = cfg.CaKey
+	cfg.NatsServer.ServerTLS = cfg.ServerTLS
+	err = cfg.NatsServer.Setup(f.Certs, f.Stores, true)
+
+	if cfg.NatsServer.DataDir == "" {
+		panic("config is missing server data directory")
 	}
+	if _, err2 := os.Stat(cfg.NatsServer.DataDir); err2 != nil {
+		slog.Warn("Creating server data directory: " + cfg.NatsServer.DataDir)
+		err = os.MkdirAll(cfg.NatsServer.DataDir, 0700)
+	}
+	if err != nil {
+		panic("error creating data directory: " + err.Error())
+	}
+	return err
 }
 
 // NewHubCoreConfig creates a new configuration for the hub server and core services.
 // Call Setup to load a config file and update directories.
 func NewHubCoreConfig() *HubCoreConfig {
-	return &HubCoreConfig{}
+	return &HubCoreConfig{
+		EnableMDNS: true,
+	}
 }

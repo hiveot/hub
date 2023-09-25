@@ -23,19 +23,21 @@ func main() {
 	config := internal.NewConfig()
 	_ = f.LoadConfig(ServiceName+".yaml", &config)
 
-	// This service uses pre-generated keys and auth token for authentication & authorization.
-	// These are generated in by the hubcli or the service launcher. The file names
-	// match the serviceID from the config.
+	// When discovery is not used, HubClient bases it on the URL.
+	core := ""
 	fullUrl := config.ServerURL
 	if fullUrl == "" {
-		fullUrl = discovery.LocateHub(0)
+		fullUrl, core = discovery.LocateHub(0, true)
 	}
 	caCertFile := path.Join(f.Certs, certs.DefaultCaCertFile)
 	caCert, err := certs.LoadX509CertFromPEM(caCertFile)
 	if err != nil {
 		slog.Error("Unable to load CA cert", "err", err, "caCertFile", caCertFile)
 	}
-	hc := hubcl.NewHubClient(fullUrl, config.BindingID, nil, caCert, "")
+	// This service uses pre-generated keys and auth token for authentication & authorization.
+	// These are generated in by the hubcli or the service launcher. The file names
+	// match the serviceID from the config.
+	hc := hubcl.NewHubClient(fullUrl, config.BindingID, nil, caCert, core)
 	err = hc.ConnectWithTokenFile(config.AuthTokenFile, config.KeyFile)
 
 	if err != nil {

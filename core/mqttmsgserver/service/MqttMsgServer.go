@@ -1,14 +1,14 @@
-package mqttmsgserver
+package service
 
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"fmt"
 	"github.com/eclipse/paho.golang/packets"
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
+	"github.com/hiveot/hub/core/mqttmsgserver"
 	"github.com/hiveot/hub/lib/hubcl/mqtthubclient"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/listeners"
@@ -17,8 +17,6 @@ import (
 	"sync"
 )
 
-var MqttInMemUDS = "@/mqttinmemuds"
-
 // MqttMsgServer runs a MQTT broker using the Mochi-co embedded mqtt server.
 // this implements the IMsgServer interface
 type MqttMsgServer struct {
@@ -26,7 +24,7 @@ type MqttMsgServer struct {
 	// this carries the mochi auth hook
 	MqttAuthHook
 
-	Config *MqttServerConfig
+	Config *mqttmsgserver.MqttServerConfig
 
 	//// map of known clients by ID for quick lookup during auth
 	//authClients map[string]msgserver.ClientAuthInfo
@@ -57,7 +55,7 @@ func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hc hubclient.IHubClie
 	hubCl := mqtthubclient.NewMqttHubClient(
 		"", serviceID, srv.Config.CoreServiceKP, nil)
 
-	conn, err := net.Dial("unix", MqttInMemUDS)
+	conn, err := net.Dial("unix", srv.Config.InProcUDSName)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +86,7 @@ func (srv *MqttMsgServer) Start() (serverURL string, err error) {
 		return "", fmt.Errorf("missing server or CA certificate")
 	}
 
-	_ = os.Remove(MqttInMemUDS)
+	_ = os.Remove(mqtthubclient.MqttInMemUDSProd)
 
 	caCertPool := x509.NewCertPool()
 	caCertPool.AddCert(srv.Config.CaCert)
@@ -131,9 +129,9 @@ func (srv *MqttMsgServer) Start() (serverURL string, err error) {
 			return "", err
 		}
 	}
-	// listen on UDS for local connections
-	// todo: does @/path prefix creates an in-memory pipe
-	inmemLis := listeners.NewUnixSock("inmem", MqttInMemUDS)
+	// listen on UDS for local connections.
+	// A path starting with '@/' is in-memory.
+	inmemLis := listeners.NewUnixSock("inmem", srv.Config.InProcUDSName)
 	err = srv.ms.AddListener(inmemLis)
 	if err != nil {
 		return "", err
@@ -143,6 +141,7 @@ func (srv *MqttMsgServer) Start() (serverURL string, err error) {
 	if err != nil {
 		return "", err
 	}
+
 	return srv.serverURL, nil
 }
 
@@ -158,20 +157,10 @@ func (srv *MqttMsgServer) Stop() {
 //
 //	cfg contains the server configuration. Setup must have been called successfully first.
 //	perms contain the map of roles and permissions. See SetRolePermissions for more detail.
-func NewMqttMsgServer(cfg *MqttServerConfig, perms map[string][]msgserver.RolePermission) *MqttMsgServer {
-	signingKeyPub, _ := x509.MarshalPKIXPublicKey(&cfg.ServerKey.PublicKey)
-	signingKeyPubStr := base64.StdEncoding.EncodeToString(signingKeyPub)
+func NewMqttMsgServer(cfg *mqttmsgserver.MqttServerConfig, perms map[string][]msgserver.RolePermission) *MqttMsgServer {
 	srv := &MqttMsgServer{
-		MqttAuthHook: MqttAuthHook{
-			HookBase:           mqtt.HookBase{},
-			authClients:        nil,
-			rolePermissions:    nil,
-			authMux:            sync.RWMutex{},
-			signingKey:         cfg.ServerKey,
-			signingKeyPub:      signingKeyPubStr,
-			servicePermissions: make(map[string][]msgserver.RolePermission),
-		},
-		Config: cfg,
+		MqttAuthHook: *NewMqttAuthHook(cfg.ServerKey),
+		Config:       cfg,
 	}
 	srv.MqttAuthHook.SetRolePermissions(perms)
 	return srv

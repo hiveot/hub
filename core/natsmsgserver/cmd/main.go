@@ -8,7 +8,7 @@ import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/core/config"
-	"github.com/hiveot/hub/core/mqttmsgserver"
+	"github.com/hiveot/hub/core/natsmsgserver/service"
 	"github.com/hiveot/hub/lib/discovery"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
@@ -21,10 +21,10 @@ import (
 
 const DefaultCfg = "hub.yaml"
 
-// Launch the hub core
+// Launch the hub NATS core
 // This starts the embedded messaging service and in-process core services.
 //
-// commandline:  hubcore command options
+// commandline:  natscore command options
 //
 // commands:
 //
@@ -71,7 +71,7 @@ func main() {
 	flag.StringVar(&cfgFile, "c", cfgFile, "Service config file")
 	flag.BoolVar(&newSetup, "new", newSetup, "Overwrite existing config (use with care!)")
 	flag.Usage = func() {
-		fmt.Println("Usage: mqttcore [options] config|run|setup")
+		fmt.Println("Usage: natscore [options] config|run|setup")
 		fmt.Println()
 		fmt.Println("Options (before command):")
 		flag.PrintDefaults()
@@ -90,7 +90,7 @@ func main() {
 	fmt.Println("home: ", f.Home)
 	// setup the configuration
 	hubCfg := config.NewHubCoreConfig()
-	err := hubCfg.Setup(f.Home, cfgFile, newSetup)
+	err := hubCfg.Setup(f.Home, cfgFile, "nats", newSetup)
 	cmd := ""
 	if len(flag.Args()) > 0 {
 		cmd = flag.Arg(0)
@@ -126,18 +126,16 @@ func main() {
 func run(cfg *config.HubCoreConfig) error {
 	var err error
 
-	msgServer := mqttmsgserver.NewMqttMsgServer(&cfg.MqttServer, auth.DefaultRolePermissions)
+	msgServer := service.NewNatsMsgServer(&cfg.NatsServer, auth.DefaultRolePermissions)
 	serverURL, err := msgServer.Start()
+
 	if err != nil {
 		return fmt.Errorf("unable to start server: %w", err)
 	}
 
-	// mqtt can use either argon2id or brcypt passwords
+	// nats requires brcypt passwords
 	cfg.Auth.Encryption = auth.PWHASH_BCRYPT
 	authSvc, err := authservice.StartAuthService(cfg.Auth, msgServer)
-	if err != nil {
-		return err
-	}
 
 	// start discovery
 	if cfg.EnableMDNS {
@@ -147,16 +145,16 @@ func run(cfg *config.HubCoreConfig) error {
 		}
 		port, _ := strconv.Atoi(urlInfo.Port())
 		svc, err := discovery.ServeDiscovery(
-			"mqttcore", "hiveot", urlInfo.Host, port, map[string]string{
+			"natscore", "hiveot", urlInfo.Host, port, map[string]string{
 				"rawurl": serverURL,
-				"core":   "mqtt",
+				"core":   "nats",
 			})
 		_ = svc
 		_ = err
 	}
 
 	// wait until signal
-	fmt.Println("MQTT Hub core started. serverURL=" + serverURL)
+	fmt.Println("Hub started. ClientURL=" + serverURL)
 	utils.WaitForSignal(context.Background())
 
 	authSvc.Stop()

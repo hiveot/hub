@@ -12,7 +12,6 @@ import (
 	"github.com/nats-io/nkeys"
 	"path"
 	"strings"
-	"time"
 )
 
 // NewHubClient returns a new Hub Client instance
@@ -56,7 +55,8 @@ func ConnectToHub(fullURL string, clientID string, certDir string, core string) 
 
 	// 1. determine the actual address
 	if fullURL == "" {
-		fullURL = discovery.LocateHub(time.Second * 3)
+		// return after first result
+		fullURL, core = discovery.LocateHub(0, true)
 	}
 	if clientID == "" {
 		return nil, fmt.Errorf("missing clientID")
@@ -70,16 +70,19 @@ func ConnectToHub(fullURL string, clientID string, certDir string, core string) 
 	// 3. Determine which core to use and setup the key and token filenames
 	if core == "nats" || strings.HasPrefix(fullURL, "nats") {
 		// nats with nkeys. The key filename format is "{serviceName}.nkey"
-		tokenFile = path.Join(certDir, clientID+".token")
+		tokenFile = path.Join(certDir, clientID+"Token.jwt")
 		keyFile = path.Join(certDir, clientID+".nkey")
 		hc = natshubclient.NewNatsHubClient(fullURL, clientID, nil, caCert)
 	} else {
 		// mqtt with ecdsa keys. The key filename format is "{serviceName}Key.pem"
-		tokenFile = path.Join(certDir, clientID+".token")
+		tokenFile = path.Join(certDir, clientID+"Token.jwt")
 		keyFile = path.Join(certDir, clientID+"Key.pem")
 		hc = mqtthubclient.NewMqttHubClient(fullURL, clientID, nil, caCert)
 	}
 	// 4. Connect and auth with token
 	err = hc.ConnectWithTokenFile(tokenFile, keyFile)
+	if err != nil {
+		return nil, err
+	}
 	return hc, err
 }

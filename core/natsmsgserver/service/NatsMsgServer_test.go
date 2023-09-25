@@ -1,10 +1,10 @@
-package natsmsgserver_test
+package service_test
 
 import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/core/natsmsgserver"
+	"github.com/hiveot/hub/core/natsmsgserver/service"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubcl/natshubclient"
 	"github.com/hiveot/hub/lib/logging"
@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 func TestStartStopNKeysServer(t *testing.T) {
 	rxChan := make(chan string, 1)
 
-	serverURL, s, _, _, err := testenv.StartNatsTestServer(withCallout)
+	serverURL, s, _, _, err := testenv.StartNatsTestServer(false, withCallout)
 
 	require.NoError(t, err)
 	defer s.Stop()
@@ -65,7 +65,7 @@ func TestConnectWithCert(t *testing.T) {
 	defer slog.Info("--- TestConnectWithCert end")
 
 	// this only works with callout
-	serverURL, srv, _, certBundle, err := testenv.StartNatsTestServer(true)
+	serverURL, srv, _, certBundle, err := testenv.StartNatsTestServer(false, true)
 	require.NoError(t, err)
 	defer srv.Stop()
 
@@ -89,7 +89,7 @@ func TestConnectWithNKey(t *testing.T) {
 	defer slog.Info("--- TestConnectWithNKey end")
 	rxChan := make(chan string, 1)
 
-	serverURL, s, _, certBundle, err := testenv.StartNatsTestServer(withCallout)
+	serverURL, s, _, certBundle, err := testenv.StartNatsTestServer(false, withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, serverURL)
@@ -123,7 +123,7 @@ func TestConnectWithPassword(t *testing.T) {
 	slog.Info("--- TestConnectWithPassword start")
 	defer slog.Info("--- TestConnectWithPassword end")
 
-	serverURL, s, _, certBundle, err := testenv.StartNatsTestServer(withCallout)
+	serverURL, s, _, certBundle, err := testenv.StartNatsTestServer(false, withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, serverURL)
@@ -143,7 +143,7 @@ func TestLoginFail(t *testing.T) {
 	slog.Info("--- TestLoginFail start")
 	defer slog.Info("--- TestLoginFail end")
 
-	serverURL, s, _, certBundle, err := testenv.StartNatsTestServer(withCallout)
+	serverURL, s, _, certBundle, err := testenv.StartNatsTestServer(false, withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, serverURL)
@@ -173,7 +173,7 @@ func TestEventsStream(t *testing.T) {
 	var err error
 
 	// setup
-	serverURL, s, certBundle, cfg, err := testenv.StartNatsTestServer(withCallout)
+	serverURL, s, certBundle, cfg, err := testenv.StartNatsTestServer(false, withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	_ = cfg
@@ -192,7 +192,7 @@ func TestEventsStream(t *testing.T) {
 
 	// the events stream must exist
 	js, _ := nc1.JetStream()
-	si, err := js.StreamInfo(natsmsgserver.EventsIntakeStreamName)
+	si, err := js.StreamInfo(service.EventsIntakeStreamName)
 	require.NoError(t, err)
 	slog.Info("stream $events:",
 		slog.Uint64("count", si.State.Msgs),
@@ -200,7 +200,7 @@ func TestEventsStream(t *testing.T) {
 	//
 
 	// create the stream consumer and listen for events
-	sub, err := hc1.SubStream(natsmsgserver.EventsIntakeStreamName, false,
+	sub, err := hc1.SubStream(service.EventsIntakeStreamName, false,
 		func(msg *hubclient.EventMessage) {
 			slog.Info("received event", "eventID", msg.EventID)
 			rxChan <- string(msg.Payload)
@@ -218,7 +218,7 @@ func TestEventsStream(t *testing.T) {
 	require.NoError(t, err)
 
 	// read the events stream for
-	si, err = hc1.JS().StreamInfo(natsmsgserver.EventsIntakeStreamName)
+	si, err = hc1.JS().StreamInfo(service.EventsIntakeStreamName)
 	slog.Info("stream $events:",
 		slog.Uint64("count", si.State.Msgs),
 		slog.Int("consumers", si.State.Consumers))

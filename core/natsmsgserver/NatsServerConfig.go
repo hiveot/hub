@@ -53,7 +53,7 @@ type NatsServerConfig struct {
 	//CoreServiceJWT   string `yaml:"-"` // generated
 
 	// appAccount to use with users and nkeys
-	appAcct *server.Account
+	AppAcct *server.Account
 }
 
 // Setup the nats server config.
@@ -241,9 +241,9 @@ accounts {
 	natsOpts.SystemAccount = "SYS"
 
 	// NewAccount creates a limitless account. There is no way to set a limit though :/
-	cfg.appAcct = server.NewAccount(cfg.AppAccountName)
+	cfg.AppAcct = server.NewAccount(cfg.AppAccountName)
 	appAccountPub, _ := cfg.AppAccountKP.PublicKey()
-	cfg.appAcct.Nkey = appAccountPub
+	cfg.AppAcct.Nkey = appAccountPub
 
 	natsOpts.Accounts = append(natsOpts.Accounts, systemAcct)
 
@@ -259,10 +259,10 @@ accounts {
 		{
 			Nkey:        coreServicePub,
 			Permissions: nil, // unlimited
-			Account:     cfg.appAcct,
+			Account:     cfg.AppAcct,
 		}, {
 			Nkey:    adminUserPub,
-			Account: cfg.appAcct,
+			Account: cfg.AppAcct,
 		}, {
 			Nkey:    systemUserPub,
 			Account: systemAcct,
@@ -320,6 +320,9 @@ func (cfg *NatsServerConfig) LoadCreateUserKP(kpPath string, writeChanges bool) 
 	// load fail, create and save
 	if userKP == nil {
 		userKP, _ = nkeys.CreateUser()
+		slog.Info("LoadCreateUserKP Keys not found. Creating new keys",
+			slog.String("kpPath", kpPath),
+			slog.Bool("writeChanges", writeChanges))
 		if writeChanges {
 			kpSeed, _ := userKP.Seed()
 			err = os.WriteFile(kpPath, kpSeed, 0400)

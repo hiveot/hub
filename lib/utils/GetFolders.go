@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-type AppFolders struct {
+type AppDirs struct {
 	Bin     string // Application binary folder, eg launcher, cli, ...
 	Plugins string // Plugin folder
 	Home    string // Home folder, default this is the parent of bin, config, certs and logs
@@ -51,7 +51,7 @@ type AppFolders struct {
 // levels up from the services folder.
 //
 //	homeFolder is optional in order to override the auto detected paths. Use "" for defaults.
-func GetFolders(homeFolder string, useSystem bool) AppFolders {
+func GetFolders(homeFolder string, useSystem bool) AppDirs {
 	// note that filepath should support windows
 	if homeFolder == "" {
 		cwd := filepath.Dir(os.Args[0])
@@ -84,7 +84,7 @@ func GetFolders(homeFolder string, useSystem bool) AppFolders {
 		storesFolder = filepath.Join("/var", "lib", "hiveot")
 	}
 
-	return AppFolders{
+	return AppDirs{
 		Bin:     binFolder,
 		Plugins: pluginsFolder,
 		Home:    homeFolder,
@@ -99,7 +99,7 @@ func GetFolders(homeFolder string, useSystem bool) AppFolders {
 // LoadConfig loads a configuration file from the config folder
 // This returns an error if loading or parsing the config file fails.
 // Returns nil if the config file doesn't exist or is loaded successfully.
-func (f *AppFolders) LoadConfig(name string, cfg interface{}) error {
+func (f *AppDirs) LoadConfig(name string, cfg interface{}) error {
 	configFile := path.Join(f.Config, name)
 	if _, err := os.Stat(configFile); err != nil {
 		slog.Info("Configuration file not found. Ignored.", "configFile", configFile)

@@ -23,7 +23,9 @@ type AuthnEntry struct {
 
 // IAuthnStore defined the interface for storing authentication data
 type IAuthnStore interface {
-	// Add add a device, service or user to the store with authn settings
+	// Add adds a device, service or user to the store with authn settings
+	// If the client already exists, it is updated with the profile.
+	//
 	//  clientID is the client's identity
 	//  profile to add. Empty fields can receive valid defaults.
 	Add(clientID string, profile ClientProfile) error

@@ -105,6 +105,7 @@ func (hc *NatsHubClient) ConnectWithJWT(jwtToken string) (err error) {
 }
 
 // ConnectWithToken connects to the Hub server using a NATS user a token obtained at login or refresh
+// If a valid nkey is set and token is empty, a connect with nkey will be done.
 //
 //	serverURL is the server URL to connect to. Eg tls://addr:port/ for tcp or wss://addr:port/ for websockets
 //	token is the token obtained with login or refresh.
@@ -112,7 +113,6 @@ func (hc *NatsHubClient) ConnectWithToken(token string) (err error) {
 
 	_, err = jwt.Decode(token)
 	// if this isn't a valid JWT, try the nkey login and ignore the token
-	// TODO: remove this once JWT is properly supported using callouts
 	if err != nil {
 		err = hc.ConnectWithKey()
 		//	err = fmt.Errorf("invalid jwt token: %w", err)
@@ -124,17 +124,17 @@ func (hc *NatsHubClient) ConnectWithToken(token string) (err error) {
 }
 
 // ConnectWithTokenFile is a convenience function to read token and key from file and connect to the server
-func (hc *NatsHubClient) ConnectWithTokenFile(tokenFile string, keyFile string) error {
-	token, err := os.ReadFile(tokenFile)
-	if err == nil && keyFile != "" {
+func (hc *NatsHubClient) ConnectWithTokenFile(tokenFile string, keyFile string) (err error) {
+	var token []byte
+	if keyFile != "" {
 		var keyData []byte
 		keyData, err = os.ReadFile(keyFile)
 		if err == nil {
 			hc.myKey, err = nkeys.ParseDecoratedUserNKey(keyData)
 		}
 	}
-	if err != nil {
-		return err
+	if tokenFile != "" {
+		token, err = os.ReadFile(tokenFile)
 	}
 	err = hc.ConnectWithToken(string(token))
 	return err

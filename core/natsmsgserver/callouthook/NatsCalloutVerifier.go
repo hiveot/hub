@@ -3,7 +3,7 @@ package callouthook
 import (
 	"crypto/x509"
 	"fmt"
-	"github.com/hiveot/hub/core/natsmsgserver"
+	"github.com/hiveot/hub/core/natsmsgserver/service"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/nats-io/jwt/v2"
 	"log/slog"
@@ -18,7 +18,7 @@ import (
 // To use, provide 'VerifyAuthnReq' to EnableNatsCalloutHook(), which determines
 // the authn method to use.
 type NatsCalloutVerifier struct {
-	msgServer *natsmsgserver.NatsMsgServer
+	msgServer *service.NatsMsgServer
 	caCert    *x509.Certificate
 }
 
@@ -119,7 +119,7 @@ func (v *NatsCalloutVerifier) VerifyAuthnReq(claims *jwt.AuthorizationRequestCla
 }
 
 func NewNatsCoVerifier(
-	msgServer *natsmsgserver.NatsMsgServer, caCert *x509.Certificate) *NatsCalloutVerifier {
+	msgServer *service.NatsMsgServer, caCert *x509.Certificate) *NatsCalloutVerifier {
 
 	v := &NatsCalloutVerifier{
 		msgServer: msgServer,

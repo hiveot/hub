@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
-	corecli2 "github.com/hiveot/hub/cmd/hubcli/corecli"
+	"github.com/hiveot/hub/api/go/hubclient"
+	"github.com/hiveot/hub/cmd/hubcli/corecli"
 	"github.com/hiveot/hub/cmd/hubcli/launchercli"
+	"github.com/hiveot/hub/lib/hubcl"
+	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
 	"os"
@@ -24,7 +27,10 @@ var nowrap bool
 // commandline:  hubcli command options
 
 func main() {
-	//logging.SetLogging("info", "")
+	var hc hubclient.IHubClient
+	var clientID = "admin"
+	var verbose bool
+	logging.SetLogging("warning", "")
 	binDir = path.Dir(os.Args[0])
 	homeDir = path.Dir(binDir)
 	nowrap = false
@@ -51,28 +57,43 @@ func main() {
 				Value:       nowrap,
 				Destination: &nowrap,
 			},
+			&cli.StringFlag{
+				Name:        "login",
+				Usage:       "login ID",
+				Value:       clientID,
+				Destination: &clientID,
+			},
+			&cli.BoolFlag{
+				Name:        "loginfo",
+				Usage:       "verbose logging",
+				Value:       verbose,
+				Destination: &verbose,
+			},
 		},
-		Before: func(c *cli.Context) error {
+		Before: func(c *cli.Context) (err error) {
 			f = utils.GetFolders(homeDir, false)
 			certsDir = f.Certs
 			runDir = f.Run
 			homeDir = f.Home
 			configDir = f.Config
+			//
+			if verbose {
+				logging.SetLogging("info", "")
+			}
 			if nowrap {
 				fmt.Printf(utils.WrapOff)
 			}
-			return nil
+			hc, err = hubcl.ConnectToHub("", clientID, certsDir, "")
+			return err
 		},
 		Commands: []*cli.Command{
 			// pass paths by reference so they are updated in the Before section
-			corecli2.CreateCACommand(&certsDir),
-			corecli2.ViewCACommand(&certsDir),
-			corecli2.RunCommand(&certsDir),
-			corecli2.SetupCommand(&homeDir),
+			corecli.CreateCACommand(&certsDir),
+			corecli.ViewCACommand(&certsDir),
 
-			launchercli.LauncherListCommand(&runDir),
-			launchercli.LauncherStartCommand(&runDir),
-			launchercli.LauncherStopCommand(&runDir),
+			launchercli.LauncherListCommand(&hc),
+			launchercli.LauncherStartCommand(&hc),
+			launchercli.LauncherStopCommand(&hc),
 		},
 	}
 

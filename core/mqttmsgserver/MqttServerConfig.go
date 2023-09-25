@@ -4,10 +4,18 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
+	"github.com/hiveot/hub/api/go/auth"
+	"github.com/hiveot/hub/api/go/msgserver"
+	"github.com/hiveot/hub/core/mqttmsgserver/jwtauth"
 	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/hubcl/mqtthubclient"
 	"log/slog"
+	"os"
 	"path"
 )
+
+const DefaultAdminKeyFileName = "adminKey.pem"
+const DefaultAdminTokenFileName = "adminToken.jwt"
 
 // MqttServerConfig holds the mqtt broker configuration
 type MqttServerConfig struct {
@@ -22,41 +30,43 @@ type MqttServerConfig struct {
 
 	DataDir string `yaml:"dataDir,omitempty"` // default is server default
 
-	//AdminUserKeyFile  string `yaml:"adminUserKeyFile,omitempty"`  // default: admin.jwt
-	//SystemUserKeyFile string `yaml:"systemUserKeyFile,omitempty"` // default: systemUser.jwt
+	AdminUserKeyFile   string `yaml:"adminUserKeyFile,omitempty"`   // default: adminKey.pem
+	AdminUserTokenFile string `yaml:"adminUserTokenFile,omitempty"` // default: adminToken.jwt
 
 	// Disable running the embedded messaging server. Default False
 	NoAutoStart bool `yaml:"noAutoStart,omitempty"`
 
+	// the in-proc UDS name to use. Default is "@/MqttInMemUDSProd" (see MqttHubClient)
+	InProcUDSName string `yaml:"inProcUDSName"`
+
 	// The certs and keys can be set directly or loaded from above files
 	CaCert    *x509.Certificate `yaml:"-"` // preset, load, or error
 	CaKey     *ecdsa.PrivateKey `yaml:"-"` // preset, load, or error
-	ServerKey *ecdsa.PrivateKey `yaml:"-"` // generated
+	ServerKey *ecdsa.PrivateKey `yaml:"-"` // generated, loaded  (used as signing key)
 	ServerTLS *tls.Certificate  `yaml:"-"` // generated
-	//AdminUserKP   *ecdsa.PrivateKey `yaml:"-"` // generated
+
+	AdminUserKP  *ecdsa.PrivateKey `yaml:"-"` // generated
+	AdminUserPub string            `yaml:"-"` // generated
 
 	CoreServiceKP  *ecdsa.PrivateKey `yaml:"-"` // generated
 	CoreServicePub string            `yaml:"-"` // generated
 
 	// The following options are JWT specific
-	//SystemAccountJWT string `yaml:"-"` // generated
-	//CoreServiceJWT   string `yaml:"-"` // generated
 }
 
-// Setup the nats server config.
+// Setup the mqtt server config.
 // This applies sensible defaults to Config.
 //
 // Any existing values that are previously set remain unchanged.
 // Missing values are created.
-// Certs and keys are loaded as per configuration.
+// Certs and keys are loaded if not provided.
 //
 // Set 'writeChanges' to persist generated server cert, operator and account keys
 //
-//		keysDir is the default key location
-//		storesDir is the data storage root (default $HOME/stores)
-//	 writeChanges writes generated account key to the keysDir
-func (cfg *MqttServerConfig) Setup(
-	keysDir, storesDir string, writeChanges bool) (err error) {
+//	keysDir is the default key location
+//	storesDir is the data storage root (default $HOME/stores)
+//	writeChanges writes generated account key to the keysDir
+func (cfg *MqttServerConfig) Setup(keysDir, storesDir string, writeChanges bool) (err error) {
 
 	// Step 1: Apply defaults parameters
 	if cfg.Host == "" {
@@ -69,17 +79,20 @@ func (cfg *MqttServerConfig) Setup(
 		cfg.WSPort = 8884
 	}
 	if cfg.DataDir == "" {
-		cfg.DataDir = path.Join(storesDir, "natsserver")
+		cfg.DataDir = path.Join(storesDir, "mqttserver")
 	}
 	if cfg.LogLevel == "" {
 		cfg.LogLevel = "warn"
 	}
-	//if cfg.AdminUserKeyFile == "" {
-	//	cfg.AdminUserKeyFile = path.Join(certsDir, "admin.pem")
-	//}
-	//if cfg.SystemUserKeyFile == "" {
-	//	cfg.SystemUserKeyFile = path.Join(certsDir, "systemUser.pem")
-	//}
+	if cfg.AdminUserKeyFile == "" {
+		cfg.AdminUserKeyFile = path.Join(keysDir, DefaultAdminKeyFileName)
+	}
+	if cfg.AdminUserTokenFile == "" {
+		cfg.AdminUserTokenFile = path.Join(keysDir, DefaultAdminTokenFileName)
+	}
+	if cfg.InProcUDSName == "" {
+		cfg.InProcUDSName = mqtthubclient.MqttInMemUDSProd
+	}
 
 	// Step 2: generate missing certificates
 	// These are typically set directly before running setup so this is intended
@@ -104,58 +117,32 @@ func (cfg *MqttServerConfig) Setup(
 		}
 	}
 
-	// Step 4: generate derived keys
-	//if cfg.AdminUserKP == nil {
-	//	cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(cfg.AdminUserKeyFile, writeChanges)
-	//}
+	// Step 4: generate admin keys and token
+	// core service keys are always regenerated and not saved
 	if cfg.CoreServiceKP == nil {
 		cfg.CoreServiceKP, cfg.CoreServicePub = certs.CreateECDSAKeys()
 	}
+	// admin user might need the key for hubcli
+	if cfg.AdminUserKP == nil {
+		cfg.AdminUserKP, cfg.AdminUserPub, err = jwtauth.LoadCreateUserKP(cfg.AdminUserKeyFile, writeChanges)
+		if err != nil {
+			slog.Error(err.Error())
+		}
+	}
 
-	//if cfg.AdminUserKeyFile != "" && writeChanges {
-	//	cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(cfg.AdminUserKeyFile, writeChanges)
-	//}
-	// Step 5: generate the JWT tokens -
-	// disables as callouts are stable
-	//if cfg.OperatorJWT == "" {
-	//	operatorPub, _ := cfg.OperatorKP.PublicKey()
-	//	operatorClaims := jwt.NewOperatorClaims(operatorPub)
-	//	operatorClaims.Name = "hiveotop"
-	//	// operator is self signed
-	//	cfg.OperatorJWT, err = operatorClaims.Encode(cfg.OperatorKP)
-	//	if err != nil {
-	//		return fmt.Errorf("OperatorJWT error: %w", err)
-	//	}
-	//}
-	//if cfg.SystemAccountJWT == "" {
-	//	systemAccountPub, _ := cfg.SystemAccountKP.PublicKey()
-	//	claims := jwt.NewAccountClaims(systemAccountPub)
-	//	claims.Name = "$SYS"
-	//	cfg.SystemAccountJWT, err = claims.Encode(cfg.OperatorKP)
-	//	if err != nil {
-	//		return fmt.Errorf("SystemAccountJWT error: %w", err)
-	//	}
-	//}
-	//if cfg.AppAccountJWT == "" {
-	//	appAccountPub, _ := cfg.AppAccountKP.PublicKey()
-	//	claims := jwt.NewAccountClaims(appAccountPub)
-	//	claims.Name = cfg.AppAccountName
-	//	claims.Limits.JetStreamLimits.DiskStorage = -1
-	//	claims.Limits.JetStreamLimits.MemoryStorage = int64(cfg.MaxDataMemoryMB) * 1024 * 1024
-	//	cfg.AppAccountJWT, err = claims.Encode(cfg.OperatorKP)
-	//	if err != nil {
-	//		return fmt.Errorf("AppAccountJWT error: %w", err)
-	//	}
-	//}
-	//if cfg.CoreServiceJWT == "" {
-	//	coreServicePub, _ := cfg.CoreServiceKP.PublicKey()
-	//	claims := jwt.NewUserClaims(coreServicePub)
-	//	claims.Name = "HiveOTCoreService"
-	//	claims.Tags.Add("clientType", auth.ClientTypeUser)
-	//	cfg.CoreServiceJWT, err = claims.Encode(cfg.AppAccountKP)
-	//	if err != nil {
-	//		return fmt.Errorf("CoreServiceJWT error: %w", err)
-	//	}
-	//}
+	// make sure the admin auth token exists
+	if _, err = os.Stat(cfg.AdminUserTokenFile); err != nil {
+		adminToken, _ := jwtauth.CreateToken(msgserver.ClientAuthInfo{
+			ClientID:   "admin",
+			ClientType: auth.ClientTypeUser,
+			PubKey:     cfg.AdminUserPub,
+			Role:       auth.ClientRoleAdmin}, cfg.ServerKey)
+		_ = os.MkdirAll(path.Dir(cfg.AdminUserTokenFile), 0700)
+		err = os.WriteFile(cfg.AdminUserTokenFile, []byte(adminToken), 0400)
+		if err != nil {
+			slog.Error(err.Error())
+		}
+
+	}
 	return nil
 }

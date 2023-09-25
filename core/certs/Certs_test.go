@@ -23,7 +23,6 @@ var certBundle certs2.TestCertBundle
 var testDir = path.Join(os.TempDir(), "test-certs")
 
 // the following are set by the testmain
-var clientURL string
 var msgServer msgserver.IMsgServer
 
 //var testSocket = path.Join(testFolder, "certs.socket")
@@ -73,6 +72,7 @@ func StartService() (svc certs.ICertService, stopFunc func()) {
 	return certClient, func() {
 		hc2.Disconnect()
 		_ = certSvc.Stop()
+		hc1.Disconnect()
 	}
 }
 
@@ -84,7 +84,7 @@ func TestMain(m *testing.M) {
 	_ = os.RemoveAll(testDir)
 	_ = os.MkdirAll(testDir, 0700)
 	// include test clients
-	clientURL, msgServer, certBundle, err = testenv.StartTestServer(core, false)
+	_, msgServer, certBundle, err = testenv.StartTestServer(core, false)
 	if err != nil {
 		panic(err)
 	}

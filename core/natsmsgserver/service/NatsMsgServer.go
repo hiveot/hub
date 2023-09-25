@@ -1,4 +1,4 @@
-package natsmsgserver
+package service
 
 import (
 	"crypto/tls"
@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/hiveot/hub/lib/hubcl/natshubclient"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
@@ -24,7 +25,7 @@ const EventsIntakeStreamName = "$events"
 // this implements the IMsgServer interface
 // See also the callouthook addon for adding JWT token support using nats callouts.
 type NatsMsgServer struct {
-	Config   *NatsServerConfig
+	Config   *natsmsgserver.NatsServerConfig
 	NatsOpts server.Options
 	ns       *server.Server
 	// tokenizer for generating JWT tokens, when used
@@ -97,7 +98,7 @@ func (srv *NatsMsgServer) ConnectInProc(serviceID string) (hubclient.IHubClient,
 // Start the NATS server with the given configuration and create an event ingress stream
 //
 //	Config.Setup must have been called first.
-func (srv *NatsMsgServer) Start() (clientURL string, err error) {
+func (srv *NatsMsgServer) Start() (serverURL string, err error) {
 
 	srv.NatsOpts, err = srv.Config.CreateNatsNKeyOptions()
 	if err != nil {
@@ -118,18 +119,18 @@ func (srv *NatsMsgServer) Start() (clientURL string, err error) {
 		err = errors.New("nats: not ready for connection")
 		return "", err
 	}
-	clientURL = srv.ns.ClientURL()
+	serverURL = srv.ns.ClientURL()
 
 	// the app account must have JS enabled
 	ac, _ := srv.ns.LookupAccount(srv.Config.AppAccountName)
 	err = ac.EnableJetStream(nil) //use defaults
 	if err != nil {
-		return clientURL, fmt.Errorf("can't enable JS for app account: %w", err)
+		return serverURL, fmt.Errorf("can't enable JS for app account: %w", err)
 	}
 
 	hasJS := ac.JetStreamEnabled()
 	if !hasJS {
-		return clientURL, fmt.Errorf("JS not enabled for app account '%s'", srv.Config.AppAccountName)
+		return serverURL, fmt.Errorf("JS not enabled for app account '%s'", srv.Config.AppAccountName)
 	}
 
 	// tokenizer
@@ -139,11 +140,11 @@ func (srv *NatsMsgServer) Start() (clientURL string, err error) {
 	// ensure the events intake stream exists
 	nc, err := srv.ConnectInProcNC("jetsetup", nil)
 	if err != nil {
-		return clientURL, err
+		return serverURL, err
 	}
 	js, err := nc.JetStream()
 	if err != nil {
-		return clientURL, err
+		return serverURL, err
 	}
 	_, err = js.StreamInfo(EventsIntakeStreamName)
 	if err != nil {
@@ -160,7 +161,7 @@ func (srv *NatsMsgServer) Start() (clientURL string, err error) {
 		_, err = js.AddStream(cfg)
 	}
 
-	return clientURL, err
+	return serverURL, err
 }
 
 // Stop the server
@@ -170,7 +171,7 @@ func (srv *NatsMsgServer) Stop() {
 
 // NewNatsMsgServer creates a new instance of the Hub NATS server for NKey authn.
 func NewNatsMsgServer(
-	cfg *NatsServerConfig, rolePermissions map[string][]msgserver.RolePermission) *NatsMsgServer {
+	cfg *natsmsgserver.NatsServerConfig, rolePermissions map[string][]msgserver.RolePermission) *NatsMsgServer {
 
 	srv := &NatsMsgServer{Config: cfg, rolePermissions: rolePermissions}
 	return srv
