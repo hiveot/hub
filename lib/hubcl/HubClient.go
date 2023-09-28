@@ -10,6 +10,7 @@ import (
 	"github.com/hiveot/hub/lib/hubcl/mqtthubclient"
 	"github.com/hiveot/hub/lib/hubcl/natshubclient"
 	"github.com/nats-io/nkeys"
+	"log/slog"
 	"path"
 	"strings"
 )
@@ -27,13 +28,22 @@ import (
 //   - caCert of server or nil to not verify server cert
 //   - core server to use, "nats" or "mqtt". Default "" will use nats if url starts with "nats" or mqtt otherwise.
 func NewHubClient(url string, clientID string, kp interface{}, caCert *x509.Certificate, core string) hubclient.IHubClient {
-	if kp == nil {
-		panic("kp is required")
-	}
+	// a kp is not needed when using connect with token file
+	//if kp == nil {
+	//	panic("kp is required")
+	//}
 	if core == "nats" || strings.HasPrefix(url, "nats") {
-		return natshubclient.NewNatsHubClient(url, clientID, kp.(nkeys.KeyPair), caCert)
+		var key nkeys.KeyPair
+		if kp != nil {
+			key = kp.(nkeys.KeyPair)
+		}
+		return natshubclient.NewNatsHubClient(url, clientID, key, caCert)
 	}
-	return mqtthubclient.NewMqttHubClient(url, clientID, kp.(*ecdsa.PrivateKey), caCert)
+	var key *ecdsa.PrivateKey
+	if kp != nil {
+		key = kp.(*ecdsa.PrivateKey)
+	}
+	return mqtthubclient.NewMqttHubClient(url, clientID, key, caCert)
 }
 
 // ConnectToHub helper function to connect to the Hub using token and key files.
@@ -68,18 +78,18 @@ func ConnectToHub(fullURL string, clientID string, certDir string, core string) 
 		return nil, err
 	}
 	// 3. Determine which core to use and setup the key and token filenames
+	// By convention the key/token filename format is "{name}.key/{name}.token"
+	tokenFile = path.Join(certDir, clientID+".token")
+	keyFile = path.Join(certDir, clientID+".key")
 	if core == "nats" || strings.HasPrefix(fullURL, "nats") {
 		// nats with nkeys. The key filename format is "{serviceName}.nkey"
-		tokenFile = path.Join(certDir, clientID+"Token.jwt")
-		keyFile = path.Join(certDir, clientID+".nkey")
 		hc = natshubclient.NewNatsHubClient(fullURL, clientID, nil, caCert)
 	} else {
-		// mqtt with ecdsa keys. The key filename format is "{serviceName}Key.pem"
-		tokenFile = path.Join(certDir, clientID+"Token.jwt")
-		keyFile = path.Join(certDir, clientID+"Key.pem")
+		// mqtt with ecdsa keys. The key filename format is "{serviceName}.key|token"
 		hc = mqtthubclient.NewMqttHubClient(fullURL, clientID, nil, caCert)
 	}
 	// 4. Connect and auth with token
+	slog.Info("connecting to", "serverURL", fullURL)
 	err = hc.ConnectWithTokenFile(tokenFile, keyFile)
 	if err != nil {
 		return nil, err

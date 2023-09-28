@@ -15,7 +15,7 @@ require (
 	github.com/mochi-mqtt/server/v2 v2.4.0
 	github.com/nats-io/jwt/v2 v2.5.2
 	github.com/nats-io/nats-server/v2 v2.10.1
-	github.com/nats-io/nats.go v1.30.0
+	github.com/nats-io/nats.go v1.30.2
 	github.com/nats-io/nkeys v0.4.5
 	github.com/rs/cors v1.10.0
 	github.com/samber/lo v1.38.1

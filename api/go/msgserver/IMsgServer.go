@@ -63,7 +63,7 @@ type IMsgServer interface {
 	// The type of token created depends on the server configuration.
 	//  NATS nkey server simply returns the public key for connecting with nkey.
 	//  NATS callout server returns a JWT token containing authorization.
-	//  MQTT uses a JWT token.
+	//  MQTT uses a base64 encoded JWT token.
 	//
 	//  authInfo with client info used to create and verify the token
 	CreateToken(authInfo ClientAuthInfo) (token string, err error)

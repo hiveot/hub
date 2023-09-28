@@ -4,18 +4,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/api/go/msgserver"
-	"github.com/hiveot/hub/core/mqttmsgserver/jwtauth"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubcl/mqtthubclient"
 	"log/slog"
-	"os"
 	"path"
 )
-
-const DefaultAdminKeyFileName = "adminKey.pem"
-const DefaultAdminTokenFileName = "adminToken.jwt"
 
 // MqttServerConfig holds the mqtt broker configuration
 type MqttServerConfig struct {
@@ -30,24 +23,19 @@ type MqttServerConfig struct {
 
 	DataDir string `yaml:"dataDir,omitempty"` // default is server default
 
-	AdminUserKeyFile   string `yaml:"adminUserKeyFile,omitempty"`   // default: adminKey.pem
-	AdminUserTokenFile string `yaml:"adminUserTokenFile,omitempty"` // default: adminToken.jwt
-
 	// Disable running the embedded messaging server. Default False
 	NoAutoStart bool `yaml:"noAutoStart,omitempty"`
 
 	// the in-proc UDS name to use. Default is "@/MqttInMemUDSProd" (see MqttHubClient)
 	InProcUDSName string `yaml:"inProcUDSName"`
 
-	// The certs and keys can be set directly or loaded from above files
+	// The certs and keys are set directly
 	CaCert    *x509.Certificate `yaml:"-"` // preset, load, or error
 	CaKey     *ecdsa.PrivateKey `yaml:"-"` // preset, load, or error
 	ServerKey *ecdsa.PrivateKey `yaml:"-"` // generated, loaded  (used as signing key)
 	ServerTLS *tls.Certificate  `yaml:"-"` // generated
 
-	AdminUserKP  *ecdsa.PrivateKey `yaml:"-"` // generated
-	AdminUserPub string            `yaml:"-"` // generated
-
+	// Core Service credentials for use by in-proc connection
 	CoreServiceKP  *ecdsa.PrivateKey `yaml:"-"` // generated
 	CoreServicePub string            `yaml:"-"` // generated
 
@@ -84,12 +72,6 @@ func (cfg *MqttServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 	if cfg.LogLevel == "" {
 		cfg.LogLevel = "warn"
 	}
-	if cfg.AdminUserKeyFile == "" {
-		cfg.AdminUserKeyFile = path.Join(keysDir, DefaultAdminKeyFileName)
-	}
-	if cfg.AdminUserTokenFile == "" {
-		cfg.AdminUserTokenFile = path.Join(keysDir, DefaultAdminTokenFileName)
-	}
 	if cfg.InProcUDSName == "" {
 		cfg.InProcUDSName = mqtthubclient.MqttInMemUDSProd
 	}
@@ -122,27 +104,6 @@ func (cfg *MqttServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 	if cfg.CoreServiceKP == nil {
 		cfg.CoreServiceKP, cfg.CoreServicePub = certs.CreateECDSAKeys()
 	}
-	// admin user might need the key for hubcli
-	if cfg.AdminUserKP == nil {
-		cfg.AdminUserKP, cfg.AdminUserPub, err = jwtauth.LoadCreateUserKP(cfg.AdminUserKeyFile, writeChanges)
-		if err != nil {
-			slog.Error(err.Error())
-		}
-	}
 
-	// make sure the admin auth token exists
-	if _, err = os.Stat(cfg.AdminUserTokenFile); err != nil {
-		adminToken, _ := jwtauth.CreateToken(msgserver.ClientAuthInfo{
-			ClientID:   "admin",
-			ClientType: auth.ClientTypeUser,
-			PubKey:     cfg.AdminUserPub,
-			Role:       auth.ClientRoleAdmin}, cfg.ServerKey)
-		_ = os.MkdirAll(path.Dir(cfg.AdminUserTokenFile), 0700)
-		err = os.WriteFile(cfg.AdminUserTokenFile, []byte(adminToken), 0400)
-		if err != nil {
-			slog.Error(err.Error())
-		}
-
-	}
 	return nil
 }

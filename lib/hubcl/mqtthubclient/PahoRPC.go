@@ -95,6 +95,7 @@ func (h *Handler) Request(ctx context.Context, pb *paho.Publish) (*paho.Publish,
 	// HS 2023-09-10: fix hangup when no response is received
 	select {
 	case <-ctx.Done():
+		slog.Error("no response to request", "topic", pb.Topic)
 		return nil, ctx.Err()
 	case resp := <-rChan:
 		return resp, nil

@@ -51,17 +51,18 @@ func StartService() (l launcher.ILauncher, stopFn func()) {
 	var launcherConfig = config.NewLauncherConfig()
 	launcherConfig.AttachStderr = true
 	launcherConfig.AttachStdout = false
-	launcherConfig.LogServices = true
+	launcherConfig.LogPlugins = true
 	var f = utils.GetFolders(homeFolder, false)
 	f.Plugins = "/bin" // for /bin/yes
 	f.Logs = logFolder
 
-	svc := service.NewLauncherService(f, launcherConfig, hc1)
+	svc := service.NewLauncherService(f, launcherConfig)
 	err = svc.Start()
 	if err != nil {
 		slog.Error(err.Error())
 		panic(err.Error())
 	}
+	err = svc.StartListener(hc1)
 
 	//--- connect the client
 	hc2, err := msgServer.ConnectInProc(testenv.TestAdminUserID)
@@ -88,8 +89,9 @@ func TestMain(m *testing.M) {
 
 func TestStartStop(t *testing.T) {
 	svc, cancelFunc := StartService()
-	defer cancelFunc()
 	assert.NotNil(t, svc)
+	time.Sleep(time.Millisecond)
+	cancelFunc()
 }
 
 func TestList(t *testing.T) {

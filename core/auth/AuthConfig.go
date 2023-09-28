@@ -1,4 +1,4 @@
-package authservice
+package auth
 
 import (
 	"fmt"
@@ -24,18 +24,26 @@ type AuthConfig struct {
 
 	// NoAutoStart prevents the auth service for auto starting. Intended for testing or custom implementation.
 	NoAutoStart bool `yaml:"noAutoStart,omitempty"`
+
+	// Setup for an administrator account
+	AdminUserKeyFile   string `yaml:"adminUserKeyFile,omitempty"`   // default: admin.key
+	AdminUserTokenFile string `yaml:"adminUserTokenFile,omitempty"` // default: admin.token
+
+	// Setup for an launcher account
+	LauncherKeyFile   string `yaml:"launcherKeyFile,omitempty"`   // default: launcher.key
+	LauncherTokenFile string `yaml:"launcherTokenFile,omitempty"` // default: launcher.token
 }
 
 // Setup ensures config is valid
 //
 //	storesDir is the default storage root directory ($HOME/stores)
-func (cfg *AuthConfig) Setup(storesDir string) error {
+func (cfg *AuthConfig) Setup(keysDir, storesDir string) error {
 
 	if cfg.PasswordFile == "" {
 		cfg.PasswordFile = auth.DefaultPasswordFile
 	}
 	if !path.IsAbs(cfg.PasswordFile) {
-		cfg.PasswordFile = path.Join(storesDir, "authn", cfg.PasswordFile)
+		cfg.PasswordFile = path.Join(storesDir, "auth", cfg.PasswordFile)
 	}
 
 	if cfg.Encryption == "" {
@@ -55,5 +63,31 @@ func (cfg *AuthConfig) Setup(storesDir string) error {
 		cfg.UserTokenValidityDays = auth.DefaultUserTokenValidityDays
 	}
 
+	if cfg.AdminUserKeyFile == "" {
+		cfg.AdminUserKeyFile = auth.DefaultAdminUserID + ".key"
+	}
+	if !path.IsAbs(cfg.AdminUserKeyFile) {
+		cfg.AdminUserKeyFile = path.Join(keysDir, cfg.AdminUserKeyFile)
+	}
+
+	if cfg.AdminUserTokenFile == "" {
+		cfg.AdminUserTokenFile = auth.DefaultAdminUserID + ".token"
+	}
+	if !path.IsAbs(cfg.AdminUserTokenFile) {
+		cfg.AdminUserTokenFile = path.Join(keysDir, cfg.AdminUserTokenFile)
+	}
+
+	if cfg.LauncherKeyFile == "" {
+		cfg.LauncherKeyFile = auth.DefaultLauncherServiceID + ".key"
+	}
+	if !path.IsAbs(cfg.LauncherKeyFile) {
+		cfg.LauncherKeyFile = path.Join(keysDir, cfg.LauncherKeyFile)
+	}
+	if cfg.LauncherTokenFile == "" {
+		cfg.LauncherTokenFile = auth.DefaultLauncherServiceID + ".token"
+	}
+	if !path.IsAbs(cfg.LauncherTokenFile) {
+		cfg.LauncherTokenFile = path.Join(keysDir, cfg.LauncherTokenFile)
+	}
 	return nil
 }

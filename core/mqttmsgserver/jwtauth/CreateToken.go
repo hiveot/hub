@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// CreateToken creates a JWT authtoken for a client.
+// CreateToken creates a signed JWT authtoken for a client.
 func CreateToken(authInfo msgserver.ClientAuthInfo, signingKey *ecdsa.PrivateKey) (token string, err error) {
 
 	if authInfo.ClientID == "" || authInfo.ClientType == "" {
@@ -57,6 +57,7 @@ func CreateToken(authInfo msgserver.ClientAuthInfo, signingKey *ecdsa.PrivateKey
 	// Declare the token with the algorithm used for signing, and the claims
 	claimsToken := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
 	authToken, err := claimsToken.SignedString(signingKey)
+
 	if err != nil {
 		return "", err
 	}

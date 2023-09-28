@@ -120,9 +120,9 @@ func (hook *MqttAuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Pack
 	}
 
 	// verify authentication using password or token
-	// step 1: credentials must be provided
+	// step 1: credentials must be provided. Password contains password or token.
 	if pk.Connect.PasswordFlag == false || len(pk.Connect.Password) == 0 {
-		slog.Info("OnConnectAuthenticate: missing authn credentials",
+		slog.Info("OnConnectAuthenticate: missing auth credentials",
 			slog.String("cid", cid))
 		return false
 	}
@@ -135,11 +135,13 @@ func (hook *MqttAuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Pack
 		_ = authInfo
 		return true
 	}
+	slog.Info("OnConnectAuthenticate. Not a jwt token.", "err", err.Error())
 
 	// step 3: password authentication, the user must be known
 	authInfo, found := hook.authClients[clientID]
 	if !found {
-		slog.Info("OnConnectAuthenticate: unknown user",
+		slog.Info("OnConnectAuthenticate: unknown client",
+			slog.String("clientID", clientID),
 			slog.String("cid", cid))
 		return false
 	}

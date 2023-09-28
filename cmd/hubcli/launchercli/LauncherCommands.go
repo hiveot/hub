@@ -72,7 +72,10 @@ func HandleListServices(hc hubclient.IHubClient) error {
 
 	fmt.Println("Service                      Size   Starts       PID    CPU   Memory   Status    Last Error")
 	fmt.Println("-------                      ----   ------   -------   ----   ------   -------   -----------")
-	entries, _ := lc.List(false)
+	entries, err := lc.List(false)
+	if err != nil {
+		return err
+	}
 	for _, entry := range entries {
 		status := "stopped"
 		cpu := ""

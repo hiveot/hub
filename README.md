@@ -18,7 +18,7 @@ Status: The status of the Hub is pre-alpha development (Sept 2023).
 4. ~~Authorization for message bus access~~ [completed]
 5. ~~Golang client library~~ [completed]
 6. HubCLI for Hub administration [in progress]
-7. Launcher service for running and monitoring plugins [in progress]
+7. ~~Launcher service for running and monitoring plugins~~ [completed]
 8. ~~Update documentation~~ [completed]
    * [HiveOT Overview](https://hiveot.github.io/)
    * [HiveOT design overview](docs/hiveot-design-overview.md) 

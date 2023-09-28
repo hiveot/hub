@@ -83,13 +83,13 @@ func LocateHub(searchTime time.Duration, firstResult bool) (fullURL string, core
 		return "", ""
 	}
 	core = params["core"]
-	fullURL, found := params["rawurl]"]
+	rawURL, found := params["rawurl"]
 	if !found {
-		fullURL = fmt.Sprintf("tls://%s:%d%s", addr, port, params["path"])
+		rawURL = fmt.Sprintf("tcp://%s:%d%s", addr, port, params["path"])
 	}
 	slog.Info("LocateHub",
 		slog.Int("Nr records", len(records)),
 		slog.String("fullURL", fullURL),
 		slog.String("core", core))
-	return fullURL, core
+	return rawURL, core
 }

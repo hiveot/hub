@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nkeys"
@@ -30,9 +31,8 @@ type NatsServerConfig struct {
 	DataDir         string `yaml:"dataDir,omitempty"`         // default is server default
 	AppAccountName  string `yaml:"appAccountName,omitempty"`  // default: hiveot
 
-	AdminUserKeyFile  string `yaml:"adminUserKeyFile,omitempty"`  // default: admin.nkey
-	AppAccountKeyFile string `yaml:"appAccountKeyFile,omitempty"` // default: appAccount.nkey
-	SystemUserKeyFile string `yaml:"systemUserKeyFile,omitempty"` // default: systemUser.nkey
+	//AppAccountKeyFile string `yaml:"appAccountKeyFile,omitempty"` // default: appAccount.nkey
+	//SystemUserKeyFile string `yaml:"systemUserKeyFile,omitempty"` // default: systemUser.nkey
 
 	// Disable running the embedded messaging server. Default False
 	NoAutoStart bool `yaml:"noAutoStart,omitempty"`
@@ -89,18 +89,15 @@ func (cfg *NatsServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 	if cfg.LogLevel == "" {
 		cfg.LogLevel = "warn"
 	}
-	if cfg.AdminUserKeyFile == "" {
-		cfg.AdminUserKeyFile = path.Join(keysDir, "admin.nkey")
-	}
 	if cfg.AppAccountName == "" {
 		cfg.AppAccountName = "hiveot"
 	}
-	if cfg.AppAccountKeyFile == "" {
-		cfg.AppAccountKeyFile = path.Join(keysDir, "appAcct.nkey")
-	}
-	if cfg.SystemUserKeyFile == "" {
-		cfg.SystemUserKeyFile = path.Join(keysDir, "systemUser.nkey")
-	}
+	//if cfg.AppAccountKeyFile == "" {
+	//	cfg.AppAccountKeyFile = path.Join(keysDir, "appAcct.nkey")
+	//}
+	//if cfg.SystemUserKeyFile == "" {
+	//	cfg.SystemUserKeyFile = path.Join(keysDir, "systemUser.nkey")
+	//}
 
 	// Step 2: generate missing certificates
 	// These are typically set directly before running setup so this is intended
@@ -125,7 +122,12 @@ func (cfg *NatsServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 
 	// Step 3: Load or generate Account key
 	if cfg.AppAccountKP == nil {
-		kpPath := cfg.AppAccountKeyFile
+		// load/create an account key (not a user key)
+		//cfg.AppAccountKP, err = cfg.LoadCreateUserKP(cfg.AppAccountName+"App", keysDir, writeChanges)
+		//if err != nil {
+		//	return fmt.Errorf("failed to persist app account key: %w", err)
+		//}
+		kpPath := path.Join(keysDir, cfg.AppAccountName+"App.key")
 		if !path.IsAbs(kpPath) {
 			kpPath = path.Join(keysDir, kpPath)
 		}
@@ -148,7 +150,7 @@ func (cfg *NatsServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 
 	// Step 4: generate derived keys
 	if cfg.AdminUserKP == nil {
-		cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(cfg.AdminUserKeyFile, writeChanges)
+		cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(auth.DefaultAdminUserID, keysDir, writeChanges)
 	}
 	if cfg.CoreServiceKP == nil {
 		cfg.CoreServiceKP, _ = nkeys.CreateUser()
@@ -157,7 +159,7 @@ func (cfg *NatsServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 		cfg.SystemAccountKP, _ = nkeys.CreateAccount()
 	}
 	if cfg.SystemUserKP == nil {
-		cfg.SystemUserKP, _ = cfg.LoadCreateUserKP(cfg.SystemUserKeyFile, writeChanges)
+		cfg.SystemUserKP, _ = cfg.LoadCreateUserKP(cfg.AppAccountName+"System", keysDir, writeChanges)
 	}
 
 	// Step 5: generate the JWT tokens -
@@ -253,16 +255,12 @@ accounts {
 	//TrustedKeys: []string{operatorPub},
 
 	coreServicePub, _ := cfg.CoreServiceKP.PublicKey()
-	adminUserPub, _ := cfg.AdminUserKP.PublicKey()
 	systemUserPub, _ := cfg.SystemUserKP.PublicKey()
 	natsOpts.Nkeys = []*server.NkeyUser{
 		{
 			Nkey:        coreServicePub,
 			Permissions: nil, // unlimited
 			Account:     cfg.AppAcct,
-		}, {
-			Nkey:    adminUserPub,
-			Account: cfg.AppAcct,
 		}, {
 			Nkey:    systemUserPub,
 			Account: systemAcct,
@@ -306,19 +304,21 @@ accounts {
 }
 
 // LoadCreateUserKP loads a user keypair, or creates one if it doesn't exist
+// By convention the filenam is {clientID}.key
 //
-//	kpPath is file of key or "" to just create it
+//	clientID is the serviceID/deviceID/userID
 //	writeChanges if a file is given and key is generated
-func (cfg *NatsServerConfig) LoadCreateUserKP(kpPath string, writeChanges bool) (userKP nkeys.KeyPair, err error) {
+func (cfg *NatsServerConfig) LoadCreateUserKP(clientID string, keysDir string, writeChanges bool) (userKP nkeys.KeyPair, err error) {
 	// attempt to load
-	if kpPath != "" {
-		kpSeed, err := os.ReadFile(kpPath)
-		if err == nil {
-			userKP, err = nkeys.ParseDecoratedNKey(kpSeed)
-		}
+	kpPath := path.Join(keysDir, clientID+".key")
+	kpSeed, err := os.ReadFile(kpPath)
+	if err == nil {
+		userKP, err = nkeys.ParseDecoratedNKey(kpSeed)
 	}
-	// load fail, create and save
+
+	// no key file, create and save
 	if userKP == nil {
+		err = nil
 		userKP, _ = nkeys.CreateUser()
 		slog.Info("LoadCreateUserKP Keys not found. Creating new keys",
 			slog.String("kpPath", kpPath),

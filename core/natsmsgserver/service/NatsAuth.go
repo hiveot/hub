@@ -33,13 +33,15 @@ func (srv *NatsMsgServer) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
 
 	// keep the core, admin and system users
 	coreServicePub, _ := srv.Config.CoreServiceKP.PublicKey()
-	adminUserPub, _ := srv.Config.AdminUserKP.PublicKey()
+	//adminUserPub, _ := srv.Config.AdminUserKP.PublicKey()
 	systemUserPub, _ := srv.Config.SystemUserKP.PublicKey()
 	nkeyUsers = append(nkeyUsers, []*server.NkeyUser{
-		{Nkey: adminUserPub,
-			Permissions: nil, // unlimited access
-			Account:     srv.Config.AppAcct,
-		}, {Nkey: coreServicePub,
+		//{
+		//Nkey: adminUserPub,
+		//Permissions: nil, // unlimited access
+		//Account:     srv.Config.AppAcct,
+		//},
+		{Nkey: coreServicePub,
 			Permissions: nil, // unlimited access
 			Account:     srv.Config.AppAcct,
 		}, {

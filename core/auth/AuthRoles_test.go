@@ -4,7 +4,6 @@ import (
 	authapi "github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/lib/testenv"
-	"log/slog"
 	"testing"
 	"time"
 
@@ -14,8 +13,8 @@ import (
 // Start the authn service and list clients
 func TestCRUDRole(t *testing.T) {
 	const role1Name = "role1"
-	slog.Info("--- TestGetRole start")
-	defer slog.Info("--- TestGetRole end")
+	t.Log("--- TestGetRole start")
+	defer t.Log("--- TestGetRole end")
 
 	svc, mng, stopFn, err := startTestAuthnService()
 	_ = svc
@@ -37,8 +36,8 @@ func TestCRUDRole(t *testing.T) {
 	err = roleMng.SetRole(testenv.TestUser1ID, authapi.ClientRoleViewer)
 	require.NoError(t, err)
 
-	// admin user hasn't been added yet
-	err = roleMng.SetRole(testenv.TestAdminUserID, authapi.ClientRoleAdmin)
+	// user hasn't been added yet
+	err = roleMng.SetRole("notaknownuser", authapi.ClientRoleAdmin)
 	require.Error(t, err)
 
 	err = roleMng.DeleteRole(role1Name)

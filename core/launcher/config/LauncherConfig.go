@@ -14,26 +14,36 @@ type LauncherConfig struct {
 	// List of services to automatically start in launch order
 	Autostart []string `yaml:"autostart"`
 
-	// log the launcher to file logs/launcher.log
-	LogLauncher bool `yaml:"loglauncher"`
+	// Core to run on startup, if any. Use mqttcore or natscore
+	// Default is not to launch a core.
+	Core string `yaml:"core"`
+
+	// CreatePluginCred creates per-plugin key and token credential files if they don't exist
+	// Default is true
+	CreatePluginCred bool `yaml:"createPluginCred"`
 
 	// logging level. default is warning
 	LogLevel string `yaml:"loglevel"`
 
-	// direct stdout of services to logfile at logs/{service}.log
-	LogServices bool `yaml:"logservices"`
+	// log the launcher to file logs/launcher.log
+	LogToFile bool `yaml:"logtofile"`
+
+	// direct stdout of plugins to logfile at logs/{service}.log
+	LogPlugins bool `yaml:"logplugins"`
 }
 
 // NewLauncherConfig returns a new launcher configuration with defaults
 func NewLauncherConfig() LauncherConfig {
 	lc := LauncherConfig{
-		AttachStdout: false,
-		AttachStderr: true,
-		AutoRestart:  false,
-		Autostart:    make([]string, 0),
-		LogLevel:     "warning",
-		LogLauncher:  true,
-		LogServices:  true,
+		AttachStderr:     true,
+		AttachStdout:     false,
+		AutoRestart:      false,
+		Autostart:        make([]string, 0),
+		Core:             "",
+		CreatePluginCred: true,
+		LogLevel:         "warning",
+		LogToFile:        true,
+		LogPlugins:       true,
 	}
 	return lc
 }

@@ -32,19 +32,19 @@ func ValidateToken(clientID string, token string,
 		jwt.WithIssuer(signingKeyPubStr), // url encoded string
 	)
 	if err != nil || jwtToken == nil || !jwtToken.Valid {
-		return authInfo, fmt.Errorf("invalid JWT token: %s", err)
+		return authInfo, fmt.Errorf("ValidateToken: client '%s' invalid JWT token or signing key: %s", clientID, err)
 	}
 
 	pubKey, _ := claims.GetSubject()
 	authInfo.PubKey = pubKey
 	if pubKey == "" {
-		return authInfo, fmt.Errorf("token has no public key")
+		return authInfo, fmt.Errorf("ValidateToken: client '%s' token has no public key", clientID)
 	}
 
 	jwtClientType, _ := claims["clientType"]
 	authInfo.ClientType = jwtClientType.(string)
 	if authInfo.ClientType == "" {
-		return authInfo, fmt.Errorf("token has no client type")
+		return authInfo, fmt.Errorf("ValidateToken: client '%s' token has no client type", clientID)
 	}
 
 	authInfo.ClientID = clientID
@@ -53,13 +53,13 @@ func ValidateToken(clientID string, token string,
 		// while this doesn't provide much extra security it might help
 		// prevent bugs. Potentially also useful as second factor auth check if
 		// clientID is obtained through a different means.
-		return authInfo, fmt.Errorf("token belongs to different clientID")
+		return authInfo, fmt.Errorf("ValidateToken: client '%s' token belongs to different clientID (%s)", clientID, jwtClientID)
 	}
 
 	jwtRole, _ := claims["role"]
 	authInfo.Role = jwtRole.(string)
 	if authInfo.Role == "" {
-		return authInfo, fmt.Errorf("token has no role")
+		return authInfo, fmt.Errorf("ValidateToken: client '%s' token has no role", clientID)
 	}
 
 	return authInfo, nil

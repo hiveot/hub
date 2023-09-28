@@ -20,6 +20,13 @@ const (
 	DefaultUserTokenValidityDays    = 30  // 30 days
 )
 
+// DefaultAdminUserID is the client ID of the default administrator account
+const DefaultAdminUserID = "admin"
+
+// DefaultLauncherServiceID is the client ID of the launcher service
+// auth creates a key and auth token for the launcher on startup
+const DefaultLauncherServiceID = "launcher"
+
 // ClientProfile contains client information of sources and users
 type ClientProfile struct {
 	// The client ID.

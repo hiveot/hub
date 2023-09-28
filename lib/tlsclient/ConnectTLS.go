@@ -44,6 +44,13 @@ func ConnectTLS(serverURL string, clientCert *tls.Certificate, caCert *x509.Cert
 	if err != nil {
 		return nil, err
 	}
+	// if no scheme is given then its a unix path
+	if broker.Scheme == "" {
+		broker.Scheme = "unix"
+	}
+	if broker.Host == "" {
+		broker.Host = broker.Path
+	}
 	conn, err := tls.Dial(broker.Scheme, broker.Host, tlsConfig)
 	return conn, err
 }

@@ -64,7 +64,6 @@ func main() {
 	cfgFile := DefaultCfg
 	newSetup := false
 	logging.SetLogging("info", "")
-
 	f := utils.GetFolders("", false)
 	homeDir := f.Home
 	flag.StringVar(&f.Home, "home", f.Home, "Application home directory")
@@ -147,7 +146,7 @@ func run(cfg *config.HubCoreConfig) error {
 		}
 		port, _ := strconv.Atoi(urlInfo.Port())
 		svc, err := discovery.ServeDiscovery(
-			"mqttcore", "hiveot", urlInfo.Host, port, map[string]string{
+			"mqttcore", "hiveot", urlInfo.Hostname(), port, map[string]string{
 				"rawurl": serverURL,
 				"core":   "mqtt",
 			})

@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
+	auth2 "github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/auth/authstore"
 	"log/slog"
 )
@@ -15,6 +16,7 @@ type AuthService struct {
 	msgServer msgserver.IMsgServer
 
 	// the hub client connection to listen to requests
+	cfg        auth2.AuthConfig
 	hc         hubclient.IHubClient
 	MngClients *AuthManageClients
 	MngRoles   *AuthManageRoles
@@ -22,7 +24,7 @@ type AuthService struct {
 }
 
 // Start the service and activate the binding to handle requests
-// This adds an 'auth' service client.
+// This adds an 'auth' service client and an admin user
 func (svc *AuthService) Start() (err error) {
 
 	slog.Info("starting AuthService")
@@ -81,6 +83,33 @@ func (svc *AuthService) Start() (err error) {
 		[]string{auth.ClientRoleAdmin})
 	svc.msgServer.SetServicePermissions(auth.AuthServiceName, auth.AuthProfileCapability,
 		[]string{auth.ClientRoleViewer, auth.ClientRoleOperator, auth.ClientRoleManager, auth.ClientRoleAdmin})
+
+	// ensure the launcher client exists and has a key and service token
+	_, launcherKeyPub, _ := svc.MngClients.LoadCreateUserKey(svc.cfg.LauncherKeyFile)
+	svc.store.Add(auth.DefaultLauncherServiceID, auth.ClientProfile{
+		ClientID:    auth.DefaultLauncherServiceID,
+		ClientType:  auth.ClientTypeService,
+		DisplayName: "Launcher Service",
+		PubKey:      launcherKeyPub,
+		// TODO: what mechanism refreshes the launcher token?
+		TokenValidityDays: auth.DefaultServiceTokenValidityDays,
+		Role:              auth.ClientRoleService,
+	})
+	_, err = svc.MngClients.LoadCreateUserToken(auth.DefaultLauncherServiceID, svc.cfg.LauncherTokenFile)
+
+	// ensure the admin user exists and has a user token
+	_, adminKeyPub, _ := svc.MngClients.LoadCreateUserKey(svc.cfg.AdminUserKeyFile)
+	svc.store.Add(auth.DefaultAdminUserID, auth.ClientProfile{
+		ClientID:    auth.DefaultAdminUserID,
+		ClientType:  auth.ClientTypeUser,
+		DisplayName: "Administrator",
+		PubKey:      adminKeyPub,
+		// TODO: what mechanism refreshes the admin token without a password?
+		TokenValidityDays: auth.DefaultUserTokenValidityDays,
+		Role:              auth.ClientRoleAdmin,
+	})
+	_, err = svc.MngClients.LoadCreateUserToken(auth.DefaultAdminUserID, svc.cfg.AdminUserTokenFile)
+
 	return err
 }
 
@@ -106,9 +135,10 @@ func (svc *AuthService) Stop() {
 //
 //	store is the client store to store authentication clients
 //	msgServer used to apply changes to users, devices and services
-func NewAuthnService(store auth.IAuthnStore, msgServer msgserver.IMsgServer) *AuthService {
+func NewAuthnService(authConfig auth2.AuthConfig, store auth.IAuthnStore, msgServer msgserver.IMsgServer) *AuthService {
 
 	authnSvc := &AuthService{
+		cfg:       authConfig,
 		store:     store,
 		msgServer: msgServer,
 	}
@@ -117,14 +147,14 @@ func NewAuthnService(store auth.IAuthnStore, msgServer msgserver.IMsgServer) *Au
 
 // StartAuthService creates and launch the auth service with the given config
 // This creates a password store using the config file and password encryption method.
-func StartAuthService(cfg AuthConfig, msgServer msgserver.IMsgServer) (*AuthService, error) {
+func StartAuthService(cfg auth2.AuthConfig, msgServer msgserver.IMsgServer) (*AuthService, error) {
 
 	// nats requires bcrypt passwords
 	authStore := authstore.NewAuthnFileStore(cfg.PasswordFile, cfg.Encryption)
-	authnSvc := NewAuthnService(authStore, msgServer)
+	authnSvc := NewAuthnService(cfg, authStore, msgServer)
 	err := authnSvc.Start()
 	if err != nil {
-		panic("cant start Auth service: " + err.Error())
+		panic("Cant start Auth service: " + err.Error())
 	}
 	return authnSvc, err
 }

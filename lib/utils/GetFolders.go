@@ -66,7 +66,7 @@ func GetFolders(homeFolder string, useSystem bool) AppDirs {
 	}
 	//slog.Infof("homeFolder is '%s", homeFolder)
 	binFolder := filepath.Join(homeFolder, "bin")
-	pluginsFolder := filepath.Join(homeFolder, "plugins")
+	pluginsFolder := filepath.Join(binFolder, "plugins")
 	configFolder := filepath.Join(homeFolder, "config")
 	certsFolder := filepath.Join(homeFolder, "certs")
 	logsFolder := filepath.Join(homeFolder, "logs")

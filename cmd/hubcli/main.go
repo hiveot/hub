@@ -29,6 +29,7 @@ var nowrap bool
 func main() {
 	var hc hubclient.IHubClient
 	var clientID = "admin"
+	var serverURL = ""
 	var verbose bool
 	logging.SetLogging("warning", "")
 	binDir = path.Dir(os.Args[0])
@@ -63,6 +64,12 @@ func main() {
 				Value:       clientID,
 				Destination: &clientID,
 			},
+			&cli.StringFlag{
+				Name:        "server",
+				Usage:       "server URL (default: use DNS-SD discovery)",
+				Value:       serverURL,
+				Destination: &serverURL,
+			},
 			&cli.BoolFlag{
 				Name:        "loginfo",
 				Usage:       "verbose logging",
@@ -83,7 +90,7 @@ func main() {
 			if nowrap {
 				fmt.Printf(utils.WrapOff)
 			}
-			hc, err = hubcl.ConnectToHub("", clientID, certsDir, "")
+			hc, err = hubcl.ConnectToHub(serverURL, clientID, certsDir, "")
 			return err
 		},
 		Commands: []*cli.Command{

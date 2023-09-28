@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/core/auth/authservice"
+	"github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/mqttmsgserver"
 	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/hiveot/hub/lib/certs"
@@ -41,7 +41,7 @@ type HubCoreConfig struct {
 	MqttServer mqttmsgserver.MqttServerConfig `yaml:"mqttserver"`
 
 	// auth service config
-	Auth authservice.AuthConfig `yaml:"auth"`
+	Auth auth.AuthConfig `yaml:"auth"`
 
 	// enable mDNS discovery
 	EnableMDNS bool `yaml:"enableMDNS"`
@@ -134,7 +134,7 @@ func (cfg *HubCoreConfig) Setup(
 		err = cfg.MqttServer.Setup(f.Certs, f.Stores, true)
 	}
 	// 7: setup authn config
-	err = cfg.Auth.Setup(f.Stores)
+	err = cfg.Auth.Setup(f.Certs, f.Stores)
 	if err != nil {
 		return err
 	}

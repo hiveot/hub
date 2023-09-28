@@ -1,16 +1,23 @@
 # Launcher configuration
 
+# Launcher authentication in the certs directory
+#keyFile: launcher.key           # default is launcher.key
+#tokenFile: launcher.token       # default is launcher.token
+
+
 # log launcher to stdout/stderr at level info (default is warning)
 loglevel: info
 
-# log launcher to file at level info (default is true)
-#logfile: true  #
+# log launcher output to file (default is true)
+#logtofile: true  #
 
-# write service stdout and stderr to logfile at logs/{servicename}.log (default is true)
-#logservices: true
+# core to launch before the plugins. The core binary must reside in the bin directory.
+# comment out if a core is already running elsewhere.
+# known cores are mqttcore or natscore
+core: mqttcore
 
-# logfile permissions. default is 0640
-#logperm: 0640  TODO
+# write plugin stdout and stderr to logfile at logs/{pluginname}.log (default is true)
+#logplugins: true
 
 # attach to service stderr for logging and testing (default is true)
 #attachstderr: true
@@ -21,12 +28,14 @@ loglevel: info
 # automatically restart services when they stop
 #autorestart: false    # enable the auto-restart feature (default is disabled)
 
-# createClientCert generates a client certificate with the plugin ID before start
-#createClientCert: true    (default true)
+# createPluginCred generates plugin credentials, if they don't exist.
+# location is the application certs directory using the name format {plugin}.key and {plugin}.token.
+#createPluginCred: true    (default true)
 
-# Order of services to start
+
+# Plugins to start in order
 autostart:
-  - certs
+  - certs            # certificate management service
 #  - directory       # directory service
-#  - owserver        # 1-wire owserver service
+#  - owserver        # 1-wire owserver binding
 #  - provisioning    # IoT device provisioning service

@@ -53,7 +53,7 @@ func (hc *MqttHubClient) ConnectWithConn(
 	// clients must use a unique connection ID otherwise the previous connection will be dropped
 	hostName, _ := os.Hostname()
 	connectID := fmt.Sprintf("%s-%s-%s", hc.clientID, hostName, time.Now().Format("20060102150405.000000"))
-	slog.Info("ConnectWithConn", "loginID", hc.clientID, "url", conn.RemoteAddr(), "connectID", connectID)
+	slog.Info("ConnectWithConn", "loginID", hc.clientID, "RemoteAddr", conn.RemoteAddr(), "connectID", connectID)
 
 	// checks
 	if hc.clientID == "" {
@@ -98,7 +98,11 @@ func (hc *MqttHubClient) ConnectWithConn(
 	_ = connAck
 
 	if err != nil {
-		err = fmt.Errorf("failed to connect. Reason: %w", err)
+		var info string
+		if connAck != nil {
+			info = fmt.Sprintf("code %d, reason: '%s'", connAck.ReasonCode, connAck.Properties.ReasonString)
+		}
+		err = fmt.Errorf("%w %s", err, info)
 		//err = fmt.Errorf("failed to connect. Reason: %d - %s",
 		//	connAck.ReasonCode, connAck.Properties.ReasonString)
 		return err
@@ -174,7 +178,7 @@ func (hc *MqttHubClient) Disconnect() {
 	if hc.pcl != nil {
 
 		slog.Info("Disconnect", "clientID", hc.clientID)
-		//time.Sleep(time.Millisecond * 10) // Disconnect doesn't seem to wait for all messages. A small delay ahead helps
+		time.Sleep(time.Millisecond * 10) // Disconnect doesn't seem to wait for all messages. A small delay ahead helps
 		_ = hc.pcl.Disconnect(&paho.Disconnect{ReasonCode: 0})
 		//time.Sleep(time.Millisecond * 10) // Disconnect doesn't seem to wait for all messages. A small delay ahead helps
 		//hc.pcl = nil
@@ -186,7 +190,7 @@ func (hc *MqttHubClient) Disconnect() {
 
 // NewMqttHubClient creates a new instance of the hub client using the connected paho client
 //
-//	url of broker to connect to, starting with "mqtts" or "mqttwss"
+//	url of broker to connect to, starting with "mqtt://", "tls://" or "mqttwss"
 //	id is the client's ID to identify as for the session.
 //	privKey for connecting with Key or JWT, and possibly encryption (future)
 //	caCert of the server to validate the server or nil to not check the server cert
@@ -199,7 +203,7 @@ func NewMqttHubClient(url string, id string, privKey *ecdsa.PrivateKey, caCert *
 		caCert:    caCert,
 		clientID:  id,
 		privKey:   privKey,
-		timeout:   time.Second * 10,
+		timeout:   time.Second * 10, // 10 for testing
 	}
 	return hc
 }

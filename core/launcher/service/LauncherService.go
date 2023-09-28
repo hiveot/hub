@@ -149,7 +149,7 @@ func (svc *LauncherService) StartService(name string) (info launcher.ServiceInfo
 	// step3: setup logging before starting service
 	slog.Info("Starting service", "name", name)
 
-	if svc.cfg.LogServices {
+	if svc.cfg.LogPlugins {
 		// inspired by https://gist.github.com/jerblack/4b98ba48ed3fb1d9f7544d2b1a1be287
 		logfile := path.Join(svc.f.Logs, name+".log")
 		fp, err := os.OpenFile(logfile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
@@ -400,11 +400,14 @@ func (svc *LauncherService) Start() error {
 			err = err2
 		}
 	}
-	// for testing, hc can be nil
-	if svc.hc != nil {
-		svc.mngSub, err = svc.hc.SubServiceRPC(
-			launcher.LauncherManageCapability, svc.HandleRequest)
-	}
+	return err
+}
+
+// StartListener subscribes to service requests using the given client
+func (svc *LauncherService) StartListener(hc hubclient.IHubClient) (err error) {
+	svc.hc = hc
+	svc.mngSub, err = svc.hc.SubServiceRPC(
+		launcher.LauncherManageCapability, svc.HandleRequest)
 	return err
 }
 
@@ -424,7 +427,6 @@ func (svc *LauncherService) Stop() error {
 func NewLauncherService(
 	f utils.AppDirs,
 	cfg config.LauncherConfig,
-	hc hubclient.IHubClient,
 ) *LauncherService {
 
 	ls := &LauncherService{
@@ -432,7 +434,6 @@ func NewLauncherService(
 		cfg:      cfg,
 		services: make(map[string]*launcher.ServiceInfo),
 		cmds:     make([]*exec.Cmd, 0),
-		hc:       hc,
 	}
 
 	return ls

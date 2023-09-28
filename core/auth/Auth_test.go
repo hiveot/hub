@@ -3,13 +3,13 @@ package auth_test
 import (
 	authapi "github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
+	"github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubcl"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/nkeys"
-	"log/slog"
 	"os"
 	"path"
 	"testing"
@@ -24,9 +24,10 @@ import (
 var core = "nats"
 var certBundle certs.TestCertBundle
 var testDir = path.Join(os.TempDir(), "test-authn")
+var authConfig auth.AuthConfig
 
 // the following are set by the testmain
-var clientURL string
+var serverURL string
 var msgServer msgserver.IMsgServer
 
 // add new user to test with
@@ -46,13 +47,13 @@ func startTestAuthnService() (authnSvc *authservice.AuthService, mng authapi.IAu
 
 	// TODO: put this in a test environment
 	_ = os.Remove(passwordFile)
-	cfg := authservice.AuthConfig{}
-	_ = cfg.Setup(testDir)
-	cfg.PasswordFile = passwordFile
-	cfg.DeviceTokenValidityDays = 10
-	cfg.Encryption = authapi.PWHASH_BCRYPT // nats requires bcrypt
+	authConfig = auth.AuthConfig{}
+	_ = authConfig.Setup(testDir, testDir)
+	authConfig.PasswordFile = passwordFile
+	authConfig.DeviceTokenValidityDays = 10
+	authConfig.Encryption = authapi.PWHASH_BCRYPT // nats requires bcrypt
 
-	authnSvc, err = authservice.StartAuthService(cfg, msgServer)
+	authnSvc, err = authservice.StartAuthService(authConfig, msgServer)
 	if err != nil {
 		panic("cant start test authn service: " + err.Error())
 	}
@@ -60,8 +61,8 @@ func startTestAuthnService() (authnSvc *authservice.AuthService, mng authapi.IAu
 	//--- connect the authn management client for managing clients
 	authClientKey, authClientPub := msgServer.CreateKP()
 	_ = authClientKey
-	authnSvc.MngClients.AddUser("authn-client", "authn client", "", authClientPub, authapi.ClientRoleAdmin)
-	hc2, err := msgServer.ConnectInProc("authn-client")
+	authnSvc.MngClients.AddUser("auth-test-client", "auth test client", "", authClientPub, authapi.ClientRoleAdmin)
+	hc2, err := msgServer.ConnectInProc("auth-test-client")
 
 	if err != nil {
 		panic(err)
@@ -85,7 +86,7 @@ func TestMain(m *testing.M) {
 	_ = os.RemoveAll(testDir)
 	_ = os.MkdirAll(testDir, 0700)
 
-	clientURL, msgServer, certBundle, err = testenv.StartTestServer(core, false)
+	serverURL, msgServer, certBundle, err = testenv.StartTestServer(core, false)
 	if err != nil {
 		panic(err)
 	}
@@ -102,8 +103,8 @@ func TestMain(m *testing.M) {
 
 // Start the authn service and list clients
 func TestStartStop(t *testing.T) {
-	slog.Info("--- TestStartStop start")
-	defer slog.Info("--- TestStartStop end")
+	t.Log("--- TestStartStop start")
+	defer t.Log("--- TestStartStop end")
 
 	_, mngAuthn, stopFn, err := startTestAuthnService()
 	require.NoError(t, err)
@@ -112,14 +113,20 @@ func TestStartStop(t *testing.T) {
 
 	clList, err := mngAuthn.GetProfiles()
 	require.NoError(t, err)
-	// auth service and the admin user are 2 existing clients
-	assert.Equal(t, 2, len(clList))
+	// auth service, test client, admin and launcher are 4 pre-existing clients
+	assert.Equal(t, 4, len(clList))
+
+	// should be able to connect as admin, using the save key and token
+	hc1 := hubcl.NewHubClient(serverURL, authapi.DefaultAdminUserID, nil, certBundle.CaCert, core)
+	err = hc1.ConnectWithTokenFile(authConfig.AdminUserTokenFile, authConfig.AdminUserKeyFile)
+	require.NoError(t, err)
+	hc1.Disconnect()
 }
 
 // Create manage users
 func TestAddRemoveClients(t *testing.T) {
-	slog.Info("--- TestAddRemoveClients start")
-	defer slog.Info("--- TestAddRemoveClients stop")
+	t.Log("--- TestAddRemoveClients start")
+	defer t.Log("--- TestAddRemoveClients stop")
 
 	deviceID := "device1"
 	deviceKP, _ := nkeys.CreateUser()
@@ -168,9 +175,9 @@ func TestAddRemoveClients(t *testing.T) {
 
 	clList, err := mng.GetProfiles()
 	assert.NoError(t, err)
-	assert.Equal(t, 6+2, len(clList))
+	assert.Equal(t, 6+4, len(clList))
 	cnt, _ := mng.GetCount()
-	assert.Equal(t, 6+2, cnt)
+	assert.Equal(t, 6+4, cnt)
 
 	err = mng.RemoveClient("user1")
 	assert.NoError(t, err)
@@ -185,7 +192,7 @@ func TestAddRemoveClients(t *testing.T) {
 
 	require.NoError(t, err)
 	clList, err = mng.GetProfiles()
-	assert.Equal(t, 2+2, len(clList))
+	assert.Equal(t, 2+4, len(clList))
 
 	_, err = mng.AddUser("user1", "user 1", "", "", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
@@ -202,8 +209,8 @@ func TestAddRemoveClients(t *testing.T) {
 }
 
 func TestUpdatePubKey(t *testing.T) {
-	slog.Info("--- TestUpdatePubKey start")
-	defer slog.Info("--- TestUpdatePubKey end")
+	t.Log("--- TestUpdatePubKey start")
+	defer t.Log("--- TestUpdatePubKey end")
 
 	var tu1ID = "tu1ID"
 	var tu1Pass = "tu1Pass"
@@ -218,7 +225,7 @@ func TestUpdatePubKey(t *testing.T) {
 
 	// 1. connect to the added user using its password
 	tu1Key, tu1KeyPub := msgServer.CreateKP()
-	hc1 := hubcl.NewHubClient(clientURL, tu1ID, tu1Key, certBundle.CaCert, core)
+	hc1 := hubcl.NewHubClient(serverURL, tu1ID, tu1Key, certBundle.CaCert, core)
 	err = hc1.ConnectWithPassword(tu1Pass)
 	require.NoError(t, err)
 	defer hc1.Disconnect()
@@ -236,8 +243,8 @@ func TestUpdatePubKey(t *testing.T) {
 
 // Note: Refresh is only useful when using JWT. The nats nkey server ignores the token and uses nkeys
 func TestLoginRefresh(t *testing.T) {
-	slog.Info("--- TestLoginRefresh start")
-	defer slog.Info("--- TestLoginRefresh end")
+	t.Log("--- TestLoginRefresh start")
+	defer t.Log("--- TestLoginRefresh end")
 
 	var tu1ID = "tu1ID"
 	var tu1Pass = "tu1Pass"
@@ -257,7 +264,7 @@ func TestLoginRefresh(t *testing.T) {
 	assert.NotEmpty(t, tu1Token)
 
 	// 1. connect to the added user using its password
-	hc1 := hubcl.NewHubClient(clientURL, tu1ID, tu1Key, certBundle.CaCert, core)
+	hc1 := hubcl.NewHubClient(serverURL, tu1ID, tu1Key, certBundle.CaCert, core)
 	err = hc1.ConnectWithPassword(tu1Pass)
 	require.NoError(t, err)
 	defer hc1.Disconnect()
@@ -269,7 +276,7 @@ func TestLoginRefresh(t *testing.T) {
 
 	// 3. login with the new token
 	// (nkeys and callout auth doesn't need a server reload)
-	hc2 := hubcl.NewHubClient(clientURL, tu1ID, tu1Key, certBundle.CaCert, core)
+	hc2 := hubcl.NewHubClient(serverURL, tu1ID, tu1Key, certBundle.CaCert, core)
 	err = hc2.ConnectWithToken(authToken1)
 	require.NoError(t, err)
 	cl2 := authclient.NewAuthProfileClient(hc2)
@@ -284,7 +291,7 @@ func TestLoginRefresh(t *testing.T) {
 	require.NotEmpty(t, authToken2)
 
 	// 5. login with the refreshed token
-	hc3 := hubcl.NewHubClient(clientURL, tu1ID, tu1Key, certBundle.CaCert, core)
+	hc3 := hubcl.NewHubClient(serverURL, tu1ID, tu1Key, certBundle.CaCert, core)
 	err = hc3.ConnectWithToken(authToken2)
 	require.NoError(t, err)
 	hc3.Disconnect()
@@ -292,8 +299,8 @@ func TestLoginRefresh(t *testing.T) {
 }
 
 func TestRefreshNoPubKey(t *testing.T) {
-	slog.Info("--- TestRefreshNoPubKey start")
-	defer slog.Info("--- TestRefreshNoPubKey end")
+	t.Log("--- TestRefreshNoPubKey start")
+	defer t.Log("--- TestRefreshNoPubKey end")
 	var tu1ID = "tu1ID"
 	var tu1Pass = "tu1Pass"
 	var authToken1 string
@@ -311,7 +318,7 @@ func TestRefreshNoPubKey(t *testing.T) {
 
 	// connect with the added user token
 	tu1Key, tu1Pub := msgServer.CreateKP()
-	hc1 := hubcl.NewHubClient(clientURL, tu1ID, tu1Key, certBundle.CaCert, core)
+	hc1 := hubcl.NewHubClient(serverURL, tu1ID, tu1Key, certBundle.CaCert, core)
 	err = hc1.ConnectWithPassword(tu1Pass)
 	defer hc1.Disconnect()
 	require.NoError(t, err)
@@ -330,7 +337,7 @@ func TestRefreshNoPubKey(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, authToken1)
 	t.Log("connecting with token")
-	hc2 := hubcl.NewHubClient(clientURL, tu1ID, tu1Key, certBundle.CaCert, core)
+	hc2 := hubcl.NewHubClient(serverURL, tu1ID, tu1Key, certBundle.CaCert, core)
 	err = hc2.ConnectWithToken(authToken1)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 10)
@@ -352,7 +359,7 @@ func TestUpdateProfile(t *testing.T) {
 	_, _, err = addNewUser(tu1ID, tu1Name, "pass0", mng)
 	require.NoError(t, err)
 	tu1Key, _ := msgServer.CreateKP()
-	hc1 := hubcl.NewHubClient(clientURL, tu1ID, tu1Key, certBundle.CaCert, core)
+	hc1 := hubcl.NewHubClient(serverURL, tu1ID, tu1Key, certBundle.CaCert, core)
 	err = hc1.ConnectWithPassword("pass0")
 	require.NoError(t, err)
 	defer hc1.Disconnect()
@@ -380,7 +387,7 @@ func TestUpdatePassword(t *testing.T) {
 
 	// add user to test with and connect
 	_, _, err = addNewUser(tu1ID, tu1Name, "pass0", mng)
-	hc1 := hubcl.NewHubClient(clientURL, tu1ID, tu1Key, certBundle.CaCert, core)
+	hc1 := hubcl.NewHubClient(serverURL, tu1ID, tu1Key, certBundle.CaCert, core)
 	err = hc1.ConnectWithPassword("pass0")
 	require.NoError(t, err)
 
