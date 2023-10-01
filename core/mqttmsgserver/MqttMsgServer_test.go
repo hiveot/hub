@@ -1,4 +1,4 @@
-package service_test
+package mqttmsgserver_test
 
 import (
 	"github.com/hiveot/hub/api/go/auth"
@@ -71,7 +71,7 @@ func TestConnectWithToken(t *testing.T) {
 	require.NoError(t, err)
 	adminToken, err := msrv.CreateToken(adminInfo)
 	require.NoError(t, err)
-	_, err = msrv.ValidateToken(testenv.TestAdminUserID, adminToken, "", "")
+	err = msrv.ValidateToken(testenv.TestAdminUserID, adminToken, "", "")
 	require.NoError(t, err)
 
 	// login with token should succeed

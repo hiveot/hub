@@ -29,15 +29,16 @@ var owsConfig internal.OWServerConfig
 var owsSimulationFile string // simulation file
 
 var msgServer msgserver.IMsgServer
+var stopFn func()
 
 // launch the hub
-func startServer() (msgServer msgserver.IMsgServer) {
+func startServer() (msgServer msgserver.IMsgServer, stopFn func()) {
 	var err error
-	_, msgServer, _, err = testenv.StartTestServer(core, true)
+	_, msgServer, _, stopFn, err = testenv.StartTestServer(core, false, true)
 	if err != nil {
 		panic("unable to start test server")
 	}
-	return msgServer
+	return msgServer, stopFn
 }
 
 // TestMain run mosquitto and use the project test folder as the home folder.
@@ -55,12 +56,12 @@ func TestMain(m *testing.M) {
 	owsConfig.OWServerURL = owsSimulationFile
 
 	//
-	msgServer = startServer()
+	msgServer, stopFn = startServer()
 
 	result := m.Run()
 	time.Sleep(time.Second)
 
-	msgServer.Stop()
+	stopFn()
 	if result == 0 {
 		_ = os.RemoveAll(tempFolder)
 	}

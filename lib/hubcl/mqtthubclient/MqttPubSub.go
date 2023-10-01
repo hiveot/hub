@@ -99,11 +99,6 @@ func (hc *MqttHubClient) PubRequest(topic string, payload []byte) (ar hubclient.
 	//	ClientID:         hc.clientID,
 	//}
 
-	// rpc handler locks up if no response is received. autopaho's handler does better
-	handler, err := NewHandler(ctx, hc.pcl)
-	if err != nil {
-		return ar, err
-	}
 	pubMsg := &paho.Publish{
 		QoS:     withQos,
 		Retain:  false,
@@ -119,7 +114,7 @@ func (hc *MqttHubClient) PubRequest(topic string, payload []byte) (ar hubclient.
 	}
 	// use the inbox as the custom response for this client instance
 	// clone of rpc.go to workaround hangup when no response is received #111
-	respMsg, err := handler.Request(ctx, pubMsg)
+	respMsg, err := hc.requestHandler.Request(ctx, pubMsg)
 	ar.Duration = time.Now().Sub(t1)
 	if err != nil {
 		return ar, err
@@ -252,7 +247,11 @@ func (hc *MqttHubClient) Sub(topic string, cb func(topic string, msg []byte)) (h
 	hc.pcl.Router.RegisterHandler(topic, func(m *paho.Publish) {
 		slog.Info("Sub, received Msg:", "topic", m.Topic)
 		//clientID := m.Properties.User.Get("clientID") // experimental
-		cb(m.Topic, m.Payload)
+
+		// run this in the background to allow for reentrancy
+		go func() {
+			cb(m.Topic, m.Payload)
+		}()
 	})
 	_ = suback
 	hcSub := &PahoSubscription{
@@ -302,14 +301,17 @@ func (hc *MqttHubClient) SubRequest(
 			},
 		}
 		m.Properties.User.Add("received", timeStamp.Format(time.StampMicro))
-		err = cb(requestMsg)
-		if err != nil {
-			slog.Error("SubRequest: handle request failed",
-				slog.String("err", err.Error()),
-				slog.String("topic", topic))
+		// run this in the background to allow for reentrancy
+		go func() {
+			err = cb(requestMsg)
+			if err != nil {
+				slog.Error("SubRequest: handle request failed",
+					slog.String("err", err.Error()),
+					slog.String("topic", topic))
 
-			err = hc.sendReply(m, nil, err)
-		}
+				err = hc.sendReply(m, nil, err)
+			}
+		}()
 	})
 
 	hcSub := &PahoSubscription{

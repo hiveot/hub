@@ -7,8 +7,8 @@ const ServiceName = "launcher"
 // LauncherManageCapability is the name of the Thing/Capability that handles management requests
 const LauncherManageCapability = "manage"
 
-// ServiceInfo contains the running status of a service
-type ServiceInfo struct {
+// PluginInfo contains the running status of a service
+type PluginInfo struct {
 	// CPU usage in %. 0 when not running
 	CPU int
 
@@ -55,50 +55,59 @@ type LauncherListReq struct {
 	OnlyRunning bool `json:"onlyRunning"`
 }
 type LauncherListResp struct {
-	ServiceInfoList []ServiceInfo `json:"serviceInfo"`
+	ServiceInfoList []PluginInfo `json:"serviceInfo"`
 }
 
-const LauncherStartServiceRPC = "startService"
+const LauncherStartPluginRPC = "startPlugin"
 
-type LauncherStartServiceReq struct {
+type LauncherStartPluginReq struct {
 	Name string `json:"name"`
 }
 
-type LauncherStartServiceResp struct {
-	ServiceInfo ServiceInfo `json:"info"`
+type LauncherStartPluginResp struct {
+	ServiceInfo PluginInfo `json:"info"`
 }
 
-const LauncherStartAllRPC = "startAll"
+const LauncherStartAllPluginsRPC = "startAllPlugins"
 
 // StartAll has no arguments
 
-const LauncherStopServiceRPC = "stop"
+const LauncherStopPluginRPC = "stopPlugin"
 
-type LauncherStopServiceReq struct {
+type LauncherStopPluginReq struct {
 	Name string `json:"name"`
 }
-type LauncherStopServiceResp struct {
-	ServiceInfo ServiceInfo `json:"info"`
+type LauncherStopPluginResp struct {
+	ServiceInfo PluginInfo `json:"info"`
 }
 
-const LauncherStopAllRPC = "stopAll"
+const LauncherStopAllPluginsRPC = "stopAllPlugins"
 
 // ILauncher defines the POGS based interface of the launcher service
 type ILauncher interface {
 
 	// List services
-	List(onlyRunning bool) ([]ServiceInfo, error)
+	List(onlyRunning bool) ([]PluginInfo, error)
 
-	// StartService start a service
-	StartService(name string) (ServiceInfo, error)
+	// Start the service and connect to the hub
+	// If a hub core is set in config then start the core first.
+	Start() error
 
-	// StartAll starts all enabled services
+	// StartAllPlugins starts all enabled plugins
 	// This returns the error from the last service that could not be started
-	StartAll() error
+	StartAllPlugins() error
 
-	// StopService stops a running service
-	StopService(name string) (ServiceInfo, error)
+	// StartPlugin start a plugin
+	// If the plugin is already running this does nothing
+	StartPlugin(name string) (PluginInfo, error)
 
-	// StopAll running services
-	StopAll() error
+	// Stop the service and disconnect from the hub
+	// If the hub core was started, stop it last.
+	Stop() error
+
+	// StopAllPlugins running plugins
+	StopAllPlugins() error
+
+	// StopPlugin stops a running plugin
+	StopPlugin(name string) (PluginInfo, error)
 }

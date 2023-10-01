@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"fmt"
 	"github.com/eclipse/paho.golang/paho"
 	"github.com/hiveot/hub/lib/certs"
@@ -12,6 +13,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"path"
 	"time"
 )
 
@@ -31,9 +33,10 @@ type MqttHubClient struct {
 	privKey   *ecdsa.PrivateKey
 	//hostName string
 	//port     int
-	conn    net.Conn
-	pcl     *paho.Client
-	timeout time.Duration // request timeout
+	conn           net.Conn
+	pcl            *paho.Client
+	requestHandler *Handler      // PahoRPC request handler
+	timeout        time.Duration // request timeout
 }
 
 // ClientID the client is authenticated as to the server
@@ -52,7 +55,7 @@ func (hc *MqttHubClient) ConnectWithConn(
 
 	// clients must use a unique connection ID otherwise the previous connection will be dropped
 	hostName, _ := os.Hostname()
-	connectID := fmt.Sprintf("%s-%s-%s", hc.clientID, hostName, time.Now().Format("20060102150405.000000"))
+	connectID := fmt.Sprintf("%s-%s-%s", hc.clientID, hostName, time.Now().Format("20060102150405.000"))
 	slog.Info("ConnectWithConn", "loginID", hc.clientID, "RemoteAddr", conn.RemoteAddr(), "connectID", connectID)
 
 	// checks
@@ -109,6 +112,9 @@ func (hc *MqttHubClient) ConnectWithConn(
 	}
 	hc.conn = conn
 	hc.pcl = pcl
+
+	// last, create a request handler
+	hc.requestHandler, err = NewHandler(ctx, hc.pcl)
 
 	return err
 }
@@ -186,6 +192,37 @@ func (hc *MqttHubClient) Disconnect() {
 		//hc.subscriptions = nil
 		//close(hc.messageChannel)     // end the message handler loop
 	}
+}
+
+// LoadCreateKey loads or creates a public/private key pair for the client.
+func (hc *MqttHubClient) LoadCreateKey(keyFile string) (key interface{}, pubKey string, err error) {
+	if keyFile == "" {
+		// todo: determine a default credentials folder?
+		certsDir := ""
+		keyFile = path.Join(certsDir, hc.clientID+".key")
+	}
+	// load key from file
+	keyData, err := os.ReadFile(keyFile)
+	if err == nil {
+		ecdsaKey, err := certs.PrivateKeyFromPEM(string(keyData))
+		if err == nil {
+			pubKeyData, err := x509.MarshalPKIXPublicKey(&ecdsaKey.PublicKey)
+			if err == nil {
+				pubKey = base64.StdEncoding.EncodeToString(pubKeyData)
+			}
+			// if err then the existing public key cannot be serialized.. odd
+			return ecdsaKey, pubKey, err
+		}
+		// unknown format. TBD: should it be replaced?
+		err = fmt.Errorf("unknown format for key in file '%s': %w", keyFile, err)
+		return nil, "", err
+	}
+
+	// Create a new key
+	userKP, pubKey := certs.CreateECDSAKeys()
+	// save the ECDSA key
+	err = certs.SaveKeysToPEM(userKP, keyFile)
+	return userKP, pubKey, err
 }
 
 // NewMqttHubClient creates a new instance of the hub client using the connected paho client

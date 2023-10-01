@@ -56,10 +56,10 @@ func (authnStore *AuthnFileStore) Add(clientID string, profile auth.ClientProfil
 		}
 	}
 	if !found {
-		slog.Info("Adding client " + clientID)
+		slog.Debug("Adding client " + clientID)
 		entry = auth.AuthnEntry{ClientProfile: profile}
 	} else {
-		slog.Info("Updating client " + clientID)
+		slog.Debug("Updating client " + clientID)
 		entry.ClientProfile = profile
 	}
 	entry.Updated = time.Now().Format(vocab.ISO8601Format)

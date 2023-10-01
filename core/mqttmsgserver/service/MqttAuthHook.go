@@ -129,10 +129,9 @@ func (hook *MqttAuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Pack
 	// step 2: determine what credential are provided, password or jwt
 	// simply try if jwt token validation succeeds
 	jwtString := string(pk.Connect.Password)
-	authInfo, err := hook.ValidateToken(clientID, jwtString, "", "")
+	err := hook.ValidateToken(clientID, jwtString, "", "")
 	if err == nil {
 		// a valid JWT token
-		_ = authInfo
 		return true
 	}
 	slog.Info("OnConnectAuthenticate. Not a jwt token.", "err", err.Error())
@@ -311,10 +310,10 @@ func (hook *MqttAuthHook) SetServicePermissions(
 // optionally verify the signed nonce using the client's public key.
 // This returns the auth info stored in the token.
 func (hook *MqttAuthHook) ValidateToken(
-	clientID string, token string, signedNonce string, nonce string) (
-	authInfo msgserver.ClientAuthInfo, err error) {
+	clientID string, token string, signedNonce string, nonce string) (err error) {
 
-	return jwtauth.ValidateToken(clientID, token, hook.signingKey, signedNonce, nonce)
+	_, err = jwtauth.ValidateToken(clientID, token, hook.signingKey, signedNonce, nonce)
+	return err
 }
 
 func (hook *MqttAuthHook) ValidatePassword(

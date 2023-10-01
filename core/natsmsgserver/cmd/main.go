@@ -13,6 +13,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
 	"gopkg.in/yaml.v3"
+	"log/slog"
 	"net/url"
 	"os"
 	"strconv"
@@ -77,9 +78,9 @@ func main() {
 		flag.PrintDefaults()
 
 		fmt.Println("\nCommands:")
-		fmt.Println("  config   display configuration")
-		fmt.Println("  run      run the core services")
-		fmt.Println("  setup    check and amend the configuration as needed")
+		fmt.Println("  (default) run the core services")
+		fmt.Println("  config    display configuration")
+		fmt.Println("  setup     check and amend the configuration as needed")
 		fmt.Println()
 	}
 	flag.Parse()
@@ -91,7 +92,7 @@ func main() {
 	// setup the configuration
 	hubCfg := config.NewHubCoreConfig()
 	err := hubCfg.Setup(f.Home, cfgFile, "nats", newSetup)
-	cmd := ""
+	cmd := "run"
 	if len(flag.Args()) > 0 {
 		cmd = flag.Arg(0)
 	}
@@ -126,6 +127,7 @@ func main() {
 func run(cfg *config.HubCoreConfig) error {
 	var err error
 
+	slog.Info("Starting NATS server")
 	msgServer := service.NewNatsMsgServer(&cfg.NatsServer, auth.DefaultRolePermissions)
 	serverURL, err := msgServer.Start()
 
@@ -133,7 +135,8 @@ func run(cfg *config.HubCoreConfig) error {
 		return fmt.Errorf("unable to start server: %w", err)
 	}
 
-	// nats requires brcypt passwords
+	// Start the auth service. NATS requires brcypt passwords
+	slog.Info("Starting Auth service")
 	cfg.Auth.Encryption = auth.PWHASH_BCRYPT
 	authSvc, err := authservice.StartAuthService(cfg.Auth, msgServer)
 

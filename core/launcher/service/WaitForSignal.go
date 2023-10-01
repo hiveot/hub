@@ -9,7 +9,7 @@ import (
 )
 
 // WaitForSignal waits until a TERM or INT signal is received
-// Intended for use by hub services to run until the app is done
+// Intended for use by hub plugins to run until the app is done
 func WaitForSignal() {
 
 	// catch all signals since not explicitly listing

@@ -79,17 +79,21 @@ func StartService() (svc certs.ICertService, stopFunc func()) {
 // TestMain clears the certs folder for clean testing
 func TestMain(m *testing.M) {
 	var err error
+	var stopFn func()
 	logging.SetLogging("info", "")
 	// clean start
 	_ = os.RemoveAll(testDir)
 	_ = os.MkdirAll(testDir, 0700)
+
 	// include test clients
-	_, msgServer, certBundle, err = testenv.StartTestServer(core, false)
+	_, msgServer, certBundle, stopFn, err = testenv.StartTestServer(
+		core, false, false)
 	if err != nil {
 		panic(err)
 	}
 
 	res := m.Run()
+	stopFn()
 	if res == 0 {
 		//os.RemoveAll(tempFolder)
 	}
@@ -97,7 +101,7 @@ func TestMain(m *testing.M) {
 }
 
 //func TestStartStop(t *testing.T) {
-//	svc, cancelFunc := StartService()
+//	svc, cancelFunc := StartPlugin()
 //	defer cancelFunc()
 //	require.NotNil(t, svc)
 //}

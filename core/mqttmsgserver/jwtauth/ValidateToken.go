@@ -12,8 +12,7 @@ import (
 // ValidateToken verifies the given JWT token and returns its claims.
 // optionally verify the signed nonce using the client's public key.
 // This returns the auth info stored in the token.
-func ValidateToken(clientID string, token string,
-	signingKey *ecdsa.PrivateKey, signedNonce string, nonce string) (
+func ValidateToken(clientID string, token string, signingKey *ecdsa.PrivateKey, signedNonce string, nonce string) (
 	authInfo msgserver.ClientAuthInfo, err error) {
 
 	signingKeyPub, _ := x509.MarshalPKIXPublicKey(&signingKey.PublicKey)
@@ -35,11 +34,8 @@ func ValidateToken(clientID string, token string,
 		return authInfo, fmt.Errorf("ValidateToken: client '%s' invalid JWT token or signing key: %s", clientID, err)
 	}
 
-	pubKey, _ := claims.GetSubject()
-	authInfo.PubKey = pubKey
-	if pubKey == "" {
-		return authInfo, fmt.Errorf("ValidateToken: client '%s' token has no public key", clientID)
-	}
+	tokenPubKey, _ := claims.GetSubject()
+	authInfo.PubKey = tokenPubKey
 
 	jwtClientType, _ := claims["clientType"]
 	authInfo.ClientType = jwtClientType.(string)

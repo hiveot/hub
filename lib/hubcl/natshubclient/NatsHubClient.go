@@ -9,6 +9,7 @@ import (
 	"github.com/nats-io/nkeys"
 	"log/slog"
 	"os"
+	"path"
 	"time"
 )
 
@@ -217,6 +218,35 @@ func (hc *NatsHubClient) ConnectWithPassword(password string) (err error) {
 // Disconnect from the Hub server and release all subscriptions
 func (hc *NatsHubClient) Disconnect() {
 	hc.nc.Close()
+}
+
+// LoadCreateKey loads or creates a public/private key pair for the client.
+func (hc *NatsHubClient) LoadCreateKey(keyFile string) (key interface{}, pubKey string, err error) {
+	if keyFile == "" {
+		// todo: determine a default credentials folder?
+		certsDir := ""
+		keyFile = path.Join(certsDir, hc.clientID+".key")
+	}
+	// load key from file
+	keyData, err := os.ReadFile(keyFile)
+	if err == nil {
+		userKP, err := nkeys.ParseDecoratedNKey(keyData)
+		if err == nil {
+			pubKey, err = userKP.PublicKey()
+			return userKP, pubKey, err
+		}
+		// unknown format. TBD: should it be replaced?
+		err = fmt.Errorf("unknown format for key in file '%s': %w", keyFile, err)
+		return nil, "", err
+	}
+
+	// Create a new key
+	userKP, _ := nkeys.CreateUser()
+	pubKey, _ = userKP.PublicKey()
+	// save the EDD25519 key
+	kpSeed, _ := userKP.Seed()
+	err = os.WriteFile(keyFile, kpSeed, 0400)
+	return userKP, pubKey, err
 }
 
 // Refresh an authentication token.

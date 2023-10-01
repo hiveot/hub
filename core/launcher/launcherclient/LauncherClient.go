@@ -1,6 +1,7 @@
 package launcherclient
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/api/go/certs"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/launcher"
@@ -34,7 +35,7 @@ func (cl *LauncherClient) pubReq(action string, req interface{}, resp interface{
 }
 
 // List services
-func (cl *LauncherClient) List(onlyRunning bool) ([]launcher.ServiceInfo, error) {
+func (cl *LauncherClient) List(onlyRunning bool) ([]launcher.PluginInfo, error) {
 
 	req := launcher.LauncherListReq{
 		OnlyRunning: onlyRunning,
@@ -44,37 +45,47 @@ func (cl *LauncherClient) List(onlyRunning bool) ([]launcher.ServiceInfo, error)
 	return resp.ServiceInfoList, err
 }
 
-// StartService start a service
-func (cl *LauncherClient) StartService(name string) (launcher.ServiceInfo, error) {
+// Start cannot start remotely
+func (cl *LauncherClient) Start() error {
+	return fmt.Errorf("cannot start launcher remotely")
+}
 
-	req := launcher.LauncherStartServiceReq{
+// StartPlugin requests to start a plugin
+func (cl *LauncherClient) StartPlugin(name string) (launcher.PluginInfo, error) {
+
+	req := launcher.LauncherStartPluginReq{
 		Name: name,
 	}
-	resp := launcher.LauncherStartServiceResp{}
-	err := cl.pubReq(launcher.LauncherStartServiceRPC, req, &resp)
+	resp := launcher.LauncherStartPluginResp{}
+	err := cl.pubReq(launcher.LauncherStartPluginRPC, req, &resp)
 	return resp.ServiceInfo, err
 }
 
-// StartAll starts all enabled services
+// StartAllPlugins starts all enabled plugins
 // This returns the error from the last service that could not be started
-func (cl *LauncherClient) StartAll() error {
-	err := cl.pubReq(launcher.LauncherStartAllRPC, nil, nil)
+func (cl *LauncherClient) StartAllPlugins() error {
+	err := cl.pubReq(launcher.LauncherStartAllPluginsRPC, nil, nil)
 	return err
 }
 
-// StopService stops a running service
-func (cl *LauncherClient) StopService(name string) (launcher.ServiceInfo, error) {
-	req := launcher.LauncherStopServiceReq{
+// Stop cannot stop remotely
+func (cl *LauncherClient) Stop() error {
+	return fmt.Errorf("cannot stop launcher remotely")
+}
+
+// StopPlugin stops a running plugin
+func (cl *LauncherClient) StopPlugin(name string) (launcher.PluginInfo, error) {
+	req := launcher.LauncherStopPluginReq{
 		Name: name,
 	}
-	resp := launcher.LauncherStopServiceResp{}
-	err := cl.pubReq(launcher.LauncherStopServiceRPC, req, &resp)
+	resp := launcher.LauncherStopPluginResp{}
+	err := cl.pubReq(launcher.LauncherStopPluginRPC, req, &resp)
 	return resp.ServiceInfo, err
 }
 
-// StopAll running services
-func (cl *LauncherClient) StopAll() error {
-	err := cl.pubReq(launcher.LauncherStopAllRPC, nil, nil)
+// StopAllPlugins stops running plugins
+func (cl *LauncherClient) StopAllPlugins() error {
+	err := cl.pubReq(launcher.LauncherStopAllPluginsRPC, nil, nil)
 	return err
 }
 

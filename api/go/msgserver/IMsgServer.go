@@ -101,10 +101,8 @@ type IMsgServer interface {
 	// on availability of the underlying messaging system.
 	//
 	//  clientID to whom the token is issued
-	//  pubKey of the client for extra verification
 	//  token to verify
 	//  signedNonce base64 encoded signature generated from private key and nonce field
 	//  nonce the server provided field used to sign the token.
-	//ValidateToken(clientID string, pubKey string,
-	//	token string, signedNonce string, nonce string) (ClientAuthInfo,error)
+	ValidateToken(clientID string, token string, signedNonce string, nonce string) error
 }

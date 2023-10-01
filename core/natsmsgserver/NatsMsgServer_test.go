@@ -1,4 +1,4 @@
-package service_test
+package natsmsgserver_test
 
 import (
 	"github.com/hiveot/hub/api/go/auth"

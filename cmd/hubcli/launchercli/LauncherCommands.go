@@ -109,7 +109,7 @@ func HandleStartService(serviceName string, hc hubclient.IHubClient) error {
 	lc := launcherclient.NewLauncherClient(hc)
 
 	if serviceName == "all" {
-		err := lc.StartAll()
+		err := lc.StartAllPlugins()
 
 		if err != nil {
 			//fmt.Println("Connect all failed with: ", err)
@@ -117,7 +117,7 @@ func HandleStartService(serviceName string, hc hubclient.IHubClient) error {
 		}
 		fmt.Printf("All services started\n")
 	} else {
-		info, err2 := lc.StartService(serviceName)
+		info, err2 := lc.StartPlugin(serviceName)
 
 		if err2 != nil {
 			//fmt.Println("Connect failed:", err2)
@@ -140,7 +140,7 @@ func HandleStopService(serviceName string, hc hubclient.IHubClient) error {
 	lc := launcherclient.NewLauncherClient(hc)
 
 	if serviceName == "all" {
-		err := lc.StopAll()
+		err := lc.StopAllPlugins()
 
 		if err != nil {
 			fmt.Println("Stop all failed:", err)
@@ -149,7 +149,7 @@ func HandleStopService(serviceName string, hc hubclient.IHubClient) error {
 		fmt.Printf("All services stopped\n")
 
 	} else {
-		info, err := lc.StopService(serviceName)
+		info, err := lc.StopPlugin(serviceName)
 		if err != nil {
 			fmt.Printf("Stop %s failed: %s\n", serviceName, err)
 			return err

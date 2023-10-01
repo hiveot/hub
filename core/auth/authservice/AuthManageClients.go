@@ -46,7 +46,18 @@ func (svc *AuthManageClients) AddDevice(
 		return "", err
 	}
 	err = svc.onChange()
-	return pubKey, err
+
+	// generate a device authentication token
+	if pubKey != "" {
+		authInfo := msgserver.ClientAuthInfo{
+			ClientID:   deviceID,
+			ClientType: auth.ClientTypeUser,
+			PubKey:     pubKey,
+			Role:       auth.ClientRoleService,
+		}
+		token, err = svc.msgServer.CreateToken(authInfo)
+	}
+	return token, err
 }
 
 // AddService adds or updates a service with the admin role
@@ -70,8 +81,16 @@ func (svc *AuthManageClients) AddService(
 	if err != nil {
 		return "", err
 	}
-	// the token will be applied when authorization (group membership) is set
-	token = pubKey
+	// generate a service authentication token
+	if pubKey != "" {
+		authInfo := msgserver.ClientAuthInfo{
+			ClientID:   serviceID,
+			ClientType: auth.ClientTypeUser,
+			PubKey:     pubKey,
+			Role:       auth.ClientRoleService,
+		}
+		token, err = svc.msgServer.CreateToken(authInfo)
+	}
 	err = svc.onChange()
 	return token, err
 }
@@ -107,8 +126,16 @@ func (svc *AuthManageClients) AddUser(
 			slog.Error(err.Error())
 		}
 	}
-	// the token will be applied when authorization (group membership) is set
-	token = pubKey
+	// generate a user token to store
+	if pubKey != "" {
+		authInfo := msgserver.ClientAuthInfo{
+			ClientID:   userID,
+			ClientType: auth.ClientTypeUser,
+			PubKey:     pubKey,
+			Role:       role,
+		}
+		token, err = svc.msgServer.CreateToken(authInfo)
+	}
 	if err == nil {
 		err = svc.onChange()
 	}

@@ -125,11 +125,11 @@ make hub
 After the build is successful, the distribution files can be found in the 'dist' folder that can be deployed to the installation directory.
 
 ```md
-dist / bin             - application binaries
-dist / bin / plugins   - plugin binaries
-dist / certs           - CA and server certificate; authentication private keys
-dist / config          - core and plugin configuration files
-dist / stores          - plugin data storage directory
+dist / bin       - core application binaries
+dist / plugins   - plugin binaries
+dist / certs     - CA and server certificate; authentication private keys
+dist / config    - core and plugin configuration files
+dist / stores    - plugin data storage directory
 ```
 
 

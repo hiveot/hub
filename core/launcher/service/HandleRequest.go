@@ -26,37 +26,37 @@ func (svc *LauncherService) HandleRequest(msg *hubclient.RequestMessage) error {
 			err = msg.SendReply(reply, nil)
 		}
 		return err
-	case launcher.LauncherStartServiceRPC:
-		req := launcher.LauncherStartServiceReq{}
+	case launcher.LauncherStartPluginRPC:
+		req := launcher.LauncherStartPluginReq{}
 		err := ser.Unmarshal(msg.Payload, &req)
 		if err != nil {
 			return err
 		}
-		serviceInfo, err := svc.StartService(req.Name)
+		serviceInfo, err := svc.StartPlugin(req.Name)
 		if err == nil {
-			resp := launcher.LauncherStartServiceResp{ServiceInfo: serviceInfo}
+			resp := launcher.LauncherStartPluginResp{ServiceInfo: serviceInfo}
 			reply, _ := ser.Marshal(&resp)
 			err = msg.SendReply(reply, nil)
 		}
 		return err
-	case launcher.LauncherStartAllRPC:
-		err := svc.StartAll()
+	case launcher.LauncherStartAllPluginsRPC:
+		err := svc.StartAllPlugins()
 		return err
-	case launcher.LauncherStopServiceRPC:
-		req := launcher.LauncherStopServiceReq{}
+	case launcher.LauncherStopPluginRPC:
+		req := launcher.LauncherStopPluginReq{}
 		err := ser.Unmarshal(msg.Payload, &req)
 		if err != nil {
 			return err
 		}
-		serviceInfo, err := svc.StopService(req.Name)
+		serviceInfo, err := svc.StopPlugin(req.Name)
 		if err == nil {
-			resp := launcher.LauncherStopServiceResp{ServiceInfo: serviceInfo}
+			resp := launcher.LauncherStopPluginResp{ServiceInfo: serviceInfo}
 			reply, _ := ser.Marshal(&resp)
 			err = msg.SendReply(reply, nil)
 		}
 		return err
-	case launcher.LauncherStopAllRPC:
-		err := svc.StopAll()
+	case launcher.LauncherStopAllPluginsRPC:
+		err := svc.StopAllPlugins()
 		if err == nil {
 			err = msg.SendAck()
 		}

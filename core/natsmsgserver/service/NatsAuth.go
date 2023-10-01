@@ -331,7 +331,7 @@ func (srv *NatsMsgServer) SetServicePermissions(
 //
 // Verifying the signedNonce is optional. Use "" to ignore.
 func (srv *NatsMsgServer) ValidateJWTToken(
-	clientID string, pubKey string, tokenString string, signedNonce string, nonce string) error {
+	clientID string, tokenString string, signedNonce string, nonce string) error {
 
 	arc, err := jwt.DecodeUserClaims(tokenString)
 	if err != nil {
@@ -449,13 +449,13 @@ func (srv *NatsMsgServer) ValidateNKey(
 //
 // Verifying the signedNonce is optional. Use "" to ignore.
 func (srv *NatsMsgServer) ValidateToken(
-	clientID string, pubKey string, token string, signedNonce string, nonce string) (err error) {
+	clientID string, token string, signedNonce string, nonce string) (err error) {
 	if srv.NatsOpts.AuthCallout == nil {
 		// nkeys only
-		if token == "" || pubKey != token {
+		if token == "" || clientID == "" {
 			return fmt.Errorf("invalid token for client '%s'", clientID)
 		}
 		return nil
 	}
-	return srv.ValidateJWTToken(clientID, pubKey, token, signedNonce, nonce)
+	return srv.ValidateJWTToken(clientID, token, signedNonce, nonce)
 }

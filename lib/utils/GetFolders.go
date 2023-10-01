@@ -7,7 +7,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 )
 
 type AppDirs struct {
@@ -27,20 +26,20 @@ type AppDirs struct {
 //
 // The default 'user based' structure is:
 //
-//	home
-//	  |- bin                Application cli and launcher binaries
-//	      |- plugins        Plugin binaries
-//	  |- config             Service configuration yaml files
-//	  |- certs              CA and service certificates
-//	  |- logs               Logging output
-//	  |- run                PID files and sockets
-//	  |- stores
-//	      |- {service}      Store for service
+//		home
+//		  |- bin                Core binaries
+//	   |- plugins            Plugin binaries
+//		  |- config             Service configuration yaml files
+//		  |- certs              CA and service certificates
+//		  |- logs               Logging output
+//		  |- run                PID files and sockets
+//		  |- stores
+//		      |- {service}      Store for service
 //
 // The system based folder structure is:
 //
 //	/opt/hiveot/bin            Application binaries, cli and launcher
-//	             |-- plugins   Plugin binaries
+//	           /plugins        Plugin binaries
 //	/etc/hiveot/conf.d         Service configuration yaml files
 //	/etc/hiveot/certs          CA and service certificates
 //	/var/log/hiveot            Logging output
@@ -52,21 +51,14 @@ type AppDirs struct {
 //
 //	homeFolder is optional in order to override the auto detected paths. Use "" for defaults.
 func GetFolders(homeFolder string, useSystem bool) AppDirs {
-	// note that filepath should support windows
+	// default home folder is the parent of the core or plugin binary
 	if homeFolder == "" {
 		cwd := filepath.Dir(os.Args[0])
-		if strings.HasSuffix(cwd, "plugins") {
-			homeFolder = filepath.Join(cwd, "..")
-		} else if strings.HasSuffix(cwd, "bin") {
-			homeFolder = filepath.Join(cwd, "..")
-		} else {
-			// not sure where home is. For now use the parent
-			homeFolder = filepath.Join(cwd, "..")
-		}
+		homeFolder = filepath.Join(cwd, "..")
 	}
 	//slog.Infof("homeFolder is '%s", homeFolder)
 	binFolder := filepath.Join(homeFolder, "bin")
-	pluginsFolder := filepath.Join(binFolder, "plugins")
+	pluginsFolder := filepath.Join(homeFolder, "plugins")
 	configFolder := filepath.Join(homeFolder, "config")
 	certsFolder := filepath.Join(homeFolder, "certs")
 	logsFolder := filepath.Join(homeFolder, "logs")

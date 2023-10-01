@@ -2,7 +2,7 @@
 DIST_FOLDER=./dist
 BUILD_FOLDER=./build
 INSTALL_HOME=~/bin/hiveot
-PLUGINS_HOME=$(INSTALL_HOME)/bin/plugins
+PLUGINS_HOME=$(INSTALL_HOME)/plugins
 .DEFAULT_GOAL := help
 
 .FORCE:

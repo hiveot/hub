@@ -44,7 +44,7 @@ func (svc *AuthManageClients) LoadCreateUserKey(keyFile string) (key interface{}
 		if err == nil {
 			pubKey = base64.StdEncoding.EncodeToString(pubKeyData)
 		}
-		// the existing public key cannot be serialized.. odd
+		// if err then the existing public key cannot be serialized.. odd
 		return ecdsaKey, pubKey, err
 	}
 	// Is this an nkey?

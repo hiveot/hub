@@ -83,7 +83,7 @@ func (v *NatsCalloutVerifier) VerifyToken(claims *jwt.AuthorizationRequestClaims
 	//requestNonce := claims.RequestNonce
 	requestNonce := claims.ClientInformation.Nonce
 	signedNonce := claims.ConnectOptions.SignedNonce
-	err := v.msgServer.ValidateToken(clientID, "", token, signedNonce, requestNonce)
+	err := v.msgServer.ValidateToken(clientID, token, signedNonce, requestNonce)
 	if err != nil {
 		return clientID, fmt.Errorf("invalid token: %w", err)
 	}

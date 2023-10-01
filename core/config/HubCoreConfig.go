@@ -193,7 +193,7 @@ func (cfg *HubCoreConfig) SetupCerts(certsDir string) {
 		}
 	}
 
-	// 3: Always create a new server cert and private key
+	// 3: Create a new server cert and private key also used for signing
 	serverCertPath := cfg.ServerCertFile
 	if !path.IsAbs(serverCertPath) {
 		serverCertPath = path.Join(certsDir, serverCertPath)
@@ -202,12 +202,19 @@ func (cfg *HubCoreConfig) SetupCerts(certsDir string) {
 	if !path.IsAbs(serverKeyPath) {
 		serverKeyPath = path.Join(certsDir, serverKeyPath)
 	}
-	cfg.ServerKey, _ = certs.CreateECDSAKeys()
+	// load the server key if available
+	if cfg.ServerKey == nil {
+		cfg.ServerKey, _ = certs.LoadKeysFromPEM(serverKeyPath)
+	}
+	if cfg.ServerKey == nil {
+		cfg.ServerKey, _ = certs.CreateECDSAKeys()
+	}
 	hostName, _ := os.Hostname()
 	serverID := "nats-" + hostName
 	ou := "hiveot"
 	names := []string{"localhost", "127.0.0.1", hostName}
-	// the server cert is valid for 1 year, after which a restart is needed.
+
+	// regenerate a new server cert, valid for 1 year, after which a restart is needed.
 	serverCert, err := certs.CreateServerCert(
 		serverID, ou, 365, &cfg.ServerKey.PublicKey, names, cfg.CaCert, cfg.CaKey)
 	if err != nil {

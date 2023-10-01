@@ -8,6 +8,7 @@ import (
 	auth2 "github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/auth/authstore"
 	"log/slog"
+	"os"
 )
 
 // AuthService handles authentication and authorization requests
@@ -85,31 +86,25 @@ func (svc *AuthService) Start() (err error) {
 		[]string{auth.ClientRoleViewer, auth.ClientRoleOperator, auth.ClientRoleManager, auth.ClientRoleAdmin})
 
 	// ensure the launcher client exists and has a key and service token
+	slog.Info("Start (auth). Adding launcher user", "keyfile", svc.cfg.LauncherKeyFile)
 	_, launcherKeyPub, _ := svc.MngClients.LoadCreateUserKey(svc.cfg.LauncherKeyFile)
-	svc.store.Add(auth.DefaultLauncherServiceID, auth.ClientProfile{
-		ClientID:    auth.DefaultLauncherServiceID,
-		ClientType:  auth.ClientTypeService,
-		DisplayName: "Launcher Service",
-		PubKey:      launcherKeyPub,
-		// TODO: what mechanism refreshes the launcher token?
-		TokenValidityDays: auth.DefaultServiceTokenValidityDays,
-		Role:              auth.ClientRoleService,
-	})
-	_, err = svc.MngClients.LoadCreateUserToken(auth.DefaultLauncherServiceID, svc.cfg.LauncherTokenFile)
+	token, err := svc.MngClients.AddService(auth.DefaultLauncherServiceID, "Launcher Service", launcherKeyPub)
+	if err == nil {
+		// remove the readonly token file if it already exists
+		_ = os.Remove(svc.cfg.LauncherTokenFile)
+		err = os.WriteFile(svc.cfg.LauncherTokenFile, []byte(token), 0400)
+	}
 
 	// ensure the admin user exists and has a user token
+	slog.Info("Start (auth). Adding admin user", "keyfile", svc.cfg.AdminUserKeyFile)
 	_, adminKeyPub, _ := svc.MngClients.LoadCreateUserKey(svc.cfg.AdminUserKeyFile)
-	svc.store.Add(auth.DefaultAdminUserID, auth.ClientProfile{
-		ClientID:    auth.DefaultAdminUserID,
-		ClientType:  auth.ClientTypeUser,
-		DisplayName: "Administrator",
-		PubKey:      adminKeyPub,
-		// TODO: what mechanism refreshes the admin token without a password?
-		TokenValidityDays: auth.DefaultUserTokenValidityDays,
-		Role:              auth.ClientRoleAdmin,
-	})
-	_, err = svc.MngClients.LoadCreateUserToken(auth.DefaultAdminUserID, svc.cfg.AdminUserTokenFile)
-
+	token, err = svc.MngClients.AddUser(
+		auth.DefaultAdminUserID, "Administrator", "", adminKeyPub, auth.ClientRoleAdmin)
+	if err == nil {
+		// remove the readonly token file if it already exists
+		_ = os.Remove(svc.cfg.AdminUserTokenFile)
+		err = os.WriteFile(svc.cfg.AdminUserTokenFile, []byte(token), 0400)
+	}
 	return err
 }
 
@@ -131,11 +126,12 @@ func (svc *AuthService) Stop() {
 	svc.store.Close()
 }
 
-// NewAuthnService creates an authentication service instance
+// NewAuthService creates an authentication service instance
 //
 //	store is the client store to store authentication clients
 //	msgServer used to apply changes to users, devices and services
-func NewAuthnService(authConfig auth2.AuthConfig, store auth.IAuthnStore, msgServer msgserver.IMsgServer) *AuthService {
+func NewAuthService(authConfig auth2.AuthConfig,
+	store auth.IAuthnStore, msgServer msgserver.IMsgServer) *AuthService {
 
 	authnSvc := &AuthService{
 		cfg:       authConfig,
@@ -151,7 +147,7 @@ func StartAuthService(cfg auth2.AuthConfig, msgServer msgserver.IMsgServer) (*Au
 
 	// nats requires bcrypt passwords
 	authStore := authstore.NewAuthnFileStore(cfg.PasswordFile, cfg.Encryption)
-	authnSvc := NewAuthnService(cfg, authStore, msgServer)
+	authnSvc := NewAuthService(cfg, authStore, msgServer)
 	err := authnSvc.Start()
 	if err != nil {
 		panic("Cant start Auth service: " + err.Error())

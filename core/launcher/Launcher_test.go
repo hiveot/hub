@@ -1,7 +1,6 @@
 package launcher_test
 
 import (
-	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/launcher"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/launcher/config"
@@ -22,28 +21,28 @@ import (
 )
 
 var core = "mqtt"
-var homeFolder = "/tmp"
-var logFolder = "/tmp"
+var homeDir = "/tmp/test-launcher"
+var logDir = "/tmp/test-launcher"
 
 // the following are set by the testmain
 var msgServer msgserver.IMsgServer
 
-var testClients = []msgserver.ClientAuthInfo{{
-	ClientID:   launcher.ServiceName,
-	ClientType: auth.ClientTypeService,
-	Role:       auth.ClientRoleService,
-}, {
-	ClientID:   testenv.TestAdminUserID,
-	ClientType: auth.ClientTypeUser,
-	Role:       auth.ClientRoleAdmin,
-}}
+//var testClients = []msgserver.ClientAuthInfo{{
+//	ClientID:   launcher.ServiceName,
+//	ClientType: auth.ClientTypeService,
+//	Role:       auth.ClientRoleService,
+//}, {
+//	ClientID:   testenv.TestAdminUserID,
+//	ClientType: auth.ClientTypeUser,
+//	Role:       auth.ClientRoleAdmin,
+//}}
 
 func StartService() (l launcher.ILauncher, stopFn func()) {
 
-	err := msgServer.ApplyAuth(testClients)
-	if err != nil {
-		panic(err)
-	}
+	//err := msgServer.ApplyAuth(testClients)
+	//if err != nil {
+	//	panic(err)
+	//}
 	hc1, err := msgServer.ConnectInProc(launcher.ServiceName)
 	if err != nil {
 		panic(err)
@@ -52,22 +51,20 @@ func StartService() (l launcher.ILauncher, stopFn func()) {
 	launcherConfig.AttachStderr = true
 	launcherConfig.AttachStdout = false
 	launcherConfig.LogPlugins = true
-	var f = utils.GetFolders(homeFolder, false)
+	var f = utils.GetFolders(homeDir, false)
 	f.Plugins = "/bin" // for /bin/yes
-	f.Logs = logFolder
+	f.Logs = logDir
+	f.Certs = homeDir
 
-	svc := service.NewLauncherService(f, launcherConfig)
+	svc := service.NewLauncherService(f, launcherConfig, hc1)
 	err = svc.Start()
 	if err != nil {
 		slog.Error(err.Error())
 		panic(err.Error())
 	}
-	err = svc.StartListener(hc1)
-
 	//--- connect the client
 	hc2, err := msgServer.ConnectInProc(testenv.TestAdminUserID)
 	cl := launcherclient.NewLauncherClient(hc2)
-
 	return cl, func() {
 		hc2.Disconnect()
 		_ = svc.Stop()
@@ -78,12 +75,17 @@ func StartService() (l launcher.ILauncher, stopFn func()) {
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
 	var err error
+	var stopFn func()
+	os.RemoveAll(homeDir)
+	os.MkdirAll(homeDir, 0700)
+
 	// include test clients
-	_, msgServer, _, err = testenv.StartTestServer(core, false)
+	_, msgServer, _, stopFn, err = testenv.StartTestServer(core, true, false)
 	if err != nil {
 		panic(err)
 	}
 	res := m.Run()
+	stopFn()
 	os.Exit(res)
 }
 
@@ -105,7 +107,7 @@ func TestList(t *testing.T) {
 
 func TestStartYes(t *testing.T) {
 	// remove logfile from previous run
-	logFile := path.Join(logFolder, "yes.log")
+	logFile := path.Join(logDir, "yes.log")
 	_ = os.Remove(logFile)
 
 	//
@@ -113,14 +115,16 @@ func TestStartYes(t *testing.T) {
 	defer cancelFunc()
 
 	assert.NotNil(t, svc)
-	info, err := svc.StartService("yes")
+	info, err := svc.StartPlugin("yes")
 	require.NoError(t, err)
 	assert.True(t, info.Running)
 	assert.True(t, info.PID > 0)
 	assert.True(t, info.StartTime != "")
 	assert.FileExists(t, logFile)
 
-	info2, err := svc.StopService("yes")
+	time.Sleep(time.Millisecond * 1)
+
+	info2, err := svc.StopPlugin("yes")
 	time.Sleep(time.Millisecond * 10)
 	assert.NoError(t, err)
 	assert.False(t, info2.Running)
@@ -132,10 +136,10 @@ func TestStartBadName(t *testing.T) {
 	defer cancelFunc()
 	assert.NotNil(t, svc)
 
-	_, err := svc.StartService("notaservicename")
+	_, err := svc.StartPlugin("notaservicename")
 	require.Error(t, err)
 	//
-	_, err = svc.StopService("notaservicename")
+	_, err = svc.StopPlugin("notaservicename")
 	require.Error(t, err)
 }
 
@@ -144,21 +148,21 @@ func TestStartStopTwice(t *testing.T) {
 	defer cancelFunc()
 	assert.NotNil(t, svc)
 
-	info, err := svc.StartService("yes")
+	info, err := svc.StartPlugin("yes")
 	assert.NoError(t, err)
-	// again
-	info2, err := svc.StartService("yes")
-	assert.Error(t, err)
+	// second start will just return
+	info2, err := svc.StartPlugin("yes")
+	assert.NoError(t, err)
 	_ = info2
 	//assert.Equal(t, info.PID, info2.PID)
 
 	// stop twice
-	info3, err := svc.StopService("yes")
+	info3, err := svc.StopPlugin("yes")
 	assert.NoError(t, err)
 	assert.False(t, info3.Running)
 	assert.Equal(t, info.PID, info3.PID)
 	// stopping is idempotent
-	info4, err := svc.StopService("yes")
+	info4, err := svc.StopPlugin("yes")
 	assert.NoError(t, err)
 	assert.False(t, info3.Running)
 	assert.Equal(t, info.PID, info4.PID)
@@ -169,7 +173,7 @@ func TestStartStopAll(t *testing.T) {
 	defer cancelFunc()
 	assert.NotNil(t, svc)
 
-	_, err := svc.StartService("yes")
+	_, err := svc.StartPlugin("yes")
 	assert.NoError(t, err)
 
 	// result should be 1 service running
@@ -178,7 +182,7 @@ func TestStartStopAll(t *testing.T) {
 	assert.Equal(t, 1, len(info))
 
 	// stopping
-	err = svc.StopAll()
+	err = svc.StopAllPlugins()
 	assert.NoError(t, err)
 
 	// result should be no service running

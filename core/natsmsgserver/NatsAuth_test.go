@@ -1,4 +1,4 @@
-package service_test
+package natsmsgserver_test
 
 import (
 	"github.com/hiveot/hub/api/go/auth"
@@ -51,6 +51,6 @@ func TestToken(t *testing.T) {
 	user2Token, err := s.CreateToken(clInfo)
 	require.NoError(t, err)
 
-	err = s.ValidateToken(user2ID, user2Pub, user2Token, "", "")
+	err = s.ValidateToken(user2ID, user2Token, "", "")
 	assert.NoError(t, err)
 }

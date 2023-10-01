@@ -1,25 +1,16 @@
-package callouthook_test
+package natsmsgserver_test
 
 import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/natsmsgserver/callouthook"
 	"github.com/hiveot/hub/lib/hubcl/natshubclient"
-	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
 	"testing"
 )
-
-// TestMain for all authn tests, setup of default folders and filenames
-func TestMain(m *testing.M) {
-	logging.SetLogging("info", "")
-	res := m.Run()
-	os.Exit(res)
-}
 
 func TestStartStopCallout(t *testing.T) {
 	// defined in NatsNKeyServer_test.go
@@ -65,7 +56,7 @@ func TestValidateToken(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = s.ValidateToken(testenv.TestDevice1ID, testenv.TestDevice1NPub, token, "", "")
+	err = s.ValidateToken(testenv.TestDevice1ID, token, "", "")
 	assert.NoError(t, err)
 }
 

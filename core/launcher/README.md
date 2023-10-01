@@ -29,8 +29,7 @@ Future:
 The launcher is a service for starting, stopping and monitoring Hub plugins follow this workflow:
 ```
 1. Launcher starts the core as per config
-   * hub core creates admin key-token credentials if they don't exist
-   * hub core creates launcher key-token credentials if they don't exist
+   * hub core creates the admin and launcher key-token credentials if they don't exist
 2. Launcher connects to the core with launcher key-token credentials
    * Connect to the auth service
    * Register service authz for launcher, limit access to admin user

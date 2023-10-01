@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/api/go/launcher"
 	"github.com/hiveot/hub/core/launcher/config"
 	"github.com/hiveot/hub/core/launcher/service"
-	"github.com/hiveot/hub/lib/hubcl"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
@@ -43,21 +42,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	// start the launcher but do not connect yet as the message bus core is a plugin.
-	svc := service.NewLauncherService(f, cfg)
+	// start the launcher but do not connect yet as the core can be started by the launcher itself.
+	// the core will generate the launcher key and token.
+	svc := service.NewLauncherService(f, cfg, nil)
 	err = svc.Start()
 	if err != nil {
 		slog.Error("Failed starting launcher: ", "err", err)
 		os.Exit(1)
 	}
-
-	// on successful start of services, connect to the hub to handle rpc requests
-	hc, err := hubcl.ConnectToHub("", launcher.ServiceName, f.Certs, "")
-	if err != nil {
-		slog.Error("Failed connecting to the Hub", "err", err)
-		os.Exit(1)
-	}
-	err = svc.StartListener(hc)
 
 	// wait for a stop signal
 	service.WaitForSignal()

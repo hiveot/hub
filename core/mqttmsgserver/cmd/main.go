@@ -13,6 +13,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
 	"gopkg.in/yaml.v3"
+	"log/slog"
 	"net/url"
 	"os"
 	"strconv"
@@ -76,9 +77,9 @@ func main() {
 		flag.PrintDefaults()
 
 		fmt.Println("\nCommands:")
-		fmt.Println("  config   display configuration")
-		fmt.Println("  run      run the core services")
-		fmt.Println("  setup    check and amend the configuration as needed")
+		fmt.Println("  (default) run the core service")
+		fmt.Println("  config    display configuration")
+		fmt.Println("  setup     check and amend the configuration as needed")
 		fmt.Println()
 	}
 	flag.Parse()
@@ -90,7 +91,7 @@ func main() {
 	// setup the configuration
 	hubCfg := config.NewHubCoreConfig()
 	err := hubCfg.Setup(f.Home, cfgFile, "mqtt", newSetup)
-	cmd := ""
+	cmd := "run"
 	if len(flag.Args()) > 0 {
 		cmd = flag.Arg(0)
 	}
@@ -125,13 +126,15 @@ func main() {
 func run(cfg *config.HubCoreConfig) error {
 	var err error
 
+	slog.Info("Starting MQTT server")
 	msgServer := service.NewMqttMsgServer(&cfg.MqttServer, auth.DefaultRolePermissions)
 	serverURL, err := msgServer.Start()
 	if err != nil {
 		return fmt.Errorf("unable to start server: %w", err)
 	}
 
-	// mqtt can use either argon2id or brcypt passwords
+	// Start the Auth service mqtt can use either argon2id or brcypt passwords
+	slog.Info("Starting Auth service")
 	cfg.Auth.Encryption = auth.PWHASH_BCRYPT
 	authSvc, err := authservice.StartAuthService(cfg.Auth, msgServer)
 	if err != nil {

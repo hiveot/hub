@@ -21,7 +21,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 )
 
-var core = "nats"
+var core = "mqtt"
 var certBundle certs.TestCertBundle
 var testDir = path.Join(os.TempDir(), "test-authn")
 var authConfig auth.AuthConfig
@@ -82,18 +82,20 @@ func startTestAuthnService() (authnSvc *authservice.AuthService, mng authapi.IAu
 // Used for all test cases in this package
 func TestMain(m *testing.M) {
 	var err error
+	var stopFn func()
 	logging.SetLogging("info", "")
 	_ = os.RemoveAll(testDir)
 	_ = os.MkdirAll(testDir, 0700)
 
-	serverURL, msgServer, certBundle, err = testenv.StartTestServer(core, false)
+	serverURL, msgServer, certBundle, stopFn, err =
+		testenv.StartTestServer(core, false, false)
 	if err != nil {
 		panic(err)
 	}
 
 	res := m.Run()
 
-	msgServer.Stop()
+	stopFn()
 	time.Sleep(time.Second)
 	if res == 0 {
 		_ = os.RemoveAll(testDir)
@@ -220,7 +222,8 @@ func TestUpdatePubKey(t *testing.T) {
 	require.NoError(t, err)
 
 	// add user to test with. don't set the public key yet
-	_, err = mng.AddUser(tu1ID, "testuser 1", tu1Pass, "", authapi.ClientRoleViewer)
+	token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, "", authapi.ClientRoleViewer)
+	assert.Empty(t, token) // without a public key there is no token
 	require.NoError(t, err)
 
 	// 1. connect to the added user using its password
@@ -262,6 +265,8 @@ func TestLoginRefresh(t *testing.T) {
 	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, tu1KeyPub, authapi.ClientRoleViewer)
 	require.NoError(t, err)
 	assert.NotEmpty(t, tu1Token)
+	err = msgServer.ValidateToken(tu1ID, tu1Token, "", "")
+	require.NoError(t, err)
 
 	// 1. connect to the added user using its password
 	hc1 := hubcl.NewHubClient(serverURL, tu1ID, tu1Key, certBundle.CaCert, core)

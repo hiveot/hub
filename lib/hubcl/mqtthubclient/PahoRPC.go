@@ -34,7 +34,7 @@ func NewHandler(ctx context.Context, c *paho.Client) (*Handler, error) {
 		c:          c,
 		correlData: make(map[string]chan *paho.Publish),
 	}
-
+	// FIXME: HS: RegisterHandler router.go:52 gets deadlocked
 	c.Router.RegisterHandler(fmt.Sprintf(InboxTopicFormat, c.ClientID), h.responseHandler)
 
 	inboxTopic := fmt.Sprintf(InboxTopicFormat, c.ClientID)
@@ -79,14 +79,13 @@ func (h *Handler) Request(ctx context.Context, pb *paho.Publish) (*paho.Publish,
 	}
 
 	pb.Properties.CorrelationData = []byte(cID)
-	//pb.Properties.ContentType = "json"
 	pb.Properties.User.Add("test2", "test2")
 	//HS 2023-09-10: allow override of response topic format
 	if pb.Properties.ResponseTopic == "" {
 		pb.Properties.ResponseTopic = fmt.Sprintf(InboxTopicFormat, h.c.ClientID)
 	}
 	pb.Retain = false
-
+	slog.Info("Handler: publish request", "topic", pb.Topic)
 	pr, err := h.c.Publish(ctx, pb)
 	_ = pr
 	if err != nil {
@@ -111,6 +110,7 @@ func (h *Handler) responseHandler(pb *paho.Publish) {
 	if rChan == nil {
 		return
 	}
+	slog.Info("Handler: received response", "topic", pb.Topic)
 
 	rChan <- pb
 }

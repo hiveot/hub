@@ -106,6 +106,18 @@ type IHubClient interface {
 	// ConnectWithPassword connects to the messaging server using password authentication
 	ConnectWithPassword(password string) error
 
+	// LoadCreateKey loads or creates a public/private key pair for the client.
+	// If the key cannot be loaded a new key is create and written to the key file.
+	//
+	// If no keyfile is given then store the key in a file named {clientID}.key
+	// The default location is {home}/certs/{clientID}.key.
+	//
+	// The key can be used with ConnectToHub.
+	//
+	// This returns the created key, its public key string or an error.
+	// The key format depends on the hub used.
+	LoadCreateKey(keyFile string) (key interface{}, pubKey string, err error)
+
 	// Disconnect from the hub server
 	Disconnect()
 

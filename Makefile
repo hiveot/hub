@@ -1,7 +1,7 @@
 # Makefile to build and test the HiveOT Hub
 DIST_FOLDER=./dist
 BIN_FOLDER=./dist/bin
-PLUGINS_FOLDER=./dist/bin/plugins
+PLUGINS_FOLDER=./dist/plugins
 INSTALL_HOME=~/bin/hiveot
 .DEFAULT_GOAL := help
 
@@ -11,14 +11,17 @@ all: core plugins hubcli  ## Build APIs, CLI, Hub services
 
 core: natscore mqttcore  launcher certs ## Build core services including mqttcore and natscore
 
+# natscore includes the embedded auth service
 natscore:
 	go build -o $(BIN_FOLDER)/$@ core/natsmsgserver/cmd/main.go
 
+# mqttcore includes the embedded auth service
 mqttcore:
 	go build -o $(BIN_FOLDER)/$@ core/mqttmsgserver/cmd/main.go
 
 launcher: .FORCE ## Build the hub launcher service
 	go build -o $(BIN_FOLDER)/$@ core/$@/cmd/main.go
+	mkdir -p $(DIST_FOLDER)/config
 	cp core/$@/config/*.yaml $(DIST_FOLDER)/config
 
 certs: .FORCE ## Build the certificate management service
@@ -46,7 +49,7 @@ clean: ## Clean distribution files
 	go clean -cache -testcache -modcache
 	rm -rf $(DIST_FOLDER)
 	mkdir -p $(BIN_FOLDER)
-	mkdir -p $(BIN_FOLDER)/plugins
+	mkdir -p $(DIST_FOLDER)/plugins
 	mkdir -p $(DIST_FOLDER)/certs
 	mkdir -p $(DIST_FOLDER)/config
 	mkdir -p $(DIST_FOLDER)/logs
@@ -60,13 +63,14 @@ help: ## Show this help
 
 install:  ## core plugins ## build and install the services
 	mkdir -p $(INSTALL_HOME)/bin
-	mkdir -p $(INSTALL_HOME)/bin/plugins
+	mkdir -p $(INSTALL_HOME)/plugins
 	mkdir -p $(INSTALL_HOME)/certs
 	mkdir -p $(INSTALL_HOME)/config
 	mkdir -p $(INSTALL_HOME)/logs
 	mkdir -p $(INSTALL_HOME)/stores
 	mkdir -p $(INSTALL_HOME)/run
 	cp -ar $(BIN_FOLDER)/* $(INSTALL_HOME)/bin
+	cp -ar $(PLUGINS_FOLDER)/* $(INSTALL_HOME)/plugins
 	cp -n $(DIST_FOLDER)/config/*.yaml $(INSTALL_HOME)/config/
 
 test: core  ## Run tests (stop on first error, don't run parallel)
