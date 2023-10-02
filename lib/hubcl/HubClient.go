@@ -46,7 +46,7 @@ func NewHubClient(url string, clientID string, kp interface{}, caCert *x509.Cert
 	return mqtthubclient.NewMqttHubClient(url, clientID, key, caCert)
 }
 
-// ConnectToHub helper function to connect to the Hub using token and key files.
+// ConnectToHub helper function to connect to the Hub using existing token and key files.
 // This assumes that CA cert, user keys and auth token have already been set up.
 //
 // The format for the key file is {clientID}.nkey for nats and {clientID}Key.pem for mqtt.
@@ -82,10 +82,10 @@ func ConnectToHub(fullURL string, clientID string, certDir string, core string) 
 	tokenFile = path.Join(certDir, clientID+".token")
 	keyFile = path.Join(certDir, clientID+".key")
 	if core == "nats" || strings.HasPrefix(fullURL, "nats") {
-		// nats with nkeys. The key filename format is "{serviceName}.nkey"
+		// nats with nkeys. The key filename format is "{serviceID}.key"
 		hc = natshubclient.NewNatsHubClient(fullURL, clientID, nil, caCert)
 	} else {
-		// mqtt with ecdsa keys. The key filename format is "{serviceName}.key|token"
+		// mqtt with ecdsa keys. The key filename format is "{serviceID}.key|token"
 		hc = mqtthubclient.NewMqttHubClient(fullURL, clientID, nil, caCert)
 	}
 	// 4. Connect and auth with token

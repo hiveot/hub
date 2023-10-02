@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/mqttmsgserver"
+	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubcl/mqtthubclient"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/listeners"
@@ -45,15 +46,16 @@ func (srv *MqttMsgServer) ClientURL() string {
 }
 
 // ConnectInProc establishes a connection to the server for core services.
-// This connects in-process using the service key.
+// This connects in-process using a generated key and token.
 // Intended for the core services to connect to the local server.
 //
 //	serviceID of the connecting service. The ID must be a known ID
 //	token is the service authentication token
 func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hc hubclient.IHubClient, err error) {
 
-	hubCl := mqtthubclient.NewMqttHubClient(
-		"", serviceID, srv.Config.CoreServiceKP, nil)
+	kp, kpPub := certs.CreateECDSAKeys()
+	_ = kpPub
+	hubCl := mqtthubclient.NewMqttHubClient("", serviceID, kp, nil)
 
 	conn, err := net.Dial("unix", srv.Config.InProcUDSName)
 	if err != nil {
@@ -62,9 +64,10 @@ func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hc hubclient.IHubClie
 	safeConn := packets.NewThreadSafeConn(conn)
 	// use an on-the-fly created token for the connection
 	token, err := srv.CreateToken(msgserver.ClientAuthInfo{
-		ClientID:     serviceID,
-		ClientType:   auth.ClientTypeService,
-		PubKey:       srv.Config.CoreServicePub,
+		ClientID:   serviceID,
+		ClientType: auth.ClientTypeService,
+		//PubKey:       srv.Config.CoreServicePub,
+		PubKey:       kpPub,
 		PasswordHash: "",
 		Role:         auth.ClientRoleAdmin,
 	})

@@ -1,8 +1,8 @@
 package launcher_test
 
 import (
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/launcher"
-	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/launcher/config"
 	"github.com/hiveot/hub/core/launcher/launcherclient"
 	"github.com/hiveot/hub/core/launcher/service"
@@ -25,7 +25,7 @@ var homeDir = "/tmp/test-launcher"
 var logDir = "/tmp/test-launcher"
 
 // the following are set by the testmain
-var msgServer msgserver.IMsgServer
+var testServer *testenv.TestServer
 
 //var testClients = []msgserver.ClientAuthInfo{{
 //	ClientID:   launcher.ServiceName,
@@ -38,12 +38,10 @@ var msgServer msgserver.IMsgServer
 //}}
 
 func StartService() (l launcher.ILauncher, stopFn func()) {
+	const launcherID = launcher.ServiceName + "-test"
+	const adminID = "admin"
 
-	//err := msgServer.ApplyAuth(testClients)
-	//if err != nil {
-	//	panic(err)
-	//}
-	hc1, err := msgServer.ConnectInProc(launcher.ServiceName)
+	hc1, err := testServer.AddConnectClient(launcherID, auth.ClientTypeService, auth.ClientRoleService)
 	if err != nil {
 		panic(err)
 	}
@@ -62,9 +60,9 @@ func StartService() (l launcher.ILauncher, stopFn func()) {
 		slog.Error(err.Error())
 		panic(err.Error())
 	}
-	//--- connect the client
-	hc2, err := msgServer.ConnectInProc(testenv.TestAdminUserID)
-	cl := launcherclient.NewLauncherClient(hc2)
+	//--- connect the launcher user
+	hc2, err := testServer.AddConnectClient(adminID, auth.ClientTypeUser, auth.ClientRoleAdmin)
+	cl := launcherclient.NewLauncherClient(launcherID, hc2)
 	return cl, func() {
 		hc2.Disconnect()
 		_ = svc.Stop()
@@ -75,17 +73,17 @@ func StartService() (l launcher.ILauncher, stopFn func()) {
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
 	var err error
-	var stopFn func()
-	os.RemoveAll(homeDir)
-	os.MkdirAll(homeDir, 0700)
+	_ = os.RemoveAll(homeDir)
+	_ = os.MkdirAll(homeDir, 0700)
 
 	// include test clients
-	_, msgServer, _, stopFn, err = testenv.StartTestServer(core, true, false)
+	testServer, err = testenv.StartTestServer(core)
 	if err != nil {
 		panic(err)
 	}
+	_ = testServer.StartAuth()
 	res := m.Run()
-	stopFn()
+	testServer.Stop()
 	os.Exit(res)
 }
 

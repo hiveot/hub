@@ -68,7 +68,7 @@ func HandleListServices(hc hubclient.IHubClient) error {
 	if hc == nil {
 		return fmt.Errorf("no Hub connection")
 	}
-	lc := launcherclient.NewLauncherClient(hc)
+	lc := launcherclient.NewLauncherClient("", hc)
 
 	fmt.Println("Service                      Size   Starts       PID    CPU   Memory   Status    Last Error")
 	fmt.Println("-------                      ----   ------   -------   ----   ------   -------   -----------")
@@ -106,7 +106,7 @@ func HandleStartService(serviceName string, hc hubclient.IHubClient) error {
 	if hc == nil {
 		return fmt.Errorf("no Hub connection")
 	}
-	lc := launcherclient.NewLauncherClient(hc)
+	lc := launcherclient.NewLauncherClient("", hc)
 
 	if serviceName == "all" {
 		err := lc.StartAllPlugins()
@@ -137,7 +137,7 @@ func HandleStopService(serviceName string, hc hubclient.IHubClient) error {
 	if hc == nil {
 		return fmt.Errorf("no Hub connection")
 	}
-	lc := launcherclient.NewLauncherClient(hc)
+	lc := launcherclient.NewLauncherClient("", hc)
 
 	if serviceName == "all" {
 		err := lc.StopAllPlugins()

@@ -127,7 +127,8 @@ func (svc *LauncherService) StartPlugin(pluginID string) (info launcher.PluginIn
 		if err != nil {
 			slog.Error("Unable to add plugin to hub and create credentials. Continuing anyways", "err", err)
 		} else {
-			// save the auth token
+			// remove old and save new auth token
+			_ = os.Remove(tokenPath)
 			err = os.WriteFile(tokenPath, []byte(token), 0400)
 		}
 	}

@@ -6,14 +6,15 @@ import (
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/launcher"
 	"github.com/hiveot/hub/lib/ser"
+	"os"
 )
 
 // LauncherClient is a marshaller for service messages using a provided hub connection.
 // This uses the default serializer to marshal and unmarshal messages.
 type LauncherClient struct {
-	// ID of the certs service that handles the requests
-	serviceID string
-	hc        hubclient.IHubClient
+	// ID of the launcher service that handles the requests
+	launcherID string
+	hc         hubclient.IHubClient
 }
 
 // helper for publishing an rpc request to the launcher service
@@ -23,7 +24,7 @@ func (cl *LauncherClient) pubReq(action string, req interface{}, resp interface{
 		msg, _ = ser.Marshal(req)
 	}
 
-	data, err := cl.hc.PubServiceRPC(cl.serviceID, certs.CertsManageCertsCapability, action, msg)
+	data, err := cl.hc.PubServiceRPC(cl.launcherID, certs.CertsManageCertsCapability, action, msg)
 	if err != nil {
 		return err
 	}
@@ -90,13 +91,20 @@ func (cl *LauncherClient) StopAllPlugins() error {
 }
 
 // NewLauncherClient returns a launcher service client
+// The launcherID is the ID of the launcher instance to connect to. This is only
+// needed when connecting to a launcher on a different host. When not provided,
+// this uses the local launcher with the ID launcher-{hostname}.
 //
-//	hc is the hub client connection to use
-func NewLauncherClient(hc hubclient.IHubClient) *LauncherClient {
-	serviceID := launcher.ServiceName
+//	launcherID is the optional ID of the launcher to use. Default is 'launcher-{hostname}'
+//	hc is the hub client connection to use.
+func NewLauncherClient(launcherID string, hc hubclient.IHubClient) *LauncherClient {
+	if launcherID == "" {
+		hostName, _ := os.Hostname()
+		launcherID = launcher.ServiceName + "-" + hostName
+	}
 	cl := LauncherClient{
-		hc:        hc,
-		serviceID: serviceID,
+		hc:         hc,
+		launcherID: launcherID,
 	}
 	return &cl
 }

@@ -44,8 +44,7 @@ type IMsgServer interface {
 	//  clients is the list of registered users and sources with their credentials
 	ApplyAuth(clients []ClientAuthInfo) error
 
-	// ConnectInProc creates an in-process client connection to the server
-	// using built-in credentials.
+	// ConnectInProc creates an in-process client connection to the server using a generated token for the serviceID.
 	//
 	// Optionally provide an alternative key-pair, or use nil for the predefined core service key.
 	// the provided keypair is that of a server generated keypair. See CreateKeys()

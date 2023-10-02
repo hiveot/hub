@@ -36,8 +36,8 @@ type MqttServerConfig struct {
 	ServerTLS *tls.Certificate  `yaml:"-"` // generated
 
 	// Core Service credentials for use by in-proc connection
-	CoreServiceKP  *ecdsa.PrivateKey `yaml:"-"` // generated
-	CoreServicePub string            `yaml:"-"` // generated
+	//CoreServiceKP  *ecdsa.PrivateKey `yaml:"-"` // generated
+	//CoreServicePub string            `yaml:"-"` // generated
 
 	// The following options are JWT specific
 }
@@ -101,9 +101,9 @@ func (cfg *MqttServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 
 	// Step 4: generate admin keys and token
 	// core service keys are always regenerated and not saved
-	if cfg.CoreServiceKP == nil {
-		cfg.CoreServiceKP, cfg.CoreServicePub = certs.CreateECDSAKeys()
-	}
+	//if cfg.CoreServiceKP == nil {
+	//	cfg.CoreServiceKP, cfg.CoreServicePub = certs.CreateECDSAKeys()
+	//}
 
 	return nil
 }

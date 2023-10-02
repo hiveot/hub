@@ -2,8 +2,8 @@ package internal_test
 
 import (
 	"encoding/json"
+	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
-	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/lib/testenv"
 	"log/slog"
 	"os"
@@ -27,24 +27,13 @@ var core = "mqtt"
 var tempFolder string
 var owsConfig internal.OWServerConfig
 var owsSimulationFile string // simulation file
-
-var msgServer msgserver.IMsgServer
-var stopFn func()
-
-// launch the hub
-func startServer() (msgServer msgserver.IMsgServer, stopFn func()) {
-	var err error
-	_, msgServer, _, stopFn, err = testenv.StartTestServer(core, false, true)
-	if err != nil {
-		panic("unable to start test server")
-	}
-	return msgServer, stopFn
-}
+var testServer *testenv.TestServer
 
 // TestMain run mosquitto and use the project test folder as the home folder.
 // All tests are run using the simulation file.
 func TestMain(m *testing.M) {
 	// setup environment
+	var err error
 	tempFolder = path.Join(os.TempDir(), "test-owserver")
 	cwd, _ := os.Getwd()
 	homeFolder := path.Join(cwd, "../docs")
@@ -52,16 +41,19 @@ func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
 
 	owsConfig = internal.NewConfig()
-	owsConfig.BindingID = testenv.TestDevice1ID
 	owsConfig.OWServerURL = owsSimulationFile
 
 	//
-	msgServer, stopFn = startServer()
+	testServer, err = testenv.StartTestServer(core)
+	if err != nil {
+		panic("unable to start test server")
+	}
+	testServer.StartAuth()
 
 	result := m.Run()
 	time.Sleep(time.Second)
 
-	stopFn()
+	testServer.Stop()
 	if result == 0 {
 		_ = os.RemoveAll(tempFolder)
 	}
@@ -71,8 +63,9 @@ func TestMain(m *testing.M) {
 
 func TestStartStop(t *testing.T) {
 	slog.Info("--- TestStartStop ---")
+	const device1ID = "device1"
 
-	hc, err := msgServer.ConnectInProc(owsConfig.BindingID)
+	hc, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 	svc := internal.NewOWServerBinding(owsConfig, hc)
@@ -84,9 +77,10 @@ func TestStartStop(t *testing.T) {
 
 func TestPoll(t *testing.T) {
 	var tdCount atomic.Int32
+	const device1ID = "device1"
 
 	slog.Info("--- TestPoll ---")
-	hc, err := msgServer.ConnectInProc(owsConfig.BindingID)
+	hc, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 	svc := internal.NewOWServerBinding(owsConfig, hc)
@@ -123,8 +117,9 @@ func TestPoll(t *testing.T) {
 
 func TestPollInvalidEDSAddress(t *testing.T) {
 	slog.Info("--- TestPollInvalidEDSAddress ---")
+	const device1ID = "device1"
 
-	hc, err := msgServer.ConnectInProc(owsConfig.BindingID)
+	hc, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 
@@ -142,13 +137,14 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 
 func TestAction(t *testing.T) {
 	slog.Info("--- TestAction ---")
+	const device1ID = "device1"
 	// node in test data
 	const nodeID = "C100100000267C7E"
 	//var nodeAddr = thing.MakeThingAddr(owsConfig.ID, nodeID)
 	var actionName = vocab.VocabRelay
 	var actionValue = ([]byte)("1")
 
-	hc, err := msgServer.ConnectInProc(owsConfig.BindingID)
+	hc, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 
@@ -161,7 +157,7 @@ func TestAction(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	reply, err := hc.PubAction(owsConfig.BindingID, nodeID, actionName, actionValue)
+	reply, err := hc.PubAction(device1ID, nodeID, actionName, actionValue)
 	assert.Error(t, err)
 	_ = reply
 

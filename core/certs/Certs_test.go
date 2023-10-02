@@ -8,6 +8,7 @@ import (
 	"github.com/hiveot/hub/core/certs/certsclient"
 	"github.com/hiveot/hub/core/certs/service/selfsigned"
 	certs2 "github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/hubcl"
 	"github.com/hiveot/hub/lib/testenv"
 	"os"
 	"path"
@@ -19,11 +20,10 @@ import (
 )
 
 var core = "mqtt"
-var certBundle certs2.TestCertBundle
 var testDir = path.Join(os.TempDir(), "test-certs")
 
 // the following are set by the testmain
-var msgServer msgserver.IMsgServer
+var testServer *testenv.TestServer
 
 //var testSocket = path.Join(testFolder, "certs.socket")
 
@@ -34,39 +34,42 @@ var msgServer msgserver.IMsgServer
 
 // Factory for creating service instance. Currently the only implementation is selfsigned.
 func StartService() (svc certs.ICertService, stopFunc func()) {
+	adminKey, adminPub := testServer.MsgServer.CreateKP()
+	adminID := "admin"
+
 	testClients := []msgserver.ClientAuthInfo{{
 		ClientID:   certs.ServiceName,
 		ClientType: auth.ClientTypeService,
 		//PubKey:       "",
-		//PasswordHash: "",
 		Role: auth.ClientRoleService,
 	}, {
-		ClientID:   testenv.TestAdminUserID,
+		ClientID:   adminID,
 		ClientType: auth.ClientTypeUser,
-		//PubKey:       "",
-		//PasswordHash: "",
-		Role: auth.ClientRoleAdmin,
+		PubKey:     adminPub,
+		Role:       auth.ClientRoleAdmin,
 	}}
 
 	// pre-add service
-	err := msgServer.ApplyAuth(testClients)
+	err := testServer.MsgServer.ApplyAuth(testClients)
 	if err != nil {
 		panic(err)
 	}
-	hc1, err := msgServer.ConnectInProc(certs.ServiceName)
+	hc1, err := testServer.AddConnectClient(certs.ServiceName, auth.ClientTypeService, auth.ClientRoleService)
 	if err != nil {
 		panic(err)
 	}
 
 	certSvc := selfsigned.NewSelfSignedCertsService(
-		certBundle.CaCert, certBundle.CaKey, hc1)
+		testServer.CertBundle.CaCert, testServer.CertBundle.CaKey, hc1)
 	err = certSvc.Start()
 	if err != nil {
 		panic(err)
 	}
 
-	//--- connect the client
-	hc2, err := msgServer.ConnectInProc(testenv.TestAdminUserID)
+	//--- connect the certs client as admin
+	adminToken, err := testServer.MsgServer.CreateToken(testClients[1])
+	hc2 := hubcl.NewHubClient(testServer.ServerURL, adminID, adminKey, testServer.CertBundle.CaCert, testServer.Core)
+	err = hc2.ConnectWithToken(adminToken)
 	certClient := certsclient.NewCertsSvcClient(hc2)
 
 	return certClient, func() {
@@ -79,21 +82,19 @@ func StartService() (svc certs.ICertService, stopFunc func()) {
 // TestMain clears the certs folder for clean testing
 func TestMain(m *testing.M) {
 	var err error
-	var stopFn func()
 	logging.SetLogging("info", "")
 	// clean start
 	_ = os.RemoveAll(testDir)
 	_ = os.MkdirAll(testDir, 0700)
 
 	// include test clients
-	_, msgServer, certBundle, stopFn, err = testenv.StartTestServer(
-		core, false, false)
+	testServer, err = testenv.StartTestServer(core)
 	if err != nil {
 		panic(err)
 	}
 
 	res := m.Run()
-	stopFn()
+	testServer.Stop()
 	if res == 0 {
 		//os.RemoveAll(tempFolder)
 	}

@@ -45,7 +45,7 @@ type OWServerBinding struct {
 
 // CreateBindingTD generates a TD document for this binding
 func (binding *OWServerBinding) CreateBindingTD() *thing.TD {
-	thingID := binding.Config.BindingID
+	thingID := binding.hc.ClientID()
 	td := thing.NewTD(thingID, "OWServer binding", vocab.DeviceTypeBinding)
 	// these are configured through the configuration file.
 	prop := td.AddProperty(vocab.VocabPollInterval, vocab.VocabPollInterval, "Poll Interval", vocab.WoTDataTypeInteger, "")
@@ -110,7 +110,7 @@ func (binding *OWServerBinding) Stop() {
 // NewOWServerBinding creates a new OWServer Protocol Binding service
 //
 //	config holds the configuration of the service
-//	devicePubSub holds the publish/subscribe service to use. It will be released on stop.
+//	hc is the connection with the hubClient to use.
 func NewOWServerBinding(config OWServerConfig, hc hubclient.IHubClient) *OWServerBinding {
 
 	// these are from hub configuration

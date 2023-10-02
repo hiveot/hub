@@ -3,6 +3,7 @@ package natsmsgserver_test
 import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
+	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/core/natsmsgserver/service"
 	"github.com/hiveot/hub/lib/certs"
@@ -10,8 +11,10 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"os"
 	"testing"
@@ -19,6 +22,55 @@ import (
 )
 
 const withCallout = false
+
+var TestDevice1ID = "device1"
+var TestDevice1NKey, _ = nkeys.CreateUser()
+var TestDevice1NPub, _ = TestDevice1NKey.PublicKey()
+
+//var TestDevice1Key, TestDevice1Pub = certs.CreateECDSAKeys()
+
+var TestThing1ID = "thing1"
+
+var TestUser1ID = "user1"
+var TestUser1Pass = "pass1"
+var TestUser1bcrypt, _ = bcrypt.GenerateFromPassword([]byte(TestUser1Pass), 0)
+
+var TestAdminUserID = "admin"
+var TestAdminUserNKey, _ = nkeys.CreateUser()
+var TestAdminUserNPub, _ = TestAdminUserNKey.PublicKey()
+
+//var TestAdminUserKey, TestAdminUserPub = certs.CreateECDSAKeys()
+
+var TestService1ID = "service1"
+var TestService1NKey, _ = nkeys.CreateUser()
+var TestService1NPub, _ = TestService1NKey.PublicKey()
+
+var NatsTestClients = []msgserver.ClientAuthInfo{
+	{
+		ClientID:   TestAdminUserID,
+		ClientType: auth.ClientTypeUser,
+		PubKey:     TestAdminUserNPub,
+		Role:       auth.ClientRoleAdmin,
+	},
+	{
+		ClientID:   TestDevice1ID,
+		ClientType: auth.ClientTypeDevice,
+		PubKey:     TestDevice1NPub,
+		Role:       auth.ClientRoleDevice,
+	},
+	{
+		ClientID:     TestUser1ID,
+		ClientType:   auth.ClientTypeUser,
+		PasswordHash: string(TestUser1bcrypt),
+		Role:         auth.ClientRoleViewer,
+	},
+	{
+		ClientID:   TestService1ID,
+		ClientType: auth.ClientTypeService,
+		PubKey:     TestService1NPub,
+		Role:       auth.ClientRoleAdmin,
+	},
+}
 
 // TestMain for all authn tests, setup of default folders and filenames
 func TestMain(m *testing.M) {
@@ -30,7 +82,7 @@ func TestMain(m *testing.M) {
 func TestStartStopNKeysServer(t *testing.T) {
 	rxChan := make(chan string, 1)
 
-	serverURL, s, _, _, err := testenv.StartNatsTestServer(false, withCallout)
+	serverURL, s, _, _, err := testenv.StartNatsTestServer(withCallout)
 
 	require.NoError(t, err)
 	defer s.Stop()
@@ -65,18 +117,18 @@ func TestConnectWithCert(t *testing.T) {
 	defer slog.Info("--- TestConnectWithCert end")
 
 	// this only works with callout
-	serverURL, srv, _, certBundle, err := testenv.StartNatsTestServer(false, true)
+	serverURL, srv, _, certBundle, err := testenv.StartNatsTestServer(true)
 	require.NoError(t, err)
 	defer srv.Stop()
 
 	// user1 used in this test must exist
-	_ = srv.ApplyAuth(testenv.NatsTestClients)
+	_ = srv.ApplyAuth(NatsTestClients)
 
 	key, _ := certs.CreateECDSAKeys()
-	clientCert, err := certs.CreateClientCert(testenv.TestUser1ID, auth.ClientRoleAdmin,
+	clientCert, err := certs.CreateClientCert(TestUser1ID, auth.ClientRoleAdmin,
 		1, &key.PublicKey, certBundle.CaCert, certBundle.CaKey)
 	require.NoError(t, err)
-	cl := natshubclient.NewNatsHubClient(serverURL, testenv.TestUser1ID, nil, certBundle.CaCert)
+	cl := natshubclient.NewNatsHubClient(serverURL, TestUser1ID, nil, certBundle.CaCert)
 	clientTLS := certs.X509CertToTLS(clientCert, key)
 	err = cl.ConnectWithCert(*clientTLS)
 	assert.NoError(t, err)
@@ -89,17 +141,17 @@ func TestConnectWithNKey(t *testing.T) {
 	defer slog.Info("--- TestConnectWithNKey end")
 	rxChan := make(chan string, 1)
 
-	serverURL, s, _, certBundle, err := testenv.StartNatsTestServer(false, withCallout)
+	serverURL, s, _, certBundle, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, serverURL)
 
 	// add several users, service and devices
-	err = s.ApplyAuth(testenv.NatsTestClients)
+	err = s.ApplyAuth(NatsTestClients)
 	require.NoError(t, err)
 
 	// users subscribe to things
-	hc1 := natshubclient.NewNatsHubClient(serverURL, testenv.TestService1ID, testenv.TestService1NKey, certBundle.CaCert)
+	hc1 := natshubclient.NewNatsHubClient(serverURL, TestService1ID, TestService1NKey, certBundle.CaCert)
 	err = hc1.ConnectWithKey()
 	require.NoError(t, err)
 	defer hc1.Disconnect()
@@ -112,7 +164,7 @@ func TestConnectWithNKey(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	subj2 := natshubclient.MakeSubject(
-		vocab.MessageTypeEvent, testenv.TestService1ID, "thing1", "test", "")
+		vocab.MessageTypeEvent, TestService1ID, "thing1", "test", "")
 	err = hc1.Pub(subj2, []byte("hello world"))
 	require.NoError(t, err)
 	rxMsg := <-rxChan
@@ -123,17 +175,17 @@ func TestConnectWithPassword(t *testing.T) {
 	slog.Info("--- TestConnectWithPassword start")
 	defer slog.Info("--- TestConnectWithPassword end")
 
-	serverURL, s, _, certBundle, err := testenv.StartNatsTestServer(false, withCallout)
+	serverURL, s, _, certBundle, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, serverURL)
 
 	// add several users, service and devices
-	err = s.ApplyAuth(testenv.NatsTestClients)
+	err = s.ApplyAuth(NatsTestClients)
 	require.NoError(t, err)
 
-	hc1 := natshubclient.NewNatsHubClient(serverURL, testenv.TestUser1ID, nil, certBundle.CaCert)
-	err = hc1.ConnectWithPassword(testenv.TestUser1Pass)
+	hc1 := natshubclient.NewNatsHubClient(serverURL, TestUser1ID, nil, certBundle.CaCert)
+	err = hc1.ConnectWithPassword(TestUser1Pass)
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 	time.Sleep(time.Millisecond)
@@ -143,16 +195,16 @@ func TestLoginFail(t *testing.T) {
 	slog.Info("--- TestLoginFail start")
 	defer slog.Info("--- TestLoginFail end")
 
-	serverURL, s, _, certBundle, err := testenv.StartNatsTestServer(false, withCallout)
+	serverURL, s, _, certBundle, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	assert.NotEmpty(t, serverURL)
 
 	// add several users, service and devices
-	err = s.ApplyAuth(testenv.NatsTestClients)
+	err = s.ApplyAuth(NatsTestClients)
 	require.NoError(t, err)
 
-	hc1 := natshubclient.NewNatsHubClient(serverURL, testenv.TestUser1ID, nil, certBundle.CaCert)
+	hc1 := natshubclient.NewNatsHubClient(serverURL, TestUser1ID, nil, certBundle.CaCert)
 	err = hc1.ConnectWithPassword("wrongpassword")
 	require.Error(t, err)
 
@@ -173,13 +225,13 @@ func TestEventsStream(t *testing.T) {
 	var err error
 
 	// setup
-	serverURL, s, certBundle, cfg, err := testenv.StartNatsTestServer(false, withCallout)
+	serverURL, s, certBundle, cfg, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	_ = cfg
 	// the main service can access $JS
 	// add devices that publish things, eg TestDevice1ID and TestService1ID
-	err = s.ApplyAuth(testenv.NatsTestClients)
+	err = s.ApplyAuth(NatsTestClients)
 	require.NoError(t, err)
 
 	//hc1, err := natshubclient.ConnectWithNKey(
@@ -209,12 +261,12 @@ func TestEventsStream(t *testing.T) {
 	defer sub.Unsubscribe()
 
 	// connect as the device and publish a thing event
-	hc2 := natshubclient.NewNatsHubClient(serverURL, testenv.TestDevice1ID, testenv.TestDevice1NKey, certBundle.CaCert)
+	hc2 := natshubclient.NewNatsHubClient(serverURL, TestDevice1ID, TestDevice1NKey, certBundle.CaCert)
 	err = hc2.ConnectWithKey()
 	require.NoError(t, err)
 	defer hc2.Disconnect()
 
-	err = hc2.PubEvent(testenv.TestThing1ID, "event1", []byte(eventMsg))
+	err = hc2.PubEvent(TestThing1ID, "event1", []byte(eventMsg))
 	require.NoError(t, err)
 
 	// read the events stream for

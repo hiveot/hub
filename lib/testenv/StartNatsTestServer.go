@@ -12,7 +12,7 @@ import (
 
 // StartNatsTestServer generate a test configuration and starts a NKeys based nats test server
 // A new temporary storage directory is used.
-func StartNatsTestServer(applyTestClients bool, withCallout bool) (
+func StartNatsTestServer(withCallout bool) (
 	clientURL string,
 	hubNatsServer *service.NatsMsgServer,
 	certBundle certs.TestCertBundle,
@@ -42,9 +42,6 @@ func StartNatsTestServer(applyTestClients bool, withCallout bool) (
 		if err != nil {
 			panic(err)
 		}
-	}
-	if applyTestClients {
-		_ = hubNatsServer.ApplyAuth(NatsTestClients)
 	}
 	return clientURL, hubNatsServer, certBundle, serverCfg, err
 }

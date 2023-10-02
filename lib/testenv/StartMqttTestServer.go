@@ -12,11 +12,7 @@ import (
 )
 
 // StartMqttTestServer creates a MQTT test server.
-// applyTestClients registers the test clients with the server for direct usage.
-//
-// Note that test clients will be replaced when the 'auth' core service is started,
-// so only use it instead of 'auth'.
-func StartMqttTestServer(applyTestClients bool) (
+func StartMqttTestServer() (
 	serverURL string,
 	msgServer msgserver.IMsgServer,
 	certBundle certs.TestCertBundle,
@@ -40,9 +36,6 @@ func StartMqttTestServer(applyTestClients bool) (
 		mqttServer := service.NewMqttMsgServer(serverCfg, auth.DefaultRolePermissions)
 		serverURL, err = mqttServer.Start()
 		msgServer = mqttServer
-		if applyTestClients {
-			_ = mqttServer.ApplyAuth(MqttTestClients)
-		}
 	}
 	return serverURL, msgServer, certBundle, err
 }
