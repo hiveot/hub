@@ -114,7 +114,7 @@ func (hc *NatsHubClient) PubConfig(
 
 // PubEvent sends the event value to the hub
 func (hc *NatsHubClient) PubEvent(thingID string, eventID string, payload []byte) error {
-	subject := MakeSubject(vocab.MessageTypeEvent, hc.clientID, thingID, eventID, "")
+	subject := MakeSubject(vocab.MessageTypeEvent, hc.clientID, thingID, eventID, hc.clientID)
 	slog.Info("PubEvent", "subject", subject)
 	err := hc.nc.Publish(subject, payload)
 	return err
@@ -123,7 +123,7 @@ func (hc *NatsHubClient) PubEvent(thingID string, eventID string, payload []byte
 // PubTD sends the TD document to the hub
 func (hc *NatsHubClient) PubTD(td *thing.TD) error {
 	payload, _ := ser.Marshal(td)
-	subject := MakeSubject(vocab.MessageTypeEvent, hc.clientID, td.ID, vocab.EventNameTD, "")
+	subject := MakeSubject(vocab.MessageTypeEvent, hc.clientID, td.ID, vocab.EventNameTD, hc.clientID)
 	slog.Info("PubTD", "subject", subject)
 	err := hc.nc.Publish(subject, payload)
 	return err

@@ -4,11 +4,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"net/url"
+	"strings"
 )
 
 // ConnectTLS creates a TLS connection to a server, optionally using a client certificate.
 //
-//	serverURL full URL:  tls://host:8883, ssl://host:8883,  wss://host:9001, tcps://awshost:8883/mqtt
+//	serverURL full URL:  tcp://host:8883,  wss://host:9001
 //	clientCert to login with. Nil to not use client certs
 //	caCert of the server to connect to (recommended). Nil to not verify the server connection.
 func ConnectTLS(serverURL string, clientCert *tls.Certificate, caCert *x509.Certificate) (
@@ -36,11 +37,16 @@ func ConnectTLS(serverURL string, clientCert *tls.Certificate, caCert *x509.Cert
 
 	tlsConfig := &tls.Config{
 		RootCAs:            caCertPool,
-		ClientAuth:         tls.RequireAndVerifyClientCert,
 		Certificates:       clientCertList,
 		InsecureSkipVerify: caCert == nil,
 	}
+	// url.Parse doesn't handle in memory UDS address starting with 'unix://@/path'
 	broker, err := url.Parse(serverURL)
+	if strings.HasPrefix(serverURL, "unix://@") {
+		broker.Scheme = "unix"
+		broker.Path = serverURL[7:]
+	}
+
 	if err != nil {
 		return nil, err
 	}

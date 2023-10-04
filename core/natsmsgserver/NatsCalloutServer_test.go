@@ -10,14 +10,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 func TestStartStopCallout(t *testing.T) {
 	// defined in NatsNKeyServer_test.go
-	serverURL, s, certBundle, _, err := testenv.StartNatsTestServer(true)
+	s, certBundle, _, err := testenv.StartNatsTestServer(true)
 	require.NoError(t, err)
 	defer s.Stop()
-	assert.NotEmpty(t, serverURL)
 	err = s.ApplyAuth(NatsTestClients)
 
 	// enabling callout should succeed
@@ -26,6 +26,7 @@ func TestStartStopCallout(t *testing.T) {
 
 	// core services do not use the callout handler
 	//c, err := s.ConnectInProc("testcalloutservice")
+	serverURL, _, _ := s.GetServerURLs()
 	hc := natshubclient.NewNatsHubClient(
 		serverURL, "testcalloutservice",
 		TestService1NKey, certBundle.CaCert)
@@ -40,10 +41,9 @@ func TestValidateToken(t *testing.T) {
 	defer t.Log("---TestToken end---")
 
 	// setup
-	serverURL, s, _, _, err := testenv.StartNatsTestServer(true)
+	s, _, _, err := testenv.StartNatsTestServer(true)
 	require.NoError(t, err)
 	defer s.Stop()
-	assert.NotEmpty(t, serverURL)
 
 	// add several predefined users, service and devices that don't need callout
 	err = s.ApplyAuth(NatsTestClients)
@@ -66,10 +66,9 @@ func TestValidateToken(t *testing.T) {
 }
 
 func TestCalloutPassword(t *testing.T) {
-	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer(false)
+	s, _, certBundle, err := testenv.StartNatsTestServer(false)
 	require.NoError(t, err)
 	defer s.Stop()
-	assert.NotEmpty(t, clientURL)
 
 	// add several predefined users, service and devices that don't need callout
 	err = s.ApplyAuth(NatsTestClients)
@@ -80,8 +79,9 @@ func TestCalloutPassword(t *testing.T) {
 	assert.NoError(t, err)
 
 	user1Key, _ := nkeys.CreateUser()
+	serverURL, _, _ := s.GetServerURLs()
 	hc1 := natshubclient.NewNatsHubClient(
-		clientURL, TestUser1ID, user1Key, certBundle.CaCert)
+		serverURL, TestUser1ID, user1Key, certBundle.CaCert)
 
 	err = hc1.ConnectWithPassword(TestUser1Pass)
 	require.NoError(t, err)
@@ -91,10 +91,9 @@ func TestCalloutPassword(t *testing.T) {
 }
 
 func TestCalloutJWT(t *testing.T) {
-	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer(true)
+	s, _, certBundle, err := testenv.StartNatsTestServer(true)
 	require.NoError(t, err)
 	defer s.Stop()
-	assert.NotEmpty(t, clientURL)
 
 	// add several predefined users, service and devices that don't need callout
 	err = s.ApplyAuth(NatsTestClients)
@@ -112,9 +111,11 @@ func TestCalloutJWT(t *testing.T) {
 		Role:         auth.ClientRoleManager,
 	})
 	require.NoError(t, err)
-	hc2 := natshubclient.NewNatsHubClient(clientURL, TestAdminUserID, TestAdminUserNKey, certBundle.CaCert)
+	serverURL, _, _ := s.GetServerURLs()
+	hc2 := natshubclient.NewNatsHubClient(serverURL, TestAdminUserID, TestAdminUserNKey, certBundle.CaCert)
 	err = hc2.ConnectWithJWT(jwtToken)
 	require.NoError(t, err)
+	time.Sleep(time.Millisecond)
 	successCount, _ := chook.GetCounters()
 	assert.Equal(t, 1, successCount)
 
@@ -122,10 +123,9 @@ func TestCalloutJWT(t *testing.T) {
 }
 
 func TestNoCalloutForExistingNKey(t *testing.T) {
-	serverURL, s, certBundle, _, err := testenv.StartNatsTestServer(true)
+	s, certBundle, _, err := testenv.StartNatsTestServer(true)
 	require.NoError(t, err)
 	defer s.Stop()
-	assert.NotEmpty(t, serverURL)
 
 	// add several predefined users, service and devices that don't need callout
 	err = s.ApplyAuth(NatsTestClients)
@@ -136,6 +136,7 @@ func TestNoCalloutForExistingNKey(t *testing.T) {
 	assert.NoError(t, err)
 
 	// (added by nkey server test)
+	serverURL, _, _ := s.GetServerURLs()
 	hc := natshubclient.NewNatsHubClient(
 		serverURL, TestService1ID, TestService1NKey, certBundle.CaCert)
 	err = hc.ConnectWithKey()
@@ -151,10 +152,10 @@ func TestNoCalloutForExistingNKey(t *testing.T) {
 func TestInValidCalloutAuthn(t *testing.T) {
 	const knownUser = "knownuser"
 
-	clientURL, s, _, certBundle, err := testenv.StartNatsTestServer(true)
+	s, _, certBundle, err := testenv.StartNatsTestServer(true)
 	require.NoError(t, err)
 	defer s.Stop()
-	assert.NotEmpty(t, clientURL)
+
 	// add several predefined users, service and devices that don't need callout
 	err = s.ApplyAuth(NatsTestClients)
 
@@ -165,7 +166,8 @@ func TestInValidCalloutAuthn(t *testing.T) {
 
 	// invoke callout by connecting with an invalid user
 	newkey2, _ := nkeys.CreateUser()
-	hc2 := natshubclient.NewNatsHubClient(clientURL, "unknownuser", newkey2, certBundle.CaCert)
+	serverURL, _, _ := s.GetServerURLs()
+	hc2 := natshubclient.NewNatsHubClient(serverURL, "unknownuser", newkey2, certBundle.CaCert)
 	err = hc2.ConnectWithKey()
 	require.Error(t, err)
 

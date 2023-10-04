@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"path"
 	"strings"
+	"time"
 )
 
 // NewHubClient returns a new Hub Client instance
@@ -66,7 +67,7 @@ func ConnectToHub(fullURL string, clientID string, certDir string, core string) 
 	// 1. determine the actual address
 	if fullURL == "" {
 		// return after first result
-		fullURL, core = discovery.LocateHub(0, true)
+		fullURL, core = discovery.LocateHub(time.Second, true)
 	}
 	if clientID == "" {
 		return nil, fmt.Errorf("missing clientID")

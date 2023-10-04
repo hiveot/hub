@@ -10,7 +10,6 @@ import (
 	"github.com/hiveot/hub/lib/hubcl/natshubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -68,7 +67,7 @@ var NatsTestClients = []msgserver.ClientAuthInfo{
 		ClientID:   TestService1ID,
 		ClientType: auth.ClientTypeService,
 		PubKey:     TestService1NPub,
-		Role:       auth.ClientRoleAdmin,
+		Role:       auth.ClientRoleAdmin, // admin adds the $JS.API.INFO permissions
 	},
 }
 
@@ -82,34 +81,41 @@ func TestMain(m *testing.M) {
 func TestStartStopNKeysServer(t *testing.T) {
 	rxChan := make(chan string, 1)
 
-	serverURL, s, _, _, err := testenv.StartNatsTestServer(withCallout)
+	srv, certBundle, _, err := testenv.StartNatsTestServer(withCallout)
 
 	require.NoError(t, err)
-	defer s.Stop()
-	assert.NotEmpty(t, serverURL)
-	//err = s.ApplyAuth(TestClients, TestRoles)
-	//require.NoError(t, err)
+	defer srv.Stop()
 
-	// connect using the built-in service key
-	nc, err := s.ConnectInProcNC("testnkeysservice", nil)
+	err = srv.ApplyAuth(NatsTestClients)
 	require.NoError(t, err)
-	_, err = nc.Subscribe("things.>", func(msg *nats.Msg) {
-		rxChan <- string(msg.Data)
-		slog.Info("received message", slog.String("msg", string(msg.Data)))
+
+	// connect with test user
+	//nc, err := srv.ConnectInProcNC("testnkeysservice", nil)
+	serverURL, _, _ := srv.GetServerURLs()
+	hc := natshubclient.NewNatsHubClient(serverURL, TestService1ID, TestService1NKey, certBundle.CaCert)
+	err = hc.ConnectWithKey()
+	require.NoError(t, err)
+	defer hc.Disconnect()
+
+	subj1 := natshubclient.MakeSubject(vocab.MessageTypeEvent, "", "", "", "")
+	_, err = hc.Sub(subj1, func(topic string, data []byte) {
+		rxChan <- string(data)
+		slog.Info("received message",
+			slog.String("topic", topic),
+			slog.String("data", string(data)))
 	})
 	require.NoError(t, err)
-	err = nc.Publish("things.service1.event", []byte("hello world"))
+	subj2 := natshubclient.MakeSubject(vocab.MessageTypeEvent, TestService1ID, "thing1", "", "")
+	err = hc.Pub(subj2, []byte("hello world"))
 	require.NoError(t, err)
 	rxMsg := <-rxChan
 	assert.Equal(t, "hello world", rxMsg)
 
 	// make sure jetstream is enabled for account
-	js, err := nc.JetStream()
-	require.NoError(t, err)
+	js := hc.JS()
 	ai, err := js.AccountInfo()
 	require.NoError(t, err)
 	require.NotEmpty(t, ai)
-	nc.Close()
 }
 
 func TestConnectWithCert(t *testing.T) {
@@ -117,7 +123,7 @@ func TestConnectWithCert(t *testing.T) {
 	defer slog.Info("--- TestConnectWithCert end")
 
 	// this only works with callout
-	serverURL, srv, _, certBundle, err := testenv.StartNatsTestServer(true)
+	srv, _, certBundle, err := testenv.StartNatsTestServer(true)
 	require.NoError(t, err)
 	defer srv.Stop()
 
@@ -128,6 +134,7 @@ func TestConnectWithCert(t *testing.T) {
 	clientCert, err := certs.CreateClientCert(TestUser1ID, auth.ClientRoleAdmin,
 		1, &key.PublicKey, certBundle.CaCert, certBundle.CaKey)
 	require.NoError(t, err)
+	serverURL, _, _ := srv.GetServerURLs()
 	cl := natshubclient.NewNatsHubClient(serverURL, TestUser1ID, nil, certBundle.CaCert)
 	clientTLS := certs.X509CertToTLS(clientCert, key)
 	err = cl.ConnectWithCert(*clientTLS)
@@ -141,16 +148,16 @@ func TestConnectWithNKey(t *testing.T) {
 	defer slog.Info("--- TestConnectWithNKey end")
 	rxChan := make(chan string, 1)
 
-	serverURL, s, _, certBundle, err := testenv.StartNatsTestServer(withCallout)
+	srv, _, certBundle, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
-	defer s.Stop()
-	assert.NotEmpty(t, serverURL)
+	defer srv.Stop()
 
 	// add several users, service and devices
-	err = s.ApplyAuth(NatsTestClients)
+	err = srv.ApplyAuth(NatsTestClients)
 	require.NoError(t, err)
 
 	// users subscribe to things
+	serverURL, _, _ := srv.GetServerURLs()
 	hc1 := natshubclient.NewNatsHubClient(serverURL, TestService1ID, TestService1NKey, certBundle.CaCert)
 	err = hc1.ConnectWithKey()
 	require.NoError(t, err)
@@ -175,15 +182,15 @@ func TestConnectWithPassword(t *testing.T) {
 	slog.Info("--- TestConnectWithPassword start")
 	defer slog.Info("--- TestConnectWithPassword end")
 
-	serverURL, s, _, certBundle, err := testenv.StartNatsTestServer(withCallout)
+	srv, _, certBundle, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
-	defer s.Stop()
-	assert.NotEmpty(t, serverURL)
+	defer srv.Stop()
 
 	// add several users, service and devices
-	err = s.ApplyAuth(NatsTestClients)
+	err = srv.ApplyAuth(NatsTestClients)
 	require.NoError(t, err)
 
+	serverURL, _, _ := srv.GetServerURLs()
 	hc1 := natshubclient.NewNatsHubClient(serverURL, TestUser1ID, nil, certBundle.CaCert)
 	err = hc1.ConnectWithPassword(TestUser1Pass)
 	require.NoError(t, err)
@@ -195,15 +202,15 @@ func TestLoginFail(t *testing.T) {
 	slog.Info("--- TestLoginFail start")
 	defer slog.Info("--- TestLoginFail end")
 
-	serverURL, s, _, certBundle, err := testenv.StartNatsTestServer(withCallout)
+	srv, _, certBundle, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
-	defer s.Stop()
-	assert.NotEmpty(t, serverURL)
+	defer srv.Stop()
 
 	// add several users, service and devices
-	err = s.ApplyAuth(NatsTestClients)
+	err = srv.ApplyAuth(NatsTestClients)
 	require.NoError(t, err)
 
+	serverURL, _, _ := srv.GetServerURLs()
 	hc1 := natshubclient.NewNatsHubClient(serverURL, TestUser1ID, nil, certBundle.CaCert)
 	err = hc1.ConnectWithPassword("wrongpassword")
 	require.Error(t, err)
@@ -225,25 +232,26 @@ func TestEventsStream(t *testing.T) {
 	var err error
 
 	// setup
-	serverURL, s, certBundle, cfg, err := testenv.StartNatsTestServer(withCallout)
+	srv, certBundle, cfg, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
-	defer s.Stop()
+	defer srv.Stop()
 	_ = cfg
 	// the main service can access $JS
 	// add devices that publish things, eg TestDevice1ID and TestService1ID
-	err = s.ApplyAuth(NatsTestClients)
+	err = srv.ApplyAuth(NatsTestClients)
 	require.NoError(t, err)
 
-	//hc1, err := natshubclient.ConnectWithNKey(
-	//	serverURL, testenv.TestService1ID, testenv.TestService1NKey, certBundle.CaCert)
-	nc1, err := s.ConnectInProcNC("core-test", nil)
-	hc1 := natshubclient.NewNatsHubClient("", "core-test", nil, nil)
-	err = hc1.ConnectWithConn("", nc1)
+	serverURL, _, _ := srv.GetServerURLs()
+	hc1 := natshubclient.NewNatsHubClient(serverURL, TestService1ID, TestService1NKey, certBundle.CaCert)
+	err = hc1.ConnectWithKey()
+	//nc1, err := srv.ConnectInProcNC("core-test", nil)
+	//hc1 := natshubclient.NewNatsHubClient("", "core-test", nil, nil)
+	//err = hc1.ConnectWithConn("", nc1)
 	require.NoError(t, err)
-	defer nc1.Close()
+	defer hc1.Disconnect()
 
 	// the events stream must exist
-	js, _ := nc1.JetStream()
+	js := hc1.JS()
 	si, err := js.StreamInfo(service.EventsIntakeStreamName)
 	require.NoError(t, err)
 	slog.Info("stream $events:",

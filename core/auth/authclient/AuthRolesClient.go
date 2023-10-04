@@ -9,14 +9,15 @@ import (
 // AuthRolesClient is a marshaller for messaging to manage roles
 // This uses the default serializer to marshal and unmarshal messages.
 type AuthRolesClient struct {
-	// ID of the authz service
-	hc hubclient.IHubClient
+	// ID of the auth service instance
+	serviceID string
+	hc        hubclient.IHubClient
 }
 
 // helper for publishing an action service request to the auth service
 func (cl *AuthRolesClient) pubReq(action string, msg []byte, resp interface{}) error {
 	data, err := cl.hc.PubServiceRPC(
-		auth.AuthServiceName, auth.AuthRolesCapability, action, msg)
+		cl.serviceID, auth.AuthRolesCapability, action, msg)
 	if err != nil {
 		return err
 	}
@@ -62,9 +63,12 @@ func (cl *AuthRolesClient) SetRole(clientID string, userRole string) error {
 }
 
 // NewAuthRolesClient creates a new client for managing roles
+//
+//	hc is the hub client connection to use
 func NewAuthRolesClient(hc hubclient.IHubClient) auth.IAuthManageRoles {
 	cl := &AuthRolesClient{
-		hc: hc,
+		serviceID: auth.AuthServiceName,
+		hc:        hc,
 	}
 	return cl
 

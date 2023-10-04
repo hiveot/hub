@@ -14,7 +14,7 @@ import (
 //	deviceID is the device being addressed. Use "" for wildcard
 //	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
 //	name is the event or action name. Use "" for wildcard.
-//	clientID is required for publishing action and rpc requests.
+//	clientID is the login ID of the sender. Use "" for subscribe.
 func MakeTopic(msgType, deviceID, thingID, name string, clientID string) string {
 	if msgType == "" {
 		msgType = vocab.MessageTypeEvent
@@ -27,16 +27,19 @@ func MakeTopic(msgType, deviceID, thingID, name string, clientID string) string 
 	}
 	if name == "" {
 		// sub only. wildcard depends if a clientID follows
-		if clientID == "" {
-			name = "#"
-		} else {
-			name = "+"
-		}
+		//if clientID == "" {
+		//	name = "#"
+		//} else {
+		name = "+"
+		//}
 	}
-	topic := fmt.Sprintf("%s/%s/%s/%s", msgType, deviceID, thingID, name)
-	if clientID != "" {
-		topic = topic + "/" + clientID
+	if clientID == "" {
+		clientID = "#"
 	}
+	topic := fmt.Sprintf("%s/%s/%s/%s/%s", msgType, deviceID, thingID, name, clientID)
+	//if clientID != "" {
+	//	topic = topic + "/" + clientID
+	//}
 	return topic
 }
 
@@ -67,7 +70,7 @@ func SplitActionTopic(topic string) (deviceID, thingID, name string, clientID st
 //	deviceID is the device or service that handles the topic.
 //	thingID is the thing of the topic, or capability for services.
 //	name is the event or action name
-//	senderID is the client publishing the request. used in actions.
+//	senderID is the client publishing the request.
 func SplitTopic(topic string) (msgType, deviceID, thingID, name string, senderID string, err error) {
 	parts := strings.Split(topic, "/")
 

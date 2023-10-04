@@ -92,13 +92,6 @@ func (hc *MqttHubClient) PubRequest(topic string, payload []byte) (ar hubclient.
 	t1 := time.Now()
 	ar.Address = topic
 
-	//hopts := rpc.HandlerOpts{
-	//	Conn:             hc.cm,
-	//	Router:           hc.router,
-	//	ResponseTopicFmt: "_INBOX/%s", // private inbox for
-	//	ClientID:         hc.clientID,
-	//}
-
 	pubMsg := &paho.Publish{
 		QoS:     withQos,
 		Retain:  false,
@@ -165,7 +158,7 @@ func (hc *MqttHubClient) PubConfig(
 
 // PubEvent sends the event value to the hub
 func (hc *MqttHubClient) PubEvent(thingID string, eventID string, payload []byte) error {
-	topic := MakeTopic(vocab.MessageTypeEvent, hc.clientID, thingID, eventID, "")
+	topic := MakeTopic(vocab.MessageTypeEvent, hc.clientID, thingID, eventID, hc.clientID)
 	//slog.Info("PubEvent", "topic", topic)
 	err := hc.Pub(topic, payload)
 	return err
@@ -185,7 +178,7 @@ func (hc *MqttHubClient) PubServiceRPC(
 // PubTD publishes an event containing a TD document
 func (hc *MqttHubClient) PubTD(td *thing.TD) error {
 	payload, _ := ser.Marshal(td)
-	topic := MakeTopic(vocab.MessageTypeEvent, hc.clientID, td.ID, vocab.EventNameTD, "")
+	topic := MakeTopic(vocab.MessageTypeEvent, hc.clientID, td.ID, vocab.EventNameTD, hc.clientID)
 	//slog.Info("PubTD", "topic", topic)
 	err := hc.Pub(topic, payload)
 	return err

@@ -10,16 +10,11 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
 	"os"
-	"path"
 )
 
 const Version = `0.1-alpha`
 
-var binDir string
-var homeDir string
-var runDir string
-var certsDir string
-var configDir string
+// var env utils.AppEnvironment
 var nowrap bool
 
 // CLI for managing the HiveOT Hub
@@ -28,16 +23,20 @@ var nowrap bool
 
 func main() {
 	var hc hubclient.IHubClient
-	var clientID = "admin"
-	var serverURL = ""
 	var verbose bool
+	var loginID = "admin"
+	var homeDir string
+	var certsDir string
+	var serverURL string
+
+	// environment defaults
+	env := utils.GetAppEnvironment("", false)
+	homeDir = env.HomeDir
+	certsDir = env.CertsDir
+
+	//defaultHome := env.HomeDir // to detect changes to the home directory
 	logging.SetLogging("warning", "")
-	binDir = path.Dir(os.Args[0])
-	homeDir = path.Dir(binDir)
 	nowrap = false
-	f := utils.GetFolders(homeDir, false)
-	certsDir = f.Certs
-	configDir = f.Config
 
 	app := &cli.App{
 		EnableBashCompletion: true,
@@ -61,8 +60,8 @@ func main() {
 			&cli.StringFlag{
 				Name:        "login",
 				Usage:       "login ID",
-				Value:       clientID,
-				Destination: &clientID,
+				Value:       loginID,
+				Destination: &loginID,
 			},
 			&cli.StringFlag{
 				Name:        "server",
@@ -78,19 +77,16 @@ func main() {
 			},
 		},
 		Before: func(c *cli.Context) (err error) {
-			f = utils.GetFolders(homeDir, false)
-			certsDir = f.Certs
-			runDir = f.Run
-			homeDir = f.Home
-			configDir = f.Config
-			//
+			// reload env in case home changes
+			env = utils.GetAppEnvironment(homeDir, false)
+			certsDir = env.CertsDir
 			if verbose {
 				logging.SetLogging("info", "")
 			}
 			if nowrap {
 				fmt.Printf(utils.WrapOff)
 			}
-			hc, err = hubcl.ConnectToHub(serverURL, clientID, certsDir, "")
+			hc, err = hubcl.ConnectToHub(serverURL, loginID, certsDir, "")
 			return err
 		},
 		Commands: []*cli.Command{

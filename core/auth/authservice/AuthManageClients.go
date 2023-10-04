@@ -40,7 +40,7 @@ func (svc *AuthManageClients) AddDevice(
 		ClientType:  auth.ClientTypeDevice,
 		DisplayName: name,
 		PubKey:      pubKey,
-		Role:        auth.ClientRoleNone,
+		Role:        auth.ClientRoleDevice,
 	})
 	if err != nil {
 		return "", err
@@ -51,9 +51,9 @@ func (svc *AuthManageClients) AddDevice(
 	if pubKey != "" {
 		authInfo := msgserver.ClientAuthInfo{
 			ClientID:   deviceID,
-			ClientType: auth.ClientTypeUser,
+			ClientType: auth.ClientTypeDevice,
 			PubKey:     pubKey,
-			Role:       auth.ClientRoleService,
+			Role:       auth.ClientRoleDevice,
 		}
 		token, err = svc.msgServer.CreateToken(authInfo)
 	}
@@ -76,7 +76,7 @@ func (svc *AuthManageClients) AddService(
 		ClientType:  auth.ClientTypeService,
 		DisplayName: name,
 		PubKey:      pubKey,
-		Role:        auth.ClientRoleAdmin,
+		Role:        auth.ClientRoleService,
 	})
 	if err != nil {
 		return "", err
@@ -85,7 +85,7 @@ func (svc *AuthManageClients) AddService(
 	if pubKey != "" {
 		authInfo := msgserver.ClientAuthInfo{
 			ClientID:   serviceID,
-			ClientType: auth.ClientTypeUser,
+			ClientType: auth.ClientTypeService,
 			PubKey:     pubKey,
 			Role:       auth.ClientRoleService,
 		}

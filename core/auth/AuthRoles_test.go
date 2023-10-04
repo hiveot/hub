@@ -15,6 +15,7 @@ func TestCRUDRole(t *testing.T) {
 	const user1ID = "newUser"
 	const user1Pass = "user1pass"
 	const role1Name = "role1"
+	const adminUserID = "admin"
 	t.Log("--- TestGetRole start")
 	defer t.Log("--- TestGetRole end")
 
@@ -22,14 +23,18 @@ func TestCRUDRole(t *testing.T) {
 	_ = svc
 	require.NoError(t, err)
 	defer stopFn()
+	serverURL, _, _ := testServer.MsgServer.GetServerURLs()
 	time.Sleep(time.Millisecond * 10)
 
-	kp, kpPub := testServer.MsgServer.CreateKP()
-	_ = kp
-	token, err := mng.AddUser(user1ID, "nu 1", user1Pass, kpPub, authapi.ClientRoleViewer)
+	// create the user whose roles to test
+	_, user1Pub := testServer.MsgServer.CreateKP()
+	_, err = mng.AddUser(user1ID, "nu 1", user1Pass, user1Pub, authapi.ClientRoleViewer)
 	require.NoError(t, err)
 
-	hc := hubcl.NewHubClient(testServer.ServerURL, user1ID, nil, testServer.CertBundle.CaCert, testServer.Core)
+	// admin user that can change roles
+	adminKP, adminPub := testServer.MsgServer.CreateKP()
+	token, err := mng.AddUser(adminUserID, "admin", "", adminPub, authapi.ClientRoleViewer)
+	hc := hubcl.NewHubClient(serverURL, adminUserID, adminKP, testServer.CertBundle.CaCert, testServer.Core)
 	err = hc.ConnectWithToken(token)
 	require.NoError(t, err)
 	defer hc.Disconnect()

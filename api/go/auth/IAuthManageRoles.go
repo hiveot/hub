@@ -52,80 +52,94 @@ const (
 
 // Role based ACL matrix example
 // -----------------------------
-// role       pub/sub   prefix  deviceID    thingID   stype     clientID
+// role       pub/sub   stype   deviceID    thingID
 //
-// *	      sub       _INBOX  {clientID}   -        -         -
-// *          sub       things  -            -        event     -
-// *	      pub       svc     auth         profile  action    {clientID}
+// *	      sub       _INBOX  {clientID}   -       	(built-in rule)
+// *	      pub       rpc     auth         profile 	(built-in rule)
+// *          pub       any     -            -        senderID must be clientID except for inbox
 //
-// viewer     sub       things  -            -        event     n/a
-// operator   pub       things  -            -        action    {clientID}
-// manager    pub       things  -            -        action    {clientID}
-//            pub       things  -            -        config    {clientID}
-// admin      pub       -       -            -        -         {clientID}
-// device     pub       things  {deviceID}   -        event     -
-//            sub       things  {deviceID}   -        action    -
-// service    pub       -       -            -        -         {serviceID}
-//            sub       things  {serviceID}  -        action    -
-//            sub       svc     {serviceID}  -        action    -
+// viewer     sub       event   -            -
+// operator   pub       action  -            -
+//            sub       event  -            -
+// manager    pub       action  -            -
+//            pub       config  -            -
+//            sub       event  -            -
+// admin      pub       action  -            -
+//            sub       event  -            -
+// device     pub       event   {clientID}   -
+//            sub       action  {clientID}   -
+// service    pub       -       -            -
+//            sub       action  {clientID}  -
+//            sub       rpc     {clientID}  -
+//            sub       event  -            -
 
-// devices can publish events, replies and subscribe to actions
+// {clientID} is replaced with the client's loginID when publishing or subscribing
+
+// devices can publish events, replies and subscribe to their own actions and config
 var devicePermissions = []msgserver.RolePermission{
 	{
-		Prefix:   "things",
 		MsgType:  vocab.MessageTypeEvent,
+		DeviceID: "{clientID}", // devices can only publish their own events
 		AllowPub: true,
-		AllowSub: true,
 	}, {
-		Prefix:   "things",
 		MsgType:  vocab.MessageTypeAction,
-		AllowPub: false,
+		DeviceID: "{clientID}",
 		AllowSub: true,
 	}, {
-		// publish replies to any inbox
-		Prefix:   "_INBOX",
+		MsgType:  vocab.MessageTypeConfig,
+		DeviceID: "{clientID}",
+		AllowSub: true,
+	},
+}
+
+// viewers can subscribe to all things
+var viewerPermissions = []msgserver.RolePermission{{
+	MsgType:  vocab.MessageTypeEvent,
+	AllowSub: true,
+}}
+
+// operators can subscribe to events and publish thing actions
+var operatorPermissions = []msgserver.RolePermission{
+	{
+		MsgType:  vocab.MessageTypeEvent,
+		AllowSub: true,
+	}, {
+		MsgType:  vocab.MessageTypeAction,
 		AllowPub: true,
 	},
 }
 
-// viewers can subscribe to all things and their inbox
-var viewerPermissions = []msgserver.RolePermission{{
-	Prefix:   "things",
-	MsgType:  vocab.MessageTypeEvent,
-	AllowPub: false,
-	AllowSub: true,
-}, {
-	Prefix:   "_INBOX",
-	SourceID: "${clientID}",
-	AllowSub: true,
-}}
-
-// operators can also publish thing actions and receive replies on their inbox
-var operatorPermissions = append(viewerPermissions, []msgserver.RolePermission{
-	{
-		Prefix:   "things",
-		MsgType:  vocab.MessageTypeAction,
-		AllowPub: true,
-	},
-}...)
-
-// managers can also publish configuration
+// managers can in addition to operator also publish configuration
 var managerPermissions = append(operatorPermissions, msgserver.RolePermission{
-	Prefix:   "things",
 	MsgType:  vocab.MessageTypeConfig,
 	AllowPub: true,
 })
 
-// administrators can do all and publish to services
+// administrators can in addition to operators publish all RPCs
+// RPC request permissions for roles are set by the service when they register.
 var adminPermissions = append(managerPermissions, msgserver.RolePermission{
-	Prefix:   "svc",
-	MsgType:  vocab.MessageTypeAction,
+	MsgType:  vocab.MessageTypeRPC,
 	AllowPub: true,
-	AllowSub: true,
 })
 
-// services can act as admin and devices
-var servicePermissions = append(adminPermissions, devicePermissions...)
+// services are admins that can also publish events and subscribe to their own rpc, actions and config
+var servicePermissions = append(adminPermissions, msgserver.RolePermission{
+	MsgType:  vocab.MessageTypeEvent,
+	DeviceID: "{clientID}",
+	AllowPub: true,
+}, msgserver.RolePermission{
+	MsgType:  vocab.MessageTypeRPC,
+	DeviceID: "{clientID}",
+	AllowSub: true,
+}, msgserver.RolePermission{
+	MsgType:  vocab.MessageTypeAction,
+	DeviceID: "{clientID}",
+	AllowSub: true,
+}, msgserver.RolePermission{
+	MsgType:  vocab.MessageTypeConfig,
+	DeviceID: "{clientID}",
+	AllowSub: true,
+})
 
 // DefaultRolePermissions contains the default pub/sub permissions for each user role
 var DefaultRolePermissions = map[string][]msgserver.RolePermission{
@@ -138,7 +152,7 @@ var DefaultRolePermissions = map[string][]msgserver.RolePermission{
 	ClientRoleAdmin:    adminPermissions,
 }
 
-// capability address part used in sending messages
+// AuthRolesCapability defines the 'capability' address part used in sending messages
 const AuthRolesCapability = "roles"
 
 // CreateRoleAction defines the service action to create a new custom role

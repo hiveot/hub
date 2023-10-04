@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/api/go/msgserver"
 	auth2 "github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/auth/authstore"
+	"github.com/hiveot/hub/lib/hubcl"
 	"log/slog"
 	"os"
 )
@@ -34,33 +35,54 @@ func (svc *AuthService) Start() (err error) {
 		return err
 	}
 
-	// before being able to connect, the AuthServiceName must be known
+	// before being able to connect, the AuthService must be known
 	myKey, myKeyPub := svc.msgServer.CreateKP()
 	_ = myKey
-	err = svc.store.Add(auth.AuthServiceName, auth.ClientProfile{
-		ClientID:          auth.AuthServiceName,
-		ClientType:        auth.ClientTypeService,
-		DisplayName:       "Auth",
-		PubKey:            myKeyPub,
-		TokenValidityDays: 0,
-		Role:              auth.ClientRoleAdmin,
-	})
+
+	// use a temporary instance of the client manager to add itself
+	mngClients := NewAuthManageClients(svc.store, nil, svc.msgServer)
+	token, err := mngClients.AddService(auth.AuthServiceName, "Auth Service", myKeyPub)
+	if err != nil {
+		return fmt.Errorf("failed to setup the auth service: %w", err)
+	}
+
+	//authServiceProfile := auth.ClientProfile{
+	//	ClientID:          auth.AuthServiceName,
+	//	ClientType:        auth.ClientTypeService,
+	//	DisplayName:       "Auth",
+	//	PubKey:            myKeyPub,
+	//	TokenValidityDays: 0,
+	//	Role:              auth.ClientRoleService,
+	//}
+	//err = svc.store.Add(auth.AuthServiceName,authServiceProfile)
+	//if err != nil {
+	//	return err
+	//}
+	//// setup the server with the initial client list
+	//err = svc.msgServer.ApplyAuth(svc.store.GetAuthClientList())
+	//if err != nil {
+	//	return fmt.Errorf("auth failed to setup the server: %w", err)
+	//}
+
+	// create the service client to manage clients, roles and user profiles
+	//token,err := svc.msgServer.CreateToken(authServiceProfile)
+	//svc.hc, err = svc.msgServer.ConnectInProc(auth.AuthServiceName)
+	//if err != nil {
+	//	return fmt.Errorf("can't connect authn to server: %w", err)
+	//}
+
+	// nats doesnt support uds?
+	tcpAddr, _, udsAddr := svc.msgServer.GetServerURLs()
+	_ = udsAddr
+	core := svc.msgServer.Core()
+	svc.hc = hubcl.NewHubClient(tcpAddr, auth.AuthServiceName, myKey, nil, core)
+	err = svc.hc.ConnectWithToken(token)
 	if err != nil {
 		return err
 	}
-	// setup the server with the initial client list
-	err = svc.msgServer.ApplyAuth(svc.store.GetAuthClientList())
-	if err != nil {
-		return fmt.Errorf("auth failed to setup the server: %w", err)
-	}
-
-	svc.hc, err = svc.msgServer.ConnectInProc(auth.AuthServiceName)
-	if err != nil {
-		return fmt.Errorf("can't connect authn to server: %w", err)
-	}
 	svc.MngClients = NewAuthManageClients(svc.store, svc.hc, svc.msgServer)
-	svc.MngProfile = NewAuthManageProfile(svc.store, nil, svc.hc, svc.msgServer)
 	svc.MngRoles = NewAuthManageRoles(svc.store, svc.hc, svc.msgServer)
+	svc.MngProfile = NewAuthManageProfile(svc.store, nil, svc.hc, svc.msgServer)
 
 	err = svc.MngClients.Start()
 	if err == nil {
@@ -85,10 +107,12 @@ func (svc *AuthService) Start() (err error) {
 	svc.msgServer.SetServicePermissions(auth.AuthServiceName, auth.AuthProfileCapability,
 		[]string{auth.ClientRoleViewer, auth.ClientRoleOperator, auth.ClientRoleManager, auth.ClientRoleAdmin})
 
-	// ensure the launcher client exists and has a key and service token
+	// FIXME, what are the permissions for other services like certs, launcher, ...?
+
+	// Ensure the launcher client exists and has a key and service token
 	slog.Info("Start (auth). Adding launcher user", "keyfile", svc.cfg.LauncherKeyFile)
 	_, launcherKeyPub, _ := svc.MngClients.LoadCreateUserKey(svc.cfg.LauncherKeyFile)
-	token, err := svc.MngClients.AddService(auth.DefaultLauncherServiceID, "Launcher Service", launcherKeyPub)
+	token, err = svc.MngClients.AddService(auth.DefaultLauncherServiceID, "Launcher Service", launcherKeyPub)
 	if err == nil {
 		// remove the readonly token file if it already exists
 		_ = os.Remove(svc.cfg.LauncherTokenFile)

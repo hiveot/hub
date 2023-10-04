@@ -6,20 +6,22 @@ import (
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubcl/mqtthubclient"
+	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
 	"path"
 )
 
 // MqttServerConfig holds the mqtt broker configuration
 type MqttServerConfig struct {
-	// configurable settings
-	Host   string `yaml:"host,omitempty"`   // default: localhost
-	Port   int    `yaml:"port,omitempty"`   // 0 default: 8883
-	WSPort int    `yaml:"wsPort,omitempty"` // 0 default: 8884
+	// Host is the server address, default is outbound IP address
+	Host string `yaml:"host,omitempty"`
+	// Port is the server TLS port, default is 8883
+	Port int `yaml:"port,omitempty"`
+	// WSPort is the server Websocket port, default is 8884
+	WSPort int `yaml:"wsPort,omitempty"`
 
 	LogLevel string `yaml:"logLevel,omitempty"` // default: warn
 	LogFile  string `yaml:"logFile,omitempty"`  // default: no logfile
-	Debug    bool   `yaml:"debug,omitempty"`    // default: false
 
 	DataDir string `yaml:"dataDir,omitempty"` // default is server default
 
@@ -27,7 +29,7 @@ type MqttServerConfig struct {
 	NoAutoStart bool `yaml:"noAutoStart,omitempty"`
 
 	// the in-proc UDS name to use. Default is "@/MqttInMemUDSProd" (see MqttHubClient)
-	InProcUDSName string `yaml:"inProcUDSName"`
+	InMemUDSName string `yaml:"inMemUDSName"`
 
 	// The certs and keys are set directly
 	CaCert    *x509.Certificate `yaml:"-"` // preset, load, or error
@@ -58,7 +60,8 @@ func (cfg *MqttServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 
 	// Step 1: Apply defaults parameters
 	if cfg.Host == "" {
-		cfg.Host = "localhost"
+		outboundIP := utils.GetOutboundIP("")
+		cfg.Host = outboundIP.String()
 	}
 	if cfg.Port == 0 {
 		cfg.Port = 8883
@@ -72,8 +75,8 @@ func (cfg *MqttServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 	if cfg.LogLevel == "" {
 		cfg.LogLevel = "warn"
 	}
-	if cfg.InProcUDSName == "" {
-		cfg.InProcUDSName = mqtthubclient.MqttInMemUDSProd
+	if cfg.InMemUDSName == "" {
+		cfg.InMemUDSName = mqtthubclient.MqttInMemUDSProd
 	}
 
 	// Step 2: generate missing certificates

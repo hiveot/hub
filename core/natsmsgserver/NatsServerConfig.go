@@ -53,7 +53,7 @@ type NatsServerConfig struct {
 	//CoreServiceJWT   string `yaml:"-"` // generated
 
 	// appAccount to use with users and nkeys
-	AppAcct *server.Account
+	AppAcct *server.Account `yaml:"-"`
 }
 
 // Setup the nats server config.

@@ -1,9 +1,5 @@
 package msgserver
 
-import (
-	"github.com/hiveot/hub/api/go/hubclient"
-)
-
 // ClientAuthInfo defines client authentication and authorization information
 type ClientAuthInfo struct {
 	// UserID, ServiceID or DeviceID of the client
@@ -25,10 +21,9 @@ type ClientAuthInfo struct {
 // RolePermission defines authorization for a role.
 // Each permission defines the source/thing the user can pub/sub to.
 type RolePermission struct {
-	Prefix   string // things (default) or "svc" for service
-	SourceID string // source or "" for all sources
-	ThingID  string // thingID or "" for all things
-	MsgType  string // event or action, or "" for all message types
+	DeviceID string // device or service, or "" for all
+	ThingID  string // thingID or capability, or "" for all
+	MsgType  string // rpc, event, action, config, or "" for all message types
 	MsgName  string // action name or "" for all actions
 	AllowPub bool   // allow publishing of this message
 	AllowSub bool   // allow subscribing to this message
@@ -48,7 +43,10 @@ type IMsgServer interface {
 	//
 	// Optionally provide an alternative key-pair, or use nil for the predefined core service key.
 	// the provided keypair is that of a server generated keypair. See CreateKeys()
-	ConnectInProc(serviceID string) (hubclient.IHubClient, error)
+	//ConnectInProc(serviceID string) (hubclient.IHubClient, error)
+
+	// Core returns the running core, "nats" or "mqtt"
+	Core() string
 
 	// CreateKP creates a keypair for use in connecting or signing.
 	// This returns the key pair and its public key string.
@@ -67,6 +65,9 @@ type IMsgServer interface {
 	//  authInfo with client info used to create and verify the token
 	CreateToken(authInfo ClientAuthInfo) (token string, err error)
 
+	// GetServerURLs returns the server URLs
+	GetServerURLs() (tlsURL string, wssURL string, udsURL string)
+
 	// SetRolePermissions sets the roles used in authorization.
 	// As messaging servers have widely different ways of handling authentication and
 	// authorization this simply gives all users and roles to the server to apply
@@ -81,8 +82,8 @@ type IMsgServer interface {
 	SetServicePermissions(serviceID string, capability string, roles []string)
 
 	// Start the server.
-	// This returns the primary connection address for use in discovery.
-	Start() (clientURL string, err error)
+	// Use GetServerURLS to determine the supported connection addresses
+	Start() error
 
 	// Stop the server
 	Stop()

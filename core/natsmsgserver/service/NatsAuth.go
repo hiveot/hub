@@ -16,7 +16,7 @@ import (
 )
 
 // ServicePermissions defines for each role the service capability that can be used
-var ServicePermissions = map[string][]msgserver.RolePermission{}
+//var ServicePermissions = map[string][]msgserver.RolePermission{}
 
 // ApplyAuth reconfigures the server for authentication and authorization.
 // For each client this applies the permissions associated with the client type and role.
@@ -55,7 +55,7 @@ func (srv *NatsMsgServer) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
 	// FIXME: when using callouts, don't apply users and have the callout verifier handle them.
 	for _, clientInfo := range clients {
 		authClients[clientInfo.ClientID] = clientInfo
-		userPermissions := srv.MakePermissions(clientInfo, srv.rolePermissions)
+		userPermissions := srv.MakePermissions(clientInfo)
 
 		if clientInfo.PasswordHash != "" {
 			pwUsers = append(pwUsers, &server.User{
@@ -155,7 +155,7 @@ func (srv *NatsMsgServer) CreateJWTToken(authInfo msgserver.ClientAuthInfo) (new
 
 	//uc.UserPermissionLimits = *limits // todo
 
-	uc.Permissions = srv.MakeJWTPermissions(authInfo, srv.rolePermissions)
+	uc.Permissions = srv.MakeJWTPermissions(authInfo)
 
 	// check things are valid
 	vr := jwt.CreateValidationResults()
@@ -180,15 +180,13 @@ func (srv *NatsMsgServer) GetClientAuth(clientID string) (msgserver.ClientAuthIn
 
 // MakeJWTPermissions constructs a permissions object for use in a JWT token.
 // Nats calllout doesn't use the nats server permissions so convert it to JWT perm.
-func (srv *NatsMsgServer) MakeJWTPermissions(
-	clientInfo msgserver.ClientAuthInfo,
-	authzRoles map[string][]msgserver.RolePermission) jwt.Permissions {
+func (srv *NatsMsgServer) MakeJWTPermissions(clientInfo msgserver.ClientAuthInfo) jwt.Permissions {
 
 	jperm := jwt.Permissions{
 		Pub: jwt.Permission{},
 		Sub: jwt.Permission{},
 	}
-	srvperm := srv.MakePermissions(clientInfo, authzRoles)
+	srvperm := srv.MakePermissions(clientInfo)
 	jperm.Pub.Allow = srvperm.Publish.Allow
 	jperm.Pub.Deny = srvperm.Publish.Deny
 	jperm.Sub.Allow = srvperm.Subscribe.Allow
@@ -198,11 +196,10 @@ func (srv *NatsMsgServer) MakeJWTPermissions(
 }
 
 // MakePermissions constructs a permissions object for a client
+//
 // Clients that are sources (device,service) receive hard-coded permissions, while users (user,service) permissions
 // are based on their role.
-func (srv *NatsMsgServer) MakePermissions(
-	clientInfo msgserver.ClientAuthInfo,
-	authzRoles map[string][]msgserver.RolePermission) *server.Permissions {
+func (srv *NatsMsgServer) MakePermissions(clientInfo msgserver.ClientAuthInfo) *server.Permissions {
 
 	subPerm := server.SubjectPermission{
 		Allow: []string{},
@@ -217,22 +214,40 @@ func (srv *NatsMsgServer) MakePermissions(
 		Subscribe: &subPerm,
 		Response:  nil,
 	}
-	// all clients can use their inbox, using inbox prefix
-	subInbox := "_INBOX." + clientInfo.ClientID + ".>"
+	// all clients can subscribe to their own inbox and publish to other inboxes
+	subInbox := vocab.MessageTypeINBOX + "." + clientInfo.ClientID + ".>"
 	subPerm.Allow = append(subPerm.Allow, subInbox)
+	pubInbox := vocab.MessageTypeINBOX + ".>"
+	pubPerm.Allow = append(pubPerm.Allow, pubInbox)
 
-	rolePerm, found := authzRoles[clientInfo.Role]
+	// generate subjects based on role permissions
+	rolePerm, found := srv.rolePermissions[clientInfo.Role]
 	if found && rolePerm == nil {
 		// no permissions for this role
 	} else if found {
+		// add services role permissions set by services
+		servicePerms, found := srv.servicePermissions[clientInfo.Role]
+		if found {
+			rolePerm = append(rolePerm, servicePerms...)
+		}
+
 		// apply role permissions
-		for _, rp := range rolePerm {
-			subj := natshubclient.MakeSubject(rp.MsgType, rp.SourceID, rp.ThingID, rp.MsgName, "")
-			if rp.AllowPub {
-				pubPerm.Allow = append(pubPerm.Allow, subj)
+		for _, perm := range rolePerm {
+			// substitute the clientID in the deviceID with the loginID
+			permDeviceID := perm.DeviceID
+			if permDeviceID == "{clientID}" {
+				permDeviceID = clientInfo.ClientID
 			}
-			if rp.AllowSub {
-				subPerm.Allow = append(subPerm.Allow, subj)
+			if perm.AllowPub {
+				// publishing requires including their own clientID
+				pubSubj := natshubclient.MakeSubject(
+					perm.MsgType, permDeviceID, perm.ThingID, perm.MsgName, clientInfo.ClientID)
+				pubPerm.Allow = append(pubPerm.Allow, pubSubj)
+			}
+			if perm.AllowSub {
+				subSubj := natshubclient.MakeSubject(
+					perm.MsgType, permDeviceID, perm.ThingID, perm.MsgName, "")
+				subPerm.Allow = append(subPerm.Allow, subSubj)
 			}
 		}
 		// allow event stream access
@@ -244,6 +259,10 @@ func (srv *NatsMsgServer) MakePermissions(
 			"$JS.API.CONSUMER.INFO." + streamName + ".>",     // to get consumer info?
 			"$JS.API.CONSUMER.MSG.NEXT." + streamName + ".>", // to get consumer info?
 		}...)
+		// admin role can access all JS API INFO
+		if clientInfo.Role == auth.ClientRoleAdmin {
+			pubPerm.Allow = append(pubPerm.Allow, "$JS.API.INFO")
+		}
 	} else {
 		// unknown role
 		slog.Error("unknown role",
@@ -254,41 +273,6 @@ func (srv *NatsMsgServer) MakePermissions(
 		pubPerm.Deny = append(pubPerm.Deny, "$JS.API.CONSUMER.>")
 		pubPerm.Deny = append(pubPerm.Deny, "$JS.API.STREAM.>")
 	}
-
-	// user role might be allowed to use a service capability
-	sp, found := ServicePermissions[clientInfo.Role]
-	if found && sp != nil {
-		for _, perm := range sp {
-			subject := natshubclient.MakeSubject(
-				vocab.MessageTypeRPC, perm.SourceID, perm.ThingID, "", "")
-			pubPerm.Allow = append(pubPerm.Allow, subject)
-		}
-	}
-
-	// devices and services are sources that can publish events and subscribe to actions and config requests
-	if clientInfo.ClientType == auth.ClientTypeDevice || clientInfo.ClientType == auth.ClientTypeService {
-		subject1 := natshubclient.MakeSubject(
-			vocab.MessageTypeEvent, clientInfo.ClientID, "", "", "")
-		subject2 := natshubclient.MakeSubject(
-			vocab.MessageTypeAction, clientInfo.ClientID, "", "", "")
-		subject3 := natshubclient.MakeSubject(
-			vocab.MessageTypeConfig, clientInfo.ClientID, "", "", "")
-		pubPerm.Allow = append(pubPerm.Allow, subject1)
-		subPerm.Allow = append(subPerm.Allow, subject2, subject3)
-	}
-
-	// services can also subscribe to actions on the rpc prefix
-	if clientInfo.ClientType == auth.ClientTypeService {
-		subject1 := natshubclient.MakeSubject(
-			vocab.MessageTypeRPC, clientInfo.ClientID, "", "", "")
-		subject2 := natshubclient.MakeSubject(
-			vocab.MessageTypeRPC, clientInfo.ClientID, "", "", "")
-		subject3 := natshubclient.MakeSubject(
-			vocab.MessageTypeRPC, clientInfo.ClientID, "", "", "")
-		pubPerm.Allow = append(pubPerm.Allow, subject1)
-		subPerm.Allow = append(subPerm.Allow, subject2, subject3)
-	}
-
 	return perm
 }
 
@@ -304,20 +288,19 @@ func (srv *NatsMsgServer) SetServicePermissions(
 
 	for _, role := range roles {
 		// add the role if needed
-		rp := ServicePermissions[role]
+		rp := srv.servicePermissions[role]
 		if rp == nil {
 			rp = []msgserver.RolePermission{}
 		}
 		rp = append(rp, msgserver.RolePermission{
-			Prefix:   "svc",
-			SourceID: serviceID,
+			MsgType:  vocab.MessageTypeRPC,
+			DeviceID: serviceID,
 			ThingID:  capability,
-			MsgType:  vocab.MessageTypeAction,
 			MsgName:  "", // all methods of the capability can be used
 			AllowPub: true,
 			AllowSub: false,
 		})
-		ServicePermissions[role] = rp
+		srv.servicePermissions[role] = rp
 	}
 
 }

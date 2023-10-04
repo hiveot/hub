@@ -97,7 +97,10 @@ type ILauncher interface {
 	// This returns the error from the last service that could not be started
 	StartAllPlugins() error
 
-	// StartPlugin start a plugin
+	// StartPlugin start the plugin with the given name.
+	// This creates a key and token for the plugin to use to authenticate.
+	// The pluginID is the binary name. This allows to run instances of the same plugin on multiple hosts
+	// simply by renaming the binary.
 	// If the plugin is already running this does nothing
 	StartPlugin(name string) (PluginInfo, error)
 

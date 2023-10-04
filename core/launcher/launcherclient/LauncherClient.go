@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/launcher"
 	"github.com/hiveot/hub/lib/ser"
-	"os"
 )
 
 // LauncherClient is a marshaller for service messages using a provided hub connection.
@@ -91,16 +90,12 @@ func (cl *LauncherClient) StopAllPlugins() error {
 }
 
 // NewLauncherClient returns a launcher service client
-// The launcherID is the ID of the launcher instance to connect to. This is only
-// needed when connecting to a launcher on a different host. When not provided,
-// this uses the local launcher with the ID launcher-{hostname}.
 //
-//	launcherID is the optional ID of the launcher to use. Default is 'launcher-{hostname}'
+//	launcherID is the optional ID of the launcher to use. Default is 'launcher'
 //	hc is the hub client connection to use.
 func NewLauncherClient(launcherID string, hc hubclient.IHubClient) *LauncherClient {
 	if launcherID == "" {
-		hostName, _ := os.Hostname()
-		launcherID = launcher.ServiceName + "-" + hostName
+		launcherID = launcher.ServiceName
 	}
 	cl := LauncherClient{
 		hc:         hc,

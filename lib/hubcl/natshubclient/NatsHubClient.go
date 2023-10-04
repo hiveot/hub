@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
@@ -95,7 +96,7 @@ func (hc *NatsHubClient) ConnectWithJWT(jwtToken string) (err error) {
 	hc.nc, err = nats.Connect(hc.serverURL,
 		nats.Name(hc.clientID), // connection name for logging, debugging
 		nats.Secure(hc.tlsConfig),
-		nats.CustomInboxPrefix("_INBOX."+hc.clientID),
+		nats.CustomInboxPrefix(vocab.MessageTypeINBOX+"."+hc.clientID),
 		nats.UserJWTAndSeed(jwtToken, string(jwtSeed)),
 		nats.Token(jwtToken), // JWT token isn't passed through in callout
 		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSec)))
@@ -126,6 +127,7 @@ func (hc *NatsHubClient) ConnectWithToken(token string) (err error) {
 
 // ConnectWithTokenFile is a convenience function to read token and key from file and connect to the server
 func (hc *NatsHubClient) ConnectWithTokenFile(tokenFile string, keyFile string) (err error) {
+	slog.Info("ConnectWithTokenFile", "tokenFile", tokenFile, "keyFile", keyFile)
 	var token []byte
 	if keyFile != "" {
 		var keyData []byte
@@ -137,23 +139,20 @@ func (hc *NatsHubClient) ConnectWithTokenFile(tokenFile string, keyFile string) 
 	if tokenFile != "" {
 		token, err = os.ReadFile(tokenFile)
 	}
+	if err != nil {
+		return fmt.Errorf("ConnectWithTokenFile failed: %w", err)
+	}
 	err = hc.ConnectWithToken(string(token))
 	return err
 }
 
-// ConnectWithNC connects using the given nats connection
-//func ConnectWithNC(nc *nats.Conn) (hc *NatsHubClient, err error) {
-//	clientID := nc.Opts.Name
-//	if clientID == "" {
-//		return nil, fmt.Errorf("NATS connection has no client ID in opts.Name")
-//	}
-//	hc, err = NewHubClient(clientID, nc)
-//	return hc, err
-//}
-
 // ConnectWithKey connects to the Hub server using the client's nkey secret
 func (hc *NatsHubClient) ConnectWithKey() error {
 	var err error
+
+	if hc.myKey == nil {
+		return fmt.Errorf("ConnectWithKey: Client '%s' has no auth key", hc.clientID)
+	}
 
 	// The handler to sign the server issued challenge
 	sigCB := func(nonce []byte) ([]byte, error) {
@@ -165,7 +164,7 @@ func (hc *NatsHubClient) ConnectWithKey() error {
 		nats.Secure(hc.tlsConfig),
 		nats.Nkey(pubKey, sigCB),
 		// client permissions allow this inbox prefix
-		nats.CustomInboxPrefix("_INBOX."+hc.clientID),
+		nats.CustomInboxPrefix(vocab.MessageTypeINBOX+"."+hc.clientID),
 		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSec)))
 
 	if err == nil {
@@ -182,38 +181,13 @@ func (hc *NatsHubClient) ConnectWithPassword(password string) (err error) {
 		nats.Secure(hc.tlsConfig),
 		// client permissions allow this inbox prefix
 		nats.Name(hc.clientID),
-		nats.CustomInboxPrefix("_INBOX."+hc.clientID),
+		nats.CustomInboxPrefix(vocab.MessageTypeINBOX+"."+hc.clientID),
 		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSec)))
 	if err == nil {
 		hc.js, err = hc.nc.JetStream()
 	}
 	return err
 }
-
-// ConnectUnauthenticated connects to the Hub server as an unauthenticated user
-// Intended for use by IoT devices to perform out-of-band provisioning.
-//func ConnectUnauthenticated(url string, caCert *x509.Certificate) (hc *NatsHubClient, err error) {
-//	if url == "" {
-//		url = nats.DefaultURL
-//	}
-//	caCertPool := x509.NewCertPool()
-//	if caCert != nil {
-//		caCertPool.AddCert(caCert)
-//	}
-//	tlsConfig := &tls.Config{
-//		RootCAs:            caCertPool,
-//		InsecureSkipVerify: caCert == nil,
-//	}
-//	nc, err := nats.Connect(url,
-//		nats.Secure(tlsConfig),
-//		// client permissions allow this inbox prefix
-//		nats.CustomInboxPrefix("_INBOX.unauthenticated"),
-//	)
-//	if err == nil {
-//		hc, err = NewHubClient("", nc)
-//	}
-//	return hc, err
-//}
 
 // Disconnect from the Hub server and release all subscriptions
 func (hc *NatsHubClient) Disconnect() {

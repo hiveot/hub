@@ -11,6 +11,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/core/natsmsgserver"
 	"github.com/hiveot/hub/lib/hubcl/natshubclient"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
@@ -34,8 +35,15 @@ type NatsMsgServer struct {
 	// map of known clients by ID for quick lookup during auth
 	authClients map[string]msgserver.ClientAuthInfo
 
-	// map of role to role permissions
+	// map of permissions for each role
 	rolePermissions map[string][]msgserver.RolePermission
+	// map of permissions for each service
+	servicePermissions map[string][]msgserver.RolePermission
+
+	// connection urls the server is listening on
+	tlsURL string
+	wssURL string
+	udsURL string
 }
 
 // ConnectInProcNC establishes a nats connection to the server for core services.
@@ -95,20 +103,29 @@ func (srv *NatsMsgServer) ConnectInProc(serviceID string) (hubclient.IHubClient,
 	return hc, err
 }
 
+func (srv *NatsMsgServer) Core() string {
+	return "nats"
+}
+
+// GetServerURLs is the URL used to connect to this server. This is set on Start
+func (srv *NatsMsgServer) GetServerURLs() (tlsURL string, wssURL string, udsURL string) {
+	return srv.tlsURL, srv.wssURL, srv.udsURL
+}
+
 // Start the NATS server with the given configuration and create an event ingress stream
 //
 //	Config.Setup must have been called first.
-func (srv *NatsMsgServer) Start() (serverURL string, err error) {
+func (srv *NatsMsgServer) Start() (err error) {
 
 	srv.NatsOpts, err = srv.Config.CreateNatsNKeyOptions()
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	// start nats
 	srv.ns, err = server.NewServer(&srv.NatsOpts)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	srv.ns.ConfigureLogger()
@@ -117,20 +134,23 @@ func (srv *NatsMsgServer) Start() (serverURL string, err error) {
 	go srv.ns.Start()
 	if !srv.ns.ReadyForConnections(30 * time.Second) {
 		err = errors.New("nats: not ready for connection")
-		return "", err
+		return err
 	}
-	serverURL = srv.ns.ClientURL()
+	outboundIP := utils.GetOutboundIP("")
+	srv.tlsURL = srv.ns.ClientURL()
+	srv.wssURL = fmt.Sprintf("wss://%s:%d", outboundIP.String(), srv.Config.WSPort)
+	srv.udsURL = "" // not supported?
 
 	// the app account must have JS enabled
 	ac, _ := srv.ns.LookupAccount(srv.Config.AppAccountName)
 	err = ac.EnableJetStream(nil) //use defaults
 	if err != nil {
-		return serverURL, fmt.Errorf("can't enable JS for app account: %w", err)
+		return fmt.Errorf("can't enable JS for app account: %w", err)
 	}
 
 	hasJS := ac.JetStreamEnabled()
 	if !hasJS {
-		return serverURL, fmt.Errorf("JS not enabled for app account '%s'", srv.Config.AppAccountName)
+		return fmt.Errorf("JS not enabled for app account '%s'", srv.Config.AppAccountName)
 	}
 
 	// tokenizer
@@ -140,11 +160,11 @@ func (srv *NatsMsgServer) Start() (serverURL string, err error) {
 	// ensure the events intake stream exists
 	nc, err := srv.ConnectInProcNC("jetsetup", nil)
 	if err != nil {
-		return serverURL, err
+		return err
 	}
 	js, err := nc.JetStream()
 	if err != nil {
-		return serverURL, err
+		return err
 	}
 	_, err = js.StreamInfo(EventsIntakeStreamName)
 	if err != nil {
@@ -161,7 +181,7 @@ func (srv *NatsMsgServer) Start() (serverURL string, err error) {
 		_, err = js.AddStream(cfg)
 	}
 
-	return serverURL, err
+	return err
 }
 
 // Stop the server
@@ -173,6 +193,9 @@ func (srv *NatsMsgServer) Stop() {
 func NewNatsMsgServer(
 	cfg *natsmsgserver.NatsServerConfig, rolePermissions map[string][]msgserver.RolePermission) *NatsMsgServer {
 
-	srv := &NatsMsgServer{Config: cfg, rolePermissions: rolePermissions}
+	srv := &NatsMsgServer{Config: cfg,
+		rolePermissions:    rolePermissions,
+		servicePermissions: make(map[string][]msgserver.RolePermission, 0),
+	}
 	return srv
 }

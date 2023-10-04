@@ -26,6 +26,7 @@ var logDir = "/tmp/test-launcher"
 
 // the following are set by the testmain
 var testServer *testenv.TestServer
+var serverURL string
 
 //var testClients = []msgserver.ClientAuthInfo{{
 //	ClientID:   launcher.ServiceName,
@@ -49,12 +50,12 @@ func StartService() (l launcher.ILauncher, stopFn func()) {
 	launcherConfig.AttachStderr = true
 	launcherConfig.AttachStdout = false
 	launcherConfig.LogPlugins = true
-	var f = utils.GetFolders(homeDir, false)
-	f.Plugins = "/bin" // for /bin/yes
-	f.Logs = logDir
-	f.Certs = homeDir
+	var env = utils.GetAppEnvironment(homeDir, false)
+	env.PluginsDir = "/bin" // for /bin/yes
+	env.LogsDir = logDir
+	env.CertsDir = homeDir
 
-	svc := service.NewLauncherService(f, launcherConfig, hc1)
+	svc := service.NewLauncherService(env, launcherConfig, hc1)
 	err = svc.Start()
 	if err != nil {
 		slog.Error(err.Error())
@@ -81,6 +82,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
+	serverURL, _, _ = testServer.MsgServer.GetServerURLs()
 	_ = testServer.StartAuth()
 	res := m.Run()
 	testServer.Stop()

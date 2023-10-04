@@ -20,11 +20,7 @@ import (
 // HubCoreConfig with core server and services configuration
 // Use NewHubCoreConfig to create a default config
 type HubCoreConfig struct {
-	// Run the core using nats or mqtt. (currently only nats)
-	Core string `yaml:"core"`
-
-	// The home directory used in init and setup
-	HomeDir string `yaml:"homeDir,omitempty"`
+	Env utils.AppEnvironment
 
 	// certificate file names or full path
 	CaCertFile     string            `yaml:"caCertFile"`     // default: caCert.pem
@@ -56,61 +52,51 @@ type HubCoreConfig struct {
 //	configFile to load or "" to use defaults
 //	core to setup, "nats" or "mqtt"
 //	new to initialize a new environment and delete existing data (careful!)
-func (cfg *HubCoreConfig) Setup(
-	homeDir string, configFile string, core string, new bool) error {
+func (cfg *HubCoreConfig) Setup(env utils.AppEnvironment, new bool) error {
 	var err error
-	cwd, _ := os.Getwd()
 	slog.Info("running setup",
 		slog.Bool("--new", new),
-		slog.String("home", homeDir),
-		slog.String("cwd", cwd))
+		slog.String("home", env.HomeDir),
+	)
 
-	// 1: Determine directories
-	// default to the parent folder of the application binary
-	if homeDir == "" {
-		homeDir = path.Base(path.Base(os.Args[0]))
-	} else if !path.IsAbs(homeDir) {
-		homeDir = path.Join(cwd, homeDir)
-	}
-	f := utils.GetFolders(homeDir, false)
-	cfg.HomeDir = f.Home
+	cfg.Env = env
 
-	// 2: Setup files and folders
-	// In a new environment, clear the home directory
+	// 1: Setup files and folders
+	// In a new environment, clear the home directory.
 	// This is very destructive!
-	// do a sanity check on home
-	if path.Clean(cfg.HomeDir) == "/etc" {
+	// Do a sanity check on home first
+	if path.Clean(env.HomeDir) == "/etc" {
 		panic("Home cannot be /etc")
-	} else if path.Clean(cfg.HomeDir) == "/tmp" {
+	} else if path.Clean(env.HomeDir) == "/tmp" {
 		panic("Home cannot be /tmp. Choose a subdir")
-	} else if path.Clean(path.Dir(cfg.HomeDir)) == "/home" {
+	} else if path.Clean(path.Dir(env.HomeDir)) == "/home" {
 		panic("application home directory cannot be someone's home directory")
 	}
-	if _, err2 := os.Stat(cfg.HomeDir); err2 == nil && new {
+	if _, err2 := os.Stat(env.HomeDir); err2 == nil && new {
 		slog.Warn("setup new. Removing ",
-			slog.String("config", f.Config),
-			slog.String("certs", f.Certs),
-			slog.String("stores", f.Stores),
-			slog.String("logs", f.Logs))
-		_ = os.RemoveAll(f.Config)
-		_ = os.RemoveAll(f.Certs)
-		_ = os.RemoveAll(f.Stores)
-		_ = os.RemoveAll(f.Logs)
+			slog.String("config", env.ConfigDir),
+			slog.String("certs", env.CertsDir),
+			slog.String("stores", env.StoresDir),
+			slog.String("logs", env.LogsDir))
+		_ = os.RemoveAll(env.ConfigDir)
+		_ = os.RemoveAll(env.CertsDir)
+		_ = os.RemoveAll(env.StoresDir)
+		_ = os.RemoveAll(env.LogsDir)
 	}
-	if _, err2 := os.Stat(cfg.HomeDir); err2 != nil {
-		err = os.MkdirAll(cfg.HomeDir, 0755)
+	if _, err2 := os.Stat(env.HomeDir); err2 != nil {
+		err = os.MkdirAll(env.HomeDir, 0755)
 	}
 	if err != nil {
-		panic("unable to create home directory: " + cfg.HomeDir)
+		panic("unable to create home directory: " + env.HomeDir)
 	}
 	cfg.CaCertFile = certs.DefaultCaCertFile
 	cfg.CaKeyFile = certs.DefaultCaKeyFile
 	cfg.ServerCertFile = "hubCert.pem"
 	cfg.ServerKeyFile = "hubKey.pem"
 
-	// 3: Load config file if given
-	if _, err := os.Stat(configFile); err == nil {
-		data, err := os.ReadFile(configFile)
+	// 2: Load config file if given
+	if _, err := os.Stat(env.ConfigFile); err == nil {
+		data, err := os.ReadFile(env.ConfigFile)
 		if err != nil {
 			return fmt.Errorf("unable to load config: %w", err)
 		}
@@ -120,21 +106,21 @@ func (cfg *HubCoreConfig) Setup(
 		}
 	}
 
-	// 4: Create/Load the CA and server certificates
-	cfg.SetupCerts(f.Certs)
+	// 3: Create/Load the CA and server certificates
+	cfg.SetupCerts(env.CertsDir)
 
-	// 5: Setup nats config
-	if core == "nats" {
-		err = cfg.SetupNatsCore(f)
+	// 4: Setup nats config
+	if env.ServerCore == "nats" {
+		err = cfg.SetupNatsCore(env)
 	} else {
 		// 6: Setup mqtt config
 		cfg.MqttServer.CaCert = cfg.CaCert
 		cfg.MqttServer.CaKey = cfg.CaKey
 		cfg.MqttServer.ServerTLS = cfg.ServerTLS
-		err = cfg.MqttServer.Setup(f.Certs, f.Stores, true)
+		err = cfg.MqttServer.Setup(env.CertsDir, env.StoresDir, true)
 	}
-	// 7: setup authn config
-	err = cfg.Auth.Setup(f.Certs, f.Stores)
+	// 5: setup authn config
+	err = cfg.Auth.Setup(env.CertsDir, env.StoresDir)
 	if err != nil {
 		return err
 	}
@@ -226,12 +212,14 @@ func (cfg *HubCoreConfig) SetupCerts(certsDir string) {
 }
 
 // SetupNatsCore load or generate nats service and admin keys.
-func (cfg *HubCoreConfig) SetupNatsCore(f utils.AppDirs) error {
+func (cfg *HubCoreConfig) SetupNatsCore(f utils.AppEnvironment) error {
 	var err error
+	slog.Warn("env", "CertsDir", f.CertsDir,
+		"HomeDir", f.HomeDir)
 	cfg.NatsServer.CaCert = cfg.CaCert
 	cfg.NatsServer.CaKey = cfg.CaKey
 	cfg.NatsServer.ServerTLS = cfg.ServerTLS
-	err = cfg.NatsServer.Setup(f.Certs, f.Stores, true)
+	err = cfg.NatsServer.Setup(f.CertsDir, f.StoresDir, true)
 
 	if cfg.NatsServer.DataDir == "" {
 		panic("config is missing server data directory")

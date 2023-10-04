@@ -14,11 +14,10 @@ func TestPermissions(t *testing.T) {
 	defer t.Log("---TestPermissions end---")
 
 	// setup
-	clientURL, s, certBundle, cfg, err := testenv.StartNatsTestServer(withCallout)
+	s, certBundle, cfg, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	_ = certBundle
-	_ = clientURL
 	_ = cfg
 
 	roles := []string{auth.ClientRoleViewer}
@@ -30,7 +29,7 @@ func TestToken(t *testing.T) {
 	defer t.Log("---TestToken end---")
 
 	// setup
-	clientURL, s, certBundle, cfg, err := testenv.StartNatsTestServer(withCallout)
+	s, certBundle, cfg, err := testenv.StartNatsTestServer(withCallout)
 	require.NoError(t, err)
 	defer s.Stop()
 	//err = s.ApplyAuth(testenv.TestClients)
@@ -40,7 +39,6 @@ func TestToken(t *testing.T) {
 	_ = user2Key
 
 	_ = certBundle
-	_ = clientURL
 	_ = cfg
 	clInfo := msgserver.ClientAuthInfo{
 		ClientID:   user2ID,

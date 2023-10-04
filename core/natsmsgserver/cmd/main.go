@@ -66,10 +66,11 @@ func main() {
 	newSetup := false
 	logging.SetLogging("info", "")
 
-	f := utils.GetFolders("", false)
-	homeDir := f.Home
-	flag.StringVar(&f.Home, "home", f.Home, "Application home directory")
+	env := utils.GetAppEnvironment("", false)
+	homeDir := env.HomeDir
+	flag.StringVar(&env.HomeDir, "home", env.HomeDir, "Application home directory")
 	flag.StringVar(&cfgFile, "c", cfgFile, "Service config file")
+	// TODO: move this to hubcli
 	flag.BoolVar(&newSetup, "new", newSetup, "Overwrite existing config (use with care!)")
 	flag.Usage = func() {
 		fmt.Println("Usage: natscore [options] config|run|setup")
@@ -85,13 +86,15 @@ func main() {
 	}
 	flag.Parse()
 	// reload f if home changed
-	if homeDir != f.Home {
-		f = utils.GetFolders(f.Home, false)
+	if homeDir != env.HomeDir {
+		env = utils.GetAppEnvironment(env.HomeDir, false)
 	}
-	fmt.Println("home: ", f.Home)
-	// setup the configuration
+	env.ServerCore = "nats"
+	logging.SetLogging(env.LogLevel, "")
+
+	// setup the core configuration
 	hubCfg := config.NewHubCoreConfig()
-	err := hubCfg.Setup(f.Home, cfgFile, "nats", newSetup)
+	err := hubCfg.Setup(env, newSetup)
 	cmd := "run"
 	if len(flag.Args()) > 0 {
 		cmd = flag.Arg(0)
@@ -129,7 +132,7 @@ func run(cfg *config.HubCoreConfig) error {
 
 	slog.Info("Starting NATS server")
 	msgServer := service.NewNatsMsgServer(&cfg.NatsServer, auth.DefaultRolePermissions)
-	serverURL, err := msgServer.Start()
+	err = msgServer.Start()
 
 	if err != nil {
 		return fmt.Errorf("unable to start server: %w", err)
@@ -141,6 +144,7 @@ func run(cfg *config.HubCoreConfig) error {
 	authSvc, err := authservice.StartAuthService(cfg.Auth, msgServer)
 
 	// start discovery
+	serverURL, _, _ := msgServer.GetServerURLs()
 	if cfg.EnableMDNS {
 		urlInfo, err := url.Parse(serverURL)
 		if err != nil {

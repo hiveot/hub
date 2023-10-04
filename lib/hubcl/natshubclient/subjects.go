@@ -8,7 +8,7 @@ import (
 )
 
 // MakeSubject creates a nats subject optionally with nats wildcards
-// This uses the hiveot nats subject format: {msgType}.{pubID}.{thingID}.name}[.{clientID}]
+// This uses the hiveot nats subject format: {msgType}.{pubID}.{thingID}.name}.{clientID}
 //
 //	msgType is the message type: "event", "action", "config" or "rpc".
 //	deviceID is the publisher of the subject. Use "" for wildcard
@@ -16,7 +16,7 @@ import (
 //	name is the event or action name. Use "" for wildcard.
 //	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
 //	name is the event or action name. Use "" for wildcard.
-//	clientID is required for publishing action and rpc requests.
+//	clientID is the sender's loginID. Required when publishing.
 func MakeSubject(msgType, deviceID, thingID, name string, clientID string) string {
 	if msgType == "" {
 		msgType = vocab.MessageTypeEvent
@@ -28,16 +28,19 @@ func MakeSubject(msgType, deviceID, thingID, name string, clientID string) strin
 		thingID = "*" // nats uses *
 	}
 	if name == "" {
-		if clientID == "" {
-			name = ">"
-		} else {
-			name = "*"
-		}
+		//if clientID == "" {
+		//	name = ">"
+		//} else {
+		name = "*"
+		//}
 	}
-	subj := fmt.Sprintf("%s.%s.%s.%s", msgType, deviceID, thingID, name)
-	if clientID != "" {
-		subj = subj + "." + clientID
+	if clientID == "" {
+		clientID = ">"
 	}
+	subj := fmt.Sprintf("%s.%s.%s.%s.%s", msgType, deviceID, thingID, name, clientID)
+	//if clientID != "" {
+	//	subj = subj + "." + clientID
+	//}
 	return subj
 }
 

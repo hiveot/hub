@@ -28,7 +28,7 @@ const CoreID = "core"
 type LauncherService struct {
 	// service configuration
 	cfg config.LauncherConfig
-	f   utils.AppDirs
+	env utils.AppEnvironment
 
 	// map of plugin name to running status
 	plugins map[string]*launcher.PluginInfo
@@ -55,7 +55,7 @@ type LauncherService struct {
 // Add discovered core to svc.plugins
 func (svc *LauncherService) addCore() error {
 	if svc.cfg.Core != "" {
-		corePath := path.Join(svc.f.Bin, svc.cfg.Core)
+		corePath := path.Join(svc.env.BinDir, svc.cfg.Core)
 		coreInfo, err := os.Stat(corePath)
 		if err != nil {
 			err = fmt.Errorf("findCore. core in config not found. Path=%s", corePath)
@@ -152,7 +152,7 @@ func (svc *LauncherService) ScanPlugins() error {
 	//	return err
 	//}
 	// add plugins
-	err := svc.addPlugins(svc.f.Plugins)
+	err := svc.addPlugins(svc.env.PluginsDir)
 	if err != nil {
 		slog.Error(err.Error())
 		return err
@@ -198,7 +198,8 @@ func (svc *LauncherService) Start() error {
 
 	// 3: a connection to the message bus is needed
 	if svc.hc == nil {
-		svc.hc, err = hubcl.ConnectToHub("", launcher.ServiceName, svc.f.Certs, "")
+		svc.hc, err = hubcl.ConnectToHub(
+			svc.env.ServerURL, svc.env.ClientID, svc.env.CertsDir, svc.env.ServerCore)
 		if err != nil {
 			err = fmt.Errorf("failed starting launcher service: %w", err)
 			return err
@@ -236,9 +237,9 @@ func (svc *LauncherService) Stop() error {
 // This will detect adding new plugins without requiring a restart.
 func (svc *LauncherService) WatchPlugins() error {
 	svc.serviceWatcher, _ = fsnotify.NewWatcher()
-	err := svc.serviceWatcher.Add(svc.f.Bin)
-	if err == nil && svc.f.Plugins != "" {
-		err = svc.serviceWatcher.Add(svc.f.Plugins)
+	err := svc.serviceWatcher.Add(svc.env.BinDir)
+	if err == nil && svc.env.PluginsDir != "" {
+		err = svc.serviceWatcher.Add(svc.env.PluginsDir)
 	}
 	if err == nil {
 		go func() {
@@ -273,13 +274,13 @@ func (svc *LauncherService) WatchPlugins() error {
 // The hub client is intended when an existing message bus is used. If the core is
 // started by the launcher then it is ignored.
 func NewLauncherService(
-	f utils.AppDirs,
+	env utils.AppEnvironment,
 	cfg config.LauncherConfig,
 	hc hubclient.IHubClient,
 ) *LauncherService {
 
 	ls := &LauncherService{
-		f:       f,
+		env:     env,
 		cfg:     cfg,
 		plugins: make(map[string]*launcher.PluginInfo),
 		cmds:    make([]*exec.Cmd, 0),

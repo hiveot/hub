@@ -24,13 +24,7 @@ var testDir = path.Join(os.TempDir(), "test-certs")
 
 // the following are set by the testmain
 var testServer *testenv.TestServer
-
-//var testSocket = path.Join(testFolder, "certs.socket")
-
-// removeCerts easy cleanup for existing device certificate
-//func removeServerCerts() {
-//	_, _ = exec.Command("sh", "-c", "rm -f "+path.Join(certFolder, "*.pem")).Output()
-//}
+var serverURL string
 
 // Factory for creating service instance. Currently the only implementation is selfsigned.
 func StartService() (svc certs.ICertService, stopFunc func()) {
@@ -50,7 +44,7 @@ func StartService() (svc certs.ICertService, stopFunc func()) {
 	}}
 
 	// pre-add service
-	err := testServer.MsgServer.ApplyAuth(testClients)
+	err := testServer.AddClients(testClients)
 	if err != nil {
 		panic(err)
 	}
@@ -68,7 +62,7 @@ func StartService() (svc certs.ICertService, stopFunc func()) {
 
 	//--- connect the certs client as admin
 	adminToken, err := testServer.MsgServer.CreateToken(testClients[1])
-	hc2 := hubcl.NewHubClient(testServer.ServerURL, adminID, adminKey, testServer.CertBundle.CaCert, testServer.Core)
+	hc2 := hubcl.NewHubClient(serverURL, adminID, adminKey, testServer.CertBundle.CaCert, testServer.Core)
 	err = hc2.ConnectWithToken(adminToken)
 	certClient := certsclient.NewCertsSvcClient(hc2)
 
@@ -89,6 +83,7 @@ func TestMain(m *testing.M) {
 
 	// include test clients
 	testServer, err = testenv.StartTestServer(core)
+	serverURL, _, _ = testServer.MsgServer.GetServerURLs()
 	if err != nil {
 		panic(err)
 	}

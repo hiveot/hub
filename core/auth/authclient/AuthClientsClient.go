@@ -141,12 +141,13 @@ func (cl *AuthClientsClient) UpdateClient(clientID string, prof auth.ClientProfi
 }
 
 // NewAuthClientsClient returns an authn client management client
+//
+//	hc is the hub client connection to use
 func NewAuthClientsClient(hc hubclient.IHubClient) auth.IAuthnManageClients {
-	bindingID := auth.AuthServiceName
 
 	cl := AuthClientsClient{
 		hc:        hc,
-		serviceID: bindingID,
+		serviceID: auth.AuthServiceName,
 	}
 	return &cl
 }

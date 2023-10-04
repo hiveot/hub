@@ -46,7 +46,7 @@ func TestMain(m *testing.M) {
 	//
 	testServer, err = testenv.StartTestServer(core)
 	if err != nil {
-		panic("unable to start test server")
+		panic("unable to start test server: " + err.Error())
 	}
 	testServer.StartAuth()
 

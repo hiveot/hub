@@ -14,7 +14,6 @@ import (
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/listeners"
 	"net"
-	"os"
 	"sync"
 )
 
@@ -27,22 +26,18 @@ type MqttMsgServer struct {
 
 	Config *mqttmsgserver.MqttServerConfig
 
-	//// map of known clients by ID for quick lookup during auth
-	//authClients map[string]msgserver.ClientAuthInfo
-	//
-	//// map of role to role permissions
-	//rolePermissions map[string][]msgserver.RolePermission
-
-	// serverURL the server is listening on
-	serverURL string
+	// urls the server is listening on
+	tlsURL string
+	wssURL string
+	udsURL string
 
 	ms      *mqtt.Server
 	authMux sync.RWMutex
 }
 
-// ClientURL is the URL used to connect to this server. This is set on Start
-func (srv *MqttMsgServer) ClientURL() string {
-	return srv.serverURL
+// GetServerURLs is the URL used to connect to this server. This is set on Start
+func (srv *MqttMsgServer) GetServerURLs() (tsURL string, wssURL string, udsURL string) {
+	return srv.tlsURL, srv.wssURL, srv.udsURL
 }
 
 // ConnectInProc establishes a connection to the server for core services.
@@ -57,7 +52,7 @@ func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hc hubclient.IHubClie
 	_ = kpPub
 	hubCl := mqtthubclient.NewMqttHubClient("", serviceID, kp, nil)
 
-	conn, err := net.Dial("unix", srv.Config.InProcUDSName)
+	conn, err := net.Dial("unix", srv.Config.InMemUDSName)
 	if err != nil {
 		return nil, err
 	}
@@ -79,17 +74,23 @@ func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hc hubclient.IHubClie
 	return hubCl, err
 }
 
+func (srv *MqttMsgServer) Core() string {
+	return "mqtt"
+}
+
 // Start the MQTT server using the configuration provided with NewMqttMsgServer().
 // This returns the URL to connect to the server or an error if startup failed.
-func (srv *MqttMsgServer) Start() (serverURL string, err error) {
-	srv.serverURL = "not started"
+func (srv *MqttMsgServer) Start() error {
+	var err error
 
 	// Require TLS for tcp and wss listeners
 	if srv.Config.CaCert == nil || srv.Config.ServerTLS == nil {
-		return "", fmt.Errorf("missing server or CA certificate")
+		return fmt.Errorf("missing server or CA certificate")
 	}
-
-	_ = os.Remove(mqtthubclient.MqttInMemUDSProd)
+	hostAddr := srv.Config.Host
+	srv.tlsURL = fmt.Sprintf("tcp://%s:%d", hostAddr, srv.Config.Port)
+	srv.wssURL = fmt.Sprintf("wss://%s:%d", hostAddr, srv.Config.WSPort)
+	srv.udsURL = srv.Config.InMemUDSName
 
 	caCertPool := x509.NewCertPool()
 	caCertPool.AddCert(srv.Config.CaCert)
@@ -107,45 +108,42 @@ func (srv *MqttMsgServer) Start() (serverURL string, err error) {
 	srv.ms.Options.Capabilities.MinimumProtocolVersion = 5
 	_ = srv.ms.AddHook(&srv.MqttAuthHook, nil)
 
-	// server listens on TCP with TLS
-	if srv.Config.Port != 0 {
-		tcpLis := listeners.NewTCP("tcp1",
-			fmt.Sprintf(":%d", srv.Config.Port),
-			&listeners.Config{
-				TLSConfig: tlsConfig,
-			})
+	// TLS over TCP listener
+	tlsAddr := fmt.Sprintf(":%d", srv.Config.Port)
+	tcpLis := listeners.NewTCP("tcp1", tlsAddr,
+		&listeners.Config{
+			TLSConfig: tlsConfig,
+		})
+	err = srv.ms.AddListener(tcpLis)
+	if err != nil {
+		return err
+	}
 
-		err = srv.ms.AddListener(tcpLis)
-		if err != nil {
-			return "", err
-		}
-		//srv.serverURL = fmt.Sprintf("tls://localhost:%d", srv.Config.Port)
-		srv.serverURL = fmt.Sprintf("tcp://localhost:%d", srv.Config.Port)
+	// TLS over Websocket listener
+	wssAddr := fmt.Sprintf(":%d", srv.Config.WSPort)
+	wsLis := listeners.NewWebsocket("ws1", wssAddr,
+		&listeners.Config{
+			TLSConfig: tlsConfig,
+		})
+	err = srv.ms.AddListener(wsLis)
+	if err != nil {
+		return err
 	}
-	// server listens on Websocket with TLS
-	if srv.Config.WSPort != 0 {
-		wsLis := listeners.NewWebsocket("ws1",
-			fmt.Sprintf(":%d", srv.Config.WSPort),
-			&listeners.Config{TLSConfig: tlsConfig})
-		err = srv.ms.AddListener(wsLis)
-		if err != nil {
-			return "", err
-		}
-	}
+
 	// listen on UDS for local connections.
-	// A path starting with '@/' is in-memory.
-	inmemLis := listeners.NewUnixSock("inmem", srv.Config.InProcUDSName)
+	// A path starting with '@/' is an in-memory.
+	inmemLis := listeners.NewUnixSock("inmem", srv.Config.InMemUDSName)
 	err = srv.ms.AddListener(inmemLis)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	err = srv.ms.Serve()
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return srv.serverURL, nil
+	return nil
 }
 
 // Stop the server

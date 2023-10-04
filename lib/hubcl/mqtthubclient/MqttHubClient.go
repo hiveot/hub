@@ -14,14 +14,15 @@ import (
 	"net"
 	"os"
 	"path"
+	"strings"
 	"time"
 )
 
 const keepAliveInterval = 30 // seconds
 const reconnectDelay = 10 * time.Second
 const withDebug = false
-const MqttInMemUDSProd = "@/MqttInMemUDSProd" // production name
-const MqttInMemUDSTest = "@/MqttInMemUDSTest" // test server name
+const MqttInMemUDSProd = "@/MqttInMemUDSProd" // production UDS name
+const MqttInMemUDSTest = "@/MqttInMemUDSTest" // test server UDS name
 
 // MqttHubClient manages the hub server connection with hub event and action messaging
 // This implements the IHubClient interface.
@@ -119,7 +120,7 @@ func (hc *MqttHubClient) ConnectWithConn(
 	return err
 }
 
-// ConnectWithCert to the Hub server
+// ConnectWithCert connects to the Hub server using TLS client certificate.
 //
 //	brokerURL of the server.
 //	clientID to connect as
@@ -138,27 +139,43 @@ func (hc *MqttHubClient) ConnectWithCert(clientCert tls.Certificate) error {
 // ConnectWithToken connects to the Hub server using a user JWT credentials secret
 // The token clientID must match that of the client
 // A private key might be required in future.
+// This supports UDS connections with @/path or unix://@/path
 //
-//	brokerURL is the server URL to connect to. Eg tls://addr:port/ for tcp or wss://addr:port/ for websockets
+//	brokerURL is the server URL to connect to. Eg tcp://addr:port/ for tcp or wss://addr:port/ for websockets
 //	jwtToken is the token obtained with login or refresh.
 func (hc *MqttHubClient) ConnectWithToken(jwtToken string) error {
-
-	conn, err := tlsclient.ConnectTLS(hc.serverURL, nil, hc.caCert)
-	if err != nil {
-		return err
+	var conn net.Conn
+	var err error
+	if strings.HasPrefix(hc.serverURL, "unix://") {
+		// mqtt server UDS listener doesn't use TLS
+		// url.Parse doesn't recognize the @ in the path
+		addr := hc.serverURL[7:]
+		conn, err = net.Dial("unix", addr)
+	} else if strings.HasPrefix(hc.serverURL, "@") {
+		// using a UDS in-memory path without scheme
+		conn, err = net.Dial("unix", hc.serverURL)
+	} else {
+		conn, err = tlsclient.ConnectTLS(hc.serverURL, nil, hc.caCert)
 	}
-	err = hc.ConnectWithConn(jwtToken, conn)
+	if err == nil {
+		err = hc.ConnectWithConn(jwtToken, conn)
+	}
+	if err != nil {
+		err = fmt.Errorf("ConnectWithToken failed: %w", err)
+	}
 	return err
 }
 
 // ConnectWithTokenFile is a convenience function to read token and key from file and connect to the server
+// This supports UDS connections with @/path or unix://@/path
 func (hc *MqttHubClient) ConnectWithTokenFile(tokenFile string, keyFile string) error {
+	slog.Info("ConnectWithTokenFile", "tokenFile", tokenFile, "keyFile", keyFile)
 	token, err := os.ReadFile(tokenFile)
 	if err == nil && keyFile != "" {
 		hc.privKey, err = certs.LoadKeysFromPEM(keyFile)
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("ConnectWithTokenFile failed: %w", err)
 	}
 	err = hc.ConnectWithToken(string(token))
 	return err
@@ -167,10 +184,7 @@ func (hc *MqttHubClient) ConnectWithTokenFile(tokenFile string, keyFile string) 
 // ConnectWithPassword connects to the Hub server using a login ID and password.
 func (hc *MqttHubClient) ConnectWithPassword(password string) error {
 
-	conn, err := tlsclient.ConnectTLS(
-		hc.serverURL,
-		nil,
-		hc.caCert)
+	conn, err := tlsclient.ConnectTLS(hc.serverURL, nil, hc.caCert)
 	if err != nil {
 		return err
 	}
@@ -227,16 +241,19 @@ func (hc *MqttHubClient) LoadCreateKey(keyFile string) (key interface{}, pubKey 
 
 // NewMqttHubClient creates a new instance of the hub client using the connected paho client
 //
-//	url of broker to connect to, starting with "mqtt://", "tls://" or "mqttwss"
+// fullURL is the url with schema. If omitted this uses the in-memory UDS address,
+// which only works with ConnectWithToken.
+//
+//	url of broker to connect to, starting with "tls://", "wss://", "unix://"
 //	id is the client's ID to identify as for the session.
 //	privKey for connecting with Key or JWT, and possibly encryption (future)
 //	caCert of the server to validate the server or nil to not check the server cert
-func NewMqttHubClient(url string, id string, privKey *ecdsa.PrivateKey, caCert *x509.Certificate) *MqttHubClient {
-	if url == "" {
-		url = "unix://" + MqttInMemUDSProd
+func NewMqttHubClient(full string, id string, privKey *ecdsa.PrivateKey, caCert *x509.Certificate) *MqttHubClient {
+	if full == "" {
+		full = "unix://" + MqttInMemUDSProd
 	}
 	hc := &MqttHubClient{
-		serverURL: url,
+		serverURL: full,
 		caCert:    caCert,
 		clientID:  id,
 		privKey:   privKey,

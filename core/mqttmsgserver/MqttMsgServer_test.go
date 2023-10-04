@@ -4,13 +4,12 @@ import (
 	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
-	"github.com/hiveot/hub/core/mqttmsgserver/service"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubcl"
 	"github.com/hiveot/hub/lib/hubcl/mqtthubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
@@ -22,43 +21,38 @@ import (
 
 // ID
 var TestDevice1ID = "device1"
-
-// var TestDevice1NKey, _ = nkeys.CreateUser()
-// var TestDevice1NPub, _ = TestDevice1NKey.PublicKey()
 var TestDevice1Key, TestDevice1Pub = certs.CreateECDSAKeys()
-
-//var TestThing1ID = "thing1"
-//var TestThing2ID = "thing2"
 
 var TestUser1ID = "user1"
 var TestUser1Pass = "pass1"
 var TestUser1bcrypt, _ = bcrypt.GenerateFromPassword([]byte(TestUser1Pass), 0)
+var TestUser2ID = "user2"
+var TestUser2Key, TestUser2Pub = certs.CreateECDSAKeys()
+var TestUser2Pass = "pass2"
+var TestUser2bcrypt, _ = bcrypt.GenerateFromPassword([]byte(TestUser2Pass), 0)
 
 var TestAdminUserID = "admin"
 
-// var TestAdminUserNKey, _ = nkeys.CreateUser()
-// var TestAdminUserNPub, _ = TestAdminUserNKey.PublicKey()
 var TestAdminUserKey, TestAdminUserPub = certs.CreateECDSAKeys()
 
 var TestService1ID = "service1"
-var TestService1NKey, _ = nkeys.CreateUser()
-var TestService1NPub, _ = TestService1NKey.PublicKey()
+var TestService1Key, TestService1Pub = certs.CreateECDSAKeys()
 
-//var TestService1Key, TestService1Pub = certs.CreateECDSAKeys()
-
+var adminAuthInfo = msgserver.ClientAuthInfo{
+	ClientID:   TestAdminUserID,
+	ClientType: auth.ClientTypeUser,
+	PubKey:     TestAdminUserPub,
+	Role:       auth.ClientRoleAdmin,
+}
+var deviceAuthInfo = msgserver.ClientAuthInfo{
+	ClientID:   TestDevice1ID,
+	ClientType: auth.ClientTypeDevice,
+	PubKey:     TestDevice1Pub,
+	Role:       auth.ClientRoleDevice,
+}
 var mqttTestClients = []msgserver.ClientAuthInfo{
-	{
-		ClientID:   TestAdminUserID,
-		ClientType: auth.ClientTypeUser,
-		PubKey:     TestAdminUserPub,
-		Role:       auth.ClientRoleAdmin,
-	},
-	{
-		ClientID:   TestDevice1ID,
-		ClientType: auth.ClientTypeDevice,
-		PubKey:     TestDevice1Pub,
-		Role:       auth.ClientRoleDevice,
-	},
+	adminAuthInfo,
+	deviceAuthInfo,
 	{
 		ClientID:     TestUser1ID,
 		ClientType:   auth.ClientTypeUser,
@@ -66,9 +60,16 @@ var mqttTestClients = []msgserver.ClientAuthInfo{
 		Role:         auth.ClientRoleViewer,
 	},
 	{
+		ClientID:     TestUser2ID,
+		ClientType:   auth.ClientTypeUser,
+		PubKey:       TestUser2Pub,
+		PasswordHash: string(TestUser2bcrypt),
+		Role:         auth.ClientRoleOperator,
+	},
+	{
 		ClientID:   TestService1ID,
 		ClientType: auth.ClientTypeService,
-		PubKey:     TestService1NPub,
+		PubKey:     TestService1Pub,
 		Role:       auth.ClientRoleAdmin,
 	},
 }
@@ -84,7 +85,7 @@ func TestConnectWithCert(t *testing.T) {
 	slog.Info("--- TestConnectWithCert start")
 	defer slog.Info("--- TestConnectWithCert end")
 
-	serverURL, srv, certBundle, err := testenv.StartMqttTestServer()
+	srv, certBundle, err := testenv.StartMqttTestServer()
 	require.NoError(t, err)
 	defer srv.Stop()
 	_ = srv.ApplyAuth(mqttTestClients)
@@ -93,6 +94,7 @@ func TestConnectWithCert(t *testing.T) {
 	clientCert, err := certs.CreateClientCert(TestUser1ID, auth.ClientRoleAdmin,
 		1, &key.PublicKey, certBundle.CaCert, certBundle.CaKey)
 	require.NoError(t, err)
+	serverURL, _, _ := srv.GetServerURLs()
 	cl := mqtthubclient.NewMqttHubClient(serverURL, TestUser1ID, key, certBundle.CaCert)
 	clientTLS := certs.X509CertToTLS(clientCert, key)
 	err = cl.ConnectWithCert(*clientTLS)
@@ -104,12 +106,13 @@ func TestConnectWithPassword(t *testing.T) {
 	slog.Info("--- TestConnectWithPassword start")
 	defer slog.Info("--- TestConnectWithPassword end")
 
-	serverURL, srv, certBundle, err := testenv.StartMqttTestServer()
+	srv, certBundle, err := testenv.StartMqttTestServer()
 	require.NoError(t, err)
 	defer srv.Stop()
 	err = srv.ApplyAuth(mqttTestClients)
 
 	key, _ := certs.CreateECDSAKeys()
+	serverURL, _, _ := srv.GetServerURLs()
 	cl := hubcl.NewHubClient(serverURL, TestUser1ID, key, certBundle.CaCert, "mqtt")
 	err = cl.ConnectWithPassword(TestUser1Pass)
 	assert.NoError(t, err)
@@ -119,21 +122,19 @@ func TestConnectWithPassword(t *testing.T) {
 func TestConnectWithToken(t *testing.T) {
 
 	// setup
-	serverURL, srv, certBundle, err := testenv.StartMqttTestServer()
-	msrv := srv.(*service.MqttMsgServer)
+	srv, certBundle, err := testenv.StartMqttTestServer()
 	require.NoError(t, err)
 	defer srv.Stop()
 	err = srv.ApplyAuth(mqttTestClients)
 
 	// admin is in the test clients with a public key
-	adminInfo, err := msrv.GetClientAuth(TestAdminUserID)
+	adminToken, err := srv.CreateToken(adminAuthInfo)
 	require.NoError(t, err)
-	adminToken, err := msrv.CreateToken(adminInfo)
-	require.NoError(t, err)
-	err = msrv.ValidateToken(TestAdminUserID, adminToken, "", "")
+	err = srv.ValidateToken(TestAdminUserID, adminToken, "", "")
 	require.NoError(t, err)
 
 	// login with token should succeed
+	serverURL, _, _ := srv.GetServerURLs()
 	hc1 := hubcl.NewHubClient(serverURL, TestAdminUserID, TestAdminUserKey, certBundle.CaCert, "mqtt")
 	err = hc1.ConnectWithToken(adminToken)
 	require.NoError(t, err)
@@ -144,7 +145,7 @@ func TestConnectWithToken(t *testing.T) {
 func TestMqttServerPubSub(t *testing.T) {
 	rxChan := make(chan string, 1)
 	msg := "hello world"
-	serverURL, srv, certBundle, err := testenv.StartMqttTestServer()
+	srv, certBundle, err := testenv.StartMqttTestServer()
 	_ = certBundle
 	require.NoError(t, err)
 
@@ -152,6 +153,7 @@ func TestMqttServerPubSub(t *testing.T) {
 	//clientURL, err := srv.Start()
 	require.NoError(t, err)
 	defer srv.Stop()
+	serverURL, _, _ := srv.GetServerURLs()
 	assert.NotEmpty(t, serverURL)
 	err = srv.ApplyAuth(mqttTestClients)
 	require.NoError(t, err)
@@ -162,18 +164,25 @@ func TestMqttServerPubSub(t *testing.T) {
 	assert.NotEmpty(t, pubKey)
 
 	// connect and perform a pub/sub
-	hc, err := srv.ConnectInProc(TestAdminUserID)
+	adminToken, err := srv.CreateToken(adminAuthInfo)
+	hc1 := hubcl.NewHubClient(serverURL, TestAdminUserID, TestAdminUserKey, certBundle.CaCert, "mqtt")
+	err = hc1.ConnectWithToken(adminToken)
 	require.NoError(t, err)
-	defer hc.Disconnect()
-	topic1 := "things/d1/t1/event/test"
-	sub1, err := hc.Sub(topic1, func(addr string, data []byte) {
+	defer hc1.Disconnect()
+	subTopic := mqtthubclient.MakeTopic(vocab.MessageTypeEvent, TestDevice1ID, "t1", "test", "")
+	sub1, err := hc1.Sub(subTopic, func(addr string, data []byte) {
 		slog.Info("received msg", "addr", addr, "data", string(data))
 		rxChan <- string(data)
 	})
 	require.NoError(t, err)
 	defer sub1.Unsubscribe()
 
-	err = hc.Pub(topic1, []byte(msg))
+	// a device publishes an event
+	hc2 := hubcl.NewHubClient(serverURL, TestDevice1ID, TestDevice1Key, certBundle.CaCert, "mqtt")
+	token, _ := srv.CreateToken(deviceAuthInfo)
+	err = hc2.ConnectWithToken(token)
+	pubTopic := mqtthubclient.MakeTopic(vocab.MessageTypeEvent, TestDevice1ID, "t1", "test", TestDevice1ID)
+	err = hc2.Pub(pubTopic, []byte(msg))
 	require.NoError(t, err)
 	rxMsg := <-rxChan
 
@@ -185,12 +194,13 @@ func TestMqttServerRequest(t *testing.T) {
 	msg := "hello world"
 
 	// setup the server with test clients
-	serverURL, srv, certBundle, err := testenv.StartMqttTestServer()
+	srv, certBundle, err := testenv.StartMqttTestServer()
 	_ = certBundle
 	require.NoError(t, err)
 	err = srv.ApplyAuth(mqttTestClients)
 	require.NoError(t, err)
 	defer srv.Stop()
+	serverURL, _, _ := srv.GetServerURLs()
 	assert.NotEmpty(t, serverURL)
 
 	// create a key pair
@@ -199,7 +209,9 @@ func TestMqttServerRequest(t *testing.T) {
 	assert.NotEmpty(t, pubKey)
 
 	// connect and perform a pub/sub
-	hc, err := srv.ConnectInProc(TestDevice1ID)
+	deviceToken, err := srv.CreateToken(deviceAuthInfo)
+	hc := hubcl.NewHubClient(serverURL, TestDevice1ID, TestDevice1Key, certBundle.CaCert, "mqtt")
+	err = hc.ConnectWithToken(deviceToken)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 
@@ -212,7 +224,12 @@ func TestMqttServerRequest(t *testing.T) {
 	})
 	defer sub2.Unsubscribe()
 
-	reply, err := hc.PubAction("device1", "thing1", "action1", []byte(msg))
+	// user publishes a device action
+	hc2 := mqtthubclient.NewMqttHubClient(serverURL, TestUser2ID, TestUser2Key, certBundle.CaCert)
+	err = hc2.ConnectWithPassword(TestUser2Pass)
+	require.NoError(t, err)
+	defer hc2.Disconnect()
+	reply, err := hc2.PubAction("device1", "thing1", "action1", []byte(msg))
 	require.NoError(t, err)
 	assert.Equal(t, msg, string(reply.Payload))
 

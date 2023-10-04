@@ -29,12 +29,12 @@ Future:
 The launcher is a service for starting, stopping and monitoring Hub plugins follow this workflow:
 ```
 1. Launcher starts the core as per config
+   * launcher clientID is that of the binary name 
    * hub core creates the admin and launcher key-token credentials if they don't exist
-2. Launcher connects to the core with launcher key-token credentials
-   * Connect to the auth service
-   * Register service authz for launcher, limit access to admin user
+2. Launcher connects to the core with launcher key/token credentials
+   * Connect to the auth clients service to be able to create plugin key/tokens 
 3. Launcher starts each plugin in order of config
-   * Create the plugin key and auth token files if they don't exist
+   * Create the plugin key/token files if they don't exist
    * Start the plugin
       * plugin loads key and token from files
       * plugin connects to core

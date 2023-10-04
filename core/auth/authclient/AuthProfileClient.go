@@ -95,10 +95,9 @@ func (cl *AuthProfileClient) UpdatePubKey(newPubKey string) error {
 //
 //	hc is the hub client connection to use
 func NewAuthProfileClient(hc hubclient.IHubClient) *AuthProfileClient {
-	serviceID := auth.AuthServiceName
 	cl := AuthProfileClient{
 		hc:        hc,
-		serviceID: serviceID,
+		serviceID: auth.AuthServiceName,
 	}
 	return &cl
 }

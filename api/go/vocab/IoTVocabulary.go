@@ -49,6 +49,7 @@ const (
 	MessageTypeConfig = "config"
 	MessageTypeEvent  = "event"
 	MessageTypeRPC    = "rpc"
+	MessageTypeINBOX  = "_INBOX"
 	EventNameTD       = "$td"
 	EventNameProps    = "$properties"
 )

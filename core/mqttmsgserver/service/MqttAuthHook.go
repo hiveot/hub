@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"github.com/hiveot/hub/api/go/auth"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/core/mqttmsgserver/jwtauth"
@@ -87,6 +86,26 @@ func (hook *MqttAuthHook) GetClientAuth(clientID string) (msgserver.ClientAuthIn
 		return clientAuth, fmt.Errorf("client '%s' not known", clientID)
 	}
 	return clientAuth, nil
+}
+
+// GetRolePermissions returns the role permissions for the given clientID
+func (hook *MqttAuthHook) GetRolePermissions(role string, clientID string) ([]msgserver.RolePermission, bool) {
+	// TODO: speed things up a bit by pre-calculating on login
+	// take the role's permissions
+	rolePerm, found := hook.rolePermissions[role]
+
+	if !found {
+		return nil, false
+	}
+	// add service permissions for this role
+	hook.authMux.RLock()
+	sp, found := hook.servicePermissions[role]
+	hook.authMux.RUnlock()
+	if found {
+		rolePerm = append(rolePerm, sp...)
+	}
+
+	return rolePerm, true
 }
 
 // Init configures the hook with the auth config
@@ -168,96 +187,92 @@ func (hook *MqttAuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Pack
 
 // OnACLCheck returns true if the connecting client has matching read or write access to subscribe
 // or publish to a given topic.
+// Embedded rules are:
+//
+//	allow sub to user's own _INBOX
+//	allow pub to any _INBOX
+//	senderID must match loginID in all other messages
 func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) bool {
 
 	cid := cl.ID
-	clientID := string(cl.Properties.Username)
-
-	// todo: on connect, store role permissions in client session
-	prof, err := hook.GetClientAuth(clientID)
-	if err != nil {
-		slog.Info("OnACLCheck: Unknown client",
-			slog.String("clientID", clientID),
-			slog.String("cid", cid))
-		return false
-	}
-
-	// devices and services can publish a reply to any inbox
-	//if write && strings.HasPrefix(topic, "_INBOX/") {
-	//	if prof.ClientType == auth.ClientTypeDevice || prof.ClientType == auth.ClientTypeService {
-	//		return true
-	//	}
-	//}
-	// all clients can subscribe to their own inbox
-	if !write && strings.HasPrefix(topic, "_INBOX/"+clientID) {
-		return true
-	}
-
-	msgType, deviceID, thingID, name, senderID, err :=
-		mqtthubclient.SplitTopic(topic)
-	if err != nil {
-		// invalid topic format.
-		return false
-	}
-	_ = msgType
-	_ = senderID
-
-	//err := hook.hasRolePermissions(prof, topic)
-
-	if hook.rolePermissions == nil {
-		slog.Error("OnACLCheck: Role permissions not set")
-		return false
-	}
-
-	rolePerm, found := hook.rolePermissions[prof.Role]
-	if !found {
-		slog.Info("OnACLCheck: Unknown role",
-			slog.String("role", prof.Role),
-			slog.String("clientID", clientID))
-		return false
-	}
-	// publishing actions requires a valid client ID
 	loginID := string(cl.Properties.Username)
 	if loginID == "" {
 		slog.Info("OnACLCheck: missing client ID for CID", "cid", cl.ID)
 		return false
 	}
 
-	// include role permissions for individual services
-	hook.authMux.RLock()
-	sp, found := hook.servicePermissions[prof.Role]
-	hook.authMux.RUnlock()
-	if found {
-		rolePerm = append(rolePerm, sp...)
+	// todo: on connect, store role permissions in client session
+	prof, err := hook.GetClientAuth(loginID)
+	if err != nil {
+		slog.Info("OnACLCheck: Unknown client",
+			slog.String("clientID", loginID),
+			slog.String("cid", cid))
+		return false
 	}
+
+	// 1. INBOX rules are embedded
+
+	// all clients can subscribe to their own inbox
+	if !write && strings.HasPrefix(topic, vocab.MessageTypeINBOX+"/"+loginID) {
+		return true
+	}
+	// anyone can write to another inbox
+	if write && strings.HasPrefix(topic, vocab.MessageTypeINBOX) {
+		return true
+	}
+
+	// 2. Break down the topic to match it with the permissions
+	msgType, deviceID, thingID, name, senderID, err :=
+		mqtthubclient.SplitTopic(topic)
+	if err != nil {
+		// invalid topic format.
+		return false
+	}
+
+	// 3. Publishers of messages must include their sender ID
+	if write && senderID != loginID {
+		return false
+	}
+
+	// 4. roles must be set
+	if hook.rolePermissions == nil {
+		slog.Error("OnACLCheck: Role permissions not set")
+		return false
+	}
+
+	// 5. determine the role's permissions
+	rolePerm, found := hook.GetRolePermissions(prof.Role, loginID)
+	if !found {
+		slog.Info("OnACLCheck: Unknown role",
+			slog.String("role", prof.Role),
+			slog.String("clientID", loginID))
+		return false
+	}
+
+	// 6. match the role's permissions
 	for _, perm := range rolePerm {
+		// substitute the clientID in the deviceID with the loginID
+		permDeviceID := perm.DeviceID
+		if permDeviceID == "{clientID}" {
+			permDeviceID = loginID
+		}
 		// when write, must allow pub, otherwise must allow sub
 		if ((write && perm.AllowPub) || (!write && perm.AllowSub)) &&
 			(perm.MsgType == "" || perm.MsgType == msgType) &&
-			(perm.SourceID == "" || perm.SourceID == deviceID) &&
+			(perm.DeviceID == "" || permDeviceID == deviceID) &&
 			(perm.ThingID == "" || perm.ThingID == thingID) &&
 			(perm.MsgName == "" || perm.MsgName == name) {
 			return true
 		}
 	}
 
-	// customized perm
-	if prof.Role == auth.ClientRoleDevice {
-		if prof.ClientID != deviceID {
-			slog.Info("Device can only pub/sub on its own things",
-				slog.String("deviceID", clientID),
-				slog.String("cid", cid),
-				slog.String("topic", topic))
-			return false
-		}
-	}
-
-	slog.Info("OnAclCheck. success",
-		slog.String("clientID", clientID),
+	slog.Warn("OnAclCheck. Role doesn't have permissions",
+		slog.String("clientID", loginID),
 		slog.String("CID", cl.ID),
 		slog.String("topic", topic),
+		slog.String("role", prof.Role),
 		slog.Bool("pub", write))
-	return true
+	return false
 }
 
 // Provides indicates which hook methods this hook provides.
@@ -293,10 +308,9 @@ func (hook *MqttAuthHook) SetServicePermissions(
 			rp = []msgserver.RolePermission{}
 		}
 		rp = append(rp, msgserver.RolePermission{
-			Prefix:   "svc",
-			SourceID: serviceID,
+			MsgType:  vocab.MessageTypeRPC,
+			DeviceID: serviceID,
 			ThingID:  capability,
-			MsgType:  vocab.MessageTypeAction,
 			MsgName:  "", // all methods of the capability can be used
 			AllowPub: true,
 			AllowSub: false,
