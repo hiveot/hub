@@ -50,13 +50,13 @@ func CreateCACommand(certsFolder *string) *cli.Command {
 // ViewCACommand shows info on the Hub self-signed CA
 // This does not require any services to run.
 //
-//	hubcli ca [--certs=CertFolder] view
+//	hubcli vca [--certs=CertFolder] view
 func ViewCACommand(certsFolder *string) *cli.Command {
 
 	return &cli.Command{
 		Name:     "vca",
 		Category: "core",
-		Usage:    "View CA certificate info",
+		Usage:    "View CA and server certificate info",
 
 		Action: func(cCtx *cli.Context) error {
 			if cCtx.NArg() > 0 {
@@ -123,5 +123,21 @@ func HandleViewCACert(certsFolder string) error {
 	fmt.Println("  Subject    : ", caCert.Subject.String())
 	fmt.Println("  Issuer     : ", caCert.Issuer.String())
 	fmt.Println("  DNS names  : ", caCert.DNSNames)
+	fmt.Println()
+
+	hubCertPath := path.Join(certsFolder, "hubCert.pem")
+	serverCert, err := certs.LoadX509CertFromPEM(hubCertPath)
+	if err != nil {
+		slog.Error("Unable to load the server certificate", "err", err)
+		return err
+	}
+	fmt.Println("Server certificate path: ", hubCertPath)
+	fmt.Println("  IsCA        : ", serverCert.IsCA)
+	fmt.Println("  Version     : ", serverCert.Version)
+	fmt.Println("  Valid until : ", serverCert.NotAfter.Format(time.RFC1123Z))
+	fmt.Println("  Subject     : ", serverCert.Subject.String())
+	fmt.Println("  Issuer      : ", serverCert.Issuer.String())
+	fmt.Println("  DNS names   : ", serverCert.DNSNames)
+	fmt.Println("  IP addresses: ", serverCert.IPAddresses)
 	return nil
 }

@@ -4,16 +4,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/eclipse/paho.golang/packets"
-	"github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/api/go/msgserver"
 	"github.com/hiveot/hub/core/mqttmsgserver"
-	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubcl/mqtthubclient"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/listeners"
-	"net"
 	"sync"
 )
 
@@ -38,40 +32,6 @@ type MqttMsgServer struct {
 // GetServerURLs is the URL used to connect to this server. This is set on Start
 func (srv *MqttMsgServer) GetServerURLs() (tsURL string, wssURL string, udsURL string) {
 	return srv.tlsURL, srv.wssURL, srv.udsURL
-}
-
-// ConnectInProc establishes a connection to the server for core services.
-// This connects in-process using a generated key and token.
-// Intended for the core services to connect to the local server.
-//
-//	serviceID of the connecting service. The ID must be a known ID
-//	token is the service authentication token
-func (srv *MqttMsgServer) ConnectInProc(serviceID string) (hc hubclient.IHubClient, err error) {
-
-	kp, kpPub := certs.CreateECDSAKeys()
-	_ = kpPub
-	hubCl := mqtthubclient.NewMqttHubClient("", serviceID, kp, nil)
-
-	conn, err := net.Dial("unix", srv.Config.InMemUDSName)
-	if err != nil {
-		return nil, err
-	}
-	safeConn := packets.NewThreadSafeConn(conn)
-	// use an on-the-fly created token for the connection
-	token, err := srv.CreateToken(msgserver.ClientAuthInfo{
-		ClientID:   serviceID,
-		ClientType: auth.ClientTypeService,
-		//PubKey:       srv.Config.CoreServicePub,
-		PubKey:       kpPub,
-		PasswordHash: "",
-		Role:         auth.ClientRoleAdmin,
-	})
-	if err != nil {
-		return nil, err
-	}
-	err = hubCl.ConnectWithConn(token, safeConn)
-
-	return hubCl, err
 }
 
 func (srv *MqttMsgServer) Core() string {

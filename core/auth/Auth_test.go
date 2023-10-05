@@ -20,7 +20,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 )
 
-var core = "nats"
+var core = "mqtt"
 var certBundle certs.TestCertBundle
 var testDir = path.Join(os.TempDir(), "test-authn")
 var authConfig auth.AuthConfig

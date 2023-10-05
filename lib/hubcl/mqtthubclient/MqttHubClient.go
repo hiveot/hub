@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"github.com/eclipse/paho.golang/packets"
 	"github.com/eclipse/paho.golang/paho"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/tlsclient"
@@ -68,9 +69,10 @@ func (hc *MqttHubClient) ConnectWithConn(
 		return err
 	}
 
+	safeConn := packets.NewThreadSafeConn(conn)
 	pahoCfg := paho.ClientConfig{
 		ClientID:      hc.clientID,
-		Conn:          conn,
+		Conn:          safeConn,
 		PacketTimeout: hc.timeout,
 	}
 	pahoCfg.OnClientError = func(err error) {

@@ -129,7 +129,7 @@ func (cfg *HubCoreConfig) Setup(env utils.AppEnvironment, new bool) error {
 
 // SetupCerts load or generate certificates.
 // If certificates are preloaded then do nothing.
-// If a CA doesn't exist then generate and save a new self-signed cert.
+// If a CA doesn't exist then generate and save a new self-signed cert valid for localhost,127.0.0.1 and outbound IP
 // The server certificates is always regenerated and saved.
 // This panics if certs cannot be setup.
 func (cfg *HubCoreConfig) SetupCerts(certsDir string) {
@@ -164,7 +164,7 @@ func (cfg *HubCoreConfig) SetupCerts(certsDir string) {
 	// 2: if no CA exists, create it
 	if cfg.CaCert == nil || cfg.CaKey == nil {
 		slog.Warn("creating a self-signed CA certificate and key", "caCertPath", caCertPath)
-		//
+
 		cfg.CaCert, cfg.CaKey, err = certs.CreateCA("hiveot", 365*10)
 		if err != nil {
 			panic("Unable to create a CA cert: " + err.Error())
@@ -179,11 +179,7 @@ func (cfg *HubCoreConfig) SetupCerts(certsDir string) {
 		}
 	}
 
-	// 3: Create a new server cert and private key also used for signing
-	serverCertPath := cfg.ServerCertFile
-	if !path.IsAbs(serverCertPath) {
-		serverCertPath = path.Join(certsDir, serverCertPath)
-	}
+	// 3: Create a new server private key if it doesn't exist
 	serverKeyPath := cfg.ServerKeyFile
 	if !path.IsAbs(serverKeyPath) {
 		serverKeyPath = path.Join(certsDir, serverKeyPath)
@@ -195,12 +191,18 @@ func (cfg *HubCoreConfig) SetupCerts(certsDir string) {
 	if cfg.ServerKey == nil {
 		cfg.ServerKey, _ = certs.CreateECDSAKeys()
 	}
+	// create a new server cert
+	serverCertPath := cfg.ServerCertFile
+	if !path.IsAbs(serverCertPath) {
+		serverCertPath = path.Join(certsDir, serverCertPath)
+	}
 	hostName, _ := os.Hostname()
 	serverID := "nats-" + hostName
 	ou := "hiveot"
-	names := []string{"localhost", "127.0.0.1", hostName}
+	outboundIP := utils.GetOutboundIP("")
+	names := []string{"localhost", "127.0.0.1", hostName, outboundIP.String()}
 
-	// regenerate a new server cert, valid for 1 year, after which a restart is needed.
+	// regenerate a new server cert, valid for 1 year
 	serverCert, err := certs.CreateServerCert(
 		serverID, ou, 365, &cfg.ServerKey.PublicKey, names, cfg.CaCert, cfg.CaKey)
 	if err != nil {

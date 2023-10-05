@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
+	"log/slog"
 	"os"
 )
 
@@ -87,7 +88,10 @@ func main() {
 				fmt.Printf(utils.WrapOff)
 			}
 			hc, err = hubcl.ConnectToHub(serverURL, loginID, certsDir, "")
-			return err
+			if err != nil {
+				slog.Error("Unable to connect to the server", "err", err)
+			}
+			return nil
 		},
 		Commands: []*cli.Command{
 			// pass paths by reference so they are updated in the Before section

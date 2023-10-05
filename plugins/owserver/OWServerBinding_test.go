@@ -1,4 +1,4 @@
-package internal_test
+package owserver_test
 
 import (
 	"encoding/json"
@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 	var err error
 	tempFolder = path.Join(os.TempDir(), "test-owserver")
 	cwd, _ := os.Getwd()
-	homeFolder := path.Join(cwd, "../docs")
+	homeFolder := path.Join(cwd, "./docs")
 	owsSimulationFile = "file://" + path.Join(homeFolder, "owserver-simulation.xml")
 	logging.SetLogging("info", "")
 

@@ -26,13 +26,13 @@ Status: The status of the Hub is pre-alpha development (Sept 2023).
 
 ### Alpha Releases Feature Road Map - Core Services
 1. ~~Certificate management for CA and server certificates~~ [completed]
+1. ~~OWServer 1-wire protocol binding~~ [completed]
 2. Directory service for serving TDs (Thing Descriptions) to users
 3. History service for serving event history
 4. Provisioning service for dynamic provisioning Thing devices
 5. Dashboard viewer for web browsers (hiveoview)
 
 ### Beta Releases Feature Road Map - Protocol Binding Plugins
-1. ~~OWServer 1-wire protocol binding~~ [completed]
 2. ZWave protocol binding (zwavejs) 
 3. ISY99 legacy Insteon protocol binding (isy99x)
 4. Weather service protocol binding (openweathermap)

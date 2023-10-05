@@ -60,18 +60,19 @@ const (
 //
 // viewer     sub       event   -            -
 // operator   pub       action  -            -
-//            sub       event  -            -
+//            sub       event   -            -
 // manager    pub       action  -            -
 //            pub       config  -            -
-//            sub       event  -            -
+//            sub       event   -            -
 // admin      pub       action  -            -
-//            sub       event  -            -
+//            sub       event   -            -
 // device     pub       event   {clientID}   -
+//            sub       event   -		     -
 //            sub       action  {clientID}   -
 // service    pub       -       -            -
-//            sub       action  {clientID}  -
-//            sub       rpc     {clientID}  -
-//            sub       event  -            -
+//            sub       action  {clientID}   -
+//            sub       rpc     {clientID}   -
+//            sub       event   -            -
 
 // {clientID} is replaced with the client's loginID when publishing or subscribing
 
@@ -81,6 +82,10 @@ var devicePermissions = []msgserver.RolePermission{
 		MsgType:  vocab.MessageTypeEvent,
 		DeviceID: "{clientID}", // devices can only publish their own events
 		AllowPub: true,
+	}, {
+		MsgType:  vocab.MessageTypeEvent,
+		DeviceID: "", // devices can subscribe to events
+		AllowSub: true,
 	}, {
 		MsgType:  vocab.MessageTypeAction,
 		DeviceID: "{clientID}",

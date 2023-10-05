@@ -67,7 +67,7 @@ var NatsTestClients = []msgserver.ClientAuthInfo{
 		ClientID:   TestService1ID,
 		ClientType: auth.ClientTypeService,
 		PubKey:     TestService1NPub,
-		Role:       auth.ClientRoleAdmin, // admin adds the $JS.API.INFO permissions
+		Role:       auth.ClientRoleService, // admin adds the $JS.API.INFO permissions
 	},
 }
 
@@ -79,7 +79,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStopNKeysServer(t *testing.T) {
-	rxChan := make(chan string, 1)
 
 	srv, certBundle, _, err := testenv.StartNatsTestServer(withCallout)
 
@@ -92,24 +91,10 @@ func TestStartStopNKeysServer(t *testing.T) {
 	// connect with test user
 	//nc, err := srv.ConnectInProcNC("testnkeysservice", nil)
 	serverURL, _, _ := srv.GetServerURLs()
-	hc := natshubclient.NewNatsHubClient(serverURL, TestService1ID, TestService1NKey, certBundle.CaCert)
+	hc := natshubclient.NewNatsHubClient(serverURL, TestAdminUserID, TestAdminUserNKey, certBundle.CaCert)
 	err = hc.ConnectWithKey()
 	require.NoError(t, err)
 	defer hc.Disconnect()
-
-	subj1 := natshubclient.MakeSubject(vocab.MessageTypeEvent, "", "", "", "")
-	_, err = hc.Sub(subj1, func(topic string, data []byte) {
-		rxChan <- string(data)
-		slog.Info("received message",
-			slog.String("topic", topic),
-			slog.String("data", string(data)))
-	})
-	require.NoError(t, err)
-	subj2 := natshubclient.MakeSubject(vocab.MessageTypeEvent, TestService1ID, "thing1", "", "")
-	err = hc.Pub(subj2, []byte("hello world"))
-	require.NoError(t, err)
-	rxMsg := <-rxChan
-	assert.Equal(t, "hello world", rxMsg)
 
 	// make sure jetstream is enabled for account
 	js := hc.JS()
@@ -163,16 +148,16 @@ func TestConnectWithNKey(t *testing.T) {
 	require.NoError(t, err)
 	defer hc1.Disconnect()
 
-	subj1 := natshubclient.MakeSubject(
+	subSubj := natshubclient.MakeSubject(
 		vocab.MessageTypeEvent, "", "", "", "")
-	_, err = hc1.Sub(subj1, func(addr string, payload []byte) {
+	_, err = hc1.Sub(subSubj, func(addr string, payload []byte) {
 		rxChan <- string(payload)
 		slog.Info("received message", "msg", string(payload))
 	})
 	assert.NoError(t, err)
-	subj2 := natshubclient.MakeSubject(
-		vocab.MessageTypeEvent, TestService1ID, "thing1", "test", "")
-	err = hc1.Pub(subj2, []byte("hello world"))
+	pubSubj := natshubclient.MakeSubject(
+		vocab.MessageTypeEvent, TestService1ID, "thing1", "test", TestService1ID)
+	err = hc1.Pub(pubSubj, []byte("hello world"))
 	require.NoError(t, err)
 	rxMsg := <-rxChan
 	assert.Equal(t, "hello world", rxMsg)
