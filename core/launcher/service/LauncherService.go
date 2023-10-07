@@ -3,12 +3,12 @@ package service
 import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
-	"github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/api/go/hubclient"
-	"github.com/hiveot/hub/api/go/launcher"
+	"github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/auth/authclient"
+	"github.com/hiveot/hub/core/launcher"
 	"github.com/hiveot/hub/core/launcher/config"
-	"github.com/hiveot/hub/lib/hubcl"
+	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/hubconnect"
 	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
 	"os"
@@ -54,8 +54,8 @@ type LauncherService struct {
 
 // Add discovered core to svc.plugins
 func (svc *LauncherService) addCore() error {
-	if svc.cfg.Core != "" {
-		corePath := path.Join(svc.env.BinDir, svc.cfg.Core)
+	if svc.cfg.CoreBin != "" {
+		corePath := path.Join(svc.env.BinDir, svc.cfg.CoreBin)
 		coreInfo, err := os.Stat(corePath)
 		if err != nil {
 			err = fmt.Errorf("findCore. core in config not found. Path=%s", corePath)
@@ -170,7 +170,7 @@ func (svc *LauncherService) Start() error {
 	svc.isRunning.Store(true)
 
 	// include the core
-	if svc.cfg.Core != "" {
+	if svc.cfg.CoreBin != "" {
 		err := svc.addCore()
 		if err != nil {
 			slog.Error(err.Error())
@@ -198,8 +198,8 @@ func (svc *LauncherService) Start() error {
 
 	// 3: a connection to the message bus is needed
 	if svc.hc == nil {
-		svc.hc, err = hubcl.ConnectToHub(
-			svc.env.ServerURL, svc.env.ClientID, svc.env.CertsDir, svc.env.ServerCore)
+		svc.hc, err = hubconnect.ConnectToHub(
+			svc.env.ServerURL, svc.env.ClientID, svc.env.CertsDir, "")
 		if err != nil {
 			err = fmt.Errorf("failed starting launcher service: %w", err)
 			return err

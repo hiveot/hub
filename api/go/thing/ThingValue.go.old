@@ -12,11 +12,11 @@ type ThingValue struct {
 	// For the type of event/action see the TD event/action @type field.
 	ID string `json:"id"`
 
-	// PublisherID of the thing
-	PublisherID string `json:"publisherID,omitempty"`
+	// DeviceID or serviceID of the thing
+	DeviceID string `json:"deviceID"`
 
-	// ThingID of the thing itself
-	ThingID string `json:"thingID,omitempty"`
+	// ThingID or capabilityID of the thing itself
+	ThingID string `json:"thingID"`
 
 	// Data with serialized value payload, as defined by the TD affordance DataSchema
 	Data []byte `json:"data,omitempty"`

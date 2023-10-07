@@ -2,9 +2,11 @@ package owserver_test
 
 import (
 	"encoding/json"
-	"github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/api/go/hubclient"
+	auth2 "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/plugins/owserver/config"
+	"github.com/hiveot/hub/plugins/owserver/service"
 	"log/slog"
 	"os"
 	"path"
@@ -18,14 +20,13 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/plugins/owserver/internal"
 )
 
 // var homeFolder string
 var core = "mqtt"
 
 var tempFolder string
-var owsConfig internal.OWServerConfig
+var owsConfig config.OWServerConfig
 var owsSimulationFile string // simulation file
 var testServer *testenv.TestServer
 
@@ -40,7 +41,7 @@ func TestMain(m *testing.M) {
 	owsSimulationFile = "file://" + path.Join(homeFolder, "owserver-simulation.xml")
 	logging.SetLogging("info", "")
 
-	owsConfig = internal.NewConfig()
+	owsConfig = config.NewConfig()
 	owsConfig.OWServerURL = owsSimulationFile
 
 	//
@@ -48,7 +49,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic("unable to start test server: " + err.Error())
 	}
-	testServer.StartAuth()
+	_ = testServer.StartAuth()
 
 	result := m.Run()
 	time.Sleep(time.Second)
@@ -65,10 +66,10 @@ func TestStartStop(t *testing.T) {
 	slog.Info("--- TestStartStop ---")
 	const device1ID = "device1"
 
-	hc, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
+	hc, err := testServer.AddConnectClient(device1ID, auth2.ClientTypeDevice, auth2.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
-	svc := internal.NewOWServerBinding(owsConfig, hc)
+	svc := service.NewOWServerBinding(owsConfig, hc)
 	err = svc.Start()
 	assert.NoError(t, err)
 	defer svc.Stop()
@@ -80,10 +81,10 @@ func TestPoll(t *testing.T) {
 	const device1ID = "device1"
 
 	slog.Info("--- TestPoll ---")
-	hc, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
+	hc, err := testServer.AddConnectClient(device1ID, auth2.ClientTypeDevice, auth2.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
-	svc := internal.NewOWServerBinding(owsConfig, hc)
+	svc := service.NewOWServerBinding(owsConfig, hc)
 
 	// Count the number of received TD events
 	sub, err := hc.SubEvents("", "",
@@ -119,11 +120,11 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 	slog.Info("--- TestPollInvalidEDSAddress ---")
 	const device1ID = "device1"
 
-	hc, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
+	hc, err := testServer.AddConnectClient(device1ID, auth2.ClientTypeDevice, auth2.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 
-	svc := internal.NewOWServerBinding(owsConfig, hc)
+	svc := service.NewOWServerBinding(owsConfig, hc)
 	svc.Config.OWServerURL = "http://invalidAddress/"
 	err = svc.Start()
 	assert.NoError(t, err)
@@ -144,11 +145,11 @@ func TestAction(t *testing.T) {
 	var actionName = vocab.VocabRelay
 	var actionValue = ([]byte)("1")
 
-	hc, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
+	hc, err := testServer.AddConnectClient(device1ID, auth2.ClientTypeDevice, auth2.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 
-	svc := internal.NewOWServerBinding(owsConfig, hc)
+	svc := service.NewOWServerBinding(owsConfig, hc)
 	err = svc.Start()
 	require.NoError(t, err)
 	defer svc.Stop()

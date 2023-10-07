@@ -1,8 +1,8 @@
 package authclient
 
 import (
-	"github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/api/go/hubclient"
+	auth2 "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 	"log/slog"
 )
@@ -22,7 +22,7 @@ func (cl *AuthClientsClient) pubReq(action string, req interface{}, resp interfa
 		msg, _ = ser.Marshal(req)
 	}
 	data, err := cl.hc.PubServiceRPC(
-		cl.serviceID, auth.AuthManageClientsCapability, action, msg)
+		cl.serviceID, auth2.AuthManageClientsCapability, action, msg)
 	if err != nil {
 		return err
 	}
@@ -39,13 +39,13 @@ func (cl *AuthClientsClient) AddDevice(
 	deviceID string, displayName string, pubKey string) (string, error) {
 
 	slog.Info("AddDevice", "deviceID", deviceID)
-	req := auth.AddDeviceReq{
+	req := auth2.AddDeviceArgs{
 		DeviceID:    deviceID,
 		DisplayName: displayName,
 		PubKey:      pubKey,
 	}
-	resp := auth.AddDeviceResp{}
-	err := cl.pubReq(auth.AddDeviceAction, &req, &resp)
+	resp := auth2.AddDeviceResp{}
+	err := cl.pubReq(auth2.AddDeviceReq, &req, &resp)
 	return resp.Token, err
 }
 
@@ -54,13 +54,13 @@ func (cl *AuthClientsClient) AddService(
 	serviceID string, displayName string, pubKey string) (string, error) {
 
 	slog.Info("AddService", "serviceID", serviceID)
-	req := auth.AddServiceReq{
+	req := auth2.AddServiceArgs{
 		ServiceID:   serviceID,
 		DisplayName: displayName,
 		PubKey:      pubKey,
 	}
-	resp := auth.AddServiceResp{}
-	err := cl.pubReq(auth.AddServiceAction, &req, &resp)
+	resp := auth2.AddServiceResp{}
+	err := cl.pubReq(auth2.AddServiceReq, &req, &resp)
 	return resp.Token, err
 }
 
@@ -76,22 +76,22 @@ func (cl *AuthClientsClient) AddUser(
 	userID string, displayName string, password string, pubKey string, role string) (string, error) {
 
 	slog.Info("AddUser", "userID", userID)
-	req := auth.AddUserReq{
+	req := auth2.AddUserArgs{
 		UserID:      userID,
 		DisplayName: displayName,
 		Password:    password,
 		PubKey:      pubKey,
 		Role:        role,
 	}
-	resp := auth.AddUserResp{}
-	err := cl.pubReq(auth.AddUserAction, &req, &resp)
+	resp := auth2.AddUserResp{}
+	err := cl.pubReq(auth2.AddUserReq, &req, &resp)
 	return resp.Token, err
 }
 
 // GetCount returns the number of clients in the store
 func (cl *AuthClientsClient) GetCount() (n int, err error) {
-	resp := auth.GetCountResp{}
-	err = cl.pubReq(auth.GetCountAction, nil, &resp)
+	resp := auth2.GetCountResp{}
+	err = cl.pubReq(auth2.GetCountReq, nil, &resp)
 	return resp.N, err
 }
 
@@ -103,51 +103,71 @@ func (cl *AuthClientsClient) GetCount() (n int, err error) {
 // GetProfile returns a client's profile
 // Users can only get their own profile.
 // Managers can get other clients profiles.
-func (cl *AuthClientsClient) GetProfile(clientID string) (profile auth.ClientProfile, err error) {
-	req := auth.GetMngProfileReq{
+func (cl *AuthClientsClient) GetProfile(clientID string) (profile auth2.ClientProfile, err error) {
+	req := auth2.GetClientProfileArgs{
 		ClientID: clientID,
 	}
-	resp := auth.GetProfileResp{}
-	err = cl.pubReq(auth.GetProfileAction, &req, &resp)
+	resp := auth2.GetProfileResp{}
+	err = cl.pubReq(auth2.GetProfileReq, &req, &resp)
 	return resp.Profile, err
 }
 
 // GetProfiles provide a list of known clients and their info.
 // The caller must be an administrator or service.
-func (cl *AuthClientsClient) GetProfiles() (profiles []auth.ClientProfile, err error) {
-	resp := auth.GetProfilesResp{}
-	err = cl.pubReq(auth.GetProfilesAction, nil, &resp)
+func (cl *AuthClientsClient) GetProfiles() (profiles []auth2.ClientProfile, err error) {
+	resp := auth2.GetProfilesResp{}
+	err = cl.pubReq(auth2.GetProfilesReq, nil, &resp)
 	return resp.Profiles, err
 }
 
 // RemoveClient removes a client and disables authentication
 // Existing tokens are immediately expired (tbd)
 func (cl *AuthClientsClient) RemoveClient(clientID string) error {
-	req := auth.RemoveClientReq{
+	req := auth2.RemoveClientArgs{
 		ClientID: clientID,
 	}
-	err := cl.pubReq(auth.RemoveClientAction, &req, nil)
+	err := cl.pubReq(auth2.RemoveClientReq, &req, nil)
 	return err
 }
 
 // UpdateClient updates a client's profile
-func (cl *AuthClientsClient) UpdateClient(clientID string, prof auth.ClientProfile) error {
-	req := &auth.UpdateClientReq{
+func (cl *AuthClientsClient) UpdateClient(clientID string, prof auth2.ClientProfile) error {
+	req := &auth2.UpdateClientArgs{
 		ClientID: clientID,
 		Profile:  prof,
 	}
-	err := cl.pubReq(auth.UpdateClientAction, req, nil)
+	err := cl.pubReq(auth2.UpdateClientReq, req, nil)
+	return err
+}
+
+// UpdateClientPassword updates a client's password
+func (cl *AuthClientsClient) UpdateClientPassword(clientID string, newPass string) error {
+	req := &auth2.UpdateClientPasswordArgs{
+		ClientID: clientID,
+		Password: newPass,
+	}
+	err := cl.pubReq(auth2.UpdateClientPasswordReq, req, nil)
+	return err
+}
+
+// UpdateClientRole updates a client's role
+func (cl *AuthClientsClient) UpdateClientRole(clientID string, newRole string) error {
+	req := &auth2.UpdateClientRoleArgs{
+		ClientID: clientID,
+		Role:     newRole,
+	}
+	err := cl.pubReq(auth2.UpdateClientRoleReq, req, nil)
 	return err
 }
 
 // NewAuthClientsClient returns an authn client management client
 //
 //	hc is the hub client connection to use
-func NewAuthClientsClient(hc hubclient.IHubClient) auth.IAuthnManageClients {
+func NewAuthClientsClient(hc hubclient.IHubClient) auth2.IAuthnManageClients {
 
 	cl := AuthClientsClient{
 		hc:        hc,
-		serviceID: auth.AuthServiceName,
+		serviceID: auth2.AuthServiceName,
 	}
 	return &cl
 }

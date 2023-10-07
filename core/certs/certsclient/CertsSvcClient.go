@@ -1,8 +1,8 @@
 package certsclient
 
 import (
-	"github.com/hiveot/hub/api/go/certs"
-	"github.com/hiveot/hub/api/go/hubclient"
+	"github.com/hiveot/hub/core/certs"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 )
 
@@ -36,13 +36,13 @@ func (cl *CertsSvcClient) pubReq(action string, req interface{}, resp interface{
 func (cl *CertsSvcClient) CreateDeviceCert(deviceID string, pubKeyPEM string, validityDays int) (
 	certPEM string, caCertPEM string, err error) {
 
-	req := certs.CreateDeviceCertReq{
+	req := certs.CreateDeviceCertArgs{
 		DeviceID:     deviceID,
 		PubKeyPEM:    pubKeyPEM,
 		ValidityDays: validityDays,
 	}
 	resp := certs.CreateCertResp{}
-	err = cl.pubReq(certs.CreateDeviceCertAction, req, &resp)
+	err = cl.pubReq(certs.CreateDeviceCertReq, req, &resp)
 	return resp.CertPEM, resp.CaCertPEM, err
 }
 
@@ -51,14 +51,14 @@ func (cl *CertsSvcClient) CreateServiceCert(
 	serviceID string, pubKeyPEM string, names []string, validityDays int) (
 	certPEM string, caCertPEM string, err error) {
 
-	req := certs.CreateServiceCertReq{
+	req := certs.CreateServiceCertArgs{
 		ServiceID:    serviceID,
 		PubKeyPEM:    pubKeyPEM,
 		Names:        names,
 		ValidityDays: validityDays,
 	}
 	resp := certs.CreateCertResp{}
-	err = cl.pubReq(certs.CreateServiceCertAction, req, &resp)
+	err = cl.pubReq(certs.CreateServiceCertReq, req, &resp)
 	return resp.CertPEM, resp.CaCertPEM, err
 }
 
@@ -67,13 +67,13 @@ func (cl *CertsSvcClient) CreateUserCert(
 	userID string, pubKeyPEM string, validityDays int) (
 	certPEM string, caCertPEM string, err error) {
 
-	req := certs.CreateUserCertReq{
+	req := certs.CreateUserCertArgs{
 		UserID:       userID,
 		PubKeyPEM:    pubKeyPEM,
 		ValidityDays: validityDays,
 	}
 	resp := certs.CreateCertResp{}
-	err = cl.pubReq(certs.CreateUserCertAction, req, &resp)
+	err = cl.pubReq(certs.CreateUserCertReq, req, &resp)
 	return resp.CertPEM, resp.CaCertPEM, err
 }
 
@@ -81,11 +81,11 @@ func (cl *CertsSvcClient) CreateUserCert(
 func (cl *CertsSvcClient) VerifyCert(
 	clientID string, certPEM string) (err error) {
 
-	req := certs.VerifyCertReq{
+	req := certs.VerifyCertArgs{
 		ClientID: clientID,
 		CertPEM:  certPEM,
 	}
-	err = cl.pubReq(certs.VerifyCertAction, req, nil)
+	err = cl.pubReq(certs.VerifyCertReq, req, nil)
 	return err
 }
 

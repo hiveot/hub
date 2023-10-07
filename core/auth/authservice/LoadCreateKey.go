@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
-	"github.com/hiveot/hub/api/go/msgserver"
+	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/nats-io/nkeys"
 	"os"

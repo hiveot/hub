@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/hubclient"
-	"github.com/hiveot/hub/cmd/hubcli/corecli"
+	"github.com/hiveot/hub/cmd/hubcli/authcli"
+	"github.com/hiveot/hub/cmd/hubcli/certs"
 	"github.com/hiveot/hub/cmd/hubcli/launchercli"
-	"github.com/hiveot/hub/lib/hubcl"
+	"github.com/hiveot/hub/cmd/hubcli/setup"
+	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/hubconnect"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
@@ -87,16 +89,24 @@ func main() {
 			if nowrap {
 				fmt.Printf(utils.WrapOff)
 			}
-			hc, err = hubcl.ConnectToHub(serverURL, loginID, certsDir, "")
+			// todo: don't connect when running setup
+			hc, err = hubconnect.ConnectToHub(serverURL, loginID, certsDir, "")
 			if err != nil {
-				slog.Error("Unable to connect to the server", "err", err)
+				slog.Warn("Unable to connect to the server", "err", err)
 			}
 			return nil
 		},
+		// commands arguments are passed by reference so they are updated in the Before section
 		Commands: []*cli.Command{
-			// pass paths by reference so they are updated in the Before section
-			corecli.CreateCACommand(&certsDir),
-			corecli.ViewCACommand(&certsDir),
+			// these commands work without a server connection
+			certs.CreateCACommand(&certsDir),
+			certs.ViewCACommand(&certsDir),
+			setup.SetupCommand(&env),
+
+			authcli.AuthAddUserCommand(&hc),
+			authcli.AuthListClientsCommand(&hc),
+			authcli.AuthRemoveClientCommand(&hc),
+			authcli.AuthPasswordCommand(&hc),
 
 			launchercli.LauncherListCommand(&hc),
 			launchercli.LauncherStartCommand(&hc),

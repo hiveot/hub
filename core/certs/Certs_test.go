@@ -2,13 +2,13 @@ package certs_test
 
 import (
 	"crypto/x509"
-	"github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/api/go/certs"
-	"github.com/hiveot/hub/api/go/msgserver"
+	auth2 "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/certs"
 	"github.com/hiveot/hub/core/certs/certsclient"
 	"github.com/hiveot/hub/core/certs/service/selfsigned"
+	"github.com/hiveot/hub/core/msgserver"
 	certs2 "github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubcl"
+	"github.com/hiveot/hub/lib/hubclient/hubconnect"
 	"github.com/hiveot/hub/lib/testenv"
 	"os"
 	"path"
@@ -33,14 +33,14 @@ func StartService() (svc certs.ICertService, stopFunc func()) {
 
 	testClients := []msgserver.ClientAuthInfo{{
 		ClientID:   certs.ServiceName,
-		ClientType: auth.ClientTypeService,
+		ClientType: auth2.ClientTypeService,
 		//PubKey:       "",
-		Role: auth.ClientRoleService,
+		Role: auth2.ClientRoleService,
 	}, {
 		ClientID:   adminID,
-		ClientType: auth.ClientTypeUser,
+		ClientType: auth2.ClientTypeUser,
 		PubKey:     adminPub,
-		Role:       auth.ClientRoleAdmin,
+		Role:       auth2.ClientRoleAdmin,
 	}}
 
 	// pre-add service
@@ -48,7 +48,7 @@ func StartService() (svc certs.ICertService, stopFunc func()) {
 	if err != nil {
 		panic(err)
 	}
-	hc1, err := testServer.AddConnectClient(certs.ServiceName, auth.ClientTypeService, auth.ClientRoleService)
+	hc1, err := testServer.AddConnectClient(certs.ServiceName, auth2.ClientTypeService, auth2.ClientRoleService)
 	if err != nil {
 		panic(err)
 	}
@@ -62,7 +62,7 @@ func StartService() (svc certs.ICertService, stopFunc func()) {
 
 	//--- connect the certs client as admin
 	adminToken, err := testServer.MsgServer.CreateToken(testClients[1])
-	hc2 := hubcl.NewHubClient(serverURL, adminID, adminKey, testServer.CertBundle.CaCert, testServer.Core)
+	hc2 := hubconnect.NewHubClient(serverURL, adminID, adminKey, testServer.CertBundle.CaCert, testServer.Core)
 	err = hc2.ConnectWithToken(adminToken)
 	certClient := certsclient.NewCertsSvcClient(hc2)
 

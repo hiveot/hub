@@ -14,21 +14,21 @@ type LauncherConfig struct {
 	// List of services to automatically start in launch order
 	Autostart []string `yaml:"autostart"`
 
-	// Core to run on startup, if any. Use mqttcore or natscore
+	// CoreBin to run on startup, if any. Use mqttcore or natscore.
 	// Default is not to launch a core.
-	Core string `yaml:"core"`
+	CoreBin string `yaml:"corebin"`
 
 	// CreatePluginCred creates per-plugin key and token credential files if they don't exist
 	// Default is true
 	CreatePluginCred bool `yaml:"createPluginCred"`
 
 	// logging level. default is warning
-	LogLevel string `yaml:"loglevel"`
+	LogLevel string `yaml:"logLevel"`
 
 	// log the launcher to file logs/launcher.log
 	LogToFile bool `yaml:"logtofile"`
 
-	// direct stdout of plugins to logfile at logs/{service}.log
+	// direct stdout of plugins to logfile at logs/{plugin}.log
 	LogPlugins bool `yaml:"logplugins"`
 }
 
@@ -39,7 +39,7 @@ func NewLauncherConfig() LauncherConfig {
 		AttachStdout:     false,
 		AutoRestart:      false,
 		Autostart:        make([]string, 0),
-		Core:             "",
+		CoreBin:          "",
 		CreatePluginCred: true,
 		LogLevel:         "warning",
 		LogToFile:        true,

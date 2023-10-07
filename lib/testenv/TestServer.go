@@ -1,13 +1,13 @@
 package testenv
 
 import (
-	"github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/api/go/hubclient"
-	"github.com/hiveot/hub/api/go/msgserver"
 	authcfg "github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/auth/authservice"
+	"github.com/hiveot/hub/core/auth/config"
+	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubcl"
+	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/hubconnect"
 	"log/slog"
 	"os"
 	"path"
@@ -63,10 +63,10 @@ func (ts *TestServer) AddConnectClient(clientID string, clientType string, clien
 	kp, kpPub := ts.MsgServer.CreateKP()
 
 	if clientType == "" {
-		clientType = auth.ClientTypeUser
+		clientType = authcfg.ClientTypeUser
 	}
 	if clientRole == "" {
-		clientRole = auth.ClientRoleViewer
+		clientRole = authcfg.ClientRoleViewer
 	}
 
 	// if auth service is running then add the user if it doesn't exist
@@ -91,7 +91,7 @@ func (ts *TestServer) AddConnectClient(clientID string, clientType string, clien
 	}
 	//safeConn := packets.NewThreadSafeConn(conn)
 	serverURL, _, _ := ts.MsgServer.GetServerURLs()
-	hc := hubcl.NewHubClient(serverURL, clientID, kp, ts.CertBundle.CaCert, ts.Core)
+	hc := hubconnect.NewHubClient(serverURL, clientID, kp, ts.CertBundle.CaCert, ts.Core)
 	err = hc.ConnectWithToken(token)
 
 	return hc, err
@@ -102,7 +102,7 @@ func (ts *TestServer) StartAuth() (err error) {
 	var testDir = path.Join(os.TempDir(), "test-home")
 	// clean start
 	_ = os.RemoveAll(testDir)
-	authConfig := authcfg.AuthConfig{}
+	authConfig := config.AuthConfig{}
 	_ = authConfig.Setup(testDir, testDir)
 	ts.AuthService, err = authservice.StartAuthService(authConfig, ts.MsgServer)
 	return err

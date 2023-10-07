@@ -2,8 +2,8 @@ package launchercli
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/hubclient"
 	"github.com/hiveot/hub/core/launcher/launcherclient"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/urfave/cli/v2"
 )
 

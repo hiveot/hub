@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"github.com/hiveot/hub/core/certs/service/selfsigned"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubcl"
+	"github.com/hiveot/hub/lib/hubclient/hubconnect"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
@@ -45,7 +45,7 @@ func main() {
 	}
 
 	// this locates the hub, load certificate, load service tokens and connect
-	hc, err := hubcl.ConnectToHub("", env.ClientID, env.CertsDir, "")
+	hc, err := hubconnect.ConnectToHub("", env.ClientID, env.CertsDir, "")
 	if err != nil {
 		slog.Error("Failed connecting to the Hub", "err", err)
 		os.Exit(1)

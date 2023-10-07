@@ -2,14 +2,14 @@ package authservice
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/api/go/hubclient"
-	"github.com/hiveot/hub/api/go/msgserver"
+	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/msgserver"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 	"log/slog"
 )
 
-// AuthManageRoles manages roles.
+// AuthManageRoles manages custom roles.
 // Intended for administrators.
 //
 // This implements the IAuthManageRoles interface.
@@ -43,54 +43,32 @@ func (svc *AuthManageRoles) HandleRequest(action *hubclient.RequestMessage) erro
 
 	slog.Info("handleActions", slog.String("actionID", action.ActionID))
 	switch action.ActionID {
-	case auth.CreateRoleAction:
-		req := &auth.CreateRoleReq{}
+	case auth.CreateRoleReq:
+		req := &auth.CreateRoleArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
 		err = svc.CreateRole(req.Role)
 		if err == nil {
-			action.SendAck()
+			_ = action.SendAck()
 		}
 		return err
-	case auth.DeleteRoleAction:
-		req := &auth.DeleteRoleReq{}
+	case auth.DeleteRoleReq:
+		req := &auth.DeleteRoleArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
 		err = svc.DeleteRole(req.Role)
 		if err == nil {
-			action.SendAck()
+			_ = action.SendAck()
 		}
 		return err
-	case auth.SetRoleAction:
-		req := &auth.SetRoleReq{}
-		err := ser.Unmarshal(action.Payload, &req)
-		if err != nil {
-			return err
-		}
-		err = svc.SetRole(req.ClientID, req.Role)
-		if err == nil {
-			action.SendAck()
-		}
-		return err
+
 	default:
 		return fmt.Errorf("unknown action '%s' for client '%s'", action.ActionID, action.ClientID)
 	}
-}
-
-// SetRole sets a role for a client
-func (svc *AuthManageRoles) SetRole(clientID string, role string) error {
-	// FIXME:validate role
-	prof, err := svc.store.GetProfile(clientID)
-	if err != nil {
-		return err
-	}
-	prof.Role = role
-	err = svc.store.Update(clientID, prof)
-	return err
 }
 
 // Start subscribes to the actions for management and client capabilities

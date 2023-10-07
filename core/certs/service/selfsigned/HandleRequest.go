@@ -1,8 +1,8 @@
 package selfsigned
 
 import (
-	"github.com/hiveot/hub/api/go/certs"
-	"github.com/hiveot/hub/api/go/hubclient"
+	"github.com/hiveot/hub/core/certs"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 	"log/slog"
 )
@@ -13,8 +13,8 @@ func (svc *SelfSignedCertsService) HandleRequest(action *hubclient.RequestMessag
 
 	// TODO: double-check the caller is an admin or svc
 	switch action.ActionID {
-	case certs.CreateDeviceCertAction:
-		req := certs.CreateDeviceCertReq{}
+	case certs.CreateDeviceCertReq:
+		req := certs.CreateDeviceCertArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -26,8 +26,8 @@ func (svc *SelfSignedCertsService) HandleRequest(action *hubclient.RequestMessag
 			err = action.SendReply(reply, nil)
 		}
 		return err
-	case certs.CreateServiceCertAction:
-		req := certs.CreateServiceCertReq{}
+	case certs.CreateServiceCertReq:
+		req := certs.CreateServiceCertArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -40,8 +40,8 @@ func (svc *SelfSignedCertsService) HandleRequest(action *hubclient.RequestMessag
 			err = action.SendReply(reply, nil)
 		}
 		return err
-	case certs.CreateUserCertAction:
-		req := certs.CreateUserCertReq{}
+	case certs.CreateUserCertReq:
+		req := certs.CreateUserCertArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -54,8 +54,8 @@ func (svc *SelfSignedCertsService) HandleRequest(action *hubclient.RequestMessag
 			err = action.SendReply(reply, nil)
 		}
 		return err
-	case certs.VerifyCertAction:
-		req := certs.VerifyCertReq{}
+	case certs.VerifyCertReq:
+		req := certs.VerifyCertArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err

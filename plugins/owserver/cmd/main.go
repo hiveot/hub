@@ -2,15 +2,14 @@ package main
 
 import (
 	"context"
-	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/discovery"
-	"github.com/hiveot/hub/lib/hubcl"
+	"github.com/hiveot/hub/lib/hubclient/hubconnect"
+	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/plugins/owserver/config"
+	"github.com/hiveot/hub/plugins/owserver/service"
 	"log/slog"
 	"os"
-	"path"
-
-	"github.com/hiveot/hub/plugins/owserver/internal"
 )
 
 // ServiceName is the default instance ID of this service.
@@ -19,24 +18,24 @@ import (
 const ServiceName = "owserver"
 
 func main() {
-	env := utils.GetAppEnvironment("", false)
-	config := internal.NewConfig()
-	_ = env.LoadConfig(env.ConfigFile, &config)
-
+	// setup environment and config
+	env := utils.GetAppEnvironment("", true)
+	logging.SetLogging(env.LogLevel, "")
+	cfg := config.NewConfig()
+	_ = env.LoadConfig(env.ConfigFile, &cfg)
+	if cfg.LogLevel != "" {
+		logging.SetLogging(cfg.LogLevel, "")
+	}
 	// If no URL is given, use discovery to locate the hub
 	core := ""
-	fullUrl := config.ServerURL
+	fullUrl := cfg.ServerURL
+
 	if fullUrl == "" {
 		fullUrl, core = discovery.LocateHub(0, true)
 	}
-	caCertFile := path.Join(env.CertsDir, certs.DefaultCaCertFile)
-	caCert, err := certs.LoadX509CertFromPEM(caCertFile)
-	if err != nil {
-		slog.Error("Unable to load CA cert", "err", err, "caCertFile", caCertFile)
-	}
 	// Use the convention for clientID, token and key files
-	hc := hubcl.NewHubClient(fullUrl, env.ClientID, nil, caCert, core)
-	err = hc.ConnectWithTokenFile(env.TokenFile, env.KeyFile)
+	hc := hubconnect.NewHubClient(fullUrl, env.ClientID, nil, env.CaCert, core)
+	err := hc.ConnectWithTokenFile(env.TokenFile, env.KeyFile)
 
 	if err != nil {
 		slog.Error("unable to connect to Hub", "url", fullUrl, "err", err)
@@ -44,7 +43,7 @@ func main() {
 	}
 
 	// start the service
-	binding := internal.NewOWServerBinding(config, hc)
+	binding := service.NewOWServerBinding(cfg, hc)
 	err = binding.Start()
 	if err != nil {
 		slog.Error("failed starting owserver", "err", err.Error())

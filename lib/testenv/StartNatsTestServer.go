@@ -1,10 +1,10 @@
 package testenv
 
 import (
-	"github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/core/natsmsgserver"
-	"github.com/hiveot/hub/core/natsmsgserver/callouthook"
-	"github.com/hiveot/hub/core/natsmsgserver/service"
+	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/msgserver/natsmsgserver"
+	"github.com/hiveot/hub/core/msgserver/natsmsgserver/callouthook"
+	"github.com/hiveot/hub/core/msgserver/natsmsgserver/service"
 	"github.com/hiveot/hub/lib/certs"
 	"os"
 	"path"

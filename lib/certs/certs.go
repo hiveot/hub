@@ -86,7 +86,7 @@ func PublicKeyFromCert(cert *x509.Certificate) *ecdsa.PublicKey {
 //	certPEMPath the file to save the X509 certificate to in PEM format
 //	keyPEMPath the file to save the private key to in PEM format
 func SaveTLSCertToPEM(cert *tls.Certificate, certPEMPath, keyPEMPath string) error {
-	slog.Warn("Saving TLS cert to " + certPEMPath)
+	slog.Info("Saving TLS cert to " + certPEMPath)
 	b := pem.Block{Type: "CERTIFICATE", Bytes: cert.Certificate[0]}
 	certPEM := pem.EncodeToMemory(&b)
 	// remove existing cert since perm 0444 doesn't allow overwriting it

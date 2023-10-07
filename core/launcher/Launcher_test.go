@@ -1,8 +1,8 @@
 package launcher_test
 
 import (
-	"github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/api/go/launcher"
+	auth2 "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/launcher"
 	"github.com/hiveot/hub/core/launcher/config"
 	"github.com/hiveot/hub/core/launcher/launcherclient"
 	"github.com/hiveot/hub/core/launcher/service"
@@ -42,7 +42,7 @@ func StartService() (l launcher.ILauncher, stopFn func()) {
 	const launcherID = launcher.ServiceName + "-test"
 	const adminID = "admin"
 
-	hc1, err := testServer.AddConnectClient(launcherID, auth.ClientTypeService, auth.ClientRoleService)
+	hc1, err := testServer.AddConnectClient(launcherID, auth2.ClientTypeService, auth2.ClientRoleService)
 	if err != nil {
 		panic(err)
 	}
@@ -62,7 +62,7 @@ func StartService() (l launcher.ILauncher, stopFn func()) {
 		panic(err.Error())
 	}
 	//--- connect the launcher user
-	hc2, err := testServer.AddConnectClient(adminID, auth.ClientTypeUser, auth.ClientRoleAdmin)
+	hc2, err := testServer.AddConnectClient(adminID, auth2.ClientTypeUser, auth2.ClientRoleAdmin)
 	cl := launcherclient.NewLauncherClient(launcherID, hc2)
 	return cl, func() {
 		hc2.Disconnect()

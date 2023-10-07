@@ -2,12 +2,12 @@ package authservice
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/api/go/hubclient"
-	"github.com/hiveot/hub/api/go/msgserver"
-	auth2 "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/auth/authstore"
-	"github.com/hiveot/hub/lib/hubcl"
+	"github.com/hiveot/hub/core/auth/config"
+	"github.com/hiveot/hub/core/msgserver"
+	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/hubconnect"
 	"log/slog"
 	"os"
 )
@@ -18,7 +18,7 @@ type AuthService struct {
 	msgServer msgserver.IMsgServer
 
 	// the hub client connection to listen to requests
-	cfg        auth2.AuthConfig
+	cfg        config.AuthConfig
 	hc         hubclient.IHubClient
 	MngClients *AuthManageClients
 	MngRoles   *AuthManageRoles
@@ -75,7 +75,7 @@ func (svc *AuthService) Start() (err error) {
 	tcpAddr, _, udsAddr := svc.msgServer.GetServerURLs()
 	_ = udsAddr
 	core := svc.msgServer.Core()
-	svc.hc = hubcl.NewHubClient(tcpAddr, auth.AuthServiceName, myKey, nil, core)
+	svc.hc = hubconnect.NewHubClient(tcpAddr, auth.AuthServiceName, myKey, nil, core)
 	err = svc.hc.ConnectWithToken(token)
 	if err != nil {
 		return err
@@ -154,7 +154,7 @@ func (svc *AuthService) Stop() {
 //
 //	store is the client store to store authentication clients
 //	msgServer used to apply changes to users, devices and services
-func NewAuthService(authConfig auth2.AuthConfig,
+func NewAuthService(authConfig config.AuthConfig,
 	store auth.IAuthnStore, msgServer msgserver.IMsgServer) *AuthService {
 
 	authnSvc := &AuthService{
@@ -167,7 +167,7 @@ func NewAuthService(authConfig auth2.AuthConfig,
 
 // StartAuthService creates and launch the auth service with the given config
 // This creates a password store using the config file and password encryption method.
-func StartAuthService(cfg auth2.AuthConfig, msgServer msgserver.IMsgServer) (*AuthService, error) {
+func StartAuthService(cfg config.AuthConfig, msgServer msgserver.IMsgServer) (*AuthService, error) {
 
 	// nats requires bcrypt passwords
 	authStore := authstore.NewAuthnFileStore(cfg.PasswordFile, cfg.Encryption)

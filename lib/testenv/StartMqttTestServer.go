@@ -1,12 +1,12 @@
 package testenv
 
 import (
-	"github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/api/go/msgserver"
-	"github.com/hiveot/hub/core/mqttmsgserver"
-	"github.com/hiveot/hub/core/mqttmsgserver/service"
+	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/msgserver"
+	"github.com/hiveot/hub/core/msgserver/mqttmsgserver"
+	"github.com/hiveot/hub/core/msgserver/mqttmsgserver/service"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubcl/mqtthubclient"
+	"github.com/hiveot/hub/lib/hubclient/mqtthubclient"
 	"os"
 	"path"
 )

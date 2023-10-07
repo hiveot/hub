@@ -18,20 +18,19 @@ import (
 // This contains folder locations, CA certificate and application clientID
 type AppEnvironment struct {
 	// Directories
-	BinDir     string `yaml:"binDir"`     // Application binary folder, eg launcher, cli, ...
-	PluginsDir string `yaml:"pluginsDir"` // Plugin folder
-	HomeDir    string `yaml:"homeDir"`    // Home folder, default this is the parent of bin, config, certs and logs
-	ConfigDir  string `yaml:"configDir"`  // Config folder with application and configuration files
-	ConfigFile string `yaml:"configFile"` // Application configuration file. Default is clientID.yaml
-	CertsDir   string `yaml:"certsDir"`   // Certificates and keys location
-	LogsDir    string `yaml:"logsDir"`    // Logging output
-	LogLevel   string `yaml:"logLevel"`   // logging level
-	RunDir     string `yaml:"runDir"`     // PID and sockets folder.
-	StoresDir  string `yaml:"storesDir"`  // Root of the service stores
+	BinDir     string `yaml:"binDir,omitempty"`     // Application binary folder, eg launcher, cli, ...
+	PluginsDir string `yaml:"pluginsDir,omitempty"` // Plugin folder
+	HomeDir    string `yaml:"homeDir,omitempty"`    // Home folder, default this is the parent of bin, config, certs and logs
+	ConfigDir  string `yaml:"configDir,omitempty"`  // Config folder with application and configuration files
+	ConfigFile string `yaml:"configFile,omitempty"` // Application configuration file. Default is clientID.yaml
+	CertsDir   string `yaml:"certsDir,omitempty"`   // Certificates and keys location
+	LogsDir    string `yaml:"logsDir,omitempty"`    // Logging output
+	LogLevel   string `yaml:"logLevel,omitempty"`   // logging level
+	StoresDir  string `yaml:"storesDir,omitempty"`  // Root of the service stores
 
 	// Server
-	ServerURL  string `yaml:"serverURL"`  // override server address, empty for auto-detect
-	ServerCore string `yaml:"serverCore"` // override core to use, "nats" or "mqtt". empty for auto-detect
+	//Core string `yaml:"core"` // core to use, "nats" or "mqtt". empty for auto-detect
+	ServerURL string `yaml:"serverURL,omitempty"` // server address
 
 	// Credentials
 	CaCert    *x509.Certificate `yaml:"-"`         // default cert if loaded
@@ -117,12 +116,11 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 	var pluginsDir string
 	var certsDir string
 	var logsDir string
-	var runDir string
 	var storesDir string
 	clientID := path.Base(os.Args[0])
 	loglevel := "warning"
 	serverURL := ""
-	serverCore := ""
+	//serverCore := ""
 
 	// default home folder is the parent of the core or plugin binary
 	if homeDir == "" {
@@ -140,8 +138,7 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 		flag.StringVar(&configFile, "configFile", configFile, "Configuration file")
 		flag.StringVar(&clientID, "clientID", clientID, "Application clientID to authenticate with")
 		flag.StringVar(&loglevel, "loglevel", loglevel, "logging level: debug, warning, info, error")
-		flag.StringVar(&serverURL, "serverURL", serverURL, "server URL or empty for auto-detect")
-		//flag.StringVar(&serverURL, "serverCore", serverCore, "server core, 'mqtt' or 'nats', or empty for auto-detect")
+		flag.StringVar(&serverURL, "server", serverURL, "server URL or empty for auto-detect")
 		if flag.Usage == nil {
 			flag.Usage = func() {
 				fmt.Println("Usage: " + clientID + " [options] ")
@@ -172,7 +169,6 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 		configDir = filepath.Join("/etc", "hiveot", "conf.d")
 		certsDir = filepath.Join("/etc", "hiveot", "certs")
 		logsDir = filepath.Join("/var", "log", "hiveot")
-		runDir = filepath.Join("/run", "hiveot")
 		storesDir = filepath.Join("/var", "lib", "hiveot")
 	} else { // use application parent dir
 		//slog.Infof("homeDir is '%s", homeDir)
@@ -180,7 +176,6 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 		pluginsDir = filepath.Join(homeDir, "plugins")
 		certsDir = filepath.Join(homeDir, "certs")
 		logsDir = filepath.Join(homeDir, "logs")
-		runDir = filepath.Join(homeDir, "run")
 		storesDir = filepath.Join(homeDir, "stores")
 
 		if configDir == "" {
@@ -194,7 +189,7 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 	caCertFile := path.Join(certsDir, certs.DefaultCaCertFile)
 	caCert, _ := certs.LoadX509CertFromPEM(caCertFile)
 
-	// determine the expected location of the app auth key and token
+	// determine the expected location of the service auth key and token
 	tokenFile := path.Join(certsDir, clientID+".token")
 	keyFile := path.Join(certsDir, clientID+".key")
 
@@ -207,14 +202,12 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 		CertsDir:   certsDir,
 		LogsDir:    logsDir,
 		LogLevel:   loglevel,
-		RunDir:     runDir,
 		StoresDir:  storesDir,
-		// default client
 		ClientID:   clientID,
 		KeyFile:    keyFile,
 		TokenFile:  tokenFile,
 		CaCert:     caCert,
-		ServerURL:  serverURL,
-		ServerCore: serverCore,
+		//Core:   serverCore,
+		ServerURL: serverURL,
 	}
 }

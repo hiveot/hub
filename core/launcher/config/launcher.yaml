@@ -6,15 +6,15 @@
 
 
 # log launcher to stdout/stderr at level info (default is warning)
-loglevel: info
+logLevel: info
 
 # log launcher output to file (default is true)
 #logtofile: true  #
 
-# core to launch before the plugins. The core binary must reside in the bin directory.
+# Core binary to launch before the plugins. The core binary must reside in the bin directory.
 # comment out if a core is already running elsewhere.
-# known cores are mqttcore or natscore
-core: mqttcore
+# known core binaries are mqttcore or natscore
+corebin: mqttcore
 
 # write plugin stdout and stderr to logfile at logs/{pluginname}.log (default is true)
 #logplugins: true
@@ -35,7 +35,17 @@ core: mqttcore
 
 # Plugins to start in order
 autostart:
+  # core services
   - certs            # certificate management service
-#  - directory       # directory service
-#  - owserver        # 1-wire owserver binding
-#  - provisioning    # IoT device provisioning service
+#  - directory         # storage of thing directory
+#  - history           # storage of event history
+#  - state             # client state storage
+#  - hiveoview         # simple dashboard for viewing in the browser
+#  - provisioning      # IoT device provisioning service
+
+  # protocol bindings
+#  - owserver          # 1-wire binding using owserver gateway
+#  - zwavejs           # ZWave binding using zwave-js
+#  - isy99x            # Insteon binding using legacy ISY99 gateway
+#  - openweathermap    # Weather service integration
+#  - locate            # Locate people and devices

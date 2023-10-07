@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/hiveot/hub/api/go/hubclient"
-	"github.com/hiveot/hub/api/go/launcher"
+	launcher "github.com/hiveot/hub/core/launcher"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 	"log/slog"
 )
@@ -13,8 +13,8 @@ func (svc *LauncherService) HandleRequest(msg *hubclient.RequestMessage) error {
 
 	// TODO: double-check the caller is an admin or svc
 	switch msg.ActionID {
-	case launcher.LauncherListRPC:
-		req := launcher.LauncherListReq{}
+	case launcher.LauncherListReq:
+		req := launcher.LauncherListArgs{}
 		err := ser.Unmarshal(msg.Payload, &req)
 		if err != nil {
 			return err
@@ -26,8 +26,8 @@ func (svc *LauncherService) HandleRequest(msg *hubclient.RequestMessage) error {
 			err = msg.SendReply(reply, nil)
 		}
 		return err
-	case launcher.LauncherStartPluginRPC:
-		req := launcher.LauncherStartPluginReq{}
+	case launcher.LauncherStartPluginReq:
+		req := launcher.LauncherStartPluginArgs{}
 		err := ser.Unmarshal(msg.Payload, &req)
 		if err != nil {
 			return err
@@ -39,11 +39,11 @@ func (svc *LauncherService) HandleRequest(msg *hubclient.RequestMessage) error {
 			err = msg.SendReply(reply, nil)
 		}
 		return err
-	case launcher.LauncherStartAllPluginsRPC:
+	case launcher.LauncherStartAllPluginsReq:
 		err := svc.StartAllPlugins()
 		return err
-	case launcher.LauncherStopPluginRPC:
-		req := launcher.LauncherStopPluginReq{}
+	case launcher.LauncherStopPluginReq:
+		req := launcher.LauncherStopPluginArgs{}
 		err := ser.Unmarshal(msg.Payload, &req)
 		if err != nil {
 			return err
@@ -55,7 +55,7 @@ func (svc *LauncherService) HandleRequest(msg *hubclient.RequestMessage) error {
 			err = msg.SendReply(reply, nil)
 		}
 		return err
-	case launcher.LauncherStopAllPluginsRPC:
+	case launcher.LauncherStopAllPluginsReq:
 		err := svc.StopAllPlugins()
 		if err == nil {
 			err = msg.SendAck()

@@ -3,8 +3,8 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/api/go/launcher"
+	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/launcher"
 	"github.com/struCoder/pidusage"
 	"io"
 	"log/slog"
@@ -50,6 +50,8 @@ func (svc *LauncherService) StartAllPlugins() (err error) {
 func (svc *LauncherService) StartPlugin(pluginName string) (info launcher.PluginInfo, err error) {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
+
+	slog.Warn("Starting plugin " + pluginName)
 
 	// step 1: pre-checks
 	serviceInfo, found := svc.plugins[pluginName]
@@ -133,7 +135,6 @@ func (svc *LauncherService) StartPlugin(pluginName string) (info launcher.Plugin
 	}
 
 	// step 5: start the command and setup serviceInfo
-	slog.Info("Starting plugin", "pluginName", pluginName)
 	err = svcCmd.Start()
 	if err != nil {
 		serviceInfo.Status = fmt.Sprintf("failed starting '%s': %s", pluginName, err.Error())
@@ -170,7 +171,7 @@ func (svc *LauncherService) StartPlugin(pluginName string) (info launcher.Plugin
 		} else {
 			serviceInfo.Status = fmt.Sprintf("Plugin '%s' has stopped without info", pluginName)
 		}
-		slog.Warn(serviceInfo.Status)
+		slog.Warn("Plugin " + pluginName + " has stopped")
 		svc.updateStatus(serviceInfo)
 		// find the service to delete
 		i := lo.IndexOf(svc.cmds, svcCmd)
@@ -209,7 +210,6 @@ func (svc *LauncherService) StopAllPlugins() (err error) {
 }
 
 func (svc *LauncherService) StopPlugin(pluginName string) (info launcher.PluginInfo, err error) {
-	slog.Info("Stopping Plugin", "name", pluginName)
 
 	svc.mux.Lock()
 	serviceInfo, found := svc.plugins[pluginName]

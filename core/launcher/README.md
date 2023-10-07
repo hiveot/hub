@@ -10,10 +10,11 @@ Manage running of Hub plugins and monitor their status.
 
 ## Features
 
+1. Start core if configured
 1. List, Start and Stop available plugins including the message bus core
 1. Generate a client auth certificate for plugins before start
 1. Set logging output to log files for each plugin
-1. Support plugin autostart on startup. Use launcher.yaml config file.
+1. Plugin autostart on startup. Use launcher.yaml config file.
 
 Future:
 1. Track memory and CPU usage.
@@ -31,7 +32,7 @@ The launcher is a service for starting, stopping and monitoring Hub plugins foll
 1. Launcher starts the core as per config
    * launcher clientID is that of the binary name 
    * hub core creates the admin and launcher key-token credentials if they don't exist
-2. Launcher connects to the core with launcher key/token credentials
+2. Launcher connects to the message server with launcher key/token credentials
    * Connect to the auth clients service to be able to create plugin key/tokens 
 3. Launcher starts each plugin in order of config
    * Create the plugin key/token files if they don't exist

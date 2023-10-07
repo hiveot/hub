@@ -3,9 +3,9 @@ package authservice
 import (
 	"crypto/x509"
 	"fmt"
-	"github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/api/go/hubclient"
-	"github.com/hiveot/hub/api/go/msgserver"
+	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/msgserver"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 	"log/slog"
 )
@@ -42,7 +42,7 @@ func (svc *AuthManageProfile) HandleRequest(action *hubclient.RequestMessage) er
 	}
 	slog.Info("handleClientActions", slog.String("actionID", action.ActionID))
 	switch action.ActionID {
-	case auth.GetProfileAction:
+	case auth.GetProfileReq:
 		// use the current client
 		profile, err := svc.GetProfile(action.ClientID)
 		if err == nil {
@@ -51,8 +51,8 @@ func (svc *AuthManageProfile) HandleRequest(action *hubclient.RequestMessage) er
 			err = action.SendReply(reply, nil)
 		}
 		return err
-	case auth.NewTokenAction:
-		req := &auth.NewTokenReq{}
+	case auth.NewTokenReq:
+		req := &auth.NewTokenArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -64,7 +64,7 @@ func (svc *AuthManageProfile) HandleRequest(action *hubclient.RequestMessage) er
 			err = action.SendReply(reply, nil)
 		}
 		return err
-	case auth.RefreshAction:
+	case auth.RefreshTokenReq:
 		newToken, err := svc.Refresh(action.ClientID)
 		if err == nil {
 			resp := auth.RefreshResp{NewToken: newToken}
@@ -72,8 +72,8 @@ func (svc *AuthManageProfile) HandleRequest(action *hubclient.RequestMessage) er
 			err = action.SendReply(reply, nil)
 		}
 		return err
-	case auth.UpdateNameAction:
-		req := &auth.UpdateNameReq{}
+	case auth.UpdateNameReq:
+		req := &auth.UpdateNameArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -83,8 +83,8 @@ func (svc *AuthManageProfile) HandleRequest(action *hubclient.RequestMessage) er
 			err = action.SendAck()
 		}
 		return err
-	case auth.UpdatePasswordAction:
-		req := &auth.UpdatePasswordReq{}
+	case auth.UpdatePasswordReq:
+		req := &auth.UpdatePasswordArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -94,8 +94,8 @@ func (svc *AuthManageProfile) HandleRequest(action *hubclient.RequestMessage) er
 			err = action.SendAck()
 		}
 		return err
-	case auth.UpdatePubKeyAction:
-		req := &auth.UpdatePubKeyReq{}
+	case auth.UpdatePubKeyReq:
+		req := &auth.UpdatePubKeyArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err

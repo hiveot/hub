@@ -2,9 +2,9 @@ package authservice
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/auth"
-	"github.com/hiveot/hub/api/go/hubclient"
-	"github.com/hiveot/hub/api/go/msgserver"
+	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/msgserver"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 	"log/slog"
 )
@@ -173,8 +173,8 @@ func (svc *AuthManageClients) HandleRequest(action *hubclient.RequestMessage) er
 
 	// TODO: doublecheck the caller is an admin or svc
 	switch action.ActionID {
-	case auth.AddDeviceAction:
-		req := auth.AddDeviceReq{}
+	case auth.AddDeviceReq:
+		req := auth.AddDeviceArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -186,8 +186,8 @@ func (svc *AuthManageClients) HandleRequest(action *hubclient.RequestMessage) er
 			err = action.SendReply(reply, nil)
 		}
 		return err
-	case auth.AddServiceAction:
-		req := auth.AddServiceReq{}
+	case auth.AddServiceReq:
+		req := auth.AddServiceArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -199,8 +199,8 @@ func (svc *AuthManageClients) HandleRequest(action *hubclient.RequestMessage) er
 			err = action.SendReply(reply, nil)
 		}
 		return err
-	case auth.AddUserAction:
-		req := auth.AddUserReq{}
+	case auth.AddUserReq:
+		req := auth.AddUserArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -213,13 +213,13 @@ func (svc *AuthManageClients) HandleRequest(action *hubclient.RequestMessage) er
 			err = action.SendReply(reply, nil)
 		}
 		return err
-	case auth.GetCountAction:
+	case auth.GetCountReq:
 		n, err := svc.GetCount()
 		resp := auth.GetCountResp{N: n}
 		reply, _ := ser.Marshal(&resp)
 		err = action.SendReply(reply, nil)
 		return err
-	case auth.GetProfileAction:
+	case auth.GetProfileReq:
 		profile, err := svc.GetProfile(action.ClientID)
 		if err == nil {
 			resp := auth.GetProfileResp{Profile: profile}
@@ -227,7 +227,7 @@ func (svc *AuthManageClients) HandleRequest(action *hubclient.RequestMessage) er
 			err = action.SendReply(reply, nil)
 		}
 		return err
-	case auth.GetProfilesAction:
+	case auth.GetProfilesReq:
 		clientList, err := svc.GetProfiles()
 		if err == nil {
 			resp := auth.GetProfilesResp{Profiles: clientList}
@@ -235,8 +235,8 @@ func (svc *AuthManageClients) HandleRequest(action *hubclient.RequestMessage) er
 			err = action.SendReply(reply, nil)
 		}
 		return err
-	case auth.RemoveClientAction:
-		req := &auth.RemoveClientReq{}
+	case auth.RemoveClientReq:
+		req := &auth.RemoveClientArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -246,13 +246,35 @@ func (svc *AuthManageClients) HandleRequest(action *hubclient.RequestMessage) er
 			err = action.SendAck()
 		}
 		return err
-	case auth.UpdateClientAction:
-		req := &auth.UpdateClientReq{}
+	case auth.UpdateClientReq:
+		req := &auth.UpdateClientArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
 		}
 		err = svc.UpdateClient(req.ClientID, req.Profile)
+		if err == nil {
+			err = action.SendAck()
+		}
+		return err
+	case auth.UpdateClientPasswordReq:
+		req := &auth.UpdateClientPasswordArgs{}
+		err := ser.Unmarshal(action.Payload, &req)
+		if err != nil {
+			return err
+		}
+		err = svc.UpdateClientPassword(req.ClientID, req.Password)
+		if err == nil {
+			err = action.SendAck()
+		}
+		return err
+	case auth.UpdateClientRoleReq:
+		req := &auth.UpdateClientRoleArgs{}
+		err := ser.Unmarshal(action.Payload, &req)
+		if err != nil {
+			return err
+		}
+		err = svc.UpdateClientRole(req.ClientID, req.Role)
 		if err == nil {
 			err = action.SendAck()
 		}
@@ -309,6 +331,20 @@ func (svc *AuthManageClients) Stop() {
 
 func (svc *AuthManageClients) UpdateClient(clientID string, prof auth.ClientProfile) (err error) {
 	err = svc.store.Update(clientID, prof)
+	return err
+}
+
+func (svc *AuthManageClients) UpdateClientPassword(clientID string, newPassword string) (err error) {
+	err = svc.store.SetPassword(clientID, newPassword)
+	return err
+}
+
+func (svc *AuthManageClients) UpdateClientRole(clientID string, newRole string) (err error) {
+	prof, err := svc.store.GetProfile(clientID)
+	if err == nil {
+		prof.Role = newRole
+		err = svc.store.Update(clientID, prof)
+	}
 	return err
 }
 

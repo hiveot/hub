@@ -2,9 +2,9 @@ package launcherclient
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/certs"
-	"github.com/hiveot/hub/api/go/hubclient"
-	"github.com/hiveot/hub/api/go/launcher"
+	"github.com/hiveot/hub/core/certs"
+	"github.com/hiveot/hub/core/launcher"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 )
 
@@ -37,11 +37,11 @@ func (cl *LauncherClient) pubReq(action string, req interface{}, resp interface{
 // List services
 func (cl *LauncherClient) List(onlyRunning bool) ([]launcher.PluginInfo, error) {
 
-	req := launcher.LauncherListReq{
+	req := launcher.LauncherListArgs{
 		OnlyRunning: onlyRunning,
 	}
 	resp := launcher.LauncherListResp{}
-	err := cl.pubReq(launcher.LauncherListRPC, req, &resp)
+	err := cl.pubReq(launcher.LauncherListReq, req, &resp)
 	return resp.ServiceInfoList, err
 }
 
@@ -53,18 +53,18 @@ func (cl *LauncherClient) Start() error {
 // StartPlugin requests to start a plugin
 func (cl *LauncherClient) StartPlugin(name string) (launcher.PluginInfo, error) {
 
-	req := launcher.LauncherStartPluginReq{
+	req := launcher.LauncherStartPluginArgs{
 		Name: name,
 	}
 	resp := launcher.LauncherStartPluginResp{}
-	err := cl.pubReq(launcher.LauncherStartPluginRPC, req, &resp)
+	err := cl.pubReq(launcher.LauncherStartPluginReq, req, &resp)
 	return resp.ServiceInfo, err
 }
 
 // StartAllPlugins starts all enabled plugins
 // This returns the error from the last service that could not be started
 func (cl *LauncherClient) StartAllPlugins() error {
-	err := cl.pubReq(launcher.LauncherStartAllPluginsRPC, nil, nil)
+	err := cl.pubReq(launcher.LauncherStartAllPluginsReq, nil, nil)
 	return err
 }
 
@@ -75,17 +75,17 @@ func (cl *LauncherClient) Stop() error {
 
 // StopPlugin stops a running plugin
 func (cl *LauncherClient) StopPlugin(name string) (launcher.PluginInfo, error) {
-	req := launcher.LauncherStopPluginReq{
+	req := launcher.LauncherStopPluginArgs{
 		Name: name,
 	}
 	resp := launcher.LauncherStopPluginResp{}
-	err := cl.pubReq(launcher.LauncherStopPluginRPC, req, &resp)
+	err := cl.pubReq(launcher.LauncherStopPluginReq, req, &resp)
 	return resp.ServiceInfo, err
 }
 
 // StopAllPlugins stops running plugins
 func (cl *LauncherClient) StopAllPlugins() error {
-	err := cl.pubReq(launcher.LauncherStopAllPluginsRPC, nil, nil)
+	err := cl.pubReq(launcher.LauncherStopAllPluginsReq, nil, nil)
 	return err
 }
 
