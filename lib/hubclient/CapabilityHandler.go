@@ -9,14 +9,9 @@ import (
 
 // CapabilityHandler defines a handler for RPC request
 type CapabilityHandler struct {
-	// Arguments type or nil if no arguments
-	ArgsType any
-	// Response type or nil if no response parameters
-	RespType any
-	// Method that handles the request
-	// The method takes the arguments in the ArgsType struct and replies
-	// with a type holding the response parameters.
-	Method reflect.Value
+	// Method that handles the request in the format:
+	//    func(args struct) (struct,error)
+	Method interface{}
 }
 
 // HandleMessage unmarshal a request message parameters, passes it to the associated method,
@@ -25,32 +20,36 @@ type CapabilityHandler struct {
 // Intended to remove most boilerplate from handling and dispatching requests.
 func (ch *CapabilityHandler) HandleMessage(payload []byte) (respData []byte, err error) {
 
-	args := ch.ArgsType
-	resp := ch.RespType
-
 	// magic spells found at: https://github.com/a8m/reflect-examples#call-function-with-list-of-arguments-and-validate-return-values
 	// and here: https://stackoverflow.com/questions/45679408/unmarshal-json-to-reflected-struct
 	// First determine the type of argument of the method and whether it is passed by value or reference
 	// this handler only support a single argument that has to be a struct by value or reference
-	t := ch.Method.Type()
-	argv := make([]reflect.Value, t.NumIn())
-	argType := t.In(0)
-	passByRef := (argType.Kind() == reflect.Ptr)
+	methodValue := reflect.ValueOf(ch.Method)
+	methodType := methodValue.Type()
+	argv := make([]reflect.Value, methodType.NumIn())
 
-	if args != nil {
-		t1 := reflect.TypeOf(args)
-		n1 := reflect.New(t1) // pointer to a new zero value of type
+	if methodType.NumIn() > 0 {
+		// determine the type of argument, if it is passed by value or reference
+		argType := methodType.In(0)
+		argIsRef := (argType.Kind() == reflect.Ptr)
+		n1 := reflect.New(argType) // pointer to a new zero value of type
 		n1El := n1.Elem()
-		err = json.Unmarshal(payload, n1El.Addr().Interface())
-
-		if passByRef {
-			argv[0] = reflect.ValueOf(n1El.Addr().Interface())
+		// n1El now contains the value of the argument type.
+		// ? Would it not contain a pointer if passed by value ? apparently not ???
+		if argIsRef {
+			// n1El is a struct pointer value?
+			// for some reason, unmarshall still needs to receive the address of it
+			err = json.Unmarshal(payload, n1El.Addr().Interface())
+			argv[0] = reflect.ValueOf(n1El.Interface())
 		} else {
+			// n1El is the value, unmarshal to its address
+			err = json.Unmarshal(payload, n1El.Addr().Interface())
 			argv[0] = reflect.ValueOf(n1El.Interface())
 		}
 	}
-	resValues := ch.Method.Call(argv)
+	resValues := methodValue.Call(argv)
 	var errResp interface{}
+	var resp interface{}
 	if len(resValues) == 1 {
 		// only returns an error value
 		resp = nil
