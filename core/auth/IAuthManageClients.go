@@ -50,7 +50,7 @@ type ClientProfile struct {
 
 // Authentication management request/response messages
 
-// AddDeviceReq defines the request to add a device with public key
+// AddDeviceReq is the request name to add a device with public key
 const AddDeviceReq = "addDevice"
 
 // AddDeviceArgs request message to add a device.
@@ -64,7 +64,7 @@ type AddDeviceResp struct {
 	Token string `json:"token"`
 }
 
-// AddServiceReq defines the request to add a service with public key
+// AddServiceReq is the request name to add a service with public key
 const AddServiceReq = "addService"
 
 // AddServiceArgs request message to add a service.
@@ -78,7 +78,7 @@ type AddServiceResp struct {
 	Token string `json:"token"`
 }
 
-// AddUserReq defines the service request to add a user with password
+// AddUserReq is the request name to add a user with password
 const AddUserReq = "addUser"
 
 // AddUserArgs request message to add a user.
@@ -100,14 +100,14 @@ type GetCountResp struct {
 	N int `json:"n"`
 }
 
-// GetClientProfileReq defines the request to get any client's profile
+// GetClientProfileReq is the request name to get any client's profile
 const GetClientProfileReq = "getClientProfile"
 
 type GetClientProfileArgs struct {
 	ClientID string `json:"clientID"`
 }
 
-// GetProfilesReq defines the service action to get a list of all client profiles
+// GetProfilesReq is the request name to get a list of all client profiles
 const GetProfilesReq = "getProfiles"
 
 // GetProfilesResp response to listClient actions
@@ -115,7 +115,7 @@ type GetProfilesResp struct {
 	Profiles []ClientProfile `json:"profiles"`
 }
 
-// RemoveClientReq defines the request to remove a client
+// RemoveClientReq is the request name to remove a client
 // The caller must be an administrator or service.
 const RemoveClientReq = "removeClient"
 
@@ -123,7 +123,7 @@ type RemoveClientArgs struct {
 	ClientID string `json:"clientID"`
 }
 
-// UpdateClientReq defines the request to update a client's profile
+// UpdateClientReq is the request name to update a client's profile
 // The caller must be an administrator or service.
 const UpdateClientReq = "updateClient"
 
@@ -132,7 +132,7 @@ type UpdateClientArgs struct {
 	Profile  ClientProfile `json:"profile"`
 }
 
-// UpdateClientPasswordReq defines the service action to update a client's password
+// UpdateClientPasswordReq is the request name to update a client's password
 // The caller must be an administrator or service.
 const UpdateClientPasswordReq = "updateClientPassword"
 
@@ -141,7 +141,7 @@ type UpdateClientPasswordArgs struct {
 	Password string `json:"password"`
 }
 
-// UpdateClientRoleReq defines the service action to change a client's role
+// UpdateClientRoleReq is the request name to change a client's role
 const UpdateClientRoleReq = "updateRole"
 
 type UpdateClientRoleArgs struct {

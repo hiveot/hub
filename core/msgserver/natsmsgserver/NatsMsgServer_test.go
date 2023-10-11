@@ -1,7 +1,6 @@
 package natsmsgserver_test
 
 import (
-	"github.com/hiveot/hub/api/go/vocab"
 	auth2 "github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver/service"
@@ -10,6 +9,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient/natshubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/lib/vocab"
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

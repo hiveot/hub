@@ -1,0 +1,170 @@
+package service
+
+import (
+	"context"
+	"fmt"
+	"strconv"
+	"time"
+
+	"github.com/araddon/dateparse"
+	"github.com/sirupsen/logrus"
+
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/pkg/bucketstore"
+)
+
+// Deprecated. Devices use pubsub, not add directly. 
+// AddHistory adds events and actions in the given Thing bucket
+//
+// The storage format key is a timestamp ordered msec since epoc:
+//
+// timestamp/name/e|a = value
+// * where timestamp is the number of milliseconds since epoc
+// * where name is the name of the event or action as described in the TD.
+// * where 'e|a' is 'e' for events and 'a' for actions
+type AddHistory struct {
+	// this buckets holds the history updates of events and actions
+	clientID    string
+	bucket      bucketstore.IBucket
+	store       bucketstore.IBucketStore
+	publisherID string
+	thingID     string
+	//thingAddr   string // address of the Thing the bucket belongs to
+
+	// callback to invoke when an event is added. Intended for tracking latest value.
+	onAddedValue func(ev *thing.ThingValue, isAction bool)
+}
+
+// encode a ThingValue into a single key value pair
+// Encoding generates a key as: timestampMsec/name/a|e, where a|e indicates action or event
+// TODO: merge this with encodeValue in AddAnyThing
+func (svc *AddHistory) encodeValue(thingValue *thing.ThingValue, isAction bool) (key string, val []byte) {
+	var err error
+	ts := time.Now()
+	if thingValue.Created != "" {
+		ts, err = dateparse.ParseAny(thingValue.Created)
+		if err != nil {
+			logrus.Infof("Invalid Created time '%s'. Using current time instead", thingValue.Created)
+			ts = time.Now()
+			err = nil
+		}
+	}
+
+	// the index uses milliseconds for timestamp
+	timestamp := ts.UnixMilli()
+	key = strconv.FormatInt(timestamp, 10) + "/" + thingValue.Name
+	if isAction {
+		key = key + "/a"
+	} else {
+		key = key + "/e"
+	}
+	val = thingValue.ValueJSON
+	return key, val
+}
+
+// AddAction adds a Thing action with the given name and value to the action history
+// value is json encoded. Optionally include a 'created' ISO8601 timestamp
+func (svc *AddHistory) AddAction(_ context.Context, actionValue *thing.ThingValue) error {
+	if err := svc.validateValue(actionValue); err != nil {
+		logrus.Info(err)
+		return err
+	}
+	key, val := svc.encodeValue(actionValue, true)
+	err := svc.bucket.Set(key, val)
+	if svc.onAddedValue != nil {
+		svc.onAddedValue(actionValue, true)
+	}
+	return err
+}
+
+// AddEvent adds an event to the event history
+// If the event has no created time, it will be set to 'now'
+func (svc *AddHistory) AddEvent(_ context.Context, eventValue *thing.ThingValue) error {
+	if err := svc.validateValue(eventValue); err != nil {
+		logrus.Info(err)
+		return err
+	}
+	key, val := svc.encodeValue(eventValue, false)
+	err := svc.bucket.Set(key, val)
+	if svc.onAddedValue != nil {
+		svc.onAddedValue(eventValue, false)
+	}
+	return err
+}
+
+// AddEvents provides a bulk-add of events to the event history
+// This modifies eventValues that have no created date set with the current time.
+// If any of the values belongs to a different Thing, the complete request is rejected and
+// an error is returned.
+func (svc *AddHistory) AddEvents(_ context.Context, eventValues []*thing.ThingValue) error {
+	kvmap := make(map[string][]byte)
+	// validate the events
+	for _, eventValue := range eventValues {
+		if err := svc.validateValue(eventValue); err != nil {
+			logrus.Info(err)
+			return err
+		}
+		// add the value to the bulk batch
+		key, val := svc.encodeValue(eventValue, false)
+		kvmap[key] = val
+		if svc.onAddedValue != nil {
+			svc.onAddedValue(eventValue, false)
+		}
+	}
+	// bulk add is fast
+	err := svc.bucket.SetMultiple(kvmap)
+	return err
+}
+
+// Release the capability and its resources
+func (svc *AddHistory) Release() {
+	err := svc.bucket.Close()
+	if err != nil {
+		logrus.Errorf("Error from store when closing AddHistory: %s", err)
+	}
+
+}
+
+// validateValue checks the event has the right thing address and adds a timestamp if missing
+func (svc *AddHistory) validateValue(thingValue *thing.ThingValue) error {
+	if thingValue == nil {
+		return fmt.Errorf("nil event instead of event for Thing '%s'", svc.thingID)
+	}
+	if thingValue.ThingID == "" || thingValue.PublisherID == "" {
+		return fmt.Errorf("missing publisher/thing address in value with name '%s'", thingValue.Name)
+	}
+	if thingValue.ThingID != svc.thingID || thingValue.PublisherID != svc.publisherID {
+		return fmt.Errorf("refused adding event for Thing '%s/%s'. Only events for '%s/%s' are allowed",
+			thingValue.PublisherID, thingValue.ThingID, svc.publisherID, svc.thingID)
+	}
+	if thingValue.Name == "" {
+		return fmt.Errorf("missing name for event or action for thing '%s/%s'", thingValue.PublisherID, thingValue.ThingID)
+	}
+	if thingValue.Created == "" {
+		thingValue.Created = time.Now().Format(vocab.ISO8601Format)
+	}
+	return nil
+}
+
+// NewAddHistory provides the capability to add values to a Thing's history bucket
+//
+//	thingAddr address of the thing (publisherID/thingID).
+//	bucket to store values
+//	onAddedValue callback to notify if a value was added
+func NewAddHistory(
+	clientID, publisherID, thingID string,
+	bucket bucketstore.IBucket,
+	onAddedValue func(event *thing.ThingValue, isAction bool)) *AddHistory {
+	svc := &AddHistory{
+		bucket:       bucket,
+		clientID:     clientID,
+		publisherID:  publisherID,
+		thingID:      thingID,
+		onAddedValue: onAddedValue,
+	}
+	if publisherID == "" || thingID == "" {
+		panic("NewAddHistory MUST have a publisherID and thingID")
+	}
+	return svc
+}

@@ -1,0 +1,83 @@
+<nodes>
+<root>Devices</root>
+<folder flag="0">
+<address>47567</address>
+<name>lights</name>
+</folder>
+<folder flag="0">
+<address>49025</address>
+<name>power</name>
+</folder>
+<node flag="128">
+<address>13 55 D3 1</address>
+<name>Basement</name>
+<parent type="3">49025</parent>
+<type>2.12.56.0</type>
+<enabled>true</enabled>
+<pnode>13 55 D3 1</pnode>
+<ELK_ID>A04</ELK_ID>
+<property id="ST" value="0" formatted="Off" uom="on/off"/>
+</node>
+<node flag="128">
+<address>13 57 73 1</address>
+<name>Wifi and Cam1, cam3</name>
+<parent type="3">49025</parent>
+<type>2.12.56.0</type>
+<enabled>true</enabled>
+<pnode>13 57 73 1</pnode>
+<ELK_ID>A02</ELK_ID>
+<property id="ST" value="0" formatted="Off" uom="on/off"/>
+</node>
+<node flag="128">
+<address>15 2D A 1</address>
+<name>Deck lights</name>
+<parent type="3">47567</parent>
+<type>2.26.58.157</type>
+<enabled>true</enabled>
+<pnode>15 2D A 1</pnode>
+<ELK_ID>A10</ELK_ID>
+<property id="ST" value="0" formatted="Off" uom="on/off"/>
+</node>
+<node flag="128">
+<address>15 2E 52 1</address>
+<name>Front door lights</name>
+<parent type="3">47567</parent>
+<type>2.26.58.0</type>
+<enabled>true</enabled>
+<pnode>15 2E 52 1</pnode>
+<ELK_ID>A01</ELK_ID>
+<property id="ST" value="255" formatted="On" uom="on/off"/>
+</node>
+<node flag="128">
+<address>15 2E 57 1</address>
+<name>Bathroom fan</name>
+<parent type="3">47567</parent>
+<type>2.26.58.0</type>
+<enabled>true</enabled>
+<pnode>15 2E 57 1</pnode>
+<ELK_ID>A06</ELK_ID>
+<property id="ST" value="0" formatted="Off" uom="on/off"/>
+</node>
+<node flag="128">
+<address>15 2E 5B 1</address>
+<name>Yard lights</name>
+<parent type="3">47567</parent>
+<type>2.26.58.0</type>
+<enabled>true</enabled>
+<pnode>15 2E 5B 1</pnode>
+<ELK_ID>A05</ELK_ID>
+<property id="ST" value="0" formatted="Off" uom="on/off"/>
+</node>
+<group flag="12">
+<address>00:21:b9:01:0e:7b</address>
+<name>zzzz-donottouch</name>
+<members>
+<link type="0">15 2E 52 1</link>
+<link type="0">13 57 73 1</link>
+<link type="0">13 55 D3 1</link>
+<link type="0">15 2E 5B 1</link>
+<link type="0">15 2E 57 1</link>
+<link type="0">15 2D A 1</link>
+</members>
+</group>
+</nodes>

@@ -1,9 +1,9 @@
 package service
 
 import (
-	"github.com/hiveot/hub/api/go/thing"
+	thing2 "github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/vocab"
 
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/plugins/owserver/service/eds"
 )
 
@@ -12,13 +12,13 @@ import (
 // - Writable non-sensors attributes are marked as writable configuration
 // - Sensors are also added as events.
 // - Writable sensors are also added as actions.
-func (binding *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing.TD) {
+func (binding *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing2.TD) {
 
 	// Should we bother with the URI? In HiveOT things have pubsub addresses that include the ID. The ID is not the address.
 	//thingID := thing.CreateThingID(binding.Config.ID, node.NodeID, node.DeviceType)
 	thingID := node.NodeID
 
-	tdoc = thing.NewTD(thingID, node.Name, node.DeviceType)
+	tdoc = thing2.NewTD(thingID, node.Name, node.DeviceType)
 	tdoc.UpdateTitleDescription(node.Name, node.Description)
 
 	// Map node attribute to Thing properties
@@ -26,13 +26,13 @@ func (binding *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *t
 		// sensors are added as both properties and events
 		if attr.IsSensor {
 			evType := attr.VocabType
-			var evSchema *thing.DataSchema
+			var evSchema *thing2.DataSchema
 			// sensors emit events
 			eventID := attrName
 			title := attr.Name
 			// only add data schema if the event carries a value
 			if attr.DataType != vocab.WoTDataTypeNone {
-				evSchema = &thing.DataSchema{
+				evSchema = &thing2.DataSchema{
 					Type:         attr.DataType,
 					Unit:         attr.Unit,
 					InitialValue: attr.Value,
@@ -45,12 +45,12 @@ func (binding *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *t
 
 		} else if attr.IsActuator {
 			// TODO: determine action @type
-			var inputSchema *thing.DataSchema
+			var inputSchema *thing2.DataSchema
 			actionID := attrName
 			actionType := attr.VocabType
 			// only add data schema if the action accepts parameters
 			if attr.DataType != vocab.WoTDataTypeNone {
-				inputSchema = &thing.DataSchema{
+				inputSchema = &thing2.DataSchema{
 					Type: attr.DataType,
 					Unit: attr.Unit,
 				}

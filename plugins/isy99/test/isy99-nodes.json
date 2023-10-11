@@ -1,0 +1,282 @@
+[
+  {
+    "address": "test/isy99/15 2E 57 1/$node",
+    "attr": {
+      "type": "onOffSwitch"
+    },
+    "config": {
+      "name": {
+        "datatype": "string",
+        "default": "Bathroom fan",
+        "description": "Name of ISY node"
+      },
+      "publishEvent": {
+        "datatype": "string",
+        "default": "false",
+        "description": "Enable publishing outputs as event"
+      },
+      "publishHistory": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing output history"
+      },
+      "publishLatest": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing latest output"
+      },
+      "publishRaw": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing raw outputs"
+      }
+    },
+    "hwID": "15 2E 57 1",
+    "nodeId": "15 2E 57 1",
+    "status": {
+      "runState": "ready"
+    },
+    "timestamp": "2020-09-30T10:32:30.728-0700"
+  },
+  {
+    "address": "test/isy99/15 2E 5B 1/$node",
+    "attr": {
+      "type": "onOffSwitch"
+    },
+    "config": {
+      "name": {
+        "datatype": "string",
+        "default": "Yard lights",
+        "description": "Name of ISY node"
+      },
+      "publishEvent": {
+        "datatype": "string",
+        "default": "false",
+        "description": "Enable publishing outputs as event"
+      },
+      "publishHistory": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing output history"
+      },
+      "publishLatest": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing latest output"
+      },
+      "publishRaw": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing raw outputs"
+      }
+    },
+    "hwID": "15 2E 5B 1",
+    "nodeId": "15 2E 5B 1",
+    "status": {
+      "runState": "ready"
+    },
+    "timestamp": "2020-09-30T10:32:30.728-0700"
+  },
+  {
+    "address": "test/isy99/gateway/$node",
+    "attr": {
+      "localIP": "file://../test",
+      "mac": "00:21:b9:01:0e:7b",
+      "manufacturer": "Universal Devices Inc.",
+      "model": "ISY 99i 256",
+      "name": "ISY-C-99",
+      "softwareVersion": "Insteon_UD99 - 3.2.6",
+      "type": "gateway"
+    },
+    "config": {
+      "name": {
+        "datatype": "string",
+        "description": "Human friendly node name"
+      },
+      "publishEvent": {
+        "datatype": "string",
+        "default": "false",
+        "description": "Enable publishing outputs as event"
+      },
+      "publishHistory": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing output history"
+      },
+      "publishLatest": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing latest output"
+      },
+      "publishRaw": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing raw outputs"
+      }
+    },
+    "hwID": "gateway",
+    "nodeId": "gateway",
+    "status": {
+      "lastError": "Connection restored to address file://../test",
+      "latencymsec": "1",
+      "runState": "ready"
+    },
+    "timestamp": "2020-09-30T10:32:30.728-0700"
+  },
+  {
+    "address": "test/isy99/13 55 D3 1/$node",
+    "attr": {
+      "type": "onOffSwitch"
+    },
+    "config": {
+      "name": {
+        "datatype": "string",
+        "default": "Basement",
+        "description": "Name of ISY node"
+      },
+      "publishEvent": {
+        "datatype": "string",
+        "default": "false",
+        "description": "Enable publishing outputs as event"
+      },
+      "publishHistory": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing output history"
+      },
+      "publishLatest": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing latest output"
+      },
+      "publishRaw": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing raw outputs"
+      }
+    },
+    "hwID": "13 55 D3 1",
+    "nodeId": "13 55 D3 1",
+    "status": {
+      "runState": "ready"
+    },
+    "timestamp": "2020-09-30T10:32:30.728-0700"
+  },
+  {
+    "address": "test/isy99/13 57 73 1/$node",
+    "attr": {
+      "type": "onOffSwitch"
+    },
+    "config": {
+      "name": {
+        "datatype": "string",
+        "default": "Wifi and Cam1, cam3",
+        "description": "Name of ISY node"
+      },
+      "publishEvent": {
+        "datatype": "string",
+        "default": "false",
+        "description": "Enable publishing outputs as event"
+      },
+      "publishHistory": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing output history"
+      },
+      "publishLatest": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing latest output"
+      },
+      "publishRaw": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing raw outputs"
+      }
+    },
+    "hwID": "13 57 73 1",
+    "nodeId": "13 57 73 1",
+    "status": {
+      "runState": "ready"
+    },
+    "timestamp": "2020-09-30T10:32:30.728-0700"
+  },
+  {
+    "address": "test/isy99/15 2D A 1/$node",
+    "attr": {
+      "type": "onOffSwitch"
+    },
+    "config": {
+      "name": {
+        "datatype": "string",
+        "default": "Deck lights",
+        "description": "Name of ISY node"
+      },
+      "publishEvent": {
+        "datatype": "string",
+        "default": "false",
+        "description": "Enable publishing outputs as event"
+      },
+      "publishHistory": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing output history"
+      },
+      "publishLatest": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing latest output"
+      },
+      "publishRaw": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing raw outputs"
+      }
+    },
+    "hwID": "15 2D A 1",
+    "nodeId": "15 2D A 1",
+    "status": {
+      "runState": "ready"
+    },
+    "timestamp": "2020-09-30T10:32:30.728-0700"
+  },
+  {
+    "address": "test/isy99/15 2E 52 1/$node",
+    "attr": {
+      "type": "onOffSwitch"
+    },
+    "config": {
+      "name": {
+        "datatype": "string",
+        "default": "Front door lights",
+        "description": "Name of ISY node"
+      },
+      "publishEvent": {
+        "datatype": "string",
+        "default": "false",
+        "description": "Enable publishing outputs as event"
+      },
+      "publishHistory": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing output history"
+      },
+      "publishLatest": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing latest output"
+      },
+      "publishRaw": {
+        "datatype": "boolean",
+        "default": "true",
+        "description": "Enable publishing raw outputs"
+      }
+    },
+    "hwID": "15 2E 52 1",
+    "nodeId": "15 2E 52 1",
+    "status": {
+      "runState": "ready"
+    },
+    "timestamp": "2020-09-30T10:32:30.728-0700"
+  }
+]

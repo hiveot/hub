@@ -12,12 +12,12 @@ This project has moved on from the microservice/RPC iteration and is now being c
 Status: The status of the Hub is pre-alpha development (Sept 2023). 
 
 ### Pre-Alpha Road Map - Messaging Core 
-1. ~~Core using nats message bus~~ [completed]
-2. ~~Core using mqtt message bus~~ [completed]
-3. ~~Authentication management of devices, services and users~~ [completed]
-4. ~~Authorization for message bus access~~ [completed]
-5. ~~Golang client library~~ [completed]
-6. HubCLI for Hub administration [in progress]
+1. ~~natscore - Core using nats message bus~~ [completed]
+2. ~~mqttcore - Core using mqtt message bus~~ [completed]
+3. ~~auth - Authentication management of devices, services and users~~ [completed]
+4. ~~auth - Authorization for message bus access~~ [completed]
+5. ~~lib - Golang client library~~ [completed]
+6. hubcli - CLI for Hub administration [in progress]
 7. ~~Launcher service for running and monitoring plugins~~ [completed]
 8. ~~Update documentation~~ [completed]
    * [HiveOT Overview](https://hiveot.github.io/)
@@ -25,29 +25,32 @@ Status: The status of the Hub is pre-alpha development (Sept 2023).
    * [Thing TDs](docs/README-TD.md)
 
 ### Alpha Releases Feature Road Map - Core Services
-1. ~~Certificate management for CA and server certificates~~ [completed]
-1. ~~OWServer 1-wire protocol binding~~ [completed]
-2. Directory service for serving TDs (Thing Descriptions) to users
-3. History service for serving event history
-4. Provisioning service for dynamic provisioning Thing devices
-5. Dashboard viewer for web browsers (hiveoview)
+1. ~~certs - Certificate management for CA and server certificates~~ [completed]
+2. ~~owserver - OWServer 1-wire protocol binding~~ [completed]
+3. directory - directory service for serving TDs (Thing Descriptions) to users
+4. history - history service for serving event history
+5. state - state service for storing client state in a key-value store
+6. hiveoview - dashboard viewer for web browsers
 
 ### Beta Releases Feature Road Map - Protocol Binding Plugins
-2. ZWave protocol binding (zwavejs) 
-3. ISY99 legacy Insteon protocol binding (isy99x)
-4. Weather service protocol binding (openweathermap)
-5. Location tracking service
+1. zwavejs - ZWave protocol binding  
+1. isy99x - ISY99 legacy Insteon protocol binding 
+1. openweathermap - Weather service protocol binding
+1. locate - Locate people and devices
 
 ### Future Releases Road Map  
-1. Automation rules service
-1. Notification service using email, SMS, VoIP
-1. CoAP protocol binding
-1. Zigbee protocol binding
-1. LetsEncrypt certificate management integration
-1. Bridge service to connect Hubs
+1. provisioning - Provisioning service for dynamic provisioning Thing devices
+1. rules - Automation rules service
+1. notify - Notification service using email, SMS, VoIP
+1. coap - CoAP protocol binding
+1. zigbee - Zigbee protocol binding
+1. certs - LetsEncrypt certificate management integration
+1. bridge - Bridge service to connect Hubs
 1. Android native application
-1. Camera motion detection service
-1. HiveAI service applying learning to IoT data
+1. motioncam - Camera motion detection service
+1. hiveai - HiveAI service applying learning to IoT data
+1. sayit - Speech interface
+
 
 ## Audience
 

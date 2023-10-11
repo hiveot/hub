@@ -3,15 +3,14 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/thing"
+	vocab2 "github.com/hiveot/hub/lib/vocab"
 	"github.com/hiveot/hub/plugins/owserver/config"
 	"github.com/hiveot/hub/plugins/owserver/service/eds"
 	"log/slog"
 	"sync"
 	"sync/atomic"
-
-	"github.com/hiveot/hub/api/go/thing"
 )
 
 // OWServerBinding is the hub protocol binding plugin for capturing 1-wire OWServer V2 Data
@@ -46,21 +45,21 @@ type OWServerBinding struct {
 // CreateBindingTD generates a TD document for this binding
 func (binding *OWServerBinding) CreateBindingTD() *thing.TD {
 	thingID := binding.hc.ClientID()
-	td := thing.NewTD(thingID, "OWServer binding", vocab.DeviceTypeBinding)
+	td := thing.NewTD(thingID, "OWServer binding", vocab2.DeviceTypeBinding)
 	// these are configured through the configuration file.
-	prop := td.AddProperty(vocab.VocabPollInterval, vocab.VocabPollInterval, "Poll Interval", vocab.WoTDataTypeInteger, "")
-	prop.Unit = vocab.UnitNameSecond
-	prop.InitialValue = fmt.Sprintf("%d %s", binding.Config.PollInterval, vocab.UnitNameSecond)
+	prop := td.AddProperty(vocab2.VocabPollInterval, vocab2.VocabPollInterval, "Poll Interval", vocab2.WoTDataTypeInteger, "")
+	prop.Unit = vocab2.UnitNameSecond
+	prop.InitialValue = fmt.Sprintf("%d %s", binding.Config.PollInterval, vocab2.UnitNameSecond)
 
-	prop = td.AddProperty("tdInterval", vocab.VocabPollInterval, "TD Publication Interval", vocab.WoTDataTypeInteger, "")
-	prop.Unit = vocab.UnitNameSecond
-	prop.InitialValue = fmt.Sprintf("%d %s", binding.Config.TDInterval, vocab.UnitNameSecond)
+	prop = td.AddProperty("tdInterval", vocab2.VocabPollInterval, "TD Publication Interval", vocab2.WoTDataTypeInteger, "")
+	prop.Unit = vocab2.UnitNameSecond
+	prop.InitialValue = fmt.Sprintf("%d %s", binding.Config.TDInterval, vocab2.UnitNameSecond)
 
-	prop = td.AddProperty("valueInterval", vocab.VocabPollInterval, "Value Republication Interval", vocab.WoTDataTypeInteger, "")
-	prop.Unit = vocab.UnitNameSecond
-	prop.InitialValue = fmt.Sprintf("%d %s", binding.Config.RepublishInterval, vocab.UnitNameSecond)
+	prop = td.AddProperty("valueInterval", vocab2.VocabPollInterval, "Value Republication Interval", vocab2.WoTDataTypeInteger, "")
+	prop.Unit = vocab2.UnitNameSecond
+	prop.InitialValue = fmt.Sprintf("%d %s", binding.Config.RepublishInterval, vocab2.UnitNameSecond)
 
-	prop = td.AddProperty("owServerAddress", vocab.VocabGatewayAddress, "OWServer gateway IP address", vocab.WoTDataTypeString, "")
+	prop = td.AddProperty("owServerAddress", vocab2.VocabGatewayAddress, "OWServer gateway IP address", vocab2.WoTDataTypeString, "")
 	prop.InitialValue = fmt.Sprintf("%s", binding.Config.OWServerURL)
 	return td
 }
@@ -78,7 +77,7 @@ func (binding *OWServerBinding) Start() error {
 
 	td := binding.CreateBindingTD()
 	tdDoc, _ := json.Marshal(td)
-	err := binding.hc.PubEvent(td.ID, vocab.EventNameTD, tdDoc)
+	err := binding.hc.PubEvent(td.ID, vocab2.EventNameTD, tdDoc)
 	if err != nil {
 		return err
 	}

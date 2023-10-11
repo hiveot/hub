@@ -1,0 +1,355 @@
+<configuration>
+<deviceSpecs>
+<make>Universal Devices Inc.</make>
+<manufacturerURL>http://www.universal-devices.com</manufacturerURL>
+<model>Insteon Web Controller</model>
+<icon>/web/udlogo.jpg</icon>
+<archive>/web/insteon.jar</archive>
+<chart>/web/chart.jar</chart>
+<queryOnInit>true</queryOnInit>
+<oneNodeAtATime>true</oneNodeAtATime>
+<baseProtocolOptional>false</baseProtocolOptional>
+</deviceSpecs>
+<upnpSpecs>
+<upnpDevice>
+<utype>X_Insteon_Lighting_Device</utype>
+<version>1</version>
+</upnpDevice>
+<upnpService>
+<utype>X_Insteon_Lighting_Service</utype>
+<version>1</version>
+</upnpService>
+</upnpSpecs>
+<controls>
+<control>
+<name>ST</name>
+<label>Status</label>
+<readOnly>true</readOnly>
+<isQueryAble>true</isQueryAble>
+<isNumeric>true</isNumeric>
+<numericUnit>%</numericUnit>
+</control>
+<control>
+<name>OL</name>
+<label>On Level</label>
+<readOnly>false</readOnly>
+<isQueryAble>true</isQueryAble>
+<isNumeric>true</isNumeric>
+<numericUnit>%</numericUnit>
+</control>
+<control>
+<name>RR</name>
+<label>Ramp Rate</label>
+<readOnly>false</readOnly>
+<isQueryAble>true</isQueryAble>
+<isNumeric>true</isNumeric>
+<numericUnit>%</numericUnit>
+</control>
+<control>
+<name>DON</name>
+<label>On</label>
+</control>
+<control>
+<name>DFON</name>
+<label>Fast On</label>
+</control>
+<control>
+<name>DOF</name>
+<label>Off</label>
+</control>
+<control>
+<name>DFOF</name>
+<label>Fast Off</label>
+</control>
+<control>
+<name>BRT</name>
+<label>Brighten</label>
+</control>
+<control>
+<name>DIM</name>
+<label>Dim</label>
+</control>
+<control>
+<name>BMAN</name>
+<label>Fade Start</label>
+</control>
+<control>
+<name>SMAN</name>
+<label>Fade Stop</label>
+</control>
+<control>
+<name>BEEP</name>
+<label>Beep</label>
+</control>
+<control>
+<name>RESET</name>
+<label>Reset values</label>
+</control>
+<control>
+<name>ERR</name>
+<label>Error</label>
+</control>
+<control>
+<name>CLISPH</name>
+<label>Heat Setpoint</label>
+<readOnly>false</readOnly>
+<isQueryAble>true</isQueryAble>
+<isNumeric>true</isNumeric>
+<numericUnit>F</numericUnit>
+</control>
+<control>
+<name>CLISPC</name>
+<label>Cool Setpoint</label>
+<readOnly>false</readOnly>
+<isQueryAble>true</isQueryAble>
+<isNumeric>true</isNumeric>
+<numericUnit>F</numericUnit>
+</control>
+<control>
+<name>CLIFS</name>
+<label>Fan State</label>
+<readOnly>false</readOnly>
+<isQueryAble>true</isQueryAble>
+<isNumeric>false</isNumeric>
+<actions>
+<action>
+<name>7</name>
+<label>On</label>
+</action>
+<action>
+<name>8</name>
+<label>Auto</label>
+</action>
+</actions>
+</control>
+<control>
+<name>CLIMD</name>
+<label>Thermostat Mode</label>
+<readOnly>false</readOnly>
+<isQueryAble>true</isQueryAble>
+<isNumeric>false</isNumeric>
+<actions>
+<action>
+<name>0</name>
+<label>Off</label>
+</action>
+<action>
+<name>1</name>
+<label>Heat</label>
+</action>
+<action>
+<name>2</name>
+<label>Cool</label>
+</action>
+<action>
+<name>3</name>
+<label>Auto</label>
+</action>
+<action>
+<name>4</name>
+<label>Fan</label>
+</action>
+<action>
+<name>5</name>
+<label>Program Auto</label>
+</action>
+<action>
+<name>6</name>
+<label>Program Heat</label>
+</action>
+<action>
+<name>7</name>
+<label>Program Cool</label>
+</action>
+</actions>
+</control>
+<control>
+<name>CLIHUM</name>
+<label>Humidity</label>
+<readOnly>true</readOnly>
+<isQueryAble>true</isQueryAble>
+<isNumeric>true</isNumeric>
+<numericUnit>%</numericUnit>
+</control>
+<control>
+<name>CLIHCS</name>
+<label>Heat/Cool State</label>
+<readOnly>true</readOnly>
+<isQueryAble>true</isQueryAble>
+<isNumeric>false</isNumeric>
+<actions>
+<action>
+<name>0</name>
+<label>Off</label>
+</action>
+<action>
+<name>1</name>
+<label>Heat On</label>
+</action>
+<action>
+<name>2</name>
+<label>Cool On</label>
+</action>
+</actions>
+</control>
+<control>
+<name>UOM</name>
+<label>Unit</label>
+<readOnly>true</readOnly>
+<isQueryAble>true</isQueryAble>
+<isNumeric>false</isNumeric>
+<actions>
+<action>
+<name>1</name>
+<label>Celsius</label>
+</action>
+<action>
+<name>2</name>
+<label>Fahrenheit</label>
+</action>
+</actions>
+</control>
+<control>
+<name>TPW</name>
+<label>Total Power Used</label>
+<readOnly>true</readOnly>
+<isQueryAble>true</isQueryAble>
+<isNumeric>true</isNumeric>
+<numericUnit>kWs</numericUnit>
+</control>
+</controls>
+<app>Insteon_UD99</app>
+<app_version>3.2.6</app_version>
+<platform>ISY-C-99</platform>
+<build_timestamp>2012-05-04-00:26:24</build_timestamp>
+<root>
+<id>00:21:b9:01:0e:7b</id>
+<name>zzzz-donottouch</name>
+</root>
+<product>
+<id>1020</id>
+<desc>ISY 99i 256</desc>
+</product>
+<features>
+<feature>
+<id>21010</id>
+<desc>Open Auto-DR</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>false</isAvailable>
+</feature>
+<feature>
+<id>21011</id>
+<desc>Electricity Monitor</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>true</isAvailable>
+</feature>
+<feature>
+<id>21012</id>
+<desc>Gas Meter</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>false</isAvailable>
+</feature>
+<feature>
+<id>21013</id>
+<desc>Water Meter</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>false</isAvailable>
+</feature>
+<feature>
+<id>21020</id>
+<desc>Weather Information</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>true</isAvailable>
+</feature>
+<feature>
+<id>21030</id>
+<desc>URL</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>false</isAvailable>
+</feature>
+<feature>
+<id>21040</id>
+<desc>Networking Module</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>true</isAvailable>
+</feature>
+<feature>
+<id>21050</id>
+<desc>AMI Electricity Meter</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>false</isAvailable>
+</feature>
+<feature>
+<id>21051</id>
+<desc>SEP ESP</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>false</isAvailable>
+</feature>
+<feature>
+<id>21060</id>
+<desc>A10/X10 for INSTEON</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>true</isAvailable>
+</feature>
+<feature>
+<id>21070</id>
+<desc>Portal Integration - Check-it.ca</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>true</isAvailable>
+</feature>
+<feature>
+<id>21014</id>
+<desc>Current Cost Meter</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>false</isAvailable>
+</feature>
+<feature>
+<id>21080</id>
+<desc>Broadband SEP Device</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>true</isAvailable>
+</feature>
+<feature>
+<id>21071</id>
+<desc>Portal Integration - GreenNet.com</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>true</isAvailable>
+</feature>
+<feature>
+<id>22000</id>
+<desc>RCS Zigbee Device Support</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>false</isAvailable>
+</feature>
+<feature>
+<id>23000</id>
+<desc>Irrigation/ETo Module</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>true</isAvailable>
+</feature>
+<feature>
+<id>21090</id>
+<desc>Elk Security System</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>true</isAvailable>
+</feature>
+<feature>
+<id>21072</id>
+<desc>Portal Integration - BestBuy.com</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>true</isAvailable>
+</feature>
+<feature>
+<id>21073</id>
+<desc>Portal Integration - MobiLinc</desc>
+<isInstalled>false</isInstalled>
+<isAvailable>true</isAvailable>
+</feature>
+</features>
+<triggers>true</triggers>
+<variables>true</variables>
+<secsys type="ELK" version="2"/>
+<security>SSL</security>
+<isDefaultCert>true</isDefaultCert>
+<maxSSLStrength>2048</maxSSLStrength>
+</configuration>

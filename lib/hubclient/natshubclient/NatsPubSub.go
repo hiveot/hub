@@ -3,10 +3,10 @@ package natshubclient
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/api/go/thing"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/ser"
+	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/vocab"
 	"github.com/nats-io/nats.go"
 	"log/slog"
 	"strings"
@@ -129,14 +129,31 @@ func (hc *NatsHubClient) PubTD(td *thing.TD) error {
 	return err
 }
 
-// PubServiceRPC sends an rpc request to a Hub Service
+// PubRPCRequest sends an rpc request to a Hub Service
+// This marshals the request and unmarshals the response into the resp struct
 // Returns the response or an error if the request fails or timed out
-func (hc *NatsHubClient) PubServiceRPC(
-	serviceID string, capability string, actionID string, payload []byte) (hubclient.ActionResponse, error) {
+func (hc *NatsHubClient) PubRPCRequest(
+	agentID string, capability string, methodName string, req interface{}, resp interface{}) (
+	hubclient.ActionResponse, error) {
 
-	subject := MakeSubject(vocab.MessageTypeRPC, serviceID, capability, actionID, hc.clientID)
+	var payload []byte
+	if req != nil {
+		payload, _ = ser.Marshal(req)
+	}
+	subject := MakeSubject(vocab.MessageTypeRPC, agentID, capability, methodName, hc.clientID)
 	slog.Info("PubServiceAction", "subject", subject)
-	return hc.pubRequest(subject, payload)
+	ar, err := hc.pubRequest(subject, payload)
+
+	if err != nil {
+		return ar, err
+	}
+	if ar.ErrorReply != nil {
+		return ar, ar.ErrorReply
+	}
+	if resp != nil {
+		err = hc.ParseResponse(payload, resp)
+	}
+	return ar, err
 }
 
 // startEventMessageHandler listens for incoming event messages and invoke a callback handler
@@ -180,7 +197,7 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *hubclient.Ev
 			msg := &hubclient.EventMessage{
 				//SenderID: msg.Header.
 				EventID:   name,
-				DeviceID:  pubID,
+				AgentID:   pubID,
 				ThingID:   thID,
 				Timestamp: timeStamp.Unix(),
 				Payload:   natsMsg.Data,
@@ -239,13 +256,13 @@ func (hc *NatsHubClient) SubConfig(
 }
 
 func (hc *NatsHubClient) SubEvents(
-	deviceID string, thingID string,
+	agentID string, thingID string,
 	cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
 
-	subject := MakeSubject(vocab.MessageTypeEvent, deviceID, thingID, "", "")
+	subject := MakeSubject(vocab.MessageTypeEvent, agentID, thingID, "", "")
 	nsub, err := hc.nc.Subscribe(subject, func(msg *nats.Msg) {
 
-		_, deviceID, thingID, name, _, err := SplitSubject(msg.Subject)
+		_, agentID, thingID, name, _, err := SplitSubject(msg.Subject)
 		if err != nil {
 			return
 		}
@@ -257,7 +274,7 @@ func (hc *NatsHubClient) SubEvents(
 		evmsg := &hubclient.EventMessage{
 			//SenderID: msg.Header.
 			EventID:   name,
-			DeviceID:  deviceID,
+			AgentID:   agentID,
 			ThingID:   thingID,
 			Timestamp: timeStamp,
 			Payload:   msg.Data,
@@ -270,8 +287,6 @@ func (hc *NatsHubClient) SubEvents(
 
 // SubRequest subscribes to request messages on the given subject and
 // sends a reply.
-//
-//	thingID is the device thing or service capability to subscribe to, or "" for wildcard
 func (hc *NatsHubClient) SubRequest(
 	subject string, cb func(msg *hubclient.RequestMessage) error) (
 	hubclient.ISubscription, error) {
@@ -284,7 +299,7 @@ func (hc *NatsHubClient) SubRequest(
 
 		}
 		payload := natsMsg.Data
-		_, deviceID, thID, name, clientID, err := SplitSubject(natsMsg.Subject)
+		_, agentID, thID, name, clientID, err := SplitSubject(natsMsg.Subject)
 		if err != nil {
 			slog.Error("unable to handle subject", "err", err, "subject", natsMsg.Subject)
 			return
@@ -292,9 +307,9 @@ func (hc *NatsHubClient) SubRequest(
 		actionMsg := &hubclient.RequestMessage{
 			//SenderID: natsMsg.Header.
 			ClientID:  clientID,
-			ActionID:  name,
-			DeviceID:  deviceID,
+			AgentID:   agentID,
 			ThingID:   thID,
+			Name:      name,
 			Timestamp: timeStamp.Unix(),
 			Payload:   payload,
 			SendReply: func(payload []byte, err error) error {
@@ -327,11 +342,11 @@ func (hc *NatsHubClient) SubRequest(
 	return sub, err
 }
 
-// SubServiceRPC subscribes to service RPC requests.
+// SubRPCRequest subscribes to service RPC requests.
 // Intended for use by services to receive requests.
 //
 //	capability is the name of the capability (thingID) to handle
-func (hc *NatsHubClient) SubServiceRPC(
+func (hc *NatsHubClient) SubRPCRequest(
 	capability string, cb func(msg *hubclient.RequestMessage) error) (hubclient.ISubscription, error) {
 
 	subject := MakeSubject(vocab.MessageTypeRPC, hc.clientID, capability, "", "")

@@ -2,7 +2,7 @@ package service
 
 import (
 	"encoding/json"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/vocab"
 	"time"
 
 	"github.com/hiveot/hub/plugins/owserver/service/eds"

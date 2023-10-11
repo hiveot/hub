@@ -5,6 +5,7 @@ import (
 	auth2 "github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/lib/vocab"
 	"github.com/hiveot/hub/plugins/owserver/config"
 	"github.com/hiveot/hub/plugins/owserver/service"
 	"log/slog"
@@ -18,8 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/hiveot/hub/lib/logging"
-
-	"github.com/hiveot/hub/api/go/vocab"
 )
 
 // var homeFolder string

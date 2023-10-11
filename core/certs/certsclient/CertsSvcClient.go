@@ -3,34 +3,36 @@ package certsclient
 import (
 	"github.com/hiveot/hub/core/certs"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/ser"
 )
 
 // CertsSvcClient is a marshaller for cert service messages using a provided hub connection.
 // This uses the default serializer to marshal and unmarshal messages.
 type CertsSvcClient struct {
-	// ID of the certs service that handles the requests
-	serviceID string
-	hc        hubclient.IHubClient
+	// agent handling the request
+	agentID string
+	// directory capability to use
+	capID string
+	hc    hubclient.IHubClient
 }
 
-// helper for publishing a rpc request to the certs service
-func (cl *CertsSvcClient) pubReq(action string, req interface{}, resp interface{}) error {
-	var msg []byte
-	if req != nil {
-		msg, _ = ser.Marshal(req)
-	}
-
-	data, err := cl.hc.PubServiceRPC(cl.serviceID, certs.CertsManageCertsCapability, action, msg)
-	if err != nil {
-		return err
-	}
-	if data.ErrorReply != nil {
-		return data.ErrorReply
-	}
-	err = cl.hc.ParseResponse(data.Payload, resp)
-	return err
-}
+//// helper for publishing a rpc request to the certs service
+//func (cl *CertsSvcClient) pubReq(action string, req interface{}, resp interface{}) error {
+//	var msg []byte
+//	if req != nil {
+//		msg, _ = ser.Marshal(req)
+//	}
+//
+//	data, err := cl.hc.PubRPCRequest(
+//		cl.serviceID, certs.CertsManageCertsCapability, action, msg)
+//	if err != nil {
+//		return err
+//	}
+//	if data.ErrorReply != nil {
+//		return data.ErrorReply
+//	}
+//	err = cl.hc.ParseResponse(data.Payload, resp)
+//	return err
+//}
 
 // CreateDeviceCert generates or renews IoT device certificate for access hub IoT gateway
 func (cl *CertsSvcClient) CreateDeviceCert(deviceID string, pubKeyPEM string, validityDays int) (
@@ -42,7 +44,8 @@ func (cl *CertsSvcClient) CreateDeviceCert(deviceID string, pubKeyPEM string, va
 		ValidityDays: validityDays,
 	}
 	resp := certs.CreateCertResp{}
-	err = cl.pubReq(certs.CreateDeviceCertReq, req, &resp)
+	_, err = cl.hc.PubRPCRequest(
+		cl.agentID, cl.capID, certs.CreateDeviceCertReq, req, &resp)
 	return resp.CertPEM, resp.CaCertPEM, err
 }
 
@@ -58,7 +61,9 @@ func (cl *CertsSvcClient) CreateServiceCert(
 		ValidityDays: validityDays,
 	}
 	resp := certs.CreateCertResp{}
-	err = cl.pubReq(certs.CreateServiceCertReq, req, &resp)
+	_, err = cl.hc.PubRPCRequest(
+		cl.agentID, cl.capID, certs.CreateServiceCertReq, req, &resp)
+
 	return resp.CertPEM, resp.CaCertPEM, err
 }
 
@@ -73,7 +78,8 @@ func (cl *CertsSvcClient) CreateUserCert(
 		ValidityDays: validityDays,
 	}
 	resp := certs.CreateCertResp{}
-	err = cl.pubReq(certs.CreateUserCertReq, req, &resp)
+	_, err = cl.hc.PubRPCRequest(
+		cl.agentID, cl.capID, certs.CreateUserCertReq, req, &resp)
 	return resp.CertPEM, resp.CaCertPEM, err
 }
 
@@ -85,7 +91,8 @@ func (cl *CertsSvcClient) VerifyCert(
 		ClientID: clientID,
 		CertPEM:  certPEM,
 	}
-	err = cl.pubReq(certs.VerifyCertReq, req, nil)
+	_, err = cl.hc.PubRPCRequest(
+		cl.agentID, cl.capID, certs.VerifyCertReq, req, nil)
 	return err
 }
 
@@ -93,10 +100,10 @@ func (cl *CertsSvcClient) VerifyCert(
 //
 //	hc is the hub client connection to use
 func NewCertsSvcClient(hc hubclient.IHubClient) *CertsSvcClient {
-	serviceID := certs.ServiceName
 	cl := CertsSvcClient{
-		hc:        hc,
-		serviceID: serviceID,
+		hc:      hc,
+		agentID: certs.ServiceName,
+		capID:   certs.CertsManageCertsCapability,
 	}
 	return &cl
 }

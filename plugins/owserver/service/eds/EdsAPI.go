@@ -4,6 +4,7 @@ package eds
 import (
 	"encoding/xml"
 	"fmt"
+	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"math"
 	"net"
@@ -13,8 +14,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/hiveot/hub/api/go/vocab"
 )
 
 // family to device type. See also: http://owfs.sourceforge.net/simple_family.html

@@ -30,8 +30,13 @@ func (ts *TestServer) AddClients(newClients []msgserver.ClientAuthInfo) error {
 	var err error
 	if ts.AuthService != nil {
 		for _, authInfo := range newClients {
-			_, err = ts.AuthService.MngClients.AddUser(
-				authInfo.ClientID, authInfo.ClientID, "", authInfo.PubKey, authInfo.Role)
+			args := authcfg.AddUserArgs{
+				UserID:      authInfo.ClientID,
+				DisplayName: authInfo.ClientID,
+				PubKey:      authInfo.PubKey,
+				Role:        authInfo.Role,
+			}
+			_, err = ts.AuthService.MngClients.AddUser(args)
 			if err != nil {
 				slog.Error("AddClients error", "clientID", authInfo.ClientID, "err", err)
 			}
@@ -71,7 +76,15 @@ func (ts *TestServer) AddConnectClient(clientID string, clientType string, clien
 
 	// if auth service is running then add the user if it doesn't exist
 	if ts.AuthService != nil {
-		token, err = ts.AuthService.MngClients.AddUser(clientID, clientID, "", kpPub, clientRole)
+		args := authcfg.AddUserArgs{
+			UserID:      clientID,
+			DisplayName: clientID,
+			PubKey:      kpPub,
+			Role:        clientRole,
+		}
+		resp, err2 := ts.AuthService.MngClients.AddUser(args)
+		err = err2
+		token = resp.Token
 	} else {
 		// use an on-the-fly created token for the connection
 		authInfo := msgserver.ClientAuthInfo{
@@ -82,7 +95,6 @@ func (ts *TestServer) AddConnectClient(clientID string, clientType string, clien
 			Role:         clientRole,
 		}
 		token, err = ts.MsgServer.CreateToken(authInfo)
-		// TODO: add user directly to the server with ApplyAuth
 		ts.testClients = append(ts.testClients, authInfo)
 		ts.MsgServer.ApplyAuth(ts.testClients)
 	}

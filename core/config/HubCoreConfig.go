@@ -20,7 +20,9 @@ import (
 const HubCoreConfigFileName = "hub.yaml"
 
 // HubCoreConfig with core server, auth, cert and launcher configuration
+// Used for launching the core.
 // Use NewHubCoreConfig to create a default config
+// FIXME: this is temporary, each service must handle their own config yaml
 type HubCoreConfig struct {
 	Env utils.AppEnvironment
 

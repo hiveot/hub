@@ -1,0 +1,14 @@
+{
+  "address": "test/isy99/$identity",
+  "domain": "test",
+  "issuerId": "isy99",
+  "location": "local",
+  "organization": "",
+  "publicKey": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEuszFcQNBiquDK2gPu531d1Vey29a\nuZE9Ay22FXMBd0WhiEWk6qdeA437zIYchw460/pjsSQXbn2JlYozdDEZyQ==\n-----END PUBLIC KEY-----\n",
+  "publisherId": "isy99",
+  "validUntil": "2021-08-07T22:58:40.898-0700",
+  "signature": "MEYCIQD-xhyfsb89pzh8OrD72SkhaxoooECrF_gCiK-0EcWPWwIhAKWgsW-CcpyE4zdmls7p4e3NxvwsGIFbljTVUdWYQ7AY",
+  "timestamp": "2020-08-07T22:58:40.898-0700",
+  "privateKey": "-----BEGIN PRIVATE KEY-----\nMHcCAQEEIDLGjc0ubau2FPmM8JraQ8Ihex6ZlBNKIi7Go629GJ9yoAoGCCqGSM49\nAwEHoUQDQgAEuszFcQNBiquDK2gPu531d1Vey29auZE9Ay22FXMBd0WhiEWk6qde\nA437zIYchw460/pjsSQXbn2JlYozdDEZyQ==\n-----END PRIVATE KEY-----\n",
+  "sender": ""
+ }

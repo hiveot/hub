@@ -59,10 +59,16 @@ func startTestAuthnService() (authnSvc *authservice.AuthService, mng auth.IAuthn
 	//--- connect the authn management client for managing clients
 	authClientKey, authClientPub := testServer.MsgServer.CreateKP()
 	_ = authClientKey
-	token, err := authnSvc.MngClients.AddUser("auth-test-client", "auth test client", "", authClientPub, auth.ClientRoleAdmin)
+	args := auth.AddUserArgs{
+		UserID:      "auth-test-client",
+		DisplayName: "auth test client",
+		PubKey:      authClientPub,
+		Role:        auth.ClientRoleAdmin,
+	}
+	resp, err := authnSvc.MngClients.AddUser(args)
 	serverURL, _, _ := testServer.MsgServer.GetServerURLs()
 	hc2 := hubconnect.NewHubClient(serverURL, "auth-test-client", authClientKey, testServer.CertBundle.CaCert, core)
-	err = hc2.ConnectWithToken(token)
+	err = hc2.ConnectWithToken(resp.Token)
 
 	if err != nil {
 		panic(err)
@@ -134,9 +140,9 @@ func TestStartStop(t *testing.T) {
 }
 
 // Create manage users
-func TestAddRemoveClients(t *testing.T) {
-	t.Log("--- TestAddRemoveClients start")
-	defer t.Log("--- TestAddRemoveClients stop")
+func TestAddRemoveClientsSuccess(t *testing.T) {
+	t.Log("--- TestAddRemoveClientsSuccess start")
+	defer t.Log("--- TestAddRemoveClientsSuccess stop")
 
 	deviceID := "device1"
 	deviceKP, _ := nkeys.CreateUser()
@@ -155,9 +161,6 @@ func TestAddRemoveClients(t *testing.T) {
 	// duplicate should update
 	_, err = mng.AddUser("user1", "user 1 updated", "pass1", "", auth.ClientRoleViewer) // should fail
 	assert.NoError(t, err)
-	// missing userID should fail
-	_, err = mng.AddUser("", "user 1", "pass1", "", auth.ClientRoleViewer) // should fail
-	assert.Error(t, err)
 
 	_, err = mng.AddUser("user2", "user 2", "pass2", "", auth.ClientRoleViewer)
 	assert.NoError(t, err)
@@ -168,15 +171,9 @@ func TestAddRemoveClients(t *testing.T) {
 
 	_, err = mng.AddDevice(deviceID, "device 1", deviceKeyPub)
 	assert.NoError(t, err)
-	// missing deviceID should fail
-	_, err = mng.AddDevice("", "", "") // should fail
-	assert.Error(t, err)
 
 	_, err = mng.AddService(serviceID, "service 1", serviceKeyPub)
 	assert.NoError(t, err)
-	// missing userID
-	_, err = mng.AddService("", "", "") // should fail
-	assert.Error(t, err)
 
 	// update the server. users can connect and have unlimited access
 	authnEntries := svc.MngClients.GetAuthClientList()
@@ -206,6 +203,33 @@ func TestAddRemoveClients(t *testing.T) {
 
 	_, err = mng.AddUser("user1", "user 1", "", "", auth.ClientRoleViewer)
 	assert.NoError(t, err)
+	// a bad key
+	_, err = mng.AddUser("user2", "user 2", "", "badkey", auth.ClientRoleViewer)
+	assert.NoError(t, err)
+}
+
+// Create manage users
+func TestAddRemoveClientsFail(t *testing.T) {
+	t.Log("--- TestAddRemoveClientsFail start")
+	defer t.Log("--- TestAddRemoveClientsFail stop")
+
+	svc, mng, stopFn, err := startTestAuthnService()
+	_ = svc
+	require.NoError(t, err)
+	defer stopFn()
+
+	// missing userID should fail
+	_, err = mng.AddUser("", "user 1", "pass1", "", auth.ClientRoleViewer) // should fail
+	assert.Error(t, err)
+
+	// missing deviceID should fail
+	_, err = mng.AddDevice("", "", "") // should fail
+	assert.Error(t, err)
+
+	// missing serviceID
+	_, err = mng.AddService("", "", "") // should fail
+	assert.Error(t, err)
+
 	// a bad key
 	_, err = mng.AddUser("user2", "user 2", "", "badkey", auth.ClientRoleViewer)
 	assert.NoError(t, err)

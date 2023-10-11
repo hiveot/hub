@@ -1,7 +1,6 @@
 package mqttmsgserver_test
 
 import (
-	"github.com/hiveot/hub/api/go/vocab"
 	auth2 "github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/certs"
@@ -10,6 +9,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient/mqtthubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/lib/vocab"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
@@ -216,7 +216,7 @@ func TestMqttServerRequest(t *testing.T) {
 	defer hc.Disconnect()
 
 	sub2, err := hc.SubActions("thing1", func(ar *hubclient.RequestMessage) error {
-		slog.Info("received action", "name", ar.ActionID)
+		slog.Info("received action", "name", ar.Name)
 		rxChan <- string(ar.Payload)
 		err2 := ar.SendReply(ar.Payload, nil)
 		assert.NoError(t, err2)

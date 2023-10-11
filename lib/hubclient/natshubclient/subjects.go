@@ -3,7 +3,7 @@ package natshubclient
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/vocab"
 	"strings"
 )
 
@@ -11,18 +11,18 @@ import (
 // This uses the hiveot nats subject format: {msgType}.{pubID}.{thingID}.name}.{clientID}
 //
 //	msgType is the message type: "event", "action", "config" or "rpc".
-//	deviceID is the publisher of the subject. Use "" for wildcard
+//	agentID is the device or service being addressed. Use "" for wildcard
 //	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
 //	name is the event or action name. Use "" for wildcard.
 //	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
 //	name is the event or action name. Use "" for wildcard.
 //	clientID is the sender's loginID. Required when publishing.
-func MakeSubject(msgType, deviceID, thingID, name string, clientID string) string {
+func MakeSubject(msgType, agentID, thingID, name string, clientID string) string {
 	if msgType == "" {
 		msgType = vocab.MessageTypeEvent
 	}
-	if deviceID == "" {
-		deviceID = "*"
+	if agentID == "" {
+		agentID = "*"
 	}
 	if thingID == "" {
 		thingID = "*" // nats uses *
@@ -37,7 +37,7 @@ func MakeSubject(msgType, deviceID, thingID, name string, clientID string) strin
 	if clientID == "" {
 		clientID = ">"
 	}
-	subj := fmt.Sprintf("%s.%s.%s.%s.%s", msgType, deviceID, thingID, name, clientID)
+	subj := fmt.Sprintf("%s.%s.%s.%s.%s", msgType, agentID, thingID, name, clientID)
 	//if clientID != "" {
 	//	subj = subj + "." + clientID
 	//}
@@ -49,17 +49,17 @@ func MakeSubject(msgType, deviceID, thingID, name string, clientID string) strin
 // subject is a hiveot nats subject. eg: msgType.publisherID.thingID.type.name.senderID
 //
 //	msgType of things or services
-//	deviceID is the device or service that handles the subject.
+//	agentID is the device or service that handles the subject.
 //	thingID is the thing of the subject, or capability for services.
 //	name is the event or action name
-func SplitSubject(subject string) (msgType, deviceID, thingID, name string, senderID string, err error) {
+func SplitSubject(subject string) (msgType, agentID, thingID, name string, senderID string, err error) {
 	parts := strings.Split(subject, ".")
 	if len(parts) < 4 {
 		err = errors.New("incomplete subject")
 		return
 	}
 	msgType = parts[0]
-	deviceID = parts[1]
+	agentID = parts[1]
 	thingID = parts[2]
 	name = parts[3]
 	if len(parts) > 4 {

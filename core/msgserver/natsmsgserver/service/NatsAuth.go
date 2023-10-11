@@ -3,10 +3,10 @@ package service
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
 	auth2 "github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/hubclient/natshubclient"
+	"github.com/hiveot/hub/lib/vocab"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nkeys"
@@ -233,20 +233,20 @@ func (srv *NatsMsgServer) MakePermissions(clientInfo msgserver.ClientAuthInfo) *
 
 		// apply role permissions
 		for _, perm := range rolePerm {
-			// substitute the clientID in the deviceID with the loginID
-			permDeviceID := perm.DeviceID
-			if permDeviceID == "{clientID}" {
-				permDeviceID = clientInfo.ClientID
+			// substitute the clientID in the agentID with the loginID
+			permAgentID := perm.AgentID
+			if permAgentID == "{clientID}" {
+				permAgentID = clientInfo.ClientID
 			}
 			if perm.AllowPub {
 				// publishing requires including their own clientID
 				pubSubj := natshubclient.MakeSubject(
-					perm.MsgType, permDeviceID, perm.ThingID, perm.MsgName, clientInfo.ClientID)
+					perm.MsgType, permAgentID, perm.ThingID, perm.MsgName, clientInfo.ClientID)
 				pubPerm.Allow = append(pubPerm.Allow, pubSubj)
 			}
 			if perm.AllowSub {
 				subSubj := natshubclient.MakeSubject(
-					perm.MsgType, permDeviceID, perm.ThingID, perm.MsgName, "")
+					perm.MsgType, permAgentID, perm.ThingID, perm.MsgName, "")
 				subPerm.Allow = append(subPerm.Allow, subSubj)
 			}
 		}
@@ -294,7 +294,7 @@ func (srv *NatsMsgServer) SetServicePermissions(
 		}
 		rp = append(rp, msgserver.RolePermission{
 			MsgType:  vocab.MessageTypeRPC,
-			DeviceID: serviceID,
+			AgentID:  serviceID,
 			ThingID:  capability,
 			MsgName:  "", // all methods of the capability can be used
 			AllowPub: true,

@@ -1,8 +1,8 @@
 package auth
 
 import (
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/core/msgserver"
+	"github.com/hiveot/hub/lib/vocab"
 )
 
 const DefaultAclFilename = "authz.acl"
@@ -52,7 +52,7 @@ const (
 
 // Role based ACL matrix example
 // -----------------------------
-// role       pub/sub   stype   deviceID    thingID
+// role       pub/sub   stype   agentID    thingID
 //
 // *	      sub       _INBOX  {clientID}   -       	(built-in rule)
 // *	      pub       rpc     auth         profile 	(built-in rule)
@@ -80,19 +80,19 @@ const (
 var devicePermissions = []msgserver.RolePermission{
 	{
 		MsgType:  vocab.MessageTypeEvent,
-		DeviceID: "{clientID}", // devices can only publish their own events
+		AgentID:  "{clientID}", // devices can only publish their own events
 		AllowPub: true,
 	}, {
 		MsgType:  vocab.MessageTypeEvent,
-		DeviceID: "", // devices can subscribe to events
+		AgentID:  "", // devices can subscribe to events
 		AllowSub: true,
 	}, {
 		MsgType:  vocab.MessageTypeAction,
-		DeviceID: "{clientID}",
+		AgentID:  "{clientID}",
 		AllowSub: true,
 	}, {
 		MsgType:  vocab.MessageTypeConfig,
-		DeviceID: "{clientID}",
+		AgentID:  "{clientID}",
 		AllowSub: true,
 	},
 }
@@ -130,19 +130,19 @@ var adminPermissions = append(managerPermissions, msgserver.RolePermission{
 // services are admins that can also publish events and subscribe to their own rpc, actions and config
 var servicePermissions = append(adminPermissions, msgserver.RolePermission{
 	MsgType:  vocab.MessageTypeEvent,
-	DeviceID: "{clientID}",
+	AgentID:  "{clientID}",
 	AllowPub: true,
 }, msgserver.RolePermission{
 	MsgType:  vocab.MessageTypeRPC,
-	DeviceID: "{clientID}",
+	AgentID:  "{clientID}",
 	AllowSub: true,
 }, msgserver.RolePermission{
 	MsgType:  vocab.MessageTypeAction,
-	DeviceID: "{clientID}",
+	AgentID:  "{clientID}",
 	AllowSub: true,
 }, msgserver.RolePermission{
 	MsgType:  vocab.MessageTypeConfig,
-	DeviceID: "{clientID}",
+	AgentID:  "{clientID}",
 	AllowSub: true,
 })
 

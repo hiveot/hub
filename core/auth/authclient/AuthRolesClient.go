@@ -1,62 +1,50 @@
 package authclient
 
 import (
-	auth2 "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/ser"
 )
 
 // AuthRolesClient is a marshaller for messaging to manage custom roles
 // This uses the default serializer to marshal and unmarshal messages.
 type AuthRolesClient struct {
-	// ID of the auth service instance
-	serviceID string
-	hc        hubclient.IHubClient
-}
-
-// helper for publishing an action service request to the auth service
-func (cl *AuthRolesClient) pubReq(action string, msg []byte, resp interface{}) error {
-	data, err := cl.hc.PubServiceRPC(
-		cl.serviceID, auth2.AuthRolesCapability, action, msg)
-	if err != nil {
-		return err
-	}
-	if data.ErrorReply != nil {
-		return data.ErrorReply
-	}
-	err = cl.hc.ParseResponse(data.Payload, resp)
-	return err
+	// ID of the authn service agent
+	agentID string
+	// capability to invoke
+	capID string
+	hc    hubclient.IHubClient
 }
 
 // CreateRole creates a new custom role
 func (cl *AuthRolesClient) CreateRole(role string) error {
 
-	req := auth2.CreateRoleArgs{
+	req := auth.CreateRoleArgs{
 		Role: role,
 	}
-	msg, _ := ser.Marshal(req)
-	err := cl.pubReq(auth2.CreateRoleReq, msg, nil)
+	_, err := cl.hc.PubRPCRequest(
+		cl.agentID, cl.capID, auth.CreateRoleReq, &req, nil)
 	return err
 }
 
 // DeleteRole deletes a custom role
 func (cl *AuthRolesClient) DeleteRole(role string) error {
 
-	req := auth2.DeleteRoleArgs{
+	req := auth.DeleteRoleArgs{
 		Role: role,
 	}
-	msg, _ := ser.Marshal(req)
-	err := cl.pubReq(auth2.DeleteRoleReq, msg, nil)
+	_, err := cl.hc.PubRPCRequest(
+		cl.agentID, cl.capID, auth.DeleteRoleReq, &req, nil)
 	return err
 }
 
 // NewAuthRolesClient creates a new client for managing roles
 //
 //	hc is the hub client connection to use
-func NewAuthRolesClient(hc hubclient.IHubClient) auth2.IAuthManageRoles {
+func NewAuthRolesClient(hc hubclient.IHubClient) auth.IAuthManageRoles {
 	cl := &AuthRolesClient{
-		serviceID: auth2.AuthServiceName,
-		hc:        hc,
+		agentID: auth.AuthServiceName,
+		capID:   auth.AuthManageRolesCapability,
+		hc:      hc,
 	}
 	return cl
 

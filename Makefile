@@ -13,11 +13,11 @@ core: natscore mqttcore  launcher certs ## Build core services including mqttcor
 
 # natscore includes the embedded auth service
 natscore:
-	go build -o $(BIN_FOLDER)/$@ core/natsmsgserver/cmd/main.go
+	go build -o $(BIN_FOLDER)/$@ core/msgserver/natsmsgserver/cmd/main.go
 
 # mqttcore includes the embedded auth service
 mqttcore:
-	go build -o $(BIN_FOLDER)/$@ core/mqttmsgserver/cmd/main.go
+	go build -o $(BIN_FOLDER)/$@ core/msgserver/mqttmsgserver/cmd/main.go
 
 launcher: .FORCE ## Build the hub launcher service
 	go build -o $(BIN_FOLDER)/$@ core/$@/cmd/main.go
@@ -40,6 +40,7 @@ hubcli: .FORCE ## Build Hub CLI
 
 owserver: .FORCE ## Build the 1-wire owserver protocol binding
 	go build -o $(PLUGINS_FOLDER)/$@  plugins/$@/cmd/main.go
+	cp plugins/$@/config/*.yaml $(DIST_FOLDER)/config
 
 zwavejs: .FORCE ## Build the zwave protocol binding
 	go build -o $(PLUGINS_FOLDER)/$@ plugins/$@/cmd/main.go
@@ -69,8 +70,8 @@ install:  ## core plugins ## build and install the services
 	mkdir -p $(INSTALL_HOME)/logs
 	mkdir -p $(INSTALL_HOME)/stores
 	mkdir -p $(INSTALL_HOME)/run
-	cp -ar $(BIN_FOLDER)/* $(INSTALL_HOME)/bin
-	cp -ar $(PLUGINS_FOLDER)/* $(INSTALL_HOME)/plugins
+	cp -af $(BIN_FOLDER)/* $(INSTALL_HOME)/bin
+	cp -af $(PLUGINS_FOLDER)/* $(INSTALL_HOME)/plugins
 	cp -n $(DIST_FOLDER)/config/*.yaml $(INSTALL_HOME)/config/
 
 test: core  ## Run tests (stop on first error, don't run parallel)

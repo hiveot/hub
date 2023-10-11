@@ -2,33 +2,41 @@ package hubclient
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/hiveot/hub/lib/ser"
+	"log/slog"
 	"reflect"
 )
 
-// CapabilityHandler defines a handler for RPC request
-type CapabilityHandler struct {
-	// Method that handles the request in the format:
-	//    func(args struct) (struct,error)
-	Method interface{}
-}
-
-// HandleMessage unmarshal a request message parameters, passes it to the associated method,
-// and marshals the result.
-// The request argument can be passed by value or reference.
-// Intended to remove most boilerplate from handling and dispatching requests.
-func (ch *CapabilityHandler) HandleMessage(payload []byte) (respData []byte, err error) {
+// HandleRequestMessage unmarshal a request message parameters, passes it to the associated method,
+// and marshals the result. Intended to remove boilerplate from handling and serving requests.
+// The method argument and result can be a struct value or reference.
+//
+// Supported method types are:
+//
+//   - func(type1) (type2,error)
+//   - func(type1) (error)
+//   - func(type1) ()
+//   - func() (type,error)
+//   - func() (error)
+//   - func() ()
+//
+// where type1 and type2 can be a struct or native type, or a pointer to a struct or native type.
+func HandleRequestMessage(method interface{}, payload []byte) (respData []byte, err error) {
 
 	// magic spells found at: https://github.com/a8m/reflect-examples#call-function-with-list-of-arguments-and-validate-return-values
 	// and here: https://stackoverflow.com/questions/45679408/unmarshal-json-to-reflected-struct
 	// First determine the type of argument of the method and whether it is passed by value or reference
 	// this handler only support a single argument that has to be a struct by value or reference
-	methodValue := reflect.ValueOf(ch.Method)
+	methodValue := reflect.ValueOf(method)
 	methodType := methodValue.Type()
 	argv := make([]reflect.Value, methodType.NumIn())
+	nrArgs := methodType.NumIn()
 
-	if methodType.NumIn() > 0 {
+	if nrArgs == 0 {
+		// nothing to do here
+	} else if nrArgs == 1 {
 		// determine the type of argument, if it is passed by value or reference
 		argType := methodType.In(0)
 		argIsRef := (argType.Kind() == reflect.Ptr)
@@ -46,11 +54,18 @@ func (ch *CapabilityHandler) HandleMessage(payload []byte) (respData []byte, err
 			err = json.Unmarshal(payload, n1El.Addr().Interface())
 			argv[0] = reflect.ValueOf(n1El.Interface())
 		}
+		if err != nil {
+			slog.Error("HandleRequestMessage, failed unmarshal request", "err", err)
+		}
+	} else {
+		return nil, fmt.Errorf("multiple arguments is not supported")
 	}
 	resValues := methodValue.Call(argv)
 	var errResp interface{}
 	var resp interface{}
-	if len(resValues) == 1 {
+	if len(resValues) == 0 {
+		errResp = nil
+	} else if len(resValues) == 1 {
 		// only returns an error value
 		resp = nil
 		v0 := resValues[0]
@@ -62,7 +77,8 @@ func (ch *CapabilityHandler) HandleMessage(payload []byte) (respData []byte, err
 		v1 := resValues[1]
 		errResp = v1.Interface()
 	} else {
-		return nil, fmt.Errorf("unexpected result")
+		return nil,
+			errors.New("method has more than 2 result params. This is not supported")
 	}
 	if errResp == nil {
 		err = nil
@@ -82,9 +98,9 @@ func (ch *CapabilityHandler) HandleMessage(payload []byte) (respData []byte, err
 // SubRPCCapability is a helper to easily subscribe capability methods with their handler.
 //
 //	capID is the capability to register
-//	capMap maps method names to their handler
+//	capMap maps method names to their implementation
 //	hc is the service agent connection to the message bus
-func SubRPCCapability(capID string, capMap map[string]CapabilityHandler, hc IHubClient) (ISubscription, error) {
+func SubRPCCapability(capID string, capMap map[string]interface{}, hc IHubClient) (ISubscription, error) {
 	// subscribe to the capability with our own handler.
 	// the handler invokes the method registered with the capability map,
 	// after unmarshalling the request argument.
@@ -92,15 +108,17 @@ func SubRPCCapability(capID string, capMap map[string]CapabilityHandler, hc IHub
 		var err error
 		var respData []byte
 
-		capHandler, found := capMap[msg.Name]
+		capMethod, found := capMap[msg.Name]
 		if !found {
 			return fmt.Errorf("method '%s' not part of capability '%s'", msg.Name, capID)
 		}
-		respData, err = capHandler.HandleMessage(msg.Payload)
-		if respData == nil {
-			err = msg.SendAck()
-		} else {
-			err = msg.SendReply(respData, err)
+		respData, err = HandleRequestMessage(capMethod, msg.Payload)
+		if err == nil {
+			if respData == nil {
+				err = msg.SendAck()
+			} else {
+				err = msg.SendReply(respData, err)
+			}
 		}
 		return err
 	})

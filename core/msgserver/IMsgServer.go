@@ -2,7 +2,7 @@ package msgserver
 
 // ClientAuthInfo defines client authentication and authorization information
 type ClientAuthInfo struct {
-	// UserID, ServiceID or DeviceID of the client
+	// UserID, ServiceID or AgentID of the client
 	ClientID string
 
 	// ClientType identifies the client as a ClientTypeDevice, ClientTypeService or ClientTypeUser
@@ -21,7 +21,7 @@ type ClientAuthInfo struct {
 // RolePermission defines authorization for a role.
 // Each permission defines the source/thing the user can pub/sub to.
 type RolePermission struct {
-	DeviceID string // device or service, or "" for all
+	AgentID  string // device or service publishing the Thing data, or "" for all
 	ThingID  string // thingID or capability, or "" for all
 	MsgType  string // rpc, event, action, config, or "" for all message types
 	MsgName  string // action name or "" for all actions

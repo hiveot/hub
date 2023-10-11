@@ -41,42 +41,22 @@ func (svc *AuthService) Start() (err error) {
 
 	// use a temporary instance of the client manager to add itself
 	mngClients := NewAuthManageClients(svc.store, nil, svc.msgServer)
-	token, err := mngClients.AddService(auth.AuthServiceName, "Auth Service", myKeyPub)
+	args1 := auth.AddServiceArgs{
+		ServiceID:   auth.AuthServiceName,
+		DisplayName: "Auth Service",
+		PubKey:      myKeyPub,
+	}
+	resp1, err := mngClients.AddService(args1)
 	if err != nil {
 		return fmt.Errorf("failed to setup the auth service: %w", err)
 	}
-
-	//authServiceProfile := auth.ClientProfile{
-	//	ClientID:          auth.AuthServiceName,
-	//	ClientType:        auth.ClientTypeService,
-	//	DisplayName:       "Auth",
-	//	PubKey:            myKeyPub,
-	//	TokenValidityDays: 0,
-	//	Role:              auth.ClientRoleService,
-	//}
-	//err = svc.store.Add(auth.AuthServiceName,authServiceProfile)
-	//if err != nil {
-	//	return err
-	//}
-	//// setup the server with the initial client list
-	//err = svc.msgServer.ApplyAuth(svc.store.GetAuthClientList())
-	//if err != nil {
-	//	return fmt.Errorf("auth failed to setup the server: %w", err)
-	//}
-
-	// create the service client to manage clients, roles and user profiles
-	//token,err := svc.msgServer.CreateToken(authServiceProfile)
-	//svc.hc, err = svc.msgServer.ConnectInProc(auth.AuthServiceName)
-	//if err != nil {
-	//	return fmt.Errorf("can't connect authn to server: %w", err)
-	//}
 
 	// nats doesnt support uds?
 	tcpAddr, _, udsAddr := svc.msgServer.GetServerURLs()
 	_ = udsAddr
 	core := svc.msgServer.Core()
 	svc.hc = hubconnect.NewHubClient(tcpAddr, auth.AuthServiceName, myKey, nil, core)
-	err = svc.hc.ConnectWithToken(token)
+	err = svc.hc.ConnectWithToken(resp1.Token)
 	if err != nil {
 		return err
 	}
@@ -112,22 +92,32 @@ func (svc *AuthService) Start() (err error) {
 	// Ensure the launcher client exists and has a key and service token
 	slog.Info("Start (auth). Adding launcher user", "keyfile", svc.cfg.LauncherKeyFile)
 	_, launcherKeyPub, _ := svc.MngClients.LoadCreateUserKey(svc.cfg.LauncherKeyFile)
-	token, err = svc.MngClients.AddService(auth.DefaultLauncherServiceID, "Launcher Service", launcherKeyPub)
+	args2 := auth.AddServiceArgs{
+		ServiceID:   auth.DefaultLauncherServiceID,
+		DisplayName: "Launcher Service",
+		PubKey:      launcherKeyPub,
+	}
+	resp2, err := svc.MngClients.AddService(args2)
 	if err == nil {
 		// remove the readonly token file if it already exists
 		_ = os.Remove(svc.cfg.LauncherTokenFile)
-		err = os.WriteFile(svc.cfg.LauncherTokenFile, []byte(token), 0400)
+		err = os.WriteFile(svc.cfg.LauncherTokenFile, []byte(resp2.Token), 0400)
 	}
 
 	// ensure the admin user exists and has a user token
 	slog.Info("Start (auth). Adding admin user", "keyfile", svc.cfg.AdminUserKeyFile)
 	_, adminKeyPub, _ := svc.MngClients.LoadCreateUserKey(svc.cfg.AdminUserKeyFile)
-	token, err = svc.MngClients.AddUser(
-		auth.DefaultAdminUserID, "Administrator", "", adminKeyPub, auth.ClientRoleAdmin)
+	args3 := auth.AddUserArgs{
+		UserID:      auth.DefaultAdminUserID,
+		DisplayName: "Administrator",
+		PubKey:      adminKeyPub,
+		Role:        auth.ClientRoleAdmin,
+	}
+	resp3, err := svc.MngClients.AddUser(args3)
 	if err == nil {
 		// remove the readonly token file if it already exists
 		_ = os.Remove(svc.cfg.AdminUserTokenFile)
-		err = os.WriteFile(svc.cfg.AdminUserTokenFile, []byte(token), 0400)
+		err = os.WriteFile(svc.cfg.AdminUserTokenFile, []byte(resp3.Token), 0400)
 	}
 	return err
 }

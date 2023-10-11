@@ -1,0 +1,11 @@
+# Publisher configuration options
+# Optional parameters are commented out and shown with their default value
+
+#publisherId: "isy99"
+
+# if the gateway is a file then run in simulation mode
+#gatewayAddress: 10.3.3.31
+gatewayAddress: "file://../test"
+
+#login: ""
+#password: ""

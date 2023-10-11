@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hub/plugins/owserver/internal/eds"
+	"github.com/hiveot/hub/plugins/owserver/service/eds"
 )
 
 // simulation file for testing without OWServer gateway

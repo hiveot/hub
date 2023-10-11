@@ -41,8 +41,8 @@ func (svc *AuthManageRoles) DeleteRole(role string) error {
 // HandleRequest unmarshal and apply action requests
 func (svc *AuthManageRoles) HandleRequest(action *hubclient.RequestMessage) error {
 
-	slog.Info("handleActions", slog.String("actionID", action.ActionID))
-	switch action.ActionID {
+	slog.Info("handleActions", slog.String("actionID", action.Name))
+	switch action.Name {
 	case auth.CreateRoleReq:
 		req := &auth.CreateRoleArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
@@ -67,7 +67,7 @@ func (svc *AuthManageRoles) HandleRequest(action *hubclient.RequestMessage) erro
 		return err
 
 	default:
-		return fmt.Errorf("unknown action '%s' for client '%s'", action.ActionID, action.ClientID)
+		return fmt.Errorf("unknown action '%s' for client '%s'", action.Name, action.ClientID)
 	}
 }
 
@@ -75,7 +75,7 @@ func (svc *AuthManageRoles) HandleRequest(action *hubclient.RequestMessage) erro
 // Register the binding subscription using the given connection
 func (svc *AuthManageRoles) Start() (err error) {
 	if svc.hc != nil {
-		svc.actionSub, _ = svc.hc.SubServiceRPC(auth.AuthRolesCapability, svc.HandleRequest)
+		svc.actionSub, _ = svc.hc.SubRPCRequest(auth.AuthRolesCapability, svc.HandleRequest)
 	}
 	return err
 }

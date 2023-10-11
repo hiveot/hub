@@ -35,78 +35,79 @@ func (svc *AuthManageProfile) GetProfile(clientID string) (profile auth.ClientPr
 }
 
 // HandleRequest unmarshal and invoke requests published by hub clients
-func (svc *AuthManageProfile) HandleRequest(action *hubclient.RequestMessage) error {
-	if action.ClientID == "" {
-		return fmt.Errorf("missing clientID in action request. deviceID='%s', thingID='%s'",
-			action.DeviceID, action.ThingID)
+// This uses the sender's ID from RequestMessage.ClientID
+func (svc *AuthManageProfile) HandleRequest(msg *hubclient.RequestMessage) error {
+	if msg.ClientID == "" {
+		return fmt.Errorf("missing clientID in request message. deviceID='%s', thingID='%s'",
+			msg.AgentID, msg.ThingID)
 	}
-	slog.Info("handleClientActions", slog.String("actionID", action.ActionID))
-	switch action.ActionID {
+	slog.Info("handleClientActions", slog.String("actionID", msg.Name))
+	switch msg.Name {
 	case auth.GetProfileReq:
 		// use the current client
-		profile, err := svc.GetProfile(action.ClientID)
+		profile, err := svc.GetProfile(msg.ClientID)
 		if err == nil {
 			resp := auth.GetProfileResp{Profile: profile}
 			reply, _ := ser.Marshal(&resp)
-			err = action.SendReply(reply, nil)
+			err = msg.SendReply(reply, nil)
 		}
 		return err
 	case auth.NewTokenReq:
 		req := &auth.NewTokenArgs{}
-		err := ser.Unmarshal(action.Payload, &req)
+		err := ser.Unmarshal(msg.Payload, &req)
 		if err != nil {
 			return err
 		}
-		newToken, err := svc.NewToken(action.ClientID, req.Password)
+		newToken, err := svc.NewToken(msg.ClientID, req.Password)
 		if err == nil {
 			resp := auth.NewTokenResp{Token: newToken}
 			reply, _ := ser.Marshal(resp)
-			err = action.SendReply(reply, nil)
+			err = msg.SendReply(reply, nil)
 		}
 		return err
 	case auth.RefreshTokenReq:
-		newToken, err := svc.Refresh(action.ClientID)
+		newToken, err := svc.Refresh(msg.ClientID)
 		if err == nil {
 			resp := auth.RefreshResp{NewToken: newToken}
 			reply, _ := ser.Marshal(resp)
-			err = action.SendReply(reply, nil)
+			err = msg.SendReply(reply, nil)
 		}
 		return err
 	case auth.UpdateNameReq:
 		req := &auth.UpdateNameArgs{}
-		err := ser.Unmarshal(action.Payload, &req)
+		err := ser.Unmarshal(msg.Payload, &req)
 		if err != nil {
 			return err
 		}
-		err = svc.UpdateName(action.ClientID, req.NewName)
+		err = svc.UpdateName(msg.ClientID, req.NewName)
 		if err == nil {
-			err = action.SendAck()
+			err = msg.SendAck()
 		}
 		return err
 	case auth.UpdatePasswordReq:
 		req := &auth.UpdatePasswordArgs{}
-		err := ser.Unmarshal(action.Payload, &req)
+		err := ser.Unmarshal(msg.Payload, &req)
 		if err != nil {
 			return err
 		}
-		err = svc.UpdatePassword(action.ClientID, req.NewPassword)
+		err = svc.UpdatePassword(msg.ClientID, req.NewPassword)
 		if err == nil {
-			err = action.SendAck()
+			err = msg.SendAck()
 		}
 		return err
 	case auth.UpdatePubKeyReq:
 		req := &auth.UpdatePubKeyArgs{}
-		err := ser.Unmarshal(action.Payload, &req)
+		err := ser.Unmarshal(msg.Payload, &req)
 		if err != nil {
 			return err
 		}
-		err = svc.UpdatePubKey(action.ClientID, req.NewPubKey)
+		err = svc.UpdatePubKey(msg.ClientID, req.NewPubKey)
 		if err == nil {
-			err = action.SendAck()
+			err = msg.SendAck()
 		}
 		return err
 	default:
-		return fmt.Errorf("Unknown user action '%s' for client '%s'", action.ActionID, action.ClientID)
+		return fmt.Errorf("unknown method '%s' for client '%s'", msg.Name, msg.ClientID)
 	}
 }
 
@@ -161,7 +162,7 @@ func (svc *AuthManageProfile) Refresh(clientID string) (newToken string, err err
 // Register the binding subscription using the given connection
 func (svc *AuthManageProfile) Start() (err error) {
 	if svc.hc != nil {
-		svc.actionSub, _ = svc.hc.SubServiceRPC(
+		svc.actionSub, _ = svc.hc.SubRPCRequest(
 			auth.AuthProfileCapability, svc.HandleRequest)
 	}
 	return err

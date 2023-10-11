@@ -9,10 +9,10 @@ import (
 
 // HandleRequest handle incoming RPC requests for managing clients
 func (svc *LauncherService) HandleRequest(msg *hubclient.RequestMessage) error {
-	slog.Info("HandleRequest", slog.String("actionID", msg.ActionID))
+	slog.Info("HandleRequest", slog.String("actionID", msg.Name))
 
 	// TODO: double-check the caller is an admin or svc
-	switch msg.ActionID {
+	switch msg.Name {
 	case launcher.LauncherListReq:
 		req := launcher.LauncherListArgs{}
 		err := ser.Unmarshal(msg.Payload, &req)

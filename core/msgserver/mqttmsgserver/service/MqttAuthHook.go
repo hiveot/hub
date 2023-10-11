@@ -8,11 +8,11 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/core/msgserver"
 	jwtauth2 "github.com/hiveot/hub/core/msgserver/mqttmsgserver/jwtauth"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient/mqtthubclient"
+	"github.com/hiveot/hub/lib/vocab"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/packets"
 	"golang.org/x/crypto/bcrypt"
@@ -222,7 +222,7 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 	}
 
 	// 2. Break down the topic to match it with the permissions
-	msgType, deviceID, thingID, name, senderID, err :=
+	msgType, agentID, thingID, name, senderID, err :=
 		mqtthubclient.SplitTopic(topic)
 	if err != nil {
 		// invalid topic format.
@@ -251,15 +251,15 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 
 	// 6. match the role's permissions
 	for _, perm := range rolePerm {
-		// substitute the clientID in the deviceID with the loginID
-		permDeviceID := perm.DeviceID
-		if permDeviceID == "{clientID}" {
-			permDeviceID = loginID
+		// substitute the clientID in the agentID with the loginID
+		permAgentID := perm.AgentID
+		if permAgentID == "{clientID}" {
+			permAgentID = loginID
 		}
 		// when write, must allow pub, otherwise must allow sub
 		if ((write && perm.AllowPub) || (!write && perm.AllowSub)) &&
 			(perm.MsgType == "" || perm.MsgType == msgType) &&
-			(perm.DeviceID == "" || permDeviceID == deviceID) &&
+			(perm.AgentID == "" || permAgentID == agentID) &&
 			(perm.ThingID == "" || perm.ThingID == thingID) &&
 			(perm.MsgName == "" || perm.MsgName == name) {
 			return true
@@ -309,7 +309,7 @@ func (hook *MqttAuthHook) SetServicePermissions(
 		}
 		rp = append(rp, msgserver.RolePermission{
 			MsgType:  vocab.MessageTypeRPC,
-			DeviceID: serviceID,
+			AgentID:  serviceID,
 			ThingID:  capability,
 			MsgName:  "", // all methods of the capability can be used
 			AllowPub: true,

@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/ser"
 	"log/slog"
 )
 
@@ -25,263 +24,156 @@ type AuthManageClients struct {
 // AddDevice adds an IoT device and generates an authentication token
 // This is handled by the underlying messaging core.
 func (svc *AuthManageClients) AddDevice(
-	deviceID string, name string, pubKey string) (token string, err error) {
-	slog.Info("AddDevice",
-		slog.String("deviceID", deviceID),
-		slog.String("name", name),
-		slog.String("pubKey", pubKey))
+	args auth.AddDeviceArgs) (auth.AddDeviceResp, error) {
 
-	if deviceID == "" {
-		return "", fmt.Errorf("AddDevice: missing device ID")
+	//deviceID string, name string, pubKey string) (token string, err error) {
+	slog.Info("AddDevice",
+		slog.String("deviceID", args.DeviceID),
+		slog.String("displayName", args.DisplayName),
+		slog.String("pubKey", args.PubKey))
+
+	resp := auth.AddDeviceResp{}
+	if args.DeviceID == "" {
+		return resp, fmt.Errorf("AddDevice: missing device ID")
 	}
 	// store/update device.
-	err = svc.store.Add(deviceID, auth.ClientProfile{
-		ClientID:    deviceID,
+	err := svc.store.Add(args.DeviceID, auth.ClientProfile{
+		ClientID:    args.DeviceID,
 		ClientType:  auth.ClientTypeDevice,
-		DisplayName: name,
-		PubKey:      pubKey,
+		DisplayName: args.DisplayName,
+		PubKey:      args.PubKey,
 		Role:        auth.ClientRoleDevice,
 	})
 	if err != nil {
-		return "", err
+		return resp, err
 	}
 	err = svc.onChange()
 
 	// generate a device authentication token
-	if pubKey != "" {
+	if args.PubKey != "" {
 		authInfo := msgserver.ClientAuthInfo{
-			ClientID:   deviceID,
+			ClientID:   args.DeviceID,
 			ClientType: auth.ClientTypeDevice,
-			PubKey:     pubKey,
+			PubKey:     args.PubKey,
 			Role:       auth.ClientRoleDevice,
 		}
-		token, err = svc.msgServer.CreateToken(authInfo)
+		resp.Token, err = svc.msgServer.CreateToken(authInfo)
 	}
-	return token, err
+	return resp, err
 }
 
 // AddService adds or updates a service with the admin role
 func (svc *AuthManageClients) AddService(
-	serviceID string, name string, pubKey string) (token string, err error) {
+	args auth.AddServiceArgs) (auth.AddServiceResp, error) {
 	slog.Info("AddService",
-		slog.String("serviceID", serviceID),
-		slog.String("name", name),
-		slog.String("pubKey", pubKey))
+		slog.String("serviceID", args.ServiceID),
+		slog.String("displayName", args.DisplayName),
+		slog.String("pubKey", args.PubKey))
 
-	if serviceID == "" {
-		return "", fmt.Errorf("missing service ID")
+	resp := auth.AddServiceResp{}
+	if args.ServiceID == "" {
+		return resp, fmt.Errorf("missing service ID")
 	}
-	err = svc.store.Add(serviceID, auth.ClientProfile{
-		ClientID:    serviceID,
+	err := svc.store.Add(args.ServiceID, auth.ClientProfile{
+		ClientID:    args.ServiceID,
 		ClientType:  auth.ClientTypeService,
-		DisplayName: name,
-		PubKey:      pubKey,
+		DisplayName: args.DisplayName,
+		PubKey:      args.PubKey,
 		Role:        auth.ClientRoleService,
 	})
 	if err != nil {
-		return "", err
+		return resp, err
 	}
 	// generate a service authentication token
-	if pubKey != "" {
+	if args.PubKey != "" {
 		authInfo := msgserver.ClientAuthInfo{
-			ClientID:   serviceID,
+			ClientID:   args.ServiceID,
 			ClientType: auth.ClientTypeService,
-			PubKey:     pubKey,
+			PubKey:     args.PubKey,
 			Role:       auth.ClientRoleService,
 		}
-		token, err = svc.msgServer.CreateToken(authInfo)
+		resp.Token, err = svc.msgServer.CreateToken(authInfo)
 	}
 	err = svc.onChange()
-	return token, err
+	return resp, err
 }
 
 // AddUser adds a new user for password authentication
 // If a public key is provided a signed token will be returned
-func (svc *AuthManageClients) AddUser(
-	userID string, userName string, password string, pubKey string, role string) (token string, err error) {
-
+func (svc *AuthManageClients) AddUser(args auth.AddUserArgs) (auth.AddUserResp, error) {
 	slog.Info("AddUser",
-		slog.String("userID", userID),
-		slog.String("userName", userName),
-		slog.String("pubKey", pubKey),
-		slog.String("role", role))
+		slog.String("userID", args.UserID),
+		slog.String("displayName", args.DisplayName),
+		slog.String("pubKey", args.PubKey),
+		slog.String("role", args.Role))
 
-	if userID == "" {
-		return "", fmt.Errorf("missing user ID")
+	resp := auth.AddUserResp{}
+	if args.UserID == "" {
+		return resp, fmt.Errorf("missing user ID")
 	}
-	err = svc.store.Add(userID, auth.ClientProfile{
-		ClientID:    userID,
+	err := svc.store.Add(args.UserID, auth.ClientProfile{
+		ClientID:    args.UserID,
 		ClientType:  auth.ClientTypeUser,
-		DisplayName: userName,
-		PubKey:      pubKey,
-		Role:        role,
+		DisplayName: args.DisplayName,
+		PubKey:      args.PubKey,
+		Role:        args.Role,
 	})
 	if err != nil {
-		return "", err
+		return resp, err
 	}
-	if password != "" {
-		err = svc.store.SetPassword(userID, password)
+	if args.Password != "" {
+		err = svc.store.SetPassword(args.UserID, args.Password)
 		if err != nil {
-			err = fmt.Errorf("AddUser: user '%s' added, but: %w. Continuing", userID, err)
+			err = fmt.Errorf("AddUser: user '%s' added, but: %w. Continuing", args.UserID, err)
 			slog.Error(err.Error())
 		}
 	}
 	// generate a user token to store
-	if pubKey != "" {
+	if args.PubKey != "" {
 		authInfo := msgserver.ClientAuthInfo{
-			ClientID:   userID,
+			ClientID:   args.UserID,
 			ClientType: auth.ClientTypeUser,
-			PubKey:     pubKey,
-			Role:       role,
+			PubKey:     args.PubKey,
+			Role:       args.Role,
 		}
-		token, err = svc.msgServer.CreateToken(authInfo)
+		resp.Token, err = svc.msgServer.CreateToken(authInfo)
 	}
 	if err == nil {
 		err = svc.onChange()
 	}
-	return token, err
+	return resp, err
 }
 
-func (svc *AuthManageClients) GetCount() (int, error) {
-	return svc.store.Count(), nil
-}
-
+// GetAuthClientList is for use with the messaging server
 func (svc *AuthManageClients) GetAuthClientList() []msgserver.ClientAuthInfo {
 	return svc.store.GetAuthClientList()
 }
 
+func (svc *AuthManageClients) GetCount() (auth.GetCountResp, error) {
+	resp := auth.GetCountResp{}
+	resp.N = svc.store.Count()
+	return resp, nil
+}
+
 // GetProfile returns a client's profile
-func (svc *AuthManageClients) GetProfile(clientID string) (profile auth.ClientProfile, err error) {
-	entry, err := svc.store.GetProfile(clientID)
-	return entry, err
+func (svc *AuthManageClients) GetProfile(
+	args auth.GetClientProfileArgs) (auth.GetProfileResp, error) {
+
+	entry, err := svc.store.GetProfile(args.ClientID)
+	resp := auth.GetProfileResp{Profile: entry}
+	return resp, err
 }
 
 // GetProfiles provide a list of known clients and their info.
-func (svc *AuthManageClients) GetProfiles() (profiles []auth.ClientProfile, err error) {
-	profiles, err = svc.store.GetProfiles()
-	return profiles, err
+func (svc *AuthManageClients) GetProfiles() (auth.GetProfilesResp, error) {
+	profiles, err := svc.store.GetProfiles()
+	resp := auth.GetProfilesResp{Profiles: profiles}
+	return resp, err
 }
 
 // GetEntries provide a list of known clients and their info including bcrypted passwords
 func (svc *AuthManageClients) GetEntries() (entries []auth.AuthnEntry) {
 	return svc.store.GetEntries()
-}
-
-// HandleRequest handle incoming RPC requests for managing clients
-func (svc *AuthManageClients) HandleRequest(action *hubclient.RequestMessage) error {
-	slog.Info("HandleRequest", slog.String("actionID", action.ActionID))
-
-	// TODO: doublecheck the caller is an admin or svc
-	switch action.ActionID {
-	case auth.AddDeviceReq:
-		req := auth.AddDeviceArgs{}
-		err := ser.Unmarshal(action.Payload, &req)
-		if err != nil {
-			return err
-		}
-		token, err := svc.AddDevice(req.DeviceID, req.DisplayName, req.PubKey)
-		if err == nil {
-			resp := auth.AddDeviceResp{Token: token}
-			reply, _ := ser.Marshal(&resp)
-			err = action.SendReply(reply, nil)
-		}
-		return err
-	case auth.AddServiceReq:
-		req := auth.AddServiceArgs{}
-		err := ser.Unmarshal(action.Payload, &req)
-		if err != nil {
-			return err
-		}
-		token, err := svc.AddService(req.ServiceID, req.DisplayName, req.PubKey)
-		if err == nil {
-			resp := auth.AddServiceResp{Token: token}
-			reply, _ := ser.Marshal(&resp)
-			err = action.SendReply(reply, nil)
-		}
-		return err
-	case auth.AddUserReq:
-		req := auth.AddUserArgs{}
-		err := ser.Unmarshal(action.Payload, &req)
-		if err != nil {
-			return err
-		}
-		token, err := svc.AddUser(
-			req.UserID, req.DisplayName, req.Password, req.PubKey, req.Role)
-		if err == nil {
-			resp := auth.AddUserResp{Token: token}
-			reply, _ := ser.Marshal(&resp)
-			err = action.SendReply(reply, nil)
-		}
-		return err
-	case auth.GetCountReq:
-		n, err := svc.GetCount()
-		resp := auth.GetCountResp{N: n}
-		reply, _ := ser.Marshal(&resp)
-		err = action.SendReply(reply, nil)
-		return err
-	case auth.GetProfileReq:
-		profile, err := svc.GetProfile(action.ClientID)
-		if err == nil {
-			resp := auth.GetProfileResp{Profile: profile}
-			reply, _ := ser.Marshal(&resp)
-			err = action.SendReply(reply, nil)
-		}
-		return err
-	case auth.GetProfilesReq:
-		clientList, err := svc.GetProfiles()
-		if err == nil {
-			resp := auth.GetProfilesResp{Profiles: clientList}
-			reply, _ := ser.Marshal(resp)
-			err = action.SendReply(reply, nil)
-		}
-		return err
-	case auth.RemoveClientReq:
-		req := &auth.RemoveClientArgs{}
-		err := ser.Unmarshal(action.Payload, &req)
-		if err != nil {
-			return err
-		}
-		err = svc.RemoveClient(req.ClientID)
-		if err == nil {
-			err = action.SendAck()
-		}
-		return err
-	case auth.UpdateClientReq:
-		req := &auth.UpdateClientArgs{}
-		err := ser.Unmarshal(action.Payload, &req)
-		if err != nil {
-			return err
-		}
-		err = svc.UpdateClient(req.ClientID, req.Profile)
-		if err == nil {
-			err = action.SendAck()
-		}
-		return err
-	case auth.UpdateClientPasswordReq:
-		req := &auth.UpdateClientPasswordArgs{}
-		err := ser.Unmarshal(action.Payload, &req)
-		if err != nil {
-			return err
-		}
-		err = svc.UpdateClientPassword(req.ClientID, req.Password)
-		if err == nil {
-			err = action.SendAck()
-		}
-		return err
-	case auth.UpdateClientRoleReq:
-		req := &auth.UpdateClientRoleArgs{}
-		err := ser.Unmarshal(action.Payload, &req)
-		if err != nil {
-			return err
-		}
-		err = svc.UpdateClientRole(req.ClientID, req.Role)
-		if err == nil {
-			err = action.SendAck()
-		}
-		return err
-	default:
-		return fmt.Errorf("Unknown manage action '%s' for client '%s'", action.ActionID, action.ClientID)
-	}
 }
 
 // notification handler invoked when clients have been added, removed or updated
@@ -303,8 +195,8 @@ func (svc *AuthManageClients) onChange() error {
 }
 
 // RemoveClient removes a client and disables authentication
-func (svc *AuthManageClients) RemoveClient(clientID string) (err error) {
-	err = svc.store.Remove(clientID)
+func (svc *AuthManageClients) RemoveClient(args auth.RemoveClientArgs) error {
+	err := svc.store.Remove(args.ClientID)
 	if err == nil {
 		err = svc.onChange()
 	}
@@ -315,8 +207,21 @@ func (svc *AuthManageClients) RemoveClient(clientID string) (err error) {
 // Register the binding subscription using the given connection
 func (svc *AuthManageClients) Start() (err error) {
 	if svc.hc != nil {
-		svc.mngSub, err = svc.hc.SubServiceRPC(
-			auth.AuthManageClientsCapability, svc.HandleRequest)
+		//svc.mngSub, err = svc.hc.SubRPCRequest(
+		//	auth.AuthManageClientsCapability, svc.HandleRequest)
+		svc.mngSub, err = hubclient.SubRPCCapability(auth.AuthManageClientsCapability,
+			map[string]interface{}{
+				auth.AddDeviceReq:            svc.AddDevice,
+				auth.AddServiceReq:           svc.AddService,
+				auth.AddUserReq:              svc.AddUser,
+				auth.GetCountReq:             svc.GetCount,
+				auth.GetProfileReq:           svc.GetProfile,
+				auth.GetProfilesReq:          svc.GetProfiles,
+				auth.RemoveClientReq:         svc.RemoveClient,
+				auth.UpdateClientReq:         svc.UpdateClient,
+				auth.UpdateClientPasswordReq: svc.UpdateClientPassword,
+				auth.UpdateClientRoleReq:     svc.UpdateClientRole,
+			}, svc.hc)
 	}
 	return err
 }
@@ -329,21 +234,21 @@ func (svc *AuthManageClients) Stop() {
 	}
 }
 
-func (svc *AuthManageClients) UpdateClient(clientID string, prof auth.ClientProfile) (err error) {
-	err = svc.store.Update(clientID, prof)
+func (svc *AuthManageClients) UpdateClient(args auth.UpdateClientArgs) error {
+	err := svc.store.Update(args.ClientID, args.Profile)
 	return err
 }
 
-func (svc *AuthManageClients) UpdateClientPassword(clientID string, newPassword string) (err error) {
-	err = svc.store.SetPassword(clientID, newPassword)
+func (svc *AuthManageClients) UpdateClientPassword(args auth.UpdateClientPasswordArgs) error {
+	err := svc.store.SetPassword(args.ClientID, args.Password)
 	return err
 }
 
-func (svc *AuthManageClients) UpdateClientRole(clientID string, newRole string) (err error) {
-	prof, err := svc.store.GetProfile(clientID)
+func (svc *AuthManageClients) UpdateClientRole(args auth.UpdateClientRoleArgs) error {
+	prof, err := svc.store.GetProfile(args.ClientID)
 	if err == nil {
-		prof.Role = newRole
-		err = svc.store.Update(clientID, prof)
+		prof.Role = args.Role
+		err = svc.store.Update(args.ClientID, prof)
 	}
 	return err
 }

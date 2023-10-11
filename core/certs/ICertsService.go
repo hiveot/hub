@@ -85,6 +85,6 @@ type ICertService interface {
 	CreateUserCert(userID string, pubKeyPEM string, validityDays int) (
 		certPEM string, caCertPEM string, err error)
 
-	// VerifyCert verifies if the certificate is valid for the Hub
+	// VerifyCert verifies if the certificate belongs to the client and is valid for the Hub
 	VerifyCert(clientID string, certPEM string) error
 }

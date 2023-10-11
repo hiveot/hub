@@ -210,8 +210,7 @@ func (svc *LauncherService) Start() error {
 	svc.authSvc = authclient.NewAuthClientsClient(svc.hc)
 
 	// start listening to requests
-	svc.mngSub, err = svc.hc.SubServiceRPC(
-		launcher.LauncherManageCapability, svc.HandleRequest)
+	svc.mngSub, err = svc.hc.SubRPCRequest(launcher.LauncherManageCapability, svc.HandleRequest)
 
 	// 4: autostart the configured 'autostart' plugins
 	for _, name := range svc.cfg.Autostart {

@@ -81,7 +81,6 @@ func TestMain(m *testing.M) {
 	_ = os.RemoveAll(testDir)
 	_ = os.MkdirAll(testDir, 0700)
 
-	// include test clients
 	testServer, err = testenv.StartTestServer(core)
 	serverURL, _, _ = testServer.MsgServer.GetServerURLs()
 	if err != nil {
@@ -198,6 +197,9 @@ func TestServiceCertBadParms(t *testing.T) {
 	const serviceID = "testService"
 	hostnames := []string{"127.0.0.1"}
 
+	svc, cancelFunc := StartService()
+	defer cancelFunc()
+
 	caCert, caKey, _ := certs2.CreateCA("Test CA", 1)
 	keys, _ := certs2.CreateECDSAKeys()
 	pubKeyPEM, _ := certs2.PublicKeyToPEM(&keys.PublicKey)
@@ -214,7 +216,8 @@ func TestServiceCertBadParms(t *testing.T) {
 	})
 
 	// missing service ID
-	svc := selfsigned.NewSelfSignedCertsService(caCert, caKey, nil)
+	//svc := selfsigned.NewSelfSignedCertsService(caCert, caKey, nil)
+
 	serviceCertPEM, _, err := svc.CreateServiceCert(
 		"", pubKeyPEM, hostnames, 1)
 
