@@ -33,7 +33,7 @@ provisioning: .FORCE ## Build device provisioning service
 plugins: directory owserver provisioning zwavejs
 
 directory: .FORCE ## Build the directory service (mqtt core)
-	go build -o $(PLUGINS_FOLDER)/$@ $@/cmd/main.go
+	go build -o $(PLUGINS_FOLDER)/$@ core/$@/cmd/main.go
 
 hubcli: .FORCE ## Build Hub CLI
 	go build -o $(BIN_FOLDER)/$@ cmd/$@/main.go

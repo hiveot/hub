@@ -3,17 +3,14 @@ package main
 
 import (
 	"context"
-	"github.com/hiveot/hub/lib/hubclient"
-	"net"
-	"path/filepath"
-
-	"github.com/hiveot/hub/lib/listener"
-	"github.com/hiveot/hub/lib/svcconfig"
-	"github.com/hiveot/hub/pkg/bucketstore/kvbtree"
-	"github.com/hiveot/hub/pkg/directory"
-	"github.com/hiveot/hub/pkg/directory/capnpserver"
-	"github.com/hiveot/hub/pkg/directory/service"
-	"github.com/hiveot/hub/pkg/pubsub/capnpclient"
+	"github.com/hiveot/hub/core/directory/service"
+	"github.com/hiveot/hub/lib/buckets/kvbtree"
+	"github.com/hiveot/hub/lib/hubclient/hubconnect"
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/utils"
+	"log/slog"
+	"os"
+	"path"
 )
 
 // name of the storage file
@@ -21,48 +18,32 @@ const storeFile = "directorystore.json"
 
 // Connect the service
 func main() {
-	var fullUrl = "" // TODO, from config
+	env := utils.GetAppEnvironment("", true)
+	logging.SetLogging(env.LogLevel, "")
 
-	ctx := context.Background()
-	serviceID := directory.ServiceName
-	f, clientCert, caCert := svcconfig.SetupFolderConfig(directory.ServiceName)
-
-	// the service uses the bucket store to store directory entries
-	storePath := filepath.Join(f.Stores, directory.ServiceName, storeFile)
-
-	// Initialize the resolver client and marshallers to access the certificate and pubsub services
-	// This allows them to live anywhere.
-	//resolver.RegisterCapnpMarshaller[pubsub.IPubSubService](capnpclient.NewPubSubCapnpClient, "")
-
-	// the resolver client is a proxy for all connected services including pubsub
-	fullUrl = hubclient.LocateHub("", 0)
-	capClient, err := hubclient.ConnectWithCapnpTCP(fullUrl, clientCert, caCert)
-	pubSubClient := capnpclient.NewPubSubCapnpClient(capClient)
-	if pubSubClient == nil {
-		panic("can't connect to pubsub")
+	// this locates the hub, load certificate, load service tokens and connect
+	hc, err := hubconnect.ConnectToHub("", env.ClientID, env.CertsDir, "")
+	if err != nil {
+		slog.Error("Failed connecting to the Hub", "err", err)
+		os.Exit(1)
 	}
-	svcPubSub, err := pubSubClient.CapServicePubSub(ctx, serviceID)
 
-	store := kvbtree.NewKVStore(directory.ServiceName, storePath)
+	// startup
+	storePath := path.Join(env.StoresDir, env.ClientID, storeFile)
+	store := kvbtree.NewKVStore(env.ClientID, storePath)
 	err = store.Open()
 	if err != nil {
 		panic("unable to open the directory store")
 	}
-	svc := service.NewDirectoryService(serviceID, store, svcPubSub)
-
-	listener.RunService(directory.ServiceName, f.SocketPath,
-		func(ctx context.Context, lis net.Listener) error {
-			// startup
-			err := svc.Start()
-			if err == nil {
-				err = capnpserver.StartDirectoryServiceCapnpServer(svc, lis)
-			}
-			return err
-		}, func() error {
-			// shutdown
-			svc.Stop()
-			pubSubClient.Release()
-			err = store.Close()
-			return err
-		})
+	svc := service.NewDirectoryService(store, hc)
+	err = svc.Start()
+	if err != nil {
+		slog.Error("Failed starting directory service", "err", err)
+		os.Exit(1)
+	}
+	utils.WaitForSignal(context.Background())
+	err = svc.Stop()
+	if err != nil {
+		os.Exit(2)
+	}
 }

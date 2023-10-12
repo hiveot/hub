@@ -46,7 +46,6 @@ The service has its configuration in the application 'config' directory. This is
 
 The following configuration files are used:
 * config/directory.yaml        - Service configuration
-* config/directorystore.json   - Directory storage file  
 
 
 ## Usage

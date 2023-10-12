@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/core/directory"
-	"github.com/hiveot/hub/core/directory/service"
+	"github.com/hiveot/hub/core/directory/dirclient"
 	"github.com/hiveot/hub/lib/thing"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
@@ -49,18 +49,21 @@ func DirectoryListCommand(hc *hubclient.IHubClient) *cli.Command {
 func HandleListDirectory(hc hubclient.IHubClient) (err error) {
 	offset := 0
 	limit := 100
-	rdir := service.NewReadDirectoryService(hc)
+	rdir := dirclient.NewReadDirectoryClient(hc)
 
-	cursor := rdir.GetReadCursor()
+	cursor, err := rdir.GetCursor()
+	if err != nil {
+		return err
+	}
 	fmt.Printf("Agent ID        Thing ID             Device Type          Title                                #props  #events #actions   Modified         \n")
 	fmt.Printf("-------------   -------------------  -------------------  -----------------------------------  ------  ------- --------   --------------------------\n")
 	i := 0
-	tv, valid := cursor.First()
+	tv, valid, err := cursor.First()
 	if offset > 0 {
 		// TODO, skip
 		//tv, valid = cursor.Skip(offset)
 	}
-	for ; valid && i < limit; tv, valid = cursor.Next() {
+	for ; valid && i < limit; tv, valid, err = cursor.Next() {
 		var tdDoc thing.TD
 		err = json.Unmarshal(tv.Data, &tdDoc)
 		var utime time.Time
@@ -90,7 +93,7 @@ func HandleListDirectory(hc hubclient.IHubClient) (err error) {
 func HandleListThing(hc hubclient.IHubClient, pubID, thingID string) error {
 	var tdDoc thing.TD
 
-	rdir := service.NewReadDirectoryService(hc)
+	rdir := dirclient.NewReadDirectoryClient(hc)
 	tv, err := rdir.GetTD(pubID, thingID)
 	if err != nil {
 		return err
@@ -170,7 +173,7 @@ func HandleListThing(hc hubclient.IHubClient, pubID, thingID string) error {
 func HandleListThingVerbose(hc hubclient.IHubClient, pubID, thingID string) error {
 	var rdir directory.IReadDirectory
 
-	rdir = service.NewReadDirectoryService(hc)
+	rdir = dirclient.NewReadDirectoryClient(hc)
 	tv, err := rdir.GetTD(pubID, thingID)
 	if err != nil {
 		return err

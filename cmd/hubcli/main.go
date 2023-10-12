@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/cmd/hubcli/authcli"
 	"github.com/hiveot/hub/cmd/hubcli/certs"
+	"github.com/hiveot/hub/cmd/hubcli/directorycli"
 	"github.com/hiveot/hub/cmd/hubcli/launchercli"
 	"github.com/hiveot/hub/cmd/hubcli/setup"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -111,6 +112,8 @@ func main() {
 			launchercli.LauncherListCommand(&hc),
 			launchercli.LauncherStartCommand(&hc),
 			launchercli.LauncherStopCommand(&hc),
+
+			directorycli.DirectoryListCommand(&hc),
 		},
 	}
 

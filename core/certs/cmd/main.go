@@ -54,7 +54,7 @@ func main() {
 	svc := selfsigned.NewSelfSignedCertsService(caCert, caKey, hc)
 	err = svc.Start()
 	if err != nil {
-		slog.Error("Failed starting service", "err", err)
+		slog.Error("Failed starting certs service", "err", err)
 		os.Exit(1)
 	}
 	utils.WaitForSignal(context.Background())
