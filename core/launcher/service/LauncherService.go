@@ -119,26 +119,28 @@ func (svc *LauncherService) addPlugins(folder string) error {
 
 // List all available or just the running plugins and their status
 // This returns the list of plugins sorted by name
-func (svc *LauncherService) List(onlyRunning bool) ([]launcher.PluginInfo, error) {
+func (svc *LauncherService) List(
+	senderID string, args launcher.ListArgs) (launcher.ListResp, error) {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 
 	// get the keys of the plugins to include and sort them
 	keys := make([]string, 0, len(svc.plugins))
 	for key, val := range svc.plugins {
-		if !onlyRunning || val.Running {
+		if !args.OnlyRunning || val.Running {
 			keys = append(keys, key)
 		}
 	}
 	sort.Strings(keys)
 
-	res := make([]launcher.PluginInfo, 0, len(keys))
+	infoList := make([]launcher.PluginInfo, 0, len(keys))
 	for _, key := range keys {
 		svcInfo := svc.plugins[key]
 		svc.updateStatus(svcInfo)
-		res = append(res, *svcInfo)
+		infoList = append(infoList, *svcInfo)
 	}
-	return res, nil
+	resp := launcher.ListResp{PluginInfoList: infoList}
+	return resp, nil
 }
 
 // ScanPlugins scans the plugin folder for changes and updates the plugins list
@@ -190,7 +192,7 @@ func (svc *LauncherService) Start() error {
 	svc.mux.Unlock()
 	if found {
 		// core is added
-		_, err = svc.StartPlugin(CoreID)
+		_, err = svc._startPlugin(CoreID)
 		if err != nil {
 			return err
 		}
@@ -210,11 +212,19 @@ func (svc *LauncherService) Start() error {
 	svc.authSvc = authclient.NewAuthClientsClient(svc.hc)
 
 	// start listening to requests
-	svc.mngSub, err = svc.hc.SubRPCRequest(launcher.LauncherManageCapability, svc.HandleRequest)
+	//svc.mngSub, err = svc.hc.SubRPCRequest(launcher.ManageCapability, svc.HandleRequest)
+	svc.mngSub, err = hubclient.SubRPCCapability(svc.hc, launcher.ManageCapability,
+		map[string]interface{}{
+			launcher.ListMethod:            svc.List,
+			launcher.StartPluginMethod:     svc.StartPlugin,
+			launcher.StartAllPluginsMethod: svc.StartAllPlugins,
+			launcher.StopPluginMethod:      svc.StopPlugin,
+			launcher.StopAllPluginsMethod:  svc.StopAllPlugins,
+		})
 
 	// 4: autostart the configured 'autostart' plugins
 	for _, name := range svc.cfg.Autostart {
-		_, err2 := svc.StartPlugin(name)
+		_, err2 := svc._startPlugin(name)
 		if err2 != nil {
 			err = err2
 		}
@@ -229,7 +239,7 @@ func (svc *LauncherService) Stop() error {
 		svc.mngSub = nil
 	}
 	svc.isRunning.Store(false)
-	return svc.StopAllPlugins()
+	return svc.StopAllPlugins(launcher.ServiceName)
 }
 
 // WatchPlugins watches the bin and plugins folder for changes and reloads

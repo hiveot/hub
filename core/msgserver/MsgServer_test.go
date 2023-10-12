@@ -29,7 +29,7 @@ func Benchmark_PubSubEvent(b *testing.B) {
 	cl2, _ := ts.AddConnectClient("sub", auth.ClientTypeUser, auth.ClientRoleOperator)
 	defer cl2.Disconnect()
 
-	sub2, _ := cl2.SubEvents("publisher", "", func(msg *hubclient.EventMessage) {
+	sub2, _ := cl2.SubEvents("publisher", "", "", func(msg *hubclient.EventMessage) {
 		//time.Sleep(time.Millisecond * 10)
 		rxCount.Add(1)
 	})

@@ -49,9 +49,6 @@ func (svc *DirectoryService) createUpdateDirTD() *thing.TD {
 }
 
 func (svc *DirectoryService) handleTDEvent(event *hubclient.EventMessage) {
-	if event.EventID != vocab.EventNameTD {
-		return
-	}
 	args := directory.UpdateTDArgs{
 		AgentID: event.AgentID,
 		ThingID: event.ThingID,
@@ -69,17 +66,17 @@ func (svc *DirectoryService) Start() (err error) {
 
 	// subscribe to TD events to add to the directory
 	if svc.hc != nil {
-		// TODO: subscribe include the TDEventName
-		svc.tdSub, err = svc.hc.SubEvents("", "", svc.handleTDEvent)
+		svc.tdSub, err = svc.hc.SubEvents(
+			"", "", vocab.EventNameTD, svc.handleTDEvent)
 	}
 
 	// listen for requests
 	bucket := svc.store.GetBucket(svc.tdBucketName)
 	var capMap map[string]interface{}
 	svc.readDirSvc, capMap = NewReadDirectoryService(svc.serviceID, bucket)
-	svc.readSub, _ = hubclient.SubRPCCapability(directory.ReadDirectoryCapability, capMap, svc.hc)
+	svc.readSub, _ = hubclient.SubRPCCapability(svc.hc, directory.ReadDirectoryCapability, capMap)
 	svc.updateDirSvc, capMap = NewUpdateDirectoryService(svc.serviceID, bucket)
-	svc.updateSub, _ = hubclient.SubRPCCapability(directory.UpdateDirectoryCapability, capMap, svc.hc)
+	svc.updateSub, _ = hubclient.SubRPCCapability(svc.hc, directory.UpdateDirectoryCapability, capMap)
 
 	// publish the TDs of this service
 	if err == nil {

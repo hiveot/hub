@@ -4,8 +4,8 @@ package launcher
 // ServiceName used to connect to this service
 const ServiceName = "launcher"
 
-// LauncherManageCapability is the name of the Thing/Capability that handles management requests
-const LauncherManageCapability = "manage"
+// ManageCapability is the name of the Thing/Capability that handles management requests
+const ManageCapability = "manage"
 
 // PluginInfo contains the running status of a service
 type PluginInfo struct {
@@ -49,39 +49,39 @@ type PluginInfo struct {
 	Uptime int
 }
 
-const LauncherListReq = "list"
+const ListMethod = "list"
 
-type LauncherListArgs struct {
+type ListArgs struct {
 	OnlyRunning bool `json:"onlyRunning"`
 }
-type LauncherListResp struct {
-	ServiceInfoList []PluginInfo `json:"serviceInfo"`
+type ListResp struct {
+	PluginInfoList []PluginInfo `json:"info"`
 }
 
-const LauncherStartPluginReq = "startPlugin"
+const StartPluginMethod = "startPlugin"
 
-type LauncherStartPluginArgs struct {
+type StartPluginArgs struct {
 	Name string `json:"name"`
 }
 
-type LauncherStartPluginResp struct {
-	ServiceInfo PluginInfo `json:"info"`
+type StartPluginResp struct {
+	PluginInfo PluginInfo `json:"info"`
 }
 
-const LauncherStartAllPluginsReq = "startAllPlugins"
+const StartAllPluginsMethod = "startAllPlugins"
 
 // StartAll has no arguments
 
-const LauncherStopPluginReq = "stopPlugin"
+const StopPluginMethod = "stopPlugin"
 
-type LauncherStopPluginArgs struct {
+type StopPluginArgs struct {
 	Name string `json:"name"`
 }
-type LauncherStopPluginResp struct {
-	ServiceInfo PluginInfo `json:"info"`
+type StopPluginResp struct {
+	PluginInfo PluginInfo `json:"info"`
 }
 
-const LauncherStopAllPluginsReq = "stopAllPlugins"
+const StopAllPluginsMethod = "stopAllPlugins"
 
 // ILauncher defines the POGS based interface of the launcher service
 type ILauncher interface {

@@ -26,11 +26,11 @@ type EventMessage struct {
 	AgentID string `yaml:"agentID"`
 	// Optional ThingID of the Thing that generated the event
 	ThingID string `yaml:"thingID,omitempty"`
-	// EventID of the event as defined in the TD document
-	EventID string `yaml:"eventID"`
+	// Name of the event as defined in the TD document
+	Name string `yaml:"name"`
 	// Optional event payload as defined in the TD document
 	Payload []byte `yaml:"payload,omitempty"`
-	// Timestamp the event was created
+	// Timestamp the event was created in milliseconds since Epoc
 	Timestamp int64 `yaml:"timestamp"`
 }
 
@@ -48,7 +48,7 @@ type RequestMessage struct {
 	ClientID string `yaml:"clientID"`
 	// Optional action payload as defined in the TD document
 	Payload []byte `yaml:"payload,omitempty"`
-	// Timestamp the action was issued
+	// Timestamp the event was created in milliseconds since Epoc
 	Timestamp int64 `yaml:"timestamp"`
 
 	// Reply to the received action with optional payload or error
@@ -229,8 +229,9 @@ type IHubClient interface {
 	//
 	//	agentID is the ID of the device or service publishing the event, or "" for any agent.
 	//	thingID is the ID of the Thing whose events to receive, or "" for any Things.
+	//  eventName is the name of the event, or "" for any event
 	// The handler receives an event message with payload.
-	SubEvents(agentID string, thingID string,
+	SubEvents(agentID string, thingID string, eventName string,
 		handler func(msg *EventMessage)) (ISubscription, error)
 
 	// SubRPCRequest subscribes a client to receive RPC capability method request.

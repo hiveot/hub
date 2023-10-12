@@ -108,10 +108,10 @@ func HandleRequestMessage(clientID string, method interface{}, payload []byte) (
 // SubRPCCapability is a helper to easily subscribe capability methods with their handler.
 // The handler must have signature func(clientID string, args interface{})(interface{},error)
 //
+//	hc is the agent connection to the message bus
 //	capID is the capability to register
 //	capMap maps method names to their implementation
-//	hc is the service agent connection to the message bus
-func SubRPCCapability(capID string, capMap map[string]interface{}, hc IHubClient) (ISubscription, error) {
+func SubRPCCapability(hc IHubClient, capID string, capMap map[string]interface{}) (ISubscription, error) {
 	// subscribe to the capability with our own handler.
 	// the handler invokes the method registered with the capability map,
 	// after unmarshalling the request argument.

@@ -310,7 +310,7 @@ func (hc *MqttHubClient) SubRequest(
 			ThingID:   thingID,
 			Name:      name,
 			Payload:   m.Payload,
-			Timestamp: timeStamp.Unix(),
+			Timestamp: timeStamp.UnixMilli(),
 			SendReply: func(payload []byte, err error) error {
 				return hc.sendReply(m, payload, err)
 			},
@@ -363,10 +363,10 @@ func (hc *MqttHubClient) SubConfig(
 }
 
 func (hc *MqttHubClient) SubEvents(
-	agentID string, thingID string,
+	agentID string, thingID string, name string,
 	cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
 
-	topic := MakeTopic(vocab.MessageTypeEvent, agentID, thingID, "", "")
+	topic := MakeTopic(vocab.MessageTypeEvent, agentID, thingID, name, "")
 
 	return hc.Sub(topic, func(topic string, payload []byte) {
 
@@ -378,9 +378,9 @@ func (hc *MqttHubClient) SubEvents(
 		eventMsg := &hubclient.EventMessage{
 			AgentID:   agentID,
 			ThingID:   thingID,
-			EventID:   name,
+			Name:      name,
 			Payload:   payload,
-			Timestamp: time.Now().Unix(),
+			Timestamp: time.Now().UnixMilli(),
 		}
 		cb(eventMsg)
 	})

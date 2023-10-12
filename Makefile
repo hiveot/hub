@@ -9,7 +9,7 @@ INSTALL_HOME=~/bin/hiveot
 
 all: core plugins hubcli  ## Build APIs, CLI, Hub services
 
-core: natscore mqttcore  launcher certs ## Build core services including mqttcore and natscore
+core: natscore mqttcore  launcher certs directory ## Build core services including mqttcore and natscore
 
 # natscore includes the embedded auth service
 natscore:

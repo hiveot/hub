@@ -206,13 +206,13 @@ func (svc *SelfSignedCertsService) CreateUserCert(
 func (svc *SelfSignedCertsService) Start() (err error) {
 	// for testing, hc can be nil
 	if svc.hc != nil {
-		svc.mngSub, err = hubclient.SubRPCCapability(certs.CertsManageCertsCapability,
+		svc.mngSub, err = hubclient.SubRPCCapability(svc.hc, certs.CertsManageCertsCapability,
 			map[string]interface{}{
 				certs.CreateDeviceCertReq:  svc.CreateDeviceCert,
 				certs.CreateServiceCertReq: svc.CreateServiceCert,
 				certs.CreateUserCertReq:    svc.CreateUserCert,
 				certs.VerifyCertReq:        svc.VerifyCert,
-			}, svc.hc)
+			})
 		//svc.mngSub, err = svc.hc.SubRPCRequest(
 		//	certs.CertsManageCertsCapability, svc.HandleRequest)
 	}

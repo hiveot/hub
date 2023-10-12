@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/cmd/hubcli/certs"
 	"github.com/hiveot/hub/cmd/hubcli/directorycli"
 	"github.com/hiveot/hub/cmd/hubcli/launchercli"
+	"github.com/hiveot/hub/cmd/hubcli/pubsubcli"
 	"github.com/hiveot/hub/cmd/hubcli/setup"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/hubconnect"
@@ -114,6 +115,10 @@ func main() {
 			launchercli.LauncherStopCommand(&hc),
 
 			directorycli.DirectoryListCommand(&hc),
+
+			pubsubcli.PubActionCommand(&hc),
+			pubsubcli.SubEventsCommand(&hc),
+			pubsubcli.SubTDCommand(&hc),
 		},
 	}
 

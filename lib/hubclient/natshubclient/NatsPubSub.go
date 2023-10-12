@@ -196,10 +196,10 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *hubclient.Ev
 			}
 			msg := &hubclient.EventMessage{
 				//SenderID: msg.Header.
-				EventID:   name,
 				AgentID:   pubID,
 				ThingID:   thID,
-				Timestamp: timeStamp.Unix(),
+				Name:      name,
+				Timestamp: timeStamp.UnixMilli(),
 				Payload:   natsMsg.Data,
 			}
 			cb(msg)
@@ -256,10 +256,10 @@ func (hc *NatsHubClient) SubConfig(
 }
 
 func (hc *NatsHubClient) SubEvents(
-	agentID string, thingID string,
+	agentID string, thingID string, name string,
 	cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
 
-	subject := MakeSubject(vocab.MessageTypeEvent, agentID, thingID, "", "")
+	subject := MakeSubject(vocab.MessageTypeEvent, agentID, thingID, name, "")
 	nsub, err := hc.nc.Subscribe(subject, func(msg *nats.Msg) {
 
 		_, agentID, thingID, name, _, err := SplitSubject(msg.Subject)
@@ -269,13 +269,13 @@ func (hc *NatsHubClient) SubEvents(
 		timeStamp := time.Now().Unix()
 		md, _ := msg.Metadata()
 		if md != nil {
-			timeStamp = md.Timestamp.Unix()
+			timeStamp = md.Timestamp.UnixMilli()
 		}
 		evmsg := &hubclient.EventMessage{
 			//SenderID: msg.Header.
-			EventID:   name,
 			AgentID:   agentID,
 			ThingID:   thingID,
+			Name:      name,
 			Timestamp: timeStamp,
 			Payload:   msg.Data,
 		}

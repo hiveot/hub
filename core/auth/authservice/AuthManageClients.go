@@ -211,7 +211,7 @@ func (svc *AuthManageClients) Start() (err error) {
 	if svc.hc != nil {
 		//svc.mngSub, err = svc.hc.SubRPCRequest(
 		//	auth.AuthManageClientsCapability, svc.HandleRequest)
-		svc.mngSub, err = hubclient.SubRPCCapability(auth.AuthManageClientsCapability,
+		svc.mngSub, err = hubclient.SubRPCCapability(svc.hc, auth.AuthManageClientsCapability,
 			map[string]interface{}{
 				auth.AddDeviceReq:            svc.AddDevice,
 				auth.AddServiceReq:           svc.AddService,
@@ -223,7 +223,7 @@ func (svc *AuthManageClients) Start() (err error) {
 				auth.UpdateClientReq:         svc.UpdateClient,
 				auth.UpdateClientPasswordReq: svc.UpdateClientPassword,
 				auth.UpdateClientRoleReq:     svc.UpdateClientRole,
-			}, svc.hc)
+			})
 	}
 	return err
 }
