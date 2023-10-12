@@ -46,7 +46,7 @@ func (svc *AuthService) Start() (err error) {
 		DisplayName: "Auth Service",
 		PubKey:      myKeyPub,
 	}
-	resp1, err := mngClients.AddService(args1)
+	resp1, err := mngClients.AddService(auth.AuthServiceName, args1)
 	if err != nil {
 		return fmt.Errorf("failed to setup the auth service: %w", err)
 	}
@@ -97,7 +97,7 @@ func (svc *AuthService) Start() (err error) {
 		DisplayName: "Launcher Service",
 		PubKey:      launcherKeyPub,
 	}
-	resp2, err := svc.MngClients.AddService(args2)
+	resp2, err := svc.MngClients.AddService(auth.AuthServiceName, args2)
 	if err == nil {
 		// remove the readonly token file if it already exists
 		_ = os.Remove(svc.cfg.LauncherTokenFile)
@@ -113,7 +113,7 @@ func (svc *AuthService) Start() (err error) {
 		PubKey:      adminKeyPub,
 		Role:        auth.ClientRoleAdmin,
 	}
-	resp3, err := svc.MngClients.AddUser(args3)
+	resp3, err := svc.MngClients.AddUser(auth.AuthServiceName, args3)
 	if err == nil {
 		// remove the readonly token file if it already exists
 		_ = os.Remove(svc.cfg.AdminUserTokenFile)

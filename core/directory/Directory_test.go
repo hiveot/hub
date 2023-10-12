@@ -2,7 +2,6 @@ package directory_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/directory"
 	"github.com/hiveot/hub/core/directory/dirclient"
@@ -11,14 +10,12 @@ import (
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/thing"
 	"github.com/hiveot/hub/lib/vocab"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"log/slog"
 	"os"
 	"path"
 	"testing"
-	"time"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/hiveot/hub/lib/logging"
 )
@@ -59,10 +56,10 @@ func startDirectory() (
 	readCl := dirclient.NewReadDirectoryClient(hc2)
 	updateCl := dirclient.NewUpdateDirectoryClient(hc2)
 	return readCl, updateCl, func() {
-		hc2.Disconnect()
-		hc1.Disconnect()
 		_ = svc.Stop()
 		_ = store.Close()
+		hc2.Disconnect()
+		hc1.Disconnect()
 	}
 }
 
@@ -109,8 +106,8 @@ func TestAddRemoveTD(t *testing.T) {
 	t.Log("--- TestAddRemoveTD start ---")
 	defer t.Log("--- TestAddRemoveTD end ---")
 	_ = os.Remove(testStoreFile)
-	const agentID = "urn:test"
-	const thing1ID = "urn:thing1"
+	const agentID = "agent1"
+	const thing1ID = "thing1"
 	const title1 = "title1"
 
 	rd, up, stopFunc := startDirectory()
@@ -128,6 +125,7 @@ func TestAddRemoveTD(t *testing.T) {
 	}
 	err = up.RemoveTD(agentID, thing1ID)
 	assert.NoError(t, err)
+	// after removal, getTD should fail
 	td3, err := rd.GetTD(agentID, thing1ID)
 	assert.Empty(t, td3)
 	assert.Error(t, err)
@@ -160,53 +158,9 @@ func TestAddRemoveTD(t *testing.T) {
 //	slog.Infof("--- TestListTDs end ---")
 //}
 
-func TestCursor(t *testing.T) {
-	t.Log("--- TestCursor start ---")
-	defer t.Log("--- TestCursor end ---")
-	_ = os.Remove(testStoreFile)
-	const publisherID = "urn:test"
-	const thing1ID = "urn:thing1"
-	const title1 = "title1"
-
-	rd, up, stopFunc := startDirectory()
-	defer stopFunc()
-
-	// add 1 doc. the service itself also has a doc
-	tdDoc1 := createTDDoc(thing1ID, title1)
-	err := up.UpdateTD(publisherID, thing1ID, tdDoc1)
-	require.NoError(t, err)
-
-	// expect 2 docs, the service itself and the one just added
-	cursor, err := rd.GetCursor()
-	assert.NoError(t, err)
-	defer cursor.Release()
-
-	tdValue, valid, err := cursor.First()
-	assert.True(t, valid)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, tdValue)
-	assert.NotEmpty(t, tdValue.Data)
-
-	tdValue, valid, err = cursor.Next() // second
-	assert.NoError(t, err)
-	assert.True(t, valid)
-	assert.NotEmpty(t, tdValue)
-	assert.NotEmpty(t, tdValue.Data)
-
-	tdValue, valid, err = cursor.Next() // there is no third
-	assert.NoError(t, err)
-	assert.False(t, valid)
-	assert.Empty(t, tdValue)
-
-	tdValues, valid, err := cursor.NextN(10) // still no third
-	assert.NoError(t, err)
-	assert.False(t, valid)
-	assert.Empty(t, tdValues)
-}
-
-func TestPubSub(t *testing.T) {
-	t.Log("--- TestPubSub start ---")
-	defer t.Log("--- TestPubSub end ---")
+func TestPubTD(t *testing.T) {
+	t.Log("--- TestPubTD start ---")
+	defer t.Log("--- TestPubTD end ---")
 	_ = os.Remove(testStoreFile)
 	const agentID = "test"
 	const thing1ID = "thing3"
@@ -235,6 +189,51 @@ func TestPubSub(t *testing.T) {
 	assert.NotNil(t, tv2)
 	assert.Equal(t, thing1ID, tv2.ThingID)
 	assert.Equal(t, tdDoc, tv2.Data)
+}
+
+func TestCursor(t *testing.T) {
+	t.Log("--- TestCursor start ---")
+	defer t.Log("--- TestCursor end ---")
+	_ = os.Remove(testStoreFile)
+	const publisherID = "urn:test"
+	const thing1ID = "urn:thing1"
+	const title1 = "title1"
+
+	rd, up, stopFunc := startDirectory()
+	defer stopFunc()
+
+	// add 1 doc. the service itself also has a doc
+	tdDoc1 := createTDDoc(thing1ID, title1)
+	err := up.UpdateTD(publisherID, thing1ID, tdDoc1)
+	require.NoError(t, err)
+
+	// expect 3 docs, two service capabilities and the one just added
+	cursor, err := rd.GetCursor()
+	require.NoError(t, err)
+	defer cursor.Release()
+
+	tdValue, valid, err := cursor.First()
+	require.NoError(t, err)
+	assert.True(t, valid)
+	assert.NotEmpty(t, tdValue)
+	assert.NotEmpty(t, tdValue.Data)
+
+	tdValue, valid, err = cursor.Next() // second
+	tdValue, valid, err = cursor.Next() // 3rd
+	assert.NoError(t, err)
+	assert.True(t, valid)
+	assert.NotEmpty(t, tdValue)
+	assert.NotEmpty(t, tdValue.Data)
+
+	tdValue, valid, err = cursor.Next() // there is no 4th
+	assert.NoError(t, err)
+	assert.False(t, valid)
+	assert.Empty(t, tdValue)
+
+	tdValues, valid, err := cursor.NextN(10) // still no third
+	assert.NoError(t, err)
+	assert.False(t, valid)
+	assert.Empty(t, tdValues)
 }
 
 //func TestQueryTDs(t *testing.T) {
@@ -267,40 +266,3 @@ func TestPubSub(t *testing.T) {
 //	assert.Equal(t, title1, el0.Title)
 //	slog.Infof("--- TestQueryTDs end ---")
 //}
-
-// simple performance test update/read, comparing direct vs capnp access
-// TODO: turn into bench test
-func TestPerf(t *testing.T) {
-	t.Log("--- TestPerf start ---")
-	defer t.Log("--- TestPerf end ---")
-	_ = os.Remove(testStoreFile)
-	const publisherID = "urn:test"
-	const thing1ID = "urn:thing1"
-	const title1 = "title1"
-	const count = 1000
-
-	// fire up the directory
-	rd, up, stopFunc := startDirectory()
-	_ = up
-	defer stopFunc()
-
-	// test update
-	t1 := time.Now()
-	for i := 0; i < count; i++ {
-		tdDoc1 := createTDDoc(thing1ID, title1)
-		err := up.UpdateTD(publisherID, thing1ID, tdDoc1)
-		require.NoError(t, err)
-	}
-	d1 := time.Now().Sub(t1)
-	fmt.Printf("Duration for update %d iterations: %d msec\n", count, int(d1.Milliseconds()))
-
-	// test read
-	t2 := time.Now()
-	for i := 0; i < count; i++ {
-		td, err := rd.GetTD(publisherID, thing1ID)
-		require.NoError(t, err)
-		assert.NotNil(t, td)
-	}
-	d2 := time.Now().Sub(t2)
-	fmt.Printf("Duration for read %d iterations: %d msec\n", count, int(d2.Milliseconds()))
-}

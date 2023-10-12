@@ -10,20 +10,22 @@ import (
 )
 
 // HandleRequestMessage unmarshal a request message parameters, passes it to the associated method,
-// and marshals the result. Intended to remove boilerplate from handling and serving requests.
-// The method argument and result can be a struct value or reference.
+// and marshals the result. Intended to remove boilerplate from RPC service request handlers.
+//
+// The first argument is always the clientID of the client invoking the request.
+// The second argument and result can be a struct value or reference.
 //
 // Supported method types are:
 //
-//   - func(type1) (type2,error)
-//   - func(type1) (error)
-//   - func(type1) ()
-//   - func() (type,error)
-//   - func() (error)
-//   - func() ()
+//   - func(string, type1) (type2,error)
+//   - func(string, type1) (error)
+//   - func(string, type1) ()
+//   - func(string) (type,error)
+//   - func(string) (error)
+//   - func(string) ()
 //
 // where type1 and type2 can be a struct or native type, or a pointer to a struct or native type.
-func HandleRequestMessage(method interface{}, payload []byte) (respData []byte, err error) {
+func HandleRequestMessage(clientID string, method interface{}, payload []byte) (respData []byte, err error) {
 
 	// magic spells found at: https://github.com/a8m/reflect-examples#call-function-with-list-of-arguments-and-validate-return-values
 	// and here: https://stackoverflow.com/questions/45679408/unmarshal-json-to-reflected-struct
@@ -35,10 +37,18 @@ func HandleRequestMessage(method interface{}, payload []byte) (respData []byte, 
 	nrArgs := methodType.NumIn()
 
 	if nrArgs == 0 {
-		// nothing to do here
+		// nothing to do here, apparently not interested in the clientID
 	} else if nrArgs == 1 {
 		// determine the type of argument, if it is passed by value or reference
 		argType := methodType.In(0)
+		argIsClientID := (argType.Kind() == reflect.String)
+		if argIsClientID {
+			argv[0] = reflect.ValueOf(clientID)
+		}
+	} else if nrArgs == 2 {
+		// determine the type of argument, if it is passed by value or reference
+		argv[0] = reflect.ValueOf(clientID)
+		argType := methodType.In(1)
 		argIsRef := (argType.Kind() == reflect.Ptr)
 		n1 := reflect.New(argType) // pointer to a new zero value of type
 		n1El := n1.Elem()
@@ -48,11 +58,11 @@ func HandleRequestMessage(method interface{}, payload []byte) (respData []byte, 
 			// n1El is a struct pointer value?
 			// for some reason, unmarshall still needs to receive the address of it
 			err = json.Unmarshal(payload, n1El.Addr().Interface())
-			argv[0] = reflect.ValueOf(n1El.Interface())
+			argv[1] = reflect.ValueOf(n1El.Interface())
 		} else {
 			// n1El is the value, unmarshal to its address
 			err = json.Unmarshal(payload, n1El.Addr().Interface())
-			argv[0] = reflect.ValueOf(n1El.Interface())
+			argv[1] = reflect.ValueOf(n1El.Interface())
 		}
 		if err != nil {
 			slog.Error("HandleRequestMessage, failed unmarshal request", "err", err)
@@ -96,6 +106,7 @@ func HandleRequestMessage(method interface{}, payload []byte) (respData []byte, 
 }
 
 // SubRPCCapability is a helper to easily subscribe capability methods with their handler.
+// The handler must have signature func(clientID string, args interface{})(interface{},error)
 //
 //	capID is the capability to register
 //	capMap maps method names to their implementation
@@ -112,7 +123,7 @@ func SubRPCCapability(capID string, capMap map[string]interface{}, hc IHubClient
 		if !found {
 			return fmt.Errorf("method '%s' not part of capability '%s'", msg.Name, capID)
 		}
-		respData, err = HandleRequestMessage(capMethod, msg.Payload)
+		respData, err = HandleRequestMessage(msg.ClientID, capMethod, msg.Payload)
 		if err == nil {
 			if respData == nil {
 				err = msg.SendAck()

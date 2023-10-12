@@ -19,8 +19,9 @@ const withQos = 1
 
 // PahoSubscription implements hubclient.ISubscription interface
 type PahoSubscription struct {
-	topic string
-	pcl   *paho.Client
+	topic    string
+	pcl      *paho.Client
+	clientID string // the client that is subscribing
 }
 
 // MqttHubSubscription  subscription helper
@@ -33,14 +34,19 @@ type PahoSubscription struct {
 
 // Unsubscribe from the subscription
 func (sub *PahoSubscription) Unsubscribe() {
-	slog.Info("Unsubscribe", "topic", sub.topic)
+	slog.Info("Unsubscribe",
+		slog.String("topic", sub.topic),
+		slog.String("clientID", sub.clientID))
 	u := &paho.Unsubscribe{
 		Topics: []string{sub.topic},
 		//Properties: nil,
 	}
 	_, err := sub.pcl.Unsubscribe(context.Background(), u)
 	if err != nil {
-		slog.Warn("failed unsubscribe", "topic", sub.topic, "err", err.Error())
+		slog.Warn("failed unsubscribe",
+			slog.String("topic", sub.topic),
+			slog.String("clientID", sub.clientID),
+			slog.String("err", err.Error()))
 	}
 }
 
@@ -49,13 +55,14 @@ func (hc *MqttHubClient) ParseResponse(data []byte, resp interface{}) error {
 	var err error
 	if data == nil || len(data) == 0 {
 		if resp != nil {
-			err = errors.New("expected response but none received")
+			err = fmt.Errorf("ParseResponse: client '%s', expected a response but none received", hc.clientID)
 		} else {
 			err = nil // all good
 		}
 	} else {
 		if resp == nil {
-			err = errors.New("unexpected response")
+			err = fmt.Errorf("ParseResponse: client '%s', received response but none was expected. data=%s",
+				hc.clientID, data)
 		} else {
 			err = ser.Unmarshal(data, resp)
 		}
@@ -265,8 +272,9 @@ func (hc *MqttHubClient) Sub(topic string, cb func(topic string, msg []byte)) (h
 	})
 	_ = suback
 	hcSub := &PahoSubscription{
-		topic: topic,
-		pcl:   hc.pcl,
+		topic:    topic,
+		pcl:      hc.pcl,
+		clientID: hc.clientID,
 	}
 	return hcSub, err
 }

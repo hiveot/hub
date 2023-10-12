@@ -85,7 +85,7 @@ func (h *Handler) Request(ctx context.Context, pb *paho.Publish) (*paho.Publish,
 		pb.Properties.ResponseTopic = fmt.Sprintf(InboxTopicFormat, h.c.ClientID)
 	}
 	pb.Retain = false
-	slog.Info("Handler: publish request", "topic", pb.Topic)
+	slog.Debug("Handler.Request: publish request", slog.String("topic", pb.Topic))
 	pr, err := h.c.Publish(ctx, pb)
 	_ = pr
 	if err != nil {
@@ -110,7 +110,7 @@ func (h *Handler) responseHandler(pb *paho.Publish) {
 	if rChan == nil {
 		return
 	}
-	slog.Info("Handler: received response", "topic", pb.Topic)
+	slog.Debug("Handler: responseHandler", slog.String("topic", pb.Topic))
 
 	rChan <- pb
 }

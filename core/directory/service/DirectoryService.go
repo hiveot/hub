@@ -52,7 +52,12 @@ func (svc *DirectoryService) handleTDEvent(event *hubclient.EventMessage) {
 	if event.EventID != vocab.EventNameTD {
 		return
 	}
-	err := svc.updateDirSvc.UpdateTD(event.AgentID, event.ThingID, event.Payload)
+	args := directory.UpdateTDArgs{
+		AgentID: event.AgentID,
+		ThingID: event.ThingID,
+		TDDoc:   event.Payload,
+	}
+	err := svc.updateDirSvc.UpdateTD(event.AgentID, args)
 	if err != nil {
 		slog.Error("handleTDEvent failed", "err", err)
 	}

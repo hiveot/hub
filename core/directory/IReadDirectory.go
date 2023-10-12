@@ -49,12 +49,18 @@ const CursorNextNMethod = "cursorNextN"
 type CursorNextNArgs struct {
 	// CursorKey with current iteration location
 	CursorKey string
-	Limit     int
+	Limit     uint
 }
 type CursorNextNResp struct {
 	Values         []thing.ThingValue
 	ItemsRemaining bool
 	// CursorKey with new iteration location
+	CursorKey string
+}
+
+const CursorReleaseMethod = "release"
+
+type CursorReleaseArgs struct {
 	CursorKey string
 }
 
@@ -95,7 +101,7 @@ type IDirectoryCursor interface {
 	// Returns empty list when trying to read past the last value
 	// itemsRemaining is true as long as more items can be retrieved
 	// limit provides the maximum number of items to obtain.
-	NextN(limit int) (batch []thing.ThingValue, itemsRemaining bool, err error)
+	NextN(limit uint) (batch []thing.ThingValue, itemsRemaining bool, err error)
 
 	// Release the cursor after use
 	Release()

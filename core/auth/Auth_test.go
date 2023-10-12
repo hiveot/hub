@@ -65,7 +65,7 @@ func startTestAuthnService() (authnSvc *authservice.AuthService, mng auth.IAuthn
 		PubKey:      authClientPub,
 		Role:        auth.ClientRoleAdmin,
 	}
-	resp, err := authnSvc.MngClients.AddUser(args)
+	resp, err := authnSvc.MngClients.AddUser("test-client", args)
 	serverURL, _, _ := testServer.MsgServer.GetServerURLs()
 	hc2 := hubconnect.NewHubClient(serverURL, "auth-test-client", authClientKey, testServer.CertBundle.CaCert, core)
 	err = hc2.ConnectWithToken(resp.Token)

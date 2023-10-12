@@ -36,7 +36,7 @@ func (ts *TestServer) AddClients(newClients []msgserver.ClientAuthInfo) error {
 				PubKey:      authInfo.PubKey,
 				Role:        authInfo.Role,
 			}
-			_, err = ts.AuthService.MngClients.AddUser(args)
+			_, err = ts.AuthService.MngClients.AddUser("testServer", args)
 			if err != nil {
 				slog.Error("AddClients error", "clientID", authInfo.ClientID, "err", err)
 			}
@@ -82,7 +82,7 @@ func (ts *TestServer) AddConnectClient(clientID string, clientType string, clien
 			PubKey:      kpPub,
 			Role:        clientRole,
 		}
-		resp, err2 := ts.AuthService.MngClients.AddUser(args)
+		resp, err2 := ts.AuthService.MngClients.AddUser("testServer", args)
 		err = err2
 		token = resp.Token
 	} else {

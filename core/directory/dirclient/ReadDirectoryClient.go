@@ -21,7 +21,15 @@ type ReadDirectoryClient struct {
 func (cl *ReadDirectoryClient) GetCursor() (directory.IDirectoryCursor, error) {
 	resp := directory.GetCursorResp{}
 	_, err := cl.hc.PubRPCRequest(cl.agentID, cl.capID, directory.GetCursorMethod, nil, &resp)
-	cursor := NewDirectoryCursorClient(resp.CursorKey, cl.hc)
+	// how does the server create a cursor?
+	//   A: in-mem iterator from DB, identified by cursor key
+	//         problem: needs release
+	//                  needs limits per client
+	//   B: ?
+	// TBD. Should cursor server have its own on-the-fly capability ID?
+	//   A: pass with address
+	//   B: pass with content
+	cursor := NewDirectoryCursorClient(cl.agentID, cl.capID, resp.CursorKey, cl.hc)
 	return cursor, err
 }
 

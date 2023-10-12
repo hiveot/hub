@@ -21,20 +21,28 @@ type UpdateDirectoryService struct {
 	bucket buckets.IBucket
 }
 
-func (svc *UpdateDirectoryService) RemoveTD(agentID, thingID string) error {
-	slog.Info("RemoveTD", "clientID", svc.clientID,
-		"agentID", agentID, "thingID", thingID)
-	thingAddr := agentID + "/" + thingID
+func (svc *UpdateDirectoryService) RemoveTD(senderID string, args directory.RemoveTDArgs) error {
+	slog.Info("RemoveTD",
+		slog.String("senderID", senderID),
+		slog.String("agentID", args.AgentID),
+		slog.String("thingID", args.ThingID))
+
+	thingAddr := args.AgentID + "/" + args.ThingID
 	err := svc.bucket.Delete(thingAddr)
 	return err
 }
 
-func (svc *UpdateDirectoryService) UpdateTD(agentID, thingID string, td []byte) error {
-	//logrus.Infof("clientID=%s, thingID=%s", svc.clientID, thingID)
+func (svc *UpdateDirectoryService) UpdateTD(senderID string, args directory.UpdateTDArgs) error {
+	slog.Info("UpdateTD",
+		slog.String("senderID", senderID),
+		slog.String("agentID", args.AgentID),
+		slog.String("thingID", args.ThingID))
 
-	thingValue := thing.NewThingValue(agentID, thingID, vocab.EventNameTD, td)
+	// store the TD ThingValue
+	thingValue := thing.NewThingValue(
+		args.AgentID, args.ThingID, vocab.EventNameTD, args.TDDoc)
 	bucketData, _ := json.Marshal(thingValue)
-	thingAddr := agentID + "/" + thingID
+	thingAddr := args.AgentID + "/" + args.ThingID
 	err := svc.bucket.Set(thingAddr, bucketData)
 	return err
 }
