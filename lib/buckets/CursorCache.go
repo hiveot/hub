@@ -1,6 +1,9 @@
 package buckets
 
 import (
+	"context"
+	"fmt"
+	"log/slog"
 	"strconv"
 	"sync"
 	"time"
@@ -10,28 +13,32 @@ type ClientCursors []IBucketCursor
 
 type CursorInfo struct {
 	Key string
+	// optional bucket instance this cursor operates on
+	// if provided it will be released with the cursor
+	Bucket IBucket
 	// the stored cursor
-	Cursor interface{}
+	Cursor IBucketCursor
 	// clientID of the cursor owner
 	OwnerID string
-	// expires
-	Expires time.Time
+	// last use of the cursor
+	LastUsed time.Time
+	// lifespan of cursor after last use
+	Lifespan time.Duration
 }
 
-// CursorCache manages a cache of cursors that can be addressed remotely by key.
-// Intended for servers that let remote clients to iterate a cursor.
+// CursorCache manages a set of cursors that can be addressed remotely by key.
+// Intended for servers that let remote clients iterate a cursor in the bucket store.
 //
-// The approach taken is store each cursor in a cache and generate a key for easy lookup.
+// Added cursors are stored in a map by generated key along with some metadata
+// such as its expiry and optionally the bucket that was allocated to use the iterator.
 // The key is passed back to the client for use during iterations.
 // The client must release the cursor it when done.
 //
-// To prevent memory leaks due to not releasing a cursor the following constraints are used:
-//   - cursors are linked to clientIDs. When a client disconnects, all cursors from this
-//     client can be removed in one call.
-//   - the number of cursors per client is limited. In most cases a few should suffice.
-//     if the number of iterators exceeds the limit, the policy can be either to delete
-//     the oldest or refuse a new iterator.
-//   - the lifespan of unreleased cursors is limited as provided during creation.
+// To prevent memory leaks due to not releasing a cursor, cursors are given a limited
+// lifespan non-use lifespan, after which they are removed. The default is 1 minute.
+//
+// Cursors are linked to their owner to prevent 'accidental' use by others. Only
+// if the client's ID matches that of the cursor owner, it can be used.
 type CursorCache struct {
 	// lookup a cursor by key
 	cursorsByKey map[string]CursorInfo
@@ -39,73 +46,94 @@ type CursorCache struct {
 	// at 1000 cursors per sec this lasts 500M years between reboots ;)
 	cursorCounter uint64
 	mux           sync.RWMutex
+	// stop the background loop
+	stopCh chan bool
 }
 
-// AddCursor adds a cursor to the tracker and returns its key
+// Add adds a cursor to the tracker and returns its key
 //
 //	cursor is the object holding the cursor
+//	bucket instance created specifically for this cursor. optional.
 //	clientID of the owner
-//	lifespan of the cursor
-func (sc *CursorCache) AddCursor(
-	cursor interface{}, clientID string, lifespan time.Duration) string {
-	sc.mux.Lock()
-	defer sc.mux.Unlock()
+//	lifespan of the cursor after last use
+func (cc *CursorCache) Add(
+	cursor IBucketCursor, bucket IBucket, clientID string, lifespan time.Duration) string {
+	cc.mux.Lock()
+	defer cc.mux.Unlock()
 
-	sc.cursorCounter++
+	cc.cursorCounter++
 	// the key is not a secret, only the owner can use it
-	key := strconv.FormatUint(sc.cursorCounter, 16)
+	key := strconv.FormatUint(cc.cursorCounter, 16)
 	ci := CursorInfo{
-		Key:     key,
-		Cursor:  cursor,
-		OwnerID: clientID,
-		Expires: time.Now().Add(lifespan),
+		Key:      key,
+		Bucket:   bucket,
+		Cursor:   cursor,
+		OwnerID:  clientID,
+		Lifespan: lifespan,
 	}
-	sc.cursorsByKey[key] = ci
+	cc.cursorsByKey[key] = ci
 	return key
 }
 
-// GetCursor returns the cursor with the given key or nil if not found
-func (sc *CursorCache) GetCursor(cursorKey string) (ci CursorInfo, found bool) {
-	sc.mux.Lock()
-	defer sc.mux.Unlock()
+// Get returns the cursor with the given key.
+// An error is returned if the cursor is not found, has expired, or belongs to a different owner.
+//
+//	cursorKey obtained with Add()
+//	clientID requesting the cursor
+//	updateLastUsed resets the lifespan of the cursor to start now
+func (cc *CursorCache) Get(
+	cursorKey string, clientID string, updateLastUsed bool) (cursor IBucketCursor, err error) {
 
-	ci, found = sc.cursorsByKey[cursorKey]
-	return ci, found
-}
+	cc.mux.Lock()
+	defer cc.mux.Unlock()
 
-// RemoveCursor removes the cursor from the tracker
-// The ownser has to release the cursor after removal.
-func (sc *CursorCache) RemoveCursor(cursorKey string) {
-	sc.mux.Lock()
-	defer sc.mux.Unlock()
-	delete(sc.cursorsByKey, cursorKey)
+	ci, found := cc.cursorsByKey[cursorKey]
+	if !found {
+		slog.Warn("Cursor not found or expired",
+			slog.String("cursorKey", cursorKey),
+			slog.String("clientID", clientID))
+		return nil, fmt.Errorf("Cursor not found or expired")
+	} else if ci.OwnerID != clientID {
+		slog.Warn("Cursor belongs to different client",
+			slog.String("cursorKey", cursorKey),
+			slog.String("ownerID", ci.OwnerID),
+			slog.String("clientID", clientID))
+		return nil, fmt.Errorf("cursor doesn't belong to client '%s'", clientID)
+	}
+	if found && updateLastUsed {
+		ci.LastUsed = time.Now()
+	}
+	return ci.Cursor, nil
 }
 
 // GetExpiredCursors returns a list of cursors that have expired
 // It is up to the user to remove and release the cursor
-func (sc *CursorCache) GetExpiredCursors() []CursorInfo {
+func (cc *CursorCache) GetExpiredCursors() []CursorInfo {
 	expiredCursors := make([]CursorInfo, 0)
-	sc.mux.RLock()
-	defer sc.mux.RUnlock()
+	cc.mux.RLock()
+	defer cc.mux.RUnlock()
+
 	now := time.Now()
 	// rather brute force, might need a sorted list if heavily used
-	for _, ci := range sc.cursorsByKey {
-		if ci.Expires.Sub(now) < 0 {
+	// however, it is not expected to have a lot of active cursors.
+	for _, ci := range cc.cursorsByKey {
+		// if cursor hasn't been used it is considered expired
+		if now.Sub(ci.LastUsed) > ci.Lifespan {
 			expiredCursors = append(expiredCursors, ci)
 		}
 	}
 	return expiredCursors
 }
 
-// GetCursorsByOwner returns a list of cursors that are ownsed by a client.
+// GetCursorsByOwner returns a list of cursors that are owned by a client.
 // Intended to remove cursors whose owner has disconnected.
 // It is up to the user to remove and release the cursor
-func (sc *CursorCache) GetCursorsByOwner(ownerID string) []CursorInfo {
+func (cc *CursorCache) GetCursorsByOwner(ownerID string) []CursorInfo {
 	ownedCursors := make([]CursorInfo, 0)
-	sc.mux.RLock()
-	defer sc.mux.RUnlock()
+	cc.mux.RLock()
+	defer cc.mux.RUnlock()
 	// rather brute force, might need to switch this to a map if heavily used
-	for _, ci := range sc.cursorsByKey {
+	for _, ci := range cc.cursorsByKey {
 		if ci.OwnerID == ownerID {
 			ownedCursors = append(ownedCursors, ci)
 		}
@@ -113,11 +141,68 @@ func (sc *CursorCache) GetCursorsByOwner(ownerID string) []CursorInfo {
 	return ownedCursors
 }
 
+// Release releases the cursor and removes the cursor from the tracker
+// If a bucket was included it will be closed as well.
+func (cc *CursorCache) Release(clientID string, cursorKey string) error {
+	cc.mux.Lock()
+	defer cc.mux.Unlock()
+	ci, found := cc.cursorsByKey[cursorKey]
+	if !found {
+		return nil
+	}
+	if ci.OwnerID != clientID {
+		slog.Warn("Release: Cursor belongs to different client",
+			slog.String("cursorKey", cursorKey),
+			slog.String("ownerID", ci.OwnerID),
+			slog.String("clientID", clientID))
+		return fmt.Errorf("cursor doesn't belong to client '%s'", clientID)
+	}
+
+	delete(cc.cursorsByKey, cursorKey)
+	ci.Cursor.Release()
+	if ci.Bucket != nil {
+		err := ci.Bucket.Close()
+		if err != nil {
+			slog.Error("failed closing bucket after releasing cursor", "err", err)
+		}
+	}
+	return nil
+}
+
+// Start starts a background loop to remove expired cursors
+func (cc *CursorCache) Start() {
+	go func() {
+		for {
+			ctx, cancelFn := context.WithTimeout(context.Background(), time.Minute)
+			select {
+			case <-ctx.Done():
+			case <-cc.stopCh:
+				cancelFn()
+				break
+			}
+			cancelFn()
+			ciList := cc.GetExpiredCursors()
+			for _, ci := range ciList {
+				slog.Info("Releasing expired cursor",
+					slog.String("agentID", ci.OwnerID), slog.String("key", ci.Key))
+				// release the expired cursor and remove it from the cache
+				_ = cc.Release(ci.OwnerID, ci.Key)
+			}
+		}
+	}()
+}
+
+// Stop the background auto-expiry loop if running
+func (cc *CursorCache) Stop() {
+	cc.stopCh <- true
+}
+
 func NewCursorCache() *CursorCache {
 	cc := CursorCache{
 		cursorsByKey:  make(map[string]CursorInfo),
 		cursorCounter: 1,
 		mux:           sync.RWMutex{},
+		stopCh:        make(chan bool),
 	}
 	return &cc
 }

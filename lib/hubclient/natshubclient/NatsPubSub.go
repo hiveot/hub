@@ -158,7 +158,7 @@ func (hc *NatsHubClient) PubRPCRequest(
 
 // startEventMessageHandler listens for incoming event messages and invoke a callback handler
 // this returns when the subscription is no longer valid
-func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *hubclient.EventMessage)) error {
+func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *thing.ThingValue)) error {
 	ci, err := nsub.ConsumerInfo()
 	if err != nil {
 		slog.Error(err.Error())
@@ -194,13 +194,13 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *hubclient.Ev
 					"subject", natsMsg.Subject)
 				return
 			}
-			msg := &hubclient.EventMessage{
+			msg := &thing.ThingValue{
 				//SenderID: msg.Header.
-				AgentID:   pubID,
-				ThingID:   thID,
-				Name:      name,
-				Timestamp: timeStamp.UnixMilli(),
-				Payload:   natsMsg.Data,
+				AgentID:     pubID,
+				ThingID:     thID,
+				Name:        name,
+				CreatedMSec: timeStamp.UnixMilli(),
+				Data:        natsMsg.Data,
 			}
 			cb(msg)
 
@@ -257,7 +257,7 @@ func (hc *NatsHubClient) SubConfig(
 
 func (hc *NatsHubClient) SubEvents(
 	agentID string, thingID string, name string,
-	cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
+	cb func(msg *thing.ThingValue)) (hubclient.ISubscription, error) {
 
 	subject := MakeSubject(vocab.MessageTypeEvent, agentID, thingID, name, "")
 	nsub, err := hc.nc.Subscribe(subject, func(msg *nats.Msg) {
@@ -271,13 +271,13 @@ func (hc *NatsHubClient) SubEvents(
 		if md != nil {
 			timeStamp = md.Timestamp.UnixMilli()
 		}
-		evmsg := &hubclient.EventMessage{
+		evmsg := &thing.ThingValue{
 			//SenderID: msg.Header.
-			AgentID:   agentID,
-			ThingID:   thingID,
-			Name:      name,
-			Timestamp: timeStamp,
-			Payload:   msg.Data,
+			AgentID:     agentID,
+			ThingID:     thingID,
+			Name:        name,
+			CreatedMSec: timeStamp,
+			Data:        msg.Data,
 		}
 		cb(evmsg)
 	})
@@ -361,7 +361,7 @@ func (hc *NatsHubClient) SubRPCRequest(
 //
 //	 name of the event stream. "" for default
 //		receiveLatest to immediately receive the latest event for each event instance
-func (hc *NatsHubClient) SubStream(name string, receiveLatest bool, cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
+func (hc *NatsHubClient) SubStream(name string, receiveLatest bool, cb func(msg *thing.ThingValue)) (hubclient.ISubscription, error) {
 	if name == "" {
 		//name = natsnkeyserver.EventsIntakeStreamName
 	}

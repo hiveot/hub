@@ -9,8 +9,13 @@ import (
 // ensure its transaction is released after the cursor is no longer used.
 // This implements the IBucketCursor API
 type BBoltCursor struct {
-	bucket *bbolt.Bucket
-	cursor *bbolt.Cursor
+	bbBucket *bbolt.Bucket
+	cursor   *bbolt.Cursor
+	bucketID string
+}
+
+func (bbc *BBoltCursor) BucketID() string {
+	return bbc.bucketID
 }
 
 // First moves the cursor to the first item
@@ -91,13 +96,13 @@ func (bbc *BBoltCursor) PrevN(steps uint) (docs map[string][]byte, itemsRemainin
 }
 
 // Release the cursor
-// This ends the bbolt bucket transaction
+// This ends the bbolt bbBucket transaction
 func (bbc *BBoltCursor) Release() {
-	slog.Info("releasing bucket cursor")
-	if bbc.bucket != nil {
-		bbc.bucket.Tx().Rollback()
+	slog.Info("releasing bbBucket cursor")
+	if bbc.bbBucket != nil {
+		bbc.bbBucket.Tx().Rollback()
 		bbc.cursor = nil
-		bbc.bucket = nil
+		bbc.bbBucket = nil
 	}
 }
 
@@ -111,14 +116,15 @@ func (bbc *BBoltCursor) Seek(searchKey string) (key string, value []byte, valid 
 	return string(k), v, valid
 }
 
-func NewBBoltCursor(bucket *bbolt.Bucket) *BBoltCursor {
+func NewBBoltCursor(bucketID string, bucket *bbolt.Bucket) *BBoltCursor {
 	var bbCursor *bbolt.Cursor = nil
 	if bucket != nil {
 		bbCursor = bucket.Cursor()
 	}
 	bbc := &BBoltCursor{
-		bucket: bucket,
-		cursor: bbCursor,
+		bucketID: bucketID,
+		bbBucket: bucket,
+		cursor:   bbCursor,
 	}
 
 	return bbc

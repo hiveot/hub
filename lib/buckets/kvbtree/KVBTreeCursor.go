@@ -10,6 +10,10 @@ type KVBTreeCursor struct {
 	kviter btree.MapIter[string, []byte]
 }
 
+func (cursor *KVBTreeCursor) BucketID() string {
+	return cursor.bucket.ID()
+}
+
 // First moves the cursor to the first item
 func (cursor *KVBTreeCursor) First() (key string, value []byte, valid bool) {
 	valid = cursor.kviter.First()

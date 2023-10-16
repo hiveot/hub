@@ -363,8 +363,8 @@ func (hc *MqttHubClient) SubConfig(
 }
 
 func (hc *MqttHubClient) SubEvents(
-	agentID string, thingID string, name string,
-	cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
+	agentID string, thingID string, name string, cb func(msg *thing.ThingValue)) (
+	hubclient.ISubscription, error) {
 
 	topic := MakeTopic(vocab.MessageTypeEvent, agentID, thingID, name, "")
 
@@ -375,12 +375,12 @@ func (hc *MqttHubClient) SubEvents(
 			slog.Info("SplitTopic fail", "topic", topic, "err", err)
 			return
 		}
-		eventMsg := &hubclient.EventMessage{
-			AgentID:   agentID,
-			ThingID:   thingID,
-			Name:      name,
-			Payload:   payload,
-			Timestamp: time.Now().UnixMilli(),
+		eventMsg := &thing.ThingValue{
+			AgentID:     agentID,
+			ThingID:     thingID,
+			Name:        name,
+			Data:        payload,
+			CreatedMSec: time.Now().UnixMilli(),
 		}
 		cb(eventMsg)
 	})
@@ -406,7 +406,7 @@ func (hc *MqttHubClient) SubRPCRequest(
 //	 name of the event stream. "" for default
 //		receiveLatest to immediately receive the latest event for each event instance
 func (hc *MqttHubClient) SubStream(
-	name string, receiveLatest bool, cb func(msg *hubclient.EventMessage)) (hubclient.ISubscription, error) {
+	name string, receiveLatest bool, cb func(msg *thing.ThingValue)) (hubclient.ISubscription, error) {
 
 	return nil, fmt.Errorf("not implemented")
 }

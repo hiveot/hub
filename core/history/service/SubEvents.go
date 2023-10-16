@@ -1,46 +1,41 @@
 package service
 
 import (
-	"context"
-
-	"github.com/sirupsen/logrus"
-
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/thing"
-	"github.com/hiveot/hub/pkg/history"
-	"github.com/hiveot/hub/pkg/pubsub"
+	"log/slog"
 )
 
 type PubSubEventHandler struct {
-	addHistory history.IAddHistory
-	serviceSub pubsub.IServicePubSub
+	addHistory *AddHistory
+	eventSub   hubclient.ISubscription
+	hc         hubclient.IHubClient
 }
 
 // Start listening for events
 func (svc *PubSubEventHandler) Start() error {
-	ctx := context.Background()
-	err := svc.serviceSub.SubEvents(ctx, "", "", "",
-		func(eventValue thing.ThingValue) {
-			logrus.Infof("received event '%s'", eventValue.ID)
-
-			_ = svc.addHistory.AddEvent(ctx, eventValue)
+	var err error
+	svc.eventSub, err = svc.hc.SubEvents("", "", "",
+		func(msg *thing.ThingValue) {
+			slog.Info("received event", slog.String("name", msg.Name))
+			_ = svc.addHistory.AddEvent(msg)
 		})
 	if err != nil {
-		logrus.Errorf("Failed subscribing to event: %s", err)
+		slog.Error("Failed subscribing to event", "err", err)
 	}
 	return err
 }
 
 // Stop releases the add history and pubsub clients
 func (svc *PubSubEventHandler) Stop() {
-	svc.addHistory.Release()
-	svc.serviceSub.Release()
+	svc.eventSub.Unsubscribe()
 }
 
 // NewSubEventHandler events obtained through pubsub
-func NewSubEventHandler(sub pubsub.IServicePubSub, add history.IAddHistory) *PubSubEventHandler {
+func NewSubEventHandler(hc hubclient.IHubClient, add *AddHistory) *PubSubEventHandler {
 	pubsubHandler := &PubSubEventHandler{
 		addHistory: add,
-		serviceSub: sub,
+		hc:         hc,
 	}
 	return pubsubHandler
 }

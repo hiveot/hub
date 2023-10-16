@@ -4,34 +4,42 @@ import (
 	"encoding/json"
 	"github.com/hiveot/hub/core/directory"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"time"
 )
 
 // ReadDirectoryService is a provides the capability to read and iterate the directory
 type ReadDirectoryService struct {
-	// the client that is reading the directory
-	clientID string
 	// read bucket that holds the TD documents
 	bucket buckets.IBucket
-	// capTable maps function names to methods
-	capabilityMap map[string]interface{}
-	//
+	// cache of remote cursors
 	cursorCache *buckets.CursorCache
-	//
-	isRunning bool
+	// subscription to read directory requests
+	readSub hubclient.ISubscription
+}
+
+// CreateReadDirTD creates a Thing TD document describing the read directory capability
+func (svc *ReadDirectoryService) CreateReadDirTD() *thing.TD {
+	title := "Thing Directory Reader"
+	deviceType := vocab.DeviceTypeService
+	td := thing.NewTD(directory.ReadDirectoryCap, title, deviceType)
+	// TODO: add properties
+	return td
 }
 
 // GetCursor returns an iterator for ThingValues containing a TD document
 // The lifespan is currently fixed to 1 minute.
-// FIXME: marshalling a cursor isn't possible right now
+//
+//	clientID is the owner of the cursor. Used to remove all cursors of an owner when it disconnects.
 func (svc *ReadDirectoryService) GetCursor(
 	clientID string) (directory.GetCursorResp, error) {
 
 	dirCursor := svc.bucket.Cursor()
 	// TODO: what lifespan is reasonable?
-	key := svc.cursorCache.AddCursor(dirCursor, clientID, time.Minute)
+	key := svc.cursorCache.Add(dirCursor, svc.bucket, clientID, time.Minute)
 	resp := directory.GetCursorResp{CursorKey: key}
 	return resp, nil
 }
@@ -40,8 +48,8 @@ func (svc *ReadDirectoryService) GetCursor(
 func (svc *ReadDirectoryService) GetTD(
 	clientID string, args *directory.GetTDArgs) (resp *directory.GetTDResp, err error) {
 
-	//logrus.Infof("clientID=%s, thingID=%s", svc.clientID, thingID)
-	// bucket keys are made of the agentID / thingID
+	//logrus.Infof("agentID=%s, thingID=%s", svc.agentID, thingID)
+	// store keys are made of the agentID / thingID
 	thingAddr := args.AgentID + "/" + args.ThingID
 	raw, err := svc.bucket.Get(thingAddr)
 	if raw != nil {
@@ -154,55 +162,38 @@ func (svc *ReadDirectoryService) GetTDs(
 // disabled as this is not used
 //QueryTDs(ctx context.Context, jsonPath string, limit int, offset int) (tds []string, err error)
 
-// Start managing director cursors
-func (svc *ReadDirectoryService) Start() {
-	svc.isRunning = true
-	// start the main loop to cleanup expired cursors
-	go func() {
-		for svc.isRunning {
-			ciList := svc.cursorCache.GetExpiredCursors()
-			for _, ci := range ciList {
-				slog.Info("Releasing expired cursor",
-					slog.String("clientID", ci.OwnerID), slog.String("key", ci.Key))
-				// release the expired cursor and remove it from the cache
-				cursor := ci.Cursor.(buckets.IBucketCursor)
-				cursor.Release()
-				svc.cursorCache.RemoveCursor(ci.Key)
-			}
-			time.Sleep(time.Minute)
-		}
-	}()
-}
-
-// Stop releases this capability and allocated resources after its use
+// Stop the read directory capability
+// this unsubscribes from requests and stops the cursor cleanup task.
 func (svc *ReadDirectoryService) Stop() {
-	svc.isRunning = false
-	// logrus.Infof("Released")
-	err := svc.bucket.Close()
-	_ = err
+	svc.cursorCache.Stop()
+	svc.readSub.Unsubscribe()
 }
 
-// NewReadDirectoryService returns the capability to read the directory
-// bucket with the TD documents. Will be closed when done.
-func NewReadDirectoryService(clientID string, bucket buckets.IBucket) (
-	*ReadDirectoryService, map[string]interface{}) {
+// StartReadDirectoryService starts the capability to read the directory
+// hc with the message bus connection. Its ID will be used as the agentID that provides the capability.
+// bucket is an open store bucket for reading the TD data.
+func StartReadDirectoryService(hc hubclient.IHubClient, bucket buckets.IBucket) (
+	svc *ReadDirectoryService, err error) {
 
-	// logrus.Infof("NewReadDirectoryService for bucket: ", bucket.ID())
-	svc := &ReadDirectoryService{
-		clientID:    clientID,
+	svc = &ReadDirectoryService{
 		bucket:      bucket,
 		cursorCache: buckets.NewCursorCache(),
 	}
-	svc.capabilityMap = map[string]interface{}{
-		directory.CursorFirstMethod: svc.First,
-		directory.CursorNextMethod:  svc.Next,
-		directory.CursorNextNMethod: svc.NextN,
-		//directory.CursorPrevMethod: svc.Prev,
-		directory.GetCursorMethod: svc.GetCursor,
-		directory.GetTDMethod:     svc.GetTD,
-		directory.GetTDsMethod:    svc.GetTDs,
-		//directory.GetTDsMethod:    svc.GetTDsRaw,
+	capMethods := map[string]interface{}{
+		directory.CursorFirstMethod:   svc.First,
+		directory.CursorNextMethod:    svc.Next,
+		directory.CursorNextNMethod:   svc.NextN,
+		directory.CursorReleaseMethod: svc.Release,
+		directory.GetCursorMethod:     svc.GetCursor,
+		directory.GetTDMethod:         svc.GetTD,
+		directory.GetTDsMethod:        svc.GetTDs,
 	}
+	// listen for requests
+	svc.readSub, err = hubclient.SubRPCCapability(
+		hc, directory.ReadDirectoryCap, capMethods)
 
-	return svc, svc.capabilityMap
+	if err == nil {
+		svc.cursorCache.Start()
+	}
+	return svc, err
 }

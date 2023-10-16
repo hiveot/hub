@@ -3,61 +3,51 @@ package main
 
 import (
 	"context"
-	"github.com/sirupsen/logrus"
-	"net"
-
-	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/listener"
-	"github.com/hiveot/hub/lib/svcconfig"
-	"github.com/hiveot/hub/pkg/bucketstore/cmd"
-	"github.com/hiveot/hub/pkg/history"
-	"github.com/hiveot/hub/pkg/history/capnpserver"
-	"github.com/hiveot/hub/pkg/history/config"
-	"github.com/hiveot/hub/pkg/history/service"
-	"github.com/hiveot/hub/pkg/pubsub/capnpclient"
+	"fmt"
+	"github.com/hiveot/hub/core/history/config"
+	"github.com/hiveot/hub/core/history/service"
+	"github.com/hiveot/hub/lib/buckets/bucketstore"
+	"github.com/hiveot/hub/lib/hubclient/hubconnect"
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/utils"
+	"log/slog"
+	"os"
+	"path"
 )
 
 // Connect the history store service
 func main() {
-	var fullUrl = "" // TODO, from config
-	ctx := context.Background()
-	f, clientCert, caCert := svcconfig.SetupFolderConfig(history.ServiceName)
-	cfg := config.NewHistoryConfig(f.Stores)
-	_ = f.LoadConfig(&cfg)
+	env := utils.GetAppEnvironment("", true)
+	logging.SetLogging(env.LogLevel, "")
 
-	// the service receives the events to store from pubsub. To obtain the pubsub capability
-	// connect to the resolver or gateway service.
-	fullUrl = hubclient.LocateHub("", 0)
-	// the resolver client is a proxy for all connected services including pubsub
-	capClient, err := hubclient.ConnectWithCapnpTCP(fullUrl, clientCert, caCert)
-	pubSubClient := capnpclient.NewPubSubCapnpClient(capClient)
-	svcPubSub, err := pubSubClient.CapServicePubSub(ctx, cfg.ServiceID)
+	// this locates the hub, load certificate, load service tokens and connect
+	hc, err := hubconnect.ConnectToHub("", env.ClientID, env.CertsDir, "")
 	if err != nil {
-		panic("can't connect to pubsub")
+		slog.Error("Failed connecting to the Hub", "err", err)
+		os.Exit(1)
 	}
+
+	storesDir := path.Join(env.StoresDir, env.ClientID)
+	cfg := config.NewHistoryConfig(storesDir)
+	_ = env.LoadConfig(env.ConfigFile, &cfg)
 
 	// the service uses the bucket store to store history
-	store := cmd.NewBucketStore(cfg.Directory, cfg.ServiceID, cfg.Backend)
+	store := bucketstore.NewBucketStore(cfg.Directory, hc.ClientID(), cfg.Backend)
 	err = store.Open()
 	if err != nil {
-		logrus.Panic("can't open history bucket store")
+		err = fmt.Errorf("can't open history bucket store: %w", err)
+		slog.Error(err.Error())
+		panic(err.Error())
 	}
-	svc := service.NewHistoryService(&cfg, store, svcPubSub)
-
-	listener.RunService(history.ServiceName, f.SocketPath,
-		func(ctx context.Context, lis net.Listener) error {
-			// startup
-			err = svc.Start()
-			if err == nil {
-				err = capnpserver.StartHistoryServiceCapnpServer(svc, lis)
-			}
-			return err
-		}, func() error {
-			// shutdown
-			err := svc.Stop()
-			pubSubClient.Release()
-			_ = store.Close()
-			return err
-		})
-
+	svc := service.NewHistoryService(&cfg, hc, store)
+	err = svc.Start()
+	if err != nil {
+		slog.Error("Failed starting history service", "err", err)
+		os.Exit(1)
+	}
+	utils.WaitForSignal(context.Background())
+	err = svc.Stop()
+	if err != nil {
+		os.Exit(2)
+	}
 }

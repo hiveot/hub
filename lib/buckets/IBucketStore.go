@@ -101,6 +101,8 @@ type IBucket interface {
 
 // IBucketCursor provides the prev/next cursor based iterator on a range
 type IBucketCursor interface {
+	// BucketID is the ID of the bucket this cursor iterates
+	BucketID() string
 
 	// First positions the cursor at the first key in the ordered list
 	// valid is false if the bucket is empty

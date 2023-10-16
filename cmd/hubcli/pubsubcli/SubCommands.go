@@ -42,10 +42,10 @@ func SubEventsCommand(hc *hubclient.IHubClient) *cli.Command {
 func HandleSubTD(hc hubclient.IHubClient) error {
 
 	sub, err := hc.SubEvents("", "", vocab.EventNameTD,
-		func(msg *hubclient.EventMessage) {
+		func(msg *thing.ThingValue) {
 			var td thing.TD
 			//fmt.Printf("%s\n", event.ValueJSON)
-			err := json.Unmarshal(msg.Payload, &td)
+			err := json.Unmarshal(msg.Data, &td)
 			if err == nil {
 				modifiedTime, _ := dateparse.ParseAny(td.Modified)                  // can be in any TZ
 				timeStr := modifiedTime.In(time.Local).Format("15:04:05.000 -0700") // want local time
@@ -70,17 +70,17 @@ func HandleSubEvents(hc hubclient.IHubClient) error {
 	fmt.Printf("---------------  -------------------  ------------------------  -----------------------------  ---------\n")
 
 	sub, err := hc.SubEvents("", "", "",
-		func(msg *hubclient.EventMessage) {
-			createdTime := time.UnixMilli(msg.Timestamp)
+		func(msg *thing.ThingValue) {
+			createdTime := time.UnixMilli(msg.CreatedMSec)
 			timeStr := createdTime.Format("15:04:05.000")
-			value := fmt.Sprintf("%-.30s", msg.Payload)
+			value := fmt.Sprintf("%-.30s", msg.Data)
 			if msg.Name == vocab.EventNameProps {
 				var props map[string]interface{}
-				_ = json.Unmarshal(msg.Payload, &props)
+				_ = json.Unmarshal(msg.Data, &props)
 				value = fmt.Sprintf("%d properties", len(props))
 			} else if msg.Name == vocab.EventNameTD {
 				var td thing.TD
-				_ = json.Unmarshal(msg.Payload, &td)
+				_ = json.Unmarshal(msg.Data, &td)
 				value = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
 					td.Title, td.DeviceType, len(td.Properties), len(td.Events), len(td.Actions))
 			}

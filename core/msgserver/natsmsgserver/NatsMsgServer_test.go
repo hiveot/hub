@@ -5,10 +5,10 @@ import (
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver/service"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/natshubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/lib/thing"
 	"github.com/hiveot/hub/lib/vocab"
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
@@ -246,9 +246,9 @@ func TestEventsStream(t *testing.T) {
 
 	// create the stream consumer and listen for events
 	sub, err := hc1.SubStream(service.EventsIntakeStreamName, false,
-		func(msg *hubclient.EventMessage) {
-			slog.Info("received event", "eventID", msg.EventID)
-			rxChan <- string(msg.Payload)
+		func(msg *thing.ThingValue) {
+			slog.Info("received event", "event name", msg.Name)
+			rxChan <- string(msg.Data)
 		})
 	assert.NoError(t, err)
 	defer sub.Unsubscribe()

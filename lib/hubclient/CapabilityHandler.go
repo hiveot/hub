@@ -110,8 +110,8 @@ func HandleRequestMessage(clientID string, method interface{}, payload []byte) (
 //
 //	hc is the agent connection to the message bus
 //	capID is the capability to register
-//	capMap maps method names to their implementation
-func SubRPCCapability(hc IHubClient, capID string, capMap map[string]interface{}) (ISubscription, error) {
+//	capMethods maps method names to their implementation
+func SubRPCCapability(hc IHubClient, capID string, capMethods map[string]interface{}) (ISubscription, error) {
 	// subscribe to the capability with our own handler.
 	// the handler invokes the method registered with the capability map,
 	// after unmarshalling the request argument.
@@ -119,7 +119,7 @@ func SubRPCCapability(hc IHubClient, capID string, capMap map[string]interface{}
 		var err error
 		var respData []byte
 
-		capMethod, found := capMap[msg.Name]
+		capMethod, found := capMethods[msg.Name]
 		if !found {
 			return fmt.Errorf("method '%s' not part of capability '%s'", msg.Name, capID)
 		}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/hiveot/hub/core/directory"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/thing"
 	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
@@ -15,10 +16,18 @@ import (
 //	Bucket keys are made of gatewayID+"/"+thingID
 //	Bucket values are ThingValue objects
 type UpdateDirectoryService struct {
-	// The client that is updating the directory
-	clientID string
 	// bucket that holds the TD documents
-	bucket buckets.IBucket
+	bucket    buckets.IBucket
+	updateSub hubclient.ISubscription
+}
+
+// CreateUpdateDirTD a new Thing TD document describing the update directory capability
+func (svc *UpdateDirectoryService) CreateUpdateDirTD() *thing.TD {
+	title := "Thing Directory Updater"
+	deviceType := vocab.DeviceTypeService
+	td := thing.NewTD(directory.UpdateDirectoryCap, title, deviceType)
+	// TODO: add properties
+	return td
 }
 
 func (svc *UpdateDirectoryService) RemoveTD(senderID string, args directory.RemoveTDArgs) error {
@@ -47,22 +56,29 @@ func (svc *UpdateDirectoryService) UpdateTD(senderID string, args directory.Upda
 	return err
 }
 
-func (svc *UpdateDirectoryService) Release() {
-	_ = svc.bucket.Close()
+// Stop the update directory capability
+// This unsubscribes from requests.
+func (svc *UpdateDirectoryService) Stop() {
+	svc.updateSub.Unsubscribe()
 }
 
-// NewUpdateDirectoryService returns the capability to update the directory
-// bucket with the TD documents. Will be closed when done.
-func NewUpdateDirectoryService(clientID string, bucket buckets.IBucket) (
-	*UpdateDirectoryService, map[string]interface{}) {
+// StartUpdateDirectoryService starts the capability to update the directory.
+// Invoke Stop() when done to unsubscribe from requests.
+//
+//	hc with the message bus connection
+//	thingBucket is the open bucket used to store TDs
+func StartUpdateDirectoryService(hc hubclient.IHubClient, bucket buckets.IBucket) (
+	svc *UpdateDirectoryService, err error) {
 
-	svc := &UpdateDirectoryService{
-		clientID: clientID,
-		bucket:   bucket,
+	svc = &UpdateDirectoryService{
+		bucket: bucket,
 	}
-	capabilityMap := map[string]interface{}{
+	capMethods := map[string]interface{}{
 		directory.UpdateTDMethod: svc.UpdateTD,
 		directory.RemoveTDMethod: svc.RemoveTD,
 	}
-	return svc, capabilityMap
+	svc.updateSub, err = hubclient.SubRPCCapability(
+		hc, directory.UpdateDirectoryCap, capMethods)
+
+	return svc, err
 }

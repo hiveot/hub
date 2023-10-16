@@ -58,10 +58,10 @@ func (ts *TestServer) AddClients(newClients []msgserver.ClientAuthInfo) error {
 // Without auth service this applies it to the messaging server directly adding to
 // what was set using AddClients() (don't use ApplyAuth on the message server directly)
 //
-//	clientID is required
+//	agentID the connecting agent is required
 //	clientType is optional. This defaults to ClientTypeUser.
 //	clientRole is optional. This defaults to viewer.
-func (ts *TestServer) AddConnectClient(clientID string, clientType string, clientRole string) (hubclient.IHubClient, error) {
+func (ts *TestServer) AddConnectClient(agentID string, clientType string, clientRole string) (hubclient.IHubClient, error) {
 	var token string
 	var err error
 
@@ -77,8 +77,8 @@ func (ts *TestServer) AddConnectClient(clientID string, clientType string, clien
 	// if auth service is running then add the user if it doesn't exist
 	if ts.AuthService != nil {
 		args := authcfg.AddUserArgs{
-			UserID:      clientID,
-			DisplayName: clientID,
+			UserID:      agentID,
+			DisplayName: "user " + agentID,
 			PubKey:      kpPub,
 			Role:        clientRole,
 		}
@@ -88,7 +88,7 @@ func (ts *TestServer) AddConnectClient(clientID string, clientType string, clien
 	} else {
 		// use an on-the-fly created token for the connection
 		authInfo := msgserver.ClientAuthInfo{
-			ClientID:     clientID,
+			ClientID:     agentID,
 			ClientType:   clientType,
 			PubKey:       kpPub,
 			PasswordHash: "",
@@ -103,7 +103,7 @@ func (ts *TestServer) AddConnectClient(clientID string, clientType string, clien
 	}
 	//safeConn := packets.NewThreadSafeConn(conn)
 	serverURL, _, _ := ts.MsgServer.GetServerURLs()
-	hc := hubconnect.NewHubClient(serverURL, clientID, kp, ts.CertBundle.CaCert, ts.Core)
+	hc := hubconnect.NewHubClient(serverURL, agentID, kp, ts.CertBundle.CaCert, ts.Core)
 	err = hc.ConnectWithToken(token)
 
 	return hc, err

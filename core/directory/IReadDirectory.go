@@ -4,64 +4,64 @@ package directory
 
 import "github.com/hiveot/hub/lib/thing"
 
-// ServiceName is the instance name of the service to connect to
+// ServiceName is the agent name of the default instance of the service
 const ServiceName = "directory"
 
-// ReadDirectoryCapability is the capability ID to read the directory
-const ReadDirectoryCapability = "readDirectory"
+// ReadDirectoryCap is the capability ID to read the directory
+const ReadDirectoryCap = "readDirectory"
 
-const GetCursorMethod = "getCursor"
-
-// Returns a read cursor
-type GetCursorResp struct {
-	// Iterator identifier
-	CursorKey string
-}
-
-const CursorFirstMethod = "first"
+const CursorFirstMethod = "cursorFirst"
 
 type CursorFirstArgs struct {
 	// Iterator identifier obtained with GetReadCursorReq
-	CursorKey string
+	CursorKey string `json:"cursorKey"`
 }
 type CursorFirstResp struct {
-	Value thing.ThingValue
-	Valid bool
+	Value thing.ThingValue `json:"value"`
+	Valid bool             `json:"valid"`
 	// CursorKey with iteration location after the first
-	CursorKey string
+	CursorKey string `json:"cursorKey"`
 }
 
 const CursorNextMethod = "cursorNext"
 
 type CursorNextArgs struct {
 	// CursorKey with current iteration location
-	CursorKey string
+	CursorKey string `json:"cursorKey"`
 }
 type CursorNextResp struct {
-	Value thing.ThingValue
-	Valid bool
+	Value thing.ThingValue `json:"value"`
+	Valid bool             `json:"valid"`
 	// CursorKey with new iteration location
-	CursorKey string
+	CursorKey string `json:"cursorKey"`
 }
 
 const CursorNextNMethod = "cursorNextN"
 
 type CursorNextNArgs struct {
 	// CursorKey with current iteration location
-	CursorKey string
-	Limit     uint
+	CursorKey string `json:"cursorKey"`
+	Limit     uint   `json:"limit"`
 }
 type CursorNextNResp struct {
-	Values         []thing.ThingValue
-	ItemsRemaining bool
+	Values         []thing.ThingValue `json:"values"`
+	ItemsRemaining bool               `json:"itemsRemaining"`
 	// CursorKey with new iteration location
-	CursorKey string
+	CursorKey string `json:"cursorKey"`
 }
 
-const CursorReleaseMethod = "release"
+const CursorReleaseMethod = "cursorRelease"
 
 type CursorReleaseArgs struct {
-	CursorKey string
+	CursorKey string `json:"cursorKey"`
+}
+
+const GetCursorMethod = "getCursor"
+
+// GetCursorResp returns a read cursor
+type GetCursorResp struct {
+	// Iterator identifier
+	CursorKey string `json:"cursorKey"`
 }
 
 const GetTDMethod = "getTD"

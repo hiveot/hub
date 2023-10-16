@@ -16,7 +16,7 @@ import (
 // This uses the BBolt package which is a derivative of BoltDB
 // Estimates using a i5-4570S @2.90GHz cpu.
 //
-// Create & close bucket
+// Create & close bbBucket
 //   Dataset 1K,        0.8 us/op
 //   Dataset 10K,       0.8 us/op
 //   Dataset 100K       0.8 us/op
@@ -75,18 +75,18 @@ func (store *BoltStore) Close() (err error) {
 	return err
 }
 
-// GetBucket returns a bucket to use for writing to storage.
-// This does not yet create the bucket in the database until an operation takes place on the bucket.
+// GetBucket returns a bbBucket to use for writing to storage.
+// This does not yet create the bbBucket in the database until an operation takes place on the bbBucket.
 func (store *BoltStore) GetBucket(bucketID string) (bucket buckets.IBucket) {
 
-	//logrus.Infof("Opening bucket '%s' of client '%s", bucketID, store.clientID)
+	//logrus.Infof("Opening bbBucket '%s' of client '%s", bucketID, store.clientID)
 	bucket = NewBoltBucket(store.clientID, bucketID, store.boltDB, store.onBucketReleased)
 
 	atomic.AddInt32(&store.bucketRefCount, 1)
 	return bucket
 }
 
-// track bucket references
+// track bbBucket references
 func (store *BoltStore) onBucketReleased(bucket buckets.IBucket) {
 	atomic.AddInt32(&store.bucketRefCount, -1)
 }
@@ -116,7 +116,7 @@ func (store *BoltStore) Open() (err error) {
 	return err
 }
 
-// NewBoltStore creates a bucket store supporting the IBucketStore API using the embedded BBolt database
+// NewBoltStore creates a bbBucket store supporting the IBucketStore API using the embedded BBolt database
 //
 //	storePath is the file holding the database
 func NewBoltStore(clientID, storePath string) *BoltStore {

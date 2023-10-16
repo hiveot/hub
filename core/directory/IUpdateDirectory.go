@@ -2,8 +2,8 @@
 // Unfortunately capnp does generate POGS types so we need to duplicate them
 package directory
 
-// UpdateDirectoryCapability is the capability ID to modify the directory
-const UpdateDirectoryCapability = "updateDirectory"
+// UpdateDirectoryCap is the capability ID to modify the directory
+const UpdateDirectoryCap = "updateDirectory"
 
 const RemoveTDMethod = "removeTD"
 

@@ -38,11 +38,12 @@ func (cl *UpdateDirectoryClient) UpdateTD(agentID, thingID string, tdDoc []byte)
 	return err
 }
 
-// NewUpdateDirectoryClient returns a directory update client for the directory service
+// NewUpdateDirectoryClient returns a directory update client for the directory service.
+// This connects to the service with the default directory service name.
 func NewUpdateDirectoryClient(hc hubclient.IHubClient) directory.IUpdateDirectory {
 	cl := &UpdateDirectoryClient{
 		agentID: directory.ServiceName,
-		capID:   directory.UpdateDirectoryCapability,
+		capID:   directory.UpdateDirectoryCap,
 		hc:      hc,
 	}
 	return cl

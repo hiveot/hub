@@ -1,47 +1,41 @@
 package service
 
 import (
-	"context"
 	"fmt"
-	"github.com/hiveot/hub/lib/vocab"
+	"github.com/hiveot/hub/lib/buckets"
+	"log/slog"
 	"strconv"
 	"time"
 
-	"github.com/araddon/dateparse"
-	"github.com/sirupsen/logrus"
-
 	"github.com/hiveot/hub/lib/thing"
-	"github.com/hiveot/hub/pkg/bucketstore"
 )
 
 // AddHistory adds events and actions of any Thing
-// this is not restricted to one Thing and only intended for services that are authorized to do so.
 type AddHistory struct {
-	clientID string
-	// store with buckets for Things
-	store bucketstore.IBucketStore
+	// store with a bucket for each Thing
+	store buckets.IBucketStore
 	// onAddedValue is a callback to invoke after a value is added. Intended for tracking most recent values.
-	onAddedValue func(ev thing.ThingValue, isAction bool)
+	onAddedValue func(ev *thing.ThingValue, isAction bool)
 	//
-	retentionMgr *ManageRetention
+	retentionMgr *HistoryRetention
 }
 
 // encode a ThingValue into a single key value pair
 // Encoding generates a key as: timestampMsec/name/a|e, where a|e indicates action or event
-func (svc *AddHistory) encodeValue(thingValue thing.ThingValue, isAction bool) (key string, val []byte) {
+func (svc *AddHistory) encodeValue(thingValue *thing.ThingValue, isAction bool) (key string, val []byte) {
 	var err error
 	ts := time.Now()
-	if thingValue.Created != "" {
-		ts, err = dateparse.ParseAny(thingValue.Created)
+	if thingValue.CreatedMSec > 0 {
+		ts = time.UnixMilli(thingValue.CreatedMSec)
 		if err != nil {
-			logrus.Infof("Invalid Created time '%s'. Using current time instead", thingValue.Created)
+			slog.Warn("Invalid CreatedMSec time. Using current time instead", "created", thingValue.CreatedMSec)
 			ts = time.Now()
 		}
 	}
 
 	// the index uses milliseconds for timestamp
 	timestamp := ts.UnixMilli()
-	key = strconv.FormatInt(timestamp, 10) + "/" + thingValue.ID
+	key = strconv.FormatInt(timestamp, 10) + "/" + thingValue.Name
 	if isAction {
 		key = key + "/a"
 	} else {
@@ -54,15 +48,18 @@ func (svc *AddHistory) encodeValue(thingValue thing.ThingValue, isAction bool) (
 
 // AddAction adds a Thing action with the given name and value to the action history
 // value is json encoded. Optionally include a 'created' ISO8601 timestamp
-func (svc *AddHistory) AddAction(_ context.Context, actionValue thing.ThingValue) error {
-	logrus.Infof("clientID=%s, thingID=%s, name=%s", svc.clientID, actionValue.ThingID, actionValue.ID)
+func (svc *AddHistory) AddAction(actionValue *thing.ThingValue) error {
+	slog.Info("AddAction",
+		slog.String("agentID", actionValue.AgentID),
+		slog.String("thingID", actionValue.ThingID),
+		slog.String("actionName", actionValue.Name))
 
 	if err := svc.validateValue(actionValue); err != nil {
-		logrus.Info(err)
+		slog.Info("AddAction error", "err", err.Error())
 		return err
 	}
 	key, val := svc.encodeValue(actionValue, true)
-	thingAddr := actionValue.PublisherID + "/" + actionValue.ThingID
+	thingAddr := actionValue.AgentID + "/" + actionValue.ThingID
 	bucket := svc.store.GetBucket(thingAddr)
 	err := bucket.Set(key, val)
 	_ = bucket.Close()
@@ -74,47 +71,49 @@ func (svc *AddHistory) AddAction(_ context.Context, actionValue thing.ThingValue
 
 // AddEvent adds an event to the event history
 // If the event has no created time, it will be set to 'now'
-func (svc *AddHistory) AddEvent(ctx context.Context, eventValue thing.ThingValue) error {
+func (svc *AddHistory) AddEvent(eventMsg *thing.ThingValue) error {
 
-	valueStr := eventValue.Data
+	valueStr := eventMsg.Data
 	if len(valueStr) > 20 {
 		valueStr = valueStr[:20]
 	}
-	logrus.Infof("clientID=%s, thingID=%s, name=%s, value=%s", svc.clientID, eventValue.ThingID, eventValue.ID, valueStr)
-	if err := svc.validateValue(eventValue); err != nil {
-		logrus.Info(err)
+	slog.Info("AddEvent",
+		slog.String("agentID", eventMsg.AgentID),
+		slog.String("thingID", eventMsg.ThingID),
+		slog.String("name", eventMsg.Name),
+		slog.String("value", string(valueStr)))
+
+	if err := svc.validateValue(eventMsg); err != nil {
+		slog.Warn("invalid value", "err", err)
 		return err
 	}
 
-	key, val := svc.encodeValue(eventValue, false)
-	thingAddr := eventValue.PublisherID + "/" + eventValue.ThingID
+	key, val := svc.encodeValue(eventMsg, false)
+	thingAddr := eventMsg.AgentID + "/" + eventMsg.ThingID
 	bucket := svc.store.GetBucket(thingAddr)
-
-	logrus.Infof("adding: [%s %s] %s", eventValue.PublisherID, eventValue.ThingID, key)
 
 	err := bucket.Set(key, val)
 	_ = bucket.Close()
 	if svc.onAddedValue != nil {
-		svc.onAddedValue(eventValue, false)
+		svc.onAddedValue(eventMsg, false)
 	}
 	return err
 }
 
 // AddEvents provides a bulk-add of events to the event history
 // Events that are invalid are skipped.
-func (svc *AddHistory) AddEvents(ctx context.Context, eventValues []thing.ThingValue) (err error) {
-	logrus.Infof("clientID=%s, nrEvents=%d", svc.clientID, len(eventValues))
+func (svc *AddHistory) AddEvents(eventValues []*thing.ThingValue) (err error) {
 	if eventValues == nil || len(eventValues) == 0 {
 		return nil
 	} else if len(eventValues) == 1 {
-		err = svc.AddEvent(ctx, eventValues[0])
+		err = svc.AddEvent(eventValues[0])
 		return err
 	}
 	// encode events as K,V pair and group them by thingAddr
 	kvpairsByThingAddr := make(map[string]map[string][]byte)
 	for _, eventValue := range eventValues {
 		// kvpairs hold a map of storage encoded value key and value
-		thingAddr := eventValue.PublisherID + "/" + eventValue.ThingID
+		thingAddr := eventValue.AgentID + "/" + eventValue.ThingID
 		kvpairs, found := kvpairsByThingAddr[thingAddr]
 		if !found {
 			kvpairs = make(map[string][]byte, 0)
@@ -138,26 +137,21 @@ func (svc *AddHistory) AddEvents(ctx context.Context, eventValues []thing.ThingV
 	return nil
 }
 
-// Release the capability and its resources
-func (svc *AddHistory) Release() {
-
-}
-
 // validateValue checks the event has the right thing address and adds a timestamp if missing
-func (svc *AddHistory) validateValue(thingValue thing.ThingValue) error {
-	if thingValue.ThingID == "" || thingValue.PublisherID == "" {
-		return fmt.Errorf("missing publisher/thing address in value with name '%s'", thingValue.ID)
+func (svc *AddHistory) validateValue(evMsg *thing.ThingValue) error {
+	if evMsg.ThingID == "" || evMsg.AgentID == "" {
+		return fmt.Errorf("missing agent/thing address in value with name '%s'", evMsg.Name)
 	}
-	if thingValue.ID == "" {
-		return fmt.Errorf("missing name for event or action for thing '%s/%s'", thingValue.PublisherID, thingValue.ThingID)
+	if evMsg.Name == "" {
+		return fmt.Errorf("missing name for event or action for thing '%s/%s'", evMsg.AgentID, evMsg.ThingID)
 	}
-	if thingValue.Created == "" {
-		thingValue.Created = time.Now().Format(vocab.ISO8601Format)
+	if evMsg.CreatedMSec == 0 {
+		evMsg.CreatedMSec = time.Now().UnixMilli()
 	}
 	if svc.retentionMgr != nil {
-		isValid, err := svc.retentionMgr.TestEvent(context.Background(), thingValue)
+		isValid, err := svc.retentionMgr.CheckRetention(evMsg)
 		if !isValid || err != nil {
-			return fmt.Errorf("no retention for event '%s'", thingValue.ID)
+			return fmt.Errorf("no retention for event '%s'", evMsg.Name)
 		}
 	}
 
@@ -166,15 +160,14 @@ func (svc *AddHistory) validateValue(thingValue thing.ThingValue) error {
 
 // NewAddHistory provides the capability to add values to Thing history buckets
 //
+//	store with a bucket for each Thing
 //	retentionMgr is optional and used to apply constraints to the events to add
 //	onAddedValue is optional and invoked after the value is added to the bucket.
 func NewAddHistory(
-	clientID string,
-	store bucketstore.IBucketStore,
-	retentionMgr *ManageRetention,
-	onAddedValue func(value thing.ThingValue, isAction bool)) *AddHistory {
+	store buckets.IBucketStore,
+	retentionMgr *HistoryRetention,
+	onAddedValue func(value *thing.ThingValue, isAction bool)) *AddHistory {
 	svc := &AddHistory{
-		clientID:     clientID,
 		store:        store,
 		retentionMgr: retentionMgr,
 		onAddedValue: onAddedValue,

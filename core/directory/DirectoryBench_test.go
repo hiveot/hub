@@ -24,7 +24,7 @@ func Benchmark_GetTD(b *testing.B) {
 	defer stopFunc()
 
 	// setup
-	b.Run(fmt.Sprintf("setup. creating TD docs"),
+	b.Run(fmt.Sprintf("update TD docs"),
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)
@@ -35,7 +35,7 @@ func Benchmark_GetTD(b *testing.B) {
 		})
 
 	// test read
-	b.Run(fmt.Sprintf("reading TD docs"),
+	b.Run(fmt.Sprintf("read TD docs"),
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)

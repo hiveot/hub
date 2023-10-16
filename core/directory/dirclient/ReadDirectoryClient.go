@@ -12,7 +12,7 @@ import (
 type ReadDirectoryClient struct {
 	// agent handling the request
 	agentID string
-	// directory capability to use
+	// capability to use
 	capID string
 	hc    hubclient.IHubClient
 }
@@ -21,15 +21,7 @@ type ReadDirectoryClient struct {
 func (cl *ReadDirectoryClient) GetCursor() (directory.IDirectoryCursor, error) {
 	resp := directory.GetCursorResp{}
 	_, err := cl.hc.PubRPCRequest(cl.agentID, cl.capID, directory.GetCursorMethod, nil, &resp)
-	// how does the server create a cursor?
-	//   A: in-mem iterator from DB, identified by cursor key
-	//         problem: needs release
-	//                  needs limits per client
-	//   B: ?
-	// TBD. Should cursor server have its own on-the-fly capability ID?
-	//   A: pass with address
-	//   B: pass with content
-	cursor := NewDirectoryCursorClient(cl.agentID, cl.capID, resp.CursorKey, cl.hc)
+	cursor := NewDirectoryCursorClient(cl.hc, cl.agentID, cl.capID, resp.CursorKey)
 	return cursor, err
 }
 
@@ -60,10 +52,12 @@ func (cl *ReadDirectoryClient) GetTDs(
 	return resp.Values, err
 }
 
+// NewReadDirectoryClient creates a instance of a read-directory client
+// This connects to the service with the default directory service name.
 func NewReadDirectoryClient(hc hubclient.IHubClient) directory.IReadDirectory {
 	return &ReadDirectoryClient{
 		agentID: directory.ServiceName,
-		capID:   directory.ReadDirectoryCapability,
+		capID:   directory.ReadDirectoryCap,
 		hc:      hc,
 	}
 }

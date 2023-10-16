@@ -2,9 +2,9 @@ package owserver_test
 
 import (
 	"encoding/json"
-	auth2 "github.com/hiveot/hub/core/auth"
-	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/lib/thing"
 	"github.com/hiveot/hub/lib/vocab"
 	"github.com/hiveot/hub/plugins/owserver/config"
 	"github.com/hiveot/hub/plugins/owserver/service"
@@ -65,7 +65,7 @@ func TestStartStop(t *testing.T) {
 	slog.Info("--- TestStartStop ---")
 	const device1ID = "device1"
 
-	hc, err := testServer.AddConnectClient(device1ID, auth2.ClientTypeDevice, auth2.ClientRoleDevice)
+	hc, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 	svc := service.NewOWServerBinding(owsConfig, hc)
@@ -80,22 +80,22 @@ func TestPoll(t *testing.T) {
 	const device1ID = "device1"
 
 	slog.Info("--- TestPoll ---")
-	hc, err := testServer.AddConnectClient(device1ID, auth2.ClientTypeDevice, auth2.ClientRoleDevice)
+	hc, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 	svc := service.NewOWServerBinding(owsConfig, hc)
 
 	// Count the number of received TD events
-	sub, err := hc.SubEvents("", "",
-		func(ev *hubclient.EventMessage) {
-			slog.Info("received event", "id", ev.EventID)
-			if ev.EventID == vocab.EventNameProps {
+	sub, err := hc.SubEvents("", "", "",
+		func(ev *thing.ThingValue) {
+			slog.Info("received event", "id", ev.Name)
+			if ev.Name == vocab.EventNameProps {
 				var value map[string][]byte
-				err2 := json.Unmarshal(ev.Payload, &value)
+				err2 := json.Unmarshal(ev.Data, &value)
 				assert.NoError(t, err2)
 			} else {
 				var value interface{}
-				err2 := json.Unmarshal(ev.Payload, &value)
+				err2 := json.Unmarshal(ev.Data, &value)
 				assert.NoError(t, err2)
 			}
 			tdCount.Add(1)
@@ -119,7 +119,7 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 	slog.Info("--- TestPollInvalidEDSAddress ---")
 	const device1ID = "device1"
 
-	hc, err := testServer.AddConnectClient(device1ID, auth2.ClientTypeDevice, auth2.ClientRoleDevice)
+	hc, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 
@@ -144,7 +144,7 @@ func TestAction(t *testing.T) {
 	var actionName = vocab.VocabRelay
 	var actionValue = ([]byte)("1")
 
-	hc, err := testServer.AddConnectClient(device1ID, auth2.ClientTypeDevice, auth2.ClientRoleDevice)
+	hc, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 

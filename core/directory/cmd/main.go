@@ -35,7 +35,7 @@ func main() {
 	if err != nil {
 		panic("unable to open the directory store")
 	}
-	svc := service.NewDirectoryService(store, hc)
+	svc := service.NewDirectoryService(hc, store)
 	err = svc.Start()
 	if err != nil {
 		slog.Error("Failed starting directory service", "err", err)

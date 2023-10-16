@@ -28,6 +28,8 @@ var core = "mqtt"
 var testServer *testenv.TestServer
 var serverURL string
 
+const serviceID string = directory.ServiceName
+
 // startDirectory initializes a Directory service, optionally using capnp RPC
 func startDirectory() (
 	r directory.IReadDirectory, u directory.IUpdateDirectory, stopFn func()) {
@@ -35,7 +37,7 @@ func startDirectory() (
 	slog.Info("startDirectory start")
 	defer slog.Info("startDirectory ended")
 	_ = os.Remove(testStoreFile)
-	store := kvbtree.NewKVStore(directory.ServiceName, testStoreFile)
+	store := kvbtree.NewKVStore(serviceID, testStoreFile)
 	err := store.Open()
 	if err != nil {
 		panic("unable to open directory store")
@@ -43,9 +45,11 @@ func startDirectory() (
 
 	// the directory service needs a server connection
 	hc1, err := testServer.AddConnectClient(
-		directory.ServiceName, auth.ClientTypeService, auth.ClientRoleService)
-	svc := service.NewDirectoryService(store, hc1)
-	err = svc.Start()
+		serviceID, auth.ClientTypeService, auth.ClientRoleService)
+	svc := service.NewDirectoryService(hc1, store)
+	if err == nil {
+		err = svc.Start()
+	}
 	if err != nil {
 		panic("service fails to start")
 	}

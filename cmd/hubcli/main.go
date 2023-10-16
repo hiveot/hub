@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/cmd/hubcli/authcli"
 	"github.com/hiveot/hub/cmd/hubcli/certs"
 	"github.com/hiveot/hub/cmd/hubcli/directorycli"
+	"github.com/hiveot/hub/cmd/hubcli/historycli"
 	"github.com/hiveot/hub/cmd/hubcli/launchercli"
 	"github.com/hiveot/hub/cmd/hubcli/pubsubcli"
 	"github.com/hiveot/hub/cmd/hubcli/setup"
@@ -115,6 +116,9 @@ func main() {
 			launchercli.LauncherStopCommand(&hc),
 
 			directorycli.DirectoryListCommand(&hc),
+
+			historycli.HistoryLatestCommand(&hc),
+			historycli.HistoryListCommand(&hc),
 
 			pubsubcli.PubActionCommand(&hc),
 			pubsubcli.SubEventsCommand(&hc),

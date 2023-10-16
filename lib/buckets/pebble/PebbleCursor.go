@@ -17,6 +17,10 @@ type PebbleCursor struct {
 	iterator     *pebble.Iterator
 }
 
+func (cursor *PebbleCursor) BucketID() string {
+	return cursor.bucketID
+}
+
 // First moves the cursor to the first item
 func (cursor *PebbleCursor) First() (key string, value []byte, valid bool) {
 	valid = cursor.iterator.First()

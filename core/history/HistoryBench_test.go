@@ -1,8 +1,8 @@
 package history_test
 
 import (
-	"context"
 	"fmt"
+	"github.com/hiveot/hub/core/history/service"
 	"testing"
 	"time"
 
@@ -107,14 +107,11 @@ func BenchmarkAddEvents(b *testing.B) {
 	logging.SetLogging("error", "")
 
 	for _, tbl := range DataSizeTable {
-		ctx := context.Background()
 		testData, _ := makeValueBatch("device1", tbl.dataSize, tbl.nrThings, timespanMonth)
-		svc, closeFn := newHistoryService(useTestCapnp)
+		histStore, readHist, stopFn := newHistoryService()
 		// build a dataset in the store
-		addHistory(svc, tbl.dataSize, 10, timespanSec)
-
-		updateHistory, _ := svc.CapAddHistory(ctx, "test", true)
-		readHistory, _ := svc.CapReadHistory(ctx, "test")
+		addBulkHistory(histStore, tbl.dataSize, 10, timespanSec)
+		addHist := service.NewAddHistory(histStore, nil, nil)
 
 		// test adding records one by one
 		b.Run(fmt.Sprintf("[dbsize:%d] #things:%d add-single:%d", tbl.dataSize, tbl.nrThings, tbl.nrSets),
@@ -123,7 +120,7 @@ func BenchmarkAddEvents(b *testing.B) {
 
 					for i := 0; i < tbl.nrSets; i++ {
 						ev := testData[i]
-						err := updateHistory.AddEvent(ctx, ev)
+						err := addHist.AddEvent(ev)
 						require.NoError(b, err)
 					}
 
@@ -135,7 +132,7 @@ func BenchmarkAddEvents(b *testing.B) {
 				func(b *testing.B) {
 					bulk := testData[0:tbl.nrSets]
 					for n := 0; n < b.N; n++ {
-						err := updateHistory.AddEvents(ctx, bulk)
+						err := addHist.AddEvents(bulk)
 						require.NoError(b, err)
 					}
 				})
@@ -145,7 +142,7 @@ func BenchmarkAddEvents(b *testing.B) {
 			func(b *testing.B) {
 				bulk := testData[0:tbl.nrSets]
 				for n := 0; n < b.N; n++ {
-					err := updateHistory.AddEvents(ctx, bulk)
+					err := addHist.AddEvents(bulk)
 					require.NoError(b, err)
 				}
 			})
@@ -155,18 +152,17 @@ func BenchmarkAddEvents(b *testing.B) {
 			func(b *testing.B) {
 				for n := 0; n < b.N; n++ {
 
-					cursor := readHistory.GetEventHistory(ctx, publisherID, thing0ID, "")
-					require.NotNil(b, cursor)
-					cursor.First()
+					cursor, releaseFn, _ := readHist.GetCursor(publisherID, thing0ID, "")
+					v, valid, _ := cursor.First()
 					for i := 0; i < tbl.nrSets-1; i++ {
-						v, valid := cursor.Next()
+						v, valid, _ = cursor.Next()
 						if !assert.True(b, valid,
 							fmt.Sprintf("counting only '%d' records. Expected at least '%d'.", i, tbl.nrSets)) {
 							break
 						}
 						assert.NotEmpty(b, v)
 					}
-					cursor.Release()
+					releaseFn()
 
 				}
 			})
@@ -175,25 +171,22 @@ func BenchmarkAddEvents(b *testing.B) {
 			func(b *testing.B) {
 				for n := 0; n < b.N; n++ {
 
-					cursor := readHistory.GetEventHistory(ctx, publisherID, thing0ID, "")
+					cursor, releaseFn, _ := readHist.GetCursor(publisherID, thing0ID, "")
 					require.NotNil(b, cursor)
 					cursor.First()
-					v, _ := cursor.NextN(uint(tbl.nrSets - 1))
+					v, _, _ := cursor.NextN(tbl.nrSets - 1)
 					if !assert.True(b, len(v) > 0,
 						fmt.Sprintf("counting only '%d' records. Expected at least '%d'.", len(v), tbl.nrSets)) {
 						break
 					}
 					assert.NotEmpty(b, v)
-					cursor.Release()
+					releaseFn()
 				}
 			})
-		updateHistory.Release()
-		readHistory.Release()
 
 		//b.Log("- next round -")
 		time.Sleep(time.Second) // cleanup delay
 		fmt.Println("--- next round ---")
-		closeFn()
-
+		stopFn()
 	}
 }

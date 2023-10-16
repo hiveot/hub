@@ -1,7 +1,7 @@
 package mqttmsgserver_test
 
 import (
-	auth2 "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -40,37 +40,37 @@ var TestService1Key, TestService1Pub = certs.CreateECDSAKeys()
 
 var adminAuthInfo = msgserver.ClientAuthInfo{
 	ClientID:   TestAdminUserID,
-	ClientType: auth2.ClientTypeUser,
+	ClientType: auth.ClientTypeUser,
 	PubKey:     TestAdminUserPub,
-	Role:       auth2.ClientRoleAdmin,
+	Role:       auth.ClientRoleAdmin,
 }
 var deviceAuthInfo = msgserver.ClientAuthInfo{
 	ClientID:   TestDevice1ID,
-	ClientType: auth2.ClientTypeDevice,
+	ClientType: auth.ClientTypeDevice,
 	PubKey:     TestDevice1Pub,
-	Role:       auth2.ClientRoleDevice,
+	Role:       auth.ClientRoleDevice,
 }
 var mqttTestClients = []msgserver.ClientAuthInfo{
 	adminAuthInfo,
 	deviceAuthInfo,
 	{
 		ClientID:     TestUser1ID,
-		ClientType:   auth2.ClientTypeUser,
+		ClientType:   auth.ClientTypeUser,
 		PasswordHash: string(TestUser1bcrypt),
-		Role:         auth2.ClientRoleViewer,
+		Role:         auth.ClientRoleViewer,
 	},
 	{
 		ClientID:     TestUser2ID,
-		ClientType:   auth2.ClientTypeUser,
+		ClientType:   auth.ClientTypeUser,
 		PubKey:       TestUser2Pub,
 		PasswordHash: string(TestUser2bcrypt),
-		Role:         auth2.ClientRoleOperator,
+		Role:         auth.ClientRoleOperator,
 	},
 	{
 		ClientID:   TestService1ID,
-		ClientType: auth2.ClientTypeService,
+		ClientType: auth.ClientTypeService,
 		PubKey:     TestService1Pub,
-		Role:       auth2.ClientRoleAdmin,
+		Role:       auth.ClientRoleAdmin,
 	},
 }
 
@@ -91,7 +91,7 @@ func TestConnectWithCert(t *testing.T) {
 	_ = srv.ApplyAuth(mqttTestClients)
 
 	key, _ := certs.CreateECDSAKeys()
-	clientCert, err := certs.CreateClientCert(TestUser1ID, auth2.ClientRoleAdmin,
+	clientCert, err := certs.CreateClientCert(TestUser1ID, auth.ClientRoleAdmin,
 		1, &key.PublicKey, certBundle.CaCert, certBundle.CaKey)
 	require.NoError(t, err)
 	serverURL, _, _ := srv.GetServerURLs()

@@ -12,6 +12,10 @@ type MongoCursor struct {
 	mongoCursor *mongo.Cursor
 }
 
+func (cursor *MongoCursor) BucketID() string {
+	return cursor.bucketID
+}
+
 // First moves the cursor to the first item
 func (cursor *MongoCursor) First() (key string, value []byte, valid bool) {
 	//valid = cursor.mongoCursor.First()

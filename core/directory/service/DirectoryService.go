@@ -12,47 +12,31 @@ import (
 
 const TDBucketName = "td"
 
-// DirectoryService is a wrapper around the internal bucket store
+// DirectoryService is a wrapper around the internal store store
 // This implements the IDirectory interface
 type DirectoryService struct {
 	hc           hubclient.IHubClient
 	store        buckets.IBucketStore
-	serviceID    string // thingID of the service instance
+	agentID      string // thingID of the service instance
 	tdBucketName string
+	tdBucket     buckets.IBucket
 
 	// td event subscription
 	tdSub hubclient.ISubscription
 
 	// capabilities and subscriptions
-	readDirSvc   *ReadDirectoryService
-	readSub      hubclient.ISubscription
+	readDirSvc *ReadDirectoryService
+	//readSub      hubclient.ISubscription
 	updateDirSvc *UpdateDirectoryService
-	updateSub    hubclient.ISubscription
+	//updateSub    hubclient.ISubscription
 }
 
-// Create a new Thing TD document describing the read directory capability
-func (svc *DirectoryService) createReadDirTD() *thing.TD {
-	title := "Thing Directory Reader"
-	deviceType := vocab.DeviceTypeService
-	td := thing.NewTD(directory.ReadDirectoryCapability, title, deviceType)
-	// TODO: add properties
-	return td
-}
-
-// Create a new Thing TD document describing the update directory capability
-func (svc *DirectoryService) createUpdateDirTD() *thing.TD {
-	title := "Thing Directory Updater"
-	deviceType := vocab.DeviceTypeService
-	td := thing.NewTD(directory.UpdateDirectoryCapability, title, deviceType)
-	// TODO: add properties
-	return td
-}
-
-func (svc *DirectoryService) handleTDEvent(event *hubclient.EventMessage) {
+// handleTDEvent stores a received Thing TD document
+func (svc *DirectoryService) handleTDEvent(event *thing.ThingValue) {
 	args := directory.UpdateTDArgs{
 		AgentID: event.AgentID,
 		ThingID: event.ThingID,
-		TDDoc:   event.Payload,
+		TDDoc:   event.Data,
 	}
 	err := svc.updateDirSvc.UpdateTD(event.AgentID, args)
 	if err != nil {
@@ -64,36 +48,34 @@ func (svc *DirectoryService) handleTDEvent(event *hubclient.EventMessage) {
 // This subscribes to pubsub TD events and updates the directory.
 func (svc *DirectoryService) Start() (err error) {
 
+	// listen for requests
+	tdBucket := svc.store.GetBucket(svc.tdBucketName)
+	svc.tdBucket = tdBucket
+
+	svc.readDirSvc, err = StartReadDirectoryService(svc.hc, tdBucket)
+	if err == nil {
+		svc.updateDirSvc, err = StartUpdateDirectoryService(svc.hc, tdBucket)
+	}
 	// subscribe to TD events to add to the directory
 	if svc.hc != nil {
 		svc.tdSub, err = svc.hc.SubEvents(
 			"", "", vocab.EventNameTD, svc.handleTDEvent)
 	}
-
-	// listen for requests
-	bucket := svc.store.GetBucket(svc.tdBucketName)
-	var capMap map[string]interface{}
-	svc.readDirSvc, capMap = NewReadDirectoryService(svc.serviceID, bucket)
-	svc.readSub, _ = hubclient.SubRPCCapability(svc.hc, directory.ReadDirectoryCapability, capMap)
-	svc.updateDirSvc, capMap = NewUpdateDirectoryService(svc.serviceID, bucket)
-	svc.updateSub, _ = hubclient.SubRPCCapability(svc.hc, directory.UpdateDirectoryCapability, capMap)
-
-	// publish the TDs of this service
+	// last, publish a TD for each service capability
 	if err == nil {
-		myTD := svc.createReadDirTD()
+		myTD := svc.updateDirSvc.CreateUpdateDirTD()
 		myTDJSON, _ := json.Marshal(myTD)
-		err = svc.hc.PubEvent(
-			directory.ReadDirectoryCapability, vocab.EventNameTD, myTDJSON)
-
-		myTD = svc.createUpdateDirTD()
-		myTDJSON, _ = json.Marshal(myTD)
-		err = svc.hc.PubEvent(
-			directory.UpdateDirectoryCapability, vocab.EventNameTD, myTDJSON)
+		err = svc.hc.PubEvent(directory.UpdateDirectoryCap, vocab.EventNameTD, myTDJSON)
 	}
-
+	if err == nil {
+		// last, publish my TD
+		myTD := svc.readDirSvc.CreateReadDirTD()
+		myTDJSON, _ := json.Marshal(myTD)
+		err = svc.hc.PubEvent(directory.ReadDirectoryCap, vocab.EventNameTD, myTDJSON)
+	}
 	// FIXME: register allowable roles with the auth service
-	//  read: viewer and up
 	//  update: manager, admin, service
+
 	return err
 }
 
@@ -103,8 +85,14 @@ func (svc *DirectoryService) Stop() error {
 		svc.tdSub.Unsubscribe()
 		svc.tdSub = nil
 	}
+	if svc.updateDirSvc != nil {
+		svc.updateDirSvc.Stop()
+	}
 	if svc.readDirSvc != nil {
 		svc.readDirSvc.Stop()
+	}
+	if svc.tdBucket != nil {
+		svc.tdBucket.Close()
 	}
 	return nil
 }
@@ -113,16 +101,15 @@ func (svc *DirectoryService) Stop() error {
 // The servicePubSub is optional and ignored when nil. It is used to subscribe to directory events and
 // will be released on Stop.
 //
-//	store is an open bucket store for persisting the directory data.
-//	hc is the hub client connection to use with this agent
+//	hc is the hub client connection to use with this agent. Its ID is used as the agentID that provides the capability.
+//	store is an open store store containing the directory data.
 func NewDirectoryService(
-	store buckets.IBucketStore, hc hubclient.IHubClient) *DirectoryService {
-	serviceID := directory.ServiceName
-	//kvStore := kvbtree.NewKVStore(serviceID, thingStorePath)
+	hc hubclient.IHubClient, store buckets.IBucketStore) *DirectoryService {
+	//kvStore := kvbtree.NewKVStore(agentID, thingStorePath)
 	svc := &DirectoryService{
 		hc:           hc,
 		store:        store,
-		serviceID:    serviceID,
+		agentID:      hc.ClientID(),
 		tdBucketName: TDBucketName,
 	}
 	return svc

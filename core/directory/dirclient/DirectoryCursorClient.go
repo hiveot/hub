@@ -1,4 +1,3 @@
-// Package capnpclient that wraps the capnp generated client with a POGS API
 package dirclient
 
 import (
@@ -57,16 +56,22 @@ func (cl *DirectoryCursorClient) NextN(limit uint) (batch []thing.ThingValue, it
 
 // Release the cursor capability
 func (cl *DirectoryCursorClient) Release() {
+	req := directory.CursorReleaseArgs{
+		CursorKey: cl.cursorKey,
+	}
+	_, err := cl.hc.PubRPCRequest(cl.agentID, cl.capID, directory.CursorReleaseMethod, &req, nil)
+	_ = err
+	return
 }
 
 // NewDirectoryCursorClient returns a read cursor client
 // Intended for internal use.
 //
-//	 agentID of the directory service
-//		capID of the read capability
-//		cursorKey is the iterator key obtain when requesting the cursor
-//		hc connection to the Hub
-func NewDirectoryCursorClient(agentID, capID string, cursorKey string, hc hubclient.IHubClient) *DirectoryCursorClient {
+//	hc connection to the Hub
+//	agentID of the directory service
+//	capID of the read capability
+//	cursorKey is the iterator key obtain when requesting the cursor
+func NewDirectoryCursorClient(hc hubclient.IHubClient, agentID, capID string, cursorKey string) *DirectoryCursorClient {
 	cl := &DirectoryCursorClient{
 		cursorKey: cursorKey,
 		agentID:   agentID,
