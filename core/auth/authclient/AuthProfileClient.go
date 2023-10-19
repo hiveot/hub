@@ -23,7 +23,7 @@ type AuthProfileClient struct {
 func (cl *AuthProfileClient) GetProfile() (profile auth.ClientProfile, err error) {
 	resp := auth.GetProfileResp{}
 	_, err = cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, auth.GetProfileReq, nil, &resp)
+		cl.agentID, cl.capID, auth.GetProfileMethod, nil, &resp)
 	return resp.Profile, err
 }
 
@@ -35,47 +35,59 @@ func (cl *AuthProfileClient) NewToken(password string) (authToken string, err er
 	}
 	resp := auth.NewTokenResp{}
 	_, err = cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, auth.NewTokenReq, &req, &resp)
+		cl.agentID, cl.capID, auth.NewTokenMethod, &req, &resp)
 	return resp.Token, err
 }
 
-// Refresh a short-lived authentication token.
-func (cl *AuthProfileClient) Refresh() (authToken string, err error) {
-	resp := auth.RefreshResp{}
+// RefreshToken a short-lived authentication token.
+func (cl *AuthProfileClient) RefreshToken() (authToken string, err error) {
+	resp := auth.RefreshTokenResp{}
 	_, err = cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, auth.RefreshTokenReq, nil, &resp)
+		cl.agentID, cl.capID, auth.RefreshTokenMethod, nil, &resp)
 	return resp.NewToken, err
+}
+
+// SetServicePermissions for use by services. Set the roles allowed to
+// use the service. This is only for use by clients that are services.
+func (cl *AuthProfileClient) SetServicePermissions(capID string, roles []string) error {
+	args := auth.SetServicePermissionsArgs{
+		Capability: capID,
+		Roles:      roles,
+	}
+	_, err := cl.hc.PubRPCRequest(
+		cl.agentID, cl.capID, auth.SetServicePermissionsMethod, &args, nil)
+	return err
 }
 
 // UpdateName updates a client's display name
 func (cl *AuthProfileClient) UpdateName(newName string) error {
-	req := auth.UpdateNameArgs{
+	args := auth.UpdateNameArgs{
 		NewName: newName,
 	}
 	_, err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, auth.UpdateNameReq, &req, nil)
+		cl.agentID, cl.capID, auth.UpdateNameMethod, &args, nil)
 	return err
 }
 
 // UpdatePassword changes the user password
 // Login or Refresh must be called successfully first.
 func (cl *AuthProfileClient) UpdatePassword(newPassword string) error {
-	req := auth.UpdatePasswordArgs{
+	args := auth.UpdatePasswordArgs{
 		NewPassword: newPassword,
 	}
 	_, err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, auth.UpdatePasswordReq, &req, nil)
+		cl.agentID, cl.capID, auth.UpdatePasswordMethod, &args, nil)
 	return err
 }
 
 // UpdatePubKey updates the user's public key and close the connection.
 // This takes effect immediately. The client must reconnect to continue.
 func (cl *AuthProfileClient) UpdatePubKey(newPubKey string) error {
-	req := auth.UpdatePubKeyArgs{
+	args := auth.UpdatePubKeyArgs{
 		NewPubKey: newPubKey,
 	}
 	_, err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, auth.UpdatePubKeyReq, &req, nil)
+		cl.agentID, cl.capID, auth.UpdatePubKeyMethod, &args, nil)
 
 	// TBD: as the connection is no longer valid, might as well disconnect it to avoid confusion.
 	//cl.hc.Disconnect()

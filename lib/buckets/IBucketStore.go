@@ -3,6 +3,8 @@
 // This package defines an API to use the store with several implementations.
 package buckets
 
+import "context"
+
 // Available embedded bucket store implementations with low memory overhead
 const (
 	BackendKVBTree = "kvbtree" // fastest and best for small to medium amounts of data (dependent on available memory)
@@ -63,7 +65,9 @@ type IBucket interface {
 
 	// Cursor creates a new bucket cursor for iterating the bucket
 	// cursor.Close must be called after use to release any read transactions
-	Cursor() (cursor IBucketCursor)
+	// 	ctx with the cursor application context, intended for including a
+	// filter context when reading the cursor.
+	Cursor(ctx context.Context) (cursor IBucketCursor, err error)
 
 	// Delete removes the key-value pair from the bucket store
 	// Returns nil if the key is deleted or doesn't exist.
@@ -103,6 +107,9 @@ type IBucket interface {
 type IBucketCursor interface {
 	// BucketID is the ID of the bucket this cursor iterates
 	BucketID() string
+
+	// Context returns the cursor application context
+	Context() context.Context
 
 	// First positions the cursor at the first key in the ordered list
 	// valid is false if the bucket is empty

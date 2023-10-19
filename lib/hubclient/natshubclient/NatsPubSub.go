@@ -115,7 +115,7 @@ func (hc *NatsHubClient) PubConfig(
 // PubEvent sends the event value to the hub
 func (hc *NatsHubClient) PubEvent(thingID string, eventID string, payload []byte) error {
 	subject := MakeSubject(vocab.MessageTypeEvent, hc.clientID, thingID, eventID, hc.clientID)
-	slog.Info("PubEvent", "subject", subject)
+	slog.Debug("PubEvent", "subject", subject)
 	err := hc.nc.Publish(subject, payload)
 	return err
 }
@@ -151,7 +151,7 @@ func (hc *NatsHubClient) PubRPCRequest(
 		return ar, ar.ErrorReply
 	}
 	if resp != nil {
-		err = hc.ParseResponse(payload, resp)
+		err = hc.ParseResponse(ar.Payload, resp)
 	}
 	return ar, err
 }
@@ -266,17 +266,17 @@ func (hc *NatsHubClient) SubEvents(
 		if err != nil {
 			return
 		}
-		timeStamp := time.Now().Unix()
+		timeStampMSec := time.Now().UnixMilli()
 		md, _ := msg.Metadata()
 		if md != nil {
-			timeStamp = md.Timestamp.UnixMilli()
+			timeStampMSec = md.Timestamp.UnixMilli()
 		}
 		evmsg := &thing.ThingValue{
 			//SenderID: msg.Header.
 			AgentID:     agentID,
 			ThingID:     thingID,
 			Name:        name,
-			CreatedMSec: timeStamp,
+			CreatedMSec: timeStampMSec,
 			Data:        msg.Data,
 		}
 		cb(evmsg)
@@ -310,7 +310,7 @@ func (hc *NatsHubClient) SubRequest(
 			AgentID:   agentID,
 			ThingID:   thID,
 			Name:      name,
-			Timestamp: timeStamp.Unix(),
+			Timestamp: timeStamp.UnixMilli(),
 			Payload:   payload,
 			SendReply: func(payload []byte, err error) error {
 				if err != nil {
@@ -327,7 +327,7 @@ func (hc *NatsHubClient) SubRequest(
 			},
 		}
 		natsMsg.Header = nats.Header{}
-		natsMsg.Header.Set("received", timeStamp.Format(time.StampMicro))
+		natsMsg.Header.Set("received", timeStamp.Format(time.StampMilli))
 		err = cb(actionMsg)
 		if err != nil {
 			errMsg := hubclient.ErrorMessage{Error: err.Error()}

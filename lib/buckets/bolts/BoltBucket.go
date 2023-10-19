@@ -2,6 +2,7 @@ package bolts
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
 	"log/slog"
@@ -68,25 +69,29 @@ func (bb *BoltBucket) Close() (err error) {
 // The cursor MUST be closed after use to release the bbolt bbBucket.
 // Do not write to the database while iterating.
 //
+//	ctx is the application context available throught the cursor Context() method
+//
 // This returns a cursor with Next() and Prev() iterators or an error if the bbBucket doesn't exist
-func (bb *BoltBucket) Cursor() (cursor buckets.IBucketCursor) {
+func (bb *BoltBucket) Cursor(ctx context.Context) (cursor buckets.IBucketCursor, err error) {
 
 	tx, err := bb.db.Begin(false)
 	if err != nil {
 		slog.Error("unable to create transaction for bbBucket for client",
 			"bucketID", bb.bucketID, "clientID", bb.clientID, "err", err)
+		return nil, fmt.Errorf("unable to create new cursor:%w", err)
 	}
 	bboltBucket := tx.Bucket([]byte(bb.bucketID))
 	if bboltBucket == nil {
 		// nothing to iterate, the bbBucket doesn't exist
 		_ = tx.Rollback()
 		err = fmt.Errorf("bbBucket '%s' no longer exist for client '%s'", bb.bucketID, bb.clientID)
-		slog.Info(err.Error())
+		slog.Warn(err.Error())
+		return nil, err
 	}
 	// always return a cursor, although it might be empty without a boltbucket
 	// cursor MUST end the transaction when done
-	cursor = NewBBoltCursor(bb.bucketID, bboltBucket)
-	return cursor
+	cursor = NewBBoltCursor(ctx, bb.bucketID, bboltBucket)
+	return cursor, nil
 }
 
 // Delete a key in the bbBucket

@@ -157,8 +157,8 @@ func (svc *AuthManageClients) GetCount() (auth.GetCountResp, error) {
 	return resp, nil
 }
 
-// GetProfile returns a client's profile
-func (svc *AuthManageClients) GetProfile(
+// GetClientProfile returns a client's profile
+func (svc *AuthManageClients) GetClientProfile(senderID string,
 	args auth.GetClientProfileArgs) (auth.GetProfileResp, error) {
 
 	entry, err := svc.store.GetProfile(args.ClientID)
@@ -213,16 +213,16 @@ func (svc *AuthManageClients) Start() (err error) {
 		//	auth.AuthManageClientsCapability, svc.HandleRequest)
 		svc.mngSub, err = hubclient.SubRPCCapability(svc.hc, auth.AuthManageClientsCapability,
 			map[string]interface{}{
-				auth.AddDeviceReq:            svc.AddDevice,
-				auth.AddServiceReq:           svc.AddService,
-				auth.AddUserReq:              svc.AddUser,
-				auth.GetCountReq:             svc.GetCount,
-				auth.GetProfileReq:           svc.GetProfile,
-				auth.GetProfilesReq:          svc.GetProfiles,
-				auth.RemoveClientReq:         svc.RemoveClient,
-				auth.UpdateClientReq:         svc.UpdateClient,
-				auth.UpdateClientPasswordReq: svc.UpdateClientPassword,
-				auth.UpdateClientRoleReq:     svc.UpdateClientRole,
+				auth.AddDeviceMethod:            svc.AddDevice,
+				auth.AddServiceMethod:           svc.AddService,
+				auth.AddUserMethod:              svc.AddUser,
+				auth.GetCountMethod:             svc.GetCount,
+				auth.GetClientProfileMethod:     svc.GetClientProfile,
+				auth.GetProfilesMethod:          svc.GetProfiles,
+				auth.RemoveClientMethod:         svc.RemoveClient,
+				auth.UpdateClientMethod:         svc.UpdateClient,
+				auth.UpdateClientPasswordMethod: svc.UpdateClientPassword,
+				auth.UpdateClientRoleMethod:     svc.UpdateClientRole,
 			})
 	}
 	return err

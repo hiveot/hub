@@ -29,7 +29,7 @@ func (cl *AuthClientsClient) AddDevice(
 	}
 	resp := auth.AddDeviceResp{}
 	_, err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, auth.AddDeviceReq, &req, &resp)
+		cl.agentID, cl.capID, auth.AddDeviceMethod, &req, &resp)
 	return resp.Token, err
 }
 
@@ -45,7 +45,7 @@ func (cl *AuthClientsClient) AddService(
 	}
 	resp := auth.AddServiceResp{}
 	_, err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, auth.AddServiceReq, &req, &resp)
+		cl.agentID, cl.capID, auth.AddServiceMethod, &req, &resp)
 	return resp.Token, err
 }
 
@@ -70,7 +70,7 @@ func (cl *AuthClientsClient) AddUser(
 	}
 	resp := auth.AddUserResp{}
 	ar, err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, auth.AddUserReq, &req, &resp)
+		cl.agentID, cl.capID, auth.AddUserMethod, &req, &resp)
 	_ = ar
 	return resp.Token, err
 }
@@ -79,7 +79,7 @@ func (cl *AuthClientsClient) AddUser(
 func (cl *AuthClientsClient) GetCount() (n int, err error) {
 	resp := auth.GetCountResp{}
 	_, err = cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, auth.GetCountReq, nil, &resp)
+		cl.agentID, cl.capID, auth.GetCountMethod, nil, &resp)
 	return resp.N, err
 }
 
@@ -97,7 +97,7 @@ func (cl *AuthClientsClient) GetProfile(clientID string) (profile auth.ClientPro
 	}
 	resp := auth.GetProfileResp{}
 	_, err = cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, auth.GetProfilesReq, &req, &resp)
+		cl.agentID, cl.capID, auth.GetProfilesMethod, &req, &resp)
 	return resp.Profile, err
 }
 
@@ -106,7 +106,7 @@ func (cl *AuthClientsClient) GetProfile(clientID string) (profile auth.ClientPro
 func (cl *AuthClientsClient) GetProfiles() (profiles []auth.ClientProfile, err error) {
 	resp := auth.GetProfilesResp{}
 	_, err = cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, auth.GetProfilesReq, nil, &resp)
+		cl.agentID, cl.capID, auth.GetProfilesMethod, nil, &resp)
 	return resp.Profiles, err
 }
 
@@ -117,7 +117,7 @@ func (cl *AuthClientsClient) RemoveClient(clientID string) error {
 		ClientID: clientID,
 	}
 	_, err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, auth.RemoveClientReq, &req, nil)
+		cl.agentID, cl.capID, auth.RemoveClientMethod, &req, nil)
 	return err
 }
 
@@ -128,7 +128,7 @@ func (cl *AuthClientsClient) UpdateClient(clientID string, prof auth.ClientProfi
 		Profile:  prof,
 	}
 	_, err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, auth.UpdateClientReq, &req, nil)
+		cl.agentID, cl.capID, auth.UpdateClientMethod, &req, nil)
 	return err
 }
 
@@ -139,7 +139,7 @@ func (cl *AuthClientsClient) UpdateClientPassword(clientID string, newPass strin
 		Password: newPass,
 	}
 	_, err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, auth.UpdatePasswordReq, &req, nil)
+		cl.agentID, cl.capID, auth.UpdatePasswordMethod, &req, nil)
 	return err
 }
 
@@ -150,7 +150,7 @@ func (cl *AuthClientsClient) UpdateClientRole(clientID string, newRole string) e
 		Role:     newRole,
 	}
 	_, err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, auth.UpdateClientRoleReq, &req, nil)
+		cl.agentID, cl.capID, auth.UpdateClientRoleMethod, &req, nil)
 	return err
 }
 

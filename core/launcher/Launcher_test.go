@@ -78,12 +78,11 @@ func TestMain(m *testing.M) {
 	_ = os.MkdirAll(homeDir, 0700)
 
 	// include test clients
-	testServer, err = testenv.StartTestServer(core)
+	testServer, err = testenv.StartTestServer(core, true)
 	if err != nil {
 		panic(err)
 	}
 	serverURL, _, _ = testServer.MsgServer.GetServerURLs()
-	_ = testServer.StartAuth()
 	res := m.Run()
 	testServer.Stop()
 	os.Exit(res)

@@ -1,8 +1,12 @@
 package service
 
 import (
+	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authclient"
+	"github.com/hiveot/hub/core/history"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/thing"
 	"log/slog"
 )
 
@@ -18,7 +22,7 @@ type HistoryService struct {
 	// Storage of the latest properties of a thing
 	propsStore *LatestPropertiesStore
 	// handling of events retention
-	retentionMgr *HistoryRetention
+	retentionMgr *ManageHistory
 	// Instance ID of this service
 	readHistSvc *ReadHistoryService
 
@@ -26,7 +30,19 @@ type HistoryService struct {
 	// the pubsub service to subscribe to event
 	hc hubclient.IHubClient
 	// optional handling of pubsub events. nil if not used
-	subEventHandler *PubSubEventHandler
+	//subEventHandler *PubSubEventHandler
+	// subscription to events to add
+	eventSub hubclient.ISubscription
+	// subscription to actions to add
+	actionSub hubclient.ISubscription
+	// handler that adds history to the store
+	addHistory *AddHistory
+}
+
+// GetAddHistory returns the handler for adding history.
+// Intended for testing.
+func (svc *HistoryService) GetAddHistory() *AddHistory {
+	return svc.addHistory
 }
 
 // Start using the history service
@@ -36,7 +52,7 @@ func (svc *HistoryService) Start() (err error) {
 	propsbucket := svc.bucketStore.GetBucket(PropertiesBucketName)
 	svc.propsStore = NewPropertiesStore(propsbucket)
 
-	//err = svc.retentionMgr.Start()
+	err = svc.retentionMgr.Start()
 
 	svc.readHistSvc, err = StartReadHistoryService(
 		svc.hc, svc.bucketStore, svc.propsStore.GetProperties)
@@ -44,12 +60,43 @@ func (svc *HistoryService) Start() (err error) {
 	//	svc.updateHistSvc, err = StartUpdateHistoryService(svc.hc, tdBucket)
 	//}
 
-	// subscribe to events to add history
+	// Set the required permissions for using this service
+	// any user roles can view the directory
+	myProfile := authclient.NewAuthProfileClient(svc.hc)
+	err = myProfile.SetServicePermissions(history.ReadHistoryCap, []string{
+		auth.ClientRoleViewer,
+		auth.ClientRoleOperator,
+		auth.ClientRoleManager,
+		auth.ClientRoleService})
+	if err == nil {
+		// only admin role can manage the history
+		err = myProfile.SetServicePermissions(history.ManageHistoryCap, []string{auth.ClientRoleAdmin})
+	}
+
+	// subscribe to events to add to the history store
 	if err == nil && svc.hc != nil {
-		capAddEvent := NewAddHistory(
+		// the onAddedValue callback is used to update the 'latest' properties
+		svc.addHistory = NewAddHistory(
 			svc.bucketStore, svc.retentionMgr, svc.propsStore.HandleAddValue)
-		svc.subEventHandler = NewSubEventHandler(svc.hc, capAddEvent)
-		err = svc.subEventHandler.Start()
+
+		// add events to the history filtered through the retention manager
+		svc.eventSub, err = svc.hc.SubEvents("", "", "",
+			func(msg *thing.ThingValue) {
+				slog.Debug("received event",
+					slog.String("agentID", msg.AgentID),
+					slog.String("thingID", msg.ThingID),
+					slog.String("name", msg.Name),
+					slog.Int64("createdMSec", msg.CreatedMSec))
+				_ = svc.addHistory.AddEvent(msg)
+			})
+
+		// add actions to the history, filtered through retention manager
+		// FIXME: this needs the ability to subscribe to actions for other agents
+		//svc.actionSub, err = svc.hc.SubActions("", "", "",
+		//	func(msg *thing.ThingValue) {
+		//		slog.Info("received action", slog.String("name", msg.Name))
+		//		_ = svc.addHistory.AddAction(msg)
+		//	})
 	}
 
 	return err
@@ -62,9 +109,17 @@ func (svc *HistoryService) Stop() error {
 	if err != nil {
 		slog.Error(err.Error())
 	}
-	//svc.retentionMgr.Stop()
-	if svc.subEventHandler != nil {
-		svc.subEventHandler.Stop()
+	if svc.readHistSvc != nil {
+		svc.readHistSvc.Stop()
+	}
+	if svc.retentionMgr != nil {
+		svc.retentionMgr.Stop()
+	}
+	if svc.eventSub != nil {
+		svc.eventSub.Unsubscribe()
+	}
+	if svc.actionSub != nil {
+		svc.actionSub.Unsubscribe()
 	}
 	return err
 }
@@ -78,18 +133,18 @@ func (svc *HistoryService) Stop() error {
 func NewHistoryService(
 	hc hubclient.IHubClient, store buckets.IBucketStore) *HistoryService {
 
-	//var retentionMgr *HistoryRetention
+	var retentionMgr *ManageHistory
 	//if config != nil {
 	//	retentionMgr = NewManageRetention(config.Retention)
 	//} else {
-	//	retentionMgr = NewManageRetention(nil)
+	retentionMgr = NewManageRetention(hc, nil)
 	//}
 	svc := &HistoryService{
-		bucketStore: store,
-		propsStore:  nil,
-		serviceID:   hc.ClientID(),
-		//retentionMgr: retentionMgr,
-		hc: hc,
+		bucketStore:  store,
+		propsStore:   nil,
+		serviceID:    hc.ClientID(),
+		retentionMgr: retentionMgr,
+		hc:           hc,
 	}
 	return svc
 }

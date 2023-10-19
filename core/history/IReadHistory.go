@@ -10,6 +10,11 @@ import (
 // the request is a json document as described below
 // Responses are sent to the replyTo address using nats or mqtt5 headers.
 
+// FIXME: determine how to document the services APIs and pass arguments/responses
+// A: through interfaces -> unnecesary work
+// B: through structs -> requires lots of unnecesary struct definitions
+// C: as json -> hard to read? tbd
+
 // ServiceName is the agent name of the default instance of the service
 const ServiceName = "history"
 
@@ -32,8 +37,6 @@ const (
 type CursorArgs struct {
 	// Cursor identifier obtained with GetCursor
 	CursorKey string `json:"cursorKey"`
-	// optional filter on event or action name
-	FilterName string `json:"filterName"`
 }
 
 // CursorSingleResp contains a single response value to a cursor request
@@ -54,8 +57,6 @@ const CursorPrevNMethod = "cursorPrevN"
 type CursorNArgs struct {
 	// Cursor identifier obtained with GetCursor
 	CursorKey string `json:"cursorKey"`
-	// optional filter on event or action name
-	FilterName string `json:"filterName"`
 	// Maximum number of results to return
 	Limit int `json:"limit"`
 }
@@ -87,8 +88,6 @@ const CursorSeekMethod = "cursorSeek"
 type CursorSeekArgs struct {
 	// Cursor identifier obtained with GetCursor
 	CursorKey string `json:"cursorKey"`
-	// optional filter on event or action name
-	FilterName string `json:"filterName"`
 	// timestamp in msec since epoc to find
 	TimeStampMSec int64 `json:"timeStampMSec"`
 }
@@ -100,6 +99,14 @@ type CursorSeekArgs struct {
 // The cursor will expire after not being used for the default expiry period.
 const GetCursorMethod = "getCursor"
 
+// GetCursorArgs request arguments:
+//
+//	JSON:
+//	{
+//		   "agentID": {string},
+//		   "thingID": {string},
+//		   "name": {string}
+//	}
 type GetCursorArgs struct {
 	// Agent providing the Thing
 	AgentID string `json:"agentID"`
@@ -110,7 +117,11 @@ type GetCursorArgs struct {
 	Name string `json:"name"`
 }
 
-// GetCursorResp returns a read cursor
+// GetCursor returns a cursor key
+//
+//	{
+//	  "cursorKey": {string}
+//	}
 type GetCursorResp struct {
 	// Cursor identifier
 	// The cursor MUST be released after use.
@@ -130,6 +141,10 @@ type GetLatestArgs struct {
 }
 
 // GetLatestResp returns the latest thing values
+//
+//	{
+//	  "values": [ {thingValue}
+//	}
 type GetLatestResp struct {
-	Values []*thing.ThingValue
+	Values []*thing.ThingValue `json:"values"`
 }

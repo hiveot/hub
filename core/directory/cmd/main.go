@@ -21,6 +21,8 @@ func main() {
 	env := utils.GetAppEnvironment("", true)
 	logging.SetLogging(env.LogLevel, "")
 
+	// A service client with the application name as ID must already have been added for this service.
+	// This can be done manually or simply be starting using the launcher.
 	// this locates the hub, load certificate, load service tokens and connect
 	hc, err := hubconnect.ConnectToHub("", env.ClientID, env.CertsDir, "")
 	if err != nil {

@@ -11,6 +11,9 @@ import (
 	"github.com/hiveot/hub/lib/thing"
 )
 
+// key of filter by event/action name, stored in context
+const filterContextKey = "name"
+
 // The HistoryCursor contains the bucket instance created for a cursor.
 // It is created when a cursor is requested, stored in the cursorCache and
 // released when the cursor is released or expires.
@@ -77,6 +80,7 @@ func (svc *ReadHistoryService) findNextName(
 		parts := strings.Split(k, "/")
 		if len(parts) != 3 {
 			// key exists but is invalid. skip this entry
+			slog.Warn("findNextName: invalid key", "key", k)
 		} else {
 			// check timestamp and name must match
 			timestampmsec, _ := strconv.ParseInt(parts[0], 10, 64)
@@ -140,7 +144,8 @@ func (svc *ReadHistoryService) findPrevName(
 func (svc *ReadHistoryService) First(
 	clientID string, args history.CursorArgs) (*history.CursorSingleResp, error) {
 	until := time.Now()
-	cursor, err := svc.cursorCache.Get(clientID, args.CursorKey, true)
+
+	cursor, err := svc.cursorCache.Get(args.CursorKey, clientID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -149,9 +154,11 @@ func (svc *ReadHistoryService) First(
 		// bucket is empty
 		return nil, nil
 	}
+
 	thingValue, valid := decodeValue(cursor.BucketID(), k, v)
-	if valid && args.FilterName != "" && thingValue.Name != args.FilterName {
-		thingValue, valid = svc.findNextName(cursor, args.FilterName, until)
+	filterName := cursor.Context().Value(filterContextKey).(string)
+	if valid && filterName != "" && thingValue.Name != filterName {
+		thingValue, valid = svc.findNextName(cursor, filterName, until)
 	}
 	resp := history.CursorSingleResp{
 		Value: thingValue,
@@ -182,8 +189,9 @@ func (svc *ReadHistoryService) Last(
 		return resp, nil
 	}
 	thingValue, valid := decodeValue(cursor.BucketID(), k, v)
-	if valid && args.FilterName != "" && thingValue.Name != args.FilterName {
-		thingValue, valid = svc.findPrevName(cursor, args.FilterName, until)
+	filterName := cursor.Context().Value(filterContextKey).(string)
+	if valid && filterName != "" && thingValue.Name != filterName {
+		thingValue, valid = svc.findPrevName(cursor, filterName, until)
 	}
 	resp.Value = thingValue
 	resp.Valid = valid
@@ -195,7 +203,6 @@ func (svc *ReadHistoryService) Last(
 func (svc *ReadHistoryService) Next(
 	clientID string, args history.CursorArgs) (*history.CursorSingleResp, error) {
 
-	until := time.Now()
 	cursor, err := svc.cursorCache.Get(args.CursorKey, clientID, true)
 	if err != nil {
 		return nil, err
@@ -209,12 +216,15 @@ func (svc *ReadHistoryService) Next(
 		return resp, nil
 	}
 	thingValue, valid := decodeValue(cursor.BucketID(), k, v)
-	if valid && args.FilterName != "" && args.FilterName != thingValue.Name {
-		thingValue, valid = svc.findNextName(cursor, args.FilterName, until)
-		return resp, nil
+	filterName := cursor.Context().Value(filterContextKey).(string)
+	if valid && filterName != "" && filterName != thingValue.Name {
+		until := time.Now()
+		thingValue, valid = svc.findNextName(cursor, filterName, until)
 	}
+
 	resp.Value = thingValue
 	resp.Valid = valid
+
 	return resp, nil
 }
 
@@ -226,10 +236,7 @@ func (svc *ReadHistoryService) NextN(
 	clientID string, args history.CursorNArgs) (*history.CursorNResp, error) {
 
 	values := make([]*thing.ThingValue, 0, args.Limit)
-	nextArgs := history.CursorArgs{
-		CursorKey:  args.CursorKey,
-		FilterName: args.FilterName,
-	}
+	nextArgs := history.CursorArgs{CursorKey: args.CursorKey}
 	itemsRemaining := true
 
 	// tbd is it faster to use NextN and sort the keys?
@@ -266,9 +273,9 @@ func (svc *ReadHistoryService) Prev(
 		return resp, nil
 	}
 	thingValue, valid := decodeValue(cursor.BucketID(), k, v)
-	if valid && args.FilterName != "" && args.FilterName != thingValue.Name {
-		thingValue, valid = svc.findPrevName(cursor, args.FilterName, until)
-		return resp, nil
+	filterName := cursor.Context().Value(filterContextKey).(string)
+	if valid && filterName != "" && filterName != thingValue.Name {
+		thingValue, valid = svc.findPrevName(cursor, filterName, until)
 	}
 	resp.Value = thingValue
 	resp.Valid = valid
@@ -283,10 +290,7 @@ func (svc *ReadHistoryService) PrevN(
 	clientID string, args history.CursorNArgs) (*history.CursorNResp, error) {
 
 	values := make([]*thing.ThingValue, 0, args.Limit)
-	prevArgs := history.CursorArgs{
-		CursorKey:  args.CursorKey,
-		FilterName: args.FilterName,
-	}
+	prevArgs := history.CursorArgs{CursorKey: args.CursorKey}
 	itemsRemaining := true
 
 	// tbd is it faster to use NextN and sort the keys? - for a remote store yes
@@ -314,7 +318,6 @@ func (svc *ReadHistoryService) Release(
 
 // Seek positions the cursor at the given searchKey and corresponding value.
 // If the key is not found, the next key is returned.
-// cursor.Close must be invoked after use in order to close any read transactions.
 func (svc *ReadHistoryService) Seek(
 	clientID string, args history.CursorSeekArgs) (*history.CursorSingleResp, error) {
 
@@ -345,9 +348,12 @@ func (svc *ReadHistoryService) Seek(
 		return resp, nil
 	}
 	thingValue, valid := decodeValue(cursor.BucketID(), k, v)
-	if valid && args.FilterName != "" && thingValue.Name != args.FilterName {
-		thingValue, valid = svc.findNextName(cursor, args.FilterName, until)
+	filterName := cursor.Context().Value(filterContextKey).(string)
+	if valid && filterName != "" && thingValue.Name != filterName {
+		thingValue, valid = svc.findNextName(cursor, filterName, until)
 	}
+	resp.Value = thingValue
+	resp.Valid = valid
 
 	return resp, nil
 }

@@ -2,6 +2,8 @@ package service
 
 import (
 	"encoding/json"
+	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/core/directory"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -61,7 +63,20 @@ func (svc *DirectoryService) Start() (err error) {
 		svc.tdSub, err = svc.hc.SubEvents(
 			"", "", vocab.EventNameTD, svc.handleTDEvent)
 	}
-	// last, publish a TD for each service capability
+	myProfile := authclient.NewAuthProfileClient(svc.hc)
+
+	// Set the required permissions for using this service
+	// any user roles can view the directory
+	err = myProfile.SetServicePermissions(directory.ReadDirectoryCap, []string{
+		auth.ClientRoleViewer,
+		auth.ClientRoleOperator,
+		auth.ClientRoleManager,
+		auth.ClientRoleService})
+	if err == nil {
+		// only admin role can manage the directory
+		err = myProfile.SetServicePermissions(directory.UpdateDirectoryCap, []string{auth.ClientRoleAdmin})
+	}
+	// last, publish a TD for each service capability and set allowable roles
 	if err == nil {
 		myTD := svc.updateDirSvc.CreateUpdateDirTD()
 		myTDJSON, _ := json.Marshal(myTD)
@@ -73,8 +88,6 @@ func (svc *DirectoryService) Start() (err error) {
 		myTDJSON, _ := json.Marshal(myTD)
 		err = svc.hc.PubEvent(directory.ReadDirectoryCap, vocab.EventNameTD, myTDJSON)
 	}
-	// FIXME: register allowable roles with the auth service
-	//  update: manager, admin, service
 
 	return err
 }

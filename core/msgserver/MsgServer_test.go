@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/lib/thing"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -21,7 +22,7 @@ func Benchmark_PubSubEvent(b *testing.B) {
 	txCount := atomic.Int32{}
 	rxCount := atomic.Int32{}
 
-	ts, _ := testenv.StartTestServer(core)
+	ts, _ := testenv.StartTestServer(core, false)
 	defer ts.Stop()
 
 	cl1, _ := ts.AddConnectClient("publisher", auth.ClientTypeDevice, auth.ClientRoleDevice)
@@ -29,7 +30,7 @@ func Benchmark_PubSubEvent(b *testing.B) {
 	cl2, _ := ts.AddConnectClient("sub", auth.ClientTypeUser, auth.ClientRoleOperator)
 	defer cl2.Disconnect()
 
-	sub2, _ := cl2.SubEvents("publisher", "", "", func(msg *hubclient.EventMessage) {
+	sub2, _ := cl2.SubEvents("publisher", "", "", func(msg *thing.ThingValue) {
 		//time.Sleep(time.Millisecond * 10)
 		rxCount.Add(1)
 	})
@@ -64,7 +65,7 @@ func Benchmark_Request(b *testing.B) {
 	txCount := atomic.Int32{}
 	rxCount := atomic.Int32{}
 
-	ts, _ := testenv.StartTestServer(core)
+	ts, _ := testenv.StartTestServer(core, false)
 	defer ts.Stop()
 
 	cl1, _ := ts.AddConnectClient("client1", auth.ClientTypeUser, auth.ClientRoleAdmin)

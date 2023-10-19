@@ -162,7 +162,7 @@ func Benchmark_bucket(b *testing.B) {
 			func(b *testing.B) {
 				for n := 0; n < b.N; n++ {
 					bucket := store.GetBucket(testBucketID)
-					cursor := bucket.Cursor()
+					cursor := bucket.Cursor(nil)
 
 					// cursor based seek (find nearest) instead of a get
 					for i := 0; i < v.nrSteps; i++ {
@@ -184,7 +184,7 @@ func Benchmark_bucket(b *testing.B) {
 			func(b *testing.B) {
 				for n := 0; n < b.N; n++ {
 					bucket := store.GetBucket(testBucketID)
-					cursor := bucket.Cursor()
+					cursor := bucket.Cursor(nil)
 					k0, v0, valid0 := cursor.First()
 					assert.True(b, valid0)
 					assert.NotEmpty(b, k0)

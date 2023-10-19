@@ -32,14 +32,14 @@ func main() {
 	_ = env.LoadConfig(env.ConfigFile, &cfg)
 
 	// the service uses the bucket store to store history
-	store := bucketstore.NewBucketStore(cfg.Directory, hc.ClientID(), cfg.Backend)
+	store := bucketstore.NewBucketStore(cfg.StoreDirectory, hc.ClientID(), cfg.Backend)
 	err = store.Open()
 	if err != nil {
 		err = fmt.Errorf("can't open history bucket store: %w", err)
 		slog.Error(err.Error())
 		panic(err.Error())
 	}
-	svc := service.NewHistoryService(&cfg, hc, store)
+	svc := service.NewHistoryService(hc, store)
 	err = svc.Start()
 	if err != nil {
 		slog.Error("Failed starting history service", "err", err)

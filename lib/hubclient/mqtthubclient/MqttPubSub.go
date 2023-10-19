@@ -72,7 +72,7 @@ func (hc *MqttHubClient) ParseResponse(data []byte, resp interface{}) error {
 
 // Pub publishes a message and returns
 func (hc *MqttHubClient) Pub(topic string, payload []byte) (err error) {
-	slog.Info("Pub", "topic", topic)
+	slog.Debug("Pub", "topic", topic)
 	ctx, cancelFn := context.WithTimeout(context.Background(), hc.timeout)
 	defer cancelFn()
 	pubMsg := &paho.Publish{
@@ -91,7 +91,7 @@ func (hc *MqttHubClient) Pub(topic string, payload []byte) (err error) {
 
 // PubRequest publishes a request message and waits for an answer or until timeout
 func (hc *MqttHubClient) PubRequest(topic string, payload []byte) (ar hubclient.ActionResponse, err error) {
-	slog.Info("PubRequest start:", "topic", topic)
+	slog.Info("PubRequest", "topic", topic)
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), hc.timeout)
 	defer cancelFn()
@@ -134,7 +134,7 @@ func (hc *MqttHubClient) PubRequest(topic string, payload []byte) (ar hubclient.
 	//	ar.ErrorReply = errors.New(errResp)
 	//	err = ar.ErrorReply
 	//}
-	slog.Info("PubRequest end:",
+	slog.Debug("PubRequest end:",
 		slog.String("topic", topic),
 		slog.String("ContentType (if any)", respMsg.Properties.ContentType),
 		slog.Duration("duration", ar.Duration))
@@ -159,14 +159,14 @@ func (hc *MqttHubClient) PubConfig(
 	hubclient.ActionResponse, error) {
 
 	topic := MakeTopic(vocab.MessageTypeConfig, agentID, thingID, propID, hc.clientID)
-	//slog.Info("PubConfig", "topic", topic)
+	slog.Info("PubConfig", "topic", topic)
 	return hc.PubRequest(topic, payload)
 }
 
 // PubEvent sends the event value to the hub
 func (hc *MqttHubClient) PubEvent(thingID string, eventID string, payload []byte) error {
 	topic := MakeTopic(vocab.MessageTypeEvent, hc.clientID, thingID, eventID, hc.clientID)
-	//slog.Info("PubEvent", "topic", topic)
+	slog.Info("PubEvent", "topic", topic)
 	err := hc.Pub(topic, payload)
 	return err
 }
@@ -183,7 +183,7 @@ func (hc *MqttHubClient) PubRPCRequest(
 		payload, _ = ser.Marshal(req)
 	}
 	topic := MakeTopic(vocab.MessageTypeRPC, agentID, capability, methodName, hc.clientID)
-	slog.Debug("PubRPCRequest", "topic", topic)
+	slog.Info("PubRPCRequest", "topic", topic)
 
 	ar, err := hc.PubRequest(topic, payload)
 
@@ -216,7 +216,7 @@ func (hc *MqttHubClient) PubTD(td *thing.TD) error {
 //	optionally include an error message in the reply
 func (hc *MqttHubClient) sendReply(req *paho.Publish, payload []byte, errResp error) error {
 
-	slog.Info("sendReply", "topic", req.Topic, "responseTopic", req.Properties.ResponseTopic)
+	slog.Debug("sendReply", "topic", req.Topic, "responseTopic", req.Properties.ResponseTopic)
 
 	responseTopic := req.Properties.ResponseTopic
 	if responseTopic == "" {

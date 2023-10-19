@@ -11,13 +11,13 @@ This project has moved on from the microservice/RPC iteration and is now being c
 
 Status: The status of the Hub is pre-alpha development (Sept 2023). 
 
-### Pre-Alpha Road Map - Messaging Core 
+### Pre-Alpha Road Map - Messaging Core [alpha] 
 1. ~~natscore - Core using nats message bus~~ [completed]
 2. ~~mqttcore - Core using mqtt message bus~~ [completed]
 3. ~~auth - Authentication management of devices, services and users~~ [completed]
 4. ~~auth - Authorization for message bus access~~ [completed]
 5. ~~lib - Golang client library~~ [completed]
-6. hubcli - CLI for Hub administration [in progress]
+6. ~~hubcli - CLI for Hub administration~~ [completed]
 7. ~~Launcher service for running and monitoring plugins~~ [completed]
 8. ~~Update documentation~~ [completed]
    * [HiveOT Overview](https://hiveot.github.io/)
@@ -27,8 +27,8 @@ Status: The status of the Hub is pre-alpha development (Sept 2023).
 ### Alpha Releases Feature Road Map - Core Services
 1. ~~certs - Certificate management for CA and server certificates~~ [completed]
 2. ~~owserver - OWServer 1-wire protocol binding~~ [completed]
-3. directory - directory service for serving TDs (Thing Descriptions) to users
-4. history - history service for serving event history
+3. ~~directory - directory service for serving TDs (Thing Descriptions) to users~~ [completed]
+4. ~~history - history service for serving event history~~ [completed]
 5. state - state service for storing client state in a key-value store
 6. hiveoview - dashboard viewer for web browsers
 

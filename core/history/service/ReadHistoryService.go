@@ -1,9 +1,11 @@
 package service
 
 import (
+	"context"
 	"github.com/hiveot/hub/core/history"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
+	"log/slog"
 	"time"
 
 	"github.com/hiveot/hub/lib/thing"
@@ -11,7 +13,7 @@ import (
 
 // GetPropertiesFunc is a callback function to retrieve latest properties of a Thing
 // latest properties are stored separate from the history.
-type GetPropertiesFunc func(thingAddr string, names []string) []thing.ThingValue
+type GetPropertiesFunc func(thingAddr string, names []string) []*thing.ThingValue
 
 // ReadHistoryService provides read access to the history of thing values.
 type ReadHistoryService struct {
@@ -30,13 +32,17 @@ type ReadHistoryService struct {
 // GetCursor returns an iterator for ThingValues containing a TD document
 // The inactivity lifespan is currently fixed to 1 minute.
 func (svc *ReadHistoryService) GetCursor(
-	clientID string, args history.GetCursorArgs) (history.GetCursorResp, error) {
-
+	clientID string, args history.GetCursorArgs) (*history.GetCursorResp, error) {
 	thingAddr := args.AgentID + "/" + args.ThingID
+	slog.Debug("GetCursor for bucket: ", "addr", thingAddr)
 	bucket := svc.bucketStore.GetBucket(thingAddr)
-	cursor := bucket.Cursor()
+	ctx := context.WithValue(context.Background(), filterContextKey, args.Name)
+	cursor, err := bucket.Cursor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	key := svc.cursorCache.Add(cursor, bucket, clientID, time.Minute)
-	resp := history.GetCursorResp{CursorKey: key}
+	resp := &history.GetCursorResp{CursorKey: key}
 	return resp, nil
 }
 
@@ -45,10 +51,11 @@ func (svc *ReadHistoryService) GetCursor(
 //
 //	providing 'names' can speed up read access significantly
 func (svc *ReadHistoryService) GetLatest(
-	agentID string, thingID string, names []string) (values []thing.ThingValue) {
-	thingAddr := agentID + "/" + thingID
-	values = svc.getPropertiesFunc(thingAddr, names)
-	return values
+	clientID string, args *history.GetLatestArgs) (*history.GetLatestResp, error) {
+	thingAddr := args.AgentID + "/" + args.ThingID
+	values := svc.getPropertiesFunc(thingAddr, args.Names)
+	resp := history.GetLatestResp{Values: values}
+	return &resp, nil
 }
 
 // Stop the read history capability
@@ -71,7 +78,9 @@ func StartReadHistoryService(
 	svc = &ReadHistoryService{
 		bucketStore:       bucketStore,
 		getPropertiesFunc: getPropertiesFunc,
+		cursorCache:       buckets.NewCursorCache(),
 	}
+	svc.cursorCache.Start()
 	capMethods := map[string]interface{}{
 		history.CursorFirstMethod:   svc.First,
 		history.CursorLastMethod:    svc.Last,

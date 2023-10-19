@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/launcher"
 	"github.com/struCoder/pidusage"
 	"io"
@@ -90,15 +89,15 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcher.PluginI
 		keyPath := path.Join(svc.env.CertsDir, pluginName+".key")
 		tokenPath := path.Join(svc.env.CertsDir, pluginName+".token")
 
-		slog.Info("Adding plugin user with key and token",
+		slog.Info("Adding plugin service client with key and token",
 			"pluginName", pluginName, "keyPath", keyPath, "tokenPath", tokenPath)
 
 		_, pubKey, err := svc.hc.LoadCreateKey(keyPath)
 		if err != nil {
-			slog.Error("Fail saving key for client. Continuing... ",
+			slog.Error("Fail saving key for service client. Continuing... ",
 				"err", err, "pluginName", pluginName)
 		}
-		token, err := svc.authSvc.AddUser(pluginName, "plugin", "", pubKey, auth.ClientRoleService)
+		token, err := svc.authSvc.AddService(pluginName, "plugin", pubKey)
 		if err != nil {
 			slog.Error("Unable to add plugin to hub and create credentials. Continuing anyways", "err", err)
 		} else {

@@ -76,15 +76,35 @@ func (ts *TestServer) AddConnectClient(agentID string, clientType string, client
 
 	// if auth service is running then add the user if it doesn't exist
 	if ts.AuthService != nil {
-		args := authcfg.AddUserArgs{
-			UserID:      agentID,
-			DisplayName: "user " + agentID,
-			PubKey:      kpPub,
-			Role:        clientRole,
+		if clientType == authcfg.ClientTypeService {
+			args := authcfg.AddServiceArgs{
+				ServiceID:   agentID,
+				DisplayName: "user " + agentID,
+				PubKey:      kpPub,
+			}
+			resp, err2 := ts.AuthService.MngClients.AddService("testServer", args)
+			err = err2
+			token = resp.Token
+		} else if clientType == authcfg.ClientTypeDevice {
+			args := authcfg.AddDeviceArgs{
+				DeviceID:    agentID,
+				DisplayName: "user " + agentID,
+				PubKey:      kpPub,
+			}
+			resp, err2 := ts.AuthService.MngClients.AddDevice("testServer", args)
+			err = err2
+			token = resp.Token
+		} else {
+			args := authcfg.AddUserArgs{
+				UserID:      agentID,
+				DisplayName: "user " + agentID,
+				PubKey:      kpPub,
+				Role:        clientRole,
+			}
+			resp, err2 := ts.AuthService.MngClients.AddUser("testServer", args)
+			err = err2
+			token = resp.Token
 		}
-		resp, err2 := ts.AuthService.MngClients.AddUser("testServer", args)
-		err = err2
-		token = resp.Token
 	} else {
 		// use an on-the-fly created token for the connection
 		authInfo := msgserver.ClientAuthInfo{
@@ -135,8 +155,8 @@ func (ts *TestServer) Stop() {
 // This generates a certificate bundle for running the server, including a self signed CA.
 //
 // Use Stop() to clean up.
-// Use StartAuth() to start the auth service
-func StartTestServer(core string) (*TestServer, error) {
+// Use withAuth or run StartAuth() to start the auth service
+func StartTestServer(core string, withAuth bool) (*TestServer, error) {
 	var err error
 	ts := &TestServer{
 		CertBundle:  certs.CreateTestCertBundle(),
@@ -148,6 +168,8 @@ func StartTestServer(core string) (*TestServer, error) {
 	} else {
 		ts.MsgServer, ts.CertBundle, err = StartMqttTestServer()
 	}
-
+	if err == nil && withAuth {
+		err = ts.StartAuth()
+	}
 	return ts, err
 }

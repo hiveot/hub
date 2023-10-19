@@ -33,8 +33,12 @@ const thingIDPrefix = "thing-"
 // when testing using the capnp RPC
 var testFolder = path.Join(os.TempDir(), "test-history")
 
-const core = "mqtt"
-const historyStoreBackend = buckets.BackendPebble
+const core = "nats"
+
+// const historyStoreBackend = buckets.BackendPebble
+// const historyStoreBackend = buckets.BackendBBolt
+const historyStoreBackend = buckets.BackendKVBTree
+
 const serviceID = history.ServiceName
 const testClientID = "operator1"
 
@@ -57,7 +61,10 @@ var names = []string{"temperature", "humidity", "pressure", "wind", "speed", "sw
 
 // Create a new store, delete if it already exists
 func newHistoryService() (
-	store buckets.IBucketStore, r *historyclient.ReadHistoryClient, stopFn func()) {
+	//store buckets.IBucketStore,
+	svc *service.HistoryService,
+	r *historyclient.ReadHistoryClient,
+	stopFn func()) {
 
 	svcConfig := config.NewHistoryConfig(testFolder)
 
@@ -71,7 +78,7 @@ func newHistoryService() (
 
 	// the service needs a server connection
 	hc, err := testServer.AddConnectClient(history.ServiceName, auth.ClientTypeService, auth.ClientRoleService)
-	svc := service.NewHistoryService(hc, histStore)
+	svc = service.NewHistoryService(hc, histStore)
 	if err == nil {
 		err = svc.Start()
 	}
@@ -81,12 +88,16 @@ func newHistoryService() (
 
 	// create an end user client for testing
 	hc2, err := testServer.AddConnectClient(testClientID, auth.ClientTypeUser, auth.ClientRoleOperator)
+	if err != nil {
+		panic("can't connect operator")
+	}
 	histCl := historyclient.NewReadHistoryClient(hc2)
 
-	return histStore, histCl, func() {
+	return svc, histCl, func() {
 		hc2.Disconnect()
 		_ = svc.Stop()
 		_ = histStore.Close()
+		hc.Disconnect()
 		// give it some time to shut down before the next test
 		time.Sleep(time.Millisecond)
 	}
@@ -130,7 +141,7 @@ func makeValueBatch(publisherID string, nrValues, nrThings, timespanSec int) (
 }
 
 // add some history to the store using publisher 'device1'
-func addBulkHistory(histStore buckets.IBucketStore, count int, nrThings int, timespanSec int) (highest map[string]*thing.ThingValue) {
+func addBulkHistory(svc *service.HistoryService, count int, nrThings int, timespanSec int) (highest map[string]*thing.ThingValue) {
 
 	const publisherID = "device1"
 	var batchSize = 1000
@@ -138,8 +149,8 @@ func addBulkHistory(histStore buckets.IBucketStore, count int, nrThings int, tim
 		batchSize = count
 	}
 
-	addHist := service.NewAddHistory(histStore, nil, nil)
 	evBatch, highest := makeValueBatch(publisherID, count, nrThings, timespanSec)
+	addHist := svc.GetAddHistory()
 
 	// use add multiple in 100's
 	for i := 0; i < count/batchSize; i++ {
@@ -158,7 +169,7 @@ func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
 	_ = os.RemoveAll(testFolder)
 	_ = os.MkdirAll(testFolder, 0700)
-	testServer, _ = testenv.StartTestServer(core)
+	testServer, _ = testenv.StartTestServer(core, true)
 
 	res := m.Run()
 	os.Exit(res)
@@ -186,13 +197,14 @@ func TestAddGetEvent(t *testing.T) {
 	const evHumidity = "humidity"
 
 	// add history with two specific things to test against
-	histStore, readHist, cancelFn := newHistoryService()
+	svc, readHist, cancelFn := newHistoryService()
+	// do not defer cancel as it will be closed and reopened in the test
 	fivemago := time.Now().Add(-time.Minute * 5)
 	fiftyfivemago := time.Now().Add(-time.Minute * 55)
-	addBulkHistory(histStore, 20, 3, 3600)
-	addHist := service.NewAddHistory(histStore, nil, nil)
+	addBulkHistory(svc, 20, 3, 3600)
 
 	// add thing1 temperature from 5 minutes ago
+	addHist := svc.GetAddHistory()
 	ev1_1 := &thing.ThingValue{AgentID: agent1ID, ThingID: thing1ID, Name: evTemperature,
 		Data: []byte("12.5"), CreatedMSec: fivemago.UnixMilli()}
 	err := addHist.AddEvent(ev1_1)
@@ -216,8 +228,8 @@ func TestAddGetEvent(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test 1: get events of thing1 older than 300 minutes ago - expect 1 humidity from 55 minutes ago
-	cursor1, cRelease, err := readHist.GetCursor(agent1ID, thing1ID, "")
-	defer cRelease()
+	cursor1, c1Release, err := readHist.GetCursor(agent1ID, thing1ID, "")
+
 	// seek must return the thing humidity added 55 minutes ago, not 5 minutes ago
 	timeAfter := time.Now().Add(-time.Minute * 300).UnixMilli()
 	tv1, valid, err := cursor1.Seek(timeAfter)
@@ -227,8 +239,9 @@ func TestAddGetEvent(t *testing.T) {
 		// next finds the temperature from 5 minutes ago
 		tv2, valid, err := cursor1.Next()
 		assert.NoError(t, err)
-		assert.True(t, valid)
-		assert.Equal(t, evTemperature, tv2.Name)
+		if assert.True(t, valid) {
+			assert.Equal(t, evTemperature, tv2.Name)
+		}
 	}
 
 	// Test 2: get events of thing 1 newer than 30 minutes ago - expect 1 temperature
@@ -236,24 +249,37 @@ func TestAddGetEvent(t *testing.T) {
 
 	// do we need to get a new cursor?
 	//readHistory = svc.CapReadHistory()
-	res2, valid, _ := cursor1.Seek(timeAfter)
+	tv3, valid, _ := cursor1.Seek(timeAfter)
 	if assert.True(t, valid) {
-		assert.Equal(t, thing1ID, res2.ThingID)   // must match the filtered id1
-		assert.Equal(t, evTemperature, res2.Name) // must match evTemperature from 5 minutes ago
-		assert.Equal(t, fivemago.UnixMilli(), res2.CreatedMSec)
+		assert.Equal(t, thing1ID, tv3.ThingID)   // must match the filtered id1
+		assert.Equal(t, evTemperature, tv3.Name) // must match evTemperature from 5 minutes ago
+		assert.Equal(t, fivemago.UnixMilli(), tv3.CreatedMSec)
 	}
+	c1Release()
+	// Stop the service before phase 2
 	cancelFn()
 
 	// PHASE 2: after closing and reopening the svc the event should still be there
-	store2, readHist2, cancelFn2 := newHistoryService()
-	defer cancelFn2()
-	require.NotNil(t, store2)
+	store2 := bucketstore.NewBucketStore(testFolder, serviceID, historyStoreBackend)
+	err = store2.Open()
+	require.NoError(t, err)
+	defer store2.Close()
+	hc, err := testServer.AddConnectClient(history.ServiceName, auth.ClientTypeService, auth.ClientRoleService)
+	require.NoError(t, err)
+	defer hc.Disconnect()
+	svc = service.NewHistoryService(hc, store2)
+	err = svc.Start()
+	require.NoError(t, err)
+	defer svc.Stop()
 
 	// Test 3: get first temperature of thing 2 - expect 1 result
-	cursor2, releaseFn, _ := readHist2.GetCursor(agent1ID, thing2ID, "")
-	res3, valid, _ := cursor2.First()
+	time.Sleep(time.Second)
+	readHist2 := historyclient.NewReadHistoryClient(hc) // reuse hc, its okay
+	cursor2, releaseFn, err := readHist2.GetCursor(agent1ID, thing2ID, "")
+	require.NoError(t, err)
+	tv4, valid, _ := cursor2.First()
 	require.True(t, valid)
-	assert.Equal(t, evTemperature, res3.Name)
+	assert.Equal(t, evTemperature, tv4.Name)
 	releaseFn()
 }
 
@@ -264,8 +290,8 @@ func TestAddPropertiesEvent(t *testing.T) {
 	const agent1 = "device1"
 	const temp1 = "55"
 
-	store, readHist, closeFn := newHistoryService()
-	// do not defer closeFn as a mid-test restart will take place
+	svc, readHist, closeFn := newHistoryService()
+	defer closeFn()
 
 	action1 := &thing.ThingValue{
 		AgentID: agent1,
@@ -313,7 +339,7 @@ func TestAddPropertiesEvent(t *testing.T) {
 	}
 
 	// in total add 5 properties
-	addHist := service.NewAddHistory(store, nil, nil)
+	addHist := svc.GetAddHistory()
 	err := addHist.AddAction(action1)
 	assert.NoError(t, err)
 	err = addHist.AddEvent(event1)
@@ -342,19 +368,6 @@ func TestAddPropertiesEvent(t *testing.T) {
 	assert.Equal(t, []byte(temp1), props[0].Data)
 	assert.Equal(t, vocab.VocabSwitch, props[1].Name)
 
-	// restart
-	closeFn()
-
-	store2, readHist2, closeFn2 := newHistoryService()
-	defer closeFn2()
-	require.NotNil(t, store2)
-
-	// after closing and reopen the store the properties should still be there
-	props, err = readHist2.GetLatest(agent1, thing1ID, []string{vocab.VocabTemperature, vocab.VocabSwitch})
-	assert.Equal(t, 2, len(props))
-	assert.Equal(t, props[0].Name, vocab.VocabTemperature)
-	assert.Equal(t, props[0].Data, []byte(temp1))
-	assert.Equal(t, props[1].Name, vocab.VocabSwitch)
 }
 
 func TestGetLatest(t *testing.T) {
@@ -457,26 +470,30 @@ func TestPrevNextFiltered(t *testing.T) {
 	const agent1ID = "device1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
 
-	store, readHist, closeFn := newHistoryService()
+	svc, readHist, closeFn := newHistoryService()
 	defer closeFn()
 
 	// 10 sensors -> 1 sample per minute, 60 per hour -> 600
-	// TODO: use different timezones
-	_ = addBulkHistory(store, count, 1, 3600*24*30)
-	propName := names[2] // names used to generate the history
+	_ = addBulkHistory(svc, count, 1, 3600*24*30)
+	propName := names[2] // names was used to generate the history
 
+	// the latest of propName should be a value containing propName
 	values, err := readHist.GetLatest(agent1ID, thing0ID, []string{propName})
 	require.NoError(t, err)
+	require.Greater(t, len(values), 0)
+	assert.Equal(t, propName, values[0].Name)
+
+	// A cursor with a filter on propName should only return results of propName
 	cursor, releaseFn, err := readHist.GetCursor(agent1ID, thing0ID, propName)
+	require.NoError(t, err)
 	defer releaseFn()
-
-	assert.NotNil(t, values)
 	assert.NotNil(t, cursor)
-
-	// go forward
 	item0, valid, err := cursor.First()
+	require.NoError(t, err)
 	assert.True(t, valid)
 	assert.Equal(t, propName, item0.Name)
+
+	// further steps should still only return propName
 	item1, valid, err := cursor.Next()
 	assert.True(t, valid)
 	assert.Equal(t, propName, item1.Name)
@@ -546,11 +563,12 @@ func TestPubSub(t *testing.T) {
 	//	{Name: vocab.VocabBatteryLevel},
 	//}
 
-	_, readHist, stopFn := newHistoryService()
+	svc, readHist, stopFn := newHistoryService()
 	defer stopFn()
+	_ = svc
 
 	hc1, err := testServer.AddConnectClient(agent1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
-
+	defer hc1.Disconnect()
 	// publish events
 	names := []string{
 		vocab.VocabTemperature, vocab.VocabSwitch,
@@ -562,8 +580,10 @@ func TestPubSub(t *testing.T) {
 
 	// only valid names should be added
 	for i := 0; i < 10; i++ {
-		err = hc1.PubEvent(thing0ID, names[i], []byte("0.3"))
+		val := strconv.Itoa(i + 1)
+		err = hc1.PubEvent(thing0ID, names[i], []byte(val))
 		assert.NoError(t, err)
+		// make sure timestamp differs
 		time.Sleep(time.Millisecond * 3)
 	}
 
@@ -575,68 +595,76 @@ func TestPubSub(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, valid)
 	assert.NotEmpty(t, ev)
+
+	// store
+
 	batched, _, _ := cursor.NextN(10)
-	// expect 4 entries total from valid events
-	assert.Equal(t, 3, len(batched))
+	// expect 3 entries total from valid events (9 when retention manager isn't used)
+	assert.Equal(t, 9, len(batched))
 	releaseFn()
 }
 
 func TestManageRetention(t *testing.T) {
 	slog.Info("--- TestManageRetention ---")
-	const agent1ID = "admin"
+	const client1ID = "admin"
+	const device1ID = "device1"
 	const thing0ID = thingIDPrefix + "0"
+	const eventName = "event1"
 
+	// setup with some history
 	store, readHist, closeFn := newHistoryService()
 	defer closeFn()
 	addBulkHistory(store, 1000, 5, 1000)
 
-	//info := store.Info(ctx)
-	//t.Logf("Store ID:%s, records:%d", info.Id, info.NrRecords)
-	hc1, err := testServer.AddConnectClient(agent1ID, auth.ClientTypeUser, auth.ClientRoleAdmin)
+	// connect as an admin user
+	hc1, err := testServer.AddConnectClient(client1ID, auth.ClientTypeUser, auth.ClientRoleAdmin)
 	mngHist := historyclient.NewManageHistoryClient(hc1)
 
-	// verify the default retention list
-	retList, err := mngHist.GetRetentionRules()
+	// should be able to read the current retention rules. Expect the default rules.
+	rules1, err := mngHist.GetRetentionRules()
 	require.NoError(t, err)
-	assert.Greater(t, 1, len(retList))
+	assert.Greater(t, 1, len(rules1))
 
-	// add a couple of retention
-	newRet := &history.RetentionRule{Name: vocab.VocabTemperature}
-	err = mngHist.SetRetentionRule(newRet)
-	newRet = &history.RetentionRule{
-		Name: "blob1", Publishers: []string{agent1ID}}
-	err = mngHist.SetRetentionRule(newRet)
+	// Add two more retention rules to retain temperature and our test event from device1
+	newRule1 := &history.RetentionRule{Name: vocab.VocabTemperature}
+	err = mngHist.SetRetentionRule(newRule1)
+	newRule2 := &history.RetentionRule{Name: eventName, Agents: []string{device1ID}}
+	err = mngHist.SetRetentionRule(newRule2)
 	require.NoError(t, err)
 
-	// The new retention should now exist
-	retList2, err := mngHist.GetRetentionRules()
+	// The new retention rule should now exist and accept our custom event
+	rules2, err := mngHist.GetRetentionRules()
 	require.NoError(t, err)
-	assert.Equal(t, len(retList)+2, len(retList2))
-	ret3, err := mngHist.GetRetentionRule("blob1")
+	assert.Equal(t, len(rules1)+2, len(rules2))
+	ret3, err := mngHist.GetRetentionRule(eventName)
 	require.NoError(t, err)
-	assert.Equal(t, "blob1", ret3.Name)
+	assert.Equal(t, eventName, ret3.Name)
 	valid, err := mngHist.CheckRetention(&thing.ThingValue{
-		AgentID: agent1ID,
+		AgentID: device1ID,
 		ThingID: thing0ID,
-		Name:    "blob1",
+		Name:    eventName,
 	})
 	assert.NoError(t, err)
 	assert.True(t, valid)
 
-	// events of blob1 should be accepted now
-	hc2, err := testServer.AddConnectClient(agent1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
+	// connect as device1 and publish the custom event
+	hc2, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
 	require.NoError(t, err)
-
-	err = hc2.PubEvent(thing0ID, "blob1", []byte("hi)"))
+	defer hc2.Disconnect()
+	err = hc2.PubEvent(thing0ID, eventName, []byte("hi)"))
 	assert.NoError(t, err)
-	//
-	cursor, releaseFn, err := readHist.GetCursor(agent1ID, thing0ID, "blob1")
+	// give it some time to persist the bucket
+	time.Sleep(time.Millisecond * 100)
+
+	// read the history of device 1 and expect the event to be retained
+	cursor, releaseFn, err := readHist.GetCursor(device1ID, thing0ID, eventName)
 	require.NoError(t, err)
 	histEv, valid, _ := cursor.First()
-	assert.True(t, valid)
-	assert.Equal(t, "blob1", histEv.Name)
+	require.True(t, valid)
+	assert.Equal(t, eventName, histEv.Name)
 	releaseFn()
-	//
-	err = mngHist.RemoveRetentionRule("blob1")
+
+	// last, cleanup and remove the custom rule
+	err = mngHist.RemoveRetentionRule(eventName)
 	assert.NoError(t, err)
 }

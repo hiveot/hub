@@ -2,6 +2,7 @@ package pebble
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
@@ -46,7 +47,9 @@ func (bucket *PebbleBucket) Close() (err error) {
 //}
 
 // Cursor provides an iterator for the bucket using a pebble iterator with prefix bounds
-func (bucket *PebbleBucket) Cursor() buckets.IBucketCursor {
+//
+//	optional name for use by application
+func (bucket *PebbleBucket) Cursor(ctx context.Context) (buckets.IBucketCursor, error) {
 	// bucket prefix is {bucketID}$
 	// range bounds end at {bucketID}@
 	opts := &pebble.IterOptions{
@@ -66,9 +69,11 @@ func (bucket *PebbleBucket) Cursor() buckets.IBucketCursor {
 	bucketIterator, err := bucket.db.NewIter(opts)
 	if err != nil {
 		slog.Error("Error getting cursor", "err", err)
+		return nil, fmt.Errorf("Error getting cursor: %w", err)
 	}
-	cursor := NewPebbleCursor(bucket.clientID, bucket.bucketID, bucket.rangeStart, bucketIterator)
-	return cursor
+	cursor := NewPebbleCursor(ctx,
+		bucket.clientID, bucket.bucketID, bucket.rangeStart, bucketIterator)
+	return cursor, nil
 }
 
 // Delete removes the key-value pair from the bucket store
@@ -182,6 +187,10 @@ func (bucket *PebbleBucket) SetMultiple(docs map[string][]byte) (err error) {
 }
 
 // NewPebbleBucket creates a new bucket
+//
+//	clientID is the owner of the buck for logging
+//	bucketID identifies the bucket
+//	pebbleDB backend storage
 func NewPebbleBucket(clientID, bucketID string, pebbleDB *pebble.DB) *PebbleBucket {
 	if pebbleDB == nil {
 		slog.Error("pebbleDB is nil", "clientID", clientID, "bucketID", bucketID)

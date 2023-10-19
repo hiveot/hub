@@ -51,7 +51,7 @@ func startDirectory() (
 		err = svc.Start()
 	}
 	if err != nil {
-		panic("service fails to start")
+		panic("service fails to start: " + err.Error())
 	}
 
 	// connect as a user to the server above
@@ -84,7 +84,7 @@ func TestMain(m *testing.M) {
 	_ = os.RemoveAll(testFolder)
 	_ = os.MkdirAll(testFolder, 0700)
 
-	testServer, err = testenv.StartTestServer(core)
+	testServer, err = testenv.StartTestServer(core, true)
 	serverURL, _, _ = testServer.MsgServer.GetServerURLs()
 	if err != nil {
 		panic(err)
@@ -104,6 +104,15 @@ func TestStartStop(t *testing.T) {
 	defer stopFunc()
 	assert.NotNil(t, rd)
 	assert.NotNil(t, up)
+
+	// viewers should be able to read the directory
+	hc, err := testServer.AddConnectClient("user1", auth.ClientTypeUser, auth.ClientRoleViewer)
+	assert.NoError(t, err)
+	defer hc.Disconnect()
+	dirCl := dirclient.NewReadDirectoryClient(hc)
+	tdList, err := dirCl.GetTDs(0, 10)
+	assert.NoError(t, err, "Cant read directory. Did the service set client permissions?")
+	_ = tdList
 }
 
 func TestAddRemoveTD(t *testing.T) {

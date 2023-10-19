@@ -93,7 +93,7 @@ func TestMain(m *testing.M) {
 	_ = os.RemoveAll(testDir)
 	_ = os.MkdirAll(testDir, 0700)
 
-	testServer, err = testenv.StartTestServer(core)
+	testServer, err = testenv.StartTestServer(core, false)
 	if err != nil {
 		panic(err)
 	}
@@ -325,7 +325,7 @@ func TestLoginRefresh(t *testing.T) {
 	defer hc2.Disconnect()
 
 	// 4. Refresh the token
-	authToken2, err = cl1.Refresh()
+	authToken2, err = cl1.RefreshToken()
 	require.NoError(t, err)
 	require.NotEmpty(t, authToken2)
 
@@ -365,7 +365,7 @@ func TestRefreshNoPubKey(t *testing.T) {
 	cl1 := authclient.NewAuthProfileClient(hc1)
 
 	//  refresh fails without a public key
-	authToken1, err = cl1.Refresh()
+	authToken1, err = cl1.RefreshToken()
 	require.Error(t, err)
 	assert.Empty(t, authToken1)
 
@@ -373,7 +373,7 @@ func TestRefreshNoPubKey(t *testing.T) {
 	t.Log("set public key and refresh should succeed")
 	err = cl1.UpdatePubKey(tu1Pub)
 	require.NoError(t, err)
-	authToken1, err = cl1.Refresh()
+	authToken1, err = cl1.RefreshToken()
 	require.NoError(t, err)
 	assert.NotEmpty(t, authToken1)
 	t.Log("connecting with token")

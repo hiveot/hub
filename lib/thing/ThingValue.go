@@ -5,6 +5,14 @@ import (
 )
 
 // ThingValue contains a Thing event, action or property value
+//
+//	{
+//	   "agentID": {string},
+//	   "thingID": {string},
+//	   "name": {string},
+//	   "data": [{byte array}],
+//	   "created": {int64},   // msec since epoc
+//	}
 type ThingValue struct {
 	// AgentID is the ID of the device or service that publishes the Thing value
 	AgentID string `json:"agentID"`
@@ -32,8 +40,8 @@ type ThingValue struct {
 
 // NewThingValue creates a new ThingValue object with the address of the thing, the action or event id and the serialized value data
 // This copies the value buffer.
-func NewThingValue(agentID, thingID, name string, data []byte) ThingValue {
-	return ThingValue{
+func NewThingValue(agentID, thingID, name string, data []byte) *ThingValue {
+	return &ThingValue{
 		AgentID:     agentID,
 		ThingID:     thingID,
 		Name:        name,

@@ -81,7 +81,7 @@ func TestMain(m *testing.M) {
 	_ = os.RemoveAll(testDir)
 	_ = os.MkdirAll(testDir, 0700)
 
-	testServer, err = testenv.StartTestServer(core)
+	testServer, err = testenv.StartTestServer(core, false)
 	serverURL, _, _ = testServer.MsgServer.GetServerURLs()
 	if err != nil {
 		panic(err)

@@ -68,6 +68,8 @@ func (hc *NatsHubClient) ConnectWithCert(clientCert tls.Certificate) (err error)
 	clientCertList := []tls.Certificate{clientCert}
 	hc.tlsConfig.Certificates = clientCertList
 
+	slog.Info("ConnectWithCert", "loginID", hc.clientID, "url", hc.serverURL)
+
 	hc.nc, err = nats.Connect(hc.serverURL,
 		nats.Name(hc.clientID),
 		nats.Secure(hc.tlsConfig),
@@ -85,6 +87,7 @@ func (hc *NatsHubClient) ConnectWithCert(clientCert tls.Certificate) (err error)
 //	serverURL is the server URL to connect to. Eg tls://addr:port/ for tcp or wss://addr:port/ for websockets
 //	jwtToken is the token obtained with login or refresh. This is not a decorated token.
 func (hc *NatsHubClient) ConnectWithJWT(jwtToken string) (err error) {
+	slog.Info("ConnectWithJWT", "loginID", hc.clientID, "url", hc.serverURL)
 
 	//claims, err := jwt.Decode(jwtToken)
 	//if err != nil {
@@ -112,6 +115,7 @@ func (hc *NatsHubClient) ConnectWithJWT(jwtToken string) (err error) {
 //	serverURL is the server URL to connect to. Eg tls://addr:port/ for tcp or wss://addr:port/ for websockets
 //	token is the token obtained with login or refresh.
 func (hc *NatsHubClient) ConnectWithToken(token string) (err error) {
+	slog.Info("ConnectWithToken", "loginID", hc.clientID, "url", hc.serverURL, "token", token)
 
 	_, err = jwt.Decode(token)
 	// if this isn't a valid JWT, try the nkey login and ignore the token

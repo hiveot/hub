@@ -4,7 +4,7 @@ package auth
 const AuthServiceName = "auth"
 
 // AuthManageClientsCapability is the name of the Thing/Capability that handles management requests
-const AuthManageClientsCapability = "clients"
+const AuthManageClientsCapability = "manageClients"
 
 // Types of clients that are issued authentication tokens
 const (
@@ -50,8 +50,8 @@ type ClientProfile struct {
 
 // Authentication management request/response messages
 
-// AddDeviceReq is the request name to add a device with public key
-const AddDeviceReq = "addDevice"
+// AddDeviceMethod is the request name to add a device with public key
+const AddDeviceMethod = "addDevice"
 
 // AddDeviceArgs request message to add a device.
 // The caller must be an administrator or service.
@@ -64,8 +64,8 @@ type AddDeviceResp struct {
 	Token string `json:"token"`
 }
 
-// AddServiceReq is the request name to add a service with public key
-const AddServiceReq = "addService"
+// AddServiceMethod is the request name to add a service with public key
+const AddServiceMethod = "addService"
 
 // AddServiceArgs request message to add a service.
 // The caller must be an administrator or service.
@@ -78,8 +78,8 @@ type AddServiceResp struct {
 	Token string `json:"token"`
 }
 
-// AddUserReq is the request name to add a user with password
-const AddUserReq = "addUser"
+// AddUserMethod is the request name to add a user with password
+const AddUserMethod = "addUser"
 
 // AddUserArgs request message to add a user.
 // The caller must be an administrator or service.
@@ -94,55 +94,55 @@ type AddUserResp struct {
 	Token string `json:"token"`
 }
 
-const GetCountReq = "getCount"
+const GetCountMethod = "getCount"
 
 type GetCountResp struct {
 	N int `json:"n"`
 }
 
-// GetClientProfileReq is the request name to get any client's profile
-const GetClientProfileReq = "getClientProfile"
+// GetClientProfileMethod is the request name to get any client's profile
+const GetClientProfileMethod = "getClientProfile"
 
 type GetClientProfileArgs struct {
 	ClientID string `json:"clientID"`
 }
 
-// GetProfilesReq is the request name to get a list of all client profiles
-const GetProfilesReq = "getProfiles"
+// GetProfilesMethod is the request name to get a list of all client profiles
+const GetProfilesMethod = "getProfiles"
 
 // GetProfilesResp response to listClient actions
 type GetProfilesResp struct {
 	Profiles []ClientProfile `json:"profiles"`
 }
 
-// RemoveClientReq is the request name to remove a client
+// RemoveClientMethod is the request name to remove a client
 // The caller must be an administrator or service.
-const RemoveClientReq = "removeClient"
+const RemoveClientMethod = "removeClient"
 
 type RemoveClientArgs struct {
 	ClientID string `json:"clientID"`
 }
 
-// UpdateClientReq is the request name to update a client's profile
+// UpdateClientMethod is the request name to update a client's profile
 // The caller must be an administrator or service.
-const UpdateClientReq = "updateClient"
+const UpdateClientMethod = "updateClient"
 
 type UpdateClientArgs struct {
 	ClientID string        `json:"clientID"`
 	Profile  ClientProfile `json:"profile"`
 }
 
-// UpdateClientPasswordReq is the request name to update a client's password
+// UpdateClientPasswordMethod is the request name to update a client's password
 // The caller must be an administrator or service.
-const UpdateClientPasswordReq = "updateClientPassword"
+const UpdateClientPasswordMethod = "updateClientPassword"
 
 type UpdateClientPasswordArgs struct {
 	ClientID string `json:"clientID"`
 	Password string `json:"password"`
 }
 
-// UpdateClientRoleReq is the request name to change a client's role
-const UpdateClientRoleReq = "updateRole"
+// UpdateClientRoleMethod is the request name to change a client's role
+const UpdateClientRoleMethod = "updateRole"
 
 type UpdateClientRoleArgs struct {
 	ClientID string `json:"clientID"`

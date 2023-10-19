@@ -229,7 +229,7 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 		return false
 	}
 
-	// 3. Publishers of messages must include their sender ID
+	// 3. Agents of messages must include their sender ID
 	if write && senderID != loginID {
 		return false
 	}

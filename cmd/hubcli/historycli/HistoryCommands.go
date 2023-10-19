@@ -100,7 +100,7 @@ func HistoryLatestCommand(hc *hubclient.IHubClient) *cli.Command {
 // HandleListEvents lists the history content
 func HandleListEvents(hc hubclient.IHubClient, publisherID, thingID string, limit int) error {
 	rd := historyclient.NewReadHistoryClient(hc)
-	cursor, err := rd.GetCursor()
+	cursor, _, err := rd.GetCursor("", "", "")
 	fmt.Println("AgentID        ThingID            Timestamp                    Event           Value (truncated)")
 	fmt.Println("-----------    -------            ---------                    -----           ---------------- ")
 	count := 0
@@ -147,7 +147,7 @@ func HandleListEvents(hc hubclient.IHubClient, publisherID, thingID string, limi
 //		fmt.Printf("%-16.16s %-8d %-30.30s %-30.30s %-30.30s\n",
 //			evRet.Name,
 //			evRet.RetentionDays,
-//			fmt.Sprintf("%s", evRet.Publishers),
+//			fmt.Sprintf("%s", evRet.Agents),
 //			fmt.Sprintf("%s", evRet.Things),
 //			fmt.Sprintf("%s", evRet.Exclude),
 //		)

@@ -1,6 +1,7 @@
 package bolts
 
 import (
+	"context"
 	"go.etcd.io/bbolt"
 	"log/slog"
 )
@@ -12,10 +13,16 @@ type BBoltCursor struct {
 	bbBucket *bbolt.Bucket
 	cursor   *bbolt.Cursor
 	bucketID string
+	ctx      context.Context // optional cursor application context
 }
 
 func (bbc *BBoltCursor) BucketID() string {
 	return bbc.bucketID
+}
+
+// Context returns the cursor application context
+func (bbc *BBoltCursor) Context() context.Context {
+	return bbc.ctx
 }
 
 // First moves the cursor to the first item
@@ -116,12 +123,13 @@ func (bbc *BBoltCursor) Seek(searchKey string) (key string, value []byte, valid 
 	return string(k), v, valid
 }
 
-func NewBBoltCursor(bucketID string, bucket *bbolt.Bucket) *BBoltCursor {
+func NewBBoltCursor(ctx context.Context, bucketID string, bucket *bbolt.Bucket) *BBoltCursor {
 	var bbCursor *bbolt.Cursor = nil
 	if bucket != nil {
 		bbCursor = bucket.Cursor()
 	}
 	bbc := &BBoltCursor{
+		ctx:      ctx,
 		bucketID: bucketID,
 		bbBucket: bucket,
 		cursor:   bbCursor,

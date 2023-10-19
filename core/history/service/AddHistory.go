@@ -17,7 +17,7 @@ type AddHistory struct {
 	// onAddedValue is a callback to invoke after a value is added. Intended for tracking most recent values.
 	onAddedValue func(ev *thing.ThingValue, isAction bool)
 	//
-	retentionMgr *HistoryRetention
+	retentionMgr *ManageHistory
 }
 
 // encode a ThingValue into a single key value pair
@@ -77,22 +77,27 @@ func (svc *AddHistory) AddEvent(eventMsg *thing.ThingValue) error {
 	if len(valueStr) > 20 {
 		valueStr = valueStr[:20]
 	}
-	slog.Info("AddEvent",
-		slog.String("agentID", eventMsg.AgentID),
-		slog.String("thingID", eventMsg.ThingID),
-		slog.String("name", eventMsg.Name),
-		slog.String("value", string(valueStr)))
-
 	if err := svc.validateValue(eventMsg); err != nil {
 		slog.Warn("invalid value", "err", err)
 		return err
 	}
 
 	key, val := svc.encodeValue(eventMsg, false)
+
+	slog.Info("AddEvent",
+		slog.String("agentID", eventMsg.AgentID),
+		slog.String("thingID", eventMsg.ThingID),
+		slog.String("name", eventMsg.Name),
+		slog.String("value", string(valueStr)),
+		slog.String("key", key))
+
 	thingAddr := eventMsg.AgentID + "/" + eventMsg.ThingID
 	bucket := svc.store.GetBucket(thingAddr)
 
 	err := bucket.Set(key, val)
+	if err != nil {
+		slog.Error("AddEvent storage error", "err", err)
+	}
 	_ = bucket.Close()
 	if svc.onAddedValue != nil {
 		svc.onAddedValue(eventMsg, false)
@@ -138,20 +143,20 @@ func (svc *AddHistory) AddEvents(eventValues []*thing.ThingValue) (err error) {
 }
 
 // validateValue checks the event has the right thing address and adds a timestamp if missing
-func (svc *AddHistory) validateValue(evMsg *thing.ThingValue) error {
-	if evMsg.ThingID == "" || evMsg.AgentID == "" {
-		return fmt.Errorf("missing agent/thing address in value with name '%s'", evMsg.Name)
+func (svc *AddHistory) validateValue(tv *thing.ThingValue) error {
+	if tv.ThingID == "" || tv.AgentID == "" {
+		return fmt.Errorf("missing agent/thing address in value with name '%s'", tv.Name)
 	}
-	if evMsg.Name == "" {
-		return fmt.Errorf("missing name for event or action for thing '%s/%s'", evMsg.AgentID, evMsg.ThingID)
+	if tv.Name == "" {
+		return fmt.Errorf("missing name for event or action for thing '%s/%s'", tv.AgentID, tv.ThingID)
 	}
-	if evMsg.CreatedMSec == 0 {
-		evMsg.CreatedMSec = time.Now().UnixMilli()
+	if tv.CreatedMSec == 0 {
+		tv.CreatedMSec = time.Now().UnixMilli()
 	}
 	if svc.retentionMgr != nil {
-		isValid, err := svc.retentionMgr.CheckRetention(evMsg)
+		isValid, err := svc.retentionMgr.CheckRetention("", tv)
 		if !isValid || err != nil {
-			return fmt.Errorf("no retention for event '%s'", evMsg.Name)
+			return fmt.Errorf("no retention for event '%s'", tv.Name)
 		}
 	}
 
@@ -165,7 +170,7 @@ func (svc *AddHistory) validateValue(evMsg *thing.ThingValue) error {
 //	onAddedValue is optional and invoked after the value is added to the bucket.
 func NewAddHistory(
 	store buckets.IBucketStore,
-	retentionMgr *HistoryRetention,
+	retentionMgr *ManageHistory,
 	onAddedValue func(value *thing.ThingValue, isAction bool)) *AddHistory {
 	svc := &AddHistory{
 		store:        store,

@@ -44,11 +44,10 @@ func TestMain(m *testing.M) {
 	owsConfig.OWServerURL = owsSimulationFile
 
 	//
-	testServer, err = testenv.StartTestServer(core)
+	testServer, err = testenv.StartTestServer(core, true)
 	if err != nil {
 		panic("unable to start test server: " + err.Error())
 	}
-	_ = testServer.StartAuth()
 
 	result := m.Run()
 	time.Sleep(time.Second)

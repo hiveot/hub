@@ -2,7 +2,6 @@ package history_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/history/service"
 	"testing"
 	"time"
 
@@ -19,73 +18,33 @@ const timespanMonth = timespanDay * 31
 const timespanYear = timespanDay * 365
 
 // $go test -bench=BenchmarkAddEvents -benchtime=3s -run ^#
-// Performance without capnp in msec:
 //
-//	DBSize #Things                  kvbtree     pebble (cap)    bbolt  (cap)
-//	 10K       1    add 1K single   2.5            3.6          4700
-//	 10K       1    add 1K batch    2.0            2.9            11
-//	 10K       1    add 1K multi    2.1            2.9            11
-//	 10K       1    get 1K          1.3            2.8             1.4
-//	 10K       1    get 1K batch    0.7
+//                                   ---------------  MQTT/NATS BROKER --------------
+//	DBSize #Things                   kvbtree (msec)    pebble (msec)     bbolt (msec)
+//	 10K       1    add 1K single        2.0            4.4          4700
+//	 10K       1    add 1K batch         0.8            2.3            11
+//	 10K       1    add 1K multi         1.0            2.3            11
+//	 10K       1    get 1K single      310/127        313             311
+//	 10K       1    get 1K batch       5.4/4.1          6               5
 //
-//	 10K      10    add 1K single   2.3            4.0          4800
-//	 10K      10    add 1K multi    1.9            2.8            73
-//	 10K      10    get 1K          1.3            1.4             1.4
-//	 10K      10    get 1K batch    0.7
+//	 10K      10    add 1K single        2.4            4.0          4600
+//	 10K      10    add 1K multi         1.5            2.2            70
+//	 10K      10    get 1K single      374/125        310             330
+//	 10K      10    get 1K batch       7.3/4.3          6               6
 //
-//	100K       1    add 1K single   1.9 msec       3.5          4900
-//	100K       1    add 1K batch    1.6 msec       2.7            15
-//	100K       1    add 1K multi    1.7 msec       2.7            14
-//	100K       1    get 1K          1.2 msec       3.5             1.4
+//	100K       1    add 1K single        2.1 msec       4.2          5020
+//	100K       1    add 1K batch         1.0 msec       2.3            15
+//	100K       1    add 1K multi         1.0 msec       2.6            15
+//	100K       1    get 1K single      328/123        380             374
+//	100K       1    get 1K batch       5.6/4.4          8               6
 //
-//	100K      10    add 1K single   2.2            3.7          4900
-//	100K      10    add 1K multi    1.7            2.8            88
-//	100K      10    get 1K          1.2            1.5             1.4
+//	100K      10    add 1K single        2.5            5.2          5000
+//	100K      10    add 1K multi         1.1            2.3            81
+//	100K      10    get 1K single      302/130        315             342
+//	100K      10    get 1K batch       5.1/4.2          6               6
 //
-//	  1M       1    add 1K single   2.2 msec       3.5          6700
-//	  1M       1    add 1K batch    1.7 msec       2.7            53
-//	  1M       1    add 1K multi    1.8 msec       2.7            47
-//	  1M       1    get 1K          1.2 msec       2.5             1.4
-//
-//	  1M     100    add 1K single   2.4            4.3          5500
-//	  1M     100    add 1K multi    1.8            3.0           560
-//	  1M     100    get 1K          1.2            1.4             1.4
-//
-// Performance with capnp:
-//
-//	DBSize #Things                  kvbtree     pebble (cap)    bbolt  (cap)
-//	 10K       1    add 1K single     94          140            4900
-//	 10K       1    add 1K batch       9.4          8.1            16
-//	 10K       1    add 1K multi       9.3          8.0            16
-//	 10K       1    get 1K single     91          140             140
-//	 10K       1    get 1K multi       8.2          6.7           6.3
-//
-//	 10K      10    add 1K single     97          140            4900
-//	 10K      10    add 1K multi       9.4          8.0            74
-//	 10K      10    get 1K single     91          140             140
-//	 10K       1    get 1K multi       8.1          6.2             6.0
-//
-//	100K       1    add 1K single    102          140           5200
-//	100K       1    add 1K batch       9.3          7.7           20
-//	100K       1    add 1K multi      10.2          7.7           20
-//	100K       1    get 1K            91          140            140
-//	100K       1    get 1K multi       7.8          8.2            5.7
-//
-//	100K      10    add 1K single    100          140           5200
-//	100K      10    add 1K multi       9.6          7.8           88
-//	100K      10    get 1K            92          140            140
-//	100K      10    get 1K multi       8.6          5.9            5.6
-//
-//	  1M       1    add 1K single     90          140           6900
-//	  1M       1    add 1K batch      12            7.8           58
-//	  1M       1    add 1K multi       8.8          7.6           48
-//	  1M       1    get 1K            92          140            140
-//	  1M       1    get 1K multi       7.8          6.5            5.6
-//
-//	  1M     100    add 1K single     99          140           5900
-//	  1M     100    add 1K multi      12            7.6          540
-//	  1M     100    get 1K            78          136            140
-//	  1M     100    get 1K multi       8.2          5.7            5.6
+// NOTE: The get 1K test is high as it makes 1K RCP calls
+
 var DataSizeTable = []struct {
 	dataSize int
 	nrThings int
@@ -108,10 +67,11 @@ func BenchmarkAddEvents(b *testing.B) {
 
 	for _, tbl := range DataSizeTable {
 		testData, _ := makeValueBatch("device1", tbl.dataSize, tbl.nrThings, timespanMonth)
-		histStore, readHist, stopFn := newHistoryService()
+		svc, readHist, stopFn := newHistoryService()
+		time.Sleep(time.Millisecond)
 		// build a dataset in the store
-		addBulkHistory(histStore, tbl.dataSize, 10, timespanSec)
-		addHist := service.NewAddHistory(histStore, nil, nil)
+		addBulkHistory(svc, tbl.dataSize, 10, timespanSec)
+		addHist := svc.GetAddHistory()
 
 		// test adding records one by one
 		b.Run(fmt.Sprintf("[dbsize:%d] #things:%d add-single:%d", tbl.dataSize, tbl.nrThings, tbl.nrSets),
@@ -126,7 +86,7 @@ func BenchmarkAddEvents(b *testing.B) {
 
 				}
 			})
-		// test adding records using the ThingID batch add
+		// test adding records using the ThingID batch add for a single ThingID
 		if tbl.nrThings == 1 {
 			b.Run(fmt.Sprintf("[dbsize:%d] #things:%d add-batch:%d", tbl.dataSize, tbl.nrThings, tbl.nrSets),
 				func(b *testing.B) {
@@ -137,7 +97,7 @@ func BenchmarkAddEvents(b *testing.B) {
 					}
 				})
 		}
-		// test adding records using the ThingID multi add of different IDs
+		// test adding records using the ThingID multi add for different ThingIDs
 		b.Run(fmt.Sprintf("[dbsize:%d] #things:%d add-multi:%d", tbl.dataSize, tbl.nrThings, tbl.nrSets),
 			func(b *testing.B) {
 				bulk := testData[0:tbl.nrSets]
@@ -184,9 +144,8 @@ func BenchmarkAddEvents(b *testing.B) {
 				}
 			})
 
-		//b.Log("- next round -")
+		stopFn()
 		time.Sleep(time.Second) // cleanup delay
 		fmt.Println("--- next round ---")
-		stopFn()
 	}
 }

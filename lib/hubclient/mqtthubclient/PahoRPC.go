@@ -38,7 +38,7 @@ func NewHandler(ctx context.Context, c *paho.Client) (*Handler, error) {
 	c.Router.RegisterHandler(fmt.Sprintf(InboxTopicFormat, c.ClientID), h.responseHandler)
 
 	inboxTopic := fmt.Sprintf(InboxTopicFormat, c.ClientID)
-	slog.Info("NewHandler. Subscribing to inbox", "topic", inboxTopic)
+	slog.Debug("NewHandler. Subscribing to inbox", "topic", inboxTopic)
 	_, err := c.Subscribe(ctx, &paho.Subscribe{
 		Subscriptions: map[string]paho.SubscribeOptions{
 			inboxTopic: {QoS: 1},

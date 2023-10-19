@@ -12,7 +12,7 @@ import (
 )
 
 // ThingPropertyValues is a map of Thing property name to value
-type ThingPropertyValues map[string]thing.ThingValue
+type ThingPropertyValues map[string]*thing.ThingValue
 
 // LatestPropertiesStore holds the most recent property and event values of things.
 // It persists a record for each Thing containing a map of the most recent properties.
@@ -62,8 +62,8 @@ func (srv *LatestPropertiesStore) LoadProps(thingAddr string) (found bool) {
 //
 //	 thingAddr is the address the thing is reachable at. Usually the agentID/thingID.
 //		names is optional and can be used to limit the resulting array of values. Use nil to get all properties.
-func (srv *LatestPropertiesStore) GetProperties(thingAddr string, names []string) (propList []thing.ThingValue) {
-	propList = make([]thing.ThingValue, 0)
+func (srv *LatestPropertiesStore) GetProperties(thingAddr string, names []string) (propList []*thing.ThingValue) {
+	propList = make([]*thing.ThingValue, 0)
 
 	// ensure this thing has its properties cache loaded
 	srv.LoadProps(thingAddr)
@@ -130,7 +130,7 @@ func (srv *LatestPropertiesStore) HandleAddValue(event *thing.ThingValue, isActi
 		// in case events arrive out of order, only update if the event is newer
 		existingLatest, found := thingCache[event.Name]
 		if !found || event.CreatedMSec > existingLatest.CreatedMSec {
-			thingCache[event.Name] = *event
+			thingCache[event.Name] = event
 		}
 	}
 	srv.changedThings[thingAddr] = true

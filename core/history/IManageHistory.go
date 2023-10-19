@@ -15,7 +15,7 @@ type RetentionRule struct {
 	Name string `yaml:"name"`
 
 	// Optional, only accept the event from these publishers
-	Publishers []string `yaml:"publishers"`
+	Agents []string `yaml:"agents"`
 
 	// Optional, only accept the event from these things
 	Things []string `yaml:"things"`
@@ -28,7 +28,7 @@ type RetentionRule struct {
 }
 
 // CheckRetentionMethod checks if the given event will be retained
-const CheckRetentionMethod = "checkEventRetention"
+const CheckRetentionMethod = "checkRetention"
 
 type CheckRetentionArgs struct {
 	// the event value to check
@@ -40,7 +40,7 @@ type CheckRetentionResp struct {
 
 // GetRetentionRuleMethod returns the retention configuration of an event by name
 // This applies to events from any publishers and things
-const GetRetentionRuleMethod = "getRetention"
+const GetRetentionRuleMethod = "getRetentionRule"
 
 type GetRetentionRuleArgs struct {
 	// Name of the event whose retention settings to get
@@ -52,7 +52,7 @@ type GetRetentionRuleResp struct {
 }
 
 // GetRetentionRulesMethod returns the collection of retention configurations
-const GetRetentionRulesMethod = "getRetentions"
+const GetRetentionRulesMethod = "getRetentionRules"
 
 type GetRetentionRulesResp struct {
 	Rules []*RetentionRule `json:"rules"`
@@ -60,7 +60,7 @@ type GetRetentionRulesResp struct {
 
 // RemoveRetentionRuleMethod removes an existing event retention rule
 // If the rule doesn't exist this is considered successful and no error will be returned
-const RemoveRetentionRuleMethod = "removeRetention"
+const RemoveRetentionRuleMethod = "removeRetentionRule"
 
 type RemoveRetentionRuleArgs struct {
 	// Name of the event whose retention settings to remove
@@ -68,7 +68,7 @@ type RemoveRetentionRuleArgs struct {
 }
 
 // SetRetentionRuleMethod configures the retention of a Thing event
-const SetRetentionRuleMethod = "setRetention"
+const SetRetentionRuleMethod = "setRetentionRule"
 
 type SetRetentionRuleArgs struct {
 	Rule *RetentionRule `json:"rule"`

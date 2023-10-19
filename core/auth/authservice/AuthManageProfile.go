@@ -6,14 +6,10 @@ import (
 	"github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/ser"
 	"log/slog"
 )
 
 // AuthManageProfile is the capability for clients to view and update their own profile.
-// This implements the IManageProfile interface.
-//
-// This implements the IAuthManageProfile interface.
 type AuthManageProfile struct {
 	// Client record persistence
 	store auth.IAuthnStore
@@ -29,93 +25,20 @@ type AuthManageProfile struct {
 }
 
 // GetProfile returns a client's profile
-func (svc *AuthManageProfile) GetProfile(clientID string) (profile auth.ClientProfile, err error) {
+func (svc *AuthManageProfile) GetProfile(clientID string) (
+	resp *auth.GetProfileResp, err error) {
 	clientProfile, err := svc.store.GetProfile(clientID)
-	return clientProfile, err
-}
-
-// HandleRequest unmarshal and invoke requests published by hub clients
-// This uses the sender's ID from RequestMessage.ClientID
-func (svc *AuthManageProfile) HandleRequest(msg *hubclient.RequestMessage) error {
-	if msg.ClientID == "" {
-		return fmt.Errorf("missing clientID in request message. deviceID='%s', thingID='%s'",
-			msg.AgentID, msg.ThingID)
-	}
-	slog.Info("handleClientActions", slog.String("actionID", msg.Name))
-	switch msg.Name {
-	case auth.GetProfileReq:
-		// use the current client
-		profile, err := svc.GetProfile(msg.ClientID)
-		if err == nil {
-			resp := auth.GetProfileResp{Profile: profile}
-			reply, _ := ser.Marshal(&resp)
-			err = msg.SendReply(reply, nil)
-		}
-		return err
-	case auth.NewTokenReq:
-		req := &auth.NewTokenArgs{}
-		err := ser.Unmarshal(msg.Payload, &req)
-		if err != nil {
-			return err
-		}
-		newToken, err := svc.NewToken(msg.ClientID, req.Password)
-		if err == nil {
-			resp := auth.NewTokenResp{Token: newToken}
-			reply, _ := ser.Marshal(resp)
-			err = msg.SendReply(reply, nil)
-		}
-		return err
-	case auth.RefreshTokenReq:
-		newToken, err := svc.Refresh(msg.ClientID)
-		if err == nil {
-			resp := auth.RefreshResp{NewToken: newToken}
-			reply, _ := ser.Marshal(resp)
-			err = msg.SendReply(reply, nil)
-		}
-		return err
-	case auth.UpdateNameReq:
-		req := &auth.UpdateNameArgs{}
-		err := ser.Unmarshal(msg.Payload, &req)
-		if err != nil {
-			return err
-		}
-		err = svc.UpdateName(msg.ClientID, req.NewName)
-		if err == nil {
-			err = msg.SendAck()
-		}
-		return err
-	case auth.UpdatePasswordReq:
-		req := &auth.UpdatePasswordArgs{}
-		err := ser.Unmarshal(msg.Payload, &req)
-		if err != nil {
-			return err
-		}
-		err = svc.UpdatePassword(msg.ClientID, req.NewPassword)
-		if err == nil {
-			err = msg.SendAck()
-		}
-		return err
-	case auth.UpdatePubKeyReq:
-		req := &auth.UpdatePubKeyArgs{}
-		err := ser.Unmarshal(msg.Payload, &req)
-		if err != nil {
-			return err
-		}
-		err = svc.UpdatePubKey(msg.ClientID, req.NewPubKey)
-		if err == nil {
-			err = msg.SendAck()
-		}
-		return err
-	default:
-		return fmt.Errorf("unknown method '%s' for client '%s'", msg.Name, msg.ClientID)
-	}
+	resp = &auth.GetProfileResp{Profile: clientProfile}
+	return resp, err
 }
 
 // NewToken validates a password and issues an authn token. A public key must be on file.
-func (svc *AuthManageProfile) NewToken(clientID string, password string) (newToken string, err error) {
-	clientProfile, err := svc.store.VerifyPassword(clientID, password)
+func (svc *AuthManageProfile) NewToken(
+	clientID string, args auth.NewTokenArgs) (resp *auth.NewTokenResp, err error) {
+
+	clientProfile, err := svc.store.VerifyPassword(clientID, args.Password)
 	if err != nil {
-		return "", err
+		return resp, err
 	}
 	authInfo := msgserver.ClientAuthInfo{
 		ClientID:   clientProfile.ClientID,
@@ -123,8 +46,9 @@ func (svc *AuthManageProfile) NewToken(clientID string, password string) (newTok
 		PubKey:     clientProfile.PubKey,
 		Role:       clientProfile.Role,
 	}
-	newToken, err = svc.msgServer.CreateToken(authInfo)
-	return newToken, err
+	newToken, err := svc.msgServer.CreateToken(authInfo)
+	resp = &auth.NewTokenResp{Token: newToken}
+	return resp, err
 }
 
 // notification handler invoked when clients have been updated
@@ -134,14 +58,14 @@ func (svc *AuthManageProfile) onChange() {
 	go svc.msgServer.ApplyAuth(svc.store.GetAuthClientList())
 }
 
-// Refresh issues a new token for the authenticated user.
+// RefreshToken issues a new token for the authenticated user.
 // This returns a refreshed token that can be used to connect to the messaging server
 // the old token must be a valid jwt token belonging to the clientID
-func (svc *AuthManageProfile) Refresh(clientID string) (newToken string, err error) {
+func (svc *AuthManageProfile) RefreshToken(clientID string) (*auth.RefreshTokenResp, error) {
 	// verify the token
 	clientProfile, err := svc.store.GetProfile(clientID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	//err = svc.msgServer.ValidateToken(
 	//	clientID, clientProfile.PubKey, oldToken, "", "")
@@ -154,16 +78,44 @@ func (svc *AuthManageProfile) Refresh(clientID string) (newToken string, err err
 		PubKey:     clientProfile.PubKey,
 		Role:       clientProfile.Role,
 	}
-	newToken, err = svc.msgServer.CreateToken(authInfo)
-	return newToken, err
+	newToken, err := svc.msgServer.CreateToken(authInfo)
+	resp := &auth.RefreshTokenResp{NewToken: newToken}
+	return resp, err
+}
+
+// SetServicePermissions sets
+// This sets the client roles that are allowed to use the service.
+// This fails if the client is not a service.
+func (svc *AuthManageProfile) SetServicePermissions(
+	clientID string, args *auth.SetServicePermissionsArgs) error {
+	// the client must be a service
+
+	clientProfile, err := svc.store.GetProfile(clientID)
+	if err != nil {
+		return err
+	} else if clientProfile.ClientType != auth.ClientTypeService {
+		return fmt.Errorf("Client '%s' must be a service, not a '%s'", clientID, clientProfile.ClientType)
+	}
+
+	svc.msgServer.SetServicePermissions(clientID, args.Capability, args.Roles)
+	return nil
 }
 
 // Start subscribes to the actions for management and client capabilities
 // Register the binding subscription using the given connection
 func (svc *AuthManageProfile) Start() (err error) {
 	if svc.hc != nil {
-		svc.actionSub, _ = svc.hc.SubRPCRequest(
-			auth.AuthProfileCapability, svc.HandleRequest)
+
+		svc.actionSub, _ = hubclient.SubRPCCapability(
+			svc.hc, auth.AuthProfileCapability, map[string]interface{}{
+				auth.GetProfileMethod:            svc.GetProfile,
+				auth.NewTokenMethod:              svc.NewToken,
+				auth.RefreshTokenMethod:          svc.RefreshToken,
+				auth.SetServicePermissionsMethod: svc.SetServicePermissions,
+				auth.UpdateNameMethod:            svc.UpdateName,
+				auth.UpdatePasswordMethod:        svc.UpdatePassword,
+				auth.UpdatePubKeyMethod:          svc.UpdatePubKey,
+			})
 	}
 	return err
 }
@@ -176,22 +128,24 @@ func (svc *AuthManageProfile) Stop() {
 	}
 }
 
-// UpdateName
-func (svc *AuthManageProfile) UpdateName(clientID string, displayName string) (err error) {
+func (svc *AuthManageProfile) UpdateName(
+	clientID string, args *auth.UpdateNameArgs) (err error) {
+
 	clientProfile, err := svc.store.GetProfile(clientID)
-	clientProfile.DisplayName = displayName
+	clientProfile.DisplayName = args.NewName
 	err = svc.store.Update(clientID, clientProfile)
 	// this doesn't affect authentication
 	return err
 }
 
-func (svc *AuthManageProfile) UpdatePassword(clientID string, newPassword string) (err error) {
+func (svc *AuthManageProfile) UpdatePassword(
+	clientID string, args *auth.UpdatePasswordArgs) (err error) {
 	slog.Info("UpdatePassword", "clientID", clientID)
 	_, err = svc.GetProfile(clientID)
 	if err != nil {
 		return err
 	}
-	err = svc.store.SetPassword(clientID, newPassword)
+	err = svc.store.SetPassword(clientID, args.NewPassword)
 	if err != nil {
 		return err
 	}
@@ -199,13 +153,15 @@ func (svc *AuthManageProfile) UpdatePassword(clientID string, newPassword string
 	return err
 }
 
-func (svc *AuthManageProfile) UpdatePubKey(clientID string, newPubKey string) (err error) {
+func (svc *AuthManageProfile) UpdatePubKey(
+	clientID string, args *auth.UpdatePubKeyArgs) (err error) {
+
 	slog.Info("UpdatePubKey", "clientID", clientID)
 	clientProfile, err := svc.store.GetProfile(clientID)
 	if err != nil {
 		return err
 	}
-	clientProfile.PubKey = newPubKey
+	clientProfile.PubKey = args.NewPubKey
 	err = svc.store.Update(clientID, clientProfile)
 	if err != nil {
 		return err

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/hiveot/hub/core/directory"
 	"github.com/hiveot/hub/lib/buckets"
@@ -35,13 +36,16 @@ func (svc *ReadDirectoryService) CreateReadDirTD() *thing.TD {
 //
 //	clientID is the owner of the cursor. Used to remove all cursors of an owner when it disconnects.
 func (svc *ReadDirectoryService) GetCursor(
-	clientID string) (directory.GetCursorResp, error) {
+	clientID string) (*directory.GetCursorResp, error) {
 
-	dirCursor := svc.bucket.Cursor()
-	// TODO: what lifespan is reasonable?
-	key := svc.cursorCache.Add(dirCursor, svc.bucket, clientID, time.Minute)
-	resp := directory.GetCursorResp{CursorKey: key}
-	return resp, nil
+	dirCursor, err := svc.bucket.Cursor(context.Background())
+	if err == nil {
+		// TODO: what lifespan is reasonable?
+		key := svc.cursorCache.Add(dirCursor, svc.bucket, clientID, time.Minute)
+		resp := &directory.GetCursorResp{CursorKey: key}
+		return resp, nil
+	}
+	return nil, err
 }
 
 // GetTD returns the TD document for the given Thing ID in JSON format
@@ -67,7 +71,7 @@ func (svc *ReadDirectoryService) GetTD(
 func (svc *ReadDirectoryService) GetTDsRaw(
 	clientID string, args *directory.GetTDsArgs) (map[string][]byte, error) {
 
-	cursor := svc.bucket.Cursor()
+	cursor, err := svc.bucket.Cursor(context.Background())
 	if args.Offset > 0 {
 		// TODO: add support for cursor.Skip
 		cursor.NextN(uint(args.Offset))
@@ -75,7 +79,7 @@ func (svc *ReadDirectoryService) GetTDsRaw(
 
 	docs, itemsRemaining := cursor.NextN(uint(args.Limit))
 	_ = itemsRemaining
-	return docs, nil
+	return docs, err
 }
 
 // GetTDs returns a collection of TD documents
@@ -85,7 +89,7 @@ func (svc *ReadDirectoryService) GetTDs(
 	clientID string, args *directory.GetTDsArgs) (res *directory.GetTDsResp, err error) {
 
 	batch := make([]thing.ThingValue, 0, args.Limit)
-	cursor := svc.bucket.Cursor()
+	cursor, err := svc.bucket.Cursor(context.Background())
 	if args.Offset > 0 {
 		// FIXME: add support for cursor.Skip
 		cursor.NextN(uint(args.Offset))

@@ -3,6 +3,7 @@ package kvbtree
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/utils"
@@ -54,14 +55,15 @@ func (bucket *KVBTreeBucket) Close() (err error) {
 // This should be fast enough for many use-cases. 100K records takes around 27msec on an i5@2.9GHz
 //
 // This returns a cursor with Next() and Prev() iterators
-func (bucket *KVBTreeBucket) Cursor() (cursor buckets.IBucketCursor) {
+func (bucket *KVBTreeBucket) Cursor(
+	ctx context.Context) (buckets.IBucketCursor, error) {
 
 	bucket.mutex.RLock()
 	defer bucket.mutex.RUnlock()
 
 	iter := bucket.kvtree.Iter()
-	cursor = NewKVCursor(bucket, iter)
-	return cursor
+	cursor := NewKVCursor(ctx, bucket, iter)
+	return cursor, nil
 }
 
 // Delete a document from the bucket
