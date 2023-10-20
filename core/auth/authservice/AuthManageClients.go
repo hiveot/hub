@@ -24,7 +24,7 @@ type AuthManageClients struct {
 // AddDevice adds an IoT device and generates an authentication token
 // This is handled by the underlying messaging core.
 func (svc *AuthManageClients) AddDevice(
-	senderID string, args auth.AddDeviceArgs) (auth.AddDeviceResp, error) {
+	ctx hubclient.ServiceContext, args auth.AddDeviceArgs) (auth.AddDeviceResp, error) {
 
 	//deviceID string, name string, pubKey string) (token string, err error) {
 	slog.Info("AddDevice",
@@ -64,9 +64,9 @@ func (svc *AuthManageClients) AddDevice(
 
 // AddService adds or updates a service with the admin role
 func (svc *AuthManageClients) AddService(
-	senderID string, args auth.AddServiceArgs) (auth.AddServiceResp, error) {
+	ctx hubclient.ServiceContext, args auth.AddServiceArgs) (auth.AddServiceResp, error) {
 	slog.Info("AddService",
-		slog.String("senderID", senderID),
+		slog.String("senderID", ctx.ClientID),
 		slog.String("serviceID", args.ServiceID),
 		slog.String("displayName", args.DisplayName),
 		slog.String("pubKey", args.PubKey))
@@ -102,7 +102,7 @@ func (svc *AuthManageClients) AddService(
 // AddUser adds a new user for password authentication
 // If a public key is provided a signed token will be returned
 func (svc *AuthManageClients) AddUser(
-	senderID string, args auth.AddUserArgs) (auth.AddUserResp, error) {
+	ctx hubclient.ServiceContext, args auth.AddUserArgs) (auth.AddUserResp, error) {
 	slog.Info("AddUser",
 		slog.String("userID", args.UserID),
 		slog.String("displayName", args.DisplayName),
@@ -158,7 +158,7 @@ func (svc *AuthManageClients) GetCount() (auth.GetCountResp, error) {
 }
 
 // GetClientProfile returns a client's profile
-func (svc *AuthManageClients) GetClientProfile(senderID string,
+func (svc *AuthManageClients) GetClientProfile(ctx hubclient.ServiceContext,
 	args auth.GetClientProfileArgs) (auth.GetProfileResp, error) {
 
 	entry, err := svc.store.GetProfile(args.ClientID)
@@ -197,7 +197,7 @@ func (svc *AuthManageClients) onChange() error {
 }
 
 // RemoveClient removes a client and disables authentication
-func (svc *AuthManageClients) RemoveClient(senderID string, args auth.RemoveClientArgs) error {
+func (svc *AuthManageClients) RemoveClient(ctx hubclient.ServiceContext, args auth.RemoveClientArgs) error {
 	err := svc.store.Remove(args.ClientID)
 	if err == nil {
 		err = svc.onChange()
@@ -236,17 +236,17 @@ func (svc *AuthManageClients) Stop() {
 	}
 }
 
-func (svc *AuthManageClients) UpdateClient(args auth.UpdateClientArgs) error {
+func (svc *AuthManageClients) UpdateClient(ctx hubclient.ServiceContext, args auth.UpdateClientArgs) error {
 	err := svc.store.Update(args.ClientID, args.Profile)
 	return err
 }
 
-func (svc *AuthManageClients) UpdateClientPassword(args auth.UpdateClientPasswordArgs) error {
+func (svc *AuthManageClients) UpdateClientPassword(ctx hubclient.ServiceContext, args auth.UpdateClientPasswordArgs) error {
 	err := svc.store.SetPassword(args.ClientID, args.Password)
 	return err
 }
 
-func (svc *AuthManageClients) UpdateClientRole(args auth.UpdateClientRoleArgs) error {
+func (svc *AuthManageClients) UpdateClientRole(ctx hubclient.ServiceContext, args auth.UpdateClientRoleArgs) error {
 	prof, err := svc.store.GetProfile(args.ClientID)
 	if err == nil {
 		prof.Role = args.Role

@@ -2,26 +2,29 @@
 
 ## Objective
 
-Provide historical reading of thing events and actions using the bucket store.
+Provide historical reading of thing events and actions using the bucket store, independent of the message bus used.
 
 
 ## Status
 
 This service is functional.
 
-To be completed:
-* Add pubsub subscription for events and actions to update the history through pubsub.
-* Configuration of event retention.
-* Configuration to determine which bucket store to use. (currently Pebble is hard coded)
+TODO:
+1. Retention for actions
+2. Configuration of event retention.
+3. Storage of event retention.
+4. config for retention default allow or deny all.
+3. hubcli commands for managing retention.
+4. Performance analysis optimization
 
 
 ## Summary
 
 The History service provides capture and retrieval of past events and actions. 
 
-Data ingress at a continuous rate of 1000 events per minute is readily supported on small to medium sized systems with 500MB of RAM or more and plenty of disk space. More sensors can be supported if storage space, memory and CPU are available. For smaller environments this can be dialed down further with some experimentation.
+Data ingress at a continuous rate of 1000 events per second is readily supported on small to medium sized systems with 500MB of RAM or more and plenty of disk space. More sensors can be supported if storage space, memory and CPU are available. For smaller environments this can be dialed down further with some experimentation. The use of retention rules can reduce the required disk space. 
 
-Basic data queryies are provided through the API for the purpose to display and compare historical information.
+Basic data queries are provided through the API for the purpose to display and compare historical information.
 
 Data retention rules must be set to start storing events. To run out of the box, a default rule set is included with the history.yaml configuration file. The rules can be modified through the retention API. Changes to the configuration file require a restart of the service.
 
@@ -29,22 +32,27 @@ Data retention rules must be set to start storing events. To run out of the box,
 
 * The history store is designed to use the bucket store and is thus limited by the storage capabilities and query capabilities of the bucket store API.
 
-* Complex analytics of historical information is out of scope for the history store. The recommended approach is to periodically export a batch of new data to a time series database such as Prometheus, InfluxDB, or others that support clustering and can be integrated with 3rd party analytics engines. This can best be accomplished by adding an export service.
+* Complex analytics of historical information is out of scope for the history store. The recommended approach is to periodically export a batch of new data to a time series database such as Prometheus, InfluxDB, or others that support clustering and can be integrated with 3rd party analytics engines.
 
 * There are no tools yet to monitor the bucket store health, and track its resource usage.
 
 
 ## Backend Storage
 
-This service uses the bucketstore for the storage backend. The bucketstore supports several embedded backend implementations that run out of the box without the need for any setup and configuration.
+This service uses the bucket-store for the storage backend. The bucket-store supports several embedded backend implementations that run out of the box without the need for any setup and configuration.
 
 Extending the bucket store with external databases such as Mongodb, SQLite, PostgresSQL and possibly others is under consideration.
 
-The bucketstore API provides a cursor with key-ranged seek capability which can be used for time-based queries. All bucket store implementations support this range query through cursors. 
+The bucket-store API provides a cursor with key-ranged seek capability which can be used for time-based queries. All bucket store implementations support this range query through cursors. 
 
 Currently, the Pebble bucket store is the default for the history store. It provides a good balance between storage size and resource usage for smaller systems. Pebble should be able to handle a TB of data or even more.
 
-More testing is needed to determine the actual limitations.
+More testing is needed to determine the actual limitations and improve performance.
+
+### Performance
+
+Performance is mostly limited by the message bus. The bench test shows an average read/write duration of 1-2 ms per 1000 calls, except for bbolt which is much slower on write but faster on read. As read times are also limited by messaging, the use of bbolt only make sense for reading lots of data locally, for example when analyzing, which currently has no use-case. 
+
 
 ### Data Size
 
@@ -74,3 +82,12 @@ An image is 720i compressed, around 100K/image.
 * A single image -> 100K snapshots/year => 10 GB/year
 * A system with 10 cameras -> 1000K snapshots/year => 100 GB/year
 * A larger system with 100 cameras -> 10M snapshots/year => 1 TB/year
+
+Backend Recommendations:
+1. Use of kvstore backend is recommended for smallish datasets up to 100GB or so. Beyond this the read/write performance starts to suffer.
+2. Of the embedded stores, Pebble scales best for large datasets of 100GB-10TB. Beyond that a stand-alone clustering database server should be used.
+3. Bbolt works best when using a service that analyzes the data locally with heavy read operations. Write is slow but read is faster than the other stores when processing a lot of data.
+
+### Retention
+
+Data that loses a meaningful use after time can be removed using retention rules. The retention engine periodically removes records of events and actions from the store that meet the criteria. Rule criteria include the publishing agent, thingID and event names. 

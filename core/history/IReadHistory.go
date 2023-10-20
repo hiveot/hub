@@ -6,14 +6,9 @@ import (
 )
 
 // rpc requests are published on the bus using the address:
-//  rpc/{serviceID}/{capability}/{method}
-// the request is a json document as described below
+//  rpc/{serviceID}/{capability}/{method}/{senderID}
+// the request contains a json document with arguments as described below.
 // Responses are sent to the replyTo address using nats or mqtt5 headers.
-
-// FIXME: determine how to document the services APIs and pass arguments/responses
-// A: through interfaces -> unnecesary work
-// B: through structs -> requires lots of unnecesary struct definitions
-// C: as json -> hard to read? tbd
 
 // ServiceName is the agent name of the default instance of the service
 const ServiceName = "history"
@@ -108,9 +103,9 @@ const GetCursorMethod = "getCursor"
 //		   "name": {string}
 //	}
 type GetCursorArgs struct {
-	// Agent providing the Thing
+	// Agent providing the Thing (required)
 	AgentID string `json:"agentID"`
-	// Thing providing the event to get
+	// Thing providing the event to get (required)
 	ThingID string `json:"thingID"`
 	// Name of the event or action whose history to get
 	// Use "" to iterate all events/action of the Thing.

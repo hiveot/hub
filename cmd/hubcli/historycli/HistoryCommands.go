@@ -27,16 +27,29 @@ import (
 //}
 
 func HistoryListCommand(hc *hubclient.IHubClient) *cli.Command {
+	limit := 100
 	return &cli.Command{
 		Name:      "lev",
 		Usage:     "List history of thing events",
-		ArgsUsage: "<agentID> <thingID>",
+		ArgsUsage: "<agentID> <thingID> [<name>]",
 		Category:  "history",
+		Flags: []cli.Flag{
+			&cli.IntFlag{
+				Name:        "limit",
+				Usage:       "Nr of events the show",
+				Value:       limit,
+				Destination: &limit,
+			},
+		},
 		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() != 2 {
+			if cCtx.NArg() < 2 {
 				return fmt.Errorf("agentID and thingID expected")
 			}
-			err := HandleListEvents(*hc, cCtx.Args().First(), cCtx.Args().Get(1), 30)
+			name := ""
+			if cCtx.NArg() == 3 {
+				name = cCtx.Args().Get(2)
+			}
+			err := HandleListEvents(*hc, cCtx.Args().First(), cCtx.Args().Get(1), name, limit)
 			return err
 		},
 	}
@@ -98,9 +111,12 @@ func HistoryLatestCommand(hc *hubclient.IHubClient) *cli.Command {
 //}
 
 // HandleListEvents lists the history content
-func HandleListEvents(hc hubclient.IHubClient, publisherID, thingID string, limit int) error {
+func HandleListEvents(hc hubclient.IHubClient, agentID, thingID string, name string, limit int) error {
 	rd := historyclient.NewReadHistoryClient(hc)
-	cursor, _, err := rd.GetCursor("", "", "")
+	cursor, _, err := rd.GetCursor(agentID, thingID, name)
+	if err != nil {
+		return err
+	}
 	fmt.Println("AgentID        ThingID            Timestamp                    Event           Value (truncated)")
 	fmt.Println("-----------    -------            ---------                    -----           ---------------- ")
 	count := 0

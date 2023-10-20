@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/hiveot/hub/core/history"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -142,10 +143,10 @@ func (svc *ReadHistoryService) findPrevName(
 
 // First returns the oldest value in the history
 func (svc *ReadHistoryService) First(
-	clientID string, args history.CursorArgs) (*history.CursorSingleResp, error) {
+	ctx hubclient.ServiceContext, args history.CursorArgs) (*history.CursorSingleResp, error) {
 	until := time.Now()
 
-	cursor, err := svc.cursorCache.Get(args.CursorKey, clientID, true)
+	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -169,11 +170,11 @@ func (svc *ReadHistoryService) First(
 
 // Last positions the cursor at the last key in the ordered list
 func (svc *ReadHistoryService) Last(
-	clientID string, args history.CursorArgs) (*history.CursorSingleResp, error) {
+	ctx hubclient.ServiceContext, args history.CursorArgs) (*history.CursorSingleResp, error) {
 
 	// the beginning of time?
 	until := time.Time{}
-	cursor, err := svc.cursorCache.Get(args.CursorKey, clientID, true)
+	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -201,9 +202,9 @@ func (svc *ReadHistoryService) Last(
 // Next moves the cursor to the next key from the current cursor
 // First() or Seek must have been called first.
 func (svc *ReadHistoryService) Next(
-	clientID string, args history.CursorArgs) (*history.CursorSingleResp, error) {
+	ctx hubclient.ServiceContext, args history.CursorArgs) (*history.CursorSingleResp, error) {
 
-	cursor, err := svc.cursorCache.Get(args.CursorKey, clientID, true)
+	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +234,7 @@ func (svc *ReadHistoryService) Next(
 // itemsRemaining is false if the iterator has reached the end.
 // Intended to speed up with batch iterations over rpc.
 func (svc *ReadHistoryService) NextN(
-	clientID string, args history.CursorNArgs) (*history.CursorNResp, error) {
+	ctx hubclient.ServiceContext, args history.CursorNArgs) (*history.CursorNResp, error) {
 
 	values := make([]*thing.ThingValue, 0, args.Limit)
 	nextArgs := history.CursorArgs{CursorKey: args.CursorKey}
@@ -241,7 +242,7 @@ func (svc *ReadHistoryService) NextN(
 
 	// tbd is it faster to use NextN and sort the keys?
 	for i := 0; i < args.Limit; i++ {
-		nextResp, err := svc.Next(clientID, nextArgs)
+		nextResp, err := svc.Next(ctx, nextArgs)
 		if !nextResp.Valid || err != nil {
 			itemsRemaining = false
 			break
@@ -257,10 +258,10 @@ func (svc *ReadHistoryService) NextN(
 // Prev moves the cursor to the previous key from the current cursor
 // Last() or Seek must have been called first.
 func (svc *ReadHistoryService) Prev(
-	clientID string, args history.CursorArgs) (*history.CursorSingleResp, error) {
+	ctx hubclient.ServiceContext, args history.CursorArgs) (*history.CursorSingleResp, error) {
 
 	until := time.Time{}
-	cursor, err := svc.cursorCache.Get(args.CursorKey, clientID, true)
+	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -287,7 +288,7 @@ func (svc *ReadHistoryService) Prev(
 // itemsRemaining is true if the iterator has reached the beginning
 // Intended to speed up with batch iterations over rpc.
 func (svc *ReadHistoryService) PrevN(
-	clientID string, args history.CursorNArgs) (*history.CursorNResp, error) {
+	ctx hubclient.ServiceContext, args history.CursorNArgs) (*history.CursorNResp, error) {
 
 	values := make([]*thing.ThingValue, 0, args.Limit)
 	prevArgs := history.CursorArgs{CursorKey: args.CursorKey}
@@ -295,7 +296,7 @@ func (svc *ReadHistoryService) PrevN(
 
 	// tbd is it faster to use NextN and sort the keys? - for a remote store yes
 	for i := 0; i < args.Limit; i++ {
-		prevResp, err := svc.Prev(clientID, prevArgs)
+		prevResp, err := svc.Prev(ctx, prevArgs)
 		if !prevResp.Valid || err != nil {
 			itemsRemaining = false
 			break
@@ -311,25 +312,25 @@ func (svc *ReadHistoryService) PrevN(
 // Release closes the bucket and cursor
 // This invalidates all values obtained from the cursor
 func (svc *ReadHistoryService) Release(
-	clientID string, args history.CursorReleaseArgs) error {
+	ctx hubclient.ServiceContext, args history.CursorReleaseArgs) error {
 
-	return svc.cursorCache.Release(clientID, args.CursorKey)
+	return svc.cursorCache.Release(ctx.ClientID, args.CursorKey)
 }
 
 // Seek positions the cursor at the given searchKey and corresponding value.
 // If the key is not found, the next key is returned.
 func (svc *ReadHistoryService) Seek(
-	clientID string, args history.CursorSeekArgs) (*history.CursorSingleResp, error) {
+	ctx hubclient.ServiceContext, args history.CursorSeekArgs) (*history.CursorSingleResp, error) {
 
 	until := time.Now()
 	//ts, err := dateparse.ParseAny(timestampMsec)
 	//if err != nil {
 	slog.Info("Seek using timestamp",
 		slog.Int64("timestampMsec", args.TimeStampMSec),
-		slog.String("clientID", clientID),
+		slog.String("clientID", ctx.ClientID),
 	)
 
-	cursor, err := svc.cursorCache.Get(args.CursorKey, clientID, true)
+	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
 	if err != nil {
 		return nil, err
 	}

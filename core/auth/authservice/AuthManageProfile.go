@@ -25,18 +25,18 @@ type AuthManageProfile struct {
 }
 
 // GetProfile returns a client's profile
-func (svc *AuthManageProfile) GetProfile(clientID string) (
+func (svc *AuthManageProfile) GetProfile(ctx hubclient.ServiceContext) (
 	resp *auth.GetProfileResp, err error) {
-	clientProfile, err := svc.store.GetProfile(clientID)
+	clientProfile, err := svc.store.GetProfile(ctx.ClientID)
 	resp = &auth.GetProfileResp{Profile: clientProfile}
 	return resp, err
 }
 
 // NewToken validates a password and issues an authn token. A public key must be on file.
 func (svc *AuthManageProfile) NewToken(
-	clientID string, args auth.NewTokenArgs) (resp *auth.NewTokenResp, err error) {
+	ctx hubclient.ServiceContext, args auth.NewTokenArgs) (resp *auth.NewTokenResp, err error) {
 
-	clientProfile, err := svc.store.VerifyPassword(clientID, args.Password)
+	clientProfile, err := svc.store.VerifyPassword(ctx.ClientID, args.Password)
 	if err != nil {
 		return resp, err
 	}
@@ -61,9 +61,9 @@ func (svc *AuthManageProfile) onChange() {
 // RefreshToken issues a new token for the authenticated user.
 // This returns a refreshed token that can be used to connect to the messaging server
 // the old token must be a valid jwt token belonging to the clientID
-func (svc *AuthManageProfile) RefreshToken(clientID string) (*auth.RefreshTokenResp, error) {
+func (svc *AuthManageProfile) RefreshToken(ctx hubclient.ServiceContext) (*auth.RefreshTokenResp, error) {
 	// verify the token
-	clientProfile, err := svc.store.GetProfile(clientID)
+	clientProfile, err := svc.store.GetProfile(ctx.ClientID)
 	if err != nil {
 		return nil, err
 	}
@@ -87,17 +87,17 @@ func (svc *AuthManageProfile) RefreshToken(clientID string) (*auth.RefreshTokenR
 // This sets the client roles that are allowed to use the service.
 // This fails if the client is not a service.
 func (svc *AuthManageProfile) SetServicePermissions(
-	clientID string, args *auth.SetServicePermissionsArgs) error {
+	ctx hubclient.ServiceContext, args *auth.SetServicePermissionsArgs) error {
 	// the client must be a service
 
-	clientProfile, err := svc.store.GetProfile(clientID)
+	clientProfile, err := svc.store.GetProfile(ctx.ClientID)
 	if err != nil {
 		return err
 	} else if clientProfile.ClientType != auth.ClientTypeService {
-		return fmt.Errorf("Client '%s' must be a service, not a '%s'", clientID, clientProfile.ClientType)
+		return fmt.Errorf("Client '%s' must be a service, not a '%s'", ctx.ClientID, clientProfile.ClientType)
 	}
 
-	svc.msgServer.SetServicePermissions(clientID, args.Capability, args.Roles)
+	svc.msgServer.SetServicePermissions(ctx.ClientID, args.Capability, args.Roles)
 	return nil
 }
 
@@ -129,23 +129,23 @@ func (svc *AuthManageProfile) Stop() {
 }
 
 func (svc *AuthManageProfile) UpdateName(
-	clientID string, args *auth.UpdateNameArgs) (err error) {
+	ctx hubclient.ServiceContext, args *auth.UpdateNameArgs) (err error) {
 
-	clientProfile, err := svc.store.GetProfile(clientID)
+	clientProfile, err := svc.store.GetProfile(ctx.ClientID)
 	clientProfile.DisplayName = args.NewName
-	err = svc.store.Update(clientID, clientProfile)
+	err = svc.store.Update(ctx.ClientID, clientProfile)
 	// this doesn't affect authentication
 	return err
 }
 
 func (svc *AuthManageProfile) UpdatePassword(
-	clientID string, args *auth.UpdatePasswordArgs) (err error) {
-	slog.Info("UpdatePassword", "clientID", clientID)
-	_, err = svc.GetProfile(clientID)
+	ctx hubclient.ServiceContext, args *auth.UpdatePasswordArgs) (err error) {
+	slog.Info("UpdatePassword", "clientID", ctx.ClientID)
+	_, err = svc.GetProfile(ctx)
 	if err != nil {
 		return err
 	}
-	err = svc.store.SetPassword(clientID, args.NewPassword)
+	err = svc.store.SetPassword(ctx.ClientID, args.NewPassword)
 	if err != nil {
 		return err
 	}
@@ -154,15 +154,15 @@ func (svc *AuthManageProfile) UpdatePassword(
 }
 
 func (svc *AuthManageProfile) UpdatePubKey(
-	clientID string, args *auth.UpdatePubKeyArgs) (err error) {
+	ctx hubclient.ServiceContext, args *auth.UpdatePubKeyArgs) (err error) {
 
-	slog.Info("UpdatePubKey", "clientID", clientID)
-	clientProfile, err := svc.store.GetProfile(clientID)
+	slog.Info("UpdatePubKey", "clientID", ctx.ClientID)
+	clientProfile, err := svc.store.GetProfile(ctx.ClientID)
 	if err != nil {
 		return err
 	}
 	clientProfile.PubKey = args.NewPubKey
-	err = svc.store.Update(clientID, clientProfile)
+	err = svc.store.Update(ctx.ClientID, clientProfile)
 	if err != nil {
 		return err
 	}

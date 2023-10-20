@@ -120,7 +120,7 @@ func (svc *LauncherService) addPlugins(folder string) error {
 // List all available or just the running plugins and their status
 // This returns the list of plugins sorted by name
 func (svc *LauncherService) List(
-	senderID string, args launcher.ListArgs) (launcher.ListResp, error) {
+	ctx hubclient.ServiceContext, args launcher.ListArgs) (launcher.ListResp, error) {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 
@@ -239,7 +239,7 @@ func (svc *LauncherService) Stop() error {
 		svc.mngSub = nil
 	}
 	svc.isRunning.Store(false)
-	return svc.StopAllPlugins(launcher.ServiceName)
+	return svc.StopAllPlugins()
 }
 
 // WatchPlugins watches the bin and plugins folder for changes and reloads

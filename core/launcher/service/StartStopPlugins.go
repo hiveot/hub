@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/core/launcher"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/struCoder/pidusage"
 	"io"
 	"log/slog"
@@ -196,7 +197,7 @@ func (svc *LauncherService) StartAllPlugins() (err error) {
 // This creates a plugin authentication key and token files in the credentials directory (certs)
 // before starting the plugin.
 func (svc *LauncherService) StartPlugin(
-	senderID string, args launcher.StartPluginArgs) (launcher.StartPluginResp, error) {
+	ctx hubclient.ServiceContext, args launcher.StartPluginArgs) (launcher.StartPluginResp, error) {
 
 	pluginInfo, err := svc._startPlugin(args.Name)
 	resp := launcher.StartPluginResp{PluginInfo: pluginInfo}
@@ -204,7 +205,7 @@ func (svc *LauncherService) StartPlugin(
 }
 
 // StopAllPlugins stops all running plugins in reverse order they were started, except for the core
-func (svc *LauncherService) StopAllPlugins(senderID string) (err error) {
+func (svc *LauncherService) StopAllPlugins() (err error) {
 
 	svc.mux.Lock()
 	slog.Info("Stopping all plugins", "count", len(svc.cmds))
@@ -229,7 +230,7 @@ func (svc *LauncherService) StopAllPlugins(senderID string) (err error) {
 }
 
 func (svc *LauncherService) StopPlugin(
-	senderID string, args launcher.StopPluginArgs) (resp launcher.StopPluginResp, err error) {
+	ctx hubclient.ServiceContext, args launcher.StopPluginArgs) (resp launcher.StopPluginResp, err error) {
 
 	svc.mux.Lock()
 	pluginInfo, _ := svc.plugins[args.Name]

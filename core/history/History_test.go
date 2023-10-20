@@ -33,11 +33,13 @@ const thingIDPrefix = "thing-"
 // when testing using the capnp RPC
 var testFolder = path.Join(os.TempDir(), "test-history")
 
-const core = "nats"
+const core = "mqtt"
 
-// const historyStoreBackend = buckets.BackendPebble
-// const historyStoreBackend = buckets.BackendBBolt
-const historyStoreBackend = buckets.BackendKVBTree
+// recommended store for history is pebble
+const historyStoreBackend = buckets.BackendPebble
+
+//const historyStoreBackend = buckets.BackendBBolt
+//const historyStoreBackend = buckets.BackendKVBTree
 
 const serviceID = history.ServiceName
 const testClientID = "operator1"
@@ -607,9 +609,10 @@ func TestPubSub(t *testing.T) {
 func TestManageRetention(t *testing.T) {
 	slog.Info("--- TestManageRetention ---")
 	const client1ID = "admin"
-	const device1ID = "device1"
+	const device1ID = "newdevice" // should not match existing test devices
 	const thing0ID = thingIDPrefix + "0"
-	const eventName = "event1"
+	const event1Name = "event1"
+	const event2Name = "notRetainedEvent"
 
 	// setup with some history
 	store, readHist, closeFn := newHistoryService()
@@ -625,46 +628,46 @@ func TestManageRetention(t *testing.T) {
 	require.NoError(t, err)
 	assert.Greater(t, 1, len(rules1))
 
-	// Add two more retention rules to retain temperature and our test event from device1
-	newRule1 := &history.RetentionRule{Name: vocab.VocabTemperature}
-	err = mngHist.SetRetentionRule(newRule1)
-	newRule2 := &history.RetentionRule{Name: eventName, Agents: []string{device1ID}}
-	err = mngHist.SetRetentionRule(newRule2)
+	// Add two retention rules to retain temperature and our test event from device1
+	rules1[vocab.VocabTemperature] = append(rules1[vocab.VocabTemperature],
+		&history.RetentionRule{Retain: true})
+	rules1[event1Name] = append(rules1[event1Name],
+		&history.RetentionRule{AgentID: device1ID, Retain: true})
+	err = mngHist.SetRetentionRules(rules1)
 	require.NoError(t, err)
 
 	// The new retention rule should now exist and accept our custom event
 	rules2, err := mngHist.GetRetentionRules()
 	require.NoError(t, err)
-	assert.Equal(t, len(rules1)+2, len(rules2))
-	ret3, err := mngHist.GetRetentionRule(eventName)
-	require.NoError(t, err)
-	assert.Equal(t, eventName, ret3.Name)
-	valid, err := mngHist.CheckRetention(&thing.ThingValue{
-		AgentID: device1ID,
-		ThingID: thing0ID,
-		Name:    eventName,
-	})
+	assert.Equal(t, len(rules1), len(rules2))
+	rule, err := mngHist.GetRetentionRule(device1ID, thing0ID, event1Name)
 	assert.NoError(t, err)
-	assert.True(t, valid)
+	if assert.NotNil(t, rule) {
+		assert.Equal(t, device1ID, rule.AgentID)
+		assert.Equal(t, "", rule.ThingID)
+		assert.Equal(t, event1Name, rule.Name)
+	}
 
-	// connect as device1 and publish the custom event
+	// connect as device1 and publish two events, one to be retained
 	hc2, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc2.Disconnect()
-	err = hc2.PubEvent(thing0ID, eventName, []byte("hi)"))
+	err = hc2.PubEvent(thing0ID, event1Name, []byte("hi)"))
+	assert.NoError(t, err)
+	err = hc2.PubEvent(thing0ID, event2Name, []byte("hi)"))
 	assert.NoError(t, err)
 	// give it some time to persist the bucket
 	time.Sleep(time.Millisecond * 100)
 
 	// read the history of device 1 and expect the event to be retained
-	cursor, releaseFn, err := readHist.GetCursor(device1ID, thing0ID, eventName)
+	cursor, releaseFn, err := readHist.GetCursor(device1ID, thing0ID, "")
 	require.NoError(t, err)
-	histEv, valid, _ := cursor.First()
-	require.True(t, valid)
-	assert.Equal(t, eventName, histEv.Name)
+	histEv1, valid, _ := cursor.First()
+	require.True(t, valid, "missing the first event")
+	assert.Equal(t, event1Name, histEv1.Name)
+	histEv2, valid2, _ := cursor.Next()
+	require.False(t, valid2, "second event should not be there")
+	_ = histEv2
 	releaseFn()
 
-	// last, cleanup and remove the custom rule
-	err = mngHist.RemoveRetentionRule(eventName)
-	assert.NoError(t, err)
 }

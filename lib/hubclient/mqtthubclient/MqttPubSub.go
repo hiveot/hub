@@ -183,7 +183,7 @@ func (hc *MqttHubClient) PubRPCRequest(
 		payload, _ = ser.Marshal(req)
 	}
 	topic := MakeTopic(vocab.MessageTypeRPC, agentID, capability, methodName, hc.clientID)
-	slog.Info("PubRPCRequest", "topic", topic)
+	//slog.Info("PubRPCRequest", "topic", topic)
 
 	ar, err := hc.PubRequest(topic, payload)
 

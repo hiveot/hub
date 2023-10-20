@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"github.com/hiveot/hub/core/history"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/thing"
@@ -24,103 +23,108 @@ func inArray(arr []string, id string) bool {
 
 // ManageHistory provides the capability to manage how history is captured
 type ManageHistory struct {
-	// default retention rules
-	defaultRetentions []*history.RetentionRule
-	// configuration set through API
-	configuredRetentions map[string]*history.RetentionRule
+	// retention rules grouped by event ID
+	rules history.RetentionRuleSet
 	//
 	retSub hubclient.ISubscription
 	//
 	hc hubclient.IHubClient
 }
 
-// CheckRetention tests if the event passes the retention filter rules
-// If no rules exist then all events pass.
-// returns True if the event passes, false if rejected.
-func (svc *ManageHistory) CheckRetention(
-	clientID string, tv *thing.ThingValue) (bool, error) {
-	//resp := &history.CheckRetentionResp{Retained: false}
-
-	rules := svc.configuredRetentions
-	// no rules, so accept everything
-	hasRetentionRules := rules != nil && len(rules) > 0
-	if !hasRetentionRules {
-		return true, nil
+// return the first retention rule that applies to the given value or nil if no rule applies
+func (svc *ManageHistory) _FindFirstRule(tv *thing.ThingValue) *history.RetentionRule {
+	// two sets of rules apply, those that match the name and those that don't filter by name
+	// rules with specified event names take precedence
+	rules1, found := svc.rules[tv.Name]
+	if found {
+		// there is a potential to optimize this for a lot of rules by
+		// include a nested map of agentIDs and ThingIDs for fast lookup.
+		// before going down that road some performance analysis needs to be done first
+		for _, rule := range rules1 {
+			if (rule.AgentID == "" || rule.AgentID == tv.AgentID) &&
+				(rule.ThingID == "" || rule.ThingID == tv.ThingID) {
+				return rule
+			}
+		}
 	}
-	// unlisted event are rejected
-	rule, found := rules[tv.Name]
-	if !found {
-		return false, nil
+	// rules that apply to any event/action names
+	rules2, found := svc.rules[""]
+	if found {
+		for _, rule := range rules2 {
+			if (rule.AgentID == "" || rule.AgentID == tv.AgentID) &&
+				(rule.ThingID == "" || rule.ThingID == tv.ThingID) {
+				return rule
+			}
+		}
 	}
-
-	// check publishers, thing IDs
-	if !inArray(rule.Agents, tv.AgentID) ||
-		!inArray(rule.Things, tv.ThingID) ||
-		rule.Exclude != nil && len(rule.Exclude) > 0 && inArray(rule.Exclude, tv.ThingID) {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-// GetRetentionRule returns the retention rule of an event by name
-// If the event isn't found an error is returned
-//
-//	eventName whose retention to return
-func (svc *ManageHistory) GetRetentionRule(
-	clientID string, name string) (resp *history.RetentionRule, err error) {
-
-	rule, found := svc.configuredRetentions[name]
-	if !found {
-		err = fmt.Errorf("rule '%s' not found in the retention list", name)
-	}
-	//resp = &history.GetRetentionRuleResp{Rule: evRet}
-	return rule, err
-}
-
-// GetRetentionRules returns all retention rules
-func (svc *ManageHistory) GetRetentionRules() ([]*history.RetentionRule, error) {
-	retList := make([]*history.RetentionRule, 0, len(svc.configuredRetentions))
-	for _, ret := range svc.configuredRetentions {
-		retList = append(retList, ret)
-		slog.Info("GetEvents", slog.String("name", ret.Name))
-	}
-	//resp = &history.GetRetentionRulesResp{Rules: retList}
-	return retList, nil
-}
-
-// RemoveRetentionRule removes the retention rule for an event.
-func (svc *ManageHistory) RemoveRetentionRule(clientID string, name string) error {
-
-	slog.Info("RemoveEventRetention", "clientID", clientID, "name", name)
-	delete(svc.configuredRetentions, name)
-	// TODO: save
+	// no applicable rule found
 	return nil
 }
 
-// SetRetentionRule configures the retention of a Thing event
-func (svc *ManageHistory) SetRetentionRule(clientID string, rule *history.RetentionRule) error {
+// _IsRetained returns the rule 'Retain' flag if a matching rule is found
+// If no retention rules are defined this returns true
+// If rules are defined but not found this returns false
+func (svc *ManageHistory) _IsRetained(tv *thing.ThingValue) (bool, *history.RetentionRule) {
+	if svc.rules == nil || len(svc.rules) == 0 {
+		return true, nil
+	}
+	rule := svc._FindFirstRule(tv)
+	if rule == nil {
+		return false, nil
+	}
+	return rule.Retain, rule
+}
 
-	slog.Info("SetEventRetention")
-	svc.configuredRetentions[rule.Name] = rule
-	// TODO: save
+// GetRetentionRule returns the first retention rule that applies
+// to the given value.
+// This returns nil without error if no retention rules are defined.
+//
+//	eventName whose retention to return
+func (svc *ManageHistory) GetRetentionRule(
+	ctx hubclient.ServiceContext, args *history.GetRetentionRuleArgs) (resp *history.GetRetentionRuleResp, err error) {
+
+	tv := thing.ThingValue{
+		AgentID: args.AgentID,
+		ThingID: args.ThingID,
+		Name:    args.Name,
+	}
+	rule := svc._FindFirstRule(&tv)
+	resp = &history.GetRetentionRuleResp{Rule: rule}
+	return resp, err
+}
+
+// GetRetentionRules returns all retention rules
+func (svc *ManageHistory) GetRetentionRules() (*history.GetRetentionRulesResp, error) {
+	resp := &history.GetRetentionRulesResp{Rules: svc.rules}
+	return resp, nil
+}
+
+// SetRetentionRules updates the retention rules set
+func (svc *ManageHistory) SetRetentionRules(
+	ctx hubclient.ServiceContext, args *history.SetRetentionRulesArgs) error {
+	ruleCount := 0
+	// ensure that the name in the rule matches the key in the map
+	for name, nameRules := range args.Rules {
+		for _, rule := range nameRules {
+			rule.Name = name
+			ruleCount++
+		}
+	}
+
+	slog.Info("SetRetentionRules", slog.Int("nr-rules", ruleCount))
+	svc.rules = args.Rules
 	return nil
 }
 
 // Start the history management handler.
 // This loads the retention configuration
 func (svc *ManageHistory) Start() (err error) {
-	// load default config
-	for _, ret := range svc.defaultRetentions {
-		svc.configuredRetentions[ret.Name] = ret
-	}
-	// TODO: load configured retentions from state store
+
+	// TODO: load latest retention rules from state store
 	capMethods := map[string]interface{}{
-		history.CheckRetentionMethod:      svc.CheckRetention,
-		history.GetRetentionRuleMethod:    svc.GetRetentionRule,
-		history.GetRetentionRulesMethod:   svc.GetRetentionRules,
-		history.RemoveRetentionRuleMethod: svc.RemoveRetentionRule,
-		history.SetRetentionRuleMethod:    svc.SetRetentionRule,
+		history.GetRetentionRuleMethod:  svc.GetRetentionRule,
+		history.GetRetentionRulesMethod: svc.GetRetentionRules,
+		history.SetRetentionRulesMethod: svc.SetRetentionRules,
 	}
 	svc.retSub, err = hubclient.SubRPCCapability(
 		svc.hc, history.ManageHistoryCap, capMethods)
@@ -134,15 +138,15 @@ func (svc *ManageHistory) Stop() {
 
 // NewManageRetention creates a new instance that implements IManageRetention
 //
-//	defaultConfig with events to retain or nil to use defaults
-func NewManageRetention(hc hubclient.IHubClient, defaultConfig []*history.RetentionRule) *ManageHistory {
-	if defaultConfig == nil {
-		defaultConfig = make([]*history.RetentionRule, 0)
+//	defaultRules with rules from config
+func NewManageRetention(
+	hc hubclient.IHubClient, defaultRules history.RetentionRuleSet) *ManageHistory {
+	if defaultRules == nil {
+		defaultRules = make(history.RetentionRuleSet)
 	}
 	svc := &ManageHistory{
-		hc:                   hc,
-		defaultRetentions:    defaultConfig,
-		configuredRetentions: make(map[string]*history.RetentionRule),
+		hc:    hc,
+		rules: defaultRules,
 	}
 	return svc
 }

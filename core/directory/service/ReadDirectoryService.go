@@ -36,12 +36,12 @@ func (svc *ReadDirectoryService) CreateReadDirTD() *thing.TD {
 //
 //	clientID is the owner of the cursor. Used to remove all cursors of an owner when it disconnects.
 func (svc *ReadDirectoryService) GetCursor(
-	clientID string) (*directory.GetCursorResp, error) {
+	ctx hubclient.ServiceContext) (*directory.GetCursorResp, error) {
 
 	dirCursor, err := svc.bucket.Cursor(context.Background())
 	if err == nil {
 		// TODO: what lifespan is reasonable?
-		key := svc.cursorCache.Add(dirCursor, svc.bucket, clientID, time.Minute)
+		key := svc.cursorCache.Add(dirCursor, svc.bucket, ctx.ClientID, time.Minute)
 		resp := &directory.GetCursorResp{CursorKey: key}
 		return resp, nil
 	}
@@ -50,7 +50,7 @@ func (svc *ReadDirectoryService) GetCursor(
 
 // GetTD returns the TD document for the given Thing ID in JSON format
 func (svc *ReadDirectoryService) GetTD(
-	clientID string, args *directory.GetTDArgs) (resp *directory.GetTDResp, err error) {
+	ctx hubclient.ServiceContext, args *directory.GetTDArgs) (resp *directory.GetTDResp, err error) {
 
 	//logrus.Infof("agentID=%s, thingID=%s", svc.agentID, thingID)
 	// store keys are made of the agentID / thingID
@@ -69,7 +69,7 @@ func (svc *ReadDirectoryService) GetTD(
 // GetTDsRaw returns a collection of ThingValue documents
 // Intended for transferring documents without unnecessary marshalling
 func (svc *ReadDirectoryService) GetTDsRaw(
-	clientID string, args *directory.GetTDsArgs) (map[string][]byte, error) {
+	ctx hubclient.ServiceContext, args *directory.GetTDsArgs) (map[string][]byte, error) {
 
 	cursor, err := svc.bucket.Cursor(context.Background())
 	if args.Offset > 0 {
@@ -86,7 +86,7 @@ func (svc *ReadDirectoryService) GetTDsRaw(
 // this is rather inefficient. Should the client do the unmarshalling of the docs array?
 // that would break the matching API. Maybe an internal method that returns a raw batch?
 func (svc *ReadDirectoryService) GetTDs(
-	clientID string, args *directory.GetTDsArgs) (res *directory.GetTDsResp, err error) {
+	ctx hubclient.ServiceContext, args *directory.GetTDsArgs) (res *directory.GetTDsResp, err error) {
 
 	batch := make([]thing.ThingValue, 0, args.Limit)
 	cursor, err := svc.bucket.Cursor(context.Background())

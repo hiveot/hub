@@ -19,43 +19,40 @@ const timespanYear = timespanDay * 365
 
 // $go test -bench=BenchmarkAddEvents -benchtime=3s -run ^#
 //
-//                                   ---------------  MQTT/NATS BROKER --------------
-//	DBSize #Things                   kvbtree (msec)    pebble (msec)     bbolt (msec)
-//	 10K       1    add 1K single        2.0            4.4          4700
-//	 10K       1    add 1K batch         0.8            2.3            11
-//	 10K       1    add 1K multi         1.0            2.3            11
-//	 10K       1    get 1K single      310/127        313             311
-//	 10K       1    get 1K batch       5.4/4.1          6               5
+//                                      ---------------  MQTT/NATS BROKER --------------
+//	DBSize #Things                      kvbtree (msec)    pebble (msec)     bbolt (msec)
+//	 10K      10    add 1K single (*)       2.5             4.8             4600/4600
+//	 10K      10    add 1K batch (*)        1.2             2.4               76/72
+//	 10K      10    get 1K single         330/125         324                300/130
+//	 10K      10    get 1K batch          5.5/4.3           6                5.5/4.3
 //
-//	 10K      10    add 1K single        2.4            4.0          4600
-//	 10K      10    add 1K multi         1.5            2.2            70
-//	 10K      10    get 1K single      374/125        310             330
-//	 10K      10    get 1K batch       7.3/4.3          6               6
+//	100K      10    add 1K single (*)       2.9             4.8             4900/4900
+//	100K      10    add 1K batch (*)        1.4             2.4               84/82
+//	100K      10    get 1K single         340/130         322                325/130
+//	100K      10    get 1K batch          6.0/4.2           6                5.2/4.3
 //
-//	100K       1    add 1K single        2.1 msec       4.2          5020
-//	100K       1    add 1K batch         1.0 msec       2.3            15
-//	100K       1    add 1K multi         1.0 msec       2.6            15
-//	100K       1    get 1K single      328/123        380             374
-//	100K       1    get 1K batch       5.6/4.4          8               6
+//	  1M     100    add 1K single (*)       2.9             5.7             5500
+//	  1M     100    add 1K batch (*)        1.4             3.1              580
+//	  1M     100    get 1K single         310             330                303
+//	  1M     100    get 1K batch          8.6               5.6                5.1
 //
-//	100K      10    add 1K single        2.5            5.2          5000
-//	100K      10    add 1K multi         1.1            2.3            81
-//	100K      10    get 1K single      302/130        315             342
-//	100K      10    get 1K batch       5.1/4.2          6               6
+//	 10M       3    add 1K single (*)       3.0            10               5460
+//	 10M       3    add 1K batch (*)        1.4             4.1              550
+//	 10M       3    get 1K single         310             326                304
+//	 10M       3    get 1K batch          6.0/4.2           6.7                5.1
 //
-// NOTE: The get 1K test is high as it makes 1K RCP calls
+// (*) NOTE1: adding events without message bus
+//     NOTE2: get 1K single/batch test uses message bus RPC calls and are thus much higher
 
 var DataSizeTable = []struct {
 	dataSize int
 	nrThings int
-	nrSets   int
+	nrSets   int // repeatedly set the same event
 }{
-	{dataSize: 10000, nrThings: 1, nrSets: 1000},
 	{dataSize: 10000, nrThings: 10, nrSets: 1000},
-	{dataSize: 100000, nrThings: 1, nrSets: 1000},
 	{dataSize: 100000, nrThings: 10, nrSets: 1000},
-	// {dataSize: 1000000, nrThings: 1, nrSets: 1000},
-	// {dataSize: 1000000, nrThings: 100, nrSets: 1000},
+	//{dataSize: 1000000, nrThings: 100, nrSets: 1000},
+	//{dataSize: 10000000, nrThings: 100, nrSets: 1000},
 }
 
 func BenchmarkAddEvents(b *testing.B) {
@@ -87,18 +84,7 @@ func BenchmarkAddEvents(b *testing.B) {
 				}
 			})
 		// test adding records using the ThingID batch add for a single ThingID
-		if tbl.nrThings == 1 {
-			b.Run(fmt.Sprintf("[dbsize:%d] #things:%d add-batch:%d", tbl.dataSize, tbl.nrThings, tbl.nrSets),
-				func(b *testing.B) {
-					bulk := testData[0:tbl.nrSets]
-					for n := 0; n < b.N; n++ {
-						err := addHist.AddEvents(bulk)
-						require.NoError(b, err)
-					}
-				})
-		}
-		// test adding records using the ThingID multi add for different ThingIDs
-		b.Run(fmt.Sprintf("[dbsize:%d] #things:%d add-multi:%d", tbl.dataSize, tbl.nrThings, tbl.nrSets),
+		b.Run(fmt.Sprintf("[dbsize:%d] #things:%d add-batch:%d", tbl.dataSize, tbl.nrThings, tbl.nrSets),
 			func(b *testing.B) {
 				bulk := testData[0:tbl.nrSets]
 				for n := 0; n < b.N; n++ {
@@ -133,13 +119,15 @@ func BenchmarkAddEvents(b *testing.B) {
 
 					cursor, releaseFn, _ := readHist.GetCursor(publisherID, thing0ID, "")
 					require.NotNil(b, cursor)
-					cursor.First()
-					v, _, _ := cursor.NextN(tbl.nrSets - 1)
-					if !assert.True(b, len(v) > 0,
-						fmt.Sprintf("counting only '%d' records. Expected at least '%d'.", len(v), tbl.nrSets)) {
-						break
+					tv, _, _ := cursor.First()
+					assert.NotEmpty(b, tv)
+					if tbl.nrSets > 1 {
+						tvBatch, _, _ := cursor.NextN(tbl.nrSets - 1)
+						if !assert.True(b, len(tvBatch) > 0,
+							fmt.Sprintf("counting only '%d' records. Expected at least '%d'.", len(tvBatch), tbl.nrSets)) {
+							break
+						}
 					}
-					assert.NotEmpty(b, v)
 					releaseFn()
 				}
 			})

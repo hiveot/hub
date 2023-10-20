@@ -30,9 +30,9 @@ func (svc *UpdateDirectoryService) CreateUpdateDirTD() *thing.TD {
 	return td
 }
 
-func (svc *UpdateDirectoryService) RemoveTD(senderID string, args directory.RemoveTDArgs) error {
+func (svc *UpdateDirectoryService) RemoveTD(ctx hubclient.ServiceContext, args directory.RemoveTDArgs) error {
 	slog.Info("RemoveTD",
-		slog.String("senderID", senderID),
+		slog.String("senderID", ctx.ClientID),
 		slog.String("agentID", args.AgentID),
 		slog.String("thingID", args.ThingID))
 
@@ -41,9 +41,9 @@ func (svc *UpdateDirectoryService) RemoveTD(senderID string, args directory.Remo
 	return err
 }
 
-func (svc *UpdateDirectoryService) UpdateTD(senderID string, args directory.UpdateTDArgs) error {
+func (svc *UpdateDirectoryService) UpdateTD(ctx hubclient.ServiceContext, args directory.UpdateTDArgs) error {
 	slog.Info("UpdateTD",
-		slog.String("senderID", senderID),
+		slog.String("senderID", ctx.ClientID),
 		slog.String("agentID", args.AgentID),
 		slog.String("thingID", args.ThingID))
 

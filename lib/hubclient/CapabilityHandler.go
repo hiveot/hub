@@ -1,6 +1,7 @@
 package hubclient
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,6 +9,13 @@ import (
 	"log/slog"
 	"reflect"
 )
+
+// ServiceContext with context provided to services
+type ServiceContext struct {
+	context.Context
+	// ClientID of the caller
+	ClientID string
+}
 
 // HandleRequestMessage unmarshal a request message parameters, passes it to the associated method,
 // and marshals the result. Intended to remove boilerplate from RPC service request handlers.
@@ -25,7 +33,7 @@ import (
 //   - func(string) ()
 //
 // where type1 and type2 can be a struct or native type, or a pointer to a struct or native type.
-func HandleRequestMessage(clientID string, method interface{}, payload []byte) (respData []byte, err error) {
+func HandleRequestMessage(ctx ServiceContext, method interface{}, payload []byte) (respData []byte, err error) {
 
 	// magic spells found at: https://github.com/a8m/reflect-examples#call-function-with-list-of-arguments-and-validate-return-values
 	// and here: https://stackoverflow.com/questions/45679408/unmarshal-json-to-reflected-struct
@@ -41,13 +49,14 @@ func HandleRequestMessage(clientID string, method interface{}, payload []byte) (
 	} else if nrArgs == 1 {
 		// determine the type of argument, if it is passed by value or reference
 		argType := methodType.In(0)
-		argIsClientID := (argType.Kind() == reflect.String)
-		if argIsClientID {
-			argv[0] = reflect.ValueOf(clientID)
+		argKind := argType.Name()
+		argIsContext := argKind == "ServiceContext"
+		if argIsContext {
+			argv[0] = reflect.ValueOf(ctx)
 		}
 	} else if nrArgs == 2 {
 		// determine the type of argument, if it is passed by value or reference
-		argv[0] = reflect.ValueOf(clientID)
+		argv[0] = reflect.ValueOf(ctx)
 		argType := methodType.In(1)
 		argIsRef := (argType.Kind() == reflect.Ptr)
 		n1 := reflect.New(argType) // pointer to a new zero value of type
@@ -108,9 +117,13 @@ func HandleRequestMessage(clientID string, method interface{}, payload []byte) (
 // SubRPCCapability is a helper to easily subscribe capability methods with their handler.
 // The handler must have signature func(clientID string, args interface{})(interface{},error)
 //
-//	hc is the agent connection to the message bus
-//	capID is the capability to register
-//	capMethods maps method names to their implementation
+//		hc is the agent connection to the message bus
+//		capID is the capability to register
+//		capMethods maps method names to their implementation. Supported formats:
+//	    1: no context, args or result: func()(error)
+//	    2: context, args, and result : func(*ServiceContext,args interface{})(interface{},error)
+//	    3: context, args, no result  : func(*ServiceContext,args interface{})(error)
+//	    4: context, no args, result  : func(*ServiceContext)(interface{}, error)
 func SubRPCCapability(hc IHubClient, capID string, capMethods map[string]interface{}) (ISubscription, error) {
 	// subscribe to the capability with our own handler.
 	// the handler invokes the method registered with the capability map,
@@ -123,7 +136,11 @@ func SubRPCCapability(hc IHubClient, capID string, capMethods map[string]interfa
 		if !found {
 			return fmt.Errorf("method '%s' not part of capability '%s'", msg.Name, capID)
 		}
-		respData, err = HandleRequestMessage(msg.ClientID, capMethod, msg.Payload)
+		ctx := ServiceContext{
+			Context:  context.Background(),
+			ClientID: msg.ClientID,
+		}
+		respData, err = HandleRequestMessage(ctx, capMethod, msg.Payload)
 		if err == nil {
 			if respData == nil {
 				err = msg.SendAck()

@@ -35,13 +35,13 @@ type CursorInfo struct {
 // The client must release the cursor it when done.
 //
 // To prevent memory leaks due to not releasing a cursor, cursors are given a limited
-// lifespan non-use lifespan, after which they are removed. The default is 1 minute.
+// non-used lifespan, after which they are removed. The default is 1 minute.
 //
 // Cursors are linked to their owner to prevent 'accidental' use by others. Only
 // if the client's ID matches that of the cursor owner, it can be used.
 type CursorCache struct {
 	// lookup a cursor by key
-	cursorsByKey map[string]CursorInfo
+	cursorsByKey map[string]*CursorInfo
 
 	// at 1000 cursors per sec this lasts 500M years between reboots ;)
 	cursorCounter uint64
@@ -64,7 +64,7 @@ func (cc *CursorCache) Add(
 	cc.cursorCounter++
 	// the key is not a secret, only the owner can use it
 	key := strconv.FormatUint(cc.cursorCounter, 16)
-	ci := CursorInfo{
+	ci := &CursorInfo{
 		Key:      key,
 		Bucket:   bucket,
 		Cursor:   cursor,
@@ -108,8 +108,8 @@ func (cc *CursorCache) Get(
 
 // GetExpiredCursors returns a list of cursors that have expired
 // It is up to the user to remove and release the cursor
-func (cc *CursorCache) GetExpiredCursors() []CursorInfo {
-	expiredCursors := make([]CursorInfo, 0)
+func (cc *CursorCache) GetExpiredCursors() []*CursorInfo {
+	expiredCursors := make([]*CursorInfo, 0)
 	cc.mux.RLock()
 	defer cc.mux.RUnlock()
 
@@ -128,8 +128,8 @@ func (cc *CursorCache) GetExpiredCursors() []CursorInfo {
 // GetCursorsByOwner returns a list of cursors that are owned by a client.
 // Intended to remove cursors whose owner has disconnected.
 // It is up to the user to remove and release the cursor
-func (cc *CursorCache) GetCursorsByOwner(ownerID string) []CursorInfo {
-	ownedCursors := make([]CursorInfo, 0)
+func (cc *CursorCache) GetCursorsByOwner(ownerID string) []*CursorInfo {
+	ownedCursors := make([]*CursorInfo, 0)
 	cc.mux.RLock()
 	defer cc.mux.RUnlock()
 	// rather brute force, might need to switch this to a map if heavily used
@@ -199,7 +199,7 @@ func (cc *CursorCache) Stop() {
 
 func NewCursorCache() *CursorCache {
 	cc := CursorCache{
-		cursorsByKey:  make(map[string]CursorInfo),
+		cursorsByKey:  make(map[string]*CursorInfo),
 		cursorCounter: 1,
 		mux:           sync.RWMutex{},
 		stopCh:        make(chan bool),

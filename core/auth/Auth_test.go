@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/core/auth/config"
 	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/hubconnect"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/nkeys"
@@ -65,7 +66,8 @@ func startTestAuthnService() (authnSvc *authservice.AuthService, mng auth.IAuthn
 		PubKey:      authClientPub,
 		Role:        auth.ClientRoleAdmin,
 	}
-	resp, err := authnSvc.MngClients.AddUser("test-client", args)
+	ctx := hubclient.ServiceContext{ClientID: "test-client"}
+	resp, err := authnSvc.MngClients.AddUser(ctx, args)
 	serverURL, _, _ := testServer.MsgServer.GetServerURLs()
 	hc2 := hubconnect.NewHubClient(serverURL, "auth-test-client", authClientKey, testServer.CertBundle.CaCert, core)
 	err = hc2.ConnectWithToken(resp.Token)

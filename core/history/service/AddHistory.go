@@ -54,14 +54,19 @@ func (svc *AddHistory) AddAction(actionValue *thing.ThingValue) error {
 		slog.String("thingID", actionValue.ThingID),
 		slog.String("actionName", actionValue.Name))
 
-	if err := svc.validateValue(actionValue); err != nil {
-		slog.Info("AddAction error", "err", err.Error())
+	retain, err := svc.validateValue(actionValue)
+	if err != nil {
+		slog.Info("AddAction value error", "err", err.Error())
 		return err
+	}
+	if !retain {
+		slog.Info("action value not retained", slog.String("name", actionValue.Name))
+		return nil
 	}
 	key, val := svc.encodeValue(actionValue, true)
 	thingAddr := actionValue.AgentID + "/" + actionValue.ThingID
 	bucket := svc.store.GetBucket(thingAddr)
-	err := bucket.Set(key, val)
+	err = bucket.Set(key, val)
 	_ = bucket.Close()
 	if svc.onAddedValue != nil {
 		svc.onAddedValue(actionValue, true)
@@ -70,37 +75,43 @@ func (svc *AddHistory) AddAction(actionValue *thing.ThingValue) error {
 }
 
 // AddEvent adds an event to the event history
+// Only events that pass retention rules are stored.
 // If the event has no created time, it will be set to 'now'
-func (svc *AddHistory) AddEvent(eventMsg *thing.ThingValue) error {
+func (svc *AddHistory) AddEvent(eventValue *thing.ThingValue) error {
 
-	valueStr := eventMsg.Data
+	valueStr := eventValue.Data
 	if len(valueStr) > 20 {
 		valueStr = valueStr[:20]
 	}
-	if err := svc.validateValue(eventMsg); err != nil {
-		slog.Warn("invalid value", "err", err)
+	retain, err := svc.validateValue(eventValue)
+	if err != nil {
+		slog.Warn("invalid event", "name", eventValue.Name)
 		return err
 	}
+	if !retain {
+		slog.Debug("event value not retained", slog.String("name", eventValue.Name))
+		return nil
+	}
 
-	key, val := svc.encodeValue(eventMsg, false)
+	key, val := svc.encodeValue(eventValue, false)
 
 	slog.Info("AddEvent",
-		slog.String("agentID", eventMsg.AgentID),
-		slog.String("thingID", eventMsg.ThingID),
-		slog.String("name", eventMsg.Name),
+		slog.String("agentID", eventValue.AgentID),
+		slog.String("thingID", eventValue.ThingID),
+		slog.String("name", eventValue.Name),
 		slog.String("value", string(valueStr)),
 		slog.String("key", key))
 
-	thingAddr := eventMsg.AgentID + "/" + eventMsg.ThingID
+	thingAddr := eventValue.AgentID + "/" + eventValue.ThingID
 	bucket := svc.store.GetBucket(thingAddr)
 
-	err := bucket.Set(key, val)
+	err = bucket.Set(key, val)
 	if err != nil {
 		slog.Error("AddEvent storage error", "err", err)
 	}
 	_ = bucket.Close()
 	if svc.onAddedValue != nil {
-		svc.onAddedValue(eventMsg, false)
+		svc.onAddedValue(eventValue, false)
 	}
 	return err
 }
@@ -124,7 +135,12 @@ func (svc *AddHistory) AddEvents(eventValues []*thing.ThingValue) (err error) {
 			kvpairs = make(map[string][]byte, 0)
 			kvpairsByThingAddr[thingAddr] = kvpairs
 		}
-		if err := svc.validateValue(eventValue); err == nil {
+		retain, err := svc.validateValue(eventValue)
+		if err != nil {
+			slog.Warn("Invalid event value", slog.String("name", eventValue.Name))
+			return err
+		}
+		if retain {
 			key, value := svc.encodeValue(eventValue, false)
 			kvpairs[key] = value
 			// notify owner to update thing properties
@@ -142,25 +158,28 @@ func (svc *AddHistory) AddEvents(eventValues []*thing.ThingValue) (err error) {
 	return nil
 }
 
-// validateValue checks the event has the right thing address and adds a timestamp if missing
-func (svc *AddHistory) validateValue(tv *thing.ThingValue) error {
+// validateValue checks the event has the right thing address, adds a timestamp if missing and returns if it is retained
+// an error will be returned if the agentID, thingID or name are empty.
+// retained returns true if the value is valid and passes the retention rules
+func (svc *AddHistory) validateValue(tv *thing.ThingValue) (retained bool, err error) {
 	if tv.ThingID == "" || tv.AgentID == "" {
-		return fmt.Errorf("missing agent/thing address in value with name '%s'", tv.Name)
+		return false, fmt.Errorf("missing agent/thing address in value with name '%s'", tv.Name)
 	}
 	if tv.Name == "" {
-		return fmt.Errorf("missing name for event or action for thing '%s/%s'", tv.AgentID, tv.ThingID)
+		return false, fmt.Errorf("missing name for event or action for thing '%s/%s'", tv.AgentID, tv.ThingID)
 	}
 	if tv.CreatedMSec == 0 {
 		tv.CreatedMSec = time.Now().UnixMilli()
 	}
 	if svc.retentionMgr != nil {
-		isValid, err := svc.retentionMgr.CheckRetention("", tv)
-		if !isValid || err != nil {
-			return fmt.Errorf("no retention for event '%s'", tv.Name)
+		retain, rule := svc.retentionMgr._IsRetained(tv)
+		if rule == nil {
+			slog.Debug("no retention rule found for event", slog.String("name", tv.Name), slog.Bool("retain", retain))
 		}
+		return retain, nil
 	}
 
-	return nil
+	return true, nil
 }
 
 // NewAddHistory provides the capability to add values to Thing history buckets

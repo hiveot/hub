@@ -40,7 +40,8 @@ func (svc *DirectoryService) handleTDEvent(event *thing.ThingValue) {
 		ThingID: event.ThingID,
 		TDDoc:   event.Data,
 	}
-	err := svc.updateDirSvc.UpdateTD(event.AgentID, args)
+	ctx := hubclient.ServiceContext{ClientID: event.AgentID}
+	err := svc.updateDirSvc.UpdateTD(ctx, args)
 	if err != nil {
 		slog.Error("handleTDEvent failed", "err", err)
 	}

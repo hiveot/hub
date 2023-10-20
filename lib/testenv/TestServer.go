@@ -28,6 +28,7 @@ type TestServer struct {
 // This either adds them to the server directly or adds them using auth.
 func (ts *TestServer) AddClients(newClients []msgserver.ClientAuthInfo) error {
 	var err error
+	ctx := hubclient.ServiceContext{ClientID: "testServer"}
 	if ts.AuthService != nil {
 		for _, authInfo := range newClients {
 			args := authcfg.AddUserArgs{
@@ -36,7 +37,7 @@ func (ts *TestServer) AddClients(newClients []msgserver.ClientAuthInfo) error {
 				PubKey:      authInfo.PubKey,
 				Role:        authInfo.Role,
 			}
-			_, err = ts.AuthService.MngClients.AddUser("testServer", args)
+			_, err = ts.AuthService.MngClients.AddUser(ctx, args)
 			if err != nil {
 				slog.Error("AddClients error", "clientID", authInfo.ClientID, "err", err)
 			}
@@ -73,6 +74,7 @@ func (ts *TestServer) AddConnectClient(agentID string, clientType string, client
 	if clientRole == "" {
 		clientRole = authcfg.ClientRoleViewer
 	}
+	ctx := hubclient.ServiceContext{ClientID: "testServer"}
 
 	// if auth service is running then add the user if it doesn't exist
 	if ts.AuthService != nil {
@@ -82,7 +84,7 @@ func (ts *TestServer) AddConnectClient(agentID string, clientType string, client
 				DisplayName: "user " + agentID,
 				PubKey:      kpPub,
 			}
-			resp, err2 := ts.AuthService.MngClients.AddService("testServer", args)
+			resp, err2 := ts.AuthService.MngClients.AddService(ctx, args)
 			err = err2
 			token = resp.Token
 		} else if clientType == authcfg.ClientTypeDevice {
@@ -91,7 +93,7 @@ func (ts *TestServer) AddConnectClient(agentID string, clientType string, client
 				DisplayName: "user " + agentID,
 				PubKey:      kpPub,
 			}
-			resp, err2 := ts.AuthService.MngClients.AddDevice("testServer", args)
+			resp, err2 := ts.AuthService.MngClients.AddDevice(ctx, args)
 			err = err2
 			token = resp.Token
 		} else {
@@ -101,7 +103,7 @@ func (ts *TestServer) AddConnectClient(agentID string, clientType string, client
 				PubKey:      kpPub,
 				Role:        clientRole,
 			}
-			resp, err2 := ts.AuthService.MngClients.AddUser("testServer", args)
+			resp, err2 := ts.AuthService.MngClients.AddUser(ctx, args)
 			err = err2
 			token = resp.Token
 		}

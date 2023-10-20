@@ -1,75 +1,58 @@
 package history
 
-import "github.com/hiveot/hub/lib/thing"
-
 // ManageHistoryCap is the capabilityID for managing history
 const ManageHistoryCap = "manageHistory"
 
-// EventNameProperties 'properties' is the name of the event that holds a JSON encoded map
-// with one or more property values of a thing.
-//const EventNameProperties = vocab.WoTProperties
-
 // RetentionRule with a retention rule for an event (or action)
 type RetentionRule struct {
-	// Name of the event to record
+	// Optional, the rule applies to data from this agent
+	AgentID string `yaml:"agentID,omitempty" json:"agentID,omitempty"`
+
+	// Optional, the rule applies to data from this thing
+	ThingID string `yaml:"thingID,omitempty" json:"thingID,omitempty"`
+
+	// Optional, the rule applies to events or actions with this name
 	Name string `yaml:"name"`
 
-	// Optional, only accept the event from these publishers
-	Agents []string `yaml:"agents"`
+	// TODO: class of value, eg @type in the TD (eg, temperature, humidity)
+	//Type string `yaml:"type",json:"type"`
 
-	// Optional, only accept the event from these things
-	Things []string `yaml:"things"`
+	// Retain or not retain based on this rule
+	Retain bool `yaml:"retain" json:"retain"`
 
-	// Optional, exclude the event from these things
-	Exclude []string `yaml:"exclude"`
-
-	// Retention sets the age of the event in seconds after which it can be removed. 0 for indefinitely (default)
+	// Retention age after which to remove the value. 0 to retain indefinitely
 	MaxAge uint64 `yaml:"maxAge"`
 }
 
-// CheckRetentionMethod checks if the given event will be retained
-const CheckRetentionMethod = "checkRetention"
+// RetentionRuleSet is a map by event/action name with one or more rules for agent/things.
+type RetentionRuleSet map[string][]*RetentionRule
 
-type CheckRetentionArgs struct {
-	// the event value to check
-	Event *thing.ThingValue `json:"event"`
-}
-type CheckRetentionResp struct {
-	Retained bool `json:"retained"`
-}
-
-// GetRetentionRuleMethod returns the retention configuration of an event by name
-// This applies to events from any publishers and things
+// GetRetentionRuleMethod returns the first retention rule that applies
+// to the given value.
 const GetRetentionRuleMethod = "getRetentionRule"
 
 type GetRetentionRuleArgs struct {
+	// AgentID is optional
+	AgentID string `json:"agentID,omitempty"`
+	// ThingID is optional
+	ThingID string `json:"thingID,omitempty"`
 	// Name of the event whose retention settings to get
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 }
 type GetRetentionRuleResp struct {
-	// The event retention if successful
-	Rule *RetentionRule `json:"eventRetention"`
+	Rule *RetentionRule `json:"rule"`
 }
 
 // GetRetentionRulesMethod returns the collection of retention configurations
 const GetRetentionRulesMethod = "getRetentionRules"
 
 type GetRetentionRulesResp struct {
-	Rules []*RetentionRule `json:"rules"`
+	Rules RetentionRuleSet `json:"rules"`
 }
 
-// RemoveRetentionRuleMethod removes an existing event retention rule
-// If the rule doesn't exist this is considered successful and no error will be returned
-const RemoveRetentionRuleMethod = "removeRetentionRule"
+// SetRetentionRulesMethod updates the set of retention rules
+const SetRetentionRulesMethod = "setRetentionRules"
 
-type RemoveRetentionRuleArgs struct {
-	// Name of the event whose retention settings to remove
-	Name string `json:"name"`
-}
-
-// SetRetentionRuleMethod configures the retention of a Thing event
-const SetRetentionRuleMethod = "setRetentionRule"
-
-type SetRetentionRuleArgs struct {
-	Rule *RetentionRule `json:"rule"`
+type SetRetentionRulesArgs struct {
+	Rules RetentionRuleSet `json:"rules"`
 }

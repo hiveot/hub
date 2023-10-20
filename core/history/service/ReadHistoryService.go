@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"github.com/hiveot/hub/core/history"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -32,16 +33,20 @@ type ReadHistoryService struct {
 // GetCursor returns an iterator for ThingValues containing a TD document
 // The inactivity lifespan is currently fixed to 1 minute.
 func (svc *ReadHistoryService) GetCursor(
-	clientID string, args history.GetCursorArgs) (*history.GetCursorResp, error) {
+	ctx hubclient.ServiceContext, args history.GetCursorArgs) (*history.GetCursorResp, error) {
+
+	if args.AgentID == "" || args.ThingID == "" {
+		return nil, fmt.Errorf("missing agentID or thingID from client '%s'", ctx.ClientID)
+	}
 	thingAddr := args.AgentID + "/" + args.ThingID
 	slog.Debug("GetCursor for bucket: ", "addr", thingAddr)
 	bucket := svc.bucketStore.GetBucket(thingAddr)
-	ctx := context.WithValue(context.Background(), filterContextKey, args.Name)
-	cursor, err := bucket.Cursor(ctx)
+	bctx := context.WithValue(context.Background(), filterContextKey, args.Name)
+	cursor, err := bucket.Cursor(bctx)
 	if err != nil {
 		return nil, err
 	}
-	key := svc.cursorCache.Add(cursor, bucket, clientID, time.Minute)
+	key := svc.cursorCache.Add(cursor, bucket, ctx.ClientID, time.Minute)
 	resp := &history.GetCursorResp{CursorKey: key}
 	return resp, nil
 }
@@ -51,7 +56,7 @@ func (svc *ReadHistoryService) GetCursor(
 //
 //	providing 'names' can speed up read access significantly
 func (svc *ReadHistoryService) GetLatest(
-	clientID string, args *history.GetLatestArgs) (*history.GetLatestResp, error) {
+	ctx hubclient.ServiceContext, args *history.GetLatestArgs) (*history.GetLatestResp, error) {
 	thingAddr := args.AgentID + "/" + args.ThingID
 	values := svc.getPropertiesFunc(thingAddr, args.Names)
 	resp := history.GetLatestResp{Values: values}
