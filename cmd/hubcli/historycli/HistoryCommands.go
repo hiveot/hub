@@ -3,8 +3,7 @@ package historycli
 import (
 	"fmt"
 	"github.com/hiveot/hub/core/history/historyclient"
-	"time"
-
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
 
 	"github.com/hiveot/hub/lib/hubclient"
@@ -117,17 +116,16 @@ func HandleListEvents(hc hubclient.IHubClient, agentID, thingID string, name str
 	if err != nil {
 		return err
 	}
-	fmt.Println("AgentID        ThingID            Timestamp                    Event           Value (truncated)")
-	fmt.Println("-----------    -------            ---------                    -----           ---------------- ")
+	fmt.Println("AgentID        ThingID            Timestamp                      Event                Value (truncated)")
+	fmt.Println("-----------    -------            ---------                      -----                ---------------- ")
 	count := 0
 	for tv, valid, err := cursor.Last(); err == nil && valid && count < limit; tv, valid, err = cursor.Prev() {
 		count++
-		utime := time.UnixMilli(tv.CreatedMSec)
 
-		fmt.Printf("%-14s %-18s %-28s %-15s %-30s\n",
+		fmt.Printf("%-14s %-18s %-30s %-20.20s %-30.30s\n",
 			tv.AgentID,
 			tv.ThingID,
-			utime.Format("02 Jan 2006 15:04:05 MST"),
+			utils.FormatMSE(tv.CreatedMSec, false),
 			tv.Name,
 			tv.Data,
 		)
@@ -178,18 +176,17 @@ func HandleListLatestEvents(
 
 	tvList, err := rd.GetLatest(agentID, thingID, nil)
 
-	fmt.Println("Event ID         Publisher       Thing                CreatedMSec                     Value")
-	fmt.Println("----------         ---------       -----                -------                     -----")
+	fmt.Println("Event ID             AgentID         ThingID              Created                        Value")
+	fmt.Println("--------             ---------       -----                -------                        -----")
 	for _, tv := range tvList {
-		utime := time.UnixMilli(tv.CreatedMSec)
 
-		fmt.Printf("%-18.18s %-15.15s %-20s %-27s %s\n",
+		fmt.Printf("%-20.20s %-15.15s %-20s %-32s %s\n",
 			tv.Name,
 			tv.AgentID,
 			tv.ThingID,
 			//utime.Format("02 Jan 2006 15:04:05 -0700"),
-			utime.Format("02 Jan 2006 15:04:05 MST"),
-			tv.Data,
+			utils.FormatMSE(tv.CreatedMSec, false),
+			fmt.Sprintf("%.50s", tv.Data),
 		)
 	}
 	return err

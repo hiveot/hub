@@ -1,7 +1,7 @@
 package testenv
 
 import (
-	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver"
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver/callouthook"
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver/service"
@@ -32,7 +32,7 @@ func StartNatsTestServer(withCallout bool) (
 	_ = os.RemoveAll(tmpDir)
 	err = serverCfg.Setup(tmpDir, tmpDir, false)
 	if err == nil {
-		hubNatsServer = service.NewNatsMsgServer(serverCfg, auth.DefaultRolePermissions)
+		hubNatsServer = service.NewNatsMsgServer(serverCfg, authapi.DefaultRolePermissions)
 		err = hubNatsServer.Start()
 	}
 	if err == nil && withCallout {

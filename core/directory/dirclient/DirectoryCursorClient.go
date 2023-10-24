@@ -1,7 +1,7 @@
 package dirclient
 
 import (
-	"github.com/hiveot/hub/core/directory"
+	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/hubclient"
 
 	"github.com/hiveot/hub/lib/thing"
@@ -22,44 +22,44 @@ type DirectoryCursorClient struct {
 
 // First positions the cursor at the first key in the ordered list
 func (cl *DirectoryCursorClient) First() (thingValue thing.ThingValue, valid bool, err error) {
-	req := directory.CursorFirstArgs{
+	req := directoryapi.CursorFirstArgs{
 		CursorKey: cl.cursorKey,
 	}
-	resp := directory.CursorFirstResp{}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directory.CursorFirstMethod, &req, &resp)
+	resp := directoryapi.CursorFirstResp{}
+	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.CursorFirstMethod, &req, &resp)
 	cl.cursorKey = resp.CursorKey
 	return resp.Value, resp.Valid, err
 }
 
 // Next moves the cursor to the next key from the current cursor
 func (cl *DirectoryCursorClient) Next() (thingValue thing.ThingValue, valid bool, err error) {
-	req := directory.CursorNextArgs{
+	req := directoryapi.CursorNextArgs{
 		CursorKey: cl.cursorKey,
 	}
-	resp := directory.CursorFirstResp{}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directory.CursorNextMethod, &req, &resp)
+	resp := directoryapi.CursorFirstResp{}
+	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.CursorNextMethod, &req, &resp)
 	cl.cursorKey = resp.CursorKey
 	return resp.Value, resp.Valid, err
 }
 
 // NextN moves the cursor to the next N steps from the current cursor
 func (cl *DirectoryCursorClient) NextN(limit uint) (batch []thing.ThingValue, itemsRemaining bool, err error) {
-	req := directory.CursorNextNArgs{
+	req := directoryapi.CursorNextNArgs{
 		CursorKey: cl.cursorKey,
 		Limit:     limit,
 	}
-	resp := directory.CursorNextNResp{}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directory.CursorNextNMethod, &req, &resp)
+	resp := directoryapi.CursorNextNResp{}
+	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.CursorNextNMethod, &req, &resp)
 	cl.cursorKey = resp.CursorKey
 	return resp.Values, resp.ItemsRemaining, err
 }
 
 // Release the cursor capability
 func (cl *DirectoryCursorClient) Release() {
-	req := directory.CursorReleaseArgs{
+	req := directoryapi.CursorReleaseArgs{
 		CursorKey: cl.cursorKey,
 	}
-	_, err := cl.hc.PubRPCRequest(cl.agentID, cl.capID, directory.CursorReleaseMethod, &req, nil)
+	_, err := cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.CursorReleaseMethod, &req, nil)
 	_ = err
 	return
 }

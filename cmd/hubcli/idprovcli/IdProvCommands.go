@@ -1,0 +1,164 @@
+package idprovcli
+
+import (
+	"fmt"
+	"github.com/hiveot/hub/core/auth/authapi"
+	"github.com/hiveot/hub/core/idprov/idprovapi"
+	"github.com/hiveot/hub/core/idprov/idprovclient"
+	"github.com/hiveot/hub/lib/utils"
+	"github.com/urfave/cli/v2"
+
+	"github.com/hiveot/hub/lib/hubclient"
+)
+
+// ProvisionPreApproveCommand
+// prov preapprove  <deviceID> <pubKey> [<mac>]
+func ProvisionPreApproveCommand(hc *hubclient.IHubClient) *cli.Command {
+	return &cli.Command{
+		Name:      "idppreapprove",
+		Usage:     "Preapprove a device for automated provisioning",
+		ArgsUsage: "<deviceID> <pubKey> [<mac>]",
+		Category:  "provisioning",
+		Action: func(cCtx *cli.Context) error {
+			if cCtx.NArg() < 2 {
+				return fmt.Errorf("expected 2 or 3 arguments. Got %d instead", cCtx.NArg())
+			}
+			deviceID := cCtx.Args().First()
+			pubKey := cCtx.Args().Get(1)
+			mac := cCtx.Args().Get(2)
+			err := HandlePreApprove(*hc, deviceID, pubKey, mac)
+			fmt.Println("preapprved device: ", deviceID)
+			return err
+		},
+	}
+}
+
+// ProvisionApproveRequestCommand
+// prov approve <deviceID>
+func ProvisionApproveRequestCommand(hc *hubclient.IHubClient) *cli.Command {
+	return &cli.Command{
+		Name:      "idpapprove",
+		Usage:     "Approve a pending provisioning request",
+		ArgsUsage: "<deviceID>",
+		Category:  "provisioning",
+		Action: func(cCtx *cli.Context) error {
+			if cCtx.NArg() != 1 {
+				return fmt.Errorf("expected 1 arguments. Got %d instead", cCtx.NArg())
+			}
+			deviceID := cCtx.Args().First()
+			err := HandleApproveRequest(*hc, deviceID)
+			return err
+		},
+	}
+}
+
+func ProvisionListCommand(hc *hubclient.IHubClient) *cli.Command {
+	return &cli.Command{
+		Name:     "idplist",
+		Usage:    "List provisioning requests",
+		Category: "provisioning",
+		Action: func(cCtx *cli.Context) error {
+			err := HandleListRequests(*hc)
+			return err
+		},
+	}
+}
+
+func ProvisionRequestCommand(hc *hubclient.IHubClient) *cli.Command {
+	return &cli.Command{
+		Name:      "idpsubmit",
+		Usage:     "Submit a provisioning request",
+		ArgsUsage: "<deviceID> <pubKey> [<mac>]",
+		Category:  "provisioning",
+		Action: func(cCtx *cli.Context) error {
+			if cCtx.NArg() < 2 {
+				return fmt.Errorf("expected 2 or 3 arguments. Got %d instead", cCtx.NArg())
+			}
+			deviceID := cCtx.Args().First()
+			pubKey := cCtx.Args().Get(1)
+			mac := ""
+			if cCtx.NArg() == 3 {
+				mac = cCtx.Args().Get(2)
+			}
+
+			err := HandleSubmitRequest(*hc, deviceID, pubKey, mac)
+			return err
+		},
+	}
+}
+
+// HandlePreApprove adds a device to the list of pre-approved devices
+//
+//	deviceID is the ID of the device to pre-approve
+//	pubKey device's public key
+func HandlePreApprove(hc hubclient.IHubClient, deviceID string, pubKey string, mac string) error {
+	cl := idprovclient.NewIdProvManageClient(hc)
+	approvals := []idprovapi.PreApprovedClient{{
+		ClientID:   deviceID,
+		ClientType: authapi.ClientTypeDevice,
+		MAC:        mac,
+		PubKey:     pubKey,
+	}}
+
+	err := cl.PreApproveDevices(approvals)
+	return err
+}
+
+// HandleApproveRequest
+//
+//	deviceID is the ID of the device to approve
+func HandleApproveRequest(hc hubclient.IHubClient, deviceID string) error {
+	cl := idprovclient.NewIdProvManageClient(hc)
+	err := cl.ApproveRequest(deviceID, authapi.ClientTypeDevice)
+
+	return err
+}
+
+func HandleListRequests(hc hubclient.IHubClient) error {
+	cl := idprovclient.NewIdProvManageClient(hc)
+	provStatus, err := cl.GetRequests(true, false, false)
+	if err != nil {
+		return err
+	}
+
+	// pending
+	fmt.Println("Pending requests:")
+	fmt.Printf("Agent ID               Request Time\n")
+	fmt.Printf("--------------------   ------------\n")
+	for _, provStatus := range provStatus {
+		fmt.Printf("%-22s %s\n",
+			provStatus.ClientID,
+			utils.FormatMSE(provStatus.ReceivedMSE, true))
+	}
+
+	// others
+	provStatus, err = cl.GetRequests(false, true, true)
+	fmt.Println()
+	fmt.Println("Non-pending requests:")
+	fmt.Printf("Agent ID               Request Time          Approved Time\n")
+	fmt.Printf("--------------------   -------------------   -------------\n")
+	for _, provStatus := range provStatus {
+		// a certificate is assigned when generated
+		fmt.Printf("%-22s %s   %s\n",
+			provStatus.ClientID,
+			utils.FormatMSE(provStatus.ReceivedMSE, true),
+			utils.FormatMSE(provStatus.ApprovedMSE, true))
+	}
+
+	return err
+}
+
+// HandleSubmitRequest requests a provisioning token
+//
+//	deviceID is the ID of the device requesting a token
+//	pubKey is the public key to use, or use \"" to accept device offered key
+func HandleSubmitRequest(hc hubclient.IHubClient, deviceID string, pubKey string, mac string) error {
+	cl := idprovclient.NewIdProvManageClient(hc)
+	status, token, err := cl.SubmitRequest(deviceID, pubKey, mac)
+	_ = status
+	_ = HandleListRequests(hc)
+	if token != "" {
+		println("Received token: ", token)
+	}
+	return err
+}

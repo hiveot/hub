@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/core/launcher/launcherclient"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
 )
 
@@ -70,8 +71,8 @@ func HandleListServices(hc hubclient.IHubClient) error {
 	}
 	lc := launcherclient.NewLauncherClient("", hc)
 
-	fmt.Println("Service                      Size   Starts       PID    CPU   Memory   Status    Last Error")
-	fmt.Println("-------                      ----   ------   -------   ----   ------   -------   -----------")
+	fmt.Println("Service                      Size   Starts       PID    CPU   Memory   Status    Since                Last Error")
+	fmt.Println("-------                      ----   ------   -------   ----   ------   -------   -------------------  -----------")
 	entries, err := lc.List(false)
 	if err != nil {
 		return err
@@ -83,10 +84,15 @@ func HandleListServices(hc hubclient.IHubClient) error {
 		pid := fmt.Sprintf("%d", entry.PID)
 		cpu = fmt.Sprintf("%d%%", entry.CPU)
 		memory = fmt.Sprintf("%d MB", entry.RSS/1024/1024)
+
+		sinceTime := ""
 		if entry.Running {
 			status = "running"
+			sinceTime = utils.FormatMSE(entry.StartTimeMSE, true)
+		} else if entry.StopTimeMSE != 0 {
+			sinceTime = utils.FormatMSE(entry.StopTimeMSE, true)
 		}
-		fmt.Printf("%-25s %4d MB   %6d   %7s   %4s   %6s   %6s   %s\n",
+		fmt.Printf("%-25s %4d MB   %6d   %7s   %4s   %6s   %6s   %-20s %s\n",
 			entry.Name,
 			entry.Size/1024/1024,
 			entry.StartCount,
@@ -94,6 +100,7 @@ func HandleListServices(hc hubclient.IHubClient) error {
 			cpu,
 			memory,
 			status,
+			sinceTime,
 			entry.Status,
 		)
 	}

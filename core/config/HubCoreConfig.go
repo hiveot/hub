@@ -18,6 +18,8 @@ import (
 )
 
 const HubCoreConfigFileName = "hub.yaml"
+const DefaultServerCertFile = "hubCert.pem"
+const DefaultServerKeyFile = "hubKey.pem"
 
 // HubCoreConfig with core server, auth, cert and launcher configuration
 // Used for launching the core.
@@ -31,7 +33,7 @@ type HubCoreConfig struct {
 	CaCertFile     string            `yaml:"caCertFile"`     // default: caCert.pem
 	CaKeyFile      string            `yaml:"caKeyFile"`      // default: caKey.pem
 	ServerCertFile string            `yaml:"serverCertFile"` // default: hubCert.pem
-	ServerKeyFile  string            `yaml:"serverKeyFile"`  // default: kubKey.pem
+	ServerKeyFile  string            `yaml:"serverKeyFile"`  // default: hubKey.pem
 	CaCert         *x509.Certificate `yaml:"-"`              // preset, load, or error
 	CaKey          *ecdsa.PrivateKey `yaml:"-"`              // preset, load, or error
 	ServerTLS      *tls.Certificate  `yaml:"-"`              // preset, load, or generate
@@ -94,9 +96,17 @@ func (cfg *HubCoreConfig) Setup(env *utils.AppEnvironment, core string, new bool
 	// 3: Setup certificates
 	cfg.CaCertFile = certs.DefaultCaCertFile
 	cfg.CaKeyFile = certs.DefaultCaKeyFile
-	cfg.ServerCertFile = "hubCert.pem"
-	cfg.ServerKeyFile = "hubKey.pem"
+	cfg.ServerCertFile = DefaultServerCertFile
+	cfg.ServerKeyFile = DefaultServerKeyFile
 	cfg.setupCerts()
+	// pass it on to the message server
+	cfg.MqttServer.CaCert = cfg.CaCert
+	cfg.MqttServer.CaKey = cfg.CaKey
+	cfg.MqttServer.ServerKey = cfg.ServerKey
+	cfg.MqttServer.ServerTLS = cfg.ServerTLS
+	cfg.NatsServer.CaCert = cfg.CaCert
+	cfg.NatsServer.CaKey = cfg.CaKey
+	cfg.NatsServer.ServerTLS = cfg.ServerTLS
 
 	// 4: Setup message server config
 	if core == "nats" {
@@ -168,17 +178,23 @@ func (cfg *HubCoreConfig) setupCerts() {
 		}
 	}
 
-	// 3: Create a new server private key if it doesn't exist
+	// 3: Load or create a new server private key if it doesn't exist
+	// As this key is used to sign tokens, save it after creation
 	serverKeyPath := cfg.ServerKeyFile
 	if !path.IsAbs(serverKeyPath) {
 		serverKeyPath = path.Join(certsDir, serverKeyPath)
 	}
 	// load the server key if available
 	if cfg.ServerKey == nil {
+		slog.Warn("Loading server key", "serverKeyPath", serverKeyPath)
 		cfg.ServerKey, _ = certs.LoadKeysFromPEM(serverKeyPath)
+	} else {
+		slog.Warn("Using provided server key")
 	}
 	if cfg.ServerKey == nil {
+		slog.Warn("Creating server key")
 		cfg.ServerKey, _ = certs.CreateECDSAKeys()
+		err = certs.SaveKeysToPEM(cfg.ServerKey, serverKeyPath)
 	}
 	// create a new server cert
 	serverCertPath := cfg.ServerCertFile
@@ -199,7 +215,12 @@ func (cfg *HubCoreConfig) setupCerts() {
 	}
 	cfg.ServerTLS = certs.X509CertToTLS(serverCert, cfg.ServerKey)
 
-	err = certs.SaveTLSCertToPEM(cfg.ServerTLS, serverCertPath, serverKeyPath)
+	slog.Warn("Writing server cert", "serverCertPath", serverCertPath)
+	err = certs.SaveX509CertToPEM(serverCert, serverCertPath)
+	if err != nil {
+		slog.Error("writing server cert failed: ", "err", err)
+	}
+	//err = certs.SaveTLSCertToPEM(cfg.ServerTLS, serverCertPath, serverKeyPath)
 }
 
 // setupDirectories creates missing directories
@@ -294,26 +315,26 @@ func (cfg *HubCoreConfig) setupNatsCore() error {
 }
 
 // Load the core config from hub.yaml
-func (cfg *HubCoreConfig) Load() error {
-	configFile := path.Join(cfg.Env.ConfigDir, HubCoreConfigFileName)
-	data, err := os.ReadFile(configFile)
-	if err != nil {
-		return err
-	}
-	err = yaml.Unmarshal(data, cfg)
-	return err
-}
-
-// Save the core config to hub.yaml
-func (cfg *HubCoreConfig) Save() error {
-	configFile := path.Join(cfg.Env.ConfigDir, HubCoreConfigFileName)
-	data, err := yaml.Marshal(cfg)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(configFile, data, 0644)
-	return err
-}
+//func (cfg *HubCoreConfig) Load() error {
+//	configFile := path.Join(cfg.Env.ConfigDir, HubCoreConfigFileName)
+//	data, err := os.ReadFile(configFile)
+//	if err != nil {
+//		return err
+//	}
+//	err = yaml.Unmarshal(data, cfg)
+//	return err
+//}
+//
+//// Save the core config to hub.yaml
+//func (cfg *HubCoreConfig) Save() error {
+//	configFile := path.Join(cfg.Env.ConfigDir, HubCoreConfigFileName)
+//	data, err := yaml.Marshal(cfg)
+//	if err != nil {
+//		return err
+//	}
+//	err = os.WriteFile(configFile, data, 0644)
+//	return err
+//}
 
 // NewHubCoreConfig creates a new configuration for the hub server and core services.
 // Call Setup to load a config file and update directories.

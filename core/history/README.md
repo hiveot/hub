@@ -10,12 +10,11 @@ Provide historical reading of thing events and actions using the bucket store, i
 This service is functional.
 
 TODO:
-1. Retention for actions
-2. Configuration of event retention.
-3. Storage of event retention.
-4. config for retention default allow or deny all.
-3. hubcli commands for managing retention.
-4. Performance analysis optimization
+1. Capture actions
+2. Storage of event retention.
+3. Hubcli commands for managing retention.
+4. Support auto expiry of events
+4. Support for removal of outlier values
 
 
 ## Summary

@@ -118,9 +118,14 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 	var logsDir string
 	var storesDir string
 	clientID := path.Base(os.Args[0])
-	loglevel := "warning"
+	loglevel := os.Getenv("LOGLEVEL")
+	if loglevel == "" {
+		loglevel = "warning"
+	}
 	serverURL := ""
 	//serverCore := ""
+
+	os.Environ()
 
 	// default home folder is the parent of the core or plugin binary
 	if homeDir == "" {

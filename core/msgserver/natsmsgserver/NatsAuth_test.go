@@ -1,7 +1,7 @@
 package natsmsgserver_test
 
 import (
-	auth2 "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/stretchr/testify/assert"
@@ -20,7 +20,7 @@ func TestPermissions(t *testing.T) {
 	_ = certBundle
 	_ = cfg
 
-	roles := []string{auth2.ClientRoleViewer}
+	roles := []string{authapi.ClientRoleViewer}
 	s.SetServicePermissions("myservice", "capability", roles)
 }
 
@@ -42,9 +42,9 @@ func TestToken(t *testing.T) {
 	_ = cfg
 	clInfo := msgserver.ClientAuthInfo{
 		ClientID:   user2ID,
-		ClientType: auth2.ClientTypeUser,
+		ClientType: authapi.ClientTypeUser,
 		PubKey:     user2Pub,
-		Role:       auth2.ClientRoleViewer,
+		Role:       authapi.ClientRoleViewer,
 	}
 	user2Token, err := s.CreateToken(clInfo)
 	require.NoError(t, err)

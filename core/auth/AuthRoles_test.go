@@ -1,7 +1,7 @@
 package auth_test
 
 import (
-	authapi "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/lib/hubclient/hubconnect"
 	"testing"
@@ -39,7 +39,7 @@ func TestCRUDRole(t *testing.T) {
 	require.NoError(t, err)
 	defer hc.Disconnect()
 
-	roleMng := authclient.NewAuthRolesClient(hc)
+	roleMng := authclient.NewRolesClient(hc)
 
 	err = roleMng.CreateRole(role1Name)
 	require.NoError(t, err)

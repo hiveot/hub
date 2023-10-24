@@ -3,7 +3,7 @@ package service
 import (
 	"encoding/base64"
 	"fmt"
-	auth2 "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/hubclient/natshubclient"
 	"github.com/hiveot/hub/lib/vocab"
@@ -122,11 +122,11 @@ func (srv *NatsMsgServer) CreateJWTToken(authInfo msgserver.ClientAuthInfo) (new
 		return "", fmt.Errorf("invalid auth info")
 	}
 	// TODO: use validity period from profile
-	validity := auth2.DefaultUserTokenValidityDays
-	if authInfo.ClientType == auth2.ClientTypeDevice {
-		validity = auth2.DefaultDeviceTokenValidityDays
-	} else if authInfo.ClientType == auth2.ClientTypeService {
-		validity = auth2.DefaultServiceTokenValidityDays
+	validity := authapi.DefaultUserTokenValidityDays
+	if authInfo.ClientType == authapi.ClientTypeDevice {
+		validity = authapi.DefaultDeviceTokenValidityDays
+	} else if authInfo.ClientType == authapi.ClientTypeService {
+		validity = authapi.DefaultServiceTokenValidityDays
 	}
 
 	// build a jwt response; user_nkey (clientPub) is the subject
@@ -260,7 +260,7 @@ func (srv *NatsMsgServer) MakePermissions(clientInfo msgserver.ClientAuthInfo) *
 			"$JS.API.CONSUMER.MSG.NEXT." + streamName + ".>", // to get consumer info?
 		}...)
 		// admin role can access all JS API INFO
-		if clientInfo.Role == auth2.ClientRoleAdmin {
+		if clientInfo.Role == authapi.ClientRoleAdmin {
 			pubPerm.Allow = append(pubPerm.Allow, "$JS.API.INFO")
 		}
 	} else {

@@ -2,7 +2,7 @@ package service
 
 import (
 	"encoding/json"
-	"github.com/hiveot/hub/core/directory"
+	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/ser"
 	"strings"
@@ -25,7 +25,7 @@ func (svc *ReadDirectoryService) _decodeValue(key string, data []byte) (thingVal
 
 // First returns the first entry in the directory
 func (svc *ReadDirectoryService) First(
-	ctx hubclient.ServiceContext, args directory.CursorFirstArgs) (*directory.CursorFirstResp, error) {
+	ctx hubclient.ServiceContext, args directoryapi.CursorFirstArgs) (*directoryapi.CursorFirstResp, error) {
 
 	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
 	if err != nil {
@@ -37,7 +37,7 @@ func (svc *ReadDirectoryService) First(
 		return nil, nil
 	}
 	thingValue, valid := svc._decodeValue(k, v)
-	resp := directory.CursorFirstResp{
+	resp := directoryapi.CursorFirstResp{
 		Value:     thingValue,
 		Valid:     valid,
 		CursorKey: args.CursorKey,
@@ -49,7 +49,7 @@ func (svc *ReadDirectoryService) First(
 // First() or Seek must have been called first.
 // Shouldn't next have a parameter?
 func (svc *ReadDirectoryService) Next(
-	ctx hubclient.ServiceContext, args directory.CursorNextArgs) (*directory.CursorNextResp, error) {
+	ctx hubclient.ServiceContext, args directoryapi.CursorNextArgs) (*directoryapi.CursorNextResp, error) {
 
 	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
 	if err != nil {
@@ -58,7 +58,7 @@ func (svc *ReadDirectoryService) Next(
 
 	k, v, valid := cursor.Next()
 	thingValue, valid := svc._decodeValue(k, v)
-	resp := directory.CursorNextResp{
+	resp := directoryapi.CursorNextResp{
 		Value:     thingValue,
 		Valid:     valid,
 		CursorKey: args.CursorKey,
@@ -71,7 +71,7 @@ func (svc *ReadDirectoryService) Next(
 // itemsRemaining is false if the iterator has reached the end.
 // Intended to speed up with batch iterations over rpc.
 func (svc *ReadDirectoryService) NextN(
-	ctx hubclient.ServiceContext, args directory.CursorNextNArgs) (*directory.CursorNextNResp, error) {
+	ctx hubclient.ServiceContext, args directoryapi.CursorNextNArgs) (*directoryapi.CursorNextNResp, error) {
 
 	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
 	if err != nil {
@@ -89,7 +89,7 @@ func (svc *ReadDirectoryService) NextN(
 			err = err2 // return the last error
 		}
 	}
-	resp := directory.CursorNextNResp{
+	resp := directoryapi.CursorNextNResp{
 		Values:         values,
 		ItemsRemaining: itemsRemaining,
 		CursorKey:      args.CursorKey,
@@ -100,7 +100,7 @@ func (svc *ReadDirectoryService) NextN(
 // Release close the cursor and release its resources.
 // This invalidates all values obtained from the cursor
 func (svc *ReadDirectoryService) Release(
-	ctx hubclient.ServiceContext, args directory.CursorReleaseArgs) error {
+	ctx hubclient.ServiceContext, args directoryapi.CursorReleaseArgs) error {
 
 	return svc.cursorCache.Release(args.CursorKey, ctx.ClientID)
 }

@@ -19,7 +19,7 @@ import (
 func main() {
 	env := utils.GetAppEnvironment("", true)
 	logging.SetLogging(env.LogLevel, "")
-
+	slog.Warn("Starting history service", "clientID", env.ClientID, "loglevel", env.LogLevel)
 	// this locates the hub, load certificate, load service tokens and connect
 	hc, err := hubconnect.ConnectToHub("", env.ClientID, env.CertsDir, "")
 	if err != nil {
@@ -47,6 +47,7 @@ func main() {
 	}
 	utils.WaitForSignal(context.Background())
 	err = svc.Stop()
+	slog.Warn("Stopped history service")
 	if err != nil {
 		os.Exit(2)
 	}

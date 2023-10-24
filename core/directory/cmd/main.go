@@ -16,14 +16,15 @@ import (
 // name of the storage file
 const storeFile = "directorystore.json"
 
-// Connect the service
+// Start the service.
+// Precondition: A loginID and keys for this service must already have been added.
+// This can be done manually using the hubcli or simply be starting it using the launcher.
 func main() {
 	env := utils.GetAppEnvironment("", true)
 	logging.SetLogging(env.LogLevel, "")
+	slog.Warn("Starting directory service", "clientID", env.ClientID, "loglevel", env.LogLevel)
 
-	// A service client with the application name as ID must already have been added for this service.
-	// This can be done manually or simply be starting using the launcher.
-	// this locates the hub, load certificate, load service tokens and connect
+	// locate the hub, load CA certificate, load service key and token and connect
 	hc, err := hubconnect.ConnectToHub("", env.ClientID, env.CertsDir, "")
 	if err != nil {
 		slog.Error("Failed connecting to the Hub", "err", err)
@@ -44,8 +45,6 @@ func main() {
 		os.Exit(1)
 	}
 	utils.WaitForSignal(context.Background())
-	err = svc.Stop()
-	if err != nil {
-		os.Exit(2)
-	}
+	svc.Stop()
+	slog.Warn("Stopped directory service")
 }

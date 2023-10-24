@@ -2,7 +2,7 @@ package owserver_test
 
 import (
 	"encoding/json"
-	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/thing"
 	"github.com/hiveot/hub/lib/vocab"
@@ -64,7 +64,7 @@ func TestStartStop(t *testing.T) {
 	slog.Info("--- TestStartStop ---")
 	const device1ID = "device1"
 
-	hc, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
+	hc, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 	svc := service.NewOWServerBinding(owsConfig, hc)
@@ -79,7 +79,7 @@ func TestPoll(t *testing.T) {
 	const device1ID = "device1"
 
 	slog.Info("--- TestPoll ---")
-	hc, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
+	hc, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 	svc := service.NewOWServerBinding(owsConfig, hc)
@@ -118,7 +118,7 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 	slog.Info("--- TestPollInvalidEDSAddress ---")
 	const device1ID = "device1"
 
-	hc, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
+	hc, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 
@@ -143,7 +143,7 @@ func TestAction(t *testing.T) {
 	var actionName = vocab.VocabRelay
 	var actionValue = ([]byte)("1")
 
-	hc, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
+	hc, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 

@@ -1,7 +1,7 @@
 package historyclient
 
 import (
-	"github.com/hiveot/hub/core/history"
+	"github.com/hiveot/hub/core/history/historyapi"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/thing"
 )
@@ -23,13 +23,13 @@ type ReadHistoryClient struct {
 //	name option filter on a specific event or action name
 func (cl *ReadHistoryClient) GetCursor(
 	agentID string, thingID string, name string) (cursor *HistoryCursorClient, releaseFn func(), err error) {
-	req := history.GetCursorArgs{
+	req := historyapi.GetCursorArgs{
 		AgentID: agentID,
 		ThingID: thingID,
 		Name:    name,
 	}
-	resp := history.GetCursorResp{}
-	_, err = cl.hc.PubRPCRequest(cl.serviceID, cl.capID, history.GetCursorMethod, &req, &resp)
+	resp := historyapi.GetCursorResp{}
+	_, err = cl.hc.PubRPCRequest(cl.serviceID, cl.capID, historyapi.GetCursorMethod, &req, &resp)
 	cursor = NewHistoryCursorClient(cl.hc, cl.serviceID, cl.capID, resp.CursorKey)
 	return cursor, cursor.Release, err
 }
@@ -41,13 +41,13 @@ func (cl *ReadHistoryClient) GetCursor(
 //	names optionally filter on specific property, event or action names. nil for all values
 func (cl *ReadHistoryClient) GetLatest(
 	agentID string, thingID string, names []string) ([]*thing.ThingValue, error) {
-	args := history.GetLatestArgs{
+	args := historyapi.GetLatestArgs{
 		AgentID: agentID,
 		ThingID: thingID,
 		Names:   names,
 	}
-	resp := history.GetLatestResp{}
-	_, err := cl.hc.PubRPCRequest(cl.serviceID, cl.capID, history.GetLatestMethod, &args, &resp)
+	resp := historyapi.GetLatestResp{}
+	_, err := cl.hc.PubRPCRequest(cl.serviceID, cl.capID, historyapi.GetLatestMethod, &args, &resp)
 	return resp.Values, err
 }
 
@@ -55,8 +55,8 @@ func (cl *ReadHistoryClient) GetLatest(
 func NewReadHistoryClient(hc hubclient.IHubClient) *ReadHistoryClient {
 	histCl := ReadHistoryClient{
 		hc:        hc,
-		serviceID: history.ServiceName,
-		capID:     history.ReadHistoryCap,
+		serviceID: historyapi.ServiceName,
+		capID:     historyapi.ReadHistoryCap,
 	}
 	return &histCl
 }

@@ -86,6 +86,7 @@ func (cfg *MqttServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 		cfg.CaCert, cfg.CaKey, err = certs.CreateCA("hiveot", 365)
 	}
 	if cfg.ServerKey == nil {
+		slog.Warn("Creating server key")
 		cfg.ServerKey, _ = certs.CreateECDSAKeys()
 	}
 	if cfg.ServerTLS == nil && cfg.CaKey != nil {

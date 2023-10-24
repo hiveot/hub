@@ -2,7 +2,7 @@ package authservice
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authstore"
 	"github.com/hiveot/hub/core/auth/config"
 	"github.com/hiveot/hub/core/msgserver"
@@ -14,7 +14,7 @@ import (
 
 // AuthService handles authentication and authorization requests
 type AuthService struct {
-	store     auth.IAuthnStore
+	store     authapi.IAuthnStore
 	msgServer msgserver.IMsgServer
 
 	// the hub client connection to listen to requests
@@ -41,12 +41,12 @@ func (svc *AuthService) Start() (err error) {
 
 	// use a temporary instance of the client manager to add itself
 	mngClients := NewAuthManageClients(svc.store, nil, svc.msgServer)
-	args1 := auth.AddServiceArgs{
-		ServiceID:   auth.AuthServiceName,
+	args1 := authapi.AddServiceArgs{
+		ServiceID:   authapi.AuthServiceName,
 		DisplayName: "Auth Service",
 		PubKey:      myKeyPub,
 	}
-	ctx := hubclient.ServiceContext{ClientID: auth.AuthServiceName}
+	ctx := hubclient.ServiceContext{ClientID: authapi.AuthServiceName}
 	resp1, err := mngClients.AddService(ctx, args1)
 	if err != nil {
 		return fmt.Errorf("failed to setup the auth service: %w", err)
@@ -56,7 +56,7 @@ func (svc *AuthService) Start() (err error) {
 	tcpAddr, _, udsAddr := svc.msgServer.GetServerURLs()
 	_ = udsAddr
 	core := svc.msgServer.Core()
-	svc.hc = hubconnect.NewHubClient(tcpAddr, auth.AuthServiceName, myKey, nil, core)
+	svc.hc = hubconnect.NewHubClient(tcpAddr, authapi.AuthServiceName, myKey, nil, core)
 	err = svc.hc.ConnectWithToken(resp1.Token)
 	if err != nil {
 		return err
@@ -81,20 +81,20 @@ func (svc *AuthService) Start() (err error) {
 	}
 
 	// set the client roles required to use the service capabilities
-	svc.msgServer.SetServicePermissions(auth.AuthServiceName, auth.AuthManageClientsCapability,
-		[]string{auth.ClientRoleAdmin})
-	svc.msgServer.SetServicePermissions(auth.AuthServiceName, auth.AuthManageRolesCapability,
-		[]string{auth.ClientRoleAdmin})
-	svc.msgServer.SetServicePermissions(auth.AuthServiceName, auth.AuthProfileCapability,
-		[]string{auth.ClientRoleViewer, auth.ClientRoleOperator, auth.ClientRoleManager, auth.ClientRoleAdmin})
+	svc.msgServer.SetServicePermissions(authapi.AuthServiceName, authapi.AuthManageClientsCapability,
+		[]string{authapi.ClientRoleAdmin})
+	svc.msgServer.SetServicePermissions(authapi.AuthServiceName, authapi.AuthManageRolesCapability,
+		[]string{authapi.ClientRoleAdmin})
+	svc.msgServer.SetServicePermissions(authapi.AuthServiceName, authapi.AuthProfileCapability,
+		[]string{authapi.ClientRoleViewer, authapi.ClientRoleOperator, authapi.ClientRoleManager, authapi.ClientRoleAdmin})
 
 	// FIXME, what are the permissions for other services like certs, launcher, ...?
 
 	// Ensure the launcher client exists and has a key and service token
 	slog.Info("Start (auth). Adding launcher user", "keyfile", svc.cfg.LauncherKeyFile)
 	_, launcherKeyPub, _ := svc.MngClients.LoadCreateUserKey(svc.cfg.LauncherKeyFile)
-	args2 := auth.AddServiceArgs{
-		ServiceID:   auth.DefaultLauncherServiceID,
+	args2 := authapi.AddServiceArgs{
+		ServiceID:   authapi.DefaultLauncherServiceID,
 		DisplayName: "Launcher Service",
 		PubKey:      launcherKeyPub,
 	}
@@ -108,11 +108,11 @@ func (svc *AuthService) Start() (err error) {
 	// ensure the admin user exists and has a user token
 	slog.Info("Start (auth). Adding admin user", "keyfile", svc.cfg.AdminUserKeyFile)
 	_, adminKeyPub, _ := svc.MngClients.LoadCreateUserKey(svc.cfg.AdminUserKeyFile)
-	args3 := auth.AddUserArgs{
-		UserID:      auth.DefaultAdminUserID,
+	args3 := authapi.AddUserArgs{
+		UserID:      authapi.DefaultAdminUserID,
 		DisplayName: "Administrator",
 		PubKey:      adminKeyPub,
-		Role:        auth.ClientRoleAdmin,
+		Role:        authapi.ClientRoleAdmin,
 	}
 	resp3, err := svc.MngClients.AddUser(ctx, args3)
 	if err == nil {
@@ -146,7 +146,7 @@ func (svc *AuthService) Stop() {
 //	store is the client store to store authentication clients
 //	msgServer used to apply changes to users, devices and services
 func NewAuthService(authConfig config.AuthConfig,
-	store auth.IAuthnStore, msgServer msgserver.IMsgServer) *AuthService {
+	store authapi.IAuthnStore, msgServer msgserver.IMsgServer) *AuthService {
 
 	authnSvc := &AuthService{
 		cfg:       authConfig,

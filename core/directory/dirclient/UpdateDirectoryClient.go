@@ -2,7 +2,7 @@
 package dirclient
 
 import (
-	"github.com/hiveot/hub/core/directory"
+	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/hubclient"
 )
 
@@ -18,32 +18,32 @@ type UpdateDirectoryClient struct {
 
 // RemoveTD removes a TD document from the directory
 func (cl *UpdateDirectoryClient) RemoveTD(agentID, thingID string) (err error) {
-	req := &directory.RemoveTDArgs{
+	req := &directoryapi.RemoveTDArgs{
 		AgentID: agentID,
 		ThingID: thingID,
 	}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directory.RemoveTDMethod, &req, nil)
+	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.RemoveTDMethod, &req, nil)
 	return err
 }
 
 // UpdateTD updates the TD document in the directory
 // If the TD with the given ID doesn't exist it will be added.
 func (cl *UpdateDirectoryClient) UpdateTD(agentID, thingID string, tdDoc []byte) (err error) {
-	req := &directory.UpdateTDArgs{
+	req := &directoryapi.UpdateTDArgs{
 		AgentID: agentID,
 		ThingID: thingID,
 		TDDoc:   tdDoc,
 	}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directory.UpdateTDMethod, &req, nil)
+	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.UpdateTDMethod, &req, nil)
 	return err
 }
 
 // NewUpdateDirectoryClient returns a directory update client for the directory service.
 // This connects to the service with the default directory service name.
-func NewUpdateDirectoryClient(hc hubclient.IHubClient) directory.IUpdateDirectory {
+func NewUpdateDirectoryClient(hc hubclient.IHubClient) *UpdateDirectoryClient {
 	cl := &UpdateDirectoryClient{
-		agentID: directory.ServiceName,
-		capID:   directory.UpdateDirectoryCap,
+		agentID: directoryapi.ServiceName,
+		capID:   directoryapi.UpdateDirectoryCap,
 		hc:      hc,
 	}
 	return cl

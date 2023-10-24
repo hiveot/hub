@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"github.com/hiveot/hub/core/directory"
+	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/thing"
@@ -26,7 +26,7 @@ type ReadDirectoryService struct {
 func (svc *ReadDirectoryService) CreateReadDirTD() *thing.TD {
 	title := "Thing Directory Reader"
 	deviceType := vocab.DeviceTypeService
-	td := thing.NewTD(directory.ReadDirectoryCap, title, deviceType)
+	td := thing.NewTD(directoryapi.ReadDirectoryCap, title, deviceType)
 	// TODO: add properties
 	return td
 }
@@ -36,13 +36,13 @@ func (svc *ReadDirectoryService) CreateReadDirTD() *thing.TD {
 //
 //	clientID is the owner of the cursor. Used to remove all cursors of an owner when it disconnects.
 func (svc *ReadDirectoryService) GetCursor(
-	ctx hubclient.ServiceContext) (*directory.GetCursorResp, error) {
+	ctx hubclient.ServiceContext) (*directoryapi.GetCursorResp, error) {
 
 	dirCursor, err := svc.bucket.Cursor(context.Background())
 	if err == nil {
 		// TODO: what lifespan is reasonable?
 		key := svc.cursorCache.Add(dirCursor, svc.bucket, ctx.ClientID, time.Minute)
-		resp := &directory.GetCursorResp{CursorKey: key}
+		resp := &directoryapi.GetCursorResp{CursorKey: key}
 		return resp, nil
 	}
 	return nil, err
@@ -50,7 +50,7 @@ func (svc *ReadDirectoryService) GetCursor(
 
 // GetTD returns the TD document for the given Thing ID in JSON format
 func (svc *ReadDirectoryService) GetTD(
-	ctx hubclient.ServiceContext, args *directory.GetTDArgs) (resp *directory.GetTDResp, err error) {
+	ctx hubclient.ServiceContext, args *directoryapi.GetTDArgs) (resp *directoryapi.GetTDResp, err error) {
 
 	//logrus.Infof("agentID=%s, thingID=%s", svc.agentID, thingID)
 	// store keys are made of the agentID / thingID
@@ -59,7 +59,7 @@ func (svc *ReadDirectoryService) GetTD(
 	if raw != nil {
 		tv := thing.ThingValue{}
 		err = json.Unmarshal(raw, &tv)
-		resp = &directory.GetTDResp{
+		resp = &directoryapi.GetTDResp{
 			Value: tv,
 		}
 	}
@@ -69,7 +69,7 @@ func (svc *ReadDirectoryService) GetTD(
 // GetTDsRaw returns a collection of ThingValue documents
 // Intended for transferring documents without unnecessary marshalling
 func (svc *ReadDirectoryService) GetTDsRaw(
-	ctx hubclient.ServiceContext, args *directory.GetTDsArgs) (map[string][]byte, error) {
+	ctx hubclient.ServiceContext, args *directoryapi.GetTDsArgs) (map[string][]byte, error) {
 
 	cursor, err := svc.bucket.Cursor(context.Background())
 	if args.Offset > 0 {
@@ -86,7 +86,7 @@ func (svc *ReadDirectoryService) GetTDsRaw(
 // this is rather inefficient. Should the client do the unmarshalling of the docs array?
 // that would break the matching API. Maybe an internal method that returns a raw batch?
 func (svc *ReadDirectoryService) GetTDs(
-	ctx hubclient.ServiceContext, args *directory.GetTDsArgs) (res *directory.GetTDsResp, err error) {
+	ctx hubclient.ServiceContext, args *directoryapi.GetTDsArgs) (res *directoryapi.GetTDsResp, err error) {
 
 	batch := make([]thing.ThingValue, 0, args.Limit)
 	cursor, err := svc.bucket.Cursor(context.Background())
@@ -106,7 +106,7 @@ func (svc *ReadDirectoryService) GetTDs(
 			slog.Warn("unable to unmarshal TV", "err", err, "key", key)
 		}
 	}
-	res = &directory.GetTDsResp{Values: batch}
+	res = &directoryapi.GetTDsResp{Values: batch}
 	return res, err
 }
 
@@ -184,17 +184,17 @@ func StartReadDirectoryService(hc hubclient.IHubClient, bucket buckets.IBucket) 
 		cursorCache: buckets.NewCursorCache(),
 	}
 	capMethods := map[string]interface{}{
-		directory.CursorFirstMethod:   svc.First,
-		directory.CursorNextMethod:    svc.Next,
-		directory.CursorNextNMethod:   svc.NextN,
-		directory.CursorReleaseMethod: svc.Release,
-		directory.GetCursorMethod:     svc.GetCursor,
-		directory.GetTDMethod:         svc.GetTD,
-		directory.GetTDsMethod:        svc.GetTDs,
+		directoryapi.CursorFirstMethod:   svc.First,
+		directoryapi.CursorNextMethod:    svc.Next,
+		directoryapi.CursorNextNMethod:   svc.NextN,
+		directoryapi.CursorReleaseMethod: svc.Release,
+		directoryapi.GetCursorMethod:     svc.GetCursor,
+		directoryapi.GetTDMethod:         svc.GetTD,
+		directoryapi.GetTDsMethod:        svc.GetTDs,
 	}
 	// listen for requests
 	svc.readSub, err = hubclient.SubRPCCapability(
-		hc, directory.ReadDirectoryCap, capMethods)
+		hc, directoryapi.ReadDirectoryCap, capMethods)
 
 	if err == nil {
 		svc.cursorCache.Start()

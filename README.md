@@ -1,6 +1,6 @@
 # Hive-Of-Things Hub
 
-HiveOT stands for the "Hive of Things". It provides the means to collect and share sensor data and other information between its users.
+HiveOT stands for the "Hive of Things". It provides a framework and services to collect and share IoT data with users.
 
 The Hub for the *Hive of Things* provides a secure core and plugins to view and operate IoT devices. The Hub securely mediates between IoT device 'Things', services, and users using a hub-and-spokes architecture. Users interact with Things via the Hub without connecting directly to the IoT devices or services. The Hub is based on the [W3C WoT TD 1.1 specification](https://www.w3.org/TR/wot-thing-description11/) and uses a NATS or MQTT message bus for secure communication.
 

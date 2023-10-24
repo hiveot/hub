@@ -2,7 +2,7 @@ package authservice
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
@@ -12,7 +12,7 @@ import (
 // This implements the IAuthManageClients interface.
 type AuthManageClients struct {
 	// clients storage
-	store auth.IAuthnStore
+	store authapi.IAuthnStore
 	// message server to apply changes to
 	msgServer msgserver.IMsgServer
 	// messaging client for receiving requests
@@ -24,7 +24,7 @@ type AuthManageClients struct {
 // AddDevice adds an IoT device and generates an authentication token
 // This is handled by the underlying messaging core.
 func (svc *AuthManageClients) AddDevice(
-	ctx hubclient.ServiceContext, args auth.AddDeviceArgs) (auth.AddDeviceResp, error) {
+	ctx hubclient.ServiceContext, args authapi.AddDeviceArgs) (authapi.AddDeviceResp, error) {
 
 	//deviceID string, name string, pubKey string) (token string, err error) {
 	slog.Info("AddDevice",
@@ -32,17 +32,17 @@ func (svc *AuthManageClients) AddDevice(
 		slog.String("displayName", args.DisplayName),
 		slog.String("pubKey", args.PubKey))
 
-	resp := auth.AddDeviceResp{}
+	resp := authapi.AddDeviceResp{}
 	if args.DeviceID == "" {
 		return resp, fmt.Errorf("AddDevice: missing device ID")
 	}
 	// store/update device.
-	err := svc.store.Add(args.DeviceID, auth.ClientProfile{
+	err := svc.store.Add(args.DeviceID, authapi.ClientProfile{
 		ClientID:    args.DeviceID,
-		ClientType:  auth.ClientTypeDevice,
+		ClientType:  authapi.ClientTypeDevice,
 		DisplayName: args.DisplayName,
 		PubKey:      args.PubKey,
-		Role:        auth.ClientRoleDevice,
+		Role:        authapi.ClientRoleDevice,
 	})
 	if err != nil {
 		return resp, err
@@ -53,9 +53,9 @@ func (svc *AuthManageClients) AddDevice(
 	if args.PubKey != "" {
 		authInfo := msgserver.ClientAuthInfo{
 			ClientID:   args.DeviceID,
-			ClientType: auth.ClientTypeDevice,
+			ClientType: authapi.ClientTypeDevice,
 			PubKey:     args.PubKey,
-			Role:       auth.ClientRoleDevice,
+			Role:       authapi.ClientRoleDevice,
 		}
 		resp.Token, err = svc.msgServer.CreateToken(authInfo)
 	}
@@ -64,23 +64,23 @@ func (svc *AuthManageClients) AddDevice(
 
 // AddService adds or updates a service with the admin role
 func (svc *AuthManageClients) AddService(
-	ctx hubclient.ServiceContext, args auth.AddServiceArgs) (auth.AddServiceResp, error) {
+	ctx hubclient.ServiceContext, args authapi.AddServiceArgs) (authapi.AddServiceResp, error) {
 	slog.Info("AddService",
 		slog.String("senderID", ctx.ClientID),
 		slog.String("serviceID", args.ServiceID),
 		slog.String("displayName", args.DisplayName),
 		slog.String("pubKey", args.PubKey))
 
-	resp := auth.AddServiceResp{}
+	resp := authapi.AddServiceResp{}
 	if args.ServiceID == "" {
 		return resp, fmt.Errorf("missing service ID")
 	}
-	err := svc.store.Add(args.ServiceID, auth.ClientProfile{
+	err := svc.store.Add(args.ServiceID, authapi.ClientProfile{
 		ClientID:    args.ServiceID,
-		ClientType:  auth.ClientTypeService,
+		ClientType:  authapi.ClientTypeService,
 		DisplayName: args.DisplayName,
 		PubKey:      args.PubKey,
-		Role:        auth.ClientRoleService,
+		Role:        authapi.ClientRoleService,
 	})
 	if err != nil {
 		return resp, err
@@ -89,9 +89,9 @@ func (svc *AuthManageClients) AddService(
 	if args.PubKey != "" {
 		authInfo := msgserver.ClientAuthInfo{
 			ClientID:   args.ServiceID,
-			ClientType: auth.ClientTypeService,
+			ClientType: authapi.ClientTypeService,
 			PubKey:     args.PubKey,
-			Role:       auth.ClientRoleService,
+			Role:       authapi.ClientRoleService,
 		}
 		resp.Token, err = svc.msgServer.CreateToken(authInfo)
 	}
@@ -102,20 +102,20 @@ func (svc *AuthManageClients) AddService(
 // AddUser adds a new user for password authentication
 // If a public key is provided a signed token will be returned
 func (svc *AuthManageClients) AddUser(
-	ctx hubclient.ServiceContext, args auth.AddUserArgs) (auth.AddUserResp, error) {
+	ctx hubclient.ServiceContext, args authapi.AddUserArgs) (authapi.AddUserResp, error) {
 	slog.Info("AddUser",
 		slog.String("userID", args.UserID),
 		slog.String("displayName", args.DisplayName),
 		slog.String("pubKey", args.PubKey),
 		slog.String("role", args.Role))
 
-	resp := auth.AddUserResp{}
+	resp := authapi.AddUserResp{}
 	if args.UserID == "" {
 		return resp, fmt.Errorf("missing user ID")
 	}
-	err := svc.store.Add(args.UserID, auth.ClientProfile{
+	err := svc.store.Add(args.UserID, authapi.ClientProfile{
 		ClientID:    args.UserID,
-		ClientType:  auth.ClientTypeUser,
+		ClientType:  authapi.ClientTypeUser,
 		DisplayName: args.DisplayName,
 		PubKey:      args.PubKey,
 		Role:        args.Role,
@@ -134,7 +134,7 @@ func (svc *AuthManageClients) AddUser(
 	if args.PubKey != "" {
 		authInfo := msgserver.ClientAuthInfo{
 			ClientID:   args.UserID,
-			ClientType: auth.ClientTypeUser,
+			ClientType: authapi.ClientTypeUser,
 			PubKey:     args.PubKey,
 			Role:       args.Role,
 		}
@@ -151,30 +151,30 @@ func (svc *AuthManageClients) GetAuthClientList() []msgserver.ClientAuthInfo {
 	return svc.store.GetAuthClientList()
 }
 
-func (svc *AuthManageClients) GetCount() (auth.GetCountResp, error) {
-	resp := auth.GetCountResp{}
+func (svc *AuthManageClients) GetCount() (authapi.GetCountResp, error) {
+	resp := authapi.GetCountResp{}
 	resp.N = svc.store.Count()
 	return resp, nil
 }
 
 // GetClientProfile returns a client's profile
 func (svc *AuthManageClients) GetClientProfile(ctx hubclient.ServiceContext,
-	args auth.GetClientProfileArgs) (auth.GetProfileResp, error) {
+	args authapi.GetClientProfileArgs) (authapi.GetProfileResp, error) {
 
 	entry, err := svc.store.GetProfile(args.ClientID)
-	resp := auth.GetProfileResp{Profile: entry}
+	resp := authapi.GetProfileResp{Profile: entry}
 	return resp, err
 }
 
 // GetProfiles provide a list of known clients and their info.
-func (svc *AuthManageClients) GetProfiles() (auth.GetProfilesResp, error) {
+func (svc *AuthManageClients) GetProfiles() (authapi.GetProfilesResp, error) {
 	profiles, err := svc.store.GetProfiles()
-	resp := auth.GetProfilesResp{Profiles: profiles}
+	resp := authapi.GetProfilesResp{Profiles: profiles}
 	return resp, err
 }
 
 // GetEntries provide a list of known clients and their info including bcrypted passwords
-func (svc *AuthManageClients) GetEntries() (entries []auth.AuthnEntry) {
+func (svc *AuthManageClients) GetEntries() (entries []authapi.AuthnEntry) {
 	return svc.store.GetEntries()
 }
 
@@ -197,7 +197,7 @@ func (svc *AuthManageClients) onChange() error {
 }
 
 // RemoveClient removes a client and disables authentication
-func (svc *AuthManageClients) RemoveClient(ctx hubclient.ServiceContext, args auth.RemoveClientArgs) error {
+func (svc *AuthManageClients) RemoveClient(ctx hubclient.ServiceContext, args authapi.RemoveClientArgs) error {
 	err := svc.store.Remove(args.ClientID)
 	if err == nil {
 		err = svc.onChange()
@@ -211,18 +211,18 @@ func (svc *AuthManageClients) Start() (err error) {
 	if svc.hc != nil {
 		//svc.mngSub, err = svc.hc.SubRPCRequest(
 		//	auth.AuthManageClientsCapability, svc.HandleRequest)
-		svc.mngSub, err = hubclient.SubRPCCapability(svc.hc, auth.AuthManageClientsCapability,
+		svc.mngSub, err = hubclient.SubRPCCapability(svc.hc, authapi.AuthManageClientsCapability,
 			map[string]interface{}{
-				auth.AddDeviceMethod:            svc.AddDevice,
-				auth.AddServiceMethod:           svc.AddService,
-				auth.AddUserMethod:              svc.AddUser,
-				auth.GetCountMethod:             svc.GetCount,
-				auth.GetClientProfileMethod:     svc.GetClientProfile,
-				auth.GetProfilesMethod:          svc.GetProfiles,
-				auth.RemoveClientMethod:         svc.RemoveClient,
-				auth.UpdateClientMethod:         svc.UpdateClient,
-				auth.UpdateClientPasswordMethod: svc.UpdateClientPassword,
-				auth.UpdateClientRoleMethod:     svc.UpdateClientRole,
+				authapi.AddDeviceMethod:            svc.AddDevice,
+				authapi.AddServiceMethod:           svc.AddService,
+				authapi.AddUserMethod:              svc.AddUser,
+				authapi.GetCountMethod:             svc.GetCount,
+				authapi.GetClientProfileMethod:     svc.GetClientProfile,
+				authapi.GetProfilesMethod:          svc.GetProfiles,
+				authapi.RemoveClientMethod:         svc.RemoveClient,
+				authapi.UpdateClientMethod:         svc.UpdateClient,
+				authapi.UpdateClientPasswordMethod: svc.UpdateClientPassword,
+				authapi.UpdateClientRoleMethod:     svc.UpdateClientRole,
 			})
 	}
 	return err
@@ -236,17 +236,17 @@ func (svc *AuthManageClients) Stop() {
 	}
 }
 
-func (svc *AuthManageClients) UpdateClient(ctx hubclient.ServiceContext, args auth.UpdateClientArgs) error {
+func (svc *AuthManageClients) UpdateClient(ctx hubclient.ServiceContext, args authapi.UpdateClientArgs) error {
 	err := svc.store.Update(args.ClientID, args.Profile)
 	return err
 }
 
-func (svc *AuthManageClients) UpdateClientPassword(ctx hubclient.ServiceContext, args auth.UpdateClientPasswordArgs) error {
+func (svc *AuthManageClients) UpdateClientPassword(ctx hubclient.ServiceContext, args authapi.UpdateClientPasswordArgs) error {
 	err := svc.store.SetPassword(args.ClientID, args.Password)
 	return err
 }
 
-func (svc *AuthManageClients) UpdateClientRole(ctx hubclient.ServiceContext, args auth.UpdateClientRoleArgs) error {
+func (svc *AuthManageClients) UpdateClientRole(ctx hubclient.ServiceContext, args authapi.UpdateClientRoleArgs) error {
 	prof, err := svc.store.GetProfile(args.ClientID)
 	if err == nil {
 		prof.Role = args.Role
@@ -261,7 +261,7 @@ func (svc *AuthManageClients) UpdateClientRole(ctx hubclient.ServiceContext, arg
 //		msgServer for applying changes to the server
 //	 hc hub client for subscribing to receive requests
 func NewAuthManageClients(
-	store auth.IAuthnStore,
+	store authapi.IAuthnStore,
 	hc hubclient.IHubClient,
 	msgServer msgserver.IMsgServer,
 ) *AuthManageClients {

@@ -1,7 +1,7 @@
 package jwtauth_test
 
 import (
-	auth2 "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	jwtauth2 "github.com/hiveot/hub/core/msgserver/mqttmsgserver/jwtauth"
 	"github.com/hiveot/hub/lib/certs"
@@ -12,7 +12,7 @@ import (
 
 func TestCreateToken(t *testing.T) {
 	const clientID = "user1"
-	const clientType = auth2.ClientTypeUser
+	const clientType = authapi.ClientTypeUser
 	signingKey, _ := certs.CreateECDSAKeys()
 	_, pubKey := certs.CreateECDSAKeys()
 
@@ -20,7 +20,7 @@ func TestCreateToken(t *testing.T) {
 		ClientID:   clientID,
 		ClientType: clientType,
 		PubKey:     pubKey,
-		Role:       auth2.ClientRoleAdmin,
+		Role:       authapi.ClientRoleAdmin,
 	}
 	token1, err := jwtauth2.CreateToken(authInfo, signingKey)
 	require.NoError(t, err)

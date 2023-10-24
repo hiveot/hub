@@ -2,7 +2,7 @@ package launcherclient
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/launcher"
+	"github.com/hiveot/hub/core/launcher/launcherapi"
 	"github.com/hiveot/hub/lib/hubclient"
 )
 
@@ -16,13 +16,13 @@ type LauncherClient struct {
 }
 
 // List services
-func (cl *LauncherClient) List(onlyRunning bool) ([]launcher.PluginInfo, error) {
+func (cl *LauncherClient) List(onlyRunning bool) ([]launcherapi.PluginInfo, error) {
 
-	req := launcher.ListArgs{
+	req := launcherapi.ListArgs{
 		OnlyRunning: onlyRunning,
 	}
-	resp := launcher.ListResp{}
-	_, err := cl.hc.PubRPCRequest(cl.agentID, cl.capID, launcher.ListMethod, req, &resp)
+	resp := launcherapi.ListResp{}
+	_, err := cl.hc.PubRPCRequest(cl.agentID, cl.capID, launcherapi.ListMethod, req, &resp)
 	return resp.PluginInfoList, err
 }
 
@@ -32,14 +32,14 @@ func (cl *LauncherClient) Start() error {
 }
 
 // StartPlugin requests to start a plugin
-func (cl *LauncherClient) StartPlugin(name string) (launcher.PluginInfo, error) {
+func (cl *LauncherClient) StartPlugin(name string) (launcherapi.PluginInfo, error) {
 
-	req := launcher.StartPluginArgs{
+	req := launcherapi.StartPluginArgs{
 		Name: name,
 	}
-	resp := launcher.StartPluginResp{}
+	resp := launcherapi.StartPluginResp{}
 	_, err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, launcher.StartPluginMethod, req, &resp)
+		cl.agentID, cl.capID, launcherapi.StartPluginMethod, req, &resp)
 	return resp.PluginInfo, err
 }
 
@@ -47,7 +47,7 @@ func (cl *LauncherClient) StartPlugin(name string) (launcher.PluginInfo, error) 
 // This returns the error from the last service that could not be started
 func (cl *LauncherClient) StartAllPlugins() error {
 	_, err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, launcher.StartAllPluginsMethod, nil, nil)
+		cl.agentID, cl.capID, launcherapi.StartAllPluginsMethod, nil, nil)
 	return err
 }
 
@@ -57,20 +57,20 @@ func (cl *LauncherClient) Stop() error {
 }
 
 // StopPlugin stops a running plugin
-func (cl *LauncherClient) StopPlugin(name string) (launcher.PluginInfo, error) {
-	req := launcher.StopPluginArgs{
+func (cl *LauncherClient) StopPlugin(name string) (launcherapi.PluginInfo, error) {
+	req := launcherapi.StopPluginArgs{
 		Name: name,
 	}
-	resp := launcher.StopPluginResp{}
+	resp := launcherapi.StopPluginResp{}
 	_, err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, launcher.StopPluginMethod, req, &resp)
+		cl.agentID, cl.capID, launcherapi.StopPluginMethod, req, &resp)
 	return resp.PluginInfo, err
 }
 
 // StopAllPlugins stops running plugins
 func (cl *LauncherClient) StopAllPlugins() error {
 	_, err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, launcher.StopAllPluginsMethod, nil, nil)
+		cl.agentID, cl.capID, launcherapi.StopAllPluginsMethod, nil, nil)
 	return err
 }
 
@@ -80,12 +80,12 @@ func (cl *LauncherClient) StopAllPlugins() error {
 //	hc is the hub client connection to use.
 func NewLauncherClient(launcherID string, hc hubclient.IHubClient) *LauncherClient {
 	if launcherID == "" {
-		launcherID = launcher.ServiceName
+		launcherID = launcherapi.ServiceName
 	}
 	cl := LauncherClient{
 		hc:      hc,
 		agentID: launcherID,
-		capID:   launcher.ManageCapability,
+		capID:   launcherapi.ManageCapability,
 	}
 	return &cl
 }

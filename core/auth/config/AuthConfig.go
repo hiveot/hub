@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"path"
 )
 
@@ -40,51 +40,51 @@ type AuthConfig struct {
 func (cfg *AuthConfig) Setup(keysDir, storesDir string) error {
 
 	if cfg.PasswordFile == "" {
-		cfg.PasswordFile = auth.DefaultPasswordFile
+		cfg.PasswordFile = authapi.DefaultPasswordFile
 	}
 	if !path.IsAbs(cfg.PasswordFile) {
 		cfg.PasswordFile = path.Join(storesDir, "auth", cfg.PasswordFile)
 	}
 
 	if cfg.Encryption == "" {
-		cfg.Encryption = auth.PWHASH_ARGON2id
+		cfg.Encryption = authapi.PWHASH_ARGON2id
 	}
-	if cfg.Encryption != auth.PWHASH_BCRYPT && cfg.Encryption != auth.PWHASH_ARGON2id {
+	if cfg.Encryption != authapi.PWHASH_BCRYPT && cfg.Encryption != authapi.PWHASH_ARGON2id {
 		return fmt.Errorf("unknown password encryption method: %s", cfg.Encryption)
 	}
 
 	if cfg.DeviceTokenValidityDays == 0 {
-		cfg.DeviceTokenValidityDays = auth.DefaultDeviceTokenValidityDays
+		cfg.DeviceTokenValidityDays = authapi.DefaultDeviceTokenValidityDays
 	}
 	if cfg.ServiceTokenValidityDays == 0 {
-		cfg.ServiceTokenValidityDays = auth.DefaultServiceTokenValidityDays
+		cfg.ServiceTokenValidityDays = authapi.DefaultServiceTokenValidityDays
 	}
 	if cfg.UserTokenValidityDays == 0 {
-		cfg.UserTokenValidityDays = auth.DefaultUserTokenValidityDays
+		cfg.UserTokenValidityDays = authapi.DefaultUserTokenValidityDays
 	}
 
 	if cfg.AdminUserKeyFile == "" {
-		cfg.AdminUserKeyFile = auth.DefaultAdminUserID + ".key"
+		cfg.AdminUserKeyFile = authapi.DefaultAdminUserID + ".key"
 	}
 	if !path.IsAbs(cfg.AdminUserKeyFile) {
 		cfg.AdminUserKeyFile = path.Join(keysDir, cfg.AdminUserKeyFile)
 	}
 
 	if cfg.AdminUserTokenFile == "" {
-		cfg.AdminUserTokenFile = auth.DefaultAdminUserID + ".token"
+		cfg.AdminUserTokenFile = authapi.DefaultAdminUserID + ".token"
 	}
 	if !path.IsAbs(cfg.AdminUserTokenFile) {
 		cfg.AdminUserTokenFile = path.Join(keysDir, cfg.AdminUserTokenFile)
 	}
 
 	if cfg.LauncherKeyFile == "" {
-		cfg.LauncherKeyFile = auth.DefaultLauncherServiceID + ".key"
+		cfg.LauncherKeyFile = authapi.DefaultLauncherServiceID + ".key"
 	}
 	if !path.IsAbs(cfg.LauncherKeyFile) {
 		cfg.LauncherKeyFile = path.Join(keysDir, cfg.LauncherKeyFile)
 	}
 	if cfg.LauncherTokenFile == "" {
-		cfg.LauncherTokenFile = auth.DefaultLauncherServiceID + ".token"
+		cfg.LauncherTokenFile = authapi.DefaultLauncherServiceID + ".token"
 	}
 	if !path.IsAbs(cfg.LauncherTokenFile) {
 		cfg.LauncherTokenFile = path.Join(keysDir, cfg.LauncherTokenFile)

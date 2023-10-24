@@ -5,8 +5,6 @@ import (
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
-	"log/slog"
-	"path"
 )
 
 // SetupCommand creates the environment setup
@@ -45,12 +43,12 @@ func HandleSetup(env *utils.AppEnvironment, core string, newSetup bool) error {
 	if err != nil {
 		return err
 	}
-	err = coreConfig.Save()
-	if err != nil {
-		slog.Error("Saving config failed", "err", err)
-	} else {
-		println("Config saved to: ", path.Join(coreConfig.Env.ConfigDir, config.HubCoreConfigFileName))
-	}
+	//err = coreConfig.Save()
+	//if err != nil {
+	//	slog.Error("Saving config failed", "err", err)
+	//} else {
+	//	println("Config saved to: ", path.Join(coreConfig.Env.ConfigDir, config.HubCoreConfigFileName))
+	//}
 
 	// TODO: generate a default launcher config if it doesn't exist
 

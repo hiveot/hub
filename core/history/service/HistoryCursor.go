@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/hiveot/hub/core/history"
+	"github.com/hiveot/hub/core/history/historyapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
@@ -143,7 +143,7 @@ func (svc *ReadHistoryService) findPrevName(
 
 // First returns the oldest value in the history
 func (svc *ReadHistoryService) First(
-	ctx hubclient.ServiceContext, args history.CursorArgs) (*history.CursorSingleResp, error) {
+	ctx hubclient.ServiceContext, args historyapi.CursorArgs) (*historyapi.CursorSingleResp, error) {
 	until := time.Now()
 
 	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
@@ -161,7 +161,7 @@ func (svc *ReadHistoryService) First(
 	if valid && filterName != "" && thingValue.Name != filterName {
 		thingValue, valid = svc.findNextName(cursor, filterName, until)
 	}
-	resp := history.CursorSingleResp{
+	resp := historyapi.CursorSingleResp{
 		Value: thingValue,
 		Valid: valid,
 	}
@@ -170,7 +170,7 @@ func (svc *ReadHistoryService) First(
 
 // Last positions the cursor at the last key in the ordered list
 func (svc *ReadHistoryService) Last(
-	ctx hubclient.ServiceContext, args history.CursorArgs) (*history.CursorSingleResp, error) {
+	ctx hubclient.ServiceContext, args historyapi.CursorArgs) (*historyapi.CursorSingleResp, error) {
 
 	// the beginning of time?
 	until := time.Time{}
@@ -180,7 +180,7 @@ func (svc *ReadHistoryService) Last(
 	}
 	k, v, valid := cursor.Last()
 
-	resp := &history.CursorSingleResp{
+	resp := &historyapi.CursorSingleResp{
 		Value: nil,
 		Valid: valid,
 	}
@@ -202,14 +202,14 @@ func (svc *ReadHistoryService) Last(
 // Next moves the cursor to the next key from the current cursor
 // First() or Seek must have been called first.
 func (svc *ReadHistoryService) Next(
-	ctx hubclient.ServiceContext, args history.CursorArgs) (*history.CursorSingleResp, error) {
+	ctx hubclient.ServiceContext, args historyapi.CursorArgs) (*historyapi.CursorSingleResp, error) {
 
 	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
 	if err != nil {
 		return nil, err
 	}
 	k, v, valid := cursor.Next()
-	resp := &history.CursorSingleResp{
+	resp := &historyapi.CursorSingleResp{
 		Value: nil,
 		Valid: valid,
 	}
@@ -234,10 +234,10 @@ func (svc *ReadHistoryService) Next(
 // itemsRemaining is false if the iterator has reached the end.
 // Intended to speed up with batch iterations over rpc.
 func (svc *ReadHistoryService) NextN(
-	ctx hubclient.ServiceContext, args history.CursorNArgs) (*history.CursorNResp, error) {
+	ctx hubclient.ServiceContext, args historyapi.CursorNArgs) (*historyapi.CursorNResp, error) {
 
 	values := make([]*thing.ThingValue, 0, args.Limit)
-	nextArgs := history.CursorArgs{CursorKey: args.CursorKey}
+	nextArgs := historyapi.CursorArgs{CursorKey: args.CursorKey}
 	itemsRemaining := true
 
 	// tbd is it faster to use NextN and sort the keys?
@@ -249,7 +249,7 @@ func (svc *ReadHistoryService) NextN(
 		}
 		values = append(values, nextResp.Value)
 	}
-	resp := &history.CursorNResp{}
+	resp := &historyapi.CursorNResp{}
 	resp.Values = values
 	resp.ItemsRemaining = itemsRemaining
 	return resp, nil
@@ -258,7 +258,7 @@ func (svc *ReadHistoryService) NextN(
 // Prev moves the cursor to the previous key from the current cursor
 // Last() or Seek must have been called first.
 func (svc *ReadHistoryService) Prev(
-	ctx hubclient.ServiceContext, args history.CursorArgs) (*history.CursorSingleResp, error) {
+	ctx hubclient.ServiceContext, args historyapi.CursorArgs) (*historyapi.CursorSingleResp, error) {
 
 	until := time.Time{}
 	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
@@ -266,7 +266,7 @@ func (svc *ReadHistoryService) Prev(
 		return nil, err
 	}
 	k, v, valid := cursor.Prev()
-	resp := &history.CursorSingleResp{
+	resp := &historyapi.CursorSingleResp{
 		Value: nil,
 		Valid: valid,
 	}
@@ -288,10 +288,10 @@ func (svc *ReadHistoryService) Prev(
 // itemsRemaining is true if the iterator has reached the beginning
 // Intended to speed up with batch iterations over rpc.
 func (svc *ReadHistoryService) PrevN(
-	ctx hubclient.ServiceContext, args history.CursorNArgs) (*history.CursorNResp, error) {
+	ctx hubclient.ServiceContext, args historyapi.CursorNArgs) (*historyapi.CursorNResp, error) {
 
 	values := make([]*thing.ThingValue, 0, args.Limit)
-	prevArgs := history.CursorArgs{CursorKey: args.CursorKey}
+	prevArgs := historyapi.CursorArgs{CursorKey: args.CursorKey}
 	itemsRemaining := true
 
 	// tbd is it faster to use NextN and sort the keys? - for a remote store yes
@@ -303,7 +303,7 @@ func (svc *ReadHistoryService) PrevN(
 		}
 		values = append(values, prevResp.Value)
 	}
-	resp := &history.CursorNResp{}
+	resp := &historyapi.CursorNResp{}
 	resp.Values = values
 	resp.ItemsRemaining = itemsRemaining
 	return resp, nil
@@ -312,7 +312,7 @@ func (svc *ReadHistoryService) PrevN(
 // Release closes the bucket and cursor
 // This invalidates all values obtained from the cursor
 func (svc *ReadHistoryService) Release(
-	ctx hubclient.ServiceContext, args history.CursorReleaseArgs) error {
+	ctx hubclient.ServiceContext, args historyapi.CursorReleaseArgs) error {
 
 	return svc.cursorCache.Release(ctx.ClientID, args.CursorKey)
 }
@@ -320,7 +320,7 @@ func (svc *ReadHistoryService) Release(
 // Seek positions the cursor at the given searchKey and corresponding value.
 // If the key is not found, the next key is returned.
 func (svc *ReadHistoryService) Seek(
-	ctx hubclient.ServiceContext, args history.CursorSeekArgs) (*history.CursorSingleResp, error) {
+	ctx hubclient.ServiceContext, args historyapi.CursorSeekArgs) (*historyapi.CursorSingleResp, error) {
 
 	until := time.Now()
 	//ts, err := dateparse.ParseAny(timestampMsec)
@@ -340,7 +340,7 @@ func (svc *ReadHistoryService) Seek(
 	searchKey := strconv.FormatInt(args.TimeStampMSec, 10) //+ "/" + thingValue.ID
 
 	k, v, valid := cursor.Seek(searchKey)
-	resp := &history.CursorSingleResp{
+	resp := &historyapi.CursorSingleResp{
 		Value: nil,
 		Valid: valid,
 	}

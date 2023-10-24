@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/core/directory"
 	"github.com/hiveot/hub/core/directory/dirclient"
 	"github.com/hiveot/hub/lib/thing"
 	"github.com/hiveot/hub/lib/utils"
@@ -55,8 +54,8 @@ func HandleListDirectory(hc hubclient.IHubClient) (err error) {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Agent ID        Thing ID             Device Type          Title                                #props  #events #actions   Modified         \n")
-	fmt.Printf("-------------   -------------------  -------------------  -----------------------------------  ------  ------- --------   --------------------------\n")
+	fmt.Printf("Agent ID        Thing ID             Device Type          Title                                #props  #events #actions   Updated         \n")
+	fmt.Printf("-------------   -------------------  -------------------  -----------------------------------  ------  ------- --------   -----------------------------\n")
 	i := 0
 	tv, valid, err := cursor.First()
 	if offset > 0 {
@@ -72,7 +71,8 @@ func HandleListDirectory(hc hubclient.IHubClient) (err error) {
 		} else if tdDoc.Created != "" {
 			utime, err = dateparse.ParseAny(tdDoc.Created)
 		}
-		timeStr := utime.In(time.Local).Format("02 Jan 2006 15:04:05 -0700")
+		//timeStr := utime.In(time.Local).Format("02 Jan 2006 15:04:05 -0700")
+		timeStr := utils.FormatMSE(utime.In(time.Local).UnixMilli(), false)
 
 		fmt.Printf("%-15s %-20s %-20.20s %-35.35s %7d  %7d  %7d   %-30s\n",
 			tv.AgentID,
@@ -171,9 +171,7 @@ func HandleListThing(hc hubclient.IHubClient, pubID, thingID string) error {
 
 // HandleListThingVerbose lists a Thing in the directory
 func HandleListThingVerbose(hc hubclient.IHubClient, pubID, thingID string) error {
-	var rdir directory.IReadDirectory
-
-	rdir = dirclient.NewReadDirectoryClient(hc)
+	rdir := dirclient.NewReadDirectoryClient(hc)
 	tv, err := rdir.GetTD(pubID, thingID)
 	if err != nil {
 		return err

@@ -2,7 +2,7 @@ package service
 
 import (
 	"encoding/json"
-	"github.com/hiveot/hub/core/directory"
+	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/thing"
@@ -25,12 +25,12 @@ type UpdateDirectoryService struct {
 func (svc *UpdateDirectoryService) CreateUpdateDirTD() *thing.TD {
 	title := "Thing Directory Updater"
 	deviceType := vocab.DeviceTypeService
-	td := thing.NewTD(directory.UpdateDirectoryCap, title, deviceType)
+	td := thing.NewTD(directoryapi.UpdateDirectoryCap, title, deviceType)
 	// TODO: add properties
 	return td
 }
 
-func (svc *UpdateDirectoryService) RemoveTD(ctx hubclient.ServiceContext, args directory.RemoveTDArgs) error {
+func (svc *UpdateDirectoryService) RemoveTD(ctx hubclient.ServiceContext, args directoryapi.RemoveTDArgs) error {
 	slog.Info("RemoveTD",
 		slog.String("senderID", ctx.ClientID),
 		slog.String("agentID", args.AgentID),
@@ -41,7 +41,7 @@ func (svc *UpdateDirectoryService) RemoveTD(ctx hubclient.ServiceContext, args d
 	return err
 }
 
-func (svc *UpdateDirectoryService) UpdateTD(ctx hubclient.ServiceContext, args directory.UpdateTDArgs) error {
+func (svc *UpdateDirectoryService) UpdateTD(ctx hubclient.ServiceContext, args directoryapi.UpdateTDArgs) error {
 	slog.Info("UpdateTD",
 		slog.String("senderID", ctx.ClientID),
 		slog.String("agentID", args.AgentID),
@@ -74,11 +74,11 @@ func StartUpdateDirectoryService(hc hubclient.IHubClient, bucket buckets.IBucket
 		bucket: bucket,
 	}
 	capMethods := map[string]interface{}{
-		directory.UpdateTDMethod: svc.UpdateTD,
-		directory.RemoveTDMethod: svc.RemoveTD,
+		directoryapi.UpdateTDMethod: svc.UpdateTD,
+		directoryapi.RemoveTDMethod: svc.RemoveTD,
 	}
 	svc.updateSub, err = hubclient.SubRPCCapability(
-		hc, directory.UpdateDirectoryCap, capMethods)
+		hc, directoryapi.UpdateDirectoryCap, capMethods)
 
 	return svc, err
 }

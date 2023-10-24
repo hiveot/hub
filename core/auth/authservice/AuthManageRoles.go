@@ -2,7 +2,7 @@ package authservice
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/ser"
@@ -15,7 +15,7 @@ import (
 // This implements the IAuthManageRoles interface.
 type AuthManageRoles struct {
 	// Client record persistence
-	store auth.IAuthnStore
+	store authapi.IAuthnStore
 	// message server for apply role changes
 	msgServer msgserver.IMsgServer
 	// action subscription
@@ -43,8 +43,8 @@ func (svc *AuthManageRoles) HandleRequest(action *hubclient.RequestMessage) erro
 
 	slog.Info("handleActions", slog.String("actionID", action.Name))
 	switch action.Name {
-	case auth.CreateRoleReq:
-		req := &auth.CreateRoleArgs{}
+	case authapi.CreateRoleReq:
+		req := &authapi.CreateRoleArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -54,8 +54,8 @@ func (svc *AuthManageRoles) HandleRequest(action *hubclient.RequestMessage) erro
 			_ = action.SendAck()
 		}
 		return err
-	case auth.DeleteRoleReq:
-		req := &auth.DeleteRoleArgs{}
+	case authapi.DeleteRoleReq:
+		req := &authapi.DeleteRoleArgs{}
 		err := ser.Unmarshal(action.Payload, &req)
 		if err != nil {
 			return err
@@ -75,7 +75,7 @@ func (svc *AuthManageRoles) HandleRequest(action *hubclient.RequestMessage) erro
 // Register the binding subscription using the given connection
 func (svc *AuthManageRoles) Start() (err error) {
 	if svc.hc != nil {
-		svc.actionSub, _ = svc.hc.SubRPCRequest(auth.AuthRolesCapability, svc.HandleRequest)
+		svc.actionSub, _ = svc.hc.SubRPCRequest(authapi.AuthRolesCapability, svc.HandleRequest)
 	}
 	return err
 }
@@ -90,7 +90,7 @@ func (svc *AuthManageRoles) Stop() {
 
 // NewAuthManageRoles creates the auth role management capability
 func NewAuthManageRoles(
-	store auth.IAuthnStore,
+	store authapi.IAuthnStore,
 	hc hubclient.IHubClient,
 	msgServer msgserver.IMsgServer) *AuthManageRoles {
 

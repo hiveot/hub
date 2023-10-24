@@ -1,9 +1,9 @@
 package service
 
 import (
-	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authclient"
-	"github.com/hiveot/hub/core/history"
+	"github.com/hiveot/hub/core/history/historyapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/thing"
@@ -62,15 +62,16 @@ func (svc *HistoryService) Start() (err error) {
 
 	// Set the required permissions for using this service
 	// any user roles can view the directory
-	myProfile := authclient.NewAuthProfileClient(svc.hc)
-	err = myProfile.SetServicePermissions(history.ReadHistoryCap, []string{
-		auth.ClientRoleViewer,
-		auth.ClientRoleOperator,
-		auth.ClientRoleManager,
-		auth.ClientRoleService})
+	myProfile := authclient.NewProfileClient(svc.hc)
+	err = myProfile.SetServicePermissions(historyapi.ReadHistoryCap, []string{
+		authapi.ClientRoleViewer,
+		authapi.ClientRoleOperator,
+		authapi.ClientRoleManager,
+		authapi.ClientRoleAdmin,
+		authapi.ClientRoleService})
 	if err == nil {
 		// only admin role can manage the history
-		err = myProfile.SetServicePermissions(history.ManageHistoryCap, []string{auth.ClientRoleAdmin})
+		err = myProfile.SetServicePermissions(historyapi.ManageHistoryCap, []string{authapi.ClientRoleAdmin})
 	}
 
 	// subscribe to events to add to the history store

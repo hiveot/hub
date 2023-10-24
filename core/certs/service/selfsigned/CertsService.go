@@ -6,8 +6,8 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"github.com/hiveot/hub/core/certs"
-	certs2 "github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/core/certs/certsapi"
+	certs "github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
 	"math/big"
@@ -41,12 +41,12 @@ func (svc *SelfSignedCertsService) _createDeviceCert(
 	deviceID string, pubKey *ecdsa.PublicKey, validityDays int) (
 	cert *x509.Certificate, err error) {
 	if validityDays == 0 {
-		validityDays = certs.DefaultDeviceCertValidityDays
+		validityDays = certsapi.DefaultDeviceCertValidityDays
 	}
 
 	cert, err = createClientCert(
 		deviceID,
-		certs2.OUIoTDevice,
+		certs.OUIoTDevice,
 		pubKey,
 		svc.caCert,
 		svc.caKey,
@@ -67,7 +67,7 @@ func (svc *SelfSignedCertsService) _createServiceCert(
 		return nil, err
 	}
 	if validityDays == 0 {
-		validityDays = certs.DefaultServiceCertValidityDays
+		validityDays = certsapi.DefaultServiceCertValidityDays
 	}
 
 	// firefox complains if serial is the same as that of the CA. So generate a unique one based on timestamp.
@@ -79,7 +79,7 @@ func (svc *SelfSignedCertsService) _createServiceCert(
 			Province:           []string{"BC"},
 			Locality:           []string{"local"},
 			Organization:       []string{"HiveOT"},
-			OrganizationalUnit: []string{certs2.OUService},
+			OrganizationalUnit: []string{certs.OUService},
 			CommonName:         serviceID,
 		},
 		NotBefore: time.Now().Add(-time.Second),
@@ -105,7 +105,7 @@ func (svc *SelfSignedCertsService) _createServiceCert(
 		}
 	}
 	// Create the service private key
-	//certKey := certs2.CreateECDSAKeys()
+	//certKey := certs.CreateECDSAKeys()
 	// and the certificate itself
 	certDer, err := x509.CreateCertificate(rand.Reader, template,
 		svc.caCert, servicePubKey, svc.caKey)
@@ -121,12 +121,12 @@ func (svc *SelfSignedCertsService) _createServiceCert(
 func (svc *SelfSignedCertsService) _createUserCert(userID string, pubKey *ecdsa.PublicKey, validityDays int) (
 	cert *x509.Certificate, err error) {
 	if validityDays == 0 {
-		validityDays = certs.DefaultUserCertValidityDays
+		validityDays = certsapi.DefaultUserCertValidityDays
 	}
 
 	cert, err = createClientCert(
 		userID,
-		certs2.OUUser,
+		certs.OUUser,
 		pubKey,
 		svc.caCert,
 		svc.caKey,
@@ -137,21 +137,21 @@ func (svc *SelfSignedCertsService) _createUserCert(userID string, pubKey *ecdsa.
 
 // CreateDeviceCert creates a CA signed certificate for mutual authentication by IoT devices in PEM format
 func (svc *SelfSignedCertsService) CreateDeviceCert(
-	ctx hubclient.ServiceContext, args certs.CreateDeviceCertArgs) (certs.CreateCertResp, error) {
+	ctx hubclient.ServiceContext, args certsapi.CreateDeviceCertArgs) (certsapi.CreateCertResp, error) {
 	//deviceID string, pubKeyPEM string, durationDays int) (
 	//certPEM string, caCertPEM string, err error) {
 	var cert *x509.Certificate
 
 	slog.Info("CreateDeviceCert", "deviceID", args.DeviceID, "pubKey", args.PubKeyPEM)
-	pubKey, err := certs2.PublicKeyFromPEM(args.PubKeyPEM)
+	pubKey, err := certs.PublicKeyFromPEM(args.PubKeyPEM)
 	if err != nil {
 		err = fmt.Errorf("public key for '%s' is invalid: %s", args.DeviceID, err)
 	} else {
 		cert, err = svc._createDeviceCert(args.DeviceID, pubKey, args.ValidityDays)
 	}
-	resp := certs.CreateCertResp{}
+	resp := certsapi.CreateCertResp{}
 	if err == nil {
-		resp.CertPEM = certs2.X509CertToPEM(cert)
+		resp.CertPEM = certs.X509CertToPEM(cert)
 		resp.CaCertPEM = svc.caCertPEM
 	}
 	return resp, err
@@ -159,20 +159,20 @@ func (svc *SelfSignedCertsService) CreateDeviceCert(
 
 // CreateServiceCert creates a CA signed service certificate for mutual authentication between services
 func (svc *SelfSignedCertsService) CreateServiceCert(
-	ctx hubclient.ServiceContext, args certs.CreateServiceCertArgs) (certs.CreateCertResp, error) {
+	ctx hubclient.ServiceContext, args certsapi.CreateServiceCertArgs) (certsapi.CreateCertResp, error) {
 	var cert *x509.Certificate
 
 	slog.Info("Creating service certificate",
 		"serviceID", args.ServiceID, "names", args.Names)
-	pubKey, err := certs2.PublicKeyFromPEM(args.PubKeyPEM)
+	pubKey, err := certs.PublicKeyFromPEM(args.PubKeyPEM)
 	if err == nil {
 		cert, err = svc._createServiceCert(
 			args.ServiceID, pubKey, args.Names, args.ValidityDays,
 		)
 	}
-	resp := certs.CreateCertResp{}
+	resp := certsapi.CreateCertResp{}
 	if err == nil {
-		resp.CertPEM = certs2.X509CertToPEM(cert)
+		resp.CertPEM = certs.X509CertToPEM(cert)
 		resp.CaCertPEM = svc.caCertPEM
 	}
 	// TODO: send event. is there a use-case for limiting service events to roles?
@@ -181,22 +181,22 @@ func (svc *SelfSignedCertsService) CreateServiceCert(
 
 // CreateUserCert creates a client certificate for end-users
 func (svc *SelfSignedCertsService) CreateUserCert(
-	ctx hubclient.ServiceContext, args certs.CreateUserCertArgs) (certs.CreateCertResp, error) {
+	ctx hubclient.ServiceContext, args certsapi.CreateUserCertArgs) (certsapi.CreateCertResp, error) {
 	//userID string, pubKeyPEM string, validityDays int) (
 	//certPEM string, caCertPEM string, err error) {
 	var cert *x509.Certificate
 
 	slog.Info("CreateUserCert",
 		"userID", args.UserID, "pubKey", args.PubKeyPEM)
-	pubKey, err := certs2.PublicKeyFromPEM(args.PubKeyPEM)
+	pubKey, err := certs.PublicKeyFromPEM(args.PubKeyPEM)
 	if err == nil {
 
 		cert, err = svc._createUserCert(
 			args.UserID, pubKey, args.ValidityDays)
 	}
-	resp := certs.CreateCertResp{}
+	resp := certsapi.CreateCertResp{}
 	if err == nil {
-		resp.CertPEM = certs2.X509CertToPEM(cert)
+		resp.CertPEM = certs.X509CertToPEM(cert)
 		resp.CaCertPEM = svc.caCertPEM
 	}
 	return resp, err
@@ -206,15 +206,15 @@ func (svc *SelfSignedCertsService) CreateUserCert(
 func (svc *SelfSignedCertsService) Start() (err error) {
 	// for testing, hc can be nil
 	if svc.hc != nil {
-		svc.mngSub, err = hubclient.SubRPCCapability(svc.hc, certs.CertsManageCertsCapability,
+		svc.mngSub, err = hubclient.SubRPCCapability(svc.hc, certsapi.ManageCertsCapability,
 			map[string]interface{}{
-				certs.CreateDeviceCertReq:  svc.CreateDeviceCert,
-				certs.CreateServiceCertReq: svc.CreateServiceCert,
-				certs.CreateUserCertReq:    svc.CreateUserCert,
-				certs.VerifyCertReq:        svc.VerifyCert,
+				certsapi.CreateDeviceCertMethod:  svc.CreateDeviceCert,
+				certsapi.CreateServiceCertMethod: svc.CreateServiceCert,
+				certsapi.CreateUserCertMethod:    svc.CreateUserCert,
+				certsapi.VerifyCertMethod:        svc.VerifyCert,
 			})
 		//svc.mngSub, err = svc.hc.SubRPCRequest(
-		//	certs.CertsManageCertsCapability, svc.HandleRequest)
+		//	certs.ManageCertsCapability, svc.HandleRequest)
 	}
 	return err
 }
@@ -229,13 +229,13 @@ func (svc *SelfSignedCertsService) Stop() error {
 }
 
 // VerifyCert verifies whether the given certificate is a valid client certificate
-func (svc *SelfSignedCertsService) VerifyCert(ctx hubclient.ServiceContext, args certs.VerifyCertArgs) error {
+func (svc *SelfSignedCertsService) VerifyCert(ctx hubclient.ServiceContext, args certsapi.VerifyCertArgs) error {
 
 	opts := x509.VerifyOptions{
 		Roots:     svc.caCertPool,
 		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}
-	cert, err := certs2.X509CertFromPEM(args.CertPEM)
+	cert, err := certs.X509CertFromPEM(args.CertPEM)
 	if err == nil {
 		if cert.Subject.CommonName != args.ClientID {
 			err = fmt.Errorf("client ID '%s' doesn't match certificate name '%s'",
@@ -271,7 +271,7 @@ func NewSelfSignedCertsService(
 	service := &SelfSignedCertsService{
 		caCert:     caCert,
 		caKey:      caKey,
-		caCertPEM:  certs2.X509CertToPEM(caCert),
+		caCertPEM:  certs.X509CertToPEM(caCert),
 		caCertPool: caCertPool,
 		hc:         hc,
 	}

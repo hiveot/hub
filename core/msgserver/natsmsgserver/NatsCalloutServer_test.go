@@ -1,7 +1,7 @@
 package natsmsgserver_test
 
 import (
-	auth2 "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver/callouthook"
 	"github.com/hiveot/hub/lib/hubclient/natshubclient"
@@ -54,10 +54,10 @@ func TestValidateToken(t *testing.T) {
 	assert.NoError(t, err)
 	token, err := s.CreateToken(msgserver.ClientAuthInfo{
 		ClientID:     TestDevice1ID,
-		ClientType:   auth2.ClientTypeDevice,
+		ClientType:   authapi.ClientTypeDevice,
 		PubKey:       TestDevice1NPub,
 		PasswordHash: "",
-		Role:         auth2.ClientRoleManager,
+		Role:         authapi.ClientRoleManager,
 	})
 	require.NoError(t, err)
 
@@ -105,10 +105,10 @@ func TestCalloutJWT(t *testing.T) {
 
 	jwtToken, err := s.CreateJWTToken(msgserver.ClientAuthInfo{
 		ClientID:     TestAdminUserID,
-		ClientType:   auth2.ClientTypeUser,
+		ClientType:   authapi.ClientTypeUser,
 		PubKey:       TestAdminUserNPub,
 		PasswordHash: "",
-		Role:         auth2.ClientRoleManager,
+		Role:         authapi.ClientRoleManager,
 	})
 	require.NoError(t, err)
 	serverURL, _, _ := s.GetServerURLs()

@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/hiveot/hub/core/history"
+	"github.com/hiveot/hub/core/history/historyapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
@@ -33,7 +33,7 @@ type ReadHistoryService struct {
 // GetCursor returns an iterator for ThingValues containing a TD document
 // The inactivity lifespan is currently fixed to 1 minute.
 func (svc *ReadHistoryService) GetCursor(
-	ctx hubclient.ServiceContext, args history.GetCursorArgs) (*history.GetCursorResp, error) {
+	ctx hubclient.ServiceContext, args historyapi.GetCursorArgs) (*historyapi.GetCursorResp, error) {
 
 	if args.AgentID == "" || args.ThingID == "" {
 		return nil, fmt.Errorf("missing agentID or thingID from client '%s'", ctx.ClientID)
@@ -47,7 +47,7 @@ func (svc *ReadHistoryService) GetCursor(
 		return nil, err
 	}
 	key := svc.cursorCache.Add(cursor, bucket, ctx.ClientID, time.Minute)
-	resp := &history.GetCursorResp{CursorKey: key}
+	resp := &historyapi.GetCursorResp{CursorKey: key}
 	return resp, nil
 }
 
@@ -56,10 +56,10 @@ func (svc *ReadHistoryService) GetCursor(
 //
 //	providing 'names' can speed up read access significantly
 func (svc *ReadHistoryService) GetLatest(
-	ctx hubclient.ServiceContext, args *history.GetLatestArgs) (*history.GetLatestResp, error) {
+	ctx hubclient.ServiceContext, args *historyapi.GetLatestArgs) (*historyapi.GetLatestResp, error) {
 	thingAddr := args.AgentID + "/" + args.ThingID
 	values := svc.getPropertiesFunc(thingAddr, args.Names)
-	resp := history.GetLatestResp{Values: values}
+	resp := historyapi.GetLatestResp{Values: values}
 	return &resp, nil
 }
 
@@ -87,19 +87,19 @@ func StartReadHistoryService(
 	}
 	svc.cursorCache.Start()
 	capMethods := map[string]interface{}{
-		history.CursorFirstMethod:   svc.First,
-		history.CursorLastMethod:    svc.Last,
-		history.CursorNextMethod:    svc.Next,
-		history.CursorNextNMethod:   svc.NextN,
-		history.CursorPrevMethod:    svc.Prev,
-		history.CursorPrevNMethod:   svc.PrevN,
-		history.CursorReleaseMethod: svc.Release,
-		history.CursorSeekMethod:    svc.Seek,
-		history.GetCursorMethod:     svc.GetCursor,
-		history.GetLatestMethod:     svc.GetLatest,
+		historyapi.CursorFirstMethod:   svc.First,
+		historyapi.CursorLastMethod:    svc.Last,
+		historyapi.CursorNextMethod:    svc.Next,
+		historyapi.CursorNextNMethod:   svc.NextN,
+		historyapi.CursorPrevMethod:    svc.Prev,
+		historyapi.CursorPrevNMethod:   svc.PrevN,
+		historyapi.CursorReleaseMethod: svc.Release,
+		historyapi.CursorSeekMethod:    svc.Seek,
+		historyapi.GetCursorMethod:     svc.GetCursor,
+		historyapi.GetLatestMethod:     svc.GetLatest,
 	}
 	svc.readSub, err = hubclient.SubRPCCapability(
-		hc, history.ReadHistoryCap, capMethods)
+		hc, historyapi.ReadHistoryCap, capMethods)
 	if err != nil {
 		svc.cursorCache.Stop()
 	}

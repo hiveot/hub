@@ -1,7 +1,7 @@
 package mqttmsgserver_test
 
 import (
-	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -40,37 +40,37 @@ var TestService1Key, TestService1Pub = certs.CreateECDSAKeys()
 
 var adminAuthInfo = msgserver.ClientAuthInfo{
 	ClientID:   TestAdminUserID,
-	ClientType: auth.ClientTypeUser,
+	ClientType: authapi.ClientTypeUser,
 	PubKey:     TestAdminUserPub,
-	Role:       auth.ClientRoleAdmin,
+	Role:       authapi.ClientRoleAdmin,
 }
 var deviceAuthInfo = msgserver.ClientAuthInfo{
 	ClientID:   TestDevice1ID,
-	ClientType: auth.ClientTypeDevice,
+	ClientType: authapi.ClientTypeDevice,
 	PubKey:     TestDevice1Pub,
-	Role:       auth.ClientRoleDevice,
+	Role:       authapi.ClientRoleDevice,
 }
 var mqttTestClients = []msgserver.ClientAuthInfo{
 	adminAuthInfo,
 	deviceAuthInfo,
 	{
 		ClientID:     TestUser1ID,
-		ClientType:   auth.ClientTypeUser,
+		ClientType:   authapi.ClientTypeUser,
 		PasswordHash: string(TestUser1bcrypt),
-		Role:         auth.ClientRoleViewer,
+		Role:         authapi.ClientRoleViewer,
 	},
 	{
 		ClientID:     TestUser2ID,
-		ClientType:   auth.ClientTypeUser,
+		ClientType:   authapi.ClientTypeUser,
 		PubKey:       TestUser2Pub,
 		PasswordHash: string(TestUser2bcrypt),
-		Role:         auth.ClientRoleOperator,
+		Role:         authapi.ClientRoleOperator,
 	},
 	{
 		ClientID:   TestService1ID,
-		ClientType: auth.ClientTypeService,
+		ClientType: authapi.ClientTypeService,
 		PubKey:     TestService1Pub,
-		Role:       auth.ClientRoleAdmin,
+		Role:       authapi.ClientRoleAdmin,
 	},
 }
 
@@ -91,7 +91,7 @@ func TestConnectWithCert(t *testing.T) {
 	_ = srv.ApplyAuth(mqttTestClients)
 
 	key, _ := certs.CreateECDSAKeys()
-	clientCert, err := certs.CreateClientCert(TestUser1ID, auth.ClientRoleAdmin,
+	clientCert, err := certs.CreateClientCert(TestUser1ID, authapi.ClientRoleAdmin,
 		1, &key.PublicKey, certBundle.CaCert, certBundle.CaKey)
 	require.NoError(t, err)
 	serverURL, _, _ := srv.GetServerURLs()

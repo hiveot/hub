@@ -1,7 +1,7 @@
 package auth_test
 
 import (
-	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/core/auth/config"
@@ -30,17 +30,17 @@ var authConfig config.AuthConfig
 var testServer *testenv.TestServer
 
 // add new user to test with
-func addNewUser(userID string, displayName string, pass string, mng auth.IAuthnManageClients) (token string, key nkeys.KeyPair, err error) {
+func addNewUser(userID string, displayName string, pass string, mng *authclient.ManageClients) (token string, key nkeys.KeyPair, err error) {
 	userKey, _ := nkeys.CreateUser()
 	userKeyPub, _ := userKey.PublicKey()
 	// FIXME: must set a password in order to be able to update it later
-	userToken, err := mng.AddUser(userID, displayName, pass, userKeyPub, auth.ClientRoleViewer)
+	userToken, err := mng.AddUser(userID, displayName, pass, userKeyPub, authapi.ClientRoleViewer)
 	return userToken, userKey, err
 }
 
 // launch the authn service and return a client for using and managing it.
 // the messaging server is already running (see TestMain)
-func startTestAuthnService() (authnSvc *authservice.AuthService, mng auth.IAuthnManageClients, stopFn func(), err error) {
+func startTestAuthnService() (authnSvc *authservice.AuthService, mng *authclient.ManageClients, stopFn func(), err error) {
 	// the password file to use
 	passwordFile := path.Join(testDir, "test.passwd")
 
@@ -50,7 +50,7 @@ func startTestAuthnService() (authnSvc *authservice.AuthService, mng auth.IAuthn
 	_ = authConfig.Setup(testDir, testDir)
 	authConfig.PasswordFile = passwordFile
 	authConfig.DeviceTokenValidityDays = 10
-	authConfig.Encryption = auth.PWHASH_BCRYPT // nats requires bcrypt
+	authConfig.Encryption = authapi.PWHASH_BCRYPT // nats requires bcrypt
 
 	authnSvc, err = authservice.StartAuthService(authConfig, testServer.MsgServer)
 	if err != nil {
@@ -60,11 +60,11 @@ func startTestAuthnService() (authnSvc *authservice.AuthService, mng auth.IAuthn
 	//--- connect the authn management client for managing clients
 	authClientKey, authClientPub := testServer.MsgServer.CreateKP()
 	_ = authClientKey
-	args := auth.AddUserArgs{
+	args := authapi.AddUserArgs{
 		UserID:      "auth-test-client",
 		DisplayName: "auth test client",
 		PubKey:      authClientPub,
-		Role:        auth.ClientRoleAdmin,
+		Role:        authapi.ClientRoleAdmin,
 	}
 	ctx := hubclient.ServiceContext{ClientID: "test-client"}
 	resp, err := authnSvc.MngClients.AddUser(ctx, args)
@@ -75,7 +75,7 @@ func startTestAuthnService() (authnSvc *authservice.AuthService, mng auth.IAuthn
 	if err != nil {
 		panic(err)
 	}
-	mngAuthn := authclient.NewAuthClientsClient(hc2)
+	mngAuthn := authclient.NewManageClients(hc2)
 
 	return authnSvc, mngAuthn, func() {
 		hc2.Disconnect()
@@ -135,7 +135,7 @@ func TestStartStop(t *testing.T) {
 	assert.Equal(t, 4, len(clList))
 
 	// should be able to connect as admin, using the save key and token
-	hc1 := hubconnect.NewHubClient(serverURL, auth.DefaultAdminUserID, nil, certBundle.CaCert, core)
+	hc1 := hubconnect.NewHubClient(serverURL, authapi.DefaultAdminUserID, nil, certBundle.CaCert, core)
 	err = hc1.ConnectWithTokenFile(authConfig.AdminUserTokenFile, authConfig.AdminUserKeyFile)
 	require.NoError(t, err)
 	hc1.Disconnect()
@@ -158,17 +158,17 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 	require.NoError(t, err)
 	defer stopFn()
 
-	_, err = mng.AddUser("user1", "user 1", "pass1", "", auth.ClientRoleViewer)
+	_, err = mng.AddUser("user1", "user 1", "pass1", "", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
 	// duplicate should update
-	_, err = mng.AddUser("user1", "user 1 updated", "pass1", "", auth.ClientRoleViewer) // should fail
+	_, err = mng.AddUser("user1", "user 1 updated", "pass1", "", authapi.ClientRoleViewer) // should fail
 	assert.NoError(t, err)
 
-	_, err = mng.AddUser("user2", "user 2", "pass2", "", auth.ClientRoleViewer)
+	_, err = mng.AddUser("user2", "user 2", "pass2", "", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
-	_, err = mng.AddUser("user3", "user 3", "pass3", "", auth.ClientRoleViewer)
+	_, err = mng.AddUser("user3", "user 3", "pass3", "", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
-	_, err = mng.AddUser("user4", "user 4", "pass4", "", auth.ClientRoleViewer)
+	_, err = mng.AddUser("user4", "user 4", "pass4", "", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
 
 	_, err = mng.AddDevice(deviceID, "device 1", deviceKeyPub)
@@ -203,10 +203,10 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 	clList, err = mng.GetProfiles()
 	assert.Equal(t, 2+4, len(clList))
 
-	_, err = mng.AddUser("user1", "user 1", "", "", auth.ClientRoleViewer)
+	_, err = mng.AddUser("user1", "user 1", "", "", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
 	// a bad key
-	_, err = mng.AddUser("user2", "user 2", "", "badkey", auth.ClientRoleViewer)
+	_, err = mng.AddUser("user2", "user 2", "", "badkey", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
 }
 
@@ -221,7 +221,7 @@ func TestAddRemoveClientsFail(t *testing.T) {
 	defer stopFn()
 
 	// missing userID should fail
-	_, err = mng.AddUser("", "user 1", "pass1", "", auth.ClientRoleViewer) // should fail
+	_, err = mng.AddUser("", "user 1", "pass1", "", authapi.ClientRoleViewer) // should fail
 	assert.Error(t, err)
 
 	// missing deviceID should fail
@@ -233,7 +233,7 @@ func TestAddRemoveClientsFail(t *testing.T) {
 	assert.Error(t, err)
 
 	// a bad key
-	_, err = mng.AddUser("user2", "user 2", "", "badkey", auth.ClientRoleViewer)
+	_, err = mng.AddUser("user2", "user 2", "", "badkey", authapi.ClientRoleViewer)
 	assert.NoError(t, err)
 
 	// bad public key
@@ -257,7 +257,7 @@ func TestUpdatePubKey(t *testing.T) {
 	serverURL, _, _ := testServer.MsgServer.GetServerURLs()
 
 	// add user to test with. don't set the public key yet
-	token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, "", auth.ClientRoleViewer)
+	token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, "", authapi.ClientRoleViewer)
 	assert.Empty(t, token) // without a public key there is no token
 	require.NoError(t, err)
 
@@ -269,7 +269,7 @@ func TestUpdatePubKey(t *testing.T) {
 	defer hc1.Disconnect()
 
 	// 2. update the public key and reconnect
-	cl1 := authclient.NewAuthProfileClient(hc1)
+	cl1 := authclient.NewProfileClient(hc1)
 	err = cl1.UpdatePubKey(tu1KeyPub)
 	assert.NoError(t, err)
 	//hc1.Disconnect()
@@ -298,7 +298,7 @@ func TestLoginRefresh(t *testing.T) {
 	// add user to test with
 	tu1Key, tu1KeyPub := testServer.MsgServer.CreateKP()
 	// AddUser returns a token. JWT or Nkey public key depending on server
-	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, tu1KeyPub, auth.ClientRoleViewer)
+	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, tu1KeyPub, authapi.ClientRoleViewer)
 	require.NoError(t, err)
 	assert.NotEmpty(t, tu1Token)
 	err = testServer.MsgServer.ValidateToken(tu1ID, tu1Token, "", "")
@@ -311,7 +311,7 @@ func TestLoginRefresh(t *testing.T) {
 	defer hc1.Disconnect()
 
 	// 2. PubAction a new token.
-	cl1 := authclient.NewAuthProfileClient(hc1)
+	cl1 := authclient.NewProfileClient(hc1)
 	authToken1, err = cl1.NewToken(tu1Pass)
 	require.NoError(t, err)
 
@@ -320,7 +320,7 @@ func TestLoginRefresh(t *testing.T) {
 	hc2 := hubconnect.NewHubClient(serverURL, tu1ID, tu1Key, certBundle.CaCert, core)
 	err = hc2.ConnectWithToken(authToken1)
 	require.NoError(t, err)
-	cl2 := authclient.NewAuthProfileClient(hc2)
+	cl2 := authclient.NewProfileClient(hc2)
 	prof2, err := cl2.GetProfile()
 	require.NoError(t, err)
 	require.Equal(t, tu1ID, prof2.ClientID)
@@ -354,7 +354,7 @@ func TestRefreshNoPubKey(t *testing.T) {
 
 	// add user to test with. password and no public key
 	// a token is not returned when no pubkey is provided
-	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, "", auth.ClientRoleViewer)
+	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, "", authapi.ClientRoleViewer)
 	require.NoError(t, err)
 	assert.Empty(t, tu1Token)
 
@@ -364,7 +364,7 @@ func TestRefreshNoPubKey(t *testing.T) {
 	err = hc1.ConnectWithPassword(tu1Pass)
 	defer hc1.Disconnect()
 	require.NoError(t, err)
-	cl1 := authclient.NewAuthProfileClient(hc1)
+	cl1 := authclient.NewProfileClient(hc1)
 
 	//  refresh fails without a public key
 	authToken1, err = cl1.RefreshToken()
@@ -409,7 +409,7 @@ func TestUpdateProfile(t *testing.T) {
 
 	// update display name
 	const newDisplayName = "new display name"
-	cl := authclient.NewAuthProfileClient(hc1)
+	cl := authclient.NewProfileClient(hc1)
 	err = cl.UpdateName(newDisplayName)
 	assert.NoError(t, err)
 	prof, err := cl.GetProfile()
@@ -436,7 +436,7 @@ func TestUpdatePassword(t *testing.T) {
 	require.NoError(t, err)
 
 	// update password
-	cl := authclient.NewAuthProfileClient(hc1)
+	cl := authclient.NewProfileClient(hc1)
 	err = cl.UpdatePassword("pass1")
 	require.NoError(t, err)
 	hc1.Disconnect()
@@ -449,7 +449,7 @@ func TestUpdatePassword(t *testing.T) {
 	// re-login with new password
 	err = hc1.ConnectWithPassword("pass1")
 	require.NoError(t, err)
-	cl = authclient.NewAuthProfileClient(hc1)
+	cl = authclient.NewProfileClient(hc1)
 	_, err = cl.GetProfile()
 	require.NoError(t, err)
 }

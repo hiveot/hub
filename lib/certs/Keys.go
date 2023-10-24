@@ -116,6 +116,8 @@ func SaveKeysToPEM(privateKey interface{}, pemPath string) error {
 	x509Encoded, err := x509.MarshalPKCS8PrivateKey(privateKey)
 	pemEncoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: x509Encoded})
 	if err == nil {
+		// remove existing key since perm 0400 doesn't allow overwriting it
+		_ = os.Remove(pemPath)
 		err = os.WriteFile(pemPath, pemEncoded, 0400)
 	}
 	return err
@@ -129,6 +131,8 @@ func SaveKeysToPEM(privateKey interface{}, pemPath string) error {
 func SavePublicKeyToPEM(pubKey interface{}, pemPath string) error {
 	pemEncoded, err := PublicKeyToPEM(pubKey)
 	if err == nil {
+		// remove existing key since perm 0400 doesn't allow overwriting it
+		_ = os.Remove(pemPath)
 		err = os.WriteFile(pemPath, []byte(pemEncoded), 0644)
 	}
 	return err

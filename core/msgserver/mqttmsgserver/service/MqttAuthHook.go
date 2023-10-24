@@ -348,6 +348,7 @@ func (hook *MqttAuthHook) ValidatePassword(
 func NewMqttAuthHook(signingKey *ecdsa.PrivateKey) *MqttAuthHook {
 	signingKeyPub, _ := x509.MarshalPKIXPublicKey(&signingKey.PublicKey)
 	signingKeyPubStr := base64.StdEncoding.EncodeToString(signingKeyPub)
+	//slog.Warn("NewMqttAuthHook: ", slog.String("signingKeyPub", signingKeyPubStr))
 	hook := &MqttAuthHook{
 		HookBase:           mqtt.HookBase{},
 		authClients:        nil,

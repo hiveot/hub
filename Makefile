@@ -9,7 +9,7 @@ INSTALL_HOME=~/bin/hiveot
 
 all: core plugins hubcli  ## Build APIs, CLI, Hub services
 
-core: natscore mqttcore  launcher certs directory history ## Build core services including mqttcore and natscore
+core: natscore mqttcore  launcher certs directory history idprov ## Build core services including mqttcore and natscore
 
 # natscore includes the embedded auth service
 natscore:
@@ -33,10 +33,10 @@ directory: .FORCE ## Build the directory service
 history: .FORCE ## Build the history service
 	go build -o $(PLUGINS_FOLDER)/$@ core/$@/cmd/main.go
 
-provisioning: .FORCE ## Build device provisioning service
+idprov: .FORCE ## Build device provisioning service
 	go build -o $(PLUGINS_FOLDER)/$@ core/$@/cmd/main.go
 
-plugins: directory owserver provisioning zwavejs
+plugins: directory owserver zwavejs
 
 hubcli: .FORCE ## Build Hub CLI
 	go build -o $(BIN_FOLDER)/$@ cmd/$@/main.go

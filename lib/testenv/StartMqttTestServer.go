@@ -1,7 +1,7 @@
 package testenv
 
 import (
-	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/core/msgserver/mqttmsgserver"
 	"github.com/hiveot/hub/core/msgserver/mqttmsgserver/service"
@@ -32,7 +32,7 @@ func StartMqttTestServer() (
 	_ = os.RemoveAll(tmpDir)
 	err = serverCfg.Setup(tmpDir, tmpDir, false)
 	if err == nil {
-		mqttServer := service.NewMqttMsgServer(serverCfg, auth.DefaultRolePermissions)
+		mqttServer := service.NewMqttMsgServer(serverCfg, authapi.DefaultRolePermissions)
 		err = mqttServer.Start()
 		msgServer = mqttServer
 	}

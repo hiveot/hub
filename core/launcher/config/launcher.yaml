@@ -14,6 +14,7 @@ logLevel: info
 # Core binary to launch before the plugins. The core binary must reside in the bin directory.
 # comment out if a core is already running elsewhere.
 # known core binaries are mqttcore or natscore
+# WARNING: keys and tokens are not compatible between cores. Empty the certs directory first.
 corebin: mqttcore
 
 # write plugin stdout and stderr to logfile at logs/{pluginname}.log (default is true)

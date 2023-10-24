@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"time"
 )
@@ -28,11 +28,11 @@ func CreateToken(authInfo msgserver.ClientAuthInfo, signingKey *ecdsa.PrivateKey
 	// see also: https://golang-jwt.github.io/jwt/usage/create/
 	// TBD: use validity period from profile
 	// default validity period depends on client type (why?)
-	validity := auth.DefaultUserTokenValidityDays
-	if authInfo.ClientType == auth.ClientTypeDevice {
-		validity = auth.DefaultDeviceTokenValidityDays
-	} else if authInfo.ClientType == auth.ClientTypeService {
-		validity = auth.DefaultServiceTokenValidityDays
+	validity := authapi.DefaultUserTokenValidityDays
+	if authInfo.ClientType == authapi.ClientTypeDevice {
+		validity = authapi.DefaultDeviceTokenValidityDays
+	} else if authInfo.ClientType == authapi.ClientTypeService {
+		validity = authapi.DefaultServiceTokenValidityDays
 	}
 	expiryTime := time.Now().Add(time.Duration(validity) * time.Hour * 24)
 

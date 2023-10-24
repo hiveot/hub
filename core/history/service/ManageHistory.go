@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/hiveot/hub/core/history"
+	"github.com/hiveot/hub/core/history/historyapi"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/thing"
 	"log/slog"
@@ -24,7 +24,7 @@ func inArray(arr []string, id string) bool {
 // ManageHistory provides the capability to manage how history is captured
 type ManageHistory struct {
 	// retention rules grouped by event ID
-	rules history.RetentionRuleSet
+	rules historyapi.RetentionRuleSet
 	//
 	retSub hubclient.ISubscription
 	//
@@ -32,7 +32,7 @@ type ManageHistory struct {
 }
 
 // return the first retention rule that applies to the given value or nil if no rule applies
-func (svc *ManageHistory) _FindFirstRule(tv *thing.ThingValue) *history.RetentionRule {
+func (svc *ManageHistory) _FindFirstRule(tv *thing.ThingValue) *historyapi.RetentionRule {
 	// two sets of rules apply, those that match the name and those that don't filter by name
 	// rules with specified event names take precedence
 	rules1, found := svc.rules[tv.Name]
@@ -64,7 +64,7 @@ func (svc *ManageHistory) _FindFirstRule(tv *thing.ThingValue) *history.Retentio
 // _IsRetained returns the rule 'Retain' flag if a matching rule is found
 // If no retention rules are defined this returns true
 // If rules are defined but not found this returns false
-func (svc *ManageHistory) _IsRetained(tv *thing.ThingValue) (bool, *history.RetentionRule) {
+func (svc *ManageHistory) _IsRetained(tv *thing.ThingValue) (bool, *historyapi.RetentionRule) {
 	if svc.rules == nil || len(svc.rules) == 0 {
 		return true, nil
 	}
@@ -81,7 +81,7 @@ func (svc *ManageHistory) _IsRetained(tv *thing.ThingValue) (bool, *history.Rete
 //
 //	eventName whose retention to return
 func (svc *ManageHistory) GetRetentionRule(
-	ctx hubclient.ServiceContext, args *history.GetRetentionRuleArgs) (resp *history.GetRetentionRuleResp, err error) {
+	ctx hubclient.ServiceContext, args *historyapi.GetRetentionRuleArgs) (resp *historyapi.GetRetentionRuleResp, err error) {
 
 	tv := thing.ThingValue{
 		AgentID: args.AgentID,
@@ -89,19 +89,19 @@ func (svc *ManageHistory) GetRetentionRule(
 		Name:    args.Name,
 	}
 	rule := svc._FindFirstRule(&tv)
-	resp = &history.GetRetentionRuleResp{Rule: rule}
+	resp = &historyapi.GetRetentionRuleResp{Rule: rule}
 	return resp, err
 }
 
 // GetRetentionRules returns all retention rules
-func (svc *ManageHistory) GetRetentionRules() (*history.GetRetentionRulesResp, error) {
-	resp := &history.GetRetentionRulesResp{Rules: svc.rules}
+func (svc *ManageHistory) GetRetentionRules() (*historyapi.GetRetentionRulesResp, error) {
+	resp := &historyapi.GetRetentionRulesResp{Rules: svc.rules}
 	return resp, nil
 }
 
 // SetRetentionRules updates the retention rules set
 func (svc *ManageHistory) SetRetentionRules(
-	ctx hubclient.ServiceContext, args *history.SetRetentionRulesArgs) error {
+	ctx hubclient.ServiceContext, args *historyapi.SetRetentionRulesArgs) error {
 	ruleCount := 0
 	// ensure that the name in the rule matches the key in the map
 	for name, nameRules := range args.Rules {
@@ -122,12 +122,12 @@ func (svc *ManageHistory) Start() (err error) {
 
 	// TODO: load latest retention rules from state store
 	capMethods := map[string]interface{}{
-		history.GetRetentionRuleMethod:  svc.GetRetentionRule,
-		history.GetRetentionRulesMethod: svc.GetRetentionRules,
-		history.SetRetentionRulesMethod: svc.SetRetentionRules,
+		historyapi.GetRetentionRuleMethod:  svc.GetRetentionRule,
+		historyapi.GetRetentionRulesMethod: svc.GetRetentionRules,
+		historyapi.SetRetentionRulesMethod: svc.SetRetentionRules,
 	}
 	svc.retSub, err = hubclient.SubRPCCapability(
-		svc.hc, history.ManageHistoryCap, capMethods)
+		svc.hc, historyapi.ManageHistoryCap, capMethods)
 	return nil
 }
 
@@ -140,9 +140,9 @@ func (svc *ManageHistory) Stop() {
 //
 //	defaultRules with rules from config
 func NewManageRetention(
-	hc hubclient.IHubClient, defaultRules history.RetentionRuleSet) *ManageHistory {
+	hc hubclient.IHubClient, defaultRules historyapi.RetentionRuleSet) *ManageHistory {
 	if defaultRules == nil {
-		defaultRules = make(history.RetentionRuleSet)
+		defaultRules = make(historyapi.RetentionRuleSet)
 	}
 	svc := &ManageHistory{
 		hc:    hc,

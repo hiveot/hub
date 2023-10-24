@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	auth2 "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/core/msgserver/mqttmsgserver/service"
@@ -66,7 +66,7 @@ func run(cfg *config.HubCoreConfig) error {
 	var err error
 
 	slog.Info("Starting MQTT server")
-	msgServer := service.NewMqttMsgServer(&cfg.MqttServer, auth2.DefaultRolePermissions)
+	msgServer := service.NewMqttMsgServer(&cfg.MqttServer, authapi.DefaultRolePermissions)
 	err = msgServer.Start()
 	if err != nil {
 		return fmt.Errorf("unable to start server: %w", err)
@@ -74,7 +74,7 @@ func run(cfg *config.HubCoreConfig) error {
 
 	// Start the Auth service mqtt can use either argon2id or brcypt passwords
 	slog.Info("Starting Auth service")
-	cfg.Auth.Encryption = auth2.PWHASH_BCRYPT
+	cfg.Auth.Encryption = authapi.PWHASH_BCRYPT
 	authSvc, err := authservice.StartAuthService(cfg.Auth, msgServer)
 	if err != nil {
 		return err

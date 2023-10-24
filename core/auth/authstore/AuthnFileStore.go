@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	auth2 "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
-	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"os"
 	"path"
@@ -24,7 +23,7 @@ import (
 // User passwords are stored using ARGON2id hash
 // It includes a file watcher to automatically reload on update.
 type AuthnFileStore struct {
-	entries   map[string]auth2.AuthnEntry // map [loginID]"loginID:hash:userName:updated:
+	entries   map[string]authapi.AuthnEntry // map [loginID]"loginID:hash:userName:updated:
 	storePath string
 	hashAlgo  string // hashing algorithm PWHASH_ARGON2id
 	watcher   *fsnotify.Watcher
@@ -33,7 +32,7 @@ type AuthnFileStore struct {
 
 // Add a new client.
 // clientID, clientType are required, the rest is optional
-func (authnStore *AuthnFileStore) Add(clientID string, profile auth2.ClientProfile) error {
+func (authnStore *AuthnFileStore) Add(clientID string, profile authapi.ClientProfile) error {
 
 	authnStore.mutex.Lock()
 	defer authnStore.mutex.Unlock()
@@ -41,28 +40,28 @@ func (authnStore *AuthnFileStore) Add(clientID string, profile auth2.ClientProfi
 	entry, found := authnStore.entries[clientID]
 	if clientID == "" || clientID != profile.ClientID {
 		return fmt.Errorf("clientID or clientType are missing")
-	} else if profile.ClientType != auth2.ClientTypeDevice &&
-		profile.ClientType != auth2.ClientTypeUser &&
-		profile.ClientType != auth2.ClientTypeService {
+	} else if profile.ClientType != authapi.ClientTypeDevice &&
+		profile.ClientType != authapi.ClientTypeUser &&
+		profile.ClientType != authapi.ClientTypeService {
 		return fmt.Errorf("invalid clientType '%s'", profile.ClientType)
 	}
 	if profile.TokenValidityDays == 0 {
-		if profile.ClientType == auth2.ClientTypeDevice {
-			profile.TokenValidityDays = auth2.DefaultDeviceTokenValidityDays
-		} else if profile.ClientType == auth2.ClientTypeService {
-			profile.TokenValidityDays = auth2.DefaultServiceTokenValidityDays
-		} else if profile.ClientType == auth2.ClientTypeUser {
-			profile.TokenValidityDays = auth2.DefaultUserTokenValidityDays
+		if profile.ClientType == authapi.ClientTypeDevice {
+			profile.TokenValidityDays = authapi.DefaultDeviceTokenValidityDays
+		} else if profile.ClientType == authapi.ClientTypeService {
+			profile.TokenValidityDays = authapi.DefaultServiceTokenValidityDays
+		} else if profile.ClientType == authapi.ClientTypeUser {
+			profile.TokenValidityDays = authapi.DefaultUserTokenValidityDays
 		}
 	}
 	if !found {
 		slog.Debug("Adding client " + clientID)
-		entry = auth2.AuthnEntry{ClientProfile: profile}
+		entry = authapi.AuthnEntry{ClientProfile: profile}
 	} else {
 		slog.Debug("Updating client " + clientID)
 		entry.ClientProfile = profile
 	}
-	entry.Updated = time.Now().Format(vocab.ISO8601Format)
+	entry.UpdatedMSE = time.Now().UnixMilli()
 
 	authnStore.entries[clientID] = entry
 
@@ -105,7 +104,7 @@ func (authnStore *AuthnFileStore) GetAuthClientList() []msgserver.ClientAuthInfo
 }
 
 // GetProfile returns the client's profile
-func (authnStore *AuthnFileStore) GetProfile(clientID string) (profile auth2.ClientProfile, err error) {
+func (authnStore *AuthnFileStore) GetProfile(clientID string) (profile authapi.ClientProfile, err error) {
 	authnStore.mutex.RLock()
 	defer authnStore.mutex.RUnlock()
 	// user must exist
@@ -117,10 +116,10 @@ func (authnStore *AuthnFileStore) GetProfile(clientID string) (profile auth2.Cli
 }
 
 // GetProfiles returns a list of all client profiles in the store
-func (authnStore *AuthnFileStore) GetProfiles() (profiles []auth2.ClientProfile, err error) {
+func (authnStore *AuthnFileStore) GetProfiles() (profiles []authapi.ClientProfile, err error) {
 	authnStore.mutex.RLock()
 	defer authnStore.mutex.RUnlock()
-	profiles = make([]auth2.ClientProfile, 0, len(authnStore.entries))
+	profiles = make([]authapi.ClientProfile, 0, len(authnStore.entries))
 	for _, entry := range authnStore.entries {
 		profiles = append(profiles, entry.ClientProfile)
 	}
@@ -128,10 +127,10 @@ func (authnStore *AuthnFileStore) GetProfiles() (profiles []auth2.ClientProfile,
 }
 
 // GetEntries returns a list of all profiles with their hashed passwords
-func (authnStore *AuthnFileStore) GetEntries() (entries []auth2.AuthnEntry) {
+func (authnStore *AuthnFileStore) GetEntries() (entries []authapi.AuthnEntry) {
 	authnStore.mutex.RLock()
 	defer authnStore.mutex.RUnlock()
-	entries = make([]auth2.AuthnEntry, 0, len(authnStore.entries))
+	entries = make([]authapi.AuthnEntry, 0, len(authnStore.entries))
 	for _, entry := range authnStore.entries {
 		entries = append(entries, entry)
 	}
@@ -164,7 +163,7 @@ func (authnStore *AuthnFileStore) Reload() error {
 	authnStore.mutex.Lock()
 	defer authnStore.mutex.Unlock()
 
-	entries := make(map[string]auth2.AuthnEntry)
+	entries := make(map[string]authapi.AuthnEntry)
 	dataBytes, err := os.ReadFile(authnStore.storePath)
 	if errors.Is(err, os.ErrNotExist) {
 		err = authnStore.save()
@@ -230,14 +229,14 @@ func (authnStore *AuthnFileStore) SetPassword(loginID string, password string) (
 	if len(password) < 5 {
 		return fmt.Errorf("password too short (%d chars)", len(password))
 	}
-	if authnStore.hashAlgo == auth2.PWHASH_ARGON2id {
+	if authnStore.hashAlgo == authapi.PWHASH_ARGON2id {
 		// TODO: tweak to something reasonable and test timing. default of 64MB is not suitable for small systems
 		params := argon2id.DefaultParams
 		params.Memory = 16 * 1024
 		params.Iterations = 2
 		params.Parallelism = 4 // what happens with fewer cores?
 		hash, err = argon2id.CreateHash(password, params)
-	} else if authnStore.hashAlgo == auth2.PWHASH_BCRYPT {
+	} else if authnStore.hashAlgo == authapi.PWHASH_BCRYPT {
 		hashBytes, err2 := bcrypt.GenerateFromPassword([]byte(password), 0)
 		err = err2
 		hash = string(hashBytes)
@@ -278,7 +277,7 @@ func (authnStore *AuthnFileStore) SetPasswordHash(loginID string, hash string) (
 		return fmt.Errorf("Client '%s' not found", loginID)
 	}
 	entry.PasswordHash = hash
-	entry.Updated = time.Now().Format(vocab.ISO8601Format)
+	entry.UpdatedMSE = time.Now().UnixMilli()
 	authnStore.entries[loginID] = entry
 
 	err = authnStore.save()
@@ -286,7 +285,7 @@ func (authnStore *AuthnFileStore) SetPasswordHash(loginID string, hash string) (
 }
 
 // Update updates the client profile, except
-func (authnStore *AuthnFileStore) Update(clientID string, profile auth2.ClientProfile) error {
+func (authnStore *AuthnFileStore) Update(clientID string, profile authapi.ClientProfile) error {
 	authnStore.mutex.Lock()
 	defer authnStore.mutex.Unlock()
 
@@ -309,7 +308,7 @@ func (authnStore *AuthnFileStore) Update(clientID string, profile auth2.ClientPr
 	if profile.PubKey != "" {
 		entry.PubKey = profile.PubKey
 	}
-	entry.Updated = time.Now().Format(vocab.ISO8601Format)
+	entry.UpdatedMSE = time.Now().UnixMilli()
 	authnStore.entries[clientID] = entry
 
 	err := authnStore.save()
@@ -318,7 +317,7 @@ func (authnStore *AuthnFileStore) Update(clientID string, profile auth2.ClientPr
 
 // VerifyPassword verifies the given password with the stored hash
 // This returns the matching user's entry or an error if the password doesn't match
-func (authnStore *AuthnFileStore) VerifyPassword(loginID, password string) (profile auth2.ClientProfile, err error) {
+func (authnStore *AuthnFileStore) VerifyPassword(loginID, password string) (profile authapi.ClientProfile, err error) {
 	isValid := false
 	authnStore.mutex.Lock()
 	defer authnStore.mutex.Unlock()
@@ -327,9 +326,9 @@ func (authnStore *AuthnFileStore) VerifyPassword(loginID, password string) (prof
 	if !found {
 		// unknown user
 		isValid = false
-	} else if authnStore.hashAlgo == auth2.PWHASH_ARGON2id {
+	} else if authnStore.hashAlgo == authapi.PWHASH_ARGON2id {
 		isValid, _ = argon2id.ComparePasswordAndHash(password, entry.PasswordHash)
-	} else if authnStore.hashAlgo == auth2.PWHASH_BCRYPT {
+	} else if authnStore.hashAlgo == authapi.PWHASH_BCRYPT {
 		err := bcrypt.CompareHashAndPassword([]byte(entry.PasswordHash), []byte(password))
 		isValid = err == nil
 	}
@@ -343,7 +342,7 @@ func (authnStore *AuthnFileStore) VerifyPassword(loginID, password string) (prof
 // WritePasswordsToTempFile write the given entries to temp file in the given folder
 // This returns the name of the new temp file.
 func WritePasswordsToTempFile(
-	folder string, entries map[string]auth2.AuthnEntry) (tempFileName string, err error) {
+	folder string, entries map[string]authapi.AuthnEntry) (tempFileName string, err error) {
 
 	file, err := os.CreateTemp(folder, "hub-pwfilestore")
 
@@ -372,15 +371,15 @@ func WritePasswordsToTempFile(
 //	hashAlgo PWHASH_ARGON2id (default) or PWHASH_BCRYPT
 func NewAuthnFileStore(filepath string, hashAlgo string) *AuthnFileStore {
 	if hashAlgo == "" {
-		hashAlgo = auth2.PWHASH_ARGON2id
+		hashAlgo = authapi.PWHASH_ARGON2id
 	}
-	if hashAlgo != auth2.PWHASH_ARGON2id && hashAlgo != auth2.PWHASH_BCRYPT {
+	if hashAlgo != authapi.PWHASH_ARGON2id && hashAlgo != authapi.PWHASH_BCRYPT {
 		panic("unknown hash algorithm: " + hashAlgo)
 	}
 	store := &AuthnFileStore{
 		storePath: filepath,
 		hashAlgo:  hashAlgo,
-		entries:   make(map[string]auth2.AuthnEntry),
+		entries:   make(map[string]authapi.AuthnEntry),
 	}
 	return store
 }

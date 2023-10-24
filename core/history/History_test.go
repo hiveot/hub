@@ -3,9 +3,9 @@ package history_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/core/auth"
-	"github.com/hiveot/hub/core/history"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/history/config"
+	"github.com/hiveot/hub/core/history/historyapi"
 	"github.com/hiveot/hub/core/history/historyclient"
 	"github.com/hiveot/hub/core/history/service"
 	"github.com/hiveot/hub/lib/buckets"
@@ -33,7 +33,7 @@ const thingIDPrefix = "thing-"
 // when testing using the capnp RPC
 var testFolder = path.Join(os.TempDir(), "test-history")
 
-const core = "mqtt"
+const core = "nats"
 
 // recommended store for history is pebble
 const historyStoreBackend = buckets.BackendPebble
@@ -41,25 +41,13 @@ const historyStoreBackend = buckets.BackendPebble
 //const historyStoreBackend = buckets.BackendBBolt
 //const historyStoreBackend = buckets.BackendKVBTree
 
-const serviceID = history.ServiceName
+const serviceID = historyapi.ServiceName
 const testClientID = "operator1"
 
 // the following are set by the testmain
 var testServer *testenv.TestServer
 
-//var svcConfig = config.HistoryStoreConfig{
-//	DatabaseType:    "mongodb",
-//	DatabaseName:    "test",
-//	DatabaseURL:     config.DefaultDBURL,
-//	LoginName:       "",
-//	Password:        "",
-//	ClientCertificate: "",
-//}
-
 var names = []string{"temperature", "humidity", "pressure", "wind", "speed", "switch", "location", "sensor-A", "sensor-B", "sensor-C"}
-
-// var testItems = make(map[string]thing.ThingValue)
-//var testHighestName = make(map[string]thing.ThingValue)
 
 // Create a new store, delete if it already exists
 func newHistoryService() (
@@ -79,7 +67,7 @@ func newHistoryService() (
 	}
 
 	// the service needs a server connection
-	hc, err := testServer.AddConnectClient(history.ServiceName, auth.ClientTypeService, auth.ClientRoleService)
+	hc, err := testServer.AddConnectClient(historyapi.ServiceName, authapi.ClientTypeService, authapi.ClientRoleService)
 	svc = service.NewHistoryService(hc, histStore)
 	if err == nil {
 		err = svc.Start()
@@ -89,7 +77,7 @@ func newHistoryService() (
 	}
 
 	// create an end user client for testing
-	hc2, err := testServer.AddConnectClient(testClientID, auth.ClientTypeUser, auth.ClientRoleOperator)
+	hc2, err := testServer.AddConnectClient(testClientID, authapi.ClientTypeUser, authapi.ClientRoleOperator)
 	if err != nil {
 		panic("can't connect operator")
 	}
@@ -266,7 +254,7 @@ func TestAddGetEvent(t *testing.T) {
 	err = store2.Open()
 	require.NoError(t, err)
 	defer store2.Close()
-	hc, err := testServer.AddConnectClient(history.ServiceName, auth.ClientTypeService, auth.ClientRoleService)
+	hc, err := testServer.AddConnectClient(historyapi.ServiceName, authapi.ClientTypeService, authapi.ClientRoleService)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 	svc = service.NewHistoryService(hc, store2)
@@ -569,7 +557,7 @@ func TestPubSub(t *testing.T) {
 	defer stopFn()
 	_ = svc
 
-	hc1, err := testServer.AddConnectClient(agent1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
+	hc1, err := testServer.AddConnectClient(agent1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	defer hc1.Disconnect()
 	// publish events
 	names := []string{
@@ -620,7 +608,7 @@ func TestManageRetention(t *testing.T) {
 	addBulkHistory(store, 1000, 5, 1000)
 
 	// connect as an admin user
-	hc1, err := testServer.AddConnectClient(client1ID, auth.ClientTypeUser, auth.ClientRoleAdmin)
+	hc1, err := testServer.AddConnectClient(client1ID, authapi.ClientTypeUser, authapi.ClientRoleAdmin)
 	mngHist := historyclient.NewManageHistoryClient(hc1)
 
 	// should be able to read the current retention rules. Expect the default rules.
@@ -630,9 +618,9 @@ func TestManageRetention(t *testing.T) {
 
 	// Add two retention rules to retain temperature and our test event from device1
 	rules1[vocab.VocabTemperature] = append(rules1[vocab.VocabTemperature],
-		&history.RetentionRule{Retain: true})
+		&historyapi.RetentionRule{Retain: true})
 	rules1[event1Name] = append(rules1[event1Name],
-		&history.RetentionRule{AgentID: device1ID, Retain: true})
+		&historyapi.RetentionRule{AgentID: device1ID, Retain: true})
 	err = mngHist.SetRetentionRules(rules1)
 	require.NoError(t, err)
 
@@ -649,7 +637,7 @@ func TestManageRetention(t *testing.T) {
 	}
 
 	// connect as device1 and publish two events, one to be retained
-	hc2, err := testServer.AddConnectClient(device1ID, auth.ClientTypeDevice, auth.ClientRoleDevice)
+	hc2, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc2.Disconnect()
 	err = hc2.PubEvent(thing0ID, event1Name, []byte("hi)"))

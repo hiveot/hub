@@ -2,7 +2,7 @@ package msgserver_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
@@ -25,9 +25,9 @@ func Benchmark_PubSubEvent(b *testing.B) {
 	ts, _ := testenv.StartTestServer(core, false)
 	defer ts.Stop()
 
-	cl1, _ := ts.AddConnectClient("publisher", auth.ClientTypeDevice, auth.ClientRoleDevice)
+	cl1, _ := ts.AddConnectClient("publisher", authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	defer cl1.Disconnect()
-	cl2, _ := ts.AddConnectClient("sub", auth.ClientTypeUser, auth.ClientRoleOperator)
+	cl2, _ := ts.AddConnectClient("sub", authapi.ClientTypeUser, authapi.ClientRoleOperator)
 	defer cl2.Disconnect()
 
 	sub2, _ := cl2.SubEvents("publisher", "", "", func(msg *thing.ThingValue) {
@@ -68,9 +68,9 @@ func Benchmark_Request(b *testing.B) {
 	ts, _ := testenv.StartTestServer(core, false)
 	defer ts.Stop()
 
-	cl1, _ := ts.AddConnectClient("client1", auth.ClientTypeUser, auth.ClientRoleAdmin)
+	cl1, _ := ts.AddConnectClient("client1", authapi.ClientTypeUser, authapi.ClientRoleAdmin)
 	defer cl1.Disconnect()
-	cl2, _ := ts.AddConnectClient("rpc", auth.ClientTypeService, auth.ClientRoleService)
+	cl2, _ := ts.AddConnectClient("rpc", authapi.ClientTypeService, authapi.ClientRoleService)
 	defer cl2.Disconnect()
 
 	sub2, _ := cl2.SubRPCRequest("cap1", func(msg *hubclient.RequestMessage) error {

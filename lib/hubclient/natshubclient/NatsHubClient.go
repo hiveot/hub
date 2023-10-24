@@ -138,6 +138,9 @@ func (hc *NatsHubClient) ConnectWithTokenFile(tokenFile string, keyFile string) 
 		keyData, err = os.ReadFile(keyFile)
 		if err == nil {
 			hc.myKey, err = nkeys.ParseDecoratedUserNKey(keyData)
+			if err != nil {
+				return fmt.Errorf("Keyfile '%s' doesn't hold a valid key: %w", keyFile, err)
+			}
 		}
 	}
 	if tokenFile != "" {

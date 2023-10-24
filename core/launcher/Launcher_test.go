@@ -1,9 +1,9 @@
 package launcher_test
 
 import (
-	auth2 "github.com/hiveot/hub/core/auth"
-	"github.com/hiveot/hub/core/launcher"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/launcher/config"
+	"github.com/hiveot/hub/core/launcher/launcherapi"
 	"github.com/hiveot/hub/core/launcher/launcherclient"
 	"github.com/hiveot/hub/core/launcher/service"
 	"github.com/hiveot/hub/lib/testenv"
@@ -38,11 +38,11 @@ var serverURL string
 //	Role:       auth.ClientRoleAdmin,
 //}}
 
-func StartService() (l launcher.ILauncher, stopFn func()) {
-	const launcherID = launcher.ServiceName + "-test"
+func StartService() (l *launcherclient.LauncherClient, stopFn func()) {
+	const launcherID = launcherapi.ServiceName + "-test"
 	const adminID = "admin"
 
-	hc1, err := testServer.AddConnectClient(launcherID, auth2.ClientTypeService, auth2.ClientRoleService)
+	hc1, err := testServer.AddConnectClient(launcherID, authapi.ClientTypeService, authapi.ClientRoleService)
 	if err != nil {
 		panic(err)
 	}
@@ -62,7 +62,7 @@ func StartService() (l launcher.ILauncher, stopFn func()) {
 		panic(err.Error())
 	}
 	//--- connect the launcher user
-	hc2, err := testServer.AddConnectClient(adminID, auth2.ClientTypeUser, auth2.ClientRoleAdmin)
+	hc2, err := testServer.AddConnectClient(adminID, authapi.ClientTypeUser, authapi.ClientRoleAdmin)
 	cl := launcherclient.NewLauncherClient(launcherID, hc2)
 	return cl, func() {
 		hc2.Disconnect()
@@ -118,7 +118,7 @@ func TestStartYes(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, info.Running)
 	assert.True(t, info.PID > 0)
-	assert.True(t, info.StartTime != "")
+	assert.True(t, info.StartTimeMSE != 0)
 	assert.FileExists(t, logFile)
 
 	time.Sleep(time.Millisecond * 1)
@@ -127,7 +127,7 @@ func TestStartYes(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 	assert.NoError(t, err)
 	assert.False(t, info2.Running)
-	assert.True(t, info2.StopTime != "")
+	assert.True(t, info2.StopTimeMSE != 0)
 }
 
 func TestStartBadName(t *testing.T) {

@@ -2,9 +2,10 @@ package authcli
 
 import (
 	"fmt"
-	auth2 "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/utils"
 	"golang.org/x/exp/rand"
 	"strings"
 	"time"
@@ -17,7 +18,7 @@ func AuthAddUserCommand(hc *hubclient.IHubClient) *cli.Command {
 	displayName := ""
 	role := ""
 	rolesTxt := fmt.Sprintf("%s, %s, %s, %s",
-		auth2.ClientRoleViewer, auth2.ClientRoleOperator, auth2.ClientRoleManager, auth2.ClientRoleAdmin)
+		authapi.ClientRoleViewer, authapi.ClientRoleOperator, authapi.ClientRoleManager, authapi.ClientRoleAdmin)
 
 	return &cli.Command{
 		Name:      "addu",
@@ -135,7 +136,7 @@ func HandleAddUser(
 	hc hubclient.IHubClient, loginID string, displayName string, role string) (err error) {
 
 	newPassword := GeneratePassword(9, true)
-	authn := authclient.NewAuthClientsClient(hc)
+	authn := authclient.NewManageClients(hc)
 
 	_, err = authn.AddUser(loginID, displayName, newPassword, "", role)
 
@@ -153,19 +154,19 @@ func HandleAddUser(
 // HandleListClients shows a list of user profiles
 func HandleListClients(hc hubclient.IHubClient) (err error) {
 
-	authn := authclient.NewAuthClientsClient(hc)
+	authn := authclient.NewManageClients(hc)
 	profileList, err := authn.GetProfiles()
 
 	fmt.Println("Users")
 	fmt.Println("Login ID             Display Name              Role            Updated")
 	fmt.Println("--------             ------------              ----            -------")
 	for _, profile := range profileList {
-		if profile.ClientType == auth2.ClientTypeUser {
+		if profile.ClientType == authapi.ClientTypeUser {
 			fmt.Printf("%-20s %-25s %-15s %s\n",
 				profile.ClientID,
 				profile.DisplayName,
 				profile.Role,
-				profile.Updated,
+				utils.FormatMSE(profile.UpdatedMSE, false),
 			)
 		}
 	}
@@ -174,11 +175,11 @@ func HandleListClients(hc hubclient.IHubClient) (err error) {
 	fmt.Println("ClientID             Type            Updated")
 	fmt.Println("--------             ----            -------")
 	for _, profile := range profileList {
-		if profile.ClientType != auth2.ClientTypeUser {
+		if profile.ClientType != authapi.ClientTypeUser {
 			fmt.Printf("%-20s %-15s %s\n",
 				profile.ClientID,
 				profile.ClientType,
-				profile.Updated,
+				utils.FormatMSE(profile.UpdatedMSE, false),
 			)
 		}
 	}
@@ -187,7 +188,7 @@ func HandleListClients(hc hubclient.IHubClient) (err error) {
 
 // HandleRemoveClient removes a user
 func HandleRemoveClient(hc hubclient.IHubClient, clientID string) (err error) {
-	authn := authclient.NewAuthClientsClient(hc)
+	authn := authclient.NewManageClients(hc)
 	err = authn.RemoveClient(clientID)
 
 	if err != nil {
@@ -207,7 +208,7 @@ func HandleSetPassword(hc hubclient.IHubClient, loginID string, newPassword stri
 	if newPassword == "" {
 		newPassword = GeneratePassword(9, true)
 	}
-	authn := authclient.NewAuthClientsClient(hc)
+	authn := authclient.NewManageClients(hc)
 	err := authn.UpdateClientPassword(loginID, newPassword)
 
 	if err != nil {
@@ -225,7 +226,7 @@ func HandleSetPassword(hc hubclient.IHubClient, loginID string, newPassword stri
 //	loginID is the ID or email of the user
 //	newPassword can be empty to auto-generate a password
 func HandleSetRole(hc hubclient.IHubClient, loginID string, newRole string) error {
-	authn := authclient.NewAuthClientsClient(hc)
+	authn := authclient.NewManageClients(hc)
 	prof, err := authn.GetProfile(loginID)
 	if err == nil {
 		prof.Role = newRole

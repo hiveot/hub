@@ -1,7 +1,7 @@
 package testenv
 
 import (
-	authcfg "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/core/auth/config"
 	"github.com/hiveot/hub/core/msgserver"
@@ -31,7 +31,7 @@ func (ts *TestServer) AddClients(newClients []msgserver.ClientAuthInfo) error {
 	ctx := hubclient.ServiceContext{ClientID: "testServer"}
 	if ts.AuthService != nil {
 		for _, authInfo := range newClients {
-			args := authcfg.AddUserArgs{
+			args := authapi.AddUserArgs{
 				UserID:      authInfo.ClientID,
 				DisplayName: authInfo.ClientID,
 				PubKey:      authInfo.PubKey,
@@ -69,17 +69,17 @@ func (ts *TestServer) AddConnectClient(agentID string, clientType string, client
 	kp, kpPub := ts.MsgServer.CreateKP()
 
 	if clientType == "" {
-		clientType = authcfg.ClientTypeUser
+		clientType = authapi.ClientTypeUser
 	}
 	if clientRole == "" {
-		clientRole = authcfg.ClientRoleViewer
+		clientRole = authapi.ClientRoleViewer
 	}
 	ctx := hubclient.ServiceContext{ClientID: "testServer"}
 
 	// if auth service is running then add the user if it doesn't exist
 	if ts.AuthService != nil {
-		if clientType == authcfg.ClientTypeService {
-			args := authcfg.AddServiceArgs{
+		if clientType == authapi.ClientTypeService {
+			args := authapi.AddServiceArgs{
 				ServiceID:   agentID,
 				DisplayName: "user " + agentID,
 				PubKey:      kpPub,
@@ -87,8 +87,8 @@ func (ts *TestServer) AddConnectClient(agentID string, clientType string, client
 			resp, err2 := ts.AuthService.MngClients.AddService(ctx, args)
 			err = err2
 			token = resp.Token
-		} else if clientType == authcfg.ClientTypeDevice {
-			args := authcfg.AddDeviceArgs{
+		} else if clientType == authapi.ClientTypeDevice {
+			args := authapi.AddDeviceArgs{
 				DeviceID:    agentID,
 				DisplayName: "user " + agentID,
 				PubKey:      kpPub,
@@ -97,7 +97,7 @@ func (ts *TestServer) AddConnectClient(agentID string, clientType string, client
 			err = err2
 			token = resp.Token
 		} else {
-			args := authcfg.AddUserArgs{
+			args := authapi.AddUserArgs{
 				UserID:      agentID,
 				DisplayName: "user " + agentID,
 				PubKey:      kpPub,

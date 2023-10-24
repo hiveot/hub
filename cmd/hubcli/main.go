@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/cmd/hubcli/certs"
 	"github.com/hiveot/hub/cmd/hubcli/directorycli"
 	"github.com/hiveot/hub/cmd/hubcli/historycli"
+	"github.com/hiveot/hub/cmd/hubcli/idprovcli"
 	"github.com/hiveot/hub/cmd/hubcli/launchercli"
 	"github.com/hiveot/hub/cmd/hubcli/pubsubcli"
 	"github.com/hiveot/hub/cmd/hubcli/setup"
@@ -123,6 +124,11 @@ func main() {
 			pubsubcli.PubActionCommand(&hc),
 			pubsubcli.SubEventsCommand(&hc),
 			pubsubcli.SubTDCommand(&hc),
+
+			idprovcli.ProvisionListCommand(&hc),
+			idprovcli.ProvisionRequestCommand(&hc),
+			idprovcli.ProvisionApproveRequestCommand(&hc),
+			idprovcli.ProvisionPreApproveCommand(&hc),
 		},
 	}
 

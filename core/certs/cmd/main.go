@@ -25,6 +25,7 @@ func main() {
 
 	env := utils.GetAppEnvironment("", true)
 	logging.SetLogging(env.LogLevel, "")
+	slog.Warn("Starting certs service", "clientID", env.ClientID, "loglevel", env.LogLevel)
 
 	// This service needs the CA certificate and key to operate
 	caCertPath := path.Join(env.CertsDir, certs.DefaultCaCertFile)
@@ -59,6 +60,7 @@ func main() {
 	}
 	utils.WaitForSignal(context.Background())
 	err = svc.Stop()
+	slog.Warn("Stopped certs service")
 	if err != nil {
 		os.Exit(2)
 	}

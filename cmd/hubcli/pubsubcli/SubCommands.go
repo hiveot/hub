@@ -3,6 +3,7 @@ package pubsubcli
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/lib/vocab"
 	"time"
 
@@ -28,11 +29,28 @@ func SubTDCommand(hc *hubclient.IHubClient) *cli.Command {
 
 func SubEventsCommand(hc *hubclient.IHubClient) *cli.Command {
 	return &cli.Command{
-		Name:     "subev",
-		Usage:    "Subscribe to Thing events",
-		Category: "pubsub",
+		Name:      "subev",
+		Usage:     "Subscribe to Thing events",
+		ArgsUsage: "[<agentID> [<thingID>]]",
+		Category:  "pubsub",
 		Action: func(cCtx *cli.Context) error {
-			err := HandleSubEvents(*hc)
+			agentID := ""
+			thingID := ""
+			name := ""
+			if cCtx.NArg() > 0 {
+				agentID = cCtx.Args().Get(0)
+			}
+			if cCtx.NArg() > 1 {
+				thingID = cCtx.Args().Get(1)
+			}
+			if cCtx.NArg() > 2 {
+				name = cCtx.Args().Get(2)
+			}
+			if cCtx.NArg() > 3 {
+				return fmt.Errorf("Unexpected arguments")
+			}
+
+			err := HandleSubEvents(*hc, agentID, thingID, name)
 			return err
 		},
 	}
@@ -47,15 +65,15 @@ func HandleSubTD(hc hubclient.IHubClient) error {
 			//fmt.Printf("%s\n", event.ValueJSON)
 			err := json.Unmarshal(msg.Data, &td)
 			if err == nil {
-				modifiedTime, _ := dateparse.ParseAny(td.Modified)                  // can be in any TZ
-				timeStr := modifiedTime.In(time.Local).Format("15:04:05.000 -0700") // want local time
+				modifiedTime, _ := dateparse.ParseAny(td.Modified) // can be in any TZ
+				timeStr := utils.FormatMSE(modifiedTime.In(time.Local).UnixMilli(), false)
 				fmt.Printf("%-20s %-25s %-30s %-20s %-18s\n",
 					msg.AgentID, msg.ThingID, td.Title, td.DeviceType, timeStr)
 			}
 		})
 	defer sub.Unsubscribe()
-	fmt.Printf("Agent ID             Thing ID                  Title                          Type                 Modified          \n")
-	fmt.Printf("-------------------  ------------------------  -----------------------------  -------------------  ------------------\n")
+	fmt.Printf("Agent ID             Thing ID                  Title                          Type                 Updated           \n")
+	fmt.Printf("-------------------  ------------------------  -----------------------------  -------------------  --------------------\n")
 
 	if err != nil {
 		return err
@@ -65,11 +83,13 @@ func HandleSubTD(hc hubclient.IHubClient) error {
 }
 
 // HandleSubEvents subscribes and prints value and property events
-func HandleSubEvents(hc hubclient.IHubClient) error {
-	fmt.Printf("Time             AgentID              ThingID                   Event Name                     Value\n")
+func HandleSubEvents(hc hubclient.IHubClient, agentID string, thingID string, name string) error {
+	fmt.Printf("Subscribing to agentID: '%s', thingID: '%s', name: '%s'\n\n", agentID, thingID, name)
+
+	fmt.Printf("Time             Agent ID             Thing ID                  Event Name                     Value\n")
 	fmt.Printf("---------------  -------------------  ------------------------  -----------------------------  ---------\n")
 
-	sub, err := hc.SubEvents("", "", "",
+	sub, err := hc.SubEvents(agentID, thingID, name,
 		func(msg *thing.ThingValue) {
 			createdTime := time.UnixMilli(msg.CreatedMSec)
 			timeStr := createdTime.Format("15:04:05.000")

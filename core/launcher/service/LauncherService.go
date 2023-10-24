@@ -3,10 +3,9 @@ package service
 import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
-	"github.com/hiveot/hub/core/auth"
 	"github.com/hiveot/hub/core/auth/authclient"
-	"github.com/hiveot/hub/core/launcher"
 	"github.com/hiveot/hub/core/launcher/config"
+	"github.com/hiveot/hub/core/launcher/launcherapi"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/hubconnect"
 	"github.com/hiveot/hub/lib/utils"
@@ -31,14 +30,14 @@ type LauncherService struct {
 	env utils.AppEnvironment
 
 	// map of plugin name to running status
-	plugins map[string]*launcher.PluginInfo
+	plugins map[string]*launcherapi.PluginInfo
 	// list of started commands in startup order
 	cmds []*exec.Cmd
 
 	// hub messaging client
 	hc hubclient.IHubClient
 	// auth service to generate plugin keys and tokens
-	authSvc auth.IAuthnManageClients
+	mngAuth *authclient.ManageClients
 	// subscription to receive requests
 	mngSub hubclient.ISubscription
 
@@ -68,7 +67,7 @@ func (svc *LauncherService) addCore() error {
 			pluginInfo.Size = coreInfo.Size()
 		} else {
 			// add new entry for core
-			pluginInfo = &launcher.PluginInfo{
+			pluginInfo = &launcherapi.PluginInfo{
 				Name:    coreInfo.Name(),
 				Path:    corePath,
 				Uptime:  0,
@@ -101,7 +100,7 @@ func (svc *LauncherService) addPlugins(folder string) error {
 			count++
 			pluginInfo, found := svc.plugins[entry.Name()]
 			if !found {
-				pluginInfo = &launcher.PluginInfo{
+				pluginInfo = &launcherapi.PluginInfo{
 					Name:    entry.Name(),
 					Path:    path.Join(folder, entry.Name()),
 					Uptime:  0,
@@ -120,7 +119,7 @@ func (svc *LauncherService) addPlugins(folder string) error {
 // List all available or just the running plugins and their status
 // This returns the list of plugins sorted by name
 func (svc *LauncherService) List(
-	ctx hubclient.ServiceContext, args launcher.ListArgs) (launcher.ListResp, error) {
+	ctx hubclient.ServiceContext, args launcherapi.ListArgs) (launcherapi.ListResp, error) {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 
@@ -133,13 +132,13 @@ func (svc *LauncherService) List(
 	}
 	sort.Strings(keys)
 
-	infoList := make([]launcher.PluginInfo, 0, len(keys))
+	infoList := make([]launcherapi.PluginInfo, 0, len(keys))
 	for _, key := range keys {
 		svcInfo := svc.plugins[key]
 		svc.updateStatus(svcInfo)
 		infoList = append(infoList, *svcInfo)
 	}
-	resp := launcher.ListResp{PluginInfoList: infoList}
+	resp := launcherapi.ListResp{PluginInfoList: infoList}
 	return resp, nil
 }
 
@@ -188,13 +187,17 @@ func (svc *LauncherService) Start() error {
 
 	// 2: start the core, if configured
 	svc.mux.Lock()
-	_, found := svc.plugins[CoreID]
+	_, foundCore := svc.plugins[CoreID]
 	svc.mux.Unlock()
-	if found {
+	if foundCore {
 		// core is added
 		_, err = svc._startPlugin(CoreID)
 		if err != nil {
+			slog.Error("Starting core failed", "CoreID", CoreID, "err", err)
 			return err
+		} else {
+			slog.Warn("core started successfully", "CoreID", CoreID)
+
 		}
 	}
 
@@ -209,17 +212,17 @@ func (svc *LauncherService) Start() error {
 	}
 
 	// the auth service is used to create plugin credentials
-	svc.authSvc = authclient.NewAuthClientsClient(svc.hc)
+	svc.mngAuth = authclient.NewManageClients(svc.hc)
 
 	// start listening to requests
 	//svc.mngSub, err = svc.hc.SubRPCRequest(launcher.ManageCapability, svc.HandleRequest)
-	svc.mngSub, err = hubclient.SubRPCCapability(svc.hc, launcher.ManageCapability,
+	svc.mngSub, err = hubclient.SubRPCCapability(svc.hc, launcherapi.ManageCapability,
 		map[string]interface{}{
-			launcher.ListMethod:            svc.List,
-			launcher.StartPluginMethod:     svc.StartPlugin,
-			launcher.StartAllPluginsMethod: svc.StartAllPlugins,
-			launcher.StopPluginMethod:      svc.StopPlugin,
-			launcher.StopAllPluginsMethod:  svc.StopAllPlugins,
+			launcherapi.ListMethod:            svc.List,
+			launcherapi.StartPluginMethod:     svc.StartPlugin,
+			launcherapi.StartAllPluginsMethod: svc.StartAllPlugins,
+			launcherapi.StopPluginMethod:      svc.StopPlugin,
+			launcherapi.StopAllPluginsMethod:  svc.StopAllPlugins,
 		})
 
 	// 4: autostart the configured 'autostart' plugins
@@ -239,7 +242,8 @@ func (svc *LauncherService) Stop() error {
 		svc.mngSub = nil
 	}
 	svc.isRunning.Store(false)
-	return svc.StopAllPlugins()
+	err := svc.StopAllPlugins(true)
+	return err
 }
 
 // WatchPlugins watches the bin and plugins folder for changes and reloads
@@ -291,7 +295,7 @@ func NewLauncherService(
 	ls := &LauncherService{
 		env:     env,
 		cfg:     cfg,
-		plugins: make(map[string]*launcher.PluginInfo),
+		plugins: make(map[string]*launcherapi.PluginInfo),
 		cmds:    make([]*exec.Cmd, 0),
 		hc:      hc,
 	}

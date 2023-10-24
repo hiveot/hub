@@ -2,9 +2,9 @@ package service
 
 import (
 	"encoding/json"
-	"github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authclient"
-	"github.com/hiveot/hub/core/directory"
+	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/thing"
@@ -35,7 +35,7 @@ type DirectoryService struct {
 
 // handleTDEvent stores a received Thing TD document
 func (svc *DirectoryService) handleTDEvent(event *thing.ThingValue) {
-	args := directory.UpdateTDArgs{
+	args := directoryapi.UpdateTDArgs{
 		AgentID: event.AgentID,
 		ThingID: event.ThingID,
 		TDDoc:   event.Data,
@@ -64,37 +64,38 @@ func (svc *DirectoryService) Start() (err error) {
 		svc.tdSub, err = svc.hc.SubEvents(
 			"", "", vocab.EventNameTD, svc.handleTDEvent)
 	}
-	myProfile := authclient.NewAuthProfileClient(svc.hc)
+	myProfile := authclient.NewProfileClient(svc.hc)
 
 	// Set the required permissions for using this service
 	// any user roles can view the directory
-	err = myProfile.SetServicePermissions(directory.ReadDirectoryCap, []string{
-		auth.ClientRoleViewer,
-		auth.ClientRoleOperator,
-		auth.ClientRoleManager,
-		auth.ClientRoleService})
+	err = myProfile.SetServicePermissions(directoryapi.ReadDirectoryCap, []string{
+		authapi.ClientRoleViewer,
+		authapi.ClientRoleOperator,
+		authapi.ClientRoleManager,
+		authapi.ClientRoleAdmin,
+		authapi.ClientRoleService})
 	if err == nil {
 		// only admin role can manage the directory
-		err = myProfile.SetServicePermissions(directory.UpdateDirectoryCap, []string{auth.ClientRoleAdmin})
+		err = myProfile.SetServicePermissions(directoryapi.UpdateDirectoryCap, []string{authapi.ClientRoleAdmin})
 	}
 	// last, publish a TD for each service capability and set allowable roles
 	if err == nil {
 		myTD := svc.updateDirSvc.CreateUpdateDirTD()
 		myTDJSON, _ := json.Marshal(myTD)
-		err = svc.hc.PubEvent(directory.UpdateDirectoryCap, vocab.EventNameTD, myTDJSON)
+		err = svc.hc.PubEvent(directoryapi.UpdateDirectoryCap, vocab.EventNameTD, myTDJSON)
 	}
 	if err == nil {
 		// last, publish my TD
 		myTD := svc.readDirSvc.CreateReadDirTD()
 		myTDJSON, _ := json.Marshal(myTD)
-		err = svc.hc.PubEvent(directory.ReadDirectoryCap, vocab.EventNameTD, myTDJSON)
+		err = svc.hc.PubEvent(directoryapi.ReadDirectoryCap, vocab.EventNameTD, myTDJSON)
 	}
 
 	return err
 }
 
 // Stop the service
-func (svc *DirectoryService) Stop() error {
+func (svc *DirectoryService) Stop() {
 	if svc.tdSub != nil {
 		svc.tdSub.Unsubscribe()
 		svc.tdSub = nil
@@ -106,9 +107,8 @@ func (svc *DirectoryService) Stop() error {
 		svc.readDirSvc.Stop()
 	}
 	if svc.tdBucket != nil {
-		svc.tdBucket.Close()
+		_ = svc.tdBucket.Close()
 	}
-	return nil
 }
 
 // NewDirectoryService creates an agent that provides capabilities to access TD documents

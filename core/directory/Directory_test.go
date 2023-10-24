@@ -2,9 +2,9 @@ package directory_test
 
 import (
 	"encoding/json"
-	"github.com/hiveot/hub/core/auth"
-	"github.com/hiveot/hub/core/directory"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/directory/dirclient"
+	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/core/directory/service"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/testenv"
@@ -28,11 +28,11 @@ var core = "mqtt"
 var testServer *testenv.TestServer
 var serverURL string
 
-const serviceID string = directory.ServiceName
+const serviceID string = directoryapi.ServiceName
 
 // startDirectory initializes a Directory service, optionally using capnp RPC
 func startDirectory() (
-	r directory.IReadDirectory, u directory.IUpdateDirectory, stopFn func()) {
+	r *dirclient.ReadDirectoryClient, u *dirclient.UpdateDirectoryClient, stopFn func()) {
 
 	slog.Info("startDirectory start")
 	defer slog.Info("startDirectory ended")
@@ -45,7 +45,7 @@ func startDirectory() (
 
 	// the directory service needs a server connection
 	hc1, err := testServer.AddConnectClient(
-		serviceID, auth.ClientTypeService, auth.ClientRoleService)
+		serviceID, authapi.ClientTypeService, authapi.ClientRoleService)
 	svc := service.NewDirectoryService(hc1, store)
 	if err == nil {
 		err = svc.Start()
@@ -56,7 +56,7 @@ func startDirectory() (
 
 	// connect as a user to the server above
 	hc2, err := testServer.AddConnectClient(
-		"admin", auth.ClientTypeUser, auth.ClientRoleAdmin)
+		"admin", authapi.ClientTypeUser, authapi.ClientRoleAdmin)
 	readCl := dirclient.NewReadDirectoryClient(hc2)
 	updateCl := dirclient.NewUpdateDirectoryClient(hc2)
 	return readCl, updateCl, func() {
@@ -106,7 +106,7 @@ func TestStartStop(t *testing.T) {
 	assert.NotNil(t, up)
 
 	// viewers should be able to read the directory
-	hc, err := testServer.AddConnectClient("user1", auth.ClientTypeUser, auth.ClientRoleViewer)
+	hc, err := testServer.AddConnectClient("user1", authapi.ClientTypeUser, authapi.ClientRoleViewer)
 	assert.NoError(t, err)
 	defer hc.Disconnect()
 	dirCl := dirclient.NewReadDirectoryClient(hc)
@@ -180,7 +180,7 @@ func TestPubTD(t *testing.T) {
 	const title1 = "title1"
 
 	// create a device client that publishes TD documents
-	deviceCl, err := testServer.AddConnectClient(agentID, auth.ClientTypeDevice, auth.ClientRoleDevice)
+	deviceCl, err := testServer.AddConnectClient(agentID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	require.NoError(t, err)
 	defer deviceCl.Disconnect()
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	auth2 "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver/service"
@@ -66,7 +66,7 @@ func run(cfg *config.HubCoreConfig) error {
 	var err error
 
 	slog.Info("Starting NATS server")
-	msgServer := service.NewNatsMsgServer(&cfg.NatsServer, auth2.DefaultRolePermissions)
+	msgServer := service.NewNatsMsgServer(&cfg.NatsServer, authapi.DefaultRolePermissions)
 	err = msgServer.Start()
 
 	if err != nil {
@@ -75,7 +75,7 @@ func run(cfg *config.HubCoreConfig) error {
 
 	// Start the auth service. NATS requires brcypt passwords
 	slog.Info("Starting Auth service")
-	cfg.Auth.Encryption = auth2.PWHASH_BCRYPT
+	cfg.Auth.Encryption = authapi.PWHASH_BCRYPT
 	authSvc, err := authservice.StartAuthService(cfg.Auth, msgServer)
 
 	// start discovery

@@ -1,7 +1,7 @@
 package natsmsgserver_test
 
 import (
-	auth2 "github.com/hiveot/hub/core/auth"
+	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver/service"
 	"github.com/hiveot/hub/lib/certs"
@@ -47,27 +47,27 @@ var TestService1NPub, _ = TestService1NKey.PublicKey()
 var NatsTestClients = []msgserver.ClientAuthInfo{
 	{
 		ClientID:   TestAdminUserID,
-		ClientType: auth2.ClientTypeUser,
+		ClientType: authapi.ClientTypeUser,
 		PubKey:     TestAdminUserNPub,
-		Role:       auth2.ClientRoleAdmin,
+		Role:       authapi.ClientRoleAdmin,
 	},
 	{
 		ClientID:   TestDevice1ID,
-		ClientType: auth2.ClientTypeDevice,
+		ClientType: authapi.ClientTypeDevice,
 		PubKey:     TestDevice1NPub,
-		Role:       auth2.ClientRoleDevice,
+		Role:       authapi.ClientRoleDevice,
 	},
 	{
 		ClientID:     TestUser1ID,
-		ClientType:   auth2.ClientTypeUser,
+		ClientType:   authapi.ClientTypeUser,
 		PasswordHash: string(TestUser1bcrypt),
-		Role:         auth2.ClientRoleViewer,
+		Role:         authapi.ClientRoleViewer,
 	},
 	{
 		ClientID:   TestService1ID,
-		ClientType: auth2.ClientTypeService,
+		ClientType: authapi.ClientTypeService,
 		PubKey:     TestService1NPub,
-		Role:       auth2.ClientRoleService, // admin adds the $JS.API.INFO permissions
+		Role:       authapi.ClientRoleService, // admin adds the $JS.API.INFO permissions
 	},
 }
 
@@ -116,7 +116,7 @@ func TestConnectWithCert(t *testing.T) {
 	_ = srv.ApplyAuth(NatsTestClients)
 
 	key, _ := certs.CreateECDSAKeys()
-	clientCert, err := certs.CreateClientCert(TestUser1ID, auth2.ClientRoleAdmin,
+	clientCert, err := certs.CreateClientCert(TestUser1ID, authapi.ClientRoleAdmin,
 		1, &key.PublicKey, certBundle.CaCert, certBundle.CaKey)
 	require.NoError(t, err)
 	serverURL, _, _ := srv.GetServerURLs()

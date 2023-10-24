@@ -18,7 +18,7 @@ import (
 // WoST services use this to announce the service instance and how they can be reached on the local domain.
 //
 //	Instance = instance name of the service. Used to differentiate between services with the same name (type)
-//	DiscoveryServiceName = name of the provided service, for example, ipp, idprov, wotdir
+//	DiscoveryServiceName = name of the provided service, for example, ipp, idprov, hiveot
 //
 // This is a wrapper around one or more discovery methods. Internally this uses DNS-SD but can be
 // expanded with additional protocols in the future.
