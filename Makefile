@@ -7,9 +7,9 @@ INSTALL_HOME=~/bin/hiveot
 
 .FORCE: 
 
-all: core plugins hubcli  ## Build APIs, CLI, Hub services
+all: services bindings ui   ## Build APIs, CLI, Hub services
 
-core: natscore mqttcore  launcher certs directory history idprov ## Build core services including mqttcore and natscore
+services: natscore mqttcore launcher certs directory history idprov state ## Build core services including mqttcore and natscore
 
 # natscore includes the embedded auth service
 natscore:
@@ -36,10 +36,11 @@ history: .FORCE ## Build the history service
 idprov: .FORCE ## Build device provisioning service
 	go build -o $(PLUGINS_FOLDER)/$@ core/$@/cmd/main.go
 
-plugins: directory owserver zwavejs
+state: .FORCE ## Build the state service
+	go build -o $(PLUGINS_FOLDER)/$@ core/$@/cmd/main.go
 
-hubcli: .FORCE ## Build Hub CLI
-	go build -o $(BIN_FOLDER)/$@ cmd/$@/main.go
+
+bindings:  owserver zwavejs  ## Build the protocol bindings
 
 owserver: .FORCE ## Build the 1-wire owserver protocol binding
 	go build -o $(PLUGINS_FOLDER)/$@  plugins/$@/cmd/main.go
@@ -47,6 +48,13 @@ owserver: .FORCE ## Build the 1-wire owserver protocol binding
 
 zwavejs: .FORCE ## Build the zwave protocol binding
 	go build -o $(PLUGINS_FOLDER)/$@ plugins/$@/cmd/main.go
+
+
+ui: hubcli hiveoview ## Build user interface aspects
+
+hubcli: .FORCE ## Build Hub CLI
+	go build -o $(BIN_FOLDER)/$@ cmd/$@/main.go
+
 
 
 clean: ## Clean distribution files

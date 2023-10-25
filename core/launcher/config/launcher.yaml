@@ -37,12 +37,12 @@ corebin: mqttcore
 # Plugins to start in order
 autostart:
   # core services
-  - certs            # certificate management service
-#  - directory         # storage of thing directory
-#  - history           # storage of event history
-#  - state             # client state storage
+  - certs             # certificate management service
+  - state             # client state storage
+  - directory         # storage of thing directory
+  - history           # storage of event history
+  - idprov            # IoT device provisioning service
 #  - hiveoview         # simple dashboard for viewing in the browser
-#  - provisioning      # IoT device provisioning service
 
   # protocol bindings
 #  - owserver          # 1-wire binding using owserver gateway

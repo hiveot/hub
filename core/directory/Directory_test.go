@@ -43,7 +43,7 @@ func startDirectory() (
 		panic("unable to open directory store")
 	}
 
-	// the directory service needs a server connection
+	// the service needs a server connection
 	hc1, err := testServer.AddConnectClient(
 		serviceID, authapi.ClientTypeService, authapi.ClientRoleService)
 	svc := service.NewDirectoryService(hc1, store)
@@ -60,7 +60,7 @@ func startDirectory() (
 	readCl := dirclient.NewReadDirectoryClient(hc2)
 	updateCl := dirclient.NewUpdateDirectoryClient(hc2)
 	return readCl, updateCl, func() {
-		_ = svc.Stop()
+		svc.Stop()
 		_ = store.Close()
 		hc2.Disconnect()
 		hc1.Disconnect()

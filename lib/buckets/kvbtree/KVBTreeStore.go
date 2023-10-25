@@ -117,7 +117,7 @@ func writeStoreFile(storePath string, docs map[string]map[string][]byte) error {
 	_, err := os.Stat(storeFolder)
 	if os.IsNotExist(err) {
 		// folder doesn't exist. Attempt to create it
-		slog.Warn("Store folder does not exist. Creating it now.", "storeFolder", storeFolder)
+		slog.Info("Store folder does not exist. Creating it now.", "storeFolder", storeFolder)
 		err = os.Mkdir(storeFolder, 0700)
 	}
 	// If the folder can't be created we're dead in the water
@@ -194,8 +194,8 @@ func (store *KVBTreeStore) Close() error {
 	var err error
 	slog.Info("closing store for client", "clientID", store.clientID)
 
-	if store.buckets == nil {
-		panic("store already closed")
+	if store.buckets == nil || store.backgroundLoopEnding == nil {
+		return fmt.Errorf("store already closed")
 	}
 
 	store.backgroundLoopEnding <- true
