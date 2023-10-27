@@ -11,7 +11,6 @@ import (
 	"github.com/hiveot/hub/cmd/hubcli/pubsubcli"
 	"github.com/hiveot/hub/cmd/hubcli/setup"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/hubconnect"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
@@ -29,7 +28,7 @@ var nowrap bool
 // commandline:  hubcli command options
 
 func main() {
-	var hc hubclient.IHubClient
+	var hc *hubclient.HubClient
 	var verbose bool
 	var loginID = "admin"
 	var homeDir string
@@ -94,7 +93,7 @@ func main() {
 				fmt.Printf(utils.WrapOff)
 			}
 			// todo: don't connect when running setup
-			hc, err = hubconnect.ConnectToHub(serverURL, loginID, certsDir, "")
+			hc, err = hubclient.ConnectToHub(serverURL, loginID, certsDir, "")
 			if err != nil {
 				slog.Warn("Unable to connect to the server", "err", err)
 			}

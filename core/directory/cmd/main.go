@@ -5,7 +5,7 @@ import (
 	"context"
 	"github.com/hiveot/hub/core/directory/service"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
-	"github.com/hiveot/hub/lib/hubclient/hubconnect"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
@@ -25,7 +25,7 @@ func main() {
 	slog.Warn("Starting directory service", "clientID", env.ClientID, "loglevel", env.LogLevel)
 
 	// locate the hub, load CA certificate, load service key and token and connect
-	hc, err := hubconnect.ConnectToHub("", env.ClientID, env.CertsDir, "")
+	hc, err := hubclient.ConnectToHub("", env.ClientID, env.CertsDir, "")
 	if err != nil {
 		slog.Error("Failed connecting to the Hub", "err", err)
 		os.Exit(1)

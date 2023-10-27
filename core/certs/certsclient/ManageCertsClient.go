@@ -12,7 +12,7 @@ type CertsClient struct {
 	agentID string
 	// directory capability to use
 	capID string
-	hc    hubclient.IHubClient
+	hc    *hubclient.HubClient
 }
 
 //// helper for publishing a rpc request to the certs service
@@ -44,7 +44,7 @@ func (cl *CertsClient) CreateDeviceCert(deviceID string, pubKeyPEM string, valid
 		ValidityDays: validityDays,
 	}
 	resp := certsapi.CreateCertResp{}
-	_, err = cl.hc.PubRPCRequest(
+	err = cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, certsapi.CreateDeviceCertMethod, req, &resp)
 	return resp.CertPEM, resp.CaCertPEM, err
 }
@@ -61,7 +61,7 @@ func (cl *CertsClient) CreateServiceCert(
 		ValidityDays: validityDays,
 	}
 	resp := certsapi.CreateCertResp{}
-	_, err = cl.hc.PubRPCRequest(
+	err = cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, certsapi.CreateServiceCertMethod, req, &resp)
 
 	return resp.CertPEM, resp.CaCertPEM, err
@@ -78,7 +78,7 @@ func (cl *CertsClient) CreateUserCert(
 		ValidityDays: validityDays,
 	}
 	resp := certsapi.CreateCertResp{}
-	_, err = cl.hc.PubRPCRequest(
+	err = cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, certsapi.CreateUserCertMethod, req, &resp)
 	return resp.CertPEM, resp.CaCertPEM, err
 }
@@ -91,7 +91,7 @@ func (cl *CertsClient) VerifyCert(
 		ClientID: clientID,
 		CertPEM:  certPEM,
 	}
-	_, err = cl.hc.PubRPCRequest(
+	err = cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, certsapi.VerifyCertMethod, req, nil)
 	return err
 }
@@ -99,7 +99,7 @@ func (cl *CertsClient) VerifyCert(
 // NewCertsClient returns a certs service client for managing certificates
 //
 //	hc is the hub client connection to use
-func NewCertsClient(hc hubclient.IHubClient) *CertsClient {
+func NewCertsClient(hc *hubclient.HubClient) *CertsClient {
 	cl := CertsClient{
 		hc:      hc,
 		agentID: certsapi.ServiceName,

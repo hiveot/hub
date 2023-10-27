@@ -5,7 +5,9 @@ import (
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/ser"
+	"github.com/hiveot/hub/lib/thing"
 	"log/slog"
 )
 
@@ -19,9 +21,9 @@ type AuthManageRoles struct {
 	// message server for apply role changes
 	msgServer msgserver.IMsgServer
 	// action subscription
-	actionSub hubclient.ISubscription
+	actionSub transports.ISubscription
 	// message server connection
-	hc hubclient.IHubClient
+	hc *hubclient.HubClient
 }
 
 // CreateRole adds a new custom role
@@ -39,35 +41,31 @@ func (svc *AuthManageRoles) DeleteRole(role string) error {
 }
 
 // HandleRequest unmarshal and apply action requests
-func (svc *AuthManageRoles) HandleRequest(action *hubclient.RequestMessage) error {
+func (svc *AuthManageRoles) HandleRequest(msg *thing.ThingValue) (reply []byte, err error) {
 
-	slog.Info("handleActions", slog.String("actionID", action.Name))
-	switch action.Name {
+	slog.Info("HandleRequest",
+		slog.String("actionID", msg.Name),
+		slog.String("senderID", msg.SenderID))
+	switch msg.Name {
 	case authapi.CreateRoleReq:
 		req := &authapi.CreateRoleArgs{}
-		err := ser.Unmarshal(action.Payload, &req)
+		err := ser.Unmarshal(msg.Data, &req)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		err = svc.CreateRole(req.Role)
-		if err == nil {
-			_ = action.SendAck()
-		}
-		return err
+		return nil, err
 	case authapi.DeleteRoleReq:
 		req := &authapi.DeleteRoleArgs{}
-		err := ser.Unmarshal(action.Payload, &req)
+		err := ser.Unmarshal(msg.Data, &req)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		err = svc.DeleteRole(req.Role)
-		if err == nil {
-			_ = action.SendAck()
-		}
-		return err
+		return nil, err
 
 	default:
-		return fmt.Errorf("unknown action '%s' for client '%s'", action.Name, action.ClientID)
+		return nil, fmt.Errorf("unknown action '%s' for client '%s'", msg.Name, msg.SenderID)
 	}
 }
 
@@ -91,7 +89,7 @@ func (svc *AuthManageRoles) Stop() {
 // NewAuthManageRoles creates the auth role management capability
 func NewAuthManageRoles(
 	store authapi.IAuthnStore,
-	hc hubclient.IHubClient,
+	hc *hubclient.HubClient,
 	msgServer msgserver.IMsgServer) *AuthManageRoles {
 
 	svc := AuthManageRoles{

@@ -14,7 +14,7 @@ type ManageClients struct {
 	// capability to invoke
 	capID string
 	// connection client
-	hc hubclient.IHubClient
+	hc *hubclient.HubClient
 }
 
 // AddDevice adds an IoT device and generates an authentication token
@@ -28,7 +28,7 @@ func (cl *ManageClients) AddDevice(
 		PubKey:      pubKey,
 	}
 	resp := authapi.AddDeviceResp{}
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.AddDeviceMethod, &req, &resp)
 	return resp.Token, err
 }
@@ -44,7 +44,7 @@ func (cl *ManageClients) AddService(
 		PubKey:      pubKey,
 	}
 	resp := authapi.AddServiceResp{}
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.AddServiceMethod, &req, &resp)
 	return resp.Token, err
 }
@@ -69,16 +69,15 @@ func (cl *ManageClients) AddUser(
 		Role:        role,
 	}
 	resp := authapi.AddUserResp{}
-	ar, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.AddUserMethod, &req, &resp)
-	_ = ar
 	return resp.Token, err
 }
 
 // GetCount returns the number of clients in the store
 func (cl *ManageClients) GetCount() (n int, err error) {
 	resp := authapi.GetCountResp{}
-	_, err = cl.hc.PubRPCRequest(
+	err = cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.GetCountMethod, nil, &resp)
 	return resp.N, err
 }
@@ -96,7 +95,7 @@ func (cl *ManageClients) GetProfile(clientID string) (profile authapi.ClientProf
 		ClientID: clientID,
 	}
 	resp := authapi.GetProfileResp{}
-	_, err = cl.hc.PubRPCRequest(
+	err = cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.GetProfilesMethod, &req, &resp)
 	return resp.Profile, err
 }
@@ -105,7 +104,7 @@ func (cl *ManageClients) GetProfile(clientID string) (profile authapi.ClientProf
 // The caller must be an administrator or service.
 func (cl *ManageClients) GetProfiles() (profiles []authapi.ClientProfile, err error) {
 	resp := authapi.GetProfilesResp{}
-	_, err = cl.hc.PubRPCRequest(
+	err = cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.GetProfilesMethod, nil, &resp)
 	return resp.Profiles, err
 }
@@ -116,7 +115,7 @@ func (cl *ManageClients) RemoveClient(clientID string) error {
 	req := authapi.RemoveClientArgs{
 		ClientID: clientID,
 	}
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.RemoveClientMethod, &req, nil)
 	return err
 }
@@ -127,7 +126,7 @@ func (cl *ManageClients) UpdateClient(clientID string, prof authapi.ClientProfil
 		ClientID: clientID,
 		Profile:  prof,
 	}
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.UpdateClientMethod, &req, nil)
 	return err
 }
@@ -138,7 +137,7 @@ func (cl *ManageClients) UpdateClientPassword(clientID string, newPass string) e
 		ClientID: clientID,
 		Password: newPass,
 	}
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.UpdatePasswordMethod, &req, nil)
 	return err
 }
@@ -149,7 +148,7 @@ func (cl *ManageClients) UpdateClientRole(clientID string, newRole string) error
 		ClientID: clientID,
 		Role:     newRole,
 	}
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.UpdateClientRoleMethod, &req, nil)
 	return err
 }
@@ -157,7 +156,7 @@ func (cl *ManageClients) UpdateClientRole(clientID string, newRole string) error
 // NewManageClients returns an authn client management client
 //
 //	hc is the hub client connection to use
-func NewManageClients(hc hubclient.IHubClient) *ManageClients {
+func NewManageClients(hc *hubclient.HubClient) *ManageClients {
 
 	cl := ManageClients{
 		hc:      hc,

@@ -14,7 +14,7 @@ import (
 //	   "created": {int64},   // msec since epoc
 //	}
 type ThingValue struct {
-	// AgentID is the ID of the device or service that publishes the Thing value
+	// AgentID is the ID of the device or service that owns the Thing
 	AgentID string `json:"agentID"`
 
 	// ThingID or capabilityID of the thing itself
@@ -36,15 +36,27 @@ type ThingValue struct {
 
 	// Sequence of the message from its creator. Intended to prevent replay attacks.
 	//Sequence int64
+
+	// ID of the publisher of the value
+	// For events this is the agentID
+	// For actions,config and rpc this is the remote user sending the request
+	SenderID string `json:"senderID"`
+
+	// Type of value, event, action, config, rpc
+	ValueType string `json:"valueType"`
 }
 
 // NewThingValue creates a new ThingValue object with the address of the thing, the action or event id and the serialized value data
 // This copies the value buffer.
-func NewThingValue(agentID, thingID, name string, data []byte) *ThingValue {
+//
+//	valueType is the type of value: action, event, config, rpc request
+func NewThingValue(valueType, agentID, thingID, name string, data []byte, senderID string) *ThingValue {
 	return &ThingValue{
+		ValueType:   valueType,
 		AgentID:     agentID,
 		ThingID:     thingID,
 		Name:        name,
+		SenderID:    senderID,
 		CreatedMSec: time.Now().UnixMilli(),
 		// DO NOT REMOVE THE TYPE CONVERSION
 		// this clones the data so the its buffer can be reused

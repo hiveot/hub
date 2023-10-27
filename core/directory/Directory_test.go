@@ -16,6 +16,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/hiveot/hub/lib/logging"
 )
@@ -195,6 +196,7 @@ func TestPubTD(t *testing.T) {
 	//err = deviceCl.PubTD(tdDoc) // TODO:create a TD instance
 
 	assert.NoError(t, err)
+	time.Sleep(time.Millisecond)
 
 	// expect it to be added to the directory
 	tv2, err := rd.GetTD(agentID, thing1ID)

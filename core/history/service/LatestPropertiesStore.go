@@ -116,7 +116,7 @@ func (srv *LatestPropertiesStore) HandleAddValue(event *thing.ThingValue, isActi
 		}
 		// turn each value into a ThingValue object
 		for propName, propValue := range props {
-			tv := thing.NewThingValue(event.AgentID, event.ThingID, propName, propValue)
+			tv := thing.NewThingValue(vocab.MessageTypeEvent, event.AgentID, event.ThingID, propName, propValue, event.SenderID)
 			tv.CreatedMSec = event.CreatedMSec
 
 			// in case events arrive out of order, only update if the event is newer

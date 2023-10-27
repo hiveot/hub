@@ -7,50 +7,56 @@ INSTALL_HOME=~/bin/hiveot
 
 .FORCE: 
 
-all: services bindings ui   ## Build APIs, CLI, Hub services
+all: core bindings hubcli   ## Build Core, Bindings and hubcli
 
-services: natscore mqttcore launcher certs directory history idprov state ## Build core services including mqttcore and natscore
+# --- Core services
 
-# natscore includes the embedded auth service
+core: natscore mqttcore launcher certs directory history idprov state ## Build core services including mqttcore and natscore
+
+# Build the embedded nats message bus core with auth
 natscore:
 	go build -o $(BIN_FOLDER)/$@ core/msgserver/natsmsgserver/cmd/main.go
 
-# mqttcore includes the embedded auth service
+# Build the embedded mqtt message bus core with auth
 mqttcore:
 	go build -o $(BIN_FOLDER)/$@ core/msgserver/mqttmsgserver/cmd/main.go
 
-launcher: .FORCE ## Build the hub launcher service
+launcher: .FORCE
 	go build -o $(BIN_FOLDER)/$@ core/$@/cmd/main.go
 	mkdir -p $(DIST_FOLDER)/config
 	cp core/$@/config/*.yaml $(DIST_FOLDER)/config
 
-certs: .FORCE ## Build the certificate management service
+certs: .FORCE
 	go build -o $(PLUGINS_FOLDER)/$@ core/$@/cmd/main.go
 
-directory: .FORCE ## Build the directory service
+directory: .FORCE
 	go build -o $(PLUGINS_FOLDER)/$@ core/$@/cmd/main.go
 
-history: .FORCE ## Build the history service
+history: .FORCE
 	go build -o $(PLUGINS_FOLDER)/$@ core/$@/cmd/main.go
 
-idprov: .FORCE ## Build device provisioning service
+idprov: .FORCE
 	go build -o $(PLUGINS_FOLDER)/$@ core/$@/cmd/main.go
 
-state: .FORCE ## Build the state service
+state: .FORCE
 	go build -o $(PLUGINS_FOLDER)/$@ core/$@/cmd/main.go
 
+# --- protocol bindings
 
-bindings:  owserver zwavejs  ## Build the protocol bindings
+bindings:  ipnet owserver zwavejs  ## Build the protocol bindings
+
+ipnet: .FORCE ## Build the ip network scanner protocol binding
+	go build -o $(PLUGINS_FOLDER)/$@  bindings/$@/cmd/main.go
 
 owserver: .FORCE ## Build the 1-wire owserver protocol binding
-	go build -o $(PLUGINS_FOLDER)/$@  plugins/$@/cmd/main.go
-	cp plugins/$@/config/*.yaml $(DIST_FOLDER)/config
+	go build -o $(PLUGINS_FOLDER)/$@  bindings/$@/cmd/main.go
+	cp bindings/$@/config/*.yaml $(DIST_FOLDER)/config
 
 zwavejs: .FORCE ## Build the zwave protocol binding
-	go build -o $(PLUGINS_FOLDER)/$@ plugins/$@/cmd/main.go
+	go build -o $(PLUGINS_FOLDER)/$@ bindings/$@/cmd/main.go
 
 
-ui: hubcli hiveoview ## Build user interface aspects
+# --- user interfaces
 
 hubcli: .FORCE ## Build Hub CLI
 	go build -o $(BIN_FOLDER)/$@ cmd/$@/main.go

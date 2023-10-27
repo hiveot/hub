@@ -10,14 +10,11 @@ Provisioned devices receive a device token that can be used to authenticate them
 
 This service is functional. Breaking changes can still be expected.
 
-## Roadmap
-
+TODO:
 1. Add monitoring for rogue DNS-SD publications 
-2. TBD: Hook into the message server discovery record 
-3. TBD: Hook into hiveoview or other webserver for receiving provisioning requests
-4. TBD: Checks if multiple connections are made by the same device using different device IDs
-5. TBD: flag suspect devices
-6. TBD: MAC address check during provisioning
+2. TBD: Checks if multiple connections are made by the same device using different device IDs
+3. TBD: flag suspect devices
+4. TBD: MAC address check during provisioning
 
 ## Summary 
 

@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 )
 
-func PubActionCommand(hc *hubclient.IHubClient) *cli.Command {
+func PubActionCommand(hc **hubclient.HubClient) *cli.Command {
 	return &cli.Command{
 		Name:      "pub",
 		Usage:     "Publish action for Thing",
@@ -32,7 +32,7 @@ func PubActionCommand(hc *hubclient.IHubClient) *cli.Command {
 	}
 }
 
-func HandlePubActions(hc hubclient.IHubClient,
+func HandlePubActions(hc *hubclient.HubClient,
 	pubID string, thingID string, action string, args string) error {
 
 	ar, err := hc.PubAction(pubID, thingID, action, []byte(args))

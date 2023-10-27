@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/core/history/historyapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/thing"
 	"log/slog"
 )
@@ -28,13 +29,13 @@ type HistoryService struct {
 
 	serviceID string
 	// the pubsub service to subscribe to event
-	hc hubclient.IHubClient
+	hc *hubclient.HubClient
 	// optional handling of pubsub events. nil if not used
 	//subEventHandler *PubSubEventHandler
 	// subscription to events to add
-	eventSub hubclient.ISubscription
+	eventSub transports.ISubscription
 	// subscription to actions to add
-	actionSub hubclient.ISubscription
+	actionSub transports.ISubscription
 	// handler that adds history to the store
 	addHistory *AddHistory
 }
@@ -132,7 +133,7 @@ func (svc *HistoryService) Stop() error {
 //	store contains an opened bucket store to use.
 //	hc connection with the hub
 func NewHistoryService(
-	hc hubclient.IHubClient, store buckets.IBucketStore) *HistoryService {
+	hc *hubclient.HubClient, store buckets.IBucketStore) *HistoryService {
 
 	var retentionMgr *ManageHistory
 	//if config != nil {

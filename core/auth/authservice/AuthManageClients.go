@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"log/slog"
 )
 
@@ -16,9 +17,9 @@ type AuthManageClients struct {
 	// message server to apply changes to
 	msgServer msgserver.IMsgServer
 	// messaging client for receiving requests
-	hc hubclient.IHubClient
+	hc *hubclient.HubClient
 	// subscription to receive requests
-	mngSub hubclient.ISubscription
+	mngSub transports.ISubscription
 }
 
 // AddDevice adds an IoT device and generates an authentication token
@@ -66,7 +67,7 @@ func (svc *AuthManageClients) AddDevice(
 func (svc *AuthManageClients) AddService(
 	ctx hubclient.ServiceContext, args authapi.AddServiceArgs) (authapi.AddServiceResp, error) {
 	slog.Info("AddService",
-		slog.String("senderID", ctx.ClientID),
+		slog.String("senderID", ctx.SenderID),
 		slog.String("serviceID", args.ServiceID),
 		slog.String("displayName", args.DisplayName),
 		slog.String("pubKey", args.PubKey))
@@ -104,6 +105,7 @@ func (svc *AuthManageClients) AddService(
 func (svc *AuthManageClients) AddUser(
 	ctx hubclient.ServiceContext, args authapi.AddUserArgs) (authapi.AddUserResp, error) {
 	slog.Info("AddUser",
+		slog.String("senderID", ctx.SenderID),
 		slog.String("userID", args.UserID),
 		slog.String("displayName", args.DisplayName),
 		slog.String("pubKey", args.PubKey),
@@ -211,7 +213,7 @@ func (svc *AuthManageClients) Start() (err error) {
 	if svc.hc != nil {
 		//svc.mngSub, err = svc.hc.SubRPCRequest(
 		//	auth.AuthManageClientsCapability, svc.HandleRequest)
-		svc.mngSub, err = hubclient.SubRPCCapability(svc.hc, authapi.AuthManageClientsCapability,
+		svc.mngSub, err = svc.hc.SubRPCCapability(authapi.AuthManageClientsCapability,
 			map[string]interface{}{
 				authapi.AddDeviceMethod:            svc.AddDevice,
 				authapi.AddServiceMethod:           svc.AddService,
@@ -262,7 +264,7 @@ func (svc *AuthManageClients) UpdateClientRole(ctx hubclient.ServiceContext, arg
 //	 hc hub client for subscribing to receive requests
 func NewAuthManageClients(
 	store authapi.IAuthnStore,
-	hc hubclient.IHubClient,
+	hc *hubclient.HubClient,
 	msgServer msgserver.IMsgServer,
 ) *AuthManageClients {
 

@@ -76,7 +76,7 @@ func run(cfg *config.HubCoreConfig) error {
 	// Start the auth service. NATS requires brcypt passwords
 	slog.Info("Starting Auth service")
 	cfg.Auth.Encryption = authapi.PWHASH_BCRYPT
-	authSvc, err := authservice.StartAuthService(cfg.Auth, msgServer)
+	authSvc, err := authservice.StartAuthService(cfg.Auth, msgServer, cfg.CaCert)
 
 	// start discovery
 	serverURL, _, _ := msgServer.GetServerURLs()

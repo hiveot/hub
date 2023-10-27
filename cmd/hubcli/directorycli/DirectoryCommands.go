@@ -13,7 +13,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 )
 
-func DirectoryListCommand(hc *hubclient.IHubClient) *cli.Command {
+func DirectoryListCommand(hc **hubclient.HubClient) *cli.Command {
 	var verbose = false
 	return &cli.Command{
 		Name:      "ld",
@@ -45,7 +45,7 @@ func DirectoryListCommand(hc *hubclient.IHubClient) *cli.Command {
 }
 
 // HandleListDirectory lists the directory content
-func HandleListDirectory(hc hubclient.IHubClient) (err error) {
+func HandleListDirectory(hc *hubclient.HubClient) (err error) {
 	offset := 0
 	limit := 100
 	rdir := dirclient.NewReadDirectoryClient(hc)
@@ -90,7 +90,7 @@ func HandleListDirectory(hc hubclient.IHubClient) (err error) {
 }
 
 // HandleListThing lists details of a Thing in the directory
-func HandleListThing(hc hubclient.IHubClient, pubID, thingID string) error {
+func HandleListThing(hc *hubclient.HubClient, pubID, thingID string) error {
 	var tdDoc thing.TD
 
 	rdir := dirclient.NewReadDirectoryClient(hc)
@@ -170,7 +170,7 @@ func HandleListThing(hc hubclient.IHubClient, pubID, thingID string) error {
 }
 
 // HandleListThingVerbose lists a Thing in the directory
-func HandleListThingVerbose(hc hubclient.IHubClient, pubID, thingID string) error {
+func HandleListThingVerbose(hc *hubclient.HubClient, pubID, thingID string) error {
 	rdir := dirclient.NewReadDirectoryClient(hc)
 	tv, err := rdir.GetTD(pubID, thingID)
 	if err != nil {

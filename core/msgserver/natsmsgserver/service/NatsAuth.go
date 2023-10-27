@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
-	"github.com/hiveot/hub/lib/hubclient/natshubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
 	"github.com/hiveot/hub/lib/vocab"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
@@ -83,12 +83,13 @@ func (srv *NatsMsgServer) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
 	return err
 }
 
-// CreateKP creates a keypair for use in connecting or signing.
-// This returns the key pair and its public key string.
-func (srv *NatsMsgServer) CreateKP() (interface{}, string) {
+// CreateKeyPair creates a serialized private and public key pair
+// NOTE: intended for testing. Might be deprecated in the future.
+func (srv *NatsMsgServer) CreateKeyPair() (string, string) {
 	kp, _ := nkeys.CreateUser()
+	serializedKP, _ := kp.Seed()
 	pubStr, _ := kp.PublicKey()
-	return kp, pubStr
+	return string(serializedKP), pubStr
 }
 
 // CreateToken create a new authentication token for a client
@@ -240,12 +241,12 @@ func (srv *NatsMsgServer) MakePermissions(clientInfo msgserver.ClientAuthInfo) *
 			}
 			if perm.AllowPub {
 				// publishing requires including their own clientID
-				pubSubj := natshubclient.MakeSubject(
+				pubSubj := natstransport.MakeSubject(
 					perm.MsgType, permAgentID, perm.ThingID, perm.MsgName, clientInfo.ClientID)
 				pubPerm.Allow = append(pubPerm.Allow, pubSubj)
 			}
 			if perm.AllowSub {
-				subSubj := natshubclient.MakeSubject(
+				subSubj := natstransport.MakeSubject(
 					perm.MsgType, permAgentID, perm.ThingID, perm.MsgName, "")
 				subPerm.Allow = append(subPerm.Allow, subSubj)
 			}

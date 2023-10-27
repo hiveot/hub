@@ -13,7 +13,7 @@ type UpdateDirectoryClient struct {
 	agentID string
 	// directory capability to use
 	capID string
-	hc    hubclient.IHubClient
+	hc    *hubclient.HubClient
 }
 
 // RemoveTD removes a TD document from the directory
@@ -22,7 +22,7 @@ func (cl *UpdateDirectoryClient) RemoveTD(agentID, thingID string) (err error) {
 		AgentID: agentID,
 		ThingID: thingID,
 	}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.RemoveTDMethod, &req, nil)
+	err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.RemoveTDMethod, &req, nil)
 	return err
 }
 
@@ -34,13 +34,13 @@ func (cl *UpdateDirectoryClient) UpdateTD(agentID, thingID string, tdDoc []byte)
 		ThingID: thingID,
 		TDDoc:   tdDoc,
 	}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.UpdateTDMethod, &req, nil)
+	err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.UpdateTDMethod, &req, nil)
 	return err
 }
 
 // NewUpdateDirectoryClient returns a directory update client for the directory service.
 // This connects to the service with the default directory service name.
-func NewUpdateDirectoryClient(hc hubclient.IHubClient) *UpdateDirectoryClient {
+func NewUpdateDirectoryClient(hc *hubclient.HubClient) *UpdateDirectoryClient {
 	cl := &UpdateDirectoryClient{
 		agentID: directoryapi.ServiceName,
 		capID:   directoryapi.UpdateDirectoryCap,

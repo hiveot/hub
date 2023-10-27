@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/thing"
 	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
@@ -17,14 +18,14 @@ const TDBucketName = "td"
 // DirectoryService is a wrapper around the internal store store
 // This implements the IDirectory interface
 type DirectoryService struct {
-	hc           hubclient.IHubClient
+	hc           *hubclient.HubClient
 	store        buckets.IBucketStore
 	agentID      string // thingID of the service instance
 	tdBucketName string
 	tdBucket     buckets.IBucket
 
 	// td event subscription
-	tdSub hubclient.ISubscription
+	tdSub transports.ISubscription
 
 	// capabilities and subscriptions
 	readDirSvc *ReadDirectoryService
@@ -40,7 +41,7 @@ func (svc *DirectoryService) handleTDEvent(event *thing.ThingValue) {
 		ThingID: event.ThingID,
 		TDDoc:   event.Data,
 	}
-	ctx := hubclient.ServiceContext{ClientID: event.AgentID}
+	ctx := hubclient.ServiceContext{SenderID: event.AgentID}
 	err := svc.updateDirSvc.UpdateTD(ctx, args)
 	if err != nil {
 		slog.Error("handleTDEvent failed", "err", err)
@@ -118,7 +119,7 @@ func (svc *DirectoryService) Stop() {
 //	hc is the hub client connection to use with this agent. Its ID is used as the agentID that provides the capability.
 //	store is an open store store containing the directory data.
 func NewDirectoryService(
-	hc hubclient.IHubClient, store buckets.IBucketStore) *DirectoryService {
+	hc *hubclient.HubClient, store buckets.IBucketStore) *DirectoryService {
 	//kvStore := kvbtree.NewKVStore(agentID, thingStorePath)
 	svc := &DirectoryService{
 		hc:           hc,

@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"log/slog"
 	"path"
 )
@@ -14,22 +15,22 @@ import (
 // StateService handles storage of client data records
 type StateService struct {
 	// Hub connection
-	hc hubclient.IHubClient
+	hc *hubclient.HubClient
 	// handler rpc subscription
-	sub hubclient.ISubscription
+	sub transports.ISubscription
 	// backend storage
 	store buckets.IBucketStore
 }
 
 func (svc *StateService) Delete(ctx hubclient.ServiceContext, args *stateapi.DeleteArgs) (err error) {
-	bucket := svc.store.GetBucket(ctx.ClientID)
+	bucket := svc.store.GetBucket(ctx.SenderID)
 	err = bucket.Delete(args.Key)
 	_ = bucket.Close()
 	return err
 }
 
 func (svc *StateService) Get(ctx hubclient.ServiceContext, args *stateapi.GetArgs) (resp *stateapi.GetResp, err error) {
-	bucket := svc.store.GetBucket(ctx.ClientID)
+	bucket := svc.store.GetBucket(ctx.SenderID)
 	value, err := bucket.Get(args.Key)
 	// bucket returns an error if key is not found.
 	found := err == nil
@@ -44,7 +45,7 @@ func (svc *StateService) Get(ctx hubclient.ServiceContext, args *stateapi.GetArg
 func (svc *StateService) GetMultiple(
 	ctx hubclient.ServiceContext, args *stateapi.GetMultipleArgs) (resp *stateapi.GetMultipleResp, err error) {
 
-	bucket := svc.store.GetBucket(ctx.ClientID)
+	bucket := svc.store.GetBucket(ctx.SenderID)
 	kv, err := bucket.GetMultiple(args.Keys)
 	err = bucket.Close()
 	resp = &stateapi.GetMultipleResp{KV: kv}
@@ -54,7 +55,7 @@ func (svc *StateService) GetMultiple(
 func (svc *StateService) Set(
 	ctx hubclient.ServiceContext, args *stateapi.SetArgs) (err error) {
 
-	bucket := svc.store.GetBucket(ctx.ClientID)
+	bucket := svc.store.GetBucket(ctx.SenderID)
 	// bucket returns an error if key is invalid
 	err = bucket.Set(args.Key, args.Value)
 	_ = bucket.Close()
@@ -64,7 +65,7 @@ func (svc *StateService) Set(
 func (svc *StateService) SetMultiple(
 	ctx hubclient.ServiceContext, args *stateapi.SetMultipleArgs) (err error) {
 
-	bucket := svc.store.GetBucket(ctx.ClientID)
+	bucket := svc.store.GetBucket(ctx.SenderID)
 	err = bucket.SetMultiple(args.KV)
 	_ = bucket.Close()
 	return err
@@ -92,7 +93,7 @@ func (svc *StateService) Start() (err error) {
 
 	if err == nil {
 		// register the handler
-		svc.sub, err = hubclient.SubRPCCapability(svc.hc, stateapi.StorageCap,
+		svc.sub, err = svc.hc.SubRPCCapability(stateapi.StorageCap,
 			map[string]interface{}{
 				stateapi.DeleteMethod:      svc.Delete,
 				stateapi.GetMethod:         svc.Get,
@@ -117,7 +118,7 @@ func (svc *StateService) Stop() {
 }
 
 // NewStateService creates a new service instance using the kvstore
-func NewStateService(hc hubclient.IHubClient, storeDir string) *StateService {
+func NewStateService(hc *hubclient.HubClient, storeDir string) *StateService {
 
 	storePath := path.Join(storeDir, hc.ClientID()+".json")
 	store := kvbtree.NewKVStore(hc.ClientID(), storePath)

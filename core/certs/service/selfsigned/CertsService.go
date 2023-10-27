@@ -7,8 +7,9 @@ import (
 	"crypto/x509/pkix"
 	"fmt"
 	"github.com/hiveot/hub/core/certs/certsapi"
-	certs "github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"log/slog"
 	"math/big"
 	"net"
@@ -31,9 +32,9 @@ type SelfSignedCertsService struct {
 	caCertPool *x509.CertPool
 
 	// messaging client for receiving requests
-	hc hubclient.IHubClient
+	hc *hubclient.HubClient
 	// subscription to receive requests
-	mngSub hubclient.ISubscription
+	mngSub transports.ISubscription
 }
 
 // _createDeviceCert internal function to create a CA signed certificate for mutual authentication by IoT devices
@@ -206,7 +207,7 @@ func (svc *SelfSignedCertsService) CreateUserCert(
 func (svc *SelfSignedCertsService) Start() (err error) {
 	// for testing, hc can be nil
 	if svc.hc != nil {
-		svc.mngSub, err = hubclient.SubRPCCapability(svc.hc, certsapi.ManageCertsCapability,
+		svc.mngSub, err = svc.hc.SubRPCCapability(certsapi.ManageCertsCapability,
 			map[string]interface{}{
 				certsapi.CreateDeviceCertMethod:  svc.CreateDeviceCert,
 				certsapi.CreateServiceCertMethod: svc.CreateServiceCert,
@@ -259,7 +260,7 @@ func (svc *SelfSignedCertsService) VerifyCert(ctx hubclient.ServiceContext, args
 func NewSelfSignedCertsService(
 	caCert *x509.Certificate,
 	caKey *ecdsa.PrivateKey,
-	hc hubclient.IHubClient,
+	hc *hubclient.HubClient,
 ) *SelfSignedCertsService {
 
 	caCertPool := x509.NewCertPool()

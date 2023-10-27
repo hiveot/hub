@@ -12,7 +12,7 @@ type RolesClient struct {
 	agentID string
 	// capability to invoke
 	capID string
-	hc    hubclient.IHubClient
+	hc    *hubclient.HubClient
 }
 
 // CreateRole creates a new custom role
@@ -21,7 +21,7 @@ func (cl *RolesClient) CreateRole(role string) error {
 	req := authapi.CreateRoleArgs{
 		Role: role,
 	}
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.CreateRoleReq, &req, nil)
 	return err
 }
@@ -32,7 +32,7 @@ func (cl *RolesClient) DeleteRole(role string) error {
 	req := authapi.DeleteRoleArgs{
 		Role: role,
 	}
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.DeleteRoleReq, &req, nil)
 	return err
 }
@@ -40,7 +40,7 @@ func (cl *RolesClient) DeleteRole(role string) error {
 // NewRolesClient creates a new client for managing roles
 //
 //	hc is the hub client connection to use
-func NewRolesClient(hc hubclient.IHubClient) *RolesClient {
+func NewRolesClient(hc *hubclient.HubClient) *RolesClient {
 	cl := &RolesClient{
 		agentID: authapi.AuthServiceName,
 		capID:   authapi.AuthManageRolesCapability,

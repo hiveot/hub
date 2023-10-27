@@ -16,7 +16,7 @@ type HistoryCursorClient struct {
 	agentID string
 	// history capability to use
 	capID string
-	hc    hubclient.IHubClient
+	hc    *hubclient.HubClient
 }
 
 // First positions the cursor at the first key in the ordered list
@@ -25,7 +25,7 @@ func (cl *HistoryCursorClient) First() (thingValue *thing.ThingValue, valid bool
 		CursorKey: cl.cursorKey,
 	}
 	resp := historyapi.CursorSingleResp{}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, historyapi.CursorFirstMethod, &req, &resp)
+	err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, historyapi.CursorFirstMethod, &req, &resp)
 	return resp.Value, resp.Valid, err
 }
 
@@ -35,7 +35,7 @@ func (cl *HistoryCursorClient) Last() (thingValue *thing.ThingValue, valid bool,
 		CursorKey: cl.cursorKey,
 	}
 	resp := historyapi.CursorSingleResp{}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, historyapi.CursorLastMethod, &req, &resp)
+	err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, historyapi.CursorLastMethod, &req, &resp)
 	return resp.Value, resp.Valid, err
 }
 
@@ -45,7 +45,7 @@ func (cl *HistoryCursorClient) Next() (thingValue *thing.ThingValue, valid bool,
 		CursorKey: cl.cursorKey,
 	}
 	resp := historyapi.CursorSingleResp{}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, historyapi.CursorNextMethod, &req, &resp)
+	err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, historyapi.CursorNextMethod, &req, &resp)
 	return resp.Value, resp.Valid, err
 }
 
@@ -56,7 +56,7 @@ func (cl *HistoryCursorClient) NextN(limit int) (batch []*thing.ThingValue, item
 		Limit:     limit,
 	}
 	resp := historyapi.CursorNResp{}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, historyapi.CursorNextNMethod, &req, &resp)
+	err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, historyapi.CursorNextNMethod, &req, &resp)
 	return resp.Values, resp.ItemsRemaining, err
 }
 
@@ -66,7 +66,7 @@ func (cl *HistoryCursorClient) Prev() (thingValue *thing.ThingValue, valid bool,
 		CursorKey: cl.cursorKey,
 	}
 	resp := historyapi.CursorSingleResp{}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, historyapi.CursorPrevMethod, &req, &resp)
+	err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, historyapi.CursorPrevMethod, &req, &resp)
 	return resp.Value, resp.Valid, err
 }
 
@@ -77,7 +77,7 @@ func (cl *HistoryCursorClient) PrevN(limit int) (batch []*thing.ThingValue, item
 		Limit:     limit,
 	}
 	resp := historyapi.CursorNResp{}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, historyapi.CursorPrevNMethod, &req, &resp)
+	err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, historyapi.CursorPrevNMethod, &req, &resp)
 	return resp.Values, resp.ItemsRemaining, err
 }
 
@@ -86,7 +86,7 @@ func (cl *HistoryCursorClient) Release() {
 	req := historyapi.CursorReleaseArgs{
 		CursorKey: cl.cursorKey,
 	}
-	_, err := cl.hc.PubRPCRequest(cl.agentID, cl.capID, historyapi.CursorReleaseMethod, &req, nil)
+	err := cl.hc.PubRPCRequest(cl.agentID, cl.capID, historyapi.CursorReleaseMethod, &req, nil)
 	_ = err
 	return
 }
@@ -100,7 +100,7 @@ func (cl *HistoryCursorClient) Seek(timeStampMSec int64) (
 		TimeStampMSec: timeStampMSec,
 	}
 	resp := historyapi.CursorSingleResp{}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, historyapi.CursorSeekMethod, &req, &resp)
+	err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, historyapi.CursorSeekMethod, &req, &resp)
 	return resp.Value, resp.Valid, err
 }
 
@@ -112,7 +112,7 @@ func (cl *HistoryCursorClient) Seek(timeStampMSec int64) (
 //	cursorKey is the iterator key obtain when requesting the cursor
 //	hc connection to the Hub
 func NewHistoryCursorClient(
-	hc hubclient.IHubClient, agentID, capID string, cursorKey string) *HistoryCursorClient {
+	hc *hubclient.HubClient, agentID, capID string, cursorKey string) *HistoryCursorClient {
 
 	cl := &HistoryCursorClient{
 		cursorKey: cursorKey,

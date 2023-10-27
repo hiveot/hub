@@ -4,7 +4,7 @@ import (
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver/callouthook"
-	"github.com/hiveot/hub/lib/hubclient/natshubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
@@ -27,13 +27,12 @@ func TestStartStopCallout(t *testing.T) {
 	// core services do not use the callout handler
 	//c, err := s.ConnectInProc("testcalloutservice")
 	serverURL, _, _ := s.GetServerURLs()
-	hc := natshubclient.NewNatsHubClient(
-		serverURL, "testcalloutservice",
-		TestService1NKey, certBundle.CaCert)
-	require.NotEmpty(t, hc)
-	err = hc.ConnectWithKey()
+	tp := natstransport.NewNatsTransport(
+		serverURL, "testcalloutservice", certBundle.CaCert)
+	require.NotEmpty(t, tp)
+	err = tp.ConnectWithKey(TestService1NKey)
 	require.NoError(t, err)
-	hc.Disconnect()
+	tp.Disconnect()
 }
 
 func TestValidateToken(t *testing.T) {
@@ -80,14 +79,14 @@ func TestCalloutPassword(t *testing.T) {
 
 	user1Key, _ := nkeys.CreateUser()
 	serverURL, _, _ := s.GetServerURLs()
-	hc1 := natshubclient.NewNatsHubClient(
-		serverURL, TestUser1ID, user1Key, certBundle.CaCert)
-
-	err = hc1.ConnectWithPassword(TestUser1Pass)
+	tp1 := natstransport.NewNatsTransport(
+		serverURL, TestUser1ID, certBundle.CaCert)
+	_ = user1Key
+	err = tp1.ConnectWithPassword(TestUser1Pass)
 	require.NoError(t, err)
 	successCount, _ := chook.GetCounters()
 	assert.Equal(t, 1, successCount)
-	hc1.Disconnect()
+	tp1.Disconnect()
 }
 
 func TestCalloutJWT(t *testing.T) {
@@ -112,8 +111,8 @@ func TestCalloutJWT(t *testing.T) {
 	})
 	require.NoError(t, err)
 	serverURL, _, _ := s.GetServerURLs()
-	hc2 := natshubclient.NewNatsHubClient(serverURL, TestAdminUserID, TestAdminUserNKey, certBundle.CaCert)
-	err = hc2.ConnectWithJWT(jwtToken)
+	hc2 := natstransport.NewNatsTransport(serverURL, TestAdminUserID, certBundle.CaCert)
+	err = hc2.ConnectWithJWT(TestAdminUserNKey, jwtToken)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond)
 	successCount, _ := chook.GetCounters()
@@ -137,12 +136,12 @@ func TestNoCalloutForExistingNKey(t *testing.T) {
 
 	// (added by nkey server test)
 	serverURL, _, _ := s.GetServerURLs()
-	hc := natshubclient.NewNatsHubClient(
-		serverURL, TestService1ID, TestService1NKey, certBundle.CaCert)
-	err = hc.ConnectWithKey()
+	tp1 := natstransport.NewNatsTransport(
+		serverURL, TestService1ID, certBundle.CaCert)
+	err = tp1.ConnectWithKey(TestService1NKey)
 	//c, err := s.ConnectInProc(testenv.TestService1ID)
 	require.NoError(t, err)
-	hc.Disconnect()
+	tp1.Disconnect()
 
 	successCount, failCount := chook.GetCounters()
 	assert.Equal(t, 0, successCount)
@@ -167,8 +166,8 @@ func TestInValidCalloutAuthn(t *testing.T) {
 	// invoke callout by connecting with an invalid user
 	newkey2, _ := nkeys.CreateUser()
 	serverURL, _, _ := s.GetServerURLs()
-	hc2 := natshubclient.NewNatsHubClient(serverURL, "unknownuser", newkey2, certBundle.CaCert)
-	err = hc2.ConnectWithKey()
+	tp2 := natstransport.NewNatsTransport(serverURL, "unknownuser", certBundle.CaCert)
+	err = tp2.ConnectWithKey(newkey2)
 	require.Error(t, err)
 
 	_, failCount := chook.GetCounters()

@@ -3,7 +3,7 @@ package auth_test
 import (
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authclient"
-	"github.com/hiveot/hub/lib/hubclient/hubconnect"
+	"github.com/hiveot/hub/lib/hubclient"
 	"testing"
 	"time"
 
@@ -27,15 +27,15 @@ func TestCRUDRole(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// create the user whose roles to test
-	_, user1Pub := testServer.MsgServer.CreateKP()
+	_, user1Pub := testServer.MsgServer.CreateKeyPair()
 	_, err = mng.AddUser(user1ID, "nu 1", user1Pass, user1Pub, authapi.ClientRoleViewer)
 	require.NoError(t, err)
 
 	// admin user that can change roles
-	adminKP, adminPub := testServer.MsgServer.CreateKP()
+	hc := hubclient.NewHubClient(serverURL, adminUserID, testServer.CertBundle.CaCert, testServer.Core)
+	adminKP, adminPub := hc.CreateKeyPair()
 	token, err := mng.AddUser(adminUserID, "admin", "", adminPub, authapi.ClientRoleAdmin)
-	hc := hubconnect.NewHubClient(serverURL, adminUserID, adminKP, testServer.CertBundle.CaCert, testServer.Core)
-	err = hc.ConnectWithToken(token)
+	err = hc.ConnectWithToken(adminKP, token)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 

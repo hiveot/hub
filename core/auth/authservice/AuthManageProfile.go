@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"log/slog"
 )
 
@@ -14,9 +15,9 @@ type AuthManageProfile struct {
 	// Client record persistence
 	store authapi.IAuthnStore
 	// hub client for subscribing to requests
-	hc hubclient.IHubClient
+	hc *hubclient.HubClient
 	// action subscription
-	actionSub hubclient.ISubscription
+	actionSub transports.ISubscription
 
 	// message server for updating authn
 	msgServer msgserver.IMsgServer
@@ -27,7 +28,7 @@ type AuthManageProfile struct {
 // GetProfile returns a client's profile
 func (svc *AuthManageProfile) GetProfile(ctx hubclient.ServiceContext) (
 	resp *authapi.GetProfileResp, err error) {
-	clientProfile, err := svc.store.GetProfile(ctx.ClientID)
+	clientProfile, err := svc.store.GetProfile(ctx.SenderID)
 	resp = &authapi.GetProfileResp{Profile: clientProfile}
 	return resp, err
 }
@@ -36,7 +37,7 @@ func (svc *AuthManageProfile) GetProfile(ctx hubclient.ServiceContext) (
 func (svc *AuthManageProfile) NewToken(
 	ctx hubclient.ServiceContext, args authapi.NewTokenArgs) (resp *authapi.NewTokenResp, err error) {
 
-	clientProfile, err := svc.store.VerifyPassword(ctx.ClientID, args.Password)
+	clientProfile, err := svc.store.VerifyPassword(ctx.SenderID, args.Password)
 	if err != nil {
 		return resp, err
 	}
@@ -63,7 +64,7 @@ func (svc *AuthManageProfile) onChange() {
 // the old token must be a valid jwt token belonging to the clientID
 func (svc *AuthManageProfile) RefreshToken(ctx hubclient.ServiceContext) (*authapi.RefreshTokenResp, error) {
 	// verify the token
-	clientProfile, err := svc.store.GetProfile(ctx.ClientID)
+	clientProfile, err := svc.store.GetProfile(ctx.SenderID)
 	if err != nil {
 		return nil, err
 	}
@@ -90,14 +91,14 @@ func (svc *AuthManageProfile) SetServicePermissions(
 	ctx hubclient.ServiceContext, args *authapi.SetServicePermissionsArgs) error {
 	// the client must be a service
 
-	clientProfile, err := svc.store.GetProfile(ctx.ClientID)
+	clientProfile, err := svc.store.GetProfile(ctx.SenderID)
 	if err != nil {
 		return err
 	} else if clientProfile.ClientType != authapi.ClientTypeService {
-		return fmt.Errorf("Client '%s' must be a service, not a '%s'", ctx.ClientID, clientProfile.ClientType)
+		return fmt.Errorf("Client '%s' must be a service, not a '%s'", ctx.SenderID, clientProfile.ClientType)
 	}
 
-	svc.msgServer.SetServicePermissions(ctx.ClientID, args.Capability, args.Roles)
+	svc.msgServer.SetServicePermissions(ctx.SenderID, args.Capability, args.Roles)
 	return nil
 }
 
@@ -106,8 +107,8 @@ func (svc *AuthManageProfile) SetServicePermissions(
 func (svc *AuthManageProfile) Start() (err error) {
 	if svc.hc != nil {
 
-		svc.actionSub, _ = hubclient.SubRPCCapability(
-			svc.hc, authapi.AuthProfileCapability, map[string]interface{}{
+		svc.actionSub, _ = svc.hc.SubRPCCapability(
+			authapi.AuthProfileCapability, map[string]interface{}{
 				authapi.GetProfileMethod:            svc.GetProfile,
 				authapi.NewTokenMethod:              svc.NewToken,
 				authapi.RefreshTokenMethod:          svc.RefreshToken,
@@ -131,21 +132,21 @@ func (svc *AuthManageProfile) Stop() {
 func (svc *AuthManageProfile) UpdateName(
 	ctx hubclient.ServiceContext, args *authapi.UpdateNameArgs) (err error) {
 
-	clientProfile, err := svc.store.GetProfile(ctx.ClientID)
+	clientProfile, err := svc.store.GetProfile(ctx.SenderID)
 	clientProfile.DisplayName = args.NewName
-	err = svc.store.Update(ctx.ClientID, clientProfile)
+	err = svc.store.Update(ctx.SenderID, clientProfile)
 	// this doesn't affect authentication
 	return err
 }
 
 func (svc *AuthManageProfile) UpdatePassword(
 	ctx hubclient.ServiceContext, args *authapi.UpdatePasswordArgs) (err error) {
-	slog.Info("UpdatePassword", "clientID", ctx.ClientID)
+	slog.Info("UpdatePassword", "clientID", ctx.SenderID)
 	_, err = svc.GetProfile(ctx)
 	if err != nil {
 		return err
 	}
-	err = svc.store.SetPassword(ctx.ClientID, args.NewPassword)
+	err = svc.store.SetPassword(ctx.SenderID, args.NewPassword)
 	if err != nil {
 		return err
 	}
@@ -156,13 +157,13 @@ func (svc *AuthManageProfile) UpdatePassword(
 func (svc *AuthManageProfile) UpdatePubKey(
 	ctx hubclient.ServiceContext, args *authapi.UpdatePubKeyArgs) (err error) {
 
-	slog.Info("UpdatePubKey", "clientID", ctx.ClientID)
-	clientProfile, err := svc.store.GetProfile(ctx.ClientID)
+	slog.Info("UpdatePubKey", "clientID", ctx.SenderID)
+	clientProfile, err := svc.store.GetProfile(ctx.SenderID)
 	if err != nil {
 		return err
 	}
 	clientProfile.PubKey = args.NewPubKey
-	err = svc.store.Update(ctx.ClientID, clientProfile)
+	err = svc.store.Update(ctx.SenderID, clientProfile)
 	if err != nil {
 		return err
 	}
@@ -178,7 +179,7 @@ func (svc *AuthManageProfile) UpdatePubKey(
 func NewAuthManageProfile(
 	store authapi.IAuthnStore,
 	caCert *x509.Certificate,
-	hc hubclient.IHubClient,
+	hc *hubclient.HubClient,
 	msgServer msgserver.IMsgServer,
 ) *AuthManageProfile {
 

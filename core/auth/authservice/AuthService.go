@@ -1,25 +1,27 @@
 package authservice
 
 import (
+	"crypto/x509"
 	"fmt"
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authstore"
 	"github.com/hiveot/hub/core/auth/config"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/hubconnect"
 	"log/slog"
 	"os"
+	"path"
 )
 
 // AuthService handles authentication and authorization requests
 type AuthService struct {
 	store     authapi.IAuthnStore
 	msgServer msgserver.IMsgServer
+	caCert    *x509.Certificate
 
 	// the hub client connection to listen to requests
 	cfg        config.AuthConfig
-	hc         hubclient.IHubClient
+	hc         *hubclient.HubClient
 	MngClients *AuthManageClients
 	MngRoles   *AuthManageRoles
 	MngProfile *AuthManageProfile
@@ -35,29 +37,30 @@ func (svc *AuthService) Start() (err error) {
 		return err
 	}
 
-	// before being able to connect, the AuthService must be known
-	myKey, myKeyPub := svc.msgServer.CreateKP()
-	_ = myKey
+	// before being able to connect, the AuthService and its key must be known
+	core := svc.msgServer.Core()
+	tcpAddr, _, udsAddr := svc.msgServer.GetServerURLs()
+	svc.hc = hubclient.NewHubClient(tcpAddr, authapi.AuthServiceName, svc.caCert, core)
+	myKP, myPubKey := svc.hc.CreateKeyPair()
 
 	// use a temporary instance of the client manager to add itself
 	mngClients := NewAuthManageClients(svc.store, nil, svc.msgServer)
 	args1 := authapi.AddServiceArgs{
 		ServiceID:   authapi.AuthServiceName,
 		DisplayName: "Auth Service",
-		PubKey:      myKeyPub,
+		PubKey:      myPubKey,
 	}
-	ctx := hubclient.ServiceContext{ClientID: authapi.AuthServiceName}
+	ctx := hubclient.ServiceContext{SenderID: authapi.AuthServiceName}
 	resp1, err := mngClients.AddService(ctx, args1)
 	if err != nil {
 		return fmt.Errorf("failed to setup the auth service: %w", err)
 	}
 
 	// nats doesnt support uds?
-	tcpAddr, _, udsAddr := svc.msgServer.GetServerURLs()
 	_ = udsAddr
-	core := svc.msgServer.Core()
-	svc.hc = hubconnect.NewHubClient(tcpAddr, authapi.AuthServiceName, myKey, nil, core)
-	err = svc.hc.ConnectWithToken(resp1.Token)
+
+	err = svc.hc.ConnectWithToken(myKP, resp1.Token)
+
 	if err != nil {
 		return err
 	}
@@ -90,35 +93,39 @@ func (svc *AuthService) Start() (err error) {
 
 	// FIXME, what are the permissions for other services like certs, launcher, ...?
 
-	// Ensure the launcher client exists and has a key and service token
-	slog.Info("Start (auth). Adding launcher user", "keyfile", svc.cfg.LauncherKeyFile)
-	_, launcherKeyPub, _ := svc.MngClients.LoadCreateUserKey(svc.cfg.LauncherKeyFile)
+	// Ensure the launcher client exists and has a saved key and auth token
+	launcherID := svc.cfg.LauncherAccountID
+	slog.Info("Start (auth). Adding launcher service", "ID", launcherID)
+	_, launcherKeyPub, _ := svc.hc.LoadCreateKeyPair(launcherID, svc.cfg.KeysDir)
 	args2 := authapi.AddServiceArgs{
-		ServiceID:   authapi.DefaultLauncherServiceID,
+		ServiceID:   launcherID,
 		DisplayName: "Launcher Service",
 		PubKey:      launcherKeyPub,
 	}
 	resp2, err := svc.MngClients.AddService(ctx, args2)
 	if err == nil {
-		// remove the readonly token file if it already exists
-		_ = os.Remove(svc.cfg.LauncherTokenFile)
-		err = os.WriteFile(svc.cfg.LauncherTokenFile, []byte(resp2.Token), 0400)
+		// remove the readonly token file if it exists, to be able to overwrite
+		tokenFile := path.Join(svc.cfg.KeysDir, launcherID+hubclient.TokenFileExt)
+		_ = os.Remove(tokenFile)
+		err = os.WriteFile(tokenFile, []byte(resp2.Token), 0400)
 	}
 
-	// ensure the admin user exists and has a user token
-	slog.Info("Start (auth). Adding admin user", "keyfile", svc.cfg.AdminUserKeyFile)
-	_, adminKeyPub, _ := svc.MngClients.LoadCreateUserKey(svc.cfg.AdminUserKeyFile)
+	// ensure the admin user exists and has a saved key and auth token
+	adminID := svc.cfg.AdminAccountID
+	slog.Info("Start (auth). Adding admin user", "ID", adminID)
+	_, adminKeyPub, _ := svc.hc.LoadCreateKeyPair(adminID, svc.cfg.KeysDir)
 	args3 := authapi.AddUserArgs{
-		UserID:      authapi.DefaultAdminUserID,
+		UserID:      adminID,
 		DisplayName: "Administrator",
 		PubKey:      adminKeyPub,
 		Role:        authapi.ClientRoleAdmin,
 	}
 	resp3, err := svc.MngClients.AddUser(ctx, args3)
 	if err == nil {
-		// remove the readonly token file if it already exists
-		_ = os.Remove(svc.cfg.AdminUserTokenFile)
-		err = os.WriteFile(svc.cfg.AdminUserTokenFile, []byte(resp3.Token), 0400)
+		// remove the readonly token file if it exists, to be able to overwrite
+		tokenFile := path.Join(svc.cfg.KeysDir, adminID+hubclient.TokenFileExt)
+		_ = os.Remove(tokenFile)
+		err = os.WriteFile(tokenFile, []byte(resp3.Token), 0400)
 	}
 	return err
 }
@@ -146,9 +153,10 @@ func (svc *AuthService) Stop() {
 //	store is the client store to store authentication clients
 //	msgServer used to apply changes to users, devices and services
 func NewAuthService(authConfig config.AuthConfig,
-	store authapi.IAuthnStore, msgServer msgserver.IMsgServer) *AuthService {
+	store authapi.IAuthnStore, msgServer msgserver.IMsgServer, caCert *x509.Certificate) *AuthService {
 
 	authnSvc := &AuthService{
+		caCert:    caCert,
 		cfg:       authConfig,
 		store:     store,
 		msgServer: msgServer,
@@ -158,11 +166,11 @@ func NewAuthService(authConfig config.AuthConfig,
 
 // StartAuthService creates and launch the auth service with the given config
 // This creates a password store using the config file and password encryption method.
-func StartAuthService(cfg config.AuthConfig, msgServer msgserver.IMsgServer) (*AuthService, error) {
+func StartAuthService(cfg config.AuthConfig, msgServer msgserver.IMsgServer, caCert *x509.Certificate) (*AuthService, error) {
 
 	// nats requires bcrypt passwords
 	authStore := authstore.NewAuthnFileStore(cfg.PasswordFile, cfg.Encryption)
-	authnSvc := NewAuthService(cfg, authStore, msgServer)
+	authnSvc := NewAuthService(cfg, authStore, msgServer, caCert)
 	err := authnSvc.Start()
 	if err != nil {
 		panic("Cant start Auth service: " + err.Error())

@@ -1,8 +1,6 @@
 # Hub Directory 
 
-## Objective
-
-Manage the collection of available Thing Description documents for use by consumers.
+The HiveOTHub Directory manages the collection of available Thing Description documents for use by consumers.
 
 ## Status
 

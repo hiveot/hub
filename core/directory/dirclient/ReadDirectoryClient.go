@@ -14,13 +14,13 @@ type ReadDirectoryClient struct {
 	agentID string
 	// capability to use
 	capID string
-	hc    hubclient.IHubClient
+	hc    *hubclient.HubClient
 }
 
 // GetCursor returns an iterator for ThingValue objects containing TD documents
 func (cl *ReadDirectoryClient) GetCursor() (directoryapi.IDirectoryCursor, error) {
 	resp := directoryapi.GetCursorResp{}
-	_, err := cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.GetCursorMethod, nil, &resp)
+	err := cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.GetCursorMethod, nil, &resp)
 	cursor := NewDirectoryCursorClient(cl.hc, cl.agentID, cl.capID, resp.CursorKey)
 	return cursor, err
 }
@@ -34,7 +34,7 @@ func (cl *ReadDirectoryClient) GetTD(
 		ThingID: thingID,
 	}
 	resp := &directoryapi.GetTDResp{}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.GetTDMethod, &req, &resp)
+	err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.GetTDMethod, &req, &resp)
 	return resp.Value, err
 }
 
@@ -48,13 +48,13 @@ func (cl *ReadDirectoryClient) GetTDs(
 		Limit:  limit,
 	}
 	resp := &directoryapi.GetTDsResp{}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.GetTDsMethod, &req, &resp)
+	err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.GetTDsMethod, &req, &resp)
 	return resp.Values, err
 }
 
 // NewReadDirectoryClient creates a instance of a read-directory client
 // This connects to the service with the default directory service name.
-func NewReadDirectoryClient(hc hubclient.IHubClient) *ReadDirectoryClient {
+func NewReadDirectoryClient(hc *hubclient.HubClient) *ReadDirectoryClient {
 	return &ReadDirectoryClient{
 		agentID: directoryapi.ServiceName,
 		capID:   directoryapi.ReadDirectoryCap,

@@ -29,11 +29,11 @@ var testServer *testenv.TestServer
 var serverURL string
 
 //var testClients = []msgserver.ClientAuthInfo{{
-//	ClientID:   launcher.ServiceName,
+//	SenderID:   launcher.ServiceName,
 //	ClientType: auth.ClientTypeService,
 //	Role:       auth.ClientRoleService,
 //}, {
-//	ClientID:   testenv.TestAdminUserID,
+//	SenderID:   testenv.TestAdminUserID,
 //	ClientType: auth.ClientTypeUser,
 //	Role:       auth.ClientRoleAdmin,
 //}}

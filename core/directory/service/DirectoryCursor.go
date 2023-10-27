@@ -27,7 +27,7 @@ func (svc *ReadDirectoryService) _decodeValue(key string, data []byte) (thingVal
 func (svc *ReadDirectoryService) First(
 	ctx hubclient.ServiceContext, args directoryapi.CursorFirstArgs) (*directoryapi.CursorFirstResp, error) {
 
-	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
+	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.SenderID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (svc *ReadDirectoryService) First(
 func (svc *ReadDirectoryService) Next(
 	ctx hubclient.ServiceContext, args directoryapi.CursorNextArgs) (*directoryapi.CursorNextResp, error) {
 
-	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
+	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.SenderID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (svc *ReadDirectoryService) Next(
 func (svc *ReadDirectoryService) NextN(
 	ctx hubclient.ServiceContext, args directoryapi.CursorNextNArgs) (*directoryapi.CursorNextNResp, error) {
 
-	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
+	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.SenderID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -102,5 +102,5 @@ func (svc *ReadDirectoryService) NextN(
 func (svc *ReadDirectoryService) Release(
 	ctx hubclient.ServiceContext, args directoryapi.CursorReleaseArgs) error {
 
-	return svc.cursorCache.Release(args.CursorKey, ctx.ClientID)
+	return svc.cursorCache.Release(args.CursorKey, ctx.SenderID)
 }

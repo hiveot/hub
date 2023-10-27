@@ -317,7 +317,7 @@ func (store *KVBTreeStore) SetWriteDelay(delay time.Duration) {
 // NewKVStore creates a store instance and load it with saved documents.
 // Run Connect to start the background loop and Stop to end it.
 //
-//	ClientID service or user for debugging and logging
+//	SenderID service or user for debugging and logging
 //	storeFile path to storage file or "" for in-memory only
 func NewKVStore(clientID, storePath string) (store *KVBTreeStore) {
 	writeDelay := time.Duration(3000) * time.Millisecond

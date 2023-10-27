@@ -75,7 +75,7 @@ func run(cfg *config.HubCoreConfig) error {
 	// Start the Auth service mqtt can use either argon2id or brcypt passwords
 	slog.Info("Starting Auth service")
 	cfg.Auth.Encryption = authapi.PWHASH_BCRYPT
-	authSvc, err := authservice.StartAuthService(cfg.Auth, msgServer)
+	authSvc, err := authservice.StartAuthService(cfg.Auth, msgServer, cfg.CaCert)
 	if err != nil {
 		return err
 	}

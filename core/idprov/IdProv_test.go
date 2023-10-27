@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/core/idprov/idprovclient"
 	"github.com/hiveot/hub/core/idprov/service"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubclient/hubconnect"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"os"
@@ -79,8 +79,8 @@ func TestStartStop(t *testing.T) {
 func TestAutomaticProvisioning(t *testing.T) {
 	const device1ID = "device1"
 	const device2ID = "device2"
-	device1Keys, device1Pub := certs.CreateECDSAKeys()
-	_, device2Pub := certs.CreateECDSAKeys()
+	device1KP, device1Pub := testServer.MsgServer.CreateKeyPair()
+	_, device2Pub := testServer.MsgServer.CreateKeyPair()
 
 	svc, mngCl, stopFn := newIdProvService()
 	_ = svc
@@ -116,8 +116,8 @@ func TestAutomaticProvisioning(t *testing.T) {
 
 	// token should be used to connect
 	srvURL, _, _ := testServer.MsgServer.GetServerURLs()
-	hc1 := hubconnect.NewHubClient(srvURL, device1ID, device1Keys, testServer.CertBundle.CaCert, core)
-	err = hc1.ConnectWithToken(token1)
+	hc1 := hubclient.NewHubClient(srvURL, device1ID, testServer.CertBundle.CaCert, core)
+	err = hc1.ConnectWithToken(device1KP, token1)
 	require.NoError(t, err)
 	hc1.Disconnect()
 }

@@ -5,8 +5,11 @@ The state service provides a simple key-value storage service to store applicati
 
 ## Status
 
-This service is currently in development.
+This service is functional but breaking changes can still be expected.
 
+TODO:
+1. Support for cursor for iterating keys.
+2. Support for auto-expiry of keys.
 
 ## Summary
 

@@ -35,7 +35,7 @@ func TestToken(t *testing.T) {
 	//err = s.ApplyAuth(testenv.TestClients)
 	require.NoError(t, err)
 	user2ID := "user2"
-	user2Key, user2Pub := s.CreateKP()
+	user2Key, user2Pub := s.CreateKeyPair()
 	_ = user2Key
 
 	_ = certBundle

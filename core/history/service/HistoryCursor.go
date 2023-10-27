@@ -146,7 +146,7 @@ func (svc *ReadHistoryService) First(
 	ctx hubclient.ServiceContext, args historyapi.CursorArgs) (*historyapi.CursorSingleResp, error) {
 	until := time.Now()
 
-	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
+	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.SenderID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +174,7 @@ func (svc *ReadHistoryService) Last(
 
 	// the beginning of time?
 	until := time.Time{}
-	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
+	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.SenderID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func (svc *ReadHistoryService) Last(
 func (svc *ReadHistoryService) Next(
 	ctx hubclient.ServiceContext, args historyapi.CursorArgs) (*historyapi.CursorSingleResp, error) {
 
-	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
+	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.SenderID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +261,7 @@ func (svc *ReadHistoryService) Prev(
 	ctx hubclient.ServiceContext, args historyapi.CursorArgs) (*historyapi.CursorSingleResp, error) {
 
 	until := time.Time{}
-	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
+	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.SenderID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +314,7 @@ func (svc *ReadHistoryService) PrevN(
 func (svc *ReadHistoryService) Release(
 	ctx hubclient.ServiceContext, args historyapi.CursorReleaseArgs) error {
 
-	return svc.cursorCache.Release(ctx.ClientID, args.CursorKey)
+	return svc.cursorCache.Release(ctx.SenderID, args.CursorKey)
 }
 
 // Seek positions the cursor at the given searchKey and corresponding value.
@@ -327,10 +327,10 @@ func (svc *ReadHistoryService) Seek(
 	//if err != nil {
 	slog.Info("Seek using timestamp",
 		slog.Int64("timestampMsec", args.TimeStampMSec),
-		slog.String("clientID", ctx.ClientID),
+		slog.String("clientID", ctx.SenderID),
 	)
 
-	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.ClientID, true)
+	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.SenderID, true)
 	if err != nil {
 		return nil, err
 	}

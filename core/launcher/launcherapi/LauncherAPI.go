@@ -83,6 +83,11 @@ type StopPluginResp struct {
 
 const StopAllPluginsMethod = "stopAllPlugins"
 
+type StopAllPluginsArgs struct {
+	// Also stop the core
+	IncludingCore bool `json:"includingCore,omitempty"`
+}
+
 // ILauncher defines the POGS based interface of the launcher service
 //type ILauncher interface {
 //

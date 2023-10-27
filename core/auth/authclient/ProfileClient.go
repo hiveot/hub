@@ -14,7 +14,7 @@ type ProfileClient struct {
 	// capability to invoke
 	capID string
 	// connection client
-	hc hubclient.IHubClient
+	hc *hubclient.HubClient
 }
 
 // GetProfile returns a client's profile
@@ -22,7 +22,7 @@ type ProfileClient struct {
 // Managers can get other clients profiles.
 func (cl *ProfileClient) GetProfile() (profile authapi.ClientProfile, err error) {
 	resp := authapi.GetProfileResp{}
-	_, err = cl.hc.PubRPCRequest(
+	err = cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.GetProfileMethod, nil, &resp)
 	return resp.Profile, err
 }
@@ -34,7 +34,7 @@ func (cl *ProfileClient) NewToken(password string) (authToken string, err error)
 		Password: password,
 	}
 	resp := authapi.NewTokenResp{}
-	_, err = cl.hc.PubRPCRequest(
+	err = cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.NewTokenMethod, &req, &resp)
 	return resp.Token, err
 }
@@ -42,7 +42,7 @@ func (cl *ProfileClient) NewToken(password string) (authToken string, err error)
 // RefreshToken a short-lived authentication token.
 func (cl *ProfileClient) RefreshToken() (authToken string, err error) {
 	resp := authapi.RefreshTokenResp{}
-	_, err = cl.hc.PubRPCRequest(
+	err = cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.RefreshTokenMethod, nil, &resp)
 	return resp.Token, err
 }
@@ -54,7 +54,7 @@ func (cl *ProfileClient) SetServicePermissions(capID string, roles []string) err
 		Capability: capID,
 		Roles:      roles,
 	}
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.SetServicePermissionsMethod, &args, nil)
 	return err
 }
@@ -64,7 +64,7 @@ func (cl *ProfileClient) UpdateName(newName string) error {
 	args := authapi.UpdateNameArgs{
 		NewName: newName,
 	}
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.UpdateNameMethod, &args, nil)
 	return err
 }
@@ -75,7 +75,7 @@ func (cl *ProfileClient) UpdatePassword(newPassword string) error {
 	args := authapi.UpdatePasswordArgs{
 		NewPassword: newPassword,
 	}
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.UpdatePasswordMethod, &args, nil)
 	return err
 }
@@ -86,7 +86,7 @@ func (cl *ProfileClient) UpdatePubKey(newPubKey string) error {
 	args := authapi.UpdatePubKeyArgs{
 		NewPubKey: newPubKey,
 	}
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.UpdatePubKeyMethod, &args, nil)
 
 	// TBD: as the connection is no longer valid, might as well disconnect it to avoid confusion.
@@ -97,7 +97,7 @@ func (cl *ProfileClient) UpdatePubKey(newPubKey string) error {
 // NewProfileClient returns an auth client for managing a user's profile
 //
 //	hc is the hub client connection to use
-func NewProfileClient(hc hubclient.IHubClient) *ProfileClient {
+func NewProfileClient(hc *hubclient.HubClient) *ProfileClient {
 	cl := ProfileClient{
 		hc:      hc,
 		agentID: authapi.AuthServiceName,

@@ -25,7 +25,7 @@ import (
 //	}
 //}
 
-func HistoryListCommand(hc *hubclient.IHubClient) *cli.Command {
+func HistoryListCommand(hc **hubclient.HubClient) *cli.Command {
 	limit := 100
 	return &cli.Command{
 		Name:      "lev",
@@ -54,7 +54,7 @@ func HistoryListCommand(hc *hubclient.IHubClient) *cli.Command {
 	}
 }
 
-func HistoryLatestCommand(hc *hubclient.IHubClient) *cli.Command {
+func HistoryLatestCommand(hc **hubclient.HubClient) *cli.Command {
 	return &cli.Command{
 		Name:      "lla",
 		Usage:     "List latest values of a thing",
@@ -70,7 +70,7 @@ func HistoryLatestCommand(hc *hubclient.IHubClient) *cli.Command {
 	}
 }
 
-//func HistoryRetainCommand(hc *hubclient.IHubClient) *cli.Command {
+//func HistoryRetainCommand(hc **hubclient.HubClient) *cli.Command {
 //	return &cli.Command{
 //		Name:  "shre",
 //		Usage: "Show history retained events",
@@ -110,7 +110,7 @@ func HistoryLatestCommand(hc *hubclient.IHubClient) *cli.Command {
 //}
 
 // HandleListEvents lists the history content
-func HandleListEvents(hc hubclient.IHubClient, agentID, thingID string, name string, limit int) error {
+func HandleListEvents(hc *hubclient.HubClient, agentID, thingID string, name string, limit int) error {
 	rd := historyclient.NewReadHistoryClient(hc)
 	cursor, _, err := rd.GetCursor(agentID, thingID, name)
 	if err != nil {
@@ -136,7 +136,7 @@ func HandleListEvents(hc hubclient.IHubClient, agentID, thingID string, name str
 
 //
 //// HandleListRetainedEvents lists the events that are retained
-//func HandleListRetainedEvents(hc hubclient.IHubClient) error {
+//func HandleListRetainedEvents(hc *hubclient.HubClient) error {
 //
 //	var hist history.IHistoryService
 //	var mngRet history.IManageRetention
@@ -171,7 +171,7 @@ func HandleListEvents(hc hubclient.IHubClient, agentID, thingID string, name str
 //}
 
 func HandleListLatestEvents(
-	hc hubclient.IHubClient, agentID string, thingID string) error {
+	hc *hubclient.HubClient, agentID string, thingID string) error {
 	rd := historyclient.NewReadHistoryClient(hc)
 
 	tvList, err := rd.GetLatest(agentID, thingID, nil)

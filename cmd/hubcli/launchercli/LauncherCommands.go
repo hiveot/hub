@@ -8,7 +8,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func LauncherListCommand(hc *hubclient.IHubClient) *cli.Command {
+func LauncherListCommand(hc **hubclient.HubClient) *cli.Command {
 
 	return &cli.Command{
 		Name: "ls",
@@ -26,7 +26,7 @@ func LauncherListCommand(hc *hubclient.IHubClient) *cli.Command {
 	}
 }
 
-func LauncherStartCommand(hc *hubclient.IHubClient) *cli.Command {
+func LauncherStartCommand(hc **hubclient.HubClient) *cli.Command {
 
 	return &cli.Command{
 		Name: "start",
@@ -45,7 +45,7 @@ func LauncherStartCommand(hc *hubclient.IHubClient) *cli.Command {
 	}
 }
 
-func LauncherStopCommand(hc *hubclient.IHubClient) *cli.Command {
+func LauncherStopCommand(hc **hubclient.HubClient) *cli.Command {
 
 	return &cli.Command{
 		Name: "stop",
@@ -64,7 +64,7 @@ func LauncherStopCommand(hc *hubclient.IHubClient) *cli.Command {
 }
 
 // HandleListServices prints a list of available services
-func HandleListServices(hc hubclient.IHubClient) error {
+func HandleListServices(hc *hubclient.HubClient) error {
 
 	if hc == nil {
 		return fmt.Errorf("no Hub connection")
@@ -108,7 +108,7 @@ func HandleListServices(hc hubclient.IHubClient) error {
 }
 
 // HandleStartService starts a service
-func HandleStartService(serviceName string, hc hubclient.IHubClient) error {
+func HandleStartService(serviceName string, hc *hubclient.HubClient) error {
 	var err error
 	if hc == nil {
 		return fmt.Errorf("no Hub connection")
@@ -138,7 +138,7 @@ func HandleStartService(serviceName string, hc hubclient.IHubClient) error {
 }
 
 // HandleStopService stops a service
-func HandleStopService(serviceName string, hc hubclient.IHubClient) error {
+func HandleStopService(serviceName string, hc *hubclient.HubClient) error {
 	var err error
 
 	if hc == nil {

@@ -9,42 +9,63 @@ The Hub for the *Hive of Things* provides a secure core and plugins to view and 
 
 This project has moved on from the microservice/RPC iteration and is now being converted to a messaging based approach using NATS and MQTT. 
 
-Status: The status of the Hub is pre-alpha development (Sept 2023). 
+Status: The status of the Hub is pre-alpha development (Oct 2023). 
 
 ### Pre-Alpha Road Map - Messaging Core [alpha] 
-1. ~~natscore - Core using nats message bus~~ [completed]
-2. ~~mqttcore - Core using mqtt message bus~~ [completed]
-3. ~~auth - Authentication management of devices, services and users~~ [completed]
-4. ~~auth - Authorization for message bus access~~ [completed]
-5. ~~lib - Golang client library~~ [completed]
-6. ~~hubcli - CLI for Hub administration~~ [completed]
-7. ~~Launcher service for running and monitoring plugins~~ [completed]
-8. ~~Update documentation~~ [completed]
+1. ~~natscore - Core using nats message bus~~ [done]
+2. ~~mqttcore - Core using mqtt message bus~~ [done]
+3. ~~auth - Authentication management of devices, services and users~~ [done]
+4. ~~auth - Authorization for message bus access~~ [done]
+5. ~~lib - Golang client library~~ [done]
+6. ~~hubcli - CLI for Hub administration~~ [done]
+7. ~~Launcher service for running and monitoring plugins~~ [done]
+8. ~~Update documentation~~ [done]
    * [HiveOT Overview](https://hiveot.github.io/)
    * [HiveOT design overview](docs/hiveot-design-overview.md) 
    * [Thing TDs](docs/README-TD.md)
 
 ### Alpha Releases Feature Road Map - Core Services
-1. ~~certs - Certificate management for CA and server certificates~~ [completed]
-2. ~~owserver - OWServer 1-wire protocol binding~~ [completed]
-3. ~~directory - directory service for serving TDs (Thing Descriptions) to users~~ [completed]
-4. ~~history - history service for serving event history~~ [completed]
-5. state - state service for storing client state in a key-value store
-6. hiveoview - dashboard viewer for web browsers
+1. ~~certs - Certificate management for CA and server certificates~~ [done]
+2. ~~directory - directory service for serving TDs (Thing Descriptions) to users~~ [done]
+3. ~~history - history service for serving event history~~ [done]
+4. ~~idprov - Provisioning service for dynamic provisioning Thing devices~~ [done]
+5. ~~state - state service for storing client state in a key-value store~~ [done]
+6. ipnet - network scanner binding for information on devices on the local network
+7. hiveoview - dashboard viewer for web browsers
+   1. Messaging websocket support
+   1. Base view with web server; auth password/token login
+   1. Admin View
+      1. Client management Panel
+      1. Provisioning Panel
+      1. Launcher Panel
+   1. Directory View: Agents and Things
+      1. List of Agents and Things
+      2. Thing Config View (for operators+)
+   1. History View
+   1. Dashboard view
+      1. Thing value selector
+      1. Card tile
+      1. List tile
+      1. Graph tile
+      2. Image tile
+   
 
 ### Beta Releases Feature Road Map - Protocol Binding Plugins
+1. ~~owserver - OWServer 1-wire protocol binding~~ [done]
 1. zwavejs - ZWave protocol binding  
 1. isy99x - ISY99 legacy Insteon protocol binding 
 1. openweathermap - Weather service protocol binding
 1. locate - Locate people and devices
 
 ### Future Releases Road Map  
-1. provisioning - Provisioning service for dynamic provisioning Thing devices
+1. idprov - add monitor for rogue DNS-SD provisioning services
+2. netscan - add snmp support
 1. rules - Automation rules service
 1. notify - Notification service using email, SMS, VoIP
+1. lora - LoraWan protocol binding
 1. coap - CoAP protocol binding
 1. zigbee - Zigbee protocol binding
-1. certs - LetsEncrypt certificate management integration
+1. certs - add LetsEncrypt certificate management integration
 1. bridge - Bridge service to connect Hubs
 1. Android native application
 1. motioncam - Camera motion detection service

@@ -7,7 +7,9 @@ import (
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/hubconnect"
+	"github.com/hiveot/hub/lib/hubclient/transports"
+	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
+	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
 	"log/slog"
 	"os"
 	"path"
@@ -28,7 +30,7 @@ type TestServer struct {
 // This either adds them to the server directly or adds them using auth.
 func (ts *TestServer) AddClients(newClients []msgserver.ClientAuthInfo) error {
 	var err error
-	ctx := hubclient.ServiceContext{ClientID: "testServer"}
+	ctx := hubclient.ServiceContext{SenderID: "testServer"}
 	if ts.AuthService != nil {
 		for _, authInfo := range newClients {
 			args := authapi.AddUserArgs{
@@ -62,11 +64,19 @@ func (ts *TestServer) AddClients(newClients []msgserver.ClientAuthInfo) error {
 //	agentID the connecting agent is required
 //	clientType is optional. This defaults to ClientTypeUser.
 //	clientRole is optional. This defaults to viewer.
-func (ts *TestServer) AddConnectClient(agentID string, clientType string, clientRole string) (hubclient.IHubClient, error) {
+func (ts *TestServer) AddConnectClient(
+	agentID string, clientType string, clientRole string) (*hubclient.HubClient, error) {
 	var token string
 	var err error
 
-	kp, kpPub := ts.MsgServer.CreateKP()
+	var tp transports.IHubTransport
+	serverURL, _, _ := ts.MsgServer.GetServerURLs()
+	if ts.Core == "nats" {
+		tp = natstransport.NewNatsTransport(serverURL, agentID, ts.CertBundle.CaCert)
+	} else {
+		tp = mqtttransport.NewMqttTransport(serverURL, agentID, ts.CertBundle.CaCert)
+	}
+	serKP, serPub := tp.CreateKeyPair()
 
 	if clientType == "" {
 		clientType = authapi.ClientTypeUser
@@ -74,7 +84,7 @@ func (ts *TestServer) AddConnectClient(agentID string, clientType string, client
 	if clientRole == "" {
 		clientRole = authapi.ClientRoleViewer
 	}
-	ctx := hubclient.ServiceContext{ClientID: "testServer"}
+	ctx := hubclient.ServiceContext{SenderID: "testServer"}
 
 	// if auth service is running then add the user if it doesn't exist
 	if ts.AuthService != nil {
@@ -82,7 +92,7 @@ func (ts *TestServer) AddConnectClient(agentID string, clientType string, client
 			args := authapi.AddServiceArgs{
 				ServiceID:   agentID,
 				DisplayName: "user " + agentID,
-				PubKey:      kpPub,
+				PubKey:      serPub,
 			}
 			resp, err2 := ts.AuthService.MngClients.AddService(ctx, args)
 			err = err2
@@ -91,7 +101,7 @@ func (ts *TestServer) AddConnectClient(agentID string, clientType string, client
 			args := authapi.AddDeviceArgs{
 				DeviceID:    agentID,
 				DisplayName: "user " + agentID,
-				PubKey:      kpPub,
+				PubKey:      serPub,
 			}
 			resp, err2 := ts.AuthService.MngClients.AddDevice(ctx, args)
 			err = err2
@@ -100,7 +110,7 @@ func (ts *TestServer) AddConnectClient(agentID string, clientType string, client
 			args := authapi.AddUserArgs{
 				UserID:      agentID,
 				DisplayName: "user " + agentID,
-				PubKey:      kpPub,
+				PubKey:      serPub,
 				Role:        clientRole,
 			}
 			resp, err2 := ts.AuthService.MngClients.AddUser(ctx, args)
@@ -112,21 +122,28 @@ func (ts *TestServer) AddConnectClient(agentID string, clientType string, client
 		authInfo := msgserver.ClientAuthInfo{
 			ClientID:     agentID,
 			ClientType:   clientType,
-			PubKey:       kpPub,
+			PubKey:       serPub,
 			PasswordHash: "",
 			Role:         clientRole,
 		}
 		token, err = ts.MsgServer.CreateToken(authInfo)
-		ts.testClients = append(ts.testClients, authInfo)
-		ts.MsgServer.ApplyAuth(ts.testClients)
+		if err == nil {
+			ts.testClients = append(ts.testClients, authInfo)
+			err = ts.MsgServer.ApplyAuth(ts.testClients)
+		}
 	}
 	if err != nil {
 		return nil, err
 	}
 	//safeConn := packets.NewThreadSafeConn(conn)
-	serverURL, _, _ := ts.MsgServer.GetServerURLs()
-	hc := hubconnect.NewHubClient(serverURL, agentID, kp, ts.CertBundle.CaCert, ts.Core)
-	err = hc.ConnectWithToken(token)
+	//serverURL, _, _ := ts.MsgServer.GetServerURLs()
+	//if ts.Core == "nats" {
+	//	tp = natstransport.NewNatsTransport(serverURL, agentID, ts.CertBundle.CaCert)
+	//} else {
+	//	tp = mqtttransport.NewMqttTransport(serverURL, agentID, ts.CertBundle.CaCert)
+	//}
+	hc := hubclient.NewHubClientFromTransport(tp, agentID)
+	err = hc.ConnectWithToken(serKP, token)
 
 	return hc, err
 }
@@ -138,7 +155,8 @@ func (ts *TestServer) StartAuth() (err error) {
 	_ = os.RemoveAll(testDir)
 	authConfig := config.AuthConfig{}
 	_ = authConfig.Setup(testDir, testDir)
-	ts.AuthService, err = authservice.StartAuthService(authConfig, ts.MsgServer)
+	ts.AuthService, err = authservice.StartAuthService(
+		authConfig, ts.MsgServer, ts.CertBundle.CaCert)
 	return err
 }
 

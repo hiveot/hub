@@ -11,7 +11,7 @@ import (
 	"github.com/hiveot/hub/core/msgserver"
 	jwtauth2 "github.com/hiveot/hub/core/msgserver/mqttmsgserver/jwtauth"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubclient/mqtthubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
 	"github.com/hiveot/hub/lib/vocab"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/packets"
@@ -58,16 +58,18 @@ func (hook *MqttAuthHook) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
 	return nil
 }
 
-// CreateKP creates a keypair for use in connecting or signing.
-// This returns the key pair and its public key string.
-func (hook *MqttAuthHook) CreateKP() (interface{}, string) {
+// CreateKeyPair creates a keypair for use in connecting or signing.
+// This returns the serialized private key and public key strings.
+// NOTE: intended for testing. Might be deprecated in the future.
+func (hook *MqttAuthHook) CreateKeyPair() (string, string) {
 	kp, _ := certs.CreateECDSAKeys()
 
 	x509EncodedPub, _ := x509.MarshalPKIXPublicKey(&kp.PublicKey)
-
 	pemEncodedPub := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x509EncodedPub})
 
-	return kp, string(pemEncodedPub)
+	serializedKP, _ := certs.PrivateKeyToPEM(kp)
+
+	return serializedKP, string(pemEncodedPub)
 }
 
 // CreateToken creates a new JWT authtoken for a client.
@@ -223,7 +225,7 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 
 	// 2. Break down the topic to match it with the permissions
 	msgType, agentID, thingID, name, senderID, err :=
-		mqtthubclient.SplitTopic(topic)
+		mqtttransport.SplitTopic(topic)
 	if err != nil {
 		// invalid topic format.
 		return false

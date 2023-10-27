@@ -8,7 +8,7 @@ import (
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/natshubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/lib/vocab"
 	"github.com/nats-io/nats-server/v2/server"
@@ -89,14 +89,15 @@ func (srv *NatsMsgServer) ConnectInProcNC(serviceID string, clientKP nkeys.KeyPa
 // Intended for the core services to connect to the server.
 //
 //	serviceID of the connecting service
-func (srv *NatsMsgServer) ConnectInProc(serviceID string) (hubclient.IHubClient, error) {
+func (srv *NatsMsgServer) ConnectInProc(serviceID string) (*hubclient.HubClient, error) {
 
 	nc, err := srv.ConnectInProcNC(serviceID, nil)
 	if err != nil {
 		return nil, err
 	}
-	hc := natshubclient.NewNatsHubClient("", serviceID, srv.Config.CoreServiceKP, nil)
-	err = hc.ConnectWithConn("", nc)
+	tp := natstransport.NewNatsTransport("", serviceID, nil)
+	err = tp.ConnectWithConn(nc)
+	hc := hubclient.NewHubClientFromTransport(tp, serviceID)
 	return hc, err
 }
 
@@ -166,7 +167,9 @@ func (srv *NatsMsgServer) Start() (err error) {
 	_, err = js.StreamInfo(EventsIntakeStreamName)
 	if err != nil {
 		// The intake stream receives events from all publishers and things
-		subj := natshubclient.MakeSubject(vocab.MessageTypeEvent, "", "", "", "")
+		// FIXME: the format is already defined in the client.
+		subj := natstransport.MakeSubject(vocab.MessageTypeEvent, "", "", "", "")
+
 		cfg := &nats.StreamConfig{
 			Name:        EventsIntakeStreamName,
 			Description: "HiveOT Events Intake Stream",

@@ -10,7 +10,7 @@ import (
 // service using the message bus.
 // This requires admin permissions.
 type ManageIdProvClient struct {
-	hc hubclient.IHubClient
+	hc *hubclient.HubClient
 	// agentID of the service
 	serviceID string
 	// capabilityID of this capability
@@ -23,7 +23,7 @@ func (cl *ManageIdProvClient) ApproveRequest(ClientID string, clientType string)
 		ClientID:   ClientID,
 		ClientType: clientType,
 	}
-	_, err := cl.hc.PubRPCRequest(cl.serviceID, cl.capID,
+	err := cl.hc.PubRPCRequest(cl.serviceID, cl.capID,
 		idprovapi.ApproveRequestMethod, &args, nil)
 
 	return err
@@ -39,7 +39,7 @@ func (cl *ManageIdProvClient) GetRequests(
 		Rejected: rejected,
 	}
 	resp := idprovapi.GetRequestsResp{}
-	_, err := cl.hc.PubRPCRequest(cl.serviceID, cl.capID,
+	err := cl.hc.PubRPCRequest(cl.serviceID, cl.capID,
 		idprovapi.GetRequestsMethod, &args, &resp)
 
 	return resp.Requests, err
@@ -52,7 +52,7 @@ func (cl *ManageIdProvClient) PreApproveDevices(
 	args := idprovapi.PreApproveClientsArgs{
 		Approvals: approvals,
 	}
-	_, err := cl.hc.PubRPCRequest(cl.serviceID, cl.capID,
+	err := cl.hc.PubRPCRequest(cl.serviceID, cl.capID,
 		idprovapi.PreApproveClientsMethod, &args, nil)
 
 	return err
@@ -61,7 +61,7 @@ func (cl *ManageIdProvClient) PreApproveDevices(
 // RejectRequest rejects a pending provisioning request
 func (cl *ManageIdProvClient) RejectRequest(clientID string) error {
 	args := idprovapi.RejectRequestArgs{ClientID: clientID}
-	_, err := cl.hc.PubRPCRequest(cl.serviceID, cl.capID,
+	err := cl.hc.PubRPCRequest(cl.serviceID, cl.capID,
 		idprovapi.RejectRequestMethod, &args, nil)
 
 	return err
@@ -77,13 +77,13 @@ func (cl *ManageIdProvClient) SubmitRequest(
 		MAC:        mac,
 	}
 	resp := idprovapi.ProvisionRequestResp{}
-	_, err = cl.hc.PubRPCRequest(cl.serviceID, cl.capID,
+	err = cl.hc.PubRPCRequest(cl.serviceID, cl.capID,
 		idprovapi.SubmitRequestMethod, &args, &resp)
 
 	return &resp.Status, resp.Token, err
 }
 
-func NewIdProvManageClient(hc hubclient.IHubClient) *ManageIdProvClient {
+func NewIdProvManageClient(hc *hubclient.HubClient) *ManageIdProvClient {
 	cl := &ManageIdProvClient{
 		hc: hc,
 		//

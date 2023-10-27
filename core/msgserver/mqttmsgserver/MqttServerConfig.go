@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubclient/mqtthubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
 	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
 	"path"
@@ -28,7 +28,7 @@ type MqttServerConfig struct {
 	// Disable running the embedded messaging server. Default False
 	NoAutoStart bool `yaml:"noAutoStart,omitempty"`
 
-	// the in-proc UDS name to use. Default is "@/MqttInMemUDSProd" (see MqttHubClient)
+	// the in-proc UDS name to use. Default is "@/MqttInMemUDSProd" (see MqttHubTransport)
 	InMemUDSName string `yaml:"inMemUDSName,omitempty"`
 
 	// The certs and keys are set directly
@@ -76,7 +76,7 @@ func (cfg *MqttServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 		cfg.LogLevel = "warn"
 	}
 	if cfg.InMemUDSName == "" {
-		cfg.InMemUDSName = mqtthubclient.MqttInMemUDSProd
+		cfg.InMemUDSName = mqtttransport.MqttInMemUDSProd
 	}
 
 	// Step 2: generate missing certificates

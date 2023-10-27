@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/thing"
 	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
@@ -18,7 +19,7 @@ import (
 type UpdateDirectoryService struct {
 	// bucket that holds the TD documents
 	bucket    buckets.IBucket
-	updateSub hubclient.ISubscription
+	updateSub transports.ISubscription
 }
 
 // CreateUpdateDirTD a new Thing TD document describing the update directory capability
@@ -32,7 +33,7 @@ func (svc *UpdateDirectoryService) CreateUpdateDirTD() *thing.TD {
 
 func (svc *UpdateDirectoryService) RemoveTD(ctx hubclient.ServiceContext, args directoryapi.RemoveTDArgs) error {
 	slog.Info("RemoveTD",
-		slog.String("senderID", ctx.ClientID),
+		slog.String("senderID", ctx.SenderID),
 		slog.String("agentID", args.AgentID),
 		slog.String("thingID", args.ThingID))
 
@@ -43,13 +44,13 @@ func (svc *UpdateDirectoryService) RemoveTD(ctx hubclient.ServiceContext, args d
 
 func (svc *UpdateDirectoryService) UpdateTD(ctx hubclient.ServiceContext, args directoryapi.UpdateTDArgs) error {
 	slog.Info("UpdateTD",
-		slog.String("senderID", ctx.ClientID),
+		slog.String("senderID", ctx.SenderID),
 		slog.String("agentID", args.AgentID),
 		slog.String("thingID", args.ThingID))
 
 	// store the TD ThingValue
 	thingValue := thing.NewThingValue(
-		args.AgentID, args.ThingID, vocab.EventNameTD, args.TDDoc)
+		vocab.MessageTypeEvent, args.AgentID, args.ThingID, vocab.EventNameTD, args.TDDoc, ctx.SenderID)
 	bucketData, _ := json.Marshal(thingValue)
 	thingAddr := args.AgentID + "/" + args.ThingID
 	err := svc.bucket.Set(thingAddr, bucketData)
@@ -67,7 +68,7 @@ func (svc *UpdateDirectoryService) Stop() {
 //
 //	hc with the message bus connection
 //	thingBucket is the open bucket used to store TDs
-func StartUpdateDirectoryService(hc hubclient.IHubClient, bucket buckets.IBucket) (
+func StartUpdateDirectoryService(hc *hubclient.HubClient, bucket buckets.IBucket) (
 	svc *UpdateDirectoryService, err error) {
 
 	svc = &UpdateDirectoryService{
@@ -77,8 +78,7 @@ func StartUpdateDirectoryService(hc hubclient.IHubClient, bucket buckets.IBucket
 		directoryapi.UpdateTDMethod: svc.UpdateTD,
 		directoryapi.RemoveTDMethod: svc.RemoveTD,
 	}
-	svc.updateSub, err = hubclient.SubRPCCapability(
-		hc, directoryapi.UpdateDirectoryCap, capMethods)
+	svc.updateSub, err = hc.SubRPCCapability(directoryapi.UpdateDirectoryCap, capMethods)
 
 	return svc, err
 }

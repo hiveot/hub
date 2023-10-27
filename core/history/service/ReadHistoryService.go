@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/core/history/historyapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"log/slog"
 	"time"
 
@@ -26,7 +27,7 @@ type ReadHistoryService struct {
 	// provides concurrency control.
 	getPropertiesFunc GetPropertiesFunc
 
-	readSub   hubclient.ISubscription
+	readSub   transports.ISubscription
 	isRunning bool
 }
 
@@ -36,7 +37,7 @@ func (svc *ReadHistoryService) GetCursor(
 	ctx hubclient.ServiceContext, args historyapi.GetCursorArgs) (*historyapi.GetCursorResp, error) {
 
 	if args.AgentID == "" || args.ThingID == "" {
-		return nil, fmt.Errorf("missing agentID or thingID from client '%s'", ctx.ClientID)
+		return nil, fmt.Errorf("missing agentID or thingID from client '%s'", ctx.SenderID)
 	}
 	thingAddr := args.AgentID + "/" + args.ThingID
 	slog.Debug("GetCursor for bucket: ", "addr", thingAddr)
@@ -46,7 +47,7 @@ func (svc *ReadHistoryService) GetCursor(
 	if err != nil {
 		return nil, err
 	}
-	key := svc.cursorCache.Add(cursor, bucket, ctx.ClientID, time.Minute)
+	key := svc.cursorCache.Add(cursor, bucket, ctx.SenderID, time.Minute)
 	resp := &historyapi.GetCursorResp{CursorKey: key}
 	return resp, nil
 }
@@ -77,7 +78,7 @@ func (svc *ReadHistoryService) Stop() {
 //	thingBucket is the open bucket used to store history data
 //	getPropertiesFunc implements the aggregation of the Thing's most recent property values
 func StartReadHistoryService(
-	hc hubclient.IHubClient, bucketStore buckets.IBucketStore, getPropertiesFunc GetPropertiesFunc,
+	hc *hubclient.HubClient, bucketStore buckets.IBucketStore, getPropertiesFunc GetPropertiesFunc,
 ) (svc *ReadHistoryService, err error) {
 
 	svc = &ReadHistoryService{
@@ -98,8 +99,7 @@ func StartReadHistoryService(
 		historyapi.GetCursorMethod:     svc.GetCursor,
 		historyapi.GetLatestMethod:     svc.GetLatest,
 	}
-	svc.readSub, err = hubclient.SubRPCCapability(
-		hc, historyapi.ReadHistoryCap, capMethods)
+	svc.readSub, err = hc.SubRPCCapability(historyapi.ReadHistoryCap, capMethods)
 	if err != nil {
 		svc.cursorCache.Stop()
 	}

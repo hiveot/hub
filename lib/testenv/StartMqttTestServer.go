@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/core/msgserver/mqttmsgserver"
 	"github.com/hiveot/hub/core/msgserver/mqttmsgserver/service"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubclient/mqtthubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
 	"os"
 	"path"
 )
@@ -25,7 +25,7 @@ func StartMqttTestServer() (
 		WSPort:       9991,
 		CaCert:       certBundle.CaCert,
 		CaKey:        certBundle.CaKey,
-		InMemUDSName: mqtthubclient.MqttInMemUDSTest,
+		InMemUDSName: mqtttransport.MqttInMemUDSTest,
 		LogLevel:     "info",
 	}
 	tmpDir := path.Join(os.TempDir(), "mqtt-testserver")

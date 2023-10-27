@@ -8,7 +8,7 @@ import (
 	"github.com/hiveot/hub/core/certs/service/selfsigned"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubclient/hubconnect"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/testenv"
 	"os"
 	"path"
@@ -28,7 +28,7 @@ var serverURL string
 
 // Factory for creating service instance. Currently the only implementation is selfsigned.
 func StartService() (svc *certsclient.CertsClient, stopFunc func()) {
-	adminKey, adminPub := testServer.MsgServer.CreateKP()
+	adminKP, adminPub := testServer.MsgServer.CreateKeyPair()
 	adminID := "admin"
 
 	testClients := []msgserver.ClientAuthInfo{{
@@ -62,8 +62,8 @@ func StartService() (svc *certsclient.CertsClient, stopFunc func()) {
 
 	//--- connect the certs client as admin
 	adminToken, err := testServer.MsgServer.CreateToken(testClients[1])
-	hc2 := hubconnect.NewHubClient(serverURL, adminID, adminKey, testServer.CertBundle.CaCert, testServer.Core)
-	err = hc2.ConnectWithToken(adminToken)
+	hc2 := hubclient.NewHubClient(serverURL, adminID, testServer.CertBundle.CaCert, testServer.Core)
+	err = hc2.ConnectWithToken(adminKP, adminToken)
 	certClient := certsclient.NewCertsClient(hc2)
 
 	return certClient, func() {

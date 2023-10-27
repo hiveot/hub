@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/core/idprov/idprovapi"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"log/slog"
 	"sync"
 	"time"
@@ -18,8 +19,8 @@ type ManageIdProvService struct {
 	requests map[string]idprovapi.ProvisionStatus
 
 	//
-	hc     hubclient.IHubClient
-	mngSub hubclient.ISubscription
+	hc     *hubclient.HubClient
+	mngSub transports.ISubscription
 	// client of auth service used to create tokens
 	authSvc *authclient.ManageClients
 	// mutex to guard access to maps
@@ -35,7 +36,7 @@ func (svc *ManageIdProvService) ApproveRequest(ctx hubclient.ServiceContext,
 	defer svc.mux.Unlock()
 
 	slog.Info("ApproveRequest",
-		slog.String("senderID", ctx.ClientID),
+		slog.String("senderID", ctx.SenderID),
 		slog.String("deviceID", args.ClientID))
 	status, found := svc.requests[args.ClientID]
 	if !found {
@@ -76,12 +77,12 @@ func (svc *ManageIdProvService) PreApproveClients(ctx hubclient.ServiceContext,
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 	slog.Info("PreApproveClients",
-		slog.String("senderID", ctx.ClientID),
+		slog.String("senderID", ctx.SenderID),
 		slog.Int("count", len(args.Approvals)))
 
 	for _, approval := range args.Approvals {
 		if approval.ClientID == "" {
-			slog.Warn("PreApproval of client without clientID", "clientID", ctx.ClientID)
+			slog.Warn("PreApproval of client without clientID", "clientID", ctx.SenderID)
 		} else {
 			svc.requests[approval.ClientID] = idprovapi.ProvisionStatus{
 				ClientID:    approval.ClientID,
@@ -103,7 +104,7 @@ func (svc *ManageIdProvService) RejectRequest(ctx hubclient.ServiceContext,
 	defer svc.mux.Unlock()
 
 	slog.Info("RejectRequest",
-		slog.String("senderID", ctx.ClientID),
+		slog.String("senderID", ctx.SenderID),
 		slog.String("deviceID", args.ClientID))
 	status, found := svc.requests[args.ClientID]
 	if !found {
@@ -127,7 +128,7 @@ func (svc *ManageIdProvService) SubmitRequest(ctx hubclient.ServiceContext,
 	var token string
 
 	slog.Info("SubmitRequest",
-		slog.String("senderID", ctx.ClientID),
+		slog.String("senderID", ctx.SenderID),
 		slog.String("deviceID", args.ClientID))
 	status, found := svc.requests[args.ClientID]
 	if !found {
@@ -201,10 +202,10 @@ func (svc *ManageIdProvService) Stop() {
 	}
 }
 
-func StartManageIdProvService(hc hubclient.IHubClient) (*ManageIdProvService, error) {
+func StartManageIdProvService(hc *hubclient.HubClient) (*ManageIdProvService, error) {
 
 	svc := &ManageIdProvService{
-		// map of requests by ClientID
+		// map of requests by SenderID
 		requests: make(map[string]idprovapi.ProvisionStatus),
 		hc:       hc,
 	}
@@ -212,7 +213,7 @@ func StartManageIdProvService(hc hubclient.IHubClient) (*ManageIdProvService, er
 	// the auth service is used to create credentials
 	svc.authSvc = authclient.NewManageClients(svc.hc)
 
-	_, err := hubclient.SubRPCCapability(svc.hc, idprovapi.ManageProvisioningCap,
+	_, err := svc.hc.SubRPCCapability(idprovapi.ManageProvisioningCap,
 		map[string]interface{}{
 			idprovapi.ApproveRequestMethod:    svc.ApproveRequest,
 			idprovapi.GetRequestsMethod:       svc.GetRequests,

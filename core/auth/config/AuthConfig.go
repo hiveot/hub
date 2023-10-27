@@ -25,13 +25,17 @@ type AuthConfig struct {
 	// NoAutoStart prevents the auth service for auto starting. Intended for testing or custom implementation.
 	NoAutoStart bool `yaml:"noAutoStart,omitempty"`
 
-	// Setup for an administrator account
-	AdminUserKeyFile   string `yaml:"adminUserKeyFile,omitempty"`   // default: admin.key
-	AdminUserTokenFile string `yaml:"adminUserTokenFile,omitempty"` // default: admin.token
-
-	// Setup for an launcher account
-	LauncherKeyFile   string `yaml:"launcherKeyFile,omitempty"`   // default: launcher.key
-	LauncherTokenFile string `yaml:"launcherTokenFile,omitempty"` // default: launcher.token
+	// predefined accounts
+	// Location of client keys and tokens
+	KeysDir           string `yaml:"certsDir,omitempty"`
+	AdminAccountID    string `yaml:"adminAccountID,omitempty"`
+	LauncherAccountID string `yaml:"launcherAccountID,omitempty"`
+	//AdminUserKeyFile   string `yaml:"adminUserKeyFile,omitempty"`   // default: admin.key
+	//AdminUserTokenFile string `yaml:"adminUserTokenFile,omitempty"` // default: admin.token
+	//
+	//// Setup for an launcher account
+	//LauncherKeyFile   string `yaml:"launcherKeyFile,omitempty"`   // default: launcher.key
+	//LauncherTokenFile string `yaml:"launcherTokenFile,omitempty"` // default: launcher.token
 }
 
 // Setup ensures config is valid
@@ -62,32 +66,35 @@ func (cfg *AuthConfig) Setup(keysDir, storesDir string) error {
 	if cfg.UserTokenValidityDays == 0 {
 		cfg.UserTokenValidityDays = authapi.DefaultUserTokenValidityDays
 	}
+	cfg.KeysDir = keysDir
+	cfg.AdminAccountID = authapi.DefaultAdminUserID
+	cfg.LauncherAccountID = authapi.DefaultLauncherServiceID
 
-	if cfg.AdminUserKeyFile == "" {
-		cfg.AdminUserKeyFile = authapi.DefaultAdminUserID + ".key"
-	}
-	if !path.IsAbs(cfg.AdminUserKeyFile) {
-		cfg.AdminUserKeyFile = path.Join(keysDir, cfg.AdminUserKeyFile)
-	}
-
-	if cfg.AdminUserTokenFile == "" {
-		cfg.AdminUserTokenFile = authapi.DefaultAdminUserID + ".token"
-	}
-	if !path.IsAbs(cfg.AdminUserTokenFile) {
-		cfg.AdminUserTokenFile = path.Join(keysDir, cfg.AdminUserTokenFile)
-	}
-
-	if cfg.LauncherKeyFile == "" {
-		cfg.LauncherKeyFile = authapi.DefaultLauncherServiceID + ".key"
-	}
-	if !path.IsAbs(cfg.LauncherKeyFile) {
-		cfg.LauncherKeyFile = path.Join(keysDir, cfg.LauncherKeyFile)
-	}
-	if cfg.LauncherTokenFile == "" {
-		cfg.LauncherTokenFile = authapi.DefaultLauncherServiceID + ".token"
-	}
-	if !path.IsAbs(cfg.LauncherTokenFile) {
-		cfg.LauncherTokenFile = path.Join(keysDir, cfg.LauncherTokenFile)
-	}
+	//if cfg.AdminUserKeyFile == "" {
+	//	cfg.AdminUserKeyFile = authapi.DefaultAdminUserID + ".key"
+	//}
+	//if !path.IsAbs(cfg.AdminUserKeyFile) {
+	//	cfg.AdminUserKeyFile = path.Join(keysDir, cfg.AdminUserKeyFile)
+	//}
+	//
+	//if cfg.AdminUserTokenFile == "" {
+	//	cfg.AdminUserTokenFile = authapi.DefaultAdminUserID + ".token"
+	//}
+	//if !path.IsAbs(cfg.AdminUserTokenFile) {
+	//	cfg.AdminUserTokenFile = path.Join(keysDir, cfg.AdminUserTokenFile)
+	//}
+	//
+	//if cfg.LauncherKeyFile == "" {
+	//	cfg.LauncherKeyFile = authapi.DefaultLauncherServiceID + ".key"
+	//}
+	//if !path.IsAbs(cfg.LauncherKeyFile) {
+	//	cfg.LauncherKeyFile = path.Join(keysDir, cfg.LauncherKeyFile)
+	//}
+	//if cfg.LauncherTokenFile == "" {
+	//	cfg.LauncherTokenFile = authapi.DefaultLauncherServiceID + ".token"
+	//}
+	//if !path.IsAbs(cfg.LauncherTokenFile) {
+	//	cfg.LauncherTokenFile = path.Join(keysDir, cfg.LauncherTokenFile)
+	//}
 	return nil
 }

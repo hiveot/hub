@@ -3,7 +3,6 @@ package msgserver_test
 import (
 	"fmt"
 	"github.com/hiveot/hub/core/auth/authapi"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/thing"
@@ -12,7 +11,7 @@ import (
 	"time"
 )
 
-const core = "mqtt"
+const core = "nats"
 
 // Benchmark a simple event pub/sub
 // mqtt: 100 usec/rpc   (with ack?)
@@ -73,11 +72,10 @@ func Benchmark_Request(b *testing.B) {
 	cl2, _ := ts.AddConnectClient("rpc", authapi.ClientTypeService, authapi.ClientRoleService)
 	defer cl2.Disconnect()
 
-	sub2, _ := cl2.SubRPCRequest("cap1", func(msg *hubclient.RequestMessage) error {
+	sub2, _ := cl2.SubRPCRequest("cap1", func(msg *thing.ThingValue) ([]byte, error) {
+
 		rxCount.Add(1)
-		//time.Sleep(time.Millisecond * 10)
-		_ = msg.SendReply(msg.Payload, nil)
-		return nil
+		return msg.Data, nil
 	})
 	defer sub2.Unsubscribe()
 
@@ -89,8 +87,7 @@ func Benchmark_Request(b *testing.B) {
 				txCount.Add(1)
 				req := "request"
 				repl := ""
-				ar, err := cl1.PubRPCRequest("rpc", "cap1", "method1", &req, &repl)
-				_ = ar
+				err := cl1.PubRPCRequest("rpc", "cap1", "method1", &req, &repl)
 				_ = err
 				if req != repl {
 					b.Error("request doesn't match reply")

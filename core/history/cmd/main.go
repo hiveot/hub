@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/core/history/config"
 	"github.com/hiveot/hub/core/history/service"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
-	"github.com/hiveot/hub/lib/hubclient/hubconnect"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
@@ -21,7 +21,7 @@ func main() {
 	logging.SetLogging(env.LogLevel, "")
 	slog.Warn("Starting history service", "clientID", env.ClientID, "loglevel", env.LogLevel)
 	// this locates the hub, load certificate, load service tokens and connect
-	hc, err := hubconnect.ConnectToHub("", env.ClientID, env.CertsDir, "")
+	hc, err := hubclient.ConnectToHub("", env.ClientID, env.CertsDir, "")
 	if err != nil {
 		slog.Error("Failed connecting to the Hub", "err", err)
 		os.Exit(1)

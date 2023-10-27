@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/thing"
 	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
@@ -19,7 +20,7 @@ type ReadDirectoryService struct {
 	// cache of remote cursors
 	cursorCache *buckets.CursorCache
 	// subscription to read directory requests
-	readSub hubclient.ISubscription
+	readSub transports.ISubscription
 }
 
 // CreateReadDirTD creates a Thing TD document describing the read directory capability
@@ -41,7 +42,7 @@ func (svc *ReadDirectoryService) GetCursor(
 	dirCursor, err := svc.bucket.Cursor(context.Background())
 	if err == nil {
 		// TODO: what lifespan is reasonable?
-		key := svc.cursorCache.Add(dirCursor, svc.bucket, ctx.ClientID, time.Minute)
+		key := svc.cursorCache.Add(dirCursor, svc.bucket, ctx.SenderID, time.Minute)
 		resp := &directoryapi.GetCursorResp{CursorKey: key}
 		return resp, nil
 	}
@@ -176,7 +177,7 @@ func (svc *ReadDirectoryService) Stop() {
 // StartReadDirectoryService starts the capability to read the directory
 // hc with the message bus connection. Its ID will be used as the agentID that provides the capability.
 // bucket is an open store bucket for reading the TD data.
-func StartReadDirectoryService(hc hubclient.IHubClient, bucket buckets.IBucket) (
+func StartReadDirectoryService(hc *hubclient.HubClient, bucket buckets.IBucket) (
 	svc *ReadDirectoryService, err error) {
 
 	svc = &ReadDirectoryService{
@@ -193,8 +194,7 @@ func StartReadDirectoryService(hc hubclient.IHubClient, bucket buckets.IBucket) 
 		directoryapi.GetTDsMethod:        svc.GetTDs,
 	}
 	// listen for requests
-	svc.readSub, err = hubclient.SubRPCCapability(
-		hc, directoryapi.ReadDirectoryCap, capMethods)
+	svc.readSub, err = hc.SubRPCCapability(directoryapi.ReadDirectoryCap, capMethods)
 
 	if err == nil {
 		svc.cursorCache.Start()

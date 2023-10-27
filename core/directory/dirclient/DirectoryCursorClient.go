@@ -17,7 +17,7 @@ type DirectoryCursorClient struct {
 	agentID string
 	// directory capability to use
 	capID string
-	hc    hubclient.IHubClient
+	hc    *hubclient.HubClient
 }
 
 // First positions the cursor at the first key in the ordered list
@@ -26,7 +26,7 @@ func (cl *DirectoryCursorClient) First() (thingValue thing.ThingValue, valid boo
 		CursorKey: cl.cursorKey,
 	}
 	resp := directoryapi.CursorFirstResp{}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.CursorFirstMethod, &req, &resp)
+	err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.CursorFirstMethod, &req, &resp)
 	cl.cursorKey = resp.CursorKey
 	return resp.Value, resp.Valid, err
 }
@@ -37,7 +37,7 @@ func (cl *DirectoryCursorClient) Next() (thingValue thing.ThingValue, valid bool
 		CursorKey: cl.cursorKey,
 	}
 	resp := directoryapi.CursorFirstResp{}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.CursorNextMethod, &req, &resp)
+	err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.CursorNextMethod, &req, &resp)
 	cl.cursorKey = resp.CursorKey
 	return resp.Value, resp.Valid, err
 }
@@ -49,7 +49,7 @@ func (cl *DirectoryCursorClient) NextN(limit uint) (batch []thing.ThingValue, it
 		Limit:     limit,
 	}
 	resp := directoryapi.CursorNextNResp{}
-	_, err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.CursorNextNMethod, &req, &resp)
+	err = cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.CursorNextNMethod, &req, &resp)
 	cl.cursorKey = resp.CursorKey
 	return resp.Values, resp.ItemsRemaining, err
 }
@@ -59,7 +59,7 @@ func (cl *DirectoryCursorClient) Release() {
 	req := directoryapi.CursorReleaseArgs{
 		CursorKey: cl.cursorKey,
 	}
-	_, err := cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.CursorReleaseMethod, &req, nil)
+	err := cl.hc.PubRPCRequest(cl.agentID, cl.capID, directoryapi.CursorReleaseMethod, &req, nil)
 	_ = err
 	return
 }
@@ -71,7 +71,7 @@ func (cl *DirectoryCursorClient) Release() {
 //	agentID of the directory service
 //	capID of the read capability
 //	cursorKey is the iterator key obtain when requesting the cursor
-func NewDirectoryCursorClient(hc hubclient.IHubClient, agentID, capID string, cursorKey string) *DirectoryCursorClient {
+func NewDirectoryCursorClient(hc *hubclient.HubClient, agentID, capID string, cursorKey string) *DirectoryCursorClient {
 	cl := &DirectoryCursorClient{
 		cursorKey: cursorKey,
 		agentID:   agentID,

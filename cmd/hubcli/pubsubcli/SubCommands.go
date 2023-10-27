@@ -15,7 +15,7 @@ import (
 )
 
 // SubTDCommand shows TD publications
-func SubTDCommand(hc *hubclient.IHubClient) *cli.Command {
+func SubTDCommand(hc **hubclient.HubClient) *cli.Command {
 	return &cli.Command{
 		Name:     "subtd",
 		Usage:    "Subscribe to TD publications",
@@ -27,7 +27,7 @@ func SubTDCommand(hc *hubclient.IHubClient) *cli.Command {
 	}
 }
 
-func SubEventsCommand(hc *hubclient.IHubClient) *cli.Command {
+func SubEventsCommand(hc **hubclient.HubClient) *cli.Command {
 	return &cli.Command{
 		Name:      "subev",
 		Usage:     "Subscribe to Thing events",
@@ -57,7 +57,7 @@ func SubEventsCommand(hc *hubclient.IHubClient) *cli.Command {
 }
 
 // HandleSubTD subscribes and prints TD publications
-func HandleSubTD(hc hubclient.IHubClient) error {
+func HandleSubTD(hc *hubclient.HubClient) error {
 
 	sub, err := hc.SubEvents("", "", vocab.EventNameTD,
 		func(msg *thing.ThingValue) {
@@ -83,7 +83,7 @@ func HandleSubTD(hc hubclient.IHubClient) error {
 }
 
 // HandleSubEvents subscribes and prints value and property events
-func HandleSubEvents(hc hubclient.IHubClient, agentID string, thingID string, name string) error {
+func HandleSubEvents(hc *hubclient.HubClient, agentID string, thingID string, name string) error {
 	fmt.Printf("Subscribing to agentID: '%s', thingID: '%s', name: '%s'\n\n", agentID, thingID, name)
 
 	fmt.Printf("Time             Agent ID             Thing ID                  Event Name                     Value\n")

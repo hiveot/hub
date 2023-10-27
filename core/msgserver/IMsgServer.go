@@ -48,11 +48,10 @@ type IMsgServer interface {
 	// Core returns the running core, "nats" or "mqtt"
 	Core() string
 
-	// CreateKP creates a keypair for use in connecting or signing.
+	// CreateKeyPair creates a serialized keypair for use in connecting or signing.
 	// This returns the key pair and its public key string.
-	// The key type depends on the server implementation. The public key is always
-	// a string representation of nkey or ecdsa key.
-	CreateKP() (interface{}, string)
+	// NOTE: intended for testing. Might be deprecated in the future.
+	CreateKeyPair() (serializedKP string, pubKey string)
 
 	// CreateToken creates a new authentication token for a known client.
 	// The client must have been added with ApplyAuth and have a public key.

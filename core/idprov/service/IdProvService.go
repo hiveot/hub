@@ -30,7 +30,7 @@ const DefaultRetrySec = 12 * 3600
 type IdProvService struct {
 
 	// Hub connection
-	hc hubclient.IHubClient
+	hc *hubclient.HubClient
 	// the manage service
 	mng *ManageIdProvService
 
@@ -87,7 +87,7 @@ func (svc *IdProvService) Stop() {
 }
 
 // NewIdProvService creates a new provisioning service instance
-func NewIdProvService(hc hubclient.IHubClient, port uint, serverCert *tls.Certificate, caCert *x509.Certificate) *IdProvService {
+func NewIdProvService(hc *hubclient.HubClient, port uint, serverCert *tls.Certificate, caCert *x509.Certificate) *IdProvService {
 	svc := &IdProvService{
 		hc:         hc,
 		port:       port,

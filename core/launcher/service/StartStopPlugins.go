@@ -70,7 +70,7 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 				slog.Info("attaching stderr using multiwriter")
 			} else {
 				// just log stderr to file
-				slog.Info("attaching stderr using logfile '%s'", logfile)
+				slog.Info("attaching stderr using logfile", "logfile", logfile)
 				svcCmd.Stderr = fp
 			}
 			if svc.cfg.AttachStdout {
@@ -80,7 +80,7 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 				svcCmd.Stdout = multiwriter
 			} else {
 				// just log stdout to file
-				slog.Info("attaching stdout using logfile '%s'", logfile)
+				slog.Info("attaching stdout using logfile", "logfile", logfile)
 				svcCmd.Stdout = fp
 			}
 		} else {
@@ -94,15 +94,14 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 			svcCmd.Stdout = os.Stdout
 		}
 	}
-	// step 4: add the service client and generate the plugin credentials
+	// step 4: add the serviceID as a client and generate its credentials
 	if pluginName != CoreID {
-		keyPath := path.Join(svc.env.CertsDir, pluginName+".key")
 		tokenPath := path.Join(svc.env.CertsDir, pluginName+".token")
 
 		slog.Info("Adding plugin service client with key and token",
-			"pluginName", pluginName, "keyPath", keyPath, "tokenPath", tokenPath)
+			"pluginName", pluginName, "certsDir", svc.env.CertsDir, "tokenPath", tokenPath)
 
-		_, pubKey, err := svc.hc.LoadCreateKey(keyPath)
+		_, pubKey, err := svc.hc.LoadCreateKeyPair(pluginName, svc.env.CertsDir)
 		if err != nil {
 			slog.Error("Fail saving key for service client. Continuing... ",
 				"err", err, "pluginName", pluginName)
@@ -177,7 +176,9 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 
 	// last, update the CPU and memory status
 	svc.updateStatus(pluginInfo)
-	slog.Info("Plugin startup complete", "pluginName", pluginName)
+	if err != nil {
+		slog.Error("Plugin startup failed", "pluginName", pluginName, "err", err, "status", pluginInfo.Status)
+	}
 	return *pluginInfo, err
 }
 
@@ -213,8 +214,12 @@ func (svc *LauncherService) StartAllPlugins() (err error) {
 // StartPlugin starts the plugin with the given name
 // This creates a plugin authentication key and token files in the credentials directory (certs)
 // before starting the plugin.
-func (svc *LauncherService) StartPlugin(
-	ctx hubclient.ServiceContext, args launcherapi.StartPluginArgs) (launcherapi.StartPluginResp, error) {
+func (svc *LauncherService) StartPlugin(ctx hubclient.ServiceContext,
+	args launcherapi.StartPluginArgs) (launcherapi.StartPluginResp, error) {
+
+	slog.Warn("StartPlugin",
+		slog.String("pluginID", args.Name),
+		slog.String("senderID", ctx.SenderID))
 
 	pluginInfo, err := svc._startPlugin(args.Name)
 	resp := launcherapi.StartPluginResp{PluginInfo: pluginInfo}
@@ -223,20 +228,23 @@ func (svc *LauncherService) StartPlugin(
 
 // StopAllPlugins stops all running plugins in reverse order they were started
 // If includingCore is set then also stop the core.
-func (svc *LauncherService) StopAllPlugins(includingCore bool) (err error) {
+func (svc *LauncherService) StopAllPlugins(ctx hubclient.ServiceContext,
+	args *launcherapi.StopAllPluginsArgs) (err error) {
 
 	svc.mux.Lock()
 
 	// use a copy of the commands as the command list will be mutated
 	cmdsToStop := svc.cmds[:]
-	slog.Warn(fmt.Sprintf("Stopping %d plugins", len(cmdsToStop)))
+	slog.Warn("Stopping all plugins",
+		slog.Int("count", len(cmdsToStop)),
+		slog.String("senderID", ctx.SenderID))
 
 	svc.mux.Unlock()
 
 	// stop each service
 	for i := len(cmdsToStop) - 1; i >= 0; i-- {
 		c := cmdsToStop[i]
-		if !includingCore && svc.cfg.CoreBin != "" && strings.HasSuffix(c.Path, svc.cfg.CoreBin) {
+		if !args.IncludingCore && svc.cfg.CoreBin != "" && strings.HasSuffix(c.Path, svc.cfg.CoreBin) {
 			// don't stop the core as that would render things unreachable
 			slog.Info("Not stopping the core", "path", c.Path)
 		} else {

@@ -14,14 +14,14 @@ type StateClient struct {
 	// State storage capability
 	capID string
 	// Connection to the hub
-	hc hubclient.IHubClient
+	hc *hubclient.HubClient
 }
 
 // Delete removes the record with the given key.
 func (cl *StateClient) Delete(key string) error {
 
 	req := stateapi.DeleteArgs{Key: key}
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, stateapi.DeleteMethod, &req, nil)
 	return err
 }
@@ -32,7 +32,7 @@ func (cl *StateClient) Get(key string, record interface{}) (found bool, err erro
 
 	req := stateapi.GetArgs{Key: key}
 	resp := stateapi.GetResp{}
-	_, err = cl.hc.PubRPCRequest(
+	err = cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, stateapi.GetMethod, &req, &resp)
 	if err != nil {
 		return false, err
@@ -49,7 +49,7 @@ func (cl *StateClient) GetMultiple(keys []string) (values map[string][]byte, err
 
 	req := stateapi.GetMultipleArgs{Keys: keys}
 	resp := stateapi.GetMultipleResp{}
-	_, err = cl.hc.PubRPCRequest(
+	err = cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, stateapi.GetMultipleMethod, &req, &resp)
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func (cl *StateClient) Set(key string, record interface{}) error {
 		return err
 	}
 	req := stateapi.SetArgs{Key: key, Value: value}
-	_, err = cl.hc.PubRPCRequest(
+	err = cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, stateapi.SetMethod, &req, nil)
 	return err
 }
@@ -72,7 +72,7 @@ func (cl *StateClient) Set(key string, record interface{}) error {
 // SetMultiple writes multiple record
 func (cl *StateClient) SetMultiple(kv map[string][]byte) error {
 	req := stateapi.SetMultipleArgs{KV: kv}
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, stateapi.SetMultipleMethod, &req, nil)
 	return err
 }
@@ -80,7 +80,7 @@ func (cl *StateClient) SetMultiple(kv map[string][]byte) error {
 // NewStateClient returns a client to access state
 //
 //	hc is the hub client connection to use.
-func NewStateClient(hc hubclient.IHubClient) *StateClient {
+func NewStateClient(hc *hubclient.HubClient) *StateClient {
 	agentID := stateapi.ServiceName
 	cl := StateClient{
 		hc:      hc,

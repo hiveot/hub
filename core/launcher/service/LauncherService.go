@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/core/launcher/config"
 	"github.com/hiveot/hub/core/launcher/launcherapi"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/hubconnect"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
 	"os"
@@ -35,11 +35,11 @@ type LauncherService struct {
 	cmds []*exec.Cmd
 
 	// hub messaging client
-	hc hubclient.IHubClient
+	hc *hubclient.HubClient
 	// auth service to generate plugin keys and tokens
 	mngAuth *authclient.ManageClients
 	// subscription to receive requests
-	mngSub hubclient.ISubscription
+	mngSub transports.ISubscription
 
 	// mutex to keep things safe
 	mux sync.Mutex
@@ -203,7 +203,7 @@ func (svc *LauncherService) Start() error {
 
 	// 3: a connection to the message bus is needed
 	if svc.hc == nil {
-		svc.hc, err = hubconnect.ConnectToHub(
+		svc.hc, err = hubclient.ConnectToHub(
 			svc.env.ServerURL, svc.env.ClientID, svc.env.CertsDir, "")
 		if err != nil {
 			err = fmt.Errorf("failed starting launcher service: %w", err)
@@ -216,7 +216,7 @@ func (svc *LauncherService) Start() error {
 
 	// start listening to requests
 	//svc.mngSub, err = svc.hc.SubRPCRequest(launcher.ManageCapability, svc.HandleRequest)
-	svc.mngSub, err = hubclient.SubRPCCapability(svc.hc, launcherapi.ManageCapability,
+	svc.mngSub, err = svc.hc.SubRPCCapability(launcherapi.ManageCapability,
 		map[string]interface{}{
 			launcherapi.ListMethod:            svc.List,
 			launcherapi.StartPluginMethod:     svc.StartPlugin,
@@ -226,11 +226,9 @@ func (svc *LauncherService) Start() error {
 		})
 
 	// 4: autostart the configured 'autostart' plugins
+	// Log errors but do not stop the launcher
 	for _, name := range svc.cfg.Autostart {
-		_, err2 := svc._startPlugin(name)
-		if err2 != nil {
-			err = err2
-		}
+		_, _ = svc._startPlugin(name)
 	}
 	return err
 }
@@ -242,7 +240,8 @@ func (svc *LauncherService) Stop() error {
 		svc.mngSub = nil
 	}
 	svc.isRunning.Store(false)
-	err := svc.StopAllPlugins(true)
+	err := svc.StopAllPlugins(hubclient.ServiceContext{},
+		&launcherapi.StopAllPluginsArgs{IncludingCore: true})
 	return err
 }
 
@@ -289,7 +288,7 @@ func (svc *LauncherService) WatchPlugins() error {
 func NewLauncherService(
 	env utils.AppEnvironment,
 	cfg config.LauncherConfig,
-	hc hubclient.IHubClient,
+	hc *hubclient.HubClient,
 ) *LauncherService {
 
 	ls := &LauncherService{

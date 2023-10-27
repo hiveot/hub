@@ -12,7 +12,7 @@ type LauncherClient struct {
 	// ID of the launcher service that handles the requests
 	agentID string
 	capID   string
-	hc      hubclient.IHubClient
+	hc      *hubclient.HubClient
 }
 
 // List services
@@ -22,7 +22,7 @@ func (cl *LauncherClient) List(onlyRunning bool) ([]launcherapi.PluginInfo, erro
 		OnlyRunning: onlyRunning,
 	}
 	resp := launcherapi.ListResp{}
-	_, err := cl.hc.PubRPCRequest(cl.agentID, cl.capID, launcherapi.ListMethod, req, &resp)
+	err := cl.hc.PubRPCRequest(cl.agentID, cl.capID, launcherapi.ListMethod, req, &resp)
 	return resp.PluginInfoList, err
 }
 
@@ -38,7 +38,7 @@ func (cl *LauncherClient) StartPlugin(name string) (launcherapi.PluginInfo, erro
 		Name: name,
 	}
 	resp := launcherapi.StartPluginResp{}
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, launcherapi.StartPluginMethod, req, &resp)
 	return resp.PluginInfo, err
 }
@@ -46,7 +46,7 @@ func (cl *LauncherClient) StartPlugin(name string) (launcherapi.PluginInfo, erro
 // StartAllPlugins starts all enabled plugins
 // This returns the error from the last service that could not be started
 func (cl *LauncherClient) StartAllPlugins() error {
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, launcherapi.StartAllPluginsMethod, nil, nil)
 	return err
 }
@@ -62,15 +62,18 @@ func (cl *LauncherClient) StopPlugin(name string) (launcherapi.PluginInfo, error
 		Name: name,
 	}
 	resp := launcherapi.StopPluginResp{}
-	_, err := cl.hc.PubRPCRequest(
+	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, launcherapi.StopPluginMethod, req, &resp)
 	return resp.PluginInfo, err
 }
 
 // StopAllPlugins stops running plugins
 func (cl *LauncherClient) StopAllPlugins() error {
-	_, err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, launcherapi.StopAllPluginsMethod, nil, nil)
+	req := launcherapi.StopAllPluginsArgs{
+		IncludingCore: false,
+	}
+	err := cl.hc.PubRPCRequest(
+		cl.agentID, cl.capID, launcherapi.StopAllPluginsMethod, &req, nil)
 	return err
 }
 
@@ -78,7 +81,7 @@ func (cl *LauncherClient) StopAllPlugins() error {
 //
 //	launcherID is the optional ID of the launcher to use. Default is 'launcher'
 //	hc is the hub client connection to use.
-func NewLauncherClient(launcherID string, hc hubclient.IHubClient) *LauncherClient {
+func NewLauncherClient(launcherID string, hc *hubclient.HubClient) *LauncherClient {
 	if launcherID == "" {
 		launcherID = launcherapi.ServiceName
 	}

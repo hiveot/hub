@@ -12,7 +12,7 @@ type ReadHistoryClient struct {
 	serviceID string
 	// capability to use
 	capID string
-	hc    hubclient.IHubClient
+	hc    *hubclient.HubClient
 }
 
 // GetCursor returns an iterator for ThingValue objects containing historical events,tds or actions
@@ -29,7 +29,7 @@ func (cl *ReadHistoryClient) GetCursor(
 		Name:    name,
 	}
 	resp := historyapi.GetCursorResp{}
-	_, err = cl.hc.PubRPCRequest(cl.serviceID, cl.capID, historyapi.GetCursorMethod, &req, &resp)
+	err = cl.hc.PubRPCRequest(cl.serviceID, cl.capID, historyapi.GetCursorMethod, &req, &resp)
 	cursor = NewHistoryCursorClient(cl.hc, cl.serviceID, cl.capID, resp.CursorKey)
 	return cursor, cursor.Release, err
 }
@@ -47,12 +47,12 @@ func (cl *ReadHistoryClient) GetLatest(
 		Names:   names,
 	}
 	resp := historyapi.GetLatestResp{}
-	_, err := cl.hc.PubRPCRequest(cl.serviceID, cl.capID, historyapi.GetLatestMethod, &args, &resp)
+	err := cl.hc.PubRPCRequest(cl.serviceID, cl.capID, historyapi.GetLatestMethod, &args, &resp)
 	return resp.Values, err
 }
 
 // NewReadHistoryClient returns an instance of the read history client using the given connection
-func NewReadHistoryClient(hc hubclient.IHubClient) *ReadHistoryClient {
+func NewReadHistoryClient(hc *hubclient.HubClient) *ReadHistoryClient {
 	histCl := ReadHistoryClient{
 		hc:        hc,
 		serviceID: historyapi.ServiceName,
