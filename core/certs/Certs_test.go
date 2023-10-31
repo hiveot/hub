@@ -54,8 +54,8 @@ func StartService() (svc *certsclient.CertsClient, stopFunc func()) {
 	}
 
 	certSvc := selfsigned.NewSelfSignedCertsService(
-		testServer.CertBundle.CaCert, testServer.CertBundle.CaKey, hc1)
-	err = certSvc.Start()
+		testServer.CertBundle.CaCert, testServer.CertBundle.CaKey)
+	err = certSvc.Start(hc1)
 	if err != nil {
 		panic(err)
 	}
@@ -207,12 +207,12 @@ func TestServiceCertBadParms(t *testing.T) {
 	// Bad CA certificate
 	badCa := x509.Certificate{}
 	assert.Panics(t, func() {
-		selfsigned.NewSelfSignedCertsService(&badCa, caKey, nil)
+		selfsigned.NewSelfSignedCertsService(&badCa, caKey)
 	})
 
 	// missing CA private key
 	assert.Panics(t, func() {
-		selfsigned.NewSelfSignedCertsService(caCert, nil, nil)
+		selfsigned.NewSelfSignedCertsService(caCert, nil)
 	})
 
 	// missing service ID

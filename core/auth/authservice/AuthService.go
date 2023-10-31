@@ -30,8 +30,8 @@ type AuthService struct {
 // Start the service and activate the binding to handle requests
 // This adds an 'auth' service client and an admin user
 func (svc *AuthService) Start() (err error) {
-
-	slog.Info("starting AuthService")
+	clientID := authapi.AuthServiceName
+	slog.Warn("starting AuthService", "clientID", clientID)
 	err = svc.store.Open()
 	if err != nil {
 		return err
@@ -40,17 +40,17 @@ func (svc *AuthService) Start() (err error) {
 	// before being able to connect, the AuthService and its key must be known
 	core := svc.msgServer.Core()
 	tcpAddr, _, udsAddr := svc.msgServer.GetServerURLs()
-	svc.hc = hubclient.NewHubClient(tcpAddr, authapi.AuthServiceName, svc.caCert, core)
+	svc.hc = hubclient.NewHubClient(tcpAddr, clientID, svc.caCert, core)
 	myKP, myPubKey := svc.hc.CreateKeyPair()
 
 	// use a temporary instance of the client manager to add itself
 	mngClients := NewAuthManageClients(svc.store, nil, svc.msgServer)
 	args1 := authapi.AddServiceArgs{
-		ServiceID:   authapi.AuthServiceName,
+		ServiceID:   clientID,
 		DisplayName: "Auth Service",
 		PubKey:      myPubKey,
 	}
-	ctx := hubclient.ServiceContext{SenderID: authapi.AuthServiceName}
+	ctx := hubclient.ServiceContext{SenderID: clientID}
 	resp1, err := mngClients.AddService(ctx, args1)
 	if err != nil {
 		return fmt.Errorf("failed to setup the auth service: %w", err)
@@ -84,11 +84,11 @@ func (svc *AuthService) Start() (err error) {
 	}
 
 	// set the client roles required to use the service capabilities
-	svc.msgServer.SetServicePermissions(authapi.AuthServiceName, authapi.AuthManageClientsCapability,
+	svc.msgServer.SetServicePermissions(clientID, authapi.AuthManageClientsCapability,
 		[]string{authapi.ClientRoleAdmin})
-	svc.msgServer.SetServicePermissions(authapi.AuthServiceName, authapi.AuthManageRolesCapability,
+	svc.msgServer.SetServicePermissions(clientID, authapi.AuthManageRolesCapability,
 		[]string{authapi.ClientRoleAdmin})
-	svc.msgServer.SetServicePermissions(authapi.AuthServiceName, authapi.AuthProfileCapability,
+	svc.msgServer.SetServicePermissions(clientID, authapi.AuthProfileCapability,
 		[]string{authapi.ClientRoleViewer, authapi.ClientRoleOperator, authapi.ClientRoleManager, authapi.ClientRoleAdmin})
 
 	// FIXME, what are the permissions for other services like certs, launcher, ...?
@@ -132,6 +132,7 @@ func (svc *AuthService) Start() (err error) {
 
 // Stop the service, unsubscribe and disconnect from the server
 func (svc *AuthService) Stop() {
+	slog.Warn("Stopping AuthService")
 	if svc.MngClients != nil {
 		svc.MngClients.Stop()
 		svc.MngClients = nil

@@ -47,9 +47,9 @@ func startDirectory() (
 	// the service needs a server connection
 	hc1, err := testServer.AddConnectClient(
 		serviceID, authapi.ClientTypeService, authapi.ClientRoleService)
-	svc := service.NewDirectoryService(hc1, store)
+	svc := service.NewDirectoryService(store)
 	if err == nil {
-		err = svc.Start()
+		err = svc.Start(hc1)
 	}
 	if err != nil {
 		panic("service fails to start: " + err.Error())

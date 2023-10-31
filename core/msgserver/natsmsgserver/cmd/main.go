@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"github.com/hiveot/hub/core/auth/authapi"
@@ -10,8 +9,7 @@ import (
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver/service"
 	"github.com/hiveot/hub/lib/discovery"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/utils"
-	"log/slog"
+	"github.com/hiveot/hub/lib/plugin"
 	"net/url"
 	"os"
 	"strconv"
@@ -35,7 +33,7 @@ func main() {
 		flag.PrintDefaults()
 		fmt.Println()
 	}
-	env := utils.GetAppEnvironment("", true)
+	env := plugin.GetAppEnvironment("", true)
 	//env.Core = "nats"
 	logging.SetLogging(env.LogLevel, "")
 	fmt.Println("home: ", env.HomeDir)
@@ -65,7 +63,6 @@ func main() {
 func run(cfg *config.HubCoreConfig) error {
 	var err error
 
-	slog.Info("Starting NATS server")
 	msgServer := service.NewNatsMsgServer(&cfg.NatsServer, authapi.DefaultRolePermissions)
 	err = msgServer.Start()
 
@@ -74,7 +71,6 @@ func run(cfg *config.HubCoreConfig) error {
 	}
 
 	// Start the auth service. NATS requires brcypt passwords
-	slog.Info("Starting Auth service")
 	cfg.Auth.Encryption = authapi.PWHASH_BCRYPT
 	authSvc, err := authservice.StartAuthService(cfg.Auth, msgServer, cfg.CaCert)
 
@@ -96,8 +92,8 @@ func run(cfg *config.HubCoreConfig) error {
 	}
 
 	// wait until signal
-	fmt.Println("Hub started. ClientURL=" + serverURL)
-	utils.WaitForSignal(context.Background())
+	fmt.Println("NATS Hub Core started. ClientURL=" + serverURL)
+	plugin.WaitForSignal()
 
 	authSvc.Stop()
 	msgServer.Stop()

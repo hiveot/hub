@@ -54,6 +54,7 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/miekg/dns v1.1.56 // indirect
 	github.com/minio/highwayhash v1.0.2 // indirect
+	github.com/mostlygeek/arp v0.0.0-20170424181311-541a2129847a // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

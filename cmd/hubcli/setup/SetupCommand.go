@@ -3,12 +3,12 @@ package setup
 import (
 	"fmt"
 	"github.com/hiveot/hub/core/config"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/lib/plugin"
 	"github.com/urfave/cli/v2"
 )
 
 // SetupCommand creates the environment setup
-func SetupCommand(env *utils.AppEnvironment) *cli.Command {
+func SetupCommand(env *plugin.AppEnvironment) *cli.Command {
 	newSetup := false
 	core := "mqtt"
 	return &cli.Command{
@@ -36,7 +36,7 @@ func SetupCommand(env *utils.AppEnvironment) *cli.Command {
 }
 
 // HandleSetup ensure the hiveot environment is setup properly
-func HandleSetup(env *utils.AppEnvironment, core string, newSetup bool) error {
+func HandleSetup(env *plugin.AppEnvironment, core string, newSetup bool) error {
 	var err error
 	coreConfig := config.NewHubCoreConfig()
 	err = coreConfig.Setup(env, core, newSetup)
@@ -47,7 +47,7 @@ func HandleSetup(env *utils.AppEnvironment, core string, newSetup bool) error {
 	//if err != nil {
 	//	slog.Error("Saving config failed", "err", err)
 	//} else {
-	//	println("Config saved to: ", path.Join(coreConfig.Env.ConfigDir, config.HubCoreConfigFileName))
+	//	println("config saved to: ", path.Join(coreConfig.Env.ConfigDir, config.HubCoreConfigFileName))
 	//}
 
 	// TODO: generate a default launcher config if it doesn't exist

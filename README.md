@@ -30,7 +30,6 @@ Status: The status of the Hub is pre-alpha development (Oct 2023).
 3. ~~history - history service for serving event history~~ [done]
 4. ~~idprov - Provisioning service for dynamic provisioning Thing devices~~ [done]
 5. ~~state - state service for storing client state in a key-value store~~ [done]
-6. ipnet - network scanner binding for information on devices on the local network
 7. hiveoview - dashboard viewer for web browsers
    1. Messaging websocket support
    1. Base view with web server; auth password/token login
@@ -52,12 +51,13 @@ Status: The status of the Hub is pre-alpha development (Oct 2023).
 
 ### Beta Releases Feature Road Map - Protocol Binding Plugins
 1. ~~owserver - OWServer 1-wire protocol binding~~ [done]
+1. ~~ipnet - network scanner binding for information on devices on the local network~~ [done]
 1. zwavejs - ZWave protocol binding  
-1. isy99x - ISY99 legacy Insteon protocol binding 
+1. ~~isy99x - ISY99 legacy Insteon protocol binding~~ [done] 
 1. openweathermap - Weather service protocol binding
-1. locate - Locate people and devices
 
 ### Future Releases Road Map  
+1. locate - Locate people and devices
 1. idprov - add monitor for rogue DNS-SD provisioning services
 2. netscan - add snmp support
 1. rules - Automation rules service

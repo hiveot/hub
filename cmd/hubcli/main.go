@@ -12,6 +12,7 @@ import (
 	"github.com/hiveot/hub/cmd/hubcli/setup"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
 	"log/slog"
@@ -36,7 +37,7 @@ func main() {
 	var serverURL string
 
 	// environment defaults
-	env := utils.GetAppEnvironment("", false)
+	env := plugin.GetAppEnvironment("", false)
 	homeDir = env.HomeDir
 	certsDir = env.CertsDir
 
@@ -84,7 +85,7 @@ func main() {
 		},
 		Before: func(c *cli.Context) (err error) {
 			// reload env in case home changes
-			env = utils.GetAppEnvironment(homeDir, false)
+			env = plugin.GetAppEnvironment(homeDir, false)
 			certsDir = env.CertsDir
 			if verbose {
 				logging.SetLogging("info", "")

@@ -15,11 +15,9 @@ func WaitForSignal() {
 	// catch all signals since not explicitly listing
 	exitChannel := make(chan os.Signal, 1)
 
-	//signal.Notify(exitChannel, syscall.SIGTERM|syscall.SIGHUP|syscall.SIGINT)
-	signal.Notify(exitChannel, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(exitChannel, syscall.SIGINT, syscall.SIGTERM, syscall.SIGSEGV)
 
 	sig := <-exitChannel
-	slog.Warn("RECEIVED SIGNAL", "signal", sig)
+	slog.Warn("RECEIVED SIGNAL", "signal", sig, "for", os.Args[0])
 	fmt.Println()
-	fmt.Println(sig)
 }

@@ -48,8 +48,14 @@ func (svc *HistoryService) GetAddHistory() *AddHistory {
 
 // Start using the history service
 // This will open the store and panic if the store cannot be opened.
-func (svc *HistoryService) Start() (err error) {
-	slog.Info("Start")
+func (svc *HistoryService) Start(hc *hubclient.HubClient) (err error) {
+	slog.Warn("Starting HistoryService", "clientID", hc.ClientID())
+
+	// setup
+	svc.hc = hc
+	svc.serviceID = hc.ClientID()
+	svc.retentionMgr = NewManageRetention(hc, nil)
+
 	propsbucket := svc.bucketStore.GetBucket(PropertiesBucketName)
 	svc.propsStore = NewPropertiesStore(propsbucket)
 
@@ -105,25 +111,28 @@ func (svc *HistoryService) Start() (err error) {
 }
 
 // Stop using the history service and release resources
-func (svc *HistoryService) Stop() error {
-	slog.Info("Stop")
+func (svc *HistoryService) Stop() {
+	slog.Warn("Stopping HistoryService")
 	err := svc.propsStore.SaveChanges()
 	if err != nil {
 		slog.Error(err.Error())
 	}
 	if svc.readHistSvc != nil {
 		svc.readHistSvc.Stop()
+		svc.readHistSvc = nil
 	}
 	if svc.retentionMgr != nil {
 		svc.retentionMgr.Stop()
+		svc.retentionMgr = nil
 	}
 	if svc.eventSub != nil {
-		svc.eventSub.Unsubscribe()
+		_ = svc.eventSub.Unsubscribe()
+		svc.eventSub = nil
 	}
 	if svc.actionSub != nil {
 		svc.actionSub.Unsubscribe()
+		svc.actionSub = nil
 	}
-	return err
 }
 
 // NewHistoryService creates a new instance for the history service using the given
@@ -132,21 +141,11 @@ func (svc *HistoryService) Stop() error {
 //	config optional configuration or nil to use defaults
 //	store contains an opened bucket store to use.
 //	hc connection with the hub
-func NewHistoryService(
-	hc *hubclient.HubClient, store buckets.IBucketStore) *HistoryService {
+func NewHistoryService(store buckets.IBucketStore) *HistoryService {
 
-	var retentionMgr *ManageHistory
-	//if config != nil {
-	//	retentionMgr = NewManageRetention(config.Retention)
-	//} else {
-	retentionMgr = NewManageRetention(hc, nil)
-	//}
 	svc := &HistoryService{
-		bucketStore:  store,
-		propsStore:   nil,
-		serviceID:    hc.ClientID(),
-		retentionMgr: retentionMgr,
-		hc:           hc,
+		bucketStore: store,
+		propsStore:  nil,
 	}
 	return svc
 }

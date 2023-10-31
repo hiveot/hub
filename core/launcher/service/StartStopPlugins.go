@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/samber/lo"
@@ -53,6 +54,9 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 
 	// step 2: create the command to start the service ... but wait for step 5
 	svcCmd := exec.Command(pluginInfo.Path)
+	svcCmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGTERM,
+	}
 
 	// step3: setup logging before starting service
 	if svc.cfg.LogPlugins {

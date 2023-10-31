@@ -10,14 +10,14 @@ import (
 	"github.com/hiveot/hub/core/msgserver/mqttmsgserver"
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/lib/net"
+	"github.com/hiveot/hub/lib/plugin"
 	"gopkg.in/yaml.v3"
 	"log/slog"
 	"os"
 	"path"
 )
 
-const HubCoreConfigFileName = "hub.yaml"
 const DefaultServerCertFile = "hubCert.pem"
 const DefaultServerKeyFile = "hubKey.pem"
 
@@ -26,7 +26,7 @@ const DefaultServerKeyFile = "hubKey.pem"
 // Use NewHubCoreConfig to create a default config
 // FIXME: this is temporary, each service must handle their own config yaml
 type HubCoreConfig struct {
-	Env utils.AppEnvironment
+	Env plugin.AppEnvironment
 
 	// certificate file names or full path
 
@@ -62,7 +62,7 @@ type HubCoreConfig struct {
 //	env holds the application directory environment
 //	core holds the core to setup, "nats" or "mqtt" (default)
 //	new to initialize a new environment and delete existing data (careful!)
-func (cfg *HubCoreConfig) Setup(env *utils.AppEnvironment, core string, new bool) error {
+func (cfg *HubCoreConfig) Setup(env *plugin.AppEnvironment, core string, new bool) error {
 	var err error
 	slog.Info("running setup",
 		slog.Bool("--new", new),
@@ -204,7 +204,7 @@ func (cfg *HubCoreConfig) setupCerts() {
 	hostName, _ := os.Hostname()
 	serverID := "nats-" + hostName
 	ou := "hiveot"
-	outboundIP := utils.GetOutboundIP("")
+	outboundIP := net.GetOutboundIP("")
 	names := []string{"localhost", "127.0.0.1", hostName, outboundIP.String()}
 
 	// regenerate a new server cert, valid for 1 year

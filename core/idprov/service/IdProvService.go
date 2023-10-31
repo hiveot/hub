@@ -50,8 +50,9 @@ type IdProvService struct {
 // 3. Start the http request server
 // 4. start the security check for rogue DNS-SD records
 // 5. start DNS-SD discovery server
-func (svc *IdProvService) Start() (err error) {
-	slog.Info("Starting the provisioning service")
+func (svc *IdProvService) Start(hc *hubclient.HubClient) (err error) {
+	slog.Warn("Starting the provisioning service", "clientID", hc.ClientID())
+	svc.hc = hc
 	svc.Stop()
 	svc.mng, err = StartManageIdProvService(svc.hc)
 	if err != nil {
@@ -75,7 +76,7 @@ func (svc *IdProvService) Start() (err error) {
 
 // Stop the provisioning service
 func (svc *IdProvService) Stop() {
-	slog.Info("Stopping the provisioning service")
+	slog.Warn("Stopping the provisioning service")
 	if svc.httpServer != nil {
 		svc.httpServer.Stop()
 		svc.httpServer = nil
@@ -87,9 +88,8 @@ func (svc *IdProvService) Stop() {
 }
 
 // NewIdProvService creates a new provisioning service instance
-func NewIdProvService(hc *hubclient.HubClient, port uint, serverCert *tls.Certificate, caCert *x509.Certificate) *IdProvService {
+func NewIdProvService(port uint, serverCert *tls.Certificate, caCert *x509.Certificate) *IdProvService {
 	svc := &IdProvService{
-		hc:         hc,
 		port:       port,
 		serverCert: serverCert,
 		caCert:     caCert,

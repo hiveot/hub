@@ -50,8 +50,10 @@ func (svc *DirectoryService) handleTDEvent(event *thing.ThingValue) {
 
 // Start the directory service and publish the service's own TD
 // This subscribes to pubsub TD events and updates the directory.
-func (svc *DirectoryService) Start() (err error) {
-
+func (svc *DirectoryService) Start(hc *hubclient.HubClient) (err error) {
+	slog.Warn("Starting DirectoryService", "clientID", hc.ClientID())
+	svc.hc = hc
+	svc.agentID = hc.ClientID()
 	// listen for requests
 	tdBucket := svc.store.GetBucket(svc.tdBucketName)
 	svc.tdBucket = tdBucket
@@ -97,6 +99,7 @@ func (svc *DirectoryService) Start() (err error) {
 
 // Stop the service
 func (svc *DirectoryService) Stop() {
+	slog.Warn("Stopping DirectoryService")
 	if svc.tdSub != nil {
 		svc.tdSub.Unsubscribe()
 		svc.tdSub = nil
@@ -119,12 +122,10 @@ func (svc *DirectoryService) Stop() {
 //	hc is the hub client connection to use with this agent. Its ID is used as the agentID that provides the capability.
 //	store is an open store store containing the directory data.
 func NewDirectoryService(
-	hc *hubclient.HubClient, store buckets.IBucketStore) *DirectoryService {
+	store buckets.IBucketStore) *DirectoryService {
 	//kvStore := kvbtree.NewKVStore(agentID, thingStorePath)
 	svc := &DirectoryService{
-		hc:           hc,
 		store:        store,
-		agentID:      hc.ClientID(),
 		tdBucketName: TDBucketName,
 	}
 	return svc

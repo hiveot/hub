@@ -37,10 +37,11 @@ func TestReadEdsFromInvalidFile(t *testing.T) {
 	assert.Nil(t, rootNode, "Did not expect root node")
 }
 
-// Read EDS device and check if more than 1 node is returned. A minimum of 1 is expected if the
-// device is online with an additional node for each connected node.
-// NOTE: This requires a live hub on the 'edsAddress'
-func TestReadEdsFromHub(t *testing.T) {
+// Read EDS gateway and check if more than 1 node is returned.
+// A minimum of 1 is expected if the device is online with an additional node
+// for each connected node.
+// NOTE: This requires a live EDS gateway on the 'edsAddress'
+func TestReadEdsFromGW(t *testing.T) {
 
 	// NOTE: This requires a live discoverable OWServer
 	edsAddress, err := eds.Discover(3)
@@ -51,8 +52,8 @@ func TestReadEdsFromHub(t *testing.T) {
 	require.NotNil(t, rootNode, "Expected root node")
 	assert.GreaterOrEqual(t, len(rootNode.Nodes), 3, "Expected at least 3 nodes")
 }
-func TestReadEdsFromInvalidAddress(t *testing.T) {
 
+func TestReadEdsFromInvalidAddress(t *testing.T) {
 	// error case - bad hub
 	// error case, unknown file
 	address := "doesnoteexist"

@@ -13,19 +13,19 @@ type NodeValueStamp struct {
 	value     string
 }
 
-func (binding *OWServerBinding) getPrevValue(nodeID, attrName string) (value NodeValueStamp, found bool) {
-	nodeValues, found := binding.values[nodeID]
+func (svc *OWServerBinding) getPrevValue(nodeID, attrName string) (value NodeValueStamp, found bool) {
+	nodeValues, found := svc.values[nodeID]
 	if found {
 		value, found = nodeValues[attrName]
 	}
 	return value, found
 }
 
-func (binding *OWServerBinding) setPrevValue(nodeID, attrName string, value string) {
-	nodeValues, found := binding.values[nodeID]
+func (svc *OWServerBinding) setPrevValue(nodeID, attrName string, value string) {
+	nodeValues, found := svc.values[nodeID]
 	if !found {
 		nodeValues = make(map[string]NodeValueStamp)
-		binding.values[nodeID] = nodeValues
+		svc.values[nodeID] = nodeValues
 	}
 	nodeValues[attrName] = NodeValueStamp{
 		timestamp: time.Now(),
@@ -36,29 +36,29 @@ func (binding *OWServerBinding) setPrevValue(nodeID, attrName string, value stri
 // PublishNodeValues publishes node property values of each node
 // Properties are combined as submitted as a single 'properties' event.
 // Sensor values are send as individual events
-func (binding *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err error) {
+func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err error) {
 
 	// Iterate the devices and their properties
 	for _, node := range nodes {
 		// send all changed property attributes in a single properties event
 		attrMap := make(map[string][]byte)
-		//thingID := thing.CreateThingID(binding.Config.ID, node.NodeID, node.DeviceType)
+		//thingID := thing.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
 		thingID := node.NodeID
 
 		for attrName, attr := range node.Attr {
 			// only send the changed values
-			prevValue, found := binding.getPrevValue(node.NodeID, attrName)
+			prevValue, found := svc.getPrevValue(node.NodeID, attrName)
 			age := time.Now().Sub(prevValue.timestamp)
-			maxAge := time.Second * time.Duration(binding.Config.RepublishInterval)
+			maxAge := time.Second * time.Duration(svc.config.RepublishInterval)
 			// skip update if the value hasn't changed for less than the republish interval
 			skip := found &&
 				prevValue.value == attr.Value &&
 				age < maxAge
 
 			if !skip {
-				binding.setPrevValue(node.NodeID, attrName, attr.Value)
+				svc.setPrevValue(node.NodeID, attrName, attr.Value)
 				if attr.IsSensor {
-					err = binding.hc.PubEvent(thingID, attrName, []byte(attr.Value))
+					err = svc.hc.PubEvent(thingID, attrName, []byte(attr.Value))
 				} else {
 					// attribute to be included in the properties event
 					attrMap[attrName] = []byte(attr.Value)
@@ -67,18 +67,18 @@ func (binding *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err
 		}
 		if len(attrMap) > 0 {
 			attrMapJSON, _ := json.Marshal(attrMap)
-			err = binding.hc.PubEvent(thingID, vocab.EventNameProps, attrMapJSON)
+			err = svc.hc.PubEvent(thingID, vocab.EventNameProps, attrMapJSON)
 		}
 	}
 	return err
 }
 
 // RefreshPropertyValues polls the OWServer hub for changed Thing values
-func (binding *OWServerBinding) RefreshPropertyValues() error {
-	nodes, err := binding.edsAPI.PollNodes()
-	//nodeValueMap, err := binding.PollNodeValues()
+func (svc *OWServerBinding) RefreshPropertyValues() error {
+	nodes, err := svc.edsAPI.PollNodes()
+	//nodeValueMap, err := svc.PollNodeValues()
 	if err == nil {
-		err = binding.PublishNodeValues(nodes)
+		err = svc.PublishNodeValues(nodes)
 	}
 	return err
 }

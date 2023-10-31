@@ -24,8 +24,8 @@ func TestWaitForSignal(t *testing.T) {
 	time.Sleep(time.Second)
 
 	// signal.Notify()
-	syscall.Kill(pid, syscall.SIGINT)
-	time.Sleep(time.Second)
+	syscall.Kill(pid, syscall.SIGTERM)
+	time.Sleep(time.Millisecond)
 	m.Lock()
 	defer m.Unlock()
 	assert.True(t, waitCompleted)

@@ -9,7 +9,7 @@ import (
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/lib/net"
 	"github.com/hiveot/hub/lib/vocab"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
@@ -112,7 +112,7 @@ func (srv *NatsMsgServer) GetServerURLs() (tlsURL string, wssURL string, udsURL 
 
 // Start the NATS server with the given configuration and create an event ingress stream
 //
-//	Config.Setup must have been called first.
+//	config.Setup must have been called first.
 func (srv *NatsMsgServer) Start() (err error) {
 
 	srv.NatsOpts, err = srv.Config.CreateNatsNKeyOptions()
@@ -134,7 +134,7 @@ func (srv *NatsMsgServer) Start() (err error) {
 		err = errors.New("nats: not ready for connection")
 		return err
 	}
-	outboundIP := utils.GetOutboundIP("")
+	outboundIP := net.GetOutboundIP("")
 	srv.tlsURL = srv.ns.ClientURL()
 	srv.wssURL = fmt.Sprintf("wss://%s:%d", outboundIP.String(), srv.Config.WSPort)
 	srv.udsURL = "" // not supported?
@@ -153,7 +153,7 @@ func (srv *NatsMsgServer) Start() (err error) {
 
 	// tokenizer
 	//srv.tokenizer = NewNatsJWTTokenizer(
-	//	srv.Config.AppAccountName, srv.Config.AppAccountKP)
+	//	srv.config.AppAccountName, srv.config.AppAccountKP)
 
 	// ensure the events intake stream exists
 	nc, err := srv.ConnectInProcNC("jetsetup", nil)

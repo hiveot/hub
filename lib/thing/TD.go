@@ -3,6 +3,7 @@ package thing
 import (
 	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/vocab"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -113,6 +114,30 @@ func (tdoc *TD) AddAction(name string, actionType string, title string, descript
 	return actionAff
 }
 
+// AddDimmerAction is short for adding an action to control a dimmer
+// This includes a data schema for integers
+//
+//	actionID is the instance ID of the action, unique within the Thing
+func (tdoc *TD) AddDimmerAction(actionID string) *ActionAffordance {
+	act := tdoc.AddAction(actionID, vocab.VocabDimmer, "", "", &DataSchema{
+		AtType: vocab.VocabDimmer,
+		Type:   vocab.WoTDataTypeInteger,
+	})
+	return act
+}
+
+// AddDimmerEvent is short for adding an event for a dimmer change event
+// This includes a data schema for integers
+//
+//	eventID is the instance ID of the event, unique within the Thing
+func (tdoc *TD) AddDimmerEvent(eventID string) *EventAffordance {
+	ev := tdoc.AddEvent(eventID, vocab.VocabDimmer, "", "", &DataSchema{
+		AtType: vocab.VocabDimmer,
+		Type:   vocab.WoTDataTypeInteger,
+	})
+	return ev
+}
+
 // AddEvent provides a simple way to add an event to the TD.
 // This returns the event affordance that can be augmented/modified directly.
 //
@@ -134,7 +159,8 @@ func (tdoc *TD) AddEvent(name string, eventType string, title string, descriptio
 	return evAff
 }
 
-// AddProperty provides a simple way to add a property to the TD
+// AddProperty provides a simple way to add a read-only property to the TD.
+//
 // This returns the property affordance that can be augmented/modified directly
 // By default the property is a read-only attribute.
 //
@@ -155,6 +181,58 @@ func (tdoc *TD) AddProperty(name string, propType string, title string, dataType
 	}
 	tdoc.UpdateProperty(name, prop)
 	return prop
+}
+
+// AddPropertyAsString is short for adding a read-only string property
+func (tdoc *TD) AddPropertyAsString(name string, propType string, title string, initialValue string) *PropertyAffordance {
+	return tdoc.AddProperty(name, propType, title, vocab.WoTDataTypeString, initialValue)
+}
+
+// AddPropertyAsBool is short for adding a read-only boolean property
+func (tdoc *TD) AddPropertyAsBool(name string, propType string, title string, initialValue bool) *PropertyAffordance {
+	valAsString := "false"
+	if initialValue {
+		valAsString = "true"
+	}
+	return tdoc.AddProperty(name, propType, title, vocab.WoTDataTypeBool, valAsString)
+}
+
+// AddPropertyAsInt is short for adding a read-only integer property
+func (tdoc *TD) AddPropertyAsInt(name string, propType string, title string, initialValue int) *PropertyAffordance {
+	valAsString := strconv.Itoa(initialValue)
+	return tdoc.AddProperty(name, propType, title, vocab.WoTDataTypeInteger, valAsString)
+}
+
+// AddSwitchAction is short for adding an action to control a switch
+func (tdoc *TD) AddSwitchAction(actionID string) *ActionAffordance {
+	act := tdoc.AddAction(actionID, vocab.VocabOnOffSwitch, "", "",
+		&DataSchema{
+			AtType: vocab.VocabOnOffSwitch,
+			Type:   vocab.WoTDataTypeBool,
+			Enum:   []interface{}{"on", "off"},
+		})
+	return act
+}
+
+// AddSwitchEvent is short for adding an event for a switch
+func (tdoc *TD) AddSwitchEvent(eventID string) *EventAffordance {
+	ev := tdoc.AddEvent(eventID, vocab.VocabOnOffSwitch, "", "",
+		&DataSchema{
+			AtType: vocab.VocabOnOffSwitch,
+			Type:   vocab.WoTDataTypeBool,
+			Enum:   []interface{}{"on", "off"},
+		})
+	return ev
+}
+
+// AddSensorEvent is short for adding an event for a sensor
+func (tdoc *TD) AddSensorEvent(eventID string) *EventAffordance {
+	ev := tdoc.AddEvent(eventID, vocab.VocabSensor, "", "",
+		&DataSchema{
+			AtType: vocab.VocabSensor,
+			Type:   vocab.WoTDataTypeNumber,
+		})
+	return ev
 }
 
 // AsMap returns the TD document as a map

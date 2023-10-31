@@ -2,14 +2,11 @@
 package main
 
 import (
-	"context"
 	"github.com/hiveot/hub/core/directory/service"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/lib/plugin"
 	"log/slog"
-	"os"
 	"path"
 )
 
@@ -20,31 +17,17 @@ const storeFile = "directorystore.json"
 // Precondition: A loginID and keys for this service must already have been added.
 // This can be done manually using the hubcli or simply be starting it using the launcher.
 func main() {
-	env := utils.GetAppEnvironment("", true)
+	env := plugin.GetAppEnvironment("", true)
 	logging.SetLogging(env.LogLevel, "")
 	slog.Warn("Starting directory service", "clientID", env.ClientID, "loglevel", env.LogLevel)
-
-	// locate the hub, load CA certificate, load service key and token and connect
-	hc, err := hubclient.ConnectToHub("", env.ClientID, env.CertsDir, "")
-	if err != nil {
-		slog.Error("Failed connecting to the Hub", "err", err)
-		os.Exit(1)
-	}
 
 	// startup
 	storePath := path.Join(env.StoresDir, env.ClientID, storeFile)
 	store := kvbtree.NewKVStore(env.ClientID, storePath)
-	err = store.Open()
+	err := store.Open()
 	if err != nil {
 		panic("unable to open the directory store")
 	}
-	svc := service.NewDirectoryService(hc, store)
-	err = svc.Start()
-	if err != nil {
-		slog.Error("Failed starting directory service", "err", err)
-		os.Exit(1)
-	}
-	utils.WaitForSignal(context.Background())
-	svc.Stop()
-	slog.Warn("Stopped directory service")
+	svc := service.NewDirectoryService(store)
+	plugin.StartPlugin(svc, &env)
 }

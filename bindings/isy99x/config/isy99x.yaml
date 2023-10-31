@@ -1,0 +1,18 @@
+# ISY99x binding configuration
+# The name of this config must match the plugin binary
+
+# logging level debug, info, warn (default), error.
+#logLevel: info
+
+# ISY OWServer info
+#isyAddr: "127.0.0.1"
+#login: "isyadmin"
+#password: "mypass"
+
+
+# Rate of polling the OWServer gateway.
+# Default is every 3 minutes
+# pollInterval: 180
+
+# how often to republish the TD document for each node. Default every 24 hours
+# tdInterval:   86400

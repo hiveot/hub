@@ -6,7 +6,7 @@ import "encoding/json"
 // Rather than hard-coding json everywhere, this allows for easy comparing and changing of serializers.
 
 func JsonMarshal(obj interface{}) ([]byte, error) {
-	return json.Marshal(obj)
+	return json.MarshalIndent(obj, " ", " ")
 }
 func JsonUnmarshal(data []byte, obj interface{}) error {
 	return json.Unmarshal(data, obj)

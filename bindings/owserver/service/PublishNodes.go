@@ -12,10 +12,10 @@ import (
 // - Writable non-sensors attributes are marked as writable configuration
 // - Sensors are also added as events.
 // - Writable sensors are also added as actions.
-func (binding *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing2.TD) {
+func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing2.TD) {
 
 	// Should we bother with the URI? In HiveOT things have pubsub addresses that include the ID. The ID is not the address.
-	//thingID := thing.CreateThingID(binding.Config.ID, node.NodeID, node.DeviceType)
+	//thingID := thing.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
 	thingID := node.NodeID
 
 	tdoc = thing2.NewTD(thingID, node.Name, node.DeviceType)
@@ -77,20 +77,20 @@ func (binding *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *t
 }
 
 // PollNodes polls the OWServer gateway for nodes and property values
-func (binding *OWServerBinding) PollNodes() ([]*eds.OneWireNode, error) {
-	nodes, err := binding.edsAPI.PollNodes()
+func (svc *OWServerBinding) PollNodes() ([]*eds.OneWireNode, error) {
+	nodes, err := svc.edsAPI.PollNodes()
 	for _, node := range nodes {
-		binding.nodes[node.NodeID] = node
+		svc.nodes[node.NodeID] = node
 	}
 	return nodes, err
 }
 
 // PublishThings converts the nodes to TD documents and publishes these on the Hub message bus
 // This returns an error if one or more publications fail
-func (binding *OWServerBinding) PublishThings(nodes []*eds.OneWireNode) (err error) {
+func (svc *OWServerBinding) PublishThings(nodes []*eds.OneWireNode) (err error) {
 	for _, node := range nodes {
-		td := binding.CreateTDFromNode(node)
-		err2 := binding.hc.PubTD(td)
+		td := svc.CreateTDFromNode(node)
+		err2 := svc.hc.PubTD(td)
 		if err2 != nil {
 			err = err2
 		}

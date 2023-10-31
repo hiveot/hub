@@ -214,7 +214,7 @@ func (hc *HubClient) PubAction(
 	agentID string, thingID string, name string, payload []byte) ([]byte, error) {
 
 	addr := hc.MakeAddress(vocab.MessageTypeAction, agentID, thingID, name, hc.clientID)
-	//slog.Info("PubAction", "topic", topic)
+	slog.Info("PubAction", "addr", addr)
 	data, err := hc.transport.PubRequest(addr, payload)
 	return data, err
 }
@@ -281,6 +281,7 @@ func (hc *HubClient) PubRPCRequest(
 		payload, _ = ser.Marshal(req)
 	}
 	addr := hc.MakeAddress(vocab.MessageTypeRPC, agentID, capability, methodName, hc.clientID)
+	slog.Info("PubRPCRequest", "addr", addr)
 
 	data, err := hc.transport.PubRequest(addr, payload)
 	if err == nil && resp != nil {
@@ -294,7 +295,7 @@ func (hc *HubClient) PubRPCRequest(
 func (hc *HubClient) PubTD(td *thing.TD) error {
 	payload, _ := ser.Marshal(td)
 	addr := hc.MakeAddress(vocab.MessageTypeEvent, hc.clientID, td.ID, vocab.EventNameTD, hc.clientID)
-	//slog.Info("PubTD", "topic", topic)
+	slog.Info("PubTD", "addr", addr)
 	err := hc.transport.Pub(addr, payload)
 	return err
 }

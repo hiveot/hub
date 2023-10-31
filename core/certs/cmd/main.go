@@ -1,14 +1,12 @@
 package main
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
 	"github.com/hiveot/hub/core/certs/service/selfsigned"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/lib/plugin"
 	"log/slog"
 	"os"
 	"path"
@@ -23,7 +21,7 @@ func main() {
 	var caKey *ecdsa.PrivateKey
 	var err error
 
-	env := utils.GetAppEnvironment("", true)
+	env := plugin.GetAppEnvironment("", true)
 	logging.SetLogging(env.LogLevel, "")
 	slog.Warn("Starting certs service", "clientID", env.ClientID, "loglevel", env.LogLevel)
 
@@ -45,23 +43,26 @@ func main() {
 		os.Exit(1)
 	}
 
+	svc := selfsigned.NewSelfSignedCertsService(caCert, caKey)
+	plugin.StartPlugin(svc, &env)
+
 	// this locates the hub, load certificate, load service tokens and connect
-	hc, err := hubclient.ConnectToHub("", env.ClientID, env.CertsDir, "")
-	if err != nil {
-		slog.Error("Failed connecting to the Hub", "err", err)
-		os.Exit(1)
-	}
-	// startup
-	svc := selfsigned.NewSelfSignedCertsService(caCert, caKey, hc)
-	err = svc.Start()
-	if err != nil {
-		slog.Error("Failed starting certs service", "err", err)
-		os.Exit(1)
-	}
-	utils.WaitForSignal(context.Background())
-	err = svc.Stop()
-	slog.Warn("Stopped certs service")
-	if err != nil {
-		os.Exit(2)
-	}
+	//hc, err := hubclient.ConnectToHub("", env.ClientID, env.CertsDir, "")
+	//if err != nil {
+	//	slog.Error("Failed connecting to the Hub", "err", err)
+	//	os.Exit(1)
+	//}
+	//// startup
+	//svc := selfsigned.NewSelfSignedCertsService(caCert, caKey)
+	//err = svc.Start(hc)
+	//if err != nil {
+	//	slog.Error("Failed starting certs service", "err", err)
+	//	os.Exit(1)
+	//}
+	//plugin.WaitForSignal()
+	//err = svc.Stop()
+	//slog.Warn("Stopped certs service")
+	//if err != nil {
+	//	os.Exit(2)
+	//}
 }

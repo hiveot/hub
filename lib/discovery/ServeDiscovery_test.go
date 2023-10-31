@@ -3,7 +3,7 @@ package discovery_test
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/discovery"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/lib/net"
 	"strings"
 	"testing"
 	"time"
@@ -20,7 +20,7 @@ const testServicePort = 9999
 // Test the discovery client and server
 func TestDiscover(t *testing.T) {
 	params := map[string]string{"path": testServicePath}
-	testServiceAddress := utils.GetOutboundIP("").String()
+	testServiceAddress := net.GetOutboundIP("").String()
 
 	discoServer, err := discovery.ServeDiscovery(
 		testServiceID, testServiceName, testServiceAddress, testServicePort, params)
@@ -68,7 +68,7 @@ func TestDiscoViaDomainName(t *testing.T) {
 func TestDiscoverBadPort(t *testing.T) {
 	serviceID := "idprov-test"
 	badPort := 0
-	address := utils.GetOutboundIP("").String()
+	address := net.GetOutboundIP("").String()
 	_, err := discovery.ServeDiscovery(
 		serviceID, testServiceName, address, badPort, nil)
 
@@ -77,7 +77,7 @@ func TestDiscoverBadPort(t *testing.T) {
 
 func TestNoInstanceID(t *testing.T) {
 	serviceID := "serviceID"
-	address := utils.GetOutboundIP("").String()
+	address := net.GetOutboundIP("").String()
 
 	_, err := discovery.ServeDiscovery(
 		"", testServiceName, address, testServicePort, nil)
@@ -91,7 +91,7 @@ func TestNoInstanceID(t *testing.T) {
 func TestDiscoverNotFound(t *testing.T) {
 	instanceID := "idprov-test-id"
 	serviceName := "idprov-test"
-	address := utils.GetOutboundIP("").String()
+	address := net.GetOutboundIP("").String()
 
 	discoServer, err := discovery.ServeDiscovery(
 		instanceID, serviceName, address, testServicePort, nil)

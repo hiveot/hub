@@ -4,7 +4,7 @@ import (
 	"github.com/hiveot/hub/core/launcher/config"
 	"github.com/hiveot/hub/core/launcher/service"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/lib/plugin"
 	"log/slog"
 	"os"
 )
@@ -12,12 +12,12 @@ import (
 // Connect the launcher service
 func main() {
 	// setup environment and config
-	env := utils.GetAppEnvironment("", true)
+	env := plugin.GetAppEnvironment("", true)
 	logging.SetLogging(env.LogLevel, "")
 
 	cfg := config.NewLauncherConfig()
 	cfg.LogLevel = env.LogLevel
-	err := env.LoadConfig(env.ConfigFile, &cfg)
+	err := env.LoadConfig(&cfg)
 	if err != nil {
 		slog.Error("Failed loading launcher config: ", "err", err)
 		os.Exit(1)

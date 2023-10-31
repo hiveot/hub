@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/lib/net"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nkeys"
 	"log/slog"
@@ -58,7 +58,7 @@ type NatsServerConfig struct {
 }
 
 // Setup the nats server config.
-// This applies sensible defaults to Config.
+// This applies sensible defaults to config.
 //
 // Any existing values that are previously set remain unchanged.
 // Missing values are created.
@@ -73,7 +73,7 @@ func (cfg *NatsServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 
 	// Step 1: Apply defaults parameters
 	if cfg.Host == "" {
-		outboundIP := utils.GetOutboundIP("")
+		outboundIP := net.GetOutboundIP("")
 		cfg.Host = outboundIP.String()
 	}
 	if cfg.Port == 0 {
@@ -274,7 +274,7 @@ accounts {
 		//	Username:    NoAuthUserID,
 		//	Password:    "",
 		//	Permissions: noAuthPermissions,
-		//	Account:     Config.appAcct,
+		//	Account:     config.appAcct,
 		//	//InboxPrefix: "_INBOX." + NoAuthUserID,
 		//},
 	}

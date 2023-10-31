@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="UTF-8"?><NetworkConfig><Interface isDHCP="false"><ip>10.3.3.31</ip><mask>255.255.255.0</mask><gateway>10.3.3.1</gateway><dns>10.3.3.1</dns></Interface><WebServer><httpPort>80</httpPort><httpsPort>443</httpsPort></WebServer></NetworkConfig>

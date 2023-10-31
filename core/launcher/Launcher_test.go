@@ -6,8 +6,8 @@ import (
 	"github.com/hiveot/hub/core/launcher/launcherapi"
 	"github.com/hiveot/hub/core/launcher/launcherclient"
 	"github.com/hiveot/hub/core/launcher/service"
+	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
 	"os"
 	"path"
@@ -50,7 +50,7 @@ func StartService() (l *launcherclient.LauncherClient, stopFn func()) {
 	launcherConfig.AttachStderr = true
 	launcherConfig.AttachStdout = false
 	launcherConfig.LogPlugins = true
-	var env = utils.GetAppEnvironment(homeDir, false)
+	var env = plugin.GetAppEnvironment(homeDir, false)
 	env.PluginsDir = "/bin" // for /bin/yes
 	env.LogsDir = logDir
 	env.CertsDir = homeDir

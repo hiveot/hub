@@ -1,0 +1,10 @@
+# IPNet configuration - all values are optional
+
+# Logging level override. Default is from launcher
+#logLevel: "info"
+
+# Polling interval scanning for devices. Default is 1 hour.
+# pollInterval: 3600
+
+# PortScan also scans common ports (default false)
+# portScan: true

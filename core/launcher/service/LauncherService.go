@@ -8,7 +8,7 @@ import (
 	"github.com/hiveot/hub/core/launcher/launcherapi"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/transports"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/lib/plugin"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -27,7 +27,7 @@ const CoreID = "core"
 type LauncherService struct {
 	// service configuration
 	cfg config.LauncherConfig
-	env utils.AppEnvironment
+	env plugin.AppEnvironment
 
 	// map of plugin name to running status
 	plugins map[string]*launcherapi.PluginInfo
@@ -91,25 +91,29 @@ func (svc *LauncherService) addPlugins(folder string) error {
 	}
 	for _, entry := range entries {
 		// ignore directories and non executable files
-		fileInfo, _ := entry.Info()
-		size := fileInfo.Size()
-		fileMode := fileInfo.Mode()
-		isExecutable := fileMode&0100 != 0
-		isFile := !entry.IsDir()
-		if isFile && isExecutable && size > 0 {
-			count++
-			pluginInfo, found := svc.plugins[entry.Name()]
-			if !found {
-				pluginInfo = &launcherapi.PluginInfo{
-					Name:    entry.Name(),
-					Path:    path.Join(folder, entry.Name()),
-					Uptime:  0,
-					Running: false,
+		fileInfo, err := entry.Info()
+		if err != nil {
+			slog.Error("Unable to read plugin info. Skipped", "err", err.Error())
+		} else {
+			size := fileInfo.Size()
+			fileMode := fileInfo.Mode()
+			isExecutable := fileMode&0100 != 0
+			isFile := !entry.IsDir()
+			if isFile && isExecutable && size > 0 {
+				count++
+				pluginInfo, found := svc.plugins[entry.Name()]
+				if !found {
+					pluginInfo = &launcherapi.PluginInfo{
+						Name:    entry.Name(),
+						Path:    path.Join(folder, entry.Name()),
+						Uptime:  0,
+						Running: false,
+					}
+					svc.plugins[pluginInfo.Name] = pluginInfo
 				}
-				svc.plugins[pluginInfo.Name] = pluginInfo
+				pluginInfo.ModifiedTime = fileInfo.ModTime().Format(time.RFC3339)
+				pluginInfo.Size = size
 			}
-			pluginInfo.ModifiedTime = fileInfo.ModTime().Format(time.RFC3339)
-			pluginInfo.Size = size
 		}
 	}
 	slog.Info("found plugins", "count", count, "directory", folder)
@@ -167,7 +171,7 @@ func (svc *LauncherService) ScanPlugins() error {
 //
 // Call stop to end
 func (svc *LauncherService) Start() error {
-
+	slog.Warn("Starting LauncherService", "clientID", svc.env.ClientID)
 	svc.isRunning.Store(true)
 
 	// include the core
@@ -235,6 +239,7 @@ func (svc *LauncherService) Start() error {
 
 // Stop the launcher and all running plugins
 func (svc *LauncherService) Stop() error {
+	slog.Warn("Stopping launcher service")
 	if svc.mngSub != nil {
 		svc.mngSub.Unsubscribe()
 		svc.mngSub = nil
@@ -286,7 +291,7 @@ func (svc *LauncherService) WatchPlugins() error {
 // The hub client is intended when an existing message bus is used. If the core is
 // started by the launcher then it is ignored.
 func NewLauncherService(
-	env utils.AppEnvironment,
+	env plugin.AppEnvironment,
 	cfg config.LauncherConfig,
 	hc *hubclient.HubClient,
 ) *LauncherService {

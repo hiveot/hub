@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/lib/net"
 	"log/slog"
 	"path"
 )
@@ -45,7 +45,7 @@ type MqttServerConfig struct {
 }
 
 // Setup the mqtt server config.
-// This applies sensible defaults to Config.
+// This applies sensible defaults to config.
 //
 // Any existing values that are previously set remain unchanged.
 // Missing values are created.
@@ -60,7 +60,7 @@ func (cfg *MqttServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 
 	// Step 1: Apply defaults parameters
 	if cfg.Host == "" {
-		outboundIP := utils.GetOutboundIP("")
+		outboundIP := net.GetOutboundIP("")
 		cfg.Host = outboundIP.String()
 	}
 	if cfg.Port == 0 {

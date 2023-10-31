@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"github.com/hiveot/hub/core/auth/authapi"
@@ -10,8 +9,7 @@ import (
 	"github.com/hiveot/hub/core/msgserver/mqttmsgserver/service"
 	"github.com/hiveot/hub/lib/discovery"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/utils"
-	"log/slog"
+	"github.com/hiveot/hub/lib/plugin"
 	"net/url"
 	"os"
 	"strconv"
@@ -34,7 +32,7 @@ func main() {
 		flag.PrintDefaults()
 		fmt.Println()
 	}
-	env := utils.GetAppEnvironment("", true)
+	env := plugin.GetAppEnvironment("", true)
 	//env.Core = "mqtt"
 	logging.SetLogging(env.LogLevel, "")
 	fmt.Println("home: ", env.HomeDir)
@@ -65,7 +63,6 @@ func main() {
 func run(cfg *config.HubCoreConfig) error {
 	var err error
 
-	slog.Info("Starting MQTT server")
 	msgServer := service.NewMqttMsgServer(&cfg.MqttServer, authapi.DefaultRolePermissions)
 	err = msgServer.Start()
 	if err != nil {
@@ -73,7 +70,6 @@ func run(cfg *config.HubCoreConfig) error {
 	}
 
 	// Start the Auth service mqtt can use either argon2id or brcypt passwords
-	slog.Info("Starting Auth service")
 	cfg.Auth.Encryption = authapi.PWHASH_BCRYPT
 	authSvc, err := authservice.StartAuthService(cfg.Auth, msgServer, cfg.CaCert)
 	if err != nil {
@@ -99,7 +95,7 @@ func run(cfg *config.HubCoreConfig) error {
 
 	// wait until signal
 	fmt.Println("MQTT Hub core started. serverURL=" + serverURL)
-	utils.WaitForSignal(context.Background())
+	plugin.WaitForSignal()
 
 	authSvc.Stop()
 	msgServer.Stop()

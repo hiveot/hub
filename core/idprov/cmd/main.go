@@ -2,13 +2,11 @@
 package main
 
 import (
-	"context"
 	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/core/idprov/service"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/lib/plugin"
 	"log/slog"
 	"os"
 	"path"
@@ -29,7 +27,7 @@ func main() {
 	var err error
 
 	// Determine the folder layout and handle commandline options
-	env := utils.GetAppEnvironment("", true)
+	env := plugin.GetAppEnvironment("", true)
 	logging.SetLogging(env.LogLevel, "")
 	slog.Warn("Starting idprov service", "clientID", env.ClientID, "loglevel", env.LogLevel)
 
@@ -43,22 +41,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// locate the hub, load CA certificate, load service key and token and connect
-	hc, err := hubclient.ConnectToHub("", env.ClientID, env.CertsDir, "")
-	if err != nil {
-		slog.Error("Failed connecting to the Hub", "err", err)
-		os.Exit(1)
-	}
-
 	// start the service using the connection and hub server certificate
-	svc := service.NewIdProvService(hc, DefaultIDProvPort, serverCert, env.CaCert)
-	err = svc.Start()
-	if err != nil {
-		slog.Error("Failed starting idprov service", "err", err)
-		os.Exit(1)
-	}
+	svc := service.NewIdProvService(DefaultIDProvPort, serverCert, env.CaCert)
 
-	utils.WaitForSignal(context.Background())
-	svc.Stop()
-	slog.Warn("Stopped idprov service")
+	plugin.StartPlugin(svc, &env)
 }

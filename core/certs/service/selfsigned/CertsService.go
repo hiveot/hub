@@ -204,29 +204,32 @@ func (svc *SelfSignedCertsService) CreateUserCert(
 }
 
 // Start the service and listen for requests
-func (svc *SelfSignedCertsService) Start() (err error) {
+//
+//	hc is the connection to the hub with a service role. For testing it can be nil.
+func (svc *SelfSignedCertsService) Start(hc *hubclient.HubClient) (err error) {
+	slog.Warn("Starting certs service", "serviceID", hc.ClientID())
 	// for testing, hc can be nil
-	if svc.hc != nil {
-		svc.mngSub, err = svc.hc.SubRPCCapability(certsapi.ManageCertsCapability,
-			map[string]interface{}{
-				certsapi.CreateDeviceCertMethod:  svc.CreateDeviceCert,
-				certsapi.CreateServiceCertMethod: svc.CreateServiceCert,
-				certsapi.CreateUserCertMethod:    svc.CreateUserCert,
-				certsapi.VerifyCertMethod:        svc.VerifyCert,
-			})
-		//svc.mngSub, err = svc.hc.SubRPCRequest(
-		//	certs.ManageCertsCapability, svc.HandleRequest)
-	}
+	svc.hc = hc
+	svc.mngSub, err = svc.hc.SubRPCCapability(certsapi.ManageCertsCapability,
+		map[string]interface{}{
+			certsapi.CreateDeviceCertMethod:  svc.CreateDeviceCert,
+			certsapi.CreateServiceCertMethod: svc.CreateServiceCert,
+			certsapi.CreateUserCertMethod:    svc.CreateUserCert,
+			certsapi.VerifyCertMethod:        svc.VerifyCert,
+		})
+	//svc.mngSub, err = svc.hc.SubRPCRequest(
+	//	certs.ManageCertsCapability, svc.HandleRequest)
+
 	return err
 }
 
 // Stop the service and remove subscription
-func (svc *SelfSignedCertsService) Stop() error {
+func (svc *SelfSignedCertsService) Stop() {
+	slog.Warn("Stopping the certs service")
 	if svc.mngSub != nil {
 		svc.mngSub.Unsubscribe()
 		svc.mngSub = nil
 	}
-	return nil
 }
 
 // VerifyCert verifies whether the given certificate is a valid client certificate
@@ -256,11 +259,9 @@ func (svc *SelfSignedCertsService) VerifyCert(ctx hubclient.ServiceContext, args
 //
 //	caCert is the CA certificate used to created certificates
 //	caKey is the CA private key used to created certificates
-//	hc is the connection to the hub with a service role. For testing it can be nil.
 func NewSelfSignedCertsService(
 	caCert *x509.Certificate,
 	caKey *ecdsa.PrivateKey,
-	hc *hubclient.HubClient,
 ) *SelfSignedCertsService {
 
 	caCertPool := x509.NewCertPool()
@@ -274,7 +275,6 @@ func NewSelfSignedCertsService(
 		caKey:      caKey,
 		caCertPEM:  certs.X509CertToPEM(caCert),
 		caCertPool: caCertPool,
-		hc:         hc,
 	}
 	if caCert == nil || caKey == nil || caCert.PublicKey == nil {
 		panic("Missing CA certificate or key")

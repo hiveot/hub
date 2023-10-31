@@ -1,23 +1,24 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/transports"
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/thing"
-	vocab2 "github.com/hiveot/hub/lib/vocab"
+	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"sync"
-	"sync/atomic"
+	"time"
 )
 
 // OWServerBinding is the hub protocol binding plugin for capturing 1-wire OWServer V2 Data
 type OWServerBinding struct {
 	// Configuration of this protocol binding
-	Config config.OWServerConfig
+	config *config.OWServerConfig
 
 	// EDS OWServer client API
 	edsAPI *eds.EdsAPI
@@ -38,91 +39,125 @@ type OWServerBinding struct {
 	// Map of previous node values [nodeID][attrName]value
 	// nodeValues map[string]map[string]string
 
-	// flag, this service is up and isRunning
-	isRunning atomic.Bool
-	mu        sync.Mutex
+	// stop the heartbeat
+	stopFn func()
+	mu     sync.Mutex
 }
 
 // CreateBindingTD generates a TD document for this binding
-func (binding *OWServerBinding) CreateBindingTD() *thing.TD {
-	thingID := binding.hc.ClientID()
-	td := thing.NewTD(thingID, "OWServer binding", vocab2.DeviceTypeBinding)
+func (svc *OWServerBinding) CreateBindingTD() *thing.TD {
+	thingID := svc.hc.ClientID()
+	td := thing.NewTD(thingID, "OWServer svc", vocab.DeviceTypeBinding)
 	// these are configured through the configuration file.
-	prop := td.AddProperty(vocab2.VocabPollInterval, vocab2.VocabPollInterval, "Poll Interval", vocab2.WoTDataTypeInteger, "")
-	prop.Unit = vocab2.UnitNameSecond
-	prop.InitialValue = fmt.Sprintf("%d %s", binding.Config.PollInterval, vocab2.UnitNameSecond)
+	prop := td.AddProperty(vocab.VocabPollInterval, vocab.VocabPollInterval, "Poll Interval", vocab.WoTDataTypeInteger, "")
+	prop.Unit = vocab.UnitNameSecond
+	prop.InitialValue = fmt.Sprintf("%d %s", svc.config.PollInterval, vocab.UnitNameSecond)
 
-	prop = td.AddProperty("tdInterval", vocab2.VocabPollInterval, "TD Publication Interval", vocab2.WoTDataTypeInteger, "")
-	prop.Unit = vocab2.UnitNameSecond
-	prop.InitialValue = fmt.Sprintf("%d %s", binding.Config.TDInterval, vocab2.UnitNameSecond)
+	prop = td.AddProperty("tdInterval", vocab.VocabPollInterval, "TD Publication Interval", vocab.WoTDataTypeInteger, "")
+	prop.Unit = vocab.UnitNameSecond
+	prop.InitialValue = fmt.Sprintf("%d %s", svc.config.TDInterval, vocab.UnitNameSecond)
 
-	prop = td.AddProperty("valueInterval", vocab2.VocabPollInterval, "Value Republication Interval", vocab2.WoTDataTypeInteger, "")
-	prop.Unit = vocab2.UnitNameSecond
-	prop.InitialValue = fmt.Sprintf("%d %s", binding.Config.RepublishInterval, vocab2.UnitNameSecond)
+	prop = td.AddProperty("valueInterval", vocab.VocabPollInterval, "Value Republication Interval", vocab.WoTDataTypeInteger, "")
+	prop.Unit = vocab.UnitNameSecond
+	prop.InitialValue = fmt.Sprintf("%d %s", svc.config.RepublishInterval, vocab.UnitNameSecond)
 
-	prop = td.AddProperty("owServerAddress", vocab2.VocabGatewayAddress, "OWServer gateway IP address", vocab2.WoTDataTypeString, "")
-	prop.InitialValue = fmt.Sprintf("%s", binding.Config.OWServerURL)
+	prop = td.AddProperty("owServerAddress", vocab.VocabGatewayAddress, "OWServer gateway IP address", vocab.WoTDataTypeString, "")
+	prop.InitialValue = fmt.Sprintf("%s", svc.config.OWServerURL)
 	return td
 }
 
 // Start the OWServer protocol binding
 // This publishes a TD for this binding, starts a background heartbeat.
-// This uses the given hub client connection.
-func (binding *OWServerBinding) Start() error {
+//
+//	hc is the connection with the hubClient to use.
+func (svc *OWServerBinding) Start(hc *hubclient.HubClient) (err error) {
 	slog.Warn("Starting OWServer binding")
+	if svc.config.LogLevel != "" {
+		logging.SetLogging(svc.config.LogLevel, "")
+	}
+	svc.hc = hc
 	// Create the adapter for the OWServer 1-wire gateway
-	binding.edsAPI = eds.NewEdsAPI(
-		binding.Config.OWServerURL, binding.Config.OWServerLogin, binding.Config.OWServerPassword)
+	svc.edsAPI = eds.NewEdsAPI(
+		svc.config.OWServerURL, svc.config.OWServerLogin, svc.config.OWServerPassword)
 
-	// TODO: restore binding configuration
+	// TODO: restore svc configuration
 
-	td := binding.CreateBindingTD()
-	tdDoc, _ := json.Marshal(td)
-	err := binding.hc.PubEvent(td.ID, vocab2.EventNameTD, tdDoc)
+	// subscribe to action requests
+	svc.actionSub, err = svc.hc.SubActions(
+		"", svc.HandleActionRequest)
 	if err != nil {
 		return err
 	}
 
-	binding.actionSub, err = binding.hc.SubActions(
-		"", binding.HandleActionRequest)
+	// publish this binding's TD document
+	td := svc.CreateBindingTD()
+	err = svc.hc.PubTD(td)
 	if err != nil {
-		return err
+		slog.Error("failed publishing service TD. Continuing...",
+			slog.String("err", err.Error()))
 	}
-	binding.isRunning.Store(true)
 
-	go binding.heartBeat()
-
-	slog.Info("Service OWServer startup completed")
-
+	// last, start polling heartbeat
+	svc.stopFn = svc.startHeartBeat()
 	return nil
 }
 
+// heartbeat polls the EDS server every X seconds and publishes updates
+func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
+	slog.Info("Starting heartBeat", "TD publish interval", svc.config.TDInterval, "polling", svc.config.PollInterval)
+	var tdCountDown = 0
+	var pollCountDown = 0
+
+	stopFn = plugin.StartHeartbeat(time.Second, func() {
+		tdCountDown--
+		pollCountDown--
+		if pollCountDown <= 0 {
+			// polling nodes and values takes one call
+			nodes, err := svc.PollNodes()
+			if err == nil {
+				if tdCountDown <= 0 {
+					// Every TDInterval update the TD's and submit all properties
+					// create ExposedThing's as they are discovered
+					err = svc.PublishThings(nodes)
+					tdCountDown = svc.config.TDInterval
+				}
+
+				err = svc.PublishNodeValues(nodes)
+			}
+			pollCountDown = svc.config.PollInterval
+			// slow down if polling fails
+			if err != nil {
+				pollCountDown = svc.config.PollInterval * 5
+			}
+		}
+	})
+	return stopFn
+}
+
 // Stop the heartbeat and remove subscriptions
-// This does NOTE close the given hubclient connection.
-func (binding *OWServerBinding) Stop() {
-	slog.Warn("Stopping OWServer binding")
-	binding.isRunning.Store(false)
-	if binding.actionSub != nil {
-		binding.actionSub.Unsubscribe()
-		binding.actionSub = nil
+// This does not close the given hubclient connection.
+func (svc *OWServerBinding) Stop() {
+	slog.Warn("Stopping OWServer svc")
+	if svc.actionSub != nil {
+		_ = svc.actionSub.Unsubscribe()
+		svc.actionSub = nil
+	}
+	if svc.stopFn != nil {
+		svc.stopFn()
+		svc.stopFn = nil
 	}
 }
 
 // NewOWServerBinding creates a new OWServer Protocol Binding service
 //
 //	config holds the configuration of the service
-//	hc is the connection with the hubClient to use.
-func NewOWServerBinding(config config.OWServerConfig, hc *hubclient.HubClient) *OWServerBinding {
+func NewOWServerBinding(config *config.OWServerConfig) *OWServerBinding {
 
 	// these are from hub configuration
-	pb := &OWServerBinding{
-		hc:        hc,
-		values:    make(map[string]map[string]NodeValueStamp),
-		nodes:     make(map[string]*eds.OneWireNode),
-		isRunning: atomic.Bool{},
-		//stopChan:  make(chan bool),
+	svc := &OWServerBinding{
+		config: config,
+		values: make(map[string]map[string]NodeValueStamp),
+		nodes:  make(map[string]*eds.OneWireNode),
 	}
-	pb.Config = config
-
-	return pb
+	return svc
 }

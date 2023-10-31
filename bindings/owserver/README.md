@@ -1,6 +1,6 @@
 # OWServer Binding
 
-HiveOT 1-wire protocol binding for OWServer-v2 gateway.
+HiveOT protocol binding for the EDS OWServer-v2 1-wire gateway.
 
 
 ## Objective
@@ -9,7 +9,16 @@ Convert EDS OWServer 1-wire devices to WoT Things.
 
 ## Status
 
-This binding is being converted to using the messaging based hub.
+This binding status is alpha and breaking changes should be expected.
+
+Limitations:
+* No remote configuration
+* Use of polling
+* Limited support for 1-wire node types. Mostly sensors.
+* Use of the HA7Net gateway is not supported
+* The vocabulary mapping of property/event/action names is inconsistent. This needs to be fixed in hiveot itself first.
+
+Above limitations can be resolved with some development and 1-wire devices for testing.
 
 
 ## Summary

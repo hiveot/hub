@@ -8,6 +8,7 @@ import (
 	"github.com/hiveot/hub/core/msgserver/mqttmsgserver"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/listeners"
+	"log/slog"
 	"sync"
 )
 
@@ -42,7 +43,7 @@ func (srv *MqttMsgServer) Core() string {
 // This returns the URL to connect to the server or an error if startup failed.
 func (srv *MqttMsgServer) Start() error {
 	var err error
-
+	slog.Warn("Starting MqttMsgServer")
 	// Require TLS for tcp and wss listeners
 	if srv.Config.CaCert == nil || srv.Config.ServerTLS == nil {
 		return fmt.Errorf("missing server or CA certificate")
@@ -108,6 +109,7 @@ func (srv *MqttMsgServer) Start() error {
 
 // Stop the server
 func (srv *MqttMsgServer) Stop() {
+	slog.Warn("Stopping MqttMsgServer")
 	if srv.ms != nil {
 		_ = srv.ms.Close()
 		srv.ms = nil

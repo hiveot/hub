@@ -31,8 +31,8 @@ func startStateService(cleanStart bool) (stateCl *stateclient.StateClient, stopF
 	hc1, err := testServer.AddConnectClient(
 		stateapi.ServiceName, authapi.ClientTypeService, authapi.ClientRoleService)
 
-	svc := service.NewStateService(hc1, storeDir)
-	err = svc.Start()
+	svc := service.NewStateService(storeDir)
+	err = svc.Start(hc1)
 	if err != nil {
 		panic("service fails to start: " + err.Error())
 	}
@@ -77,8 +77,8 @@ func TestStartStopBadLocation(t *testing.T) {
 		stateapi.ServiceName, authapi.ClientTypeService, authapi.ClientRoleService)
 
 	// use a read-only folder
-	stateSvc := service.NewStateService(hc1, "/not/a/folder")
-	err = stateSvc.Start()
+	stateSvc := service.NewStateService("/not/a/folder")
+	err = stateSvc.Start(hc1)
 	require.Error(t, err)
 
 	// stop should not break things further

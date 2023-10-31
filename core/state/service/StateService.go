@@ -19,7 +19,8 @@ type StateService struct {
 	// handler rpc subscription
 	sub transports.ISubscription
 	// backend storage
-	store buckets.IBucketStore
+	storeDir string
+	store    buckets.IBucketStore
 }
 
 func (svc *StateService) Delete(ctx hubclient.ServiceContext, args *stateapi.DeleteArgs) (err error) {
@@ -73,8 +74,11 @@ func (svc *StateService) SetMultiple(
 
 // Start the service
 // This sets the permission for roles (any) that can use the state store and opens the store
-func (svc *StateService) Start() (err error) {
-	slog.Info("Starting the state service")
+func (svc *StateService) Start(hc *hubclient.HubClient) (err error) {
+	slog.Warn("Starting the state service", "clientID", hc.ClientID())
+	svc.hc = hc
+	storePath := path.Join(svc.storeDir, hc.ClientID()+".json")
+	svc.store = kvbtree.NewKVStore(hc.ClientID(), storePath)
 
 	// Set the required permissions for using this service
 	// any user roles can read and write their state
@@ -108,7 +112,7 @@ func (svc *StateService) Start() (err error) {
 
 // Stop the service
 func (svc *StateService) Stop() {
-	slog.Info("Stopping the state service")
+	slog.Warn("Stopping the state service")
 	if svc.sub != nil {
 		svc.sub.Unsubscribe()
 		svc.sub = nil
@@ -118,13 +122,10 @@ func (svc *StateService) Stop() {
 }
 
 // NewStateService creates a new service instance using the kvstore
-func NewStateService(hc *hubclient.HubClient, storeDir string) *StateService {
+func NewStateService(storeDir string) *StateService {
 
-	storePath := path.Join(storeDir, hc.ClientID()+".json")
-	store := kvbtree.NewKVStore(hc.ClientID(), storePath)
 	svc := &StateService{
-		hc:    hc,
-		store: store,
+		storeDir: storeDir,
 	}
 
 	return svc

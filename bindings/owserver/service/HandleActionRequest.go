@@ -11,7 +11,7 @@ import (
 )
 
 // HandleActionRequest handles requests to activate inputs
-func (binding *OWServerBinding) HandleActionRequest(action *thing.ThingValue) (reply []byte, err error) {
+func (svc *OWServerBinding) HandleActionRequest(action *thing.ThingValue) (reply []byte, err error) {
 	var attr eds.OneWireAttr
 	slog.Info("HandleActionRequest",
 		slog.String("agentID", action.AgentID),
@@ -39,7 +39,7 @@ func (binding *OWServerBinding) HandleActionRequest(action *thing.ThingValue) (r
 	// determine the value. Booleans are submitted as integers
 	actionValue := action.Data
 
-	node, found := binding.nodes[agentID]
+	node, found := svc.nodes[agentID]
 	if found {
 		attr, found = node.Attr[rawActionID]
 	}
@@ -54,15 +54,15 @@ func (binding *OWServerBinding) HandleActionRequest(action *thing.ThingValue) (r
 	if attr.DataType == vocab.WoTDataTypeBool {
 		//actionValue = fmt.Sprint(ValueAsInt())
 	}
-	err = binding.edsAPI.WriteData(agentID, edsName, string(actionValue))
+	err = svc.edsAPI.WriteData(agentID, edsName, string(actionValue))
 
 	// read the result
 	time.Sleep(time.Second)
-	_ = binding.RefreshPropertyValues()
+	_ = svc.RefreshPropertyValues()
 
 	// Writing the EDS is slow, retry in case it was missed
 	time.Sleep(time.Second * 4)
-	_ = binding.RefreshPropertyValues()
+	_ = svc.RefreshPropertyValues()
 
 	if err != nil {
 		err = fmt.Errorf("action '%s' failed: %w", action.Name, err)

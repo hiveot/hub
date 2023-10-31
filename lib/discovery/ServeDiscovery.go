@@ -3,7 +3,7 @@ package discovery
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/utils"
+	net2 "github.com/hiveot/hub/lib/net"
 	"log/slog"
 	"net"
 	"os"
@@ -67,7 +67,7 @@ func ServeDiscovery(instanceID string, serviceName string,
 		ips = []string{actualIP[0].String()}
 	}
 
-	ifaces, err := utils.GetInterfaces(ips[0])
+	ifaces, err := net2.GetInterfaces(ips[0])
 	if err != nil || len(ifaces) == 0 {
 		slog.Warn("Address does not appear on any interface. Continuing anyways", "address", ips[0])
 	}

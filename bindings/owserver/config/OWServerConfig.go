@@ -36,7 +36,7 @@ type OWServerConfig struct {
 }
 
 // NewConfig returns a OWServerConfig with default values
-func NewConfig() OWServerConfig {
+func NewConfig() *OWServerConfig {
 	cfg := OWServerConfig{}
 
 	// ensure valid defaults
@@ -46,5 +46,5 @@ func NewConfig() OWServerConfig {
 	cfg.RepublishInterval = 3600
 	//cfg.AuthTokenFile = "owserver.token"
 	//cfg.KeyFile = "owserver.key"
-	return cfg
+	return &cfg
 }

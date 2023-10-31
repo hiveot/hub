@@ -29,7 +29,7 @@ var owsConfig config.OWServerConfig
 var owsSimulationFile string // simulation file
 var testServer *testenv.TestServer
 
-// TestMain run mosquitto and use the project test folder as the home folder.
+// TestMain run test server and use the project test folder as the home folder.
 // All tests are run using the simulation file.
 func TestMain(m *testing.M) {
 	// setup environment
@@ -40,7 +40,7 @@ func TestMain(m *testing.M) {
 	owsSimulationFile = "file://" + path.Join(homeFolder, "owserver-simulation.xml")
 	logging.SetLogging("info", "")
 
-	owsConfig = config.NewConfig()
+	owsConfig = *config.NewConfig()
 	owsConfig.OWServerURL = owsSimulationFile
 
 	//
@@ -67,8 +67,8 @@ func TestStartStop(t *testing.T) {
 	hc, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
-	svc := service.NewOWServerBinding(owsConfig, hc)
-	err = svc.Start()
+	svc := service.NewOWServerBinding(&owsConfig)
+	err = svc.Start(hc)
 	assert.NoError(t, err)
 	defer svc.Stop()
 	time.Sleep(time.Second)
@@ -82,7 +82,7 @@ func TestPoll(t *testing.T) {
 	hc, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
-	svc := service.NewOWServerBinding(owsConfig, hc)
+	svc := service.NewOWServerBinding(&owsConfig)
 
 	// Count the number of received TD events
 	sub, err := hc.SubEvents("", "", "",
@@ -103,7 +103,7 @@ func TestPoll(t *testing.T) {
 	defer sub.Unsubscribe()
 
 	// start the service which publishes TDs
-	err = svc.Start()
+	err = svc.Start(hc)
 	require.NoError(t, err)
 	defer svc.Stop()
 
@@ -122,9 +122,10 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 	require.NoError(t, err)
 	defer hc.Disconnect()
 
-	svc := service.NewOWServerBinding(owsConfig, hc)
-	svc.Config.OWServerURL = "http://invalidAddress/"
-	err = svc.Start()
+	badConfig := owsConfig // copy
+	badConfig.OWServerURL = "http://invalidAddress/"
+	svc := service.NewOWServerBinding(&badConfig)
+	err = svc.Start(hc)
 	assert.NoError(t, err)
 	defer svc.Stop()
 
@@ -147,8 +148,8 @@ func TestAction(t *testing.T) {
 	require.NoError(t, err)
 	defer hc.Disconnect()
 
-	svc := service.NewOWServerBinding(owsConfig, hc)
-	err = svc.Start()
+	svc := service.NewOWServerBinding(&owsConfig)
+	err = svc.Start(hc)
 	require.NoError(t, err)
 	defer svc.Stop()
 
