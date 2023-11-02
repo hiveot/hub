@@ -22,7 +22,7 @@
 		"@popperjs/core": "^2.11.6",
 		"@sveltejs/adapter-auto": "^2.0.0",
 		"@sveltejs/adapter-node": "^1.2.3",
-		"@sveltejs/kit": "^1.5.0",
+		"@sveltejs/kit": "^1.15.2",
 		"@types/node": "^18.15.11",
 		"@types/ws": "^8.5.4",
 		"@vavite/node-loader": "^1.7.0",
