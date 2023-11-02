@@ -30,7 +30,7 @@
 		"classnames": "^2.3.2",
 		"flowbite": "^1.6.4",
 		"flowbite-svelte": "^0.34.4",
-		"postcss": "^8.4.14",
+		"postcss": "^8.4.31",
 		"postcss-comment": "^2.0.0",
 		"postcss-load-config": "^4.0.1",
 		"prettier": "^2.8.0",
