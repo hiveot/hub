@@ -16,7 +16,7 @@ require (
 	github.com/nats-io/jwt/v2 v2.5.2
 	github.com/nats-io/nats-server/v2 v2.10.1
 	github.com/nats-io/nats.go v1.30.2
-	github.com/nats-io/nkeys v0.4.5
+	github.com/nats-io/nkeys v0.4.6
 	github.com/rs/cors v1.10.1
 	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.8.4
