@@ -7,11 +7,11 @@
       <excludeFolder url="file://$MODULE_DIR$/dist/certs" />
       <excludeFolder url="file://$MODULE_DIR$/dist/logs" />
       <excludeFolder url="file://$MODULE_DIR$/dist/run" />
-      <excludeFolder url="file://$MODULE_DIR$/bindings/hiveoview/.svelte-kit" />
-      <excludeFolder url="file://$MODULE_DIR$/bindings/hiveoview/build" />
-      <excludeFolder url="file://$MODULE_DIR$/bindings/hiveoview/dist" />
       <excludeFolder url="file://$MODULE_DIR$/bindings/zwavejs/build" />
       <excludeFolder url="file://$MODULE_DIR$/bindings/zwavejs/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/../plugins.js/hiveoview/.svelte-kit" />
+      <excludeFolder url="file://$MODULE_DIR$/../plugins.js/hiveoview/build" />
+      <excludeFolder url="file://$MODULE_DIR$/../plugins.js/hiveoview/dist" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
   </component>

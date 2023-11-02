@@ -68,7 +68,7 @@ func StartService() (svc *certsclient.CertsClient, stopFunc func()) {
 
 	return certClient, func() {
 		hc2.Disconnect()
-		_ = certSvc.Stop()
+		certSvc.Stop()
 		hc1.Disconnect()
 	}
 }

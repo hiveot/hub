@@ -3,6 +3,7 @@ package certs
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
@@ -12,9 +13,23 @@ import (
 	"os"
 )
 
+// CreateEd25519Keys creates an asymmetric key set using ED25519 curve algorithm
+// This is one of the safest algorithms as of 2023
+// See also: https://safecurves.cr.yp.to/
+func CreateEd25519Keys() (ed25519.PrivateKey, ed25519.PublicKey, error) {
+	rng := rand.Reader
+	pubKey, privKey, err := ed25519.GenerateKey(rng)
+	return privKey, pubKey, err
+}
+
 // CreateECDSAKeys creates a asymmetric key set.
 // This returns the private key and a base64 encoded public key string.
+//
+// Deprecated: P256 is unsafe. Switch to ed25519.
+//
+// See also: https://safecurves.cr.yp.to/
 func CreateECDSAKeys() (*ecdsa.PrivateKey, string) {
+
 	rng := rand.Reader
 	curve := elliptic.P256()
 	privKey, err := ecdsa.GenerateKey(curve, rng)

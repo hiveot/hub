@@ -40,7 +40,7 @@ type HubClient struct {
 }
 
 // MakeAddress creates a message address optionally with wildcards
-// This uses the hiveot topic format: {msgType}/{deviceID}/{thingID}/{name}[/{clientID}]
+// This uses the hiveot address format: {msgType}/{deviceID}/{thingID}/{name}[/{clientID}]
 // Where '/' is the address separator for MQTT or '.' for Nats
 // Where "+" is the wildcard for MQTT or "*" for Nats
 //
@@ -87,7 +87,7 @@ func (hc *HubClient) SplitAddress(addr string) (msgType, agentID, thingID, name 
 	parts := strings.Split(addr, sep)
 
 	// inbox topics are short
-	if len(parts) >= 1 && parts[0] == "_INBOX" {
+	if len(parts) >= 1 && parts[0] == vocab.MessageTypeINBOX {
 		msgType = parts[0]
 		if len(parts) >= 2 {
 			agentID = parts[1]
@@ -95,7 +95,7 @@ func (hc *HubClient) SplitAddress(addr string) (msgType, agentID, thingID, name 
 		return
 	}
 	if len(parts) < 4 {
-		err = errors.New("incomplete topic")
+		err = errors.New("incomplete address")
 		return
 	}
 	msgType = parts[0]
@@ -116,8 +116,8 @@ func (hc *HubClient) ClientID() string {
 // ConnectWithToken connects to the Hub server using a user JWT credentials secret
 // The token clientID must match that of the client
 //
-//	 kp is the serialized public/private key-pair of this client
-//		jwtToken is the token obtained with login or refresh.
+//	kp is the serialized public/private key-pair of this client
+//	jwtToken is the token obtained with login or refresh.
 func (hc *HubClient) ConnectWithToken(kp, jwtToken string) error {
 
 	err := hc.transport.ConnectWithToken(kp, jwtToken)
@@ -147,7 +147,7 @@ func (hc *HubClient) ConnectWithTokenFile(keysDir string) error {
 	return err
 }
 
-// ConnectWithPassword connects to the Hub server using a login ID and password.
+// ConnectWithPassword connects to the Hub server using the clientID and password.
 func (hc *HubClient) ConnectWithPassword(password string) error {
 	err := hc.transport.ConnectWithPassword(password)
 	return err
@@ -323,8 +323,6 @@ func (hc *HubClient) SubActions(thingID string,
 
 			messageType, agentID, thingID, name, senderID, err := hc.SplitAddress(addr)
 			msg := thing.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
-			msg.SenderID = senderID
-			msg.ValueType = messageType
 			if msg.SenderID == "" || err != nil {
 				err = fmt.Errorf("SubActions: Received request on invalid address '%s'", addr)
 				slog.Warn(err.Error())

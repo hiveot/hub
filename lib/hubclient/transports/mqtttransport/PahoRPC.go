@@ -82,6 +82,7 @@ func (h *Handler) Request(ctx context.Context, pb *paho.Publish) (*paho.Publish,
 	pb.Properties.User.Add("test2", "test2")
 	//HS 2023-09-10: allow override of response topic format
 	if pb.Properties.ResponseTopic == "" {
+		// the ClientID is the instance ID
 		pb.Properties.ResponseTopic = fmt.Sprintf(InboxTopicFormat, h.c.ClientID)
 	}
 	pb.Retain = false

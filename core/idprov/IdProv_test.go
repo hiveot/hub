@@ -36,8 +36,8 @@ func newIdProvService() (
 	stopFn func()) {
 
 	hc, err := testServer.AddConnectClient(idprovapi.ServiceName, authapi.ClientTypeService, authapi.ClientRoleService)
-	svc = service.NewIdProvService(hc, testPort, testServer.CertBundle.ServerCert, testServer.CertBundle.CaCert)
-	err = svc.Start()
+	svc = service.NewIdProvService(testPort, testServer.CertBundle.ServerCert, testServer.CertBundle.CaCert)
+	err = svc.Start(hc)
 	if err != nil {
 		panic("failed starting service")
 	}
@@ -112,6 +112,7 @@ func TestAutomaticProvisioning(t *testing.T) {
 	approved, err := mngCl.GetRequests(true, true, true)
 	assert.NoError(t, err)
 	require.True(t, len(approved) > 0)
+	// TBD: is the order fixed?
 	assert.Equal(t, device1ID, approved[0].ClientID)
 
 	// token should be used to connect

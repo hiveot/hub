@@ -42,26 +42,23 @@ func TestMain(m *testing.M) {
 
 	owsConfig = *config.NewConfig()
 	owsConfig.OWServerURL = owsSimulationFile
-
 	//
 	testServer, err = testenv.StartTestServer(core, true)
 	if err != nil {
 		panic("unable to start test server: " + err.Error())
 	}
-
 	result := m.Run()
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond)
 
 	testServer.Stop()
 	if result == 0 {
 		_ = os.RemoveAll(tempFolder)
 	}
-
 	os.Exit(result)
 }
 
 func TestStartStop(t *testing.T) {
-	slog.Info("--- TestStartStop ---")
+	t.Log("--- TestStartStop ---")
 	const device1ID = "device1"
 
 	hc, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
@@ -78,7 +75,7 @@ func TestPoll(t *testing.T) {
 	var tdCount atomic.Int32
 	const device1ID = "device1"
 
-	slog.Info("--- TestPoll ---")
+	t.Log("--- TestPoll ---")
 	hc, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
@@ -115,7 +112,7 @@ func TestPoll(t *testing.T) {
 }
 
 func TestPollInvalidEDSAddress(t *testing.T) {
-	slog.Info("--- TestPollInvalidEDSAddress ---")
+	t.Log("--- TestPollInvalidEDSAddress ---")
 	const device1ID = "device1"
 
 	hc, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
@@ -136,7 +133,7 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 }
 
 func TestAction(t *testing.T) {
-	slog.Info("--- TestAction ---")
+	t.Log("--- TestAction ---")
 	const device1ID = "device1"
 	// node in test data
 	const nodeID = "C100100000267C7E"

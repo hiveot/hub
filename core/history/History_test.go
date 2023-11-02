@@ -68,9 +68,9 @@ func newHistoryService() (
 
 	// the service needs a server connection
 	hc, err := testServer.AddConnectClient(historyapi.ServiceName, authapi.ClientTypeService, authapi.ClientRoleService)
-	svc = service.NewHistoryService(hc, histStore)
+	svc = service.NewHistoryService(histStore)
 	if err == nil {
-		err = svc.Start()
+		err = svc.Start(hc)
 	}
 	if err != nil {
 		panic("Failed starting the state service: " + err.Error())
@@ -85,7 +85,7 @@ func newHistoryService() (
 
 	return svc, histCl, func() {
 		hc2.Disconnect()
-		_ = svc.Stop()
+		svc.Stop()
 		_ = histStore.Close()
 		hc.Disconnect()
 		// give it some time to shut down before the next test
@@ -257,8 +257,8 @@ func TestAddGetEvent(t *testing.T) {
 	hc, err := testServer.AddConnectClient(historyapi.ServiceName, authapi.ClientTypeService, authapi.ClientRoleService)
 	require.NoError(t, err)
 	defer hc.Disconnect()
-	svc = service.NewHistoryService(hc, store2)
-	err = svc.Start()
+	svc = service.NewHistoryService(store2)
+	err = svc.Start(hc)
 	require.NoError(t, err)
 	defer svc.Stop()
 

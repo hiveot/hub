@@ -13,11 +13,11 @@ const deckLightsID = "15 2D A 1"
 var simFile = "file://../../test"
 
 // TestDiscover requires a live ISY99x gateway
-func TestDiscover(t *testing.T) {
-	addr, err := isyapi.Discover(3)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, addr, "ISY99x gateway not found")
-}
+//func TestDiscover(t *testing.T) {
+//	addr, err := isyapi.Discover(3)
+//	assert.NoError(t, err)
+//	assert.NotEmpty(t, addr, "ISY99x gateway not found")
+//}
 
 // Read simulation file from ISY device and check if more than 1 node is returned.
 // A minimum of 1 is expected if the device is online with an additional node for each connected node.
@@ -36,7 +36,7 @@ func TestReadIsyGateway(t *testing.T) {
 	// use a simulation file
 	isyNodes, err := isyAPI.ReadIsyNodes()
 	if assert.NoError(t, err) {
-		assert.True(t, len(isyNodes.Nodes) > 5, "Expected 6 ISY nodes. Got fewer.")
+		assert.True(t, len(isyNodes) > 5, "Expected 6 ISY nodes. Got fewer.")
 	}
 }
 

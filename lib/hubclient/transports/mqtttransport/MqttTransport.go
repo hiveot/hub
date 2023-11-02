@@ -151,6 +151,8 @@ func (ht *MqttHubTransport) ConnectWithPassword(password string) error {
 // A private key might be required in future.
 // This supports UDS connections with @/path or unix://@/path
 //
+// TODO: encrypt token with server public key so a MIM won't be able to get the token
+//
 //	kp is a serialized public/private key-pair of this client
 //	jwtToken is the token obtained with login or refresh.
 func (ht *MqttHubTransport) ConnectWithToken(kp string, jwtToken string) error {
