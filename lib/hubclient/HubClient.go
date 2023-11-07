@@ -8,8 +8,9 @@ import (
 	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
 	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
+	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/ser"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"os"
@@ -46,7 +47,7 @@ type HubClient struct {
 //
 //	msgType is the message type: "event", "action", "config" or "rpc".
 //	agentID is the device or service being addressed. Use "" for wildcard
-//	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
+//	thingID is the ID of the things managed by the publisher. Use "" for wildcard
 //	name is the event or action name. Use "" for wildcard.
 //	clientID is the login ID of the sender. Use "" for subscribe.
 func (hc *HubClient) MakeAddress(msgType, agentID, thingID, name string, clientID string) string {
@@ -118,7 +119,7 @@ func (hc *HubClient) ClientID() string {
 //
 //	kp is the serialized public/private key-pair of this client
 //	jwtToken is the token obtained with login or refresh.
-func (hc *HubClient) ConnectWithToken(kp, jwtToken string) error {
+func (hc *HubClient) ConnectWithToken(kp keys.IHiveKey, jwtToken string) error {
 
 	err := hc.transport.ConnectWithToken(kp, jwtToken)
 	return err
@@ -129,7 +130,7 @@ func (hc *HubClient) ConnectWithToken(kp, jwtToken string) error {
 //
 // keysDir is the directory with the {clientID}.key and {clientID}.token files.
 func (hc *HubClient) ConnectWithTokenFile(keysDir string) error {
-	var keyStr []byte
+	var kp keys.IHiveKey
 
 	slog.Info("ConnectWithTokenFile",
 		slog.String("keysDir", keysDir),
@@ -138,12 +139,12 @@ func (hc *HubClient) ConnectWithTokenFile(keysDir string) error {
 	tokenFile := path.Join(keysDir, hc.clientID+TokenFileExt)
 	token, err := os.ReadFile(tokenFile)
 	if err == nil && keyFile != "" {
-		keyStr, err = os.ReadFile(keyFile)
+		kp, err = keys.NewKeyFromFile(keyFile)
 	}
 	if err != nil {
 		return fmt.Errorf("ConnectWithTokenFile failed: %w", err)
 	}
-	err = hc.transport.ConnectWithToken(string(keyStr), string(token))
+	err = hc.transport.ConnectWithToken(kp, string(token))
 	return err
 }
 
@@ -154,7 +155,7 @@ func (hc *HubClient) ConnectWithPassword(password string) error {
 }
 
 // CreateKeyPair create a new serialized public/private key pair for use by this client
-func (hc *HubClient) CreateKeyPair() (string, string) {
+func (hc *HubClient) CreateKeyPair() keys.IHiveKey {
 	return hc.transport.CreateKeyPair()
 }
 
@@ -171,35 +172,32 @@ func (hc *HubClient) Disconnect() {
 //	keysDir is the location where the keys are stored.
 //
 // This returns the serialized private and pub keypair, or an error.
-func (hc *HubClient) LoadCreateKeyPair(clientID, keysDir string) (serializedKP string, pubKey string, err error) {
+func (hc *HubClient) LoadCreateKeyPair(clientID, keysDir string) (kp keys.IHiveKey, err error) {
 	if keysDir == "" {
-		return "", "", fmt.Errorf("certs directory must be provided")
+		return nil, fmt.Errorf("certs directory must be provided")
 	}
 	if clientID == "" {
 		clientID = hc.clientID
 	}
 	keyFile := path.Join(keysDir, clientID+KPFileExt)
 	pubFile := path.Join(keysDir, clientID+PubKeyFileExt)
-	// load key from file
-	keyBytes, err := os.ReadFile(keyFile)
-	pubBytes, err2 := os.ReadFile(pubFile)
 
-	if err != nil || err2 != nil {
+	// load key from file
+	kp, err = keys.NewKeyFromFile(keyFile)
+
+	if err != nil {
 		// no keyfile, create the key
-		serializedKP, pubKey = hc.transport.CreateKeyPair()
+		kp = hc.transport.CreateKeyPair()
 
 		// save the key for future use
-		err = os.WriteFile(keyFile, []byte(serializedKP), 0400)
-		err2 = os.WriteFile(pubFile, []byte(pubKey), 0444)
+		err = kp.ExportPrivateToFile(keyFile)
+		err2 := kp.ExportPublicToFile(pubFile)
 		if err2 != nil {
 			err = err2
 		}
-	} else {
-		serializedKP = string(keyBytes)
-		pubKey = string(pubBytes)
 	}
 
-	return serializedKP, pubKey, err
+	return kp, err
 }
 
 // PubAction publishes a request for action from a Thing.
@@ -223,7 +221,7 @@ func (hc *HubClient) PubAction(
 //
 // The client's ID is used as the publisher ID of the action.
 //
-//		agentID of the device that handles the action for the thing or service capability
+//		agentID of the device that handles the action for the things or service capability
 //		thingID is the destination thingID that handles the action
 //	 propName is the ID of the property to change as described in the TD properties section
 //	 payload is the optional payload of the action as described in the Thing's TD
@@ -241,8 +239,8 @@ func (hc *HubClient) PubConfig(
 // PubEvent publishes a Thing event. The payload is an event value as per TD document.
 // Intended for devices and services to notify of changes to the Things they are the agent for.
 //
-// 'thingID' is the ID of the 'thing' whose event to publish. This is the ID under which the
-// TD document is published that describes the thing. It can be the ID of the sensor, actuator
+// 'thingID' is the ID of the 'things' whose event to publish. This is the ID under which the
+// TD document is published that describes the things. It can be the ID of the sensor, actuator
 // or service.
 //
 // This will use the client's ID as the agentID of the event.
@@ -292,7 +290,7 @@ func (hc *HubClient) PubRPCRequest(
 
 // PubTD publishes an event with a Thing TD document.
 // The client's authentication ID will be used as the agentID of the event.
-func (hc *HubClient) PubTD(td *thing.TD) error {
+func (hc *HubClient) PubTD(td *things.TD) error {
 	payload, _ := ser.Marshal(td)
 	addr := hc.MakeAddress(vocab.MessageTypeEvent, hc.clientID, td.ID, vocab.EventNameTD, hc.clientID)
 	slog.Info("PubTD", "addr", addr)
@@ -308,13 +306,13 @@ func (hc *HubClient) PubTD(td *thing.TD) error {
 //
 // The supported actions are defined in the TD document of the things this binding has published.
 //
-//	thingID is the device thing or service capability to subscribe to, or "" for wildcard
+//	thingID is the device things or service capability to subscribe to, or "" for wildcard
 //	cb is the callback to invoke
 //
 // The handler receives an action request message with request payload and
 // must return a reply payload, which can be nil, or return an error.
 func (hc *HubClient) SubActions(thingID string,
-	handler func(msg *thing.ThingValue) (result []byte, err error)) (transports.ISubscription, error) {
+	handler func(msg *things.ThingValue) (result []byte, err error)) (transports.ISubscription, error) {
 
 	subAddr := hc.MakeAddress(vocab.MessageTypeAction, hc.clientID, thingID, "", "")
 
@@ -322,7 +320,7 @@ func (hc *HubClient) SubActions(thingID string,
 		func(addr string, payload []byte) (result []byte, err error) {
 
 			messageType, agentID, thingID, name, senderID, err := hc.SplitAddress(addr)
-			msg := thing.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
+			msg := things.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
 			if msg.SenderID == "" || err != nil {
 				err = fmt.Errorf("SubActions: Received request on invalid address '%s'", addr)
 				slog.Warn(err.Error())
@@ -343,12 +341,12 @@ func (hc *HubClient) SubActions(thingID string,
 //
 // The supported properties are defined in the TD document of the things this binding has published.
 //
-//	thingID is the device thing or service capability to subscribe to, or "" for wildcard
+//	thingID is the device things or service capability to subscribe to, or "" for wildcard
 //	cb is the callback to invoke
 //
 // The handler receives an action request message with request payload and
 // must reply with msg.Reply or msg.Ack, or return an error
-func (hc *HubClient) SubConfig(thingID string, handler func(msg *thing.ThingValue) error) (
+func (hc *HubClient) SubConfig(thingID string, handler func(msg *things.ThingValue) error) (
 	transports.ISubscription, error) {
 
 	subAddr := hc.MakeAddress(vocab.MessageTypeConfig, hc.clientID, thingID, "", "")
@@ -358,7 +356,7 @@ func (hc *HubClient) SubConfig(thingID string, handler func(msg *thing.ThingValu
 
 			messageType, agentID, thingID, name, senderID, err := hc.SplitAddress(addr)
 
-			msg := thing.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
+			msg := things.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
 			if msg.SenderID == "" || err != nil {
 				err = fmt.Errorf("SubConfig: Received request on invalid address '%s'", addr)
 				slog.Warn(err.Error())
@@ -383,7 +381,7 @@ func (hc *HubClient) SubConfig(thingID string, handler func(msg *thing.ThingValu
 //
 // The handler receives an event value message with data payload.
 func (hc *HubClient) SubEvents(agentID string, thingID string, eventName string,
-	handler func(msg *thing.ThingValue)) (transports.ISubscription, error) {
+	handler func(msg *things.ThingValue)) (transports.ISubscription, error) {
 
 	subAddr := hc.MakeAddress(vocab.MessageTypeEvent, agentID, thingID, eventName, "")
 
@@ -394,7 +392,7 @@ func (hc *HubClient) SubEvents(agentID string, thingID string, eventName string,
 			slog.Warn("SubEvents: Ignored event on invalid address", "addr", addr)
 			return
 		}
-		eventMsg := &thing.ThingValue{
+		eventMsg := &things.ThingValue{
 			AgentID:     evAgentID,
 			ThingID:     evThingID,
 			Name:        name,
@@ -415,7 +413,7 @@ func (hc *HubClient) SubEvents(agentID string, thingID string, eventName string,
 //
 // The handler must reply with msg.Reply or msg.Ack, or return an error.
 func (hc *HubClient) SubRPCRequest(capabilityID string,
-	handler func(msg *thing.ThingValue) (reply []byte, err error)) (
+	handler func(msg *things.ThingValue) (reply []byte, err error)) (
 	transports.ISubscription, error) {
 
 	subAddr := hc.MakeAddress(vocab.MessageTypeRPC, hc.clientID, capabilityID, "", "")
@@ -423,7 +421,7 @@ func (hc *HubClient) SubRPCRequest(capabilityID string,
 		func(addr string, payload []byte) (reply []byte, err error) {
 
 			messageType, agentID, thingID, name, senderID, err := hc.SplitAddress(addr)
-			msg := thing.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
+			msg := things.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
 			if senderID == "" || err != nil {
 				err = fmt.Errorf("SubRPCRequest: Received request on invalid address '%s'", addr)
 				slog.Warn(err.Error())
@@ -465,7 +463,7 @@ func (hc *HubClient) SubRPCRequest(capabilityID string,
 func (hc *HubClient) SubRPCCapability(
 	capID string, capMethods map[string]interface{}) (transports.ISubscription, error) {
 
-	sub, err := hc.SubRPCRequest(capID, func(msg *thing.ThingValue) (reply []byte, err error) {
+	sub, err := hc.SubRPCRequest(capID, func(msg *things.ThingValue) (reply []byte, err error) {
 
 		capMethod, found := capMethods[msg.Name]
 		if !found {

@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"github.com/eclipse/paho.golang/packets"
 	"github.com/eclipse/paho.golang/paho"
-	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient/transports"
+	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"log/slog"
@@ -153,9 +153,9 @@ func (ht *MqttHubTransport) ConnectWithPassword(password string) error {
 //
 // TODO: encrypt token with server public key so a MIM won't be able to get the token
 //
-//	kp is a serialized public/private key-pair of this client
+//	kp is the key-pair of this client
 //	jwtToken is the token obtained with login or refresh.
-func (ht *MqttHubTransport) ConnectWithToken(kp string, jwtToken string) error {
+func (ht *MqttHubTransport) ConnectWithToken(kp keys.IHiveKey, jwtToken string) error {
 	var conn net.Conn
 	var err error
 	if strings.HasPrefix(ht.serverURL, "unix://") {
@@ -180,11 +180,9 @@ func (ht *MqttHubTransport) ConnectWithToken(kp string, jwtToken string) error {
 }
 
 // CreateKeyPair returns a new set of serialized public/private key pair
-func (ht *MqttHubTransport) CreateKeyPair() (serializedKP string, serializedPub string) {
-	privKey, pubKey := certs.CreateECDSAKeys()
-	serializedKP, _ = certs.PrivateKeyToPEM(privKey)
-
-	return serializedKP, pubKey
+func (ht *MqttHubTransport) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
+	k := keys.NewKey(keys.KeyTypeECDSA)
+	return k
 }
 
 // Disconnect from the MQTT broker and unsubscribe from all topics and set

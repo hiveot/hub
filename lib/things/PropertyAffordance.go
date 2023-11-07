@@ -1,5 +1,5 @@
-// Package thing with API interface definitions for the ExposedThing and ConsumedThing classes
-package thing
+// Package things with API interface definitions for the ExposedThing and ConsumedThing classes
+package things
 
 // PropertyAffordance metadata that defines Thing properties
 // This is a Subclass of the InteractionAffordance Class and the DataSchema Class.

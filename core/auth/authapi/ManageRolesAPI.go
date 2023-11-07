@@ -24,7 +24,7 @@ const (
 	//  Write permissions: pubEvents, pubActions, pubConfig
 	ClientRoleAdmin = "admin"
 
-	// ClientRoleDevice lets a client publish thing events and subscribe to device actions
+	// ClientRoleDevice lets a client publish things events and subscribe to device actions
 	//  Read permissions: subActions
 	//  Write permissions: pubTDs, pubEvents
 	ClientRoleDevice = "device"
@@ -103,7 +103,7 @@ var viewerPermissions = []msgserver.RolePermission{{
 	AllowSub: true,
 }}
 
-// operators can subscribe to events and publish thing actions
+// operators can subscribe to events and publish things actions
 var operatorPermissions = []msgserver.RolePermission{
 	{
 		MsgType:  vocab.MessageTypeEvent,

@@ -35,15 +35,14 @@ func TestToken(t *testing.T) {
 	//err = s.ApplyAuth(testenv.TestClients)
 	require.NoError(t, err)
 	user2ID := "user2"
-	user2Key, user2Pub := s.CreateKeyPair()
-	_ = user2Key
+	kp := s.CreateKeyPair()
 
 	_ = certBundle
 	_ = cfg
 	clInfo := msgserver.ClientAuthInfo{
 		ClientID:   user2ID,
 		ClientType: authapi.ClientTypeUser,
-		PubKey:     user2Pub,
+		PubKey:     kp.ExportPublic(),
 		Role:       authapi.ClientRoleViewer,
 	}
 	user2Token, err := s.CreateToken(clInfo)

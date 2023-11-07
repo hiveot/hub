@@ -1,7 +1,7 @@
 package service
 
 import (
-	thing2 "github.com/hiveot/hub/lib/thing"
+	thing2 "github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/vocab"
 
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
@@ -15,7 +15,7 @@ import (
 func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing2.TD) {
 
 	// Should we bother with the URI? In HiveOT things have pubsub addresses that include the ID. The ID is not the address.
-	//thingID := thing.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
+	//thingID := things.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
 	thingID := node.NodeID
 
 	tdoc = thing2.NewTD(thingID, node.Name, node.DeviceType)

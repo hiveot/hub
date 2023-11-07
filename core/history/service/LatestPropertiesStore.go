@@ -8,30 +8,30 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 )
 
 // ThingPropertyValues is a map of Thing property name to value
-type ThingPropertyValues map[string]*thing.ThingValue
+type ThingPropertyValues map[string]*things.ThingValue
 
 // LatestPropertiesStore holds the most recent property and event values of things.
 // It persists a record for each Thing containing a map of the most recent properties.
 type LatestPropertiesStore struct {
-	// bucket to persist thing properties with a serialized property map for each thing
+	// bucket to persist things properties with a serialized property map for each things
 	store buckets.IBucket
 
-	// in-memory cache of the latest thing values by thing address
+	// in-memory cache of the latest things values by things address
 	cache map[string]ThingPropertyValues
 	// mutex for read/writing the cache
 	cacheMux sync.RWMutex // mutex for the following two fields
-	// map o thing addresses and their change status
+	// map o things addresses and their change status
 	changedThings map[string]bool
 }
 
 // LoadProps loads the cached value of a Thing properties on demand.
 // To be invoked before reading and writing Thing properties to ensure the cache is loaded.
 // This immediately returns if a record for the Thing was already loaded.
-// Returns true if a cache value exists, false if the thing address was added to the cache
+// Returns true if a cache value exists, false if the things address was added to the cache
 func (srv *LatestPropertiesStore) LoadProps(thingAddr string) (found bool) {
 	srv.cacheMux.Lock()
 	props, found := srv.cache[thingAddr]
@@ -43,13 +43,13 @@ func (srv *LatestPropertiesStore) LoadProps(thingAddr string) (found bool) {
 	val, _ := srv.store.Get(thingAddr)
 
 	if val == nil {
-		// create a new record with thing properties
+		// create a new record with things properties
 		props = make(ThingPropertyValues)
 	} else {
-		// decode the record with thing properties
+		// decode the record with things properties
 		err := json.Unmarshal(val, &props)
 		if err != nil {
-			slog.Error("stored 'latest' properties of thing can't be unmarshalled. Clean start.",
+			slog.Error("stored 'latest' properties of things can't be unmarshalled. Clean start.",
 				slog.String("thingAddr", thingAddr), slog.String("err", err.Error()))
 			props = make(ThingPropertyValues)
 		}
@@ -58,14 +58,14 @@ func (srv *LatestPropertiesStore) LoadProps(thingAddr string) (found bool) {
 	return
 }
 
-// GetProperties returns the latest value of thing properties and events as a list of properties
+// GetProperties returns the latest value of things properties and events as a list of properties
 //
-//	 thingAddr is the address the thing is reachable at. Usually the agentID/thingID.
+//	 thingAddr is the address the things is reachable at. Usually the agentID/thingID.
 //		names is optional and can be used to limit the resulting array of values. Use nil to get all properties.
-func (srv *LatestPropertiesStore) GetProperties(thingAddr string, names []string) (propList []*thing.ThingValue) {
-	propList = make([]*thing.ThingValue, 0)
+func (srv *LatestPropertiesStore) GetProperties(thingAddr string, names []string) (propList []*things.ThingValue) {
+	propList = make([]*things.ThingValue, 0)
 
-	// ensure this thing has its properties cache loaded
+	// ensure this things has its properties cache loaded
 	srv.LoadProps(thingAddr)
 
 	srv.cacheMux.RLock()
@@ -89,10 +89,10 @@ func (srv *LatestPropertiesStore) GetProperties(thingAddr string, names []string
 	return propList
 }
 
-// HandleAddValue is the handler of update to a thing's event/property values
+// HandleAddValue is the handler of update to a things's event/property values
 // used to update the properties cache.
 // isAction indicates the value is an action.
-func (srv *LatestPropertiesStore) HandleAddValue(event *thing.ThingValue, isAction bool) {
+func (srv *LatestPropertiesStore) HandleAddValue(event *things.ThingValue, isAction bool) {
 	// ensure the Thing has its properties cache loaded
 	thingAddr := event.AgentID + "/" + event.ThingID
 	srv.LoadProps(thingAddr)
@@ -116,7 +116,7 @@ func (srv *LatestPropertiesStore) HandleAddValue(event *thing.ThingValue, isActi
 		}
 		// turn each value into a ThingValue object
 		for propName, propValue := range props {
-			tv := thing.NewThingValue(vocab.MessageTypeEvent, event.AgentID, event.ThingID, propName, propValue, event.SenderID)
+			tv := things.NewThingValue(vocab.MessageTypeEvent, event.AgentID, event.ThingID, propName, propValue, event.SenderID)
 			tv.CreatedMSec = event.CreatedMSec
 
 			// in case events arrive out of order, only update if the event is newer

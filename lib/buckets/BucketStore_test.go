@@ -17,17 +17,17 @@ import (
 
 	"github.com/hiveot/hub/lib/logging"
 
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 )
 
 var testBucketID = "default"
 
-var testBackendType = buckets.BackendKVBTree
+//var testBackendType = buckets.BackendKVBTree
 
-// var testBackendType = bucketstore.BackendBBolt
-// var testBackendType = bucketstore.BackendPebble
+var testBackendType = buckets.BackendBBolt
+
+// var testBackendType = buckets.BackendPebble
 var testBackendDirectory = "/tmp/test-bucketstore"
-var testClientID = "buckettestclient"
 
 const (
 	doc1ID = "doc1"
@@ -55,30 +55,30 @@ var doc2 = []byte(`{
 // Create the bucket store using the backend
 func openNewStore() (store buckets.IBucketStore, err error) {
 	_ = os.RemoveAll(testBackendDirectory)
-	store = bucketstore.NewBucketStore(testBackendDirectory, testClientID, testBackendType)
+	store = bucketstore.NewBucketStore(testBackendDirectory, "test", testBackendType)
 	err = store.Open()
 	return store, err
 }
 
 // Create a TD document
-func createTD(id string) *thing.TD {
-	td := &thing.TD{
+func createTD(id string) *things.TD {
+	td := &things.TD{
 		ID:         id,
 		Title:      fmt.Sprintf("test TD %s", id),
 		DeviceType: vocab.DeviceTypeSensor,
-		Properties: make(map[string]*thing.PropertyAffordance),
-		Events:     make(map[string]*thing.EventAffordance),
+		Properties: make(map[string]*things.PropertyAffordance),
+		Events:     make(map[string]*things.EventAffordance),
 	}
-	td.Properties[vocab.VocabTitle] = &thing.PropertyAffordance{
-		DataSchema: thing.DataSchema{
+	td.Properties[vocab.VocabTitle] = &things.PropertyAffordance{
+		DataSchema: things.DataSchema{
 			Title:       "Sensor title",
 			Description: "This is a smart sensor",
 			Type:        vocab.WoTDataTypeString,
 			Default:     "Default value",
 		},
 	}
-	td.Properties[vocab.VocabSoftwareVersion] = &thing.PropertyAffordance{
-		DataSchema: thing.DataSchema{
+	td.Properties[vocab.VocabSoftwareVersion] = &things.PropertyAffordance{
+		DataSchema: things.DataSchema{
 			Title:       "Version",
 			Description: "Embedded firmware",
 			Type:        vocab.WoTDataTypeString,
@@ -86,18 +86,18 @@ func createTD(id string) *thing.TD {
 			Const:       "v1.0",
 		},
 	}
-	td.Events[vocab.VocabValue] = &thing.EventAffordance{
+	td.Events[vocab.VocabValue] = &things.EventAffordance{
 		Title:       "Event 1",
 		Description: "ID of this event",
-		Data: &thing.DataSchema{
+		Data: &things.DataSchema{
 			Type:        vocab.WoTDataTypeString,
 			Const:       "123",
 			Title:       "Event name data",
 			Description: "String with friendly name of the event"},
 	}
-	td.Events[vocab.VocabBatteryLevel] = &thing.EventAffordance{
+	td.Events[vocab.VocabBatteryLevel] = &things.EventAffordance{
 		Title: "Event 2",
-		Data: &thing.DataSchema{
+		Data: &things.DataSchema{
 			Type:        vocab.WoTDataTypeInteger,
 			Title:       "Battery level",
 			Unit:        vocab.UnitNamePercent,
@@ -162,8 +162,26 @@ func TestMain(m *testing.M) {
 	os.Exit(res)
 }
 
+func TestAllBackends(t *testing.T) {
+	backends := []string{buckets.BackendBBolt, buckets.BackendPebble, buckets.BackendKVBTree}
+	for _, backend := range backends {
+		testBackendType = backend
+		// Generic directory store testcases
+		t.Run("TestStartStop", TestStartStop)
+		t.Run("TestCreateStoreBadFolder", TestCreateStoreBadFolder)
+		t.Run("TestCreateStoreReadOnlyFolder", TestCreateStoreReadOnlyFolder)
+		t.Run("TestCreateStoreCantReadFile", TestCreateStoreCantReadFile)
+		t.Run("TestWriteRead", TestWriteRead)
+		t.Run("TestWriteBadData", TestWriteBadData)
+		t.Run("TestWriteReadMultiple", TestWriteReadMultiple)
+		t.Run("TestSeek", TestSeek)
+		t.Run("TestPrevNextN", TestPrevNextN)
+	}
+}
+
 // Generic directory store testcases
 func TestStartStop(t *testing.T) {
+
 	store, err := openNewStore()
 	require.NoError(t, err)
 	err = store.Close()
@@ -172,21 +190,21 @@ func TestStartStop(t *testing.T) {
 
 func TestCreateStoreBadFolder(t *testing.T) {
 	badDir := "/folder/does/not/exist/"
-	store := bucketstore.NewBucketStore(badDir, testClientID, testBackendType)
+	store := bucketstore.NewBucketStore(badDir, "test", testBackendType)
 	err := store.Open()
 	assert.Error(t, err)
 }
 
 func TestCreateStoreReadOnlyFolder(t *testing.T) {
 	badDir := "/var/"
-	store := bucketstore.NewBucketStore(badDir, testClientID, testBackendType)
+	store := bucketstore.NewBucketStore(badDir, "test", testBackendType)
 	err := store.Open()
 	assert.Error(t, err)
 }
 
 func TestCreateStoreCantReadFile(t *testing.T) {
 	badDir := "/bin"
-	store := bucketstore.NewBucketStore(badDir, "yes", testBackendType)
+	store := bucketstore.NewBucketStore(badDir, "test", testBackendType)
 	err := store.Open()
 	assert.Error(t, err)
 }
@@ -251,6 +269,7 @@ func TestWriteRead(t *testing.T) {
 	// Delete
 	err = bucket.Delete(id1)
 	assert.NoError(t, err)
+	time.Sleep(time.Millisecond)
 	resp, err = bucket.Get(id1)
 	assert.Error(t, err)
 	assert.Nil(t, resp)
@@ -515,34 +534,34 @@ func TestPrevNextN(t *testing.T) {
 //	queryString := "$[?(@['@type']==\"sensor\")]"
 //	id1 := "thing1"
 //	id2 := "thing2"
-//	td1 := thing.ThingDescription{
+//	td1 := things.ThingDescription{
 //		ID:         id1,
 //		Title:      "test TD 1",
 //		AtType:     string(vocab.DeviceTypeSensor),
-//		Properties: make(map[string]*thing.PropertyAffordance),
+//		Properties: make(map[string]*things.PropertyAffordance),
 //	}
-//	//td1 := thing.CreateTD(id1, "test TD", vocab.DeviceTypeSensor)
-//	td1.Properties[vocab.PropNameTitle] = &thing.PropertyAffordance{
-//		DataSchema: thing.DataSchema{
+//	//td1 := things.CreateTD(id1, "test TD", vocab.DeviceTypeSensor)
+//	td1.Properties[vocab.PropNameTitle] = &things.PropertyAffordance{
+//		DataSchema: things.DataSchema{
 //			Title: "Sensor title",
 //			Type:  vocab.WoTDataTypeString,
 //		},
 //	}
-//	td1.Properties[vocab.PropNameValue] = &thing.PropertyAffordance{
-//		DataSchema: thing.DataSchema{
+//	td1.Properties[vocab.PropNameValue] = &things.PropertyAffordance{
+//		DataSchema: things.DataSchema{
 //			Title: "Sensor value",
 //			Type:  vocab.WoTDataTypeNumber,
 //		},
 //	}
 //
-//	td2 := thing.ThingDescription{
+//	td2 := things.ThingDescription{
 //		ID:         id2,
 //		Title:      "test TD 2",
 //		AtType:     string(vocab.DeviceTypeSensor),
-//		Properties: make(map[string]*thing.PropertyAffordance),
+//		Properties: make(map[string]*things.PropertyAffordance),
 //	}
-//	td2.Properties[vocab.PropNameTitle] = &thing.PropertyAffordance{
-//		DataSchema: thing.DataSchema{
+//	td2.Properties[vocab.PropNameTitle] = &things.PropertyAffordance{
+//		DataSchema: things.DataSchema{
 //			Title: "The switch",
 //			Type:  vocab.WoTDataTypeBool,
 //		},
@@ -563,7 +582,7 @@ func TestPrevNextN(t *testing.T) {
 //	require.NoError(t, err)
 //	require.Equal(t, 2, len(resp))
 //
-//	var readTD1 thing.ThingDescription
+//	var readTD1 things.ThingDescription
 //	err = json.Unmarshal([]byte(resp[0]), &readTD1)
 //	require.NoError(t, err)
 //	read1type := readTD1.AtType

@@ -2,38 +2,37 @@ package jwtauth
 
 import (
 	"crypto/ecdsa"
-	"crypto/x509"
-	"encoding/base64"
-	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/keys"
 	"log/slog"
 )
 
 // LoadCreateUserKP loads a user keypair, or creates one if it doesn't exist
 //
-//	kpPath is file of key or "" to just create it
+//	pemPath is file of key or "" to just create it
 //	writeChanges if a file is given and key is generated
 //
 // This returns the public/private key pair with a public key string, or an error.
-func LoadCreateUserKP(kpPath string, writeChanges bool) (kp *ecdsa.PrivateKey, kpPub string, err error) {
+func LoadCreateUserKP(pemPath string, writeChanges bool) (privKey *ecdsa.PrivateKey, pubPEM string, err error) {
+	k := keys.NewKey(keys.KeyTypeECDSA)
+
 	// attempt to load
-	if kpPath != "" {
-		kp, _ = certs.LoadKeysFromPEM(kpPath)
-	}
-	// load fail, create and save
-	if kp == nil {
-		slog.Info("LoadCreateUserKP Keys not found. Creating new keys",
-			slog.String("kpPath", kpPath),
-			slog.Bool("writeChanges", writeChanges))
-		kp, kpPub = certs.CreateECDSAKeys()
-		if writeChanges {
-			err = certs.SaveKeysToPEM(kp, kpPath)
-		}
-	} else {
-		x509Pub, err := x509.MarshalPKIXPublicKey(&kp.PublicKey)
+	if pemPath != "" {
+		err = k.ImportPrivateFromFile(pemPath)
+
 		if err != nil {
-			return nil, "", err
+			// if load fails then keep the created keys
+			slog.Info("LoadCreateUserKP Keys not found. Creating new keys",
+				slog.String("pemPath", pemPath),
+				slog.Bool("writeChanges", writeChanges))
+
+			// load failed, new keys are used
+			if writeChanges {
+				err = k.ExportPrivateToFile(pemPath)
+			}
 		}
-		kpPub = base64.StdEncoding.EncodeToString(x509Pub)
 	}
-	return kp, kpPub, err
+
+	privKey = k.PrivateKey().(*ecdsa.PrivateKey)
+	pubPEM = k.ExportPublic()
+	return privKey, pubPEM, err
 }

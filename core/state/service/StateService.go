@@ -39,7 +39,11 @@ func (svc *StateService) Get(ctx hubclient.ServiceContext, args *stateapi.GetArg
 		Key:   args.Key,
 		Found: found,
 		Value: value}
-	err = bucket.Close()
+
+	err2 := bucket.Close()
+	if err == nil {
+		err = err2
+	}
 	return resp, err
 }
 
@@ -77,8 +81,8 @@ func (svc *StateService) SetMultiple(
 func (svc *StateService) Start(hc *hubclient.HubClient) (err error) {
 	slog.Warn("Starting the state service", "clientID", hc.ClientID())
 	svc.hc = hc
-	storePath := path.Join(svc.storeDir, hc.ClientID()+".json")
-	svc.store = kvbtree.NewKVStore(hc.ClientID(), storePath)
+	storePath := path.Join(svc.storeDir, "state.kvbtree")
+	svc.store = kvbtree.NewKVStore(storePath)
 
 	// Set the required permissions for using this service
 	// any user roles can read and write their state

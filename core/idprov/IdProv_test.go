@@ -6,8 +6,8 @@ import (
 	"github.com/hiveot/hub/core/idprov/idprovapi"
 	"github.com/hiveot/hub/core/idprov/idprovclient"
 	"github.com/hiveot/hub/core/idprov/service"
-	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"os"
@@ -24,7 +24,7 @@ import (
 var testFolder = path.Join(os.TempDir(), "test-provisioning")
 var testPort = uint(23001)
 
-const core = "mqtt"
+const core = "nats"
 
 // the following are set by the testmain
 var testServer *testenv.TestServer
@@ -79,8 +79,8 @@ func TestStartStop(t *testing.T) {
 func TestAutomaticProvisioning(t *testing.T) {
 	const device1ID = "device1"
 	const device2ID = "device2"
-	device1KP, device1Pub := testServer.MsgServer.CreateKeyPair()
-	_, device2Pub := testServer.MsgServer.CreateKeyPair()
+	device1KP := testServer.MsgServer.CreateKeyPair()
+	device2KP := testServer.MsgServer.CreateKeyPair()
 
 	svc, mngCl, stopFn := newIdProvService()
 	_ = svc
@@ -88,9 +88,9 @@ func TestAutomaticProvisioning(t *testing.T) {
 
 	approvedDevices := make([]idprovapi.PreApprovedClient, 2)
 	approvedDevices[0] = idprovapi.PreApprovedClient{
-		ClientID: device1ID, ClientType: authapi.ClientTypeDevice, PubKey: device1Pub}
+		ClientID: device1ID, ClientType: authapi.ClientTypeDevice, PubKey: device1KP.ExportPublic()}
 	approvedDevices[1] = idprovapi.PreApprovedClient{
-		ClientID: device2ID, ClientType: authapi.ClientTypeDevice, PubKey: device2Pub}
+		ClientID: device2ID, ClientType: authapi.ClientTypeDevice, PubKey: device2KP.ExportPublic()}
 
 	err := mngCl.PreApproveDevices(approvedDevices)
 	assert.NoError(t, err)
@@ -100,7 +100,7 @@ func TestAutomaticProvisioning(t *testing.T) {
 	tlsClient := tlsclient.NewTLSClient(idProvServerURL, testServer.CertBundle.CaCert)
 	tlsClient.ConnectNoAuth()
 	status, token1, err := idprovclient.SubmitIdProvRequest(
-		device1ID, device1Pub, "", tlsClient)
+		device1ID, device1KP.ExportPublic(), "", tlsClient)
 	require.NoError(t, err)
 
 	assert.Equal(t, device1ID, status.ClientID)
@@ -125,7 +125,9 @@ func TestAutomaticProvisioning(t *testing.T) {
 
 func TestAutomaticProvisioningBadParameters(t *testing.T) {
 	const device1ID = "device1"
-	_, device1Pub := certs.CreateECDSAKeys()
+
+	device1Keys := keys.NewKey(keys.KeyTypeECDSA)
+	device1PubPEM := device1Keys.ExportPublic()
 
 	svc, mngCl, stopFn := newIdProvService()
 	_ = svc
@@ -133,7 +135,7 @@ func TestAutomaticProvisioningBadParameters(t *testing.T) {
 
 	approvedDevices := make([]idprovapi.PreApprovedClient, 2)
 	approvedDevices[0] = idprovapi.PreApprovedClient{
-		ClientID: device1ID, PubKey: device1Pub}
+		ClientID: device1ID, PubKey: device1PubPEM}
 
 	err := mngCl.PreApproveDevices(approvedDevices)
 	assert.NoError(t, err)
@@ -142,7 +144,7 @@ func TestAutomaticProvisioningBadParameters(t *testing.T) {
 	idProvServerURL := "localhost:9002"
 	tlsClient := tlsclient.NewTLSClient(idProvServerURL, testServer.CertBundle.CaCert)
 	status, tokenEnc, err := idprovclient.SubmitIdProvRequest(
-		"", device1Pub, "", tlsClient)
+		"", device1PubPEM, "", tlsClient)
 	assert.Error(t, err)
 	assert.Empty(t, status)
 	assert.Empty(t, tokenEnc)
@@ -160,7 +162,8 @@ func TestAutomaticProvisioningBadParameters(t *testing.T) {
 
 func TestManualProvisioning(t *testing.T) {
 	const device1ID = "device1"
-	_, device1Pub := certs.CreateECDSAKeys()
+	device1Keys := keys.NewKey(keys.KeyTypeECDSA)
+	device1PubPEM := device1Keys.ExportPublic()
 
 	svc, mngCl, stopFn := newIdProvService()
 	_ = svc
@@ -170,7 +173,7 @@ func TestManualProvisioning(t *testing.T) {
 	idProvServerAddr := fmt.Sprintf("localhost:%d", testPort)
 	tlsClient := tlsclient.NewTLSClient(idProvServerAddr, testServer.CertBundle.CaCert)
 	tlsClient.ConnectNoAuth()
-	status, token, err := idprovclient.SubmitIdProvRequest(device1ID, device1Pub, "", tlsClient)
+	status, token, err := idprovclient.SubmitIdProvRequest(device1ID, device1PubPEM, "", tlsClient)
 	require.NoError(t, err)
 
 	assert.Equal(t, device1ID, status.ClientID)
@@ -192,7 +195,7 @@ func TestManualProvisioning(t *testing.T) {
 
 	// provisioning request should now succeed
 	status, token, err = idprovclient.SubmitIdProvRequest(
-		device1ID, device1Pub, "", tlsClient)
+		device1ID, device1PubPEM, "", tlsClient)
 	require.NoError(t, err)
 	require.False(t, status.Pending)
 	require.NotEmpty(t, status.ReceivedMSE)

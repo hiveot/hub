@@ -1,18 +1,18 @@
 package jwtauth
 
 import (
-	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
+	"github.com/hiveot/hub/lib/keys"
 	"time"
 )
 
 // CreateToken creates a signed JWT authtoken for a client.
-func CreateToken(authInfo msgserver.ClientAuthInfo, signingKey *ecdsa.PrivateKey) (token string, err error) {
+func CreateToken(authInfo msgserver.ClientAuthInfo, signingKey keys.IHiveKey) (token string, err error) {
 
 	if authInfo.ClientID == "" || authInfo.ClientType == "" {
 		err = fmt.Errorf("CreateToken: Missing client ID or type")
@@ -36,7 +36,7 @@ func CreateToken(authInfo msgserver.ClientAuthInfo, signingKey *ecdsa.PrivateKey
 	}
 	expiryTime := time.Now().Add(time.Duration(validity) * time.Hour * 24)
 
-	signingKeyPub, _ := x509.MarshalPKIXPublicKey(&signingKey.PublicKey)
+	signingKeyPub, _ := x509.MarshalPKIXPublicKey(signingKey.PublicKey())
 	signingKeyPubStr := base64.StdEncoding.EncodeToString(signingKeyPub)
 	// Create the JWT claims, which includes the username, clientType and expiry time
 	claims := jwt.MapClaims{
@@ -56,7 +56,7 @@ func CreateToken(authInfo msgserver.ClientAuthInfo, signingKey *ecdsa.PrivateKey
 
 	// Declare the token with the algorithm used for signing, and the claims
 	claimsToken := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
-	authToken, err := claimsToken.SignedString(signingKey)
+	authToken, err := claimsToken.SignedString(signingKey.PrivateKey())
 
 	if err != nil {
 		return "", err

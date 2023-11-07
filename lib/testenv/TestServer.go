@@ -76,7 +76,8 @@ func (ts *TestServer) AddConnectClient(
 	} else {
 		tp = mqtttransport.NewMqttTransport(serverURL, agentID, ts.CertBundle.CaCert)
 	}
-	serKP, serPub := tp.CreateKeyPair()
+	serKP := tp.CreateKeyPair()
+	serPub := serKP.ExportPublic()
 
 	if clientType == "" {
 		clientType = authapi.ClientTypeUser

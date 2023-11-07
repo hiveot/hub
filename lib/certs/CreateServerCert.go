@@ -1,11 +1,11 @@
 package certs
 
 import (
-	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
+	"github.com/hiveot/hub/lib/keys"
 	"log/slog"
 	"math/big"
 	"net"
@@ -24,17 +24,17 @@ const DefaultServerCertValidityDays = 100
 //	* serviceID is the unique service ID used as the CN. for example hostname-serviceName
 //	* ou is the organizational unit of the certificate
 //	* validityDays is the duration the cert is valid for. Use 0 for default.
-//	* serverPubKey is the server's public key
+//	* serverKey contains the server's public key
 //	* names are the SAN names to include with the certificate, localhost and 127.0.0.1 are always added
 //	* caCert is the CA certificate used to sign the certificate
 //	* caKey is the CA private key used to sign certificate
 func CreateServerCert(
 	serverID string, ou string, validityDays int,
-	serverPubKey *ecdsa.PublicKey, names []string,
-	caCert *x509.Certificate, caKey *ecdsa.PrivateKey) (
+	serverKey keys.IHiveKey, names []string,
+	caCert *x509.Certificate, caKey keys.IHiveKey) (
 	x509Cert *x509.Certificate, err error) {
 
-	if serverID == "" || serverPubKey == nil {
+	if serverID == "" || serverKey == nil {
 		err := fmt.Errorf("missing argument serviceID, servicePubKey")
 		slog.Error(err.Error())
 		return nil, err
@@ -94,8 +94,9 @@ func CreateServerCert(
 	// Create the service private key
 	//certKey := certs.CreateECDSAKeys()
 	// and the certificate itself
+	pubKey := serverKey.PublicKey()
 	certDerBytes, err := x509.CreateCertificate(
-		rand.Reader, template, caCert, serverPubKey, caKey)
+		rand.Reader, template, caCert, pubKey, caKey.PrivateKey())
 	if err == nil {
 		x509Cert, err = x509.ParseCertificate(certDerBytes)
 	}

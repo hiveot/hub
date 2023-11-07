@@ -1,5 +1,5 @@
-// Package thing with API interface definitions for forms
-package thing
+// Package things with API interface definitions for forms
+package things
 
 // Form can be viewed as a statement of "To perform an operation type operation on form context, make a
 // request method request to submission target" where the optional form fields may further describe the required

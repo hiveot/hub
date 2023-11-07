@@ -25,15 +25,15 @@ import (
 
 	"github.com/hiveot/hub/lib/logging"
 
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 )
 
-const thingIDPrefix = "thing-"
+const thingIDPrefix = "things-"
 
 // when testing using the capnp RPC
 var testFolder = path.Join(os.TempDir(), "test-history")
 
-const core = "nats"
+const core = "mqtt"
 
 // recommended store for history is pebble
 const historyStoreBackend = buckets.BackendPebble
@@ -60,7 +60,7 @@ func newHistoryService() (
 
 	// create a new empty store to use
 	_ = os.RemoveAll(svcConfig.StoreDirectory)
-	histStore := bucketstore.NewBucketStore(testFolder, serviceID, historyStoreBackend)
+	histStore := bucketstore.NewBucketStore(testFolder, "hist", historyStoreBackend)
 	err := histStore.Open()
 	if err != nil {
 		panic("can't open history bucket store")
@@ -99,10 +99,10 @@ func newHistoryService() (
 
 // generate a random batch of values for testing
 func makeValueBatch(publisherID string, nrValues, nrThings, timespanSec int) (
-	batch []*thing.ThingValue, highest map[string]*thing.ThingValue) {
+	batch []*things.ThingValue, highest map[string]*things.ThingValue) {
 
-	highest = make(map[string]*thing.ThingValue)
-	valueBatch := make([]*thing.ThingValue, 0, nrValues)
+	highest = make(map[string]*things.ThingValue)
+	valueBatch := make([]*things.ThingValue, 0, nrValues)
 	for j := 0; j < nrValues; j++ {
 		randomID := rand.Intn(nrThings)
 		randomName := rand.Intn(10)
@@ -111,14 +111,14 @@ func makeValueBatch(publisherID string, nrValues, nrThings, timespanSec int) (
 		randomTime := time.Now().Add(-randomSeconds)
 		thingID := thingIDPrefix + strconv.Itoa(randomID)
 
-		ev := &thing.ThingValue{
+		ev := &things.ThingValue{
 			AgentID:     publisherID,
 			ThingID:     thingID,
 			Name:        names[randomName],
 			Data:        []byte(fmt.Sprintf("%2.3f", randomValue)),
 			CreatedMSec: randomTime.UnixMilli(),
 		}
-		// track the actual most recent event for the name for thing 3
+		// track the actual most recent event for the name for things 3
 		if randomID == 0 {
 			if _, exists := highest[ev.Name]; !exists ||
 				highest[ev.Name].CreatedMSec < ev.CreatedMSec {
@@ -131,7 +131,7 @@ func makeValueBatch(publisherID string, nrValues, nrThings, timespanSec int) (
 }
 
 // add some history to the store using publisher 'device1'
-func addBulkHistory(svc *service.HistoryService, count int, nrThings int, timespanSec int) (highest map[string]*thing.ThingValue) {
+func addBulkHistory(svc *service.HistoryService, count int, nrThings int, timespanSec int) (highest map[string]*things.ThingValue) {
 
 	const publisherID = "device1"
 	var batchSize = 1000
@@ -144,7 +144,7 @@ func addBulkHistory(svc *service.HistoryService, count int, nrThings int, timesp
 
 	// use add multiple in 100's
 	for i := 0; i < count/batchSize; i++ {
-		// no thingID constraint allows adding events from any thing
+		// no thingID constraint allows adding events from any things
 		start := batchSize * i
 		end := batchSize * (i + 1)
 		err := addHist.AddEvents(evBatch[start:end])
@@ -195,24 +195,24 @@ func TestAddGetEvent(t *testing.T) {
 
 	// add thing1 temperature from 5 minutes ago
 	addHist := svc.GetAddHistory()
-	ev1_1 := &thing.ThingValue{AgentID: agent1ID, ThingID: thing1ID, Name: evTemperature,
+	ev1_1 := &things.ThingValue{AgentID: agent1ID, ThingID: thing1ID, Name: evTemperature,
 		Data: []byte("12.5"), CreatedMSec: fivemago.UnixMilli()}
 	err := addHist.AddEvent(ev1_1)
 	assert.NoError(t, err)
 	// add thing1 humidity from 55 minutes ago
-	ev1_2 := &thing.ThingValue{AgentID: agent1ID, ThingID: thing1ID, Name: evHumidity,
+	ev1_2 := &things.ThingValue{AgentID: agent1ID, ThingID: thing1ID, Name: evHumidity,
 		Data: []byte("70"), CreatedMSec: fiftyfivemago.UnixMilli()}
 	err = addHist.AddEvent(ev1_2)
 	assert.NoError(t, err)
 
 	// add thing2 humidity from 5 minutes ago
-	ev2_1 := &thing.ThingValue{AgentID: agent1ID, ThingID: thing2ID, Name: evHumidity,
+	ev2_1 := &things.ThingValue{AgentID: agent1ID, ThingID: thing2ID, Name: evHumidity,
 		Data: []byte("50"), CreatedMSec: fivemago.UnixMilli()}
 	err = addHist.AddEvent(ev2_1)
 	assert.NoError(t, err)
 
 	// add thing2 temperature from 55 minutes ago
-	ev2_2 := &thing.ThingValue{AgentID: agent1ID, ThingID: thing2ID, Name: evTemperature,
+	ev2_2 := &things.ThingValue{AgentID: agent1ID, ThingID: thing2ID, Name: evTemperature,
 		Data: []byte("17.5"), CreatedMSec: fiftyfivemago.UnixMilli()}
 	err = addHist.AddEvent(ev2_2)
 	assert.NoError(t, err)
@@ -220,7 +220,7 @@ func TestAddGetEvent(t *testing.T) {
 	// Test 1: get events of thing1 older than 300 minutes ago - expect 1 humidity from 55 minutes ago
 	cursor1, c1Release, err := readHist.GetCursor(agent1ID, thing1ID, "")
 
-	// seek must return the thing humidity added 55 minutes ago, not 5 minutes ago
+	// seek must return the things humidity added 55 minutes ago, not 5 minutes ago
 	timeAfter := time.Now().Add(-time.Minute * 300).UnixMilli()
 	tv1, valid, err := cursor1.Seek(timeAfter)
 	if assert.NoError(t, err) && assert.True(t, valid) {
@@ -234,7 +234,7 @@ func TestAddGetEvent(t *testing.T) {
 		}
 	}
 
-	// Test 2: get events of thing 1 newer than 30 minutes ago - expect 1 temperature
+	// Test 2: get events of things 1 newer than 30 minutes ago - expect 1 temperature
 	timeAfter = time.Now().Add(-time.Minute * 30).UnixMilli()
 
 	// do we need to get a new cursor?
@@ -250,7 +250,7 @@ func TestAddGetEvent(t *testing.T) {
 	cancelFn()
 
 	// PHASE 2: after closing and reopening the svc the event should still be there
-	store2 := bucketstore.NewBucketStore(testFolder, serviceID, historyStoreBackend)
+	store2 := bucketstore.NewBucketStore(testFolder, "hist", historyStoreBackend)
 	err = store2.Open()
 	require.NoError(t, err)
 	defer store2.Close()
@@ -262,7 +262,7 @@ func TestAddGetEvent(t *testing.T) {
 	require.NoError(t, err)
 	defer svc.Stop()
 
-	// Test 3: get first temperature of thing 2 - expect 1 result
+	// Test 3: get first temperature of things 2 - expect 1 result
 	time.Sleep(time.Second)
 	readHist2 := historyclient.NewReadHistoryClient(hc) // reuse hc, its okay
 	cursor2, releaseFn, err := readHist2.GetCursor(agent1ID, thing2ID, "")
@@ -283,35 +283,35 @@ func TestAddPropertiesEvent(t *testing.T) {
 	svc, readHist, closeFn := newHistoryService()
 	defer closeFn()
 
-	action1 := &thing.ThingValue{
+	action1 := &things.ThingValue{
 		AgentID: agent1,
 		ThingID: thing1ID,
 		Name:    vocab.VocabSwitch,
 		Data:    []byte("on"),
 	}
-	event1 := &thing.ThingValue{
+	event1 := &things.ThingValue{
 		AgentID: agent1,
 		ThingID: thing1ID,
 		Name:    vocab.VocabTemperature,
 		Data:    []byte(temp1),
 	}
-	badEvent1 := &thing.ThingValue{
+	badEvent1 := &things.ThingValue{
 		AgentID: agent1,
 		ThingID: thing1ID,
 		Name:    "", // missing name
 	}
-	badEvent2 := &thing.ThingValue{
+	badEvent2 := &things.ThingValue{
 		AgentID: "", // missing publisher
 		ThingID: thing1ID,
 		Name:    "name",
 	}
-	badEvent3 := &thing.ThingValue{
+	badEvent3 := &things.ThingValue{
 		AgentID:     agent1,
 		ThingID:     thing1ID,
 		Name:        "baddate",
 		CreatedMSec: -1,
 	}
-	badEvent4 := &thing.ThingValue{
+	badEvent4 := &things.ThingValue{
 		AgentID: agent1,
 		ThingID: "", // missing ID
 		Name:    "temperature",
@@ -321,7 +321,7 @@ func TestAddPropertiesEvent(t *testing.T) {
 	propsList[vocab.VocabCPULevel] = []byte("30")
 	propsList[vocab.VocabSwitch] = []byte("off")
 	propsValue, _ := json.Marshal(propsList)
-	props1 := &thing.ThingValue{
+	props1 := &things.ThingValue{
 		AgentID: agent1,
 		ThingID: thing1ID,
 		Name:    vocab.EventNameProps,

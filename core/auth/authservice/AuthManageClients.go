@@ -63,7 +63,7 @@ func (svc *AuthManageClients) AddDevice(
 	return resp, err
 }
 
-// AddService adds or updates a service with the admin role
+// AddService adds or updates a client of type service
 func (svc *AuthManageClients) AddService(
 	ctx hubclient.ServiceContext, args authapi.AddServiceArgs) (authapi.AddServiceResp, error) {
 	slog.Info("AddService",

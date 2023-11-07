@@ -59,13 +59,12 @@ func startTestAuthnService() (authnSvc *authservice.AuthService, mng *authclient
 	//--- connect the authn management client for managing clients
 	serverURL, _, _ := testServer.MsgServer.GetServerURLs()
 	hc2 := hubclient.NewHubClient(serverURL, "auth-test-client", testServer.CertBundle.CaCert, core)
-	clKP, clPub := hc2.CreateKeyPair()
-	_ = clKP
+	clKP := hc2.CreateKeyPair()
 
 	args := authapi.AddUserArgs{
 		UserID:      "auth-test-client",
 		DisplayName: "auth test client",
-		PubKey:      clPub,
+		PubKey:      clKP.ExportPublic(),
 		Role:        authapi.ClientRoleAdmin,
 	}
 	ctx := hubclient.ServiceContext{SenderID: "test-client"}
@@ -123,6 +122,7 @@ func TestStartStop(t *testing.T) {
 	t.Log("--- TestStartStop start")
 	defer t.Log("--- TestStartStop end")
 
+	// this creates the admin user key
 	_, mngAuthn, stopFn, err := startTestAuthnService()
 	require.NoError(t, err)
 	defer stopFn()
@@ -262,7 +262,7 @@ func TestUpdatePubKey(t *testing.T) {
 	require.NoError(t, err)
 
 	// 1. connect to the added user using its password
-	_, tu1KeyPub := testServer.MsgServer.CreateKeyPair()
+	kp := testServer.MsgServer.CreateKeyPair()
 	hc1 := hubclient.NewHubClient(serverURL, tu1ID, certBundle.CaCert, core)
 	err = hc1.ConnectWithPassword(tu1Pass)
 	require.NoError(t, err)
@@ -270,13 +270,14 @@ func TestUpdatePubKey(t *testing.T) {
 
 	// 2. update the public key and reconnect
 	cl1 := authclient.NewProfileClient(hc1)
-	err = cl1.UpdatePubKey(tu1KeyPub)
+	tu1Pub := kp.ExportPublic()
+	err = cl1.UpdatePubKey(tu1Pub)
 	assert.NoError(t, err)
 	//hc1.Disconnect()
 
 	prof, err := cl1.GetProfile()
 	require.NoError(t, err)
-	assert.Equal(t, tu1KeyPub, prof.PubKey)
+	assert.Equal(t, tu1Pub, prof.PubKey)
 }
 
 // Note: Refresh is only useful when using JWT. The nats nkey server ignores the token and uses nkeys
@@ -297,7 +298,8 @@ func TestLoginRefresh(t *testing.T) {
 
 	// add user to test with
 	hc1 := hubclient.NewHubClient(serverURL, tu1ID, certBundle.CaCert, core)
-	tu1Key, tu1KeyPub := hc1.CreateKeyPair()
+	tu1Key := hc1.CreateKeyPair()
+	tu1KeyPub := tu1Key.ExportPublic()
 	// AddUser returns a token. JWT or Nkey public key depending on server
 	tu1Token, err := mng.AddUser(tu1ID, "testuser 1", tu1Pass, tu1KeyPub, authapi.ClientRoleViewer)
 	require.NoError(t, err)
@@ -373,8 +375,8 @@ func TestRefreshNoPubKey(t *testing.T) {
 
 	// after setting pub key refresh should succeed
 	t.Log("set public key and refresh should succeed")
-	tu1Key, tu1Pub := hc1.CreateKeyPair()
-	err = cl1.UpdatePubKey(tu1Pub)
+	tu1Key := hc1.CreateKeyPair()
+	err = cl1.UpdatePubKey(tu1Key.ExportPublic())
 	require.NoError(t, err)
 	authToken1, err = cl1.RefreshToken()
 	require.NoError(t, err)

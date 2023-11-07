@@ -71,14 +71,13 @@ func HandleCreateCACert(certsFolder string, validityDays int, force bool) error 
 		}
 	}
 
-	caCert, privKey, err := certs.CreateCA("Hub CA", validityDays)
+	caCert, caKey, err := certs.CreateCA("Hub CA", validityDays)
 	if err != nil {
 		return err
 	}
 	err = certs.SaveX509CertToPEM(caCert, caCertPath)
 	if err == nil {
-		// this sets permissions to 0400 current user readonly
-		err = certs.SaveKeysToPEM(privKey, caKeyPath)
+		err = caKey.ExportPrivateToFile(caKeyPath)
 	}
 
 	slog.Info("Generated CA certificate", "caCertPath", caCertPath, "caKeyPath", caKeyPath)

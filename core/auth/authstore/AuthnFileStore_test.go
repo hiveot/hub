@@ -288,7 +288,7 @@ func TestConcurrentReadWrite(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		for i = 0; i < 30; i++ {
-			thingID := fmt.Sprintf("thing-%d", i)
+			thingID := fmt.Sprintf("things-%d", i)
 			err = pwStore1.Add(thingID,
 				authapi.ClientProfile{ClientID: thingID, ClientType: authapi.ClientTypeUser, Role: authapi.ClientRoleNone})
 			time.Sleep(time.Millisecond * 1)

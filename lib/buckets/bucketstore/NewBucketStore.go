@@ -10,23 +10,26 @@ import (
 )
 
 // NewBucketStore creates a new bucket store of a given type
+// The store will be created in the given directory using the
+// backend as the name. The directory is typically the name of the service that
+// uses the store. Different databases can co-exist.
 //
-//		directory is the directory to create the store
-//	 clientID is used to name the store
-//		backend is the type of store to create: BackendKVBTree, BackendBBolt, BackendPebble
-func NewBucketStore(directory, clientID, backend string) (store buckets.IBucketStore) {
+//	directory is the directory in which to create the store
+//	name of the store database file or folder without extension
+//	backend is the type of store to create: BackendKVBTree, BackendBBolt, BackendPebble
+func NewBucketStore(directory, name string, backend string) (store buckets.IBucketStore) {
 	if backend == buckets.BackendKVBTree {
 		// kvbtree stores data into a single file
-		storePath := path.Join(directory, clientID+".json")
-		store = kvbtree.NewKVStore(clientID, storePath)
+		storePath := path.Join(directory, name+".kvbtree")
+		store = kvbtree.NewKVStore(storePath)
 	} else if backend == buckets.BackendBBolt {
 		// bbolt stores data into a single file
-		storePath := path.Join(directory, clientID+".boltdb")
-		store = bolts.NewBoltStore(clientID, storePath)
+		storePath := path.Join(directory, name+".boltdb")
+		store = bolts.NewBoltStore(storePath)
 	} else if backend == buckets.BackendPebble {
 		// Pebbles stores data into a directory
-		storePath := path.Join(directory, clientID)
-		store = pebble.NewPebbleStore(clientID, storePath)
+		storePath := path.Join(directory, name+".pebble")
+		store = pebble.NewPebbleStore(storePath)
 	} else {
 		slog.Error("Unknown backend", "backend", backend)
 	}

@@ -8,7 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"log/slog"
+	"github.com/hiveot/hub/lib/keys"
 	"os"
 )
 
@@ -17,7 +17,7 @@ const DefaultCaKeyFile = "caKey.pem"
 
 // Certificate Organization Unit for client certificate based authorization
 const (
-	//OUAdmin lets a client approve thing provisioning (postOOB), add and remove users
+	//OUAdmin lets a client approve things provisioning (postOOB), add and remove users
 	// Provision API permissions: GetDirectory, ProvisionRequest, GetStatus, PostOOB
 	OUAdmin = "admin"
 
@@ -85,22 +85,24 @@ func PublicKeyFromCert(cert *x509.Certificate) *ecdsa.PublicKey {
 //	cert is the obtained TLS certificate whose parts to save
 //	certPEMPath the file to save the X509 certificate to in PEM format
 //	keyPEMPath the file to save the private key to in PEM format
-func SaveTLSCertToPEM(cert *tls.Certificate, certPEMPath, keyPEMPath string) error {
-	slog.Info("Saving TLS cert to " + certPEMPath)
-	b := pem.Block{Type: "CERTIFICATE", Bytes: cert.Certificate[0]}
-	certPEM := pem.EncodeToMemory(&b)
-	// remove existing cert since perm 0444 doesn't allow overwriting it
-	_ = os.Remove(certPEMPath)
-	_ = os.Remove(keyPEMPath)
-	err := os.WriteFile(certPEMPath, certPEM, 0444)
-	if err != nil {
-		slog.Error("Failed writing server cert to file", "err", err)
-		return err
-	}
-	err = SaveKeysToPEM(cert.PrivateKey, keyPEMPath)
-
-	return err
-}
+//func SaveTLSCertToPEM(cert *tls.Certificate, certPEMPath, keyPEMPath string) error {
+//	slog.Info("Saving TLS cert to " + certPEMPath)
+//	b := pem.Block{Type: "CERTIFICATE", Bytes: cert.Certificate[0]}
+//	certPEM := pem.EncodeToMemory(&b)
+//	// remove existing cert since perm 0444 doesn't allow overwriting it
+//	_ = os.Remove(certPEMPath)
+//	_ = os.Remove(keyPEMPath)
+//	err := os.WriteFile(certPEMPath, certPEM, 0444)
+//	if err != nil {
+//		slog.Error("Failed writing server cert to file", "err", err)
+//		return err
+//	}
+//	k, err := keys.NewKeyFromEnc(cert.PrivateKey)
+//	if err == nil {
+//		err = k.ExportPrivateToFile(keyPEMPath)
+//	}
+//	return err
+//}
 
 // SaveX509CertToPEM saves the x509 certificate to file in PEM format.
 // Clients that receive a client certificate from provisioning can use this
@@ -132,11 +134,11 @@ func X509CertToPEM(cert *x509.Certificate) string {
 }
 
 // X509CertToTLS combines a x509 certificate and private key into a TLS certificate
-func X509CertToTLS(cert *x509.Certificate, privKey *ecdsa.PrivateKey) *tls.Certificate {
+func X509CertToTLS(cert *x509.Certificate, privKey keys.IHiveKey) *tls.Certificate {
 	// A TLS certificate is a wrapper around x509 with private key
 	tlsCert := &tls.Certificate{}
 	tlsCert.Certificate = append(tlsCert.Certificate, cert.Raw)
-	tlsCert.PrivateKey = privKey
+	tlsCert.PrivateKey = privKey.PrivateKey()
 
 	return tlsCert
 }

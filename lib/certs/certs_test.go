@@ -41,40 +41,40 @@ func TestPublicKeyFromCert(t *testing.T) {
 	assert.NotEmpty(t, pubKey)
 }
 
-func TestSaveLoadTLSCert(t *testing.T) {
-	// hostnames := []string{"localhost"}
-	certFile := path.Join(TestCertFolder, "tlscert.pem")
-	keyFile := path.Join(TestCertFolder, "tlskey.pem")
+//func TestSaveLoadTLSCert(t *testing.T) {
+//	// hostnames := []string{"localhost"}
+//	certFile := path.Join(TestCertFolder, "tlscert.pem")
+//	keyFile := path.Join(TestCertFolder, "tlskey.pem")
+//
+//	testCerts := certs.CreateTestCertBundle()
+//
+//	// save the test x509 part of the TLS cert
+//	err := certs.SaveTLSCertToPEM(testCerts.ServerCert, certFile, keyFile)
+//	assert.NoError(t, err)
+//
+//	// load back the x509 part of the TLS cert
+//	cert, err := certs.LoadTLSCertFromPEM(certFile, keyFile)
+//	assert.NoError(t, err)
+//	assert.NotNil(t, cert)
+//}
 
-	testCerts := certs.CreateTestCertBundle()
-
-	// save the test x509 part of the TLS cert
-	err := certs.SaveTLSCertToPEM(testCerts.ServerCert, certFile, keyFile)
-	assert.NoError(t, err)
-
-	// load back the x509 part of the TLS cert
-	cert, err := certs.LoadTLSCertFromPEM(certFile, keyFile)
-	assert.NoError(t, err)
-	assert.NotNil(t, cert)
-}
-
-func TestSaveLoadCertNoFile(t *testing.T) {
-	certFile := "/root/notavalidcert.pem"
-	keyFile := "/root/notavalidkey.pem"
-	testCerts := certs.CreateTestCertBundle()
-	// save the test x509 cert
-	err := certs.SaveX509CertToPEM(testCerts.CaCert, certFile)
-	assert.Error(t, err)
-
-	_, err = certs.LoadX509CertFromPEM(certFile)
-	assert.Error(t, err)
-
-	// save the test x509 part of the TLS cert
-	err = certs.SaveTLSCertToPEM(testCerts.ServerCert, certFile, keyFile)
-	assert.Error(t, err)
-
-	// load back the x509 part of the TLS cert
-	_, err = certs.LoadTLSCertFromPEM(certFile, keyFile)
-	assert.Error(t, err)
-
-}
+//func TestSaveLoadCertNoFile(t *testing.T) {
+//	certFile := "/root/notavalidcert.pem"
+//	keyFile := "/root/notavalidkey.pem"
+//	testCerts := certs.CreateTestCertBundle()
+//	// save the test x509 cert
+//	err := certs.SaveX509CertToPEM(testCerts.CaCert, certFile)
+//	assert.Error(t, err)
+//
+//	_, err = certs.LoadX509CertFromPEM(certFile)
+//	assert.Error(t, err)
+//
+//	// save the test x509 part of the TLS cert
+//	err = certs.SaveTLSCertToPEM(testCerts.ServerCert, certFile, keyFile)
+//	assert.Error(t, err)
+//
+//	// load back the x509 part of the TLS cert
+//	_, err = certs.LoadTLSCertFromPEM(certFile, keyFile)
+//	assert.Error(t, err)
+//
+//}

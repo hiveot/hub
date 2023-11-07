@@ -16,7 +16,6 @@ import (
 // KVBTreeBucket is an in-memory bucket for the KVBTreeBucket
 type KVBTreeBucket struct {
 	BucketID string `json:"bucketID"`
-	ClientID string `json:"clientID"`
 	refCount int    // simple ref count for error detection
 	kvtree   btree.Map[string, []byte]
 
@@ -33,15 +32,15 @@ type KVBTreeBucket struct {
 // This decreases the refCount and detects an error if below 0
 func (bucket *KVBTreeBucket) Close() (err error) {
 
-	slog.Debug("closing bucket", "bucketID", bucket.BucketID, "clientID", bucket.ClientID)
+	slog.Debug("closing bucket", "bucketID", bucket.BucketID)
 	// this just lowers the refCount to detect leaks
 	bucket.mutex.Lock()
 	defer bucket.mutex.Unlock()
 
 	bucket.refCount--
 	if bucket.refCount < 0 {
-		err = fmt.Errorf("bucket '%s' of client '%s' closed more often than opened",
-			bucket.BucketID, bucket.ClientID)
+		err = fmt.Errorf("bucket '%s' closed more often than opened",
+			bucket.BucketID)
 	}
 	return err
 }
@@ -104,7 +103,8 @@ func (bucket *KVBTreeBucket) Get(key string) (val []byte, err error) {
 
 	val, found = bucket.kvtree.Get(key)
 	if !found {
-		err = fmt.Errorf("key '%s' not found in map", key)
+		err = fmt.Errorf("key '%s' not found", key)
+		// return nil with no error
 	}
 	return val, err
 }
@@ -287,10 +287,9 @@ func (bucket *KVBTreeBucket) SetMultiple(docs map[string][]byte) (err error) {
 	return nil
 }
 
-func NewKVMemBucket(clientID, bucketID string) *KVBTreeBucket {
+func NewKVMemBucket(bucketID string) *KVBTreeBucket {
 	kvbucket := &KVBTreeBucket{
 		BucketID: bucketID,
-		ClientID: clientID,
 		refCount: 0,
 		mutex:    sync.RWMutex{},
 		updated:  nil,
@@ -300,11 +299,10 @@ func NewKVMemBucket(clientID, bucketID string) *KVBTreeBucket {
 
 // NewKVMemBucketFromMap creates a new KVBTreeBucket from a map with bucket data
 // Intended for loading a saved store.
-func NewKVMemBucketFromMap(clientID, bucketID string, data map[string][]byte) *KVBTreeBucket {
-	slog.Debug("creating bucket", "bucketID", bucketID, "clientID", clientID)
+func NewKVMemBucketFromMap(bucketID string, data map[string][]byte) *KVBTreeBucket {
+	slog.Debug("creating bucket", "bucketID", bucketID)
 	kvbucket := &KVBTreeBucket{
 		BucketID: bucketID,
-		ClientID: clientID,
 		refCount: 0,
 		mutex:    sync.RWMutex{},
 		updated:  nil,

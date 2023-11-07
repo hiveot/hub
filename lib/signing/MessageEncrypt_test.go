@@ -2,9 +2,9 @@ package signing_test
 
 import (
 	"encoding/json"
+	"github.com/hiveot/hub/lib/keys"
 	"testing"
 
-	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/signing"
 
 	"github.com/stretchr/testify/assert"
@@ -38,7 +38,7 @@ import (
 // }
 
 func TestEncryptDecrypt(t *testing.T) {
-	privKey, _ := certs.CreateECDSAKeys()
+	privKey := keys.NewECDSAKeys(nil).PrivateKey()
 	const msg1 = "Message1"
 	// encrypt using my own public key
 	serialized, err := signing.EncryptMessage(msg1, &privKey.PublicKey)
@@ -52,7 +52,7 @@ func TestEncryptDecrypt(t *testing.T) {
 }
 
 func TestSignAndEncrypt(t *testing.T) {
-	privKey, _ := certs.CreateECDSAKeys()
+	privKey := keys.NewECDSAKeys(nil).PrivateKey()
 	payload, _ := json.Marshal(testObject)
 
 	msg, err := signing.SignAndEncrypt(payload, privKey, &privKey.PublicKey)

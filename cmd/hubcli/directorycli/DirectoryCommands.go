@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/core/directory/dirclient"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
 	"time"
@@ -63,7 +63,7 @@ func HandleListDirectory(hc *hubclient.HubClient) (err error) {
 		//tv, valid = cursor.Skip(offset)
 	}
 	for ; valid && i < limit; tv, valid, err = cursor.Next() {
-		var tdDoc thing.TD
+		var tdDoc things.TD
 		err = json.Unmarshal(tv.Data, &tdDoc)
 		var utime time.Time
 		if tdDoc.Modified != "" {
@@ -91,7 +91,7 @@ func HandleListDirectory(hc *hubclient.HubClient) (err error) {
 
 // HandleListThing lists details of a Thing in the directory
 func HandleListThing(hc *hubclient.HubClient, pubID, thingID string) error {
-	var tdDoc thing.TD
+	var tdDoc things.TD
 
 	rdir := dirclient.NewReadDirectoryClient(hc)
 	tv, err := rdir.GetTD(pubID, thingID)

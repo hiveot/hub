@@ -16,8 +16,6 @@ import (
 type BoltBucket struct {
 	// the underlying DB
 	db *bbolt.DB
-	// client this bbBucket is for. Intended for debugging and logging.
-	clientID string
 	// ID of the storage bbBucket
 	bucketID string
 	// callback for reporting bbBucket is released
@@ -32,8 +30,8 @@ func (bb *BoltBucket) bucketTransaction(writable bool, cb func(bucket *bbolt.Buc
 	tx, err := bb.db.Begin(writable)
 	slog.Debug("starting transaction for bbBucket. ", "bucketID", bb.bucketID, "writable", writable)
 	if err != nil {
-		slog.Error("unable to create transaction for bbBucket for client",
-			"bucketID", bb.bucketID, "clientID", bb.clientID, "err", err.Error())
+		slog.Error("unable to create transaction for BoltBucket",
+			"bucketID", bb.bucketID, "err", err.Error())
 		return err
 	}
 	if writable {
@@ -42,7 +40,7 @@ func (bb *BoltBucket) bucketTransaction(writable bool, cb func(bucket *bbolt.Buc
 		bboltBucket = tx.Bucket([]byte(bb.bucketID))
 	}
 	if bboltBucket == nil {
-		slog.Debug("Nothing to read, bbBucket for client doesn't yet exist", "bucketID", bb.bucketID, "clientID", bb.clientID)
+		slog.Debug("Nothing to read, bbBucket for client doesn't yet exist", "bucketID", bb.bucketID)
 		// This bbBucket has never been written to so ignore the rest
 	} else {
 		err = cb(bboltBucket)
@@ -59,7 +57,7 @@ func (bb *BoltBucket) bucketTransaction(writable bool, cb func(bucket *bbolt.Buc
 
 // Close the bbBucket
 func (bb *BoltBucket) Close() (err error) {
-	//slog.Infof("Closing bbBucket '%s' of client '%s", bb.bucketID, bb.clientID)
+	//slog.Infof("Closing BoltBucket '%s'", bb.bucketID)
 	bb.onRelease(bb)
 	return err
 }
@@ -76,15 +74,15 @@ func (bb *BoltBucket) Cursor(ctx context.Context) (cursor buckets.IBucketCursor,
 
 	tx, err := bb.db.Begin(false)
 	if err != nil {
-		slog.Error("unable to create transaction for bbBucket for client",
-			"bucketID", bb.bucketID, "clientID", bb.clientID, "err", err)
+		slog.Error("unable to create transaction for BoltBucket",
+			"bucketID", bb.bucketID, "err", err)
 		return nil, fmt.Errorf("unable to create new cursor:%w", err)
 	}
 	bboltBucket := tx.Bucket([]byte(bb.bucketID))
 	if bboltBucket == nil {
 		// nothing to iterate, the bbBucket doesn't exist
 		_ = tx.Rollback()
-		err = fmt.Errorf("bbBucket '%s' no longer exist for client '%s'", bb.bucketID, bb.clientID)
+		err = fmt.Errorf("bbBucket '%s' no longer exist", bb.bucketID)
 		slog.Warn(err.Error())
 		return nil, err
 	}
@@ -113,8 +111,10 @@ func (bb *BoltBucket) Get(key string) (val []byte, err error) {
 		v := bboltBucket.Get([]byte(key))
 		if v != nil {
 			byteValue = bytes.NewBuffer(v).Bytes() //copy the buffer
+		} else {
+			err = fmt.Errorf("key '%s' not found", key)
 		}
-		return nil
+		return err
 	})
 	return byteValue, err
 }
@@ -128,7 +128,7 @@ func (bb *BoltBucket) GetMultiple(keys []string) (docs map[string][]byte, err er
 			byteValue := bboltBucket.Get([]byte(key))
 			// simply ignore non existing keys and log as info
 			if byteValue == nil {
-				//slog.Infof("key '%s' in bbBucket '%s' for client '%s' doesn't exist", key, bb.bucketID, bb.clientID)
+				//slog.Infof("key '%s' in bbBucket '%s' doesn't exist", key, bb.bucketID)
 			} else {
 				// byteValue is only valid within the transaction
 				val := bytes.NewBuffer(byteValue).Bytes()
@@ -183,7 +183,7 @@ func (bb *BoltBucket) SetMultiple(docs map[string][]byte) (err error) {
 		for key, value := range docs {
 			err = bboltBucket.Put([]byte(key), value)
 			if err != nil {
-				err = fmt.Errorf("error put client '%s' value for key '%s' in bbBucket '%s': %w", bb.clientID, key, bb.bucketID, err)
+				err = fmt.Errorf("error bucket.Put with key '%s' in bbBucket '%s': %w", key, bb.bucketID, err)
 				//_ = bb.bbBucket.Tx().Rollback()
 				return err
 			}
@@ -195,14 +195,12 @@ func (bb *BoltBucket) SetMultiple(docs map[string][]byte) (err error) {
 
 // NewBoltBucket creates a new bbBucket
 //
-//	clientID that owns the bbBucket. Used for logging
 //	bucketID used to create transactional buckets
 //	db bbolt database used to create transactions
 //	onRelease callback to track reference for detecting unreleased buckets on close
-func NewBoltBucket(clientID, bucketID string, db *bbolt.DB, onRelease func(bucket buckets.IBucket)) *BoltBucket {
+func NewBoltBucket(bucketID string, db *bbolt.DB, onRelease func(bucket buckets.IBucket)) *BoltBucket {
 	srv := &BoltBucket{
 		db:        db,
-		clientID:  clientID,
 		bucketID:  bucketID,
 		onRelease: onRelease,
 	}

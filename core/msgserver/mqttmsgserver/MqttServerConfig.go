@@ -1,11 +1,11 @@
 package mqttmsgserver
 
 import (
-	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
+	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/net"
 	"log/slog"
 	"path"
@@ -33,8 +33,8 @@ type MqttServerConfig struct {
 
 	// The certs and keys are set directly
 	CaCert    *x509.Certificate `yaml:"-"` // preset, load, or error
-	CaKey     *ecdsa.PrivateKey `yaml:"-"` // preset, load, or error
-	ServerKey *ecdsa.PrivateKey `yaml:"-"` // generated, loaded  (used as signing key)
+	CaKey     keys.IHiveKey     `yaml:"-"` // preset, load, or error
+	ServerKey keys.IHiveKey     `yaml:"-"` // generated, loaded  (used as signing key)
 	ServerTLS *tls.Certificate  `yaml:"-"` // generated
 
 	// Core Service credentials for use by in-proc connection
@@ -87,14 +87,14 @@ func (cfg *MqttServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 	}
 	if cfg.ServerKey == nil {
 		slog.Warn("Creating server key")
-		cfg.ServerKey, _ = certs.CreateECDSAKeys()
+		cfg.ServerKey = keys.NewKey(keys.KeyTypeECDSA)
 	}
 	if cfg.ServerTLS == nil && cfg.CaKey != nil {
 		names := []string{cfg.Host}
 		serverX509, err := certs.CreateServerCert(
 			"hiveot", "server",
 			365, // validity matches the CA
-			&cfg.ServerKey.PublicKey,
+			cfg.ServerKey,
 			names, cfg.CaCert, cfg.CaKey)
 		if err != nil {
 			slog.Error("unable to generate server cert. Not using TLS.", "err", err)

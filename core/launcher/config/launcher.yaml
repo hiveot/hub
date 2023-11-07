@@ -39,15 +39,16 @@ autostart:
   # core services
   - certs             # certificate management service
   - state             # client state storage
-  - directory         # storage of thing directory
+  - directory         # storage of things directory
   - history           # storage of event history
   - idprov            # IoT device provisioning service
-#  - hiveoview         # simple dashboard for viewing in the browser
 
-  # protocol bindings
+# protocol bindings
+#  - hiveoview         # simple dashboard for viewing in the browser
 #  - owserver          # 1-wire binding using owserver gateway
 #  - zwavejs           # ZWave binding using zwave-js
 #  - isy99x            # Insteon binding using legacy ISY99 gateway
 #  - ipnet             # IP network scanner
+
 #  - openweathermap    # Weather service integration
 #  - locate            # Locate people and devices

@@ -8,7 +8,7 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/transports"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 )
@@ -35,7 +35,7 @@ type DirectoryService struct {
 }
 
 // handleTDEvent stores a received Thing TD document
-func (svc *DirectoryService) handleTDEvent(event *thing.ThingValue) {
+func (svc *DirectoryService) handleTDEvent(event *things.ThingValue) {
 	args := directoryapi.UpdateTDArgs{
 		AgentID: event.AgentID,
 		ThingID: event.ThingID,

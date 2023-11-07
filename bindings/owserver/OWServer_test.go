@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/bindings/owserver/service"
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"os"
@@ -83,7 +83,7 @@ func TestPoll(t *testing.T) {
 
 	// Count the number of received TD events
 	sub, err := hc.SubEvents("", "", "",
-		func(ev *thing.ThingValue) {
+		func(ev *things.ThingValue) {
 			slog.Info("received event", "id", ev.Name)
 			if ev.Name == vocab.EventNameProps {
 				var value map[string][]byte
@@ -107,7 +107,7 @@ func TestPoll(t *testing.T) {
 	// wait until startup poll completed
 	time.Sleep(time.Millisecond * 100)
 
-	// the simulation file contains 3 things. The service is 1 thing.
+	// the simulation file contains 3 things. The service is 1 things.
 	assert.GreaterOrEqual(t, tdCount.Load(), int32(4))
 }
 
@@ -137,7 +137,7 @@ func TestAction(t *testing.T) {
 	const device1ID = "device1"
 	// node in test data
 	const nodeID = "C100100000267C7E"
-	//var nodeAddr = thing.MakeThingAddr(owsConfig.ID, nodeID)
+	//var nodeAddr = things.MakeThingAddr(owsConfig.ID, nodeID)
 	var actionName = vocab.VocabRelay
 	var actionValue = ([]byte)("1")
 

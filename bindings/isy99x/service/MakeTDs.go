@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/bindings/isy99x/service/isyapi"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/vocab"
 	"strings"
 )
@@ -64,9 +64,9 @@ func (svc *IsyBinding) getPropName(prop *isyapi.IsyProp) string {
 
 // MakeBindingTD generates a TD document for this binding
 // containing configuration properties, event and action definitions
-func (svc *IsyBinding) MakeBindingTD() *thing.TD {
+func (svc *IsyBinding) MakeBindingTD() *things.TD {
 	thingID := svc.hc.ClientID()
-	td := thing.NewTD(thingID, "OWServer binding", vocab.DeviceTypeBinding)
+	td := things.NewTD(thingID, "OWServer binding", vocab.DeviceTypeBinding)
 
 	// these are configured through the configuration file.
 	prop := td.AddProperty(vocab.VocabPollInterval, vocab.VocabPollInterval, "Poll Interval", vocab.WoTDataTypeInteger, "")
@@ -86,7 +86,7 @@ func (svc *IsyBinding) MakeBindingTD() *thing.TD {
 }
 
 // MakeGatewayTD creates a TD of the ISY gateway device
-func (svc *IsyBinding) MakeGatewayTD(isyDevice *isyapi.IsyDevice) *thing.TD {
+func (svc *IsyBinding) MakeGatewayTD(isyDevice *isyapi.IsyDevice) *things.TD {
 	// update the TD
 	// some fields to pick from
 
@@ -94,7 +94,7 @@ func (svc *IsyBinding) MakeGatewayTD(isyDevice *isyapi.IsyDevice) *thing.TD {
 	thingID := isyDevice.Configuration.App             // Insteon_UD99
 	title := isyDevice.Configuration.DeviceSpecs.Model // Insteon Web Controller
 	deviceType := vocab.DeviceTypeGateway
-	td := thing.NewTD(thingID, title, deviceType)
+	td := things.NewTD(thingID, title, deviceType)
 
 	// device read-only attributes
 	td.AddPropertyAsString(vocab.VocabManufacturer, vocab.VocabManufacturer,
@@ -153,7 +153,7 @@ func (svc *IsyBinding) MakeGatewayTD(isyDevice *isyapi.IsyDevice) *thing.TD {
 }
 
 // MakeNodeTD makes a TD document of an isy node
-func (svc *IsyBinding) MakeNodeTD(node *isyapi.IsyNode) (td *thing.TD) {
+func (svc *IsyBinding) MakeNodeTD(node *isyapi.IsyNode) (td *things.TD) {
 	deviceType := vocab.DeviceTypeUnknown
 
 	// determine what device this is
@@ -168,7 +168,7 @@ func (svc *IsyBinding) MakeNodeTD(node *isyapi.IsyNode) (td *thing.TD) {
 			deviceType = vocab.DeviceTypeUnknown
 		}
 	}
-	td = thing.NewTD(node.Address, node.Name, deviceType)
+	td = things.NewTD(node.Address, node.Name, deviceType)
 
 	//--- Node attributes (read-only) that describe the device ---
 	prop := td.AddPropertyAsInt(

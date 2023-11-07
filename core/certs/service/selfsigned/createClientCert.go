@@ -1,11 +1,11 @@
 package selfsigned
 
 import (
-	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
+	"github.com/hiveot/hub/lib/keys"
 	"log/slog"
 	"math/big"
 	"net"
@@ -29,8 +29,8 @@ import (
 //
 // Returns the signed certificate with the corresponding CA used to sign, or an error
 func createClientCert(
-	clientID string, ouRole string, ownerPubKey *ecdsa.PublicKey,
-	caCert *x509.Certificate, caPrivKey *ecdsa.PrivateKey, validityDays int) (
+	clientID string, ouRole string, ownerPubKey keys.IHiveKey,
+	caCert *x509.Certificate, caPrivKey keys.IHiveKey, validityDays int) (
 	clientCert *x509.Certificate, err error) {
 
 	var newCert *x509.Certificate
@@ -65,7 +65,7 @@ func createClientCert(
 		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
 	}
 	// clientKey := certs.CreateECDSAKeys()
-	certDer, err := x509.CreateCertificate(rand.Reader, template, caCert, ownerPubKey, caPrivKey)
+	certDer, err := x509.CreateCertificate(rand.Reader, template, caCert, ownerPubKey.PublicKey(), caPrivKey.PrivateKey())
 	if err == nil {
 		newCert, err = x509.ParseCertificate(certDer)
 	}

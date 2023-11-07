@@ -3,7 +3,7 @@ package historyclient
 import (
 	"github.com/hiveot/hub/core/history/historyapi"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 )
 
 // ReadHistoryClient for talking to the history service
@@ -40,7 +40,7 @@ func (cl *ReadHistoryClient) GetCursor(
 //	thingID the event or action belongs to
 //	names optionally filter on specific property, event or action names. nil for all values
 func (cl *ReadHistoryClient) GetLatest(
-	agentID string, thingID string, names []string) ([]*thing.ThingValue, error) {
+	agentID string, thingID string, names []string) ([]*things.ThingValue, error) {
 	args := historyapi.GetLatestArgs{
 		AgentID: agentID,
 		ThingID: thingID,

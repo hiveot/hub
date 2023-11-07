@@ -1,5 +1,5 @@
-// Package thing with handling of property, event and action values
-package thing
+// Package things with handling of property, event and action values
+package things
 
 import (
 	"encoding/json"

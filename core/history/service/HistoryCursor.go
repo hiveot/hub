@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 )
 
 // key of filter by event/action name, stored in context
@@ -27,14 +27,14 @@ const filterContextKey = "name"
 //	bc         buckets.IBucketCursor // the iteration
 //}
 
-// convert the storage key and raw data to a thing value object
+// convert the storage key and raw data to a things value object
 // this must match the encoding done in AddHistory
 //
 //	bucketID is the ID of the bucket, which this service defines as agentID/thingID
 //	key is the value's key, which is defined as timestamp/valueName
 //
 // This returns the value, or nil if the key is invalid
-func decodeValue(bucketID string, key string, data []byte) (thingValue *thing.ThingValue, valid bool) {
+func decodeValue(bucketID string, key string, data []byte) (thingValue *things.ThingValue, valid bool) {
 	// key is constructed as  timestamp/agentID/thingID/valueName/{a|e}
 	parts := strings.Split(key, "/")
 	if len(parts) < 2 {
@@ -49,7 +49,7 @@ func decodeValue(bucketID string, key string, data []byte) (thingValue *thing.Th
 	agentID := addrParts[0]
 	thingID := addrParts[1]
 
-	thingValue = &thing.ThingValue{
+	thingValue = &things.ThingValue{
 		ThingID:     thingID,
 		AgentID:     agentID,
 		Name:        parts[1],
@@ -69,7 +69,7 @@ func decodeValue(bucketID string, key string, data []byte) (thingValue *thing.Th
 //	name is the event name to match
 //	until is the time not to exceed in the result. Intended to avoid unnecessary iteration in range queries
 func (svc *ReadHistoryService) findNextName(
-	cursor buckets.IBucketCursor, name string, until time.Time) (thingValue *thing.ThingValue, found bool) {
+	cursor buckets.IBucketCursor, name string, until time.Time) (thingValue *things.ThingValue, found bool) {
 	found = false
 	for {
 		k, v, valid := cursor.Next()
@@ -110,7 +110,7 @@ func (svc *ReadHistoryService) findNextName(
 //	name is the event name to match
 //	until is the time not to exceed in the result. Intended to avoid unnecesary iteration in range queries
 func (svc *ReadHistoryService) findPrevName(
-	cursor buckets.IBucketCursor, name string, until time.Time) (thingValue *thing.ThingValue, found bool) {
+	cursor buckets.IBucketCursor, name string, until time.Time) (thingValue *things.ThingValue, found bool) {
 	found = false
 	for {
 		k, v, valid := cursor.Prev()
@@ -236,7 +236,7 @@ func (svc *ReadHistoryService) Next(
 func (svc *ReadHistoryService) NextN(
 	ctx hubclient.ServiceContext, args historyapi.CursorNArgs) (*historyapi.CursorNResp, error) {
 
-	values := make([]*thing.ThingValue, 0, args.Limit)
+	values := make([]*things.ThingValue, 0, args.Limit)
 	nextArgs := historyapi.CursorArgs{CursorKey: args.CursorKey}
 	itemsRemaining := true
 
@@ -290,7 +290,7 @@ func (svc *ReadHistoryService) Prev(
 func (svc *ReadHistoryService) PrevN(
 	ctx hubclient.ServiceContext, args historyapi.CursorNArgs) (*historyapi.CursorNResp, error) {
 
-	values := make([]*thing.ThingValue, 0, args.Limit)
+	values := make([]*things.ThingValue, 0, args.Limit)
 	prevArgs := historyapi.CursorArgs{CursorKey: args.CursorKey}
 	itemsRemaining := true
 

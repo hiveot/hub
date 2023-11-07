@@ -1,27 +1,27 @@
 package jwtauth
 
 import (
-	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/hiveot/hub/core/msgserver"
+	"github.com/hiveot/hub/lib/keys"
 )
 
 // ValidateToken verifies the given JWT token and returns its claims.
 // optionally verify the signed nonce using the client's public key.
 // This returns the auth info stored in the token.
-func ValidateToken(clientID string, token string, signingKey *ecdsa.PrivateKey, signedNonce string, nonce string) (
+func ValidateToken(clientID string, token string, signingKey keys.IHiveKey, signedNonce string, nonce string) (
 	authInfo msgserver.ClientAuthInfo, err error) {
 
-	signingKeyPub, _ := x509.MarshalPKIXPublicKey(&signingKey.PublicKey)
+	signingKeyPub, _ := x509.MarshalPKIXPublicKey(signingKey.PublicKey())
 	signingKeyPubStr := base64.StdEncoding.EncodeToString(signingKeyPub)
 
 	claims := jwt.MapClaims{}
 	jwtToken, err := jwt.ParseWithClaims(token, &claims,
 		func(token *jwt.Token) (interface{}, error) {
-			return &signingKey.PublicKey, nil
+			return signingKey.PublicKey(), nil
 		}, jwt.WithValidMethods([]string{
 			jwt.SigningMethodES256.Name,
 			jwt.SigningMethodES384.Name,

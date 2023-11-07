@@ -162,11 +162,12 @@ func TestDelete(t *testing.T) {
 	assert.True(t, found)
 	assert.Equal(t, val1, val2)
 
-	// delete and get should not return a value
+	// delete should not return an error
 	err = stateCl.Delete(key1)
 	assert.NoError(t, err)
+	// get should return an error
 	found, err = stateCl.Get(key1, &val3)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.False(t, found)
 	assert.NotEqual(t, val1, val3)
 
@@ -207,10 +208,10 @@ func TestGetDifferentClientBuckets(t *testing.T) {
 	tmp1 := ""
 	tmp2 := ""
 	found1, err := cl1.Get(key2, &tmp1)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.False(t, found1)
 	found2, err := cl2.Get(key1, &tmp2)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.False(t, found2)
 }
 

@@ -4,7 +4,7 @@ import (
 	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/hubclient"
 
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 )
 
 // DirectoryCursorClient provides iterator client for iterating the directory
@@ -21,7 +21,7 @@ type DirectoryCursorClient struct {
 }
 
 // First positions the cursor at the first key in the ordered list
-func (cl *DirectoryCursorClient) First() (thingValue thing.ThingValue, valid bool, err error) {
+func (cl *DirectoryCursorClient) First() (thingValue things.ThingValue, valid bool, err error) {
 	req := directoryapi.CursorFirstArgs{
 		CursorKey: cl.cursorKey,
 	}
@@ -32,7 +32,7 @@ func (cl *DirectoryCursorClient) First() (thingValue thing.ThingValue, valid boo
 }
 
 // Next moves the cursor to the next key from the current cursor
-func (cl *DirectoryCursorClient) Next() (thingValue thing.ThingValue, valid bool, err error) {
+func (cl *DirectoryCursorClient) Next() (thingValue things.ThingValue, valid bool, err error) {
 	req := directoryapi.CursorNextArgs{
 		CursorKey: cl.cursorKey,
 	}
@@ -43,7 +43,7 @@ func (cl *DirectoryCursorClient) Next() (thingValue thing.ThingValue, valid bool
 }
 
 // NextN moves the cursor to the next N steps from the current cursor
-func (cl *DirectoryCursorClient) NextN(limit uint) (batch []thing.ThingValue, itemsRemaining bool, err error) {
+func (cl *DirectoryCursorClient) NextN(limit uint) (batch []things.ThingValue, itemsRemaining bool, err error) {
 	req := directoryapi.CursorNextNArgs{
 		CursorKey: cl.cursorKey,
 		Limit:     limit,

@@ -49,7 +49,6 @@ import (
 //
 // See https://pkg.go.dev/github.com/cockroachdb/pebble for Pebble's documentation.
 type PebbleStore struct {
-	clientID       string
 	storeDirectory string
 	db             *pebble.DB
 }
@@ -62,7 +61,7 @@ func (store *PebbleStore) Close() error {
 // GetBucket returns a bucket with the given ID.
 // If the bucket doesn't yet exist it will be created.
 func (store *PebbleStore) GetBucket(bucketID string) (bucket buckets.IBucket) {
-	pb := NewPebbleBucket(store.clientID, bucketID, store.db)
+	pb := NewPebbleBucket(bucketID, store.db)
 	return pb
 }
 
@@ -94,11 +93,9 @@ func (store *PebbleStore) Open() (err error) {
 
 // NewPebbleStore creates a storage database with bucket support.
 //
-//	clientID that owns the database
 //	storeDirectory is the directory (not file) holding the database
-func NewPebbleStore(clientID, storeDirectory string) *PebbleStore {
+func NewPebbleStore(storeDirectory string) *PebbleStore {
 	srv := &PebbleStore{
-		clientID:       clientID,
 		storeDirectory: storeDirectory,
 	}
 	return srv

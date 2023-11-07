@@ -1,12 +1,12 @@
 package natsmsgserver
 
 import (
-	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/net"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nkeys"
@@ -40,7 +40,7 @@ type NatsServerConfig struct {
 
 	// The certs and keys can be set directly or loaded from above files
 	CaCert          *x509.Certificate `yaml:"-"` // preset, load, or error
-	CaKey           *ecdsa.PrivateKey `yaml:"-"` // preset, load, or error
+	CaKey           keys.IHiveKey     `yaml:"-"` // preset, load, or error
 	ServerTLS       *tls.Certificate  `yaml:"-"` // preset, load, or generate
 	AppAccountKP    nkeys.KeyPair     `yaml:"-"` // preset, load, or generate
 	AdminUserKP     nkeys.KeyPair     `yaml:"-"` // generated
@@ -108,12 +108,12 @@ func (cfg *NatsServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 		cfg.CaCert, cfg.CaKey, err = certs.CreateCA("hiveot", 365)
 	}
 	if cfg.ServerTLS == nil && cfg.CaKey != nil {
-		serverKeys, _ := certs.CreateECDSAKeys()
+		serverKeys := keys.NewKey(cfg.CaKey.KeyType()) // use same type for key as the CA
 		names := []string{cfg.Host}
 		serverX509, err := certs.CreateServerCert(
 			cfg.AppAccountName, "server",
 			365, // validity matches the CA
-			&serverKeys.PublicKey,
+			serverKeys,
 			names, cfg.CaCert, cfg.CaKey)
 		if err != nil {
 			slog.Error("unable to generate server cert. Not using TLS.", "err", err)

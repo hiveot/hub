@@ -1,5 +1,5 @@
-// Package thing with API interface definitions for the ExposedThing and ConsumedThing classes
-package thing
+// Package things with API interface definitions for the ExposedThing and ConsumedThing classes
+package things
 
 // EventAffordance with metadata that describes an event source, which asynchronously pushes
 // event data to MemberRoles (e.g., overheating alerts).

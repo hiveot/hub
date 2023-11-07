@@ -12,9 +12,9 @@ import (
 //
 //	msgType is the message type: "event", "action", "config" or "rpc".
 //	agentID is the device or service being addressed. Use "" for wildcard
-//	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
+//	thingID is the ID of the things managed by the publisher. Use "" for wildcard
 //	name is the event or action name. Use "" for wildcard.
-//	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
+//	thingID is the ID of the things managed by the publisher. Use "" for wildcard
 //	name is the event or action name. Use "" for wildcard.
 //	clientID is the sender's loginID. Required when publishing.
 func MakeSubject(msgType, agentID, thingID, name string, clientID string) string {
@@ -50,7 +50,7 @@ func MakeSubject(msgType, agentID, thingID, name string, clientID string) string
 //
 //	msgType of things or services
 //	agentID is the device or service that handles the subject.
-//	thingID is the thing of the subject, or capability for services.
+//	thingID is the things of the subject, or capability for services.
 //	name is the event or action name
 func SplitSubject(subject string) (msgType, agentID, thingID, name string, senderID string, err error) {
 	parts := strings.Split(subject, ".")

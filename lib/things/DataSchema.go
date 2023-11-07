@@ -1,6 +1,6 @@
-// Package thing with Schema type definitions for the ExposedThing and ConsumedThing classes
+// Package things with Schema type definitions for the ExposedThing and ConsumedThing classes
 // as described here: https://www.w3.org/TR/wot-thing-description/#sec-data-schema-vocabulary-definition
-package thing
+package things
 
 // DataSchema with metadata  that describes the data format used. It can be used for validation.
 //

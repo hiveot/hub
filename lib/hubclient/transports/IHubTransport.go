@@ -1,5 +1,7 @@
 package transports
 
+import "github.com/hiveot/hub/lib/keys"
+
 // ISubscription interface to underlying subscription mechanism
 type ISubscription interface {
 	Unsubscribe() error
@@ -22,14 +24,14 @@ type IHubTransport interface {
 
 	// ConnectWithToken connects to the messaging server using an authentication token
 	// and pub/private keys provided when creating an instance of the hub client.
-	//  serializedKP is the key generated with CreateKey.
+	//  kp is the client's key pair
 	//  token is created by the auth service.
-	ConnectWithToken(serializedKP string, token string) error
+	ConnectWithToken(kp keys.IHiveKey, token string) error
 
 	// CreateKeyPair returns a new set of serialized public/private key pair.
 	//  serializedKP contains the serialized public/private key pair
 	//  pubKey contains the serialized public key to be shared
-	CreateKeyPair() (serializedKeyPair string, serializedPub string)
+	CreateKeyPair() (kp keys.IHiveKey)
 
 	// Disconnect from the message bus.
 	Disconnect()

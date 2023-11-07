@@ -4,7 +4,7 @@ import (
 	"github.com/hiveot/hub/core/history/historyapi"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/transports"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 )
 
@@ -33,7 +33,7 @@ type ManageHistory struct {
 }
 
 // return the first retention rule that applies to the given value or nil if no rule applies
-func (svc *ManageHistory) _FindFirstRule(tv *thing.ThingValue) *historyapi.RetentionRule {
+func (svc *ManageHistory) _FindFirstRule(tv *things.ThingValue) *historyapi.RetentionRule {
 	// two sets of rules apply, those that match the name and those that don't filter by name
 	// rules with specified event names take precedence
 	rules1, found := svc.rules[tv.Name]
@@ -65,7 +65,7 @@ func (svc *ManageHistory) _FindFirstRule(tv *thing.ThingValue) *historyapi.Reten
 // _IsRetained returns the rule 'Retain' flag if a matching rule is found
 // If no retention rules are defined this returns true
 // If rules are defined but not found this returns false
-func (svc *ManageHistory) _IsRetained(tv *thing.ThingValue) (bool, *historyapi.RetentionRule) {
+func (svc *ManageHistory) _IsRetained(tv *things.ThingValue) (bool, *historyapi.RetentionRule) {
 	if svc.rules == nil || len(svc.rules) == 0 {
 		return true, nil
 	}
@@ -84,7 +84,7 @@ func (svc *ManageHistory) _IsRetained(tv *thing.ThingValue) (bool, *historyapi.R
 func (svc *ManageHistory) GetRetentionRule(
 	ctx hubclient.ServiceContext, args *historyapi.GetRetentionRuleArgs) (resp *historyapi.GetRetentionRuleResp, err error) {
 
-	tv := thing.ThingValue{
+	tv := things.ThingValue{
 		AgentID: args.AgentID,
 		ThingID: args.ThingID,
 		Name:    args.Name,

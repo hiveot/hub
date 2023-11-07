@@ -1,10 +1,10 @@
 package main
 
 import (
-	"crypto/ecdsa"
 	"crypto/x509"
 	"github.com/hiveot/hub/core/certs/service/selfsigned"
 	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"log/slog"
@@ -18,7 +18,6 @@ import (
 //	--certs <certificate folder>
 func main() {
 	var caCert *x509.Certificate
-	var caKey *ecdsa.PrivateKey
 	var err error
 
 	env := plugin.GetAppEnvironment("", true)
@@ -36,7 +35,7 @@ func main() {
 			"caCertPath", caCertPath, "err", err)
 		os.Exit(1)
 	}
-	caKey, err = certs.LoadKeysFromPEM(caKeyPath)
+	caKey, err := keys.NewKeyFromFile(caKeyPath)
 	if err != nil {
 		slog.Error("Error loading CA key",
 			"caKeyPath", caKeyPath, "err", err)

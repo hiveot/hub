@@ -8,7 +8,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"sync"
@@ -45,9 +45,9 @@ type OWServerBinding struct {
 }
 
 // CreateBindingTD generates a TD document for this binding
-func (svc *OWServerBinding) CreateBindingTD() *thing.TD {
+func (svc *OWServerBinding) CreateBindingTD() *things.TD {
 	thingID := svc.hc.ClientID()
-	td := thing.NewTD(thingID, "OWServer svc", vocab.DeviceTypeBinding)
+	td := things.NewTD(thingID, "OWServer svc", vocab.DeviceTypeBinding)
 	// these are configured through the configuration file.
 	prop := td.AddProperty(vocab.VocabPollInterval, vocab.VocabPollInterval, "Poll Interval", vocab.WoTDataTypeInteger, "")
 	prop.Unit = vocab.UnitNameSecond

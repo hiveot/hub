@@ -14,7 +14,6 @@ type PebbleCursor struct {
 	//bucket   *PebbleBucket
 	bucketPrefix string // prefix to remove from keys returned by get/set/seek/first/last
 	bucketID     string
-	clientID     string
 	iterator     *pebble.Iterator
 	ctx          context.Context // optional cursor application context
 }
@@ -131,18 +130,16 @@ func (cursor *PebbleCursor) Seek(searchKey string) (key string, value []byte, va
 // NewPebbleCursor create a pebble storage iterator cursor for a pebble bucket
 //
 //	ctx holds cursor context, for example additional application filters
-//	clientID owner
 //	bucketID the cursor iterates
 //	bucketPrefix
 //	iterator is pebble's iterator
-func NewPebbleCursor(ctx context.Context, clientID, bucketID string, bucketPrefix string, iterator *pebble.Iterator) *PebbleCursor {
+func NewPebbleCursor(ctx context.Context, bucketID string, bucketPrefix string, iterator *pebble.Iterator) *PebbleCursor {
 
 	// TBD: use pebble range keys instead of bucket prefix
 	cursor := &PebbleCursor{
 		ctx:          ctx,
 		bucketPrefix: bucketPrefix,
 		bucketID:     bucketID,
-		clientID:     clientID,
 		iterator:     iterator,
 	}
 	return cursor

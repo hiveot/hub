@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/transports"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 )
 
@@ -20,7 +20,7 @@ type HistoryService struct {
 
 	// The history service bucket store with a bucket for each Thing
 	bucketStore buckets.IBucketStore
-	// Storage of the latest properties of a thing
+	// Storage of the latest properties of a things
 	propsStore *LatestPropertiesStore
 	// handling of events retention
 	retentionMgr *ManageHistory
@@ -89,7 +89,7 @@ func (svc *HistoryService) Start(hc *hubclient.HubClient) (err error) {
 
 		// add events to the history filtered through the retention manager
 		svc.eventSub, err = svc.hc.SubEvents("", "", "",
-			func(msg *thing.ThingValue) {
+			func(msg *things.ThingValue) {
 				slog.Debug("received event",
 					slog.String("agentID", msg.AgentID),
 					slog.String("thingID", msg.ThingID),
@@ -101,7 +101,7 @@ func (svc *HistoryService) Start(hc *hubclient.HubClient) (err error) {
 		// add actions to the history, filtered through retention manager
 		// FIXME: this needs the ability to subscribe to actions for other agents
 		//svc.actionSub, err = svc.hc.SubActions("", "", "",
-		//	func(msg *thing.ThingValue) {
+		//	func(msg *things.ThingValue) {
 		//		slog.Info("received action", slog.String("name", msg.Name))
 		//		_ = svc.addHistory.AddAction(msg)
 		//	})

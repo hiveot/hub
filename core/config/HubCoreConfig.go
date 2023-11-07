@@ -1,7 +1,6 @@
 package config
 
 import (
-	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -10,6 +9,7 @@ import (
 	"github.com/hiveot/hub/core/msgserver/mqttmsgserver"
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver"
 	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/net"
 	"github.com/hiveot/hub/lib/plugin"
 	"gopkg.in/yaml.v3"
@@ -35,9 +35,9 @@ type HubCoreConfig struct {
 	ServerCertFile string            `yaml:"serverCertFile"` // default: hubCert.pem
 	ServerKeyFile  string            `yaml:"serverKeyFile"`  // default: hubKey.pem
 	CaCert         *x509.Certificate `yaml:"-"`              // preset, load, or error
-	CaKey          *ecdsa.PrivateKey `yaml:"-"`              // preset, load, or error
+	CaKey          keys.IHiveKey     `yaml:"-"`              // preset, load, or error
 	ServerTLS      *tls.Certificate  `yaml:"-"`              // preset, load, or generate
-	ServerKey      *ecdsa.PrivateKey `yaml:"-"`
+	ServerKey      keys.IHiveKey     `yaml:"-"`
 
 	// use either nats or mqtt.
 	NatsServer natsmsgserver.NatsServerConfig `yaml:"natsserver"`
@@ -157,11 +157,11 @@ func (cfg *HubCoreConfig) setupCerts() {
 	}
 	// only load the ca key if the cert was loaded
 	if cfg.CaCert != nil && cfg.CaKey == nil {
-		cfg.CaKey, err = certs.LoadKeysFromPEM(caKeyPath)
+		cfg.CaKey, err = keys.NewKeyFromFile(caKeyPath)
 	}
 
 	// 2: if no CA exists, create it
-	if cfg.CaCert == nil || cfg.CaKey == nil {
+	if err != nil || cfg.CaCert == nil || cfg.CaKey == nil {
 		slog.Warn("creating a self-signed CA certificate and key", "caCertPath", caCertPath)
 
 		cfg.CaCert, cfg.CaKey, err = certs.CreateCA("hiveot", 365*10)
@@ -169,7 +169,7 @@ func (cfg *HubCoreConfig) setupCerts() {
 			panic("Unable to create a CA cert: " + err.Error())
 		}
 
-		err = certs.SaveKeysToPEM(cfg.CaKey, caKeyPath)
+		err = cfg.CaKey.ExportPrivateToFile(caKeyPath)
 		if err == nil {
 			err = certs.SaveX509CertToPEM(cfg.CaCert, caCertPath)
 		}
@@ -187,14 +187,18 @@ func (cfg *HubCoreConfig) setupCerts() {
 	// load the server key if available
 	if cfg.ServerKey == nil {
 		slog.Warn("Loading server key", "serverKeyPath", serverKeyPath)
-		cfg.ServerKey, _ = certs.LoadKeysFromPEM(serverKeyPath)
+		cfg.ServerKey, err = keys.NewKeyFromFile(serverKeyPath)
 	} else {
 		slog.Warn("Using provided server key")
+		err = nil
 	}
-	if cfg.ServerKey == nil {
+	if err != nil || cfg.ServerKey == nil {
 		slog.Warn("Creating server key")
-		cfg.ServerKey, _ = certs.CreateECDSAKeys()
-		err = certs.SaveKeysToPEM(cfg.ServerKey, serverKeyPath)
+		cfg.ServerKey = keys.NewKey(cfg.CaKey.KeyType()) // use same key type as CA
+		err = cfg.ServerKey.ExportPrivateToFile(serverKeyPath)
+		if err != nil {
+			slog.Error("Unable to save the server key", "err", err)
+		}
 	}
 	// create a new server cert
 	serverCertPath := cfg.ServerCertFile
@@ -209,7 +213,7 @@ func (cfg *HubCoreConfig) setupCerts() {
 
 	// regenerate a new server cert, valid for 1 year
 	serverCert, err := certs.CreateServerCert(
-		serverID, ou, 365, &cfg.ServerKey.PublicKey, names, cfg.CaCert, cfg.CaKey)
+		serverID, ou, 365, cfg.ServerKey, names, cfg.CaCert, cfg.CaKey)
 	if err != nil {
 		panic("Unable to create a server cert: " + err.Error())
 	}

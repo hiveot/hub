@@ -1,4 +1,4 @@
-package thing
+package things
 
 import (
 	"github.com/hiveot/hub/lib/ser"

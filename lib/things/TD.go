@@ -1,4 +1,4 @@
-package thing
+package things
 
 import (
 	"github.com/hiveot/hub/lib/ser"
@@ -52,7 +52,7 @@ type TD struct {
 	// * IDs are optional. However in HiveOT that won't work as they must be addressable.
 	// * IDs start with "urn:" based on the idea that IDs can be used as an address. In HiveOT, IDs and Addresses
 	//   serve a different purpose. IDs are not addresses. HiveOT allows IDs that do not start with "urn:".
-	//   note that pubsub uses addresses of which the thing ID is part of.
+	//   note that pubsub uses addresses of which the things ID is part of.
 	// * ID's SHOULD be mutable. Recommended is on device reset the ID is changed.
 	// * The id of a TD SHOULD NOT contain metadata describing the Thing or from the TD itself.
 	// * Using random UUIDs as recommended in 10.5
@@ -66,11 +66,11 @@ type TD struct {
 	// Human-readable titles in the different languages
 	Titles map[string]string `json:"titles,omitempty"`
 
-	// All properties-based interaction affordances of the thing
+	// All properties-based interaction affordances of the things
 	Properties map[string]*PropertyAffordance `json:"properties,omitempty"`
-	// All action-based interaction affordances of the thing
+	// All action-based interaction affordances of the things
 	Actions map[string]*ActionAffordance `json:"actions,omitempty"`
-	// All event-based interaction affordances of the thing
+	// All event-based interaction affordances of the things
 	Events map[string]*EventAffordance `json:"events,omitempty"`
 
 	// links: todo
@@ -286,7 +286,7 @@ func (tdoc *TD) GetProperty(name string) *PropertyAffordance {
 	return propAffordance
 }
 
-// GetID returns the ID of the thing TD
+// GetID returns the ID of the things TD
 func (tdoc *TD) GetID() string {
 	return tdoc.ID
 }
@@ -350,7 +350,7 @@ func (tdoc *TD) UpdateTitleDescription(title string, description string) {
 //	{
 //	     @context: "http://www.w3.org/ns/td",
 //	     id: <thingID>,              // urn:[{prefix}:]{randomID}
-//	     title: string,              // required. Human description of the thing
+//	     title: string,              // required. Human description of the things
 //	     @type: <deviceType>,        // required in HiveOT. See DeviceType vocabulary
 //	     created: <iso8601>,         // will be the current timestamp. See vocabulary TimeFormat
 //	     actions: {name:TDAction, ...},

@@ -1,6 +1,7 @@
 package certs_test
 
 import (
+	"github.com/hiveot/hub/lib/keys"
 	"testing"
 
 	"github.com/hiveot/hub/lib/certs"
@@ -16,9 +17,9 @@ func TestCreateCerts(t *testing.T) {
 
 	caCert, caKey, _ := certs.CreateCA("testca", 1)
 
-	serverKeys, _ := certs.CreateECDSAKeys()
+	serverKey := keys.NewKey(keys.KeyTypeECDSA)
 	serverCert, err := certs.CreateServerCert(
-		serverID, "myou", 0, &serverKeys.PublicKey, names, caCert, caKey)
+		serverID, "myou", 0, serverKey, names, caCert, caKey)
 
 	serverCertPEM := certs.X509CertToPEM(serverCert)
 	// verify service certificate against CA
@@ -26,12 +27,12 @@ func TestCreateCerts(t *testing.T) {
 	assert.NoError(t, err)
 
 	// create a server TLS cert
-	tlsCert := certs.X509CertToTLS(serverCert, serverKeys)
+	tlsCert := certs.X509CertToTLS(serverCert, serverKey)
 	assert.NotEmpty(t, tlsCert)
 
 	// create a client cert
-	clientKeys, _ := certs.CreateECDSAKeys()
-	clientCert, err := certs.CreateClientCert(clientID, "", 0, &clientKeys.PublicKey, caCert, caKey)
+	clientKey := keys.NewKey(keys.KeyTypeECDSA)
+	clientCert, err := certs.CreateClientCert(clientID, "", 0, clientKey, caCert, caKey)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, clientCert)
 }
@@ -42,23 +43,23 @@ func TestServerCertBadParms(t *testing.T) {
 	names := []string{"127.0.0.1", "localhost"}
 
 	caCert, caKey, _ := certs.CreateCA("testca", 1)
-	serverKeys, _ := certs.CreateECDSAKeys()
+	serverKey := keys.NewKey(keys.KeyTypeECDSA)
 
 	// Missing CA certificate
 	assert.Panics(t, func() {
 		_, _ = certs.CreateServerCert(
-			serverID, "myou", 0, &serverKeys.PublicKey, names, nil, caKey)
+			serverID, "myou", 0, serverKey, names, nil, caKey)
 	})
 
 	// missing CA private key
 	assert.Panics(t, func() {
 		_, _ = certs.CreateServerCert(
-			serverID, "myou", 0, &serverKeys.PublicKey, names, caCert, nil)
+			serverID, "myou", 0, serverKey, names, caCert, nil)
 	})
 
 	// missing service ID
 	serverCert, err := certs.CreateServerCert(
-		"", "myou", 0, &serverKeys.PublicKey, names, caCert, caKey)
+		"", "myou", 0, serverKey, names, caCert, caKey)
 	_ = serverCert
 	require.Error(t, err)
 	require.Empty(t, serverCert)

@@ -4,7 +4,7 @@ package dirclient
 import (
 	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 )
 
 // ReadDirectoryClient is the messenger client for reading the Thing Directory
@@ -25,9 +25,10 @@ func (cl *ReadDirectoryClient) GetCursor() (directoryapi.IDirectoryCursor, error
 	return cursor, err
 }
 
-// GetTD returns a thing value containing the TD document for the given Thing address
+// GetTD returns a things value containing the TD document for the given Thing address
+// This returns an error if not found
 func (cl *ReadDirectoryClient) GetTD(
-	agentID string, thingID string) (tv thing.ThingValue, err error) {
+	agentID string, thingID string) (tv things.ThingValue, err error) {
 
 	req := &directoryapi.GetTDArgs{
 		AgentID: agentID,
@@ -41,7 +42,7 @@ func (cl *ReadDirectoryClient) GetTD(
 // GetTDs returns a batch of TD documents.
 // The order is undefined.
 func (cl *ReadDirectoryClient) GetTDs(
-	offset int, limit int) (tv []thing.ThingValue, err error) {
+	offset int, limit int) (tv []things.ThingValue, err error) {
 
 	req := &directoryapi.GetTDsArgs{
 		Offset: offset,

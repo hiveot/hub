@@ -47,7 +47,6 @@ import (
 // Note that future implementations of this service can change the storage media used while
 // maintaining API compatibility.
 type KVBTreeStore struct {
-	clientID string
 	// collection of buckets, one for each Thing, each being a map.
 	buckets              map[string]*KVBTreeBucket
 	storePath            string       // for file backed storage or "" for in-memory only
@@ -63,14 +62,14 @@ type KVBTreeStore struct {
 // importStoreFile loads the store content into a map and converts it to a map of buckets
 // returns an error if the file does not exist
 // not concurrent safe
-func importStoreFile(clientID, storePath string) (docs map[string]*KVBTreeBucket, err error) {
+func importStoreFile(storePath string) (docs map[string]*KVBTreeBucket, err error) {
 	imported, err := readStoreFile(storePath)
 	docs = make(map[string]*KVBTreeBucket)
 	if err != nil {
 		return nil, err
 	}
 	for bucketID, bucketData := range imported {
-		bucket := NewKVMemBucketFromMap(clientID, bucketID, bucketData)
+		bucket := NewKVMemBucketFromMap(bucketID, bucketData)
 		docs[bucketID] = bucket
 	}
 	// if the store didn't exist it must be writable successfully in order to continue
@@ -192,7 +191,7 @@ func (store *KVBTreeStore) autoSaveLoop() {
 // If any changes are remaining then write to disk now.
 func (store *KVBTreeStore) Close() error {
 	var err error
-	slog.Info("closing store for client", "clientID", store.clientID)
+	slog.Info("closing store for client", "storePath", store.storePath)
 
 	if store.buckets == nil || store.backgroundLoopEnding == nil {
 		return fmt.Errorf("store already closed")
@@ -210,7 +209,7 @@ func (store *KVBTreeStore) Close() error {
 		err = writeStoreFile(store.storePath, exportedCopy)
 	}
 	store.buckets = nil
-	slog.Info("Store close completed. Background loop ended", "clientID", store.clientID)
+	slog.Info("Store close completed. Background loop ended", "storePath", store.storePath)
 	return err
 }
 
@@ -237,7 +236,7 @@ func (store *KVBTreeStore) GetBucket(bucketID string) (bucket buckets.IBucket) {
 	store.mutex.Lock()
 	kvBucket, _ := store.buckets[bucketID]
 	if kvBucket == nil {
-		kvBucket = NewKVMemBucket(store.clientID, bucketID)
+		kvBucket = NewKVMemBucket(bucketID)
 		kvBucket.setUpdateHandler(store.onBucketUpdated)
 		store.buckets[bucketID] = kvBucket
 		bucket = kvBucket
@@ -266,7 +265,7 @@ func (store *KVBTreeStore) Open() error {
 	if store.buckets != nil {
 		return fmt.Errorf("store already open")
 	}
-	store.buckets, err = importStoreFile(store.clientID, store.storePath)
+	store.buckets, err = importStoreFile(store.storePath)
 	// recover from bad file. Missing file is okay.
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -317,13 +316,11 @@ func (store *KVBTreeStore) SetWriteDelay(delay time.Duration) {
 // NewKVStore creates a store instance and load it with saved documents.
 // Run Connect to start the background loop and Stop to end it.
 //
-//	SenderID service or user for debugging and logging
 //	storeFile path to storage file or "" for in-memory only
-func NewKVStore(clientID, storePath string) (store *KVBTreeStore) {
+func NewKVStore(storePath string) (store *KVBTreeStore) {
 	writeDelay := time.Duration(3000) * time.Millisecond
 	store = &KVBTreeStore{
 		//jsonDocs:             make(map[string]string),
-		clientID:             clientID,
 		buckets:              nil, // will be set after open
 		storePath:            storePath,
 		backgroundLoopEnding: nil,

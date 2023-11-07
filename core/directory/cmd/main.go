@@ -1,4 +1,4 @@
-// Package main with the thing directory store
+// Package main with the things directory store
 package main
 
 import (
@@ -11,7 +11,7 @@ import (
 )
 
 // name of the storage file
-const storeFile = "directorystore.json"
+const storeFile = "directory.kvbtree"
 
 // Start the service.
 // Precondition: A loginID and keys for this service must already have been added.
@@ -23,7 +23,7 @@ func main() {
 
 	// startup
 	storePath := path.Join(env.StoresDir, env.ClientID, storeFile)
-	store := kvbtree.NewKVStore(env.ClientID, storePath)
+	store := kvbtree.NewKVStore(storePath)
 	err := store.Open()
 	if err != nil {
 		panic("unable to open the directory store")

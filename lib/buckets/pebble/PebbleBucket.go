@@ -20,14 +20,13 @@ type PebbleBucket struct {
 	rangeStart string
 	rangeEnd   string
 	bucketID   string
-	clientID   string
 	closed     bool
 }
 
 // Close the bucket
 func (bucket *PebbleBucket) Close() (err error) {
 	if bucket.closed {
-		err = fmt.Errorf("bucket '%s' of client '%s' is already closed", bucket.bucketID, bucket.clientID)
+		err = fmt.Errorf("bucket '%s' is already closed", bucket.bucketID)
 	}
 	bucket.closed = true
 	return err
@@ -37,11 +36,10 @@ func (bucket *PebbleBucket) Close() (err error) {
 //func (bucket *PebbleBucket) Commit() (err error) {
 //	// this is just for error detection
 //	if !bucket.writable {
-//		err = fmt.Errorf("cant commit as bucket '%s' of client '%s' is not writable",
-//			bucket.bucketID, bucket.clientID)
+//		err = fmt.Errorf("cant commit as bucket '%s' is not writable",bucket.bucketID)
 //	}
 //	if bucket.closed {
-//		err = fmt.Errorf("bucket '%s' of client '%s' is already closed", bucket.bucketID, bucket.clientID)
+//		err = fmt.Errorf("bucket '%s' is already closed", bucket.bucketID)
 //	}
 //	return err
 //}
@@ -72,7 +70,7 @@ func (bucket *PebbleBucket) Cursor(ctx context.Context) (buckets.IBucketCursor, 
 		return nil, fmt.Errorf("Error getting cursor: %w", err)
 	}
 	cursor := NewPebbleCursor(ctx,
-		bucket.clientID, bucket.bucketID, bucket.rangeStart, bucketIterator)
+		bucket.bucketID, bucket.rangeStart, bucketIterator)
 	return cursor, nil
 }
 
@@ -95,8 +93,8 @@ func (bucket *PebbleBucket) Get(key string) (doc []byte, err error) {
 		doc = bytes.NewBuffer(byteValue).Bytes()
 		err = closer.Close()
 	} else if errors.Is(err, pebble.ErrNotFound) {
-		// return doc nil if not found
-		err = nil
+		// return error if not found
+		err = fmt.Errorf("key '%s' not found", key)
 		doc = nil
 	}
 	return doc, err
@@ -156,8 +154,8 @@ func (bucket *PebbleBucket) Info() (info *buckets.BucketStoreInfo) {
 // Set sets a document with the given key
 func (bucket *PebbleBucket) Set(key string, doc []byte) error {
 	if key == "" {
-		err := fmt.Errorf("empty key '%s' for bucket '%s' and client '%s'",
-			key, bucket.bucketID, bucket.clientID)
+		err := fmt.Errorf("empty key '%s' for bucket '%s'",
+			key, bucket.bucketID)
 		return err
 	}
 	bucketKey := bucket.rangeStart + key
@@ -176,7 +174,7 @@ func (bucket *PebbleBucket) SetMultiple(docs map[string][]byte) (err error) {
 		opts := &pebble.WriteOptions{}
 		err = batch.Set([]byte(bucketKey), value, opts)
 		if err != nil {
-			slog.Error("failed set multiple documents for client", "clientID", bucket.clientID, "err", err)
+			slog.Error("failed set multiple documents", "err", err)
 			_ = batch.Close()
 			return err
 		}
@@ -188,15 +186,13 @@ func (bucket *PebbleBucket) SetMultiple(docs map[string][]byte) (err error) {
 
 // NewPebbleBucket creates a new bucket
 //
-//	clientID is the owner of the buck for logging
 //	bucketID identifies the bucket
 //	pebbleDB backend storage
-func NewPebbleBucket(clientID, bucketID string, pebbleDB *pebble.DB) *PebbleBucket {
+func NewPebbleBucket(bucketID string, pebbleDB *pebble.DB) *PebbleBucket {
 	if pebbleDB == nil {
-		slog.Error("pebbleDB is nil", "clientID", clientID, "bucketID", bucketID)
+		slog.Error("pebbleDB is nil", "bucketID", bucketID)
 	}
 	srv := &PebbleBucket{
-		clientID:   clientID,
 		bucketID:   bucketID,
 		db:         pebbleDB,
 		rangeStart: bucketID + "$",

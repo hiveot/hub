@@ -28,7 +28,7 @@ type AuthService struct {
 }
 
 // Start the service and activate the binding to handle requests
-// This adds an 'auth' service client and an admin user
+// This adds an 'auth' and 'launcher' client with key in the admin.key/launcher.key files.
 func (svc *AuthService) Start() (err error) {
 	clientID := authapi.AuthServiceName
 	slog.Warn("starting AuthService", "clientID", clientID)
@@ -41,7 +41,9 @@ func (svc *AuthService) Start() (err error) {
 	core := svc.msgServer.Core()
 	tcpAddr, _, udsAddr := svc.msgServer.GetServerURLs()
 	svc.hc = hubclient.NewHubClient(tcpAddr, clientID, svc.caCert, core)
-	myKP, myPubKey := svc.hc.CreateKeyPair()
+	// auth service key are in-memory only
+	myKP := svc.hc.CreateKeyPair()
+	myPubKey := myKP.ExportPublic()
 
 	// use a temporary instance of the client manager to add itself
 	mngClients := NewAuthManageClients(svc.store, nil, svc.msgServer)
@@ -96,11 +98,11 @@ func (svc *AuthService) Start() (err error) {
 	// Ensure the launcher client exists and has a saved key and auth token
 	launcherID := svc.cfg.LauncherAccountID
 	slog.Info("Start (auth). Adding launcher service", "ID", launcherID)
-	_, launcherKeyPub, _ := svc.hc.LoadCreateKeyPair(launcherID, svc.cfg.KeysDir)
+	launcherKey, _ := svc.hc.LoadCreateKeyPair(launcherID, svc.cfg.KeysDir)
 	args2 := authapi.AddServiceArgs{
 		ServiceID:   launcherID,
 		DisplayName: "Launcher Service",
-		PubKey:      launcherKeyPub,
+		PubKey:      launcherKey.ExportPublic(),
 	}
 	resp2, err := svc.MngClients.AddService(ctx, args2)
 	if err == nil {
@@ -113,11 +115,11 @@ func (svc *AuthService) Start() (err error) {
 	// ensure the admin user exists and has a saved key and auth token
 	adminID := svc.cfg.AdminAccountID
 	slog.Info("Start (auth). Adding admin user", "ID", adminID)
-	_, adminKeyPub, _ := svc.hc.LoadCreateKeyPair(adminID, svc.cfg.KeysDir)
+	adminKey, _ := svc.hc.LoadCreateKeyPair(adminID, svc.cfg.KeysDir)
 	args3 := authapi.AddUserArgs{
 		UserID:      adminID,
 		DisplayName: "Administrator",
-		PubKey:      adminKeyPub,
+		PubKey:      adminKey.ExportPublic(),
 		Role:        authapi.ClientRoleAdmin,
 	}
 	resp3, err := svc.MngClients.AddUser(ctx, args3)

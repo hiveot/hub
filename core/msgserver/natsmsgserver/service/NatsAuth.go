@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
+	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/vocab"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
@@ -83,13 +84,11 @@ func (srv *NatsMsgServer) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
 	return err
 }
 
-// CreateKeyPair creates a serialized private and public key pair
+// CreateKeyPair creates a private and public key pair
 // NOTE: intended for testing. Might be deprecated in the future.
-func (srv *NatsMsgServer) CreateKeyPair() (string, string) {
-	kp, _ := nkeys.CreateUser()
-	serializedKP, _ := kp.Seed()
-	pubStr, _ := kp.PublicKey()
-	return string(serializedKP), pubStr
+func (srv *NatsMsgServer) CreateKeyPair() keys.IHiveKey {
+	kp := keys.NewNkeysKey()
+	return kp
 }
 
 // CreateToken create a new authentication token for a client

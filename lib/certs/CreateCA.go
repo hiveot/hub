@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"github.com/hiveot/hub/lib/keys"
 	"log/slog"
 	"math/big"
 	"time"
@@ -15,7 +16,7 @@ const CertOrgLocality = "HiveOT zone"
 
 // CreateCA creates a CA certificate with private key for self-signed server certificates
 // Source: https://shaneutt.com/blog/golang-ca-and-signed-cert-go/
-func CreateCA(cn string, validityDays int) (cert *x509.Certificate, key *ecdsa.PrivateKey, err error) {
+func CreateCA(cn string, validityDays int) (cert *x509.Certificate, key keys.IHiveKey, err error) {
 
 	// set up our CA certificate
 	// see also: https://superuser.com/questions/738612/openssl-ca-keyusage-extension
@@ -50,14 +51,17 @@ func CreateCA(cn string, validityDays int) (cert *x509.Certificate, key *ecdsa.P
 	}
 
 	// Create the CA private key
-	privKey, _ := CreateECDSAKeys()
+	caKey := keys.NewKey(keys.KeyTypeECDSA)
+	privKey := caKey.PrivateKey().(*ecdsa.PrivateKey)
+	pubKey := caKey.PublicKey().(*ecdsa.PublicKey)
 
 	// create the CA
-	caCertDer, err := x509.CreateCertificate(rand.Reader, rootTemplate, rootTemplate, &privKey.PublicKey, privKey)
+	caCertDer, err := x509.CreateCertificate(
+		rand.Reader, rootTemplate, rootTemplate, pubKey, privKey)
 	if err != nil {
 		// normally this never happens
 		slog.Error("unable to create CA cert", "err", err)
 	}
 	caCert, _ := x509.ParseCertificate(caCertDer)
-	return caCert, privKey, nil
+	return caCert, caKey, nil
 }

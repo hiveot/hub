@@ -105,12 +105,12 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 		slog.Info("Adding plugin service client with key and token",
 			"pluginName", pluginName, "certsDir", svc.env.CertsDir, "tokenPath", tokenPath)
 
-		_, pubKey, err := svc.hc.LoadCreateKeyPair(pluginName, svc.env.CertsDir)
+		pluginKP, err := svc.hc.LoadCreateKeyPair(pluginName, svc.env.CertsDir)
 		if err != nil {
 			slog.Error("Fail saving key for service client. Continuing... ",
 				"err", err, "pluginName", pluginName)
 		}
-		token, err := svc.mngAuth.AddService(pluginName, "plugin", pubKey)
+		token, err := svc.mngAuth.AddService(pluginName, "plugin", pluginKP.ExportPublic())
 		if err != nil {
 			slog.Error("Unable to add plugin to hub and create credentials. Continuing anyways", "err", err)
 		} else {

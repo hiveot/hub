@@ -59,8 +59,6 @@ type IBucketStore interface {
 type IBucket interface {
 
 	// Close the bucket and release its resources
-	// If commit is true and transactions are support then this commits the transaction.
-	// use false to rollback the transaction. For readonly buckets commit returns an error
 	Close() error
 
 	// Cursor creates a new bucket cursor for iterating the bucket
@@ -71,11 +69,11 @@ type IBucket interface {
 
 	// Delete removes the key-value pair from the bucket store
 	// Returns nil if the key is deleted or doesn't exist.
-	// Returns an error if the key cannot be deleted.
+	// Returns an error if the database cannot be updated.
 	Delete(key string) (err error)
 
 	// Get returns the document for the given key
-	// Returns nil and an error if the key isn't found in the bucket or the database cannot be read
+	// Returns an error if the key isn't found in the bucket or if the database cannot be read
 	Get(key string) (value []byte, err error)
 
 	// GetMultiple returns a batch of documents with existing keys

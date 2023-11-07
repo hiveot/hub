@@ -3,7 +3,7 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"time"
@@ -36,7 +36,7 @@ func (svc *IsyBinding) SwitchOnOff(thingID string, onOff bool) error {
 
 // HandleActionRequest for handling actions
 // Currently very basic. Only switches are supported.
-func (svc *IsyBinding) handleActionRequest(tv *thing.ThingValue) (reply []byte, err error) {
+func (svc *IsyBinding) handleActionRequest(tv *things.ThingValue) (reply []byte, err error) {
 	slog.Info("handleActionRequest",
 		slog.String("thingID", tv.ThingID),
 		slog.String("name", tv.Name),

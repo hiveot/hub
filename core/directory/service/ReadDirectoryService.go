@@ -3,11 +3,12 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/transports"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"time"
@@ -24,10 +25,10 @@ type ReadDirectoryService struct {
 }
 
 // CreateReadDirTD creates a Thing TD document describing the read directory capability
-func (svc *ReadDirectoryService) CreateReadDirTD() *thing.TD {
+func (svc *ReadDirectoryService) CreateReadDirTD() *things.TD {
 	title := "Thing Directory Reader"
 	deviceType := vocab.DeviceTypeService
-	td := thing.NewTD(directoryapi.ReadDirectoryCap, title, deviceType)
+	td := things.NewTD(directoryapi.ReadDirectoryCap, title, deviceType)
 	// TODO: add properties
 	return td
 }
@@ -57,12 +58,13 @@ func (svc *ReadDirectoryService) GetTD(
 	// store keys are made of the agentID / thingID
 	thingAddr := args.AgentID + "/" + args.ThingID
 	raw, err := svc.bucket.Get(thingAddr)
+	resp = &directoryapi.GetTDResp{}
 	if raw != nil {
-		tv := thing.ThingValue{}
+		tv := things.ThingValue{}
 		err = json.Unmarshal(raw, &tv)
-		resp = &directoryapi.GetTDResp{
-			Value: tv,
-		}
+		resp.Value = tv
+	} else {
+		err = fmt.Errorf("TD with agentID '%s' and thingID '%s' not found ", args.AgentID, args.ThingID)
 	}
 	return resp, err
 }
@@ -89,7 +91,7 @@ func (svc *ReadDirectoryService) GetTDsRaw(
 func (svc *ReadDirectoryService) GetTDs(
 	ctx hubclient.ServiceContext, args *directoryapi.GetTDsArgs) (res *directoryapi.GetTDsResp, err error) {
 
-	batch := make([]thing.ThingValue, 0, args.Limit)
+	batch := make([]things.ThingValue, 0, args.Limit)
 	cursor, err := svc.bucket.Cursor(context.Background())
 	if args.Offset > 0 {
 		// FIXME: add support for cursor.Skip
@@ -99,7 +101,7 @@ func (svc *ReadDirectoryService) GetTDs(
 	// FIXME: the unmarshalled ThingValue will be remarshalled when sending it as a reply.
 	_ = itemsRemaining
 	for key, val := range docs {
-		tv := thing.ThingValue{}
+		tv := things.ThingValue{}
 		err = json.Unmarshal(val, &tv)
 		if err == nil {
 			batch = append(batch, tv)
@@ -154,7 +156,7 @@ func (svc *ReadDirectoryService) GetTDs(
 //	//res := make([]string, 0)
 //	//if err == nil {
 //	//	for _, docText := range resp {
-//	//		var td thing.ThingDescription
+//	//		var td things.ThingDescription
 //	//		err = json.Unmarshal([]byte(docText), &td)
 //	//		res.Things = append(res.Things, &td)
 //	//	}

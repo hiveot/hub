@@ -23,7 +23,7 @@ func main() {
 	_ = env.LoadConfig(&cfg)
 
 	// the service uses the bucket store to store history
-	store := bucketstore.NewBucketStore(cfg.StoreDirectory, env.ClientID, cfg.Backend)
+	store := bucketstore.NewBucketStore(cfg.StoreDirectory, "history", cfg.Backend)
 	err := store.Open()
 	if err != nil {
 		err = fmt.Errorf("can't open history bucket store: %w", err)

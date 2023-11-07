@@ -3,8 +3,8 @@ package mqttmsgserver_test
 import (
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
-	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
+	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/vocab"
@@ -19,35 +19,40 @@ import (
 
 // ID
 var TestDevice1ID = "device1"
-var TestDevice1Key, TestDevice1Pub = certs.CreateECDSAKeys()
-var TestDevice1KP, _ = certs.PrivateKeyToPEM(TestDevice1Key)
+var TestDevice1Keys = keys.NewKey(keys.KeyTypeECDSA)
+var TestDevice1PrivPEM = TestDevice1Keys.ExportPrivate()
+var TestDevice1PubPEM = TestDevice1Keys.ExportPublic()
 
 var TestUser1ID = "user1"
 var TestUser1Pass = "pass1"
 var TestUser1bcrypt, _ = bcrypt.GenerateFromPassword([]byte(TestUser1Pass), 0)
 var TestUser2ID = "user2"
-var TestUser2Key, TestUser2Pub = certs.CreateECDSAKeys()
+var TestUser2Keys = keys.NewKey(keys.KeyTypeECDSA)
+var TestUser2Key = TestUser2Keys.PrivateKey()
+var TestUser2PubPEM = TestUser2Keys.ExportPublic()
 var TestUser2Pass = "pass2"
 var TestUser2bcrypt, _ = bcrypt.GenerateFromPassword([]byte(TestUser2Pass), 0)
 
 var TestAdminUserID = "admin"
 
-var TestAdminUserKey, TestAdminUserPub = certs.CreateECDSAKeys()
-var TestAdminUserKP, _ = certs.PrivateKeyToPEM(TestAdminUserKey)
+var TestAdminUserKey = keys.NewKey(keys.KeyTypeECDSA)
+var TestAdminUserPubPEM = TestAdminUserKey.ExportPublic()
+var TestAdminUserPrivPEM = TestAdminUserKey.ExportPrivate()
 
 var TestService1ID = "service1"
-var TestService1Key, TestService1Pub = certs.CreateECDSAKeys()
+var TestService1Key = keys.NewKey(keys.KeyTypeECDSA)
+var TestService1PubPEM = TestService1Key.ExportPublic()
 
 var adminAuthInfo = msgserver.ClientAuthInfo{
 	ClientID:   TestAdminUserID,
 	ClientType: authapi.ClientTypeUser,
-	PubKey:     TestAdminUserPub,
+	PubKey:     TestAdminUserPubPEM,
 	Role:       authapi.ClientRoleAdmin,
 }
 var deviceAuthInfo = msgserver.ClientAuthInfo{
 	ClientID:   TestDevice1ID,
 	ClientType: authapi.ClientTypeDevice,
-	PubKey:     TestDevice1Pub,
+	PubKey:     TestDevice1PubPEM,
 	Role:       authapi.ClientRoleDevice,
 }
 var mqttTestClients = []msgserver.ClientAuthInfo{
@@ -62,14 +67,14 @@ var mqttTestClients = []msgserver.ClientAuthInfo{
 	{
 		ClientID:     TestUser2ID,
 		ClientType:   authapi.ClientTypeUser,
-		PubKey:       TestUser2Pub,
+		PubKey:       TestUser2PubPEM,
 		PasswordHash: string(TestUser2bcrypt),
 		Role:         authapi.ClientRoleOperator,
 	},
 	{
 		ClientID:   TestService1ID,
 		ClientType: authapi.ClientTypeService,
-		PubKey:     TestService1Pub,
+		PubKey:     TestService1PubPEM,
 		Role:       authapi.ClientRoleAdmin,
 	},
 }
@@ -136,7 +141,7 @@ func TestConnectWithToken(t *testing.T) {
 	// login with token should succeed
 	serverURL, _, _ := srv.GetServerURLs()
 	tp1 := mqtttransport.NewMqttTransport(serverURL, TestAdminUserID, certBundle.CaCert)
-	err = tp1.ConnectWithToken(TestAdminUserKP, adminToken)
+	err = tp1.ConnectWithToken(TestAdminUserKey, adminToken)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond)
 	tp1.Disconnect()
@@ -159,14 +164,13 @@ func TestMqttServerPubSub(t *testing.T) {
 	require.NoError(t, err)
 
 	// create a key pair
-	serializedKP, pubKey := srv.CreateKeyPair()
-	assert.NotEmpty(t, serializedKP)
-	assert.NotEmpty(t, pubKey)
+	kp := srv.CreateKeyPair()
+	assert.NotEmpty(t, kp)
 
 	// connect and perform a pub/sub
 	adminToken, err := srv.CreateToken(adminAuthInfo)
 	tp1 := mqtttransport.NewMqttTransport(serverURL, TestAdminUserID, certBundle.CaCert)
-	err = tp1.ConnectWithToken(TestAdminUserKP, adminToken)
+	err = tp1.ConnectWithToken(TestAdminUserKey, adminToken)
 	require.NoError(t, err)
 	defer tp1.Disconnect()
 	subTopic := mqtttransport.MakeTopic(vocab.MessageTypeEvent, TestDevice1ID, "t1", "test", "")
@@ -180,7 +184,7 @@ func TestMqttServerPubSub(t *testing.T) {
 	// a device publishes an event
 	tp2 := mqtttransport.NewMqttTransport(serverURL, TestDevice1ID, certBundle.CaCert)
 	token, _ := srv.CreateToken(deviceAuthInfo)
-	err = tp2.ConnectWithToken(TestDevice1KP, token)
+	err = tp2.ConnectWithToken(TestDevice1Keys, token)
 	pubTopic := mqtttransport.MakeTopic(vocab.MessageTypeEvent, TestDevice1ID, "t1", "test", TestDevice1ID)
 	err = tp2.Pub(pubTopic, []byte(msg))
 	require.NoError(t, err)
@@ -204,14 +208,13 @@ func TestMqttServerRequest(t *testing.T) {
 	assert.NotEmpty(t, serverURL)
 
 	// create a key pair
-	serializedKP, pubKey := srv.CreateKeyPair()
-	assert.NotEmpty(t, serializedKP)
-	assert.NotEmpty(t, pubKey)
+	kp := srv.CreateKeyPair()
+	assert.NotEmpty(t, kp)
 
 	// connect and perform a pub/sub
 	deviceToken, err := srv.CreateToken(deviceAuthInfo)
 	tp1 := mqtttransport.NewMqttTransport(serverURL, TestDevice1ID, certBundle.CaCert)
-	err = tp1.ConnectWithToken(TestDevice1KP, deviceToken)
+	err = tp1.ConnectWithToken(TestDevice1Keys, deviceToken)
 	require.NoError(t, err)
 	defer tp1.Disconnect()
 

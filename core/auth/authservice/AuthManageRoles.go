@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/ser"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 )
 
@@ -41,7 +41,7 @@ func (svc *AuthManageRoles) DeleteRole(role string) error {
 }
 
 // HandleRequest unmarshal and apply action requests
-func (svc *AuthManageRoles) HandleRequest(msg *thing.ThingValue) (reply []byte, err error) {
+func (svc *AuthManageRoles) HandleRequest(msg *things.ThingValue) (reply []byte, err error) {
 
 	slog.Info("HandleRequest",
 		slog.String("actionID", msg.Name),

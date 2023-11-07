@@ -12,7 +12,7 @@ import (
 //
 //	msgType is the message type: "event", "action", "config" or "rpc".
 //	agentID is the device or service being addressed. Use "" for wildcard
-//	thingID is the ID of the thing managed by the publisher. Use "" for wildcard
+//	thingID is the ID of the things managed by the publisher. Use "" for wildcard
 //	name is the event or action name. Use "" for wildcard.
 //	clientID is the login ID of the sender. Use "" for subscribe.
 func MakeTopic(msgType, agentID, thingID, name string, clientID string) string {
@@ -49,7 +49,7 @@ func MakeTopic(msgType, agentID, thingID, name string, clientID string) string {
 //
 //	msgType of "things", "rpc" or "_INBOX"
 //	agentID is the device or service that is being addressed.
-//	thingID is the thing of the topic, or capability for services.
+//	thingID is the things of the topic, or capability for services.
 //	name is the event or action name
 //	senderID is the client publishing the request.
 func SplitTopic(topic string) (msgType, agentID, thingID, name string, senderID string, err error) {

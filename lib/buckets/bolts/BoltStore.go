@@ -45,8 +45,6 @@ import (
 type BoltStore struct {
 	// the underlying database
 	boltDB *bbolt.DB
-	// client this store is for. Intended for debugging and logging.
-	clientID string
 	// storePath with the location of the database
 	storePath string
 	// for preventing deadlocks when closing the store. panic instead
@@ -58,7 +56,7 @@ type BoltStore struct {
 // Close() returns before closing is completed.
 func (store *BoltStore) Close() (err error) {
 	br := atomic.LoadInt32(&store.bucketRefCount)
-	slog.Info("closing store for client", "clientID", store.clientID, "refCnt", br)
+	slog.Info("closing store", "storePath", store.storePath, "refCnt", br)
 	//close with wait until all transactions are completed ...
 	// so it might hang forever if not all transactions are released.
 	//err = store.boltDB.Close()
@@ -79,8 +77,8 @@ func (store *BoltStore) Close() (err error) {
 // This does not yet create the bbBucket in the database until an operation takes place on the bbBucket.
 func (store *BoltStore) GetBucket(bucketID string) (bucket buckets.IBucket) {
 
-	//logrus.Infof("Opening bbBucket '%s' of client '%s", bucketID, store.clientID)
-	bucket = NewBoltBucket(store.clientID, bucketID, store.boltDB, store.onBucketReleased)
+	//logrus.Infof("Opening BoltBucket '%s", bucketID, store.clientID)
+	bucket = NewBoltBucket(bucketID, store.boltDB, store.onBucketReleased)
 
 	atomic.AddInt32(&store.bucketRefCount, 1)
 	return bucket
@@ -93,7 +91,7 @@ func (store *BoltStore) onBucketReleased(bucket buckets.IBucket) {
 
 // Open the store
 func (store *BoltStore) Open() (err error) {
-	slog.Info("Opening bboltDB store for client", "clientID", store.clientID)
+	slog.Info("Opening BoltDB store", "storePath", store.storePath)
 
 	// make sure the folder exists
 	storeDir := path.Dir(store.storePath)
@@ -111,7 +109,7 @@ func (store *BoltStore) Open() (err error) {
 	store.boltDB, err = bbolt.Open(store.storePath, 0600, options)
 
 	if err != nil {
-		err = fmt.Errorf("Error opening bboltDB for client %s: %w", store.clientID, err)
+		err = fmt.Errorf("error opening BoltDB at %s: %w", store.storePath, err)
 	}
 	return err
 }
@@ -119,9 +117,8 @@ func (store *BoltStore) Open() (err error) {
 // NewBoltStore creates a bbBucket store supporting the IBucketStore API using the embedded BBolt database
 //
 //	storePath is the file holding the database
-func NewBoltStore(clientID, storePath string) *BoltStore {
+func NewBoltStore(storePath string) *BoltStore {
 	srv := &BoltStore{
-		clientID:  clientID,
 		storePath: storePath,
 	}
 	return srv

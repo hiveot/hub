@@ -10,16 +10,16 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 )
 
 // GetPropertiesFunc is a callback function to retrieve latest properties of a Thing
 // latest properties are stored separate from the history.
-type GetPropertiesFunc func(thingAddr string, names []string) []*thing.ThingValue
+type GetPropertiesFunc func(thingAddr string, names []string) []*things.ThingValue
 
-// ReadHistoryService provides read access to the history of thing values.
+// ReadHistoryService provides read access to the history of things values.
 type ReadHistoryService struct {
-	// routing address of the thing to read history of
+	// routing address of the things to read history of
 	bucketStore buckets.IBucketStore
 	// cache of remote cursors
 	cursorCache *buckets.CursorCache
@@ -72,7 +72,7 @@ func (svc *ReadHistoryService) Stop() {
 	svc.readSub.Unsubscribe()
 }
 
-// StartReadHistoryService starts the capability to read from a thing's history
+// StartReadHistoryService starts the capability to read from a things's history
 //
 //	hc with the message bus connection. Its ID will be used as the agentID that provides the capability.
 //	thingBucket is the open bucket used to store history data

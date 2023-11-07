@@ -38,7 +38,7 @@ func HandlePubActions(hc *hubclient.HubClient,
 	ar, err := hc.PubAction(pubID, thingID, action, []byte(args))
 	_ = ar
 	if err == nil {
-		fmt.Printf("Successfully published action '%s' to thing '%s'\n", action, thingID)
+		fmt.Printf("Successfully published action '%s' to things '%s'\n", action, thingID)
 	}
 	return err
 }

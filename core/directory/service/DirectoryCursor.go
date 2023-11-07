@@ -7,18 +7,18 @@ import (
 	"github.com/hiveot/hub/lib/ser"
 	"strings"
 
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 )
 
-// convert the storage key and raw data to a thing value object
+// convert the storage key and raw data to a things value object
 // This returns the value, or nil if the key is invalid
-func (svc *ReadDirectoryService) _decodeValue(key string, data []byte) (thingValue thing.ThingValue, valid bool) {
+func (svc *ReadDirectoryService) _decodeValue(key string, data []byte) (thingValue things.ThingValue, valid bool) {
 	// key is constructed as  {timestamp}/{valueName}/{a|e}
 	parts := strings.Split(key, "/")
 	if len(parts) < 2 {
 		return thingValue, false
 	}
-	thingValue = thing.ThingValue{}
+	thingValue = things.ThingValue{}
 	_ = json.Unmarshal(data, &thingValue)
 	return thingValue, true
 }
@@ -77,11 +77,11 @@ func (svc *ReadDirectoryService) NextN(
 	if err != nil {
 		return nil, err
 	}
-	values := make([]thing.ThingValue, 0, args.Limit)
+	values := make([]things.ThingValue, 0, args.Limit)
 	// obtain a map of [addr]TDJson
 	docMap, itemsRemaining := cursor.NextN(args.Limit)
 	for _, doc := range docMap {
-		tv := thing.ThingValue{}
+		tv := things.ThingValue{}
 		err2 := ser.Unmarshal(doc, &tv)
 		if err2 == nil {
 			values = append(values, tv)

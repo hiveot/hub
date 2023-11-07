@@ -1,5 +1,7 @@
 package msgserver
 
+import "github.com/hiveot/hub/lib/keys"
+
 // ClientAuthInfo defines client authentication and authorization information
 type ClientAuthInfo struct {
 	// UserID, ServiceID or AgentID of the client
@@ -8,7 +10,7 @@ type ClientAuthInfo struct {
 	// ClientType identifies the client as a ClientTypeDevice, ClientTypeService or ClientTypeUser
 	ClientType string
 
-	// The client's public key, if any
+	// The PEM encoded client's public key, if any
 	PubKey string
 
 	// password encrypted with argon2id or bcrypt
@@ -19,7 +21,7 @@ type ClientAuthInfo struct {
 }
 
 // RolePermission defines authorization for a role.
-// Each permission defines the source/thing the user can pub/sub to.
+// Each permission defines the source/things the user can pub/sub to.
 type RolePermission struct {
 	AgentID  string // device or service publishing the Thing data, or "" for all
 	ThingID  string // thingID or capability, or "" for all
@@ -49,9 +51,9 @@ type IMsgServer interface {
 	Core() string
 
 	// CreateKeyPair creates a serialized keypair for use in connecting or signing.
-	// This returns the key pair and its public key string.
+	// This returns the crypto key pair,
 	// NOTE: intended for testing. Might be deprecated in the future.
-	CreateKeyPair() (serializedKP string, pubKey string)
+	CreateKeyPair() (kp keys.IHiveKey)
 
 	// CreateToken creates a new authentication token for a known client.
 	// The client must have been added with ApplyAuth and have a public key.

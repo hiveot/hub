@@ -2,16 +2,12 @@ package service
 
 import (
 	"bytes"
-	"crypto/ecdsa"
 	"crypto/tls"
-	"crypto/x509"
-	"encoding/base64"
-	"encoding/pem"
 	"fmt"
 	"github.com/hiveot/hub/core/msgserver"
 	jwtauth2 "github.com/hiveot/hub/core/msgserver/mqttmsgserver/jwtauth"
-	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
+	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/vocab"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/packets"
@@ -35,8 +31,7 @@ type MqttAuthHook struct {
 	authMux sync.RWMutex
 
 	// server key for signing and verifying token signature
-	signingKey    *ecdsa.PrivateKey
-	signingKeyPub string
+	signingKey keys.IHiveKey
 
 	// optionally require that the JWT token ID is that of a known user
 	//jwtTokenMustBeKnownUser bool
@@ -59,17 +54,10 @@ func (hook *MqttAuthHook) ApplyAuth(clients []msgserver.ClientAuthInfo) error {
 }
 
 // CreateKeyPair creates a keypair for use in connecting or signing.
-// This returns the serialized private key and public key strings.
 // NOTE: intended for testing. Might be deprecated in the future.
-func (hook *MqttAuthHook) CreateKeyPair() (string, string) {
-	kp, _ := certs.CreateECDSAKeys()
-
-	x509EncodedPub, _ := x509.MarshalPKIXPublicKey(&kp.PublicKey)
-	pemEncodedPub := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x509EncodedPub})
-
-	serializedKP, _ := certs.PrivateKeyToPEM(kp)
-
-	return serializedKP, string(pemEncodedPub)
+func (hook *MqttAuthHook) CreateKeyPair() (kp keys.IHiveKey) {
+	k := keys.NewKey(keys.KeyTypeECDSA)
+	return k
 }
 
 // CreateToken creates a new JWT authtoken for a client.
@@ -347,9 +335,7 @@ func (hook *MqttAuthHook) ValidatePassword(
 	return cinfo, err
 }
 
-func NewMqttAuthHook(signingKey *ecdsa.PrivateKey) *MqttAuthHook {
-	signingKeyPub, _ := x509.MarshalPKIXPublicKey(&signingKey.PublicKey)
-	signingKeyPubStr := base64.StdEncoding.EncodeToString(signingKeyPub)
+func NewMqttAuthHook(signingKey keys.IHiveKey) *MqttAuthHook {
 	//slog.Warn("NewMqttAuthHook: ", slog.String("signingKeyPub", signingKeyPubStr))
 	hook := &MqttAuthHook{
 		HookBase:           mqtt.HookBase{},
@@ -357,7 +343,6 @@ func NewMqttAuthHook(signingKey *ecdsa.PrivateKey) *MqttAuthHook {
 		rolePermissions:    nil,
 		authMux:            sync.RWMutex{},
 		signingKey:         signingKey,
-		signingKeyPub:      signingKeyPubStr,
 		servicePermissions: make(map[string][]msgserver.RolePermission),
 	}
 	return hook

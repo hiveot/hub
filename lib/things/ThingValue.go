@@ -1,4 +1,4 @@
-package thing
+package things
 
 import (
 	"time"
@@ -17,7 +17,7 @@ type ThingValue struct {
 	// AgentID is the ID of the device or service that owns the Thing
 	AgentID string `json:"agentID"`
 
-	// ThingID or capabilityID of the thing itself
+	// ThingID or capabilityID of the things itself
 	ThingID string `json:"thingID"`
 
 	// Name of event, action or property as defined in the TD event/action map.
@@ -46,7 +46,7 @@ type ThingValue struct {
 	ValueType string `json:"valueType"`
 }
 
-// NewThingValue creates a new ThingValue object with the address of the thing, the action or event id and the serialized value data
+// NewThingValue creates a new ThingValue object with the address of the things, the action or event id and the serialized value data
 // This copies the value buffer.
 //
 //	valueType is the type of value: action, event, config, rpc request

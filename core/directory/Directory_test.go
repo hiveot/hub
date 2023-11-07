@@ -8,7 +8,7 @@ import (
 	"github.com/hiveot/hub/core/directory/service"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/vocab"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +23,7 @@ import (
 
 var testFolder = path.Join(os.TempDir(), "test-directory")
 var testStoreFile = path.Join(testFolder, "directory.json")
-var core = "mqtt"
+var core = "nats"
 
 // the following are set by the testmain
 var testServer *testenv.TestServer
@@ -38,7 +38,7 @@ func startDirectory() (
 	slog.Info("startDirectory start")
 	defer slog.Info("startDirectory ended")
 	_ = os.Remove(testStoreFile)
-	store := kvbtree.NewKVStore(serviceID, testStoreFile)
+	store := kvbtree.NewKVStore(testStoreFile)
 	err := store.Open()
 	if err != nil {
 		panic("unable to open directory store")
@@ -70,7 +70,7 @@ func startDirectory() (
 
 // generate a JSON serialized TD document
 func createTDDoc(thingID string, title string) []byte {
-	td := &thing.TD{
+	td := &things.TD{
 		ID:    thingID,
 		Title: title,
 	}
@@ -139,7 +139,7 @@ func TestAddRemoveTD(t *testing.T) {
 	}
 	err = up.RemoveTD(agentID, thing1ID)
 	assert.NoError(t, err)
-	// after removal, getTD should fail
+	// after removal, getTD should return nil
 	td3, err := rd.GetTD(agentID, thing1ID)
 	assert.Empty(t, td3)
 	assert.Error(t, err)
@@ -275,7 +275,7 @@ func TestCursor(t *testing.T) {
 //	require.NoError(t, err)
 //	assert.NotNil(t, tdList)
 //	assert.True(t, len(tdList) > 0)
-//	el0 := thing.ThingDescription{}
+//	el0 := things.ThingDescription{}
 //	json.Unmarshal([]byte(tdList[0]), &el0)
 //	assert.Equal(t, thing1ID, el0.ID)
 //	assert.Equal(t, title1, el0.Title)

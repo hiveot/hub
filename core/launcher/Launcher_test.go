@@ -20,7 +20,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 )
 
-var core = "mqtt"
+var core = "nats"
 var homeDir = "/tmp/test-launcher"
 var logDir = "/tmp/test-launcher"
 

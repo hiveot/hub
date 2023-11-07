@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/testenv"
 	"os"
 	"path"
@@ -28,7 +29,7 @@ var serverURL string
 
 // Factory for creating service instance. Currently the only implementation is selfsigned.
 func StartService() (svc *certsclient.CertsClient, stopFunc func()) {
-	adminKP, adminPub := testServer.MsgServer.CreateKeyPair()
+	adminKP := testServer.MsgServer.CreateKeyPair()
 	adminID := "admin"
 
 	testClients := []msgserver.ClientAuthInfo{{
@@ -39,7 +40,7 @@ func StartService() (svc *certsclient.CertsClient, stopFunc func()) {
 	}, {
 		ClientID:   adminID,
 		ClientType: authapi.ClientTypeUser,
-		PubKey:     adminPub,
+		PubKey:     adminKP.ExportPublic(),
 		Role:       authapi.ClientRoleAdmin,
 	}}
 
@@ -106,8 +107,8 @@ func TestCreateDeviceCert(t *testing.T) {
 
 	svc, cancelFunc := StartService()
 	defer cancelFunc()
-	keys, _ := certs.CreateECDSAKeys()
-	pubKeyPEM, _ := certs.PublicKeyToPEM(&keys.PublicKey)
+	k := keys.NewKey(keys.KeyTypeECDSA)
+	pubKeyPEM := k.ExportPublic()
 
 	deviceCertPEM, caCertPEM, err := svc.CreateDeviceCert(
 		deviceID, pubKeyPEM, 1)
@@ -145,8 +146,8 @@ func TestDeviceCertBadParms(t *testing.T) {
 	svc, cancelFunc := StartService()
 	defer cancelFunc()
 
-	keys, _ := certs.CreateECDSAKeys()
-	pubKeyPEM, _ := certs.PublicKeyToPEM(&keys.PublicKey)
+	k := keys.NewKey(keys.KeyTypeECDSA)
+	pubKeyPEM := k.ExportPublic()
 
 	// missing device ID
 	certPEM, _, err := svc.CreateDeviceCert("", pubKeyPEM, 0)
@@ -167,8 +168,8 @@ func TestCreateServiceCert(t *testing.T) {
 
 	svc, cancelFunc := StartService()
 	defer cancelFunc()
-	keys, _ := certs.CreateECDSAKeys()
-	pubKeyPEM, _ := certs.PublicKeyToPEM(&keys.PublicKey)
+	k := keys.NewKey(keys.KeyTypeECDSA)
+	pubKeyPEM := k.ExportPublic()
 
 	serviceCertPEM, caCertPEM, err := svc.CreateServiceCert(
 		serviceID, pubKeyPEM, names, 0)
@@ -201,8 +202,8 @@ func TestServiceCertBadParms(t *testing.T) {
 	defer cancelFunc()
 
 	caCert, caKey, _ := certs.CreateCA("Test CA", 1)
-	keys, _ := certs.CreateECDSAKeys()
-	pubKeyPEM, _ := certs.PublicKeyToPEM(&keys.PublicKey)
+	k := keys.NewKey(keys.KeyTypeECDSA)
+	pubKeyPEM := k.ExportPublic()
 
 	// Bad CA certificate
 	badCa := x509.Certificate{}
@@ -237,8 +238,8 @@ func TestCreateUserCert(t *testing.T) {
 	// test creating hub certificate
 	svc, cancelFunc := StartService()
 	defer cancelFunc()
-	keys, _ := certs.CreateECDSAKeys()
-	pubKeyPEM, _ := certs.PublicKeyToPEM(&keys.PublicKey)
+	k := keys.NewKey(keys.KeyTypeECDSA)
+	pubKeyPEM := k.ExportPublic()
 
 	userCertPEM, caCertPEM, err := svc.CreateUserCert(userID, pubKeyPEM, 0)
 	require.NoError(t, err)

@@ -11,7 +11,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 )
 
 // SubTDCommand shows TD publications
@@ -60,8 +60,8 @@ func SubEventsCommand(hc **hubclient.HubClient) *cli.Command {
 func HandleSubTD(hc *hubclient.HubClient) error {
 
 	sub, err := hc.SubEvents("", "", vocab.EventNameTD,
-		func(msg *thing.ThingValue) {
-			var td thing.TD
+		func(msg *things.ThingValue) {
+			var td things.TD
 			//fmt.Printf("%s\n", event.ValueJSON)
 			err := json.Unmarshal(msg.Data, &td)
 			if err == nil {
@@ -90,7 +90,7 @@ func HandleSubEvents(hc *hubclient.HubClient, agentID string, thingID string, na
 	fmt.Printf("---------------  -------------------  ------------------------  -----------------------------  ---------\n")
 
 	sub, err := hc.SubEvents(agentID, thingID, name,
-		func(msg *thing.ThingValue) {
+		func(msg *things.ThingValue) {
 			createdTime := time.UnixMilli(msg.CreatedMSec)
 			timeStr := createdTime.Format("15:04:05.000")
 			value := fmt.Sprintf("%-.30s", msg.Data)
@@ -99,7 +99,7 @@ func HandleSubEvents(hc *hubclient.HubClient, agentID string, thingID string, na
 				_ = json.Unmarshal(msg.Data, &props)
 				value = fmt.Sprintf("%d properties", len(props))
 			} else if msg.Name == vocab.EventNameTD {
-				var td thing.TD
+				var td things.TD
 				_ = json.Unmarshal(msg.Data, &td)
 				value = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
 					td.Title, td.DeviceType, len(td.Properties), len(td.Events), len(td.Actions))

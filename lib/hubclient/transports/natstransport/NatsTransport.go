@@ -6,8 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/lib/hubclient/transports"
+	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/ser"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/vocab"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats.go"
@@ -138,19 +139,17 @@ func (nt *NatsTransport) ConnectWithPassword(password string) (err error) {
 //
 //	keyPair is the serialized pub/private key of the user
 //	token is the token obtained with login or refresh.
-func (nt *NatsTransport) ConnectWithToken(keyPair string, token string) (err error) {
+func (nt *NatsTransport) ConnectWithToken(keyPair keys.IHiveKey, token string) (err error) {
 	slog.Info("ConnectWithToken",
 		slog.String("loginID", nt.clientID),
 		slog.String("url", nt.serverURL))
 
-	myKey, err := nkeys.ParseDecoratedUserNKey([]byte(keyPair))
+	myKey := keyPair.PrivateKey().(nkeys.KeyPair)
 
 	_, err = jwt.Decode(token)
 	// if this isn't a valid JWT, try the nkey login and ignore the token
 	if err != nil {
 		err = nt.ConnectWithKey(myKey)
-		//	err = fmt.Errorf("invalid jwt token: %w", err)
-		//	return err
 	} else {
 		err = nt.ConnectWithJWT(myKey, token)
 	}
@@ -158,19 +157,9 @@ func (nt *NatsTransport) ConnectWithToken(keyPair string, token string) (err err
 }
 
 // CreateKeyPair returns a new set of serialized public/private keys for the client
-func (nt *NatsTransport) CreateKeyPair() (serializedKP string, serializedPub string) {
-	// Create a new key
-
-	// deserialize the EDD25519 key
-	//userKP, err := nkeys.ParseDecoratedUserNKey([]byte(nt.keyPair))
-	//if err != nil {
-	//	panic("bad keys, can't continue")
-	//}
-	userKP, _ := nkeys.CreateUser()
-	kpSeed, _ := userKP.Seed()
-	userPub, _ := userKP.PublicKey()
-
-	return string(kpSeed), userPub
+func (nt *NatsTransport) CreateKeyPair() (kp keys.IHiveKey) {
+	kp = keys.NewNkeysKey()
+	return kp
 }
 
 // Disconnect from the Hub server and release all subscriptions
@@ -238,7 +227,7 @@ func (nt *NatsTransport) PubRequest(
 
 // startEventMessageHandler listens for incoming event messages and invoke a callback handler
 // this returns when the subscription is no longer valid
-func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *thing.ThingValue)) error {
+func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *things.ThingValue)) error {
 	ci, err := nsub.ConsumerInfo()
 	if err != nil {
 		slog.Error(err.Error())
@@ -274,7 +263,7 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *thing.ThingV
 					"subject", natsMsg.Subject)
 				return
 			}
-			msg := &thing.ThingValue{
+			msg := &things.ThingValue{
 				//SenderID: msg.Header.
 				AgentID:     pubID,
 				ThingID:     thID,
@@ -362,7 +351,7 @@ func (nt *NatsTransport) SubRequest(
 //
 //	 name of the event stream. "" for default
 //		receiveLatest to immediately receive the latest event for each event instance
-func (nt *NatsTransport) SubStream(name string, receiveLatest bool, cb func(msg *thing.ThingValue)) (transports.ISubscription, error) {
+func (nt *NatsTransport) SubStream(name string, receiveLatest bool, cb func(msg *things.ThingValue)) (transports.ISubscription, error) {
 	if name == "" {
 		//name = natsnkeyserver.EventsIntakeStreamName
 	}

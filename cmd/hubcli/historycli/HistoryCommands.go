@@ -29,7 +29,7 @@ func HistoryListCommand(hc **hubclient.HubClient) *cli.Command {
 	limit := 100
 	return &cli.Command{
 		Name:      "lev",
-		Usage:     "List history of thing events",
+		Usage:     "List history of things events",
 		ArgsUsage: "<agentID> <thingID> [<name>]",
 		Category:  "history",
 		Flags: []cli.Flag{
@@ -57,7 +57,7 @@ func HistoryListCommand(hc **hubclient.HubClient) *cli.Command {
 func HistoryLatestCommand(hc **hubclient.HubClient) *cli.Command {
 	return &cli.Command{
 		Name:      "lla",
-		Usage:     "List latest values of a thing",
+		Usage:     "List latest values of a things",
 		ArgsUsage: "<pubID> <thingID>",
 		Category:  "history",
 		Action: func(cCtx *cli.Context) error {

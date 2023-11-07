@@ -2,7 +2,7 @@
 package historyapi
 
 import (
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 )
 
 // rpc requests are published on the bus using the address:
@@ -37,7 +37,7 @@ type CursorArgs struct {
 // CursorSingleResp contains a single response value to a cursor request
 type CursorSingleResp struct {
 	// The value at the new cursor position or nil if not valid
-	Value *thing.ThingValue `json:"value"`
+	Value *things.ThingValue `json:"value"`
 	// The current position holds a valid value
 	Valid bool `json:"valid"`
 }
@@ -60,7 +60,7 @@ type CursorNArgs struct {
 type CursorNResp struct {
 	// Returns up to 'Limit' iterated values.
 	// This will be an empty list when trying to read past the last value.
-	Values []*thing.ThingValue `json:"values"`
+	Values []*things.ThingValue `json:"values"`
 	// There are still items remaining.
 	ItemsRemaining bool `json:"itemsRemaining"`
 }
@@ -89,7 +89,7 @@ type CursorSeekArgs struct {
 
 // returns CursorSingleResp
 
-// GetCursorMethod returns a cursor to iterate the history of a thing
+// GetCursorMethod returns a cursor to iterate the history of a things
 // The cursor MUST be released after use.
 // The cursor will expire after not being used for the default expiry period.
 const GetCursorMethod = "getCursor"
@@ -116,13 +116,13 @@ const GetLatestMethod = "getLatest"
 type GetLatestArgs struct {
 	//	agentID is the ID of the agent that published the Thing values
 	AgentID string `json:"agentID"`
-	//	thingID is the ID of the thing whose history to read
+	//	thingID is the ID of the things whose history to read
 	ThingID string `json:"thingID"`
 	//	names is the list of properties or events to return. Use nil for all known properties.
 	Names []string `json:"names"`
 }
 
-// GetLatestResp returns the latest thing values
+// GetLatestResp returns the latest things values
 type GetLatestResp struct {
-	Values []*thing.ThingValue `json:"values"`
+	Values []*things.ThingValue `json:"values"`
 }

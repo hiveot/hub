@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 	"time"
 )
@@ -25,7 +25,7 @@ type IPNetBinding struct {
 }
 
 // ActionHandler handle action requests
-func (svc *IPNetBinding) ActionHandler(msg *thing.ThingValue) ([]byte, error) {
+func (svc *IPNetBinding) ActionHandler(msg *things.ThingValue) ([]byte, error) {
 	return nil, fmt.Errorf("unknown action '%s'", msg.Name)
 }
 

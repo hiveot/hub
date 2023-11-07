@@ -1,10 +1,10 @@
 package certs
 
 import (
-	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"github.com/hiveot/hub/lib/keys"
 	"math/big"
 	"time"
 )
@@ -18,10 +18,10 @@ const DefaultClientCertValidityDays = 366
 //	cn is the certificate common name, usually the client ID
 //	ou the organization.
 //	pubKey is the owner public key for this certificate
-//	caCert and caKey is the signing CA
+//	caKeys is the signing CA's key pair
 //	validityDays
-func CreateClientCert(cn string, ou string, validityDays int, pubKey *ecdsa.PublicKey,
-	caCert *x509.Certificate, caKey *ecdsa.PrivateKey) (cert *x509.Certificate, err error) {
+func CreateClientCert(cn string, ou string, validityDays int, pubKey keys.IHiveKey,
+	caCert *x509.Certificate, caKeys keys.IHiveKey) (cert *x509.Certificate, err error) {
 	validity := time.Hour * time.Duration(24*validityDays)
 
 	if validityDays == 0 {
@@ -52,7 +52,7 @@ func CreateClientCert(cn string, ou string, validityDays int, pubKey *ecdsa.Publ
 		IsCA:                  false,
 	}
 
-	certDerBytes, err := x509.CreateCertificate(rand.Reader, template, caCert, pubKey, caKey)
+	certDerBytes, err := x509.CreateCertificate(rand.Reader, template, caCert, pubKey.PublicKey(), caKeys.PrivateKey())
 	if err == nil {
 		//certPEMBuffer := new(bytes.Buffer)
 		//_ = pem.Encode(certPEMBuffer, &pem.Block{Type: "CERTIFICATE", Bytes: certDerBytes})

@@ -8,7 +8,7 @@ type RetentionRule struct {
 	// Optional, the rule applies to data from this agent
 	AgentID string `yaml:"agentID,omitempty" json:"agentID,omitempty"`
 
-	// Optional, the rule applies to data from this thing
+	// Optional, the rule applies to data from this things
 	ThingID string `yaml:"thingID,omitempty" json:"thingID,omitempty"`
 
 	// Optional, the rule applies to events or actions with this name

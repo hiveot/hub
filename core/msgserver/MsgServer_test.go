@@ -5,13 +5,13 @@ import (
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
-const core = "nats"
+const core = "mqtt"
 
 // Benchmark a simple event pub/sub
 // mqtt: 100 usec/rpc   (with ack?)
@@ -29,7 +29,7 @@ func Benchmark_PubSubEvent(b *testing.B) {
 	cl2, _ := ts.AddConnectClient("sub", authapi.ClientTypeUser, authapi.ClientRoleOperator)
 	defer cl2.Disconnect()
 
-	sub2, _ := cl2.SubEvents("publisher", "", "", func(msg *thing.ThingValue) {
+	sub2, _ := cl2.SubEvents("publisher", "", "", func(msg *things.ThingValue) {
 		//time.Sleep(time.Millisecond * 10)
 		rxCount.Add(1)
 	})
@@ -72,7 +72,7 @@ func Benchmark_Request(b *testing.B) {
 	cl2, _ := ts.AddConnectClient("rpc", authapi.ClientTypeService, authapi.ClientRoleService)
 	defer cl2.Disconnect()
 
-	sub2, _ := cl2.SubRPCRequest("cap1", func(msg *thing.ThingValue) ([]byte, error) {
+	sub2, _ := cl2.SubRPCRequest("cap1", func(msg *things.ThingValue) ([]byte, error) {
 
 		rxCount.Add(1)
 		return msg.Data, nil

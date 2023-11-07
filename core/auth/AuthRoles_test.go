@@ -27,13 +27,15 @@ func TestCRUDRole(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// create the user whose roles to test
-	_, user1Pub := testServer.MsgServer.CreateKeyPair()
+	user1KP := testServer.MsgServer.CreateKeyPair()
+	user1Pub := user1KP.ExportPublic()
 	_, err = mng.AddUser(user1ID, "nu 1", user1Pass, user1Pub, authapi.ClientRoleViewer)
 	require.NoError(t, err)
 
 	// admin user that can change roles
 	hc := hubclient.NewHubClient(serverURL, adminUserID, testServer.CertBundle.CaCert, testServer.Core)
-	adminKP, adminPub := hc.CreateKeyPair()
+	adminKP := hc.CreateKeyPair()
+	adminPub := adminKP.ExportPublic()
 	token, err := mng.AddUser(adminUserID, "admin", "", adminPub, authapi.ClientRoleAdmin)
 	err = hc.ConnectWithToken(adminKP, token)
 	require.NoError(t, err)

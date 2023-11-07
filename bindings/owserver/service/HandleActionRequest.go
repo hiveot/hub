@@ -4,14 +4,14 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
-	"github.com/hiveot/hub/lib/thing"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"time"
 )
 
 // HandleActionRequest handles requests to activate inputs
-func (svc *OWServerBinding) HandleActionRequest(action *thing.ThingValue) (reply []byte, err error) {
+func (svc *OWServerBinding) HandleActionRequest(action *things.ThingValue) (reply []byte, err error) {
 	var attr eds.OneWireAttr
 	slog.Info("HandleActionRequest",
 		slog.String("agentID", action.AgentID),
