@@ -66,7 +66,8 @@ func (srv *MqttMsgServer) Start() error {
 	}
 
 	srv.ms = mqtt.New(nil)
-	srv.ms.Options.Capabilities.MinimumProtocolVersion = 5
+	//srv.ms.Options.Capabilities.MinimumProtocolVersion = 5
+	srv.ms.Options.Capabilities.MinimumProtocolVersion = 3
 	_ = srv.ms.AddHook(&srv.MqttAuthHook, nil)
 
 	// TLS over TCP listener

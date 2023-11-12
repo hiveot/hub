@@ -45,7 +45,7 @@ func (cl *StateClient) Get(key string, record interface{}) (found bool, err erro
 
 // GetMultiple reads multiple records with the given keys.
 // This marshalling and unmarshalling is up to the caller.
-func (cl *StateClient) GetMultiple(keys []string) (values map[string][]byte, err error) {
+func (cl *StateClient) GetMultiple(keys []string) (values map[string]string, err error) {
 
 	req := stateapi.GetMultipleArgs{Keys: keys}
 	resp := stateapi.GetMultipleResp{}
@@ -63,14 +63,14 @@ func (cl *StateClient) Set(key string, record interface{}) error {
 	if err != nil {
 		return err
 	}
-	req := stateapi.SetArgs{Key: key, Value: value}
+	req := stateapi.SetArgs{Key: key, Value: string(value)}
 	err = cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, stateapi.SetMethod, &req, nil)
 	return err
 }
 
 // SetMultiple writes multiple record
-func (cl *StateClient) SetMultiple(kv map[string][]byte) error {
+func (cl *StateClient) SetMultiple(kv map[string]string) error {
 	req := stateapi.SetMultipleArgs{KV: kv}
 	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, stateapi.SetMultipleMethod, &req, nil)

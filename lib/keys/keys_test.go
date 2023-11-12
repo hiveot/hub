@@ -102,7 +102,7 @@ func TestPublicKeyPEM(t *testing.T) {
 	// openssl generated public key - THIS WORKS
 	const TestKeyOpenSSL = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAELtv253KXEWvWjCse0Wp5DprnXp5tp17C1Qtfjk5t/6+HPSc74uMQcp/KV++vc6OXJwk5XdZ8FSkUiU9cYRBo8A=="
 
-	// JS elliptic encoded using base64 encoding of hex encoded pub key
+	// JS elliptic encoded using base64 encoding of hex encoded pub key - this fails
 	const TestKeyPub64hex = "MDRhMzk1YTc2Yjc2MjRiOGU4NzY4YjY4YjZjMzJmMTViMzg5ZDYzZjcwNGMyZTA4NGRiM2FiOWViNmZmMTI4MjYyNDJlOTdkN2E4NWU2Yzg3YTVhNjI3M2YzYjYzM2UyYzQ1NzYyMWU0ZDNhMzcxMThiMGU5YzUxMGU2ZTZhNWRmYQ=="
 
 	// decode from base64 string. This succeeds. d2 is 91 bytes - this works

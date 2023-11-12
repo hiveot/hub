@@ -217,14 +217,16 @@ func (hc *HubClient) PubAction(
 	return data, err
 }
 
-// PubConfig publishes a Thing configuration change request
+// PubConfig publishes a Thing configuration change request.
+// It is up to the Thing to decide what value to return. Typically it would be the
+// accepted value, or the old value if it wasn't accepted.
 //
 // The client's ID is used as the publisher ID of the action.
 //
-//		agentID of the device that handles the action for the things or service capability
-//		thingID is the destination thingID that handles the action
-//	 propName is the ID of the property to change as described in the TD properties section
-//	 payload is the optional payload of the action as described in the Thing's TD
+//	agentID of the device that handles the action for the things or service capability
+//	thingID is the destination thingID that handles the action
+//	propName is the ID of the property to change as described in the TD properties section
+//	payload is the optional payload of the action as described in the Thing's TD
 //
 // This returns the reply data or an error if an error was returned or no reply was received
 func (hc *HubClient) PubConfig(
@@ -237,6 +239,7 @@ func (hc *HubClient) PubConfig(
 }
 
 // PubEvent publishes a Thing event. The payload is an event value as per TD document.
+// Event values are send as text and can be converted to native type based on the information defined in the TD.
 // Intended for devices and services to notify of changes to the Things they are the agent for.
 //
 // 'thingID' is the ID of the 'things' whose event to publish. This is the ID under which the

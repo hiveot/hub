@@ -90,11 +90,11 @@ func AuthRemoveClientCommand(hc **hubclient.HubClient) *cli.Command {
 	}
 }
 
-// AuthPasswordCommand replaces a user's password
-func AuthPasswordCommand(hc **hubclient.HubClient) *cli.Command {
+// AuthSetPasswordCommand sets a client's password
+func AuthSetPasswordCommand(hc **hubclient.HubClient) *cli.Command {
 	return &cli.Command{
-		Name:      "password",
-		Usage:     "Change password. (careful, no confirmation)",
+		Name:      "setpass",
+		Usage:     "Set password. (careful, no confirmation)",
 		ArgsUsage: "<loginID> <newpass>",
 		Category:  "auth",
 		Action: func(cCtx *cli.Context) error {
@@ -131,7 +131,7 @@ func AuthRoleCommand(hc **hubclient.HubClient) *cli.Command {
 	}
 }
 
-// HandleAddUser adds a user and displays a temperary password
+// HandleAddUser adds a user and displays a temporary password
 func HandleAddUser(
 	hc *hubclient.HubClient, loginID string, displayName string, role string) (err error) {
 
@@ -142,7 +142,7 @@ func HandleAddUser(
 
 	if err != nil {
 		fmt.Println("Error: " + err.Error())
-	} else if newPassword == "" {
+	} else if newPassword != "" {
 		fmt.Println("User " + loginID + " added successfully. Temp password: " + newPassword)
 	} else {
 		// no need to show the given password
@@ -209,7 +209,7 @@ func HandleSetPassword(hc *hubclient.HubClient, loginID string, newPassword stri
 		newPassword = GeneratePassword(9, true)
 	}
 	authn := authclient.NewManageClients(hc)
-	err := authn.UpdateClientPassword(loginID, newPassword)
+	err := authn.SetClientPassword(loginID, newPassword)
 
 	if err != nil {
 		fmt.Println("Error: " + err.Error())

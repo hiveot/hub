@@ -88,8 +88,6 @@ func TestStartStopBadLocation(t *testing.T) {
 
 func TestSetGet1(t *testing.T) {
 	t.Log("--- TestSetGet1 ---")
-	const clientID1 = "test-client1"
-	const appID = "test-app"
 	const key1 = "key1"
 	var val1 = "value 1"
 	var val2 = ""
@@ -117,13 +115,11 @@ func TestSetGet1(t *testing.T) {
 
 func TestSetGetMultiple(t *testing.T) {
 	t.Log("--- TestSetGetMultiple ---")
-	const clientID1 = "test-client1"
-	const appID = "test-app"
 	const key1 = "key1"
 	const key2 = "key2"
-	var val1 = []byte("value 1")
-	var val2 = []byte("value 2")
-	data := map[string][]byte{
+	var val1 = "value 1"
+	var val2 = "value 2"
+	data := map[string]string{
 		key1: val1,
 		key2: val2,
 	}
@@ -144,8 +140,6 @@ func TestSetGetMultiple(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	t.Log("--- TestDelete ---")
-	const clientID1 = "test-client1"
-	const appID = "test-app"
 	const key1 = "key1"
 	var val1 = "value 1"
 	var val2 = ""
@@ -181,7 +175,6 @@ func TestGetDifferentClientBuckets(t *testing.T) {
 	t.Log("--- TestGetDifferentClientBuckets ---")
 	const clientID1 = "test-client1"
 	const clientID2 = "test-client2"
-	const appID = "test-app"
 	const key1 = "key1"
 	const key2 = "key2"
 	var val1 = "value 1"

@@ -14,6 +14,8 @@ const (
 )
 
 // IHiveKey defines the standard interface for various key types used for signing and authentication
+//
+// ... because we don't care about all these keys, just that it works and is secure...
 type IHiveKey interface {
 
 	// ExportPrivate returns the serialized private key if available
@@ -23,8 +25,8 @@ type IHiveKey interface {
 	//  key type nkeys encodes when generating its seed
 	ExportPrivate() string
 
-	// ExportPrivateToFile saves the private/public key to a PEM file
-	ExportPrivateToFile(pemPath string) error
+	// ExportPrivateToFile saves the private/public key to a key file
+	ExportPrivateToFile(keyPath string) error
 
 	// ExportPublic returns the serialized public key if available
 	// This defaults to PEM encoding unless the key type doesn't support it.

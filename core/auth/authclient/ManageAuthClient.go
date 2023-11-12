@@ -120,6 +120,17 @@ func (cl *ManageClients) RemoveClient(clientID string) error {
 	return err
 }
 
+// SetClientPassword sets a new password for a client
+func (cl *ManageClients) SetClientPassword(clientID string, newPass string) error {
+	req := &authapi.SetClientPasswordArgs{
+		ClientID: clientID,
+		Password: newPass,
+	}
+	err := cl.hc.PubRPCRequest(
+		cl.agentID, cl.capID, authapi.SetClientPasswordMethod, &req, nil)
+	return err
+}
+
 // UpdateClient updates a client's profile
 func (cl *ManageClients) UpdateClient(clientID string, prof authapi.ClientProfile) error {
 	req := &authapi.UpdateClientArgs{
@@ -128,17 +139,6 @@ func (cl *ManageClients) UpdateClient(clientID string, prof authapi.ClientProfil
 	}
 	err := cl.hc.PubRPCRequest(
 		cl.agentID, cl.capID, authapi.UpdateClientMethod, &req, nil)
-	return err
-}
-
-// UpdateClientPassword updates a client's password
-func (cl *ManageClients) UpdateClientPassword(clientID string, newPass string) error {
-	req := &authapi.UpdateClientPasswordArgs{
-		ClientID: clientID,
-		Password: newPass,
-	}
-	err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, authapi.UpdatePasswordMethod, &req, nil)
 	return err
 }
 

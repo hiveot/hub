@@ -152,6 +152,7 @@ func (ht *MqttHubTransport) ConnectWithPassword(password string) error {
 // This supports UDS connections with @/path or unix://@/path
 //
 // TODO: encrypt token with server public key so a MIM won't be able to get the token
+// TBD: can server send a connection nonce and verify token signature?
 //
 //	kp is the key-pair of this client
 //	jwtToken is the token obtained with login or refresh.
@@ -169,6 +170,7 @@ func (ht *MqttHubTransport) ConnectWithToken(kp keys.IHiveKey, jwtToken string) 
 	} else {
 		conn, err = tlsclient.ConnectTLS(ht.serverURL, nil, ht.caCert)
 	}
+	// TODO: pass in a signed auth nonce, if possible
 	if err == nil {
 		// clientID from the token is used
 		err = ht.ConnectWithConn(jwtToken, conn)

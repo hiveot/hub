@@ -102,6 +102,15 @@ type RemoveClientArgs struct {
 	ClientID string `json:"clientID"`
 }
 
+// SetClientPasswordMethod is the request name to set a new password for a client
+// This is equivalent to UpdatePassword in Manage Profile (that the client themselves can invoke)
+const SetClientPasswordMethod = "setClientPassword"
+
+type SetClientPasswordArgs struct {
+	ClientID string `json:"clientID"`
+	Password string `json:"password"`
+}
+
 // UpdateClientMethod is the request name to update a client's profile
 // The caller must be an administrator or service.
 const UpdateClientMethod = "updateClient"
@@ -109,15 +118,6 @@ const UpdateClientMethod = "updateClient"
 type UpdateClientArgs struct {
 	ClientID string        `json:"clientID"`
 	Profile  ClientProfile `json:"profile"`
-}
-
-// UpdateClientPasswordMethod is the request name to update a client's password
-// The caller must be an administrator or service.
-const UpdateClientPasswordMethod = "updateClientPassword"
-
-type UpdateClientPasswordArgs struct {
-	ClientID string `json:"clientID"`
-	Password string `json:"password"`
 }
 
 // UpdateClientRoleMethod is the request name to change a client's role

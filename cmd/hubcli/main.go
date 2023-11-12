@@ -110,7 +110,7 @@ func main() {
 			authcli.AuthAddUserCommand(&hc),
 			authcli.AuthListClientsCommand(&hc),
 			authcli.AuthRemoveClientCommand(&hc),
-			authcli.AuthPasswordCommand(&hc),
+			authcli.AuthSetPasswordCommand(&hc),
 
 			launchercli.LauncherListCommand(&hc),
 			launchercli.LauncherStartCommand(&hc),

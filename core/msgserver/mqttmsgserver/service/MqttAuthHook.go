@@ -112,7 +112,9 @@ func (hook *MqttAuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Pack
 	slog.Info("OnConnectAuthenticate",
 		slog.String("clientID", clientID),
 		slog.String("cid", cid),
-		slog.Int("protocolVersion", int(cl.Properties.ProtocolVersion)))
+		slog.Int("protocolVersion", int(cl.Properties.ProtocolVersion)),
+		slog.String("net.remote", cl.Net.Remote),
+	)
 
 	// Accept auth if a TLS connection with client cert is provided
 	// The cert CN must be the clientID
@@ -131,7 +133,7 @@ func (hook *MqttAuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Pack
 	// verify authentication using password or token
 	// step 1: credentials must be provided. Password contains password or token.
 	if pk.Connect.PasswordFlag == false || len(pk.Connect.Password) == 0 {
-		slog.Info("OnConnectAuthenticate: missing auth credentials",
+		slog.Warn("OnConnectAuthenticate: missing auth credentials",
 			slog.String("cid", cid))
 		return false
 	}
@@ -141,14 +143,15 @@ func (hook *MqttAuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Pack
 	err := hook.ValidateToken(clientID, jwtString, "", "")
 	if err == nil {
 		// a valid JWT token
+		slog.Info("Login success using a valid jwt token.", "clientID", pk.Connect.Username)
 		return true
 	}
-	slog.Info("OnConnectAuthenticate. Not a jwt token.", "err", err.Error())
+	slog.Debug("OnConnectAuthenticate. Not a jwt token.", "err", err.Error())
 
 	// step 3: password authentication, the user must be known
 	authInfo, found := hook.authClients[clientID]
 	if !found {
-		slog.Info("OnConnectAuthenticate: unknown client",
+		slog.Warn("OnConnectAuthenticate: unknown client",
 			slog.String("clientID", clientID),
 			slog.String("cid", cid))
 		return false
@@ -157,18 +160,16 @@ func (hook *MqttAuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Pack
 		// verify password
 		err := bcrypt.CompareHashAndPassword([]byte(authInfo.PasswordHash), pk.Connect.Password)
 		if err != nil {
-			slog.Info("OnConnectAuthenticate: invalid password",
+			slog.Warn("OnConnectAuthenticate: invalid password",
 				"cid", cid,
 				"net.remote", cl.Net.Remote)
 			return false
 		}
-		slog.Info("OnConnectAuthenticate: password login success",
-			"cid", cid,
-			"net.remote", cl.Net.Remote)
+		slog.Info("Login success using a valid password", "cid", cid)
 		return true
 	}
 	// credentials provided but unable to match it
-	slog.Info("OnConnectAuthenticate: invalid credentials",
+	slog.Warn("OnConnectAuthenticate: invalid credentials",
 		"cid", cid,
 		"net.remote", cl.Net.Remote)
 	//cl.Properties.Props.
@@ -215,12 +216,14 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 	msgType, agentID, thingID, name, senderID, err :=
 		mqtttransport.SplitTopic(topic)
 	if err != nil {
+		slog.Error("OnACLCheck: Invalid topic format, topic:", topic)
 		// invalid topic format.
 		return false
 	}
 
 	// 3. Agents of messages must include their sender ID
 	if write && senderID != loginID {
+		slog.Error("OnACLCheck: missing senderID in topic:", topic)
 		return false
 	}
 
@@ -252,6 +255,15 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 			(perm.AgentID == "" || permAgentID == agentID) &&
 			(perm.ThingID == "" || perm.ThingID == thingID) &&
 			(perm.MsgName == "" || perm.MsgName == name) {
+			if write {
+				slog.Info("OnAclCheck. Publish granted to topic",
+					slog.String("clientID", loginID),
+					slog.String("topic", topic))
+			} else {
+				slog.Info("OnAclCheck. Subscribe granted to topic",
+					slog.String("clientID", loginID),
+					slog.String("topic", topic))
+			}
 			return true
 		}
 	}
@@ -317,6 +329,7 @@ func (hook *MqttAuthHook) ValidateToken(
 	clientID string, token string, signedNonce string, nonce string) (err error) {
 
 	_, err = jwtauth2.ValidateToken(clientID, token, hook.signingKey, signedNonce, nonce)
+	//slog.Debug("ValidateToken", "clientID", clientID, "err", err)
 	return err
 }
 
@@ -332,6 +345,9 @@ func (hook *MqttAuthHook) ValidatePassword(
 
 	// verify password
 	err = bcrypt.CompareHashAndPassword([]byte(cinfo.PasswordHash), []byte(password))
+
+	//slog.Info("ValidatePassword", "loginID", loginID, "err", err)
+
 	return cinfo, err
 }
 

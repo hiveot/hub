@@ -44,24 +44,4 @@ func main() {
 
 	svc := selfsigned.NewSelfSignedCertsService(caCert, caKey)
 	plugin.StartPlugin(svc, &env)
-
-	// this locates the hub, load certificate, load service tokens and connect
-	//hc, err := hubclient.ConnectToHub("", env.ClientID, env.CertsDir, "")
-	//if err != nil {
-	//	slog.Error("Failed connecting to the Hub", "err", err)
-	//	os.Exit(1)
-	//}
-	//// startup
-	//svc := selfsigned.NewSelfSignedCertsService(caCert, caKey)
-	//err = svc.Start(hc)
-	//if err != nil {
-	//	slog.Error("Failed starting certs service", "err", err)
-	//	os.Exit(1)
-	//}
-	//plugin.WaitForSignal()
-	//err = svc.Stop()
-	//slog.Warn("Stopped certs service")
-	//if err != nil {
-	//	os.Exit(2)
-	//}
 }

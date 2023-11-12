@@ -13,7 +13,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 )
 
-const DefaultBucketID = "default"
+//const DefaultBucketID = "default"
 
 // Add records to the state store
 func addRecords(stateCl *stateclient.StateClient, count int) {
@@ -23,10 +23,10 @@ func addRecords(stateCl *stateclient.StateClient, count int) {
 	// Don't exceed the max transaction size
 	for iBatch := 0; iBatch < nrBatches; iBatch++ {
 
-		docs := make(map[string][]byte)
+		docs := make(map[string]string)
 		for i := 0; i < batchSize && count > 0; i++ {
 			k := randstr.String(12)
-			v := randstr.Bytes(100)
+			v := randstr.String(100)
 			docs[k] = v
 			count--
 		}
@@ -74,15 +74,15 @@ var DataSizeTable = []struct {
 // Generate random test data used to set and set multiple
 type TestEl struct {
 	key string
-	val []byte
+	val string
 }
 
 var testData = func() []TestEl {
 	count := 100000
 	data := make([]TestEl, count)
 	for i := 0; i < count; i++ {
-		key := randstr.String(10) // 10 char string
-		val := randstr.Bytes(100) // 100 byte data
+		key := randstr.String(10)  // 10 char string
+		val := randstr.String(100) // 100 byte data
 		data[i] = TestEl{key: key, val: val}
 	}
 	return data
@@ -127,11 +127,11 @@ func BenchmarkSetMultiple(b *testing.B) {
 		addRecords(stateCl, tbl.dataSize)
 
 		// build a set of data to test with
-		multiple := make(map[string][]byte)
+		multiple := make(map[string]string)
 		_ = multiple
 		for i := 0; i < tbl.nrSets; i++ {
 			td := testData[i]
-			multiple[td.key] = td.val
+			multiple[td.key] = string(td.val)
 		}
 
 		b.Run(fmt.Sprintf("SetMultiple. Datasize=%d, #sets=%d", tbl.dataSize, tbl.nrSets),

@@ -177,7 +177,7 @@ func TestBadClientCert(t *testing.T) {
 	// use cert not signed by the CA
 	otherCA, otherKey, err := certs.CreateCA("test", 1)
 	otherCert, err := certs.CreateClientCert("name", "ou", 1,
-		&authBundle.ClientKey.PublicKey, otherCA, otherKey)
+		authBundle.ClientKey, otherCA, otherKey)
 	otherTLS := certs.X509CertToTLS(otherCert, authBundle.ClientKey)
 	assert.NoError(t, err)
 

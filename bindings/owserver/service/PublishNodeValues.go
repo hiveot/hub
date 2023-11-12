@@ -35,13 +35,14 @@ func (svc *OWServerBinding) setPrevValue(nodeID, attrName string, value string) 
 
 // PublishNodeValues publishes node property values of each node
 // Properties are combined as submitted as a single 'properties' event.
-// Sensor values are send as individual events
+// Sensor values are send as individual events.
+// All values are sent as text.
 func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err error) {
 
 	// Iterate the devices and their properties
 	for _, node := range nodes {
 		// send all changed property attributes in a single properties event
-		attrMap := make(map[string][]byte)
+		attrMap := make(map[string]string)
 		//thingID := things.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
 		thingID := node.NodeID
 
@@ -61,7 +62,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err err
 					err = svc.hc.PubEvent(thingID, attrName, []byte(attr.Value))
 				} else {
 					// attribute to be included in the properties event
-					attrMap[attrName] = []byte(attr.Value)
+					attrMap[attrName] = attr.Value
 				}
 			}
 		}

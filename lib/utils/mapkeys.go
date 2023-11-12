@@ -5,7 +5,7 @@ import (
 	"sort"
 )
 
-// MapKeys returns an slice of keys
+// MapKeys returns a slice of keys
 func MapKeys[K comparable, V any](mm map[K]V) []K {
 	res := make([]K, 0, len(mm))
 	for k, _ := range mm {

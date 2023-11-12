@@ -21,12 +21,12 @@ type GetArgs struct {
 }
 
 type GetResp struct {
-	// The returned key or "" if record wasnt found
+	// The returned key or "" if record wasn't found
 	Key string `json:"key"`
 	// Flag, the record was found (true)
 	Found bool `json:"found"`
 	// Data, the raw data of the record
-	Value []byte `json:"value"`
+	Value string `json:"value"`
 }
 
 // GetMultipleMethod reads multiple records from the store
@@ -38,7 +38,7 @@ type GetMultipleArgs struct {
 
 type GetMultipleResp struct {
 	// Key-values that were found
-	KV map[string][]byte `json:"kv"`
+	KV map[string]string `json:"kv"`
 }
 
 // SetMethod writes a record to the store
@@ -46,12 +46,12 @@ const SetMethod = "set"
 
 type SetArgs struct {
 	Key   string `json:"key"`
-	Value []byte `json:"value"`
+	Value string `json:"value"`
 }
 
 // SetMultipleMethod writes multiple records to the store
 const SetMultipleMethod = "setMultiple"
 
 type SetMultipleArgs struct {
-	KV map[string][]byte `json:"kv"`
+	KV map[string]string `json:"kv"`
 }

@@ -200,10 +200,17 @@ func (svc *AuthManageClients) onChange() error {
 
 // RemoveClient removes a client and disables authentication
 func (svc *AuthManageClients) RemoveClient(ctx hubclient.ServiceContext, args authapi.RemoveClientArgs) error {
+	slog.Info("RemoveClient", "clientID", args.ClientID)
 	err := svc.store.Remove(args.ClientID)
 	if err == nil {
 		err = svc.onChange()
 	}
+	return err
+}
+
+func (svc *AuthManageClients) SetClientPassword(ctx hubclient.ServiceContext, args authapi.SetClientPasswordArgs) error {
+	slog.Info("SetClientPassword", "clientID", args.ClientID)
+	err := svc.store.SetPassword(args.ClientID, args.Password)
 	return err
 }
 
@@ -215,16 +222,16 @@ func (svc *AuthManageClients) Start() (err error) {
 		//	auth.AuthManageClientsCapability, svc.HandleRequest)
 		svc.mngSub, err = svc.hc.SubRPCCapability(authapi.AuthManageClientsCapability,
 			map[string]interface{}{
-				authapi.AddDeviceMethod:            svc.AddDevice,
-				authapi.AddServiceMethod:           svc.AddService,
-				authapi.AddUserMethod:              svc.AddUser,
-				authapi.GetCountMethod:             svc.GetCount,
-				authapi.GetClientProfileMethod:     svc.GetClientProfile,
-				authapi.GetProfilesMethod:          svc.GetProfiles,
-				authapi.RemoveClientMethod:         svc.RemoveClient,
-				authapi.UpdateClientMethod:         svc.UpdateClient,
-				authapi.UpdateClientPasswordMethod: svc.UpdateClientPassword,
-				authapi.UpdateClientRoleMethod:     svc.UpdateClientRole,
+				authapi.AddDeviceMethod:         svc.AddDevice,
+				authapi.AddServiceMethod:        svc.AddService,
+				authapi.AddUserMethod:           svc.AddUser,
+				authapi.GetCountMethod:          svc.GetCount,
+				authapi.GetClientProfileMethod:  svc.GetClientProfile,
+				authapi.GetProfilesMethod:       svc.GetProfiles,
+				authapi.RemoveClientMethod:      svc.RemoveClient,
+				authapi.UpdateClientMethod:      svc.UpdateClient,
+				authapi.SetClientPasswordMethod: svc.SetClientPassword,
+				authapi.UpdateClientRoleMethod:  svc.UpdateClientRole,
 			})
 	}
 	return err
@@ -239,16 +246,13 @@ func (svc *AuthManageClients) Stop() {
 }
 
 func (svc *AuthManageClients) UpdateClient(ctx hubclient.ServiceContext, args authapi.UpdateClientArgs) error {
+	slog.Info("UpdateClient", "clientID", args.ClientID, "role")
 	err := svc.store.Update(args.ClientID, args.Profile)
 	return err
 }
 
-func (svc *AuthManageClients) UpdateClientPassword(ctx hubclient.ServiceContext, args authapi.UpdateClientPasswordArgs) error {
-	err := svc.store.SetPassword(args.ClientID, args.Password)
-	return err
-}
-
 func (svc *AuthManageClients) UpdateClientRole(ctx hubclient.ServiceContext, args authapi.UpdateClientRoleArgs) error {
+	slog.Info("UpdateClientRole", "clientID", args.ClientID, "role", args.Role)
 	prof, err := svc.store.GetProfile(args.ClientID)
 	if err == nil {
 		prof.Role = args.Role

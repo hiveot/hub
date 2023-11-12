@@ -38,7 +38,7 @@ func (svc *StateService) Get(ctx hubclient.ServiceContext, args *stateapi.GetArg
 	resp = &stateapi.GetResp{
 		Key:   args.Key,
 		Found: found,
-		Value: value}
+		Value: string(value)}
 
 	err2 := bucket.Close()
 	if err == nil {
@@ -51,27 +51,42 @@ func (svc *StateService) GetMultiple(
 	ctx hubclient.ServiceContext, args *stateapi.GetMultipleArgs) (resp *stateapi.GetMultipleResp, err error) {
 
 	bucket := svc.store.GetBucket(ctx.SenderID)
-	kv, err := bucket.GetMultiple(args.Keys)
+	kvbyte, err := bucket.GetMultiple(args.Keys)
 	err = bucket.Close()
-	resp = &stateapi.GetMultipleResp{KV: kv}
+	// convert values back to string
+	kvstring := make(map[string]string)
+	for k, v := range kvbyte {
+		kvstring[k] = string(v)
+	}
+
+	resp = &stateapi.GetMultipleResp{KV: kvstring}
 	return resp, err
 }
 
 func (svc *StateService) Set(
 	ctx hubclient.ServiceContext, args *stateapi.SetArgs) (err error) {
-
+	slog.Info("Set", slog.String("key", args.Key))
 	bucket := svc.store.GetBucket(ctx.SenderID)
 	// bucket returns an error if key is invalid
-	err = bucket.Set(args.Key, args.Value)
+	err = bucket.Set(args.Key, []byte(args.Value))
+	if err != nil {
+		slog.Warn("Set; Invalid key", slog.String("key", args.Key))
+	}
 	_ = bucket.Close()
 	return err
 }
 
 func (svc *StateService) SetMultiple(
 	ctx hubclient.ServiceContext, args *stateapi.SetMultipleArgs) (err error) {
+	slog.Info("SetMultiple", slog.Int("count", len(args.KV)))
+	// convert to string :(
+	storage := make(map[string][]byte)
+	for k, v := range args.KV {
+		storage[k] = []byte(v)
+	}
 
 	bucket := svc.store.GetBucket(ctx.SenderID)
-	err = bucket.SetMultiple(args.KV)
+	err = bucket.SetMultiple(storage)
 	_ = bucket.Close()
 	return err
 }
