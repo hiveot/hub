@@ -7,7 +7,6 @@ import (
 	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
@@ -23,9 +22,6 @@ type DirectoryService struct {
 	agentID      string // thingID of the service instance
 	tdBucketName string
 	tdBucket     buckets.IBucket
-
-	// td event subscription
-	tdSub transports.ISubscription
 
 	// capabilities and subscriptions
 	readDirSvc *ReadDirectoryService
@@ -58,14 +54,13 @@ func (svc *DirectoryService) Start(hc *hubclient.HubClient) (err error) {
 	tdBucket := svc.store.GetBucket(svc.tdBucketName)
 	svc.tdBucket = tdBucket
 
-	svc.readDirSvc, err = StartReadDirectoryService(svc.hc, tdBucket)
-	if err == nil {
-		svc.updateDirSvc, err = StartUpdateDirectoryService(svc.hc, tdBucket)
-	}
+	svc.readDirSvc = StartReadDirectoryService(svc.hc, tdBucket)
+	svc.updateDirSvc = StartUpdateDirectoryService(svc.hc, tdBucket)
+
 	// subscribe to TD events to add to the directory
 	if svc.hc != nil {
-		svc.tdSub, err = svc.hc.SubEvents(
-			"", "", vocab.EventNameTD, svc.handleTDEvent)
+		svc.hc.SetEventHandler(svc.handleTDEvent)
+		err = svc.hc.SubEvents("", "", vocab.EventNameTD)
 	}
 	myProfile := authclient.NewProfileClient(svc.hc)
 
@@ -100,10 +95,6 @@ func (svc *DirectoryService) Start(hc *hubclient.HubClient) (err error) {
 // Stop the service
 func (svc *DirectoryService) Stop() {
 	slog.Warn("Stopping DirectoryService")
-	if svc.tdSub != nil {
-		svc.tdSub.Unsubscribe()
-		svc.tdSub = nil
-	}
 	if svc.updateDirSvc != nil {
 		svc.updateDirSvc.Stop()
 	}

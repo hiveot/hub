@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"log/slog"
 )
 
@@ -16,8 +15,6 @@ type AuthManageProfile struct {
 	store authapi.IAuthnStore
 	// hub client for subscribing to requests
 	hc *hubclient.HubClient
-	// action subscription
-	actionSub transports.ISubscription
 
 	// message server for updating authn
 	msgServer msgserver.IMsgServer
@@ -107,7 +104,7 @@ func (svc *AuthManageProfile) SetServicePermissions(
 func (svc *AuthManageProfile) Start() (err error) {
 	if svc.hc != nil {
 
-		svc.actionSub, _ = svc.hc.SubRPCCapability(
+		svc.hc.SetRPCCapability(
 			authapi.AuthProfileCapability, map[string]interface{}{
 				authapi.GetProfileMethod:            svc.GetProfile,
 				authapi.NewTokenMethod:              svc.NewToken,
@@ -123,10 +120,10 @@ func (svc *AuthManageProfile) Start() (err error) {
 
 // Stop removes subscriptions
 func (svc *AuthManageProfile) Stop() {
-	if svc.actionSub != nil {
-		svc.actionSub.Unsubscribe()
-		svc.actionSub = nil
-	}
+	//if svc.actionSub != nil {
+	//	svc.actionSub.Unsubscribe()
+	//	svc.actionSub = nil
+	//}
 }
 
 func (svc *AuthManageProfile) UpdateName(

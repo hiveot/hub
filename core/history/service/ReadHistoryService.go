@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/core/history/historyapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"log/slog"
 	"time"
 
@@ -27,7 +26,6 @@ type ReadHistoryService struct {
 	// provides concurrency control.
 	getPropertiesFunc GetPropertiesFunc
 
-	readSub   transports.ISubscription
 	isRunning bool
 }
 
@@ -69,7 +67,6 @@ func (svc *ReadHistoryService) GetLatest(
 func (svc *ReadHistoryService) Stop() {
 	svc.isRunning = false
 	svc.cursorCache.Stop()
-	svc.readSub.Unsubscribe()
 }
 
 // StartReadHistoryService starts the capability to read from a things's history
@@ -99,9 +96,6 @@ func StartReadHistoryService(
 		historyapi.GetCursorMethod:     svc.GetCursor,
 		historyapi.GetLatestMethod:     svc.GetLatest,
 	}
-	svc.readSub, err = hc.SubRPCCapability(historyapi.ReadHistoryCap, capMethods)
-	if err != nil {
-		svc.cursorCache.Stop()
-	}
+	hc.SetRPCCapability(historyapi.ReadHistoryCap, capMethods)
 	return svc, err
 }

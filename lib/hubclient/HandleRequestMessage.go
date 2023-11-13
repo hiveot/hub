@@ -2,7 +2,6 @@ package hubclient
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/lib/ser"
@@ -19,17 +18,23 @@ type ServiceContext struct {
 // HandleRequestMessage unmarshal a request message parameters, passes it to the associated method,
 // and marshals the result. Intended to remove boilerplate from RPC service request handlers.
 //
-// The first argument is always the clientID of the client invoking the request.
-// The second argument and result can be a struct value or reference.
+// The first argument can optionally be the service context containing
+// the clientID invoking the request.
+// The second argument and results can be a struct value or reference.
+//
+// Since the arguments are JSON serialized, the wire protocol expects
+// a single (type1) struct that holds the parameters. If the handler
+// implements multiple arguments, they all receive the same payload if they
+// are of the same type.
 //
 // Supported method types are:
 //
-//   - func(string, type1) (type2,error)
-//   - func(string, type1) (error)
-//   - func(string, type1) ()
-//   - func(string) (type,error)
-//   - func(string) (error)
-//   - func(string) ()
+//   - func([ctx,] type1) (type2,error)
+//   - func([ctx,] type1) (error)
+//   - func([ctx,] type1) ()
+//   - func([ctx]) (type,error)
+//   - func([ctx]) (error)
+//   - func([ctx]) ()
 //
 // where type1 and type2 can be a struct or native type, or a pointer to a struct or native type.
 func HandleRequestMessage(ctx ServiceContext, method interface{}, payload []byte) (respData []byte, err error) {
@@ -43,41 +48,38 @@ func HandleRequestMessage(ctx ServiceContext, method interface{}, payload []byte
 	argv := make([]reflect.Value, methodType.NumIn())
 	nrArgs := methodType.NumIn()
 
-	if nrArgs == 0 {
-		// nothing to do here, apparently not interested in the clientID
-	} else if nrArgs == 1 {
-		// determine the type of argument, if it is passed by value or reference
-		argType := methodType.In(0)
+	for i := 0; i < nrArgs; i++ {
+		// determine the type of argument, expect the service context containing the clientID
+		argType := methodType.In(i)
 		argKind := argType.Name()
 		argIsContext := argKind == "ServiceContext"
 		if argIsContext {
-			argv[0] = reflect.ValueOf(ctx)
-		}
-	} else if nrArgs == 2 {
-		// determine the type of argument, if it is passed by value or reference
-		argv[0] = reflect.ValueOf(ctx)
-		argType := methodType.In(1)
-		argIsRef := (argType.Kind() == reflect.Ptr)
-		n1 := reflect.New(argType) // pointer to a new zero value of type
-		n1El := n1.Elem()
-		// n1El now contains the value of the argument type.
-		// ? Would it not contain a pointer if passed by value ? apparently not ???
-		if argIsRef {
-			// n1El is a struct pointer value?
-			// for some reason, unmarshall still needs to receive the address of it
-			err = json.Unmarshal(payload, n1El.Addr().Interface())
-			argv[1] = reflect.ValueOf(n1El.Interface())
+			// first argument is the service context containing clientID
+			argv[i] = reflect.ValueOf(ctx)
 		} else {
-			// n1El is the value, unmarshal to its address
-			err = json.Unmarshal(payload, n1El.Addr().Interface())
-			argv[1] = reflect.ValueOf(n1El.Interface())
+			// the argument is not a service context
+			argIsRef := (argType.Kind() == reflect.Ptr)
+			n1 := reflect.New(argType) // pointer to a new zero value of type
+			n1El := n1.Elem()
+			// n1El now contains the value of the argument type.
+			// ? Would it not contain a pointer if passed by value ? apparently not ???
+			if argIsRef {
+				// n1El is a struct pointer value?
+				// for some reason, unmarshall still needs to receive the address of it
+				err = ser.Unmarshal(payload, n1El.Addr().Interface())
+				argv[i] = reflect.ValueOf(n1El.Interface())
+			} else {
+				// n1El is the value, unmarshal to its address
+				err = ser.Unmarshal(payload, n1El.Addr().Interface())
+				argv[i] = reflect.ValueOf(n1El.Interface())
+			}
+			if err != nil {
+				return nil, fmt.Errorf("failed unmarshal request: %s", err)
+			}
 		}
-		if err != nil {
-			return nil, fmt.Errorf("failed unmarshal request: %s", err)
-		}
-	} else {
-		return nil, fmt.Errorf("multiple arguments is not supported")
+
 	}
+
 	resValues := methodValue.Call(argv)
 	var errResp interface{}
 	var resp interface{}

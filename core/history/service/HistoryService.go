@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/core/history/historyapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 )
@@ -32,10 +31,6 @@ type HistoryService struct {
 	hc *hubclient.HubClient
 	// optional handling of pubsub events. nil if not used
 	//subEventHandler *PubSubEventHandler
-	// subscription to events to add
-	eventSub transports.ISubscription
-	// subscription to actions to add
-	actionSub transports.ISubscription
 	// handler that adds history to the store
 	addHistory *AddHistory
 }
@@ -54,7 +49,7 @@ func (svc *HistoryService) Start(hc *hubclient.HubClient) (err error) {
 	// setup
 	svc.hc = hc
 	svc.serviceID = hc.ClientID()
-	svc.retentionMgr = NewManageRetention(hc, nil)
+	svc.retentionMgr = NewManageHistory(hc, nil)
 
 	propsbucket := svc.bucketStore.GetBucket(PropertiesBucketName)
 	svc.propsStore = NewPropertiesStore(propsbucket)
@@ -88,15 +83,24 @@ func (svc *HistoryService) Start(hc *hubclient.HubClient) (err error) {
 			svc.bucketStore, svc.retentionMgr, svc.propsStore.HandleAddValue)
 
 		// add events to the history filtered through the retention manager
-		svc.eventSub, err = svc.hc.SubEvents("", "", "",
-			func(msg *things.ThingValue) {
-				slog.Debug("received event",
-					slog.String("agentID", msg.AgentID),
-					slog.String("thingID", msg.ThingID),
-					slog.String("name", msg.Name),
-					slog.Int64("createdMSec", msg.CreatedMSec))
-				_ = svc.addHistory.AddEvent(msg)
-			})
+		err = svc.hc.SubEvents("", "", "")
+		svc.hc.SetEventHandler(func(msg *things.ThingValue) {
+			slog.Debug("received event",
+				slog.String("agentID", msg.AgentID),
+				slog.String("thingID", msg.ThingID),
+				slog.String("name", msg.Name),
+				slog.Int64("createdMSec", msg.CreatedMSec))
+			_ = svc.addHistory.AddEvent(msg)
+		})
+		// TODO: capture all actions
+		//svc.hc.Subscribe("","","","")
+		//	slog.Debug("received event",
+		//		slog.String("agentID", msg.AgentID),
+		//		slog.String("thingID", msg.ThingID),
+		//		slog.String("name", msg.Name),
+		//		slog.Int64("createdMSec", msg.CreatedMSec))
+		//	_ = svc.addHistory.AddEvent(msg)
+		//})
 
 		// add actions to the history, filtered through retention manager
 		// FIXME: this needs the ability to subscribe to actions for other agents
@@ -124,14 +128,6 @@ func (svc *HistoryService) Stop() {
 	if svc.retentionMgr != nil {
 		svc.retentionMgr.Stop()
 		svc.retentionMgr = nil
-	}
-	if svc.eventSub != nil {
-		_ = svc.eventSub.Unsubscribe()
-		svc.eventSub = nil
-	}
-	if svc.actionSub != nil {
-		svc.actionSub.Unsubscribe()
-		svc.actionSub = nil
 	}
 }
 

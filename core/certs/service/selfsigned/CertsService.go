@@ -8,7 +8,6 @@ import (
 	"github.com/hiveot/hub/core/certs/certsapi"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/keys"
 	"log/slog"
 	"math/big"
@@ -31,8 +30,6 @@ type SelfSignedCertsService struct {
 
 	// messaging client for receiving requests
 	hc *hubclient.HubClient
-	// subscription to receive requests
-	mngSub transports.ISubscription
 }
 
 // _createDeviceCert internal function to create a CA signed certificate for mutual authentication by IoT devices
@@ -208,15 +205,13 @@ func (svc *SelfSignedCertsService) Start(hc *hubclient.HubClient) (err error) {
 	slog.Warn("Starting certs service", "serviceID", hc.ClientID())
 	// for testing, hc can be nil
 	svc.hc = hc
-	svc.mngSub, err = svc.hc.SubRPCCapability(certsapi.ManageCertsCapability,
+	svc.hc.SetRPCCapability(certsapi.ManageCertsCapability,
 		map[string]interface{}{
 			certsapi.CreateDeviceCertMethod:  svc.CreateDeviceCert,
 			certsapi.CreateServiceCertMethod: svc.CreateServiceCert,
 			certsapi.CreateUserCertMethod:    svc.CreateUserCert,
 			certsapi.VerifyCertMethod:        svc.VerifyCert,
 		})
-	//svc.mngSub, err = svc.hc.SubRPCRequest(
-	//	certs.ManageCertsCapability, svc.HandleRequest)
 
 	return err
 }
@@ -224,10 +219,6 @@ func (svc *SelfSignedCertsService) Start(hc *hubclient.HubClient) (err error) {
 // Stop the service and remove subscription
 func (svc *SelfSignedCertsService) Stop() {
 	slog.Warn("Stopping the certs service")
-	if svc.mngSub != nil {
-		svc.mngSub.Unsubscribe()
-		svc.mngSub = nil
-	}
 }
 
 // VerifyCert verifies whether the given certificate is a valid client certificate

@@ -3,7 +3,6 @@ package service
 import (
 	"github.com/hiveot/hub/core/history/historyapi"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 )
@@ -26,8 +25,6 @@ func inArray(arr []string, id string) bool {
 type ManageHistory struct {
 	// retention rules grouped by event ID
 	rules historyapi.RetentionRuleSet
-	//
-	retSub transports.ISubscription
 	//
 	hc *hubclient.HubClient
 }
@@ -127,19 +124,19 @@ func (svc *ManageHistory) Start() (err error) {
 		historyapi.GetRetentionRulesMethod: svc.GetRetentionRules,
 		historyapi.SetRetentionRulesMethod: svc.SetRetentionRules,
 	}
-	svc.retSub, err = svc.hc.SubRPCCapability(historyapi.ManageHistoryCap, capMethods)
+	svc.hc.SetRPCCapability(historyapi.ManageHistoryCap, capMethods)
 	return nil
 }
 
-// Stop using the retention manager
+// Stop using the history manager
 func (svc *ManageHistory) Stop() {
-	svc.retSub.Unsubscribe()
+	// nothing to do here
 }
 
-// NewManageRetention creates a new instance that implements IManageRetention
+// NewManageHistory creates a new instance that implements IManageRetention
 //
 //	defaultRules with rules from config
-func NewManageRetention(
+func NewManageHistory(
 	hc *hubclient.HubClient, defaultRules historyapi.RetentionRuleSet) *ManageHistory {
 	if defaultRules == nil {
 		defaultRules = make(historyapi.RetentionRuleSet)

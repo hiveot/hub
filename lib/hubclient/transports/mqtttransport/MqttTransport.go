@@ -3,12 +3,10 @@ package mqtttransport
 import (
 	"context"
 	"crypto/x509"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/eclipse/paho.golang/packets"
 	"github.com/eclipse/paho.golang/paho"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/tlsclient"
@@ -35,12 +33,16 @@ type MqttHubTransport struct {
 	caCert         *x509.Certificate
 	conn           net.Conn
 	pcl            *paho.Client
-	requestHandler *Handler      // PahoRPC request handler
+	pahoReqHandler *Handler      // PahoRPC request handler
 	timeout        time.Duration // request timeout
+
+	connectHandler func(connected bool, err error)
+	eventHandler   func(addr string, payload []byte)
+	requestHandler func(addr string, payload []byte) (reply []byte, err error, donotreply bool)
 }
 
 // AddressTokens returns the address separator and wildcards
-func (hc *MqttHubTransport) AddressTokens() (sep string, wc string, rem string) {
+func (ht *MqttHubTransport) AddressTokens() (sep string, wc string, rem string) {
 	return "/", "+", "#"
 }
 
@@ -113,8 +115,10 @@ func (ht *MqttHubTransport) ConnectWithConn(credentials string, conn net.Conn) e
 	ht.conn = conn
 	ht.pcl = pcl
 
-	// last, create a request handler
-	ht.requestHandler, err = NewHandler(ctx, ht.pcl)
+	// create a request handler for request-response messages
+	ht.pahoReqHandler, err = NewHandler(ctx, ht.pcl)
+	// register a single handler for all messages containing type/agent/thing|cap/...
+	ht.pcl.Router.RegisterHandler("+/+/+/#", ht.handleMessage)
 
 	return err
 }
@@ -201,6 +205,44 @@ func (ht *MqttHubTransport) Disconnect() {
 	}
 }
 
+// handleMessage handles incoming request and event messages
+func (ht *MqttHubTransport) handleMessage(m *paho.Publish) {
+
+	// run this in the background to allow for reentrancy
+	go func() {
+		replyTo := m.Properties.ResponseTopic
+		if replyTo != "" {
+			var reply []byte
+			var err error
+			var donotreply bool
+			// this is a request message, expecting a response
+			if ht.requestHandler != nil {
+				reply, err, donotreply = ht.requestHandler(m.Topic, m.Payload)
+				if err != nil {
+					slog.Warn("SubRequest: handle request failed",
+						slog.String("err", err.Error()),
+						slog.String("topic", m.Topic))
+				}
+			} else {
+				slog.Error("received request message but no request handler is set")
+				err = errors.New("Cannot handle request. No handler is set")
+			}
+			if !donotreply {
+				err = ht.sendReply(m, reply, err)
+
+				if err != nil {
+					slog.Error("SubRequest. Sending reply failed", "err", err)
+				}
+			}
+		} else {
+			// this is en event message
+			if ht.eventHandler != nil {
+				ht.eventHandler(m.Topic, m.Payload)
+			}
+		}
+	}()
+}
+
 // ParseResponse helper message to parse response and check for errors
 func (ht *MqttHubTransport) ParseResponse(data []byte, resp interface{}) error {
 	var err error
@@ -221,13 +263,13 @@ func (ht *MqttHubTransport) ParseResponse(data []byte, resp interface{}) error {
 	return err
 }
 
-// Pub publishes a message and returns
-func (ht *MqttHubTransport) Pub(topic string, payload []byte) (err error) {
-	slog.Debug("Pub", "topic", topic)
+// PubEvent publishes a message and returns
+func (ht *MqttHubTransport) PubEvent(topic string, payload []byte) (err error) {
+	slog.Debug("PubEvent", "topic", topic)
 	ctx, cancelFn := context.WithTimeout(context.Background(), ht.timeout)
 	defer cancelFn()
 	pubMsg := &paho.Publish{
-		QoS:     withQos,
+		QoS:     0, //withQos,
 		Retain:  false,
 		Topic:   topic,
 		Payload: payload,
@@ -262,8 +304,8 @@ func (ht *MqttHubTransport) PubRequest(topic string, payload []byte) (resp []byt
 	}
 	// use the inbox as the custom response for this client instance
 	// clone of rpc.go to workaround hangup when no response is received #111
-	respMsg, err := ht.requestHandler.Request(ctx, pubMsg)
-	//ar.Duration = time.Now().Sub(t1)
+	respMsg, err := ht.pahoReqHandler.Request(ctx, pubMsg)
+	//ar.Duration = time.Now().SubEvent(t1)
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +336,7 @@ func (ht *MqttHubTransport) sendReply(req *paho.Publish, payload []byte, errResp
 
 	responseTopic := req.Properties.ResponseTopic
 	if responseTopic == "" {
-		err2 := fmt.Errorf("sendReply. No response topic. Not sending reply.")
+		err2 := fmt.Errorf("sendReply. No response topic. Not sending a reply")
 		slog.Error(err2.Error())
 	}
 	replyMsg := &paho.Publish{
@@ -325,82 +367,96 @@ func (ht *MqttHubTransport) sendReply(req *paho.Publish, payload []byte, errResp
 	return err
 }
 
-// Sub subscribes to a topic
-func (ht *MqttHubTransport) Sub(topic string, cb func(topic string, msg []byte)) (transports.ISubscription, error) {
-	slog.Info("Sub", "topic", topic)
-	spacket := &paho.Subscribe{
+// SetConnectHandler sets the notification handler of connection status changes
+func (ht *MqttHubTransport) SetConnectHandler(cb func(connected bool, err error)) {
+	ht.connectHandler = cb
+}
+
+// SetEventHandler set the single handler that receives all subscribed events.
+// This does not provide routing as in most cases it is unnecessary overhead
+// Use 'Subscribe' to set the addresses that this receives events on.
+func (ht *MqttHubTransport) SetEventHandler(cb func(addr string, payload []byte)) {
+	ht.eventHandler = cb
+}
+
+// SetRequestHandler sets the handler that receives all subscribed requests.
+// This does not provide routing as in most cases it is unnecessary overhead
+// Use 'Subscribe' to set the addresses that this receives requests on.
+func (ht *MqttHubTransport) SetRequestHandler(
+	cb func(addr string, payload []byte) (reply []byte, err error, donotreply bool)) {
+
+	ht.requestHandler = cb
+}
+
+// Subscribe subscribes to a topic.
+// Incoming messages are passed to the event or request handler, depending on whether
+// a reply-to address and correlation-ID is set.
+func (ht *MqttHubTransport) Subscribe(topic string) error {
+	slog.Info("Subscribe", "topic", topic)
+	packet := &paho.Subscribe{
 		Properties: nil,
 		Subscriptions: map[string]paho.SubscribeOptions{
 			topic: {QoS: withQos},
 		},
 	}
-	suback, err := ht.pcl.Subscribe(context.Background(), spacket)
-	ht.pcl.Router.RegisterHandler(topic, func(m *paho.Publish) {
-		slog.Info("Sub, received Msg:", "topic", m.Topic)
-		//clientID := m.Properties.User.Get("clientID") // experimental
-
-		// run this in the background to allow for reentrancy
-		go func() {
-			cb(m.Topic, m.Payload)
-		}()
-	})
+	suback, err := ht.pcl.Subscribe(context.Background(), packet)
 	_ = suback
-	hcSub := &PahoSubscription{
-		topic:    topic,
-		pcl:      ht.pcl,
-		clientID: ht.clientID,
+	return err
+}
+func (ht *MqttHubTransport) Unsubscribe(topic string) {
+	packet := &paho.Unsubscribe{
+		Topics: []string{topic},
 	}
-	return hcSub, err
+	ack, err := ht.pcl.Unsubscribe(context.Background(), packet)
+	_ = ack
+	_ = err
 }
 
-// SubRequest subscribes to a requests and sends a response
-// Intended for actions, config and rpc requests
-func (ht *MqttHubTransport) SubRequest(
-	topic string, cb func(topic string, payload []byte) (reply []byte, err error)) (
-	transports.ISubscription, error) {
-
-	spacket := &paho.Subscribe{
-		Properties: nil,
-		Subscriptions: map[string]paho.SubscribeOptions{
-			topic: {QoS: withQos},
-		},
-	}
-	suback, err := ht.pcl.Subscribe(context.Background(), spacket)
-	_ = suback
-	ht.pcl.Router.RegisterHandler(topic, func(m *paho.Publish) {
-
-		// run this in the background to allow for reentrancy
-		go func() {
-			reply, err := cb(m.Topic, m.Payload)
-
-			// TODO: cleanup. Is there something useful in properties.user?
-			//clientID:= m.Properties.User.Get("clientID")
-			propsJson, _ := json.Marshal(m.Properties.User)
-			slog.Debug("SubRequest. Properties.User",
-				"props", propsJson)
-
-			if err != nil {
-				slog.Warn("SubRequest: handle request failed",
-					slog.String("err", err.Error()),
-					slog.String("topic", topic))
-
-				err = ht.sendReply(m, nil, err)
-			} else {
-				err = ht.sendReply(m, reply, err)
-			}
-			if err != nil {
-				slog.Error("SubRequest. Sending reply failed", "err", err)
-			}
-		}()
-	})
-
-	hcSub := &PahoSubscription{
-		topic: topic,
-		pcl:   ht.pcl,
-	}
-
-	return hcSub, err
-}
+//	topic string, cb func(topic string, payload []byte) (reply []byte, err error)) (
+//	transports.ISubscription, error) {
+//
+//	spacket := &paho.Subscribe{
+//		Properties: nil,
+//		Subscriptions: map[string]paho.SubscribeOptions{
+//			topic: {QoS: withQos},
+//		},
+//	}
+//	suback, err := ht.pcl.Subscribe(context.Background(), spacket)
+//	_ = suback
+//	ht.pcl.Router.RegisterHandler(topic, func(m *paho.Publish) {
+//
+//		// run this in the background to allow for reentrancy
+//		go func() {
+//			reply, err := cb(m.Topic, m.Payload)
+//
+//			// TODO: cleanup. Is there something useful in properties.user?
+//			//clientID:= m.Properties.User.Get("clientID")
+//			propsJson, _ := json.Marshal(m.Properties.User)
+//			slog.Debug("SubRequest. Properties.User",
+//				"props", propsJson)
+//
+//			if err != nil {
+//				slog.Warn("SubRequest: handle request failed",
+//					slog.String("err", err.Error()),
+//					slog.String("topic", topic))
+//
+//				err = ht.sendReply(m, nil, err)
+//			} else {
+//				err = ht.sendReply(m, reply, err)
+//			}
+//			if err != nil {
+//				slog.Error("SubRequest. Sending reply failed", "err", err)
+//			}
+//		}()
+//	})
+//
+//	hcSub := &PahoSubscription{
+//		topic: topic,
+//		pcl:   ht.pcl,
+//	}
+//
+//	return hcSub, err
+//}
 
 // NewMqttTransport creates a new instance of the mqtt client.
 //

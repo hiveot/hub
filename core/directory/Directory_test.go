@@ -23,7 +23,7 @@ import (
 
 var testFolder = path.Join(os.TempDir(), "test-directory")
 var testStoreFile = path.Join(testFolder, "directory.json")
-var core = "nats"
+var core = "mqtt"
 
 // the following are set by the testmain
 var testServer *testenv.TestServer

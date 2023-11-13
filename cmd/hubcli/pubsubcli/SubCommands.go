@@ -59,25 +59,24 @@ func SubEventsCommand(hc **hubclient.HubClient) *cli.Command {
 // HandleSubTD subscribes and prints TD publications
 func HandleSubTD(hc *hubclient.HubClient) error {
 
-	sub, err := hc.SubEvents("", "", vocab.EventNameTD,
-		func(msg *things.ThingValue) {
-			var td things.TD
-			//fmt.Printf("%s\n", event.ValueJSON)
-			err := json.Unmarshal(msg.Data, &td)
-			if err == nil {
-				modifiedTime, _ := dateparse.ParseAny(td.Modified) // can be in any TZ
-				timeStr := utils.FormatMSE(modifiedTime.In(time.Local).UnixMilli(), false)
-				fmt.Printf("%-20s %-25s %-30s %-20s %-18s\n",
-					msg.AgentID, msg.ThingID, td.Title, td.DeviceType, timeStr)
-			}
-		})
-	defer sub.Unsubscribe()
-	fmt.Printf("Agent ID             Thing ID                  Title                          Type                 Updated           \n")
-	fmt.Printf("-------------------  ------------------------  -----------------------------  -------------------  --------------------\n")
-
+	err := hc.SubEvents("", "", vocab.EventNameTD)
 	if err != nil {
 		return err
 	}
+	hc.SetEventHandler(func(msg *things.ThingValue) {
+		var td things.TD
+		//fmt.Printf("%s\n", event.ValueJSON)
+		err := json.Unmarshal(msg.Data, &td)
+		if err == nil {
+			modifiedTime, _ := dateparse.ParseAny(td.Modified) // can be in any TZ
+			timeStr := utils.FormatMSE(modifiedTime.In(time.Local).UnixMilli(), false)
+			fmt.Printf("%-20s %-25s %-30s %-20s %-18s\n",
+				msg.AgentID, msg.ThingID, td.Title, td.DeviceType, timeStr)
+		}
+	})
+	fmt.Printf("Agent ID             Thing ID                  Title                          Type                 Updated           \n")
+	fmt.Printf("-------------------  ------------------------  -----------------------------  -------------------  --------------------\n")
+
 	time.Sleep(time.Hour * 24)
 	return nil
 }
@@ -89,26 +88,25 @@ func HandleSubEvents(hc *hubclient.HubClient, agentID string, thingID string, na
 	fmt.Printf("Time             Agent ID             Thing ID                  Event Name                     Value\n")
 	fmt.Printf("---------------  -------------------  ------------------------  -----------------------------  ---------\n")
 
-	sub, err := hc.SubEvents(agentID, thingID, name,
-		func(msg *things.ThingValue) {
-			createdTime := time.UnixMilli(msg.CreatedMSec)
-			timeStr := createdTime.Format("15:04:05.000")
-			value := fmt.Sprintf("%-.30s", msg.Data)
-			if msg.Name == vocab.EventNameProps {
-				var props map[string]interface{}
-				_ = json.Unmarshal(msg.Data, &props)
-				value = fmt.Sprintf("%d properties", len(props))
-			} else if msg.Name == vocab.EventNameTD {
-				var td things.TD
-				_ = json.Unmarshal(msg.Data, &td)
-				value = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
-					td.Title, td.DeviceType, len(td.Properties), len(td.Events), len(td.Actions))
-			}
+	err := hc.SubEvents(agentID, thingID, name)
+	hc.SetEventHandler(func(msg *things.ThingValue) {
+		createdTime := time.UnixMilli(msg.CreatedMSec)
+		timeStr := createdTime.Format("15:04:05.000")
+		value := fmt.Sprintf("%-.30s", msg.Data)
+		if msg.Name == vocab.EventNameProps {
+			var props map[string]interface{}
+			_ = json.Unmarshal(msg.Data, &props)
+			value = fmt.Sprintf("%d properties", len(props))
+		} else if msg.Name == vocab.EventNameTD {
+			var td things.TD
+			_ = json.Unmarshal(msg.Data, &td)
+			value = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
+				td.Title, td.DeviceType, len(td.Properties), len(td.Events), len(td.Actions))
+		}
 
-			fmt.Printf("%-16s %-20s %-25s %-30s %-30s\n",
-				timeStr, msg.AgentID, msg.ThingID, msg.Name, value)
-		})
-	defer sub.Unsubscribe()
+		fmt.Printf("%-16s %-20s %-25s %-30s %-30s\n",
+			timeStr, msg.AgentID, msg.ThingID, msg.Name, value)
+	})
 	if err != nil {
 		return err
 	}

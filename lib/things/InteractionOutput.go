@@ -92,7 +92,7 @@ func (io *InteractionOutput) ValueAsMap() map[string]interface{} {
 }
 
 // NewInteractionOutputFromJson creates a new interaction output for reading output data
-// @param serEncoded is raw data that will be ser parsed using the given Schema
+// @param serEncoded is raw data that will be decoded using the given Schema
 // @param Schema describes the value. nil in case of unknown Schema
 func NewInteractionOutputFromJson(jsonEncoded []byte, schema *DataSchema) *InteractionOutput {
 	var err error

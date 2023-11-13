@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/things"
@@ -25,9 +24,6 @@ type OWServerBinding struct {
 
 	// hub client to publish TDs and values and receive actions
 	hc *hubclient.HubClient
-
-	// subscription to actions
-	actionSub transports.ISubscription
 
 	// track the last value for change detection
 	// map of [node/device ID] [attribute name] value
@@ -83,8 +79,7 @@ func (svc *OWServerBinding) Start(hc *hubclient.HubClient) (err error) {
 	// TODO: restore svc configuration
 
 	// subscribe to action requests
-	svc.actionSub, err = svc.hc.SubActions(
-		"", svc.HandleActionRequest)
+	svc.hc.SetActionHandler(svc.HandleActionRequest)
 	if err != nil {
 		return err
 	}
@@ -138,10 +133,7 @@ func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
 // This does not close the given hubclient connection.
 func (svc *OWServerBinding) Stop() {
 	slog.Warn("Stopping OWServer svc")
-	if svc.actionSub != nil {
-		_ = svc.actionSub.Unsubscribe()
-		svc.actionSub = nil
-	}
+
 	if svc.stopFn != nil {
 		svc.stopFn()
 		svc.stopFn = nil

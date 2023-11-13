@@ -1,10 +1,10 @@
 package owserver_test
 
 import (
-	"encoding/json"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
 	"github.com/hiveot/hub/core/auth/authapi"
+	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/vocab"
@@ -82,22 +82,22 @@ func TestPoll(t *testing.T) {
 	svc := service.NewOWServerBinding(&owsConfig)
 
 	// Count the number of received TD events
-	sub, err := hc.SubEvents("", "", "",
-		func(ev *things.ThingValue) {
-			slog.Info("received event", "id", ev.Name)
-			if ev.Name == vocab.EventNameProps {
-				var value map[string][]byte
-				err2 := json.Unmarshal(ev.Data, &value)
-				assert.NoError(t, err2)
-			} else {
-				var value interface{}
-				err2 := json.Unmarshal(ev.Data, &value)
-				assert.NoError(t, err2)
-			}
-			tdCount.Add(1)
-		})
+	err = hc.SubEvents("", "", "")
+	require.NoError(t, err)
+	hc.SetEventHandler(func(ev *things.ThingValue) {
+		slog.Info("received event", "id", ev.Name)
+		if ev.Name == vocab.EventNameProps {
+			var value map[string]interface{}
+			err2 := ser.Unmarshal(ev.Data, &value)
+			assert.NoError(t, err2)
+		} else {
+			var value interface{}
+			err2 := ser.Unmarshal(ev.Data, &value)
+			assert.NoError(t, err2)
+		}
+		tdCount.Add(1)
+	})
 	assert.NoError(t, err)
-	defer sub.Unsubscribe()
 
 	// start the service which publishes TDs
 	err = svc.Start(hc)

@@ -79,11 +79,11 @@ func (h *Handler) Request(ctx context.Context, pb *paho.Publish) (*paho.Publish,
 	}
 
 	pb.Properties.CorrelationData = []byte(cID)
-	pb.Properties.User.Add("test2", "test2")
+	//pb.Properties.User.Add("test2", "test2")
 	//HS 2023-09-10: allow override of response topic format
 	if pb.Properties.ResponseTopic == "" {
-		// the ClientID is the instance ID
-		pb.Properties.ResponseTopic = fmt.Sprintf(InboxTopicFormat, h.c.ClientID)
+		instanceID := h.c.ClientID
+		pb.Properties.ResponseTopic = fmt.Sprintf(InboxTopicFormat, instanceID)
 	}
 	pb.Retain = false
 	slog.Debug("Handler.Request: publish request", slog.String("topic", pb.Topic))
@@ -96,6 +96,7 @@ func (h *Handler) Request(ctx context.Context, pb *paho.Publish) (*paho.Publish,
 	select {
 	case <-ctx.Done():
 		slog.Error("no response to request", "topic", pb.Topic)
+		// FIXME, remove correlationID
 		return nil, ctx.Err()
 	case resp := <-rChan:
 		return resp, nil

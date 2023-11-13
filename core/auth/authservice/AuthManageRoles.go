@@ -1,13 +1,10 @@
 package authservice
 
 import (
-	"fmt"
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/transports"
-	"github.com/hiveot/hub/lib/ser"
-	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 )
 
@@ -27,53 +24,57 @@ type AuthManageRoles struct {
 }
 
 // CreateRole adds a new custom role
-func (svc *AuthManageRoles) CreateRole(role string) error {
+func (svc *AuthManageRoles) CreateRole(args authapi.CreateRoleArgs) error {
 	// FIXME:implement
 	slog.Error("CreateRole is not yet implemented")
 	return nil
 }
 
 // DeleteRole deletes a custom role
-func (svc *AuthManageRoles) DeleteRole(role string) error {
+func (svc *AuthManageRoles) DeleteRole(args authapi.DeleteRoleArgs) error {
 	// FIXME:implement
 	slog.Error("DeleteRole is not yet implemented")
 	return nil
 }
 
 // HandleRequest unmarshal and apply action requests
-func (svc *AuthManageRoles) HandleRequest(msg *things.ThingValue) (reply []byte, err error) {
-
-	slog.Info("HandleRequest",
-		slog.String("actionID", msg.Name),
-		slog.String("senderID", msg.SenderID))
-	switch msg.Name {
-	case authapi.CreateRoleReq:
-		req := &authapi.CreateRoleArgs{}
-		err := ser.Unmarshal(msg.Data, &req)
-		if err != nil {
-			return nil, err
-		}
-		err = svc.CreateRole(req.Role)
-		return nil, err
-	case authapi.DeleteRoleReq:
-		req := &authapi.DeleteRoleArgs{}
-		err := ser.Unmarshal(msg.Data, &req)
-		if err != nil {
-			return nil, err
-		}
-		err = svc.DeleteRole(req.Role)
-		return nil, err
-
-	default:
-		return nil, fmt.Errorf("unknown action '%s' for client '%s'", msg.Name, msg.SenderID)
-	}
-}
+//func (svc *AuthManageRoles) HandleRequest(msg *things.ThingValue) (reply []byte, err error) {
+//
+//	slog.Info("HandleRequest",
+//		slog.String("actionID", msg.Name),
+//		slog.String("senderID", msg.SenderID))
+//	switch msg.Name {
+//	case authapi.CreateRoleReq:
+//		req := &authapi.CreateRoleArgs{}
+//		err := ser.Unmarshal(msg.Data, &req)
+//		if err != nil {
+//			return nil, err
+//		}
+//		err = svc.CreateRole(req.Role)
+//		return nil, err
+//	case authapi.DeleteRoleReq:
+//		req := &authapi.DeleteRoleArgs{}
+//		err := ser.Unmarshal(msg.Data, &req)
+//		if err != nil {
+//			return nil, err
+//		}
+//		err = svc.DeleteRole(req.Role)
+//		return nil, err
+//
+//	default:
+//		return nil, fmt.Errorf("unknown action '%s' for client '%s'", msg.Name, msg.SenderID)
+//	}
+//}
 
 // Start subscribes to the actions for management and client capabilities
 // Register the binding subscription using the given connection
 func (svc *AuthManageRoles) Start() (err error) {
 	if svc.hc != nil {
-		svc.actionSub, _ = svc.hc.SubRPCRequest(authapi.AuthRolesCapability, svc.HandleRequest)
+		svc.hc.SetRPCCapability(authapi.AuthManageRolesCapability,
+			map[string]interface{}{
+				authapi.CreateRoleReq: svc.CreateRole,
+				authapi.DeleteRoleReq: svc.DeleteRole,
+			})
 	}
 	return err
 }

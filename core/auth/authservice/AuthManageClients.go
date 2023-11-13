@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"log/slog"
 )
 
@@ -19,7 +18,7 @@ type AuthManageClients struct {
 	// messaging client for receiving requests
 	hc *hubclient.HubClient
 	// subscription to receive requests
-	mngSub transports.ISubscription
+	//mngSub transports.ISubscription
 }
 
 // AddDevice adds an IoT device and generates an authentication token
@@ -220,7 +219,7 @@ func (svc *AuthManageClients) Start() (err error) {
 	if svc.hc != nil {
 		//svc.mngSub, err = svc.hc.SubRPCRequest(
 		//	auth.AuthManageClientsCapability, svc.HandleRequest)
-		svc.mngSub, err = svc.hc.SubRPCCapability(authapi.AuthManageClientsCapability,
+		svc.hc.SetRPCCapability(authapi.AuthManageClientsCapability,
 			map[string]interface{}{
 				authapi.AddDeviceMethod:         svc.AddDevice,
 				authapi.AddServiceMethod:        svc.AddService,
@@ -239,14 +238,14 @@ func (svc *AuthManageClients) Start() (err error) {
 
 // Stop removes subscriptions
 func (svc *AuthManageClients) Stop() {
-	if svc.mngSub != nil {
-		svc.mngSub.Unsubscribe()
-		svc.mngSub = nil
-	}
+	//if svc.mngSub != nil {
+	//	svc.mngSub.Unsubscribe()
+	//	svc.mngSub = nil
+	//}
 }
 
 func (svc *AuthManageClients) UpdateClient(ctx hubclient.ServiceContext, args authapi.UpdateClientArgs) error {
-	slog.Info("UpdateClient", "clientID", args.ClientID, "role")
+	slog.Info("UpdateClient", "clientID", args.ClientID, "role", args.Profile.Role)
 	err := svc.store.Update(args.ClientID, args.Profile)
 	return err
 }

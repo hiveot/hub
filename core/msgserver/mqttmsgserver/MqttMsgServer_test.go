@@ -1,6 +1,7 @@
 package mqttmsgserver_test
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
@@ -173,20 +174,24 @@ func TestMqttServerPubSub(t *testing.T) {
 	err = tp1.ConnectWithToken(TestAdminUserKey, adminToken)
 	require.NoError(t, err)
 	defer tp1.Disconnect()
-	subTopic := mqtttransport.MakeTopic(vocab.MessageTypeEvent, TestDevice1ID, "t1", "test", "")
-	sub1, err := tp1.Sub(subTopic, func(addr string, data []byte) {
-		slog.Info("received msg", "addr", addr, "data", string(data))
-		rxChan <- string(data)
+	tp1.SetEventHandler(func(addr string, payload []byte) {
+		slog.Info("received msg", "addr", addr, "payload", string(payload))
+		rxChan <- string(payload)
 	})
+	tp1.SetRequestHandler(func(addr string, payload []byte) ([]byte, error, bool) {
+		return nil, fmt.Errorf("not implemented"), false
+	})
+
+	subTopic := mqtttransport.MakeTopic(vocab.MessageTypeEvent, TestDevice1ID, "t1", "test", "")
+	err = tp1.Subscribe(subTopic)
 	require.NoError(t, err)
-	defer sub1.Unsubscribe()
 
 	// a device publishes an event
 	tp2 := mqtttransport.NewMqttTransport(serverURL, TestDevice1ID, certBundle.CaCert)
 	token, _ := srv.CreateToken(deviceAuthInfo)
 	err = tp2.ConnectWithToken(TestDevice1Keys, token)
 	pubTopic := mqtttransport.MakeTopic(vocab.MessageTypeEvent, TestDevice1ID, "t1", "test", TestDevice1ID)
-	err = tp2.Pub(pubTopic, []byte(msg))
+	err = tp2.PubEvent(pubTopic, []byte(msg))
 	require.NoError(t, err)
 	rxMsg := <-rxChan
 
@@ -218,13 +223,18 @@ func TestMqttServerRequest(t *testing.T) {
 	require.NoError(t, err)
 	defer tp1.Disconnect()
 
-	topic := mqtttransport.MakeTopic(vocab.MessageTypeAction, TestDevice1ID, "", "", "")
-	sub2, err := tp1.SubRequest(topic, func(addr string, payload []byte) (resp []byte, err error) {
+	tp1.SetEventHandler(func(addr string, payload []byte) {
+		slog.Info("received msg", "addr", addr, "payload", string(payload))
+		rxChan <- string(payload)
+	})
+	tp1.SetRequestHandler(func(addr string, payload []byte) ([]byte, error, bool) {
 		slog.Info("received action", "addr", addr)
 		rxChan <- string(payload)
-		return payload, nil
+		return payload, nil, false
 	})
-	defer sub2.Unsubscribe()
+
+	topic := mqtttransport.MakeTopic(vocab.MessageTypeAction, TestDevice1ID, "", "", "")
+	err = tp1.Subscribe(topic)
 
 	// user publishes a device action
 	hc2 := mqtttransport.NewMqttTransport(serverURL, TestUser2ID, certBundle.CaCert)

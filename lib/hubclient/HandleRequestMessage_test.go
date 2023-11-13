@@ -62,11 +62,12 @@ func Method7ByteArrayArg(ctx hubclient.ServiceContext, arg1 []byte) ([]byte, err
 	slog.Info("received array arg", "arg1", arg1)
 	return arg1, nil
 }
-func Method8TwoArgsFail(ctx hubclient.ServiceContext, arg1 string, args2 string) (string, error) {
-	slog.Info("received 2 args doesn't work", "arg1", arg1)
+func Method8TwoArgs(ctx hubclient.ServiceContext, arg1 string, arg2 int) (string, error) {
+	// this fails as arg2 is an int
+	slog.Info("received 2 args", "arg1", arg1, "arg2", arg2)
 	return arg1, nil
 }
-func Method9ThreeResFail(ctx hubclient.ServiceContext, arg1 string) (string, string, error) {
+func Method9ThreeRes(ctx hubclient.ServiceContext, arg1 string) (string, string, error) {
 	slog.Info("returning 3 results should fail", "arg1", arg1)
 	return arg1, arg1, nil
 }
@@ -159,14 +160,14 @@ func TestByteArrayArgs(t *testing.T) {
 func TestTwoArgsFail(t *testing.T) {
 	sargJson, _ := json.Marshal("Hello world")
 	// this method has 2 args, we only pass 1. Does it blow up?
-	data, err := hubclient.HandleRequestMessage(testContext, Method8TwoArgsFail, sargJson)
+	data, err := hubclient.HandleRequestMessage(testContext, Method8TwoArgs, sargJson)
 	assert.Error(t, err)
 	assert.Nil(t, data)
 }
 func TestThreeResFail(t *testing.T) {
 	sargJson, _ := json.Marshal("Hello world")
 	// this method has 3 results. Does it blow up?
-	data, err := hubclient.HandleRequestMessage(testContext, Method9ThreeResFail, sargJson)
+	data, err := hubclient.HandleRequestMessage(testContext, Method9ThreeRes, sargJson)
 	assert.Error(t, err)
 	assert.Nil(t, data)
 }

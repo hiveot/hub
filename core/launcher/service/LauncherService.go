@@ -7,7 +7,6 @@ import (
 	"github.com/hiveot/hub/core/launcher/config"
 	"github.com/hiveot/hub/core/launcher/launcherapi"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/plugin"
 	"log/slog"
 	"os"
@@ -38,8 +37,6 @@ type LauncherService struct {
 	hc *hubclient.HubClient
 	// auth service to generate plugin keys and tokens
 	mngAuth *authclient.ManageClients
-	// subscription to receive requests
-	mngSub transports.ISubscription
 
 	// mutex to keep things safe
 	mux sync.Mutex
@@ -220,7 +217,7 @@ func (svc *LauncherService) Start() error {
 
 	// start listening to requests
 	//svc.mngSub, err = svc.hc.SubRPCRequest(launcher.ManageCapability, svc.HandleRequest)
-	svc.mngSub, err = svc.hc.SubRPCCapability(launcherapi.ManageCapability,
+	svc.hc.SetRPCCapability(launcherapi.ManageCapability,
 		map[string]interface{}{
 			launcherapi.ListMethod:            svc.List,
 			launcherapi.StartPluginMethod:     svc.StartPlugin,
@@ -240,10 +237,6 @@ func (svc *LauncherService) Start() error {
 // Stop the launcher and all running plugins
 func (svc *LauncherService) Stop() error {
 	slog.Warn("Stopping launcher service")
-	if svc.mngSub != nil {
-		svc.mngSub.Unsubscribe()
-		svc.mngSub = nil
-	}
 	svc.isRunning.Store(false)
 	err := svc.StopAllPlugins(hubclient.ServiceContext{},
 		&launcherapi.StopAllPluginsArgs{IncludingCore: true})

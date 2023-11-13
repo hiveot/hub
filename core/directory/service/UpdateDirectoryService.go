@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
@@ -18,8 +17,7 @@ import (
 //	Bucket values are ThingValue objects
 type UpdateDirectoryService struct {
 	// bucket that holds the TD documents
-	bucket    buckets.IBucket
-	updateSub transports.ISubscription
+	bucket buckets.IBucket
 }
 
 // CreateUpdateDirTD a new Thing TD document describing the update directory capability
@@ -60,7 +58,6 @@ func (svc *UpdateDirectoryService) UpdateTD(ctx hubclient.ServiceContext, args d
 // Stop the update directory capability
 // This unsubscribes from requests.
 func (svc *UpdateDirectoryService) Stop() {
-	svc.updateSub.Unsubscribe()
 }
 
 // StartUpdateDirectoryService starts the capability to update the directory.
@@ -68,17 +65,16 @@ func (svc *UpdateDirectoryService) Stop() {
 //
 //	hc with the message bus connection
 //	thingBucket is the open bucket used to store TDs
-func StartUpdateDirectoryService(hc *hubclient.HubClient, bucket buckets.IBucket) (
-	svc *UpdateDirectoryService, err error) {
+func StartUpdateDirectoryService(hc *hubclient.HubClient, bucket buckets.IBucket) *UpdateDirectoryService {
 
-	svc = &UpdateDirectoryService{
+	svc := &UpdateDirectoryService{
 		bucket: bucket,
 	}
 	capMethods := map[string]interface{}{
 		directoryapi.UpdateTDMethod: svc.UpdateTD,
 		directoryapi.RemoveTDMethod: svc.RemoveTD,
 	}
-	svc.updateSub, err = hc.SubRPCCapability(directoryapi.UpdateDirectoryCap, capMethods)
+	hc.SetRPCCapability(directoryapi.UpdateDirectoryCap, capMethods)
 
-	return svc, err
+	return svc
 }

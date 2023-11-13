@@ -8,7 +8,7 @@ import (
 const DefaultAclFilename = "authz.acl"
 
 // AuthManageRolesCapability is the name of the Thing/Capability that handles role requests
-const AuthManageRolesCapability = "roles"
+const AuthManageRolesCapability = "manageRoles"
 
 // Predefined user roles.
 const (

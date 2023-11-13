@@ -11,11 +11,11 @@ import (
 	"time"
 )
 
-const core = "mqtt"
+const core = "nats"
 
 // Benchmark a simple event pub/sub
-// mqtt: 100 usec/rpc   (with ack?)
-// nats:   8 usec/rpc ! (* risk of dropped messages)
+// mqtt: 95 usec/rpc (QOS 1), 60 usec/rpc (QOS 0); 450 usec for request/response
+// nats:  9 usec/rpc ! (* risk of dropped messages); 170 usec for request/response
 func Benchmark_PubSubEvent(b *testing.B) {
 	logging.SetLogging("warning", "")
 	txCount := atomic.Int32{}
@@ -28,20 +28,20 @@ func Benchmark_PubSubEvent(b *testing.B) {
 	defer cl1.Disconnect()
 	cl2, _ := ts.AddConnectClient("sub", authapi.ClientTypeUser, authapi.ClientRoleOperator)
 	defer cl2.Disconnect()
-
-	sub2, _ := cl2.SubEvents("publisher", "", "", func(msg *things.ThingValue) {
+	_ = cl2.SubEvents("publisher", "", "")
+	cl2.SetEventHandler(func(msg *things.ThingValue) {
 		//time.Sleep(time.Millisecond * 10)
 		rxCount.Add(1)
 	})
-	defer sub2.Unsubscribe()
 
 	t1 := time.Now()
-	b.Run("pub and sub",
+	b.Run("pub and sub event",
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				txCount.Add(1)
 				// nats loses events without a minor delay
-				// FIXME: check nats delivery options for guaranteed once
+				// FIXME: a small delay to prevent events from being dropped when using NATS
+				// docs (https://docs.nats.io/nats-concepts/what-is-nats) say to use jetstream for guaranteed delivery.
 				time.Sleep(time.Microsecond)
 				_ = cl1.PubEvent("thing1", "ev1", []byte("hello"))
 			}
@@ -72,15 +72,13 @@ func Benchmark_Request(b *testing.B) {
 	cl2, _ := ts.AddConnectClient("rpc", authapi.ClientTypeService, authapi.ClientRoleService)
 	defer cl2.Disconnect()
 
-	sub2, _ := cl2.SubRPCRequest("cap1", func(msg *things.ThingValue) ([]byte, error) {
-
+	cl2.SetRPCHandler(func(msg *things.ThingValue) ([]byte, error) {
 		rxCount.Add(1)
 		return msg.Data, nil
 	})
-	defer sub2.Unsubscribe()
 
 	t1 := time.Now()
-	b.Run("pub and sub",
+	b.Run("pub and sub request",
 		func(b *testing.B) {
 
 			for n := 0; n < b.N; n++ {

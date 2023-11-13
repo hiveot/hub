@@ -7,7 +7,6 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"log/slog"
 	"path"
 )
@@ -16,8 +15,6 @@ import (
 type StateService struct {
 	// Hub connection
 	hc *hubclient.HubClient
-	// handler rpc subscription
-	sub transports.ISubscription
 	// backend storage
 	storeDir string
 	store    buckets.IBucketStore
@@ -116,7 +113,7 @@ func (svc *StateService) Start(hc *hubclient.HubClient) (err error) {
 
 	if err == nil {
 		// register the handler
-		svc.sub, err = svc.hc.SubRPCCapability(stateapi.StorageCap,
+		svc.hc.SetRPCCapability(stateapi.StorageCap,
 			map[string]interface{}{
 				stateapi.DeleteMethod:      svc.Delete,
 				stateapi.GetMethod:         svc.Get,
@@ -132,11 +129,6 @@ func (svc *StateService) Start(hc *hubclient.HubClient) (err error) {
 // Stop the service
 func (svc *StateService) Stop() {
 	slog.Warn("Stopping the state service")
-	if svc.sub != nil {
-		svc.sub.Unsubscribe()
-		svc.sub = nil
-	}
-
 	_ = svc.store.Close()
 }
 

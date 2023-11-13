@@ -1,7 +1,7 @@
 package service
 
 import (
-	"encoding/json"
+	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/vocab"
 	"time"
 
@@ -67,7 +67,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err err
 			}
 		}
 		if len(attrMap) > 0 {
-			attrMapJSON, _ := json.Marshal(attrMap)
+			attrMapJSON, _ := ser.Marshal(attrMap)
 			err = svc.hc.PubEvent(thingID, vocab.EventNameProps, attrMapJSON)
 		}
 	}

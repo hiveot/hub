@@ -16,7 +16,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"time"
 )
 
 // TokenFileExt defines the filename extension under which client tokens are stored
@@ -37,7 +36,16 @@ type HubClient struct {
 	//caCert    *x509.Certificate
 	clientID  string
 	transport transports.IHubTransport
-	//serializedKP string
+
+	// capability map:
+	//  map[capID] map[methodName]handler
+	capTable map[string]map[string]interface{}
+
+	actionHandler     func(msg *things.ThingValue) (reply []byte, err error)
+	configHandler     func(msg *things.ThingValue) error
+	connectionHandler func(connected bool, err error)
+	eventHandler      func(msg *things.ThingValue)
+	rpcHandler        func(msg *things.ThingValue) (reply []byte, err error)
 }
 
 // MakeAddress creates a message address optionally with wildcards
@@ -164,6 +172,62 @@ func (hc *HubClient) Disconnect() {
 	hc.transport.Disconnect()
 }
 
+// onConnect is invoked when the connection status changes.
+// This simply passes it through to the handler, if set.
+func (hc *HubClient) onConnect(connected bool, err error) {
+	if hc.connectionHandler != nil {
+		hc.connectionHandler(connected, err)
+	}
+}
+
+// Handlers of events and requests. These are dispatched to their appropriate handlers
+func (hc *HubClient) onEvent(addr string, payload []byte) {
+	messageType, agentID, thingID, name, senderID, err := hc.SplitAddress(addr)
+	if err == nil && hc.eventHandler != nil {
+		tv := things.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
+		hc.eventHandler(tv)
+	}
+}
+
+// onRequest determines if this is a configuration, action or RPC request and
+// passes it to the handler.
+// Requests that are not addressed to this agent are treated as events and do not receive a reply.
+func (hc *HubClient) onRequest(addr string, payload []byte) (reply []byte, err error, donotreply bool) {
+	messageType, agentID, thingID, name, senderID, err := hc.SplitAddress(addr)
+	tv := things.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
+
+	if agentID != hc.clientID {
+		if err == nil && hc.eventHandler != nil {
+			tv := things.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
+			hc.eventHandler(tv)
+		}
+		donotreply = true
+	} else if messageType == vocab.MessageTypeAction && hc.actionHandler != nil {
+		slog.Info("Received action request",
+			slog.String("sender", senderID),
+			slog.String("thingID", thingID),
+			slog.String("action", name),
+		)
+		reply, err = hc.actionHandler(tv)
+	} else if messageType == vocab.MessageTypeRPC && hc.rpcHandler != nil {
+		slog.Info("Received RPC request",
+			slog.String("sender", senderID),
+			slog.String("capability", thingID),
+			slog.String("method", name),
+		)
+		reply, err = hc.rpcHandler(tv)
+
+	} else if messageType == vocab.MessageTypeConfig && hc.configHandler != nil {
+		slog.Info("Received config request",
+			slog.String("sender", senderID),
+			slog.String("thingID", thingID),
+			slog.String("property", name),
+		)
+		err = hc.configHandler(tv)
+	}
+	return reply, err, donotreply
+}
+
 // LoadCreateKeyPair loads or creates a public/private key pair using the clientID as filename.
 //
 //	The key-pair is named {clientID}.key, the public key {clientID}.pub
@@ -205,7 +269,7 @@ func (hc *HubClient) LoadCreateKeyPair(clientID, keysDir string) (kp keys.IHiveK
 //	agentID of the device or service that handles the action.
 //	thingID is the destination thingID to whom the action applies.
 //	name is the name of the action as described in the Thing's TD
-//	payload is the optional payload of the action as described in the Thing's TD
+//	payload is the optional serialized payload of the action as described in the Thing's TD
 //
 // This returns the reply data or an error if an error was returned or no reply was received
 func (hc *HubClient) PubAction(
@@ -217,25 +281,24 @@ func (hc *HubClient) PubAction(
 	return data, err
 }
 
-// PubConfig publishes a Thing configuration change request.
-// It is up to the Thing to decide what value to return. Typically it would be the
-// accepted value, or the old value if it wasn't accepted.
+// PubConfig publishes a Thing configuration change request and wait for confirmation.
+// No value is returned.
 //
 // The client's ID is used as the publisher ID of the action.
 //
 //	agentID of the device that handles the action for the things or service capability
 //	thingID is the destination thingID that handles the action
 //	propName is the ID of the property to change as described in the TD properties section
-//	payload is the optional payload of the action as described in the Thing's TD
+//	payload is the optional payload of the configuration as described in the Thing's TD
 //
-// This returns the reply data or an error if an error was returned or no reply was received
+// This returns an error if an error was returned or no confirmation was received
 func (hc *HubClient) PubConfig(
-	agentID string, thingID string, propName string, payload []byte) ([]byte, error) {
+	agentID string, thingID string, propName string, payload []byte) error {
 
 	addr := hc.MakeAddress(vocab.MessageTypeConfig, agentID, thingID, propName, hc.clientID)
 	slog.Info("PubConfig", "addr", addr)
-	data, err := hc.transport.PubRequest(addr, payload)
-	return data, err
+	_, err := hc.transport.PubRequest(addr, payload)
+	return err
 }
 
 // PubEvent publishes a Thing event. The payload is an event value as per TD document.
@@ -257,7 +320,7 @@ func (hc *HubClient) PubEvent(thingID string, eventName string, payload []byte) 
 
 	addr := hc.MakeAddress(vocab.MessageTypeEvent, hc.clientID, thingID, eventName, hc.clientID)
 	slog.Info("PubEvent", "addr", addr)
-	err := hc.transport.Pub(addr, payload)
+	err := hc.transport.PubEvent(addr, payload)
 	return err
 }
 
@@ -297,148 +360,60 @@ func (hc *HubClient) PubTD(td *things.TD) error {
 	payload, _ := ser.Marshal(td)
 	addr := hc.MakeAddress(vocab.MessageTypeEvent, hc.clientID, td.ID, vocab.EventNameTD, hc.clientID)
 	slog.Info("PubTD", "addr", addr)
-	err := hc.transport.Pub(addr, payload)
+	err := hc.transport.PubEvent(addr, payload)
 	return err
 }
 
-// SubActions subscribes to actions requested of this client's Things.
-// Intended for use by devices or services to receive requests for its things.
-//
-// The handler receives an action request message with request payload and returns
-// an optional reply or an error when the request wasn't accepted.
-//
-// The supported actions are defined in the TD document of the things this binding has published.
-//
-//	thingID is the device things or service capability to subscribe to, or "" for wildcard
-//	cb is the callback to invoke
-//
-// The handler receives an action request message with request payload and
-// must return a reply payload, which can be nil, or return an error.
-func (hc *HubClient) SubActions(thingID string,
-	handler func(msg *things.ThingValue) (result []byte, err error)) (transports.ISubscription, error) {
-
-	subAddr := hc.MakeAddress(vocab.MessageTypeAction, hc.clientID, thingID, "", "")
-
-	sub, err := hc.transport.SubRequest(subAddr,
-		func(addr string, payload []byte) (result []byte, err error) {
-
-			messageType, agentID, thingID, name, senderID, err := hc.SplitAddress(addr)
-			msg := things.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
-			if msg.SenderID == "" || err != nil {
-				err = fmt.Errorf("SubActions: Received request on invalid address '%s'", addr)
-				slog.Warn(err.Error())
-				return nil, err
-			}
-			result, err = handler(msg)
-			return result, err
-		})
-	return sub, err
+// SetActionHandler sets the handler of incoming action requests
+// This will subscribe to actions directed to this client's agentID.
+// The result or error will be sent back to the caller.
+func (hc *HubClient) SetActionHandler(handler func(msg *things.ThingValue) (reply []byte, err error)) {
+	hc.actionHandler = handler
+	addr := hc.MakeAddress(vocab.MessageTypeAction, hc.clientID, "", "", "")
+	_ = hc.transport.Subscribe(addr)
+	// the request handler will split actions, config and RPC requests
+	hc.transport.SetRequestHandler(hc.onRequest)
 }
 
-// SubConfig subscribes to configuration change requested of this client's Things.
-// Intended for use by devices to receive configuration requests for its things.
-// The device's agentID is the ID used to authenticate with the server, eg, this clientID.
-//
-// The handler receives an action request message with request payload and returns
-// an optional reply or an error when the request wasn't accepted.
-//
-// The supported properties are defined in the TD document of the things this binding has published.
-//
-//	thingID is the device things or service capability to subscribe to, or "" for wildcard
-//	cb is the callback to invoke
-//
-// The handler receives an action request message with request payload and
-// must reply with msg.Reply or msg.Ack, or return an error
-func (hc *HubClient) SubConfig(thingID string, handler func(msg *things.ThingValue) error) (
-	transports.ISubscription, error) {
-
-	subAddr := hc.MakeAddress(vocab.MessageTypeConfig, hc.clientID, thingID, "", "")
-
-	sub, err := hc.transport.SubRequest(subAddr,
-		func(addr string, payload []byte) (reply []byte, err error) {
-
-			messageType, agentID, thingID, name, senderID, err := hc.SplitAddress(addr)
-
-			msg := things.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
-			if msg.SenderID == "" || err != nil {
-				err = fmt.Errorf("SubConfig: Received request on invalid address '%s'", addr)
-				slog.Warn(err.Error())
-				return nil, err
-			}
-			err = handler(msg)
-			return nil, err
-		})
-	return sub, err
-
+// SetConfigHandler sets the handler of incoming configuration requests
+// This will subscribe to configuration requests directed to this client's agentID.
+func (hc *HubClient) SetConfigHandler(handler func(msg *things.ThingValue) error) {
+	hc.configHandler = handler
+	addr := hc.MakeAddress(vocab.MessageTypeConfig, hc.clientID, "", "", "")
+	_ = hc.transport.Subscribe(addr)
+	hc.transport.SetRequestHandler(hc.onRequest)
 }
 
-// SubEvents subscribes to events from a device or service.
-//
-// Events are passed to the handler in sequential order after the handler returns.
-// For parallel processing, create a goroutine to handle the event and return
-// immediately.
-//
-//		agentID is the ID of the device or service publishing the event, or "" for any agent.
-//		thingID is the ID of the Thing whose events to receive, or "" for any Things.
-//	 eventName is the name of the event, or "" for any event
-//
-// The handler receives an event value message with data payload.
-func (hc *HubClient) SubEvents(agentID string, thingID string, eventName string,
-	handler func(msg *things.ThingValue)) (transports.ISubscription, error) {
-
-	subAddr := hc.MakeAddress(vocab.MessageTypeEvent, agentID, thingID, eventName, "")
-
-	sub, err := hc.transport.Sub(subAddr, func(addr string, payload []byte) {
-
-		_, evAgentID, evThingID, name, _, err := hc.SplitAddress(addr)
-		if err != nil {
-			slog.Warn("SubEvents: Ignored event on invalid address", "addr", addr)
-			return
-		}
-		eventMsg := &things.ThingValue{
-			AgentID:     evAgentID,
-			ThingID:     evThingID,
-			Name:        name,
-			Data:        payload,
-			CreatedMSec: time.Now().UnixMilli(),
-		}
-		handler(eventMsg)
-	})
-	return sub, err
+// SetConnectionHandler sets the callback for connection status changes.
+func (hc *HubClient) SetConnectionHandler(handler func(connected bool, err error)) {
+	hc.connectionHandler = handler
 }
 
-// SubRPCRequest subscribes a client to receive RPC capability method request.
-// Intended for use by services to receive requests for its capabilities.
-//
-// The capabilityID identifies the interface that is supported. Each
-// capability represents one or more methods that are identified by the
-// actionName. This is similar to the thingID in events and actions.
-//
-// The handler must reply with msg.Reply or msg.Ack, or return an error.
-func (hc *HubClient) SubRPCRequest(capabilityID string,
-	handler func(msg *things.ThingValue) (reply []byte, err error)) (
-	transports.ISubscription, error) {
-
-	subAddr := hc.MakeAddress(vocab.MessageTypeRPC, hc.clientID, capabilityID, "", "")
-	sub, err := hc.transport.SubRequest(subAddr,
-		func(addr string, payload []byte) (reply []byte, err error) {
-
-			messageType, agentID, thingID, name, senderID, err := hc.SplitAddress(addr)
-			msg := things.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
-			if senderID == "" || err != nil {
-				err = fmt.Errorf("SubRPCRequest: Received request on invalid address '%s'", addr)
-				slog.Warn(err.Error())
-				return nil, err
-			}
-			return handler(msg)
-		})
-	return sub, err
+// SetEventHandler sets the handler of subscribed events.
+// Use 'Subscribe' to set the events to listen for.
+func (hc *HubClient) SetEventHandler(handler func(msg *things.ThingValue)) {
+	hc.eventHandler = handler
+	hc.transport.SetEventHandler(hc.onEvent)
 }
 
-// SubRPCCapability registers RPC capability and handler methods.
-// This returns a subscription object.
+// SetRPCHandler sets the handler of all incoming RPC requests
+// This will subscribe to RPC requests directed to this client's agentID.
+// The result or error will be sent back to the caller.
+// See also SetRPCCapability to define capability methods in a table
+func (hc *HubClient) SetRPCHandler(handler func(msg *things.ThingValue) (reply []byte, err error)) {
+	hc.rpcHandler = handler
+	addr := hc.MakeAddress(vocab.MessageTypeRPC, hc.clientID, "", "", "")
+	_ = hc.transport.Subscribe(addr)
+	// onRequest will invoke the handler
+	hc.transport.SetRequestHandler(hc.onRequest)
+}
+
+// SetRPCCapability registers an RPC capability with a table of methods
 //
 // Intended for implementing RPC handlers by services.
+// This uses SetRPCHandler, so they can't be used both.
+//
+// There is no RemoveRPCHandler. Close the hub connection to clear any subscriptions.
 //
 // The typical RPC handler is a method that takes a context, an optional single argument
 // and returns a result and error status. Supported formats are:
@@ -463,25 +438,49 @@ func (hc *HubClient) SubRPCRequest(capabilityID string,
 //
 //	capID is the capability name (equivalent to thingID) to register.
 //	capMethods maps method names to their implementation
-func (hc *HubClient) SubRPCCapability(
-	capID string, capMethods map[string]interface{}) (transports.ISubscription, error) {
+func (hc *HubClient) SetRPCCapability(capID string, capMethods map[string]interface{}) {
 
-	sub, err := hc.SubRPCRequest(capID, func(msg *things.ThingValue) (reply []byte, err error) {
+	// add the capability handler
+	if hc.rpcHandler == nil {
+		multiCapHandler := func(tv *things.ThingValue) (reply []byte, err error) {
+			methods, found := hc.capTable[tv.ThingID]
+			if !found {
+				err = fmt.Errorf("unknown capability '%s'", tv.ThingID)
+				return nil, err
+			}
+			capMethod, found := methods[tv.Name]
+			if !found {
+				err = fmt.Errorf("method '%s' not part of capability '%s'", tv.Name, capID)
+				slog.Warn("SubRPCCapability; unknown method",
+					slog.String("methodName", tv.Name),
+					slog.String("senderID", tv.SenderID))
+				return nil, err
+			}
+			ctx := ServiceContext{
+				Context:  context.Background(),
+				SenderID: tv.SenderID,
+			}
+			respData, err := HandleRequestMessage(ctx, capMethod, tv.Data)
+			return respData, err
+		}
+		hc.SetRPCHandler(multiCapHandler)
+	}
+	hc.capTable[capID] = capMethods
+	hc.transport.SetRequestHandler(hc.onRequest)
+}
 
-		capMethod, found := capMethods[msg.Name]
-		if !found {
-			err = fmt.Errorf("method '%s' not part of capability '%s'", msg.Name, capID)
-			slog.Warn("SubRPCCapability; unknown method", "methodName", msg.Name, "senderID", msg.SenderID)
-			return nil, err
-		}
-		ctx := ServiceContext{
-			Context:  context.Background(),
-			SenderID: msg.SenderID,
-		}
-		respData, err := HandleRequestMessage(ctx, capMethod, msg.Data)
-		return respData, err
-	})
-	return sub, err
+// SubEvents adds an event subscription to event handler set the SetEventHandler.
+//
+//	agentID is the ID of the device or service publishing the event, or "" for any agent.
+//	thingID is the ID of the Thing whose events to receive, or "" for any Things.
+//	eventName is the name of the event, or "" for any event
+//
+// The handler receives an event value message with data payload.
+func (hc *HubClient) SubEvents(agentID string, thingID string, eventName string) error {
+
+	subAddr := hc.MakeAddress(vocab.MessageTypeEvent, agentID, thingID, eventName, "")
+	err := hc.transport.Subscribe(subAddr)
+	return err
 }
 
 // NewHubClientFromTransport returns a new Hub Client instance for the given transport.
@@ -492,6 +491,7 @@ func NewHubClientFromTransport(transport transports.IHubTransport, clientID stri
 	hc := HubClient{
 		clientID:  clientID,
 		transport: transport,
+		capTable:  make(map[string]map[string]interface{}),
 	}
 	return &hc
 }

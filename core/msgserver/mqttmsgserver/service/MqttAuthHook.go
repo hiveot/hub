@@ -216,14 +216,14 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 	msgType, agentID, thingID, name, senderID, err :=
 		mqtttransport.SplitTopic(topic)
 	if err != nil {
-		slog.Error("OnACLCheck: Invalid topic format, topic:", topic)
+		slog.Error("OnACLCheck: Invalid topic format", slog.String("topic", topic))
 		// invalid topic format.
 		return false
 	}
 
 	// 3. Agents of messages must include their sender ID
 	if write && senderID != loginID {
-		slog.Error("OnACLCheck: missing senderID in topic:", topic)
+		slog.Error("OnACLCheck: missing senderID in topic:", slog.String("topic", topic))
 		return false
 	}
 

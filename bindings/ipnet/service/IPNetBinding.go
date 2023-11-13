@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/bindings/ipnet/config"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/things"
@@ -16,8 +15,6 @@ type IPNetBinding struct {
 	config *config.IPNetConfig
 	// Hub connection
 	hc *hubclient.HubClient
-	// handler action subscription
-	sub transports.ISubscription
 
 	// discovered devices
 	devicesMap      map[string]*IPDeviceInfo
@@ -39,7 +36,7 @@ func (svc *IPNetBinding) Start(hc *hubclient.HubClient) (err error) {
 	svc.hc = hc
 
 	// register the action handler
-	svc.sub, err = svc.hc.SubActions("", svc.ActionHandler)
+	svc.hc.SetActionHandler(svc.ActionHandler)
 
 	// publish this binding's TD document
 	td := svc.MakeBindingTD()
@@ -70,10 +67,6 @@ func (svc *IPNetBinding) startHeartbeat() (stopFn func()) {
 // Stop the binding
 func (svc *IPNetBinding) Stop() {
 	slog.Warn("Stopping the IPNet binding")
-	if svc.sub != nil {
-		_ = svc.sub.Unsubscribe()
-		svc.sub = nil
-	}
 	if svc.stopHeartbeatFn != nil {
 		svc.stopHeartbeatFn()
 		svc.stopHeartbeatFn = nil

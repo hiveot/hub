@@ -13,14 +13,6 @@ type PahoSubscription struct {
 	clientID string // the client that is subscribing
 }
 
-// MqttHubSubscription  subscription helper
-// This implements ISubscription
-//type MqttHubSubscription struct {
-//	topic   string
-//	handler func(topic string, payload []byte)
-//	pcl     *paho.Client
-//}
-
 // Unsubscribe from the subscription
 func (sub *PahoSubscription) Unsubscribe() error {
 	slog.Info("Unsubscribe",

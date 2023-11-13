@@ -38,7 +38,7 @@ func (cl *StateClient) Get(key string, record interface{}) (found bool, err erro
 		return false, err
 	}
 	if resp.Found {
-		err = ser.Unmarshal(resp.Value, record)
+		err = ser.Unmarshal([]byte(resp.Value), record)
 	}
 	return resp.Found, err
 }

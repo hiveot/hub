@@ -147,16 +147,18 @@ func TestConnectWithNKey(t *testing.T) {
 	require.NoError(t, err)
 	defer tp1.Disconnect()
 
+	tp1.SetEventHandler(func(addr string, payload []byte) {
+		slog.Info("received msg", "addr", addr, "payload", string(payload))
+		rxChan <- string(payload)
+	})
+
 	subSubj := natstransport.MakeSubject(
 		vocab.MessageTypeEvent, "", "", "", "")
-	_, err = tp1.Sub(subSubj, func(addr string, payload []byte) {
-		rxChan <- string(payload)
-		slog.Info("received message", "msg", string(payload))
-	})
+	err = tp1.Subscribe(subSubj)
 	assert.NoError(t, err)
 	pubSubj := natstransport.MakeSubject(
 		vocab.MessageTypeEvent, TestService1ID, "thing1", "test", TestService1ID)
-	err = tp1.Pub(pubSubj, []byte("hello world"))
+	err = tp1.PubEvent(pubSubj, []byte("hello world"))
 	require.NoError(t, err)
 	rxMsg := <-rxChan
 	assert.Equal(t, "hello world", rxMsg)
@@ -258,7 +260,7 @@ func TestEventsStream(t *testing.T) {
 	addr2 := natstransport.MakeSubject(
 		vocab.MessageTypeEvent, "device1", TestThing1ID, "event1", TestDevice1ID)
 
-	err = tp2.Pub(addr2, []byte(eventMsg))
+	err = tp2.PubEvent(addr2, []byte(eventMsg))
 	require.NoError(t, err)
 
 	// read the events stream for

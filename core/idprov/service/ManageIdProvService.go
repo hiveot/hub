@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/core/idprov/idprovapi"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"log/slog"
 	"sync"
 	"time"
@@ -19,8 +18,7 @@ type ManageIdProvService struct {
 	requests map[string]idprovapi.ProvisionStatus
 
 	//
-	hc     *hubclient.HubClient
-	mngSub transports.ISubscription
+	hc *hubclient.HubClient
 	// client of auth service used to create tokens
 	authSvc *authclient.ManageClients
 	// mutex to guard access to maps
@@ -196,13 +194,9 @@ func (svc *ManageIdProvService) SubmitRequest(ctx hubclient.ServiceContext,
 	return resp, nil
 }
 func (svc *ManageIdProvService) Stop() {
-	if svc.mngSub != nil {
-		svc.mngSub.Unsubscribe()
-		svc.mngSub = nil
-	}
 }
 
-func StartManageIdProvService(hc *hubclient.HubClient) (*ManageIdProvService, error) {
+func StartManageIdProvService(hc *hubclient.HubClient) *ManageIdProvService {
 
 	svc := &ManageIdProvService{
 		// map of requests by SenderID
@@ -213,7 +207,7 @@ func StartManageIdProvService(hc *hubclient.HubClient) (*ManageIdProvService, er
 	// the auth service is used to create credentials
 	svc.authSvc = authclient.NewManageClients(svc.hc)
 
-	_, err := svc.hc.SubRPCCapability(idprovapi.ManageProvisioningCap,
+	svc.hc.SetRPCCapability(idprovapi.ManageProvisioningCap,
 		map[string]interface{}{
 			idprovapi.ApproveRequestMethod:    svc.ApproveRequest,
 			idprovapi.GetRequestsMethod:       svc.GetRequests,
@@ -221,5 +215,5 @@ func StartManageIdProvService(hc *hubclient.HubClient) (*ManageIdProvService, er
 			idprovapi.RejectRequestMethod:     svc.RejectRequest,
 			idprovapi.SubmitRequestMethod:     svc.SubmitRequest,
 		})
-	return svc, err
+	return svc
 }

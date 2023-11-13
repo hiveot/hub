@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/bindings/isy99x/config"
 	"github.com/hiveot/hub/bindings/isy99x/service/isyapi"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"log/slog"
@@ -28,7 +27,6 @@ type IsyBinding struct {
 	gwReachable bool
 
 	mu              sync.Mutex
-	actionSub       transports.ISubscription
 	stopHeartbeatFn func()
 
 	// PrevValues is a map of [thingID/propName] to device values,
@@ -48,7 +46,7 @@ func (svc *IsyBinding) Start(hc *hubclient.HubClient) (err error) {
 		svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
 
 	// subscribe to action requests
-	svc.actionSub, err = svc.hc.SubActions("", svc.handleActionRequest)
+	svc.hc.SetActionHandler(svc.handleActionRequest)
 	if err != nil {
 		return err
 	}
@@ -105,10 +103,6 @@ func (svc *IsyBinding) startHeartbeat() (stopFn func()) {
 func (svc *IsyBinding) Stop() {
 	slog.Warn("Stopping the ISY99x Binding")
 	//svc.isRunning.Store(false)
-	if svc.actionSub != nil {
-		_ = svc.actionSub.Unsubscribe()
-		svc.actionSub = nil
-	}
 	if svc.stopHeartbeatFn != nil {
 		svc.stopHeartbeatFn()
 		svc.stopHeartbeatFn = nil

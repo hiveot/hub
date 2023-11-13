@@ -25,6 +25,8 @@ func Benchmark_GetTD(b *testing.B) {
 
 	// setup
 	b.Run(fmt.Sprintf("update TD docs"),
+		// nats: 120 usec/op
+		// mqtt: 290 usec/op
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)
@@ -36,6 +38,8 @@ func Benchmark_GetTD(b *testing.B) {
 
 	// test read
 	b.Run(fmt.Sprintf("read TD docs"),
+		// Nats: 130 usec/op
+		// Mqtt: 330 usec/op
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)

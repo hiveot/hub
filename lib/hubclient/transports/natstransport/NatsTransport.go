@@ -32,9 +32,13 @@ type NatsTransport struct {
 	nc        *nats.Conn
 	js        nats.JetStreamContext
 	serverURL string
-	timeout   time.Duration
 	// TLS configuration to use in connecting
 	tlsConfig *tls.Config
+	timeout   time.Duration
+
+	connectHandler func(connected bool, err error)
+	eventHandler   func(addr string, payload []byte)
+	requestHandler func(addr string, payload []byte) (reply []byte, err error, donotreply bool)
 }
 
 // AddressTokens returns the address separator and wildcards
@@ -172,6 +176,43 @@ func (nt *NatsTransport) JS() nats.JetStreamContext {
 	return nt.js
 }
 
+// onMessage handles incoming request and event messages
+func (nt *NatsTransport) onMessage(msg *nats.Msg) {
+	var err error
+	if msg.Reply == "" {
+		if nt.eventHandler != nil {
+			// no reply address, so treat as event
+			nt.eventHandler(msg.Subject, msg.Data)
+		}
+	} else if nt.requestHandler != nil {
+		// this is a request-response message
+		reply, err, donotreply := nt.requestHandler(msg.Subject, msg.Data)
+		msg.Data = reply
+		// FIXME, does this work?
+
+		if err != nil {
+			if msg.Header == nil {
+				msg.Header = nats.Header{}
+			}
+			msg.Header.Set("error", err.Error())
+		}
+		if !donotreply {
+			err = msg.RespondMsg(msg)
+		}
+	} else {
+		// this client has no handler, ignore the request
+		msg.Header.Set("error", "missing handler")
+		// this
+		//err = msg.Ack()
+		err = nil
+	}
+	if err != nil {
+		slog.Error("onMessage: failed sending response",
+			"err", err.Error(),
+			"subject", msg.Subject)
+	}
+}
+
 // ParseResponse helper message to parse response and detect the error response message
 func (nt *NatsTransport) ParseResponse(data []byte, resp interface{}) error {
 	var err error
@@ -198,15 +239,14 @@ func (nt *NatsTransport) ParseResponse(data []byte, resp interface{}) error {
 	return err
 }
 
-// Pub low level publish to NATS
-func (nt *NatsTransport) Pub(subject string, payload []byte) error {
-	slog.Info("Pub", "subject", subject)
+// PubEvent publishes a message and returns
+func (nt *NatsTransport) PubEvent(subject string, payload []byte) error {
+	slog.Info("PubEvent", "subject", subject)
 	err := nt.nc.Publish(subject, payload)
 	return err
 }
 
-// PubRequest sends an action request to a Hub Service on the svc prefix
-// Returns the response or an error if the request fails or timed out
+// PubRequest publishes a request message and waits for an answer or until timeout
 func (nt *NatsTransport) PubRequest(
 	subject string, payload []byte) (data []byte, err error) {
 
@@ -215,7 +255,6 @@ func (nt *NatsTransport) PubRequest(
 		return nil, err
 	}
 	// error responses are stored in the header
-	// FIXME: does this work?
 	if resp.Header != nil {
 		errMsg := resp.Header.Get("error")
 		if errMsg != "" {
@@ -225,7 +264,8 @@ func (nt *NatsTransport) PubRequest(
 	return resp.Data, err
 }
 
-// startEventMessageHandler listens for incoming event messages and invoke a callback handler
+// startEventMessageHandler listens for incoming event messages from a stream
+// and invoke a callback handler.
 // this returns when the subscription is no longer valid
 func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *things.ThingValue)) error {
 	ci, err := nsub.ConsumerInfo()
@@ -278,67 +318,83 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *things.Thing
 	return nil
 }
 
-// Sub is a low level subscription to a subject
-func (nt *NatsTransport) _sub(subject string, cb func(msg *nats.Msg)) (sub transports.ISubscription, err error) {
-	nsub, err := nt.nc.Subscribe(subject, cb)
+// SetConnectHandler sets the notification handler of connection status changes
+func (nt *NatsTransport) SetConnectHandler(cb func(connected bool, err error)) {
+	nt.connectHandler = cb
+}
+
+// SetEventHandler set the single handler that receives all subscribed events.
+// This does not provide routing as in most cases it is unnecessary overhead
+// Use 'Subscribe' to set the addresses that this receives events on.
+func (nt *NatsTransport) SetEventHandler(cb func(addr string, payload []byte)) {
+	nt.eventHandler = cb
+}
+
+// SetRequestHandler sets the handler that receives all subscribed requests.
+// This does not provide routing as in most cases it is unnecessary overhead
+// Use 'Subscribe' to set the addresses that this receives requests on.
+func (nt *NatsTransport) SetRequestHandler(
+	cb func(addr string, payload []byte) (reply []byte, err error, donotreply bool)) {
+	nt.requestHandler = cb
+}
+
+// Subscribe to a subject.
+// Incoming messages are passed to the event or request handler, depending on whether
+// a reply-to address and correlation-ID is set.
+func (nt *NatsTransport) Subscribe(subject string) (err error) {
+	nsub, err := nt.nc.Subscribe(subject, nt.onMessage)
 	isValid := nsub.IsValid()
 	if err != nil || !isValid {
 		err = fmt.Errorf("subscribe to '%s' failed: %w", subject, err)
+	} else {
+		// subscribe successful
 	}
-	//sub = &NatsHubSubscription{nsub: nsub}
-	sub = nsub
-	return sub, err
-}
-
-// Sub subscribe to an address.
-// Primarily intended for testing
-func (nt *NatsTransport) Sub(subject string, cb func(subject string, data []byte)) (transports.ISubscription, error) {
-
-	sub, err := nt._sub(subject, func(natsMsg *nats.Msg) {
-		cb(natsMsg.Subject, natsMsg.Data)
-	})
-	return sub, err
+	return err
 }
 
 // SubRequest subscribes to a requests and sends a response
 // Intended for actions, config and rpc requests
-func (nt *NatsTransport) SubRequest(
-	subject string, cb func(subject string, payload []byte) (reply []byte, err error)) (
-	transports.ISubscription, error) {
+//func (nt *NatsTransport) SubRequest(
+//	subject string, cb func(subject string, payload []byte) (reply []byte, err error)) (
+//	transports.ISubscription, error) {
+//
+//	sub, err := nt._sub(subject, func(natsMsg *nats.Msg) {
+//		md, _ := natsMsg.Metadata()
+//		timeStamp := time.Now()
+//		if md != nil {
+//			timeStamp = md.Timestamp
+//
+//		}
+//		natsMsg.Header = nats.Header{}
+//		natsMsg.Header.Set("received", timeStamp.Format(time.StampMilli))
+//		reply, err := cb(natsMsg.Subject, natsMsg.Data)
+//		if err != nil {
+//			slog.Error("request error",
+//				"subject", natsMsg.Subject, "err", err.Error())
+//			// the intent is to pass the error using the header but that doesn't seem to work
+//			natsMsg.Header.Set("error", err.Error())
+//			// so for now use a json message "{error:text}"
+//			errPayload, _ := ser.Marshal(err.Error())
+//			natsMsg.Data = []byte("{\"error\":" + string(errPayload) + "}")
+//			err = natsMsg.RespondMsg(natsMsg)
+//		} else if reply != nil {
+//			natsMsg.Data = reply
+//			natsMsg.RespondMsg(natsMsg)
+//			err = natsMsg.RespondMsg(natsMsg)
+//		} else {
+//			err = natsMsg.Ack()
+//		}
+//		if err != nil {
+//			slog.Error("SubRequest: failed sending response",
+//				"err", err.Error(),
+//				"subject", natsMsg.Subject)
+//		}
+//	})
+//	return sub, err
+//}
 
-	sub, err := nt._sub(subject, func(natsMsg *nats.Msg) {
-		md, _ := natsMsg.Metadata()
-		timeStamp := time.Now()
-		if md != nil {
-			timeStamp = md.Timestamp
-
-		}
-		natsMsg.Header = nats.Header{}
-		natsMsg.Header.Set("received", timeStamp.Format(time.StampMilli))
-		reply, err := cb(natsMsg.Subject, natsMsg.Data)
-		if err != nil {
-			slog.Error("request error",
-				"subject", natsMsg.Subject, "err", err.Error())
-			// the intent is to pass the error using the header but that doesn't seem to work
-			natsMsg.Header.Set("error", err.Error())
-			// so for now use a json message "{error:text}"
-			errPayload, _ := ser.Marshal(err.Error())
-			natsMsg.Data = []byte("{\"error\":" + string(errPayload) + "}")
-			err = natsMsg.RespondMsg(natsMsg)
-		} else if reply != nil {
-			natsMsg.Data = reply
-			natsMsg.RespondMsg(natsMsg)
-			err = natsMsg.RespondMsg(natsMsg)
-		} else {
-			err = natsMsg.Ack()
-		}
-		if err != nil {
-			slog.Error("SubRequest: failed sending response",
-				"err", err.Error(),
-				"subject", natsMsg.Subject)
-		}
-	})
-	return sub, err
+func (nt *NatsTransport) Unsubscribe(topic string) {
+	nt.Unsubscribe(topic)
 }
 
 // SubStream subscribes to events received by the event stream.
