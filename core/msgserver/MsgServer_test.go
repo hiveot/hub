@@ -1,101 +1,91 @@
 package msgserver_test
 
 import (
-	"fmt"
+	"context"
 	"github.com/hiveot/hub/core/auth/authapi"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/things"
-	"sync/atomic"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"log/slog"
 	"testing"
 	"time"
 )
 
-const core = "nats"
+const core = "mqtt"
 
-// Benchmark a simple event pub/sub
-// mqtt: 95 usec/rpc (QOS 1), 60 usec/rpc (QOS 0); 450 usec for request/response
-// nats:  9 usec/rpc ! (* risk of dropped messages); 170 usec for request/response
-func Benchmark_PubSubEvent(b *testing.B) {
-	logging.SetLogging("warning", "")
-	txCount := atomic.Int32{}
-	rxCount := atomic.Int32{}
-
-	ts, _ := testenv.StartTestServer(core, false)
-	defer ts.Stop()
-
-	cl1, _ := ts.AddConnectClient("publisher", authapi.ClientTypeDevice, authapi.ClientRoleDevice)
-	defer cl1.Disconnect()
-	cl2, _ := ts.AddConnectClient("sub", authapi.ClientTypeUser, authapi.ClientRoleOperator)
-	defer cl2.Disconnect()
-	_ = cl2.SubEvents("publisher", "", "")
-	cl2.SetEventHandler(func(msg *things.ThingValue) {
-		//time.Sleep(time.Millisecond * 10)
-		rxCount.Add(1)
-	})
-
-	t1 := time.Now()
-	b.Run("pub and sub event",
-		func(b *testing.B) {
-			for n := 0; n < b.N; n++ {
-				txCount.Add(1)
-				// nats loses events without a minor delay
-				// FIXME: a small delay to prevent events from being dropped when using NATS
-				// docs (https://docs.nats.io/nats-concepts/what-is-nats) say to use jetstream for guaranteed delivery.
-				time.Sleep(time.Microsecond)
-				_ = cl1.PubEvent("thing1", "ev1", []byte("hello"))
-			}
-		})
-
-	d1 := time.Now().Sub(t1)
-	fmt.Printf("==> Duration: %d usec per rq\n\n", d1.Microseconds()/int64(txCount.Load()))
-
-	time.Sleep(time.Millisecond * 10)
-	if rxCount.Load() != txCount.Load() {
-		b.Error(fmt.Sprintf("rx count %d doesn't match tx count %d", rxCount.Load(), txCount.Load()))
+func startTestServer() *testenv.TestServer {
+	srv, err := testenv.StartTestServer(core, true)
+	if err != nil {
+		panic(err)
 	}
+	return srv
 }
 
-// benchmark RPC request
-// mqtt: 300 usec/request
-// nats: 120 usec/request
-func Benchmark_Request(b *testing.B) {
-	logging.SetLogging("warning", "")
-	txCount := atomic.Int32{}
-	rxCount := atomic.Int32{}
+func TestReconnect(t *testing.T) {
+	logging.SetLogging("info", "")
+	const deviceID = "device1"
+	rxChan := make(chan string, 1)
+	connectedCh := make(chan transports.ConnectionStatus)
+	msg := "hello world"
+	var connectStatus transports.ConnectionStatus
+	var rxMsg string
 
-	ts, _ := testenv.StartTestServer(core, false)
-	defer ts.Stop()
+	//setup
+	ts := startTestServer()
 
-	cl1, _ := ts.AddConnectClient("client1", authapi.ClientTypeUser, authapi.ClientRoleAdmin)
-	defer cl1.Disconnect()
-	cl2, _ := ts.AddConnectClient("rpc", authapi.ClientTypeService, authapi.ClientRoleService)
-	defer cl2.Disconnect()
-
-	cl2.SetRPCHandler(func(msg *things.ThingValue) ([]byte, error) {
-		rxCount.Add(1)
-		return msg.Data, nil
+	// connect client and subscribe
+	hc1, err := ts.AddConnectClient(deviceID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
+	hc1.SetRetryConnect(true)
+	require.NoError(t, err)
+	defer hc1.Disconnect()
+	err = hc1.SubEvents(deviceID, "", "")
+	require.NoError(t, err)
+	hc1.SetEventHandler(func(tv *things.ThingValue) {
+		slog.Info("received event")
+		rxChan <- string(tv.Data)
+	})
+	hc1.SetConnectionHandler(func(status transports.ConnectionStatus, info transports.ConnInfo) {
+		t.Logf("onconnect callback: status=%s, info=%s", status, info)
+		if status == transports.Connected {
+			connectedCh <- status
+		}
 	})
 
-	t1 := time.Now()
-	b.Run("pub and sub request",
-		func(b *testing.B) {
+	t.Log("--- Disconnect server and reconnect")
+	ts.MsgServer.Stop()
+	err = ts.MsgServer.Start()
+	require.NoError(t, err)
+	err = ts.StartAuth(false)
+	require.NoError(t, err)
 
-			for n := 0; n < b.N; n++ {
-				txCount.Add(1)
-				req := "request"
-				repl := ""
-				err := cl1.PubRPCRequest("rpc", "cap1", "method1", &req, &repl)
-				_ = err
-				if req != repl {
-					b.Error("request doesn't match reply")
-				}
-			}
-		})
-	d1 := time.Now().Sub(t1)
-	fmt.Printf("==> Duration: %d usec per rq\n\n", d1.Microseconds()/int64(txCount.Load()))
-	time.Sleep(time.Millisecond)
-	if rxCount.Load() != txCount.Load() {
-		b.Error(fmt.Sprintf("rx count %d doesn't match tx count %d", rxCount.Load(), txCount.Load()))
+	t.Log("waiting up to 30 seconds for reconnect")
+	ctx, cancelFn := context.WithTimeout(context.Background(), time.Second*30)
+	select {
+	case <-ctx.Done():
+		t.Fail()
+	case connectStatus = <-connectedCh:
+		cancelFn()
 	}
+	//time.Sleep(time.Second * 30)
+
+	require.Equal(t, transports.Connected, hc1.ConnectionStatus(), "connection not reestablished")
+	require.Equal(t, transports.Connected, connectStatus)
+
+	// check if subscription is restored as well
+	err = hc1.PubEvent("user1thing2", "user1event", []byte(msg))
+	assert.NoError(t, err)
+	ctx, cancelFn = context.WithTimeout(context.Background(), time.Second*3)
+	//
+	select {
+	case <-ctx.Done():
+		assert.Fail(t, "Timeout. no event received")
+	case rxMsg = <-rxChan:
+	}
+	cancelFn()
+	assert.Equal(t, msg, rxMsg)
+	hc1.Disconnect()
+	t.Log("--- done")
 }

@@ -214,7 +214,7 @@ func EnableNatsCalloutHook(
 
 	// Ideally the callout handler uses a separate callout account.
 	// Apparently this isn't allowed so it runs in the application account.
-	nc, err := srv.ConnectInProcNC("callout", nil)
+	nc, err := srv.ConnectInProc("callout", nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect callout handler: %w", err)
 	}

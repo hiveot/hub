@@ -70,7 +70,7 @@ func HandleSubTD(hc *hubclient.HubClient) error {
 		if err == nil {
 			modifiedTime, _ := dateparse.ParseAny(td.Modified) // can be in any TZ
 			timeStr := utils.FormatMSE(modifiedTime.In(time.Local).UnixMilli(), false)
-			fmt.Printf("%-20s %-25s %-30s %-20s %-18s\n",
+			fmt.Printf("%-20.20s %-25.25s %-30.30s %-20.20s %-18.18s\n",
 				msg.AgentID, msg.ThingID, td.Title, td.DeviceType, timeStr)
 		}
 	})
@@ -104,7 +104,7 @@ func HandleSubEvents(hc *hubclient.HubClient, agentID string, thingID string, na
 				td.Title, td.DeviceType, len(td.Properties), len(td.Events), len(td.Actions))
 		}
 
-		fmt.Printf("%-16s %-20s %-25s %-30s %-30s\n",
+		fmt.Printf("%-16.16s %-20.20s %-25.25s %-30.30s %-40.40s\n",
 			timeStr, msg.AgentID, msg.ThingID, msg.Name, value)
 	})
 	if err != nil {

@@ -1,4 +1,4 @@
-package mqtttransport
+package mqtttransportautopaho
 
 import (
 	"context"
@@ -8,10 +8,8 @@ import (
 	"fmt"
 	"github.com/eclipse/paho.golang/autopaho"
 	"github.com/eclipse/paho.golang/paho"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/ser"
-	"log"
 	"log/slog"
 	"net/url"
 	"os"
@@ -20,7 +18,7 @@ import (
 	"time"
 )
 
-// InboxPrefix is the INBOX subscription topic used by the client
+// InboxTopicFormat is the INBOX subscription topic used by the client
 // _INBOX/{clientID}
 const InboxPrefix = "_INBOX/"
 const InboxTopicFormat = "_INBOX/%s"
@@ -31,38 +29,30 @@ const withDebug = false
 const withQos = 1
 
 // Connecting with UDS for local services. Might not work with autopaho
-// FIXME: UDS isn't supported by autopaho
-const (
-	MqttInMemUDSProd = "@/MqttInMemUDSProd" // production UDS name
-	MqttInMemUDSTest = "@/MqttInMemUDSTest" // test server UDS name
-)
+const MqttInMemUDSProd = "@/MqttInMemUDSProd" // production UDS name
+const MqttInMemUDSTest = "@/MqttInMemUDSTest" // test server UDS name
 
-// MqttHubTransport manages the hub server connection with hub event and action messaging using autopaho.
+// MqttHubTransport manages the hub server connection with hub event and action
+// messaging using autopaho.
 // This implements the IHubTransport interface.
 type MqttHubTransport struct {
 	serverURL string
 	clientID  string
 	caCert    *x509.Certificate
 	//conn      net.Conn
-
+	pcl     *autopaho.ConnectionManager
 	timeout time.Duration // request timeout
-	// enable debug logging in the transport
-	logDebug bool
 
-	// track the request-response correlations. Access only when setting lock
+	// track the request-response correlations
+	correlData map[string]chan *paho.Publish
+	inboxTopic string // set on first request
 
-	// _ variables are mux protected
-	mux             sync.RWMutex
-	_connectID      string
-	_correlData     map[string]chan *paho.Publish
-	_connStatus     transports.ConnectionStatus
-	_connInfo       transports.ConnInfo
-	_inboxTopic     string // set on first request, cleared on disconnect
-	_pcl            *autopaho.ConnectionManager
-	_subscriptions  map[string]bool
-	_connectHandler func(status transports.ConnectionStatus, info transports.ConnInfo)
-	_eventHandler   func(addr string, payload []byte)
-	_requestHandler func(addr string, payload []byte) (reply []byte, err error, donotreply bool)
+	connectHandler func(connected bool, err error)
+	eventHandler   func(addr string, payload []byte)
+	requestHandler func(addr string, payload []byte) (reply []byte, err error, donotreply bool)
+
+	//
+	mux sync.RWMutex
 }
 
 // AddressTokens returns the address separator and wildcards
@@ -76,12 +66,7 @@ func (tp *MqttHubTransport) AddressTokens() (sep string, wc string, rem string) 
 //	credentials is either the password or a signed JWT token
 //	conn network connection to utilize
 func (tp *MqttHubTransport) Connect(credentials string) error {
-	tp.mux.RLock()
-	if tp._pcl != nil {
-		tp.mux.RUnlock()
-		return fmt.Errorf("already connected")
-	}
-	tp.mux.RUnlock()
+	ctx := context.Background()
 
 	// clients must use a unique connection ID otherwise the previous connection will be dropped
 	hostName, _ := os.Hostname()
@@ -110,44 +95,92 @@ func (tp *MqttHubTransport) Connect(credentials string) error {
 	if err != nil {
 		return err
 	}
-	//connectContext, cancelFn := context.WithCancel(context.Background())
-
 	//safeConn := packets.NewThreadSafeConn(conn)
 	// Setup the Paho client configuration
-	logger := log.Default()
-	autoCfg := autopaho.ClientConfig{
+	pahoCfg := autopaho.ClientConfig{
 		BrokerUrls: []*url.URL{u},
-		PahoErrors: logger,
 		ClientConfig: paho.ClientConfig{
-			ClientID: connectID, // instance ID, not the clientID
+			ClientID: tp.clientID,
 			//Conn:          safeConn,    // autopaho ignores this :(
 			PacketTimeout: tp.timeout,
 			Router: paho.NewSingleHandlerRouter(func(m *paho.Publish) {
 				tp.handleMessage(m)
 			}),
+			OnServerDisconnect: func(d *paho.Disconnect) {
+				err := errors.New(
+					fmt.Sprintf("Server disconnected. reason code %d", d.ReasonCode))
+				slog.Warn(err.Error())
+				if tp.connectHandler != nil {
+					tp.connectHandler(false, err)
+				}
+			},
 		},
 		TlsCfg: tlsCfg,
 		// CleanStartOnInitialConnection defaults to false.
 		// Setting this to true will clear the session on the first connection.
 		//CleanStartOnInitialConnection: true,
 		KeepAlive: 20, // Keepalive message should be sent every 20 seconds
+		OnConnectionUp: func(cm *autopaho.ConnectionManager, connAck *paho.Connack) {
+			if tp.connectHandler != nil {
+				tp.connectHandler(true, nil)
+			}
+		},
+		OnConnectError: func(err error) {
+			fmt.Printf("error whilst attempting connection: %s\n", err)
+		},
 	}
-	autoCfg.SetUsernamePassword(tp.clientID, []byte(credentials))
-	autoCfg.OnConnectError = tp.onPahoConnectionError
-	autoCfg.OnConnectionUp = tp.onPahoConnect
-	autoCfg.OnServerDisconnect = tp.onPahoServerDisconnect
-	if tp.logDebug {
-		autoCfg.PahoDebug = logger
+	pahoCfg.SetUsernamePassword(tp.clientID, []byte(credentials))
+	pahoCfg.OnClientError = func(err error) {
+		// connection closing can cause this error.
+		slog.Warn("OnClientError - connection closing",
+			slog.String("err", err.Error()),
+			slog.String("clientID", pahoCfg.ClientID))
+	}
+	pahoCfg.OnServerDisconnect = func(d *paho.Disconnect) {
+		slog.Warn("OnServerDisconnect: Disconnected from broker",
+			"code", d.ReasonCode,
+			"loginID", tp.clientID)
+	}
+	pcl, err := autopaho.NewConnection(ctx, pahoCfg)
+	// Wait for the connection to come up
+	if err = pcl.AwaitConnection(ctx); err != nil {
+		panic(err)
 	}
 
-	ctx := context.Background()
-	pcl, err := autopaho.NewConnection(ctx, autoCfg)
-	tp.mux.Lock()
-	tp._connectID = connectID
-	tp._pcl = pcl
-	tp.mux.Unlock()
-	// Wait for the connection to come up
-	err = pcl.AwaitConnection(ctx)
+	// subscribe to inbox to receive responses to requests
+
+	//cp := &paho.Connect{
+	//	Password: []byte(credentials),
+	//	Username: tp.clientID,
+	//	ClientID: connectID,
+	//	// TODO: consider including a signed nonce when connecting with key
+	//	Properties:   &paho.ConnectProperties{},
+	//	KeepAlive:    60,
+	//	CleanStart:   true,
+	//	UsernameFlag: true,
+	//	PasswordFlag: credentials != "",
+	//}
+	//ctx, cancelFn := context.WithTimeout(context.Background(), tp.timeout)
+	//defer cancelFn()
+	//connAck, err := pcl.Connect(ctx, cp)
+	//_ = connAck
+
+	if err != nil {
+		var info string
+		//if connAck != nil {
+		//	info = fmt.Sprintf("code %d, reason: '%s'", connAck.ReasonCode, connAck.Properties.ReasonString)
+		//}
+		err = fmt.Errorf("%w %s", err, info)
+		return err
+	}
+	//tp.conn = conn
+	tp.pcl = pcl
+
+	// create a request handler for request-response messages
+	//tp.pahoReqHandler, err = rpc.NewHandler(ctx, tp.pcl)
+	// register a single handler for all messages containing type/agent/thing|cap/...
+	//tp.pcl.Router.RegisterHandler("+/+/+/#", tp.handleMessage)
+
 	return err
 }
 
@@ -225,30 +258,18 @@ func (tp *MqttHubTransport) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
 // Disconnect from the MQTT broker and unsubscribe from all topics and set
 // device state to disconnected
 func (tp *MqttHubTransport) Disconnect() {
-	tp.mux.Lock()
-	slog.Info("Disconnecting", "cid", tp._connectID)
-	pcl := tp._pcl
-	tp._pcl = nil
-	tp.mux.Unlock()
-	if pcl != nil {
-		//time.Sleep(time.Millisecond * 10) // Disconnect doesn't seem to wait for all messages. A small delay ahead helps
-		tp.mux.Lock()
-		tp._inboxTopic = ""
-		tp._connectID = ""
-		slog.Info("clearing connectid")
-		tp._connStatus = transports.Disconnected
-		tp._connInfo = "disconnected by user"
-		err := pcl.Disconnect(context.Background())
-		if err != nil {
-			slog.Error("disconnect error", "err", err)
-		}
-		tp.mux.Unlock()
+	if tp.pcl != nil {
+		time.Sleep(time.Millisecond * 10) // Disconnect doesn't seem to wait for all messages. A small delay ahead helps
+		//_ = tp.pcl.Disconnect(&paho.Disconnect{ReasonCode: 0})
+		_ = tp.pcl.Disconnect(context.Background())
+		//tp.subscriptions = nil
+		//close(tp.messageChannel)     // end the message handler loop
 	}
 }
 
 // handleMessage handles incoming request, reply and event messages
 func (tp *MqttHubTransport) handleMessage(m *paho.Publish) {
-	slog.Debug("handleMessage", slog.String("topic", m.Topic))
+
 	// run this in the background to allow for reentrancy
 	go func() {
 		// handle reply message
@@ -256,11 +277,11 @@ func (tp *MqttHubTransport) handleMessage(m *paho.Publish) {
 			// Pass replies to their waiting channel
 			cID := string(m.Properties.CorrelationData)
 			tp.mux.Lock()
-			rChan, _ := tp._correlData[cID]
+			rChan, _ := tp.correlData[cID]
 			if rChan == nil {
 				slog.Warn("Received reply without matching correlation ID", "corrID", cID)
 			} else {
-				delete(tp._correlData, cID)
+				delete(tp.correlData, cID)
 				rChan <- m
 			}
 			tp.mux.Unlock()
@@ -274,11 +295,8 @@ func (tp *MqttHubTransport) handleMessage(m *paho.Publish) {
 			var err error
 			var donotreply bool
 			// get a reply from the single request handler
-			tp.mux.RLock()
-			reqHandler := tp._requestHandler
-			tp.mux.RUnlock()
-			if reqHandler != nil {
-				reply, err, donotreply = reqHandler(m.Topic, m.Payload)
+			if tp.requestHandler != nil {
+				reply, err, donotreply = tp.requestHandler(m.Topic, m.Payload)
 				if err != nil {
 					slog.Warn("SubRequest: handle request failed.",
 						slog.String("err", err.Error()),
@@ -300,94 +318,10 @@ func (tp *MqttHubTransport) handleMessage(m *paho.Publish) {
 			}
 		} else {
 			// this is en event message
-			tp.mux.RLock()
-			evHandler := tp._eventHandler
-			tp.mux.RUnlock()
-			if evHandler != nil {
-				evHandler(m.Topic, m.Payload)
+			if tp.eventHandler != nil {
+				tp.eventHandler(m.Topic, m.Payload)
 			}
 		}
-	}()
-}
-
-func (tp *MqttHubTransport) onPahoConnect(cm *autopaho.ConnectionManager, connAck *paho.Connack) {
-	tp.mux.Lock()
-	tp._connStatus = transports.Connected
-	tp._connInfo = ""
-	subList := make([]string, 0, len(tp._subscriptions))
-	for topic := range tp._subscriptions {
-		subList = append(subList, topic)
-	}
-	tp.mux.Unlock()
-	go func() {
-		// (re)subscribe all subscriptions
-		for _, topic := range subList {
-			err := tp.sub(topic)
-			if err != nil {
-				slog.Error("onConnect. resubscribe failed", "topic", topic)
-			}
-		}
-		// now subscriptions have been restored, inform subscriber
-		tp.mux.RLock()
-		tp._connectHandler(tp._connStatus, "")
-		tp.mux.RUnlock()
-	}()
-}
-
-// paho reports an error but will keep trying until disconnect is called
-func (tp *MqttHubTransport) onPahoConnectionError(err error) {
-	go func() {
-		connInfo := transports.ConnInfoNetworkDisconnected
-		connStatus := transports.Connecting
-		// possible causes:
-		// 1. wrong credentials - inform user, dont repeat or do repeat?
-		// 2. connection is interrupted - inform user/log, keep repeating
-		// 3. server disconnects - inform user/log, keep repeating
-		// 4. client disconnects - terminate
-		switch et := err.(type) {
-		case *autopaho.ConnackError:
-			if et.ReasonCode == 134 {
-				connInfo = transports.ConnInfoUnauthorized
-				slog.Error("authentication error", "clientID", tp.clientID, "err", err)
-			} else {
-				connInfo = transports.ConnInfoNetworkDisconnected
-				slog.Error("connection error", "clientID", tp.clientID, "err", err)
-			}
-		default:
-			connInfo = transports.ConnInfoNetworkDisconnected
-			slog.Error("connection error", "clientID", tp.clientID, "err", err)
-		}
-		// notify on change
-		tp.mux.RLock()
-		oldStatus := tp._connStatus
-		oldInfo := tp._connInfo
-		tp.mux.RUnlock()
-		if connStatus != oldStatus || connInfo != oldInfo {
-			tp.mux.Lock()
-			tp._connStatus = connStatus
-			tp._connInfo = connInfo
-			connHandler := tp._connectHandler
-			tp.mux.Unlock()
-			connHandler(connStatus, connInfo)
-		}
-	}()
-}
-
-// onPahoDisconnect handles a server disconnect
-//
-//	d is the disconnect packet from the server
-func (tp *MqttHubTransport) onPahoServerDisconnect(d *paho.Disconnect) {
-	go func() {
-		tp.mux.Lock()
-		slog.Warn("OnDisconnect: Disconnected by server",
-			"clientID", tp.clientID, "cid", tp._connectID)
-		newStatus := transports.Connecting
-		newInfo := transports.ConnInfoServerDisconnected
-		tp._connStatus = newStatus
-		tp._connInfo = newInfo
-		connHandler := tp._connectHandler
-		tp.mux.Unlock()
-		connHandler(newStatus, newInfo)
 	}()
 }
 
@@ -412,7 +346,6 @@ func (tp *MqttHubTransport) ParseResponse(data []byte, resp interface{}) error {
 }
 
 // PubEvent publishes a message and returns
-// This applies a read lock
 func (tp *MqttHubTransport) PubEvent(topic string, payload []byte) (err error) {
 	slog.Debug("PubEvent", "topic", topic)
 	ctx, cancelFn := context.WithTimeout(context.Background(), tp.timeout)
@@ -423,13 +356,10 @@ func (tp *MqttHubTransport) PubEvent(topic string, payload []byte) (err error) {
 		Topic:   topic,
 		Payload: payload,
 	}
-	tp.mux.RLock()
-	defer tp.mux.RUnlock()
-	pcl := tp._pcl
-	if pcl != nil {
-		_, err = pcl.Publish(ctx, pubMsg)
-	} else {
-		err = errors.New("no connection with the hub")
+	respMsg, err := tp.pcl.Publish(ctx, pubMsg)
+	_ = respMsg
+	if err != nil {
+		return err
 	}
 	return err
 }
@@ -443,35 +373,20 @@ func (tp *MqttHubTransport) PubRequest(topic string, payload []byte) (resp []byt
 	defer cancelFn()
 
 	tp.mux.Lock()
-	pcl := tp._pcl
-	if pcl == nil {
-		tp.mux.Unlock()
-		return nil, fmt.Errorf("connection lost")
-	}
-	inboxTopic := tp._inboxTopic
-	if tp._inboxTopic == "" {
-		inboxTopic = fmt.Sprintf(InboxTopicFormat, tp._connectID)
-		if tp._connectID == "" {
-			err = fmt.Errorf("can't publish request as connectID is not set. This is unexpected.")
-			slog.Error(err.Error())
-			return nil, err
-		}
-		tp._inboxTopic = inboxTopic
-		tp.mux.Unlock()
+	if tp.inboxTopic == "" {
+		inboxTopic := fmt.Sprintf(InboxTopicFormat, tp.clientID)
 		err = tp.Subscribe(inboxTopic)
 		if err != nil {
 			slog.Error("Failed inbox subscription",
 				"err", err, "inboxTopic", inboxTopic)
 			return nil, err
 		}
-	} else {
-		tp.mux.Unlock()
+		tp.inboxTopic = inboxTopic
 	}
 	// from paho rpc.go:
 	cid := fmt.Sprintf("%d", time.Now().UnixNano())
 	rChan := make(chan *paho.Publish)
-	tp.mux.Lock()
-	tp._correlData[cid] = rChan
+	tp.correlData[cid] = rChan
 	tp.mux.Unlock()
 
 	pubMsg := &paho.Publish{
@@ -481,7 +396,7 @@ func (tp *MqttHubTransport) PubRequest(topic string, payload []byte) (resp []byt
 		Payload: payload,
 		Properties: &paho.PublishProperties{
 			CorrelationData: []byte(cid),
-			ResponseTopic:   inboxTopic,
+			ResponseTopic:   tp.inboxTopic,
 			ContentType:     "json",
 			User: paho.UserProperties{{
 				Key:   "test",
@@ -489,7 +404,11 @@ func (tp *MqttHubTransport) PubRequest(topic string, payload []byte) (resp []byt
 			}},
 		},
 	}
-	_, err = pcl.Publish(ctx, pubMsg)
+	_, err = tp.pcl.Publish(ctx, pubMsg)
+	// use the inbox as the custom response for this client instance
+	// clone of rpc.go to workaround hangup when no response is received #111
+	//respMsg, err := tp.pahoReqHandler.Request(ctx, pubMsg)
+	//ar.Duration = time.Now().SubEvent(t1)
 	if err != nil {
 		return nil, err
 	}
@@ -522,11 +441,9 @@ func (tp *MqttHubTransport) PubRequest(topic string, payload []byte) (resp []byt
 //	req is the request to reply to
 //	optionally include a payload in the reply
 //	optionally include an error message in the reply
-func (tp *MqttHubTransport) sendReply(req *paho.Publish, payload []byte, errResp error) (err error) {
+func (tp *MqttHubTransport) sendReply(req *paho.Publish, payload []byte, errResp error) error {
 
-	slog.Info("sendReply",
-		slog.String("topic", req.Topic),
-		slog.String("responseTopic", req.Properties.ResponseTopic))
+	slog.Debug("sendReply", "topic", req.Topic, "responseTopic", req.Properties.ResponseTopic)
 
 	responseTopic := req.Properties.ResponseTopic
 	if responseTopic == "" {
@@ -551,41 +468,26 @@ func (tp *MqttHubTransport) sendReply(req *paho.Publish, payload []byte, errResp
 		// for testing, somehow properties.user is not transferred
 		replyMsg.Payload = []byte(errResp.Error())
 	}
-	tp.mux.RLock()
-	pcl := tp._pcl
-	tp.mux.RUnlock()
-	if pcl == nil {
-		err = errors.New("connection lost")
-	} else {
-		ctx, cancelFn := context.WithTimeout(context.Background(), time.Second)
-		defer cancelFn()
-		_, err = pcl.Publish(ctx, replyMsg)
-
-		if err != nil {
-			slog.Warn("sendReply. Error publishing response",
-				slog.String("err", err.Error()))
-		}
+	ctx, cancelFn := context.WithTimeout(context.Background(), time.Second)
+	defer cancelFn()
+	_, err := tp.pcl.Publish(ctx, replyMsg)
+	if err != nil {
+		slog.Warn("sendReply. Error publishing response",
+			slog.String("err", err.Error()))
 	}
 	return err
 }
 
 // SetConnectHandler sets the notification handler of connection status changes
-func (tp *MqttHubTransport) SetConnectHandler(cb func(status transports.ConnectionStatus, info transports.ConnInfo)) {
-	if cb == nil {
-		panic("nil handler not allowed")
-	}
-	tp.mux.Lock()
-	tp._connectHandler = cb
-	tp.mux.Unlock()
+func (tp *MqttHubTransport) SetConnectHandler(cb func(connected bool, err error)) {
+	tp.connectHandler = cb
 }
 
 // SetEventHandler set the single handler that receives all subscribed events.
 // This does not provide routing as in most cases it is unnecessary overhead
 // Use 'Subscribe' to set the addresses that this receives events on.
 func (tp *MqttHubTransport) SetEventHandler(cb func(addr string, payload []byte)) {
-	tp.mux.Lock()
-	tp._eventHandler = cb
-	tp.mux.Unlock()
+	tp.eventHandler = cb
 }
 
 // SetRequestHandler sets the handler that receives all subscribed requests.
@@ -594,14 +496,14 @@ func (tp *MqttHubTransport) SetEventHandler(cb func(addr string, payload []byte)
 func (tp *MqttHubTransport) SetRequestHandler(
 	cb func(addr string, payload []byte) (reply []byte, err error, donotreply bool)) {
 
-	tp.mux.Lock()
-	tp._requestHandler = cb
-	tp.mux.Unlock()
+	tp.requestHandler = cb
 }
 
-// sub builds a subscribe packet and submits it
-// this applies a read lock
-func (tp *MqttHubTransport) sub(topic string) error {
+// Subscribe subscribes to a topic.
+// Incoming messages are passed to the event or request handler, depending on whether
+// a reply-to address and correlation-ID is set.
+func (tp *MqttHubTransport) Subscribe(topic string) error {
+	slog.Info("Subscribe", "topic", topic)
 	packet := &paho.Subscribe{
 		Properties: nil,
 		Subscriptions: []paho.SubscribeOptions{
@@ -611,43 +513,20 @@ func (tp *MqttHubTransport) sub(topic string) error {
 			},
 		},
 	}
-	tp.mux.RLock()
-	suback, err := tp._pcl.Subscribe(context.Background(), packet)
-	tp.mux.RUnlock()
+	suback, err := tp.pcl.Subscribe(context.Background(), packet)
 	_ = suback
-	return err
-}
-
-// Subscribe subscribes to a topic.
-// Incoming messages are passed to the event or request handler, depending on whether
-// a reply-to address and correlation-ID is set.
-func (tp *MqttHubTransport) Subscribe(topic string) error {
-	slog.Info("Subscribe", "topic", topic)
-	err := tp.sub(topic)
-	if err != nil {
-		return err
-	}
-	tp.mux.Lock()
-	tp._subscriptions[topic] = true
-	tp.mux.Unlock()
 	return err
 }
 func (tp *MqttHubTransport) Unsubscribe(topic string) {
 	packet := &paho.Unsubscribe{
 		Topics: []string{topic},
 	}
-	tp.mux.Lock()
-	ack, err := tp._pcl.Unsubscribe(context.Background(), packet)
+	ack, err := tp.pcl.Unsubscribe(context.Background(), packet)
 	_ = ack
-	if err != nil {
-		slog.Error("Unable to unsubscribe from topic", "topic", topic)
-		return
-	}
-	delete(tp._subscriptions, topic)
-	tp.mux.Unlock()
+	_ = err
 }
 
-// NewMqttTransport creates a new instance of the mqtt client.
+// NewMqttTransportAutoPaho creates a new instance of the mqtt client.
 //
 // fullURL is the url with schema. If omitted this uses the in-memory UDS address,
 // which only works with ConnectWithToken.
@@ -656,7 +535,7 @@ func (tp *MqttHubTransport) Unsubscribe(topic string) {
 //	clientID to connect as
 //	keyPair with previously saved serialized public/private key pair, or "" to create one
 //	caCert of the server to validate the server or nil to not check the server cert
-func NewMqttTransport(fullURL string, clientID string, caCert *x509.Certificate) *MqttHubTransport {
+func NewMqttTransportAutoPaho(fullURL string, clientID string, caCert *x509.Certificate) *MqttHubTransport {
 	if fullURL == "" {
 		fullURL = "unix://" + MqttInMemUDSProd
 	}
@@ -665,18 +544,11 @@ func NewMqttTransport(fullURL string, clientID string, caCert *x509.Certificate)
 		panic("NewMqttTransport - Missing client ID")
 	}
 	hc := &MqttHubTransport{
-		serverURL:      fullURL,
-		clientID:       clientID,
-		caCert:         caCert,
-		timeout:        time.Second * 10, // 10 for testing
-		_correlData:    make(map[string]chan *paho.Publish),
-		_subscriptions: make(map[string]bool),
-		_connStatus:    transports.Disconnected,
-		// default, log status
-		_connectHandler: func(status transports.ConnectionStatus, info transports.ConnInfo) {
-			slog.Info("connection status change",
-				"newStatus", status, "info", info, "clientID", clientID)
-		},
+		serverURL:  fullURL,
+		clientID:   clientID,
+		caCert:     caCert,
+		timeout:    time.Second * 10, // 10 for testing
+		correlData: make(map[string]chan *paho.Publish),
 	}
 	return hc
 }

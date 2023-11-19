@@ -36,7 +36,7 @@ type NatsTransport struct {
 	tlsConfig *tls.Config
 	timeout   time.Duration
 
-	connectHandler func(connected bool, err error)
+	connectHandler func(status transports.ConnectionStatus, info transports.ConnInfo)
 	eventHandler   func(addr string, payload []byte)
 	requestHandler func(addr string, payload []byte) (reply []byte, err error, donotreply bool)
 }
@@ -61,6 +61,8 @@ func (nt *NatsTransport) ConnectWithConn(nconn *nats.Conn) (err error) {
 		err := fmt.Errorf("connect - missing connection")
 		return err
 	}
+	nconn.SetDisconnectErrHandler(nt.onDisconnect)
+	nconn.SetReconnectHandler(nt.onConnected)
 	nt.nc = nconn
 	nt.js, err = nconn.JetStream()
 	return err
@@ -82,6 +84,9 @@ func (nt *NatsTransport) ConnectWithJWT(myKey nkeys.KeyPair, jwtToken string) (e
 	//clientID := claims.Claims().Name
 	jwtSeed, _ := myKey.Seed()
 	nt.nc, err = nats.Connect(nt.serverURL,
+		nats.ConnectHandler(nt.onConnected),
+		nats.DisconnectErrHandler(nt.onDisconnect),
+		nats.ReconnectHandler(nt.onConnected),
 		nats.Name(nt.clientID), // connection name for logging, debugging
 		nats.Secure(nt.tlsConfig),
 		nats.CustomInboxPrefix(vocab.MessageTypeINBOX+"."+nt.clientID),
@@ -109,6 +114,9 @@ func (nt *NatsTransport) ConnectWithKey(myKey nkeys.KeyPair) error {
 	}
 	pubKey, _ := myKey.PublicKey()
 	nt.nc, err = nats.Connect(nt.serverURL,
+		nats.ConnectHandler(nt.onConnected),
+		nats.DisconnectErrHandler(nt.onDisconnect),
+		nats.ReconnectHandler(nt.onConnected),
 		nats.Name(nt.clientID), // connection name for logging
 		nats.Secure(nt.tlsConfig),
 		nats.Nkey(pubKey, sigCB),
@@ -126,6 +134,9 @@ func (nt *NatsTransport) ConnectWithKey(myKey nkeys.KeyPair) error {
 func (nt *NatsTransport) ConnectWithPassword(password string) (err error) {
 
 	nt.nc, err = nats.Connect(nt.serverURL,
+		nats.ConnectHandler(nt.onConnected),
+		nats.DisconnectErrHandler(nt.onDisconnect),
+		nats.ReconnectHandler(nt.onConnected),
 		nats.UserInfo(nt.clientID, password),
 		nats.Secure(nt.tlsConfig),
 		// client permissions allow this inbox prefix
@@ -174,6 +185,19 @@ func (nt *NatsTransport) Disconnect() {
 // JS Returns the JetStream client (nats specific)
 func (nt *NatsTransport) JS() nats.JetStreamContext {
 	return nt.js
+}
+
+// handle connected to the server
+func (nt *NatsTransport) onConnected(c *nats.Conn) {
+	nt.connectHandler(transports.Connected, "")
+}
+
+// handle disconnect from the server
+func (nt *NatsTransport) onDisconnect(c *nats.Conn, err error) {
+	// FIXME: should this be retrying instead?
+	// What reason can we give?
+	info := transports.ConnInfoNetworkDisconnected
+	nt.connectHandler(transports.Disconnected, info)
 }
 
 // onMessage handles incoming request and event messages
@@ -319,7 +343,10 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *things.Thing
 }
 
 // SetConnectHandler sets the notification handler of connection status changes
-func (nt *NatsTransport) SetConnectHandler(cb func(connected bool, err error)) {
+func (nt *NatsTransport) SetConnectHandler(cb func(status transports.ConnectionStatus, info transports.ConnInfo)) {
+	if cb == nil {
+		panic("nil handler not allowed")
+	}
 	nt.connectHandler = cb
 }
 
@@ -466,12 +493,14 @@ func NewNatsTransport(url string, clientID string, caCert *x509.Certificate) *Na
 		RootCAs:            caCertPool,
 		InsecureSkipVerify: caCert == nil,
 	}
-
 	hc := &NatsTransport{
 		serverURL: url,
 		clientID:  clientID,
 		timeout:   time.Duration(DefaultTimeoutSec) * time.Second,
 		tlsConfig: tlsConfig,
+		connectHandler: func(status transports.ConnectionStatus, info transports.ConnInfo) {
+			slog.Info("connection status change", "newStatus", status, "info", info)
+		},
 	}
 	return hc
 }

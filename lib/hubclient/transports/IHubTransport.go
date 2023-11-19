@@ -7,6 +7,34 @@ type ISubscription interface {
 	Unsubscribe() error
 }
 
+type ConnectionStatus string
+
+const (
+	// Connecting attempting a connection
+	Connecting ConnectionStatus = "connecting"
+	// Connected and authenticated successful
+	Connected ConnectionStatus = "connected"
+	// Disconnected by client or not yet connected
+	Disconnected ConnectionStatus = "disconnected"
+	// ConnectFailed after failure to connect
+	// Only used if retry has given up
+	ConnectFailed ConnectionStatus = "connectFailed"
+)
+
+// ConnInfo last error information
+type ConnInfo string
+
+const (
+	// ConnInfoUnauthorized credentials invalid
+	ConnInfoUnauthorized ConnInfo = "unauthorized"
+	// ConnInfoUnreachable unable to reach the server during the initial connection attempt
+	ConnInfoUnreachable ConnInfo = "unreachable"
+	// ConnInfoServerDisconnected a server disconnect message was received.
+	ConnInfoServerDisconnected ConnInfo = "serverDisconnected"
+	// ConnInfoNetworkDisconnected connection has dropped. Caused by disconnecting the network somewhere
+	ConnInfoNetworkDisconnected ConnInfo = "networkDisconnected"
+)
+
 // IHubTransport defines the interface of the transport that connects to the messaging server.
 type IHubTransport interface {
 
@@ -48,7 +76,7 @@ type IHubTransport interface {
 	PubRequest(address string, payload []byte) (reply []byte, err error)
 
 	// SetConnectHandler sets the notification handler of connection status changes
-	SetConnectHandler(cb func(connected bool, err error))
+	SetConnectHandler(cb func(status ConnectionStatus, info ConnInfo))
 
 	// SetEventHandler set the single handler that receives all subscribed events.
 	// Messages are considered events when they do not have a reply-to address.

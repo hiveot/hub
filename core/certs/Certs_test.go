@@ -65,6 +65,7 @@ func StartService() (svc *certsclient.CertsClient, stopFunc func()) {
 	adminToken, err := testServer.MsgServer.CreateToken(testClients[1])
 	hc2 := hubclient.NewHubClient(serverURL, adminID, testServer.CertBundle.CaCert, testServer.Core)
 	err = hc2.ConnectWithToken(adminKP, adminToken)
+	hc2.SetRetryConnect(false)
 	certClient := certsclient.NewCertsClient(hc2)
 
 	return certClient, func() {

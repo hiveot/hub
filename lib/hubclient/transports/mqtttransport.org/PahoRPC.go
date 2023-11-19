@@ -5,7 +5,7 @@
 // To prevent lockup if PubAction is not responded to, this adds the
 // fix applied in autopaho.rpc
 
-package mqtttransport
+package mqtttransport_org
 
 import (
 	"context"
@@ -40,8 +40,8 @@ func NewHandler(ctx context.Context, c *paho.Client) (*Handler, error) {
 	inboxTopic := fmt.Sprintf(InboxTopicFormat, c.ClientID)
 	slog.Debug("NewHandler. Subscribing to inbox", "topic", inboxTopic)
 	_, err := c.Subscribe(ctx, &paho.Subscribe{
-		Subscriptions: map[string]paho.SubscribeOptions{
-			inboxTopic: {QoS: 1},
+		Subscriptions: []paho.SubscribeOptions{
+			{Topic: inboxTopic, QoS: 1},
 		},
 	})
 	if err != nil {

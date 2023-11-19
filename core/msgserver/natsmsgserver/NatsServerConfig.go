@@ -125,10 +125,6 @@ func (cfg *NatsServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 	// Step 3: Load or generate Account key
 	if cfg.AppAccountKP == nil {
 		// load/create an account key (not a user key)
-		//cfg.AppAccountKP, err = cfg.LoadCreateUserKP(cfg.AppAccountName+"App", keysDir, writeChanges)
-		//if err != nil {
-		//	return fmt.Errorf("failed to persist app account key: %w", err)
-		//}
 		kpPath := path.Join(keysDir, cfg.AppAccountName+"App.key")
 		if !path.IsAbs(kpPath) {
 			kpPath = path.Join(keysDir, kpPath)

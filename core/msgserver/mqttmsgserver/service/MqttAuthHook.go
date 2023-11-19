@@ -143,10 +143,11 @@ func (hook *MqttAuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Pack
 	err := hook.ValidateToken(clientID, jwtString, "", "")
 	if err == nil {
 		// a valid JWT token
-		slog.Info("Login success using a valid jwt token.", "clientID", pk.Connect.Username)
+		slog.Info("Login success using a valid jwt token.",
+			slog.String("clientID", string(pk.Connect.Username)))
 		return true
 	}
-	slog.Debug("OnConnectAuthenticate. Not a jwt token.", "err", err.Error())
+	slog.Debug("OnConnectAuthenticate. Not a jwt token.", slog.String("err", err.Error()))
 
 	// step 3: password authentication, the user must be known
 	authInfo, found := hook.authClients[clientID]
@@ -256,11 +257,11 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 			(perm.ThingID == "" || perm.ThingID == thingID) &&
 			(perm.MsgName == "" || perm.MsgName == name) {
 			if write {
-				slog.Info("OnAclCheck. Publish granted to topic",
+				slog.Debug("OnAclCheck. Publish granted to topic",
 					slog.String("clientID", loginID),
 					slog.String("topic", topic))
 			} else {
-				slog.Info("OnAclCheck. Subscribe granted to topic",
+				slog.Debug("OnAclCheck. Subscribe granted to topic",
 					slog.String("clientID", loginID),
 					slog.String("topic", topic))
 			}

@@ -1,9 +1,12 @@
 package mqttmsgserver_test
 
 import (
+	"crypto/x509"
 	"fmt"
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
+	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/logging"
@@ -80,6 +83,27 @@ var mqttTestClients = []msgserver.ClientAuthInfo{
 	},
 }
 
+func newTransport(srv msgserver.IMsgServer, clientID string, caCert *x509.Certificate) transports.IHubTransport {
+	url, _, _ := srv.GetServerURLs()
+	//cl := mqtttransport_org.NewMqttTransportOrg(url, clientID, caCert)
+	cl := mqtttransport.NewMqttTransport(url, clientID, caCert)
+	return cl
+}
+
+func startServer(withAuth bool) (msgserver.IMsgServer, *certs.TestCertBundle) {
+	srv, certBundle, err := testenv.StartMqttTestServer()
+	if err != nil {
+		panic("failed to start mqtt server")
+	}
+	if withAuth {
+		err = srv.ApplyAuth(mqttTestClients)
+		if err != nil {
+			panic("failed to apply auth")
+		}
+	}
+	return srv, &certBundle
+}
+
 // TestMain for all authn tests, setup of default folders and filenames
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
@@ -118,8 +142,7 @@ func TestConnectWithPassword(t *testing.T) {
 	err = srv.ApplyAuth(mqttTestClients)
 
 	//key, _ := certs.CreateECDSAKeys()
-	serverURL, _, _ := srv.GetServerURLs()
-	cl := mqtttransport.NewMqttTransport(serverURL, TestUser1ID, certBundle.CaCert)
+	cl := newTransport(srv, TestUser1ID, certBundle.CaCert)
 	err = cl.ConnectWithPassword(TestUser1Pass)
 	assert.NoError(t, err)
 	defer cl.Disconnect()
@@ -128,10 +151,8 @@ func TestConnectWithPassword(t *testing.T) {
 func TestConnectWithToken(t *testing.T) {
 
 	// setup
-	srv, certBundle, err := testenv.StartMqttTestServer()
-	require.NoError(t, err)
+	srv, certBundle := startServer(true)
 	defer srv.Stop()
-	err = srv.ApplyAuth(mqttTestClients)
 
 	// admin is in the test clients with a public key
 	adminToken, err := srv.CreateToken(adminAuthInfo)
@@ -140,29 +161,35 @@ func TestConnectWithToken(t *testing.T) {
 	require.NoError(t, err)
 
 	// login with token should succeed
-	serverURL, _, _ := srv.GetServerURLs()
-	tp1 := mqtttransport.NewMqttTransport(serverURL, TestAdminUserID, certBundle.CaCert)
+	tp1 := newTransport(srv, TestAdminUserID, certBundle.CaCert)
 	err = tp1.ConnectWithToken(TestAdminUserKey, adminToken)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond)
 	tp1.Disconnect()
 }
+func TestConnectBadCredentials(t *testing.T) {
+	slog.Info("--- TestConnectBadCredentials start")
+	defer slog.Info("--- TestConnectBadCredentials end")
 
+	srv, certBundle, err := testenv.StartMqttTestServer()
+	require.NoError(t, err)
+	defer srv.Stop()
+	err = srv.ApplyAuth(mqttTestClients)
+
+	//key, _ := certs.CreateECDSAKeys()
+	cl := newTransport(srv, TestUser1ID, certBundle.CaCert)
+	cl.SetConnectHandler(func(stat transports.ConnectionStatus, info transports.ConnInfo) {
+		go cl.Disconnect()
+	})
+	err = cl.ConnectWithPassword("wrong password")
+	assert.Error(t, err)
+}
 func TestMqttServerPubSub(t *testing.T) {
 	rxChan := make(chan string, 1)
 	msg := "hello world"
-	srv, certBundle, err := testenv.StartMqttTestServer()
-	_ = certBundle
-	require.NoError(t, err)
 
-	//srv := service.NewMqttMsgServer(&cfg, auth.DefaultRolePermissions)
-	//clientURL, err := srv.Start()
-	require.NoError(t, err)
+	srv, certBundle := startServer(true)
 	defer srv.Stop()
-	serverURL, _, _ := srv.GetServerURLs()
-	assert.NotEmpty(t, serverURL)
-	err = srv.ApplyAuth(mqttTestClients)
-	require.NoError(t, err)
 
 	// create a key pair
 	kp := srv.CreateKeyPair()
@@ -170,7 +197,7 @@ func TestMqttServerPubSub(t *testing.T) {
 
 	// connect and perform a pub/sub
 	adminToken, err := srv.CreateToken(adminAuthInfo)
-	tp1 := mqtttransport.NewMqttTransport(serverURL, TestAdminUserID, certBundle.CaCert)
+	tp1 := newTransport(srv, TestAdminUserID, certBundle.CaCert)
 	err = tp1.ConnectWithToken(TestAdminUserKey, adminToken)
 	require.NoError(t, err)
 	defer tp1.Disconnect()
@@ -187,7 +214,7 @@ func TestMqttServerPubSub(t *testing.T) {
 	require.NoError(t, err)
 
 	// a device publishes an event
-	tp2 := mqtttransport.NewMqttTransport(serverURL, TestDevice1ID, certBundle.CaCert)
+	tp2 := newTransport(srv, TestDevice1ID, certBundle.CaCert)
 	token, _ := srv.CreateToken(deviceAuthInfo)
 	err = tp2.ConnectWithToken(TestDevice1Keys, token)
 	pubTopic := mqtttransport.MakeTopic(vocab.MessageTypeEvent, TestDevice1ID, "t1", "test", TestDevice1ID)
@@ -202,15 +229,9 @@ func TestMqttServerRequest(t *testing.T) {
 	rxChan := make(chan string, 1)
 	msg := "hello world"
 
-	// setup the server with test clients
-	srv, certBundle, err := testenv.StartMqttTestServer()
-	_ = certBundle
-	require.NoError(t, err)
-	err = srv.ApplyAuth(mqttTestClients)
-	require.NoError(t, err)
+	// setup
+	srv, certBundle := startServer(true)
 	defer srv.Stop()
-	serverURL, _, _ := srv.GetServerURLs()
-	assert.NotEmpty(t, serverURL)
 
 	// create a key pair
 	kp := srv.CreateKeyPair()
@@ -218,7 +239,7 @@ func TestMqttServerRequest(t *testing.T) {
 
 	// connect and perform a pub/sub
 	deviceToken, err := srv.CreateToken(deviceAuthInfo)
-	tp1 := mqtttransport.NewMqttTransport(serverURL, TestDevice1ID, certBundle.CaCert)
+	tp1 := newTransport(srv, TestDevice1ID, certBundle.CaCert)
 	err = tp1.ConnectWithToken(TestDevice1Keys, deviceToken)
 	require.NoError(t, err)
 	defer tp1.Disconnect()
@@ -235,16 +256,18 @@ func TestMqttServerRequest(t *testing.T) {
 
 	topic := mqtttransport.MakeTopic(vocab.MessageTypeAction, TestDevice1ID, "", "", "")
 	err = tp1.Subscribe(topic)
-
-	// user publishes a device action
-	hc2 := mqtttransport.NewMqttTransport(serverURL, TestUser2ID, certBundle.CaCert)
-	_ = TestUser2Key
-	err = hc2.ConnectWithPassword(TestUser2Pass)
 	require.NoError(t, err)
-	defer hc2.Disconnect()
+
+	// publish a request and match the response
+	tp2 := newTransport(srv, TestUser2ID, certBundle.CaCert)
+	_ = TestUser2Key
+	err = tp2.ConnectWithPassword(TestUser2Pass)
+	require.NoError(t, err)
+	defer tp2.Disconnect()
+
 	addr2 := mqtttransport.MakeTopic(vocab.MessageTypeAction,
 		TestDevice1ID, "thing1", "action1", TestUser2ID)
-	reply, err := hc2.PubRequest(addr2, []byte(msg))
+	reply, err := tp2.PubRequest(addr2, []byte(msg))
 	require.NoError(t, err)
 	assert.Equal(t, msg, string(reply))
 

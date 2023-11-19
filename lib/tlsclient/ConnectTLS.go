@@ -9,7 +9,7 @@ import (
 
 // ConnectTLS creates a TLS connection to a server, optionally using a client certificate.
 //
-//	serverURL full URL:  tcp://host:8883,  wss://host:9001
+//	serverURL full URL:  tls/tcp/tcps://host:8883,  wss://host:9001
 //	clientCert to login with. Nil to not use client certs
 //	caCert of the server to connect to (recommended). Nil to not verify the server connection.
 func ConnectTLS(serverURL string, clientCert *tls.Certificate, caCert *x509.Certificate) (
@@ -56,6 +56,10 @@ func ConnectTLS(serverURL string, clientCert *tls.Certificate, caCert *x509.Cert
 	}
 	if broker.Host == "" {
 		broker.Host = broker.Path
+	}
+	// dial doesn't support tcps or mqtts
+	if broker.Scheme == "tcps" || broker.Scheme == "mqtts" || broker.Scheme == "tls" {
+		broker.Scheme = "tcp"
 	}
 	conn, err := tls.Dial(broker.Scheme, broker.Host, tlsConfig)
 	return conn, err

@@ -16,6 +16,8 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
+	"sync/atomic"
 )
 
 // TokenFileExt defines the filename extension under which client tokens are stored
@@ -34,8 +36,15 @@ const PubKeyFileExt = ".pub"
 type HubClient struct {
 	//serverURL string
 	//caCert    *x509.Certificate
-	clientID  string
-	transport transports.IHubTransport
+	clientID         string
+	transport        transports.IHubTransport
+	connectionStatus transports.ConnectionStatus
+	connectionInfo   transports.ConnInfo
+	// keep retrying connection on error (default true)
+	retryConnect atomic.Bool
+
+	// mux is used to protect access to handlers and capTable
+	mux sync.RWMutex
 
 	// capability map:
 	//  map[capID] map[methodName]handler
@@ -43,7 +52,7 @@ type HubClient struct {
 
 	actionHandler     func(msg *things.ThingValue) (reply []byte, err error)
 	configHandler     func(msg *things.ThingValue) error
-	connectionHandler func(connected bool, err error)
+	connectionHandler func(status transports.ConnectionStatus, info transports.ConnInfo)
 	eventHandler      func(msg *things.ThingValue)
 	rpcHandler        func(msg *things.ThingValue) (reply []byte, err error)
 }
@@ -128,7 +137,6 @@ func (hc *HubClient) ClientID() string {
 //	kp is the serialized public/private key-pair of this client
 //	jwtToken is the token obtained with login or refresh.
 func (hc *HubClient) ConnectWithToken(kp keys.IHiveKey, jwtToken string) error {
-
 	err := hc.transport.ConnectWithToken(kp, jwtToken)
 	return err
 }
@@ -172,17 +180,41 @@ func (hc *HubClient) Disconnect() {
 	hc.transport.Disconnect()
 }
 
+// ConnectionStatus returns the connection status: connected, connecting or disconnected
+func (hc *HubClient) ConnectionStatus() transports.ConnectionStatus {
+	return hc.connectionStatus
+}
+
 // onConnect is invoked when the connection status changes.
-// This simply passes it through to the handler, if set.
-func (hc *HubClient) onConnect(connected bool, err error) {
+// This cancels the connection attempt if 'retry' is set to false.
+// This passes the info through to the handler, if set.
+func (hc *HubClient) onConnect(status transports.ConnectionStatus, info transports.ConnInfo) {
+	hc.connectionStatus = status
+	hc.connectionInfo = info
+	retryConnect := hc.retryConnect.Load()
+	if !retryConnect && status != transports.Connected {
+		slog.Warn("disconnecting and not retrying", "clientID", hc.clientID)
+		hc.Disconnect()
+	} else if status == transports.Connected {
+		slog.Warn("connection restored", "clientID", hc.clientID)
+	} else if status == transports.Disconnected {
+		slog.Warn("disconnected", "clientID", hc.clientID)
+	} else if status == transports.Connecting {
+		slog.Warn("retrying to connect", "clientID", hc.clientID)
+	}
+	hc.mux.RLock()
+	defer hc.mux.RUnlock()
 	if hc.connectionHandler != nil {
-		hc.connectionHandler(connected, err)
+		hc.connectionHandler(status, info)
 	}
 }
 
 // Handlers of events and requests. These are dispatched to their appropriate handlers
 func (hc *HubClient) onEvent(addr string, payload []byte) {
 	messageType, agentID, thingID, name, senderID, err := hc.SplitAddress(addr)
+
+	hc.mux.RLock()
+	defer hc.mux.RUnlock()
 	if err == nil && hc.eventHandler != nil {
 		tv := things.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
 		hc.eventHandler(tv)
@@ -196,6 +228,8 @@ func (hc *HubClient) onRequest(addr string, payload []byte) (reply []byte, err e
 	messageType, agentID, thingID, name, senderID, err := hc.SplitAddress(addr)
 	tv := things.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
 
+	hc.mux.RLock()
+	defer hc.mux.RUnlock()
 	if agentID != hc.clientID {
 		if err == nil && hc.eventHandler != nil {
 			tv := things.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
@@ -224,6 +258,11 @@ func (hc *HubClient) onRequest(addr string, payload []byte) (reply []byte, err e
 			slog.String("property", name),
 		)
 		err = hc.configHandler(tv)
+	} else {
+		slog.Warn("received unexpected message type as request. Is this an event with a replyTo field?",
+			slog.String("sender", senderID),
+			slog.String("addr", addr))
+		// TBD pass it on to event handler???
 	}
 	return reply, err, donotreply
 }
@@ -368,7 +407,9 @@ func (hc *HubClient) PubTD(td *things.TD) error {
 // This will subscribe to actions directed to this client's agentID.
 // The result or error will be sent back to the caller.
 func (hc *HubClient) SetActionHandler(handler func(msg *things.ThingValue) (reply []byte, err error)) {
+	hc.mux.Lock()
 	hc.actionHandler = handler
+	hc.mux.Unlock()
 	addr := hc.MakeAddress(vocab.MessageTypeAction, hc.clientID, "", "", "")
 	_ = hc.transport.Subscribe(addr)
 	// the request handler will split actions, config and RPC requests
@@ -378,22 +419,35 @@ func (hc *HubClient) SetActionHandler(handler func(msg *things.ThingValue) (repl
 // SetConfigHandler sets the handler of incoming configuration requests
 // This will subscribe to configuration requests directed to this client's agentID.
 func (hc *HubClient) SetConfigHandler(handler func(msg *things.ThingValue) error) {
+	hc.mux.Lock()
 	hc.configHandler = handler
+	hc.mux.Unlock()
 	addr := hc.MakeAddress(vocab.MessageTypeConfig, hc.clientID, "", "", "")
 	_ = hc.transport.Subscribe(addr)
 	hc.transport.SetRequestHandler(hc.onRequest)
 }
 
 // SetConnectionHandler sets the callback for connection status changes.
-func (hc *HubClient) SetConnectionHandler(handler func(connected bool, err error)) {
+func (hc *HubClient) SetConnectionHandler(handler func(status transports.ConnectionStatus, info transports.ConnInfo)) {
+	hc.mux.Lock()
 	hc.connectionHandler = handler
+	hc.mux.Unlock()
 }
 
 // SetEventHandler sets the handler of subscribed events.
 // Use 'Subscribe' to set the events to listen for.
 func (hc *HubClient) SetEventHandler(handler func(msg *things.ThingValue)) {
+	hc.mux.Lock()
 	hc.eventHandler = handler
+	hc.mux.Unlock()
 	hc.transport.SetEventHandler(hc.onEvent)
+}
+
+// SetRetryConnect enables/disables the retry if a connection with the server is broken.
+// The default is enabled, so this can be used to disable it for testing connection issues.
+// This can be set before or after connection is established.
+func (hc *HubClient) SetRetryConnect(enable bool) {
+	hc.retryConnect.Store(enable)
 }
 
 // SetRPCHandler sets the handler of all incoming RPC requests
@@ -401,7 +455,9 @@ func (hc *HubClient) SetEventHandler(handler func(msg *things.ThingValue)) {
 // The result or error will be sent back to the caller.
 // See also SetRPCCapability to define capability methods in a table
 func (hc *HubClient) SetRPCHandler(handler func(msg *things.ThingValue) (reply []byte, err error)) {
+	hc.mux.Lock()
 	hc.rpcHandler = handler
+	hc.mux.Unlock()
 	addr := hc.MakeAddress(vocab.MessageTypeRPC, hc.clientID, "", "", "")
 	_ = hc.transport.Subscribe(addr)
 	// onRequest will invoke the handler
@@ -493,6 +549,8 @@ func NewHubClientFromTransport(transport transports.IHubTransport, clientID stri
 		transport: transport,
 		capTable:  make(map[string]map[string]interface{}),
 	}
+	hc.retryConnect.Store(true)
+	transport.SetConnectHandler(hc.onConnect)
 	return &hc
 }
 
@@ -518,6 +576,7 @@ func NewHubClient(url string, clientID string, caCert *x509.Certificate, core st
 		tp = natstransport.NewNatsTransport(url, clientID, caCert)
 	} else {
 		tp = mqtttransport.NewMqttTransport(url, clientID, caCert)
+		//tp = mqtttransport_org.NewMqttTransportOrg(url, clientID, caCert)
 	}
 	hc := NewHubClientFromTransport(tp, clientID)
 	return hc

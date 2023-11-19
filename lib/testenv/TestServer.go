@@ -51,9 +51,13 @@ func (ts *TestServer) AddClients(newClients []msgserver.ClientAuthInfo) error {
 	return err
 }
 
-// AddConnectClient to the hub as a client type using the given clientID.
+// AddConnectClient connects a client to the hub.
+// If the client doesn't exist it will be created along with a new key-pair.
 // This generates a key pair and auth token used to connect.
 // Intended for easily connecting during tests to avoid a lot of auth boilerplate.
+//
+// This client has connection retry disabled to assist in testing. To enable it invoke
+// SetRetryConnect(true) on the client that is returned.
 //
 // If auth has started using the TestServer then this adds the client to auth service
 // as a service. Don't use this method if auth is started separately. Use auth directly instead.
@@ -61,20 +65,20 @@ func (ts *TestServer) AddClients(newClients []msgserver.ClientAuthInfo) error {
 // Without auth service this applies it to the messaging server directly adding to
 // what was set using AddClients() (don't use ApplyAuth on the message server directly)
 //
-//	agentID the connecting agent is required
+//	clientID login/connect ID of the client
 //	clientType is optional. This defaults to ClientTypeUser.
 //	clientRole is optional. This defaults to viewer.
 func (ts *TestServer) AddConnectClient(
-	agentID string, clientType string, clientRole string) (*hubclient.HubClient, error) {
+	clientID string, clientType string, clientRole string) (*hubclient.HubClient, error) {
 	var token string
 	var err error
 
 	var tp transports.IHubTransport
 	serverURL, _, _ := ts.MsgServer.GetServerURLs()
 	if ts.Core == "nats" {
-		tp = natstransport.NewNatsTransport(serverURL, agentID, ts.CertBundle.CaCert)
+		tp = natstransport.NewNatsTransport(serverURL, clientID, ts.CertBundle.CaCert)
 	} else {
-		tp = mqtttransport.NewMqttTransport(serverURL, agentID, ts.CertBundle.CaCert)
+		tp = mqtttransport.NewMqttTransport(serverURL, clientID, ts.CertBundle.CaCert)
 	}
 	serKP := tp.CreateKeyPair()
 	serPub := serKP.ExportPublic()
@@ -87,12 +91,12 @@ func (ts *TestServer) AddConnectClient(
 	}
 	ctx := hubclient.ServiceContext{SenderID: "testServer"}
 
-	// if auth service is running then add the user if it doesn't exist
+	// if auth service is running then add the client if it doesn't exist
 	if ts.AuthService != nil {
 		if clientType == authapi.ClientTypeService {
 			args := authapi.AddServiceArgs{
-				ServiceID:   agentID,
-				DisplayName: "user " + agentID,
+				ServiceID:   clientID,
+				DisplayName: "user " + clientID,
 				PubKey:      serPub,
 			}
 			resp, err2 := ts.AuthService.MngClients.AddService(ctx, args)
@@ -100,8 +104,8 @@ func (ts *TestServer) AddConnectClient(
 			token = resp.Token
 		} else if clientType == authapi.ClientTypeDevice {
 			args := authapi.AddDeviceArgs{
-				DeviceID:    agentID,
-				DisplayName: "user " + agentID,
+				DeviceID:    clientID,
+				DisplayName: "user " + clientID,
 				PubKey:      serPub,
 			}
 			resp, err2 := ts.AuthService.MngClients.AddDevice(ctx, args)
@@ -109,8 +113,8 @@ func (ts *TestServer) AddConnectClient(
 			token = resp.Token
 		} else {
 			args := authapi.AddUserArgs{
-				UserID:      agentID,
-				DisplayName: "user " + agentID,
+				UserID:      clientID,
+				DisplayName: "user " + clientID,
 				PubKey:      serPub,
 				Role:        clientRole,
 			}
@@ -121,7 +125,7 @@ func (ts *TestServer) AddConnectClient(
 	} else {
 		// use an on-the-fly created token for the connection
 		authInfo := msgserver.ClientAuthInfo{
-			ClientID:     agentID,
+			ClientID:     clientID,
 			ClientType:   clientType,
 			PubKey:       serPub,
 			PasswordHash: "",
@@ -139,21 +143,25 @@ func (ts *TestServer) AddConnectClient(
 	//safeConn := packets.NewThreadSafeConn(conn)
 	//serverURL, _, _ := ts.MsgServer.GetServerURLs()
 	//if ts.Core == "nats" {
-	//	tp = natstransport.NewNatsTransport(serverURL, agentID, ts.CertBundle.CaCert)
+	//	tp = natstransport.NewNatsTransport(serverURL, clientID, ts.CertBundle.CaCert)
 	//} else {
-	//	tp = mqtttransport.NewMqttTransport(serverURL, agentID, ts.CertBundle.CaCert)
+	//	tp = mqtttransport.NewMqttTransport(serverURL, clientID, ts.CertBundle.CaCert)
 	//}
-	hc := hubclient.NewHubClientFromTransport(tp, agentID)
+	hc := hubclient.NewHubClientFromTransport(tp, clientID)
+	hc.SetRetryConnect(false) // for testing failure
 	err = hc.ConnectWithToken(serKP, token)
 
 	return hc, err
 }
 
 // StartAuth starts the auth service
-func (ts *TestServer) StartAuth() (err error) {
+//
+//	use cleanStart to delete all prior auth data
+func (ts *TestServer) StartAuth(cleanStart bool) (err error) {
 	var testDir = path.Join(os.TempDir(), "test-home")
-	// clean start
-	_ = os.RemoveAll(testDir)
+	if cleanStart {
+		_ = os.RemoveAll(testDir)
+	}
 	authConfig := config.AuthConfig{}
 	_ = authConfig.Setup(testDir, testDir)
 	ts.AuthService, err = authservice.StartAuthService(
@@ -190,7 +198,7 @@ func StartTestServer(core string, withAuth bool) (*TestServer, error) {
 		ts.MsgServer, ts.CertBundle, err = StartMqttTestServer()
 	}
 	if err == nil && withAuth {
-		err = ts.StartAuth()
+		err = ts.StartAuth(true)
 	}
 	return ts, err
 }

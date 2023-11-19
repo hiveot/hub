@@ -4,15 +4,18 @@ Commandline interface for managing Hub services.
 
 ## Status
 
-The status of the Hub CLI Alpha. 
-It is functional but breaking changes might happen. CLI for services are still being added. 
+The status of the Hub CLI Alpha.
+It is functional but breaking changes might happen. CLI for services are still being added.
+
+TODO:
+
+- subscriptions don't persist after auto-reconnect.
 
 ## Summary
 
 The Hub CLI provides a commandline interface for managing Hub and service configuration.
 
 Usage: hubcli -h
-
 
 ## Setup
 
@@ -27,7 +30,9 @@ Where ~/bin/hiveot is the root installation folder. By default the home folder i
 To start the hub run:
 > hubcli start  [--home ~/bin/hiveot]
 
-This will start the Launcher which in turn starts any configured services. The launcher is configured through the 'config/launcher.yaml' file. This file describes the core to use and the services to launch. See the included file for more details. For example:
+This will start the Launcher which in turn starts any configured services. The launcher is configured through the '
+config/launcher.yaml' file. This file describes the core to use and the services to launch. See the included file for
+more details. For example:
 
 ```yaml
 # config/launcher.yaml
@@ -35,7 +40,7 @@ This will start the Launcher which in turn starts any configured services. The l
 # core to launch before the plugins. The core binary must reside in the bin directory.
 # comment out if a core is already running elsewhere.
 # known cores are mqttcore or natscore
-core: mqttcore    
+core: mqttcore
 
 # start services in order
 autostart:
@@ -48,7 +53,7 @@ autostart:
 
   # plugins for are additional services
   - dashboard      # dashboard for viewing IoT device info
-  
+
   # protocol bindings are added in future
   - owserver       # Publish Things connected to a local OWServer V2 1-wire gateway
   # etc...
@@ -58,5 +63,5 @@ Each service or gateway entry can have additional specifications:
 
 To list running services:
 > bin/hubcli ls
-> 
+>
 > 

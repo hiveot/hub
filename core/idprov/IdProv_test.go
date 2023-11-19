@@ -24,7 +24,7 @@ import (
 var testFolder = path.Join(os.TempDir(), "test-provisioning")
 var testPort = uint(23001)
 
-const core = "nats"
+const core = "mqtt"
 
 // the following are set by the testmain
 var testServer *testenv.TestServer
@@ -112,12 +112,18 @@ func TestAutomaticProvisioning(t *testing.T) {
 	approved, err := mngCl.GetRequests(true, true, true)
 	assert.NoError(t, err)
 	require.True(t, len(approved) > 0)
-	// TBD: is the order fixed?
-	assert.Equal(t, device1ID, approved[0].ClientID)
+	hasDevice1 := false
+	for _, a := range approved {
+		if a.ClientID == device1ID {
+			hasDevice1 = true
+		}
+	}
+	assert.True(t, hasDevice1)
 
 	// token should be used to connect
 	srvURL, _, _ := testServer.MsgServer.GetServerURLs()
 	hc1 := hubclient.NewHubClient(srvURL, device1ID, testServer.CertBundle.CaCert, core)
+	hc1.SetRetryConnect(false)
 	err = hc1.ConnectWithToken(device1KP, token1)
 	require.NoError(t, err)
 	hc1.Disconnect()

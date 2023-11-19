@@ -88,7 +88,7 @@ func TestStartStopNKeysServer(t *testing.T) {
 	require.NoError(t, err)
 
 	// connect with test user
-	//nc, err := srv.ConnectInProcNC("testnkeysservice", nil)
+	//nc, err := srv.ConnectInProc("testnkeysservice", nil)
 	serverURL, _, _ := srv.GetServerURLs()
 	tp := natstransport.NewNatsTransport(serverURL, TestAdminUserID, certBundle.CaCert)
 	err = tp.ConnectWithKey(TestAdminUserNKey)
@@ -228,7 +228,7 @@ func TestEventsStream(t *testing.T) {
 	serverURL, _, _ := srv.GetServerURLs()
 	tp1 := natstransport.NewNatsTransport(serverURL, TestService1ID, certBundle.CaCert)
 	err = tp1.ConnectWithKey(TestService1NKey)
-	//nc1, err := srv.ConnectInProcNC("core-test", nil)
+	//nc1, err := srv.ConnectInProc("core-test", nil)
 	//hc1 := natshubclient.NewNatsHubClient("", "core-test", nil, nil)
 	//err = hc1.ConnectWithConn("", nc1)
 	require.NoError(t, err)

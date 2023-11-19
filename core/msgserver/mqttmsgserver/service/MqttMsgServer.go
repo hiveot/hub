@@ -49,7 +49,7 @@ func (srv *MqttMsgServer) Start() error {
 		return fmt.Errorf("missing server or CA certificate")
 	}
 	hostAddr := srv.Config.Host
-	srv.tlsURL = fmt.Sprintf("tcp://%s:%d", hostAddr, srv.Config.Port)
+	srv.tlsURL = fmt.Sprintf("mqtts://%s:%d", hostAddr, srv.Config.Port)
 	srv.wssURL = fmt.Sprintf("wss://%s:%d", hostAddr, srv.Config.WSPort)
 	srv.udsURL = srv.Config.InMemUDSName
 

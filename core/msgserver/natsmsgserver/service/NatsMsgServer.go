@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
 	"github.com/hiveot/hub/lib/net"
 	"github.com/hiveot/hub/lib/vocab"
@@ -43,13 +42,13 @@ type NatsMsgServer struct {
 	udsURL string
 }
 
-// ConnectInProcNC establishes a nats connection to the server for core services.
+// ConnectInProc establishes a nats connection to the server for core services.
 // This connects in-process using the service key.
 // Intended for the core services to connect to the server.
 //
 //	serviceID of the connecting service
 //	clientKey is optional alternate key or nil to use the built-in core service ID
-func (srv *NatsMsgServer) ConnectInProcNC(serviceID string, clientKP nkeys.KeyPair) (*nats.Conn, error) {
+func (srv *NatsMsgServer) ConnectInProc(serviceID string, clientKP nkeys.KeyPair) (*nats.Conn, error) {
 
 	if clientKP == nil {
 		clientKP = srv.Config.CoreServiceKP
@@ -89,17 +88,17 @@ func (srv *NatsMsgServer) ConnectInProcNC(serviceID string, clientKP nkeys.KeyPa
 // Intended for the core services to connect to the server.
 //
 //	serviceID of the connecting service
-func (srv *NatsMsgServer) ConnectInProc(serviceID string) (*hubclient.HubClient, error) {
-
-	nc, err := srv.ConnectInProcNC(serviceID, nil)
-	if err != nil {
-		return nil, err
-	}
-	tp := natstransport.NewNatsTransport("", serviceID, nil)
-	err = tp.ConnectWithConn(nc)
-	hc := hubclient.NewHubClientFromTransport(tp, serviceID)
-	return hc, err
-}
+//func (srv *NatsMsgServer) ConnectInProc(serviceID string) (*hubclient.HubClient, error) {
+//
+//	nc, err := srv.ConnectInProc(serviceID, nil)
+//	if err != nil {
+//		return nil, err
+//	}
+//	tp := natstransport.NewNatsTransport("", serviceID, nil)
+//	err = tp.ConnectWithConn(nc)
+//	hc := hubclient.NewHubClientFromTransport(tp, serviceID)
+//	return hc, err
+//}
 
 func (srv *NatsMsgServer) Core() string {
 	return "nats"
@@ -156,7 +155,7 @@ func (srv *NatsMsgServer) Start() (err error) {
 	//	srv.config.AppAccountName, srv.config.AppAccountKP)
 
 	// ensure the events intake stream exists
-	nc, err := srv.ConnectInProcNC("jetsetup", nil)
+	nc, err := srv.ConnectInProc("jetsetup", nil)
 	if err != nil {
 		return err
 	}

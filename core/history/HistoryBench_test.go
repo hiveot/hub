@@ -28,7 +28,7 @@ const timespanYear = timespanDay * 365
 //
 //	100K      10    add 1K single (*)       2.9             4.3             4900/4900
 //	100K      10    add 1K batch (*)        1.4             2.4               84/82
-//	100K      10    get 1K single         340/130         322/128            325/130
+//	100K      10    get 1K single         340/130         320/128            325/130
 //	100K      10    get 1K batch          6.0/4.2           7                5.2/4.3
 //
 //	  1M     100    add 1K single (*)       2.9             5.7             5500

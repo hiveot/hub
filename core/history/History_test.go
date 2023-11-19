@@ -33,7 +33,7 @@ const thingIDPrefix = "things-"
 // when testing using the capnp RPC
 var testFolder = path.Join(os.TempDir(), "test-history")
 
-const core = "mqtt"
+const core = "nats"
 
 // recommended store for history is pebble
 const historyStoreBackend = buckets.BackendPebble

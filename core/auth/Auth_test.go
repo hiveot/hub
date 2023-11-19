@@ -69,6 +69,7 @@ func startTestAuthnService() (authnSvc *authservice.AuthService, mng *authclient
 	}
 	ctx := hubclient.ServiceContext{SenderID: "test-client"}
 	resp, err := authnSvc.MngClients.AddUser(ctx, args)
+	hc2.SetRetryConnect(false)
 	err = hc2.ConnectWithToken(clKP, resp.Token)
 
 	if err != nil {
@@ -136,6 +137,7 @@ func TestStartStop(t *testing.T) {
 
 	// should be able to connect as admin, using the saved key and token
 	hc1 := hubclient.NewHubClient(serverURL, authapi.DefaultAdminUserID, certBundle.CaCert, core)
+	hc1.SetRetryConnect(false)
 	err = hc1.ConnectWithTokenFile(authConfig.KeysDir)
 	require.NoError(t, err)
 	hc1.Disconnect()
@@ -264,6 +266,7 @@ func TestUpdatePubKey(t *testing.T) {
 	// 1. connect to the added user using its password
 	kp := testServer.MsgServer.CreateKeyPair()
 	hc1 := hubclient.NewHubClient(serverURL, tu1ID, certBundle.CaCert, core)
+	hc1.SetRetryConnect(false)
 	err = hc1.ConnectWithPassword(tu1Pass)
 	require.NoError(t, err)
 	defer hc1.Disconnect()
@@ -321,6 +324,7 @@ func TestLoginRefresh(t *testing.T) {
 	// 3. login with the new token
 	// (nkeys and callout auth doesn't need a server reload)
 	hc2 := hubclient.NewHubClient(serverURL, tu1ID, certBundle.CaCert, core)
+	hc2.SetRetryConnect(false)
 	err = hc2.ConnectWithToken(tu1Key, authToken1)
 	require.NoError(t, err)
 	cl2 := authclient.NewProfileClient(hc2)
@@ -336,6 +340,7 @@ func TestLoginRefresh(t *testing.T) {
 
 	// 5. login with the refreshed token
 	hc3 := hubclient.NewHubClient(serverURL, tu1ID, certBundle.CaCert, core)
+	hc2.SetRetryConnect(false)
 	err = hc3.ConnectWithToken(tu1Key, authToken2)
 	require.NoError(t, err)
 	hc3.Disconnect()
@@ -363,6 +368,7 @@ func TestRefreshNoPubKey(t *testing.T) {
 
 	// connect with the added user token
 	hc1 := hubclient.NewHubClient(serverURL, tu1ID, certBundle.CaCert, core)
+	hc1.SetRetryConnect(false)
 	err = hc1.ConnectWithPassword(tu1Pass)
 	defer hc1.Disconnect()
 	require.NoError(t, err)
@@ -383,6 +389,7 @@ func TestRefreshNoPubKey(t *testing.T) {
 	assert.NotEmpty(t, authToken1)
 	t.Log("connecting with token")
 	hc2 := hubclient.NewHubClient(serverURL, tu1ID, certBundle.CaCert, core)
+	hc2.SetRetryConnect(false)
 	err = hc2.ConnectWithToken(tu1Key, authToken1)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 10)
@@ -406,6 +413,7 @@ func TestUpdateProfile(t *testing.T) {
 	require.NoError(t, err)
 	//tu1Key, _ := testServer.MsgServer.CreateKP()
 	hc1 := hubclient.NewHubClient(serverURL, tu1ID, certBundle.CaCert, core)
+	hc1.SetRetryConnect(false)
 	err = hc1.ConnectWithPassword("pass0")
 	require.NoError(t, err)
 	defer hc1.Disconnect()
@@ -432,26 +440,37 @@ func TestUpdatePassword(t *testing.T) {
 	serverURL, _, _ := testServer.MsgServer.GetServerURLs()
 
 	// add user to test with and connect
-	_, _, err = addNewUser(tu1ID, tu1Name, "pass0", mng)
+	_, _, err = addNewUser(tu1ID, tu1Name, "oldpass", mng)
 	hc1 := hubclient.NewHubClient(serverURL, tu1ID, certBundle.CaCert, core)
-	err = hc1.ConnectWithPassword("pass0")
+	hc1.SetRetryConnect(false)
+	err = hc1.ConnectWithPassword("oldpass")
 	require.NoError(t, err)
+	authProfileClient := authclient.NewProfileClient(hc1)
+	p1, err := authProfileClient.GetProfile()
+	require.NoError(t, err)
+	assert.NotEmpty(t, p1)
 
 	// update password
 	cl := authclient.NewProfileClient(hc1)
-	err = cl.UpdatePassword("pass1")
+	err = cl.UpdatePassword("newpass")
 	require.NoError(t, err)
 	hc1.Disconnect()
 	time.Sleep(time.Millisecond)
 
 	// login with old password should now fail
-	err = hc1.ConnectWithPassword("pass0")
+	// see also: https://github.com/eclipse/paho.golang/issues/192
+	// suggest to hook into OnConnectError and determine cause to decide to retry
+	t.Log("an error is expected logging in with the old password")
+	err = hc1.ConnectWithPassword("oldpass")
 	require.Error(t, err)
 
 	// re-login with new password
-	err = hc1.ConnectWithPassword("pass1")
+	err = hc1.ConnectWithPassword("newpass")
 	require.NoError(t, err)
+	defer hc1.Disconnect()
+	//time.Sleep(time.Second * 1)
 	cl = authclient.NewProfileClient(hc1)
 	_, err = cl.GetProfile()
+	//time.Sleep(time.Second * 3)
 	require.NoError(t, err)
 }

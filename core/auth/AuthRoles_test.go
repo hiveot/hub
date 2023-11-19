@@ -34,6 +34,7 @@ func TestCRUDRole(t *testing.T) {
 
 	// admin user that can change roles
 	hc := hubclient.NewHubClient(serverURL, adminUserID, testServer.CertBundle.CaCert, testServer.Core)
+	hc.SetRetryConnect(false)
 	adminKP := hc.CreateKeyPair()
 	adminPub := adminKP.ExportPublic()
 	token, err := mng.AddUser(adminUserID, "admin", "", adminPub, authapi.ClientRoleAdmin)
