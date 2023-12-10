@@ -185,6 +185,42 @@ func (hc *HubClient) ConnectionStatus() transports.ConnectionStatus {
 	return hc.connectionStatus
 }
 
+// LoadCreateKeyPair loads or creates a public/private key pair using the clientID as filename.
+//
+//	The key-pair is named {clientID}.key, the public key {clientID}.pub
+//
+//	clientID is the clientID to use, or "" to use the connecting ID
+//	keysDir is the location where the keys are stored.
+//
+// This returns the serialized private and pub keypair, or an error.
+func (hc *HubClient) LoadCreateKeyPair(clientID, keysDir string) (kp keys.IHiveKey, err error) {
+	if keysDir == "" {
+		return nil, fmt.Errorf("certs directory must be provided")
+	}
+	if clientID == "" {
+		clientID = hc.clientID
+	}
+	keyFile := path.Join(keysDir, clientID+KPFileExt)
+	pubFile := path.Join(keysDir, clientID+PubKeyFileExt)
+
+	// load key from file
+	kp, err = keys.NewKeyFromFile(keyFile)
+
+	if err != nil {
+		// no keyfile, create the key
+		kp = hc.transport.CreateKeyPair()
+
+		// save the key for future use
+		err = kp.ExportPrivateToFile(keyFile)
+		err2 := kp.ExportPublicToFile(pubFile)
+		if err2 != nil {
+			err = err2
+		}
+	}
+
+	return kp, err
+}
+
 // onConnect is invoked when the connection status changes.
 // This cancels the connection attempt if 'retry' is set to false.
 // This passes the info through to the handler, if set.
@@ -265,42 +301,6 @@ func (hc *HubClient) onRequest(addr string, payload []byte) (reply []byte, err e
 		// TBD pass it on to event handler???
 	}
 	return reply, err, donotreply
-}
-
-// LoadCreateKeyPair loads or creates a public/private key pair using the clientID as filename.
-//
-//	The key-pair is named {clientID}.key, the public key {clientID}.pub
-//
-//	clientID is the clientID to use, or "" to use the connecting ID
-//	keysDir is the location where the keys are stored.
-//
-// This returns the serialized private and pub keypair, or an error.
-func (hc *HubClient) LoadCreateKeyPair(clientID, keysDir string) (kp keys.IHiveKey, err error) {
-	if keysDir == "" {
-		return nil, fmt.Errorf("certs directory must be provided")
-	}
-	if clientID == "" {
-		clientID = hc.clientID
-	}
-	keyFile := path.Join(keysDir, clientID+KPFileExt)
-	pubFile := path.Join(keysDir, clientID+PubKeyFileExt)
-
-	// load key from file
-	kp, err = keys.NewKeyFromFile(keyFile)
-
-	if err != nil {
-		// no keyfile, create the key
-		kp = hc.transport.CreateKeyPair()
-
-		// save the key for future use
-		err = kp.ExportPrivateToFile(keyFile)
-		err2 := kp.ExportPublicToFile(pubFile)
-		if err2 != nil {
-			err = err2
-		}
-	}
-
-	return kp, err
 }
 
 // PubAction publishes a request for action from a Thing.

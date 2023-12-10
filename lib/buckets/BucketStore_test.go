@@ -340,13 +340,13 @@ func TestWriteReadMultiple(t *testing.T) {
 }
 
 func TestSeek(t *testing.T) {
-	const count = 1000
+	const docsCount = 1000
 	const seekCount = 200
-	const base = 500
+	const base = 300
 
 	store, err := openNewStore()
 	require.NoError(t, err)
-	err = addDocs(store, testBucketID, count)
+	err = addDocs(store, testBucketID, docsCount)
 	require.NoError(t, err)
 	bucket := store.GetBucket(testBucketID)
 	require.NotNil(t, bucket)

@@ -114,9 +114,10 @@ func TestCalloutJWT(t *testing.T) {
 	hc2 := natstransport.NewNatsTransport(serverURL, TestAdminUserID, certBundle.CaCert)
 	err = hc2.ConnectWithJWT(TestAdminUserNKey, jwtToken)
 	require.NoError(t, err)
-	time.Sleep(time.Millisecond)
-	successCount, _ := chook.GetCounters()
+	time.Sleep(time.Millisecond * 10)
+	successCount, failCount := chook.GetCounters()
 	assert.Equal(t, 1, successCount)
+	assert.Equal(t, 0, failCount)
 
 	hc2.Disconnect()
 }

@@ -86,7 +86,7 @@ func (store *PebbleStore) Open() (err error) {
 	if err == nil {
 		store.db, err = pebble.Open(store.storeDirectory, options)
 	} else {
-		slog.Error("failed to open bucket store", "err", err)
+		slog.Error("failed to open bucket store", "directory", store.storeDirectory, "err", err)
 	}
 	return err
 }

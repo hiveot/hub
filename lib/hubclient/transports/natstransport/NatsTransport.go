@@ -420,8 +420,10 @@ func (nt *NatsTransport) Subscribe(subject string) (err error) {
 //	return sub, err
 //}
 
-func (nt *NatsTransport) Unsubscribe(topic string) {
-	nt.Unsubscribe(topic)
+func (nt *NatsTransport) Unsubscribe(subject string) {
+	// on-the-fly subscribe-unsubscribe is not the intended use.
+	// if there is a good use-case it can be added, but it would mean tracking the subscriptions.
+	slog.Warn("unsubscribe is not used", "subject", subject)
 }
 
 // SubStream subscribes to events received by the event stream.

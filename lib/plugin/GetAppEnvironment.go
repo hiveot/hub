@@ -121,6 +121,7 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 	serverURL := ""
 	//serverCore := ""
 
+	// TODO: get default config from environment
 	os.Environ()
 
 	// default home folder is the parent of the core or plugin binary
