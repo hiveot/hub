@@ -1,3 +1,17 @@
-{{template "app/appHead" .}}
+{{block "appHead" .}} "App head goes here" {{end}}
 
-<h1>{{.Title}}</h1>
+<main>
+    <div class="center-align middle">
+        {{block ".page" .}} "Page content goes here" {{end}}
+    </div>
+</main>
+
+<div>
+    {{block "appFooter" .}} "App footer goes here" {{end}}
+</div>
+
+<style>
+    main {
+        flex-grow: 1;
+    }
+</style>

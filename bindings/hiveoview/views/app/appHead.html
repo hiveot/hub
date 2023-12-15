@@ -1,3 +1,4 @@
+{{define "appHead"}}
 <nav>
     <div>
         <img src="/static/logo.svg" class="brand">
@@ -16,6 +17,10 @@
     <!-- spacer -->
     <div class="max"></div>
 
+    <!-- Counter for testing-->
+    {{template "counter.html" .}}
+
+
     <!-- navigation/menu buttons on top-right -->
     <span class="nav-button">
         <!-- One button to rule the night
@@ -26,14 +31,7 @@
             <div class="tooltip bottom ">switch light/dark mode</div>
         </button>
 
-        <!-- connection status
-        @param conn_icon: "link", "link_off"
-        @param conn_status: "connected", "disconnected", or connection error
-        -->
-        <button>
-            <i>{{.conn_icon}}</i>
-            <div class="tooltip bottomRight">{{.conn_status}}</div>
-        </button>
+        {{template "connectStatus.html" .}}
 
         <!-- menu
 
@@ -82,3 +80,5 @@
 
 
 </style>
+
+{{end}}

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <link rel="icon" href="/static/favicon.png"/>
+    <link rel="stylesheet" href="/static/css/beer-3.4.9.min.css">
+    <script src="/static/htmx.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="Hive Of Things Viewer">
+    <title>{{.Title}}</title>
+</head>
+
+<body class="{{.theme}}">
+{{block "embed" .}} main template {{end}}
+</body>
+</html>
+
+<style>
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    /*Default light and dark theme colors
+     See also: https://m2.material.io/develop/web/theming/theming-guide
+     future: new themes can be embedded from template.
+    */
+    :root,
+    body.light {
+        --primary: #beb18a;
+        --on-primary: #e9d9c2;
+        --primary-container: #e9ddff;
+        --on-primary-container: #22005d;
+        --secondary: #625b71;
+        --on-secondary: #ffffff;
+        --secondary-container: #e8def8;
+        --on-secondary-container: #1e192b;
+        --tertiary: #7e5260;
+        --on-tertiary: #ffffff;
+        --tertiary-container: #ffd9e3;
+        --on-tertiary-container: #31101d;
+        --error: #ba1a1a;
+        --on-error: #ffffff;
+        --error-container: #ffdad6;
+        --on-error-container: #410002;
+        --background: #fffbff;
+        --on-background: #1c1b1e;
+        --surface: #f8f6ea;
+        --on-surface: #1c1b1e;
+        --surface-variant: #e7e0eb;
+        --on-surface-variant: #49454e;
+        --outline: #7a757f;
+        --outline-variant: #cac4cf;
+        --shadow: #000000;
+        --scrim: #000000;
+        --inverse-surface: #313033;
+        --inverse-on-surface: #f4eff4;
+        --inverse-primary: #95947a;
+        --surface-dim: #ddd8dd;
+        --surface-bright: #fdf8fd;
+        --surface-container-lowest: #ffffff;
+        --surface-container-low: #f7f2f7;
+        --surface-container: #f2ecf1;
+        --surface-container-high: #ece7eb;
+        --surface-container-highest: #e6e1e6;
+        --overlay: rgb(0 0 0 / 0.5);
+        --active: rgb(0 0 0 / 0.1);
+        --elevate1: 0 0.125rem 0.125rem 0 rgb(0 0 0 / 0.32);
+        --elevate2: 0 0.25rem 0.5rem 0 rgb(0 0 0 / 0.4);
+        --elevate3: 0 0.375rem 0.75rem 0 rgb(0 0 0 / 0.48);
+    }
+
+    body.dark {
+        --primary: #ffebbc;
+        --on-primary: #1e3972;
+        --primary-container: #37498a;
+        --on-primary-container: #e9ddff;
+        --secondary: #cbc2db;
+        --on-secondary: #332d41;
+        --secondary-container: #4a4458;
+        --on-secondary-container: #e8def8;
+        --tertiary: #efb8c8;
+        --on-tertiary: #4a2532;
+        --tertiary-container: #633b48;
+        --on-tertiary-container: #ffd9e3;
+        --error: #ffb4ab;
+        --on-error: #690005;
+        --error-container: #93000a;
+        --on-error-container: #ffb4ab;
+        --background: #1c1b1e;
+        --on-background: #e6e1e6;
+        --surface: #141316;
+        /*--on-surface: #e6e1e6; !* On-surface, used for text that is on top of a surface background.*!*/
+        --on-surface: #ffebbc; /* make same as primary*/
+
+        --surface-variant: #49454e;
+        --on-surface-variant: #cac4cf;
+        --outline: #948f99;
+        --outline-variant: #49454e;
+        --shadow: #000000;
+        --scrim: #000000;
+        --inverse-surface: #e6e1e6;
+        --inverse-on-surface: #313033;
+        --inverse-primary: #6750a4;
+        --surface-dim: #141316;
+        --surface-bright: #3a383c;
+        --surface-container-lowest: #0f0e11;
+        --surface-container-low: #1c1b1e;
+        --surface-container: #201f22;
+        --surface-container-high: #2b292d;
+        --surface-container-highest: #363438;
+        --overlay: rgb(0 0 0 / 0.5);
+        --active: rgb(255 255 255 / 0.2);
+        --elevate1: 0 0.125rem 0.125rem 0 rgb(0 0 0 / 0.32);
+        --elevate2: 0 0.25rem 0.5rem 0 rgb(0 0 0 / 0.4);
+        --elevate3: 0 0.375rem 0.75rem 0 rgb(0 0 0 / 0.48);
+    }
+</style>
