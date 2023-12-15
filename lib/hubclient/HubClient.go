@@ -181,8 +181,8 @@ func (hc *HubClient) Disconnect() {
 }
 
 // ConnectionStatus returns the connection status: connected, connecting or disconnected
-func (hc *HubClient) ConnectionStatus() transports.ConnectionStatus {
-	return hc.connectionStatus
+func (hc *HubClient) ConnectionStatus() (stat transports.ConnectionStatus, info string) {
+	return hc.connectionStatus, string(hc.connectionInfo)
 }
 
 // LoadCreateKeyPair loads or creates a public/private key pair using the clientID as filename.
