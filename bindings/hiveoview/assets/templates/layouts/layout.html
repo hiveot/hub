@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="Hive Of Things Viewer">
+    <link rel="icon" href="/static/favicon.png"/>
+    <script src="/static/htmx.min.js"></script>
+    <script src="/static/iconify-icon.min.js"></script>
+    <link rel="stylesheet" href="static/css/uikit-3.17.11.min.css"/>
+    <script src="static/uikit-3.17.11.min.js"></script>
+    <!--    <script src="static/uikit-3.17.11-icons.js"></script>-->
+    <title>{{.Title}}</title>
+</head>
+
+<!--TODO: set theme from button-->
+<body>
+{{block "embed" .}} main template {{end}}
+</body>
+</html>
+
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    body {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    :root {
+        /* theme colors */
+        --font-size: 16px;
+        --icon-font-size: 24px;
+        --main-text-color: #666;
+
+        .uk-dark {
+            --main-bg-color: #3e4747;
+            --header-bg-color: #2f3636;
+            --main-text-color: #fbfaf7;
+        }
+
+        /* sizes */
+        font-size: var(--font-size);
+
+        iconify-icon {
+            font-size: var(--icon-font-size);
+        }
+
+        .uk-button, .uk-button-default, .uk-button-link, .uk-button-text {
+            padding: 5px;
+            /*vertical align for text and icons*/
+            display: flex;
+            color: var(--main-text-color);
+        }
+
+    }
+
+    /* show a pointer for checkboxes and their labels
+    credits: https://stackoverflow.com/questions/41614446/change-pointer-for-checkbox-html
+    */
+    input[type="checkbox"], input[type="checkbox"] + label {
+        cursor: pointer;
+    }
+
+    .bg-transparent {
+        background-color: transparent;
+    }
+
+    .grow {
+        flex-grow: 1;
+    }
+
+    /*Experiment with alternative tooltip position for the menu
+     * inset auto 0  will right-align against the parent container
+    */
+    .tooltip.bottomRight {
+        /*position: absolute;*/
+        /*inset: auto 0 auto auto;*/
+        position: fixed;
+        inset: auto;
+        right: 5px;
+        transform: translateY(50px);
+        z-index: 1;
+    }
+
+    .tooltip.bottomLeft {
+        position: fixed;
+        left: 0;
+        transform: translateY(50px);
+        z-index: 1;
+    }
+
+    /*UIKit doesn't have a dark theme for some strange reason, so whip it up here */
+    .uk-dark {
+        background-color: var(--main-bg-color);
+        color: cornsilk;
+
+        .uk-navbar-container {
+            background-color: var(--header-bg-color);
+            color: inherit;
+        }
+
+        .uk-tab > .uk-active > * {
+            background-color: var(--header-bg-color);
+            color: var(--main-text-color);
+        }
+
+        .uk-button {
+            /*color: #fbfaf7;*/
+            color: var(--main-text-color);
+        }
+    }
+
+    .uk-tab {
+        margin-bottom: 5px;
+        margin-top: 5px;
+    }
+</style>

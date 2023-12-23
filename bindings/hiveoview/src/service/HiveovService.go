@@ -1,23 +1,20 @@
 package service
 
 import (
-	"embed"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/hiveot/hub/bindings/hiveoview/src/hovmw"
+	"github.com/hiveot/hub/bindings/hiveoview/assets"
+	"github.com/hiveot/hub/bindings/hiveoview/assets/templates/about"
+	"github.com/hiveot/hub/bindings/hiveoview/assets/templates/app"
+	"github.com/hiveot/hub/bindings/hiveoview/assets/templates/dashboard"
+	"github.com/hiveot/hub/bindings/hiveoview/assets/templates/login"
+	"github.com/hiveot/hub/bindings/hiveoview/assets/templates/thingsview"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
-	"github.com/hiveot/hub/bindings/hiveoview/views"
-	"github.com/hiveot/hub/bindings/hiveoview/views/about"
-	"github.com/hiveot/hub/bindings/hiveoview/views/app"
-	"github.com/hiveot/hub/bindings/hiveoview/views/dashboard"
-	"github.com/hiveot/hub/bindings/hiveoview/views/login"
-	"github.com/hiveot/hub/bindings/hiveoview/views/thingsview"
 	"html/template"
 	"io/fs"
 	"log/slog"
 	"net/http"
-	"path/filepath"
 )
 
 // HiveovService operates the html web server.
@@ -61,7 +58,7 @@ func (svc *HiveovService) createRoutes(t *template.Template, staticFS fs.FS) chi
 
 	//--- private routes that requires a valid session
 	router.Group(func(r chi.Router) {
-		r.Use(hovmw.AuthSession(svc.sm))
+		r.Use(session.AuthSession(svc.sm))
 
 		r.Get("/dashboard", dashboard.GetDashboard(t))
 		r.Get("/things", thingsview.GetThings(t))
@@ -70,30 +67,13 @@ func (svc *HiveovService) createRoutes(t *template.Template, staticFS fs.FS) chi
 	return router
 }
 
-// ParseTemplates the html templates in the given embedded filesystem
-func (svc *HiveovService) ParseTemplates(files embed.FS) (*template.Template, error) {
-	t := template.New("")
-	err := fs.WalkDir(files, ".", func(parent string, d fs.DirEntry, err error) error {
-		if err == nil && d.IsDir() {
-			_, err = t.ParseFS(files, filepath.Join(parent, "*.html"))
-			// todo, difference between no files and parse error?
-			if err != nil {
-				slog.Error("error parsing template", "err", err)
-			}
-			err = nil
-		}
-		return err
-	})
-	return t, err
-}
-
 func (svc *HiveovService) Start() {
 
 	// parse all templates for use in the routes
 	// Would like to do ParseFSRecursive("*.html") ... but it doesn't exist
 	//templates, err := template.ParseFS(views.EmbeddedTemplates,
 	//	"*.html", "login/*.html", "app/*.html", "about/*.html")
-	templates, err := svc.ParseTemplates(views.EmbeddedTemplates)
+	templates, err := assets.ParseTemplates()
 	if err != nil {
 		slog.Error("Parsing templates failed", "err", err)
 		panic("failed parsing templates")
@@ -101,7 +81,7 @@ func (svc *HiveovService) Start() {
 
 	// setup static resources
 	// add the routes
-	router := svc.createRoutes(templates, views.EmbeddedStatic)
+	router := svc.createRoutes(templates, assets.EmbeddedStatic)
 
 	// FIXME: change into TLS using a signed server certificate
 	//err = router.Run(fmt.Sprintf(":%d", svc.port))

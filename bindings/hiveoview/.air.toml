@@ -16,9 +16,9 @@ full_bin = "APP_ENV=dev APP_USER=air tmp/hiveoview -home ./"
 # Watch these filename extensions.
 include_ext = ["go", "tpl", "tmpl", "html"]
 # Ignore these filename extensions or directories.
-exclude_dir = ["assets", "tmp", "vendor", "node_modules", "dist"]
+exclude_dir = ["tmp", "vendor", "node_modules", "dist"]
 # Watch these directories if you specified.
-include_dir = ["src", "views", "static"]
+include_dir = ["cmd", "src", "assets"]
 # Exclude files.
 exclude_file = []
 # It's not necessary to trigger build each time file changes if it's too frequent.

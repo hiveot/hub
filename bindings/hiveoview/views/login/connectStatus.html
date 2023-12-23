@@ -1,8 +1,0 @@
-<!-- connection status
-@param conn_icon: "link", "link_off"
-@param conn_status: "connected", "disconnected", or connection error
--->
-<button hx-get="/htmx/connectStatus.html" hx-trigger="click" hx-swap="outerHTML">
-    <i>{{or .conn_icon "link_off"}}</i>
-    <div class="tooltip bottomRight">{{or .conn_status "Starting..." }}</div>
-</button>

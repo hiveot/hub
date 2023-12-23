@@ -1,0 +1,75 @@
+{{define "appbar"}}
+
+<nav uk-navbar class="appbar uk-navbar-container">
+
+    <div class="appbar-brand">
+        <img src="{{.logo}}" class="appbar-brand">
+        <label>{{.title}}</label>
+    </div>
+    <!-- Dashboard pages if enabled
+    @param pages: list of tab page names
+    -->
+    <ul uk-tab>
+        {{range .pages}}
+        <li class="uk-active" id="{{.}}-tab"><a href="#">{{.}}</a></li>
+        {{end}}
+    </ul>
+
+    <!-- spacer -->
+    <div class="grow"></div>
+
+    <!-- Counter for testing-->
+    {{template "counter.html" .}}
+
+    <!-- dark mode, one button to rule the night -->
+    <button onclick="toggleDarkMode(document.body)"
+            class="bg-transparent uk-button uk-padding-small">
+        <iconify-icon icon="mdi:theme-light-dark"></iconify-icon>
+    </button>
+
+    {{template "connectStatus.html" .}}
+
+    {{template "dropdown.html" .}}
+</nav>
+
+
+<script>
+    function toggleDarkMode(btn) {
+        console.log("toggleDarkMode")
+        if (btn.classList.contains("uk-dark")) {
+            btn.classList.remove("uk-dark")
+            // btn.classList.add("uk-light")
+        } else {
+            // btn.classList.remove("uk-light")
+            btn.classList.add("uk-dark")
+        }
+    }
+</script>
+
+
+<style>
+    .appbar {
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 15px;
+        padding: 0;
+        padding-right: 5px;
+        height: 62px;
+    }
+
+    .appbar-brand {
+        display: flex;
+        flex-direction: row;
+        height: 100%;
+        flex-wrap: nowrap;
+        align-items: center;
+        padding: 4px;
+        padding-right: 10px;
+    }
+
+</style>
+
+{{end}}

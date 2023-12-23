@@ -9,7 +9,7 @@ import (
 func TestStartStop(t *testing.T) {
 	t.Log("--- TestStartStop ---")
 
-	svc := service.NewHiveovService(8080)
+	svc := service.NewHiveovService(8080, true)
 
 	svc.Start()
 	time.Sleep(time.Second * 3)

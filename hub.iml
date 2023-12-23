@@ -14,5 +14,7 @@
       <excludeFolder url="file://$MODULE_DIR$/../plugins.js/hiveoview/dist" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="assets" level="project" />
+    <orderEntry type="library" name="assets" level="project" />
   </component>
 </module>
