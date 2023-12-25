@@ -5,16 +5,16 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/hiveot/hub/bindings/hiveoview/assets"
-	"github.com/hiveot/hub/bindings/hiveoview/assets/templates/about"
-	"github.com/hiveot/hub/bindings/hiveoview/assets/templates/app"
-	"github.com/hiveot/hub/bindings/hiveoview/assets/templates/dashboard"
-	"github.com/hiveot/hub/bindings/hiveoview/assets/templates/login"
-	"github.com/hiveot/hub/bindings/hiveoview/assets/templates/thingsview"
+	"github.com/hiveot/hub/bindings/hiveoview/assets/views/about"
+	"github.com/hiveot/hub/bindings/hiveoview/assets/views/app"
+	"github.com/hiveot/hub/bindings/hiveoview/assets/views/dashboard"
+	"github.com/hiveot/hub/bindings/hiveoview/assets/views/login"
+	"github.com/hiveot/hub/bindings/hiveoview/assets/views/thingsview"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
-	"html/template"
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"time"
 )
 
 // HiveovService operates the html web server.
@@ -26,16 +26,13 @@ type HiveovService struct {
 	shouldUpdate bool
 	router       chi.Router
 
-	// session manager for tracking client sessions
-	sm *session.SessionManager
-
 	// run in debug mode, extra logging and reload templates render
 	debug bool
 }
 
 // setup the chain of routes used by the service and return the router
 // fs is the filesystem containing /static and template files
-func (svc *HiveovService) createRoutes(t *template.Template, staticFS fs.FS) chi.Router {
+func (svc *HiveovService) createRoutes(staticFS fs.FS) chi.Router {
 
 	router := chi.NewRouter()
 
@@ -45,23 +42,34 @@ func (svc *HiveovService) createRoutes(t *template.Template, staticFS fs.FS) chi
 
 	//--- public routes
 	router.Group(func(r chi.Router) {
-		staticFileServer := http.FileServer(http.FS(staticFS))
-		r.Handle("/static/*", staticFileServer)
-		r.Get("/htmx/connectStatus.html", login.GetConnectStatus(t, svc.sm))
-		r.Get("/login", login.GetLogin(t, svc.sm))
-		r.Post("/login", login.PostLogin(t, svc.sm))
-		r.Get("/about", about.GetAbout(t))
-		r.Get("/", app.GetApp(t))
-		// initialize the application components
-		app.InitCounterComp(t, r)
+		staticFileServer := http.FileServer(
+			&StaticFSWrapper{
+				FileSystem:   http.FS(staticFS),
+				FixedModTime: time.Now(),
+			})
+
+		// full page routes
+		r.Get("/static/*", staticFileServer.ServeHTTP)
+		r.Get("/login", login.RenderLogin)
+		r.Post("/login", login.PostLogin)
+		r.Get("/about", about.RenderAbout)
+		//r.Get("/app/about", app.RenderApp(t, "about.html"))
+		r.Get("/app/{pageName}", app.RenderApp)
+		r.Get("/", app.RenderApp)
+
+		// fragment routes
+		r.Get("/htmx/connectStatus.html", login.RenderConnectStatus)
+		r.Get("/htmx/about.html", about.RenderAbout)
+		r.Get("/htmx/counter.html", app.RenderCounter)
 	})
 
 	//--- private routes that requires a valid session
 	router.Group(func(r chi.Router) {
-		r.Use(session.AuthSession(svc.sm))
+		sm := session.GetSessionManager()
+		r.Use(session.AuthSession(sm))
 
-		r.Get("/dashboard", dashboard.GetDashboard(t))
-		r.Get("/things", thingsview.GetThings(t))
+		r.Get("/dashboard", dashboard.RenderDashboard)
+		r.Get("/things", thingsview.RenderThings)
 
 	})
 	return router
@@ -71,22 +79,23 @@ func (svc *HiveovService) Start() {
 
 	// parse all templates for use in the routes
 	// Would like to do ParseFSRecursive("*.html") ... but it doesn't exist
-	//templates, err := template.ParseFS(views.EmbeddedTemplates,
+	//templates, err := template.ParseFS(views.EmbeddedViews,
 	//	"*.html", "login/*.html", "app/*.html", "about/*.html")
-	templates, err := assets.ParseTemplates()
-	if err != nil {
-		slog.Error("Parsing templates failed", "err", err)
-		panic("failed parsing templates")
-	}
+	//templates, err := assets.ParseTemplates()
+	//if err != nil {
+	//	slog.Error("Parsing templates failed", "err", err)
+	//	panic("failed parsing templates")
+	//}
 
 	// setup static resources
 	// add the routes
-	router := svc.createRoutes(templates, assets.EmbeddedStatic)
+	router := svc.createRoutes(assets.EmbeddedStatic)
 
-	// FIXME: change into TLS using a signed server certificate
+	// TODO: change into TLS using a signed server certificate
+	// TODO: set Cache-Control header
 	//err = router.Run(fmt.Sprintf(":%d", svc.port))
 	addr := fmt.Sprintf(":%d", svc.port)
-	err = http.ListenAndServe(addr, router)
+	err := http.ListenAndServe(addr, router)
 	if err != nil {
 		slog.Error("Failed starting server", "err", err)
 		panic("failed starting server")
@@ -117,13 +126,10 @@ func (svc *HiveovService) Stop() {
 // serverPort is the port of the web server will listen on
 // debug to enable debugging output
 func NewHiveovService(serverPort int, debug bool) *HiveovService {
-	sm := session.NewSessionManager()
-
 	svc := HiveovService{
 		port:         serverPort,
 		shouldUpdate: true,
 		debug:        debug,
-		sm:           sm,
 	}
 	return &svc
 }

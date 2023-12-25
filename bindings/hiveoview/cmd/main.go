@@ -15,7 +15,7 @@ const port = 8080 // test port
 func main() {
 
 	env := plugin.GetAppEnvironment("", true)
-	_ = env
+	env.LogLevel = "info" // TODO: remove later
 	logging.SetLogging(env.LogLevel, "")
 	// TODO: get port and debug from config
 

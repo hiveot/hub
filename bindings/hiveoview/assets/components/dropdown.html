@@ -1,83 +1,49 @@
-<!-- dropdown menu that uses focus to hide
-     Once FF support for the proposed 'popover' attribute is live, change this code accordingly
--->
+{{define "dropdown"}}
 
-<div class="dropdown">
-    <button type="button" onclick="togglemenu(this)"
-            class="bg-transparent uk-button"
+<!-- dropdown menu -->
+<div class="uk-inline">
+    <button type="button"
+            class="bg-transparent uk-button uk-button-link round"
     >
         <iconify-icon icon="mdi:menu"></iconify-icon>
     </button>
 
-    <div class="dropdown-content" tabIndex="-1" onfocusout="hideme(this)">
-        <ul>
-            {{range $page := .pages}}
-            <li id="{{$page}}-item">
-                <a href="#{{$page}}">{{$page}}</a>
-            </li>
+    <div uk-dropdown="delay-show:800">
+        <ul class="uk-nav uk-dropdown-nav">
+            {{range $item := .}}
+
+            {{template "menu-item" $item}}
+
             {{end}}
-            <hr style="height:0;color: #d5d7d7">
-            <li>waar light de nadruk nu op?</li>
         </ul>
     </div>
 </div>
 
-<script>
-    function togglemenu(btn) {
-        console.log("togglemenu clicked")
-        let nextEl = btn.nextElementSibling
-        // if (nextEl.style.display === 'block') {
-        if (nextEl.classList.contains('show')) {
-            nextEl.classList.remove('show')
-            // nextEl.style.display = 'none'
-        } else {
-            // nextEl.style.display = 'block'
-            nextEl.classList.add('show')
-            nextEl.focus()
-        }
-    }
+{{end}}
 
-    function hideme(menu) {
-        console.log("hideme")
-        menu.classList.remove('show')
-        // menu.style.display = 'none'
-    }
-</script>
 
-<style>
-    .dropdown {
-        position: relative;
-        display: flex;
-    }
+{{define "menu-item"}}
+<!--show menu as a link, checkbox or divider
+@param .Label with text to show
+@param .Icon to show, if any
+@param .Type == "checkbox", "href", "divider"
+@param .Value to display
+-->
+{{if (eq .Type "checkbox")}}
+<li id=".ID">
+    <a target="_blank">
+        <input id="{{.ID}}-input" type="checkbox" value="{{.Value}}"
+               class="checkbox uk-margin-remove-left "/>
+        <label for="{{.ID}}-input">{{.Label}}</label>
+    </a>
+</li>
+{{else if (eq .Type "divider")}}
+<li class="uk-nav-divider"></li>
+{{else if (eq .Type "link")}}
+<li id=".ID"><a href="{{.Value}}">{{.Label}}</a></li>
+{{else}}
+<li id=".ID"><a href="#" target="_blank">{{.Label}}</a></li>
+{{end}}
 
-    .dropdown-content {
-        display: none;
-        flex-direction: column;
-        position: absolute;
-        right: 2px;
-        transform: translateY(45px);
-        z-index: 1;
+{{end}}
 
-        width: max-content;
-        border-radius: 6px;
-
-        opacity: 1;
-        transition: opacity .5s ease-in-out;
-    }
-
-    /*The dropdown remains visible while it has focus*/
-    /*.dropdown-content:focus {*/
-    .dropdown-content:focus-within {
-        display: block;
-    }
-
-    /*The show class is used to toggle visibility */
-    .show {
-        display: block;
-    }
-
-    iconify-icon {
-        display: flex;
-    }
-
-</style>

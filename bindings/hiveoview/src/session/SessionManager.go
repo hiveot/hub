@@ -86,11 +86,15 @@ func (sm *SessionManager) Close(sessionID string) {
 	delete(sm.sessions, sessionID)
 }
 
-// NewSessionManager returns a new instance of client sessions containing
-// the hub message bus connection.
-func NewSessionManager() *SessionManager {
+// The global session manager instance
+var sessionmanager = func() *SessionManager {
 	sm := &SessionManager{
 		sessions: make(map[string]*SessionInfo),
 	}
 	return sm
+}()
+
+// GetSessionManager returns the sessionManager singleton
+func GetSessionManager() *SessionManager {
+	return sessionmanager
 }

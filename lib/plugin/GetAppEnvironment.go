@@ -25,7 +25,7 @@ type AppEnvironment struct {
 	ConfigFile string `yaml:"configFile,omitempty"` // Application configuration file. Default is clientID.yaml
 	CertsDir   string `yaml:"certsDir,omitempty"`   // Certificates and keys location
 	LogsDir    string `yaml:"logsDir,omitempty"`    // Logging output
-	LogLevel   string `yaml:"logLevel,omitempty"`   // logging level
+	LogLevel   string `yaml:"logLevel,omitempty"`   // logging level: error, warning, info, debug
 	StoresDir  string `yaml:"storesDir,omitempty"`  // Root of the service stores
 
 	// Server
