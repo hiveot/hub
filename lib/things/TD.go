@@ -146,15 +146,17 @@ func (tdoc *TD) AddDimmerEvent(eventID string) *EventAffordance {
 //	name is the event name under which it is stored in the affordance map.
 //	eventType describes the type of event in HiveOT vocabulary if available, or "" if non-standard.
 //	title is the short display title of the event
-//	dataType is the type of data the event holds, WoTDataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
 //	schema optional event data schema or nil if the event doesn't carry any data
-func (tdoc *TD) AddEvent(name string, eventType string, title string, description string, schema *DataSchema) *EventAffordance {
+func (tdoc *TD) AddEvent(
+	name string, eventType string, title string, description string, schema *DataSchema) *EventAffordance {
+
 	evAff := &EventAffordance{
 		EventType:   eventType,
 		Title:       title,
 		Description: description,
 		Data:        schema,
 	}
+
 	tdoc.UpdateEvent(name, evAff)
 	return evAff
 }

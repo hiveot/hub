@@ -36,10 +36,10 @@ const PubKeyFileExt = ".pub"
 type HubClient struct {
 	//serverURL string
 	//caCert    *x509.Certificate
-	clientID         string
-	transport        transports.IHubTransport
-	connectionStatus transports.ConnectionStatus
-	connectionInfo   transports.ConnInfo
+	clientID  string
+	transport transports.IHubTransport
+	//connectionStatus transports.ConnectionStatus
+
 	// keep retrying connection on error (default true)
 	retryConnect atomic.Bool
 
@@ -52,7 +52,7 @@ type HubClient struct {
 
 	actionHandler     func(msg *things.ThingValue) (reply []byte, err error)
 	configHandler     func(msg *things.ThingValue) error
-	connectionHandler func(status transports.ConnectionStatus, info transports.ConnInfo)
+	connectionHandler func(status transports.HubTransportStatus)
 	eventHandler      func(msg *things.ThingValue)
 	rpcHandler        func(msg *things.ThingValue) (reply []byte, err error)
 }
@@ -180,9 +180,9 @@ func (hc *HubClient) Disconnect() {
 	hc.transport.Disconnect()
 }
 
-// ConnectionStatus returns the connection status: connected, connecting or disconnected
-func (hc *HubClient) ConnectionStatus() (stat transports.ConnectionStatus, info string) {
-	return hc.connectionStatus, string(hc.connectionInfo)
+// GetStatus returns the transport connection status
+func (hc *HubClient) GetStatus() transports.HubTransportStatus {
+	return hc.transport.GetStatus()
 }
 
 // LoadCreateKeyPair loads or creates a public/private key pair using the clientID as filename.
@@ -224,24 +224,24 @@ func (hc *HubClient) LoadCreateKeyPair(clientID, keysDir string) (kp keys.IHiveK
 // onConnect is invoked when the connection status changes.
 // This cancels the connection attempt if 'retry' is set to false.
 // This passes the info through to the handler, if set.
-func (hc *HubClient) onConnect(status transports.ConnectionStatus, info transports.ConnInfo) {
-	hc.connectionStatus = status
-	hc.connectionInfo = info
+func (hc *HubClient) onConnect(status transports.HubTransportStatus) {
+	//hc.connectionStatus = status
+	//hc.connectionInfo = info
 	retryConnect := hc.retryConnect.Load()
-	if !retryConnect && status != transports.Connected {
+	if !retryConnect && status.ConnectionStatus != transports.Connected {
 		slog.Warn("disconnecting and not retrying", "clientID", hc.clientID)
 		hc.Disconnect()
-	} else if status == transports.Connected {
+	} else if status.ConnectionStatus == transports.Connected {
 		slog.Warn("connection restored", "clientID", hc.clientID)
-	} else if status == transports.Disconnected {
+	} else if status.ConnectionStatus == transports.Disconnected {
 		slog.Warn("disconnected", "clientID", hc.clientID)
-	} else if status == transports.Connecting {
+	} else if status.ConnectionStatus == transports.Connecting {
 		slog.Warn("retrying to connect", "clientID", hc.clientID)
 	}
 	hc.mux.RLock()
 	defer hc.mux.RUnlock()
 	if hc.connectionHandler != nil {
-		hc.connectionHandler(status, info)
+		hc.connectionHandler(status)
 	}
 }
 
@@ -428,7 +428,7 @@ func (hc *HubClient) SetConfigHandler(handler func(msg *things.ThingValue) error
 }
 
 // SetConnectionHandler sets the callback for connection status changes.
-func (hc *HubClient) SetConnectionHandler(handler func(status transports.ConnectionStatus, info transports.ConnInfo)) {
+func (hc *HubClient) SetConnectionHandler(handler func(status transports.HubTransportStatus)) {
 	hc.mux.Lock()
 	hc.connectionHandler = handler
 	hc.mux.Unlock()

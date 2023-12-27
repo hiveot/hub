@@ -55,12 +55,11 @@ type MqttHubTransport struct {
 	mux             sync.RWMutex
 	_connectID      string
 	_correlData     map[string]chan *paho.Publish
-	_connStatus     transports.ConnectionStatus
-	_connInfo       transports.ConnInfo
+	_status         transports.HubTransportStatus
 	_inboxTopic     string // set on first request, cleared on disconnect
-	_pcl            *autopaho.ConnectionManager
+	_pahoClient     *autopaho.ConnectionManager
 	_subscriptions  map[string]bool
-	_connectHandler func(status transports.ConnectionStatus, info transports.ConnInfo)
+	_connectHandler func(status transports.HubTransportStatus)
 	_eventHandler   func(addr string, payload []byte)
 	_requestHandler func(addr string, payload []byte) (reply []byte, err error, donotreply bool)
 }
@@ -77,7 +76,7 @@ func (tp *MqttHubTransport) AddressTokens() (sep string, wc string, rem string) 
 //	conn network connection to utilize
 func (tp *MqttHubTransport) Connect(credentials string) error {
 	tp.mux.RLock()
-	if tp._pcl != nil {
+	if tp._pahoClient != nil {
 		tp.mux.RUnlock()
 		return fmt.Errorf("already connected")
 	}
@@ -140,11 +139,13 @@ func (tp *MqttHubTransport) Connect(credentials string) error {
 		autoCfg.PahoDebug = logger
 	}
 
+	// Warning, can't use WithTimeout as it will disconnect the perfectly good
+	// connection after the timeout has passed.
 	ctx := context.Background()
 	pcl, err := autopaho.NewConnection(ctx, autoCfg)
 	tp.mux.Lock()
 	tp._connectID = connectID
-	tp._pcl = pcl
+	tp._pahoClient = pcl
 	tp.mux.Unlock()
 	// Wait for the connection to come up
 	err = pcl.AwaitConnection(ctx)
@@ -227,8 +228,8 @@ func (tp *MqttHubTransport) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
 func (tp *MqttHubTransport) Disconnect() {
 	tp.mux.Lock()
 	slog.Info("Disconnecting", "cid", tp._connectID)
-	pcl := tp._pcl
-	tp._pcl = nil
+	pcl := tp._pahoClient
+	tp._pahoClient = nil
 	tp.mux.Unlock()
 	if pcl != nil {
 		//time.Sleep(time.Millisecond * 10) // Disconnect doesn't seem to wait for all messages. A small delay ahead helps
@@ -236,14 +237,19 @@ func (tp *MqttHubTransport) Disconnect() {
 		tp._inboxTopic = ""
 		tp._connectID = ""
 		slog.Info("clearing connectid")
-		tp._connStatus = transports.Disconnected
-		tp._connInfo = "disconnected by user"
+		tp._status.ConnectionStatus = transports.Disconnected
+		tp._status.LastError = "disconnected by user"
 		err := pcl.Disconnect(context.Background())
 		if err != nil {
 			slog.Error("disconnect error", "err", err)
 		}
 		tp.mux.Unlock()
 	}
+}
+
+// GetStatus Return the transport connection info
+func (tp *MqttHubTransport) GetStatus() transports.HubTransportStatus {
+	return tp._status
 }
 
 // handleMessage handles incoming request, reply and event messages
@@ -312,8 +318,8 @@ func (tp *MqttHubTransport) handleMessage(m *paho.Publish) {
 
 func (tp *MqttHubTransport) onPahoConnect(cm *autopaho.ConnectionManager, connAck *paho.Connack) {
 	tp.mux.Lock()
-	tp._connStatus = transports.Connected
-	tp._connInfo = ""
+	tp._status.ConnectionStatus = transports.Connected
+	tp._status.LastError = transports.ConnErrNone
 	subList := make([]string, 0, len(tp._subscriptions))
 	for topic := range tp._subscriptions {
 		subList = append(subList, topic)
@@ -329,7 +335,7 @@ func (tp *MqttHubTransport) onPahoConnect(cm *autopaho.ConnectionManager, connAc
 		}
 		// now subscriptions have been restored, inform subscriber
 		tp.mux.RLock()
-		tp._connectHandler(tp._connStatus, "")
+		tp._connectHandler(tp._status)
 		tp.mux.RUnlock()
 	}()
 }
@@ -337,7 +343,7 @@ func (tp *MqttHubTransport) onPahoConnect(cm *autopaho.ConnectionManager, connAc
 // paho reports an error but will keep trying until disconnect is called
 func (tp *MqttHubTransport) onPahoConnectionError(err error) {
 	go func() {
-		connInfo := transports.ConnInfoNetworkDisconnected
+		connErr := transports.ConnErrNetworkDisconnected
 		connStatus := transports.Connecting
 		// possible causes:
 		// 1. wrong credentials - inform user, dont repeat or do repeat?
@@ -347,28 +353,28 @@ func (tp *MqttHubTransport) onPahoConnectionError(err error) {
 		switch et := err.(type) {
 		case *autopaho.ConnackError:
 			if et.ReasonCode == 134 {
-				connInfo = transports.ConnInfoUnauthorized
+				connErr = transports.ConnErrUnauthorized
 				slog.Error("authentication error", "clientID", tp.clientID, "err", err)
 			} else {
-				connInfo = transports.ConnInfoNetworkDisconnected
+				connErr = transports.ConnErrNetworkDisconnected
 				slog.Error("connection error", "clientID", tp.clientID, "err", err)
 			}
 		default:
-			connInfo = transports.ConnInfoNetworkDisconnected
+			connErr = transports.ConnErrNetworkDisconnected
 			slog.Error("connection error", "clientID", tp.clientID, "err", err)
 		}
 		// notify on change
 		tp.mux.RLock()
-		oldStatus := tp._connStatus
-		oldInfo := tp._connInfo
+		oldStatus := tp._status.ConnectionStatus
+		oldErr := tp._status.LastError
 		tp.mux.RUnlock()
-		if connStatus != oldStatus || connInfo != oldInfo {
+		if connStatus != oldStatus || connErr != oldErr {
 			tp.mux.Lock()
-			tp._connStatus = connStatus
-			tp._connInfo = connInfo
+			tp._status.ConnectionStatus = connStatus
+			tp._status.LastError = connErr
 			connHandler := tp._connectHandler
 			tp.mux.Unlock()
-			connHandler(connStatus, connInfo)
+			connHandler(tp._status)
 		}
 	}()
 }
@@ -381,13 +387,11 @@ func (tp *MqttHubTransport) onPahoServerDisconnect(d *paho.Disconnect) {
 		tp.mux.Lock()
 		slog.Warn("OnDisconnect: Disconnected by server",
 			"clientID", tp.clientID, "cid", tp._connectID)
-		newStatus := transports.Connecting
-		newInfo := transports.ConnInfoServerDisconnected
-		tp._connStatus = newStatus
-		tp._connInfo = newInfo
+		tp._status.ConnectionStatus = transports.Connecting
+		tp._status.LastError = transports.ConnErrServerDisconnected
 		connHandler := tp._connectHandler
 		tp.mux.Unlock()
-		connHandler(newStatus, newInfo)
+		connHandler(tp._status)
 	}()
 }
 
@@ -425,7 +429,7 @@ func (tp *MqttHubTransport) PubEvent(topic string, payload []byte) (err error) {
 	}
 	tp.mux.RLock()
 	defer tp.mux.RUnlock()
-	pcl := tp._pcl
+	pcl := tp._pahoClient
 	if pcl != nil {
 		_, err = pcl.Publish(ctx, pubMsg)
 	} else {
@@ -443,7 +447,7 @@ func (tp *MqttHubTransport) PubRequest(topic string, payload []byte) (resp []byt
 	defer cancelFn()
 
 	tp.mux.Lock()
-	pcl := tp._pcl
+	pcl := tp._pahoClient
 	if pcl == nil {
 		tp.mux.Unlock()
 		return nil, fmt.Errorf("connection lost")
@@ -552,7 +556,7 @@ func (tp *MqttHubTransport) sendReply(req *paho.Publish, payload []byte, errResp
 		replyMsg.Payload = []byte(errResp.Error())
 	}
 	tp.mux.RLock()
-	pcl := tp._pcl
+	pcl := tp._pahoClient
 	tp.mux.RUnlock()
 	if pcl == nil {
 		err = errors.New("connection lost")
@@ -570,7 +574,7 @@ func (tp *MqttHubTransport) sendReply(req *paho.Publish, payload []byte, errResp
 }
 
 // SetConnectHandler sets the notification handler of connection status changes
-func (tp *MqttHubTransport) SetConnectHandler(cb func(status transports.ConnectionStatus, info transports.ConnInfo)) {
+func (tp *MqttHubTransport) SetConnectHandler(cb func(status transports.HubTransportStatus)) {
 	if cb == nil {
 		panic("nil handler not allowed")
 	}
@@ -612,7 +616,7 @@ func (tp *MqttHubTransport) sub(topic string) error {
 		},
 	}
 	tp.mux.RLock()
-	suback, err := tp._pcl.Subscribe(context.Background(), packet)
+	suback, err := tp._pahoClient.Subscribe(context.Background(), packet)
 	tp.mux.RUnlock()
 	_ = suback
 	return err
@@ -637,7 +641,7 @@ func (tp *MqttHubTransport) Unsubscribe(topic string) {
 		Topics: []string{topic},
 	}
 	tp.mux.Lock()
-	ack, err := tp._pcl.Unsubscribe(context.Background(), packet)
+	ack, err := tp._pahoClient.Unsubscribe(context.Background(), packet)
 	_ = ack
 	if err != nil {
 		slog.Error("Unable to unsubscribe from topic", "topic", topic)
@@ -671,11 +675,20 @@ func NewMqttTransport(fullURL string, clientID string, caCert *x509.Certificate)
 		timeout:        time.Second * 10, // 10 for testing
 		_correlData:    make(map[string]chan *paho.Publish),
 		_subscriptions: make(map[string]bool),
-		_connStatus:    transports.Disconnected,
 		// default, log status
-		_connectHandler: func(status transports.ConnectionStatus, info transports.ConnInfo) {
+		_connectHandler: func(status transports.HubTransportStatus) {
 			slog.Info("connection status change",
-				"newStatus", status, "info", info, "clientID", clientID)
+				"newStatus", status.ConnectionStatus,
+				"lastError", status.LastError,
+				"clientID", clientID)
+		},
+		_status: transports.HubTransportStatus{
+			CaCert:           caCert,
+			HubURL:           fullURL,
+			ClientID:         clientID,
+			ConnectionStatus: transports.Disconnected,
+			LastError:        transports.ConnErrNone,
+			Core:             "mqtt",
 		},
 	}
 	return hc

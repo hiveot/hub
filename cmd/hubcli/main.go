@@ -108,6 +108,7 @@ func main() {
 			setup.SetupCommand(&env),
 
 			authcli.AuthAddUserCommand(&hc),
+			authcli.AuthAddServiceCommand(&hc, env.CertsDir),
 			authcli.AuthListClientsCommand(&hc),
 			authcli.AuthRemoveClientCommand(&hc),
 			authcli.AuthSetPasswordCommand(&hc),

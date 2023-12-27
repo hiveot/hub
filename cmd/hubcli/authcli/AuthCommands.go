@@ -1,19 +1,24 @@
 package authcli
 
 import (
+	"errors"
 	"fmt"
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/utils"
 	"golang.org/x/exp/rand"
+	"log/slog"
+	"os"
+	"path"
 	"strings"
 	"time"
 
 	"github.com/urfave/cli/v2"
 )
 
-// AuthnAddUserCommand adds a user
+// AuthAddUserCommand adds a user
 func AuthAddUserCommand(hc **hubclient.HubClient) *cli.Command {
 	displayName := ""
 	role := ""
@@ -49,6 +54,35 @@ func AuthAddUserCommand(hc **hubclient.HubClient) *cli.Command {
 			}
 			loginID := cCtx.Args().Get(0)
 			err := HandleAddUser(*hc, loginID, displayName, role)
+			return err
+		},
+	}
+}
+
+// AuthAddServiceCommand adds a service with key and auth token
+func AuthAddServiceCommand(hc **hubclient.HubClient, certsDir string) *cli.Command {
+	displayName := ""
+
+	return &cli.Command{
+		Name:      "addsvc",
+		Usage:     "Add a service with its key and auth token in the certs folder.",
+		ArgsUsage: "<serviceID>",
+		Category:  "auth",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "name",
+				Usage:       "set a display name",
+				Value:       displayName,
+				Destination: &displayName,
+			},
+		},
+		Action: func(cCtx *cli.Context) error {
+			if cCtx.NArg() != 1 {
+				err := fmt.Errorf("expected 1 argument")
+				return err
+			}
+			serviceID := cCtx.Args().First()
+			err := HandleAddService(*hc, serviceID, displayName, certsDir)
 			return err
 		},
 	}
@@ -147,6 +181,44 @@ func HandleAddUser(
 	} else {
 		// no need to show the given password
 		fmt.Println("User " + loginID + " added successfully")
+	}
+	return err
+}
+
+// HandleAddService adds a service with key and token
+//
+//	loginID is required
+//	displayName is optional
+//	certsDir with directory to store keys/token
+func HandleAddService(
+	hc *hubclient.HubClient, serviceID string, displayName string, certsDir string) (err error) {
+	var kp keys.IHiveKey
+	//TODO: use standardized extensions from launcher
+	keyFile := serviceID + ".key"
+	authClient := authclient.NewManageClients(hc)
+
+	// if a key exists, use it
+	keyPath := path.Join(certsDir, keyFile)
+	if _, err = os.Stat(keyPath); errors.Is(err, os.ErrNotExist) {
+		kp = hc.CreateKeyPair()
+		err = kp.ExportPrivateToFile(keyPath)
+	} else {
+		kp = hc.CreateKeyPair()
+		err = kp.ImportPrivateFromFile(keyPath)
+	}
+	if err != nil {
+		slog.Error("Failed creating or loading key", "err", err.Error())
+		return
+	}
+	_, err = authClient.AddService(serviceID, displayName, kp.ExportPrivate())
+
+	// service needs an auth token
+	//tokenFile := serviceID + ".token"
+	//tokenPath := path.Join(certsDir, tokenFile)
+	//err = authClient.CreateToken(tokenPath)
+
+	if err != nil {
+		fmt.Println("Error: " + err.Error())
 	}
 	return err
 }

@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,10 +37,13 @@ func newIdProvService() (
 	stopFn func()) {
 
 	hc, err := testServer.AddConnectClient(idprovapi.ServiceName, authapi.ClientTypeService, authapi.ClientRoleService)
+	if err != nil {
+		panic("failed connecting to the hub: " + err.Error())
+	}
 	svc = service.NewIdProvService(testPort, testServer.CertBundle.ServerCert, testServer.CertBundle.CaCert)
 	err = svc.Start(hc)
 	if err != nil {
-		panic("failed starting service")
+		panic("failed starting service: " + err.Error())
 	}
 
 	// create an end user client for testing
@@ -73,6 +77,7 @@ func TestStartStop(t *testing.T) {
 	svc, mngCl, stopFn := newIdProvService()
 	_ = svc
 	_ = mngCl
+	time.Sleep(time.Second)
 	stopFn()
 }
 

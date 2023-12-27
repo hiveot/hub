@@ -8,6 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"log/slog"
 	"os"
+	"os/user"
 	"path"
 	"path/filepath"
 	"strings"
@@ -18,7 +19,7 @@ import (
 // This contains folder locations, CA certificate and application clientID
 type AppEnvironment struct {
 	// Directories
-	BinDir     string `yaml:"binDir,omitempty"`     // Application binary folder, eg launcher, cli, ...
+	BinDir     string `yaml:"binDir,omitempty"`     // Application binary folder, e.g. launcher, cli, ...
 	PluginsDir string `yaml:"pluginsDir,omitempty"` // Plugin folder
 	HomeDir    string `yaml:"homeDir,omitempty"`    // Home folder, default this is the parent of bin, config, certs and logs
 	ConfigDir  string `yaml:"configDir,omitempty"`  // config folder with application and configuration files
@@ -114,9 +115,9 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 	var logsDir string
 	var storesDir string
 	clientID := path.Base(os.Args[0])
-	loglevel := os.Getenv("LOGLEVEL")
-	if loglevel == "" {
-		loglevel = "warning"
+	logLevel := os.Getenv("LOGLEVEL")
+	if logLevel == "" {
+		logLevel = "warning"
 	}
 	serverURL := ""
 	//serverCore := ""
@@ -139,7 +140,7 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 		flag.StringVar(&configDir, "config", configDir, "Configuration directory")
 		flag.StringVar(&configFile, "configFile", configFile, "Configuration file")
 		flag.StringVar(&clientID, "clientID", clientID, "Application clientID to authenticate with")
-		flag.StringVar(&loglevel, "loglevel", loglevel, "logging level: debug, warning, info, error")
+		flag.StringVar(&logLevel, "logLevel", logLevel, "logging level: debug, warning, info, error")
 		flag.StringVar(&serverURL, "server", serverURL, "server URL or empty for auto-detect")
 		if flag.Usage == nil {
 			flag.Usage = func() {
@@ -151,7 +152,10 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 		}
 		flag.Parse()
 	}
-	if !path.IsAbs(homeDir) {
+	if strings.HasPrefix(homeDir, "~") {
+		usr, _ := user.Current()
+		homeDir = path.Join(usr.HomeDir, homeDir[1:])
+	} else if !path.IsAbs(homeDir) {
 		cwd, _ := os.Getwd()
 		homeDir = path.Join(cwd, homeDir)
 	}
@@ -173,7 +177,6 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 		logsDir = filepath.Join("/var", "log", "hiveot")
 		storesDir = filepath.Join("/var", "lib", "hiveot")
 	} else { // use application parent dir
-		//slog.Infof("homeDir is '%s", homeDir)
 		binDir = filepath.Join(homeDir, "bin")
 		pluginsDir = filepath.Join(homeDir, "plugins")
 		certsDir = filepath.Join(homeDir, "certs")
@@ -203,7 +206,7 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 		ConfigFile: configFile,
 		CertsDir:   certsDir,
 		LogsDir:    logsDir,
-		LogLevel:   loglevel,
+		LogLevel:   logLevel,
 		StoresDir:  storesDir,
 		ClientID:   clientID,
 		KeyFile:    keyFile,

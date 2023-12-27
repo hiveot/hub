@@ -47,10 +47,10 @@ func TestReconnect(t *testing.T) {
 		slog.Info("received event")
 		rxChan <- string(tv.Data)
 	})
-	hc1.SetConnectionHandler(func(status transports.ConnectionStatus, info transports.ConnInfo) {
-		t.Logf("onconnect callback: status=%s, info=%s", status, info)
-		if status == transports.Connected {
-			connectedCh <- status
+	hc1.SetConnectionHandler(func(status transports.HubTransportStatus) {
+		t.Logf("onconnect callback: status=%s, info=%s", status.ConnectionStatus, status.LastError)
+		if status.ConnectionStatus == transports.Connected {
+			connectedCh <- status.ConnectionStatus
 		}
 	})
 
@@ -70,8 +70,8 @@ func TestReconnect(t *testing.T) {
 		cancelFn()
 	}
 	//time.Sleep(time.Second * 30)
-
-	require.Equal(t, transports.Connected, hc1.ConnectionStatus(), "connection not reestablished")
+	currentStatus := hc1.GetStatus()
+	require.Equal(t, transports.Connected, currentStatus.ConnectionStatus, "connection not reestablished")
 	require.Equal(t, transports.Connected, connectStatus)
 
 	// check if subscription is restored as well

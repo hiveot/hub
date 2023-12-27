@@ -53,7 +53,7 @@ type IdProvService struct {
 func (svc *IdProvService) Start(hc *hubclient.HubClient) (err error) {
 	slog.Warn("Starting the provisioning service", "clientID", hc.ClientID())
 	svc.hc = hc
-	svc.Stop()
+	//svc.Stop()
 	svc.mng = StartManageIdProvService(svc.hc)
 	if err != nil {
 		return err

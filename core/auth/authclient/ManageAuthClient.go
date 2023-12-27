@@ -33,7 +33,8 @@ func (cl *ManageClients) AddDevice(
 	return resp.Token, err
 }
 
-// AddService adds a service.
+// AddService adds a service with the given serviceID
+// To generate a key/token use the ProfileClient
 func (cl *ManageClients) AddService(
 	serviceID string, displayName string, pubKey string) (string, error) {
 

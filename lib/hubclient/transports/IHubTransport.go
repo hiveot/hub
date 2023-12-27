@@ -1,6 +1,9 @@
 package transports
 
-import "github.com/hiveot/hub/lib/keys"
+import (
+	"crypto/x509"
+	"github.com/hiveot/hub/lib/keys"
+)
 
 // ISubscription interface to underlying subscription mechanism
 type ISubscription interface {
@@ -14,6 +17,8 @@ const (
 	Connecting ConnectionStatus = "connecting"
 	// Connected and authenticated successful
 	Connected ConnectionStatus = "connected"
+	// Expired authentication token
+	Expired ConnectionStatus = "expired"
 	// Disconnected by client or not yet connected
 	Disconnected ConnectionStatus = "disconnected"
 	// ConnectFailed after failure to connect
@@ -21,19 +26,35 @@ const (
 	ConnectFailed ConnectionStatus = "connectFailed"
 )
 
-// ConnInfo last error information
-type ConnInfo string
+// ConnErr last error information
 
 const (
-	// ConnInfoUnauthorized credentials invalid
-	ConnInfoUnauthorized ConnInfo = "unauthorized"
-	// ConnInfoUnreachable unable to reach the server during the initial connection attempt
-	ConnInfoUnreachable ConnInfo = "unreachable"
-	// ConnInfoServerDisconnected a server disconnect message was received.
-	ConnInfoServerDisconnected ConnInfo = "serverDisconnected"
-	// ConnInfoNetworkDisconnected connection has dropped. Caused by disconnecting the network somewhere
-	ConnInfoNetworkDisconnected ConnInfo = "networkDisconnected"
+	ConnErrNone = ""
+	// ConnErrUnauthorized credentials invalid
+	ConnErrUnauthorized = "unauthorized"
+	// ConnErrUnreachable unable to reach the server during the initial connection attempt
+	ConnErrUnreachable = "unreachable"
+	// ConnErrServerDisconnected a server disconnect message was received.
+	ConnErrServerDisconnected = "serverDisconnected"
+	// ConnErrNetworkDisconnected connection has dropped. Caused by disconnecting the network somewhere
+	ConnErrNetworkDisconnected = "networkDisconnected"
 )
+
+type HubTransportStatus struct {
+	// URL of the hub
+	HubURL string
+	// CA used to connect
+	CaCert *x509.Certificate
+	// The transport core, eg mqtt or nats
+	Core string
+	// the client ID to identify as
+	ClientID string
+
+	// The current connection status
+	ConnectionStatus ConnectionStatus
+	// The last connection error message, if any
+	LastError string
+}
 
 // IHubTransport defines the interface of the transport that connects to the messaging server.
 type IHubTransport interface {
@@ -64,6 +85,9 @@ type IHubTransport interface {
 	// This removes all subscriptions.
 	Disconnect()
 
+	// GetStatus returns the current transport connection status
+	GetStatus() HubTransportStatus
+
 	// PubEvent publishes an event style message without waiting for a response.
 	//	address to publish on
 	//	payload with serialized message to publish
@@ -76,7 +100,7 @@ type IHubTransport interface {
 	PubRequest(address string, payload []byte) (reply []byte, err error)
 
 	// SetConnectHandler sets the notification handler of connection status changes
-	SetConnectHandler(cb func(status ConnectionStatus, info ConnInfo))
+	SetConnectHandler(cb func(status HubTransportStatus))
 
 	// SetEventHandler set the single handler that receives all subscribed events.
 	// Messages are considered events when they do not have a reply-to address.

@@ -18,9 +18,6 @@ import (
 	"time"
 )
 
-// CoreID The core has a predefined ID
-const CoreID = "core"
-
 // LauncherService manages starting and stopping of plugins
 // This implements the ILauncher interface
 type LauncherService struct {
@@ -49,15 +46,15 @@ type LauncherService struct {
 }
 
 // Add discovered core to svc.plugins
-func (svc *LauncherService) addCore() error {
-	if svc.cfg.CoreBin != "" {
-		corePath := path.Join(svc.env.BinDir, svc.cfg.CoreBin)
+func (svc *LauncherService) addCore(coreBin string) error {
+	if coreBin != "" {
+		corePath := path.Join(svc.env.BinDir, coreBin)
 		coreInfo, err := os.Stat(corePath)
 		if err != nil {
 			err = fmt.Errorf("findCore. core in config not found. Path=%s", corePath)
 			return err
 		}
-		pluginInfo, found := svc.plugins[CoreID]
+		pluginInfo, found := svc.plugins[coreBin]
 		if found {
 			// update existing entry for core
 			pluginInfo.ModifiedTime = coreInfo.ModTime().Format(time.RFC3339)
@@ -72,7 +69,7 @@ func (svc *LauncherService) addCore() error {
 			}
 			pluginInfo.ModifiedTime = coreInfo.ModTime().Format(time.RFC3339)
 			pluginInfo.Size = coreInfo.Size()
-			svc.plugins[CoreID] = pluginInfo
+			svc.plugins[coreBin] = pluginInfo
 		}
 	}
 	return nil
@@ -171,9 +168,10 @@ func (svc *LauncherService) Start() error {
 	slog.Warn("Starting LauncherService", "clientID", svc.env.ClientID)
 	svc.isRunning.Store(true)
 
-	// include the core
-	if svc.cfg.CoreBin != "" {
-		err := svc.addCore()
+	// include the core message server
+	coreBin := svc.cfg.CoreBin
+	if coreBin != "" {
+		err := svc.addCore(coreBin)
 		if err != nil {
 			slog.Error(err.Error())
 			return err
@@ -188,16 +186,16 @@ func (svc *LauncherService) Start() error {
 
 	// 2: start the core, if configured
 	svc.mux.Lock()
-	_, foundCore := svc.plugins[CoreID]
+	_, foundCore := svc.plugins[coreBin]
 	svc.mux.Unlock()
 	if foundCore {
-		// core is added
-		_, err = svc._startPlugin(CoreID)
+		// core is added and starts first
+		_, err = svc._startPlugin(coreBin)
 		if err != nil {
-			slog.Error("Starting core failed", "CoreID", CoreID, "err", err)
+			slog.Error("Starting core failed", "coreBin", coreBin, "err", err)
 			return err
 		} else {
-			slog.Warn("core started successfully", "CoreID", CoreID)
+			slog.Warn("core started successfully", "coreBin", coreBin)
 
 		}
 	}

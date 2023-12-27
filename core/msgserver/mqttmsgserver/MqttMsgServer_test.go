@@ -178,7 +178,7 @@ func TestConnectBadCredentials(t *testing.T) {
 
 	//key, _ := certs.CreateECDSAKeys()
 	cl := newTransport(srv, TestUser1ID, certBundle.CaCert)
-	cl.SetConnectHandler(func(stat transports.ConnectionStatus, info transports.ConnInfo) {
+	cl.SetConnectHandler(func(stat transports.HubTransportStatus) {
 		go cl.Disconnect()
 	})
 	err = cl.ConnectWithPassword("wrong password")

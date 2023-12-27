@@ -2,6 +2,7 @@
 <nav uk-navbar class="appHead uk-navbar-container uk-navbar-transparent">
     <div class="appBrand uk-navbar">
         <a class="uk-link-muted appBrand" href="/">
+            <!-- set style to prevent flashing large logo on initial render-->
             <img src="/static/logo.svg" class="appBrand">
         </a>
         <label>HiveOT</label>
@@ -36,6 +37,7 @@
     .appHead {
         /*background-color: transparent;*/
         /*width: 100%;*/
+        max-height: 62px;
         display: flex;
         flex-direction: row;
         flex-wrap: nowrap;
@@ -44,11 +46,19 @@
         padding: 0;
         padding-right: 5px;
         height: 62px;
+
+        /*Header buttons are smaller*/
+
+        .uk-button {
+            margin: 0;
+            padding: 3px 3px;
+        }
     }
 
     .appBrand {
         display: flex;
         /*tame the SVG icons size*/
+        max-height: 60px;
         height: 90%;
         flex-direction: row;
         flex-wrap: nowrap;

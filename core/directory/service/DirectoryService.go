@@ -44,7 +44,7 @@ func (svc *DirectoryService) handleTDEvent(event *things.ThingValue) {
 	}
 }
 
-// Start the directory service and publish the service's own TD
+// Start the directory service and publish the service's own TD.
 // This subscribes to pubsub TD events and updates the directory.
 func (svc *DirectoryService) Start(hc *hubclient.HubClient) (err error) {
 	slog.Warn("Starting DirectoryService", "clientID", hc.ClientID())

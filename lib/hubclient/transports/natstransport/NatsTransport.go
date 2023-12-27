@@ -32,11 +32,13 @@ type NatsTransport struct {
 	nc        *nats.Conn
 	js        nats.JetStreamContext
 	serverURL string
+	caCert    *x509.Certificate
 	// TLS configuration to use in connecting
 	tlsConfig *tls.Config
 	timeout   time.Duration
+	status    transports.HubTransportStatus
 
-	connectHandler func(status transports.ConnectionStatus, info transports.ConnInfo)
+	connectHandler func(status transports.HubTransportStatus)
 	eventHandler   func(addr string, payload []byte)
 	requestHandler func(addr string, payload []byte) (reply []byte, err error, donotreply bool)
 }
@@ -145,6 +147,8 @@ func (nt *NatsTransport) ConnectWithPassword(password string) (err error) {
 		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSec)))
 	if err == nil {
 		nt.js, err = nt.nc.JetStream()
+	} else {
+
 	}
 	return err
 }
@@ -182,6 +186,11 @@ func (nt *NatsTransport) Disconnect() {
 	nt.nc.Close()
 }
 
+// GetStatus Return the transport connection info
+func (nt *NatsTransport) GetStatus() transports.HubTransportStatus {
+	return nt.status
+}
+
 // JS Returns the JetStream client (nats specific)
 func (nt *NatsTransport) JS() nats.JetStreamContext {
 	return nt.js
@@ -189,15 +198,22 @@ func (nt *NatsTransport) JS() nats.JetStreamContext {
 
 // handle connected to the server
 func (nt *NatsTransport) onConnected(c *nats.Conn) {
-	nt.connectHandler(transports.Connected, "")
+	nt.status.ConnectionStatus = transports.Connected
+	nt.status.LastError = transports.ConnErrNone
+	nt.connectHandler(nt.status)
 }
 
 // handle disconnect from the server
 func (nt *NatsTransport) onDisconnect(c *nats.Conn, err error) {
-	// FIXME: should this be retrying instead?
-	// What reason can we give?
-	info := transports.ConnInfoNetworkDisconnected
-	nt.connectHandler(transports.Disconnected, info)
+	// FIXME: how to differentiate between intentional and unintended disconnect?
+	// Is it important?
+	nt.status.ConnectionStatus = transports.Disconnected
+	if err != nil {
+		nt.status.LastError = err.Error()
+	} else {
+		nt.status.LastError = transports.ConnErrNone
+	}
+	nt.connectHandler(nt.status)
 }
 
 // onMessage handles incoming request and event messages
@@ -343,7 +359,7 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *things.Thing
 }
 
 // SetConnectHandler sets the notification handler of connection status changes
-func (nt *NatsTransport) SetConnectHandler(cb func(status transports.ConnectionStatus, info transports.ConnInfo)) {
+func (nt *NatsTransport) SetConnectHandler(cb func(status transports.HubTransportStatus)) {
 	if cb == nil {
 		panic("nil handler not allowed")
 	}
@@ -495,14 +511,24 @@ func NewNatsTransport(url string, clientID string, caCert *x509.Certificate) *Na
 		RootCAs:            caCertPool,
 		InsecureSkipVerify: caCert == nil,
 	}
-	hc := &NatsTransport{
+	tp := &NatsTransport{
 		serverURL: url,
+		caCert:    caCert,
 		clientID:  clientID,
 		timeout:   time.Duration(DefaultTimeoutSec) * time.Second,
 		tlsConfig: tlsConfig,
-		connectHandler: func(status transports.ConnectionStatus, info transports.ConnInfo) {
-			slog.Info("connection status change", "newStatus", status, "info", info)
+		connectHandler: func(status transports.HubTransportStatus) {
+			slog.Info("connection status change", "newStatus", status.ConnectionStatus, "last error", status.LastError)
+		},
+		status: transports.HubTransportStatus{
+			CaCert:           caCert,
+			HubURL:           url,
+			ClientID:         clientID,
+			ConnectionStatus: transports.Disconnected,
+			LastError:        "",
+			Core:             "nats",
 		},
 	}
-	return hc
+
+	return tp
 }

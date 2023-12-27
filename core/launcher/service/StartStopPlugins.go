@@ -25,15 +25,14 @@ import (
 // This places a mux lock until start is complete.
 func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.PluginInfo, err error) {
 
-	slog.Warn("Starting plugin " + pluginName)
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 
 	// step 1: pre-checks
 	pluginInfo := svc.plugins[pluginName]
 	if pluginInfo == nil {
-		err = fmt.Errorf("plugin '%s' not found", pluginName)
-		slog.Error("plugin not found", "name", pluginName)
+		err = fmt.Errorf("plugin ID '%s' not found", pluginName)
+		slog.Error("_startPlugin: plugin not found", "name", pluginName)
 		return pi, err
 	}
 	if pluginInfo.Running {
@@ -42,6 +41,8 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 			slog.String("StartTime", utils.FormatMSE(pluginInfo.StartTimeMSE, true)))
 		return *pluginInfo, nil
 	}
+	slog.Warn("_startPlugin", "pluginName", pluginName, "path", pluginInfo.Path)
+
 	// don't start twice
 	for _, cmd := range svc.cmds {
 		if cmd.Path == pluginInfo.Path {
@@ -99,7 +100,7 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 		}
 	}
 	// step 4: add the serviceID as a client and generate its credentials
-	if pluginName != CoreID {
+	if pluginName != svc.cfg.CoreBin {
 		tokenPath := path.Join(svc.env.CertsDir, pluginName+".token")
 
 		slog.Info("Adding plugin service client with key and token",
@@ -245,7 +246,7 @@ func (svc *LauncherService) StopAllPlugins(ctx hubclient.ServiceContext,
 
 	svc.mux.Unlock()
 
-	// stop each service
+	// stop each service in reverse order
 	for i := len(cmdsToStop) - 1; i >= 0; i-- {
 		c := cmdsToStop[i]
 		if !args.IncludingCore && svc.cfg.CoreBin != "" && strings.HasSuffix(c.Path, svc.cfg.CoreBin) {

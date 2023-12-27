@@ -39,11 +39,19 @@
 </li>
 {{else if (eq .Type "divider")}}
 <li class="uk-nav-divider"></li>
-{{else if (eq .Type "link")}}
-<li id=".ID"><a href="{{.Value}}">{{.Label}}</a></li>
 {{else}}
-<li id=".ID"><a href="#" target="_blank">{{.Label}}</a></li>
+
+{{if (eq .Type "link")}}
+<li id=".ID">
+    <i name="{{.Icon}}" height="12"></i>
+    <a href="{{.Value}}">{{.Label}}</a>
+</li>
+{{else}}
+<li id=".ID">
+    <i name="{{.Icon}}" height="12"></i>
+    <a href="#" target="_blank">{{.Label}}</a>
+</li>
 {{end}}
 
 {{end}}
-
+{{end}}

@@ -4,7 +4,6 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <meta name="description" content="Hive Of Things Viewer">
-    <meta http-equiv="Cache-control" content="public, max-age=14400">
     <link rel="icon" href="/static/favicon.png"/>
     <link rel="stylesheet" href="/static/css/uikit-3.17.11.min.css"/>
     <script src="/static/htmx.min.js"></script>
@@ -14,7 +13,18 @@
     <title>{{.Title}}</title>
 </head>
 
-<body onload="if (localStorage.getItem('dark-mode')=='on') {document.body.classList.add('dark-mode')}">
+<script>
+    console.log("setting mode")
+
+    function showBody() {
+        if (localStorage.getItem('dark-mode') == 'on') {
+            document.body.classList.add('dark-mode')
+        }
+        document.body.hidden = false
+    }
+</script>
+
+<body onload="showBody()" hidden>
 {{block "embed" .}} main template {{end}}
 </body>
 </html>
@@ -163,7 +173,7 @@
     }
 
     .uk-button, .uk-button-default, .uk-button-link, .uk-button-text {
-        padding: 5px;
+        padding: 3px 15px;
         /*vertical align for text and icons*/
         display: flex;
         margin: 5px;
