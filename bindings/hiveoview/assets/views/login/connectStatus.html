@@ -3,10 +3,9 @@
 @param conn_status: "connected", "disconnected", or connection error
 -->
 <button hx-get="/htmx/connectStatus.html" hx-trigger="click" hx-swap="outerHTML"
-        class="bg-transparent uk-button uk-padding-small">
-
-    <iconify-icon icon="mdi:link-off"
-                  uk-tooltip='{{or .conn_status "Starting..."}}'
-    ></iconify-icon>
+        class="bg-transparent uk-button uk-padding-small"
+        uk-tooltip='{{or .conn_status "not yet connected"}}'
+>
+    <iconify-icon icon='mdi:{{or .conn_icon  "link-off"}}'></iconify-icon>
 </button>
 

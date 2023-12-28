@@ -1,4 +1,7 @@
-<div hx-get="/htmx/counter.html" hx-trigger="every 1m" hx-swap="outerHTML">
+<div hx-get="/htmx/counter.html"
+     hx-trigger="every 1m"
+     hx-swap="outerHTML"
+     uk-tooltip="test counter using htmx">
     C: {{ .value }}
 </div>
 

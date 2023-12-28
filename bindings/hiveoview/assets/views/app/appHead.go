@@ -7,37 +7,46 @@ import "github.com/hiveot/hub/bindings/hiveoview/assets/components"
 var appHeadMenuItems = []components.DropdownItem{
 	components.DropdownItem{
 		ID:    "page1Item",
-		Type:  components.MenuItem_Link,
+		Type:  components.MenuItemLink,
 		Label: "page1",
 		Value: "page1",
+		Icon:  "view-dashboard",
 	},
 	components.DropdownItem{
 		ID:    "page2Item",
-		Type:  components.MenuItem_Link,
+		Type:  components.MenuItemLink,
 		Label: "page2",
 		Value: "page2",
+		Icon:  "view-dashboard-outline",
 	},
 	components.DropdownItem{
-		Type: components.MenuItem_Divider,
+		Type: components.MenuItemDivider,
 	},
 	components.DropdownItem{
 		ID:    "editModeItem",
-		Type:  components.MenuItem_Checkbox,
+		Type:  components.MenuItemCheckbox,
 		Label: "Edit Mode",
 		Value: "false",
 	},
 	components.DropdownItem{
+		ID:    "logout",
+		Type:  components.MenuItemPost, // buttons post while links get
+		Label: "Logout",
+		Value: "/logout",
+		Icon:  "logout",
+	},
+	components.DropdownItem{
 		ID:    "aboutItem",
-		Type:  components.MenuItem_Link,
+		Type:  components.MenuItemLink,
 		Label: "About Hiveoview",
 		Value: "/app/about",
-		Icon:  "mdi:info",
+		Icon:  "info",
 	},
 }
 
-// SetAppHeadProps sets the properties used in rendering the appbar component
+// GetAppHeadProps returns the properties used in rendering the appbar component
 // TODO: get pages from client config/session store
-func SetAppHeadProps(data map[string]any, title string, logo string, pages []string) {
+func GetAppHeadProps(data map[string]any, title string, logo string, pages []string) {
 	data["logo"] = logo
 	data["title"] = title
 	data["pages"] = pages
@@ -47,7 +56,6 @@ func SetAppHeadProps(data map[string]any, title string, logo string, pages []str
 	}...)
 
 	components.SetDropdownProps(data, "headerMenu", appHeadMenuItems)
-
 }
 
 //

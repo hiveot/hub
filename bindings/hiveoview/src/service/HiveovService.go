@@ -54,6 +54,8 @@ func (svc *HiveovService) createRoutes(staticFS fs.FS) chi.Router {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.Compress(5,
 		"text/html", "text/css", "text/javascript", "image/svg+xml"))
+	sm := session.GetSessionManager()
+	router.Use(session.AddSessionToContext(sm))
 
 	//--- public routes
 	router.Group(func(r chi.Router) {
@@ -68,6 +70,7 @@ func (svc *HiveovService) createRoutes(staticFS fs.FS) chi.Router {
 		r.Get("/static/*", staticFileServer.ServeHTTP)
 		r.Get("/login", login.RenderLogin)
 		r.Post("/login", login.PostLogin)
+		r.Post("/logout", login.PostLogout)
 
 		// fragment routes
 		r.Get("/htmx/connectStatus.html", login.RenderConnectStatus)
@@ -76,9 +79,11 @@ func (svc *HiveovService) createRoutes(staticFS fs.FS) chi.Router {
 
 	//--- private routes that requires a valid session
 	router.Group(func(r chi.Router) {
-		sm := session.GetSessionManager()
-		r.Use(session.AuthSession(sm, "/login"))
+		// these routes must be authenticated otherwise redirect to login
+		r.Use(session.AuthenticateSession("/login"))
 
+		// TODO: improve support render htmx partials
+		// see also:https://medium.com/gravel-engineering/i-find-it-hard-to-reuse-root-template-in-go-htmx-so-i-made-my-own-little-tools-to-solve-it-df881eed7e4d
 		r.Get("/", app.RenderApp)
 		r.Get("/about", about.RenderAbout)
 		//r.Get("/dashboard", dashboard.RenderDashboard)

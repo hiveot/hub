@@ -3,9 +3,14 @@ package components
 //const tplName = "appbar"
 
 const (
-	MenuItem_Checkbox = "checkbox"
-	MenuItem_Link     = "link"
-	MenuItem_Divider  = "divider"
+	// MenuItemCheckbox show a checkbox in the menu
+	MenuItemCheckbox = "checkbox"
+	// MenuItemLink navigates to href
+	MenuItemLink = "link"
+	// MenuItemPost posts to a href
+	MenuItemPost = "post"
+	// MenuItemDivider show a divider in the menu
+	MenuItemDivider = "divider"
 )
 
 type DropdownItem struct {

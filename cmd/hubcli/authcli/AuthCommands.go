@@ -60,7 +60,7 @@ func AuthAddUserCommand(hc **hubclient.HubClient) *cli.Command {
 }
 
 // AuthAddServiceCommand adds a service with key and auth token
-func AuthAddServiceCommand(hc **hubclient.HubClient, certsDir string) *cli.Command {
+func AuthAddServiceCommand(hc **hubclient.HubClient, certsDir *string) *cli.Command {
 	displayName := ""
 
 	return &cli.Command{
@@ -82,7 +82,7 @@ func AuthAddServiceCommand(hc **hubclient.HubClient, certsDir string) *cli.Comma
 				return err
 			}
 			serviceID := cCtx.Args().First()
-			err := HandleAddService(*hc, serviceID, displayName, certsDir)
+			err := HandleAddService(*hc, serviceID, displayName, *certsDir)
 			return err
 		},
 	}
@@ -202,20 +202,36 @@ func HandleAddService(
 	if _, err = os.Stat(keyPath); errors.Is(err, os.ErrNotExist) {
 		kp = hc.CreateKeyPair()
 		err = kp.ExportPrivateToFile(keyPath)
+		pubKeyPath := path.Join(certsDir, serviceID+".pub")
+		err = kp.ExportPublicToFile(pubKeyPath)
+		fmt.Printf("New private/public keys written to file '%s'\n", keyPath)
 	} else {
 		kp = hc.CreateKeyPair()
 		err = kp.ImportPrivateFromFile(keyPath)
+		fmt.Printf("Private key loaded from file '%s'\n", keyPath)
 	}
 	if err != nil {
 		slog.Error("Failed creating or loading key", "err", err.Error())
 		return
 	}
-	_, err = authClient.AddService(serviceID, displayName, kp.ExportPrivate())
+	authToken, err := authClient.AddService(serviceID, displayName, kp.ExportPrivate())
+	if err != nil {
+		slog.Error("Failed adding service",
+			"serviceID", serviceID, "err", err.Error())
+		return
+	} else {
+		fmt.Printf("Service '%s' added succesfully\n", serviceID)
+	}
 
-	// service needs an auth token
-	//tokenFile := serviceID + ".token"
-	//tokenPath := path.Join(certsDir, tokenFile)
-	//err = authClient.CreateToken(tokenPath)
+	// service needs an auth token, remove existing
+	tokenFile := serviceID + ".token"
+	tokenPath := path.Join(certsDir, tokenFile)
+	if _, err = os.Stat(tokenPath); errors.Is(err, os.ErrNotExist) {
+		err = os.WriteFile(tokenPath, []byte(authToken), 0400)
+		fmt.Printf("Auth token written to file '%s'\n", tokenPath)
+	} else {
+		fmt.Printf("Token file %s already exists. No changes made.\n", tokenPath)
+	}
 
 	if err != nil {
 		fmt.Println("Error: " + err.Error())

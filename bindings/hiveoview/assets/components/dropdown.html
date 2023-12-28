@@ -8,8 +8,8 @@
         <iconify-icon icon="mdi:menu"></iconify-icon>
     </button>
 
-    <div uk-dropdown="delay-show:800">
-        <ul class="uk-nav uk-dropdown-nav">
+    <div uk-dropdown="mode: click">
+        <ul class="uk-nav uk-dropdown-nav uk-list-large">
             {{range $item := .}}
 
             {{template "menu-item" $item}}
@@ -18,6 +18,31 @@
         </ul>
     </div>
 </div>
+
+
+<style>
+    /*Adjust spacing between menu items. default is a huge 20px*/
+    .uk-list-large > :nth-child(n+2) {
+        margin-top: 10px;
+    }
+
+    .menu-item {
+        /*font-size: 1.1rem;*/
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 7px;
+    }
+
+    .menu-checkbox {
+        width: 20px;
+        height: 20px;
+        margin-left: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+
+</style>
 
 {{end}}
 
@@ -29,29 +54,36 @@
 @param .Type == "checkbox", "href", "divider"
 @param .Value to display
 -->
-{{if (eq .Type "checkbox")}}
-<li id=".ID">
-    <a target="_blank">
-        <input id="{{.ID}}-input" type="checkbox" value="{{.Value}}"
-               class="checkbox uk-margin-remove-left "/>
-        <label for="{{.ID}}-input">{{.Label}}</label>
-    </a>
-</li>
-{{else if (eq .Type "divider")}}
+{{if (eq .Type "divider")}}
 <li class="uk-nav-divider"></li>
-{{else}}
-
-{{if (eq .Type "link")}}
-<li id=".ID">
-    <i name="{{.Icon}}" height="12"></i>
+{{else if (eq .Type "checkbox")}}
+<li id=".ID" class="menu-item">
+    <input id="{{.ID}}-input" type="checkbox" value="{{.Value}}"
+           class="menu-checkbox"/>
+    <a for="{{.ID}}-input">{{.Label}}</a>
+</li>
+{{else if (eq .Type "link")}}
+<li id=".ID" class="menu-item">
+    {{if .Icon}}
+    <iconify-icon icon='mdi:{{.Icon}}'></iconify-icon>
+    {{end}}
     <a href="{{.Value}}">{{.Label}}</a>
 </li>
+{{else if (eq .Type "post")}}
+<!--hx-boost will issue a get after the post-->
+<li id=".ID" class="menu-item">
+    {{if .Icon}}
+    <iconify-icon icon='mdi:{{.Icon}}'></iconify-icon>
+    {{end}}
+    <a hx-post="{{.Value}}" hx-target="body">{{.Label}}</a>
+</li>
 {{else}}
-<li id=".ID">
-    <i name="{{.Icon}}" height="12"></i>
+<li id=".ID" class="menu-item">
+    {{if .Icon}}
+    <iconify-icon icon="{{.Icon}}"></iconify-icon>
+    {{end}}
     <a href="#" target="_blank">{{.Label}}</a>
 </li>
 {{end}}
 
-{{end}}
 {{end}}

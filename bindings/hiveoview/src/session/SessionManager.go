@@ -27,31 +27,26 @@ type SessionManager struct {
 	core string
 }
 
-// Add a new sessions for the given client after a successful login
-// If a session with the given ID already exists, it is returned
+// Add a new session for the given client and create a hub client
+// instance for connecting to the Hub as the given user.
+//
+// If a session with the given ID already exists, it is returned instead.
 // The session contains a hub client for publishing and subscribing messages
+// authToken is optional when restoring a saved session
 func (sm *SessionManager) Add(
-	sessionID string, loginID string, expiry time.Time, remoteAddr string) (*ClientSession, error) {
+	sessionID string, loginID string, remoteAddr string, authToken string) *ClientSession {
 	sm.mux.Lock()
 	defer sm.mux.Unlock()
 
 	// TODO: limit max nr of sessions per client/remote addr
 
-	si, exists := sm.sessions[sessionID]
+	cs, exists := sm.sessions[sessionID]
 	if !exists {
-		si = &ClientSession{
-			//SessionID:  sessionID,
-			LoginID:    loginID,
-			Expiry:     expiry,
-			RemoteAddr: remoteAddr,
-			hc:         hubclient.NewHubClient(sm.hubURL, loginID, sm.caCert, sm.core),
-		}
-		sm.sessions[sessionID] = si
-		// TODO: save with delay
-		err := sm.save()
-		return si, err
+		hc := hubclient.NewHubClient(sm.hubURL, loginID, sm.caCert, sm.core)
+		cs = NewClientSession(sessionID, hc, remoteAddr, authToken)
+		sm.sessions[sessionID] = cs
 	}
-	return si, nil
+	return cs
 }
 
 // ConnectWithToken to the Hub using an existing token.
@@ -71,6 +66,9 @@ func (sm *SessionManager) GetSession(sessionID string) (*ClientSession, error) {
 	session, found := sm.sessions[sessionID]
 	if !found {
 		return nil, errors.New("sessionID'" + sessionID + "' not found")
+	} else if time.Now().Compare(session.Expiry) >= 0 {
+		delete(sm.sessions, sessionID)
+		return nil, errors.New("sessionID'" + sessionID + "' has expired")
 	}
 	return session, nil
 }
@@ -106,24 +104,44 @@ func (sm *SessionManager) Load() error {
 	err = json.Unmarshal(data, &loadedSessions)
 	if err != nil {
 		slog.Error("Restored sessions are invalid ",
-			"sessionFile", sm.sessionFile, "err", err.Error())
+			slog.String("sessionFile", sm.sessionFile),
+			slog.String("err", err.Error()))
 		return err
 	} else {
-		slog.Info("Restored sessions", "count", len(loadedSessions))
+		slog.Info("Reloaded sessions",
+			slog.Int("count", len(loadedSessions)))
 	}
 	// restore session only when valid
 	now := time.Now()
-	for id, si := range loadedSessions {
-		if now.Compare(si.Expiry) == -1 {
+	for id, cs := range loadedSessions {
+		if now.Compare(cs.Expiry) >= 0 {
+			slog.Info("Dropping expired session",
+				slog.String("sessionID", id),
+				slog.String("loginID", cs.LoginID))
+		} else if cs.AuthToken == "" {
+			slog.Info("Dropping session without auth token",
+				slog.String("sessionID", id),
+				slog.String("loginID", cs.LoginID))
+		} else {
 			// not expired
-			si2, _ := sm.Add(id, si.LoginID, si.Expiry, si.RemoteAddr)
-			if si.AuthToken != "" {
-				// TODO: generate kp for this session?
-				si2.hc.ConnectWithToken(nil, si.AuthToken)
-				// TODO: renew the token
+			cs2 := sm.Add(id, cs.LoginID, cs.RemoteAddr, cs.AuthToken)
+			// TODO: generate kp for this session?
+			err = cs2.Reconnect()
+			if err != nil {
+				slog.Warn("Connect failed for restored session",
+					"sessionID", id,
+					"loginID", cs.LoginID,
+					"err", err.Error())
+			} else {
+				slog.Info("Connect succeeded for restored session",
+					"sessionID", id,
+					"loginID", cs.LoginID)
 			}
+			// TODO: renew the token
 		}
 	}
+	// save the valid sessions
+	_ = sm.Save()
 	return err
 }
 
@@ -143,7 +161,7 @@ func (sm *SessionManager) Remove(sessionID string) {
 }
 
 // Save current sessions if a sessionFile is set with Init()
-func (sm *SessionManager) save() error {
+func (sm *SessionManager) Save() error {
 	if sm.sessionFile == "" {
 		// no session persistence
 		return nil

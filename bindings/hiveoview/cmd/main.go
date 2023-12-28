@@ -36,6 +36,7 @@ func main() {
 
 	flag.IntVar(&serverPort, "port", serverPort, "Webserver port")
 	env := plugin.GetAppEnvironment("", true)
+	env.LogLevel = "info"
 	logging.SetLogging(env.LogLevel, "")
 
 	storeDir := path.Join(env.StoresDir, "hiveoview")

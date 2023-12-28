@@ -3,6 +3,7 @@ package app
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/bindings/hiveoview/assets"
+	"github.com/hiveot/hub/bindings/hiveoview/assets/views/login"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/lib/hubclient/transports"
 	"log/slog"
@@ -19,9 +20,9 @@ func RenderApp(w http.ResponseWriter, r *http.Request) {
 	//c.String(http.StatusOK, "the home page")
 	siContext := r.Context().Value("session")
 	if siContext != nil {
-		si := siContext.(*session.ClientSession)
-		slog.Info("found session", "loginID", si.LoginID)
-		connStat := si.ConnectionStatus()
+		cs := siContext.(*session.ClientSession)
+		slog.Info("found session", "loginID", cs.LoginID)
+		connStat := cs.GetStatus()
 		isConnected = connStat.ConnectionStatus == transports.Connected
 	}
 	data := map[string]any{
@@ -31,7 +32,8 @@ func RenderApp(w http.ResponseWriter, r *http.Request) {
 		//"pages":      []string{"page1", "page2"},
 		"connected": isConnected,
 	}
-	SetAppHeadProps(data, "HiveOT", "/static/logo.svg", []string{"page1", "page2"})
+	GetAppHeadProps(data, "HiveOT", "/static/logo.svg", []string{"page1", "page2"})
+	login.GetConnectStatusProps(data, r)
 
 	// determine the page name from the URL and append .html if needed
 	pageName := chi.URLParam(r, "pageName")

@@ -8,39 +8,39 @@ import (
 	"net/http"
 )
 
-// RenderConnectStatus renders the presentation of the client connection to the Hub message bus.
-func RenderConnectStatus(w http.ResponseWriter, r *http.Request) {
-	var sessionInfo *session.ClientSession
-
-	data := map[string]any{
-		"conn_icon":   "link_off",     // or "link"
-		"conn_status": "disconnected", // connected, disconnected, connection error
-	}
-	sessionID, _ := r.Cookie("session")
-	sm := session.GetSessionManager()
-	if sessionID != nil {
-		sessionInfo, _ = sm.GetSession(sessionID.Value)
-	}
-	if sessionInfo == nil {
-		data["conn_icon"] = "link_off"
-		data["conn_status"] = "Not connected"
+func GetConnectStatusProps(data map[string]any, r *http.Request) {
+	cs := session.GetClientSession(r)
+	connIcon := "link-off"
+	connText := "Disconnected"
+	if cs == nil {
+		connIcon = "link-off"
+		connText = "Session not yet established"
 	} else {
-		hc := sessionInfo.GetConnection()
-		cStat := hc.GetStatus()
+		cStat := cs.GetStatus()
 		if cStat.ConnectionStatus == transports.Connected {
-			data["conn_icon"] = "link"
-			data["conn_status"] = "Connected"
+			connIcon = "link"
+			connText = "Connected as " + cs.LoginID
 		} else if cStat.ConnectionStatus == transports.ConnectFailed {
-			data["conn_icon"] = "link_off"
-			data["conn_status"] = "Failed to connect: " + cStat.LastError
+			connIcon = "link-off"
+			connText = "Failed to connect: " + cStat.LastError
 		} else if cStat.ConnectionStatus == transports.Connecting {
-			data["conn_icon"] = "leak_add"
-			data["conn_status"] = "Connecting ... " + cStat.LastError
+			connIcon = "leak-add"
+			connText = "Connecting ... " + cStat.LastError
 		} else {
-			data["conn_icon"] = "link_off"
-			data["conn_status"] = "not connected: " + cStat.LastError
+			connIcon = "link-off"
+			connText = "Not connected; " + cStat.LastError
 		}
 	}
+	data["conn_icon"] = connIcon
+	data["conn_status"] = connText
+}
+
+// RenderConnectStatus renders the presentation of the client connection to the Hub message bus.
+func RenderConnectStatus(w http.ResponseWriter, r *http.Request) {
+
+	data := map[string]any{}
+	GetConnectStatusProps(data, r)
+
 	t := assets.GetTemplate("connectStatus.html")
 	err := t.Execute(w, data)
 	if err != nil {

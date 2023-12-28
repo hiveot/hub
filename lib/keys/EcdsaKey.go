@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"fmt"
+	"os"
 	"reflect"
 )
 
@@ -38,6 +39,17 @@ func (k *EcdsaKey) ImportPrivate(privatePEM string) (err error) {
 	return err
 }
 
+// ImportPrivateFromFile loads public/private key pair from PEM file
+// and determines its key type.
+func (k *EcdsaKey) ImportPrivateFromFile(pemPath string) (err error) {
+	pemEncodedPriv, err := os.ReadFile(pemPath)
+	if err != nil {
+		return err
+	}
+	err = k.ImportPrivate(string(pemEncodedPriv))
+	return err
+}
+
 // ImportPublic reads the public key from the PEM data.
 // This returns an error if the PEM is not a valid public key
 //
@@ -52,6 +64,16 @@ func (k *EcdsaKey) ImportPublic(publicPEM string) (err error) {
 		keyType := reflect.TypeOf(k.pubKeyPtr)
 		return fmt.Errorf("not an ECDSA public key. It looks to be a '%s'", keyType)
 	}
+	return err
+}
+
+// ImportPublicFromFile loads ECDSA public key from PEM file
+func (k *EcdsaKey) ImportPublicFromFile(pemPath string) (err error) {
+	pemEncodedPub, err := os.ReadFile(pemPath)
+	if err != nil {
+		return err
+	}
+	err = k.ImportPublic(string(pemEncodedPub))
 	return err
 }
 
@@ -96,9 +118,9 @@ func (k *EcdsaKey) Verify(msg []byte, signature []byte) (valid bool) {
 
 // NewEcdsaKey creates and initialize a ECDSA key
 func NewEcdsaKey() IHiveKey {
-	k := &EcdsaKey{}
-	k.Initialize()
-	return k
+	nk := &EcdsaKey{}
+	nk.Initialize()
+	return nk
 }
 
 // NewEcdsaKeyFromPrivate creates and initialize a IHiveKey object from an existing ECDSA private key.

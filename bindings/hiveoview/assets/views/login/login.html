@@ -1,15 +1,72 @@
 <!--Login View-->
+<div id="login" class="login-container">
 
-<h1>Login</h1>
+    <form action="/login" class="login-form" method="post">
+        <span class="flex-row-centered">
+            <h3>HiveOT Login</h3>
+        </span>
+
+        <div class="uk-margin">
+            <label for="loginID">Login email</label>
+            <input id="loginID" name="loginID"
+                   type="text" class="uk-input"
+                   placeholder="login email"/>
+        </div>
+
+        <div class="uk-margin">
+            <label for="password">Password</label>
+            <input id="password" name="password"
+                   type="password"
+                   class="uk-input uk-form-password"
+                   autocomplete="off" value=""
+                   placeholder="password"
+            />
+        </div>
+
+        <hr/>
+
+        <div class="flex-row">
+            <button type="button" class="uk-button">Cancel</button>
+            <span class="grow"></span>
+            <button type="submit" class="uk-button primary">Log In</button>
+        </div>
+    </form>
+
+</div>
 
 
-<form action="/login" method="post">
-    <label for="loginID">Login email</label>
-    <input type="text" id="loginID" name="loginID"/>
+<style>
+    .login-container {
+        height: 100%;
 
-    <label for="password">Password</label>
-    <input type="password" id="password" name="password"/>
+        border-color: var(--main-text-color);
+        align-items: center;
+        justify-content: center;
+        display: flex;
+        flex-direction: column;
+        background-color: var(--header-bg-color);
+    }
 
-    <input type="button" value="Cancel"/>
-    <input type="submit" value="Log In"/>
-</form>
+    .login-form {
+        display: flex;
+        flex-direction: column;
+        border: solid;
+        border-width: 1px;
+        border-color: lightgray;
+        border-radius: 5px;
+        background-color: var(--header-bg-color);
+        padding: 15px;
+
+        hr {
+            border-color: lightgray;
+        }
+
+        .uk-button {
+            border-color: lightgray;
+            border-radius: 5px;
+            /*padding: 3px 10px;*/
+            line-height: 32px;
+        }
+    }
+
+</style>
