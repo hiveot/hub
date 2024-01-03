@@ -150,7 +150,7 @@ func (authnStore *AuthnFileStore) Open() (err error) {
 		authnStore.watcher, err = watcher.WatchFile(authnStore.storePath, authnStore.Reload)
 	}
 	if err != nil {
-		err = fmt.Errorf("Open failed %w", err)
+		err = fmt.Errorf("NewSession failed %w", err)
 	}
 	return err
 }
@@ -363,7 +363,7 @@ func WritePasswordsToTempFile(
 }
 
 // NewAuthnFileStore creates a new instance of a file based identity store.
-// Call Open/Release to start/stop using this store.
+// Call NewSession/Release to start/stop using this store.
 // Note: this store is intended for one writer and many readers.
 // Multiple concurrent writes are not supported and might lead to one write being ignored.
 //

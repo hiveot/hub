@@ -1,0 +1,16 @@
+<!-- connection status
+The SSE event 'connectStatus is used to trigger an update of this fragment.
+@param conn_icon: "link", "link_off"
+@param conn_status: tooltip text
+-->
+<button hx-get="/htmx/connectStatus.html" hx-trigger="click"
+       
+        class="bg-transparent uk-button uk-padding-small"
+>
+    <div class="flex-col-centered" sse-swap="counter"
+         uk-tooltip='{{or .conn_status "not yet connected"}}'
+    >
+        <iconify-icon icon='mdi:{{or .conn_icon  "link-off"}}'></iconify-icon>
+    </div>
+</button>
+

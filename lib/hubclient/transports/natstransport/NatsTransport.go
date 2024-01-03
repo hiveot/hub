@@ -199,7 +199,7 @@ func (nt *NatsTransport) JS() nats.JetStreamContext {
 // handle connected to the server
 func (nt *NatsTransport) onConnected(c *nats.Conn) {
 	nt.status.ConnectionStatus = transports.Connected
-	nt.status.LastError = transports.ConnErrNone
+	nt.status.LastError = nil
 	nt.connectHandler(nt.status)
 }
 
@@ -209,9 +209,9 @@ func (nt *NatsTransport) onDisconnect(c *nats.Conn, err error) {
 	// Is it important?
 	nt.status.ConnectionStatus = transports.Disconnected
 	if err != nil {
-		nt.status.LastError = err.Error()
+		nt.status.LastError = err
 	} else {
-		nt.status.LastError = transports.ConnErrNone
+		nt.status.LastError = nil
 	}
 	nt.connectHandler(nt.status)
 }
@@ -525,7 +525,7 @@ func NewNatsTransport(url string, clientID string, caCert *x509.Certificate) *Na
 			HubURL:           url,
 			ClientID:         clientID,
 			ConnectionStatus: transports.Disconnected,
-			LastError:        "",
+			LastError:        nil,
 			Core:             "nats",
 		},
 	}

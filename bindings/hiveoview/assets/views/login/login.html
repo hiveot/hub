@@ -1,4 +1,7 @@
-<!--Login View-->
+<!--Login View
+@param loginID: login email to display
+@param error: optional if login previously failed 
+-->
 <div id="login" class="login-container">
 
     <form action="/login" class="login-form" method="post">
@@ -17,10 +20,13 @@
             <label for="password">Password</label>
             <input id="password" name="password"
                    type="password"
-                   class="uk-input uk-form-password"
+                   class="uk-input uk-form-password {{if .error}}uk-form-danger{{end}}"
                    autocomplete="off" value=""
                    placeholder="password"
             />
+            {{if .error}}
+            <label class="uk-form-danger">Invalid login ID or password</label>
+            {{end}}
         </div>
 
         <hr/>

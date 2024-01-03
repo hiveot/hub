@@ -1,24 +1,13 @@
 package app
 
-import "github.com/hiveot/hub/bindings/hiveoview/assets/components"
+import (
+	"fmt"
+	"github.com/hiveot/hub/bindings/hiveoview/assets/components"
+)
 
 //const tplName = "appbar"
 
 var appHeadMenuItems = []components.DropdownItem{
-	components.DropdownItem{
-		ID:    "page1Item",
-		Type:  components.MenuItemLink,
-		Label: "page1",
-		Value: "page1",
-		Icon:  "view-dashboard",
-	},
-	components.DropdownItem{
-		ID:    "page2Item",
-		Type:  components.MenuItemLink,
-		Label: "page2",
-		Value: "page2",
-		Icon:  "view-dashboard-outline",
-	},
 	components.DropdownItem{
 		Type: components.MenuItemDivider,
 	},
@@ -39,7 +28,7 @@ var appHeadMenuItems = []components.DropdownItem{
 		ID:    "aboutItem",
 		Type:  components.MenuItemLink,
 		Label: "About Hiveoview",
-		Value: "/app/about",
+		Value: "/about",
 		Icon:  "info",
 	},
 }
@@ -55,7 +44,19 @@ func GetAppHeadProps(data map[string]any, title string, logo string, pages []str
 		"About...",
 	}...)
 
-	components.SetDropdownProps(data, "headerMenu", appHeadMenuItems)
+	// dynamically add the pages as menu items
+	menuItems := make([]components.DropdownItem, 0)
+	for i, page := range pages {
+		menuItems = append(menuItems, components.DropdownItem{
+			ID:    fmt.Sprintf("%s-%d", page, i),
+			Type:  components.MenuItemLink,
+			Label: page,
+			Value: "/app/" + page,
+			Icon:  "view-dashboard",
+		})
+	}
+	menuItems = append(menuItems, appHeadMenuItems...)
+	components.SetDropdownProps(data, "headerMenu", menuItems)
 }
 
 //

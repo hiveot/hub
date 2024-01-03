@@ -1,6 +1,7 @@
 package service
 
 import (
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
@@ -36,28 +37,32 @@ type HiveovService struct {
 	// This client's CA and URL is also used to establish client sessions.
 	hc *hubclient.HubClient
 
+	// cookie signing
+	signingKey *ecdsa.PrivateKey
+
 	// run in debug mode, extra logging and reload templates render
 	debug bool
-
-	// optional session persistance
-	sessionFile string
 }
 
 // setup the chain of routes used by the service and return the router
 // fs is the filesystem containing /static and template files
-func (svc *HiveovService) createRoutes(staticFS fs.FS) chi.Router {
+func (svc *HiveovService) createRoutes(staticFS fs.FS) http.Handler {
 
 	router := chi.NewRouter()
+
+	// TODO: add csrf support in posts
+	//csrfMiddleware := csrf.Protect(
+	//	[]byte("32-byte-long-auth-key"),
+	//	csrf.SameSite(csrf.SameSiteStrictMode))
 
 	//-- add the routes and middleware
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
-	router.Use(middleware.Compress(5,
-		"text/html", "text/css", "text/javascript", "image/svg+xml"))
-	sm := session.GetSessionManager()
-	router.Use(session.AddSessionToContext(sm))
+	//router.Use(csrfMiddleware)
+	//router.Use(middleware.Compress(5,
+	//	"text/html", "text/css", "text/javascript", "image/svg+xml"))
 
-	//--- public routes
+	//--- public routes do not require a Hub connection
 	router.Group(func(r chi.Router) {
 		// serve static files with the startup timestamp so caching works
 		staticFileServer := http.FileServer(
@@ -70,26 +75,32 @@ func (svc *HiveovService) createRoutes(staticFS fs.FS) chi.Router {
 		r.Get("/static/*", staticFileServer.ServeHTTP)
 		r.Get("/login", login.RenderLogin)
 		r.Post("/login", login.PostLogin)
-		r.Post("/logout", login.PostLogout)
+		r.Post("/logout", session.SessionLogout)
+		r.Get("/about", about.RenderAbout)
 
-		// fragment routes
-		r.Get("/htmx/connectStatus.html", login.RenderConnectStatus)
-		r.Get("/htmx/counter.html", app.RenderCounter)
+		// SSE has its own validation
+		r.Get("/sse", session.SseHandler)
+
 	})
 
 	//--- private routes that requires a valid session
 	router.Group(func(r chi.Router) {
 		// these routes must be authenticated otherwise redirect to login
-		r.Use(session.AuthenticateSession("/login"))
+		r.Use(session.AddSessionToContext())
 
 		// TODO: improve support render htmx partials
 		// see also:https://medium.com/gravel-engineering/i-find-it-hard-to-reuse-root-template-in-go-htmx-so-i-made-my-own-little-tools-to-solve-it-df881eed7e4d
 		r.Get("/", app.RenderApp)
-		r.Get("/about", about.RenderAbout)
-		//r.Get("/dashboard", dashboard.RenderDashboard)
-		//r.Get("/things", thingsview.RenderThings)
-		r.Get("/app/{pageName}", app.RenderApp)
+		//r.Get("/app/", app.RenderApp)
+		//r.Get("/app/#dashboard", dashboard.RenderDashboard)
+		//r.Get("/app/#things", thingsview.RenderThings)
+		r.Get("/app/{pageName}", app.RenderAppPage)
+
+		// fragment routes
+		r.Get("/htmx/connectStatus.html", app.RenderConnectStatus)
+
 	})
+
 	return router
 }
 
@@ -134,10 +145,7 @@ func (svc *HiveovService) Start(hc *hubclient.HubClient) error {
 	// Setup the handling of incoming web sessions
 	sm := session.GetSessionManager()
 	connStat := hc.GetStatus()
-	err = sm.Init(svc.sessionFile, connStat.HubURL, connStat.Core, connStat.CaCert)
-	if err != nil {
-		slog.Error("failed to restore hiveoview sessions", "err", err.Error())
-	}
+	sm.Init(connStat.HubURL, connStat.Core, svc.signingKey, connStat.CaCert)
 
 	// setup static resources
 	// add the routes
@@ -183,12 +191,12 @@ func (svc *HiveovService) Stop() {
 //
 // serverPort is the port of the web server will listen on
 // debug to enable debugging output
-func NewHiveovService(serverPort int, debug bool, sessionFile string) *HiveovService {
+func NewHiveovService(serverPort int, debug bool, signingKey *ecdsa.PrivateKey) *HiveovService {
 	svc := HiveovService{
 		port:         serverPort,
 		shouldUpdate: true,
 		debug:        debug,
-		sessionFile:  sessionFile,
+		signingKey:   signingKey,
 	}
 	return &svc
 }

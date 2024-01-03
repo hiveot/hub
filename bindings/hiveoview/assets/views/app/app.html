@@ -1,5 +1,12 @@
 <!--Main application view with header, page content and footer-->
-<div class="app">
+<!--hx-boost lets links with href's target #appPage destination while without-->
+<!--javascript the regular get takes place-->
+<div hx-boost="true" id="app" class="app" hx-ext="sse" sse-connect="/sse">
+    <!--  Handle the sse logout message-->
+    <span hx-get="/login"
+          hx-target="body" sse-swap="logout"
+          hx-trigger="sse:logout" hidden>log me out</span>
+
     <div class="apphead">
         {{block "appHead" .}}App header goes here {{end}}
     </div>

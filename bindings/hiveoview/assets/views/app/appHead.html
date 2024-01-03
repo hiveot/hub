@@ -11,17 +11,14 @@
     <!-- Tabs for dashboard pages-->
     <!--    {{template "tabs.html" .}}-->
 
-    <ul uk-tab>
+    <ul uk-tab class="uk-visible@s">
         {{range .pages}}
-        <li id="{{.}}-tab"><a href="#">{{.}}</a></li>
+        <li id="{{.}}-tab"><a href="/app/{{.}}" hx-target="#appPage">{{.}}</a></li>
         {{end}}
     </ul>
 
     <!-- spacer -->
     <div class="grow"></div>
-
-    <!-- Counter for testing-->
-    {{template "counter.html" .}}
 
     {{template "dark-mode" .}}
 

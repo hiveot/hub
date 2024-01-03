@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/ecdsa"
 	"flag"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/hiveot/hub/bindings/hiveoview/src/service"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
@@ -31,7 +33,7 @@ const port = 8080 // default webserver port
 // If the test user __hiveoview doesn't exist it will be added and a private key
 // generated.
 func main() {
-	sessionFile := ""
+	var signingKey *ecdsa.PrivateKey
 	serverPort := port
 
 	flag.IntVar(&serverPort, "port", serverPort, "Webserver port")
@@ -46,8 +48,11 @@ func main() {
 		panic(err.Error())
 	}
 	// serve the hiveoview web pages
-	sessionFile = path.Join(storeDir, "sessions.json")
-	svc := service.NewHiveovService(serverPort, false, sessionFile)
+	keyData, err := os.ReadFile(env.KeyFile)
+	if err == nil {
+		signingKey, err = jwt.ParseECPrivateKeyFromPEM(keyData)
+	}
+	svc := service.NewHiveovService(serverPort, false, signingKey)
 	// StartPlugin will connect to the hub and wait for signal to end
 	plugin.StartPlugin(svc, &env)
 }

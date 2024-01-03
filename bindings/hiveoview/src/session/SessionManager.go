@@ -1,24 +1,30 @@
 package session
 
 import (
+	"crypto/ecdsa"
 	"crypto/x509"
-	"encoding/json"
 	"errors"
+	"github.com/google/uuid"
+	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
-	"os"
+	"net/http"
 	"sync"
 	"time"
 )
 
-// SessionManager tracks logged-in sessions
-// TODO: persist between restarts for testing using 'air'
+// SessionManager tracks client sessions using session cookies
+// TODO:
+//  1. close session after not being used for X seconds
+//  2. publish a login event on the message bus
 type SessionManager struct {
-	// existing sessions by sessionID
+	// existing sessions by sessionID (remoteAddr)
 	sessions map[string]*ClientSession
-	// path to the session store or "" when not to persist sessions
-	sessionFile string
-	mux         sync.RWMutex
+	// mutex to access the sessions
+	mux sync.RWMutex
+	// signing key for creating and verifying cookies
+	signingKey *ecdsa.PrivateKey
+
 	// Hub address
 	hubURL string
 	// Hub CA certificate
@@ -27,26 +33,26 @@ type SessionManager struct {
 	core string
 }
 
-// Add a new session for the given client and create a hub client
-// instance for connecting to the Hub as the given user.
-//
-// If a session with the given ID already exists, it is returned instead.
-// The session contains a hub client for publishing and subscribing messages
-// authToken is optional when restoring a saved session
-func (sm *SessionManager) Add(
-	sessionID string, loginID string, remoteAddr string, authToken string) *ClientSession {
+// Close closes the hub connection and event channel, and removes the session
+func (sm *SessionManager) Close(sessionID string) error {
 	sm.mux.Lock()
 	defer sm.mux.Unlock()
 
-	// TODO: limit max nr of sessions per client/remote addr
-
-	cs, exists := sm.sessions[sessionID]
-	if !exists {
-		hc := hubclient.NewHubClient(sm.hubURL, loginID, sm.caCert, sm.core)
-		cs = NewClientSession(sessionID, hc, remoteAddr, authToken)
-		sm.sessions[sessionID] = cs
+	si, found := sm.sessions[sessionID]
+	if !found {
+		slog.Error("Close. Session not found. This is unexpected.",
+			"sessionID", sessionID)
+		return errors.New("Session not found")
 	}
-	return cs
+	si.Close()
+	delete(sm.sessions, sessionID)
+	return nil
+}
+
+// NewHubClient creates a new hub client using the configured URL and core
+func (sm *SessionManager) NewHubClient(loginID string) *hubclient.HubClient {
+	hc := hubclient.NewHubClient(sm.hubURL, loginID, sm.caCert, sm.core)
+	return hc
 }
 
 // ConnectWithToken to the Hub using an existing token.
@@ -54,8 +60,7 @@ func (sm *SessionManager) Add(
 //func ConnectWithToken(clientID string, token string) (*ClientSession, error) {
 //}
 
-// GetSession returns the client session info if available
-// Returns the session or an error if it session doesn't exist
+// GetSession returns the client session if available
 func (sm *SessionManager) GetSession(sessionID string) (*ClientSession, error) {
 	sm.mux.RLock()
 	defer sm.mux.RUnlock()
@@ -65,116 +70,201 @@ func (sm *SessionManager) GetSession(sessionID string) (*ClientSession, error) {
 	}
 	session, found := sm.sessions[sessionID]
 	if !found {
-		return nil, errors.New("sessionID'" + sessionID + "' not found")
-	} else if time.Now().Compare(session.Expiry) >= 0 {
-		delete(sm.sessions, sessionID)
-		return nil, errors.New("sessionID'" + sessionID + "' has expired")
+		return nil, errors.New("sessionID '" + sessionID + "' not found")
 	}
+	session.lastActivity = time.Now()
 	return session, nil
+}
+
+// GetSessionFromCookie returns the session from the session cookie
+// If no active session exists but a valid cookie was found then try to
+// activate a session instance.
+// If no valid cookie is found then return an error
+//
+// Passing a response writer is optional. It allows to refresh the auth token in the cookie.
+func (sm *SessionManager) GetSessionFromCookie(w http.ResponseWriter, r *http.Request) (*ClientSession, error) {
+	var cs *ClientSession
+	claims, err := GetSessionCookie(r, &sm.signingKey.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+	// return the active session
+	cs, err = sm.GetSession(claims.ID)
+	if err == nil && cs.IsActive() {
+		// success
+		return cs, nil
+	}
+	// try to re-activate the session
+	cs = sm.ActivateSession(w, *claims)
+	return cs, nil
 }
 
 // Init initializes the session manager
 //
-//	sessionFile with session storage. Consider using tmpfs for performance.
 //	hubURL with address of the hub message bus
-func (sm *SessionManager) Init(sessionFile string, hubURL string, core string, caCert *x509.Certificate) error {
-	sm.sessionFile = sessionFile
+//	messaging core to use or "" for auto-detection
+//	signingKey for cookies
+//	caCert of the messaging server
+func (sm *SessionManager) Init(hubURL string, core string,
+	signingKey *ecdsa.PrivateKey, caCert *x509.Certificate) {
 	sm.hubURL = hubURL
 	sm.caCert = caCert
 	sm.core = core
-	err := sm.Load()
-	return err
+	sm.signingKey = signingKey
 }
 
-// Load restores saved sessions that are not expired
-// This return an error if the session file exists and is corrupted.
-func (sm *SessionManager) Load() error {
-	if sm.sessionFile == "" {
-		return nil
-	}
-	var loadedSessions map[string]*ClientSession
-	data, err := os.ReadFile(sm.sessionFile)
-	if err != nil {
-		// no session file, is okay
-		if errors.Is(err, os.ErrNotExist) {
-			return nil
-		}
-		return err
-	}
-	err = json.Unmarshal(data, &loadedSessions)
-	if err != nil {
-		slog.Error("Restored sessions are invalid ",
-			slog.String("sessionFile", sm.sessionFile),
-			slog.String("err", err.Error()))
-		return err
-	} else {
-		slog.Info("Reloaded sessions",
-			slog.Int("count", len(loadedSessions)))
-	}
-	// restore session only when valid
-	now := time.Now()
-	for id, cs := range loadedSessions {
-		if now.Compare(cs.Expiry) >= 0 {
-			slog.Info("Dropping expired session",
-				slog.String("sessionID", id),
-				slog.String("loginID", cs.LoginID))
-		} else if cs.AuthToken == "" {
-			slog.Info("Dropping session without auth token",
-				slog.String("sessionID", id),
-				slog.String("loginID", cs.LoginID))
-		} else {
-			// not expired
-			cs2 := sm.Add(id, cs.LoginID, cs.RemoteAddr, cs.AuthToken)
-			// TODO: generate kp for this session?
-			err = cs2.Reconnect()
-			if err != nil {
-				slog.Warn("Connect failed for restored session",
-					"sessionID", id,
-					"loginID", cs.LoginID,
-					"err", err.Error())
-			} else {
-				slog.Info("Connect succeeded for restored session",
-					"sessionID", id,
-					"loginID", cs.LoginID)
+// LoginToSession updates or creates a session for the given Hub client.
+// This tries to read the current session cookie to determine the session ID
+// or creates a session ID if no cookie exists.
+//
+// This updates the hub client of the existing session if one exists, or
+// closes the given client if the existing session is already active in order
+// to retain any existing subscriptions for SSE notifications.
+// If no session exists then create a new session.
+//
+// Last, refresh the auth token, generate a JWT token containing claims for
+// the session ID, login ID and auth token, and store this token in the
+// session cookie.
+//
+// From here on the session is active and can be reactived from the cookie if
+// needed, regardless the previous state.
+//
+//	w is the response write used to store the new cookie
+//	r is the request reader used to obtain existing session ID and login ID
+//	hc is a connected Hub client for use in the session
+//	maxAge is the time in seconds the session is active for. Use 0 to deactivate on browser exit
+func (sm *SessionManager) LoginToSession(
+	w http.ResponseWriter, r *http.Request, newhc *hubclient.HubClient, maxAge int) {
+	var sessionID = ""
+	var cs *ClientSession
+
+	// get the existing session jwt, if it exists, to determine the session ID
+	claims, _ := GetSessionCookie(r, &sm.signingKey.PublicKey)
+	if claims != nil {
+		sessionID = claims.ID
+		clientID := claims.Subject
+		// verify the cookie matches the session
+		sm.mux.RLock()
+		cs = sm.sessions[sessionID]
+		sm.mux.RUnlock()
+		// verify if a session exist and has the correct clientID
+		if cs != nil {
+			if cs.clientID != clientID {
+				slog.Error("ERROR, session cookie clientID differs from session clientID. Should not happen.",
+					"cookie clientID", clientID,
+					"session clientID", cs.clientID,
+					"remote addr", r.RemoteAddr)
+				return
 			}
-			// TODO: renew the token
 		}
+	} else {
+		sessionID = uuid.NewString()
 	}
-	// save the valid sessions
-	_ = sm.Save()
-	return err
-}
+	// if an active client session exists then disconnect the given client
+	// and leave the client in place.
+	if cs != nil {
+		if cs.IsActive() {
+			newhc.Disconnect()
+			newhc = cs.hc
+		} else {
+			// replace the existing session HC with the given one.
+			cs.hc.Disconnect()
+			cs.ReplaceHubClient(newhc) // and subscribe to events
+		}
+	} else {
+		// create a new session
+		cs = NewClientSession(sessionID, newhc)
+		sm.mux.Lock()
+		sm.sessions[sessionID] = cs
+		sm.mux.Unlock()
+	}
 
-// Remove closes a session and disconnect if connected
-func (sm *SessionManager) Remove(sessionID string) {
-	sm.mux.Lock()
-	defer sm.mux.Unlock()
-
-	si, found := sm.sessions[sessionID]
-	if !found {
+	// last, refresh the auth token and update the cookie
+	profileClient := authclient.NewProfileClient(newhc)
+	authToken, err := profileClient.RefreshToken()
+	if err != nil {
+		slog.Error("Failed refreshing auth token. Session remains active.",
+			"err", err.Error())
 		return
 	}
-	if si.hc != nil {
-		si.hc.Disconnect()
-	}
-	delete(sm.sessions, sessionID)
+
+	SetSessionCookie(w, sessionID, newhc.ClientID(), authToken, maxAge, sm.signingKey)
 }
 
-// Save current sessions if a sessionFile is set with Init()
-func (sm *SessionManager) Save() error {
-	if sm.sessionFile == "" {
-		// no session persistence
-		return nil
-	}
+// ActivateSession creates a new session instance.
+//
+// If no session cookie exists then this returns nil.
+// If a session cookie exists with a session ID then create a new session
+// instance if one doesn't already exist.
+//
+// If the session is not connected then attempt to reconnect.
+//
+// If a connection exists or is successful then refresh the auth token
+// and update the cookie.
+//
+// Passing a ResponseWriter is optional and allows for refreshing the auth token.
+//
+// This always returns a session or nil if a session could not be created.
+func (sm *SessionManager) ActivateSession(
+	w http.ResponseWriter, claims SessionClaims) *ClientSession {
 
-	data, err := json.Marshal(sm.sessions)
-	if err == nil {
-		err = os.WriteFile(sm.sessionFile, data, 0600)
+	sm.mux.Lock()
+	defer sm.mux.Unlock()
+	doRefreshToken := false
+
+	sessionID := claims.ID
+	clientID, _ := claims.GetSubject()
+	authToken := claims.AuthToken
+
+	cs, exists := sm.sessions[sessionID]
+	if !exists {
+		// no session exists, so create a new session with hub client
+		hc := hubclient.NewHubClient(sm.hubURL, clientID, sm.caCert, sm.core)
+		if authToken != "" {
+			err := hc.ConnectWithToken(nil, authToken)
+			if err != nil {
+				slog.Error("ActivateSession. Error connecting to the hub",
+					slog.String("sessionID", sessionID),
+					slog.String("loginID", clientID),
+					slog.String("err", err.Error()))
+				// TODO: if authentication failed, the token expired.
+				// Remove it the auth token in the cookie
+				// TODO: if the server is unreachable, then notify the caller
+			} else {
+				doRefreshToken = true
+				slog.Info("ActivateSession. Connected to the hub",
+					slog.String("sessionID", sessionID),
+					slog.String("loginID", clientID))
+			}
+		}
+		cs = NewClientSession(sessionID, hc)
+		sm.sessions[sessionID] = cs
+	} else if cs.IsActive() {
+		// an active session exists, no need to connect but do refresh the token
+		doRefreshToken = true
+	} else {
+		// a session exists but is not active. Try to reconnect
+		// FIXME: a client key is required in NATS
+		// how does the web client get a key ?
+		err := cs.hc.ConnectWithToken(nil, authToken)
+		doRefreshToken = err == nil
 	}
-	return err
+	// refresh the auth token if needed and a response writer is provided
+	if doRefreshToken && w != nil {
+		// use the auth service 'profile client' capability
+		profileClient := authclient.NewProfileClient(cs.hc)
+		newToken, err := profileClient.RefreshToken()
+		if err == nil {
+			SetSessionCookie(w, sessionID, cs.hc.ClientID(), newToken, claims.MaxAge, sm.signingKey)
+		} else {
+			slog.Error("ActivateSession. Auth token refresh failed", "err", err.Error())
+		}
+	}
+	return cs
 }
 
-// The global session manager instance
+// The global session manager instance.
+// Init must be called before use.
 var sessionmanager = func() *SessionManager {
 	sm := &SessionManager{
 		sessions: make(map[string]*ClientSession),
@@ -185,4 +275,14 @@ var sessionmanager = func() *SessionManager {
 // GetSessionManager returns the sessionManager singleton
 func GetSessionManager() *SessionManager {
 	return sessionmanager
+}
+
+// GetSession returns the session for the given request
+// This tries to reactivate the session if a session cookie with credentials
+// is available
+//
+// Passing a ResponseWriter is optional and allows for updating a cookie.
+// This should not be used in an SSE session.
+func GetSession(w http.ResponseWriter, r *http.Request) (*ClientSession, error) {
+	return sessionmanager.GetSessionFromCookie(w, r)
 }

@@ -1,0 +1,109 @@
+package session
+
+import (
+	"fmt"
+	"log/slog"
+	"net/http"
+)
+
+// SseHandler handles incoming SSE connections, eg. one per browser tab.
+// This subscribes to the user's session sse channel and sends messages to the browser.
+// Sse requests are refused if no auth info is found.
+func SseHandler(w http.ResponseWriter, r *http.Request) {
+	// Set headers for SSE response
+	//w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Expose-Headers", "Content-Type")
+	w.Header().Set("Cache-Control", "private, no-cache, no-store, must-revalidate, max-age=0, no-transform")
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Connection", "keep-alive")
+
+	// A session is required before accepting the request
+	cs, err := GetSession(nil, r)
+	if err != nil {
+		slog.Warn("No session available, delay retry to 30 seconds")
+
+		// TODO: standardize this event flow somewhere
+		// option 1: send event to redirect - requires client implementation
+		//_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
+		//	"logout", "missing session")
+		//w.(http.Flusher).Flush()
+
+		// option 2: set retry to a large number
+		// while this doesn't redirect, it does stop it from holding a connection.
+		// see https://javascript.info/server-sent-events#reconnection
+		// and https://javascript.info/server-sent-events#reconnection
+		_, _ = fmt.Fprintf(w, "retry: %s\nevent:%s\n\n",
+			"30000", "logout")
+		w.(http.Flusher).Flush()
+		//time.Sleep(time.Millisecond)
+		//w.WriteHeader(http.StatusUnauthorized)
+		//http.Error(w, "not authenticated", http.StatusUnauthorized)
+
+		// option 3: use HX-redirect - doesn't work
+		//w.Header().Set("HX-Redirect", "/login")
+
+		// option 4: plain old redirect - doesn't work
+		//http.Redirect(w, r, "/login", http.StatusFound)
+
+		// option 5: send status code 204??? - doesn't work
+		//"If the server wants the browser to stop reconnecting, it should respond with HTTP status 204."
+		// https://javascript.info/server-sent-events#reconnection
+		//w.WriteHeader(204)
+
+		// option 6: send status code 502 - doesn't work
+		// https://stackoverflow.com/questions/24564030/is-an-eventsource-sse-supposed-to-try-to-reconnect-indefinitely
+		//w.WriteHeader(502)
+
+		return
+	}
+
+	// establish a client event channel
+	sseChan := make(chan SSEEvent)
+	cs.AddSSEClient(sseChan)
+
+	slog.Info("SseHandler. New SSE connection",
+		slog.String("RemoteAddr", r.RemoteAddr),
+		slog.String("clientID", cs.clientID),
+		slog.Int("nr sse connections", len(cs.sseClients)),
+	)
+	//var sseMsg SSEEvent
+
+	done := false
+	for !done { // sseMsg := range sseChan {
+		// wait for message, or writer closing
+		select {
+		case sseMsg, ok := <-sseChan: // received event
+			slog.Info("SseHandler: received event from sseChan",
+				slog.String("remote", r.RemoteAddr),
+				slog.String("clientID", cs.clientID),
+				slog.String("event", sseMsg.Event),
+				slog.Bool("ok", ok),
+			)
+			if !ok { // channel was closed by session
+				done = true
+				break
+			}
+			// WARNING: messages are send as MIME type "text/event-stream", which is defined as
+			// "Each message is sent as a block of text terminated by a pair of newlines. "
+			//https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
+			//_, err := fmt.Fprintf(w, "event: time\ndata: <div sse-swap='time'>%s</div>\n\n", data)
+			_, err = fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
+				sseMsg.Event, sseMsg.Payload)
+			//_, err := fmt.Fprint(w, sseMsg)
+			w.(http.Flusher).Flush()
+			break
+		case <-r.Context().Done(): // remote client connection closed
+			slog.Info("Remote client disconnected (read context)")
+			close(sseChan)
+			done = true
+			break
+		}
+	}
+	cs.RemoveSSEClient(sseChan)
+
+	slog.Info("SseHandler: sse connection closed",
+		slog.String("remote", r.RemoteAddr),
+		slog.String("clientID", cs.clientID),
+		slog.Int("nr sse connections", len(cs.sseClients)),
+	)
+}

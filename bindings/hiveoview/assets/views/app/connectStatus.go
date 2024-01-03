@@ -1,4 +1,4 @@
-package login
+package app
 
 import (
 	"github.com/hiveot/hub/bindings/hiveoview/assets"
@@ -9,7 +9,7 @@ import (
 )
 
 func GetConnectStatusProps(data map[string]any, r *http.Request) {
-	cs := session.GetClientSession(r)
+	cs, _ := session.GetSession(nil, r)
 	connIcon := "link-off"
 	connText := "Disconnected"
 	if cs == nil {
@@ -17,18 +17,21 @@ func GetConnectStatusProps(data map[string]any, r *http.Request) {
 		connText = "Session not yet established"
 	} else {
 		cStat := cs.GetStatus()
+		if cStat.LastError != nil {
+			connText = cStat.LastError.Error()
+		}
 		if cStat.ConnectionStatus == transports.Connected {
 			connIcon = "link"
-			connText = "Connected as " + cs.LoginID
+			connText = "Connected to Hub"
 		} else if cStat.ConnectionStatus == transports.ConnectFailed {
 			connIcon = "link-off"
-			connText = "Failed to connect: " + cStat.LastError
+			connText = "Connect failed (" + connText + ")"
 		} else if cStat.ConnectionStatus == transports.Connecting {
-			connIcon = "leak-add"
-			connText = "Connecting ... " + cStat.LastError
+			connIcon = "leak-off"
+			connText = "Reconnecting (" + connText + ")"
 		} else {
 			connIcon = "link-off"
-			connText = "Not connected; " + cStat.LastError
+			connText = connText
 		}
 	}
 	data["conn_icon"] = connIcon

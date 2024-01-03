@@ -68,7 +68,7 @@ func (store *PebbleStore) GetBucket(bucketID string) (bucket buckets.IBucket) {
 // Open the store
 func (store *PebbleStore) Open() (err error) {
 	options := &pebble.Options{}
-	// pebble.Open will panic if the store directory is readonly, so check ahead to return an error
+	// pebble.NewSession will panic if the store directory is readonly, so check ahead to return an error
 	stat, err := os.Stat(store.storeDirectory)
 	// if the path exists, it must be a directory
 	if err == nil {

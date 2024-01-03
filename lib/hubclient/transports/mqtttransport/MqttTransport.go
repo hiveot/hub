@@ -148,7 +148,13 @@ func (tp *MqttHubTransport) Connect(credentials string) error {
 	tp._pahoClient = pcl
 	tp.mux.Unlock()
 	// Wait for the connection to come up
+	ctx, cancelFn := context.WithTimeout(ctx, time.Second*1)
 	err = pcl.AwaitConnection(ctx)
+	cancelFn()
+	if err != nil {
+		// provide a more meaningful error, the actual error is not returned by paho
+		err = tp._status.LastError
+	}
 	return err
 }
 
@@ -238,7 +244,7 @@ func (tp *MqttHubTransport) Disconnect() {
 		tp._connectID = ""
 		slog.Info("clearing connectid")
 		tp._status.ConnectionStatus = transports.Disconnected
-		tp._status.LastError = "disconnected by user"
+		tp._status.LastError = errors.New("disconnected by user")
 		err := pcl.Disconnect(context.Background())
 		if err != nil {
 			slog.Error("disconnect error", "err", err)
@@ -319,7 +325,7 @@ func (tp *MqttHubTransport) handleMessage(m *paho.Publish) {
 func (tp *MqttHubTransport) onPahoConnect(cm *autopaho.ConnectionManager, connAck *paho.Connack) {
 	tp.mux.Lock()
 	tp._status.ConnectionStatus = transports.Connected
-	tp._status.LastError = transports.ConnErrNone
+	tp._status.LastError = nil
 	subList := make([]string, 0, len(tp._subscriptions))
 	for topic := range tp._subscriptions {
 		subList = append(subList, topic)
@@ -343,8 +349,8 @@ func (tp *MqttHubTransport) onPahoConnect(cm *autopaho.ConnectionManager, connAc
 // paho reports an error but will keep trying until disconnect is called
 func (tp *MqttHubTransport) onPahoConnectionError(err error) {
 	go func() {
-		connErr := transports.ConnErrNetworkDisconnected
 		connStatus := transports.Connecting
+		connErr := errors.New(string(transports.Disconnected))
 		// possible causes:
 		// 1. wrong credentials - inform user, dont repeat or do repeat?
 		// 2. connection is interrupted - inform user/log, keep repeating
@@ -353,14 +359,16 @@ func (tp *MqttHubTransport) onPahoConnectionError(err error) {
 		switch et := err.(type) {
 		case *autopaho.ConnackError:
 			if et.ReasonCode == 134 {
-				connErr = transports.ConnErrUnauthorized
-				slog.Error("authentication error", "clientID", tp.clientID, "err", err)
+				connStatus = transports.Unauthorized
+				connErr = fmt.Errorf("Unauthorized: %s", et.Reason)
 			} else {
-				connErr = transports.ConnErrNetworkDisconnected
-				slog.Error("connection error", "clientID", tp.clientID, "err", err)
+				connStatus = transports.Connecting
+				connErr = fmt.Errorf("%s: %w", et.Reason, err)
+				//connErr = fmt.Errorf("disconnected user '%s': %s", tp.clientID, err.Error())
 			}
 		default:
-			connErr = transports.ConnErrNetworkDisconnected
+			connStatus = transports.Connecting
+			connErr = fmt.Errorf("disconnected: %w", err)
 			slog.Error("connection error", "clientID", tp.clientID, "err", err)
 		}
 		// notify on change
@@ -376,6 +384,11 @@ func (tp *MqttHubTransport) onPahoConnectionError(err error) {
 			tp.mux.Unlock()
 			connHandler(tp._status)
 		}
+		slog.Info("onPahoConnectionError", "err", connErr.Error())
+		// don't retry on authentication error
+		if connStatus == transports.Unauthorized {
+			_ = tp._pahoClient.Disconnect(context.Background())
+		}
 	}()
 }
 
@@ -385,10 +398,10 @@ func (tp *MqttHubTransport) onPahoConnectionError(err error) {
 func (tp *MqttHubTransport) onPahoServerDisconnect(d *paho.Disconnect) {
 	go func() {
 		tp.mux.Lock()
-		slog.Warn("OnDisconnect: Disconnected by server",
+		slog.Warn("onPahoServerDisconnect: Disconnected by server. Retrying...",
 			"clientID", tp.clientID, "cid", tp._connectID)
 		tp._status.ConnectionStatus = transports.Connecting
-		tp._status.LastError = transports.ConnErrServerDisconnected
+		tp._status.LastError = errors.New("disconnected by server")
 		connHandler := tp._connectHandler
 		tp.mux.Unlock()
 		connHandler(tp._status)
@@ -687,7 +700,7 @@ func NewMqttTransport(fullURL string, clientID string, caCert *x509.Certificate)
 			HubURL:           fullURL,
 			ClientID:         clientID,
 			ConnectionStatus: transports.Disconnected,
-			LastError:        transports.ConnErrNone,
+			LastError:        nil,
 			Core:             "mqtt",
 		},
 	}

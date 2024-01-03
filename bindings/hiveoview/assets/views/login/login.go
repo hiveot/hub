@@ -1,104 +1,68 @@
 package login
 
 import (
-	"github.com/google/uuid"
 	"github.com/hiveot/hub/bindings/hiveoview/assets"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"log/slog"
 	"net/http"
-	"time"
 )
 
-// RenderLogin renders the login view
-// TODO: Proper login form fragment
+// keep session auth for 7 days
+// TODO: use the token expiry instead
+const DefaultAuthAge = 3600 * 24 * 7
+
+// RenderLogin renders the login form
 func RenderLogin(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
-		"loginID":  "",
-		"password": "",
+		"loginID": "",
 	}
-	sessionContext := r.Context().Value("session")
-	if sessionContext != nil {
-		cs := sessionContext.(*session.ClientSession)
-		data["loginID"] = cs.LoginID
+	loginError := r.URL.Query().Get("error")
+	if loginError != "" {
+		data["error"] = loginError
 	}
+
 	// don't cache the login
 	w.Header().Add("Cache-Control", "no-cache, max-age=0, must-revalidate, no-store")
 	assets.RenderWithLayout(w, assets.AllTemplates, "login.html", "", data)
 }
 
 // PostLogin handles the login request to log in with a password.
-// This creates or refreshes a session containing a hub connection for the user.
-// If connection fails then the session persists but an error is returned.
+// This creates or refreshes a user session containing credentials.
+// If connection fails then an error is returned.
 func PostLogin(w http.ResponseWriter, r *http.Request) {
-	var sessionID string
 
 	// obtain login form fields
 	loginID := r.FormValue("loginID")
 	password := r.FormValue("password")
 	if loginID == "" && password == "" {
-		w.WriteHeader(http.StatusBadRequest)
+		http.Redirect(w, r, "/", http.StatusBadRequest)
+		//w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	// if a session exists, reuse it
-	sessionCookie, err := r.Cookie("session")
-	if err == nil {
-		// use the existing session cookie
-		sessionID = sessionCookie.Value
-	} else {
-		sessionID = uuid.NewString()
-		sessionCookie = &http.Cookie{
-			Name:  "session",
-			Value: sessionID,
-			//Expires: see below
-			//Secure:   true,  // Cookie is only sent over HTTPS
-			HttpOnly: true, // Cookie is not accessible via client-side java (CSRA attack)
-		}
-	}
+	// login to get the auth token for creating an SSE session
 	sm := session.GetSessionManager()
-	// add the session or return the existing one
-	cs := sm.Add(sessionID, loginID, r.RemoteAddr, "")
-	sessionCookie.Expires = cs.Expiry
+	hc := sm.NewHubClient(loginID)
+	err := hc.ConnectWithPassword(password)
 
-	// attempt to connect the session using the given password
-	// on success the session will obtain and store an auth token for reconnecting
-	// without requiring a password.
-	err = cs.ConnectWithPassword(password)
 	if err != nil {
-		slog.Warn("Login failed", "loginID", loginID, "err", err.Error())
+		slog.Warn("PostLogin failed",
+			slog.String("remoteAddr", r.RemoteAddr),
+			slog.String("loginID", loginID),
+			slog.String("err", err.Error()))
 		// do not cache the login form in the browser
 		w.Header().Add("Cache-Control", "no-cache, max-age=0, must-revalidate, no-store")
-		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = w.Write([]byte(err.Error()))
+		http.Redirect(w, r, "/login?error="+err.Error(), http.StatusSeeOther)
 		return
 	}
-	// update the cookie with the new expiry
-	sessionCookie.Expires = cs.Expiry
-	http.SetCookie(w, sessionCookie)
-	sm.Save() // save the session auth token
+	// update the session. This ensures an active session exists and the
+	// cookie contains the existing or new session ID with a fresh auth token.
+	// keep the session cookie for 30 days
+	maxAge := 3600 * 24 * 30
+	sm.LoginToSession(w, r, hc, maxAge)
 
-	slog.Info("login successful", "loginID", loginID, "sessionID", sessionID, "remoteAddr", r.RemoteAddr)
+	slog.Info("login successful", "loginID", loginID)
 	// do not cache the password
 	w.Header().Add("Cache-Control", "no-cache, max-age=0, must-revalidate, no-store")
-	//TODO: return to last page?
-	http.Redirect(w, r, "/", http.StatusFound)
-}
-
-// PostLogout removes the current session
-func PostLogout(w http.ResponseWriter, r *http.Request) {
-	cs := session.GetClientSession(r)
-	if cs != nil {
-		sm := session.GetSessionManager()
-		sm.Remove(cs.SessionID)
-	}
-	// session is no longer valid
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
-		Value:    "logged out",
-		MaxAge:   -1,
-		Expires:  time.Now().Add(-time.Hour),
-		HttpOnly: true, // Cookie is not accessible via client-side java (CSRA attack)
-	})
-	// redirect to root page
 	http.Redirect(w, r, "/", http.StatusFound)
 }

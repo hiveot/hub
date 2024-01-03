@@ -2,6 +2,7 @@ package transports
 
 import (
 	"crypto/x509"
+	"errors"
 	"github.com/hiveot/hub/lib/keys"
 )
 
@@ -17,28 +18,18 @@ const (
 	Connecting ConnectionStatus = "connecting"
 	// Connected and authenticated successful
 	Connected ConnectionStatus = "connected"
-	// Expired authentication token
-	Expired ConnectionStatus = "expired"
-	// Disconnected by client or not yet connected
-	Disconnected ConnectionStatus = "disconnected"
 	// ConnectFailed after failure to connect
 	// Only used if retry has given up
 	ConnectFailed ConnectionStatus = "connectFailed"
+	// Disconnected by client or not yet connected
+	Disconnected ConnectionStatus = "disconnected"
+	// Expired authentication token
+	Expired ConnectionStatus = "expired"
+	// Unauthorized login name or password
+	Unauthorized ConnectionStatus = "unauthorized"
 )
 
-// ConnErr last error information
-
-const (
-	ConnErrNone = ""
-	// ConnErrUnauthorized credentials invalid
-	ConnErrUnauthorized = "unauthorized"
-	// ConnErrUnreachable unable to reach the server during the initial connection attempt
-	ConnErrUnreachable = "unreachable"
-	// ConnErrServerDisconnected a server disconnect message was received.
-	ConnErrServerDisconnected = "serverDisconnected"
-	// ConnErrNetworkDisconnected connection has dropped. Caused by disconnecting the network somewhere
-	ConnErrNetworkDisconnected = "networkDisconnected"
-)
+var ErrorUnauthorized = errors.New(string(Unauthorized))
 
 type HubTransportStatus struct {
 	// URL of the hub
@@ -53,7 +44,7 @@ type HubTransportStatus struct {
 	// The current connection status
 	ConnectionStatus ConnectionStatus
 	// The last connection error message, if any
-	LastError string
+	LastError error
 }
 
 // IHubTransport defines the interface of the transport that connects to the messaging server.
