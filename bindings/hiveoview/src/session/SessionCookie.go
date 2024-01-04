@@ -47,7 +47,6 @@ func GetSessionCookie(r *http.Request, pubKey *ecdsa.PublicKey) (*SessionClaims,
 		// would we ever get here?
 		return sessionClaims, errors.New("invalid token")
 	}
-
 	return sessionClaims, nil
 }
 
@@ -73,9 +72,7 @@ func SetSessionCookie(w http.ResponseWriter,
 		MaxAge:    maxAge,
 		AuthToken: authToken,
 	}
-	// FIXME: choosing signing method, HS256 (shared private key),
-	// ES256 or RS256 (pub/private key pair)
-	//
+
 	jwtToken := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
 	cookieValue, err := jwtToken.SignedString(privKey)
 	if err != nil {
@@ -101,8 +98,7 @@ func SetSessionCookie(w http.ResponseWriter,
 func RemoveSessionCookie(w http.ResponseWriter, r *http.Request) {
 	c, err := r.Cookie(SessionCookieID)
 	if err != nil {
-		slog.Error("No session cookie found, this is unexpected",
-			"url", r.URL.String())
+		slog.Info("No session cookie found", "url", r.URL.String())
 		return
 	}
 	c.Value = ""

@@ -7,18 +7,17 @@ const (
 	MenuItemCheckbox = "checkbox"
 	// MenuItemLink navigates to href
 	MenuItemLink = "link"
-	// MenuItemPost posts to a href
-	MenuItemPost = "post"
 	// MenuItemDivider show a divider in the menu
 	MenuItemDivider = "divider"
 )
 
 type DropdownItem struct {
-	ID    string // Menu item ID
-	Type  string // checkbox, divider, label, link
-	Label string // label to display
-	Value any    // checkbox value, link href
-	Icon  any    // icon object, if any
+	ID     string // Menu item ID
+	Type   string // checkbox, divider, label, link
+	Label  string // label to display
+	Value  any    // checkbox value, link href
+	Icon   any    // icon object, if any
+	Target string // HX-target field for redirects
 }
 
 // SetDropdownProps sets the properties used in rendering a dropdown menu
@@ -34,6 +33,8 @@ func SetDropdownProps(data map[string]any, menuID string, items []DropdownItem) 
 		dataItem["Label"] = item.Label
 		dataItem["Value"] = item.Value
 		dataItem["Icon"] = item.Icon
+		dataItem["Target"] = item.Target
+
 		dataItems = append(dataItems, dataItem)
 	}
 	data[menuID] = dataItems

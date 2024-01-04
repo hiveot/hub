@@ -75,7 +75,7 @@ func (svc *HiveovService) createRoutes(staticFS fs.FS) http.Handler {
 		r.Get("/static/*", staticFileServer.ServeHTTP)
 		r.Get("/login", login.RenderLogin)
 		r.Post("/login", login.PostLogin)
-		r.Post("/logout", session.SessionLogout)
+		r.Get("/logout", session.SessionLogout)
 		r.Get("/about", about.RenderAbout)
 
 		// SSE has its own validation
@@ -90,13 +90,12 @@ func (svc *HiveovService) createRoutes(staticFS fs.FS) http.Handler {
 
 		// TODO: improve support render htmx partials
 		// see also:https://medium.com/gravel-engineering/i-find-it-hard-to-reuse-root-template-in-go-htmx-so-i-made-my-own-little-tools-to-solve-it-df881eed7e4d
-		r.Get("/", app.RenderApp)
-		//r.Get("/app/", app.RenderApp)
-		//r.Get("/app/#dashboard", dashboard.RenderDashboard)
-		//r.Get("/app/#things", thingsview.RenderThings)
+		r.Get("/", app.RenderAppPage)
+		r.Get("/app", app.RenderAppPage)
 		r.Get("/app/{pageName}", app.RenderAppPage)
 
 		// fragment routes
+		// do fragments require a cookie? connectStatus needs a session
 		r.Get("/htmx/connectStatus.html", app.RenderConnectStatus)
 
 	})

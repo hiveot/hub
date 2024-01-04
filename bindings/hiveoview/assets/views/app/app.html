@@ -1,18 +1,19 @@
 <!--Main application view with header, page content and footer-->
 <!--hx-boost lets links with href's target #appPage destination while without-->
 <!--javascript the regular get takes place-->
-<div hx-boost="true" id="app" class="app" hx-ext="sse" sse-connect="/sse">
+<div id="app" hx-boost="true" class="app" hx-ext="sse" sse-connect="/sse">
     <!--  Handle the sse logout message-->
-    <span hx-get="/login"
-          hx-target="body" sse-swap="logout"
-          hx-trigger="sse:logout" hidden>log me out</span>
+    <!--    <span hx-get="/login"-->
+    <!--          hx-target="body" sse-swap="logout"-->
+    <!--          hx-trigger="sse:logout" hidden>log me out</span>-->
 
     <div class="apphead">
         {{block "appHead" .}}App header goes here {{end}}
     </div>
 
-    <div class="apppages" id="appPage">
-        {{block "appPage" .}} Welcome to HiveOT {{end}}
+    <div class="apppages" id="appPage"
+         hx-get="/app/{{.pageName}}" hx-trigger="load delay:1s">
+        {{template "loading.html"}}
     </div>
 
     <div class="appfooter">
@@ -37,6 +38,7 @@
     iconify-icon {
         font-size: 20px;
     }
+
 
     /*all buttons in the nav-button section */
     .nav-button > button {

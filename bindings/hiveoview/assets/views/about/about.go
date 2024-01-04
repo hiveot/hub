@@ -11,8 +11,6 @@ func RenderAbout(w http.ResponseWriter, r *http.Request) {
 		"By":      "The Hive",
 		"Version": "pre-alpha",
 	}
-	//if r.Header.Get("")
-	//t := assets.AllTemplates
-	//assets.RenderWithLayout(w, t, "about.html", "", data)
-	assets.RenderTemplate(w, "about.html", data)
+	// simply render this as full or partial
+	assets.RenderMain(w, r, "about.html", data)
 }

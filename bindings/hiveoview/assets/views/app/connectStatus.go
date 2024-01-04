@@ -4,7 +4,6 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/assets"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/lib/hubclient/transports"
-	"log/slog"
 	"net/http"
 )
 
@@ -40,13 +39,7 @@ func GetConnectStatusProps(data map[string]any, r *http.Request) {
 
 // RenderConnectStatus renders the presentation of the client connection to the Hub message bus.
 func RenderConnectStatus(w http.ResponseWriter, r *http.Request) {
-
 	data := map[string]any{}
 	GetConnectStatusProps(data, r)
-
-	t := assets.GetTemplate("connectStatus.html")
-	err := t.Execute(w, data)
-	if err != nil {
-		slog.Error("Error rendering template", "err", err)
-	}
+	assets.RenderMain(w, r, "connectStatus.html", data)
 }

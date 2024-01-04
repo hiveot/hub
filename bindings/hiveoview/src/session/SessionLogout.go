@@ -16,5 +16,5 @@ func SessionLogout(w http.ResponseWriter, r *http.Request) {
 	RemoveSessionCookie(w, r)
 
 	// redirect to home
-	http.Redirect(w, r, "/login", http.StatusFound)
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }

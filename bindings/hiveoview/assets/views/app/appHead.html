@@ -1,9 +1,9 @@
 {{define "appHead"}}
 <nav uk-navbar class="appHead uk-navbar-container uk-navbar-transparent">
     <div class="appBrand uk-navbar">
-        <a class="uk-link-muted appBrand" href="/">
+        <a class="uk-link-muted appBrand" href="/" hx-target="#app" hx-swap="outerHTML">
             <!-- set style to prevent flashing large logo on initial render-->
-            <img src="/static/logo.svg" class="appBrand">
+            <img src="{{.logo}}" class="appBrand">
         </a>
         <label>HiveOT</label>
     </div>

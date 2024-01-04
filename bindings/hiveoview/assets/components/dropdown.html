@@ -66,17 +66,10 @@
     {{if .Icon}}
     <iconify-icon icon='mdi:{{.Icon}}'></iconify-icon>
     {{end}}
-    <a href="{{.Value}}" hx-target="#appPage">{{.Label}}</a>
-    <!--    <a hx-target="{{.Value}}">{{.Label}}</a>-->
+    <a href="{{.Value}}" hx-target="{{.Target}}">{{.Label}}</a>
+    <!--    <a href="{{.Value}}">{{.Label}}</a>-->
 </li>
-{{else if (eq .Type "post")}}
-<!--hx-boost will issue a get after the post-->
-<li id=".ID" class="menu-item">
-    {{if .Icon}}
-    <iconify-icon icon='mdi:{{.Icon}}'></iconify-icon>
-    {{end}}
-    <a hx-post="{{.Value}}" hx-target="body">{{.Label}}</a>
-</li>
+
 {{else}}
 <li id=".ID" class="menu-item">
     {{if .Icon}}
