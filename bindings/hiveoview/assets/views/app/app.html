@@ -2,14 +2,12 @@
 <!--hx-boost lets links with href's target #appPage destination while without-->
 <!--javascript the regular get takes place-->
 <div id="app" hx-boost="true" class="app" hx-ext="sse" sse-connect="/sse">
-    <!--  Handle the sse logout message-->
+    <!--  Handle the sse logout event-->
     <!--    <span hx-get="/login"-->
     <!--          hx-target="body" sse-swap="logout"-->
     <!--          hx-trigger="sse:logout" hidden>log me out</span>-->
 
-    <div class="apphead">
-        {{block "appHead" .}}App header goes here {{end}}
-    </div>
+    {{block "appHead" .}}App header goes here {{end}}
 
     <div class="apppages" id="appPage"
          hx-get="/app/{{.pageName}}" hx-trigger="load delay:1s">
@@ -23,8 +21,7 @@
 
 
 <style>
-    .apphead {
-    }
+
 
     .app, .apppages {
         width: 100%;
@@ -37,17 +34,6 @@
     /* default icons are a tiny 14px */
     iconify-icon {
         font-size: 20px;
-    }
-
-
-    /*all buttons in the nav-button section */
-    .nav-button > button {
-        margin: 1px;
-        background-color: transparent;
-        color: var(--primary);
-        border-radius: 2.5rem;
-        padding: 0;
-    / important;
     }
 
 

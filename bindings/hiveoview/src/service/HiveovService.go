@@ -73,6 +73,7 @@ func (svc *HiveovService) createRoutes(staticFS fs.FS) http.Handler {
 
 		// full page routes
 		r.Get("/static/*", staticFileServer.ServeHTTP)
+		r.Get("/components/*", staticFileServer.ServeHTTP)
 		r.Get("/login", login.RenderLogin)
 		r.Post("/login", login.PostLogin)
 		r.Get("/logout", session.SessionLogout)

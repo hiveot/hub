@@ -19,7 +19,7 @@ var EmbeddedComponents embed.FS
 
 // EmbeddedStatic contains all static assets
 //
-//go:embed static/*
+//go:embed static/* components/*
 var EmbeddedStatic embed.FS
 
 var AllTemplates, _ = parseTemplates()

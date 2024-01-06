@@ -1,19 +1,24 @@
 {{define "appHead"}}
-<nav uk-navbar class="appHead uk-navbar-container uk-navbar-transparent">
-    <div class="appBrand uk-navbar">
-        <a class="uk-link-muted appBrand" href="/" hx-target="#app" hx-swap="outerHTML">
-            <!-- set style to prevent flashing large logo on initial render-->
-            <img src="{{.logo}}" class="appBrand">
-        </a>
-        <label>HiveOT</label>
-    </div>
+<nav class="appHead">
+    <!--    <div class="appBrand">-->
+    <!--        <a class="appBrand" href="/" hx-target="#app" hx-swap="outerHTML">-->
+    <!--            &lt;!&ndash; set style to prevent flashing large logo on initial render&ndash;&gt;-->
+    <!--            <img src="{{.logo}}" class="appBrand " style="height: 42px">-->
+    <!--        </a>-->
+    <!--        <label>HiveOT</label>-->
+    <!--    </div>-->
+    <a href="/" hx-target="#app" hx-swap="outerHTML">
+        <h-brand title="HiveOT" logo="{{.logo}}"></h-brand>
+    </a>
 
     <!-- Tabs for dashboard pages-->
     <!--    {{template "tabs.html" .}}-->
 
-    <ul uk-tab class="uk-visible@s">
+    <ul uk-tab style="margin-left: 20px">
         {{range .pages}}
-        <li id="{{.}}-tab"><a href="/app/{{.}}" hx-target="#appPage">{{.}}</a></li>
+        <li id="{{.}}-tab">
+            <a href="/app/{{.}}" hx-target="#appPage">{{.}}</a>
+        </li>
         {{end}}
     </ul>
 
@@ -29,41 +34,38 @@
 
 
 <style>
+    h-brand {
+        /*hide the link color*/
+        /*color: var(--main-text-color);*/
+    }
 
+    ::part(h-brand-title) {
+        /*replace the 'link' color of the title with the normal text*/
+        color: var(--main-text-color);
+    }
 
     .appHead {
         /*background-color: transparent;*/
         /*width: 100%;*/
-        max-height: 62px;
+        /*max-height: 62px;*/
         display: flex;
         flex-direction: row;
         flex-wrap: nowrap;
         align-items: center;
-        gap: 15px;
-        padding: 0;
+        /*gap: 15px;*/
+        /*padding: 0;*/
         padding-right: 5px;
-        height: 62px;
-
-        /*Header buttons are smaller*/
-
-        .uk-button {
-            margin: 0;
-            padding: 3px 3px;
-        }
+        /*height: 62px;*/
     }
 
-    .appBrand {
-        display: flex;
-        /*tame the SVG icons size*/
-        max-height: 60px;
-        height: 90%;
-        flex-direction: row;
-        flex-wrap: nowrap;
-        align-items: center;
-        padding: 4px;
-        padding-right: 10px;
+    /*all buttons in the nav-button section */
+    .nav-button > button {
+        /*margin: 1px;*/
+        background-color: transparent;
+        /*color: var(--primary);*/
+        border-radius: 2.5rem;
+        /*padding: 0;*/
     }
-
 
 </style>
 

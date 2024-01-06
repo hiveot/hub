@@ -5,18 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <meta name="description" content="Hive Of Things Viewer">
     <!--    <link rel="icon" href="/static/favicon.png"/>-->
-    <link rel="icon" href="/static/favicon.png"/>
-    <link rel="stylesheet" href="/static/css/uikit-3.17.11.min.css"/>
+    <link rel="icon" href="/static/favicon.svg"/>
     <script src="/static/htmx.min.js"></script>
     <script src="/static/sse.js"></script>
     <script src="/static/iconify-icon.min.js"></script>
+    <link rel="stylesheet" href="/static/css/uikit-3.17.11.min.css"/>
     <script src="/static/uikit-3.17.11.min.js"></script>
-    <!--    <script src="static/uikit-3.17.11-icons.js"></script>-->
+    <script type="module" src="/components/components.js"></script>
     <title>{{.Title}}</title>
 </head>
 
+
 <script>
-    console.log("setting mode")
+    // console.log("starting hiveoview")
 
     function showBody() {
         if (localStorage.getItem('dark-mode') == 'on') {
@@ -27,6 +28,8 @@
 </script>
 
 <body onload="showBody()" hidden>
+
+
 {{block "embed" .}} main template {{end}}
 </body>
 </html>
@@ -178,12 +181,13 @@
     .uk-tab {
         margin-bottom: 5px;
         margin-top: 5px;
+        /*margin-left: 0;*/
     }
 
     .uk-button, .uk-button-default, .uk-button-link, .uk-button-text {
-        padding: 3px 15px;
+        /*padding: 3px 15px;*/
         /*vertical align for text and icons*/
         display: flex;
-        margin: 5px;
+        /*margin: 5px;*/
     }
 </style>

@@ -1,0 +1,25 @@
+<script src="/components/h-brand.js"></script>
+
+<template id="h-brand">
+    <div class="h-brand">
+        <a href="/" hx-target="#app" hx-swap="outerHTML">
+            <img src="{{.logo}}" class="appBrand"></img>
+        </a>
+        <label>HiveOT</label>
+
+        <style>
+            .h-brand {
+                display: flex;
+                /*tame the SVG icons size*/
+                max-height: 60px;
+                height: 90%;
+                flex-direction: row;
+                flex-wrap: nowrap;
+                align-items: center;
+                padding: 4px;
+                padding-right: 10px;
+            }
+        </style>
+    </div>
+</template>
+
