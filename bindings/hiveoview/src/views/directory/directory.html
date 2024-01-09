@@ -1,0 +1,28 @@
+<div>
+    <p>Directory contents</p>
+    <!-- todo: list of agents/publishers-->
+
+    <!--    Straight table of all things from template ".Things" data-->
+    <table class="uk-table">
+        <caption>Things</caption>
+        <thead>
+        <tr>Publisher</tr>
+        <tr>Thing ID</tr>
+        <tr>Name</tr>
+        <tr>Make</tr>
+        <tr>Description</tr>
+        </thead>
+        <tbody>
+        {{range .Things}}
+        <tr>{{.Publisher}}</tr>
+        <tr>{{.ThingID}}</tr>
+        <tr>{{.Name}}</tr>
+        <tr>{{.Make}}</tr>
+        <tr>{{.Description}}</tr>
+        {{end}}
+        </tbody>
+        <tfoot>
+
+        </tfoot>
+    </table>
+</div>

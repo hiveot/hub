@@ -6,21 +6,21 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/hiveot/hub/bindings/hiveoview/assets"
-	"github.com/hiveot/hub/bindings/hiveoview/assets/views/about"
-	"github.com/hiveot/hub/bindings/hiveoview/assets/views/app"
-	"github.com/hiveot/hub/bindings/hiveoview/assets/views/login"
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/hiveoviewapi"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/login"
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/vocab"
-	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
+	"path"
 	"time"
 )
 
@@ -32,6 +32,8 @@ type HiveovService struct {
 	dev          bool // development configuration
 	shouldUpdate bool
 	router       chi.Router
+	rootPath     string
+	tm           *views.TemplateManager
 
 	// hc hub client of this service.
 	// This client's CA and URL is also used to establish client sessions.
@@ -45,9 +47,20 @@ type HiveovService struct {
 }
 
 // setup the chain of routes used by the service and return the router
-// fs is the filesystem containing /static and template files
-func (svc *HiveovService) createRoutes(staticFS fs.FS) http.Handler {
+// rootPath points to the filesystem containing /static and template files
+func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
+	var staticFileServer http.Handler
 
+	if rootPath == "" {
+		staticFileServer = http.FileServer(
+			&StaticFSWrapper{
+				FileSystem:   http.FS(src.EmbeddedStatic),
+				FixedModTime: time.Now(),
+			})
+	} else {
+		// during development when run from the 'hub' project directory
+		staticFileServer = http.FileServer(http.Dir(rootPath))
+	}
 	router := chi.NewRouter()
 
 	// TODO: add csrf support in posts
@@ -65,19 +78,19 @@ func (svc *HiveovService) createRoutes(staticFS fs.FS) http.Handler {
 	//--- public routes do not require a Hub connection
 	router.Group(func(r chi.Router) {
 		// serve static files with the startup timestamp so caching works
-		staticFileServer := http.FileServer(
-			&StaticFSWrapper{
-				FileSystem:   http.FS(staticFS),
-				FixedModTime: time.Now(),
-			})
+		//staticFileServer := http.FileServer(
+		//	&StaticFSWrapper{
+		//		FileSystem:   http.FS(staticFS),
+		//		FixedModTime: time.Now(),
+		//	})
 
 		// full page routes
 		r.Get("/static/*", staticFileServer.ServeHTTP)
-		r.Get("/components/*", staticFileServer.ServeHTTP)
+		r.Get("/webcomp/*", staticFileServer.ServeHTTP)
 		r.Get("/login", login.RenderLogin)
 		r.Post("/login", login.PostLogin)
 		r.Get("/logout", session.SessionLogout)
-		r.Get("/about", about.RenderAbout)
+		//r.Get("/about", about.RenderAbout)
 
 		// SSE has its own validation
 		r.Get("/sse", session.SseHandler)
@@ -91,8 +104,8 @@ func (svc *HiveovService) createRoutes(staticFS fs.FS) http.Handler {
 
 		// TODO: improve support render htmx partials
 		// see also:https://medium.com/gravel-engineering/i-find-it-hard-to-reuse-root-template-in-go-htmx-so-i-made-my-own-little-tools-to-solve-it-df881eed7e4d
-		r.Get("/", app.RenderAppPage)
-		r.Get("/app", app.RenderAppPage)
+		r.Get("/", app.RenderApp)
+		r.Get("/app/", app.RenderApp)
 		r.Get("/app/{pageName}", app.RenderAppPage)
 
 		// fragment routes
@@ -147,9 +160,11 @@ func (svc *HiveovService) Start(hc *hubclient.HubClient) error {
 	connStat := hc.GetStatus()
 	sm.Init(connStat.HubURL, connStat.Core, svc.signingKey, connStat.CaCert)
 
-	// setup static resources
+	// parse the templates
+	svc.tm.ParseAllTemplates()
+
 	// add the routes
-	router := svc.createRoutes(assets.EmbeddedStatic)
+	router := svc.createRoutes(svc.rootPath)
 
 	// TODO: change into TLS using a signed server certificate
 	addr := fmt.Sprintf(":%d", svc.port)
@@ -179,24 +194,25 @@ func (svc *HiveovService) Stop() {
 // NewHiveovService creates a new service instance that serves the
 // content from a http.FileSystem.
 //
-// For a live filesystem use: http.Dir("path/to/files")
-//
-// For an embedded filesystem use one of:
-//
-//	embed:       //go:embed path/to/folder
-//	(go 1.16+)   var contentFS embed.FS
-//	pkger: pkger.Dir("/views")
-//	packr: packr.New("Templates","/views")
-//	rice:  rice.MustFindBox("views").HTTPBox()
+// rootPath is the root directory when serving files from the filesystem.
+// This must contain static/, views/ and webc/ directories.
+// If empty, the embedded filesystem is used.
 //
 // serverPort is the port of the web server will listen on
 // debug to enable debugging output
-func NewHiveovService(serverPort int, debug bool, signingKey *ecdsa.PrivateKey) *HiveovService {
+func NewHiveovService(serverPort int, debug bool, signingKey *ecdsa.PrivateKey, rootPath string) *HiveovService {
+	templatePath := rootPath
+	if rootPath != "" {
+		templatePath = path.Join(rootPath, "views")
+	}
+	tm := views.InitTemplateManager(templatePath)
 	svc := HiveovService{
 		port:         serverPort,
 		shouldUpdate: true,
 		debug:        debug,
 		signingKey:   signingKey,
+		rootPath:     rootPath,
+		tm:           tm,
 	}
 	return &svc
 }

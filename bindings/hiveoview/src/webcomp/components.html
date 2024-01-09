@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="Component Viewer">
+    <script src="../static/iconify-icon.min.js"></script>
+    <link rel="stylesheet" href="../static/uikit-3.17.11.min.css"/>
+    <script src="../static/uikit-3.17.11.min.js"></script>
+    <script type="module" src="../webcomp/components.js"></script>
+    <title>Component Viewer</title>
+</head>
+
+
+<body>
+
+<div style=" display:flex">
+
+    <table class="comptable">
+        <tr style="background-color: cornsilk">
+            <th>Name</th>
+            <th>Component</th>
+        </tr>
+        <tr>
+            <td class="table-label">
+                <span class="table-label">h-brand</span>
+            </td>
+            <td class="table-content">
+                <h-brand title="My Brand" logo="../static/logo.svg"></h-brand>
+            </td>
+        </tr>
+
+        <tr>
+            <td class="table-label">
+                <span class="table-label">h-dropdown</span>
+            </td>
+            <td class="table-content">
+                <h-dropdown title="my menu" position="bottomright">
+                    <button slot="button" class="uk-button">Menu
+                        <iconify-icon icon="mdi:menu"></iconify-icon>
+                    </button>
+                    <div style="width:100%;height:100%;border:1px solid gray; background-color: cornsilk">
+                        <ul>
+                            <li><a href="#">This is the dropdown content line 1</a></li>
+                            <li><p>line 2 of the dropdown content</p></li>
+                        </ul>
+                    </div>
+                </h-dropdown>
+            </td>
+        </tr>
+    </table>
+</div>
+
+</body>
+</html>
+
+<style>
+    html, body {
+        /*background-color: #ececed;*/
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        width: 100%;
+    }
+
+    /*Do not render the dropdown before it is defined, so its slotted content isn't shown */
+    /*https://stackoverflow.com/questions/64213037/how-to-avoid-that-slot-elements-in-web-components-appear-before-the-rest-is-rend*/
+    h-dropdown:not(:defined) {
+        display: none;
+    }
+
+    .comptable {
+        background-color: #dbd9d9;
+        width: 100%;
+        margin: 20px;
+        border: gray 1px solid;
+    }
+
+    .comptable .table-label, .comptable .table-content {
+        padding: 10px;
+        align-items: center;
+        /*background-color: #20212a;*/
+        /*color: #e6e1e1;*/
+    }
+
+    .comptable .table-label {
+        justify-content: center;
+        width: 200px;
+
+    }
+</style>

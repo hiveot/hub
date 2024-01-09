@@ -1,0 +1,57 @@
+<!--Main application view with header, page content and footer-->
+<!--hx-boost lets links with href's target #appPage destination while without-->
+<!--javascript the regular get takes place-->
+
+<div id="app" hx-boost="true" class="app" hx-ext="sse" sse-connect="/sse">
+    <!--  Handle the sse logout event-->
+    <!--    <span hx-get="/login"-->
+    <!--          hx-target="body" sse-swap="logout"-->
+    <!--          hx-trigger="sse:logout" hidden>log me out</span>-->
+
+    <div class="apphead">
+        {{block "appHead" .}}App header goes here {{end}}
+    </div>
+
+    <!-- FIXME: this should be a set of pages selectable from the menu. only 1 page is visible at a time
+         Page state, like scrolling in lists, should be retained when switching between pages.
+    -->
+    <div class="apppages" id="appPage">
+        <div id="dashboard" class="targetPage">{{template "dashboard.html"}}</div>
+        <div id="directory" class="targetPage">{{template "directory.html"}}</div>
+        <div id="status" class="targetPage">{{template "loading.html"}}</div>
+    </div>
+
+    <div class="appfooter">
+        {{block "appFooter" .}} App footer goes here {{end}}
+    </div>
+</div>
+
+
+<style>
+    .apphead {
+    }
+
+    .targetPage {
+        display: none;
+    }
+
+    .targetPage:target {
+        display: flex;
+    }
+
+
+    .app, .apppages {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        flex-grow: 10;
+    }
+
+    /* default icons are a tiny 14px */
+    iconify-icon {
+        font-size: 20px;
+    }
+
+
+</style>

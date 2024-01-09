@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="Hive Of Things Viewer">
+    <!--    <link rel="icon" href="/static/favicon.png"/>-->
+    <link rel="icon" href="../static/logo.svg"/>
+    <script src="../static/htmx.min.js"></script>
+    <script src="../static/sse.js"></script>
+    <script src="../static/iconify-icon.min.js"></script>
+    <link rel="stylesheet" href="../static/uikit-3.17.11.min.css"/>
+    <script src="../static/uikit-3.17.11.min.js"></script>
+    <script type="module" src="../webcomp/components.js"></script>
+    <title>{{.Title}}</title>
+</head>
+
+
+<script>
+    // console.log("starting hiveoview")
+
+    function showBody() {
+        if (localStorage.getItem('dark-mode') === 'on') {
+            document.body.classList.add('dark-mode')
+        }
+        document.body.hidden = false
+    }
+</script>
+
+<body onload="showBody()" hidden>
+
+
+{{block "embed" .}} main template {{end}}
+</body>
+</html>
+
+<style>
+    :root {
+        /* theme  */
+        --font-size: 16px;
+        --icon-font-size: 24px;
+
+        --main-bg-color: #E6E5E2FF;
+        --main-text-color: #343435;
+        --main-text-active-color: #191919;
+
+        --header-bg-color: #eeeeee;
+        --header-text-color: #4e4e52;
+
+        --dropdown-bg-color: #fffefe;
+
+        .dark-mode {
+            --main-bg-color: #3e4747;
+            --main-text-color: #dddddd;
+            --main-text-active-color: #eeeeee;
+
+            --header-bg-color: #3a3a3d;
+            --header-text-color: #dddddd;
+            --header-text-active-color: #eeeeee;
+
+            --dropdown-bg-color: #222222;
+        }
+
+        /* sizes */
+        font-size: var(--font-size);
+    }
+
+    html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    body {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+
+        color: var(--main-text-color);
+        background-color: var(--main-bg-color);
+    }
+
+    .appHead {
+        color: var(--header-text-color);
+        background-color: var(--header-bg-color);
+
+        .uk-tab > .uk-active > a {
+            color: var(--header-text-active-color);
+        }
+
+        .uk-button-link {
+            color: var(--header-text-color);
+        }
+    }
+
+    .bg-transparent {
+        background-color: transparent;
+    }
+
+    .uk-button {
+        background-color: var(--header-bg-color);
+        color: var(--header-text-color);
+        /*mix-blend-mode: difference;*/
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        color: var(--main-text-color);
+    }
+
+    iconify-icon {
+        font-size: var(--icon-font-size);
+    }
+
+    /* show a pointer for checkboxes and their labels
+    credits: https://stackoverflow.com/questions/41614446/change-pointer-for-checkbox-html
+    */
+    input[type="checkbox"], input[type="checkbox"] + label {
+        cursor: pointer;
+    }
+
+
+    .grow {
+        flex-grow: 1;
+    }
+
+    .flex-col, .flex-col-centered {
+        display: flex;
+        flex-direction: column;
+
+        .flex-col-centered {
+            align-items: center;
+        }
+    }
+
+    /* flexbox row with items centered */
+    .flex-row, .flex-row-centered {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .flex-row-centered {
+        justify-content: center;
+    }
+
+
+    /*.flex-center {*/
+    /*    align-self: center;*/
+    /*    justify-self: center;*/
+    /*}*/
+
+    /*Experiment with alternative tooltip position for the menu
+     * inset auto 0  will right-align against the parent container
+    */
+    /*.tooltip.bottomRight {*/
+    /*    !*position: absolute;*!*/
+    /*    !*inset: auto 0 auto auto;*!*/
+    /*    position: fixed;*/
+    /*    inset: auto;*/
+    /*    right: 5px;*/
+    /*    transform: translateY(50px);*/
+    /*    z-index: 1;*/
+    /*}*/
+
+    /*.tooltip.bottomLeft {*/
+    /*    position: fixed;*/
+    /*    left: 0;*/
+    /*    transform: translateY(50px);*/
+    /*    z-index: 1;*/
+    /*}*/
+
+
+    .uk-dropdown {
+        background-color: var(--dropdown-bg-color);
+        color: var(--main-text-color);
+        padding: 10px;
+        border-radius: 4px;
+    }
+
+    .uk-dropdown-nav > li > a {
+        color: var(--main-text-color);
+    }
+
+    .uk-tab {
+        margin-bottom: 5px;
+        margin-top: 5px;
+        /*margin-left: 0;*/
+
+        * > a {
+            color: var(--main-text-color);
+        }
+    }
+
+    .uk-button, .uk-button-default, .uk-button-link, .uk-button-text {
+        /*padding: 3px 15px;*/
+        /*vertical align for text and icons*/
+        display: flex;
+        /*margin: 5px;*/
+    }
+</style>

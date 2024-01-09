@@ -1,0 +1,117 @@
+{{define "appHead"}}
+
+<script>
+    // detect changes to the URL hash for updating the selected page tab
+    // https://developer.mozilla.org/en-US/docs/Web/API/Window/hashchange_event
+    addEventListener("hashchange", (ev) => {
+        console.log("hashchange: ", ev.newURL)
+        selectActiveTab()
+    })
+
+    // select tab based on current URL.
+    // TODO: clean this up. put it in a tab-bar web component?
+    // aint pretty and only works on page load :(
+    function selectActiveTab() {
+        let currentHash = window.location.hash
+        // let menuItems = document.getElementsByClassName("selectIt")
+        let menuItems = document.querySelectorAll(".selectIt")
+        // console.log("selecting active tab. Found menuitems: ", menuItems)
+
+        for (let i = 0; i < menuItems.length; i++) {
+            let item = menuItems[i]
+            let linkURL = item.getAttribute("href")
+            // console.log("checking href: " + linkURL + " vs: " + currentHash)
+            if (linkURL === currentHash) {
+                item.classList.add("uk-active")
+            } else {
+                item.classList.remove("uk-active")
+            }
+        }
+    }
+
+    window.addEventListener("load", selectActiveTab)
+
+</script>
+
+<nav class="appHead">
+    <!--    <div class="appBrand">-->
+    <!--        <a class="appBrand" href="/" hx-target="#app" hx-swap="outerHTML">-->
+    <!--            &lt;!&ndash; set style to prevent flashing large logo on initial render&ndash;&gt;-->
+    <!--            <img src="{{.logo}}" class="appBrand " style="height: 42px">-->
+    <!--        </a>-->
+    <!--        <label>HiveOT</label>-->
+    <!--    </div>-->
+    <a href="/app/#status" hx-boost="false" hx-target="#app">
+        <h-brand title="HiveOT" logo="{{.logo}}"></h-brand>
+    </a>
+
+    <!-- Tabs for dashboard pages-->
+    <!-- FIXME: for some reason the href doesn't update in the browser, so use onclick -->
+    <!--    FIXME: hx-boost-->
+    <div>
+        <ul id="tabList" uk-tab style="margin-left: 20px" class="uk-nav uk-visible@s"
+        >
+            {{range .pages}}
+            <li href="#{{.}}" class="selectIt">
+                <a id="{{.}}-switch" href="#{{.}}"
+                   onclick="window.location.href = this.href"
+                >{{.}}</a>
+            </li>
+            {{end}}
+        </ul>
+    </div>
+    <!-- spacer -->
+    <div class="grow"></div>
+
+    {{template "dark-mode" .}}
+
+    {{template "connectStatus.html" .}}
+
+    {{template "dropdown" .headerMenu}}
+
+    {{template "about.html"}}
+
+</nav>
+
+
+<style>
+    /*.selectIt[href="#directory"] {*/
+    /*    background-color: chocolate;*/
+    /*}*/
+
+    h-brand {
+        /*hide the link color*/
+        /*color: var(--main-text-color);*/
+    }
+
+    ::part(h-brand-title) {
+        /*replace the 'link' color of the title with the normal text*/
+        color: var(--main-text-color);
+    }
+
+    .appHead {
+        /*background-color: transparent;*/
+        /*width: 100%;*/
+        /*max-height: 62px;*/
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        /*gap: 15px;*/
+        /*padding: 0;*/
+        padding-right: 5px;
+        /*height: 62px;*/
+    }
+
+    /*all buttons in the nav-button section */
+    .nav-button > button {
+        /*margin: 1px;*/
+        background-color: transparent;
+        /*color: var(--primary);*/
+        border-radius: 2.5rem;
+        /*padding: 0;*/
+    }
+
+</style>
+
+{{end}}

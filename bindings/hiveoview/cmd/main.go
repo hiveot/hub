@@ -52,7 +52,11 @@ func main() {
 	if err == nil {
 		signingKey, err = jwt.ParseECPrivateKeyFromPEM(keyData)
 	}
-	svc := service.NewHiveovService(serverPort, false, signingKey)
+	// development only, serve files and parse templates from filesystem
+	cwd, _ := os.Getwd()
+	rootPath := path.Join(cwd, "bindings/hiveoview/src")
+
+	svc := service.NewHiveovService(serverPort, false, signingKey, rootPath)
 	// StartPlugin will connect to the hub and wait for signal to end
 	plugin.StartPlugin(svc, &env)
 }
