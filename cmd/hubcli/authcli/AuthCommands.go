@@ -177,7 +177,7 @@ func HandleAddUser(
 	if err != nil {
 		fmt.Println("Error: " + err.Error())
 	} else if newPassword != "" {
-		fmt.Println("User " + loginID + " added successfully. Temp password: " + newPassword)
+		println("User " + loginID + " added successfully. Temp password: " + newPassword)
 	} else {
 		// no need to show the given password
 		fmt.Println("User " + loginID + " added successfully")
@@ -301,8 +301,6 @@ func HandleSetPassword(hc *hubclient.HubClient, loginID string, newPassword stri
 
 	if err != nil {
 		fmt.Println("Error: " + err.Error())
-	} else if newPassword == "" {
-		fmt.Println("User "+loginID+" password has been updated. Generated password:", newPassword)
 	} else {
 		fmt.Println("User " + loginID + " password has been updated")
 	}
