@@ -54,8 +54,7 @@ template.innerHTML = `
       position: absolute;
       /*z-index: -1;   !* stay out of the way when hidden *! */
       width: max-content;
-      /*padding: 3px;*/
-      overflow: hidden;
+      overflow: visible;
       /*prevent outline showing on browser refresh */
     outline: none;
 
@@ -140,14 +139,16 @@ template.innerHTML = `
       z-index: 10;
       display: flex;  
       /* unclipped*/
-      clip-path: inset(0 0 0 0); 
+      /* allow room for box shadow */
+      clip-path: inset(-20px -20px -20px -20px); 
   }
 
   .content.show {
       z-index: 10;
       display: flex;
       /* unclipped*/
-      clip-path: inset(0 0 0 0); 
+      /* allow room for box shadow */
+      clip-path: inset(-20px -20px -20px -20px); 
   }
   
 </style>  
