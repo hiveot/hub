@@ -6,12 +6,16 @@
     <meta name="description" content="Hive Of Things Viewer">
     <!--    <link rel="icon" href="/static/favicon.png"/>-->
     <link rel="icon" href="../static/logo.svg"/>
+    <script type="module" src="../webcomp/components.js"></script>
+    <link rel="stylesheet" href="../webcomp/h-styles.css"/>
+
     <script src="../static/htmx.min.js"></script>
     <script src="../static/sse.js"></script>
     <script src="../static/iconify-icon.min.js"></script>
+
     <link rel="stylesheet" href="../static/uikit-3.17.11.min.css"/>
     <script src="../static/uikit-3.17.11.min.js"></script>
-    <script type="module" src="../webcomp/components.js"></script>
+
     <title>{{.Title}}</title>
 </head>
 
@@ -37,7 +41,7 @@
 <style>
     :root {
         /* theme  */
-        --font-size: 16px;
+        --font-size: 18px;
         --icon-font-size: 24px;
 
         --main-bg-color: #E6E5E2FF;
@@ -63,6 +67,8 @@
 
         /* sizes */
         font-size: var(--font-size);
+        font-family: Roboto, Helvetica, Arial, sans-serif;
+
     }
 
     html, body {
@@ -70,6 +76,7 @@
         padding: 0;
         width: 100%;
         height: 100%;
+        outline: none;
     }
 
     body {

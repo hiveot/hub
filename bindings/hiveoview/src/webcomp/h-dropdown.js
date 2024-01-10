@@ -56,7 +56,8 @@ template.innerHTML = `
       width: max-content;
       /*padding: 3px;*/
       overflow: hidden;
-      word-wrap: unset;
+      /*prevent outline showing on browser refresh */
+    outline: none;
 
 /*instead of display none, use clip-path to hide the menu, along with z-index.
  * z-index is set to -1 so it won't be in the way of other elements when hidden.
@@ -65,17 +66,17 @@ template.innerHTML = `
  */
     transition: all 300ms ease;
 }
-  .bottom {
+  .content.bottom {
     top: 100%;
     clip-path: inset(0 0 100% 0); 
   }
   
-  .bottomright {
+  .content.bottomright {
     top: 100%;
     right:0;
     clip-path: inset(0 0 100% 0); 
   }
-  .bottomleft {
+  .content.bottomleft {
    top:100%;
    left:0;
     clip-path: inset(0 0 100% 0); 
@@ -83,22 +84,22 @@ template.innerHTML = `
    /* place container left from the button
     (requires container align-items: center) 
    */
-  .left {
+  .content.left {
     right:100%;
     clip-path: inset(0 0 0 100%); 
   }
-  .leftbottom {
+  .content.leftbottom {
     top: 100%;
     right: 100%;
     clip-path: inset(0 0 100% 100%); 
   }
-  .lefttop {
+  .content.lefttop {
     bottom: 100%;
     right: 100%;
     clip-path: inset(100% 0 0 100%); 
   }
 
-  .right {
+  .content.right {
     left:100%;
     /* hide right to left */
     clip-path: inset(0 100% 0 0); 
@@ -108,24 +109,24 @@ template.innerHTML = `
     left: 100%;
     clip-path: inset(0 100% 100% 0); 
   }
-  .righttop {
+  .content.righttop {
     bottom: 100%;
     left: 100%;
     clip-path: inset(100% 100% 0 0); 
   }
-  .top {
+  .content.top {
   bottom: 100%;
     /* hide bottom-to top */
     clip-path: inset(100% 0 0 0); 
 }
 
-  .topright {
+  .content.topright {
     bottom: 100%;
     right:0;
     /* hide bottom-to top */
     clip-path: inset(100% 0 0 0); 
   }
-  .topleft {
+  .content.topleft {
     bottom: 100%;
     left:0;
     /* hide bottom-to top */
@@ -138,7 +139,6 @@ template.innerHTML = `
   /* content remains visible while it has focus*/
       z-index: 10;
       display: flex;  
-      opacity: 1;
       /* unclipped*/
       clip-path: inset(0 0 0 0); 
   }
@@ -146,10 +146,8 @@ template.innerHTML = `
   .content.show {
       z-index: 10;
       display: flex;
-      opacity: 1;
       /* unclipped*/
       clip-path: inset(0 0 0 0); 
-      max-width: 1000px;
   }
   
 </style>  
@@ -190,6 +188,7 @@ class HDropdown extends HTMLElement {
         // we need the click event from the child in the button slot to show
         // either the default button or the provided button.
         this.elButton = shadowRoot.querySelector("[button]");
+
         this.elButtonSlot = this.elButton.children[0]
         this.elButtonSlot.addEventListener("click", this.toggleMenu.bind(this))
         // if we're about to click on the button then ignore the focus event that
@@ -202,7 +201,7 @@ class HDropdown extends HTMLElement {
         this.elContent = shadowRoot.querySelector("[content]");
         this.elContentSlot = shadowRoot.querySelector("[content-slot]");
         // the children of the content slot must have a focus stop (tabIndex -1)
-        if (this.elContentSlot.assignedElements) {
+        if (this.elContentSlot && this.elContentSlot.assignedElements) {
             let contentChildren = this.elContentSlot.assignedElements()
             this.contentChild = contentChildren[0]
             this.contentChild.tabIndex = -1
