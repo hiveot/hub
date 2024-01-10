@@ -51,13 +51,17 @@
     <div>
         <ul id="tabList" uk-tab style="margin-left: 20px" class="uk-nav uk-visible@s"
         >
-            {{range .pages}}
-            <li href="#{{.}}" class="selectIt">
-                <a id="{{.}}-switch" href="#{{.}}"
+            <li id="dashboard-tab" href="#dashboard" class="selectIt">
+                <a href="#dashboard" hx-target="#app" hx-boost="false"
                    onclick="window.location.href = this.href"
-                >{{.}}</a>
+                >Dashboard</a>
             </li>
-            {{end}}
+            <li id="directory-tab" href="#directory" class="selectIt">
+                <a href="#directory"
+                   onclick="window.location.href = this.href"
+                >Directory</a>
+            </li>
+
         </ul>
     </div>
     <!-- spacer -->
@@ -67,7 +71,7 @@
 
     {{template "connectStatus.html" .}}
 
-    {{template "dropdown" .headerMenu}}
+    {{template "appmenu.html"}}
 
     {{template "about.html"}}
 

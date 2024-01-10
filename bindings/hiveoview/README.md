@@ -1,19 +1,20 @@
 # HiveOView
 
-Hive of Things Viewer, written in golang, html/htmx and sse using echo. Very little javascript.
+Hive of Things Viewer, written in golang, html/htmx, web components, and sse using chi router, sprinkled with a little javascript.
 
 ## Status
 
-This viewer is in early development. The information below is subject to change. TODO:
+This viewer is in early development. The information below is subject to change.
 
 ### Phase 1: SSR infrastructure and session management
 
-1. Setup a server with HTML template renderer
-2. Define Html templates for layout, landing page, about window, login window
-3. Include htmx with sse for dynamic updates
-4. Track client sessions with sse connections and state on the server
-5. MQTT Authentication in client session
-6. Push connection status update
+1. Setup a server with HTML template renderer [done]
+2. Define Html templates for base layout, dashboard, about, and login pages [done]
+3. Support SSE connections for dynamic updates [done]
+4. Session management for MQTT hub connections and sse support to push events [done]
+5. MQTT Authentication in client session [done]
+6. NATS Authentication in client session (todo: session auth without keys)
+7. Push connection status update
 
 ### Phase 2: Read directory
 

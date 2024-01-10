@@ -1,0 +1,69 @@
+<!-- dropdown menu -->
+<h-dropdown position="bottomright" class="uk-padding-small ">
+    <button slot="button" type="button"
+            class="bg-transparent uk-button  uk-button-link round"
+    >
+        <iconify-icon icon="mdi:menu"></iconify-icon>
+    </button>
+
+    <ul class="uk-dropdown-nav uk-list uk-list-large h-shadow"
+        style="background-color: var(--header-bg-color);
+        padding:10px;">
+
+        <li id="dashboard-menu" class="menu-item">
+            <iconify-icon icon='mdi:view-dashboard'></iconify-icon>
+            <a href="/app/#dashboard" hx-target="#app" hx-boost="false">Dashboard</a>
+        </li>
+        <li id="directory-menu" class="menu-item">
+            <iconify-icon icon='mdi:view-dashboard'></iconify-icon>
+            <a href="/app/#directory" hx-target="#app" hx-boost="false">Directory</a>
+        </li>
+
+        <li class="uk-nav-divider"></li>
+
+        <li id="editmode-menu" class="menu-item">
+            <!--    checkboxes don't close them menu when clicked-->
+            <input id="editmode-input" type="checkbox" value="false"
+                   class="menu-checkbox"/>
+            <label for="editmode-input">Edit Mode</label>
+        </li>
+        <li id="logout-menu" class="menu-item">
+            <iconify-icon icon='mdi:logout'></iconify-icon>
+            <a href="/logout" hx-boost="false">Logout</a>
+        </li>
+        <li id="about-menu" class="menu-item">
+            <iconify-icon icon='mdi:info'></iconify-icon>
+            <a uk-toggle="target: #about">About Hiveoview</a>
+        </li>
+
+    </ul>
+</h-dropdown>
+
+<style>
+    /*Adjust spacing between menu items. default is a huge 20px*/
+    .uk-list-large > :nth-child(n+2) {
+        margin-top: 10px;
+    }
+
+    /*.menu-shadow {*/
+    /*    box-shadow: 0px 5px 5px -3px rgba(0, 0, 0, 0.2), 0px 8px 10px 1px rgba(0, 0, 0, 0.14), 0px 3px 14px 2px rgba(0, 0, 0, 0.12);*/
+    /*}*/
+
+    .menu-item {
+        /*font-size: 1.1rem;*/
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 7px;
+    }
+
+    .menu-checkbox {
+        width: 20px;
+        height: 20px;
+        margin-left: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+
+</style>
+

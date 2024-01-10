@@ -1,4 +1,4 @@
-package components
+package app
 
 //const tplName = "appbar"
 
@@ -13,7 +13,7 @@ const (
 	MenuItemDivider = "divider"
 )
 
-type DropdownItem struct {
+type AppMenuItem struct {
 	ID     string // Menu item ID
 	Type   string // checkbox, divider, label, link
 	Label  string // label to display
@@ -22,12 +22,12 @@ type DropdownItem struct {
 	Target string // HX-target field for redirects
 }
 
-// SetDropdownProps sets the properties used in rendering a dropdown menu
+// SetAppMenuProps sets the properties used in rendering the app menu
 //
 //	data is contains the existing template properties to add to
 //	menuID is the ID under which the menu is stored for use by the template
 //	items is the list of menu items
-func SetDropdownProps(data map[string]any, menuID string, items []DropdownItem) {
+func SetAppMenuProps(data map[string]any, menuID string, items []AppMenuItem) {
 	dataItems := make([]any, 0)
 	for _, item := range items {
 		dataItem := make(map[string]any)

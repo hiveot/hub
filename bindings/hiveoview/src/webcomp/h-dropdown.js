@@ -195,7 +195,7 @@ class HDropdown extends HTMLElement {
         // if we're about to click on the button then ignore the focus event that
         // is the result of this click, to prevent the menu from toggling to open.
         this.elButtonSlot.addEventListener("mousedown", (ev) => {
-            console.log("mousedown  set ignoreblur")
+            // console.log("mousedown  set ignoreblur")
             this.ignoreBlur = true
         })
 
@@ -210,7 +210,6 @@ class HDropdown extends HTMLElement {
         // when losing focus in the dropdown, close it.
         this.elContent.addEventListener("blur", this.hideContent.bind(this))
 
-        // this.position = "bottom"
         // credits: react-autocomplete. ignore the blur event
         this.ignoreBlur = false
     }
@@ -220,7 +219,7 @@ class HDropdown extends HTMLElement {
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
-        console.log("attributeChangedCallback: " + name + "=" + newValue);
+        // console.log("attributeChangedCallback: " + name + "=" + newValue);
         if (name === "position") {
             this.elContent.classList.remove(oldValue)
             this.elContent.classList.add(newValue)
@@ -278,7 +277,7 @@ class HDropdown extends HTMLElement {
         // otherwise the toggle button click will show it again after hiding the dropdown.
 
         if (this.ignoreBlur) {
-            console.log("hidecontent ignored")
+            // console.log("hidecontent ignored")
             return
         }
         // if focus is set to content then the content remains visible until focus leaves
@@ -287,7 +286,7 @@ class HDropdown extends HTMLElement {
         // that focus was on the content).
         // Ideally the blur event (which calls hideContent) only happens when 'focus-within'
         // is no longer active.
-        console.log("hidecontent remove show")
+        // console.log("hidecontent remove show")
         this.elContent.classList.remove("show")
     }
 
@@ -298,7 +297,7 @@ class HDropdown extends HTMLElement {
     // menu toggle is called, otherwise hideContent will remove 'show' and the toggle
     // will then add 'show' again.
     toggleMenu(ev) {
-        console.log("on toggle and remove ignoreblur")
+        // console.log("on toggle and remove ignoreblur")
         // the show class controls menu visibility
         let isShown = this.elContent.classList.contains("show")
         if (isShown) {
