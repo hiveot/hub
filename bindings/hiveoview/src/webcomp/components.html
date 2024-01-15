@@ -8,7 +8,10 @@
     <script type="module" src="../webcomp/components.js"></script>
     <link rel="stylesheet" href="../webcomp/h-styles.css"/>
 
+    <script src="../static/htmx.min.js"></script>
+    <script src="../static/sse.js"></script>
     <script src="../static/iconify-icon.min.js"></script>
+
     <link rel="stylesheet" href="../static/uikit-3.17.11.min.css"/>
     <script src="../static/uikit-3.17.11.min.js"></script>
     <title>Component Viewer</title>
@@ -18,28 +21,37 @@
 <body>
 
 <!--Table of HiveOT web component examples-->
-<div style=" display:flex">
+<div style="display:flex">
 
     <table class="comptable">
+        <thead>
         <tr style="background-color: cornsilk">
             <th>Name</th>
             <th>Component</th>
         </tr>
+        </thead>
+
+        <!-- === h-brand ===-->
+        <tbody>
+
         <tr>
-            <td class="table-label">
+            <td>
                 <span class="table-label">h-brand</span>
             </td>
-            <td class="table-content">
+            <td>
                 <h-brand title="My Brand" logo="../static/logo.svg"></h-brand>
             </td>
         </tr>
 
+        <!-- === h-dropdown ===-->
         <tr>
-            <td class="table-label">
+            <td>
                 <span class="table-label">h-dropdown</span>
             </td>
-            <td class="table-content">
-                <h-dropdown title="my menu" show position="bottomleft" show>
+            <td>
+
+                <h-dropdown id="dropdown1" show="false" titlez="my menu" position="bottomleft">
+
                     <button slot="button" class="uk-button">Menu
                         <iconify-icon icon="mdi:menu"></iconify-icon>
                     </button>
@@ -47,7 +59,7 @@
                           background-color: cornsilk; ">
                         <ul style="display: block;  list-style: none; ;
                           box-shadow: 3px 3px 10px 5px rgba(0,0,0,.5);">
-                            <li><a href="#">This is the bottomleft dropdown</a></li>
+                            <li><a href="#">This is the "bottomleft" dropdown</a></li>
                             <li>Use position="bottom" or "bottomright", "bottomleft" to place it below the button</li>
                             <li>Use position="top" or "topright" or "topleft" to place above the button</li>
                             <li>Use position="right" or "righttop" or "rightbottom" to place right of the button</li>
@@ -57,8 +69,58 @@
                 </h-dropdown>
             </td>
         </tr>
+        <!-- === h-modal ===-->
+        <tr>
+            <td>
+                <span class="table-label">h-modal</span>
+            </td>
+            <td class="h-row" style="gap: 5px">
+                <!-- =Modal 1: CSS based inside the modal= -->
+                <button id="buttonM1" name="button" class="uk-button"
+                        hx-get="../webcomp/test-dialog1.html"
+                        href="#modal1"
+                        hx-target="#modal1">HTML/CSS in dialog1
+                </button>
+                <div id="modal1"></div>
+
+                <!-- =Modal 2: web component with slot= -->
+                <button id="buttonM2" name="button" class="uk-button"
+                        _="on click add @show to #modal2"
+                >WC light DOM+slot (2)
+                </button>
+                <h-modal2 id="modal2"
+                          showclose
+                          onclose="console.log('dialog closed')"
+                          oncancel="console.log('dialog cancelled')"
+                          onsubmit="console.log('dialog submitted')"
+                >
+                    <div slot="header"><h2>Hello modal 2</h2></div>
+                    <div slot="body">
+                        <p style="border:1px gray solid">
+                            Modal 2 default content</p>
+                    </div>
+                </h-modal2>
+
+                <!-- =Modal 3= -->
+                <button id="buttonM3" class="uk-button"
+                        hx-get="../webcomp/test-dialog3.html"
+                        hx-target="#modal3"
+                        _="on click log 'opening modal 3b'"
+                >WC Virt DOM+Slot (3)
+                </button>
+                <h-modal3 id="modal3">
+                    Modal 3 default content
+                </h-modal3>
+
+
+            </td>
+        </tr>
+        </tbody>
     </table>
 </div>
+
+<script>
+</script>
 
 </body>
 </html>
@@ -77,7 +139,7 @@
         * {
             /*margin: 0;*/
             /*padding: 0;*/
-            border: none;
+            /*border: none;*/
             /*outline: none;*/
 
         }
@@ -89,6 +151,10 @@
         display: none;
     }
 
+    h-modal2:not(:defined) {
+        display: none;
+    }
+
     .comptable {
         background-color: #dbd9d9;
         width: 100%;
@@ -96,16 +162,8 @@
         border: gray 1px solid;
     }
 
-    .comptable .table-label, .comptable .table-content {
+    .comptable td {
         padding: 10px;
-        align-items: center;
-        /*background-color: #20212a;*/
-        /*color: #e6e1e1;*/
     }
 
-    .comptable .table-label {
-        justify-content: center;
-        width: 200px;
-
-    }
 </style>

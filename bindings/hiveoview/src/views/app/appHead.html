@@ -47,12 +47,11 @@
 
     <!-- Tabs for dashboard pages-->
     <!-- FIXME: for some reason the href doesn't update in the browser, so use onclick -->
-    <!--    FIXME: hx-boost-->
     <div>
         <ul id="tabList" uk-tab style="margin-left: 20px" class="uk-nav uk-visible@s"
         >
             <li id="dashboard-tab" href="#dashboard" class="selectIt">
-                <a href="#dashboard" hx-target="#app" hx-boost="false"
+                <a href="#dashboard" hx-target="#app"
                    onclick="window.location.href = this.href"
                 >Dashboard</a>
             </li>
@@ -73,7 +72,7 @@
 
     {{template "appmenu.html"}}
 
-    {{template "about.html"}}
+    {{template "appAbout.html"}}
 
 </nav>
 

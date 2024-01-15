@@ -72,8 +72,8 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
 	//router.Use(csrfMiddleware)
-	//router.Use(middleware.Compress(5,
-	//	"text/html", "text/css", "text/javascript", "image/svg+xml"))
+	router.Use(middleware.Compress(5,
+		"text/html", "text/css", "text/javascript", "image/svg+xml"))
 
 	//--- public routes do not require a Hub connection
 	router.Group(func(r chi.Router) {
@@ -90,7 +90,6 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 		r.Get("/login", login.RenderLogin)
 		r.Post("/login", login.PostLogin)
 		r.Get("/logout", session.SessionLogout)
-		//r.Get("/about", about.RenderAbout)
 
 		// SSE has its own validation
 		r.Get("/sse", session.SseHandler)

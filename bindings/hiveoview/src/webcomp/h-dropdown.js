@@ -51,11 +51,11 @@ template.innerHTML = `
      /*z-index:1;*/
   }
   .content {
-      position: absolute;
-      /*z-index: -1;   !* stay out of the way when hidden *! */
-      width: max-content;
-      overflow: visible;
-      /*prevent outline showing on browser refresh */
+    position: absolute;
+    /*z-index: -1;   !* stay out of the way when hidden *! */
+    width: max-content;
+    overflow: visible;
+    /*prevent outline showing on browser refresh */
     outline: none;
 
 /*instead of display none, use clip-path to hide the menu, along with z-index.
@@ -189,7 +189,6 @@ class HDropdown extends HTMLElement {
         // we need the click event from the child in the button slot to show
         // either the default button or the provided button.
         this.elButton = shadowRoot.querySelector("[button]");
-
         this.elButtonSlot = this.elButton.children[0]
         this.elButtonSlot.addEventListener("click", this.toggleMenu.bind(this))
         // if we're about to click on the button then ignore the focus event that
@@ -242,7 +241,11 @@ class HDropdown extends HTMLElement {
             }
 
         } else if (name === "show") {
-            this.elContent.classList.add("show")
+            if (newValue == "false") {
+                this.elContent.classList.remove("show")
+            } else {
+                this.elContent.classList.add("show")
+            }
         }
         // console.log("height:" + this.style.getPropertyValue("height"));
     }
