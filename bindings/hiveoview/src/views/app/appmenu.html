@@ -7,16 +7,15 @@
     </button>
 
     <ul class="uk-dropdown-nav uk-list uk-list-large h-shadow"
-        style="background-color: var(--header-bg-color);
-        padding:10px;">
+    >
 
         <li id="dashboard-menu" class="menu-item">
             <iconify-icon icon='mdi:view-dashboard'></iconify-icon>
-            <a href="/app/#dashboard" hx-target="#app" hx-boost="false">Dashboard</a>
+            <a href="#dashboard" hx-target="#app">Dashboard</a>
         </li>
         <li id="directory-menu" class="menu-item">
             <iconify-icon icon='mdi:view-dashboard'></iconify-icon>
-            <a href="/app/#directory" hx-target="#app" hx-boost="false">Directory</a>
+            <a href="#directory" hx-target="#app">Directory</a>
         </li>
 
         <li class="uk-nav-divider"></li>
@@ -33,7 +32,10 @@
         </li>
         <li id="about-menu" class="menu-item">
             <iconify-icon icon='mdi:info'></iconify-icon>
-            <a uk-toggle="target: #about">About Hiveoview</a>
+
+            <!-- TODO: how to toggle the about view?-->
+            <!--            <a uk-toggle="target: #about">About Hiveoview</a>-->
+            <a href="#about" hx-target="#app">About Hiveoview</a>
         </li>
 
     </ul>

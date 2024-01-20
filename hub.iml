@@ -16,5 +16,6 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="assets" level="project" />
     <orderEntry type="library" name="assets" level="project" />
+    <orderEntry type="library" name="webcomp" level="project" />
   </component>
 </module>

@@ -11,6 +11,7 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/login"
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authclient"
@@ -104,8 +105,7 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 		// TODO: improve support render htmx partials
 		// see also:https://medium.com/gravel-engineering/i-find-it-hard-to-reuse-root-template-in-go-htmx-so-i-made-my-own-little-tools-to-solve-it-df881eed7e4d
 		r.Get("/", app.RenderApp)
-		r.Get("/app/", app.RenderApp)
-		r.Get("/app/{pageName}", app.RenderAppPage)
+		r.Get("/dashboard/{pageName}", dashboard.RenderDashboard)
 
 		// fragment routes
 		// do fragments require a cookie? connectStatus needs a session

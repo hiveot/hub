@@ -121,6 +121,7 @@ func (svc *TemplateManager) RenderTemplate(w http.ResponseWriter, r *http.Reques
 }
 
 // RenderFragment renders the template 'name' with the given data without base template.
+// Intended to be used with hx-target pointing to the page in which to render the fragment.
 //
 //	w is the writer to render to
 //	name is the name of the template to render

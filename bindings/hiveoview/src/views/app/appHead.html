@@ -41,30 +41,19 @@
     <!--        </a>-->
     <!--        <label>HiveOT</label>-->
     <!--    </div>-->
-    <a href="/app/#status" hx-boost="false" hx-target="#app">
+    <a href="#status" hx-target="#app">
         <h-brand title="HiveOT" logo="{{.logo}}"></h-brand>
     </a>
 
     <!-- Tabs for dashboard pages-->
     <!-- FIXME: for some reason the href doesn't update in the browser, so use onclick -->
-    <div>
-        <ul id="tabList" uk-tab style="margin-left: 20px" class="uk-nav uk-visible@s"
-        >
-            <li id="dashboard-tab" href="#dashboard" class="selectIt">
-                <a href="#dashboard" hx-target="#app"
-                   onclick="window.location.href = this.href"
-                >Dashboard</a>
-            </li>
-            <li id="directory-tab" href="#directory" class="selectIt">
-                <a href="#directory"
-                   onclick="window.location.href = this.href"
-                >Directory</a>
-            </li>
-
-        </ul>
-    </div>
+    <h-navbar>
+        <li><a id="dashboard" href="#dashboard">Dashboard</a></li>
+        <li><a id="directory" href="#directory">Directory</a></li>
+        <li><a id="notifications" href="#notifications">Notifications</a></li>
+    </h-navbar>
     <!-- spacer -->
-    <div class="grow"></div>
+    <div class="h-grow"></div>
 
     {{template "dark-mode" .}}
 
@@ -72,7 +61,6 @@
 
     {{template "appmenu.html"}}
 
-    {{template "appAbout.html"}}
 
 </nav>
 
@@ -93,26 +81,21 @@
     }
 
     .appHead {
-        /*background-color: transparent;*/
-        /*width: 100%;*/
-        /*max-height: 62px;*/
+        color: var(--header-text-color);
+        background-color: var(--header-bg-color);
+
         display: flex;
         flex-direction: row;
         flex-wrap: nowrap;
         align-items: center;
-        /*gap: 15px;*/
-        /*padding: 0;*/
         padding-right: 5px;
-        /*height: 62px;*/
     }
 
     /*all buttons in the nav-button section */
     .nav-button > button {
-        /*margin: 1px;*/
         background-color: transparent;
         /*color: var(--primary);*/
         border-radius: 2.5rem;
-        /*padding: 0;*/
     }
 
 </style>

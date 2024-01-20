@@ -5,15 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <meta name="description" content="Component Viewer">
 
-    <script type="module" src="../webcomp/components.js"></script>
-    <link rel="stylesheet" href="../webcomp/h-styles.css"/>
-
     <script src="../static/htmx.min.js"></script>
     <script src="../static/sse.js"></script>
-    <script src="../static/iconify-icon.min.js"></script>
+    <!--    <script src="../static/iconify-icon.min.js"></script>-->
 
-    <link rel="stylesheet" href="../static/uikit-3.17.11.min.css"/>
-    <script src="../static/uikit-3.17.11.min.js"></script>
+    <!--    <link rel="stylesheet" href="../static/pico-1.5.11.min.css"/>-->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@next/css/pico.min.css"/>
+
+    <link rel="stylesheet" href="../webcomp/h-theme.css"/>
+    <link rel="stylesheet" href="../webcomp/h-classes.css"/>
+    <script type="module" src="../webcomp/components.js"></script>
     <title>Component Viewer</title>
 </head>
 
@@ -21,11 +22,11 @@
 <body>
 
 <!--Table of HiveOT web component examples-->
-<div style="display:flex">
+<main class="container-fluid" hx-boost="true">
 
-    <table class="comptable">
+    <table>
         <thead>
-        <tr style="background-color: cornsilk">
+        <tr>
             <th>Name</th>
             <th>Component</th>
         </tr>
@@ -33,137 +34,110 @@
 
         <!-- === h-brand ===-->
         <tbody>
-
         <tr>
             <td>
-                <span class="table-label">h-brand</span>
+                <span>h-brand</span>
             </td>
-            <td>
+            <td class="h-row">
                 <h-brand title="My Brand" logo="../static/logo.svg"></h-brand>
+                <h-dark-toggle></h-dark-toggle>
             </td>
+
         </tr>
 
         <!-- === h-dropdown ===-->
         <tr>
             <td>
-                <span class="table-label">h-dropdown</span>
+                <span>h-dropdown</span>
             </td>
-            <td>
-
-                <h-dropdown id="dropdown1" show="false" titlez="my menu" position="bottomleft">
-
-                    <button slot="button" class="uk-button">Menu
-                        <iconify-icon icon="mdi:menu"></iconify-icon>
+            <td class="h-row">
+                <h-dropdown id="dropdown1" show="false" position="bottomleft">
+                    <button slot="button" class="outline h-row">Menu
                     </button>
-                    <div style="
-                          background-color: cornsilk; ">
-                        <ul style="display: block;  list-style: none; ;
-                          box-shadow: 3px 3px 10px 5px rgba(0,0,0,.5);">
+                    <article class="h-shadow h-col">
+                        <ul>
                             <li><a href="#">This is the "bottomleft" dropdown</a></li>
-                            <li>Use position="bottom" or "bottomright", "bottomleft" to place it below the button</li>
+                            <li>Use position="bottom" or "bottomright", "bottomleft" to place it below the button
+                            </li>
                             <li>Use position="top" or "topright" or "topleft" to place above the button</li>
-                            <li>Use position="right" or "righttop" or "rightbottom" to place right of the button</li>
+                            <li>Use position="right" or "righttop" or "rightbottom" to place right of the button
+                            </li>
                             <li>Use position="left" or "lefttop" or "leftbottom" to place right of the button</li>
                         </ul>
-                    </div>
+                    </article>
                 </h-dropdown>
+
+                <details class="dropdown">
+                    <summary>Menu</summary>
+                    <ul>
+                        <li><a href="#">This is the "bottomleft" dropdown</a></li>
+                        <li>Use position="bottom" or "bottomright", "bottomleft" to place it below the button</li>
+                        <li>Use position="top" or "topright" or "topleft" to place above the button</li>
+                        <li>Use position="right" or "righttop" or "rightbottom" to place right of the button</li>
+                        <li>Use position="left" or "lefttop" or "leftbottom" to place right of the button</li>
+                    </ul>
+                </details>
             </td>
         </tr>
         <!-- === h-modal ===-->
         <tr>
             <td>
-                <span class="table-label">h-modal</span>
+                <span>h-modal</span>
             </td>
-            <td class="h-row" style="gap: 5px">
-                <!-- =Modal 1: CSS based inside the modal= -->
-                <button id="buttonM1" name="button" class="uk-button"
-                        hx-get="../webcomp/test-dialog1.html"
-                        href="#modal1"
-                        hx-target="#modal1">HTML/CSS in dialog1
+            <td>
+                <!-- =Modal Using hx-get= -->
+                <button class="outline secondary"
+                        hx-get="../webcomp/test-dialog.html"
+                        hx-target="#modal1"
+                        onclick="hShow('modal1')"
+                >Modal with hx-get
                 </button>
-                <div id="modal1"></div>
+                <h-modal id="modal1" shadow showclose animate>
+                </h-modal>
 
-                <!-- =Modal 2: web component with slot= -->
-                <button id="buttonM2" name="button" class="uk-button"
-                        _="on click add @show to #modal2"
-                >WC light DOM+slot (2)
+                <!-- =Modal with inline content= -->
+                <button class="outline secondary"
+                        onclick="hShow('modal2')">Modal with inline content
                 </button>
-                <h-modal2 id="modal2"
-                          showclose
-                          onclose="console.log('dialog closed')"
-                          oncancel="console.log('dialog cancelled')"
-                          onsubmit="console.log('dialog submitted')"
-                >
-                    <div slot="header"><h2>Hello modal 2</h2></div>
-                    <div slot="body">
-                        <p style="border:1px gray solid">
-                            Modal 2 default content</p>
-                    </div>
-                </h-modal2>
-
-                <!-- =Modal 3= -->
-                <button id="buttonM3" class="uk-button"
-                        hx-get="../webcomp/test-dialog3.html"
-                        hx-target="#modal3"
-                        _="on click log 'opening modal 3b'"
-                >WC Virt DOM+Slot (3)
-                </button>
-                <h-modal3 id="modal3">
-                    Modal 3 default content
-                </h-modal3>
+                <h-modal id="modal2" shadow showclose animate>
+                    <article class="h-panel">
+                        Modal slot inline content
+                    </article>
+                </h-modal>
 
 
             </td>
         </tr>
+        <!-- === h-navbar  ===-->
+        <tr>
+            <td>
+                <span>h-navbar</span>
+            </td>
+            <td class="h-row" style="gap: 5px">
+                <h-navbar>
+                    <li><a href="#navpage1" class="active">item1</a></li>
+                    <li><a href="#navpage2">item2</a></li>
+                    <li><a href="#navpage3">item3</a></li>
+                </h-navbar>
+            </td>
+        </tr>
+
         </tbody>
     </table>
-</div>
 
-<script>
-</script>
+</main>
+
 
 </body>
 </html>
 
 <style>
-    html, body {
-        /*background-color: #ececed;*/
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        width: 100%;
 
-        font-family: Roboto, Helvetica, Arial, sans-serif;
-        color: rgb(40, 47, 56);
-
-        * {
-            /*margin: 0;*/
-            /*padding: 0;*/
-            /*border: none;*/
-            /*outline: none;*/
-
-        }
-    }
-
-    /*Do not render the dropdown before it is defined, so its slotted content isn't shown */
+    /*Do not render web components before they are defined to avoid their slotted to flash */
     /*https://stackoverflow.com/questions/64213037/how-to-avoid-that-slot-elements-in-web-components-appear-before-the-rest-is-rend*/
-    h-dropdown:not(:defined) {
-        display: none;
-    }
-
-    h-modal2:not(:defined) {
-        display: none;
-    }
-
-    .comptable {
-        background-color: #dbd9d9;
-        width: 100%;
-        margin: 20px;
-        border: gray 1px solid;
-    }
-
-    .comptable td {
-        padding: 10px;
+    *:not(:defined) {
+        /*display: none;*/
     }
 
 </style>
+

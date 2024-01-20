@@ -1,39 +1,42 @@
 <!--about dialog -->
-<div id="about" uk-modal="esc-close; bg-close" class="about-containerz">
-    <div class="flex-col about-box uk-modal-dialog uk-modal-body">
 
-        <span class="flex-row-centered">
+<div id="about" class="about-container">
+    <div class="h-col about-box  uk-modal-body">
+
+        <span class="h-row-centered">
             <h4>About HiveOT</h4>
         </span>
-        <div class="flex-row" style="gap: 10px">
+        <div class="h-row" style="gap: 10px">
             <img src="/static/logo.svg" alt="logo" style="height:60px"/>
             <text>The Hive Of Things provides secure use of connected devices and services.
             </text>
         </div>
 
         <hr>
-        <div class="flex-col">
+        <div class="h-col">
             <span>By: The Hive</span>
             <span>Version: pre-alpha</span>
         </div>
 
-        <div class="flex-row"
-             style="justify-content: center; flex-wrap: nowrap; padding-top:30px">
+        <div class="h-row"
+             style="justify-content: center; flex-wrap: nowrap; padding-top:30px; position: relative">
             <span></span>
             <a class="uk-modal-close uk-button uk-button-primary" type="button"
+               href="#"
             >Close
             </a>
 
             <a href="https://github.com/hiveot" target="_blank" aria-label="github"
-               style=" font-size: 0.5rem; position:absolute; right:10px; bottom:10px">
+               style=" font-size: 0.5rem; position:absolute; right:0px; bottom:0px">
                 <i style="font-size: 12px">
-                    <iconify-icon icon="mdi:github" uk-tooltip="github"></iconify-icon>
+                    <iconify-icon icon="mdi:github" title="github"></iconify-icon>
                 </i>
             </a>
 
         </div>
     </div>
 </div>
+
 
 <style>
     .about-container {
@@ -69,3 +72,4 @@
     }
 
 </style>
+

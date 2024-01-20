@@ -1,0 +1,120 @@
+/*==========================================================================
+ * HiveOT utility classes
+ *==========================================================================
+ */
+
+/* apply box shadow with opacity gradient */
+.h-shadow {
+    box-shadow: 0px 5px 5px -3px rgba(0, 0, 0, 0.2),
+    0px 8px 10px 1px rgba(0, 0, 0, 0.14),
+    0px 3px 14px 2px rgba(0, 0, 0, 0.12);
+}
+
+/* set background transparent */
+.h-bg-transparent {
+    background-color: transparent;
+}
+
+
+.h-grow {
+    flex-grow: 1;
+}
+
+.h-col, .h-col-centered {
+    display: flex;
+    flex-direction: column;
+}
+
+.h-col-centered {
+    align-items: center;
+}
+
+/* panel with background color and flex col*/
+.h-panel {
+    background-color: var(--pico-background-color);
+    display: flex;
+    flex-direction: column;
+}
+
+/* flexbox row with items centered */
+.h-row, .h-row-centered {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+
+.h-row-centered {
+    justify-content: center;
+}
+
+/*.flex-center {*/
+/*    align-self: center;*/
+/*    justify-self: center;*/
+/*}*/
+
+
+/*==========================================================================
+ * HiveOT Web Component default internal styles
+ *==========================================================================
+ */
+h-modal {
+    /*The opacity of the modal mask*/
+    --mask-opacity: 70%;
+    /*The background color of the modal mask*/
+    --mask-background: #dfe5e7;
+    /* the animation timing of opening and closing the modal */
+    --animation-duration: 500ms;
+}
+
+h-navbar {
+    border-radius: 3px;
+    /*background-image: linear-gradient(*/
+    /*        rgb(48, 48, 48) 13%,*/
+    /*        rgb(30, 30, 30) 40%,*/
+    /*        #0c0d11 86%);*/
+    /*color: rgba(255, 255, 255, 0.6);*/
+    /*text-shadow: 0 -2px 0 black;*/
+    /*box-shadow: 1px 2px 4px rgb(20, 20, 20), 0 4px 12px rgb(10, 10, 10);*/
+    border-bottom: 1px solid #624b4b;
+}
+
+/*Navbar buttons style*/
+h-navbar li {
+    /*color: var(--header-text-color);*/
+    overflow: hidden;
+    /*background-color: var(--header-bg-color);*/
+    outline: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    transition: 0.3s;
+
+    & .active {
+        color: var(--header-text-active-color);
+        /*text-shadow: 0 0 3px hsla(260, 100%, 70%, 0.7);*/
+    }
+
+    & :not(.active):hover {
+        color: var(--header-text-color);
+        /*color: rgba(255, 255, 255, 0.87);*/
+    }
+
+    & :hover {
+        color: inherit;
+    }
+
+    &:hover > .icon .subicon {
+        height: 32px;
+        width: 32px;
+        border-radius: 32px;
+        top: -16px;
+        right: -16px;
+        border-color: white;
+    }
+
+    & a {
+        /*color: var(--header-text-color)*/
+    }
+}
+
+

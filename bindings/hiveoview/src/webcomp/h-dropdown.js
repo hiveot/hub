@@ -1,7 +1,6 @@
 /**
  * Dropdown web-component.
  * Features:
- * - no color styling
  * - set title for the default button element
  * - slot for overriding the default button element
  * - any container can be used for content
@@ -16,7 +15,7 @@
 const template = document.createElement('template')
 template.innerHTML = `
     <div class="dropdown-container">
-       <div button class="button">
+       <div button >
            <!-- named slot 'button' to replace the default button-->
            <slot  name="button" button-slot>
               <button>menu</button>
@@ -57,6 +56,7 @@ template.innerHTML = `
     overflow: visible;
     /*prevent outline showing on browser refresh */
     outline: none;
+    background-color: var(--menu-bg-color);
 
 /*instead of display none, use clip-path to hide the menu, along with z-index.
  * z-index is set to -1 so it won't be in the way of other elements when hidden.
