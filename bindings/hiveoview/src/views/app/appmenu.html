@@ -1,13 +1,10 @@
 <!-- dropdown menu -->
-<h-dropdown position="bottomright" class="uk-padding-small ">
-    <button slot="button" type="button"
-            class="bg-transparent uk-button  uk-button-link round"
-    >
+<h-dropdown position="bottomright">
+    <button slot="button" class="h-icon-button  outline">
         <iconify-icon icon="mdi:menu"></iconify-icon>
     </button>
 
-    <ul class="uk-dropdown-nav uk-list uk-list-large h-shadow"
-    >
+    <ul class="h-shadow h-col" style="align-items: start; margin:0;">
 
         <li id="dashboard-menu" class="menu-item">
             <iconify-icon icon='mdi:view-dashboard'></iconify-icon>
@@ -18,7 +15,7 @@
             <a href="#directory" hx-target="#app">Directory</a>
         </li>
 
-        <li class="uk-nav-divider"></li>
+        <li class="h-horizontal-divider"></li>
 
         <li id="editmode-menu" class="menu-item">
             <!--    checkboxes don't close them menu when clicked-->
@@ -42,20 +39,47 @@
 </h-dropdown>
 
 <style>
+
+
     /*Adjust spacing between menu items. default is a huge 20px*/
-    .uk-list-large > :nth-child(n+2) {
-        margin-top: 10px;
-    }
+    /*.uk-list-large > :nth-child(n+2) {*/
+    /*    margin-top: 10px;*/
+    /*}*/
 
     /*.menu-shadow {*/
     /*    box-shadow: 0px 5px 5px -3px rgba(0, 0, 0, 0.2), 0px 8px 10px 1px rgba(0, 0, 0, 0.14), 0px 3px 14px 2px rgba(0, 0, 0, 0.12);*/
+    /*}*/
+
+    /*.vertical-divider {*/
+    /*    !*font-size: 1px;*!*/
+    /*    display: flex;*/
+    /*    flex-direction: row;*/
+    /*    justify-content: center;*/
+    /*    text-shadow: 1px 1px 1px rgba(0, 0, 0, .45);*/
+    /*}*/
+    /*.vertical-divider::before,*/
+    /*.vertical-divider::after {*/
+    /*        content: '';*/
+    /*        display: block;*/
+    /*        height: 0.09em;*/
+    /*        width: 100%;*/
+    /*    }*/
+
+    /*.vertical-divider::before {*/
+    /*        background: linear-gradient(to right, rgba(240, 240, 240, 0), #fff);*/
+    /*        margin-right: 4vh;*/
+    /*    }*/
+
+    /*.vertical-divider::after {*/
+    /*        background: linear-gradient(to left, rgba(240, 240, 240, 0), #fff);*/
+    /*        margin-left: 4vh;*/
+    /*    }*/
     /*}*/
 
     .menu-item {
         /*font-size: 1.1rem;*/
         display: flex;
         flex-direction: row;
-        align-items: center;
         gap: 7px;
     }
 

@@ -12,7 +12,7 @@ const icon = `
 
 const template = `
     <button target="_blank" dark-toggle-button 
-    class="outline h-dark-toggle h-bg-transparent h-row">
+            class="h-icon-button outline">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" 
             class="  h-dark-toggle-img"> 
             ${iconPath}
@@ -26,7 +26,7 @@ const template = `
     }
     .h-dark-toggle-img {
         /*width:24px;*/
-        height:1.2rem;
+        height:20px;
         /*border: none;*/
         /*outline: none;*/
         /*color: blue;*/
@@ -89,5 +89,6 @@ class HDarkToggle extends HTMLElement {
 
 }
 
+window.HDarkToggle = HDarkToggle
 customElements.define('h-dark-toggle', HDarkToggle)
 

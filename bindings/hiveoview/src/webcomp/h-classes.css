@@ -16,10 +16,6 @@
 }
 
 
-.h-grow {
-    flex-grow: 1;
-}
-
 .h-col, .h-col-centered {
     display: flex;
     flex-direction: column;
@@ -27,6 +23,33 @@
 
 .h-col-centered {
     align-items: center;
+}
+
+/* css horizontal divider for use between list items */
+.h-horizontal-divider {
+    width: 100%;
+    height: 1px;
+    margin: 6px 0;
+    padding: 0;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(to right, var(--pico-background-color), var(--pico-color), var(--pico-background-color));
+}
+
+.h-grow {
+    flex-grow: 1;
+}
+
+.h-icon-button {
+    padding: 8px;
+    display: flex;
+    flex-direction: row;
+    /* outline */
+    --pico-background-color: transparent;
+    --pico-color: var(--pico-primary);
+    --pico-border-color: currentColor
 }
 
 /* panel with background color and flex col*/
@@ -58,6 +81,17 @@
  * HiveOT Web Component default internal styles
  *==========================================================================
  */
+h-dropdown {
+    & li {
+        list-style: none;
+    }
+
+    & ul {
+        /*padding-left: 0;*/
+        padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
+    }
+}
+
 h-modal {
     /*The opacity of the modal mask*/
     --mask-opacity: 70%;

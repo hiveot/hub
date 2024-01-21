@@ -14,7 +14,7 @@
 
 const template = document.createElement('template')
 template.innerHTML = `
-    <div class="dropdown-container">
+    <div class="dropdown-container h-row">
        <div button >
            <!-- named slot 'button' to replace the default button-->
            <slot  name="button" button-slot>
@@ -66,16 +66,19 @@ template.innerHTML = `
     transition: all 300ms ease;
 }
   .content.bottom {
+    margin-top: 3px;
     top: 100%;
     clip-path: inset(0 0 100% 0); 
   }
   
   .content.bottomright {
+    margin-top: 3px;
     top: 100%;
     right:0;
     clip-path: inset(0 0 100% 0); 
   }
   .content.bottomleft {
+    margin-top: 3px;
    top:100%;
    left:0;
     clip-path: inset(0 0 100% 0); 

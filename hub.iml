@@ -17,5 +17,6 @@
     <orderEntry type="library" name="assets" level="project" />
     <orderEntry type="library" name="assets" level="project" />
     <orderEntry type="library" name="webcomp" level="project" />
+    <orderEntry type="library" name="@picocss/pico" level="application" />
   </component>
 </module>

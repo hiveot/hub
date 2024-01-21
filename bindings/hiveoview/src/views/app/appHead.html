@@ -22,9 +22,9 @@
             let linkURL = item.getAttribute("href")
             // console.log("checking href: " + linkURL + " vs: " + currentHash)
             if (linkURL === currentHash) {
-                item.classList.add("uk-active")
+                item.classList.add("active")
             } else {
-                item.classList.remove("uk-active")
+                item.classList.remove("active")
             }
         }
     }
@@ -33,7 +33,7 @@
 
 </script>
 
-<nav class="appHead">
+<nav class="appHead container-fluid">
     <!--    <div class="appBrand">-->
     <!--        <a class="appBrand" href="/" hx-target="#app" hx-swap="outerHTML">-->
     <!--            &lt;!&ndash; set style to prevent flashing large logo on initial render&ndash;&gt;-->
@@ -55,7 +55,7 @@
     <!-- spacer -->
     <div class="h-grow"></div>
 
-    {{template "dark-mode" .}}
+    <h-dark-toggle></h-dark-toggle>
 
     {{template "connectStatus.html" .}}
 
@@ -77,15 +77,13 @@
 
     ::part(h-brand-title) {
         /*replace the 'link' color of the title with the normal text*/
-        color: var(--main-text-color);
+        /*color: var(--main-text-color);*/
     }
 
     .appHead {
-        color: var(--header-text-color);
-        background-color: var(--header-bg-color);
-
         display: flex;
         flex-direction: row;
+        gap: 5px;
         flex-wrap: nowrap;
         align-items: center;
         padding-right: 5px;

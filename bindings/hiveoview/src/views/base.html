@@ -10,6 +10,8 @@
     <script src="../static/sse.js"></script>
     <script src="../static/iconify-icon.min.js"></script>
 
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@next/css/pico.min.css"/>
+
     <link rel="stylesheet" href="../webcomp/h-theme.css"/>
     <link rel="stylesheet" href="../webcomp/h-classes.css"/>
     <script type="module" src="../webcomp/components.js"></script>
@@ -19,10 +21,10 @@
 
 
 <script>
-    // console.log("starting hiveoview")
 
     function showBody() {
-        HDarkToggle.setThemeFromLocalStorage()
+        let dt = window['HDarkToggle']
+        dt.setThemeFromLocalStorage()
         document.body.hidden = false
     }
 </script>
@@ -30,17 +32,23 @@
 <!--hx-boost lets links with href's target #appPage destination while without-->
 <body onload="showBody()" hx-boost="true" hidden>
 
-
 {{block "embed" .}} main template {{end}}
+
 </body>
 </html>
 
 <style>
+    :root {
+        width: 100%;
+        height: 100%;
+    }
 
     body {
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        width: 100%;
+        height: 100%;
 
         /*color: var(--main-text-color);*/
         /*background-color: var(--main-bg-color);*/

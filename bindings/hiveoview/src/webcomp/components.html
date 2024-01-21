@@ -28,7 +28,7 @@
         <thead>
         <tr>
             <th>Name</th>
-            <th>Component</th>
+            <th>Web Element/Component</th>
         </tr>
         </thead>
 
@@ -53,9 +53,10 @@
             <td class="h-row">
                 <h-dropdown id="dropdown1" show="false" position="bottomleft">
                     <button slot="button" class="outline h-row">Menu
+                        <!--  FIXME: use menu icon-->
                     </button>
-                    <article class="h-shadow h-col">
-                        <ul>
+                    <div class="h-shadow h-panel">
+                        <ul style="list-style: none">
                             <li><a href="#">This is the "bottomleft" dropdown</a></li>
                             <li>Use position="bottom" or "bottomright", "bottomleft" to place it below the button
                             </li>
@@ -64,7 +65,7 @@
                             </li>
                             <li>Use position="left" or "lefttop" or "leftbottom" to place right of the button</li>
                         </ul>
-                    </article>
+                    </div>
                 </h-dropdown>
 
                 <details class="dropdown">
