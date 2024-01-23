@@ -1,7 +1,7 @@
 //=========================================================
 // HiveOT Utility functions
 //==========================================================
-
+const IS_URL_TARGET_CLASS = "h-target"
 
 /** Set the 'show' attribute on a HiveOT element
  * HiveOT elements can all be shown by adding the 'show' attribute and hidden
@@ -33,3 +33,24 @@ window.hHide = (elementID) => {
     }
 }
 
+
+/**
+ * selectURLTargets sets the 'h-target' class on elements with a href matching the URL.
+ * call this once on initialiation and each time the URL changes. (hashchange event)
+ *
+ * @param oldURL previous URL whose h-target to remove, or "" for the initial call.
+ */
+// set the 'h-target' class on elements with a href matching the URL
+window.selectURLTargets = (oldURL) => {
+    let eList = document.documentElement.querySelectorAll(["[href]"])
+    let newURL = window.location.href
+    console.log("href changed  to:", newURL)
+    eList.forEach((item) => {
+        // console.log("item: id=", item.id, ", href=", item.href)
+        if (item.href === newURL) {
+            item.classList.add(IS_URL_TARGET_CLASS)
+        } else if (item.href === oldURL) {
+            item.classList.remove(IS_URL_TARGET_CLASS)
+        }
+    })
+}

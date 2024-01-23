@@ -51,12 +51,9 @@ template.innerHTML = `
   }
   .content {
     position: absolute;
-    /*z-index: -1;   !* stay out of the way when hidden *! */
     width: max-content;
-    overflow: visible;
-    /*prevent outline showing on browser refresh */
-    outline: none;
     background-color: var(--menu-bg-color);
+    border: var(--pico-border-width) solid var(--pico-form-element-border-color);
 
 /*instead of display none, use clip-path to hide the menu, along with z-index.
  * z-index is set to -1 so it won't be in the way of other elements when hidden.

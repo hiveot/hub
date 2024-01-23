@@ -15,10 +15,10 @@
          Page state, like scrolling in lists, should be retained when switching between pages.
     -->
     <div class="app-pages" id="appPage">
-        <div id="dashboard" class="targetPage">{{template "dashboard.html"}}</div>
-        <div id="directory" class="targetPage">{{template "directory.html"}}</div>
-        <div id="status" class="targetPage">{{template "loading.html"}}</div>
-        <div id="about" class="targetPage">{{template "about.html"}}</div>
+        <div id="dashboard">{{template "dashboard.html"}}</div>
+        <div id="directory">{{template "directory.html"}}</div>
+        <div id="status">{{template "loading.html"}}</div>
+        <div id="about">{{template "about.html"}}</div>
     </div>
 
     <div class="appfooter">
@@ -31,23 +31,33 @@
     .apphead {
     }
 
-    .targetPage {
-        display: none;
-    }
-
-    .targetPage:target {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        width: 100%;
-    }
-
     .app, .app-pages {
         width: 100%;
         height: 100%;
         display: flex;
         flex-direction: column;
         flex-grow: 10;
+    }
+
+    .app-pages {
+        > div {
+            display: none;
+        }
+
+        & :target {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+        }
+
+        /*:target {*/
+        /*    display: flex;*/
+        /*    flex-direction: column;*/
+        /*    height: 100%;*/
+        /*    width: 100%;*/
+        /*}*/
+
     }
 
     /* default icons are a tiny 14px */

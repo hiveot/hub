@@ -4,5 +4,11 @@ import "../webcomp/h-brand.js";
 import "../webcomp/h-dark-toggle.js";
 import "../webcomp/h-dropdown.js";
 import "../webcomp/h-modal.js";
-import "../webcomp/h-navbar.js";
 import "../webcomp/h-utils.js";
+
+// activate the navbar
+
+window.addEventListener("hashchange", (ev) => {
+    selectURLTargets(ev.oldURL)
+})
+selectURLTargets("")

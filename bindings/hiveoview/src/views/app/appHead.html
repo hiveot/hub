@@ -1,57 +1,16 @@
 {{define "appHead"}}
 
-<script>
-    // detect changes to the URL hash for updating the selected page tab
-    // https://developer.mozilla.org/en-US/docs/Web/API/Window/hashchange_event
-    addEventListener("hashchange", (ev) => {
-        console.log("hashchange: ", ev.newURL)
-        selectActiveTab()
-    })
-
-    // select tab based on current URL.
-    // TODO: clean this up. put it in a tab-bar web component?
-    // aint pretty and only works on page load :(
-    function selectActiveTab() {
-        let currentHash = window.location.hash
-        // let menuItems = document.getElementsByClassName("selectIt")
-        let menuItems = document.querySelectorAll(".selectIt")
-        // console.log("selecting active tab. Found menuitems: ", menuItems)
-
-        for (let i = 0; i < menuItems.length; i++) {
-            let item = menuItems[i]
-            let linkURL = item.getAttribute("href")
-            // console.log("checking href: " + linkURL + " vs: " + currentHash)
-            if (linkURL === currentHash) {
-                item.classList.add("active")
-            } else {
-                item.classList.remove("active")
-            }
-        }
-    }
-
-    window.addEventListener("load", selectActiveTab)
-
-</script>
-
 <nav class="appHead container-fluid">
-    <!--    <div class="appBrand">-->
-    <!--        <a class="appBrand" href="/" hx-target="#app" hx-swap="outerHTML">-->
-    <!--            &lt;!&ndash; set style to prevent flashing large logo on initial render&ndash;&gt;-->
-    <!--            <img src="{{.logo}}" class="appBrand " style="height: 42px">-->
-    <!--        </a>-->
-    <!--        <label>HiveOT</label>-->
-    <!--    </div>-->
     <a href="#status" hx-target="#app">
         <h-brand title="HiveOT" logo="{{.logo}}"></h-brand>
     </a>
 
-    <!-- Tabs for dashboard pages-->
-    <!-- FIXME: for some reason the href doesn't update in the browser, so use onclick -->
-    <h-navbar>
-        <li><a id="dashboard" href="#dashboard">Dashboard</a></li>
-        <li><a id="directory" href="#directory">Directory</a></li>
-        <li><a id="notifications" href="#notifications">Notifications</a></li>
-    </h-navbar>
+    <!-- Tabs for dashboard pages. The h-navbar sets the 'h-target' style when href matches-->
+    <ul class="h-navbar" style="margin-left:1rem">
+        <li><a href="#dashboard">Dashboard</a></li>
+        <li><a href="#directory">Directory</a></li>
+        <li><a href="#notifications">Notifications</a></li>
+    </ul>
     <!-- spacer -->
     <div class="h-grow"></div>
 
@@ -66,9 +25,6 @@
 
 
 <style>
-    /*.selectIt[href="#directory"] {*/
-    /*    background-color: chocolate;*/
-    /*}*/
 
     h-brand {
         /*hide the link color*/
@@ -92,7 +48,6 @@
     /*all buttons in the nav-button section */
     .nav-button > button {
         background-color: transparent;
-        /*color: var(--primary);*/
         border-radius: 2.5rem;
     }
 

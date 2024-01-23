@@ -42,15 +42,15 @@
     flex-grow: 1;
 }
 
+/* button class with only an icon
+ */
 .h-icon-button {
     padding: 8px;
     display: flex;
     flex-direction: row;
-    /* outline */
-    --pico-background-color: transparent;
-    --pico-color: var(--pico-primary);
-    --pico-border-color: currentColor
+    border: var(--pico-border-width) solid var(--pico-form-element-border-color);
 }
+
 
 /* panel with background color and flex col*/
 .h-panel {
@@ -101,54 +101,40 @@ h-modal {
     --animation-duration: 500ms;
 }
 
-h-navbar {
+/* Horizontal navigation bar
+ * navbar highlights the tab with the href matching the url.
+ * this requires that
+ */
+.h-navbar {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    padding: 0;
+    margin-left: 1rem;
     border-radius: 3px;
-    /*background-image: linear-gradient(*/
-    /*        rgb(48, 48, 48) 13%,*/
-    /*        rgb(30, 30, 30) 40%,*/
-    /*        #0c0d11 86%);*/
-    /*color: rgba(255, 255, 255, 0.6);*/
-    /*text-shadow: 0 -2px 0 black;*/
-    /*box-shadow: 1px 2px 4px rgb(20, 20, 20), 0 4px 12px rgb(10, 10, 10);*/
-    border-bottom: 1px solid #624b4b;
+    @media screen and (max-width: 800px) {
+        display: none;
+    }
 }
 
 /*Navbar buttons style*/
-h-navbar li {
-    /*color: var(--header-text-color);*/
+.h-navbar li {
+    color: var(--pico-color);
     overflow: hidden;
-    /*background-color: var(--header-bg-color);*/
     outline: none;
     cursor: pointer;
     padding: 14px 16px;
-    transition: 0.3s;
+    transition: border .3s ease-in-out;
+    border-bottom: 2px solid var(--pico-muted-border-color);
+}
 
-    & .active {
-        color: var(--header-text-active-color);
-        /*text-shadow: 0 0 3px hsla(260, 100%, 70%, 0.7);*/
-    }
+/*If element has the 'h-target' set (the child anchor href matches) then show a thicker bottom border*/
+.h-navbar li:has(a.h-target) {
+    border-bottom: 2px solid var(--pico-primary-border);
+}
 
-    & :not(.active):hover {
-        color: var(--header-text-color);
-        /*color: rgba(255, 255, 255, 0.87);*/
-    }
-
-    & :hover {
-        color: inherit;
-    }
-
-    &:hover > .icon .subicon {
-        height: 32px;
-        width: 32px;
-        border-radius: 32px;
-        top: -16px;
-        right: -16px;
-        border-color: white;
-    }
-
-    & a {
-        /*color: var(--header-text-color)*/
-    }
+.h-navbar li:hover {
+    color: var(--pico-text-decoration);
 }
 
 

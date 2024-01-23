@@ -5,16 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <meta name="description" content="Component Viewer">
 
-    <script src="../static/htmx.min.js"></script>
-    <script src="../static/sse.js"></script>
-    <!--    <script src="../static/iconify-icon.min.js"></script>-->
-
-    <!--    <link rel="stylesheet" href="../static/pico-1.5.11.min.css"/>-->
+    <script src="../src/static/htmx.min.js"></script>
+    <script src="../src/static/sse.js"></script>
+    <script src="../src/static/iconify-icon.min.js"></script>
+    <!--    <link rel="stylesheet" href="../static/pico-2.0.min.css"/>-->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@next/css/pico.min.css"/>
 
-    <link rel="stylesheet" href="../webcomp/h-theme.css"/>
-    <link rel="stylesheet" href="../webcomp/h-classes.css"/>
-    <script type="module" src="../webcomp/components.js"></script>
+    <link rel="stylesheet" href="../src/webcomp/h-theme.css"/>
+    <link rel="stylesheet" href="../src/webcomp/h-classes.css"/>
+    <script type="module" src="../src/webcomp/components.js"></script>
     <title>Component Viewer</title>
 </head>
 
@@ -39,7 +38,7 @@
                 <span>h-brand</span>
             </td>
             <td class="h-row">
-                <h-brand title="My Brand" logo="../static/logo.svg"></h-brand>
+                <h-brand title="My Brand" logo="../src/static/logo.svg"></h-brand>
                 <h-dark-toggle></h-dark-toggle>
             </td>
 
@@ -52,8 +51,8 @@
             </td>
             <td class="h-row">
                 <h-dropdown id="dropdown1" show="false" position="bottomleft">
-                    <button slot="button" class="outline h-row">Menu
-                        <!--  FIXME: use menu icon-->
+                    <button slot="button" class="outline  h-row">Menu
+                        <iconify-icon icon="mdi:menu"></iconify-icon>
                     </button>
                     <div class="h-shadow h-panel">
                         <ul style="list-style: none">
@@ -115,11 +114,11 @@
                 <span>h-navbar</span>
             </td>
             <td class="h-row" style="gap: 5px">
-                <h-navbar>
+                <ul class="h-navbar" style="margin: 0">
                     <li><a href="#navpage1" class="active">item1</a></li>
                     <li><a href="#navpage2">item2</a></li>
                     <li><a href="#navpage3">item3</a></li>
-                </h-navbar>
+                </ul>
             </td>
         </tr>
 

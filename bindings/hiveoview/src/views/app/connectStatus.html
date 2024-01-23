@@ -5,7 +5,7 @@ The SSE event 'connectStatus is used to trigger an update of this fragment.
 -->
 
 <!--TODO use event to instant update changes-->
-<button hx-get="/htmx/connectStatus.html" hx-trigger="click, every 60s"
+<button hx-get="/htmx/connectStatus.html" hx-trigger="click, every 600s"
         hx-swap="outerHTML"
         class="outline h-icon-button"
         title='{{or .conn_status "not yet connected"}}'

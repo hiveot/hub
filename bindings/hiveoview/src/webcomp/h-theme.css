@@ -1,4 +1,4 @@
-/* theme adjusts pico's theme settings */
+/* Adjustments to  pico's theme settings */
 
 :root {
     /* theme  */
@@ -22,7 +22,7 @@
     button {
         /* adjust the default button to look a bit less 'bloated' */
         border: var(--pico-border-width) solid var(--pico-form-element-border-color);
-        background-color: var(--pico-form-element-background-color);
+        /*background-color: var(--pico-form-element-background-color);*/
     }
 
 }

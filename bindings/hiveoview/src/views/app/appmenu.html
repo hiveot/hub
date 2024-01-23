@@ -4,30 +4,35 @@
         <iconify-icon icon="mdi:menu"></iconify-icon>
     </button>
 
-    <ul class="h-shadow h-col" style="align-items: start; margin:0;">
+    <ul class="h-shadow h-col">
 
-        <li id="dashboard-menu" class="menu-item">
+        <li>
             <iconify-icon icon='mdi:view-dashboard'></iconify-icon>
             <a href="#dashboard" hx-target="#app">Dashboard</a>
         </li>
-        <li id="directory-menu" class="menu-item">
+        <li>
             <iconify-icon icon='mdi:view-dashboard'></iconify-icon>
             <a href="#directory" hx-target="#app">Directory</a>
         </li>
+        <li>
+            <iconify-icon icon="mdi:bell"></iconify-icon>
+            <a href="#notifications" hx-target="#app">Notifications</a>
+        </li>
+
 
         <li class="h-horizontal-divider"></li>
 
-        <li id="editmode-menu" class="menu-item">
+        <li>
             <!--    checkboxes don't close them menu when clicked-->
             <input id="editmode-input" type="checkbox" value="false"
-                   class="menu-checkbox"/>
+                   class="menu-checkbox" style="margin:0"/>
             <label for="editmode-input">Edit Mode</label>
         </li>
-        <li id="logout-menu" class="menu-item">
+        <li>
             <iconify-icon icon='mdi:logout'></iconify-icon>
             <a href="/logout" hx-boost="false">Logout</a>
         </li>
-        <li id="about-menu" class="menu-item">
+        <li>
             <iconify-icon icon='mdi:info'></iconify-icon>
 
             <!-- TODO: how to toggle the about view?-->
@@ -40,47 +45,19 @@
 
 <style>
 
-
-    /*Adjust spacing between menu items. default is a huge 20px*/
-    /*.uk-list-large > :nth-child(n+2) {*/
-    /*    margin-top: 10px;*/
-    /*}*/
-
-    /*.menu-shadow {*/
-    /*    box-shadow: 0px 5px 5px -3px rgba(0, 0, 0, 0.2), 0px 8px 10px 1px rgba(0, 0, 0, 0.14), 0px 3px 14px 2px rgba(0, 0, 0, 0.12);*/
-    /*}*/
-
-    /*.vertical-divider {*/
-    /*    !*font-size: 1px;*!*/
-    /*    display: flex;*/
-    /*    flex-direction: row;*/
-    /*    justify-content: center;*/
-    /*    text-shadow: 1px 1px 1px rgba(0, 0, 0, .45);*/
-    /*}*/
-    /*.vertical-divider::before,*/
-    /*.vertical-divider::after {*/
-    /*        content: '';*/
-    /*        display: block;*/
-    /*        height: 0.09em;*/
-    /*        width: 100%;*/
-    /*    }*/
-
-    /*.vertical-divider::before {*/
-    /*        background: linear-gradient(to right, rgba(240, 240, 240, 0), #fff);*/
-    /*        margin-right: 4vh;*/
-    /*    }*/
-
-    /*.vertical-divider::after {*/
-    /*        background: linear-gradient(to left, rgba(240, 240, 240, 0), #fff);*/
-    /*        margin-left: 4vh;*/
-    /*    }*/
-    /*}*/
-
-    .menu-item {
-        /*font-size: 1.1rem;*/
+    h-dropdown li {
         display: flex;
         flex-direction: row;
+        align-items: center;
         gap: 7px;
+        width: 100%;
+
+        /*align-items: start;*/
+        /*margin: 0;*/
+    }
+
+    h-dropdown li:has(a.h-target) {
+        background-color: var(--pico-form-element-selected-background-color);
     }
 
     .menu-checkbox {
