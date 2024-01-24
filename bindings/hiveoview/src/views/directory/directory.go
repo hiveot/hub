@@ -6,50 +6,40 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/views"
 	"github.com/hiveot/hub/core/directory/dirclient"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"net/http"
 	"sort"
 )
 
-const SensorIcon = "import"
-const ServiceIcon = "cube-outline"
-const ActuatorIcon = "export"
-const ControllerIcon = "usb" //"molecule"
-
-// TODO: icons from config
-var deviceTypeIcons = map[string]string{
-	vocab.DeviceTypeBinarySwitch: ActuatorIcon,
-	vocab.DeviceTypeBinding:      ServiceIcon,
-	vocab.DeviceTypeCamera:       SensorIcon,
-	vocab.DeviceTypeGateway:      ControllerIcon,
-	vocab.DeviceTypeService:      ServiceIcon,
-	vocab.DeviceTypeMultisensor:  SensorIcon,
-	vocab.DeviceTypeSensor:       SensorIcon,
-	vocab.DeviceTypeThermometer:  SensorIcon,
-	// the following types should be changed in the binding to use the vocabulary
-	"Binary Sensor":     SensorIcon,
-	"Binary Switch":     ActuatorIcon,
-	"Multilevel Sensor": SensorIcon,
-	"Multilevel Switch": ActuatorIcon,
-	"Static Controller": ControllerIcon,
-	"error":             "alert-circle",
-	"":                  "",
-}
-
-// TemplateThing is an intermediate struct for mapping ThingTD to the template IDs
-type TemplateThing struct {
-	Publisher string
-	Icon      string
-	ThingID   string
-	Created   string
-	Name      string
-	Type      string
-}
+//
+//const SensorIcon = "import"
+//const ServiceIcon = "cube-outline"
+//const ActuatorIcon = "export"
+//const ControllerIcon = "usb" //"molecule"
+//
+//// TODO: icons from config
+//var deviceTypeIcons = map[string]string{
+//	vocab.DeviceTypeBinarySwitch: ActuatorIcon,
+//	vocab.DeviceTypeBinding:      ServiceIcon,
+//	vocab.DeviceTypeCamera:       SensorIcon,
+//	vocab.DeviceTypeGateway:      ControllerIcon,
+//	vocab.DeviceTypeService:      ServiceIcon,
+//	vocab.DeviceTypeMultisensor:  SensorIcon,
+//	vocab.DeviceTypeSensor:       SensorIcon,
+//	vocab.DeviceTypeThermometer:  SensorIcon,
+//	// the following types should be changed in the binding to use the vocabulary
+//	"Binary Sensor":     SensorIcon,
+//	"Binary Switch":     ActuatorIcon,
+//	"Multilevel Sensor": SensorIcon,
+//	"Multilevel Switch": ActuatorIcon,
+//	"Static Controller": ControllerIcon,
+//	"error":             "alert-circle",
+//	"":                  "",
+//}
 
 type TemplateGroup struct {
 	Publisher string
-	Things    []TemplateThing
+	Things    []*things.TD
 }
 
 // Sort the given list of things and group them by publishing agent
@@ -68,23 +58,14 @@ func sortByPublisher(tvList []things.ThingValue) map[string]*TemplateGroup {
 		if !found {
 			tplGroup = &TemplateGroup{
 				Publisher: tv.SenderID,
-				Things:    make([]TemplateThing, 0),
+				Things:    make([]*things.TD, 0),
 			}
 			groups[tv.SenderID] = tplGroup
 		}
 		td := things.TD{}
 		err := json.Unmarshal(tv.Data, &td)
 		if err == nil {
-			icon := deviceTypeIcons[td.DeviceType]
-			tplThing := TemplateThing{
-				Publisher: tv.AgentID,
-				Icon:      icon,
-				ThingID:   tv.ThingID,
-				Created:   td.Created,
-				Name:      td.Title,
-				Type:      td.DeviceType,
-			}
-			tplGroup.Things = append(tplGroup.Things, tplThing)
+			tplGroup.Things = append(tplGroup.Things, &td)
 			if len(tplGroup.Things) == 0 {
 				slog.Error("append failed")
 			}

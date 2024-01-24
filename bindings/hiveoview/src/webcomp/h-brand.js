@@ -1,11 +1,4 @@
 // This is a simple webcomponent for the purpose of learning how to build one.
-// Issues:
-//  1. How to import the html from an external file?
-//  2. Is it possible to define HTML, JS, and CSS in a single file like vue does?
-//  3. How to test this easier without a nodejs environment (eg golang)?
-//  4. Can this component be styled from the outside?  eg: h-brand {} => use ::part(name){}
-//  5. Should this use :host ?  not sure
-//  6. How to document the properties of this component?
 //
 // properties:
 //  logo:  path to image file

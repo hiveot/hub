@@ -24,15 +24,7 @@
         <button id="reload-directory" class="outline h-icon-button" title="Reload directory">
             <iconify-icon icon="mdi:refresh"></iconify-icon>
         </button>
-        <!--        <span class="h-grow"></span>-->
-        <!--        <label>-->
-        <!--            <input type="checkbox" name="services"></input>-->
-        <!--            Services-->
-        <!--        </label>-->
-        <!--        <label>-->
-        <!--            <input type="checkbox" name="devices" checked></input>-->
-        <!--            Devices-->
-        <!--        </label>-->
+     
     </header>
 
     <div>
@@ -51,8 +43,11 @@
                 <tr>
                     <th scope="col"></th>
                     <th scope="col" style="min-width:100px">Thing ID</th>
-                    <th scope="col" class="hideSmall">Type</th>
+                    <th scope="col" class="hideOnSmall">Type</th>
                     <th scope="col" style="width:100%">Name</th>
+                    <th scope="col" class="hideOnMedium">Outputs</th>
+                    <th scope="col" class="hideOnMedium">Actions</th>
+                    <th scope="col" class="hideOnLarge">Modified</th>
                     <!--            <th scope="col">Description</th>-->
                 </tr>
                 </thead>
@@ -61,11 +56,14 @@
                 {{range .Things}}
                 <tr>
                     <td>
-                        <iconify-icon icon="mdi:{{.Icon}}"></iconify-icon>
+                        <h-device-icon deviceType={{.DeviceType}}></h-device-icon>
                     </td>
-                    <td>{{.ThingID}}</td>
-                    <td class="hideSmall">{{.Type}}</td>
-                    <td>{{.Name}}</td>
+                    <td>{{.ID}}</td>
+                    <td class="hideOnSmall">{{.DeviceType}}</td>
+                    <td>{{.Title}}</td>
+                    <td class="hideOnMedium">{{len .Events}} outputs</td>
+                    <td class="hideOnMedium">{{len .Actions}} actions</td>
+                    <td class="hideOnLarge">{{.GetAge}} ago</td>
                 </tr>
                 {{end}}
                 </tbody>
@@ -91,6 +89,7 @@
 
 </main>
 
+
 <style>
     .directory-header {
         /*display: flex;*/
@@ -108,11 +107,30 @@
         --pico-background-color: var(--pico-muted-border-color);
     }
 
-    @media only screen and (max-width: 900px) {
-        .dirTable .hideSmall {
+    @media only screen and (max-width: 576px) {
+        .dirTable .hideOnSmall {
             display: none;
         }
     }
+
+    @media only screen and (max-width: 768px) {
+        .dirTable .hideOnMedium {
+            display: none;
+        }
+    }
+
+    @media only screen and (max-width: 992px) {
+        .dirTable .hideOnLarge {
+            display: none;
+        }
+    }
+
+    @media only screen and (max-width: 1200px) {
+        .dirTable .hideOnXLarge {
+            display: none;
+        }
+    }
+
 
     tbody {
         white-space: nowrap;

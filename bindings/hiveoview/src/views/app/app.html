@@ -11,30 +11,7 @@
         {{block "appHead" .}}App header goes here {{end}}
     </div>
 
-    <!-- Initial load of all pages without data.
-         When the page becomes visible, render its content and reload in-place using htmx.
-         option 1: detect page selection ... how?
-                   rerender - pull data ... how?
-         option 2: on initial load, detect which page is loaded from the hash
-                   return the renderer for that page.
-                   with page up/down, rerender the content using htmx params
-
-          If no data field is included in the template render, then define a HTMX trigger that
-            pulls the data upon first display (along with a progress indicator):
-          - runs only if no view data is set in the page.
-          - does not run if page isn't rendered, so only view data for current page is pulled
-          - this sends a htmx request for the same page. This time it includes the page number,
-            which causes the data to be pulled.
-          - show a progress indicator while loading.
-          - Paging repeats this process with request page nr.
-
-    -->
-    <!--
-      Navigating within the page:
-
-        With HTMX: use submit button with htmx trigger including page as parameter
-        -->
-
+    <!-- This uses htmx to load the template content with actual data on first show-->
     <div class="app-pages" id="appPage">
         <div id="dashboard">{{template "dashboard.html"}}</div>
         <div id="directory">{{template "directory.html"}}</div>

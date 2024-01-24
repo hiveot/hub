@@ -81,15 +81,13 @@
  * HiveOT Web Component default internal styles
  *==========================================================================
  */
-h-dropdown {
-    & li {
-        list-style: none;
-    }
+h-dropdown > li {
+    list-style: none;
+}
 
-    & ul {
-        /*padding-left: 0;*/
-        padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
-    }
+h-dropdown > ul {
+    /*padding-left: 0;*/
+    padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
 }
 
 h-modal {
