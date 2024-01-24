@@ -11,5 +11,5 @@ var EmbeddedViews embed.FS
 
 // EmbeddedStatic contains all static assets
 //
-//go:embed static/* webcomp/*.js
+//go:embed static/* webcomp/*
 var EmbeddedStatic embed.FS

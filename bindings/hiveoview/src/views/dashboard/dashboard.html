@@ -5,6 +5,10 @@
         {{template "dashboardpage.html" .}}
     </div>
     {{end}}
+    {{if not .pages}}
+    {{template "loading.html"}}
+    {{end}}
+
 </div>
 
 <style>

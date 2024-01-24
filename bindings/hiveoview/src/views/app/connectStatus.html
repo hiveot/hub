@@ -4,14 +4,17 @@ The SSE event 'connectStatus is used to trigger an update of this fragment.
 @param conn_status: tooltip text
 -->
 
-<!--TODO use event to instant update changes-->
+<!--TODO use SSE event to instant update changes-->
 <button hx-get="/htmx/connectStatus.html" hx-trigger="click, every 600s"
         hx-swap="outerHTML"
-        class="outline h-icon-button"
+        class="outline status-color h-icon-button"
         title='{{or .conn_status "not yet connected"}}'
 >
     <iconify-icon icon='mdi:{{or .conn_icon  "link-off"}}'></iconify-icon>
 </button>
 
 <style>
+    .status-color {
+        border: 1px solid {{if .isConnected}}green{{else}}red{{end}};
+    }
 </style>

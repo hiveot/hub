@@ -1,56 +1,29 @@
 {{define "appHead"}}
 
-<nav class="appHead container-fluid">
+<nav class="container-fluid h-row">
     <a href="#status" hx-target="#app">
         <h-brand title="HiveOT" logo="{{.logo}}"></h-brand>
     </a>
 
-    <!-- Tabs for dashboard pages. The h-navbar sets the 'h-target' style when href matches-->
-    <ul class="h-navbar" style="margin-left:1rem">
+    <!-- === Tabs for application pages === -->
+    <!-- The h-navbar css highlights the li with class 'h-target', set by selectURLTargets() -->
+    <ul class="h-navbar">
         <li><a href="#dashboard">Dashboard</a></li>
         <li><a href="#directory">Directory</a></li>
         <li><a href="#notifications">Notifications</a></li>
     </ul>
+
     <!-- spacer -->
     <div class="h-grow"></div>
 
+    <!-- === Dark/Light Theme Toggle === -->
     <h-dark-toggle></h-dark-toggle>
 
+    <!-- === Connection Status Indicator using htmx === -->
     {{template "connectStatus.html" .}}
 
     {{template "appmenu.html"}}
 
-
 </nav>
-
-
-<style>
-
-    h-brand {
-        /*hide the link color*/
-        /*color: var(--main-text-color);*/
-    }
-
-    ::part(h-brand-title) {
-        /*replace the 'link' color of the title with the normal text*/
-        /*color: var(--main-text-color);*/
-    }
-
-    .appHead {
-        display: flex;
-        flex-direction: row;
-        gap: 5px;
-        flex-wrap: nowrap;
-        align-items: center;
-        padding-right: 5px;
-    }
-
-    /*all buttons in the nav-button section */
-    .nav-button > button {
-        background-color: transparent;
-        border-radius: 2.5rem;
-    }
-
-</style>
 
 {{end}}

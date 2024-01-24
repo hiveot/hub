@@ -1,7 +1,9 @@
 package app
 
 import (
+	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views"
+	"log/slog"
 	"net/http"
 )
 
@@ -18,8 +20,11 @@ func RenderApp(w http.ResponseWriter, r *http.Request) {
 		"theme_icon": "bi-sun", // bi-sun bi-moon-fill
 		//"pages":      []string{"page1", "page2"},
 	}
-	GetAppHeadProps(data, "HiveOT", "/static/logo.svg", []string{"dashboard", "directory"})
+	GetAppHeadProps(data, "HiveOT", "/static/logo.svg")
 	GetConnectStatusProps(data, r)
+
+	pageName := chi.URLParam(r, "pageName")
+	slog.Info("pagename from url", "pageName", pageName, "url", r.URL.String())
 
 	views.TM.RenderFull(w, "app.html", data)
 }

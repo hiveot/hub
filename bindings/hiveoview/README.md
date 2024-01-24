@@ -14,14 +14,14 @@ This viewer is in early development. The information below is subject to change.
 4. Session management for MQTT hub connections and sse support to push events [done]
 5. MQTT Authentication in client session [done]
 6. NATS Authentication in client session (todo: session auth without keys)
-7. Push connection status update
+7. Push connection status update. Present status view.
 
 ### Phase 2: Read directory
 
-6. HTML directory view, view-model and mqtt directory calls in golang
-7. Use Htmx to interactively browse the directory
-8. Thing details view
-9. Hydrate view on received directory updates (using server events or WS)
+1. Directory view using SSR rendering in golang [done]
+2. Use Htmx to interactively browse the directory
+3. Thing details view
+4. Hydrate view on received directory updates (using server events or WS)
 
 ### Phase 3: Dashboard
 

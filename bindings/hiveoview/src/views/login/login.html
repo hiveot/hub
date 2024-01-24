@@ -2,77 +2,52 @@
 @param loginID: login email to display
 @param error: optional if login previously failed 
 -->
-<div id="login" class="login-container">
-
-    <form action="/login" class="login-form" method="post">
-        <span class="flex-row-centered">
+<dialog open id="login" class="login">
+    <article>
+        <header class="h-row-centered">
             <h3>HiveOT Login</h3>
-        </span>
+        </header>
+        <form action="/login" method="post">
 
-        <div class="uk-margin">
-            <label for="loginID">Login email</label>
-            <input id="loginID" name="loginID"
-                   type="text" class="uk-input"
-                   placeholder="login email"/>
-        </div>
+            <div>
+                <label for="loginID">Login email</label>
+                <input id="loginID" name="loginID"
+                       type="text"
+                       placeholder="login email"/>
+            </div>
 
-        <div class="uk-margin">
-            <label for="password">Password</label>
-            <input id="password" name="password"
-                   type="password"
-                   class="uk-input uk-form-password {{if .error}}uk-form-danger{{end}}"
-                   autocomplete="off" value=""
-                   placeholder="password"
-            />
-            {{if .error}}
-            <label class="uk-form-danger">Invalid login ID or password</label>
-            {{end}}
-        </div>
+            <div>
+                <label for="password">Password</label>
+                <input id="password" name="password"
+                       type="password"
+                       {{if .error}}aria-invalid="true" {{end}}
+                       autocomplete="off" value=""
+                       placeholder="password"
+                />
+                {{if .error}}
+                <label class="danger">{{.error}}</label>
+                {{end}}
+            </div>
 
-        <hr/>
+            <hr/>
 
-        <div class="h-row">
-            <button type="button" class="uk-button">Cancel</button>
-            <span class="h-grow"></span>
-            <button type="submit" class="uk-button primary">Log In</button>
-        </div>
-    </form>
-
-</div>
+            <div class="h-row">
+                <a type="button" href="/#">Cancel</a>
+                <span class="h-grow"></span>
+                <button type="submit">Log In</button>
+            </div>
+        </form>
+    </article>
+</dialog>
 
 
 <style>
-    .login-container {
-        height: 100%;
 
-        border-color: var(--main-text-color);
-        align-items: center;
-        justify-content: center;
-        display: flex;
-        flex-direction: column;
-        background-color: var(--header-bg-color);
-    }
-
-    .login-form {
-        display: flex;
-        flex-direction: column;
+    .login article {
         border: solid;
         border-width: 1px;
-        border-color: lightgray;
-        border-radius: 5px;
-        background-color: var(--header-bg-color);
-        padding: 15px;
-
-        hr {
-            border-color: lightgray;
-        }
-
-        .uk-button {
-            border-color: lightgray;
-            border-radius: 5px;
-            /*padding: 3px 10px;*/
-            line-height: 32px;
-        }
+        border-color: var(--pico-dropdown-border-color);
+        border-radius: 10px;
     }
 
 </style>

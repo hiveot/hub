@@ -12,6 +12,7 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/views"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/directory"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/login"
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authclient"
@@ -110,6 +111,7 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 		// fragment routes
 		// do fragments require a cookie? connectStatus needs a session
 		r.Get("/htmx/connectStatus.html", app.RenderConnectStatus)
+		r.Get("/htmx/directory.html", directory.RenderDirectory)
 
 	})
 

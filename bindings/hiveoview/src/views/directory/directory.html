@@ -1,28 +1,126 @@
-<div>
-    <p>Directory contents</p>
-    <!-- todo: list of agents/publishers-->
+<!--Directory template
 
-    <!--    Straight table of all things from template ".Things" data-->
-    <table class="uk-table">
-        <caption>Things</caption>
-        <thead>
-        <tr>Publisher</tr>
-        <tr>Thing ID</tr>
-        <tr>Name</tr>
-        <tr>Make</tr>
-        <tr>Description</tr>
-        </thead>
-        <tbody>
-        {{range .Things}}
-        <tr>{{.Publisher}}</tr>
-        <tr>{{.ThingID}}</tr>
-        <tr>{{.Name}}</tr>
-        <tr>{{.Make}}</tr>
-        <tr>{{.Description}}</tr>
+ @param .Things: array of things to display
+ @param .PageNr: page to display (todo)
+ @param .Total: number of things displayed
+ -->
+
+
+<!--After an initial load without data, auto-reload when viewed. -->
+<!--TODO: standardize the 'reload' event send by a header button-->
+{{$trigger := "intersect once"}}
+{{if .Groups}}
+{{$trigger = "click from:#reload-directory"}}
+{{end}}
+
+<main class="container-fluid"
+      hx-get="/htmx/directory.html" hx-trigger="{{$trigger}}" hx-target="this" hx-swap="outerHTML">
+
+    <!-- Header with a 'reload' button that triggers the htmx-get request above-->
+    <header class="directory-header h-row">
+        <div class="h-grow"></div>
+        <h4 style="margin-top: 1rem; margin-bottom: 0; margin-right: 5px;">Device & Service Directory</h4>
+        <div class="h-grow"></div>
+        <button id="reload-directory" class="outline h-icon-button" title="Reload directory">
+            <iconify-icon icon="mdi:refresh"></iconify-icon>
+        </button>
+        <!--        <span class="h-grow"></span>-->
+        <!--        <label>-->
+        <!--            <input type="checkbox" name="services"></input>-->
+        <!--            Services-->
+        <!--        </label>-->
+        <!--        <label>-->
+        <!--            <input type="checkbox" name="devices" checked></input>-->
+        <!--            Devices-->
+        <!--        </label>-->
+    </header>
+
+    <div>
+        {{range .Groups}}
+
+        <hr/>
+        <!-- Table of all things from template ".Things" data-->
+        <details>
+            <summary class="outline">
+                <span>Publisher:</span>
+                <span style="font-size: medium"><strong>{{.Publisher}}</strong></span>
+                <span>- {{len .Things}} things</span>
+            </summary>
+            <table class="dirTable striped">
+                <thead>
+                <tr>
+                    <th scope="col"></th>
+                    <th scope="col" style="min-width:100px">Thing ID</th>
+                    <th scope="col" class="hideSmall">Type</th>
+                    <th scope="col" style="width:100%">Name</th>
+                    <!--            <th scope="col">Description</th>-->
+                </tr>
+                </thead>
+
+                <tbody>
+                {{range .Things}}
+                <tr>
+                    <td>
+                        <iconify-icon icon="mdi:{{.Icon}}"></iconify-icon>
+                    </td>
+                    <td>{{.ThingID}}</td>
+                    <td class="hideSmall">{{.Type}}</td>
+                    <td>{{.Name}}</td>
+                </tr>
+                {{end}}
+                </tbody>
+
+                <tfoot>
+                <tr>
+                    <!--                    <td colspan="3">Nr Things: {{ len .Things }}</td>-->
+                </tr>
+                </tfoot>
+            </table>
+        </details>
         {{end}}
-        </tbody>
-        <tfoot>
+    </div>
+    <hr/>
 
-        </tfoot>
-    </table>
-</div>
+    <!-- TODO: add pager with first, prev, next, nr entries per page
+          or, use continuous scrolling.
+        -->
+
+    {{if not .Groups}}
+    {{template "loading.html"}}
+    {{end}}
+
+</main>
+
+<style>
+    .directory-header {
+        /*display: flex;*/
+        /*flex-direction: row;*/
+        /*align-items: center;*/
+        /*gap: 5px;*/
+        /*padding: 0 10px;*/
+    }
+
+    table, th, td {
+        /*border: 1px solid*/
+    }
+
+    .dirTable thead {
+        --pico-background-color: var(--pico-muted-border-color);
+    }
+
+    @media only screen and (max-width: 900px) {
+        .dirTable .hideSmall {
+            display: none;
+        }
+    }
+
+    tbody {
+        white-space: nowrap;
+    }
+
+    th {
+        position: sticky;
+        top: 0;
+    }
+
+</style>

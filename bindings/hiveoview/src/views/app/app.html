@@ -1,19 +1,40 @@
 <!--Main application view with header, page content and footer-->
 <!--javascript the regular get takes place-->
 
-<div id="app" class="app" hx-ext="sse" sse-connect="/sse">
+<div id="app" class="app " hx-ext="sse" sse-connect="/sse">
     <!--  Handle the sse logout event-->
     <!--    <span hx-get="/login"-->
     <!--          hx-target="body" sse-swap="logout"-->
     <!--          hx-trigger="sse:logout" hidden>log me out</span>-->
 
-    <div class="apphead">
+    <div class="app-head ">
         {{block "appHead" .}}App header goes here {{end}}
     </div>
 
-    <!-- FIXME: this should be a set of pages selectable from the menu. only 1 page is visible at a time
-         Page state, like scrolling in lists, should be retained when switching between pages.
+    <!-- Initial load of all pages without data.
+         When the page becomes visible, render its content and reload in-place using htmx.
+         option 1: detect page selection ... how?
+                   rerender - pull data ... how?
+         option 2: on initial load, detect which page is loaded from the hash
+                   return the renderer for that page.
+                   with page up/down, rerender the content using htmx params
+
+          If no data field is included in the template render, then define a HTMX trigger that
+            pulls the data upon first display (along with a progress indicator):
+          - runs only if no view data is set in the page.
+          - does not run if page isn't rendered, so only view data for current page is pulled
+          - this sends a htmx request for the same page. This time it includes the page number,
+            which causes the data to be pulled.
+          - show a progress indicator while loading.
+          - Paging repeats this process with request page nr.
+
     -->
+    <!--
+      Navigating within the page:
+
+        With HTMX: use submit button with htmx trigger including page as parameter
+        -->
+
     <div class="app-pages" id="appPage">
         <div id="dashboard">{{template "dashboard.html"}}</div>
         <div id="directory">{{template "directory.html"}}</div>
@@ -21,43 +42,45 @@
         <div id="about">{{template "about.html"}}</div>
     </div>
 
-    <div class="appfooter">
+    <div class=" ">
         {{block "appFooter" .}} App footer goes here {{end}}
     </div>
 </div>
 
 
 <style>
-    .apphead {
-    }
 
-    .app, .app-pages {
+    .app {
         width: 100%;
         height: 100%;
         display: flex;
         flex-direction: column;
-        flex-grow: 10;
+        overflow-y: hidden; /*no scrollbar at the app*/
+    }
+
+    .app-head {
+        /*just some testing for pixel perfect placement??*/
+        /*margin-top: -1px;*/
+        /*padding-top: 1px;*/
     }
 
     .app-pages {
-        > div {
-            display: none;
-        }
+        width: 100%;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+    }
 
-        & :target {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            width: 100%;
-        }
+    .app-pages > div {
+        display: none;
+    }
 
-        /*:target {*/
-        /*    display: flex;*/
-        /*    flex-direction: column;*/
-        /*    height: 100%;*/
-        /*    width: 100%;*/
-        /*}*/
-
+    .app-pages div:target {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        width: 100%;
     }
 
     /* default icons are a tiny 14px */

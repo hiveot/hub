@@ -51,12 +51,12 @@
     border: var(--pico-border-width) solid var(--pico-form-element-border-color);
 }
 
-
 /* panel with background color and flex col*/
 .h-panel {
     background-color: var(--pico-background-color);
     display: flex;
     flex-direction: column;
+    border: 1px solid var(--pico-border-color);
 }
 
 /* flexbox row with items centered */
@@ -110,7 +110,8 @@ h-modal {
     flex-direction: row;
     gap: 0;
     padding: 0;
-    margin-left: 1rem;
+    margin-left: 1rem !important;
+
     border-radius: 3px;
     @media screen and (max-width: 800px) {
         display: none;
@@ -124,6 +125,10 @@ h-modal {
     outline: none;
     cursor: pointer;
     padding: 14px 16px;
+
+    font-size: 0.9rem;
+    text-transform: uppercase;
+
     transition: border .3s ease-in-out;
     border-bottom: 2px solid var(--pico-muted-border-color);
 }

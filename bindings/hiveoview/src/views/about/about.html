@@ -1,11 +1,10 @@
 <!--about dialog -->
 
-<div id="about" class="about-container">
-    <div class="h-col about-box  uk-modal-body">
-
-        <span class="h-row-centered">
-            <h4>About HiveOT</h4>
-        </span>
+<dialog open id="about" class="about">
+    <article>
+        <header class="h-row-centered" style="height: 60px">
+            <h3>About HiveOT</h3>
+        </header>
         <div class="h-row" style="gap: 10px">
             <img src="/static/logo.svg" alt="logo" style="height:60px"/>
             <text>The Hive Of Things provides secure use of connected devices and services.
@@ -18,13 +17,9 @@
             <span>Version: pre-alpha</span>
         </div>
 
-        <div class="h-row"
-             style="justify-content: center; flex-wrap: nowrap; padding-top:30px; position: relative">
-            <span></span>
-            <a class="uk-modal-close uk-button uk-button-primary" type="button"
-               href="#"
-            >Close
-            </a>
+        <!-- foot is relative to accommodate the fixed github icon-->
+        <footer class="h-row-centered" style="position: relative">
+            <a type="button" href="#" style="margin-bottom: 0">Close</a>
 
             <a href="https://github.com/hiveot" target="_blank" aria-label="github"
                style=" font-size: 0.5rem; position:absolute; right:0px; bottom:0px">
@@ -33,43 +28,20 @@
                 </i>
             </a>
 
-        </div>
-    </div>
-</div>
+        </footer>
+    </article>
+</dialog>
 
 
 <style>
-    .about-container {
-        height: 100%;
 
-        /*border-color: var(--main-text-color);*/
-        align-items: center;
-        justify-content: center;
-        display: flex;
-    }
-
-    .about-box {
-        padding: 15px;
-        /*width: 50%;*/
+    .about article {
         border: solid;
         border-width: 1px;
-        border-color: lightgray;
-        border-radius: 5px;
-        display: flex;
-        flex-direction: column;
-        background-color: var(--header-bg-color);
-
-        hr {
-            border-color: lightgray;
-        }
-
-        .uk-button {
-            border-color: lightgray;
-            border-radius: 5px;
-            /*padding: 3px 10px;*/
-            line-height: 32px;
-        }
+        border-color: var(--pico-dropdown-border-color);
+        border-radius: 10px;
     }
+
 
 </style>
 

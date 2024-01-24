@@ -4,7 +4,7 @@
         <iconify-icon icon="mdi:menu"></iconify-icon>
     </button>
 
-    <ul class="h-shadow h-col">
+    <ul class="h-shadow h-panel">
 
         <li>
             <iconify-icon icon='mdi:view-dashboard'></iconify-icon>
@@ -23,20 +23,12 @@
         <li class="h-horizontal-divider"></li>
 
         <li>
-            <!--    checkboxes don't close them menu when clicked-->
-            <input id="editmode-input" type="checkbox" value="false"
-                   class="menu-checkbox" style="margin:0"/>
-            <label for="editmode-input">Edit Mode</label>
-        </li>
-        <li>
             <iconify-icon icon='mdi:logout'></iconify-icon>
             <a href="/logout" hx-boost="false">Logout</a>
         </li>
         <li>
             <iconify-icon icon='mdi:info'></iconify-icon>
 
-            <!-- TODO: how to toggle the about view?-->
-            <!--            <a uk-toggle="target: #about">About Hiveoview</a>-->
             <a href="#about" hx-target="#app">About Hiveoview</a>
         </li>
 

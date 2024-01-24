@@ -6,12 +6,12 @@
     /*--icon-size: 24px;*/
 
     /* the default pico spacing of 1 rem is massive */
-    --pico-spacing: 0.5rem; /* base spacing for various spacings */
+    /*--pico-spacing: 0.75rem; !* base spacing for various spacings *!*/
     /* --pico-form-element-spacing-vertical is used for button padding. Bad choice */
-    --pico-form-element-spacing-vertical: 0.3rem; /* default 0.75rem */
-    --pico-form-element-spacing-horizontal: 0.5rem; /* default 0.75rem */
+    /*--pico-form-element-spacing-vertical: 0.5rem; !* default 0.75rem *!*/
+    /*--pico-form-element-spacing-horizontal: 0.75rem; !* default 0.75rem *!*/
     /*the default menu item spacing is massive*/
-    --pico-nav-element-spacing-vertical: 0.5rem;
+    /*--pico-nav-element-spacing-vertical: 0.5rem;*/
 
 
     details {
@@ -21,8 +21,8 @@
 
     button {
         /* adjust the default button to look a bit less 'bloated' */
-        border: var(--pico-border-width) solid var(--pico-form-element-border-color);
-        /*background-color: var(--pico-form-element-background-color);*/
+        /*border: var(--pico-border-width) solid var(--pico-form-element-border-color);*/
+        background-color: var(--pico-form-element-background-color);
     }
 
 }
