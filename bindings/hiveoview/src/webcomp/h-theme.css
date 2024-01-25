@@ -3,26 +3,22 @@
 :root {
     /* theme  */
     --pico-font-size: 16px;
-    /*--icon-size: 24px;*/
-
-    /* the default pico spacing of 1 rem is massive */
-    /*--pico-spacing: 0.75rem; !* base spacing for various spacings *!*/
-    /* --pico-form-element-spacing-vertical is used for button padding. Bad choice */
-    /*--pico-form-element-spacing-vertical: 0.5rem; !* default 0.75rem *!*/
-    /*--pico-form-element-spacing-horizontal: 0.75rem; !* default 0.75rem *!*/
-    /*the default menu item spacing is massive*/
-    /*--pico-nav-element-spacing-vertical: 0.5rem;*/
-
 
     details {
         /* why does <details/> have a bottom margin when using flex horizontal  ? */
         margin-bottom: 0;
     }
 
-    button {
-        /* adjust the default button to look a bit less 'bloated' */
-        /*border: var(--pico-border-width) solid var(--pico-form-element-border-color);*/
-        background-color: var(--pico-form-element-background-color);
-    }
 
+    /* if height is mobile in landscape then reduce vertical spacing*/
+    @media (max-height: 700px) {
+        --pico-spacing: 0.75rem; /* base spacing for various spacings */
+        --pico-form-element-spacing-vertical: 0.5rem; /* default 0.75rem */
+        --pico-nav-element-spacing-vertical: 0.5rem !important;
+    }
+}
+
+[data-theme=light],
+:root:not([data-theme=dark]) {
+    --pico-background-color: #eee;
 }

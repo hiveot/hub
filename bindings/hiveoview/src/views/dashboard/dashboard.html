@@ -6,7 +6,7 @@
     </div>
     {{end}}
     {{if not .pages}}
-    {{template "loading.html"}}
+    <h-loading></h-loading>
     {{end}}
 
 </div>
@@ -19,4 +19,5 @@
         display: flex;
         flex-direction: column;
     }
+
 </style>

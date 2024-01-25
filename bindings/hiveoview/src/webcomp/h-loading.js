@@ -1,25 +1,28 @@
-<!--Loading spinner component-->
-<!--Credits: Martin van Driel-->
+// Web element with Martin van Driel's awesome loading animation
+// This shows the animation in the center of the view.
+//
+// Set a 'loading' class to change the settings below.
+const template = `
+<div>
+    <div class="one"></div>
+    <div class="two"></div>
+    <div class="three"></div>
+</div>   
 
-<div class="loading">
-    <div class="inner one"></div>
-    <div class="inner two"></div>
-    <div class="inner three"></div>
-</div>
 
 <style>
 
-    .loading {
+    h-loading {
         position: absolute;
-        top: calc(50% - 32px);
-        left: calc(50% - 32px);
-        width: 64px;
-        height: 64px;
+        top: calc(50% - 64px);
+        left: calc(50% - 64px);
+        width: 128px;
+        height: 128px;
         border-radius: 50%;
         perspective: 800px;
     }
 
-    .inner {
+    h-loading div {
         position: absolute;
         box-sizing: border-box;
         width: 100%;
@@ -27,25 +30,25 @@
         border-radius: 50%;
     }
 
-    .inner.one {
+    h-loading .one {
         left: 0%;
         top: 0%;
         animation: rotate-one 1s linear infinite;
-        border-bottom: 3px solid #EFEFFA;
+        border-bottom: 3px solid var(--pico-color);
     }
 
-    .inner.two {
+    h-loading .two {
         right: 0%;
         top: 0%;
         animation: rotate-two 1s linear infinite;
-        border-right: 3px solid #EFEFFA;
+        border-right: 3px solid var(--pico-color);
     }
 
-    .inner.three {
+    h-loading .three {
         right: 0%;
         bottom: 0%;
         animation: rotate-three 1s linear infinite;
-        border-top: 3px solid #EFEFFA;
+        border-top: 3px solid var(--pico-color);
     }
 
 
@@ -76,3 +79,20 @@
         }
     }
 </style>
+
+`
+
+
+class HLoading extends HTMLElement {
+
+    constructor() {
+        super();
+        this.innerHTML = template;
+    }
+
+
+    connectedCallback() {
+    }
+}
+
+customElements.define('h-loading', HLoading)

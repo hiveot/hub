@@ -9,7 +9,7 @@
     <!-- The h-navbar css highlights the li with class 'h-target', set by selectURLTargets() -->
     <ul class="h-navbar">
         <li><a href="#dashboard">Dashboard</a></li>
-        <li><a href="#directory">Directory</a></li>
+        <li><a href="#directory" hx-target="#app">Directory</a></li>
         <li><a href="#notifications">Notifications</a></li>
     </ul>
 
@@ -26,4 +26,9 @@
 
 </nav>
 
+<style>
+    .container-fluid {
+        background-color: var(--pico-form-element-background-color);
+    }
+</style>
 {{end}}

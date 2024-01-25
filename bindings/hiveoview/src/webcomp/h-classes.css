@@ -128,11 +128,13 @@ h-modal {
     text-transform: uppercase;
 
     transition: border .3s ease-in-out;
-    border-bottom: 2px solid var(--pico-muted-border-color);
+    /*border-bottom: 2px solid var(--pico-form-element-border-color);*/
+    border-bottom: 2px solid var(--pico-form-element-border-color);
 }
 
-/*If element has the 'h-target' set (the child anchor href matches) then show a thicker bottom border*/
-.h-navbar li:has(a.h-target) {
+/*If element has the 'h-target' set then show a thicker bottom border*/
+/*.h-navbar li:has(a.h-target) {*/
+.h-navbar li.h-target {
     border-bottom: 2px solid var(--pico-primary-border);
 }
 

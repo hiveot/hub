@@ -8,11 +8,11 @@
 
         <li>
             <iconify-icon icon='mdi:view-dashboard'></iconify-icon>
-            <a href="#dashboard" hx-target="#app">Dashboard</a>
+            <a href="#dashboard">Dashboard</a>
         </li>
         <li>
             <iconify-icon icon='mdi:view-dashboard'></iconify-icon>
-            <a href="#directory" hx-target="#app">Directory</a>
+            <a href="#directory" hx-target="#app" hx-boost="false">Directory</a>
         </li>
         <li>
             <iconify-icon icon="mdi:bell"></iconify-icon>
@@ -48,7 +48,10 @@
         /*margin: 0;*/
     }
 
-    h-dropdown li:has(a.h-target) {
+    /*h-dropdown li:has(a.h-target) {*/
+    /*    background-color: var(--pico-form-element-selected-background-color);*/
+    /*}*/
+    h-dropdown li.h-target {
         background-color: var(--pico-form-element-selected-background-color);
     }
 

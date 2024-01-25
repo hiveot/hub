@@ -4,8 +4,17 @@
 const IS_URL_TARGET_CLASS = "h-target"
 
 /**
- * selectURLTargets sets the 'h-target' class on elements with a href matching the URL.
- * call this once on initialiation and each time the URL changes. (hashchange event)
+ * selectURLTargets sets the h-target class on the li parent of the element with an
+ * href matching the current URL. Intended to highlight the navigation element of
+ * the current URL.
+ *
+ * This uses querySelector to locate elements with an href, checks if it matching the
+ * URL, and find the nearest parent li element.
+ *
+ * This is the equivalent of CSS li:has(a.h-target), which is not supported on older
+ * browsers and mobile devices.
+ *
+ * Call this once on initialiation and each time the URL changes. (hashchange event)
  *
  * @param oldURL previous URL whose h-target to remove, or "" for the initial call.
  */
@@ -13,13 +22,18 @@ const IS_URL_TARGET_CLASS = "h-target"
 window.selectURLTargets = (oldURL) => {
     let eList = document.documentElement.querySelectorAll(["[href]"])
     let newURL = window.location.href
-    console.log("href changed  to:", newURL)
+    // console.log("href changed from ", oldURL, " to:", newURL, ". Found ", eList.length, "elements")
     eList.forEach((item) => {
-        // console.log("item: id=", item.id, ", href=", item.href)
-        if (item.href === newURL) {
-            item.classList.add(IS_URL_TARGET_CLASS)
-        } else if (item.href === oldURL) {
-            item.classList.remove(IS_URL_TARGET_CLASS)
+        let liEl = item.closest('li')
+        if (liEl) {
+            // allow additional parameters after the URL
+            if (newURL.startsWith(item.href)) {
+                // item.classList.add(IS_URL_TARGET_CLASS)
+                liEl.classList.add(IS_URL_TARGET_CLASS)
+            } else if (oldURL.startsWith(item.href)) {
+                // item.classList.remove(IS_URL_TARGET_CLASS)
+                liEl.classList.remove(IS_URL_TARGET_CLASS)
+            }
         }
     })
 }

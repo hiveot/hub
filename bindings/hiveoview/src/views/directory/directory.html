@@ -24,7 +24,7 @@
         <button id="reload-directory" class="outline h-icon-button" title="Reload directory">
             <iconify-icon icon="mdi:refresh"></iconify-icon>
         </button>
-     
+
     </header>
 
     <div>
@@ -47,7 +47,7 @@
                     <th scope="col" style="width:100%">Name</th>
                     <th scope="col" class="hideOnMedium">Outputs</th>
                     <th scope="col" class="hideOnMedium">Actions</th>
-                    <th scope="col" class="hideOnLarge">Modified</th>
+                    <th scope="col" class="hideOnLarge">Updated</th>
                     <!--            <th scope="col">Description</th>-->
                 </tr>
                 </thead>
@@ -58,7 +58,9 @@
                     <td>
                         <h-device-icon deviceType={{.DeviceType}}></h-device-icon>
                     </td>
-                    <td>{{.ID}}</td>
+                    <td>
+                        <a href="#directory/{{.ID}}">{{.ID}}</a>
+                    </td>
                     <td class="hideOnSmall">{{.DeviceType}}</td>
                     <td>{{.Title}}</td>
                     <td class="hideOnMedium">{{len .Events}} outputs</td>
@@ -84,7 +86,7 @@
         -->
 
     {{if not .Groups}}
-    {{template "loading.html"}}
+    <h-loading></h-loading>
     {{end}}
 
 </main>
