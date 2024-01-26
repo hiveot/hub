@@ -4,36 +4,36 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <meta name="description" content="Hive Of Things Viewer">
-    <link rel="shortcut icon" href="../static/favicon.svg"/>
+    <!--    disable favicon during development so it won't be reloaded each change-->
+    <!--    <link rel="shortcut icon" href="/static/favicon.svg"/>-->
 
-    <script src="../static/htmx.min.js"></script>
-    <script src="../static/sse.js"></script>
-    <script src="../static/iconify-icon.min.js"></script>
+    <!--    <script src="/static/htmx.min.js"></script>-->
+    <script src="https://unpkg.com/htmx.org@1.9.10"
+            integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC"
+            crossorigin="anonymous"></script>
+    <script src="/static/sse.js"></script>
+    <script src="/static/iconify-icon.min.js"></script>
 
     <!--    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@next/css/pico.min.css"/>-->
-    <link rel="stylesheet" href="../static/pico-v2.0.0-rc3.css"/>
+    <link rel="stylesheet" href="/static/pico-v2.0.0-rc3.css"/>
 
-    <link rel="stylesheet" href="../webcomp/h-theme.css"/>
-    <link rel="stylesheet" href="../webcomp/h-classes.css"/>
-    <script type="module" src="../webcomp/components.js"></script>
-
+    <link rel="stylesheet" href="/webcomp/h-theme.css"/>
+    <link rel="stylesheet" href="/webcomp/h-classes.css"/>
+    <script type="module" src="/webcomp/components.js"></script>
     <title>{{.Title}}</title>
 </Head>
 
 
 <script>
-
     function showBody() {
         let dt = window['HDarkToggle']
         dt.setThemeFromLocalStorage()
         document.body.hidden = false
     }
-
-
 </script>
 
 <!--hx-boost lets links with href's target #appPage destination while without-->
-<body onload="showBody()" hx-boost="true" hidden>
+<body onload="showBody()" hx-boost="false" hidden>
 
 {{block "embed" .}} main template {{end}}
 
@@ -52,14 +52,7 @@
         overflow: hidden;
         width: 100%;
         height: 100%;
-
-        /*color: var(--main-text-color);*/
-        /*background-color: var(--main-bg-color);*/
     }
-
-    /*iconify-icon {*/
-    /*    font-size: var(--icon-font-size);*/
-    /*}*/
 
     /*!* show a pointer for checkboxes and their labels*/
     /*credits: https://stackoverflow.com/questions/41614446/change-pointer-for-checkbox-html*/

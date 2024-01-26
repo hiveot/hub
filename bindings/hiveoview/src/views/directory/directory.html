@@ -1,20 +1,23 @@
 <!--Directory template
 
- @param .Things: array of things to display
- @param .PageNr: page to display (todo)
- @param .Total: number of things displayed
+ @param .Groups: map of groups by publisher agentID, each containing
+     the .Publisher and an array of .Things (TD documents)
+ @param .Error: in case of error to display
  -->
 
 
 <!--After an initial load without data, auto-reload when viewed. -->
 <!--TODO: standardize the 'reload' event send by a header button-->
 {{$trigger := "intersect once"}}
-{{if .Groups}}
+{{if .Directory}}
 {{$trigger = "click from:#reload-directory"}}
 {{end}}
 
 <main class="container-fluid"
-      hx-get="/htmx/directory.html" hx-trigger="{{$trigger}}" hx-target="this" hx-swap="outerHTML">
+      hx-get="/htmx/directory"
+      hx-trigger="{{$trigger}}"
+      hx-target="this"
+      hx-swap="outerHTML">
 
     <!-- Header with a 'reload' button that triggers the htmx-get request above-->
     <header class="directory-header h-row">
@@ -28,7 +31,8 @@
     </header>
 
     <div>
-        {{range .Groups}}
+        <!--=== for {.Publisher, .Things} in .Groups ===-->
+        {{range .Directory.Groups}}
 
         <hr/>
         <!-- Table of all things from template ".Things" data-->
@@ -53,13 +57,24 @@
                 </thead>
 
                 <tbody>
+
+                <!--=== for TD{} in .Things ===-->
+                {{$agentID := .Publisher}}
                 {{range .Things}}
                 <tr>
                     <td>
                         <h-device-icon deviceType={{.DeviceType}}></h-device-icon>
                     </td>
                     <td>
-                        <a href="#directory/{{.ID}}">{{.ID}}</a>
+                        <!-- hx-push-url is broken: error invalid url-->
+                        <a href="#thing"
+                           hx-get="/htmx/thing/{{$agentID}}/{{.ID}}"
+                           hx-push-url="false"
+                           hx-target="#thing"
+                           hx-swap="innerHTML"
+                           onclick="history.pushState('','',this.getAttribute('hx-get'))"
+                        >{{.ID}}
+                        </a>
                     </td>
                     <td class="hideOnSmall">{{.DeviceType}}</td>
                     <td>{{.Title}}</td>
@@ -85,7 +100,7 @@
           or, use continuous scrolling.
         -->
 
-    {{if not .Groups}}
+    {{if not .Directory}}
     <h-loading></h-loading>
     {{end}}
 

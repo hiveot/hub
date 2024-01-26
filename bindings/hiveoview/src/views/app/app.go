@@ -15,9 +15,9 @@ const templateName = "app.html"
 func RenderApp(w http.ResponseWriter, r *http.Request) {
 
 	data := map[string]any{
-		//"Title":      "HiveOT",
-		"theme":      "dark",
-		"theme_icon": "bi-sun", // bi-sun bi-moon-fill
+		"Title": "HiveOT",
+		//"theme":      "dark",
+		//"theme_icon": "bi-sun", // bi-sun bi-moon-fill
 		//"pages":      []string{"page1", "page2"},
 	}
 	GetAppHeadProps(data, "HiveOT", "/static/logo.svg")

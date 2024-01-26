@@ -11,12 +11,15 @@
         {{block "appHead" .}}App header goes here {{end}}
     </div>
 
-    <!-- This uses htmx to load the template content with actual data on first show-->
+    <!-- This uses htmx to load the template content with actual data on first show
+        eg: hx-get="/htmx/thing/pubId/thingID" hx-target="#thing" hx-swap="innerHtml"
+     -->
     <div class="app-pages" id="appPage">
         <div id="dashboard">{{template "dashboard.html"}}</div>
         <div id="directory">{{template "directory.html"}}</div>
         <div id="status">{{template "status.html"}}</div>
         <div id="about">{{template "about.html"}}</div>
+        <div id="thing">{{template "thingDetails.html"}}</div>
     </div>
 
     <div class=" ">
@@ -53,6 +56,7 @@
         display: none;
     }
 
+    /*FIXME: :target doesn't work with parameters in URL hash '*/
     .app-pages div:target {
         display: flex;
         flex-direction: column;

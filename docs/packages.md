@@ -17,9 +17,7 @@ HiveOT Packages provides the core functionality with protocol bindings and appli
     * mqttmsgserver - embedded mqtt messaging server for mqtt core
     * natsmsgserver - embedded nats messaging server for nats core
 
-* plugins - protocol bindings and other services
+* bindings - protocol bindings and other services
     * hiveoview - web client dashboard for viewing hiveot Things
     * owserver - binding for OWServer 1-wire gateway
     * zwavejs - binding for zwave devices using zwavejs
-
-

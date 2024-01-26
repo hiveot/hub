@@ -11,41 +11,21 @@ import (
 	"sort"
 )
 
-//
-//const SensorIcon = "import"
-//const ServiceIcon = "cube-outline"
-//const ActuatorIcon = "export"
-//const ControllerIcon = "usb" //"molecule"
-//
-//// TODO: icons from config
-//var deviceTypeIcons = map[string]string{
-//	vocab.DeviceTypeBinarySwitch: ActuatorIcon,
-//	vocab.DeviceTypeBinding:      ServiceIcon,
-//	vocab.DeviceTypeCamera:       SensorIcon,
-//	vocab.DeviceTypeGateway:      ControllerIcon,
-//	vocab.DeviceTypeService:      ServiceIcon,
-//	vocab.DeviceTypeMultisensor:  SensorIcon,
-//	vocab.DeviceTypeSensor:       SensorIcon,
-//	vocab.DeviceTypeThermometer:  SensorIcon,
-//	// the following types should be changed in the binding to use the vocabulary
-//	"Binary Sensor":     SensorIcon,
-//	"Binary Switch":     ActuatorIcon,
-//	"Multilevel Sensor": SensorIcon,
-//	"Multilevel Switch": ActuatorIcon,
-//	"Static Controller": ControllerIcon,
-//	"error":             "alert-circle",
-//	"":                  "",
-//}
-
-type TemplateGroup struct {
+type DirGroup struct {
 	Publisher string
 	Things    []*things.TD
 }
 
+type DirectoryData struct {
+	Groups map[string]*DirGroup
+}
+
 // Sort the given list of things and group them by publishing agent
 // this returns a map of groups each containing an array of thing values
-func sortByPublisher(tvList []things.ThingValue) map[string]*TemplateGroup {
-	groups := make(map[string]*TemplateGroup)
+func sortByPublisher(tvList []things.ThingValue) *DirectoryData {
+	dirData := &DirectoryData{
+		Groups: make(map[string]*DirGroup),
+	}
 
 	// sort by agent+thingID for now
 	sort.Slice(tvList, func(i, j int) bool {
@@ -54,13 +34,13 @@ func sortByPublisher(tvList []things.ThingValue) map[string]*TemplateGroup {
 		return item1.AgentID+item1.ThingID < item2.AgentID+item2.ThingID
 	})
 	for _, tv := range tvList {
-		tplGroup, found := groups[tv.SenderID]
+		tplGroup, found := dirData.Groups[tv.SenderID]
 		if !found {
-			tplGroup = &TemplateGroup{
+			tplGroup = &DirGroup{
 				Publisher: tv.SenderID,
 				Things:    make([]*things.TD, 0),
 			}
-			groups[tv.SenderID] = tplGroup
+			dirData.Groups[tv.SenderID] = tplGroup
 		}
 		td := things.TD{}
 		err := json.Unmarshal(tv.Data, &td)
@@ -71,7 +51,7 @@ func sortByPublisher(tvList []things.ThingValue) map[string]*TemplateGroup {
 			}
 		}
 	}
-	return groups
+	return dirData
 }
 
 // RenderDirectory renders the list of Things
@@ -89,9 +69,10 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 		rd := dirclient.NewReadDirectoryClient(hc)
 		thingsList, err := rd.GetTDs(0, 100)
 		if err == nil {
-			groupedThings := sortByPublisher(thingsList)
-			data["Total"] = len(thingsList)
-			data["Groups"] = groupedThings
+			dirGroups := sortByPublisher(thingsList)
+			data["Directory"] = dirGroups
+		} else {
+			slog.Error("unable to load directory", "err", err)
 		}
 	}
 	if err != nil {

@@ -1,6 +1,7 @@
 package views
 
 import (
+	"errors"
 	"fmt"
 	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"html/template"
@@ -29,7 +30,7 @@ type TemplateManager struct {
 }
 
 // GetTemplate returns the requested template ready for execution.
-// Returns nil of template doesn't exist.
+// Returns an error if the template doesn't exist.
 func (svc *TemplateManager) GetTemplate(name string) (*template.Template, error) {
 	if svc.templatePath == "" {
 
@@ -54,6 +55,9 @@ func (svc *TemplateManager) GetTemplate(name string) (*template.Template, error)
 	templateFS := os.DirFS(svc.templatePath)
 	err := svc.parseTemplateFiles(t, templateFS)
 	tpl := t.Lookup(name)
+	if tpl == nil {
+		return nil, errors.New("Template '" + name + "' not found.")
+	}
 	return tpl, err
 }
 
@@ -111,7 +115,7 @@ func (svc *TemplateManager) parseTemplateFiles(t *template.Template, files fs.FS
 //	w is the writer to render to
 //	name is the name of the template to render
 //	data contains a map of variables to pass to the template renderer
-func (svc *TemplateManager) RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data map[string]any) {
+func (svc *TemplateManager) RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data any) {
 	isFragment := r.Header.Get("HX-Request") != ""
 	if isFragment {
 		svc.RenderFragment(w, name, data)
@@ -126,7 +130,7 @@ func (svc *TemplateManager) RenderTemplate(w http.ResponseWriter, r *http.Reques
 //	w is the writer to render to
 //	name is the name of the template to render
 //	data is a map with template variables and their values
-func (svc *TemplateManager) RenderFragment(w http.ResponseWriter, name string, data map[string]any) {
+func (svc *TemplateManager) RenderFragment(w http.ResponseWriter, name string, data any) {
 	slog.Info("RenderPartial", "template", name)
 	svc.renderMux.Lock()
 	defer svc.renderMux.Unlock()
@@ -155,7 +159,7 @@ func (svc *TemplateManager) RenderFragment(w http.ResponseWriter, name string, d
 //		t is the template bundle to lookup base and name
 //		name is the name of the template to render
 //		data contains a map of variables to pass to the template renderer
-func (svc *TemplateManager) RenderFull(w http.ResponseWriter, name string, data map[string]any) {
+func (svc *TemplateManager) RenderFull(w http.ResponseWriter, name string, data any) {
 	slog.Info("RenderFull", "template", name)
 	svc.renderMux.Lock()
 	defer svc.renderMux.Unlock()

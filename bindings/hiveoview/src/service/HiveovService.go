@@ -14,6 +14,7 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/directory"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/login"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/thing"
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -106,12 +107,12 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 		// TODO: improve support render htmx partials
 		// see also:https://medium.com/gravel-engineering/i-find-it-hard-to-reuse-root-template-in-go-htmx-so-i-made-my-own-little-tools-to-solve-it-df881eed7e4d
 		r.Get("/", app.RenderApp)
-		r.Get("/dashboard/{pageName}", dashboard.RenderDashboard)
 
-		// fragment routes
-		// do fragments require a cookie? connectStatus needs a session
+		// fragment routes for loading into specific hx-target elements
 		r.Get("/htmx/connectStatus.html", app.RenderConnectStatus)
-		r.Get("/htmx/directory.html", directory.RenderDirectory)
+		r.Get("/htmx/dashboard/{page}", dashboard.RenderDashboard)
+		r.Get("/htmx/directory", directory.RenderDirectory)
+		r.Get("/htmx/thing/{agentID}/{thingID}", thing.RenderThingDetails)
 
 	})
 

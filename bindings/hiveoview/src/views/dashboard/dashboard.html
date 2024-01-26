@@ -1,11 +1,7 @@
 <div class="dashboard">
     Welcome to the dashboard
-    {{range .pages}}
-    <div class="dashboard" style="display: none" id="{{.}}">
-        {{template "dashboardpage.html" .}}
-    </div>
-    {{end}}
-    {{if not .pages}}
+
+    {{if not .Dashboard}}
     <h-loading></h-loading>
     {{end}}
 
