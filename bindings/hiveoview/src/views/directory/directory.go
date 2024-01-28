@@ -3,7 +3,6 @@ package directory
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
-	"github.com/hiveot/hub/bindings/hiveoview/src/views"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/core/directory/dirclient"
 	"github.com/hiveot/hub/lib/things"
@@ -82,13 +81,6 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	}
 	data["PageNr"] = 1
 
-	//support fragment and full rerender
-	// TODO: can the #directory hash name be forced added here? a redirect maybe?
-	isFragment := r.Header.Get("HX-Request") != ""
-	isBoosted := r.Header.Get("HX-Boosted") != ""
-	if isFragment && !isBoosted {
-		views.TM.RenderFragment(w, "directory.html", data)
-	} else {
-		app.RenderAppPages(w, r, data)
-	}
+	// full render or fragment render
+	app.RenderAppOrFragment(w, r, "directory.html", data)
 }

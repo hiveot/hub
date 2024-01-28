@@ -1,7 +1,7 @@
 {{define "appHead"}}
 
 <nav class="container-fluid h-row">
-    <a href="/status" onclick="window.navigateTo(event,this.href)">
+    <a href="/app/status" onclick="window.navigateTo(event,this.href)">
         <h-brand title="HiveOT" logo="{{.logo}}"></h-brand>
     </a>
 
@@ -9,11 +9,11 @@
     <!-- The h-navbar css highlights the li with class 'h-target', set by selectURLTargets() -->
     <ul class="h-navbar">
         <!-- TODO: use a link component which handles the onclick and stop propagation-->
-        <li><a href="/dashboard" onclick="window.navigateTo(event,this.href)">
+        <li><a href="/app/dashboard" onclick="window.navigateTo(event,this.href)">
             Dashboard</a></li>
-        <li><a href="/directory" onclick="window.navigateTo(event,this.href)">
+        <li><a href="/app/directory" onclick="window.navigateTo(event,this.href)">
             Directory</a></li>
-        <li><a href="/notifications" onclick="window.navigateTo(event,this.href)">
+        <li><a href="/app/notifications" onclick="window.navigateTo(event,this.href)">
             Notifications</a></li>
     </ul>
 

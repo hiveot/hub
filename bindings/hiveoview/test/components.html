@@ -86,7 +86,7 @@
             <td>
                 <!-- =Modal Using hx-get= -->
                 <button class="outline secondary"
-                        hx-get="../webcomp/test-dialog.html"
+                        hx-get="../test/test-dialog.html"
                         hx-target="#modal1"
                         onclick="hShow('modal1')"
                 >Modal with hx-get
@@ -114,11 +114,14 @@
             </td>
             <td class="h-row" style="gap: 5px">
                 <ul class="h-navbar" style="margin: 0">
-                    <li><a href="#navpage1" class="active">item1</a></li>
-                    <li><a href="#navpage2">item2</a></li>
-                    <li><a href="#navpage3">item3</a></li>
+                    <li><a
+                            hx-push-url="true" hx-get="../test/test-dialog.html" hx-target="#navtarget1"
+                            class="active">item1</a></li>
+                    <li><a href="/navpage2">item2</a></li>
+                    <li><a href="/navpage3">item3</a></li>
                 </ul>
             </td>
+            <div id="navtarget1"></div>
         </tr>
 
         </tbody>

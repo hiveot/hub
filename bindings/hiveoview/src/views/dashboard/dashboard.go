@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/bindings/hiveoview/src/views"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"net/http"
 )
@@ -76,12 +75,6 @@ func RenderDashboard(w http.ResponseWriter, r *http.Request) {
 		Tiles: tiles,
 	}
 
-	// TODO: can the #directory hash name be forced added here? a redirect maybe?
-	isFragment := r.Header.Get("HX-Request") != ""
-	isBoosted := r.Header.Get("HX-Boosted") != ""
-	if isFragment && !isBoosted {
-		views.TM.RenderFragment(w, "dashboard.html", data)
-	} else {
-		app.RenderAppPages(w, r, data)
-	}
+	// full render or fragment render
+	app.RenderAppOrFragment(w, r, "dashboard.html", data)
 }

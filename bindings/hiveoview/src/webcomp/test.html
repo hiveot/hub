@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<Head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="Hive Of Things Viewer">
+    <!--    disable favicon during development so it won't be reloaded each change-->
+    <!--    <link rel="shortcut icon" href="/static/favicon.svg"/>-->
+
+    <script src="/static/htmx.org@1.9.10.js"></script>
+    <!--    <script src="/static/sse.js"></script>-->
+    <!--    <script src="/static/iconify-icon.min.js"></script>-->
+    <!---->
+    <!--    <link rel="stylesheet" href="/static/pico-v2.0.0-rc3.css"/>-->
+    <!---->
+    <!--    <link rel="stylesheet" href="/webcomp/h-theme.css"/>-->
+    <!--    <link rel="stylesheet" href="/webcomp/h-classes.css"/>-->
+    <!--    <script type="module" src="/webcomp/components.js"></script>-->
+    <title>{{.title}}</title>
+</Head>
+
+
+<!--hx-boost lets links with href's target #appPage destination while without-->
+<body>
+
+<a href="/" hx-get="/" hx-push-url="true">click me</a>
+
+</body>
+</html>
+

@@ -15,11 +15,11 @@
         eg: hx-get="/dashboard" hx-target="#dashboard" hx-swap="innerHtml"
      -->
     <div class="app-pages" tabindex="1" style="outline: none">
-        <div id="status" displayIfTarget="/status">{{template "status.html" .}}</div>
-        <div id="dashboard" displayIfTarget="/dashboard">{{template "dashboard.html" .}}</div>
-        <div id="directory" displayIfTarget="/directory">{{template "directory.html" .}}</div>
-        <div id="about" displayIfTarget="/about">{{template "about.html" .}}</div>
-        <div id="thing" displayIfTarget="/thing">{{template "thingDetails.html" .}}</div>
+        <div id="status" displayIfTarget="/app/status">{{template "status.html" .}}</div>
+        <div id="dashboard" displayIfTarget="/app/dashboard">{{template "dashboard.html" .}}</div>
+        <div id="directory" displayIfTarget="/app/directory">{{template "directory.html" .}}</div>
+        <div id="about" displayIfTarget="/app/about">{{template "about.html" .}}</div>
+        <div id="thing" displayIfTarget="/app/thing">{{template "thingDetails.html" .}}</div>
     </div>
 
     <div class=" ">

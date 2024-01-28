@@ -12,7 +12,7 @@
 {{end}}
 
 <main class="container-fluid"
-      hx-get="/htmx/directory"
+      hx-get="/app/directory"
       hx-trigger="{{$trigger}}"
       hx-target="this"
       hx-swap="outerHTML">
@@ -65,12 +65,13 @@
                         <h-device-icon deviceType={{.DeviceType}}></h-device-icon>
                     </td>
                     <td>
-                        <!-- hx-push-url is broken: error invalid url-->
-                        <a href="/directory/{{$agentID}}/{{.ID}}"
-                           hx-get="/directory/{{$agentID}}/{{.ID}}"
-                           hx-push-url="false"
+                        <!-- hx-push-url does not trigger popState so how to show result?-->
+                        <a href="/app/thing/{{$agentID}}/{{.ID}}"
+                           hx-get="/app/thing/{{$agentID}}/{{.ID}}"
                            hx-target="#thing"
-                           hx-swap="innerHTML"
+                           hx-swap="innerHtml"
+                           hx-trigger="click"
+                           onclick="navigateTo(null,this.href)"
                         >{{.ID}}
                         </a>
                     </td>

@@ -36,3 +36,23 @@ func RenderAppPages(w http.ResponseWriter, r *http.Request, data map[string]any)
 	//render the full page base > app.html
 	views.TM.RenderFull(w, "app.html", data)
 }
+
+// RenderAppOrFragment renders the full html for a page in app.html using the given data,
+// or if hx-request is set and hx-boost is not, just the fragment.
+//
+// This is a one-stop shop for rendering a page both as a fragment or a full reload (from a bookmark)
+//
+// This just renders the page, it does not select it for viewing (which is a client side concern)
+//
+// fragmentHtml is the html file contain the fragment to render.
+// data contains the fragment data, also used in full render.
+func RenderAppOrFragment(w http.ResponseWriter, r *http.Request, fragmentHtml string, data map[string]any) {
+
+	isFragment := r.Header.Get("HX-Request") != ""
+	isBoosted := r.Header.Get("HX-Boosted") != ""
+	if isFragment && !isBoosted {
+		views.TM.RenderFragment(w, fragmentHtml, data)
+	} else {
+		RenderAppPages(w, r, data)
+	}
+}

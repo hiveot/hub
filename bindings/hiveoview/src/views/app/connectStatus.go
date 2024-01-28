@@ -50,5 +50,6 @@ func RenderConnectStatus(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{}
 	GetConnectStatusProps(data, r)
 
+	// render with base or as fragment
 	views.TM.RenderTemplate(w, r, "connectStatus.html", data)
 }

@@ -4,14 +4,12 @@ import (
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
-	"github.com/hiveot/hub/bindings/hiveoview/src/views"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/core/directory/dirclient"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 	"net/http"
 )
-
-const htmlFile = "thingDetails.html"
 
 type DetailsTemplateData struct {
 	AgentID string
@@ -25,8 +23,8 @@ type DetailsTemplateData struct {
 // @param thingID to view
 func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	data := make(map[string]any)
-	thingID := chi.URLParam(r, "thingID")
 	agentID := chi.URLParam(r, "agentID")
+	thingID := chi.URLParam(r, "thingID")
 	thingData := &DetailsTemplateData{}
 	data["Thing"] = thingData
 	data["Title"] = "details of thing"
@@ -46,7 +44,6 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Failed loading Thing info",
 			"agentID", agentID, "thingID", thingID, "err", err.Error())
 	}
-	views.TM.RenderTemplate(w, r, htmlFile, &data)
-	//http.Redirect(w, r, "#thing", http.StatusSeeOther)
-
+	// full render or fragment render
+	app.RenderAppOrFragment(w, r, "thingDetails.html", data)
 }

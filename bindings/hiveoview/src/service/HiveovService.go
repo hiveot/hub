@@ -10,6 +10,7 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/hiveoviewapi"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/about"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/directory"
@@ -106,22 +107,15 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 		r.Use(session.AddSessionToContext())
 
 		// see also:https://medium.com/gravel-engineering/i-find-it-hard-to-reuse-root-template-in-go-htmx-so-i-made-my-own-little-tools-to-solve-it-df881eed7e4d
-		// option1: render full app and trigger htmx request for htmx/thing/agentID/thingID
-		//        eg, substitute # for htmx with target #thing
-		// option2: add support for hashroutes in chi
+		// these renderer full page or fragments for non hx-boost hx-requests
 		r.Get("/", app.RenderApp)
-		r.Get("/dashboard", dashboard.RenderDashboard)
-		r.Get("/dashboard/{page}", dashboard.RenderDashboard) // TODO: support multiple pages
-		r.Get("/directory", directory.RenderDirectory)
-		r.Get("/directory/thing/{a}/{b}", thing.RenderThingDetails)
-		r.Get("/status", status.RenderStatus)
-		r.Get("/about", app.RenderApp) //about.RenderAbout)
-
-		// fragment routes for loading data into specific hx-target elements
-		r.Get("/htmx/connectStatus.html", app.RenderConnectStatus)
-		r.Get("/htmx/dashboard", dashboard.RenderDashboard)        // TODO: support multiple pages
-		r.Get("/htmx/dashboard/{page}", dashboard.RenderDashboard) // TODO: support multiple pages
-		r.Get("/htmx/directory", directory.RenderDirectory)
+		r.Get("/app/about", about.RenderAbout)
+		r.Get("/app/connectStatus.html", app.RenderConnectStatus)
+		r.Get("/app/dashboard", dashboard.RenderDashboard)
+		r.Get("/app/dashboard/{page}", dashboard.RenderDashboard) // TODO: support multiple pages
+		r.Get("/app/directory", directory.RenderDirectory)
+		r.Get("/app/thing/{agentID}/{thingID}", thing.RenderThingDetails)
+		r.Get("/app/status", status.RenderStatus)
 	})
 
 	return router

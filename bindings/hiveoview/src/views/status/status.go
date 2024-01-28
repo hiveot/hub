@@ -6,17 +6,25 @@ import (
 	"net/http"
 )
 
+type AppStatus struct {
+	LoginID       string
+	ConnectStatus string
+	Error         string
+}
+
 // RenderStatus renders the client status page
 func RenderStatus(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{}
 	s, err := session.GetSession(w, r)
-	if err == nil {
-		data["LoginID"] = s.GetHubClient().ClientID()
-		data["ConnectStatus"] = s.GetStatus().ConnectionStatus
+	if err != nil {
+		data["Status"] = &AppStatus{Error: err.Error()}
+	} else {
+		data["Status"] = &AppStatus{
+			LoginID:       s.GetHubClient().ClientID(),
+			ConnectStatus: string(s.GetStatus().ConnectionStatus),
+		}
 	}
 
-	// just get the status data
-	// TODO on first load the status page should fetch its content
-	// so nothing to do here??
-	app.RenderAppPages(w, r, data)
+	// full render or fragment render
+	app.RenderAppOrFragment(w, r, "status.html", data)
 }

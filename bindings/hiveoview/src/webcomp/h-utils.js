@@ -76,11 +76,15 @@ window.selectNavTargets = (oldURL, newURL) => {
 // This pushes the new URL, displays the new targets and sets focus to the new target.
 // returns false to stop propagation in case of an onclick handler.
 // Note that this does not trigger a popstate event.
-// @param  is the destination URL
+//
+// @param ev optional the event that triggered the request that will be stopped
+// @param newURL is the destination URL
 window.navigateTo = (ev, newURL) => {
     // FIXME: event is deprecated. how to stop propagation?
-    ev.stopImmediatePropagation()
-    ev.preventDefault()
+    if (ev) {
+        ev.stopImmediatePropagation()
+        ev.preventDefault()
+    }
     let oldURL = location.href
     history.pushState("", "", newURL)
     selectNavTargets(oldURL, newURL)
