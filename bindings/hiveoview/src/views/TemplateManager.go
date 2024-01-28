@@ -117,7 +117,8 @@ func (svc *TemplateManager) parseTemplateFiles(t *template.Template, files fs.FS
 //	data contains a map of variables to pass to the template renderer
 func (svc *TemplateManager) RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data any) {
 	isFragment := r.Header.Get("HX-Request") != ""
-	if isFragment {
+	isBoosted := r.Header.Get("HX-Boosted") != ""
+	if isFragment && !isBoosted {
 		svc.RenderFragment(w, name, data)
 	} else {
 		svc.RenderFull(w, name, data)

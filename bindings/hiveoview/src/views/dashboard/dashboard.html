@@ -1,10 +1,20 @@
-<div class="dashboard">
+<!--After an initial load without data, auto-reload when viewed. -->
+{{$trigger := "intersect once"}}
+{{if .Dashboard}}
+{{$trigger = "click"}}
+{{end}}
+
+<div class="dashboard container-fluid"
+     hx-get="/htmx/dashboard"
+     hx-trigger="{{$trigger}}"
+     hx-target="this"
+     hx-swap="outerHTML"
+     tabindex="1">
     Welcome to the dashboard
 
     {{if not .Dashboard}}
     <h-loading></h-loading>
     {{end}}
-
 </div>
 
 <style>
@@ -17,3 +27,4 @@
     }
 
 </style>
+<!--end of dashboard-->

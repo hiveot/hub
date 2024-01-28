@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/core/directory/dirclient"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
@@ -54,11 +55,12 @@ func sortByPublisher(tvList []things.ThingValue) *DirectoryData {
 	return dirData
 }
 
-// RenderDirectory renders the list of Things
-// This is invoked through a htmx call to fet the directory.
-// The directory template is rendered on initial page load without any data, and
-// again once the page is displayed in the browser, this time with data provided
-// by this renderer.
+// RenderDirectory renders the directory of Things.
+//
+// This supports both a full and fragment rendering.
+// Fragment rendering using htmx must use the #directory target.
+// To view the directory, the #directory hash must be included at the end of the URL.
+// E.g.: /directory/#directory
 func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	var data = make(map[string]any)
 
@@ -80,6 +82,13 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	}
 	data["PageNr"] = 1
 
-	// don't cache the login
-	views.TM.RenderTemplate(w, r, "directory.html", data)
+	//support fragment and full rerender
+	// TODO: can the #directory hash name be forced added here? a redirect maybe?
+	isFragment := r.Header.Get("HX-Request") != ""
+	isBoosted := r.Header.Get("HX-Boosted") != ""
+	if isFragment && !isBoosted {
+		views.TM.RenderFragment(w, "directory.html", data)
+	} else {
+		app.RenderAppPages(w, r, data)
+	}
 }

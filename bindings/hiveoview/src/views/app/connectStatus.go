@@ -7,6 +7,8 @@ import (
 	"net/http"
 )
 
+// GetConnectStatusProps populates the data map with the mqtt/nats connection status
+// intended for rendering the connection status.
 func GetConnectStatusProps(data map[string]any, r *http.Request) {
 	cs, _ := session.GetSession(nil, r)
 	connIcon := "link-off"
@@ -43,8 +45,10 @@ func GetConnectStatusProps(data map[string]any, r *http.Request) {
 }
 
 // RenderConnectStatus renders the presentation of the client connection to the Hub message bus.
+// This only renders the fragment. On a full page refresh this renders inside the base.html
 func RenderConnectStatus(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{}
 	GetConnectStatusProps(data, r)
+
 	views.TM.RenderTemplate(w, r, "connectStatus.html", data)
 }

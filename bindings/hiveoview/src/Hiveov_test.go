@@ -42,7 +42,7 @@ func TestMain(m *testing.M) {
 func TestStartStop(t *testing.T) {
 	t.Log("--- TestStartStop ---")
 
-	svc := service.NewHiveovService(8080, true, "")
+	svc := service.NewHiveovService(8080, true, nil, "")
 	hc1, err := testServer.AddConnectClient(
 		serviceID, authapi.ClientTypeService, authapi.ClientRoleService)
 	require.NoError(t, err)

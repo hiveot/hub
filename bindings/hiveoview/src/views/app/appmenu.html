@@ -5,18 +5,23 @@
     </button>
 
     <ul class="h-shadow h-panel">
-
+        <!--TODO: use a link component which stops href propagation and invokes navigateTo
+        and changes focus to the new window
+        -->
         <li>
             <iconify-icon icon='mdi:view-dashboard'></iconify-icon>
-            <a href="#dashboard">Dashboard</a>
+            <a href="/dashboard" onclick="window.navigateTo(event,this.href)">
+                Dashboard</a>
         </li>
         <li>
             <iconify-icon icon='mdi:view-dashboard'></iconify-icon>
-            <a href="#directory" hx-target="#app" hx-boost="false">Directory</a>
+            <a href="/directory" onclick="window.navigateTo(event,this.href)">
+                Directory</a>
         </li>
         <li>
             <iconify-icon icon="mdi:bell"></iconify-icon>
-            <a href="#notifications" hx-target="#app">Notifications</a>
+            <a href="/notifications" onclick="window.navigateTo(event,this.href)">
+                Notifications</a>
         </li>
 
 
@@ -29,7 +34,8 @@
         <li>
             <iconify-icon icon='mdi:info'></iconify-icon>
 
-            <a href="#about" hx-target="#app">About Hiveoview</a>
+            <a href="/about" onclick="window.navigateTo(event,this.href)">
+                About Hiveoview</a>
         </li>
 
     </ul>

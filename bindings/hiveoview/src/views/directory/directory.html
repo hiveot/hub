@@ -5,9 +5,7 @@
  @param .Error: in case of error to display
  -->
 
-
 <!--After an initial load without data, auto-reload when viewed. -->
-<!--TODO: standardize the 'reload' event send by a header button-->
 {{$trigger := "intersect once"}}
 {{if .Directory}}
 {{$trigger = "click from:#reload-directory"}}
@@ -24,7 +22,8 @@
         <div class="h-grow"></div>
         <h4 style="margin-top: 1rem; margin-bottom: 0; margin-right: 5px;">Device & Service Directory</h4>
         <div class="h-grow"></div>
-        <button id="reload-directory" class="outline h-icon-button" title="Reload directory">
+        <button id="reload-directory" class="outline h-icon-button"
+                title="Reload directory">
             <iconify-icon icon="mdi:refresh"></iconify-icon>
         </button>
 
@@ -67,12 +66,11 @@
                     </td>
                     <td>
                         <!-- hx-push-url is broken: error invalid url-->
-                        <a href="#thing"
-                           hx-get="/htmx/thing/{{$agentID}}/{{.ID}}"
+                        <a href="/directory/{{$agentID}}/{{.ID}}"
+                           hx-get="/directory/{{$agentID}}/{{.ID}}"
                            hx-push-url="false"
                            hx-target="#thing"
                            hx-swap="innerHTML"
-                           onclick="history.pushState('','',this.getAttribute('hx-get'))"
                         >{{.ID}}
                         </a>
                     </td>

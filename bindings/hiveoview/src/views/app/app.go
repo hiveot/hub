@@ -1,71 +1,38 @@
 package app
 
 import (
-	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views"
-	"log/slog"
 	"net/http"
 )
 
 const templateName = "app.html"
 
-// RenderApp renders the app view using hash #page to select the view using ":target"
-//
-//	URL:  /app/#{page}
+// RenderApp renders the full app view without a specific page
 func RenderApp(w http.ResponseWriter, r *http.Request) {
 
-	data := map[string]any{
-		"Title": "HiveOT",
-		//"theme":      "dark",
-		//"theme_icon": "bi-sun", // bi-sun bi-moon-fill
-		//"pages":      []string{"page1", "page2"},
+	// no specific fragment data
+	data := map[string]any{}
+	RenderAppPages(w, r, data)
+}
+
+// RenderAppPages renders the full html for a page in app.html.
+// Instead of rendering a fragment, this renders the full application html
+// with provided fragment data included.
+//
+// Usage: 1. Load the fragment data of the page to display
+//  2. Select the app page to be viewed, whose fragment data was provided
+//     e.g. append #pageName to the URL.
+//  3. Render the full page with the data of the selected page.
+//  4. All further navigation should render fragments using htmx.
+func RenderAppPages(w http.ResponseWriter, r *http.Request, data map[string]any) {
+
+	// 1a. full pages need the app title and header data
+	if data == nil {
+		data = map[string]any{}
 	}
 	GetAppHeadProps(data, "HiveOT", "/static/logo.svg")
 	GetConnectStatusProps(data, r)
 
-	pageName := chi.URLParam(r, "pageName")
-	slog.Info("pagename from url", "pageName", pageName, "url", r.URL.String())
-
+	//render the full page base > app.html
 	views.TM.RenderFull(w, "app.html", data)
 }
-
-//// RenderAppPage renders the app sub-page injected into the app page html
-//// This is invoked by the app page on load.
-//// This supports both full page reloads and htmx fragments
-//func RenderAppPage(w http.ResponseWriter, r *http.Request) {
-//	data := map[string]any{
-//		//"Title":      "HiveOT",
-//		"theme":      "dark",
-//		"theme_icon": "bi-sun", // bi-sun bi-moon-fill
-//		//"pages":      []string{"page1", "page2"},
-//	}
-//	GetAppHeadProps(data, "HiveOT", "/static/logo.svg", []string{"dashboard", "directory"})
-//
-//	// determine the page name from the URL and append .html if needed
-//	pageName := chi.URLParam(r, "pageName")
-//	if pageName != "" && !strings.HasSuffix(pageName, ".html") {
-//		pageName = pageName + ".html"
-//	} else if pageName == "" {
-//		pageName = "status.html"
-//	}
-//	data["pageName"] = pageName
-//	//views.TM.RenderTemplate(w, r, pageName, data)
-//	//slog.Info("pagename from url", "pageName", pageName, "url", r.URL.String())
-//	isHtmx := r.Header.Get("HX-Request") != ""
-//	if isHtmx {
-//		// render the partial
-//		views.TM.RenderFragment(w, pageName, data)
-//		//	//fmt.Fprintf(w, "<div>Hello "+pageName+"</div>")
-//	} else {
-//		//render the full page base>app>page
-//		// FIXME-1: get proper app data
-//		//slog.Info("RenderFull App with trigger of loading the page", "pageName", pageName)
-//		views.TM.RenderFull(w, "app.html", data)
-//		//
-//		//	// ? Include a htmx trigger in the response that loads the app page as a partial?
-//		//	// this would speed up initial page load
-//		//	//pageTpl := assets.GetTemplate(pageName)
-//		//	//assets.RenderPartial(w, pageName, data)
-//	}
-//
-//}

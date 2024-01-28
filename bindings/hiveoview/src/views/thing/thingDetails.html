@@ -1,4 +1,13 @@
-<div id="alsoathing">
+<!-- On full render, .Thing is empty. reload the fragment using the agent and thing from the url -->
+{{$trigger := "intersect once"}}
+{{if .Thing}}
+{{$trigger = "click"}}
+{{end}}
+<div hx-get="/htmx/thing"
+     hx-trigger="{{$trigger}}"
+     hx-target="this"
+     hx-swap="outerHTML"
+>
 
     <p>Things is the thing details view of:</p>
     <p>Publisher: {{.Thing.AgentID}}</p>

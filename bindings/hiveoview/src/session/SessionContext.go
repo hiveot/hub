@@ -12,7 +12,7 @@ const SessionContextID = "session"
 // AddSessionToContext middleware adds a ClientSession object to the request context.
 //
 // If no valid session is found and no cookie with auth token is present
-// then HandleLogout is invoked.
+// then SessionLogout is invoked.
 func AddSessionToContext() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
