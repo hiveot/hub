@@ -17,6 +17,11 @@
 </head>
 
 
+<script id="model-data" type="application/json">
+
+</script>
+
+
 <body>
 
 <!--Table of HiveOT web component examples-->
@@ -122,6 +127,26 @@
                 </ul>
             </td>
             <div id="navtarget1"></div>
+        </tr>
+
+        <!-- === h-simple-table  ===-->
+        <tr>
+            <td>
+                <span>h-simple-table</span>
+            </td>
+            <td>
+                <h-data id="model-data" hx-next="/app/data/more">
+                    {'label':'Item 1', 'val':'value 1',"onoff":"on"},
+                    {'label':'Item 2', 'val':'value 2',"onoff":"off"}
+                </h-data>
+                <h-simple-table id="mode-table" data="#model-data">
+                    <li col="1" title="Name" field="label" field-type="text"></li>
+                    <li col="2" title="Value" field="val" field-type="number"></li>
+                    <li col="3" title="On/Off" field="onoff">
+                        <switch on='{onoff}'></switch>
+                    </li>
+                </h-simple-table>
+            </td>
         </tr>
 
         </tbody>

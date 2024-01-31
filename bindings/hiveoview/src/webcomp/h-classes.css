@@ -3,12 +3,6 @@
  *==========================================================================
  */
 
-/* apply box shadow with opacity gradient */
-.h-shadow {
-    box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2),
-    0 8px 10px 1px rgba(0, 0, 0, 0.14),
-    0 3px 14px 2px rgba(0, 0, 0, 0.12);
-}
 
 /* set background transparent */
 .h-bg-transparent {
@@ -38,6 +32,34 @@
     background: linear-gradient(to right, var(--pico-background-color), var(--pico-color), var(--pico-background-color));
 }
 
+/* apply to a table to show using CSS grid
+ */
+.h-grid-table {
+    display: grid;
+    border-collapse: collapse;
+    min-width: 100%;
+    border: 1px solid gray;
+
+    td {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    thead, tbody, tr {
+        display: contents;
+    }
+
+    /*show an ellipsis in a span element that is using a flexbox parent*/
+
+    td span {
+        display: block;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis
+    }
+}
+
+
 .h-grow {
     flex-grow: 1;
 }
@@ -49,6 +71,51 @@
     display: flex;
     flex-direction: row;
     border: var(--pico-border-width) solid var(--pico-form-element-border-color);
+}
+
+/*=== helpers to show columns or fields for responsive design ===*/
+/* show on small and above  */
+:root {
+    --h-media-xs: 576px;
+    --h-media-sm: 768px;
+    --h-media-md: 992px;
+    --h-media-lg: 1200px;
+
+
+    @media (width < 576px) {
+        --h-xs: true;
+        .h-show-sm, .h-show-md, .h-show-lg, .h-show-xl {
+            display: none; /*hide xs*/
+        }
+    }
+
+    /* hide on small and below; show on medium and above */
+    @media (width < 768px) {
+        --h-sm: "sm";
+        .h-show-md, .h-show-lg, .h-show-xl {
+            display: none; /*hide sm*/
+        }
+    }
+
+    /* hide on medium and below; show on large and above */
+    @media (width < 992px) {
+        --h-md: "md";
+        .h-show-lg, .h-show-xl {
+            display: none; /*hide md*/
+        }
+    }
+
+    /* hide on large and below; show on extra large and above */
+    @media (width < 1200px) {
+        --h-media: "lg";
+        .h-show-xl {
+            display: none; /*hide lg*/
+        }
+    }
+
+    @media (width >= 1200px) {
+        --h-media: "xl";
+    }
 }
 
 /* panel with background color and flex col*/
@@ -69,6 +136,20 @@
 
 .h-row-centered {
     justify-content: center;
+}
+
+.h-row-inline {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+
+/* apply box shadow with opacity gradient */
+.h-shadow {
+    box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2),
+    0 8px 10px 1px rgba(0, 0, 0, 0.14),
+    0 3px 14px 2px rgba(0, 0, 0, 0.12);
 }
 
 /*.flex-center {*/
@@ -141,5 +222,3 @@ h-modal {
 .h-navbar li:hover {
     color: var(--pico-text-decoration);
 }
-
-

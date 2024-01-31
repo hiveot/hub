@@ -6,6 +6,8 @@ import (
 	"net/http"
 )
 
+const DashboardTemplate = "dashboard.gohtml"
+
 // TilePlacement location of the tile in the grid
 type TilePlacement struct {
 	GridX      int
@@ -76,5 +78,5 @@ func RenderDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// full render or fragment render
-	app.RenderAppOrFragment(w, r, "dashboard.html", data)
+	app.RenderAppOrFragment(w, r, DashboardTemplate, data)
 }

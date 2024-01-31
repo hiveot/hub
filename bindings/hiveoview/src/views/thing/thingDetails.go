@@ -11,10 +11,15 @@ import (
 	"net/http"
 )
 
+const TemplateFile = "thingDetails.gohtml"
+
 type DetailsTemplateData struct {
 	AgentID string
 	ThingID string
 	TD      things.TD
+	// These lists are sorted by property/event/action name
+	Attributes map[string]*things.PropertyAffordance
+	Config     map[string]*things.PropertyAffordance
 }
 
 // RenderThingDetails renders thing details view fragment 'thingDetails.html'
@@ -25,11 +30,14 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	data := make(map[string]any)
 	agentID := chi.URLParam(r, "agentID")
 	thingID := chi.URLParam(r, "thingID")
-	thingData := &DetailsTemplateData{}
-	data["Thing"] = thingData
-	data["Title"] = "details of thing"
+	thingData := &DetailsTemplateData{
+		Attributes: make(map[string]*things.PropertyAffordance),
+		Config:     make(map[string]*things.PropertyAffordance),
+	}
 	thingData.ThingID = thingID
 	thingData.AgentID = agentID
+	data["Thing"] = thingData
+	data["Title"] = "details of thing"
 
 	mySession, err := session.GetSession(w, r)
 	if err == nil {
@@ -38,6 +46,15 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 		tv, err := rd.GetTD(agentID, thingID)
 		if err == nil {
 			err = json.Unmarshal(tv.Data, &thingData.TD)
+			// split properties into attributes and configuration
+
+			for k, prop := range thingData.TD.Properties {
+				if prop.ReadOnly {
+					thingData.Attributes[k] = prop
+				} else {
+					thingData.Config[k] = prop
+				}
+			}
 		}
 	}
 	if err != nil {
@@ -45,5 +62,5 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 			"agentID", agentID, "thingID", thingID, "err", err.Error())
 	}
 	// full render or fragment render
-	app.RenderAppOrFragment(w, r, "thingDetails.html", data)
+	app.RenderAppOrFragment(w, r, TemplateFile, data)
 }

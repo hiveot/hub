@@ -2,29 +2,29 @@
 <!--javascript the regular get takes place-->
 
 <div id="app" class="app" hx-ext="sse" sse-connect="/sse">
-    <!--  Handle the sse logout event-->
-    <!--    <span hx-get="/login"-->
-    <!--          hx-target="body" sse-swap="logout"-->
-    <!--          hx-trigger="sse:logout" hidden>log me out</span>-->
+	<!--  Handle the sse logout event-->
+	<!--    <span hx-get="/login"-->
+	<!--          hx-target="body" sse-swap="logout"-->
+	<!--          hx-trigger="sse:logout" hidden>log me out</span>-->
 
-    <div class="app-head ">
-        {{block "appHead" .}}App header goes here {{end}}
-    </div>
+	<div class="app-head ">
+      {{block "appHead" .}}App header goes here {{end}}
+	</div>
 
-    <!-- These pages are updated using htmx fragments.
-        eg: hx-get="/dashboard" hx-target="#dashboard" hx-swap="innerHtml"
-     -->
-    <div class="app-pages" tabindex="1" style="outline: none">
-        <div id="status" displayIfTarget="/app/status">{{template "status.html" .}}</div>
-        <div id="dashboard" displayIfTarget="/app/dashboard">{{template "dashboard.html" .}}</div>
-        <div id="directory" displayIfTarget="/app/directory">{{template "directory.html" .}}</div>
-        <div id="about" displayIfTarget="/app/about">{{template "about.html" .}}</div>
-        <div id="thing" displayIfTarget="/app/thing">{{template "thingDetails.html" .}}</div>
-    </div>
+	<!-- These pages are updated using htmx fragments.
+			eg: hx-get="/dashboard" hx-target="#dashboard" hx-swap="innerHtml"
+	 -->
+	<div class="app-pages" tabindex="1" style="outline: none">
+		<div id="status" displayIfTarget="/app/status">{{template "status.gohtml" .}}</div>
+		<div id="dashboard" displayIfTarget="/app/dashboard">{{template "dashboard.gohtml" .}}</div>
+		<div id="directory" displayIfTarget="/app/directory">{{template "directory.gohtml" .}}</div>
+		<div id="about" displayIfTarget="/app/about">{{template "about.gohtml" .}}</div>
+		<div id="thing" displayIfTarget="/app/thing">{{template "thingDetails.gohtml" .}}</div>
+	</div>
 
-    <div class=" ">
-        {{block "appFooter" .}} App footer for {{.title}} goes here {{end}}
-    </div>
+	<div class=" ">
+      {{block "appFooter" .}} App footer for {{.title}} goes here {{end}}
+	</div>
 </div>
 
 

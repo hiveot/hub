@@ -7,49 +7,64 @@ import (
 	"net/http"
 )
 
-// GetConnectStatusProps populates the data map with the mqtt/nats connection status
-// intended for rendering the connection status.
-func GetConnectStatusProps(data map[string]any, r *http.Request) {
+const ConnectStatusTemplate = "connectStatus.gohtml"
+
+// ConnectStatus describes the message bus connection status of the current session
+type ConnectStatus struct {
+	// the login ID which is used to connect
+	LoginID string
+	// description of the connection status
+	Description string
+	// mdi icon set icon name representing the status
+	IconName string
+	// optional error text if connection failed
+	Error string
+	// simple flag whether a connection is established
+	IsConnected bool
+}
+
+// GetConnectStatus returns the description of the connection status
+func GetConnectStatus(r *http.Request) *ConnectStatus {
 	cs, _ := session.GetSession(nil, r)
-	connIcon := "link-off"
-	connText := "Disconnected"
-	isConnected := false
+	status := &ConnectStatus{
+		IconName:    "link-off",
+		Description: "disconnected",
+		IsConnected: false,
+		Error:       "",
+	}
 	if cs == nil {
-		connIcon = "link-off"
-		connText = "Session not established"
+		status.Description = "Session not established"
 	} else {
 		cStat := cs.GetStatus()
+		status.LoginID = cs.GetHubClient().ClientID()
 		if cStat.LastError != nil {
-			connText = cStat.LastError.Error()
+			status.Error = cStat.LastError.Error()
 		}
 		if cStat.ConnectionStatus == transports.Connected {
-			connIcon = "link"
-			connText = "Connected to the Hub"
-			isConnected = true
+			status.IconName = "link"
+			status.Description = "Connected to the Hub"
+			status.IsConnected = true
 		} else if cStat.ConnectionStatus == transports.ConnectFailed {
-			connIcon = "link-off"
-			connText = "Connection failed (" + connText + ")"
+			status.IconName = "link-off"
+			status.Description = "Connection failed"
 		} else if cStat.ConnectionStatus == transports.Connecting {
-			connIcon = "leak-off"
-			connText = "Reconnecting (" + connText + ")"
+			status.IconName = "leak-off"
+			status.Description = "Reconnecting"
 		} else {
-			connIcon = "link-off"
-			connText = connText
+			status.IconName = "link-off"
+			status.Description = "unknown"
 		}
 	}
-	data["conn_icon"] = connIcon
-	data["conn_status"] = connText
-	if isConnected {
-		data["isConnected"] = isConnected
-	}
+	return status
 }
 
 // RenderConnectStatus renders the presentation of the client connection to the Hub message bus.
 // This only renders the fragment. On a full page refresh this renders inside the base.html
 func RenderConnectStatus(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{}
-	GetConnectStatusProps(data, r)
+	status := GetConnectStatus(r)
+	data["Status"] = status
 
 	// render with base or as fragment
-	views.TM.RenderTemplate(w, r, "connectStatus.html", data)
+	views.TM.RenderTemplate(w, r, ConnectStatusTemplate, data)
 }

@@ -110,7 +110,7 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 		// these renderer full page or fragments for non hx-boost hx-requests
 		r.Get("/", app.RenderApp)
 		r.Get("/app/about", about.RenderAbout)
-		r.Get("/app/connectStatus.html", app.RenderConnectStatus)
+		r.Get("/app/connectStatus", app.RenderConnectStatus)
 		r.Get("/app/dashboard", dashboard.RenderDashboard)
 		r.Get("/app/dashboard/{page}", dashboard.RenderDashboard) // TODO: support multiple pages
 		r.Get("/app/directory", directory.RenderDirectory)

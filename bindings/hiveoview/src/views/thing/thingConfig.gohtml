@@ -1,0 +1,73 @@
+<!--Thing configuration list-->
+<!--@param go's thing.TD object-->
+
+<table class="h-grid-table striped thing-config">
+	<thead>
+	<tr>
+		<th class="h-show-sm">ID</th>
+		<th>Name</th>
+		<th>Value</th>
+		<th class="h-show-lg">Type</th>
+		<th class="h-show-md">Default</th>
+	</tr>
+	</thead>
+
+	<tbody>
+  {{range $k, $v := .}}
+      {{- /*gotype: github.com/hiveot/hub/lib/things.PropertyAffordance*/ -}}
+			<tr>
+				<td class="h-show-sm">{{$k}}</td>
+				<td>{{$v.DataSchema.Title}}</td>
+				<td class="h-row-inline">
+					<iconify-icon icon="mdi:pencil"></iconify-icon>
+					<span>{{printf "%.100s" $v.InitialValue}}  {{$v.DataSchema.Unit}}</span>
+				</td>
+				<td class="h-show-lg">{{$v.Type}}</td>
+				<td class="h-show-md">{{$v.Default}}</td>
+			</tr>
+  {{end}}
+	</tbody>
+</table>
+
+<style>
+
+    @media (width < 576px) {
+        .thing-config {
+            /*xs, show column 2, 3 */
+            grid-template-columns: minmax(200px, max-content) minmax(100px, max-content);
+        }
+    }
+
+    @media (width >= 576px) {
+        .thing-config {
+            /*sm, show column 1,2,3 */
+            grid-template-columns:
+				            minmax(100px, max-content)
+				            minmax(200px, 1fr)
+				            minmax(100px, max-content);
+        }
+    }
+
+    @media (width >= 768px) {
+        .thing-config {
+            /*md,show column 1,2,3,4*/
+            grid-template-columns: minmax(100px, max-content)
+              minmax(200px, max-content)
+              minmax(100px, max-content)
+              minmax(100px, 1fr);
+        }
+    }
+
+    @media (width >= 992px) {
+        .thing-config {
+            /*lg, show all*/
+            grid-template-columns: minmax(100px, max-content)
+              minmax(200px, max-content)
+              minmax(100px, max-content)
+              100px
+              minmax(100px, 1fr);
+        }
+    }
+
+
+</style>

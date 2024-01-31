@@ -14,7 +14,7 @@ type ISubscription interface {
 type ConnectionStatus string
 
 const (
-	// Connecting attempting a connection
+	// Connecting attempting a (re)connection
 	Connecting ConnectionStatus = "connecting"
 	// Connected and authenticated successful
 	Connected ConnectionStatus = "connected"

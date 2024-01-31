@@ -14,7 +14,8 @@ import (
 	"sync"
 )
 
-const baseTemplateName = "base.html"
+const baseTemplateName = "base.gohtml"
+const TemplateExt = "*.gohtml"
 
 var TM *TemplateManager
 
@@ -86,7 +87,7 @@ func (svc *TemplateManager) ParseAllTemplates() {
 func (svc *TemplateManager) parseTemplateFiles(t *template.Template, files fs.FS) error {
 	err := fs.WalkDir(files, ".", func(parent string, d fs.DirEntry, err error) error {
 		if err == nil && d.IsDir() {
-			subT, err := t.ParseFS(files, filepath.Join(parent, "*.html"))
+			subT, err := t.ParseFS(files, filepath.Join(parent, TemplateExt))
 			_ = subT
 			// only report template errors, but keep going
 			if err != nil && !strings.HasPrefix(err.Error(), "template: pattern matches no files:") {

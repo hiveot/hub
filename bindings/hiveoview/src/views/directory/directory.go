@@ -11,6 +11,8 @@ import (
 	"sort"
 )
 
+const DirectoryTemplate = "directory.gohtml"
+
 type DirGroup struct {
 	Publisher string
 	Things    []*things.TD
@@ -82,5 +84,5 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	data["PageNr"] = 1
 
 	// full render or fragment render
-	app.RenderAppOrFragment(w, r, "directory.html", data)
+	app.RenderAppOrFragment(w, r, DirectoryTemplate, data)
 }

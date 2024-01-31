@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-const templateName = "app.html"
+const AppTemplate = "app.gohtml"
 
 // RenderApp renders the full app view without a specific page
 func RenderApp(w http.ResponseWriter, r *http.Request) {
@@ -31,10 +31,10 @@ func RenderAppPages(w http.ResponseWriter, r *http.Request, data map[string]any)
 		data = map[string]any{}
 	}
 	GetAppHeadProps(data, "HiveOT", "/static/logo.svg")
-	GetConnectStatusProps(data, r)
+	data["Status"] = GetConnectStatus(r)
 
 	//render the full page base > app.html
-	views.TM.RenderFull(w, "app.html", data)
+	views.TM.RenderFull(w, AppTemplate, data)
 }
 
 // RenderAppOrFragment renders the full html for a page in app.html using the given data,

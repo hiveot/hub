@@ -1,0 +1,74 @@
+<!--Thing event list-->
+<!--@param go's thing.TD object-->
+
+<table class="h-grid-table striped thing-events">
+	<thead>
+	<tr>
+		<th class="h-show-sm">ID</th>
+		<th>Name</th>
+		<th>Value</th>
+		<th class="h-show-md">Type</th>
+		<th class="h-show-lg">Description</th>
+	</tr>
+	</thead>
+	<tbody>
+  {{range $k,$v := .}}
+      {{- /*gotype: github.com/hiveot/hub/lib/things.EventAffordance*/ -}}
+			<tr>
+				<td class="h-show-sm">{{$k}}</td>
+				<td>{{$v.Title}}</td>
+				<td>
+            {{if $v.Data}}
+							<span>{{$v.Data.InitialValue}} </span>
+            {{end}}
+				</td>
+				<td class="h-show-md">{{$v.EventType}}</td>
+				<td class="h-show-lg">{{$v.Description}}</td>
+			</tr>
+  {{end}}
+  {{if not .}}
+		<tr>
+			<td colspan="3">
+				<i>No events defined</i>
+			</td>
+		</tr>
+  {{end}}
+	</tbody>
+</table>
+
+
+<style>
+
+    @media (width < 576px) {
+        .thing-events {
+            /*xs, show column 2, 3 */
+            grid-template-columns: minmax(200px, 2fr) minmax(100px, 1fr);
+        }
+    }
+
+    @media (width >= 576px) {
+        .thing-events {
+            /*sm, show column 1,2,3 */
+            grid-template-columns: minmax(100px, max-content) minmax(200px, 2fr) minmax(100px, 1fr);;
+        }
+    }
+
+    @media (width >= 768px) {
+        .thing-events {
+            /*md,show column 1,2,3,4*/
+            grid-template-columns: minmax(100px, max-content)
+              minmax(200px, max-content)
+              minmax(100px, max-content)
+              minmax(100px, 1fr);
+        }
+    }
+
+    @media (width >= 992px) {
+        .thing-events {
+            /*lg, show all*/
+            grid-template-columns: minmax(100px, max-content) minmax(200px, max-content) minmax(100px, max-content) 100px minmax(100px, 1fr);
+        }
+    }
+
+
+</style>
