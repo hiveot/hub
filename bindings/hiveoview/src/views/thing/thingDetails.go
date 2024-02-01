@@ -64,3 +64,16 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	// full render or fragment render
 	app.RenderAppOrFragment(w, r, TemplateFile, data)
 }
+
+func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
+	data := make(map[string]any)
+	agentID := r.URL.Query().Get("agentID")
+	thingID := r.URL.Query().Get("thingID")
+	configKey := r.URL.Query().Get("key")
+	currentValue := r.URL.Query().Get("value")
+	data["AgentID"] = agentID
+	data["ThingID"] = thingID
+	data["ConfigKey"] = configKey
+	data["Value"] = currentValue
+	app.RenderAppOrFragment(w, r, "editConfig.gohtml", data)
+}

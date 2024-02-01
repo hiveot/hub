@@ -20,8 +20,8 @@
     {{end}}
     {{if not .}}
 			<li>
-				<div colspan="3">
-					<i>No actions defined</i>
+				<div style="grid-column: 1/5 ">
+					<i>No actions defined blah blah blah 12345</i>
 				</div>
 			</li>
     {{end}}
@@ -40,7 +40,8 @@
     @media (width >= 576px) {
         .thing-actions {
             /*sm, show column 1,2,3 */
-            grid-template-columns: minmax(100px, max-content) minmax(200px, 2fr) minmax(100px, 1fr);;
+            grid-template-columns:
+				            minmax(100px, max-content) minmax(200px, 2fr) minmax(100px, 1fr);;
         }
     }
 

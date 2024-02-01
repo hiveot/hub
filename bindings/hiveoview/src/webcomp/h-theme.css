@@ -9,8 +9,8 @@
         margin-bottom: 0;
     }
 
-
     --pico-form-element-spacing-vertical: 0.6rem;
+    
     /* if height is mobile in landscape then reduce vertical spacing*/
     @media (max-height: 700px) {
         --pico-spacing: 0.75rem; /* base spacing for various spacings */

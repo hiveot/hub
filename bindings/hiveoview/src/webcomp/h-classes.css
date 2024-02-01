@@ -65,7 +65,7 @@
 }
 
 .h-grid-table[border] {
-    border: 1px solid gray;
+    border: 1px solid var(--pico-form-element-border-color);
 }
 
 .h-grid-table li {
@@ -75,20 +75,22 @@
 
 .h-grid-table li div {
     font-weight: var(--pico-font-weight);
-    background-color: var(--pico-background-color);
+    background-color: var(--pico-card-sectioning-background-color);
     padding: calc(var(--pico-spacing) / 2) var(--pico-spacing);
+    align-items: center;
+    display: inline-flex;
 }
 
 .h-grid-table li:first-child div {
     font-variant-caps: small-caps;
-    background-color: var(--pico-background-color);
+    background-color: var(--pico-form-element-background-color);
     --pico-font-weight: 600;
-    border: 1px solid var(--pico-form-element-border-color);
-    /*--pico-border-width: 0.1875rem;*/
+    /*border-bottom: 1px solid var(--pico-form-element-border-color);*/
+    border-bottom: 1px solid var(--pico-form-element-active-border-color);
 }
 
-.h-grid-table[striped] li:nth-child(even) div {
-    background-color: var(--pico-table-row-stripped-background-color);
+.h-grid-table[striped] li:nth-child(odd) div {
+    background-color: var(--pico-background-color);
 }
 
 
@@ -107,49 +109,50 @@
 
 /*=== helpers to show columns or fields for responsive design ===*/
 
-/** XXL: >= 15360*/
-
-/* XL (>=1200-1536); show on XL and above  */
-@media (width < 1536px) {
-}
-
-/*  LG: 1024-1280: show on large and above; hide on medium and below */
-@media (width < 1280px) {
-    .h-show-xl {
-        display: none; /*hide lg*/
-    }
-}
-
-/* MD: 768-1024) show on medium and above; hide on small and below;  */
-@media (width < 1024px) {
-    .h-show-lg, .h-show-xl {
-        display: none; /*hide md*/
-    }
-
-}
-
-/* SM: 576-768 */
-@media (width < 768px) {
-    .h-show-md, .h-show-lg, .h-show-xl {
-        display: none; /*hide xs,sm*/
-    }
-}
-
-
 /* XS (<576) */
 @media (width < 576px) {
     .h-show-sm, .h-show-md, .h-show-lg, .h-show-xl {
-        display: none; /*hide xs*/
+        display: none;
     }
 }
+
+/* SM: 576-768 */
+@media (width >= 576px) and (width < 768px) {
+    .h-show-md, .h-show-lg, .h-show-xl {
+        display: none;
+    }
+}
+
+
+/* MD: 768-1024) show on medium and above; hide on small and below;  */
+@media (width >= 768px) and (width < 1024px) {
+    .h-show-lg, .h-show-xl {
+        display: none;
+    }
+}
+
+/*  LG: 1024-1280: show on large and above; hide on medium and below */
+@media (width >= 1024px) and (width < 1280px) {
+    .h-show-xl {
+        display: none; /*hide xs,sm,md,lg*/
+    }
+}
+
+/* XL (>=1200-1536); show on XL and above  */
+@media (width >= 1200px) {
+    /* disable nothing*/
+}
+
+/** XXL: >= 15360*/
 
 
 /* panel with background color and flex col*/
 .h-panel {
-    background-color: var(--pico-background-color);
+    /*background-color: var(--pico-background-color);*/
     display: flex;
     flex-direction: column;
     border: 1px solid var(--pico-border-color);
+    padding: var(--pico-block-spacing-horizontal) var(--pico-block-spacing-vertical);
 }
 
 /* flexbox row with items centered */

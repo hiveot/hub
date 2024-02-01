@@ -1,0 +1,27 @@
+<h-modal show showClose>
+	<article>
+		<header class="h-row-centered" style="height: 60px">
+			<h3>Edit Configuration</h3>
+		</header>
+		<main>
+			<form>
+				<fieldset>
+					<label>AgentID: {{.AgentID}}</label>
+					<input readonly placeholder="{{.AgentID}}"/>
+
+					<label>Thing: </label>
+					<input readonly placeholder="{{.ThingID}}"/>
+
+            {{/*	TODO: support for text, number, enum/select*/}}
+					<label for="ecvinput">{{.ConfigKey}}</label>
+					<input autofocus id="ecvinput" placeholder={{.Value}} value="{{.Value}}"/>
+				</fieldset>
+			</form>
+		</main>
+	</article>
+
+	<footer class="h-row" style="width:100%">
+		<button class="button" type="cancel">Close</button>
+		<button class="button" type="submit" style="margin-bottom: 0">Submit</button>
+	</footer>
+</h-modal>

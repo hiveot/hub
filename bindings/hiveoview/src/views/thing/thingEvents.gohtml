@@ -36,17 +36,17 @@
 
 <style>
 
-    @media (width < 576px) {
-        .thing-events {
-            /*xs, show column 2, 3 */
-            grid-template-columns: minmax(200px, 2fr) minmax(100px, 1fr);
-        }
+    /*default XS, column 2, 3 */
+    .thing-events {
+        grid-template-columns: minmax(200px, 2fr) minmax(100px, 1fr);
     }
 
     @media (width >= 576px) {
         .thing-events {
             /*sm, show column 1,2,3 */
-            grid-template-columns: minmax(100px, max-content) minmax(200px, 2fr) minmax(100px, 1fr);;
+            grid-template-columns: minmax(100px, max-content)
+              minmax(200px, 2fr)
+              minmax(100px, 1fr);;
         }
     }
 
@@ -60,10 +60,13 @@
         }
     }
 
-    @media (width >= 992px) {
-        .thing-events {
-            /*lg, show all*/
-            grid-template-columns: minmax(100px, max-content) minmax(200px, max-content) minmax(100px, max-content) 100px minmax(100px, 1fr);
+    @media (width >= 1024px) {
+        .thing-events { /*lg*/
+            grid-template-columns: minmax(100px, max-content)
+		          minmax(200px, max-content)
+		          minmax(100px, max-content)
+		          max-content
+            minmax(100px, 1fr);
         }
     }
 

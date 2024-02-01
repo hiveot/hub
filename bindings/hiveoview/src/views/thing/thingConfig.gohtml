@@ -1,5 +1,5 @@
 <!--Thing configuration list-->
-<!--@param go's thing.TD object-->
+<!--@param object of type thing.DetailsTemplateData -->
 
 <ul class="h-grid-table thing-config" striped border>
 	<li>
@@ -10,13 +10,20 @@
 		<div class="h-show-md">Default</div>
 	</li>
 
-    {{range $k, $v := .}}
+    {{range $k, $v := .Config}}
         {{- /*gotype: github.com/hiveot/hub/lib/things.PropertyAffordance*/ -}}
 				<li>
 					<div class="h-show-sm">{{$k}}</div>
 					<div>{{$v.DataSchema.Title}}</div>
 					<div class="h-row-inline">
-						<iconify-icon icon="mdi:pencil"></iconify-icon>
+						<button style="padding: 6px 20px; align-content: center; display: flex"
+						        hx-trigger="click"
+						        hx-get="/app/thing/editConfig"
+						        hx-vals='{"agentID":"{{$.AgentID}}","thingID":"{{$.ThingID}}","key":"{{$k}}","value":{{$v.InitialValue}}}'
+						        hx-target="#editConfigModal"
+						>
+							<iconify-icon icon="mdi:pencil"></iconify-icon>
+						</button>
 						<span>{{printf "%.100s" $v.InitialValue}}  {{$v.DataSchema.Unit}}</span>
 					</div>
 					<div class="h-show-lg">{{$v.Type}}</div>
@@ -24,6 +31,7 @@
 				</li>
     {{end}}
 </ul>
+<div id="editConfigModal"></div>
 
 <style>
 

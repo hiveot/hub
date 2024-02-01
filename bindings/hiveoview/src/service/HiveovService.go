@@ -98,7 +98,6 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 
 		// SSE has its own validation
 		r.Get("/sse", session.SseHandler)
-
 	})
 
 	//--- private routes that requires a valid session
@@ -115,6 +114,7 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 		r.Get("/app/dashboard/{page}", dashboard.RenderDashboard) // TODO: support multiple pages
 		r.Get("/app/directory", directory.RenderDirectory)
 		r.Get("/app/thing/{agentID}/{thingID}", thing.RenderThingDetails)
+		r.Get("/app/thing/editConfig", thing.RenderEditThingConfig)
 		r.Get("/app/status", status.RenderStatus)
 	})
 
