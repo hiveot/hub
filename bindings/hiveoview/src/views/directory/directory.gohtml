@@ -42,54 +42,50 @@
 						<span>- {{len .Things}} things</span>
 					</summary>
 
-					<table class="directory-table h-grid-table striped">
-						<thead>
-						<tr>
-							<th class="h-show-md"></th>
-							<th>Thing ID</th>
-							<th>Name</th>
-							<th class="h-show-sm">Type</th>
-							<th class="h-show-md">Outputs</th>
-							<th class="h-show-md">Actions</th>
-							<th class="h-show-lg">Updated</th>
-							<!--            <th scope="col">Description</th>-->
-						</tr>
-						</thead>
+					<ul class="directory-table h-grid-table" striped border>
+						<li>
+							<div class="h-show-md"></div>
+							<div>Thing ID</div>
+							<div>Name</div>
+							<div class="h-show-sm">Type</div>
+							<div class="h-show-md">Outputs</div>
+							<div class="h-show-md">Actions</div>
+							<div class="h-show-lg">Updated</div>
+							<!--            <div scope="col">Description</div>-->
+						</li>
 
-						<tbody>
 						<!--=== for TD{} in .Things ===-->
-            {{$agentID := .Publisher}}
-            {{range .Things}}
-							<tr>
-								<td class="h-show-md">
-									<h-device-icon deviceType={{.DeviceType}}></h-device-icon>
-								</td>
-								<td>
-									<!-- hx-push-url does not trigger popState so how to show result?-->
-									<a href="/app/thing/{{$agentID}}/{{.ID}}"
-									   hx-get="/app/thing/{{$agentID}}/{{.ID}}"
-									   hx-target="#thing"
-									   hx-swap="innerHtml"
-									   hx-trigger="click"
-									   onclick="navigateTo(null,this.href)"
-									>{{.ID}}
-									</a>
-								</td>
-								<td>{{.Title}}</td>
-								<td class="h-show-sm">{{.DeviceType}}</td>
-								<td class="h-show-md">{{len .Events}} outputs</td>
-								<td class="h-show-md">{{len .Actions}} actions</td>
-								<td class="h-show-lg">{{.GetAge}} ago</td>
-							</tr>
-            {{end}}
-						</tbody>
+              {{$agentID := .Publisher}}
+              {{range .Things}}
+								<li>
+									<div class="h-show-md">
+										<h-device-icon deviceType={{.DeviceType}}></h-device-icon>
+									</div>
+									<div>
+										<!-- hx-push-url does not trigger popState so how to show result?-->
+										<a href="/app/thing/{{$agentID}}/{{.ID}}"
+										   hx-get="/app/thing/{{$agentID}}/{{.ID}}"
+										   hx-target="#thing"
+										   hx-swap="innerHtml"
+										   hx-trigger="click"
+										   onclick="navigateTo(null,this.href)"
+										>{{.ID}}
+										</a>
+									</div>
+									<div>{{.Title}}</div>
+									<div class="h-show-sm">{{.DeviceType}}</div>
+									<div class="h-show-md">{{len .Events}} outputs</div>
+									<div class="h-show-md">{{len .Actions}} actions</div>
+									<div class="h-show-lg">{{.GetAge}} ago</div>
+								</li>
+              {{end}}
 
 						<tfoot>
-						<tr>
-							<!--                    <td colspan="3">Nr Things: {{ len .Things }}</td>-->
-						</tr>
+						<li>
+							<!--                    <div colspan="3">Nr Things: {{ len .Things }}</div>-->
+						</li>
 						</tfoot>
-					</table>
+					</ul>
 				</details>
       {{end}}
 	</div>
@@ -108,15 +104,15 @@
 
 <style>
 
-    @media (width < 576px) {
+    @media (max-width: 576px) {
         .directory-table {
             /*xs, show column 2, 3 */
             grid-template-columns:
-				            minmax(150px, max-content) minmax(150px, max-content);
+				            minmax(150px, max-content) minmax(100px, 1fr);
         }
     }
 
-    @media (width >= 576px) {
+    @media (min-width: 576px) {
         .directory-table {
             /*sm, show column 2,3,4 */
             grid-template-columns:
@@ -126,7 +122,7 @@
         }
     }
 
-    @media (width >= 768px) {
+    @media (min-width: 768px) {
         .directory-table {
             /*md,show column 1,2,3,4,5,6*/
             grid-template-columns:
@@ -139,7 +135,7 @@
         }
     }
 
-    @media (width >= 992px) {
+    @media (min-width: 992px) {
         .directory-table {
             /*lg, show all 7*/
             grid-template-columns:

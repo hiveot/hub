@@ -2,28 +2,27 @@
 <!--@param go's thing.TD object-->
 
 
-<table class="h-grid-table striped thing-attr">
-	<thead>
-	<td>ID</td>
-	<td>Name</td>
-	<td>Value</td>
-	</thead>
+<ul class="h-grid-table thing-attr " border striped>
+	<li>
+		<div>ID</div>
+		<div>Name</div>
+		<div>Value</div>
+	</li>
 
-	<tbody>
-  {{range $k, $v := .}}
-		<tr>
-			<td>{{$k}}</td>
-			<td>{{$v.Title}}</td>
-			<td>{{$v.InitialValue}} {{$v.DataSchema.Unit}}</td>
-		</tr>
-  {{end}}
-	</tbody>
-</table>
+    {{range $k, $v := .}}
+			<li>
+				<div>{{$k}}</div>
+				<div>{{$v.Title}}</div>
+				<div>{{$v.InitialValue}} {{$v.DataSchema.Unit}}</div>
+			</li>
+    {{end}}
+</ul>
 
 <style>
+
     .thing-attr {
         grid-template-columns:
-                minmax(100px, 1fr)
+                minmax(150px, 1fr)
                 minmax(200px, 2fr)
                 minmax(100px, 1fr);
     }

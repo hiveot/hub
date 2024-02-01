@@ -1,7 +1,7 @@
 package app
 
-const AppHeadTemplate = "appHead.gohtml"
-const AppMenuTemplate = "appMenu.gohtml"
+//const AppHeadTemplate = "appHead.gohtml"
+//const AppMenuTemplate = "appMenu.gohtml"
 
 // GetAppHeadProps returns the properties used in rendering the appbar component
 // TODO: get pages from client config/session store

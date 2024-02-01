@@ -1,35 +1,31 @@
 <!--Thing actions list-->
 <!--@param go's thing.ActionAffordance object-->
 
-<table class="h-grid-table striped thing-actions">
-	<thead>
-	<tr>
-		<th class="h-show-sm">ID</th>
-		<th>Name</th>
-		<th>Type</th>
-		<th class="h-show-md"> Description</th>
-	</tr>
-	</thead>
+<ul class="h-grid-table thing-actions" striped border>
+	<li>
+		<div class="h-show-sm">ID</div>
+		<div>Name</div>
+		<div>Type</div>
+		<div class="h-show-md"> Description</div>
+	</li>
 
-	<tbody>
-  {{range $k,$v := . }}
-      {{- /*gotype: github.com/hiveot/hub/lib/things.ActionAffordance*/ -}}
-			<tr>
-				<td class="h-show-sm">{{$k}}</td>
-				<td>{{$v.Title}}</td>
-				<td>{{$v.ActionType}}</td>
-				<td class="h-show-md">{{$v.Description}}</td>
-			</tr>
-  {{end}}
-  {{if not .}}
-		<tr>
-			<td colspan="3">
-				<i>No actions defined</i>
-			</td>
-		</tr>
-  {{end}}
-	</tbody>
-</table>
+    {{range $k,$v := . }}
+        {{- /*gotype: github.com/hiveot/hub/lib/things.ActionAffordance*/ -}}
+				<li>
+					<div class="h-show-sm">{{$k}}</div>
+					<div>{{$v.Title}}</div>
+					<div>{{$v.ActionType}}</div>
+					<div class="h-show-md">{{$v.Description}}</div>
+				</li>
+    {{end}}
+    {{if not .}}
+			<li>
+				<div colspan="3">
+					<i>No actions defined</i>
+				</div>
+			</li>
+    {{end}}
+</ul>
 
 
 <style>
@@ -51,7 +47,11 @@
     @media (width >= 768px) {
         .thing-actions {
             /*md,show column 1,2,3,4 */
-            grid-template-columns: minmax(100px, max-content) minmax(200px, max-content) minmax(100px, max-content) minmax(100px, 1fr);
+            grid-template-columns:
+				            minmax(100px, max-content)
+				            minmax(200px, max-content)
+				            minmax(100px, max-content)
+				            minmax(100px, 1fr);
         }
     }
 

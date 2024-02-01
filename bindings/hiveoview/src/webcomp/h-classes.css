@@ -34,29 +34,61 @@
 
 /* apply to a table to show using CSS grid
  */
+/*.h-grid-table {*/
+/*    display: grid;*/
+/*    border-collapse: collapse;*/
+/*    min-width: 100%;*/
+/*    border: 1px solid gray;*/
+
+/*    td {*/
+/*        overflow: hidden;*/
+/*        text-overflow: ellipsis;*/
+/*    }*/
+
+/*    thead, tbody, tr {*/
+/*        display: contents;*/
+/*    }*/
+
+/*    !*show an ellipsis in a span element that is using a flexbox parent*!*/
+
+/*    span {*/
+/*        display: block;*/
+/*        overflow: hidden;*/
+/*        white-space: nowrap;*/
+/*        text-overflow: ellipsis*/
+/*    }*/
+/*}*/
+
 .h-grid-table {
     display: grid;
-    border-collapse: collapse;
-    min-width: 100%;
+    padding: 0;
+}
+
+.h-grid-table[border] {
     border: 1px solid gray;
+}
 
-    td {
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
+.h-grid-table li {
+    display: contents;
+    list-style: none;
+}
 
-    thead, tbody, tr {
-        display: contents;
-    }
+.h-grid-table li div {
+    font-weight: var(--pico-font-weight);
+    background-color: var(--pico-background-color);
+    padding: calc(var(--pico-spacing) / 2) var(--pico-spacing);
+}
 
-    /*show an ellipsis in a span element that is using a flexbox parent*/
+.h-grid-table li:first-child div {
+    font-variant-caps: small-caps;
+    background-color: var(--pico-background-color);
+    --pico-font-weight: 600;
+    border: 1px solid var(--pico-form-element-border-color);
+    /*--pico-border-width: 0.1875rem;*/
+}
 
-    td span {
-        display: block;
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis
-    }
+.h-grid-table[striped] li:nth-child(even) div {
+    background-color: var(--pico-table-row-stripped-background-color);
 }
 
 
@@ -74,49 +106,43 @@
 }
 
 /*=== helpers to show columns or fields for responsive design ===*/
-/* show on small and above  */
-:root {
-    --h-media-xs: 576px;
-    --h-media-sm: 768px;
-    --h-media-md: 992px;
-    --h-media-lg: 1200px;
 
+/** XXL: >= 15360*/
 
-    @media (width < 576px) {
-        --h-xs: true;
-        .h-show-sm, .h-show-md, .h-show-lg, .h-show-xl {
-            display: none; /*hide xs*/
-        }
-    }
+/* XL (>=1200-1536); show on XL and above  */
+@media (width < 1536px) {
+}
 
-    /* hide on small and below; show on medium and above */
-    @media (width < 768px) {
-        --h-sm: "sm";
-        .h-show-md, .h-show-lg, .h-show-xl {
-            display: none; /*hide sm*/
-        }
-    }
-
-    /* hide on medium and below; show on large and above */
-    @media (width < 992px) {
-        --h-md: "md";
-        .h-show-lg, .h-show-xl {
-            display: none; /*hide md*/
-        }
-    }
-
-    /* hide on large and below; show on extra large and above */
-    @media (width < 1200px) {
-        --h-media: "lg";
-        .h-show-xl {
-            display: none; /*hide lg*/
-        }
-    }
-
-    @media (width >= 1200px) {
-        --h-media: "xl";
+/*  LG: 1024-1280: show on large and above; hide on medium and below */
+@media (width < 1280px) {
+    .h-show-xl {
+        display: none; /*hide lg*/
     }
 }
+
+/* MD: 768-1024) show on medium and above; hide on small and below;  */
+@media (width < 1024px) {
+    .h-show-lg, .h-show-xl {
+        display: none; /*hide md*/
+    }
+
+}
+
+/* SM: 576-768 */
+@media (width < 768px) {
+    .h-show-md, .h-show-lg, .h-show-xl {
+        display: none; /*hide xs,sm*/
+    }
+}
+
+
+/* XS (<576) */
+@media (width < 576px) {
+    .h-show-sm, .h-show-md, .h-show-lg, .h-show-xl {
+        display: none; /*hide xs*/
+    }
+}
+
 
 /* panel with background color and flex col*/
 .h-panel {

@@ -1,40 +1,37 @@
 <!--Thing event list-->
 <!--@param go's thing.TD object-->
 
-<table class="h-grid-table striped thing-events">
-	<thead>
-	<tr>
-		<th class="h-show-sm">ID</th>
-		<th>Name</th>
-		<th>Value</th>
-		<th class="h-show-md">Type</th>
-		<th class="h-show-lg">Description</th>
-	</tr>
-	</thead>
-	<tbody>
-  {{range $k,$v := .}}
-      {{- /*gotype: github.com/hiveot/hub/lib/things.EventAffordance*/ -}}
-			<tr>
-				<td class="h-show-sm">{{$k}}</td>
-				<td>{{$v.Title}}</td>
-				<td>
-            {{if $v.Data}}
-							<span>{{$v.Data.InitialValue}} </span>
-            {{end}}
-				</td>
-				<td class="h-show-md">{{$v.EventType}}</td>
-				<td class="h-show-lg">{{$v.Description}}</td>
-			</tr>
-  {{end}}
-  {{if not .}}
-		<tr>
-			<td colspan="3">
-				<i>No events defined</i>
-			</td>
-		</tr>
-  {{end}}
-	</tbody>
-</table>
+<ul class="h-grid-table thing-events" striped border>
+	<li>
+		<div class="h-show-sm">ID</div>
+		<div>Name</div>
+		<div>Value</div>
+		<div class="h-show-md">Type</div>
+		<div class="h-show-lg">Description</div>
+	</li>
+
+    {{range $k,$v := .}}
+        {{- /*gotype: github.com/hiveot/hub/lib/things.EventAffordance*/ -}}
+				<li>
+					<div class="h-show-sm">{{$k}}</div>
+					<div>{{$v.Title}}</div>
+					<div>
+              {{if $v.Data}}
+								<span>{{$v.Data.InitialValue}} </span>
+              {{end}}
+					</div>
+					<div class="h-show-md">{{$v.EventType}}</div>
+					<div class="h-show-lg">{{$v.Description}}</div>
+				</li>
+    {{end}}
+    {{if not .}}
+			<li>
+				<div colspan="3">
+					<i>No events defined</i>
+				</div>
+			</li>
+    {{end}}
+</ul>
 
 
 <style>
