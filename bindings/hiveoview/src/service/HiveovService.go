@@ -37,8 +37,9 @@ type HiveovService struct {
 	dev          bool // development configuration
 	shouldUpdate bool
 	router       chi.Router
-	rootPath     string
-	tm           *views.TemplateManager
+	// filesystem location of the ./static, webcomp, and ./views template root folder
+	rootPath string
+	tm       *views.TemplateManager
 
 	// hc hub client of this service.
 	// This client's CA and URL is also used to establish client sessions.
@@ -115,6 +116,7 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 		r.Get("/app/directory", directory.RenderDirectory)
 		r.Get("/app/thing/{agentID}/{thingID}", thing.RenderThingDetails)
 		r.Get("/app/thing/editConfig", thing.RenderEditThingConfig)
+		r.Post("/app/thing/{agentID}/{thingID}/{propKey}", thing.PostThingConfig)
 		r.Get("/app/status", status.RenderStatus)
 	})
 
@@ -162,7 +164,7 @@ func (svc *HiveovService) Start(hc *hubclient.HubClient) error {
 	// Setup the handling of incoming web sessions
 	sm := session.GetSessionManager()
 	connStat := hc.GetStatus()
-	sm.Init(connStat.HubURL, connStat.Core, svc.signingKey, connStat.CaCert)
+	sm.Init(connStat.HubURL, connStat.Core, svc.signingKey, connStat.CaCert, svc.hc.ClientKP())
 
 	// parse the templates
 	svc.tm.ParseAllTemplates()
@@ -204,7 +206,11 @@ func (svc *HiveovService) Stop() {
 //
 // serverPort is the port of the web server will listen on
 // debug to enable debugging output
-func NewHiveovService(serverPort int, debug bool, signingKey *ecdsa.PrivateKey, rootPath string) *HiveovService {
+// signingKey used to sign cookies
+// rootPath
+func NewHiveovService(serverPort int, debug bool,
+	signingKey *ecdsa.PrivateKey, rootPath string,
+) *HiveovService {
 	templatePath := rootPath
 	if rootPath != "" {
 		templatePath = path.Join(rootPath, "views")

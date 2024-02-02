@@ -38,6 +38,8 @@ type HubClient struct {
 	//caCert    *x509.Certificate
 	clientID  string
 	transport transports.IHubTransport
+	// key set after connecting with token
+	kp keys.IHiveKey
 	//connectionStatus transports.ConnectionStatus
 
 	// keep retrying connection on error (default true)
@@ -131,6 +133,11 @@ func (hc *HubClient) ClientID() string {
 	return hc.clientID
 }
 
+// ClientKP returns the key-pair used to connect with token or nil if connected with password
+func (hc *HubClient) ClientKP() keys.IHiveKey {
+	return hc.kp
+}
+
 // ConnectWithToken connects to the Hub server using a user JWT credentials secret
 // The token clientID must match that of the client
 //
@@ -138,6 +145,7 @@ func (hc *HubClient) ClientID() string {
 //	jwtToken is the token obtained with login or refresh.
 func (hc *HubClient) ConnectWithToken(kp keys.IHiveKey, jwtToken string) error {
 	err := hc.transport.ConnectWithToken(kp, jwtToken)
+	hc.kp = kp
 	return err
 }
 
@@ -160,6 +168,7 @@ func (hc *HubClient) ConnectWithTokenFile(keysDir string) error {
 	if err != nil {
 		return fmt.Errorf("ConnectWithTokenFile failed: %w", err)
 	}
+	hc.kp = kp
 	err = hc.transport.ConnectWithToken(kp, string(token))
 	return err
 }

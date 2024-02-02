@@ -14,11 +14,11 @@ The data stored in a cookie is a server encrypted JWT token containing claims fo
 
 1. the sessionID, used to differentiate sessions from different browsers.
 2. the loginID, used to reconnect a session without having to login again.
-3. authentication token (short lived) of the Hub connection, used to restore a Hub connection without a password.
+3. authentication token (short lived) of the Hub connection, used to restore a Hub connection without requiring a password.
 4. remote IP address the session belongs to, used to prevent use of stolen cookies.
 5. browser ID the session belongs to, also used to prevent use of stolen cookies.
 
-Note that the session cookie can still be viewed by the user of the browser. On public computers it is important to set the max-age of the cookie to 'session' so it is removed when the browser closes. In the UI an option 'remember me' controls the max-age settings.
+Note that the session cookie can still be viewed by the user of the browser. On public computers it is important to set the max-age of the cookie to 'session' so it is removed when the browser closes. In the UI an option 'remember me' at the login screen controls the max-age settings.
 
 ## Session Login
 
@@ -99,9 +99,9 @@ Using multiple accounts in the same browser is currently not supported as there 
 To support multiple accounts in the same browser it could be done as follows:
 
 After login the application URL contains an account prefix {prefix}:
-> https://myhiveot-address/{prefix}/#{page}
+> https://myhiveot-address/{prefix}/{page}
 
-Where {prefix} is an arbitrary string and {page} is the page to view. The # is used to redirect without being considered a full page reload.
+Where {prefix} is an arbitrary string and {page} is the page to view.
 
 The URL with prefix is also used to load HTMX fragments on:
 

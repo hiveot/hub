@@ -7,6 +7,7 @@
  *   1. removing show attribute from this element
  *   2. Press the ESC key (todo)
  *   3. click outside the modal
+ *   4. client dispatching 'cancel' event Event('cancel',{bubbles:true})
  *
  * - display content from slot,
  * - or use hx-get trigger to load the content
@@ -238,6 +239,13 @@ class HModal extends HTMLElement {
 
         this.modalCloseEl.addEventListener("click", this.closeModal.bind(this))
         this.modalMaskEl.addEventListener("click", this.closeModal.bind(this))
+        this.modalContentEl.addEventListener("close-modal", this.closeModal.bind(this))
+        this.addEventListener("keydown", (ev) => {
+            if (ev.key == "Escape") {
+                ev.stopImmediatePropagation();
+                this.closeModal();
+            }
+        })
     }
 
     closeModal() {

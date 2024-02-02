@@ -306,11 +306,11 @@ func (tdoc *TD) GetEvent(name string) *EventAffordance {
 	return eventAffordance
 }
 
-// GetProperty returns the Schema and value for the property or nil if propID is not a property
-func (tdoc *TD) GetProperty(name string) *PropertyAffordance {
+// GetProperty returns the Schema and value for the property or nil if its key is not found.
+func (tdoc *TD) GetProperty(key string) *PropertyAffordance {
 	tdoc.updateMutex.RLock()
 	defer tdoc.updateMutex.RUnlock()
-	propAffordance, found := tdoc.Properties[name]
+	propAffordance, found := tdoc.Properties[key]
 	if !found {
 		return nil
 	}

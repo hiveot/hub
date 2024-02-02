@@ -77,13 +77,17 @@ func (svc *AuthManageProfile) RefreshToken(ctx hubclient.ServiceContext) (*autha
 		Role:       clientProfile.Role,
 	}
 	newToken, err := svc.msgServer.CreateToken(authInfo)
+	if err != nil {
+		slog.Warn("RefreshToken",
+			"clientID", clientProfile.ClientID, "err", err.Error())
+	}
 	resp := &authapi.RefreshTokenResp{Token: newToken}
 	return resp, err
 }
 
-// SetServicePermissions sets
-// This sets the client roles that are allowed to use the service.
-// This fails if the client is not a service.
+// SetServicePermissions sets the client roles that are allowed to use this service.
+// Intended for use by services to set the roles that have access to it.
+// This fails if this client is not a service.
 func (svc *AuthManageProfile) SetServicePermissions(
 	ctx hubclient.ServiceContext, args *authapi.SetServicePermissionsArgs) error {
 	// the client must be a service

@@ -3,41 +3,42 @@
 @param error: optional if login previously failed 
 -->
 <dialog open id="login" class="login">
-    <article>
-        <header class="h-row-centered">
-            <h3>HiveOT Login</h3>
-        </header>
-        <form action="/login" method="post">
+	<article>
+		<header class="h-row-centered">
+			<h3>HiveOT Login</h3>
+		</header>
+      {{/* hx-boost must be false to force reload and not show all views*/}}
+		<form action="/login" method="post" hx-boost="false">
 
-            <div>
-                <label for="loginID">Login email</label>
-                <input id="loginID" name="loginID"
-                       type="text"
-                       placeholder="login email"/>
-            </div>
+			<div>
+				<label for="loginID">Login email</label>
+				<input id="loginID" name="loginID"
+				       type="text" autocomplete="off"
+				       placeholder="login email"/>
+			</div>
 
-            <div>
-                <label for="password">Password</label>
-                <input id="password" name="password"
-                       type="password"
-                       {{if .error}}aria-invalid="true" {{end}}
-                       autocomplete="off" value=""
-                       placeholder="password"
-                />
-                {{if .error}}
-                <label class="danger">{{.error}}</label>
-                {{end}}
-            </div>
+			<div>
+				<label for="password">Password</label>
+				<input id="password" name="password"
+				       type="password"
+               {{if .error}}aria-invalid="true" {{end}}
+				       autocomplete="off" value=""
+				       placeholder="password"
+				/>
+          {{if .error}}
+						<label class="danger">{{.error}}</label>
+          {{end}}
+			</div>
 
-            <hr/>
+			<hr/>
 
-            <div class="h-row">
-                <a type="button" class="secondary" href="/">Cancel</a>
-                <span class="h-grow"></span>
-                <button type="submit">Log In</button>
-            </div>
-        </form>
-    </article>
+			<div class="h-row">
+				<a type="button" class="secondary" href="/">Cancel</a>
+				<span class="h-grow"></span>
+				<button type="submit">Log In</button>
+			</div>
+		</form>
+	</article>
 </dialog>
 
 

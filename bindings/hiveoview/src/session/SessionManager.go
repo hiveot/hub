@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/keys"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -31,6 +32,9 @@ type SessionManager struct {
 	caCert *x509.Certificate
 	// Hub core if known (mqtt or nats)
 	core string
+
+	// keys to use for clients that have no public key set
+	tokenKP keys.IHiveKey
 }
 
 // Close closes the hub connection and event channel, and removes the session
@@ -101,16 +105,19 @@ func (sm *SessionManager) GetSessionFromCookie(w http.ResponseWriter, r *http.Re
 
 // Init initializes the session manager
 //
-//	hubURL with address of the hub message bus
-//	messaging core to use or "" for auto-detection
-//	signingKey for cookies
-//	caCert of the messaging server
+//		hubURL with address of the hub message bus
+//		messaging core to use or "" for auto-detection
+//		signingKey for cookies
+//		caCert of the messaging server
+//	 tokenKP optional keys to use for refreshing tokens of authenticated users
 func (sm *SessionManager) Init(hubURL string, core string,
-	signingKey *ecdsa.PrivateKey, caCert *x509.Certificate) {
+	signingKey *ecdsa.PrivateKey, caCert *x509.Certificate,
+	tokenKP keys.IHiveKey) {
 	sm.hubURL = hubURL
 	sm.caCert = caCert
 	sm.core = core
 	sm.signingKey = signingKey
+	sm.tokenKP = tokenKP
 }
 
 // LoginToSession updates or creates a session for the given Hub client.
@@ -124,7 +131,8 @@ func (sm *SessionManager) Init(hubURL string, core string,
 //
 // Last, refresh the auth token, generate a JWT token containing claims for
 // the session ID, login ID and auth token, and store this token in the
-// session cookie.
+// session cookie. If no public key exists, the key-pair of this service is
+// used.
 //
 // From here on the session is active and can be reactived from the cookie if
 // needed, regardless the previous state.
@@ -180,11 +188,27 @@ func (sm *SessionManager) LoginToSession(
 	}
 
 	// last, refresh the auth token and update the cookie
+	// if this fails then assign this service's public key, which is good enough
+	// for webclient users.
 	profileClient := authclient.NewProfileClient(newhc)
 	authToken, err := profileClient.RefreshToken()
-	if err != nil {
-		slog.Error("Failed refreshing auth token. Session remains active.",
-			"err", err.Error())
+	if err != nil && sm.tokenKP != nil {
+		// try to recover by ensuring a public key exists on the account.
+		// this fallback is only useful for users that login using this backend service.
+		// This is probable as otherwise a public key would have been set already.
+		prof, err := profileClient.GetProfile()
+		if err == nil {
+			if prof.PubKey == "" {
+				pubKey := sm.tokenKP.ExportPublic()
+				err = profileClient.UpdatePubKey(pubKey)
+			}
+			// retry
+			authToken, err = profileClient.RefreshToken()
+		}
+		if err != nil {
+			slog.Error("Failed refreshing auth token. Session remains active.",
+				"err", err.Error())
+		}
 		return
 	}
 
@@ -221,6 +245,7 @@ func (sm *SessionManager) ActivateSession(
 		// no session exists, so create a new session with hub client
 		hc := hubclient.NewHubClient(sm.hubURL, clientID, sm.caCert, sm.core)
 		if authToken != "" {
+			// FIXME, use a key-pair, needed by NATS
 			err := hc.ConnectWithToken(nil, authToken)
 			if err != nil {
 				slog.Error("ActivateSession. Error connecting to the hub",

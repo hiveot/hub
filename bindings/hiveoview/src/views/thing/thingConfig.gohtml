@@ -13,18 +13,18 @@
     {{range $k, $v := .Config}}
         {{- /*gotype: github.com/hiveot/hub/lib/things.PropertyAffordance*/ -}}
 				<li>
-					<div class="h-show-sm">{{$k}}</div>
+					<div class="h-show-sm"><span>{{$k}}</span></div>
 					<div>{{$v.DataSchema.Title}}</div>
-					<div class="h-row-inline">
-						<button style="padding: 6px 20px; align-content: center; display: flex"
+					<div>
+						<button style="padding: 6px 20px; margin-right: 6px"
 						        hx-trigger="click"
 						        hx-get="/app/thing/editConfig"
-						        hx-vals='{"agentID":"{{$.AgentID}}","thingID":"{{$.ThingID}}","key":"{{$k}}","value":{{$v.InitialValue}}}'
+						        hx-vals='{"agentID":"{{$.AgentID}}","thingID":"{{$.ThingID}}","key":"{{$k}}"}'
 						        hx-target="#editConfigModal"
 						>
 							<iconify-icon icon="mdi:pencil"></iconify-icon>
 						</button>
-						<span>{{printf "%.100s" $v.InitialValue}}  {{$v.DataSchema.Unit}}</span>
+              {{printf "%.100s" $v.InitialValue}}  {{$v.DataSchema.Unit}}
 					</div>
 					<div class="h-show-lg">{{$v.Type}}</div>
 					<div class="h-show-md">{{$v.Default}}</div>
@@ -36,25 +36,19 @@
 <style>
 
     .thing-config {
-        /*lg, show all columns*/
-        grid-template-columns: minmax(100px, max-content)
-              minmax(200px, max-content)
-              minmax(100px, max-content)
-              100px
-              minmax(100px, 1fr);
+        overflow-x: auto;
     }
 
-    @media (width < 1024px) {
+    @media (width < 576px) {
         .thing-config {
-            /*md,show column 1,2,3,4*/
-            grid-template-columns: minmax(100px, max-content)
-              minmax(200px, max-content)
-              minmax(100px, max-content)
-              minmax(100px, 1fr);
+            /*xs, show column 2,3 */
+            grid-template-columns:
+				            minmax(200px, 1fr)
+				            minmax(100px, max-content);
         }
     }
 
-    @media (width < 768px) {
+    @media (width >= 576px) and (width < 768px) {
         .thing-config {
             /*sm, show column 1,2,3 */
             grid-template-columns:
@@ -64,12 +58,24 @@
         }
     }
 
-    @media (width < 576px) {
+    @media (width >= 768px) and (width < 1024px) {
         .thing-config {
-            /*sm, show column 2,3 */
-            grid-template-columns:
-				            minmax(200px, 1fr)
-				            minmax(100px, max-content);
+            /*md,show column 1,2,3,4*/
+            grid-template-columns: minmax(100px, max-content)
+              minmax(200px, max-content)
+              minmax(100px, 1fr)
+              minmax(100px, max-content);
+        }
+    }
+
+    @media (width >= 1024px) {
+        .thing-config {
+            /*lg, show all columns*/
+            grid-template-columns: minmax(100px, max-content)
+              minmax(200px, max-content)
+              minmax(100px, max-content)
+              100px
+              minmax(100px, 1fr);
         }
     }
 

@@ -15,18 +15,28 @@
 			eg: hx-get="/dashboard" hx-target="#dashboard" hx-swap="innerHtml"
 	 -->
 	<div class="app-pages" tabindex="1" style="outline: none">
-		<div id="status" displayIfTarget="/app/status">{{template "status.gohtml" .}}</div>
-		<div id="dashboard" displayIfTarget="/app/dashboard">{{template "dashboard.gohtml" .}}</div>
-		<div id="directory" displayIfTarget="/app/directory">{{template "directory.gohtml" .}}</div>
-		<div id="about" displayIfTarget="/app/about">{{template "about.gohtml" .}}</div>
-		<div id="thing" displayIfTarget="/app/thing">{{template "thingDetails.gohtml" .}}</div>
+		<div id="status" class="hidden" displayIfTarget="/app/status">
+        {{template "status.gohtml" .}}
+		</div>
+		<div id="dashboard" class="hidden" displayIfTarget="/app/dashboard">
+        {{template "dashboard.gohtml" .}}
+		</div>
+		<div id="directory" class="hidden" displayIfTarget="/app/directory">
+        {{template "directory.gohtml" .}}
+		</div>
+		<div id="about" class="hidden" displayIfTarget="/app/about">
+        {{template "about.gohtml" .}}
+		</div>
+		<div id="thing" class="hidden" displayIfTarget="/app/thing">
+        {{template "thingDetails.gohtml" .}}
+		</div>
 	</div>
 
 	<div class=" ">
       {{block "appFooter" .}} App footer for {{.title}} goes here {{end}}
 	</div>
-</div>
 
+</div>
 
 <style>
     .app {
@@ -51,18 +61,14 @@
         overflow-y: auto;
     }
 
+    .app-pages .hidden {
+        display: none;
+    }
+
     /* App sub-pages are hidden until the URL path matches 'displayIfTarget' attr*/
     .app-pages > div {
         display: none;
         /*visibility: hidden;*/
-    }
-
-    /*pseudoclass :target is replaced by JS util 'displayIfTarget' using path instead of hash
-     * keep the following selector as a reminder
-     */
-    .app-pages > div:target {
-        /*display: flex;*/
-        /*visibility: visible;*/
     }
 
     /* default icons are a tiny 14px */
@@ -72,3 +78,4 @@
 
 
 </style>
+

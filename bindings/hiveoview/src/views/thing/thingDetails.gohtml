@@ -10,22 +10,22 @@
 	      grid-template-columns: max-content 1fr;
 	      align-items: baseline;
 		">
-			<label>Device Model:</label>
-			<input readonly style="margin: 0; text-overflow: ellipsis; "
+			<label for="deviceModel">Device Model:</label>
+			<input id="deviceModel" readonly style="margin: 0; text-overflow: ellipsis; "
 			       placeholder="{{.Thing.TD.Title}}"/>
 
-			<label>Device Make:</label>
-			<input type="text" readonly
+			<label for="manufacturer">Device Make:</label>
+			<input id="manufacturer" type="text" readonly
 			       style="margin: 0; text-overflow: ellipsis;"
 			       placeholder="{{.Thing.Attributes.manufacturer.InitialValue}}"/>
 
-			<label>Updated:</label>
-			<input type="text" readonly
+			<label for="age">Updated:</label>
+			<input id="age" type="text" readonly
 			       style="margin: 0; text-overflow: ellipsis;"
 			       placeholder="{{.Thing.TD.GetAge}} ago"/>
 
-			<label>Published by:</label>
-			<input readonly style="margin: 0; text-overflow: ellipsis; "
+			<label for="agentID">Published by:</label>
+			<input id="agentID" readonly style="margin: 0; text-overflow: ellipsis; "
 			       placeholder="{{.Thing.AgentID}} as {{.Thing.ThingID}}"/>
 		</ul>
 	</details>

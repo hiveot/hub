@@ -1,27 +1,93 @@
-<h-modal show showClose>
+{{/*Edit Thing Configuration Modal*/}}
+{{/*@param AgentID  Thing publisher*/}}
+{{/*@param ThingID  Thing ID */}}
+{{/*@param Key  with configuration key*/}}
+{{/*@param Config containing the PropertyAffordance object*/}}
+
+<h-modal show showClose showCancel showSubmit>
 	<article>
 		<header class="h-row-centered" style="height: 60px">
 			<h3>Edit Configuration</h3>
 		</header>
 		<main>
-			<form>
+			<form id="edit-config-form">
 				<fieldset>
-					<label>AgentID: {{.AgentID}}</label>
-					<input readonly placeholder="{{.AgentID}}"/>
+					<label for="agent-id">Agent ID: {{.AgentID}}</label>
+					<input id="agent-id" readonly placeholder="{{.AgentID}}"/>
 
-					<label>Thing: </label>
-					<input readonly placeholder="{{.ThingID}}"/>
+					<label for="thing-id">Thing ID: </label>
+					<input id="thing-id" readonly placeholder="{{.ThingID}}"/>
 
-            {{/*	TODO: support for text, number, enum/select*/}}
-					<label for="ecvinput">{{.ConfigKey}}</label>
-					<input autofocus id="ecvinput" placeholder={{.Value}} value="{{.Value}}"/>
+					<label for="config-input">{{.Config.Title}}</label>
+            {{$iv := .Config.InitialValue}}
+            {{$minmax:=""}}
+
+            {{if .Config.Enum }}
+                {{/*	=== Enum Selection Input ===*/}}
+                {{/* add a select with list of options for the .Config.Enum values */}}
+								<select id="config-input" name="value"
+								        autofocus placeholder="{{$iv}}">
+                    {{ range $enumValue := .Config.Enum}}
+											<option {{if eq $enumValue.text $iv}} selected {{end}}>
+                          {{$enumValue.text}}
+											</option>
+                    {{end}}
+								</select>
+								<small>Current value: {{$iv}}</small>
+
+            {{else if eq .Config.Type "number"}}
+                {{/*	=== Numeric Input ===*/}}
+                {{if .Config.NumberMinimum}}
+                    {{/*FIXME: don't hard code rounding*/}}
+                    {{$minmax = printf " [%0.01f-%0.01f]" .Config.NumberMinimum .Config.NumberMaximum }}
+                {{end}}
+								<input id="config-input" name="value"
+								       autofocus autocomplete="off" type="number"
+								       placeholder="{{$iv}}"
+								       value="{{$iv}}"
+								/>
+								<small>Current value: {{$iv}} {{.Config.Unit}} {{$minmax}} </small>
+
+            {{else if eq .Config.Type "integer"}}
+                {{/*	=== Integer Input ===*/}}
+                {{if .Config.IntegerMinimum}}
+                    {{$minmax = printf " [%d-%d]" .Config.IntegerMinimum .Config.IntegerMaximum }}
+                {{end}}
+								<input id="config-input" name="value"
+								       autofocus autocomplete="off" type="number"
+								       placeholder="{{$iv}}"
+								/>
+								<small>Current value: {{$iv}} {{.Config.Unit}} {{$minmax}}</small>
+
+            {{else if eq .Config.Type "boolean"}}
+                {{/*	=== Boolean Input ===*/}}
+								<input id="config-input" name="value"
+								       type="checkbox" role="switch" autofocus
+                        {{if eq $iv "true"}} checked {{end}}/>
+
+            {{else}}
+                {{/*	=== Text Input ===*/}}
+								<input id="config-input" name="value"
+								       autofocus autocomplete="off"
+								       placeholder="{{$iv}}" value="{{$iv}}"/>
+								<small>Current value: {{$iv}}</small>
+            {{end}}
 				</fieldset>
 			</form>
 		</main>
 	</article>
 
 	<footer class="h-row" style="width:100%">
-		<button class="button" type="cancel">Close</button>
-		<button class="button" type="submit" style="margin-bottom: 0">Submit</button>
+		<button id="cancelBtn"
+		        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+		        class="secondary">Cancel
+		</button>
+		<button type="submit"
+		        hx-post="/app/thing/{{.AgentID}}/{{.ThingID}}/{{.Key}}"
+		        hx-include="#edit-config-form"
+		        hx-indicator="todo"
+		        style="margin-bottom: 0">Submit
+		</button>
 	</footer>
+
 </h-modal>

@@ -210,6 +210,13 @@ func (svc *AuthManageClients) RemoveClient(ctx hubclient.ServiceContext, args au
 func (svc *AuthManageClients) SetClientPassword(ctx hubclient.ServiceContext, args authapi.SetClientPasswordArgs) error {
 	slog.Info("SetClientPassword", "clientID", args.ClientID)
 	err := svc.store.SetPassword(args.ClientID, args.Password)
+	if err == nil {
+		err = svc.onChange()
+	}
+	if err != nil {
+		slog.Error("Failed changing password",
+			"clientID", args.ClientID, "err", err.Error())
+	}
 	return err
 }
 

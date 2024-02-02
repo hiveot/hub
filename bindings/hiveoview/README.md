@@ -19,9 +19,9 @@ This viewer is in early development. The information below is subject to change.
 ### Phase 2: Read directory
 
 1. Directory view using SSR rendering in golang [done]
-2. Use Htmx to interactively browse the directory
-3. Thing details view
-4. Hydrate view on received directory updates (using server events or WS)
+2. Use Htmx to interactively browse the directory [done]
+3. Thing details view [done]
+4. Update configuration
 
 ### Phase 3: Dashboard
 

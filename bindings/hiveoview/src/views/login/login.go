@@ -17,5 +17,5 @@ func RenderLogin(w http.ResponseWriter, r *http.Request) {
 
 	// don't cache the login
 	w.Header().Add("Cache-Control", "no-cache, max-age=0, must-revalidate, no-store")
-	views.TM.RenderFull(w, "login.html", data)
+	views.TM.RenderFull(w, "login.gohtml", data)
 }

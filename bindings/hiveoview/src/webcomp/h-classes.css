@@ -77,8 +77,6 @@
     font-weight: var(--pico-font-weight);
     background-color: var(--pico-card-sectioning-background-color);
     padding: calc(var(--pico-spacing) / 2) var(--pico-spacing);
-    align-items: center;
-    display: inline-flex;
 }
 
 .h-grid-table li:first-child div {

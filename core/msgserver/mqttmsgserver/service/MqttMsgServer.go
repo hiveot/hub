@@ -30,13 +30,13 @@ type MqttMsgServer struct {
 	authMux sync.RWMutex
 }
 
+func (srv *MqttMsgServer) Core() string {
+	return "mqtt"
+}
+
 // GetServerURLs is the URL used to connect to this server. This is set on Start
 func (srv *MqttMsgServer) GetServerURLs() (tsURL string, wssURL string, udsURL string) {
 	return srv.tlsURL, srv.wssURL, srv.udsURL
-}
-
-func (srv *MqttMsgServer) Core() string {
-	return "mqtt"
 }
 
 // Start the MQTT server using the configuration provided with NewMqttMsgServer().

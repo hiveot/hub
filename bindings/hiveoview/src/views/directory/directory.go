@@ -2,6 +2,7 @@ package directory
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/core/directory/dirclient"
@@ -70,16 +71,24 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		hc := mySession.GetHubClient()
 		rd := dirclient.NewReadDirectoryClient(hc)
-		thingsList, err := rd.GetTDs(0, 100)
+		thingsList, err2 := rd.GetTDs(0, 100)
+		err = err2
 		if err == nil {
 			dirGroups := sortByPublisher(thingsList)
 			data["Directory"] = dirGroups
 		} else {
-			slog.Error("unable to load directory", "err", err)
+			//// Directory is used by html to stop retrying
+			//data["Directory"] = &DirectoryData{}
+			err = fmt.Errorf("unable to load directory: %w", err)
+			slog.Error(err.Error())
 		}
 	}
 	if err != nil {
-		data["Error"] = err.Error()
+		// assume this is an auth issue, maybe the browser was still open or a bookmark was used
+		//mySession.Close()
+		//http.Error(w, err.Error(), http.StatusUnauthorized)
+		session.SessionLogout(w, r)
+		return
 	}
 	data["PageNr"] = 1
 
