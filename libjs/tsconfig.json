@@ -1,0 +1,56 @@
+{
+  // https://blog.logrocket.com/make-sharing-typescript-code-types-quick-easy/
+  // typescript should generate JS files that support nodejs type loading
+  // however, intellij doesn't seem to understand this.
+  "compilerOptions": {
+    "allowJs": true,
+    "baseUrl": ".",
+    "checkJs": false,
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "emitDecoratorMetadata": false,
+    "esModuleInterop": true,
+    "lib": [
+      "dom",
+      "esnext"
+    ],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmitOnError": false,
+    "noErrorTruncation": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "outDir": "./build",
+    // paths resolves relative to baseUrl (run with tsx to make this work)
+    "paths": {
+      "@hivelib/*": [
+        "src/*"
+      ],
+      "@keys/*": [
+        "src/keys/*"
+      ]
+    },
+    "preserveSymlinks": true,
+    "pretty": true,
+    "resolveJsonModule": true,
+    "rootDir": "./",
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "target": "esnext",
+    "types": [
+      "node"
+    ],
+  },
+  "include": [
+    "./src/**/*.ts",
+    "./src/**/*.js"
+  ],
+  "exclude": [
+    "build/**",
+    "node_modules",
+    "dist/**",
+  ],
+  //  "references": [{
+  //    "path": "../hivelib"}]
+}

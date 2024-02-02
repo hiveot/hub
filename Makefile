@@ -43,11 +43,14 @@ state: .FORCE
 
 # --- protocol bindings
 
-bindings:  ipnet isy99x owserver    ## Build the protocol bindings
+bindings:  hiveoview ipnet isy99x owserver zwavejs   ## Build the protocol bindings
+
+hiveoview: .FORCE ## build the SSR web viewer binding
+	go build -o $(PLUGINS_FOLDER)/$@  bindings/$@/cmd/main.go
 
 ipnet: .FORCE ## Build the ip network scanner protocol binding
 	go build -o $(PLUGINS_FOLDER)/$@  bindings/$@/cmd/main.go
-	cp bindings/$@/config/*.yaml $(DIST_FOLDER)/config
+	cp bindings/$@/config/*.y	aml $(DIST_FOLDER)/config
 
 isy99x: .FORCE ## Build the ISY99x INSTEON protocol binding
 	go build -o $(PLUGINS_FOLDER)/$@  bindings/$@/cmd/main.go
@@ -56,6 +59,10 @@ isy99x: .FORCE ## Build the ISY99x INSTEON protocol binding
 owserver: .FORCE ## Build the 1-wire owserver protocol binding
 	go build -o $(PLUGINS_FOLDER)/$@  bindings/$@/cmd/main.go
 	cp bindings/$@/config/*.yaml $(DIST_FOLDER)/config
+
+zwavejs: .FORCE ## Build the zwave-js protocol binding
+	cd bindings/$@ && make dist
+	cp bindings/$@/dist/$@ $(PLUGINS_FOLDER)
 
 
 # --- user interfaces
@@ -67,6 +74,7 @@ hubcli: .FORCE ## Build Hub CLI
 
 clean: ## Clean distribution files
 	go clean -cache -testcache -modcache
+	cd bindings/zwavejs && make clean
 	rm -rf $(DIST_FOLDER)
 	mkdir -p $(BIN_FOLDER)
 	mkdir -p $(DIST_FOLDER)/plugins

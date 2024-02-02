@@ -1,0 +1,55 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // run typescript using tsx (https://stackoverflow.com/questions/76042042/how-can-i-create-a-node-test-launch-configuration)
+            // this works with the debugger, breakpoints, source maps enabled. :)
+            "name": "transports_test",
+            "type": "node",
+            "request": "launch",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+            "runtimeArgs": [
+                "${workspaceFolder}/src/hubclient/transports/transports.test.ts"
+            ],
+            "console": "integratedTerminal", // fixes EACCESS error writing to console
+            "cwd": "${workspaceFolder}",
+            "env": {
+                // "DEBUG": "mqttjs*"
+            }
+        },
+        {
+            "name": "hubclient_test",
+            "type": "node",
+            "request": "launch",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+            "runtimeArgs": [
+                "${workspaceFolder}/src/hubclient/hubclient.test.ts"
+            ],
+            "console": "integratedTerminal", // fixes EACCESS error writing to console
+            "cwd": "${workspaceFolder}",
+        },
+        {
+            "name": "clients_test",
+            "type": "node",
+            "request": "launch",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+            "runtimeArgs": [
+                "${workspaceFolder}/src/clients/stateclient.test.ts"
+            ],
+            "console": "integratedTerminal", // fixes EACCESS error writing to console
+            "cwd": "${workspaceFolder}",
+        }
+    ]
+}

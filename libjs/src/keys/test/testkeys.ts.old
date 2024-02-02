@@ -1,0 +1,57 @@
+
+// openssl ecparam -name prime256v1 -genkey -noout -out ossl_prime256v1-key.pem
+export const ossl_prime256v1_priv="-----BEGIN EC PRIVATE KEY-----\n" +
+    "MHcCAQEEIOPu1yUcqHU0b0nO7HkFok7A5v+z3acH4mCsjcOJc6uOoAoGCCqGSM49\n" +
+    "AwEHoUQDQgAELtv253KXEWvWjCse0Wp5DprnXp5tp17C1Qtfjk5t/6+HPSc74uMQ\n" +
+    "cp/KV++vc6OXJwk5XdZ8FSkUiU9cYRBo8A==\n" +
+    "-----END EC PRIVATE KEY-----"
+export const ossl_prime256v1_pub = "-----BEGIN PUBLIC KEY-----\n" +
+    "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAELtv253KXEWvWjCse0Wp5DprnXp5t\n" +
+    "p17C1Qtfjk5t/6+HPSc74uMQcp/KV++vc6OXJwk5XdZ8FSkUiU9cYRBo8A==\n" +
+    "-----END PUBLIC KEY-----\n"
+
+// openssl ecparam -name secp256k1 -genkey -noout -out secp256k1-key.pem
+export const ossl_secp256k1_priv="-----BEGIN EC PRIVATE KEY-----\n" +
+    "MHQCAQEEIMzJOJrhnsv8d0PFUkcdrtTaQN57TKzqUE69bvTFa7kdoAcGBSuBBAAK\n" +
+    "oUQDQgAEgiil2nX3MnRRDkW1mwQAHp02YPyT34P/P2stcH8AigDEEN/1MDbGHAk3\n" +
+    "HCAvn5Y/rY862YAKlMURP9AAcahVAw==\n" +
+    "-----END EC PRIVATE KEY-----"
+export const ossl_secp256k1_pub="-----BEGIN PUBLIC KEY-----\n" +
+    "MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEgiil2nX3MnRRDkW1mwQAHp02YPyT34P/\n" +
+    "P2stcH8AigDEEN/1MDbGHAk3HCAvn5Y/rY862YAKlMURP9AAcahVAw==\n" +
+    "-----END PUBLIC KEY-----"
+
+
+// openssl genpkey -algorithm ed25519  -out ed25519-key.pem
+export const ossl_ed25519_priv = "-----BEGIN PRIVATE KEY-----\n" +
+    "MC4CAQAwBQYDK2VwBCIEIJk7DDf82+dMlqcqb7AoAn/mK9t/lKz7bzgOgUOTu9TK\n" +
+    "-----END PRIVATE KEY-----"
+// openssl pkey -in ed25519-key.pem -pubout -out ed25519-pub.pem
+export const ossl_ed25519_pub = "-----BEGIN PUBLIC KEY-----\n" +
+    "MCowBQYDK2VwAyEATIzo8S2S+XUlSW0WHfnfUJ48nfXjMKMOBRCpR/cTv2g=\n" +
+    "-----END PUBLIC KEY-----"
+
+// created in golang as base64 encoded keys
+export const go_ed25519_priv_b64 = "3nD443uAMj1sgUjHh+cZyTZ8ULSwmTEiCVPfkQYnL0I="
+export const go_ed25519_pub_b64 = "MCowBQYDK2VwAyEAPqCVPLjcLxx1TB61cSb4k9fLS0fXfXCWPaIf2popp8k="
+
+
+// generated with crypto module; generated using type pkcs8 (not sec1)
+export const crypto_secp256k1_priv="-----BEGIN PRIVATE KEY-----\n" +
+    "MIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0wawIBAQQgsEVKVZ0mwVquXwMUv6X+\n" +
+    "4vl0hoAnGMZjgfBkE2pwUdahRANCAAQpXKm0jMXky0ZnHTZUTnzArKMVUrxvqnB8\n" +
+    "8JpupYB45HWPnLLzYRw4QrDws9IfqBAp74FtjZ/GZuqp5omyUs3O\n" +
+    "-----END PRIVATE KEY-----"
+// generated using type spki
+export const crypto_secp256k1_pub="-----BEGIN PUBLIC KEY-----\n" +
+    "MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEKVyptIzF5MtGZx02VE58wKyjFVK8b6pw\n" +
+    "fPCabqWAeOR1j5yy82EcOEKw8LPSH6gQKe+BbY2fxmbqqeaJslLNzg==\n" +
+    "-----END PUBLIC KEY-----"
+
+export const crypto_ed25519_priv="-----BEGIN PRIVATE KEY-----\n" +
+    "MC4CAQAwBQYDK2VwBCIEIPehAqpa0WUqafmqRUodlLeg4BLmPmJmGGsD2s7DRqay\n" +
+    "-----END PRIVATE KEY-----"
+export const crypto_ed25519_pub="-----BEGIN PUBLIC KEY-----\n" +
+    "MCowBQYDK2VwAyEATrxSvvN/H603Oo1MZLtq6K0IM5j9wESVYpgql5byaOo=\n" +
+    "-----END PUBLIC KEY-----"
+

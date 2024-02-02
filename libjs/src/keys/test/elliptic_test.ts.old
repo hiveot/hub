@@ -1,0 +1,131 @@
+import {createECDSAKeys} from "../ecdsaKeys.ts.old"
+import * as elliptic from 'elliptic';
+const EC = elliptic.ec;
+
+import * as testkeys from './testkeys'
+import {pem2der} from "./pem2der";
+
+
+// test1: generate ecdsa keys and decode them
+function test1() {
+    let ecdsa = new EC('secp256k1')
+
+    let kp = ecdsa.genKeyPair()
+    let priv = kp.getPrivate()
+    let privHex = priv.toString("hex")
+    let privStr10 = priv.toString(10)
+    let privArr = priv.toArray()
+    let privEnc = kp.getPrivate("hex")
+    let priv64 = Buffer.from(privArr).toString('base64')
+    let priv64fromHex = Buffer.from(privHex,"hex").toString('base64')
+
+    let pub = kp.getPublic()
+    let pubHexComp = pub.encodeCompressed("hex")
+    let pubArrComp = pub.encodeCompressed("array")
+    let pubHex = pub.encode("hex",false)
+    let pubArr = pub.encode("array",false)
+    let pubEnc = kp.getPublic("hex")
+    let pub64 = Buffer.from(pubArr).toString('base64')
+
+    // decode serialized
+    let kp2 = ecdsa.keyFromPrivate(privEnc)
+    let isValid = kp2.validate()
+    let pub2Enc = kp2.getPublic("hex")
+
+    // decode works with array and hex
+    let pub3 = ecdsa.keyFromPublic(pubArr)
+    let pub3Arr = kp2.getPublic("array")
+    let pub3b = ecdsa.keyFromPublic(pub3Arr)
+    let pub3c = ecdsa.keyFromPublic(pubHex,"hex")
+
+    // back and forth with base64
+    let a1 = Buffer.from(pub64,"base64")
+    let a2 = [...a1]
+    let a3 = ecdsa.keyFromPublic(a2)
+    console.log("test1 complete")
+}
+
+// test2: load and decode ecdsa key to PEM format
+function test2() {
+    let ecdsa = new EC('secp256k1')
+
+    // let testPriv = readPEM(testkeys.ossl_prime256v1_priv)
+    // let testPub = readPEM(testkeys.ossl_prime256v1_pub)
+    let testPriv = pem2der(testkeys.ossl_secp256k1_priv)
+    let testPub = pem2der(testkeys.ossl_secp256k1_pub)
+
+    let privKey = ecdsa.keyFromPrivate(testPriv,"array")
+    let pubKey = privKey.getPublic()
+    let pubArr = pubKey.encode("array",false)
+    let pubArrc = pubKey.encode("array",true)
+
+    // decode pub2. This fails when using the openssl public key
+    let pub2gen = ecdsa.keyFromPublic(pubArr)
+    let pub2ossl = ecdsa.keyFromPublic(testPub)
+    console.log("test2 complete")
+}
+
+// test3: generate and decode ed22519 keys
+function test3() {
+    let ed = new EC('ed25519')
+    let kp = ed.genKeyPair()
+    let priv = kp.getPrivate()
+    let privArr = priv.toArray()
+    let priv64 = Buffer.from(privArr).toString('base64')
+
+    let pubArr = kp.getPublic().encode("array",false)
+    let pubHex = kp.getPublic().encode("hex",false)
+    let pubHexc = kp.getPublic().encode("hex",true)
+    let pub64 = Buffer.from(pubArr).toString('base64')
+    // this should work
+    console.log("pub64: "+pub64)
+
+    // decode it
+    let priv2 = ed.keyFromPrivate(privArr)
+    let pub2 = ed.keyFromPublic(pubArr)
+    let pub3 = ed.keyFromPublic(pubHex,"hex")
+    let pub4 = ed.keyFromPublic(pubHexc,"hex")
+
+    let res = pub2.validate()
+    console.log("test3 complete")
+}
+
+// test4: load and decode ed25519 keys
+function test4() {
+    let ed = new EC('ed25519')
+
+    let testPriv = pem2der(testkeys.ossl_ed25519_priv)
+    let testPub = pem2der(testkeys.ossl_ed25519_pub)
+
+    // decoding private key works
+    let priv2 = ed.keyFromPrivate(testPriv)
+    let priv2Pub = priv2.getPublic()
+    let priv2PubArray = priv2Pub.encode("array",false)
+    let priv2PubHex = priv2Pub.encodeCompressed("hex")
+
+    // unknown point format. same problem as ecdsa
+    // https://github.com/indutny/elliptic/issues/243
+    // I believe that the incompatibility is due to two things: 1) elliptic does not automatically
+    // clamp private key values in the same way as other implementations, and 2) elliptic interprets
+    // keys as big-endian numbers, whereas other implementations interpret them as little-endian
+    // numbers. So if you have a private key as an array of bytes, you need to:
+    // goPubArr[0] &=248;
+    // goPubArr[31] &=127;
+    // goPubArr[31] |=64;
+    // goPubArr.reverse()
+
+    // https://keygen.sh/blog/how-to-use-hexadecimal-ed25519-keys-in-node/
+    // unfortunately this doesn't work
+    let b = Buffer.from(testPub)
+    let testPub2 = b.toString("hex")
+    let testPub2noasn = testPub2.substring(24)
+
+    let pub2hex = ed.keyFromPublic(testPub2noasn,"hex")
+    // let testPub3 = b.slice(12)
+
+    // let pub3 = ed.keyFromPublic(testPub3,"array")
+    // let pub2 = ed.keyFromPublic(goPub64,"base64")
+    // let pub2 = ed.keyFromPublic(myHex,"hex")
+    console.log("test4 complete")
+}
+ test4()

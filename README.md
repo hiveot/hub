@@ -9,9 +9,10 @@ Things* provides a secure core and plugins to view and operate IoT devices. The 
 
 ## Project Status
 
-Status: The status of the Hub is alpha development (Jan 2024)
+Status: The status of the Hub is alpha development (Feb 2024)
 
-Completed core services
+Completed core services:
+
 * embedded messaging server for MQTT and Nats
 * authentication and authorization (core/auth)
 * directory service (core/directory)
@@ -21,6 +22,7 @@ Completed core services
 * launcher service (core/launcher)
 
 Bindings
+
 * 1-wire protocol binding using owserver-v2 gateway (bindings/owserver)
 * zwave protocol binding using zwavejs (bindings/zwavejs)
 * web client using html/htmx and go templates (bindings/hiveoview) - in progress
@@ -74,7 +76,7 @@ Last but not least, the 'hive' can be expanded by connecting hubs to each other 
 
 ## Build From Source
 
-To build the hub and plugins from source, a Linux system with golang 1.21 or newer must be available for the target system. To build the hive.js repo plugins, nodejs is used.
+To build the hub and plugins from source, a Linux system with golang 1.21 or newer must be available for the target system. To build zwavejs nodejs is used. hivoview is golang based and does not require any additional build tools.
 
 Prerequisites:
 
@@ -82,6 +84,7 @@ Prerequisites:
 2. Golang 1.21 or newer (with GOPATH set)
 3. GCC Make any 2020+ version
 4. NATS server and NATS-go developement library v2.10+
+5. nodejs v18+ for building zwavejs
 
 ### Build Hub And CLI
 
