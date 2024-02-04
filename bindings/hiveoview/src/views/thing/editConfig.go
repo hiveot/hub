@@ -68,9 +68,14 @@ func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 			slog.String("thingID", thingID),
 			slog.String("propKey", propKey),
 			slog.String("err", err.Error()))
+
+		// notify UI via SSE. This is handled by a toast component.
+		_ = mySession.SendSSE("error", err.Error())
+
 		// todo, differentiate between server error, invalid value and unauthorized
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	_ = mySession.SendSSE("info", "Configuration '"+propKey+"' update accepted")
 	w.WriteHeader(http.StatusOK)
 }

@@ -181,6 +181,10 @@ template.innerHTML = `
  */
 class HDropdown extends HTMLElement {
 
+    static get observedAttributes() {
+        return ["position", "title", "show"];
+    }
+
     constructor() {
         super();
         const shadowRoot = this.attachShadow({mode: "open"});
@@ -213,9 +217,6 @@ class HDropdown extends HTMLElement {
         this.ignoreBlur = false
     }
 
-    static get observedAttributes() {
-        return ["position", "title", "show"];
-    }
 
     attributeChangedCallback(name, oldValue, newValue) {
         // console.log("attributeChangedCallback: " + name + "=" + newValue);

@@ -41,7 +41,7 @@ func PostLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	// update the session. This ensures an active session exists and the
 	// cookie contains the existing or new session ID with a fresh auth token.
-	// keep the session cookie for 30 days
+	// keep the session cookie for 30 days (todo: make this a service config)
 	maxAge := 3600 * 24 * 30
 	sm.LoginToSession(w, r, hc, maxAge)
 

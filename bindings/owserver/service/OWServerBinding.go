@@ -78,11 +78,9 @@ func (svc *OWServerBinding) Start(hc *hubclient.HubClient) (err error) {
 
 	// TODO: restore svc configuration
 
-	// subscribe to action requests
+	// subscribe to action and configuration requests
 	svc.hc.SetActionHandler(svc.HandleActionRequest)
-	if err != nil {
-		return err
-	}
+	svc.hc.SetConfigHandler(svc.HandleConfigRequest)
 
 	// publish this binding's TD document
 	td := svc.CreateBindingTD()

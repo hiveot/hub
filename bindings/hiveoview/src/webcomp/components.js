@@ -6,4 +6,5 @@ import "../webcomp/h-device-icon.js";
 import "../webcomp/h-dropdown.js";
 import "../webcomp/h-loading.js";
 import "../webcomp/h-modal.js";
+import "../webcomp/h-toast.js"
 import "../webcomp/h-utils.js";

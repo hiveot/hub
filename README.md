@@ -3,9 +3,7 @@
 HiveOT stands for the "Hive of Things". It provides a framework and services to collect and share IoT data with users.
 
 The Hub for the
-*Hive
-of
-Things* provides a secure core and plugins to view and operate IoT devices. The Hub securely mediates between IoT device 'Things', services, and users using a hub-and-spokes architecture. Users interact with Things via the Hub without connecting directly to the IoT devices or services. The Hub is based on the [W3C WoT TD 1.1 specification](https://www.w3.org/TR/wot-thing-description11/) and uses a NATS or MQTT message bus for secure communication.
+*Hive-of-Things* provides a secure core and plugins to view and operate IoT devices. The Hub securely mediates between IoT device 'Things', services, and users using a hub-and-spokes architecture. Users interact with Things via the Hub without connecting directly to the IoT devices or services. The Hub is based on the [W3C WoT TD 1.1 specification](https://www.w3.org/TR/wot-thing-description11/) and uses a NATS or MQTT message bus for secure communication.
 
 ## Project Status
 
@@ -84,7 +82,7 @@ Prerequisites:
 2. Golang 1.21 or newer (with GOPATH set)
 3. GCC Make any 2020+ version
 4. NATS server and NATS-go developement library v2.10+
-5. nodejs v18+ for building zwavejs
+5. nodejs v18+ (for building zwavejs)
 
 ### Build Hub And CLI
 
@@ -111,7 +109,7 @@ dist / config - core and plugin configuration files
 dist / stores - plugin data storage directory
 ```
 
-## Install To User (Recommended)
+## Install To User (Easiest)
 
 When installed to user, the hub is installed into a user's bin directory and runs under that user's permissions.
 
