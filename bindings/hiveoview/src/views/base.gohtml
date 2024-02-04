@@ -29,6 +29,7 @@
         window.displayIfTarget(window.location.pathname)
         window.selectNavTargets("", window.location.href)
         // window.toast.showToast("info", "welcome to the hive of things viewer", 5000)
+        // document.dispatchEvent(new CustomEvent("toast", {detail: {type: "info", text: "hello"}}))
     }
 
     // listen for URL changes and re-activate the targets by setting the h-target class
@@ -49,7 +50,7 @@
 <body onload="showBody()" hidden hx-boost="true">
 
 {{/*Place to inject toasts*/}}
-<h-toast id="toast" vertical duration="6000"></h-toast>
+<h-toast id="toast" vertical top duration="6000"></h-toast>
 
 {{/*The main template, login or app*/}}
 {{block "embed" .}} main template {{end}}

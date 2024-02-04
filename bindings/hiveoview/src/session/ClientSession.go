@@ -112,6 +112,20 @@ func (cs *ClientSession) IsActive() bool {
 		status.ConnectionStatus == transports.Connecting
 }
 
+// onConnectChange is invoked on disconnect/reconnect
+func (cs *ClientSession) onConnectChange(stat transports.HubTransportStatus) {
+	slog.Info("connection change",
+		slog.String("clientID", stat.ClientID),
+		slog.String("status", string(stat.ConnectionStatus)))
+	if stat.ConnectionStatus == transports.Connected {
+		cs.SendSSE("success", "Connection with Hub successful")
+	} else if stat.ConnectionStatus == transports.Connecting {
+		cs.SendSSE("warning", "Attempt to reconnect to the Hub")
+	} else {
+		cs.SendSSE("warning", "Connection changed: "+string(stat.ConnectionStatus))
+	}
+}
+
 // onEvent passes incoming events from the Hub to the SSE client(s)
 func (cs *ClientSession) onEvent(msg *things.ThingValue) {
 	cs.mux.RLock()
@@ -169,8 +183,10 @@ func (cs *ClientSession) ReplaceHubClient(newHC *hubclient.HubClient) {
 	if cs.hc != nil {
 		cs.hc.Disconnect()
 		cs.hc.SetEventHandler(nil)
+		cs.hc.SetConnectionHandler(nil)
 	}
 	cs.hc = newHC
+	cs.hc.SetConnectionHandler(cs.onConnectChange)
 	cs.hc.SetEventHandler(cs.onEvent)
 }
 
@@ -217,5 +233,6 @@ func NewClientSession(sessionID string, hc *hubclient.HubClient) *ClientSession 
 		lastActivity: time.Now(),
 	}
 	hc.SetEventHandler(cs.onEvent)
+	hc.SetConnectionHandler(cs.onConnectChange)
 	return &cs
 }

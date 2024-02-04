@@ -9,10 +9,14 @@
  * - toasts for info, success, error, and warning
  * - progress bar indicates remaining visible time
  * - halt countdown when hovering with the mouse (more time to read)
+ * - invoke through showToast, htmx target, and 'toast' events
  *
  * Usage:
  *   html: <h-toast top|bottom left|right horizontal|vertical duration="1000"></h-toast>
  *   JS: window.toast.showToast(type, text, 3000)
+ *   HTMX: <div sse-swap="info" hx-target="#toast" hx-swap="beforeend"></div>
+ *   Event:  document.dispatchEvent(new CustomEvent("toast", {detail: {type: "info", text: "hello"}}))
+
  *
  * @attr top|bottom placement of the toast (default is top)
  * @attr left|right placement of the toast (default is center)
@@ -30,11 +34,10 @@
 const PROGRESS_BAR_ANIMATION = "progressbar"
 
 const template = `
-<ul class="h-toast-container" >
-</ul>
+
 
 <style>
-.h-toast-container{
+h-toast{
     position: fixed;
     top:50px;     
     padding: 0;
@@ -47,6 +50,7 @@ const template = `
     
     z-index: 1;
 
+/*TODO: use pico colors*/
   --dark: #34495E;
   --toast-background: var(--pico-background-color);
   --toast-border: var(--pico-border-color);
@@ -58,15 +62,15 @@ const template = `
   --toast-duration: 5s;
     transition: all 800ms ease;  /* fixme animate collapsing multiples*/ 
 }
-h-toast[bottom] .h-toast-container {
+h-toast[bottom]  {
     top: unset;
     bottom: 0px;
 }
-h-toast[left] .h-toast-container {
+h-toast[left]  {
     left:20px;
     width: unset;
 }
-h-toast[right] .h-toast-container {
+h-toast[right] {
     right:20px;
     width: unset;
 }
@@ -250,12 +254,12 @@ margin-left: 10px;
 
 /*on small screen use up the full width*/
 @media screen and (max-width: 530px) {
-  .h-toast-container {
+  h-toast {
     width: 100%;
     padding-left: 20px;
     padding-right: 20px;
   }
-  .h-toast-container .toast {
+  h-toast .toast {
     width: 100%;
     font-size: 1rem;
     /*margin-left: 20px;*/
@@ -288,29 +292,66 @@ class HToast extends HTMLElement {
     }
 
     static get observedAttributes() {
-        return ["duration"]
+        return ["duration", "vertical", "horizontal", "top", "bottom", "left", "right"]
     }
 
     constructor() {
         super();
         this.innerHTML = template;
-        this.toastContainer = this.querySelector(".h-toast-container")
-        this.duration = 5000;
+        this.duration = 5000; // default value when not set
         if (this.id) {
             window[this.id] = this
         }
-        // window.toast1 = this
+        // children added with htmx are shown as toasts
+        this.observeChildren((ev) => {
+            console.log("child changed", ev)
+        })
+        // handle toast events send to the dom
+        document.addEventListener("toast", (ev) => {
+            if (ev.detail) {
+                this.showToast(ev.detail.type, ev.detail.text)
+            } else {
+                console.error("Received toast event but 'detail' field is empty")
+            }
+        })
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
         if (name === "duration") {
             this.duration = newValue;
-            this.toastContainer.style.setProperty("--toast-duration", this.duration + "ms")
+            this.style.setProperty("--toast-duration", this.duration + "ms")
         }
     }
 
     connectedCallback() {
-        this.toastContainer = this.querySelector(".h-toast-container")
+        // console.log("toast connectedCallback")
+    }
+
+    // Observe changes to the children
+    //
+    // When a child element is added that isn't a list item then remove it and
+    // re-add the text as a toast, which is a LI.
+    // Intended for use by htmx:sse with hx-swap="beforeend" hx-target="#toast"
+    // to create toast notifications for certain sse events.
+    //
+    // NOTE: this seems like a rather inefficient way of receiving events from sse,
+    // maybe better to add a custom sse handler without htmx.
+    observeChildren(cb) {
+        let observer = new MutationObserver(
+            (mutations) => {
+                mutations.forEach((mut) => {
+                    if (mut.addedNodes.length > 0) {
+                        let node = mut.addedNodes[0]
+                        if (node.nodeName !== "LI") {
+                            // console.log("child added through htmx", node)
+                            this.removeChild(node)
+                            this.showToast("info", node.wholeText)
+                        }
+                    }
+                })
+            })
+
+        observer.observe(this, {characterData: true, subtree: true, childList: true})
     }
 
     /* Show a new toast of the given type (info, warning, error, success)
@@ -337,7 +378,7 @@ class HToast extends HTMLElement {
              <iconify-icon icon="mdi:close" onclick="parentElement.removeToast(this.parentElement)"></iconify-icon>
            `;
         toast.removeToast = this.removeToast
-        this.toastContainer.appendChild(toast); // Append the toast to the notification ul
+        this.appendChild(toast); // Append the toast to the notification ul
         // timeout to remove the toast after the progress animation ends
         toast.onanimationend = (ev) => {
             if (ev.animationName == PROGRESS_BAR_ANIMATION) {
@@ -352,7 +393,6 @@ class HToast extends HTMLElement {
             clearTimeout(toast.timeoutId);
         } // Clearing the timeout for the toast
         // Removing the toast after 500ms
-        // TODO: use timing from variables
         setTimeout(() => toast.remove(), 500);
     }
 }
