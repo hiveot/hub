@@ -3,7 +3,8 @@
 
 <div id="app" class="app" hx-ext="sse" sse-connect="/sse">
 
-	<div sse-swap="info" hx-target="#toast" hx-swap="beforeend"></div>
+    {{/*	The notify event is displayed by the toast popup. content is "type:message" */}}
+	<div sse-swap="notify" hx-target="#toast" hx-swap="beforeend"></div>
 
 	<!--  Handle the sse logout event-->
 	<!--    <span hx-get="/login"-->

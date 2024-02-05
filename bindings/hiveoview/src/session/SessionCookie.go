@@ -23,7 +23,7 @@ type SessionClaims struct {
 }
 
 // GetSessionCookie retrieves the credentials from the browser cookie.
-// If no valid cookie is found then this returns an empty sessionID.
+// If no valid cookie is found then this returns an error.
 func GetSessionCookie(r *http.Request, pubKey *ecdsa.PublicKey) (*SessionClaims, error) {
 	cookie, err := r.Cookie(SessionCookieID)
 	if err != nil {
@@ -68,6 +68,8 @@ func SetSessionCookie(w http.ResponseWriter,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:      sessionID,
 			Subject: clientID,
+			//Issuer: sm.pubKey,
+			IssuedAt: &jwt.NumericDate{Time: time.Now()},
 		},
 		MaxAge:    maxAge,
 		AuthToken: authToken,

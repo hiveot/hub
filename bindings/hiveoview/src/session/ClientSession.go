@@ -1,7 +1,6 @@
 package session
 
 import (
-	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/things"
@@ -25,12 +24,9 @@ type ClientSession struct {
 
 	// ClientID is the login ID of the user
 	clientID string
-	// Auth token obtained from the secure cookie and used to re-connect to the hub
-	//AuthToken string `json:"auth_token"`
-	// Expiry of the session
-	//Expiry time.Time `json:"expiry"`
-	// remote address
-	//RemoteAddr string `json:"remote_addr"`
+	// RemoteAddr of the user
+	remoteAddr string
+
 	lastActivity time.Time
 
 	// The associated hub client for pub/sub
@@ -48,7 +44,13 @@ func (cs *ClientSession) AddSSEClient(c chan SSEEvent) {
 	defer cs.mux.RUnlock()
 	cs.sseClients = append(cs.sseClients, c)
 
-	go cs.SendSSE("info", "new client listening")
+	go func() {
+		if cs.IsActive() {
+			cs.SendSSE("notify", "success:Connected to the Hub")
+		} else {
+			cs.SendSSE("notify", "error:Not connected to the Hub")
+		}
+	}()
 }
 
 // Close the session
@@ -62,30 +64,6 @@ func (cs *ClientSession) Close() {
 	cs.hc.Disconnect()
 	cs.sseClients = nil
 }
-
-// ConnectWithPassword connects the session with the Hub using the given password
-//
-// This returns a new auth token for restoring the connection at a later time.
-//func (cs *ClientSession) ConnectWithPassword(password string) (string, error) {
-//
-//	err := cs.hc.ConnectWithPassword(password)
-//	if err != nil {
-//		slog.Debug("ConnectWithPassword failed", "err", err)
-//		_ = cs.SendSSE("error", "Connect failed: "+err.Error())
-//		return "", err
-//	} else {
-//		_ = cs.SendSSE("success", "Connected to the Hub")
-//	}
-//	authCl := authclient.NewProfileClient(cs.hc)
-//	authToken, err := authCl.RefreshToken()
-//	if err == nil {
-//		// for testing
-//		go func() {
-//			cs.SendSSETestLoop()
-//		}()
-//	}
-//	return authToken, err
-//}
 
 // GetStatus returns the status of hub connection
 // This returns:
@@ -105,7 +83,7 @@ func (cs *ClientSession) GetHubClient() *hubclient.HubClient {
 	return cs.hc
 }
 
-// IsActive returns whether the session has a connection to the Hub
+// IsActive returns whether the session has a connection to the Hub or is in the process of connecting.
 func (cs *ClientSession) IsActive() bool {
 	status := cs.hc.GetStatus()
 	return status.ConnectionStatus == transports.Connected ||
@@ -118,11 +96,11 @@ func (cs *ClientSession) onConnectChange(stat transports.HubTransportStatus) {
 		slog.String("clientID", stat.ClientID),
 		slog.String("status", string(stat.ConnectionStatus)))
 	if stat.ConnectionStatus == transports.Connected {
-		cs.SendSSE("success", "Connection with Hub successful")
+		cs.SendSSE("notify", "success:Connection with Hub successful")
 	} else if stat.ConnectionStatus == transports.Connecting {
-		cs.SendSSE("warning", "Attempt to reconnect to the Hub")
+		cs.SendSSE("notify", "warning:Attempt to reconnect to the Hub")
 	} else {
-		cs.SendSSE("warning", "Connection changed: "+string(stat.ConnectionStatus))
+		cs.SendSSE("notify", "warning:Connection changed: "+string(stat.ConnectionStatus))
 	}
 }
 
@@ -134,36 +112,6 @@ func (cs *ClientSession) onEvent(msg *things.ThingValue) {
 	// SSE's usually expect an HTML snippet, not json data
 	//_ = cs.SendSSE(msg.Name, string(msg.Data))
 }
-
-// Reconnect restores the session's connection with the hub
-// This returns a refreshed token or an error if connection fails
-//func (cs *ClientSession) Reconnect(authToken string) (string, error) {
-//	if authToken == "" {
-//		return "", errors.New("missing auth token")
-//	}
-//
-//	// TODO: update expiry with a new token
-//	// the user's private key is not available. This token auth only works
-//	// if it doesn't require one.
-//	err := cs.hc.ConnectWithToken(nil, authToken)
-//	if err != nil {
-//		return "", err
-//	}
-//	myProfile := authclient.NewProfileClient(cs.hc)
-//	newToken, err := myProfile.RefreshToken()
-//	if err != nil {
-//		slog.Error("Token refresh failed. Continuing as existing token is still valid.",
-//			"clientID", cs.hc.ClientID(), "err", err)
-//		_ = cs.SendSSE("error", "Authentication refresh failed. ")
-//		err = nil
-//		return "", nil
-//	}
-//	cs.mux.Lock()
-//	defer cs.mux.Unlock()
-//	_ = cs.SendSSE("success", "Authenticated with the Hub")
-//
-//	return newToken, err
-//}
 
 func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {
 	cs.mux.RLock()
@@ -202,32 +150,16 @@ func (cs *ClientSession) SendSSE(event string, content string) error {
 	return nil
 }
 
-// send sse test counter
-func (cs *ClientSession) SendSSETestLoop() {
-	// toggle status
-	counter := 1
-	for {
-		time.Sleep(time.Second * 5)
-		msg := fmt.Sprintf(
-			`<div >Hello world %d</div>`, counter)
-		err := cs.SendSSE("counter", msg)
-		if err != nil {
-			break
-		}
-		counter++
-	}
-	slog.Info("counter loop done")
-}
-
 // NewClientSession creates a new client session for the given Hub connection
 // Intended for use by the session manager.
 // note that expiry is a placeholder for now used to refresh auth token.
 // it should be obtained from the login authentication/refresh.
-func NewClientSession(sessionID string, hc *hubclient.HubClient) *ClientSession {
+func NewClientSession(sessionID string, hc *hubclient.HubClient, remoteAddr string) *ClientSession {
 	cs := ClientSession{
-		sessionID: sessionID,
-		clientID:  hc.ClientID(),
-		hc:        hc,
+		sessionID:  sessionID,
+		clientID:   hc.ClientID(),
+		remoteAddr: remoteAddr,
+		hc:         hc,
 		// TODO: assess need for buffering
 		sseClients:   make([]chan SSEEvent, 0),
 		lastActivity: time.Now(),

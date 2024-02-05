@@ -8,12 +8,13 @@ import (
 
 // keep session auth for 7 days
 // TODO: use the token expiry instead
-const DefaultAuthAge = 3600 * 24 * 7
+//const DefaultAuthAge = 3600 * 24 * 7
 
 // PostLogin handles the login request to log in with a password.
 // This creates or refreshes a user session containing credentials.
 // If connection fails then an error is returned.
 func PostLogin(w http.ResponseWriter, r *http.Request) {
+	sm := session.GetSessionManager()
 
 	// obtain login form fields
 	loginID := r.FormValue("loginID")
@@ -24,11 +25,8 @@ func PostLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// login to get the auth token for creating an SSE session
-	sm := session.GetSessionManager()
-	hc := sm.NewHubClient(loginID)
-	err := hc.ConnectWithPassword(password)
-
+	// step 1: authenticate with the password
+	hc, err := sm.ConnectWithPassword(loginID, password)
 	if err != nil {
 		slog.Warn("PostLogin failed",
 			slog.String("remoteAddr", r.RemoteAddr),
@@ -39,11 +37,14 @@ func PostLogin(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login?error="+err.Error(), http.StatusSeeOther)
 		return
 	}
+	// TODO: session age from config
+	_, _ = sm.ActivateNewSession(w, r, hc)
+
 	// update the session. This ensures an active session exists and the
 	// cookie contains the existing or new session ID with a fresh auth token.
 	// keep the session cookie for 30 days (todo: make this a service config)
-	maxAge := 3600 * 24 * 30
-	sm.LoginToSession(w, r, hc, maxAge)
+	//maxAge := 3600 * 24 * 30
+	//sm.LoginToSession(w, r, hc, maxAge)
 
 	slog.Info("login successful", "loginID", loginID)
 	// do not cache the password

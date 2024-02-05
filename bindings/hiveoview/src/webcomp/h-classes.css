@@ -146,7 +146,7 @@
 
 /* panel with background color and flex col*/
 .h-panel {
-    /*background-color: var(--pico-background-color);*/
+    background-color: var(--pico-background-color);
     display: flex;
     flex-direction: column;
     border: 1px solid var(--pico-border-color);

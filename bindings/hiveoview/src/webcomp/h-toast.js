@@ -344,8 +344,12 @@ class HToast extends HTMLElement {
                         let node = mut.addedNodes[0]
                         if (node.nodeName !== "LI") {
                             // console.log("child added through htmx", node)
+                            // expect <type>: text
+                            let parts = node.wholeText.split(":", 1)
+                            let ttype = parts[0].trim()
+                            let remainder = node.wholeText.substring(ttype.length + 1).trim()
                             this.removeChild(node)
-                            this.showToast("info", node.wholeText)
+                            this.showToast(ttype, remainder)
                         }
                     }
                 })
