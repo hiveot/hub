@@ -21,7 +21,7 @@ func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 	thingID := r.URL.Query().Get("thingID")
 	propKey := r.URL.Query().Get("key")
 
-	mySession, err := session.GetSession(w, r)
+	mySession, err := session.GetSessionFromContext(r)
 	if err == nil {
 		hc := mySession.GetHubClient()
 		rd := dirclient.NewReadDirectoryClient(hc)
@@ -53,7 +53,7 @@ func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 	propKey := chi.URLParam(r, "propKey")
 	value := r.FormValue("value")
 	//
-	mySession, err := session.GetSession(w, r)
+	mySession, err := session.GetSessionFromContext(r)
 	if err == nil {
 		hc := mySession.GetHubClient()
 		slog.Info("Updating config",

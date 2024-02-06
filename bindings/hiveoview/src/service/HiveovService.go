@@ -97,8 +97,9 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 		r.Post("/login", login.PostLogin)
 		r.Get("/logout", session.SessionLogout)
 
-		// SSE has its own validation
+		// sse has its own validation instead of using session context (which reconnects or redirects to /login)
 		r.Get("/sse", session.SseHandler)
+
 	})
 
 	//--- private routes that requires a valid session

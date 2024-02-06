@@ -50,6 +50,7 @@ func (sm *SessionManager) ActivateNewSession(
 	var cs *ClientSession
 	var sessionID string
 
+	slog.Info("ActivateNewSession", slog.String("clientID", hc.ClientID()))
 	// 1. close the existing session
 	claims, err := GetSessionCookie(r, &sm.signingKey.PublicKey)
 	if err == nil && claims.ID != "" {
@@ -64,7 +65,10 @@ func (sm *SessionManager) ActivateNewSession(
 	}
 
 	// 2. create a new session using the given connection, if any
-	sessionID = uuid.NewString()
+	// re-use the session ID if there was one.
+	if sessionID == "" {
+		sessionID = uuid.NewString()
+	}
 	cs = NewClientSession(sessionID, hc, r.RemoteAddr)
 	sm.mux.Lock()
 	sm.sessions[sessionID] = cs
@@ -150,6 +154,7 @@ func (sm *SessionManager) GetSession(sessionID string) (*ClientSession, error) {
 }
 
 // GetSessionFromCookie returns the session object using the session cookie.
+// This should only be used from the middleware, as reconnecting to the hub can change the sessionID.
 //
 // If no session exists but a cookie is found then return the cookie claims.
 // If no valid cookie is found then return an error
@@ -193,15 +198,4 @@ var sessionmanager = func() *SessionManager {
 // GetSessionManager returns the sessionManager singleton
 func GetSessionManager() *SessionManager {
 	return sessionmanager
-}
-
-// GetSession returns the session object for the given request
-// This tries to reactivate the session if a session cookie with credentials
-// is available
-//
-// Passing a ResponseWriter is optional and allows for updating a cookie.
-// This should not be used in an SSE session.
-func GetSession(w http.ResponseWriter, r *http.Request) (*ClientSession, error) {
-	cs, _, err := sessionmanager.GetSessionFromCookie(r)
-	return cs, err
 }

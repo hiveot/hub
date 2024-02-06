@@ -39,7 +39,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	data["Thing"] = thingData
 	data["Title"] = "details of thing"
 
-	mySession, err := session.GetSession(w, r)
+	mySession, err := session.GetSessionFromContext(r)
 	if err == nil {
 		hc := mySession.GetHubClient()
 		rd := dirclient.NewReadDirectoryClient(hc)

@@ -67,7 +67,7 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	var data = make(map[string]any)
 
 	// 1: get session
-	mySession, err := session.GetSession(w, r)
+	mySession, err := session.GetSessionFromContext(r)
 	if err == nil {
 		hc := mySession.GetHubClient()
 		rd := dirclient.NewReadDirectoryClient(hc)
@@ -77,16 +77,17 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 			dirGroups := sortByPublisher(thingsList)
 			data["Directory"] = dirGroups
 		} else {
-			//// Directory is used by html to stop retrying
-			//data["Directory"] = &DirectoryData{}
+			// the 'Directory' attribute is used by html know if to reload
 			err = fmt.Errorf("unable to load directory: %w", err)
 			slog.Error(err.Error())
 		}
 	}
 	if err != nil {
+		slog.Info("failed getting session. Redirecting to login", "err", err.Error())
 		// assume this is an auth issue, maybe the browser was still open or a bookmark was used
 		//mySession.Close()
 		//http.Error(w, err.Error(), http.StatusUnauthorized)
+		// FIXME: logout doesn't update URL to /login (need navigateto?)
 		session.SessionLogout(w, r)
 		return
 	}

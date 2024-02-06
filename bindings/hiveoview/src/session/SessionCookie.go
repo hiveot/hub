@@ -24,6 +24,8 @@ type SessionClaims struct {
 
 // GetSessionCookie retrieves the credentials from the browser cookie.
 // If no valid cookie is found then this returns an error.
+// Intended for use by middleware. Any updates to the session will not be available in the cookie
+// until the next request. In almost all cases use session from context as set by middleware.
 func GetSessionCookie(r *http.Request, pubKey *ecdsa.PublicKey) (*SessionClaims, error) {
 	cookie, err := r.Cookie(SessionCookieID)
 	if err != nil {
@@ -61,9 +63,8 @@ func GetSessionCookie(r *http.Request, pubKey *ecdsa.PublicKey) (*SessionClaims,
 //
 // This generates a JWT token, signed by the service key, with claims.
 func SetSessionCookie(w http.ResponseWriter,
-	sessionID string, clientID string, authToken string, maxAge int, privKey *ecdsa.PrivateKey) string {
-	prefix := ""
-
+	sessionID string, clientID string, authToken string, maxAge int, privKey *ecdsa.PrivateKey) error {
+	slog.Info("SetSessionCookie", "sessionID", sessionID)
 	claims := SessionClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:      sessionID,
@@ -78,7 +79,7 @@ func SetSessionCookie(w http.ResponseWriter,
 	jwtToken := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
 	cookieValue, err := jwtToken.SignedString(privKey)
 	if err != nil {
-		return "bad signing: " + err.Error()
+		return err
 	}
 	// TODO: encrypt cookie value
 
@@ -90,10 +91,10 @@ func SetSessionCookie(w http.ResponseWriter,
 		//Secure:   true, // TODO: only use with https
 		// With SSR, samesite strict should offer good CSRF protection
 		SameSite: http.SameSiteStrictMode,
-		Path:     prefix,
+		Path:     "/",
 	}
 	http.SetCookie(w, c)
-	return prefix
+	return err
 }
 
 // RemoveSessionCookie removes the cookie. Intended for logout.

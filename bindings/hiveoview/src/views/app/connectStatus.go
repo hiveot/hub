@@ -25,7 +25,7 @@ type ConnectStatus struct {
 
 // GetConnectStatus returns the description of the connection status
 func GetConnectStatus(r *http.Request) *ConnectStatus {
-	cs, _ := session.GetSession(nil, r)
+	cs, _ := session.GetSessionFromContext(r)
 	status := &ConnectStatus{
 		IconName:    "link-off",
 		Description: "disconnected",

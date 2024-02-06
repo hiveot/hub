@@ -17,43 +17,20 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Connection", "keep-alive")
 
-	// A session is required before accepting the request
-	cs, err := GetSession(nil, r)
-	if err != nil {
+	// An active session is required before accepting the request
+	cs, claims, err := sessionmanager.GetSessionFromCookie(r)
+	_ = claims
+	if cs == nil || !cs.IsActive() || err != nil {
 		slog.Warn("No session available, delay retry to 30 seconds")
 
-		// TODO: standardize this event flow somewhere
-		// option 1: send event to redirect - requires client implementation
-		//_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
-		//	"logout", "missing session")
-		//w.(http.Flusher).Flush()
-
-		// option 2: set retry to a large number
+		// set retry to a large number
 		// while this doesn't redirect, it does stop it from holding a connection.
 		// see https://javascript.info/server-sent-events#reconnection
-		// and https://javascript.info/server-sent-events#reconnection
 		_, _ = fmt.Fprintf(w, "retry: %s\nevent:%s\n\n",
 			"30000", "logout")
+		// this result code doesn't seem to work
+		w.WriteHeader(http.StatusUnauthorized)
 		w.(http.Flusher).Flush()
-		//time.Sleep(time.Millisecond)
-		//w.WriteHeader(http.StatusUnauthorized)
-		//http.Error(w, "not authenticated", http.StatusUnauthorized)
-
-		// option 3: use HX-redirect - doesn't work
-		//w.Header().Set("HX-Redirect", "/login")
-
-		// option 4: plain old redirect - doesn't work
-		//http.Redirect(w, r, "/login", http.StatusFound)
-
-		// option 5: send status code 204??? - doesn't work
-		//"If the server wants the browser to stop reconnecting, it should respond with HTTP status 204."
-		// https://javascript.info/server-sent-events#reconnection
-		//w.WriteHeader(204)
-
-		// option 6: send status code 502 - doesn't work
-		// https://stackoverflow.com/questions/24564030/is-an-eventsource-sse-supposed-to-try-to-reconnect-indefinitely
-		//w.WriteHeader(502)
-
 		return
 	}
 
@@ -87,7 +64,7 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 			// "Each message is sent as a block of text terminated by a pair of newlines. "
 			//https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
 			//_, err := fmt.Fprintf(w, "event: time\ndata: <div sse-swap='time'>%s</div>\n\n", data)
-			_, err = fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
+			_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
 				sseMsg.Event, sseMsg.Payload)
 			//_, err := fmt.Fprint(w, sseMsg)
 			w.(http.Flusher).Flush()
