@@ -28,8 +28,6 @@
         document.body.hidden = false
         window.displayIfTarget(window.location.pathname)
         window.selectNavTargets("", window.location.href)
-        // window.toast.showToast("info", "welcome to the hive of things viewer", 5000)
-        // document.dispatchEvent(new CustomEvent("toast", {detail: {type: "info", text: "hello"}}))
     }
 
     // listen for URL changes and re-activate the targets by setting the h-target class
@@ -37,11 +35,11 @@
         window.selectNavTargets(ev.oldURL, window.location.href)
         window.displayIfTarget(window.location.pathname)
     })
-    window.addEventListener("hashchange", (ev) => {
-        alert("hashchange event", ev)
-        window.selectNavTargets(ev.oldURL, window.location.href)
-        window.displayIfTarget(window.location.pathname)
-    })
+    // window.addEventListener("hashchange", (ev) => {
+    //     alert("hashchange event", ev)
+    //     window.selectNavTargets(ev.oldURL, window.location.href)
+    //     window.displayIfTarget(window.location.pathname)
+    // })
 
 </script>
 
@@ -49,8 +47,8 @@
 <!--hx-boost lets links with href's target #appPage destination while without-->
 <body onload="showBody()" hidden hx-boost="true">
 
-{{/*Place to inject toasts*/}}
-<h-toast id="toast" vertical top duration="6000"></h-toast>
+{{/*Place to inject notification toasts (as in sse notifications in app.gohtml)*/}}
+<h-toast id="toast" vertical top duration="3000"></h-toast>
 
 {{/*The main template, login or app*/}}
 {{block "embed" .}} main template {{end}}

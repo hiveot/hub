@@ -1,26 +1,32 @@
 <!--Thing event list-->
-<!--@param go's thing.TD object-->
+<!--@param '.' object of type thing.DetailsTemplateData -->
 
 <ul class="h-grid-table thing-events" striped border>
 	<li>
-		<div class="h-show-sm">ID</div>
-		<div>Name</div>
+		<div class="h-show-sm">{{/*icon*/}}</div>
+		<div style="display:grid">
+			<span>Name</span>
+		</div>
 		<div>Value</div>
-		<div class="h-show-md">Type</div>
+		<div class="h-show-md">Updated</div>
 		<div class="h-show-lg">Description</div>
 	</li>
 
-    {{range $k,$v := .}}
+    {{range $k,$v := .TD.Events}}
         {{- /*gotype: github.com/hiveot/hub/lib/things.EventAffordance*/ -}}
 				<li>
-					<div class="h-show-sm">{{$k}}</div>
-					<div>{{$v.Title}}</div>
+					<div class="h-show-sm">{{/*icon*/}}</div>
 					<div>
-              {{if $v.Data}}
-								<span>{{$v.Data.InitialValue}} </span>
-              {{end}}
+						<span title="ID:{{$k}}">{{$v.Title}}</span>
 					</div>
-					<div class="h-show-md">{{$v.EventType}}</div>
+					<div>
+						<span sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}"
+						      title="age: {{$.Values.Age $k}}">
+								{{$.Values.Get $k}}
+						</span>
+              {{$v.Data.Unit}}
+					</div>
+					<div class="h-show-md">{{$.Values.Updated $k}}</div>
 					<div class="h-show-lg">{{$v.Description}}</div>
 				</li>
     {{end}}
@@ -44,17 +50,17 @@
     @media (width >= 576px) {
         .thing-events {
             /*sm, show column 1,2,3 */
-            grid-template-columns: minmax(100px, max-content)
+            grid-template-columns: minmax(40px, max-content)
               minmax(200px, 2fr)
-              minmax(100px, 1fr);;
+              minmax(100px, 1fr);
         }
     }
 
     @media (width >= 768px) {
         .thing-events {
             /*md,show column 1,2,3,4*/
-            grid-template-columns: minmax(100px, max-content)
-              minmax(200px, max-content)
+            grid-template-columns: minmax(40px, max-content)
+              minmax(200px, 1fr)
               minmax(100px, max-content)
               minmax(100px, 1fr);
         }
@@ -62,11 +68,11 @@
 
     @media (width >= 1024px) {
         .thing-events { /*lg*/
-            grid-template-columns: minmax(100px, max-content)
-		          minmax(200px, max-content)
+            grid-template-columns: minmax(40px, max-content)
+		          minmax(200px, 1fr)
 		          minmax(100px, max-content)
-		          max-content
-            minmax(100px, 1fr);
+		          minmax(100px, 1fr)
+        minmax(100px, 1fr);
         }
     }
 

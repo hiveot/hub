@@ -6,11 +6,6 @@
     {{/*	The notify event is displayed by the toast popup. content is "type:message" */}}
 	<div sse-swap="notify" hx-target="#toast" hx-swap="beforeend"></div>
 
-	<!--  Handle the sse logout event-->
-	<!--    <span hx-get="/login"-->
-	<!--          hx-target="body" sse-swap="logout"-->
-	<!--          hx-trigger="sse:logout" hidden>log me out</span>-->
-
 	<div class="app-head ">
       {{block "appHead" .}}App header goes here {{end}}
 	</div>

@@ -1,6 +1,6 @@
 {{if .Thing}}
 
-	<article class="h-panel container">
+	<article class="h-panel container-fluid">
       {{/*	<h3>Details of Thing: {{.Thing.AgentID}}/{{.Thing.ThingID}}</h3>*/}}
 
 		<details open>
@@ -39,7 +39,7 @@
 				<span style="font-size: medium"><strong>Attributes</strong></span>
 				<span> ({{len .Thing.Attributes}})</span>
 			</summary>
-        {{template "thingAttr.gohtml" .Thing.Attributes}}
+        {{template "thingAttr.gohtml" .Thing}}
 		</details>
 
 		<!--===Thing Configuration===-->
@@ -58,7 +58,7 @@
 				<span style="font-size: medium"><strong>Events</strong></span>
 				<span> ({{len .Thing.TD.Events}})</span>
 			</summary>
-        {{template "thingEvents.gohtml" .Thing.TD.Events}}
+        {{template "thingEvents.gohtml" .Thing}}
 		</details>
 
 		<!--===Thing Actions===-->
@@ -68,7 +68,7 @@
 				<span style="font-size: medium"><strong>Actions</strong></span>
 				<span> ({{len .Thing.TD.Actions}})</span>
 			</summary>
-        {{template "thingActions.gohtml" .Thing.TD.Actions}}
+        {{template "thingActions.gohtml" .Thing}}
 		</details>
 
 	</article>

@@ -85,9 +85,20 @@
 		<button type="submit"
 		        hx-post="/app/thing/{{.AgentID}}/{{.ThingID}}/{{.Key}}"
 		        hx-include="#edit-config-form"
-		        hx-indicator="todo"
+		        hx-on::after-request="onSubmitCompleted(event, this)"
 		        style="margin-bottom: 0">Submit
 		</button>
 	</footer>
 
 </h-modal>
+
+<script>
+    function onSubmitCompleted(ev, btn) {
+        let details = ev.detail
+        if (details.successful) {
+            modal = btn.parentElement.parentElement
+            // modal.removeAttribute("show")
+            modal.closeModal()
+        }
+    }
+</script>

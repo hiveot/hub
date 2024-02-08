@@ -32,7 +32,7 @@
  *  8. support sse 'toast' {"type":"info","text","toast text"} events
  */
 const PROGRESS_BAR_ANIMATION = "progressbar"
-
+const DEFAULT_DURATION = 3000  // msec showing toast
 const template = `
 
 
@@ -176,7 +176,7 @@ h-toast[vertical][bottom]  .toast.hide {
 .toast::before {
   position: absolute;
   content: "";
-  height: 2px;
+  height: 1px;
   width: 100%;
   bottom: 0px;
   left: 0px;
@@ -298,7 +298,7 @@ class HToast extends HTMLElement {
     constructor() {
         super();
         this.innerHTML = template;
-        this.duration = 5000; // default value when not set
+        this.duration = DEFAULT_DURATION; // default value when not set
         if (this.id) {
             window[this.id] = this
         }
@@ -347,7 +347,7 @@ class HToast extends HTMLElement {
                             // expect <type>: text
                             let parts = node.wholeText.split(":", 1)
                             let ttype = parts[0].trim()
-                            let remainder = node.wholeText.substring(ttype.length + 1).trim()
+                            let remainder = node.wholeText.substring(parts[0].length + 1).trim()
                             this.removeChild(node)
                             this.showToast(ttype, remainder)
                         }

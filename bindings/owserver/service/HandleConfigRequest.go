@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 )
@@ -14,5 +13,6 @@ func (svc *OWServerBinding) HandleConfigRequest(tv *things.ThingValue) (err erro
 		slog.String("property", tv.Name),
 		slog.String("payload", string(tv.Data)))
 
-	return errors.New("Config not yet supported")
+	err = svc.edsAPI.WriteData(tv.ThingID, tv.Name, string(tv.Data))
+	return err
 }

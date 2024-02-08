@@ -49,5 +49,6 @@ func PostLogin(w http.ResponseWriter, r *http.Request) {
 	slog.Info("login successful", "loginID", loginID)
 	// do not cache the password
 	w.Header().Add("Cache-Control", "no-cache, max-age=0, must-revalidate, no-store")
-	http.Redirect(w, r, "/", http.StatusFound)
+	// prevent the browser from re-posting on back button or refresh (POST-Redirect-GET) pattern
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

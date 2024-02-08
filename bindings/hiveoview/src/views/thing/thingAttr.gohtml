@@ -1,19 +1,25 @@
 <!--Thing attribute list-->
-<!--@param go's thing.TD object-->
-
+<!--@param '.' object of type thing.DetailsTemplateData -->
 
 <ul class="h-grid-table thing-attr " border striped>
 	<li>
-		<div>ID</div>
+		<div>{{/*icon*/}}</div>
 		<div>Name</div>
 		<div>Value</div>
 	</li>
 
-    {{range $k, $v := .}}
+    {{range $k, $v := .Attributes}}
 			<li>
-				<div>{{$k}}</div>
-				<div>{{$v.Title}}</div>
-				<div>{{$v.InitialValue}} {{$v.DataSchema.Unit}}</div>
+				<div>{{/*icon*/}}</div>
+				<div>
+					<span style="">{{$v.Title}}</span>
+				</div>
+				<div>
+					<span sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}">
+              {{$.Values.Get $k}}
+					</span>
+            {{$v.DataSchema.Unit}}
+				</div>
 			</li>
     {{end}}
 </ul>
@@ -22,9 +28,17 @@
 
     .thing-attr {
         grid-template-columns:
-                minmax(150px, 1fr)
-                minmax(200px, 2fr)
-                minmax(100px, 1fr);
+                40px
+                minmax(min-content, 1fr)
+                minmax(100px, max-content);
     }
 
+    /*container holding multiple values in a grid row/column*/
+    .grid-col-container {
+        display: grid;
+        grid-auto-flow: row;
+
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        /*grid-template-columns: minmax(min-content, max-content) minmax(min-content, 1fr);*/
+    }
 </style>

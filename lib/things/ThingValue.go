@@ -1,6 +1,7 @@
 package things
 
 import (
+	"github.com/hiveot/hub/lib/utils"
 	"time"
 )
 
@@ -44,6 +45,18 @@ type ThingValue struct {
 
 	// Type of value, event, action, config, rpc
 	ValueType string `json:"valueType"`
+}
+
+// Updated is a helper function to return the formatted time the data was last updated.
+func (tv *ThingValue) Updated() string {
+	created := time.Unix(tv.CreatedMSec/1000, 0)
+	return created.Format(time.RFC822)
+}
+
+// Age is a helper function to return the age of the data for use in templates
+func (tv *ThingValue) Age() string {
+	t := time.Unix(tv.CreatedMSec/1000, 0)
+	return utils.Age(t)
 }
 
 // NewThingValue creates a new ThingValue object with the address of the things, the action or event id and the serialized value data

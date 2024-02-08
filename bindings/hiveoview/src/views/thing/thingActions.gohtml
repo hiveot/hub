@@ -1,19 +1,25 @@
 <!--Thing actions list-->
-<!--@param go's thing.ActionAffordance object-->
+<!--@param '.' object of type thing.DetailsTemplateData -->
 
 <ul class="h-grid-table thing-actions" striped border>
 	<li>
-		<div class="h-show-sm">ID</div>
-		<div>Name</div>
+		<div class="h-show-sm">{{/*icon*/}}</div>
+		<div style="display:grid">
+			<small>ID</small>
+			<span>Name</span>
+		</div>
 		<div>Type</div>
 		<div class="h-show-md"> Description</div>
 	</li>
 
-    {{range $k,$v := . }}
+    {{range $k,$v := .TD.Actions }}
         {{- /*gotype: github.com/hiveot/hub/lib/things.ActionAffordance*/ -}}
 				<li>
-					<div class="h-show-sm">{{$k}}</div>
-					<div>{{$v.Title}}</div>
+					<div class="h-show-sm">{{/*icon*/}}</div>
+					<div style="display:grid">
+						<small>{{$k}}</small>
+						<span>{{$v.Title}}</span>
+					</div>
 					<div>{{$v.ActionType}}</div>
 					<div class="h-show-md">{{$v.Description}}</div>
 				</li>
@@ -41,7 +47,7 @@
         .thing-actions {
             /*sm, show column 1,2,3 */
             grid-template-columns:
-				            minmax(100px, max-content) minmax(200px, 2fr) minmax(100px, 1fr);;
+				            40px minmax(200px, 2fr) minmax(100px, 1fr);;
         }
     }
 
@@ -49,7 +55,7 @@
         .thing-actions {
             /*md,show column 1,2,3,4 */
             grid-template-columns:
-				            minmax(100px, max-content)
+				            40px
 				            minmax(200px, max-content)
 				            minmax(100px, max-content)
 				            minmax(100px, 1fr);

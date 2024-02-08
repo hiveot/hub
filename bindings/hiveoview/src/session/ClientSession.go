@@ -1,6 +1,7 @@
 package session
 
 import (
+	"github.com/hiveot/hub/core/state/stateclient"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/things"
@@ -21,6 +22,9 @@ const DefaultExpiryHours = 72
 type ClientSession struct {
 	// ID of this session
 	sessionID string
+
+	// Client subscription and dashboard model, loaded from the state service
+	clientModel ClientModel
 
 	// ClientID is the login ID of the user
 	clientID string
@@ -53,7 +57,7 @@ func (cs *ClientSession) AddSSEClient(c chan SSEEvent) {
 	}()
 }
 
-// Close the session
+// Close the session and save its state.
 // This closes the hub connection and SSE data channels
 func (cs *ClientSession) Close() {
 	cs.mux.Lock()
@@ -138,6 +142,18 @@ func (cs *ClientSession) ReplaceHubClient(newHC *hubclient.HubClient) {
 	cs.hc.SetEventHandler(cs.onEvent)
 }
 
+// SaveState stores the current model to the server
+func (cs *ClientSession) SaveState() error {
+	stateCl := stateclient.NewStateClient(cs.GetHubClient())
+	err := stateCl.Set(cs.clientID, &cs.clientModel)
+	//if err != nil {
+	//	slog.Error("unable to save session state",
+	//		slog.String("clientID", cs.clientID),
+	//		slog.String("err", err.Error()))
+	//}
+	return err
+}
+
 // SendSSE encodes and sends an SSE event to clients of this session
 // Intended to notify the browser of changes.
 func (cs *ClientSession) SendSSE(event string, content string) error {
@@ -166,5 +182,15 @@ func NewClientSession(sessionID string, hc *hubclient.HubClient, remoteAddr stri
 	}
 	hc.SetEventHandler(cs.onEvent)
 	hc.SetConnectionHandler(cs.onConnectChange)
+
+	// restore the session data model
+	stateCl := stateclient.NewStateClient(hc)
+	found, err := stateCl.Get(hc.ClientID(), &cs.clientModel)
+	_ = err
+	if found {
+		// subscribe
+	}
+
+	// subscribe to configured agents
 	return &cs
 }

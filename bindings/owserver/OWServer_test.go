@@ -135,6 +135,7 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 func TestAction(t *testing.T) {
 	t.Log("--- TestAction ---")
 	const device1ID = "device1"
+	const user1ID = "operator1"
 	// node in test data
 	const nodeID = "C100100000267C7E"
 	//var nodeAddr = things.MakeThingAddr(owsConfig.ID, nodeID)
@@ -154,9 +155,44 @@ func TestAction(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
+	hc2, err := testServer.AddConnectClient(user1ID, authapi.ClientTypeUser, authapi.ClientRoleOperator)
+	require.NoError(t, err)
+	defer hc2.Disconnect()
 	reply, err := hc.PubAction(device1ID, nodeID, actionName, actionValue)
 	assert.Error(t, err)
 	_ = reply
+
+	//time.Sleep(time.Second*10)  // debugging delay
+}
+
+func TestConfig(t *testing.T) {
+	t.Log("--- TestConfig ---")
+	const device1ID = "device1"
+	const user1ID = "manager1"
+	// node in test data
+	const nodeID = "C100100000267C7E"
+	//var nodeAddr = things.MakeThingAddr(owsConfig.ID, nodeID)
+	var configName = "LEDFunction"
+	var configValue = ([]byte)("1")
+
+	hc, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
+	require.NoError(t, err)
+	defer hc.Disconnect()
+
+	svc := service.NewOWServerBinding(&owsConfig)
+	err = svc.Start(hc)
+	require.NoError(t, err)
+	defer svc.Stop()
+
+	// give Start time to run
+	time.Sleep(time.Millisecond * 10)
+
+	// note that the simulation file doesn't support writes so this logs an error
+	hc2, err := testServer.AddConnectClient(user1ID, authapi.ClientTypeUser, authapi.ClientRoleManager)
+	require.NoError(t, err)
+	defer hc2.Disconnect()
+	err = hc2.PubConfig(device1ID, nodeID, configName, configValue)
+	assert.Error(t, err)
 
 	//time.Sleep(time.Second*10)  // debugging delay
 }

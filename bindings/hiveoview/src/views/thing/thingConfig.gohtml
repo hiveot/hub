@@ -1,33 +1,44 @@
 <!--Thing configuration list-->
-<!--@param object of type thing.DetailsTemplateData -->
+<!--@param '.' object of type thing.DetailsTemplateData -->
 
 <ul class="h-grid-table thing-config" striped border>
 	<li>
-		<div class="h-show-sm">ID</div>
+
+		<div class="h-show-sm">{{/*icon*/}}</div>
 		<div>Name</div>
 		<div>Value</div>
-		<div class="h-show-lg">Type</div>
 		<div class="h-show-md">Default</div>
+		<div class="h-show-lg">Updated</div>
 	</li>
 
     {{range $k, $v := .Config}}
         {{- /*gotype: github.com/hiveot/hub/lib/things.PropertyAffordance*/ -}}
 				<li>
-					<div class="h-show-sm"><span>{{$k}}</span></div>
-					<div>{{$v.DataSchema.Title}}</div>
+					<div class="h-show-sm">{{/*icon*/}}</div>
 					<div>
-						<button style="padding: 6px 20px; margin-right: 6px"
+						<span title="ID:{{$k}}">{{$v.DataSchema.Title}}</span></div>
+					<div>
+						<button class="outline" style="border:none;
+						display:inline-flex; gap: 5px;
+						align-items: center; padding:0"
 						        hx-trigger="click"
 						        hx-get="/app/thing/editConfig"
 						        hx-vals='{"agentID":"{{$.AgentID}}","thingID":"{{$.ThingID}}","key":"{{$k}}"}'
 						        hx-target="#editConfigModal"
 						>
-							<iconify-icon icon="mdi:pencil"></iconify-icon>
+							<iconify-icon style="padding: 0 10px" icon="mdi:pencil"></iconify-icon>
+                {{/*replace show value on sse event*/}}
+							<span sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}"
+							      title="age: {{$.Values.Age $k}}">
+							{{$.Values.Get $k}}
+							</span>
+                {{$v.DataSchema.Unit}}
 						</button>
-              {{printf "%.100s" $v.InitialValue}}  {{$v.DataSchema.Unit}}
 					</div>
-					<div class="h-show-lg">{{$v.Type}}</div>
 					<div class="h-show-md">{{$v.Default}}</div>
+					<div class="h-show-lg"
+					     title="age: {{$.Values.Age $k}}">{{$.Values.Updated $k}}</div>
+
 				</li>
     {{end}}
 </ul>
@@ -52,7 +63,7 @@
         .thing-config {
             /*sm, show column 1,2,3 */
             grid-template-columns:
-				            minmax(100px, max-content)
+				            40px
 				            minmax(200px, 1fr)
 				            minmax(100px, max-content);
         }
@@ -60,22 +71,24 @@
 
     @media (width >= 768px) and (width < 1024px) {
         .thing-config {
-            /*md,show column 1,2,3,4*/
-            grid-template-columns: minmax(100px, max-content)
-              minmax(200px, max-content)
-              minmax(100px, 1fr)
-              minmax(100px, max-content);
+            /*md,show column 1,2,3*/
+            grid-template-columns:
+				        40px
+                minmax(200px, 1fr)
+                minmax(100px, max-content)
+                minmax(100px, max-content);
         }
     }
 
     @media (width >= 1024px) {
         .thing-config {
             /*lg, show all columns*/
-            grid-template-columns: minmax(100px, max-content)
-              minmax(200px, max-content)
-              minmax(100px, max-content)
-              100px
-              minmax(100px, 1fr);
+            grid-template-columns:
+				        40px
+                minmax(200px, 1fr)
+                minmax(100px, max-content)
+                minmax(100px, max-content)
+        minmax(100px, max-content);
         }
     }
 

@@ -48,9 +48,9 @@
 							<div>Thing ID</div>
 							<div>Name</div>
 							<div class="h-show-sm">Type</div>
-							<div class="h-show-md">Outputs</div>
-							<div class="h-show-md">Actions</div>
-							<div class="h-show-lg">Updated</div>
+							<div class="h-show-lg">Outputs</div>
+							<div class="h-show-lg">Actions</div>
+							<div class="h-show-xl">Updated</div>
 							<!--            <div scope="col">Description</div>-->
 						</li>
 
@@ -74,9 +74,9 @@
 									</div>
 									<div>{{.Title}}</div>
 									<div class="h-show-sm">{{.DeviceType}}</div>
-									<div class="h-show-md">{{len .Events}} outputs</div>
-									<div class="h-show-md">{{len .Actions}} actions</div>
-									<div class="h-show-lg">{{.GetAge}} ago</div>
+									<div class="h-show-lg">{{len .Events}} outputs</div>
+									<div class="h-show-lg">{{len .Actions}} actions</div>
+									<div class="h-show-xl">{{.GetAge}} ago</div>
 								</li>
               {{end}}
 
@@ -124,20 +124,31 @@
 
     @media (min-width: 768px) {
         .directory-table {
-            /*md,show column 1,2,3,4,5,6*/
+            /*md,show column 1,2,3,4*/
             grid-template-columns:
 	            60px
               minmax(150px, max-content)
               minmax(150px, 1fr)
               minmax(100px, 1fr)
-			        minmax(100px, 1fr)
-	            minmax(100px, 1fr);
         }
     }
 
-    @media (min-width: 992px) {
+    @media (min-width: 1024px) {
         .directory-table {
-            /*lg, show all 7*/
+            /*lg, show 1,2,3,4,5,6 */
+            grid-template-columns:
+				      60px
+			        minmax(150px, max-content)
+			        minmax(150px, 1fr)
+			        minmax(100px, 1fr)
+			        minmax(100px, 150px)
+			        minmax(100px, 150px)
+        }
+    }
+
+    @media (min-width: 1280px) {
+        .directory-table {
+            /*xl, show all 7*/
             grid-template-columns:
 				      60px
 			        minmax(150px, max-content)

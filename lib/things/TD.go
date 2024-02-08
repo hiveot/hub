@@ -1,9 +1,9 @@
 package things
 
 import (
-	"fmt"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/lib/ser"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/lib/vocab"
 	"strconv"
 	"sync"
@@ -275,23 +275,7 @@ func (tdoc *TD) GetAge() string {
 	if err != nil {
 		return tdoc.Modified
 	}
-	dur := int(time.Now().Sub(t).Round(time.Second).Seconds())
-	days := dur / (24 * 3600)
-	if days >= 1 {
-		dur -= days * (24 * 3600)
-	}
-	hours := dur / 3600
-	dur -= hours * 3600
-	minutes := dur / 60
-	sec := dur - minutes*60
-	if days > 30 {
-		return fmt.Sprintf("%dd, %dh", days, hours)
-	} else if days > 0 {
-		return fmt.Sprintf("%dd, %dh %dm", days, hours, minutes)
-	} else if hours > 0 {
-		return fmt.Sprintf("%dh %dm %ds", hours, minutes, sec)
-	}
-	return fmt.Sprintf("%dm %ds", minutes, sec)
+	return utils.Age(t)
 }
 
 // GetEvent returns the Schema for the event or nil if the event doesn't exist

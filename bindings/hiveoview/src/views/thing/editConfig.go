@@ -2,10 +2,12 @@ package thing
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/core/directory/dirclient"
+	"github.com/hiveot/hub/core/history/historyclient"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 	"net/http"
@@ -54,8 +56,8 @@ func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 	value := r.FormValue("value")
 	//
 	mySession, err := session.GetSessionFromContext(r)
+	hc := mySession.GetHubClient()
 	if err == nil {
-		hc := mySession.GetHubClient()
 		slog.Info("Updating config",
 			"agentID", agentID, "thingID", thingID,
 			"propKey", propKey, "value", value)
@@ -70,12 +72,23 @@ func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 			slog.String("err", err.Error()))
 
 		// notify UI via SSE. This is handled by a toast component.
-		_ = mySession.SendSSE("error", err.Error())
+		_ = mySession.SendSSE("notify", "error:"+err.Error())
 
 		// todo, differentiate between server error, invalid value and unauthorized
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	_ = mySession.SendSSE("info", "Configuration '"+propKey+"' update accepted")
+
+	_ = mySession.SendSSE("notify", "success: Configuration '"+propKey+"' updated")
+
+	// read the updated config value and update the UI fragments
+	cl := historyclient.NewReadHistoryClient(hc)
+	tvs, err := cl.GetLatest(agentID, thingID, []string{propKey})
+	propAddr := fmt.Sprintf("%s/%s/%s", agentID, thingID, propKey)
+	propVal := fmt.Sprintf("%.100s", tvs[0].Data)
+	slog.Info("Updated value of prop", "propAddr", propAddr, "propVal", propVal)
+	mySession.SendSSE(propAddr, propVal)
+
 	w.WriteHeader(http.StatusOK)
+
 }

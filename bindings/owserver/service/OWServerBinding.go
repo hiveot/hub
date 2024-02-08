@@ -82,6 +82,12 @@ func (svc *OWServerBinding) Start(hc *hubclient.HubClient) (err error) {
 	svc.hc.SetActionHandler(svc.HandleActionRequest)
 	svc.hc.SetConfigHandler(svc.HandleConfigRequest)
 
+	//myProfile := authclient.NewProfileClient(svc.hc)
+	//err = myProfile.SetServicePermissions(WriteConfigCap, []string{
+	//	authapi.ClientRoleManager,
+	//	authapi.ClientRoleAdmin,
+	//	authapi.ClientRoleService})
+
 	// publish this binding's TD document
 	td := svc.CreateBindingTD()
 	err = svc.hc.PubTD(td)

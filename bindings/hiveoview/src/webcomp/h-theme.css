@@ -10,7 +10,14 @@
     }
 
     --pico-form-element-spacing-vertical: 0.6rem;
-    
+
+    /*differentiate background of readonly inputs from writable*/
+
+    input[readonly] {
+        --pico-form-element-background-color: auto;
+    }
+
+
     /* if height is mobile in landscape then reduce vertical spacing*/
     @media (max-height: 700px) {
         --pico-spacing: 0.75rem; /* base spacing for various spacings */
@@ -22,4 +29,5 @@
 [data-theme=light],
 :root:not([data-theme=dark]) {
     --pico-background-color: #eee;
+
 }

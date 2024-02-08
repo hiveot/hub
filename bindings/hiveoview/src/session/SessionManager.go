@@ -106,15 +106,14 @@ func (sm *SessionManager) ActivateNewSession(
 	return cs, nil
 }
 
-// Close closes the hub connection and event channel, removes the session and the session cookie.
+// Close closes the hub connection and event channel, removes the session
 func (sm *SessionManager) Close(sessionID string) error {
 	sm.mux.Lock()
 	defer sm.mux.Unlock()
 
 	si, found := sm.sessions[sessionID]
 	if !found {
-		slog.Error("Close. Session not found. This is unexpected.",
-			"sessionID", sessionID)
+		slog.Info("Close. Session was already closed.", "sessionID", sessionID)
 		return errors.New("Session not found")
 	}
 	si.Close()
