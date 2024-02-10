@@ -15,9 +15,9 @@
     "incremental": true,
     // Avoid runtime imports that are unnecessary
     "lib": [
-      "esnext"
+      "es2022"
     ],
-    "module": "commonjs",
+    "module": "ES2020",
     "moduleResolution": "node",
     "noEmit": false,
     "noEmitOnError": false,

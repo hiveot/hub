@@ -1,30 +1,30 @@
-import type { ZWaveController, ZWaveNode } from "zwave-js";
-import { RFRegion } from "zwave-js";
-import type { ThingTD } from "@hivelib/things/ThingTD";
-import { DataSchema } from "@hivelib/things/dataSchema";
-import { DataType, } from "@hivelib/vocab/vocabulary";
+import type {ZWaveController, ZWaveNode} from "zwave-js";
+import {RFRegion} from "zwave-js";
+import type {ThingTD} from "@hivelib/things/ThingTD";
+import {DataSchema} from "@hivelib/things/dataSchema";
+import {DataType,} from "@hivelib/vocab/vocabulary";
 
-// parseController adds controller actions and attributes to the Thing
+// parseController adds controller actions and attributes to the Thing TD
 export function parseController(td: ThingTD, ctl: ZWaveController) {
     // td.AddProperty("sdkVersion", "Z-Wave SDK version", DataType.String, ctl.sdkVersion.toString());
     // td.AddProperty("homeID", "Network ID", DataType.Number, ctl.homeId.toString());
 
     if (ctl.rfRegion) {
         td.AddProperty("rfRegion", "", "RF Region", DataType.String)
-            .SetAsEnum(RFRegion, ctl.rfRegion)
+            .SetAsEnum(RFRegion)
             .SetAsConfiguration()
             .SetDescription("RF Region the controller is set to")
     }
 
     // controller events. Note these must match the controller event handler
     td.AddEvent("healNetworkState", "healNetworkState", "Heal Network Progress", undefined,
-        new DataSchema({ title: "Heal State", type: DataType.String }))
+        new DataSchema({title: "Heal State", type: DataType.String}))
     td.AddEvent("inclusionState", "inclusionState", "Node Inclusion Progress", undefined,
-        new DataSchema({ title: "Inclusion State", type: DataType.String }))
+        new DataSchema({title: "Inclusion State", type: DataType.String}))
     td.AddEvent("nodeAdded", "nodeAdded", "Node Added", undefined,
-        new DataSchema({ title: "ThingID", type: DataType.String }))
+        new DataSchema({title: "ThingID", type: DataType.String}))
     td.AddEvent("nodeRemoved", "nodeRemoved", "Node Removed", undefined,
-        new DataSchema({ title: "ThingID", type: DataType.String }))
+        new DataSchema({title: "ThingID", type: DataType.String}))
 
     // controller network actions
     td.AddAction("beginInclusion", "beginInclusion", "Start add node process",
@@ -39,15 +39,15 @@ export function parseController(td: ThingTD, ctl: ZWaveController) {
     // controller node actions
     td.AddAction("getNodeNeighbors", "getNodeNeighbors", "Update Neighbors",
         "Request update to a node's neighbor list",
-        new DataSchema({ title: "ThingID", type: DataType.String })
+        new DataSchema({title: "ThingID", type: DataType.String})
     )
     td.AddAction("healNode", "healNode", "Heal the node",
         "Heal the node and update its neighbor list",
-        new DataSchema({ title: "ThingID", type: DataType.String })
+        new DataSchema({title: "ThingID", type: DataType.String})
     )
     td.AddAction("removeFailedNode", "removeFailedNode", "Remove failed node",
         "Remove a failed node from the network",
-        new DataSchema({ title: "ThingID", type: DataType.String })
+        new DataSchema({title: "ThingID", type: DataType.String})
     )
     // td.AddAction("replaceFailedNode", "Replace a failed node with another node (thingID, thingID)", DataType.String)
 

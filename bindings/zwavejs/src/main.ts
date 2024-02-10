@@ -1,16 +1,17 @@
 #!/usr/bin/env node
-import { env, exit } from "process";
-import { NewHubClient } from "@hivelib/hubclient/HubClient"
-import { ZwaveJSBinding } from "./ZWaveJSBinding";
+import {env, exit} from "process";
+import {NewHubClient} from "@hivelib/hubclient/HubClient"
+import {ZwaveJSBinding} from "./ZWaveJSBinding";
 import path from "path";
-import { locateHub } from "@hivelib/hubclient/locateHub";
+import {locateHub} from "@hivelib/hubclient/locateHub";
 import fs from "fs";
-import { BindingConfig } from "./BindingConfig";
+import {BindingConfig} from "./BindingConfig";
 import * as tslog from 'tslog';
-const log = new tslog.Logger({ name: "zwavejs" })
+
+const log = new tslog.Logger({name: "zwavejs"})
 
 process.on("uncaughtException", (err) => {
-    log.error("uncaught exception")
+    log.error("uncaught exception:", err)
 })
 
 async function main() {

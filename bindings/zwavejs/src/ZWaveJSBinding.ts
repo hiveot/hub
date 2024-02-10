@@ -1,19 +1,18 @@
 // ZWaveJSBinding.ts holds the entry point to the zwave binding along with its configuration
-import type { TranslatedValueID, ZWaveNode } from "zwave-js";
-import { InterviewStage } from "zwave-js";
-import { parseNode } from "./parseNode";
-import { ParseValues } from "./ParseValues";
-import { ZWAPI } from "./ZWAPI.js";
-import { HubClient } from "@hivelib/hubclient/HubClient";
-import { parseController } from "./parseController";
-import { logVid } from "./logVid";
-import { getPropID } from "./getPropID";
-import { ActionTypes, EventTypes, PropTypes } from "@hivelib/vocab/vocabulary";
+import type {TranslatedValueID, ZWaveNode} from "zwave-js";
+import {InterviewStage} from "zwave-js";
+import {parseNode} from "./parseNode";
+import {ParseValues} from "./ParseValues";
+import {ZWAPI} from "./ZWAPI.js";
+import {HubClient} from "@hivelib/hubclient/HubClient";
+import {parseController} from "./parseController";
+import {logVid} from "./logVid";
+import {getPropID} from "./getPropID";
+import {ActionTypes, EventTypes} from "@hivelib/vocab/vocabulary";
 import fs from "fs";
-import { ThingValue } from "@hivelib/things/ThingValue";
-import { BindingConfig } from "./BindingConfig";
+import {ThingValue} from "@hivelib/things/ThingValue";
+import {BindingConfig} from "./BindingConfig";
 import * as tslog from 'tslog';
-import { nextTick } from "process";
 
 const log = new tslog.Logger()
 
@@ -117,7 +116,7 @@ export class ZwaveJSBinding {
             case "refreshinfo":
                 // do not use when node interview is not yet complete
                 if (node.interviewStage == InterviewStage.Complete) {
-                    node.refreshInfo({ waitForWakeup: true }).then()
+                    node.refreshInfo({waitForWakeup: true}).then()
                 }
                 break;
             case "refreshvalues":
@@ -136,6 +135,7 @@ export class ZwaveJSBinding {
         }
         return ""
     }
+
     // handle configuration requests as defined in the TD
     handleConfigRequest(tv: ThingValue): boolean {
         return false
@@ -178,16 +178,17 @@ export class ZwaveJSBinding {
         if (node.isControllerNode) {
             parseController(thingTD, this.zwapi.driver.controller)
         }
-        // republish the TD and its values
+        // republish the TD
         this.hc.pubTD(thingTD)
 
+        // publish the thing property (attr, config) values
         let newValues = new ParseValues(node);
         let lastNodeValues = this.lastValues.get(thingTD.id)
         let diffValues = newValues
         if (lastNodeValues) {
             diffValues = lastNodeValues.diffValues(newValues)
         }
-        this.hc.pubProperties(thingTD.id, diffValues.values)
+        this.hc.pubProperties(thingTD.id, diffValues.values).then()
         this.lastValues.set(thingTD.id, newValues);
 
     }
