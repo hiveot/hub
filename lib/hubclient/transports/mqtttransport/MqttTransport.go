@@ -242,7 +242,7 @@ func (tp *MqttHubTransport) Disconnect() {
 		tp.mux.Lock()
 		tp._inboxTopic = ""
 		tp._connectID = ""
-		slog.Info("clearing connectid")
+		slog.Debug("clearing connectid")
 		tp._status.ConnectionStatus = transports.Disconnected
 		tp._status.LastError = errors.New("disconnected by user")
 		err := pcl.Disconnect(context.Background())
@@ -386,7 +386,7 @@ func (tp *MqttHubTransport) onPahoConnectionError(err error) {
 		}
 		slog.Info("onPahoConnectionError", "err", connErr.Error())
 		// don't retry on authentication error
-		if connStatus == transports.Unauthorized {
+		if connStatus == transports.Unauthorized && tp._pahoClient != nil {
 			_ = tp._pahoClient.Disconnect(context.Background())
 		}
 	}()
@@ -454,7 +454,7 @@ func (tp *MqttHubTransport) PubEvent(topic string, payload []byte) (err error) {
 // PubRequest publishes a request message and waits for an answer or until timeout
 // In order to receive replies, an inbox subscription is added on the first request.
 func (tp *MqttHubTransport) PubRequest(topic string, payload []byte) (resp []byte, err error) {
-	slog.Info("PubRequest", "topic", topic)
+	slog.Debug("PubRequest", "topic", topic)
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), tp.timeout)
 	defer cancelFn()
@@ -541,7 +541,7 @@ func (tp *MqttHubTransport) PubRequest(topic string, payload []byte) (resp []byt
 //	optionally include an error message in the reply
 func (tp *MqttHubTransport) sendReply(req *paho.Publish, payload []byte, errResp error) (err error) {
 
-	slog.Info("sendReply",
+	slog.Debug("sendReply",
 		slog.String("topic", req.Topic),
 		slog.String("responseTopic", req.Properties.ResponseTopic))
 
@@ -639,7 +639,7 @@ func (tp *MqttHubTransport) sub(topic string) error {
 // Incoming messages are passed to the event or request handler, depending on whether
 // a reply-to address and correlation-ID is set.
 func (tp *MqttHubTransport) Subscribe(topic string) error {
-	slog.Info("Subscribe", "topic", topic)
+	slog.Debug("Subscribe", "topic", topic)
 	err := tp.sub(topic)
 	if err != nil {
 		return err

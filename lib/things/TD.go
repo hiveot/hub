@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/lib/vocab"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -172,15 +171,14 @@ func (tdoc *TD) AddEvent(
 //	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
 //	title is the short display title of the property.
 //	dataType is the type of data the property holds, WoTDataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
-//	initialValue optional value, in text format, at time of creation. Intended for testing or debugging
-func (tdoc *TD) AddProperty(name string, propType string, title string, dataType string, initialValue string) *PropertyAffordance {
+func (tdoc *TD) AddProperty(name string, propType string, title string, dataType string) *PropertyAffordance {
 	prop := &PropertyAffordance{
 		DataSchema: DataSchema{
-			AtType:       propType,
-			Title:        title,
-			Type:         dataType,
-			ReadOnly:     true,
-			InitialValue: initialValue,
+			AtType:   propType,
+			Title:    title,
+			Type:     dataType,
+			ReadOnly: true,
+			//InitialValue: initialValue,
 		},
 	}
 	tdoc.UpdateProperty(name, prop)
@@ -188,23 +186,18 @@ func (tdoc *TD) AddProperty(name string, propType string, title string, dataType
 }
 
 // AddPropertyAsString is short for adding a read-only string property
-func (tdoc *TD) AddPropertyAsString(name string, propType string, title string, initialValue string) *PropertyAffordance {
-	return tdoc.AddProperty(name, propType, title, vocab.WoTDataTypeString, initialValue)
+func (tdoc *TD) AddPropertyAsString(name string, propType string, title string) *PropertyAffordance {
+	return tdoc.AddProperty(name, propType, title, vocab.WoTDataTypeString)
 }
 
 // AddPropertyAsBool is short for adding a read-only boolean property
-func (tdoc *TD) AddPropertyAsBool(name string, propType string, title string, initialValue bool) *PropertyAffordance {
-	valAsString := "false"
-	if initialValue {
-		valAsString = "true"
-	}
-	return tdoc.AddProperty(name, propType, title, vocab.WoTDataTypeBool, valAsString)
+func (tdoc *TD) AddPropertyAsBool(name string, propType string, title string) *PropertyAffordance {
+	return tdoc.AddProperty(name, propType, title, vocab.WoTDataTypeBool)
 }
 
 // AddPropertyAsInt is short for adding a read-only integer property
-func (tdoc *TD) AddPropertyAsInt(name string, propType string, title string, initialValue int) *PropertyAffordance {
-	valAsString := strconv.Itoa(initialValue)
-	return tdoc.AddProperty(name, propType, title, vocab.WoTDataTypeInteger, valAsString)
+func (tdoc *TD) AddPropertyAsInt(name string, propType string, title string) *PropertyAffordance {
+	return tdoc.AddProperty(name, propType, title, vocab.WoTDataTypeInteger)
 }
 
 // AddSwitchAction is short for adding an action to control a switch

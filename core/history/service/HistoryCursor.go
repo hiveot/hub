@@ -4,6 +4,7 @@ import (
 	"github.com/hiveot/hub/core/history/historyapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -35,12 +36,27 @@ const filterContextKey = "name"
 //
 // This returns the value, or nil if the key is invalid
 func decodeValue(bucketID string, key string, data []byte) (thingValue *things.ThingValue, valid bool) {
-	// key is constructed as  timestamp/agentID/thingID/valueName/{a|e}
+
+	// key is constructed as  timestamp/name/{a|e|c}/sender, where sender can be omitted
 	parts := strings.Split(key, "/")
 	if len(parts) < 2 {
 		return thingValue, false
 	}
 	millisec, _ := strconv.ParseInt(parts[0], 10, 64)
+	name := parts[1]
+	senderID := ""
+	messageType := vocab.MessageTypeEvent
+	if len(parts) >= 2 {
+		if parts[2] == "a" {
+			messageType = vocab.MessageTypeAction
+		} else if parts[2] == "c" {
+			messageType = vocab.MessageTypeConfig
+		}
+	}
+	if len(parts) >= 3 {
+		senderID = parts[3]
+	}
+
 	// the bucketID consists of the agentID/thingID
 	addrParts := strings.Split(bucketID, "/")
 	if len(addrParts) < 2 {
@@ -52,9 +68,11 @@ func decodeValue(bucketID string, key string, data []byte) (thingValue *things.T
 	thingValue = &things.ThingValue{
 		ThingID:     thingID,
 		AgentID:     agentID,
-		Name:        parts[1],
+		Name:        name,
 		Data:        data,
 		CreatedMSec: millisec,
+		ValueType:   messageType,
+		SenderID:    senderID,
 	}
 	return thingValue, true
 }
@@ -77,9 +95,9 @@ func (svc *ReadHistoryService) findNextName(
 			// key is invalid. This means we reached the end of cursor
 			return nil, false
 		}
-		// key is constructed as  {timestamp}/{valueName}/{a|e}
+		// key is constructed as  {timestamp}/{valueName}/{a|e|c}/{sender}
 		parts := strings.Split(k, "/")
-		if len(parts) != 3 {
+		if len(parts) != 4 {
 			// key exists but is invalid. skip this entry
 			slog.Warn("findNextName: invalid key", "key", k)
 		} else {
@@ -118,9 +136,9 @@ func (svc *ReadHistoryService) findPrevName(
 			// key is invalid. This means we reached the beginning of cursor
 			return thingValue, false
 		}
-		// key is constructed as  {timestamp}/{valueName}/{a|e}
+		// key is constructed as  {timestamp}/{valueName}/{a|e|c}/sender
 		parts := strings.Split(k, "/")
-		if len(parts) != 3 {
+		if len(parts) != 4 {
 			// key exists but is invalid. skip this entry
 		} else {
 			// check timestamp and name must match

@@ -2,6 +2,8 @@ package service
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
@@ -207,7 +209,7 @@ func (svc *HiveovService) Stop() {
 //
 // serverPort is the port of the web server will listen on
 // debug to enable debugging output
-// signingKey used to sign cookies
+// signingKey used to sign cookies. Using nil means that a server restart will invalidate the cookies
 // rootPath
 func NewHiveovService(serverPort int, debug bool,
 	signingKey *ecdsa.PrivateKey, rootPath string,
@@ -215,6 +217,9 @@ func NewHiveovService(serverPort int, debug bool,
 	templatePath := rootPath
 	if rootPath != "" {
 		templatePath = path.Join(rootPath, "views")
+	}
+	if signingKey == nil {
+		signingKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	}
 	tm := views.InitTemplateManager(templatePath)
 	svc := HiveovService{

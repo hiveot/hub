@@ -3,6 +3,7 @@ package hubclient
 import (
 	"context"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/lib/hubclient/transports"
@@ -346,6 +347,23 @@ func (hc *HubClient) PubConfig(
 	addr := hc.MakeAddress(vocab.MessageTypeConfig, agentID, thingID, propName, hc.clientID)
 	slog.Info("PubConfig", "addr", addr)
 	_, err := hc.transport.PubRequest(addr, payload)
+	return err
+}
+
+// PubProps publishes a 'properties' event containing a map of property name and values.
+//
+//	agentID of the device that handles the action for the things or service capability
+//	thingID is the destination thingID that handles the action
+//	propName is the ID of the property to change as described in the TD properties section
+//	payload is the optional payload of the configuration as described in the Thing's TD
+//
+// This returns an error if an error was returned or no confirmation was received
+func (hc *HubClient) PubProps(thingID string, props map[string]string) error {
+
+	addr := hc.MakeAddress(vocab.MessageTypeEvent, hc.clientID, thingID, vocab.EventNameProps, hc.clientID)
+	slog.Info("PubProps", "addr", addr)
+	payload, _ := json.Marshal(props)
+	err := hc.transport.PubEvent(addr, payload)
 	return err
 }
 

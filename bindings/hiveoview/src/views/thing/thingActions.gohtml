@@ -4,30 +4,36 @@
 <ul class="h-grid-table thing-actions" striped border>
 	<li>
 		<div class="h-show-sm">{{/*icon*/}}</div>
-		<div style="display:grid">
-			<small>ID</small>
-			<span>Name</span>
+		<div class="id-title">
+			<small><i>ID</i></small>
+			<span>Title</span>
 		</div>
 		<div>Type</div>
-		<div class="h-show-md"> Description</div>
+		<div class="h-show-md">Last Action</div>
+		<div class="h-show-md">Date</div>
+		<div class="h-show-lg">Description</div>
 	</li>
 
     {{range $k,$v := .TD.Actions }}
         {{- /*gotype: github.com/hiveot/hub/lib/things.ActionAffordance*/ -}}
 				<li>
 					<div class="h-show-sm">{{/*icon*/}}</div>
-					<div style="display:grid">
-						<small>{{$k}}</small>
+					<div class="id-title">
+						<small><i>{{$k}}</i></small>
 						<span>{{$v.Title}}</span>
 					</div>
 					<div>{{$v.ActionType}}</div>
-					<div class="h-show-md">{{$v.Description}}</div>
+					<div class="h-show-md">{{$.Values.ToString $k}}</div>
+					<div class="h-show-md"
+					     title="Updated: {{$.Values.Age $k}} ago by {{($.Values.SenderID $k)}}">
+              {{$.Values.Updated $k}}</div>
+					<div class="h-show-lg">{{$v.Description}}</div>
 				</li>
     {{end}}
-    {{if not .}}
+    {{if not .TD.Actions}}
 			<li>
 				<div style="grid-column: 1/5 ">
-					<i>No actions defined blah blah blah 12345</i>
+					<i>No actions defined...</i>
 				</div>
 			</li>
     {{end}}
@@ -39,7 +45,9 @@
     @media (width < 576px) {
         .thing-actions {
             /*xs, show column 2, 3 */
-            grid-template-columns: minmax(200px, 2fr) minmax(100px, 1fr);
+            grid-template-columns:
+				            minmax(200px, max-content)
+				            minmax(100px, 1fr);
         }
     }
 
@@ -47,18 +55,34 @@
         .thing-actions {
             /*sm, show column 1,2,3 */
             grid-template-columns:
-				            40px minmax(200px, 2fr) minmax(100px, 1fr);;
+				            40px
+				            minmax(200px, max-content)
+				            minmax(100px, 1fr);
         }
     }
 
     @media (width >= 768px) {
         .thing-actions {
-            /*md,show column 1,2,3,4 */
+            /*md,show column 1,2,3,4,5 */
             grid-template-columns:
-				            40px
-				            minmax(200px, max-content)
-				            minmax(100px, max-content)
-				            minmax(100px, 1fr);
+				            40px/*icon*/
+				            minmax(200px, max-content) /*name*/
+				            minmax(100px, max-content)/*type*/
+				            minmax(100px, max-content) /*last action*/
+				            minmax(100px, 1fr); /*date*/
+        }
+    }
+
+    @media (width >= 1024px) {
+        .thing-actions {
+            /*lg,show column 1-6 */
+            grid-template-columns:
+				            40px/*icon*/
+				            minmax(200px, max-content) /*name*/
+				            minmax(100px, max-content)/*type*/
+				            minmax(100px, max-content) /*last action*/
+				            minmax(100px, max-content) /*date*/
+				            minmax(100px, 1fr); /*description*/
         }
     }
 

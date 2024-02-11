@@ -35,8 +35,10 @@ const port = 8080 // default webserver port
 func main() {
 	var signingKey *ecdsa.PrivateKey
 	serverPort := port
+	extfs := false
 
 	flag.IntVar(&serverPort, "port", serverPort, "Webserver port")
+	flag.BoolVar(&extfs, "extfs", extfs, "Use external gohtml filesystem")
 	env := plugin.GetAppEnvironment("", true)
 	env.LogLevel = "info"
 	logging.SetLogging(env.LogLevel, "")
@@ -53,8 +55,11 @@ func main() {
 		signingKey, err = jwt.ParseECPrivateKeyFromPEM(keyData)
 	}
 	// development only, serve files and parse templates from filesystem
-	cwd, _ := os.Getwd()
-	rootPath := path.Join(cwd, "bindings/hiveoview/src")
+	rootPath := ""
+	if extfs {
+		cwd, _ := os.Getwd()
+		rootPath = path.Join(cwd, "bindings/hiveoview/src")
+	}
 
 	svc := service.NewHiveovService(serverPort, false, signingKey, rootPath)
 	// StartPlugin will connect to the hub and wait for signal to end

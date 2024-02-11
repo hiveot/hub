@@ -19,7 +19,7 @@
 					<input id="thing-id" readonly placeholder="{{.ThingID}}"/>
 
 					<label for="config-input">{{.Config.Title}}</label>
-            {{$iv := .Config.InitialValue}}
+            {{$iv := .Value}}
             {{$minmax:=""}}
 
             {{if .Config.Enum }}

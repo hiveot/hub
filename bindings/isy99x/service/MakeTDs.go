@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/bindings/isy99x/service/isyapi"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/vocab"
+	"strconv"
 	"strings"
 )
 
@@ -69,20 +70,23 @@ func (svc *IsyBinding) MakeBindingTD() *things.TD {
 	td := things.NewTD(thingID, "OWServer binding", vocab.DeviceTypeBinding)
 
 	// these are configured through the configuration file.
-	prop := td.AddProperty(vocab.VocabPollInterval, vocab.VocabPollInterval, "Poll Interval", vocab.WoTDataTypeInteger, "")
+	prop := td.AddProperty(vocab.VocabPollInterval, vocab.VocabPollInterval, "Poll Interval", vocab.WoTDataTypeInteger)
 	prop.Unit = vocab.UnitNameSecond
-	prop.InitialValue = fmt.Sprintf("%d %s", svc.config.PollInterval, vocab.UnitNameSecond)
-
-	prop = td.AddProperty("address", vocab.VocabGatewayAddress, "OWServer gateway IP address", vocab.WoTDataTypeString, "")
-	prop.InitialValue = fmt.Sprintf("%s", svc.config.IsyAddress)
+	prop = td.AddProperty(vocab.VocabGatewayAddress, vocab.VocabGatewayAddress, "OWServer gateway IP address", vocab.WoTDataTypeString)
 
 	// gateway events
 	_ = td.AddEvent(vocab.VocabConnected, vocab.VocabConnected, "Connected to OWServer gateway", vocab.WoTDataTypeBool, nil)
 	_ = td.AddEvent(vocab.VocabDisconnected, vocab.VocabDisconnected, "Connected lost to OWServer gateway", vocab.WoTDataTypeBool, nil)
 
 	// no gateway actions
-
 	return td
+}
+
+func (svc *IsyBinding) MakeBindingProps() map[string]string {
+	pv := make(map[string]string)
+	pv[vocab.VocabPollInterval] = fmt.Sprintf("%d", svc.config.PollInterval)
+	pv[vocab.VocabGatewayAddress] = svc.config.IsyAddress
+	return pv
 }
 
 // MakeGatewayTD creates a TD of the ISY gateway device
@@ -97,59 +101,65 @@ func (svc *IsyBinding) MakeGatewayTD(isyDevice *isyapi.IsyDevice) *things.TD {
 	td := things.NewTD(thingID, title, deviceType)
 
 	// device read-only attributes
-	td.AddPropertyAsString(vocab.VocabManufacturer, vocab.VocabManufacturer,
-		"Manufacturer", isyDevice.Configuration.DeviceSpecs.Make) // Universal Devices Inc.
-	td.AddPropertyAsString(vocab.VocabModel, vocab.VocabModel,
-		"Model", isyDevice.Configuration.Platform) // ISY-C-99
-	td.AddPropertyAsString(vocab.VocabSoftwareVersion, vocab.VocabSoftwareVersion,
-		"AppVersion", isyDevice.Configuration.AppVersion) // 3.2.6
-	td.AddPropertyAsString(vocab.VocabMAC, vocab.VocabMAC,
-		"MAC", isyDevice.Configuration.Root.ID) // 00:21:xx:yy:... (mac)
-	td.AddPropertyAsString(vocab.VocabProduct, vocab.VocabProduct,
-		"Product", isyDevice.Configuration.Product.Description) // ISY 99i 256
-	td.AddPropertyAsString("ProductID", vocab.VocabProduct,
-		"Product ID", isyDevice.Configuration.Product.ID) // 1020
-	prop := td.AddPropertyAsInt("sunrise", "",
-		"Sunrise in seconds since epoch", isyDevice.Time.Sunrise)
+	td.AddPropertyAsString(vocab.VocabManufacturer, vocab.VocabManufacturer, "Manufacturer")     // Universal Devices Inc.
+	td.AddPropertyAsString(vocab.VocabModel, vocab.VocabModel, "Model")                          // ISY-C-99
+	td.AddPropertyAsString(vocab.VocabSoftwareVersion, vocab.VocabSoftwareVersion, "AppVersion") // 3.2.6
+	td.AddPropertyAsString(vocab.VocabMAC, vocab.VocabMAC, "MAC")                                // 00:21:xx:yy:... (mac)
+	td.AddPropertyAsString(vocab.VocabProduct, vocab.VocabProduct, "Product")                    // ISY 99i 256
+	td.AddPropertyAsString("ProductID", vocab.VocabProduct, "Product ID")                        // 1020
+	prop := td.AddPropertyAsInt("sunrise", "", "Sunrise in seconds since epoch")
 	prop.Unit = vocab.UnitNameSecond
-	prop = td.AddPropertyAsInt("sunset", "",
-		"Sunset in seconds since epoch", isyDevice.Time.Sunrise)
+	prop = td.AddPropertyAsInt("sunset", "", "Sunset in seconds since epoch")
 	prop.Unit = vocab.UnitNameSecond
 
 	// device configuration
-	prop = td.AddPropertyAsString(vocab.VocabName, vocab.VocabName,
-		"Name", isyDevice.Configuration.Root.Name) // custom name
+	// custom name
+	prop = td.AddPropertyAsString(vocab.VocabName, vocab.VocabName, "Name")
 	prop.ReadOnly = false
 
 	// network config
-	prop = td.AddPropertyAsBool("DHCP", "",
-		"DHCP enabled", isyDevice.Network.Interface.IsDHCP) //
+	prop = td.AddPropertyAsBool("DHCP", "", "DHCP enabled")
 	prop.ReadOnly = false
-	prop = td.AddPropertyAsString(vocab.VocabLocalIP, vocab.VocabLocalIP,
-		"IP address", isyDevice.Address) //
+	prop = td.AddPropertyAsString(vocab.VocabLocalIP, vocab.VocabLocalIP, "IP address")
 	prop.ReadOnly = isyDevice.Network.Interface.IsDHCP == false
-	prop = td.AddPropertyAsString("Gateway login name", "",
-		"Name", svc.config.LoginName)
+	prop = td.AddPropertyAsString("Gateway login name", "", "Name")
 	prop.ReadOnly = false
-	prop = td.AddPropertyAsString("Gateway login password", "",
-		"Password", "")
+	prop = td.AddPropertyAsString("Gateway login password", "", "Password")
 	prop.WriteOnly = true
 
 	// time config
-	prop = td.AddPropertyAsString("NTPHost", "",
-		"Network Time Host", isyDevice.System.NTPHost)
+	prop = td.AddPropertyAsString("NTPHost", "", "Network Time Host")
 	prop.ReadOnly = false
-	prop = td.AddPropertyAsBool("NTPEnabled", "",
-		"NTP Enabled", isyDevice.System.NTPEnabled)
+	prop = td.AddPropertyAsBool("NTPEnabled", "", "NTP Enabled")
 	prop.ReadOnly = false
-	td.AddPropertyAsBool("DSTEnabled", "",
-		"DST Enabled", isyDevice.Time.DST)
+	td.AddPropertyAsBool("DSTEnabled", "", "DST Enabled")
 	prop.ReadOnly = false
 
 	// TODO: any events?
 	// TODO: any actions?
 	//
 	return td
+}
+
+// MakeGatewayProps generates a properties map for attribute and config properties of ISY gateway device
+func (svc *IsyBinding) MakeGatewayProps(isyDevice *isyapi.IsyDevice) map[string]string {
+	pv := make(map[string]string)
+	pv[vocab.VocabManufacturer] = isyDevice.Configuration.DeviceSpecs.Make
+	pv[vocab.VocabModel] = isyDevice.Configuration.Platform
+	pv[vocab.VocabSoftwareVersion] = isyDevice.Configuration.AppVersion
+	pv[vocab.VocabMAC] = isyDevice.Configuration.Root.ID
+	pv[vocab.VocabProduct] = isyDevice.Configuration.Product.Description
+	pv["ProductID"] = isyDevice.Configuration.Product.ID
+	pv["sunrise"] = fmt.Sprintf("%d", isyDevice.Time.Sunrise)           // seconds since epoc
+	pv["sunset"] = fmt.Sprintf("%d", isyDevice.Time.Sunset)             // seconds since epoc
+	pv[vocab.VocabName] = isyDevice.Configuration.Root.Name             // custom name
+	pv["DHCP"] = strconv.FormatBool(isyDevice.Network.Interface.IsDHCP) // true or false
+	pv[vocab.VocabLocalIP] = isyDevice.Address
+	pv["Gateway login name"] = svc.config.LoginName
+	pv["NTPHost"] = isyDevice.System.NTPHost
+	pv["NTPEnabled"] = strconv.FormatBool(isyDevice.System.NTPEnabled)
+	pv["DSTEnabled"] = strconv.FormatBool(isyDevice.Time.DST)
+	return pv
 }
 
 // MakeNodeTD makes a TD document of an isy node
@@ -171,8 +181,7 @@ func (svc *IsyBinding) MakeNodeTD(node *isyapi.IsyNode) (td *things.TD) {
 	td = things.NewTD(node.Address, node.Name, deviceType)
 
 	//--- Node attributes (read-only) that describe the device ---
-	prop := td.AddPropertyAsInt(
-		"flag", "", "Node Flag", int(node.Flag))
+	prop := td.AddPropertyAsInt("flag", "", "Node Flag")
 	prop.Description = "A bit mask: 0x01 -- Node is initialized (internal)," +
 		" 0x02 -- Node is going to be crawled (internal)," +
 		" 0x04 -- This is a group node," +
@@ -182,23 +191,17 @@ func (svc *IsyBinding) MakeNodeTD(node *isyapi.IsyNode) (td *things.TD) {
 		" 0x40 -- Node shall be deleted," +
 		" 0x80 -- Node is device root"
 
-	prop = td.AddPropertyAsString(
-		"nodeType", "", "Node Type", node.Type)
+	prop = td.AddPropertyAsString("nodeType", "", "Node Type")
 	prop.Description = "<device cat>.<sub cat>.<model>.<reserved>"
 
-	prop = td.AddPropertyAsString(
-		"enabled", "", "Is the node plugged in", node.Enabled)
+	prop = td.AddPropertyAsString("enabled", "", "Is the node plugged in")
 	prop.Description = "Whether or not the node is enabled (plugged in). Note: this feature only works on 99 Series"
 
-	prop = td.AddPropertyAsString(
-		"property", "", "raw property field",
-		fmt.Sprintf("property id='%s' value='%s' formatted='%s' uom='%s'",
-			node.Property.ID, node.Property.Value, node.Property.Formatted, node.Property.UOM))
+	prop = td.AddPropertyAsString("property", "", "raw property field")
 	prop.Description = "Device's property for troubleshooting."
 
 	//--- Node config ---
-	prop = td.AddPropertyAsString(
-		vocab.VocabName, vocab.VocabName, "Name", node.Name)
+	prop = td.AddPropertyAsString(vocab.VocabName, vocab.VocabName, "Name")
 	prop.ReadOnly = false
 
 	//--- Node events (outputs) depend on the device type ---
@@ -226,6 +229,17 @@ func (svc *IsyBinding) MakeNodeTD(node *isyapi.IsyNode) (td *things.TD) {
 	} else if deviceType == vocab.DeviceTypeOnOffSwitch {
 		td.AddSwitchAction(propName)
 	}
-
 	return td
+}
+
+// MakeNodeProps generates a properties map for attribute and config properties of ISY gateway device
+func (svc *IsyBinding) MakeNodeProps(node *isyapi.IsyNode) map[string]string {
+	pv := make(map[string]string)
+	pv["flag"] = fmt.Sprintf("%d", node.Flag)
+	pv["nodeType"] = node.Type
+	pv["enabled"] = node.Enabled
+	pv["property"] = fmt.Sprintf("property id='%s' value='%s' formatted='%s' uom='%s'",
+		node.Property.ID, node.Property.Value, node.Property.Formatted, node.Property.UOM)
+	pv[vocab.VocabName] = node.Name
+	return pv
 }

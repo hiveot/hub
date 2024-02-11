@@ -1,4 +1,4 @@
-package src
+package test
 
 import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/service"

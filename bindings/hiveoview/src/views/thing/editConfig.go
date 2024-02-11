@@ -18,6 +18,7 @@ import (
 func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 	var prop *things.PropertyAffordance
 	var td things.TD
+	var value string
 	data := make(map[string]any)
 	agentID := r.URL.Query().Get("agentID")
 	thingID := r.URL.Query().Get("thingID")
@@ -34,11 +35,19 @@ func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 				prop = td.GetProperty(propKey)
 			}
 		}
+		if err == nil {
+			rh := historyclient.NewReadHistoryClient(hc)
+			tvs, _ := rh.GetLatest(agentID, thingID, []string{propKey})
+			if tvs != nil && len(tvs) > 0 {
+				value = string(tvs.ToString(propKey))
+			}
+		}
 	}
 	data["AgentID"] = agentID
 	data["ThingID"] = thingID
 	data["Key"] = propKey
 	data["Config"] = prop
+	data["Value"] = value
 
 	app.RenderAppOrFragment(w, r, "editConfig.gohtml", data)
 }
@@ -85,7 +94,7 @@ func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 	cl := historyclient.NewReadHistoryClient(hc)
 	tvs, err := cl.GetLatest(agentID, thingID, []string{propKey})
 	propAddr := fmt.Sprintf("%s/%s/%s", agentID, thingID, propKey)
-	propVal := fmt.Sprintf("%.100s", tvs[0].Data)
+	propVal := fmt.Sprintf("%.100s", tvs[propKey].Data)
 	slog.Info("Updated value of prop", "propAddr", propAddr, "propVal", propVal)
 	mySession.SendSSE(propAddr, propVal)
 

@@ -40,7 +40,7 @@ func (cl *ReadHistoryClient) GetCursor(
 //	thingID the event or action belongs to
 //	names optionally filter on specific property, event or action names. nil for all values
 func (cl *ReadHistoryClient) GetLatest(
-	agentID string, thingID string, names []string) ([]*things.ThingValue, error) {
+	agentID string, thingID string, names []string) (things.ThingValueMap, error) {
 	args := historyapi.GetLatestArgs{
 		AgentID: agentID,
 		ThingID: thingID,

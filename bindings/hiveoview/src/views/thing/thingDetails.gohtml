@@ -19,7 +19,7 @@
 				<label for="manufacturer">Device Make:</label>
 				<input id="manufacturer" type="text" readonly
 				       style="margin: 0; text-overflow: ellipsis;"
-				       placeholder="{{.Thing.Attributes.manufacturer.InitialValue}}"/>
+				       placeholder='{{.Thing.Values.ToString "manufacturer"}}'/>
 
 				<label for="age">Updated:</label>
 				<input id="age" type="text" readonly
@@ -73,4 +73,15 @@
 
 	</article>
 
+	<style>
+      /*container holding multiple values in a grid row/column*/
+      .id-title {
+          display: inline-flex;
+          flex-direction: column;
+          /*display: grid;*/
+          /*grid-auto-flow: row;*/
+          /*grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));*/
+      }
+
+	</style>
 {{end}}

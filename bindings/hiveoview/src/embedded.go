@@ -5,8 +5,9 @@ import (
 )
 
 // EmbeddedViews contains all html templates
+// FIXME: for some reason "views/*.gohtml" does not work
 //
-//go:embed views/*.gohtml
+//go:embed views
 var EmbeddedViews embed.FS
 
 // EmbeddedStatic contains all static assets

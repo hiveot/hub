@@ -281,7 +281,7 @@ func (nt *NatsTransport) ParseResponse(data []byte, resp interface{}) error {
 
 // PubEvent publishes a message and returns
 func (nt *NatsTransport) PubEvent(subject string, payload []byte) error {
-	slog.Info("PubEvent", "subject", subject)
+	slog.Debug("PubEvent", "subject", subject)
 	err := nt.nc.Publish(subject, payload)
 	return err
 }
@@ -327,7 +327,7 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *things.Thing
 				break
 			}
 			natsMsg := natsMsgs[0]
-			slog.Info("received event msg from consumer ",
+			slog.Debug("received event msg from consumer ",
 				slog.String("consumer", ci.Name),
 				slog.String("stream", ci.Stream),
 				slog.String("subject", natsMsg.Subject),

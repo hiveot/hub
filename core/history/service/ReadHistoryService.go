@@ -14,7 +14,7 @@ import (
 
 // GetPropertiesFunc is a callback function to retrieve latest properties of a Thing
 // latest properties are stored separate from the history.
-type GetPropertiesFunc func(thingAddr string, names []string) []*things.ThingValue
+type GetPropertiesFunc func(thingAddr string, names []string) things.ThingValueMap
 
 // ReadHistoryService provides read access to the history of things values.
 type ReadHistoryService struct {

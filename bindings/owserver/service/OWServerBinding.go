@@ -45,21 +45,27 @@ func (svc *OWServerBinding) CreateBindingTD() *things.TD {
 	thingID := svc.hc.ClientID()
 	td := things.NewTD(thingID, "OWServer svc", vocab.DeviceTypeBinding)
 	// these are configured through the configuration file.
-	prop := td.AddProperty(vocab.VocabPollInterval, vocab.VocabPollInterval, "Poll Interval", vocab.WoTDataTypeInteger, "")
+	prop := td.AddProperty(vocab.VocabPollInterval, vocab.VocabPollInterval, "Poll Interval", vocab.WoTDataTypeInteger)
 	prop.Unit = vocab.UnitNameSecond
-	prop.InitialValue = fmt.Sprintf("%d %s", svc.config.PollInterval, vocab.UnitNameSecond)
 
-	prop = td.AddProperty("tdInterval", vocab.VocabPollInterval, "TD Publication Interval", vocab.WoTDataTypeInteger, "")
+	prop = td.AddProperty("tdInterval", vocab.VocabPollInterval, "TD Publication Interval", vocab.WoTDataTypeInteger)
 	prop.Unit = vocab.UnitNameSecond
-	prop.InitialValue = fmt.Sprintf("%d %s", svc.config.TDInterval, vocab.UnitNameSecond)
 
-	prop = td.AddProperty("valueInterval", vocab.VocabPollInterval, "Value Republication Interval", vocab.WoTDataTypeInteger, "")
+	prop = td.AddProperty("valueInterval", vocab.VocabPollInterval, "Value Republication Interval", vocab.WoTDataTypeInteger)
 	prop.Unit = vocab.UnitNameSecond
-	prop.InitialValue = fmt.Sprintf("%d %s", svc.config.RepublishInterval, vocab.UnitNameSecond)
 
-	prop = td.AddProperty("owServerAddress", vocab.VocabGatewayAddress, "OWServer gateway IP address", vocab.WoTDataTypeString, "")
-	prop.InitialValue = fmt.Sprintf("%s", svc.config.OWServerURL)
+	prop = td.AddProperty("owServerAddress", vocab.VocabGatewayAddress, "OWServer gateway IP address", vocab.WoTDataTypeString)
 	return td
+}
+
+// MakeBindingProps generates a properties map for attribute and config properties of this binding
+func (svc *OWServerBinding) MakeBindingProps() map[string]string {
+	pv := make(map[string]string)
+	pv[vocab.VocabPollInterval] = fmt.Sprintf("%d", svc.config.PollInterval)
+	pv["tdInterval"] = fmt.Sprintf("%d", svc.config.TDInterval)
+	pv["valueInterval"] = fmt.Sprintf("%d", svc.config.RepublishInterval)
+	pv["owServerAddress"] = svc.config.OWServerURL
+	return pv
 }
 
 // Start the OWServer protocol binding
@@ -94,6 +100,9 @@ func (svc *OWServerBinding) Start(hc *hubclient.HubClient) (err error) {
 	if err != nil {
 		slog.Error("failed publishing service TD. Continuing...",
 			slog.String("err", err.Error()))
+	} else {
+		props := svc.MakeBindingProps()
+		_ = svc.hc.PubProps(td.ID, props)
 	}
 
 	// last, start polling heartbeat

@@ -4,22 +4,28 @@
 <ul class="h-grid-table thing-attr " border striped>
 	<li>
 		<div>{{/*icon*/}}</div>
-		<div>Name</div>
+		<div class="id-title">
+			<small><i>ID</i></small>
+			<span>Title</span>
+		</div>
 		<div>Value</div>
+		<div class="h-show-lg">Description</div>
 	</li>
 
     {{range $k, $v := .Attributes}}
 			<li>
 				<div>{{/*icon*/}}</div>
-				<div>
-					<span style="">{{$v.Title}}</span>
+				<div class="id-title">
+					<small><i>{{$k}}</i></small>
+					<span>{{$v.Title}}</span>
 				</div>
 				<div>
 					<span sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}">
-              {{$.Values.Get $k}}
+              {{$.Values.ToString $k}}
 					</span>
-            {{$v.DataSchema.Unit}}
+            {{$v.Unit}}
 				</div>
+				<div class="h-show-lg">{{$v.Description}}</div>
 			</li>
     {{end}}
 </ul>
@@ -29,16 +35,19 @@
     .thing-attr {
         grid-template-columns:
                 40px
-                minmax(min-content, 1fr)
-                minmax(100px, max-content);
+                minmax(min-content, max-content)
+                minmax(100px, 1fr);
     }
 
-    /*container holding multiple values in a grid row/column*/
-    .grid-col-container {
-        display: grid;
-        grid-auto-flow: row;
 
-        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-        /*grid-template-columns: minmax(min-content, max-content) minmax(min-content, 1fr);*/
+    @media (width >= 1024px) {
+        .thing-attr {
+            /*md,show column 1,2,3,4*/
+            grid-template-columns: 40px/*icon*/
+              minmax(200px, max-content) /*name*/
+              minmax(min-content, 1fr) /*value*/
+              minmax(min-content, 1fr); /*updated*/
+        }
     }
+
 </style>

@@ -90,7 +90,7 @@ func (svc *HistoryService) Start(hc *hubclient.HubClient) (err error) {
 				slog.String("thingID", msg.ThingID),
 				slog.String("name", msg.Name),
 				slog.Int64("createdMSec", msg.CreatedMSec))
-			_ = svc.addHistory.AddEvent(msg)
+			_ = svc.addHistory.AddMessage(msg)
 		})
 		// TODO: capture all actions
 		//svc.hc.Subscribe("","","","")
@@ -99,7 +99,7 @@ func (svc *HistoryService) Start(hc *hubclient.HubClient) (err error) {
 		//		slog.String("thingID", msg.ThingID),
 		//		slog.String("name", msg.Name),
 		//		slog.Int64("createdMSec", msg.CreatedMSec))
-		//	_ = svc.addHistory.AddEvent(msg)
+		//	_ = svc.addHistory.AddMessage(msg)
 		//})
 
 		// add actions to the history, filtered through retention manager

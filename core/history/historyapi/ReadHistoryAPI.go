@@ -124,5 +124,5 @@ type GetLatestArgs struct {
 
 // GetLatestResp returns the latest things values
 type GetLatestResp struct {
-	Values []*things.ThingValue `json:"values"`
+	Values things.ThingValueMap `json:"values"`
 }

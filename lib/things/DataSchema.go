@@ -34,11 +34,6 @@ type DataSchema struct {
 	// See vocab DataFormXyz "date-time", "email", "uri" (todo)
 	Format string `json:"format,omitempty"`
 
-	// Initial value at time of creation
-	// this is always a string with optionally a unit
-	// not part of the WoT definition but useful for testing and debugging
-	InitialValue string `json:"initialValue,omitempty"`
-
 	// OneOf provides constraint of data as one of the given data schemas
 	OneOf []interface{} `json:"oneOf,omitempty"`
 

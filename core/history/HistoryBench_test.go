@@ -77,7 +77,7 @@ func BenchmarkAddEvents(b *testing.B) {
 
 					for i := 0; i < tbl.nrSets; i++ {
 						ev := testData[i]
-						err := addHist.AddEvent(ev)
+						err := addHist.AddMessage(ev)
 						require.NoError(b, err)
 					}
 
@@ -88,7 +88,7 @@ func BenchmarkAddEvents(b *testing.B) {
 			func(b *testing.B) {
 				bulk := testData[0:tbl.nrSets]
 				for n := 0; n < b.N; n++ {
-					err := addHist.AddEvents(bulk)
+					err := addHist.AddMessages(bulk)
 					require.NoError(b, err)
 				}
 			})

@@ -33,7 +33,7 @@ const thingIDPrefix = "things-"
 // when testing using the capnp RPC
 var testFolder = path.Join(os.TempDir(), "test-history")
 
-const core = "nats"
+const core = "mqtt"
 
 // recommended store for history is pebble
 const historyStoreBackend = buckets.BackendPebble
@@ -111,13 +111,12 @@ func makeValueBatch(publisherID string, nrValues, nrThings, timespanSec int) (
 		randomTime := time.Now().Add(-randomSeconds)
 		thingID := thingIDPrefix + strconv.Itoa(randomID)
 
-		ev := &things.ThingValue{
-			AgentID:     publisherID,
-			ThingID:     thingID,
-			Name:        names[randomName],
-			Data:        []byte(fmt.Sprintf("%2.3f", randomValue)),
-			CreatedMSec: randomTime.UnixMilli(),
-		}
+		ev := things.NewThingValue(vocab.MessageTypeEvent,
+			publisherID, thingID, names[randomName],
+			[]byte(fmt.Sprintf("%2.3f", randomValue)), "",
+		)
+		ev.CreatedMSec = randomTime.UnixMilli()
+
 		// track the actual most recent event for the name for things 3
 		if randomID == 0 {
 			if _, exists := highest[ev.Name]; !exists ||
@@ -147,7 +146,7 @@ func addBulkHistory(svc *service.HistoryService, count int, nrThings int, timesp
 		// no thingID constraint allows adding events from any things
 		start := batchSize * i
 		end := batchSize * (i + 1)
-		err := addHist.AddEvents(evBatch[start:end])
+		err := addHist.AddMessages(evBatch[start:end])
 		if err != nil {
 			slog.Error("Problem adding events: %s", err)
 		}
@@ -197,24 +196,24 @@ func TestAddGetEvent(t *testing.T) {
 	addHist := svc.GetAddHistory()
 	ev1_1 := &things.ThingValue{AgentID: agent1ID, ThingID: thing1ID, Name: evTemperature,
 		Data: []byte("12.5"), CreatedMSec: fivemago.UnixMilli()}
-	err := addHist.AddEvent(ev1_1)
+	err := addHist.AddMessage(ev1_1)
 	assert.NoError(t, err)
 	// add thing1 humidity from 55 minutes ago
 	ev1_2 := &things.ThingValue{AgentID: agent1ID, ThingID: thing1ID, Name: evHumidity,
 		Data: []byte("70"), CreatedMSec: fiftyfivemago.UnixMilli()}
-	err = addHist.AddEvent(ev1_2)
+	err = addHist.AddMessage(ev1_2)
 	assert.NoError(t, err)
 
 	// add thing2 humidity from 5 minutes ago
 	ev2_1 := &things.ThingValue{AgentID: agent1ID, ThingID: thing2ID, Name: evHumidity,
 		Data: []byte("50"), CreatedMSec: fivemago.UnixMilli()}
-	err = addHist.AddEvent(ev2_1)
+	err = addHist.AddMessage(ev2_1)
 	assert.NoError(t, err)
 
 	// add thing2 temperature from 55 minutes ago
 	ev2_2 := &things.ThingValue{AgentID: agent1ID, ThingID: thing2ID, Name: evTemperature,
 		Data: []byte("17.5"), CreatedMSec: fiftyfivemago.UnixMilli()}
-	err = addHist.AddEvent(ev2_2)
+	err = addHist.AddMessage(ev2_2)
 	assert.NoError(t, err)
 
 	// Test 1: get events of thing1 older than 300 minutes ago - expect 1 humidity from 55 minutes ago
@@ -284,32 +283,37 @@ func TestAddPropertiesEvent(t *testing.T) {
 	defer closeFn()
 
 	action1 := &things.ThingValue{
-		AgentID: agent1,
-		ThingID: thing1ID,
-		Name:    vocab.VocabSwitch,
-		Data:    []byte("on"),
+		AgentID:   agent1,
+		ThingID:   thing1ID,
+		Name:      vocab.VocabSwitch,
+		Data:      []byte("on"),
+		ValueType: vocab.MessageTypeAction,
 	}
 	event1 := &things.ThingValue{
-		AgentID: agent1,
-		ThingID: thing1ID,
-		Name:    vocab.VocabTemperature,
-		Data:    []byte(temp1),
+		AgentID:   agent1,
+		ThingID:   thing1ID,
+		Name:      vocab.VocabTemperature,
+		Data:      []byte(temp1),
+		ValueType: vocab.MessageTypeEvent,
 	}
 	badEvent1 := &things.ThingValue{
-		AgentID: agent1,
-		ThingID: thing1ID,
-		Name:    "", // missing name
+		AgentID:   agent1,
+		ThingID:   thing1ID,
+		Name:      "", // missing name
+		ValueType: vocab.MessageTypeEvent,
 	}
 	badEvent2 := &things.ThingValue{
-		AgentID: "", // missing publisher
-		ThingID: thing1ID,
-		Name:    "name",
+		AgentID:   "", // missing publisher
+		ThingID:   thing1ID,
+		Name:      "name",
+		ValueType: vocab.MessageTypeEvent,
 	}
 	badEvent3 := &things.ThingValue{
 		AgentID:     agent1,
 		ThingID:     thing1ID,
 		Name:        "baddate",
 		CreatedMSec: -1,
+		ValueType:   vocab.MessageTypeEvent,
 	}
 	badEvent4 := &things.ThingValue{
 		AgentID: agent1,
@@ -330,23 +334,23 @@ func TestAddPropertiesEvent(t *testing.T) {
 
 	// in total add 5 properties
 	addHist := svc.GetAddHistory()
-	err := addHist.AddAction(action1)
+	err := addHist.AddMessage(action1)
 	assert.NoError(t, err)
-	err = addHist.AddEvent(event1)
+	err = addHist.AddMessage(event1)
 	assert.NoError(t, err)
-	err = addHist.AddEvent(props1) // props has 3 values
+	err = addHist.AddMessage(props1) // props has 3 values
 	assert.NoError(t, err)
 
 	// and some bad values
-	err = addHist.AddEvent(badEvent1)
+	err = addHist.AddMessage(badEvent1)
 	assert.Error(t, err)
-	err = addHist.AddEvent(badEvent2)
+	err = addHist.AddMessage(badEvent2)
 	assert.Error(t, err)
-	err = addHist.AddEvent(badEvent3) // bad date is recovered
+	err = addHist.AddMessage(badEvent3) // bad date is recovered
 	assert.NoError(t, err)
-	err = addHist.AddEvent(badEvent4)
+	err = addHist.AddMessage(badEvent4)
 	assert.Error(t, err)
-	err = addHist.AddAction(badEvent1)
+	err = addHist.AddMessage(badEvent1)
 	assert.Error(t, err)
 
 	// verify named properties from different sources
@@ -354,9 +358,12 @@ func TestAddPropertiesEvent(t *testing.T) {
 		[]string{vocab.VocabTemperature, vocab.VocabSwitch})
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(props))
-	assert.Equal(t, vocab.VocabTemperature, props[0].Name)
-	assert.Equal(t, []byte(temp1), props[0].Data)
-	assert.Equal(t, vocab.VocabSwitch, props[1].Name)
+	assert.Equal(t, vocab.VocabTemperature, props[vocab.VocabTemperature].Name)
+	assert.Equal(t, []byte(temp1), props[vocab.VocabTemperature].Data)
+	assert.Equal(t, vocab.MessageTypeEvent, props[vocab.VocabTemperature].ValueType)
+
+	assert.Equal(t, vocab.VocabSwitch, props[vocab.VocabSwitch].Name)
+	assert.Equal(t, vocab.MessageTypeAction, props[vocab.VocabSwitch].ValueType)
 
 }
 
@@ -471,7 +478,7 @@ func TestPrevNextFiltered(t *testing.T) {
 	values, err := readHist.GetLatest(agent1ID, thing0ID, []string{propName})
 	require.NoError(t, err)
 	require.Greater(t, len(values), 0)
-	assert.Equal(t, propName, values[0].Name)
+	assert.Equal(t, propName, values[propName].Name)
 
 	// A cursor with a filter on propName should only return results of propName
 	cursor, releaseFn, err := readHist.GetCursor(agent1ID, thing0ID, propName)

@@ -44,6 +44,9 @@ func (svc *IPNetBinding) Start(hc *hubclient.HubClient) (err error) {
 	if err != nil {
 		slog.Error("failed publishing service TD. Continuing...",
 			slog.String("err", err.Error()))
+	} else {
+		props := svc.MakeBindingProps()
+		_ = svc.hc.PubProps(td.ID, props)
 	}
 
 	// start polling in the background

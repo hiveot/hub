@@ -1,8 +1,8 @@
 // Definition of the Thing's TD, Thing Description document
 // This consists of the TD itself with properties
 
-import type { DataType } from "../vocab/vocabulary"
-import { DataSchema } from "./dataSchema";
+import type {DataType} from "../vocab/vocabulary"
+import {DataSchema} from "./dataSchema";
 
 
 export class InteractionAffordance extends Object {
@@ -191,7 +191,7 @@ export class ThingTD extends Object {
     // @param title is the title used in the property.
     // @param dataType is the type of data the property holds, DataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
     // @param initialValue the value at time of creation, for testing and debugging
-    AddProperty(id: string, propType: string, title: string, dataType: DataType, initialValue?: any): PropertyAffordance {
+    AddProperty(id: string, propType: string, title: string, dataType: DataType): PropertyAffordance {
         let prop = new PropertyAffordance()
         prop.id = id;
         if (propType) {
@@ -200,9 +200,6 @@ export class ThingTD extends Object {
         prop.type = dataType;
         prop.title = title ? title : id;
         prop.readOnly = true;
-        if (initialValue != undefined) {
-            prop.initialValue = String(initialValue);
-        }
         this.properties[id] = prop;
         return prop
     }
@@ -216,10 +213,10 @@ export class ThingTD extends Object {
     // @param title is the title used in the property. Leave empty to use the name.
     // @param dataType is the type of data the property holds, DataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
     AddPropertyIf(initialValue: any, id: string, propType: string, title: string,
-        dataType: DataType): PropertyAffordance | undefined {
+                  dataType: DataType): PropertyAffordance | undefined {
 
         if (initialValue != undefined) {
-            return this.AddProperty(id, propType, title, dataType, initialValue)
+            return this.AddProperty(id, propType, title, dataType)
         }
         return undefined
     }

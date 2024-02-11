@@ -33,12 +33,12 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing
 			// only add data schema if the event carries a value
 			if attr.DataType != vocab.WoTDataTypeNone {
 				evSchema = &thing2.DataSchema{
-					Type:         attr.DataType,
-					Unit:         attr.Unit,
-					InitialValue: attr.Value,
+					Type: attr.DataType,
+					Unit: attr.Unit,
+					//InitialValue: attr.Value,
 				}
 				if attr.Unit != "" {
-					evSchema.InitialValue += " " + attr.Unit
+					//evSchema.InitialValue += " " + attr.Unit
 				}
 			}
 			tdoc.AddEvent(eventID, evType, title, "", evSchema)
@@ -59,11 +59,7 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing
 		} else {
 			// TODO: determine property @type
 			propType := ""
-			initialValue := attr.Value
-			if attr.Unit != "" {
-				initialValue += " " + attr.Unit
-			}
-			prop := tdoc.AddProperty(attrName, propType, attr.Name, attr.DataType, initialValue)
+			prop := tdoc.AddProperty(attrName, propType, attr.Name, attr.DataType)
 			prop.Unit = attr.Unit
 			// non-sensors are attributes. Writable attributes are configuration.
 			if attr.Writable {
@@ -74,6 +70,16 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing
 		}
 	}
 	return
+}
+
+func (svc *OWServerBinding) MakeNodeProps(node *eds.OneWireNode) map[string]string {
+	pv := make(map[string]string)
+	// Map node attribute to Thing properties
+	for attrName, attr := range node.Attr {
+		pv[attrName] = attr.Value
+	}
+
+	return pv
 }
 
 // PollNodes polls the OWServer gateway for nodes and property values
@@ -93,6 +99,9 @@ func (svc *OWServerBinding) PublishThings(nodes []*eds.OneWireNode) (err error) 
 		err2 := svc.hc.PubTD(td)
 		if err2 != nil {
 			err = err2
+		} else {
+			props := svc.MakeNodeProps(node)
+			_ = svc.hc.PubProps(td.ID, props)
 		}
 	}
 	return err

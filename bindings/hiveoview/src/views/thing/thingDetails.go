@@ -15,40 +15,6 @@ import (
 
 const TemplateFile = "thingDetails.gohtml"
 
-type ValueMap struct {
-	values map[string]*things.ThingValue
-}
-
-// Get returns the value of a property key, or "" if it doesn't exist
-// intended for use in template as .Values.Get $key
-func (vm *ValueMap) Get(key string) string {
-	value, found := vm.values[key]
-	if !found {
-		return ""
-	}
-	return string(value.Data)
-}
-
-// Age returns the age of a property, or "" if it doesn't exist
-// intended for use in template as .Values.Age $key
-func (vm *ValueMap) Age(key string) string {
-	value, found := vm.values[key]
-	if !found {
-		return ""
-	}
-	return value.Age()
-}
-
-// Updated returns the timestamp of a property, or "" if it doesn't exist
-// intended for use in template as .Values.Updated $key
-func (vm *ValueMap) Updated(key string) string {
-	value, found := vm.values[key]
-	if !found {
-		return ""
-	}
-	return value.Updated()
-}
-
 type DetailsTemplateData struct {
 	AgentID string
 	ThingID string
@@ -56,21 +22,19 @@ type DetailsTemplateData struct {
 	// These lists are sorted by property/event/action name
 	Attributes map[string]*things.PropertyAffordance
 	Config     map[string]*things.PropertyAffordance
-	Values     *ValueMap
+	Values     things.ThingValueMap
 }
 
 // return a map with the latest property values of a thing or nil if failed
-func getLatest(agentID string, thingID string, hc *hubclient.HubClient) (*ValueMap, error) {
-	data := &ValueMap{
-		values: make(map[string]*things.ThingValue),
-	}
+func getLatest(agentID string, thingID string, hc *hubclient.HubClient) (things.ThingValueMap, error) {
+	data := things.NewThingValueMap()
 	rh := historyclient.NewReadHistoryClient(hc)
 	tvs, err := rh.GetLatest(agentID, thingID, nil)
 	if err != nil {
 		return data, err
 	}
 	for _, tv := range tvs {
-		data.values[tv.Name] = tv
+		data.Set(tv.Name, tv)
 		if tv.Data == nil {
 			tv.Data = []byte("")
 		}

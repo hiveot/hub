@@ -27,6 +27,9 @@ func (svc *IsyBinding) PollGatewayNodes() error {
 		err = fmt.Errorf("failed publishing gateway TD: %w", err)
 		slog.Error(err.Error())
 		return err
+	} else {
+		props := svc.MakeGatewayProps(isyGW)
+		_ = svc.hc.PubProps(td.ID, props)
 	}
 
 	for _, node := range isyNodes {
@@ -37,6 +40,9 @@ func (svc *IsyBinding) PollGatewayNodes() error {
 			err = fmt.Errorf("failed publishing node TDs: %w", err)
 			slog.Error(err.Error())
 			return err
+		} else {
+			props := svc.MakeNodeProps(node)
+			_ = svc.hc.PubProps(td.ID, props)
 		}
 	}
 	return err

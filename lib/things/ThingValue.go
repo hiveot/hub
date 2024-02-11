@@ -43,11 +43,12 @@ type ThingValue struct {
 	// For actions,config and rpc this is the remote user sending the request
 	SenderID string `json:"senderID"`
 
-	// Type of value, event, action, config, rpc
+	// Type of message value: (MessageTypeEvent, MessageTypeAction, MessageTypeConfig, MessageTypeRPC...)
 	ValueType string `json:"valueType"`
 }
 
 // Updated is a helper function to return the formatted time the data was last updated.
+// This uses the time format RFC822 ("02 Jan 06 15:04 MST")
 func (tv *ThingValue) Updated() string {
 	created := time.Unix(tv.CreatedMSec/1000, 0)
 	return created.Format(time.RFC822)

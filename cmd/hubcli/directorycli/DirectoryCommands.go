@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/core/directory/dirclient"
+	"github.com/hiveot/hub/core/history/historyclient"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
+	"log/slog"
 	"time"
 
 	"github.com/hiveot/hub/lib/hubclient"
@@ -94,6 +96,7 @@ func HandleListThing(hc *hubclient.HubClient, pubID, thingID string) error {
 	var tdDoc things.TD
 
 	rdir := dirclient.NewReadDirectoryClient(hc)
+	rhist := historyclient.NewReadHistoryClient(hc)
 	tv, err := rdir.GetTD(pubID, thingID)
 	if err != nil {
 		return err
@@ -101,6 +104,11 @@ func HandleListThing(hc *hubclient.HubClient, pubID, thingID string) error {
 	err = json.Unmarshal(tv.Data, &tdDoc)
 	if err != nil {
 		return err
+	}
+	histValues, err := rhist.GetLatest(pubID, thingID, nil)
+
+	if err != nil {
+		slog.Error("Unable to read history:", "err", err)
 	}
 	fmt.Printf("%sTD of %s %s:%s\n", utils.COBlue, pubID, thingID, utils.COReset)
 	fmt.Printf(" title:       %s\n", tdDoc.Title)
@@ -110,30 +118,32 @@ func HandleListThing(hc *hubclient.HubClient, pubID, thingID string) error {
 	fmt.Println("")
 
 	fmt.Println(utils.COGreen + "Attributes:")
-	fmt.Println(" ID                             Title                                    Initial Value   Description")
+	fmt.Println(" ID                             Title                                    Value           Description")
 	fmt.Println(" ----------------------------   ---------------------------------------  -------------   -----------" + utils.COReset)
 	keys := utils.OrderedMapKeys(tdDoc.Properties)
 	for _, key := range keys {
 		prop, found := tdDoc.Properties[key]
 		if found && prop.ReadOnly {
-			fmt.Printf(" %-30s %-40.40s %s%-15.15v%s %s\n",
-				key, prop.Title, utils.COGreen, prop.InitialValue, utils.COReset, prop.Description)
+			value := histValues.ToString(key)
+			fmt.Printf(" %-30s %-40.40s %s%-15.15v%s %.80s\n",
+				key, prop.Title, utils.COGreen, value, utils.COReset, prop.Description)
 		}
 	}
 	fmt.Println()
 	fmt.Println(utils.COBlue + "Configuration:")
-	fmt.Println(" ID                             Title                                    DataType   Initial Value   Description")
+	fmt.Println(" ID                             Title                                    DataType   Value           Description")
 	fmt.Println(" -----------------------------  ---------------------------------------  ---------  -------------   -----------" + utils.COReset)
 	for _, key := range keys {
 		prop, found := tdDoc.Properties[key]
 		if found && !prop.ReadOnly {
-			fmt.Printf(" %-30s %-40.40s %-10s %s%-15.15v%s %s\n",
-				key, prop.Title, prop.Type, utils.COBlue, prop.InitialValue, utils.COReset, prop.Description)
+			value := histValues.ToString(key)
+			fmt.Printf(" %-30s %-40.40s %-10s %s%-15.15v%s %.80s\n",
+				key, prop.Title, prop.Type, utils.COBlue, value, utils.COReset, prop.Description)
 		}
 	}
 
 	fmt.Println(utils.COYellow + "\nEvents:")
-	fmt.Println(" ID                             EventType       Title                                    DataType   Initial Value   Description")
+	fmt.Println(" ID                             EventType       Title                                    DataType   Value           Description")
 	fmt.Println(" -----------------------------  --------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
 	keys = utils.OrderedMapKeys(tdDoc.Events)
 	for _, key := range keys {
@@ -142,28 +152,28 @@ func HandleListThing(hc *hubclient.HubClient, pubID, thingID string) error {
 		if ev.Data != nil {
 			dataType = ev.Data.Type
 		}
-		initialValue := ""
+		value := histValues.ToString(key)
 		if ev.Data != nil {
-			initialValue = ev.Data.InitialValue
+			//initialValue = ev.Data.InitialValue
 		}
-		fmt.Printf(" %-30s %-15.15s %-40.40s %-10.10v %s%-15.15s%s %s\n",
-			key, ev.EventType, ev.Title, dataType, utils.COYellow, initialValue, utils.COReset, ev.Description)
+		fmt.Printf(" %-30s %-15.15s %-40.40s %-10.10v %s%-15.15s%s %.80s\n",
+			key, ev.EventType, ev.Title, dataType, utils.COYellow, value, utils.COReset, ev.Description)
 	}
 
 	fmt.Println(utils.CORed + "\nActions:")
-	fmt.Println(" ID                             ActionType      Title                                    Arg(s)     Initial Value   Description")
+	fmt.Println(" ID                             ActionType      Title                                    Arg(s)     Value           Description")
 	fmt.Println(" -----------------------------  --------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
 	keys = utils.OrderedMapKeys(tdDoc.Actions)
 	for _, key := range keys {
 		action := tdDoc.Actions[key]
 		dataType := "(n/a)"
-		initialValue := ""
+		value := histValues.ToString(key)
 		if action.Input != nil {
 			dataType = action.Input.Type
-			initialValue = action.Input.InitialValue
+			//initialValue = action.Input.InitialValue
 		}
-		fmt.Printf(" %-30.30s %-15.15s %-40.40s %-10.10s %s%-15.15s%s %s\n",
-			key, action.ActionType, action.Title, dataType, utils.CORed, initialValue, utils.COReset, action.Description)
+		fmt.Printf(" %-30.30s %-15.15s %-40.40s %-10.10s %s%-15.15s%s %.80s\n",
+			key, action.ActionType, action.Title, dataType, utils.CORed, value, utils.COReset, action.Description)
 	}
 	fmt.Println()
 	return err

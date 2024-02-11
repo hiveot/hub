@@ -1,6 +1,6 @@
 // Definition of the DataSchema used in TD affordances
 
-import { DataType } from "../vocab/vocabulary"
+import {DataType} from "../vocab/vocabulary"
 
 export class DataSchema extends Object {
     public constructor(init?: Partial<DataSchema>) {
@@ -59,11 +59,6 @@ export class DataSchema extends Object {
     // Boolean value to indicate whether a property interaction / value is write-only (=true) or not (=false)
     public writeOnly: boolean = false
 
-    // Initial value at time of creation
-    // this is always a string with optionally a unit
-    // not part of the WoT definition but useful for testing and debugging
-    public initialValue: string | undefined = undefined
-
     // Enumeration table to lookup the value or key
     private enumTable: Object | undefined = undefined
 
@@ -79,15 +74,13 @@ export class DataSchema extends Object {
     //
     // @param enumeration is a map from enum values to names and vice-versa
     // @param initialValue is converted to name and stored in the schema as initialValue (for testing/debugging) 
-    SetAsEnum(enumeration: Object, initialValue: number): DataSchema {
-        let valueName = (enumeration as any)[initialValue] || String(initialValue);
-        this.initialValue = valueName
+    SetAsEnum(enumeration: Object): DataSchema {
         this.enumTable = enumeration
         let keys = Object.values(enumeration)
         this.enum = keys.filter((key: any) => {
-            let isName = (!Number.isFinite(key))
-            return isName
-        }
+                let isName = (!Number.isFinite(key))
+                return isName
+            }
         )
         return this
     }

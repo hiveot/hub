@@ -28,8 +28,8 @@ import (
 func HistoryListCommand(hc **hubclient.HubClient) *cli.Command {
 	limit := 100
 	return &cli.Command{
-		Name:      "lev",
-		Usage:     "List history of things events",
+		Name:      "hev",
+		Usage:     "History of Thing events",
 		ArgsUsage: "<agentID> <thingID> [<name>]",
 		Category:  "history",
 		Flags: []cli.Flag{
@@ -56,8 +56,8 @@ func HistoryListCommand(hc **hubclient.HubClient) *cli.Command {
 
 func HistoryLatestCommand(hc **hubclient.HubClient) *cli.Command {
 	return &cli.Command{
-		Name:      "lla",
-		Usage:     "List latest values of a things",
+		Name:      "hla",
+		Usage:     "History latest values of a things",
 		ArgsUsage: "<pubID> <thingID>",
 		Category:  "history",
 		Action: func(cCtx *cli.Context) error {
@@ -119,7 +119,7 @@ func HandleListEvents(hc *hubclient.HubClient, agentID, thingID string, name str
 	fmt.Println("AgentID        ThingID            Timestamp                      Event                Value (truncated)")
 	fmt.Println("-----------    -------            ---------                      -----                ---------------- ")
 	count := 0
-	for tv, valid, err := cursor.Last(); err == nil && valid && count < limit; tv, valid, err = cursor.Prev() {
+	for tv, valid, err := cursor.First(); err == nil && valid && count < limit; tv, valid, err = cursor.Next() {
 		count++
 
 		fmt.Printf("%-14s %-18s %-30s %-20.20s %-30.30s\n",
@@ -174,19 +174,19 @@ func HandleListLatestEvents(
 	hc *hubclient.HubClient, agentID string, thingID string) error {
 	rd := historyclient.NewReadHistoryClient(hc)
 
-	tvList, err := rd.GetLatest(agentID, thingID, nil)
+	props, err := rd.GetLatest(agentID, thingID, nil)
 
-	fmt.Println("Event ID             AgentID         ThingID              Created                        Value")
-	fmt.Println("--------             ---------       -----                -------                        -----")
-	for _, tv := range tvList {
+	fmt.Println("Event ID                  AgentID         ThingID              Value                            Created")
+	fmt.Println("--------                  -------         -------              -----                            -------")
+	for _, tv := range props {
 
-		fmt.Printf("%-20.20s %-15.15s %-20s %-32s %s\n",
+		fmt.Printf("%-25.25s %-15.15s %-20s %-32s %.80s\n",
 			tv.Name,
 			tv.AgentID,
 			tv.ThingID,
+			fmt.Sprintf("%.32s", tv.Data),
 			//utime.Format("02 Jan 2006 15:04:05 -0700"),
 			utils.FormatMSE(tv.CreatedMSec, false),
-			fmt.Sprintf("%.50s", tv.Data),
 		)
 	}
 	return err

@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"strconv"
 	"time"
@@ -15,119 +16,123 @@ type AddHistory struct {
 	// store with a bucket for each Thing
 	store buckets.IBucketStore
 	// onAddedValue is a callback to invoke after a value is added. Intended for tracking most recent values.
-	onAddedValue func(ev *things.ThingValue, isAction bool)
+	onAddedValue func(ev *things.ThingValue)
 	//
 	retentionMgr *ManageHistory
 }
 
-// encode a ThingValue into a single key value pair
-// Encoding generates a key as: timestampMsec/name/a|e, where a|e indicates action or event
-func (svc *AddHistory) encodeValue(thingValue *things.ThingValue, isAction bool) (key string, val []byte) {
+// encode a ThingValue into a single key value pair for easy storage and filtering.
+// Encoding generates a key as: timestampMsec/name/a|e|c/sender,
+// where a|e|c indicates action, event or config
+func (svc *AddHistory) encodeValue(tv *things.ThingValue) (key string, val []byte) {
 	var err error
 	ts := time.Now()
-	if thingValue.CreatedMSec > 0 {
-		ts = time.UnixMilli(thingValue.CreatedMSec)
+	if tv.CreatedMSec > 0 {
+		ts = time.UnixMilli(tv.CreatedMSec)
 		if err != nil {
-			slog.Warn("Invalid CreatedMSec time. Using current time instead", "created", thingValue.CreatedMSec)
+			slog.Warn("Invalid CreatedMSec time. Using current time instead", "created", tv.CreatedMSec)
 			ts = time.Now()
 		}
 	}
 
 	// the index uses milliseconds for timestamp
 	timestamp := ts.UnixMilli()
-	key = strconv.FormatInt(timestamp, 10) + "/" + thingValue.Name
-	if isAction {
+	key = strconv.FormatInt(timestamp, 10) + "/" + tv.Name
+	if tv.ValueType == vocab.MessageTypeAction {
 		key = key + "/a"
+	} else if tv.ValueType == vocab.MessageTypeConfig {
+		key = key + "/c"
 	} else {
 		key = key + "/e"
 	}
-	// TODO: reorganize data to store. Remove duplication. Timestamp in msec since epoc
-	val = thingValue.Data
+	key = key + "/" + tv.SenderID
+	val = tv.Data
 	return key, val
 }
 
-// AddAction adds a Thing action with the given name and value to the action history
-// value is json encoded. Optionally include a 'created' ISO8601 timestamp
-func (svc *AddHistory) AddAction(actionValue *things.ThingValue) error {
-	slog.Info("AddAction",
-		slog.String("agentID", actionValue.AgentID),
-		slog.String("thingID", actionValue.ThingID),
-		slog.String("actionName", actionValue.Name))
+//
+//// AddAction adds a Thing action with the given name and value to the action history
+//// value is json encoded. Optionally include a 'created' ISO8601 timestamp
+//func (svc *AddHistory) AddAction(actionValue *things.ThingValue) error {
+//	slog.Info("AddAction",
+//		slog.String("agentID", actionValue.AgentID),
+//		slog.String("thingID", actionValue.ThingID),
+//		slog.String("actionName", actionValue.Name))
+//
+//	retain, err := svc.validateValue(actionValue)
+//	if err != nil {
+//		slog.Info("AddAction value error", "err", err.Error())
+//		return err
+//	}
+//	if !retain {
+//		slog.Info("action value not retained", slog.String("name", actionValue.Name))
+//		return nil
+//	}
+//	key, val := svc.encodeValue(actionValue)
+//	thingAddr := actionValue.AgentID + "/" + actionValue.ThingID
+//	bucket := svc.store.GetBucket(thingAddr)
+//	err = bucket.Set(key, val)
+//	_ = bucket.Close()
+//	if svc.onAddedValue != nil {
+//		svc.onAddedValue(actionValue)
+//	}
+//	return err
+//}
 
-	retain, err := svc.validateValue(actionValue)
-	if err != nil {
-		slog.Info("AddAction value error", "err", err.Error())
-		return err
-	}
-	if !retain {
-		slog.Info("action value not retained", slog.String("name", actionValue.Name))
-		return nil
-	}
-	key, val := svc.encodeValue(actionValue, true)
-	thingAddr := actionValue.AgentID + "/" + actionValue.ThingID
-	bucket := svc.store.GetBucket(thingAddr)
-	err = bucket.Set(key, val)
-	_ = bucket.Close()
-	if svc.onAddedValue != nil {
-		svc.onAddedValue(actionValue, true)
-	}
-	return err
-}
-
-// AddEvent adds an event to the event history
+// AddMessage adds an event to the event history
 // Only events that pass retention rules are stored.
 // If the event has no created time, it will be set to 'now'
-func (svc *AddHistory) AddEvent(eventValue *things.ThingValue) error {
+func (svc *AddHistory) AddMessage(newtv *things.ThingValue) error {
 
-	valueStr := eventValue.Data
+	valueStr := newtv.Data
 	if len(valueStr) > 20 {
 		valueStr = valueStr[:20]
 	}
-	retain, err := svc.validateValue(eventValue)
+	retain, err := svc.validateValue(newtv)
 	if err != nil {
-		slog.Warn("invalid event", "name", eventValue.Name)
+		slog.Warn("invalid event", "name", newtv.Name, "err", err)
 		return err
 	}
 	if !retain {
-		slog.Debug("event value not retained", slog.String("name", eventValue.Name))
+		slog.Debug("event value not retained", slog.String("name", newtv.Name))
 		return nil
 	}
 
-	key, val := svc.encodeValue(eventValue, false)
+	key, val := svc.encodeValue(newtv)
 
-	slog.Info("AddEvent",
-		slog.String("agentID", eventValue.AgentID),
-		slog.String("thingID", eventValue.ThingID),
-		slog.String("name", eventValue.Name),
+	slog.Info("AddMessage",
+		slog.String("agentID", newtv.AgentID),
+		slog.String("thingID", newtv.ThingID),
+		slog.String("name", newtv.Name),
 		slog.String("value", string(valueStr)),
 		slog.String("key", key))
 
-	thingAddr := eventValue.AgentID + "/" + eventValue.ThingID
+	thingAddr := newtv.AgentID + "/" + newtv.ThingID
 	bucket := svc.store.GetBucket(thingAddr)
 
 	err = bucket.Set(key, val)
 	if err != nil {
-		slog.Error("AddEvent storage error", "err", err)
+		slog.Error("AddMessage storage error", "err", err)
 	}
 	_ = bucket.Close()
 	if svc.onAddedValue != nil {
-		svc.onAddedValue(eventValue, false)
+		svc.onAddedValue(newtv)
 	}
 	return err
 }
 
-// AddEvents provides a bulk-add of events to the event history
+// AddMessages provides a bulk-add of event/action messages to the history
 // Events that are invalid are skipped.
-func (svc *AddHistory) AddEvents(eventValues []*things.ThingValue) (err error) {
-	if eventValues == nil || len(eventValues) == 0 {
+func (svc *AddHistory) AddMessages(tvList []*things.ThingValue) (err error) {
+	if tvList == nil || len(tvList) == 0 {
 		return nil
-	} else if len(eventValues) == 1 {
-		err = svc.AddEvent(eventValues[0])
+	} else if len(tvList) == 1 {
+		err = svc.AddMessage(tvList[0])
 		return err
 	}
 	// encode events as K,V pair and group them by thingAddr
 	kvpairsByThingAddr := make(map[string]map[string][]byte)
-	for _, eventValue := range eventValues {
+	for _, eventValue := range tvList {
 		// kvpairs hold a map of storage encoded value key and value
 		thingAddr := eventValue.AgentID + "/" + eventValue.ThingID
 		kvpairs, found := kvpairsByThingAddr[thingAddr]
@@ -141,11 +146,11 @@ func (svc *AddHistory) AddEvents(eventValues []*things.ThingValue) (err error) {
 			return err
 		}
 		if retain {
-			key, value := svc.encodeValue(eventValue, false)
+			key, value := svc.encodeValue(eventValue)
 			kvpairs[key] = value
 			// notify owner to update things properties
 			if svc.onAddedValue != nil {
-				svc.onAddedValue(eventValue, false)
+				svc.onAddedValue(eventValue)
 			}
 		}
 	}
@@ -190,7 +195,7 @@ func (svc *AddHistory) validateValue(tv *things.ThingValue) (retained bool, err 
 func NewAddHistory(
 	store buckets.IBucketStore,
 	retentionMgr *ManageHistory,
-	onAddedValue func(value *things.ThingValue, isAction bool)) *AddHistory {
+	onAddedValue func(value *things.ThingValue)) *AddHistory {
 	svc := &AddHistory{
 		store:        store,
 		retentionMgr: retentionMgr,
