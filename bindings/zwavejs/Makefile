@@ -13,8 +13,7 @@ js: .FORCE  ## Compile typescript
 	npx tsc
 
 dist: .FORCE ## Build binary app using pkg and esbuild
-	npx tsc
-	npx pkg --compress GZip .
+	./build.sh
 
 clean: ## Clear build and cache
 	rm -rf node_modules

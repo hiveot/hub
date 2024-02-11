@@ -50,7 +50,7 @@ hiveoview: .FORCE ## build the SSR web viewer binding
 
 ipnet: .FORCE ## Build the ip network scanner protocol binding
 	go build -o $(PLUGINS_FOLDER)/$@  bindings/$@/cmd/main.go
-	cp bindings/$@/config/*.y	aml $(DIST_FOLDER)/config
+	cp bindings/$@/config/*.yaml $(DIST_FOLDER)/config
 
 isy99x: .FORCE ## Build the ISY99x INSTEON protocol binding
 	go build -o $(PLUGINS_FOLDER)/$@  bindings/$@/cmd/main.go

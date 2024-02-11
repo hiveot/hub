@@ -7,8 +7,8 @@
   "type": "commonjs",
   "scripts": {
     "build": "tsc && tsc-alias",
-    "esbuild": "esbuild src/main.ts --bundle  --platform=node --target=node20 --preserve-symlinks --external:\"prebuilds/*\" --external:./node_modules/zwave-js/package.json --external:./node_modules/@zwave-js/config/package.json --outfile=build/zwavejs-esbuild.js",
-    "pkg": "pkg package.json",
+    "esbuild": "esbuild src/main.ts --bundle  --platform=node --target=node20 --preserve-symlinks --external:\"prebuilds/*\" --external:./node_modules/zwave-js/package.json --external:./node_modules/@zwave-js/config/package.json --outfile=build/main.js",
+    "dist": "./build.sh",
     "dev": "tsc && tsc-alias && ZWAVEJS_EXTERNAL_CONFIG=dist/cache node --preserve-symlinks build/src/main.js --clientID testsvc --home ~/bin/hiveot",
     "distinstall": "cp dist/zwavejs ~/bin/hiveot/plugins",
     "test": "tsc && tsc-alias && node --preserve-symlinks build/src/tests/hubconnect_test.js",
@@ -25,18 +25,19 @@
     "testtsx": "experiment testing using tsx to run typescript. While tsx works as promised it doesn't support debugging imported modules",
     "tsc-alias": "note on tsc-alias. It doesn't work with tsconfig references. alias paths in outdir are not replaced. Workaround, do not use reference but use a symlink to library."
   },
-  "bin": "build/zwavejs-esbuild.js",
+  "bin": "build/main.js",
   "pkg": {
-    "scripts": [],
+    "scripts": [
+      "node_modules/axios/dist/node/*"
+    ],
     "compress": "GZip",
     "assets": [
-      "./node_modules/@serialport/bindings-cpp/**/*",
-      "./node_modules/@zwave-js/config/**/*",
       "prebuilds/**/*",
       "config/**/*"
     ],
     "targets": [
-      "node20.11-linux-x64"
+      "node20.11-linux-x64",
+      "node20.11-linux-armv6"
     ],
     "outputPath": "dist"
   },

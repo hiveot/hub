@@ -54,28 +54,18 @@ Then run from the project root with:
 
 * note1: --clientID is the client this runs under, eg 'testsvc' during testing. Default will be the binding name zwavejs.
 
-## build a single executable using pkg and esbuild
+## build a single executable using pkg and esbuild from zwave-js-ui
 
-NOTE: This uses the output of the previous esbuild step in build/zwavejs-esbuild.js and requires the prebuilds and config folder symlinks to work.
-
-Note that vercel/pkg is deprecated. The fork from yao-pkg/pkg supports node20.
-
-Configuration:
-
-* pkg config is defined in package.json 'pkg' section.
+NOTE: This uses the esbuild.js script from zwave-js-ui, which does some filename mangling to
+get the externals to work. Not sure how it works but I also really don't care.
 
 Build with:
-> npx pkg package.json
+> yarn pkg    or   ./build.sh
 
 run it:
 > dist/zwavejs --clientID testsvc --home ~/bin/hiveot
 
-Three problems are noticeable:
-
-1. The build generates "prebuild-install warn install No prebuilt binaries found" warnings. These seem to be okay as the serialport prebuild binaries are included as assets and will be loaded on startup.
-2. The build generates "failed to make bytecode node20.11 for file ...node_modules/axios/lib/..." warning. Things seem to run fine in spite of these warnings.
-
-TODO: To clean up this mess, lets move it all to the build directory.
+TODO: Clean up this build mess.
 
 ## Installation
 
