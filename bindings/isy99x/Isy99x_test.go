@@ -17,7 +17,7 @@ import (
 
 const appID = "isy99"
 
-// For testing, IsyAPI.isyRequest simulates reading isy from file using the path:
+// For testing, IsyGW.isyRequest simulates reading isy from file using the path:
 //
 //	gatewayaddress[7:]/restpath.xml, where restpath is the isy REST api path and
 //
@@ -71,15 +71,15 @@ func TestStartStop(t *testing.T) {
 	svc := service.NewIsyBinding(appConfig)
 	err = svc.Start(hc)
 
-	isyDevice, err := svc.IsyAPI.ReadIsyGateway()
+	err = svc.IsyGW.ReadIsyThings()
 	assert.NoError(t, err)
-	assert.NotNil(t, isyDevice)
 
 	time.Sleep(time.Second)
 
 	svc.Stop()
 	time.Sleep(time.Millisecond)
 }
+
 func TestBadAddress(t *testing.T) {
 	os.Remove(nodesFile)
 
@@ -91,9 +91,11 @@ func TestBadAddress(t *testing.T) {
 	badConfig.IsyAddress = "localhost"
 	svc := service.NewIsyBinding(&badConfig)
 	err = svc.Start(hc)
-	_, err = svc.IsyAPI.ReadIsyGateway()
-	time.Sleep(time.Millisecond * 100)
+
+	err = svc.IsyGW.ReadIsyThings()
 	assert.Error(t, err)
+	time.Sleep(time.Millisecond * 100)
+
 	svc.Stop()
 	time.Sleep(time.Millisecond * 1)
 }
@@ -108,7 +110,8 @@ func TestIsyAppPoll(t *testing.T) {
 	err = svc.Start(hc)
 	require.NoError(t, err)
 
-	svc.PollGatewayNodes()
+	err = svc.PublishIsyTDs()
+	assert.NoError(t, err)
 	time.Sleep(2 * time.Second)
 	svc.Stop()
 }
@@ -128,7 +131,8 @@ func TestSwitch(t *testing.T) {
 	require.NoError(t, err)
 	defer svc.Stop()
 
-	svc.PollGatewayNodes()
+	err = svc.PublishIsyTDs()
+	assert.NoError(t, err)
 	// some time to publish stuff
 	time.Sleep(1 * time.Second)
 	//

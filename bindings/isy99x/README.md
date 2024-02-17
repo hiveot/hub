@@ -2,13 +2,15 @@
 
 ISY99 is a legacy gateway for the Insteon protocol. It is not longer produced and replaced by the ISY994. The ISY994 which also works with this publisher, albeit limited to what the ISY99 can do.
 
+The intent of this binding implementation is to be able to use some basic devices that are commonly used, mostly insteon switches. As Insteon is a legacy protocol not much development effort is to be expected.
+
 ## Status
 
-This binding is bare bones functional POC. Breaking changes are to be expected.
+This binding is a bare bones functional POC that is able to identify the Insteon device and issue basic commands.
 
 Limitations:
-1. no remote configuration
-2. no actions yet
+1. only basic configuration
+2. only basic actions
 3. only support for switches and dimmer nodes
 4. uses polling instead of subscription to ISY events
 5. no support for ISY scenes and programs

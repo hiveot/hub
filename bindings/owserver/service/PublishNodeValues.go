@@ -52,9 +52,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err err
 			age := time.Now().Sub(prevValue.timestamp)
 			maxAge := time.Second * time.Duration(svc.config.RepublishInterval)
 			// skip update if the value hasn't changed for less than the republish interval
-			skip := found &&
-				prevValue.value == attr.Value &&
-				age < maxAge
+			skip := found && prevValue.value == attr.Value && age < maxAge
 
 			if !skip {
 				svc.setPrevValue(node.NodeID, attrName, attr.Value)

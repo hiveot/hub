@@ -1,4 +1,4 @@
-package isyapi_test
+package service_test
 
 import (
 	"github.com/hiveot/hub/bindings/isy99x/service/isyapi"

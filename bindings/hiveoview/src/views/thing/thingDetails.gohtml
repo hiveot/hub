@@ -12,14 +12,14 @@
 	      grid-template-columns: max-content 1fr;
 	      align-items: baseline;
 		">
-				<label for="deviceModel">Device Model:</label>
+				<label for="deviceModel">Device Type:</label>
 				<input id="deviceModel" readonly style="margin: 0; text-overflow: ellipsis; "
-				       placeholder="{{.Thing.TD.Title}}"/>
+				       placeholder="{{.Thing.Values.ToString "deviceType"}}"/>
 
-				<label for="manufacturer">Device Make:</label>
+				<label for="manufacturer">Device Make & Model:</label>
 				<input id="manufacturer" type="text" readonly
 				       style="margin: 0; text-overflow: ellipsis;"
-				       placeholder='{{.Thing.Values.ToString "manufacturer"}}'/>
+				       placeholder='{{.Thing.Values.ToString "manufacturer"}} {{.Thing.Values.ToString "model"}}'/>
 
 				<label for="age">Updated:</label>
 				<input id="age" type="text" readonly

@@ -15,7 +15,7 @@ type Isy99xConfig struct {
 	// LogLevel, optional. Default from environment
 	LogLevel string `yaml:"logLevel,omitempty"`
 
-	// Interval in seconds to poll and publish ISY99x values
+	// Interval in seconds to poll and publish ISY99x values. 0 to not poll.
 	PollInterval int `yaml:"pollInterval"`
 	// Interval in seconds to read and publish node TD documents
 	TDInterval int `yaml:"tdInterval"`

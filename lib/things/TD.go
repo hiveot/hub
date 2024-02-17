@@ -50,7 +50,7 @@ type TD struct {
 
 	// Instance identifier of the Thing in form of a URI (RFC3986)
 	// https://www.w3.org/TR/wot-thing-description11/#sec-privacy-consideration-id
-	// * IDs are optional. However in HiveOT that won't work as they must be addressable.
+	// * IDs are optional. However, in HiveOT that won't work as they must be addressable.
 	// * IDs start with "urn:" based on the idea that IDs can be used as an address. In HiveOT, IDs and Addresses
 	//   serve a different purpose. IDs are not addresses. HiveOT allows IDs that do not start with "urn:".
 	//   note that pubsub uses addresses of which the things ID is part of.
@@ -62,7 +62,7 @@ type TD struct {
 	// Information about the TD maintainer as URI scheme (e.g., mailto [RFC6068], tel [RFC3966], https).
 	Support string `json:"support,omitempty"`
 
-	// Human-readable title in the default language. Required.
+	// Title is a short description of the thing in human-readable in the default language. Required.
 	Title string `json:"title"`
 	// Human-readable titles in the different languages
 	Titles map[string]string `json:"titles,omitempty"`
@@ -186,16 +186,22 @@ func (tdoc *TD) AddProperty(name string, propType string, title string, dataType
 }
 
 // AddPropertyAsString is short for adding a read-only string property
+//
+//	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
 func (tdoc *TD) AddPropertyAsString(name string, propType string, title string) *PropertyAffordance {
 	return tdoc.AddProperty(name, propType, title, vocab.WoTDataTypeString)
 }
 
 // AddPropertyAsBool is short for adding a read-only boolean property
+//
+//	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
 func (tdoc *TD) AddPropertyAsBool(name string, propType string, title string) *PropertyAffordance {
 	return tdoc.AddProperty(name, propType, title, vocab.WoTDataTypeBool)
 }
 
 // AddPropertyAsInt is short for adding a read-only integer property
+//
+//	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
 func (tdoc *TD) AddPropertyAsInt(name string, propType string, title string) *PropertyAffordance {
 	return tdoc.AddProperty(name, propType, title, vocab.WoTDataTypeInteger)
 }
