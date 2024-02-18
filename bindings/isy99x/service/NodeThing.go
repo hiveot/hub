@@ -47,11 +47,7 @@ type NodeThing struct {
 	// propCB to invoke on property value changes, if set.
 	propCB func(propID string, value string)
 
-	// current property values of this thing
-	currentProps map[string]string
-
-	// property name-value pairs applied since last call to GetProps(true)
-	changedProps map[string]string
+	propValues *things.PropertyValues
 
 	// protect access to property values
 	mux sync.RWMutex
@@ -68,20 +64,7 @@ func (it *NodeThing) GetID() string {
 
 // GetProps returns the attr and config property values
 func (it *NodeThing) GetProps(onlyChanges bool) map[string]string {
-	props := make(map[string]string)
-
-	it.mux.Lock()
-	defer it.mux.Unlock()
-	if !onlyChanges {
-		for k, v := range it.currentProps {
-			props[k] = v
-		}
-	} else {
-		props = it.changedProps
-	}
-	// reset changes
-	it.changedProps = make(map[string]string)
-	return props
+	return it.propValues.GetValues(onlyChanges)
 }
 
 // GetTD return a basic TD document that describes the Thing represented here.
@@ -100,7 +83,7 @@ func (it *NodeThing) GetTD() *things.TD {
 		" 0x40 -- Node shall be deleted," +
 		" 0x80 -- Node is device root"
 
-	prop = td.AddPropertyAsString(vocab.VocabDeviceType, vocab.VocabDeviceType, "Insteon Device Type")
+	prop = td.AddPropertyAsString("nodeType", "", "Insteon Device Type")
 	prop.Description = "<device cat>.<sub cat>.<version>.<reserved>"
 	prop = td.AddPropertyAsString(vocab.VocabProduct, vocab.VocabProduct, "Product Name")
 	prop = td.AddPropertyAsString(vocab.VocabModel, vocab.VocabModel, "Product Model")
@@ -120,12 +103,8 @@ func (it *NodeThing) GetTD() *things.TD {
 }
 
 // GetValue returns the default 'value' property
-func (it *NodeThing) GetValue() string {
-	it.mux.RLock()
-	defer it.mux.RUnlock()
-
-	v := it.currentProps[vocab.VocabValue]
-	return v
+func (it *NodeThing) GetValue() (string, bool) {
+	return it.propValues.GetValue(vocab.VocabValue)
 }
 
 // HandleActionRequest invokes the action handler of the specialized thing
@@ -162,14 +141,9 @@ func (it *NodeThing) HandleValueUpdate(propID string, uom string, newValue strin
 	defer it.mux.Unlock()
 	// TODO: translate the propID to hiveot vocabulary
 	// TODO: include use of the uom
-	oldValue := it.currentProps[propID]
-	if oldValue != newValue {
-		it.currentProps[propID] = newValue
-		it.changedProps[propID] = newValue
-
-		if it.propCB != nil {
-			it.propCB(propID, newValue)
-		}
+	changed := it.propValues.SetValue(propID, newValue)
+	if changed && it.propCB != nil {
+		it.propCB(propID, newValue)
 	}
 	return nil
 }
@@ -177,7 +151,7 @@ func (it *NodeThing) HandleValueUpdate(propID string, uom string, newValue strin
 // Init initializes the NodeThing base class
 // This determines the device type from prodInfo and sets property values for
 // product and model.
-func (it *NodeThing) Init(ic *IsyConnection, id string, prodInfo InsteonProduct, hwVersion string) {
+func (it *NodeThing) Init(ic *IsyConnection, node *IsyNode, prodInfo InsteonProduct, hwVersion string) {
 	var found bool
 	it.deviceType, found = deviceCatMap[prodInfo.Cat]
 	if !found {
@@ -185,23 +159,15 @@ func (it *NodeThing) Init(ic *IsyConnection, id string, prodInfo InsteonProduct,
 	}
 
 	it.ic = ic
-	it.id = id
+	it.id = node.Address
 	it.productInfo = prodInfo
-	it.currentProps = make(map[string]string)
-	it.currentProps[vocab.VocabDeviceType] = it.deviceType
-	it.currentProps[vocab.VocabProduct] = prodInfo.ProductName
-	it.currentProps[vocab.VocabModel] = prodInfo.Model
-	it.currentProps[vocab.VocabHardwareVersion] = hwVersion
-	it.changedProps = make(map[string]string)
-
-	//it.propValues["flag"] = fmt.Sprintf("%2X", node.Flag)
-	//it.propValues["enabled"] = node.Enabled
-	//it.propValues[vocab.VocabName] = node.Name
-
-	//pv["property"] = fmt.Sprintf("property id='%s' value='%s' formatted='%s' uom='%s'",
-	//node.Property.ID, node.Property.Value, node.Property.Formatted, node.Property.UOM)
-	//pv[vocab.VocabName] = node.Name
-
+	it.propValues = things.NewPropertyValues()
+	pv := it.propValues
+	pv.SetValue(vocab.VocabDeviceType, it.deviceType)
+	pv.SetValue(vocab.VocabProduct, prodInfo.ProductName)
+	pv.SetValue(vocab.VocabModel, prodInfo.Model)
+	pv.SetValue(vocab.VocabHardwareVersion, hwVersion)
+	pv.SetValue("nodeType", node.Type)
 }
 
 // Rename sets a new friendly name of the ISY device
@@ -218,9 +184,7 @@ func (it *NodeThing) Rename(newName string) error {
 	err := it.ic.SendRequest("GET", msgBody, nil)
 	if err != nil {
 		// TODO: wait for update until event from gateway, needs WS support.
-		propID := vocab.VocabName
-		it.currentProps[propID] = newName
-		it.changedProps[propID] = newName
+		it.propValues.SetValue(vocab.VocabName, newName)
 		it.propCB(vocab.VocabName, newName)
 	}
 	return err

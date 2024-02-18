@@ -39,8 +39,8 @@ func (it *IsySwitchThing) HandleActionRequest(tv *things.ThingValue) (err error)
 		newValue = "DOF"
 	} else if tv.Name == vocab.VocabActionToggle {
 		newValue = "DOF"
-		oldValue := it.NodeThing.currentProps[tv.Name]
-		if oldValue == "DOF" {
+		oldValue, found := it.propValues.GetValue(tv.Name)
+		if !found || oldValue == "DOF" {
 			newValue = "DON"
 		}
 	} else {

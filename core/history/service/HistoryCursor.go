@@ -53,7 +53,7 @@ func decodeValue(bucketID string, key string, data []byte) (thingValue *things.T
 			messageType = vocab.MessageTypeConfig
 		}
 	}
-	if len(parts) >= 3 {
+	if len(parts) > 3 {
 		senderID = parts[3]
 	}
 

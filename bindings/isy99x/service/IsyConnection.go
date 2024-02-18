@@ -11,6 +11,8 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -54,34 +56,47 @@ type IsyConnection struct {
 	password string // Basic Auth password
 	//simulation map[string]string // map used when in simulation
 
-	id string
+	isConnected atomic.Bool
+
+	// the ISY connect gateway device config, if isConnected is true
+	isyConfig ISYConfiguration
+
+	// mutex to protect reconnection
+	mux sync.RWMutex
 }
 
-// Connect to the gateway and read its make and model
+// Connect to the gateway and read its ID
 func (ic *IsyConnection) Connect(
 	gwAddr string, login string, password string) (err error) {
 
 	if gwAddr == "" {
 		gwAddr, err = ic.Discover(time.Second * 3)
 		if err != nil {
+			ic.isConnected.Store(false)
 			return err
 		}
 	}
+	ic.mux.Lock()
+	defer ic.mux.Unlock()
+
 	ic.address = gwAddr
 	ic.login = login
 	ic.password = password
 
 	// get the ISY gateway ID and test if it is reachable
-	cfg := ISYConfiguration{}
-	err = ic.SendRequest("GET", "/rest/config", &cfg)
-	ic.id = cfg.App
-	//ic.id = cfg.Product.ID
+	err = ic.SendRequest("GET", "/rest/config", &ic.isyConfig)
+	if err != nil {
+		// connection failed
+		ic.isConnected.Store(false)
+	}
+	ic.isConnected.Store(true)
 
 	// TODO: websocket connect
 	return err
 }
 
 func (ic *IsyConnection) Disconnect() {
+	ic.isConnected.Store(false)
 	// TODO: websocket disconnect
 }
 
@@ -113,7 +128,12 @@ func (ic *IsyConnection) Discover(timeout time.Duration) (addr string, err error
 
 // GetID returns the ISY Gateway ID
 func (ic *IsyConnection) GetID() string {
-	return ic.id
+	// Use the 'app' field as the gateway ID
+	return ic.isyConfig.App
+}
+
+func (ic *IsyConnection) IsConnected() bool {
+	return ic.isConnected.Load()
 }
 
 // ReadNodes reads the ISY Node list

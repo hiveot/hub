@@ -350,23 +350,6 @@ func (hc *HubClient) PubConfig(
 	return err
 }
 
-// PubProps publishes a 'properties' event containing a map of property name and values.
-//
-//	agentID of the device that handles the action for the things or service capability
-//	thingID is the destination thingID that handles the action
-//	propName is the ID of the property to change as described in the TD properties section
-//	payload is the optional payload of the configuration as described in the Thing's TD
-//
-// This returns an error if an error was returned or no confirmation was received
-func (hc *HubClient) PubProps(thingID string, props map[string]string) error {
-
-	addr := hc.MakeAddress(vocab.MessageTypeEvent, hc.clientID, thingID, vocab.EventNameProps, hc.clientID)
-	slog.Info("PubProps", "addr", addr)
-	payload, _ := json.Marshal(props)
-	err := hc.transport.PubEvent(addr, payload)
-	return err
-}
-
 // PubEvent publishes a Thing event. The payload is an event value as per TD document.
 // Event values are send as text and can be converted to native type based on the information defined in the TD.
 // Intended for devices and services to notify of changes to the Things they are the agent for.
@@ -386,6 +369,23 @@ func (hc *HubClient) PubEvent(thingID string, eventName string, payload []byte) 
 
 	addr := hc.MakeAddress(vocab.MessageTypeEvent, hc.clientID, thingID, eventName, hc.clientID)
 	slog.Info("PubEvent", "addr", addr)
+	err := hc.transport.PubEvent(addr, payload)
+	return err
+}
+
+// PubProps publishes a 'properties' event containing a map of property name and values.
+//
+//	agentID of the device that handles the action for the things or service capability
+//	thingID is the destination thingID that handles the action
+//	propName is the ID of the property to change as described in the TD properties section
+//	payload is the optional payload of the configuration as described in the Thing's TD
+//
+// This returns an error if an error was returned or no confirmation was received
+func (hc *HubClient) PubProps(thingID string, props map[string]string) error {
+
+	addr := hc.MakeAddress(vocab.MessageTypeEvent, hc.clientID, thingID, vocab.EventNameProps, hc.clientID)
+	slog.Info("PubProps", "addr", addr, "nr props", len(props))
+	payload, _ := json.Marshal(props)
 	err := hc.transport.PubEvent(addr, payload)
 	return err
 }

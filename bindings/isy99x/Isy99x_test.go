@@ -61,6 +61,7 @@ func TestMain(m *testing.M) {
 
 	os.Exit(result)
 }
+
 func TestStartStop(t *testing.T) {
 	os.Remove(nodesFile)
 
@@ -72,9 +73,11 @@ func TestStartStop(t *testing.T) {
 	err = svc.Start(hc)
 
 	err = svc.IsyGW.ReadIsyThings()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	time.Sleep(time.Second)
+	devices := svc.IsyGW.GetIsyThings()
+	assert.True(t, len(devices) > 5, "Expected 6 ISY nodes. Got fewer.")
 
 	svc.Stop()
 	time.Sleep(time.Millisecond)
@@ -91,7 +94,7 @@ func TestBadAddress(t *testing.T) {
 	badConfig.IsyAddress = "localhost"
 	svc := service.NewIsyBinding(&badConfig)
 	err = svc.Start(hc)
-
+	assert.NoError(t, err)
 	err = svc.IsyGW.ReadIsyThings()
 	assert.Error(t, err)
 	time.Sleep(time.Millisecond * 100)

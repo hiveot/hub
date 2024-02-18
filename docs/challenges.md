@@ -32,9 +32,20 @@ A single Hub is easier to secure and update than each individual device. Authent
 
 ## Ontology
 
-How to define IoT devices?
+How to describe IoT devices?
 
-Initially established a standard called iotdomain-standard', then tried NGSI's approach but it got bulky and needs a separate server, and eventually caught up with W3C's Web of Things.
+I initially established a standard called iotdomain-standard', then tried NGSI's approach but it got bulky and needs a separate server, and eventually caught up with W3C's Web of Things. So, take a look at [W3C's Thing Description](https://www.w3.org/TR/wot-thing-description11/) document.
+
+A related issue is vocabulary. Who is responsible for standardizing the terminology used in events, properties and actions?
+a. The publishing device maps internal to standardized vocabulary
+b. The Hub services translate the vocabulary from the publisher
+c. The user interface translates.
+
+Option a. is chosen because it constrains the mapping domain knowledge to the individual publishers. Thus a protocol binding for a particular protocol translates terminology of device events, properties and actions to standardized HiveOT vocabulary. All that consumers need to know is the standardized vocabulary.
+
+How to define a vocabulary? Unfortunately there is no globally accepted vocabulary (yet), so one is put together using W3C or other standards. This is work in progress.
+
+
 
 ## Authorization
 
@@ -43,12 +54,15 @@ Initially established a standard called iotdomain-standard', then tried NGSI's a
 ## Communication Protocol
 
 1. How to communicate between devices and Hub services, between users and Hub, and between multiple Hubs? Use messaging, REST, or RPC for communication? 
-   2. Initially iotdomain was message based but ran into the problem that some services require request-response. REST doesn't support callbacks and WebSockets has no standard for 2-way messaging. WoT talks a great deal about http access which is not an option as devices cannot be accessed directly. NGSI is API based.
+   a. Initially iotdomain was message based but ran into the problem that some services require request-response. REST doesn't support callbacks and WebSockets has no standard for 2-way messaging. WoT talks a great deal about http access which is not an option as devices cannot be accessed directly. NGSI is API based.
+  b. HiveOT tried RPC using gRPC and eventually Capn'proto. Capn'proto has the more versatile IDL and turned out to be stable and very fast. gRPC is very constrained, probably good enough for Google, but limited for defining a full API.
+  c. Finally, coming full circle, we're back at messaging using either MQTT-v5 or NATS. Both support building RPC style messages, providing best of both worlds.
 
-   2. HiveOT tried RPC using gRPC and eventually Capn'proto. Capn'proto has the more versatile IDL and turned out to be stable and very fast. gRPC is very constrained, probably good enough for Google, but limited for defining a full API.
-1. How to receive data real time?
-    2. Message bus seems ideal here as they support subscription.
-    2. Capn'proto supports callbacks (yeah, pretty amazing) but routing data via multiple hubs is more of a challenge.
+2. How to receive data real time?
+    a. Message bus seems ideal here as they support subscription. So this is a no-brainer.
+    b. Capn'proto supports callbacks (yeah, pretty amazing) but routing data via multiple hubs or proxies is more of a challenge.
+
+3. Other concerns:
 - high latency/non realtime of pubsub. Message round trip should remain under 1 msec, including audio, video and especially data.
 - not always confirmation of delivery (messaging vs rpc)
 - Lack of support for audio and video.

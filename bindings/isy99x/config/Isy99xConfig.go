@@ -23,7 +23,7 @@ type Isy99xConfig struct {
 
 func NewIsy99xConfig() *Isy99xConfig {
 	cfg := &Isy99xConfig{
-		IsyAddress:   "127.0.0.1",
+		IsyAddress:   "", // use auto config
 		LoginName:    "",
 		Password:     "",
 		LogLevel:     "warn",

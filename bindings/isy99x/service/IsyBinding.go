@@ -53,6 +53,9 @@ func (svc *IsyBinding) handleActionRequest(tv *things.ThingValue) (reply []byte,
 		slog.String("name", tv.Name),
 		slog.String("senderID", tv.SenderID))
 
+	if !svc.ic.IsConnected() {
+		return nil, fmt.Errorf("No connection with the gateway")
+	}
 	isyThing := svc.IsyGW.GetIsyThing(tv.ThingID)
 	if isyThing == nil {
 		err = fmt.Errorf("handleActionRequest: thing '%s' not found", tv.ThingID)
@@ -72,6 +75,17 @@ func (svc *IsyBinding) handleConfigRequest(tv *things.ThingValue) (err error) {
 		slog.String("name", tv.Name),
 		slog.String("senderID", tv.SenderID))
 
+	// configuring the binding doesn't require a connection with the gateway
+	if tv.ThingID == svc.thingID {
+		err = svc.HandleBindingConfig(tv)
+		return err
+	}
+
+	if !svc.ic.IsConnected() {
+		return fmt.Errorf("No connection with the gateway")
+	}
+
+	// pass request to the Thing
 	isyThing := svc.IsyGW.GetIsyThing(tv.ThingID)
 	if isyThing == nil {
 		err = fmt.Errorf("handleActionRequest: thing '%s' not found", tv.ThingID)
@@ -82,7 +96,10 @@ func (svc *IsyBinding) handleConfigRequest(tv *things.ThingValue) (err error) {
 	return err
 }
 
-// Start the ISY99x protocol binding
+// Start the ISY99x protocol binding.
+// Connection to the gateway will be made during the heartbeat.
+// If no connection can be made the heartbeat will retry periodically until stopped.
+//
 // This publishes a TD for this binding, starts a background polling heartbeat.
 func (svc *IsyBinding) Start(hc *hubclient.HubClient) (err error) {
 	slog.Warn("Starting Isy99x binding")
@@ -93,27 +110,26 @@ func (svc *IsyBinding) Start(hc *hubclient.HubClient) (err error) {
 	}
 	svc.prodMap, err = LoadProductMapCSV("")
 
-	// 'IsyThings' use the 'isy connection' to talk to the gateway
+	//// 'IsyThings' use the 'isy connection' to talk to the gateway
 	svc.ic = NewIsyConnection()
-	err = svc.ic.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
-	if err != nil {
-		// gateway not found
-		return err
-	}
-	// The binding manages the gateway instance while the gateway instance manages
-	// the nodes connected to the gateway device.
 	svc.IsyGW = NewIsyGateway(svc.prodMap)
-	svc.IsyGW.Init(svc.ic, svc.ic.GetID(), InsteonProduct{}, "")
+	_ = svc.ic.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+	svc.IsyGW.Init(svc.ic)
+
+	//err = svc.ic.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+	//if err != nil {
+	//	// gateway not found
+	//	return err
+	//}
+	//// The binding manages the gateway instance while the gateway instance manages
+	//// the nodes connected to the gateway device.
+	//svc.IsyGW = NewIsyGateway(svc.prodMap)
+	//// need a connection to get the device ID
+	//svc.IsyGW.Init(svc.ic, svc.ic.GetID(), InsteonProduct{}, "")
 
 	// subscribe to action requests
 	svc.hc.SetActionHandler(svc.handleActionRequest)
-	if err != nil {
-		return err
-	}
 	svc.hc.SetConfigHandler(svc.handleConfigRequest)
-	if err != nil {
-		return err
-	}
 
 	// last, start polling heartbeat
 	svc.stopHeartbeatFn = svc.startHeartbeat()

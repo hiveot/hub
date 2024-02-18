@@ -8,6 +8,7 @@ import (
 
 // Start the ISY99x protocol binding
 func main() {
+
 	env := plugin.GetAppEnvironment("", true)
 	cfg := config.NewIsy99xConfig()
 	_ = env.LoadConfig(&cfg)
