@@ -36,7 +36,7 @@ This viewer is in early development. The information below is subject to change.
 
 ## Objective
 
-Provide a reference implementation of a viewer on IoT data using the Hive Of Things backend. This includes a dashboardfor presenting 'Thing' (device) outputs and controls for inputs.
+Provide a reference implementation of a viewer on IoT data using the Hive Of Things backend. This includes a dashboard for presenting 'Thing' (device) outputs and controls for inputs.
 
 Use HTMX with bare minimum of javascript. Just HTML, HTMX, CSS, Golang and maybe a sprinkle of plain javascript as needed. No frameworks, no nodejs, no JS/TS/CSS compile step. Single binary for easy deployment.
 

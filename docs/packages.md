@@ -1,23 +1,26 @@
 # HiveOT Packages
 
-HiveOT Packages provides the core functionality with protocol bindings and applications.
+HiveOT Packages providing the core services along with a starter set of protocol bindings and client services.
 
 * cmd - commandline interface
-    * hubcli - hub commandling interface
-    * natscore - running of the nats core
-    * mqttcore - running of the mqtt core
+	* hubcli - hub commandling interface
 
 * core - hub core services
-    * auth - management of authentication and authorization for the messaging server
-    * certs - management of CA and server certificate
-    * config - core configuration
-    * directory - collects and serves the TD documents of discovered Things
-    * history - collects and serves a history of Thing events
-    * launcher - service for starting and stopping of plugins
-    * mqttmsgserver - embedded mqtt messaging server for mqtt core
-    * natsmsgserver - embedded nats messaging server for nats core
+	* auth - management of authentication and authorization for the messaging server
+	* certs - management of CA and server certificate
+	* config - hub configuration - to be deprecated in the future
+	* directory - collects and serves the TD documents of discovered Things
+	* history - collects and serves a history of Thing events
+	* idprov - provisioning service
+	* launcher - service for starting and stopping of plugins
+	* msgserver
+		* mqttmsgserver - embedded mqtt messaging server for mqtt core
+		* natsmsgserver - embedded nats messaging server for nats core
+	* state - state and configuration storage for services and clients
 
 * bindings - protocol bindings and other services
-    * hiveoview - web client dashboard for viewing hiveot Things
-    * owserver - binding for OWServer 1-wire gateway
-    * zwavejs - binding for zwave devices using zwavejs
+	* hiveoview - basic web client providing a directory and dashboard viewer of hiveot Things
+	* ipnet - ip network scanner
+	* isy99x - protocol binding for legacy ISY 99/994 gateway
+	* owserver - protocol binding for OWServer 1-wire gateway
+	* zwavejs - protocol binding for zwave devices using zwavejs

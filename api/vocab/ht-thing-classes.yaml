@@ -1,0 +1,406 @@
+# ht-thing-classes.yaml
+#
+# By: HiveOT project (github.com/hiveot/hub)
+# Subject: Vocabulary definitions for HiveOT device classes.
+# Version: 0.1
+#
+# This includes default title and description.
+# This file is a source for the vocabulary generator utility, which produces
+# golang, javascript and python code than can be used directly in the services.
+#
+# Clients can also load this map from file to present translated title and description
+#
+ThingClasses:
+  Version: "0.1"
+  Link: "github.com/hiveot/hub/api/vocab/ht-thing-classes.yaml"
+  Namespace: "ht"
+
+  # ht:actuator devices
+  Actuator:
+    class: "ht:actuator"
+    title: "Actuator"
+    description: "Generic actuator"
+  ActuatorAlarm:
+    class: "ht:actuator:alarm"
+    title: "Alarm"
+    description: "Siren or light alarm"
+  ActuatorDimmer:
+    class: "ht:actuator:dimmer"
+    title: "Dimmer"
+    description: "Light dimmer"
+  ActuatorLock:
+    class: "ht:actuator:lock"
+    title: "Lock"
+    description: "Electronic door lock"
+  ActuatorLight:
+    class: "ht:actuator:light"
+    title: "Light"
+    description: "Smart LED or other light"
+  ActuatorMotor:
+    class: "ht:actuator:motor"
+    title: "Motor"
+    description: "Motor driven actuator, such as garage door, blinds, tv lifts"
+  ActuatorOutput:
+    class: "ht:actuator:output"
+    title: "Output"
+    description: "General purpose electrical output signal"
+  ActuatorRanged:
+    class: "ht:actuator:ranged"
+    title: "Ranged actuator"
+    description: "Generic ranged actuator with a set point"
+  ActuatorSwitch:
+    class: "ht:actuator:switch"
+    title: "Switch"
+    description: "An electric powered on/off switch for powering circuits"
+  ActuatorValve:
+    class: "ht:actuator:valve"
+    title: "Valve"
+    description: "Electric powered valve for fluids or gas"
+  ActuatorValveWater:
+    class: "ht:actuator:valve:water"
+    title: "Water valve"
+    description: "Electric powered water valve"
+  ActuatorValveFuel:
+    class: "ht:actuator:valve:fuel"
+    title: "Fuel valve"
+    description: "Electric powered fuel valve"
+
+  # ht:appliance devices
+  Appliance:
+    class: "ht:appliance"
+    title: "Appliance"
+    description: "Appliance to accomplish a particular task for occupant use"
+  ApplianceDishwasher:
+    class: "ht:appliance:dishwasher"
+    title: "Dishwasher"
+    description: "Dishwasher"
+  ApplianceDryer:
+    class: "ht:appliance:dryer"
+    title: "Dryer"
+    description: "Clothing dryer"
+  ApplianceFreezer:
+    class: "ht:appliance:freezer"
+    title: "Freezer"
+    description: "Refrigerator freezer"
+  ApplianceFridge:
+    class: "ht:appliance:fridge"
+    title: "Fridge"
+    description: "Refrigerator appliance"
+  ApplianceWasher:
+    class: "ht:appliance:washer"
+    title: "Washer"
+    description: "Clothing washer"
+
+  # ht:computer devices including phones
+  Computer:
+    class: "ht:computer"
+    title: Computing Device
+    description: General purpose computing device
+  ComputerCellPhone:
+    class: "ht:computer:cellphone"
+    title: Cell Phone
+    description: Cellular phone
+  ComputerEmbedded:
+    class: "ht:computer:embedded"
+    title: Embedded System
+    description: Embedded computing device
+  ComputerPC:
+    class: "ht:computer:pc"
+    title: PC/Laptop
+    description: Personal computer/laptop
+  ComputerPotsPhone:
+    class: "ht:computer:potsphone"
+    title: Land Line
+    description: Plain Old Telephone System, aka landline
+  ComputerSatPhone:
+    class: "ht:computer:satphone"
+    title: Satellite phone
+    description:
+  ComputerTablet:
+    class: "ht:computer:tablet"
+    title: Tablet
+    description: Tablet computer
+  ComputerVoipPhone:
+    class: "ht:computer:voipphone"
+    title: VoIP Phone
+    description: Voice over IP phone
+
+  # ht:control input devices for capturing input commands.
+  # controls that directly drive outputs belong in the actuator section.
+  Control:
+    class: "ht:control"
+    title: "Input controller"
+    description: "Generic input controller"
+  ControlDimmer:
+    class: "ht:control:dimmer"
+    title: "Dimmer"
+    description: "Light dimmer input device"
+  ControlJoystick:
+    class: "ht:control:joystick"
+    title: "Joystick"
+    description: "Flight control stick"
+  ControlKeypad:
+    class: "ht:control:keypad"
+    title: "Keypad"
+    description: "Multi-key pad for command input"
+  ControlPushbutton:
+    class: "ht:control:pushbutton"
+    title: "Momentary switch"
+    description: "Momentary push button control input"
+  ControlSwitch:
+    class: "ht:control:switch"
+    title: "Input switch"
+    description: "On or off switch input control"
+  ControlThermostat:
+    class: "ht:control:thermostat"
+    title: "Thermostat"
+    description: "Thermostat HVAC control"
+  ControlToggle:
+    class: "ht:control:toggle"
+    title: "Toggle switch"
+    description: "Toggle switch input control"
+
+  # ht:media - devices for consuming or producing audio/visual media content
+  Media:
+    class: "ht:media"
+    title: "A/V media"
+    description: "Generic device for audio/video media record or playback"
+  MediaAmplifier:
+    class: "ht:media:amplifier"
+    title: "Audio amplifier"
+    description: "Audio amplifier with volume controls"
+  MediaCamera:
+    class: "ht:media:camera"
+    title: "Camera"
+    description: "Video camera"
+  MediaMicrophone:
+    class: "ht:media:microphone"
+    title: "Microphone"
+    description: "Microphone for capturing audio"
+  MediaPlayer:
+    class: "ht:media:player"
+    title: "Media player"
+    description: "CD/DVD/Blueray/USB player of recorded media"
+  MediaRadio:
+    class: "ht:media:radio"
+    title: "Radio"
+    description: "AM or FM radio receiver"
+  MediaReceiver:
+    class: "ht:media:receiver"
+    title: "Receiver"
+    description: "Audio/video receiver and player"
+  MediaSpeaker:
+    class: "ht:media:speaker"
+    title: "Connected speakers"
+    description: "Network connected speakers"
+  MediaTV:
+    class: "ht:media:tv"
+    title: "TV"
+    description: "Network connected television"
+
+  # ht:meter - metering devices for electricity, water, fuel
+  Meter:
+    class: "ht:meter"
+    title: "Meter"
+    description: "General metering device"
+  MeterElectric:
+    class: "ht:meter:electric"
+  MeterElectricCurrent:
+    class: "ht:meter:electric:current"
+    title: "Electric current"
+    description: "Electrical current meter"
+  MeterElectricEnergy:
+    class: "ht:meter:electric:energy"
+    title: "Electric energy"
+    description: "Electrical energy meter"
+  MeterElectricPower:
+    class: "ht:meter:electric:power"
+    title: "Electrical Power"
+    description: "Electrical power meter"
+  MeterElectricVoltage:
+    class: "ht:meter:electric:voltage"
+    title: "Voltage"
+    description: "Electrical voltage meter"
+  MeterFuel:
+    class: "ht:meter:fuel"
+    title: "Fuel metering device"
+    description: "General fuel metering device"
+  MeterFuelFlow:
+    class: "ht:meter:fuel:flow"
+    title: "Fuel flow rate"
+    description: "Dedicated fuel flow rate metering device"
+  MeterFuelLevel:
+    class: "ht:meter:fuel:level"
+    title: "Fuel level"
+    description: "Dedicated fuel level metering device"
+  MeterWater:
+    class: "ht:meter:water"
+    title: "Water metering device"
+    description: "General water metering device"
+  MeterWaterConsumption:
+    class: "ht:meter:water:consumption"
+    title: "Water consumption meter"
+    description: "Water consumption meter"
+  MeterWaterFlow:
+    class: "ht:meter:water:flow"
+    title: "Water flow"
+    description: "Dedicated water flow-rate meter"
+  MeterWaterLevel:
+    class: "ht:meter:water:level"
+    title: "Water level"
+    description: "Dedicated water level meter"
+
+  # ht:net - devices to facilitate network machine communication
+  Net:
+    class: "ht:net"
+    title: "Network device"
+    description: "Generic network device"
+  NetBluetooth:
+    class: "ht:net:bluetooth"
+    title: "Bluetooth"
+    description: "Bluetooth radio"
+  NetGateway:
+    class: "ht:net:gateway"
+    title: "Gateway"
+    description: "Generic gateway device providing access to other devices"
+  NetGatewayCoap:
+    class: "ht:net:gateway:coap"
+    title: "CoAP gateway"
+    description: "Gateway providing access to CoAP devices"
+  NetGatewayInsteon:
+    class: "ht:net:gateway:insteon"
+    title: "Insteon gateway"
+    description: "Gateway providing access to Insteon devices"
+  NetGatewayOnewire:
+    class: "ht:net:gateway:onewire"
+    title: "1-Wire gateway"
+    description: "Gateway providing access to 1-wire devices"
+  NetGatewayZwave:
+    class: "ht:net:gateway:zwave"
+    title: "ZWave gateway"
+    description: "Gateway providing access to ZWave devices"
+  NetGatewayZigbee:
+    class: "ht:net:gateway:zigbee"
+    title: "Zigbee gateway"
+    description: "Gateway providing access to Zigbee devices"
+  NetRouter:
+    class: "ht:net:router"
+    title: "Network router"
+    description: "IP Network router providing access to other IP networks"
+  NetSwitch:
+    class: "ht:net:switch"
+    title: "Network switch"
+    description: "Network switch to connect computer devices to the network"
+  NetWifi:
+    class: "ht:net:wifi"
+    title: "Wifi device"
+    description: "Generic wifi device"
+  NetWifiAp:
+    class: "ht:net:wifi:ap"
+    title: "Wifi access point"
+    description: "Wireless access point for IP networks"
+  NetLora:
+    class: "ht:net:lora"
+    title: "LoRa network device"
+    description: "Generic Long Range network protocol device"
+  NetLoraGateway:
+    class: "ht:net:lora:gw"
+    title: "LoRaWAN gateway"
+    description: "Gateway providing access to LoRa devices"
+  NetLoraP2P:
+    class: "ht:net:lora:p2p"
+    title: "LoRa P2P"
+    description: "LoRa Peer-to-peer network device"
+
+  # ht:sensor - devices designed to observe features of interest
+  Sensor:
+    class: "ht:sensor"
+    title: "Sensor"
+    description: "Generic sensor device"
+  SensorEnvironment:
+    class: "ht:sensor:environment"
+    title: "Environmental sensor"
+    description: "Environmental sensor with one or more features such as temperature, humidity, etc"
+  SensorInput:
+    class: "ht:sensor:input"
+    title: "Input sensor"
+    description: "General purpose electrical input sensor"
+  SensorMulti:
+    class: "ht:sensor:multi"
+    title: "Multi sensor"
+    description: "Sense multiple inputs"
+  SensorSecurity:
+    class: "ht:sensor:security"
+    title: "Security"
+    description: "Generic security sensor"
+  SensorSecurityGlass:
+    class: "ht:sensor:security:glass"
+    title: "Glass sensor"
+    description: "Dedicated sensor for detecting breaking of glass"
+  SensorSecurityMotion:
+    class: "ht:sensor:security:motion"
+    title: "Motion sensor"
+    description: "Dedicated security sensor detecting motion"
+  SensorSecurityDoorWindow:
+    class: "ht:sensor:security:doorwindow"
+    title: "Door/Window sensor"
+    description: "Dedicated door/window opening security sensor"
+  SensorWaterLeak:
+    class: "ht:sensor:water:leak"
+    title: "Water leak detector"
+    description: "Dedicated water leak detector"
+
+  # ht:service - Software that processes data and offers features of interest
+  Service:
+    class: "ht:service"
+    title: "Service"
+    description: "General service for processing data and offering features of interest"
+  ServiceAuth:
+    class: "ht:service:auth"
+    title: "Authentication service"
+    description: ""
+  ServiceAutomation:
+    class: "ht:service:automation"
+    title: "Automation service"
+    description: ""
+  ServiceDirectory:
+    class: "ht:service:directory"
+    title: "Directory service"
+    description: ""
+  ServiceHistory:
+    class: "ht:service:history"
+    title: "History service"
+    description: ""
+  ServiceImage:
+    class: "ht:service:image"
+    title: "Image classification"
+    description: ""
+  ServiceTTS:
+    class: "ht:service:tts"
+    title: "Text to speech"
+    description: ""
+  ServiceSTT:
+    class: "ht:service:stt"
+    title: "Speech to text"
+    description: ""
+  ServiceTranslation:
+    class: "ht:service:translation"
+    title: "Language translation service"
+    description: ""
+  ServiceStore:
+    class: "ht:service:store"
+    title: "Data storage"
+    description: ""
+  ServiceWeather:
+    class: "ht:service:weather"
+    title: "Weather service"
+    description: "General weather service"
+  ServiceWeatherCurrent:
+    class: "ht:service:weather:current"
+    title: "Current weather"
+    description: ""
+  ServiceWeatherForecast:
+    class: "ht:service:weather:forecast"
+    title: "Weather forecast"
+    description: ""
+
