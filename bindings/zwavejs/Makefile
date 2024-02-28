@@ -19,8 +19,6 @@ clean: ## Clear build and cache
 	rm -rf node_modules
 	rm -rf dist/*
 	rm -rf build/*
-	go clean
-	go mod tidy
 	yarn
 
 help: ## Show this help

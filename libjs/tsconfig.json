@@ -25,7 +25,8 @@
     // paths resolves relative to baseUrl (run with tsx to make this work)
     "paths": {
       "@hivelib/*": [
-        "src/*"
+        "src/*",
+        "../api/js/*"
       ],
       "@keys/*": [
         "src/keys/*"
@@ -40,7 +41,7 @@
     "target": "esnext",
     "types": [
       "node"
-    ],
+    ]
   },
   "include": [
     "./src/**/*.ts",
@@ -49,8 +50,8 @@
   "exclude": [
     "build/**",
     "node_modules",
-    "dist/**",
-  ],
+    "dist/**"
+  ]
   //  "references": [{
   //    "path": "../hivelib"}]
 }

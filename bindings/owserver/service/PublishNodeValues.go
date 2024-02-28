@@ -1,8 +1,8 @@
 package service
 
 import (
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/ser"
-	"github.com/hiveot/hub/lib/vocab"
 	"time"
 
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
@@ -66,7 +66,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err err
 		}
 		if len(attrMap) > 0 {
 			attrMapJSON, _ := ser.Marshal(attrMap)
-			err = svc.hc.PubEvent(thingID, vocab.EventNameProps, attrMapJSON)
+			err = svc.hc.PubEvent(thingID, transports.EventNameProps, attrMapJSON)
 		}
 	}
 	return err

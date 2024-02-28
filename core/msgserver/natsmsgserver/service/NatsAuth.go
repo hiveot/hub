@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/vocab"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nkeys"
@@ -215,9 +215,9 @@ func (srv *NatsMsgServer) MakePermissions(clientInfo msgserver.ClientAuthInfo) *
 		Response:  nil,
 	}
 	// all clients can subscribe to their own inbox and publish to other inboxes
-	subInbox := vocab.MessageTypeINBOX + "." + clientInfo.ClientID + ".>"
+	subInbox := transports.MessageTypeINBOX + "." + clientInfo.ClientID + ".>"
 	subPerm.Allow = append(subPerm.Allow, subInbox)
-	pubInbox := vocab.MessageTypeINBOX + ".>"
+	pubInbox := transports.MessageTypeINBOX + ".>"
 	pubPerm.Allow = append(pubPerm.Allow, pubInbox)
 
 	// generate subjects based on role permissions
@@ -293,7 +293,7 @@ func (srv *NatsMsgServer) SetServicePermissions(
 			rp = []msgserver.RolePermission{}
 		}
 		rp = append(rp, msgserver.RolePermission{
-			MsgType:  vocab.MessageTypeRPC,
+			MsgType:  transports.MessageTypeRPC,
 			AgentID:  serviceID,
 			ThingID:  capability,
 			MsgName:  "", // all methods of the capability can be used

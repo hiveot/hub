@@ -3,8 +3,8 @@ package service
 import (
 	"errors"
 	"fmt"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/vocab"
 )
 
 // IsyDimmerThing is a general-purpose dimmer switch
@@ -15,10 +15,10 @@ type IsyDimmerThing struct {
 func (it *IsyDimmerThing) GetTD() *things.TD {
 	td := it.NodeThing.GetTD()
 	// AddSwitchEvent is short for adding an event for a switch
-	td.AddDimmerEvent(vocab.VocabDimmer)
+	td.AddDimmerEvent(vocab.PropSwitchDimmer)
 
-	a := td.AddDimmerAction(vocab.VocabActionSetValue)
-	a.Input.Unit = vocab.UnitNamePercent
+	a := td.AddDimmerAction(vocab.ActionDimmerSet)
+	a.Input.Unit = vocab.UnitPercent
 	a.Input.NumberMinimum = 0
 	a.Input.NumberMaximum = 100
 	// TODO: increment and decrement
@@ -45,7 +45,7 @@ func (it *IsyDimmerThing) HandleActionRequest(tv *things.ThingValue) (err error)
 	var restPath = ""
 	var newValue = ""
 	// supported actions: on, off
-	if tv.Name == vocab.VocabActionSetValue {
+	if tv.Name == vocab.ActionDimmerSet {
 		newValue = string(tv.Data)
 		restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.id, newValue)
 

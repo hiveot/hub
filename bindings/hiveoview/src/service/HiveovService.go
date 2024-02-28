@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/hiveoviewapi"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
@@ -22,8 +23,8 @@ import (
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"net/http"
 	"os"
@@ -129,7 +130,7 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 // CreateHiveoviewTD creates a new Thing TD document describing the service capability
 func (svc *HiveovService) CreateHiveoviewTD() *things.TD {
 	title := "Web Server"
-	deviceType := vocab.DeviceTypeService
+	deviceType := vocab.ThingService
 	td := things.NewTD(hiveoviewapi.HiveoviewServiceCap, title, deviceType)
 	// TODO: add properties: uptime, max nr clients
 
@@ -159,7 +160,7 @@ func (svc *HiveovService) Start(hc *hubclient.HubClient) error {
 
 	myTD := svc.CreateHiveoviewTD()
 	myTDJSON, _ := json.Marshal(myTD)
-	err = svc.hc.PubEvent(hiveoviewapi.HiveoviewServiceCap, vocab.EventNameTD, myTDJSON)
+	err = svc.hc.PubEvent(hiveoviewapi.HiveoviewServiceCap, transports.EventNameTD, myTDJSON)
 	if err != nil {
 		slog.Error("failed to publish the hiveoview service TD", "err", err.Error())
 	}

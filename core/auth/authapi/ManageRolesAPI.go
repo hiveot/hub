@@ -2,7 +2,7 @@ package authapi
 
 import (
 	"github.com/hiveot/hub/core/msgserver"
-	"github.com/hiveot/hub/lib/vocab"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 )
 
 const DefaultAclFilename = "authz.acl"
@@ -79,19 +79,19 @@ const (
 // devices can publish events, replies and subscribe to their own actions and config
 var devicePermissions = []msgserver.RolePermission{
 	{
-		MsgType:  vocab.MessageTypeEvent,
+		MsgType:  transports.MessageTypeEvent,
 		AgentID:  "{clientID}", // devices can only publish their own events
 		AllowPub: true,
 	}, {
-		MsgType:  vocab.MessageTypeEvent,
+		MsgType:  transports.MessageTypeEvent,
 		AgentID:  "", // devices can subscribe to events
 		AllowSub: true,
 	}, {
-		MsgType:  vocab.MessageTypeAction,
+		MsgType:  transports.MessageTypeAction,
 		AgentID:  "{clientID}",
 		AllowSub: true,
 	}, {
-		MsgType:  vocab.MessageTypeConfig,
+		MsgType:  transports.MessageTypeConfig,
 		AgentID:  "{clientID}",
 		AllowSub: true,
 	},
@@ -99,49 +99,49 @@ var devicePermissions = []msgserver.RolePermission{
 
 // viewers can subscribe to all things
 var viewerPermissions = []msgserver.RolePermission{{
-	MsgType:  vocab.MessageTypeEvent,
+	MsgType:  transports.MessageTypeEvent,
 	AllowSub: true,
 }}
 
 // operators can subscribe to events and publish things actions
 var operatorPermissions = []msgserver.RolePermission{
 	{
-		MsgType:  vocab.MessageTypeEvent,
+		MsgType:  transports.MessageTypeEvent,
 		AllowSub: true,
 	}, {
-		MsgType:  vocab.MessageTypeAction,
+		MsgType:  transports.MessageTypeAction,
 		AllowPub: true,
 	},
 }
 
 // managers can in addition to operator also publish configuration
 var managerPermissions = append(operatorPermissions, msgserver.RolePermission{
-	MsgType:  vocab.MessageTypeConfig,
+	MsgType:  transports.MessageTypeConfig,
 	AllowPub: true,
 })
 
 // administrators can in addition to operators publish all RPCs
 // RPC request permissions for roles are set by the service when they register.
 var adminPermissions = append(managerPermissions, msgserver.RolePermission{
-	MsgType:  vocab.MessageTypeRPC,
+	MsgType:  transports.MessageTypeRPC,
 	AllowPub: true,
 })
 
 // services are admins that can also publish events and subscribe to their own rpc, actions and config
 var servicePermissions = append(adminPermissions, msgserver.RolePermission{
-	MsgType:  vocab.MessageTypeEvent,
+	MsgType:  transports.MessageTypeEvent,
 	AgentID:  "{clientID}",
 	AllowPub: true,
 }, msgserver.RolePermission{
-	MsgType:  vocab.MessageTypeRPC,
+	MsgType:  transports.MessageTypeRPC,
 	AgentID:  "{clientID}",
 	AllowSub: true,
 }, msgserver.RolePermission{
-	MsgType:  vocab.MessageTypeAction,
+	MsgType:  transports.MessageTypeAction,
 	AgentID:  "{clientID}",
 	AllowSub: true,
 }, msgserver.RolePermission{
-	MsgType:  vocab.MessageTypeConfig,
+	MsgType:  transports.MessageTypeConfig,
 	AgentID:  "{clientID}",
 	AllowSub: true,
 })

@@ -1,10 +1,9 @@
 package service
 
 import (
-	thing2 "github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/vocab"
-
+	"github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
+	thing2 "github.com/hiveot/hub/lib/things"
 )
 
 // CreateTDFromNode converts the 1-wire node into a TD that describes the node.

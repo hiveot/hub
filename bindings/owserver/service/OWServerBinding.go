@@ -2,13 +2,13 @@ package service
 
 import (
 	"fmt"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"sync"
 	"time"
@@ -43,25 +43,29 @@ type OWServerBinding struct {
 // CreateBindingTD generates a TD document for this binding
 func (svc *OWServerBinding) CreateBindingTD() *things.TD {
 	thingID := svc.hc.ClientID()
-	td := things.NewTD(thingID, "OWServer svc", vocab.DeviceTypeBinding)
+	td := things.NewTD(thingID, "OWServer svc", vocab.ThingServiceAdapter)
 	// these are configured through the configuration file.
-	prop := td.AddProperty(vocab.VocabPollInterval, vocab.VocabPollInterval, "Poll Interval", vocab.WoTDataTypeInteger)
-	prop.Unit = vocab.UnitNameSecond
+	prop := td.AddProperty(vocab.PropDevicePollinterval, vocab.PropDevicePollinterval,
+		"Poll Interval", vocab.WoTDataTypeInteger)
+	prop.Unit = vocab.UnitSecond
 
-	prop = td.AddProperty("tdInterval", vocab.VocabPollInterval, "TD Publication Interval", vocab.WoTDataTypeInteger)
-	prop.Unit = vocab.UnitNameSecond
+	prop = td.AddProperty("tdInterval", vocab.PropDevicePollinterval,
+		"TD Publication Interval", vocab.WoTDataTypeInteger)
+	prop.Unit = vocab.UnitSecond
 
-	prop = td.AddProperty("valueInterval", vocab.VocabPollInterval, "Value Republication Interval", vocab.WoTDataTypeInteger)
-	prop.Unit = vocab.UnitNameSecond
+	prop = td.AddProperty("valueInterval", vocab.PropDevicePollinterval,
+		"Value Republication Interval", vocab.WoTDataTypeInteger)
+	prop.Unit = vocab.UnitSecond
 
-	prop = td.AddProperty("owServerAddress", vocab.VocabGatewayAddress, "OWServer gateway IP address", vocab.WoTDataTypeString)
+	prop = td.AddProperty("owServerAddress", vocab.PropNetAddress,
+		"OWServer gateway IP address", vocab.WoTDataTypeString)
 	return td
 }
 
 // MakeBindingProps generates a properties map for attribute and config properties of this binding
 func (svc *OWServerBinding) MakeBindingProps() map[string]string {
 	pv := make(map[string]string)
-	pv[vocab.VocabPollInterval] = fmt.Sprintf("%d", svc.config.PollInterval)
+	pv[vocab.PropDevicePollinterval] = fmt.Sprintf("%d", svc.config.PollInterval)
 	pv["tdInterval"] = fmt.Sprintf("%d", svc.config.TDInterval)
 	pv["valueInterval"] = fmt.Sprintf("%d", svc.config.RepublishInterval)
 	pv["owServerAddress"] = svc.config.OWServerURL

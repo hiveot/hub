@@ -4,7 +4,7 @@ package eds
 import (
 	"encoding/xml"
 	"fmt"
-	"github.com/hiveot/hub/lib/vocab"
+	vocab "github.com/hiveot/hub/api/go"
 	"log/slog"
 	"math"
 	"net/http"
@@ -18,54 +18,54 @@ import (
 // family to device type. See also: http://owfs.sourceforge.net/simple_family.html
 // Todo: get from config file so it is easy to update
 var deviceTypeMap = map[string]string{
-	"01": "serialNumber",               // 2401,2411 (1990A): Silicon Serial Number
-	"02": "securityKey",                // 1425 (1991): multikey 1153bit secure
-	"04": vocab.DeviceTypeTime,         // 2404 (1994): econoram time chip
-	"05": vocab.DeviceTypeBinarySwitch, // 2405: Addresable Switch
-	"06": vocab.DeviceTypeMemory,       // (1993) 4K memory ibutton
-	"08": vocab.DeviceTypeMemory,       // (1992) 1K memory ibutton
-	"0A": vocab.DeviceTypeMemory,       // (1995) 16K memory ibutton
-	"0C": vocab.DeviceTypeMemory,       // (1996) 64K memory ibutton
-	"10": vocab.DeviceTypeThermometer,  // 18S20: high precision digital thermometer
-	"12": vocab.DeviceTypeBinarySwitch, // 2406:  dual addressable switch plus 1k memory
-	"14": vocab.DeviceTypeEeprom,       // 2430A (1971): 256 EEPROM
-	"1A": vocab.DeviceTypeEeprom,       // (1963L) 4K Monetary
-	"1C": vocab.DeviceTypeEeprom,       // 28E04-100: 4K EEPROM with PIO
-	"1D": vocab.DeviceTypeMemory,       // 2423:  4K RAM with counter
-	"1F": "coupler",                    // 2409:  Microlan coupler?
-	"20": "adconverter",                // 2450:  Quad A/D convert
-	"21": vocab.DeviceTypeThermometer,  // 1921:  Thermochron iButton device
-	"22": vocab.DeviceTypeThermometer,  // 1822:  Econo digital thermometer
-	"24": vocab.DeviceTypeTime,         // 2415:  time chip
-	"26": vocab.DeviceTypeBatteryMon,   // 2438:  smart battery monitor
-	"27": vocab.DeviceTypeTime,         // 2417:  time chip with interrupt
-	"28": vocab.DeviceTypeThermometer,  // 18B20: programmable resolution digital thermometer
-	"29": vocab.DeviceTypeOnOffSwitch,  // 2408:  8-channel addressable switch
-	"2C": vocab.DeviceTypeSensor,       // 2890:  digital potentiometer"
-	"2D": vocab.DeviceTypeEeprom,       // 2431:  1k eeprom
-	"2E": vocab.DeviceTypeBatteryMon,   // 2770:  battery monitor and charge controller
-	"30": vocab.DeviceTypeBatteryMon,   // 2760, 2761, 2762:  high-precision li+ battery monitor
-	"31": vocab.DeviceTypeBatteryMon,   // 2720: efficient addressable single-cell rechargable lithium protection ic
-	"33": vocab.DeviceTypeEeprom,       // 2432 (1961S): 1k protected eeprom with SHA-1
-	"36": vocab.DeviceTypeSensor,       // 2740: high precision coulomb counter
-	"37": vocab.DeviceTypeEeprom,       // (1977): OWServerPassword protected 32k eeprom
-	"3B": vocab.DeviceTypeThermometer,  // DS1825: programmable digital thermometer (https://www.analog.com/media/en/technical-documentation/data-sheets/ds1825.pdf)
-	"41": vocab.DeviceTypeSensor,       // 2422: Temperature Logger 8k mem
-	"42": vocab.DeviceTypeThermometer,  // DS28EA00: digital thermometer with PIO (https://www.analog.com/media/en/technical-documentation/data-sheets/ds28ea00.pdf)
-	"51": vocab.DeviceTypeIndicator,    // 2751: multi chemistry battery fuel gauge
-	"84": vocab.DeviceTypeTime,         // 2404S: dual port plus time
+	"01": "serialNumber",                  // 2401,2411 (1990A): Silicon Serial Number
+	"02": "securityKey",                   // 1425 (1991): multikey 1153bit secure
+	"04": vocab.ThingDeviceTime,           // 2404 (1994): econoram time chip
+	"05": vocab.ThingActuatorSwitch,       // 2405: Addressable Switch
+	"06": vocab.ThingComputerMemory,       // (1993) 4K memory ibutton
+	"08": vocab.ThingComputerMemory,       // (1992) 1K memory ibutton
+	"0A": vocab.ThingComputerMemory,       // (1995) 16K memory ibutton
+	"0C": vocab.ThingComputerMemory,       // (1996) 64K memory ibutton
+	"10": vocab.ThingSensorThermometer,    // 18S20: high precision digital thermometer
+	"12": vocab.ThingActuatorSwitch,       // 2406:  dual addressable switch plus 1k memory
+	"14": vocab.ThingComputerMemory,       // 2430A (1971): 256 EEPROM
+	"1A": vocab.ThingComputerMemory,       // (1963L) 4K Monetary
+	"1C": vocab.ThingComputerMemory,       // 28E04-100: 4K EEPROM with PIO
+	"1D": vocab.ThingComputerMemory,       // 2423:  4K RAM with counter
+	"1F": "coupler",                       // 2409:  Microlan coupler?
+	"20": "adconverter",                   // 2450:  Quad A/D convert
+	"21": vocab.ThingSensorThermometer,    // 1921:  Thermochron iButton device
+	"22": vocab.ThingSensorThermometer,    // 1822:  Econo digital thermometer
+	"24": vocab.ThingDeviceTime,           // 2415:  time chip
+	"26": vocab.ThingDeviceBatteryMonitor, // 2438:  smart battery monitor
+	"27": vocab.ThingDeviceTime,           // 2417:  time chip with interrupt
+	"28": vocab.ThingSensorThermometer,    // 18B20: programmable resolution digital thermometer
+	"29": vocab.ThingActuatorSwitch,       // 2408:  8-channel addressable switch
+	"2C": vocab.ThingSensor,               // 2890:  digital potentiometer"
+	"2D": vocab.ThingComputerMemory,       // 2431:  1k eeprom
+	"2E": vocab.ThingDeviceBatteryMonitor, // 2770:  battery monitor and charge controller
+	"30": vocab.ThingDeviceBatteryMonitor, // 2760, 2761, 2762:  high-precision li+ battery monitor
+	"31": vocab.ThingDeviceBatteryMonitor, // 2720: efficient addressable single-cell rechargable lithium protection ic
+	"33": vocab.ThingComputerMemory,       // 2432 (1961S): 1k protected eeprom with SHA-1
+	"36": vocab.ThingSensor,               // 2740: high precision coulomb counter
+	"37": vocab.ThingComputerMemory,       // (1977): OWServerPassword protected 32k eeprom
+	"3B": vocab.ThingSensorThermometer,    // DS1825: programmable digital thermometer (https://www.analog.com/media/en/technical-documentation/data-sheets/ds1825.pdf)
+	"41": vocab.ThingSensorThermometer,    // 2422: Temperature Logger 8k mem
+	"42": vocab.ThingSensorThermometer,    // DS28EA00: digital thermometer with PIO (https://www.analog.com/media/en/technical-documentation/data-sheets/ds28ea00.pdf)
+	"51": vocab.ThingDeviceIndicator,      // 2751: multi chemistry battery fuel gauge
+	"84": vocab.ThingDeviceTime,           // 2404S: dual port plus time
 	//# EDS0068: Temperature, Humidity, Barometric Pressure and Light Sensor
 	//https://www.embeddeddatasystems.com/assets/images/supportFiles/manuals/EN-UserMan%20%20OW-ENV%20Sensor%20v13.pdf
-	"7E": vocab.DeviceTypeMultisensor,
+	"7E": vocab.ThingSensorMulti,
 }
 
 // AttrVocab maps OWServer attribute names to IoT vocabulary
 var AttrVocab = map[string]string{
-	"MACAddress": vocab.VocabMAC,
+	"MACAddress": vocab.PropNetMAC,
 	//"DateTime":   vocab.VocabDateTime,
-	"DeviceName": vocab.VocabName,
-	"HostName":   vocab.VocabHostname,
-	"Version":    vocab.VocabSoftwareVersion,
+	"DeviceName": vocab.PropDeviceName,
+	"HostName":   vocab.PropNetHostname,
+	"Version":    vocab.PropDeviceSoftwareVersion,
 	// Exclude/ignore the following attributes as they are chatty or not useful
 	"BarometricPressureHg":                           "",
 	"BarometricPressureHgHighAlarmState":             "",
@@ -107,20 +107,20 @@ var SensorTypeVocab = map[string]struct {
 	decimals   int // number of decimals accuracy for this value
 }{
 	// "BarometricPressureHg": vocab.PropNameAtmosphericPressure, // unit Hg
-	"BarometricPressureMb":               {sensorType: vocab.VocabAtmosphericPressure, name: "Atmospheric Pressure", dataType: vocab.WoTDataTypeNumber, decimals: 0}, // unit Mb
-	"BarometricPressureMbHighAlarmState": {sensorType: vocab.VocabAlarmState, name: "Pressure High Alarm", dataType: vocab.WoTDataTypeBool},
-	"BarometricPressureMbLowAlarmState":  {sensorType: vocab.VocabAlarmState, name: "Pressure Low Alarm", dataType: vocab.WoTDataTypeBool},
-	"DewPoint":                           {sensorType: vocab.VocabDewpoint, name: "Dew point", dataType: vocab.WoTDataTypeNumber, decimals: 1},
+	"BarometricPressureMb":               {sensorType: vocab.PropEnvBarometer, name: "Atmospheric Pressure", dataType: vocab.WoTDataTypeNumber, decimals: 0}, // unit Mb
+	"BarometricPressureMbHighAlarmState": {sensorType: "HighPressureAlarm", name: "Pressure High Alarm", dataType: vocab.WoTDataTypeBool},
+	"BarometricPressureMbLowAlarmState":  {sensorType: "LowPressureAlarm", name: "Pressure Low Alarm", dataType: vocab.WoTDataTypeBool},
+	"DewPoint":                           {sensorType: vocab.PropEnvDewpoint, name: "Dew point", dataType: vocab.WoTDataTypeNumber, decimals: 1},
 	"Health":                             {sensorType: "health", name: "Health 0-7", dataType: vocab.WoTDataTypeNumber},
-	"HeatIndex":                          {sensorType: vocab.VocabHeatIndex, name: "Heat Index", dataType: vocab.WoTDataTypeNumber, decimals: 1},
-	"Humidity":                           {sensorType: vocab.VocabHumidity, name: "Humidity", dataType: vocab.WoTDataTypeNumber, decimals: 0},
-	"HumidityHighAlarmState":             {sensorType: vocab.VocabAlarmState, name: "Humidity High Alarm", dataType: vocab.WoTDataTypeBool},
-	"HumidityLowAlarmState":              {sensorType: vocab.VocabAlarmState, name: "Humidity Low Alarm", dataType: vocab.WoTDataTypeBool},
-	"Light":                              {sensorType: vocab.VocabLuminance, name: "Luminance", dataType: vocab.WoTDataTypeNumber, decimals: 0},
-	"RelayState":                         {sensorType: vocab.VocabRelay, name: "Relay State", dataType: vocab.WoTDataTypeBool, decimals: 0},
-	"Temperature":                        {sensorType: vocab.VocabTemperature, name: "Temperature", dataType: vocab.WoTDataTypeNumber, decimals: 1},
-	"TemperatureHighAlarmState":          {sensorType: vocab.VocabAlarmState, name: "Temperature High Alarm", dataType: vocab.WoTDataTypeBool},
-	"TemperatureLowAlarmState":           {sensorType: vocab.VocabAlarmState, name: "Temperature Low Alarm", dataType: vocab.WoTDataTypeBool},
+	//"HeatIndex":                          {sensorType: vocab.PropEnvHeatindex, name: "Heat Index", dataType: vocab.WoTDataTypeNumber, decimals: 1},
+	"Humidity":                  {sensorType: vocab.PropEnvHumidity, name: "Humidity", dataType: vocab.WoTDataTypeNumber, decimals: 0},
+	"HumidityHighAlarmState":    {sensorType: "HighHumidityAlarm", name: "Humidity High Alarm", dataType: vocab.WoTDataTypeBool},
+	"HumidityLowAlarmState":     {sensorType: "LowHumidityAlarm", name: "Humidity Low Alarm", dataType: vocab.WoTDataTypeBool},
+	"Light":                     {sensorType: vocab.PropEnvLuminance, name: "Luminance", dataType: vocab.WoTDataTypeNumber, decimals: 0},
+	"RelayState":                {sensorType: vocab.PropSwitchOnOff, name: "Relay State", dataType: vocab.WoTDataTypeBool, decimals: 0},
+	"Temperature":               {sensorType: vocab.PropEnvTemperature, name: "Temperature", dataType: vocab.WoTDataTypeNumber, decimals: 1},
+	"TemperatureHighAlarmState": {sensorType: "HighTemperatureAlarm", name: "Temperature High Alarm", dataType: vocab.WoTDataTypeBool},
+	"TemperatureLowAlarmState":  {sensorType: "LowTemperatureAlarm", name: "Temperature Low Alarm", dataType: vocab.WoTDataTypeBool},
 }
 
 // ActuatorTypeVocab maps OWServer names to IoT vocabulary
@@ -130,19 +130,19 @@ var ActuatorTypeVocab = map[string]struct {
 	DataType     string
 }{
 	// "BarometricPressureHg": vocab.PropNameAtmosphericPressure, // unit Hg
-	"Relay": {ActuatorType: vocab.VocabRelay, Title: "Relay", DataType: vocab.WoTDataTypeBool},
+	"Relay": {ActuatorType: vocab.ActionSwitchOff, Title: "Relay", DataType: vocab.WoTDataTypeBool},
 }
 
 // UnitNameVocab maps OWServer unit names to IoT vocabulary
 var UnitNameVocab = map[string]string{
-	"PercentRelativeHumidity": vocab.UnitNamePercent,
-	"Millibars":               vocab.UnitNameMillibar,
-	"Centigrade":              vocab.UnitNameCelcius,
-	"Fahrenheit":              vocab.UnitNameFahrenheit,
-	"InchesOfMercury":         vocab.UnitNameMercury,
-	"Lux":                     vocab.UnitNameLux,
-	"//":                      vocab.UnitNameCount,
-	"Volt":                    vocab.UnitNameVolt,
+	"PercentRelativeHumidity": vocab.UnitPercent,
+	"Millibars":               vocab.UnitMillibar,
+	"Centigrade":              vocab.UnitCelcius,
+	"Fahrenheit":              vocab.UnitFahrenheit,
+	"InchesOfMercury":         vocab.UnitMercury,
+	"Lux":                     vocab.UnitLux,
+	"//":                      vocab.UnitCount,
+	"Volt":                    vocab.UnitVolt,
 }
 
 // EdsAPI EDS device API properties and methods
@@ -223,14 +223,14 @@ func ParseOneWireNodes(
 		Name:        xmlNode.XMLName.Local,
 		Description: xmlNode.Description,
 		Attr:        make(map[string]OneWireAttr),
-		DeviceType:  vocab.DeviceTypeGateway,
+		DeviceType:  vocab.ThingNetGateway,
 	}
 	owNodeList = append(owNodeList, &owNode)
 	// todo: find a better place for this
 	if isRootNode {
 		owAttr := OneWireAttr{
-			ID:       vocab.VocabLatency,
-			Name:     vocab.VocabLatency,
+			ID:       vocab.PropNetLatency,
+			Name:     vocab.PropNetLatency,
 			Value:    fmt.Sprintf("%.2f", latency.Seconds()),
 			Unit:     "sec",
 			DataType: vocab.WoTDataTypeNumber,
@@ -298,7 +298,7 @@ func ParseOneWireNodes(
 				if node.XMLName.Local == "Family" {
 					deviceType := deviceTypeMap[owAttr.Value]
 					if deviceType == "" {
-						deviceType = vocab.DeviceTypeUnknown
+						deviceType = vocab.ThingDevice
 					}
 					owNode.DeviceType = deviceType
 				} else if node.XMLName.Local == "ROMId" {

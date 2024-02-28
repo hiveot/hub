@@ -3,9 +3,9 @@ package buckets_test
 import (
 	"encoding/json"
 	"fmt"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
-	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"math/rand"
 	"os"
@@ -65,11 +65,11 @@ func createTD(id string) *things.TD {
 	td := &things.TD{
 		ID:         id,
 		Title:      fmt.Sprintf("test TD %s", id),
-		DeviceType: vocab.DeviceTypeSensor,
+		DeviceType: vocab.ThingSensor,
 		Properties: make(map[string]*things.PropertyAffordance),
 		Events:     make(map[string]*things.EventAffordance),
 	}
-	td.Properties[vocab.VocabTitle] = &things.PropertyAffordance{
+	td.Properties[vocab.PropDeviceName] = &things.PropertyAffordance{
 		DataSchema: things.DataSchema{
 			Title:       "Sensor title",
 			Description: "This is a smart sensor",
@@ -77,7 +77,7 @@ func createTD(id string) *things.TD {
 			Default:     "Default value",
 		},
 	}
-	td.Properties[vocab.VocabSoftwareVersion] = &things.PropertyAffordance{
+	td.Properties[vocab.PropDeviceSoftwareVersion] = &things.PropertyAffordance{
 		DataSchema: things.DataSchema{
 			Title:       "Version",
 			Description: "Embedded firmware",
@@ -86,7 +86,7 @@ func createTD(id string) *things.TD {
 			Const:       "v1.0",
 		},
 	}
-	td.Events[vocab.VocabValue] = &things.EventAffordance{
+	td.Events[vocab.PropEnvTemperature] = &things.EventAffordance{
 		Title:       "Event 1",
 		Description: "ID of this event",
 		Data: &things.DataSchema{
@@ -95,12 +95,12 @@ func createTD(id string) *things.TD {
 			Title:       "Event name data",
 			Description: "String with friendly name of the event"},
 	}
-	td.Events[vocab.VocabBatteryLevel] = &things.EventAffordance{
+	td.Events[vocab.PropDeviceBattery] = &things.EventAffordance{
 		Title: "Event 2",
 		Data: &things.DataSchema{
 			Type:        vocab.WoTDataTypeInteger,
 			Title:       "Battery level",
-			Unit:        vocab.UnitNamePercent,
+			Unit:        vocab.UnitPercent,
 			Description: "Battery level update in % of device"},
 	}
 	return td

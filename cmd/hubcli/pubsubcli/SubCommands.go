@@ -3,8 +3,8 @@ package pubsubcli
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/lib/vocab"
 	"time"
 
 	"github.com/araddon/dateparse"
@@ -59,7 +59,7 @@ func SubEventsCommand(hc **hubclient.HubClient) *cli.Command {
 // HandleSubTD subscribes and prints TD publications
 func HandleSubTD(hc *hubclient.HubClient) error {
 
-	err := hc.SubEvents("", "", vocab.EventNameTD)
+	err := hc.SubEvents("", "", transports.EventNameTD)
 	if err != nil {
 		return err
 	}
@@ -93,11 +93,11 @@ func HandleSubEvents(hc *hubclient.HubClient, agentID string, thingID string, na
 		createdTime := time.UnixMilli(msg.CreatedMSec)
 		timeStr := createdTime.Format("15:04:05.000")
 		value := fmt.Sprintf("%-.30s", msg.Data)
-		if msg.Name == vocab.EventNameProps {
+		if msg.Name == transports.EventNameProps {
 			var props map[string]interface{}
 			_ = json.Unmarshal(msg.Data, &props)
 			value = fmt.Sprintf("%d properties", len(props))
-		} else if msg.Name == vocab.EventNameTD {
+		} else if msg.Name == transports.EventNameTD {
 			var td things.TD
 			_ = json.Unmarshal(msg.Data, &td)
 			value = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",

@@ -3,8 +3,8 @@ package service
 import (
 	"errors"
 	"fmt"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/vocab"
 )
 
 // IsySwitchThing is a general-purpose on/off switch
@@ -15,9 +15,10 @@ type IsySwitchThing struct {
 func (it *IsySwitchThing) GetTD() *things.TD {
 	td := it.NodeThing.GetTD()
 	// AddSwitchEvent is short for adding an event for a switch
-	td.AddSwitchEvent(vocab.VocabOnOffSwitch)
-	td.AddSwitchAction(vocab.VocabActionOn)
-	td.AddSwitchAction(vocab.VocabActionOff)
+	td.AddSwitchEvent(vocab.PropSwitchOnOff)
+	td.AddSwitchAction(vocab.ActionSwitchOn)
+	td.AddSwitchAction(vocab.ActionSwitchOff)
+	td.AddSwitchAction(vocab.ActionSwitchToggle)
 
 	return td
 }
@@ -33,11 +34,11 @@ func (it *IsySwitchThing) HandleActionRequest(tv *things.ThingValue) (err error)
 	var restPath = ""
 	var newValue = ""
 	// supported actions: on, off
-	if tv.Name == vocab.VocabActionOn {
+	if tv.Name == vocab.ActionSwitchOn {
 		newValue = "DON"
-	} else if tv.Name == vocab.VocabActionOff {
+	} else if tv.Name == vocab.ActionSwitchOff {
 		newValue = "DOF"
-	} else if tv.Name == vocab.VocabActionToggle {
+	} else if tv.Name == vocab.ActionSwitchToggle {
 		newValue = "DOF"
 		oldValue, found := it.propValues.GetValue(tv.Name)
 		if !found || oldValue == "DOF" {

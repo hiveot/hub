@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/core/msgserver"
 	jwtauth2 "github.com/hiveot/hub/core/msgserver/mqttmsgserver/jwtauth"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/vocab"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/packets"
 	"golang.org/x/crypto/bcrypt"
@@ -205,11 +205,11 @@ func (hook *MqttAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) 
 	// 1. INBOX rules are embedded
 
 	// all clients can subscribe to their own inbox
-	if !write && strings.HasPrefix(topic, vocab.MessageTypeINBOX+"/"+loginID) {
+	if !write && strings.HasPrefix(topic, transports.MessageTypeINBOX+"/"+loginID) {
 		return true
 	}
 	// anyone can write to another inbox
-	if write && strings.HasPrefix(topic, vocab.MessageTypeINBOX) {
+	if write && strings.HasPrefix(topic, transports.MessageTypeINBOX) {
 		return true
 	}
 
@@ -311,7 +311,7 @@ func (hook *MqttAuthHook) SetServicePermissions(
 			rp = []msgserver.RolePermission{}
 		}
 		rp = append(rp, msgserver.RolePermission{
-			MsgType:  vocab.MessageTypeRPC,
+			MsgType:  transports.MessageTypeRPC,
 			AgentID:  serviceID,
 			ThingID:  capability,
 			MsgName:  "", // all methods of the capability can be used

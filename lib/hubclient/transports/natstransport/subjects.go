@@ -3,7 +3,7 @@ package natstransport
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/lib/vocab"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"strings"
 )
 
@@ -19,7 +19,7 @@ import (
 //	clientID is the sender's loginID. Required when publishing.
 func MakeSubject(msgType, agentID, thingID, name string, clientID string) string {
 	if msgType == "" {
-		msgType = vocab.MessageTypeEvent
+		msgType = transports.MessageTypeEvent
 	}
 	if agentID == "" {
 		agentID = "*"

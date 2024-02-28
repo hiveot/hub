@@ -7,8 +7,8 @@ import (
 	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 )
 
@@ -60,7 +60,7 @@ func (svc *DirectoryService) Start(hc *hubclient.HubClient) (err error) {
 	// subscribe to TD events to add to the directory
 	if svc.hc != nil {
 		svc.hc.SetEventHandler(svc.handleTDEvent)
-		err = svc.hc.SubEvents("", "", vocab.EventNameTD)
+		err = svc.hc.SubEvents("", "", transports.EventNameTD)
 	}
 	myProfile := authclient.NewProfileClient(svc.hc)
 
@@ -80,13 +80,13 @@ func (svc *DirectoryService) Start(hc *hubclient.HubClient) (err error) {
 	if err == nil {
 		myTD := svc.updateDirSvc.CreateUpdateDirTD()
 		myTDJSON, _ := json.Marshal(myTD)
-		err = svc.hc.PubEvent(directoryapi.UpdateDirectoryCap, vocab.EventNameTD, myTDJSON)
+		err = svc.hc.PubEvent(directoryapi.UpdateDirectoryCap, transports.EventNameTD, myTDJSON)
 	}
 	if err == nil {
 		// last, publish my TD
 		myTD := svc.readDirSvc.CreateReadDirTD()
 		myTDJSON, _ := json.Marshal(myTD)
-		err = svc.hc.PubEvent(directoryapi.ReadDirectoryCap, vocab.EventNameTD, myTDJSON)
+		err = svc.hc.PubEvent(directoryapi.ReadDirectoryCap, transports.EventNameTD, myTDJSON)
 	}
 
 	return err

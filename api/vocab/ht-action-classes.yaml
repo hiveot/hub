@@ -14,83 +14,113 @@
 #
 #
 ActionClasses:
-  Version: "0.1"
-  Link: "github.com/hiveot/hub/api/vocab/ht-action-classes.yaml"
-  Namespace: "ht"
+  version: "0.1"
+  link: "github.com/hiveot/hub/api/vocab/ht-action-classes.yaml"
+  namespace: "ht"
+  vocab:
+    # ht:action:media commands to control media playback
+    ActionMedia:
+      class: "ht:action:media"
+      title: "Media control"
+      description: "Commands to control media recording and playback"
+    ActionMediaMute:
+      class: "ht:action:media:mute"
+      title: "Mute"
+      description: "Mute audio"
+    ActionMediaNext:
+      class: "ht:action:media:next"
+      title: "Next"
+      description: "Next track or station"
+    ActionMediaPause:
+      class: "ht:action:media:pause"
+      title: "Pause"
+      description: "Pause playback"
+    ActionMediaPlay:
+      class: "ht:action:media:play"
+      title: "Play"
+      description: "Start or continue playback"
+    ActionMediaPrevious:
+      class: "ht:action:media:previous"
+      title: "Previous"
+      description: "Previous track or station"
+    ActionMediaUnmute:
+      class: "ht:action:media:unmute"
+      title: "Unmute"
+      description: "Unmute audio"
+    ActionMediaVolume:
+      class: "ht:action:media:volume"
+      title: "Volume"
+      description: "Set volume level"
+    ActionMediaVolumeIncrease:
+      class: "ht:action:media:volume:increase"
+      title: "Increase volume"
+      description: "Increase volume"
+    ActionMediaVolumeDecrease:
+      class: "ht:action:media:volume:decrease"
+      title: "Decrease volume"
+      description: "Decrease volume"
 
-  # ht:action:media commands to control media playback
-  ActionMedia:
-    class: "ht:action:media"
-    title: "Media control"
-    description: "Commands to control media recording and playback"
-  ActionMediaMute:
-    class: "ht:action:media:mute"
-    title: "Mute"
-    description: "Mute audio"
-  ActionMediaNext:
-    class: "ht:action:media:next"
-    title: "Next"
-    description: "Next track or station"
-  ActionMediaPause:
-    class: "ht:action:media:pause"
-    title: "Pause"
-    description: "Pause playback"
-  ActionMediaPlay:
-    class: "ht:action:media:play"
-    title: "Play"
-    description: "Start or continue playback"
-  ActionMediaPrevious:
-    class: "ht:action:media:previous"
-    title: "Previous"
-    description: "Previous track or station"
-  ActionMediaUnmute:
-    class: "ht:action:media:unmute"
-    title: "Unmute"
-    description: "Unmute audio"
-  ActionMediaVolume:
-    class: "ht:action:media:volume"
-    title: "Volume"
-    description: "Set volume level"
-  ActionMediaVolumeIncrease:
-    class: "ht:action:media:volume:increase"
-    title: "Increase volume"
-    description: "Increase volume"
-  ActionMediaVolumeDecrease:
-    class: "ht:action:media:volume:decrease"
-    title: "Decrease volume"
-    description: "Decrease volume"
+    # actions for switches and dimmers
+    ActionDimmer:
+      class: "ht:action:dimmer"
+      title: "Dimmer"
+      description: "General dimmer action"
+    ActionDimmerDecrement:
+      class: "ht:action:dimmer:decrement"
+      title: "Lower dimmer"
+      description: ""
+    ActionDimmerIncrement:
+      class: "ht:action:dimmer:increment"
+      title: "Increase dimmer"
+      description: ""
+    ActionDimmerSet:
+      class: "ht:action:dimmer:set"
+      title: "Set dimmer"
+      description: "Action to set the dimmer value"
 
-  # actions for switches and dimmers
-  ActionDimmer:
-    class: "ht:action:dimmer"
-    title: "Dimmer"
-    description: "Action to set the dimmer value"
-  ActionDimmerDecrement:
-    class: "ht:action:dimmer:decrement"
-    title: "Lower dimmer"
-    description: ""
-  ActionDimmerIncrement:
-    class: "ht:action:dimmer:increment"
-    title: "Increase dimmer"
-    description: ""
+    ActionSwitch:
+      class: "ht:action:switch"
+      title: "Switch"
+      description: "General switch action"
+    ActionSwitchOff:
+      class: "ht:action:switch:off"
+      title: "Switch off"
+      description: "Action to turn the switch off"
+    ActionSwitchOn:
+      class: "ht:action:switch:on"
+      title: "Switch on"
+      description: "Action to turn the switch on"
+    ActionSwitchOnOff:
+      class: "ht:action:switch:onoff"
+      title: "Set On/Off switch"
+      description: "Action to set the switch on/off state"
+    ActionSwitchToggle:
+      class: "ht:action:switch:toggle"
+      title: "Toggle switch"
+      description: "Action to toggle the switch"
 
-  ActionSwitch:
-    class: "ht:action:switch"
-    title: "Switch"
-    description: "General switch action"
-  ActionSwitchOff:
-    class: "ht:action:switch:off"
-    title: "Switch off"
-    description: "Action to turn the switch off"
-  ActionSwitchOn:
-    class: "ht:action:switch:on"
-    title: "Switch on"
-    description: "Action to turn the switch on"
-  ActionSwitchSet:
-    class: "ht:action:switch:set"
-    title: "Set switch"
-    description: "Action to set the switch state"
-  ActionSwitchToggle:
-    class: "ht:action:switch:toggle"
-    title: "Toggle switch"
-    description: "Action to toggle the switch"
+    ActionThingDisable:
+      class: "ht:action:thing:disable"
+      title: "Disable"
+      description: "Action to disable a thing"
+    ActionThingEnable:
+      class: "ht:action:thing:enable"
+      title: "Enable"
+      description: "Action to enable a thing"
+    ActionThingStart:
+      class: "ht:action:thing:start"
+      title: "Start"
+      description: "Start running a task"
+    ActionThingStop:
+      class: "ht:action:thing:stop"
+      title: "Stop"
+      description: "Stop a running task"
+
+    ActionValveClose:
+      class: "ht:action:valve:close"
+      title: "Close valve"
+      description: "Action to close the valve"
+    ActionValveOpen:
+      class: "ht:action:valve:open"
+      title: "Open valve"
+      description: "Action to open the valve"

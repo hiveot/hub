@@ -7,9 +7,9 @@ import (
 	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/core/directory/service"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/vocab"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
@@ -192,7 +192,7 @@ func TestPubTD(t *testing.T) {
 
 	// publish a TD
 	tdDoc := createTDDoc(thing1ID, title1)
-	err = deviceCl.PubEvent(thing1ID, vocab.EventNameTD, tdDoc)
+	err = deviceCl.PubEvent(thing1ID, transports.EventNameTD, tdDoc)
 	//err = deviceCl.PubTD(tdDoc) // TODO:create a TD instance
 
 	assert.NoError(t, err)

@@ -2,7 +2,7 @@ import type {ZWaveController, ZWaveNode} from "zwave-js";
 import {RFRegion} from "zwave-js";
 import type {ThingTD} from "@hivelib/things/ThingTD";
 import {DataSchema} from "@hivelib/things/dataSchema";
-import {DataType,} from "@hivelib/vocab/vocabulary";
+import {WoTDataTypeNone, WoTDataTypeString} from "@hivelib/api/wot-vocab";
 
 // parseController adds controller actions and attributes to the Thing TD
 export function parseController(td: ThingTD, ctl: ZWaveController) {
@@ -10,7 +10,7 @@ export function parseController(td: ThingTD, ctl: ZWaveController) {
     // td.AddProperty("homeID", "Network ID", DataType.Number, ctl.homeId.toString());
 
     if (ctl.rfRegion) {
-        td.AddProperty("rfRegion", "", "RF Region", DataType.String)
+        td.AddProperty("rfRegion", "", "RF Region", WoTDataTypeString)
             .SetAsEnum(RFRegion)
             .SetAsConfiguration()
             .SetDescription("RF Region the controller is set to")
@@ -18,13 +18,13 @@ export function parseController(td: ThingTD, ctl: ZWaveController) {
 
     // controller events. Note these must match the controller event handler
     td.AddEvent("healNetworkState", "healNetworkState", "Heal Network Progress", undefined,
-        new DataSchema({title: "Heal State", type: DataType.String}))
+        new DataSchema({title: "Heal State", type: WoTDataTypeString}))
     td.AddEvent("inclusionState", "inclusionState", "Node Inclusion Progress", undefined,
-        new DataSchema({title: "Inclusion State", type: DataType.String}))
+        new DataSchema({title: "Inclusion State", type: WoTDataTypeString}))
     td.AddEvent("nodeAdded", "nodeAdded", "Node Added", undefined,
-        new DataSchema({title: "ThingID", type: DataType.String}))
+        new DataSchema({title: "ThingID", type: WoTDataTypeString}))
     td.AddEvent("nodeRemoved", "nodeRemoved", "Node Removed", undefined,
-        new DataSchema({title: "ThingID", type: DataType.String}))
+        new DataSchema({title: "ThingID", type: WoTDataTypeString}))
 
     // controller network actions
     td.AddAction("beginInclusion", "beginInclusion", "Start add node process",
@@ -39,15 +39,15 @@ export function parseController(td: ThingTD, ctl: ZWaveController) {
     // controller node actions
     td.AddAction("getNodeNeighbors", "getNodeNeighbors", "Update Neighbors",
         "Request update to a node's neighbor list",
-        new DataSchema({title: "ThingID", type: DataType.String})
+        new DataSchema({title: "ThingID", type: WoTDataTypeString})
     )
     td.AddAction("healNode", "healNode", "Heal the node",
         "Heal the node and update its neighbor list",
-        new DataSchema({title: "ThingID", type: DataType.String})
+        new DataSchema({title: "ThingID", type: WoTDataTypeString})
     )
     td.AddAction("removeFailedNode", "removeFailedNode", "Remove failed node",
         "Remove a failed node from the network",
-        new DataSchema({title: "ThingID", type: DataType.String})
+        new DataSchema({title: "ThingID", type: WoTDataTypeString})
     )
     // td.AddAction("replaceFailedNode", "Replace a failed node with another node (thingID, thingID)", DataType.String)
 
@@ -64,7 +64,7 @@ export function parseController(td: ThingTD, ctl: ZWaveController) {
         for (let [param, pi] of ownNode.deviceConfig.paramInformation) {
             let propID = `${pi.parameterNumber} ${pi.label}`
             let title = propID
-            let dataType = DataType.Unknown
+            let dataType = WoTDataTypeNone
             // FIXME: Include Data schema handle dataType, minValue, maxValue, options, unit, readOnly, writeOnly, unsigned
             let prop = td.AddProperty(propID, "", title, dataType)
             prop.readOnly = false

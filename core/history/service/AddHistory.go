@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/vocab"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"log/slog"
 	"strconv"
 	"time"
@@ -38,9 +38,9 @@ func (svc *AddHistory) encodeValue(tv *things.ThingValue) (key string, val []byt
 	// the index uses milliseconds for timestamp
 	timestamp := ts.UnixMilli()
 	key = strconv.FormatInt(timestamp, 10) + "/" + tv.Name
-	if tv.ValueType == vocab.MessageTypeAction {
+	if tv.ValueType == transports.MessageTypeAction {
 		key = key + "/a"
-	} else if tv.ValueType == vocab.MessageTypeConfig {
+	} else if tv.ValueType == transports.MessageTypeConfig {
 		key = key + "/c"
 	} else {
 		key = key + "/e"

@@ -1,5 +1,5 @@
 // ISubscription interface to underlying subscription mechanism
-import type { IHiveKey } from "@hivelib/keys/IHiveKey";
+import type {IHiveKey} from "@hivelib/keys/IHiveKey";
 
 
 export enum ConnectionStatus {
@@ -22,6 +22,19 @@ export enum ConnInfo {
     // NotConnected means the client has yet to connect
     NotConnected = "notConnected"
 }
+
+// MessageTypeINBOX special inbox prefix for RPCs
+// reserved event and action names
+export enum MessageType {
+    Action = "action",
+    Config = "config",
+    Event = "event",
+    RPC = "rpc",
+    INBOX = "_INBOX",
+    TD = "$td",
+    Props = "$properties"
+}
+
 
 // IHubTransport defines the interface of the message bus transport used by
 // the hub client.

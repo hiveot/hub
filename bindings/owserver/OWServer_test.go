@@ -1,13 +1,14 @@
 package owserver_test
 
 import (
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
 	"github.com/hiveot/hub/core/auth/authapi"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"os"
 	"path"
@@ -86,7 +87,7 @@ func TestPoll(t *testing.T) {
 	require.NoError(t, err)
 	hc.SetEventHandler(func(ev *things.ThingValue) {
 		slog.Info("received event", "id", ev.Name)
-		if ev.Name == vocab.EventNameProps {
+		if ev.Name == transports.EventNameProps {
 			var value map[string]interface{}
 			err2 := ser.Unmarshal(ev.Data, &value)
 			assert.NoError(t, err2)
@@ -139,7 +140,7 @@ func TestAction(t *testing.T) {
 	// node in test data
 	const nodeID = "C100100000267C7E"
 	//var nodeAddr = things.MakeThingAddr(owsConfig.ID, nodeID)
-	var actionName = vocab.VocabRelay
+	var actionName = vocab.ActionSwitchOn
 	var actionValue = ([]byte)("1")
 
 	hc, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)

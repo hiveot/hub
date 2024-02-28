@@ -29,6 +29,18 @@ const (
 	Unauthorized ConnectionStatus = "unauthorized"
 )
 
+// MessageTypeINBOX special inbox prefix for RPCs
+// reserved event and action names
+const (
+	MessageTypeAction = "action"
+	MessageTypeConfig = "config"
+	MessageTypeEvent  = "event"
+	MessageTypeRPC    = "rpc"
+	MessageTypeINBOX  = "_INBOX"
+	EventNameTD       = "$td"
+	EventNameProps    = "$properties"
+)
+
 var ErrorUnauthorized = errors.New(string(Unauthorized))
 
 type HubTransportStatus struct {

@@ -4,11 +4,11 @@ import (
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver/service"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/vocab"
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -153,11 +153,11 @@ func TestConnectWithNKey(t *testing.T) {
 	})
 
 	subSubj := natstransport.MakeSubject(
-		vocab.MessageTypeEvent, "", "", "", "")
+		transports.MessageTypeEvent, "", "", "", "")
 	err = tp1.Subscribe(subSubj)
 	assert.NoError(t, err)
 	pubSubj := natstransport.MakeSubject(
-		vocab.MessageTypeEvent, TestService1ID, "thing1", "test", TestService1ID)
+		transports.MessageTypeEvent, TestService1ID, "thing1", "test", TestService1ID)
 	err = tp1.PubEvent(pubSubj, []byte("hello world"))
 	require.NoError(t, err)
 	rxMsg := <-rxChan
@@ -258,7 +258,7 @@ func TestEventsStream(t *testing.T) {
 	require.NoError(t, err)
 	defer tp2.Disconnect()
 	addr2 := natstransport.MakeSubject(
-		vocab.MessageTypeEvent, "device1", TestThing1ID, "event1", TestDevice1ID)
+		transports.MessageTypeEvent, "device1", TestThing1ID, "event1", TestDevice1ID)
 
 	err = tp2.PubEvent(addr2, []byte(eventMsg))
 	require.NoError(t, err)

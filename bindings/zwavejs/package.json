@@ -6,14 +6,15 @@
   "main": "src/main.ts",
   "type": "commonjs",
   "scripts": {
-    "build": "tsc && tsc-alias",
-    "esbuild": "esbuild src/main.ts --bundle  --platform=node --target=node20 --preserve-symlinks --external:\"prebuilds/*\" --external:./node_modules/zwave-js/package.json --external:./node_modules/@zwave-js/config/package.json --outfile=build/main.js",
-    "dist": "./build.sh",
-    "dev": "tsc && tsc-alias && ZWAVEJS_EXTERNAL_CONFIG=dist/cache node --preserve-symlinks build/src/main.js --clientID testsvc --home ~/bin/hiveot",
+    "build": "node esbuild.js",
+    "dev": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache node --preserve-symlinks build/index.js --clientID testsvc --home ~/bin/hiveot",
+    "pkg": "./build.sh",
+    "esbuildold": "esbuild src/main.ts --bundle  --platform=node --target=node20 --preserve-symlinks --external:\"prebuilds/*\" --external:./node_modules/zwave-js/package.json --external:./node_modules/@zwave-js/config/package.json --outfile=build/main.js",
+    "devold": "tsc && tsc-alias && ZWAVEJS_EXTERNAL_CONFIG=dist/cache node --preserve-symlinks build/src/main.js --clientID testsvc --home ~/bin/hiveot",
+    "devtsxold": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache tsx --preserve-symlinks src/main.ts --clientID testsvc --home ~/bin/hiveot",
     "distinstall": "cp dist/zwavejs ~/bin/hiveot/plugins",
     "test": "tsc && tsc-alias && node --preserve-symlinks build/src/tests/hubconnect_test.js",
     "testtsx": "tsx --preserve-symlinks src/tests/hubconnect_test.ts",
-    "devtsx": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache tsx --preserve-symlinks src/main.ts --clientID testsvc --home ~/bin/hiveot",
     "version": "node --version"
   },
   "scriptComments": {

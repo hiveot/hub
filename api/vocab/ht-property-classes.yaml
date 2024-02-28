@@ -1,253 +1,388 @@
 # ht-props-classes.yaml
 #
 # By: HiveOT project (github.com/hiveot/hub)
-# Subject: Vocabulary definitions for HiveOT WoT property classes.
+# Subject: Vocabulary definitions for HiveOT WoT property and event classes.
 # Version: 0.1
 #
-# The property vocabulary defines the classes for property and event types
-# defined with the @type attribute in the WoT DataSchema.
+# The property vocabulary contains classes for defining property and event types
+# using the @type attribute in the WoT DataSchema. Events use the same classes
+# as properties, as events the latest event value can be made available as an attribute.
+# In this case they use the same instance ID and the same property class.
 #
 # This file is a source for the vocabulary generator utility, which produces
 # golang, javascript and python code than can be used directly in the services.
 #
-# Clients can also load this map from file to present translated title and description
-#
+# Clients can also load this yaml map from file to present translated title and description.
 #
 PropertyClasses:
-  Version: "0.1"
-  Link: "github.com/hiveot/hub/api/vocab/ht-property-classes.yaml"
-  Namespace: "ht"
+  version: "0.1"
+  link: "github.com/hiveot/hub/api/vocab/ht-property-classes.yaml"
+  namespace: "ht"
+  vocab:
+    # ht:prop:alarm properties for alarm status
+    # TODO: determine better subcategory
+    PropAlarmStatus:
+      class: "ht:prop:alarm:status"
+      title: "Alarm state"
+      description: "Current alarm status"
+    PropAlarmMotion:
+      class: "ht:prop:alarm:motion"
+      title: "Motion"
+      description: "Motion detected"
 
-  # ht:prop:alarm properties for alarm status
-  PropAlarm:
-    class: "ht:prop:alarm"
-    title: "Alarm state"
-    description: "Current alarm status"
+    # ht:prop:device
+    # Device attributes not covered by electrical, network or media categories
+    PropDevice:
+      class: "ht:prop:device"
+      title: "Device attributes"
+      description: "Attributes describing a device"
+    PropDeviceBattery:
+      class: "ht:prop:device:battery"
+      title: "Battery level"
+      description: "Device battery level"
+    PropDeviceDescription:
+      class: "ht:prop:device:description"
+      title: "Description"
+      description: "Device product description"
+    PropDeviceEnabledDisabled:
+      class: "ht:prop:device:enabled-disabled"
+      title: "Enabled/Disabled"
+      description: "Enabled or disabled state"
+      enum:
+        disabled: "Disabled"
+        enabled: "Enabled"
+    PropDeviceFirmwareVersion:
+      class: "ht:prop:device:firmwareversion"
+      title: "Firmware version"
+      description: ""
+    PropDeviceHardwareVersion:
+      class: "ht:prop:device:hardwareversion"
+      title: "Hardware version"
+      description: ""
+    PropDeviceManufacturer:
+      class: "ht:prop:device:manufacturer"
+      title: "Manufacturer"
+      description: "Device manufacturer"
+    PropDeviceModel:
+      class: "ht:prop:device:model"
+      title: "Model"
+      description: "Device model"
+    PropDeviceName:
+      class: "ht:prop:device:name"
+      title: "Name"
+      description: "Device name"
+    PropDevicePollinterval:
+      class: "ht:prop:device:pollinterval"
+      title: "Polling interval"
+      description: "Interval to poll for updates"
+    PropDeviceSoftwareVersion:
+      class: "ht:prop:device:softwareversion"
+      title: "Software version"
+      description: ""
+    PropDeviceStatus:
+      class: "ht:prop:device:status"
+      enum:
+        alive: "Alive"
+        awake: "Awake"
+        dead: "Dead"
+        sleeping: "Sleeping"
+      title: "Status"
+      description: "Device status; alive, awake, dead, sleeping"
 
-  # ht:prop:electric group of electrical properties
-  PropElectric:
-    class: "ht:prop:electric"
-    title: "Electrical properties"
-    description: "General group of electrical properties"
-  PropElectricCurrent:
-    class: "ht:prop:electric:current"
-    title: "Current"
-    description: "Electrical current"
-  PropElectricEnergy:
-    class: "ht:prop:electric:energy"
-    title: "Energy"
-    description: "Electrical energy consumed"
-  PropElectricPower:
-    class: "ht:prop:electric:poer"
-    title: "Power"
-    description: "Electrical power being consumed"
-  PropElectricVoltage:
-    class: "ht:prop:electric:voltage"
-    title: "Voltage"
-    description: "Electrical voltage potential"
-  PropElectricOverload:
-    class: "ht:prop:electric:overload"
-    title: "Overload protection"
-    description: "Cut load on overload"
+    # ht:prop:electric group of electrical properties
+    PropElectric:
+      class: "ht:prop:electric"
+      title: "Electrical properties"
+      description: "General group of electrical properties"
+    PropElectricCurrent:
+      class: "ht:prop:electric:current"
+      title: "Current"
+      description: "Electrical current"
+    PropElectricEnergy:
+      class: "ht:prop:electric:energy"
+      title: "Energy"
+      description: "Electrical energy consumed"
+    PropElectricPower:
+      class: "ht:prop:electric:poer"
+      title: "Power"
+      description: "Electrical power being consumed"
+    PropElectricVoltage:
+      class: "ht:prop:electric:voltage"
+      title: "Voltage"
+      description: "Electrical voltage potential"
+    PropElectricOverload:
+      class: "ht:prop:electric:overload"
+      title: "Overload protection"
+      description: "Cut load on overload"
 
-  # Enum properties with fixed values
-  # Intended for properties that have common fixed values.
-  # The title and description are placeholders to be replaced by their purpose.
-  PropEnum:
-    class: "ht:prop:enum"
-    title: "Enum"
-    description: "Enum properties with fixed values"
-  PropEnumEnabledDisabled:
-    class: "ht:prop:enum:enabled-disabled"
-    title: "Enum"
-    description: "Enum for enabled or disabled state"
-  PropEnumOnOff:
-    class: "ht:prop:enum:on-off"
-    title: "On/Off"
-    description: "Enum for on or off value"
-  PropEnumOpenClosed:
-    class: "ht:prop:enum:open-closed"
-    title: "Open/Closed"
-    description: "Enum for open or closed state"
-  PropEnumStartStop:
-    class: "ht:prop:enum:start-stop"
-    title: "Started/Stopped"
-    description: "Enum for started or stopped state"
-  PropEnumYesNo:
-    class: "ht:prop:enum:yes-no"
-    title: "Yes/No"
-    description: "Enum for yes or no value"
 
-  # hy:prop:env - properties with environmental sensors
-  PropEnv:
-    class: "ht:prop:env"
-    title: "Environmental property"
-    description: "Property of environmental sensor"
-  PropEnvBarometer:
-    class: "ht:prop:env:barometer"
-    title: "Barometric pressure"
-    description: "Atmospheric barometric pressure"
-  PropEnvBattery:
-    class: "ht:prop:env:battery"
-    title: "Battery level"
-    description: ""
-  PropEnvCO:
-    class: "ht:prop:env:co"
-    title: "Carbon monoxide level"
-    description: "Carbon monoxide level"
-  PropEnvCO2:
-    class: "ht:prop:env:co2"
-    title: "Carbon dioxide level"
-    description: "Carbon dioxide level"
-  PropEnvDewpoint:
-    class: "ht:prop:env:dewpoint"
-    title: "Dew point"
-    description: "Dew point temperature"
-  PropEnvHumidex:
-    class: "ht:prop:env:humidex"
-    title: "Humidex"
-    description: ""
-  PropEnvHumidity:
-    class: "ht:prop:env:humidity"
-    title: "Humidity"
-    description: ""
-  PropEnvLuminance:
-    class: "ht:prop:env:luminance"
-    title: "Luminance"
-    description: ""
-  PropEnvMotion:
-    class: "ht:prop:env:motion"
-    title: "Motion"
-    description: ""
-  PropEnvPressure:
-    class: "ht:prop:env:pressure"
-    title: "Pressure"
-    description: ""
-  PropEnvTemperature:
-    class: "ht:prop:env:temperature"
-    title: "Temperature"
-    description: ""
-  PropEnvTimezone:
-    class: "ht:prop:env:timezone"
-    title: "Timezone"
-    description: ""
-  PropEnvUV:
-    class: "ht:prop:env:uv"
-    title: "UV"
-    description: ""
-  PropEnvVibration:
-    class: "ht:prop:env:vibration"
-    title: "Vibration"
-    description: ""
+    # hy:prop:env - properties with environmental sensors
+    PropEnv:
+      class: "ht:prop:env"
+      title: "Environmental property"
+      description: "Property of environmental sensor"
+    PropEnvAcceleration:
+      class: "ht:prop:env:acceleration"
+      title: "Acceleration"
+      description: ""
+    PropEnvAirquality:
+      class: "ht:prop:env:airquality"
+      title: "Air quality"
+      description: "Air quality level"
+    PropEnvBarometer:
+      class: "ht:prop:env:barometer"
+      title: "Atmospheric pressure"
+      description: "Barometric pressure of the atmosphere"
+    PropEnvCO:
+      class: "ht:prop:env:co"
+      title: "Carbon monoxide level"
+      description: "Carbon monoxide level"
+    PropEnvCO2:
+      class: "ht:prop:env:co2"
+      title: "Carbon dioxide level"
+      description: "Carbon dioxide level"
+    PropEnvCpuload:
+      class: "ht:prop:env:cpuload"
+      title: "CPU load level"
+      description: "Device CPU load level"
+    PropEnvDewpoint:
+      class: "ht:prop:env:dewpoint"
+      title: "Dew point"
+      description: "Dew point temperature"
+    PropEnvFuelLevel:
+      class: "ht:prop:env:fuel:level"
+      title: "Fuel level"
+      description: ""
+    PropEnvFuelFlowrate:
+      class: "ht:prop:env:fuel:flowrate"
+      title: "Fuel flow rate"
+      description: ""
+    PropEnvHumidex:
+      class: "ht:prop:env:humidex"
+      title: "Humidex"
+      description: ""
+    PropEnvHumidity:
+      class: "ht:prop:env:humidity"
+      title: "Humidity"
+      description: ""
+    PropEnvLuminance:
+      class: "ht:prop:env:luminance"
+      title: "Luminance"
+      description: ""
+    PropEnvPressure:
+      class: "ht:prop:env:pressure"
+      title: "Pressure"
+      description: ""
+    PropEnvTemperature:
+      class: "ht:prop:env:temperature"
+      title: "Temperature"
+      description: ""
+    PropEnvTimezone:
+      class: "ht:prop:env:timezone"
+      title: "Timezone"
+      description: ""
+    PropEnvUV:
+      class: "ht:prop:env:uv"
+      title: "UV"
+      description: ""
+    PropEnvVibration:
+      class: "ht:prop:env:vibration"
+      title: "Vibration"
+      description: ""
+    PropEnvVolume:
+      class: "ht:prop:env:volume"
+      title: "Volume"
+      description: ""
+    PropEnvWaterFlowrate:
+      class: "ht:prop:env:water:flowrate"
+      title: "Water flow rate"
+      description: ""
+    PropEnvWaterLevel:
+      class: "ht:prop:env:water:level"
+      title: "Water level"
+      description: ""
+    PropEnvWindHeading:
+      class: "ht:prop:env:wind:heading"
+      title: "Wind heading"
+      description: ""
+    PropEnvWindSpeed:
+      class: "ht:prop:env:wind:speed"
+      title: "Wind speed"
+      description: ""
 
-  # ht:prop:location with location related properties
-  PropLocation:
-    class: "ht:prop:location"
-    title: "Location"
-    description: "General location information"
-  PropLocationStreet:
-    class: "ht:prop:location:street"
-    title: "Street"
-    description: "Street address"
-  PropLocationCity:
-    class: "ht:prop:location:city"
-    title: "City"
-    description: "City name"
-  PropLocationLatitude:
-    class: "ht:prop:location:latitude"
-    title: "Latitude"
-    description: "Latitude geographic coordinate"
-  PropLocationLongitude:
-    class: "ht:prop:location:longitude"
-    title: "Longitude"
-    description: "Longitude geographic coordinate"
-  PropLocationName:
-    class: "ht:prop:location:name"
-    title: "Location name"
-    description: "Name of the location"
-  PropLocationZipcode:
-    class: "ht:prop:location:zipcode"
-    title: "Zip code"
-    description: "Location ZIP code"
+    # ht:prop:location with location related properties
+    PropLocation:
+      class: "ht:prop:location"
+      title: "Location"
+      description: "General location information"
+    PropLocationStreet:
+      class: "ht:prop:location:street"
+      title: "Street"
+      description: "Street address"
+    PropLocationCity:
+      class: "ht:prop:location:city"
+      title: "City"
+      description: "City name"
+    PropLocationLatitude:
+      class: "ht:prop:location:latitude"
+      title: "Latitude"
+      description: "Latitude geographic coordinate"
+    PropLocationLongitude:
+      class: "ht:prop:location:longitude"
+      title: "Longitude"
+      description: "Longitude geographic coordinate"
+    PropLocationName:
+      class: "ht:prop:location:name"
+      title: "Location name"
+      description: "Name of the location"
+    PropLocationZipcode:
+      class: "ht:prop:location:zipcode"
+      title: "Zip code"
+      description: "Location ZIP code"
 
-  # ht:prop:media  - properties with media status and configuration
-  PropMedia:
-    class: "ht:prop:media"
-    title: "Media commands"
-    description: "Control of media equipment"
-  PropMediaPlaying:
-    class: "ht:prop:media:playing"
-    title: "Playing"
-    description: "Media is playing"
-  PropMediaPaused:
-    class: "ht:prop:media:paused"
-    title: "Paused"
-    description: "Media is paused"
-  PropMediaMuted:
-    class: "ht:prop:media:muted"
-    title: "Muted"
-    description: "Audio is muted"
-  PropMediaVolume:
-    class: "ht:prop:media:volume"
-    title: "Volume"
-    description: "Media volume setting"
-  PropMediaTrack:
-    class: "ht:prop:media:track"
-    title: "Track"
-    description: "Selected A/V track"
-  PropMediaStation:
-    class: "ht:prop:media:station"
-    title: "Station"
-    description: "Selected radio station"
+    # ht:prop:media  - properties with media status and configuration
+    PropMedia:
+      class: "ht:prop:media"
+      title: "Media commands"
+      description: "Control of media equipment"
+    PropMediaPlaying:
+      class: "ht:prop:media:playing"
+      title: "Playing"
+      description: "Media is playing"
+    PropMediaPaused:
+      class: "ht:prop:media:paused"
+      title: "Paused"
+      description: "Media is paused"
+    PropMediaMuted:
+      class: "ht:prop:media:muted"
+      title: "Muted"
+      description: "Audio is muted"
+    PropMediaVolume:
+      class: "ht:prop:media:volume"
+      title: "Volume"
+      description: "Media volume setting"
+    PropMediaTrack:
+      class: "ht:prop:media:track"
+      title: "Track"
+      description: "Selected A/V track"
+    PropMediaStation:
+      class: "ht:prop:media:station"
+      title: "Station"
+      description: "Selected radio station"
 
-  # ht:prop:net - network related properties
-  PropNet:
-    class: "ht:prop:net"
-    title: "Network properties"
-    description: "General network properties"
-  PropNetConnected:
-    class: "ht:prop:net:connected"
-    title: "Connected"
-    description: "Connected or disconnected status"
-  PropNetConnection:
-    class: "ht:prop:net:connection"
-    title: "Connection"
-    description: "Connection status, connected, connecting, retrying, disconnected,..."
-  PropNetLatency:
-    class: "ht:prop:net:latency"
-    title: "Network latency"
-    description: "Delay between hub and client"
-  PropNetIP:
-    class: "ht:prop:net:ip"
-    title: "IP address"
-    description: "Device IP address"
-  PropNetMAC:
-    class: "ht:prop:net:mac"
-    title: "MAC"
-    description: "Hardware MAC address"
-  PropNetHostname:
-    class: "ht:prop:net:hostname"
-    title: "Hostname"
-    description: "Hostname of the client"
-  PropNetDomainname:
-    class: "ht:prop:net:domainname"
-    title: "Domain name"
-    description: "Domainname of the client"
+    # ht:prop:net - network related properties
+    PropNet:
+      class: "ht:prop:net"
+      title: "Network properties"
+      description: "General network properties"
+    PropNetAddress:
+      class: "ht:prop:net:address"
+      title: "Address"
+      description: "Network address"
+    PropNetConnected:
+      class: "ht:prop:net:connected"
+      title: "Connected"
+      description: "Connected or disconnected status"
+    PropNetConnection:
+      class: "ht:prop:net:connection"
+      title: "Connection"
+      description: "Connection status, connected, connecting, retrying, disconnected,..."
+    PropNetDomainname:
+      class: "ht:prop:net:domainname"
+      title: "Domain name"
+      description: "Domainname of the client"
+    PropNetGateway:
+      class: "ht:prop:net:gateway"
+      title: "Gateway"
+      description: "Network gateway address"
+    PropNetHostname:
+      class: "ht:prop:net:hostname"
+      title: "Hostname"
+      description: "Hostname of the client"
+    PropNetIP4:
+      class: "ht:prop:net:ip4"
+      title: "IP4 address"
+      description: "Device IP4 address"
+    PropNetIP6:
+      class: "ht:prop:net:ip6"
+      title: "IP6 address"
+      description: "Device IP6 address"
+    PropNetLatency:
+      class: "ht:prop:net:latency"
+      title: "Network latency"
+      description: "Delay between hub and client"
+    PropNetMAC:
+      class: "ht:prop:net:mac"
+      title: "MAC"
+      description: "Hardware MAC address"
+    PropNetMask:
+      class: "ht:prop:net:mask"
+      title: "Netmask"
+      description: "Network mask. Example: 255.255.255.0 or 24/8"
+    PropNetPort:
+      class: "ht:prop:net:port"
+      title: "Port"
+      description: "Network port"
+    PropNetSignalstrength:
+      class: "ht:prop:net:signalstrength"
+      title: "Signal strength"
+      description: "Wireless signal strength"
+    PropNetSubnet:
+      class: "ht:prop:net:subnet"
+      title: "Subnet"
+      description: "Network subnet address. Example: 192.168.0.0"
 
-  # ht:prop:switch - Switch status
-  PropSwitch:
-    class: "ht:prop:switch"
-    title: "Switch status"
-    description: ""
-  PropSwitchDimmer:
-    class: "ht:prop:switch:dimmer"
-    title: "Dimmer value"
-    description: ""
-  PropSwitchLight:
-    class: "ht:prop:switch:light"
-    title: "Light switch"
-    description: ""
-  PropSwitchLocked:
-    class: "ht:prop:switch:locked"
-    title: "Lock"
-    description: "Electric lock status"
+    # ht:prop:status - general status values
+    PropStatusOnOff:
+      class: "ht:prop:status:onoff"
+      enum:
+        on: "On"
+        off: "Off"
+      title: "On/off status"
+      description: ""
+    PropStatusOpenClosed:
+      class: "ht:prop:status:openclosed"
+      enum:
+        open: "Open"
+        closed: "Closed"
+      title: "Open/Closed status"
+      description: ""
+    PropStatusStartedStopped:
+      class: "ht:prop:status:started-stopped"
+      enum:
+        started: "Started"
+        stopped: "Stopped"
+      title: "Started/Stopped"
+      description: "Started or stopped status"
+    PropStatusYesNo:
+      class: "ht:prop:status:yes-no"
+      enum:
+        no: "No"
+        yes: "Yes"
+      title: "Yes/No"
+      description: "Status with yes or no value"
+
+    # ht:prop:switch - Switch status
+    PropSwitch:
+      class: "ht:prop:switch"
+      title: "Switch status"
+      description: ""
+    PropSwitchOnOff:
+      class: "ht:prop:switch:onoff"
+      enum:
+        on: "On"
+        off: "Off"
+      title: "On/Off switch"
+      description: ""
+    PropSwitchDimmer:
+      class: "ht:prop:switch:dimmer"
+      title: "Dimmer value"
+      description: ""
+    PropSwitchLight:
+      class: "ht:prop:switch:light"
+      title: "Light switch"
+      description: ""
+    PropSwitchLocked:
+      class: "ht:prop:switch:locked"
+      title: "Lock"
+      description: "Electric lock status"

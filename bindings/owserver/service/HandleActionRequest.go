@@ -3,9 +3,9 @@ package service
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"time"
 )

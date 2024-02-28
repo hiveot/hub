@@ -4,7 +4,7 @@ import (
 	"github.com/hiveot/hub/core/history/historyapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/vocab"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -45,12 +45,12 @@ func decodeValue(bucketID string, key string, data []byte) (thingValue *things.T
 	millisec, _ := strconv.ParseInt(parts[0], 10, 64)
 	name := parts[1]
 	senderID := ""
-	messageType := vocab.MessageTypeEvent
+	messageType := transports.MessageTypeEvent
 	if len(parts) >= 2 {
 		if parts[2] == "a" {
-			messageType = vocab.MessageTypeAction
+			messageType = transports.MessageTypeAction
 		} else if parts[2] == "c" {
-			messageType = vocab.MessageTypeConfig
+			messageType = transports.MessageTypeConfig
 		}
 	}
 	if len(parts) > 3 {

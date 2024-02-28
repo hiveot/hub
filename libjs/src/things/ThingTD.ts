@@ -1,7 +1,6 @@
 // Definition of the Thing's TD, Thing Description document
 // This consists of the TD itself with properties
 
-import type {DataType} from "../vocab/vocabulary"
 import {DataSchema} from "./dataSchema";
 
 
@@ -191,7 +190,7 @@ export class ThingTD extends Object {
     // @param title is the title used in the property.
     // @param dataType is the type of data the property holds, DataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
     // @param initialValue the value at time of creation, for testing and debugging
-    AddProperty(id: string, propType: string, title: string, dataType: DataType): PropertyAffordance {
+    AddProperty(id: string, propType: string, title: string, dataType: string): PropertyAffordance {
         let prop = new PropertyAffordance()
         prop.id = id;
         if (propType) {
@@ -213,7 +212,7 @@ export class ThingTD extends Object {
     // @param title is the title used in the property. Leave empty to use the name.
     // @param dataType is the type of data the property holds, DataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
     AddPropertyIf(initialValue: any, id: string, propType: string, title: string,
-                  dataType: DataType): PropertyAffordance | undefined {
+                  dataType: string): PropertyAffordance | undefined {
 
         if (initialValue != undefined) {
             return this.AddProperty(id, propType, title, dataType)

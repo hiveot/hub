@@ -1,7 +1,7 @@
-import { getEnumMemberName, NodeStatus, ZWaveNode, ZWavePlusNodeType, ZWavePlusRoleType, } from "zwave-js";
-import { InterviewStage, SecurityClass } from '@zwave-js/core';
-import { PropTypes } from "@hivelib/vocab/vocabulary";
-import { getPropID } from "./getPropID";
+import {getEnumMemberName, NodeStatus, ZWaveNode, ZWavePlusNodeType, ZWavePlusRoleType,} from "zwave-js";
+import {InterviewStage, SecurityClass} from '@zwave-js/core';
+import * as vocab from "@hivelib/api/ht-vocab";
+import {getPropID} from "./getPropID";
 
 
 // Value map for node values
@@ -71,7 +71,7 @@ export class ParseValues {
         this.setIf("keepAwake", node.keepAwake);
         this.setIf("label", node.deviceConfig?.label)
         this.setIf("manufacturerId", node.manufacturerId);
-        this.setIf(PropTypes.Manufacturer, node.deviceConfig?.manufacturer);
+        this.setIf(vocab.PropDeviceManufacturer, node.deviceConfig?.manufacturer);
 
         this.setIf("maxDataRate", node.maxDataRate)
         if (node.nodeType) {

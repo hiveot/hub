@@ -11,13 +11,20 @@ import {
 } from "zwave-js";
 import {CommandClasses, InterviewStage} from '@zwave-js/core';
 import {ActionAffordance, EventAffordance, PropertyAffordance, ThingTD} from "@hivelib/things/ThingTD";
-import {ActionTypes, DataType, EventTypes, PropTypes} from "@hivelib/vocab/vocabulary";
+import * as vocab from "@hivelib/api/ht-vocab";
 import type {ZWAPI} from "./ZWAPI";
 import {logVid} from "./logVid";
 import {getPropID} from "./getPropID";
 import {getVidAffordance, VidAffordance} from "./getVidAffordance";
 import {getDeviceType} from "./getDeviceType";
 import {DataSchema} from "@hivelib/things/dataSchema";
+import {
+    WoTDataTypeArray,
+    WoTDataTypeBool,
+    WoTDataTypeNone,
+    WoTDataTypeNumber,
+    WoTDataTypeString
+} from "@hivelib/api/wot-vocab";
 
 
 // Add the ZWave value data to the TD as an action
@@ -42,7 +49,7 @@ function addAction(td: ThingTD, node: ZWaveNode, vid: TranslatedValueID, actionI
 // Add the ZWave value data to the TD as an attribute property
 function addAttribute(td: ThingTD, node: ZWaveNode, vid: TranslatedValueID, propID: string, va: VidAffordance): PropertyAffordance {
 
-    let prop = td.AddProperty(propID, va?.atType, "", DataType.Unknown)
+    let prop = td.AddProperty(propID, va?.atType, "", WoTDataTypeNone)
     // SetDataSchema also sets the title and data type
     SetDataSchema(prop, node, vid)
     return prop
@@ -50,7 +57,7 @@ function addAttribute(td: ThingTD, node: ZWaveNode, vid: TranslatedValueID, prop
 
 // Add the ZWave VID to the TD as a configuration property
 function addConfig(td: ThingTD, node: ZWaveNode, vid: TranslatedValueID, propID: string, va: VidAffordance): PropertyAffordance {
-    let prop = td.AddProperty(propID, va.atType, "", DataType.Unknown)
+    let prop = td.AddProperty(propID, va.atType, "", WoTDataTypeNone)
     prop.readOnly = false
     // SetDataSchema also sets the title and data type
     SetDataSchema(prop, node, vid)
@@ -109,39 +116,61 @@ export function parseNode(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     //--- Step 2: Add read-only attributes that are common to many nodes
     // since none of these have standard property names, use the ZWave name instead.
     // these names must match those used in parseNodeValues()
-    td.AddPropertyIf(node.canSleep, "canSleep", "", "Device sleeps to conserve battery", DataType.Bool);
-    td.AddProperty("endpointCount", "", "Number of endpoints", DataType.Number);
-    td.AddPropertyIf(node.firmwareVersion, "firmwareVersion", PropTypes.FirmwareVersion, "Device firmware version", DataType.String);
-    td.AddPropertyIf(node.getHighestSecurityClass(), "highestSecurityClass", "", "", DataType.String);
-    td.AddPropertyIf(node.interviewAttempts, "interviewAttempts", "Nr interview attempts", "", DataType.Number);
+    td.AddPropertyIf(node.canSleep, "canSleep", "",
+        "Device sleeps to conserve battery", WoTDataTypeBool);
+    td.AddProperty("endpointCount", "",
+        "Number of endpoints", WoTDataTypeNumber);
+    td.AddPropertyIf(node.firmwareVersion, "firmwareVersion", vocab.PropDeviceFirmwareVersion,
+        "Device firmware version", WoTDataTypeString);
+    td.AddPropertyIf(node.getHighestSecurityClass(), "highestSecurityClass", "",
+        "", WoTDataTypeString);
+    td.AddPropertyIf(node.interviewAttempts, "interviewAttempts", "Nr interview attempts",
+        "", WoTDataTypeNumber);
     if (node.interviewStage) {
-        td.AddProperty("interviewStage", "", "Device Interview Stage", DataType.String).SetAsEnum(InterviewStage)
+        td.AddProperty("interviewStage", "",
+            "Device Interview Stage", WoTDataTypeString).SetAsEnum(InterviewStage)
     }
-    td.AddPropertyIf(node.isListening, "isListening", "", "Device always listens", DataType.Bool);
-    td.AddPropertyIf(node.isSecure, "isSecure", "", "Device communicates securely with controller", DataType.Bool);
-    td.AddPropertyIf(node.isRouting, "isRouting", "", "Device support message routing/forwarding (if listening)", DataType.Bool);
-    td.AddPropertyIf(node.isControllerNode, "isControllerNode", "", "Device is a ZWave controller", DataType.Bool);
-    td.AddPropertyIf(node.keepAwake, "keepAwake", "", "Device stays awake a bit longer before sending it to sleep", DataType.Bool);
-    td.AddPropertyIf(node.label, "label", "", "", DataType.String);
-    td.AddPropertyIf(node.manufacturerId, "manufacturerId", "", "Manufacturer ID", DataType.String);
-    td.AddPropertyIf(node.deviceConfig?.manufacturer, PropTypes.Manufacturer, PropTypes.Manufacturer, PropTypes.Manufacturer, DataType.String);
-    td.AddPropertyIf(node.maxDataRate, "maxDataRate", "", "Device maximum communication data rate", DataType.Number);
+    td.AddPropertyIf(node.isListening, "isListening", "",
+        "Device always listens", WoTDataTypeBool);
+    td.AddPropertyIf(node.isSecure, "isSecure", "",
+        "Device communicates securely with controller", WoTDataTypeBool);
+    td.AddPropertyIf(node.isRouting, "isRouting", "",
+        "Device support message routing/forwarding (if listening)", WoTDataTypeBool);
+    td.AddPropertyIf(node.isControllerNode, "isControllerNode", "",
+        "Device is a ZWave controller", WoTDataTypeBool);
+    td.AddPropertyIf(node.keepAwake, "keepAwake", "",
+        "Device stays awake a bit longer before sending it to sleep", WoTDataTypeBool);
+    td.AddPropertyIf(node.label, "label", "", "", WoTDataTypeString);
+    td.AddPropertyIf(node.manufacturerId, "manufacturerId", "",
+        "Manufacturer ID", WoTDataTypeString);
+    td.AddPropertyIf(node.deviceConfig?.manufacturer, vocab.PropDeviceManufacturer, vocab.PropDeviceManufacturer,
+        "Manufacturer", WoTDataTypeString);
+    td.AddPropertyIf(node.maxDataRate, "maxDataRate", "",
+        "Device maximum communication data rate", WoTDataTypeNumber);
     if (node.nodeType) {
-        td.AddProperty("nodeType", "", "ZWave node type", DataType.Number).SetAsEnum(NodeType)
+        td.AddProperty("nodeType", "", "ZWave node type", WoTDataTypeNumber).SetAsEnum(NodeType)
     }
-    td.AddPropertyIf(node.productId, "productId", "", "", DataType.Number);
-    td.AddPropertyIf(node.productType, "productType", PropTypes.ProductName, "", DataType.Number);
+    td.AddPropertyIf(node.productId, "productId", "",
+        "", WoTDataTypeNumber);
+    td.AddPropertyIf(node.productType, "productType", vocab.PropDeviceDescription,
+        "", WoTDataTypeNumber);
 
-    td.AddPropertyIf(node.protocolVersion, "protocolVersion", "", "ZWave protocol version", DataType.String);
-    td.AddPropertyIf(node.sdkVersion, "sdkVersion", "", "", DataType.String);
+    td.AddPropertyIf(node.protocolVersion, "protocolVersion", "",
+        "ZWave protocol version", WoTDataTypeString);
+    td.AddPropertyIf(node.sdkVersion, "sdkVersion", "",
+        "", WoTDataTypeString);
     if (node.status) {
-        td.AddProperty(EventTypes.Status, EventTypes.Status, "Node status", DataType.Number).SetAsEnum(NodeStatus)
+        td.AddProperty(vocab.PropDeviceStatus, vocab.PropDeviceStatus,
+            "Node status", WoTDataTypeNumber).SetAsEnum(NodeStatus)
     }
-    td.AddPropertyIf(node.supportedDataRates, "supportedDataRates", "", "ZWave Data Speed", DataType.String);
-    td.AddPropertyIf(node.userIcon, "userIcon", "", "", DataType.String);
+    td.AddPropertyIf(node.supportedDataRates, "supportedDataRates", "",
+        "ZWave Data Speed", WoTDataTypeString);
+    td.AddPropertyIf(node.userIcon, "userIcon", "",
+        "", WoTDataTypeString);
 
     // always show whether this is ZWave+
-    let prop = td.AddProperty("zwavePlusNodeType", "", "Type of ZWave+", DataType.Number)
+    let prop = td.AddProperty("zwavePlusNodeType", "",
+        "Type of ZWave+", WoTDataTypeNumber)
     if (node.zwavePlusNodeType != undefined) {
         prop.SetAsEnum(ZWavePlusNodeType)
     } else {
@@ -149,32 +178,36 @@ export function parseNode(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     }
 
     if (node.zwavePlusRoleType) {
-        td.AddProperty("zwavePlusRoleType", "", "Type of Z-Wave+ role of this device", DataType.Number)
+        td.AddProperty("zwavePlusRoleType", "",
+            "Type of Z-Wave+ role of this device", WoTDataTypeNumber)
             .SetAsEnum(ZWavePlusRoleType)
     }
-    td.AddPropertyIf(node.zwavePlusVersion, "zwavePlusVersion", "", "Z-Wave+ Version", DataType.Number);
+    td.AddPropertyIf(node.zwavePlusVersion, "zwavePlusVersion", "",
+        "Z-Wave+ Version", WoTDataTypeNumber);
 
     // writable configuration properties that are not VIDs
-    prop = td.AddProperty("name", PropTypes.Name, "Device Name", DataType.String)
+    prop = td.AddProperty("name", vocab.PropDeviceName,
+        "Device Name", WoTDataTypeString)
     prop.readOnly = false
 
-    prop = td.AddProperty("checkLifelineHealth", "", "Check connection health", DataType.Bool)
+    prop = td.AddProperty("checkLifelineHealth", "",
+        "Check connection health", WoTDataTypeBool)
     prop.description = "Initiates tests to check the health of the connection between the controller and this node and returns the results. " +
         "This should NOT be done while there is a lot of traffic on the network because it will negatively impact the test results"
     prop.readOnly = false
     prop.writeOnly = true
 
-    prop = td.AddProperty(ActionTypes.Ping, ActionTypes.Ping, "Ping the device", DataType.Unknown)
+    prop = td.AddProperty("ping", "", "Ping the device", WoTDataTypeNone)
     prop.readOnly = false
     prop.writeOnly = true
 
-    prop = td.AddProperty("refreshInfo", ActionTypes.Refresh, "Refresh Device Info", DataType.Unknown)
+    prop = td.AddProperty("refreshInfo", "", "Refresh Device Info", WoTDataTypeNone)
     prop.description = "Resets (almost) all information about this node and forces a fresh interview. " +
         "Ignored when interview is in progress. After this action, the node will no longer be ready. This can take a long time."
     prop.readOnly = false
     prop.writeOnly = true
 
-    prop = td.AddProperty("refreshValues", "", "Refresh Device Values", DataType.Bool)
+    prop = td.AddProperty("refreshValues", "", "Refresh Device Values", WoTDataTypeBool)
     prop.description = "Refresh all non-static sensor and actuator values. " +
         "Use sparingly. This can take a long time and generate a lot of traffic."
     prop.readOnly = false
@@ -244,7 +277,7 @@ function SetDataSchema(ds: DataSchema | undefined, node: ZWaveNode, vid: Transla
     // get more details on this property using its metadata and command class(es)
     switch (vidMeta.type) {
         case "string": {
-            ds.type = DataType.String
+            ds.type = WoTDataTypeString
             let vms = vidMeta as ValueMetadataString;
             ds.minLength = vms.minLength;
             ds.maxLength = vms.maxLength;
@@ -252,14 +285,14 @@ function SetDataSchema(ds: DataSchema | undefined, node: ZWaveNode, vid: Transla
         }
             break;
         case "boolean": {
-            ds.type = DataType.Bool
+            ds.type = WoTDataTypeBool
             let vmb = vidMeta as ValueMetadataBoolean;
             ds.default = vmb.default?.toString() || undefined;
         }
             break;
         case "duration":
         case "number": {
-            ds.type = DataType.Number
+            ds.type = WoTDataTypeNumber
             let vmn = vidMeta as ValueMetadataNumeric;
             ds.minimum = vmn.min;
             ds.maximum = vmn.max;
@@ -270,7 +303,7 @@ function SetDataSchema(ds: DataSchema | undefined, node: ZWaveNode, vid: Transla
             // if a list of states exist then the number is an enum.
             // convert the enum and use strings instead of numeric values
             if (vmn.states && Object.keys(vmn.states).length > 0) {
-                ds.type = DataType.String
+                ds.type = WoTDataTypeString
                 // valueName = vmn.states[value as number]
                 // // eg Operating Voltage has a value of 110 while the map has 120, 240
                 // if (valueName == undefined) {
@@ -290,19 +323,19 @@ function SetDataSchema(ds: DataSchema | undefined, node: ZWaveNode, vid: Transla
         }
             break;
         case "color": {
-            ds.type = DataType.Number
+            ds.type = WoTDataTypeNumber
         }
             break;
         case "buffer":
         case "boolean[]":
         case "number[]":
         case "string[]": {
-            ds.type = DataType.Array
+            ds.type = WoTDataTypeArray
         }
             break;
         default: {
             // TBD: does this mean there is no schema, eg no data, eg not a value?
-            ds.type = DataType.Unknown
+            ds.type = WoTDataTypeNone
         }
     }
     // ds.initialValue = valueName

@@ -1,6 +1,6 @@
-import type { ZWaveNode } from "zwave-js";
-import { CommandClasses, ValueID } from "@zwave-js/core";
-import { ActionTypes, EventTypes } from "@hivelib/vocab/vocabulary";
+import type {ZWaveNode} from "zwave-js";
+import {CommandClasses, ValueID} from "@zwave-js/core";
+import * as vocab from "@hivelib/api/ht-vocab.js";
 
 
 // ValueID to Affordance classification
@@ -20,23 +20,23 @@ const overrideMap: Map<string, Partial<VidAffordance> | undefined> = new Map([
     ["32-restorePrevious", {}],
 
     // Binary Switch 0x25 (37) is an actuator
-    ["37-currentValue", { atType: ActionTypes.Switch, affordance: "event" }],
-    ["37-targetValue", { atType: ActionTypes.Switch, affordance: "action" }],
+    ["37-currentValue", {atType: vocab.PropSwitch, affordance: "event"}],
+    ["37-targetValue", {atType: vocab.ActionSwitch, affordance: "action"}],
 
     // Multilevel Switch (38) is an actuator
 
     // Binary Sensor (48)
-    ["48-Any", { atType: EventTypes.Alarm, affordance: "event" }],
+    ["48-Any", {atType: vocab.PropAlarmStatus, affordance: "event"}],
 
     // Meter - electrical
-    ["50-value-65537", { atType: EventTypes.Energy, affordance: "event" }],
-    ["50-value-66049", { atType: EventTypes.Power, affordance: "event" }],
-    ["50-value-66561", { atType: EventTypes.Voltage, affordance: "event" }],
-    ["50-value-66817", { atType: EventTypes.Current, affordance: "event" }],
-    ["50-reset", { affordance: "config" }], // for managers, not operators
+    ["50-value-65537", {atType: vocab.PropElectricEnergy, affordance: "event"}],
+    ["50-value-66049", {atType: vocab.PropElectricPower, affordance: "event"}],
+    ["50-value-66561", {atType: vocab.PropElectricVoltage, affordance: "event"}],
+    ["50-value-66817", {atType: vocab.PropElectricCurrent, affordance: "event"}],
+    ["50-reset", {affordance: "config"}], // for managers, not operators
 
     // Notification
-    ["113-Home Security-Motion sensor status", { atType: EventTypes.Motion, affordance: "event" }],
+    ["113-Home Security-Motion sensor status", {atType: vocab.PropAlarmMotion, affordance: "event"}],
 ]);
 
 
@@ -146,9 +146,9 @@ function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number
         case CommandClasses["All Switch"]:  //
         case CommandClasses["Application Capability"]:  // obsolete
         case CommandClasses["Alarm Sensor"]:  // nodes also have Notification CC
-            {
-                return undefined
-            }
+        {
+            return undefined
+        }
     }
 
     if (!vidMeta.readable) {

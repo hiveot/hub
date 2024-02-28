@@ -1,6 +1,6 @@
 // Definition of the DataSchema used in TD affordances
 
-import {DataType} from "../vocab/vocabulary"
+import {WoTDataTypeNone} from "../api/wot-vocab.js"
 
 export class DataSchema extends Object {
     public constructor(init?: Partial<DataSchema>) {
@@ -51,7 +51,7 @@ export class DataSchema extends Object {
     public titles: string[] | undefined = undefined
 
     // Type provides JSON based data type,  one of DataTypeNumber, ...object, array, string, integer, boolean or null
-    public type: DataType = DataType.Unknown
+    public type: string = WoTDataTypeNone
 
     // See vocab UnitNameXyz for units in the WoST vocabulary
     public unit: string | undefined = undefined

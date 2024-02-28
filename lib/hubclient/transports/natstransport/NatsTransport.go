@@ -9,7 +9,6 @@ import (
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/vocab"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
@@ -20,6 +19,8 @@ import (
 
 //// PublicUnauthenticatedNKey is the public seed of the unaunthenticated user
 //const PublicUnauthenticatedNKey = "SUAOXRE662WSIGIMSIFVQNCCIWG673K7GZMB3ZUUIF45BWGMYKECEQQJZE"
+
+//const InboxPrefix = "_INBOX"
 
 // DefaultTimeoutSec with timeout for connecting and publishing.
 const DefaultTimeoutSec = 100 //3 // 100 for testing
@@ -91,7 +92,7 @@ func (nt *NatsTransport) ConnectWithJWT(myKey nkeys.KeyPair, jwtToken string) (e
 		nats.ReconnectHandler(nt.onConnected),
 		nats.Name(nt.clientID), // connection name for logging, debugging
 		nats.Secure(nt.tlsConfig),
-		nats.CustomInboxPrefix(vocab.MessageTypeINBOX+"."+nt.clientID),
+		nats.CustomInboxPrefix(transports.MessageTypeINBOX+"."+nt.clientID),
 		nats.UserJWTAndSeed(jwtToken, string(jwtSeed)),
 		nats.Token(jwtToken), // JWT token isn't passed through in callout
 		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSec)))
@@ -123,7 +124,7 @@ func (nt *NatsTransport) ConnectWithKey(myKey nkeys.KeyPair) error {
 		nats.Secure(nt.tlsConfig),
 		nats.Nkey(pubKey, sigCB),
 		// client permissions allow this inbox prefix
-		nats.CustomInboxPrefix(vocab.MessageTypeINBOX+"."+nt.clientID),
+		nats.CustomInboxPrefix(transports.MessageTypeINBOX+"."+nt.clientID),
 		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSec)))
 
 	if err == nil {
@@ -143,7 +144,7 @@ func (nt *NatsTransport) ConnectWithPassword(password string) (err error) {
 		nats.Secure(nt.tlsConfig),
 		// client permissions allow this inbox prefix
 		nats.Name(nt.clientID),
-		nats.CustomInboxPrefix(vocab.MessageTypeINBOX+"."+nt.clientID),
+		nats.CustomInboxPrefix(transports.MessageTypeINBOX+"."+nt.clientID),
 		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSec)))
 	if err == nil {
 		nt.js, err = nt.nc.JetStream()

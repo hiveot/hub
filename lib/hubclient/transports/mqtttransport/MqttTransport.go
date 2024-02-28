@@ -20,10 +20,9 @@ import (
 	"time"
 )
 
-// InboxPrefix is the INBOX subscription topic used by the client
+// InboxPrefix is the INBOX subscription topic used by the client and RPC calls
 // _INBOX/{clientID}
-const InboxPrefix = "_INBOX/"
-const InboxTopicFormat = "_INBOX/%s"
+const InboxTopicFormat = transports.MessageTypeINBOX + "/%s"
 
 const keepAliveInterval = 30 // seconds
 const reconnectDelay = 10 * time.Second
@@ -264,7 +263,7 @@ func (tp *MqttHubTransport) handleMessage(m *paho.Publish) {
 	// run this in the background to allow for reentrancy
 	go func() {
 		// handle reply message
-		if strings.HasPrefix(m.Topic, InboxPrefix) && m.Properties.CorrelationData != nil {
+		if strings.HasPrefix(m.Topic, transports.MessageTypeINBOX) && m.Properties.CorrelationData != nil {
 			// Pass replies to their waiting channel
 			cID := string(m.Properties.CorrelationData)
 			tp.mux.Lock()
@@ -386,9 +385,11 @@ func (tp *MqttHubTransport) onPahoConnectionError(err error) {
 		}
 		slog.Info("onPahoConnectionError", "err", connErr.Error())
 		// don't retry on authentication error
+		tp.mux.RLock()
 		if connStatus == transports.Unauthorized && tp._pahoClient != nil {
 			_ = tp._pahoClient.Disconnect(context.Background())
 		}
+		tp.mux.RUnlock()
 	}()
 }
 

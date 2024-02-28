@@ -2,11 +2,12 @@ package service
 
 import (
 	"encoding/json"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 )
 
@@ -23,7 +24,7 @@ type UpdateDirectoryService struct {
 // CreateUpdateDirTD a new Thing TD document describing the update directory capability
 func (svc *UpdateDirectoryService) CreateUpdateDirTD() *things.TD {
 	title := "Thing Directory Updater"
-	deviceType := vocab.DeviceTypeService
+	deviceType := vocab.ThingServiceDirectory
 	td := things.NewTD(directoryapi.UpdateDirectoryCap, title, deviceType)
 	// TODO: add properties
 	return td
@@ -48,7 +49,7 @@ func (svc *UpdateDirectoryService) UpdateTD(ctx hubclient.ServiceContext, args d
 
 	// store the TD ThingValue
 	thingValue := things.NewThingValue(
-		vocab.MessageTypeEvent, args.AgentID, args.ThingID, vocab.EventNameTD, args.TDDoc, ctx.SenderID)
+		transports.MessageTypeEvent, args.AgentID, args.ThingID, transports.EventNameTD, args.TDDoc, ctx.SenderID)
 	bucketData, _ := json.Marshal(thingValue)
 	thingAddr := args.AgentID + "/" + args.ThingID
 	err := svc.bucket.Set(thingAddr, bucketData)

@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/core/msgserver/natsmsgserver"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
 	"github.com/hiveot/hub/lib/net"
-	"github.com/hiveot/hub/lib/vocab"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
@@ -167,7 +167,7 @@ func (srv *NatsMsgServer) Start() (err error) {
 	if err != nil {
 		// The intake stream receives events from all publishers and things
 		// FIXME: the format is already defined in the client.
-		subj := natstransport.MakeSubject(vocab.MessageTypeEvent, "", "", "", "")
+		subj := natstransport.MakeSubject(transports.MessageTypeEvent, "", "", "", "")
 
 		cfg := &nats.StreamConfig{
 			Name:        EventsIntakeStreamName,

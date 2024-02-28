@@ -2,8 +2,8 @@ package service
 
 import (
 	"fmt"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -162,7 +162,9 @@ func (igw *IsyGatewayThing) AddIsyThing(node *IsyNode) error {
 	}
 	if isyThing != nil {
 		isyThing.Init(igw.ic, node, prodInfo, hwVersion)
+		igw.mux.Lock()
 		igw.things[isyThing.GetID()] = isyThing
+		igw.mux.Unlock()
 	}
 	return err
 }
@@ -206,28 +208,28 @@ func (igw *IsyGatewayThing) GetTD() *things.TD {
 		return nil
 	}
 
-	td := things.NewTD(igw.id, igw.Configuration.DeviceSpecs.Model, vocab.DeviceTypeGateway)
+	td := things.NewTD(igw.id, igw.Configuration.DeviceSpecs.Model, vocab.ThingNetGateway)
 	td.Description = igw.Configuration.DeviceSpecs.Make + "-" + igw.Configuration.DeviceSpecs.Model
 
 	//--- device read-only attributes
-	td.AddPropertyAsString(vocab.VocabManufacturer, vocab.VocabManufacturer, "Manufacturer")     // Universal Devices Inc.
-	td.AddPropertyAsString(vocab.VocabModel, vocab.VocabModel, "Model")                          // ISY-C-99
-	td.AddPropertyAsString(vocab.VocabSoftwareVersion, vocab.VocabSoftwareVersion, "AppVersion") // 3.2.6
-	td.AddPropertyAsString(vocab.VocabMAC, vocab.VocabMAC, "MAC")                                // 00:21:xx:yy:... (mac)
-	td.AddPropertyAsString(vocab.VocabProduct, vocab.VocabProduct, "Product")                    // ISY 99i 256
-	td.AddPropertyAsString("ProductID", vocab.VocabProduct, "Product ID")                        // 1020
+	td.AddPropertyAsString(vocab.PropDeviceManufacturer, vocab.PropDeviceManufacturer, "Manufacturer")     // Universal Devices Inc.
+	td.AddPropertyAsString(vocab.PropDeviceModel, vocab.PropDeviceModel, "Model")                          // ISY-C-99
+	td.AddPropertyAsString(vocab.PropDeviceSoftwareVersion, vocab.PropDeviceSoftwareVersion, "AppVersion") // 3.2.6
+	td.AddPropertyAsString(vocab.PropNetMAC, vocab.PropNetMAC, "MAC")                                      // 00:21:xx:yy:... (mac)
+	td.AddPropertyAsString(vocab.PropDeviceDescription, vocab.PropDeviceDescription, "Product")            // ISY 99i 256
+	td.AddPropertyAsString("ProductID", vocab.PropDeviceDescription, "Product ID")                         // 1020
 	prop := td.AddPropertyAsString("sunrise", "", "Sunrise")
 	prop = td.AddPropertyAsString("sunset", "", "Sunset")
 
 	//--- device configuration
 	// custom name
-	prop = td.AddPropertyAsString(vocab.VocabName, vocab.VocabName, "Name")
+	prop = td.AddPropertyAsString(vocab.PropDeviceName, vocab.PropDeviceName, "Name")
 	prop.ReadOnly = false
 
 	// network config
 	prop = td.AddPropertyAsBool("DHCP", "", "DHCP enabled")
 	prop.ReadOnly = false
-	prop = td.AddPropertyAsString(vocab.VocabLocalIP, vocab.VocabLocalIP, "IP address")
+	prop = td.AddPropertyAsString(vocab.PropNetIP4, vocab.PropNetIP4, "IP address")
 	prop.ReadOnly = igw.Network.Interface.IsDHCP == false
 	prop = td.AddPropertyAsString("Gateway login name", "", "Login Name")
 	prop.ReadOnly = false
@@ -243,7 +245,7 @@ func (igw *IsyGatewayThing) GetTD() *things.TD {
 	prop.ReadOnly = false
 	prop = td.AddPropertyAsInt("TMZOffset", "", "Timezone Offset")
 	prop.ReadOnly = false
-	prop.Unit = vocab.UnitNameSecond
+	prop.Unit = vocab.UnitSecond
 	prop = td.AddPropertyAsBool("DSTEnabled", "", "DST Enabled")
 	prop.ReadOnly = false
 
@@ -298,21 +300,21 @@ func (igw *IsyGatewayThing) ReadGatewayValues() (err error) {
 
 	pv := igw.propValues
 
-	pv.SetValue(vocab.VocabManufacturer, igw.Configuration.DeviceSpecs.Make)
-	pv.SetValue(vocab.VocabModel, igw.Configuration.DeviceSpecs.Model)
-	pv.SetValue(vocab.VocabSoftwareVersion, igw.Configuration.AppVersion)
-	pv.SetValue(vocab.VocabMAC, igw.Configuration.Root.ID)
-	pv.SetValue(vocab.VocabProduct, igw.Configuration.Product.Description)
+	pv.SetValue(vocab.PropDeviceManufacturer, igw.Configuration.DeviceSpecs.Make)
+	pv.SetValue(vocab.PropDeviceModel, igw.Configuration.DeviceSpecs.Model)
+	pv.SetValue(vocab.PropDeviceSoftwareVersion, igw.Configuration.AppVersion)
+	pv.SetValue(vocab.PropNetMAC, igw.Configuration.Root.ID)
+	pv.SetValue(vocab.PropDeviceDescription, igw.Configuration.Product.Description)
 	pv.SetValue("ProductID", igw.Configuration.Product.ID)
 	// isy provides NTP stamp in local time, not in GMT :/
 	sunrise := int64(igw.Time.Sunrise-igw.Time.TMZOffset) - NTP_OFFSET
 	pv.SetValue("sunrise", time.Unix(sunrise, 0).Format(time.TimeOnly))
 	sunset := int64(igw.Time.Sunset-igw.Time.TMZOffset) - NTP_OFFSET
 	pv.SetValue("sunset", time.Unix(sunset, 0).Format(time.TimeOnly))     // seconds since epoc
-	pv.SetValue(vocab.VocabName, igw.Configuration.Root.Name)             // custom name
+	pv.SetValue(vocab.PropDeviceName, igw.Configuration.Root.Name)        // custom name
 	pv.SetValue("DHCP", strconv.FormatBool(igw.Network.Interface.IsDHCP)) // true or false
-	pv.SetValue(vocab.VocabLocalIP, igw.Network.Interface.IP)
-	pv.SetValue(vocab.VocabPort, igw.Network.WebServer.HttpPort)
+	pv.SetValue(vocab.PropNetIP4, igw.Network.Interface.IP)
+	pv.SetValue(vocab.PropNetPort, igw.Network.WebServer.HttpPort)
 	//pv.SetValue("Gateway login name",  igw.LoginName)
 	pv.SetValue("NTPHost", igw.System.NTPHost)
 	pv.SetValue("NTPEnabled", strconv.FormatBool(igw.System.NTPEnabled))
@@ -333,7 +335,9 @@ func (igw *IsyGatewayThing) ReadIsyThings() error {
 	}
 	for _, node := range isyNodes.Nodes {
 		thingID := node.Address
+		igw.mux.RLock()
 		_, found := igw.things[thingID]
+		igw.mux.RUnlock()
 		if !found {
 			err = igw.AddIsyThing(node)
 			if err != nil {

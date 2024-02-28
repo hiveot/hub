@@ -3,7 +3,7 @@ package mqtttransport
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/lib/vocab"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"strings"
 )
 
@@ -17,7 +17,7 @@ import (
 //	clientID is the login ID of the sender. Use "" for subscribe.
 func MakeTopic(msgType, agentID, thingID, name string, clientID string) string {
 	if msgType == "" {
-		msgType = vocab.MessageTypeEvent
+		msgType = transports.MessageTypeEvent
 	}
 	if agentID == "" {
 		agentID = "+"
@@ -56,7 +56,7 @@ func SplitTopic(topic string) (msgType, agentID, thingID, name string, senderID 
 	parts := strings.Split(topic, "/")
 
 	// inbox topics are short
-	if len(parts) >= 1 && parts[0] == "_INBOX" {
+	if len(parts) >= 1 && parts[0] == transports.MessageTypeINBOX {
 		msgType = parts[0]
 		if len(parts) >= 2 {
 			agentID = parts[1]

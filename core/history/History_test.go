@@ -3,6 +3,7 @@ package history_test
 import (
 	"encoding/json"
 	"fmt"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/history/config"
 	"github.com/hiveot/hub/core/history/historyapi"
@@ -10,8 +11,8 @@ import (
 	"github.com/hiveot/hub/core/history/service"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"math/rand"
 	"os"
@@ -111,7 +112,7 @@ func makeValueBatch(publisherID string, nrValues, nrThings, timespanSec int) (
 		randomTime := time.Now().Add(-randomSeconds)
 		thingID := thingIDPrefix + strconv.Itoa(randomID)
 
-		ev := things.NewThingValue(vocab.MessageTypeEvent,
+		ev := things.NewThingValue(transports.MessageTypeEvent,
 			publisherID, thingID, names[randomName],
 			[]byte(fmt.Sprintf("%2.3f", randomValue)), "",
 		)
@@ -285,35 +286,35 @@ func TestAddPropertiesEvent(t *testing.T) {
 	action1 := &things.ThingValue{
 		AgentID:   agent1,
 		ThingID:   thing1ID,
-		Name:      vocab.VocabSwitch,
+		Name:      vocab.ActionSwitchOnOff,
 		Data:      []byte("on"),
-		ValueType: vocab.MessageTypeAction,
+		ValueType: transports.MessageTypeAction,
 	}
 	event1 := &things.ThingValue{
 		AgentID:   agent1,
 		ThingID:   thing1ID,
-		Name:      vocab.VocabTemperature,
+		Name:      vocab.PropEnvTemperature,
 		Data:      []byte(temp1),
-		ValueType: vocab.MessageTypeEvent,
+		ValueType: transports.MessageTypeEvent,
 	}
 	badEvent1 := &things.ThingValue{
 		AgentID:   agent1,
 		ThingID:   thing1ID,
 		Name:      "", // missing name
-		ValueType: vocab.MessageTypeEvent,
+		ValueType: transports.MessageTypeEvent,
 	}
 	badEvent2 := &things.ThingValue{
 		AgentID:   "", // missing publisher
 		ThingID:   thing1ID,
 		Name:      "name",
-		ValueType: vocab.MessageTypeEvent,
+		ValueType: transports.MessageTypeEvent,
 	}
 	badEvent3 := &things.ThingValue{
 		AgentID:     agent1,
 		ThingID:     thing1ID,
 		Name:        "baddate",
 		CreatedMSec: -1,
-		ValueType:   vocab.MessageTypeEvent,
+		ValueType:   transports.MessageTypeEvent,
 	}
 	badEvent4 := &things.ThingValue{
 		AgentID: agent1,
@@ -321,14 +322,14 @@ func TestAddPropertiesEvent(t *testing.T) {
 		Name:    "temperature",
 	}
 	propsList := make(map[string][]byte)
-	propsList[vocab.VocabBatteryLevel] = []byte("50")
-	propsList[vocab.VocabCPULevel] = []byte("30")
-	propsList[vocab.VocabSwitch] = []byte("off")
+	propsList[vocab.PropDeviceBattery] = []byte("50")
+	propsList[vocab.PropEnvCpuload] = []byte("30")
+	propsList[vocab.PropSwitchOnOff] = []byte("off")
 	propsValue, _ := json.Marshal(propsList)
 	props1 := &things.ThingValue{
 		AgentID: agent1,
 		ThingID: thing1ID,
-		Name:    vocab.EventNameProps,
+		Name:    transports.EventNameProps,
 		Data:    propsValue,
 	}
 
@@ -355,15 +356,15 @@ func TestAddPropertiesEvent(t *testing.T) {
 
 	// verify named properties from different sources
 	props, err := readHist.GetLatest(agent1, thing1ID,
-		[]string{vocab.VocabTemperature, vocab.VocabSwitch})
+		[]string{vocab.PropEnvTemperature, vocab.PropSwitchOnOff, vocab.ActionSwitchOnOff})
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(props))
-	assert.Equal(t, vocab.VocabTemperature, props[vocab.VocabTemperature].Name)
-	assert.Equal(t, []byte(temp1), props[vocab.VocabTemperature].Data)
-	assert.Equal(t, vocab.MessageTypeEvent, props[vocab.VocabTemperature].ValueType)
+	assert.Equal(t, 3, len(props))
+	assert.Equal(t, vocab.PropEnvTemperature, props[vocab.PropEnvTemperature].Name)
+	assert.Equal(t, []byte(temp1), props[vocab.PropEnvTemperature].Data)
+	assert.Equal(t, transports.MessageTypeEvent, props[vocab.PropEnvTemperature].ValueType)
 
-	assert.Equal(t, vocab.VocabSwitch, props[vocab.VocabSwitch].Name)
-	assert.Equal(t, vocab.MessageTypeAction, props[vocab.VocabSwitch].ValueType)
+	assert.Equal(t, vocab.PropSwitchOnOff, props[vocab.PropSwitchOnOff].Name)
+	assert.Equal(t, transports.MessageTypeAction, props[vocab.ActionSwitchOnOff].ValueType)
 
 }
 
@@ -568,11 +569,11 @@ func TestPubSub(t *testing.T) {
 	defer hc1.Disconnect()
 	// publish events
 	names := []string{
-		vocab.VocabTemperature, vocab.VocabSwitch,
-		vocab.VocabSwitch, vocab.VocabBatteryLevel,
-		vocab.VocabAlarm, "noname",
-		"tttt", vocab.VocabTemperature,
-		vocab.VocabSwitch, vocab.VocabTemperature}
+		vocab.PropEnvTemperature, vocab.PropSwitchOnOff,
+		vocab.PropSwitchOnOff, vocab.PropDeviceBattery,
+		vocab.PropAlarmStatus, "noname",
+		"tttt", vocab.PropEnvTemperature,
+		vocab.PropSwitchOnOff, vocab.PropEnvTemperature}
 	_ = names
 
 	// only valid names should be added
@@ -624,7 +625,7 @@ func TestManageRetention(t *testing.T) {
 	assert.Greater(t, 1, len(rules1))
 
 	// Add two retention rules to retain temperature and our test event from device1
-	rules1[vocab.VocabTemperature] = append(rules1[vocab.VocabTemperature],
+	rules1[vocab.PropEnvTemperature] = append(rules1[vocab.PropEnvTemperature],
 		&historyapi.RetentionRule{Retain: true})
 	rules1[event1Name] = append(rules1[event1Name],
 		&historyapi.RetentionRule{AgentID: device1ID, Retain: true})

@@ -2,9 +2,9 @@ package things
 
 import (
 	"github.com/araddon/dateparse"
+	"github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/lib/vocab"
 	"sync"
 	"time"
 )
@@ -120,8 +120,8 @@ func (tdoc *TD) AddAction(name string, actionType string, title string, descript
 //
 //	actionID is the instance ID of the action, unique within the Thing
 func (tdoc *TD) AddDimmerAction(actionID string) *ActionAffordance {
-	act := tdoc.AddAction(actionID, vocab.VocabDimmer, "", "", &DataSchema{
-		AtType: vocab.VocabDimmer,
+	act := tdoc.AddAction(actionID, vocab.ActionDimmer, "", "", &DataSchema{
+		AtType: vocab.ActionDimmer,
 		Type:   vocab.WoTDataTypeInteger,
 	})
 	return act
@@ -132,8 +132,8 @@ func (tdoc *TD) AddDimmerAction(actionID string) *ActionAffordance {
 //
 //	eventID is the instance ID of the event, unique within the Thing
 func (tdoc *TD) AddDimmerEvent(eventID string) *EventAffordance {
-	ev := tdoc.AddEvent(eventID, vocab.VocabDimmer, "", "", &DataSchema{
-		AtType: vocab.VocabDimmer,
+	ev := tdoc.AddEvent(eventID, vocab.PropSwitchDimmer, "", "", &DataSchema{
+		AtType: vocab.PropSwitchDimmer,
 		Type:   vocab.WoTDataTypeInteger,
 	})
 	return ev
@@ -206,11 +206,11 @@ func (tdoc *TD) AddPropertyAsInt(name string, propType string, title string) *Pr
 	return tdoc.AddProperty(name, propType, title, vocab.WoTDataTypeInteger)
 }
 
-// AddSwitchAction is short for adding an action to control a switch
+// AddSwitchAction is short for adding an action to control an on/off switch
 func (tdoc *TD) AddSwitchAction(actionID string) *ActionAffordance {
-	act := tdoc.AddAction(actionID, vocab.VocabOnOffSwitch, "", "",
+	act := tdoc.AddAction(actionID, vocab.ActionSwitchOnOff, "", "",
 		&DataSchema{
-			AtType: vocab.VocabOnOffSwitch,
+			AtType: vocab.ActionSwitchOnOff,
 			Type:   vocab.WoTDataTypeBool,
 			Enum:   []interface{}{"on", "off"},
 		})
@@ -219,20 +219,20 @@ func (tdoc *TD) AddSwitchAction(actionID string) *ActionAffordance {
 
 // AddSwitchEvent is short for adding an event for a switch
 func (tdoc *TD) AddSwitchEvent(eventID string) *EventAffordance {
-	ev := tdoc.AddEvent(eventID, vocab.VocabOnOffSwitch, "", "",
+	ev := tdoc.AddEvent(eventID, vocab.PropSwitchOnOff, "", "",
 		&DataSchema{
-			AtType: vocab.VocabOnOffSwitch,
+			AtType: vocab.PropSwitchOnOff,
 			Type:   vocab.WoTDataTypeBool,
 			Enum:   []interface{}{"on", "off"},
 		})
 	return ev
 }
 
-// AddSensorEvent is short for adding an event for a sensor
+// AddSensorEvent is short for adding an event for a generic sensor
 func (tdoc *TD) AddSensorEvent(eventID string) *EventAffordance {
-	ev := tdoc.AddEvent(eventID, vocab.VocabSensor, "", "",
+	ev := tdoc.AddEvent(eventID, vocab.PropEnv, "", "",
 		&DataSchema{
-			AtType: vocab.VocabSensor,
+			AtType: vocab.PropEnv,
 			Type:   vocab.WoTDataTypeNumber,
 		})
 	return ev
@@ -377,11 +377,11 @@ func NewTD(thingID string, title string, deviceType string) *TD {
 		// TODO @type is a JSON-LD keyword to label using semantic tags, eg it needs a Schema
 		DeviceType: deviceType,
 		Actions:    map[string]*ActionAffordance{},
-		Created:    time.Now().Format(vocab.ISO8601Format),
+		Created:    time.Now().Format(utils.ISO8601Format),
 		Events:     map[string]*EventAffordance{},
 		Forms:      nil,
 		ID:         thingID,
-		Modified:   time.Now().Format(vocab.ISO8601Format),
+		Modified:   time.Now().Format(utils.ISO8601Format),
 		Properties: map[string]*PropertyAffordance{},
 		// security schemas don't apply to HiveOT devices, except services exposed by the hub itself
 		Security:    vocab.WoTNoSecurityScheme,

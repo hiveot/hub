@@ -12,7 +12,6 @@ import (
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"os"
 	"path"
@@ -75,7 +74,7 @@ func (hc *HubClient) MakeAddress(msgType, agentID, thingID, name string, clientI
 
 	parts := make([]string, 0, 5)
 	if msgType == "" {
-		msgType = vocab.MessageTypeEvent
+		msgType = transports.MessageTypeEvent
 	}
 	parts = append(parts, msgType)
 	if agentID == "" {
@@ -108,7 +107,7 @@ func (hc *HubClient) SplitAddress(addr string) (msgType, agentID, thingID, name 
 	parts := strings.Split(addr, sep)
 
 	// inbox topics are short
-	if len(parts) >= 1 && parts[0] == vocab.MessageTypeINBOX {
+	if len(parts) >= 1 && strings.HasPrefix(addr, transports.MessageTypeINBOX) {
 		msgType = parts[0]
 		if len(parts) >= 2 {
 			agentID = parts[1]
@@ -282,14 +281,14 @@ func (hc *HubClient) onRequest(addr string, payload []byte) (reply []byte, err e
 			hc.eventHandler(tv)
 		}
 		donotreply = true
-	} else if messageType == vocab.MessageTypeAction && hc.actionHandler != nil {
+	} else if messageType == transports.MessageTypeAction && hc.actionHandler != nil {
 		slog.Info("Received action request",
 			slog.String("sender", senderID),
 			slog.String("thingID", thingID),
 			slog.String("action", name),
 		)
 		reply, err = hc.actionHandler(tv)
-	} else if messageType == vocab.MessageTypeRPC && hc.rpcHandler != nil {
+	} else if messageType == transports.MessageTypeRPC && hc.rpcHandler != nil {
 		slog.Info("Received RPC request",
 			slog.String("sender", senderID),
 			slog.String("capability", thingID),
@@ -297,7 +296,7 @@ func (hc *HubClient) onRequest(addr string, payload []byte) (reply []byte, err e
 		)
 		reply, err = hc.rpcHandler(tv)
 
-	} else if messageType == vocab.MessageTypeConfig && hc.configHandler != nil {
+	} else if messageType == transports.MessageTypeConfig && hc.configHandler != nil {
 		slog.Info("Received config request",
 			slog.String("sender", senderID),
 			slog.String("thingID", thingID),
@@ -324,7 +323,7 @@ func (hc *HubClient) onRequest(addr string, payload []byte) (reply []byte, err e
 func (hc *HubClient) PubAction(
 	agentID string, thingID string, name string, payload []byte) ([]byte, error) {
 
-	addr := hc.MakeAddress(vocab.MessageTypeAction, agentID, thingID, name, hc.clientID)
+	addr := hc.MakeAddress(transports.MessageTypeAction, agentID, thingID, name, hc.clientID)
 	slog.Info("PubAction", "addr", addr)
 	data, err := hc.transport.PubRequest(addr, payload)
 	return data, err
@@ -344,7 +343,7 @@ func (hc *HubClient) PubAction(
 func (hc *HubClient) PubConfig(
 	agentID string, thingID string, propName string, payload []byte) error {
 
-	addr := hc.MakeAddress(vocab.MessageTypeConfig, agentID, thingID, propName, hc.clientID)
+	addr := hc.MakeAddress(transports.MessageTypeConfig, agentID, thingID, propName, hc.clientID)
 	slog.Info("PubConfig", "addr", addr)
 	_, err := hc.transport.PubRequest(addr, payload)
 	return err
@@ -367,7 +366,7 @@ func (hc *HubClient) PubConfig(
 //	payload is the serialized event value, or nil if the event has no value
 func (hc *HubClient) PubEvent(thingID string, eventName string, payload []byte) error {
 
-	addr := hc.MakeAddress(vocab.MessageTypeEvent, hc.clientID, thingID, eventName, hc.clientID)
+	addr := hc.MakeAddress(transports.MessageTypeEvent, hc.clientID, thingID, eventName, hc.clientID)
 	slog.Info("PubEvent", "addr", addr)
 	err := hc.transport.PubEvent(addr, payload)
 	return err
@@ -383,7 +382,8 @@ func (hc *HubClient) PubEvent(thingID string, eventName string, payload []byte) 
 // This returns an error if an error was returned or no confirmation was received
 func (hc *HubClient) PubProps(thingID string, props map[string]string) error {
 
-	addr := hc.MakeAddress(vocab.MessageTypeEvent, hc.clientID, thingID, vocab.EventNameProps, hc.clientID)
+	addr := hc.MakeAddress(transports.MessageTypeEvent, hc.clientID, thingID,
+		transports.EventNameProps, hc.clientID)
 	slog.Info("PubProps", "addr", addr, "nr props", len(props))
 	payload, _ := json.Marshal(props)
 	err := hc.transport.PubEvent(addr, payload)
@@ -410,7 +410,8 @@ func (hc *HubClient) PubRPCRequest(
 	if req != nil {
 		payload, _ = ser.Marshal(req)
 	}
-	addr := hc.MakeAddress(vocab.MessageTypeRPC, agentID, capability, methodName, hc.clientID)
+	addr := hc.MakeAddress(
+		transports.MessageTypeRPC, agentID, capability, methodName, hc.clientID)
 	slog.Info("PubRPCRequest", "addr", addr)
 
 	data, err := hc.transport.PubRequest(addr, payload)
@@ -424,7 +425,8 @@ func (hc *HubClient) PubRPCRequest(
 // The client's authentication ID will be used as the agentID of the event.
 func (hc *HubClient) PubTD(td *things.TD) error {
 	payload, _ := ser.Marshal(td)
-	addr := hc.MakeAddress(vocab.MessageTypeEvent, hc.clientID, td.ID, vocab.EventNameTD, hc.clientID)
+	addr := hc.MakeAddress(
+		transports.MessageTypeEvent, hc.clientID, td.ID, transports.EventNameTD, hc.clientID)
 	slog.Info("PubTD", "addr", addr)
 	err := hc.transport.PubEvent(addr, payload)
 	return err
@@ -437,7 +439,8 @@ func (hc *HubClient) SetActionHandler(handler func(msg *things.ThingValue) (repl
 	hc.mux.Lock()
 	hc.actionHandler = handler
 	hc.mux.Unlock()
-	addr := hc.MakeAddress(vocab.MessageTypeAction, hc.clientID, "", "", "")
+	addr := hc.MakeAddress(
+		transports.MessageTypeAction, hc.clientID, "", "", "")
 	_ = hc.transport.Subscribe(addr)
 	// the request handler will split actions, config and RPC requests
 	hc.transport.SetRequestHandler(hc.onRequest)
@@ -449,7 +452,8 @@ func (hc *HubClient) SetConfigHandler(handler func(msg *things.ThingValue) error
 	hc.mux.Lock()
 	hc.configHandler = handler
 	hc.mux.Unlock()
-	addr := hc.MakeAddress(vocab.MessageTypeConfig, hc.clientID, "", "", "")
+	addr := hc.MakeAddress(
+		transports.MessageTypeConfig, hc.clientID, "", "", "")
 	_ = hc.transport.Subscribe(addr)
 	hc.transport.SetRequestHandler(hc.onRequest)
 }
@@ -485,7 +489,8 @@ func (hc *HubClient) SetRPCHandler(handler func(msg *things.ThingValue) (reply [
 	hc.mux.Lock()
 	hc.rpcHandler = handler
 	hc.mux.Unlock()
-	addr := hc.MakeAddress(vocab.MessageTypeRPC, hc.clientID, "", "", "")
+	addr := hc.MakeAddress(
+		transports.MessageTypeRPC, hc.clientID, "", "", "")
 	_ = hc.transport.Subscribe(addr)
 	// onRequest will invoke the handler
 	hc.transport.SetRequestHandler(hc.onRequest)
@@ -561,7 +566,8 @@ func (hc *HubClient) SetRPCCapability(capID string, capMethods map[string]interf
 // The handler receives an event value message with data payload.
 func (hc *HubClient) SubEvents(agentID string, thingID string, eventName string) error {
 
-	subAddr := hc.MakeAddress(vocab.MessageTypeEvent, agentID, thingID, eventName, "")
+	subAddr := hc.MakeAddress(
+		transports.MessageTypeEvent, agentID, thingID, eventName, "")
 	err := hc.transport.Subscribe(subAddr)
 	return err
 }

@@ -77,7 +77,7 @@ func (svc *TemplateManager) ParseAllTemplates() {
 		err = svc.parseTemplateFiles(t, templateFS)
 	}
 	if err != nil {
-		slog.Error("Error parsing templates: ", err.Error())
+		slog.Error("Error parsing templates: ", "err", err.Error())
 	}
 	svc.allTemplates = t
 }

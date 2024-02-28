@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/vocab"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"log/slog"
 	"sync"
 	"time"
@@ -103,7 +103,7 @@ func (srv *LatestPropertiesStore) HandleAddValue(addtv *things.ThingValue) {
 	defer srv.cacheMux.Unlock()
 	thingCache, _ := srv.cache[thingAddr]
 
-	if addtv.Name == vocab.EventNameProps {
+	if addtv.Name == transports.EventNameProps {
 		// the value holds a map of property name:value pairs, add each one individually
 		// in order to retain the sender and created timestamp.
 		props := make(map[string]string)
@@ -113,7 +113,7 @@ func (srv *LatestPropertiesStore) HandleAddValue(addtv *things.ThingValue) {
 		}
 		// turn each value into a ThingValue object
 		for propName, propValue := range props {
-			tv := things.NewThingValue(vocab.MessageTypeEvent,
+			tv := things.NewThingValue(transports.MessageTypeEvent,
 				addtv.AgentID, addtv.ThingID, propName, []byte(propValue), addtv.SenderID)
 			tv.CreatedMSec = addtv.CreatedMSec
 

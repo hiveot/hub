@@ -1,10 +1,10 @@
 // mqtt and nats transport testing
 
-import { NewHubClient } from "@hivelib/hubclient/HubClient";
 import process from "node:process";
 import * as tslog from 'tslog';
+import {NewHubClient} from "@hivelib/hubclient/HubClient.js";
 
-const log = new tslog.Logger({ name: "TTT" })
+const log = new tslog.Logger({name: "TTT"})
 
 async function test1() {
 

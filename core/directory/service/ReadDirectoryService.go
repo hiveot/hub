@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/core/directory/directoryapi"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"time"
 )
@@ -24,7 +24,7 @@ type ReadDirectoryService struct {
 // CreateReadDirTD creates a Thing TD document describing the read directory capability
 func (svc *ReadDirectoryService) CreateReadDirTD() *things.TD {
 	title := "Thing Directory Reader"
-	deviceType := vocab.DeviceTypeService
+	deviceType := vocab.ThingServiceDirectory
 	td := things.NewTD(directoryapi.ReadDirectoryCap, title, deviceType)
 	// TODO: add properties
 	return td

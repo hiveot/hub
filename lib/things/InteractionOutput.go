@@ -4,8 +4,8 @@ package things
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/ser"
-	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 )
 

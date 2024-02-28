@@ -11,7 +11,6 @@ import (
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/lib/vocab"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
@@ -209,7 +208,7 @@ func TestMqttServerPubSub(t *testing.T) {
 		return nil, fmt.Errorf("not implemented"), false
 	})
 
-	subTopic := mqtttransport.MakeTopic(vocab.MessageTypeEvent, TestDevice1ID, "t1", "test", "")
+	subTopic := mqtttransport.MakeTopic(transports.MessageTypeEvent, TestDevice1ID, "t1", "test", "")
 	err = tp1.Subscribe(subTopic)
 	require.NoError(t, err)
 
@@ -217,7 +216,7 @@ func TestMqttServerPubSub(t *testing.T) {
 	tp2 := newTransport(srv, TestDevice1ID, certBundle.CaCert)
 	token, _ := srv.CreateToken(deviceAuthInfo)
 	err = tp2.ConnectWithToken(TestDevice1Keys, token)
-	pubTopic := mqtttransport.MakeTopic(vocab.MessageTypeEvent, TestDevice1ID, "t1", "test", TestDevice1ID)
+	pubTopic := mqtttransport.MakeTopic(transports.MessageTypeEvent, TestDevice1ID, "t1", "test", TestDevice1ID)
 	err = tp2.PubEvent(pubTopic, []byte(msg))
 	require.NoError(t, err)
 	rxMsg := <-rxChan
@@ -254,7 +253,7 @@ func TestMqttServerRequest(t *testing.T) {
 		return payload, nil, false
 	})
 
-	topic := mqtttransport.MakeTopic(vocab.MessageTypeAction, TestDevice1ID, "", "", "")
+	topic := mqtttransport.MakeTopic(transports.MessageTypeAction, TestDevice1ID, "", "", "")
 	err = tp1.Subscribe(topic)
 	require.NoError(t, err)
 
@@ -265,7 +264,7 @@ func TestMqttServerRequest(t *testing.T) {
 	require.NoError(t, err)
 	defer tp2.Disconnect()
 
-	addr2 := mqtttransport.MakeTopic(vocab.MessageTypeAction,
+	addr2 := mqtttransport.MakeTopic(transports.MessageTypeAction,
 		TestDevice1ID, "thing1", "action1", TestUser2ID)
 	reply, err := tp2.PubRequest(addr2, []byte(msg))
 	require.NoError(t, err)

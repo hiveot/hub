@@ -1,9 +1,9 @@
 package things
 
 import (
+	"github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/ser"
-	"github.com/hiveot/hub/lib/vocab"
 	"log/slog"
 	"testing"
 

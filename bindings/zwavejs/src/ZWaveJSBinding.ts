@@ -8,7 +8,7 @@ import {HubClient} from "@hivelib/hubclient/HubClient";
 import {parseController} from "./parseController";
 import {logVid} from "./logVid";
 import {getPropID} from "./getPropID";
-import {ActionTypes, EventTypes} from "@hivelib/vocab/vocabulary";
+import * as vocab from "@hivelib/api/ht-vocab";
 import fs from "fs";
 import {ThingValue} from "@hivelib/things/ThingValue";
 import {BindingConfig} from "./BindingConfig";
@@ -108,9 +108,9 @@ export class ZwaveJSBinding {
             case "checklifelinehealth":
                 node.checkLifelineHealth().then()
                 break;
-            case ActionTypes.Ping.toLowerCase():
+            case "ping":
                 node.ping().then((success) => {
-                    this.hc.pubEvent(tv.thingID, ActionTypes.Ping, success ? "success" : "fail")
+                    this.hc.pubEvent(tv.thingID, "ping", success ? "success" : "fail")
                 })
                 break;
             case "refreshinfo":
@@ -157,7 +157,7 @@ export class ZwaveJSBinding {
             case "dead":
             case "awake":
             case "sleeping": {
-                this.hc.pubEvent(thingID, EventTypes.Status, newState)
+                this.hc.pubEvent(thingID, vocab.PropDeviceStatus, newState)
             }
                 break;
             case "interview completed":
