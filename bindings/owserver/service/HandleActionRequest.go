@@ -3,7 +3,6 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
@@ -19,42 +18,28 @@ func (svc *OWServerBinding) HandleActionRequest(action *things.ThingValue) (repl
 		slog.String("action", action.Name),
 		slog.String("payload", string(action.Data)))
 
-	// If the action name is converted to a standardized vocabulary then convert the name
-	// to the EDS writable property name.
-
-	// which node is this action for?
-	agentID := action.ThingID
-	rawActionID := action.Name
-	for actID, actType := range eds.ActuatorTypeVocab {
-		// check both the 'raw' attribute ID and the vocab ID
-		if actID == action.Name || actType.ActuatorType == action.Name {
-			rawActionID = actID
-			break
-		}
-	}
-
-	// TODO: lookup the action name used by the EDS
+	// TODO: lookup the action Title used by the EDS
 	edsName := action.Name
 
 	// determine the value. Booleans are submitted as integers
 	actionValue := action.Data
 
-	node, found := svc.nodes[agentID]
+	node, found := svc.nodes[action.ThingID]
 	if found {
-		attr, found = node.Attr[rawActionID]
+		attr, found = node.Attr[action.Name]
 	}
 	if !found {
-		err := fmt.Errorf("action '%s' on unknown attribute '%s'", action.Name, attr.Name)
+		err := fmt.Errorf("action '%s' on unknown attribute '%s'",
+			action.Name, attr.ID)
 		return nil, err
 	} else if !attr.Writable {
-		err := fmt.Errorf("action '%s' on read-only attribute '%s'", action.Name, attr.Name)
+		err := fmt.Errorf("action '%s' on read-only attribute '%s'",
+			action.Name, attr.ID)
 		return nil, err
 	}
-	// TODO: type conversions needed?
-	if attr.DataType == vocab.WoTDataTypeBool {
-		//actionValue = fmt.Sprint(ValueAsInt())
-	}
-	err = svc.edsAPI.WriteData(agentID, edsName, string(actionValue))
+
+	// the thingID is the device identifier, eg the ROMId
+	err = svc.edsAPI.WriteData(action.ThingID, edsName, string(actionValue))
 
 	// read the result
 	time.Sleep(time.Second)

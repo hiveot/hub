@@ -44,23 +44,25 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err err
 		// send all changed property attributes in a single properties event
 		attrMap := make(map[string]string)
 		//thingID := things.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
-		thingID := node.NodeID
+		thingID := node.ROMId
 
-		for attrName, attr := range node.Attr {
+		for attrID, attr := range node.Attr {
 			// only send the changed values
-			prevValue, found := svc.getPrevValue(node.NodeID, attrName)
+			prevValue, found := svc.getPrevValue(node.ROMId, attrID)
 			age := time.Now().Sub(prevValue.timestamp)
 			maxAge := time.Second * time.Duration(svc.config.RepublishInterval)
 			// skip update if the value hasn't changed for less than the republish interval
 			skip := found && prevValue.value == attr.Value && age < maxAge
 
 			if !skip {
-				svc.setPrevValue(node.NodeID, attrName, attr.Value)
-				if attr.IsSensor {
-					err = svc.hc.PubEvent(thingID, attrName, []byte(attr.Value))
+				svc.setPrevValue(node.ROMId, attrID, attr.Value)
+				sensorInfo, isSensor := SensorAttrVocab[attrID]
+				_ = sensorInfo
+				if isSensor {
+					err = svc.hc.PubEvent(thingID, attrID, []byte(attr.Value))
 				} else {
 					// attribute to be included in the properties event
-					attrMap[attrName] = attr.Value
+					attrMap[attrID] = attr.Value
 				}
 			}
 		}

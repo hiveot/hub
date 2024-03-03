@@ -71,10 +71,10 @@ func HandleSubTD(hc *hubclient.HubClient) error {
 			modifiedTime, _ := dateparse.ParseAny(td.Modified) // can be in any TZ
 			timeStr := utils.FormatMSE(modifiedTime.In(time.Local).UnixMilli(), false)
 			fmt.Printf("%-20.20s %-25.25s %-30.30s %-20.20s %-18.18s\n",
-				msg.AgentID, msg.ThingID, td.Title, td.DeviceType, timeStr)
+				msg.AgentID, msg.ThingID, td.Title, td.AtType, timeStr)
 		}
 	})
-	fmt.Printf("Agent ID             Thing ID                  Title                          Type                 Updated           \n")
+	fmt.Printf("Agent ID             Thing ID                  Title                          @type                Updated           \n")
 	fmt.Printf("-------------------  ------------------------  -----------------------------  -------------------  --------------------\n")
 
 	time.Sleep(time.Hour * 24)
@@ -101,7 +101,7 @@ func HandleSubEvents(hc *hubclient.HubClient, agentID string, thingID string, na
 			var td things.TD
 			_ = json.Unmarshal(msg.Data, &td)
 			value = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
-				td.Title, td.DeviceType, len(td.Properties), len(td.Events), len(td.Actions))
+				td.Title, td.AtType, len(td.Properties), len(td.Events), len(td.Actions))
 		}
 
 		fmt.Printf("%-16.16s %-20.20s %-25.25s %-30.30s %-40.40s\n",

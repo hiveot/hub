@@ -25,7 +25,8 @@ import (
 //	clientID to connect as. Also used for the key and token file names
 //	certDir is the location of the CA cert and key/token files
 //	core optional core selection. Fallback is to auto determine based on URL.
-func ConnectToHub(fullURL string, clientID string, certDir string, core string) (
+//	 password optional for a user login
+func ConnectToHub(fullURL string, clientID string, certDir string, core string, password string) (
 	hc *HubClient, err error) {
 
 	// 1. determine the actual address
@@ -48,7 +49,12 @@ func ConnectToHub(fullURL string, clientID string, certDir string, core string) 
 
 	// 4. Connect and auth with token from file
 	slog.Info("connecting to", "serverURL", fullURL)
-	err = hc.ConnectWithTokenFile(certDir)
+	if password != "" {
+		err = hc.ConnectWithPassword(password)
+	} else {
+		// login with token file
+		err = hc.ConnectWithTokenFile(certDir)
+	}
 	if err != nil {
 		return nil, err
 	}

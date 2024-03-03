@@ -106,9 +106,9 @@ func TestPoll(t *testing.T) {
 	defer svc.Stop()
 
 	// wait until startup poll completed
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 200)
 
-	// the simulation file contains 3 things. The service is 1 things.
+	// the simulation file contains 3 things. The service is 1 Thing.
 	assert.GreaterOrEqual(t, tdCount.Load(), int32(4))
 }
 

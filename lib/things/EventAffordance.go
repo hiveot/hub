@@ -20,7 +20,7 @@ type EventAffordance struct {
 
 	// Form hypermedia controls to describe how an operation can be performed
 	// Forms are serializations of Protocol Bindings.
-	Forms []Form `json:"forms"`
+	Forms []Form `json:"forms,omitempty"`
 
 	// Define URI template variables according to [RFC6570] as collection based on DataSchema declarations.
 	// ... right

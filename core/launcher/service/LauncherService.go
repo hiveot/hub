@@ -203,7 +203,7 @@ func (svc *LauncherService) Start() error {
 	// 3: a connection to the message bus is needed
 	if svc.hc == nil {
 		svc.hc, err = hubclient.ConnectToHub(
-			svc.env.ServerURL, svc.env.ClientID, svc.env.CertsDir, "")
+			svc.env.ServerURL, svc.env.ClientID, svc.env.CertsDir, "", "")
 		if err != nil {
 			err = fmt.Errorf("failed starting launcher service: %w", err)
 			return err

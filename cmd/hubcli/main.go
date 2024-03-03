@@ -32,6 +32,7 @@ func main() {
 	var hc *hubclient.HubClient
 	var verbose bool
 	var loginID = "admin"
+	var password = ""
 	var homeDir string
 	var certsDir string
 	var serverURL string
@@ -71,6 +72,12 @@ func main() {
 				Destination: &loginID,
 			},
 			&cli.StringFlag{
+				Name:        "password",
+				Usage:       "optional password for alt user",
+				Value:       password,
+				Destination: &password,
+			},
+			&cli.StringFlag{
 				Name:        "server",
 				Usage:       "server URL (default: use DNS-SD discovery)",
 				Value:       serverURL,
@@ -94,7 +101,7 @@ func main() {
 				fmt.Printf(utils.WrapOff)
 			}
 			// todo: don't connect when running setup
-			hc, err = hubclient.ConnectToHub(serverURL, loginID, certsDir, "")
+			hc, err = hubclient.ConnectToHub(serverURL, loginID, certsDir, "", password)
 			if err != nil {
 				slog.Warn("Unable to connect to the server", "err", err)
 			}

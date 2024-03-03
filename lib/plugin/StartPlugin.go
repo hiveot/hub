@@ -33,7 +33,7 @@ func StartPlugin(plugin IPlugin, env *AppEnvironment) {
 	logging.SetLogging(env.LogLevel, "")
 
 	// locate the hub, load CA certificate, load service key and token and connect
-	hc, err := hubclient.ConnectToHub("", env.ClientID, env.CertsDir, "")
+	hc, err := hubclient.ConnectToHub("", env.ClientID, env.CertsDir, "", "")
 	if err != nil {
 		slog.Error("Failed connecting to the Hub", "err", err)
 		os.Exit(1)

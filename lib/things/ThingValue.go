@@ -21,7 +21,7 @@ type ThingValue struct {
 	// ThingID or capabilityID of the things itself
 	ThingID string `json:"thingID"`
 
-	// Name of event, action or property as defined in the TD event/action map.
+	// Name/ID of event, action or property as defined in the TD event/action map.
 	Name string `json:"name"`
 
 	// Data with serialized value payload, as defined by the TD affordance DataSchema

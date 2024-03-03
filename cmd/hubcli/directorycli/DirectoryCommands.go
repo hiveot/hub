@@ -24,8 +24,8 @@ func DirectoryListCommand(hc **hubclient.HubClient) *cli.Command {
 		ArgsUsage: "[<agentID> <thingID>]",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
-				Name:        "v",
-				Usage:       "Verbose, display raw json",
+				Name:        "raw",
+				Usage:       "raw, display raw json",
 				Value:       false,
 				Destination: &verbose,
 			},
@@ -56,8 +56,8 @@ func HandleListDirectory(hc *hubclient.HubClient) (err error) {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Agent ID        Thing ID             Device Type          Title                                #props  #events #actions   Updated         \n")
-	fmt.Printf("-------------   -------------------  -------------------  -----------------------------------  ------  ------- --------   -----------------------------\n")
+	fmt.Printf("Agent ID / Thing ID                 @type                               Title                                #props  #events #actions   Updated         \n")
+	fmt.Printf("----------------------------------  ----------------------------------  -----------------------------------  ------  ------- --------   -----------------------------\n")
 	i := 0
 	tv, valid, err := cursor.First()
 	if offset > 0 {
@@ -76,10 +76,9 @@ func HandleListDirectory(hc *hubclient.HubClient) (err error) {
 		//timeStr := utime.In(time.Local).Format("02 Jan 2006 15:04:05 -0700")
 		timeStr := utils.FormatMSE(utime.In(time.Local).UnixMilli(), false)
 
-		fmt.Printf("%-15s %-20s %-20.20s %-35.35s %7d  %7d  %7d   %-30s\n",
-			tv.AgentID,
-			tdDoc.ID,
-			tdDoc.DeviceType,
+		fmt.Printf("%-35s %-35.35s %-35.35s %7d  %7d  %7d   %-30s\n",
+			tv.AgentID+" / "+tdDoc.ID,
+			tdDoc.AtType,
 			tdDoc.Title,
 			len(tdDoc.Properties),
 			len(tdDoc.Events),
@@ -113,7 +112,7 @@ func HandleListThing(hc *hubclient.HubClient, pubID, thingID string) error {
 	fmt.Printf("%sTD of %s %s:%s\n", utils.COBlue, pubID, thingID, utils.COReset)
 	fmt.Printf(" title:       %s\n", tdDoc.Title)
 	fmt.Printf(" description: %s\n", tdDoc.Description)
-	fmt.Printf(" deviceType:  %s\n", tdDoc.DeviceType)
+	fmt.Printf(" @type:       %s\n", tdDoc.AtType)
 	fmt.Printf(" modified:    %s\n", tdDoc.Modified)
 	fmt.Println("")
 

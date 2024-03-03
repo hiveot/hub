@@ -14,6 +14,11 @@ import (
 	"time"
 )
 
+const bindingValuePollIntervalID = "valuePollInterval"
+const bindingTDIntervalID = "tdPollInterval"
+const bindingValuePublishIntervalID = "valueRepublishInterval"
+const bindingOWServerAddressID = "owServerAddress"
+
 // OWServerBinding is the hub protocol binding plugin for capturing 1-wire OWServer V2 Data
 type OWServerBinding struct {
 	// Configuration of this protocol binding
@@ -26,10 +31,10 @@ type OWServerBinding struct {
 	hc *hubclient.HubClient
 
 	// track the last value for change detection
-	// map of [node/device ID] [attribute name] value
+	// map of [node/device ID] [attribute Title] value
 	values map[string]map[string]NodeValueStamp
 
-	// nodes by deviceID/thingID
+	// nodes by thingID. Used in handling action requests
 	nodes map[string]*eds.OneWireNode
 
 	// Map of previous node values [nodeID][attrName]value
@@ -43,21 +48,21 @@ type OWServerBinding struct {
 // CreateBindingTD generates a TD document for this binding
 func (svc *OWServerBinding) CreateBindingTD() *things.TD {
 	thingID := svc.hc.ClientID()
-	td := things.NewTD(thingID, "OWServer svc", vocab.ThingServiceAdapter)
+	td := things.NewTD(thingID, "OWServer binding", vocab.ThingServiceAdapter)
 	// these are configured through the configuration file.
-	prop := td.AddProperty(vocab.PropDevicePollinterval, vocab.PropDevicePollinterval,
-		"Poll Interval", vocab.WoTDataTypeInteger)
+	prop := td.AddProperty(bindingValuePollIntervalID, vocab.PropDevicePollinterval,
+		"Value Polling Interval", vocab.WoTDataTypeInteger)
 	prop.Unit = vocab.UnitSecond
 
-	prop = td.AddProperty("tdInterval", vocab.PropDevicePollinterval,
+	prop = td.AddProperty(bindingValuePublishIntervalID, "",
+		"Value republish Interval", vocab.WoTDataTypeInteger)
+	prop.Unit = vocab.UnitSecond
+
+	prop = td.AddProperty(bindingTDIntervalID, vocab.PropDevicePollinterval,
 		"TD Publication Interval", vocab.WoTDataTypeInteger)
 	prop.Unit = vocab.UnitSecond
 
-	prop = td.AddProperty("valueInterval", vocab.PropDevicePollinterval,
-		"Value Republication Interval", vocab.WoTDataTypeInteger)
-	prop.Unit = vocab.UnitSecond
-
-	prop = td.AddProperty("owServerAddress", vocab.PropNetAddress,
+	prop = td.AddProperty(bindingOWServerAddressID, vocab.PropNetAddress,
 		"OWServer gateway IP address", vocab.WoTDataTypeString)
 	return td
 }
@@ -65,10 +70,10 @@ func (svc *OWServerBinding) CreateBindingTD() *things.TD {
 // MakeBindingProps generates a properties map for attribute and config properties of this binding
 func (svc *OWServerBinding) MakeBindingProps() map[string]string {
 	pv := make(map[string]string)
-	pv[vocab.PropDevicePollinterval] = fmt.Sprintf("%d", svc.config.PollInterval)
-	pv["tdInterval"] = fmt.Sprintf("%d", svc.config.TDInterval)
-	pv["valueInterval"] = fmt.Sprintf("%d", svc.config.RepublishInterval)
-	pv["owServerAddress"] = svc.config.OWServerURL
+	pv[bindingValuePollIntervalID] = fmt.Sprintf("%d", svc.config.PollInterval)
+	pv[bindingTDIntervalID] = fmt.Sprintf("%d", svc.config.TDInterval)
+	pv[bindingValuePublishIntervalID] = fmt.Sprintf("%d", svc.config.RepublishInterval)
+	pv[bindingOWServerAddressID] = svc.config.OWServerURL
 	return pv
 }
 
@@ -128,12 +133,11 @@ func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
 			nodes, err := svc.PollNodes()
 			if err == nil {
 				if tdCountDown <= 0 {
-					// Every TDInterval update the TD's and submit all properties
-					// create ExposedThing's as they are discovered
-					err = svc.PublishThings(nodes)
+					// Every TDInterval publish the full TD's
+					err = svc.PublishNodeTDs(nodes)
 					tdCountDown = svc.config.TDInterval
 				}
-
+				// publish changed values
 				err = svc.PublishNodeValues(nodes)
 			}
 			pollCountDown = svc.config.PollInterval
@@ -149,7 +153,7 @@ func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
 // Stop the heartbeat and remove subscriptions
 // This does not close the given hubclient connection.
 func (svc *OWServerBinding) Stop() {
-	slog.Warn("Stopping OWServer svc")
+	slog.Warn("Stopping OWServer binding")
 
 	if svc.stopFn != nil {
 		svc.stopFn()

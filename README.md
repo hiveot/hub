@@ -51,7 +51,7 @@ Open standards improves interoperability with devices and 3rd party services. Pr
 
 Provide a decentralized solution. Multiple Hubs can build a bigger hive without requiring a cloud service and can operate successfully on a private network.
 
-HiveOT is based on the [W3C WoT TD 1.1 specification](https://www.w3.org/TR/wot-thing-description11/). See [docs/README-TD] for more information.
+HiveOT is based on the [W3C WoT TD 1.1 specification](https://www.w3.org/TR/wot-thing-description11/). See [docs/README-TD.md] for more information.
 
 ## About HiveOT
 

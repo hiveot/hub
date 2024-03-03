@@ -59,7 +59,7 @@
               {{range .Things}}
 								<li>
 									<div class="h-show-md">
-										<h-device-icon deviceType={{.DeviceType}}></h-device-icon>
+										<h-device-icon deviceType={{.AtType}}></h-device-icon>
 									</div>
 									<div>
 										<!-- hx-push-url does not trigger popState so how to show result?-->
@@ -73,7 +73,7 @@
 										</a>
 									</div>
 									<div>{{.Title}}</div>
-									<div class="h-show-sm">{{.DeviceType}}</div>
+									<div class="h-show-sm">{{.AtType}}</div>
 									<div class="h-show-lg">{{len .Events}} outputs</div>
 									<div class="h-show-lg">{{len .Actions}} actions</div>
 									<div class="h-show-xl">{{.GetAge}} ago</div>

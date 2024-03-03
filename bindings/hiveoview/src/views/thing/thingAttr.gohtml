@@ -32,20 +32,20 @@
 
 <style>
 
-    .thing-attr {
-        grid-template-columns:
+    @media (width < 1024px) {
+        .thing-attr {
+            grid-template-columns:
                 40px
                 minmax(min-content, max-content)
                 minmax(100px, 1fr);
+        }
     }
-
-
     @media (width >= 1024px) {
         .thing-attr {
             /*md,show column 1,2,3,4*/
             grid-template-columns: 40px/*icon*/
-              minmax(200px, max-content) /*name*/
-              minmax(min-content, 1fr) /*value*/
+              minmax(200px, max-content) /*id-title*/
+              minmax(min-content, max-content) /*value*/
               minmax(min-content, 1fr); /*updated*/
         }
     }

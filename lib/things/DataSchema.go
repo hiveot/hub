@@ -35,7 +35,7 @@ type DataSchema struct {
 	Format string `json:"format,omitempty"`
 
 	// OneOf provides constraint of data as one of the given data schemas
-	OneOf []interface{} `json:"oneOf,omitempty"`
+	OneOf []DataSchema `json:"oneOf,omitempty"`
 
 	// Restricted set of values provided as an array.
 	//  for example: ["option1", "option2"]
@@ -43,7 +43,7 @@ type DataSchema struct {
 
 	// Boolean value to indicate whether a property interaction / value is read-only (=true) or not (=false)
 	// the value true implies read-only.
-	ReadOnly bool `json:"readOnly,omitempty"`
+	ReadOnly bool `json:"readOnly"`
 
 	// Boolean value to indicate whether a property interaction / value is write-only (=true) or not (=false)
 	// the value true implies writable but not readable. Intended for secrets such as passwords.
@@ -106,4 +106,17 @@ type DataSchema struct {
 	// ContentMediaType specifies the MIME type of the contents of a string value, as described in RFC 2046.
 	// e.g., image/png, or audio/mpeg)
 	StringContentMediaType string `json:"contentMediaType,omitempty"`
+}
+
+// SetEnumValues updates the data schema with restricted enum values.
+// This uses the 'oneOf' field to allow support title and description of enum values.
+// See also the discussion at: https://github.com/w3c/wot-thing-description/issues/997#issuecomment-1865902885
+// Values is a set of dataschema values where:
+//   - const is the value, required.
+//   - title is the human description of the value
+//   - description contains an optional elaboration of the value
+//   - @type is optional reference to the corresponding vocabulary for this value (if used)
+func (ds *DataSchema) SetEnumValues(values []DataSchema) *DataSchema {
+	ds.OneOf = values
+	return ds
 }

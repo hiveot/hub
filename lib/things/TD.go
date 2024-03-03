@@ -9,11 +9,14 @@ import (
 	"time"
 )
 
+const WoTTDContext = "https://www.w3.org/2022/wot/td/v1.1"
+const HiveOTContext = "https://www.hiveot.net/vocab/v0.1"
+
 // TD contains the Thing Description document
 // Its structure is:
 //
 //	{
-//	     @context: "http://www.w3.org/ns/td",
+//	     @context: <WoTTDContext>, {"ht":<HiveOTContext>},
 //	     @type: <deviceType>,
 //	     id: <thingID>,
 //	     title: <human description>,  (why is this not a property?)
@@ -24,13 +27,14 @@ import (
 //	}
 type TD struct {
 	// JSON-LD keyword to define shorthand names called terms that are used throughout a TD document. Required.
-	AtContext []string `json:"@context"`
+	// in order to add the "ht" namespace, the context value can be a string or map
+	AtContext []any `json:"@context"`
 
 	// JSON-LD keyword to label the object with semantic tags (or types).
 	// in HiveOT this contains the device type defined in the vocabulary.
 	// Intended for grouping and querying similar devices, and standardized presentation such as icons
-	DeviceType string `json:"@type,omitempty"`
-	AtTypes    string `json:"@types,omitempty"`
+	AtType  string `json:"@type,omitempty"`
+	AtTypes string `json:"@types,omitempty"`
 
 	// base: Define the base URI that is used for all relative URI references throughout a TD document.
 	//Base string `json:"base,omitempty"`
@@ -300,6 +304,19 @@ func (tdoc *TD) GetProperty(key string) *PropertyAffordance {
 	return propAffordance
 }
 
+// GetPropertyOfType returns the first property affordance with the given @type
+// This returns the property ID and the property affordances, or nil if not found
+func (tdoc *TD) GetPropertyOfType(atType string) (string, *PropertyAffordance) {
+	tdoc.updateMutex.RLock()
+	defer tdoc.updateMutex.RUnlock()
+	for propID, prop := range tdoc.Properties {
+		if prop.AtType == atType {
+			return propID, prop
+		}
+	}
+	return "", nil
+}
+
 // GetID returns the ID of the things TD
 func (tdoc *TD) GetID() string {
 	return tdoc.ID
@@ -362,10 +379,10 @@ func (tdoc *TD) UpdateTitleDescription(title string, description string) {
 // Its structure:
 //
 //	{
-//	     @context: "http://www.w3.org/ns/td",
-//	     id: <thingID>,              // urn:[{prefix}:]{randomID}
-//	     title: string,              // required. Human description of the things
+//	     @context: "http://www.w3.org/ns/td",{"ht":"http://hiveot.net/vocab/v..."}
 //	     @type: <deviceType>,        // required in HiveOT. See DeviceType vocabulary
+//	     id: <thingID>,              // urn:[{prefix}:]{randomID}   required in hiveot
+//	     title: string,              // required. Human description of the things
 //	     created: <iso8601>,         // will be the current timestamp. See vocabulary TimeFormat
 //	     actions: {name:TDAction, ...},
 //	     events:  {name: TDEvent, ...},
@@ -373,9 +390,11 @@ func (tdoc *TD) UpdateTitleDescription(title string, description string) {
 //	}
 func NewTD(thingID string, title string, deviceType string) *TD {
 	td := TD{
-		AtContext: []string{"http://www.w3.org/ns/thing"},
-		// TODO @type is a JSON-LD keyword to label using semantic tags, eg it needs a Schema
-		DeviceType: deviceType,
+		AtContext: []any{
+			WoTTDContext,
+			map[string]string{"ht": HiveOTContext},
+		},
+		AtType:     deviceType,
 		Actions:    map[string]*ActionAffordance{},
 		Created:    time.Now().Format(utils.ISO8601Format),
 		Events:     map[string]*EventAffordance{},

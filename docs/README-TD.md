@@ -365,19 +365,11 @@ Where 'data' is optional response data to the action as defined in the TD action
 
 WoT's DataSchema (which is the base for properties, events and actions) includes an 'enum' field that is defined as an array of any type. It is intended to contain a restricted set of values.
 
-Many enum and boolean restricted fields values have well known labels. For example enabled/disabled, on/off, start/stop, open/closed, active/inactive, etc... However, how to provide the human label and description of these values?
+Unfortunately, while WoT's DataSchema does define an 'enum' value array for a property/event/action, it does not provide a way to define the title and description for these values. So how to present these enum values?
 
-Standardization of enum style property classes, would cover a large portion of the cases. HiveOT therefore defines a set of enum @type names in the ht:enum namespace. Using these implies a default label and value for each possible values. For example, if @type is "ht:enum:on-off", then the possible enum values are 'on' and 'off' with corresponding titles of 'On' and 'Off'. The property title and description can be used to describe the purpose of the on/off value in general. Note that for TD compatibility reasons, the 'enum' field should still contain the restricted values. The use of @type is intended to aid in presentation of the values. Without a @type field set, the values themselves can still be presented.
+This is has been discussed in the WoT group [here](https://github.com/w3c/wot-thing-description/issues/997#issuecomment-1865902885) where the proposed solution is the use 'oneOf', or to add an 'enumMap' attribute.
 
-The vocabulary defines the list of defined enum pairs for the "ht" namespace.
-
-See the vocabulary addendum for the full list.
-
-That leaves a collection of uncommon enum values. Unfortunately, while WoT's DataSchema does define an 'enum' value array for a property/event/action, it does not provide a way to define the title and description for these values. So how to present these enum values?
-
-HiveOT chooses to allow including a 'labels' field in the DataSchema that contains an array of presentation labels corresponding to the 'enum' array entries.
-
-Note that these labels are in the default language. Support for multi-language values is a future concern. In the interim the WoT group might introduce a solution.
+HiveOT chooses to use oneOf with an array of DataSchema to support enums with DataSchema annotations. The 'const' field defines the value while 'title' provides a human description. The use of '@type' is possible in case of a value from another vocabulary.
 
 ### Links
 

@@ -257,7 +257,7 @@ func (hc *HubClient) onConnect(status transports.HubTransportStatus) {
 // Handlers of events and requests. These are dispatched to their appropriate handlers
 func (hc *HubClient) onEvent(addr string, payload []byte) {
 	messageType, agentID, thingID, name, senderID, err := hc.SplitAddress(addr)
-
+	slog.Info("onEvent", slog.String("addr", addr))
 	hc.mux.RLock()
 	defer hc.mux.RUnlock()
 	if err == nil && hc.eventHandler != nil {
@@ -366,6 +366,11 @@ func (hc *HubClient) PubConfig(
 //	payload is the serialized event value, or nil if the event has no value
 func (hc *HubClient) PubEvent(thingID string, eventName string, payload []byte) error {
 
+	if eventName == "" {
+		err := fmt.Errorf("PubEvent missing event Name")
+		slog.Error(err.Error())
+		return err
+	}
 	addr := hc.MakeAddress(transports.MessageTypeEvent, hc.clientID, thingID, eventName, hc.clientID)
 	slog.Info("PubEvent", "addr", addr)
 	err := hc.transport.PubEvent(addr, payload)
@@ -406,6 +411,12 @@ func (hc *HubClient) PubProps(thingID string, props map[string]string) error {
 func (hc *HubClient) PubRPCRequest(
 	agentID string, capability string, methodName string, req interface{}, resp interface{}) error {
 
+	if capability == "" || methodName == "" {
+		err := fmt.Errorf("PubRPCRequest missing capability or methodName")
+		slog.Error(err.Error())
+		return err
+	}
+
 	var payload []byte
 	if req != nil {
 		payload, _ = ser.Marshal(req)
@@ -424,6 +435,11 @@ func (hc *HubClient) PubRPCRequest(
 // PubTD publishes an event with a Thing TD document.
 // The client's authentication ID will be used as the agentID of the event.
 func (hc *HubClient) PubTD(td *things.TD) error {
+	if td.ID == "" {
+		err := fmt.Errorf("PubTD missing Thing ID")
+		slog.Error(err.Error())
+		return err
+	}
 	payload, _ := ser.Marshal(td)
 	addr := hc.MakeAddress(
 		transports.MessageTypeEvent, hc.clientID, td.ID, transports.EventNameTD, hc.clientID)

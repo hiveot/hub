@@ -3,6 +3,7 @@ package thing
 import (
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/core/directory/dirclient"
@@ -16,9 +17,11 @@ import (
 const TemplateFile = "thingDetails.gohtml"
 
 type DetailsTemplateData struct {
-	AgentID string
-	ThingID string
-	TD      things.TD
+	AgentID    string
+	ThingID    string
+	MakeModel  string
+	DeviceType string
+	TD         things.TD
 	// These lists are sorted by property/event/action name
 	Attributes map[string]*things.PropertyAffordance
 	Config     map[string]*things.PropertyAffordance
@@ -81,6 +84,20 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 			propMap, err2 := getLatest(agentID, thingID, hc)
 			err = err2
 			thingData.Values = propMap
+			thingData.DeviceType = thingData.TD.AtType
+
+			// get the value of a make & model properties, if they exist
+			// TODO: this is a bit of a pain to do. Is this a common problem?
+			makeID, _ := thingData.TD.GetPropertyOfType(vocab.PropDeviceManufacturer)
+			modelID, _ := thingData.TD.GetPropertyOfType(vocab.PropDeviceModel)
+			makeValue := propMap.Get(makeID)
+			modelValue := propMap.Get(modelID)
+			if makeValue != nil {
+				thingData.MakeModel = string(makeValue.Data) + ", "
+			}
+			if modelValue != nil {
+				thingData.MakeModel = thingData.MakeModel + string(modelValue.Data)
+			}
 		}
 	}
 	if err != nil {
