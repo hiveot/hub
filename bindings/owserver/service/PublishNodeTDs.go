@@ -134,6 +134,11 @@ var PropAttrVocab = map[string]struct {
 		DataType: vocab.WoTDataTypeNumber, Unit: vocab.UnitVolt},
 }
 
+// PropIgnore ignore these properties
+var PropIgnore = map[string]bool{
+	"RawData": true,
+}
+
 // SensorAttrVocab maps OWServer sensor attribute names to IoT event and property vocabulary
 var SensorAttrVocab = map[string]struct {
 	VocabType string // sensor type from vocabulary
@@ -157,7 +162,7 @@ var SensorAttrVocab = map[string]struct {
 	"Health": {
 		VocabType: "", Title: "Health 0-7", DataType: vocab.WoTDataTypeNumber,
 	},
-	//"HeatIndex":                          {VocabType: vocab.PropEnvHeatindex, Title: "Heat Index", DataType: vocab.WoTDataTypeNumber, Decimals: 1},
+	//"HeatIndex":  {VocabType: vocab.PropEnvHeatindex, Title: "Heat Index", DataType: vocab.WoTDataTypeNumber, Decimals: 1},
 	"Humidity": {
 		VocabType: vocab.PropEnvHumidity,
 		Title:     "Humidity", DataType: vocab.WoTDataTypeNumber, Decimals: 0,
@@ -224,6 +229,7 @@ func CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing.TD) {
 		sensorInfo, isSensor := SensorAttrVocab[attrID]
 		actuatorInfo, isActuator := ActuatorTypeVocab[attrID]
 		propInfo, isProp := PropAttrVocab[attrID]
+		propIgnore, _ := PropIgnore[attrID]
 
 		if isSensor {
 			var evSchema *thing.DataSchema
@@ -252,7 +258,7 @@ func CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing.TD) {
 				}
 			}
 			tdoc.AddAction(attrID, actuatorInfo.VocabType, actuatorInfo.Title, "", inputSchema)
-		} else {
+		} else if !propIgnore {
 			propType := ""
 			title := attrID
 			dataType := ""

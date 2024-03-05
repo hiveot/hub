@@ -9,8 +9,8 @@
 			<span>Title</span>
 		</div>
 		<div>Value</div>
-		<div class="h-show-md">Updated</div>
 		<div class="h-show-lg">Description</div>
+		<div class="h-show-md">Updated</div>
 	</li>
 
     {{range $k,$v := .TD.Events}}
@@ -26,12 +26,12 @@
 						      title="age: {{$.Values.Age $k}}">
 								{{$.Values.ToString $k}}
 						</span>
-              {{$v.Data.Unit}}
+              {{$v.Data.UnitSymbol}}
 					</div>
+					<div class="h-show-lg">{{$v.Description}}</div>
 					<div class="h-show-md"
 					     title="Updated: {{$.Values.Age $k}} ago by {{($.Values.SenderID $k)}}">
               {{$.Values.Updated $k}}</div>
-					<div class="h-show-lg">{{$v.Description}}</div>
 				</li>
     {{end}}
     {{if not .TD.Events}}
@@ -48,14 +48,16 @@
 
     /*default XS, column 2, 3 */
     .thing-events {
-        grid-template-columns: minmax(200px, max-content) minmax(100px, 1fr);
+        grid-template-columns:
+				        minmax(200px, max-content) /* ID/Title */
+				        minmax(100px, 1fr);        /* Value */
     }
 
     @media (width >= 576px) {
         .thing-events {
             /*sm, show column 1,2,3 */
             grid-template-columns: 40px/*icon*/
-              minmax(200px, max-content) /*name*/
+              minmax(200px, max-content) /*ID/Title*/
               minmax(100px, 1fr); /*value*/
         }
     }
@@ -75,8 +77,8 @@
             grid-template-columns: 40px/*icon*/
               minmax(200px, max-content) /*name*/
               minmax(100px, max-content) /*value*/
-		          minmax(100px, max-content) /*updated*/
-			        minmax(100px, 1fr); /*description*/
+			        minmax(100px, 1fr) /*description*/
+		        minmax(100px, max-content); /*updated*/
         }
     }
 

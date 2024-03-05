@@ -18,6 +18,7 @@ const bindingValuePollIntervalID = "valuePollInterval"
 const bindingTDIntervalID = "tdPollInterval"
 const bindingValuePublishIntervalID = "valueRepublishInterval"
 const bindingOWServerAddressID = "owServerAddress"
+const bindingMake = "make"
 
 // OWServerBinding is the hub protocol binding plugin for capturing 1-wire OWServer V2 Data
 type OWServerBinding struct {
@@ -49,8 +50,13 @@ type OWServerBinding struct {
 func (svc *OWServerBinding) CreateBindingTD() *things.TD {
 	thingID := svc.hc.ClientID()
 	td := things.NewTD(thingID, "OWServer binding", vocab.ThingServiceAdapter)
+	td.Description = "Driver for the OWServer V2 Gateway 1-wire interface"
+
+	prop := td.AddProperty(bindingMake, vocab.PropDeviceManufacturer,
+		"Developed By", vocab.WoTDataTypeString)
+
 	// these are configured through the configuration file.
-	prop := td.AddProperty(bindingValuePollIntervalID, vocab.PropDevicePollinterval,
+	prop = td.AddProperty(bindingValuePollIntervalID, vocab.PropDevicePollinterval,
 		"Value Polling Interval", vocab.WoTDataTypeInteger)
 	prop.Unit = vocab.UnitSecond
 
@@ -74,6 +80,7 @@ func (svc *OWServerBinding) MakeBindingProps() map[string]string {
 	pv[bindingTDIntervalID] = fmt.Sprintf("%d", svc.config.TDInterval)
 	pv[bindingValuePublishIntervalID] = fmt.Sprintf("%d", svc.config.RepublishInterval)
 	pv[bindingOWServerAddressID] = svc.config.OWServerURL
+	pv[bindingMake] = "HiveOT"
 	return pv
 }
 

@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/ser"
+	"strconv"
 	"time"
 
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
@@ -59,7 +60,13 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err err
 				sensorInfo, isSensor := SensorAttrVocab[attrID]
 				_ = sensorInfo
 				if isSensor {
-					err = svc.hc.PubEvent(thingID, attrID, []byte(attr.Value))
+					valueStr := attr.Value
+					valueFloat, err := strconv.ParseFloat(attr.Value, 32)
+					if err == nil {
+						valueStr = strconv.FormatFloat(valueFloat, 'f', sensorInfo.Decimals, 32)
+					}
+					// strange, expected a valid number
+					err = svc.hc.PubEvent(thingID, attrID, []byte(valueStr))
 				} else {
 					// attribute to be included in the properties event
 					attrMap[attrID] = attr.Value

@@ -3,7 +3,7 @@
 
 # type: ActionClasses
 # version: 0.1
-# generated: 27 Feb 24 16:55 PST
+# generated: 03 Mar 24 22:35 PST
 # source: github.com/hiveot/hub/api/vocab/ht-action-classes.yaml
 # namespace: ht
 ActionDimmer = "ht:action:dimmer"
@@ -35,7 +35,7 @@ ActionValveOpen = "ht:action:valve:open"
 
 # type: PropertyClasses
 # version: 0.1
-# generated: 27 Feb 24 16:55 PST
+# generated: 03 Mar 24 22:35 PST
 # source: github.com/hiveot/hub/api/vocab/ht-property-classes.yaml
 # namespace: ht
 PropAlarmMotion = "ht:prop:alarm:motion"
@@ -123,7 +123,7 @@ PropSwitchOnOff = "ht:prop:switch:onoff"
 
 # type: ThingClasses
 # version: 0.1
-# generated: 27 Feb 24 16:55 PST
+# generated: 03 Mar 24 22:35 PST
 # source: github.com/hiveot/hub/api/vocab/ht-thing-classes.yaml
 # namespace: ht
 ThingActuator = "ht:thing:actuator"
@@ -239,7 +239,7 @@ ThingServiceWeatherForecast = "ht:thing:service:weather:forecast"
 
 # type: UnitClasses
 # version: 0.1
-# generated: 27 Feb 24 16:55 PST
+# generated: 03 Mar 24 22:35 PST
 # source: github.com/hiveot/hub/api/vocab/ht-unit-classes.yaml
 # namespace: ht
 UnitAmpere = "ht:unit:ampere"

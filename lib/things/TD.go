@@ -242,7 +242,7 @@ func (tdoc *TD) AddSensorEvent(eventID string) *EventAffordance {
 	return ev
 }
 
-// AsMap returns the TD document as a map
+// AsMap returns the TD document as a key-value map
 func (tdoc *TD) AsMap() map[string]interface{} {
 	tdoc.updateMutex.RLock()
 	defer tdoc.updateMutex.RUnlock()
@@ -270,7 +270,7 @@ func (tdoc *TD) GetAction(name string) *ActionAffordance {
 	return actionAffordance
 }
 
-// GetAge returns the age of the document since last modified in a human readable format.
+// GetAge returns the age of the document since last modified in a human-readable format.
 // this is just an experiment to see if this is useful.
 // Might be better to do on the UI client side to reduce cpu.
 func (tdoc *TD) GetAge() string {
@@ -279,6 +279,15 @@ func (tdoc *TD) GetAge() string {
 		return tdoc.Modified
 	}
 	return utils.Age(t)
+}
+
+// GetAtTypeVocab return the vocab map of the @type
+func (tdoc *TD) GetAtTypeVocab() string {
+	atTypeVocab, found := vocab.ThingClassesMap[tdoc.AtType]
+	if !found {
+		return tdoc.AtType
+	}
+	return atTypeVocab.Title
 }
 
 // GetEvent returns the Schema for the event or nil if the event doesn't exist
@@ -315,6 +324,13 @@ func (tdoc *TD) GetPropertyOfType(atType string) (string, *PropertyAffordance) {
 		}
 	}
 	return "", nil
+}
+
+// GetUpdated is a helper function to return the formatted time the thing was last updated.
+// This uses the time format RFC822 ("02 Jan 06 15:04 MST")
+func (tdoc *TD) GetUpdated() string {
+	created, _ := dateparse.ParseAny(tdoc.Modified)
+	return created.Format(time.RFC1123)
 }
 
 // GetID returns the ID of the things TD

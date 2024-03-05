@@ -7,24 +7,21 @@
 			<summary class="outline">
 				<h4>{{.Thing.TD.Title}}</h4>
 			</summary>
-			<ul class="h-grid-table"
-			    style="grid-column-gap: 10px;
-	      grid-template-columns: max-content 1fr;
-	      align-items: baseline;
-		">
+			<ul class="h-grid-table details-header">
 				<label for="deviceType">Device Type:</label>
 				<input id="deviceType" readonly style="margin: 0; text-overflow: ellipsis; "
-				       placeholder="{{.Thing.TD.AtType}}"/>
+				       placeholder="{{.Thing.TD.GetAtTypeVocab}}"/>
 
 				<label for="manufacturer">Device Make & Model:</label>
 				<input id="manufacturer" type="text" readonly
 				       style="margin: 0; text-overflow: ellipsis;"
-				       placeholder='{{.Thing.MakeModel}}'/>
+				       placeholder="{{.Thing.MakeModel}}  {{.Thing.TD.Description}}"/>
 
-				<label for="age">Updated:</label>
-				<input id="age" type="text" readonly
+				<label for="updated">Updated:</label>
+				<input id="updated" type="text" readonly
 				       style="margin: 0; text-overflow: ellipsis;"
-				       placeholder="{{.Thing.TD.GetAge}} ago"/>
+				       title="Updated: {{$.Thing.TD.GetAge}} ago"
+               placeholder="{{$.Thing.TD.GetUpdated}}"/>
 
 				<label for="agentID">Published by:</label>
 				<input id="agentID" readonly style="margin: 0; text-overflow: ellipsis; "
@@ -83,5 +80,18 @@
           /*grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));*/
       }
 
+      /* responsive columns for the details page heading*/
+      .details-header {
+          grid-column-gap: 10px;
+          align-items: baseline;
+
+          /*grid-template-columns: max-content 1fr;*/
+      }
+
+      @media (width >= 576px) {
+          .details-header {
+              grid-template-columns: max-content 1fr;
+          }
+      }
 	</style>
 {{end}}

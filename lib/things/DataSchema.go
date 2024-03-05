@@ -2,6 +2,8 @@
 // as described here: https://www.w3.org/TR/wot-thing-description/#sec-data-schema-vocabulary-definition
 package things
 
+import vocab "github.com/hiveot/hub/api/go"
+
 // DataSchema with metadata  that describes the data format used. It can be used for validation.
 //
 // Golang doesn't support dynamic types or subclasses, so DataSchema merges all possible schemas
@@ -119,4 +121,16 @@ type DataSchema struct {
 func (ds *DataSchema) SetEnumValues(values []DataSchema) *DataSchema {
 	ds.OneOf = values
 	return ds
+}
+
+// UnitSymbol returns the symbol of the unit of this schema using the vocabulary unit map
+func (ds *DataSchema) UnitSymbol() string {
+	if ds.Unit == "" {
+		return ""
+	}
+	unit, found := vocab.UnitClassesMap[ds.Unit]
+	if !found {
+		return ds.Unit
+	}
+	return unit.Symbol
 }

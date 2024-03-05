@@ -45,6 +45,7 @@ type VocabClass struct {
 	ClassName   string `yaml:"class"`
 	Title       string `yaml:"title"`
 	Description string `yaml:"description"`
+	Symbol      string `yaml:"symbol,omitempty"` // for units
 }
 
 // VocabClassMap class map by vocabulary keyword
@@ -76,12 +77,14 @@ func LoadVocabFiles(dir string) (map[string]VocabClassMap, error) {
 	return classes, err
 }
 
-// ExportToGolang writes the thing, property and action classes in a golang format
+// ExportToGolang writes the thing, property, action and unit classes in a golang format
 func ExportToGolang(vc map[string]VocabClassMap) []string {
 	lines := make([]string, 0)
 
 	lines = append(lines, "// Package vocab with HiveOT vocabulary names for TD Things, properties, events and actions")
 	lines = append(lines, "package vocab")
+
+	// export the constants
 	for classType, cm := range vc {
 		vocabKeys := utils.OrderedMapKeys(cm.Vocab)
 
@@ -98,7 +101,23 @@ func ExportToGolang(vc map[string]VocabClassMap) []string {
 		}
 		lines = append(lines, ")")
 		lines = append(lines, "// end of "+classType)
+
+		//- export the map with title and description
+		lines = append(lines, "")
+		lines = append(lines, fmt.Sprintf("// %sMap maps @type to symbol, title and description", classType))
+		lines = append(lines, fmt.Sprintf("var %sMap = map[string]struct {", classType))
+		lines = append(lines, "   Symbol string; Title string; Description string")
+		lines = append(lines, "} {")
+		for key, unitInfo := range cm.Vocab {
+			lines = append(lines, fmt.Sprintf(
+				"  %s: {Symbol:\"%s\", Title:\"%s\", Description:\"%s\"},",
+				key, unitInfo.Symbol, unitInfo.Title, unitInfo.Description))
+		}
+		lines = append(lines, "}")
+		lines = append(lines, "")
+
 	}
+
 	return lines
 }
 

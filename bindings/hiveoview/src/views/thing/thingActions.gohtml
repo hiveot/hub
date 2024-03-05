@@ -10,8 +10,8 @@
 		</div>
 		<div>Type</div>
 		<div class="h-show-md">Last Action</div>
-		<div class="h-show-md">Date</div>
 		<div class="h-show-lg">Description</div>
+		<div class="h-show-md">Updated</div>
 	</li>
 
     {{range $k,$v := .TD.Actions }}
@@ -24,10 +24,10 @@
 					</div>
 					<div>{{$v.ActionType}}</div>
 					<div class="h-show-md">{{$.Values.ToString $k}}</div>
+					<div class="h-show-lg">{{$v.Description}}</div>
 					<div class="h-show-md"
 					     title="Updated: {{$.Values.Age $k}} ago by {{($.Values.SenderID $k)}}">
               {{$.Values.Updated $k}}</div>
-					<div class="h-show-lg">{{$v.Description}}</div>
 				</li>
     {{end}}
     {{if not .TD.Actions}}
@@ -46,8 +46,8 @@
         .thing-actions {
             /*xs, show column 2, 3 */
             grid-template-columns:
-				            minmax(200px, max-content)
-				            minmax(100px, 1fr);
+				            minmax(200px, max-content) /* ID/title */
+				            minmax(100px, 1fr); /*type*/
         }
     }
 
@@ -55,9 +55,9 @@
         .thing-actions {
             /*sm, show column 1,2,3 */
             grid-template-columns:
-				            40px
-				            minmax(200px, max-content)
-				            minmax(100px, 1fr);
+				            40px   /* icon*/
+				            minmax(200px, max-content) /*ID/title*/
+				            minmax(100px, 1fr); /*type*/
         }
     }
 
@@ -65,11 +65,11 @@
         .thing-actions {
             /*md,show column 1,2,3,4,5 */
             grid-template-columns:
-				            40px/*icon*/
-				            minmax(200px, max-content) /*name*/
-				            minmax(100px, max-content)/*type*/
+				            40px  /*icon*/
+				            minmax(200px, max-content) /*ID/title*/
+				            minmax(100px, max-content) /*type*/
 				            minmax(100px, max-content) /*last action*/
-				            minmax(100px, 1fr); /*date*/
+				            minmax(100px, 1fr);        /*updated*/
         }
     }
 
@@ -81,8 +81,8 @@
 				            minmax(200px, max-content) /*name*/
 				            minmax(100px, max-content)/*type*/
 				            minmax(100px, max-content) /*last action*/
-				            minmax(100px, max-content) /*date*/
-				            minmax(100px, 1fr); /*description*/
+				            minmax(100px, 1fr) /*description*/
+				            minmax(100px, max-content); /*date*/
         }
     }
 
