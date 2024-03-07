@@ -82,7 +82,7 @@ func (svc *IsyBinding) handleConfigRequest(tv *things.ThingValue) (err error) {
 	}
 
 	if !svc.ic.IsConnected() {
-		return fmt.Errorf("No connection with the gateway")
+		return fmt.Errorf("no connection with the gateway")
 	}
 
 	// pass request to the Thing
@@ -116,17 +116,6 @@ func (svc *IsyBinding) Start(hc *hubclient.HubClient) (err error) {
 	_ = svc.ic.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
 	svc.IsyGW.Init(svc.ic)
 
-	//err = svc.ic.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
-	//if err != nil {
-	//	// gateway not found
-	//	return err
-	//}
-	//// The binding manages the gateway instance while the gateway instance manages
-	//// the nodes connected to the gateway device.
-	//svc.IsyGW = NewIsyGateway(svc.prodMap)
-	//// need a connection to get the device ID
-	//svc.IsyGW.Init(svc.ic, svc.ic.GetID(), InsteonProduct{}, "")
-
 	// subscribe to action requests
 	svc.hc.SetActionHandler(svc.handleActionRequest)
 	svc.hc.SetConfigHandler(svc.handleConfigRequest)
@@ -156,21 +145,3 @@ func NewIsyBinding(cfg *config.Isy99xConfig) *IsyBinding {
 	}
 	return &svc
 }
-
-// Run the publisher until the SIGTERM  or SIGINT signal is received
-//func Run() error {
-//	appConfig := &IsyBindingConfig{ClientID: appID}
-//	hc := hubclient.NewHubClient("", caCert, core)
-//	err := hc.ConnectWithTokenFile(keysDir)
-//	if err == nil {
-//		binding := NewIsyBinding(appConfig, hc)
-//		err = binding.Start()
-//
-//		if err == nil {
-//			utils.WaitForSignal(context.Background())
-//			binding.Stop()
-//			return err
-//		}
-//	}
-//	return err
-//}

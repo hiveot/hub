@@ -4,6 +4,7 @@ import (
 	"fmt"
 	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/things"
+	"strings"
 	"sync"
 )
 
@@ -20,6 +21,17 @@ var deviceCatMap = map[string]string{
 	"0x07": vocab.ThingActuator,          //• 0x07 - Sensor or actuator device
 	"0x08": "Home Entertainment Unit",
 	"0x09": "Energy management",
+}
+
+type INodeThing interface {
+	GetID() string
+	GetProps(onlyChanges bool) map[string]string
+	GetTD() *things.TD
+	HandleActionRequest(tv *things.ThingValue) (err error)
+	HandleConfigRequest(tv *things.ThingValue) (err error)
+	HandleValueUpdate(propID string, uom string, newValue string) error
+	Init(ic *IsyConnection, node *IsyNode, prodInfo InsteonProduct, hwVersion string)
+	Rename(newName string) error
 }
 
 // NodeThing is the generic base of Things constructed out of ISY Insteon nodes.
@@ -92,7 +104,8 @@ func (it *NodeThing) GetTD() *things.TD {
 	prop = td.AddPropertyAsString(vocab.PropDeviceModel, vocab.PropDeviceModel, "Product Model")
 	prop = td.AddPropertyAsString(vocab.PropDeviceHardwareVersion, vocab.PropDeviceHardwareVersion, "Device version")
 
-	prop = td.AddPropertyAsString("enabled", "", "Is the node plugged in")
+	prop = td.AddPropertyAsString("enabled",
+		vocab.PropDeviceEnabledDisabled, "Is the node plugged in")
 	prop.Description = "Whether or not the node is enabled (plugged in). Note: this feature only works on 99 Series"
 	prop.Enum = []interface{}{"enabled", "disabled"}
 
@@ -171,8 +184,14 @@ func (it *NodeThing) Init(ic *IsyConnection, node *IsyNode, prodInfo InsteonProd
 	it.id = node.Address
 	it.productInfo = prodInfo
 	it.propValues = things.NewPropertyValues()
+	enabledDisabled := "enabled"
+	if strings.ToLower(node.Enabled) != "true" {
+		enabledDisabled = "disabled"
+	}
 	pv := it.propValues
 	pv.SetValue("deviceType", it.deviceType)
+	pv.SetValue("flag", fmt.Sprintf("0x%X", node.Flag))
+	pv.SetValue(vocab.PropDeviceEnabledDisabled, enabledDisabled)
 	pv.SetValue(vocab.PropDeviceName, prodInfo.ProductName)
 	pv.SetValue(vocab.PropDeviceModel, prodInfo.Model)
 	pv.SetValue(vocab.PropDeviceHardwareVersion, hwVersion)

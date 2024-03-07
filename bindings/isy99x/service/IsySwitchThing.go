@@ -15,10 +15,10 @@ type IsySwitchThing struct {
 func (it *IsySwitchThing) GetTD() *things.TD {
 	td := it.NodeThing.GetTD()
 	// AddSwitchEvent is short for adding an event for a switch
-	td.AddSwitchEvent(vocab.PropSwitchOnOff)
-	td.AddSwitchAction(vocab.ActionSwitchOn)
-	td.AddSwitchAction(vocab.ActionSwitchOff)
-	td.AddSwitchAction(vocab.ActionSwitchToggle)
+	td.AddSwitchEvent(vocab.PropSwitchOnOff, "On/Off changed")
+	td.AddSwitchAction(vocab.ActionSwitchOn, "Switch on")
+	td.AddSwitchAction(vocab.ActionSwitchOff, "Switch off")
+	td.AddSwitchAction(vocab.ActionSwitchToggle, "Toggle switch")
 
 	return td
 }
@@ -59,6 +59,13 @@ func (it *IsySwitchThing) HandleActionRequest(tv *things.ThingValue) (err error)
 		//it.currentProps[actionID] = newValue
 	}
 	return err
+}
+
+// Init initializes the NodeThing base class
+// This determines the device type from prodInfo and sets property values for
+// product and model.
+func (it *IsySwitchThing) Init(ic *IsyConnection, node *IsyNode, prodInfo InsteonProduct, hwVersion string) {
+	it.NodeThing.Init(ic, node, prodInfo, hwVersion)
 }
 
 // NewIsySwitchThing creates a new instance of an ISY switch.

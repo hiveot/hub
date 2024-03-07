@@ -211,8 +211,8 @@ func (tdoc *TD) AddPropertyAsInt(name string, propType string, title string) *Pr
 }
 
 // AddSwitchAction is short for adding an action to control an on/off switch
-func (tdoc *TD) AddSwitchAction(actionID string) *ActionAffordance {
-	act := tdoc.AddAction(actionID, vocab.ActionSwitchOnOff, "", "",
+func (tdoc *TD) AddSwitchAction(actionID string, title string) *ActionAffordance {
+	act := tdoc.AddAction(actionID, vocab.ActionSwitchOnOff, title, "",
 		&DataSchema{
 			AtType: vocab.ActionSwitchOnOff,
 			Type:   vocab.WoTDataTypeBool,
@@ -222,8 +222,8 @@ func (tdoc *TD) AddSwitchAction(actionID string) *ActionAffordance {
 }
 
 // AddSwitchEvent is short for adding an event for a switch
-func (tdoc *TD) AddSwitchEvent(eventID string) *EventAffordance {
-	ev := tdoc.AddEvent(eventID, vocab.PropSwitchOnOff, "", "",
+func (tdoc *TD) AddSwitchEvent(eventID string, title string) *EventAffordance {
+	ev := tdoc.AddEvent(eventID, vocab.PropSwitchOnOff, title, "",
 		&DataSchema{
 			AtType: vocab.PropSwitchOnOff,
 			Type:   vocab.WoTDataTypeBool,
@@ -233,8 +233,8 @@ func (tdoc *TD) AddSwitchEvent(eventID string) *EventAffordance {
 }
 
 // AddSensorEvent is short for adding an event for a generic sensor
-func (tdoc *TD) AddSensorEvent(eventID string) *EventAffordance {
-	ev := tdoc.AddEvent(eventID, vocab.PropEnv, "", "",
+func (tdoc *TD) AddSensorEvent(eventID string, title string) *EventAffordance {
+	ev := tdoc.AddEvent(eventID, vocab.PropEnv, title, "",
 		&DataSchema{
 			AtType: vocab.PropEnv,
 			Type:   vocab.WoTDataTypeNumber,

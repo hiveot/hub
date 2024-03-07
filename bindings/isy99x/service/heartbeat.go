@@ -59,7 +59,7 @@ func (svc *IsyBinding) PublishPropValues(onlyChanges bool) error {
 	// publish the binding's values
 	props := svc.GetPropValues(onlyChanges)
 
-	// the binding ID is that of the publisher
+	// the thing ID is that of the binding service
 	bindingID := svc.hc.ClientID()
 	err := svc.hc.PubProps(bindingID, props)
 
@@ -78,14 +78,18 @@ func (svc *IsyBinding) PublishPropValues(onlyChanges bool) error {
 		return err
 	}
 	props = svc.IsyGW.GetProps(onlyChanges)
-	_ = svc.hc.PubProps(svc.IsyGW.GetID(), props)
+	if len(props) > 0 {
+		_ = svc.hc.PubProps(svc.IsyGW.GetID(), props)
+	}
 
 	// read and publish props of each node
 	_ = svc.IsyGW.ReadIsyNodeValues()
 	isyThings := svc.IsyGW.GetIsyThings()
 	for _, thing := range isyThings {
 		props = thing.GetProps(onlyChanges)
-		_ = svc.hc.PubProps(thing.GetID(), props)
+		if len(props) > 0 {
+			_ = svc.hc.PubProps(thing.GetID(), props)
+		}
 	}
 	return nil
 }

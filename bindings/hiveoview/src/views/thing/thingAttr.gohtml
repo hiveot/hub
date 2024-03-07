@@ -3,7 +3,7 @@
 
 <ul class="h-grid-table thing-attr " border striped>
 	<li>
-		<div>{{/*icon*/}}</div>
+		<div class="h-show-sm">{{/*icon*/}}</div>
 		<div class="id-title">
 			<small><i>ID</i></small>
 			<span>Title</span>
@@ -15,7 +15,7 @@
 
     {{range $k, $v := .Attributes}}
 			<li>
-				<div>{{/*icon*/}}</div>
+				<div class="h-show-sm">{{/*icon*/}}</div>
 				<div class="id-title">
 					<small><i>{{$k}}</i></small>
 					<span>{{$v.Title}}</span>
@@ -36,7 +36,15 @@
 
 <style>
 
-    @media (width < 1024px) {
+    @media (width < 576px) {
+        .thing-attr {
+            /*xs, show column 2,3 */
+            grid-template-columns:
+                minmax(200px, max-content) /*name*/
+                minmax(100px, 1fr);
+        }
+    }
+    @media (width >= 576px) and (width < 768px) {
         .thing-attr {
             grid-template-columns:
                 40px

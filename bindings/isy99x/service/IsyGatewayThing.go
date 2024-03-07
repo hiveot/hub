@@ -25,7 +25,7 @@ type IsyGatewayThing struct {
 	prodMap map[string]InsteonProduct
 
 	// The things that this gateway manages
-	things map[string]*NodeThing
+	things map[string]INodeThing
 
 	// flag, a new node was discovered when reading values. Trigger a scan for new nodes.
 	newNodeFound bool
@@ -134,7 +134,7 @@ type IsyGatewayThing struct {
 
 // AddIsyThing adds a representing of an Insteon device
 func (igw *IsyGatewayThing) AddIsyThing(node *IsyNode) error {
-	var isyThing *NodeThing
+	var isyThing INodeThing
 	var err error
 
 	parts := strings.Split(node.Type, ".")
@@ -152,10 +152,10 @@ func (igw *IsyGatewayThing) AddIsyThing(node *IsyNode) error {
 	//the category determines the high level device type
 	switch cat {
 	case 2: // OnOff switch
-		isyThing = &NewIsySwitchThing().NodeThing
+		isyThing = NewIsySwitchThing()
 		break
 	case 7: // sensor switch
-		isyThing = &NewIsySensorThing().NodeThing
+		isyThing = NewIsySensorThing()
 		break
 	default:
 		isyThing = NewIsyThing()
@@ -171,7 +171,7 @@ func (igw *IsyGatewayThing) AddIsyThing(node *IsyNode) error {
 
 // GetIsyThing returns the ISY device Thing with the given ThingID
 // Returns nil of a thing with this ID doesn't exist
-func (igw *IsyGatewayThing) GetIsyThing(thingID string) things.IThing {
+func (igw *IsyGatewayThing) GetIsyThing(thingID string) INodeThing {
 	igw.mux.RLock()
 	defer igw.mux.RUnlock()
 	it, _ := igw.things[thingID]
@@ -185,10 +185,10 @@ func (igw *IsyGatewayThing) GetID() string {
 
 // GetIsyThings returns a list of ISY devices for publishing TD or values as updated in
 // the last call to ReadIsyThings().
-func (igw *IsyGatewayThing) GetIsyThings() []*NodeThing {
+func (igw *IsyGatewayThing) GetIsyThings() []INodeThing {
 	igw.mux.RLock()
 	defer igw.mux.RUnlock()
-	thingList := make([]*NodeThing, 0, len(igw.things))
+	thingList := make([]INodeThing, 0, len(igw.things))
 	for _, it := range igw.things {
 		thingList = append(thingList, it)
 	}
@@ -270,7 +270,7 @@ func (igw *IsyGatewayThing) GetTD() *things.TD {
 func (igw *IsyGatewayThing) Init(ic *IsyConnection) {
 	igw.ic = ic
 	igw.id = ic.GetID()
-	igw.things = make(map[string]*NodeThing)
+	igw.things = make(map[string]INodeThing)
 	igw.propValues = things.NewPropertyValues()
 
 	// values are used in TD title and description
@@ -390,7 +390,7 @@ func NewIsyGateway(prodMap map[string]InsteonProduct) *IsyGatewayThing {
 
 	isyGW := &IsyGatewayThing{
 		prodMap:    prodMap,
-		things:     make(map[string]*NodeThing),
+		things:     make(map[string]INodeThing),
 		propValues: things.NewPropertyValues(),
 	}
 	return isyGW

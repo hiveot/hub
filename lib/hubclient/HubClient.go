@@ -378,6 +378,7 @@ func (hc *HubClient) PubEvent(thingID string, eventName string, payload []byte) 
 }
 
 // PubProps publishes a 'properties' event containing a map of property name and values.
+// If the given properties map is empty then nothing will be published.
 //
 //	agentID of the device that handles the action for the things or service capability
 //	thingID is the destination thingID that handles the action
@@ -387,6 +388,10 @@ func (hc *HubClient) PubEvent(thingID string, eventName string, payload []byte) 
 // This returns an error if an error was returned or no confirmation was received
 func (hc *HubClient) PubProps(thingID string, props map[string]string) error {
 
+	if props == nil || len(props) == 0 {
+		slog.Info("PubProps - no properties to publish", "thingID", thingID)
+		return nil
+	}
 	addr := hc.MakeAddress(transports.MessageTypeEvent, hc.clientID, thingID,
 		transports.EventNameProps, hc.clientID)
 	slog.Info("PubProps", "addr", addr, "nr props", len(props))

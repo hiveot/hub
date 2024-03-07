@@ -84,10 +84,11 @@ func ExportToGolang(vc map[string]VocabClassMap) []string {
 	lines = append(lines, "// Package vocab with HiveOT vocabulary names for TD Things, properties, events and actions")
 	lines = append(lines, "package vocab")
 
-	// export the constants
+	// Loop through the types of vocabularies
 	for classType, cm := range vc {
 		vocabKeys := utils.OrderedMapKeys(cm.Vocab)
 
+		//- export the constants
 		lines = append(lines, "")
 		lines = append(lines, fmt.Sprintf("// type: %s", classType))
 		lines = append(lines, fmt.Sprintf("// version: %s", cm.Version))
@@ -110,12 +111,11 @@ func ExportToGolang(vc map[string]VocabClassMap) []string {
 		lines = append(lines, "} {")
 		for key, unitInfo := range cm.Vocab {
 			lines = append(lines, fmt.Sprintf(
-				"  %s: {Symbol:\"%s\", Title:\"%s\", Description:\"%s\"},",
+				"  %s: {Symbol: \"%s\", Title: \"%s\", Description: \"%s\"},",
 				key, unitInfo.Symbol, unitInfo.Title, unitInfo.Description))
 		}
 		lines = append(lines, "}")
 		lines = append(lines, "")
-
 	}
 
 	return lines
@@ -127,9 +127,11 @@ func ExportToJavascript(vc map[string]VocabClassMap) []string {
 
 	lines = append(lines, "// Package vocab with HiveOT vocabulary names for TD Things, properties, events and actions")
 	lines = append(lines, fmt.Sprintf("// DO NOT EDIT. This file is generated and changes will be overwritten"))
+	// Loop through the types of vocabularies
 	for classType, cm := range vc {
 		vocabKeys := utils.OrderedMapKeys(cm.Vocab)
 
+		//- export the constants
 		lines = append(lines, "")
 		lines = append(lines, fmt.Sprintf("// type: %s", classType))
 		lines = append(lines, fmt.Sprintf("// version: %s", cm.Version))
@@ -141,6 +143,19 @@ func ExportToJavascript(vc map[string]VocabClassMap) []string {
 			lines = append(lines, fmt.Sprintf("export const %s = \"%s\";", key, classInfo.ClassName))
 		}
 		lines = append(lines, "// end of "+classType)
+
+		//- export the map with title and description
+		lines = append(lines, "")
+		lines = append(lines, fmt.Sprintf("// %sMap maps @type to symbol, title and description", classType))
+		lines = append(lines, fmt.Sprintf("export const %sMap = {", classType))
+		for key, unitInfo := range cm.Vocab {
+			atType := cm.Vocab[key].ClassName //
+			lines = append(lines, fmt.Sprintf(
+				"  \"%s\": {Symbol: \"%s\", Title: \"%s\", Description: \"%s\"},",
+				atType, unitInfo.Symbol, unitInfo.Title, unitInfo.Description))
+		}
+		lines = append(lines, "}")
+		lines = append(lines, "")
 	}
 	return lines
 }
@@ -152,9 +167,11 @@ func ExportToPython(vc map[string]VocabClassMap) []string {
 	lines = append(lines, "# Package vocab with HiveOT vocabulary names for TD Things, properties, events and actions")
 	lines = append(lines, fmt.Sprintf("# DO NOT EDIT. This file is generated and changes will be overwritten"))
 
+	// Loop through the types of vocabularies
 	for classType, cm := range vc {
 		vocabKeys := utils.OrderedMapKeys(cm.Vocab)
 
+		//- export the constants
 		lines = append(lines, "")
 		lines = append(lines, fmt.Sprintf("# type: %s", classType))
 		lines = append(lines, fmt.Sprintf("# version: %s", cm.Version))
@@ -166,6 +183,19 @@ func ExportToPython(vc map[string]VocabClassMap) []string {
 			lines = append(lines, fmt.Sprintf("%s = \"%s\"", key, classInfo.ClassName))
 		}
 		lines = append(lines, "# end of "+classType)
+
+		//- export the map with title and description
+		lines = append(lines, "")
+		lines = append(lines, fmt.Sprintf("# %sMap maps @type to symbol, title and description", classType))
+		lines = append(lines, fmt.Sprintf("%sMap = {", classType))
+		for key, unitInfo := range cm.Vocab {
+			atType := cm.Vocab[key].ClassName //
+			lines = append(lines, fmt.Sprintf(
+				"  \"%s\": {\"Symbol\": \"%s\", \"Title\": \"%s\", \"Description\": \"%s\"},",
+				atType, unitInfo.Symbol, unitInfo.Title, unitInfo.Description))
+		}
+		lines = append(lines, "}")
+		lines = append(lines, "")
 	}
 	return lines
 }
