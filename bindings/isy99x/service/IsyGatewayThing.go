@@ -11,12 +11,25 @@ import (
 	"time"
 )
 
+// Non-vocab property IDs
+const (
+	PropIDDHCP       = "DHCP"
+	PropIDDSTEnabled = "DSTEnabled"
+	PropIDLogin      = "login"
+	PropIDNTPHost    = "NTPHost"
+	PropIDNTPEnabled = "NTPEnabled"
+	PropIDPassword   = "password"
+	PropIDSunrise    = "sunrise"
+	PropIDSunset     = "sunset"
+	PropIDTMZOffset  = "TMZOffset"
+)
+
 // IsyGatewayThing is a Thing representing the ISY gateway device.
 // This implements IThing interface.
 type IsyGatewayThing struct {
 
 	// REST/SOAP/WS connection to the ISY hub
-	ic *IsyConnection
+	ic *IsyAPI
 
 	// The gateway thing ID
 	id string
@@ -25,7 +38,7 @@ type IsyGatewayThing struct {
 	prodMap map[string]InsteonProduct
 
 	// The things that this gateway manages
-	things map[string]INodeThing
+	things map[string]IIsyThing
 
 	// flag, a new node was discovered when reading values. Trigger a scan for new nodes.
 	newNodeFound bool
@@ -56,12 +69,12 @@ type IsyGatewayThing struct {
 		BuildTimestamp string `xml:"build_timestamp"` // 2012-05-04-00:26:24
 
 		Root struct {
-			ID   string `xml:"id"`   // MAC  aa:bb:cc:dd:ee:ff
-			Name string `xml:"name"` // ISY gateway name customizable (might affect programs)
+			ID   string `xml:"nodeID"` // MAC  aa:bb:cc:dd:ee:ff
+			Name string `xml:"name"`   // ISY gateway name customizable (might affect programs)
 		} `xml:"root"`
 		Product struct {
-			ID          string `xml:"id"`   // 1020
-			Description string `xml:"desc"` // ISY 99i 256
+			ID          string `xml:"nodeID"` // 1020
+			Description string `xml:"desc"`   // ISY 99i 256
 		} `xml:"product"`
 
 		// controls describe the Value ID's (types)
@@ -134,7 +147,7 @@ type IsyGatewayThing struct {
 
 // AddIsyThing adds a representing of an Insteon device
 func (igw *IsyGatewayThing) AddIsyThing(node *IsyNode) error {
-	var isyThing INodeThing
+	var isyThing IIsyThing
 	var err error
 
 	parts := strings.Split(node.Type, ".")
@@ -151,13 +164,40 @@ func (igw *IsyGatewayThing) AddIsyThing(node *IsyNode) error {
 	//deviceType, title := determineNodeDeviceType(node.Type)
 	//the category determines the high level device type
 	switch cat {
+	case 0: // general controller, tabletop/remote/touch panel
+		isyThing = NewIsyThing()
+		break
+	case 1: // dimmer control
+		isyThing = NewIsyDimmerThing()
+		break
 	case 2: // OnOff switch
 		isyThing = NewIsySwitchThing()
+		break
+	case 3: // network bridge
+		isyThing = NewIsyThing()
+		break
+	case 4: // irrigation control
+		isyThing = NewIsyThing()
+		break
+	case 5: // climate control
+		isyThing = NewIsyThing()
+		break
+	case 6: // pool/spa control
+		isyThing = NewIsyThing()
 		break
 	case 7: // sensor switch
 		isyThing = NewIsySensorThing()
 		break
-	default:
+	case 9: // energy meter/management
+		isyThing = NewIsyThing()
+		break
+	case 14: // window/blinds
+		isyThing = NewIsyThing()
+		break
+	case 15: // access control/ door lock
+		isyThing = NewIsyThing()
+		break
+	default: // unknown general purpose thing
 		isyThing = NewIsyThing()
 	}
 	if isyThing != nil {
@@ -171,7 +211,7 @@ func (igw *IsyGatewayThing) AddIsyThing(node *IsyNode) error {
 
 // GetIsyThing returns the ISY device Thing with the given ThingID
 // Returns nil of a thing with this ID doesn't exist
-func (igw *IsyGatewayThing) GetIsyThing(thingID string) INodeThing {
+func (igw *IsyGatewayThing) GetIsyThing(thingID string) IIsyThing {
 	igw.mux.RLock()
 	defer igw.mux.RUnlock()
 	it, _ := igw.things[thingID]
@@ -185,20 +225,23 @@ func (igw *IsyGatewayThing) GetID() string {
 
 // GetIsyThings returns a list of ISY devices for publishing TD or values as updated in
 // the last call to ReadIsyThings().
-func (igw *IsyGatewayThing) GetIsyThings() []INodeThing {
+func (igw *IsyGatewayThing) GetIsyThings() []IIsyThing {
 	igw.mux.RLock()
 	defer igw.mux.RUnlock()
-	thingList := make([]INodeThing, 0, len(igw.things))
+	thingList := make([]IIsyThing, 0, len(igw.things))
 	for _, it := range igw.things {
 		thingList = append(thingList, it)
 	}
 	return thingList
 }
 
-// GetProps returns the current or changed properties.
-// If changed properties are requested then clear the map of changes.
-func (igw *IsyGatewayThing) GetProps(onlyChanges bool) map[string]string {
-	return igw.propValues.GetValues(onlyChanges)
+// GetValues returns the current or changed property and event values.
+// onlyChanges only provides changed properties and event values
+func (igw *IsyGatewayThing) GetValues(onlyChanges bool) (map[string]string, map[string]string) {
+	values := igw.propValues.GetValues(onlyChanges)
+	// TODO: add event values. Currently the TD does not list events.
+	events := make(map[string]string)
+	return values, events
 }
 
 // GetTD returns the Gateway TD document
@@ -212,41 +255,41 @@ func (igw *IsyGatewayThing) GetTD() *things.TD {
 	td.Description = igw.Configuration.DeviceSpecs.Make + "-" + igw.Configuration.DeviceSpecs.Model
 
 	//--- device read-only attributes
-	td.AddPropertyAsString(vocab.PropDeviceManufacturer, vocab.PropDeviceManufacturer, "Manufacturer")     // Universal Devices Inc.
-	td.AddPropertyAsString(vocab.PropDeviceModel, vocab.PropDeviceModel, "Model")                          // ISY-C-99
-	td.AddPropertyAsString(vocab.PropDeviceSoftwareVersion, vocab.PropDeviceSoftwareVersion, "AppVersion") // 3.2.6
-	td.AddPropertyAsString(vocab.PropNetMAC, vocab.PropNetMAC, "MAC")                                      // 00:21:xx:yy:... (mac)
-	td.AddPropertyAsString(vocab.PropDeviceDescription, vocab.PropDeviceDescription, "Product")            // ISY 99i 256
-	td.AddPropertyAsString("ProductID", vocab.PropDeviceDescription, "Product ID")                         // 1020
-	prop := td.AddPropertyAsString("sunrise", "", "Sunrise")
-	prop = td.AddPropertyAsString("sunset", "", "Sunset")
+	td.AddPropertyAsString("", vocab.PropDeviceMake, "Manufacturer")               // Universal Devices Inc.
+	td.AddPropertyAsString("", vocab.PropDeviceModel, "Model")                     // ISY-C-99
+	td.AddPropertyAsString("", vocab.PropDeviceSoftwareVersion, "AppVersion")      // 3.2.6
+	td.AddPropertyAsString("", vocab.PropNetMAC, "MAC")                            // 00:21:xx:yy:... (mac)
+	td.AddPropertyAsString("", vocab.PropDeviceDescription, "Product description") // ISY 99i 256
+	td.AddPropertyAsString("ProductID", "", "Product ID")                          // 1020
+	prop := td.AddPropertyAsString(PropIDSunrise, "", "Sunrise")
+	prop = td.AddPropertyAsString(PropIDSunset, "", "Sunset")
 
 	//--- device configuration
 	// custom name
-	prop = td.AddPropertyAsString(vocab.PropDeviceName, vocab.PropDeviceName, "Name")
+	prop = td.AddPropertyAsString("", vocab.PropDeviceTitle, "Title")
 	prop.ReadOnly = false
 
 	// network config
-	prop = td.AddPropertyAsBool("DHCP", "", "DHCP enabled")
+	prop = td.AddPropertyAsBool(PropIDDHCP, "", "DHCP enabled")
 	prop.ReadOnly = false
-	prop = td.AddPropertyAsString(vocab.PropNetIP4, vocab.PropNetIP4, "IP address")
+	prop = td.AddPropertyAsString("", vocab.PropNetIP4, "IP address")
 	prop.ReadOnly = igw.Network.Interface.IsDHCP == false
-	prop = td.AddPropertyAsString("Gateway login name", "", "Login Name")
+	prop = td.AddPropertyAsString(PropIDLogin, "", "Gateway login name")
 	prop.ReadOnly = false
-	prop = td.AddPropertyAsString("Gateway login password", "", "Password")
+	prop = td.AddPropertyAsString(PropIDPassword, "", "Gateway password (hidden)")
 	prop.ReadOnly = false
 	prop.WriteOnly = true
 
 	// time config
-	prop = td.AddPropertyAsString("NTPHost", "", "Network time host")
+	prop = td.AddPropertyAsString(PropIDNTPHost, "", "Network time host")
 	prop.ReadOnly = false
 	prop.Default = "pool.ntp.org"
-	prop = td.AddPropertyAsBool("NTPEnabled", "", "Use network time")
+	prop = td.AddPropertyAsBool(PropIDNTPEnabled, "", "Use network time")
 	prop.ReadOnly = false
-	prop = td.AddPropertyAsInt("TMZOffset", "", "Timezone Offset")
+	prop = td.AddPropertyAsInt(PropIDTMZOffset, "", "Timezone Offset")
 	prop.ReadOnly = false
 	prop.Unit = vocab.UnitSecond
-	prop = td.AddPropertyAsBool("DSTEnabled", "", "DST Enabled")
+	prop = td.AddPropertyAsBool(PropIDDSTEnabled, "", "DST Enabled")
 	prop.ReadOnly = false
 
 	// TODO: any events?
@@ -267,10 +310,10 @@ func (igw *IsyGatewayThing) GetTD() *things.TD {
 
 // Init re-initializes the gateway Thing for use and load the gateway configuration/
 // This removes prior use nodes for a fresh start.
-func (igw *IsyGatewayThing) Init(ic *IsyConnection) {
+func (igw *IsyGatewayThing) Init(ic *IsyAPI) {
 	igw.ic = ic
 	igw.id = ic.GetID()
-	igw.things = make(map[string]INodeThing)
+	igw.things = make(map[string]IIsyThing)
 	igw.propValues = things.NewPropertyValues()
 
 	// values are used in TD title and description
@@ -287,39 +330,43 @@ func (igw *IsyGatewayThing) ReadGatewayValues() (err error) {
 
 	const NTP_OFFSET = 2208988800
 
-	err = igw.ic.SendRequest("GET", "/rest/config", &igw.Configuration)
+	err = igw.ic.SendRequest("GET", "/rest/config", "", &igw.Configuration)
 	if err == nil {
-		err = igw.ic.SendRequest("GET", "/rest/sys", &igw.System)
+		err = igw.ic.SendRequest("GET", "/rest/sys", "", &igw.System)
 	}
 	if err == nil {
-		err = igw.ic.SendRequest("GET", "/rest/time", &igw.Time)
+		err = igw.ic.SendRequest("GET", "/rest/time", "", &igw.Time)
 	}
 	if err == nil {
-		err = igw.ic.SendRequest("GET", "/rest/network", &igw.Network)
+		err = igw.ic.SendRequest("GET", "/rest/network", "", &igw.Network)
 	}
 
 	pv := igw.propValues
 
-	pv.SetValue(vocab.PropDeviceManufacturer, igw.Configuration.DeviceSpecs.Make)
+	pv.SetValue(vocab.PropDeviceMake, igw.Configuration.DeviceSpecs.Make)
 	pv.SetValue(vocab.PropDeviceModel, igw.Configuration.DeviceSpecs.Model)
 	pv.SetValue(vocab.PropDeviceSoftwareVersion, igw.Configuration.AppVersion)
 	pv.SetValue(vocab.PropNetMAC, igw.Configuration.Root.ID)
 	pv.SetValue(vocab.PropDeviceDescription, igw.Configuration.Product.Description)
-	pv.SetValue("ProductID", igw.Configuration.Product.ID)
-	// isy provides NTP stamp in local time, not in GMT :/
-	sunrise := int64(igw.Time.Sunrise-igw.Time.TMZOffset) - NTP_OFFSET
-	pv.SetValue("sunrise", time.Unix(sunrise, 0).Format(time.TimeOnly))
-	sunset := int64(igw.Time.Sunset-igw.Time.TMZOffset) - NTP_OFFSET
-	pv.SetValue("sunset", time.Unix(sunset, 0).Format(time.TimeOnly))     // seconds since epoc
-	pv.SetValue(vocab.PropDeviceName, igw.Configuration.Root.Name)        // custom name
-	pv.SetValue("DHCP", strconv.FormatBool(igw.Network.Interface.IsDHCP)) // true or false
+	//pv.SetValue(vocab.PropDeviceDescription, igw.Configuration.Product.Description)
+	pv.SetValue(vocab.PropDeviceTitle, igw.Configuration.Root.Name) // custom name
 	pv.SetValue(vocab.PropNetIP4, igw.Network.Interface.IP)
 	pv.SetValue(vocab.PropNetPort, igw.Network.WebServer.HttpPort)
-	//pv.SetValue("Gateway login name",  igw.LoginName)
-	pv.SetValue("NTPHost", igw.System.NTPHost)
-	pv.SetValue("NTPEnabled", strconv.FormatBool(igw.System.NTPEnabled))
-	pv.SetValue("TMZOffset", strconv.FormatInt(int64(igw.Time.TMZOffset), 10))
-	pv.SetValue("DSTEnabled", strconv.FormatBool(igw.Time.DST))
+
+	pv.SetValue("ProductID", igw.Configuration.Product.ID)
+	pv.SetValue(PropIDDHCP, strconv.FormatBool(igw.Network.Interface.IsDHCP)) // true or false
+	pv.SetValue(PropIDLogin, igw.ic.login)
+
+	// isy provides NTP stamp in local time, not in GMT!
+	sunrise := int64(igw.Time.Sunrise-igw.Time.TMZOffset) - NTP_OFFSET
+	pv.SetValue(PropIDSunrise, time.Unix(sunrise, 0).Format(time.TimeOnly))
+	sunset := int64(igw.Time.Sunset-igw.Time.TMZOffset) - NTP_OFFSET
+	pv.SetValue(PropIDSunset, time.Unix(sunset, 0).Format(time.TimeOnly)) // seconds since epoc
+
+	pv.SetValue(PropIDNTPHost, igw.System.NTPHost)
+	pv.SetValue(PropIDNTPEnabled, strconv.FormatBool(igw.System.NTPEnabled))
+	pv.SetValue(PropIDTMZOffset, strconv.FormatInt(int64(igw.Time.TMZOffset), 10))
+	pv.SetValue(PropIDDSTEnabled, strconv.FormatBool(igw.Time.DST))
 	return err
 }
 
@@ -353,8 +400,8 @@ func (igw *IsyGatewayThing) ReadIsyThings() error {
 // This requests the status from the gateway and parses the response into a struct with
 // xml properties as follows:
 //
-//	<node id="13 55 D3 1">
-//	    <property id="ST" value="255" formatted="On" uom="on/off"/>
+//	<node nodeID="13 55 D3 1">
+//	    <property nodeID="ST" value="255" formatted="On" uom="on/off"/>
 //	</node>
 //
 // Each ISY Thing will be updated with the latest status. It is up to them
@@ -365,7 +412,7 @@ func (igw *IsyGatewayThing) ReadIsyNodeValues() error {
 	}
 
 	isyStatus := IsyStatus{}
-	err := igw.ic.SendRequest("GET", "/rest/status", &isyStatus)
+	err := igw.ic.SendRequest("GET", "/rest/status", "", &isyStatus)
 	for _, node := range isyStatus.Nodes {
 		thingID := node.Address
 		propID := node.Prop.ID
@@ -373,7 +420,9 @@ func (igw *IsyGatewayThing) ReadIsyNodeValues() error {
 		uom := node.Prop.UOM
 
 		it, found := igw.things[thingID]
-		if found {
+		if thingID == "" {
+			slog.Error("ReadyISYNodeValues: no node.Address received")
+		} else if found {
 			err = it.HandleValueUpdate(propID, uom, newValue)
 		} else {
 			// new node found, refresh the node list
@@ -390,7 +439,7 @@ func NewIsyGateway(prodMap map[string]InsteonProduct) *IsyGatewayThing {
 
 	isyGW := &IsyGatewayThing{
 		prodMap:    prodMap,
-		things:     make(map[string]INodeThing),
+		things:     make(map[string]IIsyThing),
 		propValues: things.NewPropertyValues(),
 	}
 	return isyGW

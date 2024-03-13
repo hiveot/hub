@@ -22,16 +22,20 @@ func (pv *PropertyValues) GetValue(key string) (value string, found bool) {
 	return value, found
 }
 
-// GetValues returns the latest or changed values
-// If onlyChanges is set then clear the changes after the call.
-func (pv *PropertyValues) GetValues(onlyChanges bool) map[string]string {
+// GetValues returns the latest or changed values and reset the changed values
+// If onlyChanges is set then only return the changes
+func (pv *PropertyValues) GetValues(onlyChanges bool) (v map[string]string) {
 	if onlyChanges {
-		return pv.GetChanged(true)
+		v = pv.GetChanged(true)
+	} else {
+		v = pv.GetLatest()
 	}
-	return pv.GetLatest()
+	pv.changed = make(map[string]string)
+	return v
 }
 
 // GetLatest returns the latest map of properties
+// This does not reset the 'changed' values so it can be called as often as needed.
 func (pv *PropertyValues) GetLatest() map[string]string {
 	pv.mux.RLock()
 	defer pv.mux.RUnlock()
@@ -68,16 +72,14 @@ func (pv *PropertyValues) GetChanged(clear bool) map[string]string {
 
 // SetValue update the properties with a string value
 // Returns true if changed.
-func (pv *PropertyValues) SetValue(key string, newValue string) bool {
+func (pv *PropertyValues) SetValue(key string, newValue string) {
 	pv.mux.Lock()
 	defer pv.mux.Unlock()
 	oldValue, found := pv.latest[key]
 	if !found || oldValue != newValue {
 		pv.latest[key] = newValue
 		pv.changed[key] = newValue
-		return true
 	}
-	return false
 }
 
 // SetValueBool sets the boolean true/false value in the property map

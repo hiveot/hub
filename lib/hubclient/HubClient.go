@@ -248,9 +248,10 @@ func (hc *HubClient) onConnect(status transports.HubTransportStatus) {
 		slog.Warn("retrying to connect", "clientID", hc.clientID)
 	}
 	hc.mux.RLock()
-	defer hc.mux.RUnlock()
-	if hc.connectionHandler != nil {
-		hc.connectionHandler(status)
+	handler := hc.connectionHandler
+	hc.mux.RUnlock()
+	if handler != nil {
+		handler(status)
 	}
 }
 
@@ -259,10 +260,11 @@ func (hc *HubClient) onEvent(addr string, payload []byte) {
 	messageType, agentID, thingID, name, senderID, err := hc.SplitAddress(addr)
 	slog.Info("onEvent", slog.String("addr", addr))
 	hc.mux.RLock()
-	defer hc.mux.RUnlock()
-	if err == nil && hc.eventHandler != nil {
+	eventHandler := hc.eventHandler
+	hc.mux.RUnlock()
+	if err == nil && eventHandler != nil {
 		tv := things.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
-		hc.eventHandler(tv)
+		eventHandler(tv)
 	}
 }
 
@@ -274,35 +276,39 @@ func (hc *HubClient) onRequest(addr string, payload []byte) (reply []byte, err e
 	tv := things.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
 
 	hc.mux.RLock()
-	defer hc.mux.RUnlock()
+	actionHandler := hc.actionHandler
+	configHandler := hc.configHandler
+	eventHandler := hc.eventHandler
+	rpcHandler := hc.rpcHandler
+	hc.mux.RUnlock()
 	if agentID != hc.clientID {
-		if err == nil && hc.eventHandler != nil {
+		if err == nil && eventHandler != nil {
 			tv := things.NewThingValue(messageType, agentID, thingID, name, payload, senderID)
-			hc.eventHandler(tv)
+			eventHandler(tv)
 		}
 		donotreply = true
-	} else if messageType == transports.MessageTypeAction && hc.actionHandler != nil {
+	} else if messageType == transports.MessageTypeAction && actionHandler != nil {
 		slog.Info("Received action request",
 			slog.String("sender", senderID),
 			slog.String("thingID", thingID),
 			slog.String("action", name),
 		)
-		reply, err = hc.actionHandler(tv)
-	} else if messageType == transports.MessageTypeRPC && hc.rpcHandler != nil {
+		reply, err = actionHandler(tv)
+	} else if messageType == transports.MessageTypeRPC && rpcHandler != nil {
 		slog.Info("Received RPC request",
 			slog.String("sender", senderID),
 			slog.String("capability", thingID),
 			slog.String("method", name),
 		)
-		reply, err = hc.rpcHandler(tv)
+		reply, err = rpcHandler(tv)
 
-	} else if messageType == transports.MessageTypeConfig && hc.configHandler != nil {
+	} else if messageType == transports.MessageTypeConfig && configHandler != nil {
 		slog.Info("Received config request",
 			slog.String("sender", senderID),
 			slog.String("thingID", thingID),
 			slog.String("property", name),
 		)
-		err = hc.configHandler(tv)
+		err = configHandler(tv)
 	} else {
 		slog.Warn("received unexpected message type as request. Is this an event with a replyTo field?",
 			slog.String("sender", senderID),
@@ -350,7 +356,8 @@ func (hc *HubClient) PubConfig(
 }
 
 // PubEvent publishes a Thing event. The payload is an event value as per TD document.
-// Event values are send as text and can be converted to native type based on the information defined in the TD.
+// Event values are send as text and can be converted to native type based on its event affordance
+// defined in the TD.
 // Intended for devices and services to notify of changes to the Things they are the agent for.
 //
 // 'thingID' is the ID of the 'things' whose event to publish. This is the ID under which the
@@ -362,28 +369,42 @@ func (hc *HubClient) PubConfig(
 // or one of the predefined events listed above as EventIDXyz
 //
 //	thingID of the Thing whose event is published
-//	eventName is one of the predefined events as described in the Thing TD
+//	eventID is the key of the event as defined in the event affordance map in the Thing TD
 //	payload is the serialized event value, or nil if the event has no value
-func (hc *HubClient) PubEvent(thingID string, eventName string, payload []byte) error {
+func (hc *HubClient) PubEvent(thingID string, eventID string, payload []byte) error {
 
-	if eventName == "" {
-		err := fmt.Errorf("PubEvent missing event Name")
+	if eventID == "" {
+		err := fmt.Errorf("PubEvent missing eventID")
 		slog.Error(err.Error())
 		return err
 	}
-	addr := hc.MakeAddress(transports.MessageTypeEvent, hc.clientID, thingID, eventName, hc.clientID)
+	addr := hc.MakeAddress(transports.MessageTypeEvent, hc.clientID, thingID, eventID, hc.clientID)
 	slog.Info("PubEvent", "addr", addr)
 	err := hc.transport.PubEvent(addr, payload)
 	return err
 }
 
-// PubProps publishes a 'properties' event containing a map of property name and values.
+// PubEvents publishes a set of events. Each event is published separately.
+// This is merely a convenience function that calls PubEvent for each key-value pair
+// in the event map.
+func (hc *HubClient) PubEvents(thingID string, eventMap map[string]string) error {
+	for k, v := range eventMap {
+		err := hc.PubEvent(thingID, k, []byte(v))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// PubProps publishes a 'properties' (transports.EventNameProps) event containing a map of
+// property name and values.
 // If the given properties map is empty then nothing will be published.
 //
 //	agentID of the device that handles the action for the things or service capability
 //	thingID is the destination thingID that handles the action
-//	propName is the ID of the property to change as described in the TD properties section
-//	payload is the optional payload of the configuration as described in the Thing's TD
+//	propID is the key of the property as described in the properties affordance map in the Thing TD
+//	payload is the optional payload of the property as described in the Thing's TD
 //
 // This returns an error if an error was returned or no confirmation was received
 func (hc *HubClient) PubProps(thingID string, props map[string]string) error {

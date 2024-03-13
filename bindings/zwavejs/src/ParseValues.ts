@@ -71,7 +71,7 @@ export class ParseValues {
         this.setIf("keepAwake", node.keepAwake);
         this.setIf("label", node.deviceConfig?.label)
         this.setIf("manufacturerId", node.manufacturerId);
-        this.setIf(vocab.PropDeviceManufacturer, node.deviceConfig?.manufacturer);
+        this.setIf(vocab.PropDeviceMake, node.deviceConfig?.manufacturer);
 
         this.setIf("maxDataRate", node.maxDataRate)
         if (node.nodeType) {

@@ -2,7 +2,6 @@ package thing
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
@@ -89,14 +88,14 @@ func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = mySession.SendSSE("notify", "success: Configuration '"+propKey+"' updated")
-
-	// read the updated config value and update the UI fragments
-	cl := historyclient.NewReadHistoryClient(hc)
-	tvs, err := cl.GetLatest(agentID, thingID, []string{propKey})
-	propAddr := fmt.Sprintf("%s/%s/%s", agentID, thingID, propKey)
-	propVal := fmt.Sprintf("%.100s", tvs[propKey].Data)
-	slog.Info("Updated value of prop", "propAddr", propAddr, "propVal", propVal)
-	mySession.SendSSE(propAddr, propVal)
+	//
+	//// read the updated config value and update the UI fragments
+	//cl := historyclient.NewReadHistoryClient(hc)
+	//tvs, err := cl.GetLatest(agentID, thingID, []string{propKey})
+	//propAddr := fmt.Sprintf("%s/%s/%s", agentID, thingID, propKey)
+	//propVal := fmt.Sprintf("%.100s", tvs[propKey].Data)
+	//slog.Info("Updated value of prop", "propAddr", propAddr, "propVal", propVal)
+	//mySession.SendSSE(propAddr, propVal)
 
 	w.WriteHeader(http.StatusOK)
 

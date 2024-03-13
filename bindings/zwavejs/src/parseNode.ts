@@ -143,7 +143,7 @@ export function parseNode(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     td.AddPropertyIf(node.label, "label", "", "", WoTDataTypeString);
     td.AddPropertyIf(node.manufacturerId, "manufacturerId", "",
         "Manufacturer ID", WoTDataTypeString);
-    td.AddPropertyIf(node.deviceConfig?.manufacturer, vocab.PropDeviceManufacturer, vocab.PropDeviceManufacturer,
+    td.AddPropertyIf(node.deviceConfig?.manufacturer, vocab.PropDeviceMake, vocab.PropDeviceMake,
         "Manufacturer", WoTDataTypeString);
     td.AddPropertyIf(node.maxDataRate, "maxDataRate", "",
         "Device maximum communication data rate", WoTDataTypeNumber);
@@ -186,7 +186,7 @@ export function parseNode(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
         "Z-Wave+ Version", WoTDataTypeNumber);
 
     // writable configuration properties that are not VIDs
-    prop = td.AddProperty("name", vocab.PropDeviceName,
+    prop = td.AddProperty("name", vocab.PropDeviceTitle,
         "Device Name", WoTDataTypeString)
     prop.readOnly = false
 

@@ -4,6 +4,7 @@ package service
 
 import (
 	"fmt"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/bindings/isy99x/config"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
@@ -24,7 +25,7 @@ type IsyBinding struct {
 	hc     *hubclient.HubClient
 
 	thingID string           // ID of the binding Thing
-	ic      *IsyConnection   // methods for communicating met ISY gateway device
+	isyAPI  *IsyAPI          // methods for communicating met ISY gateway device
 	IsyGW   *IsyGatewayThing // ISY gateway access
 
 	// is gateway currently reachable?
@@ -38,8 +39,8 @@ type IsyBinding struct {
 }
 
 //
-//// GetProps returns the property values of the binding Thing
-//func (svc *IsyBinding) GetProps(onlyChanges bool) map[string]string {
+//// GetValues returns the property values of the binding Thing
+//func (svc *IsyBinding) GetValues(onlyChanges bool) map[string]string {
 //	props := make(map[string]string)
 //	props[vocab.VocabPollInterval] = fmt.Sprintf("%d", svc.config.PollInterval)
 //	props[vocab.VocabGatewayAddress] = svc.config.IsyAddress
@@ -53,7 +54,7 @@ func (svc *IsyBinding) handleActionRequest(tv *things.ThingValue) (reply []byte,
 		slog.String("name", tv.Name),
 		slog.String("senderID", tv.SenderID))
 
-	if !svc.ic.IsConnected() {
+	if !svc.isyAPI.IsConnected() {
 		return nil, fmt.Errorf("No connection with the gateway")
 	}
 	isyThing := svc.IsyGW.GetIsyThing(tv.ThingID)
@@ -81,7 +82,7 @@ func (svc *IsyBinding) handleConfigRequest(tv *things.ThingValue) (err error) {
 		return err
 	}
 
-	if !svc.ic.IsConnected() {
+	if !svc.isyAPI.IsConnected() {
 		return fmt.Errorf("no connection with the gateway")
 	}
 
@@ -92,6 +93,13 @@ func (svc *IsyBinding) handleConfigRequest(tv *things.ThingValue) (err error) {
 		slog.Warn(err.Error())
 	} else {
 		err = isyThing.HandleConfigRequest(tv)
+		//
+		_ = svc.PublishValues(true)
+		// re-submit the TD if the title changes
+		if tv.Name == vocab.PropDeviceTitle {
+			td := isyThing.GetTD()
+			_ = svc.hc.PubTD(td)
+		}
 	}
 	return err
 }
@@ -111,10 +119,10 @@ func (svc *IsyBinding) Start(hc *hubclient.HubClient) (err error) {
 	svc.prodMap, err = LoadProductMapCSV("")
 
 	//// 'IsyThings' use the 'isy connection' to talk to the gateway
-	svc.ic = NewIsyConnection()
+	svc.isyAPI = NewIsyAPI()
 	svc.IsyGW = NewIsyGateway(svc.prodMap)
-	_ = svc.ic.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
-	svc.IsyGW.Init(svc.ic)
+	_ = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+	svc.IsyGW.Init(svc.isyAPI)
 
 	// subscribe to action requests
 	svc.hc.SetActionHandler(svc.handleActionRequest)

@@ -37,12 +37,13 @@ type SessionManager struct {
 	tokenKP keys.IHiveKey
 }
 
-// ActivateNewSession (re)activates a new session using a connected hub client.
+// ActivateNewSession (re)activates a new session for a newly connected hub client.
 //
 // If a session exists, it will be closed and removed first.
 // This requests a session token for storing in the cookie to allow re-opening the session
 // after the browser pages is closed or refreshed, without requiring a new password.
 // This replaces the session cookie in the browser with a new cookie.
+// This subscribes to events of configured agents.
 //
 // This returns the new session instance or nil with an error if a session could not be created.
 func (sm *SessionManager) ActivateNewSession(
@@ -69,6 +70,7 @@ func (sm *SessionManager) ActivateNewSession(
 	if sessionID == "" {
 		sessionID = uuid.NewString()
 	}
+	// create a session for this connection and subscribe to events from configured agents.
 	cs = NewClientSession(sessionID, hc, r.RemoteAddr)
 	sm.mux.Lock()
 	sm.sessions[sessionID] = cs
@@ -125,6 +127,7 @@ func (sm *SessionManager) Close(sessionID string) error {
 func (sm *SessionManager) ConnectWithPassword(loginID string, password string) (*hubclient.HubClient, error) {
 	hc := hubclient.NewHubClient(sm.hubURL, loginID, sm.caCert, sm.core)
 	err := hc.ConnectWithPassword(password)
+	// subscribe to updates
 	return hc, err
 }
 

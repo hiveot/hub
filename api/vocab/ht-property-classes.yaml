@@ -43,7 +43,7 @@ PropertyClasses:
     PropDeviceDescription:
       class: "ht:prop:device:description"
       title: "Description"
-      description: "Device product description"
+      description: "Device product description"  # also TD.Description
     PropDeviceEnabledDisabled:
       class: "ht:prop:device:enabled-disabled"
       title: "Enabled/Disabled"
@@ -59,18 +59,14 @@ PropertyClasses:
       class: "ht:prop:device:hardwareversion"
       title: "Hardware version"
       description: ""
-    PropDeviceManufacturer:
-      class: "ht:prop:device:manufacturer"
-      title: "Manufacturer"
+    PropDeviceMake:
+      class: "ht:prop:device:make"
+      title: "Make"
       description: "Device manufacturer"
     PropDeviceModel:
       class: "ht:prop:device:model"
       title: "Model"
       description: "Device model"
-    PropDeviceName:
-      class: "ht:prop:device:name"
-      title: "Name"
-      description: "Device name"
     PropDevicePollinterval:
       class: "ht:prop:device:pollinterval"
       title: "Polling interval"
@@ -88,6 +84,10 @@ PropertyClasses:
         sleeping: "Sleeping"
       title: "Status"
       description: "Device status; alive, awake, dead, sleeping"
+    PropDeviceTitle:
+      class: "ht:prop:device:title"
+      title: "Title"
+      description: "Device friendly title"
 
     # ht:prop:electric group of electrical properties
     PropElectric:
@@ -279,10 +279,6 @@ PropertyClasses:
       class: "ht:prop:net:address"
       title: "Address"
       description: "Network address"
-    PropNetConnected:
-      class: "ht:prop:net:connected"
-      title: "Connected"
-      description: "Connected or disconnected status"
     PropNetConnection:
       class: "ht:prop:net:connection"
       title: "Connection"

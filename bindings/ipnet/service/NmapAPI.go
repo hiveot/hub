@@ -22,6 +22,19 @@ type IPDeviceInfo struct {
 	Ports    []IPDeviceInfoPort // Device connectable ports
 }
 
+// GetDefaultName returns the default name of the device.
+// This is the hostname or IP address if not known
+func (di *IPDeviceInfo) GetDefaultName() string {
+	name := di.Hostname
+	if name == "" {
+		name = di.IP4
+	}
+	if name == "" {
+		name = di.IP6
+	}
+	return name
+}
+
 // DeviceInfoPort containg discovered port number, port name, and protocol (tcp, udp, ...)
 type IPDeviceInfoPort struct {
 	Port     int

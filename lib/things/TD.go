@@ -39,12 +39,11 @@ type TD struct {
 	// base: Define the base URI that is used for all relative URI references throughout a TD document.
 	//Base string `json:"base,omitempty"`
 
-	// ISO8601 timestamp this document was first created
+	// ISO8601 timestamp this document was first created. See also 'Modified'.
 	Created string `json:"created,omitempty"`
-	// ISO8601 timestamp this document was last modified
-	Modified string `json:"modified,omitempty"`
 
-	// Provides additional (human-readable) information based on a default language
+	// Describe the device in the default human-readable language.
+	// It is recommended to use the product description.
 	Description string `json:"description,omitempty"`
 	// Provides additional nulti-language information
 	Descriptions []string `json:"descriptions,omitempty"`
@@ -63,10 +62,15 @@ type TD struct {
 	// * Using random UUIDs as recommended in 10.5
 	ID string `json:"id,omitempty"`
 
+	// ISO8601 timestamp this document was last modified. See also 'Created'.
+	Modified string `json:"modified,omitempty"`
+
 	// Information about the TD maintainer as URI scheme (e.g., mailto [RFC6068], tel [RFC3966], https).
 	Support string `json:"support,omitempty"`
 
-	// Title is a short description of the thing in human-readable in the default language. Required.
+	// Title is the name of the thing in human-readable in the default language. Required.
+	// The same name is provided through the properties configuration, where it can be changed.
+	// This allows to present the TD by its name without having to load its property values.
 	Title string `json:"title"`
 	// Human-readable titles in the different languages
 	Titles map[string]string `json:"titles,omitempty"`
@@ -148,13 +152,16 @@ func (tdoc *TD) AddDimmerEvent(eventID string) *EventAffordance {
 //
 // If the event returns data then set the .Data field to a DataSchema instance that describes it.
 //
-//	name is the event name under which it is stored in the affordance map.
-//	eventType describes the type of event in HiveOT vocabulary if available, or "" if non-standard.
-//	title is the short display title of the event
-//	schema optional event data schema or nil if the event doesn't carry any data
+//		eventID is the key under which it is stored in the affordance map.
+//	   If omitted, the eventType is used.
+//		eventType describes the type of event in HiveOT vocabulary if available, or "" if non-standard.
+//		title is the short display title of the event
+//		schema optional event data schema or nil if the event doesn't carry any data
 func (tdoc *TD) AddEvent(
-	name string, eventType string, title string, description string, schema *DataSchema) *EventAffordance {
-
+	eventID string, eventType string, title string, description string, schema *DataSchema) *EventAffordance {
+	if eventID == "" {
+		eventID = eventType
+	}
 	evAff := &EventAffordance{
 		EventType:   eventType,
 		Title:       title,
@@ -162,7 +169,7 @@ func (tdoc *TD) AddEvent(
 		Data:        schema,
 	}
 
-	tdoc.UpdateEvent(name, evAff)
+	tdoc.UpdateEvent(eventID, evAff)
 	return evAff
 }
 
@@ -171,11 +178,15 @@ func (tdoc *TD) AddEvent(
 // This returns the property affordance that can be augmented/modified directly
 // By default the property is a read-only attribute.
 //
-//	name is the property name under which it is stored in the affordance map.
-//	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
-//	title is the short display title of the property.
-//	dataType is the type of data the property holds, WoTDataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
-func (tdoc *TD) AddProperty(name string, propType string, title string, dataType string) *PropertyAffordance {
+//		propID is the key under which it is stored in the affordance map.
+//	   If omitted, the eventType is used.
+//		propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
+//		title is the short display title of the property.
+//		dataType is the type of data the property holds, WoTDataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
+func (tdoc *TD) AddProperty(propID string, propType string, title string, dataType string) *PropertyAffordance {
+	if propID == "" {
+		propID = propType
+	}
 	prop := &PropertyAffordance{
 		DataSchema: DataSchema{
 			AtType:   propType,
@@ -185,7 +196,7 @@ func (tdoc *TD) AddProperty(name string, propType string, title string, dataType
 			//InitialValue: initialValue,
 		},
 	}
-	tdoc.UpdateProperty(name, prop)
+	tdoc.UpdateProperty(propID, prop)
 	return prop
 }
 
@@ -384,6 +395,9 @@ func (tdoc *TD) UpdateProperty(name string, affordance *PropertyAffordance) *Pro
 }
 
 // UpdateTitleDescription sets the title and description of the Thing in the default language
+//
+//	title is the name of the device, equivalent to the vocab.PropDeviceName property.
+//	description is the device product description.
 func (tdoc *TD) UpdateTitleDescription(title string, description string) {
 	tdoc.updateMutex.Lock()
 	defer tdoc.updateMutex.Unlock()
@@ -392,18 +406,19 @@ func (tdoc *TD) UpdateTitleDescription(title string, description string) {
 }
 
 // NewTD creates a new Thing Description document with properties, events and actions
-// Its structure:
+// The 'title' should match the value of 'vocab.PropDeviceName' property.
 //
-//	{
-//	     @context: "http://www.w3.org/ns/td",{"ht":"http://hiveot.net/vocab/v..."}
-//	     @type: <deviceType>,        // required in HiveOT. See DeviceType vocabulary
-//	     id: <thingID>,              // urn:[{prefix}:]{randomID}   required in hiveot
-//	     title: string,              // required. Human description of the things
-//	     created: <iso8601>,         // will be the current timestamp. See vocabulary TimeFormat
-//	     actions: {name:TDAction, ...},
-//	     events:  {name: TDEvent, ...},
-//	     properties: {name: TDProperty, ...}
-//	}
+//	 Its structure:
+//		{
+//		     @context: "http://www.w3.org/ns/td",{"ht":"http://hiveot.net/vocab/v..."}
+//		     @type: <deviceType>,        // required in HiveOT. See DeviceType vocabulary
+//		     id: <thingID>,              // urn:[{prefix}:]{randomID}   required in hiveot
+//		     title: string,              // required. Name of the thing
+//		     created: <iso8601>,         // will be the current timestamp. See vocabulary TimeFormat
+//		     actions: {name:TDAction, ...},
+//		     events:  {name: TDEvent, ...},
+//		     properties: {name: TDProperty, ...}
+//		}
 func NewTD(thingID string, title string, deviceType string) *TD {
 	td := TD{
 		AtContext: []any{

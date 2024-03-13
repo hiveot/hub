@@ -19,7 +19,7 @@ func (svc *IsyBinding) PublishIsyTDs() (err error) {
 		slog.Error(err.Error())
 		return err
 	}
-	if !svc.ic.IsConnected() {
+	if !svc.isyAPI.IsConnected() {
 		return errors.New("not connected to the gateway")
 	}
 
@@ -51,24 +51,22 @@ func (svc *IsyBinding) PublishIsyTDs() (err error) {
 	return err
 }
 
-// PublishPropValues reads and publishes property values of the binding,gateway and nodes
-// Set onlyChanges to only publish changed values.
-func (svc *IsyBinding) PublishPropValues(onlyChanges bool) error {
-	slog.Info("PublishPropValues", slog.Bool("onlyChanges", onlyChanges))
+// PublishValues reads and publishes property/event values of the binding, gateway and nodes
+// Set onlyChanges to only publish changed values as events
+func (svc *IsyBinding) PublishValues(onlyChanges bool) error {
+	slog.Info("PublishValues", slog.Bool("onlyChanges", onlyChanges))
 
-	// publish the binding's values
-	props := svc.GetPropValues(onlyChanges)
-
-	// the thing ID is that of the binding service
+	// publish the binding's property and event values
+	props, events := svc.GetPropValues(onlyChanges)
 	bindingID := svc.hc.ClientID()
 	err := svc.hc.PubProps(bindingID, props)
-
 	// no use continuing if publishing fails
 	if err != nil {
 		err = fmt.Errorf("failed publishing ISY binding props: %w", err)
 		slog.Error(err.Error())
 		return err
 	}
+	err = svc.hc.PubEvents(bindingID, events)
 
 	// publish the gateway device values
 	err = svc.IsyGW.ReadGatewayValues()
@@ -77,18 +75,23 @@ func (svc *IsyBinding) PublishPropValues(onlyChanges bool) error {
 		slog.Error(err.Error())
 		return err
 	}
-	props = svc.IsyGW.GetProps(onlyChanges)
+	props, events = svc.IsyGW.GetValues(onlyChanges)
 	if len(props) > 0 {
 		_ = svc.hc.PubProps(svc.IsyGW.GetID(), props)
+		_ = svc.hc.PubEvents(svc.IsyGW.GetID(), events)
 	}
 
 	// read and publish props of each node
 	_ = svc.IsyGW.ReadIsyNodeValues()
 	isyThings := svc.IsyGW.GetIsyThings()
 	for _, thing := range isyThings {
-		props = thing.GetProps(onlyChanges)
+		props = thing.GetPropValues(onlyChanges)
 		if len(props) > 0 {
 			_ = svc.hc.PubProps(thing.GetID(), props)
+			// send an event for each of the changed values
+			if onlyChanges {
+				_ = svc.hc.PubEvents(thing.GetID(), props)
+			}
 		}
 	}
 	return nil
@@ -106,14 +109,14 @@ func (svc *IsyBinding) startHeartbeat() (stopFn func()) {
 
 	stopFn = plugin.StartHeartbeat(time.Second, func() {
 		// if no gateway connection exists, try to reestablish a connection to the gateway
-		isConnected = svc.ic.IsConnected()
+		isConnected = svc.isyAPI.IsConnected()
 		if !isConnected {
-			err = svc.ic.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+			err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
 			if err == nil {
 				// re-establish the gateway device connection
-				svc.IsyGW.Init(svc.ic)
+				svc.IsyGW.Init(svc.isyAPI)
 			}
-			isConnected = svc.ic.IsConnected()
+			isConnected = svc.isyAPI.IsConnected()
 		}
 
 		// publish node TDs and values
@@ -127,7 +130,7 @@ func (svc *IsyBinding) startHeartbeat() (stopFn func()) {
 		// publish changes to sensor/actuator values
 		pollCountDown--
 		if isConnected && pollCountDown <= 0 {
-			err = svc.PublishPropValues(onlyChanges)
+			err = svc.PublishValues(onlyChanges)
 			pollCountDown = svc.config.PollInterval
 			// slow down if this fails. Don't flood the logs
 			if err != nil {

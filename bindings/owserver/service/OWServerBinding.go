@@ -52,7 +52,7 @@ func (svc *OWServerBinding) CreateBindingTD() *things.TD {
 	td := things.NewTD(thingID, "OWServer binding", vocab.ThingServiceAdapter)
 	td.Description = "Driver for the OWServer V2 Gateway 1-wire interface"
 
-	prop := td.AddProperty(bindingMake, vocab.PropDeviceManufacturer,
+	prop := td.AddProperty(bindingMake, vocab.PropDeviceMake,
 		"Developed By", vocab.WoTDataTypeString)
 
 	// these are configured through the configuration file.

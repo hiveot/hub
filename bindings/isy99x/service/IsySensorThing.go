@@ -7,7 +7,20 @@ import (
 
 // IsySensorThing is a general-purpose sensor
 type IsySensorThing struct {
-	NodeThing
+	IsyThing
+}
+
+// GetPropValues returns the property and event values for publication
+func (it *IsySensorThing) GetPropValues(onlyChanges bool) map[string]string {
+	propValues := it.IsyThing.GetPropValues(onlyChanges)
+	return propValues
+}
+
+// GetTD returns the TD document representing the node
+func (it *IsySensorThing) GetTD() *things.TD {
+	td := it.IsyThing.GetTD()
+	// TODO: add sensor properties and events
+	return td
 }
 
 func (it *IsySensorThing) HandleConfigRequest(tv *things.ThingValue) (err error) {
@@ -15,15 +28,9 @@ func (it *IsySensorThing) HandleConfigRequest(tv *things.ThingValue) (err error)
 	return errors.New("unknown config: " + tv.Name)
 }
 
-// GetTD returns the TD document representing the node
-//func (t *IsySensorThing) GetTD() *things.TD {
-//
-//}
-
 // NewIsySensorThing creates a ISY sensor device instance.
 // Call Init() before use.
 func NewIsySensorThing() *IsySensorThing {
 	thing := &IsySensorThing{}
-	thing.configHandler = thing.HandleConfigRequest
 	return thing
 }

@@ -20,6 +20,7 @@ type DetailsTemplateData struct {
 	AgentID    string
 	ThingID    string
 	MakeModel  string
+	Name       string
 	DeviceType string
 	TD         things.TD
 	// These lists are sorted by property/event/action name
@@ -88,7 +89,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 
 			// get the value of a make & model properties, if they exist
 			// TODO: this is a bit of a pain to do. Is this a common problem?
-			makeID, _ := thingData.TD.GetPropertyOfType(vocab.PropDeviceManufacturer)
+			makeID, _ := thingData.TD.GetPropertyOfType(vocab.PropDeviceMake)
 			modelID, _ := thingData.TD.GetPropertyOfType(vocab.PropDeviceModel)
 			makeValue := propMap.Get(makeID)
 			modelValue := propMap.Get(modelID)
@@ -97,6 +98,11 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 			}
 			if modelValue != nil {
 				thingData.MakeModel = thingData.MakeModel + string(modelValue.Data)
+			}
+			// use name from configuration if available. Fall back to title.
+			thingData.Name = thingData.Values.ToString(vocab.PropDeviceTitle)
+			if thingData.Name == "" {
+				thingData.Name = thingData.TD.Title
 			}
 		}
 	}

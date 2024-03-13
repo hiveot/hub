@@ -8,6 +8,24 @@ import (
 	"github.com/hiveot/hub/lib/things"
 )
 
+// GetPropValues returns the property/event values to publish
+func (svc *IsyBinding) GetPropValues(onlyChanges bool) (map[string]string, map[string]string) {
+	props := make(map[string]string)
+	props[vocab.PropDevicePollinterval] = fmt.Sprintf("%d", svc.config.PollInterval)
+	props[vocab.PropNetAddress] = svc.config.IsyAddress
+	props[vocab.PropDeviceMake] = "Hive Of Things"
+
+	connStatus := "disconnnected"
+	if svc.isyAPI.IsConnected() {
+		connStatus = "connected"
+	}
+	events := make(map[string]string)
+	events[vocab.PropNetConnection] = connStatus
+	//
+
+	return props, events
+}
+
 // GetTD generates a TD document for this binding containing properties,
 // event and action definitions.
 func (svc *IsyBinding) GetTD() *things.TD {
@@ -17,7 +35,8 @@ func (svc *IsyBinding) GetTD() *things.TD {
 	prop := td.AddProperty("connectionStatus", "",
 		"Connection Status", vocab.WoTDataTypeString)
 	prop.Description = "Whether the Binding has a connection to an ISY gateway"
-	prop = td.AddProperty(vocab.PropDeviceManufacturer, vocab.PropDeviceManufacturer,
+	//
+	prop = td.AddProperty(vocab.PropDeviceMake, vocab.PropDeviceMake,
 		"Manufacturer", vocab.WoTDataTypeString)
 	prop.Description = "Developer of the binding"
 
@@ -28,32 +47,18 @@ func (svc *IsyBinding) GetTD() *things.TD {
 	prop.Description = "Interval the binding polls the gateway for data value updates."
 	prop.Unit = vocab.UnitSecond
 	prop.ReadOnly = false
-
+	//
 	prop = td.AddProperty(vocab.PropNetAddress, vocab.PropNetAddress,
 		"Network Address", vocab.WoTDataTypeString)
 	prop.Description = "ISY99x IP address; empty to auto discover."
 	prop.ReadOnly = false
 
-	// gateway events
-	//_ = td.AddEvent(vocab.VocabConnected, vocab.VocabConnected, "Connected to OWServer gateway", vocab.WoTDataTypeBool, nil)
-	//_ = td.AddEvent(vocab.VocabDisconnected, vocab.VocabDisconnected, "Connected lost to OWServer gateway", vocab.WoTDataTypeBool, nil)
+	// binding events
+	ev := td.AddEvent("", vocab.PropNetConnection, "Connection status", vocab.WoTDataTypeNone, nil)
+	ev.Description = "Status of connection to OWServer gateway changed"
 
 	// no binding actions
 	return td
-}
-
-// GetPropValues returns the property values to publish
-func (svc *IsyBinding) GetPropValues(onlyChanges bool) map[string]string {
-	props := make(map[string]string)
-	props[vocab.PropDevicePollinterval] = fmt.Sprintf("%d", svc.config.PollInterval)
-	props[vocab.PropNetAddress] = svc.config.IsyAddress
-	props[vocab.PropDeviceManufacturer] = "Hive Of Things"
-	connStatus := "disconnnected"
-	if svc.ic.IsConnected() {
-		connStatus = "connected"
-	}
-	props["connectionStatus"] = connStatus
-	return props
 }
 
 // HandleBindingConfig configures the binding.
@@ -62,16 +67,16 @@ func (svc *IsyBinding) HandleBindingConfig(tv *things.ThingValue) error {
 	switch tv.Name {
 	case vocab.PropNetAddress:
 		svc.config.IsyAddress = string(tv.Data)
-		err = svc.ic.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+		err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
 		if err == nil {
-			svc.IsyGW.Init(svc.ic)
+			svc.IsyGW.Init(svc.isyAPI)
 		}
 	}
 	return err
 }
 
-//// GetProps returns the property values of the binding Thing
-//func (svc *IsyBinding) GetProps(onlyChanges bool) map[string]string {
+//// GetValues returns the property values of the binding Thing
+//func (svc *IsyBinding) GetValues(onlyChanges bool) map[string]string {
 //	props := make(map[string]string)
 //	props[vocab.VocabPollInterval] = fmt.Sprintf("%d", svc.config.PollInterval)
 //	props[vocab.VocabGatewayAddress] = svc.config.IsyAddress

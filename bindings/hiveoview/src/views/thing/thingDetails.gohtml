@@ -8,11 +8,11 @@
 				<h4>{{.Thing.TD.Title}}</h4>
 			</summary>
 			<ul class="h-grid-table details-header">
-				<label for="deviceType">Device Type:</label>
-				<input id="deviceType" readonly style="margin: 0; text-overflow: ellipsis; "
-				       placeholder="{{.Thing.TD.GetAtTypeVocab}}"/>
+				<label for="deviceName">Title:</label>
+				<input id="deviceName" readonly style="margin: 0; text-overflow: ellipsis; "
+				       placeholder="{{.Thing.Name}}"/>
 
-				<label for="manufacturer">Device Make & Model:</label>
+				<label for="manufacturer">Device Description:</label>
 				<input id="manufacturer" type="text" readonly
 				       style="margin: 0; text-overflow: ellipsis;"
 				       placeholder="{{.Thing.MakeModel}}  {{.Thing.TD.Description}}"/>

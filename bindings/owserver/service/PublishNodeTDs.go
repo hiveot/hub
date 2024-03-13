@@ -98,7 +98,7 @@ var PropAttrVocab = map[string]struct {
 		},
 	},
 	"Manufacturer": {
-		Title: "Manufacturer", VocabType: vocab.PropDeviceManufacturer, DataType: vocab.WoTDataTypeString,
+		Title: "Manufacturer", VocabType: vocab.PropDeviceMake, DataType: vocab.WoTDataTypeString,
 	},
 	"Model": {
 		Title: "Model", VocabType: vocab.PropDeviceModel, DataType: vocab.WoTDataTypeString,

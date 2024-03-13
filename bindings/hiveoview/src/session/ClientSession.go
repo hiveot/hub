@@ -112,6 +112,24 @@ func (cs *ClientSession) onConnectChange(stat transports.HubTransportStatus) {
 func (cs *ClientSession) onEvent(msg *things.ThingValue) {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
+	// FIXME: HOW TO UPDATE THE VIEW MODEL?
+	// a: each view has its own viewmodel that is updated
+	//    is this reimplementing vue?
+	//    each view can reload if their data changes
+
+	if msg.Name == transports.EventNameTD {
+		// TODO: send the current view a TD changed event
+		// TODO: how are the other views that use the TD updated?
+		_ = cs.SendSSE(msg.Name, string(msg.Data))
+	} else if msg.Name == transports.EventNameProps {
+		// TODO: send the current view a properties changed event, if applicable
+		// TODO: how are the other views that display the value updated?
+	} else {
+		// value changed event
+		// TODO: send the current view a value changed event, if applicable
+		// TODO: how are the other views that display the value updated?
+	}
+	slog.Info("received event", "id", msg.Name)
 	// TODO: determine how events are consumed
 	// SSE's usually expect an HTML snippet, not json data
 	//_ = cs.SendSSE(msg.Name, string(msg.Data))
@@ -168,6 +186,8 @@ func (cs *ClientSession) SendSSE(event string, content string) error {
 
 // NewClientSession creates a new client session for the given Hub connection
 // Intended for use by the session manager.
+// This subscribes to events for configured agents.
+//
 // note that expiry is a placeholder for now used to refresh auth token.
 // it should be obtained from the login authentication/refresh.
 func NewClientSession(sessionID string, hc *hubclient.HubClient, remoteAddr string) *ClientSession {
@@ -186,11 +206,17 @@ func NewClientSession(sessionID string, hc *hubclient.HubClient, remoteAddr stri
 	// restore the session data model
 	stateCl := stateclient.NewStateClient(hc)
 	found, err := stateCl.Get(hc.ClientID(), &cs.clientModel)
+	_ = found
 	_ = err
-	if found {
-		// subscribe
+	if len(cs.clientModel.Agents) > 0 {
+		for _, agent := range cs.clientModel.Agents {
+			// subscribe to TD and value events
+			err = hc.SubEvents(agent, "", "")
+		}
+	} else {
+		// no agent set so subscribe to all agents
+		err = hc.SubEvents("", "", "")
 	}
-
 	// subscribe to configured agents
 	return &cs
 }

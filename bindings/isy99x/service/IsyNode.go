@@ -22,7 +22,9 @@ type IsyNodes struct {
 	Nodes []*IsyNode `xml:"node"`
 }
 
-// IsyNode with info of a node on the gateway
+// IsyNode is an immutable object temporarily holding data about an ISY device.
+// It is created from the data returned by the ISY gateway and used to create or
+// update the IsyThing instance.
 type IsyNode struct {
 	// Flag value map
 	//NODE_IS_INIT 0x01 //needs to be initialized
@@ -64,7 +66,7 @@ type IsyNode struct {
 	//One of these nodes is designated the primary node and is used to help group the set of nodes for a device.
 	//Note: UPB Mandatory/INSTEON Optional.
 	Pnode string `xml:"pnode,omitempty"`
-	// Property value
+	// Property holding the node's value
 	Property IsyProp `xml:"property"`
 }
 

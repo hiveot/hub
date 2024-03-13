@@ -130,20 +130,20 @@ func HandleListThing(hc *hubclient.HubClient, pubID, thingID string) error {
 	}
 	fmt.Println()
 	fmt.Println(utils.COBlue + "Configuration:")
-	fmt.Println(" ID                             Title                                    DataType   Value           Description")
-	fmt.Println(" -----------------------------  ---------------------------------------  ---------  -------------   -----------" + utils.COReset)
+	fmt.Println(" ID                             Title                                    DataType   Value                Description")
+	fmt.Println(" -----------------------------  ---------------------------------------  ---------  ------------------   -----------" + utils.COReset)
 	for _, key := range keys {
 		prop, found := tdDoc.Properties[key]
 		if found && !prop.ReadOnly {
 			value := histValues.ToString(key)
-			fmt.Printf(" %-30s %-40.40s %-10s %s%-15.15v%s %.80s\n",
+			fmt.Printf(" %-30s %-40.40s %-10s %s%-20.20v%s %.80s\n",
 				key, prop.Title, prop.Type, utils.COBlue, value, utils.COReset, prop.Description)
 		}
 	}
 
 	fmt.Println(utils.COYellow + "\nEvents:")
-	fmt.Println(" ID                             EventType       Title                                    DataType   Value           Description")
-	fmt.Println(" -----------------------------  --------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
+	fmt.Println(" ID                             EventType                 Title                                    DataType   Value           Description")
+	fmt.Println(" -----------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
 	keys = utils.OrderedMapKeys(tdDoc.Events)
 	for _, key := range keys {
 		ev := tdDoc.Events[key]
@@ -155,13 +155,13 @@ func HandleListThing(hc *hubclient.HubClient, pubID, thingID string) error {
 		if ev.Data != nil {
 			//initialValue = ev.Data.InitialValue
 		}
-		fmt.Printf(" %-30s %-15.15s %-40.40s %-10.10v %s%-15.15s%s %.80s\n",
+		fmt.Printf(" %-30s %-25.25s %-40.40s %-10.10v %s%-15.15s%s %.80s\n",
 			key, ev.EventType, ev.Title, dataType, utils.COYellow, value, utils.COReset, ev.Description)
 	}
 
 	fmt.Println(utils.CORed + "\nActions:")
-	fmt.Println(" ID                             ActionType      Title                                    Arg(s)     Value           Description")
-	fmt.Println(" -----------------------------  --------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
+	fmt.Println(" ID                             ActionType                Title                                    Arg(s)     Value           Description")
+	fmt.Println(" -----------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
 	keys = utils.OrderedMapKeys(tdDoc.Actions)
 	for _, key := range keys {
 		action := tdDoc.Actions[key]
@@ -171,7 +171,7 @@ func HandleListThing(hc *hubclient.HubClient, pubID, thingID string) error {
 			dataType = action.Input.Type
 			//initialValue = action.Input.InitialValue
 		}
-		fmt.Printf(" %-30.30s %-15.15s %-40.40s %-10.10s %s%-15.15s%s %.80s\n",
+		fmt.Printf(" %-30.30s %-25.25s %-40.40s %-10.10s %s%-15.15s%s %.80s\n",
 			key, action.ActionType, action.Title, dataType, utils.CORed, value, utils.COReset, action.Description)
 	}
 	fmt.Println()

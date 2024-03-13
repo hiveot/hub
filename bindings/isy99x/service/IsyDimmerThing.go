@@ -9,11 +9,18 @@ import (
 
 // IsyDimmerThing is a general-purpose dimmer switch
 type IsyDimmerThing struct {
-	NodeThing
+	IsyThing
+}
+
+// GetValues returns the property and event values for publication
+func (it *IsyDimmerThing) GetValues(onlyChanges bool) map[string]string {
+	propValues := it.IsyThing.GetPropValues(onlyChanges)
+	propValues[vocab.PropSwitchDimmer] = propValues[vocab.PropSwitchDimmer]
+	return propValues
 }
 
 func (it *IsyDimmerThing) GetTD() *things.TD {
-	td := it.NodeThing.GetTD()
+	td := it.IsyThing.GetTD()
 	// AddSwitchEvent is short for adding an event for a switch
 	td.AddDimmerEvent(vocab.PropSwitchDimmer)
 
@@ -47,19 +54,19 @@ func (it *IsyDimmerThing) HandleActionRequest(tv *things.ThingValue) (err error)
 	// supported actions: on, off
 	if tv.Name == vocab.ActionDimmerSet {
 		newValue = string(tv.Data)
-		restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.id, newValue)
+		restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
 
 		//} else if tv.Name == vocab.VocabActionDecrement {
-		//	restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.id, newValue)
+		//	restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
 		//} else if tv.Name == vocab.VocabActionIncrement {
-		//	restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.id, newValue)
+		//	restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
 	} else {
 		// unknown action
 		err = fmt.Errorf("HandleActionRequest. Unknown action: '%s'", tv.Name)
 		return err
 	}
 
-	err = it.ic.SendRequest("GET", restPath, nil)
+	err = it.isyAPI.SendRequest("GET", restPath, "", nil)
 	if err == nil {
 		// TODO: handle event from gateway using websockets. For now just assume this worked.
 		err = it.HandleValueUpdate(tv.Name, "", newValue)
@@ -72,7 +79,5 @@ func (it *IsyDimmerThing) HandleActionRequest(tv *things.ThingValue) (err error)
 // Call Init() before use
 func NewIsyDimmerThing() *IsyDimmerThing {
 	thing := &IsyDimmerThing{}
-	thing.actionHandler = thing.HandleActionRequest
-	thing.configHandler = thing.HandleConfigRequest
 	return thing
 }
