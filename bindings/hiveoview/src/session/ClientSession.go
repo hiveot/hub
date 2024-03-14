@@ -1,6 +1,7 @@
 package session
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/core/state/stateclient"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/transports"
@@ -112,15 +113,34 @@ func (cs *ClientSession) onConnectChange(stat transports.HubTransportStatus) {
 func (cs *ClientSession) onEvent(msg *things.ThingValue) {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
-	// FIXME: HOW TO UPDATE THE VIEW MODEL?
-	// a: each view has its own viewmodel that is updated
-	//    is this reimplementing vue?
-	//    each view can reload if their data changes
+	// FIXME: HOW TO IMPLEMENT DATA BINDING WITH HTMX fragments?
+	// A: use alpine.js databinding. Include JS objects that the element binds to
+	//    and use sse events to trigger a reload of the object.
+	//
+	//    pro: * one and two-way data binding provided by Alpine
+	//    con: * risk duplicating server/client state
+	//         * dependent on the Alpine-js kitchen sink
+	//
+	// B: use sse event to reload data associated fragments.
+	//    (one event can affect multiple fragments)
+	//
+	//    pro: * isolation between data updates and fragment reload (separation of concerns)
+	//         * support 1-many relationship for data-fragments
+	//    con: * have to manually manage many fragments and event names
+	//         * all fragments must have unique IDs
+	//         * fragment reloads can cause unintended side effects like layout changes.
+	//           for example the open/close state of a 'details' element is reset after reload.
+	//
+	// Q: is there a need for client side state to bind to?
+	// Q: does htmx has an extension to facilitate data binding?
+	//		hx-trigger="customers from:body" ??? how to trigger specific TD ID?
+	//      ? hx-trigger="sse:<thingID>" could this work?
 
 	if msg.Name == transports.EventNameTD {
 		// TODO: send the current view a TD changed event
-		// TODO: how are the other views that use the TD updated?
-		_ = cs.SendSSE(msg.Name, string(msg.Data))
+		// FIXME: can the event have spaces? => NO!
+		thingAddr := fmt.Sprintf("%s/%s", msg.AgentID, msg.ThingID)
+		_ = cs.SendSSE(thingAddr, "")
 	} else if msg.Name == transports.EventNameProps {
 		// TODO: send the current view a properties changed event, if applicable
 		// TODO: how are the other views that display the value updated?

@@ -90,8 +90,8 @@ func (it *IsySwitchThing) HandleValueUpdate(propID string, uom string, newValue 
 // Init initializes the IsyThing base class
 // This determines the device type from prodInfo and sets property values for
 // product and model.
-func (it *IsySwitchThing) Init(ic *IsyAPI, node *IsyNode, prodInfo InsteonProduct, hwVersion string) {
-	it.IsyThing.Init(ic, node, prodInfo, hwVersion)
+func (it *IsySwitchThing) Init(ic *IsyAPI, thingID string, node *IsyNode, prodInfo InsteonProduct, hwVersion string) {
+	it.IsyThing.Init(ic, thingID, node, prodInfo, hwVersion)
 }
 
 // NewIsySwitchThing creates a new instance of an ISY switch.

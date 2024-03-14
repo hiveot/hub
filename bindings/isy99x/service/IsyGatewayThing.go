@@ -37,7 +37,7 @@ type IsyGatewayThing struct {
 	// map of ISY product ID's
 	prodMap map[string]InsteonProduct
 
-	// The things that this gateway manages
+	// The things that this gateway manages by thingID
 	things map[string]IIsyThing
 
 	// flag, a new node was discovered when reading values. Trigger a scan for new nodes.
@@ -145,6 +145,13 @@ type IsyGatewayThing struct {
 	} `xml:"NetworkConfig"`
 }
 
+// derive a thingID from a ISY nodeID
+// ISY node IDs have spaces in them, which are not allowed in Thing IDs
+func nodeID2ThingID(nodeID string) string {
+	thingID := strings.ReplaceAll(nodeID, " ", "-")
+	return thingID
+}
+
 // AddIsyThing adds a representing of an Insteon device
 func (igw *IsyGatewayThing) AddIsyThing(node *IsyNode) error {
 	var isyThing IIsyThing
@@ -201,7 +208,8 @@ func (igw *IsyGatewayThing) AddIsyThing(node *IsyNode) error {
 		isyThing = NewIsyThing()
 	}
 	if isyThing != nil {
-		isyThing.Init(igw.ic, node, prodInfo, hwVersion)
+		thingID := nodeID2ThingID(node.Address)
+		isyThing.Init(igw.ic, thingID, node, prodInfo, hwVersion)
 		igw.mux.Lock()
 		igw.things[isyThing.GetID()] = isyThing
 		igw.mux.Unlock()
@@ -212,6 +220,16 @@ func (igw *IsyGatewayThing) AddIsyThing(node *IsyNode) error {
 // GetIsyThing returns the ISY device Thing with the given ThingID
 // Returns nil of a thing with this ID doesn't exist
 func (igw *IsyGatewayThing) GetIsyThing(thingID string) IIsyThing {
+	igw.mux.RLock()
+	defer igw.mux.RUnlock()
+	it, _ := igw.things[thingID]
+	return it
+}
+
+// GetIsyThingByNodeID returns the ISY device Thing with the given Node address/ID
+// Returns nil if a thing with this ID doesn't exist
+func (igw *IsyGatewayThing) GetIsyThingByNodeID(nodeID string) IIsyThing {
+	thingID := nodeID2ThingID(nodeID)
 	igw.mux.RLock()
 	defer igw.mux.RUnlock()
 	it, _ := igw.things[thingID]
@@ -381,11 +399,8 @@ func (igw *IsyGatewayThing) ReadIsyThings() error {
 		return err
 	}
 	for _, node := range isyNodes.Nodes {
-		thingID := node.Address
-		igw.mux.RLock()
-		_, found := igw.things[thingID]
-		igw.mux.RUnlock()
-		if !found {
+		it := igw.GetIsyThingByNodeID(node.Address)
+		if it == nil {
 			err = igw.AddIsyThing(node)
 			if err != nil {
 				slog.Error("Error adding ISY device. Ignored.", "err", err)
@@ -414,15 +429,12 @@ func (igw *IsyGatewayThing) ReadIsyNodeValues() error {
 	isyStatus := IsyStatus{}
 	err := igw.ic.SendRequest("GET", "/rest/status", "", &isyStatus)
 	for _, node := range isyStatus.Nodes {
-		thingID := node.Address
 		propID := node.Prop.ID
 		newValue := node.Prop.Value
 		uom := node.Prop.UOM
 
-		it, found := igw.things[thingID]
-		if thingID == "" {
-			slog.Error("ReadyISYNodeValues: no node.Address received")
-		} else if found {
+		it := igw.GetIsyThingByNodeID(node.Address)
+		if it != nil {
 			err = it.HandleValueUpdate(propID, uom, newValue)
 		} else {
 			// new node found, refresh the node list

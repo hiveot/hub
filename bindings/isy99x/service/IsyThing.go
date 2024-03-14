@@ -38,7 +38,7 @@ type IIsyThing interface {
 	// HandleValueUpdate updates the Thing properties with value obtained via the ISY gateway
 	HandleValueUpdate(propID string, uom string, newValue string) error
 	// Init assigns the ISY connection and node this Thing represents
-	Init(ic *IsyAPI, node *IsyNode, prodInfo InsteonProduct, hwVersion string)
+	Init(ic *IsyAPI, thingID string, node *IsyNode, prodInfo InsteonProduct, hwVersion string)
 }
 
 // IsyThing is the generic base of Things constructed out of ISY Insteon nodes.
@@ -47,6 +47,9 @@ type IIsyThing interface {
 type IsyThing struct {
 	// The node ID, also used as the ThingID
 	nodeID string
+
+	// ThingID derived from the nodeID
+	thingID string
 
 	// device type derived from productInfo
 	deviceType string
@@ -68,7 +71,7 @@ type IsyThing struct {
 // No assumptions should be made on how this is constructed. The only
 // guarantee is that it identifies, directly or indirectly, the node.
 func (it *IsyThing) GetID() string {
-	return it.nodeID
+	return it.thingID
 }
 
 // GetPropValues returns the property values
@@ -85,7 +88,7 @@ func (it *IsyThing) GetTD() *things.TD {
 		title = it.productInfo.ProductName
 	}
 	it.mux.RLock()
-	td := things.NewTD(it.nodeID, title, it.deviceType)
+	td := things.NewTD(it.thingID, title, it.deviceType)
 	it.mux.RUnlock()
 
 	//--- read-only properties
@@ -157,7 +160,7 @@ func (it *IsyThing) HandleValueUpdate(propID string, uom string, newValue string
 // Init initializes the IsyThing base class
 // This determines the device type from prodInfo and sets property values for
 // product and model.
-func (it *IsyThing) Init(ic *IsyAPI, node *IsyNode, prodInfo InsteonProduct, hwVersion string) {
+func (it *IsyThing) Init(ic *IsyAPI, thingID string, node *IsyNode, prodInfo InsteonProduct, hwVersion string) {
 	var found bool
 	it.mux.Lock()
 	defer it.mux.Unlock()
@@ -168,6 +171,7 @@ func (it *IsyThing) Init(ic *IsyAPI, node *IsyNode, prodInfo InsteonProduct, hwV
 
 	it.isyAPI = ic
 	it.nodeID = node.Address
+	it.thingID = thingID
 	it.productInfo = prodInfo
 	it.propValues = things.NewPropertyValues()
 	enabledDisabled := "enabled"
