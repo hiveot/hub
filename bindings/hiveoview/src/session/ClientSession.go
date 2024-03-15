@@ -136,23 +136,35 @@ func (cs *ClientSession) onEvent(msg *things.ThingValue) {
 	//		hx-trigger="customers from:body" ??? how to trigger specific TD ID?
 	//      ? hx-trigger="sse:<thingID>" could this work?
 
+	slog.Info("received event", slog.String("thingID", msg.ThingID),
+		slog.String("id", msg.Name))
 	if msg.Name == transports.EventNameTD {
-		// TODO: send the current view a TD changed event
-		// FIXME: can the event have spaces? => NO!
+		// Publish sse event indicating the Thing TD has changed.
+		// The UI that displays this event can use this as a trigger to reload the
+		// fragment that displays this TD:
+		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}"
 		thingAddr := fmt.Sprintf("%s/%s", msg.AgentID, msg.ThingID)
 		_ = cs.SendSSE(thingAddr, "")
 	} else if msg.Name == transports.EventNameProps {
-		// TODO: send the current view a properties changed event, if applicable
-		// TODO: how are the other views that display the value updated?
+		// Publish sse event indicating one or more properties of a Thing has changed.
+		// The UI that displays this event can use this as a trigger to reload the
+		// fragment that displays this event:
+		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}/$properties"
+		// where $properties is transports.EventNameProps  (can the ui use JS to get this constant?)
+		thingAddr := fmt.Sprintf("%s/%s/%s", msg.AgentID, msg.ThingID, msg.Name)
+		_ = cs.SendSSE(thingAddr, string(msg.Data))
 	} else {
-		// value changed event
-		// TODO: send the current view a value changed event, if applicable
-		// TODO: how are the other views that display the value updated?
+		// Publish sse event indicating the event affordance or value has changed.
+		// The UI that displays this event can use this as a trigger to reload the
+		// fragment that displays this event:
+		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}/{{$k}}"
+		// where $k is the event ID
+		thingAddr := fmt.Sprintf("%s/%s/%s", msg.AgentID, msg.ThingID, msg.Name)
+		_ = cs.SendSSE(thingAddr, string(msg.Data))
+		// TODO: improve on this crude way to update the 'updated' field
+		thingAddr = fmt.Sprintf("%s/%s/%s/updated", msg.AgentID, msg.ThingID, msg.Name)
+		_ = cs.SendSSE(thingAddr, msg.Updated())
 	}
-	slog.Info("received event", "id", msg.Name)
-	// TODO: determine how events are consumed
-	// SSE's usually expect an HTML snippet, not json data
-	//_ = cs.SendSSE(msg.Name, string(msg.Data))
 }
 
 func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {

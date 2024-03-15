@@ -14,25 +14,35 @@ This viewer is in early development. The information below is subject to change.
 4. Session management for MQTT hub connections and sse support to push events [done]
 5. MQTT Authentication in client session [done]
 6. NATS Authentication in client session (todo: session auth without keys)
-7. Push connection status update. Present status view.
+7. Push connection status update. Present status view. [done]
 
-### Phase 2: Read directory
+### Phase 2: Directory view
 
 1. Directory view using SSR rendering in golang [done]
-2. Use Htmx to interactively browse the directory [done]
-3. Thing details view [done]
-4. Update configuration
+2. Responsive layout [done]
+3. Use Htmx to interactively browse the directory [done]
+4. Thing details view [done]
+5. Thing configuration edit [done]
+6. Configuration of title (if supported by Thing) [partial]
+7. Server push of property and event values
 
 ### Phase 3: Dashboard
 
-10. Add/remove dashboard pages
-11. Tiling engine in HTML/HTMX with persistent configuration
-12. Value tile with a single Thing value with min/max
-13. Card tile with values from Things
-14. Line chart tile with value history
+1. Add/remove dashboard pages
+2. Tiling engine in HTML/HTMX with persistent configuration
+3. Value tile with a single Thing value with min/max
+4. Card tile with values from Things
+5. Line chart tile with value history
     Phase 4: Live updates
-15. Subscribe to Thing values from tiles
-16. Refresh tile
+6. Subscribe to Thing values from tiles
+7. Refresh tile
+
+### Phase 4: iteration 2  (tbd, based on learnings)
+1. Subscribe to and organize Things by IoT Agents
+2. Migrate to digital twin model 
+3. Distinguish between basic and advanced attr/config/events
+4. Indication of pending configuration update (owserver updates can take 10 seconds)
+
 
 ## Objective
 
