@@ -36,7 +36,10 @@ const PubKeyFileExt = ".pub"
 type HubClient struct {
 	//serverURL string
 	//caCert    *x509.Certificate
-	clientID  string
+
+	// login ID
+	clientID string
+	//
 	transport transports.IHubTransport
 	// key set after connecting with token
 	kp keys.IHiveKey
@@ -65,8 +68,8 @@ type HubClient struct {
 // Where "+" is the wildcard for MQTT or "*" for Nats
 //
 //	msgType is the message type: "event", "action", "config" or "rpc".
-//	agentID is the device or service being addressed. Use "" for wildcard
-//	thingID is the ID of the things managed by the publisher. Use "" for wildcard
+//	agentID is the thingID of the device or service being addressed. Use "" for wildcard
+//	thingID is the ID of the thing including the urn: prefix. Use "" for wildcard
 //	name is the event or action name. Use "" for wildcard.
 //	clientID is the login ID of the sender. Use "" for subscribe.
 func (hc *HubClient) MakeAddress(msgType, agentID, thingID, name string, clientID string) string {
@@ -198,7 +201,7 @@ func (hc *HubClient) GetStatus() transports.HubTransportStatus {
 //
 //	The key-pair is named {clientID}.key, the public key {clientID}.pub
 //
-//	clientID is the clientID to use, or "" to use the connecting ID
+//	clientID is the login ID to use, or "" to use the connecting ID
 //	keysDir is the location where the keys are stored.
 //
 // This returns the serialized private and pub keypair, or an error.

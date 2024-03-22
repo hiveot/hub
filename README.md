@@ -2,8 +2,7 @@
 
 HiveOT stands for the "Hive of Things". It provides a framework and services to collect and share IoT data with users.
 
-The Hub for the
-*Hive-of-Things* provides a secure core and plugins to view and operate IoT devices. The Hub securely mediates between IoT device 'Things', services, and users using a hub-and-spokes architecture. Users interact with Things via the Hub without connecting directly to the IoT devices or services. The Hub is based on the [W3C WoT TD 1.1 specification](https://www.w3.org/TR/wot-thing-description11/) and uses a NATS or MQTT message bus for secure communication.
+The Hub for the *Hive-of-Things* provides a secure core and plugins to view and operate IoT devices. The Hub securely mediates between IoT device 'Things', services, and users using a hub-and-spokes architecture. Users interact with Things via the Hub without connecting directly to the IoT devices or services. The Hub is based on the [W3C WoT TD 1.1 specification](https://www.w3.org/TR/wot-thing-description11/) and uses a NATS or MQTT message bus for secure communication.
 
 ## Project Status
 
@@ -22,8 +21,15 @@ Completed core services:
 Bindings
 
 * 1-wire protocol binding using owserver-v2 gateway (bindings/owserver)
+* insteon binding using isy99x gateway (bindings/isy99x)
 * zwave protocol binding using zwavejs (bindings/zwavejs)
 * web client using html/htmx and go templates (bindings/hiveoview) - in progress
+
+Integrations
+
+It is a bit early to look at integrations, but some interesting candidates are:
+* plc4go (https://plc4x.apache.org/users/getting-started/plc4go.html)
+* home assistant (https://www.home-assistant.io/)
 
 ## Audience
 

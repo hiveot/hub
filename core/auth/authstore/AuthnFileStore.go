@@ -249,23 +249,6 @@ func (authnStore *AuthnFileStore) SetPassword(loginID string, password string) (
 	return authnStore.SetPasswordHash(loginID, hash)
 }
 
-// SetRole updates the client's role
-//func (authnStore *AuthnFileStore) SetRole(clientID string, role string) (err error) {
-//	authnStore.mutex.Lock()
-//	defer authnStore.mutex.Unlock()
-//
-//	entry, found := authnStore.entries[clientID]
-//	if !found {
-//		return fmt.Errorf("Client '%s' not found", clientID)
-//	}
-//	entry.Role = role
-//	entry.Updated = time.Now().Format(vocab.ISO8601Format)
-//	authnStore.entries[clientID] = entry
-//
-//	err = authnStore.save()
-//	return err
-//}
-
 // SetPasswordHash adds/updates the password hash for the given login ID
 // Intended for use by administrators to add a new user or clients to update their password
 func (authnStore *AuthnFileStore) SetPasswordHash(loginID string, hash string) (err error) {

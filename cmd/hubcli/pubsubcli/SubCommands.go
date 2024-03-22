@@ -74,7 +74,7 @@ func HandleSubTD(hc *hubclient.HubClient) error {
 				msg.AgentID, msg.ThingID, td.Title, td.AtType, timeStr)
 		}
 	})
-	fmt.Printf("Agent ID             Thing ID                  Title                          @type                Updated           \n")
+	fmt.Printf("Agent ID             Thing ID                  Title                          @type                GetUpdated           \n")
 	fmt.Printf("-------------------  ------------------------  -----------------------------  -------------------  --------------------\n")
 
 	time.Sleep(time.Hour * 24)

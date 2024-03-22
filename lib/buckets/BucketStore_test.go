@@ -65,11 +65,11 @@ func createTD(id string) *things.TD {
 	td := &things.TD{
 		ID:         id,
 		Title:      fmt.Sprintf("test TD %s", id),
-		DeviceType: vocab.ThingSensor,
+		AtType:     vocab.ThingSensor,
 		Properties: make(map[string]*things.PropertyAffordance),
 		Events:     make(map[string]*things.EventAffordance),
 	}
-	td.Properties[vocab.PropDeviceName] = &things.PropertyAffordance{
+	td.Properties[vocab.PropDeviceTitle] = &things.PropertyAffordance{
 		DataSchema: things.DataSchema{
 			Title:       "Sensor title",
 			Description: "This is a smart sensor",

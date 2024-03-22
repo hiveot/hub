@@ -22,6 +22,8 @@ const bindingMake = "make"
 
 // OWServerBinding is the hub protocol binding plugin for capturing 1-wire OWServer V2 Data
 type OWServerBinding struct {
+	thingID string
+
 	// Configuration of this protocol binding
 	config *config.OWServerConfig
 
@@ -48,8 +50,7 @@ type OWServerBinding struct {
 
 // CreateBindingTD generates a TD document for this binding
 func (svc *OWServerBinding) CreateBindingTD() *things.TD {
-	thingID := svc.hc.ClientID()
-	td := things.NewTD(thingID, "OWServer binding", vocab.ThingServiceAdapter)
+	td := things.NewTD(svc.thingID, "OWServer binding", vocab.ThingServiceAdapter)
 	td.Description = "Driver for the OWServer V2 Gateway 1-wire interface"
 
 	prop := td.AddProperty(bindingMake, vocab.PropDeviceMake,
@@ -94,6 +95,7 @@ func (svc *OWServerBinding) Start(hc *hubclient.HubClient) (err error) {
 		logging.SetLogging(svc.config.LogLevel, "")
 	}
 	svc.hc = hc
+	svc.thingID = hc.ClientID()
 	// Create the adapter for the OWServer 1-wire gateway
 	svc.edsAPI = eds.NewEdsAPI(
 		svc.config.OWServerURL, svc.config.OWServerLogin, svc.config.OWServerPassword)

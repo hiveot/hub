@@ -4,13 +4,13 @@ type ThingValueMap map[string]*ThingValue
 
 // Age returns the age of a property, or "" if it doesn't exist
 // intended for use in template as .Values.Age $key
-func (vm ThingValueMap) Age(key string) string {
-	tv := vm.Get(key)
-	if tv == nil {
-		return ""
-	}
-	return tv.Age()
-}
+//func (vm ThingValueMap) Age(key string) string {
+//	tv := vm.Get(key)
+//	if tv == nil {
+//		return ""
+//	}
+//	return tv.Age()
+//}
 
 // Get returns the value of a property key, or nil if it doesn't exist
 func (vm ThingValueMap) Get(key string) *ThingValue {
@@ -19,6 +19,16 @@ func (vm ThingValueMap) Get(key string) *ThingValue {
 		return nil
 	}
 	return tv
+}
+
+// GetUpdated returns the timestamp of a property, or "" if it doesn't exist
+// intended for use in template as .Values.GetUpdated $key
+func (vm *ThingValueMap) GetUpdated(key string) string {
+	tv := vm.Get(key)
+	if tv == nil {
+		return ""
+	}
+	return tv.GetUpdated()
 }
 
 // ToString returns the value of a property as text, or "" if it doesn't exist
@@ -45,16 +55,6 @@ func (vm ThingValueMap) SenderID(key string) string {
 // if key already exists its value will be replaced
 func (vm ThingValueMap) Set(key string, tv *ThingValue) {
 	vm[key] = tv
-}
-
-// Updated returns the timestamp of a property, or "" if it doesn't exist
-// intended for use in template as .Values.Updated $key
-func (vm *ThingValueMap) Updated(key string) string {
-	tv := vm.Get(key)
-	if tv == nil {
-		return ""
-	}
-	return tv.Updated()
 }
 
 func NewThingValueMap() ThingValueMap {

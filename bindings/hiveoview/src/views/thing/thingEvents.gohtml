@@ -34,7 +34,7 @@
 {{/*TODO: improve on this rather crude way to refresh the derived 'updated' field when value changes?*/}}
 					<div sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
 									class="h-show-md"
-						>{{$.Values.Updated $k}}</div>
+						>{{$.Values.GetUpdated $k}}</div>
 				</li>
     {{end}}
     {{if not .TD.Events}}

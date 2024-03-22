@@ -106,15 +106,16 @@ func (srv *LatestPropertiesStore) HandleAddValue(addtv *things.ThingValue) {
 	if addtv.Name == transports.EventNameProps {
 		// the value holds a map of property name:value pairs, add each one individually
 		// in order to retain the sender and created timestamp.
-		props := make(map[string]string)
+		props := make(map[string]any)
 		err := json.Unmarshal(addtv.Data, &props)
 		if err != nil {
 			return // data is not used
 		}
 		// turn each value into a ThingValue object
 		for propName, propValue := range props {
+			propValueString := fmt.Sprint(propValue)
 			tv := things.NewThingValue(transports.MessageTypeEvent,
-				addtv.AgentID, addtv.ThingID, propName, []byte(propValue), addtv.SenderID)
+				addtv.AgentID, addtv.ThingID, propName, []byte(propValueString), addtv.SenderID)
 			tv.CreatedMSec = addtv.CreatedMSec
 
 			// in case events arrive out of order, only update if the addtv is newer

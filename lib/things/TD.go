@@ -4,7 +4,6 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/ser"
-	"github.com/hiveot/hub/lib/utils"
 	"sync"
 	"time"
 )
@@ -281,16 +280,16 @@ func (tdoc *TD) GetAction(name string) *ActionAffordance {
 	return actionAffordance
 }
 
-// GetAge returns the age of the document since last modified in a human-readable format.
-// this is just an experiment to see if this is useful.
-// Might be better to do on the UI client side to reduce cpu.
-func (tdoc *TD) GetAge() string {
-	t, err := dateparse.ParseAny(tdoc.Modified)
-	if err != nil {
-		return tdoc.Modified
-	}
-	return utils.Age(t)
-}
+//// GetAge returns the age of the document since last modified in a human-readable format.
+//// this is just an experiment to see if this is useful.
+//// Might be better to do on the UI client side to reduce cpu.
+//func (tdoc *TD) GetAge() string {
+//	t, err := dateparse.ParseAny(tdoc.Modified)
+//	if err != nil {
+//		return tdoc.Modified
+//	}
+//	return utils.Age(t)
+//}
 
 // GetAtTypeVocab return the vocab map of the @type
 func (tdoc *TD) GetAtTypeVocab() string {
@@ -340,8 +339,13 @@ func (tdoc *TD) GetPropertyOfType(atType string) (string, *PropertyAffordance) {
 // GetUpdated is a helper function to return the formatted time the thing was last updated.
 // This uses the time format RFC822 ("02 Jan 06 15:04 MST")
 func (tdoc *TD) GetUpdated() string {
-	created, _ := dateparse.ParseAny(tdoc.Modified)
-	return created.Format(time.RFC1123)
+	created, err := dateparse.ParseAny(tdoc.Modified)
+	if err != nil {
+		return tdoc.Modified
+	}
+	created = created.Local()
+	return created.Format(time.RFC822)
+
 }
 
 // GetID returns the ID of the things TD
@@ -420,18 +424,20 @@ func (tdoc *TD) UpdateTitleDescription(title string, description string) {
 //		     properties: {name: TDProperty, ...}
 //		}
 func NewTD(thingID string, title string, deviceType string) *TD {
+
 	td := TD{
 		AtContext: []any{
 			WoTTDContext,
 			map[string]string{"ht": HiveOTContext},
 		},
-		AtType:     deviceType,
-		Actions:    map[string]*ActionAffordance{},
-		Created:    time.Now().Format(utils.ISO8601Format),
+		AtType:  deviceType,
+		Actions: map[string]*ActionAffordance{},
+
+		Created:    time.Now().Format(time.RFC3339),
 		Events:     map[string]*EventAffordance{},
 		Forms:      nil,
 		ID:         thingID,
-		Modified:   time.Now().Format(utils.ISO8601Format),
+		Modified:   time.Now().Format(time.RFC3339),
 		Properties: map[string]*PropertyAffordance{},
 		// security schemas don't apply to HiveOT devices, except services exposed by the hub itself
 		Security:    vocab.WoTNoSecurityScheme,

@@ -208,7 +208,12 @@ export class ZwaveJSBinding {
             valueMap.values[propID] = newValue
             //
             let serValue = JSON.stringify(newValue)
+            log.info("handleValueUpdate: publish event for deviceID="+deviceID+", propID="+propID+"" )
             this.hc.pubEvent(deviceID, propID, serValue)
+        } else {
+            // for debugging
+            log.info("handleValueUpdate: unchanged value deviceID="+deviceID+", propID="+propID+" (ignored)" )
+
         }
     }
 

@@ -31,8 +31,8 @@ type IsyGatewayThing struct {
 	// REST/SOAP/WS connection to the ISY hub
 	ic *IsyAPI
 
-	// The gateway thing ID
-	id string
+	// The gateway thingID
+	thingID string
 
 	// map of ISY product ID's
 	prodMap map[string]InsteonProduct
@@ -238,7 +238,7 @@ func (igw *IsyGatewayThing) GetIsyThingByNodeID(nodeID string) IIsyThing {
 
 // GetID return the gateway thingID
 func (igw *IsyGatewayThing) GetID() string {
-	return igw.id
+	return igw.thingID
 }
 
 // GetIsyThings returns a list of ISY devices for publishing TD or values as updated in
@@ -269,7 +269,7 @@ func (igw *IsyGatewayThing) GetTD() *things.TD {
 		return nil
 	}
 
-	td := things.NewTD(igw.id, igw.Configuration.DeviceSpecs.Model, vocab.ThingNetGateway)
+	td := things.NewTD(igw.thingID, igw.Configuration.DeviceSpecs.Model, vocab.ThingNetGateway)
 	td.Description = igw.Configuration.DeviceSpecs.Make + "-" + igw.Configuration.DeviceSpecs.Model
 
 	//--- device read-only attributes
@@ -330,7 +330,7 @@ func (igw *IsyGatewayThing) GetTD() *things.TD {
 // This removes prior use nodes for a fresh start.
 func (igw *IsyGatewayThing) Init(ic *IsyAPI) {
 	igw.ic = ic
-	igw.id = ic.GetID()
+	igw.thingID = ic.GetID()
 	igw.things = make(map[string]IIsyThing)
 	igw.propValues = things.NewPropertyValues()
 

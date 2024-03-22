@@ -246,7 +246,7 @@ func HandleListClients(hc *hubclient.HubClient) (err error) {
 	profileList, err := authn.GetProfiles()
 
 	fmt.Println("Users")
-	fmt.Println("Login ID             Display Name              Role            Updated")
+	fmt.Println("Login ID             Display Name              Role            GetUpdated")
 	fmt.Println("--------             ------------              ----            -------")
 	for _, profile := range profileList {
 		if profile.ClientType == authapi.ClientTypeUser {
@@ -260,7 +260,7 @@ func HandleListClients(hc *hubclient.HubClient) (err error) {
 	}
 	fmt.Println()
 	fmt.Println("Devices/Services")
-	fmt.Println("SenderID             Type            Updated")
+	fmt.Println("SenderID             Type            GetUpdated")
 	fmt.Println("--------             ----            -------")
 	for _, profile := range profileList {
 		if profile.ClientType != authapi.ClientTypeUser {

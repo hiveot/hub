@@ -3,7 +3,6 @@ package things_test
 import (
 	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/utils"
 	"testing"
 	"time"
 
@@ -34,9 +33,9 @@ func TestCreateTD(t *testing.T) {
 		},
 	}
 
-	// created time must be set to ISO8601
+	// created time must be set to RFC3339
 	assert.NotEmpty(t, tdoc.Created)
-	t1, err := time.Parse(utils.ISO8601Format, tdoc.Created)
+	t1, err := time.Parse(time.RFC3339, tdoc.Created)
 	assert.NoError(t, err)
 	assert.NotNil(t, t1)
 

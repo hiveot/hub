@@ -33,8 +33,7 @@
 						>
 							<iconify-icon style="padding: 0 10px" icon="mdi:pencil"></iconify-icon>
                 {{/*replace show value on sse event*/}}
-							<span sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}"
-							      title="age: {{$.Values.Age $k}}">
+							<span sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
 							{{$.Values.ToString $k}}
 							</span>
                 {{$v.UnitSymbol}}
@@ -43,9 +42,10 @@
 					<div class="h-show-md">{{$v.Default}}</div>
 					<div class="h-show-lg">{{$v.Description}}</div>
 					<div class="h-show-sm"
-					     title="Updated: {{$.Values.Age $k}} ago by {{($.Values.SenderID $k)}}"
+					     sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
+					     title="Updated: {{$.Values.GetUpdated $k}} by {{($.Values.SenderID $k)}}"
 					>
-              {{$.Values.Updated $k}}
+              {{$.Values.GetUpdated $k}}
 					</div>
 
 				</li>

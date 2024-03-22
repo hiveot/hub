@@ -20,8 +20,8 @@ import (
 	"time"
 )
 
-// InboxPrefix is the INBOX subscription topic used by the client and RPC calls
-// _INBOX/{clientID}
+// InboxTopicFormat is the INBOX subscription topic used by the client and RPC calls
+// _INBOX/{clientID}    (clientID is the unique session clientID, not per-se the loginID)
 const InboxTopicFormat = transports.MessageTypeINBOX + "/%s"
 
 const keepAliveInterval = 30 // seconds
@@ -153,7 +153,9 @@ func (tp *MqttHubTransport) Connect(credentials string) error {
 	cancelFn()
 	if err != nil {
 		// provide a more meaningful error, the actual error is not returned by paho
+		tp.mux.RLock()
 		err = tp._status.LastError
+		tp.mux.RUnlock()
 	}
 	return err
 }

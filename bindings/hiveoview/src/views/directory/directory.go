@@ -15,8 +15,8 @@ import (
 const DirectoryTemplate = "directory.gohtml"
 
 type DirGroup struct {
-	Publisher string
-	Things    []*things.TD
+	AgentID string
+	Things  []*things.TD
 }
 
 type DirectoryData struct {
@@ -40,8 +40,8 @@ func sortByPublisher(tvList []things.ThingValue) *DirectoryData {
 		tplGroup, found := dirData.Groups[tv.SenderID]
 		if !found {
 			tplGroup = &DirGroup{
-				Publisher: tv.SenderID,
-				Things:    make([]*things.TD, 0),
+				AgentID: tv.SenderID,
+				Things:  make([]*things.TD, 0),
 			}
 			dirData.Groups[tv.SenderID] = tplGroup
 		}

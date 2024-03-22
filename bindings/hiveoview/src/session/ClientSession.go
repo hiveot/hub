@@ -1,6 +1,7 @@
 package session
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/core/state/stateclient"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -146,13 +147,20 @@ func (cs *ClientSession) onEvent(msg *things.ThingValue) {
 		thingAddr := fmt.Sprintf("%s/%s", msg.AgentID, msg.ThingID)
 		_ = cs.SendSSE(thingAddr, "")
 	} else if msg.Name == transports.EventNameProps {
-		// Publish sse event indicating one or more properties of a Thing has changed.
-		// The UI that displays this event can use this as a trigger to reload the
-		// fragment that displays this event:
-		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}/$properties"
-		// where $properties is transports.EventNameProps  (can the ui use JS to get this constant?)
-		thingAddr := fmt.Sprintf("%s/%s/%s", msg.AgentID, msg.ThingID, msg.Name)
-		_ = cs.SendSSE(thingAddr, string(msg.Data))
+		// Publish an sse event for each of the properties
+		// The UI that displays this event can use this as a trigger to load the
+		// property value:
+		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}/{{k}}"
+		props := make(map[string]string)
+		err := json.Unmarshal(msg.Data, &props)
+		if err == nil {
+			for k, v := range props {
+				thingAddr := fmt.Sprintf("%s/%s/%s", msg.AgentID, msg.ThingID, k)
+				_ = cs.SendSSE(thingAddr, v)
+				thingAddr = fmt.Sprintf("%s/%s/%s/updated", msg.AgentID, msg.ThingID, k)
+				_ = cs.SendSSE(thingAddr, msg.GetUpdated())
+			}
+		}
 	} else {
 		// Publish sse event indicating the event affordance or value has changed.
 		// The UI that displays this event can use this as a trigger to reload the
@@ -162,8 +170,10 @@ func (cs *ClientSession) onEvent(msg *things.ThingValue) {
 		thingAddr := fmt.Sprintf("%s/%s/%s", msg.AgentID, msg.ThingID, msg.Name)
 		_ = cs.SendSSE(thingAddr, string(msg.Data))
 		// TODO: improve on this crude way to update the 'updated' field
+		// Can the value contain an object with a value and updated field instead?
+		// htmx sse-swap does allow cherry picking the content unfortunately.
 		thingAddr = fmt.Sprintf("%s/%s/%s/updated", msg.AgentID, msg.ThingID, msg.Name)
-		_ = cs.SendSSE(thingAddr, msg.Updated())
+		_ = cs.SendSSE(thingAddr, msg.GetUpdated())
 	}
 }
 

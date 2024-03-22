@@ -38,7 +38,7 @@
 				<details>
 					<summary class="outline">
 						<span>Publisher:</span>
-						<span style="font-size: medium"><strong>{{.Publisher}}</strong></span>
+						<span style="font-size: medium"><strong>{{.AgentID}}</strong></span>
 						<span>- {{len .Things}} things</span>
 					</summary>
 
@@ -55,7 +55,7 @@
 						</li>
 
 						<!--=== for TD{} in .Things ===-->
-              {{$agentID := .Publisher}}
+              {{$agentID := .AgentID}}
               {{range .Things}}
 								<li>
 									<div class="h-show-md">
@@ -77,7 +77,7 @@
 									<div class="h-show-sm">{{.GetAtTypeVocab}}</div>
 									<div class="h-show-lg">{{len .Events}} outputs</div>
 									<div class="h-show-lg">{{len .Actions}} actions</div>
-									<div class="h-show-xl">{{.GetAge}} ago</div>
+									<div class="h-show-xl">{{.GetUpdated}}</div>
 								</li>
               {{end}}
 

@@ -56,7 +56,7 @@ func HandleListDirectory(hc *hubclient.HubClient) (err error) {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Agent ID / Thing ID                 @type                               Title                                #props  #events #actions   Updated         \n")
+	fmt.Printf("Agent ID / Thing ID                 @type                               Title                                #props  #events #actions   GetUpdated         \n")
 	fmt.Printf("----------------------------------  ----------------------------------  -----------------------------------  ------  ------- --------   -----------------------------\n")
 	i := 0
 	tv, valid, err := cursor.First()

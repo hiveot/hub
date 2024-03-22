@@ -1,8 +1,10 @@
 package historycli
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/core/history/historyclient"
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
 
@@ -121,13 +123,20 @@ func HandleListEvents(hc *hubclient.HubClient, agentID, thingID string, name str
 	count := 0
 	for tv, valid, err := cursor.First(); err == nil && valid && count < limit; tv, valid, err = cursor.Next() {
 		count++
+		value := string(tv.Data)
+		// show number of properties
+		if tv.Name == transports.EventNameProps {
+			props := make(map[string]string)
+			_ = json.Unmarshal(tv.Data, &props)
+			value = fmt.Sprintf("(%d properties)", len(props))
+		}
 
 		fmt.Printf("%-14s %-18s %-30s %-20.20s %-30.30s\n",
 			tv.AgentID,
 			tv.ThingID,
 			utils.FormatMSE(tv.CreatedMSec, false),
 			tv.Name,
-			tv.Data,
+			value,
 		)
 	}
 	cursor.Release()
