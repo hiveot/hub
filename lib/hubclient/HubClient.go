@@ -640,7 +640,7 @@ func NewHubClientFromTransport(transport transports.IHubTransport, clientID stri
 // Invoke hubClient.ConnectWithXy() to connect
 //
 //   - url of server to connect to.
-//   - clientID of the client that will be connecting
+//   - clientID is the account/login ID of the client that will be connecting
 //   - keyPair is this client's serialized private/public key pair, or "" to create them.
 //   - caCert of server or nil to not verify server cert
 //   - core server to use, "nats" or "mqtt". Default "" will use nats if url starts with "nats" or mqtt otherwise.

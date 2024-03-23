@@ -1,8 +1,10 @@
 package config
 
 type IPNetConfig struct {
-	LogLevel     string `yaml:"logLevel" json:"logLevel"`
-	PollInterval int    `yaml:"pollInterval" json:"pollInterval"`
+	// AgentID is this service thingID to publish as. Default is "ipnet"
+	AgentID      string `yaml:"agentID"`
+	LogLevel     string `yaml:"logLevel"`
+	PollInterval int    `yaml:"pollInterval"`
 
 	// also scan common ports
 	PortScan bool `yaml:"portScan" json:"portScan"`

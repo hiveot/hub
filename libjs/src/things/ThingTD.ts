@@ -151,7 +151,7 @@ export class ThingTD extends Object {
     // describes the parameter(s).
     //
     // @param id is the key under which it is stored in the action map.
-    // @param actionType one of the ActionTypes from the vocabulary. Use "" if not known
+    // @param actionType one of the vocabulary ActionTypes. Use "" if not known
     // @param title is the short display title of the action.
     // @param description optional detailed description of the action
     // @param input with optional dataschema of the action input data

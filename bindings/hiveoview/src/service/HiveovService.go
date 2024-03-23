@@ -131,7 +131,7 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 func (svc *HiveovService) CreateHiveoviewTD() *things.TD {
 	title := "Web Server"
 	deviceType := vocab.ThingService
-	td := things.NewTD(hiveoviewapi.HiveoviewServiceCap, title, deviceType)
+	td := things.NewTD(hiveoviewapi.HiveoviewServiceID, title, deviceType)
 	// TODO: add properties: uptime, max nr clients
 
 	td.AddEvent("activeSessions", "", "Nr Sessions", "Number of currently active sessions",
@@ -151,7 +151,7 @@ func (svc *HiveovService) Start(hc *hubclient.HubClient) error {
 	// publish a TD for each service capability and set allowable roles
 	// in this case only a management capability is published
 	myProfile := authclient.NewProfileClient(svc.hc)
-	err := myProfile.SetServicePermissions(hiveoviewapi.HiveoviewServiceCap, []string{
+	err := myProfile.SetServicePermissions(hiveoviewapi.HiveoviewServiceID, []string{
 		authapi.ClientRoleAdmin,
 		authapi.ClientRoleService})
 	if err != nil {
@@ -160,7 +160,7 @@ func (svc *HiveovService) Start(hc *hubclient.HubClient) error {
 
 	myTD := svc.CreateHiveoviewTD()
 	myTDJSON, _ := json.Marshal(myTD)
-	err = svc.hc.PubEvent(hiveoviewapi.HiveoviewServiceCap, transports.EventNameTD, myTDJSON)
+	err = svc.hc.PubEvent(hiveoviewapi.HiveoviewServiceID, transports.EventNameTD, myTDJSON)
 	if err != nil {
 		slog.Error("failed to publish the hiveoview service TD", "err", err.Error())
 	}

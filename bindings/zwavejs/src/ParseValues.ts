@@ -96,7 +96,7 @@ export class ParseValues {
             this.setIf("zwavePlusRoleType", node.zwavePlusRoleType);
             this.setIf("zwavePlusRoleTypeName", getEnumMemberName(ZWavePlusRoleType, node.zwavePlusRoleType));
         }
-        this.setIf("zwPlusVersion", node.zwavePlusVersion);
+        this.setIf("zwavePlusVersion", node.zwavePlusVersion);
 
         // add value ID values
         let vids = node.getDefinedValueIDs()

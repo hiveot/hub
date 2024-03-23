@@ -88,9 +88,10 @@ function addEvent(td: ThingTD, node: ZWaveNode, vid: TranslatedValueID, eventID:
 // - convert ZWave vocabulary to WoT/HiveOT vocabulary
 // - build a TD document containing properties, events and actions
 // - if this is the controller node, add controller attributes and actions
-// @param zwapi:
-// @param node
-// @param vidLogFD: optional file handle to log VID info to CSV
+// @param zwapi: wrapper around the zwave driver
+// @param node: the zwave node definition
+// @param vidLogFD: optional file handle to log VID info to CSV for further analysis
+// @param maxNrScenes: limit the nr of scenes in the TD as it would bloat the TD to a massive size.
 export function parseNode(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | undefined, maxNrScenes: number): ThingTD {
     let td: ThingTD;
 
@@ -206,15 +207,18 @@ export function parseNode(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
 
     action = td.AddAction("ping", "", "Ping", WoTDataTypeNone)
     action.description = "Ping the device"
+    // todo: what type of response is expected
 
     action = td.AddAction("refreshInfo", "", "Refresh Device Info", WoTDataTypeNone)
     action.description = "Resets (almost) all information about this node and forces a fresh interview. " +
         "Ignored when interview is in progress. After this action, the node will no longer be ready. This can take a long time."
+    // todo: what type of response is expected
 
 
     action = td.AddAction("refreshValues", "", "Refresh Device Values", WoTDataTypeNone)
     action.description = "Refresh all non-static sensor and actuator values. " +
         "Use sparingly. This can take a long time and generate a lot of traffic."
+    // todo: what type of response is expected
 
 
     //--- Step 4: add properties, events, and actions from the ValueIDs

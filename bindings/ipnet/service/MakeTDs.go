@@ -10,8 +10,7 @@ import (
 // MakeBindingTD generates a TD document for this binding
 // containing configuration properties, event and action definitions
 func (svc *IPNetBinding) MakeBindingTD() *things.TD {
-	thingID := svc.hc.ClientID()
-	td := things.NewTD(thingID, "IPNet binding", vocab.ThingServiceAdapter)
+	td := things.NewTD(svc.config.AgentID, "IPNet binding", vocab.ThingServiceAdapter)
 
 	// these are configured through the configuration file.
 	prop := td.AddPropertyAsInt(vocab.PropDevicePollinterval, vocab.PropDevicePollinterval, "Poll Interval")
@@ -30,7 +29,7 @@ func (svc *IPNetBinding) MakeBindingProps() map[string]string {
 
 // MakeDeviceTD generates a TD document for discovered devices
 func (svc *IPNetBinding) MakeDeviceTD(deviceInfo *IPDeviceInfo) *things.TD {
-	thingID := deviceInfo.MAC
+	thingID := "urn:" + deviceInfo.MAC
 	deviceName := deviceInfo.GetDefaultName()
 	td := things.NewTD(thingID, deviceName, vocab.ThingNet)
 

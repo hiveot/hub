@@ -90,9 +90,10 @@ type TD struct {
 	// Set of security definition names, chosen from those defined in securityDefinitions
 	// In HiveOT security is handled by the Hub. HiveOT Things will use the NoSecurityScheme type
 	Security string `json:"security"`
+
 	// Set of named security configurations (definitions only).
 	// Not actually applied unless names are used in a security name-value pair. (why is this mandatory then?)
-	SecurityDefinitions map[string]string `json:"securityDefinitions,omitempty"`
+	SecurityDefinitions map[string]SecurityScheme `json:"securityDefinitions"`
 
 	// profile: todo
 	// schemaDefinitions: todo
@@ -410,7 +411,16 @@ func (tdoc *TD) UpdateTitleDescription(title string, description string) {
 }
 
 // NewTD creates a new Thing Description document with properties, events and actions
-// The 'title' should match the value of 'vocab.PropDeviceName' property.
+//
+// Conventions:
+// 1. thingID is a URI, starting with the "urn:" prefix as per WoT standard.
+// 2. If title is editable then the user should add a property with ID vocab.PropDeviceTitle and update the TD if it is set.
+// 3. If description is editable then the user should add a property with ID vocab.PropDeviceDescription and
+// update the TD description if it is set.
+// 4. the deviceType comes from the vocabulary and has ID vocab.DeviceType<Xyz>
+//
+// Devices or bindings are not expected to use forms. The form content describes the
+// connection protocol which should reference the hub, not the device.
 //
 //	 Its structure:
 //		{
@@ -418,7 +428,7 @@ func (tdoc *TD) UpdateTitleDescription(title string, description string) {
 //		     @type: <deviceType>,        // required in HiveOT. See DeviceType vocabulary
 //		     id: <thingID>,              // urn:[{prefix}:]{randomID}   required in hiveot
 //		     title: string,              // required. Name of the thing
-//		     created: <iso8601>,         // will be the current timestamp. See vocabulary TimeFormat
+//		     created: <rfc3339>,         // will be the current timestamp. See vocabulary TimeFormat
 //		     actions: {name:TDAction, ...},
 //		     events:  {name: TDEvent, ...},
 //		     properties: {name: TDProperty, ...}
@@ -439,10 +449,13 @@ func NewTD(thingID string, title string, deviceType string) *TD {
 		ID:         thingID,
 		Modified:   time.Now().Format(time.RFC3339),
 		Properties: map[string]*PropertyAffordance{},
-		// security schemas don't apply to HiveOT devices, except services exposed by the hub itself
-		Security:    vocab.WoTNoSecurityScheme,
-		Title:       title,
-		updateMutex: sync.RWMutex{},
+
+		// security schemas are optional for devices themselves but will be added by the Hub services
+		// that provide the TDD.
+		Security:            vocab.WoTNoSecurityScheme,
+		SecurityDefinitions: make(map[string]SecurityScheme),
+		Title:               title,
+		updateMutex:         sync.RWMutex{},
 	}
 
 	return &td
