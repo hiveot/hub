@@ -581,11 +581,11 @@ func (hc *HubClient) SetRPCCapability(capID string, capMethods map[string]interf
 				err = fmt.Errorf("unknown capability '%s'", tv.ThingID)
 				return nil, err
 			}
-			capMethod, found := methods[tv.Name]
+			capMethod, found := methods[tv.Key]
 			if !found {
-				err = fmt.Errorf("method '%s' not part of capability '%s'", tv.Name, capID)
+				err = fmt.Errorf("method '%s' not part of capability '%s'", tv.Key, capID)
 				slog.Warn("SubRPCCapability; unknown method",
-					slog.String("methodName", tv.Name),
+					slog.String("methodName", tv.Key),
 					slog.String("senderID", tv.SenderID))
 				return nil, err
 			}
@@ -606,13 +606,13 @@ func (hc *HubClient) SetRPCCapability(capID string, capMethods map[string]interf
 //
 //	agentID is the ID of the device or service publishing the event, or "" for any agent.
 //	thingID is the ID of the Thing whose events to receive, or "" for any Things.
-//	eventName is the name of the event, or "" for any event
+//	eventKey is the key of the event from the TD, or "" for any event
 //
 // The handler receives an event value message with data payload.
-func (hc *HubClient) SubEvents(agentID string, thingID string, eventName string) error {
+func (hc *HubClient) SubEvents(agentID string, thingID string, eventKey string) error {
 
 	subAddr := hc.MakeAddress(
-		transports.MessageTypeEvent, agentID, thingID, eventName, "")
+		transports.MessageTypeEvent, agentID, thingID, eventKey, "")
 	err := hc.transport.Subscribe(subAddr)
 	return err
 }

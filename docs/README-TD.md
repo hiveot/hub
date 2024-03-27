@@ -11,19 +11,17 @@ The WoT specification is closer to a framework than an application. As such it d
 
 ## What Are 'Things'?
 
-Things are I/O Devices, Gateways, Publishers, and Services.
+Things are I/O Devices and services that provide information. 
 
-Most IoT 'things' are pieces of hardware that have embedded software that manages its behavior. Virtual IoT devices are build with software only but are otherwise considered identical to hardware devices. Services can also be provided as Things.
-
-IoT devices often fulfill multiple roles: a part provides network access, a part provides access to inputs and outputs, a part reports its state, and a part that manages its configuration.
+Most IoT 'things' are pieces of hardware that have embedded software that manages its behavior. IoT devices build with software are also considered Things as are services that provide a capability to retrieve information, for example a weather forecasting service.
 
 HiveOT makes the following distinction based on the primary role of the device. These are identified by their device type as provided in the TD @type field and defined in the HiveOT vocabulary.
 
-* A gateway is a Thing that provides access to other Things. A Z-Wave controller USB-stick is a gateway that uses the Z-Wave protocol to connect to I/O devices. A gateway is independent of the Things it provides access to and can have its own inputs or outputs.
-* A publisher is a Thing that publishes Thing information to the HiveOT Hub. A publisher has authorization to publish and subscribe to the things it is the publisher of. For example, a gateway is the publisher of the Things obtained through the gateway.
-* An I/O device or service is a Thing whose primary role is to provide access to inputs and outputs and has its own attributes and configuration.
-* A Hub bridge is a device that connects two Hubs and shares Thing information between them.
-* A service is software that offers a capability in the IoT ecosystem. For example, a directory service stores TD documents. Services are also Things.
+* A gateway is a device that provides access to other Things. A Z-Wave controller USB-stick is a gateway that uses the Z-Wave protocol to connect to Z-Wave devices. A gateway is a Thing independent of the Things it provides access to and can have its own inputs, outputs or configuration.
+* An agent is a Thing that publishes Thing information to the HiveOT Hub. A publisher has authorization to publish and subscribe to the things it is the publisher of. For the Z-Wave agent publishes Thing information of the Z-Wave controller and the devices obtained from that controller.
+* An I/O device is a Thing whose primary role is to provide access to inputs and outputs and has its own attributes and configuration.
+* A Hub bridge is a software device that connects two Hubs and shares configured Thing information between them.
+* A service is a software Thing that offers a capability in the IoT ecosystem. For example, a history service provides a history of Thing values.
 
 ## Thing Description Document (TD)
 
