@@ -49,7 +49,7 @@ func (svc *UpdateDirectoryService) UpdateTD(ctx hubclient.ServiceContext, args d
 
 	// store the TD ThingValue
 	thingValue := things.NewThingValue(
-		transports.MessageTypeEvent, args.AgentID, args.ThingID, transports.EventNameTD, string(args.TDDoc), ctx.SenderID)
+		transports.MessageTypeEvent, args.AgentID, args.ThingID, transports.EventNameTD, args.TDDoc, ctx.SenderID)
 	bucketData, _ := json.Marshal(thingValue)
 	thingAddr := args.AgentID + "/" + args.ThingID
 	err := svc.bucket.Set(thingAddr, bucketData)

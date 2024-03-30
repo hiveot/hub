@@ -29,7 +29,7 @@ func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 		rd := dirclient.NewReadDirectoryClient(hc)
 		tv, err := rd.GetTD(agentID, thingID)
 		if err == nil {
-			err = json.Unmarshal(tv.Data, &td)
+			err = json.Unmarshal([]byte(tv.Data), &td)
 			if err == nil {
 				prop = td.GetProperty(propKey)
 			}

@@ -24,10 +24,10 @@ const (
 	//  Write permissions: pubEvents, pubActions, pubConfig
 	ClientRoleAdmin = "admin"
 
-	// ClientRoleDevice lets a client publish things events and subscribe to device actions
+	// ClientRoleAgent lets a device agent publish thing events and subscribe to device actions
 	//  Read permissions: subActions
 	//  Write permissions: pubTDs, pubEvents
-	ClientRoleDevice = "device"
+	ClientRoleAgent = "agent"
 
 	// ClientRoleManager lets a client subscribe to Thing TD, events, publish actions and update configuration
 	//  Read permissions: subEvents
@@ -66,7 +66,7 @@ const (
 //            sub       event   -            -
 // admin      pub       action  -            -
 //            sub       event   -            -
-// device     pub       event   {clientID}   -
+// agent      pub       event   {clientID}   -
 //            sub       event   -		     -
 //            sub       action  {clientID}   -
 // service    pub       -       -            -
@@ -77,7 +77,7 @@ const (
 // {clientID} is replaced with the client's loginID when publishing or subscribing
 
 // devices can publish events, replies and subscribe to their own actions and config
-var devicePermissions = []msgserver.RolePermission{
+var agentPermissions = []msgserver.RolePermission{
 	{
 		MsgType:  transports.MessageTypeEvent,
 		AgentID:  "{clientID}", // devices can only publish their own events
@@ -149,7 +149,7 @@ var servicePermissions = append(adminPermissions, msgserver.RolePermission{
 // DefaultRolePermissions contains the default pub/sub permissions for each user role
 var DefaultRolePermissions = map[string][]msgserver.RolePermission{
 	ClientRoleNone:     nil,
-	ClientRoleDevice:   devicePermissions,
+	ClientRoleAgent:    agentPermissions,
 	ClientRoleService:  servicePermissions,
 	ClientRoleViewer:   viewerPermissions,
 	ClientRoleOperator: operatorPermissions,

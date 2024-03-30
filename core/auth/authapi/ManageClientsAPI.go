@@ -8,7 +8,7 @@ const AuthManageClientsCapability = "manageClients"
 
 // Types of clients that are issued authentication tokens
 const (
-	ClientTypeDevice  = "device"
+	ClientTypeAgent   = "agent"
 	ClientTypeService = "service"
 	ClientTypeUser    = "user"
 )

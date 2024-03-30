@@ -58,34 +58,45 @@ Use of external protocol servers such as Redis can be accommodated with the cave
 Protocol servers separate the message flow from agents and consumers. This is managed through their addresses. 
 It is required that all servers are able to authenticate the sender using the clientID registered with the authentication service. 
 
-### HTTPS/SSE
+### HTTPS/SSE/WS
 
-The HTTPS/SSE protocol binding opens a listening TLS port for clients (both agents and consumers) to connect to. The connection handles publishing of events, actions and rpc requests, which are passed through the middleware and handled by the runtime as described below.
+The HTTPS/SSE/WS protocol binding opens a listening TLS port for clients (both agents and consumers) to connect to. The connection handles publishing of events, actions and rpc requests, which are passed through the middleware and handled by the runtime as described below.
 
-The REST paths are:
-* GET "/event/{agentID}/{thingID}/{key}" path to get the latest digital events. 
-* POST "/action/{agentID}/{thingID}/{key}" path for requesting actions. Send by consumers and handled by the router.
-* POST "/rpc/{agentID}/{thingID}/{key}" path for RPC requests. Send by consumers and handled by the router.
+The default paths below are used by the server and included in the TD document forms of the Things. RPC paths are defined in the TDD action form.
 
+Agent REST paths:
+ * POST "/event/{agentID}/{thingID}/{key}"          post event 
+ * GET  "/action/{agentID}/{thingID}"               get queued actions (planned)
+ * POST "/rpc/{serviceID}/{interfaceID}/{method}"  invoke method on service
+
+Consumer REST paths:
+ * GET  "/thing/values/{agentID}/{thingID}"          read current Thing values
+ * POST "/action/digitwin/{agentID}/{thingID}/{key}" request action from the digital twin
+ * POST "/rpc/{serviceID}/{interfaceID}/{method}"    invoke method on service
+
+The result of posting an action request is an action status message that indicates if the request is queued or delivered. 
+The result of an RPC request is the result of the RPC. If the service is not reachable the request will fail.
+ 
 The requests must use TLS and carry a valid authentication token.
 
-In addition, the server supports SSE sessions (Server Side Events) to notify consumers of events, agents of actions and services of events.
+See the [HTTPS Binding Config](../runtime/protocols/httpsbinding/HttpsBindingConfig.go) for more details.
 
-The SSE path is:
-* GET "/sse/{clientID}"
+#### SSE
 
-Multiple SSE connections with the same clientID are allowed.
+The server supports SSE sessions (Server Side Events) to notify consumers of events, agents of actions and services of rpc requests.
 
-### WebSockets
+The SSE connection path is and requires a valid session token:
+* GET "/sse"
 
-The WebSockets protocol binding opens a listening TLS port for clients (both agents and consumers) to connect to. The connection handles publishing of events, actions and rpc requests, which are passed through the middleware and handled by the runtime as described below.
+#### WebSockets
 
-WebSockets create a persistent connect (session) and depend on the message payload to identify the message. This uses the ThingValue object exchange messages. The connecting client generates a unique request ID for each message, based on the client's session ID and receives a response message with the same request ID.
+The HTTP server supports websocket connections. The connection handles publishing of events, actions and rpc requests, which are passed through the middleware and handled by the runtime as described below.
 
-The WebSocket path is:
-* "/wss/{clientID}
+WebSockets create a persistent connect (session) and use the message payload to identify the message. This uses the ThingValue object for exchange of messages. 
 
-Multiple WS connections with the same clientID are allowed.
+The WebSocket connection path is and requires a valid session token:
+* GET "/wss"
+
 
 ### gRPC
 

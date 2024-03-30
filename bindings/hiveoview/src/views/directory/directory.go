@@ -46,7 +46,7 @@ func sortByPublisher(tvList []things.ThingValue) *DirectoryData {
 			dirData.Groups[tv.SenderID] = tplGroup
 		}
 		td := things.TD{}
-		err := json.Unmarshal(tv.Data, &td)
+		err := json.Unmarshal([]byte(tv.Data), &td)
 		if err == nil {
 			tplGroup.Things = append(tplGroup.Things, &td)
 			if len(tplGroup.Things) == 0 {

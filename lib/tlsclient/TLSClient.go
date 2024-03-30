@@ -207,6 +207,8 @@ func (cl *TLSClient) ConnectWithClientCert(clientCert *tls.Certificate) (err err
 // ConnectWithJwtAccessToken Sets login ID and secret for JWT authentication using an access
 // token obtained elsewhere.
 // This uses the provided access token as bearer token in the authorization header
+//
+// No error is returned as this just sets up the token and http client. A messages are send yet.
 func (cl *TLSClient) ConnectWithJwtAccessToken(loginID string, accessToken string) {
 	cl.userID = loginID
 	cl.jwtAccessToken = accessToken

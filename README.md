@@ -6,26 +6,51 @@ The Hub for the *Hive-of-Things* provides a secure core to view and operate IoT 
 
 ## Project Status
 
-Status: The status of the Hub is alpha development (Mar 2024)
+Status: The Hub core is currently being reworked to use a "digital twins runtime" with multiple concurrent protocol support. (Mar 2024). This branch is not functional. 
 
-Current work: Migrate to the "digital twins runtime" with additional protocol support.
+TODO before alpha:
+1. authentication service
+	1. user/role management
+	2. user JWT authentication
+	3. role authorization (viewer, operator, manager, admin)
+2. https protocol binding
+   1. authentication
+      * Password authentication
+      * JWT token authentication
+      * Client certificate authentication
+   2. session management
+   3. SSE extension
+   4. WS extension
+   5. hubclient https/we/sse transport
+3. middleware
+   1. authorization
+   2. logging
+4. message handlers (one for each message type)
+   1. Thing event handler
+   2. Thing action handler
+   3. RPC request handler
+5. digital twin service
+   1. TDD store
+   2. Value store
 
-Completed core services:
+6. Rework existing services using http/sse transport
+   * history service (core/history)
+   * provisioning service (core/idprov)
+   * state storage service (core/state)
+   * launcher service (core/launcher)
+   
+7. Rework existing IoT bindings to work with the digital twin runtime
+   * 1-wire protocol binding using owserver-v2 gateway (bindings/owserver)
+   * insteon binding using isy99x gateway (bindings/isy99x)
+   * zwave protocol binding using zwavejs (bindings/zwavejs)
+   * web client using html/htmx and go templates (bindings/hiveoview) - in progress
 
-* embedded messaging server for MQTT and Nats
-* authentication and authorization (core/auth)
-* directory service (core/directory)
-* history service (core/history)
-* provisioning service (core/idprov)
-* state storage service (core/state)
-* launcher service (core/launcher)
+Future Roadmap:
+1. mqtt protocol binding
+1. nats protocol binding
+1. gRPC protocol binding
+1. Action queue
 
-Bindings
-
-* 1-wire protocol binding using owserver-v2 gateway (bindings/owserver)
-* insteon binding using isy99x gateway (bindings/isy99x)
-* zwave protocol binding using zwavejs (bindings/zwavejs)
-* web client using html/htmx and go templates (bindings/hiveoview) - in progress
 
 Integrations
 
@@ -74,7 +99,7 @@ HiveOT follows the 'WoT' (Web of Things) open standard developed by the W3C orga
 
 Integration with 3rd party IoT devices is supported through the use of protocol bindings. These protocol bindings translate between the 3rd device protocol and WoT defined messages.
 
-The Hub supports multiple communication protocols, such as HTTP, WebSocket, NATS, and MQTT message bus protocols through embedded servers.
+The Hub supports multiple communication protocols, such as HTTPS/SSE, WebSocket, NATS, and MQTT message bus protocols through embedded servers.
 
 Last but not least, the 'hive' can be expanded by connecting hubs to each other through a 'bridge'. The bridge lets the Hub owner share select IoT information with other hubs. (future feature)
 

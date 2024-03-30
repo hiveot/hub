@@ -38,10 +38,7 @@ func getLatest(agentID string, thingID string, hc *hubclient.HubClient) (things.
 		return data, err
 	}
 	for _, tv := range tvs {
-		data.Set(tv.Name, tv)
-		if tv.Data == nil {
-			tv.Data = []byte("")
-		}
+		data.Set(tv.Key, tv)
 	}
 	//_ = data.of("")
 	return data, nil
@@ -71,7 +68,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 		tv, err2 := rd.GetTD(agentID, thingID)
 		err = err2
 		if err == nil {
-			err = json.Unmarshal(tv.Data, &thingData.TD)
+			err = json.Unmarshal([]byte(tv.Data), &thingData.TD)
 			// split properties into attributes and configuration
 			for k, prop := range thingData.TD.Properties {
 				if prop.ReadOnly {

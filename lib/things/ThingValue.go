@@ -28,7 +28,7 @@ type ThingValue struct {
 
 	// Data converted to text from the type defined by the TD affordance DataSchema.
 	// This can be omitted if no data is associated with the event or action.
-	Data string `json:"data,omitempty"`
+	Data []byte `json:"data,omitempty"`
 
 	// Timestamp the value was created in msec since Epoch Jan 1st,1970 00:00 utc
 	CreatedMSec int64 `json:"created,omitempty"`
@@ -61,7 +61,7 @@ func (tv *ThingValue) GetUpdated() string {
 //	key is the property, event or action key of the value as described in the thing TD
 //	value is the stringified value from the type defined in the value's TD dataschema
 //	senderID is the accountID of the creator of the value
-func NewThingValue(messageType, agentID, thingID, key string, data string, senderID string) *ThingValue {
+func NewThingValue(messageType, agentID, thingID, key string, data []byte, senderID string) *ThingValue {
 	return &ThingValue{
 		MessageType: messageType,
 		AgentID:     agentID,

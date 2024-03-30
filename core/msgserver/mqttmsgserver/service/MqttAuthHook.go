@@ -5,10 +5,10 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/hiveot/hub/core/msgserver"
-	jwtauth2 "github.com/hiveot/hub/core/msgserver/mqttmsgserver/jwtauth"
 	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
 	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/runtime/authn/jwtauth"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/packets"
 	"golang.org/x/crypto/bcrypt"
@@ -62,7 +62,7 @@ func (hook *MqttAuthHook) CreateKeyPair() (kp keys.IHiveKey) {
 
 // CreateToken creates a new JWT authtoken for a client.
 func (hook *MqttAuthHook) CreateToken(authInfo msgserver.ClientAuthInfo) (token string, err error) {
-	token, err = jwtauth2.CreateToken(authInfo, hook.signingKey)
+	token, err = jwtauth.CreateToken(authInfo, hook.signingKey)
 	return token, err
 }
 
@@ -329,7 +329,7 @@ func (hook *MqttAuthHook) SetServicePermissions(
 func (hook *MqttAuthHook) ValidateToken(
 	clientID string, token string, signedNonce string, nonce string) (err error) {
 
-	_, err = jwtauth2.ValidateToken(clientID, token, hook.signingKey, signedNonce, nonce)
+	_, err = jwtauth.ValidateToken(clientID, token, hook.signingKey, signedNonce, nonce)
 	//slog.Debug("ValidateToken", "clientID", clientID, "err", err)
 	return err
 }

@@ -348,7 +348,7 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *things.Thing
 				//SenderID: msg.Header.
 				AgentID:     pubID,
 				ThingID:     thID,
-				Name:        name,
+				Key:         name,
 				CreatedMSec: timeStamp.UnixMilli(),
 				Data:        natsMsg.Data,
 			}
