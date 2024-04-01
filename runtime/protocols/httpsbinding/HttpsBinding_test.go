@@ -7,7 +7,7 @@ import (
 	thing "github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/runtime/authn/jwtauth"
-	"github.com/hiveot/hub/runtime/protocolbindings/httpsbinding"
+	"github.com/hiveot/hub/runtime/protocols/httpsbinding"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -28,7 +28,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
-	svc := httpsbinding.NewHttpsBinding(testPort,
+	config := httpsbinding.NewHttpsBindingConfig()
+	config.Port = testPort
+	svc := httpsbinding.NewHttpsBinding(config,
 		certBundle.ClientKey, certBundle.ServerCert, certBundle.CaCert,
 		func(tv *thing.ThingValue) ([]byte, error) {
 			return nil, nil
@@ -38,6 +40,7 @@ func TestStartStop(t *testing.T) {
 	svc.Stop()
 }
 
+// Test publishing an event
 func TestPubEvent(t *testing.T) {
 	var rxMsg *thing.ThingValue
 	var testMsg = "hello world"
@@ -47,7 +50,9 @@ func TestPubEvent(t *testing.T) {
 	var eventKey = "key1"
 
 	// 1. start the binding
-	svc := httpsbinding.NewHttpsBinding(testPort,
+	config := httpsbinding.NewHttpsBindingConfig()
+	config.Port = testPort
+	svc := httpsbinding.NewHttpsBinding(config,
 		certBundle.ServerKey, certBundle.ServerCert, certBundle.CaCert,
 		func(tv *thing.ThingValue) ([]byte, error) {
 			rxMsg = tv

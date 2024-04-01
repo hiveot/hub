@@ -91,7 +91,7 @@ type HttpsBindingConfig struct {
 
 // NewHttpsBindingConfig creates a new instance of the https binding configuration
 // with default values
-func NewHttpsBindingConfig() *HttpsBindingConfig {
+func NewHttpsBindingConfig() HttpsBindingConfig {
 	cfg := HttpsBindingConfig{
 		Host:      "",
 		Port:      444,
@@ -107,5 +107,5 @@ func NewHttpsBindingConfig() *HttpsBindingConfig {
 		SSEPath:        "/sse",
 		WSPath:         "/ws",
 	}
-	return &cfg
+	return cfg
 }

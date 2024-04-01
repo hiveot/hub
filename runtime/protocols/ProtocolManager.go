@@ -5,8 +5,9 @@ import (
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/keys"
 	thing "github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/protocolbindings/api"
-	"github.com/hiveot/hub/runtime/protocolbindings/httpsbinding"
+	"github.com/hiveot/hub/runtime"
+	"github.com/hiveot/hub/runtime/protocols/api"
+	"github.com/hiveot/hub/runtime/protocols/httpsbinding"
 	"log/slog"
 )
 
@@ -44,13 +45,12 @@ func (svc *ProtocolManager) Stop() {
 }
 
 // NewProtocolManager creates a new instance of the protocol manager
-func NewProtocolManager(
+func NewProtocolManager(config *runtime.RuntimeConfig,
 	privKey keys.IHiveKey, serverCert *tls.Certificate, caCert *x509.Certificate,
 	msgHandler func(tv *thing.ThingValue) ([]byte, error)) *ProtocolManager {
-	httpsPort := uint(9000)
 	svc := ProtocolManager{}
 	svc.AddProtocolBinding(
-		httpsbinding.NewHttpsBinding(httpsPort, privKey, serverCert, caCert, msgHandler))
+		httpsbinding.NewHttpsBinding(config.HttpsBindingConfig, privKey, serverCert, caCert, msgHandler))
 
 	return &svc
 }

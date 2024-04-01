@@ -1,8 +1,8 @@
 package jwtauth_test
 
 import (
-	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/runtime/authn"
 	"github.com/hiveot/hub/runtime/authn/jwtauth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -11,7 +11,7 @@ import (
 
 func TestCreateSessionToken(t *testing.T) {
 	const clientID = "user1"
-	const clientType = authapi.ClientTypeUser
+	const clientType = authn.ClientTypeUser
 	sessionID := "session1"
 	signingKey := keys.NewEcdsaKey()
 

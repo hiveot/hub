@@ -1,4 +1,4 @@
-package service
+package valuestore
 
 import (
 	"encoding/json"

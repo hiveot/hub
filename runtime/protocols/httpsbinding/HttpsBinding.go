@@ -17,6 +17,8 @@ import (
 // HttpsBinding for handling messages over HTTPS
 // THis wraps the library's https server and add routes and middleware for use in the binding
 type HttpsBinding struct {
+	// port and path configuration
+	config *HttpsBindingConfig
 
 	// server key
 	privKey keys.IHiveKey
@@ -73,7 +75,7 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 		r.Use(AddSessionFromToken(svc.privKey.PublicKey()))
 
 		// agents
-		r.Post("/event/{agentID}/{thingID}/{key}", svc.handlePostEvent)
+		r.Post(svc.config.PostEventPath, svc.handlePostEvent)
 		//r.Get("/action/{agentID}/{thingID}", svc.handleGetQueuedActions)
 
 		// consumers
@@ -138,15 +140,18 @@ func (svc *HttpsBinding) Stop() {
 
 // NewHttpsBinding creates a new instance of the HTTPS Server with JWT authentication
 // and endpoints for bindings.
-func NewHttpsBinding(
-	port uint,
+func NewHttpsBinding(config *HttpsBindingConfig,
 	privKey keys.IHiveKey,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	handler func(tv *things.ThingValue) ([]byte, error),
 ) *HttpsBinding {
-	httpServer, router := tlsserver.NewTLSServer("", port, serverCert, caCert)
+
+	httpServer, router := tlsserver.NewTLSServer(
+		config.Host, uint(config.Port), serverCert, caCert)
+
 	svc := HttpsBinding{
+		config:        config,
 		privKey:       privKey,
 		httpServer:    httpServer,
 		handleMessage: handler,
