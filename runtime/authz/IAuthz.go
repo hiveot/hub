@@ -49,27 +49,16 @@ const (
 // RolePermission defines authorization for a role.
 // Each permission defines the source/things the user can pub/sub to.
 type RolePermission struct {
-	AgentID  string // device or service publishing the Thing data, or "" for all
-	ThingID  string // thingID or capability, or "" for all
-	MsgType  string // rpc, event, action, config, or "" for all message types
-	MsgName  string // action name or "" for all actions
-	AllowPub bool   // allow publishing of this message
-	AllowSub bool   // allow subscribing to this message
-}
-
-// AuthRolesCapability defines the 'capability' address part used in sending messages
-const AuthRolesCapability = "roles"
-
-// CreateRoleReq defines the request to create a new custom role
-const CreateRoleReq = "createRole"
-
-type CreateRoleArgs struct {
-	Role string `json:"role"`
-}
-
-// DeleteRoleReq defines the request to delete a custom role.
-const DeleteRoleReq = "deleteRole"
-
-type DeleteRoleArgs struct {
-	Role string `json:"role"`
+	// device or service publishing the Thing data, or "" for all
+	AgentID string
+	// thingID or capability, or "" for all
+	ThingID string
+	// rpc, event, action, config, or "" for all message types
+	MsgType string
+	// action name or "" for all actions
+	MsgName string
+	// allow publishing of this message
+	AllowPub bool
+	// allow subscribing to this message
+	AllowSub bool
 }

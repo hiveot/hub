@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/runtime/authn"
+	"github.com/hiveot/hub/runtime/authz"
 	"log/slog"
 	"os"
 	"path"
@@ -22,11 +23,12 @@ import (
 // User passwords are stored using ARGON2id hash
 // It includes a file watcher to automatically reload on update.
 type AuthnFileStore struct {
-	entries   map[string]authn.AuthnEntry
-	storePath string
-	hashAlgo  string // hashing algorithm PWHASH_ARGON2id
-	watcher   *fsnotify.Watcher
-	mutex     sync.RWMutex
+	entries           map[string]authn.AuthnEntry
+	storePath         string
+	hashAlgo          string // hashing algorithm PWHASH_ARGON2id
+	minPasswordLength int
+	watcher           *fsnotify.Watcher
+	mutex             sync.RWMutex
 }
 
 // Add a new client.
@@ -38,17 +40,19 @@ func (store *AuthnFileStore) Add(clientID string, profile authn.ClientProfile) e
 
 	entry, found := store.entries[clientID]
 	if clientID == "" || clientID != profile.ClientID {
-		return fmt.Errorf("clientID or clientType are missing")
-	} else if profile.ClientType != authn.ClientTypeAgent &&
+		return fmt.Errorf("Add: missing clientID")
+	}
+	if profile.ClientType != authn.ClientTypeAgent &&
 		profile.ClientType != authn.ClientTypeUser &&
 		profile.ClientType != authn.ClientTypeService {
-		return fmt.Errorf("invalid clientType '%s'", profile.ClientType)
+		return fmt.Errorf("Add: invalid clientType '%s' for client '%s'",
+			profile.ClientType, clientID)
 	}
 	if !found {
-		slog.Debug("Adding client " + clientID)
+		slog.Info("Add: New client " + clientID)
 		entry = authn.AuthnEntry{ClientProfile: profile}
 	} else {
-		slog.Debug("Updating client " + clientID)
+		slog.Info("Add: Updating existing client", slog.String("clientID", clientID))
 		entry.ClientProfile = profile
 	}
 	entry.UpdatedMSE = time.Now().UnixMilli()
@@ -98,6 +102,19 @@ func (store *AuthnFileStore) GetProfiles() (profiles []authn.ClientProfile, err 
 		profiles = append(profiles, entry.ClientProfile)
 	}
 	return profiles, nil
+}
+
+// GetRole returns the client's stored role
+func (store *AuthnFileStore) GetRole(clientID string) (role string, err error) {
+	store.mutex.RLock()
+	defer store.mutex.RUnlock()
+	// user must exist
+	entry, found := store.entries[clientID]
+	if !found {
+		err = fmt.Errorf("clientID '%s' does not exist", clientID)
+		return authz.ClientRoleNone, err
+	}
+	return entry.Role, nil
 }
 
 // GetEntries returns a list of all profiles with their hashed passwords
@@ -196,11 +213,25 @@ func (store *AuthnFileStore) save() error {
 	return err
 }
 
-// SetPassword generates and stores the user's password hash
-// bcrypt limits max password length to 72 bytes
+// SetRole changes the client's default role
+func (store *AuthnFileStore) SetRole(clientID string, role string) error {
+	entry, found := store.entries[clientID]
+	if !found {
+		return fmt.Errorf("SetRole: Client '%s' not found", clientID)
+	}
+	entry.Role = role
+	store.entries[clientID] = entry
+	err := store.save()
+	return err
+}
+
+// SetPassword generates and stores the user's password hash.
+//
+// The hash used is argon2id or bcrypt based on the 'hashAlgo' setting.
+// bcrypt limits max password length to 72 bytes.
 func (store *AuthnFileStore) SetPassword(loginID string, password string) (err error) {
 	var hash string
-	if len(password) < 5 {
+	if len(password) < store.minPasswordLength {
 		return fmt.Errorf("password too short (%d chars)", len(password))
 	}
 	if store.hashAlgo == authn.PWHASH_ARGON2id {
@@ -224,7 +255,7 @@ func (store *AuthnFileStore) SetPassword(loginID string, password string) (err e
 }
 
 // SetPasswordHash adds/updates the password hash for the given login ID
-// Intended for use by administrators to add a new user or clients to update their password
+// Intended for clients to update their own password
 func (store *AuthnFileStore) SetPasswordHash(loginID string, hash string) (err error) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
@@ -241,17 +272,23 @@ func (store *AuthnFileStore) SetPasswordHash(loginID string, hash string) (err e
 	return err
 }
 
-// Update updates the client profile, except
-func (store *AuthnFileStore) Update(clientID string, profile authn.ClientProfile) error {
+// UpdateProfile updates the client profile
+// The senderID is the connection ID of the sender.
+// Authorization should only allow admin level
+func (store *AuthnFileStore) UpdateProfile(senderID string, profile authn.ClientProfile) error {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	entry, found := store.entries[clientID]
+	// TODO: verify sender exi
+	entry, found := store.entries[senderID]
 	if !found {
-		return fmt.Errorf("Client '%s' not found", clientID)
+		return fmt.Errorf("UpdateProfile: SenderID='%s' not found", senderID)
 	}
-	if profile.ClientID != clientID {
-		return fmt.Errorf("clientID '%s' mismatch in profile as '%s'", clientID, profile.ClientID)
+
+	entry, found = store.entries[profile.ClientID]
+	if !found {
+		return fmt.Errorf("UpdateProfile: SenderID='%s'; Client '%s' not found",
+			senderID, profile.ClientID)
 	}
 	if profile.ClientType != "" {
 		entry.ClientType = profile.ClientType
@@ -266,7 +303,7 @@ func (store *AuthnFileStore) Update(clientID string, profile authn.ClientProfile
 		entry.PubKey = profile.PubKey
 	}
 	entry.UpdatedMSE = time.Now().UnixMilli()
-	store.entries[clientID] = entry
+	store.entries[profile.ClientID] = entry
 
 	err := store.save()
 	return err
@@ -331,12 +368,13 @@ func NewAuthnFileStore(filepath string, hashAlgo string) *AuthnFileStore {
 		hashAlgo = authn.PWHASH_ARGON2id
 	}
 	if hashAlgo != authn.PWHASH_ARGON2id && hashAlgo != authn.PWHASH_BCRYPT {
-		panic("unknown hash algorithm: " + hashAlgo)
+		slog.Error("unknown hash algorithm. Falling back to argon2id", "hashAlgo", hashAlgo)
 	}
 	store := &AuthnFileStore{
-		storePath: filepath,
-		hashAlgo:  hashAlgo,
-		entries:   make(map[string]authn.AuthnEntry),
+		storePath:         filepath,
+		hashAlgo:          hashAlgo,
+		minPasswordLength: 5,
+		entries:           make(map[string]authn.AuthnEntry),
 	}
 	return store
 }

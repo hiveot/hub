@@ -55,10 +55,14 @@ type ClientProfile struct {
 // For internal use.
 type AuthnEntry struct {
 	// Client's profile
-	ClientProfile
+	ClientProfile `yaml:"clientProfile" json:"clientProfile"`
 
 	// PasswordHash password encrypted with argon2id or bcrypt
-	PasswordHash string
+	PasswordHash string `yaml:"passwordHash" json:"passwordHash"`
+
+	// Client 'base role'. Authz can add agent/thing specific roles in the future.
+	// This is set when creating a user and updated with SetRole. Authz reads it.
+	Role string `yaml:"role" json:"role"`
 }
 
 // IAuthnStore defined the interface for storing authentication data
@@ -88,6 +92,9 @@ type IAuthnStore interface {
 	// GetProfiles returns all client profiles in the store
 	GetProfiles() (entries []ClientProfile, err error)
 
+	// GetRole returns the client's default role
+	GetRole(clientID string) (role string, err error)
+
 	// Open the store
 	Open() error
 
@@ -104,10 +111,13 @@ type IAuthnStore interface {
 	// Returns error if the store isn't writable
 	SetPassword(clientID string, password string) error
 
-	// Update updates client information
+	// SetRole sets the default role of a client
+	SetRole(clientID string, newRole string) error
+
+	// UpdateProfile updates client profile
 	// If the clientID doesn't exist, this returns an error.
 	// This fails if the client doesn't exist.
-	Update(clientID string, entry ClientProfile) error
+	UpdateProfile(clientID string, entry ClientProfile) error
 
 	// VerifyPassword verifies the given password against the stored hash
 	// Returns the client profile and an error if the verification fails.

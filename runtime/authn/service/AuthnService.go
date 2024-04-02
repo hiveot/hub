@@ -116,20 +116,21 @@ func (svc *AuthnService) CreateSessionToken(
 	return token, err
 }
 
-// GetClient returns a client's profile
-func (svc *AuthnService) GetClient(clientID string) (authn.ClientProfile, error) {
+// GetAllProfiles returns a list of all known client profiles
+func (svc *AuthnService) GetAllProfiles() ([]authn.ClientProfile, error) {
+	profiles, err := svc.store.GetProfiles()
+	return profiles, err
+}
+
+// GetProfile returns a client's profile
+func (svc *AuthnService) GetProfile(clientID string) (authn.ClientProfile, error) {
 
 	entry, err := svc.store.GetProfile(clientID)
 	return entry, err
 }
 
-// GetAllClients returns a list of all known client profiles
-func (svc *AuthnService) GetAllClients() ([]authn.ClientProfile, error) {
-	profiles, err := svc.store.GetProfiles()
-	return profiles, err
-}
-
-// GetEntries provide a list of known clients and their info including hashed passwords
+// GetEntries provide a list of known clients
+// An entry is a profile with a password hash.
 func (svc *AuthnService) GetEntries() (entries []authn.AuthnEntry) {
 	return svc.store.GetEntries()
 }
@@ -156,9 +157,8 @@ func (svc *AuthnService) LoadCreateKeyPair(clientID, keysDir string) (kp keys.IH
 
 		// save the key for future use
 		err = kp.ExportPrivateToFile(keyFile)
-		err2 := kp.ExportPublicToFile(pubFile)
-		if err2 != nil {
-			err = err2
+		if err == nil {
+			err = kp.ExportPublicToFile(pubFile)
 		}
 	}
 
@@ -221,11 +221,13 @@ func (svc *AuthnService) RemoveClient(clientID string) error {
 // UpdateClient update the client profile.
 // Intended for administrators.
 //
-//	clientID is the issuer of the request
+//	senderID is the issuer of the request
 //	profile is the new updated client profile
-func (svc *AuthnService) UpdateClient(clientID string, profile authn.ClientProfile) error {
-	slog.Info("UpdateClient", "clientID", profile.ClientID)
-	err := svc.store.Update(profile.ClientID, profile)
+func (svc *AuthnService) UpdateClient(senderID string, profile authn.ClientProfile) error {
+	slog.Info("UpdateClient",
+		slog.String("clientID", profile.ClientID),
+		slog.String("senderID", senderID))
+	err := svc.store.UpdateProfile(profile.ClientID, profile)
 	return err
 }
 
@@ -264,6 +266,10 @@ func (svc *AuthnService) Start() (err error) {
 
 	if err != nil {
 		return err
+	}
+	// ensure the password hash algo is valid
+	if svc.cfg.Encryption != authn.PWHASH_BCRYPT && svc.cfg.Encryption != authn.PWHASH_ARGON2id {
+		return fmt.Errorf("Start: Invalid password hash algo: %s", svc.cfg.Encryption)
 	}
 
 	// Ensure the launcher service and admin user exist and has a saved key and auth token
@@ -313,8 +319,5 @@ func StartAuthnService(cfg *authn.AuthnConfig, caCert *x509.Certificate) (*Authn
 	authStore := authnstore.NewAuthnFileStore(cfg.PasswordFile, cfg.Encryption)
 	authnSvc := NewAuthnService(cfg, authStore, caCert)
 	err := authnSvc.Start()
-	if err != nil {
-		panic("Cant start Auth service: " + err.Error())
-	}
 	return authnSvc, err
 }

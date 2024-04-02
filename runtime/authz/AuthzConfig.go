@@ -2,6 +2,7 @@ package authz
 
 import (
 	"github.com/hiveot/hub/lib/hubclient/transports"
+	"path"
 )
 
 // Role based ACL matrix example
@@ -21,7 +22,6 @@ import (
 // admin      pub       action  -            -
 //            sub       event   -            -
 // agent      pub       event   {clientID}   -
-//            sub       event   -		     -
 //            sub       action  {clientID}   -
 // service    pub       -       -            -
 //            sub       action  {clientID}   -
@@ -37,12 +37,8 @@ var agentPermissions = []RolePermission{
 		AgentID:  "{clientID}", // devices can only publish their own events
 		AllowPub: true,
 	}, {
-		MsgType:  transports.MessageTypeEvent,
-		AgentID:  "", // devices can subscribe to events
-		AllowSub: true,
-	}, {
 		MsgType:  transports.MessageTypeAction,
-		AgentID:  "{clientID}",
+		AgentID:  "{clientID}", // agents can only subscribe actions for themselves
 		AllowSub: true,
 	}, {
 		MsgType:  transports.MessageTypeConfig,
@@ -113,11 +109,24 @@ var DefaultRolePermissions = map[string][]RolePermission{
 
 // AuthzConfig holds the authorization permissions for client roles
 type AuthzConfig struct {
-	rolePermissions map[string][]RolePermission
+	rolePermissions map[string][]RolePermission `yaml:"rolePermissions"`
+	aclFile         string                      `yaml:"aclFile"`
 }
 
-func NewAuthzConfig() *AuthzConfig {
-	cfg := &AuthzConfig{
+// Setup ensures config is valid and loaded
+//
+//	storesDir is the default storage root directory ($HOME/stores)
+func (cfg *AuthzConfig) Setup(storesDir string) {
+	if cfg.aclFile == "" {
+		cfg.aclFile = DefaultAclFilename
+	}
+	if !path.IsAbs(cfg.aclFile) {
+		cfg.aclFile = path.Join(storesDir, "authz", cfg.aclFile)
+	}
+}
+
+func NewAuthzConfig() AuthzConfig {
+	cfg := AuthzConfig{
 		rolePermissions: DefaultRolePermissions,
 	}
 	return cfg

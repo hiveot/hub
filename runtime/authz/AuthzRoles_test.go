@@ -1,75 +1,85 @@
 package authz_test
 
 import (
+	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/runtime/authn"
+	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authz"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
 	"path"
 	"testing"
 )
 
-const authzFileName = "testauthzroles.json"
-
-var authzFilePath string
-
-var tempFolder string
+var testDir = path.Join(os.TempDir(), "test-authz")
+var passwordFile = path.Join(testDir, "test.passwd")
 
 // TestMain for all authn tests, setup of default folders and filenames
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
-	tempFolder = path.Join(os.TempDir(), "hiveot-authz-test")
-	_ = os.MkdirAll(tempFolder, 0700)
 
-	authzFilePath = path.Join(tempFolder, authzFileName)
-	_ = os.Remove(authzFilePath)
+	_ = os.RemoveAll(testDir)
 
 	res := m.Run()
 	if res == 0 {
-		_ = os.RemoveAll(tempFolder)
+		_ = os.RemoveAll(testDir)
 	}
 	os.Exit(res)
 }
 
-// Test creating and deleting custom roles
-func TestCRUDRole(t *testing.T) {
-	const user1ID = "newUser"
-	const user1Pass = "user1pass"
-	const role1Name = "role1"
-	const adminUserID = "admin"
-	t.Log("--- TestGetRole start")
-	defer t.Log("--- TestGetRole end")
-
+// Test starting and stopping authorization service
+func TestStartStop(t *testing.T) {
 	cfg := authz.NewAuthzConfig()
-	svc := authz.NewAuthzService(cfg)
+	svc := authz.NewAuthzService(&cfg, nil)
 	err := svc.Start()
 	require.NoError(t, err)
 	defer svc.Stop()
-
-	err = svc.CreateRole(role1Name)
-	require.NoError(t, err)
-
-	err = svc.DeleteRole(role1Name)
-	require.NoError(t, err)
 }
 
-// Test creating and deleting custom roles
-func TestVerifyPermissions(t *testing.T) {
-	const user1ID = "newUser"
-	const user1Pass = "user1pass"
-	const role1Name = "role1"
-	const adminUserID = "admin"
-	t.Log("--- TestGetRole start")
-	defer t.Log("--- TestGetRole end")
-
+// Test Get/Set role
+func TestSetRole(t *testing.T) {
+	const client1ID = "client1"
+	const client1Role = authz.ClientRoleAgent
 	cfg := authz.NewAuthzConfig()
-	svc := authz.NewAuthzService(cfg)
+	authnStore := authnstore.NewAuthnFileStore(passwordFile, "")
+	svc := authz.NewAuthzService(&cfg, authnStore)
 	err := svc.Start()
 	require.NoError(t, err)
 	defer svc.Stop()
 
-	// verify default permissions
-	hasperm = svc.VerifyPermissions(role1Name)
-	require.True(t, hasperm)
+	svc.SetRole(client1ID, client1Role)
+}
 
+func TestHasPermission(t *testing.T) {
+	const client1ID = "client1"
+	const client1Role = authz.ClientRoleAgent
+	cfg := authz.NewAuthzConfig()
+	cfg.Setup(testDir)
+	authnStore := authnstore.NewAuthnFileStore(passwordFile, "")
+	svc := authz.NewAuthzService(&cfg, authnStore)
+	err := svc.Start()
+	require.NoError(t, err)
+	defer svc.Stop()
+
+	err = authnStore.Add(client1ID, authn.ClientProfile{ClientID: client1ID, ClientType: authn.ClientTypeUser})
+	require.NoError(t, err)
+	err = svc.SetRole(client1ID, client1Role)
+	assert.NoError(t, err)
+	hasperm := svc.HasPermission(client1ID, transports.MessageTypeEvent, true)
+	assert.True(t, hasperm)
+	//
+	hasperm = svc.CanPubAction(client1ID)
+	assert.False(t, hasperm)
+	hasperm = svc.CanPubEvent(client1ID)
+	assert.True(t, hasperm)
+	hasperm = svc.CanPubRPC(client1ID, "someservice", "someinterface")
+	assert.False(t, hasperm)
+	hasperm = svc.CanSubEvent(client1ID)
+	assert.False(t, hasperm)
+	hasperm = svc.CanSubAction(client1ID)
+	assert.True(t, hasperm)
+	hasperm = svc.CanSubRPC(client1ID)
+	assert.False(t, hasperm)
 }

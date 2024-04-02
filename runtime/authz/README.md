@@ -2,7 +2,7 @@
 
 ## Objective
 
-Manage authorization of Hub client requests based on their role.
+Manage authorization of client requests based on their role.
 
 ## Status
 
@@ -10,18 +10,15 @@ This service is being reworked for the Digital Twin Runtime. It is currently bro
 
 Implementation of custom roles is not yet complete. 
 
-## Scope
-
-In-scope is to provide identity management for users, device agents, and services on the local network, with support for password, static key, and token based authentication.
-
 ## Summary
 
 This service provides the following capabilities:
 
-1. Authorization requests for agents, consumers and services 
-2. Role management for managing custom roles and assign roles to users. 
+1. Authorize requests made by agents, consumers and services
+2. Retrieve roles
+3. Custom role management (future)
 
-Authorization is built on top of authentication and uses its client settings and role.
+Authorization is built on top of authentication and uses its client settings.
 
 ## Usage
 

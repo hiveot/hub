@@ -1,8 +1,8 @@
 package authn
 
 import (
-	"fmt"
 	"github.com/hiveot/hub/lib/keys"
+	"log/slog"
 	"path"
 )
 
@@ -42,20 +42,21 @@ type AuthnConfig struct {
 // Setup ensures config is valid
 //
 //	storesDir is the default storage root directory ($HOME/stores)
-func (cfg *AuthnConfig) Setup(keysDir, storesDir string) error {
+func (cfg *AuthnConfig) Setup(keysDir, storesDir string) {
 
 	if cfg.PasswordFile == "" {
 		cfg.PasswordFile = DefaultPasswordFile
 	}
 	if !path.IsAbs(cfg.PasswordFile) {
-		cfg.PasswordFile = path.Join(storesDir, "auth", cfg.PasswordFile)
+		cfg.PasswordFile = path.Join(storesDir, "authn", cfg.PasswordFile)
 	}
 
 	if cfg.Encryption == "" {
 		cfg.Encryption = PWHASH_ARGON2id
 	}
 	if cfg.Encryption != PWHASH_BCRYPT && cfg.Encryption != PWHASH_ARGON2id {
-		return fmt.Errorf("unknown password encryption method: %s", cfg.Encryption)
+		slog.Error("unknown password encryption method. Reverting to ARGON2id", "Encoding", cfg.Encryption)
+		cfg.Encryption = PWHASH_ARGON2id
 	}
 
 	if cfg.AgentTokenValiditySec == 0 {
@@ -97,13 +98,14 @@ func (cfg *AuthnConfig) Setup(keysDir, storesDir string) error {
 	//if !path.IsAbs(cfg.LauncherTokenFile) {
 	//	cfg.LauncherTokenFile = path.Join(keysDir, cfg.LauncherTokenFile)
 	//}
-	return nil
 }
 
-func NewAuthnConfig() *AuthnConfig {
-	cfg := &AuthnConfig{
+func NewAuthnConfig() AuthnConfig {
+	cfg := AuthnConfig{
 		// key to use for creating keys
 		DefaultKeyType: keys.KeyTypeECDSA,
+		// default password encryption method
+		Encryption: PWHASH_ARGON2id,
 	}
 	return cfg
 }

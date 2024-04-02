@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/runtime/authn"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
+	"github.com/hiveot/hub/runtime/authz"
 
 	"log/slog"
 	"os"
@@ -351,11 +352,11 @@ func TestUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	// update must be of the same user
-	err = pwStore1.Update(user1, authn.ClientProfile{ClientID: user2, ClientType: authn.ClientTypeUser})
+	err = pwStore1.UpdateProfile(user1, authn.ClientProfile{ClientID: user2, ClientType: authn.ClientTypeUser})
 	assert.Error(t, err)
 
 	// update must succeed
-	err = pwStore1.Update(user1, authn.ClientProfile{
+	err = pwStore1.UpdateProfile(user1, authn.ClientProfile{
 		ClientID: user1, ClientType: authn.ClientTypeUser, DisplayName: name2, PubKey: key1,
 		TokenValiditySec: 100,
 	})
@@ -367,7 +368,29 @@ func TestUpdate(t *testing.T) {
 	assert.Equal(t, 100, prof.TokenValiditySec)
 
 	// update of non-existing user should fail
-	err = pwStore1.Update(
+	err = pwStore1.UpdateProfile(
+		user1, authn.ClientProfile{ClientID: "notauser", ClientType: authn.ClientTypeUser})
+	assert.Error(t, err)
+	err = pwStore1.UpdateProfile(
 		"notauser", authn.ClientProfile{ClientID: user1, ClientType: authn.ClientTypeUser})
 	assert.Error(t, err)
+}
+
+func TestSetRole(t *testing.T) {
+	const user1 = "user1"
+	const role1 = authz.ClientRoleAgent
+
+	_ = os.Remove(unpwFilePath)
+	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath, "")
+	err := pwStore1.Open()
+	require.NoError(t, err)
+	err = pwStore1.Add(user1, authn.ClientProfile{ClientID: user1,
+		ClientType: authn.ClientTypeUser, DisplayName: "test user"})
+	require.NoError(t, err)
+
+	err = pwStore1.SetRole(user1, role1)
+	assert.NoError(t, err)
+	role2, err := pwStore1.GetRole(user1)
+	assert.NoError(t, err)
+	assert.Equal(t, role1, role2)
 }

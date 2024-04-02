@@ -5,11 +5,12 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/core/auth/config"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/net"
 	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/runtime/authn"
+	"github.com/hiveot/hub/runtime/authz"
 	"github.com/hiveot/hub/runtime/directory"
 	"github.com/hiveot/hub/runtime/middleware"
 	"github.com/hiveot/hub/runtime/protocols/httpsbinding"
@@ -26,9 +27,6 @@ const DefaultServerKeyFile = "hubKey.pem"
 // RuntimeConfig holds the digital twin runtime and protocol bindings configuration
 type RuntimeConfig struct {
 
-	// auth service config
-	Auth config.AuthConfig `yaml:"auth"`
-
 	// enable mDNS discovery
 	EnableMDNS bool `yaml:"enableMDNS"`
 
@@ -42,15 +40,17 @@ type RuntimeConfig struct {
 	EnableNATS bool `yaml:"enableNATS,omitempty"`
 
 	// each protocol binding has its own config section
-	HttpsBindingConfig httpsbinding.HttpsBindingConfig `yaml:"httpsBinding"`
-	//MqttBindingConfig  *MqttBindingConfig
-	//NatsBindingConfig  *NatsBindingConfig
-	//GrpcBindingConfig  *GrpcBindingConfig
+	HttpsBinding httpsbinding.HttpsBindingConfig `yaml:"httpsBinding"`
+	//MqttBinding  *MqttBindingConfig
+	//NatsBinding  *NatsBindingConfig
+	//GrpcBinding  *GrpcBindingConfig
 
-	MiddlewareConfig middleware.MiddlewareConfig `yaml:"middlewareConfig"`
-	AuthConfig       authn.AuthConfig            `yaml:"authConfig"`
-	DirectoryConfig  directory.DirectoryConfig   `yaml:"directoryConfig"`
-	ValueStoreConfig valuestore.ValueStoreConfig `yaml:"valueStoreConfig"`
+	// middleware and services config. These all work out of the box with their defaults.
+	Middleware middleware.MiddlewareConfig `yaml:"middleware"`
+	Authn      authn.AuthnConfig           `yaml:"authn"`
+	Authz      authz.AuthzConfig           `yaml:"authz"`
+	Directory  directory.DirectoryConfig   `yaml:"directory"`
+	ValueStore valuestore.ValueStoreConfig `yaml:"valueStore"`
 
 	// Runtime logging
 	LogLevel string `yaml:"logLevel,omitempty"` // default: warn
@@ -264,7 +264,12 @@ func (cfg *RuntimeConfig) Setup(env *plugin.AppEnvironment) error {
 	cfg.setupCerts(env)
 
 	// 4: setup authn config
-	err = cfg.Auth.Setup(env.CertsDir, env.StoresDir)
+	err = cfg.Authn.Setup(env.CertsDir, env.StoresDir)
+	if err != nil {
+		return err
+	}
+	// 4: setup authz config
+	err = cfg.Authz.Setup(env.StoresDir)
 	if err != nil {
 		return err
 	}
@@ -279,17 +284,18 @@ func (cfg *RuntimeConfig) Setup(env *plugin.AppEnvironment) error {
 // The CA and Server certificate and keys must be set after creation.
 func NewRuntimeConfig() *RuntimeConfig {
 	cfg := &RuntimeConfig{
-		EnableHTTPS:        false,
-		EnableMQTT:         false,
-		EnableNATS:         false,
-		EnableGRPC:         false,
-		HttpsBindingConfig: httpsbinding.NewHttpsBindingConfig(),
-		MiddlewareConfig:   middleware.NewMiddlewareConfig(),
-		AuthConfig:         authn.NewAuthConfig(),
-		DirectoryConfig:    directory.NewDirectoryConfig(),
-		ValueStoreConfig:   valuestore.NewValueStoreConfig(),
-		LogLevel:           "warning", // error, warning, info, debug
-		LogFile:            "",        // no logfile
+		EnableHTTPS:  false,
+		EnableMQTT:   false,
+		EnableNATS:   false,
+		EnableGRPC:   false,
+		HttpsBinding: httpsbinding.NewHttpsBindingConfig(),
+		Middleware:   middleware.NewMiddlewareConfig(),
+		Authn:        authn.NewAuthnConfig(),
+		Authz:        authz.NewAuthzConfig(),
+		Directory:    directory.NewDirectoryConfig(),
+		ValueStore:   valuestore.NewValueStoreConfig(),
+		LogLevel:     "warning", // error, warning, info, debug
+		LogFile:      "",        // no logfile
 
 		CaCertFile:     certs.DefaultCaCertFile,
 		CaKeyFile:      certs.DefaultCaKeyFile,
