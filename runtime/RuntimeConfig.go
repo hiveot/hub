@@ -12,8 +12,8 @@ import (
 	"github.com/hiveot/hub/runtime/authn"
 	"github.com/hiveot/hub/runtime/authz"
 	"github.com/hiveot/hub/runtime/directory"
-	"github.com/hiveot/hub/runtime/middleware"
-	"github.com/hiveot/hub/runtime/protocols/httpsbinding"
+	"github.com/hiveot/hub/runtime/protocols"
+	"github.com/hiveot/hub/runtime/router"
 	"github.com/hiveot/hub/runtime/valuestore"
 	"gopkg.in/yaml.v3"
 	"log/slog"
@@ -39,17 +39,12 @@ type RuntimeConfig struct {
 	// Enable the NATS protocol binding, default is false.
 	EnableNATS bool `yaml:"enableNATS,omitempty"`
 
-	// each protocol binding has its own config section
-	HttpsBinding httpsbinding.HttpsBindingConfig `yaml:"httpsBinding"`
-	//MqttBinding  *MqttBindingConfig
-	//NatsBinding  *NatsBindingConfig
-	//GrpcBinding  *GrpcBindingConfig
-
 	// middleware and services config. These all work out of the box with their defaults.
-	Middleware middleware.MiddlewareConfig `yaml:"middleware"`
 	Authn      authn.AuthnConfig           `yaml:"authn"`
 	Authz      authz.AuthzConfig           `yaml:"authz"`
 	Directory  directory.DirectoryConfig   `yaml:"directory"`
+	Router     router.RouterConfig         `yaml:"router"`
+	Protocols  protocols.ProtocolsConfig   `yaml:"protocols"`
 	ValueStore valuestore.ValueStoreConfig `yaml:"valueStore"`
 
 	// Runtime logging
@@ -264,15 +259,10 @@ func (cfg *RuntimeConfig) Setup(env *plugin.AppEnvironment) error {
 	cfg.setupCerts(env)
 
 	// 4: setup authn config
-	err = cfg.Authn.Setup(env.CertsDir, env.StoresDir)
-	if err != nil {
-		return err
-	}
-	// 4: setup authz config
-	err = cfg.Authz.Setup(env.StoresDir)
-	if err != nil {
-		return err
-	}
+	cfg.Authn.Setup(env.CertsDir, env.StoresDir)
+
+	// 5: setup authz config
+	cfg.Authz.Setup(env.StoresDir)
 
 	// 4. configure protocol bindings
 	return err
@@ -284,18 +274,18 @@ func (cfg *RuntimeConfig) Setup(env *plugin.AppEnvironment) error {
 // The CA and Server certificate and keys must be set after creation.
 func NewRuntimeConfig() *RuntimeConfig {
 	cfg := &RuntimeConfig{
-		EnableHTTPS:  false,
-		EnableMQTT:   false,
-		EnableNATS:   false,
-		EnableGRPC:   false,
-		HttpsBinding: httpsbinding.NewHttpsBindingConfig(),
-		Middleware:   middleware.NewMiddlewareConfig(),
-		Authn:        authn.NewAuthnConfig(),
-		Authz:        authz.NewAuthzConfig(),
-		Directory:    directory.NewDirectoryConfig(),
-		ValueStore:   valuestore.NewValueStoreConfig(),
-		LogLevel:     "warning", // error, warning, info, debug
-		LogFile:      "",        // no logfile
+		EnableHTTPS: false,
+		EnableMQTT:  false,
+		EnableNATS:  false,
+		EnableGRPC:  false,
+		Authn:       authn.NewAuthnConfig(),
+		Authz:       authz.NewAuthzConfig(),
+		Directory:   directory.NewDirectoryConfig(),
+		Router:      router.NewRouterConfig(),
+		Protocols:   protocols.NewProtocolsConfig(),
+		ValueStore:  valuestore.NewValueStoreConfig(),
+		LogLevel:    "warning", // error, warning, info, debug
+		LogFile:     "",        // no logfile
 
 		CaCertFile:     certs.DefaultCaCertFile,
 		CaKeyFile:      certs.DefaultCaKeyFile,

@@ -85,7 +85,7 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 		// both agents and consumers
 		//r.Get("/rpc/{serviceID}/{interfaceID}/{method}", svc.handleInvokeRPC)
 		// sse has its own validation instead of using session context (which reconnects or redirects to /login)
-		//r.Get("/sse", SseHandler)
+		r.Get("/sse", SseHandler)
 	})
 
 	return router
@@ -123,6 +123,13 @@ func (svc *HttpsBinding) handlePostEvent(w http.ResponseWriter, r *http.Request)
 	}
 	w.WriteHeader(http.StatusOK)
 	return
+}
+
+// Publish a message to subscribers of this message
+// This passes it to SSE handlers of active sessions
+func (svc *HttpsBinding) Publish(message *things.ThingValue) {
+	// TODO: track subscriptions
+	// TODO: publish to SSE handlers of subscribed clients
 }
 
 // Start the https server and listen for incoming connection requests

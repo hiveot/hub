@@ -12,11 +12,14 @@ import (
 	"github.com/hiveot/hub/lib/things"
 )
 
-// ThingValueStore holds the most recent property and event values of things.
+// ValueService holds the most recent property and event values of things.
 // It persists a record for each Thing containing a map of the most recent properties.
-type ThingValueStore struct {
-	// bucket to persist things properties with a serialized property map for each things
-	store buckets.IBucket
+type ValueService struct {
+	cfg *ValueStoreConfig
+
+	// bucket to persist things properties with a serialized property map for each thing
+	store  buckets.IBucketStore
+	bucket buckets.IBucket
 
 	// in-memory cache of the latest things values by things address
 	cache map[string]things.ThingValueMap
@@ -30,7 +33,7 @@ type ThingValueStore struct {
 // To be invoked before reading and writing Thing properties to ensure the cache is loaded.
 // This immediately returns if a record for the Thing was already loaded.
 // Returns true if a cache value exists, false if the things address was added to the cache
-func (svc *ThingValueStore) LoadProps(thingAddr string) (found bool) {
+func (svc *ValueService) LoadProps(thingAddr string) (found bool) {
 	svc.cacheMux.Lock()
 	props, found := svc.cache[thingAddr]
 	defer svc.cacheMux.Unlock()
@@ -38,7 +41,7 @@ func (svc *ThingValueStore) LoadProps(thingAddr string) (found bool) {
 	if found {
 		return
 	}
-	val, _ := svc.store.Get(thingAddr)
+	val, _ := svc.bucket.Get(thingAddr)
 
 	if val == nil {
 		// create a new record with things properties
@@ -60,7 +63,7 @@ func (svc *ThingValueStore) LoadProps(thingAddr string) (found bool) {
 //
 //	thingAddr is the address the things is reachable at. Usually the agentID/thingID.
 //	names is optional and can be used to limit the resulting array of values. Use nil to get all properties.
-func (svc *ThingValueStore) GetProperties(thingAddr string, names []string) (props things.ThingValueMap) {
+func (svc *ValueService) GetProperties(thingAddr string, names []string) (props things.ThingValueMap) {
 	props = things.NewThingValueMap()
 
 	// ensure this thing has its properties cache loaded
@@ -91,7 +94,7 @@ func (svc *ThingValueStore) GetProperties(thingAddr string, names []string) (pro
 // HandleAddValue is the handler of update to a things's event/property values
 // used to update the properties cache.
 // isAction indicates the value is an action.
-func (svc *ThingValueStore) HandleAddValue(addtv *things.ThingValue) {
+func (svc *ValueService) HandleAddValue(addtv *things.ThingValue) {
 	// ensure the Thing has its properties cache loaded
 	thingAddr := addtv.AgentID + "/" + addtv.ThingID
 	if addtv.CreatedMSec <= 0 {
@@ -137,7 +140,7 @@ func (svc *ThingValueStore) HandleAddValue(addtv *things.ThingValue) {
 
 // SaveChanges writes modified cached properties to the underlying store.
 // this returns the last encountered error, although writing is attempted for all changes
-func (svc *ThingValueStore) SaveChanges() (err error) {
+func (svc *ValueService) SaveChanges() (err error) {
 
 	// try to minimize the lock time for each Thing
 	// start with using a read lock to collect the addresses of Things that changed
@@ -168,7 +171,7 @@ func (svc *ThingValueStore) SaveChanges() (err error) {
 
 		// buckets manage their own locks
 		if propsJSON != nil {
-			err2 := svc.store.Set(thingAddr, propsJSON)
+			err2 := svc.bucket.Set(thingAddr, propsJSON)
 			if err2 != nil {
 				err = err2
 			}
@@ -177,11 +180,23 @@ func (svc *ThingValueStore) SaveChanges() (err error) {
 	return err
 }
 
-// NewThingValueStore creates a new instance of the storage for Thing's latest property values
-func NewThingValueStore(storage buckets.IBucket) *ThingValueStore {
+// Start the value store
+func (svc *ValueService) Start() (err error) {
+	slog.Warn("Starting ValueStore")
+	return err
+}
 
-	svc := &ThingValueStore{
-		store:         storage,
+// Stop the value store
+func (svc *ValueService) Stop() {
+	slog.Warn("Stopping ValueStore")
+}
+
+// NewThingValueService creates a new instance of the storage for Thing's latest property values
+func NewThingValueService(cfg *ValueStoreConfig, store buckets.IBucketStore) *ValueService {
+
+	svc := &ValueService{
+		cfg:           cfg,
+		store:         store,
 		cache:         make(map[string]things.ThingValueMap),
 		cacheMux:      sync.RWMutex{},
 		changedThings: make(map[string]bool),

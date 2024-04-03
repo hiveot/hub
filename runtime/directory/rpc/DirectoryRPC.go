@@ -1,9 +1,7 @@
-package directoryapi
+// Package rpc with message definitions for querying the directory
+package rpc
 
 import "github.com/hiveot/hub/lib/things"
-
-// ServiceName is the agent name of the default instance of the service
-const ServiceName = "directory"
 
 // ReadDirectoryCap is the capability ID to read the directory
 const ReadDirectoryCap = "readDirectory"
@@ -104,17 +102,3 @@ type IDirectoryCursor interface {
 	// Release the cursor after use
 	Release()
 }
-
-//// IReadDirectory defines the capability of reading the Thing directory
-//type IReadDirectory interface {
-//	// GetCursor returns an iterator for ThingValue objects containing TD documents
-//	GetCursor() (cursor IDirectoryCursor, err error)
-//
-//	// GetTD returns the TD document for the given Device/Thing ID in JSON format.
-//	// Returns the value containing the JSON serialized TD document
-//	// or nil if the agent/things doesn't exist, and an error if the store is not reachable.
-//	GetTD(agentID, thingID string) (value things.ThingValue, err error)
-//
-//	// GetTDs returns a batch of TD values
-//	GetTDs(offset int, limit int) (value []things.ThingValue, err error)
-//}
