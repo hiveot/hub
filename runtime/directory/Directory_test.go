@@ -2,80 +2,50 @@ package directory_test
 
 import (
 	"encoding/json"
-	"github.com/hiveot/hub/core/auth/authapi"
-	"github.com/hiveot/hub/core/directory/dirclient"
-	"github.com/hiveot/hub/core/directory/directoryapi"
-	"github.com/hiveot/hub/core/directory/service"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
-	"github.com/hiveot/hub/lib/hubclient/transports"
-	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/directory"
+	"github.com/hiveot/hub/runtime/directory/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"log/slog"
 	"os"
 	"path"
 	"testing"
-	"time"
-
-	"github.com/hiveot/hub/lib/logging"
 )
 
 var testFolder = path.Join(os.TempDir(), "test-directory")
 var testStoreFile = path.Join(testFolder, "directory.json")
-var core = "mqtt"
 
-// the following are set by the testmain
-var testServer *testenv.TestServer
-var serverURL string
-
-const serviceID string = directoryapi.ServiceName
-
-// startDirectory initializes a Directory service, optionally using capnp RPC
-func startDirectory() (
-	r *dirclient.ReadDirectoryClient, u *dirclient.UpdateDirectoryClient, stopFn func()) {
-
-	slog.Info("startDirectory start")
-	defer slog.Info("startDirectory ended")
+// startDirectory initializes a Directory service
+func startDirectory() (svc *service.DirectoryService, stopFn func()) {
 	_ = os.Remove(testStoreFile)
 	store := kvbtree.NewKVStore(testStoreFile)
 	err := store.Open()
 	if err != nil {
 		panic("unable to open directory store")
 	}
-
-	// the service needs a server connection
-	hc1, err := testServer.AddConnectClient(
-		serviceID, authapi.ClientTypeService, authapi.ClientRoleService)
-	svc := service.NewDirectoryService(store)
-	if err == nil {
-		err = svc.Start(hc1)
-	}
+	cfg := directory.NewDirectoryConfig()
+	svc = service.NewDirectoryService(&cfg, store)
+	err = svc.Start()
 	if err != nil {
-		panic("service fails to start: " + err.Error())
+		panic("unable to start directory")
 	}
 
-	// connect as a user to the server above
-	hc2, err := testServer.AddConnectClient(
-		"admin", authapi.ClientTypeUser, authapi.ClientRoleAdmin)
-	readCl := dirclient.NewReadDirectoryClient(hc2)
-	updateCl := dirclient.NewUpdateDirectoryClient(hc2)
-	return readCl, updateCl, func() {
+	return svc, func() {
 		svc.Stop()
 		_ = store.Close()
-		hc2.Disconnect()
-		hc1.Disconnect()
 	}
 }
 
 // generate a JSON serialized TD document
-func createTDDoc(thingID string, title string) []byte {
+func createTDDoc(thingID string, title string) string {
 	td := &things.TD{
 		ID:    thingID,
 		Title: title,
 	}
 	tdDoc, _ := json.Marshal(td)
-	return tdDoc
+	return string(tdDoc)
 }
 
 func TestMain(m *testing.M) {
@@ -83,16 +53,13 @@ func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
 	// clean start
 	_ = os.RemoveAll(testFolder)
-	_ = os.MkdirAll(testFolder, 0700)
+	err = os.MkdirAll(testFolder, 0700)
 
-	testServer, err = testenv.StartTestServer(core, true)
-	serverURL, _, _ = testServer.MsgServer.GetServerURLs()
 	if err != nil {
 		panic(err)
 	}
 
 	res := m.Run()
-	testServer.Stop()
 	os.Exit(res)
 }
 
@@ -101,17 +68,11 @@ func TestStartStop(t *testing.T) {
 	defer t.Log("--- TestStartStop end ---")
 
 	_ = os.Remove(testStoreFile)
-	rd, up, stopFunc := startDirectory()
+	svc, stopFunc := startDirectory()
 	defer stopFunc()
-	assert.NotNil(t, rd)
-	assert.NotNil(t, up)
 
 	// viewers should be able to read the directory
-	hc, err := testServer.AddConnectClient("user1", authapi.ClientTypeUser, authapi.ClientRoleViewer)
-	assert.NoError(t, err)
-	defer hc.Disconnect()
-	dirCl := dirclient.NewReadDirectoryClient(hc)
-	tdList, err := dirCl.GetTDs(0, 10)
+	tdList, err := svc.GetTDs(0, 10)
 	assert.NoError(t, err, "Cant read directory. Did the service set client permissions?")
 	_ = tdList
 }
@@ -120,164 +81,169 @@ func TestAddRemoveTD(t *testing.T) {
 	t.Log("--- TestAddRemoveTD start ---")
 	defer t.Log("--- TestAddRemoveTD end ---")
 	_ = os.Remove(testStoreFile)
-	const agentID = "agent1"
-	const thing1ID = "thing1"
+	const senderID = "agent1"
+	const thing1ID = "agent1:thing1"
 	const title1 = "title1"
 
-	rd, up, stopFunc := startDirectory()
+	_ = os.Remove(testStoreFile)
+	svc, stopFunc := startDirectory()
 	defer stopFunc()
 
 	tdDoc1 := createTDDoc(thing1ID, title1)
-	err := up.UpdateTD(agentID, thing1ID, tdDoc1)
+	err := svc.UpdateTD(senderID, thing1ID, tdDoc1)
 	assert.NoError(t, err)
 
-	tv2, err := rd.GetTD(agentID, thing1ID)
-	if assert.NoError(t, err) {
-		assert.NotNil(t, tv2)
-		assert.Equal(t, thing1ID, tv2.ThingID)
-		assert.Equal(t, tdDoc1, tv2.Data)
-	}
-	err = up.RemoveTD(agentID, thing1ID)
-	assert.NoError(t, err)
+	tdj2, err := svc.GetTD(thing1ID)
+	var td2 things.TD
+	err = json.Unmarshal([]byte(tdj2), &td2)
+	require.NoError(t, err)
+	assert.Equal(t, thing1ID, td2.ID)
+	assert.Equal(t, tdDoc1, tdj2)
+
 	// after removal, getTD should return nil
-	td3, err := rd.GetTD(agentID, thing1ID)
+	err = svc.RemoveTD(senderID, thing1ID)
+	assert.NoError(t, err)
+
+	td3, err := svc.GetTD(thing1ID)
 	assert.Empty(t, td3)
 	assert.Error(t, err)
 }
 
-//func TestListTDs(t *testing.T) {
-//	slog.Infof("--- TestListTDs start ---")
-//	_ = os.Remove(dirStoreFile)
-//	const thing1ID = "thing1"
-//	const title1 = "title1"
-//
-//	ctx := context.Background()
-//	store, cancelFunc, err := startDirectory(testUseCapnp)
-//	defer cancelFunc()
-//	require.NoError(t, err)
-//
-//	readCap := store.CapReadDirectory(ctx)
-//	defer readCap.Release()
-//	updateCap := store.CapUpdateDirectory(ctx)
-//	defer updateCap.Release()
-//	tdDoc1 := createTDDoc(thing1ID, title1)
-//
-//	err = updateCap.UpdateTD(ctx, thing1ID, tdDoc1)
-//	require.NoError(t, err)
-//
-//	tdList, err := readCap.ListTDs(ctx, 0, 0)
-//	require.NoError(t, err)
-//	assert.NotNil(t, tdList)
-//	assert.True(t, len(tdList) > 0)
-//	slog.Infof("--- TestListTDs end ---")
-//}
-
-func TestPubTD(t *testing.T) {
-	t.Log("--- TestPubTD start ---")
-	defer t.Log("--- TestPubTD end ---")
+func TestGetTDsFail(t *testing.T) {
+	const clientID = "client1"
 	_ = os.Remove(testStoreFile)
-	const agentID = "test"
-	const thing1ID = "thing3"
+	svc, stopFunc := startDirectory()
+	defer stopFunc()
+	tds, err := svc.GetTDs(0, 10)
+	require.NoError(t, err)
+	require.Empty(t, tds)
+
+	tds, err = svc.GetTDs(10, 10)
+	require.NoError(t, err)
+	require.Empty(t, tds)
+
+	// missing data
+	cursorKey, err := svc.CursorMgr().NewCursor(clientID)
+	require.NoError(t, err)
+	_, _, valid, err := svc.CursorMgr().First(cursorKey, clientID)
+	require.NoError(t, err)
+	require.False(t, valid)
+	_, _, valid, err = svc.CursorMgr().Next(cursorKey, clientID)
+	require.NoError(t, err)
+	require.False(t, valid)
+	_, valid, err = svc.CursorMgr().NextN(cursorKey, clientID, 1)
+	require.NoError(t, err)
+	require.False(t, valid)
+
+	// bad clientID
+	_, _, valid, err = svc.CursorMgr().First(cursorKey, "badid")
+	require.Error(t, err)
+	require.False(t, valid)
+
+	// bad cursorKey
+	_, _, valid, err = svc.CursorMgr().First("badkey", clientID)
+	require.Error(t, err)
+	require.False(t, valid)
+	_, _, valid, err = svc.CursorMgr().Next("badkey", clientID)
+	require.Error(t, err)
+	require.False(t, valid)
+	_, valid, err = svc.CursorMgr().NextN("badkey", clientID, 1)
+	require.Error(t, err)
+	require.False(t, valid)
+
+	svc.CursorMgr().CloseCursor(cursorKey, clientID)
+}
+
+func TestListTDs(t *testing.T) {
+	_ = os.Remove(testStoreFile)
+	const senderID = "agent1"
+	const thing1ID = "agent1:thing1"
 	const title1 = "title1"
 
-	// create a device client that publishes TD documents
-	deviceCl, err := testServer.AddConnectClient(agentID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
-	require.NoError(t, err)
-	defer deviceCl.Disconnect()
-
-	// fire up the directory
-	rd, up, stopFunc := startDirectory()
-	_ = up
+	svc, stopFunc := startDirectory()
 	defer stopFunc()
 
-	// publish a TD
-	tdDoc := createTDDoc(thing1ID, title1)
-	err = deviceCl.PubEvent(thing1ID, transports.EventNameTD, tdDoc)
-	//err = deviceCl.PubTD(tdDoc) // TODO:create a TD instance
+	tdDoc1 := createTDDoc(thing1ID, title1)
 
-	assert.NoError(t, err)
-	time.Sleep(time.Millisecond)
-
-	// expect it to be added to the directory
-	tv2, err := rd.GetTD(agentID, thing1ID)
+	err := svc.UpdateTD(senderID, thing1ID, tdDoc1)
 	require.NoError(t, err)
-	assert.NotNil(t, tv2)
-	assert.Equal(t, thing1ID, tv2.ThingID)
-	assert.Equal(t, tdDoc, tv2.Data)
+
+	tdList, err := svc.GetTDs(0, 10)
+	require.NoError(t, err)
+	assert.NotNil(t, tdList)
+	assert.True(t, len(tdList) > 0)
+	//	slog.Infof("--- TestListTDs end ---")
 }
 
 func TestCursor(t *testing.T) {
-	t.Log("--- TestCursor start ---")
-	defer t.Log("--- TestCursor end ---")
 	_ = os.Remove(testStoreFile)
+	const clientID = "client1"
 	const publisherID = "urn:test"
-	const thing1ID = "urn:thing1"
-	const title1 = "title1"
+	const thing1ID = "urn:agent1:thing1"
+	const thing2ID = "urn:agent1:thing2"
+	const thing3ID = "urn:agent1:thing3"
 
-	rd, up, stopFunc := startDirectory()
+	svc, stopFunc := startDirectory()
 	defer stopFunc()
 
-	// add 1 doc. the service itself also has a doc
-	tdDoc1 := createTDDoc(thing1ID, title1)
-	err := up.UpdateTD(publisherID, thing1ID, tdDoc1)
+	// add 3 docs.
+	tdDoc1 := createTDDoc(thing1ID, "title 1")
+	err := svc.UpdateTD(publisherID, thing1ID, tdDoc1)
+	require.NoError(t, err)
+	tdDoc2 := createTDDoc(thing2ID, "title 2")
+	err = svc.UpdateTD(publisherID, thing2ID, tdDoc2)
+	require.NoError(t, err)
+	tdDoc3 := createTDDoc(thing3ID, "title 3")
+	err = svc.UpdateTD(publisherID, thing3ID, tdDoc3)
 	require.NoError(t, err)
 
 	// expect 3 docs, two service capabilities and the one just added
-	cursor, err := rd.GetCursor()
+	cursorKey, err := svc.CursorMgr().NewCursor(clientID)
 	require.NoError(t, err)
-	defer cursor.Release()
+	defer svc.CursorMgr().CloseCursor(cursorKey, clientID)
 
-	tdValue, valid, err := cursor.First()
+	thingID, tdValue, valid, err := svc.CursorMgr().First(cursorKey, clientID)
+	require.NotEmpty(t, thingID)
 	require.NoError(t, err)
 	assert.True(t, valid)
 	assert.NotEmpty(t, tdValue)
-	assert.NotEmpty(t, tdValue.Data)
 
-	tdValue, valid, err = cursor.Next() // second
-	tdValue, valid, err = cursor.Next() // 3rd
+	_, tdValue, valid, err = svc.CursorMgr().Next(cursorKey, clientID) // second
 	assert.NoError(t, err)
 	assert.True(t, valid)
 	assert.NotEmpty(t, tdValue)
-	assert.NotEmpty(t, tdValue.Data)
 
-	tdValue, valid, err = cursor.Next() // there is no 4th
+	tdds, remaining, err := svc.CursorMgr().NextN(cursorKey, clientID, 3) // there is no 4th
 	assert.NoError(t, err)
-	assert.False(t, valid)
-	assert.Empty(t, tdValue)
+	assert.False(t, remaining)
+	assert.True(t, len(tdds) == 1)
 
-	tdValues, valid, err := cursor.NextN(10) // still no third
+	tdValues, valid, err := svc.CursorMgr().NextN(cursorKey, clientID, 10) // still no third
 	assert.NoError(t, err)
 	assert.False(t, valid)
 	assert.Empty(t, tdValues)
 }
 
 //func TestQueryTDs(t *testing.T) {
-//	slog.Infof("--- TestQueryTDs start ---")
-//	_ = os.Remove(dirStoreFile)
-//	const thing1ID = "thing1"
+//	_ = os.Remove(testStoreFile)
+//	const senderID = "agent1"
+//	const thing1ID = "agent1:thing1"
 //	const title1 = "title1"
 //
-//	ctx := context.Background()
-//	store, cancelFunc, err := startDirectory(testUseCapnp)
-//	defer cancelFunc()
-//	require.NoError(t, err)
-//	readCap := store.CapReadDirectory(ctx)
-//	defer readCap.Release()
-//	updateCap := store.CapUpdateDirectory(ctx)
-//	defer updateCap.Release()
+//	svc, stopFunc := startDirectory()
+//	defer stopFunc()
 //
 //	tdDoc1 := createTDDoc(thing1ID, title1)
-//	err = updateCap.UpdateTD(ctx, thing1ID, tdDoc1)
+//	err := svc.UpdateTD(senderID, thing1ID, tdDoc1)
 //	require.NoError(t, err)
 //
-//	jsonPathQuery := `$[?(@.id=="thing1")]`
-//	tdList, err := readCap.QueryTDs(ctx, jsonPathQuery, 0, 0)
+//	jsonPathQuery := `$[?(@.id=="agent1:thing1")]`
+//	tdList, err := svc.QueryTDs(jsonPathQuery)
 //	require.NoError(t, err)
 //	assert.NotNil(t, tdList)
 //	assert.True(t, len(tdList) > 0)
-//	el0 := things.ThingDescription{}
+//	el0 := things.TD{}
 //	json.Unmarshal([]byte(tdList[0]), &el0)
 //	assert.Equal(t, thing1ID, el0.ID)
 //	assert.Equal(t, title1, el0.Title)
-//	slog.Infof("--- TestQueryTDs end ---")
 //}

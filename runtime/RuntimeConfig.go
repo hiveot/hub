@@ -14,7 +14,7 @@ import (
 	"github.com/hiveot/hub/runtime/directory"
 	"github.com/hiveot/hub/runtime/protocols"
 	"github.com/hiveot/hub/runtime/router"
-	"github.com/hiveot/hub/runtime/valuestore"
+	"github.com/hiveot/hub/runtime/valueservice"
 	"gopkg.in/yaml.v3"
 	"log/slog"
 	"os"
@@ -40,12 +40,12 @@ type RuntimeConfig struct {
 	EnableNATS bool `yaml:"enableNATS,omitempty"`
 
 	// middleware and services config. These all work out of the box with their defaults.
-	Authn      authn.AuthnConfig           `yaml:"authn"`
-	Authz      authz.AuthzConfig           `yaml:"authz"`
-	Directory  directory.DirectoryConfig   `yaml:"directory"`
-	Router     router.RouterConfig         `yaml:"router"`
-	Protocols  protocols.ProtocolsConfig   `yaml:"protocols"`
-	ValueStore valuestore.ValueStoreConfig `yaml:"valueStore"`
+	Authn      authn.AuthnConfig             `yaml:"authn"`
+	Authz      authz.AuthzConfig             `yaml:"authz"`
+	Directory  directory.DirectoryConfig     `yaml:"directory"`
+	Router     router.RouterConfig           `yaml:"router"`
+	Protocols  protocols.ProtocolsConfig     `yaml:"protocols"`
+	ValueStore valueservice.ValueStoreConfig `yaml:"valueStore"`
 
 	// Runtime logging
 	LogLevel string `yaml:"logLevel,omitempty"` // default: warn
@@ -283,7 +283,7 @@ func NewRuntimeConfig() *RuntimeConfig {
 		Directory:   directory.NewDirectoryConfig(),
 		Router:      router.NewRouterConfig(),
 		Protocols:   protocols.NewProtocolsConfig(),
-		ValueStore:  valuestore.NewValueStoreConfig(),
+		ValueStore:  valueservice.NewValueStoreConfig(),
 		LogLevel:    "warning", // error, warning, info, debug
 		LogFile:     "",        // no logfile
 

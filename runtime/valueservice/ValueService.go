@@ -1,4 +1,4 @@
-package valuestore
+package valueservice
 
 import (
 	"encoding/json"
@@ -12,6 +12,8 @@ import (
 	"github.com/hiveot/hub/lib/things"
 )
 
+const PropertiesBucketName = "properties"
+
 // ValueService holds the most recent property and event values of things.
 // It persists a record for each Thing containing a map of the most recent properties.
 type ValueService struct {
@@ -21,27 +23,27 @@ type ValueService struct {
 	store  buckets.IBucketStore
 	bucket buckets.IBucket
 
-	// in-memory cache of the latest things values by things address
+	// in-memory cache of the latest things values by thingID
 	cache map[string]things.ThingValueMap
 	// mutex for read/writing the cache
 	cacheMux sync.RWMutex // mutex for the following two fields
-	// map o things addresses and their change status
+	// map of thingsIDs and their change status
 	changedThings map[string]bool
 }
 
 // LoadProps loads the cached value of a Thing properties on demand.
 // To be invoked before reading and writing Thing properties to ensure the cache is loaded.
 // This immediately returns if a record for the Thing was already loaded.
-// Returns true if a cache value exists, false if the things address was added to the cache
-func (svc *ValueService) LoadProps(thingAddr string) (found bool) {
+// Returns true if a cache value exists, false if the thingID was added to the cache
+func (svc *ValueService) LoadProps(thingID string) (cached bool) {
 	svc.cacheMux.Lock()
-	props, found := svc.cache[thingAddr]
+	props, found := svc.cache[thingID]
 	defer svc.cacheMux.Unlock()
 
 	if found {
-		return
+		return true
 	}
-	val, _ := svc.bucket.Get(thingAddr)
+	val, _ := svc.bucket.Get(thingID)
 
 	if val == nil {
 		// create a new record with things properties
@@ -51,27 +53,27 @@ func (svc *ValueService) LoadProps(thingAddr string) (found bool) {
 		err := json.Unmarshal(val, &props)
 		if err != nil {
 			slog.Error("stored 'latest' properties of things can't be unmarshalled. Clean start.",
-				slog.String("thingAddr", thingAddr), slog.String("err", err.Error()))
+				slog.String("thingID", thingID), slog.String("err", err.Error()))
 			props = things.NewThingValueMap()
 		}
 	}
-	svc.cache[thingAddr] = props
-	return
+	svc.cache[thingID] = props
+	return false
 }
 
 // GetProperties returns the latest value of things properties and events as a list of properties
 //
-//	thingAddr is the address the things is reachable at. Usually the agentID/thingID.
+//	thingID of the thing to read.
 //	names is optional and can be used to limit the resulting array of values. Use nil to get all properties.
-func (svc *ValueService) GetProperties(thingAddr string, names []string) (props things.ThingValueMap) {
+func (svc *ValueService) GetProperties(thingID string, names []string) (props things.ThingValueMap) {
 	props = things.NewThingValueMap()
 
 	// ensure this thing has its properties cache loaded
-	svc.LoadProps(thingAddr)
+	svc.LoadProps(thingID)
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
-	thingCache, _ := svc.cache[thingAddr]
+	thingCache, _ := svc.cache[thingID]
 	if names != nil && len(names) > 0 {
 		// filter the requested property/event names
 		for _, name := range names {
@@ -96,15 +98,14 @@ func (svc *ValueService) GetProperties(thingAddr string, names []string) (props 
 // isAction indicates the value is an action.
 func (svc *ValueService) HandleAddValue(addtv *things.ThingValue) {
 	// ensure the Thing has its properties cache loaded
-	thingAddr := addtv.AgentID + "/" + addtv.ThingID
 	if addtv.CreatedMSec <= 0 {
 		addtv.CreatedMSec = time.Now().UnixMilli()
 	}
 
-	svc.LoadProps(thingAddr)
+	svc.LoadProps(addtv.ThingID)
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
-	thingCache, _ := svc.cache[thingAddr]
+	thingCache, _ := svc.cache[addtv.ThingID]
 
 	if addtv.Key == transports.EventNameProps {
 		// the value holds a map of property name:value pairs, add each one individually
@@ -118,7 +119,7 @@ func (svc *ValueService) HandleAddValue(addtv *things.ThingValue) {
 		for propName, propValue := range props {
 			propValueString := fmt.Sprint(propValue)
 			tv := things.NewThingValue(transports.MessageTypeEvent,
-				addtv.AgentID, addtv.ThingID, propName, []byte(propValueString), addtv.SenderID)
+				addtv.ThingID, propName, []byte(propValueString), addtv.SenderID)
 			tv.CreatedMSec = addtv.CreatedMSec
 
 			// in case events arrive out of order, only update if the addtv is newer
@@ -135,7 +136,7 @@ func (svc *ValueService) HandleAddValue(addtv *things.ThingValue) {
 			thingCache.Set(addtv.Key, addtv)
 		}
 	}
-	svc.changedThings[thingAddr] = true
+	svc.changedThings[addtv.ThingID] = true
 }
 
 // SaveChanges writes modified cached properties to the underlying store.
@@ -143,35 +144,35 @@ func (svc *ValueService) HandleAddValue(addtv *things.ThingValue) {
 func (svc *ValueService) SaveChanges() (err error) {
 
 	// try to minimize the lock time for each Thing
-	// start with using a read lock to collect the addresses of Things that changed
+	// start with using a read lock to collect the IDs of Things that changed
 	var changedThings = make([]string, 0)
 	svc.cacheMux.RLock()
-	for thingAddr, hasChanged := range svc.changedThings {
+	for thingID, hasChanged := range svc.changedThings {
 		if hasChanged {
-			changedThings = append(changedThings, thingAddr)
+			changedThings = append(changedThings, thingID)
 		}
 	}
 	svc.cacheMux.RUnlock()
 
 	// next, iterate the changes and lock only to serialize the properties record
-	for _, thingAddr := range changedThings {
+	for _, thingID := range changedThings {
 		var propsJSON []byte
 		// lock only for marshalling the properties
 		svc.cacheMux.Lock()
-		props, found := svc.cache[thingAddr]
+		props, found := svc.cache[thingID]
 		if !found {
 			// Should never happen
-			err = fmt.Errorf("thingsChanged is set for address '%s' but no properties are present. Ignored", thingAddr)
+			err = fmt.Errorf("thingsChanged is set for thingID '%s' but no properties are present. Ignored", thingID)
 			slog.Error(err.Error())
 		} else {
 			propsJSON, _ = json.Marshal(props)
 		}
-		svc.changedThings[thingAddr] = false
+		svc.changedThings[thingID] = false
 		svc.cacheMux.Unlock()
 
 		// buckets manage their own locks
 		if propsJSON != nil {
-			err2 := svc.bucket.Set(thingAddr, propsJSON)
+			err2 := svc.bucket.Set(thingID, propsJSON)
 			if err2 != nil {
 				err = err2
 			}
@@ -182,21 +183,28 @@ func (svc *ValueService) SaveChanges() (err error) {
 
 // Start the value store
 func (svc *ValueService) Start() (err error) {
-	slog.Warn("Starting ValueStore")
+	slog.Info("Starting ValueStore")
+	// start with empty cache
+	svc.cache = make(map[string]things.ThingValueMap)
+	svc.changedThings = make(map[string]bool)
+
 	return err
 }
 
 // Stop the value store
 func (svc *ValueService) Stop() {
-	slog.Warn("Stopping ValueStore")
+	slog.Info("Stopping ValueStore")
+	_ = svc.SaveChanges()
 }
 
 // NewThingValueService creates a new instance of the storage for Thing's latest property values
 func NewThingValueService(cfg *ValueStoreConfig, store buckets.IBucketStore) *ValueService {
+	propsbucket := store.GetBucket(PropertiesBucketName)
 
 	svc := &ValueService{
 		cfg:           cfg,
 		store:         store,
+		bucket:        propsbucket,
 		cache:         make(map[string]things.ThingValueMap),
 		cacheMux:      sync.RWMutex{},
 		changedThings: make(map[string]bool),

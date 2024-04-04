@@ -1,106 +1,102 @@
 package service
 
 import (
-	"encoding/json"
-	"github.com/hiveot/hub/core/directory/directoryapi"
-	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/ser"
-	"strings"
-
-	"github.com/hiveot/hub/lib/things"
+	"context"
+	"github.com/hiveot/hub/lib/buckets"
+	"time"
 )
 
-// convert the storage key and raw data to a things value object
-// This returns the value, or nil if the key is invalid
-func (svc *ReadDirectoryService) _decodeValue(key string, data []byte) (thingValue things.ThingValue, valid bool) {
-	// key is constructed as  {timestamp}/{valueName}/{a|e}
-	parts := strings.Split(key, "/")
-	if len(parts) < 2 {
-		return thingValue, false
-	}
-	thingValue = things.ThingValue{}
-	_ = json.Unmarshal(data, &thingValue)
-	return thingValue, true
+// DirectoryCursorMgr manages iteration cursors
+type DirectoryCursorMgr struct {
+	// cache of cursors for remote clients
+	cursorCache *buckets.CursorCache
+	// maximum lifespan of a cursor after last use
+	cursorLifespan time.Duration
+
+	// directory bucket
+	tdBucket buckets.IBucket
+}
+
+// CloseCursor release the resources associated with the cursor.
+// This invalidates all values obtained from the cursor
+func (svc *DirectoryCursorMgr) CloseCursor(cursorKey string, clientID string) {
+	_ = svc.cursorCache.Release(cursorKey, clientID)
 }
 
 // First returns the first entry in the directory
-func (svc *ReadDirectoryService) First(
-	ctx hubclient.ServiceContext, args directoryapi.CursorFirstArgs) (*directoryapi.CursorFirstResp, error) {
+func (svc *DirectoryCursorMgr) First(cursorKey string, senderID string) (
+	thingID string, tdd string, valid bool, err error) {
 
-	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.SenderID, true)
+	cursor, err := svc.cursorCache.Get(cursorKey, senderID, true)
 	if err != nil {
-		return nil, err
+		return "", "", false, err
 	}
 	k, v, valid := cursor.First()
 	if !valid {
 		// store is empty
-		return nil, nil
+		return "", "", false, nil
 	}
-	thingValue, valid := svc._decodeValue(k, v)
-	resp := directoryapi.CursorFirstResp{
-		Value:     thingValue,
-		Valid:     valid,
-		CursorKey: args.CursorKey,
-	}
-	return &resp, nil
+	return k, string(v), valid, nil
 }
 
 // Next moves the cursor to the next key from the current cursor
 // First() or Seek must have been called first.
-// Shouldn't next have a parameter?
-func (svc *ReadDirectoryService) Next(
-	ctx hubclient.ServiceContext, args directoryapi.CursorNextArgs) (*directoryapi.CursorNextResp, error) {
+// This returns the next item, a flag if the value is valid
+func (svc *DirectoryCursorMgr) Next(cursorKey string, clientID string) (
+	id string, tdd string, valid bool, err error) {
 
-	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.SenderID, true)
+	cursor, err := svc.cursorCache.Get(cursorKey, clientID, true)
 	if err != nil {
-		return nil, err
+		return "", "", false, err
 	}
 
 	k, v, valid := cursor.Next()
-	thingValue, valid := svc._decodeValue(k, v)
-	resp := directoryapi.CursorNextResp{
-		Value:     thingValue,
-		Valid:     valid,
-		CursorKey: args.CursorKey,
-	}
-	return &resp, nil
+	return k, string(v), valid, nil
 }
 
 // NextN moves the cursor to the next N places from the current cursor
 // and return a list with N values in incremental time order.
 // itemsRemaining is false if the iterator has reached the end.
 // Intended to speed up with batch iterations over rpc.
-func (svc *ReadDirectoryService) NextN(
-	ctx hubclient.ServiceContext, args directoryapi.CursorNextNArgs) (*directoryapi.CursorNextNResp, error) {
+func (svc *DirectoryCursorMgr) NextN(cursorKey string, clientID string, limit uint) (
+	tddList []string, itemsRemaining bool, err error) {
 
-	cursor, err := svc.cursorCache.Get(args.CursorKey, ctx.SenderID, true)
+	cursor, err := svc.cursorCache.Get(cursorKey, clientID, true)
 	if err != nil {
-		return nil, err
+		return tddList, false, err
 	}
-	values := make([]things.ThingValue, 0, args.Limit)
+	tddList = make([]string, 0, limit)
 	// obtain a map of [addr]TDJson
-	docMap, itemsRemaining := cursor.NextN(args.Limit)
+	docMap, itemsRemaining := cursor.NextN(limit)
 	for _, doc := range docMap {
-		tv := things.ThingValue{}
-		err2 := ser.Unmarshal(doc, &tv)
-		if err2 == nil {
-			values = append(values, tv)
-		} else {
-			err = err2 // return the last error
-		}
+		tddList = append(tddList, string(doc))
 	}
-	resp := directoryapi.CursorNextNResp{
-		Values:         values,
-		ItemsRemaining: itemsRemaining,
-		CursorKey:      args.CursorKey,
-	}
-	return &resp, err
+	return tddList, itemsRemaining, err
 }
 
-// Release close the cursor and release its resources.
-// This invalidates all values obtained from the cursor
-func (svc *ReadDirectoryService) Release(
-	ctx hubclient.ServiceContext, args directoryapi.CursorReleaseArgs) error {
+// NewCursor creates a new iteration cursor for TD documents.
+//
+// Iteration cursors are intended for remote clients to efficiently read a large set of data.
+// They are stateful and need to be closed after use with CloseCursor. They can close
+// automatically if there has been no activity for a period of time.
+//
+// This returns the cursor key. Both clientID and key are needed for further iteration.
+// Use CloseCursor to release the cursor
+func (svc *DirectoryCursorMgr) NewCursor(clientID string) (cursorKey string, err error) {
+	cursor, err := svc.tdBucket.Cursor(context.Background())
+	cursorKey = svc.cursorCache.Add(cursor, svc.tdBucket, clientID, svc.cursorLifespan)
+	return cursorKey, err
+}
 
-	return svc.cursorCache.Release(args.CursorKey, ctx.SenderID)
+// NewDirectoryCursor create a new instance of the directory iteration cursor management
+//
+//	tdBucket is the bucket containing TD documents
+//	lifespan is the maximum lifespan of a cursor before it is released
+func NewDirectoryCursor(tdBucket buckets.IBucket, lifespan time.Duration) *DirectoryCursorMgr {
+	svc := DirectoryCursorMgr{
+		tdBucket:       tdBucket,
+		cursorLifespan: lifespan,
+		cursorCache:    buckets.NewCursorCache(),
+	}
+	return &svc
 }

@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 func TestStartStop(t *testing.T) {
 	config := httpsbinding.NewHttpsBindingConfig()
 	config.Port = testPort
-	svc := httpsbinding.NewHttpsBinding(config,
+	svc := httpsbinding.NewHttpsBinding(&config,
 		certBundle.ClientKey, certBundle.ServerCert, certBundle.CaCert,
 		func(tv *thing.ThingValue) ([]byte, error) {
 			return nil, nil
@@ -52,7 +52,7 @@ func TestPubEvent(t *testing.T) {
 	// 1. start the binding
 	config := httpsbinding.NewHttpsBindingConfig()
 	config.Port = testPort
-	svc := httpsbinding.NewHttpsBinding(config,
+	svc := httpsbinding.NewHttpsBinding(&config,
 		certBundle.ServerKey, certBundle.ServerCert, certBundle.CaCert,
 		func(tv *thing.ThingValue) ([]byte, error) {
 			rxMsg = tv

@@ -20,7 +20,7 @@ import (
 	service2 "github.com/hiveot/hub/runtime/directory/service"
 	"github.com/hiveot/hub/runtime/protocols"
 	"github.com/hiveot/hub/runtime/router"
-	"github.com/hiveot/hub/runtime/valuestore"
+	"github.com/hiveot/hub/runtime/valueservice"
 	"log/slog"
 	"os"
 	"path"
@@ -173,18 +173,18 @@ func StartRouterSvc(cfg *router.RouterConfig) (svc *router.RouterService, err er
 	return svc, err
 }
 
-func StartValueSvc(env *plugin.AppEnvironment, cfg *valuestore.ValueStoreConfig) (
-	svc *valuestore.ValueService, err error) {
+func StartValueSvc(env *plugin.AppEnvironment, cfg *valueservice.ValueStoreConfig) (
+	svc *valueservice.ValueService, err error) {
 
 	var valueStore buckets.IBucketStore
-	var valueSvc *valuestore.ValueService
+	var valueSvc *valueservice.ValueService
 	if err == nil {
 		storeDir := path.Join(env.StoresDir, "values")
 		valueStore = bucketstore.NewBucketStore(storeDir, "values", cfg.StoreFilename)
 		err = valueStore.Open()
 	}
 	if err == nil {
-		valueSvc = valuestore.NewThingValueService(cfg, valueStore)
+		valueSvc = valueservice.NewThingValueService(cfg, valueStore)
 		err = valueSvc.Start()
 	}
 

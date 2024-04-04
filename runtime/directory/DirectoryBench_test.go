@@ -12,15 +12,14 @@ func Benchmark_GetTD(b *testing.B) {
 	b.Log("--- Benchmark_GetTD start ---")
 	defer b.Log("--- Benchmark_GetTD end ---")
 	_ = os.Remove(testStoreFile)
-	const publisherID = "urn:test"
-	const thing1ID = "urn:thing1"
+	const senderID = "agent1"
+	const thing1ID = "agent1:thing1"
 	const title1 = "title1"
 
 	logging.SetLogging("warning", "")
 
 	// fire up the directory
-	rd, up, stopFunc := startDirectory()
-	_ = up
+	svc, stopFunc := startDirectory()
 	defer stopFunc()
 
 	// setup
@@ -31,7 +30,7 @@ func Benchmark_GetTD(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)
 				tdDoc1 := createTDDoc(thingID, title1)
-				err := up.UpdateTD(publisherID, thingID, tdDoc1)
+				err := svc.UpdateTD(senderID, thingID, tdDoc1)
 				_ = err
 			}
 		})
@@ -43,7 +42,7 @@ func Benchmark_GetTD(b *testing.B) {
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)
-				td, err := rd.GetTD(publisherID, thingID)
+				td, err := svc.GetTD(thingID)
 				_ = td
 				_ = err
 			}

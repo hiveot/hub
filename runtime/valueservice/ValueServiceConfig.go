@@ -1,4 +1,4 @@
-package valuestore
+package valueservice
 
 const DefaultValueStoreFilename = "thingValues"
 
