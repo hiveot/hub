@@ -1,8 +1,9 @@
 package authz
 
 import (
-	"github.com/hiveot/hub/lib/hubclient/transports"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/runtime/authn"
+	"log/slog"
 )
 
 // AuthzService is the authorization service for authorizing access to devices
@@ -32,38 +33,38 @@ type AuthzService struct {
 
 // CanPubAction checks if the given client can publish actions
 func (svc *AuthzService) CanPubAction(clientID string) bool {
-	hasPerm := svc.HasPermission(clientID, transports.MessageTypeAction, true)
+	hasPerm := svc.HasPermission(clientID, vocab.MessageTypeAction, true)
 	return hasPerm
 }
 
 // CanPubEvent checks if the given client can publish events
 func (svc *AuthzService) CanPubEvent(clientID string) bool {
-	hasPerm := svc.HasPermission(clientID, transports.MessageTypeEvent, true)
+	hasPerm := svc.HasPermission(clientID, vocab.MessageTypeEvent, true)
 	return hasPerm
 }
 
 // CanPubRPC checks if the given client can invoke RPC requests on the interface of a service.
 // Use of RPC requests is limited by the receiving service.
 func (svc *AuthzService) CanPubRPC(clientID string, serviceID string, interfaceID string) bool {
-	hasPerm := svc.HasPermission(clientID, transports.MessageTypeRPC, true)
+	hasPerm := svc.HasPermission(clientID, vocab.MessageTypeRPC, true)
 	return hasPerm
 }
 
 // CanSubAction checks if the given client can subscribe to actions
 func (svc *AuthzService) CanSubAction(clientID string) bool {
-	hasPerm := svc.HasPermission(clientID, transports.MessageTypeAction, false)
+	hasPerm := svc.HasPermission(clientID, vocab.MessageTypeAction, false)
 	return hasPerm
 }
 
 // CanSubEvent checks if the given client can subscribe to events
 func (svc *AuthzService) CanSubEvent(clientID string) bool {
-	hasPerm := svc.HasPermission(clientID, transports.MessageTypeEvent, false)
+	hasPerm := svc.HasPermission(clientID, vocab.MessageTypeEvent, false)
 	return hasPerm
 }
 
 // CanSubRPC checks if the given client can subscribe to RPC requests
 func (svc *AuthzService) CanSubRPC(clientID string) bool {
-	hasPerm := svc.HasPermission(clientID, transports.MessageTypeRPC, false)
+	hasPerm := svc.HasPermission(clientID, vocab.MessageTypeRPC, false)
 	return hasPerm
 }
 
@@ -117,11 +118,13 @@ func (svc *AuthzService) SetRole(clientID string, role string) error {
 
 // Start starts the authorization service
 func (svc *AuthzService) Start() error {
+	slog.Info("Starting AuthzService")
 	return nil
 }
 
 // Stop stops the authorization service
 func (svc *AuthzService) Stop() {
+	slog.Info("Stopping AuthzService")
 }
 
 // NewAuthzService creates a new instance of the authorization service with default rules

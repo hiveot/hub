@@ -1,7 +1,7 @@
 package authz_test
 
 import (
-	"github.com/hiveot/hub/lib/hubclient/transports"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/runtime/authn"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
@@ -67,7 +67,7 @@ func TestHasPermission(t *testing.T) {
 	require.NoError(t, err)
 	err = svc.SetRole(client1ID, client1Role)
 	assert.NoError(t, err)
-	hasperm := svc.HasPermission(client1ID, transports.MessageTypeEvent, true)
+	hasperm := svc.HasPermission(client1ID, vocab.MessageTypeEvent, true)
 	assert.True(t, hasperm)
 	//
 	hasperm = svc.CanPubAction(client1ID)

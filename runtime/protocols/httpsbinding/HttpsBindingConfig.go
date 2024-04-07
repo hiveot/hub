@@ -1,5 +1,7 @@
 package httpsbinding
 
+const DefaultHttpsPort = 8444
+
 // HttpsBindingConfig contains the configuration of the HTTPS server binding,
 // including the websocket and the sse configuration.
 type HttpsBindingConfig struct {
@@ -12,45 +14,44 @@ type HttpsBindingConfig struct {
 	// Host is the server address, default is outbound IP address
 	Host string `yaml:"host,omitempty"`
 
-	// Port is the server TLS port, default is 444
+	// Port is the server TLS port, default is 8444
 	// This port handles http, websocket and sse requests
 	Port int `yaml:"port,omitempty"`
 
 	// GetActionsPath is the router path for agents to read queued actions
-	// Default is "/action/{agentID}/{thingID}"
+	// Default is "/action/{thingID}"
 	GetActionsPath string `yaml:"getActionsPath,omitempty"`
 
 	// GetTDDPath is the router path that handles reading TD documents from the directory
-	// Default is "/thing/directory/{agentID}/{thingID}"
-	//  {agentID} is the accountID of the agent under which the TDD was published. This is required.
+	// Default is "/thing/directory/{thingID}"
 	//  {thingID} is the digital twin ThingID and can be omitted to get the TDDs of all things of the agent
 	// This returns a json encoded list of TD documents.
 	GetTDDPath string `yaml:"getTDDPath,omitempty"`
 
 	// GetValuesPath is the router path for consumers to read thing values
-	// Default is "/thing/values/{agentID}/{thingID}/{key}"
-	//  {agentID} is the accountID of the agent under which the TDD was published. This is required.
+	// Default is "/thing/values/{thingID}/{key}"
 	//  {thingID} is the digital twin ThingID whose values to read
 	//  {key} is the optional key to read. Omit to read all values of the thing.
 	// This returns a json encoded map of key-value pairs
 	GetValuesPath string `yaml:"getTDDPath,omitempty"`
 
 	// PostActionPath is the router path for consumers to POST action requests
-	// Default is  "/action/digitwin/{agentID}/{thingID}/{key}"
-	//  digitwin is addresses the digital twin on the hub
-	//  {agentID} is the accountID of the agent under which the TDD was published. This is required.
+	// Default is  "/action/{thingID}/{key}"
 	//  {thingID} is the digital twin ThingID whose values to read
 	//  {key} is the optional key to read. Omit to read all values of the thing.
 	// The result is an action status message.
 	PostActionPath string `yaml:"postActionPath,omitempty"`
 
 	// PostEventPath is the router path for agents to POST events
-	// Default is  "/event/{agentID}/{thingID}/{key}"
-	//  {agentID} is the accountID of the agent under which the TDD was published. This is required.
+	// Default is  "/event/{thingID}/{key}"
 	//  {thingID} is the digital twin ThingID whose values to read
 	//  {key} is the optional key to read. Omit to read all values of the thing.
 	// The payload is the event content as described by the TDD
 	PostEventPath string `yaml:"postEventPath,omitempty"`
+
+	// PostLoginPath is the router path for consumers to post a login request using
+	// login ID and credentials. This returns a JWT token
+	PostLoginPath string `yaml:"postLoginPath,omitempty"`
 
 	// PostRPCPath is the router path for consumers to POST a RPC request to a service
 	// RPC methods are defined as actions in the TDD.
@@ -70,9 +71,9 @@ type HttpsBindingConfig struct {
 	//
 	// Default is "/sse"
 	// The subscription header must contain a list of subscriptions in the form:
-	//    ["/event/{agentID}[/{thingID}[/{key}",...]
+	//    ["/event[/{thingID}[/{key}",...]
 	// or
-	//    ["/action/{agentID}/{thingID}/{key}",...]
+	//    ["/action/{thingID}/{key}",...]
 	// The server publishes a json encoded ThingValue object for each event or action.
 	SSEPath string `yaml:"ssePath,omitempty"`
 
@@ -94,15 +95,16 @@ type HttpsBindingConfig struct {
 func NewHttpsBindingConfig() HttpsBindingConfig {
 	cfg := HttpsBindingConfig{
 		Host:      "",
-		Port:      444,
+		Port:      DefaultHttpsPort,
 		EnableSSE: false,
 		EnableWS:  false,
 		// router paths used in runtime TDD and thing forms
-		GetActionsPath: "/action/{agentID}/{thingID}",
-		GetTDDPath:     "/thing/directory/{agentID}/{thingID}",
-		GetValuesPath:  "/thing/values/{agentID}/{thingID}/{key}",
-		PostActionPath: "/action/digitwin/{agentID}/{thingID}/{key}",
-		PostEventPath:  "/event/{agentID}/{thingID}/{key}",
+		GetActionsPath: "/action/{thingID}",
+		GetTDDPath:     "/thing/directory/{thingID}",
+		GetValuesPath:  "/thing/values/{thingID}/{key}",
+		PostActionPath: "/action/{thingID}/{key}",
+		PostEventPath:  "/event/{thingID}/{key}",
+		PostLoginPath:  "/authn/login",
 		PostRPCPath:    "/rpc/{serviceID}/{interfaceID}/{methodName}",
 		SSEPath:        "/sse",
 		WSPath:         "/ws",

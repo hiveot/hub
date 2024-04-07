@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/runtime/authn/jwtauth"
+	"github.com/hiveot/hub/runtime/tlsserver"
 	"log/slog"
 	"net/http"
 	"time"
@@ -21,35 +21,30 @@ const SessionContextID = "session"
 // If no valid session is found this will reply with an unauthorized status code.
 //
 // pubKey is the public key from the keypair used in creating the session token.
-func AddSessionFromToken(pubKey interface{}) func(next http.Handler) http.Handler {
+func (svc *HttpsBinding) AddSessionFromToken() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-			tokenString := r.Header.Get("Authorization")
-			if tokenString == "" {
+			bearerToken, err := tlsserver.GetBearerToken(r)
+			if err != nil {
 				w.WriteHeader(http.StatusUnauthorized)
-				fmt.Fprint(w, "Missing authorization header")
+				slog.Warn("AddSessionFromToken: " + err.Error())
+				_, _ = fmt.Fprint(w, "AddSessionFromToken: "+err.Error())
 				return
 			}
-			tokenString = tokenString[len("Bearer "):]
-			//
 			//check if the token is properly signed
-			cid, sid, err := jwtauth.DecodeSessionToken(tokenString, pubKey, "", "")
-			if err != nil {
+			cid, sid, err := svc.sessionAuth.ValidateToken(bearerToken)
+			if err != nil || sid == "" || cid == "" {
 				slog.Warn("Invalid session token:", "err", err)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 
 			// next obtain the client and session IDs from the claims
+			// A session was added on user login.
+			// service/devices don't have a session until they first connect
 			cs, err := sessionmanager.GetSession(sid)
-			if err != nil {
-				slog.Warn("DecodeSessionToken: Request without a valid session. Please re-authenticate.",
-					slog.String("remoteAdd", r.RemoteAddr),
-					slog.String("url", r.URL.String()))
-				w.WriteHeader(http.StatusUnauthorized)
-				time.Sleep(time.Second)
-				return
+			if err != nil || cs == nil {
+				cs, err = sessionmanager.NewSession(cid, r.RemoteAddr, sid)
 			}
 
 			if cs.clientID != cid {

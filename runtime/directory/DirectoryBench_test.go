@@ -3,7 +3,6 @@ package directory_test
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/logging"
-	"os"
 	"testing"
 )
 
@@ -11,7 +10,6 @@ import (
 func Benchmark_GetTD(b *testing.B) {
 	b.Log("--- Benchmark_GetTD start ---")
 	defer b.Log("--- Benchmark_GetTD end ---")
-	_ = os.Remove(testStoreFile)
 	const senderID = "agent1"
 	const thing1ID = "agent1:thing1"
 	const title1 = "title1"
@@ -19,7 +17,7 @@ func Benchmark_GetTD(b *testing.B) {
 	logging.SetLogging("warning", "")
 
 	// fire up the directory
-	svc, stopFunc := startDirectory()
+	svc, stopFunc := startDirectory(true)
 	defer stopFunc()
 
 	// setup

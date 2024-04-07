@@ -1,0 +1,70 @@
+package authenticator_test
+
+import (
+	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/runtime/authn"
+	"github.com/hiveot/hub/runtime/authn/authenticator"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"testing"
+)
+
+// TODO get store instance and populate with test user
+var authnStore authn.IAuthnStore
+
+func TestCreateSessionToken(t *testing.T) {
+	const clientID = "user1"
+	const clientType = authn.ClientTypeUser
+	sessionID := "session1"
+
+	signingKey := keys.NewEcdsaKey()
+	svc := authenticator.NewJWTAuthenticator(signingKey, authnStore)
+
+	token1, err := svc.CreateSessionToken(clientID, sessionID, 100)
+	require.NoError(t, err)
+	assert.NotEmpty(t, token1)
+
+	// decode it
+	cid2, sid2, err := svc.DecodeSessionToken(token1, "", "")
+	require.NoError(t, err)
+	require.Equal(t, clientID, cid2)
+	require.Equal(t, sessionID, sid2)
+
+	// refresh
+	newToken, err := svc.RefreshToken(clientID, token1, 100)
+	require.NoError(t, err)
+
+	// validate the new token
+	cid3, sid3, err := svc.ValidateToken(newToken)
+	require.NoError(t, err)
+	require.Equal(t, clientID, cid3)
+	require.Equal(t, sessionID, sid3)
+}
+
+func TestBadTokens(t *testing.T) {
+	const clientID = "user1"
+	const clientType = authn.ClientTypeUser
+	sessionID := "session1"
+
+	signingKey := keys.NewEcdsaKey()
+	svc := authenticator.NewJWTAuthenticator(signingKey, authnStore)
+
+	token1, err := svc.CreateSessionToken(clientID, sessionID, 100)
+	require.NoError(t, err)
+	assert.NotEmpty(t, token1)
+
+	// try to refresh as a different client
+
+	// refresh
+	newToken, err := svc.RefreshToken("badclient", token1, 100)
+	require.Error(t, err)
+	assert.Empty(t, newToken)
+
+	// expired
+	token2, _ := svc.CreateSessionToken(clientID, sessionID, -100)
+	cid2, sid2, err := svc.ValidateToken(token2)
+	require.Error(t, err)
+	assert.Equal(t, clientID, cid2)
+	assert.Equal(t, sessionID, sid2)
+
+}

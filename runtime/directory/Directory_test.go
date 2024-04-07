@@ -2,6 +2,7 @@ package directory_test
 
 import (
 	"encoding/json"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/things"
@@ -18,8 +19,10 @@ var testFolder = path.Join(os.TempDir(), "test-directory")
 var testStoreFile = path.Join(testFolder, "directory.json")
 
 // startDirectory initializes a Directory service
-func startDirectory() (svc *service.DirectoryService, stopFn func()) {
-	_ = os.Remove(testStoreFile)
+func startDirectory(clean bool) (svc *service.DirectoryService, stopFn func()) {
+	if clean {
+		_ = os.Remove(testStoreFile)
+	}
 	store := kvbtree.NewKVStore(testStoreFile)
 	err := store.Open()
 	if err != nil {
@@ -64,11 +67,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
-	t.Log("--- TestStartStop start ---")
-	defer t.Log("--- TestStartStop end ---")
-
-	_ = os.Remove(testStoreFile)
-	svc, stopFunc := startDirectory()
+	svc, stopFunc := startDirectory(true)
 	defer stopFunc()
 
 	// viewers should be able to read the directory
@@ -78,15 +77,11 @@ func TestStartStop(t *testing.T) {
 }
 
 func TestAddRemoveTD(t *testing.T) {
-	t.Log("--- TestAddRemoveTD start ---")
-	defer t.Log("--- TestAddRemoveTD end ---")
-	_ = os.Remove(testStoreFile)
 	const senderID = "agent1"
 	const thing1ID = "agent1:thing1"
 	const title1 = "title1"
 
-	_ = os.Remove(testStoreFile)
-	svc, stopFunc := startDirectory()
+	svc, stopFunc := startDirectory(true)
 	defer stopFunc()
 
 	tdDoc1 := createTDDoc(thing1ID, title1)
@@ -109,10 +104,34 @@ func TestAddRemoveTD(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestHandleEvent(t *testing.T) {
+	const senderID = "agent1"
+	const thing1ID = "agent1:thing1"
+	const title1 = "title1"
+
+	svc, stopFunc := startDirectory(true)
+	defer stopFunc()
+
+	// events should be handled
+	tdDoc1 := createTDDoc(thing1ID, title1)
+	tv := things.NewThingMessage(vocab.MessageTypeEvent, thing1ID,
+		vocab.EventTypeTD, []byte(tdDoc1), senderID)
+	_, err := svc.HandleEvent(tv)
+	assert.NoError(t, err)
+
+	// non-events like actions should be ignored
+	tv.MessageType = vocab.MessageTypeAction
+	_, err = svc.HandleEvent(tv)
+	assert.NoError(t, err)
+
+	tdList, err := svc.GetTDs(0, 10)
+	assert.Equal(t, 1, len(tdList))
+	assert.NoError(t, err)
+}
+
 func TestGetTDsFail(t *testing.T) {
 	const clientID = "client1"
-	_ = os.Remove(testStoreFile)
-	svc, stopFunc := startDirectory()
+	svc, stopFunc := startDirectory(true)
 	defer stopFunc()
 	tds, err := svc.GetTDs(0, 10)
 	require.NoError(t, err)
@@ -155,12 +174,11 @@ func TestGetTDsFail(t *testing.T) {
 }
 
 func TestListTDs(t *testing.T) {
-	_ = os.Remove(testStoreFile)
 	const senderID = "agent1"
 	const thing1ID = "agent1:thing1"
 	const title1 = "title1"
 
-	svc, stopFunc := startDirectory()
+	svc, stopFunc := startDirectory(true)
 	defer stopFunc()
 
 	tdDoc1 := createTDDoc(thing1ID, title1)
@@ -176,14 +194,13 @@ func TestListTDs(t *testing.T) {
 }
 
 func TestCursor(t *testing.T) {
-	_ = os.Remove(testStoreFile)
 	const clientID = "client1"
 	const publisherID = "urn:test"
 	const thing1ID = "urn:agent1:thing1"
 	const thing2ID = "urn:agent1:thing2"
 	const thing3ID = "urn:agent1:thing3"
 
-	svc, stopFunc := startDirectory()
+	svc, stopFunc := startDirectory(true)
 	defer stopFunc()
 
 	// add 3 docs.

@@ -3,11 +3,12 @@ package httpsbinding
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/authn"
 	"github.com/hiveot/hub/runtime/tlsserver"
 	"io"
 	"log/slog"
@@ -28,7 +29,10 @@ type HttpsBinding struct {
 	router     *chi.Mux
 
 	// callback handler for incoming events,actions and rpc messages
-	handleMessage func(tv *things.ThingValue) ([]byte, error)
+	handleMessage func(tv *things.ThingMessage) ([]byte, error)
+
+	// sessionAuth for logging in and validating session tokens
+	sessionAuth authn.IAuthenticator
 }
 
 // setup the chain of routes used by the service and return the router
@@ -64,7 +68,7 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 
 		// full page routes
 		//r.Get("/static/*", staticFileServer.ServeHTTP)
-		//r.Post("/login", svc.handleLogin)
+		r.Post(svc.config.PostLoginPath, svc.handleLogin)
 		//r.Post("/logout", svc.handleLogout)
 
 	})
@@ -72,10 +76,13 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 	//--- private routes that requires authentication
 	router.Group(func(r chi.Router) {
 		// client sessions
-		r.Use(AddSessionFromToken(svc.privKey.PublicKey()))
+		r.Use(svc.AddSessionFromToken())
 
-		// agents
+		// handlers for receiving requests by type
+		r.Post(svc.config.PostActionPath, svc.handlePostAction)
 		r.Post(svc.config.PostEventPath, svc.handlePostEvent)
+		r.Post(svc.config.PostRPCPath, svc.handlePostRPC)
+
 		//r.Get("/action/{agentID}/{thingID}", svc.handleGetQueuedActions)
 
 		// consumers
@@ -91,50 +98,33 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 	return router
 }
 
-// onPostEvent handles a posted event by agent
-func (svc *HttpsBinding) handlePostEvent(w http.ResponseWriter, r *http.Request) {
-	// get the client session of this agent
-	ctxSession := r.Context().Value(SessionContextID)
-	if ctxSession == nil {
-		slog.Error("handlePostEvent. Missing session.")
-		w.WriteHeader(http.StatusUnauthorized)
+// Handle login and return an auth token with a new session id for the client
+func (svc *HttpsBinding) handleLogin(w http.ResponseWriter, req *http.Request) {
+	// credentials are in a json payload
+	authMsg := make(map[string]string)
+	data, _ := io.ReadAll(req.Body)
+	err := json.Unmarshal(data, &authMsg)
+	if err != nil {
+		slog.Warn("handleLogin failed getting credentials", "err", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	cs := ctxSession.(*ClientSession)
-
-	agentID := chi.URLParam(r, "agentID")
-	thingID := chi.URLParam(r, "thingID")
-	key := chi.URLParam(r, "key")
-	data, err := io.ReadAll(r.Body)
+	loginID := authMsg["login"]
+	password := authMsg["password"]
+	authToken, err := svc.sessionAuth.Login(loginID, password, "")
 	if err != nil {
-		slog.Warn("Error reading event body", "err", err)
-	}
-	// pass event to the protocol handler
-	tv := things.NewThingValue(transports.MessageTypeEvent, agentID, thingID, key, data, cs.clientID)
-	reply, err := svc.handleMessage(tv)
-	if err != nil {
-		_, _ = w.Write([]byte(err.Error()))
-		w.WriteHeader(http.StatusInternalServerError)
+		// missing bearer token
+		slog.Warn("handleLogin bad login", "clientID", loginID)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	// return the reply
-	if reply != nil {
-		_, _ = w.Write(reply)
-	}
+	_, _ = w.Write([]byte(authToken))
 	w.WriteHeader(http.StatusOK)
-	return
-}
-
-// Publish a message to subscribers of this message
-// This passes it to SSE handlers of active sessions
-func (svc *HttpsBinding) Publish(message *things.ThingValue) {
-	// TODO: track subscriptions
-	// TODO: publish to SSE handlers of subscribed clients
 }
 
 // Start the https server and listen for incoming connection requests
 func (svc *HttpsBinding) Start() error {
-	slog.Info("HttpsBinding Start")
+	slog.Info("Starting HttpsBinding")
 	svc.createRoutes(svc.router)
 	err := svc.httpServer.Start()
 	return err
@@ -142,22 +132,31 @@ func (svc *HttpsBinding) Start() error {
 
 // Stop the https server
 func (svc *HttpsBinding) Stop() {
+	slog.Info("Stopping HttpsBinding")
 	svc.httpServer.Stop()
 }
 
 // NewHttpsBinding creates a new instance of the HTTPS Server with JWT authentication
 // and endpoints for bindings.
+//
+//	config
+//	privKey
+//	caCert
+//	sessionAuth for creating and validating authentication tokens
+//	handler
 func NewHttpsBinding(config *HttpsBindingConfig,
 	privKey keys.IHiveKey,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
-	handler func(tv *things.ThingValue) ([]byte, error),
+	sessionAuth authn.IAuthenticator,
+	handler func(tv *things.ThingMessage) ([]byte, error),
 ) *HttpsBinding {
 
 	httpServer, router := tlsserver.NewTLSServer(
 		config.Host, uint(config.Port), serverCert, caCert)
 
 	svc := HttpsBinding{
+		sessionAuth:   sessionAuth,
 		config:        config,
 		privKey:       privKey,
 		httpServer:    httpServer,

@@ -3,8 +3,8 @@ package valueservice
 import (
 	"encoding/json"
 	"fmt"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"log/slog"
 	"sync"
 	"time"
@@ -24,49 +24,19 @@ type ValueService struct {
 	bucket buckets.IBucket
 
 	// in-memory cache of the latest things values by thingID
-	cache map[string]things.ThingValueMap
+	cache map[string]things.ThingMessageMap
 	// mutex for read/writing the cache
 	cacheMux sync.RWMutex // mutex for the following two fields
 	// map of thingsIDs and their change status
 	changedThings map[string]bool
 }
 
-// LoadProps loads the cached value of a Thing properties on demand.
-// To be invoked before reading and writing Thing properties to ensure the cache is loaded.
-// This immediately returns if a record for the Thing was already loaded.
-// Returns true if a cache value exists, false if the thingID was added to the cache
-func (svc *ValueService) LoadProps(thingID string) (cached bool) {
-	svc.cacheMux.Lock()
-	props, found := svc.cache[thingID]
-	defer svc.cacheMux.Unlock()
-
-	if found {
-		return true
-	}
-	val, _ := svc.bucket.Get(thingID)
-
-	if val == nil {
-		// create a new record with things properties
-		props = things.NewThingValueMap()
-	} else {
-		// decode the record with things properties
-		err := json.Unmarshal(val, &props)
-		if err != nil {
-			slog.Error("stored 'latest' properties of things can't be unmarshalled. Clean start.",
-				slog.String("thingID", thingID), slog.String("err", err.Error()))
-			props = things.NewThingValueMap()
-		}
-	}
-	svc.cache[thingID] = props
-	return false
-}
-
 // GetProperties returns the latest value of things properties and events as a list of properties
 //
 //	thingID of the thing to read.
 //	names is optional and can be used to limit the resulting array of values. Use nil to get all properties.
-func (svc *ValueService) GetProperties(thingID string, names []string) (props things.ThingValueMap) {
-	props = things.NewThingValueMap()
+func (svc *ValueService) GetProperties(thingID string, names []string) (props things.ThingMessageMap) {
+	props = things.NewThingMessageMap()
 
 	// ensure this thing has its properties cache loaded
 	svc.LoadProps(thingID)
@@ -93,36 +63,42 @@ func (svc *ValueService) GetProperties(thingID string, names []string) (props th
 	return props
 }
 
-// HandleAddValue is the handler of update to a things's event/property values
+// HandleEvent is the handler of update to a things's event/property values
 // used to update the properties cache.
 // isAction indicates the value is an action.
-func (svc *ValueService) HandleAddValue(addtv *things.ThingValue) {
+func (svc *ValueService) HandleEvent(msg *things.ThingMessage) ([]byte, error) {
 	// ensure the Thing has its properties cache loaded
-	if addtv.CreatedMSec <= 0 {
-		addtv.CreatedMSec = time.Now().UnixMilli()
+	if msg.CreatedMSec <= 0 {
+		msg.CreatedMSec = time.Now().UnixMilli()
 	}
 
-	svc.LoadProps(addtv.ThingID)
+	svc.LoadProps(msg.ThingID)
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
-	thingCache, _ := svc.cache[addtv.ThingID]
+	thingCache, _ := svc.cache[msg.ThingID]
 
-	if addtv.Key == transports.EventNameProps {
+	if msg.MessageType != vocab.MessageTypeEvent || msg.Key == vocab.EventTypeTD {
+		// ignore TDs
+		return nil, nil
+	} else if msg.Key == vocab.EventTypeProps {
 		// the value holds a map of property name:value pairs, add each one individually
 		// in order to retain the sender and created timestamp.
 		props := make(map[string]any)
-		err := json.Unmarshal(addtv.Data, &props)
+		err := json.Unmarshal(msg.Data, &props)
 		if err != nil {
-			return // data is not used
+			slog.Warn("HandleEvent; Error unmarshalling props",
+				slog.String("err", err.Error()),
+				slog.String("senderID", msg.SenderID))
+			return nil, err
 		}
-		// turn each value into a ThingValue object
+		// turn each value into a ThingMessage object
 		for propName, propValue := range props {
 			propValueString := fmt.Sprint(propValue)
-			tv := things.NewThingValue(transports.MessageTypeEvent,
-				addtv.ThingID, propName, []byte(propValueString), addtv.SenderID)
-			tv.CreatedMSec = addtv.CreatedMSec
+			tv := things.NewThingMessage(vocab.MessageTypeEvent,
+				msg.ThingID, propName, []byte(propValueString), msg.SenderID)
+			tv.CreatedMSec = msg.CreatedMSec
 
-			// in case events arrive out of order, only update if the addtv is newer
+			// in case events arrive out of order, only update if the msg is newer
 			existingLatest := thingCache.Get(propName)
 			if existingLatest == nil || tv.CreatedMSec > existingLatest.CreatedMSec {
 				thingCache.Set(propName, tv)
@@ -130,13 +106,44 @@ func (svc *ValueService) HandleAddValue(addtv *things.ThingValue) {
 		}
 	} else {
 		// events or action messages
-		// in case events arrive out of order, only update if the addtv is newer
-		existingLatest := thingCache.Get(addtv.Key)
-		if existingLatest == nil || addtv.CreatedMSec > existingLatest.CreatedMSec {
-			thingCache.Set(addtv.Key, addtv)
+		// in case events arrive out of order, only update if the msg is newer
+		existingLatest := thingCache.Get(msg.Key)
+		if existingLatest == nil || msg.CreatedMSec > existingLatest.CreatedMSec {
+			thingCache.Set(msg.Key, msg)
 		}
 	}
-	svc.changedThings[addtv.ThingID] = true
+	svc.changedThings[msg.ThingID] = true
+	return nil, nil
+}
+
+// LoadProps loads the cached value of a Thing properties on demand.
+// To be invoked before reading and writing Thing properties to ensure the cache is loaded.
+// This immediately returns if a record for the Thing was already loaded.
+// Returns true if a cache value exists, false if the thingID was added to the cache
+func (svc *ValueService) LoadProps(thingID string) (cached bool) {
+	svc.cacheMux.Lock()
+	props, found := svc.cache[thingID]
+	defer svc.cacheMux.Unlock()
+
+	if found {
+		return true
+	}
+	val, _ := svc.bucket.Get(thingID)
+
+	if val == nil {
+		// create a new record with things properties
+		props = things.NewThingMessageMap()
+	} else {
+		// decode the record with things properties
+		err := json.Unmarshal(val, &props)
+		if err != nil {
+			slog.Error("stored 'latest' properties of things can't be unmarshalled. Clean start.",
+				slog.String("thingID", thingID), slog.String("err", err.Error()))
+			props = things.NewThingMessageMap()
+		}
+	}
+	svc.cache[thingID] = props
+	return false
 }
 
 // SaveChanges writes modified cached properties to the underlying store.
@@ -172,10 +179,7 @@ func (svc *ValueService) SaveChanges() (err error) {
 
 		// buckets manage their own locks
 		if propsJSON != nil {
-			err2 := svc.bucket.Set(thingID, propsJSON)
-			if err2 != nil {
-				err = err2
-			}
+			err = svc.bucket.Set(thingID, propsJSON)
 		}
 	}
 	return err
@@ -183,9 +187,9 @@ func (svc *ValueService) SaveChanges() (err error) {
 
 // Start the value store
 func (svc *ValueService) Start() (err error) {
-	slog.Info("Starting ValueStore")
+	slog.Info("Starting ValueService")
 	// start with empty cache
-	svc.cache = make(map[string]things.ThingValueMap)
+	svc.cache = make(map[string]things.ThingMessageMap)
 	svc.changedThings = make(map[string]bool)
 
 	return err
@@ -193,7 +197,7 @@ func (svc *ValueService) Start() (err error) {
 
 // Stop the value store
 func (svc *ValueService) Stop() {
-	slog.Info("Stopping ValueStore")
+	slog.Info("Stopping ValueService")
 	_ = svc.SaveChanges()
 }
 
@@ -205,7 +209,7 @@ func NewThingValueService(cfg *ValueStoreConfig, store buckets.IBucketStore) *Va
 		cfg:           cfg,
 		store:         store,
 		bucket:        propsbucket,
-		cache:         make(map[string]things.ThingValueMap),
+		cache:         make(map[string]things.ThingMessageMap),
 		cacheMux:      sync.RWMutex{},
 		changedThings: make(map[string]bool),
 	}

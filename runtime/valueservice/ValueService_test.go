@@ -3,9 +3,9 @@ package valueservice_test
 import (
 	"encoding/json"
 	"fmt"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/valueservice"
 	"github.com/stretchr/testify/assert"
@@ -25,9 +25,9 @@ var names = []string{"temperature", "humidity", "pressure", "wind", "speed", "sw
 
 // generate a random batch of values for testing
 func makeValueBatch(valueSvc *valueservice.ValueService,
-	nrValues int, thingIDs []string, timespanSec int) (batch []*things.ThingValue) {
+	nrValues int, thingIDs []string, timespanSec int) (batch []*things.ThingMessage) {
 
-	valueBatch := make([]*things.ThingValue, 0, nrValues)
+	valueBatch := make([]*things.ThingMessage, 0, nrValues)
 	for j := 0; j < nrValues; j++ {
 		thingIndex := rand.Intn(len(thingIDs))
 		thingID := thingIDs[thingIndex]
@@ -36,23 +36,29 @@ func makeValueBatch(valueSvc *valueservice.ValueService,
 		randomSeconds := time.Duration(rand.Intn(timespanSec)) * time.Second
 		randomTime := time.Now().Add(-randomSeconds)
 
-		ev := things.NewThingValue(transports.MessageTypeEvent,
+		ev := things.NewThingMessage(vocab.MessageTypeEvent,
 			thingID, names[randomName],
 			[]byte(fmt.Sprintf("%2.3f", randomValue)), "sender1",
 		)
 		ev.CreatedMSec = randomTime.UnixMilli()
 
-		valueSvc.HandleAddValue(ev)
+		_, _ = valueSvc.HandleEvent(ev)
 		valueBatch = append(valueBatch, ev)
 	}
 	return valueBatch
 }
 
-func startValueService() (svc *valueservice.ValueService, stopFn func()) {
+// start the value service
+// optionally clean the existing store
+func startValueService(clean bool) (svc *valueservice.ValueService, stopFn func()) {
 	var valueStore buckets.IBucketStore
 	var cfg = valueservice.NewValueStoreConfig()
 
-	valueStore = bucketstore.NewBucketStore(testFolder, "values", backend)
+	if clean {
+		_ = os.RemoveAll(testFolder)
+		_ = os.Mkdir(testFolder, 0700)
+	}
+	valueStore, _ = bucketstore.NewBucketStore(testFolder, "values", backend)
 	err := valueStore.Open()
 
 	if err != nil {
@@ -75,7 +81,7 @@ func TestGetLatest(t *testing.T) {
 	const agent1ID = "agent1"
 	const thing1ID = "thing1" // matches a percentage of the random things
 
-	svc, closeFn := startValueService()
+	svc, closeFn := startValueService(true)
 	defer closeFn()
 
 	batch := makeValueBatch(svc, count, []string{thing1ID}, 3600*24*30)
@@ -104,27 +110,6 @@ func TestGetLatest(t *testing.T) {
 	assert.NoError(t, err)
 	found := svc.LoadProps(thing1ID)
 	assert.False(t, found) // not cached
-
-	//cursor, releaseFn, err := readHist.GetCursor(agent1ID, thing1ID, "")
-	//defer releaseFn()
-
-	//t.Logf("Received %d values", len(values))
-	//assert.Greater(t, len(values), 0, "Expected multiple properties, got none")
-	//// compare the results with the highest value tracked during creation of the test data
-	//for _, val := range values {
-	//	t.Logf("Result; name '%s'; created: %d", val.Name, val.CreatedMSec)
-	//	highest := highestFromAdded[val.Name]
-	//	if assert.NotNil(t, highest) {
-	//		t.Logf("Expect %s: %v", highest.Name, highest.CreatedMSec)
-	//		assert.Equal(t, highest.CreatedMSec, val.CreatedMSec)
-	//	}
-	//}
-	//// getting the Last should get the same result
-	//lastItem, valid, _ := cursor.Last()
-	//highest := highestFromAdded[lastItem.Name]
-	//
-	//assert.True(t, valid)
-	//assert.Equal(t, lastItem.CreatedMSec, highest.CreatedMSec)
 }
 
 func TestAddPropsEvent(t *testing.T) {
@@ -135,19 +120,40 @@ func TestAddPropsEvent(t *testing.T) {
 	pev["switch"] = "false"
 	serProps, _ := json.Marshal(pev)
 
-	svc, closeFn := startValueService()
+	svc, closeFn := startValueService(true)
 	defer closeFn()
-	tv := things.NewThingValue(transports.MessageTypeEvent,
-		thing1ID, transports.EventNameProps, serProps, "sender")
-	svc.HandleAddValue(tv)
+	tv := things.NewThingMessage(vocab.MessageTypeEvent,
+		thing1ID, vocab.EventTypeProps, serProps, "sender")
+	_, _ = svc.HandleEvent(tv)
 
 	values1 := svc.GetProperties(thing1ID, names)
-	assert.LessOrEqual(t, len(pev), len(values1))
+	assert.Equal(t, len(pev), len(values1))
+}
+
+func TestAddBadProps(t *testing.T) {
+	thing1ID := "thing1"
+	badProps := []string{"bad1", "bad2"}
+	serProps, _ := json.Marshal(badProps)
+
+	svc, closeFn := startValueService(true)
+	defer closeFn()
+	tv := things.NewThingMessage(vocab.MessageTypeEvent,
+		thing1ID, vocab.EventTypeProps, serProps, "sender")
+	_, err := svc.HandleEvent(tv)
+	assert.Error(t, err)
+
+	// action is ignored
+	tv.MessageType = vocab.MessageTypeAction
+	_, err = svc.HandleEvent(tv)
+	assert.NoError(t, err)
+
+	values1 := svc.GetProperties(thing1ID, names)
+	assert.Equal(t, 0, len(values1))
 }
 
 func TestReadPropsFail(t *testing.T) {
 	thing1ID := "badthingid"
-	svc, closeFn := startValueService()
+	svc, closeFn := startValueService(true)
 	defer closeFn()
 	values1 := svc.GetProperties(thing1ID, names)
 	assert.Empty(t, values1)

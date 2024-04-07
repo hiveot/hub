@@ -13,8 +13,8 @@ type CursorFirstArgs struct {
 	CursorKey string `json:"cursorKey"`
 }
 type CursorFirstResp struct {
-	Value things.ThingValue `json:"value"`
-	Valid bool              `json:"valid"`
+	Value things.ThingMessage `json:"value"`
+	Valid bool                `json:"valid"`
 	// CursorKey with iteration location after the first
 	CursorKey string `json:"cursorKey"`
 }
@@ -26,8 +26,8 @@ type CursorNextArgs struct {
 	CursorKey string `json:"cursorKey"`
 }
 type CursorNextResp struct {
-	Value things.ThingValue `json:"value"`
-	Valid bool              `json:"valid"`
+	Value things.ThingMessage `json:"value"`
+	Valid bool                `json:"valid"`
 	// CursorKey with new iteration location
 	CursorKey string `json:"cursorKey"`
 }
@@ -40,8 +40,8 @@ type CursorNextNArgs struct {
 	Limit     uint   `json:"limit"`
 }
 type CursorNextNResp struct {
-	Values         []things.ThingValue `json:"values"`
-	ItemsRemaining bool                `json:"itemsRemaining"`
+	Values         []things.ThingMessage `json:"values"`
+	ItemsRemaining bool                  `json:"itemsRemaining"`
 	// CursorKey with new iteration location
 	CursorKey string `json:"cursorKey"`
 }
@@ -67,7 +67,7 @@ type GetTDArgs struct {
 	ThingID string `json:"thingID"`
 }
 type GetTDResp struct {
-	Value things.ThingValue `json:"value"`
+	Value things.ThingMessage `json:"value"`
 }
 
 const GetTDsMethod = "getTDs"
@@ -77,7 +77,7 @@ type GetTDsArgs struct {
 	Limit  int `json:"limit"`
 }
 type GetTDsResp struct {
-	Values []things.ThingValue `json:"values"`
+	Values []things.ThingMessage `json:"values"`
 }
 
 //--- Interface
@@ -87,17 +87,17 @@ type IDirectoryCursor interface {
 	// First return the first directory entry.
 	//  tdDoc contains the serialized TD document
 	// Returns nil if the store is empty
-	First() (value things.ThingValue, valid bool, err error)
+	First() (value things.ThingMessage, valid bool, err error)
 
 	// Next returns the next directory entry
 	// Returns nil when trying to read past the last value
-	Next() (value things.ThingValue, valid bool, err error)
+	Next() (value things.ThingMessage, valid bool, err error)
 
 	// NextN returns a batch of next directory entries
 	// Returns empty list when trying to read past the last value
 	// itemsRemaining is true as long as more items can be retrieved
 	// limit provides the maximum number of items to obtain.
-	NextN(limit uint) (batch []things.ThingValue, itemsRemaining bool, err error)
+	NextN(limit uint) (batch []things.ThingMessage, itemsRemaining bool, err error)
 
 	// Release the cursor after use
 	Release()

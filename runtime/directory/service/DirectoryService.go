@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/directory"
 	"log/slog"
 	"time"
@@ -57,6 +59,18 @@ func (svc *DirectoryService) GetTDs(offset, limit int) (tddList []string, err er
 	return tddList, nil
 }
 
+// HandleEvent handles TD update events
+func (svc *DirectoryService) HandleEvent(msg *things.ThingMessage) ([]byte, error) {
+	if msg.MessageType == vocab.MessageTypeEvent && msg.Key == vocab.EventTypeTD {
+		tdd := msg.Data
+		err := svc.UpdateTD(msg.SenderID, msg.ThingID, string(tdd))
+		if err != nil {
+			slog.Warn("HandleEvent: TD update failed", "err", err)
+		}
+	}
+	return nil, nil
+}
+
 // QueryTDs the collection of TD documents
 //func (svc *DirectoryService) QueryTDs(query string) (tddList []string, err error) {
 //	// TBD: query based on what?
@@ -74,7 +88,7 @@ func (svc *DirectoryService) RemoveTD(senderID string, thingID string) error {
 
 // Start the directory service and open the directory stored TD bucket
 func (svc *DirectoryService) Start() (err error) {
-	slog.Warn("Starting DirectoryService")
+	slog.Info("Starting DirectoryService")
 	// listen for requests
 
 	return err
@@ -82,7 +96,7 @@ func (svc *DirectoryService) Start() (err error) {
 
 // Stop the service
 func (svc *DirectoryService) Stop() {
-	slog.Warn("Stopping DirectoryService")
+	slog.Info("Stopping DirectoryService")
 	if svc.tdBucket != nil {
 		_ = svc.tdBucket.Close()
 	}

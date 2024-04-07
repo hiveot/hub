@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/authn"
 	"github.com/hiveot/hub/runtime/protocols/api"
 	"github.com/hiveot/hub/runtime/protocols/httpsbinding"
 	"log/slog"
@@ -23,6 +24,44 @@ type ProtocolsManager struct {
 // Protocols must be added before calling Start()
 func (svc *ProtocolsManager) AddProtocolBinding(binding api.IProtocolBinding) {
 	svc.bindings = append(svc.bindings, binding)
+}
+
+// SendAction sends an action request to the destination.
+//
+// TODO: queue the action if the destination is not available
+// TODO: identify if the destination agent is connected
+func (svc *ProtocolsManager) SendAction(msg *things.ThingMessage) (reply []byte, err error) {
+	// for now simply send the action request to all protocol handlers
+	for _, protoHandler := range svc.bindings {
+		reply, err = protoHandler.SendAction(msg)
+		if err == nil {
+			// avoid double delivery
+			break
+		}
+	}
+	return reply, err
+}
+
+// SendEvent sends a event to all subscribers
+func (svc *ProtocolsManager) SendEvent(msg *things.ThingMessage) {
+	for _, protoHandler := range svc.bindings {
+		protoHandler.SendEvent(msg)
+	}
+}
+
+// SendRPC sends a rpc request to the destination.
+//
+// TODO: identify if the destination agent is connected
+func (svc *ProtocolsManager) SendRPC(msg *things.ThingMessage) (reply []byte, err error) {
+	// for now simply send the rpc request to all protocol handlers until one is successful
+	for _, protoHandler := range svc.bindings {
+		reply, err = protoHandler.SendRPC(msg)
+		if err == nil {
+			// avoid double delivery
+			break
+		}
+	}
+	return reply, err
 }
 
 // Start the protocol servers
@@ -46,10 +85,14 @@ func (svc *ProtocolsManager) Stop() {
 // NewProtocolManager creates a new instance of the protocol manager
 func NewProtocolManager(cfg *ProtocolsConfig,
 	privKey keys.IHiveKey, serverCert *tls.Certificate, caCert *x509.Certificate,
-	msgHandler func(tv *things.ThingValue) ([]byte, error)) *ProtocolsManager {
+	sessionAuth authn.IAuthenticator,
+	msgHandler func(tv *things.ThingMessage) ([]byte, error)) *ProtocolsManager {
+
 	svc := ProtocolsManager{}
 	svc.AddProtocolBinding(
-		httpsbinding.NewHttpsBinding(&cfg.HttpsBinding, privKey, serverCert, caCert, msgHandler))
+		httpsbinding.NewHttpsBinding(&cfg.HttpsBinding,
+			privKey, serverCert, caCert,
+			sessionAuth, msgHandler))
 
 	return &svc
 }

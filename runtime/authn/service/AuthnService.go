@@ -6,8 +6,8 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/authn"
+	"github.com/hiveot/hub/runtime/authn/authenticator"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
-	"github.com/hiveot/hub/runtime/authn/jwtauth"
 	"log/slog"
 	"os"
 	"path"
@@ -18,13 +18,16 @@ const AuthnServiceID = "authn"
 
 // AuthnService handles authentication and authorization requests
 type AuthnService struct {
-	store  authn.IAuthnStore
-	caCert *x509.Certificate
+	authnStore authn.IAuthnStore
+	caCert     *x509.Certificate
 
 	cfg *authn.AuthnConfig
 
 	// key used to create and verify session tokens
 	signingKey keys.IHiveKey
+
+	// the authenticator for jwt tokens
+	sessionAuth authn.IAuthenticator
 }
 
 // AddClient adds a new client to the service.
@@ -61,7 +64,7 @@ func (svc *AuthnService) AddClient(
 		validitySec = svc.cfg.AgentTokenValiditySec
 	}
 
-	prof, err := svc.store.GetProfile(clientID)
+	prof, err := svc.authnStore.GetProfile(clientID)
 	if err != nil {
 		prof = authn.ClientProfile{
 			ClientID:         clientID,
@@ -71,9 +74,9 @@ func (svc *AuthnService) AddClient(
 			TokenValiditySec: validitySec,
 		}
 	}
-	err = svc.store.Add(clientID, prof)
+	err = svc.authnStore.Add(clientID, prof)
 	if password != "" {
-		err = svc.store.SetPassword(clientID, password)
+		err = svc.authnStore.SetPassword(clientID, password)
 	}
 	return err
 }
@@ -90,7 +93,7 @@ func (svc *AuthnService) AddClientWithTokenFile(
 		err = svc.AddClient(clientType, clientID, displayName, kp.ExportPublic(), "")
 	}
 	if err == nil {
-		authToken, err2 := svc.CreateSessionToken(clientID, "", validitySec)
+		authToken, err2 := svc.sessionAuth.CreateSessionToken(clientID, "", validitySec)
 		err = err2
 		if err == nil {
 			// remove the readonly token file if it exists, to be able to overwrite
@@ -102,37 +105,23 @@ func (svc *AuthnService) AddClientWithTokenFile(
 	return err
 }
 
-// CreateSessionToken creates a new session token for the client
-//
-//	clientID is the account ID of a known client
-//	sessionID for which this token is valid. Empty session ID allows any session.
-//	validitySec is the token validity period or 0 for default based on client type
-func (svc *AuthnService) CreateSessionToken(
-	clientID string, sessionID string, validitySec int) (string, error) {
-
-	// TODO: add support for nonce challenge with client pubkey
-	token, err := jwtauth.CreateSessionToken(
-		clientID, sessionID, svc.signingKey, validitySec)
-	return token, err
-}
-
 // GetAllProfiles returns a list of all known client profiles
 func (svc *AuthnService) GetAllProfiles() ([]authn.ClientProfile, error) {
-	profiles, err := svc.store.GetProfiles()
+	profiles, err := svc.authnStore.GetProfiles()
 	return profiles, err
 }
 
 // GetProfile returns a client's profile
 func (svc *AuthnService) GetProfile(clientID string) (authn.ClientProfile, error) {
 
-	entry, err := svc.store.GetProfile(clientID)
+	entry, err := svc.authnStore.GetProfile(clientID)
 	return entry, err
 }
 
 // GetEntries provide a list of known clients
 // An entry is a profile with a password hash.
 func (svc *AuthnService) GetEntries() (entries []authn.AuthnEntry) {
-	return svc.store.GetEntries()
+	return svc.authnStore.GetEntries()
 }
 
 // LoadCreateKeyPair loads a public/private key pair from file or create it if it doesn't exist
@@ -170,51 +159,25 @@ func (svc *AuthnService) LoadCreateKeyPair(clientID, keysDir string) (kp keys.IH
 //
 //	clientID is the client to log in
 //	password to verify
-//	sessionID of the new session
+//	sessionID of the new session or "" to create a new session
 //
 // This returns a session token or an error if failed
 func (svc *AuthnService) Login(clientID, password, sessionID string) (token string, err error) {
 
-	clientProfile, err := svc.store.VerifyPassword(clientID, password)
+	clientProfile, err := svc.authnStore.VerifyPassword(clientID, password)
 	_ = clientProfile
 	if err != nil {
 		return "", err
 	}
 	validitySec := clientProfile.TokenValiditySec
-	token, err = svc.CreateSessionToken(clientID, sessionID, validitySec)
-	return token, err
-}
-
-// RefreshToken issues a new session token for the authenticated user.
-// This returns a refreshed token that can be used to connect to the messaging server
-// the old token must be a valid jwt token belonging to the clientID
-func (svc *AuthnService) RefreshToken(clientID string, oldToken string) (token string, err error) {
-	// verify the token
-	clientProfile, err := svc.store.GetProfile(clientID)
-	if err != nil {
-		return "", err
-	}
-	tokenClientID, sessionID, err := jwtauth.DecodeSessionToken(
-		oldToken, svc.signingKey.PublicKey(), "", "")
-	if tokenClientID != clientID {
-		err = fmt.Errorf("RefreshToken:Token client '%s' differs from client '%s'", tokenClientID, clientID)
-	}
-	if err != nil {
-		return "", fmt.Errorf("error validating oldToken of client %s: %w", clientID, err)
-	}
-	validitySec := clientProfile.TokenValiditySec
-	token, err = svc.CreateSessionToken(clientID, sessionID, validitySec)
-	if err != nil {
-		slog.Warn("RefreshToken",
-			"clientID", clientProfile.ClientID, "err", err.Error())
-	}
+	token, err = svc.sessionAuth.CreateSessionToken(clientID, sessionID, validitySec)
 	return token, err
 }
 
 // RemoveClient removes a client and disables authentication
 func (svc *AuthnService) RemoveClient(clientID string) error {
 	slog.Info("RemoveClient", "clientID", clientID)
-	err := svc.store.Remove(clientID)
+	err := svc.authnStore.Remove(clientID)
 	return err
 }
 
@@ -227,23 +190,13 @@ func (svc *AuthnService) UpdateClient(senderID string, profile authn.ClientProfi
 	slog.Info("UpdateClient",
 		slog.String("clientID", profile.ClientID),
 		slog.String("senderID", senderID))
-	err := svc.store.UpdateProfile(profile.ClientID, profile)
+	err := svc.authnStore.UpdateProfile(profile.ClientID, profile)
 	return err
 }
 
 func (svc *AuthnService) UpdatePassword(clientID string, password string) error {
 	slog.Info("SetClientPassword", "clientID", clientID)
-	err := svc.store.SetPassword(clientID, password)
-	if err != nil {
-		slog.Error("Failed changing password", "clientID", clientID, "err", err.Error())
-	}
-	return err
-}
-func (svc *AuthnService) ValidateToken(clientID string, token string) error {
-	slog.Info("ValidateToken", slog.String("clientID", clientID))
-	cid, sid, err := jwtauth.DecodeSessionToken(token, svc.signingKey.PublicKey(), "", "")
-	_ = cid
-	_ = sid
+	err := svc.authnStore.SetPassword(clientID, password)
 	if err != nil {
 		slog.Error("Failed changing password", "clientID", clientID, "err", err.Error())
 	}
@@ -251,13 +204,13 @@ func (svc *AuthnService) ValidateToken(clientID string, token string) error {
 }
 
 // Start the authentication service.
-// This opens the user store and creates accounts for the admin user and launcher
-// if they don't exist.
-func (svc *AuthnService) Start() (err error) {
-	slog.Warn("starting AuthnService")
-	err = svc.store.Open()
+// The provided user store must be opened first.
+// This creates accounts for the admin user and launcher if they don't exist.
+func (svc *AuthnService) Start() (sessionAuth authn.IAuthenticator, err error) {
+	slog.Info("starting AuthnService")
+	//err = svc.authnStore.Open()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// before being able to connect, the AuthService and its key must be known
@@ -265,11 +218,13 @@ func (svc *AuthnService) Start() (err error) {
 	svc.signingKey, err = svc.LoadCreateKeyPair(AuthnServiceID, svc.cfg.KeysDir)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
+	svc.sessionAuth = authenticator.NewJWTAuthenticator(svc.signingKey, svc.authnStore)
+
 	// ensure the password hash algo is valid
 	if svc.cfg.Encryption != authn.PWHASH_BCRYPT && svc.cfg.Encryption != authn.PWHASH_ARGON2id {
-		return fmt.Errorf("Start: Invalid password hash algo: %s", svc.cfg.Encryption)
+		return nil, fmt.Errorf("Start: Invalid password hash algo: %s", svc.cfg.Encryption)
 	}
 
 	// Ensure the launcher service and admin user exist and has a saved key and auth token
@@ -287,37 +242,48 @@ func (svc *AuthnService) Start() (err error) {
 	if err != nil {
 		err = fmt.Errorf("failed to setup the admin account: %w", err)
 	}
-	return err
+	return svc.sessionAuth, err
 }
 
 // Stop the service, unsubscribe and disconnect from the server
 func (svc *AuthnService) Stop() {
-	slog.Warn("Stopping AuthService")
-	svc.store.Close()
+	slog.Info("Stopping AuthnService")
+	//svc.authnStore.Close()
 }
 
-// NewAuthnService creates an authentication service instance
+// NewAuthnService creates an authentication service instance.
+// The provided store will be opened on start and closed on stop.
 //
-//	store is the client store to store authentication clients
+//	authnConfig with the configuration settings
+//	authnStore is the client and credentials store. Must be opened before starting this service.
 //	msgServer used to apply changes to users, devices and services
-func NewAuthnService(authConfig *authn.AuthnConfig,
-	store authn.IAuthnStore, caCert *x509.Certificate) *AuthnService {
+func NewAuthnService(
+	authConfig *authn.AuthnConfig,
+	authnStore authn.IAuthnStore,
+	caCert *x509.Certificate) *AuthnService {
 
 	authnSvc := &AuthnService{
-		caCert: caCert,
-		cfg:    authConfig,
-		store:  store,
+		caCert:     caCert,
+		cfg:        authConfig,
+		authnStore: authnStore,
+		// jwtAuthenticator is initialized on startup
 	}
 	return authnSvc
 }
 
 // StartAuthnService creates and launch the authn service with the given config
 // This creates a password store using the config file and password encryption method.
-func StartAuthnService(cfg *authn.AuthnConfig, caCert *x509.Certificate) (*AuthnService, error) {
+// To shut down, stop the service first then close the store.
+func StartAuthnService(cfg *authn.AuthnConfig, caCert *x509.Certificate) (
+	*AuthnService, authn.IAuthnStore, authn.IAuthenticator, error) {
 
 	// nats requires bcrypt passwords
-	authStore := authnstore.NewAuthnFileStore(cfg.PasswordFile, cfg.Encryption)
-	authnSvc := NewAuthnService(cfg, authStore, caCert)
-	err := authnSvc.Start()
-	return authnSvc, err
+	authnStore := authnstore.NewAuthnFileStore(cfg.PasswordFile, cfg.Encryption)
+	err := authnStore.Open()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	authnSvc := NewAuthnService(cfg, authnStore, caCert)
+	sessionAuth, err := authnSvc.Start()
+	return authnSvc, authnStore, sessionAuth, err
 }

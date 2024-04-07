@@ -23,7 +23,9 @@ var defaultHash = authn.PWHASH_ARGON2id
 
 // launch the authn service and return a client for using and managing it.
 // the messaging server is already running (see TestMain)
-func startTestAuthnService(testHash string) (authnSvc *service.AuthnService, stopFn func(), err error) {
+func startTestAuthnService(testHash string) (
+	authnSvc *service.AuthnService, sessionAuth authn.IAuthenticator, stopFn func(), err error) {
+
 	// the password file to use
 	passwordFile := path.Join(testDir, "test.passwd")
 
@@ -35,9 +37,11 @@ func startTestAuthnService(testHash string) (authnSvc *service.AuthnService, sto
 	authnConfig.AgentTokenValiditySec = 100
 	authnConfig.Encryption = testHash
 
-	authnSvc, err = service.StartAuthnService(&authnConfig, certBundle.CaCert)
-	return authnSvc, func() {
+	authnSvc, authnStore, sessionAuth, err := service.StartAuthnService(&authnConfig, certBundle.CaCert)
+	_ = sessionAuth
+	return authnSvc, sessionAuth, func() {
 		authnSvc.Stop()
+		authnStore.Close()
 
 		// let background tasks finish
 		time.Sleep(time.Millisecond * 100)
@@ -62,7 +66,7 @@ func TestMain(m *testing.M) {
 // Start the authn service and list clients
 func TestStartStop(t *testing.T) {
 	// this creates the admin user key
-	svc, stopFn, err := startTestAuthnService(defaultHash)
+	svc, _, stopFn, err := startTestAuthnService(defaultHash)
 	require.NoError(t, err)
 	defer stopFn()
 
@@ -81,7 +85,7 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 	serviceKP := keys.NewKey(keys.KeyTypeECDSA)
 	serviceKeyPub := serviceKP.ExportPublic()
 
-	svc, stopFn, err := startTestAuthnService(defaultHash)
+	svc, _, stopFn, err := startTestAuthnService(defaultHash)
 	require.NoError(t, err)
 	defer stopFn()
 
@@ -136,7 +140,7 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 
 // Create manage users
 func TestAddRemoveClientsFail(t *testing.T) {
-	svc, stopFn, err := startTestAuthnService(defaultHash)
+	svc, _, stopFn, err := startTestAuthnService(defaultHash)
 	require.NoError(t, err)
 	defer stopFn()
 
@@ -155,7 +159,7 @@ func TestUpdatePubKey(t *testing.T) {
 	var tu1ID = "tu1ID"
 	var tu1Pass = "tu1Pass"
 
-	svc, stopFn, err := startTestAuthnService(defaultHash)
+	svc, sessionAuth, stopFn, err := startTestAuthnService(defaultHash)
 	defer stopFn()
 	require.NoError(t, err)
 
@@ -163,7 +167,7 @@ func TestUpdatePubKey(t *testing.T) {
 	err = svc.AddClient(authn.ClientTypeUser, tu1ID, "user 2", "", tu1Pass)
 	require.NoError(t, err)
 	//
-	token, err := svc.CreateSessionToken(tu1ID, "", 0)
+	token, err := sessionAuth.CreateSessionToken(tu1ID, "", 0)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 
@@ -181,14 +185,14 @@ func TestUpdatePubKey(t *testing.T) {
 	assert.Equal(t, kp.ExportPublic(), prof.PubKey)
 }
 
-// Note: Refresh is only possible when using JWT.
+// Note: RefreshToken is only possible when using JWT.
 func TestLoginRefresh(t *testing.T) {
 	var tu1ID = "tu1ID"
 	var tu1Pass = "tu1Pass"
 	var authToken1 string
 	var authToken2 string
 
-	svc, stopFn, err := startTestAuthnService(defaultHash)
+	svc, sessionAuth, stopFn, err := startTestAuthnService(defaultHash)
 	defer stopFn()
 	require.NoError(t, err)
 
@@ -202,27 +206,31 @@ func TestLoginRefresh(t *testing.T) {
 	authToken1, err = svc.Login(tu1ID, tu1Pass, "")
 	require.NoError(t, err)
 
-	err = svc.ValidateToken(tu1ID, authToken1)
+	cid2, sid2, err := sessionAuth.ValidateToken(authToken1)
+	assert.Equal(t, tu1ID, cid2)
+	assert.NotEmpty(t, sid2)
 	require.NoError(t, err)
 
-	// Refresh the token
-	authToken2, err = svc.RefreshToken(tu1ID, authToken1)
+	// RefreshToken the token
+	authToken2, err = sessionAuth.RefreshToken(tu1ID, authToken1, 100)
 	require.NoError(t, err)
 	require.NotEmpty(t, authToken2)
 
-	// Validate the new token
-	err = svc.ValidateToken(tu1ID, authToken2)
+	// ValidateToken the new token
+	cid3, sid3, err := sessionAuth.ValidateToken(authToken2)
+	assert.Equal(t, tu1ID, cid3)
+	assert.Equal(t, sid2, sid3)
 	require.NoError(t, err)
 }
 
 func TestLoginRefreshFail(t *testing.T) {
 
-	svc, stopFn, err := startTestAuthnService(defaultHash)
+	_, sessionAuth, stopFn, err := startTestAuthnService(defaultHash)
 	defer stopFn()
 	require.NoError(t, err)
 
-	// Refresh the token non-existing
-	_, err = svc.RefreshToken("badclientID", "badToken")
+	// RefreshToken the token non-existing
+	_, err = sessionAuth.RefreshToken("badclientID", "badToken", 10)
 	require.Error(t, err)
 }
 
@@ -230,7 +238,8 @@ func TestUpdateProfile(t *testing.T) {
 	var tu1ID = "tu1ID"
 	var tu1Name = "test user 1"
 
-	svc, stopFn, err := startTestAuthnService(defaultHash)
+	svc, sessionAuth, stopFn, err := startTestAuthnService(defaultHash)
+	_ = sessionAuth
 	defer stopFn()
 	require.NoError(t, err)
 
@@ -254,7 +263,7 @@ func TestUpdateProfile(t *testing.T) {
 }
 
 func TestUpdateProfileFail(t *testing.T) {
-	svc, stopFn, err := startTestAuthnService(defaultHash)
+	svc, _, stopFn, err := startTestAuthnService(defaultHash)
 	defer stopFn()
 	require.NoError(t, err)
 	err = svc.UpdateClient("badclient", authn.ClientProfile{})
@@ -271,7 +280,7 @@ func TestUpdatePasswordForHashes(t *testing.T) {
 			var tu1ID = "tu1ID"
 			var tu1Name = "test user 1"
 
-			svc, stopFn, err := startTestAuthnService(testHash)
+			svc, _, stopFn, err := startTestAuthnService(testHash)
 			defer stopFn()
 			if testHash == badhash {
 				require.Error(t, err)
@@ -319,7 +328,7 @@ func TestUpdatePasswordForHashes(t *testing.T) {
 }
 
 func TestUpdatePasswordFail(t *testing.T) {
-	svc, stopFn, err := startTestAuthnService(defaultHash)
+	svc, _, stopFn, err := startTestAuthnService(defaultHash)
 	defer stopFn()
 	require.NoError(t, err)
 

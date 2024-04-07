@@ -1,7 +1,7 @@
 package authz
 
 import (
-	"github.com/hiveot/hub/lib/hubclient/transports"
+	vocab "github.com/hiveot/hub/api/go"
 	"path"
 )
 
@@ -33,15 +33,15 @@ import (
 // devices can publish events, replies and subscribe to their own actions and config
 var agentPermissions = []RolePermission{
 	{
-		MsgType:  transports.MessageTypeEvent,
+		MsgType:  vocab.MessageTypeEvent,
 		AgentID:  "{clientID}", // devices can only publish their own events
 		AllowPub: true,
 	}, {
-		MsgType:  transports.MessageTypeAction,
+		MsgType:  vocab.MessageTypeAction,
 		AgentID:  "{clientID}", // agents can only subscribe actions for themselves
 		AllowSub: true,
 	}, {
-		MsgType:  transports.MessageTypeConfig,
+		MsgType:  vocab.MessageTypeConfig,
 		AgentID:  "{clientID}",
 		AllowSub: true,
 	},
@@ -49,49 +49,49 @@ var agentPermissions = []RolePermission{
 
 // viewers can subscribe to all things
 var viewerPermissions = []RolePermission{{
-	MsgType:  transports.MessageTypeEvent,
+	MsgType:  vocab.MessageTypeEvent,
 	AllowSub: true,
 }}
 
 // operators can subscribe to events and publish things actions
 var operatorPermissions = []RolePermission{
 	{
-		MsgType:  transports.MessageTypeEvent,
+		MsgType:  vocab.MessageTypeEvent,
 		AllowSub: true,
 	}, {
-		MsgType:  transports.MessageTypeAction,
+		MsgType:  vocab.MessageTypeAction,
 		AllowPub: true,
 	},
 }
 
 // managers can in addition to operator also publish configuration
 var managerPermissions = append(operatorPermissions, RolePermission{
-	MsgType:  transports.MessageTypeConfig,
+	MsgType:  vocab.MessageTypeConfig,
 	AllowPub: true,
 })
 
 // administrators can in addition to operators publish all RPCs
 // RPC request permissions for roles are set by the service when they register.
 var adminPermissions = append(managerPermissions, RolePermission{
-	MsgType:  transports.MessageTypeRPC,
+	MsgType:  vocab.MessageTypeRPC,
 	AllowPub: true,
 })
 
 // services are admins that can also publish events and subscribe to their own rpc, actions and config
 var servicePermissions = append(adminPermissions, RolePermission{
-	MsgType:  transports.MessageTypeEvent,
+	MsgType:  vocab.MessageTypeEvent,
 	AgentID:  "{clientID}",
 	AllowPub: true,
 }, RolePermission{
-	MsgType:  transports.MessageTypeRPC,
+	MsgType:  vocab.MessageTypeRPC,
 	AgentID:  "{clientID}",
 	AllowSub: true,
 }, RolePermission{
-	MsgType:  transports.MessageTypeAction,
+	MsgType:  vocab.MessageTypeAction,
 	AgentID:  "{clientID}",
 	AllowSub: true,
 }, RolePermission{
-	MsgType:  transports.MessageTypeConfig,
+	MsgType:  vocab.MessageTypeConfig,
 	AgentID:  "{clientID}",
 	AllowSub: true,
 })

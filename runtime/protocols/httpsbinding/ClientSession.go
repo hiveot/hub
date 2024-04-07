@@ -3,6 +3,7 @@ package httpsbinding
 import (
 	"encoding/json"
 	"fmt"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
@@ -75,19 +76,18 @@ func (cs *ClientSession) onConnectChange(stat transports.HubTransportStatus) {
 }
 
 // onEvent passes incoming events from the Hub to the SSE client(s)
-func (cs *ClientSession) onEvent(msg *things.ThingValue) {
+func (cs *ClientSession) onEvent(msg *things.ThingMessage) {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
 	slog.Info("received event", slog.String("thingID", msg.ThingID),
 		slog.String("id", msg.Key))
-	if msg.Key == transports.EventNameTD {
+	if msg.Key == vocab.EventTypeTD {
 		// Publish sse event indicating the Thing TD has changed.
 		// The UI that displays this event can use this as a trigger to reload the
 		// fragment that displays this TD:
 		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}"
-		thingAddr := fmt.Sprintf("%s/%s", msg.AgentID, msg.ThingID)
-		_ = cs.SendSSE(thingAddr, "")
-	} else if msg.Key == transports.EventNameProps {
+		_ = cs.SendSSE(msg.ThingID, "")
+	} else if msg.Key == vocab.EventTypeProps {
 		// Publish an sse event for each of the properties
 		// The UI that displays this event can use this as a trigger to load the
 		// property value:
@@ -96,9 +96,9 @@ func (cs *ClientSession) onEvent(msg *things.ThingValue) {
 		err := json.Unmarshal([]byte(msg.Data), &props)
 		if err == nil {
 			for k, v := range props {
-				thingAddr := fmt.Sprintf("%s/%s/%s", msg.AgentID, msg.ThingID, k)
+				thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, k)
 				_ = cs.SendSSE(thingAddr, v)
-				thingAddr = fmt.Sprintf("%s/%s/%s/updated", msg.AgentID, msg.ThingID, k)
+				thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, k)
 				_ = cs.SendSSE(thingAddr, msg.GetUpdated())
 			}
 		}
@@ -108,11 +108,11 @@ func (cs *ClientSession) onEvent(msg *things.ThingValue) {
 		// fragment that displays this event:
 		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}/{{$k}}"
 		// where $k is the event ID
-		thingAddr := fmt.Sprintf("%s/%s/%s", msg.AgentID, msg.ThingID, msg.Key)
+		thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, msg.Key)
 		_ = cs.SendSSE(thingAddr, string(msg.Data))
 		// TODO: improve on this crude way to update the 'updated' field
 		// Can the value contain an object with a value and updated field instead?
-		thingAddr = fmt.Sprintf("%s/%s/%s/updated", msg.AgentID, msg.ThingID, msg.Key)
+		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Key)
 		_ = cs.SendSSE(thingAddr, msg.GetUpdated())
 	}
 }

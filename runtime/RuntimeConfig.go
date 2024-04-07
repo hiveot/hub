@@ -61,10 +61,10 @@ type RuntimeConfig struct {
 	ServerKeyFile  string `yaml:"serverKeyFile"`  // default: hubKey.pem
 	// The certs and keys to use by the runtime.
 	// These are set directly on startup.
-	CaCert    *x509.Certificate `yaml:"-"` // preset, load, or error
-	CaKey     keys.IHiveKey     `yaml:"-"` // preset, load, or error
-	ServerKey keys.IHiveKey     `yaml:"-"` // generated, loaded  (used as signing key)
-	ServerTLS *tls.Certificate  `yaml:"-"` // generated
+	CaCert     *x509.Certificate `yaml:"-"` // preset, load, or error
+	CaKey      keys.IHiveKey     `yaml:"-"` // preset, load, or error
+	ServerKey  keys.IHiveKey     `yaml:"-"` // generated, loaded  (used as signing key)
+	ServerCert *tls.Certificate  `yaml:"-"` // generated
 
 }
 
@@ -149,26 +149,29 @@ func (cfg *RuntimeConfig) setupCerts(env *plugin.AppEnvironment) {
 		serverCertPath = path.Join(certsDir, serverCertPath)
 	}
 	hostName, _ := os.Hostname()
+
 	// digital twin runtime
-	serverID := "dtr-" + "hostname"
-	ou := "hiveot"
-	outboundIP := net.GetOutboundIP("")
-	names := []string{"localhost", "127.0.0.1", hostName, outboundIP.String()}
+	if cfg.ServerCert == nil {
+		serverID := "dtr-" + "hostname"
+		ou := "hiveot"
+		outboundIP := net.GetOutboundIP("")
+		names := []string{"localhost", "127.0.0.1", hostName, outboundIP.String()}
 
-	// regenerate a new server cert, valid for 1 year
-	serverCert, err := certs.CreateServerCert(
-		serverID, ou, 365, cfg.ServerKey, names, cfg.CaCert, cfg.CaKey)
-	if err != nil {
-		panic("Unable to create a server cert: " + err.Error())
-	}
-	cfg.ServerTLS = certs.X509CertToTLS(serverCert, cfg.ServerKey)
+		// regenerate a new server cert, valid for 1 year
+		serverCert, err := certs.CreateServerCert(
+			serverID, ou, 365, cfg.ServerKey, names, cfg.CaCert, cfg.CaKey)
+		if err != nil {
+			panic("Unable to create a server cert: " + err.Error())
+		}
+		cfg.ServerCert = certs.X509CertToTLS(serverCert, cfg.ServerKey)
 
-	slog.Warn("Writing server cert", "serverCertPath", serverCertPath)
-	err = certs.SaveX509CertToPEM(serverCert, serverCertPath)
-	if err != nil {
-		slog.Error("writing server cert failed: ", "err", err)
+		slog.Warn("Writing server cert", "serverCertPath", serverCertPath)
+		err = certs.SaveX509CertToPEM(serverCert, serverCertPath)
+		if err != nil {
+			slog.Error("writing server cert failed: ", "err", err)
+		}
 	}
-	//err = certs.SaveTLSCertToPEM(cfg.ServerTLS, serverCertPath, serverKeyPath)
+	//err = certs.SaveTLSCertToPEM(cfg.ServerCert, serverCertPath, serverKeyPath)
 }
 
 // setupDirectories creates missing directories

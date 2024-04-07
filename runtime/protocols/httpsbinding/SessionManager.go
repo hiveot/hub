@@ -24,11 +24,11 @@ type SessionManager struct {
 
 // NewSession creates a new session for the given clientID and remote address.
 // The clientID must already have been authorized first.
+// sessionID is optional sessionID if one exists.
 //
 // This returns the new session instance or an error if the client has too many sessions.
-func (sm *SessionManager) NewSession(clientID string, remoteAddr string) (*ClientSession, error) {
+func (sm *SessionManager) NewSession(clientID string, remoteAddr string, sessionID string) (*ClientSession, error) {
 	var cs *ClientSession
-	var sessionID string
 
 	slog.Info("NewSession")
 	if sessionID == "" {
