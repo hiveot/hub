@@ -3,6 +3,7 @@ package authn_test
 import (
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn"
 	"github.com/hiveot/hub/runtime/authn/service"
 	"os"
@@ -19,12 +20,12 @@ import (
 var certBundle = certs.CreateTestCertBundle()
 var testDir = path.Join(os.TempDir(), "test-authn")
 var authnConfig authn.AuthnConfig
-var defaultHash = authn.PWHASH_ARGON2id
+var defaultHash = api.PWHASH_ARGON2id
 
 // launch the authn service and return a client for using and managing it.
 // the messaging server is already running (see TestMain)
 func startTestAuthnService(testHash string) (
-	authnSvc *service.AuthnService, sessionAuth authn.IAuthenticator, stopFn func(), err error) {
+	authnSvc *service.AuthnService, sessionAuth api.IAuthenticator, stopFn func(), err error) {
 
 	// the password file to use
 	passwordFile := path.Join(testDir, "test.passwd")
@@ -89,23 +90,23 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 	require.NoError(t, err)
 	defer stopFn()
 
-	err = svc.AddClient(authn.ClientTypeUser, "user1", "user 1", "pass1", "")
+	err = svc.AddClient(api.ClientTypeUser, "user1", "user 1", "pass1", "")
 	assert.NoError(t, err)
 	// duplicate should update
-	err = svc.AddClient(authn.ClientTypeUser, "user1", "user 1 updated", "pass1", "")
+	err = svc.AddClient(api.ClientTypeUser, "user1", "user 1 updated", "pass1", "")
 	assert.NoError(t, err)
 
-	err = svc.AddClient(authn.ClientTypeUser, "user2", "user 2", "", "pass2")
+	err = svc.AddClient(api.ClientTypeUser, "user2", "user 2", "", "pass2")
 	assert.NoError(t, err)
-	err = svc.AddClient(authn.ClientTypeUser, "user3", "user 3", "", "pass2")
+	err = svc.AddClient(api.ClientTypeUser, "user3", "user 3", "", "pass2")
 	assert.NoError(t, err)
-	err = svc.AddClient(authn.ClientTypeUser, "user4", "user 4", "", "pass2")
-	assert.NoError(t, err)
-
-	err = svc.AddClient(authn.ClientTypeAgent, deviceID, "agent 1", deviceKeyPub, "")
+	err = svc.AddClient(api.ClientTypeUser, "user4", "user 4", "", "pass2")
 	assert.NoError(t, err)
 
-	err = svc.AddClient(authn.ClientTypeService, serviceID, "service 1", serviceKeyPub, "")
+	err = svc.AddClient(api.ClientTypeAgent, deviceID, "agent 1", deviceKeyPub, "")
+	assert.NoError(t, err)
+
+	err = svc.AddClient(api.ClientTypeService, serviceID, "service 1", serviceKeyPub, "")
 	assert.NoError(t, err)
 
 	// update the server. users can connect and have unlimited access
@@ -131,10 +132,10 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 	clEntries := svc.GetEntries()
 	assert.Equal(t, 2+2, len(clEntries))
 
-	err = svc.AddClient(authn.ClientTypeUser, "user1", "user 1", "", "pass1")
+	err = svc.AddClient(api.ClientTypeUser, "user1", "user 1", "", "pass1")
 	assert.NoError(t, err)
 	// a bad key is allowed
-	err = svc.AddClient(authn.ClientTypeUser, "user2", "user 2", "badkey", "")
+	err = svc.AddClient(api.ClientTypeUser, "user2", "user 2", "badkey", "")
 	assert.NoError(t, err)
 }
 
@@ -145,11 +146,11 @@ func TestAddRemoveClientsFail(t *testing.T) {
 	defer stopFn()
 
 	// missing clientID should fail
-	err = svc.AddClient(authn.ClientTypeService, "", "user 1", "", "")
+	err = svc.AddClient(api.ClientTypeService, "", "user 1", "", "")
 	assert.Error(t, err)
 
 	// a bad key is not an error
-	err = svc.AddClient(authn.ClientTypeUser, "user2", "user 2", "badkey", "")
+	err = svc.AddClient(api.ClientTypeUser, "user2", "user 2", "badkey", "")
 	assert.NoError(t, err)
 
 	//
@@ -164,7 +165,7 @@ func TestUpdatePubKey(t *testing.T) {
 	require.NoError(t, err)
 
 	// add user to test with. don't set the public key yet
-	err = svc.AddClient(authn.ClientTypeUser, tu1ID, "user 2", "", tu1Pass)
+	err = svc.AddClient(api.ClientTypeUser, tu1ID, "user 2", "", tu1Pass)
 	require.NoError(t, err)
 	//
 	token, err := sessionAuth.CreateSessionToken(tu1ID, "", 0)
@@ -200,7 +201,7 @@ func TestLoginRefresh(t *testing.T) {
 	tu1Key := keys.NewKey(keys.KeyTypeECDSA)
 	tu1KeyPub := tu1Key.ExportPublic()
 
-	err = svc.AddClient(authn.ClientTypeUser,
+	err = svc.AddClient(api.ClientTypeUser,
 		tu1ID, "testuser 1", tu1KeyPub, tu1Pass)
 	require.NoError(t, err)
 	authToken1, err = svc.Login(tu1ID, tu1Pass, "")
@@ -244,7 +245,7 @@ func TestUpdateProfile(t *testing.T) {
 	require.NoError(t, err)
 
 	// add user to test with and connect
-	err = svc.AddClient(authn.ClientTypeUser, tu1ID, tu1Name, "", "pass0")
+	err = svc.AddClient(api.ClientTypeUser, tu1ID, tu1Name, "", "pass0")
 	require.NoError(t, err)
 	//tu1Key, _ := testServer.MsgServer.CreateKP()
 
@@ -266,14 +267,14 @@ func TestUpdateProfileFail(t *testing.T) {
 	svc, _, stopFn, err := startTestAuthnService(defaultHash)
 	defer stopFn()
 	require.NoError(t, err)
-	err = svc.UpdateClient("badclient", authn.ClientProfile{})
+	err = svc.UpdateClient("badclient", api.ClientProfile{})
 	assert.Error(t, err)
 }
 
 func TestUpdatePasswordForHashes(t *testing.T) {
 	const badhash = "badhhash"
 	var hashes = []string{
-		authn.PWHASH_BCRYPT, authn.PWHASH_ARGON2id, badhash}
+		api.PWHASH_BCRYPT, api.PWHASH_ARGON2id, badhash}
 	for _, testHash := range hashes {
 		var testName = "test-" + testHash
 		t.Run(testName, func(t *testing.T) {
@@ -288,7 +289,7 @@ func TestUpdatePasswordForHashes(t *testing.T) {
 				require.NoError(t, err)
 			}
 			// add user to test with
-			err = svc.AddClient(authn.ClientTypeUser, tu1ID, tu1Name, "", "oldpass")
+			err = svc.AddClient(api.ClientTypeUser, tu1ID, tu1Name, "", "oldpass")
 			if testHash == badhash {
 				require.Error(t, err)
 			} else {

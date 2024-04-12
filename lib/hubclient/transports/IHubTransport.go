@@ -6,6 +6,10 @@ import (
 	"github.com/hiveot/hub/lib/keys"
 )
 
+// inbox implementation depends on the underlying transport.
+// this is the commonly used name for it.
+const MessageTypeINBOX = "_INBOX"
+
 // ISubscription interface to underlying subscription mechanism
 type ISubscription interface {
 	Unsubscribe() error
@@ -32,13 +36,13 @@ const (
 // MessageTypeINBOX special inbox prefix for RPCs
 // reserved event and action names
 const (
-	MessageTypeAction = "action"
-	MessageTypeConfig = "config"
-	MessageTypeEvent  = "event"
-	MessageTypeRPC    = "rpc"
-	MessageTypeINBOX  = "_INBOX"
-	EventNameTD       = "$td"
-	EventNameProps    = "$properties"
+// MessageTypeAction = "action"
+// MessageTypeConfig = "config"
+// MessageTypeEvent  = "event"
+// MessageTypeRPC    = "rpc"
+// MessageTypeINBOX  = "_INBOX"
+// EventTypeTD       = "$td"
+// EventTypeProps    = "$properties"
 )
 
 var ErrorUnauthorized = errors.New(string(Unauthorized))

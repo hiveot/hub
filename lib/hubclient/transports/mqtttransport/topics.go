@@ -3,6 +3,7 @@ package mqtttransport
 import (
 	"errors"
 	"fmt"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/hubclient/transports"
 	"strings"
 )
@@ -17,7 +18,7 @@ import (
 //	clientID is the login ID of the sender. Use "" for subscribe.
 func MakeTopic(msgType, agentID, thingID, name string, clientID string) string {
 	if msgType == "" {
-		msgType = transports.MessageTypeEvent
+		msgType = vocab.MessageTypeEvent
 	}
 	if agentID == "" {
 		agentID = "+"

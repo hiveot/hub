@@ -2,7 +2,7 @@ package authz
 
 import (
 	vocab "github.com/hiveot/hub/api/go"
-	"github.com/hiveot/hub/runtime/authn"
+	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 )
 
@@ -14,7 +14,7 @@ type AuthzService struct {
 
 	// authz currently uses authn store to persist the user's role
 	// this is good enough as long as a user only has a single role
-	authnStore authn.IAuthnStore
+	authnStore api.IAuthnStore
 }
 
 // CreateRole adds a new custom role
@@ -43,13 +43,6 @@ func (svc *AuthzService) CanPubEvent(clientID string) bool {
 	return hasPerm
 }
 
-// CanPubRPC checks if the given client can invoke RPC requests on the interface of a service.
-// Use of RPC requests is limited by the receiving service.
-func (svc *AuthzService) CanPubRPC(clientID string, serviceID string, interfaceID string) bool {
-	hasPerm := svc.HasPermission(clientID, vocab.MessageTypeRPC, true)
-	return hasPerm
-}
-
 // CanSubAction checks if the given client can subscribe to actions
 func (svc *AuthzService) CanSubAction(clientID string) bool {
 	hasPerm := svc.HasPermission(clientID, vocab.MessageTypeAction, false)
@@ -59,12 +52,6 @@ func (svc *AuthzService) CanSubAction(clientID string) bool {
 // CanSubEvent checks if the given client can subscribe to events
 func (svc *AuthzService) CanSubEvent(clientID string) bool {
 	hasPerm := svc.HasPermission(clientID, vocab.MessageTypeEvent, false)
-	return hasPerm
-}
-
-// CanSubRPC checks if the given client can subscribe to RPC requests
-func (svc *AuthzService) CanSubRPC(clientID string) bool {
-	hasPerm := svc.HasPermission(clientID, vocab.MessageTypeRPC, false)
 	return hasPerm
 }
 
@@ -130,7 +117,7 @@ func (svc *AuthzService) Stop() {
 // NewAuthzService creates a new instance of the authorization service with default rules
 //
 //	authnStore is used to store default client roles
-func NewAuthzService(cfg *AuthzConfig, authnStore authn.IAuthnStore) *AuthzService {
+func NewAuthzService(cfg *AuthzConfig, authnStore api.IAuthnStore) *AuthzService {
 	svc := &AuthzService{
 		cfg:        cfg,
 		authnStore: authnStore,

@@ -87,7 +87,7 @@ func (cs *ClientSession) onEvent(msg *things.ThingMessage) {
 		// fragment that displays this TD:
 		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}"
 		_ = cs.SendSSE(msg.ThingID, "")
-	} else if msg.Key == vocab.EventTypeProps {
+	} else if msg.Key == vocab.EventTypeProperties {
 		// Publish an sse event for each of the properties
 		// The UI that displays this event can use this as a trigger to load the
 		// property value:

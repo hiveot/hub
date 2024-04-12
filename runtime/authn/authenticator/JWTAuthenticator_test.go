@@ -2,7 +2,7 @@ package authenticator_test
 
 import (
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/runtime/authn"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/authenticator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -10,11 +10,11 @@ import (
 )
 
 // TODO get store instance and populate with test user
-var authnStore authn.IAuthnStore
+var authnStore api.IAuthnStore
 
 func TestCreateSessionToken(t *testing.T) {
 	const clientID = "user1"
-	const clientType = authn.ClientTypeUser
+	const clientType = api.ClientTypeUser
 	sessionID := "session1"
 
 	signingKey := keys.NewEcdsaKey()
@@ -43,7 +43,7 @@ func TestCreateSessionToken(t *testing.T) {
 
 func TestBadTokens(t *testing.T) {
 	const clientID = "user1"
-	const clientType = authn.ClientTypeUser
+	const clientType = api.ClientTypeUser
 	sessionID := "session1"
 
 	signingKey := keys.NewEcdsaKey()

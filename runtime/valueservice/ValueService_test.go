@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/valueservice"
 	"github.com/stretchr/testify/assert"
 	"math/rand"
@@ -42,7 +43,7 @@ func makeValueBatch(valueSvc *valueservice.ValueService,
 		)
 		ev.CreatedMSec = randomTime.UnixMilli()
 
-		_, _ = valueSvc.HandleEvent(ev)
+		_ = valueSvc.HandleEvent(ev)
 		valueBatch = append(valueBatch, ev)
 	}
 	return valueBatch
@@ -88,7 +89,15 @@ func TestGetLatest(t *testing.T) {
 	_ = batch
 
 	t0 := time.Now()
-	values := svc.GetProperties(thing1ID, nil)
+
+	//values := svc.GetProperties(thing1ID, nil)
+	args := api.GetPropertiesArgs{ThingID: thing1ID}
+	data, _ := json.Marshal(args)
+	msg := things.NewThingMessage(vocab.MessageTypeAction,
+		api.ValueServiceID, api.ValueServiceGetPropertiesMethod,
+		data, agent1ID)
+	values, err := svc.HandleMessage(msg)
+
 	assert.NotNil(t, values)
 	d0 := time.Now().Sub(t0)
 
@@ -105,7 +114,7 @@ func TestGetLatest(t *testing.T) {
 
 	// save and reload props
 	svc.Stop()
-	err := svc.Start()
+	err = svc.Start()
 
 	assert.NoError(t, err)
 	found := svc.LoadProps(thing1ID)
@@ -123,8 +132,8 @@ func TestAddPropsEvent(t *testing.T) {
 	svc, closeFn := startValueService(true)
 	defer closeFn()
 	tv := things.NewThingMessage(vocab.MessageTypeEvent,
-		thing1ID, vocab.EventTypeProps, serProps, "sender")
-	_, _ = svc.HandleEvent(tv)
+		thing1ID, vocab.EventTypeProperties, serProps, "sender")
+	_ = svc.HandleEvent(tv)
 
 	values1 := svc.GetProperties(thing1ID, names)
 	assert.Equal(t, len(pev), len(values1))
@@ -138,15 +147,15 @@ func TestAddBadProps(t *testing.T) {
 	svc, closeFn := startValueService(true)
 	defer closeFn()
 	tv := things.NewThingMessage(vocab.MessageTypeEvent,
-		thing1ID, vocab.EventTypeProps, serProps, "sender")
-	_, err := svc.HandleEvent(tv)
+		thing1ID, vocab.EventTypeProperties, serProps, "sender")
+	err := svc.HandleEvent(tv)
 	assert.Error(t, err)
 
-	// action is ignored
-	tv.MessageType = vocab.MessageTypeAction
-	_, err = svc.HandleEvent(tv)
-	assert.NoError(t, err)
-
+	//// action is ignored
+	//tv.MessageType = vocab.MessageTypeAction
+	//_, err = svc.HandleEvent(tv)
+	//assert.NoError(t, err)
+	//
 	values1 := svc.GetProperties(thing1ID, names)
 	assert.Equal(t, 0, len(values1))
 }

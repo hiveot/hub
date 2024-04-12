@@ -1,10 +1,9 @@
-package tlsserver_test
+package tlsserver_old_test
 
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/tlsclient"
-	"github.com/hiveot/hub/lib/tlsserver"
 	"log/slog"
 	"net/http"
 	"os"
@@ -38,7 +37,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
-	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
+	srv := tlsserver_old.NewTLSServer(serverAddress, serverPort,
 		testCerts.ServerCert, testCerts.CaCert)
 	err := srv.Start()
 	assert.NoError(t, err)
@@ -46,14 +45,14 @@ func TestStartStop(t *testing.T) {
 }
 
 func TestNoCA(t *testing.T) {
-	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
+	srv := tlsserver_old.NewTLSServer(serverAddress, serverPort,
 		testCerts.ServerCert, nil)
 	err := srv.Start()
 	assert.Error(t, err)
 	srv.Stop()
 }
 func TestNoServerCert(t *testing.T) {
-	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
+	srv := tlsserver_old.NewTLSServer(serverAddress, serverPort,
 		nil, testCerts.CaCert)
 	err := srv.Start()
 	assert.Error(t, err)
@@ -64,7 +63,7 @@ func TestNoServerCert(t *testing.T) {
 func TestNoAuth(t *testing.T) {
 	path1 := "/hello"
 	path1Hit := 0
-	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
+	srv := tlsserver_old.NewTLSServer(serverAddress, serverPort,
 		testCerts.ServerCert, testCerts.CaCert)
 
 	srv.AddHandlerNoAuth(path1, func(http.ResponseWriter, *http.Request) {
@@ -92,7 +91,7 @@ func TestUnauthorized(t *testing.T) {
 	//password1 := "user1pass"
 
 	// setup server and client environment
-	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
+	srv := tlsserver_old.NewTLSServer(serverAddress, serverPort,
 		testCerts.ServerCert, testCerts.CaCert)
 
 	err := srv.Start()
@@ -120,7 +119,7 @@ func TestUnauthorized(t *testing.T) {
 func TestCertAuth(t *testing.T) {
 	path1 := "/hello"
 	path1Hit := 0
-	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
+	srv := tlsserver_old.NewTLSServer(serverAddress, serverPort,
 		testCerts.ServerCert, testCerts.CaCert)
 	err := srv.Start()
 	assert.NoError(t, err)
@@ -146,7 +145,7 @@ func TestCertAuth(t *testing.T) {
 func TestQueryParams(t *testing.T) {
 	path2 := "/hello"
 	path2Hit := 0
-	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
+	srv := tlsserver_old.NewTLSServer(serverAddress, serverPort,
 		testCerts.ServerCert, testCerts.CaCert)
 	err := srv.Start()
 	assert.NoError(t, err)
@@ -185,7 +184,7 @@ func TestQueryParams(t *testing.T) {
 func TestWriteResponse(t *testing.T) {
 	path2 := "/hello"
 	path2Hit := 0
-	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
+	srv := tlsserver_old.NewTLSServer(serverAddress, serverPort,
 		testCerts.ServerCert, testCerts.CaCert)
 	err := srv.Start()
 	assert.NoError(t, err)
@@ -212,7 +211,7 @@ func TestWriteResponse(t *testing.T) {
 }
 
 func TestBadPort(t *testing.T) {
-	srv := tlsserver.NewTLSServer(serverAddress, 1, // bad port
+	srv := tlsserver_old.NewTLSServer(serverAddress, 1, // bad port
 		testCerts.ServerCert, testCerts.CaCert)
 
 	err := srv.Start()
@@ -227,7 +226,7 @@ func TestBasicAuth(t *testing.T) {
 	password1 := "user1pass"
 
 	// setup server and client environment
-	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
+	srv := tlsserver_old.NewTLSServer(serverAddress, serverPort,
 		testCerts.ServerCert, testCerts.CaCert)
 	srv.EnableBasicAuth(func(userID, password string) bool {
 		path1Hit++

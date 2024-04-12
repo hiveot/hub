@@ -6,9 +6,9 @@ import (
 	"net/http"
 )
 
-// SseHandler handles incoming SSE connections, authenticates the client
+// handleSseConnect handles incoming SSE connections, authenticates the client
 // Sse requests are refused if no valid session found.
-func SseHandler(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpsBinding) handleSseConnect(w http.ResponseWriter, r *http.Request) {
 	// Set headers for SSE response
 	//w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Expose-Headers", "Content-Type")

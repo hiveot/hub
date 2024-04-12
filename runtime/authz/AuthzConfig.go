@@ -2,6 +2,7 @@ package authz
 
 import (
 	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/runtime/api"
 	"path"
 )
 
@@ -21,8 +22,9 @@ import (
 //            sub       event   -            -
 // admin      pub       action  -            -
 //            sub       event   -            -
-// agent      pub       event   {clientID}   -
-//            sub       action  {clientID}   -
+// agent      pub       event      {clientID}   -
+//            sub       action     {clientID}   -
+//            sub       properties {clientID}   -
 // service    pub       -       -            -
 //            sub       action  {clientID}   -
 //            sub       rpc     {clientID}   -
@@ -31,7 +33,7 @@ import (
 // {clientID} is replaced with the client's loginID when publishing or subscribing
 
 // devices can publish events, replies and subscribe to their own actions and config
-var agentPermissions = []RolePermission{
+var agentPermissions = []api.RolePermission{
 	{
 		MsgType:  vocab.MessageTypeEvent,
 		AgentID:  "{clientID}", // devices can only publish their own events
@@ -40,21 +42,35 @@ var agentPermissions = []RolePermission{
 		MsgType:  vocab.MessageTypeAction,
 		AgentID:  "{clientID}", // agents can only subscribe actions for themselves
 		AllowSub: true,
-	}, {
-		MsgType:  vocab.MessageTypeConfig,
-		AgentID:  "{clientID}",
-		AllowSub: true,
 	},
 }
 
-// viewers can subscribe to all things
-var viewerPermissions = []RolePermission{{
+// viewers can subscribe to events from all things
+var viewerPermissions = []api.RolePermission{{
 	MsgType:  vocab.MessageTypeEvent,
 	AllowSub: true,
 }}
 
 // operators can subscribe to events and publish things actions
-var operatorPermissions = []RolePermission{
+// operators cannot configure things
+var operatorPermissions = []api.RolePermission{
+	{
+		MsgType:  vocab.MessageTypeEvent,
+		AllowSub: true,
+	}, {
+		// action to change properties is not allowed
+		MsgType:  vocab.MessageTypeAction,
+		MsgKey:   vocab.ActionTypeProperties,
+		AllowPub: false,
+	}, {
+		// any other actions are allowed
+		MsgType:  vocab.MessageTypeAction,
+		AllowPub: true,
+	},
+}
+
+// managers can sub all events and pub all actions
+var managerPermissions = []api.RolePermission{
 	{
 		MsgType:  vocab.MessageTypeEvent,
 		AllowSub: true,
@@ -64,53 +80,36 @@ var operatorPermissions = []RolePermission{
 	},
 }
 
-// managers can in addition to operator also publish configuration
-var managerPermissions = append(operatorPermissions, RolePermission{
-	MsgType:  vocab.MessageTypeConfig,
-	AllowPub: true,
-})
+// administrators are like managers.
+// Services will add their role authorization on startup
+var adminPermissions = append(managerPermissions)
 
-// administrators can in addition to operators publish all RPCs
-// RPC request permissions for roles are set by the service when they register.
-var adminPermissions = append(managerPermissions, RolePermission{
-	MsgType:  vocab.MessageTypeRPC,
-	AllowPub: true,
-})
-
-// services are admins that can also publish events and subscribe to their own rpc, actions and config
-var servicePermissions = append(adminPermissions, RolePermission{
+// services can pub/sub anything
+var servicePermissions = append(adminPermissions, api.RolePermission{
 	MsgType:  vocab.MessageTypeEvent,
 	AgentID:  "{clientID}",
 	AllowPub: true,
-}, RolePermission{
-	MsgType:  vocab.MessageTypeRPC,
-	AgentID:  "{clientID}",
-	AllowSub: true,
-}, RolePermission{
+}, api.RolePermission{
 	MsgType:  vocab.MessageTypeAction,
-	AgentID:  "{clientID}",
-	AllowSub: true,
-}, RolePermission{
-	MsgType:  vocab.MessageTypeConfig,
 	AgentID:  "{clientID}",
 	AllowSub: true,
 })
 
 // DefaultRolePermissions contains the default pub/sub permissions for each user role
-var DefaultRolePermissions = map[string][]RolePermission{
-	ClientRoleNone:     nil,
-	ClientRoleAgent:    agentPermissions,
-	ClientRoleService:  servicePermissions,
-	ClientRoleViewer:   viewerPermissions,
-	ClientRoleOperator: operatorPermissions,
-	ClientRoleManager:  managerPermissions,
-	ClientRoleAdmin:    adminPermissions,
+var DefaultRolePermissions = map[string][]api.RolePermission{
+	api.ClientRoleNone:     nil,
+	api.ClientRoleAgent:    agentPermissions,
+	api.ClientRoleService:  servicePermissions,
+	api.ClientRoleViewer:   viewerPermissions,
+	api.ClientRoleOperator: operatorPermissions,
+	api.ClientRoleManager:  managerPermissions,
+	api.ClientRoleAdmin:    adminPermissions,
 }
 
 // AuthzConfig holds the authorization permissions for client roles
 type AuthzConfig struct {
-	rolePermissions map[string][]RolePermission `yaml:"rolePermissions"`
-	aclFile         string                      `yaml:"aclFile"`
+	rolePermissions map[string][]api.RolePermission `yaml:"rolePermissions"`
+	aclFile         string                          `yaml:"aclFile"`
 }
 
 // Setup ensures config is valid and loaded
@@ -118,7 +117,7 @@ type AuthzConfig struct {
 //	storesDir is the default storage root directory ($HOME/stores)
 func (cfg *AuthzConfig) Setup(storesDir string) {
 	if cfg.aclFile == "" {
-		cfg.aclFile = DefaultAclFilename
+		cfg.aclFile = api.DefaultAclFilename
 	}
 	if !path.IsAbs(cfg.aclFile) {
 		cfg.aclFile = path.Join(storesDir, "authz", cfg.aclFile)

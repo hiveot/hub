@@ -5,6 +5,7 @@ import (
 	"fmt"
 	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 	"sync"
 	"time"
@@ -35,7 +36,7 @@ type ValueService struct {
 //
 //	thingID of the thing to read.
 //	names is optional and can be used to limit the resulting array of values. Use nil to get all properties.
-func (svc *ValueService) GetProperties(thingID string, names []string) (props things.ThingMessageMap) {
+func (svc *ValueService) GetProperties(thingID string, keys []string) (props things.ThingMessageMap) {
 	props = things.NewThingMessageMap()
 
 	// ensure this thing has its properties cache loaded
@@ -44,9 +45,9 @@ func (svc *ValueService) GetProperties(thingID string, names []string) (props th
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
 	thingCache, _ := svc.cache[thingID]
-	if names != nil && len(names) > 0 {
-		// filter the requested property/event names
-		for _, name := range names {
+	if keys != nil && len(keys) > 0 {
+		// filter the requested property/event keys
+		for _, name := range keys {
 			tv := thingCache.Get(name)
 			if tv != nil {
 				props.Set(name, tv)
@@ -55,7 +56,7 @@ func (svc *ValueService) GetProperties(thingID string, names []string) (props th
 		return props
 	}
 
-	// default: get all available property/event names
+	// default: get all available property/event keys
 	props = thingCache
 	//for _, value := range thingCache {
 	//	propList = append(propList, value)
@@ -63,24 +64,49 @@ func (svc *ValueService) GetProperties(thingID string, names []string) (props th
 	return props
 }
 
-// HandleEvent is the handler of update to a things's event/property values
+// HandleMessage handles thing events and value service action requests
 // used to update the properties cache.
 // isAction indicates the value is an action.
-func (svc *ValueService) HandleEvent(msg *things.ThingMessage) ([]byte, error) {
+func (svc *ValueService) HandleMessage(msg *things.ThingMessage) ([]byte, error) {
 	// ensure the Thing has its properties cache loaded
 	if msg.CreatedMSec <= 0 {
 		msg.CreatedMSec = time.Now().UnixMilli()
 	}
 
+	if msg.MessageType == vocab.MessageTypeEvent {
+		return nil, svc.HandleEvent(msg)
+	} else {
+		return svc.HandleAction(msg)
+	}
+}
+
+// HandleAction requests, including reading latest value
+func (svc *ValueService) HandleAction(action *things.ThingMessage) (reply []byte, err error) {
+	if action.Key == api.ValueServiceGetActionsMethod {
+		return nil, fmt.Errorf("not yet implemented")
+	} else if action.Key == api.ValueServiceGetPropertiesMethod {
+		args := api.GetPropertiesArgs{}
+		err = json.Unmarshal(action.Data, &args)
+		if err != nil {
+			return nil, err
+		}
+		resp := api.GetPropertiesResp{}
+		resp.Props = svc.GetProperties(args.ThingID, args.Keys)
+		reply, err = json.Marshal(resp)
+		return reply, err
+	}
+	return nil, fmt.Errorf("unknown action '%s'", action.Key)
+}
+
+// HandleEvent stores the latest event and property event values
+func (svc *ValueService) HandleEvent(msg *things.ThingMessage) error {
 	svc.LoadProps(msg.ThingID)
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 	thingCache, _ := svc.cache[msg.ThingID]
 
-	if msg.MessageType != vocab.MessageTypeEvent || msg.Key == vocab.EventTypeTD {
-		// ignore TDs
-		return nil, nil
-	} else if msg.Key == vocab.EventTypeProps {
+	if msg.Key == vocab.EventTypeProperties {
+
 		// the value holds a map of property name:value pairs, add each one individually
 		// in order to retain the sender and created timestamp.
 		props := make(map[string]any)
@@ -89,7 +115,7 @@ func (svc *ValueService) HandleEvent(msg *things.ThingMessage) ([]byte, error) {
 			slog.Warn("HandleEvent; Error unmarshalling props",
 				slog.String("err", err.Error()),
 				slog.String("senderID", msg.SenderID))
-			return nil, err
+			return err
 		}
 		// turn each value into a ThingMessage object
 		for propName, propValue := range props {
@@ -104,16 +130,19 @@ func (svc *ValueService) HandleEvent(msg *things.ThingMessage) ([]byte, error) {
 				thingCache.Set(propName, tv)
 			}
 		}
+		svc.changedThings[msg.ThingID] = true
+	} else if msg.Key == vocab.EventTypeTD {
+		// TD documents are handled by the directory
 	} else {
-		// events or action messages
+		// Thing events
 		// in case events arrive out of order, only update if the msg is newer
 		existingLatest := thingCache.Get(msg.Key)
 		if existingLatest == nil || msg.CreatedMSec > existingLatest.CreatedMSec {
 			thingCache.Set(msg.Key, msg)
+			svc.changedThings[msg.ThingID] = true
 		}
 	}
-	svc.changedThings[msg.ThingID] = true
-	return nil, nil
+	return nil
 }
 
 // LoadProps loads the cached value of a Thing properties on demand.

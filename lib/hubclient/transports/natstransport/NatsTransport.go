@@ -308,7 +308,7 @@ func (nt *NatsTransport) PubRequest(
 // startEventMessageHandler listens for incoming event messages from a stream
 // and invoke a callback handler.
 // this returns when the subscription is no longer valid
-func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *things.ThingValue)) error {
+func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *things.ThingMessage)) error {
 	ci, err := nsub.ConsumerInfo()
 	if err != nil {
 		slog.Error(err.Error())
@@ -344,9 +344,10 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *things.Thing
 					"subject", natsMsg.Subject)
 				return
 			}
-			msg := &things.ThingValue{
+			msg := &things.ThingMessage{
 				//SenderID: msg.Header.
-				AgentID:     pubID,
+				//AgentID:     pubID,
+				SenderID:    pubID,
 				ThingID:     thID,
 				Key:         name,
 				CreatedMSec: timeStamp.UnixMilli(),
@@ -453,7 +454,7 @@ func (nt *NatsTransport) Unsubscribe(subject string) {
 //
 //	 name of the event stream. "" for default
 //		receiveLatest to immediately receive the latest event for each event instance
-func (nt *NatsTransport) SubStream(name string, receiveLatest bool, cb func(msg *things.ThingValue)) (transports.ISubscription, error) {
+func (nt *NatsTransport) SubStream(name string, receiveLatest bool, cb func(msg *things.ThingMessage)) (transports.ISubscription, error) {
 	if name == "" {
 		//name = natsnkeyserver.EventsIntakeStreamName
 	}

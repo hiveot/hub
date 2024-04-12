@@ -28,7 +28,7 @@ func Benchmark_GetTD(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)
 				tdDoc1 := createTDDoc(thingID, title1)
-				err := svc.UpdateTD(senderID, thingID, tdDoc1)
+				err := svc.UpdateTDD(senderID, thingID, tdDoc1)
 				_ = err
 			}
 		})
@@ -40,7 +40,7 @@ func Benchmark_GetTD(b *testing.B) {
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)
-				td, err := svc.GetTD(thingID)
+				td, err := svc.ReadTDD(thingID)
 				_ = td
 				_ = err
 			}

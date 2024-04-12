@@ -1,7 +1,9 @@
 // Package rpc with RPC message structs
 package rpc
 
-import "github.com/hiveot/hub/runtime/authn"
+import (
+	"github.com/hiveot/hub/runtime/api"
+)
 
 // AuthProfileCapability is the name of the Thing/Capability that handles client requests
 const AuthProfileCapability = "profile"
@@ -14,7 +16,7 @@ const GetProfileMethod = "getProfile"
 // GetProfileResp response message to get the client's profile.
 // The message address MUST contain the client sending the action to whom this applies
 type GetProfileResp struct {
-	Profile authn.ClientProfile `json:"profile"`
+	Profile api.ClientProfile `json:"profile"`
 }
 
 // NewTokenMethod requests a new jwt token for password based login

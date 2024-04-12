@@ -45,7 +45,7 @@ type IThing interface {
 	// action affordance, or is empty if no data is expected.
 	//
 	// tv contains the action name, value and sender
-	HandleActionRequest(tv *ThingValue) error
+	HandleActionRequest(tv *ThingMessage) error
 
 	// HandleConfigRequest applies an incoming config request to the Thing.
 	// Intended to be invoked by the hub connection handler.
@@ -55,7 +55,7 @@ type IThing interface {
 	// property affordance.
 	//
 	// tv contains the property name, value and sender
-	HandleConfigRequest(tv *ThingValue) error
+	HandleConfigRequest(tv *ThingMessage) error
 
 	// Rename applies a new friendly name to the Thing.
 	// If accepted, this updates the vocab.Name property.

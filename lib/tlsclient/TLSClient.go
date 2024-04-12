@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	vocab "github.com/hiveot/hub/api/go"
 	"golang.org/x/net/publicsuffix"
 	"io"
 	"log/slog"
@@ -39,28 +40,11 @@ const (
 	ParamThings = "things"
 )
 
-// The default paths for user authentication and configuration
-const (
-	// DefaultJWTLoginPath for obtaining access & refresh tokens
-	DefaultJWTLoginPath = "/authn/login"
-	// DefaultJWTRefreshPath for refreshing tokens with the auth service
-	DefaultJWTRefreshPath = "/authn/refresh"
-	// DefaultJWTConfigPath for storing client configuration on the auth service
-	DefaultJWTConfigPath = "/authn/config"
-)
-
 // JwtAuthLogin defines the login request message to sent when using JWT authentication
 type JwtAuthLogin struct {
 	LoginID    string `json:"login"` // typically the email
 	Password   string `json:"password"`
-	RememberMe bool   `json:"rememberMe"` // store refresh token in cookie
-}
-
-// JwtAuthResponse defines the login or refresh response
-type JwtAuthResponse struct {
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
-	RefreshURL   string `json:"refreshURL"`
+	RememberMe bool   `json:"rememberMe,omitempty"` // store refresh token in cookie
 }
 
 // TLSClient is a simple TLS Client with authentication using certificates or JWT authentication with login/pw
@@ -79,18 +63,9 @@ type TLSClient struct {
 	// User ID for authentication
 	userID string
 
-	// Secret when using basic authentication
-	basicSecret string
-
-	// JwtTokens with access and refresh tokens. The access token is passed as
-	// bearer token with each Invoke request. The refresh token is used to
-	// refresh both tokens. These tokens can be shared with clients that connect
-	// to other Hub services as a single-signon solution.
-	//JwtTokens *JwtAuthResponse
-
-	// JWT access after login, refresh, or external source
+	// JWT bearer token after login, refresh, or external source
 	// Invoke will use this if set.
-	jwtAccessToken string
+	bearerToken string
 }
 
 // Certificate returns the client auth certificate or nil if none is used
@@ -139,16 +114,6 @@ func (cl *TLSClient) connect() *http.Client {
 // ConnectNoAuth creates a connection with the server without client authentication
 // Only requests that do not require authentication will succeed
 func (cl *TLSClient) ConnectNoAuth() {
-	cl.httpClient = cl.connect()
-}
-
-// ConnectWithBasicAuth creates a server connection using the configured authentication
-// Intended to connect to services that do not support JWT authentication
-func (cl *TLSClient) ConnectWithBasicAuth(userID string, passwd string) {
-	cl.userID = userID
-	cl.basicSecret = passwd
-	// Invoke() will use basic auth if basicSecret is set
-
 	cl.httpClient = cl.connect()
 }
 
@@ -204,41 +169,32 @@ func (cl *TLSClient) ConnectWithClientCert(clientCert *tls.Certificate) (err err
 	return nil
 }
 
-// ConnectWithJwtAccessToken Sets login ID and secret for JWT authentication using an access
-// token obtained elsewhere.
-// This uses the provided access token as bearer token in the authorization header
+// ConnectWithToken Sets login ID and secret for JWT authentication using a
+// token obtained at login or elsewhere.
 //
 // No error is returned as this just sets up the token and http client. A messages are send yet.
-func (cl *TLSClient) ConnectWithJwtAccessToken(loginID string, accessToken string) {
+func (cl *TLSClient) ConnectWithToken(loginID string, token string) {
 	cl.userID = loginID
-	cl.jwtAccessToken = accessToken
+	cl.bearerToken = token
 
 	cl.httpClient = cl.connect()
 }
 
-// ConnectWithJWTLogin requests JWT tokens using loginID/password
+// ConnectWithPassword requests JWT tokens using loginID/password
 // If a CA certificate is not available then insecure-skip-verify is used to allow
 // connection to an unverified server (leap of faith).
 //
-// This uses JWT authentication using the POST /login path with a Json encoded
-// JwtAuthLogin message as body.
-//
-// The server returns a JwtAuthResponse message with an access/refresh token pair and a refresh URL.
-// The access token is used as bearer token in the Authentication header for followup requests.
+// The server returns a JwtAuthResponse message with a jwt bearer token for use in the authorization header.
 //
 //	loginID username or application ID to identify as.
 //	secret to authenticate with.
-//	authLoginURL optional full address of the authentication server login, "" to authenticate using the application server /login
 //
-// Returns nil if successful or an error if setting up of authentication failed.
-func (cl *TLSClient) ConnectWithJWTLogin(loginID string, secret string, authLoginURL string) (accessToken string, err error) {
+// Returns new auth token if successful or an error if setting up of authentication failed.
+func (cl *TLSClient) ConnectWithPassword(loginID string, secret string) (token string, err error) {
 	cl.userID = loginID
 
-	loginURL := fmt.Sprintf("https://%s%s", cl.hostPort, DefaultJWTLoginPath)
+	loginURL := fmt.Sprintf("https://%s%s", cl.hostPort, vocab.PostLoginPath)
 
-	if authLoginURL != "" {
-		loginURL = authLoginURL
-	}
 	// create tlsTransport
 	cl.httpClient = cl.connect()
 
@@ -250,18 +206,20 @@ func (cl *TLSClient) ConnectWithJWTLogin(loginID string, secret string, authLogi
 	// resp, err2 := cl.Post(cl.jwtLoginPath, authLogin)
 	resp, err2 := cl.Invoke("POST", loginURL, loginMessage)
 	if err2 != nil {
-		err = fmt.Errorf("ConnectWithLoginID: JWT login to %s failed. %s", loginURL, err2)
+		err = fmt.Errorf("ConnectWithPassword: login to %s failed. %s", loginURL, err2)
 		return "", err
 	}
-	var jwtResp JwtAuthResponse
+	//var jwtResp JwtAuthResponse
+	//err2 = json.Unmarshal(resp, &jwtResp)
+	//err2 = json.Unmarshal(resp, &token)
 
-	err2 = json.Unmarshal(resp, &jwtResp)
-	if err2 != nil {
-		err = fmt.Errorf("ConnectWithLoginID: JWT login to %s has unexpected response message: %s", loginURL, err2)
-		return "", err
-	}
-	cl.jwtAccessToken = jwtResp.AccessToken
-	return cl.jwtAccessToken, err
+	//if err2 != nil {
+	//	err = fmt.Errorf("ConnectWithPassword: JWT login to %s has unexpected response message: %s", loginURL, err2)
+	//	return "", err
+	//}
+	//cl.bearerToken = jwtResp.Token
+	cl.bearerToken = string(resp)
+	return cl.bearerToken, err
 }
 
 // Login requests JWT tokens using loginID/password
@@ -288,11 +246,13 @@ func (cl *TLSClient) Get(path string) ([]byte, error) {
 }
 
 // Invoke a HTTPS method and read response
-// If Basic or JWT authentication is enabled then add the auth info to the headers
+// If a JWT authentication is enabled then add the bearer token to the header
+// If msg is a string then it is considered to be already serialized.
+// If msg is not a string then it will be json encoded.
 //
 //	method: GET, PUT, POST, ...
 //	url: full URL to invoke
-//	msg message object to include. Non strings will be marshalled to json
+//	msg contains the request body as a string or object
 func (cl *TLSClient) Invoke(method string, url string, msg interface{}) ([]byte, error) {
 	var body io.Reader = http.NoBody
 	var err error
@@ -324,11 +284,8 @@ func (cl *TLSClient) Invoke(method string, url string, msg interface{}) ([]byte,
 		return nil, err
 	}
 
-	// Set authentication for the request. Use basic auth as fallback. JWT is preferred
-	if cl.userID != "" && cl.basicSecret != "" {
-		req.SetBasicAuth(cl.userID, cl.basicSecret)
-	} else if cl.jwtAccessToken != "" {
-		req.Header.Add("Authorization", "bearer "+cl.jwtAccessToken)
+	if cl.bearerToken != "" {
+		req.Header.Add("Authorization", "bearer "+cl.bearerToken)
 	} else {
 		// no authentication
 	}
@@ -359,10 +316,12 @@ func (cl *TLSClient) Invoke(method string, url string, msg interface{}) ([]byte,
 	return respBody, err
 }
 
-// Post a message with json payload
+// Post a message.
+// If msg is a string then it is considered to be already serialized.
+// If msg is not a string then it will be json encoded.
 //
 //	path to invoke
-//	msg message object to include. Non strings will be marshalled to json
+//	msg contains the request body as a string or object
 func (cl *TLSClient) Post(path string, msg interface{}) ([]byte, error) {
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	url := fmt.Sprintf("https://%s%s", cl.hostPort, path)
@@ -370,9 +329,11 @@ func (cl *TLSClient) Post(path string, msg interface{}) ([]byte, error) {
 }
 
 // Put a message with json payload
+// If msg is a string then it is considered to be already serialized.
+// If msg is not a string then it will be json encoded.
 //
 //	path to invoke
-//	msg message object to include. Non strings will be marshalled to json
+//	msg contains the request body as a string or object
 func (cl *TLSClient) Put(path string, msg interface{}) ([]byte, error) {
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	url := fmt.Sprintf("https://%s%s", cl.hostPort, path)
@@ -380,54 +341,49 @@ func (cl *TLSClient) Put(path string, msg interface{}) ([]byte, error) {
 }
 
 // Patch sends a patch message with json payload
+// If msg is a string then it is considered to be already serialized.
+// If msg is not a string then it will be json encoded.
 //
 //	path to invoke
-//	msg message object to include. Non strings will be marshalled to json
+//	msg contains the request body as a string or object
 func (cl *TLSClient) Patch(path string, msg interface{}) ([]byte, error) {
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	url := fmt.Sprintf("https://%s%s", cl.hostPort, path)
 	return cl.Invoke("PATCH", url, msg)
 }
 
-// RefreshJWTTokens refreshes the JWT access and bearer token
-//
-//	refreshURL to use. "" for using the application server and default refresh path
+// RefreshToken refreshes the JWT token
 //
 // This returns a struct with new access and refresh token
-func (cl *TLSClient) RefreshJWTTokens(refreshURL string) (refreshTokens *JwtAuthResponse, err error) {
-	//if refreshURL == "" {
-	//	refreshURL = cl.JwtTokens.RefreshURL
-	//}
+func (cl *TLSClient) RefreshToken(refreshURL string) (newToken string, err error) {
 	if refreshURL == "" {
-		refreshURL = fmt.Sprintf("https://%s%s", cl.hostPort, DefaultJWTRefreshPath)
+		refreshURL = fmt.Sprintf("https://%s%s", cl.hostPort, vocab.PostRefreshPath)
 	}
 
-	// refresh token exists in client cookie
+	// old token exists in client cookie
 	req, err := http.NewRequest("POST", refreshURL, http.NoBody)
 	var resp *http.Response
 	if err != nil {
-		err = fmt.Errorf("RefreshJWTTokens: Error creating request for URL %s: %w", refreshURL, err)
-		return nil, err
+		err = fmt.Errorf("RefreshToken: Error creating request for URL %s: %w", refreshURL, err)
+		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err = cl.httpClient.Do(req)
 
 	if err != nil {
-		err = fmt.Errorf("RefreshJWTTokens: Error using URL %s: %w", refreshURL, err)
-		return nil, err
+		err = fmt.Errorf("RefreshToken: Error using URL %s: %w", refreshURL, err)
+		return "", err
 	} else if resp.StatusCode >= 400 {
-		err = fmt.Errorf("RefreshJWTTokens: refresh using URL %s failed with: %s", refreshURL, resp.Status)
-		return nil, err
+		err = fmt.Errorf("RefreshToken: refresh using URL %s failed with: %s", refreshURL, resp.Status)
+		return "", err
 	}
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		err = fmt.Errorf("RefreshJWTTokens: failed with error %w", err)
-		return nil, err
+		err = fmt.Errorf("RefreshToken: failed with error %w", err)
+		return "", err
 	}
-	var jwtTokens JwtAuthResponse
-	err = json.Unmarshal(respBody, &jwtTokens)
-	cl.jwtAccessToken = jwtTokens.AccessToken
-	return &jwtTokens, err
+	err = json.Unmarshal(respBody, &newToken)
+	return newToken, err
 }
 
 // NewTLSClient creates a new TLS Client instance.

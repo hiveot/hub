@@ -7,7 +7,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/runtime/authn"
+	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 	"time"
 )
@@ -18,7 +18,7 @@ type JWTAuthenticator struct {
 	// key used to create and verify session tokens
 	signingKey keys.IHiveKey
 	// authentication store for login verification
-	authnStore authn.IAuthnStore
+	authnStore api.IAuthnStore
 }
 
 // Login with password and generate a session token
@@ -169,7 +169,7 @@ func (svc *JWTAuthenticator) ValidateToken(token string) (clientID string, sessi
 }
 
 // NewJWTAuthenticator returns a new instance of a JWT token authenticator
-func NewJWTAuthenticator(signingKey keys.IHiveKey, authnStore authn.IAuthnStore) *JWTAuthenticator {
+func NewJWTAuthenticator(signingKey keys.IHiveKey, authnStore api.IAuthnStore) *JWTAuthenticator {
 	svc := JWTAuthenticator{
 		signingKey: signingKey,
 		authnStore: authnStore,

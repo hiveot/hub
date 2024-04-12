@@ -4,20 +4,15 @@ import (
 	"time"
 )
 
-// ThingValue holds a value and metadata of an event, action, config or rpc message.
+// ThingMessage holds a value and metadata of an event, action, config or rpc message.
 //
 //	{
-//	   "agentID": {string},
 //	   "thingID": {string},
 //	   "name": {string},
 //	   "data": [{byte array}],
 //	   "created": {int64},   // msec since epoc
 //	}
-type ThingValue struct {
-	// AgentID is the ID of the device or service that owns the Thing.
-	// This is required.
-	AgentID string `json:"agentID"`
-
+type ThingMessage struct {
 	// ThingID of the thing this value applies to.
 	// This is required.
 	ThingID string `json:"thingID"`
@@ -47,24 +42,23 @@ type ThingValue struct {
 
 // GetUpdated is a helper function to return the formatted time the data was last updated.
 // This uses the time format RFC822 ("02 Jan 06 15:04 MST")
-func (tv *ThingValue) GetUpdated() string {
+func (tv *ThingMessage) GetUpdated() string {
 	created := time.Unix(tv.CreatedMSec/1000, 0).Local()
 	return created.Format(time.RFC822)
 }
 
-// NewThingValue creates a new ThingValue object with the address of the things, the action or event id and the serialized value data
+// NewThingMessage creates a new ThingMessage object with the address of the things,
+// the message action, event or rpc key, and the serialized value data.
 // This copies the value buffer.
 //
-//	valueType is the type of value: action, event, config, rpc request
-//	agentID is the agent of the thing
+//	messageType is the type of value: action, event, config, rpc request
 //	thingID is the thing the value applies to (destination of action or source of event)
 //	key is the property, event or action key of the value as described in the thing TD
-//	value is the stringified value from the type defined in the value's TD dataschema
+//	data is the message serialized payload as defined in the corresponding TD dataschema.
 //	senderID is the accountID of the creator of the value
-func NewThingValue(messageType, agentID, thingID, key string, data []byte, senderID string) *ThingValue {
-	return &ThingValue{
+func NewThingMessage(messageType, thingID, key string, data []byte, senderID string) *ThingMessage {
+	return &ThingMessage{
 		MessageType: messageType,
-		AgentID:     agentID,
 		ThingID:     thingID,
 		Key:         key,
 		SenderID:    senderID,

@@ -50,15 +50,9 @@ type TD struct {
 	// Version information of the TD document (?not the device??)
 	//Version VersionInfo `json:"version,omitempty"` // todo
 
-	// Instance identifier of the Thing in form of a URI (RFC3986)
-	// https://www.w3.org/TR/wot-thing-description11/#sec-privacy-consideration-id
-	// * IDs are optional. However, in HiveOT that won't work as they must be addressable.
-	// * IDs start with "urn:" based on the idea that IDs can be used as an address. In HiveOT, IDs and Addresses
-	//   serve a different purpose. IDs are not addresses. HiveOT allows IDs that do not start with "urn:".
-	//   note that pubsub uses addresses of which the things ID is part of.
-	// * ID's SHOULD be mutable. Recommended is on device reset the ID is changed.
-	// * The id of a TD SHOULD NOT contain metadata describing the Thing or from the TD itself.
-	// * Using random UUIDs as recommended in 10.5
+	// ID is the Thing instance identifier.
+	// HiveOT prefixes the thing's ID with the publishing agentID to help with uniqueness, separated by colon:
+	//  ThingID format used: urn:agentID:deviceID
 	ID string `json:"id,omitempty"`
 
 	// ISO8601 timestamp this document was last modified. See also 'Created'.

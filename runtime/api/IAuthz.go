@@ -1,10 +1,15 @@
 // Package authz with authorization definitions
-package authz
+package api
+
+const AuthzServiceID = "authz"
 
 const DefaultAclFilename = "authz.acl"
 
-// AuthManageRolesCapability is the name of the Thing/Capability that handles role requests
-const AuthManageRolesCapability = "manageRoles"
+// supported methods for authz service
+const (
+	AuthzGetClientRoleMethod = "getClientRole"
+	AuthzSetClientRoleMethod = "setClientRole"
+)
 
 // Predefined user roles.
 const (
@@ -56,7 +61,7 @@ type RolePermission struct {
 	// rpc, event, action, config, or "" for all message types
 	MsgType string
 	// action name or "" for all actions
-	MsgName string
+	MsgKey string
 	// allow publishing of this message
 	AllowPub bool
 	// allow subscribing to this message

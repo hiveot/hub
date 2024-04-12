@@ -1,7 +1,9 @@
 // Package rpc with RPC message structs
 package rpc
 
-import "github.com/hiveot/hub/runtime/authn"
+import (
+	"github.com/hiveot/hub/runtime/api"
+)
 
 // AddDeviceMethod is the request name to add a device with public key
 const AddDeviceMethod = "addDevice"
@@ -65,7 +67,7 @@ const GetProfilesMethod = "getProfiles"
 
 // GetProfilesResp response to listClient actions
 type GetProfilesResp struct {
-	Profiles []authn.ClientProfile `json:"profiles"`
+	Profiles []api.ClientProfile `json:"profiles"`
 }
 
 // RemoveClientMethod is the request name to remove a client
@@ -90,8 +92,8 @@ type SetClientPasswordArgs struct {
 const UpdateClientMethod = "updateClient"
 
 type UpdateClientArgs struct {
-	ClientID string              `json:"clientID"`
-	Profile  authn.ClientProfile `json:"profile"`
+	ClientID string            `json:"clientID"`
+	Profile  api.ClientProfile `json:"profile"`
 }
 
 // UpdateClientRoleMethod is the request name to change a client's role

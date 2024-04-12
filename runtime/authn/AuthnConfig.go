@@ -2,6 +2,7 @@ package authn
 
 import (
 	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 	"path"
 )
@@ -45,32 +46,32 @@ type AuthnConfig struct {
 func (cfg *AuthnConfig) Setup(keysDir, storesDir string) {
 
 	if cfg.PasswordFile == "" {
-		cfg.PasswordFile = DefaultPasswordFile
+		cfg.PasswordFile = api.DefaultPasswordFile
 	}
 	if !path.IsAbs(cfg.PasswordFile) {
 		cfg.PasswordFile = path.Join(storesDir, "authn", cfg.PasswordFile)
 	}
 
 	if cfg.Encryption == "" {
-		cfg.Encryption = PWHASH_ARGON2id
+		cfg.Encryption = api.PWHASH_ARGON2id
 	}
-	if cfg.Encryption != PWHASH_BCRYPT && cfg.Encryption != PWHASH_ARGON2id {
+	if cfg.Encryption != api.PWHASH_BCRYPT && cfg.Encryption != api.PWHASH_ARGON2id {
 		slog.Error("unknown password encryption method. Reverting to ARGON2id", "Encoding", cfg.Encryption)
-		cfg.Encryption = PWHASH_ARGON2id
+		cfg.Encryption = api.PWHASH_ARGON2id
 	}
 
 	if cfg.AgentTokenValiditySec == 0 {
-		cfg.AgentTokenValiditySec = DefaultAgentTokenValiditySec
+		cfg.AgentTokenValiditySec = api.DefaultAgentTokenValiditySec
 	}
 	if cfg.ServiceTokenValiditySec == 0 {
-		cfg.ServiceTokenValiditySec = DefaultServiceTokenValiditySec
+		cfg.ServiceTokenValiditySec = api.DefaultServiceTokenValiditySec
 	}
 	if cfg.UserTokenValiditySec == 0 {
-		cfg.UserTokenValiditySec = DefaultUserTokenValiditySec
+		cfg.UserTokenValiditySec = api.DefaultUserTokenValiditySec
 	}
 	cfg.KeysDir = keysDir
-	cfg.AdminAccountID = DefaultAdminUserID
-	cfg.LauncherAccountID = DefaultLauncherServiceID
+	cfg.AdminAccountID = api.DefaultAdminUserID
+	cfg.LauncherAccountID = api.DefaultLauncherServiceID
 
 	//if cfg.AdminUserKeyFile == "" {
 	//	cfg.AdminUserKeyFile = .DefaultAdminUserID + ".key"
@@ -105,7 +106,7 @@ func NewAuthnConfig() AuthnConfig {
 		// key to use for creating keys
 		DefaultKeyType: keys.KeyTypeECDSA,
 		// default password encryption method
-		Encryption: PWHASH_ARGON2id,
+		Encryption: api.PWHASH_ARGON2id,
 	}
 	return cfg
 }

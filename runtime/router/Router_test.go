@@ -1,12 +1,14 @@
-package router
+package router_test
 
 import (
 	"fmt"
 	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/router"
 	"github.com/stretchr/testify/assert"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -16,11 +18,29 @@ func TestMain(m *testing.M) {
 	os.Exit(res)
 }
 
-func TestHandleMessage(t *testing.T) {
+func TestHandleAction(t *testing.T) {
+	serviceID := "service1"
+	methodID := "method1"
+	data := "Hello World"
+	cfg := router.NewRouterConfig()
+	r := router.NewMessageRouter(&cfg)
+
+	// this handler returns the uppercase text
+	r.AddActionHandler(serviceID, methodID, func(tv *things.ThingMessage) ([]byte, error) {
+		upper := strings.ToUpper(string(tv.Data))
+		return []byte(upper), nil
+	})
+	tv1 := things.NewThingMessage(vocab.MessageTypeAction, serviceID, methodID, []byte(data), "sender1")
+	resp, err := r.HandleMessage(tv1)
+	assert.Equal(t, strings.ToUpper(string(tv1.Data)), string(resp))
+	assert.NoError(t, err)
+}
+
+func TestHandleEvent(t *testing.T) {
 	mwh1Count := 0
 	mwh2Count := 0
-	cfg := NewRouterConfig()
-	r := NewMessageRouter(&cfg)
+	cfg := router.NewRouterConfig()
+	r := router.NewMessageRouter(&cfg)
 
 	r.AddMiddlewareHandler(func(tv *things.ThingMessage) (*things.ThingMessage, error) {
 		mwh1Count++
@@ -30,7 +50,7 @@ func TestHandleMessage(t *testing.T) {
 		mwh2Count++
 		return tv, nil
 	})
-	r.AddMessageTypeHandler(vocab.MessageTypeEvent, func(tv *things.ThingMessage) ([]byte, error) {
+	r.AddEventHandler("", "", func(tv *things.ThingMessage) ([]byte, error) {
 		return tv.Data, nil
 	})
 	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", []byte("data"), "sender1")
@@ -41,12 +61,11 @@ func TestHandleMessage(t *testing.T) {
 	assert.Equal(t, mwh1Count, 1)
 	assert.Equal(t, mwh2Count, 1)
 }
-
 func TestBadMessageType(t *testing.T) {
-	cfg := NewRouterConfig()
-	r := NewMessageRouter(&cfg)
+	cfg := router.NewRouterConfig()
+	r := router.NewMessageRouter(&cfg)
 
-	r.AddMessageTypeHandler(vocab.MessageTypeEvent, func(tv *things.ThingMessage) ([]byte, error) {
+	r.AddEventHandler("", "", func(tv *things.ThingMessage) ([]byte, error) {
 		return tv.Data, nil
 	})
 	tv1 := things.NewThingMessage("badmessagetype", "thing1", "key1", []byte("data"), "sender1")
@@ -55,13 +74,13 @@ func TestBadMessageType(t *testing.T) {
 }
 
 func TestMiddlewareError(t *testing.T) {
-	cfg := NewRouterConfig()
-	r := NewMessageRouter(&cfg)
+	cfg := router.NewRouterConfig()
+	r := router.NewMessageRouter(&cfg)
 
 	r.AddMiddlewareHandler(func(tv *things.ThingMessage) (*things.ThingMessage, error) {
 		return tv, fmt.Errorf("middleware rejects message")
 	})
-	r.AddMessageTypeHandler(vocab.MessageTypeEvent, func(tv *things.ThingMessage) ([]byte, error) {
+	r.AddEventHandler("", "", func(tv *things.ThingMessage) ([]byte, error) {
 		return tv.Data, nil
 	})
 	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", []byte("data"), "sender1")
@@ -70,10 +89,10 @@ func TestMiddlewareError(t *testing.T) {
 }
 
 func TestHandlerError(t *testing.T) {
-	cfg := NewRouterConfig()
-	r := NewMessageRouter(&cfg)
+	cfg := router.NewRouterConfig()
+	r := router.NewMessageRouter(&cfg)
 
-	r.AddMessageTypeHandler(vocab.MessageTypeEvent, func(tv *things.ThingMessage) ([]byte, error) {
+	r.AddEventHandler("", "", func(tv *things.ThingMessage) ([]byte, error) {
 		return tv.Data, fmt.Errorf("handler returns error")
 	})
 	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", []byte("data"), "sender1")

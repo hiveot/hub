@@ -4,7 +4,6 @@ import (
 	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/core/auth/authservice"
 	"github.com/hiveot/hub/core/auth/config"
-	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/transports"
@@ -21,14 +20,14 @@ import (
 type TestServer struct {
 	Core        string
 	CertBundle  certs.TestCertBundle
-	MsgServer   msgserver.IMsgServer
+	MsgServer   msgserver_old.IMsgServer
 	AuthService *authservice.AuthService
-	testClients []msgserver.ClientAuthInfo // when using AddConnectClient
+	testClients []msgserver_old.ClientAuthInfo // when using AddConnectClient
 }
 
 // AddClients adds test clients to the server.
 // This either adds them to the server directly or adds them using auth.
-func (ts *TestServer) AddClients(newClients []msgserver.ClientAuthInfo) error {
+func (ts *TestServer) AddClients(newClients []msgserver_old.ClientAuthInfo) error {
 	var err error
 	ctx := hubclient.ServiceContext{SenderID: "testServer"}
 	if ts.AuthService != nil {
@@ -124,7 +123,7 @@ func (ts *TestServer) AddConnectClient(
 		}
 	} else {
 		// use an on-the-fly created token for the connection
-		authInfo := msgserver.ClientAuthInfo{
+		authInfo := msgserver_old.ClientAuthInfo{
 			ClientID:     clientID,
 			ClientType:   clientType,
 			PubKey:       serPub,
@@ -190,7 +189,7 @@ func StartTestServer(core string, withAuth bool) (*TestServer, error) {
 	ts := &TestServer{
 		CertBundle:  certs.CreateTestCertBundle(),
 		Core:        core,
-		testClients: make([]msgserver.ClientAuthInfo, 0),
+		testClients: make([]msgserver_old.ClientAuthInfo, 0),
 	}
 	if core == "nats" {
 		ts.MsgServer, ts.CertBundle, _, err = StartNatsTestServer(false)

@@ -3,14 +3,13 @@ package httpsbinding
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/authn"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/tlsserver"
-	"io"
 	"log/slog"
 	"net/http"
 )
@@ -32,7 +31,7 @@ type HttpsBinding struct {
 	handleMessage func(tv *things.ThingMessage) ([]byte, error)
 
 	// sessionAuth for logging in and validating session tokens
-	sessionAuth authn.IAuthenticator
+	sessionAuth api.IAuthenticator
 }
 
 // setup the chain of routes used by the service and return the router
@@ -68,7 +67,7 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 
 		// full page routes
 		//r.Get("/static/*", staticFileServer.ServeHTTP)
-		r.Post(svc.config.PostLoginPath, svc.handleLogin)
+		r.Post(vocab.PostLoginPath, svc.handlePostLogin)
 		//r.Post("/logout", svc.handleLogout)
 
 	})
@@ -78,10 +77,26 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 		// client sessions
 		r.Use(svc.AddSessionFromToken())
 
-		// handlers for receiving requests by type
-		r.Post(svc.config.PostActionPath, svc.handlePostAction)
-		r.Post(svc.config.PostEventPath, svc.handlePostEvent)
-		r.Post(svc.config.PostRPCPath, svc.handlePostRPC)
+		// handlers for agent messages
+		r.Get(vocab.AgentDeleteThingPath, svc.handleAgentDeleteThing)
+		r.Get(vocab.AgentGetActionsPath, svc.handleAgentGetActions)
+		r.Post(vocab.AgentPostEventPath, svc.handleAgentPostEvent)
+		r.Put(vocab.AgentPutPropertiesPath, svc.handleAgentPutProperties)
+		r.Put(vocab.AgentPutThingPath, svc.handleAgentPutThing)
+
+		// handlers for consumer requests
+		r.Post(vocab.ConsumerPostActionPath, svc.handleConsumerPostAction)
+		r.Post(vocab.ConsumerPostPropertiesPath, svc.handleConsumerPostProperties)
+		r.Get(vocab.ConsumerDeleteThingPath, svc.handleConsumerRemoveThing)
+		r.Get(vocab.ConsumerGetThingPath, svc.handleConsumerGetThing)
+		r.Get(vocab.ConsumerGetThingsPath, svc.handleConsumerGetThings)
+		r.Get(vocab.ConsumerGetEventPath, svc.handleConsumerGetEvent)
+		r.Get(vocab.ConsumerGetEventsPath, svc.handleConsumerGetEvents)
+		r.Get(vocab.ConsumerGetPropertiesPath, svc.handleConsumerGetProperties)
+
+		// handlers for built-in services requests
+		r.Post(vocab.PostRefreshPath, svc.handlePostRefresh)
+		r.Post(vocab.PostRPCPath, svc.handlePostRPC)
 
 		//r.Get("/action/{agentID}/{thingID}", svc.handleGetQueuedActions)
 
@@ -89,37 +104,12 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 		//r.Get("/event/{agentID}/{thingID}/{key}", svc.handleGetEvents)
 		//r.Post("/action/{agentID}/{thingID}/{key}", svc.handlePostAction)
 
-		// both agents and consumers
-		//r.Get("/rpc/{serviceID}/{interfaceID}/{method}", svc.handleInvokeRPC)
 		// sse has its own validation instead of using session context (which reconnects or redirects to /login)
-		r.Get("/sse", SseHandler)
+		r.Get(vocab.ConnectSSEPath, svc.handleSseConnect)
+		//r.Get(vocab.ConnectWSPath, svc.handleWSConnect)
 	})
 
 	return router
-}
-
-// Handle login and return an auth token with a new session id for the client
-func (svc *HttpsBinding) handleLogin(w http.ResponseWriter, req *http.Request) {
-	// credentials are in a json payload
-	authMsg := make(map[string]string)
-	data, _ := io.ReadAll(req.Body)
-	err := json.Unmarshal(data, &authMsg)
-	if err != nil {
-		slog.Warn("handleLogin failed getting credentials", "err", err.Error())
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	loginID := authMsg["login"]
-	password := authMsg["password"]
-	authToken, err := svc.sessionAuth.Login(loginID, password, "")
-	if err != nil {
-		// missing bearer token
-		slog.Warn("handleLogin bad login", "clientID", loginID)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	_, _ = w.Write([]byte(authToken))
-	w.WriteHeader(http.StatusOK)
 }
 
 // Start the https server and listen for incoming connection requests
@@ -148,7 +138,7 @@ func NewHttpsBinding(config *HttpsBindingConfig,
 	privKey keys.IHiveKey,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
-	sessionAuth authn.IAuthenticator,
+	sessionAuth api.IAuthenticator,
 	handler func(tv *things.ThingMessage) ([]byte, error),
 ) *HttpsBinding {
 

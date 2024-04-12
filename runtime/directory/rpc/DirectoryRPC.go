@@ -1,104 +1,103 @@
-// Package rpc with message definitions for querying the directory
 package rpc
 
-import "github.com/hiveot/hub/lib/things"
+import (
+	"encoding/json"
+	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/directory/service"
+	"log/slog"
+)
 
-// ReadDirectoryCap is the capability ID to read the directory
-const ReadDirectoryCap = "readDirectory"
-
-const CursorFirstMethod = "cursorFirst"
-
-type CursorFirstArgs struct {
-	// Iterator identifier obtained with GetReadCursorReq
-	CursorKey string `json:"cursorKey"`
-}
-type CursorFirstResp struct {
-	Value things.ThingMessage `json:"value"`
-	Valid bool                `json:"valid"`
-	// CursorKey with iteration location after the first
-	CursorKey string `json:"cursorKey"`
+// DirectoryRPC contains the message based interface to the directory service
+// This implements a HandleMessage method that supports the message format from the API.
+type DirectoryRPC struct {
+	svc *service.DirectoryService
 }
 
-const CursorNextMethod = "cursorNext"
-
-type CursorNextArgs struct {
-	// CursorKey with current iteration location
-	CursorKey string `json:"cursorKey"`
-}
-type CursorNextResp struct {
-	Value things.ThingMessage `json:"value"`
-	Valid bool                `json:"valid"`
-	// CursorKey with new iteration location
-	CursorKey string `json:"cursorKey"`
-}
-
-const CursorNextNMethod = "cursorNextN"
-
-type CursorNextNArgs struct {
-	// CursorKey with current iteration location
-	CursorKey string `json:"cursorKey"`
-	Limit     uint   `json:"limit"`
-}
-type CursorNextNResp struct {
-	Values         []things.ThingMessage `json:"values"`
-	ItemsRemaining bool                  `json:"itemsRemaining"`
-	// CursorKey with new iteration location
-	CursorKey string `json:"cursorKey"`
+// HandleMessage an event or action message for the directory service
+func (rpc *DirectoryRPC) HandleMessage(msg *things.ThingMessage) ([]byte, error) {
+	if msg.MessageType == vocab.MessageTypeEvent && msg.Key == vocab.EventTypeTD {
+		return nil, rpc.HandleTDEvent(msg)
+	} else if msg.MessageType == vocab.MessageTypeAction {
+		// all rpc calls
+		if msg.Key == api.DirectoryReadTDDsMethod {
+			return rpc.HandleReadTDDs(msg)
+		} else if msg.Key == api.DirectoryReadTDDMethod {
+			return rpc.HandleReadTDD(msg)
+		} else if msg.Key == api.DirectoryRemoveTDDMethod {
+			return rpc.HandleRemoveTDD(msg)
+		}
+	}
+	return nil, nil
 }
 
-const CursorReleaseMethod = "cursorRelease"
+// HandleReadTDDs handles an action request for a list of TD documents
+func (rpc *DirectoryRPC) HandleReadTDDs(msg *things.ThingMessage) ([]byte, error) {
+	var args api.DirectoryReadTDDsArgs
+	var tdds []*things.TD
 
-type CursorReleaseArgs struct {
-	CursorKey string `json:"cursorKey"`
+	err := json.Unmarshal(msg.Data, &args)
+	if err == nil {
+		tdds, err = rpc.svc.ReadTDDs(args.Offset, args.Limit)
+	}
+	if err != nil {
+		slog.Warn("HandleReadTDDs failed", "err", err)
+	}
+	resp := api.DirectoryReadTDDsResp{
+		TDDs: tdds,
+	}
+	respJson, err := json.Marshal(resp)
+	return respJson, err
 }
 
-const GetCursorMethod = "getCursor"
+// HandleReadTDD handles an action request for a sing TD document
+func (rpc *DirectoryRPC) HandleReadTDD(msg *things.ThingMessage) ([]byte, error) {
+	var args api.DirectoryReadTDDArgs
+	var tdd *things.TD
 
-// GetCursorResp returns a read cursor
-type GetCursorResp struct {
-	// Iterator identifier
-	CursorKey string `json:"cursorKey"`
+	err := json.Unmarshal(msg.Data, &args)
+	if err == nil {
+		tdd, err = rpc.svc.ReadTDD(args.ThingID)
+	}
+	if err != nil {
+		slog.Warn("HandleReadTDD failed", "err", err)
+	}
+	resp := api.DirectoryReadTDDResp{
+		TDD: tdd,
+	}
+	respJson, err := json.Marshal(resp)
+	return respJson, err
 }
 
-const GetTDMethod = "getTD"
+// HandleRemoveTDD handles an action request for removing a TD document
+func (rpc *DirectoryRPC) HandleRemoveTDD(msg *things.ThingMessage) ([]byte, error) {
+	var args api.DirectoryRemoveTDDArgs
 
-type GetTDArgs struct {
-	AgentID string `json:"agentID"`
-	ThingID string `json:"thingID"`
-}
-type GetTDResp struct {
-	Value things.ThingMessage `json:"value"`
-}
-
-const GetTDsMethod = "getTDs"
-
-type GetTDsArgs struct {
-	Offset int `json:"offset"`
-	Limit  int `json:"limit"`
-}
-type GetTDsResp struct {
-	Values []things.ThingMessage `json:"values"`
+	err := json.Unmarshal(msg.Data, &args)
+	if err == nil {
+		err = rpc.svc.RemoveTDD(msg.SenderID, args.ThingID)
+	}
+	if err != nil {
+		slog.Warn("HandleRemoveTDD failed", "err", err)
+	}
+	return nil, err
 }
 
-//--- Interface
+// HandleTDEvent handles an event containing a TD document
+func (rpc *DirectoryRPC) HandleTDEvent(msg *things.ThingMessage) error {
+	var args api.DirectoryTDEventArgs
+	err := json.Unmarshal(msg.Data, &args)
+	if err == nil {
+		err = rpc.svc.UpdateTDD(msg.SenderID, msg.ThingID, args)
+	}
+	if err != nil {
+		slog.Warn("HandleEvent: TD update failed", "err", err)
+	}
+	return err
+}
 
-// IDirectoryCursor is a cursor to iterate the directory
-type IDirectoryCursor interface {
-	// First return the first directory entry.
-	//  tdDoc contains the serialized TD document
-	// Returns nil if the store is empty
-	First() (value things.ThingMessage, valid bool, err error)
-
-	// Next returns the next directory entry
-	// Returns nil when trying to read past the last value
-	Next() (value things.ThingMessage, valid bool, err error)
-
-	// NextN returns a batch of next directory entries
-	// Returns empty list when trying to read past the last value
-	// itemsRemaining is true as long as more items can be retrieved
-	// limit provides the maximum number of items to obtain.
-	NextN(limit uint) (batch []things.ThingMessage, itemsRemaining bool, err error)
-
-	// Release the cursor after use
-	Release()
+func NewDirectoryRPC(svc *service.DirectoryService) *DirectoryRPC {
+	rpc := DirectoryRPC{svc: svc}
+	return &rpc
 }

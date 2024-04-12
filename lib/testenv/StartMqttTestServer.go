@@ -2,7 +2,6 @@ package testenv
 
 import (
 	"github.com/hiveot/hub/core/auth/authapi"
-	"github.com/hiveot/hub/core/msgserver"
 	"github.com/hiveot/hub/core/msgserver/mqttmsgserver"
 	"github.com/hiveot/hub/core/msgserver/mqttmsgserver/service"
 	"github.com/hiveot/hub/lib/certs"
@@ -13,7 +12,7 @@ import (
 
 // StartMqttTestServer creates a MQTT test server.
 func StartMqttTestServer() (
-	msgServer msgserver.IMsgServer,
+	msgServer msgserver_old.IMsgServer,
 	certBundle certs.TestCertBundle,
 	err error) {
 

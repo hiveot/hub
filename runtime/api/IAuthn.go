@@ -1,4 +1,15 @@
-package authn
+package api
+
+const AuthnServiceID = "authn"
+
+// supported methods
+const (
+	AuthnAddClientMethod    = "addClient"
+	AuthnGetProfileMethod   = "getProfile"
+	AuthnGetProfilesMethod  = "getProfiles"
+	AuthnRemoveClientMethod = "removeClient"
+	AuthnUpdateClientMethod = "updateClient"
+)
 
 // ClientType with the types of clients supported by authn
 type ClientType string

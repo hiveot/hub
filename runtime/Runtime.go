@@ -11,6 +11,7 @@ import (
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/service"
@@ -27,14 +28,14 @@ import (
 type Runtime struct {
 	cfg *RuntimeConfig
 
-	authnStore  authn.IAuthnStore
-	authnSvc    *service.AuthnService
-	authzSvc    *authz.AuthzService
-	dirSvc      *service2.DirectoryService
-	msgRouter   *router.MessageRouter
-	protocolMgr *protocols.ProtocolsManager
-	valueSvc    *valueservice.ValueService
-	valueStore  buckets.IBucketStore
+	AuthnStore  api.IAuthnStore
+	AuthnSvc    *service.AuthnService
+	AuthzSvc    *authz.AuthzService
+	DirSvc      *service2.DirectoryService
+	MsgRouter   *router.MessageRouter
+	ProtocolMgr *protocols.ProtocolsManager
+	ValueSvc    *valueservice.ValueService
+	ValueStore  buckets.IBucketStore
 }
 
 func (r *Runtime) Start(env *plugin.AppEnvironment) error {
@@ -44,68 +45,77 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		return err
 	}
 
+	// setup ingress routing; right now it is quite simple with a single event handler
+	r.MsgRouter = router.NewMessageRouter(&r.cfg.Router)
+
 	// startup
-	var sessionAuth authn.IAuthenticator
-	r.authnSvc, sessionAuth, r.authnStore, err = StartAuthnSvc(&r.cfg.Authn, env.CaCert)
+	var sessionAuth api.IAuthenticator
+	r.AuthnSvc, sessionAuth, r.AuthnStore, err = StartAuthnSvc(
+		&r.cfg.Authn, env.CaCert, r.MsgRouter)
 	if err != nil {
 		return err
 	}
 
-	r.authzSvc, err = StartAuthzSvc(&r.cfg.Authz, r.authnStore)
+	r.AuthzSvc, err = StartAuthzSvc(&r.cfg.Authz, r.AuthnStore, r.MsgRouter)
 	if err != nil {
 		return err
 	}
 
-	r.dirSvc, err = StartDirectorySvc(&r.cfg.Directory, env.StoresDir)
+	r.DirSvc, err = StartDirectorySvc(&r.cfg.Directory, env.StoresDir, r.MsgRouter)
 	if err != nil {
 		return err
 	}
 
-	r.valueSvc, r.valueStore, err = StartValueSvc(&r.cfg.ValueStore, env.StoresDir)
+	r.ValueSvc, r.ValueStore, err = StartValueSvc(&r.cfg.ValueStore, env.StoresDir, r.MsgRouter)
 	if err != nil {
 		return err
 	}
+	//
+	//// setup ingress routing; right now it is quite simple with a single event handler
+	//r.MsgRouter = router.NewMessageRouter(&r.cfg.Router)
+	// TODO: add built-in services as separate event types, eg TD and Properties events
+	//r.MsgRouter.AddEventHandler("", "", func(tv *things.ThingMessage) ([]byte, error) {
+	//	_, _ = r.DirSvc.HandleEvent(tv)
+	//	_, _ = r.ValueSvc.HandleEvent(tv)
+	//	return nil, nil
+	//})
+	// pass to the default action handler
+	// TODO: add built-in services as separate actions
+	//r.MsgRouter.AddActionHandler("", "", func(tv *things.ThingMessage) ([]byte, error) {
+	//	return nil, fmt.Errorf("not yet implemented")
+	//})
 
-	// setup ingress routing; right now its quite simple
-	r.msgRouter = router.NewMessageRouter(&r.cfg.Router)
-	r.msgRouter.AddMessageTypeHandler(vocab.MessageTypeEvent, func(tv *things.ThingMessage) ([]byte, error) {
-		_, _ = r.dirSvc.HandleEvent(tv)
-		_, _ = r.valueSvc.HandleEvent(tv)
-		return nil, nil
-	})
-	r.msgRouter.AddMessageTypeHandler(vocab.MessageTypeAction, func(tv *things.ThingMessage) ([]byte, error) {
-		return nil, fmt.Errorf("not yet implemented")
-	})
-	r.msgRouter.AddMessageTypeHandler(vocab.MessageTypeRPC, func(tv *things.ThingMessage) ([]byte, error) {
-		return nil, fmt.Errorf("not yet implemented")
-	})
-
-	r.protocolMgr, err = StartProtocolsManager(
-		&r.cfg.Protocols, r.cfg.ServerKey, r.cfg.ServerCert, r.cfg.CaCert, sessionAuth, r.msgRouter.HandleMessage)
+	r.ProtocolMgr, err = StartProtocolsManager(
+		&r.cfg.Protocols, r.cfg.ServerKey, r.cfg.ServerCert, r.cfg.CaCert, sessionAuth,
+		r.MsgRouter.HandleMessage)
 	return err
 }
 
-func StartAuthnSvc(cfg *authn.AuthnConfig, caCert *x509.Certificate) (
-	svc *service.AuthnService, sessionAuth authn.IAuthenticator,
-	store authn.IAuthnStore, err error) {
+func StartAuthnSvc(cfg *authn.AuthnConfig, caCert *x509.Certificate, r *router.MessageRouter) (
+	svc *service.AuthnService, sessionAuth api.IAuthenticator,
+	store api.IAuthnStore, err error) {
 
 	// setup the Authentication service
 	authStore := authnstore.NewAuthnFileStore(cfg.PasswordFile, cfg.Encryption)
 	svc = service.NewAuthnService(cfg, authStore, caCert)
 	sessionAuth, err = svc.Start()
+	//r.AddEventHandler(api.AuthnServiceID, vocab.EventTypeTD, svc.HandleEvent)
+	r.AddActionHandler(api.AuthnServiceID, "", svc.HandleActions)
 	return svc, sessionAuth, authStore, err
 }
 
 func StartAuthzSvc(cfg *authz.AuthzConfig,
-	authnStore authn.IAuthnStore) (svc *authz.AuthzService, err error) {
+	authnStore api.IAuthnStore, r *router.MessageRouter) (svc *authz.AuthzService, err error) {
 
 	// setup the Authentication service
 	svc = authz.NewAuthzService(cfg, authnStore)
 	err = svc.Start()
+	//r.AddEventHandler(api.AuthzServiceID, vocab.EventTypeTD, svc.HandleEvent)
+	//r.AddActionHandler(api.AuthzServiceID, "", svc.HandleRPCRequests)
 	return svc, err
 }
 
-func StartDirectorySvc(cfg *directory.DirectoryConfig, storesDir string) (
+func StartDirectorySvc(cfg *directory.DirectoryConfig, storesDir string, r *router.MessageRouter) (
 	svc *service2.DirectoryService, err error) {
 
 	var dirStore buckets.IBucketStore
@@ -117,14 +127,17 @@ func StartDirectorySvc(cfg *directory.DirectoryConfig, storesDir string) (
 	if err == nil {
 		svc = service2.NewDirectoryService(cfg, dirStore)
 		err = svc.Start()
+		// should these be registered through their TD? not right now
+		r.AddEventHandler(api.DirectoryServiceID, vocab.EventTypeTD, svc.HandleTDEvent)
+		r.AddActionHandler(api.DirectoryServiceID, "", svc.HandleActions)
 	}
 	return svc, err
 }
 
 func StartProtocolsManager(cfg *protocols.ProtocolsConfig,
 	serverKey keys.IHiveKey, serverCert *tls.Certificate, caCert *x509.Certificate,
-	sessionAuth authn.IAuthenticator,
-	handler func(tv *things.ThingMessage) ([]byte, error)) (
+	sessionAuth api.IAuthenticator,
+	handler func(msg *things.ThingMessage) ([]byte, error)) (
 	svc *protocols.ProtocolsManager, err error) {
 
 	pm := protocols.NewProtocolManager(
@@ -136,7 +149,7 @@ func StartProtocolsManager(cfg *protocols.ProtocolsConfig,
 	return pm, err
 }
 
-func StartValueSvc(cfg *valueservice.ValueStoreConfig, storesDir string) (
+func StartValueSvc(cfg *valueservice.ValueStoreConfig, storesDir string, r *router.MessageRouter) (
 	valueSvc *valueservice.ValueService, valueStore buckets.IBucketStore, err error) {
 
 	if err == nil {
@@ -152,34 +165,38 @@ func StartValueSvc(cfg *valueservice.ValueStoreConfig, storesDir string) (
 	if err == nil {
 		valueSvc = valueservice.NewThingValueService(cfg, valueStore)
 		err = valueSvc.Start()
+
+		// should these be registered through their TD? not right now
+		r.AddEventHandler(api.ValueServiceID, vocab.EventTypeTD, valueSvc.HandleEvent)
+		r.AddActionHandler(api.ValueServiceID, "", valueSvc.HandleAction)
 	}
 
 	return valueSvc, valueStore, err
 }
 
 func (r *Runtime) Stop() {
-	if r.protocolMgr != nil {
-		r.protocolMgr.Stop()
+	if r.ProtocolMgr != nil {
+		r.ProtocolMgr.Stop()
 	}
-	if r.msgRouter != nil {
+	if r.MsgRouter != nil {
 	}
-	if r.valueSvc != nil {
-		r.valueSvc.Stop()
+	if r.ValueSvc != nil {
+		r.ValueSvc.Stop()
 	}
-	if r.valueStore != nil {
-		_ = r.valueStore.Close()
+	if r.ValueStore != nil {
+		_ = r.ValueStore.Close()
 	}
-	if r.dirSvc != nil {
-		r.dirSvc.Stop()
+	if r.DirSvc != nil {
+		r.DirSvc.Stop()
 	}
-	if r.authzSvc != nil {
-		r.authzSvc.Stop()
+	if r.AuthzSvc != nil {
+		r.AuthzSvc.Stop()
 	}
-	if r.authnSvc != nil {
-		r.authnSvc.Stop()
+	if r.AuthnSvc != nil {
+		r.AuthnSvc.Stop()
 	}
-	if r.authnStore != nil {
-		r.authnStore.Close()
+	if r.AuthnStore != nil {
+		r.AuthnStore.Close()
 	}
 }
 

@@ -1,10 +1,11 @@
 package things
 
-type ThingValueMap map[string]*ThingValue
+// ThingMessageMap map of message event or action keys to value
+type ThingMessageMap map[string]*ThingMessage
 
 // Age returns the age of a property, or "" if it doesn't exist
 // intended for use in template as .Values.Age $key
-//func (vm ThingValueMap) Age(key string) string {
+//func (vm ThingMessageMap) Age(key string) string {
 //	tv := vm.Get(key)
 //	if tv == nil {
 //		return ""
@@ -13,7 +14,7 @@ type ThingValueMap map[string]*ThingValue
 //}
 
 // Get returns the value of a property key, or nil if it doesn't exist
-func (vm ThingValueMap) Get(key string) *ThingValue {
+func (vm ThingMessageMap) Get(key string) *ThingMessage {
 	tv, found := vm[key]
 	if !found {
 		return nil
@@ -23,7 +24,7 @@ func (vm ThingValueMap) Get(key string) *ThingValue {
 
 // GetUpdated returns the timestamp of a property, or "" if it doesn't exist
 // intended for use in template as .Values.GetUpdated $key
-func (vm *ThingValueMap) GetUpdated(key string) string {
+func (vm *ThingMessageMap) GetUpdated(key string) string {
 	tv := vm.Get(key)
 	if tv == nil {
 		return ""
@@ -33,7 +34,7 @@ func (vm *ThingValueMap) GetUpdated(key string) string {
 
 // ToString returns the value of a property as text, or "" if it doesn't exist
 // intended for use in template as .Values.ToString $key
-func (vm ThingValueMap) ToString(key string) string {
+func (vm ThingMessageMap) ToString(key string) string {
 	tv := vm.Get(key)
 	if tv == nil {
 		return ""
@@ -41,23 +42,14 @@ func (vm ThingValueMap) ToString(key string) string {
 	return string(tv.Data)
 }
 
-// SenderID returns the sender ID of the client updating the value, or "" if it doesn't exist
-// intended for use in template as .Values.SenderID $key
-func (vm ThingValueMap) SenderID(key string) string {
-	tv := vm.Get(key)
-	if tv == nil {
-		return ""
-	}
-	return tv.AgentID
-}
-
 // Set a property value in the map
 // if key already exists its value will be replaced
-func (vm ThingValueMap) Set(key string, tv *ThingValue) {
+func (vm ThingMessageMap) Set(key string, tv *ThingMessage) {
 	vm[key] = tv
 }
 
-func NewThingValueMap() ThingValueMap {
-	vm := make(ThingValueMap)
+// NewThingMessageMap creates map of message event,action or rpc key to value
+func NewThingMessageMap() ThingMessageMap {
+	vm := make(ThingMessageMap)
 	return vm
 }

@@ -1,6 +1,7 @@
-package runtime
+package runtime_test
 
 import (
+	"encoding/json"
 	"fmt"
 	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/certs"
@@ -8,7 +9,9 @@ import (
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsclient"
-	"github.com/hiveot/hub/runtime/authn"
+	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/runtime"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -21,8 +24,40 @@ const TestPort = 9444
 
 var testDir = path.Join(os.TempDir(), "test-runtime")
 var rtEnv = plugin.GetAppEnvironment(testDir, false)
-var rtConfig = NewRuntimeConfig()
+var rtConfig = runtime.NewRuntimeConfig()
 var certsBundle = certs.CreateTestCertBundle()
+
+// start the runtime
+func startRuntime() *runtime.Runtime {
+	r := runtime.NewRuntime(rtConfig)
+	err := r.Start(&rtEnv)
+	if err != nil {
+		panic("Failed to start runtime:" + err.Error())
+	}
+	return r
+}
+
+// Add a client and connect with its password
+func addConnectClient(r *runtime.Runtime, clientType api.ClientType, clientID string) (cl *tlsclient.TLSClient, token string) {
+	password := "pass1"
+	err := r.AuthnSvc.AddClient(clientType, clientID, clientID, "", password)
+	if err != nil {
+		panic("Failed adding client:" + err.Error())
+	}
+
+	cl = tlsclient.NewTLSClient(fmt.Sprintf("localhost:%d", TestPort), certsBundle.CaCert)
+	token, err = cl.ConnectWithPassword(clientID, password)
+	if err != nil {
+		panic("Failed connect with password:" + err.Error())
+	}
+	return cl, token
+}
+
+// create a TD with the given thingID
+func createTD(thingID string) *things.TD {
+	td := things.NewTD(thingID, "title-"+thingID, vocab.ThingSensor)
+	return td
+}
 
 // TestMain for all authn tests, setup of default folders and filenames
 func TestMain(m *testing.M) {
@@ -47,9 +82,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
-	r := NewRuntime(rtConfig)
-	err := r.Start(&rtEnv)
-	require.NoError(t, err)
+	r := startRuntime()
 	r.Stop()
 	time.Sleep(time.Millisecond * 100)
 }
@@ -58,44 +91,76 @@ func TestLogin(t *testing.T) {
 	const senderID = "sender1"
 	const password = "pass1"
 
-	r := NewRuntime(rtConfig)
-	err := r.Start(&rtEnv)
-	require.NoError(t, err)
-	err = r.authnSvc.AddClient(authn.ClientTypeUser, senderID, senderID, "", password)
-	require.NoError(t, err)
-	cl := tlsclient.NewTLSClient(fmt.Sprintf("localhost:%d", TestPort), certsBundle.CaCert)
-	_, err = cl.ConnectWithPassword(senderID, password)
-	assert.NoError(t, err)
+	r := startRuntime()
+	cl, _ := addConnectClient(r, api.ClientTypeUser, senderID)
+	cl.Close()
 	r.Stop()
 	time.Sleep(time.Millisecond * 100)
 }
 
-func TestHttpsPubEvent(t *testing.T) {
+func TestAddRemoveTD(t *testing.T) {
+	t.Log("--- TestAddRemoveTD start ---")
+	defer t.Log("--- TestAddRemoveTD end ---")
+
+	const agentID = "agent1"
+	const userID = "user1"
+	const thing1ID = "thing1"
+
+	r := startRuntime()
+	defer r.Stop()
+	ag, _ := addConnectClient(r, api.ClientTypeAgent, agentID)
+	defer ag.Close()
+	cl, _ := addConnectClient(r, api.ClientTypeUser, userID)
+	defer cl.Close()
+
+	td1 := createTD(thing1ID)
+	params := map[string]string{"thingID": thing1ID}
+	addr := utils.Substitute(vocab.AgentPutThingPath, params)
+	resp, err := ag.Put(addr, td1)
+	_ = resp
+	assert.NoError(t, err)
+
+	// Get returns a serialized TD object
+	addr = utils.Substitute(vocab.ConsumerGetThingPath, params)
+	td2Doc, err := cl.Get(addr)
+	require.NoError(t, err)
+	td2 := things.TD{}
+	err = json.Unmarshal(td2Doc, &td2)
+	require.NoError(t, err)
+
+	addr = fmt.Sprintf("/things/%s", thing1ID)
+	_, err = cl.Delete(addr, nil)
+	require.NoError(t, err)
+
+	// after removal, getTD should return nil
+	addr = fmt.Sprintf("/things/%s", thing1ID)
+	td3, err := cl.Get(addr)
+	assert.Empty(t, td3)
+	assert.Error(t, err)
+}
+
+func TestHttpsPubValueEvent(t *testing.T) {
 	const thingID = "thing1"
 	const key1 = "key1"
 	const senderID = "sender1"
-	const password = "pass1"
 	const data = "Hello world"
 
-	r := NewRuntime(rtConfig)
-	err := r.Start(&rtEnv)
-	require.NoError(t, err)
-	err = r.authnSvc.AddClient(authn.ClientTypeUser, senderID, senderID, "", password)
-	require.NoError(t, err)
+	r := startRuntime()
+	cl, _ := addConnectClient(r, api.ClientTypeUser, senderID)
 
 	// publish an event
 	msg := things.NewThingMessage(vocab.MessageTypeEvent, thingID, key1, []byte(data), senderID)
-	cl := tlsclient.NewTLSClient(fmt.Sprintf("localhost:%d", TestPort), certsBundle.CaCert)
-	assert.Equal(t, certsBundle.CaCert, rtConfig.CaCert)
 
-	token, err := cl.ConnectWithPassword(senderID, password)
-	_ = token
-	//err = cl.ConnectWithClientCert(certsBundle.ClientCert)
-	assert.NoError(t, err)
 	// TODO: use a client from the library. path needs to match the server
-	evPath := fmt.Sprintf("/event/%s/%s", thingID, key1)
-	_, err = cl.Post(evPath, msg)
+	//evPath := fmt.Sprintf("/event/%s/%s", thingID, key1)
+	vars := map[string]string{"thingID": thingID, "key": key1}
+	eventPath := utils.Substitute(vocab.AgentPostEventPath, vars)
+
+	_, err := cl.Post(eventPath, msg.Data)
 	assert.NoError(t, err)
+
+	props := r.ValueSvc.GetProperties(thingID, nil)
+	assert.Equal(t, msg.Data, props[key1].Data)
 
 	// the event must be in the store
 	r.Stop()

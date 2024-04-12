@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	thing "github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsclient"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/protocols/httpsbinding"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -113,7 +114,8 @@ func TestPubEvent(t *testing.T) {
 
 	// 3. publish two events
 	// the path must match that in the config
-	eventPath := fmt.Sprintf("/event/%s/%s", thingID, eventKey)
+	vars := map[string]string{"thingID": thingID, "key": eventKey}
+	eventPath := utils.Substitute(vocab.AgentPostEventPath, vars)
 	_, err = cl.Post(eventPath, testMsg)
 	_, err = cl.Post(eventPath, testMsg)
 

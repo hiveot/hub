@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/directory"
+	"github.com/hiveot/hub/runtime/directory/rpc"
 	"github.com/hiveot/hub/runtime/directory/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,13 +43,9 @@ func startDirectory(clean bool) (svc *service.DirectoryService, stopFn func()) {
 }
 
 // generate a JSON serialized TD document
-func createTDDoc(thingID string, title string) string {
-	td := &things.TD{
-		ID:    thingID,
-		Title: title,
-	}
-	tdDoc, _ := json.Marshal(td)
-	return string(tdDoc)
+func createTDDoc(thingID string, title string) *things.TD {
+	td := things.NewTD(thingID, title, vocab.ThingDevice)
+	return td
 }
 
 func TestMain(m *testing.M) {
@@ -71,7 +68,7 @@ func TestStartStop(t *testing.T) {
 	defer stopFunc()
 
 	// viewers should be able to read the directory
-	tdList, err := svc.GetTDs(0, 10)
+	tdList, err := svc.ReadTDDs(0, 10)
 	assert.NoError(t, err, "Cant read directory. Did the service set client permissions?")
 	_ = tdList
 }
@@ -85,21 +82,18 @@ func TestAddRemoveTD(t *testing.T) {
 	defer stopFunc()
 
 	tdDoc1 := createTDDoc(thing1ID, title1)
-	err := svc.UpdateTD(senderID, thing1ID, tdDoc1)
+	err := svc.UpdateTDD(senderID, thing1ID, tdDoc1)
 	assert.NoError(t, err)
 
-	tdj2, err := svc.GetTD(thing1ID)
-	var td2 things.TD
-	err = json.Unmarshal([]byte(tdj2), &td2)
+	td2, err := svc.ReadTDD(thing1ID)
 	require.NoError(t, err)
 	assert.Equal(t, thing1ID, td2.ID)
-	assert.Equal(t, tdDoc1, tdj2)
 
 	// after removal, getTD should return nil
-	err = svc.RemoveTD(senderID, thing1ID)
+	err = svc.RemoveTDD(senderID, thing1ID)
 	assert.NoError(t, err)
 
-	td3, err := svc.GetTD(thing1ID)
+	td3, err := svc.ReadTDD(thing1ID)
 	assert.Empty(t, td3)
 	assert.Error(t, err)
 }
@@ -110,21 +104,23 @@ func TestHandleEvent(t *testing.T) {
 	const title1 = "title1"
 
 	svc, stopFunc := startDirectory(true)
+	dirRPC := rpc.NewDirectoryRPC(svc)
 	defer stopFunc()
 
 	// events should be handled
 	tdDoc1 := createTDDoc(thing1ID, title1)
+	tdDoc1Json, _ := json.Marshal(tdDoc1)
 	tv := things.NewThingMessage(vocab.MessageTypeEvent, thing1ID,
-		vocab.EventTypeTD, []byte(tdDoc1), senderID)
-	_, err := svc.HandleEvent(tv)
+		vocab.EventTypeTD, tdDoc1Json, senderID)
+	_, err := dirRPC.HandleMessage(tv)
 	assert.NoError(t, err)
 
 	// non-events like actions should be ignored
 	tv.MessageType = vocab.MessageTypeAction
-	_, err = svc.HandleEvent(tv)
+	_, err = dirRPC.HandleMessage(tv)
 	assert.NoError(t, err)
 
-	tdList, err := svc.GetTDs(0, 10)
+	tdList, err := svc.ReadTDDs(0, 10)
 	assert.Equal(t, 1, len(tdList))
 	assert.NoError(t, err)
 }
@@ -133,44 +129,18 @@ func TestGetTDsFail(t *testing.T) {
 	const clientID = "client1"
 	svc, stopFunc := startDirectory(true)
 	defer stopFunc()
-	tds, err := svc.GetTDs(0, 10)
+	tds, err := svc.ReadTDDs(0, 10)
 	require.NoError(t, err)
 	require.Empty(t, tds)
 
-	tds, err = svc.GetTDs(10, 10)
+	tds, err = svc.ReadTDDs(10, 10)
 	require.NoError(t, err)
 	require.Empty(t, tds)
-
-	// missing data
-	cursorKey, err := svc.CursorMgr().NewCursor(clientID)
-	require.NoError(t, err)
-	_, _, valid, err := svc.CursorMgr().First(cursorKey, clientID)
-	require.NoError(t, err)
-	require.False(t, valid)
-	_, _, valid, err = svc.CursorMgr().Next(cursorKey, clientID)
-	require.NoError(t, err)
-	require.False(t, valid)
-	_, valid, err = svc.CursorMgr().NextN(cursorKey, clientID, 1)
-	require.NoError(t, err)
-	require.False(t, valid)
 
 	// bad clientID
-	_, _, valid, err = svc.CursorMgr().First(cursorKey, "badid")
+	tdd1, err := svc.ReadTDD("badid")
 	require.Error(t, err)
-	require.False(t, valid)
-
-	// bad cursorKey
-	_, _, valid, err = svc.CursorMgr().First("badkey", clientID)
-	require.Error(t, err)
-	require.False(t, valid)
-	_, _, valid, err = svc.CursorMgr().Next("badkey", clientID)
-	require.Error(t, err)
-	require.False(t, valid)
-	_, valid, err = svc.CursorMgr().NextN("badkey", clientID, 1)
-	require.Error(t, err)
-	require.False(t, valid)
-
-	svc.CursorMgr().CloseCursor(cursorKey, clientID)
+	require.Nil(t, tdd1)
 }
 
 func TestListTDs(t *testing.T) {
@@ -183,62 +153,14 @@ func TestListTDs(t *testing.T) {
 
 	tdDoc1 := createTDDoc(thing1ID, title1)
 
-	err := svc.UpdateTD(senderID, thing1ID, tdDoc1)
+	err := svc.UpdateTDD(senderID, thing1ID, tdDoc1)
 	require.NoError(t, err)
 
-	tdList, err := svc.GetTDs(0, 10)
+	tdList, err := svc.ReadTDDs(0, 10)
 	require.NoError(t, err)
 	assert.NotNil(t, tdList)
 	assert.True(t, len(tdList) > 0)
 	//	slog.Infof("--- TestListTDs end ---")
-}
-
-func TestCursor(t *testing.T) {
-	const clientID = "client1"
-	const publisherID = "urn:test"
-	const thing1ID = "urn:agent1:thing1"
-	const thing2ID = "urn:agent1:thing2"
-	const thing3ID = "urn:agent1:thing3"
-
-	svc, stopFunc := startDirectory(true)
-	defer stopFunc()
-
-	// add 3 docs.
-	tdDoc1 := createTDDoc(thing1ID, "title 1")
-	err := svc.UpdateTD(publisherID, thing1ID, tdDoc1)
-	require.NoError(t, err)
-	tdDoc2 := createTDDoc(thing2ID, "title 2")
-	err = svc.UpdateTD(publisherID, thing2ID, tdDoc2)
-	require.NoError(t, err)
-	tdDoc3 := createTDDoc(thing3ID, "title 3")
-	err = svc.UpdateTD(publisherID, thing3ID, tdDoc3)
-	require.NoError(t, err)
-
-	// expect 3 docs, two service capabilities and the one just added
-	cursorKey, err := svc.CursorMgr().NewCursor(clientID)
-	require.NoError(t, err)
-	defer svc.CursorMgr().CloseCursor(cursorKey, clientID)
-
-	thingID, tdValue, valid, err := svc.CursorMgr().First(cursorKey, clientID)
-	require.NotEmpty(t, thingID)
-	require.NoError(t, err)
-	assert.True(t, valid)
-	assert.NotEmpty(t, tdValue)
-
-	_, tdValue, valid, err = svc.CursorMgr().Next(cursorKey, clientID) // second
-	assert.NoError(t, err)
-	assert.True(t, valid)
-	assert.NotEmpty(t, tdValue)
-
-	tdds, remaining, err := svc.CursorMgr().NextN(cursorKey, clientID, 3) // there is no 4th
-	assert.NoError(t, err)
-	assert.False(t, remaining)
-	assert.True(t, len(tdds) == 1)
-
-	tdValues, valid, err := svc.CursorMgr().NextN(cursorKey, clientID, 10) // still no third
-	assert.NoError(t, err)
-	assert.False(t, valid)
-	assert.Empty(t, tdValues)
 }
 
 //func TestQueryTDs(t *testing.T) {

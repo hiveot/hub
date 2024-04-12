@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/runtime/authn"
-	"github.com/hiveot/hub/runtime/authz"
+	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 	"os"
 	"path"
@@ -23,7 +22,7 @@ import (
 // User passwords are stored using ARGON2id hash
 // It includes a file watcher to automatically reload on update.
 type AuthnFileStore struct {
-	entries           map[string]authn.AuthnEntry
+	entries           map[string]api.AuthnEntry
 	storePath         string
 	hashAlgo          string // hashing algorithm PWHASH_ARGON2id
 	minPasswordLength int
@@ -33,7 +32,7 @@ type AuthnFileStore struct {
 
 // Add a new client.
 // clientID, clientType are required, the rest is optional
-func (store *AuthnFileStore) Add(clientID string, profile authn.ClientProfile) error {
+func (store *AuthnFileStore) Add(clientID string, profile api.ClientProfile) error {
 
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
@@ -42,15 +41,15 @@ func (store *AuthnFileStore) Add(clientID string, profile authn.ClientProfile) e
 	if clientID == "" || clientID != profile.ClientID {
 		return fmt.Errorf("Add: missing clientID")
 	}
-	if profile.ClientType != authn.ClientTypeAgent &&
-		profile.ClientType != authn.ClientTypeUser &&
-		profile.ClientType != authn.ClientTypeService {
+	if profile.ClientType != api.ClientTypeAgent &&
+		profile.ClientType != api.ClientTypeUser &&
+		profile.ClientType != api.ClientTypeService {
 		return fmt.Errorf("Add: invalid clientType '%s' for client '%s'",
 			profile.ClientType, clientID)
 	}
 	if !found {
 		slog.Info("Add: New client " + clientID)
-		entry = authn.AuthnEntry{ClientProfile: profile}
+		entry = api.AuthnEntry{ClientProfile: profile}
 	} else {
 		slog.Info("Add: Updating existing client", slog.String("clientID", clientID))
 		entry.ClientProfile = profile
@@ -82,7 +81,7 @@ func (store *AuthnFileStore) Count() int {
 }
 
 // GetProfile returns the client's profile
-func (store *AuthnFileStore) GetProfile(clientID string) (profile authn.ClientProfile, err error) {
+func (store *AuthnFileStore) GetProfile(clientID string) (profile api.ClientProfile, err error) {
 	store.mutex.RLock()
 	defer store.mutex.RUnlock()
 	// user must exist
@@ -94,10 +93,10 @@ func (store *AuthnFileStore) GetProfile(clientID string) (profile authn.ClientPr
 }
 
 // GetProfiles returns a list of all client profiles in the store
-func (store *AuthnFileStore) GetProfiles() (profiles []authn.ClientProfile, err error) {
+func (store *AuthnFileStore) GetProfiles() (profiles []api.ClientProfile, err error) {
 	store.mutex.RLock()
 	defer store.mutex.RUnlock()
-	profiles = make([]authn.ClientProfile, 0, len(store.entries))
+	profiles = make([]api.ClientProfile, 0, len(store.entries))
 	for _, entry := range store.entries {
 		profiles = append(profiles, entry.ClientProfile)
 	}
@@ -112,16 +111,16 @@ func (store *AuthnFileStore) GetRole(clientID string) (role string, err error) {
 	entry, found := store.entries[clientID]
 	if !found {
 		err = fmt.Errorf("clientID '%s' does not exist", clientID)
-		return authz.ClientRoleNone, err
+		return api.ClientRoleNone, err
 	}
 	return entry.Role, nil
 }
 
 // GetEntries returns a list of all profiles with their hashed passwords
-func (store *AuthnFileStore) GetEntries() (entries []authn.AuthnEntry) {
+func (store *AuthnFileStore) GetEntries() (entries []api.AuthnEntry) {
 	store.mutex.RLock()
 	defer store.mutex.RUnlock()
-	entries = make([]authn.AuthnEntry, 0, len(store.entries))
+	entries = make([]api.AuthnEntry, 0, len(store.entries))
 	for _, entry := range store.entries {
 		entries = append(entries, entry)
 	}
@@ -154,7 +153,7 @@ func (store *AuthnFileStore) Reload() error {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	entries := make(map[string]authn.AuthnEntry)
+	entries := make(map[string]api.AuthnEntry)
 	dataBytes, err := os.ReadFile(store.storePath)
 	if errors.Is(err, os.ErrNotExist) {
 		err = store.save()
@@ -234,14 +233,14 @@ func (store *AuthnFileStore) SetPassword(loginID string, password string) (err e
 	if len(password) < store.minPasswordLength {
 		return fmt.Errorf("password too short (%d chars)", len(password))
 	}
-	if store.hashAlgo == authn.PWHASH_ARGON2id {
+	if store.hashAlgo == api.PWHASH_ARGON2id {
 		// TODO: tweak to something reasonable and test timing. default of 64MB is not suitable for small systems
 		params := argon2id.DefaultParams
 		params.Memory = 16 * 1024
 		params.Iterations = 2
 		params.Parallelism = 4 // what happens with fewer cores?
 		hash, err = argon2id.CreateHash(password, params)
-	} else if store.hashAlgo == authn.PWHASH_BCRYPT {
+	} else if store.hashAlgo == api.PWHASH_BCRYPT {
 		hashBytes, err2 := bcrypt.GenerateFromPassword([]byte(password), 0)
 		err = err2
 		hash = string(hashBytes)
@@ -275,7 +274,7 @@ func (store *AuthnFileStore) SetPasswordHash(loginID string, hash string) (err e
 // UpdateProfile updates the client profile
 // The senderID is the connection ID of the sender.
 // Authorization should only allow admin level
-func (store *AuthnFileStore) UpdateProfile(senderID string, profile authn.ClientProfile) error {
+func (store *AuthnFileStore) UpdateProfile(senderID string, profile api.ClientProfile) error {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
@@ -311,7 +310,7 @@ func (store *AuthnFileStore) UpdateProfile(senderID string, profile authn.Client
 
 // VerifyPassword verifies the given password with the stored hash
 // This returns the matching user's entry or an error if the password doesn't match
-func (store *AuthnFileStore) VerifyPassword(loginID, password string) (profile authn.ClientProfile, err error) {
+func (store *AuthnFileStore) VerifyPassword(loginID, password string) (profile api.ClientProfile, err error) {
 	isValid := false
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
@@ -320,9 +319,9 @@ func (store *AuthnFileStore) VerifyPassword(loginID, password string) (profile a
 	if !found {
 		// unknown user
 		isValid = false
-	} else if store.hashAlgo == authn.PWHASH_ARGON2id {
+	} else if store.hashAlgo == api.PWHASH_ARGON2id {
 		isValid, _ = argon2id.ComparePasswordAndHash(password, entry.PasswordHash)
-	} else if store.hashAlgo == authn.PWHASH_BCRYPT {
+	} else if store.hashAlgo == api.PWHASH_BCRYPT {
 		err := bcrypt.CompareHashAndPassword([]byte(entry.PasswordHash), []byte(password))
 		isValid = err == nil
 	}
@@ -336,7 +335,7 @@ func (store *AuthnFileStore) VerifyPassword(loginID, password string) (profile a
 // WritePasswordsToTempFile write the given entries to temp file in the given folder
 // This returns the name of the new temp file.
 func WritePasswordsToTempFile(
-	folder string, entries map[string]authn.AuthnEntry) (tempFileName string, err error) {
+	folder string, entries map[string]api.AuthnEntry) (tempFileName string, err error) {
 
 	file, err := os.CreateTemp(folder, "hub-pwfilestore")
 
@@ -365,16 +364,16 @@ func WritePasswordsToTempFile(
 //	hashAlgo PWHASH_ARGON2id (default) or PWHASH_BCRYPT
 func NewAuthnFileStore(filepath string, hashAlgo string) *AuthnFileStore {
 	if hashAlgo == "" {
-		hashAlgo = authn.PWHASH_ARGON2id
+		hashAlgo = api.PWHASH_ARGON2id
 	}
-	if hashAlgo != authn.PWHASH_ARGON2id && hashAlgo != authn.PWHASH_BCRYPT {
+	if hashAlgo != api.PWHASH_ARGON2id && hashAlgo != api.PWHASH_BCRYPT {
 		slog.Error("unknown hash algorithm. Falling back to argon2id", "hashAlgo", hashAlgo)
 	}
 	store := &AuthnFileStore{
 		storePath:         filepath,
 		hashAlgo:          hashAlgo,
 		minPasswordLength: 5,
-		entries:           make(map[string]authn.AuthnEntry),
+		entries:           make(map[string]api.AuthnEntry),
 	}
 	return store
 }
