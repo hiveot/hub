@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/directory"
 	"log/slog"
 	"sync"
 )
@@ -22,12 +21,10 @@ const TDBucketName = "td"
 //
 // Read and query methods using the in-memory cache for fast performance.
 type DirectoryService struct {
-	cfg *directory.DirectoryConfig
-
 	store    buckets.IBucketStore
 	tdBucket buckets.IBucket
 
-	// tdCache holds an in-memory cache version of TDs
+	// tdCache holds an in-memory cache version of stored TDs
 	tdCache map[string]*things.TD
 	// list of thingIDs used as a consistent iterator for reading batches
 	thingKeys []string
@@ -45,6 +42,10 @@ func (svc *DirectoryService) LoadCacheFromStore() error {
 	}
 	svc.thingKeys = make([]string, 0, 1000)
 	svc.tdCache = make(map[string]*things.TD)
+	//k, v, valid := cursor.First()
+	//_ = k
+	//_ = v
+	//_ = valid
 	for {
 		// read in batches of 1000 TD documents
 		tdmap, itemsRemaining := cursor.NextN(1000)
@@ -73,8 +74,8 @@ func (svc *DirectoryService) LoadCacheFromStore() error {
 //	return nil, fmt.Errorf("not yet implemented")
 //}
 
-// ReadTDD returns the TD document in json format for the given Thing ID
-func (svc *DirectoryService) ReadTDD(thingID string) (td *things.TD, err error) {
+// ReadThing returns the TD document in json format for the given Thing ID
+func (svc *DirectoryService) ReadThing(thingID string) (td *things.TD, err error) {
 	svc.cachemux.RLock()
 	defer svc.cachemux.RUnlock()
 	td, found := svc.tdCache[thingID]
@@ -84,11 +85,11 @@ func (svc *DirectoryService) ReadTDD(thingID string) (td *things.TD, err error) 
 	return td, err
 }
 
-// ReadTDDs returns a list of TD documents
+// ReadThings returns a list of TD documents
 //
 //	offset is the offset in the list
 //	limit is the maximum number of records to return
-func (svc *DirectoryService) ReadTDDs(offset, limit int) (tdList []*things.TD, err error) {
+func (svc *DirectoryService) ReadThings(offset, limit int) (tdList []*things.TD, err error) {
 	tdList = make([]*things.TD, 0, limit)
 	svc.cachemux.RLock()
 	defer svc.cachemux.RUnlock()
@@ -110,8 +111,8 @@ func (svc *DirectoryService) ReadTDDs(offset, limit int) (tdList []*things.TD, e
 	return tdList, nil
 }
 
-// RemoveTDD deletes the TD document from the given agent with the ThingID
-func (svc *DirectoryService) RemoveTDD(senderID string, thingID string) error {
+// RemoveThing deletes the TD document from the given agent with the ThingID
+func (svc *DirectoryService) RemoveThing(senderID string, thingID string) error {
 	slog.Info("RemoveThing",
 		slog.String("thingID", thingID),
 		slog.String("senderID", senderID))
@@ -149,10 +150,10 @@ func (svc *DirectoryService) Stop() {
 	}
 }
 
-// UpdateTDD adds or updates the Thing Description document
+// UpdateThing adds or updates the Thing Description document
 // Added things are written to the store.
-func (svc *DirectoryService) UpdateTDD(senderID string, thingID string, tdd *things.TD) error {
-	slog.Info("UpdateTDD",
+func (svc *DirectoryService) UpdateThing(senderID string, thingID string, tdd *things.TD) error {
+	slog.Info("UpdateThing",
 		slog.String("senderID", senderID),
 		slog.String("thingID", thingID))
 
@@ -172,13 +173,12 @@ func (svc *DirectoryService) UpdateTDD(senderID string, thingID string, tdd *thi
 	return err
 }
 
-// NewDirectoryService creates a new service instance for the directory of Thing TD documents.
+// NewDirectoryStore creates a new service instance for the directory of Thing TD documents.
 //
 //	store is an instance of the bucket store to store the directory data. This is opened by 'Start' and closed by 'Stop'
-func NewDirectoryService(cfg *directory.DirectoryConfig, store buckets.IBucketStore) *DirectoryService {
+func NewDirectoryStore(store buckets.IBucketStore) *DirectoryService {
 	tdBucket := store.GetBucket(TDBucketName)
 	svc := &DirectoryService{
-		cfg:      cfg,
 		store:    store,
 		tdBucket: tdBucket,
 	}

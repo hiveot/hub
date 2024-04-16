@@ -20,14 +20,6 @@ import (
 // in the keys directory.
 const TokenFileExt = ".token"
 
-// KPFileExt defines the filename extension under which public/private keys are stored
-// in the keys directory.
-const KPFileExt = ".key"
-
-// PubKeyFileExt defines the filename extension under which public key is stored
-// in the keys directory.
-const PubKeyFileExt = ".pub"
-
 // HubClient wrapper around the underlying message bus transport.
 type HubClient struct {
 	//serverURL string
@@ -158,7 +150,7 @@ func (hc *HubClient) ConnectWithTokenFile(keysDir string) error {
 	slog.Info("ConnectWithTokenFile",
 		slog.String("keysDir", keysDir),
 		slog.String("clientID", hc.clientID))
-	keyFile := path.Join(keysDir, hc.clientID+KPFileExt)
+	keyFile := path.Join(keysDir, hc.clientID+keys.KPFileExt)
 	tokenFile := path.Join(keysDir, hc.clientID+TokenFileExt)
 	token, err := os.ReadFile(tokenFile)
 	if err == nil && keyFile != "" {
@@ -191,42 +183,6 @@ func (hc *HubClient) Disconnect() {
 // GetStatus returns the transport connection status
 func (hc *HubClient) GetStatus() transports.HubTransportStatus {
 	return hc.transport.GetStatus()
-}
-
-// LoadCreateKeyPair loads or creates a public/private key pair using the clientID as filename.
-//
-//	The key-pair is named {clientID}.key, the public key {clientID}.pub
-//
-//	clientID is the login ID to use, or "" to use the connecting ID
-//	keysDir is the location where the keys are stored.
-//
-// This returns the serialized private and pub keypair, or an error.
-func (hc *HubClient) LoadCreateKeyPair(clientID, keysDir string) (kp keys.IHiveKey, err error) {
-	if keysDir == "" {
-		return nil, fmt.Errorf("certs directory must be provided")
-	}
-	if clientID == "" {
-		clientID = hc.clientID
-	}
-	keyFile := path.Join(keysDir, clientID+KPFileExt)
-	pubFile := path.Join(keysDir, clientID+PubKeyFileExt)
-
-	// load key from file
-	kp, err = keys.NewKeyFromFile(keyFile)
-
-	if err != nil {
-		// no keyfile, create the key
-		kp = hc.transport.CreateKeyPair()
-
-		// save the key for future use
-		err = kp.ExportPrivateToFile(keyFile)
-		err2 := kp.ExportPublicToFile(pubFile)
-		if err2 != nil {
-			err = err2
-		}
-	}
-
-	return kp, err
 }
 
 // onConnect is invoked when the connection status changes.

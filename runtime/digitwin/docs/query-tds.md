@@ -1,5 +1,6 @@
 # Examples of querying for TD documents
 
+NOT YET FUNCTIONAL
 
 ## JSONPath
 

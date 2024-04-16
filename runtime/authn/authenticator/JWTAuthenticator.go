@@ -21,29 +21,6 @@ type JWTAuthenticator struct {
 	authnStore api.IAuthnStore
 }
 
-// Login with password and generate a session token
-// Intended for end-users that want to establish a session.
-//
-//	clientID is the client to log in
-//	password to verify
-//	sessionID of the new session or "" to generate a new session ID
-//
-// This returns a session token or an error if failed
-func (svc *JWTAuthenticator) Login(clientID, password, sessionID string) (token string, err error) {
-
-	if svc.authnStore == nil {
-		return "", fmt.Errorf("Login: missing authnStore")
-	}
-	clientProfile, err := svc.authnStore.VerifyPassword(clientID, password)
-	_ = clientProfile
-	if err != nil {
-		return "", err
-	}
-	validitySec := clientProfile.TokenValiditySec
-	token, err = svc.CreateSessionToken(clientID, sessionID, validitySec)
-	return token, err
-}
-
 // CreateSessionToken creates a new session token for the client
 //
 //	clientID is the account ID of a known client
@@ -136,7 +113,30 @@ func (svc *JWTAuthenticator) DecodeSessionToken(token string, signedNonce string
 	return clientID, sessionID, nil
 }
 
-// Refresh issues a new session token for the authenticated user.
+// Login with password and generate a session token
+// Intended for end-users that want to establish a session.
+//
+//	clientID is the client to log in
+//	password to verify
+//	sessionID of the new session or "" to generate a new session ID
+//
+// This returns a session token or an error if failed
+func (svc *JWTAuthenticator) Login(clientID, password, sessionID string) (token string, err error) {
+
+	if svc.authnStore == nil {
+		return "", fmt.Errorf("Login: missing authnStore")
+	}
+	clientProfile, err := svc.authnStore.VerifyPassword(clientID, password)
+	_ = clientProfile
+	if err != nil {
+		return "", err
+	}
+	validitySec := clientProfile.TokenValiditySec
+	token, err = svc.CreateSessionToken(clientID, sessionID, validitySec)
+	return token, err
+}
+
+// RefreshToken issues a new session token for the authenticated user.
 // This returns a refreshed token that can be used to connect to the messaging server
 // the old token must be a valid jwt token belonging to the clientID
 func (svc *JWTAuthenticator) RefreshToken(clientID string, oldToken string, validitySec int) (token string, err error) {
@@ -160,7 +160,7 @@ func (svc *JWTAuthenticator) RefreshToken(clientID string, oldToken string, vali
 	return token, err
 }
 
-// Validate the session token
+// ValidateToken the session token
 func (svc *JWTAuthenticator) ValidateToken(token string) (clientID string, sessionID string, err error) {
 	slog.Info("ValidateToken", slog.String("clientID", clientID))
 	cid, sid, err := svc.DecodeSessionToken(token, "", "")
@@ -169,10 +169,30 @@ func (svc *JWTAuthenticator) ValidateToken(token string) (clientID string, sessi
 }
 
 // NewJWTAuthenticator returns a new instance of a JWT token authenticator
-func NewJWTAuthenticator(signingKey keys.IHiveKey, authnStore api.IAuthnStore) *JWTAuthenticator {
+func NewJWTAuthenticator(authnStore api.IAuthnStore, signingKey keys.IHiveKey) *JWTAuthenticator {
 	svc := JWTAuthenticator{
 		signingKey: signingKey,
 		authnStore: authnStore,
 	}
 	return &svc
+}
+
+// NewJWTAuthenticatorFromFile returns a new instance of a JWT token authenticator
+// loading a keypair from file or creating one if it doesn't exist.
+// This returns nil if no signing key can be loaded or created
+func NewJWTAuthenticatorFromFile(
+	authnStore api.IAuthnStore,
+	keysDir string, keyType keys.KeyType) *JWTAuthenticator {
+
+	clientID := "authn"
+	signingKey, err := keys.LoadCreateKeyPair(clientID, keysDir, keyType)
+	if err != nil {
+		slog.Error("NewJWTAuthenticatorFromFile failed creating key pair for client",
+			"err", err.Error(),
+			"clientID", clientID)
+		return nil
+	}
+	_ = err
+	svc := NewJWTAuthenticator(authnStore, signingKey)
+	return svc
 }

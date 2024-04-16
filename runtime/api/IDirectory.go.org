@@ -1,0 +1,42 @@
+package api
+
+import "github.com/hiveot/hub/lib/things"
+
+// DirectoryServiceID Directory service 'thingID'
+const DirectoryServiceID = "directory"
+
+// Directory crud method keys
+const (
+	DirectoryReadThingMethod   = "readThing"
+	DirectoryReadThingsMethod  = "readThings"
+	DirectoryRemoveThingMethod = "removeTDD"
+)
+
+// DirectoryReadThingArgs
+type DirectoryReadThingArgs struct {
+	ThingID string `json:"thingID"`
+}
+
+// DirectoryReadThingResp response containing a single TD document
+type DirectoryReadThingResp struct {
+	TDD *things.TD `json:"tdd"`
+}
+
+// DirectoryReadThingsArgs
+type DirectoryReadThingsArgs struct {
+	Offset int `json:"offset,omitempty"`
+	Limit  int `json:"limit,omitempty"`
+}
+
+// DirectoryReadThingsResp response containing a list of TD documents
+type DirectoryReadThingsResp struct {
+	TDDs []*things.TD `json:"tdd"`
+}
+
+// DirectoryRemoveThingArgs arguments for removing a TDD
+type DirectoryRemoveThingArgs struct {
+	ThingID string `json:"thingID"`
+}
+
+// DirectoryThingEventArgs is a serialized TDD document sent as event
+type DirectoryThingEventArgs *things.TD

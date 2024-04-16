@@ -1,4 +1,4 @@
-// Package certs with key management for clients (and server) certificates
+// Package keys with key management for certificates and JWT
 package keys
 
 import (
@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/nats-io/nkeys"
 	"os"
+	"path"
 )
 
 // DetermineKeyType returns the type of key
@@ -70,6 +71,36 @@ func DetermineKeyType(encKey string) KeyType {
 		return KeyTypeEd25519
 	}
 	return KeyTypeUnknown
+}
+
+// LoadCreateKeyPair loads a public/private key pair from file or create it if it doesn't exist
+// This will load or create a file <clientID>.key and <clientID>.pub from the keysDir.
+//
+//	clientID is the client to create the keys for
+//	keysDir is the location of the key file
+//	keyType is the type of key to create (see IHiveKey)
+func LoadCreateKeyPair(clientID string, keysDir string, keyType KeyType) (kp IHiveKey, err error) {
+	if keysDir == "" {
+		return nil, fmt.Errorf("keys directory must be provided")
+	}
+
+	keyFile := path.Join(keysDir, clientID+KPFileExt)
+	pubFile := path.Join(keysDir, clientID+PubKeyFileExt)
+
+	// load key from file
+	kp, err = NewKeyFromFile(keyFile)
+
+	if err != nil {
+		// no keyfile, create the key
+		kp = NewKey(keyType)
+
+		// save the key for future use
+		err = kp.ExportPrivateToFile(keyFile)
+		if err == nil {
+			err = kp.ExportPublicToFile(pubFile)
+		}
+	}
+	return kp, err
 }
 
 // NewKey creates a new key of the given type

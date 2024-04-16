@@ -1,25 +1,20 @@
-package valueservice
+package service
 
 import (
 	"encoding/json"
 	"fmt"
 	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 	"sync"
-	"time"
-
-	"github.com/hiveot/hub/lib/things"
 )
 
-const PropertiesBucketName = "properties"
+const ValuesBucketName = "values"
 
 // ValueService holds the most recent property and event values of things.
 // It persists a record for each Thing containing a map of the most recent properties.
 type ValueService struct {
-	cfg *ValueStoreConfig
-
 	// bucket to persist things properties with a serialized property map for each thing
 	store  buckets.IBucketStore
 	bucket buckets.IBucket
@@ -32,75 +27,44 @@ type ValueService struct {
 	changedThings map[string]bool
 }
 
-// GetProperties returns the latest value of things properties and events as a list of properties
+// readLatest returns the latest values send to digital twin Things.
 //
-//	thingID of the thing to read.
-//	names is optional and can be used to limit the resulting array of values. Use nil to get all properties.
-func (svc *ValueService) GetProperties(thingID string, keys []string) (props things.ThingMessageMap) {
-	props = things.NewThingMessageMap()
-
-	// ensure this thing has its properties cache loaded
-	svc.LoadProps(thingID)
+//	thingID whose actions to return
+//	messageType to read
+//	keys optional filter for the values to read or nil to read all
+func (svc *ValueService) readLatest(thingID string, msgType string, keys []string) (things.ThingMessageMap, error) {
+	values := things.NewThingMessageMap()
+	svc.LoadValues(thingID)
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
-	thingCache, _ := svc.cache[thingID]
+	thingValues, found := svc.cache[thingID]
+	if !found {
+		return nil, fmt.Errorf("ReadActions. Unknown thingID '%s'", thingID)
+	}
+	// get each specified value
 	if keys != nil && len(keys) > 0 {
 		// filter the requested property/event keys
 		for _, name := range keys {
-			tv := thingCache.Get(name)
+			tv := thingValues.Get(name)
 			if tv != nil {
-				props.Set(name, tv)
+				values.Set(name, tv)
 			}
 		}
-		return props
-	}
-
-	// default: get all available property/event keys
-	props = thingCache
-	//for _, value := range thingCache {
-	//	propList = append(propList, value)
-	//}
-	return props
-}
-
-// HandleMessage handles thing events and value service action requests
-// used to update the properties cache.
-// isAction indicates the value is an action.
-func (svc *ValueService) HandleMessage(msg *things.ThingMessage) ([]byte, error) {
-	// ensure the Thing has its properties cache loaded
-	if msg.CreatedMSec <= 0 {
-		msg.CreatedMSec = time.Now().UnixMilli()
-	}
-
-	if msg.MessageType == vocab.MessageTypeEvent {
-		return nil, svc.HandleEvent(msg)
 	} else {
-		return svc.HandleAction(msg)
-	}
-}
-
-// HandleAction requests, including reading latest value
-func (svc *ValueService) HandleAction(action *things.ThingMessage) (reply []byte, err error) {
-	if action.Key == api.ValueServiceGetActionsMethod {
-		return nil, fmt.Errorf("not yet implemented")
-	} else if action.Key == api.ValueServiceGetPropertiesMethod {
-		args := api.GetPropertiesArgs{}
-		err = json.Unmarshal(action.Data, &args)
-		if err != nil {
-			return nil, err
+		// filter by message type
+		for k, v := range thingValues {
+			if v.MessageType == msgType {
+				values[k] = v
+			}
 		}
-		resp := api.GetPropertiesResp{}
-		resp.Props = svc.GetProperties(args.ThingID, args.Keys)
-		reply, err = json.Marshal(resp)
-		return reply, err
 	}
-	return nil, fmt.Errorf("unknown action '%s'", action.Key)
+	return values, nil
 }
 
 // HandleEvent stores the latest event and property event values
 func (svc *ValueService) HandleEvent(msg *things.ThingMessage) error {
-	svc.LoadProps(msg.ThingID)
+	svc.LoadValues(msg.ThingID)
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 	thingCache, _ := svc.cache[msg.ThingID]
@@ -145,11 +109,27 @@ func (svc *ValueService) HandleEvent(msg *things.ThingMessage) error {
 	return nil
 }
 
-// LoadProps loads the cached value of a Thing properties on demand.
+// HandleMessage handles thing events and value service action requests
+// used to update the properties cache.
+// isAction indicates the value is an action.
+//func (svc *ValueService) HandleMessage(msg *things.ThingMessage) ([]byte, error) {
+//	// ensure the Thing has its properties cache loaded
+//	if msg.CreatedMSec <= 0 {
+//		msg.CreatedMSec = time.Now().UnixMilli()
+//	}
+//
+//	if msg.MessageType == vocab.MessageTypeEvent {
+//		return nil, svc.HandleEvent(msg)
+//	} else {
+//		return svc.HandleAction(msg)
+//	}
+//}
+
+// LoadValues loads the cached value of a Thing properties on demand.
 // To be invoked before reading and writing Thing properties to ensure the cache is loaded.
 // This immediately returns if a record for the Thing was already loaded.
 // Returns true if a cache value exists, false if the thingID was added to the cache
-func (svc *ValueService) LoadProps(thingID string) (cached bool) {
+func (svc *ValueService) LoadValues(thingID string) (cached bool) {
 	svc.cacheMux.Lock()
 	props, found := svc.cache[thingID]
 	defer svc.cacheMux.Unlock()
@@ -173,6 +153,33 @@ func (svc *ValueService) LoadProps(thingID string) (cached bool) {
 	}
 	svc.cache[thingID] = props
 	return false
+}
+
+// ReadActions returns the latest action values send to digital twin Things.
+// This only returns the latest value of each received action, not its history.
+//
+//	thingID whose actions to return
+func (svc *ValueService) ReadActions(thingID string, keys []string) (things.ThingMessageMap, error) {
+	return svc.readLatest(thingID, vocab.MessageTypeAction, keys)
+}
+
+// ReadEvents returns the latest received event value of a thing.
+// This only returns the latest value of each received event, not its history.
+//
+//	thingID of the thing to read.
+//	names is optional and can be used to limit the resulting array of values. Use nil to get all properties.
+func (svc *ValueService) ReadEvents(thingID string, keys []string) (things.ThingMessageMap, error) {
+	return svc.readLatest(thingID, vocab.MessageTypeEvent, keys)
+}
+
+// ReadProperties returns the latest value of things properties and events as a list of properties
+// This only returns the latest value of each received property, not its history.
+//
+//	thingID of the thing to read.
+//	names is optional and can be used to limit the resulting array of values. Use nil to get all properties.
+func (svc *ValueService) ReadProperties(thingID string, keys []string) (things.ThingMessageMap, error) {
+	// FIXME: property changes are send as events. how best to filter on properties?
+	return svc.readLatest(thingID, vocab.MessageTypeEvent, keys)
 }
 
 // SaveChanges writes modified cached properties to the underlying store.
@@ -230,14 +237,13 @@ func (svc *ValueService) Stop() {
 	_ = svc.SaveChanges()
 }
 
-// NewThingValueService creates a new instance of the storage for Thing's latest property values
-func NewThingValueService(cfg *ValueStoreConfig, store buckets.IBucketStore) *ValueService {
-	propsbucket := store.GetBucket(PropertiesBucketName)
+// NewThingValueStore creates a new instance of the storage for Thing's latest property values
+func NewThingValueStore(store buckets.IBucketStore) *ValueService {
+	bucket := store.GetBucket(ValuesBucketName)
 
 	svc := &ValueService{
-		cfg:           cfg,
 		store:         store,
-		bucket:        propsbucket,
+		bucket:        bucket,
 		cache:         make(map[string]things.ThingMessageMap),
 		cacheMux:      sync.RWMutex{},
 		changedThings: make(map[string]bool),

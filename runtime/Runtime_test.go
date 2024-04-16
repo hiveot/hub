@@ -123,6 +123,7 @@ func TestAddRemoveTD(t *testing.T) {
 	// Get returns a serialized TD object
 	addr = utils.Substitute(vocab.ConsumerGetThingPath, params)
 	td2Doc, err := cl.Get(addr)
+	time.Sleep(time.Second * 30)
 	require.NoError(t, err)
 	td2 := things.TD{}
 	err = json.Unmarshal(td2Doc, &td2)
@@ -159,7 +160,8 @@ func TestHttpsPubValueEvent(t *testing.T) {
 	_, err := cl.Post(eventPath, msg.Data)
 	assert.NoError(t, err)
 
-	props := r.ValueSvc.GetProperties(thingID, nil)
+	props, err := r.DigiTwinSvc.Values.ReadProperties(thingID, nil)
+	require.NoError(t, err)
 	assert.Equal(t, msg.Data, props[key1].Data)
 
 	// the event must be in the store

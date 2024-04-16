@@ -13,6 +13,14 @@ const (
 	KeyTypeUnknown         = ""
 )
 
+// KPFileExt defines the filename extension under which public/private keys are stored
+// in the keys directory.
+const KPFileExt = ".key"
+
+// PubKeyFileExt defines the filename extension under which public key is stored
+// in the keys directory.
+const PubKeyFileExt = ".pub"
+
 // IHiveKey defines the standard interface for various key types used for signing and authentication
 //
 // ... because we don't care about all these keys, just that it works and is secure...

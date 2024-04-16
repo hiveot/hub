@@ -3,39 +3,39 @@ package runtime
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/buckets/bucketstore"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn"
+	"github.com/hiveot/hub/runtime/authn/authnsrv"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/service"
 	"github.com/hiveot/hub/runtime/authz"
-	"github.com/hiveot/hub/runtime/directory"
-	service2 "github.com/hiveot/hub/runtime/directory/service"
+	"github.com/hiveot/hub/runtime/digitwin/digitwinsrv"
+	service3 "github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/protocols"
 	"github.com/hiveot/hub/runtime/router"
-	"github.com/hiveot/hub/runtime/valueservice"
 	"path"
 )
+
+const DefaultDigiTwinStoreFilename = "digitwin.kvbtree"
 
 // Runtime is the Hub runtime
 type Runtime struct {
 	cfg *RuntimeConfig
 
-	AuthnStore  api.IAuthnStore
-	AuthnSvc    *service.AuthnService
-	AuthzSvc    *authz.AuthzService
-	DirSvc      *service2.DirectoryService
+	AuthnStore api.IAuthnStore
+	AuthnSvc   *service.AuthnService
+	AuthzSvc   *authz.AuthzService
+	//DirSvc      *service2.DirectoryService
+	DigiTwinSvc *service3.DigiTwinService
 	MsgRouter   *router.MessageRouter
 	ProtocolMgr *protocols.ProtocolsManager
-	ValueSvc    *valueservice.ValueService
-	ValueStore  buckets.IBucketStore
+	//ValueSvc    *valueservice.ValueService
+	//ValueStore  buckets.IBucketStore
 }
 
 func (r *Runtime) Start(env *plugin.AppEnvironment) error {
@@ -61,16 +61,11 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		return err
 	}
 
-	r.DirSvc, err = StartDirectorySvc(&r.cfg.Directory, env.StoresDir, r.MsgRouter)
+	r.DigiTwinSvc, err = StartDigiTwinSvc(env.StoresDir, r.MsgRouter)
 	if err != nil {
 		return err
 	}
 
-	r.ValueSvc, r.ValueStore, err = StartValueSvc(&r.cfg.ValueStore, env.StoresDir, r.MsgRouter)
-	if err != nil {
-		return err
-	}
-	//
 	//// setup ingress routing; right now it is quite simple with a single event handler
 	//r.MsgRouter = router.NewMessageRouter(&r.cfg.Router)
 	// TODO: add built-in services as separate event types, eg TD and Properties events
@@ -91,17 +86,19 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	return err
 }
 
-func StartAuthnSvc(cfg *authn.AuthnConfig, caCert *x509.Certificate, r *router.MessageRouter) (
-	svc *service.AuthnService, sessionAuth api.IAuthenticator,
-	store api.IAuthnStore, err error) {
+func StartAuthnSvc(
+	cfg *authn.AuthnConfig, caCert *x509.Certificate, r *router.MessageRouter) (
+	svc *service.AuthnService, err error) {
 
 	// setup the Authentication service
 	authStore := authnstore.NewAuthnFileStore(cfg.PasswordFile, cfg.Encryption)
-	svc = service.NewAuthnService(cfg, authStore, caCert)
-	sessionAuth, err = svc.Start()
-	//r.AddEventHandler(api.AuthnServiceID, vocab.EventTypeTD, svc.HandleEvent)
-	r.AddActionHandler(api.AuthnServiceID, "", svc.HandleActions)
-	return svc, sessionAuth, authStore, err
+	svc = service.NewAuthnService(cfg, authStore, sessionAuth)
+	err = svc.Start()
+	adminMsgHandler := authnsrv.NewAuthnAdminSrv(svc.AdminSvc)
+	clientMsgHandler := authnsrv.NewAuthnClientSrv(svc.ClientSvc)
+	r.AddServiceHandler(api.AuthnAdminServiceID, adminMsgHandler.HandleMessage)
+	r.AddServiceHandler(api.AuthnClientServiceID, clientMsgHandler.HandleMessage)
+	return svc, err
 }
 
 func StartAuthzSvc(cfg *authz.AuthzConfig,
@@ -110,27 +107,25 @@ func StartAuthzSvc(cfg *authz.AuthzConfig,
 	// setup the Authentication service
 	svc = authz.NewAuthzService(cfg, authnStore)
 	err = svc.Start()
-	//r.AddEventHandler(api.AuthzServiceID, vocab.EventTypeTD, svc.HandleEvent)
-	//r.AddActionHandler(api.AuthzServiceID, "", svc.HandleRPCRequests)
+	//msgHandler := NewAuthzRPC(svc)
+	//r.AddServiceHandler(api.AuthzServiceID, msgHandler.HandleMessage)
 	return svc, err
 }
 
-func StartDirectorySvc(cfg *directory.DirectoryConfig, storesDir string, r *router.MessageRouter) (
-	svc *service2.DirectoryService, err error) {
+func StartDigiTwinSvc(storesDir string, r *router.MessageRouter) (*service3.DigiTwinService, error) {
 
-	var dirStore buckets.IBucketStore
-	if err == nil {
-		dirStorePath := path.Join(storesDir, "directory", cfg.StoreFilename)
-		dirStore = kvbtree.NewKVStore(dirStorePath)
-		err = dirStore.Open()
+	var store buckets.IBucketStore
+	storePath := path.Join(storesDir, "digitwin", DefaultDigiTwinStoreFilename)
+	store = kvbtree.NewKVStore(storePath)
+	err := store.Open()
+	if err != nil {
+		return nil, err
 	}
-	if err == nil {
-		svc = service2.NewDirectoryService(cfg, dirStore)
-		err = svc.Start()
-		// should these be registered through their TD? not right now
-		r.AddEventHandler(api.DirectoryServiceID, vocab.EventTypeTD, svc.HandleTDEvent)
-		r.AddActionHandler(api.DirectoryServiceID, "", svc.HandleActions)
-	}
+
+	svc := service3.NewDigiTwinService(store)
+	err = svc.Start()
+	msgHandler := digitwinsrv.NewDigiTwinSrv(svc)
+	r.AddServiceHandler(api.DigiTwinServiceID, msgHandler.HandleMessage)
 	return svc, err
 }
 
@@ -149,30 +144,30 @@ func StartProtocolsManager(cfg *protocols.ProtocolsConfig,
 	return pm, err
 }
 
-func StartValueSvc(cfg *valueservice.ValueStoreConfig, storesDir string, r *router.MessageRouter) (
-	valueSvc *valueservice.ValueService, valueStore buckets.IBucketStore, err error) {
-
-	if err == nil {
-		storeDir := path.Join(storesDir, "values")
-		valueStore, err = bucketstore.NewBucketStore(
-			storeDir, cfg.StoreFilename, buckets.BackendPebble)
-		if err != nil {
-			err = fmt.Errorf("can't open history bucket store: %w", err)
-		} else {
-			err = valueStore.Open()
-		}
-	}
-	if err == nil {
-		valueSvc = valueservice.NewThingValueService(cfg, valueStore)
-		err = valueSvc.Start()
-
-		// should these be registered through their TD? not right now
-		r.AddEventHandler(api.ValueServiceID, vocab.EventTypeTD, valueSvc.HandleEvent)
-		r.AddActionHandler(api.ValueServiceID, "", valueSvc.HandleAction)
-	}
-
-	return valueSvc, valueStore, err
-}
+//func StartValueSvc(cfg *valueservice.ValueStoreConfig, storesDir string, r *router.MessageRouter) (
+//	valueSvc *valueservice.ValueService, valueStore buckets.IBucketStore, err error) {
+//
+//	if err == nil {
+//		storeDir := path.Join(storesDir, "values")
+//		valueStore, err = bucketstore.NewBucketStore(
+//			storeDir, cfg.StoreFilename, buckets.BackendPebble)
+//		if err != nil {
+//			err = fmt.Errorf("can't open history bucket store: %w", err)
+//		} else {
+//			err = valueStore.Open()
+//		}
+//	}
+//	if err == nil {
+//		valueSvc = valueservice.NewThingValueService(cfg, valueStore)
+//		err = valueSvc.Start()
+//
+//		// should these be registered through their TD? not right now
+//		r.AddMessageHandler(vocab.MessageTypeEvent, api.ValueServiceID, vocab.EventTypeTD, valueSvc.HandleMessage)
+//		r.AddMessageHandler(vocab.MessageTypeAction, api.ValueServiceID, "", valueSvc.HandleMessage)
+//	}
+//
+//	return valueSvc, valueStore, err
+//}
 
 func (r *Runtime) Stop() {
 	if r.ProtocolMgr != nil {
@@ -180,14 +175,14 @@ func (r *Runtime) Stop() {
 	}
 	if r.MsgRouter != nil {
 	}
-	if r.ValueSvc != nil {
-		r.ValueSvc.Stop()
-	}
-	if r.ValueStore != nil {
-		_ = r.ValueStore.Close()
-	}
-	if r.DirSvc != nil {
-		r.DirSvc.Stop()
+	//if r.ValueSvc != nil {
+	//	r.ValueSvc.Stop()
+	//}
+	//if r.ValueStore != nil {
+	//	_ = r.ValueStore.Close()
+	//}
+	if r.DigiTwinSvc != nil {
+		r.DigiTwinSvc.Stop()
 	}
 	if r.AuthzSvc != nil {
 		r.AuthzSvc.Stop()

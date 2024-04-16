@@ -1,4 +1,4 @@
-package directory_test
+package digitwin_test
 
 import (
 	"fmt"
@@ -7,8 +7,10 @@ import (
 )
 
 // Simple performance test update/read
-func Benchmark_GetTD(b *testing.B) {
-	b.Log("--- Benchmark_GetTD start ---")
+// Benchmark_GetTD/update_TD_docs-4    4768 ns/op
+// Benchmark_GetTD/read_TD_docs-4       739.4 ns/op
+func Benchmark_ReadTD(b *testing.B) {
+	b.Log("--- Benchmark_ReadTD start ---")
 	defer b.Log("--- Benchmark_GetTD end ---")
 	const senderID = "agent1"
 	const thing1ID = "agent1:thing1"
@@ -17,30 +19,33 @@ func Benchmark_GetTD(b *testing.B) {
 	logging.SetLogging("warning", "")
 
 	// fire up the directory
-	svc, stopFunc := startDirectory(true)
+	svc, cl, stopFunc := startService(true)
+	_ = cl
 	defer stopFunc()
 
 	// setup
 	b.Run(fmt.Sprintf("update TD docs"),
+		// old values kept for future comparison:
 		// nats: 120 usec/op
 		// mqtt: 290 usec/op
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)
 				tdDoc1 := createTDDoc(thingID, title1)
-				err := svc.UpdateTDD(senderID, thingID, tdDoc1)
+				err := svc.Directory.UpdateThing(senderID, thingID, tdDoc1)
 				_ = err
 			}
 		})
 
 	// test read
 	b.Run(fmt.Sprintf("read TD docs"),
+		// old values kept for future comparison:
 		// Nats: 130 usec/op
 		// Mqtt: 330 usec/op
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)
-				td, err := svc.ReadTDD(thingID)
+				td, err := svc.Directory.ReadThing(thingID)
 				_ = td
 				_ = err
 			}

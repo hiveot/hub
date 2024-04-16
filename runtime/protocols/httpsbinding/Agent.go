@@ -2,88 +2,78 @@
 package httpsbinding
 
 import (
+	"encoding/json"
 	"fmt"
 	vocab "github.com/hiveot/hub/api/go"
-	thing "github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/directory"
 	"net/http"
 )
 
 // handleAgentDeleteThing handles an agent's delete request of a Thing from the digital twin
 func (svc *HttpsBinding) handleAgentDeleteThing(w http.ResponseWriter, r *http.Request) {
-	msg, session, err := svc.getMessageSession(vocab.MessageTypeAction, r)
-	_ = session
+	cs, thingID, _, _, err := svc.getRequestParams(w, r)
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	thingID := msg.ThingID
-	msg.ThingID = api.DirectoryServiceID
-	msg.Key = directory.DirectoryRemoveThingMethod
-	msg.Data = []byte(fmt.Sprintf("{thingID:%s}", thingID))
-	_, err = svc.handleMessage(msg)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
+	args := api.RemoveThingArgs{ThingID: thingID}
+	data, _ := json.Marshal(args)
+	msg := things.NewThingMessage(vocab.MessageTypeAction, api.DigiTwinServiceID, api.RemoveThingMethod,
+		data, cs.clientID)
+	svc.forwardRequest(w, msg)
 }
 
 // handleAgentGetActions handles the agent's request to read outstanding actions
 func (svc *HttpsBinding) handleAgentGetActions(w http.ResponseWriter, r *http.Request) {
-
-	msg, session, err := svc.getMessageSession(vocab.MessageTypeAction, r)
-	//re-target the message to the directory service
-	_ = session
-	thingID := msg.ThingID
-	msg.ThingID = api.ValueServiceID
-	msg.Key = api.ValueServiceMethodGetActions
-	msg.Data = []byte(fmt.Sprintf("{thingID:%s,}", thingID))
-	reply, err := svc.handleMessage(msg)
+	cs, thingID, _, _, err := svc.getRequestParams(w, r)
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	w.Write(reply)
+	keys := []string{}
+	args := api.ReadActionsArgs{ThingID: thingID, Keys: keys}
+	data, _ := json.Marshal(args)
+	msg := things.NewThingMessage(vocab.MessageTypeAction, api.DigiTwinServiceID, api.ReadActionsMethod,
+		data, cs.clientID)
+	svc.forwardRequest(w, msg)
 }
 
 // handleAgentPostEvent handles the agent's request to post a new event
 func (svc *HttpsBinding) handleAgentPostEvent(w http.ResponseWriter, r *http.Request) {
-	svc.onRequest(vocab.MessageTypeEvent, w, r)
+	cs, thingID, key, data, err := svc.getRequestParams(w, r)
+	if err != nil {
+		return
+	}
+	msg := things.NewThingMessage(vocab.MessageTypeEvent, thingID, key, data, cs.clientID)
+	svc.forwardRequest(w, msg)
 }
 
 // handleAgentPutThing handles an agent's request to update a TD document
 // @urlparam {thingID}   thing to update
 func (svc *HttpsBinding) handleAgentPutThing(w http.ResponseWriter, r *http.Request) {
-	// turn the request in an TD update event
-	msg, session, err := svc.getMessageSession(vocab.MessageTypeEvent, r)
-	_ = session
-	msg.Key = vocab.EventTypeTD
+	cs, thingID, _, data, err := svc.getRequestParams(w, r)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	_, err = svc.handleMessage(msg)
-	w.WriteHeader(http.StatusOK)
+	msg := things.NewThingMessage(
+		vocab.MessageTypeEvent, thingID, vocab.EventTypeTD, data, cs.clientID)
+	svc.forwardRequest(w, msg)
 }
 
 // handleAgentPutProperties handles an agent's request to update property values
 // @param {thingID}   thing to update
+// data
 func (svc *HttpsBinding) handleAgentPutProperties(w http.ResponseWriter, r *http.Request) {
-	// turn the request in a properties update event
-	msg, session, err := svc.getMessageSession(vocab.MessageTypeEvent, r)
-	_ = session
-	msg.Key = vocab.EventTypeProperties
-	_, err = svc.handleMessage(msg)
+	cs, thingID, _, data, err := svc.getRequestParams(w, r)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	msg := things.NewThingMessage(
+		vocab.MessageTypeEvent, thingID, vocab.EventTypeProperties, data, cs.clientID)
+	svc.forwardRequest(w, msg)
 }
 
 // SendActionToAgent sends the action request to the agent and return the result
-func (svc *HttpsBinding) SendActionToAgent(agentID string, action *thing.ThingMessage) (resp []byte, err error) {
+func (svc *HttpsBinding) SendActionToAgent(agentID string, action *things.ThingMessage) (resp []byte, err error) {
 	// this requires an sse or WS connection from that agent
 	return nil, fmt.Errorf("not yet implemented")
 }

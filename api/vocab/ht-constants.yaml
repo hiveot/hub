@@ -1,0 +1,58 @@
+# definition of constants used in hiveot
+
+MessageTypes:
+  version: "0.1"
+  link: "github.com/hiveot/hub/api/vocab/ht-constants.yaml"
+  description: "Message types used throughout the Hub and its clients"
+  namespace: "ht"
+  vocab:
+
+    MessageTypeAction:     "action"    # request an action - operators
+    MessageTypeEvent:      "event"     # an event has happened - agents
+
+    # are properties and TD a type of event? - yes
+    # are these described in the TD event? - no - this is a problem
+    EventTypeProperties:  "$properties"   # properties have changed - agents
+    EventTypeTD:          "$td"           # event a td is updated - agents
+    ActionTypeProperties: "$properties"   # request action to set properties - consumers
+
+    # why inbox? response message over a separate channel. payload is a correlation id.
+    # is this internal to a binding? probably yes.
+    #MessageTypeINBOX:      "_INBOX"
+
+HttpPaths:
+  version: "0.1"
+  link: "github.com/hiveot/hub/api/vocab/ht-constants.yaml"
+  namespace: "ht"
+  description: "Default http rest paths for use by agents and services"
+  # see also: https://webthings.io/api/#web-thing-rest-api
+  vocab:
+    # agent paths
+    AgentDeleteThingPath:     "/agent/{thingID}"
+    AgentGetActionsPath:      "/agent/{thingID}/actions"
+    AgentPostEventPath:       "/agent/{thingID}/event/{key}"
+    AgentPostEventsPath:      "/agent/{thingID}/events"
+    AgentPutPropertiesPath:   "/agent/{thingID}/properties"
+    AgentPutPropertyPath:     "/agent/{thingID}/property"
+    AgentPutThingPath:        "/agent/{thingID}"
+
+    # consumer paths
+    ConsumerDeleteThingPath:    "/things/{thingID}"
+    ConsumerGetActionPath:      "/things/{thingID}/actions/{key}"
+    ConsumerGetActionsPath:     "/things/{thingID}/actions"
+    ConsumerGetEventPath:       "/things/{thingID}/events/{key}"
+    ConsumerGetEventsPath:      "/things/{thingID}/events"
+    ConsumerGetPropertiesPath:  "/things/{thingID}/properties"
+    ConsumerGetPropertyPath:    "/things/{thingID}/properties/{key}"
+    ConsumerGetThingPath:       "/things/{thingID}"
+    ConsumerGetThingsPath:      "/things"
+    ConsumerPostActionPath:     "/things/{thingID}/actions/{key}"
+    ConsumerPostPropertiesPath: "/things/{thingID}/properties"
+    ConsumerPutPropertyPath:    "/things/{thingID}/properties/{key}"
+
+    # other endpoints
+    PostLoginPath:   "/rpc/authn/login"
+    PostRefreshPath: "/rpc/authn/refresh"
+    PostRPCPath:     "/rpc/{thingID}/{key}"
+    ConnectSSEPath:  "/sse"
+    ConnectWSPath:   "/ws"

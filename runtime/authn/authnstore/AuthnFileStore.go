@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/authn"
 	"log/slog"
 	"os"
 	"path"
@@ -46,6 +47,9 @@ func (store *AuthnFileStore) Add(clientID string, profile api.ClientProfile) err
 		profile.ClientType != api.ClientTypeService {
 		return fmt.Errorf("Add: invalid clientType '%s' for client '%s'",
 			profile.ClientType, clientID)
+	}
+	if profile.TokenValiditySec == 0 {
+		profile.TokenValiditySec = authn.DefaultUserTokenValiditySec
 	}
 	if !found {
 		slog.Info("Add: New client " + clientID)
@@ -233,14 +237,14 @@ func (store *AuthnFileStore) SetPassword(loginID string, password string) (err e
 	if len(password) < store.minPasswordLength {
 		return fmt.Errorf("password too short (%d chars)", len(password))
 	}
-	if store.hashAlgo == api.PWHASH_ARGON2id {
+	if store.hashAlgo == authn.PWHASH_ARGON2id {
 		// TODO: tweak to something reasonable and test timing. default of 64MB is not suitable for small systems
 		params := argon2id.DefaultParams
 		params.Memory = 16 * 1024
 		params.Iterations = 2
 		params.Parallelism = 4 // what happens with fewer cores?
 		hash, err = argon2id.CreateHash(password, params)
-	} else if store.hashAlgo == api.PWHASH_BCRYPT {
+	} else if store.hashAlgo == authn.PWHASH_BCRYPT {
 		hashBytes, err2 := bcrypt.GenerateFromPassword([]byte(password), 0)
 		err = err2
 		hash = string(hashBytes)
@@ -319,9 +323,9 @@ func (store *AuthnFileStore) VerifyPassword(loginID, password string) (profile a
 	if !found {
 		// unknown user
 		isValid = false
-	} else if store.hashAlgo == api.PWHASH_ARGON2id {
+	} else if store.hashAlgo == authn.PWHASH_ARGON2id {
 		isValid, _ = argon2id.ComparePasswordAndHash(password, entry.PasswordHash)
-	} else if store.hashAlgo == api.PWHASH_BCRYPT {
+	} else if store.hashAlgo == authn.PWHASH_BCRYPT {
 		err := bcrypt.CompareHashAndPassword([]byte(entry.PasswordHash), []byte(password))
 		isValid = err == nil
 	}
@@ -364,9 +368,9 @@ func WritePasswordsToTempFile(
 //	hashAlgo PWHASH_ARGON2id (default) or PWHASH_BCRYPT
 func NewAuthnFileStore(filepath string, hashAlgo string) *AuthnFileStore {
 	if hashAlgo == "" {
-		hashAlgo = api.PWHASH_ARGON2id
+		hashAlgo = authn.PWHASH_ARGON2id
 	}
-	if hashAlgo != api.PWHASH_ARGON2id && hashAlgo != api.PWHASH_BCRYPT {
+	if hashAlgo != authn.PWHASH_ARGON2id && hashAlgo != authn.PWHASH_BCRYPT {
 		slog.Error("unknown hash algorithm. Falling back to argon2id", "hashAlgo", hashAlgo)
 	}
 	store := &AuthnFileStore{

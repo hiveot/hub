@@ -48,21 +48,6 @@ func (svc *ProtocolsManager) SendEvent(msg *things.ThingMessage) {
 	}
 }
 
-// SendRPC sends a rpc request to the destination.
-//
-// TODO: identify if the destination agent is connected
-func (svc *ProtocolsManager) SendRPC(msg *things.ThingMessage) (reply []byte, err error) {
-	// for now simply send the rpc request to all protocol handlers until one is successful
-	for _, protoHandler := range svc.bindings {
-		reply, err = protoHandler.SendRPC(msg)
-		if err == nil {
-			// avoid double delivery
-			break
-		}
-	}
-	return reply, err
-}
-
 // Start the protocol servers
 func (svc *ProtocolsManager) Start() error {
 	for _, pb := range svc.bindings {

@@ -1,10 +1,11 @@
 package authn_test
 
 import (
-	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn"
+	"github.com/hiveot/hub/runtime/authn/authenticator"
+	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/service"
 	"os"
 	"path"
@@ -13,19 +14,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/hiveot/hub/lib/logging"
 )
 
-var certBundle = certs.CreateTestCertBundle()
-var testDir = path.Join(os.TempDir(), "test-authn")
-var authnConfig authn.AuthnConfig
-var defaultHash = api.PWHASH_ARGON2id
+// NOTE: this uses default settings from AuthnClient_test.go
 
 // launch the authn service and return a client for using and managing it.
 // the messaging server is already running (see TestMain)
-func startTestAuthnService(testHash string) (
-	authnSvc *service.AuthnService, sessionAuth api.IAuthenticator, stopFn func(), err error) {
+func startTestAuthnAdminService(testHash string) (
+	authnAdminSvc *service.AuthnAdminService, sessionAuth api.IAuthenticator, stopFn func(), err error) {
 
 	// the password file to use
 	passwordFile := path.Join(testDir, "test.passwd")
@@ -38,10 +34,22 @@ func startTestAuthnService(testHash string) (
 	authnConfig.AgentTokenValiditySec = 100
 	authnConfig.Encryption = testHash
 
-	authnSvc, authnStore, sessionAuth, err := service.StartAuthnService(&authnConfig, certBundle.CaCert)
+	authnStore := authnstore.NewAuthnFileStore(
+		authnConfig.PasswordFile, authnConfig.Encryption)
+	err = authnStore.Open()
+	if err != nil {
+		panic("Error opening password store:" + err.Error())
+	}
+	sessionAuth = authenticator.NewJWTAuthenticatorFromFile(
+		authnStore, authnConfig.KeysDir, authnConfig.DefaultKeyType)
+	authnAdminSvc = service.NewAuthnAdminService(&authnConfig, authnStore, sessionAuth)
+	err = authnAdminSvc.Start()
+	if err != nil {
+		panic("Error starting authn admin service:" + err.Error())
+	}
 	_ = sessionAuth
-	return authnSvc, sessionAuth, func() {
-		authnSvc.Stop()
+	return authnAdminSvc, sessionAuth, func() {
+		authnAdminSvc.Stop()
 		authnStore.Close()
 
 		// let background tasks finish
@@ -49,29 +57,14 @@ func startTestAuthnService(testHash string) (
 	}, err
 }
 
-// TestMain creates a test environment
-// Used for all test cases in this package
-func TestMain(m *testing.M) {
-
-	logging.SetLogging("info", "")
-
-	res := m.Run()
-
-	time.Sleep(time.Second)
-	if res == 0 {
-		_ = os.RemoveAll(testDir)
-	}
-	os.Exit(res)
-}
-
 // Start the authn service and list clients
 func TestStartStop(t *testing.T) {
 	// this creates the admin user key
-	svc, _, stopFn, err := startTestAuthnService(defaultHash)
+	svc, _, stopFn, err := startTestAuthnAdminService(defaultHash)
 	require.NoError(t, err)
 	defer stopFn()
 
-	clList, err := svc.GetAllProfiles()
+	clList, err := svc.GetProfiles()
 	require.NoError(t, err)
 	// admin and launcher are 2 pre-existing clients
 	assert.Equal(t, 2, len(clList))
@@ -86,7 +79,7 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 	serviceKP := keys.NewKey(keys.KeyTypeECDSA)
 	serviceKeyPub := serviceKP.ExportPublic()
 
-	svc, _, stopFn, err := startTestAuthnService(defaultHash)
+	svc, _, stopFn, err := startTestAuthnAdminService(defaultHash)
 	require.NoError(t, err)
 	defer stopFn()
 
@@ -110,7 +103,7 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 	assert.NoError(t, err)
 
 	// update the server. users can connect and have unlimited access
-	clList, err := svc.GetAllProfiles()
+	clList, err := svc.GetProfiles()
 	require.NoError(t, err)
 	assert.Equal(t, 6+2, len(clList))
 
@@ -125,7 +118,7 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 	err = svc.RemoveClient(serviceID)
 	assert.NoError(t, err)
 
-	clList, err = svc.GetAllProfiles()
+	clList, err = svc.GetProfiles()
 	require.NoError(t, err)
 	assert.Equal(t, 2+2, len(clList))
 
@@ -141,7 +134,7 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 
 // Create manage users
 func TestAddRemoveClientsFail(t *testing.T) {
-	svc, _, stopFn, err := startTestAuthnService(defaultHash)
+	svc, _, stopFn, err := startTestAuthnAdminService(defaultHash)
 	require.NoError(t, err)
 	defer stopFn()
 
@@ -160,7 +153,7 @@ func TestUpdatePubKey(t *testing.T) {
 	var tu1ID = "tu1ID"
 	var tu1Pass = "tu1Pass"
 
-	svc, sessionAuth, stopFn, err := startTestAuthnService(defaultHash)
+	svc, sessionAuth, stopFn, err := startTestAuthnAdminService(defaultHash)
 	defer stopFn()
 	require.NoError(t, err)
 
@@ -174,72 +167,23 @@ func TestUpdatePubKey(t *testing.T) {
 
 	// update the public key
 	kp := keys.NewKey(keys.KeyTypeECDSA)
-	prof1, err := svc.GetProfile(tu1ID)
+	prof1, err := svc.GetClientProfile(tu1ID)
 	require.NoError(t, err)
 	prof1.PubKey = kp.ExportPublic()
-	err = svc.UpdateClient(tu1ID, prof1)
+	err = svc.UpdateClientProfile(prof1)
 	assert.NoError(t, err)
 
 	// check result
-	prof, err := svc.GetProfile(tu1ID)
+	prof, err := svc.GetClientProfile(tu1ID)
 	require.NoError(t, err)
 	assert.Equal(t, kp.ExportPublic(), prof.PubKey)
-}
-
-// Note: RefreshToken is only possible when using JWT.
-func TestLoginRefresh(t *testing.T) {
-	var tu1ID = "tu1ID"
-	var tu1Pass = "tu1Pass"
-	var authToken1 string
-	var authToken2 string
-
-	svc, sessionAuth, stopFn, err := startTestAuthnService(defaultHash)
-	defer stopFn()
-	require.NoError(t, err)
-
-	// add user to test with
-	tu1Key := keys.NewKey(keys.KeyTypeECDSA)
-	tu1KeyPub := tu1Key.ExportPublic()
-
-	err = svc.AddClient(api.ClientTypeUser,
-		tu1ID, "testuser 1", tu1KeyPub, tu1Pass)
-	require.NoError(t, err)
-	authToken1, err = svc.Login(tu1ID, tu1Pass, "")
-	require.NoError(t, err)
-
-	cid2, sid2, err := sessionAuth.ValidateToken(authToken1)
-	assert.Equal(t, tu1ID, cid2)
-	assert.NotEmpty(t, sid2)
-	require.NoError(t, err)
-
-	// RefreshToken the token
-	authToken2, err = sessionAuth.RefreshToken(tu1ID, authToken1, 100)
-	require.NoError(t, err)
-	require.NotEmpty(t, authToken2)
-
-	// ValidateToken the new token
-	cid3, sid3, err := sessionAuth.ValidateToken(authToken2)
-	assert.Equal(t, tu1ID, cid3)
-	assert.Equal(t, sid2, sid3)
-	require.NoError(t, err)
-}
-
-func TestLoginRefreshFail(t *testing.T) {
-
-	_, sessionAuth, stopFn, err := startTestAuthnService(defaultHash)
-	defer stopFn()
-	require.NoError(t, err)
-
-	// RefreshToken the token non-existing
-	_, err = sessionAuth.RefreshToken("badclientID", "badToken", 10)
-	require.Error(t, err)
 }
 
 func TestUpdateProfile(t *testing.T) {
 	var tu1ID = "tu1ID"
 	var tu1Name = "test user 1"
 
-	svc, sessionAuth, stopFn, err := startTestAuthnService(defaultHash)
+	svc, sessionAuth, stopFn, err := startTestAuthnAdminService(defaultHash)
 	_ = sessionAuth
 	defer stopFn()
 	require.NoError(t, err)
@@ -251,88 +195,22 @@ func TestUpdateProfile(t *testing.T) {
 
 	// update display name
 	const newDisplayName = "new display name"
-	prof1, err := svc.GetProfile(tu1ID)
+	prof1, err := svc.GetClientProfile(tu1ID)
 	require.NoError(t, err)
 	prof1.DisplayName = newDisplayName
-	err = svc.UpdateClient(tu1ID, prof1)
+	err = svc.UpdateClientProfile(prof1)
 	assert.NoError(t, err)
 
 	// verify
-	prof2, err := svc.GetProfile(tu1ID)
+	prof2, err := svc.GetClientProfile(tu1ID)
 	require.NoError(t, err)
 	assert.Equal(t, newDisplayName, prof2.DisplayName)
 }
 
 func TestUpdateProfileFail(t *testing.T) {
-	svc, _, stopFn, err := startTestAuthnService(defaultHash)
+	svc, _, stopFn, err := startTestAuthnAdminService(defaultHash)
 	defer stopFn()
 	require.NoError(t, err)
-	err = svc.UpdateClient("badclient", api.ClientProfile{})
-	assert.Error(t, err)
-}
-
-func TestUpdatePasswordForHashes(t *testing.T) {
-	const badhash = "badhhash"
-	var hashes = []string{
-		api.PWHASH_BCRYPT, api.PWHASH_ARGON2id, badhash}
-	for _, testHash := range hashes {
-		var testName = "test-" + testHash
-		t.Run(testName, func(t *testing.T) {
-			var tu1ID = "tu1ID"
-			var tu1Name = "test user 1"
-
-			svc, _, stopFn, err := startTestAuthnService(testHash)
-			defer stopFn()
-			if testHash == badhash {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-			// add user to test with
-			err = svc.AddClient(api.ClientTypeUser, tu1ID, tu1Name, "", "oldpass")
-			if testHash == badhash {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-
-			// login should succeed
-			_, err = svc.Login(tu1ID, "oldpass", "session1")
-			if testHash == badhash {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-
-			// change password
-			err = svc.UpdatePassword(tu1ID, "newpass")
-			if testHash == badhash {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-
-			// login with old password should now fail
-			//t.Log("an error is expected logging in with the old password")
-			_, err = svc.Login(tu1ID, "oldpass", "")
-			require.Error(t, err)
-
-			// re-login with new password
-			_, err = svc.Login(tu1ID, "newpass", "")
-			if testHash == badhash {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-		})
-	}
-}
-
-func TestUpdatePasswordFail(t *testing.T) {
-	svc, _, stopFn, err := startTestAuthnService(defaultHash)
-	defer stopFn()
-	require.NoError(t, err)
-
-	err = svc.UpdatePassword("badclientid", "newpass")
+	err = svc.UpdateClientProfile(api.ClientProfile{ClientID: "badclient"})
 	assert.Error(t, err)
 }

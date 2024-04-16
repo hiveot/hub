@@ -2,10 +2,32 @@ package authn
 
 import (
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 	"path"
 )
+
+// Session token validity for client types
+const (
+	DefaultAgentTokenValiditySec   = 90 * 24 * 3600  // 90 days
+	DefaultServiceTokenValiditySec = 365 * 24 * 3600 // 1 year
+	DefaultUserTokenValiditySec    = 30 * 24 * 3600  // 30 days
+)
+
+// supported password hashes
+const (
+	PWHASH_ARGON2id = "argon2id"
+	PWHASH_BCRYPT   = "bcrypt" // fallback in case argon2id cannot be used
+)
+
+// DefaultAdminUserID is the client ID of the default CLI administrator account
+const DefaultAdminUserID = "admin"
+
+// DefaultLauncherServiceID is the client ID of the launcher service
+// auth creates a key and auth token for the launcher on startup
+const DefaultLauncherServiceID = "launcher"
+
+// DefaultPasswordFile is the recommended password filename for Hub authentication
+const DefaultPasswordFile = "hub.passwd"
 
 // AuthnConfig contains the auth service configuration
 type AuthnConfig struct {
@@ -46,32 +68,32 @@ type AuthnConfig struct {
 func (cfg *AuthnConfig) Setup(keysDir, storesDir string) {
 
 	if cfg.PasswordFile == "" {
-		cfg.PasswordFile = api.DefaultPasswordFile
+		cfg.PasswordFile = DefaultPasswordFile
 	}
 	if !path.IsAbs(cfg.PasswordFile) {
 		cfg.PasswordFile = path.Join(storesDir, "authn", cfg.PasswordFile)
 	}
 
 	if cfg.Encryption == "" {
-		cfg.Encryption = api.PWHASH_ARGON2id
+		cfg.Encryption = PWHASH_ARGON2id
 	}
-	if cfg.Encryption != api.PWHASH_BCRYPT && cfg.Encryption != api.PWHASH_ARGON2id {
+	if cfg.Encryption != PWHASH_BCRYPT && cfg.Encryption != PWHASH_ARGON2id {
 		slog.Error("unknown password encryption method. Reverting to ARGON2id", "Encoding", cfg.Encryption)
-		cfg.Encryption = api.PWHASH_ARGON2id
+		cfg.Encryption = PWHASH_ARGON2id
 	}
 
 	if cfg.AgentTokenValiditySec == 0 {
-		cfg.AgentTokenValiditySec = api.DefaultAgentTokenValiditySec
+		cfg.AgentTokenValiditySec = DefaultAgentTokenValiditySec
 	}
 	if cfg.ServiceTokenValiditySec == 0 {
-		cfg.ServiceTokenValiditySec = api.DefaultServiceTokenValiditySec
+		cfg.ServiceTokenValiditySec = DefaultServiceTokenValiditySec
 	}
 	if cfg.UserTokenValiditySec == 0 {
-		cfg.UserTokenValiditySec = api.DefaultUserTokenValiditySec
+		cfg.UserTokenValiditySec = DefaultUserTokenValiditySec
 	}
 	cfg.KeysDir = keysDir
-	cfg.AdminAccountID = api.DefaultAdminUserID
-	cfg.LauncherAccountID = api.DefaultLauncherServiceID
+	cfg.AdminAccountID = DefaultAdminUserID
+	cfg.LauncherAccountID = DefaultLauncherServiceID
 
 	//if cfg.AdminUserKeyFile == "" {
 	//	cfg.AdminUserKeyFile = .DefaultAdminUserID + ".key"
@@ -106,7 +128,7 @@ func NewAuthnConfig() AuthnConfig {
 		// key to use for creating keys
 		DefaultKeyType: keys.KeyTypeECDSA,
 		// default password encryption method
-		Encryption: api.PWHASH_ARGON2id,
+		Encryption: PWHASH_ARGON2id,
 	}
 	return cfg
 }

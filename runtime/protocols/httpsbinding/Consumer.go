@@ -8,47 +8,43 @@ import (
 	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/directory"
 	"io"
 	"log/slog"
 	"net/http"
 )
 
-// getMessageSession reads the message and identifies the sender's session
-// This reads the URL parameters 'thingID' and 'key' as used in the paths in ht-vocab.yaml
-func (svc *HttpsBinding) getMessageSession(msgType string, r *http.Request) (
-	msg *things.ThingMessage, session *ClientSession, err error) {
-
+// getSessionParams reads the message and identifies the sender's session.
+//
+// This returns the URL parameters 'thingID' and 'key' from the path along
+// with the body payload.
+//
+// If the session is invalid then write an unauthorized response and return an error
+func (svc *HttpsBinding) getRequestParams(w http.ResponseWriter, r *http.Request) (
+	session *ClientSession, thingID string, key string, body []byte, err error) {
 	// get the required client session of this agent
 	ctxSession := r.Context().Value(SessionContextID)
 	if ctxSession == nil {
-		err = fmt.Errorf("missing session")
-		return nil, nil, err
+		err = fmt.Errorf("missing session for request '%s' from '%s'",
+			r.RequestURI, r.RemoteAddr)
+		slog.Warn(err.Error())
+		return nil, "", "", nil, err
 	}
 	cs := ctxSession.(*ClientSession)
 
 	// build a message from the URL and payload
-	thingID := chi.URLParam(r, "thingID")
-	key := chi.URLParam(r, "key")
-	data, err := io.ReadAll(r.Body)
-	if err != nil {
-		err = fmt.Errorf("failed reading message body: %w", err)
-	}
-	msg = things.NewThingMessage(msgType, thingID, key, data, cs.clientID)
-	return msg, cs, err
+	// URLParam names are defined by the path variables set in the router.
+	thingID = chi.URLParam(r, "thingID")
+	key = chi.URLParam(r, "key")
+	body, _ = io.ReadAll(r.Body)
+
+	return cs, thingID, key, body, err
 }
 
-// handleMessage construct a message from the request and passes it to the universal handler.
-// This reads the URL parameters 'thingID' and 'key' as used in the paths in ht-vocab.yaml
-func (svc *HttpsBinding) onRequest(msgType string, w http.ResponseWriter, r *http.Request) {
+// Forward a message to the runtime router for delivery to the destination thingID.
+// The reply is written as-is to the response writer.
+// If the handler returns an error, an 'internal server error' is written
+func (svc *HttpsBinding) forwardRequest(w http.ResponseWriter, msg *things.ThingMessage) {
 
-	msg, session, err := svc.getMessageSession(msgType, r)
-	if err != nil {
-		slog.Warn("handlePostAction", "err", err)
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	_ = session
 	reply, err := svc.handleMessage(msg)
 	if err != nil {
 		_, _ = w.Write([]byte(err.Error()))
@@ -63,43 +59,37 @@ func (svc *HttpsBinding) onRequest(msgType string, w http.ResponseWriter, r *htt
 
 // handleConsumerDeleteThing sends a delete thing action request to the directory service
 func (svc *HttpsBinding) handleConsumerRemoveThing(w http.ResponseWriter, r *http.Request) {
-	msg, session, err := svc.getMessageSession(vocab.MessageTypeAction, r)
-	_ = session
+	cs, thingID, _, _, err := svc.getRequestParams(w, r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	thingID := msg.ThingID
-	msg.ThingID = api.DirectoryServiceID
-	msg.Key = directory.DirectoryRemoveThingMethod
-	msg.Data = []byte(fmt.Sprintf("{thingID:%s}", thingID))
-	_, err = svc.handleMessage(msg)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
+	// create a ThingMessage containing an action for the directory service.
+	// The thingID from the request is used for the message payload.
+	args := api.RemoveThingArgs{ThingID: thingID}
+	data, _ := json.Marshal(args)
+	msg := things.NewThingMessage(
+		vocab.MessageTypeAction, api.DigiTwinServiceID, api.RemoveThingMethod,
+		data, cs.clientID)
+	svc.forwardRequest(w, msg)
 }
 
-func (svc *HttpsBinding) handleConsumerGetThing(w http.ResponseWriter, r *http.Request) {
-	msg, session, err := svc.getMessageSession(vocab.MessageTypeAction, r)
-	_ = session
+func (svc *HttpsBinding) handleConsumerReadThing(w http.ResponseWriter, r *http.Request) {
+	cs, thingID, _, _, err := svc.getRequestParams(w, r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	thingID := msg.ThingID
-	msg.ThingID = api.DirectoryServiceID
-	msg.Key = directory.DirectoryReadThingMethod
-	params := map[string]string{"thingID": thingID}
-	msg.Data, _ = json.Marshal(params)
-	reply, err := svc.handleMessage(msg)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	w.Write(reply)
-	// response is {tdd}
+	// populate the ThingMessage with an action for the directory service
+	// the thingID from the request is used for the message payload.
+	args := api.ReadThingArgs{ThingID: thingID}
+	data, _ := json.Marshal(args)
+	msg := things.NewThingMessage(
+		vocab.MessageTypeAction, api.DigiTwinServiceID, api.ReadThingMethod,
+		data, cs.clientID)
+	svc.forwardRequest(w, msg)
 }
+
 func (svc *HttpsBinding) handleConsumerGetThings(w http.ResponseWriter, r *http.Request) {
 	// rpc message with thingID=directory, key=getthings and payload
 	// is {query:"expression"} or {things: []thingID} or {agent:id} or {updated:...}...
@@ -127,11 +117,13 @@ func (svc *HttpsBinding) handleConsumerGetProperties(w http.ResponseWriter, r *h
 
 // handleConsumerPostAction handles a consumer's request to post a thing action
 func (svc *HttpsBinding) handleConsumerPostAction(w http.ResponseWriter, r *http.Request) {
-	//msg, session, err := svc.getMessageSession(vocab.MessageTypeAction,r)
-	// convert request into a standard message format
-	// action message with key the action type
-	// response is reply data
-	svc.onRequest(vocab.MessageTypeAction, w, r)
+
+	cs, thingID, key, data, err := svc.getRequestParams(w, r)
+	if err != nil {
+		return
+	}
+	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, data, cs.clientID)
+	svc.forwardRequest(w, msg)
 }
 
 // handleConsumerPostProperties handles a consumer's request to modify one or more properties

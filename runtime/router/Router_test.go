@@ -26,11 +26,13 @@ func TestHandleAction(t *testing.T) {
 	r := router.NewMessageRouter(&cfg)
 
 	// this handler returns the uppercase text
-	r.AddActionHandler(serviceID, methodID, func(tv *things.ThingMessage) ([]byte, error) {
-		upper := strings.ToUpper(string(tv.Data))
-		return []byte(upper), nil
-	})
-	tv1 := things.NewThingMessage(vocab.MessageTypeAction, serviceID, methodID, []byte(data), "sender1")
+	r.AddMessageHandler(vocab.MessageTypeAction, serviceID, methodID,
+		func(tv *things.ThingMessage) ([]byte, error) {
+			upper := strings.ToUpper(string(tv.Data))
+			return []byte(upper), nil
+		})
+	tv1 := things.NewThingMessage(
+		vocab.MessageTypeAction, serviceID, methodID, []byte(data), "sender1")
 	resp, err := r.HandleMessage(tv1)
 	assert.Equal(t, strings.ToUpper(string(tv1.Data)), string(resp))
 	assert.NoError(t, err)
@@ -50,9 +52,10 @@ func TestHandleEvent(t *testing.T) {
 		mwh2Count++
 		return tv, nil
 	})
-	r.AddEventHandler("", "", func(tv *things.ThingMessage) ([]byte, error) {
-		return tv.Data, nil
-	})
+	r.AddMessageHandler(vocab.MessageTypeEvent, "", "",
+		func(tv *things.ThingMessage) ([]byte, error) {
+			return tv.Data, nil
+		})
 	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", []byte("data"), "sender1")
 	resp, err := r.HandleMessage(tv1)
 	assert.Equal(t, tv1.Data, resp)
@@ -65,9 +68,10 @@ func TestBadMessageType(t *testing.T) {
 	cfg := router.NewRouterConfig()
 	r := router.NewMessageRouter(&cfg)
 
-	r.AddEventHandler("", "", func(tv *things.ThingMessage) ([]byte, error) {
-		return tv.Data, nil
-	})
+	r.AddMessageHandler(vocab.MessageTypeEvent, "", "",
+		func(tv *things.ThingMessage) ([]byte, error) {
+			return tv.Data, nil
+		})
 	tv1 := things.NewThingMessage("badmessagetype", "thing1", "key1", []byte("data"), "sender1")
 	_, err := r.HandleMessage(tv1)
 	assert.Error(t, err)
@@ -80,7 +84,7 @@ func TestMiddlewareError(t *testing.T) {
 	r.AddMiddlewareHandler(func(tv *things.ThingMessage) (*things.ThingMessage, error) {
 		return tv, fmt.Errorf("middleware rejects message")
 	})
-	r.AddEventHandler("", "", func(tv *things.ThingMessage) ([]byte, error) {
+	r.AddMessageHandler(vocab.MessageTypeEvent, "", "", func(tv *things.ThingMessage) ([]byte, error) {
 		return tv.Data, nil
 	})
 	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", []byte("data"), "sender1")
@@ -92,7 +96,7 @@ func TestHandlerError(t *testing.T) {
 	cfg := router.NewRouterConfig()
 	r := router.NewMessageRouter(&cfg)
 
-	r.AddEventHandler("", "", func(tv *things.ThingMessage) ([]byte, error) {
+	r.AddMessageHandler(vocab.MessageTypeEvent, "", "", func(tv *things.ThingMessage) ([]byte, error) {
 		return tv.Data, fmt.Errorf("handler returns error")
 	})
 	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", []byte("data"), "sender1")

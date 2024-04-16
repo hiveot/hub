@@ -87,8 +87,8 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 		// handlers for consumer requests
 		r.Post(vocab.ConsumerPostActionPath, svc.handleConsumerPostAction)
 		r.Post(vocab.ConsumerPostPropertiesPath, svc.handleConsumerPostProperties)
-		r.Get(vocab.ConsumerDeleteThingPath, svc.handleConsumerRemoveThing)
-		r.Get(vocab.ConsumerGetThingPath, svc.handleConsumerGetThing)
+		r.Post(vocab.ConsumerDeleteThingPath, svc.handleConsumerRemoveThing)
+		r.Get(vocab.ConsumerGetThingPath, svc.handleConsumerReadThing)
 		r.Get(vocab.ConsumerGetThingsPath, svc.handleConsumerGetThings)
 		r.Get(vocab.ConsumerGetEventPath, svc.handleConsumerGetEvent)
 		r.Get(vocab.ConsumerGetEventsPath, svc.handleConsumerGetEvents)

@@ -13,7 +13,13 @@ import (
 
 // handlePostRPC handles a rpc request posted by a consumer
 func (svc *HttpsBinding) handlePostRPC(w http.ResponseWriter, r *http.Request) {
-	svc.onRequest(vocab.MessageTypeAction, w, r)
+	cs, serviceID, methodName, data, err := svc.getRequestParams(w, r)
+	if err != nil {
+		return
+	}
+	msg := things.NewThingMessage(
+		vocab.MessageTypeAction, serviceID, methodName, data, cs.clientID)
+	svc.forwardRequest(w, msg)
 }
 
 // handlePostRPC handles a login request posted by a consumer

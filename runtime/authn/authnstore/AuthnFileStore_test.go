@@ -3,6 +3,7 @@ package authnstore_test
 import (
 	"fmt"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/authn"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"log/slog"
 	"os"
@@ -22,7 +23,7 @@ const unpwFileName = "testunpwstore.passwd"
 var unpwFilePath string
 
 var tempFolder string
-var algo = api.PWHASH_ARGON2id
+var algo = authn.PWHASH_ARGON2id
 
 // TestMain for all authn tests, setup of default folders and filenames
 func TestMain(m *testing.M) {
@@ -172,9 +173,9 @@ func TestVerifyHashAlgo(t *testing.T) {
 
 // verify password
 func TestVerifyBCryptAlgo(t *testing.T) {
-	algo = api.PWHASH_BCRYPT
+	algo = authn.PWHASH_BCRYPT
 	TestVerifyHashAlgo(t)
-	algo = api.PWHASH_ARGON2id
+	algo = authn.PWHASH_ARGON2id
 }
 
 func TestName(t *testing.T) {
@@ -217,7 +218,8 @@ func TestSetPasswordTwoStores(t *testing.T) {
 	err = pwStore2.Add(user2,
 		api.ClientProfile{ClientID: user2, ClientType: api.ClientTypeUser})
 	require.NoError(t, err)
-	pwStore1.Reload()
+	err = pwStore1.Reload()
+	require.NoError(t, err)
 	time.Sleep(time.Millisecond)
 
 	// set password in store 1, should appear in store 2
