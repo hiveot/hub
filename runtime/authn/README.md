@@ -2,11 +2,11 @@
 
 ## Objective
 
-Manage Hub client profiles with authentication keys for the local network.
+Manage Hub client profiles and corresponding authentication keys. 
 
 ## Status
 
-This service is being reworked for the Digital Twin Runtime. It is currently broken.
+This service is being reworked for the Digital Twin Runtime. It is functional but not yet used.
 
 Implementation of custom roles is not yet complete. 
 
@@ -21,9 +21,9 @@ This service provides the following capabilities:
 1. Client management to add and remove Hub clients such as devices, users and services. Client information is persisted in an authentication store. 
 2. Profile management for use by clients to update their profile and update login tokens.
 
-Authentication is used by the underlying protocol binding. It is up to each protocol binding to decide whether to use the authn service for generating session tokens. 
+Authentication can be used by the protocol bindings. It is up to each protocol binding to decide whether to use the authn service for generating session tokens. 
 
-An optional golang client is included and support for other languages is planned.
+An optional golang client API is included and support for other languages is planned.
 
 ## Password Storage
 
@@ -33,7 +33,7 @@ NATS uses bcrypt to storing passwords in memory. When using the NATS core passwo
 
 ## Usage
 
-This service is included with the hub core. 
+This service is part of the hub runtime. 
 
-To function as intended, the service must store a CA certificate, server certificate and password file on the filesystem. The default path are the hiveot 'certs' directory for the certificate and hiveot 'stores/auth' directory for the profile and password storage. Location of files can be changed in the hub.yaml config.
+To function as intended, the service must have access to the filesystem to store passwords and service authentication keys. The default path are the hiveot 'certs' directory for the certificate and hiveot 'stores/authn' directory for the profile and password storage. Location of files can be changed in the runtime.yaml config.
 

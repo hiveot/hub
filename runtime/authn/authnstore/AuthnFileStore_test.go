@@ -142,7 +142,7 @@ func TestVerifyHashAlgo(t *testing.T) {
 	require.NoError(t, err2, "password verification failed")
 	assert.Equal(t, user1, profile1.ClientID)
 	assert.Equal(t, profile1, profile2)
-	assert.NotEmpty(t, profile1.UpdatedMSE)
+	assert.NotEmpty(t, profile1.UpdatedMsec)
 
 	// verify incorrect password
 	_, err = pwStore1.VerifyPassword(user1, pass2)
@@ -194,7 +194,7 @@ func TestName(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, user1, entry.ClientID)
 	assert.Equal(t, name1, entry.DisplayName)
-	assert.NotEmpty(t, entry.UpdatedMSE)
+	assert.NotEmpty(t, entry.UpdatedMsec)
 }
 
 func TestSetPasswordTwoStores(t *testing.T) {

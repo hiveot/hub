@@ -27,7 +27,7 @@ type JWTAuthenticator struct {
 //	sessionID for which this token is valid. "" to generate a new sessionID
 //	validitySec is the token validity period or 0 for default based on client type
 func (svc *JWTAuthenticator) CreateSessionToken(
-	clientID string, sessionID string, validitySec int) (string, error) {
+	clientID string, sessionID string, validitySec int) string {
 
 	// TODO: add support for nonce challenge with client pubkey
 
@@ -62,13 +62,9 @@ func (svc *JWTAuthenticator) CreateSessionToken(
 
 	// Declare the token with the algorithm used for signing, and the claims
 	claimsToken := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
-	sessionToken, err := claimsToken.SignedString(svc.signingKey.PrivateKey())
+	sessionToken, _ := claimsToken.SignedString(svc.signingKey.PrivateKey())
 
-	if err != nil {
-		return "", err
-	}
-
-	return sessionToken, nil
+	return sessionToken
 }
 
 // DecodeSessionToken verifies the given JWT token and returns its claims.
@@ -123,16 +119,13 @@ func (svc *JWTAuthenticator) DecodeSessionToken(token string, signedNonce string
 // This returns a session token or an error if failed
 func (svc *JWTAuthenticator) Login(clientID, password, sessionID string) (token string, err error) {
 
-	if svc.authnStore == nil {
-		return "", fmt.Errorf("Login: missing authnStore")
-	}
 	clientProfile, err := svc.authnStore.VerifyPassword(clientID, password)
 	_ = clientProfile
 	if err != nil {
 		return "", err
 	}
 	validitySec := clientProfile.TokenValiditySec
-	token, err = svc.CreateSessionToken(clientID, sessionID, validitySec)
+	token = svc.CreateSessionToken(clientID, sessionID, validitySec)
 	return token, err
 }
 
@@ -148,15 +141,7 @@ func (svc *JWTAuthenticator) RefreshToken(clientID string, oldToken string, vali
 	if err != nil {
 		return "", fmt.Errorf("error validating oldToken of client %s: %w", clientID, err)
 	}
-	if sessionID == "" {
-		id, _ := uuid.NewUUID()
-		sessionID = id.String()
-	}
-	token, err = svc.CreateSessionToken(clientID, sessionID, validitySec)
-	if err != nil {
-		slog.Info("RefreshToken",
-			"clientID", clientID, "err", err.Error())
-	}
+	token = svc.CreateSessionToken(clientID, sessionID, validitySec)
 	return token, err
 }
 
@@ -188,8 +173,7 @@ func NewJWTAuthenticatorFromFile(
 	signingKey, err := keys.LoadCreateKeyPair(clientID, keysDir, keyType)
 	if err != nil {
 		slog.Error("NewJWTAuthenticatorFromFile failed creating key pair for client",
-			"err", err.Error(),
-			"clientID", clientID)
+			"err", err.Error(), "clientID", clientID)
 		return nil
 	}
 	_ = err

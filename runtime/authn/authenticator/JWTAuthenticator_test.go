@@ -18,10 +18,9 @@ func TestCreateSessionToken(t *testing.T) {
 	sessionID := "session1"
 
 	signingKey := keys.NewEcdsaKey()
-	svc := authenticator.NewJWTAuthenticator(signingKey, authnStore)
+	svc := authenticator.NewJWTAuthenticator(authnStore, signingKey)
 
-	token1, err := svc.CreateSessionToken(clientID, sessionID, 100)
-	require.NoError(t, err)
+	token1 := svc.CreateSessionToken(clientID, sessionID, 100)
 	assert.NotEmpty(t, token1)
 
 	// decode it
@@ -47,10 +46,9 @@ func TestBadTokens(t *testing.T) {
 	sessionID := "session1"
 
 	signingKey := keys.NewEcdsaKey()
-	svc := authenticator.NewJWTAuthenticator(signingKey, authnStore)
+	svc := authenticator.NewJWTAuthenticator(authnStore, signingKey)
 
-	token1, err := svc.CreateSessionToken(clientID, sessionID, 100)
-	require.NoError(t, err)
+	token1 := svc.CreateSessionToken(clientID, sessionID, 100)
 	assert.NotEmpty(t, token1)
 
 	// try to refresh as a different client
@@ -61,7 +59,7 @@ func TestBadTokens(t *testing.T) {
 	assert.Empty(t, newToken)
 
 	// expired
-	token2, _ := svc.CreateSessionToken(clientID, sessionID, -100)
+	token2 := svc.CreateSessionToken(clientID, sessionID, -100)
 	cid2, sid2, err := svc.ValidateToken(token2)
 	require.Error(t, err)
 	assert.Equal(t, clientID, cid2)

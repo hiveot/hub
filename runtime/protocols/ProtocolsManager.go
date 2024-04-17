@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/protocols/httpsbinding"
+	"github.com/hiveot/hub/runtime/router"
 	"log/slog"
 )
 
@@ -17,6 +18,9 @@ type ProtocolsManager struct {
 
 	// handler for events, actions and rpc requests
 	bindings []api.IProtocolBinding
+
+	// handler to pass incoming messages to
+	handler func(tv *things.ThingMessage) ([]byte, error)
 }
 
 // AddProtocolBinding adds a protocol binding to the manager
@@ -49,9 +53,10 @@ func (svc *ProtocolsManager) SendEvent(msg *things.ThingMessage) {
 }
 
 // Start the protocol servers
-func (svc *ProtocolsManager) Start() error {
+func (svc *ProtocolsManager) Start(handler router.MessageHandler) error {
+	svc.handler = handler
 	for _, pb := range svc.bindings {
-		err := pb.Start()
+		err := pb.Start(handler)
 		if err != nil {
 			slog.Error("Protocol binding error:", "err", err)
 		}
@@ -69,14 +74,12 @@ func (svc *ProtocolsManager) Stop() {
 // NewProtocolManager creates a new instance of the protocol manager
 func NewProtocolManager(cfg *ProtocolsConfig,
 	privKey keys.IHiveKey, serverCert *tls.Certificate, caCert *x509.Certificate,
-	sessionAuth api.IAuthenticator,
-	handler func(tv *things.ThingMessage) ([]byte, error)) *ProtocolsManager {
+	sessionAuth api.IAuthenticator) *ProtocolsManager {
 
 	svc := ProtocolsManager{}
 	svc.AddProtocolBinding(
 		httpsbinding.NewHttpsBinding(&cfg.HttpsBinding,
-			privKey, serverCert, caCert,
-			sessionAuth, handler))
+			privKey, serverCert, caCert, sessionAuth))
 
 	return &svc
 }

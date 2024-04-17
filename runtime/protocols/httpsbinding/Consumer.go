@@ -69,7 +69,7 @@ func (svc *HttpsBinding) handleConsumerRemoveThing(w http.ResponseWriter, r *htt
 	args := api.RemoveThingArgs{ThingID: thingID}
 	data, _ := json.Marshal(args)
 	msg := things.NewThingMessage(
-		vocab.MessageTypeAction, api.DigiTwinServiceID, api.RemoveThingMethod,
+		vocab.MessageTypeAction, api.DigiTwinThingID, api.RemoveThingMethod,
 		data, cs.clientID)
 	svc.forwardRequest(w, msg)
 }
@@ -85,7 +85,7 @@ func (svc *HttpsBinding) handleConsumerReadThing(w http.ResponseWriter, r *http.
 	args := api.ReadThingArgs{ThingID: thingID}
 	data, _ := json.Marshal(args)
 	msg := things.NewThingMessage(
-		vocab.MessageTypeAction, api.DigiTwinServiceID, api.ReadThingMethod,
+		vocab.MessageTypeAction, api.DigiTwinThingID, api.ReadThingMethod,
 		data, cs.clientID)
 	svc.forwardRequest(w, msg)
 }

@@ -6,7 +6,7 @@ import (
 )
 
 type AuthnAdminClient struct {
-	pm api.IPostActionMessage
+	mt api.IMessageTransport
 }
 
 // AddClient adds a new client
@@ -14,29 +14,29 @@ func (svc *AuthnAdminClient) AddClient(
 	clientType api.ClientType,
 	clientID string, displayName string,
 	pubKey string, password string) (err error) {
-	req := api.AddClientArgs{
+	args := api.AddClientArgs{
 		ClientType:  clientType,
 		ClientID:    clientID,
 		DisplayName: displayName,
 		PubKey:      pubKey,
 		Password:    password,
 	}
-	err = svc.pm(api.AuthnAdminServiceID, api.AddClientMethod, req, nil)
+	err = svc.mt(api.AuthnAdminThingID, api.AddClientMethod, &args, nil)
 	return err
 }
 
 // GetClientProfile request a client's profile
 func (svc *AuthnAdminClient) GetClientProfile(clientID string) (api.ClientProfile, error) {
-	req := api.GetClientProfileArgs{ClientID: clientID}
+	args := api.GetClientProfileArgs{ClientID: clientID}
 	resp := api.GetProfileResp{}
-	err := svc.pm(api.AuthnAdminServiceID, api.GetClientProfileMethod, req, &resp)
+	err := svc.mt(api.AuthnAdminThingID, api.GetClientProfileMethod, &args, &resp)
 	return resp.Profile, err
 }
 
 // GetProfiles request the list of known client profiles
 func (svc *AuthnAdminClient) GetProfiles() ([]api.ClientProfile, error) {
 	resp := api.GetProfilesResp{}
-	err := svc.pm(api.AuthnAdminServiceID, api.GetProfilesMethod, nil, &resp)
+	err := svc.mt(api.AuthnAdminThingID, api.GetProfilesMethod, nil, &resp)
 	return resp.Profiles, err
 }
 
@@ -44,26 +44,26 @@ func (svc *AuthnAdminClient) GetProfiles() ([]api.ClientProfile, error) {
 // After removal the client is no longer able to login.
 // Existing login tokens remain valid until they expire
 func (svc *AuthnAdminClient) RemoveClient(clientID string) error {
-	req := api.RemoveClientArgs{ClientID: clientID}
-	err := svc.pm(api.AuthnAdminServiceID, api.RemoveClientMethod, req, nil)
+	args := api.RemoveClientArgs{ClientID: clientID}
+	err := svc.mt(api.AuthnAdminThingID, api.RemoveClientMethod, &args, nil)
 	return err
 }
 
 // UpdateClientProfile request update of a client's profile
 func (svc *AuthnAdminClient) UpdateClientProfile(profile api.ClientProfile) error {
 	args := api.UpdateClientProfileArgs{Profile: profile}
-	err := svc.pm(api.AuthnAdminServiceID, api.UpdateClientProfileMethod, args, nil)
+	err := svc.mt(api.AuthnAdminThingID, api.UpdateClientProfileMethod, &args, nil)
 	return err
 }
 
 // UpdateClientPassword request update of a client's password
 func (svc *AuthnAdminClient) UpdateClientPassword(clientID string, password string) error {
 	args := api.UpdateClientPasswordArgs{ClientID: clientID, Password: password}
-	err := svc.pm(api.AuthnAdminServiceID, api.UpdateClientPasswordMethod, args, nil)
+	err := svc.mt(api.AuthnAdminThingID, api.UpdateClientPasswordMethod, &args, nil)
 	return err
 }
 
-func NewAuthnAdminClient(pm api.IPostActionMessage) *AuthnAdminClient {
-	cl := AuthnAdminClient{pm: pm}
+func NewAuthnAdminClient(mt api.IMessageTransport) *AuthnAdminClient {
+	cl := AuthnAdminClient{mt: mt}
 	return &cl
 }

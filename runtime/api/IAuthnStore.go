@@ -52,7 +52,7 @@ type IAuthnStore interface {
 	// UpdateProfile updates client profile
 	// If the clientID doesn't exist, this returns an error.
 	// This fails if the client doesn't exist.
-	UpdateProfile(clientID string, entry ClientProfile) error
+	UpdateProfile(clientID string, profile ClientProfile) error
 
 	// VerifyPassword verifies the given password against the stored hash
 	// Returns the client profile and an error if the verification fails.

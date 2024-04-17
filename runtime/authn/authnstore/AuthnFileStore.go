@@ -58,7 +58,7 @@ func (store *AuthnFileStore) Add(clientID string, profile api.ClientProfile) err
 		slog.Info("Add: Updating existing client", slog.String("clientID", clientID))
 		entry.ClientProfile = profile
 	}
-	entry.UpdatedMSE = time.Now().UnixMilli()
+	entry.UpdatedMsec = time.Now().UnixMilli()
 
 	store.entries[clientID] = entry
 
@@ -216,18 +216,6 @@ func (store *AuthnFileStore) save() error {
 	return err
 }
 
-// SetRole changes the client's default role
-func (store *AuthnFileStore) SetRole(clientID string, role string) error {
-	entry, found := store.entries[clientID]
-	if !found {
-		return fmt.Errorf("SetRole: Client '%s' not found", clientID)
-	}
-	entry.Role = role
-	store.entries[clientID] = entry
-	err := store.save()
-	return err
-}
-
 // SetPassword generates and stores the user's password hash.
 //
 // The hash used is argon2id or bcrypt based on the 'hashAlgo' setting.
@@ -268,10 +256,22 @@ func (store *AuthnFileStore) SetPasswordHash(loginID string, hash string) (err e
 		return fmt.Errorf("Client '%s' not found", loginID)
 	}
 	entry.PasswordHash = hash
-	entry.UpdatedMSE = time.Now().UnixMilli()
+	entry.UpdatedMsec = time.Now().UnixMilli()
 	store.entries[loginID] = entry
 
 	err = store.save()
+	return err
+}
+
+// SetRole changes the client's default role
+func (store *AuthnFileStore) SetRole(clientID string, role string) error {
+	entry, found := store.entries[clientID]
+	if !found {
+		return fmt.Errorf("SetRole: Client '%s' not found", clientID)
+	}
+	entry.Role = role
+	store.entries[clientID] = entry
+	err := store.save()
 	return err
 }
 
@@ -305,7 +305,7 @@ func (store *AuthnFileStore) UpdateProfile(senderID string, profile api.ClientPr
 	if profile.PubKey != "" {
 		entry.PubKey = profile.PubKey
 	}
-	entry.UpdatedMSE = time.Now().UnixMilli()
+	entry.UpdatedMsec = time.Now().UnixMilli()
 	store.entries[profile.ClientID] = entry
 
 	err := store.save()

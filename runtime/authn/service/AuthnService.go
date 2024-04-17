@@ -11,18 +11,18 @@ type AuthnService struct {
 	SessionAuth api.IAuthenticator
 	AuthnStore  api.IAuthnStore
 	AdminSvc    *AuthnAdminService
-	ClientSvc   *AuthnClientService
+	UserSvc     *AuthnUserService
 }
 
 // Start the Authentication admin and client services
 // This opens the authentication data store and starts the services.
 func (svc *AuthnService) Start() error {
 	err := svc.AuthnStore.Open()
-	//svc.SessionAuth = authenticator.NewJWTAuthenticator(svc.AuthnStore, signingKey)
 	if err == nil {
 		err = svc.AdminSvc.Start()
 		if err == nil {
-			svc.ClientSvc = NewAuthnClientService(svc.AuthnStore, svc.SessionAuth)
+			svc.UserSvc = NewAuthnUserService(svc.AuthnStore, svc.SessionAuth)
+			err = svc.UserSvc.Start()
 		}
 	}
 	return err
@@ -31,21 +31,22 @@ func (svc *AuthnService) Start() error {
 // Stop the authentication service and close the store
 func (svc *AuthnService) Stop() {
 	svc.AdminSvc.Stop()
-	//svc.ClientSvc.Stop() // n/a
+	svc.UserSvc.Stop()
 	svc.AuthnStore.Close()
 }
 
 // NewAuthnService creates an instance of the authentication services
-// The 'AdminSvc' and 'ClientSvc' can be used directly.
+// The 'AdminSvc' and 'UserSvc' can be used directly.
 func NewAuthnService(
 	cfg *authn.AuthnConfig,
 	authnStore api.IAuthnStore,
 	sessionAuth api.IAuthenticator) *AuthnService {
 
 	svc := &AuthnService{
-		AuthnStore: authnStore,
-		AdminSvc:   NewAuthnAdminService(cfg, authnStore, sessionAuth),
-		ClientSvc:  nil, // set on start
+		AuthnStore:  authnStore,
+		SessionAuth: sessionAuth,
+		AdminSvc:    NewAuthnAdminService(cfg, authnStore, sessionAuth),
+		UserSvc:     nil, // set on start
 	}
 	return svc
 }

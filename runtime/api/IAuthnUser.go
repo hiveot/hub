@@ -1,7 +1,7 @@
 package api
 
-// AuthnClientServiceID contains the ThingID of the authentication client service
-const AuthnClientServiceID = "authnClient"
+// AuthnUserThingID contains the ThingID of the authentication user service
+const AuthnUserThingID = "authn:user"
 
 // client methods
 const (
@@ -52,7 +52,7 @@ type ClientProfile struct {
 	// The client's PEM encoded public key
 	PubKey string `json:"pubKey,omitempty"`
 	// timestamp in 'Millisec-Since-Epoc' the entry was last updated
-	UpdatedMSE int64 `json:"updatedMSE,omitempty"`
+	UpdatedMsec int64 `json:"updatedMsec,omitempty"`
 	// TokenValidityDays nr of seconds that issued JWT tokens are valid for or 0 for default
 	TokenValiditySec int `json:"tokenValiditySec,omitempty"`
 }
@@ -80,7 +80,6 @@ type GetProfileResp struct {
 
 // RefreshTokenArgs arguments for requesting a new user login token
 type RefreshTokenArgs struct {
-	ClientID string `json:"clientID"`
 	OldToken string `json:"oldToken"`
 }
 
@@ -91,18 +90,15 @@ type RefreshTokenResp struct {
 
 // UpdateNameArgs arguments for requesting a user name update
 type UpdateNameArgs struct {
-	ClientID string `json:"clientID"`
-	NewName  string `json:"newName"`
+	NewName string `json:"newName"`
 }
 
 // UpdatePasswordArgs arguments for requesting a user password update
 type UpdatePasswordArgs struct {
-	ClientID    string `json:"clientID"`
 	NewPassword string `json:"newPassword"`
 }
 
 // UpdatePubKeyArgs arguments for updating a public key in pem format
 type UpdatePubKeyArgs struct {
-	ClientID  string `json:"clientID"`
 	PubKeyPem string `json:"pubKeyPem"`
 }

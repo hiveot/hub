@@ -11,7 +11,7 @@ type IAuthenticator interface {
 
 	// CreateSessionToken creates a signed session token for a client.
 	// If no sessionID is provided then one will be generated.
-	CreateSessionToken(clientID, sessionID string, validitySec int) (token string, err error)
+	CreateSessionToken(clientID, sessionID string, validitySec int) (token string)
 
 	// RefreshToken the session token and retain its session ID
 	RefreshToken(clientID string, oldToken string, validitySec int) (newToken string, err error)

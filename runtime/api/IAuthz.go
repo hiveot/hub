@@ -1,14 +1,14 @@
 // Package authz with authorization definitions
 package api
 
-const AuthzServiceID = "authz"
+const AuthzThingID = "authz"
 
 const DefaultAclFilename = "authz.acl"
 
 // supported methods for authz service
 const (
-	AuthzGetClientRoleMethod = "getClientRole"
-	AuthzSetClientRoleMethod = "setClientRole"
+	GetClientRoleMethod = "getClientRole"
+	SetClientRoleMethod = "setClientRole"
 )
 
 // Predefined user roles.
@@ -66,4 +66,26 @@ type RolePermission struct {
 	AllowPub bool
 	// allow subscribing to this message
 	AllowSub bool
+}
+
+type GetClientRoleArgs struct {
+	ClientID string `json:"clientID"`
+}
+
+type GetClientRoleResp struct {
+	ClientID string `json:"clientID"`
+	Role     string `json:"role"`
+}
+
+type SetClientRoleArgs struct {
+	ClientID string `json:"clientID"`
+	Role     string `json:"role"`
+}
+
+type CreateRoleArgs struct {
+	Role string `json:"role"`
+}
+
+type DeleteRoleArgs struct {
+	Role string `json:"role"`
 }

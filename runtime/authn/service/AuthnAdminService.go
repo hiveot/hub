@@ -87,14 +87,12 @@ func (svc *AuthnAdminService) AddClientWithTokenFile(
 		err = svc.AddClient(clientType, clientID, displayName, kp.ExportPublic(), "")
 	}
 	if err == nil {
-		authToken, err2 := svc.sessionAuth.CreateSessionToken(clientID, "", validitySec)
-		err = err2
-		if err == nil {
-			// remove the readonly token file if it exists, to be able to overwrite
-			tokenFile := path.Join(svc.cfg.KeysDir, clientID+hubclient.TokenFileExt)
-			_ = os.Remove(tokenFile)
-			err = os.WriteFile(tokenFile, []byte(authToken), 0400)
-		}
+		authToken := svc.sessionAuth.CreateSessionToken(clientID, "", validitySec)
+
+		// remove the readonly token file if it exists, to be able to overwrite
+		tokenFile := path.Join(svc.cfg.KeysDir, clientID+hubclient.TokenFileExt)
+		_ = os.Remove(tokenFile)
+		err = os.WriteFile(tokenFile, []byte(authToken), 0400)
 	}
 	return err
 }
@@ -118,36 +116,6 @@ func (svc *AuthnAdminService) GetProfiles() ([]api.ClientProfile, error) {
 	return profiles, err
 }
 
-// LoadCreateKeyPair loads a public/private key pair from file or create it if it doesn't exist
-// This will load or create a file <clientID>.key and <clientID>.pub from the keysDir.
-//
-//	clientID is the client to create the keys for
-//	keysDir is the location of the key file
-//func (svc *AuthnAdminService) LoadCreateKeyPair(clientID, keysDir string) (kp keys.IHiveKey, err error) {
-//	if keysDir == "" {
-//		return nil, fmt.Errorf("certs directory must be provided")
-//	}
-//
-//	keyFile := path.Join(keysDir, clientID+hubclient.KPFileExt)
-//	pubFile := path.Join(keysDir, clientID+hubclient.PubKeyFileExt)
-//
-//	// load key from file
-//	kp, err = keys.NewKeyFromFile(keyFile)
-//
-//	if err != nil {
-//		// no keyfile, create the key
-//		kp = keys.NewKey(svc.cfg.DefaultKeyType)
-//
-//		// save the key for future use
-//		err = kp.ExportPrivateToFile(keyFile)
-//		if err == nil {
-//			err = kp.ExportPublicToFile(pubFile)
-//		}
-//	}
-//
-//	return kp, err
-//}
-
 // RemoveClient removes a client and disables authentication
 func (svc *AuthnAdminService) RemoveClient(clientID string) error {
 	slog.Info("RemoveClient", "clientID", clientID)
@@ -160,19 +128,6 @@ func (svc *AuthnAdminService) RemoveClient(clientID string) error {
 // This creates accounts for the admin user and launcher if they don't exist.
 func (svc *AuthnAdminService) Start() error {
 	slog.Info("starting AuthnAdminService")
-	//err = svc.authnStore.Open()
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	// before being able to connect, the AuthService and its key must be known
-	// auth service key is in-memory only
-	//svc.signingKey, err = svc.LoadCreateKeyPair(api.AuthnAdminServiceID, svc.cfg.KeysDir)
-	//
-	//if err != nil {
-	//	return nil, err
-	//}
-	//svc.sessionAuth = authenticator.NewJWTAuthenticator(svc.signingKey, svc.authnStore)
 
 	// ensure the password hash algo is valid
 	if svc.cfg.Encryption != authn.PWHASH_BCRYPT && svc.cfg.Encryption != authn.PWHASH_ARGON2id {
@@ -241,22 +196,3 @@ func NewAuthnAdminService(
 	}
 	return authnSvc
 }
-
-// StartAuthnAdminService creates and launch the authn administration service
-// with the given config. This creates a password store using the config file
-// and password encryption method.
-// To shut down, stop the service first then close the store.
-//func StartAuthnAdminService(
-//	cfg *authn.AuthnConfig, caCert *x509.Certificate) (
-//	*AuthnAdminService, api.IAuthnStore, api.IAuthenticator, error) {
-//
-//	// nats requires bcrypt passwords
-//	authnStore := authnstore.NewAuthnFileStore(cfg.PasswordFile, cfg.Encryption)
-//	err := authnStore.Open()
-//	if err != nil {
-//		return nil, nil, nil, err
-//	}
-//	authnSvc := NewAuthnAdminService(cfg, authnStore, caCert)
-//	sessionAuth, err := authnSvc.Start()
-//	return authnSvc, authnStore, sessionAuth, err
-//}

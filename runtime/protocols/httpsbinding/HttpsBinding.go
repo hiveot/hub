@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/router"
 	"github.com/hiveot/hub/runtime/tlsserver"
 	"log/slog"
 	"net/http"
@@ -113,8 +114,9 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 }
 
 // Start the https server and listen for incoming connection requests
-func (svc *HttpsBinding) Start() error {
+func (svc *HttpsBinding) Start(handler router.MessageHandler) error {
 	slog.Info("Starting HttpsBinding")
+	svc.handleMessage = handler
 	svc.createRoutes(svc.router)
 	err := svc.httpServer.Start()
 	return err
@@ -139,19 +141,17 @@ func NewHttpsBinding(config *HttpsBindingConfig,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	sessionAuth api.IAuthenticator,
-	handler func(tv *things.ThingMessage) ([]byte, error),
 ) *HttpsBinding {
 
 	httpServer, router := tlsserver.NewTLSServer(
 		config.Host, uint(config.Port), serverCert, caCert)
 
 	svc := HttpsBinding{
-		sessionAuth:   sessionAuth,
-		config:        config,
-		privKey:       privKey,
-		httpServer:    httpServer,
-		handleMessage: handler,
-		router:        router,
+		sessionAuth: sessionAuth,
+		config:      config,
+		privKey:     privKey,
+		httpServer:  httpServer,
+		router:      router,
 	}
 	return &svc
 }

@@ -1,7 +1,7 @@
 package api
 
-// AuthnAdminServiceID is the ThingID of the admin service
-const AuthnAdminServiceID = "authnAdmin"
+// AuthnAdminThingID is the ThingID of the authentication admin service
+const AuthnAdminThingID = "authn:admin"
 
 // admin methods
 const (

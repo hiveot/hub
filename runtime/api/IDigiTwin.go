@@ -2,8 +2,12 @@ package api
 
 import "github.com/hiveot/hub/lib/things"
 
-// DigiTwinServiceID digitwin service identifier
-const DigiTwinServiceID = "digitwin"
+// DigiTwinThingID digitwin thing identifier for addressing using things
+const DigiTwinThingID = "digitwin"
+
+// DigiTwinAgentID agent identifier for authentication
+// (not used as this service is the hearth of the runtime.)
+//const DigiTwinAgentID = "digitwin"
 
 // Methods for accessing Thing description documents
 const (

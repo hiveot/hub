@@ -33,8 +33,8 @@ type DummyAuthenticator struct{}
 func (d *DummyAuthenticator) Login(clientID string, password string, sessionID string) (token string, err error) {
 	return testToken, nil
 }
-func (d *DummyAuthenticator) CreateSessionToken(clientID, sessionID string, validitySec int) (token string, err error) {
-	return testToken, nil
+func (d *DummyAuthenticator) CreateSessionToken(clientID, sessionID string, validitySec int) (token string) {
+	return testToken
 }
 
 func (d *DummyAuthenticator) RefreshToken(clientID string, oldToken string, validitySec int) (newToken string, err error) {
@@ -66,10 +66,10 @@ func TestStartStop(t *testing.T) {
 	svc := httpsbinding.NewHttpsBinding(&config,
 		certBundle.ClientKey, certBundle.ServerCert, certBundle.CaCert,
 		dummyAuthenticator,
-		func(tv *thing.ThingMessage) ([]byte, error) {
-			return nil, nil
-		})
-	err := svc.Start()
+	)
+	err := svc.Start(func(tv *thing.ThingMessage) ([]byte, error) {
+		return nil, nil
+	})
 	assert.NoError(t, err)
 	svc.Stop()
 }
@@ -87,13 +87,12 @@ func TestPubEvent(t *testing.T) {
 	config.Port = testPort
 	svc := httpsbinding.NewHttpsBinding(&config,
 		certBundle.ServerKey, certBundle.ServerCert, certBundle.CaCert,
-		dummyAuthenticator,
-		func(tv *thing.ThingMessage) ([]byte, error) {
-			assert.Equal(t, vocab.MessageTypeEvent, tv.MessageType)
-			rxMsg = tv
-			return nil, nil
-		})
-	err := svc.Start()
+		dummyAuthenticator)
+	err := svc.Start(func(tv *thing.ThingMessage) ([]byte, error) {
+		assert.Equal(t, vocab.MessageTypeEvent, tv.MessageType)
+		rxMsg = tv
+		return nil, nil
+	})
 	require.NoError(t, err)
 	defer svc.Stop()
 

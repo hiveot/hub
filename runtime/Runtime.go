@@ -10,7 +10,6 @@ import (
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn"
-	"github.com/hiveot/hub/runtime/authn/authnsrv"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/service"
 	"github.com/hiveot/hub/runtime/authz"
@@ -94,10 +93,10 @@ func StartAuthnSvc(
 	authStore := authnstore.NewAuthnFileStore(cfg.PasswordFile, cfg.Encryption)
 	svc = service.NewAuthnService(cfg, authStore, sessionAuth)
 	err = svc.Start()
-	adminMsgHandler := authnsrv.NewAuthnAdminSrv(svc.AdminSvc)
-	clientMsgHandler := authnsrv.NewAuthnClientSrv(svc.ClientSvc)
-	r.AddServiceHandler(api.AuthnAdminServiceID, adminMsgHandler.HandleMessage)
-	r.AddServiceHandler(api.AuthnClientServiceID, clientMsgHandler.HandleMessage)
+	adminMsgHandler := authnhandler.NewAuthnAdminSrv(svc.AdminSvc)
+	clientMsgHandler := authnhandler.NewAuthnUserHandler(svc.UserSvc)
+	r.AddServiceHandler(api.AuthnAdminThingID, adminMsgHandler.HandleMessage)
+	r.AddServiceHandler(api.AuthnUserThingID, clientMsgHandler.HandleMessage)
 	return svc, err
 }
 
@@ -125,7 +124,7 @@ func StartDigiTwinSvc(storesDir string, r *router.MessageRouter) (*service3.Digi
 	svc := service3.NewDigiTwinService(store)
 	err = svc.Start()
 	msgHandler := digitwinsrv.NewDigiTwinSrv(svc)
-	r.AddServiceHandler(api.DigiTwinServiceID, msgHandler.HandleMessage)
+	r.AddServiceHandler(api.DigiTwinThingID, msgHandler.HandleMessage)
 	return svc, err
 }
 

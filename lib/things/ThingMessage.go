@@ -4,14 +4,7 @@ import (
 	"time"
 )
 
-// ThingMessage holds a value and metadata of an event, action, config or rpc message.
-//
-//	{
-//	   "thingID": {string},
-//	   "name": {string},
-//	   "data": [{byte array}],
-//	   "created": {int64},   // msec since epoc
-//	}
+// ThingMessage holds an event or action received from agents, services or end-users.
 type ThingMessage struct {
 	// ThingID of the thing this value applies to.
 	// This is required.
@@ -31,9 +24,8 @@ type ThingMessage struct {
 	// SequenceNr nr of the message from its sender. Intended to detect duplicates and prevent replay attacks.
 	SequenceNr int64 `json:"sequenceNr,omitempty"`
 
-	// SenderID is the account ID of the sender of the value.
-	// This is used in authorization of the sender.
-	// TODO: For security reasons this field is empty if the user reading this value has insufficient permissions.
+	// SenderID is the account ID of the agent, service or user sending the message.
+	// This is used in authorization of the sender and routing of messages.
 	SenderID string `json:"senderID"`
 
 	// Type of message this value was sent as: (MessageTypeEvent, MessageTypeAction, MessageTypeConfig, MessageTypeRPC...)

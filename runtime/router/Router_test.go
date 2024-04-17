@@ -26,7 +26,7 @@ func TestHandleAction(t *testing.T) {
 	r := router.NewMessageRouter(&cfg)
 
 	// this handler returns the uppercase text
-	r.AddMessageHandler(vocab.MessageTypeAction, serviceID, methodID,
+	r.AddServiceHandler(serviceID,
 		func(tv *things.ThingMessage) ([]byte, error) {
 			upper := strings.ToUpper(string(tv.Data))
 			return []byte(upper), nil
@@ -52,7 +52,7 @@ func TestHandleEvent(t *testing.T) {
 		mwh2Count++
 		return tv, nil
 	})
-	r.AddMessageHandler(vocab.MessageTypeEvent, "", "",
+	r.AddServiceHandler("",
 		func(tv *things.ThingMessage) ([]byte, error) {
 			return tv.Data, nil
 		})
@@ -68,7 +68,7 @@ func TestBadMessageType(t *testing.T) {
 	cfg := router.NewRouterConfig()
 	r := router.NewMessageRouter(&cfg)
 
-	r.AddMessageHandler(vocab.MessageTypeEvent, "", "",
+	r.AddServiceHandler("",
 		func(tv *things.ThingMessage) ([]byte, error) {
 			return tv.Data, nil
 		})
@@ -84,9 +84,10 @@ func TestMiddlewareError(t *testing.T) {
 	r.AddMiddlewareHandler(func(tv *things.ThingMessage) (*things.ThingMessage, error) {
 		return tv, fmt.Errorf("middleware rejects message")
 	})
-	r.AddMessageHandler(vocab.MessageTypeEvent, "", "", func(tv *things.ThingMessage) ([]byte, error) {
-		return tv.Data, nil
-	})
+	r.AddServiceHandler("",
+		func(tv *things.ThingMessage) ([]byte, error) {
+			return tv.Data, nil
+		})
 	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", []byte("data"), "sender1")
 	_, err := r.HandleMessage(tv1)
 	assert.Error(t, err)
@@ -96,9 +97,10 @@ func TestHandlerError(t *testing.T) {
 	cfg := router.NewRouterConfig()
 	r := router.NewMessageRouter(&cfg)
 
-	r.AddMessageHandler(vocab.MessageTypeEvent, "", "", func(tv *things.ThingMessage) ([]byte, error) {
-		return tv.Data, fmt.Errorf("handler returns error")
-	})
+	r.AddServiceHandler("",
+		func(tv *things.ThingMessage) ([]byte, error) {
+			return tv.Data, fmt.Errorf("handler returns error")
+		})
 	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", []byte("data"), "sender1")
 	_, err := r.HandleMessage(tv1)
 	assert.Error(t, err)

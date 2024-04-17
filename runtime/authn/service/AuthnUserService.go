@@ -7,8 +7,9 @@ import (
 	"log/slog"
 )
 
-// AuthnClientService handles authentication and authorization of the current client
-type AuthnClientService struct {
+// AuthnUserService handles authentication and authorization of regular users
+// such as agents, services and end-users.
+type AuthnUserService struct {
 	authnStore api.IAuthnStore
 	caCert     *x509.Certificate
 
@@ -22,61 +23,55 @@ type AuthnClientService struct {
 }
 
 // GetProfile returns a client's profile
-func (svc *AuthnClientService) GetProfile(clientID string) (api.ClientProfile, error) {
+func (svc *AuthnUserService) GetProfile(clientID string) (api.ClientProfile, error) {
 
 	entry, err := svc.authnStore.GetProfile(clientID)
 	return entry, err
 }
 
-//
-//// Start the authentication service.
-//// The provided user store must be opened first.
-//// This creates accounts for the admin user and launcher if they don't exist.
-//func (svc *AuthnClientService) Start() error {
-//	slog.Info("starting AuthnService")
-//
-//	//// before being able to connect, the AuthService and its key must be known
-//	//// auth service key is in-memory only
-//	//svc.signingKey, err = svc.LoadCreateKeyPair(api.AuthnClientServiceID, svc.cfg.KeysDir)
-//	//
-//	//if err != nil {
-//	//	return nil, err
-//	//}
-//	//svc.sessionAuth = authenticator.NewJWTAuthenticator(svc.signingKey, svc.authnStore)
-//
-//	// ensure the password hash algo is valid
-//	//if svc.cfg.Encryption != authn.PWHASH_BCRYPT && svc.cfg.Encryption != authn.PWHASH_ARGON2id {
-//	//	return fmt.Errorf("Start: Invalid password hash algo: %s", svc.cfg.Encryption)
-//	//}
-//
-//	return svc.sessionAuth, err
-//}
+// Start the user facing authentication service.
+func (svc *AuthnUserService) Start() error {
+	slog.Info("starting AuthnService")
+	return nil
+}
 
 // Stop the service, unsubscribe and disconnect from the server
-//func (svc *AuthnClientService) Stop() {
-//	slog.Info("Stopping AuthnService")
-//}
+func (svc *AuthnUserService) Stop() {
+	slog.Info("Stopping AuthnUserService")
+}
 
 // Login and return a session token
-func (svc *AuthnClientService) Login(
+func (svc *AuthnUserService) Login(
 	clientID string, password string, sessionID string) (token string, err error) {
 	token, err = svc.sessionAuth.Login(clientID, password, sessionID)
 	return token, err
 }
 
 // RefreshToken requests a new token based on the old token
-func (svc *AuthnClientService) RefreshToken(clientID string, oldToken string) (newToken string, err error) {
+func (svc *AuthnUserService) RefreshToken(clientID string, oldToken string) (newToken string, err error) {
 	prof, err := svc.authnStore.GetProfile(clientID)
 	newToken, err = svc.sessionAuth.RefreshToken(clientID, oldToken, prof.TokenValiditySec)
 	return newToken, err
 }
 
 // ValidateToken verifies that the given token is valid
-func (svc *AuthnClientService) ValidateToken(token string) (clientID string, sessionID string, err error) {
+func (svc *AuthnUserService) ValidateToken(token string) (clientID string, sessionID string, err error) {
 	return svc.sessionAuth.ValidateToken(token)
 }
 
-func (svc *AuthnClientService) UpdatePassword(clientID string, password string) error {
+func (svc *AuthnUserService) UpdateName(clientID string, newName string) error {
+	slog.Info("UpdateName", "clientID", clientID, "newName", newName)
+	prof, err := svc.authnStore.GetProfile(clientID)
+	if err == nil {
+		prof.DisplayName = newName
+		err = svc.authnStore.UpdateProfile(clientID, prof)
+	}
+	if err != nil {
+		slog.Error("Failed changing password", "clientID", clientID, "err", err.Error())
+	}
+	return err
+}
+func (svc *AuthnUserService) UpdatePassword(clientID string, password string) error {
 	slog.Info("SetClientPassword", "clientID", clientID)
 	err := svc.authnStore.SetPassword(clientID, password)
 	if err != nil {
@@ -84,7 +79,7 @@ func (svc *AuthnClientService) UpdatePassword(clientID string, password string) 
 	}
 	return err
 }
-func (svc *AuthnClientService) UpdatePubKey(clientID string, pubKey string) error {
+func (svc *AuthnUserService) UpdatePubKey(clientID string, pubKey string) error {
 	slog.Info("UpdatePubKey", "clientID", clientID)
 	prof, err := svc.authnStore.GetProfile(clientID)
 	if err == nil {
@@ -97,7 +92,7 @@ func (svc *AuthnClientService) UpdatePubKey(clientID string, pubKey string) erro
 	return err
 }
 
-// NewAuthnClientService creates an end-user authentication service instance for
+// NewAuthnUserService creates an end-user authentication service instance for
 // logging in and managing a user's own profile. This service is accessible by any
 // client.
 // This service works in conjunction with the authentication store and the
@@ -109,11 +104,11 @@ func (svc *AuthnClientService) UpdatePubKey(clientID string, pubKey string) erro
 //
 //	authnStore is the client and credentials store. Must be opened before starting this service.
 //	sessionAuth is the authenticator returned by the admin service.
-func NewAuthnClientService(
+func NewAuthnUserService(
 	authnStore api.IAuthnStore,
-	sessionAuth api.IAuthenticator) *AuthnClientService {
+	sessionAuth api.IAuthenticator) *AuthnUserService {
 
-	authnSvc := &AuthnClientService{
+	authnSvc := &AuthnUserService{
 		authnStore:  authnStore,
 		sessionAuth: sessionAuth,
 	}

@@ -18,7 +18,7 @@ func (svc *HttpsBinding) handleAgentDeleteThing(w http.ResponseWriter, r *http.R
 	}
 	args := api.RemoveThingArgs{ThingID: thingID}
 	data, _ := json.Marshal(args)
-	msg := things.NewThingMessage(vocab.MessageTypeAction, api.DigiTwinServiceID, api.RemoveThingMethod,
+	msg := things.NewThingMessage(vocab.MessageTypeAction, api.DigiTwinThingID, api.RemoveThingMethod,
 		data, cs.clientID)
 	svc.forwardRequest(w, msg)
 }
@@ -32,7 +32,7 @@ func (svc *HttpsBinding) handleAgentGetActions(w http.ResponseWriter, r *http.Re
 	keys := []string{}
 	args := api.ReadActionsArgs{ThingID: thingID, Keys: keys}
 	data, _ := json.Marshal(args)
-	msg := things.NewThingMessage(vocab.MessageTypeAction, api.DigiTwinServiceID, api.ReadActionsMethod,
+	msg := things.NewThingMessage(vocab.MessageTypeAction, api.DigiTwinThingID, api.ReadActionsMethod,
 		data, cs.clientID)
 	svc.forwardRequest(w, msg)
 }

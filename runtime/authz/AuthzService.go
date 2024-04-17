@@ -98,8 +98,8 @@ func (svc *AuthzService) HasPermission(clientID string, messageType string, isPu
 	return false
 }
 
-// SetRole sets the role of a client in the authz store
-func (svc *AuthzService) SetRole(clientID string, role string) error {
+// SetClientRole sets the role of a client in the authz store
+func (svc *AuthzService) SetClientRole(clientID string, role string) error {
 	return svc.authnStore.SetRole(clientID, role)
 }
 
