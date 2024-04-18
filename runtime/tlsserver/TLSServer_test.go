@@ -27,6 +27,7 @@ func TestMain(m *testing.M) {
 	// serverAddress = hubnet.GetOutboundIP("").String()
 	// use the localhost interface for testing
 	serverAddress = "127.0.0.1"
+
 	// hostnames := []string{serverAddress}
 	clientHostPort = fmt.Sprintf("%s:%d", serverAddress, serverPort)
 
@@ -61,8 +62,11 @@ func TestNoAuth(t *testing.T) {
 	path1Hit := 0
 	srv, router := tlsserver.NewTLSServer(serverAddress, serverPort,
 		testCerts.ServerCert, testCerts.CaCert)
-	_ = router
 	router.Get(path1, func(w http.ResponseWriter, req *http.Request) {
+		// expect no bearer token
+		bearerToken, err := tlsserver.GetBearerToken(req)
+		assert.Error(t, err)
+		assert.Empty(t, bearerToken)
 		slog.Info("TestNoAuth: path1 hit")
 		path1Hit++
 	})
@@ -76,6 +80,55 @@ func TestNoAuth(t *testing.T) {
 	_, err = cl.Get(path1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, path1Hit)
+
+	cl.Close()
+	srv.Stop()
+}
+
+func TestTokenAuth(t *testing.T) {
+	path1 := "/test1"
+	path1Hit := 0
+	loginID1 := "user1"
+	token1 := "abcd"
+
+	// setup server and client environment
+	srv, router := tlsserver.NewTLSServer(serverAddress, serverPort,
+		testCerts.ServerCert, testCerts.CaCert)
+	//srv.EnableBasicAuth(func(userID, password string) bool {
+	//	path1Hit++
+	//	return userID == loginID1 && password == password1
+	//})
+	router.Get(path1, func(w http.ResponseWriter, req *http.Request) {
+		// expect a bearer token
+		bearerToken, err := tlsserver.GetBearerToken(req)
+		assert.NoError(t, err)
+		if bearerToken == token1 {
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+		}
+		slog.Info("TestBearerAuth: path1 hit")
+		path1Hit++
+	})
+	err := srv.Start()
+	assert.NoError(t, err)
+
+	// create a client and login
+	cl := tlsclient.NewTLSClient(clientHostPort, testCerts.CaCert)
+	assert.NoError(t, err)
+	cl.ConnectWithToken(loginID1, token1)
+
+	// test the auth with a GET request
+	_, err = cl.Get(path1)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, path1Hit)
+
+	// test a failed login
+	cl.Close()
+	cl.ConnectWithToken(loginID1, "wrongpassword")
+	_, err = cl.Get(path1)
+	assert.Error(t, err)
+	assert.Equal(t, 2, path1Hit) // should not increase
 
 	cl.Close()
 	srv.Stop()
@@ -220,46 +273,3 @@ func TestBadPort(t *testing.T) {
 	err := srv.Start()
 	assert.Error(t, err)
 }
-
-//
-//// Test BASIC authentication
-//func TestBasicAuth(t *testing.T) {
-//	path1 := "/test1"
-//	path1Hit := 0
-//	loginID1 := "user1"
-//	password1 := "user1pass"
-//
-//	// setup server and client environment
-//	srv := tlsserver.NewTLSServer(serverAddress, serverPort,
-//		testCerts.ServerCert, testCerts.CaCert)
-//	srv.EnableBasicAuth(func(userID, password string) bool {
-//		path1Hit++
-//		return userID == loginID1 && password == password1
-//	})
-//	err := srv.Start()
-//	assert.NoError(t, err)
-//	//
-//	srv.AddHandler(path1, func(string, http.ResponseWriter, *http.Request) {
-//		slog.Info("TestBasicAuth: path1 hit")
-//		path1Hit++
-//	})
-//	//
-//	cl := tlsclient.NewTLSClient(clientHostPort, testCerts.CaCert)
-//	assert.NoError(t, err)
-//	cl.ConnectWithBasicAuth(loginID1, password1)
-//
-//	// test the auth with a GET request
-//	_, err = cl.Get(path1)
-//	assert.NoError(t, err)
-//	assert.Equal(t, 2, path1Hit)
-//
-//	// test a failed login
-//	cl.Close()
-//	cl.ConnectWithBasicAuth(loginID1, "wrongpassword")
-//	_, err = cl.Get(path1)
-//	assert.Error(t, err)
-//	assert.Equal(t, 3, path1Hit) // should not increase
-//
-//	cl.Close()
-//	srv.Stop()
-//}

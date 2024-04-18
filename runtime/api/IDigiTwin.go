@@ -14,6 +14,7 @@ const (
 	ReadThingMethod   = "readThing"
 	ReadThingsMethod  = "readThings"
 	RemoveThingMethod = "removeThing"
+	//QueryThingMethod  = "queryThing"    // todo
 )
 
 // Methods for accessing Thing values

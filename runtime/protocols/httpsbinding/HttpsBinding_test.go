@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/protocols/httpsbinding"
+	"github.com/hiveot/hub/runtime/protocols/httpsbinding/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -98,7 +99,7 @@ func TestPubEvent(t *testing.T) {
 
 	// 2a. create a session for connecting a client
 	// (normally this happens when a session token is issued on authentication)
-	sm := httpsbinding.GetSessionManager()
+	sm := sessions.GetSessionManager()
 	cs, err := sm.NewSession(agentID, "remote addr", "")
 	assert.NoError(t, err)
 	assert.NotNil(t, cs)
@@ -108,7 +109,7 @@ func TestPubEvent(t *testing.T) {
 	//sessionToken, err := jwtauth.CreateSessionToken(agentID, cs.GetSessionID(), certBundle.ServerKey, 10)
 	require.NoError(t, err)
 
-	cl := tlsclient.NewTLSClient(hostPort, certBundle.CaCert)
+	cl := tlsclient.NewTLSClient(hostPort, certBundle.CaCert, time.Second*120)
 	cl.ConnectWithToken(agentID, sessionToken)
 
 	// 3. publish two events

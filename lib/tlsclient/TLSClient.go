@@ -227,14 +227,14 @@ func (cl *TLSClient) ConnectWithPassword(loginID string, secret string) (token s
 // connection to an unverified server (leap of faith).
 //
 
-// Delete sends a delete message with json payload
+// Delete sends a delete message
+// Note that delete methods do not allow a body, or a 405 is returned.
 //
 //	path to invoke
-//	msg message object to include. This will be marshalled to json
-func (cl *TLSClient) Delete(path string, msg interface{}) ([]byte, error) {
+func (cl *TLSClient) Delete(path string) ([]byte, error) {
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	url := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	return cl.Invoke("DELETE", url, msg)
+	return cl.Invoke("DELETE", url, nil)
 }
 
 // Get is a convenience function to send a request
@@ -245,7 +245,7 @@ func (cl *TLSClient) Get(path string) ([]byte, error) {
 	return cl.Invoke("GET", url, nil)
 }
 
-// Invoke a HTTPS method and read response
+// Invoke a HTTPS method and read response using content type application/json
 // If a JWT authentication is enabled then add the bearer token to the header
 // If msg is a string then it is considered to be already serialized.
 // If msg is not a string then it will be json encoded.
@@ -389,11 +389,12 @@ func (cl *TLSClient) RefreshToken(refreshURL string) (newToken string, err error
 // NewTLSClient creates a new TLS Client instance.
 // Use connect/Close to open and close connections
 //
-//	hostPort is the server hostname or IP address and port to connect to
-//	caCert with the x509 CA certificate, nil if not available
+//		hostPort is the server hostname or IP address and port to connect to
+//		caCert with the x509 CA certificate, nil if not available
+//	 timeout of the request.
 //
 // returns TLS client for submitting requests
-func NewTLSClient(hostPort string, caCert *x509.Certificate) *TLSClient {
+func NewTLSClient(hostPort string, caCert *x509.Certificate, timeout time.Duration) *TLSClient {
 	var checkServerCert bool
 	caCertPool := x509.NewCertPool()
 
@@ -412,7 +413,7 @@ func NewTLSClient(hostPort string, caCert *x509.Certificate) *TLSClient {
 
 	cl := &TLSClient{
 		hostPort:        hostPort,
-		timeout:         time.Second * 10,
+		timeout:         timeout,
 		caCertPool:      caCertPool,
 		caCert:          caCert,
 		checkServerCert: checkServerCert,

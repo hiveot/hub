@@ -67,10 +67,10 @@ func TestHandleEvent(t *testing.T) {
 func TestBadMessageType(t *testing.T) {
 	cfg := router.NewRouterConfig()
 	r := router.NewMessageRouter(&cfg)
-
+	// add a default handler that reports an error
 	r.AddServiceHandler("",
 		func(tv *things.ThingMessage) ([]byte, error) {
-			return tv.Data, nil
+			return tv.Data, fmt.Errorf("bad message type")
 		})
 	tv1 := things.NewThingMessage("badmessagetype", "thing1", "key1", []byte("data"), "sender1")
 	_, err := r.HandleMessage(tv1)

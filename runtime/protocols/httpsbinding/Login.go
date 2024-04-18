@@ -3,24 +3,21 @@ package httpsbinding
 
 import (
 	"encoding/json"
-	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
-	"github.com/hiveot/hub/lib/things"
 	"io"
 	"log/slog"
 	"net/http"
 )
 
 // handlePostRPC handles a rpc request posted by a consumer
-func (svc *HttpsBinding) handlePostRPC(w http.ResponseWriter, r *http.Request) {
-	cs, serviceID, methodName, data, err := svc.getRequestParams(w, r)
-	if err != nil {
-		return
-	}
-	msg := things.NewThingMessage(
-		vocab.MessageTypeAction, serviceID, methodName, data, cs.clientID)
-	svc.forwardRequest(w, msg)
-}
+//func (svc *HttpsBinding) handlePostRPC(w http.ResponseWriter, r *http.Request) {
+//	cs, serviceID, methodName, data, err := svc.getRequestParams(w, r)
+//	if err != nil {
+//		return
+//	}
+//	msg := things.NewThingMessage(
+//		vocab.MessageTypeAction, serviceID, methodName, data, cs.clientID)
+//	svc.forwardRequest(w, msg)
+//}
 
 // handlePostRPC handles a login request posted by a consumer
 func (svc *HttpsBinding) handlePostLogin(w http.ResponseWriter, r *http.Request) {
@@ -51,8 +48,8 @@ func (svc *HttpsBinding) handlePostRefresh(w http.ResponseWriter, r *http.Reques
 
 // SendRPC an rpc requestmessage to the destination
 // This returns an error if no session for the destination is available
-func (svc *HttpsBinding) SendRPC(message *things.ThingMessage) ([]byte, error) {
-	return nil, fmt.Errorf("not yet implemented")
-	// TODO: track subscriptions
-	// TODO: publish to SSE handlers of subscribed clients
-}
+//func (svc *HttpsBinding) SendRPC(message *things.ThingMessage) ([]byte, error) {
+//	return nil, fmt.Errorf("not yet implemented")
+//	// TODO: track subscriptions
+//	// TODO: publish to SSE handlers of subscribed clients
+//}

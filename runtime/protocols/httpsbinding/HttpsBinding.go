@@ -9,6 +9,9 @@ import (
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/protocols/httpsbinding/rest"
+	"github.com/hiveot/hub/runtime/protocols/httpsbinding/sessions"
+	"github.com/hiveot/hub/runtime/protocols/httpsbinding/sse"
 	"github.com/hiveot/hub/runtime/router"
 	"github.com/hiveot/hub/runtime/tlsserver"
 	"log/slog"
@@ -33,6 +36,11 @@ type HttpsBinding struct {
 
 	// sessionAuth for logging in and validating session tokens
 	sessionAuth api.IAuthenticator
+
+	// handlers for the REST API
+	restHandler *rest.RestHandler
+	// handlers for SSE server push connections
+	sseHandler *sse.SSEHandler
 }
 
 // setup the chain of routes used by the service and return the router
@@ -75,38 +83,20 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 
 	//--- private routes that requires authentication
 	router.Group(func(r chi.Router) {
-		// client sessions
-		r.Use(svc.AddSessionFromToken())
+		// client sessions authenticate the sender
+		r.Use(sessions.AddSessionFromToken(svc.sessionAuth))
 
-		// handlers for agent messages
-		r.Get(vocab.AgentDeleteThingPath, svc.handleAgentDeleteThing)
-		r.Get(vocab.AgentGetActionsPath, svc.handleAgentGetActions)
-		r.Post(vocab.AgentPostEventPath, svc.handleAgentPostEvent)
-		r.Put(vocab.AgentPutPropertiesPath, svc.handleAgentPutProperties)
-		r.Put(vocab.AgentPutThingPath, svc.handleAgentPutThing)
-
-		// handlers for consumer requests
-		r.Post(vocab.ConsumerPostActionPath, svc.handleConsumerPostAction)
-		r.Post(vocab.ConsumerPostPropertiesPath, svc.handleConsumerPostProperties)
-		r.Post(vocab.ConsumerDeleteThingPath, svc.handleConsumerRemoveThing)
-		r.Get(vocab.ConsumerGetThingPath, svc.handleConsumerReadThing)
-		r.Get(vocab.ConsumerGetThingsPath, svc.handleConsumerGetThings)
-		r.Get(vocab.ConsumerGetEventPath, svc.handleConsumerGetEvent)
-		r.Get(vocab.ConsumerGetEventsPath, svc.handleConsumerGetEvents)
-		r.Get(vocab.ConsumerGetPropertiesPath, svc.handleConsumerGetProperties)
+		// register the agent and consumer methods
+		svc.restHandler.RegisterMethods(r)
 
 		// handlers for built-in services requests
+		// TODO: move to rest api?
 		r.Post(vocab.PostRefreshPath, svc.handlePostRefresh)
-		r.Post(vocab.PostRPCPath, svc.handlePostRPC)
-
-		//r.Get("/action/{agentID}/{thingID}", svc.handleGetQueuedActions)
-
-		// consumers
-		//r.Get("/event/{agentID}/{thingID}/{key}", svc.handleGetEvents)
-		//r.Post("/action/{agentID}/{thingID}/{key}", svc.handlePostAction)
+		//r.Post(vocab.PostRPCPath, svc.handlePostRPC)
 
 		// sse has its own validation instead of using session context (which reconnects or redirects to /login)
-		r.Get(vocab.ConnectSSEPath, svc.handleSseConnect)
+		svc.sseHandler.RegisterMethods(r)
+		//r.Get(vocab.ConnectSSEPath, svc.handleSseConnect)
 		//r.Get(vocab.ConnectWSPath, svc.handleWSConnect)
 	})
 
@@ -117,7 +107,12 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 func (svc *HttpsBinding) Start(handler router.MessageHandler) error {
 	slog.Info("Starting HttpsBinding")
 	svc.handleMessage = handler
+
+	svc.restHandler = rest.NewRestHandler(svc.handleMessage)
+	svc.sseHandler = sse.NewSSEHandler(svc.handleMessage)
+
 	svc.createRoutes(svc.router)
+
 	err := svc.httpServer.Start()
 	return err
 }

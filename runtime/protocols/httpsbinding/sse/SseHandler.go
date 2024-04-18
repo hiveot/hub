@@ -1,14 +1,27 @@
-package httpsbinding
+package sse
 
 import (
 	"fmt"
+	"github.com/go-chi/chi/v5"
+	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/runtime/protocols/httpsbinding/sessions"
+	"github.com/hiveot/hub/runtime/router"
 	"log/slog"
 	"net/http"
 )
 
+// SSEHandler supports pushing server messages to the client using the SSE protocol.
+// This handles incoming SSE connections and links them to client sessions using
+// the authentication token. Messages can be sent to the clients using the
+// session object.
+// The token must be a session token issued through login or refresh methods.
+type SSEHandler struct {
+	handleMessage router.MessageHandler
+}
+
 // handleSseConnect handles incoming SSE connections, authenticates the client
 // Sse requests are refused if no valid session found.
-func (svc *HttpsBinding) handleSseConnect(w http.ResponseWriter, r *http.Request) {
+func (svc *SSEHandler) handleSseConnect(w http.ResponseWriter, r *http.Request) {
 	// Set headers for SSE response
 	//w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Expose-Headers", "Content-Type")
@@ -18,7 +31,7 @@ func (svc *HttpsBinding) handleSseConnect(w http.ResponseWriter, r *http.Request
 
 	// An active session is required before accepting the request. This is created on
 	// authentication/login.
-	cs, err := GetSessionFromContext(r)
+	cs, err := sessions.GetSessionFromContext(r)
 	if cs == nil || err != nil {
 		slog.Warn("No session available, delay retry to 30 seconds")
 
@@ -34,13 +47,15 @@ func (svc *HttpsBinding) handleSseConnect(w http.ResponseWriter, r *http.Request
 	}
 
 	// establish a client event channel for sending messages back to the client
-	sseChan := make(chan SSEEvent)
+	sseChan := make(chan sessions.SSEEvent)
 	cs.AddSSEClient(sseChan)
+
+	// TODO: if this is a first connection of the client send a connected event
 
 	slog.Info("SseHandler. New SSE connection",
 		slog.String("RemoteAddr", r.RemoteAddr),
-		slog.String("clientID", cs.clientID),
-		slog.Int("nr sse connections", len(cs.sseClients)),
+		slog.String("clientID", cs.GetClientID()),
+		slog.Int("nr sse connections", cs.GetNrConnections()),
 	)
 	//var sseMsg SSEEvent
 
@@ -51,7 +66,7 @@ func (svc *HttpsBinding) handleSseConnect(w http.ResponseWriter, r *http.Request
 		case sseMsg, ok := <-sseChan: // received event
 			slog.Info("SseHandler: received event from sseChan",
 				slog.String("remote", r.RemoteAddr),
-				slog.String("clientID", cs.clientID),
+				slog.String("clientID", cs.GetClientID()),
 				slog.String("event", sseMsg.Event),
 				slog.Bool("ok", ok),
 			)
@@ -76,10 +91,25 @@ func (svc *HttpsBinding) handleSseConnect(w http.ResponseWriter, r *http.Request
 		}
 	}
 	cs.RemoveSSEClient(sseChan)
+	// TODO: if all connections are closed for this client send a disconnected event
 
 	slog.Info("SseHandler: sse connection closed",
 		slog.String("remote", r.RemoteAddr),
-		slog.String("clientID", cs.clientID),
-		slog.Int("nr sse connections", len(cs.sseClients)),
+		slog.String("clientID", cs.GetClientID()),
+		slog.Int("nr sse connections", cs.GetNrConnections()),
 	)
+}
+
+// RegisterMethods registers agent and consumer methods with the router
+func (svc *SSEHandler) RegisterMethods(r chi.Router) {
+	r.Get(vocab.ConnectSSEPath, svc.handleSseConnect)
+}
+
+// NewSSEHandler creates an instance of the SSE connection handler
+// handleMessage is used to send connect/disconnect events.
+func NewSSEHandler(handleMessage router.MessageHandler) *SSEHandler {
+	handler := SSEHandler{
+		handleMessage: handleMessage,
+	}
+	return &handler
 }

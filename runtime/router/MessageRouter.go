@@ -2,6 +2,7 @@ package router
 
 import (
 	"fmt"
+	vocab "github.com/hiveot/hub/api/go"
 	"github.com/hiveot/hub/lib/things"
 )
 
@@ -23,9 +24,19 @@ type MessageRouter struct {
 
 	// Handler of hub messages by thingID/serviceID
 	messageHandlers map[string]MessageHandler
+
+	// Handler of events
+	eventHandlers []MessageHandler
 }
 
-// AddServiceHandler adds a handler directed at a service
+// AddEventHandler adds a handler for events
+func (svc *MessageRouter) AddEventHandler(handler MessageHandler) {
+	svc.eventHandlers = append(svc.eventHandlers, handler)
+}
+
+// AddServiceHandler adds a handler directed at a service.
+// Only a single handler per serviceID (thingID) is allowed. Intended for
+// embedded services.
 // Use an empty thingID/serviceID and key to register the default handler.
 func (svc *MessageRouter) AddServiceHandler(serviceID string, handler MessageHandler) {
 	svc.messageHandlers[serviceID] = handler
@@ -39,7 +50,13 @@ func (svc *MessageRouter) AddMiddlewareHandler(handler MiddlewareHandler) {
 
 // HandleMessage passes an incoming message through the middleware chain and on to
 // the registered handlers.
-// Intended for handling event and action requests from consumers and services.
+//
+// Events are handled separate from targeted messages such as actions.
+// Actions are passed to the handler registered for the thingID. If no handler
+// exists then the default handler is invoked.
+//
+// The default handler can lookup the destination device and decide to queue or
+// forward the request, based on the policy. (TODO)
 //
 // The middleware chain is intended to validate, enrich, and process the event, action and rpc messages.
 func (svc *MessageRouter) HandleMessage(tv *things.ThingMessage) ([]byte, error) {
@@ -52,7 +69,13 @@ func (svc *MessageRouter) HandleMessage(tv *things.ThingMessage) ([]byte, error)
 			return nil, err
 		}
 	}
-
+	// events are handled separate from targeted messages
+	if tv.MessageType == vocab.MessageTypeEvent {
+		for _, h := range svc.eventHandlers {
+			_, _ = h(tv)
+		}
+		return nil, nil
+	}
 	msgHandler, found := svc.messageHandlers[tv.ThingID]
 	if !found {
 		// check for the default handler
@@ -62,7 +85,8 @@ func (svc *MessageRouter) HandleMessage(tv *things.ThingMessage) ([]byte, error)
 		return nil, fmt.Errorf("no handler for messageType '%s', thingID '%s', key '%s' from sender '%s'",
 			tv.MessageType, tv.ThingID, tv.Key, tv.SenderID)
 	}
-	return msgHandler(tv)
+	reply, err := msgHandler(tv)
+	return reply, err
 }
 
 // NewMessageRouter creates a new instance of the message router.
@@ -73,6 +97,7 @@ func NewMessageRouter(cfg *RouterConfig) *MessageRouter {
 		cfg:             cfg,
 		mwChain:         make([]MiddlewareHandler, 0),
 		messageHandlers: make(map[string]MessageHandler),
+		eventHandlers:   make([]MessageHandler, 0),
 	}
 	return mw
 }

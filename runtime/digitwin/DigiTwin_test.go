@@ -7,6 +7,8 @@ import (
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/digitwin/digitwinclient"
+	"github.com/hiveot/hub/runtime/digitwin/digitwinhandler"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,14 +45,14 @@ func startService(clean bool) (
 		panic("unable to start the digital twin service")
 	}
 
-	// create the RPC communication layer
-	svcRPC := msghandler.NewDigiTwinRPC(svc)
+	// create the messaging wrapper
+	msgHandler := digitwinhandler.NewDigiTwinHandler(svc)
 	pm := func(thingID string, method string, args interface{}, reply interface{}) error {
 		// message transport passes it straight to the service rpc handler
 		data, _ := json.Marshal(args)
 		tm := things.NewThingMessage(vocab.MessageTypeAction,
 			thingID, method, data, "testclient")
-		resp, err := svcRPC.HandleMessage(tm)
+		resp, err := msgHandler(tm)
 		if reply != nil && resp != nil {
 			err = json.Unmarshal(resp, &reply)
 		}
@@ -266,13 +268,13 @@ func TestAddRemoveTD(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestHandleEvent(t *testing.T) {
+func TestHandleTDEvent(t *testing.T) {
 	const senderID = "agent1"
 	const thing1ID = "agent1:thing1"
 	const title1 = "title1"
 
 	svc, cl, stopFunc := startService(true)
-	dirRPC := msghandler.NewDigiTwinRPC(svc)
+	msgHandler := digitwinhandler.NewDigiTwinHandler(svc)
 	defer stopFunc()
 
 	// events should be handled
@@ -280,12 +282,12 @@ func TestHandleEvent(t *testing.T) {
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
 	tv := things.NewThingMessage(vocab.MessageTypeEvent, thing1ID,
 		vocab.EventTypeTD, tdDoc1Json, senderID)
-	_, err := dirRPC.HandleMessage(tv)
+	_, err := msgHandler(tv)
 	assert.NoError(t, err)
 
 	// non-events like actions should be ignored
 	tv.MessageType = vocab.MessageTypeAction
-	_, err = dirRPC.HandleMessage(tv)
+	_, err = msgHandler(tv)
 	assert.NoError(t, err)
 
 	tdList, err := cl.ReadThings(0, 10)

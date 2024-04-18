@@ -8,7 +8,7 @@ import (
 // IProtocolBinding is the interface implemented by all protocol bindings
 type IProtocolBinding interface {
 
-	// SendActionToAgent sends an action request to a connect agent.
+	// SendActionToAgent sends an action request to a connected agent.
 	// This returns the message reply data or an error if the destination is not available
 	SendActionToAgent(agentID string, action *thing.ThingMessage) (reply []byte, err error)
 

@@ -40,12 +40,13 @@ func startRuntime() *runtime.Runtime {
 // Add a client and connect with its password
 func addConnectClient(r *runtime.Runtime, clientType api.ClientType, clientID string) (cl *tlsclient.TLSClient, token string) {
 	password := "pass1"
-	err := r.AuthnSvc.AddClient(clientType, clientID, clientID, "", password)
+	err := r.AuthnSvc.AdminSvc.AddClient(clientType, clientID, clientID, "", password)
 	if err != nil {
 		panic("Failed adding client:" + err.Error())
 	}
 
-	cl = tlsclient.NewTLSClient(fmt.Sprintf("localhost:%d", TestPort), certsBundle.CaCert)
+	addr := fmt.Sprintf("localhost:%d", TestPort)
+	cl = tlsclient.NewTLSClient(addr, certsBundle.CaCert, time.Second*120)
 	token, err = cl.ConnectWithPassword(clientID, password)
 	if err != nil {
 		panic("Failed connect with password:" + err.Error())
@@ -123,14 +124,14 @@ func TestAddRemoveTD(t *testing.T) {
 	// Get returns a serialized TD object
 	addr = utils.Substitute(vocab.ConsumerGetThingPath, params)
 	td2Doc, err := cl.Get(addr)
-	time.Sleep(time.Second * 30)
+	//time.Sleep(time.Second * 30)  // otherwise timeout during debugging. Is there a better way?
 	require.NoError(t, err)
 	td2 := things.TD{}
 	err = json.Unmarshal(td2Doc, &td2)
 	require.NoError(t, err)
 
 	addr = fmt.Sprintf("/things/%s", thing1ID)
-	_, err = cl.Delete(addr, nil)
+	_, err = cl.Delete(addr)
 	require.NoError(t, err)
 
 	// after removal, getTD should return nil
@@ -160,8 +161,9 @@ func TestHttpsPubValueEvent(t *testing.T) {
 	_, err := cl.Post(eventPath, msg.Data)
 	assert.NoError(t, err)
 
-	props, err := r.DigiTwinSvc.Values.ReadProperties(thingID, nil)
+	props, err := r.DigiTwinSvc.Values.ReadEvents(thingID, nil)
 	require.NoError(t, err)
+	require.NotEmpty(t, props)
 	assert.Equal(t, msg.Data, props[key1].Data)
 
 	// the event must be in the store

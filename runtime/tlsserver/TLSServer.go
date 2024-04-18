@@ -127,7 +127,7 @@ func (srv *TLSServer) Stop() {
 //
 //	address        server listening address
 //	port           listening port
-//	serverCert     MsgServer TLS certificate
+//	serverCert     Server TLS certificate
 //	caCert         CA certificate to verify client certificates
 //
 // returns TLS server and router for handling requests

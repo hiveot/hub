@@ -10,10 +10,11 @@ import (
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn"
-	"github.com/hiveot/hub/runtime/authn/authnstore"
+	"github.com/hiveot/hub/runtime/authn/authnhandler"
 	"github.com/hiveot/hub/runtime/authn/service"
 	"github.com/hiveot/hub/runtime/authz"
-	"github.com/hiveot/hub/runtime/digitwin/digitwinsrv"
+	"github.com/hiveot/hub/runtime/authz/authzhandler"
+	"github.com/hiveot/hub/runtime/digitwin/digitwinhandler"
 	service3 "github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/protocols"
 	"github.com/hiveot/hub/runtime/router"
@@ -26,9 +27,9 @@ const DefaultDigiTwinStoreFilename = "digitwin.kvbtree"
 type Runtime struct {
 	cfg *RuntimeConfig
 
-	AuthnStore api.IAuthnStore
-	AuthnSvc   *service.AuthnService
-	AuthzSvc   *authz.AuthzService
+	//AuthnStore api.IAuthnStore
+	AuthnSvc *service.AuthnService
+	AuthzSvc *authz.AuthzService
 	//DirSvc      *service2.DirectoryService
 	DigiTwinSvc *service3.DigiTwinService
 	MsgRouter   *router.MessageRouter
@@ -48,14 +49,13 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	r.MsgRouter = router.NewMessageRouter(&r.cfg.Router)
 
 	// startup
-	var sessionAuth api.IAuthenticator
-	r.AuthnSvc, sessionAuth, r.AuthnStore, err = StartAuthnSvc(
-		&r.cfg.Authn, env.CaCert, r.MsgRouter)
+	r.AuthnSvc, err = StartAuthnSvc(&r.cfg.Authn, env.CaCert, r.MsgRouter)
 	if err != nil {
 		return err
 	}
+	//r.AuthnSvc, sessionAuth, r.AuthnStore,
 
-	r.AuthzSvc, err = StartAuthzSvc(&r.cfg.Authz, r.AuthnStore, r.MsgRouter)
+	r.AuthzSvc, err = StartAuthzSvc(&r.cfg.Authz, r.AuthnSvc.AuthnStore, r.MsgRouter)
 	if err != nil {
 		return err
 	}
@@ -80,8 +80,8 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	//})
 
 	r.ProtocolMgr, err = StartProtocolsManager(
-		&r.cfg.Protocols, r.cfg.ServerKey, r.cfg.ServerCert, r.cfg.CaCert, sessionAuth,
-		r.MsgRouter.HandleMessage)
+		&r.cfg.Protocols, r.cfg.ServerKey, r.cfg.ServerCert, r.cfg.CaCert,
+		r.AuthnSvc.SessionAuth, r.MsgRouter.HandleMessage)
 	return err
 }
 
@@ -90,13 +90,15 @@ func StartAuthnSvc(
 	svc *service.AuthnService, err error) {
 
 	// setup the Authentication service
-	authStore := authnstore.NewAuthnFileStore(cfg.PasswordFile, cfg.Encryption)
-	svc = service.NewAuthnService(cfg, authStore, sessionAuth)
-	err = svc.Start()
-	adminMsgHandler := authnhandler.NewAuthnAdminSrv(svc.AdminSvc)
+	svc, err = service.StartAuthnService(cfg)
+	if err != nil {
+		return nil, err
+	}
+	// add the messaging interface handler
+	adminMsgHandler := authnhandler.NewAuthnAdminHandler(svc.AdminSvc)
 	clientMsgHandler := authnhandler.NewAuthnUserHandler(svc.UserSvc)
-	r.AddServiceHandler(api.AuthnAdminThingID, adminMsgHandler.HandleMessage)
-	r.AddServiceHandler(api.AuthnUserThingID, clientMsgHandler.HandleMessage)
+	r.AddServiceHandler(api.AuthnAdminThingID, adminMsgHandler)
+	r.AddServiceHandler(api.AuthnUserThingID, clientMsgHandler)
 	return svc, err
 }
 
@@ -106,8 +108,10 @@ func StartAuthzSvc(cfg *authz.AuthzConfig,
 	// setup the Authentication service
 	svc = authz.NewAuthzService(cfg, authnStore)
 	err = svc.Start()
-	//msgHandler := NewAuthzRPC(svc)
-	//r.AddServiceHandler(api.AuthzServiceID, msgHandler.HandleMessage)
+
+	// add the messaging interface handler
+	msgHandler := authzhandler.NewAuthzHandler(svc)
+	r.AddServiceHandler(api.AuthzThingID, msgHandler)
 	return svc, err
 }
 
@@ -123,8 +127,11 @@ func StartDigiTwinSvc(storesDir string, r *router.MessageRouter) (*service3.Digi
 
 	svc := service3.NewDigiTwinService(store)
 	err = svc.Start()
-	msgHandler := digitwinsrv.NewDigiTwinSrv(svc)
-	r.AddServiceHandler(api.DigiTwinThingID, msgHandler.HandleMessage)
+
+	// add the messaging interface handler
+	msgHandler := digitwinhandler.NewDigiTwinHandler(svc)
+	r.AddServiceHandler(api.DigiTwinThingID, msgHandler)
+	r.AddEventHandler(msgHandler)
 	return svc, err
 }
 
@@ -135,10 +142,10 @@ func StartProtocolsManager(cfg *protocols.ProtocolsConfig,
 	svc *protocols.ProtocolsManager, err error) {
 
 	pm := protocols.NewProtocolManager(
-		cfg, serverKey, serverCert, caCert, sessionAuth, handler)
+		cfg, serverKey, serverCert, caCert, sessionAuth)
 
 	if err == nil {
-		err = pm.Start()
+		err = pm.Start(handler)
 	}
 	return pm, err
 }
@@ -188,9 +195,6 @@ func (r *Runtime) Stop() {
 	}
 	if r.AuthnSvc != nil {
 		r.AuthnSvc.Stop()
-	}
-	if r.AuthnStore != nil {
-		r.AuthnStore.Close()
 	}
 }
 

@@ -54,11 +54,12 @@ func NewAuthnService(
 // StartAuthnService creates and start the authn administration service
 // with the given config.
 // This creates a password store and authenticator.
-func StartAuthnService(cfg *authn.AuthnConfig) *AuthnService {
+func StartAuthnService(cfg *authn.AuthnConfig) (*AuthnService, error) {
 
 	authnStore := authnstore.NewAuthnFileStore(cfg.PasswordFile, cfg.Encryption)
 	sessionAuth := authenticator.NewJWTAuthenticatorFromFile(
 		authnStore, cfg.KeysDir, cfg.DefaultKeyType)
 	svc := NewAuthnService(cfg, authnStore, sessionAuth)
-	return svc
+	err := svc.Start()
+	return svc, err
 }

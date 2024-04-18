@@ -1,4 +1,4 @@
-package httpsbinding
+package sessions
 
 import (
 	"encoding/json"
@@ -57,6 +57,14 @@ func (cs *ClientSession) Close() {
 	cs.sseClients = nil
 }
 
+func (cs *ClientSession) GetClientID() string {
+	return cs.clientID
+}
+
+// return the number of SSE connections for the session
+func (cs *ClientSession) GetNrConnections() int {
+	return len(cs.sseClients)
+}
 func (cs *ClientSession) GetSessionID() string {
 	return cs.sessionID
 }

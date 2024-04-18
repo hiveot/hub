@@ -1,4 +1,4 @@
-package digitwinsrv
+package digitwinhandler
 
 import (
 	"encoding/json"
@@ -7,51 +7,59 @@ import (
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/digitwin/service"
+	"github.com/hiveot/hub/runtime/router"
 	"log/slog"
 )
 
-// DigiTwinSrv serves the message based interface to the digitwin service API.
+// DigiTwinHandler serves the message based interface to the digitwin service API.
 // This converts the request messages into API calls and converts the result
 // back to a reply message, if any.
 // The main entry point is the HandleMessage function.
-type DigiTwinSrv struct {
+type DigiTwinHandler struct {
 	svc *service.DigiTwinService
 }
 
 // HandleMessage an event or action message for the digital twin service
-func (rpc *DigiTwinSrv) HandleMessage(msg *things.ThingMessage) ([]byte, error) {
-	if msg.MessageType == vocab.MessageTypeEvent && msg.Key == vocab.EventTypeTD {
-		return nil, rpc.HandleTDEvent(msg)
+func (h *DigiTwinHandler) HandleMessage(msg *things.ThingMessage) (reply []byte, err error) {
+	if msg.MessageType == vocab.MessageTypeEvent {
+		if msg.Key == vocab.EventTypeTD {
+			err = h.HandleTDEvent(msg)
+		} else if msg.Key == vocab.EventTypeProperties {
+			err = h.svc.Values.HandleEvent(msg)
+		} else {
+			err = h.svc.Values.HandleEvent(msg)
+		}
+		return nil, err
 	} else if msg.MessageType == vocab.MessageTypeAction {
 		// Methods for accessing Thing description documents
 		switch msg.Key {
 		case api.ReadThingMethod:
-			return rpc.HandleReadThing(msg)
+			return h.HandleReadThing(msg)
 		case api.ReadThingsMethod:
-			return rpc.HandleReadThings(msg)
+			return h.HandleReadThings(msg)
 		case api.RemoveThingMethod:
-			return rpc.HandleRemoveThing(msg)
+			return h.HandleRemoveThing(msg)
 
 		// Methods for accessing Thing values
 		case api.ReadActionsMethod:
-			return rpc.HandleReadActions(msg)
+			return h.HandleReadActions(msg)
 		case api.ReadEventsMethod:
-			return rpc.HandleReadEvents(msg)
+			return h.HandleReadEvents(msg)
 		case api.ReadPropertiesMethod:
-			return rpc.HandleReadProperties(msg)
+			return h.HandleReadProperties(msg)
 		}
 	}
 	return nil, nil
 }
 
 // HandleReadThings handles an action request for a list of TD documents
-func (rpc *DigiTwinSrv) HandleReadThings(msg *things.ThingMessage) ([]byte, error) {
+func (h *DigiTwinHandler) HandleReadThings(msg *things.ThingMessage) ([]byte, error) {
 	var args api.ReadThingsArgs
 	var tds []*things.TD
 
 	err := json.Unmarshal(msg.Data, &args)
 	if err == nil {
-		tds, err = rpc.svc.Directory.ReadThings(args.Offset, args.Limit)
+		tds, err = h.svc.Directory.ReadThings(args.Offset, args.Limit)
 	}
 	if err != nil {
 		return nil, err
@@ -64,13 +72,13 @@ func (rpc *DigiTwinSrv) HandleReadThings(msg *things.ThingMessage) ([]byte, erro
 }
 
 // HandleReadThing handles an action request for a sing TD document
-func (rpc *DigiTwinSrv) HandleReadThing(msg *things.ThingMessage) ([]byte, error) {
+func (h *DigiTwinHandler) HandleReadThing(msg *things.ThingMessage) ([]byte, error) {
 	var args api.ReadThingArgs
 	var tdd *things.TD
 
 	err := json.Unmarshal(msg.Data, &args)
 	if err == nil {
-		tdd, err = rpc.svc.Directory.ReadThing(args.ThingID)
+		tdd, err = h.svc.Directory.ReadThing(args.ThingID)
 	}
 	if err != nil {
 		return nil, err
@@ -81,12 +89,12 @@ func (rpc *DigiTwinSrv) HandleReadThing(msg *things.ThingMessage) ([]byte, error
 }
 
 // HandleRemoveThing handles an action request for removing a TD document
-func (rpc *DigiTwinSrv) HandleRemoveThing(msg *things.ThingMessage) ([]byte, error) {
+func (h *DigiTwinHandler) HandleRemoveThing(msg *things.ThingMessage) ([]byte, error) {
 	var args api.RemoveThingArgs
 
 	err := json.Unmarshal(msg.Data, &args)
 	if err == nil {
-		err = rpc.svc.Directory.RemoveThing(msg.SenderID, args.ThingID)
+		err = h.svc.Directory.RemoveThing(msg.SenderID, args.ThingID)
 	}
 	if err != nil {
 		return nil, err
@@ -94,13 +102,13 @@ func (rpc *DigiTwinSrv) HandleRemoveThing(msg *things.ThingMessage) ([]byte, err
 	return nil, err
 }
 
-func (rpc *DigiTwinSrv) HandleReadActions(msg *things.ThingMessage) ([]byte, error) {
+func (h *DigiTwinHandler) HandleReadActions(msg *things.ThingMessage) ([]byte, error) {
 	var args api.ReadActionsArgs
 	err := json.Unmarshal(msg.Data, &args)
 	if err != nil {
 		return nil, fmt.Errorf("HandleReadActions. Argument error: %w", err)
 	}
-	values, err := rpc.svc.Values.ReadActions(args.ThingID, args.Keys)
+	values, err := h.svc.Values.ReadActions(args.ThingID, args.Keys)
 	if err != nil {
 		return nil, err
 	}
@@ -108,13 +116,13 @@ func (rpc *DigiTwinSrv) HandleReadActions(msg *things.ThingMessage) ([]byte, err
 	reply, err := json.Marshal(resp)
 	return reply, err
 }
-func (rpc *DigiTwinSrv) HandleReadEvents(msg *things.ThingMessage) ([]byte, error) {
+func (h *DigiTwinHandler) HandleReadEvents(msg *things.ThingMessage) ([]byte, error) {
 	var args api.ReadEventsArgs
 	err := json.Unmarshal(msg.Data, &args)
 	if err != nil {
 		return nil, fmt.Errorf("HandleReadEvents. Argument error: %w", err)
 	}
-	values, err := rpc.svc.Values.ReadEvents(args.ThingID, args.Keys)
+	values, err := h.svc.Values.ReadEvents(args.ThingID, args.Keys)
 	if err != nil {
 		return nil, err
 	}
@@ -122,13 +130,13 @@ func (rpc *DigiTwinSrv) HandleReadEvents(msg *things.ThingMessage) ([]byte, erro
 	reply, err := json.Marshal(resp)
 	return reply, err
 }
-func (rpc *DigiTwinSrv) HandleReadProperties(msg *things.ThingMessage) ([]byte, error) {
+func (h *DigiTwinHandler) HandleReadProperties(msg *things.ThingMessage) ([]byte, error) {
 	var args api.ReadPropertiesArgs
 	err := json.Unmarshal(msg.Data, &args)
 	if err != nil {
 		return nil, fmt.Errorf("HandleReadProperties. Argument error: %w", err)
 	}
-	values, err := rpc.svc.Values.ReadProperties(args.ThingID, args.Keys)
+	values, err := h.svc.Values.ReadProperties(args.ThingID, args.Keys)
 	if err != nil {
 		return nil, err
 	}
@@ -138,11 +146,11 @@ func (rpc *DigiTwinSrv) HandleReadProperties(msg *things.ThingMessage) ([]byte, 
 }
 
 // HandleTDEvent handles an event containing a TD document
-func (rpc *DigiTwinSrv) HandleTDEvent(msg *things.ThingMessage) error {
+func (h *DigiTwinHandler) HandleTDEvent(msg *things.ThingMessage) error {
 	var args *things.TD
 	err := json.Unmarshal(msg.Data, &args)
 	if err == nil {
-		err = rpc.svc.Directory.UpdateThing(msg.SenderID, msg.ThingID, args)
+		err = h.svc.Directory.UpdateThing(msg.SenderID, msg.ThingID, args)
 	}
 	if err != nil {
 		slog.Warn("HandleEvent: TD update failed", "err", err)
@@ -150,9 +158,9 @@ func (rpc *DigiTwinSrv) HandleTDEvent(msg *things.ThingMessage) error {
 	return err
 }
 
-// NewDigiTwinSrv creates a new instance of the messaging api server for the
+// NewDigiTwinHandler creates a new instance of the messaging api server for the
 // digitwin service.
-func NewDigiTwinSrv(svc *service.DigiTwinService) *DigiTwinSrv {
-	rpc := DigiTwinSrv{svc: svc}
-	return &rpc
+func NewDigiTwinHandler(svc *service.DigiTwinService) router.MessageHandler {
+	decoder := DigiTwinHandler{svc: svc}
+	return decoder.HandleMessage
 }

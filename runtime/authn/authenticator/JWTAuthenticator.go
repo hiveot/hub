@@ -147,8 +147,8 @@ func (svc *JWTAuthenticator) RefreshToken(clientID string, oldToken string, vali
 
 // ValidateToken the session token
 func (svc *JWTAuthenticator) ValidateToken(token string) (clientID string, sessionID string, err error) {
-	slog.Info("ValidateToken", slog.String("clientID", clientID))
 	cid, sid, err := svc.DecodeSessionToken(token, "", "")
+	slog.Info("ValidateToken", slog.String("clientID", cid))
 
 	return cid, sid, err
 }

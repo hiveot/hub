@@ -1,9 +1,10 @@
-package httpsbinding
+package sessions
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/tlsserver"
 	"log/slog"
 	"net/http"
@@ -21,7 +22,7 @@ const SessionContextID = "session"
 // If no valid session is found this will reply with an unauthorized status code.
 //
 // pubKey is the public key from the keypair used in creating the session token.
-func (svc *HttpsBinding) AddSessionFromToken() func(next http.Handler) http.Handler {
+func AddSessionFromToken(sessionAuth api.IAuthenticator) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			bearerToken, err := tlsserver.GetBearerToken(r)
@@ -32,7 +33,7 @@ func (svc *HttpsBinding) AddSessionFromToken() func(next http.Handler) http.Hand
 				return
 			}
 			//check if the token is properly signed
-			cid, sid, err := svc.sessionAuth.ValidateToken(bearerToken)
+			cid, sid, err := sessionAuth.ValidateToken(bearerToken)
 			if err != nil || sid == "" || cid == "" {
 				slog.Warn("Invalid session token:", "err", err)
 				w.WriteHeader(http.StatusUnauthorized)

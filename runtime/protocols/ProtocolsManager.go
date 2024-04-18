@@ -30,10 +30,8 @@ func (svc *ProtocolsManager) AddProtocolBinding(binding api.IProtocolBinding) {
 }
 
 // SendActionToAgent sends an action request to the agent.
-//
-// TODO: queue the action if the destination is not available
-// TODO: identify if the destination agent is connected
-func (svc *ProtocolsManager) SendActionToAgent(agentID string, msg *things.ThingMessage) (reply []byte, err error) {
+func (svc *ProtocolsManager) SendActionToAgent(
+	agentID string, msg *things.ThingMessage) (reply []byte, err error) {
 	// for now simply send the action request to all protocol handlers
 	for _, protoHandler := range svc.bindings {
 		reply, err = protoHandler.SendActionToAgent(agentID, msg)
@@ -78,8 +76,10 @@ func NewProtocolManager(cfg *ProtocolsConfig,
 
 	svc := ProtocolsManager{}
 	svc.AddProtocolBinding(
-		httpsbinding.NewHttpsBinding(&cfg.HttpsBinding,
-			privKey, serverCert, caCert, sessionAuth))
+		httpsbinding.NewHttpsBinding(
+			&cfg.HttpsBinding,
+			privKey, serverCert, caCert,
+			sessionAuth))
 
 	return &svc
 }

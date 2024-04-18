@@ -1,4 +1,4 @@
-package httpsbinding
+package sessions
 
 import (
 	"crypto/ecdsa"
@@ -15,6 +15,8 @@ import (
 //
 // TODO:
 //  1. close session after not being used for X seconds
+//  2. Send notification if a client connects and disconnects
+//     needed to send push notifications to clients (primarily agents and services)
 type SessionManager struct {
 	// existing sessions by sessionID (remoteAddr)
 	sessions map[string]*ClientSession
