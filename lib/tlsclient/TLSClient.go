@@ -8,7 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/runtime/api"
 	"golang.org/x/net/publicsuffix"
 	"io"
 	"log/slog"
@@ -40,13 +41,6 @@ const (
 	ParamThings = "things"
 )
 
-// JwtAuthLogin defines the login request message to sent when using JWT authentication
-type JwtAuthLogin struct {
-	LoginID    string `json:"login"` // typically the email
-	Password   string `json:"password"`
-	RememberMe bool   `json:"rememberMe,omitempty"` // store refresh token in cookie
-}
-
 // TLSClient is a simple TLS Client with authentication using certificates or JWT authentication with login/pw
 type TLSClient struct {
 	// host and port of the server to connect to
@@ -61,7 +55,7 @@ type TLSClient struct {
 	clientCert *tls.Certificate
 
 	// User ID for authentication
-	userID string
+	clientID string
 
 	// JWT bearer token after login, refresh, or external source
 	// Invoke will use this if set.
@@ -172,9 +166,9 @@ func (cl *TLSClient) ConnectWithClientCert(clientCert *tls.Certificate) (err err
 // ConnectWithToken Sets login ID and secret for JWT authentication using a
 // token obtained at login or elsewhere.
 //
-// No error is returned as this just sets up the token and http client. A messages are send yet.
+// No error is returned as this just sets up the token and http client. No messages are send yet.
 func (cl *TLSClient) ConnectWithToken(loginID string, token string) {
-	cl.userID = loginID
+	cl.clientID = loginID
 	cl.bearerToken = token
 
 	cl.httpClient = cl.connect()
@@ -191,7 +185,7 @@ func (cl *TLSClient) ConnectWithToken(loginID string, token string) {
 //
 // Returns new auth token if successful or an error if setting up of authentication failed.
 func (cl *TLSClient) ConnectWithPassword(loginID string, secret string) (token string, err error) {
-	cl.userID = loginID
+	cl.clientID = loginID
 
 	loginURL := fmt.Sprintf("https://%s%s", cl.hostPort, vocab.PostLoginPath)
 
@@ -199,8 +193,8 @@ func (cl *TLSClient) ConnectWithPassword(loginID string, secret string) (token s
 	cl.httpClient = cl.connect()
 
 	// Authenticate with JWT requires a cookiejar to store the refresh token
-	loginMessage := JwtAuthLogin{
-		LoginID:  loginID,
+	loginMessage := api.LoginArgs{
+		ClientID: loginID,
 		Password: secret,
 	}
 	// resp, err2 := cl.Post(cl.jwtLoginPath, authLogin)
@@ -209,23 +203,15 @@ func (cl *TLSClient) ConnectWithPassword(loginID string, secret string) (token s
 		err = fmt.Errorf("ConnectWithPassword: login to %s failed. %s", loginURL, err2)
 		return "", err
 	}
-	//var jwtResp JwtAuthResponse
-	//err2 = json.Unmarshal(resp, &jwtResp)
-	//err2 = json.Unmarshal(resp, &token)
-
-	//if err2 != nil {
-	//	err = fmt.Errorf("ConnectWithPassword: JWT login to %s has unexpected response message: %s", loginURL, err2)
-	//	return "", err
-	//}
-	//cl.bearerToken = jwtResp.Token
-	cl.bearerToken = string(resp)
+	reply := api.LoginResp{}
+	err = json.Unmarshal(resp, &reply)
+	if err != nil {
+		err = fmt.Errorf("ConnectWithPassword: Login to %s has unexpected response message: %s", loginURL, err)
+		return "", err
+	}
+	cl.bearerToken = reply.Token
 	return cl.bearerToken, err
 }
-
-// Login requests JWT tokens using loginID/password
-// If a CA certificate is not available then insecure-skip-verify is used to allow
-// connection to an unverified server (leap of faith).
-//
 
 // Delete sends a delete message
 // Note that delete methods do not allow a body, or a 405 is returned.
@@ -316,6 +302,13 @@ func (cl *TLSClient) Invoke(method string, url string, msg interface{}) ([]byte,
 	return respBody, err
 }
 
+// Logout from the server and end the session
+func (cl *TLSClient) Logout() error {
+	url := fmt.Sprintf("https://%s%s", cl.hostPort, vocab.PostLogoutPath)
+	_, err := cl.Invoke("POST", url, http.NoBody)
+	return err
+}
+
 // Post a message.
 // If msg is a string then it is considered to be already serialized.
 // If msg is not a string then it will be json encoded.
@@ -354,35 +347,52 @@ func (cl *TLSClient) Patch(path string, msg interface{}) ([]byte, error) {
 
 // RefreshToken refreshes the JWT token
 //
+// refreshURL is an optional alternative URL, or "" for the default path
+//
 // This returns a struct with new access and refresh token
 func (cl *TLSClient) RefreshToken(refreshURL string) (newToken string, err error) {
 	if refreshURL == "" {
 		refreshURL = fmt.Sprintf("https://%s%s", cl.hostPort, vocab.PostRefreshPath)
 	}
+	args := api.RefreshTokenArgs{
+		OldToken: cl.bearerToken, ClientID: cl.clientID,
+	}
+	data, _ := json.Marshal(args)
+	// the bearer token holds the old token
+	resp, err := cl.Invoke("POST", refreshURL, data)
+	// set the new token as the bearer token
+	if err == nil {
+		reply := api.RefreshTokenResp{}
+		err = json.Unmarshal(resp, &reply)
 
+		if err == nil {
+			newToken = reply.Token
+			cl.bearerToken = newToken
+		}
+	}
 	// old token exists in client cookie
-	req, err := http.NewRequest("POST", refreshURL, http.NoBody)
-	var resp *http.Response
-	if err != nil {
-		err = fmt.Errorf("RefreshToken: Error creating request for URL %s: %w", refreshURL, err)
-		return "", err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err = cl.httpClient.Do(req)
-
-	if err != nil {
-		err = fmt.Errorf("RefreshToken: Error using URL %s: %w", refreshURL, err)
-		return "", err
-	} else if resp.StatusCode >= 400 {
-		err = fmt.Errorf("RefreshToken: refresh using URL %s failed with: %s", refreshURL, resp.Status)
-		return "", err
-	}
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		err = fmt.Errorf("RefreshToken: failed with error %w", err)
-		return "", err
-	}
-	err = json.Unmarshal(respBody, &newToken)
+	//req, err := http.NewRequest("POST", refreshURL, http.NoBody)
+	//var resp *http.Response
+	//if err != nil {
+	//	err = fmt.Errorf("RefreshToken: Error creating request for URL %s: %w", refreshURL, err)
+	//	return "", err
+	//}
+	//req.Header.Set("Content-Type", "application/json")
+	//resp, err = cl.httpClient.Do(req)
+	//
+	//if err != nil {
+	//	err = fmt.Errorf("RefreshToken: Error using URL %s: %w", refreshURL, err)
+	//	return "", err
+	//} else if resp.StatusCode >= 400 {
+	//	err = fmt.Errorf("RefreshToken: refresh using URL %s failed with: %s", refreshURL, resp.Status)
+	//	return "", err
+	//}
+	//respBody, err := io.ReadAll(resp.Body)
+	//if err != nil {
+	//	err = fmt.Errorf("RefreshToken: failed with error %w", err)
+	//	return "", err
+	//}
+	//err = json.Unmarshal(respBody, &newToken)
 	return newToken, err
 }
 

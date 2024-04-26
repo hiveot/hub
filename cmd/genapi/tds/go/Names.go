@@ -1,4 +1,4 @@
-package goapi
+package _go
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"

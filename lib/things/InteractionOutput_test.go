@@ -1,7 +1,7 @@
 package things
 
 import (
-	"github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/ser"
 	"log/slog"
@@ -57,7 +57,7 @@ func TestString(t *testing.T) {
 }
 
 func TestObject(t *testing.T) {
-	schema := &DataSchema{Type: vocab.WoTDataTypeObject}
+	schema := &DataSchema{Type: vocab.vocab.WoTDataTypeObject}
 	type User struct {
 		Name        string
 		Age         int

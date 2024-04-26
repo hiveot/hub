@@ -1,7 +1,7 @@
 package things_test
 
 import (
-	vocab "github.com/hiveot/hub/api/go"
+	vocab2 "github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
 	"testing"
 	"time"
@@ -11,23 +11,23 @@ import (
 
 func TestCreateTD(t *testing.T) {
 	thingID := "urn:thing1"
-	tdoc := things.NewTD(thingID, "test TD", vocab.ThingSensor)
+	tdoc := things.NewTD(thingID, "test TD", vocab2.ThingSensor)
 	assert.NotNil(t, tdoc)
 
 	// Set version
 	//versions := map[string]string{"Software": "v10.1", "Hardware": "v2.0"}
 	propAffordance := &things.PropertyAffordance{
 		DataSchema: things.DataSchema{
-			Type:  vocab.WoTDataTypeArray,
+			Type:  vocab2.WoTDataTypeArray,
 			Title: "version",
 		},
 	}
-	tdoc.UpdateProperty(vocab.PropDeviceSoftwareVersion, propAffordance)
+	tdoc.UpdateProperty(vocab2.PropDeviceSoftwareVersion, propAffordance)
 
 	// Define TD property
 	propAffordance = &things.PropertyAffordance{
 		DataSchema: things.DataSchema{
-			Type: vocab.WoTDataTypeString,
+			Type: vocab2.WoTDataTypeString,
 			Enum: make([]interface{}, 0), //{"value1", "value2"},
 			Unit: "C",
 		},
@@ -66,7 +66,7 @@ func TestMissingAffordance(t *testing.T) {
 	thingID := "urn:thing1"
 
 	// test return nil if no affordance is found
-	tdoc := things.NewTD(thingID, "test TD", vocab.ThingSensor)
+	tdoc := things.NewTD(thingID, "test TD", vocab2.ThingSensor)
 	assert.NotNil(t, tdoc)
 
 	prop := tdoc.GetProperty("prop1")
@@ -81,11 +81,11 @@ func TestMissingAffordance(t *testing.T) {
 
 func TestAddProp(t *testing.T) {
 	thingID := "urn:thing1"
-	tdoc := things.NewTD(thingID, "test TD", vocab.ThingSensor)
-	tdoc.AddProperty("prop1", "", "test property", vocab.WoTDataTypeBool)
+	tdoc := things.NewTD(thingID, "test TD", vocab2.ThingSensor)
+	tdoc.AddProperty("prop1", "", "test property", vocab2.WoTDataTypeBool)
 
 	go func() {
-		tdoc.AddProperty("prop2", "", "test property2", vocab.WoTDataTypeString)
+		tdoc.AddProperty("prop2", "", "test property2", vocab2.WoTDataTypeString)
 	}()
 
 	prop := tdoc.GetProperty("prop1")
@@ -97,7 +97,7 @@ func TestAddProp(t *testing.T) {
 
 func TestAddEvent(t *testing.T) {
 	thingID := "urn:thing1"
-	tdoc := things.NewTD(thingID, "test TD", vocab.ThingSensor)
+	tdoc := things.NewTD(thingID, "test TD", vocab2.ThingSensor)
 	tdoc.AddEvent("event1", "", "Test Event", "", nil)
 
 	go func() {
@@ -113,7 +113,7 @@ func TestAddEvent(t *testing.T) {
 
 func TestAddAction(t *testing.T) {
 	thingID := "urn:thing1"
-	tdoc := things.NewTD(thingID, "test TD", vocab.ThingSensor)
+	tdoc := things.NewTD(thingID, "test TD", vocab2.ThingSensor)
 	tdoc.AddAction("action1", "test", "Test Action", "", nil)
 
 	go func() {

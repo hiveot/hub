@@ -126,6 +126,7 @@ func (svc *DirectoryService) RemoveThing(senderID string, thingID string) error 
 		if key == thingID {
 			svc.thingKeys[i] = svc.thingKeys[len(svc.thingKeys)-1]
 			svc.thingKeys = svc.thingKeys[:len(svc.thingKeys)-1]
+			break
 		}
 	}
 	return err

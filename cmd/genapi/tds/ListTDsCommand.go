@@ -6,14 +6,27 @@ import (
 	"github.com/hiveot/hub/lib/things"
 	"github.com/urfave/cli/v2"
 	"os"
+	"path"
 	"path/filepath"
 )
 
+var tddSourceDir string = path.Join("api", "src", "tdd")
+
 // ListTDsCommand lists the available TD documents
-func ListTDsCommand(sourceDir string) *cli.Command {
+func ListTDsCommand() *cli.Command {
+	var sourceDir string = tddSourceDir
+
 	return &cli.Command{
 		Name:  "ltd",
 		Usage: "List the TD's available in the source directory",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "sources",
+				Usage:       "Path to TD document sources",
+				Value:       sourceDir,
+				Destination: &sourceDir,
+			},
+		},
 
 		Action: func(cCtx *cli.Context) error {
 			err := HandleListTDs(sourceDir)

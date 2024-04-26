@@ -21,6 +21,9 @@ type DigiTwinHandler struct {
 
 // HandleMessage an event or action message for the digital twin service
 func (h *DigiTwinHandler) HandleMessage(msg *things.ThingMessage) (reply []byte, err error) {
+	switch msg.MessageType {
+	case vocab.MessageTypeEvent:
+	}
 	if msg.MessageType == vocab.MessageTypeEvent {
 		if msg.Key == vocab.EventTypeTD {
 			// TDs update the directory

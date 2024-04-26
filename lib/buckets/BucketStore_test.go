@@ -3,7 +3,7 @@ package buckets_test
 import (
 	"encoding/json"
 	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
+	vocab2 "github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
 	"log/slog"
@@ -65,42 +65,42 @@ func createTD(id string) *things.TD {
 	td := &things.TD{
 		ID:         id,
 		Title:      fmt.Sprintf("test TD %s", id),
-		AtType:     vocab.ThingSensor,
+		AtType:     vocab2.ThingSensor,
 		Properties: make(map[string]*things.PropertyAffordance),
 		Events:     make(map[string]*things.EventAffordance),
 	}
-	td.Properties[vocab.PropDeviceTitle] = &things.PropertyAffordance{
+	td.Properties[vocab2.PropDeviceTitle] = &things.PropertyAffordance{
 		DataSchema: things.DataSchema{
 			Title:       "Sensor title",
 			Description: "This is a smart sensor",
-			Type:        vocab.WoTDataTypeString,
+			Type:        vocab2.WoTDataTypeString,
 			Default:     "Default value",
 		},
 	}
-	td.Properties[vocab.PropDeviceSoftwareVersion] = &things.PropertyAffordance{
+	td.Properties[vocab2.PropDeviceSoftwareVersion] = &things.PropertyAffordance{
 		DataSchema: things.DataSchema{
 			Title:       "Version",
 			Description: "Embedded firmware",
-			Type:        vocab.WoTDataTypeString,
+			Type:        vocab2.WoTDataTypeString,
 			Default:     "Default value",
 			Const:       "v1.0",
 		},
 	}
-	td.Events[vocab.PropEnvTemperature] = &things.EventAffordance{
+	td.Events[vocab2.PropEnvTemperature] = &things.EventAffordance{
 		Title:       "Event 1",
 		Description: "ID of this event",
 		Data: &things.DataSchema{
-			Type:        vocab.WoTDataTypeString,
+			Type:        vocab2.WoTDataTypeString,
 			Const:       "123",
 			Title:       "Event name data",
 			Description: "String with friendly name of the event"},
 	}
-	td.Events[vocab.PropDeviceBattery] = &things.EventAffordance{
+	td.Events[vocab2.PropDeviceBattery] = &things.EventAffordance{
 		Title: "Event 2",
 		Data: &things.DataSchema{
-			Type:        vocab.WoTDataTypeInteger,
+			Type:        vocab2.WoTDataTypeInteger,
 			Title:       "Battery level",
-			Unit:        vocab.UnitPercent,
+			Unit:        vocab2.UnitPercent,
 			Description: "Battery level update in % of device"},
 	}
 	return td

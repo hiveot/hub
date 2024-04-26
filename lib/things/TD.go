@@ -2,7 +2,7 @@ package things
 
 import (
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/ser"
 	"sync"
 	"time"
@@ -81,9 +81,11 @@ type TD struct {
 	// Protocol Bindings. Thing-level forms are used to describe endpoints for a group of interaction affordances.
 	Forms []Form `json:"forms,omitempty"`
 
-	// Set of security definition names, chosen from those defined in securityDefinitions
+	// Security is a string or array of security definition names, chosen from those defined
+	// in securityDefinitions.
 	// In HiveOT security is handled by the Hub. HiveOT Things will use the NoSecurityScheme type
-	Security string `json:"security"`
+	//Security string `json:"security"`
+	Security any `json:"security"`
 
 	// Set of named security configurations (definitions only).
 	// Not actually applied unless names are used in a security name-value pair. (why is this mandatory then?)

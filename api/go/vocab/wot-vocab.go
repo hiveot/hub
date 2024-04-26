@@ -1,4 +1,5 @@
 // Package vocab with WoT and JSON-LD defined vocabulary
+// This is not generated and can be edited by hand
 package vocab
 
 // Thing Description document vocabulary definitions

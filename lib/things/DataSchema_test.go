@@ -1,7 +1,7 @@
 package things
 
 import (
-	"github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/ser"
 	"testing"
 
@@ -33,7 +33,7 @@ func TestObjectSchema(t *testing.T) {
 		StringMinLength: 10,
 	}
 	os.Properties["intProp"] = DataSchema{
-		Type:          vocab.WoTDataTypeInteger,
+		Type:          vocab.vocab.WoTDataTypeInteger,
 		NumberMinimum: 10,
 		NumberMaximum: 20,
 	}

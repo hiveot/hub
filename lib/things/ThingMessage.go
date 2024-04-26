@@ -28,7 +28,7 @@ type ThingMessage struct {
 	// This is used in authorization of the sender and routing of messages.
 	SenderID string `json:"senderID"`
 
-	// Type of message this value was sent as: (MessageTypeEvent, MessageTypeAction, MessageTypeConfig, MessageTypeRPC...)
+	// Type of message this value was sent as: (MessageTypeEvent, MessageTypeAction...)
 	MessageType string `json:"messageType"`
 }
 

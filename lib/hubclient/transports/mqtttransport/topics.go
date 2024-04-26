@@ -3,7 +3,7 @@ package mqtttransport
 import (
 	"errors"
 	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient/transports"
 	"strings"
 )

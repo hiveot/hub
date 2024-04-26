@@ -132,18 +132,19 @@
 				"type": "object",
 				"properties": {
 					"query": {
-						"title": "Query",
+						"title": "Query Things",
 						"description": "Query expression (tbd)",
 						"type": "string"
 					},
 					"offset": {
-						"title": "Offset",
+						"title": "Result offset",
+						"description": "Number of results to skip",
 						"type": "integer",
 						"minimum": 0,
 						"default": 0
 					},
 					"limit": {
-						"title": "Limit",
+						"title": "Max entries",
 						"description": "Maximum number of entries to return",
 						"type": "integer",
 						"minimum": 1,

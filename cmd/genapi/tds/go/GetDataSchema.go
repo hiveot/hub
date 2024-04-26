@@ -1,9 +1,10 @@
-package goapi
+package _go
 
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/utils"
 )
 
 type SchemaAttr struct {
@@ -78,12 +79,11 @@ func GetSchemaAttrs(key string, schema *things.DataSchema) []SchemaAttr {
 }
 
 // GenDataSchemaParams generate a golang variable or list of variables from a dataschema
-func GenDataSchemaParams(l L, attrList []SchemaAttr) L {
+func GenDataSchemaParams(l *utils.L, attrList []SchemaAttr) {
 	for _, attr := range attrList {
-		l = l.Add("")
-		l = l.Add("    // %s %s", attr.AttrName, attr.Description)
-		l = l.Add("    %s %s `json:\"%s\"`", attr.AttrName, attr.AttrType, attr.AttrName)
+		l.Add("")
+		l.Add("    // %s %s", attr.AttrName, attr.Description)
+		l.Add("    %s %s `json:\"%s\"`", attr.AttrName, attr.AttrType, attr.AttrName)
 
 	}
-	return l
 }
