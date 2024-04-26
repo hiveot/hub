@@ -2,7 +2,7 @@ package router
 
 import (
 	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
 )
 

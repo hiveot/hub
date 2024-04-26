@@ -3,7 +3,7 @@ package sessions
 import (
 	"encoding/json"
 	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"

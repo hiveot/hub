@@ -3,7 +3,8 @@ package sse
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/protocols/httpsbinding/sessions"
 	"github.com/hiveot/hub/runtime/router"
 	"log/slog"
@@ -16,6 +17,7 @@ import (
 // session object.
 // The token must be a session token issued through login or refresh methods.
 type SSEHandler struct {
+	sessionAuth   api.IAuthenticator
 	handleMessage router.MessageHandler
 }
 
@@ -107,8 +109,9 @@ func (svc *SSEHandler) RegisterMethods(r chi.Router) {
 
 // NewSSEHandler creates an instance of the SSE connection handler
 // handleMessage is used to send connect/disconnect events.
-func NewSSEHandler(handleMessage router.MessageHandler) *SSEHandler {
+func NewSSEHandler(handleMessage router.MessageHandler, sessionAuth api.IAuthenticator) *SSEHandler {
 	handler := SSEHandler{
+		sessionAuth:   sessionAuth,
 		handleMessage: handleMessage,
 	}
 	return &handler

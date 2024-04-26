@@ -3,7 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
@@ -12,7 +12,7 @@ import (
 
 const ValuesBucketName = "values"
 
-// ValueService holds the most recent property and event values of things.
+// ValueService holds the most recent property, event and action values of things.
 // It persists a record for each Thing containing a map of the most recent properties.
 type ValueService struct {
 	// bucket to persist things properties with a serialized property map for each thing
@@ -27,12 +27,16 @@ type ValueService struct {
 	changedThings map[string]bool
 }
 
-// readLatest returns the latest values send to digital twin Things.
+// ReadLatest returns the latest values send to digital twin Things.
 //
+//	msgType type of message, MessageTypeAction, MessageTypeEvent, MessageTypeProperties
 //	thingID whose actions to return
-//	messageType to read
+//	since optional ISO timestamp with time since which to return the messages
+//	keys  optional keys of message types to filter on
+//
 //	keys optional filter for the values to read or nil to read all
-func (svc *ValueService) readLatest(thingID string, msgType string, keys []string) (things.ThingMessageMap, error) {
+func (svc *ValueService) ReadLatest(
+	msgType string, thingID string, since string, keys []string) (things.ThingMessageMap, error) {
 	values := things.NewThingMessageMap()
 	svc.LoadValues(thingID)
 
@@ -42,6 +46,7 @@ func (svc *ValueService) readLatest(thingID string, msgType string, keys []strin
 	if !found {
 		return nil, fmt.Errorf("ReadActions. Unknown thingID '%s'", thingID)
 	}
+	// TODO: filter on since
 	// get each specified value
 	if keys != nil && len(keys) > 0 {
 		// filter the requested property/event keys
@@ -62,15 +67,15 @@ func (svc *ValueService) readLatest(thingID string, msgType string, keys []strin
 	return values, nil
 }
 
-// HandleEvent stores the latest event and property event values
-func (svc *ValueService) HandleEvent(msg *things.ThingMessage) error {
+// HandleMessage stores the latest event, property or action values
+func (svc *ValueService) HandleMessage(msg *things.ThingMessage) error {
 	svc.LoadValues(msg.ThingID)
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 	thingCache, _ := svc.cache[msg.ThingID]
 
 	if msg.Key == vocab.EventTypeProperties {
-
+		// TODO: change map to list
 		// the value holds a map of property name:value pairs, add each one individually
 		// in order to retain the sender and created timestamp.
 		props := make(map[string]any)
@@ -98,7 +103,7 @@ func (svc *ValueService) HandleEvent(msg *things.ThingMessage) error {
 	} else if msg.Key == vocab.EventTypeTD {
 		// TD documents are handled by the directory
 	} else {
-		// Thing events
+		// Thing events or action requests
 		// in case events arrive out of order, only update if the msg is newer
 		existingLatest := thingCache.Get(msg.Key)
 		if existingLatest == nil || msg.CreatedMSec > existingLatest.CreatedMSec {
@@ -159,8 +164,10 @@ func (svc *ValueService) LoadValues(thingID string) (cached bool) {
 // This only returns the latest value of each received action, not its history.
 //
 //	thingID whose actions to return
-func (svc *ValueService) ReadActions(thingID string, keys []string) (things.ThingMessageMap, error) {
-	return svc.readLatest(thingID, vocab.MessageTypeAction, keys)
+func (svc *ValueService) ReadActions(thingID string, keys []string, since string) (
+	things.ThingMessageMap, error) {
+
+	return svc.ReadLatest(vocab.MessageTypeAction, thingID, since, keys)
 }
 
 // ReadEvents returns the latest received event value of a thing.
@@ -168,8 +175,10 @@ func (svc *ValueService) ReadActions(thingID string, keys []string) (things.Thin
 //
 //	thingID of the thing to read.
 //	names is optional and can be used to limit the resulting array of values. Use nil to get all properties.
-func (svc *ValueService) ReadEvents(thingID string, keys []string) (things.ThingMessageMap, error) {
-	return svc.readLatest(thingID, vocab.MessageTypeEvent, keys)
+func (svc *ValueService) ReadEvents(thingID string, keys []string, since string) (
+	things.ThingMessageMap, error) {
+
+	return svc.ReadLatest(vocab.MessageTypeEvent, thingID, since, keys)
 }
 
 // ReadProperties returns the latest value of things properties and events as a list of properties
@@ -177,9 +186,11 @@ func (svc *ValueService) ReadEvents(thingID string, keys []string) (things.Thing
 //
 //	thingID of the thing to read.
 //	names is optional and can be used to limit the resulting array of values. Use nil to get all properties.
-func (svc *ValueService) ReadProperties(thingID string, keys []string) (things.ThingMessageMap, error) {
+func (svc *ValueService) ReadProperties(thingID string, keys []string, since string) (
+	things.ThingMessageMap, error) {
+
 	// FIXME: property changes are send as events. how best to filter on properties?
-	return svc.readLatest(thingID, vocab.MessageTypeEvent, keys)
+	return svc.ReadLatest(vocab.MessageTypeEvent, thingID, since, keys)
 }
 
 // SaveChanges writes modified cached properties to the underlying store.

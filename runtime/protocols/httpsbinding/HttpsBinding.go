@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
@@ -37,8 +37,12 @@ type HttpsBinding struct {
 	// sessionAuth for logging in and validating session tokens
 	sessionAuth api.IAuthenticator
 
-	// handlers for the REST API
-	restHandler *rest.RestHandler
+	// handlers for the REST APIs
+	dtDirectoryHandler *rest.DigiTwinDirectory
+	dtValuesHandler    *rest.DigiTwinValues
+	dtHistoryHandler   *rest.DigiTwinHistory
+	authnRestHandler   *rest.AuthnRest
+
 	// handlers for SSE server push connections
 	sseHandler *sse.SSEHandler
 }
@@ -74,11 +78,8 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 	//--- public routes do not require a Hub connection
 	router.Group(func(r chi.Router) {
 
-		// full page routes
 		//r.Get("/static/*", staticFileServer.ServeHTTP)
-		r.Post(vocab.PostLoginPath, svc.handlePostLogin)
-		//r.Post("/logout", svc.handleLogout)
-
+		r.Post(vocab.PostLoginPath, svc.authnRestHandler.HandlePostLogin)
 	})
 
 	//--- private routes that requires authentication
@@ -86,13 +87,11 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 		// client sessions authenticate the sender
 		r.Use(sessions.AddSessionFromToken(svc.sessionAuth))
 
-		// register the agent and consumer methods
-		svc.restHandler.RegisterMethods(r)
-
-		// handlers for built-in services requests
-		// TODO: move to rest api?
-		r.Post(vocab.PostRefreshPath, svc.handlePostRefresh)
-		//r.Post(vocab.PostRPCPath, svc.handlePostRPC)
+		// register rest api for built-in services
+		svc.authnRestHandler.RegisterMethods(r)
+		svc.dtDirectoryHandler.RegisterMethods(r)
+		svc.dtValuesHandler.RegisterMethods(r)
+		svc.dtHistoryHandler.RegisterMethods(r)
 
 		// sse has its own validation instead of using session context (which reconnects or redirects to /login)
 		svc.sseHandler.RegisterMethods(r)
@@ -108,8 +107,11 @@ func (svc *HttpsBinding) Start(handler router.MessageHandler) error {
 	slog.Info("Starting HttpsBinding")
 	svc.handleMessage = handler
 
-	svc.restHandler = rest.NewRestHandler(svc.handleMessage)
-	svc.sseHandler = sse.NewSSEHandler(svc.handleMessage)
+	svc.dtDirectoryHandler = rest.NewDigiTwinDirectory(svc.handleMessage)
+	svc.dtHistoryHandler = rest.NewDigiTwinHistory(svc.handleMessage)
+	svc.dtValuesHandler = rest.NewDigiTwinValues(svc.handleMessage)
+	svc.authnRestHandler = rest.NewAuthnRest(svc.handleMessage, svc.sessionAuth)
+	svc.sseHandler = sse.NewSSEHandler(svc.handleMessage, svc.sessionAuth)
 
 	svc.createRoutes(svc.router)
 
@@ -138,7 +140,7 @@ func NewHttpsBinding(config *HttpsBindingConfig,
 	sessionAuth api.IAuthenticator,
 ) *HttpsBinding {
 
-	httpServer, router := tlsserver.NewTLSServer(
+	httpServer, r := tlsserver.NewTLSServer(
 		config.Host, uint(config.Port), serverCert, caCert)
 
 	svc := HttpsBinding{
@@ -146,7 +148,7 @@ func NewHttpsBinding(config *HttpsBindingConfig,
 		config:      config,
 		privKey:     privKey,
 		httpServer:  httpServer,
-		router:      router,
+		router:      r,
 	}
 	return &svc
 }

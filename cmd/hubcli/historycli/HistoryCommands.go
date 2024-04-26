@@ -125,7 +125,7 @@ func HandleListEvents(hc *hubclient.HubClient, agentID, thingID string, name str
 		count++
 		value := string(tv.Data)
 		// show number of properties
-		if tv.Name == transports.EventNameProps {
+		if tv.Name == transports.EventTypeProps {
 			props := make(map[string]string)
 			_ = json.Unmarshal(tv.Data, &props)
 			value = fmt.Sprintf("(%d properties)", len(props))

@@ -16,6 +16,13 @@ const SessionContextID = "session"
 // AddSessionFromToken middleware decodes the bearer session token in the authorization header
 // and adds the corresponding ClientSession object to the request context.
 //
+// Session tokens can be provided through a bearer token or a client cookie. The token
+// must match with an existing session ID
+// TODO: consider using persistent sessions where the token must be that of an existing session,
+// or be considered invalid. This improves security because closing the session invalidates
+// the token, even if it hasn't yet expired.
+// This does require that the session must be stored somewhere.
+//
 // The session can be retrieved from the request context using GetSessionFromContext()
 //
 // The client session contains the caller's ID, and stats for the current session.

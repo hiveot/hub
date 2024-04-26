@@ -40,8 +40,7 @@ func startTestAuthnService(testHash string) (
 	authnConfig.AgentTokenValiditySec = 100
 	authnConfig.Encryption = testHash
 
-	svc = service.StartAuthnService(&authnConfig)
-	err := svc.Start()
+	svc, err := service.StartAuthnService(&authnConfig)
 	if err != nil {
 		panic("Error starting authn admin service:" + err.Error())
 	}

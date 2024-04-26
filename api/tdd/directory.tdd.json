@@ -1,0 +1,158 @@
+{
+	"@context":[ "https://www.w3.org/2022/wot/td/v1.1",
+		{"ht": "https://www.hiveot.net/vocab/v0.1"}
+	],
+	"@type": "Service",
+	"id": "digitwin",
+	"title": "DigiTwin Directory",
+	"description": "HiveOT digital twin directory service",
+	"version": "0.1",
+	"created": "2024-04-21T17:00:00.000-0700",
+	"modified": "2024-04-21T17:00:00.000-0700",
+	"support": "https://www.github.com/hiveot/hub",
+	"security": ["bearer"],
+	"securityDefinitions": {},
+	"forms": [{
+		"op": "readallproperties",
+		"contentType": "application/json",
+		"href": "/things/{thingID}/properties"
+	}],
+	"properties": {
+	},
+	"events": {
+		"thingAdded": {
+			"title": "Thing Added",
+			"description": "A new Thing TD was added to the directory",
+			"data": {
+				"title": "thingID",
+				"description": "ID of the Thing that was added",
+				"type": "string"
+			},
+			"forms": []
+		},
+		"thingRemoved": {
+			"title": "Thing Removed",
+			"description": "A Thing TD was removed from the directory",
+			"data": {
+				"title": "thingID",
+				"description": "ID of the Thing that was removed",
+				"type": "string"
+			},
+			"forms": []
+		}
+	},
+	"actions": {
+		"readThing": {
+			"@type": "ht:function",
+			"title": "Read TD",
+			"description": "This returns a single TD document",
+			"safe": true,
+			"idempotent": true,
+			"forms": [{
+				"op": "?",
+				"href": "things/{thingID}/readThing",
+				"contentType": "application/json",
+				"https:methodName": "GET"
+			}],
+			"input": {
+				"type": "object",
+				"required": ["thingID"],
+				"properties": {
+					"thingID": {
+						"title": "Thing ID",
+						"description": "ID of the Thing to read",
+						"type": "string"
+					}
+				}
+			},
+			"output": {
+				"title": "TDD",
+				"description": "A Thing Description Document",
+				"question": "How to link to the TD as a type?",
+				"type": "string",
+				"forms": []
+			}
+		},
+		"readThings": {
+			"@type": "ht:function",
+			"title": "Read TDs",
+			"description": "Read a batch of TD documents",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"type": "object",
+				"properties": {
+					"offset": {
+						"title": "Offset",
+						"type": "integer",
+						"minimum": 0,
+						"default": 0
+					},
+					"limit": {
+						"title": "Limit",
+						"type": "integer",
+						"minimum": 1,
+						"default": 100
+					}
+				}
+			},
+			"output": {
+				"title": "TD list",
+				"description": "List of TD documents",
+				"type": "array",
+				"forms": []
+			},
+			"forms": []
+		},
+		"removeThing": {
+			"@type": "ht:function",
+			"title": "Remove Thing",
+			"description": "Remove a Thing from the directory and value stores",
+			"safe": false,
+			"idempotent": true,
+			"input": {
+				"type": "object",
+				"properties": {
+					"thingID": {
+						"title": "thingID",
+						"description": "ID of the Thing to remove",
+						"type": "string"
+					}
+				}
+			},
+			"forms": []
+		},
+		"queryThings": {
+			"@type": "ht:function",
+			"title": "Query Things",
+			"description": "Query things from the directory",
+			"safe": false,
+			"idempotent": true,
+			"input": {
+				"type": "object",
+				"properties": {
+					"query": {
+						"title": "Query",
+						"description": "Query expression (tbd)",
+						"type": "string"
+					},
+					"offset": {
+						"title": "Offset",
+						"type": "integer",
+						"minimum": 0,
+						"default": 0
+					},
+					"limit": {
+						"title": "Limit",
+						"description": "Maximum number of entries to return",
+						"type": "integer",
+						"minimum": 1,
+						"default": 100
+					}
+				}
+			},
+			"forms": []
+		}
+	},
+	"links": []
+}

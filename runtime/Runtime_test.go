@@ -3,7 +3,7 @@ package runtime_test
 import (
 	"encoding/json"
 	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
@@ -116,13 +116,12 @@ func TestAddRemoveTD(t *testing.T) {
 
 	td1 := createTD(thing1ID)
 	params := map[string]string{"thingID": thing1ID}
-	addr := utils.Substitute(vocab.AgentPutThingPath, params)
-	resp, err := ag.Put(addr, td1)
-	_ = resp
+	addr := utils.Substitute(vocab.PostThingPath, params)
+	_, err := ag.Post(addr, td1)
 	assert.NoError(t, err)
 
 	// Get returns a serialized TD object
-	addr = utils.Substitute(vocab.ConsumerGetThingPath, params)
+	addr = utils.Substitute(vocab.GetThingPath, params)
 	td2Doc, err := cl.Get(addr)
 	//time.Sleep(time.Second * 30)  // otherwise timeout during debugging. Is there a better way?
 	require.NoError(t, err)
@@ -156,16 +155,39 @@ func TestHttpsPubValueEvent(t *testing.T) {
 	// TODO: use a client from the library. path needs to match the server
 	//evPath := fmt.Sprintf("/event/%s/%s", thingID, key1)
 	vars := map[string]string{"thingID": thingID, "key": key1}
-	eventPath := utils.Substitute(vocab.AgentPostEventPath, vars)
+	eventPath := utils.Substitute(vocab.PostEventPath, vars)
 
 	_, err := cl.Post(eventPath, msg.Data)
 	assert.NoError(t, err)
 
-	props, err := r.DigiTwinSvc.Values.ReadEvents(thingID, nil)
+	props, err := r.DigiTwinSvc.Values.ReadEvents(thingID, nil, "")
 	require.NoError(t, err)
 	require.NotEmpty(t, props)
 	assert.Equal(t, msg.Data, props[key1].Data)
 
 	// the event must be in the store
 	r.Stop()
+}
+
+func TestHttpsPutProperties(t *testing.T) {
+	const thingID = "thing1"
+	const agentID = "agent1"
+
+	r := startRuntime()
+	cl, token := addConnectClient(r, api.ClientTypeAgent, agentID)
+	require.NotEmpty(t, token)
+	vars := map[string]string{"thingID": thingID, "key": vocab.EventTypeProperties}
+	pubEventPath := utils.Substitute(vocab.PostEventPath, vars)
+	props := map[string]string{
+		"prop1": "val1",
+		"prop2": "val2",
+	}
+	data, _ := json.Marshal(props)
+	_, err := cl.Post(pubEventPath, data)
+	assert.NoError(t, err)
+
+	readPropsPath := utils.Substitute(vocab.GetPropertiesPath, vars)
+	data, err = cl.Get(readPropsPath)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, data)
 }

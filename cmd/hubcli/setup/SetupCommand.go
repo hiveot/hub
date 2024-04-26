@@ -2,7 +2,6 @@ package setup
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/config"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/urfave/cli/v2"
 )
@@ -38,7 +37,7 @@ func SetupCommand(env *plugin.AppEnvironment) *cli.Command {
 // HandleSetup ensure the hiveot environment is setup properly
 func HandleSetup(env *plugin.AppEnvironment, core string, newSetup bool) error {
 	var err error
-	coreConfig := config.NewHubCoreConfig()
+	coreConfig := config_old.NewHubCoreConfig()
 	err = coreConfig.Setup(env, core, newSetup)
 	if err != nil {
 		return err

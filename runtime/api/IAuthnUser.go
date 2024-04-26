@@ -80,6 +80,7 @@ type GetProfileResp struct {
 
 // RefreshTokenArgs arguments for requesting a new user login token
 type RefreshTokenArgs struct {
+	ClientID string `json:"clientID"`
 	OldToken string `json:"oldToken"`
 }
 

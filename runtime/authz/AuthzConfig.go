@@ -1,7 +1,7 @@
 package authz
 
 import (
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/api"
 	"path"
 )

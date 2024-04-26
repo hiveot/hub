@@ -20,39 +20,53 @@ MessageTypes:
     # is this internal to a binding? probably yes.
     #MessageTypeINBOX:      "_INBOX"
 
-HttpPaths:
+
+# DigiTwinRestPaths defines the REST API paths of the DigiTwin service HTTPS binding.
+# This is subject to change as definitions for the query parameters, arguments and responses need to be included.
+# FIXME: this is part of the rest API and doesn't belong here
+# TODO: migrate this to an OpenAPI (swagger) specification.
+DigiTwinRestPaths:
   version: "0.1"
   link: "github.com/hiveot/hub/api/vocab/ht-constants.yaml"
   namespace: "ht"
-  description: "Default http rest paths for use by agents and services"
-  # see also: https://webthings.io/api/#web-thing-rest-api
+  description: "DigiTwin rest API paths for use by agents and consumers"
+  # modelled after: https://webthings.io/api/#web-thing-rest-api
   vocab:
-    # agent paths
-    AgentDeleteThingPath:     "/agent/{thingID}"
-    AgentGetActionsPath:      "/agent/{thingID}/actions"
-    AgentPostEventPath:       "/agent/{thingID}/event/{key}"
-    AgentPostEventsPath:      "/agent/{thingID}/events"
-    AgentPutPropertiesPath:   "/agent/{thingID}/properties"
-    AgentPutPropertyPath:     "/agent/{thingID}/property"
-    AgentPutThingPath:        "/agent/{thingID}"
+    # todo: how to express query parameters? eg "&since=2024-03-01T12:12:12+0700"
+    # todo: how to query a set of events? eg &"keys=key1,key2,key3"
+    # todo: how to specify history vs latest values?
+    #  eg: /things/{id}/events?keys=key1 for latest values for key1
+    #  eg: /things/{id}/events/key1?since=... for historical values for key1
 
-    # consumer paths
-    ConsumerDeleteThingPath:    "/things/{thingID}"
-    ConsumerGetActionPath:      "/things/{thingID}/actions/{key}"
-    ConsumerGetActionsPath:     "/things/{thingID}/actions"
-    ConsumerGetEventPath:       "/things/{thingID}/events/{key}"
-    ConsumerGetEventsPath:      "/things/{thingID}/events"
-    ConsumerGetPropertiesPath:  "/things/{thingID}/properties"
-    ConsumerGetPropertyPath:    "/things/{thingID}/properties/{key}"
-    ConsumerGetThingPath:       "/things/{thingID}"
-    ConsumerGetThingsPath:      "/things"
-    ConsumerPostActionPath:     "/things/{thingID}/actions/{key}"
-    ConsumerPostPropertiesPath: "/things/{thingID}/properties"
-    ConsumerPutPropertyPath:    "/things/{thingID}/properties/{key}"
+    #--- general REST interface
 
-    # other endpoints
-    PostLoginPath:   "/rpc/authn/login"
-    PostRefreshPath: "/rpc/authn/refresh"
-    PostRPCPath:     "/rpc/{thingID}/{key}"
-    ConnectSSEPath:  "/sse"
-    ConnectWSPath:   "/ws"
+    # SSE connection path
+    ConnectSSEPath:   "/sse"
+    # SSE connection path (tbd)
+    #ConnectWSSPath:   "/wss"
+
+    #--- Authentication service paths
+    PostLoginPath:    "/authn/login"
+    PostLogoutPath:   "/authn/logout"
+    PostRefreshPath:  "/authn/refresh"
+
+    #--- Directory service paths
+    GetThingsPath:      "/things"
+    GetThingPath:       "/things/{thingID}"
+    DeleteThingPath:    "/things/{thingID}"
+    PostThingPath:      "/things/{thingID}"
+
+    #--- Value service paths ----
+    # Read actions/events/property values of a thing.
+    # Optional query params "&since=ISOTime"
+    GetActionsPath:       "/things/{thingID}/actions"
+    GetEventsPath:        "/things/{thingID}/events"
+    GetPropertiesPath:    "/things/{thingID}/properties"
+    PostEventPath:        "/things/{thingID}/event/{key}"
+    PostActionPath:       "/things/{thingID}/action/{key}"
+    PostPropertiesPath:   "/things/{thingID}/properties"
+
+    #--- Digital twin history service paths ----
+    GetActionHistoryPath:      "/history/{thingID}/action/{key}"
+    GetEventHistoryPath:       "/history/{thingID}/event/{key}"
+

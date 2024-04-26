@@ -3,10 +3,11 @@ package digitwin_test
 import (
 	"encoding/json"
 	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/digitwin/digitwinclient"
 	"github.com/hiveot/hub/runtime/digitwin/digitwinhandler"
 	"github.com/hiveot/hub/runtime/digitwin/service"
@@ -27,7 +28,7 @@ var valueNames = []string{"temperature", "humidity", "pressure", "wind", "speed"
 // This doesn't use any transport.
 func startService(clean bool) (
 	svc *service.DigiTwinService,
-	cl *digitwinclient.DigiTwinClient,
+	mt api.IMessageTransport,
 	stopFn func()) {
 
 	if clean {
@@ -47,7 +48,7 @@ func startService(clean bool) (
 
 	// create the messaging wrapper
 	msgHandler := digitwinhandler.NewDigiTwinHandler(svc)
-	pm := func(thingID string, method string, args interface{}, reply interface{}) error {
+	mt = func(thingID string, method string, args interface{}, reply interface{}) error {
 		// message transport passes it straight to the service rpc handler
 		data, _ := json.Marshal(args)
 		tm := things.NewThingMessage(vocab.MessageTypeAction,
@@ -58,11 +59,10 @@ func startService(clean bool) (
 		}
 		return err
 	}
-	cl = digitwinclient.NewDigiTwinClient(pm)
 
-	return svc, cl, func() {
+	return svc, mt, func() {
 		svc.Stop()
-		store.Close()
+		_ = store.Close()
 	}
 }
 
@@ -91,7 +91,7 @@ func createValueBatch(svc *service.DigiTwinService,
 		)
 		ev.CreatedMSec = randomTime.UnixMilli()
 
-		_ = svc.Values.HandleEvent(ev)
+		_ = svc.Values.HandleMessage(ev)
 		valueBatch = append(valueBatch, ev)
 	}
 	return valueBatch
@@ -114,12 +114,13 @@ func TestMain(m *testing.M) {
 
 func TestStartStop(t *testing.T) {
 	var thingIDs = []string{"thing1", "thing2", "thing3", "thing4"}
-	svc, cl, stopFunc := startService(true)
+	svc, mt, stopFunc := startService(true)
 
 	// add TDs and values
 	for _, thingID := range thingIDs {
 		td := createTDDoc(thingID, thingID)
-		svc.Directory.UpdateThing("test", thingID, td)
+		err := svc.Directory.UpdateThing("test", thingID, td)
+		require.NoError(t, err)
 	}
 	createValueBatch(svc, 100, thingIDs, 100)
 
@@ -127,25 +128,26 @@ func TestStartStop(t *testing.T) {
 	tdList, err := svc.Directory.ReadThings(0, 10)
 	assert.NoError(t, err, "Cant read directory. Did the service set client permissions?")
 	assert.Equal(t, len(thingIDs), len(tdList))
-	valList1, err := cl.ReadProperties(thingIDs[1], nil)
+	valList1, err := digitwinclient.ReadEvents(mt, thingIDs[1], nil, "")
+	//valList1, err := cl.ReadProperties(thingIDs[1], nil)
 	assert.NoError(t, err)
 	assert.True(t, len(valList1) > 1)
 
 	// stop and start again, the update should be reloaded
 	stopFunc()
 
-	svc, cl, stopFunc = startService(false)
+	svc, mt, stopFunc = startService(false)
 	defer stopFunc()
-	tdList2, err := cl.ReadThings(0, 10)
+	tdList2, err := digitwinclient.ReadThings(mt, 0, 10)
 	assert.Equal(t, len(thingIDs), len(tdList2))
 
-	valList2a, err := cl.ReadProperties(thingIDs[1], nil)
+	valList2a, err := digitwinclient.ReadProperties(mt, thingIDs[1], nil, "")
 	assert.NoError(t, err)
 	assert.Equal(t, len(valList1), len(valList2a))
-	valList2b, err := cl.ReadEvents(thingIDs[1], nil)
+	valList2b, err := digitwinclient.ReadEvents(mt, thingIDs[1], nil, "")
 	_ = valList2b
 	assert.NoError(t, err)
-	valList2c, err := cl.ReadActions(thingIDs[1], nil)
+	valList2c, err := digitwinclient.ReadActions(mt, thingIDs[1], nil, "")
 	_ = valList2c
 	assert.NoError(t, err)
 }
@@ -155,7 +157,7 @@ func TestGetEvents(t *testing.T) {
 	const agent1ID = "agent1"
 	const thing1ID = "thing1" // matches a percentage of the random things
 
-	svc, cl, closeFn := startService(true)
+	svc, mt, closeFn := startService(true)
 	defer closeFn()
 
 	batch := createValueBatch(svc, count, []string{thing1ID}, 3600*24*30)
@@ -163,21 +165,21 @@ func TestGetEvents(t *testing.T) {
 
 	t0 := time.Now()
 
-	values, err := cl.ReadProperties(thing1ID, nil)
+	values, err := digitwinclient.ReadProperties(mt, thing1ID, nil, "")
 	require.NoError(t, err)
 	require.NotNil(t, values)
 	d0 := time.Now().Sub(t0)
 
 	// 2nd time from cache
 	t1 := time.Now()
-	values2, err := cl.ReadProperties(thing1ID, nil)
+	values2, err := digitwinclient.ReadProperties(mt, thing1ID, nil, "")
 	require.NoError(t, err)
 	require.NotNil(t, values2)
 	d1 := time.Now().Sub(t1)
 
 	assert.Less(t, d1, d0)
 
-	values3, err := cl.ReadProperties(thing1ID, valueNames)
+	values3, err := digitwinclient.ReadProperties(mt, thing1ID, valueNames, "")
 	require.NoError(t, err)
 	require.NotNil(t, values3)
 	_ = values3
@@ -199,24 +201,24 @@ func TestAddPropsEvent(t *testing.T) {
 	pev["switch"] = "false"
 	serProps, _ := json.Marshal(pev)
 
-	svc, cl, closeFn := startService(true)
+	svc, mt, closeFn := startService(true)
 	defer closeFn()
 
 	tv := things.NewThingMessage(vocab.MessageTypeEvent,
 		thing1ID, vocab.EventTypeProperties, serProps, "sender")
-	_ = svc.Values.HandleEvent(tv)
+	_ = svc.Values.HandleMessage(tv)
 
-	values1, err := cl.ReadProperties(thing1ID, valueNames)
+	values1, err := digitwinclient.ReadProperties(mt, thing1ID, valueNames, "")
 	require.NoError(t, err)
 	assert.Equal(t, len(pev), len(values1))
 }
 
 func TestAddPropsFail(t *testing.T) {
 	thing1ID := "badthingid"
-	svc, cl, closeFn := startService(true)
+	svc, mt, closeFn := startService(true)
 	_ = svc
 	defer closeFn()
-	values1, err := cl.ReadProperties(thing1ID, valueNames)
+	values1, err := digitwinclient.ReadProperties(mt, thing1ID, valueNames, "")
 	require.NoError(t, err)
 	assert.Empty(t, values1)
 }
@@ -226,11 +228,11 @@ func TestAddBadProps(t *testing.T) {
 	badProps := []string{"bad1", "bad2"}
 	serProps, _ := json.Marshal(badProps)
 
-	svc, cl, closeFn := startService(true)
+	svc, mt, closeFn := startService(true)
 	defer closeFn()
 	tv := things.NewThingMessage(vocab.MessageTypeEvent,
 		thing1ID, vocab.EventTypeProperties, serProps, "sender")
-	err := svc.Values.HandleEvent(tv)
+	err := svc.Values.HandleMessage(tv)
 	assert.Error(t, err)
 
 	//// action is ignored
@@ -238,7 +240,7 @@ func TestAddBadProps(t *testing.T) {
 	//_, err = svc.HandleEvent(tv)
 	//assert.NoError(t, err)
 	//
-	values1, err := cl.ReadProperties(thing1ID, valueNames)
+	values1, err := digitwinclient.ReadProperties(mt, thing1ID, valueNames, "")
 	require.NoError(t, err)
 	assert.Equal(t, 0, len(values1))
 }
@@ -248,22 +250,22 @@ func TestAddRemoveTD(t *testing.T) {
 	const thing1ID = "agent1:thing1"
 	const title1 = "title1"
 
-	svc, cl, stopFunc := startService(true)
+	svc, mt, stopFunc := startService(true)
 	defer stopFunc()
 
 	tdDoc1 := createTDDoc(thing1ID, title1)
 	err := svc.Directory.UpdateThing(senderID, thing1ID, tdDoc1)
 	assert.NoError(t, err)
 
-	td2, err := cl.ReadThing(thing1ID)
+	td2, err := digitwinclient.ReadThing(mt, thing1ID)
 	require.NoError(t, err)
 	assert.Equal(t, thing1ID, td2.ID)
 
 	// after removal, getTD should return nil
-	err = cl.RemoveThing(thing1ID)
+	err = digitwinclient.RemoveThing(mt, thing1ID)
 	assert.NoError(t, err)
 
-	td3, err := cl.ReadThing(thing1ID)
+	td3, err := digitwinclient.ReadThing(mt, thing1ID)
 	assert.Empty(t, td3)
 	assert.Error(t, err)
 }
@@ -273,7 +275,7 @@ func TestHandleTDEvent(t *testing.T) {
 	const thing1ID = "agent1:thing1"
 	const title1 = "title1"
 
-	svc, cl, stopFunc := startService(true)
+	svc, mt, stopFunc := startService(true)
 	msgHandler := digitwinhandler.NewDigiTwinHandler(svc)
 	defer stopFunc()
 
@@ -290,26 +292,26 @@ func TestHandleTDEvent(t *testing.T) {
 	_, err = msgHandler(tv)
 	assert.NoError(t, err)
 
-	tdList, err := cl.ReadThings(0, 10)
+	tdList, err := digitwinclient.ReadThings(mt, 0, 10)
 	assert.Equal(t, 1, len(tdList))
 	assert.NoError(t, err)
 }
 
 func TestGetTDsFail(t *testing.T) {
 	const clientID = "client1"
-	svc, cl, stopFunc := startService(true)
+	svc, mt, stopFunc := startService(true)
 	_ = svc
 	defer stopFunc()
-	tds, err := cl.ReadThings(0, 10)
+	tds, err := digitwinclient.ReadThings(mt, 0, 10)
 	require.NoError(t, err)
 	require.Empty(t, tds)
 
-	tds, err = cl.ReadThings(10, 10)
+	tds, err = digitwinclient.ReadThings(mt, 10, 10)
 	require.NoError(t, err)
 	require.Empty(t, tds)
 
 	// bad clientID
-	tdd1, err := cl.ReadThing("badid")
+	tdd1, err := digitwinclient.ReadThing(mt, "badid")
 	require.Error(t, err)
 	require.Nil(t, tdd1)
 }
@@ -319,7 +321,7 @@ func TestListTDs(t *testing.T) {
 	const thing1ID = "agent1:thing1"
 	const title1 = "title1"
 
-	svc, cl, stopFunc := startService(true)
+	svc, mt, stopFunc := startService(true)
 	defer stopFunc()
 
 	tdDoc1 := createTDDoc(thing1ID, title1)
@@ -327,7 +329,7 @@ func TestListTDs(t *testing.T) {
 	err := svc.Directory.UpdateThing(senderID, thing1ID, tdDoc1)
 	require.NoError(t, err)
 
-	tdList, err := cl.ReadThings(0, 10)
+	tdList, err := digitwinclient.ReadThings(mt, 0, 10)
 	require.NoError(t, err)
 	assert.NotNil(t, tdList)
 	assert.True(t, len(tdList) > 0)

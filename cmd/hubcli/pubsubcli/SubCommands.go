@@ -59,11 +59,11 @@ func SubEventsCommand(hc **hubclient.HubClient) *cli.Command {
 // HandleSubTD subscribes and prints TD publications
 func HandleSubTD(hc *hubclient.HubClient) error {
 
-	err := hc.SubEvents("", "", transports.EventNameTD)
+	err := hc.SubEvents("", "", transports.EventTypeTD)
 	if err != nil {
 		return err
 	}
-	hc.SetEventHandler(func(msg *things.ThingValue) {
+	hc.SetEventHandler(func(msg *things.ThingMessage) {
 		var td things.TD
 		//fmt.Printf("%s\n", event.ValueJSON)
 		err := json.Unmarshal(msg.Data, &td)
@@ -89,15 +89,15 @@ func HandleSubEvents(hc *hubclient.HubClient, agentID string, thingID string, na
 	fmt.Printf("---------------  -------------------  ------------------------  -----------------------------  ---------\n")
 
 	err := hc.SubEvents(agentID, thingID, name)
-	hc.SetEventHandler(func(msg *things.ThingValue) {
+	hc.SetEventHandler(func(msg *things.ThingMessage) {
 		createdTime := time.UnixMilli(msg.CreatedMSec)
 		timeStr := createdTime.Format("15:04:05.000")
 		value := fmt.Sprintf("%-.30s", msg.Data)
-		if msg.Name == transports.EventNameProps {
+		if msg.Name == transports.EventTypeProps {
 			var props map[string]interface{}
 			_ = json.Unmarshal(msg.Data, &props)
 			value = fmt.Sprintf("%d properties", len(props))
-		} else if msg.Name == transports.EventNameTD {
+		} else if msg.Name == transports.EventTypeTD {
 			var td things.TD
 			_ = json.Unmarshal(msg.Data, &td)
 			value = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",

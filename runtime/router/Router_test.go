@@ -2,7 +2,7 @@ package router_test
 
 import (
 	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/router"
@@ -52,13 +52,13 @@ func TestHandleEvent(t *testing.T) {
 		mwh2Count++
 		return tv, nil
 	})
-	r.AddServiceHandler("",
+	r.AddEventHandler(
 		func(tv *things.ThingMessage) ([]byte, error) {
 			return tv.Data, nil
 		})
 	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", []byte("data"), "sender1")
 	resp, err := r.HandleMessage(tv1)
-	assert.Equal(t, tv1.Data, resp)
+	assert.Empty(t, resp)
 	assert.NoError(t, err)
 
 	assert.Equal(t, mwh1Count, 1)
@@ -101,7 +101,7 @@ func TestHandlerError(t *testing.T) {
 		func(tv *things.ThingMessage) ([]byte, error) {
 			return tv.Data, fmt.Errorf("handler returns error")
 		})
-	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", []byte("data"), "sender1")
+	tv1 := things.NewThingMessage(vocab.MessageTypeAction, "thing1", "key1", []byte("data"), "sender1")
 	_, err := r.HandleMessage(tv1)
 	assert.Error(t, err)
 }
