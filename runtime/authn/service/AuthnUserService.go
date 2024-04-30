@@ -43,7 +43,8 @@ func (svc *AuthnUserService) Stop() {
 // Login and return a session token
 func (svc *AuthnUserService) Login(
 	clientID string, password string, sessionID string) (token string, err error) {
-	token, err = svc.sessionAuth.Login(clientID, password, sessionID)
+	// a user login always creates a session token
+	token, sessionID, err = svc.sessionAuth.Login(clientID, password, sessionID)
 	return token, err
 }
 

@@ -17,11 +17,16 @@ const SessionContextID = "session"
 // and adds the corresponding ClientSession object to the request context.
 //
 // Session tokens can be provided through a bearer token or a client cookie. The token
-// must match with an existing session ID
-// TODO: consider using persistent sessions where the token must be that of an existing session,
-// or be considered invalid. This improves security because closing the session invalidates
-// the token, even if it hasn't yet expired.
-// This does require that the session must be stored somewhere.
+// must match with an existing session ID.
+//
+// This distinguishes two types of tokens. Those with and those without a session ID.
+// If the token contains a session ID then that session must exist or the token is invalid.
+// User tokens are typically session tokens. Closing the session (logout) invalidates the token,
+// even if it hasn't yet expired. Sessions are currently only stored in memory so a service
+// restart also invalidates all session tokens.
+//
+// # Non-session tokens, are used by services and device agents. These tokens are generated
+// on provisioning or token renewal and last until their expiry.
 //
 // The session can be retrieved from the request context using GetSessionFromContext()
 //
@@ -41,20 +46,28 @@ func AddSessionFromToken(sessionAuth api.IAuthenticator) func(next http.Handler)
 			}
 			//check if the token is properly signed
 			cid, sid, err := sessionAuth.ValidateToken(bearerToken)
-			if err != nil || sid == "" || cid == "" {
+			if err != nil || cid == "" {
 				slog.Warn("Invalid session token:", "err", err)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 
-			// next obtain the client and session IDs from the claims
-			// A session was added on user login.
-			// service/devices don't have a session until they first connect
+			// A token with session-id must have a known session
 			cs, err := sessionmanager.GetSession(sid)
-			if err != nil || cs == nil {
-				cs, err = sessionmanager.NewSession(cid, r.RemoteAddr, sid)
+			if sid == "" {
+				// service/devices don't have a session-id in their token. These tokens
+				// remain valid until they expire. Use the client-id as the session ID.
+				cs, err = sessionmanager.NewSession(cid, r.RemoteAddr, cid)
+			} else if err != nil {
+				// If no session is found then the session token is invalid. This can
+				// happen after the user logs out.
+				slog.Warn("Session '%s' is not valid:", "sid", sid, "err", err)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			} else {
+				// this is a valid session
 			}
-
+			// the session must belong to the client
 			if cs.clientID != cid {
 				slog.Error("AddSessionToContext: ClientID in session does not match jwt clientID",
 					"jwt clientID", cid,

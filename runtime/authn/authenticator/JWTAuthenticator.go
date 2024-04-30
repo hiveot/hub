@@ -24,8 +24,10 @@ type JWTAuthenticator struct {
 // CreateSessionToken creates a new session token for the client
 //
 //	clientID is the account ID of a known client
-//	sessionID for which this token is valid. "" to generate a new sessionID
+//	sessionID for which this token is valid. "" to not apply a sessionID.
 //	validitySec is the token validity period or 0 for default based on client type
+//
+// This returns the token
 func (svc *JWTAuthenticator) CreateSessionToken(
 	clientID string, sessionID string, validitySec int) string {
 
@@ -38,10 +40,6 @@ func (svc *JWTAuthenticator) CreateSessionToken(
 
 	validity := time.Second * time.Duration(validitySec)
 	expiryTime := time.Now().Add(validity)
-	if sessionID == "" {
-		sid, _ := uuid.NewUUID()
-		sessionID = sid.String()
-	}
 	signingKeyPub, _ := x509.MarshalPKIXPublicKey(svc.signingKey.PublicKey())
 	signingKeyPubStr := base64.StdEncoding.EncodeToString(signingKeyPub)
 
@@ -116,22 +114,26 @@ func (svc *JWTAuthenticator) DecodeSessionToken(token string, signedNonce string
 //	password to verify
 //	sessionID of the new session or "" to generate a new session ID
 //
-// This returns a session token or an error if failed
-func (svc *JWTAuthenticator) Login(clientID, password, sessionID string) (token string, err error) {
+// This returns a session token, its session ID, or an error if failed
+func (svc *JWTAuthenticator) Login(clientID, password, sessionID string) (token string, sid string, err error) {
 
 	clientProfile, err := svc.authnStore.VerifyPassword(clientID, password)
 	_ = clientProfile
 	if err != nil {
-		return "", err
+		return "", "", err
+	}
+	if sessionID == "" {
+		uid, _ := uuid.NewUUID()
+		sessionID = uid.String()
 	}
 	validitySec := clientProfile.TokenValiditySec
 	token = svc.CreateSessionToken(clientID, sessionID, validitySec)
-	return token, err
+	return token, sessionID, err
 }
 
-// RefreshToken issues a new session token for the authenticated user.
-// This returns a refreshed token that can be used to connect to the messaging server
-// the old token must be a valid jwt token belonging to the clientID
+// RefreshToken issues a new authentication token for the authenticated user.
+// This returns a refreshed token carrying the same session id as the old token.
+// the old token must be a valid jwt token belonging to the clientID.
 func (svc *JWTAuthenticator) RefreshToken(clientID string, oldToken string, validitySec int) (token string, err error) {
 	// verify the token
 	tokenClientID, sessionID, err := svc.DecodeSessionToken(oldToken, "", "")

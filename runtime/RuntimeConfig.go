@@ -125,10 +125,10 @@ func (cfg *RuntimeConfig) setupCerts(env *plugin.AppEnvironment) {
 	}
 	// load the server key if available
 	if cfg.ServerKey == nil {
-		slog.Warn("Loading server key", "serverKeyPath", serverKeyPath)
+		slog.Info("Loading server key", "serverKeyPath", serverKeyPath)
 		cfg.ServerKey, err = keys.NewKeyFromFile(serverKeyPath)
 	} else {
-		slog.Warn("Using provided server key")
+		slog.Info("Using provided server key")
 		err = nil
 	}
 	if err != nil || cfg.ServerKey == nil {

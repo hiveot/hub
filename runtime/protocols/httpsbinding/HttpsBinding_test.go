@@ -33,11 +33,16 @@ const testToken = "testtoken"
 
 type DummyAuthenticator struct{}
 
-func (d *DummyAuthenticator) Login(clientID string, password string, sessionID string) (token string, err error) {
-	if password == testPassword && clientID == testLogin {
-		return testToken, nil
+func (d *DummyAuthenticator) Login(clientID string, password string, sessionID string) (token string, sid string, err error) {
+	if sessionID == "" {
+		//uid, _ := uuid.NewUUID()
+		//sessionID = uid.String()
+		sessionID = "testsession"
 	}
-	return "", fmt.Errorf("Invalid login")
+	if password == testPassword && clientID == testLogin {
+		return testToken, sessionID, nil
+	}
+	return "", "", fmt.Errorf("Invalid login")
 }
 func (d *DummyAuthenticator) CreateSessionToken(clientID, sessionID string, validitySec int) (token string) {
 	return testToken
@@ -84,7 +89,8 @@ func createConnectClient(clientID string) *tlsclient.TLSClient {
 	}
 
 	// 2b. connect a client
-	sessionToken, err := dummyAuthenticator.Login(testLogin, testPassword, "")
+	sessionToken, sid, err := dummyAuthenticator.Login(testLogin, testPassword, "")
+	_ = sid
 
 	cl := tlsclient.NewTLSClient(hostPort, certBundle.CaCert, time.Second*120)
 	cl.ConnectWithToken(clientID, sessionToken)

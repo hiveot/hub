@@ -10,6 +10,8 @@ import (
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/runtime"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"os"
 	"path"
 	"testing"
@@ -86,10 +88,13 @@ func TestStartStop(t *testing.T) {
 
 func TestLogin(t *testing.T) {
 	const senderID = "sender1"
-	const password = "pass1"
 
 	r := startRuntime()
 	cl, _ := addConnectClient(r, api.ClientTypeUser, senderID)
+	t2, err := cl.RefreshToken("")
+	require.NoError(t, err)
+	assert.NotEmpty(t, t2)
+
 	cl.Close()
 	r.Stop()
 	time.Sleep(time.Millisecond * 100)

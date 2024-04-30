@@ -6,7 +6,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/protocols/httpsbinding/sessions"
 	"github.com/hiveot/hub/runtime/router"
+	"github.com/hiveot/hub/runtime/tlsserver"
 	"io"
 	"net/http"
 )
@@ -20,6 +22,8 @@ type AuthnRest struct {
 
 // HandlePostLogin handles a login request and a new session, posted by a consumer
 func (svc *AuthnRest) HandlePostLogin(w http.ResponseWriter, r *http.Request) {
+	sm := sessions.GetSessionManager()
+
 	args := api.LoginArgs{}
 	// credentials are in a json payload
 	data, err := io.ReadAll(r.Body)
@@ -31,12 +35,27 @@ func (svc *AuthnRest) HandlePostLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = json.Unmarshal(data, &args)
-	// this generates a new session ID
-	token, err := svc.sessionAuth.Login(args.ClientID, args.Password, "")
+	// login generates a new session ID
+	token, sid, err := svc.sessionAuth.Login(args.ClientID, args.Password, "")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
+	// if a session exists, remove it
+	oldToken, err := tlsserver.GetBearerToken(r)
+	if err == nil {
+		_, oldSid, err := svc.sessionAuth.ValidateToken(oldToken)
+		if err == nil {
+			_ = sm.Close(oldSid)
+		}
+	}
+	// create the session for this token
+	_, err = sm.NewSession(args.ClientID, r.RemoteAddr, sid)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
 	reply := api.LoginResp{Token: token}
 	resp, err := json.Marshal(reply)
 	_, _ = w.Write(resp)

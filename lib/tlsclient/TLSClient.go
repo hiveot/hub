@@ -15,6 +15,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/cookiejar"
+	"net/url"
 	"time"
 )
 
@@ -308,13 +309,18 @@ func (cl *TLSClient) Invoke(method string, url string, msg interface{}) ([]byte,
 }
 
 // NewRequest creates a request object containing a bearer token if available
-func (cl *TLSClient) NewRequest(method string, url string, body []byte) (*http.Request, error) {
+func (cl *TLSClient) NewRequest(method string, fullURL string, body []byte) (*http.Request, error) {
 	bodyReader := bytes.NewReader(body)
-	req, err := http.NewRequest(method, url, bodyReader)
+	req, err := http.NewRequest(method, fullURL, bodyReader)
 	if err != nil {
 		return nil, err
 	}
-
+	// set the intended destination
+	// in web browser this is the origin that provided the web page,
+	// here it means the server that we'd like to talk to.
+	parts, err := url.Parse(fullURL)
+	origin := fmt.Sprintf("%s://%s", parts.Scheme, parts.Host)
+	req.Header.Set("Origin", origin)
 	if cl.bearerToken != "" {
 		req.Header.Add("Authorization", "bearer "+cl.bearerToken)
 	} else {

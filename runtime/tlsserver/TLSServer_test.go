@@ -3,6 +3,7 @@ package tlsserver_test
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/runtime/tlsserver"
 	"log/slog"
@@ -23,6 +24,7 @@ var testCerts certs.TestCertBundle
 // TestMain runs a http server
 // Used for all test cases in this package
 func TestMain(m *testing.M) {
+	logging.SetLogging("info", "")
 	slog.Info("------ TestMain of TLSServer_test.go ------")
 	// serverAddress = hubnet.GetOutboundIP("").String()
 	// use the localhost interface for testing
@@ -133,40 +135,6 @@ func TestTokenAuth(t *testing.T) {
 	cl.Close()
 	srv.Stop()
 }
-
-// Test with invalid login authentication
-//func TestUnauthorized(t *testing.T) {
-//	path1 := "/test1"
-//	//loginID1 := "user1"
-//	//password1 := "user1pass"
-//
-//	// setup server and client environment
-//	srv, router := tlsserver.NewTLSServer(serverAddress, serverPort,
-//		testCerts.ServerCert, testCerts.CaCert)
-//
-//	err := srv.Start()
-//	assert.NoError(t, err)
-//	//
-//	jwtAuthorizer := tlsserver.NewJWTAuthenticator()
-//	router.Use(jwtAuthorizer)
-//	srv.AddHandler(path1, func(string, http.ResponseWriter, *http.Request) {
-//		slog.Info("TestNoAuth: path1 hit")
-//		assert.Fail(t, "did not expect the request to pass")
-//	})
-//	//
-//	cl := tlsclient.NewTLSClient(clientHostPort, testCerts.CaCert)
-//	assert.NoError(t, err)
-//
-//	// AuthMethodNone creates a client without any authentication method
-//	cl.ConnectNoAuth()
-//
-//	// ... which causes any request to fail
-//	_, err = cl.Get(path1)
-//	assert.Error(t, err)
-//
-//	cl.Close()
-//	srv.Stop()
-//}
 
 //func TestCertAuth(t *testing.T) {
 //	path1 := "/hello"

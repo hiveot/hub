@@ -269,9 +269,11 @@ func TestAuthJWT(t *testing.T) {
 	assert.NoError(t, err)
 	//
 	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert, 0)
-	_, err = cl.ConnectWithPassword(user1, password1)
+	token1, err := cl.ConnectWithPassword(user1, password1)
 	assert.NoError(t, err)
 
+	// reconnect using the given token
+	cl.ConnectWithToken(user1, token1)
 	_, err = cl.Get(path3)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, path3Hit)

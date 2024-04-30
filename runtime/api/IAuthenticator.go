@@ -7,7 +7,7 @@ type IAuthenticator interface {
 	// This will verify the given password and if valid will generate an authentication
 	// token containing a clientID and sessionID.
 	// A new sessionID will be generated if none is provided.
-	Login(clientID string, password string, sessionID string) (newToken string, err error)
+	Login(clientID string, password string, sessionID string) (newToken string, sid string, err error)
 
 	// CreateSessionToken creates a signed session token for a client.
 	// If no sessionID is provided then one will be generated.

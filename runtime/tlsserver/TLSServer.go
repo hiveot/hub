@@ -70,14 +70,15 @@ func (srv *TLSServer) Start() error {
 				slog.Debug("TLSServer.AllowOriginFunc: Cors origin Is True", "origin", orig)
 				return true
 			}
-			slog.Warn("TLSServer.AllowOriginFunc: Cors: origin Is False", "orig", orig)
+			slog.Warn("TLSServer.AllowOriginFunc: Cors: missing origin")
 			return false
 		},
 		// default allowed headers is "Origin", "Accept", "Content-Type", "X-Requested-With" (missing authorization)
 		AllowedHeaders: []string{"Origin", "Accept", "Content-Type", "Authorization", "Headers"},
+		//AllowedHeaders: []string{"*"},
 		// default is get/put/patch/post/delete/head
 		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions},
-		Debug:            true,
+		Debug:            false, //true, // the AllowOriginFunc above does the reporting
 		AllowCredentials: true,
 	})
 	handler := c.Handler(srv.router)
