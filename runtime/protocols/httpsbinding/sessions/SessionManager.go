@@ -3,9 +3,12 @@ package sessions
 import (
 	"crypto/ecdsa"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
 	"github.com/google/uuid"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 	"sync"
 	"time"
@@ -58,6 +61,19 @@ func (sm *SessionManager) Close(sessionID string) error {
 	return nil
 }
 
+// CloseAll closes all sessions
+func (sm *SessionManager) CloseAll() {
+	sm.mux.Lock()
+	defer sm.mux.Unlock()
+
+	slog.Info("CloseAll. Closing remaining sessions", "count", len(sm.sessions))
+	for sid, session := range sm.sessions {
+		_ = sid
+		session.Close()
+	}
+	sm.sessions = make(map[string]*ClientSession)
+}
+
 // GetSession returns the client session if available
 // An error is returned if the sessionID is not an existing session
 func (sm *SessionManager) GetSession(sessionID string) (*ClientSession, error) {
@@ -85,6 +101,18 @@ func (sm *SessionManager) GetSession(sessionID string) (*ClientSession, error) {
 func (sm *SessionManager) Init(hubURL string, core string,
 	signingKey *ecdsa.PrivateKey, caCert *x509.Certificate,
 	tokenKP keys.IHiveKey) {
+}
+
+// SendEvent passs an event to all sessions
+func (sm *SessionManager) SendEvent(msg *things.ThingMessage) {
+	sm.mux.RLock()
+	defer sm.mux.RUnlock()
+	payload, _ := json.Marshal(msg)
+
+	for id, session := range sm.sessions {
+		_ = id
+		_ = session.SendSSE(vocab.MessageTypeEvent, string(payload))
+	}
 }
 
 // The global session manager instance.

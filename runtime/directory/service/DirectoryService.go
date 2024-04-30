@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/hiveot/hub/api/go/directory"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
@@ -30,6 +32,21 @@ type DirectoryService struct {
 	thingKeys []string
 	// mutex for accessing the cache
 	cachemux sync.RWMutex
+}
+
+// HandleTDEvent updates a TD when receiving a TD event, sent by agents.
+func (svc *DirectoryService) HandleTDEvent(msg *things.ThingMessage) ([]byte, error) {
+	if msg.MessageType == vocab.MessageTypeEvent && msg.Key == vocab.EventTypeTD {
+		td := things.TD{}
+		err := json.Unmarshal(msg.Data, &td)
+		if err == nil {
+			err = svc.UpdateThing(msg.SenderID, msg.ThingID, &td)
+		}
+		if err != nil {
+			slog.Error("StoreEvent. Failed updating TD", "thingID", msg.ThingID, "err", err)
+		}
+	}
+	return nil, nil
 }
 
 // LoadCacheFromStore loads the cache from store
@@ -68,62 +85,69 @@ func (svc *DirectoryService) LoadCacheFromStore() error {
 	return nil
 }
 
-// QueryTDs the collection of TD documents
-//func (svc *DirectoryService) QueryTDs(query string) (tddList []string, err error) {
-//	// TBD: query based on what?
-//	return nil, fmt.Errorf("not yet implemented")
-//}
+// QueryThings query the collection of TD documents
+func (svc *DirectoryService) QueryThings(args directory.QueryThingsArgs) (resp directory.QueryThingsResp, err error) {
+	// TBD: query based on what?
+	return resp, fmt.Errorf("not yet implemented")
+}
 
 // ReadThing returns the TD document in json format for the given Thing ID
-func (svc *DirectoryService) ReadThing(thingID string) (td *things.TD, err error) {
+func (svc *DirectoryService) ReadThing(args directory.ReadThingArgs) (resp directory.ReadThingResp, err error) {
 	svc.cachemux.RLock()
 	defer svc.cachemux.RUnlock()
-	td, found := svc.tdCache[thingID]
+	td, found := svc.tdCache[args.ThingID]
 	if !found {
-		err = fmt.Errorf("Thing with ID '%s' not found", thingID)
+		err = fmt.Errorf("Thing with ID '%s' not found", args.ThingID)
+		return resp, err
 	}
-	return td, err
+	// TODO: re-marshalling is inefficient. Do this on startup
+
+	tdjson, _ := json.Marshal(td)
+	return directory.ReadThingResp{Result: string(tdjson)}, err
 }
 
 // ReadThings returns a list of TD documents
 //
 //	offset is the offset in the list
 //	limit is the maximum number of records to return
-func (svc *DirectoryService) ReadThings(offset, limit int) (tdList []*things.TD, err error) {
-	tdList = make([]*things.TD, 0, limit)
+func (svc *DirectoryService) ReadThings(args directory.ReadThingsArgs) (resp directory.ReadThingsResp, err error) {
+	tdList := make([]string, 0, args.Limit)
 	svc.cachemux.RLock()
 	defer svc.cachemux.RUnlock()
 	// Use the thingKeys index to ensure consistent iteration and to quickly
 	// skip offset items (maps are not consistent between iterations)
-	if offset >= len(svc.thingKeys) {
+	if args.Offset >= len(svc.thingKeys) {
 		// empty result
-		return []*things.TD{}, nil
+		resp.Result = tdList
+		return resp, nil
 	}
-	if offset+limit > len(svc.thingKeys) {
-		limit = len(svc.thingKeys) - offset
+	if args.Offset+args.Limit > len(svc.thingKeys) {
+		args.Limit = len(svc.thingKeys) - args.Offset
 	}
-	tdKeys := svc.thingKeys[offset:limit]
+	tdKeys := svc.thingKeys[args.Offset:args.Limit]
 	// add the TD documents
 	for _, k := range tdKeys {
 		v := svc.tdCache[k]
-		tdList = append(tdList, v)
+		// TODO: re-marshalling is inefficient. Do this on startup
+		tdjson, _ := json.Marshal(v)
+		tdList = append(tdList, string(tdjson))
 	}
-	return tdList, nil
+	resp.Result = tdList
+	return resp, nil
 }
 
 // RemoveThing deletes the TD document from the given agent with the ThingID
-func (svc *DirectoryService) RemoveThing(senderID string, thingID string) error {
+func (svc *DirectoryService) RemoveThing(args directory.RemoveThingArgs) error {
 	slog.Info("RemoveThing",
-		slog.String("thingID", thingID),
-		slog.String("senderID", senderID))
+		slog.String("thingID", args.ThingID))
 	// remove from both cache and bucket
-	err := svc.tdBucket.Delete(thingID)
+	err := svc.tdBucket.Delete(args.ThingID)
 	svc.cachemux.Lock()
 	defer svc.cachemux.Unlock()
-	delete(svc.tdCache, thingID)
+	delete(svc.tdCache, args.ThingID)
 	// fast delete from the index array
 	for i, key := range svc.thingKeys {
-		if key == thingID {
+		if key == args.ThingID {
 			svc.thingKeys[i] = svc.thingKeys[len(svc.thingKeys)-1]
 			svc.thingKeys = svc.thingKeys[:len(svc.thingKeys)-1]
 			break
@@ -174,10 +198,10 @@ func (svc *DirectoryService) UpdateThing(senderID string, thingID string, tdd *t
 	return err
 }
 
-// NewDirectoryStore creates a new service instance for the directory of Thing TD documents.
+// NewDirectoryService creates a new service instance for the directory of Thing TD documents.
 //
 //	store is an instance of the bucket store to store the directory data. This is opened by 'Start' and closed by 'Stop'
-func NewDirectoryStore(store buckets.IBucketStore) *DirectoryService {
+func NewDirectoryService(store buckets.IBucketStore) *DirectoryService {
 	tdBucket := store.GetBucket(TDBucketName)
 	svc := &DirectoryService{
 		store:    store,

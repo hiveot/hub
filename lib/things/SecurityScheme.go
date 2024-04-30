@@ -17,4 +17,28 @@ type SecurityScheme struct {
 
 	// Identification of the security mechanism being configured.
 	Scheme string `json:"scheme"`
+
+	//--- fields for bearer schema
+	// URI of the authorization server
+	// Used in Bearer Schema
+	Authorization string `json:"authorization,omitempty"`
+
+	// Name for query, header, cookie or uri parameters
+	// Used in Bearer Schema
+	Name string `json:"name,omitempty"`
+
+	// Encoding, encryption, or digest algorithm
+	// eg: ES256, ES512-256
+	// Used in Bearer Schema
+	Alg string `json:"alg,omitempty"`
+
+	// Specifies format of security authentication information
+	// e.g.: jwt, cwt, jwe, jws
+	// Used in Bearer Schema
+	Format string `json:"format,omitempty"`
+
+	// Specifies the location of security authentication information.
+	// one of: header, query, body, cookie or auto
+	// Used in Bearer Schema
+	In string `json:"in,omitempty"`
 }

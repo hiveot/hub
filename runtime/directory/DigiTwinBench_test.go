@@ -1,7 +1,8 @@
-package digitwin_test
+package directory_test
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/directory"
 	"github.com/hiveot/hub/lib/logging"
 	"testing"
 )
@@ -19,7 +20,7 @@ func Benchmark_ReadTD(b *testing.B) {
 	logging.SetLogging("warning", "")
 
 	// fire up the directory
-	svc, cl, stopFunc := startService(true)
+	svc, cl, stopFunc := startDirectory(true)
 	_ = cl
 	defer stopFunc()
 
@@ -32,7 +33,7 @@ func Benchmark_ReadTD(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)
 				tdDoc1 := createTDDoc(thingID, title1)
-				err := svc.Directory.UpdateThing(senderID, thingID, tdDoc1)
+				err := svc.UpdateThing(senderID, thingID, tdDoc1)
 				_ = err
 			}
 		})
@@ -45,7 +46,7 @@ func Benchmark_ReadTD(b *testing.B) {
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)
-				td, err := svc.Directory.ReadThing(thingID)
+				td, err := svc.ReadThing(directory.ReadThingArgs{ThingID: thingID})
 				_ = td
 				_ = err
 			}

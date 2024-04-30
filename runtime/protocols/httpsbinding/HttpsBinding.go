@@ -38,9 +38,10 @@ type HttpsBinding struct {
 	sessionAuth api.IAuthenticator
 
 	// handlers for the REST APIs
-	dtDirectoryHandler *rest.DigiTwinDirectory
-	dtValuesHandler    *rest.DigiTwinValues
-	dtHistoryHandler   *rest.DigiTwinHistory
+	transportHandler   *rest.RestHandlePost
+	dtDirectoryHandler *rest.DirectoryRest
+	dtValuesHandler    *rest.ThingValuesRest
+	dtHistoryHandler   *rest.HistoryRest
 	authnRestHandler   *rest.AuthnRest
 
 	// handlers for SSE server push connections
@@ -87,6 +88,10 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 		// client sessions authenticate the sender
 		r.Use(sessions.AddSessionFromToken(svc.sessionAuth))
 
+		// register the general purpose event and action message transport
+		// these allows the binding to work as a transport from client to services using generated clients
+		svc.transportHandler.RegisterMethods(r)
+
 		// register rest api for built-in services
 		svc.authnRestHandler.RegisterMethods(r)
 		svc.dtDirectoryHandler.RegisterMethods(r)
@@ -107,9 +112,10 @@ func (svc *HttpsBinding) Start(handler router.MessageHandler) error {
 	slog.Info("Starting HttpsBinding")
 	svc.handleMessage = handler
 
-	svc.dtDirectoryHandler = rest.NewDigiTwinDirectory(svc.handleMessage)
-	svc.dtHistoryHandler = rest.NewDigiTwinHistory(svc.handleMessage)
-	svc.dtValuesHandler = rest.NewDigiTwinValues(svc.handleMessage)
+	svc.transportHandler = rest.NewTransportRest(svc.handleMessage)
+	svc.dtDirectoryHandler = rest.NewDirectoryRest(svc.handleMessage)
+	svc.dtHistoryHandler = rest.NewHistoryRest(svc.handleMessage)
+	svc.dtValuesHandler = rest.NewValuesRest(svc.handleMessage)
 	svc.authnRestHandler = rest.NewAuthnRest(svc.handleMessage, svc.sessionAuth)
 	svc.sseHandler = sse.NewSSEHandler(svc.handleMessage, svc.sessionAuth)
 
@@ -122,7 +128,15 @@ func (svc *HttpsBinding) Start(handler router.MessageHandler) error {
 // Stop the https server
 func (svc *HttpsBinding) Stop() {
 	slog.Info("Stopping HttpsBinding")
+
+	// Shutdown remaining sessions to avoid hanging.
+	// (closing the TLS server does not shut down active connections)
+	sm := sessions.GetSessionManager()
+	sm.CloseAll()
+	svc.sseHandler.Stop()
+
 	svc.httpServer.Stop()
+
 }
 
 // NewHttpsBinding creates a new instance of the HTTPS Server with JWT authentication

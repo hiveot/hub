@@ -1,7 +1,6 @@
 package router
 
 import (
-	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
 )
@@ -59,33 +58,33 @@ func (svc *MessageRouter) AddMiddlewareHandler(handler MiddlewareHandler) {
 // forward the request, based on the policy. (TODO)
 //
 // The middleware chain is intended to validate, enrich, and process the event, action and rpc messages.
-func (svc *MessageRouter) HandleMessage(tv *things.ThingMessage) ([]byte, error) {
+func (svc *MessageRouter) HandleMessage(msg *things.ThingMessage) ([]byte, error) {
 	var err error
 
 	//
 	for _, handler := range svc.mwChain {
-		tv, err = handler(tv)
+		msg, err = handler(msg)
 		if err != nil {
 			return nil, err
 		}
 	}
 	// events are handled separate from targeted messages
-	if tv.MessageType == vocab.MessageTypeEvent {
+	if msg.MessageType == vocab.MessageTypeEvent {
 		for _, h := range svc.eventHandlers {
-			_, _ = h(tv)
+			_, _ = h(msg)
 		}
 		return nil, nil
 	}
-	msgHandler, found := svc.messageHandlers[tv.ThingID]
+	msgHandler, found := svc.messageHandlers[msg.ThingID]
 	if !found {
 		// check for the default handler
 		msgHandler, found = svc.messageHandlers[""]
 	}
 	if !found {
-		return nil, fmt.Errorf("no handler for messageType '%s', thingID '%s', key '%s' from sender '%s'",
-			tv.MessageType, tv.ThingID, tv.Key, tv.SenderID)
+		// not an internal service
+		return nil, nil
 	}
-	reply, err := msgHandler(tv)
+	reply, err := msgHandler(msg)
 	return reply, err
 }
 

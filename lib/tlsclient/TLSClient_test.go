@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/tlsclient"
+	"github.com/hiveot/hub/runtime/api"
 	"io"
 	"log/slog"
 	"net/http"
@@ -87,7 +88,7 @@ func TestNoCA(t *testing.T) {
 	assert.NoError(t, err)
 
 	// certificate authentication but no CA
-	cl := tlsclient.NewTLSClient(testAddress, nil)
+	cl := tlsclient.NewTLSClient(testAddress, nil, 0)
 	err = cl.ConnectWithClientCert(authBundle.ClientCert)
 	assert.NoError(t, err)
 
@@ -97,7 +98,7 @@ func TestNoCA(t *testing.T) {
 	cl.Close()
 
 	// No authentication
-	cl = tlsclient.NewTLSClient(testAddress, nil)
+	cl = tlsclient.NewTLSClient(testAddress, nil, 0)
 	cl.ConnectNoAuth()
 
 	_, err = cl.Get(path1)
@@ -123,7 +124,7 @@ func TestAuthClientCert(t *testing.T) {
 		path1Hit++
 	})
 	//
-	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert)
+	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert, 0)
 	err = cl.ConnectWithClientCert(authBundle.ClientCert)
 	assert.NoError(t, err)
 
@@ -148,7 +149,7 @@ func TestAuthClientCert(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = cl.Put(path1, "")
 	assert.NoError(t, err)
-	_, err = cl.Delete(path1, "")
+	_, err = cl.Delete(path1)
 	assert.NoError(t, err)
 	_, err = cl.Patch(path1, "")
 	assert.NoError(t, err)
@@ -159,20 +160,20 @@ func TestAuthClientCert(t *testing.T) {
 }
 
 func TestNotStarted(t *testing.T) {
-	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert)
+	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert, 0)
 	_, err := cl.Get("/notstarted")
 	assert.Error(t, err)
 	cl.Close()
 }
 func TestNoClientCert(t *testing.T) {
-	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert)
+	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert, 3)
 	err := cl.ConnectWithClientCert(nil)
 	assert.Error(t, err)
 	cl.Close()
 }
 
 func TestBadClientCert(t *testing.T) {
-	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert)
+	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert, 0)
 
 	// use cert not signed by the CA
 	otherCA, otherKey, err := certs.CreateCA("test", 1)
@@ -189,7 +190,7 @@ func TestBadClientCert(t *testing.T) {
 func TestNoServer(t *testing.T) {
 	// setup server and client environm
 	//
-	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert)
+	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert, 0)
 	err := cl.ConnectWithClientCert(authBundle.ClientCert)
 	assert.NoError(t, err)
 	_, err = cl.Get("/noserver")
@@ -201,7 +202,7 @@ func TestCert404(t *testing.T) {
 	srv, err := startTestServer(mux)
 	assert.NoError(t, err)
 
-	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert)
+	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert, 0)
 
 	err = cl.ConnectWithClientCert(authBundle.ClientCert)
 	assert.NoError(t, err)
@@ -227,15 +228,15 @@ func TestAuthJWT(t *testing.T) {
 	mux := http.NewServeMux()
 	// Handle a jwt login
 	mux.HandleFunc(pathLogin1, func(resp http.ResponseWriter, req *http.Request) {
-		var authMsg tlsclient.JwtAuthLogin
+		var authMsg api.LoginArgs
 		slog.Info("TestAuthJWT: login")
 		body, err := io.ReadAll(req.Body)
 		assert.NoError(t, err)
 		err = json.Unmarshal(body, &authMsg)
 		assert.NoError(t, err)
-		assert.Equal(t, user1, authMsg.LoginID)
+		assert.Equal(t, user1, authMsg.ClientID)
 		assert.Equal(t, password1, authMsg.Password)
-		if authMsg.LoginID == user1 {
+		if authMsg.ClientID == user1 {
 			claims := jwt.RegisteredClaims{
 				ID:      user1,
 				Issuer:  "me",
@@ -247,7 +248,8 @@ func TestAuthJWT(t *testing.T) {
 			token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 			newToken, err := token.SignedString(secret)
 			assert.NoError(t, err)
-			data, _ := json.Marshal(newToken)
+			loginResp := api.LoginResp{Token: newToken}
+			data, _ := json.Marshal(loginResp)
 			_, _ = resp.Write(data)
 		} else {
 			// write nothing
@@ -266,8 +268,7 @@ func TestAuthJWT(t *testing.T) {
 	srv, err := startTestServer(mux)
 	assert.NoError(t, err)
 	//
-	//
-	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert)
+	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert, 0)
 	_, err = cl.ConnectWithPassword(user1, password1)
 	assert.NoError(t, err)
 
@@ -291,19 +292,19 @@ func TestAuthRefreshToken(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc(pathLogin1, func(resp http.ResponseWriter, req *http.Request) {
 		slog.Info("TestAuthRefreshToken: login")
-		data, _ := json.Marshal(token1)
+		data, _ := json.Marshal(api.LoginResp{Token: token1})
 		_, _ = resp.Write(data)
 	})
 	mux.HandleFunc(pathRefresh1, func(resp http.ResponseWriter, req *http.Request) {
 		slog.Info("TestAuthRefreshToken: refresh")
-		data, _ := json.Marshal(token2)
+		data, _ := json.Marshal(api.RefreshTokenResp{Token: token2})
 		_, _ = resp.Write(data)
 	})
 	srv, err := startTestServer(mux)
 	assert.NoError(t, err)
 	//
 	//
-	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert)
+	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert, 0)
 	_, err = cl.ConnectWithPassword("user1", "pw")
 	assert.NoError(t, err)
 
@@ -337,7 +338,7 @@ func TestAuthJWTFail(t *testing.T) {
 		resp.WriteHeader(http.StatusUnauthorized)
 	})
 	//
-	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert)
+	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert, 0)
 	token, err := cl.ConnectWithPassword(user1, password1)
 	assert.Empty(t, token)
 	assert.Error(t, err)

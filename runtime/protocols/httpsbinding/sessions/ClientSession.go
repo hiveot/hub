@@ -12,8 +12,9 @@ import (
 )
 
 type SSEEvent struct {
-	Event   string
-	Payload string
+	EventType string // type of message, eg event, action or other
+	ID        string // event ID
+	Payload   string // message content
 }
 
 // DefaultExpiryHours TODO: set default expiry in config
@@ -31,6 +32,7 @@ type ClientSession struct {
 	remoteAddr string
 
 	lastActivity time.Time
+	sequenceNr   int
 
 	// session mutex for updating sse and activity
 	mux sync.RWMutex
@@ -61,7 +63,7 @@ func (cs *ClientSession) GetClientID() string {
 	return cs.clientID
 }
 
-// return the number of SSE connections for the session
+// GetNrConnections returns the number of SSE connections for the session
 func (cs *ClientSession) GetNrConnections() int {
 	return len(cs.sseClients)
 }
@@ -139,12 +141,18 @@ func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {
 
 // SendSSE encodes and sends an SSE event to clients of this session
 // Intended to send events to clients over sse.
-func (cs *ClientSession) SendSSE(key string, payload string) error {
+func (cs *ClientSession) SendSSE(eventType string, payload string) error {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
-	slog.Info("sending sse event", "key", key, "nr clients", len(cs.sseClients))
+	slog.Info("sending sse event", "eventType", eventType, "nr clients", len(cs.sseClients))
+	cs.sequenceNr++
+	eventID := fmt.Sprintf("%d", cs.sequenceNr)
 	for _, c := range cs.sseClients {
-		c <- SSEEvent{key, payload}
+		c <- SSEEvent{
+			ID:        eventID,
+			EventType: eventType,
+			Payload:   payload,
+		}
 	}
 	return nil
 }

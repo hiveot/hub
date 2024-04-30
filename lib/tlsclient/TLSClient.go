@@ -45,6 +45,8 @@ const (
 type TLSClient struct {
 	// host and port of the server to connect to
 	hostPort        string
+	loginPath       string // path on server to login
+	refreshPath     string // path on server to refresh token
 	caCert          *x509.Certificate
 	caCertPool      *x509.CertPool
 	httpClient      *http.Client
@@ -110,6 +112,16 @@ func (cl *TLSClient) connect() *http.Client {
 func (cl *TLSClient) ConnectNoAuth() {
 	cl.httpClient = cl.connect()
 }
+
+// ConnectWithBasicAuth creates a server connection using the configured authentication
+// Intended to connect to services that do not support JWT authentication
+//func (cl *TLSClient) ConnectWithBasicAuth(userID string, passwd string) {
+//	cl.clientID = userID
+//	//cl.basicSecret = passwd
+//	// Invoke() will use basic auth if basicSecret is set
+//
+//	cl.httpClient = cl.connect()
+//}
 
 // ConnectWithClientCert creates a connection with the server using a client certificate for mutual authentication.
 // The provided certificate must be signed by the server's CA.
@@ -187,17 +199,15 @@ func (cl *TLSClient) ConnectWithToken(loginID string, token string) {
 func (cl *TLSClient) ConnectWithPassword(loginID string, secret string) (token string, err error) {
 	cl.clientID = loginID
 
-	loginURL := fmt.Sprintf("https://%s%s", cl.hostPort, vocab.PostLoginPath)
+	loginURL := fmt.Sprintf("https://%s%s", cl.hostPort, cl.loginPath)
 
 	// create tlsTransport
 	cl.httpClient = cl.connect()
 
-	// Authenticate with JWT requires a cookiejar to store the refresh token
 	loginMessage := api.LoginArgs{
 		ClientID: loginID,
 		Password: secret,
 	}
-	// resp, err2 := cl.Post(cl.jwtLoginPath, authLogin)
 	resp, err2 := cl.Invoke("POST", loginURL, loginMessage)
 	if err2 != nil {
 		err = fmt.Errorf("ConnectWithPassword: login to %s failed. %s", loginURL, err2)
@@ -231,6 +241,11 @@ func (cl *TLSClient) Get(path string) ([]byte, error) {
 	return cl.Invoke("GET", url, nil)
 }
 
+// GetHttpClient returns the underlying HTTP client
+func (cl *TLSClient) GetHttpClient() *http.Client {
+	return cl.httpClient
+}
+
 // Invoke a HTTPS method and read response using content type application/json
 // If a JWT authentication is enabled then add the bearer token to the header
 // If msg is a string then it is considered to be already serialized.
@@ -240,7 +255,7 @@ func (cl *TLSClient) Get(path string) ([]byte, error) {
 //	url: full URL to invoke
 //	msg contains the request body as a string or object
 func (cl *TLSClient) Invoke(method string, url string, msg interface{}) ([]byte, error) {
-	var body io.Reader = http.NoBody
+	var body []byte
 	var err error
 	var req *http.Request
 	contentType := "application/json"
@@ -257,24 +272,14 @@ func (cl *TLSClient) Invoke(method string, url string, msg interface{}) ([]byte,
 		// only marshal to JSON if this isn't a string
 		switch msgWithType := msg.(type) {
 		case string:
-			body = bytes.NewReader([]byte(msgWithType))
+			body = []byte(msgWithType)
 		case []byte:
-			body = bytes.NewReader(msgWithType)
+			body = msgWithType
 		default:
-			bodyBytes, _ := json.Marshal(msg)
-			body = bytes.NewReader(bodyBytes)
+			body, _ = json.Marshal(msg)
 		}
 	}
-	req, err = http.NewRequest(method, url, body)
-	if err != nil {
-		return nil, err
-	}
-
-	if cl.bearerToken != "" {
-		req.Header.Add("Authorization", "bearer "+cl.bearerToken)
-	} else {
-		// no authentication
-	}
+	req, err = cl.NewRequest(method, url, body)
 	if err != nil {
 		return nil, err
 	}
@@ -300,6 +305,22 @@ func (cl *TLSClient) Invoke(method string, url string, msg interface{}) ([]byte,
 		return nil, err
 	}
 	return respBody, err
+}
+
+// NewRequest creates a request object containing a bearer token if available
+func (cl *TLSClient) NewRequest(method string, url string, body []byte) (*http.Request, error) {
+	bodyReader := bytes.NewReader(body)
+	req, err := http.NewRequest(method, url, bodyReader)
+	if err != nil {
+		return nil, err
+	}
+
+	if cl.bearerToken != "" {
+		req.Header.Add("Authorization", "bearer "+cl.bearerToken)
+	} else {
+		// no authentication
+	}
+	return req, nil
 }
 
 // Logout from the server and end the session
@@ -352,7 +373,7 @@ func (cl *TLSClient) Patch(path string, msg interface{}) ([]byte, error) {
 // This returns a struct with new access and refresh token
 func (cl *TLSClient) RefreshToken(refreshURL string) (newToken string, err error) {
 	if refreshURL == "" {
-		refreshURL = fmt.Sprintf("https://%s%s", cl.hostPort, vocab.PostRefreshPath)
+		refreshURL = fmt.Sprintf("https://%s%s", cl.hostPort, cl.refreshPath)
 	}
 	args := api.RefreshTokenArgs{
 		OldToken: cl.bearerToken, ClientID: cl.clientID,
@@ -399,14 +420,17 @@ func (cl *TLSClient) RefreshToken(refreshURL string) (newToken string, err error
 // NewTLSClient creates a new TLS Client instance.
 // Use connect/Close to open and close connections
 //
-//		hostPort is the server hostname or IP address and port to connect to
-//		caCert with the x509 CA certificate, nil if not available
-//	 timeout of the request.
+//	hostPort is the server hostname or IP address and port to connect to
+//	caCert with the x509 CA certificate, nil if not available
+//	timeout duration of the request or 0 for default of 10 seconds
 //
 // returns TLS client for submitting requests
 func NewTLSClient(hostPort string, caCert *x509.Certificate, timeout time.Duration) *TLSClient {
 	var checkServerCert bool
 	caCertPool := x509.NewCertPool()
+	if timeout == 0 {
+		timeout = time.Second * 10
+	}
 
 	// Use CA certificate for server authentication if it exists
 	if caCert == nil {
@@ -423,6 +447,8 @@ func NewTLSClient(hostPort string, caCert *x509.Certificate, timeout time.Durati
 
 	cl := &TLSClient{
 		hostPort:        hostPort,
+		loginPath:       vocab.PostLoginPath,
+		refreshPath:     vocab.PostRefreshPath,
 		timeout:         timeout,
 		caCertPool:      caCertPool,
 		caCert:          caCert,

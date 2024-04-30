@@ -4,7 +4,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/things"
 )
 
 // inbox implementation depends on the underlying transport.
@@ -71,7 +70,7 @@ type IHubTransport interface {
 	//  sep is the address separator. eg "." for nats, "/" for mqtt and redis
 	//  wc is the address wildcard. "*" for nats, "+" for mqtt
 	//  rem is the address remainder. "" for nats; "#" for mqtt
-	//AddressTokens() (sep, wc, rem string)
+	AddressTokens() (sep, wc, rem string)
 
 	// ConnectWithPassword connects to the messaging server using password authentication.
 	//  loginID is the client's ID
@@ -97,17 +96,15 @@ type IHubTransport interface {
 	GetStatus() HubTransportStatus
 
 	// PubEvent publishes an event style message without waiting for a response.
-	//	thingID whose event is published
-	//	key ID of the event
+	//	address to publish on
 	//	payload with serialized message to publish
-	PubEvent(thingID string, key string, payload []byte) error
+	PubEvent(address string, payload []byte) error
 
-	// PubRequest publishes an action request and waits for a response.
-	//	thingID for whom the action is intended
-	//	key ID or method name of the action
+	// PubRequest publishes a request and waits for a response.
+	//  address to publish on
 	//  payload with serialized message to publish
 	//  returns a reply with serialized response message
-	PubRequest(thingID string, key string, payload []byte) (reply []byte, err error)
+	PubRequest(address string, payload []byte) (reply []byte, err error)
 
 	// SetConnectHandler sets the notification handler of connection status changes
 	SetConnectHandler(cb func(status HubTransportStatus))
@@ -116,23 +113,25 @@ type IHubTransport interface {
 	// Messages are considered events when they do not have a reply-to address.
 	// This does not provide routing as in most cases it is unnecessary overhead
 	// Use 'Subscribe' to set the addresses that this receives events on.
-	SetEventHandler(cb func(msg *things.ThingMessage))
+	SetEventHandler(cb func(addr string, payload []byte))
 
-	// SetRequestHandler sets the handler that receives all subscribed actions.
+	// SetRequestHandler sets the handler that receives all subscribed requests.
+	// Messages are considered requests when they have a reply-to address.
 	// This does not provide routing as in most cases it is unnecessary overhead
 	// Use 'Subscribe' to set the addresses that this receives requests on.
-	SetRequestHandler(cb func(msg *things.ThingMessage) (reply []byte, err error, donotreply bool))
+	SetRequestHandler(cb func(addr string, payload []byte) (reply []byte, err error, donotreply bool))
 
-	// Subscribe adds a subscription for one or more events.
-	// Events will be passed to the event handler.
-	// This is pretty coarse grained.
+	// Subscribe adds a subscription for an event or request address.
+	// Incoming messages are passed to the event handler or the request handler, depending on whether they
+	// have a reply-to address. The event/request handler will handle the routing as this is application specific.
 	// Subscriptions remain in effect when the connection with the messaging server is interrupted.
-	//  thingID is the ID of the Thing whose events to receive or "" for events from all things
-	Subscribe(thingID string) error
+	//
+	// The address MUST be constructed using the tokens provided by AddressTokens()
+	Subscribe(address string) error
 
-	// Unsubscribe removes a previous event subscription.
+	// Unsubscribe removes a previous address subscription.
 	// No more events or requests will be received after Unsubscribe.
-	Unsubscribe(thingID string)
+	Unsubscribe(address string)
 
 	//// SubEvent subscribes to an event style message.
 	////	address to subscribe to, this can contain wildcards

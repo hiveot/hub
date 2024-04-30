@@ -1,12 +1,14 @@
 package sse
 
 import (
+	"context"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/protocols/httpsbinding/sessions"
 	"github.com/hiveot/hub/runtime/router"
+	"github.com/tmaxmax/go-sse"
 	"log/slog"
 	"net/http"
 )
@@ -19,6 +21,7 @@ import (
 type SSEHandler struct {
 	sessionAuth   api.IAuthenticator
 	handleMessage router.MessageHandler
+	gosse         *sse.Server
 }
 
 // handleSseConnect handles incoming SSE connections, authenticates the client
@@ -27,6 +30,7 @@ func (svc *SSEHandler) handleSseConnect(w http.ResponseWriter, r *http.Request) 
 	// Set headers for SSE response
 	//w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Expose-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Cache-Control", "private, no-cache, no-store, must-revalidate, max-age=0, no-transform")
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Connection", "keep-alive")
@@ -66,10 +70,10 @@ func (svc *SSEHandler) handleSseConnect(w http.ResponseWriter, r *http.Request) 
 		// wait for message, or writer closing
 		select {
 		case sseMsg, ok := <-sseChan: // received event
-			slog.Info("SseHandler: received event from sseChan",
+			slog.Info("SseHandler: sending sse event to client",
 				slog.String("remote", r.RemoteAddr),
 				slog.String("clientID", cs.GetClientID()),
-				slog.String("event", sseMsg.Event),
+				slog.String("eventType", sseMsg.EventType),
 				slog.Bool("ok", ok),
 			)
 			if !ok { // channel was closed by session
@@ -81,7 +85,7 @@ func (svc *SSEHandler) handleSseConnect(w http.ResponseWriter, r *http.Request) 
 			//https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
 			//_, err := fmt.Fprintf(w, "event: time\ndata: <div sse-swap='time'>%s</div>\n\n", data)
 			_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
-				sseMsg.Event, sseMsg.Payload)
+				sseMsg.EventType, sseMsg.Payload)
 			//_, err := fmt.Fprint(w, sseMsg)
 			w.(http.Flusher).Flush()
 			break
@@ -102,9 +106,61 @@ func (svc *SSEHandler) handleSseConnect(w http.ResponseWriter, r *http.Request) 
 	)
 }
 
-// RegisterMethods registers agent and consumer methods with the router
+// registerGosse using go-sse
+func (svc *SSEHandler) registerWithGosse(r chi.Router) {
+
+	svc.gosse.OnSession = func(sseSession *sse.Session) (sse.Subscription, bool) {
+		// An active session is required before accepting the request. This is created on
+		// authentication/login.
+		cs, err := sessions.GetSessionFromContext(sseSession.Req)
+		if err != nil {
+			return sse.Subscription{}, false
+		}
+
+		// TODO use subscription topics
+		// TODO use last event ID
+		//lastEventID := htSession.lastEventID
+		sub := sse.Subscription{
+			Client:      sseSession,
+			LastEventID: sseSession.LastEventID,
+			Topics:      []string{sse.DefaultTopic},
+		}
+
+		// establish a client event channel for sending messages back to the client
+		sseChan := make(chan sessions.SSEEvent)
+		cs.AddSSEClient(sseChan)
+		go func() {
+			for ev := range sseChan {
+				sseMsg := sse.Message{}
+				sseMsg.AppendData(ev.Payload)
+				sseMsg.ID, _ = sse.NewID(ev.ID)
+				sseMsg.Type, err = sse.NewType(ev.EventType)
+				err = sseSession.Send(&sseMsg)
+				if err != nil {
+					slog.Error("failed sending message", "err", err)
+				} else {
+					_ = sseSession.Flush()
+				}
+			}
+			cs.RemoveSSEClient(sseChan)
+			// TODO: if all connections are closed for this client send a disconnected event
+			slog.Info("registerGosse: Session closed", "clientID", cs.GetClientID())
+		}()
+
+		return sub, true
+	}
+	r.HandleFunc(vocab.ConnectSSEPath, svc.gosse.ServeHTTP)
+}
+
+// RegisterMethods registers handlers with the router
 func (svc *SSEHandler) RegisterMethods(r chi.Router) {
-	r.Get(vocab.ConnectSSEPath, svc.handleSseConnect)
+	// built-in server or go-sse server
+	//r.HandleFunc(vocab.ConnectSSEPath, svc.handleSseConnect)
+	svc.registerWithGosse(r)
+}
+
+func (svc *SSEHandler) Stop() {
+	svc.gosse.Shutdown(context.Background())
 }
 
 // NewSSEHandler creates an instance of the SSE connection handler
@@ -113,6 +169,7 @@ func NewSSEHandler(handleMessage router.MessageHandler, sessionAuth api.IAuthent
 	handler := SSEHandler{
 		sessionAuth:   sessionAuth,
 		handleMessage: handleMessage,
+		gosse:         &sse.Server{},
 	}
 	return &handler
 }

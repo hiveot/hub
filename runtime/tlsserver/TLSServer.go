@@ -116,6 +116,7 @@ func (srv *TLSServer) Stop() {
 	slog.Info("Stopping TLS server")
 
 	if srv.httpServer != nil {
+		// note that this does not close existing connections
 		srv.httpServer.Shutdown(context.Background())
 	}
 }
