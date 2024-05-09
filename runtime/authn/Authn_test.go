@@ -3,10 +3,10 @@ package authn_test
 import (
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn"
-	"github.com/hiveot/hub/runtime/authn/authnhandler"
+	"github.com/hiveot/hub/runtime/authn/authnagent"
 	"github.com/hiveot/hub/runtime/authn/service"
-	"github.com/hiveot/hub/runtime/router"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path"
@@ -23,10 +23,7 @@ var defaultHash = authn.PWHASH_ARGON2id
 
 // launch the authn service and return the server side message handlers for using and managing it.
 func startTestAuthnService(testHash string) (
-	svc *service.AuthnService,
-	adminHandler router.MessageHandler,
-	userHandler router.MessageHandler,
-	stopFn func()) {
+	svc *service.AuthnService, messageHandler api.MessageHandler, stopFn func()) {
 
 	_ = os.RemoveAll(testDir)
 	_ = os.MkdirAll(testDir, 0700)
@@ -44,10 +41,12 @@ func startTestAuthnService(testHash string) (
 	if err != nil {
 		panic("Error starting authn admin service:" + err.Error())
 	}
-	adminHandler = authnhandler.NewAuthnAdminHandler(svc.AdminSvc)
-	userHandler = authnhandler.NewAuthnUserHandler(svc.UserSvc)
+	ag, err := authnagent.StartAuthnAgent(svc, nil)
+	//adminHandler = authnagent.NewAuthnAdminHandler(svc.AdminSvc)
+	//userHandler = authnagent.NewAuthnUserHandler(svc.UserSvc)
 
-	return svc, adminHandler, userHandler, func() {
+	//return svc, adminHandler, userHandler, func() {
+	return svc, ag.HandleMessage, func() {
 		svc.Stop()
 
 		// let background tasks finish
@@ -69,7 +68,7 @@ func TestMain(m *testing.M) {
 // Start the authn service and list clients
 func TestStartStop(t *testing.T) {
 	// this creates the admin user key
-	svc, _, _, stopFn := startTestAuthnService(defaultHash)
+	svc, _, stopFn := startTestAuthnService(defaultHash)
 	assert.NotNil(t, svc.AdminSvc)
 	assert.NotNil(t, svc.UserSvc)
 	assert.NotNil(t, svc.AuthnStore)

@@ -21,7 +21,7 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 	serviceKP := keys.NewKey(keys.KeyTypeECDSA)
 	serviceKeyPub := serviceKP.ExportPublic()
 
-	svc, adminHandler, _, stopFn := startTestAuthnService(defaultHash)
+	svc, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	mt := direct.NewDirectTransport(serviceID, adminHandler)
 	adminCl := authnclient.NewAuthnAdminClient(mt)
@@ -78,7 +78,7 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 // Create manage users
 func TestAddRemoveClientsFail(t *testing.T) {
 	const adminID = "administrator-1"
-	_, adminHandler, _, stopFn := startTestAuthnService(defaultHash)
+	_, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	mt := direct.NewDirectTransport(adminID, adminHandler)
 	adminCl := authnclient.NewAuthnAdminClient(mt)
@@ -98,7 +98,7 @@ func TestUpdateClientPassword(t *testing.T) {
 	var tuPass2 = "tuPass2"
 	const adminID = "administrator-1"
 
-	svc, adminHandler, _, stopFn := startTestAuthnService(defaultHash)
+	svc, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	mt := direct.NewDirectTransport(adminID, adminHandler)
 	adminCl := authnclient.NewAuthnAdminClient(mt)
@@ -107,17 +107,18 @@ func TestUpdateClientPassword(t *testing.T) {
 		api.ClientTypeUser, tu1ID, "user 1", "", tuPass1)
 	require.NoError(t, err)
 
-	token, err := svc.SessionAuth.Login(tu1ID, tuPass1, "session1")
+	token, sid, err := svc.SessionAuth.Login(tu1ID, tuPass1, "session1")
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
+	require.Equal(t, "session1", sid)
 
 	adminCl.UpdateClientPassword(tu1ID, tuPass2)
 
-	token, err = svc.SessionAuth.Login(tu1ID, tuPass1, "session1")
+	token, _, err = svc.SessionAuth.Login(tu1ID, tuPass1, "session1")
 	require.Error(t, err)
 	require.Empty(t, token)
 
-	token, err = svc.SessionAuth.Login(tu1ID, tuPass2, "session1")
+	token, _, err = svc.SessionAuth.Login(tu1ID, tuPass2, "session1")
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 }
@@ -127,7 +128,7 @@ func TestUpdatePubKey(t *testing.T) {
 	var tu1Pass = "tu1Pass"
 	const adminID = "administrator-1"
 
-	svc, adminHandler, _, stopFn := startTestAuthnService(defaultHash)
+	svc, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	mt := direct.NewDirectTransport(adminID, adminHandler)
 	adminCl := authnclient.NewAuthnAdminClient(mt)
@@ -158,7 +159,7 @@ func TestUpdateProfile(t *testing.T) {
 	var tu1Name = "test user 1"
 
 	const adminID = "administrator-1"
-	_, adminHandler, _, stopFn := startTestAuthnService(defaultHash)
+	_, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	mt := direct.NewDirectTransport(adminID, adminHandler)
 	adminCl := authnclient.NewAuthnAdminClient(mt)
@@ -185,7 +186,7 @@ func TestUpdateProfile(t *testing.T) {
 func TestUpdateProfileFail(t *testing.T) {
 	const adminID = "administrator-1"
 
-	_, adminHandler, _, stopFn := startTestAuthnService(defaultHash)
+	_, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	mt := direct.NewDirectTransport(adminID, adminHandler)
 	adminCl := authnclient.NewAuthnAdminClient(mt)
@@ -197,7 +198,7 @@ func TestUpdateProfileFail(t *testing.T) {
 func TestBadAdminCommand(t *testing.T) {
 	const adminID = "administrator-1"
 
-	_, adminHandler, _, stopFn := startTestAuthnService(defaultHash)
+	_, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	mt := direct.NewDirectTransport(adminID, adminHandler)
 	err := mt(api.AuthnAdminThingID, "badmethod", nil, nil)

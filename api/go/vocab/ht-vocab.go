@@ -8,11 +8,12 @@ package vocab
 // source: github.com/hiveot/hub/api/vocab/ht-constants.yaml
 // description: Message types used throughout the Hub and its clients
 const (
-	ActionTypeProperties = "$properties"
-	EventTypeProperties  = "$properties"
-	EventTypeTD          = "$td"
-	MessageTypeAction    = "action"
-	MessageTypeEvent     = "event"
+	ActionTypeProperties    = "$properties"
+	EventTypeProperties     = "$properties"
+	EventTypeTD             = "$td"
+	EventTypeDeliveryUpdate = "$delivery"
+	MessageTypeAction       = "action"
+	MessageTypeEvent        = "event"
 )
 
 // end of MessageTypes

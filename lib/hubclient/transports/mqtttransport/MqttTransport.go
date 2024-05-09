@@ -467,7 +467,7 @@ func (tp *MqttHubTransport) PubEvent(topic string, payload []byte) (err error) {
 // PubRequest publishes a request message and waits for an answer or until timeout
 // In order to receive replies, an inbox subscription is added on the first request.
 func (tp *MqttHubTransport) PubRequest(topic string, payload []byte) (resp []byte, err error) {
-	slog.Debug("PubRequest", "topic", topic)
+	slog.Debug("PubAction", "topic", topic)
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), tp.timeout)
 	defer cancelFn()
@@ -546,7 +546,7 @@ func (tp *MqttHubTransport) PubRequest(topic string, payload []byte) (resp []byt
 		return nil, err
 	}
 
-	slog.Debug("PubRequest end:",
+	slog.Debug("PubAction end:",
 		slog.String("topic", topic),
 		slog.String("ContentType (if any)", respMsg.Properties.ContentType),
 	)

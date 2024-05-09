@@ -1,10 +1,11 @@
 package transports
 
 import (
+	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
 )
 
 // inbox implementation depends on the underlying transport.
@@ -62,27 +63,34 @@ type HubTransportStatus struct {
 	ConnectionStatus ConnectionStatus
 	// The last connection error message, if any
 	LastError error
+
+	// flags indicating the supported protocols
+	SupportsCertAuth     bool
+	SupportsPasswordAuth bool
+	SupportsKeysAuth     bool
+	SupportsTokenAuth    bool
 }
 
-// IHubTransport defines the interface of the transport that connects to the messaging server.
+// IHubTransport defines the interface of the transport client that connects to a messaging server.
 type IHubTransport interface {
 
-	// AddressTokens returns the address separator and wildcard tokens used by the transport.
-	//  sep is the address separator. eg "." for nats, "/" for mqtt and redis
-	//  wc is the address wildcard. "*" for nats, "+" for mqtt
-	//  rem is the address remainder. "" for nats; "#" for mqtt
-	//AddressTokens() (sep, wc, rem string)
+	// ConnectWithCert connects to the server using a client certificate.
+	// This authentication method is optional
+	ConnectWithCert(kp keys.IHiveKey, cert *tls.Certificate) (token string, err error)
 
 	// ConnectWithPassword connects to the messaging server using password authentication.
-	//  loginID is the client's ID
+	//  loginID is the client's ID (typically consumers)
 	//  password is created when registering the user with the auth service.
+	//
+	// This authentication method must be supported by all transports
 	ConnectWithPassword(password string) error
 
-	// ConnectWithToken connects to the messaging server using an authentication token
+	// ConnectWithJWT connects to the messaging server using an authentication token
 	// and pub/private keys provided when creating an instance of the hub client.
-	//  kp is the client's key pair
 	//  token is created by the auth service.
-	ConnectWithToken(kp keys.IHiveKey, token string) error
+	//
+	// This authentication method must be supported by all transports
+	ConnectWithJWT(token string) error
 
 	// CreateKeyPair returns a new set of serialized public/private key pair.
 	//  serializedKP contains the serialized public/private key pair
@@ -96,34 +104,41 @@ type IHubTransport interface {
 	// GetStatus returns the current transport connection status
 	GetStatus() HubTransportStatus
 
+	// PubAction publishes an action request and waits for a response.
+	//	thingID for whom the action is intended
+	//	key ID or method name of the action
+	//  payload with serialized message to publish
+	//  returns a delivery status with serialized response message if delivered
+	PubAction(thingID string, key string, payload []byte) api.DeliveryStatus
+
 	// PubEvent publishes an event style message without waiting for a response.
 	//	thingID whose event is published
 	//	key ID of the event
 	//	payload with serialized message to publish
-	PubEvent(thingID string, key string, payload []byte) error
-
-	// PubRequest publishes an action request and waits for a response.
-	//	thingID for whom the action is intended
-	//	key ID or method name of the action
-	//  payload with serialized message to publish
-	//  returns a reply with serialized response message
-	PubRequest(thingID string, key string, payload []byte) (reply []byte, err error)
+	PubEvent(thingID string, key string, payload []byte) api.DeliveryStatus
 
 	// SetConnectHandler sets the notification handler of connection status changes
 	SetConnectHandler(cb func(status HubTransportStatus))
 
-	// SetEventHandler set the single handler that receives all subscribed events.
-	// Messages are considered events when they do not have a reply-to address.
-	// This does not provide routing as in most cases it is unnecessary overhead
-	// Use 'Subscribe' to set the addresses that this receives events on.
-	SetEventHandler(cb func(msg *things.ThingMessage))
+	// SetMessageHandler set the single handler that receives all subscribed messages
+	// and messages directed at this client.
+	//
+	// Note that Agents receive actions with a thingID that does not have the agent
+	// prefix as the agent prefix is consumer facing. Things from agents are physical
+	// things while digitwin Things are virtual Things with a different ID.
+	//
+	// Consumers can only interact with the digital twin.
+	//
+	// See also 'Subscribe' to set the things this client receives messages for.
+	SetMessageHandler(cb api.MessageHandler)
 
-	// SetRequestHandler sets the handler that receives all subscribed actions.
-	// This does not provide routing as in most cases it is unnecessary overhead
-	// Use 'Subscribe' to set the addresses that this receives requests on.
-	SetRequestHandler(cb func(msg *things.ThingMessage) (reply []byte, err error, donotreply bool))
-
-	// Subscribe adds a subscription for one or more events.
+	// Subscribe adds a subscription for one or more events from the thingID.
+	//
+	// This is for events only. Actions directed to this client are automatically passed
+	// to this client's messageHandler. The TD documents published by this agent have
+	// their ThingID associated with the agent using this transport.
+	//
+	//
 	// Events will be passed to the event handler.
 	// This is pretty coarse grained.
 	// Subscriptions remain in effect when the connection with the messaging server is interrupted.
@@ -133,18 +148,4 @@ type IHubTransport interface {
 	// Unsubscribe removes a previous event subscription.
 	// No more events or requests will be received after Unsubscribe.
 	Unsubscribe(thingID string)
-
-	//// SubEvent subscribes to an event style message.
-	////	address to subscribe to, this can contain wildcards
-	////	cb callback to invoke when a message is received
-	//SubEvent(address string, cb func(addr string, data []byte)) (ISubscription, error)
-	//
-	//// SubRequest subscribes to RPC requests and sends the reply to the sender.
-	//// Intended for services.
-	////  address is the address to subscribe to (using AddressTokens to construct)
-	////  cb is the callback to invoke when a message is received
-	////
-	//// Returns a subscription object that needs to be unsubscribed when done
-	//SubRequest(address string, handler func(addr string, payload []byte) (
-	//	reply []byte, err error)) (ISubscription, error)
 }

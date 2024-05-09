@@ -43,9 +43,8 @@ func ConnectToHub(fullURL string, clientID string, certDir string, core string, 
 	if err != nil {
 		return nil, err
 	}
-	// 3. Determine which core to use and setup the key and token filenames
-	// By convention the key/token filename format is "{name}.key/{name}.token"
-	hc = NewHubClient(fullURL, clientID, caCert, core)
+	// 3. Determine which protocol to use and setup the key and token filenames
+	hc = NewHubClient(fullURL, clientID, caCert)
 
 	// 4. Connect and auth with token from file
 	slog.Info("connecting to", "serverURL", fullURL)

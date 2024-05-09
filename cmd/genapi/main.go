@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/hiveot/hub/cmd/genapi/genvocab"
-	"github.com/hiveot/hub/cmd/genapi/tds"
+	"github.com/hiveot/hub/cmd/genapi/services"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/urfave/cli/v2"
 	"os"
@@ -22,8 +22,8 @@ func main() {
 
 		// commands arguments are passed by reference so they are updated in the Before section
 		Commands: []*cli.Command{
-			tds.ListTDsCommand(),
-			tds.GenGoAPICommand(),
+			services.ListTDsCommand(),
+			services.GenGoAPICommand(),
 			genvocab.GenVocabCommand(),
 		},
 	}

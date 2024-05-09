@@ -25,6 +25,7 @@ const HiveOTContext = "https://www.hiveot.net/vocab/v0.1"
 //	     properties: {propID: PropertyAffordance, ...}
 //	}
 type TD struct {
+
 	// JSON-LD keyword to define shorthand names called terms that are used throughout a TD document. Required.
 	// in order to add the "ht" namespace, the context value can be a string or map
 	AtContext []any `json:"@context"`

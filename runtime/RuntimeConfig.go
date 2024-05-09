@@ -12,7 +12,6 @@ import (
 	"github.com/hiveot/hub/runtime/authn"
 	"github.com/hiveot/hub/runtime/authz"
 	"github.com/hiveot/hub/runtime/protocols"
-	"github.com/hiveot/hub/runtime/router"
 	"gopkg.in/yaml.v3"
 	"log/slog"
 	"os"
@@ -40,7 +39,6 @@ type RuntimeConfig struct {
 	// middleware and services config. These all work out of the box with their defaults.
 	Authn     authn.AuthnConfig         `yaml:"authn"`
 	Authz     authz.AuthzConfig         `yaml:"authz"`
-	Router    router.RouterConfig       `yaml:"router"`
 	Protocols protocols.ProtocolsConfig `yaml:"protocols"`
 
 	// Runtime logging
@@ -279,7 +277,6 @@ func NewRuntimeConfig() *RuntimeConfig {
 		EnableGRPC:  false,
 		Authn:       authn.NewAuthnConfig(),
 		Authz:       authz.NewAuthzConfig(),
-		Router:      router.NewRouterConfig(),
 		Protocols:   protocols.NewProtocolsConfig(),
 		LogLevel:    "warning", // error, warning, info, debug
 		LogFile:     "",        // no logfile

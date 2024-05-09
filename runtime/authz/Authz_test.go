@@ -6,8 +6,8 @@ import (
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authz"
+	"github.com/hiveot/hub/runtime/authz/authzagent"
 	"github.com/hiveot/hub/runtime/authz/authzclient"
-	"github.com/hiveot/hub/runtime/authz/authzhandler"
 	"github.com/hiveot/hub/runtime/protocols/direct"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,9 +59,10 @@ func TestSetRole(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// create the client marshaller
-	handler := authzhandler.NewAuthzHandler(svc)
-	mt := direct.NewDirectTransport(client1ID, handler)
+	// connect the client marshaller to the server agent
+
+	handler, _ := authzagent.StartAuthzAgent(svc, nil)
+	mt := direct.NewDirectTransport(client1ID, handler.HandleMessage)
 	authzCl := authzclient.NewAuthzClient(mt)
 
 	// set the role

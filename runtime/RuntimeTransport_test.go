@@ -31,10 +31,18 @@ func TestHttpsPubValueEvent(t *testing.T) {
 	_, err := cl.Post(eventPath, msg.Data)
 	assert.NoError(t, err)
 
-	props, err := r.ValueSvc.ReadEvents(thingID, nil, "")
+	// Read events
+	addr := utils.Substitute(vocab.GetEventsPath, vars)
+	resp, err := cl.Get(addr)
 	require.NoError(t, err)
-	require.NotEmpty(t, props)
-	assert.Equal(t, msg.Data, props[key1].Data)
+	reply := things.ThingMessageMap{}
+	err = json.Unmarshal(resp, &reply)
+
+	//props, err := outbox.ReadLatest(cl, thingID, nil, "")
+	//props, err := r.DigitwinSvc.Outbox.ReadLatest(thingID, nil, "")
+	require.NoError(t, err)
+	require.NotEmpty(t, reply)
+	assert.Equal(t, msg.Data, reply[key1].Data)
 
 	// the event must be in the store
 	r.Stop()

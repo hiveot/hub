@@ -1,15 +1,19 @@
 package hubclient
 
 import (
+	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"github.com/hiveot/hub/lib/hubclient/transports"
+	"github.com/hiveot/hub/lib/hubclient/transports/httptransport"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/protocols/direct"
 	"log/slog"
+	"net/url"
 	"os"
 	"path"
-	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -41,11 +45,8 @@ type HubClient struct {
 	//  map[capID] map[methodName]handler
 	capTable map[string]map[string]interface{}
 
-	actionHandler     func(msg *things.ThingMessage) (reply []byte, err error)
-	configHandler     func(msg *things.ThingMessage) error
 	connectionHandler func(status transports.HubTransportStatus)
-	eventHandler      func(msg *things.ThingMessage)
-	rpcHandler        func(msg *things.ThingMessage) (reply []byte, err error)
+	messageHandler    api.MessageHandler
 }
 
 // MakeAddress creates a message address optionally with wildcards
@@ -127,14 +128,22 @@ func (hc *HubClient) ClientKP() keys.IHiveKey {
 	return hc.kp
 }
 
-// ConnectWithToken connects to the Hub server using a user JWT credentials secret
-// The token clientID must match that of the client
+// ConnectWithCert connects to the Hub server using a client certificate.
 //
 //	kp is the serialized public/private key-pair of this client
 //	jwtToken is the token obtained with login or refresh.
-func (hc *HubClient) ConnectWithToken(kp keys.IHiveKey, jwtToken string) error {
-	err := hc.transport.ConnectWithToken(kp, jwtToken)
+func (hc *HubClient) ConnectWithCert(kp keys.IHiveKey, cert *tls.Certificate) error {
+	_, err := hc.transport.ConnectWithCert(kp, cert)
 	hc.kp = kp
+	return err
+}
+
+// ConnectWithJWT connects to the Hub server using a user JWT credentials secret
+// The token clientID must match that of the client
+//
+//	jwtToken is the token obtained with login or refresh.
+func (hc *HubClient) ConnectWithJWT(jwtToken string) error {
+	err := hc.transport.ConnectWithJWT(jwtToken)
 	return err
 }
 
@@ -158,7 +167,7 @@ func (hc *HubClient) ConnectWithTokenFile(keysDir string) error {
 		return fmt.Errorf("ConnectWithTokenFile failed: %w", err)
 	}
 	hc.kp = kp
-	err = hc.transport.ConnectWithToken(kp, string(token))
+	err = hc.transport.ConnectWithJWT(string(token))
 	return err
 }
 
@@ -208,86 +217,17 @@ func (hc *HubClient) onConnect(status transports.HubTransportStatus) {
 	}
 }
 
-// Handlers of events and requests. These are dispatched to their appropriate handlers
-func (hc *HubClient) onEvent(msg *things.ThingMessage) {
-	//	messageType, agentID, thingID, name, senderID, err := hc.SplitAddress(addr)
-	slog.Info("onEvent",
-		slog.String("thingID", msg.ThingID),
-		slog.String("key", msg.Key))
-	hc.mux.RLock()
-	eventHandler := hc.eventHandler
-	hc.mux.RUnlock()
-	if eventHandler != nil {
-		eventHandler(msg)
-	}
-}
-
-// onRequest determines if this is a configuration, action or RPC request and
-// passes it to the handler.
-// Requests that are not addressed to this agent are treated as events and do not receive a reply.
-func (hc *HubClient) onRequest(thingID, key string, payload []byte) (reply []byte, err error, donotreply bool) {
-	//	messageType, agentID, thingID, name, senderID, err := hc.SplitAddress(addr)
-	//	tv := things.NewThingMessage(messageType, agentID, thingID, name, payload, senderID)
-	//
-	//	hc.mux.RLock()
-	//	actionHandler := hc.actionHandler
-	//	configHandler := hc.configHandler
-	//	eventHandler := hc.eventHandler
-	//	rpcHandler := hc.rpcHandler
-	//	hc.mux.RUnlock()
-	//	if agentID != hc.clientID {
-	//		if err == nil && eventHandler != nil {
-	//			tv := things.NewThingMessage(messageType, agentID, thingID, name, payload, senderID)
-	//			eventHandler(tv)
-	//		}
-	//		donotreply = true
-	//	} else if messageType == transports.MessageTypeAction && actionHandler != nil {
-	//		slog.Info("Received action request",
-	//			slog.String("sender", senderID),
-	//			slog.String("thingID", thingID),
-	//			slog.String("action", name),
-	//		)
-	//		reply, err = actionHandler(tv)
-	//	} else if messageType == transports.MessageTypeRPC && rpcHandler != nil {
-	//		slog.Info("Received RPC request",
-	//			slog.String("sender", senderID),
-	//			slog.String("capability", thingID),
-	//			slog.String("method", name),
-	//		)
-	//		reply, err = rpcHandler(tv)
-	//
-	//	} else if messageType == transports.MessageTypeConfig && configHandler != nil {
-	//		slog.Info("Received config request",
-	//			slog.String("sender", senderID),
-	//			slog.String("thingID", thingID),
-	//			slog.String("property", name),
-	//		)
-	//		err = configHandler(tv)
-	//	} else {
-	//		slog.Warn("received unexpected message type as request. Is this an event with a replyTo field?",
-	//			slog.String("sender", senderID),
-	//			slog.String("addr", addr))
-	//		// TBD pass it on to event handler???
-	//	}
-	return reply, err, donotreply
-}
-
 // PubAction publishes a request for action from a Thing.
 //
-//	agentID of the device or service that handles the action.
 //	thingID is the destination thingID to whom the action applies.
 //	key is the name of the action as described in the Thing's TD
 //	payload is the optional serialized payload of the action as described in the Thing's TD
 //
-// This returns the reply data or an error if an error was returned or no reply was received
-func (hc *HubClient) PubAction(
-	agentID string, thingID string, key string, payload []byte) ([]byte, error) {
+// This returns the delivery status and reply data if delivery is completed
+func (hc *HubClient) PubAction(thingID string, key string, payload []byte) api.DeliveryStatus {
 
-	//addr := hc.MakeAddress(transports.MessageTypeAction, agentID, thingID, name, hc.clientID)
-	//slog.Info("PubAction", "addr", addr)
-	//data, err := hc.transport.PubRequest(addr, payload)
-	data, err := hc.transport.PubRequest(thingID, key, payload)
-	return data, err
+	stat := hc.transport.PubAction(thingID, key, payload)
+	return stat
 }
 
 // PubConfig publishes a Thing configuration change request and wait for confirmation.
@@ -306,7 +246,7 @@ func (hc *HubClient) PubAction(
 //
 //	addr := hc.MakeAddress(transports.MessageTypeConfig, agentID, thingID, propName, hc.clientID)
 //	slog.Info("PubConfig", "addr", addr)
-//	_, err := hc.transport.PubRequest(addr, payload)
+//	_, err := hc.transport.PubAction(addr, payload)
 //	return err
 //}
 
@@ -326,149 +266,39 @@ func (hc *HubClient) PubAction(
 //	thingID of the Thing whose event is published
 //	eventID is the key of the event as defined in the event affordance map in the Thing TD
 //	payload is the serialized event value, or nil if the event has no value
-func (hc *HubClient) PubEvent(thingID string, eventID string, payload []byte) error {
+func (hc *HubClient) PubEvent(thingID string, eventID string, payload []byte) api.DeliveryStatus {
 
 	if eventID == "" {
-		err := fmt.Errorf("PubEvent missing eventID")
-		slog.Error(err.Error())
-		return err
+		errMsg := "PubEvent missing eventID"
+		slog.Error(errMsg)
+		return api.DeliveryStatus{Status: api.DeliveryFailed, Error: errMsg}
 	}
-	//addr := hc.MakeAddress(transports.MessageTypeEvent, hc.clientID, thingID, eventID, hc.clientID)
-	//slog.Info("PubEvent", "addr", addr)
-	err := hc.transport.PubEvent(thingID, eventID, payload)
-	return err
+	stat := hc.transport.PubEvent(thingID, eventID, payload)
+	return stat
 }
 
-// PubEvents publishes a set of events. Each event is published separately.
-// This is merely a convenience function that calls PubEvent for each key-value pair
-// in the event map.
-//func (hc *HubClient) PubEvents(thingID string, eventMap map[string]string) error {
-//	for k, v := range eventMap {
-//		err := hc.PubEvent(thingID, k, []byte(v))
-//		if err != nil {
-//			return err
-//		}
-//	}
-//	return nil
-//}
-
-// PubProps publishes a 'properties' (transports.EventTypeProps) event containing a map of
-// property name and values.
-// If the given properties map is empty then nothing will be published.
+// SetMessageHandler set the single handler that receives all subscribed messages
+// and messages directed at this client.
 //
-//	agentID of the device that handles the action for the things or service capability
-//	thingID is the destination thingID that handles the action
-//	propID is the key of the property as described in the properties affordance map in the Thing TD
-//	payload is the optional payload of the property as described in the Thing's TD
-//
-// This returns an error if an error was returned or no confirmation was received
-//func (hc *HubClient) PubProps(thingID string, props map[string]string) error {
-//
-//	if props == nil || len(props) == 0 {
-//		slog.Info("PubProps - no properties to publish", "thingID", thingID)
-//		return nil
-//	}
-//	addr := hc.MakeAddress(transports.MessageTypeEvent, hc.clientID, thingID,
-//		transports.EventTypeProps, hc.clientID)
-//	slog.Info("PubProps", "addr", addr, "nr props", len(props))
-//	payload, _ := json.Marshal(props)
-//	err := hc.transport.PubEvent(addr, payload)
-//	return err
-//}
-
-// PubRPCRequest publishes an RPC request to a service and waits for a response.
-// Intended for users and services to invoke RPC to services.
-//
-// Authorization to use the service capability can depend on the user's role. Check the service
-// documentation for details. When unauthorized then an error will be returned after a short delay.
-//
-// The client's ID is used as the senderID of the rpc request.
-//
-//	agentID of the service that handles the request
-//	capability is the capability to invoke
-//	methodName is the name of the request method to invoke
-//	req is the request message that will be marshalled or nil if no arguments are expected
-//	resp is the expected response message that is unmarshalled, or nil if no response is expected
-//func (hc *HubClient) PubRPCRequest(
-//	agentID string, capability string, methodName string, req interface{}, resp interface{}) error {
-//
-//	if capability == "" || methodName == "" {
-//		err := fmt.Errorf("PubRPCRequest missing capability or methodName")
-//		slog.Error(err.Error())
-//		return err
-//	}
-//
-//	var payload []byte
-//	if req != nil {
-//		payload, _ = ser.Marshal(req)
-//	}
-//	addr := hc.MakeAddress(
-//		vocab.MessageTypeRPC, agentID, capability, methodName, hc.clientID)
-//	slog.Info("PubRPCRequest", "addr", addr)
-//
-//	data, err := hc.transport.PubRequest(addr, payload)
-//	if err == nil && resp != nil {
-//		err = ser.Unmarshal(data, resp)
-//	}
-//	return err
-//}
-
-// PubTD publishes an event with a Thing TD document.
-// The client's authentication ID will be used as the agentID of the event.
-//func (hc *HubClient) PubTD(td *things.TD) error {
-//	if td.ID == "" {
-//		err := fmt.Errorf("PubTD missing Thing ID")
-//		slog.Error(err.Error())
-//		return err
-//	}
-//	payload, _ := ser.Marshal(td)
-//	addr := hc.MakeAddress(
-//		vocab.MessageTypeEvent, hc.clientID, td.ID, vocab.EventTypeTD, hc.clientID)
-//	slog.Info("PubTD", "addr", addr)
-//	err := hc.transport.PubEvent(addr, payload)
-//	return err
-//}
-
-// SetActionHandler sets the handler of incoming action requests
-// This will subscribe to actions directed to this client's agentID.
 // The result or error will be sent back to the caller.
-//func (hc *HubClient) SetActionHandler(handler func(msg *things.ThingMessage) (reply []byte, err error)) {
-//	hc.mux.Lock()
-//	hc.actionHandler = handler
-//	hc.mux.Unlock()
-//	addr := hc.MakeAddress(
-//		vocab.MessageTypeAction, hc.clientID, "", "", "")
-//	_ = hc.transport.Subscribe(addr)
-//	// the request handler will split actions, config and RPC requests
-//	hc.transport.SetRequestHandler(hc.onRequest)
-//}
+func (hc *HubClient) SetMessageHandler(handler api.MessageHandler) {
 
-// SetConfigHandler sets the handler of incoming configuration requests
-// This will subscribe to configuration requests directed to this client's agentID.
-//func (hc *HubClient) SetConfigHandler(handler func(msg *things.ThingMessage) error) {
-//	hc.mux.Lock()
-//	hc.configHandler = handler
-//	hc.mux.Unlock()
-//	addr := hc.MakeAddress(
-//		vocab.MessageTypeConfig, hc.clientID, "", "", "")
-//	_ = hc.transport.Subscribe(addr)
-//	hc.transport.SetRequestHandler(hc.onRequest)
-//}
+	hc.mux.Lock()
+	hc.messageHandler = handler
+	hc.mux.Unlock()
+
+	hc.transport.SetMessageHandler(
+		func(msg *things.ThingMessage) api.DeliveryStatus {
+			stat := hc.messageHandler(msg)
+			return stat
+		})
+}
 
 // SetConnectionHandler sets the callback for connection status changes.
 func (hc *HubClient) SetConnectionHandler(handler func(status transports.HubTransportStatus)) {
 	hc.mux.Lock()
 	hc.connectionHandler = handler
 	hc.mux.Unlock()
-}
-
-// SetEventHandler sets the handler of subscribed events.
-// Use 'Subscribe' to set the events to listen for.
-func (hc *HubClient) SetEventHandler(handler func(msg *things.ThingMessage)) {
-	hc.mux.Lock()
-	hc.eventHandler = handler
-	hc.mux.Unlock()
-	hc.transport.SetEventHandler(hc.onEvent)
 }
 
 // SetRetryConnect enables/disables the retry if a connection with the server is broken.
@@ -591,22 +421,25 @@ func NewHubClientFromTransport(transport transports.IHubTransport, clientID stri
 //
 // Invoke hubClient.ConnectWithXy() to connect
 //
-//   - url of server to connect to.
+//   - fullURL of server to connect to.
 //   - clientID is the account/login ID of the client that will be connecting
-//   - keyPair is this client's serialized private/public key pair, or "" to create them.
 //   - caCert of server or nil to not verify server cert
-//   - core server to use: nats, mqtt, http. Default "" will use nats if url starts with "nats" or mqtt otherwise.
-func NewHubClient(url string, clientID string, caCert *x509.Certificate, core string) *HubClient {
-	// a kp is not needed when using connect with token file
-	//if kp == nil {
-	//	panic("kp is required")
-	//}
+func NewHubClient(fullURL string, clientID string, caCert *x509.Certificate) *HubClient {
 	var tp transports.IHubTransport
-	if core == "nats" || strings.HasPrefix(url, "nats") {
+	parts, _ := url.Parse(fullURL)
+	tpid := parts.Scheme
+	if tpid == "nats" {
+		// FIXME: nats
 		//tp = natstransport.NewNatsTransport(url, clientID, caCert)
-	} else if core == "http" {
-	} else {
+	} else if tpid == "mqtt" {
+		// FIXME: support mqtt
 		//tp = mqtttransport.NewMqttTransport(url, clientID, caCert)
+	} else if tpid == "https" || tpid == "tls" {
+		// FIXME: obtain the sse path from elsewhere?
+		ssePath := "/sse"
+		tp = httptransport.NewHttpSSETransport(parts.Host, ssePath, clientID, caCert)
+	} else if tpid == "" {
+		tp = direct.NewEmbeddedTransport(clientID, nil)
 	}
 	hc := NewHubClientFromTransport(tp, clientID)
 	return hc

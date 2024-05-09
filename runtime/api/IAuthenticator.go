@@ -10,12 +10,13 @@ type IAuthenticator interface {
 	Login(clientID string, password string, sessionID string) (newToken string, sid string, err error)
 
 	// CreateSessionToken creates a signed session token for a client.
-	// If no sessionID is provided then one will be generated.
+	// sessionID is optional and only used if a matching session is required
 	CreateSessionToken(clientID, sessionID string, validitySec int) (token string)
 
 	// RefreshToken the session token and retain its session ID
 	RefreshToken(clientID string, oldToken string, validitySec int) (newToken string, err error)
 
 	// ValidateToken the session token and return the corresponding clientID and sessionID
+	// If a sessionID is provided or the token contains a sessionID then the MUST match.
 	ValidateToken(token string) (clientID string, sessionID string, err error)
 }

@@ -3,17 +3,18 @@ package httpsbinding
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/protocols/httpsbinding/rest"
 	"github.com/hiveot/hub/runtime/protocols/httpsbinding/sessions"
 	"github.com/hiveot/hub/runtime/protocols/httpsbinding/sse"
-	"github.com/hiveot/hub/runtime/router"
 	"github.com/hiveot/hub/runtime/tlsserver"
+	"io"
 	"log/slog"
 	"net/http"
 )
@@ -32,17 +33,10 @@ type HttpsBinding struct {
 	router     *chi.Mux
 
 	// callback handler for incoming events,actions and rpc messages
-	handleMessage func(tv *things.ThingMessage) ([]byte, error)
+	handleMessage api.MessageHandler
 
 	// sessionAuth for logging in and validating session tokens
 	sessionAuth api.IAuthenticator
-
-	// handlers for the REST APIs
-	transportHandler   *rest.RestHandlePost
-	dtDirectoryHandler *rest.DirectoryRest
-	dtValuesHandler    *rest.ThingValuesRest
-	dtHistoryHandler   *rest.HistoryRest
-	authnRestHandler   *rest.AuthnRest
 
 	// handlers for SSE server push connections
 	sseHandler *sse.SSEHandler
@@ -80,7 +74,7 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 	router.Group(func(r chi.Router) {
 
 		//r.Get("/static/*", staticFileServer.ServeHTTP)
-		r.Post(vocab.PostLoginPath, svc.authnRestHandler.HandlePostLogin)
+		r.Post(vocab.PostLoginPath, svc.HandlePostLogin)
 	})
 
 	//--- private routes that requires authentication
@@ -90,13 +84,16 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 
 		// register the general purpose event and action message transport
 		// these allows the binding to work as a transport from client to services using generated clients
-		svc.transportHandler.RegisterMethods(r)
+		r.Post(vocab.PostActionPath, svc.HandlePostAction)
+		r.Post(vocab.PostEventPath, svc.HandlePostEvent)
 
 		// register rest api for built-in services
-		svc.authnRestHandler.RegisterMethods(r)
-		svc.dtDirectoryHandler.RegisterMethods(r)
-		svc.dtValuesHandler.RegisterMethods(r)
-		svc.dtHistoryHandler.RegisterMethods(r)
+		r.Post(vocab.PostRefreshPath, svc.HandlePostRefresh)
+		r.Post(vocab.PostLogoutPath, svc.HandlePostLogout)
+		//svc.authnHandler.RegisterMethods(r)
+		//svc.dtDirectoryHandler.RegisterMethods(r)
+		//svc.dtValuesHandler.RegisterMethods(r)
+		//svc.dtHistoryHandler.RegisterMethods(r)
 
 		// sse has its own validation instead of using session context (which reconnects or redirects to /login)
 		svc.sseHandler.RegisterMethods(r)
@@ -107,17 +104,213 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 	return router
 }
 
+// getRequestParams reads the client session, URL parameters and body payload from the request.
+//
+// The session context is set by the http middleware. If the session is not available then
+// this returns an error. Note that the session middleware handler will block any request
+// that requires a session.
+func (svc *HttpsBinding) getRequestParams(r *http.Request) (
+	session *sessions.ClientSession, thingID string, key string, body []byte, err error) {
+	// get the required client session of this agent
+	ctxSession := r.Context().Value(sessions.SessionContextID)
+	if ctxSession == nil {
+		// This is an internal error. The middleware session handler would have blocked
+		// a request that required a session before getting here.
+		err = fmt.Errorf("Missing session for request '%s' from '%s'",
+			r.RequestURI, r.RemoteAddr)
+		slog.Error(err.Error())
+		return nil, "", "", nil, err
+	}
+	cs := ctxSession.(*sessions.ClientSession)
+
+	// build a message from the URL and payload
+	// URLParam names are defined by the path variables set in the router.
+	thingID = chi.URLParam(r, "thingID")
+	key = chi.URLParam(r, "key")
+	body, _ = io.ReadAll(r.Body)
+
+	return cs, thingID, key, body, err
+}
+
+// writeReply is a convenience function that writes a reply to a request.
+// If the reply has an error then write a bad request with the error as payload
+func (svc *HttpsBinding) writeReply(w http.ResponseWriter, payload []byte, err error) {
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if payload != nil {
+		_, _ = w.Write(payload)
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// GetProtocolInfo returns info on the protocol supported by this binding
+// TODO: this is a placeholder and will change to include all information needed for TD forms.
+func (svc *HttpsBinding) GetProtocolInfo() api.ProtocolInfo {
+	hostName := svc.config.Host
+	if hostName == "" {
+		hostName = "localhost"
+	}
+	baseURL := fmt.Sprintf("https://%s:%d", hostName, svc.config.Port)
+	inf := api.ProtocolInfo{
+		BaseURL:   baseURL,
+		Schema:    "https",
+		Transport: "https",
+	}
+	return inf
+}
+
+// HandlePostAction passes a posted action to the router
+func (svc *HttpsBinding) HandlePostAction(w http.ResponseWriter, r *http.Request) {
+	cs, thingID, key, body, err := svc.getRequestParams(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	// this request can simply be turned into an action message.
+	msg := things.NewThingMessage(
+		vocab.MessageTypeAction, thingID, key, body, cs.GetClientID())
+
+	stat := svc.handleMessage(msg)
+	reply, err := json.Marshal(&stat)
+	svc.writeReply(w, reply, err)
+}
+
+// HandlePostEvent passes a posted event to the router
+func (svc *HttpsBinding) HandlePostEvent(w http.ResponseWriter, r *http.Request) {
+	cs, thingID, key, body, err := svc.getRequestParams(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	// this request can simply be turned into an event message.
+	msg := things.NewThingMessage(
+		vocab.MessageTypeEvent, thingID, key, body, cs.GetClientID())
+
+	stat := svc.handleMessage(msg)
+	reply, err := json.Marshal(&stat)
+	svc.writeReply(w, reply, err)
+}
+
+// HandlePostLogin handles a login request and a new session, posted by a consumer
+func (svc *HttpsBinding) HandlePostLogin(w http.ResponseWriter, r *http.Request) {
+	sm := sessions.GetSessionManager()
+
+	args := api.LoginArgs{}
+	// credentials are in a json payload
+	data, err := io.ReadAll(r.Body)
+	if err == nil {
+		err = json.Unmarshal(data, &args)
+	}
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	err = json.Unmarshal(data, &args)
+	// login generates a new session ID
+	token, sid, err := svc.sessionAuth.Login(args.ClientID, args.Password, "")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	// if a session exists, remove it
+	oldToken, err := tlsserver.GetBearerToken(r)
+	if err == nil {
+		_, oldSid, err := svc.sessionAuth.ValidateToken(oldToken)
+		if err == nil {
+			_ = sm.Close(oldSid)
+		}
+	}
+	// create the session for this token
+	_, err = sm.NewSession(args.ClientID, r.RemoteAddr, sid)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	reply := api.LoginResp{Token: token}
+	resp, err := json.Marshal(reply)
+	_, _ = w.Write(resp)
+	w.WriteHeader(http.StatusOK)
+	// TODO: set client session cookie
+	//svc.sessionManager.SetSessionCookie(cs.sessionID,token)
+}
+
+func (svc *HttpsBinding) HandlePostLogout(w http.ResponseWriter, r *http.Request) {
+	cs, _, _, _, err := svc.getRequestParams(r)
+	if err != nil {
+		return
+	}
+	// logout closes the session
+	cs.Close()
+	// TODO: remove client session cookie
+	//svc.sessionManager.ClearSessionCookie(cs.sessionID)
+}
+
+func (svc *HttpsBinding) HandlePostRefresh(w http.ResponseWriter, r *http.Request) {
+	var newToken string
+	args := api.RefreshTokenArgs{}
+	cs, _, _, data, err := svc.getRequestParams(r)
+	if err == nil {
+		err = json.Unmarshal(data, &args)
+	}
+	if cs.GetClientID() != args.ClientID {
+		http.Error(w, "bad login", http.StatusUnauthorized)
+		return
+	}
+	if err == nil {
+		newToken, err = svc.sessionAuth.RefreshToken(cs.GetClientID(), args.OldToken, 0)
+	}
+	reply := &api.RefreshTokenResp{Token: newToken}
+	resp, err := json.Marshal(reply)
+	svc.writeReply(w, resp, err)
+	// TODO: update client session cookie with new token
+	//svc.sessionManager.SetSessionCookie(cs.sessionID,newToken)
+}
+
+// SendEvent an event message to subscribers.
+// This passes it to SSE handlers of active sessions
+func (svc *HttpsBinding) SendEvent(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	sm := sessions.GetSessionManager()
+	return sm.SendEvent(msg)
+}
+
+// SendToClient sends a message to a connected agent or consumer.
+func (svc *HttpsBinding) SendToClient(
+	clientID string, msg *things.ThingMessage) (stat api.DeliveryStatus) {
+
+	stat.MessageID = msg.MessageID
+	sm := sessions.GetSessionManager()
+	cs, err := sm.GetSessionByClientID(clientID)
+	if err == nil {
+		payload, _ := json.Marshal(msg)
+		count := cs.SendSSE(msg.MessageType, string(payload))
+		if count == 0 {
+			err = fmt.Errorf("client '%s' is not reachable", clientID)
+		} else {
+			// completion status is send asynchroneously by the agent
+			stat.Status = api.DeliveryDelivered
+		}
+	}
+	if err != nil {
+		stat.Error = err.Error()
+		stat.Status = api.DeliveryFailed
+	}
+	return stat
+}
+
 // Start the https server and listen for incoming connection requests
-func (svc *HttpsBinding) Start(handler router.MessageHandler) error {
+func (svc *HttpsBinding) Start(handler api.MessageHandler) error {
 	slog.Info("Starting HttpsBinding")
 	svc.handleMessage = handler
 
-	svc.transportHandler = rest.NewTransportRest(svc.handleMessage)
-	svc.dtDirectoryHandler = rest.NewDirectoryRest(svc.handleMessage)
-	svc.dtHistoryHandler = rest.NewHistoryRest(svc.handleMessage)
-	svc.dtValuesHandler = rest.NewValuesRest(svc.handleMessage)
-	svc.authnRestHandler = rest.NewAuthnRest(svc.handleMessage, svc.sessionAuth)
-	svc.sseHandler = sse.NewSSEHandler(svc.handleMessage, svc.sessionAuth)
+	//svc.transportHandler = rest.NewTransportRest(svc.handleMessage)
+	//svc.dtDirectoryHandler = rest.NewDirectoryRest(svc.handleMessage)
+	//svc.dtHistoryHandler = rest.NewHistoryRest(svc.handleMessage)
+	//svc.dtValuesHandler = rest.NewValuesRest(svc.handleMessage)
+	//svc.authnHandler = rest.NewAuthnRest(svc.handleMessage, svc.sessionAuth)
+	svc.sseHandler = sse.NewSSEHandler(svc.sessionAuth)
 
 	svc.createRoutes(svc.router)
 

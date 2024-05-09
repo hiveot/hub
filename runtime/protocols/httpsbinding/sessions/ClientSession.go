@@ -141,7 +141,9 @@ func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {
 
 // SendSSE encodes and sends an SSE event to clients of this session
 // Intended to send events to clients over sse.
-func (cs *ClientSession) SendSSE(eventType string, payload string) error {
+// This returns the number of events being sent, or 0 if no client sessions exist
+func (cs *ClientSession) SendSSE(eventType string, payload string) int {
+	count := 0
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
 	slog.Info("sending sse event", "eventType", eventType, "nr clients", len(cs.sseClients))
@@ -153,8 +155,9 @@ func (cs *ClientSession) SendSSE(eventType string, payload string) error {
 			EventType: eventType,
 			Payload:   payload,
 		}
+		count++
 	}
-	return nil
+	return count
 }
 
 // NewClientSession creates a new client session

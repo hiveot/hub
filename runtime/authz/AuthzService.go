@@ -124,3 +124,13 @@ func NewAuthzService(cfg *AuthzConfig, authnStore api.IAuthnStore) *AuthzService
 	}
 	return svc
 }
+
+// StartAuthzService creates and start the authz administration service
+// with the given config.
+// This uses the authn store to store the user role
+func StartAuthzService(cfg *AuthzConfig, authnStore api.IAuthnStore) (*AuthzService, error) {
+
+	svc := NewAuthzService(cfg, authnStore)
+	err := svc.Start()
+	return svc, err
+}

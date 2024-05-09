@@ -3,26 +3,19 @@ package runtime
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
-	"github.com/hiveot/hub/api/go/directory"
-	"github.com/hiveot/hub/api/go/thingValues"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/buckets/bucketstore"
-	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/authn"
-	"github.com/hiveot/hub/runtime/authn/authnhandler"
+	"github.com/hiveot/hub/runtime/authn/authnagent"
 	"github.com/hiveot/hub/runtime/authn/service"
 	"github.com/hiveot/hub/runtime/authz"
-	"github.com/hiveot/hub/runtime/authz/authzhandler"
-	service2 "github.com/hiveot/hub/runtime/directory/service"
+	"github.com/hiveot/hub/runtime/authz/authzagent"
+	"github.com/hiveot/hub/runtime/digitwin/digitwinagent"
+	service4 "github.com/hiveot/hub/runtime/digitwin/service"
+	service2 "github.com/hiveot/hub/runtime/history/service"
+	"github.com/hiveot/hub/runtime/middleware"
 	"github.com/hiveot/hub/runtime/protocols"
-	"github.com/hiveot/hub/runtime/router"
-	service3 "github.com/hiveot/hub/runtime/thingvalues/service"
-	"path"
 )
 
 const DefaultDigiTwinStoreFilename = "digitwin.kvbtree"
@@ -32,13 +25,13 @@ type Runtime struct {
 	cfg *RuntimeConfig
 
 	//AuthnStore api.IAuthnStore
-	AuthnSvc    *service.AuthnService
-	AuthzSvc    *authz.AuthzService
-	DirSvc      *service2.DirectoryService
-	MsgRouter   *router.MessageRouter
-	ProtocolMgr *protocols.ProtocolsManager
-	ValueSvc    *service3.ThingValuesService
-	ValueStore  buckets.IBucketStore
+	AuthnSvc      *service.AuthnService
+	AuthzSvc      *authz.AuthzService
+	DigitwinStore buckets.IBucketStore
+	DigitwinSvc   *service4.DigitwinService
+	HistorySvc    *service2.HistoryService
+	Middleware    *middleware.Middleware
+	ProtocolMgr   *protocols.ProtocolsManager
 }
 
 func (r *Runtime) Start(env *plugin.AppEnvironment) error {
@@ -47,106 +40,57 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	if err != nil {
 		return err
 	}
-
-	// setup ingress routing; right now it is quite simple with a single event handler
-	r.MsgRouter = router.NewMessageRouter(&r.cfg.Router)
+	// setup ingress middleware.
+	r.Middleware = middleware.NewMiddleware()
 
 	// startup
-	r.AuthnSvc, err = StartAuthnSvc(&r.cfg.Authn, env.CaCert, r.MsgRouter)
+	// setup the Authentication service
+	r.AuthnSvc, err = service.StartAuthnService(&r.cfg.Authn)
 	if err != nil {
 		return err
 	}
-	//r.AuthnSvc, sessionAuth, r.AuthnStore,
-
-	r.AuthzSvc, err = StartAuthzSvc(&r.cfg.Authz, r.AuthnSvc.AuthnStore, r.MsgRouter)
-	if err != nil {
-		return err
-	}
-
-	r.DirSvc, err = StartDirectorySvc(env.StoresDir, r.MsgRouter)
+	r.AuthzSvc, err = authz.StartAuthzService(&r.cfg.Authz, r.AuthnSvc.AuthnStore)
 	if err != nil {
 		return err
 	}
 
-	r.ValueSvc, r.ValueStore, err = StartValueSvc(env.StoresDir, r.MsgRouter)
-	if err != nil {
-		return err
-	}
-
+	// the protocol manager receives messages from clients (source) and
+	// sends messages to connected clients (sink)
 	//
-	//// setup ingress routing; right now it is quite simple with a single event handler
-	//r.MsgRouter = router.NewMessageRouter(&r.cfg.Router)
-	// TODO: add built-in services as separate event types, eg TD and Properties events
-	//r.MsgRouter.AddEventHandler("", "", func(tv *things.ThingMessage) ([]byte, error) {
-	//	_, _ = r.DirSvc.StoreEvent(tv)
-	//	_, _ = r.ValueSvc.StoreEvent(tv)
-	//	return nil, nil
-	//})
-	// pass to the default action handler
-	// TODO: add built-in services as separate actions
-	//r.MsgRouter.AddActionHandler("", "", func(tv *things.ThingMessage) ([]byte, error) {
-	//	return nil, fmt.Errorf("not yet implemented")
-	//})
-
 	r.ProtocolMgr, err = StartProtocolsManager(
 		&r.cfg.Protocols, r.cfg.ServerKey, r.cfg.ServerCert, r.cfg.CaCert,
-		r.AuthnSvc.SessionAuth, r.MsgRouter.HandleMessage)
+		r.AuthnSvc.SessionAuth, r.Middleware.HandleMessage)
+
+	// The digitwin service directs the message flow between agents and consumers
+	// It receives messages from the middleware and uses the protocol manager
+	// to send messages to clients.
+	r.DigitwinSvc, err = service4.StartDigitwinService(env.StoresDir, r.ProtocolMgr)
+
+	// The middleware validates messages and passes them on to the digitwin service
+	if err == nil {
+		r.Middleware.SetMessageHandler(r.DigitwinSvc.HandleMessage)
+	}
+
+	// last, connect the embedded services via a direct client
+	embeddedBinding := r.ProtocolMgr.GetEmbedded()
+	cl1 := embeddedBinding.NewClient(service4.DigitwinAgentID)
+	_, err = digitwinagent.StartDigiTwinAgent(r.DigitwinSvc, cl1)
+
+	if err == nil {
+		cl2 := embeddedBinding.NewClient(authnagent.AuthnAgentID)
+		_, err = authnagent.StartAuthnAgent(r.AuthnSvc, cl2)
+	}
+	if err == nil {
+		cl3 := embeddedBinding.NewClient(authzagent.AuthzAgentID)
+		_, err = authzagent.StartAuthzAgent(r.AuthzSvc, cl3)
+	}
+	// last, set the handlers for f
 	return err
-}
-
-func StartAuthnSvc(
-	cfg *authn.AuthnConfig, caCert *x509.Certificate, r *router.MessageRouter) (
-	svc *service.AuthnService, err error) {
-
-	// setup the Authentication service
-	svc, err = service.StartAuthnService(cfg)
-	if err != nil {
-		return nil, err
-	}
-	// add the messaging interface handler
-	adminMsgHandler := authnhandler.NewAuthnAdminHandler(svc.AdminSvc)
-	clientMsgHandler := authnhandler.NewAuthnUserHandler(svc.UserSvc)
-	r.AddServiceHandler(api.AuthnAdminThingID, adminMsgHandler)
-	r.AddServiceHandler(api.AuthnUserThingID, clientMsgHandler)
-	return svc, err
-}
-
-func StartAuthzSvc(cfg *authz.AuthzConfig,
-	authnStore api.IAuthnStore, r *router.MessageRouter) (svc *authz.AuthzService, err error) {
-
-	// setup the Authentication service
-	svc = authz.NewAuthzService(cfg, authnStore)
-	err = svc.Start()
-
-	// add the messaging interface handler
-	msgHandler := authzhandler.NewAuthzHandler(svc)
-	r.AddServiceHandler(api.AuthzThingID, msgHandler)
-	return svc, err
-}
-
-func StartDirectorySvc(storesDir string, r *router.MessageRouter) (
-	svc *service2.DirectoryService, err error) {
-
-	var dirStore buckets.IBucketStore
-	if err == nil {
-		dirStorePath := path.Join(storesDir, "directory", "directory.store")
-		dirStore = kvbtree.NewKVStore(dirStorePath)
-		err = dirStore.Open()
-	}
-	if err == nil {
-		svc = service2.NewDirectoryService(dirStore)
-		err = svc.Start()
-		// should these be registered through their TD? not right now
-		r.AddEventHandler(svc.HandleTDEvent)
-		r.AddServiceHandler(directory.ThingID, directory.GetActionHandler(svc))
-	}
-	return svc, err
 }
 
 func StartProtocolsManager(cfg *protocols.ProtocolsConfig,
 	serverKey keys.IHiveKey, serverCert *tls.Certificate, caCert *x509.Certificate,
-	sessionAuth api.IAuthenticator,
-	handler func(msg *things.ThingMessage) ([]byte, error)) (
+	sessionAuth api.IAuthenticator, handler api.MessageHandler) (
 	svc *protocols.ProtocolsManager, err error) {
 
 	pm := protocols.NewProtocolManager(
@@ -158,46 +102,15 @@ func StartProtocolsManager(cfg *protocols.ProtocolsConfig,
 	return pm, err
 }
 
-func StartValueSvc(storesDir string, r *router.MessageRouter) (
-	valueSvc *service3.ThingValuesService, valueStore buckets.IBucketStore, err error) {
-
-	if err == nil {
-		storeDir := path.Join(storesDir, "values")
-		storeName := "valueService"
-		valueStore, err = bucketstore.NewBucketStore(
-			storeDir, storeName, buckets.BackendPebble)
-		if err != nil {
-			err = fmt.Errorf("can't open history bucket store: %w", err)
-		} else {
-			err = valueStore.Open()
-		}
-	}
-	if err == nil {
-		valueSvc = service3.NewThingValuesService(valueStore)
-		err = valueSvc.Start()
-
-		// value service records all messages
-		r.AddMiddlewareHandler(valueSvc.StoreMessage)
-		r.AddServiceHandler(thingValues.ThingID, thingValues.GetActionHandler(valueSvc))
-	}
-
-	return valueSvc, valueStore, err
-}
-
 func (r *Runtime) Stop() {
 	if r.ProtocolMgr != nil {
 		r.ProtocolMgr.Stop()
 	}
-	if r.MsgRouter != nil {
+	if r.HistorySvc != nil {
+		r.HistorySvc.Stop()
 	}
-	if r.ValueSvc != nil {
-		r.ValueSvc.Stop()
-	}
-	if r.ValueStore != nil {
-		_ = r.ValueStore.Close()
-	}
-	if r.DirSvc != nil {
-		r.DirSvc.Stop()
+	if r.DigitwinSvc != nil {
+		r.DigitwinSvc.Stop()
 	}
 	if r.AuthzSvc != nil {
 		r.AuthzSvc.Stop()
@@ -208,6 +121,8 @@ func (r *Runtime) Stop() {
 }
 
 func NewRuntime(cfg *RuntimeConfig) *Runtime {
-	r := &Runtime{cfg: cfg}
+	r := &Runtime{
+		cfg: cfg,
+	}
 	return r
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/hiveot/hub/runtime/api"
 )
 
+// AuthzClient marshals and unmarshals request to the authz service
 type AuthzClient struct {
 	mt api.IMessageTransport
 }

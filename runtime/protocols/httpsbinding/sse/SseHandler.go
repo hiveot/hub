@@ -7,7 +7,6 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/protocols/httpsbinding/sessions"
-	"github.com/hiveot/hub/runtime/router"
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
 	"net/http"
@@ -19,9 +18,9 @@ import (
 // session object.
 // The token must be a session token issued through login or refresh methods.
 type SSEHandler struct {
-	sessionAuth   api.IAuthenticator
-	handleMessage router.MessageHandler
-	gosse         *sse.Server
+	sessionAuth api.IAuthenticator
+	//handleMessage router.MessageHandler
+	gosse *sse.Server
 }
 
 // handleSseConnect handles incoming SSE connections, authenticates the client
@@ -116,6 +115,9 @@ func (svc *SSEHandler) registerWithGosse(r chi.Router) {
 		if err != nil {
 			return sse.Subscription{}, false
 		}
+		slog.Info("SseHandler. New connection",
+			slog.String("ClientID", cs.GetClientID()),
+			slog.String("RemoteAddr", sseSession.Req.RemoteAddr))
 
 		// TODO use subscription topics
 		// TODO use last event ID
@@ -144,7 +146,7 @@ func (svc *SSEHandler) registerWithGosse(r chi.Router) {
 			}
 			cs.RemoveSSEClient(sseChan)
 			// TODO: if all connections are closed for this client send a disconnected event
-			slog.Info("registerGosse: Session closed", "clientID", cs.GetClientID())
+			slog.Info("SseHandler: Session closed", "clientID", cs.GetClientID())
 		}()
 
 		return sub, true
@@ -165,11 +167,11 @@ func (svc *SSEHandler) Stop() {
 
 // NewSSEHandler creates an instance of the SSE connection handler
 // handleMessage is used to send connect/disconnect events.
-func NewSSEHandler(handleMessage router.MessageHandler, sessionAuth api.IAuthenticator) *SSEHandler {
+func NewSSEHandler(sessionAuth api.IAuthenticator) *SSEHandler {
 	handler := SSEHandler{
-		sessionAuth:   sessionAuth,
-		handleMessage: handleMessage,
-		gosse:         &sse.Server{},
+		sessionAuth: sessionAuth,
+		//handleMessage: handleMessage,
+		gosse: &sse.Server{},
 	}
 	return &handler
 }

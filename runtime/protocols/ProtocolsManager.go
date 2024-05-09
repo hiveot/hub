@@ -3,24 +3,28 @@ package protocols
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/protocols/direct"
 	"github.com/hiveot/hub/runtime/protocols/httpsbinding"
-	"github.com/hiveot/hub/runtime/router"
 	"log/slog"
 )
 
 // ProtocolsManager aggregates multiple protocol bindings and manages the starting,
 // stopping and routing of protocol messages.
-// This implements the IProtocolCallback interface.
+// This implements the IProtocolBinding interface like the protocols it manages.
 type ProtocolsManager struct {
 
 	// handler for events, actions and rpc requests
 	bindings []api.IProtocolBinding
 
+	// The embedded binding can be used directly with embedded services
+	embeddedBinding *direct.EmbeddedBinding
+
 	// handler to pass incoming messages to
-	handler func(tv *things.ThingMessage) ([]byte, error)
+	handler func(tv *things.ThingMessage) api.DeliveryStatus
 }
 
 // AddProtocolBinding adds a protocol binding to the manager
@@ -29,29 +33,75 @@ func (svc *ProtocolsManager) AddProtocolBinding(binding api.IProtocolBinding) {
 	svc.bindings = append(svc.bindings, binding)
 }
 
-// SendActionToAgent sends an action request to the agent.
-func (svc *ProtocolsManager) SendActionToAgent(
-	agentID string, msg *things.ThingMessage) (reply []byte, err error) {
-	// for now simply send the action request to all protocol handlers
-	for _, protoHandler := range svc.bindings {
-		reply, err = protoHandler.SendActionToAgent(agentID, msg)
-		if err == nil {
-			// avoid double delivery
-			break
+// GetEmbedded returns the embedded protocol binding
+// Intended to receive messages from, and send to, embedded services
+func (svc *ProtocolsManager) GetEmbedded() *direct.EmbeddedBinding {
+	return svc.embeddedBinding
+}
+
+// GetConnectURL returns URL of the first protocol that has a baseurl
+func (svc *ProtocolsManager) GetConnectURL() string {
+	for _, b := range svc.bindings {
+		pi := b.GetProtocolInfo()
+		if pi.BaseURL != "" {
+			return pi.BaseURL
 		}
 	}
-	return reply, err
+	return ""
+}
+
+// GetProtocolInfo returns information on the preferred protocol
+func (svc *ProtocolsManager) GetProtocolInfo() (pi api.ProtocolInfo) {
+	if len(svc.bindings) > 0 {
+		return svc.bindings[0].GetProtocolInfo()
+	}
+	return
+}
+
+// GetProtocols returns a list of active server protocol bindings
+func (svc *ProtocolsManager) GetProtocols() []api.IProtocolBinding {
+	return svc.bindings
+}
+
+// SendToClient sends a message to a connected agent or consumer client
+// If an agent is connected through multiple protocols then this stops
+// after the first successful delivery.
+// TODO: optimize to use the most efficient protocol
+// TODO: sending to multiple instances of the same client?
+func (svc *ProtocolsManager) SendToClient(
+	clientID string, msg *things.ThingMessage) (stat api.DeliveryStatus) {
+
+	stat.Status = api.DeliveryFailed
+	stat.Error = fmt.Sprintf("SendToClient: Destination '%s' not found", clientID)
+	// for now simply send the action request to all protocol handlers
+	for _, protoHandler := range svc.bindings {
+		stat = protoHandler.SendToClient(clientID, msg)
+		if stat.Status == api.DeliveryCompleted {
+			return stat
+		}
+	}
+	return stat
 }
 
 // SendEvent sends a event to all subscribers
-func (svc *ProtocolsManager) SendEvent(msg *things.ThingMessage) {
+func (svc *ProtocolsManager) SendEvent(
+	msg *things.ThingMessage) (stat api.DeliveryStatus) {
+
+	stat.Status = api.DeliveryFailed
+	stat.Error = "Destination not found"
+
 	for _, protoHandler := range svc.bindings {
-		protoHandler.SendEvent(msg)
+		stat2 := protoHandler.SendEvent(msg)
+		if stat2.Status == api.DeliveryDelivered {
+			stat.Status = api.DeliveryDelivered
+			stat.Error = ""
+		}
 	}
+	return stat
 }
 
 // Start the protocol servers
-func (svc *ProtocolsManager) Start(handler router.MessageHandler) error {
+func (svc *ProtocolsManager) Start(handler api.MessageHandler) error {
 	svc.handler = handler
 	for _, pb := range svc.bindings {
 		err := pb.Start(handler)
@@ -69,12 +119,21 @@ func (svc *ProtocolsManager) Stop() {
 	}
 }
 
-// NewProtocolManager creates a new instance of the protocol manager
+// NewProtocolManager creates a new instance of the protocol manager.
+// This instantiates enabled protocol bindings, including the embedded binding
+// to be used to register embedded services.
 func NewProtocolManager(cfg *ProtocolsConfig,
 	privKey keys.IHiveKey, serverCert *tls.Certificate, caCert *x509.Certificate,
 	sessionAuth api.IAuthenticator) *ProtocolsManager {
 
-	svc := ProtocolsManager{}
+	svc := ProtocolsManager{
+		// the embedded protocol binding
+		// 1. receives messages from embedded services to pass on to the middleware (source)
+		// 2. sends messages to embedded services (sink)
+		// Embedded services are: authn, authz, directory, inbox, outbox and history services
+		embeddedBinding: direct.NewEmbeddedBinding(),
+	}
+	svc.AddProtocolBinding(svc.embeddedBinding)
 	svc.AddProtocolBinding(
 		httpsbinding.NewHttpsBinding(
 			&cfg.HttpsBinding,

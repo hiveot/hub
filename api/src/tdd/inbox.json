@@ -1,0 +1,93 @@
+{
+	"@context":[ "https://www.w3.org/2022/wot/td/v1.1",
+		{"ht": "https://www.hiveot.net/vocab/v0.1"}
+	],
+	"@type": "Service",
+	"id": "inbox",
+	"title": "DigiTwin Inbox",
+	"description": "HiveOT digital twin inbox action storage",
+	"version": {
+		"instance": "0.1.0"
+	},
+	"created": "2024-05-03T17:00:00.000Z",
+	"modified": "2024-05-03T17:00:00.000Z",
+	"support": "https://www.github.com/hiveot/hub",
+	"security": ["bearer"],
+	"securityDefinitions": {
+		"bearer": {
+			"description": "HTTP protocol authentication",
+			"name": "authentication",
+			"alg": "es256",
+			"format": "jwt",
+			"scheme": "bearer",
+			"in": "header"
+		}
+	},
+	"forms": [{
+		"op": "readallproperties",
+		"contentType": "application/json",
+		"href": "/things/{thingID}/properties"
+	}],
+	"properties": {
+	},
+	"events": {
+	},
+	"actions": {
+		"readLatest": {
+			"@type": "ht:function",
+			"title": "Read latest actions",
+			"description": "Read the latest request value of each action of a Thing",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"type": "object",
+				"required": [
+					"thingID"
+				],
+				"properties": {
+					"thingID": {
+						"title": "Thing ID",
+						"description": "ID of the Thing to read",
+						"type": "string"
+					},
+					"keys": {
+						"title": "Value Key",
+						"description": "The action keys to read or empty to read all latest values",
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"since": {
+						"title": "Since",
+						"description": "Only return values updated since",
+						"type": "dateTime"
+					}
+				}
+			},
+			"output": {
+				"type": "object",
+				"title": "Values",
+				"description": "map of key:ThingValue objects",
+				"comment": "this returns a map of key:ThingValue objects. Too much work to describe here in detail",
+				"properties": {
+					"Values": {
+						"title": "Value map",
+						"description": "map of key:ThingValue objects",
+						"type": "object"
+					}
+				}
+			},
+			"forms": [
+				{
+					"op": "?",
+					"href": "things/{thingID}/readLatest",
+					"contentType": "application/json",
+					"https:methodName": "GET"
+				}
+			]
+		}
+
+	},
+	"links": []
+}

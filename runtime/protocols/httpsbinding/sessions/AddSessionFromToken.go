@@ -37,6 +37,7 @@ const SessionContextID = "session"
 func AddSessionFromToken(sessionAuth api.IAuthenticator) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var cs *ClientSession
 			bearerToken, err := tlsserver.GetBearerToken(r)
 			if err != nil {
 				w.WriteHeader(http.StatusUnauthorized)
@@ -52,20 +53,23 @@ func AddSessionFromToken(sessionAuth api.IAuthenticator) func(next http.Handler)
 				return
 			}
 
-			// A token with session-id must have a known session
-			cs, err := sessionmanager.GetSession(sid)
 			if sid == "" {
 				// service/devices don't have a session-id in their token. These tokens
 				// remain valid until they expire. Use the client-id as the session ID.
-				cs, err = sessionmanager.NewSession(cid, r.RemoteAddr, cid)
-			} else if err != nil {
+				cs, err = sessionmanager.GetSession(cid)
+				if cs == nil {
+					cs, err = sessionmanager.NewSession(cid, r.RemoteAddr, cid)
+				}
+			} else {
+				// A token with session-id must have a known session
+				cs, err = sessionmanager.GetSession(sid)
+			}
+			if err != nil {
 				// If no session is found then the session token is invalid. This can
 				// happen after the user logs out.
 				slog.Warn("Session '%s' is not valid:", "sid", sid, "err", err)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
-			} else {
-				// this is a valid session
 			}
 			// the session must belong to the client
 			if cs.clientID != cid {

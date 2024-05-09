@@ -2,9 +2,10 @@ package direct
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/router"
+	"github.com/hiveot/hub/runtime/api"
 )
 
 // NewDirectTransport returns a function to create a ThingMessage object and pass it to a handler.
@@ -13,17 +14,20 @@ import (
 // response.
 //
 // This marshals the request data and builds a ThingMessage object to pass to the handler.
-func NewDirectTransport(clientID string, handler router.MessageHandler) func(
+func NewDirectTransport(clientID string, handler api.MessageHandler) func(
 	thingID string, method string, args interface{}, reply interface{}) error {
 
 	return func(thingID string, method string, args interface{}, reply interface{}) error {
 		data, _ := json.Marshal(args)
 		tv := things.NewThingMessage(vocab.MessageTypeAction, thingID, method, data, clientID)
-		resp, err := handler(tv)
-		if err == nil && resp != nil {
-			err = json.Unmarshal(resp, &reply)
+		stat := handler(tv)
+		if stat.Status == api.DeliveryCompleted && stat.Reply != nil {
+			err := json.Unmarshal(stat.Reply, &reply)
+			return err
+		} else if stat.Error != "" {
+			return errors.New(stat.Error)
 		}
-		return err
+		return nil
 	}
 }
 
@@ -31,7 +35,7 @@ func NewDirectTransport(clientID string, handler router.MessageHandler) func(
 // a handler for routing to its destination.
 // This returns the reply data or an error.
 func WriteActionMessage(
-	thingID string, key string, data []byte, senderID string, handler router.MessageHandler) ([]byte, error) {
+	thingID string, key string, data []byte, senderID string, handler api.MessageHandler) api.DeliveryStatus {
 	tv := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, data, senderID)
 	return handler(tv)
 }

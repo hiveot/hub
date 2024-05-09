@@ -286,7 +286,7 @@ func (hc *HubClient) onRequest(addr string, payload []byte) (reply []byte, err e
 //
 //	addr := hc.MakeAddress(transports.MessageTypeAction, agentID, thingID, name, hc.clientID)
 //	slog.Info("PubAction", "addr", addr)
-//	data, err := hc.transport.PubRequest(addr, payload)
+//	data, err := hc.transport.PubAction(addr, payload)
 //	return data, err
 //}
 
@@ -306,7 +306,7 @@ func (hc *HubClient) onRequest(addr string, payload []byte) (reply []byte, err e
 //
 //	addr := hc.MakeAddress(transports.MessageTypeConfig, agentID, thingID, propName, hc.clientID)
 //	slog.Info("PubConfig", "addr", addr)
-//	_, err := hc.transport.PubRequest(addr, payload)
+//	_, err := hc.transport.PubAction(addr, payload)
 //	return err
 //}
 
@@ -406,7 +406,7 @@ func (hc *HubClient) onRequest(addr string, payload []byte) (reply []byte, err e
 //		vocab.MessageTypeRPC, agentID, capability, methodName, hc.clientID)
 //	slog.Info("PubRPCRequest", "addr", addr)
 //
-//	data, err := hc.transport.PubRequest(addr, payload)
+//	data, err := hc.transport.PubAction(addr, payload)
 //	if err == nil && resp != nil {
 //		err = ser.Unmarshal(data, resp)
 //	}

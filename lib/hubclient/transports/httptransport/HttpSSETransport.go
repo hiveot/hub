@@ -1,6 +1,7 @@
 package httptransport
 
 import (
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
@@ -10,8 +11,8 @@ import (
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/tmaxmax/go-sse"
-	//"github.com/tmaxmax/go-sse"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -21,10 +22,10 @@ import (
 // HttpSSETransport manages the hub server connection with hub event and action messaging using autopaho.
 // This implements the IHubTransport interface.
 type HttpSSETransport struct {
-	serverURL string
-	ssePath   string
-	clientID  string
-	caCert    *x509.Certificate
+	hostPort string
+	ssePath  string
+	clientID string
+	caCert   *x509.Certificate
 
 	timeout time.Duration // request timeout
 	// _ variables are mux protected
@@ -36,15 +37,14 @@ type HttpSSETransport struct {
 	_sseChan        chan *sse.Event
 	_subscriptions  map[string]bool
 	_connectHandler func(status transports.HubTransportStatus)
-	_eventHandler   func(msg *things.ThingMessage)
-	_requestHandler func(msg *things.ThingMessage) (reply []byte, err error, donotreply bool)
+	_messageHandler api.MessageHandler
 }
 
 // ConnectSSE establishes a sse session over the Hub HTTPS connection.
 // All hub messages are send as type ThingMessage, containing thingID, key, payload and sender
 func (tp *HttpSSETransport) ConnectSSE(client *http.Client) error {
 	// FIXME. what if serverURL contains a schema?
-	sseURL := "https://" + tp.serverURL + tp.ssePath
+	sseURL := fmt.Sprintf("https://%s%s", tp.hostPort, tp.ssePath)
 
 	//r, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, sseURL, http.NoBody)
 	r, _ := tp.tlsClient.NewRequest("GET", sseURL, []byte{})
@@ -53,29 +53,7 @@ func (tp *HttpSSETransport) ConnectSSE(client *http.Client) error {
 
 	conn := sse.NewConnection(r)
 
-	conn.SubscribeToAll(func(event sse.Event) {
-		slog.Info("received SSE msg")
-
-		slog.Info("startSSEListener. Received message",
-			//slog.String("Comment", string(event.Comment)),
-			slog.String("LastEventID", string(event.LastEventID)),
-			slog.String("event", string(event.Data)),
-			slog.String("type", string(event.Type)),
-			slog.Int("size", len(event.Data)),
-		)
-		if tp._eventHandler != nil {
-			// These events are of type ThingMessage
-			msg := things.ThingMessage{}
-			err := json.Unmarshal([]byte(event.Data), &msg)
-			if err != nil {
-				slog.Error("ConnectSSE - subscribe; Received non-ThingMessage sse event. Ignored",
-					"eventType", event.Type,
-					"LastEventID", event.LastEventID)
-				return
-			}
-			tp._eventHandler(&msg)
-		}
-	})
+	conn.SubscribeToAll(tp.handleSSEEvent)
 	go func() {
 		if err := conn.Connect(); err != nil {
 			slog.Error("SSE connection failed", "err", err.Error())
@@ -86,14 +64,22 @@ func (tp *HttpSSETransport) ConnectSSE(client *http.Client) error {
 	return nil
 }
 
+// ConnectWithCert connects to the Hub TLS server using client certifcate authentication
+func (tp *HttpSSETransport) ConnectWithCert(kp keys.IHiveKey, cert *tls.Certificate) (token string, err error) {
+	tp.mux.RLock()
+	defer tp.mux.RUnlock()
+	return "", fmt.Errorf("ConnectWithCert not yet supported by the HTTPS/SSE binding")
+}
+
 // ConnectWithPassword connects to the Hub TLS server using a login ID and password.
 func (tp *HttpSSETransport) ConnectWithPassword(password string) error {
 	tp.mux.RLock()
-	tp.mux.RUnlock()
+	defer tp.mux.RUnlock()
 	if tp.tlsClient != nil {
 		return fmt.Errorf("already connected")
 	}
-	cl := tlsclient.NewTLSClient(tp.serverURL, tp.caCert, time.Second*120)
+
+	cl := tlsclient.NewTLSClient(tp.hostPort, tp.caCert, time.Second*120)
 	token, err := cl.ConnectWithPassword(tp.clientID, password)
 	if err == nil {
 		tp.tlsClient = cl
@@ -107,24 +93,18 @@ func (tp *HttpSSETransport) ConnectWithPassword(password string) error {
 	return err
 }
 
-// ConnectWithToken connects to the Hub server using a user JWT credentials secret
+// ConnectWithJWT connects to the Hub server using a user JWT credentials secret
 // The token clientID must match that of the client
-// A private key might be required in future.
-// This supports UDS connections with @/path or unix://@/path
 //
-// TODO: encrypt token with server public key so a MIM won't be able to get the token
-// TBD: can server send a connection nonce and verify token signature?
-//
-//	kp is the key-pair of this client
 //	jwtToken is the token obtained with login or refresh.
-func (tp *HttpSSETransport) ConnectWithToken(kp keys.IHiveKey, jwtToken string) (err error) {
+func (tp *HttpSSETransport) ConnectWithJWT(jwtToken string) (err error) {
 	tp.mux.RLock()
-	tp.mux.RUnlock()
+	defer tp.mux.RUnlock()
 	if tp.tlsClient != nil {
 		return fmt.Errorf("already connected")
 	}
 
-	tp.tlsClient = tlsclient.NewTLSClient(tp.serverURL, tp.caCert, time.Second*120)
+	tp.tlsClient = tlsclient.NewTLSClient(tp.hostPort, tp.caCert, time.Second*120)
 	tp.tlsClient.ConnectWithToken(tp.clientID, jwtToken)
 
 	// establish the sse connection if a path is set
@@ -162,25 +142,88 @@ func (tp *HttpSSETransport) GetTlsClient() *tlsclient.TLSClient {
 	return tp.tlsClient
 }
 
-// PubEvent publishes a message and returns
-func (tp *HttpSSETransport) PubEvent(thingID string, key string, payload []byte) (err error) {
-	slog.Debug("PubEvent",
-		slog.String("thingID", thingID), slog.String("key", key))
-	vars := map[string]string{"thingID": thingID, "key": key}
-	eventPath := utils.Substitute(vocab.PostEventPath, vars)
-	_, err = tp.tlsClient.Post(eventPath, payload)
-	return err
+// handleSSEEvent processes the push-event received from the hub.
+// This is passed on to the client, which must provide a delivery applied, completed or error status.
+// This sends the delivery  status to the hub using a delivery event.
+func (tp *HttpSSETransport) handleSSEEvent(event sse.Event) {
+	slog.Info("received SSE msg")
+	var stat api.DeliveryStatus
+	var rxMsg things.ThingMessage
+
+	slog.Info("startSSEListener. Received message",
+		//slog.String("Comment", string(event.Comment)),
+		slog.String("LastEventID", string(event.LastEventID)),
+		slog.String("event", string(event.Data)),
+		slog.String("type", string(event.Type)),
+		slog.Int("size", len(event.Data)),
+	)
+	rxMsg = things.ThingMessage{}
+	err := json.Unmarshal([]byte(event.Data), &rxMsg)
+	if err != nil {
+		slog.Error("ConnectSSE - subscribe; Received non-ThingMessage sse event. Ignored",
+			"eventType", event.Type,
+			"LastEventID", event.LastEventID)
+		return
+	}
+
+	// if no message handler is set then this obviously fails
+	if tp._messageHandler == nil {
+		stat.Error = "handleSSEEvent no handler is set, event ignored"
+		stat.Status = api.DeliveryFailed
+	} else {
+		stat = tp._messageHandler(&rxMsg)
+	}
+	// only actions need a delivery update
+	if rxMsg.MessageType == vocab.MessageTypeAction {
+		stat.MessageID = rxMsg.MessageID
+		tp.SendDeliveryUpdate(rxMsg.ThingID, stat)
+	}
 }
 
-// PubRequest publishes an action message and waits for an answer or until timeout
+// SendDeliveryUpdate sends a delivery status update to the hub.
+// The hub's digitwin will update the status of the action and notify the original sender.
+//
+// Intended for agents that have processed an incoming action request and need to send
+// a reply and confirm that the action has applied.
+func (tp *HttpSSETransport) SendDeliveryUpdate(thingID string, stat api.DeliveryStatus) {
+	//thingID := inbox.RawThingID // tbd, is this the inbox service?
+	statJSON, _ := json.Marshal(&stat)
+	tp.PubEvent(thingID, vocab.EventTypeDeliveryUpdate, statJSON)
+}
+
+// PubAction publishes an action message and waits for an answer or until timeout
 // In order to receive replies, an inbox subscription is added on the first request.
-func (tp *HttpSSETransport) PubRequest(thingID string, key string, payload []byte) (resp []byte, err error) {
+func (tp *HttpSSETransport) PubAction(thingID string, key string, payload []byte) (stat api.DeliveryStatus) {
 	slog.Debug("PubEvent",
 		slog.String("thingID", thingID), slog.String("key", key))
 	vars := map[string]string{"thingID": thingID, "key": key}
 	eventPath := utils.Substitute(vocab.PostActionPath, vars)
-	resp, err = tp.tlsClient.Post(eventPath, payload)
-	return resp, err
+	resp, err := tp.tlsClient.Post(eventPath, payload)
+	if err == nil {
+		err = json.Unmarshal(resp, &stat)
+	}
+	if err != nil {
+		stat.Status = api.DeliveryFailed
+		stat.Error = err.Error()
+	}
+	return stat
+}
+
+// PubEvent publishes a message and returns
+func (tp *HttpSSETransport) PubEvent(thingID string, key string, payload []byte) (stat api.DeliveryStatus) {
+	slog.Debug("PubEvent",
+		slog.String("thingID", thingID), slog.String("key", key))
+	vars := map[string]string{"thingID": thingID, "key": key}
+	eventPath := utils.Substitute(vocab.PostEventPath, vars)
+	resp, err := tp.tlsClient.Post(eventPath, payload)
+	if err == nil {
+		err = json.Unmarshal(resp, &stat)
+	}
+	if err != nil {
+		stat.Status = api.DeliveryFailed
+		stat.Error = err.Error()
+	}
+	return stat
 }
 
 // SetConnectHandler sets the notification handler of connection status changes
@@ -190,22 +233,11 @@ func (tp *HttpSSETransport) SetConnectHandler(cb func(status transports.HubTrans
 	tp.mux.Unlock()
 }
 
-// SetEventHandler set the single handler that receives all subscribed events.
+// SetMessageHandler set the single handler that receives all subscribed events.
 // Use 'Subscribe' to set the addresses that this receives events on.
-func (tp *HttpSSETransport) SetEventHandler(cb func(msg *things.ThingMessage)) {
+func (tp *HttpSSETransport) SetMessageHandler(cb api.MessageHandler) {
 	tp.mux.Lock()
-	tp._eventHandler = cb
-	tp.mux.Unlock()
-}
-
-// SetRequestHandler sets the handler that receives all subscribed requests.
-// This does not provide routing as in most cases it is unnecessary overhead
-// Use 'Subscribe' to set the addresses that this receives requests on.
-func (tp *HttpSSETransport) SetRequestHandler(
-	cb func(msg *things.ThingMessage) (reply []byte, err error, donotreply bool)) {
-
-	tp.mux.Lock()
-	tp._requestHandler = cb
+	tp._messageHandler = cb
 	tp.mux.Unlock()
 }
 
@@ -266,23 +298,23 @@ func (tp *HttpSSETransport) Unsubscribe(thingID string) {
 
 }
 
-// NewHttpTransport creates a new instance of the htpp client.
+// NewHttpSSETransport creates a new instance of the htpp client with a SSE return-channel.
 //
 // fullURL is the url with schema. If omitted this uses the in-memory UDS address,
 // which only works with ConnectWithToken.
 //
-//	fullURL of broker to connect to, starting with "tls://", "wss://", "unix://"
+//	hostPort of broker to connect to, without the scheme
 //	ssePath path on the server of the SSE connection handler for setting up a SSE event channel
 //	clientID to connect as
 //	keyPair with previously saved serialized public/private key pair, or "" to create one
 //	caCert of the server to validate the server or nil to not check the server cert
-func NewHttpTransport(fullURL string, ssePath string, clientID string, caCert *x509.Certificate) *HttpSSETransport {
+func NewHttpSSETransport(hostPort string, ssePath string, clientID string, caCert *x509.Certificate) *HttpSSETransport {
 	tp := HttpSSETransport{
-		clientID:  clientID,
-		caCert:    caCert,
-		serverURL: fullURL,
-		ssePath:   ssePath,
-		_sseChan:  make(chan *sse.Event),
+		clientID: clientID,
+		caCert:   caCert,
+		hostPort: hostPort,
+		ssePath:  ssePath,
+		_sseChan: make(chan *sse.Event),
 	}
 	return &tp
 }

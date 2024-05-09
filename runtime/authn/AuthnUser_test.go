@@ -13,7 +13,7 @@ import (
 func TestClientUpdatePubKey(t *testing.T) {
 	var tu1ID = "tu1ID"
 
-	svc, _, userHandler, stopFn := startTestAuthnService(defaultHash)
+	svc, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// wrap service in message de/encoders
 	mt := direct.NewDirectTransport(tu1ID, userHandler)
@@ -46,7 +46,7 @@ func TestLoginRefresh(t *testing.T) {
 	var authToken1 string
 	var authToken2 string
 
-	svc, _, userHandler, stopFn := startTestAuthnService(defaultHash)
+	svc, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// create the client that connects directly to the user service
 	mt := direct.NewDirectTransport(tu1ID, userHandler)
@@ -86,7 +86,7 @@ func TestLoginRefresh(t *testing.T) {
 func TestLoginRefreshFail(t *testing.T) {
 	var tu1ID = "testuser1"
 
-	_, _, userHandler, stopFn := startTestAuthnService(defaultHash)
+	_, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// create the client that connects directly to the user service
 	mt := direct.NewDirectTransport(tu1ID, userHandler)
@@ -103,7 +103,7 @@ func TestUpdatePassword(t *testing.T) {
 	var tu1ID = "tu1ID"
 	var tu1Name = "test user 1"
 
-	svc, _, userHandler, stopFn := startTestAuthnService(defaultHash)
+	svc, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// create the client that connects directly to the user service
 	mt := direct.NewDirectTransport(tu1ID, userHandler)
@@ -134,7 +134,7 @@ func TestUpdatePassword(t *testing.T) {
 
 func TestUpdatePasswordFail(t *testing.T) {
 	var tu1ID = "tu1ID"
-	_, _, userHandler, stopFn := startTestAuthnService(defaultHash)
+	_, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// create the client that connects directly to the user service
 	mt := direct.NewDirectTransport(tu1ID, userHandler)
@@ -150,7 +150,7 @@ func TestUpdateName(t *testing.T) {
 	var tu1Name = "test user 1"
 	var tu2Name = "test user 1"
 
-	svc, _, userHandler, stopFn := startTestAuthnService(defaultHash)
+	svc, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// create the client that connects directly to the user service
 	mt := direct.NewDirectTransport(tu1ID, userHandler)
@@ -174,7 +174,7 @@ func TestUpdateName(t *testing.T) {
 }
 
 func TestBadUserCommand(t *testing.T) {
-	_, _, userHandler, stopFn := startTestAuthnService(defaultHash)
+	_, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	mt := direct.NewDirectTransport("client1", userHandler)
 	err := mt(api.AuthnUserThingID, "badmethod", nil, nil)

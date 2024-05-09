@@ -1,35 +1,45 @@
 package things
 
 import (
+	"github.com/google/uuid"
 	"time"
 )
 
 // ThingMessage holds an event or action received from agents, services or end-users.
 type ThingMessage struct {
-	// ThingID of the thing this value applies to.
-	// This is required.
-	ThingID string `json:"thingID"`
+	//--- required fields to be filled-in by the sender
 
 	// Key of the event, action or property as defined in the TD property/event/action map.
 	// This is required.
 	Key string `json:"key"`
 
+	// Type of message this value was sent as: (MessageTypeEvent, MessageTypeAction...)
+	// This is required
+	MessageType string `json:"messageType"`
+
+	// SenderID is the account ID of the agent, service or user sending the message
+	// to the hub.
+	// This is required and used in authorization of the sender and routing of messages.
+	// The underlying protocol binding MUST set this to the authenticated client.
+	SenderID string `json:"senderID"`
+
+	// ThingID of the thing this value applies to.
+	// This is required.
+	ThingID string `json:"thingID"`
+
+	//--- optional fields
+
+	// Timestamp the value was created in msec since Epoch Jan 1st,1970 00:00 utc
+	// Optional. This will be set to 'now' if omitted.
+	CreatedMSec int64 `json:"created,omitempty"`
+
 	// Data converted to text from the type defined by the TD affordance DataSchema.
 	// This can be omitted if no data is associated with the event or action.
 	Data []byte `json:"data,omitempty"`
 
-	// Timestamp the value was created in msec since Epoch Jan 1st,1970 00:00 utc
-	CreatedMSec int64 `json:"created,omitempty"`
-
-	// SequenceNr nr of the message from its sender. Intended to detect duplicates and prevent replay attacks.
-	SequenceNr int64 `json:"sequenceNr,omitempty"`
-
-	// SenderID is the account ID of the agent, service or user sending the message.
-	// This is used in authorization of the sender and routing of messages.
-	SenderID string `json:"senderID"`
-
-	// Type of message this value was sent as: (MessageTypeEvent, MessageTypeAction...)
-	MessageType string `json:"messageType"`
+	// MessageID of the message. Intended to detect duplicates and send replies.
+	// Optional. The hub will generate a unique messageID if omitted.
+	MessageID string `json:"messageID,omitempty"`
 }
 
 // GetUpdated is a helper function to return the formatted time the data was last updated.
@@ -50,11 +60,12 @@ func (tv *ThingMessage) GetUpdated() string {
 //	senderID is the accountID of the creator of the value
 func NewThingMessage(messageType, thingID, key string, data []byte, senderID string) *ThingMessage {
 	return &ThingMessage{
-		MessageType: messageType,
-		ThingID:     thingID,
-		Key:         key,
-		SenderID:    senderID,
 		CreatedMSec: time.Now().UnixMilli(),
 		Data:        data,
+		Key:         key,
+		MessageID:   uuid.NewString(),
+		MessageType: messageType,
+		SenderID:    senderID,
+		ThingID:     thingID,
 	}
 }

@@ -6,27 +6,70 @@ In development
 
 ## Summary
 
-The objective of HiveOT runtime is to provide routing of events, actions, and rpc requests through multiple protocols.
-The runtime comes with a digital twin service that consists of a Thing directory and value store.
+The HiveOT runtime provides routing of events and actions through multiple protocols.
+The runtime includes a digital twin service that consists of a Thing directory, value store and history store.
 
-The protocol bindings authenticates request messages and passes them to the router. The router first invokes the registered middleware, and if accepted passes the message to the registered handler for the message type.
-
-
-The general incoming message flow is:
-> client -> protocol -> router -> middleware 
->                              -> handler [queue]  => protocol -> client
-
-The result of the handler is returned to the protocol binding. The protocol binding sends it as a reply to the client. 
+The protocol bindings authenticate request messages and pass them to the router. The router  invokes the middleware handlers, and if accepted passes the message to the registered handler for the message type.
 
 Handling of messages depends on the type of message: 
 
-* Event messages follow a publish/subscribe approach. Device agents publish an event while consumers subscribe to events. Events can be published with or without delivery guarantee. The protocol binding confirms the delivery as soon as the event is received and handed off to the router. The router forwards events to active subscribers. Events are not queued. All protocol bindings must support publishing of, and subscribing to event messages.
+### Events
+Event messages follow a publish/subscribe approach. Thing agents publish an event while consumers subscribe to Thing events. Each can use their own protocol binding.
 
-* Action messages delivered by the protocol binding are passed to the router which returns a delivery status response containing a request ID. Delivery status updates are sent until delivery is complete or cancelled. 
-  * The handler first attempts to immediately deliver the message by passing it to the protocol bindings. If a protocol binding has an active session then the message is passed to the destination agent and a response is received. The handler returns a delivery status message containing the agent's response. 
-  * If none of the protocol bindings can deliver the message then delivery is queued. When the destination connects, the message is delivered and the response is sent to the original sender's inbox using a delivery status message. If the message expiry time has passed it is removed from the queue. All protocol bindings must support action messages. Status updates are sent as events to the caller's inbox containing the request ID. 
+The general event flow is:
+> thing -> agent -> protocol binding -> router -> [digital twin outbox]
+>   [digital twin outbox] -> router -> protocol binding -> subscribers
 
-* RPC style messages are handled similar to action message except that they are not queued. 
+
+Events delivered by Thing agents are stored in the digital twin's outbox. There is no reply other than the confirmation the event is received.
+
+The outbox retains events until they expire which can vary between immediately to years.
+
+Consumers can request an update from the outbox of a Thing for a given timeframe using the API supported by the protocol binding.
+
+### Actions
+Actions are messages targeted at a specific thing. Consumers publish action requests while agents subscribe to action requests. Each can use their own protocol binding.
+
+The general action delivery flow is:
+> consumer -> protocol binding -> router -> [digital twin inbox]
+>   [digital twin inbox] -> router -> protocol binding -> agent -> thing
+> 
+
+The action status update flow:
+> thing -> agent -> protocol binding -> router [digital twin inbox]
+>   [digital twin inbox] -> router -> protocol binding -> consumer
+
+
+Action requests are delivered by the protocol binding via the router to the digital twin inbox for the targeted Thing. Action requests always return with a delivery status containing the delivery progress and possibly a reply value. The action flow can hold one of the following delivery status values: 
+* pending   - the action is received, placed in the outbox, but not yet delivered to the thing agent 
+* delivered - the action request is delivered to the Thing agent but not yet applied
+* waiting   - the action is waiting to be applied by the agent, eg device is asleep or offline
+* applied   - the action was applied but result is waiting for confirmation
+* completed - the action was applied and result is available
+* failed    - the action was failed due to authorization, expiry, lack of confirmation, or other causes.
+
+The action requests goes through two flows, the delivery flow and the return flow:
+Steps of the delivery flow:
+1. Consumer sends an action request via the protocol binding.
+2. The protocol binding passes it to the router.
+3. The router places the request in the digital twin inbox.
+4a. If the agent is reachable, the request is forwarded to the protocol binding that delivers it to the agent. The request returns with the status 'delivered'.
+4b. If the agent is not reachable, the request returns with the status 'pending'.
+5. If an agent becomes connected then the router is notified who passes active requests currently waiting in the inbox to the agent and updates the delivery status to 'delivered'.
+
+Steps of the return flow:
+1. When the action for a Thing is applied and immediate feedback is received, the status message 'completed' is sent to the digital thing, containing the result value if applicable. 
+2. If the action is applied and no immediate feedback is received then the delivery status message 'applied' is sent by the agent to the digital twin.
+3. If the action is applied and fails then a delivery status message 'failed' is sent by the agent to the digital twin.
+4. If the action cannot be applied because the Thing is offline or sleeping then the delivery status 'waiting' is sent with a reason code of 'sleeping' or 'offline'.
+   4a. If waiting is not supported by the agent then the agent can send a failed status update and the consumer will have to send a new request. 
+   4b. Once the Thing is reachable, the action is applied then this goes to step 2. 
+
+Applying an action can result in a state change in the device. In this case the status change event is sent separately by the agent as described in the events section of the Thing's TDD.
+
+When the digital twin receives a status update from the agent, it is passed to the consumer that sent the request, if it is online.
+
+TBD: when an action request is received, the digital twin outbox could wait for a specified  time with replying to give the agent time to reply asynchronously with an action status update message. If received within a specified period then this status update is returned.
 
 
 ## Protocol Binding

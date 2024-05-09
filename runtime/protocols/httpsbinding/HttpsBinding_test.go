@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsclient"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/protocols/httpsbinding"
 	"github.com/hiveot/hub/runtime/protocols/httpsbinding/sessions"
 	"github.com/stretchr/testify/assert"
@@ -64,7 +65,7 @@ var dummyAuthenticator = &DummyAuthenticator{}
 // ---------
 // startHttpsBinding starts the binding service
 // intended to handle the boilerplate
-func startHttpsBinding(msgHandler func(message *things.ThingMessage) ([]byte, error)) *httpsbinding.HttpsBinding {
+func startHttpsBinding(msgHandler api.MessageHandler) *httpsbinding.HttpsBinding {
 	config := httpsbinding.NewHttpsBindingConfig()
 	config.Port = testPort
 	svc := httpsbinding.NewHttpsBinding(&config,
@@ -112,8 +113,9 @@ func TestStartStop(t *testing.T) {
 		certBundle.ClientKey, certBundle.ServerCert, certBundle.CaCert,
 		dummyAuthenticator,
 	)
-	err := svc.Start(func(tv *things.ThingMessage) ([]byte, error) {
-		return nil, nil
+	err := svc.Start(func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
+		stat.Status = api.DeliveryCompleted
+		return stat
 	})
 	assert.NoError(t, err)
 	svc.Stop()
@@ -121,9 +123,9 @@ func TestStartStop(t *testing.T) {
 
 func TestLoginRefresh(t *testing.T) {
 	svc := startHttpsBinding(
-		func(tv *things.ThingMessage) ([]byte, error) {
+		func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
 			assert.Fail(t, "should not get here")
-			return nil, nil
+			return stat
 		})
 	defer svc.Stop()
 
@@ -157,9 +159,9 @@ func TestLoginRefresh(t *testing.T) {
 
 func TestBadLogin(t *testing.T) {
 	svc := startHttpsBinding(
-		func(tv *things.ThingMessage) ([]byte, error) {
+		func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
 			assert.Fail(t, "should not get here")
-			return nil, nil
+			return stat
 		})
 	defer svc.Stop()
 
@@ -185,9 +187,9 @@ func TestBadLogin(t *testing.T) {
 
 func TestBadRefresh(t *testing.T) {
 	svc := startHttpsBinding(
-		func(tv *things.ThingMessage) ([]byte, error) {
+		func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
 			assert.Fail(t, "should not get here")
-			return nil, nil
+			return stat
 		})
 	defer svc.Stop()
 
@@ -220,9 +222,11 @@ func TestPostEventAction(t *testing.T) {
 
 	// 1. start the binding
 	svc := startHttpsBinding(
-		func(tv *things.ThingMessage) ([]byte, error) {
+		func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
 			rxMsg = tv
-			return []byte(testMsg), nil
+			stat.Reply = []byte(testMsg)
+			stat.Status = api.DeliveryCompleted
+			return stat
 		})
 	defer svc.Stop()
 
@@ -238,10 +242,11 @@ func TestPostEventAction(t *testing.T) {
 	//require.NoError(t, err)
 	//cl := tlsclient.NewTLSClient(hostPort, certBundle.CaCert, time.Second*120)
 	//cl.ConnectWithToken(agentID, sessionToken)
-	tp := httptransport.NewHttpTransport(
+	tp := httptransport.NewHttpSSETransport(
 		hostPort, vocab.ConnectSSEPath, testLogin, certBundle.CaCert)
 	cl := hubclient.NewHubClientFromTransport(tp, testLogin)
 	err = cl.ConnectWithPassword(testPassword)
+	require.NoError(t, err)
 
 	// 3. publish two events
 	// the path must match that in the config
@@ -249,8 +254,10 @@ func TestPostEventAction(t *testing.T) {
 	//eventPath := utils.Substitute(vocab.PostEventPath, vars)
 	//_, err = cl.Post(eventPath, testMsg)
 	//_, err = cl.Post(eventPath, testMsg)
-	err = cl.PubEvent(thingID, eventKey, []byte(testMsg))
-	err = cl.PubEvent(thingID, eventKey, []byte(testMsg))
+	stat := cl.PubEvent(thingID, eventKey, []byte(testMsg))
+	require.Empty(t, stat.Error)
+	stat = cl.PubEvent(thingID, eventKey, []byte(testMsg))
+	require.Empty(t, stat.Error)
 
 	// 4. verify that the handler received it
 	assert.NoError(t, err)
@@ -263,10 +270,10 @@ func TestPostEventAction(t *testing.T) {
 	//vars := map[string]string{"thingID": thingID, "key": actionKey}
 	//actionPath := utils.Substitute(vocab.PostActionPath, vars)
 	//_, err = cl.Post(actionPath, testMsg)
-	reply, err := cl.PubAction(agentID, thingID, actionKey, []byte(testMsg))
+	stat = cl.PubAction(thingID, actionKey, []byte(testMsg))
+	require.Empty(t, stat.Error)
 	time.Sleep(time.Millisecond * 100)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, reply)
+	assert.NotEmpty(t, stat.Reply)
 	if assert.NotNil(t, rxMsg) {
 		assert.Equal(t, vocab.MessageTypeAction, rxMsg.MessageType)
 		assert.Equal(t, testMsg, string(rxMsg.Data))
@@ -288,16 +295,16 @@ func TestPubSubSSE(t *testing.T) {
 	// 1. start the binding
 	var svc *httpsbinding.HttpsBinding
 	svc = startHttpsBinding(
-		func(tv *things.ThingMessage) ([]byte, error) {
+		func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
 			// broadcast event to subscribers
 			slog.Info("broadcasting event")
-			svc.SendEvent(tv)
-			return nil, nil
+			stat = svc.SendEvent(tv)
+			return stat
 		})
 	defer svc.Stop()
 
 	// 2. connect with a client
-	tp := httptransport.NewHttpTransport(
+	tp := httptransport.NewHttpSSETransport(
 		hostPort, vocab.ConnectSSEPath, testLogin, certBundle.CaCert)
 	hc := hubclient.NewHubClientFromTransport(tp, testLogin)
 	err := hc.ConnectWithPassword(testPassword)
@@ -307,16 +314,19 @@ func TestPubSubSSE(t *testing.T) {
 	// give the client time to establish a sse connection
 	time.Sleep(time.Millisecond * 3)
 
-	// 3. register tha handler for events
-	hc.SetEventHandler(func(msg *things.ThingMessage) {
+	// 3. register the handler for events
+	hc.SetMessageHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 		rxMsg = msg
+		stat.Status = api.DeliveryCompleted
+		return stat
 	})
 
 	// 4. publish an event using the hub client, the server will invoke the message handler
 	// which in turn will publish this to the listeners over sse, including this client.
-	err = hc.PubEvent(thingID, eventKey, []byte(testMsg))
-	assert.NoError(t, err)
-	time.Sleep(time.Second * 3)
+	stat := hc.PubEvent(thingID, eventKey, []byte(testMsg))
+	assert.Empty(t, stat.Error)
+	assert.Equal(t, api.DeliveryCompleted, stat.Status)
+	time.Sleep(time.Second * 1)
 	//
 	require.NotNil(t, rxMsg)
 	assert.Equal(t, thingID, rxMsg.ThingID)
