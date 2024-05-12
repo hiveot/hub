@@ -7,6 +7,7 @@ import (
 
 // MiddlewareHandler for processing a message through the middleware chain until an error
 // is returned.
+// TODO: add functions for rate control and authorization
 type MiddlewareHandler func(msg *things.ThingMessage) (*things.ThingMessage, error)
 
 // MessageHandler handles the message after the middleware

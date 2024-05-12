@@ -28,7 +28,7 @@ type DigiTwinOutbox struct {
 // HandleEvent adds an event to the inbox
 func (svc *DigiTwinOutbox) HandleEvent(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 	// change the thingID to that of the digitwin
-	dtThingID := MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
+	dtThingID := things.MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
 	msg.ThingID = dtThingID
 
 	// store for reading the last received events

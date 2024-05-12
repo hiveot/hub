@@ -1,4 +1,4 @@
-package natstransport
+package natsclient
 
 import (
 	"errors"

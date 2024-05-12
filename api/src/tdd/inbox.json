@@ -3,7 +3,7 @@
 		{"ht": "https://www.hiveot.net/vocab/v0.1"}
 	],
 	"@type": "Service",
-	"id": "inbox",
+	"id": "urn:digitwin:inbox",
 	"title": "DigiTwin Inbox",
 	"description": "HiveOT digital twin inbox action storage",
 	"version": {

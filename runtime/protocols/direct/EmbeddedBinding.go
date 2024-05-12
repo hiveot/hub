@@ -1,7 +1,9 @@
 package direct
 
 import (
-	"github.com/hiveot/hub/lib/hubclient/transports"
+	"fmt"
+	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/embedded"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 )
@@ -41,7 +43,7 @@ func (svc *EmbeddedBinding) SendToClient(
 	if found {
 		stat = handler(action)
 	} else {
-		stat.Error = "SendToClient: unknown client: " + clientID
+		stat.Failed(action, fmt.Errorf("SendToClient: unknown client: %s", clientID))
 	}
 	return stat
 }
@@ -56,13 +58,13 @@ func (svc *EmbeddedBinding) SendEvent(event *things.ThingMessage) (stat api.Deli
 
 // NewClient create a new messaging client that is already connected to the protocol server.
 // It is directly for use by embedded services.
-func (svc *EmbeddedBinding) NewClient(agentID string) transports.IHubTransport {
+func (svc *EmbeddedBinding) NewClient(agentID string) hubclient.IHubClient {
 	// the transport sends messages from client to this binding
-	tp := NewEmbeddedTransport(agentID, svc.handleMessageFromClient)
+	cl := embedded.NewEmbeddedClient(agentID, svc.handleMessageFromClient)
 
-	// to send messages from binding to client it must have
-	svc.handlers[agentID] = tp.ReceiveMessage
-	return tp
+	// to send messages from binding to client it must be registered
+	svc.handlers[agentID] = cl.ReceiveMessage
+	return cl
 }
 
 // Start the protocol binding

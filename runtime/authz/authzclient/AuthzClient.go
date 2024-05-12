@@ -1,29 +1,32 @@
 package authzclient
 
 import (
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
 )
 
 // AuthzClient marshals and unmarshals request to the authz service
 type AuthzClient struct {
-	mt api.IMessageTransport
+	hc hubclient.IHubClient
 }
 
 func (svc *AuthzClient) GetClientRole(clientID string) (string, error) {
 	args := api.GetClientRoleArgs{ClientID: clientID}
 	resp := api.GetClientRoleResp{}
-	err := svc.mt(api.AuthzThingID, api.GetClientRoleMethod, &args, &resp)
+	stat, err := svc.hc.Rpc(nil, api.AuthzThingID, api.GetClientRoleMethod, &args, &resp)
+	_ = stat
 	return resp.Role, err
 }
 
 func (svc *AuthzClient) SetClientRole(clientID string, role string) error {
 	args := api.SetClientRoleArgs{ClientID: clientID, Role: role}
-	err := svc.mt(api.AuthzThingID, api.SetClientRoleMethod, &args, nil)
+	stat, err := svc.hc.Rpc(nil, api.AuthzThingID, api.SetClientRoleMethod, &args, nil)
+	_ = stat
 	return err
 }
 
 // NewAuthzClient creates a new instance of the authorization client
-func NewAuthzClient(mt api.IMessageTransport) *AuthzClient {
-	cl := AuthzClient{mt: mt}
+func NewAuthzClient(hc hubclient.IHubClient) *AuthzClient {
+	cl := AuthzClient{hc: hc}
 	return &cl
 }

@@ -39,6 +39,7 @@ func (h *AuthnAdminHandler) HandleMessage(msg *things.ThingMessage) (stat api.De
 			return h.UpdateClientPassword(msg)
 		}
 	}
+	stat.MessageID = msg.MessageID
 	stat.Status = api.DeliveryFailed
 	stat.Error = fmt.Sprintf("unknown action '%s' for service '%s'", msg.Key, msg.ThingID)
 	return stat
@@ -49,14 +50,14 @@ func (h *AuthnAdminHandler) AddClient(
 
 	var args api.AddClientArgs
 
-	stat.Status = api.DeliveryDelivered
+	stat.MessageID = msg.MessageID
+	stat.Status = api.DeliveryCompleted
 	err := json.Unmarshal(msg.Data, &args)
 	if err == nil {
 		err = h.svc.AddClient(args.ClientType, args.ClientID, args.DisplayName, args.PubKey, args.Password)
 	}
 	if err != nil {
 		stat.Error = err.Error()
-		stat.Status = api.DeliveryFailed
 	}
 	return stat
 }
@@ -64,6 +65,7 @@ func (h *AuthnAdminHandler) AddClient(
 func (h *AuthnAdminHandler) GetClientProfile(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
 
+	stat.MessageID = msg.MessageID
 	stat.Status = api.DeliveryCompleted
 	var args api.GetClientProfileArgs
 	err := json.Unmarshal(msg.Data, &args)
@@ -78,7 +80,6 @@ func (h *AuthnAdminHandler) GetClientProfile(
 	}
 	if err != nil {
 		stat.Error = err.Error()
-		stat.Status = api.DeliveryFailed
 	}
 	return stat
 }
@@ -86,6 +87,7 @@ func (h *AuthnAdminHandler) GetClientProfile(
 func (h *AuthnAdminHandler) GetProfiles(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
 
+	stat.MessageID = msg.MessageID
 	stat.Status = api.DeliveryCompleted
 	profList, err := h.svc.GetProfiles()
 	if err == nil {
@@ -94,7 +96,6 @@ func (h *AuthnAdminHandler) GetProfiles(
 	}
 	if err != nil {
 		stat.Error = err.Error()
-		stat.Status = api.DeliveryFailed
 	}
 	return stat
 }
@@ -102,6 +103,7 @@ func (h *AuthnAdminHandler) GetProfiles(
 func (h *AuthnAdminHandler) RemoveClient(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
 
+	stat.MessageID = msg.MessageID
 	stat.Status = api.DeliveryCompleted
 	var args api.RemoveClientArgs
 	err := json.Unmarshal(msg.Data, &args)
@@ -110,13 +112,13 @@ func (h *AuthnAdminHandler) RemoveClient(
 	}
 	if err != nil {
 		stat.Error = err.Error()
-		stat.Status = api.DeliveryFailed
 	}
 	return stat
 }
 func (h *AuthnAdminHandler) UpdateClientProfile(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
 
+	stat.MessageID = msg.MessageID
 	stat.Status = api.DeliveryCompleted
 	var args api.UpdateClientProfileArgs
 	err := json.Unmarshal(msg.Data, &args)
@@ -125,13 +127,13 @@ func (h *AuthnAdminHandler) UpdateClientProfile(
 	}
 	if err != nil {
 		stat.Error = err.Error()
-		stat.Status = api.DeliveryFailed
 	}
 	return stat
 }
 func (h *AuthnAdminHandler) UpdateClientPassword(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
 
+	stat.MessageID = msg.MessageID
 	stat.Status = api.DeliveryCompleted
 	var args api.UpdateClientPasswordArgs
 	err := json.Unmarshal(msg.Data, &args)
@@ -140,7 +142,6 @@ func (h *AuthnAdminHandler) UpdateClientPassword(
 	}
 	if err != nil {
 		stat.Error = err.Error()
-		stat.Status = api.DeliveryFailed
 	}
 	return stat
 }

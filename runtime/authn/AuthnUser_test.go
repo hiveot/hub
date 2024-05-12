@@ -1,10 +1,10 @@
 package authn_test
 
 import (
+	"github.com/hiveot/hub/lib/hubclient/embedded"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/authnclient"
-	"github.com/hiveot/hub/runtime/protocols/direct"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -16,8 +16,8 @@ func TestClientUpdatePubKey(t *testing.T) {
 	svc, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// wrap service in message de/encoders
-	mt := direct.NewDirectTransport(tu1ID, userHandler)
-	userCl := authnclient.NewAuthnUserClient(mt)
+	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
+	userCl := authnclient.NewAuthnUserClient(ecl)
 
 	// add user to test with. don't set the public key yet
 	err := svc.AdminSvc.AddClient(
@@ -49,8 +49,8 @@ func TestLoginRefresh(t *testing.T) {
 	svc, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// create the client that connects directly to the user service
-	mt := direct.NewDirectTransport(tu1ID, userHandler)
-	userCl := authnclient.NewAuthnUserClient(mt)
+	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
+	userCl := authnclient.NewAuthnUserClient(ecl)
 
 	// add user to test with
 	tu1Key := keys.NewKey(keys.KeyTypeECDSA)
@@ -89,8 +89,8 @@ func TestLoginRefreshFail(t *testing.T) {
 	_, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// create the client that connects directly to the user service
-	mt := direct.NewDirectTransport(tu1ID, userHandler)
-	userCl := authnclient.NewAuthnUserClient(mt)
+	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
+	userCl := authnclient.NewAuthnUserClient(ecl)
 
 	// RefreshToken the token non-existing
 	token, err := userCl.RefreshToken("badToken")
@@ -106,8 +106,8 @@ func TestUpdatePassword(t *testing.T) {
 	svc, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// create the client that connects directly to the user service
-	mt := direct.NewDirectTransport(tu1ID, userHandler)
-	userCl := authnclient.NewAuthnUserClient(mt)
+	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
+	userCl := authnclient.NewAuthnUserClient(ecl)
 
 	// add user to test with
 	err := svc.AdminSvc.AddClient(
@@ -137,8 +137,8 @@ func TestUpdatePasswordFail(t *testing.T) {
 	_, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// create the client that connects directly to the user service
-	mt := direct.NewDirectTransport(tu1ID, userHandler)
-	userCl := authnclient.NewAuthnUserClient(mt)
+	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
+	userCl := authnclient.NewAuthnUserClient(ecl)
 
 	err := userCl.UpdatePassword("newpass")
 	assert.Error(t, err)
@@ -153,8 +153,8 @@ func TestUpdateName(t *testing.T) {
 	svc, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// create the client that connects directly to the user service
-	mt := direct.NewDirectTransport(tu1ID, userHandler)
-	userCl := authnclient.NewAuthnUserClient(mt)
+	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
+	userCl := authnclient.NewAuthnUserClient(ecl)
 
 	// add user to test with
 	err := svc.AdminSvc.AddClient(
@@ -176,8 +176,9 @@ func TestUpdateName(t *testing.T) {
 func TestBadUserCommand(t *testing.T) {
 	_, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	mt := direct.NewDirectTransport("client1", userHandler)
-	err := mt(api.AuthnUserThingID, "badmethod", nil, nil)
+	ecl := embedded.NewEmbeddedClient("client1", userHandler)
+	stat, err := ecl.Rpc(nil, api.AuthnUserThingID, "badmethod", nil, nil)
+	_ = stat
 	require.Error(t, err)
 
 }

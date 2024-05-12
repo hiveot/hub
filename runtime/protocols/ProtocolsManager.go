@@ -71,15 +71,17 @@ func (svc *ProtocolsManager) GetProtocols() []api.IProtocolBinding {
 func (svc *ProtocolsManager) SendToClient(
 	clientID string, msg *things.ThingMessage) (stat api.DeliveryStatus) {
 
-	stat.Status = api.DeliveryFailed
-	stat.Error = fmt.Sprintf("SendToClient: Destination '%s' not found", clientID)
 	// for now simply send the action request to all protocol handlers
 	for _, protoHandler := range svc.bindings {
 		stat = protoHandler.SendToClient(clientID, msg)
-		if stat.Status == api.DeliveryCompleted {
+		// if delivery is not failed or pending then the remote client has received it
+		if stat.Status != api.DeliveryFailed &&
+			stat.Status != api.DeliveryPending &&
+			stat.Status != "" {
 			return stat
 		}
 	}
+	stat.Failed(msg, fmt.Errorf("SendToClient: Destination '%s' not found", clientID))
 	return stat
 }
 
@@ -141,4 +143,17 @@ func NewProtocolManager(cfg *ProtocolsConfig,
 			sessionAuth))
 
 	return &svc
+}
+
+// StartProtocolManager starts a new instance of the protocol manager.
+// This instantiates enabled protocol bindings, including the embedded binding
+// to be used to register embedded services.
+func StartProtocolManager(cfg *ProtocolsConfig,
+	privKey keys.IHiveKey, serverCert *tls.Certificate, caCert *x509.Certificate,
+	sessionAuth api.IAuthenticator, handler api.MessageHandler) (*ProtocolsManager, error) {
+
+	svc := NewProtocolManager(cfg, privKey, serverCert, caCert, sessionAuth)
+	err := svc.Start(handler)
+
+	return svc, err
 }

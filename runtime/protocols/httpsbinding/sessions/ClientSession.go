@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient/transports"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 	"sync"
@@ -72,13 +72,13 @@ func (cs *ClientSession) GetSessionID() string {
 }
 
 // onConnectChange is invoked on disconnect/reconnect
-func (cs *ClientSession) onConnectChange(stat transports.HubTransportStatus) {
+func (cs *ClientSession) onConnectChange(stat hubclient.HubTransportStatus) {
 	slog.Info("connection change",
 		slog.String("clientID", stat.ClientID),
 		slog.String("status", string(stat.ConnectionStatus)))
-	if stat.ConnectionStatus == transports.Connected {
+	if stat.ConnectionStatus == hubclient.Connected {
 		cs.SendSSE("notify", "success:Connection with Hub successful")
-	} else if stat.ConnectionStatus == transports.Connecting {
+	} else if stat.ConnectionStatus == hubclient.Connecting {
 		cs.SendSSE("notify", "warning:Attempt to reconnect to the Hub")
 	} else {
 		cs.SendSSE("notify", "warning:Connection changed: "+string(stat.ConnectionStatus))

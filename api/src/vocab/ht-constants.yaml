@@ -14,6 +14,7 @@ MessageTypes:
     # are these described in the TD event? - no - this is a problem
     EventTypeProperties:  "$properties"   # properties have changed - agents
     EventTypeTD:          "$td"           # event a td is updated - agents
+    EventTypeDeliveryUpdate: "$delivery"
     ActionTypeProperties: "$properties"   # request action to set properties - consumers
 
     # why inbox? response message over a separate channel. payload is a correlation id.
@@ -51,22 +52,22 @@ DigiTwinRestPaths:
     PostRefreshPath:  "/authn/refresh"
 
     #--- Directory service paths
-    GetThingsPath:      "/things"
-    GetThingPath:       "/things/{thingID}"
-    DeleteThingPath:    "/things/{thingID}"
-    PostThingPath:      "/things/{thingID}"
+#    GetThingsPath:      "/things"
+#    GetThingPath:       "/things/{thingID}"
+#    DeleteThingPath:    "/things/{thingID}"
+#    PostThingPath:      "/things/{thingID}"
 
     #--- Value service paths ----
     # Read actions/events/property values of a thing.
     # Optional query params "&since=ISOTime"
-    GetActionsPath:       "/things/{thingID}/actions"
-    GetEventsPath:        "/things/{thingID}/events"
-    GetPropertiesPath:    "/things/{thingID}/properties"
+#    GetActionsPath:       "/things/{thingID}/actions"
+#    GetEventsPath:        "/things/{thingID}/events"
+#    GetPropertiesPath:    "/things/{thingID}/properties"
     PostEventPath:        "/things/{thingID}/event/{key}"
     PostActionPath:       "/things/{thingID}/action/{key}"
-    PostPropertiesPath:   "/things/{thingID}/properties"
+#    PostPropertiesPath:   "/things/{thingID}/properties"
 
     #--- Digital twin history service paths ----
-    GetActionHistoryPath:      "/history/{thingID}/action/{key}"
-    GetEventHistoryPath:       "/history/{thingID}/event/{key}"
+#    GetActionHistoryPath:      "/history/{thingID}/action/{key}"
+#    GetEventHistoryPath:       "/history/{thingID}/event/{key}"
 

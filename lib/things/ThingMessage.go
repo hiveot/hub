@@ -44,8 +44,8 @@ type ThingMessage struct {
 
 // GetUpdated is a helper function to return the formatted time the data was last updated.
 // This uses the time format RFC822 ("02 Jan 06 15:04 MST")
-func (tv *ThingMessage) GetUpdated() string {
-	created := time.Unix(tv.CreatedMSec/1000, 0).Local()
+func (tm *ThingMessage) GetUpdated() string {
+	created := time.Unix(tm.CreatedMSec/1000, 0).Local()
 	return created.Format(time.RFC822)
 }
 

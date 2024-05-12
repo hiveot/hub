@@ -137,11 +137,11 @@ func (svc *JWTAuthenticator) Login(clientID, password, sessionID string) (token 
 func (svc *JWTAuthenticator) RefreshToken(clientID string, oldToken string, validitySec int) (token string, err error) {
 	// verify the token
 	tokenClientID, sessionID, err := svc.DecodeSessionToken(oldToken, "", "")
-	if tokenClientID != clientID {
+	if err == nil && tokenClientID != clientID {
 		err = fmt.Errorf("RefreshToken:Token client '%s' differs from client '%s'", tokenClientID, clientID)
 	}
 	if err != nil {
-		return "", fmt.Errorf("error validating oldToken of client %s: %w", clientID, err)
+		return "", fmt.Errorf("RefreshToken: invalid oldToken of client %s: %w", clientID, err)
 	}
 	token = svc.CreateSessionToken(clientID, sessionID, validitySec)
 	return token, err

@@ -1,13 +1,11 @@
 package _go
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
 	"time"
 )
-
-// TODO: this service ID should be defined in the service
-const DigitwinServiceID = "digitwin"
 
 // GenGoAPIFromTD generates a golang source file from a Thing Description Document of a service.
 // Intended for services.
@@ -24,26 +22,34 @@ const DigitwinServiceID = "digitwin"
 // * Define a message handler for invoking the service and returning a response
 func GenGoAPIFromTD(td *things.TD, outfile string) (err error) {
 
+	agentID, nativeThingID, valid := things.SplitDigiTwinThingID(td.ID)
+	serviceName := ToTitle(nativeThingID)
+
+	if !valid {
+		return fmt.Errorf("TD thingID does not have an agent prefix")
+	}
+
 	l := &utils.L{}
-	l.Add("// Package %s with types and interfaces for using this service", td.ID)
+	l.Add("// Package %s with types and interfaces for using this service with agent '%s'",
+		nativeThingID, agentID)
 	l.Add("// DO NOT EDIT. This file is auto generated. Any changes will be overwritten.")
 	l.Add("// Generated %s. ", time.Now().Format(time.RFC822))
-	l.Add("package %s", td.ID)
+	l.Add("package %s", nativeThingID)
 
 	l.Add("")
 	l.Add("import \"encoding/json\"")
-	l.Add("import \"fmt\"")
+	l.Add("import \"errors\"")
 	l.Add("import \"github.com/hiveot/hub/runtime/api\"")
 	l.Add("import \"github.com/hiveot/hub/lib/things\"")
 	l.Add("")
-	l.Add("// the raw thingID as used by agents. Digitwin adds the urn:{agent} prefix")
-	l.Add("const RawThingID = \"%s\"", td.ID)
-	l.Add("const ThingID = \"urn:%s:%s\"", DigitwinServiceID, td.ID)
+	l.Add("// RawThingID is the raw thingID as used by agents. Digitwin adds the urn:{agent} prefix")
+	l.Add("const RawThingID = \"%s\"", nativeThingID)
+	l.Add("const ThingID = \"%s\"", td.ID)
 	l.Add("")
 	GenActionStructs(l, td)
 	GenActionClient(l, td)
-	GenServiceInterface(l, td)
-	GenServiceHandler(l, td)
+	GenServiceInterface(l, serviceName, td)
+	GenServiceHandler(l, serviceName, td)
 
 	if l.Size() > 0 {
 		err = l.Write(outfile)

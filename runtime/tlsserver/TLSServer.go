@@ -113,6 +113,7 @@ func (srv *TLSServer) Start() error {
 }
 
 // Stop the TLS server and close all connections
+// this waits until all connections are closed
 func (srv *TLSServer) Stop() {
 	slog.Info("Stopping TLS server")
 

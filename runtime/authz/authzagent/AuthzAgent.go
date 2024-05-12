@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient/transports"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authz"
@@ -18,7 +18,7 @@ const AuthzAgentID = "authz"
 // back to a reply message, if any.
 // The main entry point is the HandleMessage function.
 type AuthzAgent struct {
-	tp  transports.IHubTransport
+	hc  hubclient.IHubClient
 	svc *authz.AuthzService
 }
 
@@ -79,18 +79,18 @@ func (agent *AuthzAgent) SetClientRole(
 }
 
 // StartAuthzAgent creates a new instance of the agent handling authorization service requests
-// If tp is nil then use the HandleMessage method directly to pass messages to the agent,
+// If hc is nil then use the HandleMessage method directly to pass messages to the agent,
 // for example when testing.
 //
 //	svc is the authorization service whose capabilities to expose
-//	tp is the optional message client used to publish and subscribe
-func StartAuthzAgent(svc *authz.AuthzService, tp transports.IHubTransport) (*AuthzAgent, error) {
+//	hc is the optional message client used to publish and subscribe
+func StartAuthzAgent(svc *authz.AuthzService, hc hubclient.IHubClient) (*AuthzAgent, error) {
 	var err error
-	agent := AuthzAgent{svc: svc, tp: tp}
-	if tp != nil {
-		agent.tp.SetMessageHandler(agent.HandleMessage)
+	agent := AuthzAgent{svc: svc, hc: hc}
+	if hc != nil {
+		agent.hc.SetMessageHandler(agent.HandleMessage)
 		// agents don't need to subscribe to receive actions directed at them
-		//err = agent.tp.Subscribe(api.AuthzThingID)
+		//err = agent.hc.Subscribe(api.AuthzThingID)
 	}
 	return &agent, err
 }

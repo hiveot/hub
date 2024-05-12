@@ -1,12 +1,8 @@
 package runtime
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/authnagent"
 	"github.com/hiveot/hub/runtime/authn/service"
 	"github.com/hiveot/hub/runtime/authz"
@@ -56,10 +52,12 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 
 	// the protocol manager receives messages from clients (source) and
 	// sends messages to connected clients (sink)
-	//
-	r.ProtocolMgr, err = StartProtocolsManager(
+	r.ProtocolMgr, err = protocols.StartProtocolManager(
 		&r.cfg.Protocols, r.cfg.ServerKey, r.cfg.ServerCert, r.cfg.CaCert,
 		r.AuthnSvc.SessionAuth, r.Middleware.HandleMessage)
+	if err != nil {
+		return err
+	}
 
 	// The digitwin service directs the message flow between agents and consumers
 	// It receives messages from the middleware and uses the protocol manager
@@ -86,20 +84,6 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	}
 	// last, set the handlers for f
 	return err
-}
-
-func StartProtocolsManager(cfg *protocols.ProtocolsConfig,
-	serverKey keys.IHiveKey, serverCert *tls.Certificate, caCert *x509.Certificate,
-	sessionAuth api.IAuthenticator, handler api.MessageHandler) (
-	svc *protocols.ProtocolsManager, err error) {
-
-	pm := protocols.NewProtocolManager(
-		cfg, serverKey, serverCert, caCert, sessionAuth)
-
-	if err == nil {
-		err = pm.Start(handler)
-	}
-	return pm, err
 }
 
 func (r *Runtime) Stop() {

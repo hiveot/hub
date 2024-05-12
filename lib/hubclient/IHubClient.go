@@ -1,6 +1,7 @@
-package transports
+package hubclient
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -71,26 +72,33 @@ type HubTransportStatus struct {
 	SupportsTokenAuth    bool
 }
 
-// IHubTransport defines the interface of the transport client that connects to a messaging server.
-type IHubTransport interface {
+// IHubClient defines the interface of the client that connects to a messaging server.
+type IHubClient interface {
 
 	// ConnectWithCert connects to the server using a client certificate.
 	// This authentication method is optional
 	ConnectWithCert(kp keys.IHiveKey, cert *tls.Certificate) (token string, err error)
 
 	// ConnectWithPassword connects to the messaging server using password authentication.
+	// If a connection already exists it will be closed first.
+	//
+	// This returns a connection token that can be used with ConnectWithJWT.
+	//
 	//  loginID is the client's ID (typically consumers)
 	//  password is created when registering the user with the auth service.
 	//
-	// This authentication method must be supported by all transports
-	ConnectWithPassword(password string) error
+	// This authentication method must be supported by all clients
+	ConnectWithPassword(password string) (newToken string, err error)
 
-	// ConnectWithJWT connects to the messaging server using an authentication token
+	// ConnectWithJWT connects to the messaging server using an authentication token.
+	//
+	// If a connection already exists it will be closed first.
+	//
 	// and pub/private keys provided when creating an instance of the hub client.
 	//  token is created by the auth service.
 	//
 	// This authentication method must be supported by all transports
-	ConnectWithJWT(token string) error
+	ConnectWithJWT(token string) (newToken string, err error)
 
 	// CreateKeyPair returns a new set of serialized public/private key pair.
 	//  serializedKP contains the serialized public/private key pair
@@ -100,6 +108,9 @@ type IHubTransport interface {
 	// Disconnect from the messaging server.
 	// This removes all subscriptions.
 	Disconnect()
+
+	// GetClientID returns the agent or user clientID for this hub client
+	GetClientID() string
 
 	// GetStatus returns the current transport connection status
 	GetStatus() HubTransportStatus
@@ -117,11 +128,33 @@ type IHubTransport interface {
 	//	payload with serialized message to publish
 	PubEvent(thingID string, key string, payload []byte) api.DeliveryStatus
 
+	// RefreshToken refreshes the authentication token
+	// The resulting token can be used with 'ConnectWithJWT'
+	RefreshToken() (newToken string, err error)
+
+	// Rpc makes a RPC call using an action and waits for a delivery confirmation.
+	//
+	// The arguments and responses use a struct (same approach as gRPC) which is
+	// defined by the service. This struct can also be generated from the actions
+	// defined in the service TD document. See cmd/genapi for the CLI.
+	//
+	// The implementation of this can be synchronous or asynchronous. The caller should
+	// not make any assumptions as to when the request is completed.
+	//
+	//	ctx is the context used to wait for the result
+	//	thingID is the ID of the service providing the RPC method
+	//	key is the ID of the RPC method as described in the service TD action affordance
+	//	args is the struct containing the arguments to marshal
+	//	resp is the struct receiving the result values
+	//
+	// This returns a delivery status or an error
+	Rpc(ctx context.Context, thingID string, key string, args interface{}, resp interface{}) (api.DeliveryStatus, error)
+
 	// SetConnectHandler sets the notification handler of connection status changes
 	SetConnectHandler(cb func(status HubTransportStatus))
 
-	// SetMessageHandler set the single handler that receives all subscribed messages
-	// and messages directed at this client.
+	// SetMessageHandler set the handler that receives all subscribed messages, and
+	// messages directed at this client.
 	//
 	// Note that Agents receive actions with a thingID that does not have the agent
 	// prefix as the agent prefix is consumer facing. Things from agents are physical

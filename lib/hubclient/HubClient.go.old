@@ -2,16 +2,11 @@ package hubclient
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
-	"github.com/hiveot/hub/lib/hubclient/transports"
-	"github.com/hiveot/hub/lib/hubclient/transports/httptransport"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/protocols/direct"
 	"log/slog"
-	"net/url"
 	"os"
 	"path"
 	"sync"
@@ -30,7 +25,7 @@ type HubClient struct {
 	// login ID
 	clientID string
 	//
-	transport transports.IHubTransport
+	transport IHubClient
 	// key set after connecting with token
 	kp keys.IHiveKey
 	//connectionStatus transports.ConnectionStatus
@@ -45,7 +40,7 @@ type HubClient struct {
 	//  map[capID] map[methodName]handler
 	capTable map[string]map[string]interface{}
 
-	connectionHandler func(status transports.HubTransportStatus)
+	connectionHandler func(status HubTransportStatus)
 	messageHandler    api.MessageHandler
 }
 
@@ -188,25 +183,25 @@ func (hc *HubClient) Disconnect() {
 }
 
 // GetStatus returns the transport connection status
-func (hc *HubClient) GetStatus() transports.HubTransportStatus {
+func (hc *HubClient) GetStatus() HubTransportStatus {
 	return hc.transport.GetStatus()
 }
 
 // onConnect is invoked when the connection status changes.
 // This cancels the connection attempt if 'retry' is set to false.
 // This passes the info through to the handler, if set.
-func (hc *HubClient) onConnect(status transports.HubTransportStatus) {
+func (hc *HubClient) onConnect(status HubTransportStatus) {
 	//hc.connectionStatus = status
 	//hc.connectionInfo = info
 	retryConnect := hc.retryConnect.Load()
-	if !retryConnect && status.ConnectionStatus != transports.Connected {
+	if !retryConnect && status.ConnectionStatus != Connected {
 		slog.Warn("disconnecting and not retrying", "clientID", hc.clientID)
 		hc.Disconnect()
-	} else if status.ConnectionStatus == transports.Connected {
+	} else if status.ConnectionStatus == Connected {
 		slog.Warn("connection restored", "clientID", hc.clientID)
-	} else if status.ConnectionStatus == transports.Disconnected {
+	} else if status.ConnectionStatus == Disconnected {
 		slog.Warn("disconnected", "clientID", hc.clientID)
-	} else if status.ConnectionStatus == transports.Connecting {
+	} else if status.ConnectionStatus == Connecting {
 		slog.Warn("retrying to connect", "clientID", hc.clientID)
 	}
 	hc.mux.RLock()
@@ -295,7 +290,7 @@ func (hc *HubClient) SetMessageHandler(handler api.MessageHandler) {
 }
 
 // SetConnectionHandler sets the callback for connection status changes.
-func (hc *HubClient) SetConnectionHandler(handler func(status transports.HubTransportStatus)) {
+func (hc *HubClient) SetConnectionHandler(handler func(status HubTransportStatus)) {
 	hc.mux.Lock()
 	hc.connectionHandler = handler
 	hc.mux.Unlock()
@@ -403,7 +398,7 @@ func (hc *HubClient) SetRetryConnect(enable bool) {
 //
 //   - message bus transport to use, eg NatsTransport or MqttTransport instance
 //   - clientID of the client that will be connecting
-func NewHubClientFromTransport(transport transports.IHubTransport, clientID string) *HubClient {
+func NewHubClientFromTransport(transport IHubClient, clientID string) *HubClient {
 	hc := HubClient{
 		clientID:  clientID,
 		transport: transport,
@@ -414,33 +409,34 @@ func NewHubClientFromTransport(transport transports.IHubTransport, clientID stri
 	return &hc
 }
 
-// NewHubClient returns a new Hub Client instance
 //
-// The keyPair string is optional. If not provided a new set of keys will be created.
-// Use GetKeyPair to retrieve it for saving to file.
-//
-// Invoke hubClient.ConnectWithXy() to connect
-//
-//   - fullURL of server to connect to.
-//   - clientID is the account/login ID of the client that will be connecting
-//   - caCert of server or nil to not verify server cert
-func NewHubClient(fullURL string, clientID string, caCert *x509.Certificate) *HubClient {
-	var tp transports.IHubTransport
-	parts, _ := url.Parse(fullURL)
-	tpid := parts.Scheme
-	if tpid == "nats" {
-		// FIXME: nats
-		//tp = natstransport.NewNatsTransport(url, clientID, caCert)
-	} else if tpid == "mqtt" {
-		// FIXME: support mqtt
-		//tp = mqtttransport.NewMqttTransport(url, clientID, caCert)
-	} else if tpid == "https" || tpid == "tls" {
-		// FIXME: obtain the sse path from elsewhere?
-		ssePath := "/sse"
-		tp = httptransport.NewHttpSSETransport(parts.Host, ssePath, clientID, caCert)
-	} else if tpid == "" {
-		tp = direct.NewEmbeddedTransport(clientID, nil)
-	}
-	hc := NewHubClientFromTransport(tp, clientID)
-	return hc
-}
+//// NewHubClient returns a new Hub Client instance
+////
+//// The keyPair string is optional. If not provided a new set of keys will be created.
+//// Use GetKeyPair to retrieve it for saving to file.
+////
+//// Invoke hubClient.ConnectWithXy() to connect
+////
+////   - fullURL of server to connect to.
+////   - clientID is the account/login ID of the client that will be connecting
+////   - caCert of server or nil to not verify server cert
+//func NewHubClient(fullURL string, clientID string, caCert *x509.Certificate) *HubClient {
+//	var tp IHubClient
+//	parts, _ := url.Parse(fullURL)
+//	tpid := parts.Scheme
+//	if tpid == "nats" {
+//		// FIXME: nats
+//		//tp = natstransport.NewNatsTransport(url, clientID, caCert)
+//	} else if tpid == "mqtt" {
+//		// FIXME: support mqtt
+//		//tp = mqtttransport.NewMqttTransport(url, clientID, caCert)
+//	} else if tpid == "https" || tpid == "tls" {
+//		// FIXME: obtain the sse path from elsewhere?
+//		ssePath := "/sse"
+//		tp = httptransport.NewHttpSSETransport(parts.Host, ssePath, clientID, caCert)
+//	} else if tpid == "" {
+//		tp = direct.NewEmbeddedTransport(clientID, nil)
+//	}
+//	hc := NewHubClientFromTransport(tp, clientID)
+//	return hc
+//}

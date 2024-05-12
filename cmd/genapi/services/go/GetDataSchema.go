@@ -82,7 +82,7 @@ func GenDataSchemaParams(l *utils.L, attrList []SchemaAttr) {
 	for _, attr := range attrList {
 		l.Add("")
 		l.Add("    // %s %s", attr.AttrName, attr.Description)
-		l.Add("    %s %s `json:\"%s\"`", attr.AttrName, attr.AttrType, attr.AttrName)
+		l.Add("    %s %s `json:\"%s\"`", attr.AttrName, attr.AttrType, attr.Key)
 
 	}
 }

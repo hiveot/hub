@@ -7,11 +7,11 @@ import (
 )
 
 // GenServiceInterface generates the service interface for handling messages
-func GenServiceInterface(l *utils.L, td *things.TD) {
+func GenServiceInterface(l *utils.L, serviceName string, td *things.TD) {
 	// ServiceType is the interface of the service. Interface names start with 'I'
-	interfaceName := "I" + ToTitle(td.GetID()) + "Service"
+	interfaceName := "I" + serviceName + "Service"
 	l.Add("")
-	l.Add("// %s defines the interface of the '%s' service", interfaceName, td.ID)
+	l.Add("// %s defines the interface of the '%s' service", interfaceName, serviceName)
 	l.Add("//")
 	l.Add("// This defines a method for each of the actions in the TD. ")
 	l.Add("// ")

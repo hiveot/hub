@@ -1,10 +1,10 @@
 package authn_test
 
 import (
+	"github.com/hiveot/hub/lib/hubclient/embedded"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/authnclient"
-	"github.com/hiveot/hub/runtime/protocols/direct"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -23,7 +23,7 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 
 	svc, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	mt := direct.NewDirectTransport(serviceID, adminHandler)
+	mt := embedded.NewEmbeddedClient(serviceID, adminHandler)
 	adminCl := authnclient.NewAuthnAdminClient(mt)
 
 	err := adminCl.AddClient(api.ClientTypeUser, "user1", "user 1", "pass1", "")
@@ -80,7 +80,7 @@ func TestAddRemoveClientsFail(t *testing.T) {
 	const adminID = "administrator-1"
 	_, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	mt := direct.NewDirectTransport(adminID, adminHandler)
+	mt := embedded.NewEmbeddedClient(adminID, adminHandler)
 	adminCl := authnclient.NewAuthnAdminClient(mt)
 
 	// missing clientID should fail
@@ -100,7 +100,7 @@ func TestUpdateClientPassword(t *testing.T) {
 
 	svc, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	mt := direct.NewDirectTransport(adminID, adminHandler)
+	mt := embedded.NewEmbeddedClient(adminID, adminHandler)
 	adminCl := authnclient.NewAuthnAdminClient(mt)
 
 	err := adminCl.AddClient(
@@ -130,7 +130,7 @@ func TestUpdatePubKey(t *testing.T) {
 
 	svc, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	mt := direct.NewDirectTransport(adminID, adminHandler)
+	mt := embedded.NewEmbeddedClient(adminID, adminHandler)
 	adminCl := authnclient.NewAuthnAdminClient(mt)
 
 	// add user to test with. don't set the public key yet
@@ -161,7 +161,7 @@ func TestUpdateProfile(t *testing.T) {
 	const adminID = "administrator-1"
 	_, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	mt := direct.NewDirectTransport(adminID, adminHandler)
+	mt := embedded.NewEmbeddedClient(adminID, adminHandler)
 	adminCl := authnclient.NewAuthnAdminClient(mt)
 
 	// add user to test with and connect
@@ -188,7 +188,7 @@ func TestUpdateProfileFail(t *testing.T) {
 
 	_, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	mt := direct.NewDirectTransport(adminID, adminHandler)
+	mt := embedded.NewEmbeddedClient(adminID, adminHandler)
 	adminCl := authnclient.NewAuthnAdminClient(mt)
 
 	err := adminCl.UpdateClientProfile(api.ClientProfile{ClientID: "badclient"})
@@ -200,8 +200,9 @@ func TestBadAdminCommand(t *testing.T) {
 
 	_, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	mt := direct.NewDirectTransport(adminID, adminHandler)
-	err := mt(api.AuthnAdminThingID, "badmethod", nil, nil)
+	mt := embedded.NewEmbeddedClient(adminID, adminHandler)
+	stat, err := mt.Rpc(nil, api.AuthnAdminThingID, "badmethod", nil, nil)
+	_ = stat
 	require.Error(t, err)
 
 }

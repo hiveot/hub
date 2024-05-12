@@ -2,11 +2,13 @@
 package authnclient
 
 import (
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
 )
 
 type AuthnAdminClient struct {
-	mt api.IMessageTransport
+	//mt api.IMessageTransport
+	hc hubclient.IHubClient
 }
 
 // AddClient adds a new client
@@ -21,7 +23,8 @@ func (svc *AuthnAdminClient) AddClient(
 		PubKey:      pubKey,
 		Password:    password,
 	}
-	err = svc.mt(api.AuthnAdminThingID, api.AddClientMethod, &args, nil)
+	stat, err := svc.hc.Rpc(nil, api.AuthnAdminThingID, api.AddClientMethod, &args, nil)
+	_ = stat
 	return err
 }
 
@@ -29,14 +32,16 @@ func (svc *AuthnAdminClient) AddClient(
 func (svc *AuthnAdminClient) GetClientProfile(clientID string) (api.ClientProfile, error) {
 	args := api.GetClientProfileArgs{ClientID: clientID}
 	resp := api.GetProfileResp{}
-	err := svc.mt(api.AuthnAdminThingID, api.GetClientProfileMethod, &args, &resp)
+	stat, err := svc.hc.Rpc(nil, api.AuthnAdminThingID, api.GetClientProfileMethod, &args, &resp)
+	_ = stat
 	return resp.Profile, err
 }
 
 // GetProfiles request the list of known client profiles
 func (svc *AuthnAdminClient) GetProfiles() ([]api.ClientProfile, error) {
 	resp := api.GetProfilesResp{}
-	err := svc.mt(api.AuthnAdminThingID, api.GetProfilesMethod, nil, &resp)
+	stat, err := svc.hc.Rpc(nil, api.AuthnAdminThingID, api.GetProfilesMethod, nil, &resp)
+	_ = stat
 	return resp.Profiles, err
 }
 
@@ -45,25 +50,28 @@ func (svc *AuthnAdminClient) GetProfiles() ([]api.ClientProfile, error) {
 // Existing login tokens remain valid until they expire
 func (svc *AuthnAdminClient) RemoveClient(clientID string) error {
 	args := api.RemoveClientArgs{ClientID: clientID}
-	err := svc.mt(api.AuthnAdminThingID, api.RemoveClientMethod, &args, nil)
+	stat, err := svc.hc.Rpc(nil, api.AuthnAdminThingID, api.RemoveClientMethod, &args, nil)
+	_ = stat
 	return err
 }
 
 // UpdateClientProfile request update of a client's profile
 func (svc *AuthnAdminClient) UpdateClientProfile(profile api.ClientProfile) error {
 	args := api.UpdateClientProfileArgs{Profile: profile}
-	err := svc.mt(api.AuthnAdminThingID, api.UpdateClientProfileMethod, &args, nil)
+	stat, err := svc.hc.Rpc(nil, api.AuthnAdminThingID, api.UpdateClientProfileMethod, &args, nil)
+	_ = stat
 	return err
 }
 
 // UpdateClientPassword request update of a client's password
 func (svc *AuthnAdminClient) UpdateClientPassword(clientID string, password string) error {
 	args := api.UpdateClientPasswordArgs{ClientID: clientID, Password: password}
-	err := svc.mt(api.AuthnAdminThingID, api.UpdateClientPasswordMethod, &args, nil)
+	stat, err := svc.hc.Rpc(nil, api.AuthnAdminThingID, api.UpdateClientPasswordMethod, &args, nil)
+	_ = stat
 	return err
 }
 
-func NewAuthnAdminClient(mt api.IMessageTransport) *AuthnAdminClient {
-	cl := AuthnAdminClient{mt: mt}
+func NewAuthnAdminClient(hc hubclient.IHubClient) *AuthnAdminClient {
+	cl := AuthnAdminClient{hc: hc}
 	return &cl
 }

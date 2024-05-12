@@ -5,10 +5,10 @@ import (
 	"github.com/hiveot/hub/api/go/directory"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
+	"github.com/hiveot/hub/lib/hubclient/embedded"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 	service2 "github.com/hiveot/hub/runtime/digitwin/service"
-	"github.com/hiveot/hub/runtime/protocols/direct"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -43,9 +43,10 @@ func startDirectory(clean bool) (
 
 	// use direct transport to pass messages to the service
 	msgHandler := directory.NewActionHandler(svc)
-	mt = direct.NewDirectTransport(directory.ThingID, msgHandler)
+	cl := embedded.NewEmbeddedClient(directory.ThingID, msgHandler)
+	//mt = direct.NewDirectTransport(directory.ThingID, msgHandler)
 
-	return svc, mt, func() {
+	return svc, cl.Rpc, func() {
 		svc.Stop()
 		_ = store.Close()
 	}
@@ -68,17 +69,20 @@ func TestStartStopDirectory(t *testing.T) {
 		require.NoError(t, err)
 	}
 	// viewers should be able to read the directory
-	tdList, err := directory.ReadThings(mt, 0, 10)
+	args := directory.ReadThingsArgs{Limit: 10, Offset: 0}
+	resp, stat, err := directory.ReadThings(mt, args)
+	_ = stat
 	assert.NoError(t, err, "Cant read directory. Did the service set client permissions?")
-	assert.Equal(t, len(thingIDs), len(tdList))
+	assert.Equal(t, len(thingIDs), len(resp.Output))
 
 	// stop and start again, the update should be reloaded
 	stopFunc()
 
 	svc, mt, stopFunc = startDirectory(false)
 	defer stopFunc()
-	tdList2, err := directory.ReadThings(mt, 0, 10)
-	assert.Equal(t, len(thingIDs), len(tdList2))
+	args = directory.ReadThingsArgs{Limit: 10, Offset: 0}
+	resp, stat, err = directory.ReadThings(mt, args)
+	assert.Equal(t, len(thingIDs), len(resp.Output))
 }
 
 func TestAddRemoveTD(t *testing.T) {
@@ -93,17 +97,19 @@ func TestAddRemoveTD(t *testing.T) {
 	err := svc.UpdateThing(senderID, thing1ID, tdDoc1)
 	assert.NoError(t, err)
 
-	td2json, err := directory.ReadThing(mt, thing1ID)
+	resp, stat, err := directory.ReadThings(mt, directory.ReadThingsArgs{Limit: 10})
+	_ = stat
 	td2 := things.TD{}
-	err = json.Unmarshal([]byte(td2json), &td2)
+	err = json.Unmarshal([]byte(resp.Output[0]), &td2)
 	require.NoError(t, err)
 	assert.Equal(t, thing1ID, td2.ID)
 
 	// after removal, getTD should return nil
-	err = directory.RemoveThing(mt, thing1ID)
+	stat, err = directory.RemoveThing(mt,
+		directory.RemoveThingArgs{ThingID: thing1ID})
 	assert.NoError(t, err)
 
-	td3, err := directory.ReadThing(mt, thing1ID)
+	td3, stat, err := directory.ReadThing(mt, directory.ReadThingArgs{ThingID: thing1ID})
 	assert.Empty(t, td3)
 	assert.Error(t, err)
 }
@@ -130,8 +136,8 @@ func TestHandleTDEvent(t *testing.T) {
 	stat = svc.HandleTDEvent(msg)
 	assert.Empty(t, stat.Error)
 
-	tdList, err := directory.ReadThings(mt, 0, 10)
-	assert.Equal(t, 1, len(tdList))
+	resp, stat, err := directory.ReadThings(mt, directory.ReadThingsArgs{Limit: 10})
+	assert.Equal(t, 1, len(resp.Output))
 	assert.NoError(t, err)
 }
 
@@ -140,18 +146,19 @@ func TestGetTDsFail(t *testing.T) {
 	svc, mt, stopFunc := startDirectory(true)
 	_ = svc
 	defer stopFunc()
-	tds, err := directory.ReadThings(mt, 0, 10)
+	resp, stat, err := directory.ReadThings(mt, directory.ReadThingsArgs{Limit: 10})
+	_ = stat
 	require.NoError(t, err)
-	require.Empty(t, tds)
+	require.Empty(t, resp.Output)
 
-	tds, err = directory.ReadThings(mt, 10, 10)
+	resp, stat, err = directory.ReadThings(mt, directory.ReadThingsArgs{Limit: 10, Offset: 10})
 	require.NoError(t, err)
-	require.Empty(t, tds)
+	require.Empty(t, resp.Output)
 
 	// bad clientID
-	tdd1, err := directory.ReadThing(mt, "badid")
+	resp2, stat, err := directory.ReadThing(mt, directory.ReadThingArgs{ThingID: "badid"})
 	require.Error(t, err)
-	require.Empty(t, tdd1)
+	require.Empty(t, resp2.Output)
 }
 
 func TestListTDs(t *testing.T) {
@@ -167,13 +174,14 @@ func TestListTDs(t *testing.T) {
 	err := svc.UpdateThing(senderID, thing1ID, tdDoc1)
 	require.NoError(t, err)
 
-	tdList, err := directory.ReadThings(mt, 0, 10)
+	resp, stat, err := directory.ReadThings(mt, directory.ReadThingsArgs{Limit: 10})
+	_ = stat
 	require.NoError(t, err)
-	assert.NotNil(t, tdList)
-	require.True(t, len(tdList) > 0)
+	assert.NotNil(t, resp.Output)
+	require.True(t, len(resp.Output) > 0)
 
 	td0 := things.TD{}
-	err = json.Unmarshal([]byte(tdList[0]), &td0)
+	err = json.Unmarshal([]byte(resp.Output[0]), &td0)
 	require.NoError(t, err)
 	//	slog.Infof("--- TestListTDs end ---")
 }

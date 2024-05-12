@@ -11,6 +11,7 @@ import (
 	"github.com/hiveot/hub/cmd/hubcli/pubsubcli"
 	"github.com/hiveot/hub/cmd/hubcli/setup"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/utils"
@@ -101,7 +102,7 @@ func main() {
 				fmt.Printf(utils.WrapOff)
 			}
 			// todo: don't connect when running setup
-			hc, err = hubclient.ConnectToHub(serverURL, loginID, certsDir, "", password)
+			hc, err = connect.ConnectToHub(serverURL, loginID, certsDir, "", password)
 			if err != nil {
 				slog.Warn("Unable to connect to the server", "err", err)
 			}

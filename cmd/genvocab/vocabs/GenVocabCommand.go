@@ -1,4 +1,4 @@
-package genvocab
+package vocabs
 
 import (
 	"github.com/urfave/cli/v2"

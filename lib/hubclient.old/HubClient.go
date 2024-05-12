@@ -3,7 +3,7 @@ package hubclient
 import (
 	"crypto/x509"
 	"fmt"
-	"github.com/hiveot/hub/lib/hubclient/transports"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
 	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
 	"github.com/hiveot/hub/lib/keys"
@@ -28,7 +28,7 @@ type HubClient struct {
 	// login ID
 	clientID string
 	//
-	transport transports.IHubTransport
+	transport hubclient.IHubClient
 	// key set after connecting with token
 	kp keys.IHiveKey
 	//connectionStatus transports.ConnectionStatus
@@ -45,7 +45,7 @@ type HubClient struct {
 
 	actionHandler     func(msg *things.ThingMessage) (reply []byte, err error)
 	configHandler     func(msg *things.ThingMessage) error
-	connectionHandler func(status transports.HubTransportStatus)
+	connectionHandler func(status hubclient.HubTransportStatus)
 	eventHandler      func(msg *things.ThingMessage)
 	rpcHandler        func(msg *things.ThingMessage) (reply []byte, err error)
 }
@@ -181,25 +181,25 @@ func (hc *HubClient) Disconnect() {
 }
 
 // GetStatus returns the transport connection status
-func (hc *HubClient) GetStatus() transports.HubTransportStatus {
+func (hc *HubClient) GetStatus() hubclient.HubTransportStatus {
 	return hc.transport.GetStatus()
 }
 
 // onConnect is invoked when the connection status changes.
 // This cancels the connection attempt if 'retry' is set to false.
 // This passes the info through to the handler, if set.
-func (hc *HubClient) onConnect(status transports.HubTransportStatus) {
+func (hc *HubClient) onConnect(status hubclient.HubTransportStatus) {
 	//hc.connectionStatus = status
 	//hc.connectionInfo = info
 	retryConnect := hc.retryConnect.Load()
-	if !retryConnect && status.ConnectionStatus != transports.Connected {
+	if !retryConnect && status.ConnectionStatus != hubclient.Connected {
 		slog.Warn("disconnecting and not retrying", "clientID", hc.clientID)
 		hc.Disconnect()
-	} else if status.ConnectionStatus == transports.Connected {
+	} else if status.ConnectionStatus == hubclient.Connected {
 		slog.Warn("connection restored", "clientID", hc.clientID)
-	} else if status.ConnectionStatus == transports.Disconnected {
+	} else if status.ConnectionStatus == hubclient.Disconnected {
 		slog.Warn("disconnected", "clientID", hc.clientID)
-	} else if status.ConnectionStatus == transports.Connecting {
+	} else if status.ConnectionStatus == hubclient.Connecting {
 		slog.Warn("retrying to connect", "clientID", hc.clientID)
 	}
 	hc.mux.RLock()
@@ -456,7 +456,7 @@ func (hc *HubClient) onRequest(addr string, payload []byte) (reply []byte, err e
 //}
 
 // SetConnectionHandler sets the callback for connection status changes.
-func (hc *HubClient) SetConnectionHandler(handler func(status transports.HubTransportStatus)) {
+func (hc *HubClient) SetConnectionHandler(handler func(status hubclient.HubTransportStatus)) {
 	hc.mux.Lock()
 	hc.connectionHandler = handler
 	hc.mux.Unlock()
@@ -573,7 +573,7 @@ func (hc *HubClient) SetRetryConnect(enable bool) {
 //
 //   - message bus transport to use, eg NatsTransport or MqttTransport instance
 //   - clientID of the client that will be connecting
-func NewHubClientFromTransport(transport transports.IHubTransport, clientID string) *HubClient {
+func NewHubClientFromTransport(transport hubclient.IHubClient, clientID string) *HubClient {
 	hc := HubClient{
 		clientID:  clientID,
 		transport: transport,
@@ -601,7 +601,7 @@ func NewHubClient(url string, clientID string, caCert *x509.Certificate, core st
 	//if kp == nil {
 	//	panic("kp is required")
 	//}
-	var tp transports.IHubTransport
+	var tp hubclient.IHubClient
 	if core == "nats" || strings.HasPrefix(url, "nats") {
 		tp = natstransport.NewNatsTransport(url, clientID, caCert)
 	} else {

@@ -74,6 +74,7 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 	router.Group(func(r chi.Router) {
 
 		//r.Get("/static/*", staticFileServer.ServeHTTP)
+		// build-in REST API for easy login to obtain a token
 		r.Post(vocab.PostLoginPath, svc.HandlePostLogin)
 	})
 
@@ -83,13 +84,15 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 		r.Use(sessions.AddSessionFromToken(svc.sessionAuth))
 
 		// register the general purpose event and action message transport
-		// these allows the binding to work as a transport from client to services using generated clients
+		// these allows the binding to work as a transport for agents and consumers
 		r.Post(vocab.PostActionPath, svc.HandlePostAction)
 		r.Post(vocab.PostEventPath, svc.HandlePostEvent)
 
-		// register rest api for built-in services
+		// register rest api for built-in easy auth refresh and logout
 		r.Post(vocab.PostRefreshPath, svc.HandlePostRefresh)
 		r.Post(vocab.PostLogoutPath, svc.HandlePostLogout)
+
+		// register rest api for built-in services
 		//svc.authnHandler.RegisterMethods(r)
 		//svc.dtDirectoryHandler.RegisterMethods(r)
 		//svc.dtValuesHandler.RegisterMethods(r)
@@ -251,6 +254,7 @@ func (svc *HttpsBinding) HandlePostLogout(w http.ResponseWriter, r *http.Request
 func (svc *HttpsBinding) HandlePostRefresh(w http.ResponseWriter, r *http.Request) {
 	var newToken string
 	args := api.RefreshTokenArgs{}
+	var reply []byte
 	cs, _, _, data, err := svc.getRequestParams(r)
 	if err == nil {
 		err = json.Unmarshal(data, &args)
@@ -262,9 +266,11 @@ func (svc *HttpsBinding) HandlePostRefresh(w http.ResponseWriter, r *http.Reques
 	if err == nil {
 		newToken, err = svc.sessionAuth.RefreshToken(cs.GetClientID(), args.OldToken, 0)
 	}
-	reply := &api.RefreshTokenResp{Token: newToken}
-	resp, err := json.Marshal(reply)
-	svc.writeReply(w, resp, err)
+	if err == nil {
+		resp := &api.RefreshTokenResp{Token: newToken}
+		reply, err = json.Marshal(resp)
+	}
+	svc.writeReply(w, reply, err)
 	// TODO: update client session cookie with new token
 	//svc.sessionManager.SetSessionCookie(cs.sessionID,newToken)
 }
@@ -304,16 +310,8 @@ func (svc *HttpsBinding) SendToClient(
 func (svc *HttpsBinding) Start(handler api.MessageHandler) error {
 	slog.Info("Starting HttpsBinding")
 	svc.handleMessage = handler
-
-	//svc.transportHandler = rest.NewTransportRest(svc.handleMessage)
-	//svc.dtDirectoryHandler = rest.NewDirectoryRest(svc.handleMessage)
-	//svc.dtHistoryHandler = rest.NewHistoryRest(svc.handleMessage)
-	//svc.dtValuesHandler = rest.NewValuesRest(svc.handleMessage)
-	//svc.authnHandler = rest.NewAuthnRest(svc.handleMessage, svc.sessionAuth)
 	svc.sseHandler = sse.NewSSEHandler(svc.sessionAuth)
-
 	svc.createRoutes(svc.router)
-
 	err := svc.httpServer.Start()
 	return err
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/core/auth/config"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
 	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
 	"log/slog"
@@ -72,7 +71,7 @@ func (ts *TestServer) AddConnectClient(
 	var token string
 	var err error
 
-	var tp transports.IHubTransport
+	var tp hubclient.IHubClient
 	serverURL, _, _ := ts.MsgServer.GetServerURLs()
 	if ts.Core == "nats" {
 		tp = natstransport.NewNatsTransport(serverURL, clientID, ts.CertBundle.CaCert)

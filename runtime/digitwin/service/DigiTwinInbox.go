@@ -104,10 +104,11 @@ func (svc *DigiTwinInbox) HandleActionFlow(msg *things.ThingMessage) (status api
 	// split the virtual thingID into the agent and physical thingID
 	// actions forwarded to agent operate using the physical ThingID
 	dtThingID := msg.ThingID
-	agentID, thingID, found := SplitDigiTwinThingID(dtThingID)
+	agentID, thingID, found := things.SplitDigiTwinThingID(dtThingID)
 	if !found {
 		actionRecord.DeliveryStatus.Status = api.DeliveryFailed
 		actionRecord.DeliveryStatus.Error = fmt.Sprintf("Agent for thing '%s' not found", msg.ThingID)
+		return actionRecord.DeliveryStatus
 	}
 	// the message itself is forwarded to the agent using the device's original thingID
 	msg.ThingID = thingID
@@ -142,7 +143,7 @@ func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) api.Del
 	// error checking that the update does belong to the right thing action
 	if err == nil {
 		// the sender (agents) must match
-		thingAgentID, thingID, _ := SplitDigiTwinThingID(inboxRecord.Request.ThingID)
+		thingAgentID, thingID, _ := things.SplitDigiTwinThingID(inboxRecord.Request.ThingID)
 		if thingAgentID != msg.SenderID {
 			err = fmt.Errorf("HandleDeliveryUpdate: status update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
 				newStatus.MessageID, msg.ThingID, thingAgentID, msg.SenderID)

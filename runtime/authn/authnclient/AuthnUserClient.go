@@ -2,6 +2,7 @@
 package authnclient
 
 import (
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
 )
 
@@ -10,12 +11,13 @@ import (
 // agents, services and regular users.
 // The main functions are to login, refresh tokens and change name and password.
 type AuthnUserClient struct {
-	pm api.IMessageTransport
+	hc hubclient.IHubClient
 }
 
 func (svc *AuthnUserClient) GetProfile() (api.ClientProfile, error) {
 	resp := api.GetProfileResp{}
-	err := svc.pm(api.AuthnUserThingID, api.GetProfileMethod, nil, &resp)
+	stat, err := svc.hc.Rpc(nil, api.AuthnUserThingID, api.GetProfileMethod, nil, &resp)
+	_ = stat
 	return resp.Profile, err
 }
 
@@ -23,7 +25,8 @@ func (svc *AuthnUserClient) GetProfile() (api.ClientProfile, error) {
 func (svc *AuthnUserClient) Login(clientID string, password string) (token string, err error) {
 	req := api.LoginArgs{ClientID: clientID, Password: password}
 	resp := api.LoginResp{}
-	err = svc.pm(api.AuthnUserThingID, api.LoginMethod, req, &resp)
+	stat, err := svc.hc.Rpc(nil, api.AuthnUserThingID, api.LoginMethod, req, &resp)
+	_ = stat
 	return resp.Token, err
 }
 
@@ -31,14 +34,16 @@ func (svc *AuthnUserClient) Login(clientID string, password string) (token strin
 func (svc *AuthnUserClient) RefreshToken(oldToken string) (newToken string, err error) {
 	req := api.RefreshTokenArgs{OldToken: oldToken}
 	resp := api.RefreshTokenResp{}
-	err = svc.pm(api.AuthnUserThingID, api.RefreshTokenMethod, req, &resp)
+	stat, err := svc.hc.Rpc(nil, api.AuthnUserThingID, api.RefreshTokenMethod, req, &resp)
+	_ = stat
 	return resp.Token, err
 }
 
 // UpdateName change the client profile name
 func (svc *AuthnUserClient) UpdateName(newName string) error {
 	req := api.UpdateNameArgs{NewName: newName}
-	err := svc.pm(api.AuthnUserThingID, api.UpdateNameMethod, req, nil)
+	stat, err := svc.hc.Rpc(nil, api.AuthnUserThingID, api.UpdateNameMethod, req, nil)
+	_ = stat
 	return err
 }
 
@@ -46,7 +51,8 @@ func (svc *AuthnUserClient) UpdateName(newName string) error {
 // FIXME: encrypt use a password hash based on server nonce
 func (svc *AuthnUserClient) UpdatePassword(password string) error {
 	req := api.UpdatePasswordArgs{NewPassword: password}
-	err := svc.pm(api.AuthnUserThingID, api.UpdatePasswordMethod, req, nil)
+	stat, err := svc.hc.Rpc(nil, api.AuthnUserThingID, api.UpdatePasswordMethod, req, nil)
+	_ = stat
 	return err
 }
 
@@ -54,13 +60,14 @@ func (svc *AuthnUserClient) UpdatePassword(password string) error {
 // Public keys are used in token generation and verification during login.
 func (svc *AuthnUserClient) UpdatePubKey(clientID string, pubKeyPem string) error {
 	req := api.UpdatePubKeyArgs{PubKeyPem: pubKeyPem}
-	err := svc.pm(api.AuthnUserThingID, api.UpdatePubKeyMethod, req, nil)
+	stat, err := svc.hc.Rpc(nil, api.AuthnUserThingID, api.UpdatePubKeyMethod, req, nil)
+	_ = stat
 	return err
 }
 
 // NewAuthnUserClient creates a new instance of a client side messaging wrapper
 // for communicating with the Authn client service.
-func NewAuthnUserClient(pm api.IMessageTransport) *AuthnUserClient {
-	cl := AuthnUserClient{pm: pm}
+func NewAuthnUserClient(hc hubclient.IHubClient) *AuthnUserClient {
+	cl := AuthnUserClient{hc: hc}
 	return &cl
 }

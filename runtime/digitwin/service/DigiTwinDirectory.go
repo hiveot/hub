@@ -109,7 +109,7 @@ func (svc *DigitwinDirectory) ReadThing(args directory.ReadThingArgs) (resp dire
 	// TODO: re-marshalling is inefficient. Do this on startup
 
 	tdjson, _ := json.Marshal(td)
-	return directory.ReadThingResp{Result: string(tdjson)}, err
+	return directory.ReadThingResp{Output: string(tdjson)}, err
 }
 
 // ReadThings returns a list of TD documents
@@ -124,7 +124,7 @@ func (svc *DigitwinDirectory) ReadThings(args directory.ReadThingsArgs) (resp di
 	// skip offset items (maps are not consistent between iterations)
 	if args.Offset >= len(svc.thingKeys) {
 		// empty result
-		resp.Result = tdList
+		resp.Output = tdList
 		return resp, nil
 	}
 	if args.Offset+args.Limit > len(svc.thingKeys) {
@@ -138,7 +138,7 @@ func (svc *DigitwinDirectory) ReadThings(args directory.ReadThingsArgs) (resp di
 		tdjson, _ := json.Marshal(v)
 		tdList = append(tdList, string(tdjson))
 	}
-	resp.Result = tdList
+	resp.Output = tdList
 	return resp, nil
 }
 

@@ -1,34 +1,36 @@
-// Package outbox with types and interfaces for using this service
+// Package outbox with types and interfaces for using this service with agent 'digitwin'
 // DO NOT EDIT. This file is auto generated. Any changes will be overwritten.
-// Generated 08 May 24 18:55 PDT.
+// Generated 11 May 24 20:40 PDT.
 package outbox
 
 import "encoding/json"
-import "fmt"
+import "errors"
 import "github.com/hiveot/hub/runtime/api"
 import "github.com/hiveot/hub/lib/things"
 
-// the raw thingID as used by agents. Digitwin adds the urn:{agent} prefix
+// RawThingID is the raw thingID as used by agents. Digitwin adds the urn:{agent} prefix
 const RawThingID = "outbox"
 const ThingID = "urn:digitwin:outbox"
 
-// Argument and Response struct for action of Thing 'outbox'
+// Argument and Response struct for action of Thing 'urn:digitwin:outbox'
 
-// ReadLatestArgs defines the arguments of the ReadLatest function
+const ReadLatestMethod = "readLatest"
+
+// ReadLatestArgs defines the arguments of the readLatest function
 // Read Latest - Read the latest value(s) of a Thing
 type ReadLatestArgs struct {
 
 	// ThingID Thing ID
-	ThingID string `json:"ThingID"`
+	ThingID string `json:"thingID"`
 
 	// Keys Value Key
-	Keys []string `json:"Keys"`
+	Keys []string `json:"keys"`
 
 	// Since Since
-	Since string `json:"Since"`
+	Since string `json:"since"`
 }
 
-// ReadLatestResp defines the response of the ReadLatest function
+// ReadLatestResp defines the response of the readLatest function
 // Read Latest - Read the latest value(s) of a Thing
 type ReadLatestResp struct {
 
@@ -36,38 +38,37 @@ type ReadLatestResp struct {
 	Values interface{} `json:"Values"`
 }
 
-// RemoveValueArgs defines the arguments of the RemoveValue function
+const RemoveValueMethod = "removeValue"
+
+// RemoveValueArgs defines the arguments of the removeValue function
 // Remove Thing Value - Remove a value
 type RemoveValueArgs struct {
 
 	// MessageID Message ID
-	MessageID string `json:"MessageID"`
+	MessageID string `json:"messageID"`
 }
 
-// RemoveValue Remove Thing Value
-// Remove a value
-func RemoveValue(mt api.IMessageTransport, messageID string) (err error) {
-	args := RemoveValueArgs{
-		MessageID: messageID,
-	}
-	err = mt("outbox", "removeValue", &args, nil)
-	return err
-}
-
-// ReadLatest Read Latest
+// ReadLatest client method - Read Latest.
 // Read the latest value(s) of a Thing
-func ReadLatest(mt api.IMessageTransport, thingID string, keys []string, since string) (Values interface{}, err error) {
-	args := ReadLatestArgs{
-		ThingID: thingID,
-		Keys:    keys,
-		Since:   since,
+func ReadLatest(mt api.IMessageTransport, args ReadLatestArgs) (resp ReadLatestResp, stat api.DeliveryStatus, err error) {
+	stat, err = mt(nil, "urn:digitwin:outbox", "readLatest", &args, &resp)
+	if stat.Error != "" {
+		err = errors.New(stat.Error)
 	}
-	resp := ReadLatestResp{}
-	err = mt("outbox", "readLatest", &args, &resp)
-	return resp.Values, err
+	return
 }
 
-// IOutboxService defines the interface of the 'outbox' service
+// RemoveValue client method - Remove Thing Value.
+// Remove a value
+func RemoveValue(mt api.IMessageTransport, args RemoveValueArgs) (stat api.DeliveryStatus, err error) {
+	stat, err = mt(nil, "urn:digitwin:outbox", "removeValue", &args, nil)
+	if stat.Error != "" {
+		err = errors.New(stat.Error)
+	}
+	return
+}
+
+// IOutboxService defines the interface of the 'Outbox' service
 //
 // This defines a method for each of the actions in the TD.
 type IOutboxService interface {
@@ -81,41 +82,39 @@ type IOutboxService interface {
 	RemoveValue(args RemoveValueArgs) error
 }
 
-// NewActionHandler returns a handler for Thing 'outbox' actions to be passed to the implementing service
+// NewActionHandler returns a server handler for Thing 'urn:digitwin:outbox' actions.
 //
-// This unmarshals the request payload into a args struct and passes it to the service
+// This unmarshals the request payload into an args struct and passes it to the service
 // that implements the corresponding interface method.
 //
 // This returns the marshalled response data or an error.
 func NewActionHandler(svc IOutboxService) func(*things.ThingMessage) api.DeliveryStatus {
-	return func(msg *things.ThingMessage) api.DeliveryStatus {
-		var err = fmt.Errorf("unknown action '%s'", msg.Key)
-		var status = api.DeliveryFailed
-		res := api.DeliveryStatus{}
+	return func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+		var err error
 		switch msg.Key {
 		case "readLatest":
 			args := ReadLatestArgs{}
-			var resp interface{}
 			err = json.Unmarshal(msg.Data, &args)
-			resp, err = svc.ReadLatest(args)
+			var resp interface{}
 			if err == nil {
-				res.Reply, err = json.Marshal(resp)
-				status = api.DeliveryCompleted
+				resp, err = svc.ReadLatest(args)
 			}
+			if resp != nil {
+				stat.Reply, _ = json.Marshal(resp)
+			}
+			stat.Completed(msg, err)
 			break
 		case "removeValue":
 			args := RemoveValueArgs{}
 			err = json.Unmarshal(msg.Data, &args)
-			err = svc.RemoveValue(args)
 			if err == nil {
-				status = api.DeliveryCompleted
+				err = svc.RemoveValue(args)
 			}
 			break
+		default:
+			err = errors.New("Unknown Method '" + msg.Key + "' of service '" + msg.ThingID + "'")
+			stat.Failed(msg, err)
 		}
-		res.Status = status
-		if err != nil {
-			res.Error = err.Error()
-		}
-		return res
+		return stat
 	}
 }

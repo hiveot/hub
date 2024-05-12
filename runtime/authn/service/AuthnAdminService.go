@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn"
@@ -90,7 +90,7 @@ func (svc *AuthnAdminService) AddClientWithTokenFile(
 		authToken := svc.sessionAuth.CreateSessionToken(clientID, "", validitySec)
 
 		// remove the readonly token file if it exists, to be able to overwrite
-		tokenFile := path.Join(svc.cfg.KeysDir, clientID+hubclient.TokenFileExt)
+		tokenFile := path.Join(svc.cfg.KeysDir, clientID+connect.TokenFileExt)
 		_ = os.Remove(tokenFile)
 		err = os.WriteFile(tokenFile, []byte(authToken), 0400)
 	}

@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/logging"
 	"log/slog"
 	"os"
@@ -15,7 +16,7 @@ type PluginConfig struct {
 type IPlugin interface {
 	// Start the plugin with the given environment settings and hub connection
 	//	hc is the hub connection for publishing and subscribing
-	Start(hc *hubclient.HubClient) error
+	Start(hc hubclient.IHubClient) error
 	Stop()
 }
 
@@ -33,7 +34,7 @@ func StartPlugin(plugin IPlugin, env *AppEnvironment) {
 	logging.SetLogging(env.LogLevel, "")
 
 	// locate the hub, load CA certificate, load service key and token and connect
-	hc, err := hubclient.ConnectToHub("", env.ClientID, env.CertsDir, "", "")
+	hc, err := connect.ConnectToHub("", env.ClientID, env.CertsDir, "", "")
 	if err != nil {
 		slog.Error("Failed connecting to the Hub", "err", err)
 		os.Exit(1)

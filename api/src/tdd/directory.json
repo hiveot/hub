@@ -3,7 +3,7 @@
 		{"ht": "https://www.hiveot.net/vocab/v0.1"}
 	],
 	"@type": "Service",
-	"id": "directory",
+	"id": "urn:digitwin:directory",
 	"title": "DigiTwin Directory Service",
 	"description": "HiveOT digital twin directory service",
 	"version": {

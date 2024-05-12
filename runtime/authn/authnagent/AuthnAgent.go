@@ -2,7 +2,7 @@ package authnagent
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/hubclient/transports"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/service"
@@ -13,7 +13,7 @@ const AuthnAgentID = "authn"
 
 // AuthnAgent agent for the authentication services:
 type AuthnAgent struct {
-	tp transports.IHubTransport
+	hc hubclient.IHubClient
 	//hc           *hubclient.HubClient
 	svc *service.AuthnService
 
@@ -40,19 +40,19 @@ func (agent *AuthnAgent) HandleMessage(msg *things.ThingMessage) (stat api.Deliv
 // for example when testing.
 //
 //	svc is the authorization service whose capabilities to expose
-//	tp is the optional message client connected to the server protocol
+//	hc is the optional message client connected to the server protocol
 func StartAuthnAgent(
-	svc *service.AuthnService, tp transports.IHubTransport) (*AuthnAgent, error) {
+	svc *service.AuthnService, hc hubclient.IHubClient) (*AuthnAgent, error) {
 	var err error
-	agent := AuthnAgent{tp: tp, svc: svc}
+	agent := AuthnAgent{hc: hc, svc: svc}
 	agent.adminHandler = NewAuthnAdminHandler(agent.svc.AdminSvc)
 	agent.userHandler = NewAuthnUserHandler(agent.svc.UserSvc)
-	if tp != nil {
-		agent.tp.SetMessageHandler(agent.HandleMessage)
+	if hc != nil {
+		agent.hc.SetMessageHandler(agent.HandleMessage)
 		// agents don't need to subscribe for actions directed at them
-		//err = agent.tp.Subscribe(api.AuthnAdminThingID)
+		//err = agent.hc.Subscribe(api.AuthnAdminThingID)
 		//if err == nil {
-		//	err = agent.tp.Subscribe(api.AuthnUserThingID)
+		//	err = agent.hc.Subscribe(api.AuthnUserThingID)
 		//}
 	}
 	return &agent, err

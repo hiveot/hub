@@ -6,9 +6,12 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 )
 
-// GenActionClient generates a client function for invoking an action
+// GenActionClient generates a client function for invoking a Thing action.
+//
 // This client will marshal the API parameters into an action argument struct and
 // invoke the method using the provided messaging transport.
+//
+// The TD document must have an ID with a "urn:{agent}:" prefix
 func GenActionClient(l *utils.L, td *things.TD) {
 
 	for key, action := range td.Actions {
@@ -16,54 +19,39 @@ func GenActionClient(l *utils.L, td *things.TD) {
 	}
 }
 
-// GenActionMethod generates a client function from an action affordance
-func GenActionMethod(l *utils.L, thingID string, key string, action *things.ActionAffordance) {
-	inputAttrs := GetSchemaAttrs("arg", action.Input)
-	outputAttrs := GetSchemaAttrs("result", action.Output)
+// GenActionMethod generates a client function from an action affordance.
+//
+//	dtThingID digitwin thingID of the service. This include the agent prefix.
+//	key with the service action method.
+//	action affordance describing the input and output parameters
+func GenActionMethod(l *utils.L, dtThingID string, key string, action *things.ActionAffordance) {
+	argsString := "mt api.IMessageTransport"
+	respString := "stat api.DeliveryStatus, err error"
+	invokeArgs := "nil"
+	invokeResp := "nil"
 
 	methodName := Key2ID(key)
-	argString := getArgs(inputAttrs)
-	if len(argString) > 0 {
-		argString = ", " + argString
+	if action.Input != nil {
+		argsString = fmt.Sprintf("%s, args %sArgs", argsString, methodName)
+		invokeArgs = "&args"
 	}
-	respString := getArgs(outputAttrs)
-	if len(respString) > 0 {
-		respString = "(" + respString + ", err error)"
-	} else {
-		respString = "(err error)"
+	if action.Output != nil {
+		respString = fmt.Sprintf("resp %sResp, %s", methodName, respString)
+		invokeResp = "&resp"
 	}
 	// Function declaration
 	l.Add("")
-	l.Add("// %s %s", methodName, action.Title)
+	l.Add("// %s client method - %s.", methodName, action.Title)
 	if len(action.Description) > 0 {
 		l.Add("// %s", action.Description)
 	}
-	l.Add("func %s(mt api.IMessageTransport%s)%s{", methodName, argString, respString)
+	l.Add("func %s(%s)(%s){", methodName, argsString, respString)
 
-	// Instantiate and marshal arguments struct
-	l.Add("    args := %sArgs {", methodName)
-	for _, attr := range inputAttrs {
-		// argument names match the args struct names
-		l.Add("        %s: %s,", attr.AttrName, attr.Key)
-	}
+	l.Add("    stat,err = mt(nil,\"%s\", \"%s\", %s, %s)", dtThingID, key, invokeArgs, invokeResp)
+	l.Add("    if stat.Error != \"\" {")
+	l.Add("    	err = errors.New(stat.Error)")
 	l.Add("    }")
-	if len(outputAttrs) == 0 {
-		// invoke without a response data struct
-		// Invoke the message transport
-		l.Add("    err = mt(\"%s\", \"%s\", &args, nil)", thingID, key)
-		l.Add("    return err")
-	} else {
-		// invoke with a response data struct and return the parameters
-		l.Add("    resp := %sResp{}", methodName)
-		// Invoke the message transport
-		l.Add("    err = mt(\"%s\", \"%s\", &args, &resp)", thingID, key)
-		returnParams := ""
-		for _, attr := range outputAttrs {
-			returnParams += fmt.Sprintf("resp.%s", attr.AttrName)
-		}
-		// return the result parameter list
-		l.Add("    return %s, err", returnParams)
-	}
+	l.Add("    return")
 	l.Add("}")
 }
 

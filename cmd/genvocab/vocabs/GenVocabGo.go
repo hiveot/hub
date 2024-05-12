@@ -1,5 +1,5 @@
 // Package genvocab for generating vocabulary
-package genvocab
+package vocabs
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const golangFile = "./api/go/vocab/ht-vocab.go"
+const golangVocabFile = "./api/go/vocab/vocab.go"
 
 // GenVocabGo generates the vocabulary constants in golang.
 func GenVocabGo(sourceDir string) error {
@@ -17,8 +17,8 @@ func GenVocabGo(sourceDir string) error {
 	if err == nil {
 		lines := ExportToGolang(classes, constants)
 		data := strings.Join(lines, "\n")
-		println("Writing: " + golangFile)
-		err = os.WriteFile(golangFile, []byte(data), 0664)
+		println("Writing: " + golangVocabFile)
+		err = os.WriteFile(golangVocabFile, []byte(data), 0664)
 	}
 	if err != nil {
 		fmt.Println("ERROR: " + err.Error())
@@ -31,7 +31,7 @@ func ExportToGolang(vclasses map[string]VocabClassMap, vconstants map[string]Voc
 	fmt.Println("Generating Golang vocabulary.")
 	lines := make([]string, 0)
 
-	lines = append(lines, "// Package vocab with HiveOT vocabulary names for TD Things, properties, events and actions")
+	lines = append(lines, "// Package vocab with HiveOT and WoT vocabulary names for TD Things, properties, events and actions")
 	lines = append(lines, fmt.Sprintf("// DO NOT EDIT. This file is generated and changes will be overwritten"))
 	lines = append(lines, "package vocab")
 

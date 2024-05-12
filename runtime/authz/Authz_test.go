@@ -2,13 +2,13 @@ package authz_test
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/hubclient/embedded"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authz"
 	"github.com/hiveot/hub/runtime/authz/authzagent"
 	"github.com/hiveot/hub/runtime/authz/authzclient"
-	"github.com/hiveot/hub/runtime/protocols/direct"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -62,8 +62,8 @@ func TestSetRole(t *testing.T) {
 	// connect the client marshaller to the server agent
 
 	handler, _ := authzagent.StartAuthzAgent(svc, nil)
-	mt := direct.NewDirectTransport(client1ID, handler.HandleMessage)
-	authzCl := authzclient.NewAuthzClient(mt)
+	ecl := embedded.NewEmbeddedClient(client1ID, handler.HandleMessage)
+	authzCl := authzclient.NewAuthzClient(ecl)
 
 	// set the role
 	err = authzCl.SetClientRole(client1ID, client1Role)

@@ -3,7 +3,7 @@
 		{"ht": "https://www.hiveot.net/vocab/v0.1"}
 	],
 	"@type": "Service",
-	"id": "outbox",
+	"id": "urn:digitwin:outbox",
 	"title": "DigiTwin Outbox",
 	"description": "HiveOT digital twin outbox event storage",
 	"version": {

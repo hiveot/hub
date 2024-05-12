@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/lib/hubclient/transports"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/things"
@@ -26,7 +26,7 @@ import (
 const DefaultTimeoutSec = 100 //3 // 100 for testing
 
 // NatsTransport is a Hub Client transport for the NATS message server.
-// This implements the IHubTransport interface.
+// This implements the IHubClient interface.
 type NatsTransport struct {
 	clientID string
 	//keyPair   string
@@ -37,9 +37,9 @@ type NatsTransport struct {
 	// TLS configuration to use in connecting
 	tlsConfig *tls.Config
 	timeout   time.Duration
-	status    transports.HubTransportStatus
+	status    hubclient.HubTransportStatus
 
-	connectHandler func(status transports.HubTransportStatus)
+	connectHandler func(status hubclient.HubTransportStatus)
 	eventHandler   func(addr string, payload []byte)
 	requestHandler func(addr string, payload []byte) (reply []byte, err error, donotreply bool)
 }
@@ -92,7 +92,7 @@ func (nt *NatsTransport) ConnectWithJWT(myKey nkeys.KeyPair, jwtToken string) (e
 		nats.ReconnectHandler(nt.onConnected),
 		nats.Name(nt.clientID), // connection name for logging, debugging
 		nats.Secure(nt.tlsConfig),
-		nats.CustomInboxPrefix(transports.MessageTypeINBOX+"."+nt.clientID),
+		nats.CustomInboxPrefix(hubclient.MessageTypeINBOX+"."+nt.clientID),
 		nats.UserJWTAndSeed(jwtToken, string(jwtSeed)),
 		nats.Token(jwtToken), // JWT token isn't passed through in callout
 		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSec)))
@@ -124,7 +124,7 @@ func (nt *NatsTransport) ConnectWithKey(myKey nkeys.KeyPair) error {
 		nats.Secure(nt.tlsConfig),
 		nats.Nkey(pubKey, sigCB),
 		// client permissions allow this inbox prefix
-		nats.CustomInboxPrefix(transports.MessageTypeINBOX+"."+nt.clientID),
+		nats.CustomInboxPrefix(hubclient.MessageTypeINBOX+"."+nt.clientID),
 		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSec)))
 
 	if err == nil {
@@ -144,7 +144,7 @@ func (nt *NatsTransport) ConnectWithPassword(password string) (err error) {
 		nats.Secure(nt.tlsConfig),
 		// client permissions allow this inbox prefix
 		nats.Name(nt.clientID),
-		nats.CustomInboxPrefix(transports.MessageTypeINBOX+"."+nt.clientID),
+		nats.CustomInboxPrefix(hubclient.MessageTypeINBOX+"."+nt.clientID),
 		nats.Timeout(time.Second*time.Duration(DefaultTimeoutSec)))
 	if err == nil {
 		nt.js, err = nt.nc.JetStream()
@@ -188,7 +188,7 @@ func (nt *NatsTransport) Disconnect() {
 }
 
 // GetStatus Return the transport connection info
-func (nt *NatsTransport) GetStatus() transports.HubTransportStatus {
+func (nt *NatsTransport) GetStatus() hubclient.HubTransportStatus {
 	return nt.status
 }
 
@@ -199,7 +199,7 @@ func (nt *NatsTransport) JS() nats.JetStreamContext {
 
 // handle connected to the server
 func (nt *NatsTransport) onConnected(c *nats.Conn) {
-	nt.status.ConnectionStatus = transports.Connected
+	nt.status.ConnectionStatus = hubclient.Connected
 	nt.status.LastError = nil
 	nt.connectHandler(nt.status)
 }
@@ -208,7 +208,7 @@ func (nt *NatsTransport) onConnected(c *nats.Conn) {
 func (nt *NatsTransport) onDisconnect(c *nats.Conn, err error) {
 	// FIXME: how to differentiate between intentional and unintended disconnect?
 	// Is it important?
-	nt.status.ConnectionStatus = transports.Disconnected
+	nt.status.ConnectionStatus = hubclient.Disconnected
 	if err != nil {
 		nt.status.LastError = err
 	} else {
@@ -361,7 +361,7 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *things.Thing
 }
 
 // SetConnectHandler sets the notification handler of connection status changes
-func (nt *NatsTransport) SetConnectHandler(cb func(status transports.HubTransportStatus)) {
+func (nt *NatsTransport) SetConnectHandler(cb func(status hubclient.HubTransportStatus)) {
 	if cb == nil {
 		panic("nil handler not allowed")
 	}
@@ -454,7 +454,7 @@ func (nt *NatsTransport) Unsubscribe(subject string) {
 //
 //	 name of the event stream. "" for default
 //		receiveLatest to immediately receive the latest event for each event instance
-func (nt *NatsTransport) SubStream(name string, receiveLatest bool, cb func(msg *things.ThingMessage)) (transports.ISubscription, error) {
+func (nt *NatsTransport) SubStream(name string, receiveLatest bool, cb func(msg *things.ThingMessage)) (hubclient.ISubscription, error) {
 	if name == "" {
 		//name = natsnkeyserver.EventsIntakeStreamName
 	}
@@ -519,14 +519,14 @@ func NewNatsTransport(url string, clientID string, caCert *x509.Certificate) *Na
 		clientID:  clientID,
 		timeout:   time.Duration(DefaultTimeoutSec) * time.Second,
 		tlsConfig: tlsConfig,
-		connectHandler: func(status transports.HubTransportStatus) {
+		connectHandler: func(status hubclient.HubTransportStatus) {
 			slog.Info("connection status change", "newStatus", status.ConnectionStatus, "last error", status.LastError)
 		},
-		status: transports.HubTransportStatus{
+		status: hubclient.HubTransportStatus{
 			CaCert:           caCert,
 			HubURL:           url,
 			ClientID:         clientID,
-			ConnectionStatus: transports.Disconnected,
+			ConnectionStatus: hubclient.Disconnected,
 			LastError:        nil,
 			Core:             "nats",
 		},

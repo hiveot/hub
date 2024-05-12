@@ -7,14 +7,13 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports/httptransport"
+	"github.com/hiveot/hub/lib/hubclient/connect"
+	"github.com/hiveot/hub/lib/hubclient/httpclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/runtime"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
@@ -42,19 +41,19 @@ func startRuntime() *runtime.Runtime {
 }
 
 // Add a client and connect with its password
-func addConnectClient(r *runtime.Runtime, clientType api.ClientType, clientID string) (cl *tlsclient.TLSClient, token string) {
+func addConnectClient(r *runtime.Runtime, clientType api.ClientType, clientID string) (
+	cl hubclient.IHubClient, token string) {
+
 	password := "pass1"
 	err := r.AuthnSvc.AdminSvc.AddClient(clientType, clientID, clientID, "", password)
 	if err != nil {
 		panic("Failed adding client:" + err.Error())
 	}
 
-	addr := fmt.Sprintf("localhost:%d", TestPort)
-	tp := httptransport.NewHttpSSETransport(addr, "", clientID, certsBundle.CaCert)
-	err = tp.ConnectWithPassword(password)
+	hostPort := fmt.Sprintf("localhost:%d", TestPort)
+	cl = httpclient.NewHttpSSEClient(hostPort, clientID, certsBundle.CaCert)
+	token, err = cl.ConnectWithPassword(password)
 
-	cl = tlsclient.NewTLSClient(addr, certsBundle.CaCert, time.Second*120)
-	token, err = cl.ConnectWithPassword(clientID, password)
 	if err != nil {
 		panic("Failed connect with password:" + err.Error())
 	}
@@ -100,11 +99,11 @@ func TestLogin(t *testing.T) {
 
 	r := startRuntime()
 	cl, _ := addConnectClient(r, api.ClientTypeUser, senderID)
-	t2, err := cl.RefreshToken("")
+	t2, err := cl.RefreshToken()
 	require.NoError(t, err)
 	assert.NotEmpty(t, t2)
 
-	cl.Close()
+	cl.Disconnect()
 	r.Stop()
 	time.Sleep(time.Millisecond * 100)
 }
@@ -130,9 +129,10 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	// connect the agent and user clients
 	// todo: iterate each protocol
 	connectURL := r.ProtocolMgr.GetConnectURL()
-	hc1 := hubclient.NewHubClient(connectURL, agentID, certsBundle.CaCert)
-	err = hc1.ConnectWithJWT(token1)
+	hc1 := connect.NewHubClient(connectURL, agentID, certsBundle.CaCert)
+	newToken, err := hc1.ConnectWithJWT(token1)
 	require.NoError(t, err)
+	require.NotEmpty(t, newToken)
 	defer hc1.Disconnect()
 
 	// Agent receives action request which we'll handle here
@@ -144,9 +144,10 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	})
 
 	// User publishes a request and receives delivery completion event
-	hc2 := hubclient.NewHubClient(connectURL, userID, certsBundle.CaCert)
-	err = hc2.ConnectWithPassword(pass1)
+	hc2 := connect.NewHubClient(connectURL, userID, certsBundle.CaCert)
+	newToken, err = hc2.ConnectWithPassword(pass1)
 	require.NoError(t, err)
+	require.NotEmpty(t, newToken)
 	defer hc2.Disconnect()
 
 	// timeout is high for testing
@@ -173,7 +174,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	time.Sleep(time.Millisecond)
 
 	// client sends action and expect a 'delivered' result
-	dtThingID := service.MakeDigiTwinThingID(agentID, thingID)
+	dtThingID := things.MakeDigiTwinThingID(agentID, thingID)
 	stat2 := hc2.PubAction(dtThingID, actionID, []byte(actionPayload))
 	// TODO change this Completed once wait for completion is supported
 	require.Equal(t, stat2.Status, api.DeliveryDelivered)

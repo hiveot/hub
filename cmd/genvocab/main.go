@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/hiveot/hub/cmd/genapi/services"
+	"github.com/hiveot/hub/cmd/genvocab/vocabs"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/urfave/cli/v2"
 	"os"
@@ -9,20 +9,19 @@ import (
 
 const Version = `0.1-alpha`
 
-// CLI for generating API's from Thing Description Documents (TD)
+// CLI for generating WoT and HiveOT vocabulary constants
 func main() {
 	logging.SetLogging("warning", "")
 
 	app := &cli.App{
 		EnableBashCompletion: true,
-		Name:                 "genapi",
-		Usage:                "HiveOT API Generator from TD actions",
+		Name:                 "genvocab",
+		Usage:                "HiveOT Vocabulary code generator",
 		Version:              Version,
 
 		// commands arguments are passed by reference so they are updated in the Before section
 		Commands: []*cli.Command{
-			services.ListTDsCommand(),
-			services.GenGoAPICommand(),
+			vocabs.GenVocabCommand(),
 		},
 	}
 	app.Suggest = true
