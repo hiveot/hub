@@ -11,7 +11,7 @@ import (
 // This client will marshal the API parameters into an action argument struct and
 // invoke the method using the provided messaging transport.
 //
-// The TD document must have an ID with a "urn:{agent}:" prefix
+// The TD document must be a digital twin received version
 func GenActionClient(l *utils.L, td *things.TD) {
 
 	for key, action := range td.Actions {
@@ -40,18 +40,20 @@ func GenActionMethod(l *utils.L, dtThingID string, key string, action *things.Ac
 		invokeResp = "&resp"
 	}
 	// Function declaration
+	l.Indent = 0
 	l.Add("")
 	l.Add("// %s client method - %s.", methodName, action.Title)
 	if len(action.Description) > 0 {
 		l.Add("// %s", action.Description)
 	}
 	l.Add("func %s(%s)(%s){", methodName, argsString, respString)
-
-	l.Add("    stat,err = mt(nil,\"%s\", \"%s\", %s, %s)", dtThingID, key, invokeArgs, invokeResp)
-	l.Add("    if stat.Error != \"\" {")
-	l.Add("    	err = errors.New(stat.Error)")
-	l.Add("    }")
-	l.Add("    return")
+	l.Indent++
+	l.Add("stat,err = mt(nil,\"%s\", \"%s\", %s, %s)", dtThingID, key, invokeArgs, invokeResp)
+	l.Add("if stat.Error != \"\" {")
+	l.Add("	err = errors.New(stat.Error)")
+	l.Add("}")
+	l.Add("return")
+	l.Indent--
 	l.Add("}")
 }
 

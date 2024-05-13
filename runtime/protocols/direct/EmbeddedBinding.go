@@ -37,7 +37,7 @@ func (svc *EmbeddedBinding) GetProtocolInfo() api.ProtocolInfo {
 // Embedded clients are guaranteed to receive the message.
 // This returns an error if the message cannot be delivered.
 func (svc *EmbeddedBinding) SendToClient(
-	clientID string, action *things.ThingMessage) (stat api.DeliveryStatus) {
+	clientID string, action *things.ThingMessage) (stat api.DeliveryStatus, found bool) {
 
 	handler, found := svc.handlers[clientID]
 	if found {
@@ -45,7 +45,7 @@ func (svc *EmbeddedBinding) SendToClient(
 	} else {
 		stat.Failed(action, fmt.Errorf("SendToClient: unknown client: %s", clientID))
 	}
-	return stat
+	return stat, found
 }
 
 // SendEvent publishes an event message to all subscribers of this protocol binding

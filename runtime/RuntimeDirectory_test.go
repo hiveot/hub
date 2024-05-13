@@ -17,7 +17,8 @@ func TestAddRemoveTD(t *testing.T) {
 
 	const agentID = "agent1"
 	const userID = "user1"
-	const thing1ID = "urn:agent1:thing1"
+	const agThing1ID = "thing1"
+	var dtThing1ID = things.MakeDigiTwinThingID(agentID, agThing1ID)
 
 	r := startRuntime()
 	defer r.Stop()
@@ -34,36 +35,34 @@ func TestAddRemoveTD(t *testing.T) {
 	})
 	defer cl.Disconnect()
 
-	td1 := createTD(thing1ID)
+	td1 := createTD(agThing1ID)
 	td1JSON, _ := json.Marshal(td1)
-	stat := ag.PubEvent(thing1ID, vocab.EventTypeTD, td1JSON)
+	stat := ag.PubEvent(agThing1ID, vocab.EventTypeTD, td1JSON)
 	assert.Equal(t, api.DeliveryCompleted, stat.Status)
 	assert.Empty(t, stat.Error)
 
 	// Get returns a serialized TD object
-	args := directory.ReadThingArgs{ThingID: thing1ID}
+	args := directory.ReadThingArgs{ThingID: dtThing1ID}
 	argsJSON, _ := json.Marshal(args)
 	stat = cl.PubAction(directory.ThingID, directory.ReadThingMethod, argsJSON)
-	//require.Empty(t, stat.Error) // no client handler error
+	require.Empty(t, stat.Error) // no client handler error
 	require.Equal(t, api.DeliveryCompleted, stat.Status)
 	td2 := things.TD{}
 	err := json.Unmarshal(stat.Reply, &td2)
 	require.NoError(t, err)
 
-	args2 := directory.RemoveThingArgs{ThingID: thing1ID}
+	args2 := directory.RemoveThingArgs{ThingID: dtThing1ID}
 	args2JSON, _ := json.Marshal(args2)
 	stat = cl.PubAction(directory.ThingID, directory.RemoveThingMethod, args2JSON)
-	//stat = cl.Rpc(nil, directory.ThingID, directory.RemoveThingMethod, &args,nil)
 	require.Empty(t, stat.Error)
 
-	// after removal, getTD should return nil
-	stat = cl.PubAction(thing1ID, directory.ReadThingMethod, nil)
-	require.Empty(t, stat.Error)
+	// TODO also use the client rpc method
+	//stat = cl.Rpc(nil, directory.ThingID, directory.RemoveThingMethod, &args,nil)
+
+	// after removal, getTD should return an error but delivery is successful
+	stat = cl.PubAction(directory.ThingID, directory.ReadThingMethod, args2JSON)
+	require.NotEmpty(t, stat.Error)
 	require.Equal(t, api.DeliveryCompleted, stat.Status)
-	//addr = fmt.Sprintf("/things/%s", thing1ID)
-	//td3, err := cl.Get(addr)
-	assert.Empty(t, stat.Reply)
-	assert.NotEmpty(t, stat.Error)
 }
 
 func TestReadThings(t *testing.T) {
@@ -71,7 +70,8 @@ func TestReadThings(t *testing.T) {
 
 	const agentID = "agent1"
 	const userID = "user1"
-	const thing1ID = "urn:agent1:thing1"
+	const agThing1ID = "thing1"
+	var dtThing1ID = things.MakeDigiTwinThingID(agentID, agThing1ID)
 
 	r := startRuntime()
 	defer r.Stop()
@@ -80,9 +80,9 @@ func TestReadThings(t *testing.T) {
 	cl, _ := addConnectClient(r, api.ClientTypeUser, userID)
 	defer cl.Disconnect()
 
-	td1 := createTD(thing1ID)
+	td1 := createTD(agThing1ID)
 	td1JSON, _ := json.Marshal(td1)
-	stat := ag.PubEvent(thing1ID, vocab.EventTypeTD, td1JSON)
+	stat := ag.PubEvent(agThing1ID, vocab.EventTypeTD, td1JSON)
 	assert.Empty(t, stat.Error)
 
 	// GetThings returns a serialized TD object
@@ -98,6 +98,6 @@ func TestReadThings(t *testing.T) {
 	td3 := things.TD{}
 	err = json.Unmarshal([]byte(resp.Output[0]), &td3)
 	require.NoError(t, err)
-	assert.Equal(t, thing1ID, td3.ID)
+	assert.Equal(t, dtThing1ID, td3.ID)
 
 }

@@ -141,7 +141,9 @@ func (svc *JWTAuthenticator) RefreshToken(clientID string, oldToken string, vali
 		err = fmt.Errorf("RefreshToken:Token client '%s' differs from client '%s'", tokenClientID, clientID)
 	}
 	if err != nil {
-		return "", fmt.Errorf("RefreshToken: invalid oldToken of client %s: %w", clientID, err)
+		err = fmt.Errorf("RefreshToken: invalid oldToken of client %s: %w", clientID, err)
+		slog.Warn(err.Error())
+		return "", err
 	}
 	token = svc.CreateSessionToken(clientID, sessionID, validitySec)
 	return token, err
@@ -150,7 +152,7 @@ func (svc *JWTAuthenticator) RefreshToken(clientID string, oldToken string, vali
 // ValidateToken the session token
 func (svc *JWTAuthenticator) ValidateToken(token string) (clientID string, sessionID string, err error) {
 	cid, sid, err := svc.DecodeSessionToken(token, "", "")
-	slog.Info("ValidateToken", slog.String("clientID", cid))
+	slog.Debug("ValidateToken", slog.String("clientID", cid))
 
 	return cid, sid, err
 }

@@ -114,7 +114,7 @@ func (svc *DigiTwinInbox) HandleActionFlow(msg *things.ThingMessage) (status api
 	msg.ThingID = thingID
 	actionRecord.DeliveryStatus.Status = api.DeliveryPending
 
-	stat := svc.pm.SendToClient(agentID, msg)
+	stat, _ := svc.pm.SendToClient(agentID, msg)
 	actionRecord.DeliveryStatus = stat
 
 	// Status updates from agents are sent as events and always asynchronously.
@@ -174,7 +174,7 @@ func (svc *DigiTwinInbox) NotifyStatus(messageID string) {
 // ReadLatest returns the latest value of each action of a thing
 func (svc *DigiTwinInbox) ReadLatest(args inbox.ReadLatestArgs) (inbox.ReadLatestResp, error) {
 	recs, err := svc.latest.ReadLatest(vocab.MessageTypeAction, args.ThingID, nil, "")
-	resp := inbox.ReadLatestResp{Values: recs}
+	resp := inbox.ReadLatestResp{ThingValues: recs}
 	return resp, err
 }
 

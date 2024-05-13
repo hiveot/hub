@@ -115,19 +115,20 @@ func TestAddRemoveTD(t *testing.T) {
 }
 
 func TestHandleTDEvent(t *testing.T) {
-	const senderID = "agent1"
-	const thing1ID = "agent1:thing1"
+	const agentID = "agent1"
+	const rawThing1ID = "thing1"
 	const title1 = "title1"
+	//var dtThing1ID = things.MakeDigiTwinThingID(agentID, rawThing1ID)
 
 	svc, mt, stopFunc := startDirectory(true)
 	//msgHandler := digitwinhandler.NewDigiTwinHandler(svc)
 	defer stopFunc()
 
 	// events should be handled
-	tdDoc1 := createTDDoc(thing1ID, title1)
+	tdDoc1 := createTDDoc(rawThing1ID, title1)
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
-	msg := things.NewThingMessage(vocab.MessageTypeEvent, thing1ID,
-		vocab.EventTypeTD, tdDoc1Json, senderID)
+	msg := things.NewThingMessage(vocab.MessageTypeEvent, rawThing1ID,
+		vocab.EventTypeTD, tdDoc1Json, agentID)
 	stat := svc.HandleTDEvent(msg)
 	assert.Empty(t, stat.Error)
 
@@ -162,16 +163,17 @@ func TestGetTDsFail(t *testing.T) {
 }
 
 func TestListTDs(t *testing.T) {
-	const senderID = "agent1"
-	const thing1ID = "agent1:thing1"
+	const agentID = "agent1"
+	const rawThing1ID = "thing1"
 	const title1 = "title1"
+	var dtThing1ID = things.MakeDigiTwinThingID(agentID, rawThing1ID)
 
 	svc, mt, stopFunc := startDirectory(true)
 	defer stopFunc()
 
-	tdDoc1 := createTDDoc(thing1ID, title1)
+	tdDoc1 := createTDDoc(dtThing1ID, title1)
 
-	err := svc.UpdateThing(senderID, thing1ID, tdDoc1)
+	err := svc.UpdateThing(agentID, dtThing1ID, tdDoc1)
 	require.NoError(t, err)
 
 	resp, stat, err := directory.ReadThings(mt, directory.ReadThingsArgs{Limit: 10})

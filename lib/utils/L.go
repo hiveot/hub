@@ -6,13 +6,21 @@ import (
 	"strings"
 )
 
+// simple indentation string
+const spaces = "                                                                                 "
+const indentSize = 4
+
 // L is a simple helper for building string lists
 type L struct {
-	Lines []string
+	Indent int
+	Lines  []string
 }
 
 func (l *L) Add(s string, args ...any) *L {
-	s2 := fmt.Sprintf(s, args...)
+	if l.Indent > 80/indentSize {
+		l.Indent = 80 / indentSize
+	}
+	s2 := spaces[:l.Indent*indentSize] + fmt.Sprintf(s, args...)
 	l.Lines = append(l.Lines, s2)
 	return l
 }

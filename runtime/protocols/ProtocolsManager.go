@@ -69,30 +69,34 @@ func (svc *ProtocolsManager) GetProtocols() []api.IProtocolBinding {
 // TODO: optimize to use the most efficient protocol
 // TODO: sending to multiple instances of the same client?
 func (svc *ProtocolsManager) SendToClient(
-	clientID string, msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	clientID string, msg *things.ThingMessage) (stat api.DeliveryStatus, found bool) {
 
 	// for now simply send the action request to all protocol handlers
 	for _, protoHandler := range svc.bindings {
-		stat = protoHandler.SendToClient(clientID, msg)
+		stat, found = protoHandler.SendToClient(clientID, msg)
 		// if delivery is not failed or pending then the remote client has received it
-		if stat.Status != api.DeliveryFailed &&
-			stat.Status != api.DeliveryPending &&
-			stat.Status != "" {
-			return stat
+		if found {
+			return stat, found
+			//} else if stat.Status != api.DeliveryFailed &&
+			//	stat.Status != api.DeliveryPending &&
+			//	stat.Status != "" {
+			//	return stat, found
 		}
 	}
 	stat.Failed(msg, fmt.Errorf("SendToClient: Destination '%s' not found", clientID))
-	return stat
+	return stat, false
 }
 
 // SendEvent sends a event to all subscribers
 func (svc *ProtocolsManager) SendEvent(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
 
+	// delivery fails if there are no subscribers. Does this matter?
 	stat.Status = api.DeliveryFailed
 	stat.Error = "Destination not found"
 
 	for _, protoHandler := range svc.bindings {
+		// FIXME: only send to subscribers in the PB's
 		stat2 := protoHandler.SendEvent(msg)
 		if stat2.Status == api.DeliveryDelivered {
 			stat.Status = api.DeliveryDelivered

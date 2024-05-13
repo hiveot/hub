@@ -11,7 +11,8 @@ import (
 // * ToTitle turns words in a string into a valid title case
 // * GetSchemaType converts a dataschema type into a golang type
 
-// GetSchemaType returns the golang type of a dataschema type
+// GetSchemaType returns the golang type of a dataschema type,
+// or the non-standard type if this not a WoT type.
 func GetSchemaType(ds *things.DataSchema) string {
 	switch ds.Type {
 	case vocab.WoTDataTypeAnyURI:
@@ -38,9 +39,10 @@ func GetSchemaType(ds *things.DataSchema) string {
 	case vocab.WoTDataTypeUnsignedInt:
 		return "uint64"
 	case vocab.WoTDataTypeObject:
-		return "interface{}"
+		//return "interface{}"
+		return "map[string]interface{}"
 	default:
-		return "string"
+		return ds.Type
 	}
 }
 

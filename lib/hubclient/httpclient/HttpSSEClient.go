@@ -180,25 +180,26 @@ func (cl *HttpSSEClient) GetTlsClient() *tlsclient.TLSClient {
 // This is passed on to the client, which must provide a delivery applied, completed or error status.
 // This sends the delivery  status to the hub using a delivery event.
 func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
-	slog.Info("received SSE msg")
 	var stat api.DeliveryStatus
 	var rxMsg things.ThingMessage
 
-	slog.Info("startSSEListener. Received message",
-		//slog.String("Comment", string(event.Comment)),
-		slog.String("LastEventID", string(event.LastEventID)),
-		slog.String("event", string(event.Data)),
-		slog.String("type", string(event.Type)),
-		slog.Int("size", len(event.Data)),
-	)
 	rxMsg = things.ThingMessage{}
 	err := json.Unmarshal([]byte(event.Data), &rxMsg)
 	if err != nil {
-		slog.Error("ConnectSSE - subscribe; Received non-ThingMessage sse event. Ignored",
+		slog.Error("handleSSEEvent; Received non-ThingMessage sse event. Ignored",
 			"eventType", event.Type,
 			"LastEventID", event.LastEventID)
 		return
 	}
+
+	slog.Info("handleSSEEvent. Received message",
+		//slog.String("Comment", string(event.Comment)),
+		slog.String("me", cl.clientID),
+		slog.String("messageType", rxMsg.MessageType),
+		slog.String("thingID", rxMsg.ThingID),
+		slog.String("key", rxMsg.Key),
+		slog.String("senderID", rxMsg.SenderID),
+	)
 
 	// if no message handler is set then this obviously fails
 	if cl._messageHandler == nil {
@@ -217,7 +218,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 // PubAction publishes an action message and waits for an answer or until timeout
 // In order to receive replies, an inbox subscription is added on the first request.
 func (cl *HttpSSEClient) PubAction(thingID string, key string, payload []byte) (stat api.DeliveryStatus) {
-	slog.Debug("PubEvent",
+	slog.Info("PubAction",
 		slog.String("thingID", thingID), slog.String("key", key))
 	vars := map[string]string{"thingID": thingID, "key": key}
 	eventPath := utils.Substitute(vocab.PostActionPath, vars)
@@ -234,8 +235,11 @@ func (cl *HttpSSEClient) PubAction(thingID string, key string, payload []byte) (
 
 // PubEvent publishes a message and returns
 func (cl *HttpSSEClient) PubEvent(thingID string, key string, payload []byte) (stat api.DeliveryStatus) {
-	slog.Debug("PubEvent",
-		slog.String("thingID", thingID), slog.String("key", key))
+	slog.Info("PubEvent",
+		slog.String("me", cl.clientID),
+		slog.String("device thingID", thingID),
+		slog.String("key", key),
+	)
 	vars := map[string]string{"thingID": thingID, "key": key}
 	eventPath := utils.Substitute(vocab.PostEventPath, vars)
 	resp, err := cl.tlsClient.Post(eventPath, payload)

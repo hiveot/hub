@@ -108,7 +108,7 @@ type IProtocolBinding interface {
 	// This returns a delivery status, and a reply if delivery is completed.
 	// If delivery is not completed then a status update will be returned asynchronously
 	// through a 'EventTypeDelivery' event.
-	SendToClient(clientID string, msg *things.ThingMessage) DeliveryStatus
+	SendToClient(clientID string, msg *things.ThingMessage) (stat DeliveryStatus, found bool)
 
 	// SendEvent publishes an event message to all subscribers of this protocol binding
 	SendEvent(event *things.ThingMessage) DeliveryStatus

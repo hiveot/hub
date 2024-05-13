@@ -97,10 +97,11 @@ func (svc *HttpsBinding) createRoutes(router *chi.Mux) http.Handler {
 		//svc.dtDirectoryHandler.RegisterMethods(r)
 		//svc.dtValuesHandler.RegisterMethods(r)
 		//svc.dtHistoryHandler.RegisterMethods(r)
+		r.Get(vocab.GetEventsPath, svc.HandleGetEvents)
+		r.Get(vocab.GetThingsPath, svc.HandleGetThings)
 
-		// sse has its own validation instead of using session context (which reconnects or redirects to /login)
+		// sse return channels
 		svc.sseHandler.RegisterMethods(r)
-		//r.Get(vocab.ConnectSSEPath, svc.handleSseConnect)
 		//r.Get(vocab.ConnectWSPath, svc.handleWSConnect)
 	})
 
@@ -284,7 +285,7 @@ func (svc *HttpsBinding) SendEvent(msg *things.ThingMessage) (stat api.DeliveryS
 
 // SendToClient sends a message to a connected agent or consumer.
 func (svc *HttpsBinding) SendToClient(
-	clientID string, msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	clientID string, msg *things.ThingMessage) (stat api.DeliveryStatus, found bool) {
 
 	stat.MessageID = msg.MessageID
 	sm := sessions.GetSessionManager()
@@ -294,16 +295,18 @@ func (svc *HttpsBinding) SendToClient(
 		count := cs.SendSSE(msg.MessageType, string(payload))
 		if count == 0 {
 			err = fmt.Errorf("client '%s' is not reachable", clientID)
+			found = false
 		} else {
 			// completion status is send asynchroneously by the agent
 			stat.Status = api.DeliveryDelivered
+			found = true
 		}
 	}
 	if err != nil {
 		stat.Error = err.Error()
 		stat.Status = api.DeliveryFailed
 	}
-	return stat
+	return stat, found
 }
 
 // Start the https server and listen for incoming connection requests

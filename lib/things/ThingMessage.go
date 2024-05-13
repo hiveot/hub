@@ -24,6 +24,8 @@ type ThingMessage struct {
 	SenderID string `json:"senderID"`
 
 	// ThingID of the thing this value applies to.
+	// For messages from/to agents this is the agent ThingID
+	// For messages to/from consumers this is the digitwin ThingID
 	// This is required.
 	ThingID string `json:"thingID"`
 

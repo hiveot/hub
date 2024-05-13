@@ -10,7 +10,7 @@ import (
 //
 //	dtThingID is the digital twin's thingID that contains the agent's ID
 func SplitDigiTwinThingID(dtThingID string) (agentID string, thingID string, found bool) {
-	// "ht:agentID:" was prepended to the original thingID
+	// "dtw:agentID:" was prepended to the original thingID
 	parts := strings.Split(dtThingID, ":")
 	if len(parts) < 3 {
 		return "", dtThingID, false
@@ -20,10 +20,9 @@ func SplitDigiTwinThingID(dtThingID string) (agentID string, thingID string, fou
 	return agentID, thingID, true
 }
 
-// MakeDigiTwinThingID returns the thingID that represents the virtual Thing
-// This is constructed  as: "ht:{agentID}:{thingID}"
+// MakeDigiTwinThingID returns the thingID that represents the digital twin Thing
+// This is constructed  as: "dtw:{agentID}:{thingID}"
 func MakeDigiTwinThingID(agentID string, thingID string) string {
-	// "urn:agentID:" was prepended to the original thingID
-	dtThingID := fmt.Sprintf("ht:%s:%s", agentID, thingID)
+	dtThingID := fmt.Sprintf("dtw:%s:%s", agentID, thingID)
 	return dtThingID
 }

@@ -28,15 +28,22 @@ type DigitwinDirectory struct {
 
 	// tdCache holds an in-memory cache version of stored TDs
 	tdCache map[string]*things.TD
-	// list of thingIDs used as a consistent iterator for reading batches
+	// list of DTW thingIDs used as a consistent iterator for reading batches
 	thingKeys []string
 	// mutex for accessing the cache
 	cachemux sync.RWMutex
 }
 
 // HandleTDEvent updates a TD when receiving a TD event, sent by agents.
+// Note that the TD is that as provided by the agent. The directory converts it to the
+// digital twin format.
+// TODO: Update the forms to match current protocols.
 func (svc *DigitwinDirectory) HandleTDEvent(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
+
+	// events use 'agent' thingIDs, only known to agents.
+	// Digitwin adds the "dtw:{agentID}:" prefix, as the event now belongs to the virtual digital twin.
+	dtThingID := things.MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
 
 	stat.MessageID = msg.MessageID
 	stat.Status = api.DeliveryFailed
@@ -44,11 +51,13 @@ func (svc *DigitwinDirectory) HandleTDEvent(
 	err := json.Unmarshal(msg.Data, &td)
 	if err == nil {
 		stat.Status = api.DeliveryCompleted
-		err = svc.UpdateThing(msg.SenderID, msg.ThingID, &td)
+		td.ID = dtThingID
+		err = svc.UpdateThing(msg.SenderID, dtThingID, &td)
 	}
 	if err != nil {
 		stat.Error = fmt.Sprintf(
-			"StoreEvent. Failed updating TD of Thing '%s': %s", msg.ThingID, err.Error())
+			"StoreEvent. Failed updating TD of Agent/Thing '%s/%s': %s",
+			msg.SenderID, msg.ThingID, err.Error())
 		stat.Status = api.DeliveryFailed
 		slog.Error(stat.Error)
 	}
@@ -151,7 +160,7 @@ func (svc *DigitwinDirectory) RemoveThing(args directory.RemoveThingArgs) error 
 	svc.cachemux.Lock()
 	defer svc.cachemux.Unlock()
 	delete(svc.tdCache, args.ThingID)
-	// fast delete from the index array
+	// delete from the index array. A bit primitive but it works
 	for i, key := range svc.thingKeys {
 		if key == args.ThingID {
 			svc.thingKeys[i] = svc.thingKeys[len(svc.thingKeys)-1]
@@ -183,25 +192,25 @@ func (svc *DigitwinDirectory) Stop() {
 
 // UpdateThing adds or updates the Thing Description document
 // Added things are written to the store.
-func (svc *DigitwinDirectory) UpdateThing(senderID string, thingID string, tdd *things.TD) error {
+func (svc *DigitwinDirectory) UpdateThing(senderID string, dtThingID string, tdd *things.TD) error {
 	slog.Info("UpdateThing",
 		slog.String("senderID", senderID),
-		slog.String("thingID", thingID))
+		slog.String("dtThingID", dtThingID))
 
 	// TODO: update the forms to point to the Hub instead of the device
 	svc.cachemux.Lock()
 	defer svc.cachemux.Unlock()
-	_, exists := svc.tdCache[thingID]
+	_, exists := svc.tdCache[dtThingID]
 	// append the key if it doesn't yet exist
 	if !exists {
-		svc.thingKeys = append(svc.thingKeys, thingID)
+		svc.thingKeys = append(svc.thingKeys, dtThingID)
 	}
 	// track the publisher
-	svc.tdCache[thingID] = tdd
+	svc.tdCache[dtThingID] = tdd
 
 	// serialize to persist
 	updatedTDD, _ := json.Marshal(tdd)
-	err := svc.tdBucket.Set(thingID, updatedTDD)
+	err := svc.tdBucket.Set(dtThingID, updatedTDD)
 	return err
 }
 

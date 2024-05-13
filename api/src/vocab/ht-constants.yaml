@@ -40,7 +40,6 @@ DigiTwinRestPaths:
     #  eg: /things/{id}/events/key1?since=... for historical values for key1
 
     #--- general REST interface
-
     # SSE connection path
     ConnectSSEPath:   "/sse"
     # SSE connection path (tbd)
@@ -51,23 +50,23 @@ DigiTwinRestPaths:
     PostLogoutPath:   "/authn/logout"
     PostRefreshPath:  "/authn/refresh"
 
-    #--- Directory service paths
-#    GetThingsPath:      "/things"
+    #--- Directory service paths - experimental http api
+    GetThingsPath:      "/things"
 #    GetThingPath:       "/things/{thingID}"
 #    DeleteThingPath:    "/things/{thingID}"
 #    PostThingPath:      "/things/{thingID}"
 
-    #--- Value service paths ----
+    #--- Value service paths - experimental http api ----
     # Read actions/events/property values of a thing.
     # Optional query params "&since=ISOTime"
 #    GetActionsPath:       "/things/{thingID}/actions"
-#    GetEventsPath:        "/things/{thingID}/events"
+    GetEventsPath:        "/things/{thingID}/events"
 #    GetPropertiesPath:    "/things/{thingID}/properties"
     PostEventPath:        "/things/{thingID}/event/{key}"
     PostActionPath:       "/things/{thingID}/action/{key}"
 #    PostPropertiesPath:   "/things/{thingID}/properties"
 
-    #--- Digital twin history service paths ----
+    #--- Digital twin history service paths - experimental ----
 #    GetActionHistoryPath:      "/history/{thingID}/action/{key}"
 #    GetEventHistoryPath:       "/history/{thingID}/event/{key}"
 

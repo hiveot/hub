@@ -146,7 +146,10 @@ func (cs *ClientSession) SendSSE(eventType string, payload string) int {
 	count := 0
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
-	slog.Info("sending sse event", "eventType", eventType, "nr clients", len(cs.sseClients))
+	slog.Info("hub sending message to client over sse:",
+		slog.String("destination clientID", cs.clientID),
+		slog.String("eventType", eventType),
+		slog.Int("nr connections", len(cs.sseClients)))
 	cs.sequenceNr++
 	eventID := fmt.Sprintf("%d", cs.sequenceNr)
 	for _, c := range cs.sseClients {

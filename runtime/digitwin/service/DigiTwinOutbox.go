@@ -1,16 +1,17 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/outbox"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/protocols"
 )
 
-const OutboxBucketName = "outbox"
+const OutboxBucketName = "eventHistory"
+const LatestEventsBucketName = "latestEvents"
 
 // DigiTwinOutbox is the digital twin outbox for sending events to subscribers.
 //
@@ -20,25 +21,33 @@ const OutboxBucketName = "outbox"
 //
 // These respond with a delivery status update
 type DigiTwinOutbox struct {
-	pm     *protocols.ProtocolsManager
+	pm     api.IProtocolBinding
 	bucket buckets.IBucket
 	latest *DigiTwinLatestStore
 }
 
-// HandleEvent adds an event to the inbox
+// HandleEvent adds an event to the outbox
 func (svc *DigiTwinOutbox) HandleEvent(msg *things.ThingMessage) (stat api.DeliveryStatus) {
-	// change the thingID to that of the digitwin
+	// events use 'raw' thingIDs, only known to agents.
+	// Digitwin adds the "ht:{agentID}:" prefix, as the event now belongs to the virtual digital twin.
+	// Same procedure at the DigiTwinDirectory
 	dtThingID := things.MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
 	msg.ThingID = dtThingID
 
 	// store for reading the last received events
 	svc.latest.StoreMessage(msg)
 
+	// TODO: prevent a double marshal?
+	msgJSON, _ := json.Marshal(msg)
+	err := svc.bucket.Set(msg.MessageID, msgJSON)
+	stat.Completed(msg, err)
+
 	// keep the history
 	//svc.history.AddMessage(msg)
 
 	// send the event to subscribers
-	stat = svc.pm.SendEvent(msg)
+	// Ignore the delivery result as the event is stored successfully
+	_ = svc.pm.SendEvent(msg)
 	return stat
 }
 
@@ -65,11 +74,15 @@ func (svc *DigiTwinOutbox) Start() error {
 func (svc *DigiTwinOutbox) Stop() {
 }
 
-// NewDigiTwinOutbox returns a new instance of the outnbox using the given storage bucket
-func NewDigiTwinOutbox(bucketStore buckets.IBucketStore) *DigiTwinOutbox {
-	bucket := bucketStore.GetBucket(OutboxBucketName)
+// NewDigiTwinOutbox returns a new instance of the outbox using the given storage bucket
+func NewDigiTwinOutbox(bucketStore buckets.IBucketStore, pm api.IProtocolBinding) *DigiTwinOutbox {
+	eventsBucket := bucketStore.GetBucket(OutboxBucketName)
+	latestBucket := bucketStore.GetBucket(LatestEventsBucketName)
+	latestStore := NewDigiTwinLatestStore(latestBucket)
 	outbox := &DigiTwinOutbox{
-		bucket: bucket,
+		latest: latestStore,
+		bucket: eventsBucket,
+		pm:     pm,
 	}
 	return outbox
 }

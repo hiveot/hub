@@ -3,7 +3,7 @@
 		{"ht": "https://www.hiveot.net/vocab/v0.1"}
 	],
 	"@type": "Service",
-	"id": "urn:digitwin:inbox",
+	"id": "dtw:digitwin:inbox",
 	"title": "DigiTwin Inbox",
 	"description": "HiveOT digital twin inbox action storage",
 	"version": {
@@ -66,15 +66,15 @@
 				}
 			},
 			"output": {
-				"type": "object",
 				"title": "Values",
-				"description": "map of key:ThingValue objects",
-				"comment": "this returns a map of key:ThingValue objects. Too much work to describe here in detail",
+				"description": "map of key:ThingMessage objects",
+				"comment": "this returns a map of key:ThingMessage objects. Too complicated to describe here in detail",
+				"type": "object",
 				"properties": {
-					"Values": {
+					"thingValues": {
 						"title": "Value map",
 						"description": "map of key:ThingValue objects",
-						"type": "object"
+						"type": "things.ThingMessageMap"
 					}
 				}
 			},

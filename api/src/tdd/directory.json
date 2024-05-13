@@ -3,7 +3,7 @@
 		{"ht": "https://www.hiveot.net/vocab/v0.1"}
 	],
 	"@type": "Service",
-	"id": "urn:digitwin:directory",
+	"id": "dtw:digitwin:directory",
 	"title": "DigiTwin Directory Service",
 	"description": "HiveOT digital twin directory service",
 	"version": {
@@ -65,7 +65,7 @@
 				"properties": {
 					"thingID": {
 						"title": "Thing ID",
-						"description": "ID of the Thing to read",
+						"description": "Digital Twin Thing ID of the Thing to read",
 						"type": "string"
 					}
 				}
@@ -122,7 +122,7 @@
 		"removeThing": {
 			"@type": "ht:function",
 			"title": "Remove Thing",
-			"description": "Remove a Thing from the directory and value stores",
+			"description": "Remove a Thing from the digital twin directory and value stores",
 			"safe": false,
 			"idempotent": true,
 			"input": {
@@ -130,7 +130,7 @@
 				"properties": {
 					"thingID": {
 						"title": "thingID",
-						"description": "ID of the Thing to remove",
+						"description": "Digital Twin ThingID of the Thing to remove",
 						"type": "string"
 					}
 				}

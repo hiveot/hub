@@ -88,7 +88,7 @@ func (svc *DigitwinService) Stop() {
 func NewDigitwinService(pm api.IProtocolBinding, store buckets.IBucketStore) *DigitwinService {
 	svc := &DigitwinService{
 		Inbox:     NewDigiTwinInbox(store, pm),
-		Outbox:    NewDigiTwinOutbox(store),
+		Outbox:    NewDigiTwinOutbox(store, pm),
 		Directory: NewDigitwinDirectory(store),
 		pm:        pm,
 		mux:       sync.RWMutex{},
