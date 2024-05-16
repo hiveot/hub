@@ -1,7 +1,7 @@
 package owserver_test
 
 import (
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
 	"github.com/hiveot/hub/core/auth/authapi"
@@ -85,9 +85,9 @@ func TestPoll(t *testing.T) {
 	// Count the number of received TD events
 	err = hc.SubEvents("", "", "")
 	require.NoError(t, err)
-	hc.SetEventHandler(func(ev *things.ThingValue) {
+	hc.SetEventHandler(func(ev *things.ThingMessage) {
 		slog.Info("received event", "id", ev.Name)
-		if ev.Name == transports.EventNameProps {
+		if ev.Name == transports.EventTypeProps {
 			var value map[string]interface{}
 			err2 := ser.Unmarshal(ev.Data, &value)
 			assert.NoError(t, err2)

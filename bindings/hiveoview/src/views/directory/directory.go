@@ -25,7 +25,7 @@ type DirectoryData struct {
 
 // Sort the given list of things and group them by publishing agent
 // this returns a map of groups each containing an array of thing values
-func sortByPublisher(tvList []things.ThingValue) *DirectoryData {
+func sortByPublisher(tvList []things.ThingMessage) *DirectoryData {
 	dirData := &DirectoryData{
 		Groups: make(map[string]*DirGroup),
 	}

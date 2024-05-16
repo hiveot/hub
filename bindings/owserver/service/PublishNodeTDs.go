@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	thing "github.com/hiveot/hub/lib/things"
 )
@@ -59,7 +59,7 @@ var ActuatorTypeVocab = map[string]struct {
 }{
 	// "BarometricPressureHg": vocab.PropNameAtmosphericPressure, // unit Hg
 	"ClearAlarms": {Title: "Clear Alarms"},
-	"Relay":       {VocabType: vocab.ActionSwitchOff, Title: "Relay", DataType: vocab.WoTDataTypeBool},
+	"Relay":       {VocabType: vocab.ActionSwitchOff, Title: "Relay", DataType: vocab.vocab.WoTDataTypeBool},
 }
 
 // PropAttrVocab defines known property/configuration attributes

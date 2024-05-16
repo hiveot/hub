@@ -105,7 +105,7 @@ Services have their own namespace:
 	* ht:service:history - history service offering stored messages
 ```
 
-For the full list of Thing classes, see [ht-thing-classes.yaml](../api/vocab/ht-thing-classes.yaml). Note that this list is an initial attempt for a core classification of IoT devices and services. When a more suited standard is found, it might replace this one. For this reason the vocabulary definitions are imported at runtime and mapped from their keys. See the section on vocabulary maps below.
+For the full list of Thing classes, see [ht-thing-classes.yaml](../api/src/vocab/ht-thing-classes.yaml). Note that this list is an initial attempt for a core classification of IoT devices and services. When a more suited standard is found, it might replace this one. For this reason the vocabulary definitions are imported at runtime and mapped from their keys. See the section on vocabulary maps below.
 
 As there are many many types of sensors and actuators, it is not the intention here to include all of them here. Instead, most specializations can be detailed through title, description and by defining device functions through events and actions. The HiveOT classification should be seen as a broad classification that makes it easy to recognize the intended purpose of the device to humans. Depth can be extended with specialization.
 
@@ -403,7 +403,7 @@ HiveOT compliant Things or agents do not implement TCP/Web servers. All interact
 Hub services that implement a REST API follows the approach as described in Mozilla's Web Thing REST API](https://iot.mozilla.org/wot/#web-thing-rest-api).
 
 ```http
-GET https://address:port/things/{agentID}/{thingID}[/...]
+GET https://address:port/things/{thingID}[/...]
 ```
 
 The WoT examples often assume or suggest that Things are directly accessed, which is not allowed in HiveOT. Therefore, the implementation of this API in HiveOT MUST adhere to the following rules:

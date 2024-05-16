@@ -3,7 +3,7 @@ package app
 import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views"
-	"github.com/hiveot/hub/lib/hubclient/transports"
+	"github.com/hiveot/hub/lib/hubclient"
 	"net/http"
 )
 
@@ -40,14 +40,14 @@ func GetConnectStatus(r *http.Request) *ConnectStatus {
 		if cStat.LastError != nil {
 			status.Error = cStat.LastError.Error()
 		}
-		if cStat.ConnectionStatus == transports.Connected {
+		if cStat.ConnectionStatus == hubclient.Connected {
 			status.IconName = "link"
 			status.Description = "Connected to the Hub"
 			status.IsConnected = true
-		} else if cStat.ConnectionStatus == transports.ConnectFailed {
+		} else if cStat.ConnectionStatus == hubclient.ConnectFailed {
 			status.IconName = "link-off"
 			status.Description = "Connection failed"
-		} else if cStat.ConnectionStatus == transports.Connecting {
+		} else if cStat.ConnectionStatus == hubclient.Connecting {
 			status.IconName = "leak-off"
 			status.Description = "Reconnecting"
 		} else {

@@ -3,8 +3,8 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/hiveot/hub/api/go/inbox"
+	"github.com/hiveot/hub/api/go/outbox"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/things"
@@ -47,15 +47,16 @@ type DigiTwinInbox struct {
 	// latest actions store for reading the last received actions
 	latest *DigiTwinLatestStore
 	// protocol manager to send updates to clients
-	pm api.IProtocolBinding
+	pm api.ITransportBinding
 }
 
 // AddAction adds a new action to the inbox
 func (svc *DigiTwinInbox) AddAction(msg *things.ThingMessage) (InboxRecord, error) {
 	record := InboxRecord{
+		// store a copy of the message
 		Request: *msg,
 		DeliveryStatus: api.DeliveryStatus{
-			MessageID: uuid.NewString(),
+			MessageID: msg.MessageID,
 			Status:    api.DeliveryPending,
 			Reply:     nil,
 		},
@@ -63,7 +64,6 @@ func (svc *DigiTwinInbox) AddAction(msg *things.ThingMessage) (InboxRecord, erro
 		DeliveredMSec: 0,
 		UpdatedMSec:   0,
 	}
-	msg.MessageID = record.DeliveryStatus.MessageID
 	recordJSON, _ := json.Marshal(record)
 	err := svc.actionRecords.Set(record.DeliveryStatus.MessageID, recordJSON)
 	return record, err
@@ -155,7 +155,7 @@ func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) api.Del
 	if err == nil {
 		// update the action delivery status
 		err = svc.SetStatus(newStatus)
-		// notify the sender of the delivery update
+		// notify the action sender of the delivery update
 		msg2 := *msg
 		svc.pm.SendToClient(inboxRecord.Request.SenderID, &msg2)
 	}
@@ -176,6 +176,12 @@ func (svc *DigiTwinInbox) ReadLatest(args inbox.ReadLatestArgs) (inbox.ReadLates
 	recs, err := svc.latest.ReadLatest(vocab.MessageTypeAction, args.ThingID, nil, "")
 	resp := inbox.ReadLatestResp{ThingValues: recs}
 	return resp, err
+}
+
+// RemoveValue Remove Thing action value
+// Intended to remove outliers
+func (svc *DigiTwinInbox) RemoveValue(args outbox.RemoveValueArgs) error {
+	return fmt.Errorf("not yet implemented")
 }
 
 // SetStatus updates the delivery status of a request
@@ -200,7 +206,7 @@ func (svc *DigiTwinInbox) Stop() {
 
 // NewDigiTwinInbox returns a new instance of the inbox service using the given storage bucket
 // pm is the protocolbinding api for sending clients delivery status messages
-func NewDigiTwinInbox(bucketStore buckets.IBucketStore, pm api.IProtocolBinding) *DigiTwinInbox {
+func NewDigiTwinInbox(bucketStore buckets.IBucketStore, pm api.ITransportBinding) *DigiTwinInbox {
 	actionsBucket := bucketStore.GetBucket(ActionRecordsBucketName)
 	latestBucket := bucketStore.GetBucket(LatestActionsBucketName)
 	latestStore := NewDigiTwinLatestStore(latestBucket)

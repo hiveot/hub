@@ -25,8 +25,8 @@ func GenActionClient(l *utils.L, td *things.TD) {
 //	key with the service action method.
 //	action affordance describing the input and output parameters
 func GenActionMethod(l *utils.L, dtThingID string, key string, action *things.ActionAffordance) {
-	argsString := "mt api.IMessageTransport"
-	respString := "stat api.DeliveryStatus, err error"
+	argsString := "hc hubclient.IHubClient"
+	respString := "err error"
 	invokeArgs := "nil"
 	invokeResp := "nil"
 
@@ -35,6 +35,7 @@ func GenActionMethod(l *utils.L, dtThingID string, key string, action *things.Ac
 		argsString = fmt.Sprintf("%s, args %sArgs", argsString, methodName)
 		invokeArgs = "&args"
 	}
+	// add a response struct to arguments
 	if action.Output != nil {
 		respString = fmt.Sprintf("resp %sResp, %s", methodName, respString)
 		invokeResp = "&resp"
@@ -48,10 +49,7 @@ func GenActionMethod(l *utils.L, dtThingID string, key string, action *things.Ac
 	}
 	l.Add("func %s(%s)(%s){", methodName, argsString, respString)
 	l.Indent++
-	l.Add("stat,err = mt(nil,\"%s\", \"%s\", %s, %s)", dtThingID, key, invokeArgs, invokeResp)
-	l.Add("if stat.Error != \"\" {")
-	l.Add("	err = errors.New(stat.Error)")
-	l.Add("}")
+	l.Add("err = hc.Rpc(\"%s\", \"%s\", %s, %s)", dtThingID, key, invokeArgs, invokeResp)
 	l.Add("return")
 	l.Indent--
 	l.Add("}")

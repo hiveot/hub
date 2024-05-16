@@ -13,9 +13,9 @@ type AuthnAdminClient struct {
 
 // AddClient adds a new client
 func (svc *AuthnAdminClient) AddClient(
-	clientType api.ClientType,
-	clientID string, displayName string,
+	clientType api.ClientType, clientID string, displayName string,
 	pubKey string, password string) (err error) {
+
 	args := api.AddClientArgs{
 		ClientType:  clientType,
 		ClientID:    clientID,
@@ -23,8 +23,7 @@ func (svc *AuthnAdminClient) AddClient(
 		PubKey:      pubKey,
 		Password:    password,
 	}
-	stat, err := svc.hc.Rpc(nil, api.AuthnAdminThingID, api.AddClientMethod, &args, nil)
-	_ = stat
+	err = svc.hc.Rpc(api.AuthnAdminThingID, api.AddClientMethod, &args, nil)
 	return err
 }
 
@@ -32,16 +31,14 @@ func (svc *AuthnAdminClient) AddClient(
 func (svc *AuthnAdminClient) GetClientProfile(clientID string) (api.ClientProfile, error) {
 	args := api.GetClientProfileArgs{ClientID: clientID}
 	resp := api.GetProfileResp{}
-	stat, err := svc.hc.Rpc(nil, api.AuthnAdminThingID, api.GetClientProfileMethod, &args, &resp)
-	_ = stat
+	err := svc.hc.Rpc(api.AuthnAdminThingID, api.GetClientProfileMethod, &args, &resp)
 	return resp.Profile, err
 }
 
 // GetProfiles request the list of known client profiles
 func (svc *AuthnAdminClient) GetProfiles() ([]api.ClientProfile, error) {
 	resp := api.GetProfilesResp{}
-	stat, err := svc.hc.Rpc(nil, api.AuthnAdminThingID, api.GetProfilesMethod, nil, &resp)
-	_ = stat
+	err := svc.hc.Rpc(api.AuthnAdminThingID, api.GetProfilesMethod, nil, &resp)
 	return resp.Profiles, err
 }
 
@@ -50,24 +47,21 @@ func (svc *AuthnAdminClient) GetProfiles() ([]api.ClientProfile, error) {
 // Existing login tokens remain valid until they expire
 func (svc *AuthnAdminClient) RemoveClient(clientID string) error {
 	args := api.RemoveClientArgs{ClientID: clientID}
-	stat, err := svc.hc.Rpc(nil, api.AuthnAdminThingID, api.RemoveClientMethod, &args, nil)
-	_ = stat
+	err := svc.hc.Rpc(api.AuthnAdminThingID, api.RemoveClientMethod, &args, nil)
 	return err
 }
 
 // UpdateClientProfile request update of a client's profile
 func (svc *AuthnAdminClient) UpdateClientProfile(profile api.ClientProfile) error {
 	args := api.UpdateClientProfileArgs{Profile: profile}
-	stat, err := svc.hc.Rpc(nil, api.AuthnAdminThingID, api.UpdateClientProfileMethod, &args, nil)
-	_ = stat
+	err := svc.hc.Rpc(api.AuthnAdminThingID, api.UpdateClientProfileMethod, &args, nil)
 	return err
 }
 
 // UpdateClientPassword request update of a client's password
 func (svc *AuthnAdminClient) UpdateClientPassword(clientID string, password string) error {
 	args := api.UpdateClientPasswordArgs{ClientID: clientID, Password: password}
-	stat, err := svc.hc.Rpc(nil, api.AuthnAdminThingID, api.UpdateClientPasswordMethod, &args, nil)
-	_ = stat
+	err := svc.hc.Rpc(api.AuthnAdminThingID, api.UpdateClientPasswordMethod, &args, nil)
 	return err
 }
 

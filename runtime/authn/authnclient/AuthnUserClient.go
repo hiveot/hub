@@ -16,8 +16,7 @@ type AuthnUserClient struct {
 
 func (svc *AuthnUserClient) GetProfile() (api.ClientProfile, error) {
 	resp := api.GetProfileResp{}
-	stat, err := svc.hc.Rpc(nil, api.AuthnUserThingID, api.GetProfileMethod, nil, &resp)
-	_ = stat
+	err := svc.hc.Rpc(api.AuthnUserThingID, api.GetProfileMethod, nil, &resp)
 	return resp.Profile, err
 }
 
@@ -25,8 +24,7 @@ func (svc *AuthnUserClient) GetProfile() (api.ClientProfile, error) {
 func (svc *AuthnUserClient) Login(clientID string, password string) (token string, err error) {
 	req := api.LoginArgs{ClientID: clientID, Password: password}
 	resp := api.LoginResp{}
-	stat, err := svc.hc.Rpc(nil, api.AuthnUserThingID, api.LoginMethod, req, &resp)
-	_ = stat
+	err = svc.hc.Rpc(api.AuthnUserThingID, api.LoginMethod, req, &resp)
 	return resp.Token, err
 }
 
@@ -34,16 +32,14 @@ func (svc *AuthnUserClient) Login(clientID string, password string) (token strin
 func (svc *AuthnUserClient) RefreshToken(oldToken string) (newToken string, err error) {
 	req := api.RefreshTokenArgs{OldToken: oldToken}
 	resp := api.RefreshTokenResp{}
-	stat, err := svc.hc.Rpc(nil, api.AuthnUserThingID, api.RefreshTokenMethod, req, &resp)
-	_ = stat
+	err = svc.hc.Rpc(api.AuthnUserThingID, api.RefreshTokenMethod, req, &resp)
 	return resp.Token, err
 }
 
 // UpdateName change the client profile name
 func (svc *AuthnUserClient) UpdateName(newName string) error {
 	req := api.UpdateNameArgs{NewName: newName}
-	stat, err := svc.hc.Rpc(nil, api.AuthnUserThingID, api.UpdateNameMethod, req, nil)
-	_ = stat
+	err := svc.hc.Rpc(api.AuthnUserThingID, api.UpdateNameMethod, req, nil)
 	return err
 }
 
@@ -51,8 +47,7 @@ func (svc *AuthnUserClient) UpdateName(newName string) error {
 // FIXME: encrypt use a password hash based on server nonce
 func (svc *AuthnUserClient) UpdatePassword(password string) error {
 	req := api.UpdatePasswordArgs{NewPassword: password}
-	stat, err := svc.hc.Rpc(nil, api.AuthnUserThingID, api.UpdatePasswordMethod, req, nil)
-	_ = stat
+	err := svc.hc.Rpc(api.AuthnUserThingID, api.UpdatePasswordMethod, req, nil)
 	return err
 }
 
@@ -60,8 +55,7 @@ func (svc *AuthnUserClient) UpdatePassword(password string) error {
 // Public keys are used in token generation and verification during login.
 func (svc *AuthnUserClient) UpdatePubKey(clientID string, pubKeyPem string) error {
 	req := api.UpdatePubKeyArgs{PubKeyPem: pubKeyPem}
-	stat, err := svc.hc.Rpc(nil, api.AuthnUserThingID, api.UpdatePubKeyMethod, req, nil)
-	_ = stat
+	err := svc.hc.Rpc(api.AuthnUserThingID, api.UpdatePubKeyMethod, req, nil)
 	return err
 }
 

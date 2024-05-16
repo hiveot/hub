@@ -77,7 +77,7 @@ func ConnectToHub(fullURL string, clientID string, certDir string, core string, 
 func ConnectWithTokenFile(hc hubclient.IHubClient, keysDir string) error {
 	var kp keys.IHiveKey
 
-	cid := hc.GetClientID()
+	cid := hc.ClientID()
 
 	slog.Info("ConnectWithTokenFile",
 		slog.String("keysDir", keysDir),

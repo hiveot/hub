@@ -9,9 +9,8 @@ import (
 	"github.com/hiveot/hub/runtime/authz/authzagent"
 	"github.com/hiveot/hub/runtime/digitwin/digitwinagent"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
-	service2 "github.com/hiveot/hub/runtime/history/service"
 	"github.com/hiveot/hub/runtime/middleware"
-	"github.com/hiveot/hub/runtime/protocols"
+	"github.com/hiveot/hub/runtime/transports"
 )
 
 const DefaultDigiTwinStoreFilename = "digitwin.kvbtree"
@@ -25,9 +24,9 @@ type Runtime struct {
 	AuthzSvc      *authz.AuthzService
 	DigitwinStore buckets.IBucketStore
 	DigitwinSvc   *service4.DigitwinService
-	HistorySvc    *service2.HistoryService
+	//HistorySvc    *service2.HistoryService
 	Middleware    *middleware.Middleware
-	ProtocolMgr   *protocols.ProtocolsManager
+	TransportsMgr *transports.TransportsManager
 }
 
 func (r *Runtime) Start(env *plugin.AppEnvironment) error {
@@ -52,7 +51,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 
 	// the protocol manager receives messages from clients (source) and
 	// sends messages to connected clients (sink)
-	r.ProtocolMgr, err = protocols.StartProtocolManager(
+	r.TransportsMgr, err = transports.StartProtocolManager(
 		&r.cfg.Protocols, r.cfg.ServerKey, r.cfg.ServerCert, r.cfg.CaCert,
 		r.AuthnSvc.SessionAuth, r.Middleware.HandleMessage)
 	if err != nil {
@@ -62,7 +61,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	// The digitwin service directs the message flow between agents and consumers
 	// It receives messages from the middleware and uses the protocol manager
 	// to send messages to clients.
-	r.DigitwinSvc, err = service4.StartDigitwinService(env.StoresDir, r.ProtocolMgr)
+	r.DigitwinSvc, err = service4.StartDigitwinService(env.StoresDir, r.TransportsMgr)
 
 	// The middleware validates messages and passes them on to the digitwin service
 	if err == nil {
@@ -70,7 +69,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	}
 
 	// last, connect the embedded services via a direct client
-	embeddedBinding := r.ProtocolMgr.GetEmbedded()
+	embeddedBinding := r.TransportsMgr.GetEmbedded()
 	cl1 := embeddedBinding.NewClient(service4.DigitwinAgentID)
 	_, err = digitwinagent.StartDigiTwinAgent(r.DigitwinSvc, cl1)
 
@@ -87,12 +86,12 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 }
 
 func (r *Runtime) Stop() {
-	if r.ProtocolMgr != nil {
-		r.ProtocolMgr.Stop()
+	if r.TransportsMgr != nil {
+		r.TransportsMgr.Stop()
 	}
-	if r.HistorySvc != nil {
-		r.HistorySvc.Stop()
-	}
+	//if r.HistorySvc != nil {
+	//	r.HistorySvc.Stop()
+	//}
 	if r.DigitwinSvc != nil {
 		r.DigitwinSvc.Stop()
 	}

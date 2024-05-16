@@ -79,7 +79,7 @@ func (cs *ClientSession) Close() {
 //	 * connected when connected to the hub
 //	 * connecting or disconnected when not connected
 //	info with a human description
-func (cs *ClientSession) GetStatus() transports.HubTransportStatus {
+func (cs *ClientSession) GetStatus() hubclient.HubTransportStatus {
 	status := cs.hc.GetStatus()
 	return status
 }
@@ -92,18 +92,18 @@ func (cs *ClientSession) GetHubClient() *hubclient.HubClient {
 // IsActive returns whether the session has a connection to the Hub or is in the process of connecting.
 func (cs *ClientSession) IsActive() bool {
 	status := cs.hc.GetStatus()
-	return status.ConnectionStatus == transports.Connected ||
-		status.ConnectionStatus == transports.Connecting
+	return status.ConnectionStatus == hubclient.Connected ||
+		status.ConnectionStatus == hubclient.Connecting
 }
 
 // onConnectChange is invoked on disconnect/reconnect
-func (cs *ClientSession) onConnectChange(stat transports.HubTransportStatus) {
+func (cs *ClientSession) onConnectChange(stat hubclient.HubTransportStatus) {
 	slog.Info("connection change",
 		slog.String("clientID", stat.ClientID),
 		slog.String("status", string(stat.ConnectionStatus)))
-	if stat.ConnectionStatus == transports.Connected {
+	if stat.ConnectionStatus == hubclient.Connected {
 		cs.SendSSE("notify", "success:Connection with Hub successful")
-	} else if stat.ConnectionStatus == transports.Connecting {
+	} else if stat.ConnectionStatus == hubclient.Connecting {
 		cs.SendSSE("notify", "warning:Attempt to reconnect to the Hub")
 	} else {
 		cs.SendSSE("notify", "warning:Connection changed: "+string(stat.ConnectionStatus))
@@ -111,7 +111,7 @@ func (cs *ClientSession) onConnectChange(stat transports.HubTransportStatus) {
 }
 
 // onEvent passes incoming events from the Hub to the SSE client(s)
-func (cs *ClientSession) onEvent(msg *things.ThingValue) {
+func (cs *ClientSession) onEvent(msg *things.ThingMessage) {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
 	// FIXME: HOW TO IMPLEMENT DATA BINDING WITH HTMX fragments?
@@ -139,14 +139,14 @@ func (cs *ClientSession) onEvent(msg *things.ThingValue) {
 
 	slog.Info("received event", slog.String("thingID", msg.ThingID),
 		slog.String("id", msg.Name))
-	if msg.Name == transports.EventNameTD {
+	if msg.Name == transports.EventTypeTD {
 		// Publish sse event indicating the Thing TD has changed.
 		// The UI that displays this event can use this as a trigger to reload the
 		// fragment that displays this TD:
 		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}"
 		thingAddr := fmt.Sprintf("%s/%s", msg.AgentID, msg.ThingID)
 		_ = cs.SendSSE(thingAddr, "")
-	} else if msg.Name == transports.EventNameProps {
+	} else if msg.Name == transports.EventTypeProps {
 		// Publish an sse event for each of the properties
 		// The UI that displays this event can use this as a trigger to load the
 		// property value:

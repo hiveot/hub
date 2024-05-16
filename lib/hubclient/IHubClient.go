@@ -1,7 +1,6 @@
 package hubclient
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -74,6 +73,8 @@ type HubTransportStatus struct {
 
 // IHubClient defines the interface of the client that connects to a messaging server.
 type IHubClient interface {
+	// ClientID returns the agent or user clientID for this hub client
+	ClientID() string
 
 	// ConnectWithCert connects to the server using a client certificate.
 	// This authentication method is optional
@@ -109,9 +110,6 @@ type IHubClient interface {
 	// This removes all subscriptions.
 	Disconnect()
 
-	// GetClientID returns the agent or user clientID for this hub client
-	GetClientID() string
-
 	// GetStatus returns the current transport connection status
 	GetStatus() HubTransportStatus
 
@@ -120,7 +118,7 @@ type IHubClient interface {
 	//	key ID or method name of the action
 	//  payload with serialized message to publish
 	//  returns a delivery status with serialized response message if delivered
-	PubAction(thingID string, key string, payload []byte) api.DeliveryStatus
+	PubAction(thingID string, key string, payload []byte) (api.DeliveryStatus, error)
 
 	// PubEvent publishes an event style message without waiting for a response.
 	//	thingID whose event is published
@@ -134,21 +132,22 @@ type IHubClient interface {
 
 	// Rpc makes a RPC call using an action and waits for a delivery confirmation.
 	//
+	// The implementation of this is synchronous. This waits until a completion response
+	// is received or a timeout occurs (set with creating the HubClient transport)
+	//
+	// To make an asynchronous RPC call, use PubAction and SetMessageHandler instead.
+	//
 	// The arguments and responses use a struct (same approach as gRPC) which is
 	// defined by the service. This struct can also be generated from the actions
 	// defined in the service TD document. See cmd/genapi for the CLI.
 	//
-	// The implementation of this can be synchronous or asynchronous. The caller should
-	// not make any assumptions as to when the request is completed.
-	//
-	//	ctx is the context used to wait for the result
 	//	thingID is the ID of the service providing the RPC method
 	//	key is the ID of the RPC method as described in the service TD action affordance
 	//	args is the struct containing the arguments to marshal
 	//	resp is the struct receiving the result values
 	//
-	// This returns a delivery status or an error
-	Rpc(ctx context.Context, thingID string, key string, args interface{}, resp interface{}) (api.DeliveryStatus, error)
+	// This returns an error if delivery failed or an error was returned
+	Rpc(thingID string, key string, args interface{}, resp interface{}) error
 
 	// SetConnectHandler sets the notification handler of connection status changes
 	SetConnectHandler(cb func(status HubTransportStatus))

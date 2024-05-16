@@ -7,7 +7,7 @@ import (
 )
 
 // HandleConfigRequest handles requests to configure the service or devices
-func (svc *OWServerBinding) HandleConfigRequest(tv *things.ThingValue) (err error) {
+func (svc *OWServerBinding) HandleConfigRequest(tv *things.ThingMessage) (err error) {
 	slog.Info("HandleConfigRequest",
 		slog.String("agentID", tv.AgentID),
 		slog.String("thingID", tv.ThingID),

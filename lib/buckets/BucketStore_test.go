@@ -55,8 +55,10 @@ var doc2 = []byte(`{
 // Create the bucket store using the backend
 func openNewStore() (store buckets.IBucketStore, err error) {
 	_ = os.RemoveAll(testBackendDirectory)
-	store = bucketstore.NewBucketStore(testBackendDirectory, "test", testBackendType)
-	err = store.Open()
+	store, err = bucketstore.NewBucketStore(testBackendDirectory, "test", testBackendType)
+	if err == nil {
+		err = store.Open()
+	}
 	return store, err
 }
 
@@ -190,21 +192,21 @@ func TestStartStop(t *testing.T) {
 
 func TestCreateStoreBadFolder(t *testing.T) {
 	badDir := "/folder/does/not/exist/"
-	store := bucketstore.NewBucketStore(badDir, "test", testBackendType)
+	store, _ := bucketstore.NewBucketStore(badDir, "test", testBackendType)
 	err := store.Open()
 	assert.Error(t, err)
 }
 
 func TestCreateStoreReadOnlyFolder(t *testing.T) {
 	badDir := "/var/"
-	store := bucketstore.NewBucketStore(badDir, "test", testBackendType)
+	store, _ := bucketstore.NewBucketStore(badDir, "test", testBackendType)
 	err := store.Open()
 	assert.Error(t, err)
 }
 
 func TestCreateStoreCantReadFile(t *testing.T) {
 	badDir := "/bin"
-	store := bucketstore.NewBucketStore(badDir, "test", testBackendType)
+	store, _ := bucketstore.NewBucketStore(badDir, "test", testBackendType)
 	err := store.Open()
 	assert.Error(t, err)
 }

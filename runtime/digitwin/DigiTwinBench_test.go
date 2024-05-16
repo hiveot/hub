@@ -46,7 +46,7 @@ func Benchmark_ReadTD(b *testing.B) {
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)
-				td, err := svc.ReadThing(directory.ReadThingArgs{ThingID: thingID})
+				td, err := svc.ReadTD(directory.ReadTDArgs{ThingID: thingID})
 				_ = td
 				_ = err
 			}

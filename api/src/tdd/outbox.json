@@ -103,8 +103,8 @@
 				"properties": {
 					"Values": {
 						"title": "Value map",
-						"description": "map of key:ThingMessage objects",
-						"type": "things.ThingMessageMap"
+						"description": "JSON encoded map of key:ThingMessage objects",
+						"type": "string"
 					}
 				}
 			}

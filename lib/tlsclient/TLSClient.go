@@ -209,7 +209,7 @@ func (cl *TLSClient) ConnectWithPassword(loginID string, secret string) (token s
 		ClientID: loginID,
 		Password: secret,
 	}
-	resp, err2 := cl.Invoke("POST", loginURL, loginMessage)
+	resp, err2 := cl.Invoke("POST", loginURL, loginMessage, nil)
 	if err2 != nil {
 		err = fmt.Errorf("ConnectWithPassword: login to %s failed. %s", loginURL, err2)
 		return "", err
@@ -231,7 +231,7 @@ func (cl *TLSClient) ConnectWithPassword(loginID string, secret string) (token s
 func (cl *TLSClient) Delete(path string) ([]byte, error) {
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	return cl.Invoke("DELETE", serverURL, nil)
+	return cl.Invoke("DELETE", serverURL, nil, nil)
 }
 
 // Get is a convenience function to send a request
@@ -239,7 +239,7 @@ func (cl *TLSClient) Delete(path string) ([]byte, error) {
 //	path to invoke
 func (cl *TLSClient) Get(path string) ([]byte, error) {
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	return cl.Invoke("GET", serverURL, nil)
+	return cl.Invoke("GET", serverURL, nil, nil)
 }
 
 // GetHttpClient returns the underlying HTTP client
@@ -255,7 +255,10 @@ func (cl *TLSClient) GetHttpClient() *http.Client {
 //	method: GET, PUT, POST, ...
 //	url: full URL to invoke
 //	msg contains the request body as a string or object
-func (cl *TLSClient) Invoke(method string, url string, msg interface{}) ([]byte, error) {
+//	qParams: optional map with query parameters
+func (cl *TLSClient) Invoke(method string, url string,
+	msg interface{}, qParams map[string]string) ([]byte, error) {
+
 	var body []byte
 	var err error
 	var req *http.Request
@@ -281,6 +284,14 @@ func (cl *TLSClient) Invoke(method string, url string, msg interface{}) ([]byte,
 		}
 	}
 	req, err = cl.NewRequest(method, url, body)
+	// optional query parameters
+	if qParams != nil {
+		qValues := req.URL.Query()
+		for k, v := range qParams {
+			qValues.Add(k, v)
+		}
+		req.URL.RawQuery = qValues.Encode()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -334,32 +345,8 @@ func (cl *TLSClient) NewRequest(method string, fullURL string, body []byte) (*ht
 // Logout from the server and end the session
 func (cl *TLSClient) Logout() error {
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, vocab.PostLogoutPath)
-	_, err := cl.Invoke("POST", serverURL, http.NoBody)
+	_, err := cl.Invoke("POST", serverURL, http.NoBody, nil)
 	return err
-}
-
-// Post a message.
-// If msg is a string then it is considered to be already serialized.
-// If msg is not a string then it will be json encoded.
-//
-//	path to invoke
-//	msg contains the request body as a string or object
-func (cl *TLSClient) Post(path string, msg interface{}) ([]byte, error) {
-	// careful, a double // in the path causes a 301 and changes POST to GET
-	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	return cl.Invoke("POST", serverURL, msg)
-}
-
-// Put a message with json payload
-// If msg is a string then it is considered to be already serialized.
-// If msg is not a string then it will be json encoded.
-//
-//	path to invoke
-//	msg contains the request body as a string or object
-func (cl *TLSClient) Put(path string, msg interface{}) ([]byte, error) {
-	// careful, a double // in the path causes a 301 and changes POST to GET
-	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	return cl.Invoke("PUT", serverURL, msg)
 }
 
 // Patch sends a patch message with json payload
@@ -371,59 +358,32 @@ func (cl *TLSClient) Put(path string, msg interface{}) ([]byte, error) {
 func (cl *TLSClient) Patch(path string, msg interface{}) ([]byte, error) {
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	return cl.Invoke("PATCH", serverURL, msg)
+	return cl.Invoke("PATCH", serverURL, msg, nil)
 }
 
-// RefreshToken refreshes the JWT token
+// Post a message.
+// If msg is a string then it is considered to be already serialized.
+// If msg is not a string then it will be json encoded.
 //
-// refreshURL is an optional alternative URL, or "" for the default path
+//	path to invoke
+//	msg contains the request body as a string or object
+func (cl *TLSClient) Post(path string, msg interface{}) ([]byte, error) {
+	// careful, a double // in the path causes a 301 and changes POST to GET
+	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
+	return cl.Invoke("POST", serverURL, msg, nil)
+}
+
+// Put a message with json payload
+// If msg is a string then it is considered to be already serialized.
+// If msg is not a string then it will be json encoded.
 //
-// This returns a struct with new access and refresh token
-//func (cl *TLSClient) RefreshToken(refreshURL string) (newToken string, err error) {
-//	if refreshURL == "" {
-//		refreshURL = fmt.Sprintf("https://%s%s", cl.hostPort, cl.refreshPath)
-//	}
-//	args := api.RefreshTokenArgs{
-//		OldToken: cl.bearerToken, ClientID: cl.clientID,
-//	}
-//	data, _ := json.Marshal(args)
-//	// the bearer token holds the old token
-//	resp, err := cl.Invoke("POST", refreshURL, data)
-//	// set the new token as the bearer token
-//	if err == nil {
-//		reply := api.RefreshTokenResp{}
-//		err = json.Unmarshal(resp, &reply)
-//
-//		if err == nil {
-//			newToken = reply.Token
-//			cl.bearerToken = newToken
-//		}
-//	}
-// old token exists in client cookie
-//req, err := http.NewRequest("POST", refreshURL, http.NoBody)
-//var resp *http.Response
-//if err != nil {
-//	err = fmt.Errorf("RefreshToken: Error creating request for URL %s: %w", refreshURL, err)
-//	return "", err
-//}
-//req.Header.Set("Content-Type", "application/json")
-//resp, err = cl.httpClient.Do(req)
-//
-//if err != nil {
-//	err = fmt.Errorf("RefreshToken: Error using URL %s: %w", refreshURL, err)
-//	return "", err
-//} else if resp.StatusCode >= 400 {
-//	err = fmt.Errorf("RefreshToken: refresh using URL %s failed with: %s", refreshURL, resp.Status)
-//	return "", err
-//}
-//respBody, err := io.ReadAll(resp.Body)
-//if err != nil {
-//	err = fmt.Errorf("RefreshToken: failed with error %w", err)
-//	return "", err
-//}
-//err = json.Unmarshal(respBody, &newToken)
-//return newToken, err
-//}
+//	path to invoke
+//	msg contains the request body as a string or object
+func (cl *TLSClient) Put(path string, msg interface{}) ([]byte, error) {
+	// careful, a double // in the path causes a 301 and changes POST to GET
+	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
+	return cl.Invoke("PUT", serverURL, msg, nil)
+}
 
 // NewTLSClient creates a new TLS Client instance.
 // Use connect/Close to open and close connections

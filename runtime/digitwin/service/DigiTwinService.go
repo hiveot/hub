@@ -27,7 +27,7 @@ type DigitwinService struct {
 
 	mux sync.RWMutex
 	// The protocol manager communicates with agents and consumers
-	pm api.IProtocolBinding
+	pm api.ITransportBinding
 }
 
 // HandleMessage is the main ingress point of the messages flow to the digital twin entities.
@@ -85,7 +85,7 @@ func (svc *DigitwinService) Stop() {
 //
 //	pm is the protocol manager used to communicate with agents and consumers
 //	store is the bucket store for inbox and outbox storage
-func NewDigitwinService(pm api.IProtocolBinding, store buckets.IBucketStore) *DigitwinService {
+func NewDigitwinService(pm api.ITransportBinding, store buckets.IBucketStore) *DigitwinService {
 	svc := &DigitwinService{
 		Inbox:     NewDigiTwinInbox(store, pm),
 		Outbox:    NewDigiTwinOutbox(store, pm),
@@ -102,7 +102,7 @@ func NewDigitwinService(pm api.IProtocolBinding, store buckets.IBucketStore) *Di
 // storesDir is the directory where to create the digitwin storage
 // pm is the protocol binding or manager used to send messages to clients
 func StartDigitwinService(
-	storesDir string, pm api.IProtocolBinding) (svc *DigitwinService, err error) {
+	storesDir string, pm api.ITransportBinding) (svc *DigitwinService, err error) {
 
 	var store buckets.IBucketStore
 

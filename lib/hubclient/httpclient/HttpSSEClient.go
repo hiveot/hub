@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
@@ -43,6 +44,13 @@ type HttpSSEClient struct {
 	_subscriptions  map[string]bool
 	_connectHandler func(status hubclient.HubTransportStatus)
 	_messageHandler api.MessageHandler
+	// map of messageID to delivery status update channel
+	_correlData map[string]chan *api.DeliveryStatus
+}
+
+// ClientID returns the client's connection ID
+func (cl *HttpSSEClient) ClientID() string {
+	return cl.clientID
 }
 
 // ConnectSSE establishes a sse session over the Hub HTTPS connection.
@@ -160,11 +168,6 @@ func (cl *HttpSSEClient) Disconnect() {
 	}
 }
 
-// GetClientID returns the client's connection ID
-func (cl *HttpSSEClient) GetClientID() string {
-	return cl.clientID
-}
-
 // GetStatus Return the transport connection info
 func (cl *HttpSSEClient) GetStatus() hubclient.HubTransportStatus {
 	cl.mux.RLock()
@@ -181,47 +184,64 @@ func (cl *HttpSSEClient) GetTlsClient() *tlsclient.TLSClient {
 // This sends the delivery  status to the hub using a delivery event.
 func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	var stat api.DeliveryStatus
-	var rxMsg things.ThingMessage
 
-	rxMsg = things.ThingMessage{}
-	err := json.Unmarshal([]byte(event.Data), &rxMsg)
+	rxMsg := &things.ThingMessage{}
+	err := json.Unmarshal([]byte(event.Data), rxMsg)
 	if err != nil {
 		slog.Error("handleSSEEvent; Received non-ThingMessage sse event. Ignored",
 			"eventType", event.Type,
 			"LastEventID", event.LastEventID)
 		return
 	}
-
+	stat.MessageID = rxMsg.MessageID
 	slog.Info("handleSSEEvent. Received message",
 		//slog.String("Comment", string(event.Comment)),
 		slog.String("me", cl.clientID),
 		slog.String("messageType", rxMsg.MessageType),
 		slog.String("thingID", rxMsg.ThingID),
 		slog.String("key", rxMsg.Key),
+		slog.String("messageID", rxMsg.MessageID),
 		slog.String("senderID", rxMsg.SenderID),
 	)
 
 	// if no message handler is set then this obviously fails
 	if cl._messageHandler == nil {
-		stat.Error = "handleSSEEvent no handler is set, event ignored"
-		stat.Status = api.DeliveryFailed
+		stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, event ignored"))
+	} else if rxMsg.MessageType == vocab.MessageTypeEvent && rxMsg.Key == vocab.EventTypeDeliveryUpdate {
+		// this client is receiving a delivery update from a previous action.
+		cl.mux.RLock()
+		err = json.Unmarshal(rxMsg.Data, &stat)
+		rChan, _ := cl._correlData[stat.MessageID]
+		cl.mux.RUnlock()
+		if rChan != nil {
+			rChan <- &stat
+			// if status == DeliveryCompleted || status == DeliveryFailed {
+			cl.mux.Lock()
+			delete(cl._correlData, rxMsg.MessageID)
+			cl.mux.Unlock()
+		} else {
+			// pass event to client as this isn't an rpc action
+			stat = cl._messageHandler(rxMsg)
+		}
 	} else {
-		stat = cl._messageHandler(&rxMsg)
+		// pass action to agent for delivery to thing
+		stat = cl._messageHandler(rxMsg)
 	}
 	// only actions need a delivery update
 	if rxMsg.MessageType == vocab.MessageTypeAction {
-		stat.MessageID = rxMsg.MessageID
 		cl.SendDeliveryUpdate(rxMsg.ThingID, stat)
 	}
 }
 
 // PubAction publishes an action message and waits for an answer or until timeout
 // In order to receive replies, an inbox subscription is added on the first request.
-func (cl *HttpSSEClient) PubAction(thingID string, key string, payload []byte) (stat api.DeliveryStatus) {
+// An error is returned if delivery failed or succeeded but the action itself failed
+func (cl *HttpSSEClient) PubAction(thingID string, key string, payload []byte) (stat api.DeliveryStatus, err error) {
 	slog.Info("PubAction",
 		slog.String("thingID", thingID), slog.String("key", key))
 	vars := map[string]string{"thingID": thingID, "key": key}
 	eventPath := utils.Substitute(vocab.PostActionPath, vars)
+	// the reply is a delivery status
 	resp, err := cl.tlsClient.Post(eventPath, payload)
 	if err == nil {
 		err = json.Unmarshal(resp, &stat)
@@ -229,11 +249,40 @@ func (cl *HttpSSEClient) PubAction(thingID string, key string, payload []byte) (
 	if err != nil {
 		stat.Status = api.DeliveryFailed
 		stat.Error = err.Error()
+	} else if stat.Error != "" {
+		// if the status contains an error return it instead
+		err = errors.New(stat.Error)
 	}
-	return stat
+	return stat, err
 }
 
-// PubEvent publishes a message and returns
+// PubActionWithQueryParams publishes an action with query parameters
+func (cl *HttpSSEClient) PubActionWithQueryParams(
+	thingID string, key string, payload []byte, params map[string]string) (stat api.DeliveryStatus, err error) {
+	slog.Info("PubActionWithQueryParams",
+		slog.String("thingID", thingID),
+		slog.String("key", key),
+	)
+
+	vars := map[string]string{"thingID": thingID, "key": key}
+	actionPath := utils.Substitute(vocab.PostActionPath, vars)
+	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, actionPath)
+	// the reply is a delivery status
+	reply, err := cl.tlsClient.Invoke("POST", serverURL, payload, params)
+	if err == nil {
+		err = json.Unmarshal(reply, &stat)
+	}
+	if err != nil {
+		stat.Status = api.DeliveryFailed
+		stat.Error = err.Error()
+	} else if stat.Error != "" {
+		// if the status contains an error return it instead
+		err = errors.New(stat.Error)
+	}
+	return stat, err
+}
+
+// PubEvent publishes an event message and returns
 func (cl *HttpSSEClient) PubEvent(thingID string, key string, payload []byte) (stat api.DeliveryStatus) {
 	slog.Info("PubEvent",
 		slog.String("me", cl.clientID),
@@ -263,7 +312,7 @@ func (cl *HttpSSEClient) RefreshToken() (newToken string, err error) {
 	}
 	data, _ := json.Marshal(args)
 	// the bearer token holds the old token
-	resp, err := cl.tlsClient.Invoke("POST", refreshURL, data)
+	resp, err := cl.tlsClient.Invoke("POST", refreshURL, data, nil)
 	// set the new token as the bearer token
 	if err == nil {
 		reply := api.RefreshTokenResp{}
@@ -279,46 +328,78 @@ func (cl *HttpSSEClient) RefreshToken() (newToken string, err error) {
 
 // Rpc invokes an action and unmarshal a response.
 // Intended to remove some boilerplate
-// context is used to timeout the request. Use nil for default of 1 sec
-// TODO: under construction
-func (cl *HttpSSEClient) Rpc(ctx context.Context,
-	thingID string, key string, args interface{}, resp interface{}) (stat api.DeliveryStatus, err error) {
+func (cl *HttpSSEClient) Rpc(
+	thingID string, key string, args interface{}, resp interface{}) (err error) {
 
-	var cancelFunc context.CancelFunc
-	if ctx == nil {
-		ctx, cancelFunc = context.WithTimeout(context.Background(), time.Second)
-		defer cancelFunc()
+	var data []byte
+	if args != nil {
+		data, _ = json.Marshal(args)
 	}
+	// a messageID is needed before the action is published in order to match it with the reply
+	messageID := "rpc-" + uuid.NewString()
+	rChan := make(chan *api.DeliveryStatus)
+	cl.mux.Lock()
+	cl._correlData[messageID] = rChan
+	cl.mux.Unlock()
 
-	data, _ := json.Marshal(args)
-	stat = cl.PubAction(thingID, key, data)
+	// invoke with query parameters to provide the message ID
+	qparams := map[string]string{"messageID": messageID}
+	stat, err := cl.PubActionWithQueryParams(thingID, key, data, qparams)
 
-	if stat.Error != "" {
-		return stat, errors.New(stat.Error)
+	// wait for a response on the message channel
+	if err == nil && !(stat.Status == api.DeliveryCompleted || stat.Status == api.DeliveryFailed) {
+		stat, err = cl.WaitForStatusUpdate(rChan, messageID, cl.timeout)
 	}
-
-	// only once completed will there be a result a return
-	if stat.Status == api.DeliveryCompleted {
-		err = json.Unmarshal(stat.Reply, resp)
-		if err != nil {
-			stat.Error = err.Error()
+	cl.mux.Lock()
+	delete(cl._correlData, messageID)
+	cl.mux.Unlock()
+	if stat.MessageID != messageID {
+		slog.Error("RPC request messageID does not match response",
+			slog.String("req", messageID),
+			slog.String("resp", stat.MessageID))
+	}
+	// when not completed return an error
+	if stat.Status != api.DeliveryCompleted {
+		// delivery not
+		err = errors.New("Delivery not complete. Status: " + stat.Status)
+		if stat.Error != "" {
+			err = errors.New(stat.Error)
 		}
+		return err
 	}
-	if stat.Status == api.DeliveryDelivered {
-		// TODO: wait for async response if status is delivered to the agent.
-		// The agent will send a delivery update asap.
+	// only once completed will there be a reply as a result
+	if resp != nil {
+		err = json.Unmarshal(stat.Reply, resp)
 	}
+	return err
+}
+
+// WaitForStatusUpdate waits for an async status update or until timeout
+// This returns the status or an error if the messageID doesn't exist
+func (cl *HttpSSEClient) WaitForStatusUpdate(
+	statChan chan *api.DeliveryStatus, messageID string, timeout time.Duration) (stat api.DeliveryStatus, err error) {
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
+	defer cancelFunc()
+	select {
+	case statC := <-statChan:
+		stat = *statC
+		break
+	case <-ctx.Done():
+		err = errors.New("Timeout waiting for message: " + messageID)
+	}
+
 	return stat, err
 }
 
 // SendDeliveryUpdate sends a delivery status update to the hub.
-// The hub's digitwin will update the status of the action and notify the original sender.
+// The hub's inbox will update the status of the action and notify the original sender.
 //
 // Intended for agents that have processed an incoming action request and need to send
 // a reply and confirm that the action has applied.
 func (cl *HttpSSEClient) SendDeliveryUpdate(thingID string, stat api.DeliveryStatus) {
-	//thingID := inbox.RawThingID // tbd, is this the inbox service?
 	statJSON, _ := json.Marshal(&stat)
+	// thing
 	cl.PubEvent(thingID, vocab.EventTypeDeliveryUpdate, statJSON)
 }
 
@@ -405,11 +486,13 @@ func (cl *HttpSSEClient) Unsubscribe(thingID string) {
 //	caCert of the server to validate the server or nil to not check the server cert
 func NewHttpSSEClient(hostPort string, clientID string, caCert *x509.Certificate) *HttpSSEClient {
 	tp := HttpSSEClient{
-		clientID: clientID,
-		caCert:   caCert,
-		hostPort: hostPort,
-		ssePath:  vocab.ConnectSSEPath,
-		_sseChan: make(chan *sse.Event),
+		timeout:     time.Minute,
+		clientID:    clientID,
+		caCert:      caCert,
+		hostPort:    hostPort,
+		ssePath:     vocab.ConnectSSEPath,
+		_sseChan:    make(chan *sse.Event),
+		_correlData: make(map[string]chan *api.DeliveryStatus),
 	}
 	return &tp
 }

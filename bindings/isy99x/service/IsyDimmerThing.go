@@ -3,7 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
 )
 
@@ -41,14 +41,14 @@ func (it *IsyDimmerThing) GetTD() *things.TD {
 	return td
 }
 
-func (it *IsyDimmerThing) HandleConfigRequest(tv *things.ThingValue) (err error) {
+func (it *IsyDimmerThing) HandleConfigRequest(tv *things.ThingMessage) (err error) {
 	return errors.New("unknown config: " + tv.Name)
 }
 
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsyDimmerThing) HandleActionRequest(tv *things.ThingValue) (err error) {
+func (it *IsyDimmerThing) HandleActionRequest(tv *things.ThingMessage) (err error) {
 	var restPath = ""
 	var newValue = ""
 	// supported actions: on, off

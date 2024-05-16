@@ -28,8 +28,8 @@ func (agent *AuthnAgent) HandleMessage(msg *things.ThingMessage) (stat api.Deliv
 	} else if msg.ThingID == api.AuthnUserThingID {
 		return agent.userHandler(msg)
 	}
+	stat.Failed(msg, nil)
 	stat.Error = fmt.Sprintf("unknown authn service capability '%s'", msg.ThingID)
-	stat.Status = api.DeliveryFailed
 	return stat
 }
 
@@ -49,11 +49,6 @@ func StartAuthnAgent(
 	agent.userHandler = NewAuthnUserHandler(agent.svc.UserSvc)
 	if hc != nil {
 		agent.hc.SetMessageHandler(agent.HandleMessage)
-		// agents don't need to subscribe for actions directed at them
-		//err = agent.hc.Subscribe(api.AuthnAdminThingID)
-		//if err == nil {
-		//	err = agent.hc.Subscribe(api.AuthnUserThingID)
-		//}
 	}
 	return &agent, err
 }

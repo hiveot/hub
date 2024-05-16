@@ -53,7 +53,7 @@
 		}
 	},
 	"actions": {
-		"readThing": {
+		"readTD": {
 			"@type": "ht:function",
 			"title": "Read TD",
 			"description": "This returns a JSON encoded TD document",
@@ -73,16 +73,16 @@
 			"output": {
 				"title": "TDD",
 				"description": "A JSON encoded Thing Description Document",
-				"question": "How to link to the TD as a type?",
+				"question": "How to link to the TD as a complex type?",
 				"type": "string"
 			},
 			"forms": [{
-				"href": "things/{thingID}/readThing",
+				"href": "things/{thingID}/readTD",
 				"contentType": "application/json",
 				"https:methodName": "GET"
 			}]
 		},
-		"readThings": {
+		"readTDs": {
 			"@type": "ht:function",
 			"title": "Read TDs",
 			"description": "Read a batch of TD documents",
@@ -114,15 +114,15 @@
 				}
 			},
 			"forms": [{
-				"href": "things/{thingID}/readThing",
+				"href": "things/{thingID}/readTDs",
 				"contentType": "application/json",
 				"https:methodName": "GET"
 			}]
 		},
-		"removeThing": {
+		"removeTD": {
 			"@type": "ht:function",
-			"title": "Remove Thing",
-			"description": "Remove a Thing from the digital twin directory and value stores",
+			"title": "Remove TD",
+			"description": "Remove a Thing TD document from the digital twin directory and value stores",
 			"safe": false,
 			"idempotent": true,
 			"input": {
@@ -136,15 +136,15 @@
 				}
 			},
 			"forms": [{
-				"href": "things/{thingID}/removeThing",
+				"href": "things/{thingID}/removeTD",
 				"contentType": "application/json",
 				"https:methodName": "POST"
 			}]
 		},
-		"queryThings": {
+		"queryTDs": {
 			"@type": "ht:function",
-			"title": "Query Things",
-			"description": "Query things from the directory",
+			"title": "Query TDs",
+			"description": "Query Thing TD documents from the directory",
 			"safe": false,
 			"idempotent": true,
 			"input": {
@@ -180,7 +180,7 @@
 				}
 			},
 			"forms": [{
-				"href": "things/{thingID}/queryThings",
+				"href": "things/{thingID}/queryTDs",
 				"contentType": "application/json",
 				"https:methodName": "GET"
 			}]

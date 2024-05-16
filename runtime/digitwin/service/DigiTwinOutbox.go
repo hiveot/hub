@@ -21,7 +21,7 @@ const LatestEventsBucketName = "latestEvents"
 //
 // These respond with a delivery status update
 type DigiTwinOutbox struct {
-	pm     api.IProtocolBinding
+	pm     api.ITransportBinding
 	bucket buckets.IBucket
 	latest *DigiTwinLatestStore
 }
@@ -58,7 +58,8 @@ func (svc *DigiTwinOutbox) ReadLatest(
 
 	recs, err := svc.latest.ReadLatest(
 		vocab.MessageTypeEvent, args.ThingID, args.Keys, args.Since)
-	resp := outbox.ReadLatestResp{Values: recs}
+	recsJSON, _ := json.Marshal(recs)
+	resp := outbox.ReadLatestResp{Values: string(recsJSON)}
 	return resp, err
 }
 
@@ -75,7 +76,7 @@ func (svc *DigiTwinOutbox) Stop() {
 }
 
 // NewDigiTwinOutbox returns a new instance of the outbox using the given storage bucket
-func NewDigiTwinOutbox(bucketStore buckets.IBucketStore, pm api.IProtocolBinding) *DigiTwinOutbox {
+func NewDigiTwinOutbox(bucketStore buckets.IBucketStore, pm api.ITransportBinding) *DigiTwinOutbox {
 	eventsBucket := bucketStore.GetBucket(OutboxBucketName)
 	latestBucket := bucketStore.GetBucket(LatestEventsBucketName)
 	latestStore := NewDigiTwinLatestStore(latestBucket)

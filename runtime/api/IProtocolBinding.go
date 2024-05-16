@@ -97,8 +97,8 @@ type ProtocolInfo struct {
 	Transport string `json:"transport"`
 }
 
-// IProtocolBinding is the interface implemented by all protocol bindings
-type IProtocolBinding interface {
+// ITransportBinding is the interface implemented by all protocol bindings
+type ITransportBinding interface {
 
 	// GetProtocolInfo returns information on the protocol provided by the binding.
 	GetProtocolInfo() ProtocolInfo

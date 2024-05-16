@@ -7,7 +7,7 @@ In development
 ## Summary
 
 The HiveOT runtime provides routing of events and actions through multiple protocols.
-The runtime includes a digital twin service that consists of a Thing directory, value store and history store.
+The runtime contains a digital twin service that consists of a Thing directory, value store and history store.
 
 The protocol bindings authenticate request messages and pass them to the router. The router  invokes the middleware handlers, and if accepted passes the message to the registered handler for the message type.
 
@@ -46,7 +46,7 @@ Action requests are delivered by the protocol binding via the router to the digi
 * waiting   - the action is waiting to be applied by the agent, eg device is asleep or offline
 * applied   - the action was applied but result is waiting for confirmation
 * completed - the action was applied and result is available
-* failed    - the action was failed due to authorization, expiry, lack of confirmation, or other causes.
+* failed    - unable to deliver the action to the agent or device
 
 The action requests goes through two flows, the delivery flow and the return flow:
 Steps of the delivery flow:

@@ -1,12 +1,13 @@
 // Package directory with types and interfaces for using this service with agent 'digitwin'
 // DO NOT EDIT. This file is auto generated. Any changes will be overwritten.
-// Generated 13 May 24 15:19 PDT.
+// Generated 16 May 24 14:40 PDT.
 package directory
 
 import "encoding/json"
 import "errors"
 import "github.com/hiveot/hub/runtime/api"
 import "github.com/hiveot/hub/lib/things"
+import "github.com/hiveot/hub/lib/hubclient"
 
 // RawThingID is the raw thingID as used by agents. Digitwin adds the urn:{agent} prefix
 const RawThingID = "directory"
@@ -14,60 +15,21 @@ const ThingID = "dtw:digitwin:directory"
 
 // Argument and Response struct for action of Thing 'dtw:digitwin:directory'
 
-const ReadThingMethod = "readThing"
+const RemoveTDMethod = "removeTD"
 
-// ReadThingArgs defines the arguments of the readThing function
-// Read TD - This returns a JSON encoded TD document
-type ReadThingArgs struct {
-
-	// ThingID Digital Twin Thing ID of the Thing to read
-	ThingID string `json:"thingID"`
-}
-
-// ReadThingResp defines the response of the readThing function
-// Read TD - This returns a JSON encoded TD document
-type ReadThingResp struct {
-
-	// Output A JSON encoded Thing Description Document
-	Output string `json:"output"`
-}
-
-const ReadThingsMethod = "readThings"
-
-// ReadThingsArgs defines the arguments of the readThings function
-// Read TDs - Read a batch of TD documents
-type ReadThingsArgs struct {
-
-	// Offset Offset
-	Offset int `json:"offset,omitEmpty"`
-
-	// Limit Limit
-	Limit int `json:"limit,omitEmpty"`
-}
-
-// ReadThingsResp defines the response of the readThings function
-// Read TDs - Read a batch of TD documents
-type ReadThingsResp struct {
-
-	// Output List of JSON encoded TD documents
-	Output []string `json:"output"`
-}
-
-const RemoveThingMethod = "removeThing"
-
-// RemoveThingArgs defines the arguments of the removeThing function
-// Remove Thing - Remove a Thing from the digital twin directory and value stores
-type RemoveThingArgs struct {
+// RemoveTDArgs defines the arguments of the removeTD function
+// Remove TD - Remove a Thing TD document from the digital twin directory and value stores
+type RemoveTDArgs struct {
 
 	// ThingID Digital Twin ThingID of the Thing to remove
 	ThingID string `json:"thingID,omitEmpty"`
 }
 
-const QueryThingsMethod = "queryThings"
+const QueryTDsMethod = "queryTDs"
 
-// QueryThingsArgs defines the arguments of the queryThings function
-// Query Things - Query things from the directory
-type QueryThingsArgs struct {
+// QueryTDsArgs defines the arguments of the queryTDs function
+// Query TDs - Query Thing TD documents from the directory
+type QueryTDsArgs struct {
 
 	// Query Query expression (tbd)
 	Query string `json:"query,omitEmpty"`
@@ -79,51 +41,78 @@ type QueryThingsArgs struct {
 	Limit int `json:"limit,omitEmpty"`
 }
 
-// QueryThingsResp defines the response of the queryThings function
-// Query Things - Query things from the directory
-type QueryThingsResp struct {
+// QueryTDsResp defines the response of the queryTDs function
+// Query TDs - Query Thing TD documents from the directory
+type QueryTDsResp struct {
 
 	// Output List of JSON encoded TD documents
 	Output []string `json:"output"`
 }
 
-// ReadThing client method - Read TD.
+const ReadTDMethod = "readTD"
+
+// ReadTDArgs defines the arguments of the readTD function
+// Read TD - This returns a JSON encoded TD document
+type ReadTDArgs struct {
+
+	// ThingID Digital Twin Thing ID of the Thing to read
+	ThingID string `json:"thingID"`
+}
+
+// ReadTDResp defines the response of the readTD function
+// Read TD - This returns a JSON encoded TD document
+type ReadTDResp struct {
+
+	// Output A JSON encoded Thing Description Document
+	Output string `json:"output"`
+}
+
+const ReadTDsMethod = "readTDs"
+
+// ReadTDsArgs defines the arguments of the readTDs function
+// Read TDs - Read a batch of TD documents
+type ReadTDsArgs struct {
+
+	// Offset Offset
+	Offset int `json:"offset,omitEmpty"`
+
+	// Limit Limit
+	Limit int `json:"limit,omitEmpty"`
+}
+
+// ReadTDsResp defines the response of the readTDs function
+// Read TDs - Read a batch of TD documents
+type ReadTDsResp struct {
+
+	// Output List of JSON encoded TD documents
+	Output []string `json:"output"`
+}
+
+// ReadTD client method - Read TD.
 // This returns a JSON encoded TD document
-func ReadThing(mt api.IMessageTransport, args ReadThingArgs) (resp ReadThingResp, stat api.DeliveryStatus, err error) {
-	stat, err = mt(nil, "dtw:digitwin:directory", "readThing", &args, &resp)
-	if stat.Error != "" {
-		err = errors.New(stat.Error)
-	}
+func ReadTD(hc hubclient.IHubClient, args ReadTDArgs) (resp ReadTDResp, err error) {
+	err = hc.Rpc("dtw:digitwin:directory", "readTD", &args, &resp)
 	return
 }
 
-// ReadThings client method - Read TDs.
+// ReadTDs client method - Read TDs.
 // Read a batch of TD documents
-func ReadThings(mt api.IMessageTransport, args ReadThingsArgs) (resp ReadThingsResp, stat api.DeliveryStatus, err error) {
-	stat, err = mt(nil, "dtw:digitwin:directory", "readThings", &args, &resp)
-	if stat.Error != "" {
-		err = errors.New(stat.Error)
-	}
+func ReadTDs(hc hubclient.IHubClient, args ReadTDsArgs) (resp ReadTDsResp, err error) {
+	err = hc.Rpc("dtw:digitwin:directory", "readTDs", &args, &resp)
 	return
 }
 
-// RemoveThing client method - Remove Thing.
-// Remove a Thing from the digital twin directory and value stores
-func RemoveThing(mt api.IMessageTransport, args RemoveThingArgs) (stat api.DeliveryStatus, err error) {
-	stat, err = mt(nil, "dtw:digitwin:directory", "removeThing", &args, nil)
-	if stat.Error != "" {
-		err = errors.New(stat.Error)
-	}
+// RemoveTD client method - Remove TD.
+// Remove a Thing TD document from the digital twin directory and value stores
+func RemoveTD(hc hubclient.IHubClient, args RemoveTDArgs) (err error) {
+	err = hc.Rpc("dtw:digitwin:directory", "removeTD", &args, nil)
 	return
 }
 
-// QueryThings client method - Query Things.
-// Query things from the directory
-func QueryThings(mt api.IMessageTransport, args QueryThingsArgs) (resp QueryThingsResp, stat api.DeliveryStatus, err error) {
-	stat, err = mt(nil, "dtw:digitwin:directory", "queryThings", &args, &resp)
-	if stat.Error != "" {
-		err = errors.New(stat.Error)
-	}
+// QueryTDs client method - Query TDs.
+// Query Thing TD documents from the directory
+func QueryTDs(hc hubclient.IHubClient, args QueryTDsArgs) (resp QueryTDsResp, err error) {
+	err = hc.Rpc("dtw:digitwin:directory", "queryTDs", &args, &resp)
 	return
 }
 
@@ -132,21 +121,21 @@ func QueryThings(mt api.IMessageTransport, args QueryThingsArgs) (resp QueryThin
 // This defines a method for each of the actions in the TD.
 type IDirectoryService interface {
 
-	// RemoveThing Remove Thing
-	// Remove a Thing from the digital twin directory and value stores
-	RemoveThing(args RemoveThingArgs) error
-
-	// QueryThings Query Things
-	// Query things from the directory
-	QueryThings(args QueryThingsArgs) (QueryThingsResp, error)
-
-	// ReadThing Read TD
+	// ReadTD Read TD
 	// This returns a JSON encoded TD document
-	ReadThing(args ReadThingArgs) (ReadThingResp, error)
+	ReadTD(args ReadTDArgs) (ReadTDResp, error)
 
-	// ReadThings Read TDs
+	// ReadTDs Read TDs
 	// Read a batch of TD documents
-	ReadThings(args ReadThingsArgs) (ReadThingsResp, error)
+	ReadTDs(args ReadTDsArgs) (ReadTDsResp, error)
+
+	// RemoveTD Remove TD
+	// Remove a Thing TD document from the digital twin directory and value stores
+	RemoveTD(args RemoveTDArgs) error
+
+	// QueryTDs Query TDs
+	// Query Thing TD documents from the directory
+	QueryTDs(args QueryTDsArgs) (QueryTDsResp, error)
 }
 
 // NewActionHandler returns a server handler for Thing 'dtw:digitwin:directory' actions.
@@ -161,38 +150,38 @@ func NewActionHandler(svc IDirectoryService) func(*things.ThingMessage) api.Deli
 		var resp interface{}
 		stat.Completed(msg, nil)
 		switch msg.Key {
-		case "removeThing":
-			args := RemoveThingArgs{}
+		case "readTD":
+			args := ReadTDArgs{}
 			err = json.Unmarshal(msg.Data, &args)
 			if err == nil {
-				err = svc.RemoveThing(args)
+				resp, err = svc.ReadTD(args)
 			} else {
 				err = errors.New("bad function argument: " + err.Error())
 			}
 			break
-		case "queryThings":
-			args := QueryThingsArgs{}
+		case "readTDs":
+			args := ReadTDsArgs{}
 			err = json.Unmarshal(msg.Data, &args)
 			if err == nil {
-				resp, err = svc.QueryThings(args)
+				resp, err = svc.ReadTDs(args)
 			} else {
 				err = errors.New("bad function argument: " + err.Error())
 			}
 			break
-		case "readThing":
-			args := ReadThingArgs{}
+		case "removeTD":
+			args := RemoveTDArgs{}
 			err = json.Unmarshal(msg.Data, &args)
 			if err == nil {
-				resp, err = svc.ReadThing(args)
+				err = svc.RemoveTD(args)
 			} else {
 				err = errors.New("bad function argument: " + err.Error())
 			}
 			break
-		case "readThings":
-			args := ReadThingsArgs{}
+		case "queryTDs":
+			args := QueryTDsArgs{}
 			err = json.Unmarshal(msg.Data, &args)
 			if err == nil {
-				resp, err = svc.ReadThings(args)
+				resp, err = svc.QueryTDs(args)
 			} else {
 				err = errors.New("bad function argument: " + err.Error())
 			}

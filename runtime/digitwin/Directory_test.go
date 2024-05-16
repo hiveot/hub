@@ -5,9 +5,9 @@ import (
 	"github.com/hiveot/hub/api/go/directory"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/embedded"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 	service2 "github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +23,7 @@ var dirStorePath = path.Join(testDirFolder, "directory.data")
 // This doesn't use any transport.
 func startDirectory(clean bool) (
 	svc *service2.DigitwinDirectory,
-	mt api.IMessageTransport,
+	cl hubclient.IHubClient,
 	stopFn func()) {
 
 	if clean {
@@ -43,10 +43,10 @@ func startDirectory(clean bool) (
 
 	// use direct transport to pass messages to the service
 	msgHandler := directory.NewActionHandler(svc)
-	cl := embedded.NewEmbeddedClient(directory.ThingID, msgHandler)
+	cl = embedded.NewEmbeddedClient(directory.ThingID, msgHandler)
 	//mt = direct.NewDirectTransport(directory.ThingID, msgHandler)
 
-	return svc, cl.Rpc, func() {
+	return svc, cl, func() {
 		svc.Stop()
 		_ = store.Close()
 	}
@@ -69,9 +69,8 @@ func TestStartStopDirectory(t *testing.T) {
 		require.NoError(t, err)
 	}
 	// viewers should be able to read the directory
-	args := directory.ReadThingsArgs{Limit: 10, Offset: 0}
-	resp, stat, err := directory.ReadThings(mt, args)
-	_ = stat
+	args := directory.ReadTDsArgs{Limit: 10, Offset: 0}
+	resp, err := directory.ReadTDs(mt, args)
 	assert.NoError(t, err, "Cant read directory. Did the service set client permissions?")
 	assert.Equal(t, len(thingIDs), len(resp.Output))
 
@@ -80,8 +79,8 @@ func TestStartStopDirectory(t *testing.T) {
 
 	svc, mt, stopFunc = startDirectory(false)
 	defer stopFunc()
-	args = directory.ReadThingsArgs{Limit: 10, Offset: 0}
-	resp, stat, err = directory.ReadThings(mt, args)
+	args = directory.ReadTDsArgs{Limit: 10, Offset: 0}
+	resp, err = directory.ReadTDs(mt, args)
 	assert.Equal(t, len(thingIDs), len(resp.Output))
 }
 
@@ -90,26 +89,24 @@ func TestAddRemoveTD(t *testing.T) {
 	const thing1ID = "agent1:thing1"
 	const title1 = "title1"
 
-	svc, mt, stopFunc := startDirectory(true)
+	svc, cl, stopFunc := startDirectory(true)
 	defer stopFunc()
 
 	tdDoc1 := createTDDoc(thing1ID, title1)
 	err := svc.UpdateThing(senderID, thing1ID, tdDoc1)
 	assert.NoError(t, err)
 
-	resp, stat, err := directory.ReadThings(mt, directory.ReadThingsArgs{Limit: 10})
-	_ = stat
+	resp, err := directory.ReadTDs(cl, directory.ReadTDsArgs{Limit: 10})
 	td2 := things.TD{}
 	err = json.Unmarshal([]byte(resp.Output[0]), &td2)
 	require.NoError(t, err)
 	assert.Equal(t, thing1ID, td2.ID)
 
 	// after removal, getTD should return nil
-	stat, err = directory.RemoveThing(mt,
-		directory.RemoveThingArgs{ThingID: thing1ID})
+	err = directory.RemoveTD(cl, directory.RemoveTDArgs{ThingID: thing1ID})
 	assert.NoError(t, err)
 
-	td3, stat, err := directory.ReadThing(mt, directory.ReadThingArgs{ThingID: thing1ID})
+	td3, err := directory.ReadTD(cl, directory.ReadTDArgs{ThingID: thing1ID})
 	assert.Empty(t, td3)
 	assert.Error(t, err)
 }
@@ -120,7 +117,7 @@ func TestHandleTDEvent(t *testing.T) {
 	const title1 = "title1"
 	//var dtThing1ID = things.MakeDigiTwinThingID(agentID, rawThing1ID)
 
-	svc, mt, stopFunc := startDirectory(true)
+	svc, cl, stopFunc := startDirectory(true)
 	//msgHandler := digitwinhandler.NewDigiTwinHandler(svc)
 	defer stopFunc()
 
@@ -137,27 +134,26 @@ func TestHandleTDEvent(t *testing.T) {
 	stat = svc.HandleTDEvent(msg)
 	assert.Empty(t, stat.Error)
 
-	resp, stat, err := directory.ReadThings(mt, directory.ReadThingsArgs{Limit: 10})
+	resp, err := directory.ReadTDs(cl, directory.ReadTDsArgs{Limit: 10})
 	assert.Equal(t, 1, len(resp.Output))
 	assert.NoError(t, err)
 }
 
 func TestGetTDsFail(t *testing.T) {
 	const clientID = "client1"
-	svc, mt, stopFunc := startDirectory(true)
+	svc, cl, stopFunc := startDirectory(true)
 	_ = svc
 	defer stopFunc()
-	resp, stat, err := directory.ReadThings(mt, directory.ReadThingsArgs{Limit: 10})
-	_ = stat
+	resp, err := directory.ReadTDs(cl, directory.ReadTDsArgs{Limit: 10})
 	require.NoError(t, err)
 	require.Empty(t, resp.Output)
 
-	resp, stat, err = directory.ReadThings(mt, directory.ReadThingsArgs{Limit: 10, Offset: 10})
+	resp, err = directory.ReadTDs(cl, directory.ReadTDsArgs{Limit: 10, Offset: 10})
 	require.NoError(t, err)
 	require.Empty(t, resp.Output)
 
 	// bad clientID
-	resp2, stat, err := directory.ReadThing(mt, directory.ReadThingArgs{ThingID: "badid"})
+	resp2, err := directory.ReadTD(cl, directory.ReadTDArgs{ThingID: "badid"})
 	require.Error(t, err)
 	require.Empty(t, resp2.Output)
 }
@@ -168,7 +164,7 @@ func TestListTDs(t *testing.T) {
 	const title1 = "title1"
 	var dtThing1ID = things.MakeDigiTwinThingID(agentID, rawThing1ID)
 
-	svc, mt, stopFunc := startDirectory(true)
+	svc, cl, stopFunc := startDirectory(true)
 	defer stopFunc()
 
 	tdDoc1 := createTDDoc(dtThing1ID, title1)
@@ -176,8 +172,7 @@ func TestListTDs(t *testing.T) {
 	err := svc.UpdateThing(agentID, dtThing1ID, tdDoc1)
 	require.NoError(t, err)
 
-	resp, stat, err := directory.ReadThings(mt, directory.ReadThingsArgs{Limit: 10})
-	_ = stat
+	resp, err := directory.ReadTDs(cl, directory.ReadTDsArgs{Limit: 10})
 	require.NoError(t, err)
 	assert.NotNil(t, resp.Output)
 	require.True(t, len(resp.Output) > 0)

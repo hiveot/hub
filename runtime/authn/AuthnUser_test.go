@@ -177,8 +177,7 @@ func TestBadUserCommand(t *testing.T) {
 	_, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	ecl := embedded.NewEmbeddedClient("client1", userHandler)
-	stat, err := ecl.Rpc(nil, api.AuthnUserThingID, "badmethod", nil, nil)
-	_ = stat
+	err := ecl.Rpc(api.AuthnUserThingID, "badmethod", nil, nil)
 	require.Error(t, err)
 
 }

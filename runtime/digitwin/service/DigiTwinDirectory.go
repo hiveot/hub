@@ -45,22 +45,20 @@ func (svc *DigitwinDirectory) HandleTDEvent(
 	// Digitwin adds the "dtw:{agentID}:" prefix, as the event now belongs to the virtual digital twin.
 	dtThingID := things.MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
 
-	stat.MessageID = msg.MessageID
-	stat.Status = api.DeliveryFailed
 	td := things.TD{}
 	err := json.Unmarshal(msg.Data, &td)
 	if err == nil {
-		stat.Status = api.DeliveryCompleted
 		td.ID = dtThingID
 		err = svc.UpdateThing(msg.SenderID, dtThingID, &td)
+
 	}
 	if err != nil {
 		stat.Error = fmt.Sprintf(
 			"StoreEvent. Failed updating TD of Agent/Thing '%s/%s': %s",
 			msg.SenderID, msg.ThingID, err.Error())
-		stat.Status = api.DeliveryFailed
 		slog.Error(stat.Error)
 	}
+	stat.Completed(msg, err)
 	return stat
 }
 
@@ -100,14 +98,14 @@ func (svc *DigitwinDirectory) LoadCacheFromStore() error {
 	return nil
 }
 
-// QueryThings query the collection of TD documents
-func (svc *DigitwinDirectory) QueryThings(args directory.QueryThingsArgs) (resp directory.QueryThingsResp, err error) {
+// QueryTDs query the collection of TD documents
+func (svc *DigitwinDirectory) QueryTDs(args directory.QueryTDsArgs) (resp directory.QueryTDsResp, err error) {
 	// TBD: query based on what?
 	return resp, fmt.Errorf("not yet implemented")
 }
 
-// ReadThing returns the TD document in json format for the given Thing ID
-func (svc *DigitwinDirectory) ReadThing(args directory.ReadThingArgs) (resp directory.ReadThingResp, err error) {
+// ReadTD returns the TD document in json format for the given Thing ID
+func (svc *DigitwinDirectory) ReadTD(args directory.ReadTDArgs) (resp directory.ReadTDResp, err error) {
 	svc.cachemux.RLock()
 	defer svc.cachemux.RUnlock()
 	td, found := svc.tdCache[args.ThingID]
@@ -116,16 +114,15 @@ func (svc *DigitwinDirectory) ReadThing(args directory.ReadThingArgs) (resp dire
 		return resp, err
 	}
 	// TODO: re-marshalling is inefficient. Do this on startup
-
-	tdjson, _ := json.Marshal(td)
-	return directory.ReadThingResp{Output: string(tdjson)}, err
+	tdJSON, _ := json.Marshal(td)
+	return directory.ReadTDResp{Output: string(tdJSON)}, err
 }
 
-// ReadThings returns a list of TD documents
+// ReadTDs returns a list of TD documents
 //
 //	offset is the offset in the list
 //	limit is the maximum number of records to return
-func (svc *DigitwinDirectory) ReadThings(args directory.ReadThingsArgs) (resp directory.ReadThingsResp, err error) {
+func (svc *DigitwinDirectory) ReadTDs(args directory.ReadTDsArgs) (resp directory.ReadTDsResp, err error) {
 	tdList := make([]string, 0, args.Limit)
 	svc.cachemux.RLock()
 	defer svc.cachemux.RUnlock()
@@ -151,8 +148,8 @@ func (svc *DigitwinDirectory) ReadThings(args directory.ReadThingsArgs) (resp di
 	return resp, nil
 }
 
-// RemoveThing deletes the TD document from the given agent with the ThingID
-func (svc *DigitwinDirectory) RemoveThing(args directory.RemoveThingArgs) error {
+// RemoveTD deletes the TD document from the given agent with the ThingID
+func (svc *DigitwinDirectory) RemoveTD(args directory.RemoveTDArgs) error {
 	slog.Info("RemoveThing",
 		slog.String("thingID", args.ThingID))
 	// remove from both cache and bucket

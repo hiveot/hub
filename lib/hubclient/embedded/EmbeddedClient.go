@@ -1,7 +1,6 @@
 package embedded
 
 import (
-	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -44,15 +43,15 @@ func (cl *EmbeddedClient) ConnectWithPassword(password string) (string, error) {
 func (cl *EmbeddedClient) ConnectWithJWT(token string) (string, error) {
 	return "dummytoken", nil
 }
+
+// ClientID returns the client's connection ID
+func (cl *EmbeddedClient) ClientID() string {
+	return cl.clientID
+}
 func (cl *EmbeddedClient) CreateKeyPair() (kp keys.IHiveKey) {
 	return nil
 }
 func (cl *EmbeddedClient) Disconnect() {
-}
-
-// GetClientID returns the client's connection ID
-func (cl *EmbeddedClient) GetClientID() string {
-	return cl.clientID
 }
 
 func (cl *EmbeddedClient) GetStatus() hubclient.HubTransportStatus {
@@ -75,10 +74,13 @@ func (cl *EmbeddedClient) ReceiveMessage(msg *things.ThingMessage) (stat api.Del
 
 // PubAction publishes an action request.
 // Since this is a direct call, the response include a reply.
-func (cl *EmbeddedClient) PubAction(thingID string, key string, payload []byte) api.DeliveryStatus {
+func (cl *EmbeddedClient) PubAction(thingID string, key string, payload []byte) (stat api.DeliveryStatus, err error) {
 	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, payload, cl.clientID)
-	stat := cl.sendMessage(msg)
-	return stat
+	stat = cl.sendMessage(msg)
+	if stat.Error != "" {
+		err = errors.New(stat.Error)
+	}
+	return stat, err
 }
 
 // PubEvent publishes an event style message without waiting for a response.
@@ -95,10 +97,9 @@ func (cl *EmbeddedClient) RefreshToken() (newToken string, err error) {
 
 // Rpc makes a RPC call using an action and waits for a delivery confirmation.
 // The embedded client Rpc calls are synchronous so results are immediately available
-func (cl *EmbeddedClient) Rpc(ctx context.Context,
-	thingID string, key string, args interface{}, resp interface{}) (api.DeliveryStatus, error) {
+func (cl *EmbeddedClient) Rpc(
+	thingID string, key string, args interface{}, resp interface{}) error {
 
-	_ = ctx
 	payload, _ := json.Marshal(args)
 	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, payload, cl.clientID)
 	// this sendMessage is synchronous
@@ -111,9 +112,9 @@ func (cl *EmbeddedClient) Rpc(ctx context.Context,
 		}
 	}
 	if stat.Error != "" {
-		return stat, errors.New(stat.Error)
+		return errors.New(stat.Error)
 	}
-	return stat, nil
+	return nil
 }
 
 // SetConnectHandler does nothing as connection is always established

@@ -11,7 +11,7 @@ import (
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime/authn"
 	"github.com/hiveot/hub/runtime/authz"
-	"github.com/hiveot/hub/runtime/protocols"
+	"github.com/hiveot/hub/runtime/transports"
 	"gopkg.in/yaml.v3"
 	"log/slog"
 	"os"
@@ -37,9 +37,9 @@ type RuntimeConfig struct {
 	EnableNATS bool `yaml:"enableNATS,omitempty"`
 
 	// middleware and services config. These all work out of the box with their defaults.
-	Authn     authn.AuthnConfig         `yaml:"authn"`
-	Authz     authz.AuthzConfig         `yaml:"authz"`
-	Protocols protocols.ProtocolsConfig `yaml:"protocols"`
+	Authn     authn.AuthnConfig          `yaml:"authn"`
+	Authz     authz.AuthzConfig          `yaml:"authz"`
+	Protocols transports.ProtocolsConfig `yaml:"protocols"`
 
 	// Runtime logging
 	LogLevel string `yaml:"logLevel,omitempty"` // default: warn
@@ -277,7 +277,7 @@ func NewRuntimeConfig() *RuntimeConfig {
 		EnableGRPC:  false,
 		Authn:       authn.NewAuthnConfig(),
 		Authz:       authz.NewAuthzConfig(),
-		Protocols:   protocols.NewProtocolsConfig(),
+		Protocols:   transports.NewProtocolsConfig(),
 		LogLevel:    "warning", // error, warning, info, debug
 		LogFile:     "",        // no logfile
 

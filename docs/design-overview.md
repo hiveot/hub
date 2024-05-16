@@ -62,22 +62,11 @@ It is required that all servers are able to authenticate the sender using the cl
 
 The HTTPS/SSE/WS protocol binding opens a listening TLS port for clients (both agents and consumers) to connect to. The connection handles publishing of events, actions and rpc requests, which are passed through the middleware and handled by the runtime as described below.
 
-The default paths below are used by the server and included in the TD document forms of the Things. RPC paths are defined in the TDD action form.
+The binding configuration defines the paths used for properties, events, actions, and the directory service. The path pattern used is that of /subject/thingID/.... For example "/events/{thingID}/{key}. REST GET requests are used to read values while PUT requests are used to update values. Actions use a POST request to initiate an action including requesting a change in property configuration value.
 
-Agent REST paths:
- * POST "/event/{agentID}/{thingID}/{key}"          post event 
- * GET  "/action/{agentID}/{thingID}"               get queued actions (planned)
- * POST "/rpc/{serviceID}/{interfaceID}/{method}"  invoke method on service
-
-Consumer REST paths:
- * GET  "/thing/values/{agentID}/{thingID}"          read current Thing values
- * POST "/action/digitwin/{agentID}/{thingID}/{key}" request action from the digital twin
- * POST "/rpc/{serviceID}/{interfaceID}/{method}"    invoke method on service
-
-The result of posting an action request is an action status message that indicates if the request is queued or delivered. 
-The result of an RPC request is the result of the RPC. If the service is not reachable the request will fail.
+These paths are included in the TD document forms, which describe how to access the values.
  
-The requests must use TLS and carry a valid authentication token.
+All requests must use TLS. Requests must carry a valid authentication token, except for the login request.
 
 See the [HTTPS Binding Config](../runtime/protocols/httpsbinding/HttpsBindingConfig.go) for more details.
 

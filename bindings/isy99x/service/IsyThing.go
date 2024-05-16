@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
 	"strings"
 	"sync"
@@ -32,9 +32,9 @@ type IIsyThing interface {
 	// GetTD returns the generated TD document describing the Thing
 	GetTD() *things.TD
 	// HandleActionRequest passes incoming actions to the Thing for execution
-	HandleActionRequest(tv *things.ThingValue) (err error)
+	HandleActionRequest(tv *things.ThingMessage) (err error)
 	// HandleConfigRequest passes configuration changes to the Thing for execution
-	HandleConfigRequest(tv *things.ThingValue) (err error)
+	HandleConfigRequest(tv *things.ThingMessage) (err error)
 	// HandleValueUpdate updates the Thing properties with value obtained via the ISY gateway
 	HandleValueUpdate(propID string, uom string, newValue string) error
 	// Init assigns the ISY connection and node this Thing represents
@@ -125,13 +125,13 @@ func (it *IsyThing) GetTD() *things.TD {
 //}
 
 // HandleActionRequest invokes the action handler of the specialized thing
-func (it *IsyThing) HandleActionRequest(tv *things.ThingValue) (err error) {
+func (it *IsyThing) HandleActionRequest(tv *things.ThingMessage) (err error) {
 	err = fmt.Errorf("HandleActionRequest not supported for this thing")
 	return err
 }
 
 // HandleConfigRequest invokes the config handler of the specialized thing
-func (it *IsyThing) HandleConfigRequest(tv *things.ThingValue) (err error) {
+func (it *IsyThing) HandleConfigRequest(tv *things.ThingMessage) (err error) {
 	// The title is the friendly name of the node
 	if tv.Name == vocab.PropDeviceTitle {
 		newName := string(tv.Data)

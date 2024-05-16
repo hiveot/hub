@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
+	vocab2 "github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
 )
 
@@ -20,19 +20,19 @@ func (it *IsySwitchThing) GetPropValues(onlyChanges bool) map[string]string {
 func (it *IsySwitchThing) GetTD() *things.TD {
 	td := it.IsyThing.GetTD()
 	// value of switch property ID "ST" is "0" or "255"
-	td.AddEvent("ST", vocab.PropSwitchOnOff, "On/Off", "",
-		&things.DataSchema{Type: vocab.WoTDataTypeBool})
+	td.AddEvent("ST", vocab2.PropSwitchOnOff, "On/Off", "",
+		&things.DataSchema{Type: vocab2.WoTDataTypeBool})
 
 	// AddSwitchEvent is short for adding an event for a switch
 	//td.AddSwitchEvent(vocab.PropSwitchOnOff, "On/Off changed")
-	td.AddSwitchAction(vocab.ActionSwitchOn, "Switch on")
-	td.AddSwitchAction(vocab.ActionSwitchOff, "Switch off")
-	td.AddSwitchAction(vocab.ActionSwitchToggle, "Toggle switch")
+	td.AddSwitchAction(vocab2.ActionSwitchOn, "Switch on")
+	td.AddSwitchAction(vocab2.ActionSwitchOff, "Switch off")
+	td.AddSwitchAction(vocab2.ActionSwitchToggle, "Toggle switch")
 
 	return td
 }
 
-//func (it *IsySwitchThing) HandleConfigRequest(tv *things.ThingValue) (err error) {
+//func (it *IsySwitchThing) HandleConfigRequest(tv *things.ThingMessage) (err error) {
 //	err = it.IsyThing.HandleConfigRequest(tv)
 //	return err
 //}
@@ -40,15 +40,15 @@ func (it *IsySwitchThing) GetTD() *things.TD {
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsySwitchThing) HandleActionRequest(tv *things.ThingValue) (err error) {
+func (it *IsySwitchThing) HandleActionRequest(tv *things.ThingMessage) (err error) {
 	var restPath = ""
 	var newValue = ""
 	// supported actions: on, off
-	if tv.Name == vocab.ActionSwitchOn {
+	if tv.Name == vocab2.ActionSwitchOn {
 		newValue = "DON"
-	} else if tv.Name == vocab.ActionSwitchOff {
+	} else if tv.Name == vocab2.ActionSwitchOff {
 		newValue = "DOF"
-	} else if tv.Name == vocab.ActionSwitchToggle {
+	} else if tv.Name == vocab2.ActionSwitchToggle {
 		newValue = "DOF"
 		oldValue, found := it.propValues.GetValue(tv.Name)
 		if !found || oldValue == "DOF" {

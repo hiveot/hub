@@ -200,9 +200,8 @@ func TestBadAdminCommand(t *testing.T) {
 
 	_, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	mt := embedded.NewEmbeddedClient(adminID, adminHandler)
-	stat, err := mt.Rpc(nil, api.AuthnAdminThingID, "badmethod", nil, nil)
-	_ = stat
+	cl := embedded.NewEmbeddedClient(adminID, adminHandler)
+	err := cl.Rpc(api.AuthnAdminThingID, "badmethod", nil, nil)
 	require.Error(t, err)
 
 }

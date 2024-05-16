@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/keys"
 	"log/slog"
 	"net/http"
@@ -125,7 +126,7 @@ func (sm *SessionManager) Close(sessionID string) error {
 
 // ConnectWithPassword creates a new hub client and connect it to the hub using password login
 func (sm *SessionManager) ConnectWithPassword(loginID string, password string) (*hubclient.HubClient, error) {
-	hc := hubclient.NewHubClient(sm.hubURL, loginID, sm.caCert, sm.core)
+	hc := connect.NewHubClient(sm.hubURL, loginID, sm.caCert, sm.core)
 	err := hc.ConnectWithPassword(password)
 	// subscribe to updates
 	return hc, err
@@ -133,7 +134,7 @@ func (sm *SessionManager) ConnectWithPassword(loginID string, password string) (
 
 // ConnectWithToken creates a new hub client and connect it to the hub using token login
 func (sm *SessionManager) ConnectWithToken(loginID string, authToken string) (*hubclient.HubClient, error) {
-	hc := hubclient.NewHubClient(sm.hubURL, loginID, sm.caCert, sm.core)
+	hc := connect.NewHubClient(sm.hubURL, loginID, sm.caCert, sm.core)
 	err := hc.ConnectWithToken(sm.tokenKP, authToken)
 	return hc, err
 }

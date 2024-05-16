@@ -41,6 +41,7 @@ func GenGoAPIFromTD(td *things.TD, outfile string) (err error) {
 	l.Add("import \"errors\"")
 	l.Add("import \"github.com/hiveot/hub/runtime/api\"")
 	l.Add("import \"github.com/hiveot/hub/lib/things\"")
+	l.Add("import \"github.com/hiveot/hub/lib/hubclient\"")
 	l.Add("")
 	l.Add("// RawThingID is the raw thingID as used by agents. Digitwin adds the urn:{agent} prefix")
 	l.Add("const RawThingID = \"%s\"", nativeThingID)

@@ -1,7 +1,6 @@
 package runtime_test
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/inbox"
@@ -28,31 +27,23 @@ func TestHttpsGetActions(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 	// agent receives actions and sends events
-	cl1, _ := addConnectClient(r, api.ClientTypeAgent, agentID)
+	cl1, _ := ts.AddConnectClient(api.ClientTypeAgent, agentID, api.ClientRoleAgent)
 	defer cl1.Disconnect()
 	// consumer sends actions and receives events
-	cl2, _ := addConnectClient(r, api.ClientTypeUser, userID)
+	cl2, _ := ts.AddConnectClient(api.ClientTypeUser, userID, api.ClientRoleManager)
 	defer cl2.Disconnect()
 
 	// consumer publish an action to the agent
-	stat := cl2.PubAction(dtThing1ID, key1, []byte(data))
+	stat, err := cl2.PubAction(dtThing1ID, key1, []byte(data))
 	require.Empty(t, stat.Error)
 
 	// read the latest actions from the digitwin inbox
 	args := inbox.ReadLatestArgs{ThingID: dtThing1ID}
 	resp := inbox.ReadLatestResp{}
-	ctx, rpcCancel := context.WithTimeout(context.Background(), time.Minute)
-	stat2, err := cl2.Rpc(ctx, inbox.ThingID, inbox.ReadLatestMethod, &args, &resp)
+	err = cl2.Rpc(inbox.ThingID, inbox.ReadLatestMethod, &args, &resp)
 	require.NoError(t, err)
-	require.NotNil(t, stat2.Reply)
-	rpcCancel()
 
-	// the status result reply should also hold the data
-	msg := inbox.ReadLatestResp{}
-	//err = json.Unmarshal(resp.ThingValues, &msg)
-	err = json.Unmarshal(stat2.Reply, &msg)
-	require.NoError(t, err)
-	actionMsg := msg.ThingValues[key1]
+	actionMsg := resp.ThingValues[key1]
 	require.NotNil(t, actionMsg)
 	assert.Equal(t, data, string(actionMsg.Data))
 }
@@ -69,20 +60,20 @@ func TestHttpsGetEvents(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 	// agent publishes events
-	cl1, _ := addConnectClient(r, api.ClientTypeAgent, agentID)
+	cl1, _ := ts.AddConnectClient(api.ClientTypeAgent, agentID, api.ClientRoleAgent)
 	defer cl1.Disconnect()
 
 	_ = cl1.PubEvent(agThingID, key1, []byte(data))
 
 	// consumer reads
-	cl, token := addConnectClient(r, api.ClientTypeUser, userID)
+	cl, token := ts.AddConnectClient(api.ClientTypeUser, userID, api.ClientRoleManager)
 	defer cl.Disconnect()
 
-	hostPort := fmt.Sprintf("localhost:%d", TestPort)
-	tlsClient := tlsclient.NewTLSClient(hostPort, certsBundle.CaCert, time.Minute)
+	hostPort := fmt.Sprintf("localhost:%d", ts.Port)
+	tlsClient := tlsclient.NewTLSClient(hostPort, ts.Certs.CaCert, time.Minute)
 	tlsClient.ConnectWithToken(userID, token)
 
-	// read latest using the http API
+	// read latest using the experimental http REST API (which needs a swagger definition)
 	vars := map[string]string{"thingID": dtThingID}
 	eventPath := utils.Substitute(vocab.GetEventsPath, vars)
 	reply, err := tlsClient.Get(eventPath)
@@ -93,12 +84,11 @@ func TestHttpsGetEvents(t *testing.T) {
 	require.NoError(t, err)
 	require.NotZero(t, len(tmm))
 
-	// read latest using the rest API
+	// read latest using the generated RPC client
 	args := outbox.ReadLatestArgs{ThingID: dtThingID}
-	resp, stat, err := outbox.ReadLatest(cl.Rpc, args)
+	resp, err := outbox.ReadLatest(cl, args)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	require.Empty(t, stat.Error)
-	require.NotEmpty(t, stat.Reply)
-
+	tmm = things.ThingMessageMap{}
+	err = json.Unmarshal([]byte(resp.Values), &tmm)
 }

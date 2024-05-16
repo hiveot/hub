@@ -3,7 +3,7 @@ package thing
 import (
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/core/directory/dirclient"
@@ -26,12 +26,12 @@ type DetailsTemplateData struct {
 	// These lists are sorted by property/event/action name
 	Attributes map[string]*things.PropertyAffordance
 	Config     map[string]*things.PropertyAffordance
-	Values     things.ThingValueMap
+	Values     things.ThingMessageMap
 }
 
 // return a map with the latest property values of a thing or nil if failed
-func getLatest(agentID string, thingID string, hc *hubclient.HubClient) (things.ThingValueMap, error) {
-	data := things.NewThingValueMap()
+func getLatest(agentID string, thingID string, hc *hubclient.HubClient) (things.ThingMessageMap, error) {
+	data := things.NewThingMessageMap()
 	rh := historyclient.NewReadHistoryClient(hc)
 	tvs, err := rh.GetLatest(agentID, thingID, nil)
 	if err != nil {

@@ -1,12 +1,13 @@
 // Package outbox with types and interfaces for using this service with agent 'digitwin'
 // DO NOT EDIT. This file is auto generated. Any changes will be overwritten.
-// Generated 13 May 24 15:19 PDT.
+// Generated 16 May 24 14:40 PDT.
 package outbox
 
 import "encoding/json"
 import "errors"
 import "github.com/hiveot/hub/runtime/api"
 import "github.com/hiveot/hub/lib/things"
+import "github.com/hiveot/hub/lib/hubclient"
 
 // RawThingID is the raw thingID as used by agents. Digitwin adds the urn:{agent} prefix
 const RawThingID = "outbox"
@@ -34,8 +35,8 @@ type ReadLatestArgs struct {
 // Read Latest - Read the latest value(s) of a Thing
 type ReadLatestResp struct {
 
-	// Values map of key:ThingMessage objects
-	Values things.ThingMessageMap `json:"Values,omitEmpty"`
+	// Values JSON encoded map of key:ThingMessage objects
+	Values string `json:"Values,omitEmpty"`
 }
 
 const RemoveValueMethod = "removeValue"
@@ -50,21 +51,15 @@ type RemoveValueArgs struct {
 
 // ReadLatest client method - Read Latest.
 // Read the latest value(s) of a Thing
-func ReadLatest(mt api.IMessageTransport, args ReadLatestArgs) (resp ReadLatestResp, stat api.DeliveryStatus, err error) {
-	stat, err = mt(nil, "dtw:digitwin:outbox", "readLatest", &args, &resp)
-	if stat.Error != "" {
-		err = errors.New(stat.Error)
-	}
+func ReadLatest(hc hubclient.IHubClient, args ReadLatestArgs) (resp ReadLatestResp, err error) {
+	err = hc.Rpc("dtw:digitwin:outbox", "readLatest", &args, &resp)
 	return
 }
 
 // RemoveValue client method - Remove Thing Value.
 // Remove a value
-func RemoveValue(mt api.IMessageTransport, args RemoveValueArgs) (stat api.DeliveryStatus, err error) {
-	stat, err = mt(nil, "dtw:digitwin:outbox", "removeValue", &args, nil)
-	if stat.Error != "" {
-		err = errors.New(stat.Error)
-	}
+func RemoveValue(hc hubclient.IHubClient, args RemoveValueArgs) (err error) {
+	err = hc.Rpc("dtw:digitwin:outbox", "removeValue", &args, nil)
 	return
 }
 

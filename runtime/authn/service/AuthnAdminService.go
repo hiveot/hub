@@ -123,6 +123,12 @@ func (svc *AuthnAdminService) RemoveClient(clientID string) error {
 	return err
 }
 
+// SetRole changes a client's role
+func (svc *AuthnAdminService) SetRole(clientID string, role string) error {
+	err := svc.authnStore.SetRole(clientID, role)
+	return err
+}
+
 // Start the authentication service.
 // The provided user store must be opened first.
 // This creates accounts for the admin user and launcher if they don't exist.
