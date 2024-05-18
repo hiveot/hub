@@ -1,9 +1,10 @@
 package stateclient
 
 import (
-	"github.com/hiveot/hub/core/state/stateapi"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/ser"
+	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/services/state/stateapi"
 )
 
 // StateClient is a marshaller for service messages using a provided hub connection.
@@ -12,17 +13,18 @@ type StateClient struct {
 	// ID of the service that handles the requests
 	agentID string
 	// State storage capability
-	capID string
+	thingID string
+	// thingID of the state service
+	serviceID string
 	// Connection to the hub
-	hc *hubclient.HubClient
+	hc hubclient.IHubClient
 }
 
 // Delete removes the record with the given key.
 func (cl *StateClient) Delete(key string) error {
 
 	req := stateapi.DeleteArgs{Key: key}
-	err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, stateapi.DeleteMethod, &req, nil)
+	err := cl.hc.Rpc(cl.serviceID, stateapi.DeleteMethod, &req, nil)
 	return err
 }
 
@@ -32,8 +34,7 @@ func (cl *StateClient) Get(key string, record interface{}) (found bool, err erro
 
 	req := stateapi.GetArgs{Key: key}
 	resp := stateapi.GetResp{}
-	err = cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, stateapi.GetMethod, &req, &resp)
+	err = cl.hc.Rpc(cl.serviceID, stateapi.GetMethod, &req, &resp)
 	if err != nil {
 		return false, err
 	}
@@ -49,8 +50,7 @@ func (cl *StateClient) GetMultiple(keys []string) (values map[string]string, err
 
 	req := stateapi.GetMultipleArgs{Keys: keys}
 	resp := stateapi.GetMultipleResp{}
-	err = cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, stateapi.GetMultipleMethod, &req, &resp)
+	err = cl.hc.Rpc(cl.serviceID, stateapi.GetMultipleMethod, &req, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -64,28 +64,27 @@ func (cl *StateClient) Set(key string, record interface{}) error {
 		return err
 	}
 	req := stateapi.SetArgs{Key: key, Value: string(value)}
-	err = cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, stateapi.SetMethod, &req, nil)
+	err = cl.hc.Rpc(cl.serviceID, stateapi.SetMethod, &req, nil)
 	return err
 }
 
 // SetMultiple writes multiple record
 func (cl *StateClient) SetMultiple(kv map[string]string) error {
 	req := stateapi.SetMultipleArgs{KV: kv}
-	err := cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, stateapi.SetMultipleMethod, &req, nil)
+	err := cl.hc.Rpc(cl.serviceID, stateapi.SetMultipleMethod, &req, nil)
 	return err
 }
 
 // NewStateClient returns a client to access state
 //
 //	hc is the hub client connection to use.
-func NewStateClient(hc *hubclient.HubClient) *StateClient {
+func NewStateClient(hc hubclient.IHubClient) *StateClient {
 	agentID := stateapi.ServiceName
 	cl := StateClient{
-		hc:      hc,
-		agentID: agentID,
-		capID:   stateapi.StorageCap,
+		hc:        hc,
+		agentID:   agentID,
+		thingID:   stateapi.StorageThingID,
+		serviceID: things.MakeDigiTwinThingID(agentID, stateapi.StorageThingID),
 	}
 	return &cl
 }

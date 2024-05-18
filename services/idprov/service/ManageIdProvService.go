@@ -2,10 +2,9 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/auth/authapi"
-	"github.com/hiveot/hub/core/auth/authclient"
-	"github.com/hiveot/hub/core/idprov/idprovapi"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/runtime/authn/authnclient"
+	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"log/slog"
 	"sync"
 	"time"
@@ -18,9 +17,9 @@ type ManageIdProvService struct {
 	requests map[string]idprovapi.ProvisionStatus
 
 	//
-	hc *hubclient.HubClient
-	// client of auth service used to create tokens
-	authSvc *authclient.ManageClients
+	hc hubclient.IHubClient
+	// client of authn service used to create tokens
+	authSvc *authnclient.AuthnAdminClient
 	// mutex to guard access to maps
 	mux sync.RWMutex
 }
@@ -161,11 +160,10 @@ func (svc *ManageIdProvService) SubmitRequest(ctx hubclient.ServiceContext,
 		}
 
 		status.Pending = false
-		if status.ClientType == authapi.ClientTypeService {
-			token, err = svc.authSvc.AddService(status.ClientID, "service", status.PubKey)
-		} else {
-			token, err = svc.authSvc.AddDevice(status.ClientID, "device", status.PubKey)
-		}
+		err = svc.authSvc.AddClient(status.ClientType,
+			status.ClientID, status.ClientID, status.PubKey, "")
+		token, err = svc.authSvc.NewAuthToken(status.ClientID, 0)
+
 		if err != nil {
 			return nil, err
 		}
@@ -196,7 +194,7 @@ func (svc *ManageIdProvService) SubmitRequest(ctx hubclient.ServiceContext,
 func (svc *ManageIdProvService) Stop() {
 }
 
-func StartManageIdProvService(hc *hubclient.HubClient) *ManageIdProvService {
+func StartManageIdProvService(hc hubclient.IHubClient) *ManageIdProvService {
 
 	svc := &ManageIdProvService{
 		// map of requests by SenderID
@@ -205,15 +203,16 @@ func StartManageIdProvService(hc *hubclient.HubClient) *ManageIdProvService {
 	}
 
 	// the auth service is used to create credentials
-	svc.authSvc = authclient.NewManageClients(svc.hc)
+	svc.authSvc = authnclient.NewAuthnAdminClient(svc.hc)
 
-	svc.hc.SetRPCCapability(idprovapi.ManageProvisioningCap,
-		map[string]interface{}{
-			idprovapi.ApproveRequestMethod:    svc.ApproveRequest,
-			idprovapi.GetRequestsMethod:       svc.GetRequests,
-			idprovapi.PreApproveClientsMethod: svc.PreApproveClients,
-			idprovapi.RejectRequestMethod:     svc.RejectRequest,
-			idprovapi.SubmitRequestMethod:     svc.SubmitRequest,
-		})
+	// FIXME: FIX HUB SERVICE AUTHORIZATION
+	//svc.hc.SetRPCCapability(idprovapi.ManageProvisioningCap,
+	//	map[string]interface{}{
+	//		idprovapi.ApproveRequestMethod:    svc.ApproveRequest,
+	//		idprovapi.GetRequestsMethod:       svc.GetRequests,
+	//		idprovapi.PreApproveClientsMethod: svc.PreApproveClients,
+	//		idprovapi.RejectRequestMethod:     svc.RejectRequest,
+	//		idprovapi.SubmitRequestMethod:     svc.SubmitRequest,
+	//	})
 	return svc
 }

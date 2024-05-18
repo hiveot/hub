@@ -83,9 +83,15 @@ func (svc *SSEHandler) handleSseConnect(w http.ResponseWriter, r *http.Request) 
 			// "Each message is sent as a block of text terminated by a pair of newlines. "
 			//https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
 			//_, err := fmt.Fprintf(w, "event: time\ndata: <div sse-swap='time'>%s</div>\n\n", data)
-			_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
+			// FIXME: There seems to be a 64K limit. Probably at the go-sse receiver side
+			n, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
 				sseMsg.EventType, sseMsg.Payload)
+			_ = n
 			//_, err := fmt.Fprint(w, sseMsg)
+			if err != nil {
+				slog.Error("Error writing event", "event", sseMsg.EventType,
+					"size", len(sseMsg.Payload))
+			}
 			w.(http.Flusher).Flush()
 			break
 		case <-r.Context().Done(): // remote client connection closed
@@ -137,6 +143,11 @@ func (svc *SSEHandler) registerWithGosse(r chi.Router) {
 				sseMsg.AppendData(ev.Payload)
 				sseMsg.ID, _ = sse.NewID(ev.ID)
 				sseMsg.Type, err = sse.NewType(ev.EventType)
+				// FIXME: go-sse uses a fixed buffer size (default 64k). How to send
+				// larger messages? (eg RPC results)
+				// Option 1: return an error
+				// Option 2: split the message and recombine at the receiving end
+				//
 				err = sseSession.Send(&sseMsg)
 				if err != nil {
 					slog.Error("failed sending message", "err", err)

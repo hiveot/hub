@@ -3,18 +3,26 @@ package stateapi
 // ServiceName defines the default state service agent ID
 const ServiceName = "state"
 
-// StorageCap identifies the capability to store state
-const StorageCap = "store"
+// StorageThingID identifies the ThingID of the capability to store state
+const StorageThingID = "store"
 
-// DeleteMethod deletes a record from the store
-const DeleteMethod = "delete"
+// Storage methods
+const (
+	// DeleteMethod deletes a record from the store
+	DeleteMethod = "delete"
+	// GetMethod reads a record from the store
+	GetMethod = "get"
+	// GetMultipleMethod reads multiple records from the store
+	GetMultipleMethod = "getMultiple"
+	// SetMethod writes a record to the store
+	SetMethod = "set"
+	// SetMultipleMethod writes multiple records to the store
+	SetMultipleMethod = "setMultiple"
+)
 
 type DeleteArgs struct {
 	Key string `json:"key"`
 }
-
-// GetMethod reads a record from the store
-const GetMethod = "get"
 
 type GetArgs struct {
 	Key string `json:"key"`
@@ -29,9 +37,6 @@ type GetResp struct {
 	Value string `json:"value"`
 }
 
-// GetMultipleMethod reads multiple records from the store
-const GetMultipleMethod = "getMultiple"
-
 type GetMultipleArgs struct {
 	Keys []string `json:"keys"`
 }
@@ -41,16 +46,10 @@ type GetMultipleResp struct {
 	KV map[string]string `json:"kv"`
 }
 
-// SetMethod writes a record to the store
-const SetMethod = "set"
-
 type SetArgs struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
-
-// SetMultipleMethod writes multiple records to the store
-const SetMultipleMethod = "setMultiple"
 
 type SetMultipleArgs struct {
 	KV map[string]string `json:"kv"`

@@ -1,7 +1,6 @@
 package idprovclient
 
 import (
-	"errors"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
@@ -21,19 +20,12 @@ type ManageIdProvClient struct {
 // Invoke the IDProv method
 // This returns an error if anything goes wrong: not delivered, delivery incomplete or processing error
 func (cl *ManageIdProvClient) call(method string, args interface{}, resp interface{}) error {
-	stat, err := cl.hc.Rpc(nil, cl.thingID, method, args, resp)
-	if err == nil {
-		if stat.Error != "" {
-			err = errors.New(stat.Error)
-		} else if stat.Status != api.DeliveryCompleted {
-			err = errors.New("No error but delivery not completed")
-		}
-	}
+	err := cl.hc.Rpc(cl.thingID, method, args, resp)
 	return err
 }
 
 // ApproveRequest approves a pending provisioning request
-func (cl *ManageIdProvClient) ApproveRequest(ClientID string, clientType string) error {
+func (cl *ManageIdProvClient) ApproveRequest(ClientID string, clientType api.ClientType) error {
 	args := idprovapi.ApproveRequestArgs{
 		ClientID:   ClientID,
 		ClientType: clientType,

@@ -3,9 +3,6 @@ package service
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/hiveot/hub/core/auth/authapi"
-	"github.com/hiveot/hub/core/auth/authclient"
-	"github.com/hiveot/hub/core/idprov/idprovapi"
 	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
 )
@@ -30,7 +27,7 @@ const DefaultRetrySec = 12 * 3600
 type IdProvService struct {
 
 	// Hub connection
-	hc *hubclient.HubClient
+	hc hubclient.IHubClient
 	// the manage service
 	mng *ManageIdProvService
 
@@ -50,7 +47,7 @@ type IdProvService struct {
 // 3. Start the http request server
 // 4. start the security check for rogue DNS-SD records
 // 5. start DNS-SD discovery server
-func (svc *IdProvService) Start(hc *hubclient.HubClient) (err error) {
+func (svc *IdProvService) Start(hc hubclient.IHubClient) (err error) {
 	slog.Warn("Starting the provisioning service", "clientID", hc.ClientID())
 	svc.hc = hc
 	//svc.Stop()
@@ -58,13 +55,14 @@ func (svc *IdProvService) Start(hc *hubclient.HubClient) (err error) {
 	if err != nil {
 		return err
 	}
+	// FIXME: FIX THE SERVICE AUTHORIZATION
 	// Set the required permissions for using this service
 	// any user roles can view the directory
-	myProfile := authclient.NewProfileClient(svc.hc)
-	err = myProfile.SetServicePermissions(idprovapi.ManageProvisioningCap, []string{
-		authapi.ClientRoleManager,
-		authapi.ClientRoleAdmin,
-		authapi.ClientRoleService})
+	//myProfile := authnclient.NewAuthnUserClient(svc.hc)
+	//err = myProfile.SetServicePermissions(idprovapi.ManageProvisioningCap, []string{
+	//	authapi.ClientRoleManager,
+	//	authapi.ClientRoleAdmin,
+	//	authapi.ClientRoleService})
 	if err != nil {
 		return err
 	}

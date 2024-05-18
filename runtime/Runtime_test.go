@@ -31,10 +31,8 @@ func startRuntime() *runtime.Runtime {
 
 // TestMain for all authn tests, setup of default folders and filenames
 func TestMain(m *testing.M) {
+
 	res := m.Run()
-	if res == 0 {
-		_ = os.RemoveAll(ts.TestDir)
-	}
 	os.Exit(res)
 }
 

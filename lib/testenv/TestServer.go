@@ -18,9 +18,8 @@ import (
 	"path"
 )
 
-// TestServer for testing application services.
-// Usage:
-// - Simply run NewTestServer() followed by Start(clean)
+// TestDir is the default test directory
+var TestDir = path.Join(os.TempDir(), "hiveot-test")
 
 var testTDs = []struct {
 	ID         string
@@ -49,6 +48,8 @@ var EventTypes = []string{vocab.PropElectricCurrent, vocab.PropElectricVoltage,
 var ActionTypes = []string{vocab.ActionDimmer, vocab.ActionSwitch,
 	vocab.ActionSwitchToggle, vocab.ActionValveOpen, vocab.ActionValveClose}
 
+// TestServer for testing application services.
+// Usage: run NewTestServer() followed by Start(clean)
 type TestServer struct {
 	Port    int
 	Certs   certs.TestCertBundle
@@ -59,6 +60,11 @@ type TestServer struct {
 	Runtime *runtime.Runtime
 }
 
+// AddConnectClient creates a new test client of the given type and role,
+// and returns a hub client.
+// The hub client is an implementation of the default transport.
+// This also returns a new authentication token for reconnecting
+// In case of error this panics.
 func (test *TestServer) AddConnectClient(
 	clientType api.ClientType, clientID string, clientRole string) (
 	cl hubclient.IHubClient, token string) {
@@ -66,10 +72,13 @@ func (test *TestServer) AddConnectClient(
 	password := clientID
 	err := test.Runtime.AuthnSvc.AdminSvc.AddClient(
 		clientType, clientID, clientID, "", password)
+	if err == nil {
+		err = test.Runtime.AuthzSvc.SetClientRole(clientID, clientRole)
+	}
 	if err != nil {
 		panic("Failed adding client:" + err.Error())
 	}
-	test.Runtime.AuthnSvc.AdminSvc.SetRole(clientID, clientRole)
+
 	hostPort := fmt.Sprintf("localhost:%d", test.Port)
 	cl = httpclient.NewHttpSSEClient(hostPort, clientID, test.Certs.CaCert)
 	token, err = cl.ConnectWithPassword(password)
@@ -163,7 +172,7 @@ func (test *TestServer) Start(clean bool) error {
 func NewTestServer() *TestServer {
 	srv := TestServer{
 		Port:    9444,
-		TestDir: path.Join(os.TempDir(), "test-runtime"),
+		TestDir: TestDir,
 		Certs:   certs.CreateTestCertBundle(),
 		Config:  runtime.NewRuntimeConfig(),
 	}

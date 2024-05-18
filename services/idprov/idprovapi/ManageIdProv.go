@@ -16,7 +16,7 @@ type ApproveRequestArgs struct {
 	// ClientID of an approved device or service
 	ClientID string `json:"clientID"`
 	// ClientType to assign to the approval
-	ClientType string `json:"clientType"`
+	ClientType api.ClientType `json:"clientType"`
 }
 
 // GetRequestsMethod returns a list of provisioning requests
@@ -43,7 +43,7 @@ type PreApprovedClient struct {
 	// ClientID of a pre-approved device or service
 	ClientID string `json:"clientID,omitempty"`
 	// client is a device or service
-	ClientType string `json:"clientType"`
+	ClientType api.ClientType `json:"clientType"`
 	// Optional MAC for extra checking
 	MAC string `json:"mac"`
 	// Device or service public key used to issue tokens

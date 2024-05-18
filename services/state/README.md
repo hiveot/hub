@@ -8,36 +8,36 @@ The state service provides a simple key-value storage service to store applicati
 This service is functional but breaking changes can still be expected.
 
 TODO:
-1. Support for cursor for iterating keys.
+1. Limit the amount of data per client, nr records and record size 
 2. Support for auto-expiry of keys.
 
 ## Summary
 
-Applications and services that need to persist state can use this key-value store. This is also available to consumers for storing state of their web application, for example a dashboard layout.
+Devices, services and users can use this key-value store to persist basic state. It is intended for devices with no or limited storage to give them a place to persist their data and for web applications to store things like a dashboard configuration. As this service should be always available, it is part of the runtime core.
 
 The state service uses the bucket store package that supports multiple implementations of the key-value store. The default store uses the built-in btree key-value store with a file based storage.  
 
-The state service is intended for a relatively small amount of state data. Performance and memory consumption are good for at least 100K total records. 
+The state service is intended for a relatively small amount of state data per client. Performance and memory consumption are good for at least 100K total records.
 
-## Installation 
+The state service is by default enabled in the runtime. It can be disabled through the runtime configuration. 
 
-The service is installed in the plugin directory. The hiveot Makefile includes the build and install commands similar to other core services. 
+## Installation  
 
-The state service is intended to be started by the launcher and is included in the default launcher.yaml configuration. For testing purposes a manual startup is also possible. 
+The service is embedded in the runtime and thus does not need installation.  
 
 ## Configuration
 
-No configuration is needed. The service will run out of the box.
+The service will run out of the box. The configuration can be modified in the runtime configuration. 
 
 
 ## Usage
 
-The service API messages are defined in the stateapi directory. Data can be retrieved and stored using the rpcrequest message of the hubclient. A native API is supported using the stateclient/StateClient implementation.
+The easiest way to use the state service client is through the provided state client.
 
 Conceptual example of using the state to retrieve data. MyData can be a struct or native type.  
 ```go
   hc := ConnectToHub(...)
-  stateClient := NewStateClient("",hc)
+  stateClient := NewStateClient(hc)
   
   // write record
   myRecord := MyData{}

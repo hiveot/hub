@@ -14,14 +14,17 @@ const (
 	// GetProfilesMethod requests a list of all clients, users, services and agents
 	GetProfilesMethod = "getProfiles"
 
+	// NewAuthTokenMethod requests a new authentication token for agent or service
+	NewAuthTokenMethod = "newAuthToken"
+
 	// RemoveClientMethod requests removal of a client
 	RemoveClientMethod = "removeClient"
 
+	// SetClientPasswordMethod requests changing a client's password
+	SetClientPasswordMethod = "setClientPassword"
+
 	// UpdateClientProfileMethod requests updates to a client
 	UpdateClientProfileMethod = "updateClientProfile"
-
-	// UpdateClientPasswordMethod requests updates to a client's password
-	UpdateClientPasswordMethod = "updateClientPassword"
 )
 
 // AuthnEntry containing client profile and password hash
@@ -62,13 +65,27 @@ type GetProfilesResp struct {
 	Profiles []ClientProfile `json:"profiles"`
 }
 
+// NewAuthTokenArgs creates an auth token for an agent or service
+// Intended for services and agents
+type NewAuthTokenArgs struct {
+	// ClientID of the service or agent
+	ClientID string `json:"clientID"`
+	// Optional duration of the token, or empty for the default duration
+	ValiditySec int `json:"validity,omitempty"`
+}
+
+// NewAuthTokenResp contains the new token
+type NewAuthTokenResp struct {
+	Token string `json:"token"`
+}
+
 // RemoveClientArgs arguments for removing a client from the system
 type RemoveClientArgs struct {
 	ClientID string `json:"clientID"`
 }
 
-// UpdateClientPasswordArgs arguments for updating a client's password
-type UpdateClientPasswordArgs struct {
+// SetClientPasswordArgs arguments for updating a client's password
+type SetClientPasswordArgs struct {
 	ClientID string `json:"clientID"`
 	Password string `json:"password"`
 }

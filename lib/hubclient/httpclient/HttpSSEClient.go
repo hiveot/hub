@@ -73,15 +73,20 @@ func (cl *HttpSSEClient) ConnectSSE(client *http.Client) error {
 	//r.Header.Set("Content-Type", "text/event-stream")
 	req.Header.Set("Content-Type", "application/json")
 
-	// FIXME: how to close this down?
+	// FIXME:  close this down ?
+	// FIXME: how to increase the buffer size from 64K to 1M?
 	conn := sse.NewConnection(req)
 
-	conn.SubscribeToAll(cl.handleSSEEvent)
+	//conn.Parser.Buffer = make([]byte, 1000000) // test 1MB buffer
+
+	remover := conn.SubscribeToAll(cl.handleSSEEvent)
+	_ = remover
 	go func() {
 		// connect and report an error if connection ends due to reason other than context cancelled
 		if err := conn.Connect(); err != nil && !errors.Is(err, context.Canceled) {
 			slog.Error("SSE connection failed", "err", err.Error())
 		}
+		remover()
 	}()
 	//c.Connection = client
 	//cl.startR3labsSSEListener()
@@ -204,10 +209,8 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		slog.String("senderID", rxMsg.SenderID),
 	)
 
-	// if no message handler is set then this obviously fails
-	if cl._messageHandler == nil {
-		stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, event ignored"))
-	} else if rxMsg.MessageType == vocab.MessageTypeEvent && rxMsg.Key == vocab.EventTypeDeliveryUpdate {
+	// always handle rpc response
+	if rxMsg.MessageType == vocab.MessageTypeEvent && rxMsg.Key == vocab.EventTypeDeliveryUpdate {
 		// this client is receiving a delivery update from a previous action.
 		cl.mux.RLock()
 		err = json.Unmarshal(rxMsg.Data, &stat)
@@ -219,13 +222,23 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 			cl.mux.Lock()
 			delete(cl._correlData, rxMsg.MessageID)
 			cl.mux.Unlock()
-		} else {
-			// pass event to client as this isn't an rpc action
+			return
+		} else if cl._messageHandler != nil {
+			// pass event to client as this is not an rpc action
 			stat = cl._messageHandler(rxMsg)
+		} else {
+			// missing rpc or message handler
+			slog.Error("handleSSEEvent, no handler registered for client",
+				"clientID", cl.ClientID())
+			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, delivery update ignored"))
 		}
-	} else {
+	} else if cl._messageHandler != nil {
 		// pass action to agent for delivery to thing
 		stat = cl._messageHandler(rxMsg)
+	} else {
+		slog.Error("handleSSEEvent, no handler registered for client",
+			"clientID", cl.ClientID())
+		stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
 	}
 	// only actions need a delivery update
 	if rxMsg.MessageType == vocab.MessageTypeAction {
@@ -353,22 +366,26 @@ func (cl *HttpSSEClient) Rpc(
 	cl.mux.Lock()
 	delete(cl._correlData, messageID)
 	cl.mux.Unlock()
-	if stat.MessageID != messageID {
-		slog.Error("RPC request messageID does not match response",
+	if err == nil && stat.Error != "" {
+		err = errors.New(stat.Error)
+	}
+	if err == nil && stat.MessageID != messageID {
+		// this only happens if a direct response was received with a different messageID
+		// this can happen when the called function does not return a proper delivery status.
+		slog.Warn("RPC request messageID does not match response. Bad response from remote service.",
+			slog.String("clientID", cl.ClientID()),
+			slog.String("service thingID", thingID),
+			slog.String("service method", key),
 			slog.String("req", messageID),
 			slog.String("resp", stat.MessageID))
 	}
 	// when not completed return an error
-	if stat.Status != api.DeliveryCompleted {
+	if err == nil && stat.Status != api.DeliveryCompleted {
 		// delivery not
 		err = errors.New("Delivery not complete. Status: " + stat.Status)
-		if stat.Error != "" {
-			err = errors.New(stat.Error)
-		}
-		return err
 	}
 	// only once completed will there be a reply as a result
-	if resp != nil {
+	if err == nil && resp != nil {
 		err = json.Unmarshal(stat.Reply, resp)
 	}
 	return err
@@ -386,7 +403,7 @@ func (cl *HttpSSEClient) WaitForStatusUpdate(
 		stat = *statC
 		break
 	case <-ctx.Done():
-		err = errors.New("Timeout waiting for message: " + messageID)
+		err = errors.New("Timeout waiting for status update: messageID=" + messageID)
 	}
 
 	return stat, err

@@ -112,7 +112,8 @@ func TestUpdateClientPassword(t *testing.T) {
 	require.NotEmpty(t, token)
 	require.Equal(t, "session1", sid)
 
-	adminCl.UpdateClientPassword(tu1ID, tuPass2)
+	err = adminCl.SetClientPassword(tu1ID, tuPass2)
+	require.NoError(t, err)
 
 	token, _, err = svc.SessionAuth.Login(tu1ID, tuPass1, "session1")
 	require.Error(t, err)
@@ -130,8 +131,8 @@ func TestUpdatePubKey(t *testing.T) {
 
 	svc, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	mt := embedded.NewEmbeddedClient(adminID, adminHandler)
-	adminCl := authnclient.NewAuthnAdminClient(mt)
+	hc := embedded.NewEmbeddedClient(adminID, adminHandler)
+	adminCl := authnclient.NewAuthnAdminClient(hc)
 
 	// add user to test with. don't set the public key yet
 	err := adminCl.AddClient(api.ClientTypeUser, tu1ID, "user 2", "", tu1Pass)
@@ -152,6 +153,32 @@ func TestUpdatePubKey(t *testing.T) {
 	prof, err := adminCl.GetClientProfile(tu1ID)
 	require.NoError(t, err)
 	assert.Equal(t, kp.ExportPublic(), prof.PubKey)
+}
+
+func TestNewAuthToken(t *testing.T) {
+	var tu1ID = "ag1ID"
+	var tu1Name = "agent 1"
+
+	const adminID = "administrator-1"
+	svc, adminHandler, stopFn := startTestAuthnService(defaultHash)
+	defer stopFn()
+	hc := embedded.NewEmbeddedClient(adminID, adminHandler)
+	adminCl := authnclient.NewAuthnAdminClient(hc)
+
+	// add agent to test with and connect
+	err := adminCl.AddClient(api.ClientTypeAgent, tu1ID, tu1Name, "", "")
+	require.NoError(t, err)
+
+	// get a new token
+	token, err := adminCl.NewAuthToken(tu1ID, 0)
+	require.NoError(t, err)
+	require.NotEmpty(t, token)
+
+	// login with new token
+	clientID, _, err := svc.SessionAuth.ValidateToken(token)
+	require.NoError(t, err)
+	require.Equal(t, tu1ID, clientID)
+
 }
 
 func TestUpdateProfile(t *testing.T) {

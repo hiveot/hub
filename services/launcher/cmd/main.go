@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/hiveot/hub/core/launcher/config"
-	"github.com/hiveot/hub/core/launcher/service"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/services/launcher/config"
+	"github.com/hiveot/hub/services/launcher/service"
 	"log/slog"
 	"os"
 )

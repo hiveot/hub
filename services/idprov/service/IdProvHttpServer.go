@@ -61,7 +61,7 @@ func StartIdProvHttpServer(
 		tlsServer: tlsServer,
 		mng:       mng,
 	}
-	tlsServer.AddHandlerNoAuth(idprovapi.ProvisionRequestPath, srv.handleRequest)
+	mux.Post(idprovapi.ProvisionRequestPath, srv.handleRequest)
 	err := srv.tlsServer.Start()
 	return &srv, err
 }

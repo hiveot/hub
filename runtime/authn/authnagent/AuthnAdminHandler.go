@@ -31,17 +31,18 @@ func (h *AuthnAdminHandler) HandleMessage(msg *things.ThingMessage) (stat api.De
 			return h.GetClientProfile(msg)
 		case api.GetProfilesMethod:
 			return h.GetProfiles(msg)
+		case api.NewAuthTokenMethod:
+			return h.NewAuthToken(msg)
 		case api.RemoveClientMethod:
 			return h.RemoveClient(msg)
+		case api.SetClientPasswordMethod:
+			return h.SetClientPassword(msg)
 		case api.UpdateClientProfileMethod:
 			return h.UpdateClientProfile(msg)
-		case api.UpdateClientPasswordMethod:
-			return h.UpdateClientPassword(msg)
 		}
 	}
-	stat.MessageID = msg.MessageID
-	stat.Status = api.DeliveryFailed
-	stat.Error = fmt.Sprintf("unknown action '%s' for service '%s'", msg.Key, msg.ThingID)
+	stat.Failed(msg, fmt.Errorf(
+		"unknown action '%s' for service '%s'", msg.Key, msg.ThingID))
 	return stat
 }
 
@@ -49,9 +50,7 @@ func (h *AuthnAdminHandler) AddClient(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
 
 	var args api.AddClientArgs
-
-	stat.MessageID = msg.MessageID
-	stat.Status = api.DeliveryCompleted
+	stat.Completed(msg, nil)
 	err := json.Unmarshal(msg.Data, &args)
 	if err == nil {
 		err = h.svc.AddClient(args.ClientType, args.ClientID, args.DisplayName, args.PubKey, args.Password)
@@ -100,6 +99,22 @@ func (h *AuthnAdminHandler) GetProfiles(
 	return stat
 }
 
+func (h *AuthnAdminHandler) NewAuthToken(
+	msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	var token string
+	stat.Completed(msg, nil)
+	var args api.NewAuthTokenArgs
+	err := json.Unmarshal(msg.Data, &args)
+	if err == nil {
+		token, err = h.svc.NewAuthToken(args.ClientID, args.ValiditySec)
+		resp := api.NewAuthTokenResp{Token: token}
+		stat.Reply, err = json.Marshal(resp)
+	}
+	if err != nil {
+		stat.Error = err.Error()
+	}
+	return stat
+}
 func (h *AuthnAdminHandler) RemoveClient(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
 
@@ -115,6 +130,22 @@ func (h *AuthnAdminHandler) RemoveClient(
 	}
 	return stat
 }
+
+func (h *AuthnAdminHandler) SetClientPassword(
+	msg *things.ThingMessage) (stat api.DeliveryStatus) {
+
+	stat.MessageID = msg.MessageID
+	stat.Status = api.DeliveryCompleted
+	var args api.SetClientPasswordArgs
+	err := json.Unmarshal(msg.Data, &args)
+	if err == nil {
+		err = h.svc.SetClientPassword(args.ClientID, args.Password)
+	}
+	if err != nil {
+		stat.Error = err.Error()
+	}
+	return stat
+}
 func (h *AuthnAdminHandler) UpdateClientProfile(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
 
@@ -124,21 +155,6 @@ func (h *AuthnAdminHandler) UpdateClientProfile(
 	err := json.Unmarshal(msg.Data, &args)
 	if err == nil {
 		err = h.svc.UpdateClientProfile(args.Profile)
-	}
-	if err != nil {
-		stat.Error = err.Error()
-	}
-	return stat
-}
-func (h *AuthnAdminHandler) UpdateClientPassword(
-	msg *things.ThingMessage) (stat api.DeliveryStatus) {
-
-	stat.MessageID = msg.MessageID
-	stat.Status = api.DeliveryCompleted
-	var args api.UpdateClientPasswordArgs
-	err := json.Unmarshal(msg.Data, &args)
-	if err == nil {
-		err = h.svc.UpdateClientPassword(args.ClientID, args.Password)
 	}
 	if err != nil {
 		stat.Error = err.Error()

@@ -3,12 +3,12 @@ package service
 import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
-	"github.com/hiveot/hub/core/auth/authclient"
-	"github.com/hiveot/hub/core/launcher/config"
-	"github.com/hiveot/hub/core/launcher/launcherapi"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/runtime/authn/authnclient"
+	"github.com/hiveot/hub/services/launcher/config"
+	"github.com/hiveot/hub/services/launcher/launcherapi"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -32,9 +32,9 @@ type LauncherService struct {
 	cmds []*exec.Cmd
 
 	// hub messaging client
-	hc *hubclient.HubClient
+	hc hubclient.IHubClient
 	// auth service to generate plugin keys and tokens
-	mngAuth *authclient.ManageClients
+	mngAuth *authnclient.AuthnAdminClient
 
 	// mutex to keep things safe
 	mux sync.Mutex
@@ -212,7 +212,7 @@ func (svc *LauncherService) Start() error {
 	}
 
 	// the auth service is used to create plugin credentials
-	svc.mngAuth = authclient.NewManageClients(svc.hc)
+	svc.mngAuth = authnclient.NewAuthnAdminClient(svc.hc)
 
 	// start listening to requests
 	//svc.mngSub, err = svc.hc.SubRPCRequest(launcher.ManageCapability, svc.HandleRequest)
@@ -285,7 +285,7 @@ func (svc *LauncherService) WatchPlugins() error {
 func NewLauncherService(
 	env plugin.AppEnvironment,
 	cfg config.LauncherConfig,
-	hc *hubclient.HubClient,
+	hc hubclient.IHubClient,
 ) *LauncherService {
 
 	ls := &LauncherService{

@@ -51,17 +51,25 @@ func (svc *AuthnAdminClient) RemoveClient(clientID string) error {
 	return err
 }
 
+// NewAuthToken request a new authentication token for an agent or service
+func (svc *AuthnAdminClient) NewAuthToken(clientID string, validitySec int) (token string, err error) {
+	args := api.NewAuthTokenArgs{ClientID: clientID, ValiditySec: validitySec}
+	resp := api.NewAuthTokenResp{}
+	err = svc.hc.Rpc(api.AuthnAdminThingID, api.NewAuthTokenMethod, &args, &resp)
+	return resp.Token, err
+}
+
+// SetClientPassword request update of a client's password
+func (svc *AuthnAdminClient) SetClientPassword(clientID string, password string) error {
+	args := api.SetClientPasswordArgs{ClientID: clientID, Password: password}
+	err := svc.hc.Rpc(api.AuthnAdminThingID, api.SetClientPasswordMethod, &args, nil)
+	return err
+}
+
 // UpdateClientProfile request update of a client's profile
 func (svc *AuthnAdminClient) UpdateClientProfile(profile api.ClientProfile) error {
 	args := api.UpdateClientProfileArgs{Profile: profile}
 	err := svc.hc.Rpc(api.AuthnAdminThingID, api.UpdateClientProfileMethod, &args, nil)
-	return err
-}
-
-// UpdateClientPassword request update of a client's password
-func (svc *AuthnAdminClient) UpdateClientPassword(clientID string, password string) error {
-	args := api.UpdateClientPasswordArgs{ClientID: clientID, Password: password}
-	err := svc.hc.Rpc(api.AuthnAdminThingID, api.UpdateClientPasswordMethod, &args, nil)
 	return err
 }
 

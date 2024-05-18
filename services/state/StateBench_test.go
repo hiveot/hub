@@ -2,7 +2,7 @@ package state_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/state/stateclient"
+	"github.com/hiveot/hub/services/state/stateclient"
 	"github.com/stretchr/testify/assert"
 	"log"
 	"math/rand"
@@ -17,7 +17,8 @@ import (
 
 // Add records to the state store
 func addRecords(stateCl *stateclient.StateClient, count int) {
-	const batchSize = 50000
+	// FIXME: SSE connection can handle only 65K messages :(
+	const batchSize = 405
 	nrBatches := (count / batchSize) + 1
 
 	// Don't exceed the max transaction size
@@ -77,7 +78,7 @@ type TestEl struct {
 	val string
 }
 
-var testData = func() []TestEl {
+func makeTestData() []TestEl {
 	count := 100000
 	data := make([]TestEl, count)
 	for i := 0; i < count; i++ {
@@ -86,13 +87,14 @@ var testData = func() []TestEl {
 		data[i] = TestEl{key: key, val: val}
 	}
 	return data
-}()
+}
 
 // test performance of N random set state
 func BenchmarkSetState(b *testing.B) {
 
 	// setup
 	logging.SetLogging("warning", "")
+	testData := makeTestData()
 
 	for _, tbl := range DataSizeTable {
 
@@ -119,6 +121,7 @@ func BenchmarkSetState(b *testing.B) {
 
 // test performance of N random set state
 func BenchmarkSetMultiple(b *testing.B) {
+	testData := makeTestData()
 
 	logging.SetLogging("warning", "")
 	for _, tbl := range DataSizeTable {

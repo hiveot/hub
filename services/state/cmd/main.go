@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/hiveot/hub/core/state/service"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/services/state/service"
 	"log/slog"
 	"path"
 )

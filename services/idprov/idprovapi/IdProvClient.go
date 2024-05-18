@@ -1,5 +1,7 @@
 package idprovapi
 
+import "github.com/hiveot/hub/runtime/api"
+
 // ProvisioningServerType defines the discovery type for the provisioning
 // this will be published as _provisioning._hiveot._tcp
 const ProvisioningServerType = "idprov"
@@ -10,7 +12,7 @@ type ProvisionStatus struct {
 	ClientID string `json:"clientID,omitempty"`
 
 	// ClientType is either ClientTypeDevice or ClientTypeService
-	ClientType string `json:"clientType"`
+	ClientType api.ClientType `json:"clientType"`
 
 	// PubKey holds the device's public key
 	PubKey string `json:"pubKey"`
@@ -34,8 +36,8 @@ type ProvisionStatus struct {
 	RetrySec int `json:"retrySec,omitempty"`
 }
 
-// ProvisionRequestPath to request provisioning through the HTTP endpoint
-//const ProvisionRequestPath = "/idprov/request"
+// ProvisionRequestPath to post a request provisioning through the HTTP endpoint
+const ProvisionRequestPath = "/idprov/request"
 
 // ProvisionRequestArgs arguments to request provisioning
 type ProvisionRequestArgs struct {

@@ -3,9 +3,9 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/core/launcher/launcherapi"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/services/launcher/launcherapi"
 	"github.com/struCoder/pidusage"
 	"io"
 	"log/slog"
@@ -111,7 +111,7 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 			slog.Error("Fail saving key for service client. Continuing... ",
 				"err", err, "pluginName", pluginName)
 		}
-		token, err := svc.mngAuth.AddService(pluginName, "plugin", pluginKP.ExportPublic())
+		token, err := svc.mngAuth.AddClient(ClientTypeService, pluginName, "plugin", pluginKP.ExportPublic())
 		if err != nil {
 			slog.Error("Unable to add plugin to hub and create credentials. Continuing anyways", "err", err)
 		} else {

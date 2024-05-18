@@ -1,13 +1,13 @@
 package launcher_test
 
 import (
-	"github.com/hiveot/hub/core/auth/authapi"
-	"github.com/hiveot/hub/core/launcher/config"
-	"github.com/hiveot/hub/core/launcher/launcherapi"
-	"github.com/hiveot/hub/core/launcher/launcherclient"
-	"github.com/hiveot/hub/core/launcher/service"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/services/launcher/config"
+	"github.com/hiveot/hub/services/launcher/launcherapi"
+	"github.com/hiveot/hub/services/launcher/launcherclient"
+	"github.com/hiveot/hub/services/launcher/service"
 	"log/slog"
 	"os"
 	"path"
@@ -42,10 +42,7 @@ func StartService() (l *launcherclient.LauncherClient, stopFn func()) {
 	const launcherID = launcherapi.ServiceName + "-test"
 	const adminID = "admin"
 
-	hc1, err := testServer.AddConnectClient(launcherID, authapi.ClientTypeService, authapi.ClientRoleService)
-	if err != nil {
-		panic(err)
-	}
+	hc1, token1 := testServer.AddConnectClient(api.ClientTypeService, launcherID, api.ClientRoleService)
 	var launcherConfig = config.NewLauncherConfig()
 	launcherConfig.AttachStderr = true
 	launcherConfig.AttachStdout = false
@@ -56,13 +53,13 @@ func StartService() (l *launcherclient.LauncherClient, stopFn func()) {
 	env.CertsDir = homeDir
 
 	svc := service.NewLauncherService(env, launcherConfig, hc1)
-	err = svc.Start()
+	err := svc.Start()
 	if err != nil {
 		slog.Error(err.Error())
 		panic(err.Error())
 	}
 	//--- connect the launcher user
-	hc2, err := testServer.AddConnectClient(adminID, authapi.ClientTypeUser, authapi.ClientRoleAdmin)
+	hc2, token2 := testServer.AddConnectClient(api.ClientTypeUser, adminID, api.ClientRoleAdmin)
 	cl := launcherclient.NewLauncherClient(launcherID, hc2)
 	return cl, func() {
 		hc2.Disconnect()

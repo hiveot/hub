@@ -116,16 +116,26 @@ func (svc *AuthnAdminService) GetProfiles() ([]api.ClientProfile, error) {
 	return profiles, err
 }
 
+// NewAuthToken creates a new authentication token for a service or agent
+// This token is not tied to a session so should only be handed out to services or agents
+func (svc *AuthnAdminService) NewAuthToken(clientID string, validitySec int) (token string, err error) {
+	prof, err := svc.authnStore.GetProfile(clientID)
+	if err == nil {
+		if validitySec == 0 {
+			validitySec = prof.TokenValiditySec
+		}
+		if validitySec == 0 {
+			validitySec = authn.DefaultAgentTokenValiditySec
+		}
+		token = svc.sessionAuth.CreateSessionToken(clientID, "", validitySec)
+	}
+	return token, err
+}
+
 // RemoveClient removes a client and disables authentication
 func (svc *AuthnAdminService) RemoveClient(clientID string) error {
 	slog.Info("RemoveClient", "clientID", clientID)
 	err := svc.authnStore.Remove(clientID)
-	return err
-}
-
-// SetRole changes a client's role
-func (svc *AuthnAdminService) SetRole(clientID string, role string) error {
-	err := svc.authnStore.SetRole(clientID, role)
 	return err
 }
 
@@ -158,22 +168,22 @@ func (svc *AuthnAdminService) Start() error {
 	return err
 }
 
+// SetClientPassword sets a new client password
+func (svc *AuthnAdminService) SetClientPassword(clientID string, password string) error {
+	slog.Info("UpdateClientPassword", "clientID", clientID)
+	err := svc.authnStore.SetPassword(clientID, password)
+	if err != nil {
+		slog.Error("Failed changing password", "clientID", clientID, "err", err.Error())
+	}
+	return err
+}
+
 // UpdateClientProfile update the client profile.
 //
 //	profile is the new updated client profile
 func (svc *AuthnAdminService) UpdateClientProfile(profile api.ClientProfile) error {
 	slog.Info("UpdateClientProfile", slog.String("clientID", profile.ClientID))
 	err := svc.authnStore.UpdateProfile(profile.ClientID, profile)
-	return err
-}
-
-// UpdateClientPassword changes a client's password
-func (svc *AuthnAdminService) UpdateClientPassword(clientID string, password string) error {
-	slog.Info("UpdateClientPassword", "clientID", clientID)
-	err := svc.authnStore.SetPassword(clientID, password)
-	if err != nil {
-		slog.Error("Failed changing password", "clientID", clientID, "err", err.Error())
-	}
 	return err
 }
 

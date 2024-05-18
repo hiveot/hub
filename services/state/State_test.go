@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/services/state/service"
+	"github.com/hiveot/hub/services/state/stateagent"
 	"github.com/hiveot/hub/services/state/stateapi"
 	"github.com/hiveot/hub/services/state/stateclient"
 	"github.com/stretchr/testify/assert"
@@ -12,36 +13,42 @@ import (
 	"log/slog"
 	"os"
 	"testing"
+	"time"
 )
 
 const storeDir = "/tmp/test-state"
-const core = "mqtt"
 
-// the following are set by the testmain
-var testServer *testenv.TestServer
-var serverURL string
+var ts *testenv.TestServer
 
 // return an API to the state service
 func startStateService(cleanStart bool) (stateCl *stateclient.StateClient, stopFn func()) {
 	slog.Info("startStateService")
-	if cleanStart {
-		_ = os.RemoveAll(storeDir)
+	ts = testenv.NewTestServer()
+	err := ts.Start(true)
+	if err != nil {
+		panic(err)
 	}
 	// the service needs a server connection
-	hc1, err := testServer.AddConnectClient(
-		stateapi.ServiceName, api.ClientTypeService, api.ClientRoleService)
+	hc1, token1 := ts.AddConnectClient(
+		api.ClientTypeService, stateapi.ServiceName, api.ClientRoleService)
+	_ = token1
 
 	svc := service.NewStateService(storeDir)
-	err = svc.Start(hc1)
+	err = svc.Start()
 	if err != nil {
 		panic("service fails to start: " + err.Error())
 	}
+	ag, err := stateagent.StartStateAgent(svc, hc1)
+	_ = ag
 
 	// connect as a user to the service above
-	hc2, err := testServer.AddConnectClient(
-		"user1", api.ClientTypeUser, api.ClientRoleViewer)
+	hc2, token2 := ts.AddConnectClient(
+		api.ClientTypeUser, "user1", api.ClientRoleViewer)
+	_ = token2
 	stateCl = stateclient.NewStateClient(hc2)
+	time.Sleep(time.Millisecond)
 	return stateCl, func() {
+		ts.Stop()
 		hc2.Disconnect()
 		svc.Stop()
 		hc1.Disconnect()
@@ -50,12 +57,6 @@ func startStateService(cleanStart bool) (stateCl *stateclient.StateClient, stopF
 
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
-	var err error
-	testServer, err = testenv.StartTestServer(core, true)
-	serverURL, _, _ = testServer.MsgServer.GetServerURLs()
-	if err != nil {
-		panic(err)
-	}
 
 	res := m.Run()
 	os.Exit(res)
@@ -72,13 +73,12 @@ func TestStartStop(t *testing.T) {
 func TestStartStopBadLocation(t *testing.T) {
 	t.Log("--- TestStartStopBadLocation ---")
 
-	// the service needs a server connection
-	hc1, err := testServer.AddConnectClient(
-		stateapi.ServiceName, api.ClientTypeService, api.ClientRoleService)
+	_, stopFn := startStateService(true)
+	defer stopFn()
 
 	// use a read-only folder
 	stateSvc := service.NewStateService("/not/a/folder")
-	err = stateSvc.Start(hc1)
+	err := stateSvc.Start()
 	require.Error(t, err)
 
 	// stop should not break things further
@@ -94,6 +94,7 @@ func TestSetGet1(t *testing.T) {
 	var val3 = ""
 
 	stateCl, stopFn := startStateService(true)
+	defer stopFn()
 
 	err := stateCl.Set(key1, val1)
 	assert.NoError(t, err)
@@ -180,20 +181,22 @@ func TestGetDifferentClientBuckets(t *testing.T) {
 	var val1 = "value 1"
 	var val2 = "value 2"
 
-	hc1, err := testServer.AddConnectClient(clientID1, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
-	require.NoError(t, err)
-	defer hc1.Disconnect()
-	hc2, err := testServer.AddConnectClient(clientID2, authapi.ClientTypeService, authapi.ClientRoleService)
-	require.NoError(t, err)
-	defer hc2.Disconnect()
-	_, stopFn := startStateService(true)
+	stateCl, stopFn := startStateService(true)
+	_ = stateCl
 	defer stopFn()
+
+	hc1, token1 := ts.AddConnectClient(api.ClientTypeAgent, clientID1, api.ClientRoleAgent)
+	require.NotEmpty(t, token1)
+	defer hc1.Disconnect()
+	hc2, token2 := ts.AddConnectClient(api.ClientTypeService, clientID2, api.ClientRoleService)
+	require.NotEmpty(t, token2)
+	defer hc2.Disconnect()
 
 	// both clients set a record
 	cl1 := stateclient.NewStateClient(hc1)
 	cl2 := stateclient.NewStateClient(hc2)
 
-	err = cl1.Set(key1, val1)
+	err := cl1.Set(key1, val1)
 	assert.NoError(t, err)
 	err = cl2.Set(key2, val2)
 
