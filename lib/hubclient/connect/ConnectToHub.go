@@ -94,7 +94,7 @@ func ConnectWithTokenFile(hc hubclient.IHubClient, keysDir string) error {
 		return fmt.Errorf("ConnectWithTokenFile failed: %w", err)
 	}
 	//hc.kp = kp
-	_, err = hc.ConnectWithJWT(string(token))
+	_, err = hc.ConnectWithToken(string(token))
 	return err
 }
 

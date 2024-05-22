@@ -1,6 +1,6 @@
 // Package inbox with types and interfaces for using this service with agent 'digitwin'
 // DO NOT EDIT. This file is auto generated. Any changes will be overwritten.
-// Generated 16 May 24 14:40 PDT.
+// Generated 19 May 24 09:16 PDT.
 package inbox
 
 import "encoding/json"
@@ -9,9 +9,16 @@ import "github.com/hiveot/hub/runtime/api"
 import "github.com/hiveot/hub/lib/things"
 import "github.com/hiveot/hub/lib/hubclient"
 
-// RawThingID is the raw thingID as used by agents. Digitwin adds the urn:{agent} prefix
-const RawThingID = "inbox"
-const ThingID = "dtw:digitwin:inbox"
+// AgentID is the connection ID of the agent managing the Thing.
+const AgentID = "digitwin"
+
+// ServiceID is the internal thingID of the device/service as used by agents.
+// Agents use this to publish events and subscribe to actions
+const ServiceID = "inbox"
+
+// DThingID is the Digitwin thingID as used by agents. Digitwin adds the dtw:{agent} prefix to the serviceID
+// Consumers use this to publish actions and subscribe to events
+const DThingID = "dtw:digitwin:inbox"
 
 // Argument and Response struct for action of Thing 'dtw:digitwin:inbox'
 
@@ -42,7 +49,7 @@ type ReadLatestResp struct {
 // ReadLatest client method - Read latest actions.
 // Read the latest request value of each action of a Thing
 func ReadLatest(hc hubclient.IHubClient, args ReadLatestArgs) (resp ReadLatestResp, err error) {
-	err = hc.Rpc("dtw:digitwin:inbox", "readLatest", &args, &resp)
+	err = hc.Rpc(DThingID, "readLatest", &args, &resp)
 	return
 }
 

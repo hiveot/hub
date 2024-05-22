@@ -50,6 +50,9 @@ func (svc *AuthnAdminService) AddClient(
 		err = fmt.Errorf("AddClient: Client type '%s' for client '%s' is not a valid client type",
 			clientType, clientID)
 		return err
+	} else if clientID == "" {
+		err = fmt.Errorf("AddClient: ClientID is missing")
+		return err
 	}
 	validitySec := svc.cfg.UserTokenValiditySec
 	if clientType == api.ClientTypeService {
@@ -57,7 +60,9 @@ func (svc *AuthnAdminService) AddClient(
 	} else if clientType == api.ClientTypeAgent {
 		validitySec = svc.cfg.AgentTokenValiditySec
 	}
-
+	if displayName == "" {
+		displayName = clientID
+	}
 	prof, err := svc.authnStore.GetProfile(clientID)
 	if err != nil {
 		prof = api.ClientProfile{
@@ -75,13 +80,12 @@ func (svc *AuthnAdminService) AddClient(
 	return err
 }
 
-// AddClientWithTokenFile adds or updates a client with key and auth token file.
+// AddService adds or updates a service account with key and auth token file.
 // Intended for creating service and admin accounts.
-func (svc *AuthnAdminService) AddClientWithTokenFile(
-	clientType api.ClientType,
+func (svc *AuthnAdminService) AddService(clientType api.ClientType,
 	clientID string, displayName string, validitySec int) error {
 
-	slog.Info("AddClientWithTokenFile", slog.String("clientID", clientID))
+	slog.Info("AddService", slog.String("clientID", clientID))
 	kp, err := keys.LoadCreateKeyPair(clientID, svc.cfg.KeysDir, svc.cfg.DefaultKeyType)
 	if err == nil {
 		err = svc.AddClient(clientType, clientID, displayName, kp.ExportPublic(), "")
@@ -152,7 +156,7 @@ func (svc *AuthnAdminService) Start() error {
 
 	// Ensure the launcher service and admin user exist and has a saved key and auth token
 	launcherID := svc.cfg.LauncherAccountID
-	err := svc.AddClientWithTokenFile(api.ClientTypeService,
+	err := svc.AddService(api.ClientTypeService,
 		launcherID, "Launcher Service", svc.cfg.ServiceTokenValiditySec)
 	if err != nil {
 		err = fmt.Errorf("failed to setup the launcher account: %w", err)
@@ -160,7 +164,7 @@ func (svc *AuthnAdminService) Start() error {
 
 	// ensure the admin user exists and has a saved key and auth token
 	adminID := svc.cfg.AdminAccountID
-	err = svc.AddClientWithTokenFile(api.ClientTypeUser,
+	err = svc.AddService(api.ClientTypeUser,
 		adminID, "Administrator", svc.cfg.AgentTokenValiditySec)
 	if err != nil {
 		err = fmt.Errorf("failed to setup the admin account: %w", err)

@@ -14,9 +14,9 @@ type LauncherConfig struct {
 	// List of services to automatically start in launch order
 	Autostart []string `yaml:"autostart"`
 
-	// CoreBin to run on startup, if any. Use mqttcore or natscore.
-	// Default is not to launch a core.
-	CoreBin string `yaml:"corebin"`
+	// RuntimeBin to run on startup, if any.
+	// Default is not to launch a runtime.
+	RuntimeBin string `yaml:"runtime"`
 
 	// CreatePluginCred creates per-plugin key and token credential files if they don't exist
 	// Default is true
@@ -39,7 +39,7 @@ func NewLauncherConfig() LauncherConfig {
 		AttachStdout:     false,
 		AutoRestart:      false,
 		Autostart:        make([]string, 0),
-		CoreBin:          "",
+		RuntimeBin:       "",
 		CreatePluginCred: true,
 		LogLevel:         "warning",
 		LogToFile:        true,

@@ -21,11 +21,7 @@ var ts *testenv.TestServer
 
 // start the test runtime
 func startRuntime() *runtime.Runtime {
-	ts = testenv.NewTestServer()
-	err := ts.Start(true)
-	if err != nil {
-		panic("Failed to start runtime:" + err.Error())
-	}
+	ts = testenv.StartTestServer(true)
 	return ts.Runtime
 }
 
@@ -77,7 +73,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	defer cl2.Disconnect()
 
 	// Agent receives action request which we'll handle here
-	cl1.SetMessageHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	cl1.SetActionHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 		rxMsg = msg
 		stat.Completed(msg, nil)
 		//stat.Failed(msg, fmt.Errorf("failuretest"))
@@ -88,7 +84,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 
 	// users receives delivery updates when sending actions
 	deliveryCtx, deliveryCtxComplete := context.WithTimeout(context.Background(), time.Minute*10)
-	cl2.SetMessageHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	cl2.SetEventHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 		if msg.Key == vocab.EventTypeDeliveryUpdate {
 			// delivery updates are only invoked on for non-rpc actions
 			err := json.Unmarshal(msg.Data, &stat3)

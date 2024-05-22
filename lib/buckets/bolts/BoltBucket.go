@@ -2,7 +2,6 @@ package bolts
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
 	"log/slog"
@@ -67,10 +66,8 @@ func (bb *BoltBucket) Close() (err error) {
 // The cursor MUST be closed after use to release the bbolt bbBucket.
 // Do not write to the database while iterating.
 //
-//	ctx is the application context available throught the cursor Context() method
-//
 // This returns a cursor with Next() and Prev() iterators or an error if the bbBucket doesn't exist
-func (bb *BoltBucket) Cursor(ctx context.Context) (cursor buckets.IBucketCursor, err error) {
+func (bb *BoltBucket) Cursor() (cursor buckets.IBucketCursor, err error) {
 
 	tx, err := bb.db.Begin(false)
 	if err != nil {
@@ -88,7 +85,7 @@ func (bb *BoltBucket) Cursor(ctx context.Context) (cursor buckets.IBucketCursor,
 	}
 	// always return a cursor, although it might be empty without a boltbucket
 	// cursor MUST end the transaction when done
-	cursor = NewBBoltCursor(ctx, bb.bucketID, bboltBucket)
+	cursor = NewBBoltCursor(bb.bucketID, bboltBucket)
 	return cursor, nil
 }
 

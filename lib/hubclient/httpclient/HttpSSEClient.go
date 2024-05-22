@@ -34,16 +34,20 @@ type HttpSSEClient struct {
 
 	timeout time.Duration // request timeout
 	// _ variables are mux protected
-	sseCancelFn     context.CancelFunc
-	mux             sync.RWMutex
-	sseClient       *sse.Client
-	tlsClient       *tlsclient.TLSClient
-	bearerToken     string
-	_status         hubclient.HubTransportStatus
-	_sseChan        chan *sse.Event
-	_subscriptions  map[string]bool
-	_connectHandler func(status hubclient.HubTransportStatus)
-	_messageHandler api.MessageHandler
+	sseCancelFn        context.CancelFunc
+	mux                sync.RWMutex
+	sseClient          *sse.Client
+	tlsClient          *tlsclient.TLSClient
+	bearerToken        string
+	_maxSSEMessageSize int
+	_status            hubclient.HubTransportStatus
+	_sseChan           chan *sse.Event
+	_subscriptions     map[string]bool
+	_connectHandler    func(status hubclient.HubTransportStatus)
+	// client side handler that receives actions from the server
+	_actionHandler api.MessageHandler
+	// client side handler that receives all non-action messages from the server
+	_eventHandler api.MessageHandler
 	// map of messageID to delivery status update channel
 	_correlData map[string]chan *api.DeliveryStatus
 }
@@ -73,9 +77,12 @@ func (cl *HttpSSEClient) ConnectSSE(client *http.Client) error {
 	//r.Header.Set("Content-Type", "text/event-stream")
 	req.Header.Set("Content-Type", "application/json")
 
-	// FIXME:  close this down ?
-	// FIXME: how to increase the buffer size from 64K to 1M?
 	conn := sse.NewConnection(req)
+	// increase buffer size to 1M
+	// TODO: make limit configurable
+	//https://github.com/tmaxmax/go-sse/issues/32
+	newBuf := make([]byte, 0, 1024*65)
+	conn.Buffer(newBuf, cl._maxSSEMessageSize)
 
 	//conn.Parser.Buffer = make([]byte, 1000000) // test 1MB buffer
 
@@ -123,11 +130,11 @@ func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 	return token, err
 }
 
-// ConnectWithJWT connects to the Hub server using a user JWT credentials secret
+// ConnectWithToken connects to the Hub server using a user JWT credentials secret
 // The token clientID must match that of the client
 //
 //	jwtToken is the token obtained with login or refresh.
-func (cl *HttpSSEClient) ConnectWithJWT(jwtToken string) (newToken string, err error) {
+func (cl *HttpSSEClient) ConnectWithToken(jwtToken string) (newToken string, err error) {
 	cl.mux.RLock()
 	defer cl.mux.RUnlock()
 	if cl.tlsClient != nil {
@@ -223,18 +230,22 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 			delete(cl._correlData, rxMsg.MessageID)
 			cl.mux.Unlock()
 			return
-		} else if cl._messageHandler != nil {
-			// pass event to client as this is not an rpc action
-			stat = cl._messageHandler(rxMsg)
+		} else if cl._eventHandler != nil {
+			// pass event to client as this is an unsolicited event
+			// it could be a delayed confirmation of delivery
+			stat = cl._eventHandler(rxMsg)
 		} else {
 			// missing rpc or message handler
 			slog.Error("handleSSEEvent, no handler registered for client",
 				"clientID", cl.ClientID())
 			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, delivery update ignored"))
 		}
-	} else if cl._messageHandler != nil {
+	} else if rxMsg.MessageType == vocab.MessageTypeEvent && cl._eventHandler != nil {
+		// pass event to handler, if set
+		stat = cl._eventHandler(rxMsg)
+	} else if rxMsg.MessageType == vocab.MessageTypeAction && cl._actionHandler != nil {
 		// pass action to agent for delivery to thing
-		stat = cl._messageHandler(rxMsg)
+		stat = cl._actionHandler(rxMsg)
 	} else {
 		slog.Error("handleSSEEvent, no handler registered for client",
 			"clientID", cl.ClientID())
@@ -296,7 +307,9 @@ func (cl *HttpSSEClient) PubActionWithQueryParams(
 }
 
 // PubEvent publishes an event message and returns
-func (cl *HttpSSEClient) PubEvent(thingID string, key string, payload []byte) (stat api.DeliveryStatus) {
+func (cl *HttpSSEClient) PubEvent(
+	thingID string, key string, payload []byte) (stat api.DeliveryStatus, err error) {
+
 	slog.Info("PubEvent",
 		slog.String("me", cl.clientID),
 		slog.String("device thingID", thingID),
@@ -312,7 +325,7 @@ func (cl *HttpSSEClient) PubEvent(thingID string, key string, payload []byte) (s
 		stat.Status = api.DeliveryFailed
 		stat.Error = err.Error()
 	}
-	return stat
+	return stat, err
 }
 
 // RefreshToken refreshes the authentication token
@@ -391,24 +404,6 @@ func (cl *HttpSSEClient) Rpc(
 	return err
 }
 
-// WaitForStatusUpdate waits for an async status update or until timeout
-// This returns the status or an error if the messageID doesn't exist
-func (cl *HttpSSEClient) WaitForStatusUpdate(
-	statChan chan *api.DeliveryStatus, messageID string, timeout time.Duration) (stat api.DeliveryStatus, err error) {
-
-	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
-	defer cancelFunc()
-	select {
-	case statC := <-statChan:
-		stat = *statC
-		break
-	case <-ctx.Done():
-		err = errors.New("Timeout waiting for status update: messageID=" + messageID)
-	}
-
-	return stat, err
-}
-
 // SendDeliveryUpdate sends a delivery status update to the hub.
 // The hub's inbox will update the status of the action and notify the original sender.
 //
@@ -427,11 +422,18 @@ func (cl *HttpSSEClient) SetConnectHandler(cb func(status hubclient.HubTransport
 	cl.mux.Unlock()
 }
 
-// SetMessageHandler set the single handler that receives all subscribed events.
-// Use 'Subscribe' to set the addresses that this receives events on.
-func (cl *HttpSSEClient) SetMessageHandler(cb api.MessageHandler) {
+// SetActionHandler set the single handler that receives all actions directed to this client.
+// Actions do not need subscription.
+func (cl *HttpSSEClient) SetActionHandler(cb api.MessageHandler) {
 	cl.mux.Lock()
-	cl._messageHandler = cb
+	cl._actionHandler = cb
+	cl.mux.Unlock()
+}
+
+// SetEventHandler set the single handler that receives all subscribed events.
+func (cl *HttpSSEClient) SetEventHandler(cb api.MessageHandler) {
+	cl.mux.Lock()
+	cl._eventHandler = cb
 	cl.mux.Unlock()
 }
 
@@ -492,6 +494,24 @@ func (cl *HttpSSEClient) Unsubscribe(thingID string) {
 
 }
 
+// WaitForStatusUpdate waits for an async status update or until timeout
+// This returns the status or an error if the messageID doesn't exist
+func (cl *HttpSSEClient) WaitForStatusUpdate(
+	statChan chan *api.DeliveryStatus, messageID string, timeout time.Duration) (stat api.DeliveryStatus, err error) {
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
+	defer cancelFunc()
+	select {
+	case statC := <-statChan:
+		stat = *statC
+		break
+	case <-ctx.Done():
+		err = errors.New("Timeout waiting for status update: messageID=" + messageID)
+	}
+
+	return stat, err
+}
+
 // NewHttpSSEClient creates a new instance of the htpp client with a SSE return-channel.
 //
 // fullURL is the url with schema. If omitted this uses the in-memory UDS address,
@@ -510,6 +530,8 @@ func NewHttpSSEClient(hostPort string, clientID string, caCert *x509.Certificate
 		ssePath:     vocab.ConnectSSEPath,
 		_sseChan:    make(chan *sse.Event),
 		_correlData: make(map[string]chan *api.DeliveryStatus),
+		// max message size for bulk reads is 10MB.
+		_maxSSEMessageSize: 1024 * 1024 * 10,
 	}
 	return &tp
 }

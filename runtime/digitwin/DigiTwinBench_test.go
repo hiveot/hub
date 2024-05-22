@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-// Simple performance test update/read
-// Benchmark_GetTD/update_TD_docs-4    4768 ns/op
-// Benchmark_GetTD/read_TD_docs-4       739.4 ns/op
+// Simple performance test update/read using embedded client (no network overhead)
+// Benchmark_GetTD/update_TD_docs-4    5400 ns/op
+// Benchmark_GetTD/read_TD_docs-4      1000 ns/op
 func Benchmark_ReadTD(b *testing.B) {
 	b.Log("--- Benchmark_ReadTD start ---")
 	defer b.Log("--- Benchmark_GetTD end ---")

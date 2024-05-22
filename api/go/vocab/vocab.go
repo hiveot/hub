@@ -14,6 +14,10 @@ const (
 	EventTypeTD             = "$td"
 	MessageTypeAction       = "action"
 	MessageTypeEvent        = "event"
+	// MessageTypeProperty is for internal use in storage and retrieval of
+	// properties vs events. Properties are published using the $properties
+	// event type.
+	MessageTypeProperty = "property"
 )
 
 // end of MessageTypes

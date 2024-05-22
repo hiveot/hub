@@ -26,7 +26,6 @@ var logDir = "/tmp/test-launcher"
 
 // the following are set by the testmain
 var testServer *testenv.TestServer
-var serverURL string
 
 //var testClients = []msgserver.ClientAuthInfo{{
 //	SenderID:   launcher.ServiceName,
@@ -38,11 +37,13 @@ var serverURL string
 //	Role:       auth.ClientRoleAdmin,
 //}}
 
-func StartService() (l *launcherclient.LauncherClient, stopFn func()) {
-	const launcherID = launcherapi.ServiceName + "-test"
+func startService() (l *launcherclient.LauncherClient, stopFn func()) {
+	const launcherID = launcherapi.AgentID + "-test"
 	const adminID = "admin"
 
-	hc1, token1 := testServer.AddConnectClient(api.ClientTypeService, launcherID, api.ClientRoleService)
+	testServer = testenv.StartTestServer(true)
+
+	hc1, _ := testServer.AddConnectClient(api.ClientTypeService, launcherID, api.ClientRoleService)
 	var launcherConfig = config.NewLauncherConfig()
 	launcherConfig.AttachStderr = true
 	launcherConfig.AttachStdout = false
@@ -58,47 +59,45 @@ func StartService() (l *launcherclient.LauncherClient, stopFn func()) {
 		slog.Error(err.Error())
 		panic(err.Error())
 	}
+	// the agent receives actions to execute on the service
+	//agent := service.StartLauncherAgent(svc, hc1)
+	//_ = agent
 	//--- connect the launcher user
-	hc2, token2 := testServer.AddConnectClient(api.ClientTypeUser, adminID, api.ClientRoleAdmin)
+	hc2, _ := testServer.AddConnectClient(api.ClientTypeUser, adminID, api.ClientRoleAdmin)
 	cl := launcherclient.NewLauncherClient(launcherID, hc2)
 	return cl, func() {
 		hc2.Disconnect()
 		_ = svc.Stop()
 		hc1.Disconnect()
+		testServer.Stop()
 	}
 }
 
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
 	var err error
-	_ = os.RemoveAll(homeDir)
-	_ = os.MkdirAll(homeDir, 0700)
-
-	// include test clients
-	testServer, err = testenv.StartTestServer(core, true)
 	if err != nil {
 		panic(err)
 	}
-	serverURL, _, _ = testServer.MsgServer.GetServerURLs()
 	res := m.Run()
-	testServer.Stop()
 	os.Exit(res)
 }
 
 func TestStartStop(t *testing.T) {
-	svc, cancelFunc := StartService()
+	svc, cancelFunc := startService()
 	assert.NotNil(t, svc)
 	time.Sleep(time.Millisecond)
 	cancelFunc()
 }
 
 func TestList(t *testing.T) {
-	svc, cancelFunc := StartService()
+	svc, cancelFunc := startService()
 	defer cancelFunc()
 	require.NotNil(t, svc)
+	// using the /bin directory yields a larger number of potential plugins
 	info, err := svc.List(false)
-	assert.NoError(t, err)
-	assert.NotNil(t, info)
+	require.NoError(t, err)
+	assert.Greater(t, len(info), 10)
 }
 
 func TestStartYes(t *testing.T) {
@@ -107,7 +106,7 @@ func TestStartYes(t *testing.T) {
 	_ = os.Remove(logFile)
 
 	//
-	svc, cancelFunc := StartService()
+	svc, cancelFunc := startService()
 	defer cancelFunc()
 
 	assert.NotNil(t, svc)
@@ -128,7 +127,7 @@ func TestStartYes(t *testing.T) {
 }
 
 func TestStartBadName(t *testing.T) {
-	svc, cancelFunc := StartService()
+	svc, cancelFunc := startService()
 	defer cancelFunc()
 	assert.NotNil(t, svc)
 
@@ -140,7 +139,7 @@ func TestStartBadName(t *testing.T) {
 }
 
 func TestStartStopTwice(t *testing.T) {
-	svc, cancelFunc := StartService()
+	svc, cancelFunc := startService()
 	defer cancelFunc()
 	assert.NotNil(t, svc)
 
@@ -165,7 +164,7 @@ func TestStartStopTwice(t *testing.T) {
 }
 
 func TestStartStopAll(t *testing.T) {
-	svc, cancelFunc := StartService()
+	svc, cancelFunc := startService()
 	defer cancelFunc()
 	assert.NotNil(t, svc)
 

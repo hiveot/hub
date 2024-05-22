@@ -8,9 +8,6 @@ import (
 	"github.com/hiveot/hub/runtime/authn/service"
 )
 
-// AuthnAgentID is the connection ID of the authn agent used in providing its capabilities
-const AuthnAgentID = "authn"
-
 // AuthnAgent agent for the authentication services:
 type AuthnAgent struct {
 	hc hubclient.IHubClient
@@ -23,13 +20,15 @@ type AuthnAgent struct {
 
 // HandleMessage dispatches requests to the service capabilities identified by their thingID
 func (agent *AuthnAgent) HandleMessage(msg *things.ThingMessage) (stat api.DeliveryStatus) {
-	if msg.ThingID == api.AuthnAdminThingID {
+	// if the message has a authn agent prefix then remove it.
+	// This can happen if invoked directly through an embedded client
+	_, thingID := things.SplitDigiTwinThingID(msg.ThingID)
+	if thingID == api.AuthnAdminServiceID {
 		return agent.adminHandler(msg)
-	} else if msg.ThingID == api.AuthnUserThingID {
+	} else if thingID == api.AuthnUserServiceID {
 		return agent.userHandler(msg)
 	}
-	stat.Failed(msg, nil)
-	stat.Error = fmt.Sprintf("unknown authn service capability '%s'", msg.ThingID)
+	stat.Failed(msg, fmt.Errorf("unknown authn service capability '%s'", msg.ThingID))
 	return stat
 }
 
@@ -39,7 +38,7 @@ func (agent *AuthnAgent) HandleMessage(msg *things.ThingMessage) (stat api.Deliv
 // If the transport is nil then use the HandleMessage method directly to pass methods to the agent,
 // for example when testing.
 //
-//	svc is the authorization service whose capabilities to expose
+//	svc is the authentication service whose capabilities to expose
 //	hc is the optional message client connected to the server protocol
 func StartAuthnAgent(
 	svc *service.AuthnService, hc hubclient.IHubClient) (*AuthnAgent, error) {
@@ -48,7 +47,7 @@ func StartAuthnAgent(
 	agent.adminHandler = NewAuthnAdminHandler(agent.svc.AdminSvc)
 	agent.userHandler = NewAuthnUserHandler(agent.svc.UserSvc)
 	if hc != nil {
-		agent.hc.SetMessageHandler(agent.HandleMessage)
+		agent.hc.SetActionHandler(agent.HandleMessage)
 	}
 	return &agent, err
 }

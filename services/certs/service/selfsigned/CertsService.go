@@ -202,23 +202,16 @@ func (svc *SelfSignedCertsService) CreateUserCert(
 //
 //	hc is the connection to the hub with a service role. For testing it can be nil.
 func (svc *SelfSignedCertsService) Start(hc hubclient.IHubClient) (err error) {
-	slog.Warn("Starting certs service", "serviceID", hc.ClientID())
+	slog.Info("Starting certs service", "serviceID", hc.ClientID())
 	// for testing, hc can be nil
 	svc.hc = hc
-	svc.hc.SetRPCCapability(certsapi.ManageCertsCapability,
-		map[string]interface{}{
-			certsapi.CreateDeviceCertMethod:  svc.CreateDeviceCert,
-			certsapi.CreateServiceCertMethod: svc.CreateServiceCert,
-			certsapi.CreateUserCertMethod:    svc.CreateUserCert,
-			certsapi.VerifyCertMethod:        svc.VerifyCert,
-		})
-
+	StartCertsAgent(svc, hc)
 	return err
 }
 
 // Stop the service and remove subscription
 func (svc *SelfSignedCertsService) Stop() {
-	slog.Warn("Stopping the certs service")
+	slog.Info("Stopping the certs service")
 }
 
 // VerifyCert verifies whether the given certificate is a valid client certificate

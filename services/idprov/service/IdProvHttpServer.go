@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/tlsserver"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"io"
@@ -37,8 +36,7 @@ func (srv *IdProvHttpServer) handleRequest(w http.ResponseWriter, req *http.Requ
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	ctx := hubclient.ServiceContext{}
-	resp, err := srv.mng.SubmitRequest(ctx, &args)
+	resp, err := srv.mng.SubmitRequest("unknown", &args)
 	if err != nil {
 		slog.Warn("idprov handleRequest. refused", "err", err.Error())
 		w.WriteHeader(http.StatusNotAcceptable)

@@ -22,19 +22,20 @@ import (
 // * Define a message handler for invoking the service and returning a response
 func GenGoAPIFromTD(td *things.TD, outfile string) (err error) {
 
-	agentID, nativeThingID, valid := things.SplitDigiTwinThingID(td.ID)
-	serviceName := ToTitle(nativeThingID)
+	dThingID := td.ID
+	agentID, serviceID := things.SplitDigiTwinThingID(dThingID)
+	serviceName := ToTitle(serviceID)
 
-	if !valid {
+	if agentID == "" {
 		return fmt.Errorf("TD thingID does not have an agent prefix")
 	}
 
 	l := &utils.L{}
 	l.Add("// Package %s with types and interfaces for using this service with agent '%s'",
-		nativeThingID, agentID)
+		serviceID, agentID)
 	l.Add("// DO NOT EDIT. This file is auto generated. Any changes will be overwritten.")
 	l.Add("// Generated %s. ", time.Now().Format(time.RFC822))
-	l.Add("package %s", nativeThingID)
+	l.Add("package %s", serviceID)
 
 	l.Add("")
 	l.Add("import \"encoding/json\"")
@@ -43,9 +44,14 @@ func GenGoAPIFromTD(td *things.TD, outfile string) (err error) {
 	l.Add("import \"github.com/hiveot/hub/lib/things\"")
 	l.Add("import \"github.com/hiveot/hub/lib/hubclient\"")
 	l.Add("")
-	l.Add("// RawThingID is the raw thingID as used by agents. Digitwin adds the urn:{agent} prefix")
-	l.Add("const RawThingID = \"%s\"", nativeThingID)
-	l.Add("const ThingID = \"%s\"", td.ID)
+	l.Add("// AgentID is the connection ID of the agent managing the Thing.")
+	l.Add("const AgentID = \"%s\"", agentID)
+	l.Add("// ServiceID is the internal thingID of the device/service as used by agents.")
+	l.Add("// Agents use this to publish events and subscribe to actions")
+	l.Add("const ServiceID = \"%s\"", serviceID)
+	l.Add("// DThingID is the Digitwin thingID as used by agents. Digitwin adds the dtw:{agent} prefix to the serviceID")
+	l.Add("// Consumers use this to publish actions and subscribe to events")
+	l.Add("const DThingID = \"%s\"", dThingID)
 	l.Add("")
 	GenActionStructs(l, td)
 	GenActionClient(l, td)

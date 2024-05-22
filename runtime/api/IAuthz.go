@@ -1,7 +1,7 @@
-// Package authz with authorization definitions
 package api
 
-const AuthzThingID = "authz"
+// AuthzThingID is the ThingID of the authorization admin service
+const AuthzThingID = "authzmin"
 
 const DefaultAclFilename = "authz.acl"
 

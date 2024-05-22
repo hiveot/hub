@@ -11,11 +11,9 @@ logLevel: info
 # log launcher output to file (default is true)
 #logtofile: true  #
 
-# Core binary to launch before the plugins. The core binary must reside in the bin directory.
-# comment out if a core is already running elsewhere.
-# known core binaries are mqttcore or natscore
-# WARNING: keys and tokens are not compatible between cores. Empty the certs directory first.
-corebin: mqttcore
+# runtime binary to launch before the plugins. The runtime binary must reside in the bin directory.
+# comment out if a runtime is already running elsewhere.
+runtime: runtime
 
 # write plugin stdout and stderr to logfile at logs/{pluginname}.log (default is true)
 #logplugins: true
@@ -39,7 +37,6 @@ autostart:
   # core services
   - certs             # certificate management service
   - state             # client state storage
-  - directory         # storage of things directory
   - history           # storage of event history
   - idprov            # IoT device provisioning service
 

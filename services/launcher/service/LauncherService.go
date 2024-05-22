@@ -46,31 +46,31 @@ type LauncherService struct {
 	done chan bool
 }
 
-// Add discovered core to svc.plugins
-func (svc *LauncherService) addCore(coreBin string) error {
-	if coreBin != "" {
-		corePath := path.Join(svc.env.BinDir, coreBin)
-		coreInfo, err := os.Stat(corePath)
+// Add discovered runtime to svc.plugins
+func (svc *LauncherService) addRuntime(runtimeBin string) error {
+	if runtimeBin != "" {
+		runtimePath := path.Join(svc.env.BinDir, runtimeBin)
+		runtimeInfo, err := os.Stat(runtimePath)
 		if err != nil {
-			err = fmt.Errorf("findCore. core in config not found. Path=%s", corePath)
+			err = fmt.Errorf("addRuntime. runtime in config not found. Path=%s", runtimePath)
 			return err
 		}
-		pluginInfo, found := svc.plugins[coreBin]
+		pluginInfo, found := svc.plugins[runtimeBin]
 		if found {
-			// update existing entry for core
-			pluginInfo.ModifiedTime = coreInfo.ModTime().Format(time.RFC3339)
-			pluginInfo.Size = coreInfo.Size()
+			// update existing entry for runtime
+			pluginInfo.ModifiedTime = runtimeInfo.ModTime().Format(time.RFC3339)
+			pluginInfo.Size = runtimeInfo.Size()
 		} else {
-			// add new entry for core
+			// add new entry for runtime
 			pluginInfo = &launcherapi.PluginInfo{
-				Name:    coreInfo.Name(),
-				Path:    corePath,
+				Name:    runtimeInfo.Name(),
+				Path:    runtimePath,
 				Uptime:  0,
 				Running: false,
 			}
-			pluginInfo.ModifiedTime = coreInfo.ModTime().Format(time.RFC3339)
-			pluginInfo.Size = coreInfo.Size()
-			svc.plugins[coreBin] = pluginInfo
+			pluginInfo.ModifiedTime = runtimeInfo.ModTime().Format(time.RFC3339)
+			pluginInfo.Size = runtimeInfo.Size()
+			svc.plugins[runtimeBin] = pluginInfo
 		}
 	}
 	return nil
@@ -117,8 +117,7 @@ func (svc *LauncherService) addPlugins(folder string) error {
 
 // List all available or just the running plugins and their status
 // This returns the list of plugins sorted by name
-func (svc *LauncherService) List(
-	ctx hubclient.ServiceContext, args launcherapi.ListArgs) (launcherapi.ListResp, error) {
+func (svc *LauncherService) List(args launcherapi.ListArgs) (launcherapi.ListResp, error) {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 
@@ -145,13 +144,7 @@ func (svc *LauncherService) List(
 func (svc *LauncherService) ScanPlugins() error {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
-	//// include the core
-	//err := svc.addCore()
-	//if err != nil {
-	//	slog.Error(err.Error())
-	//	return err
-	//}
-	// add plugins
+
 	err := svc.addPlugins(svc.env.PluginsDir)
 	if err != nil {
 		slog.Error(err.Error())
@@ -161,18 +154,18 @@ func (svc *LauncherService) ScanPlugins() error {
 }
 
 // Start the launcher service
-// This first starts the core defined in the config, then connects to the hub
+// This first starts the runtime defined in the config, then connects to the hub
 // to be able to create auth keys and tokens, and to subscribe to rpc requests.
 //
 // Call stop to end
 func (svc *LauncherService) Start() error {
-	slog.Warn("Starting LauncherService", "clientID", svc.env.ClientID)
+	slog.Info("Starting LauncherService", "clientID", svc.env.ClientID)
 	svc.isRunning.Store(true)
 
-	// include the core message server
-	coreBin := svc.cfg.CoreBin
-	if coreBin != "" {
-		err := svc.addCore(coreBin)
+	// include the runtime
+	runtimeBin := svc.cfg.RuntimeBin
+	if runtimeBin != "" {
+		err := svc.addRuntime(runtimeBin)
 		if err != nil {
 			slog.Error(err.Error())
 			return err
@@ -185,23 +178,26 @@ func (svc *LauncherService) Start() error {
 		return err
 	}
 
-	// 2: start the core, if configured
+	// 2: start the runtime, if configured
 	svc.mux.Lock()
-	_, foundCore := svc.plugins[coreBin]
+	_, foundRuntime := svc.plugins[runtimeBin]
 	svc.mux.Unlock()
-	if foundCore {
-		// core is added and starts first
-		_, err = svc._startPlugin(coreBin)
+	if foundRuntime {
+		// runtime is added and starts first
+		_, err = svc._startPlugin(runtimeBin)
 		if err != nil {
-			slog.Error("Starting core failed", "coreBin", coreBin, "err", err)
+			slog.Error("Starting runtime failed", "runtimeBin", runtimeBin, "err", err)
 			return err
 		} else {
-			slog.Warn("core started successfully", "coreBin", coreBin)
+			slog.Warn("Runtime started successfully", "runtimeBin", runtimeBin)
 
 		}
 	}
 
-	// 3: a connection to the message bus is needed
+	// 3: start listening to action requests
+	StartLauncherAgent(svc, svc.hc)
+
+	// 4: a connection to the authn service bus is needed to add service accounts
 	if svc.hc == nil {
 		svc.hc, err = connect.ConnectToHub(
 			svc.env.ServerURL, svc.env.ClientID, svc.env.CertsDir, "", "")
@@ -216,29 +212,29 @@ func (svc *LauncherService) Start() error {
 
 	// start listening to requests
 	//svc.mngSub, err = svc.hc.SubRPCRequest(launcher.ManageCapability, svc.HandleRequest)
-	svc.hc.SetRPCCapability(launcherapi.ManageCapability,
-		map[string]interface{}{
-			launcherapi.ListMethod:            svc.List,
-			launcherapi.StartPluginMethod:     svc.StartPlugin,
-			launcherapi.StartAllPluginsMethod: svc.StartAllPlugins,
-			launcherapi.StopPluginMethod:      svc.StopPlugin,
-			launcherapi.StopAllPluginsMethod:  svc.StopAllPlugins,
-		})
+	//svc.hc.SetRPCCapability(launcherapi.ManageCapability,
+	//	map[string]interface{}{
+	//		launcherapi.ListMethod:            svc.List,
+	//		launcherapi.StartPluginMethod:     svc.StartPlugin,
+	//		launcherapi.StartAllPluginsMethod: svc.StartAllPlugins,
+	//		launcherapi.StopPluginMethod:      svc.StopPlugin,
+	//		launcherapi.StopAllPluginsMethod:  svc.StopAllPlugins,
+	//	})
 
-	// 4: autostart the configured 'autostart' plugins
+	// 5: autostart the configured 'autostart' plugins
 	// Log errors but do not stop the launcher
 	for _, name := range svc.cfg.Autostart {
 		_, _ = svc._startPlugin(name)
 	}
+
 	return err
 }
 
 // Stop the launcher and all running plugins
 func (svc *LauncherService) Stop() error {
-	slog.Warn("Stopping launcher service")
+	slog.Info("Stopping launcher service")
 	svc.isRunning.Store(false)
-	err := svc.StopAllPlugins(hubclient.ServiceContext{},
-		&launcherapi.StopAllPluginsArgs{IncludingCore: true})
+	err := svc.StopAllPlugins(&launcherapi.StopAllPluginsArgs{IncludingRuntime: true})
 	return err
 }
 
@@ -280,8 +276,7 @@ func (svc *LauncherService) WatchPlugins() error {
 // This scans the folder for executables, adds these to the list of available plugins and autostarts plugins
 // Logging will be enabled based on LauncherConfig.
 //
-// The hub client is intended when an existing message bus is used. If the core is
-// started by the launcher then it is ignored.
+// The hub client is used to create service accounts if needed.
 func NewLauncherService(
 	env plugin.AppEnvironment,
 	cfg config.LauncherConfig,

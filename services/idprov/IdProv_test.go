@@ -2,15 +2,15 @@ package idprov_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/services/idprov/idprovapi"
-	"github.com/hiveot/hub/services/idprov/idprovclient"
-	"github.com/hiveot/hub/services/idprov/service"
-
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/tlsclient"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/services/idprov/idprovapi"
+	"github.com/hiveot/hub/services/idprov/idprovclient"
+	"github.com/hiveot/hub/services/idprov/service"
 	"os"
 	"path"
 	"testing"
@@ -34,10 +34,10 @@ var testServer *testenv.TestServer
 // Create a new store, delete if it already exists
 func newIdProvService() (
 	svc *service.IdProvService,
-	mngCl *idprovclient.ManageIdProvClient,
+	hc hubclient.IHubClient,
 	stopFn func()) {
 
-	hc, token1 := testServer.AddConnectClient(api.ClientTypeService, idprovapi.AgentID)
+	hc, token1 := testServer.AddConnectClient(api.ClientTypeService, idprovapi.AgentID, api.ClientRoleService)
 	_ = token1
 	svc = service.NewIdProvService(testPort, testServer.Certs.ServerCert, testServer.Certs.CaCert)
 	err := svc.Start(hc)
@@ -45,15 +45,16 @@ func newIdProvService() (
 		panic("failed starting service: " + err.Error())
 	}
 
+	//ag := service.StartIdProvAgent(svc.ManageIdProv, hc)
+	//_ = ag
+
 	// create an end user client for testing
-	hc2, token2 := testServer.AddConnectClient(api.ClientTypeUser, "test-client")
+	hc2, token2 := testServer.AddConnectClient(api.ClientTypeUser, "test-client", api.ClientRoleManager)
 	_ = token2
 	if err != nil {
 		panic("can't connect operator")
 	}
-	mngCl = idprovclient.NewIdProvManageClient(hc2)
-
-	return svc, mngCl, func() {
+	return svc, hc, func() {
 		hc2.Disconnect()
 		svc.Stop()
 		hc.Disconnect()
@@ -66,7 +67,7 @@ func TestMain(m *testing.M) {
 	_ = os.RemoveAll(testFolder)
 	_ = os.MkdirAll(testFolder, 0700)
 
-	testServer, _ = testenv.StartTestServer(core, true)
+	testServer = testenv.StartTestServer(true)
 
 	res := m.Run()
 	os.Exit(res)
@@ -74,9 +75,9 @@ func TestMain(m *testing.M) {
 
 // Test starting the provisioning service
 func TestStartStop(t *testing.T) {
-	svc, mngCl, stopFn := newIdProvService()
+	svc, hc, stopFn := newIdProvService()
 	_ = svc
-	_ = mngCl
+	_ = hc
 	time.Sleep(time.Second)
 	stopFn()
 }
@@ -84,25 +85,27 @@ func TestStartStop(t *testing.T) {
 func TestAutomaticProvisioning(t *testing.T) {
 	const device1ID = "device1"
 	const device2ID = "device2"
-	device1KP := testServer.MsgServer.CreateKeyPair()
-	device2KP := testServer.MsgServer.CreateKeyPair()
 
-	svc, mngCl, stopFn := newIdProvService()
+	svc, hc, stopFn := newIdProvService()
 	_ = svc
 	defer stopFn()
 
+	mngCl := idprovclient.NewIdProvManageClient(hc)
+	device1KP := hc.CreateKeyPair()
+	device2KP := hc.CreateKeyPair()
+
 	approvedDevices := make([]idprovapi.PreApprovedClient, 2)
 	approvedDevices[0] = idprovapi.PreApprovedClient{
-		ClientID: device1ID, ClientType: authapi.ClientTypeDevice, PubKey: device1KP.ExportPublic()}
+		ClientID: device1ID, ClientType: api.ClientTypeAgent, PubKey: device1KP.ExportPublic()}
 	approvedDevices[1] = idprovapi.PreApprovedClient{
-		ClientID: device2ID, ClientType: authapi.ClientTypeDevice, PubKey: device2KP.ExportPublic()}
+		ClientID: device2ID, ClientType: api.ClientTypeAgent, PubKey: device2KP.ExportPublic()}
 
 	err := mngCl.PreApproveDevices(approvedDevices)
 	assert.NoError(t, err)
 
 	// next, provisioning should succeed
 	idProvServerURL := fmt.Sprintf("localhost:%d", testPort)
-	tlsClient := tlsclient.NewTLSClient(idProvServerURL, testServer.CertBundle.CaCert)
+	tlsClient := tlsclient.NewTLSClient(idProvServerURL, testServer.Certs.CaCert, 0)
 	tlsClient.ConnectNoAuth()
 	status, token1, err := idprovclient.SubmitIdProvRequest(
 		device1ID, device1KP.ExportPublic(), "", tlsClient)
@@ -126,10 +129,11 @@ func TestAutomaticProvisioning(t *testing.T) {
 	assert.True(t, hasDevice1)
 
 	// token should be used to connect
-	srvURL, _, _ := testServer.MsgServer.GetServerURLs()
-	hc1 := connect.NewHubClient(srvURL, device1ID, testServer.CertBundle.CaCert, core)
-	hc1.SetRetryConnect(false)
-	err = hc1.ConnectWithToken(device1KP, token1)
+	srvURL := testServer.Runtime.TransportsMgr.GetConnectURL()
+	hc1 := connect.NewHubClient(srvURL, device1ID, testServer.Certs.CaCert)
+	//hc1.SetRetryConnect(false)
+	newToken, err := hc1.ConnectWithToken(token1)
+	require.NotEmpty(t, newToken)
 	require.NoError(t, err)
 	hc1.Disconnect()
 }
@@ -140,9 +144,10 @@ func TestAutomaticProvisioningBadParameters(t *testing.T) {
 	device1Keys := keys.NewKey(keys.KeyTypeECDSA)
 	device1PubPEM := device1Keys.ExportPublic()
 
-	svc, mngCl, stopFn := newIdProvService()
+	svc, hc, stopFn := newIdProvService()
 	_ = svc
 	defer stopFn()
+	mngCl := idprovclient.NewIdProvManageClient(hc)
 
 	approvedDevices := make([]idprovapi.PreApprovedClient, 2)
 	approvedDevices[0] = idprovapi.PreApprovedClient{
@@ -153,7 +158,7 @@ func TestAutomaticProvisioningBadParameters(t *testing.T) {
 
 	// test missing deviceID
 	idProvServerURL := "localhost:9002"
-	tlsClient := tlsclient.NewTLSClient(idProvServerURL, testServer.CertBundle.CaCert)
+	tlsClient := tlsclient.NewTLSClient(idProvServerURL, testServer.Certs.CaCert, 0)
 	status, tokenEnc, err := idprovclient.SubmitIdProvRequest(
 		"", device1PubPEM, "", tlsClient)
 	assert.Error(t, err)
@@ -176,13 +181,14 @@ func TestManualProvisioning(t *testing.T) {
 	device1Keys := keys.NewKey(keys.KeyTypeECDSA)
 	device1PubPEM := device1Keys.ExportPublic()
 
-	svc, mngCl, stopFn := newIdProvService()
+	svc, hc, stopFn := newIdProvService()
+	mngCl := idprovclient.NewIdProvManageClient(hc)
 	_ = svc
 	defer stopFn()
 
 	// request provisioning
 	idProvServerAddr := fmt.Sprintf("localhost:%d", testPort)
-	tlsClient := tlsclient.NewTLSClient(idProvServerAddr, testServer.CertBundle.CaCert)
+	tlsClient := tlsclient.NewTLSClient(idProvServerAddr, testServer.Certs.CaCert, 0)
 	tlsClient.ConnectNoAuth()
 	status, token, err := idprovclient.SubmitIdProvRequest(device1ID, device1PubPEM, "", tlsClient)
 	require.NoError(t, err)
@@ -201,7 +207,7 @@ func TestManualProvisioning(t *testing.T) {
 	assert.True(t, len(approvedList) == 0)
 
 	// Stage 2: approve the request
-	err = mngCl.ApproveRequest(device1ID, authapi.ClientTypeDevice)
+	err = mngCl.ApproveRequest(device1ID, api.ClientTypeAgent)
 	assert.NoError(t, err)
 
 	// provisioning request should now succeed

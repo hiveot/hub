@@ -12,7 +12,7 @@ import (
 )
 
 // FIXME: this ID belongs to the agent of this service
-const DigitwinAgentID = "digitwin"
+//const DigitwinAgentID = "digitwin"
 
 // The DigitwinService orchestrates the flow of events and actions with Thing agents and consumers
 // It manages storage of events, actions and communicates with agents and consumers using the

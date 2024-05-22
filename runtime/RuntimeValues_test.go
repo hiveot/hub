@@ -40,7 +40,7 @@ func TestHttpsGetActions(t *testing.T) {
 	// read the latest actions from the digitwin inbox
 	args := inbox.ReadLatestArgs{ThingID: dtThing1ID}
 	resp := inbox.ReadLatestResp{}
-	err = cl2.Rpc(inbox.ThingID, inbox.ReadLatestMethod, &args, &resp)
+	err = cl2.Rpc(inbox.DThingID, inbox.ReadLatestMethod, &args, &resp)
 	require.NoError(t, err)
 
 	actionMsg := resp.ThingValues[key1]
@@ -63,12 +63,18 @@ func TestHttpsGetEvents(t *testing.T) {
 	cl1, _ := ts.AddConnectClient(api.ClientTypeAgent, agentID, api.ClientRoleAgent)
 	defer cl1.Disconnect()
 
-	_ = cl1.PubEvent(agThingID, key1, []byte(data))
+	// FIXME: this event reaches the agent but it hasn't subscribed. (unnecesary traffic)
+	// FIXME: todo subscription is not implemented in embedded and https clients
+	// FIXME: todo authorization to publish an event - middleware or transport?
+	// FIXME: unmarshal error
+	stat, err := cl1.PubEvent(agThingID, key1, []byte(data))
+	assert.Equal(t, api.DeliveryCompleted, stat.Status)
+	assert.NoError(t, err)
 
-	// consumer reads
+	// consumer reads the posted event
 	cl, token := ts.AddConnectClient(api.ClientTypeUser, userID, api.ClientRoleManager)
 	defer cl.Disconnect()
-
+	// read using a plain old http client
 	hostPort := fmt.Sprintf("localhost:%d", ts.Port)
 	tlsClient := tlsclient.NewTLSClient(hostPort, ts.Certs.CaCert, time.Minute)
 	tlsClient.ConnectWithToken(userID, token)

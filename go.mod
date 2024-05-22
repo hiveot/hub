@@ -80,7 +80,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
-	github.com/tmaxmax/go-sse v0.8.0 // indirect
+	github.com/tmaxmax/go-sse v0.9.0-pre.2 // indirect
 	github.com/xrash/smetrics v0.0.0-20231213231151-1d8dd44e695e // indirect
 	golang.org/x/mod v0.15.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
@@ -90,7 +90,3 @@ require (
 	google.golang.org/protobuf v1.32.0 // indirect
 	gopkg.in/cenkalti/backoff.v1 v1.1.0 // indirect
 )
-
-replace github.com/nats-io/nats-server/v2 => ../nats-server
-
-replace github.com/nats-io/nats.go => ../nats.go

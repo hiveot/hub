@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
+	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
 	"path"
 )
@@ -74,19 +75,21 @@ func (svc *StateService) SetMultiple(clientID string, kv map[string]string) (err
 }
 
 // Start the service
-// This sets the permission for roles (any) that can use the state store and opens the store
-func (svc *StateService) Start() (err error) {
+func (svc *StateService) Start(hc hubclient.IHubClient) (err error) {
 	slog.Info("Starting the state service")
 	storePath := path.Join(svc.storeDir, StateStoreName)
 	svc.store = kvbtree.NewKVStore(storePath)
 
 	err = svc.store.Open()
+	if err == nil && hc != nil {
+		StartStateAgent(svc, hc)
+	}
 	return err
 }
 
 // Stop the service
 func (svc *StateService) Stop() {
-	slog.Warn("Stopping the state service")
+	slog.Info("Stopping the state service")
 	_ = svc.store.Close()
 }
 

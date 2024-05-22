@@ -55,8 +55,12 @@ func (svc *EmbeddedTransport) SendToClient(
 
 // SendEvent publishes an event message to all subscribers of this protocol binding
 func (svc *EmbeddedTransport) SendEvent(event *things.ThingMessage) (stat api.DeliveryStatus) {
-	for _, agent := range svc.handlers {
-		stat = agent(event)
+	for agentID, agent := range svc.handlers {
+		// FIXME: only send to subscribers
+		// don't send events back to their agent
+		if agentID != event.SenderID {
+			stat = agent(event)
+		}
 	}
 	return
 }

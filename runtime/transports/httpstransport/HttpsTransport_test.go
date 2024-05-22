@@ -130,7 +130,6 @@ func TestLoginRefresh(t *testing.T) {
 		})
 	defer svc.Stop()
 
-	// the dummy authenticator accepts only the testLogin and testPassword
 	cl := httpclient.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
 	token, err := cl.ConnectWithPassword(testPassword)
 	assert.NoError(t, err)
@@ -147,7 +146,7 @@ func TestLoginRefresh(t *testing.T) {
 	// should be able to reconnect with the new token
 	// NOTE: the runtime session manager doesn't allow this as
 	// the session no longer exists, but the authenticator doesn't care.
-	token, err = cl.ConnectWithJWT(token)
+	token, err = cl.ConnectWithToken(token)
 	require.NoError(t, err)
 	assert.NotEmpty(t, token)
 	token2, err := cl.RefreshToken()
@@ -204,7 +203,7 @@ func TestBadRefresh(t *testing.T) {
 	cl := httpclient.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
 
 	// set the token
-	token, err := cl.ConnectWithJWT("badtoken")
+	token, err := cl.ConnectWithToken("badtoken")
 	assert.Error(t, err)
 	assert.Empty(t, token)
 	token, err = cl.RefreshToken()
@@ -221,7 +220,7 @@ func TestBadRefresh(t *testing.T) {
 	//
 	cl2 := httpclient.NewHttpSSEClient(hostPort, "badlogin", certBundle.CaCert)
 	defer cl2.Disconnect()
-	token, err = cl2.ConnectWithJWT(validToken)
+	token, err = cl2.ConnectWithToken(validToken)
 	assert.Error(t, err)
 	assert.Empty(t, token)
 	token, err = cl2.RefreshToken()
@@ -272,10 +271,10 @@ func TestPostEventAction(t *testing.T) {
 	//eventPath := utils.Substitute(vocab.PostEventPath, vars)
 	//_, err = cl.Post(eventPath, testMsg)
 	//_, err = cl.Post(eventPath, testMsg)
-	stat := cl.PubEvent(thingID, eventKey, []byte(testMsg))
-	require.Empty(t, stat.Error)
-	stat = cl.PubEvent(thingID, eventKey, []byte(testMsg))
-	require.Empty(t, stat.Error)
+	stat, err := cl.PubEvent(thingID, eventKey, []byte(testMsg))
+	require.NoError(t, err)
+	stat, err = cl.PubEvent(thingID, eventKey, []byte(testMsg))
+	require.NoError(t, err)
 
 	// 4. verify that the handler received it
 	assert.NoError(t, err)
@@ -332,7 +331,7 @@ func TestPubSubSSE(t *testing.T) {
 	time.Sleep(time.Millisecond * 3)
 
 	// 3. register the handler for events
-	cl.SetMessageHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	cl.SetEventHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 		rxMsg = msg
 		stat.Status = api.DeliveryCompleted
 		return stat
@@ -340,8 +339,8 @@ func TestPubSubSSE(t *testing.T) {
 
 	// 4. publish an event using the hub client, the server will invoke the message handler
 	// which in turn will publish this to the listeners over sse, including this client.
-	stat := cl.PubEvent(thingID, eventKey, []byte(testMsg))
-	assert.Empty(t, stat.Error)
+	stat, err := cl.PubEvent(thingID, eventKey, []byte(testMsg))
+	assert.NoError(t, err)
 	assert.Equal(t, api.DeliveryCompleted, stat.Status)
 	time.Sleep(time.Millisecond * 10)
 	//

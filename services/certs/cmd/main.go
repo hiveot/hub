@@ -2,11 +2,11 @@ package main
 
 import (
 	"crypto/x509"
-	"github.com/hiveot/hub/core/certs/service/selfsigned"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/services/certs/service/selfsigned"
 	"log/slog"
 	"os"
 	"path"
@@ -43,5 +43,6 @@ func main() {
 	}
 
 	svc := selfsigned.NewSelfSignedCertsService(caCert, caKey)
-	plugin.StartPlugin(svc, &env)
+
+	plugin.StartPlugin(svc, env.ClientID, env.CertsDir)
 }

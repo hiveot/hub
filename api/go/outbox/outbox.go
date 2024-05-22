@@ -1,6 +1,6 @@
 // Package outbox with types and interfaces for using this service with agent 'digitwin'
 // DO NOT EDIT. This file is auto generated. Any changes will be overwritten.
-// Generated 16 May 24 14:40 PDT.
+// Generated 19 May 24 09:16 PDT.
 package outbox
 
 import "encoding/json"
@@ -9,9 +9,16 @@ import "github.com/hiveot/hub/runtime/api"
 import "github.com/hiveot/hub/lib/things"
 import "github.com/hiveot/hub/lib/hubclient"
 
-// RawThingID is the raw thingID as used by agents. Digitwin adds the urn:{agent} prefix
-const RawThingID = "outbox"
-const ThingID = "dtw:digitwin:outbox"
+// AgentID is the connection ID of the agent managing the Thing.
+const AgentID = "digitwin"
+
+// ServiceID is the internal thingID of the device/service as used by agents.
+// Agents use this to publish events and subscribe to actions
+const ServiceID = "outbox"
+
+// DThingID is the Digitwin thingID as used by agents. Digitwin adds the dtw:{agent} prefix to the serviceID
+// Consumers use this to publish actions and subscribe to events
+const DThingID = "dtw:digitwin:outbox"
 
 // Argument and Response struct for action of Thing 'dtw:digitwin:outbox'
 
@@ -52,14 +59,14 @@ type RemoveValueArgs struct {
 // ReadLatest client method - Read Latest.
 // Read the latest value(s) of a Thing
 func ReadLatest(hc hubclient.IHubClient, args ReadLatestArgs) (resp ReadLatestResp, err error) {
-	err = hc.Rpc("dtw:digitwin:outbox", "readLatest", &args, &resp)
+	err = hc.Rpc(DThingID, "readLatest", &args, &resp)
 	return
 }
 
 // RemoveValue client method - Remove Thing Value.
 // Remove a value
 func RemoveValue(hc hubclient.IHubClient, args RemoveValueArgs) (err error) {
-	err = hc.Rpc("dtw:digitwin:outbox", "removeValue", &args, nil)
+	err = hc.Rpc(DThingID, "removeValue", &args, nil)
 	return
 }
 
@@ -89,20 +96,20 @@ func NewActionHandler(svc IOutboxService) func(*things.ThingMessage) api.Deliver
 		var resp interface{}
 		stat.Completed(msg, nil)
 		switch msg.Key {
-		case "readLatest":
-			args := ReadLatestArgs{}
-			err = json.Unmarshal(msg.Data, &args)
-			if err == nil {
-				resp, err = svc.ReadLatest(args)
-			} else {
-				err = errors.New("bad function argument: " + err.Error())
-			}
-			break
 		case "removeValue":
 			args := RemoveValueArgs{}
 			err = json.Unmarshal(msg.Data, &args)
 			if err == nil {
 				err = svc.RemoveValue(args)
+			} else {
+				err = errors.New("bad function argument: " + err.Error())
+			}
+			break
+		case "readLatest":
+			args := ReadLatestArgs{}
+			err = json.Unmarshal(msg.Data, &args)
+			if err == nil {
+				resp, err = svc.ReadLatest(args)
 			} else {
 				err = errors.New("bad function argument: " + err.Error())
 			}

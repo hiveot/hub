@@ -21,7 +21,7 @@ func GenActionClient(l *utils.L, td *things.TD) {
 
 // GenActionMethod generates a client function from an action affordance.
 //
-//	dtThingID digitwin thingID of the service. This include the agent prefix.
+//	dtThingID digitwin thingID of the service. This includes the agent prefix.
 //	key with the service action method.
 //	action affordance describing the input and output parameters
 func GenActionMethod(l *utils.L, dtThingID string, key string, action *things.ActionAffordance) {
@@ -49,7 +49,8 @@ func GenActionMethod(l *utils.L, dtThingID string, key string, action *things.Ac
 	}
 	l.Add("func %s(%s)(%s){", methodName, argsString, respString)
 	l.Indent++
-	l.Add("err = hc.Rpc(\"%s\", \"%s\", %s, %s)", dtThingID, key, invokeArgs, invokeResp)
+	//l.Add("err = hc.Rpc(\"%s\", \"%s\", %s, %s)", dtThingID, key, invokeArgs, invokeResp)
+	l.Add("err = hc.Rpc(DThingID, \"%s\", %s, %s)", key, invokeArgs, invokeResp)
 	l.Add("return")
 	l.Indent--
 	l.Add("}")

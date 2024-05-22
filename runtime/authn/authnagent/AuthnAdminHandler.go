@@ -61,6 +61,20 @@ func (h *AuthnAdminHandler) AddClient(
 	return stat
 }
 
+func (h *AuthnAdminHandler) AddService(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+
+	var args api.AddServiceArgs
+	stat.Completed(msg, nil)
+	err := json.Unmarshal(msg.Data, &args)
+	if err == nil {
+		err = h.svc.AddService(args.ClientType, args.ClientID, args.DisplayName, 0)
+	}
+	if err != nil {
+		stat.Error = err.Error()
+	}
+	return stat
+}
+
 func (h *AuthnAdminHandler) GetClientProfile(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
 

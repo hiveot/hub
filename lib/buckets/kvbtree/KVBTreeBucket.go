@@ -3,7 +3,6 @@ package kvbtree
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/utils"
@@ -48,20 +47,16 @@ func (bucket *KVBTreeBucket) Close() (err error) {
 // Cursor returns a new cursor for iterating the bucket.
 // The cursor MUST be closed after use to release its memory.
 //
-// This implementation is brute force. It generates a sorted list of key/values for use by the cursor.
-// The cursor makes a shallow copy of the store. Store mutations are not reflected in the cursor.
-//
 // This should be fast enough for many use-cases. 100K records takes around 27msec on an i5@2.9GHz
 //
 // This returns a cursor with Next() and Prev() iterators
-func (bucket *KVBTreeBucket) Cursor(
-	ctx context.Context) (buckets.IBucketCursor, error) {
+func (bucket *KVBTreeBucket) Cursor() (buckets.IBucketCursor, error) {
 
 	bucket.mutex.RLock()
 	defer bucket.mutex.RUnlock()
 
 	iter := bucket.kvtree.Iter()
-	cursor := NewKVCursor(ctx, bucket, iter)
+	cursor := NewKVCursor(bucket, iter)
 	return cursor, nil
 }
 

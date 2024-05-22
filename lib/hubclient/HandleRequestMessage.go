@@ -18,8 +18,7 @@ type ServiceContext struct {
 // HandleRequestMessage unmarshal a request message parameters, passes it to the associated method,
 // and marshals the result. Intended to remove boilerplate from RPC service request handlers.
 //
-// The first argument can optionally be the service context containing
-// the clientID invoking the request.
+// The first argument can optionally be the senderID of the clientID invoking the request.
 // The second argument and results can be a struct value or reference.
 //
 // Since the arguments are JSON serialized, the wire protocol expects
@@ -29,15 +28,15 @@ type ServiceContext struct {
 //
 // Supported method types are:
 //
-//   - func([ctx,] type1) (type2,error)
-//   - func([ctx,] type1) (error)
-//   - func([ctx,] type1) ()
-//   - func([ctx]) (type,error)
-//   - func([ctx]) (error)
-//   - func([ctx]) ()
+//   - func([string,] type1) (type2,error)
+//   - func([string,] type1) (error)
+//   - func([string,] type1) ()
+//   - func([string]) (type,error)
+//   - func([string]) (error)
+//   - func([string]) ()
 //
 // where type1 and type2 can be a struct or native type, or a pointer to a struct or native type.
-func HandleRequestMessage(ctx ServiceContext, method interface{}, payload []byte) (respData []byte, err error) {
+func HandleRequestMessage(senderID string, method interface{}, payload []byte) (respData []byte, err error) {
 
 	// magic spells found at: https://github.com/a8m/reflect-examples#call-function-with-list-of-arguments-and-validate-return-values
 	// and here: https://stackoverflow.com/questions/45679408/unmarshal-json-to-reflected-struct
@@ -49,15 +48,15 @@ func HandleRequestMessage(ctx ServiceContext, method interface{}, payload []byte
 	nrArgs := methodType.NumIn()
 
 	for i := 0; i < nrArgs; i++ {
-		// determine the type of argument, expect the service context containing the clientID
+		// determine the type of argument, expect the senderID string as first arg
 		argType := methodType.In(i)
 		argKind := argType.Name()
-		argIsContext := argKind == "ServiceContext"
-		if argIsContext {
-			// first argument is the service context containing clientID
-			argv[i] = reflect.ValueOf(ctx)
+		argIsSenderID := argKind == "string"
+		if argIsSenderID {
+			// first argument is the sender clientID
+			argv[i] = reflect.ValueOf(senderID)
 		} else {
-			// the argument is not a service context
+			// the argument is not a senderID string
 			argIsRef := (argType.Kind() == reflect.Ptr)
 			n1 := reflect.New(argType) // pointer to a new zero value of type
 			n1El := n1.Elem()

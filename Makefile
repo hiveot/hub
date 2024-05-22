@@ -7,39 +7,31 @@ INSTALL_HOME=~/bin/hiveot
 
 .FORCE: 
 
-all: core bindings hubcli   ## Build Core, Bindings and hubcli
+all: runtime services bindings hubcli   ## Build Core, Bindings and hubcli
 
-# --- Core services
+# --- Runtime services
 
-core: natscore mqttcore launcher certs directory history idprov state ## Build core services including mqttcore and natscore
+runtime: .FORCE
+	go build -o $(BIN_FOLDER)/$@ runtime/cmd/main.go
 
-# Build the embedded nats message bus core with auth
-natscore:
-	go build -o $(BIN_FOLDER)/$@ core/msgserver/natsmsgserver/cmd/main.go
-
-# Build the embedded mqtt message bus core with auth
-mqttcore:
-	go build -o $(BIN_FOLDER)/$@ core/msgserver/mqttmsgserver/cmd/main.go
+services: launcher state idprov certs history
 
 launcher: .FORCE
-	go build -o $(BIN_FOLDER)/$@ core/$@/cmd/main.go
+	go build -o $(BIN_FOLDER)/$@ services/$@/cmd/main.go
 	mkdir -p $(DIST_FOLDER)/config
-	cp core/$@/config/*.yaml $(DIST_FOLDER)/config
+	cp services/$@/config/*.yaml $(DIST_FOLDER)/config
 
 certs: .FORCE
-	go build -o $(PLUGINS_FOLDER)/$@ core/$@/cmd/main.go
-
-directory: .FORCE
-	go build -o $(PLUGINS_FOLDER)/$@ core/$@/cmd/main.go
+	go build -o $(PLUGINS_FOLDER)/$@ services/$@/cmd/main.go
 
 history: .FORCE
-	go build -o $(PLUGINS_FOLDER)/$@ core/$@/cmd/main.go
+	go build -o $(PLUGINS_FOLDER)/$@ services/$@/cmd/main.go
 
 idprov: .FORCE
-	go build -o $(PLUGINS_FOLDER)/$@ core/$@/cmd/main.go
+	go build -o $(PLUGINS_FOLDER)/$@ services/$@/cmd/main.go
 
 state: .FORCE
-	go build -o $(PLUGINS_FOLDER)/$@ core/$@/cmd/main.go
+	go build -o $(PLUGINS_FOLDER)/$@ services/$@/cmd/main.go
 
 # --- protocol bindings
 
@@ -101,7 +93,7 @@ install:  ## core plugins ## build and install the services
 	cp -af $(PLUGINS_FOLDER)/* $(INSTALL_HOME)/plugins
 	cp -n $(DIST_FOLDER)/config/*.yaml $(INSTALL_HOME)/config/
 
-test: core  ## Run tests (stop on first error, don't run parallel)
+test: runtime services bindings  ## Run tests (stop on first error, don't run parallel)
 	go test -race -failfast -p 1 ./...
 
 upgrade:

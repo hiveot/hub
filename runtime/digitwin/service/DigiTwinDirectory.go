@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/directory"
@@ -66,7 +65,7 @@ func (svc *DigitwinDirectory) HandleTDEvent(
 func (svc *DigitwinDirectory) LoadCacheFromStore() error {
 	svc.cachemux.Lock()
 	defer svc.cachemux.Unlock()
-	cursor, err := svc.tdBucket.Cursor(context.Background())
+	cursor, err := svc.tdBucket.Cursor()
 	if err != nil {
 		return err
 	}

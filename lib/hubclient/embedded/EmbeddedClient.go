@@ -25,8 +25,10 @@ type EmbeddedClient struct {
 	clientID string
 	// sendMessage from the client to the protocol binding server
 	sendMessage api.MessageHandler
-	// client side handler that receives messages from the server
-	receiveMessage api.MessageHandler
+	// client side handler that receives actions from the server
+	receiveActionHandler api.MessageHandler
+	// client side handler that receives all non-action messages from the server
+	receiveEventHandler api.MessageHandler
 }
 
 // ConnectWithCert always succeeds as a direct connection doesn't need a certificate
@@ -39,8 +41,8 @@ func (cl *EmbeddedClient) ConnectWithPassword(password string) (string, error) {
 	return "dummytoken", nil
 }
 
-// ConnectWithJWT always succeeds as a direct connection doesn't need a token
-func (cl *EmbeddedClient) ConnectWithJWT(token string) (string, error) {
+// ConnectWithToken always succeeds as a direct connection doesn't need a token
+func (cl *EmbeddedClient) ConnectWithToken(token string) (string, error) {
 	return "dummytoken", nil
 }
 
@@ -63,8 +65,14 @@ func (cl *EmbeddedClient) GetStatus() hubclient.HubTransportStatus {
 
 // ReceiveMessage receives a message from the server for this client
 func (cl *EmbeddedClient) ReceiveMessage(msg *things.ThingMessage) (stat api.DeliveryStatus) {
-	if cl.receiveMessage != nil {
-		return cl.receiveMessage(msg)
+	if msg.MessageType == vocab.MessageTypeAction {
+		if cl.receiveActionHandler != nil {
+			return cl.receiveActionHandler(msg)
+		}
+	} else {
+		if cl.receiveEventHandler != nil {
+			return cl.receiveEventHandler(msg)
+		}
 	}
 	// The delivery is complete. Too bad the handler isn't registered. This is almost
 	// certainly a bug in the client code, so lets make clear this isn't a transport problem.
@@ -74,7 +82,9 @@ func (cl *EmbeddedClient) ReceiveMessage(msg *things.ThingMessage) (stat api.Del
 
 // PubAction publishes an action request.
 // Since this is a direct call, the response include a reply.
-func (cl *EmbeddedClient) PubAction(thingID string, key string, payload []byte) (stat api.DeliveryStatus, err error) {
+func (cl *EmbeddedClient) PubAction(
+	thingID string, key string, payload []byte) (stat api.DeliveryStatus, err error) {
+
 	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, payload, cl.clientID)
 	stat = cl.sendMessage(msg)
 	if stat.Error != "" {
@@ -84,10 +94,15 @@ func (cl *EmbeddedClient) PubAction(thingID string, key string, payload []byte) 
 }
 
 // PubEvent publishes an event style message without waiting for a response.
-func (cl *EmbeddedClient) PubEvent(thingID string, key string, payload []byte) api.DeliveryStatus {
+func (cl *EmbeddedClient) PubEvent(
+	thingID string, key string, payload []byte) (stat api.DeliveryStatus, err error) {
+
 	msg := things.NewThingMessage(vocab.MessageTypeEvent, thingID, key, payload, cl.clientID)
-	stat := cl.sendMessage(msg)
-	return stat
+	stat = cl.sendMessage(msg)
+	if stat.Error != "" {
+		err = errors.New(stat.Error)
+	}
+	return stat, err
 }
 
 // RefreshToken does nothing as tokens aren't used
@@ -122,15 +137,21 @@ func (cl *EmbeddedClient) SetConnectHandler(cb func(status hubclient.HubTranspor
 	return
 }
 
-// SetMessageHandler set the handler that receives all subscribed messages.
-// Use 'Subscribe' to set the type of events and actions to receive
-func (cl *EmbeddedClient) SetMessageHandler(cb api.MessageHandler) {
-	cl.receiveMessage = cb
+// SetActionHandler set the handler that receives all subscribed action messages.
+func (cl *EmbeddedClient) SetActionHandler(cb api.MessageHandler) {
+	cl.receiveActionHandler = cb
 }
 
-// Subscribe adds a subscription for one or more events. Events will be passed to the
-// receiveMessage handler.
-// Messages directed at this client are automatically passed in. No need to subscribe.
+// SetEventHandler set the handler that receives all subscribed messages.
+// Use 'Subscribe' to set the type of events and actions to receive
+func (cl *EmbeddedClient) SetEventHandler(cb api.MessageHandler) {
+	cl.receiveEventHandler = cb
+}
+
+// Subscribe adds a subscription for one or more events. Events will be passed to
+// the handler set with SetventHandler.
+//
+// Actions directed at this client are automatically passed in. No need to subscribe.
 //
 // This is pretty coarse grained.
 // Subscriptions remain in effect when the connection with the messaging server is interrupted.
@@ -163,9 +184,8 @@ func (cl *EmbeddedClient) Unsubscribe(thingID string) {
 // services.
 func NewEmbeddedClient(clientID string, serverHandler api.MessageHandler) *EmbeddedClient {
 	cl := EmbeddedClient{
-		clientID:       clientID,
-		sendMessage:    serverHandler,
-		receiveMessage: nil,
+		clientID:    clientID,
+		sendMessage: serverHandler,
 	}
 	return &cl
 }

@@ -24,8 +24,8 @@ func main() {
 	}
 	logging.SetLogging(cfg.LogLevel, "")
 
-	// start the launcher but do not connect yet as the core can be started by the launcher itself.
-	// the core will generate the launcher key and token.
+	// start the launcher but do not connect yet as the runtime can be started by the launcher itself.
+	// the runtime will generate the launcher key and token.
 	svc := service.NewLauncherService(env, cfg, nil)
 	err = svc.Start()
 	if err != nil {

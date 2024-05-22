@@ -3,6 +3,7 @@ package runtime
 import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/authnagent"
 	"github.com/hiveot/hub/runtime/authn/service"
 	"github.com/hiveot/hub/runtime/authz"
@@ -70,11 +71,11 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 
 	// last, connect the embedded services via a direct client
 	embeddedBinding := r.TransportsMgr.GetEmbedded()
-	cl1 := embeddedBinding.NewClient(service4.DigitwinAgentID)
+	cl1 := embeddedBinding.NewClient(digitwinagent.DigiTwinAgentID)
 	_, err = digitwinagent.StartDigiTwinAgent(r.DigitwinSvc, cl1)
 
 	if err == nil {
-		cl2 := embeddedBinding.NewClient(authnagent.AuthnAgentID)
+		cl2 := embeddedBinding.NewClient(api.AuthnAgentID)
 		_, err = authnagent.StartAuthnAgent(r.AuthnSvc, cl2)
 	}
 	if err == nil {

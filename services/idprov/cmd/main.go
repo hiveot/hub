@@ -2,10 +2,11 @@
 package main
 
 import (
-	"github.com/hiveot/hub/core/idprov/service"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/runtime"
+	"github.com/hiveot/hub/services/idprov/service"
 	"log/slog"
 	"os"
 	"path"
@@ -32,8 +33,8 @@ func main() {
 
 	// load the server cert
 	// TODO: get server cert info from idprov config
-	serverCertPath := path.Join(env.CertsDir, config_old.DefaultServerCertFile)
-	serverKeyPath := path.Join(env.CertsDir, config_old.DefaultServerKeyFile)
+	serverCertPath := path.Join(env.CertsDir, runtime.DefaultServerCertFile)
+	serverKeyPath := path.Join(env.CertsDir, runtime.DefaultServerKeyFile)
 	serverCert, err := certs.LoadTLSCertFromPEM(serverCertPath, serverKeyPath)
 	if err != nil {
 		slog.Error("idprov: Failed loading server certificate", "err", err)
@@ -42,6 +43,5 @@ func main() {
 
 	// start the service using the connection and hub server certificate
 	svc := service.NewIdProvService(DefaultIDProvPort, serverCert, env.CaCert)
-
-	plugin.StartPlugin(svc, &env)
+	plugin.StartPlugin(svc, env.ClientID, env.CertsDir)
 }

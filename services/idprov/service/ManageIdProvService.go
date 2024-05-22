@@ -27,13 +27,13 @@ type ManageIdProvService struct {
 // ApproveRequest approves an existing provisioning request.
 // The client will be added on the next request.
 // The next repeat request will return a short-lived token.
-func (svc *ManageIdProvService) ApproveRequest(ctx hubclient.ServiceContext,
-	args *idprovapi.ApproveRequestArgs) error {
+func (svc *ManageIdProvService) ApproveRequest(
+	senderID string, args *idprovapi.ApproveRequestArgs) error {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 
 	slog.Info("ApproveRequest",
-		slog.String("senderID", ctx.SenderID),
+		slog.String("senderID", senderID),
 		slog.String("deviceID", args.ClientID))
 	status, found := svc.requests[args.ClientID]
 	if !found {
@@ -50,8 +50,8 @@ func (svc *ManageIdProvService) ApproveRequest(ctx hubclient.ServiceContext,
 // GetRequests returns list of requests since last start
 // If args.OnlyPending is set then only return pending requests
 // Note that rejected requests are never returned
-func (svc *ManageIdProvService) GetRequests(ctx hubclient.ServiceContext,
-	args *idprovapi.GetRequestsArgs) (*idprovapi.GetRequestsResp, error) {
+func (svc *ManageIdProvService) GetRequests(
+	senderID string, args *idprovapi.GetRequestsArgs) (*idprovapi.GetRequestsResp, error) {
 	svc.mux.RLock()
 	defer svc.mux.RUnlock()
 
@@ -69,17 +69,17 @@ func (svc *ManageIdProvService) GetRequests(ctx hubclient.ServiceContext,
 }
 
 // PreApproveClients uploads list of pre-approved devices and services
-func (svc *ManageIdProvService) PreApproveClients(ctx hubclient.ServiceContext,
-	args *idprovapi.PreApproveClientsArgs) error {
+func (svc *ManageIdProvService) PreApproveClients(
+	senderID string, args *idprovapi.PreApproveClientsArgs) error {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 	slog.Info("PreApproveClients",
-		slog.String("senderID", ctx.SenderID),
+		slog.String("senderID", senderID),
 		slog.Int("count", len(args.Approvals)))
 
 	for _, approval := range args.Approvals {
 		if approval.ClientID == "" {
-			slog.Warn("PreApproval of client without clientID", "clientID", ctx.SenderID)
+			slog.Warn("PreApproval of client without clientID", "clientID", senderID)
 		} else {
 			svc.requests[approval.ClientID] = idprovapi.ProvisionStatus{
 				ClientID:    approval.ClientID,
@@ -95,13 +95,13 @@ func (svc *ManageIdProvService) PreApproveClients(ctx hubclient.ServiceContext,
 }
 
 // RejectRequest rejects a provisioning request
-func (svc *ManageIdProvService) RejectRequest(ctx hubclient.ServiceContext,
-	args *idprovapi.RejectRequestArgs) error {
+func (svc *ManageIdProvService) RejectRequest(
+	senderID string, args *idprovapi.RejectRequestArgs) error {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 
 	slog.Info("RejectRequest",
-		slog.String("senderID", ctx.SenderID),
+		slog.String("senderID", senderID),
 		slog.String("deviceID", args.ClientID))
 	status, found := svc.requests[args.ClientID]
 	if !found {
@@ -118,14 +118,14 @@ func (svc *ManageIdProvService) RejectRequest(ctx hubclient.ServiceContext,
 // If the request is pre-approved a token will be returned if the pubKey and/or
 // MAC matches.
 // If the pre-approval does not include a public key then only match required is the MAC.
-func (svc *ManageIdProvService) SubmitRequest(ctx hubclient.ServiceContext,
-	args *idprovapi.ProvisionRequestArgs) (resp *idprovapi.ProvisionRequestResp, err error) {
+func (svc *ManageIdProvService) SubmitRequest(senderID string, args *idprovapi.ProvisionRequestArgs) (
+	resp *idprovapi.ProvisionRequestResp, err error) {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 	var token string
 
 	slog.Info("SubmitRequest",
-		slog.String("senderID", ctx.SenderID),
+		slog.String("senderID", senderID),
 		slog.String("deviceID", args.ClientID))
 	status, found := svc.requests[args.ClientID]
 	if !found {
@@ -204,15 +204,5 @@ func StartManageIdProvService(hc hubclient.IHubClient) *ManageIdProvService {
 
 	// the auth service is used to create credentials
 	svc.authSvc = authnclient.NewAuthnAdminClient(svc.hc)
-
-	// FIXME: FIX HUB SERVICE AUTHORIZATION
-	//svc.hc.SetRPCCapability(idprovapi.ManageProvisioningCap,
-	//	map[string]interface{}{
-	//		idprovapi.ApproveRequestMethod:    svc.ApproveRequest,
-	//		idprovapi.GetRequestsMethod:       svc.GetRequests,
-	//		idprovapi.PreApproveClientsMethod: svc.PreApproveClients,
-	//		idprovapi.RejectRequestMethod:     svc.RejectRequest,
-	//		idprovapi.SubmitRequestMethod:     svc.SubmitRequest,
-	//	})
 	return svc
 }

@@ -12,7 +12,8 @@ import (
 type ClientCursors []IBucketCursor
 
 type CursorInfo struct {
-	Key string
+	Key    string
+	Filter string
 	// optional bucket instance this cursor operates on
 	// if provided it will be released with the cursor
 	Bucket IBucket
@@ -57,7 +58,7 @@ type CursorCache struct {
 //	clientID of the owner
 //	lifespan of the cursor after last use
 func (cc *CursorCache) Add(
-	cursor IBucketCursor, bucket IBucket, clientID string, lifespan time.Duration) string {
+	cursor IBucketCursor, bucket IBucket, clientID string, filter string, lifespan time.Duration) string {
 	cc.mux.Lock()
 	defer cc.mux.Unlock()
 
@@ -66,6 +67,7 @@ func (cc *CursorCache) Add(
 	key := strconv.FormatUint(cc.cursorCounter, 16)
 	ci := &CursorInfo{
 		Key:      key,
+		Filter:   filter,
 		Bucket:   bucket,
 		Cursor:   cursor,
 		OwnerID:  clientID,
@@ -81,8 +83,8 @@ func (cc *CursorCache) Add(
 //	cursorKey obtained with Add()
 //	clientID requesting the cursor
 //	updateLastUsed resets the lifespan of the cursor to start now
-func (cc *CursorCache) Get(
-	cursorKey string, clientID string, updateLastUsed bool) (cursor IBucketCursor, err error) {
+func (cc *CursorCache) Get(cursorKey string, clientID string, updateLastUsed bool) (
+	cursor IBucketCursor, ci *CursorInfo, err error) {
 
 	cc.mux.Lock()
 	defer cc.mux.Unlock()
@@ -92,18 +94,18 @@ func (cc *CursorCache) Get(
 		slog.Warn("Cursor not found or expired",
 			slog.String("cursorKey", cursorKey),
 			slog.String("clientID", clientID))
-		return nil, fmt.Errorf("Cursor not found or expired")
+		return nil, ci, fmt.Errorf("Cursor not found or expired")
 	} else if ci.OwnerID != clientID {
 		slog.Warn("Cursor belongs to different client",
 			slog.String("cursorKey", cursorKey),
 			slog.String("ownerID", ci.OwnerID),
 			slog.String("clientID", clientID))
-		return nil, fmt.Errorf("cursor doesn't belong to client '%s'", clientID)
+		return nil, ci, fmt.Errorf("cursor doesn't belong to client '%s'", clientID)
 	}
 	if found && updateLastUsed {
 		ci.LastUsed = time.Now()
 	}
-	return ci.Cursor, nil
+	return ci.Cursor, ci, nil
 }
 
 // GetExpiredCursors returns a list of cursors that have expired

@@ -2,14 +2,13 @@ package certs_test
 
 import (
 	"crypto/x509"
-	"github.com/hiveot/hub/core/auth/authapi"
-	"github.com/hiveot/hub/core/certs/certsapi"
-	"github.com/hiveot/hub/core/certs/certsclient"
-	"github.com/hiveot/hub/core/certs/service/selfsigned"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/services/certs/certsapi"
+	"github.com/hiveot/hub/services/certs/certsclient"
+	"github.com/hiveot/hub/services/certs/service/selfsigned"
 	"os"
 	"path"
 	"testing"
@@ -19,79 +18,49 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var core = "mqtt"
 var testDir = path.Join(os.TempDir(), "test-certs")
 
 // the following are set by the testmain
-var testServer *testenv.TestServer
 var serverURL string
 
+var ts *testenv.TestServer
+
 // Factory for creating service instance. Currently the only implementation is selfsigned.
-func StartService() (svc *certsclient.CertsClient, stopFunc func()) {
-	adminKP := testServer.MsgServer.CreateKeyPair()
-	adminID := "admin"
+func startService() (cl *certsclient.CertsClient, stopFunc func()) {
+	ts = testenv.StartTestServer(true)
 
-	testClients := []msgserver_old.ClientAuthInfo{{
-		ClientID:   certsapi.ServiceName,
-		ClientType: authapi.ClientTypeService,
-		//PubKey:       "",
-		Role: authapi.ClientRoleService,
-	}, {
-		ClientID:   adminID,
-		ClientType: authapi.ClientTypeUser,
-		PubKey:     adminKP.ExportPublic(),
-		Role:       authapi.ClientRoleAdmin,
-	}}
+	// the service needs a server connection
+	hc1, token1 := ts.AddConnectClient(
+		api.ClientTypeService, certsapi.AgentID, api.ClientRoleService)
+	_ = token1
 
-	// pre-add service
-	err := testServer.AddClients(testClients)
-	if err != nil {
-		panic(err)
-	}
-	hc1, err := testServer.AddConnectClient(certsapi.ServiceName, authapi.ClientTypeService, authapi.ClientRoleService)
-	if err != nil {
-		panic(err)
-	}
+	//storeDir := path.Join(ts.TestDir, "test-certs")
 
-	certSvc := selfsigned.NewSelfSignedCertsService(
-		testServer.CertBundle.CaCert, testServer.CertBundle.CaKey)
-	err = certSvc.Start(hc1)
+	svc := selfsigned.NewSelfSignedCertsService(ts.Certs.CaCert, ts.Certs.CaKey)
+	err := svc.Start(hc1)
 	if err != nil {
 		panic(err)
 	}
 
 	//--- connect the certs client as admin
-	adminToken, err := testServer.MsgServer.CreateToken(testClients[1])
-	hc2 := connect.NewHubClient(serverURL, adminID, testServer.CertBundle.CaCert, testServer.Core)
-	err = hc2.ConnectWithToken(adminKP, adminToken)
-	hc2.SetRetryConnect(false)
+	hc2, _ := ts.AddConnectClient(
+		api.ClientTypeUser, "admin1", api.ClientRoleAdmin)
 	certClient := certsclient.NewCertsClient(hc2)
 
 	return certClient, func() {
 		hc2.Disconnect()
-		certSvc.Stop()
 		hc1.Disconnect()
+		svc.Stop()
+		ts.Stop()
 	}
 }
 
 // TestMain clears the certs folder for clean testing
 func TestMain(m *testing.M) {
-	var err error
 	logging.SetLogging("info", "")
-	// clean start
-	_ = os.RemoveAll(testDir)
-	_ = os.MkdirAll(testDir, 0700)
-
-	testServer, err = testenv.StartTestServer(core, false)
-	serverURL, _, _ = testServer.MsgServer.GetServerURLs()
-	if err != nil {
-		panic(err)
-	}
 
 	res := m.Run()
-	testServer.Stop()
 	if res == 0 {
-		//os.RemoveAll(tempFolder)
 	}
 	os.Exit(res)
 }
@@ -105,12 +74,12 @@ func TestMain(m *testing.M) {
 func TestCreateDeviceCert(t *testing.T) {
 	deviceID := "device1"
 
-	svc, cancelFunc := StartService()
+	cl, cancelFunc := startService()
 	defer cancelFunc()
 	k := keys.NewKey(keys.KeyTypeECDSA)
 	pubKeyPEM := k.ExportPublic()
 
-	deviceCertPEM, caCertPEM, err := svc.CreateDeviceCert(
+	deviceCertPEM, caCertPEM, err := cl.CreateDeviceCert(
 		deviceID, pubKeyPEM, 1)
 	require.NoError(t, err)
 
@@ -122,9 +91,9 @@ func TestCreateDeviceCert(t *testing.T) {
 	require.NotNil(t, caCert2)
 
 	// verify certificate
-	err = svc.VerifyCert(deviceID, deviceCertPEM)
+	err = cl.VerifyCert(deviceID, deviceCertPEM)
 	assert.NoError(t, err)
-	err = svc.VerifyCert("notanid", deviceCertPEM)
+	err = cl.VerifyCert("notanid", deviceCertPEM)
 	assert.Error(t, err)
 
 	// verify certificate against CA
@@ -143,19 +112,19 @@ func TestDeviceCertBadParms(t *testing.T) {
 	deviceID := "device1"
 
 	// test creating hub certificate
-	svc, cancelFunc := StartService()
+	cl, cancelFunc := startService()
 	defer cancelFunc()
 
 	k := keys.NewKey(keys.KeyTypeECDSA)
 	pubKeyPEM := k.ExportPublic()
 
 	// missing device ID
-	certPEM, _, err := svc.CreateDeviceCert("", pubKeyPEM, 0)
+	certPEM, _, err := cl.CreateDeviceCert("", pubKeyPEM, 0)
 	require.Error(t, err)
 	assert.Empty(t, certPEM)
 
 	// missing public key
-	certPEM, _, err = svc.CreateDeviceCert(deviceID, "", 1)
+	certPEM, _, err = cl.CreateDeviceCert(deviceID, "", 1)
 	require.Error(t, err)
 	assert.Empty(t, certPEM)
 
@@ -166,12 +135,12 @@ func TestCreateServiceCert(t *testing.T) {
 	const serviceID = "testService"
 	names := []string{"127.0.0.1", "localhost"}
 
-	svc, cancelFunc := StartService()
+	cl, cancelFunc := startService()
 	defer cancelFunc()
 	k := keys.NewKey(keys.KeyTypeECDSA)
 	pubKeyPEM := k.ExportPublic()
 
-	serviceCertPEM, caCertPEM, err := svc.CreateServiceCert(
+	serviceCertPEM, caCertPEM, err := cl.CreateServiceCert(
 		serviceID, pubKeyPEM, names, 0)
 	require.NoError(t, err)
 	serviceCert, err := certs.X509CertFromPEM(serviceCertPEM)
@@ -180,7 +149,7 @@ func TestCreateServiceCert(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify service certificate against CA
-	err = svc.VerifyCert(serviceID, serviceCertPEM)
+	err = cl.VerifyCert(serviceID, serviceCertPEM)
 	assert.NoError(t, err)
 
 	caCertPool := x509.NewCertPool()
@@ -198,7 +167,7 @@ func TestServiceCertBadParms(t *testing.T) {
 	const serviceID = "testService"
 	hostnames := []string{"127.0.0.1"}
 
-	svc, cancelFunc := StartService()
+	svc, cancelFunc := startService()
 	defer cancelFunc()
 
 	caCert, caKey, _ := certs.CreateCA("Test CA", 1)
@@ -236,12 +205,12 @@ func TestServiceCertBadParms(t *testing.T) {
 func TestCreateUserCert(t *testing.T) {
 	userID := "bob"
 	// test creating hub certificate
-	svc, cancelFunc := StartService()
+	cl, cancelFunc := startService()
 	defer cancelFunc()
 	k := keys.NewKey(keys.KeyTypeECDSA)
 	pubKeyPEM := k.ExportPublic()
 
-	userCertPEM, caCertPEM, err := svc.CreateUserCert(userID, pubKeyPEM, 0)
+	userCertPEM, caCertPEM, err := cl.CreateUserCert(userID, pubKeyPEM, 0)
 	require.NoError(t, err)
 
 	userCert, err := certs.X509CertFromPEM(userCertPEM)
@@ -252,7 +221,7 @@ func TestCreateUserCert(t *testing.T) {
 	require.NotNil(t, caCert2)
 
 	// verify service certificate against CA
-	err = svc.VerifyCert(userID, userCertPEM)
+	err = cl.VerifyCert(userID, userCertPEM)
 	assert.NoError(t, err)
 
 	// verify client certificate against CA

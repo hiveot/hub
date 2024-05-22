@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
@@ -22,8 +23,8 @@ type AddHistory struct {
 }
 
 // encode a ThingMessage into a single key value pair for easy storage and filtering.
-// Encoding generates a key as: timestampMsec/name/a|e|c/sender,
-// where a|e|c indicates action, event or config
+// Encoding generates a key as: timestampMsec/name/a|e|p/sender,
+// where a|e|p indicates action, event or property
 func (svc *AddHistory) encodeValue(tv *things.ThingMessage) (key string, val []byte) {
 	var err error
 	ts := time.Now()
@@ -40,8 +41,8 @@ func (svc *AddHistory) encodeValue(tv *things.ThingMessage) (key string, val []b
 	key = strconv.FormatInt(timestamp, 10) + "/" + tv.Key
 	if tv.MessageType == vocab.MessageTypeAction {
 		key = key + "/a"
-	} else if tv.MessageType == MessageTypeConfig {
-		key = key + "/c"
+	} else if tv.MessageType == vocab.MessageTypeProperty {
+		key = key + "/p"
 	} else {
 		key = key + "/e"
 	}
@@ -50,64 +51,96 @@ func (svc *AddHistory) encodeValue(tv *things.ThingMessage) (key string, val []b
 	return key, val
 }
 
-//
-//// AddAction adds a Thing action with the given name and value to the action history
-//// value is json encoded. Optionally include a 'created' ISO8601 timestamp
-//func (svc *AddHistory) AddAction(actionValue *things.ThingMessage) error {
-//	slog.Info("AddAction",
-//		slog.String("agentID", actionValue.AgentID),
-//		slog.String("thingID", actionValue.ThingID),
-//		slog.String("actionName", actionValue.Name))
-//
-//	retain, err := svc.validateValue(actionValue)
-//	if err != nil {
-//		slog.Info("AddAction value error", "err", err.Error())
-//		return err
-//	}
-//	if !retain {
-//		slog.Info("action value not retained", slog.String("name", actionValue.Name))
-//		return nil
-//	}
-//	key, val := svc.encodeValue(actionValue)
-//	thingAddr := actionValue.AgentID + "/" + actionValue.ThingID
-//	bucket := svc.store.GetBucket(thingAddr)
-//	err = bucket.Set(key, val)
-//	_ = bucket.Close()
-//	if svc.onAddedValue != nil {
-//		svc.onAddedValue(actionValue)
-//	}
-//	return err
-//}
-
-// AddMessage adds an event to the event history
-// Only events that pass retention rules are stored.
-// If the event has no created time, it will be set to 'now'
-func (svc *AddHistory) AddMessage(newtm *things.ThingMessage) error {
-
-	valueStr := newtm.Data
-	if len(valueStr) > 20 {
-		valueStr = valueStr[:20]
-	}
-	retain, err := svc.validateValue(newtm)
+// AddAction adds a Thing action with the given name and value to the action history
+// value is json encoded. Optionally include a 'created' ISO8601 timestamp
+func (svc *AddHistory) AddAction(actionValue *things.ThingMessage) error {
+	slog.Info("AddAction",
+		slog.String("senderID", actionValue.SenderID),
+		slog.String("thingID", actionValue.ThingID),
+		slog.String("key", actionValue.Key))
+	// actions are always aimed at the digital twin ID
+	dThingID := actionValue.ThingID
+	retain, err := svc.validateValue(actionValue)
 	if err != nil {
-		slog.Warn("invalid event", "name", newtm.Key, "err", err)
+		slog.Info("AddAction value error", "err", err.Error())
 		return err
 	}
 	if !retain {
-		slog.Debug("event value not retained", slog.String("name", newtm.Key))
+		slog.Info("action value not retained",
+			slog.String("name", actionValue.Key))
+		return nil
+	}
+	key, val := svc.encodeValue(actionValue)
+	bucket := svc.store.GetBucket(dThingID)
+	err = bucket.Set(key, val)
+	_ = bucket.Close()
+	if svc.onAddedValue != nil {
+		svc.onAddedValue(actionValue)
+	}
+	return err
+}
+
+// AddProperties adds individual property values to the history
+// This splits the property map and adds then as individual key-values
+func (svc *AddHistory) AddProperties(msg *things.ThingMessage) error {
+	propMap := make(map[string]any)
+	err := json.Unmarshal(msg.Data, &propMap)
+	if err != nil {
+		return err
+	}
+	thingAddr := msg.ThingID // the digitwin ID with the agent prefix
+	bucket := svc.store.GetBucket(thingAddr)
+
+	// turn each property into a ThingMessage object so they can be queried separately
+	for propName, propValue := range propMap {
+		propValueString := fmt.Sprint(propValue)
+		// store this as a property message to differentiate from events
+		tv := things.NewThingMessage(vocab.MessageTypeProperty,
+			msg.ThingID, propName, []byte(propValueString), msg.SenderID)
+		tv.CreatedMSec = msg.CreatedMSec
+		//
+
+		storageKey, val := svc.encodeValue(msg)
+
+		err = bucket.Set(storageKey, val)
+	}
+	_ = bucket.Close()
+	return err
+}
+
+// AddEvent adds an event to the event history
+// Only events that pass retention rules are stored.
+// If the event has no created time, it will be set to 'now'
+// These events must contain the digitwin thingID
+func (svc *AddHistory) AddEvent(msg *things.ThingMessage) error {
+
+	if msg.Key == vocab.EventTypeProperties {
+		return svc.AddProperties(msg)
+	}
+	valueStr := msg.Data
+	if len(valueStr) > 20 {
+		valueStr = valueStr[:20]
+	}
+	retain, err := svc.validateValue(msg)
+	if err != nil {
+		slog.Warn("invalid event", "name", msg.Key, "err", err)
+		return err
+	}
+	if !retain {
+		slog.Debug("event value not retained", slog.String("name", msg.Key))
 		return nil
 	}
 
-	storageKey, val := svc.encodeValue(newtm)
+	storageKey, val := svc.encodeValue(msg)
 
-	slog.Info("AddMessage",
-		slog.String("senderID", newtm.SenderID),
-		slog.String("thingID", newtm.ThingID),
-		slog.String("key", newtm.Key),
+	slog.Info("AddEvent",
+		slog.String("senderID", msg.SenderID),
+		slog.String("thingID", msg.ThingID),
+		slog.String("key", msg.Key),
 		slog.String("value", string(valueStr)),
 		slog.String("storageKey", storageKey))
 
-	thingAddr := newtm.ThingID // the digitwin ID with the agent prefix
+	thingAddr := msg.ThingID // the digitwin ID with the agent prefix
 	bucket := svc.store.GetBucket(thingAddr)
 
 	err = bucket.Set(storageKey, val)
@@ -116,23 +149,34 @@ func (svc *AddHistory) AddMessage(newtm *things.ThingMessage) error {
 	}
 	_ = bucket.Close()
 	if svc.onAddedValue != nil {
-		svc.onAddedValue(newtm)
+		svc.onAddedValue(msg)
 	}
 	return err
 }
 
+// AddMessage adds an event, action or properties to the history store
+func (svc *AddHistory) AddMessage(msg *things.ThingMessage) error {
+	if msg.MessageType == vocab.MessageTypeAction {
+		return svc.AddAction(msg)
+	}
+	if msg.Key == vocab.EventTypeProperties {
+		return svc.AddProperties(msg)
+	}
+	return svc.AddEvent(msg)
+}
+
 // AddMessages provides a bulk-add of event/action messages to the history
 // Events that are invalid are skipped.
-func (svc *AddHistory) AddMessages(tvList []*things.ThingMessage) (err error) {
-	if tvList == nil || len(tvList) == 0 {
+func (svc *AddHistory) AddMessages(msgList []*things.ThingMessage) (err error) {
+	if msgList == nil || len(msgList) == 0 {
 		return nil
-	} else if len(tvList) == 1 {
-		err = svc.AddMessage(tvList[0])
+	} else if len(msgList) == 1 {
+		err = svc.AddMessage(msgList[0])
 		return err
 	}
 	// encode events as K,V pair and group them by thingAddr
 	kvpairsByThingAddr := make(map[string]map[string][]byte)
-	for _, eventValue := range tvList {
+	for _, eventValue := range msgList {
 		// kvpairs hold a map of storage encoded value key and value
 		thingAddr := eventValue.ThingID
 		kvpairs, found := kvpairsByThingAddr[thingAddr]
@@ -172,6 +216,9 @@ func (svc *AddHistory) validateValue(tv *things.ThingMessage) (retained bool, er
 	}
 	if tv.Key == "" {
 		return false, fmt.Errorf("missing key for event or action for things '%s'", tv.ThingID)
+	}
+	if tv.SenderID == "" {
+		return false, fmt.Errorf("missing sender for event or action for things '%s'", tv.ThingID)
 	}
 	if tv.CreatedMSec == 0 {
 		tv.CreatedMSec = time.Now().UnixMilli()

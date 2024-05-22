@@ -7,7 +7,6 @@ import (
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/httpclient"
-	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime"
@@ -98,8 +97,8 @@ func (test *TestServer) AddTD(agentID string, td *things.TD) *things.TD {
 	}
 	tdJSON, _ := json.Marshal(td)
 	ag := test.Runtime.TransportsMgr.GetEmbedded().NewClient(agentID)
-	stat := ag.PubEvent(td.ID, vocab.EventTypeTD, tdJSON)
-	if stat.Error != "" {
+	_, err := ag.PubEvent(td.ID, vocab.EventTypeTD, tdJSON)
+	if err != nil {
 		slog.Error("Failed adding TD")
 	}
 	return td
@@ -146,9 +145,10 @@ func (test *TestServer) Stop() {
 	test.Runtime.Stop()
 }
 
-// Start the test server
-func (test *TestServer) Start(clean bool) error {
-	logging.SetLogging("info", "")
+// Start the test server.
+// This panics if something goes wrong.
+func (test *TestServer) Start(clean bool) {
+	//logging.SetLogging("info", "")
 
 	if clean {
 		_ = os.RemoveAll(test.TestDir)
@@ -162,11 +162,13 @@ func (test *TestServer) Start(clean bool) error {
 	test.Config.ServerCert = test.Certs.ServerCert
 	err := test.Config.Setup(&test.AppEnv)
 	if err != nil {
-		return err
+		panic("unable to setup test server config")
 	}
 	test.Runtime = runtime.NewRuntime(test.Config)
 	err = test.Runtime.Start(&test.AppEnv)
-	return err
+	if err != nil {
+		panic("unable to start test server runtime")
+	}
 }
 
 func NewTestServer() *TestServer {
@@ -178,4 +180,12 @@ func NewTestServer() *TestServer {
 	}
 
 	return &srv
+}
+
+// StartTestServer creates and starts the test server
+// This panics if start fails.
+func StartTestServer(clean bool) *TestServer {
+	srv := NewTestServer()
+	srv.Start(clean)
+	return srv
 }

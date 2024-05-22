@@ -1,6 +1,6 @@
 // Package directory with types and interfaces for using this service with agent 'digitwin'
 // DO NOT EDIT. This file is auto generated. Any changes will be overwritten.
-// Generated 16 May 24 14:40 PDT.
+// Generated 19 May 24 09:16 PDT.
 package directory
 
 import "encoding/json"
@@ -9,45 +9,18 @@ import "github.com/hiveot/hub/runtime/api"
 import "github.com/hiveot/hub/lib/things"
 import "github.com/hiveot/hub/lib/hubclient"
 
-// RawThingID is the raw thingID as used by agents. Digitwin adds the urn:{agent} prefix
-const RawThingID = "directory"
-const ThingID = "dtw:digitwin:directory"
+// AgentID is the connection ID of the agent managing the Thing.
+const AgentID = "digitwin"
+
+// ServiceID is the internal thingID of the device/service as used by agents.
+// Agents use this to publish events and subscribe to actions
+const ServiceID = "directory"
+
+// DThingID is the Digitwin thingID as used by agents. Digitwin adds the dtw:{agent} prefix to the serviceID
+// Consumers use this to publish actions and subscribe to events
+const DThingID = "dtw:digitwin:directory"
 
 // Argument and Response struct for action of Thing 'dtw:digitwin:directory'
-
-const RemoveTDMethod = "removeTD"
-
-// RemoveTDArgs defines the arguments of the removeTD function
-// Remove TD - Remove a Thing TD document from the digital twin directory and value stores
-type RemoveTDArgs struct {
-
-	// ThingID Digital Twin ThingID of the Thing to remove
-	ThingID string `json:"thingID,omitEmpty"`
-}
-
-const QueryTDsMethod = "queryTDs"
-
-// QueryTDsArgs defines the arguments of the queryTDs function
-// Query TDs - Query Thing TD documents from the directory
-type QueryTDsArgs struct {
-
-	// Query Query expression (tbd)
-	Query string `json:"query,omitEmpty"`
-
-	// Offset Number of results to skip
-	Offset int `json:"offset,omitEmpty"`
-
-	// Limit Maximum number of entries to return
-	Limit int `json:"limit,omitEmpty"`
-}
-
-// QueryTDsResp defines the response of the queryTDs function
-// Query TDs - Query Thing TD documents from the directory
-type QueryTDsResp struct {
-
-	// Output List of JSON encoded TD documents
-	Output []string `json:"output"`
-}
 
 const ReadTDMethod = "readTD"
 
@@ -88,31 +61,65 @@ type ReadTDsResp struct {
 	Output []string `json:"output"`
 }
 
-// ReadTD client method - Read TD.
-// This returns a JSON encoded TD document
-func ReadTD(hc hubclient.IHubClient, args ReadTDArgs) (resp ReadTDResp, err error) {
-	err = hc.Rpc("dtw:digitwin:directory", "readTD", &args, &resp)
-	return
+const RemoveTDMethod = "removeTD"
+
+// RemoveTDArgs defines the arguments of the removeTD function
+// Remove TD - Remove a Thing TD document from the digital twin directory and value stores
+type RemoveTDArgs struct {
+
+	// ThingID Digital Twin ThingID of the Thing to remove
+	ThingID string `json:"thingID,omitEmpty"`
+}
+
+const QueryTDsMethod = "queryTDs"
+
+// QueryTDsArgs defines the arguments of the queryTDs function
+// Query TDs - Query Thing TD documents from the directory
+type QueryTDsArgs struct {
+
+	// Query Query expression (tbd)
+	Query string `json:"query,omitEmpty"`
+
+	// Offset Number of results to skip
+	Offset int `json:"offset,omitEmpty"`
+
+	// Limit Maximum number of entries to return
+	Limit int `json:"limit,omitEmpty"`
+}
+
+// QueryTDsResp defines the response of the queryTDs function
+// Query TDs - Query Thing TD documents from the directory
+type QueryTDsResp struct {
+
+	// Output List of JSON encoded TD documents
+	Output []string `json:"output"`
 }
 
 // ReadTDs client method - Read TDs.
 // Read a batch of TD documents
 func ReadTDs(hc hubclient.IHubClient, args ReadTDsArgs) (resp ReadTDsResp, err error) {
-	err = hc.Rpc("dtw:digitwin:directory", "readTDs", &args, &resp)
+	err = hc.Rpc(DThingID, "readTDs", &args, &resp)
 	return
 }
 
 // RemoveTD client method - Remove TD.
 // Remove a Thing TD document from the digital twin directory and value stores
 func RemoveTD(hc hubclient.IHubClient, args RemoveTDArgs) (err error) {
-	err = hc.Rpc("dtw:digitwin:directory", "removeTD", &args, nil)
+	err = hc.Rpc(DThingID, "removeTD", &args, nil)
 	return
 }
 
 // QueryTDs client method - Query TDs.
 // Query Thing TD documents from the directory
 func QueryTDs(hc hubclient.IHubClient, args QueryTDsArgs) (resp QueryTDsResp, err error) {
-	err = hc.Rpc("dtw:digitwin:directory", "queryTDs", &args, &resp)
+	err = hc.Rpc(DThingID, "queryTDs", &args, &resp)
+	return
+}
+
+// ReadTD client method - Read TD.
+// This returns a JSON encoded TD document
+func ReadTD(hc hubclient.IHubClient, args ReadTDArgs) (resp ReadTDResp, err error) {
+	err = hc.Rpc(DThingID, "readTD", &args, &resp)
 	return
 }
 
@@ -150,24 +157,6 @@ func NewActionHandler(svc IDirectoryService) func(*things.ThingMessage) api.Deli
 		var resp interface{}
 		stat.Completed(msg, nil)
 		switch msg.Key {
-		case "readTD":
-			args := ReadTDArgs{}
-			err = json.Unmarshal(msg.Data, &args)
-			if err == nil {
-				resp, err = svc.ReadTD(args)
-			} else {
-				err = errors.New("bad function argument: " + err.Error())
-			}
-			break
-		case "readTDs":
-			args := ReadTDsArgs{}
-			err = json.Unmarshal(msg.Data, &args)
-			if err == nil {
-				resp, err = svc.ReadTDs(args)
-			} else {
-				err = errors.New("bad function argument: " + err.Error())
-			}
-			break
 		case "removeTD":
 			args := RemoveTDArgs{}
 			err = json.Unmarshal(msg.Data, &args)
@@ -182,6 +171,24 @@ func NewActionHandler(svc IDirectoryService) func(*things.ThingMessage) api.Deli
 			err = json.Unmarshal(msg.Data, &args)
 			if err == nil {
 				resp, err = svc.QueryTDs(args)
+			} else {
+				err = errors.New("bad function argument: " + err.Error())
+			}
+			break
+		case "readTD":
+			args := ReadTDArgs{}
+			err = json.Unmarshal(msg.Data, &args)
+			if err == nil {
+				resp, err = svc.ReadTD(args)
+			} else {
+				err = errors.New("bad function argument: " + err.Error())
+			}
+			break
+		case "readTDs":
+			args := ReadTDsArgs{}
+			err = json.Unmarshal(msg.Data, &args)
+			if err == nil {
+				resp, err = svc.ReadTDs(args)
 			} else {
 				err = errors.New("bad function argument: " + err.Error())
 			}

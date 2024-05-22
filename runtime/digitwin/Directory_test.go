@@ -43,8 +43,7 @@ func startDirectory(clean bool) (
 
 	// use direct transport to pass messages to the service
 	msgHandler := directory.NewActionHandler(svc)
-	cl = embedded.NewEmbeddedClient(directory.ThingID, msgHandler)
-	//mt = direct.NewDirectTransport(directory.ThingID, msgHandler)
+	cl = embedded.NewEmbeddedClient(directory.AgentID, msgHandler)
 
 	return svc, cl, func() {
 		svc.Stop()

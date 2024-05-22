@@ -356,7 +356,7 @@ func TestSeek(t *testing.T) {
 	defer bucket.Close()
 
 	// set cursor 'base' records forward
-	cursor, err := bucket.Cursor(nil)
+	cursor, err := bucket.Cursor()
 	k1, v1, valid := cursor.First()
 	assert.True(t, valid)
 	for i := 0; i < base; i++ {
@@ -419,7 +419,7 @@ func TestPrevNextN(t *testing.T) {
 	defer bucket.Close()
 
 	// test NextN
-	cursor, err := bucket.Cursor(nil)
+	cursor, err := bucket.Cursor()
 	k1, v1, valid := cursor.First()
 	assert.True(t, valid)
 	docs, itemsRemaining := cursor.NextN(seekCount)

@@ -10,12 +10,8 @@ import (
 // StateClient is a marshaller for service messages using a provided hub connection.
 // This uses the default serializer to marshal and unmarshal messages.
 type StateClient struct {
-	// ID of the service that handles the requests
-	agentID string
-	// State storage capability
-	thingID string
-	// thingID of the state service
-	serviceID string
+	// dThingID digital twin service ID of the state management
+	dThingID string
 	// Connection to the hub
 	hc hubclient.IHubClient
 }
@@ -24,7 +20,7 @@ type StateClient struct {
 func (cl *StateClient) Delete(key string) error {
 
 	req := stateapi.DeleteArgs{Key: key}
-	err := cl.hc.Rpc(cl.serviceID, stateapi.DeleteMethod, &req, nil)
+	err := cl.hc.Rpc(cl.dThingID, stateapi.DeleteMethod, &req, nil)
 	return err
 }
 
@@ -34,7 +30,7 @@ func (cl *StateClient) Get(key string, record interface{}) (found bool, err erro
 
 	req := stateapi.GetArgs{Key: key}
 	resp := stateapi.GetResp{}
-	err = cl.hc.Rpc(cl.serviceID, stateapi.GetMethod, &req, &resp)
+	err = cl.hc.Rpc(cl.dThingID, stateapi.GetMethod, &req, &resp)
 	if err != nil {
 		return false, err
 	}
@@ -50,7 +46,7 @@ func (cl *StateClient) GetMultiple(keys []string) (values map[string]string, err
 
 	req := stateapi.GetMultipleArgs{Keys: keys}
 	resp := stateapi.GetMultipleResp{}
-	err = cl.hc.Rpc(cl.serviceID, stateapi.GetMultipleMethod, &req, &resp)
+	err = cl.hc.Rpc(cl.dThingID, stateapi.GetMultipleMethod, &req, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -64,27 +60,28 @@ func (cl *StateClient) Set(key string, record interface{}) error {
 		return err
 	}
 	req := stateapi.SetArgs{Key: key, Value: string(value)}
-	err = cl.hc.Rpc(cl.serviceID, stateapi.SetMethod, &req, nil)
+	err = cl.hc.Rpc(cl.dThingID, stateapi.SetMethod, &req, nil)
 	return err
 }
 
 // SetMultiple writes multiple record
 func (cl *StateClient) SetMultiple(kv map[string]string) error {
 	req := stateapi.SetMultipleArgs{KV: kv}
-	err := cl.hc.Rpc(cl.serviceID, stateapi.SetMultipleMethod, &req, nil)
+	err := cl.hc.Rpc(cl.dThingID, stateapi.SetMultipleMethod, &req, nil)
 	return err
 }
 
-// NewStateClient returns a client to access state
+// NewStateClient returns a client to access state.
+//
+// This assumes the agentID used to access the service is: stateapi.StateAgentID.
 //
 //	hc is the hub client connection to use.
+//	agentID is the instance name of the state agent. Use "" for default.
 func NewStateClient(hc hubclient.IHubClient) *StateClient {
-	agentID := stateapi.ServiceName
+	agentID := stateapi.AgentID
 	cl := StateClient{
-		hc:        hc,
-		agentID:   agentID,
-		thingID:   stateapi.StorageThingID,
-		serviceID: things.MakeDigiTwinThingID(agentID, stateapi.StorageThingID),
+		hc:       hc,
+		dThingID: things.MakeDigiTwinThingID(agentID, stateapi.StorageServiceID),
 	}
 	return &cl
 }

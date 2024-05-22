@@ -29,7 +29,7 @@ type IdProvService struct {
 	// Hub connection
 	hc hubclient.IHubClient
 	// the manage service
-	mng *ManageIdProvService
+	ManageIdProv *ManageIdProvService
 
 	// server listening port
 	port uint
@@ -48,10 +48,10 @@ type IdProvService struct {
 // 4. start the security check for rogue DNS-SD records
 // 5. start DNS-SD discovery server
 func (svc *IdProvService) Start(hc hubclient.IHubClient) (err error) {
-	slog.Warn("Starting the provisioning service", "clientID", hc.ClientID())
+	slog.Info("Starting the provisioning service", "clientID", hc.ClientID())
 	svc.hc = hc
 	//svc.Stop()
-	svc.mng = StartManageIdProvService(svc.hc)
+	svc.ManageIdProv = StartManageIdProvService(svc.hc)
 	if err != nil {
 		return err
 	}
@@ -66,22 +66,25 @@ func (svc *IdProvService) Start(hc hubclient.IHubClient) (err error) {
 	if err != nil {
 		return err
 	}
+	// the agent maps incoming action requests to the management service methods
+	StartIdProvAgent(svc.ManageIdProv, hc)
 
 	// Start the HTTP server
-	svc.httpServer, err = StartIdProvHttpServer(svc.port, svc.serverCert, svc.caCert, svc.mng)
+	svc.httpServer, err = StartIdProvHttpServer(
+		svc.port, svc.serverCert, svc.caCert, svc.ManageIdProv)
 	return err
 }
 
 // Stop the provisioning service
 func (svc *IdProvService) Stop() {
-	slog.Warn("Stopping the provisioning service")
+	slog.Info("Stopping the provisioning service")
 	if svc.httpServer != nil {
 		svc.httpServer.Stop()
 		svc.httpServer = nil
 	}
-	if svc.mng != nil {
-		svc.mng.Stop()
-		svc.mng = nil
+	if svc.ManageIdProv != nil {
+		svc.ManageIdProv.Stop()
+		svc.ManageIdProv = nil
 	}
 }
 

@@ -88,7 +88,7 @@ func StartAuthzAgent(svc *authz.AuthzService, hc hubclient.IHubClient) (*AuthzAg
 	var err error
 	agent := AuthzAgent{svc: svc, hc: hc}
 	if hc != nil {
-		agent.hc.SetMessageHandler(agent.HandleMessage)
+		agent.hc.SetActionHandler(agent.HandleMessage)
 		// agents don't need to subscribe to receive actions directed at them
 		//err = agent.hc.Subscribe(api.AuthzThingID)
 	}

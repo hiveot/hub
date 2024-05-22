@@ -5,41 +5,36 @@ import (
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/services/state/service"
-	"github.com/hiveot/hub/services/state/stateagent"
 	"github.com/hiveot/hub/services/state/stateapi"
 	"github.com/hiveot/hub/services/state/stateclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"log/slog"
+	"log"
 	"os"
+	"path"
 	"testing"
 	"time"
 )
 
-const storeDir = "/tmp/test-state"
-
 var ts *testenv.TestServer
 
 // return an API to the state service
-func startStateService(cleanStart bool) (stateCl *stateclient.StateClient, stopFn func()) {
-	slog.Info("startStateService")
-	ts = testenv.NewTestServer()
-	err := ts.Start(true)
-	if err != nil {
-		panic(err)
-	}
+func startStateService(cleanStart bool) (
+	svc *service.StateService, stateCl *stateclient.StateClient, stopFn func()) {
+	ts = testenv.StartTestServer(cleanStart)
+
 	// the service needs a server connection
 	hc1, token1 := ts.AddConnectClient(
-		api.ClientTypeService, stateapi.ServiceName, api.ClientRoleService)
+		api.ClientTypeService, stateapi.AgentID, api.ClientRoleService)
 	_ = token1
 
-	svc := service.NewStateService(storeDir)
-	err = svc.Start()
+	storeDir := path.Join(ts.TestDir, "test-state")
+	svc = service.NewStateService(storeDir)
+	err := svc.Start(hc1)
+
 	if err != nil {
 		panic("service fails to start: " + err.Error())
 	}
-	ag, err := stateagent.StartStateAgent(svc, hc1)
-	_ = ag
 
 	// connect as a user to the service above
 	hc2, token2 := ts.AddConnectClient(
@@ -47,24 +42,24 @@ func startStateService(cleanStart bool) (stateCl *stateclient.StateClient, stopF
 	_ = token2
 	stateCl = stateclient.NewStateClient(hc2)
 	time.Sleep(time.Millisecond)
-	return stateCl, func() {
-		ts.Stop()
+	return svc, stateCl, func() {
 		hc2.Disconnect()
-		svc.Stop()
 		hc1.Disconnect()
+		svc.Stop()
+		ts.Stop()
 	}
 }
 
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
-
+	log.Print("old logger")
 	res := m.Run()
 	os.Exit(res)
 }
 
 func TestStartStop(t *testing.T) {
 	t.Log("--- TestStartStop ---")
-	stateCl, stopFn := startStateService(true)
+	_, stateCl, stopFn := startStateService(true)
 	assert.NotNil(t, stateCl)
 
 	stopFn()
@@ -73,12 +68,12 @@ func TestStartStop(t *testing.T) {
 func TestStartStopBadLocation(t *testing.T) {
 	t.Log("--- TestStartStopBadLocation ---")
 
-	_, stopFn := startStateService(true)
+	_, _, stopFn := startStateService(true)
 	defer stopFn()
 
 	// use a read-only folder
 	stateSvc := service.NewStateService("/not/a/folder")
-	err := stateSvc.Start()
+	err := stateSvc.Start(nil)
 	require.Error(t, err)
 
 	// stop should not break things further
@@ -93,7 +88,7 @@ func TestSetGet1(t *testing.T) {
 	var val2 = ""
 	var val3 = ""
 
-	stateCl, stopFn := startStateService(true)
+	_, stateCl, stopFn := startStateService(true)
 	defer stopFn()
 
 	err := stateCl.Set(key1, val1)
@@ -106,7 +101,7 @@ func TestSetGet1(t *testing.T) {
 
 	// check if it persists
 	stopFn()
-	stateCl, stopFn = startStateService(false)
+	_, stateCl, stopFn = startStateService(false)
 	found, err = stateCl.Get(key1, &val3)
 	assert.NoError(t, err)
 	assert.True(t, found)
@@ -125,7 +120,7 @@ func TestSetGetMultiple(t *testing.T) {
 		key2: val2,
 	}
 
-	stateCl, stopFn := startStateService(true)
+	_, stateCl, stopFn := startStateService(true)
 	defer stopFn()
 
 	// write multiple
@@ -146,7 +141,7 @@ func TestDelete(t *testing.T) {
 	var val2 = ""
 	var val3 = ""
 
-	stateCl, stopFn := startStateService(true)
+	_, stateCl, stopFn := startStateService(true)
 	defer stopFn()
 
 	// set and get should succeed
@@ -181,7 +176,7 @@ func TestGetDifferentClientBuckets(t *testing.T) {
 	var val1 = "value 1"
 	var val2 = "value 2"
 
-	stateCl, stopFn := startStateService(true)
+	_, stateCl, stopFn := startStateService(true)
 	_ = stateCl
 	defer stopFn()
 

@@ -15,9 +15,14 @@ func TestClientUpdatePubKey(t *testing.T) {
 
 	svc, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	// wrap service in message de/encoders
-	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
-	userCl := authnclient.NewAuthnUserClient(ecl)
+	ehc := embedded.NewEmbeddedClient(tu1ID, userHandler)
+	// PROBLEM: this client connects directly to the agent with the digitwin thingID.
+	// The agent however expects the native thingID.
+	// Option1: agent removes the digitwin prefix if used.
+	// Option2: client accepts agentID to use
+	//   this allows connecting to different agents instead of hardcoding one.
+	//   not an issue for auth though.
+	userCl := authnclient.NewAuthnUserClient(ehc)
 
 	// add user to test with. don't set the public key yet
 	err := svc.AdminSvc.AddClient(
@@ -177,7 +182,7 @@ func TestBadUserCommand(t *testing.T) {
 	_, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	ecl := embedded.NewEmbeddedClient("client1", userHandler)
-	err := ecl.Rpc(api.AuthnUserThingID, "badmethod", nil, nil)
+	err := ecl.Rpc(api.AuthnUserServiceID, "badmethod", nil, nil)
 	require.Error(t, err)
 
 }

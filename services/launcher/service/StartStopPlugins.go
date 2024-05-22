@@ -3,8 +3,8 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
 	"github.com/struCoder/pidusage"
 	"io"
@@ -66,6 +66,7 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 
 		// inspired by https://gist.github.com/jerblack/4b98ba48ed3fb1d9f7544d2b1a1be287
 		logfile := path.Join(svc.env.LogsDir, pluginName+".log")
+		_ = os.MkdirAll(svc.env.LogsDir, 0700)
 		fp, err := os.OpenFile(logfile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err == nil {
 			if svc.cfg.AttachStderr {
@@ -100,25 +101,31 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 		}
 	}
 	// step 4: add the serviceID as a client and generate its credentials
-	if pluginName != svc.cfg.CoreBin {
+	if pluginName != svc.cfg.RuntimeBin {
 		tokenPath := path.Join(svc.env.CertsDir, pluginName+".token")
 
 		slog.Info("Adding plugin service client with key and token",
 			"pluginName", pluginName, "certsDir", svc.env.CertsDir, "tokenPath", tokenPath)
 
-		pluginKP, err := svc.hc.LoadCreateKeyPair(pluginName, svc.env.CertsDir)
-		if err != nil {
-			slog.Error("Fail saving key for service client. Continuing... ",
-				"err", err, "pluginName", pluginName)
-		}
-		token, err := svc.mngAuth.AddClient(ClientTypeService, pluginName, "plugin", pluginKP.ExportPublic())
+		//pluginKP, err := svc.hc.LoadCreateKeyPair(pluginName, svc.env.CertsDir)
+		//if err != nil {
+		//	slog.Error("Fail saving key for service client. Continuing... ",
+		//		"err", err, "pluginName", pluginName)
+		//}
+		//err = svc.mngAuth.AddClient(api.ClientTypeService, pluginName, "plugin", pluginKP.ExportPublic(), "")
+
+		// add a service account and generate a new token file in the keys directory
+		// the service must have read access to this directory, or the keys must be
+		// copied by the administrator.
+		err = svc.mngAuth.AddService(api.ClientTypeService, pluginName, pluginName)
 		if err != nil {
 			slog.Error("Unable to add plugin to hub and create credentials. Continuing anyways", "err", err)
-		} else {
-			// remove old and save new auth token
-			_ = os.Remove(tokenPath)
-			err = os.WriteFile(tokenPath, []byte(token), 0400)
 		}
+		//else {
+		//	// remove old and save new auth token
+		//	_ = os.Remove(tokenPath)
+		//	err = os.WriteFile(tokenPath, []byte(token), 0400)
+		//}
 	}
 
 	// step 5: start the command and setup pluginInfo
@@ -219,12 +226,11 @@ func (svc *LauncherService) StartAllPlugins() (err error) {
 // StartPlugin starts the plugin with the given name
 // This creates a plugin authentication key and token files in the credentials directory (certs)
 // before starting the plugin.
-func (svc *LauncherService) StartPlugin(ctx hubclient.ServiceContext,
-	args launcherapi.StartPluginArgs) (launcherapi.StartPluginResp, error) {
+func (svc *LauncherService) StartPlugin(args launcherapi.StartPluginArgs) (launcherapi.StartPluginResp, error) {
 
 	slog.Warn("StartPlugin",
 		slog.String("pluginID", args.Name),
-		slog.String("senderID", ctx.SenderID))
+	)
 
 	pluginInfo, err := svc._startPlugin(args.Name)
 	resp := launcherapi.StartPluginResp{PluginInfo: pluginInfo}
@@ -233,23 +239,22 @@ func (svc *LauncherService) StartPlugin(ctx hubclient.ServiceContext,
 
 // StopAllPlugins stops all running plugins in reverse order they were started
 // If includingCore is set then also stop the core.
-func (svc *LauncherService) StopAllPlugins(ctx hubclient.ServiceContext,
-	args *launcherapi.StopAllPluginsArgs) (err error) {
+func (svc *LauncherService) StopAllPlugins(args *launcherapi.StopAllPluginsArgs) (err error) {
 
 	svc.mux.Lock()
 
 	// use a copy of the commands as the command list will be mutated
 	cmdsToStop := svc.cmds[:]
-	slog.Warn("Stopping all plugins",
+	slog.Info("Stopping all plugins",
 		slog.Int("count", len(cmdsToStop)),
-		slog.String("senderID", ctx.SenderID))
+	)
 
 	svc.mux.Unlock()
 
 	// stop each service in reverse order
 	for i := len(cmdsToStop) - 1; i >= 0; i-- {
 		c := cmdsToStop[i]
-		if !args.IncludingCore && svc.cfg.CoreBin != "" && strings.HasSuffix(c.Path, svc.cfg.CoreBin) {
+		if !args.IncludingRuntime && svc.cfg.RuntimeBin != "" && strings.HasSuffix(c.Path, svc.cfg.RuntimeBin) {
 			// don't stop the core as that would render things unreachable
 			slog.Info("Not stopping the core", "path", c.Path)
 		} else {
@@ -260,8 +265,7 @@ func (svc *LauncherService) StopAllPlugins(ctx hubclient.ServiceContext,
 	return err
 }
 
-func (svc *LauncherService) StopPlugin(
-	ctx hubclient.ServiceContext, args launcherapi.StopPluginArgs) (resp launcherapi.StopPluginResp, err error) {
+func (svc *LauncherService) StopPlugin(args launcherapi.StopPluginArgs) (resp launcherapi.StopPluginResp, err error) {
 
 	svc.mux.Lock()
 	pluginInfo, _ := svc.plugins[args.Name]

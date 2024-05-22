@@ -2,6 +2,7 @@ package history_test
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/lib/things"
 	"testing"
 	"time"
 
@@ -56,15 +57,16 @@ var DataSizeTable = []struct {
 }
 
 func BenchmarkAddEvents(b *testing.B) {
-	const publisherID = "device1"
+	const agentID = "device1"
 	const thing0ID = thingIDPrefix + "0"
 	const timespanSec = 3600 * 24 * 10
+	var dThing0ID = things.MakeDigiTwinThingID(agentID, thing0ID)
 
 	logging.SetLogging("error", "")
 
 	for _, tbl := range DataSizeTable {
 		testData, _ := makeValueBatch("device1", tbl.dataSize, tbl.nrThings, timespanMonth)
-		svc, readHist, stopFn := newHistoryService()
+		svc, readHist, stopFn := startHistoryService()
 		time.Sleep(time.Millisecond)
 		// build a dataset in the store
 		addBulkHistory(svc, tbl.dataSize, 10, timespanSec)
@@ -98,7 +100,7 @@ func BenchmarkAddEvents(b *testing.B) {
 			func(b *testing.B) {
 				for n := 0; n < b.N; n++ {
 
-					cursor, releaseFn, _ := readHist.GetCursor(publisherID, thing0ID, "")
+					cursor, releaseFn, _ := readHist.GetCursor(dThing0ID, "")
 					v, valid, _ := cursor.First()
 					for i := 0; i < tbl.nrSets-1; i++ {
 						v, valid, _ = cursor.Next()
@@ -117,7 +119,7 @@ func BenchmarkAddEvents(b *testing.B) {
 			func(b *testing.B) {
 				for n := 0; n < b.N; n++ {
 
-					cursor, releaseFn, _ := readHist.GetCursor(publisherID, thing0ID, "")
+					cursor, releaseFn, _ := readHist.GetCursor(dThing0ID, "")
 					require.NotNil(b, cursor)
 					tv, _, _ := cursor.First()
 					assert.NotEmpty(b, tv)

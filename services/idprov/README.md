@@ -19,9 +19,9 @@ TODO:
 
 ## Summary 
 
-The purpose of this service is to enable fast and easy onboarding of one or multiple IoT devices and services without the need to setup or configure the device itself. 
+The purpose of this service is to enable fast and easy onboarding of one or multiple IoT devices without the need to setup or configure the device itself. 
 
-The typical use-case is that upon installing one or more IoT devices, the administrator collects the device ID and corresponding out-of-band secret and provides these to the provisioning server using the commandline utility or Hub management web interface. When the devices are powered on they auto-provision following these steps:
+The typical use-case is that upon installation of one or more IoT devices, the administrator collects the device ID and corresponding out-of-band secret and provides these to the provisioning server using the commandline utility or Hub management web interface. When the devices are powered on they auto-provision following these steps:
 
 1. The administrator uploads the pre-approved list of device IDs with their public key as provided by the factory. A MAC address can be used instead of a public key, in which case the device's MAC will be matched and the device's public key recorded.
 1. The IoT device discovers the provisioning service on the local network using DNS-SD. 
@@ -30,7 +30,7 @@ The typical use-case is that upon installing one or more IoT devices, the admini
    A: if client ID is unknown then the administrator must approve the request. The server returns a 'pending approval' answer.
    B: if the client ID and public key are known, the client is added and a short lived auth token is returned. 
    C: if the client ID and MAC are known, the client is added along with the provided public key and a short-lived auth token is returned.
-5. After receiving the token, the client uses it to connect to the Hub with its own ID. As the token is short live, the device must immediately refreshes the token from the auth service. The lifespan of tokens issued by the auth service is configurable and defaults to 1 month. 
+5. After receiving the token, the client uses it to connect to the Hub with its own ID. As the token is short lived, the device must immediately refresh the token from the auth service. The lifespan of tokens issued by the auth service is configurable and defaults to 1 month. 
 6. Periodically the device must check the remaining token lifespan and requests a new token from the auth service when less than half its lifespan remains.  The lifespan can be determined by decoding the JWT token and verifying the expiry date. 
 
 Devices that are pre-loaded with the server CA certificate, are secured against a rogue server as establishing a connection with this server will only succeed with the valid server.

@@ -2,6 +2,7 @@ package idprovclient
 
 import (
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 )
@@ -11,16 +12,14 @@ import (
 // This requires admin permissions.
 type ManageIdProvClient struct {
 	hc hubclient.IHubClient
-	// agentID of the service capability (Thing)
-	agentID string
-	// thingID of the capability (digitwin version with agent prefix)
-	thingID string
+	// thingID digital twin service ID of this capability (digitwin version with agent prefix)
+	dThingID string
 }
 
 // Invoke the IDProv method
 // This returns an error if anything goes wrong: not delivered, delivery incomplete or processing error
 func (cl *ManageIdProvClient) call(method string, args interface{}, resp interface{}) error {
-	err := cl.hc.Rpc(cl.thingID, method, args, resp)
+	err := cl.hc.Rpc(cl.dThingID, method, args, resp)
 	return err
 }
 
@@ -65,6 +64,7 @@ func (cl *ManageIdProvClient) RejectRequest(clientID string) error {
 	err := cl.call(idprovapi.RejectRequestMethod, &args, nil)
 	return err
 }
+
 func (cl *ManageIdProvClient) SubmitRequest(
 	clientID string, pubKey string, mac string) (
 	status *idprovapi.ProvisionStatus, token string, err error) {
@@ -81,11 +81,10 @@ func (cl *ManageIdProvClient) SubmitRequest(
 }
 
 func NewIdProvManageClient(hc hubclient.IHubClient) *ManageIdProvClient {
+	agentID := idprovapi.AgentID
 	cl := &ManageIdProvClient{
-		hc: hc,
-		//
-		agentID: idprovapi.AgentID,
-		thingID: idprovapi.ManageProvisioningThingID,
+		hc:       hc,
+		dThingID: things.MakeDigiTwinThingID(agentID, idprovapi.ManageServiceID),
 	}
 	return cl
 }

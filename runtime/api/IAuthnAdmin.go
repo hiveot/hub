@@ -1,12 +1,15 @@
 package api
 
-// AuthnAdminThingID is the ThingID of the authentication admin service
-const AuthnAdminThingID = "authn:admin"
+// AuthnAdminServiceID is the ThingID of the authentication admin service
+const AuthnAdminServiceID = "authnmin"
 
 // admin methods
 const (
 	// AddClientMethod requests to add a new client
 	AddClientMethod = "addClient"
+
+	// AddServiceMethod requests to add/update a service account with auth token
+	AddServiceMethod = "addService"
 
 	// GetClientProfileMethod requests the profile of a client
 	GetClientProfileMethod = "getClientProfile"
@@ -46,8 +49,23 @@ type AddClientArgs struct {
 	ClientType  ClientType `json:"clientType"`
 	ClientID    string     `json:"clientID"`
 	DisplayName string     `json:"displayName"`
-	PubKey      string     `json:"pubKey"`
-	Password    string     `json:"password"`
+	PubKey      string     `json:"pubKey,omitempty"`
+	Password    string     `json:"password,omitempty"`
+}
+
+// AddServiceArgs adds a new service client with a keys and token file
+// Intended for creating an account for local services or administrators that can
+// read the keys and token from the keys directory. Used by the launcher and hub cli.
+type AddServiceArgs struct {
+	// ClientType is typically a service or (admin) user
+	ClientType ClientType `json:"clientType"`
+	// ClientID (agentID) of the service or administrator
+	ClientID string `json:"clientID"`
+	// DisplayName
+	DisplayName string `json:"displayName,omitempty"`
+	// ValiditySec is the optional validity of the token before it must be renewed
+	// use 0 for the default. See ConnectWithToken for additional info.
+	ValiditySec int `json:"validitySec,omitempty"`
 }
 
 // GetClientProfileArgs arguments for requesting a client's profile

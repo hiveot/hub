@@ -1,7 +1,10 @@
 package api
 
-// AuthnUserThingID contains the ThingID of the authentication user service
-const AuthnUserThingID = "authn:user"
+// AuthnAgentID is the connection ID of the agent used in providing its capabilities
+const AuthnAgentID = "authn"
+
+// AuthnUserServiceID contains the ThingID of the authentication user service
+const AuthnUserServiceID = "authnuse"
 
 // client methods
 const (

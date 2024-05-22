@@ -91,7 +91,7 @@ type IHubClient interface {
 	// This authentication method must be supported by all clients
 	ConnectWithPassword(password string) (newToken string, err error)
 
-	// ConnectWithJWT connects to the messaging server using an authentication token.
+	// ConnectWithToken connects to the messaging server using an authentication token.
 	//
 	// If a connection already exists it will be closed first.
 	//
@@ -99,7 +99,7 @@ type IHubClient interface {
 	//  token is created by the auth service.
 	//
 	// This authentication method must be supported by all transports
-	ConnectWithJWT(token string) (newToken string, err error)
+	ConnectWithToken(token string) (newToken string, err error)
 
 	// CreateKeyPair returns a new set of serialized public/private key pair.
 	//  serializedKP contains the serialized public/private key pair
@@ -124,7 +124,7 @@ type IHubClient interface {
 	//	thingID whose event is published
 	//	key ID of the event
 	//	payload with serialized message to publish
-	PubEvent(thingID string, key string, payload []byte) api.DeliveryStatus
+	PubEvent(thingID string, key string, payload []byte) (api.DeliveryStatus, error)
 
 	// RefreshToken refreshes the authentication token
 	// The resulting token can be used with 'ConnectWithJWT'
@@ -152,17 +152,18 @@ type IHubClient interface {
 	// SetConnectHandler sets the notification handler of connection status changes
 	SetConnectHandler(cb func(status HubTransportStatus))
 
-	// SetMessageHandler set the handler that receives all subscribed messages, and
+	// SetActionHandler set the handler that receives all actions directed at this client
+	// This replaces any previously set action handler.
+	//
+	SetActionHandler(cb api.MessageHandler)
+
+	// SetEventHandler set the handler that receives all subscribed events, and
 	// messages directed at this client.
 	//
-	// Note that Agents receive actions with a thingID that does not have the agent
-	// prefix as the agent prefix is consumer facing. Things from agents are physical
-	// things while digitwin Things are virtual Things with a different ID.
-	//
-	// Consumers can only interact with the digital twin.
+	// This replaces any previously set event handler.
 	//
 	// See also 'Subscribe' to set the things this client receives messages for.
-	SetMessageHandler(cb api.MessageHandler)
+	SetEventHandler(cb api.MessageHandler)
 
 	// Subscribe adds a subscription for one or more events from the thingID.
 	//

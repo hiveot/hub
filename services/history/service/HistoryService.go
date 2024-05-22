@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/services/history/historyapi"
 	"log/slog"
 )
 
@@ -19,13 +18,13 @@ type HistoryService struct {
 	// The history service bucket store with a bucket for each Thing
 	bucketStore buckets.IBucketStore
 	// Storage of the latest properties of a things
-	propsStore *LatestPropertiesStore
-	// handling of events retention
-	retentionMgr *ManageHistory
-	// Instance ID of this service
-	readHistSvc *ReadHistoryService
+	//propsStore *LatestPropertiesStore
+	// the manage history sub-service
+	manageHistSvc *ManageHistory
+	// the read-history sub-service
+	readHistSvc *ReadHistory
 
-	serviceID string
+	agentID string
 	// the pubsub service to subscribe to event
 	hc hubclient.IHubClient
 	// optional handling of pubsub events. nil if not used
@@ -41,73 +40,68 @@ func (svc *HistoryService) GetAddHistory() *AddHistory {
 }
 
 // Start using the history service
-// This will open the store and panic if the store cannot be opened.
 func (svc *HistoryService) Start(hc hubclient.IHubClient) (err error) {
-	slog.Warn("Starting HistoryService", "clientID", hc.ClientID())
+	slog.Info("Starting HistoryService", "clientID", hc.ClientID())
 
 	// setup
 	svc.hc = hc
-	svc.serviceID = hc.ClientID()
-	svc.retentionMgr = NewManageHistory(hc, nil)
-
-	propsbucket := svc.bucketStore.GetBucket(PropertiesBucketName)
-	svc.propsStore = NewPropertiesStore(propsbucket)
-
-	err = svc.retentionMgr.Start()
-
-	svc.readHistSvc, err = StartReadHistoryService(
-		svc.hc, svc.bucketStore, svc.propsStore.GetProperties)
-	//if err == nil {
-	//	svc.updateHistSvc, err = StartUpdateHistoryService(svc.hc, tdBucket)
-	//}
-
+	svc.agentID = hc.ClientID()
+	svc.manageHistSvc = NewManageHistory(nil)
+	err = svc.manageHistSvc.Start()
+	if err == nil {
+		svc.readHistSvc = NewReadHistory(svc.bucketStore)
+		err = svc.readHistSvc.Start()
+	}
+	if err != nil {
+		return err
+	}
 	// Set the required permissions for using this service
 	// any user roles can view the directory
-	myProfile := NewProfileClient(svc.hc)
-	err = myProfile.SetServicePermissions(historyapi.ReadHistoryCap, []string{
-		api.ClientRoleViewer,
-		api.ClientRoleOperator,
-		api.ClientRoleManager,
-		api.ClientRoleAdmin,
-		api.ClientRoleService})
-	if err == nil {
-		// only admin role can manage the history
-		err = myProfile.SetServicePermissions(historyapi.ManageHistoryThingID, []string{api.ClientRoleAdmin})
-	}
+	//myProfile := NewProfileClient(svc.hc)
+	//err = myProfile.SetServicePermissions(historyapi.ReadHistoryCap, []string{
+	//	api.ClientRoleViewer,
+	//	api.ClientRoleOperator,
+	//	api.ClientRoleManager,
+	//	api.ClientRoleAdmin,
+	//	api.ClientRoleService})
+	//if err == nil {
+	//	// only admin role can manage the history
+	//	err = myProfile.SetServicePermissions(historyapi.ManageHistoryThingID, []string{api.ClientRoleAdmin})
+	//}
 
 	// subscribe to events to add to the history store
 	if err == nil && svc.hc != nil {
 		// the onAddedValue callback is used to update the 'latest' properties
-		svc.addHistory = NewAddHistory(
-			svc.bucketStore, svc.retentionMgr, svc.propsStore.HandleAddValue)
+		svc.addHistory = NewAddHistory(svc.bucketStore, svc.manageHistSvc, nil)
 
 		// add events to the history filtered through the retention manager
-		err = svc.hc.SubEvents("", "", "")
-		svc.hc.SetEventHandler(func(msg *things.ThingMessage) {
+		err = svc.hc.Subscribe("")
+		svc.hc.SetEventHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 			slog.Debug("received event",
 				slog.String("senderID", msg.SenderID),
 				slog.String("thingID", msg.ThingID),
 				slog.String("key", msg.Key),
 				slog.Int64("createdMSec", msg.CreatedMSec))
-			_ = svc.addHistory.AddMessage(msg)
+			_ = svc.addHistory.AddEvent(msg)
+			stat.Completed(msg, nil)
+			return stat
 		})
-		// TODO: capture all actions
-		//svc.hc.Subscribe("","","","")
-		//	slog.Debug("received event",
-		//		slog.String("agentID", msg.AgentID),
-		//		slog.String("thingID", msg.ThingID),
-		//		slog.String("name", msg.Name),
-		//		slog.Int64("createdMSec", msg.CreatedMSec))
-		//	_ = svc.addHistory.AddMessage(msg)
-		//})
+		// register the history service methods
+		StartHistoryAgent(svc, svc.hc)
 
 		// add actions to the history, filtered through retention manager
 		// FIXME: this needs the ability to subscribe to actions for other agents
+
 		//svc.actionSub, err = svc.hc.SubActions("", "", "",
 		//	func(msg *things.ThingMessage) {
 		//		slog.Info("received action", slog.String("name", msg.Name))
 		//		_ = svc.addHistory.AddAction(msg)
 		//	})
+
+		// TODO: add action history. Note that the agent also subscribes to actions,
+		// so if we subscribe here we must invoke the agent from here
+
+		err = svc.hc.Subscribe("")
 	}
 
 	return err
@@ -115,18 +109,14 @@ func (svc *HistoryService) Start(hc hubclient.IHubClient) (err error) {
 
 // Stop using the history service and release resources
 func (svc *HistoryService) Stop() {
-	slog.Warn("Stopping HistoryService")
-	err := svc.propsStore.SaveChanges()
-	if err != nil {
-		slog.Error(err.Error())
-	}
+	slog.Info("Stopping HistoryService")
 	if svc.readHistSvc != nil {
 		svc.readHistSvc.Stop()
 		svc.readHistSvc = nil
 	}
-	if svc.retentionMgr != nil {
-		svc.retentionMgr.Stop()
-		svc.retentionMgr = nil
+	if svc.manageHistSvc != nil {
+		svc.manageHistSvc.Stop()
+		svc.manageHistSvc = nil
 	}
 }
 
@@ -140,7 +130,6 @@ func NewHistoryService(store buckets.IBucketStore) *HistoryService {
 
 	svc := &HistoryService{
 		bucketStore: store,
-		propsStore:  nil,
 	}
 	return svc
 }

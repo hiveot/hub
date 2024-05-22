@@ -11,10 +11,9 @@ import (
 // This uses the default serializer to marshal and unmarshal messages.
 type LauncherClient struct {
 	// ID of the launcher service that handles the requests
-	agentID   string
-	capID     string
-	serviceID string
-	hc        hubclient.IHubClient
+	dThingID string // capability
+	//serviceID string
+	hc hubclient.IHubClient
 }
 
 // List services
@@ -24,7 +23,7 @@ func (cl *LauncherClient) List(onlyRunning bool) ([]launcherapi.PluginInfo, erro
 		OnlyRunning: onlyRunning,
 	}
 	resp := launcherapi.ListResp{}
-	err := cl.hc.Rpc(cl.serviceID, launcherapi.ListMethod, req, &resp)
+	err := cl.hc.Rpc(cl.dThingID, launcherapi.ListMethod, req, &resp)
 	return resp.PluginInfoList, err
 }
 
@@ -40,14 +39,14 @@ func (cl *LauncherClient) StartPlugin(name string) (launcherapi.PluginInfo, erro
 		Name: name,
 	}
 	resp := launcherapi.StartPluginResp{}
-	err := cl.hc.Rpc(cl.serviceID, launcherapi.StartPluginMethod, req, &resp)
+	err := cl.hc.Rpc(cl.dThingID, launcherapi.StartPluginMethod, req, &resp)
 	return resp.PluginInfo, err
 }
 
 // StartAllPlugins starts all enabled plugins
 // This returns the error from the last service that could not be started
 func (cl *LauncherClient) StartAllPlugins() error {
-	err := cl.hc.Rpc(cl.serviceID, launcherapi.StartAllPluginsMethod, nil, nil)
+	err := cl.hc.Rpc(cl.dThingID, launcherapi.StartAllPluginsMethod, nil, nil)
 	return err
 }
 
@@ -62,16 +61,16 @@ func (cl *LauncherClient) StopPlugin(name string) (launcherapi.PluginInfo, error
 		Name: name,
 	}
 	resp := launcherapi.StopPluginResp{}
-	err := cl.hc.Rpc(cl.serviceID, launcherapi.StopPluginMethod, req, &resp)
+	err := cl.hc.Rpc(cl.dThingID, launcherapi.StopPluginMethod, req, &resp)
 	return resp.PluginInfo, err
 }
 
 // StopAllPlugins stops running plugins
 func (cl *LauncherClient) StopAllPlugins() error {
 	req := launcherapi.StopAllPluginsArgs{
-		IncludingCore: false,
+		IncludingRuntime: false,
 	}
-	err := cl.hc.Rpc(cl.serviceID, launcherapi.StopAllPluginsMethod, &req, nil)
+	err := cl.hc.Rpc(cl.dThingID, launcherapi.StopAllPluginsMethod, &req, nil)
 	return err
 }
 
@@ -79,15 +78,13 @@ func (cl *LauncherClient) StopAllPlugins() error {
 //
 //	launcherID is the optional ID of the launcher to use. Default is 'launcher'
 //	hc is the hub client connection to use.
-func NewLauncherClient(launcherID string, hc hubclient.IHubClient) *LauncherClient {
-	if launcherID == "" {
-		launcherID = launcherapi.ServiceName
+func NewLauncherClient(agentID string, hc hubclient.IHubClient) *LauncherClient {
+	if agentID == "" {
+		agentID = launcherapi.AgentID
 	}
 	cl := LauncherClient{
-		hc:        hc,
-		agentID:   launcherID,
-		capID:     launcherapi.ManageCapability,
-		serviceID: things.MakeDigiTwinThingID(launcherID, launcherapi.ManageCapability),
+		hc:       hc,
+		dThingID: things.MakeDigiTwinThingID(agentID, launcherapi.ManageServiceID),
 	}
 	return &cl
 }

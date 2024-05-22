@@ -1,11 +1,24 @@
-// Package launcher with the launcher interface
 package launcherapi
 
-// ServiceName used to connect to this service
-const ServiceName = "launcher"
+// AgentID is the connect ID of the agent connecting to the Hub
+const AgentID = "launcher"
 
-// ManageCapability is the name of the Thing/Capability that handles management requests
-const ManageCapability = "manage"
+// ManageServiceID is the ID of the service as used by the agent
+const ManageServiceID = "manage"
+
+// Launcher service management methods
+const (
+	// ListMethod lists the launch status of plugins
+	ListMethod = "list"
+	// StartPluginMethod starts a plugin
+	StartPluginMethod = "startPlugin"
+	// StartAllPluginsMethod starts all known plugins that haven't yet been started
+	StartAllPluginsMethod = "startAllPlugins"
+	// StopPluginMethod stops a plugin
+	StopPluginMethod = "stopPlugin"
+	// StopAllPluginsMethod stops all running plugins
+	StopAllPluginsMethod = "stopAllPlugins"
+)
 
 // PluginInfo contains the running status of a service
 type PluginInfo struct {
@@ -49,16 +62,12 @@ type PluginInfo struct {
 	Uptime int
 }
 
-const ListMethod = "list"
-
 type ListArgs struct {
 	OnlyRunning bool `json:"onlyRunning"`
 }
 type ListResp struct {
 	PluginInfoList []PluginInfo `json:"info"`
 }
-
-const StartPluginMethod = "startPlugin"
 
 type StartPluginArgs struct {
 	Name string `json:"name"`
@@ -68,12 +77,6 @@ type StartPluginResp struct {
 	PluginInfo PluginInfo `json:"info"`
 }
 
-const StartAllPluginsMethod = "startAllPlugins"
-
-// StartAll has no arguments
-
-const StopPluginMethod = "stopPlugin"
-
 type StopPluginArgs struct {
 	Name string `json:"name"`
 }
@@ -81,41 +84,7 @@ type StopPluginResp struct {
 	PluginInfo PluginInfo `json:"info"`
 }
 
-const StopAllPluginsMethod = "stopAllPlugins"
-
 type StopAllPluginsArgs struct {
-	// Also stop the core
-	IncludingCore bool `json:"includingCore,omitempty"`
+	// Also stop the runtime
+	IncludingRuntime bool `json:"includingRuntime,omitempty"`
 }
-
-// ILauncher defines the POGS based interface of the launcher service
-//type ILauncher interface {
-//
-//	// List services
-//	List(onlyRunning bool) ([]PluginInfo, error)
-//
-//	// Start the service and connect to the hub
-//	// If a hub core is set in config then start the core first.
-//	Start() error
-//
-//	// StartAllPlugins starts all enabled plugins
-//	// This returns the error from the last service that could not be started
-//	StartAllPlugins() error
-//
-//	// StartPlugin start the plugin with the given name.
-//	// This creates a key and token for the plugin to use to authenticate.
-//	// The pluginID is the binary name. This allows to run instances of the same plugin on multiple hosts
-//	// simply by renaming the binary.
-//	// If the plugin is already running this does nothing
-//	StartPlugin(name string) (PluginInfo, error)
-//
-//	// Stop the service and disconnect from the hub
-//	// If the hub core was started, stop it last.
-//	Stop() error
-//
-//	// StopAllPlugins running plugins
-//	StopAllPlugins() error
-//
-//	// StopPlugin stops a running plugin
-//	StopPlugin(name string) (PluginInfo, error)
-//}

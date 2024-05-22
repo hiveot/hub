@@ -1,18 +1,18 @@
 package certsclient
 
 import (
-	"github.com/hiveot/hub/core/certs/certsapi"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/services/certs/certsapi"
 )
 
 // CertsClient is a marshaller for cert service messages using a provided hub connection.
 // This uses the default serializer to marshal and unmarshal messages.
 type CertsClient struct {
-	// agent handling the request
-	agentID string
-	// directory capability to use
-	capID string
-	hc    *hubclient.HubClient
+	// dThingID digital twin service ID of the certificate management
+	dThingID string
+	// Connection to the hub
+	hc hubclient.IHubClient
 }
 
 //// helper for publishing a rpc request to the certs service
@@ -44,8 +44,7 @@ func (cl *CertsClient) CreateDeviceCert(deviceID string, pubKeyPEM string, valid
 		ValidityDays: validityDays,
 	}
 	resp := certsapi.CreateCertResp{}
-	err = cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, certsapi.CreateDeviceCertMethod, req, &resp)
+	err = cl.hc.Rpc(cl.dThingID, certsapi.CreateDeviceCertMethod, req, &resp)
 	return resp.CertPEM, resp.CaCertPEM, err
 }
 
@@ -61,8 +60,7 @@ func (cl *CertsClient) CreateServiceCert(
 		ValidityDays: validityDays,
 	}
 	resp := certsapi.CreateCertResp{}
-	err = cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, certsapi.CreateServiceCertMethod, req, &resp)
+	err = cl.hc.Rpc(cl.dThingID, certsapi.CreateServiceCertMethod, req, &resp)
 
 	return resp.CertPEM, resp.CaCertPEM, err
 }
@@ -78,8 +76,7 @@ func (cl *CertsClient) CreateUserCert(
 		ValidityDays: validityDays,
 	}
 	resp := certsapi.CreateCertResp{}
-	err = cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, certsapi.CreateUserCertMethod, req, &resp)
+	err = cl.hc.Rpc(cl.dThingID, certsapi.CreateUserCertMethod, req, &resp)
 	return resp.CertPEM, resp.CaCertPEM, err
 }
 
@@ -91,19 +88,19 @@ func (cl *CertsClient) VerifyCert(
 		ClientID: clientID,
 		CertPEM:  certPEM,
 	}
-	err = cl.hc.PubRPCRequest(
-		cl.agentID, cl.capID, certsapi.VerifyCertMethod, req, nil)
+	err = cl.hc.Rpc(cl.dThingID, certsapi.VerifyCertMethod, req, nil)
 	return err
 }
 
 // NewCertsClient returns a certs service client for managing certificates
 //
 //	hc is the hub client connection to use
-func NewCertsClient(hc *hubclient.HubClient) *CertsClient {
+func NewCertsClient(hc hubclient.IHubClient) *CertsClient {
+	agentID := certsapi.AgentID
+
 	cl := CertsClient{
-		hc:      hc,
-		agentID: certsapi.ServiceName,
-		capID:   certsapi.ManageCertsCapability,
+		hc:       hc,
+		dThingID: things.MakeDigiTwinThingID(agentID, certsapi.ManageCertsServiceID),
 	}
 	return &cl
 }

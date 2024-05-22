@@ -13,12 +13,10 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 )
 
-//const DefaultBucketID = "default"
-
 // Add records to the state store
 func addRecords(stateCl *stateclient.StateClient, count int) {
 	// FIXME: SSE connection can handle only 65K messages :(
-	const batchSize = 405
+	const batchSize = 1405
 	nrBatches := (count / batchSize) + 1
 
 	// Don't exceed the max transaction size
@@ -55,19 +53,20 @@ func addRecords(stateCl *stateclient.StateClient, count int) {
 //                 1K      1000          130            130              130
 //               100K      1000          130            130              130
 
-//
 // Observations:
-//  - transaction write of bbolt is very costly. Use setmultiple or performance will be insufficient
-//  - the capnp RPC over Unix Domain Sockets call overhead is around 0.13 msec.
-
+//   - transaction write of bbolt is very costly. Use setmultiple or performance will be insufficient
+//   - the capnp RPC over Unix Domain Sockets call overhead is around 0.13 msec.
+//
+// With the digitwin http RPC transport (round trip)
+//   - the http RPC over http call overhead is around 0.8 msec
 var DataSizeTable = []struct {
 	dataSize int
 	nrSets   int
 }{
 	{dataSize: 1000, nrSets: 1},
-	{dataSize: 100000, nrSets: 1},
+	//{dataSize: 100000, nrSets: 1},
 	{dataSize: 1000, nrSets: 1000},
-	{dataSize: 100000, nrSets: 1000},
+	//{dataSize: 100000, nrSets: 1000},
 	//{dataSize: 1000000, nrSets: 1},
 	//{dataSize: 1000000, nrSets: 1000},
 }
@@ -98,7 +97,9 @@ func BenchmarkSetState(b *testing.B) {
 
 	for _, tbl := range DataSizeTable {
 
-		stateCl, stopFn := startStateService(true)
+		svc, stateCl, stopFn := startStateService(true)
+		_ = svc
+		logging.SetLogging("warning", "")
 
 		addRecords(stateCl, tbl.dataSize)
 
@@ -111,6 +112,7 @@ func BenchmarkSetState(b *testing.B) {
 						j := rand.Intn(100000)
 						td := testData[j]
 						err := stateCl.Set(td.key, td.val)
+						//err := svc.Set("user1", td.key, td.val)
 						assert.NoError(b, err)
 					}
 				}
@@ -122,11 +124,12 @@ func BenchmarkSetState(b *testing.B) {
 // test performance of N random set state
 func BenchmarkSetMultiple(b *testing.B) {
 	testData := makeTestData()
-
 	logging.SetLogging("warning", "")
+
 	for _, tbl := range DataSizeTable {
 		// setup
-		stateCl, stopFn := startStateService(true)
+		_, stateCl, stopFn := startStateService(true)
+		logging.SetLogging("warning", "")
 		addRecords(stateCl, tbl.dataSize)
 
 		// build a set of data to test with
@@ -153,12 +156,12 @@ func BenchmarkSetMultiple(b *testing.B) {
 func BenchmarkGetState(b *testing.B) {
 	const key1 = "key1"
 	var val1 = "value 1"
-
 	logging.SetLogging("warning", "")
 
 	for _, tbl := range DataSizeTable {
 		// setup
-		stateCl, stopFn := startStateService(true)
+		_, stateCl, stopFn := startStateService(true)
+		logging.SetLogging("warning", "")
 		addRecords(stateCl, tbl.dataSize)
 
 		err := stateCl.Set(key1, val1)

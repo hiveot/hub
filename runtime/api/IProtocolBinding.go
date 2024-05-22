@@ -74,7 +74,9 @@ func (stat *DeliveryStatus) Completed(msg *things.ThingMessage, err error) {
 func (stat *DeliveryStatus) Failed(msg *things.ThingMessage, err error) {
 	stat.Status = DeliveryFailed
 	stat.MessageID = msg.MessageID
-	stat.Error = err.Error()
+	if err != nil {
+		stat.Error = err.Error()
+	}
 }
 
 // EventHandler processes an event without return value

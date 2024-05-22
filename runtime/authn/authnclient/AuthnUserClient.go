@@ -3,6 +3,7 @@ package authnclient
 
 import (
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 )
 
@@ -11,12 +12,13 @@ import (
 // agents, services and regular users.
 // The main functions are to login, refresh tokens and change name and password.
 type AuthnUserClient struct {
-	hc hubclient.IHubClient
+	hc        hubclient.IHubClient
+	dtThingID string
 }
 
 func (svc *AuthnUserClient) GetProfile() (api.ClientProfile, error) {
 	resp := api.GetProfileResp{}
-	err := svc.hc.Rpc(api.AuthnUserThingID, api.GetProfileMethod, nil, &resp)
+	err := svc.hc.Rpc(svc.dtThingID, api.GetProfileMethod, nil, &resp)
 	return resp.Profile, err
 }
 
@@ -24,7 +26,7 @@ func (svc *AuthnUserClient) GetProfile() (api.ClientProfile, error) {
 func (svc *AuthnUserClient) Login(clientID string, password string) (token string, err error) {
 	req := api.LoginArgs{ClientID: clientID, Password: password}
 	resp := api.LoginResp{}
-	err = svc.hc.Rpc(api.AuthnUserThingID, api.LoginMethod, req, &resp)
+	err = svc.hc.Rpc(svc.dtThingID, api.LoginMethod, req, &resp)
 	return resp.Token, err
 }
 
@@ -32,14 +34,14 @@ func (svc *AuthnUserClient) Login(clientID string, password string) (token strin
 func (svc *AuthnUserClient) RefreshToken(oldToken string) (newToken string, err error) {
 	req := api.RefreshTokenArgs{OldToken: oldToken}
 	resp := api.RefreshTokenResp{}
-	err = svc.hc.Rpc(api.AuthnUserThingID, api.RefreshTokenMethod, req, &resp)
+	err = svc.hc.Rpc(svc.dtThingID, api.RefreshTokenMethod, req, &resp)
 	return resp.Token, err
 }
 
 // UpdateName change the client profile name
 func (svc *AuthnUserClient) UpdateName(newName string) error {
 	req := api.UpdateNameArgs{NewName: newName}
-	err := svc.hc.Rpc(api.AuthnUserThingID, api.UpdateNameMethod, req, nil)
+	err := svc.hc.Rpc(svc.dtThingID, api.UpdateNameMethod, req, nil)
 	return err
 }
 
@@ -47,7 +49,7 @@ func (svc *AuthnUserClient) UpdateName(newName string) error {
 // FIXME: encrypt use a password hash based on server nonce
 func (svc *AuthnUserClient) UpdatePassword(password string) error {
 	req := api.UpdatePasswordArgs{NewPassword: password}
-	err := svc.hc.Rpc(api.AuthnUserThingID, api.UpdatePasswordMethod, req, nil)
+	err := svc.hc.Rpc(svc.dtThingID, api.UpdatePasswordMethod, req, nil)
 	return err
 }
 
@@ -55,13 +57,16 @@ func (svc *AuthnUserClient) UpdatePassword(password string) error {
 // Public keys are used in token generation and verification during login.
 func (svc *AuthnUserClient) UpdatePubKey(clientID string, pubKeyPem string) error {
 	req := api.UpdatePubKeyArgs{PubKeyPem: pubKeyPem}
-	err := svc.hc.Rpc(api.AuthnUserThingID, api.UpdatePubKeyMethod, req, nil)
+	err := svc.hc.Rpc(svc.dtThingID, api.UpdatePubKeyMethod, req, nil)
 	return err
 }
 
 // NewAuthnUserClient creates a new instance of a client side messaging wrapper
 // for communicating with the Authn client service.
 func NewAuthnUserClient(hc hubclient.IHubClient) *AuthnUserClient {
-	cl := AuthnUserClient{hc: hc}
+	cl := AuthnUserClient{
+		hc:        hc,
+		dtThingID: things.MakeDigiTwinThingID(api.AuthnAgentID, api.AuthnUserServiceID),
+	}
 	return &cl
 }

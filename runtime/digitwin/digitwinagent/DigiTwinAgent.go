@@ -32,11 +32,11 @@ type DigiTwinAgent struct {
 
 // HandleMessage dispatches requests to the service capabilities identified by their thingID
 func (agent *DigiTwinAgent) HandleMessage(msg *things.ThingMessage) (stat api.DeliveryStatus) {
-	if msg.ThingID == directory.RawThingID {
+	if msg.ThingID == directory.ServiceID {
 		return agent.directoryHandler(msg)
-	} else if msg.ThingID == inbox.RawThingID {
+	} else if msg.ThingID == inbox.ServiceID {
 		return agent.inboxHandler(msg)
-	} else if msg.ThingID == outbox.RawThingID {
+	} else if msg.ThingID == outbox.ServiceID {
 		return agent.outboxHandler(msg)
 	}
 
@@ -51,7 +51,8 @@ func (agent *DigiTwinAgent) HandleMessage(msg *things.ThingMessage) (stat api.De
 func StartDigiTwinAgent(svc *service.DigitwinService, cl hubclient.IHubClient) (*DigiTwinAgent, error) {
 	var err error
 	agent := DigiTwinAgent{ag: cl, svc: svc}
-	cl.SetMessageHandler(agent.HandleMessage)
+	cl.SetActionHandler(agent.HandleMessage)
+	cl.SetEventHandler(agent.HandleMessage)
 	// each of the digitwin services implements an API that can be accessed through actions.
 	agent.directoryHandler = directory.NewActionHandler(agent.svc.Directory)
 	agent.inboxHandler = inbox.NewActionHandler(agent.svc.Inbox)

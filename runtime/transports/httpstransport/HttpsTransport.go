@@ -65,8 +65,8 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 	//	csrf.SameSite(csrf.SameSiteStrictMode))
 
 	//-- add the routes and middleware
+	//router.Use(middleware.Logger) // todo: proper logging strategy
 	router.Use(middleware.Recoverer)
-	router.Use(middleware.Logger)
 	//router.Use(csrfMiddleware)
 	router.Use(middleware.Compress(5,
 		"text/html", "text/css", "text/javascript", "image/svg+xml"))

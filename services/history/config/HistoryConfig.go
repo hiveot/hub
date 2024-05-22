@@ -11,7 +11,7 @@ type HistoryConfig struct {
 	Backend string `yaml:"backend"`
 
 	// Bucket store location where to store the history
-	StoreDirectory string `yaml:"storeDirectory"`
+	//StoreDirectory string `yaml:"storeDirectory"`
 
 	// Default retention from config by event name
 	//Retention []history.EventRetention `yaml:"retention"`
@@ -20,8 +20,8 @@ type HistoryConfig struct {
 // NewHistoryConfig creates a new config with default values
 func NewHistoryConfig(storeDirectory string) HistoryConfig {
 	cfg := HistoryConfig{
-		Backend:        buckets.BackendPebble,
-		StoreDirectory: storeDirectory,
+		Backend: buckets.BackendPebble,
+		//StoreDirectory: storeDirectory,
 	}
 	return cfg
 }

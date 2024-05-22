@@ -4,7 +4,12 @@ import "github.com/hiveot/hub/runtime/api"
 
 // ProvisioningServerType defines the discovery type for the provisioning
 // this will be published as _provisioning._hiveot._tcp
+// FIXME: look also at the wot discovery specification
+// TODO: is there a benefit in embedding this into the runtime?
 const ProvisioningServerType = "idprov"
+
+// ProvisionRequestPath to post a request provisioning through the HTTP endpoint
+const ProvisionRequestPath = "/idprov/request"
 
 // ProvisionStatus holds the status of a provisioning request
 type ProvisionStatus struct {
@@ -35,9 +40,6 @@ type ProvisionStatus struct {
 	// Optional delay for retrying the request in seconds in case status is pending
 	RetrySec int `json:"retrySec,omitempty"`
 }
-
-// ProvisionRequestPath to post a request provisioning through the HTTP endpoint
-const ProvisionRequestPath = "/idprov/request"
 
 // ProvisionRequestArgs arguments to request provisioning
 type ProvisionRequestArgs struct {

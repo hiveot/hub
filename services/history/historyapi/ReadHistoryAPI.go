@@ -1,19 +1,35 @@
-// Package history with message definitions for reading the history store.
 package historyapi
 
 import (
 	"github.com/hiveot/hub/lib/things"
 )
 
-// rpc requests are published on the bus using the address:
-//  rpc/{agentID}/{thingID}/{method}/{senderID}
-// the request contains a json document with arguments as described below.
-// Responses are sent to the replyTo address using nats or mqtt5 headers.
+// ReadHistoryServiceID is the ID of the service exposed by the agent
+const ReadHistoryServiceID = "readHistory"
 
-// ReadHistoryCap is the capability ID to read the history
-const ReadHistoryCap = "readHistory"
+// Read history methods
+const (
+	// CursorNextNMethod returns a batch of next N historical values
+	CursorNextNMethod = "cursorNextN"
 
-var ReadHistoryThingID = things.MakeDigiTwinThingID(HistoryAgentID, ReadHistoryCap)
+	// CursorPrevNMethod returns a batch of prior N historical values
+	CursorPrevNMethod = "cursorPrevN"
+
+	// CursorReleaseMethod releases the cursor and resources
+	// This MUST be called after the cursor is not longer used.
+	CursorReleaseMethod = "cursorRelease"
+
+	// CursorSeekMethod seeks the starting point in time for iterating the history
+	// This returns a single value response with the value at timestamp or next closest
+	// if it doesn't exist.
+	// Returns empty value when there are no values at or past the given timestamp
+	CursorSeekMethod = "cursorSeek"
+
+	// GetCursorMethod returns a cursor to iterate the history of a things
+	// The cursor MUST be released after use.
+	// The cursor will expire after not being used for the default expiry period.
+	GetCursorMethod = "getCursor"
+)
 
 // cursor methods that take the key as arg and returns a value
 const (
@@ -41,12 +57,6 @@ type CursorSingleResp struct {
 	Valid bool `json:"valid"`
 }
 
-// CursorNextNMethod returns a batch of next N historical values
-const CursorNextNMethod = "cursorNextN"
-
-// CursorPrevNMethod returns a batch of prior N historical values
-const CursorPrevNMethod = "cursorPrevN"
-
 // CursorNArgs contains the request for use in NextN and PrevN
 type CursorNArgs struct {
 	// Cursor identifier obtained with GetCursor
@@ -64,20 +74,10 @@ type CursorNResp struct {
 	ItemsRemaining bool `json:"itemsRemaining"`
 }
 
-// CursorReleaseMethod releases the cursor and resources
-// This MUST be called after the cursor is not longer used.
-const CursorReleaseMethod = "cursorRelease"
-
 type CursorReleaseArgs struct {
 	// Cursor identifier obtained with GetCursor
 	CursorKey string `json:"cursorKey"`
 }
-
-// CursorSeekMethod seeks the starting point in time for iterating the history
-// This returns a single value response with the value at timestamp or next closest
-// if it doesn't exist.
-// Returns empty value when there are no values at or past the given timestamp
-const CursorSeekMethod = "cursorSeek"
 
 type CursorSeekArgs struct {
 	// Cursor identifier obtained with GetCursor
@@ -88,40 +88,15 @@ type CursorSeekArgs struct {
 
 // returns CursorSingleResp
 
-// GetCursorMethod returns a cursor to iterate the history of a things
-// The cursor MUST be released after use.
-// The cursor will expire after not being used for the default expiry period.
-const GetCursorMethod = "getCursor"
-
 // GetCursorArgs request arguments:
 type GetCursorArgs struct {
-	// Agent providing the Thing (required)
-	AgentID string `json:"agentID"`
-	// Thing providing the event to get (required)
+	// Digitwin thing providing the event to get (required)
 	ThingID string `json:"thingID"`
-	// Name of the event or action whose history to get
-	// Use "" to iterate all events/action of the Thing.
-	Name string `json:"name"`
+	// Optional filter value to search for a specific key
+	FilterOnKey string `json:"filterOnKey,omitempty"`
 }
 type GetCursorResp struct {
 	// Cursor identifier
 	// The cursor MUST be released after use.
 	CursorKey string `json:"cursorKey"`
-}
-
-// GetLatestMethod returns the latest values of a Thing.
-const GetLatestMethod = "getLatest"
-
-type GetLatestArgs struct {
-	//	agentID is the ID of the agent that published the Thing values
-	AgentID string `json:"agentID"`
-	//	thingID is the ID of the things whose history to read
-	ThingID string `json:"thingID"`
-	//	names is the list of properties or events to return. Use nil for all known properties.
-	Names []string `json:"names"`
-}
-
-// GetLatestResp returns the latest things values
-type GetLatestResp struct {
-	Values things.ThingMessageMap `json:"values"`
 }

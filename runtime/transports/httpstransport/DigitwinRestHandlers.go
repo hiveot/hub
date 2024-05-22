@@ -2,6 +2,8 @@ package httpstransport
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/hiveot/hub/api/go/outbox"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
@@ -25,24 +27,31 @@ func (svc *HttpsTransport) HandleGetEvents(w http.ResponseWriter, r *http.Reques
 	}
 	// this request can simply be turned into an action message.
 	args := outbox.ReadLatestArgs{ThingID: thingID}
-	// just a single key supported
+	// only a single key is supported at the moment
 	if key != "" {
 		args.Keys = []string{key}
 	}
 	argsJSON, _ := json.Marshal(args)
 	msg := things.NewThingMessage(
-		vocab.MessageTypeAction, outbox.ThingID, outbox.ReadLatestMethod, argsJSON, cs.GetClientID())
+		vocab.MessageTypeAction, outbox.DThingID, outbox.ReadLatestMethod, argsJSON, cs.GetClientID())
 	stat := svc.handleMessage(msg)
-	_ = stat
-	resp := outbox.ReadLatestResp{}
-	_ = json.Unmarshal(stat.Reply, &resp)
-	// The response values are already serialized
-	svc.writeReply(w, []byte(resp.Values), err)
+	var reply []byte
+	if stat.Error != "" {
+		err = errors.New(stat.Error)
+	} else {
+		resp := outbox.ReadLatestResp{}
+		_ = json.Unmarshal(stat.Reply, &resp)
+		// The response values are already serialized
+		reply = []byte(resp.Values)
+	}
+	svc.writeReply(w, reply, err)
 }
 
 // HandleGetThings returns a list of things in the directory
 // No parameters
 func (svc *HttpsTransport) HandleGetThings(w http.ResponseWriter, r *http.Request) {
+	svc.writeReply(w, nil, fmt.Errorf("Not yet implemented"))
+
 }
 
 func (svc *HttpsTransport) HandlePostLogout(w http.ResponseWriter, r *http.Request) {

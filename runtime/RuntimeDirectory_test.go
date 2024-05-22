@@ -23,13 +23,13 @@ func TestAddRemoveTD(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 	ag, _ := ts.AddConnectClient(api.ClientTypeAgent, agentID, api.ClientRoleAgent)
-	ag.SetMessageHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	ag.SetActionHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 		stat.Status = api.DeliveryCompleted
 		return
 	})
 	defer ag.Disconnect()
 	cl, _ := ts.AddConnectClient(api.ClientTypeUser, userID, api.ClientRoleManager)
-	cl.SetMessageHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	cl.SetEventHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 		stat.Status = api.DeliveryCompleted
 		return
 	})
@@ -38,14 +38,14 @@ func TestAddRemoveTD(t *testing.T) {
 	// Add the TD by sending it as an event
 	td1 := things.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
 	td1JSON, _ := json.Marshal(td1)
-	stat := ag.PubEvent(agThing1ID, vocab.EventTypeTD, td1JSON)
+	stat, err := ag.PubEvent(agThing1ID, vocab.EventTypeTD, td1JSON)
 	assert.Equal(t, api.DeliveryCompleted, stat.Status)
-	assert.Empty(t, stat.Error)
+	assert.NoError(t, err)
 
 	// Get returns a serialized TD object
 	args := directory.ReadTDArgs{ThingID: dtThing1ID}
 	argsJSON, _ := json.Marshal(args)
-	stat, err := cl.PubAction(directory.ThingID, directory.ReadTDMethod, argsJSON)
+	stat, err = cl.PubAction(directory.DThingID, directory.ReadTDMethod, argsJSON)
 	require.NoError(t, err) // no client handler error
 	require.Equal(t, api.DeliveryCompleted, stat.Status)
 
@@ -69,11 +69,11 @@ func TestAddRemoveTD(t *testing.T) {
 	//stat = cl.Rpc(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
 	args4 := directory.RemoveTDArgs{ThingID: dtThing1ID}
 	args4JSON, _ := json.Marshal(args4)
-	stat, err = cl.PubAction(directory.ThingID, directory.RemoveTDMethod, args4JSON)
+	stat, err = cl.PubAction(directory.DThingID, directory.RemoveTDMethod, args4JSON)
 	require.Empty(t, stat.Error)
 
 	// after removal, getTD should return an error but delivery is successful
-	stat, err = cl.PubAction(directory.ThingID, directory.ReadTDMethod, args4JSON)
+	stat, err = cl.PubAction(directory.DThingID, directory.ReadTDMethod, args4JSON)
 	require.Error(t, err)
 	require.Equal(t, api.DeliveryCompleted, stat.Status)
 }

@@ -1,4 +1,4 @@
-package stateagent
+package service
 
 import (
 	"encoding/json"
@@ -6,22 +6,18 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/services/state/service"
 	"github.com/hiveot/hub/services/state/stateapi"
 )
-
-// StateAgentID is the connection ID of the state agent used in providing its capabilities
-const StateAgentID = "state"
 
 // StateAgent agent for the state storage services
 type StateAgent struct {
 	hc  hubclient.IHubClient
-	svc *service.StateService
+	svc *StateService
 }
 
 // HandleMessage dispatches requests to the service capabilities
 func (agent *StateAgent) HandleMessage(msg *things.ThingMessage) (stat api.DeliveryStatus) {
-	if msg.ThingID == stateapi.StorageThingID {
+	if msg.ThingID == stateapi.StorageServiceID {
 		switch msg.Key {
 		case stateapi.DeleteMethod:
 			return agent.Delete(msg)
@@ -81,18 +77,25 @@ func (agent *StateAgent) SetMultiple(msg *things.ThingMessage) (stat api.Deliver
 	return stat
 }
 
+// NewStateAgent returns a new instance of the communication agent for the state service.
+// Intended for use in StartPlugin
+//
+//	svc is the state service whose capabilities to expose
+func NewStateAgent(svc *StateService) *StateAgent {
+	agent := StateAgent{svc: svc}
+	return &agent
+}
+
 // StartStateAgent returns a new instance of the communication agent for the state service.
 // This uses the given connected transport for publishing events and subscribing to actions.
 // The transport must be closed by the caller after use.
 //
 //	svc is the state service whose capabilities to expose
 //	hc is the messaging client used to register a message handler
-func StartStateAgent(
-	svc *service.StateService, hc hubclient.IHubClient) (*StateAgent, error) {
-	var err error
+func StartStateAgent(svc *StateService, hc hubclient.IHubClient) *StateAgent {
 	agent := StateAgent{hc: hc, svc: svc}
 	if hc != nil {
-		agent.hc.SetMessageHandler(agent.HandleMessage)
+		agent.hc.SetActionHandler(agent.HandleMessage)
 	}
 	// FIXME: REINSTATE AUTHORIZATION FOR SERVICES
 	// Set the required permissions for using this service
@@ -108,5 +111,5 @@ func StartStateAgent(
 	//if err != nil {
 	//	return err
 	//}
-	return &agent, err
+	return &agent
 }
