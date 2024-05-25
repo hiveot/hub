@@ -51,7 +51,7 @@ func TestStartStop(t *testing.T) {
 		ScanAsRoot: false,
 	}
 	svc := service.NewIpNetBinding(&cfg)
-	hc, err := testServer.AddConnectClient("ipnet", authapi.ClientTypeService, authapi.ClientRoleService)
+	hc, err := testServer.AddConnectUser("ipnet", authapi.ClientTypeService, authapi.ClientRoleService)
 	require.NoError(t, err)
 	err = svc.Start(hc)
 	require.NoError(t, err)

@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
 	"strings"
 	"sync"
@@ -32,13 +32,13 @@ type IIsyThing interface {
 	// GetTD returns the generated TD document describing the Thing
 	GetTD() *things.TD
 	// HandleActionRequest passes incoming actions to the Thing for execution
-	HandleActionRequest(tv *things.ThingValue) (err error)
+	HandleActionRequest(tv *things.ThingMessage) (err error)
 	// HandleConfigRequest passes configuration changes to the Thing for execution
-	HandleConfigRequest(tv *things.ThingValue) (err error)
+	HandleConfigRequest(tv *things.ThingMessage) (err error)
 	// HandleValueUpdate updates the Thing properties with value obtained via the ISY gateway
 	HandleValueUpdate(propID string, uom string, newValue string) error
 	// Init assigns the ISY connection and node this Thing represents
-	Init(ic *IsyAPI, node *IsyNode, prodInfo InsteonProduct, hwVersion string)
+	Init(ic *IsyAPI, thingID string, node *IsyNode, prodInfo InsteonProduct, hwVersion string)
 }
 
 // IsyThing is the generic base of Things constructed out of ISY Insteon nodes.
@@ -47,6 +47,9 @@ type IIsyThing interface {
 type IsyThing struct {
 	// The node ID, also used as the ThingID
 	nodeID string
+
+	// ThingID derived from the nodeID
+	thingID string
 
 	// device type derived from productInfo
 	deviceType string
@@ -68,7 +71,7 @@ type IsyThing struct {
 // No assumptions should be made on how this is constructed. The only
 // guarantee is that it identifies, directly or indirectly, the node.
 func (it *IsyThing) GetID() string {
-	return it.nodeID
+	return it.thingID
 }
 
 // GetPropValues returns the property values
@@ -85,7 +88,7 @@ func (it *IsyThing) GetTD() *things.TD {
 		title = it.productInfo.ProductName
 	}
 	it.mux.RLock()
-	td := things.NewTD(it.nodeID, title, it.deviceType)
+	td := things.NewTD(it.thingID, title, it.deviceType)
 	it.mux.RUnlock()
 
 	//--- read-only properties
@@ -122,13 +125,13 @@ func (it *IsyThing) GetTD() *things.TD {
 //}
 
 // HandleActionRequest invokes the action handler of the specialized thing
-func (it *IsyThing) HandleActionRequest(tv *things.ThingValue) (err error) {
+func (it *IsyThing) HandleActionRequest(tv *things.ThingMessage) (err error) {
 	err = fmt.Errorf("HandleActionRequest not supported for this thing")
 	return err
 }
 
 // HandleConfigRequest invokes the config handler of the specialized thing
-func (it *IsyThing) HandleConfigRequest(tv *things.ThingValue) (err error) {
+func (it *IsyThing) HandleConfigRequest(tv *things.ThingMessage) (err error) {
 	// The title is the friendly name of the node
 	if tv.Name == vocab.PropDeviceTitle {
 		newName := string(tv.Data)
@@ -157,7 +160,7 @@ func (it *IsyThing) HandleValueUpdate(propID string, uom string, newValue string
 // Init initializes the IsyThing base class
 // This determines the device type from prodInfo and sets property values for
 // product and model.
-func (it *IsyThing) Init(ic *IsyAPI, node *IsyNode, prodInfo InsteonProduct, hwVersion string) {
+func (it *IsyThing) Init(ic *IsyAPI, thingID string, node *IsyNode, prodInfo InsteonProduct, hwVersion string) {
 	var found bool
 	it.mux.Lock()
 	defer it.mux.Unlock()
@@ -168,6 +171,7 @@ func (it *IsyThing) Init(ic *IsyAPI, node *IsyNode, prodInfo InsteonProduct, hwV
 
 	it.isyAPI = ic
 	it.nodeID = node.Address
+	it.thingID = thingID
 	it.productInfo = prodInfo
 	it.propValues = things.NewPropertyValues()
 	enabledDisabled := "enabled"

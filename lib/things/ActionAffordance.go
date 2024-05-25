@@ -24,7 +24,7 @@ type ActionAffordance struct {
 
 	// Define URI template variables according to [RFC6570] as collection based on DataSchema declarations.
 	// ... right
-	UriVariables map[string]DataSchema `json:"uriVariables,omitempty"`
+	UriVariables map[string]*DataSchema `json:"uriVariables,omitempty"`
 	//---InteractionAffordance ends
 
 	// Define the input data Schema of the action or nil if the action doesn't take input data

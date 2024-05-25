@@ -1,4 +1,3 @@
-// Package internal with methods for talking to ISY99x nodes
 package service
 
 // IsyNodes Collection of ISY99x nodes. Example:
@@ -38,7 +37,8 @@ type IsyNode struct {
 	//NODE_IS_DEVICE_ROOT 0x80 //root device such as KPL load
 	Flag uint `xml:"flag,attr"` //
 
-	// Address is the unique node address. Used as thingID. Note that it contains spaces.
+	// Address is the unique node address.
+	// Note that it contains spaces which are not allowed in a Thing ID.
 	Address string `xml:"address"`
 	// Name is the friendly name of the node (writable)
 	Name string `xml:"name"`

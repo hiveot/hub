@@ -1,17 +1,18 @@
 package pubsubcli
 
 import (
+	"errors"
 	"fmt"
 	"github.com/urfave/cli/v2"
 
 	"github.com/hiveot/hub/lib/hubclient"
 )
 
-func PubActionCommand(hc **hubclient.HubClient) *cli.Command {
+func PubActionCommand(hc *hubclient.IHubClient) *cli.Command {
 	return &cli.Command{
 		Name:      "pub",
 		Usage:     "Publish action for Thing",
-		ArgsUsage: "<pubID> <thingID> <action> [<value>]",
+		ArgsUsage: "<thingID> <action> [<value>]",
 		Description: "Request an action from a Thing, where:\n" +
 			"  pubID:   ID of the publisher of the Thing as shown by 'hubapi ld'\n" +
 			"  thingID: ID of the Thing to invoke\n" +
@@ -19,26 +20,26 @@ func PubActionCommand(hc **hubclient.HubClient) *cli.Command {
 			"  value:   Optional value if required by the action",
 		Category: "pubsub",
 		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() < 3 {
+			if cCtx.NArg() < 2 {
 				return fmt.Errorf("missing arguments")
 			}
-			pubID := cCtx.Args().First()
-			thingID := cCtx.Args().Get(1)
+			dThingID := cCtx.Args().First()
 			action := cCtx.Args().Get(2)
 			args := cCtx.Args().Get(3)
-			err := HandlePubActions(*hc, pubID, thingID, action, args)
+			err := HandlePubActions(*hc, dThingID, action, args)
 			return err
 		},
 	}
 }
 
-func HandlePubActions(hc *hubclient.HubClient,
-	pubID string, thingID string, action string, args string) error {
+func HandlePubActions(hc hubclient.IHubClient,
+	dThingID string, action string, args string) error {
 
-	ar, err := hc.PubAction(pubID, thingID, action, []byte(args))
-	_ = ar
-	if err == nil {
-		fmt.Printf("Successfully published action '%s' to things '%s'\n", action, thingID)
+	stat := hc.PubAction(dThingID, action, []byte(args))
+	if stat.Error == "" {
+		fmt.Printf("Successfully published action '%s' to Thing '%s'\n", action, dThingID)
+		return nil
 	}
+	err := errors.New(stat.Error)
 	return err
 }

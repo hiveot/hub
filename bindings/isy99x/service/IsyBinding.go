@@ -4,7 +4,7 @@ package service
 
 import (
 	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/config"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
@@ -48,7 +48,7 @@ type IsyBinding struct {
 //}
 
 // HandleActionRequest passes the action request to the associated Thing.
-func (svc *IsyBinding) handleActionRequest(tv *things.ThingValue) (reply []byte, err error) {
+func (svc *IsyBinding) handleActionRequest(tv *things.ThingMessage) (reply []byte, err error) {
 	slog.Info("handleActionRequest",
 		slog.String("thingID", tv.ThingID),
 		slog.String("name", tv.Name),
@@ -69,7 +69,7 @@ func (svc *IsyBinding) handleActionRequest(tv *things.ThingValue) (reply []byte,
 }
 
 // handleConfigRequest for handling binding, gateway and node configuration changes
-func (svc *IsyBinding) handleConfigRequest(tv *things.ThingValue) (err error) {
+func (svc *IsyBinding) handleConfigRequest(tv *things.ThingMessage) (err error) {
 
 	slog.Info("handleConfigRequest",
 		slog.String("thingID", tv.ThingID),

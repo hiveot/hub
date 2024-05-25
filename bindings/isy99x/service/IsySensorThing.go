@@ -23,7 +23,7 @@ func (it *IsySensorThing) GetTD() *things.TD {
 	return td
 }
 
-func (it *IsySensorThing) HandleConfigRequest(tv *things.ThingValue) (err error) {
+func (it *IsySensorThing) HandleConfigRequest(tv *things.ThingMessage) (err error) {
 	// TODO: sensor configuration
 	return errors.New("unknown config: " + tv.Name)
 }

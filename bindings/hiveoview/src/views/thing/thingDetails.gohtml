@@ -1,10 +1,12 @@
 {{if .Thing}}
-
-	<article class="h-panel container-fluid">
-      {{/*	<h3>Details of Thing: {{.Thing.AgentID}}/{{.Thing.ThingID}}</h3>*/}}
+	<article
+				hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}"
+				hx-swap="outerHTML"
+				hx-get="/app/thing/{{.Thing.AgentID}}/{{.Thing.ThingID}}"
+				class="h-panel container-fluid">
 
 		<details open>
-			<summary class="outline">
+			<summary id="detailsSummary" class="outline">
 				<h4>{{.Thing.TD.Title}}</h4>
 			</summary>
 			<ul class="h-grid-table details-header">
@@ -20,7 +22,6 @@
 				<label for="updated">Updated:</label>
 				<input id="updated" type="text" readonly
 				       style="margin: 0; text-overflow: ellipsis;"
-				       title="Updated: {{$.Thing.TD.GetAge}} ago"
                placeholder="{{$.Thing.TD.GetUpdated}}"/>
 
 				<label for="agentID">Published by:</label>
@@ -71,13 +72,12 @@
 	</article>
 
 	<style>
-      /*container holding multiple values in a grid row/column*/
+      /*container holding multiple values in a grid row/column
+      used in attribute and config lists
+      */
       .id-title {
           display: inline-flex;
           flex-direction: column;
-          /*display: grid;*/
-          /*grid-auto-flow: row;*/
-          /*grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));*/
       }
 
       /* responsive columns for the details page heading*/

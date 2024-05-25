@@ -15,6 +15,8 @@
 
     {{range $k,$v := .TD.Events}}
         {{- /*gotype: github.com/hiveot/hub/lib/things.EventAffordance*/ -}}
+
+        {{- /*auto reload row on event changes*/ -}}
 				<li>
 					<div class="h-show-sm">{{/*icon*/}}</div>
 					<div class="id-title">
@@ -22,16 +24,17 @@
 						<span>{{$v.Title}}</span>
 					</div>
 					<div>
-						<span sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}"
-						      title="age: {{$.Values.Age $k}}">
+						{{/* Dynamic refresh of value on sse event*/}}
+						<span sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
 								{{$.Values.ToString $k}}
 						</span>
               {{$v.Data.UnitSymbol}}
 					</div>
 					<div class="h-show-lg">{{$v.Description}}</div>
-					<div class="h-show-md"
-					     title="Updated: {{$.Values.Age $k}} ago by {{($.Values.SenderID $k)}}">
-              {{$.Values.Updated $k}}</div>
+{{/*TODO: improve on this rather crude way to refresh the derived 'updated' field when value changes?*/}}
+					<div sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
+									class="h-show-md"
+						>{{$.Values.GetUpdated $k}}</div>
 				</li>
     {{end}}
     {{if not .TD.Events}}

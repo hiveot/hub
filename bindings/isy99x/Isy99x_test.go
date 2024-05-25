@@ -66,7 +66,7 @@ func TestStartStop(t *testing.T) {
 	os.Remove(nodesFile)
 
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	hc, err := testServer.AddConnectClient("isy99", authapi.ClientTypeService, authapi.ClientRoleService)
+	hc, err := testServer.AddConnectUser("isy99", authapi.ClientTypeService, authapi.ClientRoleService)
 	require.NoError(t, err)
 
 	svc := service.NewIsyBinding(appConfig)
@@ -86,7 +86,7 @@ func TestStartStop(t *testing.T) {
 func TestBadAddress(t *testing.T) {
 	os.Remove(nodesFile)
 
-	hc, err := testServer.AddConnectClient("isy99", authapi.ClientTypeService, authapi.ClientRoleService)
+	hc, err := testServer.AddConnectUser("isy99", authapi.ClientTypeService, authapi.ClientRoleService)
 	require.NoError(t, err)
 
 	// error case - use real url
@@ -106,7 +106,7 @@ func TestBadAddress(t *testing.T) {
 func TestIsyAppPoll(t *testing.T) {
 	os.Remove(nodesFile)
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	hc, err := testServer.AddConnectClient("isy99", authapi.ClientTypeService, authapi.ClientRoleService)
+	hc, err := testServer.AddConnectUser("isy99", authapi.ClientTypeService, authapi.ClientRoleService)
 	require.NoError(t, err)
 
 	svc := service.NewIsyBinding(appConfig)
@@ -126,7 +126,7 @@ func TestSwitch(t *testing.T) {
 
 	os.Remove(nodesFile)
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	hc, err := testServer.AddConnectClient("isy99", authapi.ClientTypeService, authapi.ClientRoleService)
+	hc, err := testServer.AddConnectUser("isy99", authapi.ClientTypeService, authapi.ClientRoleService)
 	require.NoError(t, err)
 
 	svc := service.NewIsyBinding(appConfig)

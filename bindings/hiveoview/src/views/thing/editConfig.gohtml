@@ -85,6 +85,7 @@
 		<button type="submit"
 		        hx-post="/app/thing/{{.AgentID}}/{{.ThingID}}/{{.Key}}"
 		        hx-include="#edit-config-form"
+		        hx-swap="none"
 		        hx-on::after-request="onSubmitCompleted(event, this)"
 		        style="margin-bottom: 0">Submit
 		</button>
@@ -94,10 +95,10 @@
 
 <script>
     function onSubmitCompleted(ev, btn) {
+        ev.stopImmediatePropagation()
         let details = ev.detail
         if (details.successful) {
             modal = btn.parentElement.parentElement
-            // modal.removeAttribute("show")
             modal.closeModal()
         }
     }

@@ -3,7 +3,7 @@ package buckets_test
 import (
 	"encoding/json"
 	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
+	vocab2 "github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
 	"log/slog"
@@ -55,8 +55,10 @@ var doc2 = []byte(`{
 // Create the bucket store using the backend
 func openNewStore() (store buckets.IBucketStore, err error) {
 	_ = os.RemoveAll(testBackendDirectory)
-	store = bucketstore.NewBucketStore(testBackendDirectory, "test", testBackendType)
-	err = store.Open()
+	store, err = bucketstore.NewBucketStore(testBackendDirectory, "test", testBackendType)
+	if err == nil {
+		err = store.Open()
+	}
 	return store, err
 }
 
@@ -65,42 +67,42 @@ func createTD(id string) *things.TD {
 	td := &things.TD{
 		ID:         id,
 		Title:      fmt.Sprintf("test TD %s", id),
-		DeviceType: vocab.ThingSensor,
+		AtType:     vocab2.ThingSensor,
 		Properties: make(map[string]*things.PropertyAffordance),
 		Events:     make(map[string]*things.EventAffordance),
 	}
-	td.Properties[vocab.PropDeviceName] = &things.PropertyAffordance{
+	td.Properties[vocab2.PropDeviceTitle] = &things.PropertyAffordance{
 		DataSchema: things.DataSchema{
 			Title:       "Sensor title",
 			Description: "This is a smart sensor",
-			Type:        vocab.WoTDataTypeString,
+			Type:        vocab2.WoTDataTypeString,
 			Default:     "Default value",
 		},
 	}
-	td.Properties[vocab.PropDeviceSoftwareVersion] = &things.PropertyAffordance{
+	td.Properties[vocab2.PropDeviceSoftwareVersion] = &things.PropertyAffordance{
 		DataSchema: things.DataSchema{
 			Title:       "Version",
 			Description: "Embedded firmware",
-			Type:        vocab.WoTDataTypeString,
+			Type:        vocab2.WoTDataTypeString,
 			Default:     "Default value",
 			Const:       "v1.0",
 		},
 	}
-	td.Events[vocab.PropEnvTemperature] = &things.EventAffordance{
+	td.Events[vocab2.PropEnvTemperature] = &things.EventAffordance{
 		Title:       "Event 1",
 		Description: "ID of this event",
 		Data: &things.DataSchema{
-			Type:        vocab.WoTDataTypeString,
+			Type:        vocab2.WoTDataTypeString,
 			Const:       "123",
 			Title:       "Event name data",
 			Description: "String with friendly name of the event"},
 	}
-	td.Events[vocab.PropDeviceBattery] = &things.EventAffordance{
+	td.Events[vocab2.PropDeviceBattery] = &things.EventAffordance{
 		Title: "Event 2",
 		Data: &things.DataSchema{
-			Type:        vocab.WoTDataTypeInteger,
+			Type:        vocab2.WoTDataTypeInteger,
 			Title:       "Battery level",
-			Unit:        vocab.UnitPercent,
+			Unit:        vocab2.UnitPercent,
 			Description: "Battery level update in % of device"},
 	}
 	return td
@@ -190,21 +192,21 @@ func TestStartStop(t *testing.T) {
 
 func TestCreateStoreBadFolder(t *testing.T) {
 	badDir := "/folder/does/not/exist/"
-	store := bucketstore.NewBucketStore(badDir, "test", testBackendType)
+	store, _ := bucketstore.NewBucketStore(badDir, "test", testBackendType)
 	err := store.Open()
 	assert.Error(t, err)
 }
 
 func TestCreateStoreReadOnlyFolder(t *testing.T) {
 	badDir := "/var/"
-	store := bucketstore.NewBucketStore(badDir, "test", testBackendType)
+	store, _ := bucketstore.NewBucketStore(badDir, "test", testBackendType)
 	err := store.Open()
 	assert.Error(t, err)
 }
 
 func TestCreateStoreCantReadFile(t *testing.T) {
 	badDir := "/bin"
-	store := bucketstore.NewBucketStore(badDir, "test", testBackendType)
+	store, _ := bucketstore.NewBucketStore(badDir, "test", testBackendType)
 	err := store.Open()
 	assert.Error(t, err)
 }
@@ -354,7 +356,7 @@ func TestSeek(t *testing.T) {
 	defer bucket.Close()
 
 	// set cursor 'base' records forward
-	cursor, err := bucket.Cursor(nil)
+	cursor, err := bucket.Cursor()
 	k1, v1, valid := cursor.First()
 	assert.True(t, valid)
 	for i := 0; i < base; i++ {
@@ -417,7 +419,7 @@ func TestPrevNextN(t *testing.T) {
 	defer bucket.Close()
 
 	// test NextN
-	cursor, err := bucket.Cursor(nil)
+	cursor, err := bucket.Cursor()
 	k1, v1, valid := cursor.First()
 	assert.True(t, valid)
 	docs, itemsRemaining := cursor.NextN(seekCount)

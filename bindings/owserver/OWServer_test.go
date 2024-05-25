@@ -1,7 +1,7 @@
 package owserver_test
 
 import (
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
 	"github.com/hiveot/hub/core/auth/authapi"
@@ -62,7 +62,7 @@ func TestStartStop(t *testing.T) {
 	t.Log("--- TestStartStop ---")
 	const device1ID = "device1"
 
-	hc, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
+	hc, err := testServer.AddConnectUser(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 	svc := service.NewOWServerBinding(&owsConfig)
@@ -77,7 +77,7 @@ func TestPoll(t *testing.T) {
 	const device1ID = "device1"
 
 	t.Log("--- TestPoll ---")
-	hc, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
+	hc, err := testServer.AddConnectUser(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 	svc := service.NewOWServerBinding(&owsConfig)
@@ -85,9 +85,9 @@ func TestPoll(t *testing.T) {
 	// Count the number of received TD events
 	err = hc.SubEvents("", "", "")
 	require.NoError(t, err)
-	hc.SetEventHandler(func(ev *things.ThingValue) {
+	hc.SetEventHandler(func(ev *things.ThingMessage) {
 		slog.Info("received event", "id", ev.Name)
-		if ev.Name == transports.EventNameProps {
+		if ev.Name == transports.EventTypeProps {
 			var value map[string]interface{}
 			err2 := ser.Unmarshal(ev.Data, &value)
 			assert.NoError(t, err2)
@@ -116,7 +116,7 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 	t.Log("--- TestPollInvalidEDSAddress ---")
 	const device1ID = "device1"
 
-	hc, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
+	hc, err := testServer.AddConnectUser(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 
@@ -143,7 +143,7 @@ func TestAction(t *testing.T) {
 	var actionName = vocab.ActionSwitchOn
 	var actionValue = ([]byte)("1")
 
-	hc, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
+	hc, err := testServer.AddConnectUser(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 
@@ -156,7 +156,7 @@ func TestAction(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	hc2, err := testServer.AddConnectClient(user1ID, authapi.ClientTypeUser, authapi.ClientRoleOperator)
+	hc2, err := testServer.AddConnectUser(user1ID, authapi.ClientTypeUser, authapi.ClientRoleOperator)
 	require.NoError(t, err)
 	defer hc2.Disconnect()
 	reply, err := hc.PubAction(device1ID, nodeID, actionName, actionValue)
@@ -176,7 +176,7 @@ func TestConfig(t *testing.T) {
 	var configName = "LEDFunction"
 	var configValue = ([]byte)("1")
 
-	hc, err := testServer.AddConnectClient(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
+	hc, err := testServer.AddConnectUser(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	require.NoError(t, err)
 	defer hc.Disconnect()
 
@@ -189,7 +189,7 @@ func TestConfig(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	hc2, err := testServer.AddConnectClient(user1ID, authapi.ClientTypeUser, authapi.ClientRoleManager)
+	hc2, err := testServer.AddConnectUser(user1ID, authapi.ClientTypeUser, authapi.ClientRoleManager)
 	require.NoError(t, err)
 	defer hc2.Disconnect()
 	err = hc2.PubConfig(device1ID, nodeID, configName, configValue)

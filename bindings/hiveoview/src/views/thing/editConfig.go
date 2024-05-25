@@ -29,7 +29,7 @@ func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 		rd := dirclient.NewReadDirectoryClient(hc)
 		tv, err := rd.GetTD(agentID, thingID)
 		if err == nil {
-			err = json.Unmarshal(tv.Data, &td)
+			err = json.Unmarshal([]byte(tv.Data), &td)
 			if err == nil {
 				prop = td.GetProperty(propKey)
 			}
@@ -88,14 +88,6 @@ func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = mySession.SendSSE("notify", "success: Configuration '"+propKey+"' updated")
-	//
-	//// read the updated config value and update the UI fragments
-	//cl := historyclient.NewReadHistoryClient(hc)
-	//tvs, err := cl.GetLatest(agentID, thingID, []string{propKey})
-	//propAddr := fmt.Sprintf("%s/%s/%s", agentID, thingID, propKey)
-	//propVal := fmt.Sprintf("%.100s", tvs[propKey].Data)
-	//slog.Info("Updated value of prop", "propAddr", propAddr, "propVal", propVal)
-	//mySession.SendSSE(propAddr, propVal)
 
 	w.WriteHeader(http.StatusOK)
 

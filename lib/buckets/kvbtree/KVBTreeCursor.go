@@ -1,7 +1,6 @@
 package kvbtree
 
 import (
-	"context"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/tidwall/btree"
 )
@@ -9,16 +8,10 @@ import (
 type KVBTreeCursor struct {
 	bucket buckets.IBucket
 	kviter btree.MapIter[string, []byte]
-	ctx    context.Context
 }
 
 func (cursor *KVBTreeCursor) BucketID() string {
 	return cursor.bucket.ID()
-}
-
-// Context returns the cursor application context
-func (cursor *KVBTreeCursor) Context() context.Context {
-	return cursor.ctx
 }
 
 // First moves the cursor to the first item
@@ -127,9 +120,8 @@ func (cursor *KVBTreeCursor) Seek(searchKey string) (key string, value []byte, v
 //	orderedKeys is a snapshot of the keys in ascending order
 //
 // func NewKVCursor(bucket bucketstore.IBucket, orderedKeys []string, kvbtree btree.Map[string, []byte]) *KVBTreeCursor {
-func NewKVCursor(ctx context.Context, bucket buckets.IBucket, kvIter btree.MapIter[string, []byte]) *KVBTreeCursor {
+func NewKVCursor(bucket buckets.IBucket, kvIter btree.MapIter[string, []byte]) *KVBTreeCursor {
 	cursor := &KVBTreeCursor{
-		ctx:    ctx,
 		bucket: bucket,
 		kviter: kvIter,
 	}

@@ -1,9 +1,11 @@
 package historycli
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/core/history/historyclient"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/urfave/cli/v2"
 
 	"github.com/hiveot/hub/lib/hubclient"
@@ -25,12 +27,12 @@ import (
 //	}
 //}
 
-func HistoryListCommand(hc **hubclient.HubClient) *cli.Command {
+func HistoryListCommand(hc *hubclient.IHubClient) *cli.Command {
 	limit := 100
 	return &cli.Command{
 		Name:      "hev",
 		Usage:     "History of Thing events",
-		ArgsUsage: "<agentID> <thingID> [<name>]",
+		ArgsUsage: "<thingID> [<key>]",
 		Category:  "history",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
@@ -41,34 +43,34 @@ func HistoryListCommand(hc **hubclient.HubClient) *cli.Command {
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() < 2 {
-				return fmt.Errorf("agentID and thingID expected")
+			if cCtx.NArg() < 1 {
+				return fmt.Errorf("thingID expected")
 			}
-			name := ""
-			if cCtx.NArg() == 3 {
-				name = cCtx.Args().Get(2)
+			key := ""
+			if cCtx.NArg() == 2 {
+				key = cCtx.Args().Get(1)
 			}
-			err := HandleListEvents(*hc, cCtx.Args().First(), cCtx.Args().Get(1), name, limit)
+			err := HandleListEvents(*hc, cCtx.Args().First(), key, limit)
 			return err
 		},
 	}
 }
 
-func HistoryLatestCommand(hc **hubclient.HubClient) *cli.Command {
-	return &cli.Command{
-		Name:      "hla",
-		Usage:     "History latest values of a things",
-		ArgsUsage: "<pubID> <thingID>",
-		Category:  "history",
-		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() != 2 {
-				return fmt.Errorf("publisherID and thingID expected")
-			}
-			err := HandleListLatestEvents(*hc, cCtx.Args().First(), cCtx.Args().Get(1))
-			return err
-		},
-	}
-}
+//func HistoryLatestCommand(hc *hubclient.IHubClient) *cli.Command {
+//	return &cli.Command{
+//		Name:      "hla",
+//		Usage:     "History latest values of a things",
+//		ArgsUsage: "<pubID> <thingID>",
+//		Category:  "history",
+//		Action: func(cCtx *cli.Context) error {
+//			if cCtx.NArg() != 2 {
+//				return fmt.Errorf("publisherID and thingID expected")
+//			}
+//			err := HandleListLatestEvents(*hc, cCtx.Args().First(), cCtx.Args().Get(1))
+//			return err
+//		},
+//	}
+//}
 
 //func HistoryRetainCommand(hc **hubclient.HubClient) *cli.Command {
 //	return &cli.Command{
@@ -110,24 +112,32 @@ func HistoryLatestCommand(hc **hubclient.HubClient) *cli.Command {
 //}
 
 // HandleListEvents lists the history content
-func HandleListEvents(hc *hubclient.HubClient, agentID, thingID string, name string, limit int) error {
+func HandleListEvents(hc hubclient.IHubClient, dThingID string, name string, limit int) error {
 	rd := historyclient.NewReadHistoryClient(hc)
-	cursor, _, err := rd.GetCursor(agentID, thingID, name)
+
+	cursor, releaseFn, err := rd.GetCursor(dThingID, name)
+	defer releaseFn()
 	if err != nil {
 		return err
 	}
-	fmt.Println("AgentID        ThingID            Timestamp                      Event                Value (truncated)")
-	fmt.Println("-----------    -------            ---------                      -----                ---------------- ")
+	fmt.Println("ThingID                        Timestamp                      Event                Value (truncated)")
+	fmt.Println("-----------                    ---------                      -----                ---------------- ")
 	count := 0
 	for tv, valid, err := cursor.First(); err == nil && valid && count < limit; tv, valid, err = cursor.Next() {
 		count++
+		value := string(tv.Data)
+		// show number of properties
+		if tv.Key == vocab.EventTypeProperties {
+			props := make(map[string]string)
+			_ = json.Unmarshal(tv.Data, &props)
+			value = fmt.Sprintf("(%d properties)", len(props))
+		}
 
-		fmt.Printf("%-14s %-18s %-30s %-20.20s %-30.30s\n",
-			tv.AgentID,
+		fmt.Printf("%-30s %-30s %-20.20s %-30.30s\n",
 			tv.ThingID,
 			utils.FormatMSE(tv.CreatedMSec, false),
-			tv.Name,
-			tv.Data,
+			tv.Key,
+			value,
 		)
 	}
 	cursor.Release()
@@ -170,24 +180,24 @@ func HandleListEvents(hc *hubclient.HubClient, agentID, thingID string, name str
 //	return err
 //}
 
-func HandleListLatestEvents(
-	hc *hubclient.HubClient, agentID string, thingID string) error {
-	rd := historyclient.NewReadHistoryClient(hc)
-
-	props, err := rd.GetLatest(agentID, thingID, nil)
-
-	fmt.Println("Event ID                  AgentID         ThingID              Value                            Created")
-	fmt.Println("--------                  -------         -------              -----                            -------")
-	for _, tv := range props {
-
-		fmt.Printf("%-25.25s %-15.15s %-20s %-32s %.80s\n",
-			tv.Name,
-			tv.AgentID,
-			tv.ThingID,
-			fmt.Sprintf("%.32s", tv.Data),
-			//utime.Format("02 Jan 2006 15:04:05 -0700"),
-			utils.FormatMSE(tv.CreatedMSec, false),
-		)
-	}
-	return err
-}
+//func HandleListLatestEvents(
+//	hc hubclient.IHubClient, agentID string, thingID string) error {
+//	rd := historyclient.NewReadHistoryClient(hc)
+//
+//	props, err := rd.GetLatest(agentID, thingID, nil)
+//
+//	fmt.Println("Event ID                  AgentID         ThingID              Value                            Created")
+//	fmt.Println("--------                  -------         -------              -----                            -------")
+//	for _, tv := range props {
+//
+//		fmt.Printf("%-25.25s %-15.15s %-20s %-32s %.80s\n",
+//			tv.Name,
+//			tv.AgentID,
+//			tv.ThingID,
+//			fmt.Sprintf("%.32s", tv.Data),
+//			//utime.Format("02 Jan 2006 15:04:05 -0700"),
+//			utils.FormatMSE(tv.CreatedMSec, false),
+//		)
+//	}
+//	return err
+//}

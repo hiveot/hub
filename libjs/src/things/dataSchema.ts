@@ -60,6 +60,7 @@ export class DataSchema extends Object {
     public writeOnly: boolean = false
 
     // Enumeration table to lookup the value or key
+    // FIXME: use oneOf object
     private enumTable: Object | undefined = undefined
 
     // Change the property into a writable configuration
@@ -75,6 +76,7 @@ export class DataSchema extends Object {
     // @param enumeration is a map from enum values to names and vice-versa
     // @param initialValue is converted to name and stored in the schema as initialValue (for testing/debugging) 
     SetAsEnum(enumeration: Object): DataSchema {
+        // FIXME: use oneOf object - match golang
         this.enumTable = enumeration
         let keys = Object.values(enumeration)
         this.enum = keys.filter((key: any) => {

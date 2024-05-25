@@ -1,204 +1,215 @@
 package testenv
 
 import (
-	"github.com/hiveot/hub/core/auth/authapi"
-	"github.com/hiveot/hub/core/auth/authservice"
-	"github.com/hiveot/hub/core/auth/config"
-	"github.com/hiveot/hub/core/msgserver"
+	"encoding/json"
+	"fmt"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
-	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
-	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
+	"github.com/hiveot/hub/lib/hubclient/httpclient"
+	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime"
+	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
+	"math/rand"
 	"os"
 	"path"
 )
 
-// TestServer for testing application services
-// This server provides an easy way to connect to the server by automatically
-// creating a user and auth token when using ConnectInProc.
+// TestDir is the default test directory
+var TestDir = path.Join(os.TempDir(), "hiveot-test")
+
+var testTDs = []struct {
+	ID         string
+	Title      string
+	DeviceType string
+	NrEvents   int
+	NrProps    int
+	NrActions  int
+}{
+	{ID: "thing-1", Title: "Environmental Sensor",
+		DeviceType: vocab.ThingSensorEnvironment, NrEvents: 1, NrProps: 1, NrActions: 0},
+	{ID: "thing-2", Title: "Light Switch",
+		DeviceType: vocab.ThingActuatorLight, NrEvents: 2, NrProps: 2, NrActions: 1},
+	{ID: "thing-3", Title: "Power meter",
+		DeviceType: vocab.ThingMeterElectric, NrEvents: 3, NrProps: 3, NrActions: 1},
+	{ID: "thing-4", Title: "Multisensor",
+		DeviceType: vocab.ThingSensorMulti, NrEvents: 4, NrProps: 4, NrActions: 2},
+	{ID: "thing-5", Title: "Alarm",
+		DeviceType: vocab.ThingActuatorAlarm, NrEvents: 2, NrProps: 2, NrActions: 2},
+}
+
+var PropTypes = []string{vocab.PropDeviceMake, vocab.PropDeviceModel,
+	vocab.PropDeviceDescription, vocab.PropDeviceFirmwareVersion, vocab.PropLocationCity}
+var EventTypes = []string{vocab.PropElectricCurrent, vocab.PropElectricVoltage,
+	vocab.PropElectricPower, vocab.PropEnvTemperature, vocab.PropEnvPressure}
+var ActionTypes = []string{vocab.ActionDimmer, vocab.ActionSwitch,
+	vocab.ActionSwitchToggle, vocab.ActionValveOpen, vocab.ActionValveClose}
+
+// TestServer for testing application services.
+// Usage: run NewTestServer() followed by Start(clean)
 type TestServer struct {
-	Core        string
-	CertBundle  certs.TestCertBundle
-	MsgServer   msgserver.IMsgServer
-	AuthService *authservice.AuthService
-	testClients []msgserver.ClientAuthInfo // when using AddConnectClient
+	Port    int
+	Certs   certs.TestCertBundle
+	TestDir string
+	//
+	Config  *runtime.RuntimeConfig
+	AppEnv  plugin.AppEnvironment
+	Runtime *runtime.Runtime
 }
 
-// AddClients adds test clients to the server.
-// This either adds them to the server directly or adds them using auth.
-func (ts *TestServer) AddClients(newClients []msgserver.ClientAuthInfo) error {
-	var err error
-	ctx := hubclient.ServiceContext{SenderID: "testServer"}
-	if ts.AuthService != nil {
-		for _, authInfo := range newClients {
-			args := authapi.AddUserArgs{
-				UserID:      authInfo.ClientID,
-				DisplayName: authInfo.ClientID,
-				PubKey:      authInfo.PubKey,
-				Role:        authInfo.Role,
-			}
-			_, err = ts.AuthService.MngClients.AddUser(ctx, args)
-			if err != nil {
-				slog.Error("AddClients error", "clientID", authInfo.ClientID, "err", err)
-			}
-		}
-	} else {
-		ts.testClients = append(ts.testClients, newClients...)
-		err = ts.MsgServer.ApplyAuth(ts.testClients)
-	}
-	return err
-}
+// AddConnectUser creates a new test user with the given role,
+// and returns a hub client and a new session token.
+// In case of error this panics.
+func (test *TestServer) AddConnectUser(
+	clientID string, clientRole string) (cl hubclient.IHubClient, token string) {
 
-// AddConnectClient connects a client to the hub.
-// If the client doesn't exist it will be created along with a new key-pair.
-// This generates a key pair and auth token used to connect.
-// Intended for easily connecting during tests to avoid a lot of auth boilerplate.
-//
-// This client has connection retry disabled to assist in testing. To enable it invoke
-// SetRetryConnect(true) on the client that is returned.
-//
-// If auth has started using the TestServer then this adds the client to auth service
-// as a service. Don't use this method if auth is started separately. Use auth directly instead.
-//
-// Without auth service this applies it to the messaging server directly adding to
-// what was set using AddClients() (don't use ApplyAuth on the message server directly)
-//
-//	clientID login/connect ID of the client
-//	clientType is optional. This defaults to ClientTypeUser.
-//	clientRole is optional. This defaults to viewer.
-func (ts *TestServer) AddConnectClient(
-	clientID string, clientType string, clientRole string) (*hubclient.HubClient, error) {
-	var token string
-	var err error
-
-	var tp transports.IHubTransport
-	serverURL, _, _ := ts.MsgServer.GetServerURLs()
-	if ts.Core == "nats" {
-		tp = natstransport.NewNatsTransport(serverURL, clientID, ts.CertBundle.CaCert)
-	} else {
-		tp = mqtttransport.NewMqttTransport(serverURL, clientID, ts.CertBundle.CaCert)
-	}
-	serKP := tp.CreateKeyPair()
-	serPub := serKP.ExportPublic()
-
-	if clientType == "" {
-		clientType = authapi.ClientTypeUser
-	}
-	if clientRole == "" {
-		clientRole = authapi.ClientRoleViewer
-	}
-	ctx := hubclient.ServiceContext{SenderID: "testServer"}
-
-	// if auth service is running then add the client if it doesn't exist
-	if ts.AuthService != nil {
-		if clientType == authapi.ClientTypeService {
-			args := authapi.AddServiceArgs{
-				ServiceID:   clientID,
-				DisplayName: "user " + clientID,
-				PubKey:      serPub,
-			}
-			resp, err2 := ts.AuthService.MngClients.AddService(ctx, args)
-			err = err2
-			token = resp.Token
-		} else if clientType == authapi.ClientTypeDevice {
-			args := authapi.AddDeviceArgs{
-				DeviceID:    clientID,
-				DisplayName: "user " + clientID,
-				PubKey:      serPub,
-			}
-			resp, err2 := ts.AuthService.MngClients.AddDevice(ctx, args)
-			err = err2
-			token = resp.Token
-		} else {
-			args := authapi.AddUserArgs{
-				UserID:      clientID,
-				DisplayName: "user " + clientID,
-				PubKey:      serPub,
-				Role:        clientRole,
-			}
-			resp, err2 := ts.AuthService.MngClients.AddUser(ctx, args)
-			err = err2
-			token = resp.Token
-		}
-	} else {
-		// use an on-the-fly created token for the connection
-		authInfo := msgserver.ClientAuthInfo{
-			ClientID:     clientID,
-			ClientType:   clientType,
-			PubKey:       serPub,
-			PasswordHash: "",
-			Role:         clientRole,
-		}
-		token, err = ts.MsgServer.CreateToken(authInfo)
-		if err == nil {
-			ts.testClients = append(ts.testClients, authInfo)
-			err = ts.MsgServer.ApplyAuth(ts.testClients)
-		}
+	password := clientID
+	err := test.Runtime.AuthnSvc.AdminSvc.AddUser(clientID, clientID, password)
+	if err == nil {
+		err = test.Runtime.AuthzSvc.SetClientRole(clientID, clientRole)
 	}
 	if err != nil {
-		return nil, err
+		panic("Failed adding client:" + err.Error())
 	}
-	//safeConn := packets.NewThreadSafeConn(conn)
-	//serverURL, _, _ := ts.MsgServer.GetServerURLs()
-	//if ts.Core == "nats" {
-	//	tp = natstransport.NewNatsTransport(serverURL, clientID, ts.CertBundle.CaCert)
-	//} else {
-	//	tp = mqtttransport.NewMqttTransport(serverURL, clientID, ts.CertBundle.CaCert)
-	//}
-	hc := hubclient.NewHubClientFromTransport(tp, clientID)
-	hc.SetRetryConnect(false) // for testing failure
-	err = hc.ConnectWithToken(serKP, token)
 
-	return hc, err
+	hostPort := fmt.Sprintf("localhost:%d", test.Port)
+	cl = httpclient.NewHttpSSEClient(hostPort, clientID, test.Certs.CaCert)
+	token, err = cl.ConnectWithPassword(password)
+
+	if err != nil {
+		panic("Failed connect with password:" + err.Error())
+	}
+	return cl, token
 }
 
-// StartAuth starts the auth service
+// AddConnectAgent creates a new agent test client.
+// Agents use non-session tokens and survive a server restart.
+// This returns the agent's connection token.
 //
-//	use cleanStart to delete all prior auth data
-func (ts *TestServer) StartAuth(cleanStart bool) (err error) {
-	var testDir = path.Join(os.TempDir(), "test-home")
-	if cleanStart {
-		_ = os.RemoveAll(testDir)
+// clientType can be one of ClientTypeAgent or ClientTypeService
+func (test *TestServer) AddConnectAgent(
+	clientType api.ClientType, clientID string) (
+	cl hubclient.IHubClient, token string) {
+
+	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(
+		clientType, clientID, clientID, "")
+	if err == nil {
+		err = test.Runtime.AuthzSvc.SetClientRole(clientID, api.ClientRoleAgent)
 	}
-	authConfig := config.AuthConfig{}
-	_ = authConfig.Setup(testDir, testDir)
-	ts.AuthService, err = authservice.StartAuthService(
-		authConfig, ts.MsgServer, ts.CertBundle.CaCert)
-	return err
+	if err != nil {
+		panic("Failed adding client:" + err.Error())
+	}
+
+	hostPort := fmt.Sprintf("localhost:%d", test.Port)
+	cl = httpclient.NewHttpSSEClient(hostPort, clientID, test.Certs.CaCert)
+	_, err = cl.ConnectWithToken(token)
+	if err != nil {
+		panic("Failed connecting using token. ClientID=" + clientID)
+	}
+
+	return cl, token
 }
 
-// Stop the test server and optionally the auth service
-func (ts *TestServer) Stop() {
-	if ts.AuthService != nil {
-		ts.AuthService.Stop()
+// AddTD adds a test TD document using the embedded connection to the runtime
+// if td is nil then a random TD will be added
+func (test *TestServer) AddTD(agentID string, td *things.TD) *things.TD {
+	if td == nil {
+		i := rand.Intn(99882)
+		td = test.CreateTestTD(i)
 	}
-	if ts.MsgServer != nil {
-		ts.MsgServer.Stop()
+	tdJSON, _ := json.Marshal(td)
+	ag := test.Runtime.TransportsMgr.GetEmbedded().NewClient(agentID)
+	err := ag.PubEvent(td.ID, vocab.EventTypeTD, tdJSON)
+	if err != nil {
+		slog.Error("Failed adding TD")
+	}
+	return td
+}
+
+// AddTDs adds a bunch of test TD documents
+func (test *TestServer) AddTDs(agentID string, count int) {
+	for i := 0; i < count; i++ {
+		_ = test.AddTD(agentID, nil)
 	}
 }
 
-// StartTestServer creates a NATS or MQTT test server depending on the requested type
-// core is either "nats", or "mqtt" (default)
-// This generates a certificate bundle for running the server, including a self signed CA.
+// CreateTestTD returns a test TD.
 //
-// Use Stop() to clean up.
-// Use withAuth or run StartAuth() to start the auth service
-func StartTestServer(core string, withAuth bool) (*TestServer, error) {
-	var err error
-	ts := &TestServer{
-		CertBundle:  certs.CreateTestCertBundle(),
-		Core:        core,
-		testClients: make([]msgserver.ClientAuthInfo, 0),
-	}
-	if core == "nats" {
-		ts.MsgServer, ts.CertBundle, _, err = StartNatsTestServer(false)
+// The first 10 are predefined and always the same. A higher number generates at random.
+// i is the index.
+func (test *TestServer) CreateTestTD(i int) (td *things.TD) {
+	tdi := testTDs[0]
+	if i < len(testTDs) {
+		tdi = testTDs[i]
 	} else {
-		ts.MsgServer, ts.CertBundle, err = StartMqttTestServer()
+		tdi.ID = fmt.Sprintf("thing-%d", rand.Intn(99823))
 	}
-	if err == nil && withAuth {
-		err = ts.StartAuth(true)
+
+	td = things.NewTD(tdi.ID, tdi.Title, tdi.DeviceType)
+	// add random properties
+	for n := 0; n < tdi.NrProps; n++ {
+		td.AddProperty(fmt.Sprintf("prop-%d", n), PropTypes[n], "title-"+PropTypes[n], vocab.WoTDataTypeString)
 	}
-	return ts, err
+	// add random events
+	for n := 0; n < tdi.NrEvents; n++ {
+		td.AddProperty(fmt.Sprintf("prop-%d", n), EventTypes[n], "title-"+EventTypes[n], vocab.WoTDataTypeString)
+	}
+	// add random actions
+	for n := 0; n < tdi.NrActions; n++ {
+		td.AddProperty(fmt.Sprintf("prop-%d", n), ActionTypes[n], "title-"+ActionTypes[n], vocab.WoTDataTypeString)
+	}
+
+	return td
+}
+
+// Stop the test server
+func (test *TestServer) Stop() {
+	test.Runtime.Stop()
+}
+
+// Start the test server.
+// This panics if something goes wrong.
+func (test *TestServer) Start(clean bool) {
+	//logging.SetLogging("info", "")
+
+	if clean {
+		_ = os.RemoveAll(test.TestDir)
+	}
+	test.AppEnv = plugin.GetAppEnvironment(test.TestDir, false)
+	//
+	test.Config.Transports.HttpsTransport.Port = test.Port
+	test.Config.CaCert = test.Certs.CaCert
+	test.Config.CaKey = test.Certs.CaKey
+	test.Config.ServerKey = test.Certs.ServerKey
+	test.Config.ServerCert = test.Certs.ServerCert
+	err := test.Config.Setup(&test.AppEnv)
+	if err != nil {
+		panic("unable to setup test server config")
+	}
+	test.Runtime = runtime.NewRuntime(test.Config)
+	err = test.Runtime.Start(&test.AppEnv)
+	if err != nil {
+		panic("unable to start test server runtime")
+	}
+}
+
+func NewTestServer() *TestServer {
+	srv := TestServer{
+		Port:    9444,
+		TestDir: TestDir,
+		Certs:   certs.CreateTestCertBundle(),
+		Config:  runtime.NewRuntimeConfig(),
+	}
+
+	return &srv
+}
+
+// StartTestServer creates and starts the test server
+// This panics if start fails.
+func StartTestServer(clean bool) *TestServer {
+	srv := NewTestServer()
+	srv.Start(clean)
+	return srv
 }

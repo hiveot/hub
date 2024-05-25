@@ -10,7 +10,7 @@ import (
 )
 
 // HandleActionRequest handles requests to activate inputs
-func (svc *OWServerBinding) HandleActionRequest(action *things.ThingValue) (reply []byte, err error) {
+func (svc *OWServerBinding) HandleActionRequest(action *things.ThingMessage) (reply []byte, err error) {
 	var attr eds.OneWireAttr
 	slog.Info("HandleActionRequest",
 		slog.String("agentID", action.AgentID),

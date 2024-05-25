@@ -3,6 +3,8 @@
 
 import {DataSchema} from "./dataSchema";
 
+const TD_CONTEXT = "https://www.w3.org/2022/wot/td/v1.1"
+const HT_CONTEXT = "https://www.hiveot.net/vocab/v0.1"
 
 export class InteractionAffordance extends Object {
     // Unique name of the affordance, eg: property, event or action name
@@ -97,12 +99,21 @@ export class ThingTD extends Object {
     constructor(deviceID: string, deviceType: string, title: string, description: string) {
         super();
         this.id = deviceID;
+        this["@context"] = [
+            TD_CONTEXT,
+            { "ht": HT_CONTEXT }
+        ]
         this["@type"] = deviceType;
         this.title = title;
         this.description = description;
         this.created = new Date().toISOString();
         this.modified = this.created;
     }
+    /** JSON-LD context */
+    public "@context": any[] = [];
+
+    /** Type of thing defined in the vocabulary */
+    public "@type": string = "";
 
     /** Unique thing ID */
     public readonly id: string = "";
@@ -119,8 +130,6 @@ export class ThingTD extends Object {
     /** Human-readable title for ui representation */
     public title: string = "";
 
-    /** Type of thing defined in the vocabulary */
-    public "@type": string = "";
 
     /**
      * Collection of properties of a thing
@@ -142,7 +151,7 @@ export class ThingTD extends Object {
     // describes the parameter(s).
     //
     // @param id is the key under which it is stored in the action map.
-    // @param actionType one of the ActionTypes from the vocabulary. Use "" if not known
+    // @param actionType one of the vocabulary ActionTypes. Use "" if not known
     // @param title is the short display title of the action.
     // @param description optional detailed description of the action
     // @param input with optional dataschema of the action input data
@@ -186,12 +195,16 @@ export class ThingTD extends Object {
     // By default this property is read-only. (eg an attribute)
     //
     // @param id is the instance ID under which it is stored in the property affordance map.
+    //        if not provided then propType is used.
     // @param propType is one of the PropertyTypes in the vocabulary or "" if not known
     // @param title is the title used in the property.
     // @param dataType is the type of data the property holds, DataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
     // @param initialValue the value at time of creation, for testing and debugging
     AddProperty(id: string, propType: string, title: string, dataType: string): PropertyAffordance {
         let prop = new PropertyAffordance()
+        if (id == "") {
+            id = propType
+        }
         prop.id = id;
         if (propType) {
             prop["@type"] = propType

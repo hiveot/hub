@@ -2,7 +2,9 @@
 // as described here: https://www.w3.org/TR/wot-thing-description/#sec-data-schema-vocabulary-definition
 package things
 
-import vocab "github.com/hiveot/hub/api/go"
+import (
+	"github.com/hiveot/hub/api/go/vocab"
+)
 
 // DataSchema with metadata  that describes the data format used. It can be used for validation.
 //
@@ -27,10 +29,10 @@ type DataSchema struct {
 	Descriptions []string `json:"descriptions,omitempty"`
 
 	// Provides a constant value of any type as per data Schema
-	Const interface{} `json:"const,omitempty"`
+	Const any `json:"const,omitempty"`
 
 	// Provides a default value of any type as per data Schema
-	Default interface{} `json:"default,omitempty"`
+	Default any `json:"default,omitempty"`
 
 	// Allows validation based on a format pattern such as "date-time", "email", "uri", etc.
 	// See vocab DataFormXyz "date-time", "email", "uri" (todo)
@@ -41,7 +43,7 @@ type DataSchema struct {
 
 	// Restricted set of values provided as an array.
 	//  for example: ["option1", "option2"]
-	Enum []interface{} `json:"enum,omitempty"`
+	Enum []any `json:"enum,omitempty"`
 
 	// Boolean value to indicate whether a property interaction / value is read-only (=true) or not (=false)
 	// the value true implies read-only.
@@ -61,8 +63,9 @@ type DataSchema struct {
 	// ArraySchema with metadata describing data of type Array.
 	// https://www.w3.org/TR/wot-thing-description/#arrayschema
 	// Used to define the characteristics of an array.
-	// Note that in golang a field cannot both be a single or an array of items.
-	ArrayItems interface{} `json:"items,omitempty"`
+	// Note that in golang a field cannot both be a single or an array of items
+	// Right now 'items' has to be a dataschema
+	ArrayItems *DataSchema `json:"items,omitempty"`
 	// Defines the minimum number of items that have to be in the array
 	ArrayMinItems uint `json:"minItems,omitempty"`
 	// Defines the maximum number of items that have to be in the array.
@@ -89,9 +92,9 @@ type DataSchema struct {
 	// ObjectSchema with metadata describing data of type Object.
 	// This Subclass is indicated by the value object assigned to type in DataSchema instances.
 	// Properties of Object.
-	Properties map[string]DataSchema `json:"properties,omitempty"`
+	Properties map[string]*DataSchema `json:"properties,omitempty"`
 	// Defines which members of the object type are mandatory
-	PropertiesRequired []string `json:"required,omitempty"`
+	Required []string `json:"required,omitempty"`
 
 	// StringSchema with metadata describing data of type string.
 	// This Subclass is indicated by the value string assigned to type in DataSchema instances.

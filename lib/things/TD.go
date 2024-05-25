@@ -2,9 +2,8 @@ package things
 
 import (
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/ser"
-	"github.com/hiveot/hub/lib/utils"
 	"sync"
 	"time"
 )
@@ -26,6 +25,7 @@ const HiveOTContext = "https://www.hiveot.net/vocab/v0.1"
 //	     properties: {propID: PropertyAffordance, ...}
 //	}
 type TD struct {
+
 	// JSON-LD keyword to define shorthand names called terms that are used throughout a TD document. Required.
 	// in order to add the "ht" namespace, the context value can be a string or map
 	AtContext []any `json:"@context"`
@@ -51,15 +51,9 @@ type TD struct {
 	// Version information of the TD document (?not the device??)
 	//Version VersionInfo `json:"version,omitempty"` // todo
 
-	// Instance identifier of the Thing in form of a URI (RFC3986)
-	// https://www.w3.org/TR/wot-thing-description11/#sec-privacy-consideration-id
-	// * IDs are optional. However, in HiveOT that won't work as they must be addressable.
-	// * IDs start with "urn:" based on the idea that IDs can be used as an address. In HiveOT, IDs and Addresses
-	//   serve a different purpose. IDs are not addresses. HiveOT allows IDs that do not start with "urn:".
-	//   note that pubsub uses addresses of which the things ID is part of.
-	// * ID's SHOULD be mutable. Recommended is on device reset the ID is changed.
-	// * The id of a TD SHOULD NOT contain metadata describing the Thing or from the TD itself.
-	// * Using random UUIDs as recommended in 10.5
+	// ID is the Thing instance identifier.
+	// HiveOT prefixes the thing's ID with the publishing agentID to help with uniqueness, separated by colon:
+	//  ThingID format used: urn:agentID:deviceID
 	ID string `json:"id,omitempty"`
 
 	// ISO8601 timestamp this document was last modified. See also 'Created'.
@@ -88,12 +82,15 @@ type TD struct {
 	// Protocol Bindings. Thing-level forms are used to describe endpoints for a group of interaction affordances.
 	Forms []Form `json:"forms,omitempty"`
 
-	// Set of security definition names, chosen from those defined in securityDefinitions
+	// Security is a string or array of security definition names, chosen from those defined
+	// in securityDefinitions.
 	// In HiveOT security is handled by the Hub. HiveOT Things will use the NoSecurityScheme type
-	Security string `json:"security"`
+	//Security string `json:"security"`
+	Security any `json:"security"`
+
 	// Set of named security configurations (definitions only).
 	// Not actually applied unless names are used in a security name-value pair. (why is this mandatory then?)
-	SecurityDefinitions map[string]string `json:"securityDefinitions,omitempty"`
+	SecurityDefinitions map[string]SecurityScheme `json:"securityDefinitions"`
 
 	// profile: todo
 	// schemaDefinitions: todo
@@ -281,16 +278,16 @@ func (tdoc *TD) GetAction(name string) *ActionAffordance {
 	return actionAffordance
 }
 
-// GetAge returns the age of the document since last modified in a human-readable format.
-// this is just an experiment to see if this is useful.
-// Might be better to do on the UI client side to reduce cpu.
-func (tdoc *TD) GetAge() string {
-	t, err := dateparse.ParseAny(tdoc.Modified)
-	if err != nil {
-		return tdoc.Modified
-	}
-	return utils.Age(t)
-}
+//// GetAge returns the age of the document since last modified in a human-readable format.
+//// this is just an experiment to see if this is useful.
+//// Might be better to do on the UI client side to reduce cpu.
+//func (tdoc *TD) GetAge() string {
+//	t, err := dateparse.ParseAny(tdoc.Modified)
+//	if err != nil {
+//		return tdoc.Modified
+//	}
+//	return utils.Age(t)
+//}
 
 // GetAtTypeVocab return the vocab map of the @type
 func (tdoc *TD) GetAtTypeVocab() string {
@@ -340,8 +337,13 @@ func (tdoc *TD) GetPropertyOfType(atType string) (string, *PropertyAffordance) {
 // GetUpdated is a helper function to return the formatted time the thing was last updated.
 // This uses the time format RFC822 ("02 Jan 06 15:04 MST")
 func (tdoc *TD) GetUpdated() string {
-	created, _ := dateparse.ParseAny(tdoc.Modified)
-	return created.Format(time.RFC1123)
+	created, err := dateparse.ParseAny(tdoc.Modified)
+	if err != nil {
+		return tdoc.Modified
+	}
+	created = created.Local()
+	return created.Format(time.RFC822)
+
 }
 
 // GetID returns the ID of the things TD
@@ -406,7 +408,16 @@ func (tdoc *TD) UpdateTitleDescription(title string, description string) {
 }
 
 // NewTD creates a new Thing Description document with properties, events and actions
-// The 'title' should match the value of 'vocab.PropDeviceName' property.
+//
+// Conventions:
+// 1. thingID is a URI, starting with the "urn:" prefix as per WoT standard.
+// 2. If title is editable then the user should add a property with ID vocab.PropDeviceTitle and update the TD if it is set.
+// 3. If description is editable then the user should add a property with ID vocab.PropDeviceDescription and
+// update the TD description if it is set.
+// 4. the deviceType comes from the vocabulary and has ID vocab.DeviceType<Xyz>
+//
+// Devices or bindings are not expected to use forms. The form content describes the
+// connection protocol which should reference the hub, not the device.
 //
 //	 Its structure:
 //		{
@@ -414,29 +425,34 @@ func (tdoc *TD) UpdateTitleDescription(title string, description string) {
 //		     @type: <deviceType>,        // required in HiveOT. See DeviceType vocabulary
 //		     id: <thingID>,              // urn:[{prefix}:]{randomID}   required in hiveot
 //		     title: string,              // required. Name of the thing
-//		     created: <iso8601>,         // will be the current timestamp. See vocabulary TimeFormat
+//		     created: <rfc3339>,         // will be the current timestamp. See vocabulary TimeFormat
 //		     actions: {name:TDAction, ...},
 //		     events:  {name: TDEvent, ...},
 //		     properties: {name: TDProperty, ...}
 //		}
 func NewTD(thingID string, title string, deviceType string) *TD {
+
 	td := TD{
 		AtContext: []any{
 			WoTTDContext,
 			map[string]string{"ht": HiveOTContext},
 		},
-		AtType:     deviceType,
-		Actions:    map[string]*ActionAffordance{},
-		Created:    time.Now().Format(utils.ISO8601Format),
+		AtType:  deviceType,
+		Actions: map[string]*ActionAffordance{},
+
+		Created:    time.Now().Format(time.RFC3339),
 		Events:     map[string]*EventAffordance{},
 		Forms:      nil,
 		ID:         thingID,
-		Modified:   time.Now().Format(utils.ISO8601Format),
+		Modified:   time.Now().Format(time.RFC3339),
 		Properties: map[string]*PropertyAffordance{},
-		// security schemas don't apply to HiveOT devices, except services exposed by the hub itself
-		Security:    vocab.WoTNoSecurityScheme,
-		Title:       title,
-		updateMutex: sync.RWMutex{},
+
+		// security schemas are optional for devices themselves but will be added by the Hub services
+		// that provide the TDD.
+		Security:            vocab.WoTNoSecurityScheme,
+		SecurityDefinitions: make(map[string]SecurityScheme),
+		Title:               title,
+		updateMutex:         sync.RWMutex{},
 	}
 
 	return &td

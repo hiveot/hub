@@ -23,11 +23,16 @@
 						<span>{{$v.Title}}</span>
 					</div>
 					<div>{{$v.ActionType}}</div>
-					<div class="h-show-md">{{$.Values.ToString $k}}</div>
+					<div class="h-show-md"
+					     sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
+						{{$.Values.ToString $k}}
+					</div>
 					<div class="h-show-lg">{{$v.Description}}</div>
 					<div class="h-show-md"
-					     title="Updated: {{$.Values.Age $k}} ago by {{($.Values.SenderID $k)}}">
-              {{$.Values.Updated $k}}</div>
+					     sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
+					     title="Updated: {{$.Values.GetUpdated $k}} by {{($.Values.SenderID $k)}}">
+              {{$.Values.GetUpdated $k}}
+					</div>
 				</li>
     {{end}}
     {{if not .TD.Actions}}

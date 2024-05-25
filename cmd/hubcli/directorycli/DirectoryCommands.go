@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/core/directory/dirclient"
-	"github.com/hiveot/hub/core/history/historyclient"
+	"github.com/hiveot/hub/api/go/directory"
+	"github.com/hiveot/hub/api/go/outbox"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
@@ -15,13 +15,13 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 )
 
-func DirectoryListCommand(hc **hubclient.HubClient) *cli.Command {
+func DirectoryListCommand(hc *hubclient.IHubClient) *cli.Command {
 	var verbose = false
 	return &cli.Command{
 		Name:      "ld",
 		Category:  "directory",
 		Usage:     "List directory of Things",
-		ArgsUsage: "[<agentID> <thingID>]",
+		ArgsUsage: "[<thingID>]",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:        "raw",
@@ -31,12 +31,12 @@ func DirectoryListCommand(hc **hubclient.HubClient) *cli.Command {
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
-			var err = fmt.Errorf("expected 0 or 2 parameters")
+			var err = fmt.Errorf("expected 0 or 1 parameters")
 			if cCtx.NArg() == 0 {
 				err = HandleListDirectory(*hc)
-			} else if cCtx.NArg() == 2 {
+			} else if cCtx.NArg() == 1 {
 				if !verbose {
-					err = HandleListThing(*hc, cCtx.Args().First(), cCtx.Args().Get(1))
+					err = HandleListThing(*hc, cCtx.Args().First())
 				} else {
 					err = HandleListThingVerbose(*hc, cCtx.Args().First(), cCtx.Args().Get(1))
 				}
@@ -47,26 +47,18 @@ func DirectoryListCommand(hc **hubclient.HubClient) *cli.Command {
 }
 
 // HandleListDirectory lists the directory content
-func HandleListDirectory(hc *hubclient.HubClient) (err error) {
-	offset := 0
-	limit := 100
-	rdir := dirclient.NewReadDirectoryClient(hc)
-
-	cursor, err := rdir.GetCursor()
+func HandleListDirectory(hc hubclient.IHubClient) (err error) {
+	// todo: iterate with offset and limit
+	args := directory.ReadTDsArgs{Offset: 0, Limit: 300}
+	resp, err := directory.ReadTDs(hc, args)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Agent ID / Thing ID                 @type                               Title                                #props  #events #actions   Updated         \n")
+	fmt.Printf("Thing ID                            @type                               Title                                #props  #events #actions   GetUpdated         \n")
 	fmt.Printf("----------------------------------  ----------------------------------  -----------------------------------  ------  ------- --------   -----------------------------\n")
-	i := 0
-	tv, valid, err := cursor.First()
-	if offset > 0 {
-		// TODO, skip
-		//tv, valid = cursor.Skip(offset)
-	}
-	for ; valid && i < limit; tv, valid, err = cursor.Next() {
+	for _, tdJSON := range resp.Output {
 		var tdDoc things.TD
-		err = json.Unmarshal(tv.Data, &tdDoc)
+		err = json.Unmarshal([]byte(tdJSON), &tdDoc)
 		var utime time.Time
 		if tdDoc.Modified != "" {
 			utime, err = dateparse.ParseAny(tdDoc.Modified)
@@ -77,7 +69,7 @@ func HandleListDirectory(hc *hubclient.HubClient) (err error) {
 		timeStr := utils.FormatMSE(utime.In(time.Local).UnixMilli(), false)
 
 		fmt.Printf("%-35s %-35.35s %-35.35s %7d  %7d  %7d   %-30s\n",
-			tv.AgentID+" / "+tdDoc.ID,
+			tdDoc.ID,
 			tdDoc.AtType,
 			tdDoc.Title,
 			len(tdDoc.Properties),
@@ -91,25 +83,27 @@ func HandleListDirectory(hc *hubclient.HubClient) (err error) {
 }
 
 // HandleListThing lists details of a Thing in the directory
-func HandleListThing(hc *hubclient.HubClient, pubID, thingID string) error {
+func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 	var tdDoc things.TD
 
-	rdir := dirclient.NewReadDirectoryClient(hc)
-	rhist := historyclient.NewReadHistoryClient(hc)
-	tv, err := rdir.GetTD(pubID, thingID)
+	tdResp, err := directory.ReadTD(hc,
+		directory.ReadTDArgs{ThingID: thingID})
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal(tv.Data, &tdDoc)
+	err = json.Unmarshal([]byte(tdResp.Output), &tdDoc)
 	if err != nil {
 		return err
 	}
-	histValues, err := rhist.GetLatest(pubID, thingID, nil)
+	latestResp, err := outbox.ReadLatest(hc,
+		outbox.ReadLatestArgs{ThingID: thingID})
+	valueMap := things.ThingMessageMap{}
+	err = json.Unmarshal([]byte(latestResp.Values), &valueMap)
 
 	if err != nil {
 		slog.Error("Unable to read history:", "err", err)
 	}
-	fmt.Printf("%sTD of %s %s:%s\n", utils.COBlue, pubID, thingID, utils.COReset)
+	fmt.Printf("%sTD of %s    %s\n", utils.COBlue, thingID, utils.COReset)
 	fmt.Printf(" title:       %s\n", tdDoc.Title)
 	fmt.Printf(" description: %s\n", tdDoc.Description)
 	fmt.Printf(" @type:       %s\n", tdDoc.AtType)
@@ -123,7 +117,7 @@ func HandleListThing(hc *hubclient.HubClient, pubID, thingID string) error {
 	for _, key := range keys {
 		prop, found := tdDoc.Properties[key]
 		if found && prop.ReadOnly {
-			value := histValues.ToString(key)
+			value := valueMap.ToString(key)
 			fmt.Printf(" %-30s %-40.40s %s%-15.15v%s %.80s\n",
 				key, prop.Title, utils.COGreen, value, utils.COReset, prop.Description)
 		}
@@ -135,7 +129,7 @@ func HandleListThing(hc *hubclient.HubClient, pubID, thingID string) error {
 	for _, key := range keys {
 		prop, found := tdDoc.Properties[key]
 		if found && !prop.ReadOnly {
-			value := histValues.ToString(key)
+			value := valueMap[key]
 			fmt.Printf(" %-30s %-40.40s %-10s %s%-20.20v%s %.80s\n",
 				key, prop.Title, prop.Type, utils.COBlue, value, utils.COReset, prop.Description)
 		}
@@ -151,7 +145,7 @@ func HandleListThing(hc *hubclient.HubClient, pubID, thingID string) error {
 		if ev.Data != nil {
 			dataType = ev.Data.Type
 		}
-		value := histValues.ToString(key)
+		value := valueMap.ToString(key)
 		if ev.Data != nil {
 			//initialValue = ev.Data.InitialValue
 		}
@@ -166,7 +160,7 @@ func HandleListThing(hc *hubclient.HubClient, pubID, thingID string) error {
 	for _, key := range keys {
 		action := tdDoc.Actions[key]
 		dataType := "(n/a)"
-		value := histValues.ToString(key)
+		value := valueMap.ToString(key)
 		if action.Input != nil {
 			dataType = action.Input.Type
 			//initialValue = action.Input.InitialValue
@@ -178,14 +172,14 @@ func HandleListThing(hc *hubclient.HubClient, pubID, thingID string) error {
 	return err
 }
 
-// HandleListThingVerbose lists a Thing in the directory
-func HandleListThingVerbose(hc *hubclient.HubClient, pubID, thingID string) error {
-	rdir := dirclient.NewReadDirectoryClient(hc)
-	tv, err := rdir.GetTD(pubID, thingID)
+// HandleListThingVerbose lists a Thing full TD
+func HandleListThingVerbose(hc hubclient.IHubClient, pubID, thingID string) error {
+	resp, err := directory.ReadTD(hc, directory.ReadTDArgs{ThingID: thingID})
+
 	if err != nil {
 		return err
 	}
 	fmt.Println("TD of", pubID, thingID)
-	fmt.Printf("%s\n", tv.Data)
+	fmt.Printf("%s\n", resp.Output)
 	return err
 }

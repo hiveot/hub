@@ -15,8 +15,8 @@ import (
 const DirectoryTemplate = "directory.gohtml"
 
 type DirGroup struct {
-	Publisher string
-	Things    []*things.TD
+	AgentID string
+	Things  []*things.TD
 }
 
 type DirectoryData struct {
@@ -25,7 +25,7 @@ type DirectoryData struct {
 
 // Sort the given list of things and group them by publishing agent
 // this returns a map of groups each containing an array of thing values
-func sortByPublisher(tvList []things.ThingValue) *DirectoryData {
+func sortByPublisher(tvList []things.ThingMessage) *DirectoryData {
 	dirData := &DirectoryData{
 		Groups: make(map[string]*DirGroup),
 	}
@@ -40,13 +40,13 @@ func sortByPublisher(tvList []things.ThingValue) *DirectoryData {
 		tplGroup, found := dirData.Groups[tv.SenderID]
 		if !found {
 			tplGroup = &DirGroup{
-				Publisher: tv.SenderID,
-				Things:    make([]*things.TD, 0),
+				AgentID: tv.SenderID,
+				Things:  make([]*things.TD, 0),
 			}
 			dirData.Groups[tv.SenderID] = tplGroup
 		}
 		td := things.TD{}
-		err := json.Unmarshal(tv.Data, &td)
+		err := json.Unmarshal([]byte(tv.Data), &td)
 		if err == nil {
 			tplGroup.Things = append(tplGroup.Things, &td)
 			if len(tplGroup.Things) == 0 {

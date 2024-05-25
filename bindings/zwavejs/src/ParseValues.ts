@@ -2,6 +2,7 @@ import {getEnumMemberName, NodeStatus, ZWaveNode, ZWavePlusNodeType, ZWavePlusRo
 import {InterviewStage, SecurityClass} from '@zwave-js/core';
 import * as vocab from "@hivelib/api/ht-vocab";
 import {getPropID} from "./getPropID";
+import {PropDeviceDescription, PropDeviceSoftwareVersion} from "@hivelib/api/ht-vocab";
 
 
 // Value map for node values
@@ -44,7 +45,7 @@ export class ParseValues {
         //--- Node read-only attributes that are common to many nodes
         this.setIf("associationCount", node.deviceConfig?.associations?.size);
         this.setIf("canSleep", node.canSleep);
-        this.setIf("description", node.deviceConfig?.description);
+        this.setIf(PropDeviceDescription, node.deviceConfig?.description);
 
         if (node.deviceClass) {
             this.setIf("deviceClassBasic", node.deviceClass.basic.label);
@@ -54,7 +55,7 @@ export class ParseValues {
         }
         this.setIf("endpointCount", node.getEndpointCount().toString());
         // this.setIf("dc.firmwareVersion", node.deviceConfig?.firmwareVersion);
-        this.setIf("firmwareVersion", node.firmwareVersion?.toString());
+        this.setIf(vocab.PropDeviceFirmwareVersion, node.firmwareVersion?.toString());
 
         if (node.getHighestSecurityClass()) {
             let classID = node.getHighestSecurityClass() as number
@@ -69,7 +70,7 @@ export class ParseValues {
         this.setIf("isRouting", node.isRouting);
         this.setIf("isControllerNode", node.isControllerNode)
         this.setIf("keepAwake", node.keepAwake);
-        this.setIf("label", node.deviceConfig?.label)
+        this.setIf(vocab.PropDeviceTitle, node.deviceConfig?.label)
         this.setIf("manufacturerId", node.manufacturerId);
         this.setIf(vocab.PropDeviceMake, node.deviceConfig?.manufacturer);
 
@@ -79,23 +80,23 @@ export class ParseValues {
             this.setIf("nodeTypName", getEnumMemberName(ZWavePlusNodeType, node.nodeType));
         }
         this.setIf("paramCount", node.deviceConfig?.paramInformation?.size);
-        this.setIf("productID", node.productId);
+        this.setIf("productId", node.productId);
         this.setIf("productType", node.productType);
         this.setIf("protocolVersion", node.protocolVersion);
-        this.setIf("sdkVersion", node.sdkVersion);
-        this.setIf("status", node.status);
-        this.setIf("statusName", getEnumMemberName(NodeStatus, node.status));
+        this.setIf(vocab.PropDeviceSoftwareVersion, node.sdkVersion);
+        this.setIf(vocab.PropDeviceStatus, getEnumMemberName(NodeStatus, node.status));
         this.setIf("supportedDataRates", node.supportedDataRates);
+
         this.setIf("userIcon", node.userIcon);
         if (node.zwavePlusNodeType) {
-            this.setIf("zwPlusType", node.zwavePlusNodeType);
-            this.setIf("zwPlusTypeName", getEnumMemberName(ZWavePlusNodeType, node.zwavePlusNodeType));
+            this.setIf("zwavePlusNodeType", node.zwavePlusNodeType);
+            this.setIf("zwavePlusNodeTypeName", getEnumMemberName(ZWavePlusNodeType, node.zwavePlusNodeType));
         }
         if (node.zwavePlusRoleType) {
             this.setIf("zwavePlusRoleType", node.zwavePlusRoleType);
             this.setIf("zwavePlusRoleTypeName", getEnumMemberName(ZWavePlusRoleType, node.zwavePlusRoleType));
         }
-        this.setIf("zwPlusVersion", node.zwavePlusVersion);
+        this.setIf("zwavePlusVersion", node.zwavePlusVersion);
 
         // add value ID values
         let vids = node.getDefinedValueIDs()

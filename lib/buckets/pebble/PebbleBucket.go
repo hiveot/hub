@@ -2,7 +2,6 @@ package pebble
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
@@ -47,7 +46,7 @@ func (bucket *PebbleBucket) Close() (err error) {
 // Cursor provides an iterator for the bucket using a pebble iterator with prefix bounds
 //
 //	optional name for use by application
-func (bucket *PebbleBucket) Cursor(ctx context.Context) (buckets.IBucketCursor, error) {
+func (bucket *PebbleBucket) Cursor() (buckets.IBucketCursor, error) {
 	// bucket prefix is {bucketID}$
 	// range bounds end at {bucketID}@
 	opts := &pebble.IterOptions{
@@ -69,8 +68,7 @@ func (bucket *PebbleBucket) Cursor(ctx context.Context) (buckets.IBucketCursor, 
 		slog.Error("Error getting cursor", "err", err)
 		return nil, fmt.Errorf("Error getting cursor: %w", err)
 	}
-	cursor := NewPebbleCursor(ctx,
-		bucket.bucketID, bucket.rangeStart, bucketIterator)
+	cursor := NewPebbleCursor(bucket.bucketID, bucket.rangeStart, bucketIterator)
 	return cursor, nil
 }
 

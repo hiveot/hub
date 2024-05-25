@@ -2,10 +2,10 @@ package idprovcli
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/auth/authapi"
-	"github.com/hiveot/hub/core/idprov/idprovapi"
-	"github.com/hiveot/hub/core/idprov/idprovclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/services/idprov/idprovapi"
+	"github.com/hiveot/hub/services/idprov/idprovclient"
 	"github.com/urfave/cli/v2"
 
 	"github.com/hiveot/hub/lib/hubclient"
@@ -13,7 +13,7 @@ import (
 
 // ProvisionPreApproveCommand
 // prov preapprove  <deviceID> <pubKey> [<mac>]
-func ProvisionPreApproveCommand(hc **hubclient.HubClient) *cli.Command {
+func ProvisionPreApproveCommand(hc *hubclient.IHubClient) *cli.Command {
 	return &cli.Command{
 		Name:      "idppreapprove",
 		Usage:     "Preapprove a device for automated provisioning",
@@ -35,7 +35,7 @@ func ProvisionPreApproveCommand(hc **hubclient.HubClient) *cli.Command {
 
 // ProvisionApproveRequestCommand
 // prov approve <deviceID>
-func ProvisionApproveRequestCommand(hc **hubclient.HubClient) *cli.Command {
+func ProvisionApproveRequestCommand(hc *hubclient.IHubClient) *cli.Command {
 	return &cli.Command{
 		Name:      "idpapprove",
 		Usage:     "Approve a pending provisioning request",
@@ -52,7 +52,7 @@ func ProvisionApproveRequestCommand(hc **hubclient.HubClient) *cli.Command {
 	}
 }
 
-func ProvisionListCommand(hc **hubclient.HubClient) *cli.Command {
+func ProvisionListCommand(hc *hubclient.IHubClient) *cli.Command {
 	return &cli.Command{
 		Name:     "idplist",
 		Usage:    "List provisioning requests",
@@ -64,7 +64,7 @@ func ProvisionListCommand(hc **hubclient.HubClient) *cli.Command {
 	}
 }
 
-func ProvisionRequestCommand(hc **hubclient.HubClient) *cli.Command {
+func ProvisionRequestCommand(hc *hubclient.IHubClient) *cli.Command {
 	return &cli.Command{
 		Name:      "idpsubmit",
 		Usage:     "Submit a provisioning request",
@@ -91,11 +91,11 @@ func ProvisionRequestCommand(hc **hubclient.HubClient) *cli.Command {
 //
 //	deviceID is the ID of the device to pre-approve
 //	pubKey device's public key
-func HandlePreApprove(hc *hubclient.HubClient, deviceID string, pubKey string, mac string) error {
+func HandlePreApprove(hc hubclient.IHubClient, deviceID string, pubKey string, mac string) error {
 	cl := idprovclient.NewIdProvManageClient(hc)
 	approvals := []idprovapi.PreApprovedClient{{
 		ClientID:   deviceID,
-		ClientType: authapi.ClientTypeDevice,
+		ClientType: api.ClientTypeAgent,
 		MAC:        mac,
 		PubKey:     pubKey,
 	}}
@@ -107,14 +107,14 @@ func HandlePreApprove(hc *hubclient.HubClient, deviceID string, pubKey string, m
 // HandleApproveRequest
 //
 //	deviceID is the ID of the device to approve
-func HandleApproveRequest(hc *hubclient.HubClient, deviceID string) error {
+func HandleApproveRequest(hc hubclient.IHubClient, deviceID string) error {
 	cl := idprovclient.NewIdProvManageClient(hc)
-	err := cl.ApproveRequest(deviceID, authapi.ClientTypeDevice)
+	err := cl.ApproveRequest(deviceID, api.ClientTypeAgent)
 
 	return err
 }
 
-func HandleListRequests(hc *hubclient.HubClient) error {
+func HandleListRequests(hc hubclient.IHubClient) error {
 	cl := idprovclient.NewIdProvManageClient(hc)
 	provStatus, err := cl.GetRequests(true, false, false)
 	if err != nil {
@@ -152,7 +152,7 @@ func HandleListRequests(hc *hubclient.HubClient) error {
 //
 //	deviceID is the ID of the device requesting a token
 //	pubKey is the public key to use, or use \"" to accept device offered key
-func HandleSubmitRequest(hc *hubclient.HubClient, deviceID string, pubKey string, mac string) error {
+func HandleSubmitRequest(hc hubclient.IHubClient, deviceID string, pubKey string, mac string) error {
 	cl := idprovclient.NewIdProvManageClient(hc)
 	status, token, err := cl.SubmitRequest(deviceID, pubKey, mac)
 	_ = status

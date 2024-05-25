@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	vocab "github.com/hiveot/hub/api/go"
+	vocab2 "github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -22,6 +22,8 @@ const bindingMake = "make"
 
 // OWServerBinding is the hub protocol binding plugin for capturing 1-wire OWServer V2 Data
 type OWServerBinding struct {
+	thingID string
+
 	// Configuration of this protocol binding
 	config *config.OWServerConfig
 
@@ -48,28 +50,27 @@ type OWServerBinding struct {
 
 // CreateBindingTD generates a TD document for this binding
 func (svc *OWServerBinding) CreateBindingTD() *things.TD {
-	thingID := svc.hc.ClientID()
-	td := things.NewTD(thingID, "OWServer binding", vocab.ThingServiceAdapter)
+	td := things.NewTD(svc.thingID, "OWServer binding", vocab2.ThingServiceAdapter)
 	td.Description = "Driver for the OWServer V2 Gateway 1-wire interface"
 
-	prop := td.AddProperty(bindingMake, vocab.PropDeviceMake,
-		"Developed By", vocab.WoTDataTypeString)
+	prop := td.AddProperty(bindingMake, vocab2.PropDeviceMake,
+		"Developed By", vocab2.WoTDataTypeString)
 
 	// these are configured through the configuration file.
-	prop = td.AddProperty(bindingValuePollIntervalID, vocab.PropDevicePollinterval,
-		"Value Polling Interval", vocab.WoTDataTypeInteger)
-	prop.Unit = vocab.UnitSecond
+	prop = td.AddProperty(bindingValuePollIntervalID, vocab2.PropDevicePollinterval,
+		"Value Polling Interval", vocab2.WoTDataTypeInteger)
+	prop.Unit = vocab2.UnitSecond
 
 	prop = td.AddProperty(bindingValuePublishIntervalID, "",
-		"Value republish Interval", vocab.WoTDataTypeInteger)
-	prop.Unit = vocab.UnitSecond
+		"Value republish Interval", vocab2.WoTDataTypeInteger)
+	prop.Unit = vocab2.UnitSecond
 
-	prop = td.AddProperty(bindingTDIntervalID, vocab.PropDevicePollinterval,
-		"TD Publication Interval", vocab.WoTDataTypeInteger)
-	prop.Unit = vocab.UnitSecond
+	prop = td.AddProperty(bindingTDIntervalID, vocab2.PropDevicePollinterval,
+		"TD Publication Interval", vocab2.WoTDataTypeInteger)
+	prop.Unit = vocab2.UnitSecond
 
-	prop = td.AddProperty(bindingOWServerAddressID, vocab.PropNetAddress,
-		"OWServer gateway IP address", vocab.WoTDataTypeString)
+	prop = td.AddProperty(bindingOWServerAddressID, vocab2.PropNetAddress,
+		"OWServer gateway IP address", vocab2.WoTDataTypeString)
 	return td
 }
 
@@ -94,6 +95,7 @@ func (svc *OWServerBinding) Start(hc *hubclient.HubClient) (err error) {
 		logging.SetLogging(svc.config.LogLevel, "")
 	}
 	svc.hc = hc
+	svc.thingID = hc.ClientID()
 	// Create the adapter for the OWServer 1-wire gateway
 	svc.edsAPI = eds.NewEdsAPI(
 		svc.config.OWServerURL, svc.config.OWServerLogin, svc.config.OWServerPassword)

@@ -22,7 +22,7 @@ type IPNetBinding struct {
 }
 
 // ActionHandler handle action requests
-func (svc *IPNetBinding) ActionHandler(msg *things.ThingValue) ([]byte, error) {
+func (svc *IPNetBinding) ActionHandler(msg *things.ThingMessage) ([]byte, error) {
 	return nil, fmt.Errorf("unknown action '%s'", msg.Name)
 }
 

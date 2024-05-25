@@ -3,7 +3,7 @@ package thing
 import (
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
-	vocab "github.com/hiveot/hub/api/go"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/core/directory/dirclient"
@@ -26,22 +26,19 @@ type DetailsTemplateData struct {
 	// These lists are sorted by property/event/action name
 	Attributes map[string]*things.PropertyAffordance
 	Config     map[string]*things.PropertyAffordance
-	Values     things.ThingValueMap
+	Values     things.ThingMessageMap
 }
 
 // return a map with the latest property values of a thing or nil if failed
-func getLatest(agentID string, thingID string, hc *hubclient.HubClient) (things.ThingValueMap, error) {
-	data := things.NewThingValueMap()
+func getLatest(agentID string, thingID string, hc *hubclient.HubClient) (things.ThingMessageMap, error) {
+	data := things.NewThingMessageMap()
 	rh := historyclient.NewReadHistoryClient(hc)
 	tvs, err := rh.GetLatest(agentID, thingID, nil)
 	if err != nil {
 		return data, err
 	}
 	for _, tv := range tvs {
-		data.Set(tv.Name, tv)
-		if tv.Data == nil {
-			tv.Data = []byte("")
-		}
+		data.Set(tv.Key, tv)
 	}
 	//_ = data.of("")
 	return data, nil
@@ -71,7 +68,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 		tv, err2 := rd.GetTD(agentID, thingID)
 		err = err2
 		if err == nil {
-			err = json.Unmarshal(tv.Data, &thingData.TD)
+			err = json.Unmarshal([]byte(tv.Data), &thingData.TD)
 			// split properties into attributes and configuration
 			for k, prop := range thingData.TD.Properties {
 				if prop.ReadOnly {

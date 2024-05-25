@@ -106,7 +106,7 @@ func readStoreFile(storePath string) (docs map[string]map[string][]byte, err err
 //	storePath is the full path to the file or "" when ignored
 //	docs contains an object map of the store objects
 func writeStoreFile(storePath string, docs map[string]map[string][]byte) error {
-	slog.Info("writeStoreFile: Flush changes to json store", "storePath", storePath)
+	slog.Debug("writeStoreFile: Flush changes to json store", "storePath", storePath)
 	if storePath == "" {
 		return nil
 	}

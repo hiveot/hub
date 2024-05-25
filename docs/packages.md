@@ -3,13 +3,12 @@
 HiveOT Packages providing the core services along with a starter set of protocol bindings and client services.
 
 * cmd - commandline interface
-	* hubcli - hub commandling interface
+    * hubcli - hub commandling interface
 
 * core - hub core services
-	* auth - management of authentication and authorization for the messaging server
+	* auth - management of authentication and authorization for use by messaging servers and communication protocols
 	* certs - management of CA and server certificate
-	* config - hub configuration - to be deprecated in the future
-	* directory - collects and serves the TD documents of discovered Things
+	* digitwin - digital twin repository
 	* history - collects and serves a history of Thing events
 	* idprov - provisioning service
 	* launcher - service for starting and stopping of plugins

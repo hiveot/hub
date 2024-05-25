@@ -75,7 +75,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err err
 		}
 		if len(attrMap) > 0 {
 			attrMapJSON, _ := ser.Marshal(attrMap)
-			err = svc.hc.PubEvent(thingID, transports.EventNameProps, attrMapJSON)
+			err = svc.hc.PubEvent(thingID, transports.EventTypeProps, attrMapJSON)
 		}
 	}
 	return err

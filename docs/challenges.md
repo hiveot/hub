@@ -99,3 +99,13 @@ While the last iteration using capnp RPC was fast, secure, reliable, and easy to
 ## Lack of Audio And Video
 
 Support for audio and video is desirable but is not supported by IoT protocols.
+
+
+## WoT TD
+* no titles for enum values, workaround use oneOf
+* no best practices with examples; per use-case?
+* no IoT vocabulary, everyone has to roll their own
+* affordances need inheritance which isn't always support (eg golang)
+* multiple types for same property (single item vs list)
+* forms/protocols unclear (2023)
+* thingID uniqueness; using agentID in address 

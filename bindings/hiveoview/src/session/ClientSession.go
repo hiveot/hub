@@ -1,6 +1,8 @@
 package session
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/hiveot/hub/core/state/stateclient"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/transports"
@@ -77,7 +79,7 @@ func (cs *ClientSession) Close() {
 //	 * connected when connected to the hub
 //	 * connecting or disconnected when not connected
 //	info with a human description
-func (cs *ClientSession) GetStatus() transports.HubTransportStatus {
+func (cs *ClientSession) GetStatus() hubclient.HubTransportStatus {
 	status := cs.hc.GetStatus()
 	return status
 }
@@ -90,18 +92,18 @@ func (cs *ClientSession) GetHubClient() *hubclient.HubClient {
 // IsActive returns whether the session has a connection to the Hub or is in the process of connecting.
 func (cs *ClientSession) IsActive() bool {
 	status := cs.hc.GetStatus()
-	return status.ConnectionStatus == transports.Connected ||
-		status.ConnectionStatus == transports.Connecting
+	return status.ConnectionStatus == hubclient.Connected ||
+		status.ConnectionStatus == hubclient.Connecting
 }
 
 // onConnectChange is invoked on disconnect/reconnect
-func (cs *ClientSession) onConnectChange(stat transports.HubTransportStatus) {
+func (cs *ClientSession) onConnectChange(stat hubclient.HubTransportStatus) {
 	slog.Info("connection change",
 		slog.String("clientID", stat.ClientID),
 		slog.String("status", string(stat.ConnectionStatus)))
-	if stat.ConnectionStatus == transports.Connected {
+	if stat.ConnectionStatus == hubclient.Connected {
 		cs.SendSSE("notify", "success:Connection with Hub successful")
-	} else if stat.ConnectionStatus == transports.Connecting {
+	} else if stat.ConnectionStatus == hubclient.Connecting {
 		cs.SendSSE("notify", "warning:Attempt to reconnect to the Hub")
 	} else {
 		cs.SendSSE("notify", "warning:Connection changed: "+string(stat.ConnectionStatus))
@@ -109,30 +111,70 @@ func (cs *ClientSession) onConnectChange(stat transports.HubTransportStatus) {
 }
 
 // onEvent passes incoming events from the Hub to the SSE client(s)
-func (cs *ClientSession) onEvent(msg *things.ThingValue) {
+func (cs *ClientSession) onEvent(msg *things.ThingMessage) {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
-	// FIXME: HOW TO UPDATE THE VIEW MODEL?
-	// a: each view has its own viewmodel that is updated
-	//    is this reimplementing vue?
-	//    each view can reload if their data changes
+	// FIXME: HOW TO IMPLEMENT DATA BINDING WITH HTMX fragments?
+	// A: use alpine.js databinding. Include JS objects that the element binds to
+	//    and use sse events to trigger a reload of the object.
+	//
+	//    pro: * one and two-way data binding provided by Alpine
+	//    con: * risk duplicating server/client state
+	//         * dependent on the Alpine-js kitchen sink
+	//
+	// B: use sse event to reload data associated fragments.
+	//    (one event can affect multiple fragments)
+	//
+	//    pro: * isolation between data updates and fragment reload (separation of concerns)
+	//         * support 1-many relationship for data-fragments
+	//    con: * have to manually manage many fragments and event names
+	//         * all fragments must have unique IDs
+	//         * fragment reloads can cause unintended side effects like layout changes.
+	//           for example the open/close state of a 'details' element is reset after reload.
+	//
+	// Q: is there a need for client side state to bind to?
+	// Q: does htmx has an extension to facilitate data binding?
+	//		hx-trigger="customers from:body" ??? how to trigger specific TD ID?
+	//      ? hx-trigger="sse:<thingID>" could this work?
 
-	if msg.Name == transports.EventNameTD {
-		// TODO: send the current view a TD changed event
-		// TODO: how are the other views that use the TD updated?
-		_ = cs.SendSSE(msg.Name, string(msg.Data))
-	} else if msg.Name == transports.EventNameProps {
-		// TODO: send the current view a properties changed event, if applicable
-		// TODO: how are the other views that display the value updated?
+	slog.Info("received event", slog.String("thingID", msg.ThingID),
+		slog.String("id", msg.Name))
+	if msg.Name == transports.EventTypeTD {
+		// Publish sse event indicating the Thing TD has changed.
+		// The UI that displays this event can use this as a trigger to reload the
+		// fragment that displays this TD:
+		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}"
+		thingAddr := fmt.Sprintf("%s/%s", msg.AgentID, msg.ThingID)
+		_ = cs.SendSSE(thingAddr, "")
+	} else if msg.Name == transports.EventTypeProps {
+		// Publish an sse event for each of the properties
+		// The UI that displays this event can use this as a trigger to load the
+		// property value:
+		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}/{{k}}"
+		props := make(map[string]string)
+		err := json.Unmarshal(msg.Data, &props)
+		if err == nil {
+			for k, v := range props {
+				thingAddr := fmt.Sprintf("%s/%s/%s", msg.AgentID, msg.ThingID, k)
+				_ = cs.SendSSE(thingAddr, v)
+				thingAddr = fmt.Sprintf("%s/%s/%s/updated", msg.AgentID, msg.ThingID, k)
+				_ = cs.SendSSE(thingAddr, msg.GetUpdated())
+			}
+		}
 	} else {
-		// value changed event
-		// TODO: send the current view a value changed event, if applicable
-		// TODO: how are the other views that display the value updated?
+		// Publish sse event indicating the event affordance or value has changed.
+		// The UI that displays this event can use this as a trigger to reload the
+		// fragment that displays this event:
+		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}/{{$k}}"
+		// where $k is the event ID
+		thingAddr := fmt.Sprintf("%s/%s/%s", msg.AgentID, msg.ThingID, msg.Name)
+		_ = cs.SendSSE(thingAddr, string(msg.Data))
+		// TODO: improve on this crude way to update the 'updated' field
+		// Can the value contain an object with a value and updated field instead?
+		// htmx sse-swap does allow cherry picking the content unfortunately.
+		thingAddr = fmt.Sprintf("%s/%s/%s/updated", msg.AgentID, msg.ThingID, msg.Name)
+		_ = cs.SendSSE(thingAddr, msg.GetUpdated())
 	}
-	slog.Info("received event", "id", msg.Name)
-	// TODO: determine how events are consumed
-	// SSE's usually expect an HTML snippet, not json data
-	//_ = cs.SendSSE(msg.Name, string(msg.Data))
 }
 
 func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {

@@ -39,7 +39,7 @@ func (svc *IsyBinding) PublishIsyTDs() (err error) {
 			slog.Error(err.Error())
 			return err
 		}
-		//things := svc.IsyGW.GetThings()
+		//things := svc.IsyGW.ReadThings()
 		for _, thing := range svc.IsyGW.GetIsyThings() {
 			td = thing.GetTD()
 			err = svc.hc.PubTD(td)
