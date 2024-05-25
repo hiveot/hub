@@ -113,72 +113,93 @@ type IHubClient interface {
 	// GetStatus returns the current transport connection status
 	GetStatus() HubTransportStatus
 
-	// PubAction publishes an action request and waits for a response.
-	//	thingID for whom the action is intended
-	//	key ID or method name of the action
+	// PubAction publishes an action request and returns as soon as the request is delivered
+	// to the Hub inbox.
+	//
+	// There are two main use-cases for this.
+	// 1. Invoke an action on an IoT device and receive confirmation of delivery and
+	//    whether it was successful. The initial delivery 'delivered' status will be returned
+	//    immediately if the device agent is connected. The 'completed' status will be
+	//    sent asynchronously. This can take a while if the device is asleep.
+	// 2. Invoke a method on a service and retrieve a result.
+	//    In most cases it is recommended to use the 'Rpc' method for this as it waits
+	//    and correlates the delivery status event with the request and returns the result.
+	//
+	// Embedded services respond with a completed status and the result in the Reply field.
+	// Actions aimed to IoT devices and non embedded services will return a delivery status
+	// update separately through a delivery event.
+	//
+	//	dThingID the digital twin ID for whom the action is intended
+	//	key is the action ID or method name of the action to invoke
 	//  payload with serialized message to publish
-	//  returns a delivery status with serialized response message if delivered
-	PubAction(thingID string, key string, payload []byte) (api.DeliveryStatus, error)
+	//
+	// This returns a delivery status with serialized response message if delivered
+	PubAction(thingID string, key string, payload []byte) api.DeliveryStatus
 
-	// PubEvent publishes an event style message without waiting for a response.
-	//	thingID whose event is published
+	// PubEvent publishes an event style message without a response.
+	// It returns as soon as delivery to the hub is confirmed.
+	// This is intended for agents, not for consumers.
+	//
+	// Events are published using their native ID, not the digital twin ID. The Hub
+	// outbox broadcasts this event using the digital twin ID.
+	//
+	//	thingID native ID of the thing whose event is published
 	//	key ID of the event
 	//	payload with serialized message to publish
-	PubEvent(thingID string, key string, payload []byte) (api.DeliveryStatus, error)
+	//
+	// This returns an error if the event cannot not be delivered to the hub
+	PubEvent(thingID string, key string, payload []byte) error
 
 	// RefreshToken refreshes the authentication token
 	// The resulting token can be used with 'ConnectWithJWT'
 	RefreshToken() (newToken string, err error)
 
-	// Rpc makes a RPC call using an action and waits for a delivery confirmation.
+	// Rpc makes a RPC call using an action and waits for a delivery confirmation event.
 	//
-	// The implementation of this is synchronous. This waits until a completion response
-	// is received or a timeout occurs (set with creating the HubClient transport)
+	// This is equivalent to use PubAction to send the request, use SetMessageHandler
+	// to receive the delivery confirmation event and match the 'messageID' from the
+	// delivery status event with the status returned by the action request.
 	//
-	// To make an asynchronous RPC call, use PubAction and SetMessageHandler instead.
+	// The arguments and responses are defined in structs (same approach as gRPC) which are
+	// defined in the service api. This struct can also be generated from the TD document
+	// if available at build time. See cmd/genapi for the CLI.
 	//
-	// The arguments and responses use a struct (same approach as gRPC) which is
-	// defined by the service. This struct can also be generated from the actions
-	// defined in the service TD document. See cmd/genapi for the CLI.
-	//
-	//	thingID is the ID of the service providing the RPC method
+	//	dThingID is the digital twin ID of the service providing the RPC method
 	//	key is the ID of the RPC method as described in the service TD action affordance
-	//	args is the struct containing the arguments to marshal
-	//	resp is the struct receiving the result values
+	//	args is the address of a struct containing the arguments to marshal
+	//	resp is the address of a struct receiving the result values
 	//
 	// This returns an error if delivery failed or an error was returned
-	Rpc(thingID string, key string, args interface{}, resp interface{}) error
-
-	// SetConnectHandler sets the notification handler of connection status changes
-	SetConnectHandler(cb func(status HubTransportStatus))
+	Rpc(dThingID string, key string, args interface{}, resp interface{}) error
 
 	// SetActionHandler set the handler that receives all actions directed at this client
 	// This replaces any previously set action handler.
 	//
 	SetActionHandler(cb api.MessageHandler)
 
-	// SetEventHandler set the handler that receives all subscribed events, and
-	// messages directed at this client.
+	// SetConnectHandler sets the notification handler of connection status changes
+	SetConnectHandler(cb func(status HubTransportStatus))
+
+	// SetEventHandler set the handler that receives all subscribed events, and other
+	// message types, subscribed to by this client.
 	//
 	// This replaces any previously set event handler.
 	//
-	// See also 'Subscribe' to set the things this client receives messages for.
-	SetEventHandler(cb api.MessageHandler)
+	// See also 'Subscribe' to set the ThingIDs this client receives messages for.
+	SetEventHandler(cb api.EventHandler)
 
-	// Subscribe adds a subscription for one or more events from the thingID.
+	// Subscribe adds a subscription for events from the given ThingID.
 	//
 	// This is for events only. Actions directed to this client are automatically passed
-	// to this client's messageHandler. The TD documents published by this agent have
-	// their ThingID associated with the agent using this transport.
+	// to this client's messageHandler.
 	//
-	//
-	// Events will be passed to the event handler.
-	// This is pretty coarse grained.
 	// Subscriptions remain in effect when the connection with the messaging server is interrupted.
-	//  thingID is the ID of the Thing whose events to receive or "" for events from all things
-	Subscribe(thingID string) error
+	//
+	//  dThingID is the digital twin ID of the Thing to subscribe to.
+	//	key is the type of event to subscribe to or "" for all events
+	Subscribe(dThingID string, key string) error
 
 	// Unsubscribe removes a previous event subscription.
 	// No more events or requests will be received after Unsubscribe.
-	Unsubscribe(thingID string)
+	Unsubscribe(dThingID string) error
 }

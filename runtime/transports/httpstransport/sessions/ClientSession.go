@@ -42,21 +42,40 @@ type ClientSession struct {
 	sseClients []chan SSEEvent
 }
 
-func (cs *ClientSession) AddSSEClient(c chan SSEEvent) {
-	cs.mux.RLock()
-	defer cs.mux.RUnlock()
-	cs.sseClients = append(cs.sseClients, c)
-}
-
 // Close the session
 // This closes the SSE data channels
 func (cs *ClientSession) Close() {
 	cs.mux.Lock()
 	defer cs.mux.Unlock()
+	slog.Info("Closing client session", "clientID", cs.clientID)
 	for _, sseChan := range cs.sseClients {
 		close(sseChan)
 	}
 	cs.sseClients = nil
+}
+
+// CreateSSEChan creates a new SSE channel to communicate with.
+// Call DeleteSSEClient to close and clean up
+func (cs *ClientSession) CreateSSEChan() chan SSEEvent {
+	cs.mux.Lock()
+	defer cs.mux.Unlock()
+	sseChan := make(chan SSEEvent)
+	cs.sseClients = append(cs.sseClients, sseChan)
+	return sseChan
+}
+
+// DeleteSSEChan deletes a previously created SSE channel and closes it.
+func (cs *ClientSession) DeleteSSEChan(c chan SSEEvent) {
+	slog.Info("DeleteSSEChan channel", "clientID", cs.clientID)
+	cs.mux.Lock()
+	defer cs.mux.Unlock()
+	for i, sseClient := range cs.sseClients {
+		if sseClient == c {
+			// delete(cs.sseClients,i)
+			cs.sseClients = append(cs.sseClients[:i], cs.sseClients[i+1:]...)
+			break
+		}
+	}
 }
 
 func (cs *ClientSession) GetClientID() string {
@@ -127,18 +146,6 @@ func (cs *ClientSession) onEvent(msg *things.ThingMessage) {
 	}
 }
 
-func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {
-	cs.mux.RLock()
-	defer cs.mux.RUnlock()
-	for i, sseClient := range cs.sseClients {
-		if sseClient == c {
-			// delete(cs.sseClients,i)
-			cs.sseClients = append(cs.sseClients[:i], cs.sseClients[i+1:]...)
-			break
-		}
-	}
-}
-
 // SendSSE encodes and sends an SSE event to clients of this session
 // Intended to send events to clients over sse.
 // This returns the number of events being sent, or 0 if no client sessions exist
@@ -161,6 +168,16 @@ func (cs *ClientSession) SendSSE(eventType string, payload string) int {
 		count++
 	}
 	return count
+}
+
+// Subscribe adds the event subscription for this session client
+func (cs *ClientSession) Subscribe(dThingID string, key string) {
+
+}
+
+// Unsubscribe removes the event subscription for this session client
+func (cs *ClientSession) Unsubscribe(dThingID string, key string) {
+
 }
 
 // NewClientSession creates a new client session

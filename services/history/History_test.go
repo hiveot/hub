@@ -42,12 +42,12 @@ var ts *testenv.TestServer
 var names = []string{"temperature", "humidity", "pressure", "wind", "speed", "switch", "location", "sensor-A", "sensor-B", "sensor-C"}
 
 // Create a new store, delete if it already exists
-func startHistoryService() (
+func startHistoryService(clean bool) (
 	svc *service.HistoryService,
 	r *historyclient.ReadHistoryClient,
 	stopFn func()) {
 
-	ts = testenv.StartTestServer(true)
+	ts = testenv.StartTestServer(clean)
 	//svcConfig := config.NewHistoryConfig(ts.TestDir)
 	histStore, err := bucketstore.NewBucketStore(
 		ts.TestDir, "hist", historyStoreBackend)
@@ -59,8 +59,7 @@ func startHistoryService() (
 	}
 
 	// the service needs a server connection
-	hc, _ := ts.AddConnectClient(
-		api.ClientTypeService, historyapi.AgentID, api.ClientRoleService)
+	hc, _ := ts.AddConnectAgent(api.ClientTypeService, historyapi.AgentID)
 	svc = service.NewHistoryService(histStore)
 	if err == nil {
 		err = svc.Start(hc)
@@ -70,7 +69,7 @@ func startHistoryService() (
 	}
 
 	// create an end user client for testing
-	hc2, _ := ts.AddConnectClient(api.ClientTypeUser, testClientID, api.ClientRoleOperator)
+	hc2, _ := ts.AddConnectUser(testClientID, api.ClientRoleOperator)
 	if err != nil {
 		panic("can't connect operator")
 	}
@@ -162,7 +161,7 @@ func TestMain(m *testing.M) {
 func TestStartStop(t *testing.T) {
 	t.Log("--- TestStartStop ---")
 
-	store, readHist, stopFn := startHistoryService()
+	store, readHist, stopFn := startHistoryService(true)
 	defer stopFn()
 	_ = store
 	_ = readHist
@@ -179,7 +178,7 @@ func TestAddGetEvent(t *testing.T) {
 	const evHumidity = "humidity"
 
 	// add history with two specific things to test against
-	svc, readHist, stopFn := startHistoryService()
+	svc, readHist, stopFn := startHistoryService(true)
 	// do not defer cancel as it will be closed and reopened in the test
 	fivemago := time.Now().Add(-time.Minute * 5)
 	fiftyfivemago := time.Now().Add(-time.Minute * 55)
@@ -248,29 +247,12 @@ func TestAddGetEvent(t *testing.T) {
 	stopFn()
 
 	// PHASE 2: after closing and reopening the svc the event should still be there
-	ts = testenv.StartTestServer(true)
-	defer ts.Stop()
-
-	store2, err := bucketstore.NewBucketStore(
-		ts.TestDir, "hist", historyStoreBackend)
-	if err == nil {
-		err = store2.Open()
-	}
-	require.NoError(t, err)
-	defer store2.Close()
-	hc, _ := ts.AddConnectClient(
-		api.ClientTypeService, historyapi.AgentID, api.ClientRoleService)
-	require.NoError(t, err)
-	defer hc.Disconnect()
-	svc = service.NewHistoryService(store2)
-	err = svc.Start(hc)
-	require.NoError(t, err)
-	defer svc.Stop()
+	svc, readHist, stopFn = startHistoryService(false)
+	defer stopFn()
 
 	// Test 3: get first temperature of things 2 - expect 1 result
 	time.Sleep(time.Second)
-	readHist2 := historyclient.NewReadHistoryClient(hc) // reuse hc, its okay
-	cursor2, releaseFn, err := readHist2.GetCursor(dThing2ID, "")
+	cursor2, releaseFn, err := readHist.GetCursor(dThing2ID, "")
 	require.NoError(t, err)
 	tv4, valid, err := cursor2.First()
 	require.NoError(t, err)
@@ -286,7 +268,7 @@ func TestAddPropertiesEvent(t *testing.T) {
 	const agent1 = "device1"
 	const temp1 = "55"
 
-	svc, readHist, closeFn := startHistoryService()
+	svc, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
 
 	dThing1ID := things.MakeDigiTwinThingID(agent1, thing1ID)
@@ -427,7 +409,7 @@ func TestPrevNext(t *testing.T) {
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
 	var dThing0ID = things.MakeDigiTwinThingID(agentID, thing0ID)
 
-	store, readHist, closeFn := startHistoryService()
+	store, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
 
 	// 10 sensors -> 1 sample per minute, 60 per hour -> 600
@@ -485,7 +467,7 @@ func TestPrevNextFiltered(t *testing.T) {
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
 	var dThing0ID = things.MakeDigiTwinThingID(agent1ID, thing0ID)
 
-	svc, readHist, closeFn := startHistoryService()
+	svc, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
 
 	// 10 sensors -> 1 sample per minute, 60 per hour -> 600
@@ -548,7 +530,7 @@ func TestGetInfo(t *testing.T) {
 	//var dThing0ID = things.MakeDigiTwinThingID(agentID, thing0ID)
 
 	// TODO: add GetInfo
-	store, readHist, stopFn := startHistoryService()
+	store, readHist, stopFn := startHistoryService(true)
 	defer stopFn()
 	_ = readHist
 	addBulkHistory(store, 1000, 5, 1000)
@@ -574,11 +556,11 @@ func TestPubSub(t *testing.T) {
 	//	{Name: vocab.VocabBatteryLevel},
 	//}
 
-	svc, readHist, stopFn := startHistoryService()
+	svc, readHist, stopFn := startHistoryService(true)
 	defer stopFn()
 	_ = svc
 
-	hc1, _ := ts.AddConnectClient(api.ClientTypeAgent, agent1ID, api.ClientRoleAgent)
+	hc1, _ := ts.AddConnectAgent(api.ClientTypeAgent, agent1ID)
 	defer hc1.Disconnect()
 	// publish events
 	names := []string{
@@ -593,7 +575,7 @@ func TestPubSub(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		val := strconv.Itoa(i + 1)
 		// events are published by the agent using their native thingID
-		_, err := hc1.PubEvent(thing0ID, names[i], []byte(val))
+		err := hc1.PubEvent(thing0ID, names[i], []byte(val))
 		assert.NoError(t, err)
 		// make sure timestamp differs
 		time.Sleep(time.Millisecond * 3)
@@ -627,12 +609,12 @@ func TestManageRetention(t *testing.T) {
 	const event2Name = "notRetainedEvent"
 
 	// setup with some history
-	store, readHist, closeFn := startHistoryService()
+	store, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
 	addBulkHistory(store, 1000, 5, 1000)
 
 	// connect as an admin user
-	hc1, _ := ts.AddConnectClient(api.ClientTypeUser, client1ID, api.ClientRoleAdmin)
+	hc1, _ := ts.AddConnectUser(client1ID, api.ClientRoleAdmin)
 	mngHist := historyclient.NewManageHistoryClient(hc1)
 
 	// should be able to read the current retention rules. Expect the default rules.
@@ -660,12 +642,12 @@ func TestManageRetention(t *testing.T) {
 	}
 
 	// connect as device1 and publish two events, one to be retained
-	hc2, _ := ts.AddConnectClient(api.ClientTypeAgent, device1ID, api.ClientRoleAgent)
+	hc2, _ := ts.AddConnectAgent(api.ClientTypeAgent, device1ID)
 	require.NoError(t, err)
 	defer hc2.Disconnect()
-	_, err = hc2.PubEvent(thing0ID, event1Name, []byte("hi)"))
+	err = hc2.PubEvent(thing0ID, event1Name, []byte("hi)"))
 	assert.NoError(t, err)
-	_, err = hc2.PubEvent(thing0ID, event2Name, []byte("hi)"))
+	err = hc2.PubEvent(thing0ID, event2Name, []byte("hi)"))
 	assert.NoError(t, err)
 	// give it some time to persist the bucket
 	time.Sleep(time.Millisecond * 100)

@@ -3,7 +3,7 @@ package pubsubcli
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/lib/hubclient/transports"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
 	"time"
 
@@ -15,7 +15,7 @@ import (
 )
 
 // SubTDCommand shows TD publications
-func SubTDCommand(hc **hubclient.HubClient) *cli.Command {
+func SubTDCommand(hc *hubclient.IHubClient) *cli.Command {
 	return &cli.Command{
 		Name:     "subtd",
 		Usage:    "Subscribe to TD publications",
@@ -27,7 +27,7 @@ func SubTDCommand(hc **hubclient.HubClient) *cli.Command {
 	}
 }
 
-func SubEventsCommand(hc **hubclient.HubClient) *cli.Command {
+func SubEventsCommand(hc *hubclient.IHubClient) *cli.Command {
 	return &cli.Command{
 		Name:      "subev",
 		Usage:     "Subscribe to Thing events",
@@ -57,13 +57,13 @@ func SubEventsCommand(hc **hubclient.HubClient) *cli.Command {
 }
 
 // HandleSubTD subscribes and prints TD publications
-func HandleSubTD(hc *hubclient.HubClient) error {
+func HandleSubTD(hc hubclient.IHubClient) error {
 
-	err := hc.SubEvents("", "", transports.EventTypeTD)
+	err := hc.Subscribe("", vocab.EventTypeTD)
 	if err != nil {
 		return err
 	}
-	hc.SetEventHandler(func(msg *things.ThingMessage) {
+	hc.SetEventHandler(func(msg *things.ThingMessage) error {
 		var td things.TD
 		//fmt.Printf("%s\n", event.ValueJSON)
 		err := json.Unmarshal(msg.Data, &td)
@@ -71,8 +71,9 @@ func HandleSubTD(hc *hubclient.HubClient) error {
 			modifiedTime, _ := dateparse.ParseAny(td.Modified) // can be in any TZ
 			timeStr := utils.FormatMSE(modifiedTime.In(time.Local).UnixMilli(), false)
 			fmt.Printf("%-20.20s %-25.25s %-30.30s %-20.20s %-18.18s\n",
-				msg.AgentID, msg.ThingID, td.Title, td.AtType, timeStr)
+				msg.SenderID, msg.ThingID, td.Title, td.AtType, timeStr)
 		}
+		return nil
 	})
 	fmt.Printf("Agent ID             Thing ID                  Title                          @type                GetUpdated           \n")
 	fmt.Printf("-------------------  ------------------------  -----------------------------  -------------------  --------------------\n")
@@ -81,23 +82,23 @@ func HandleSubTD(hc *hubclient.HubClient) error {
 	return nil
 }
 
-// HandleSubEvents subscribes and prints value and property events
-func HandleSubEvents(hc *hubclient.HubClient, agentID string, thingID string, name string) error {
+// HandleSubEvents subscribes and prints events
+func HandleSubEvents(hc hubclient.IHubClient, agentID string, thingID string, name string) error {
 	fmt.Printf("Subscribing to agentID: '%s', thingID: '%s', name: '%s'\n\n", agentID, thingID, name)
 
 	fmt.Printf("Time             Agent ID             Thing ID                  Event Name                     Value\n")
 	fmt.Printf("---------------  -------------------  ------------------------  -----------------------------  ---------\n")
 
-	err := hc.SubEvents(agentID, thingID, name)
-	hc.SetEventHandler(func(msg *things.ThingMessage) {
+	err := hc.Subscribe(thingID, name)
+	hc.SetEventHandler(func(msg *things.ThingMessage) error {
 		createdTime := time.UnixMilli(msg.CreatedMSec)
 		timeStr := createdTime.Format("15:04:05.000")
 		value := fmt.Sprintf("%-.30s", msg.Data)
-		if msg.Name == transports.EventTypeProps {
+		if msg.Key == vocab.EventTypeProperties {
 			var props map[string]interface{}
 			_ = json.Unmarshal(msg.Data, &props)
 			value = fmt.Sprintf("%d properties", len(props))
-		} else if msg.Name == transports.EventTypeTD {
+		} else if msg.Key == vocab.EventTypeTD {
 			var td things.TD
 			_ = json.Unmarshal(msg.Data, &td)
 			value = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
@@ -105,7 +106,8 @@ func HandleSubEvents(hc *hubclient.HubClient, agentID string, thingID string, na
 		}
 
 		fmt.Printf("%-16.16s %-20.20s %-25.25s %-30.30s %-40.40s\n",
-			timeStr, msg.AgentID, msg.ThingID, msg.Name, value)
+			timeStr, msg.SenderID, msg.ThingID, msg.Key, value)
+		return nil
 	})
 	if err != nil {
 		return err

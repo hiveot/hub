@@ -144,10 +144,9 @@ func (sm *SessionManager) SendEvent(msg *things.ThingMessage) (stat api.Delivery
 		_ = session.SendSSE(vocab.MessageTypeEvent, string(payload))
 	}
 	if len(sm.sidSessions) > 0 {
-		stat.Status = api.DeliveryCompleted
+		stat.Completed(msg, nil)
 	} else {
-		stat.Status = api.DeliveryFailed
-		stat.Error = "No active sessions"
+		stat.Failed(msg, errors.New("no active sessions"))
 	}
 	return stat
 }

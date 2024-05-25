@@ -37,7 +37,7 @@ func TestReconnect(t *testing.T) {
 	ts := startTestServer()
 
 	// connect client and subscribe
-	hc1, err := ts.AddConnectClient(deviceID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
+	hc1, err := ts.AddConnectUser(deviceID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	hc1.SetRetryConnect(true)
 	require.NoError(t, err)
 	defer hc1.Disconnect()

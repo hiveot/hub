@@ -38,7 +38,7 @@ func (svc *SSEHandler) handleSseConnect(w http.ResponseWriter, r *http.Request) 
 	// authentication/login.
 	cs, err := sessions.GetSessionFromContext(r)
 	if cs == nil || err != nil {
-		slog.Warn("No session available, delay retry to 30 seconds")
+		slog.Warn("No session available, telling client to delay retry to 30 seconds")
 
 		// set retry to a large number
 		// while this doesn't redirect, it does stop it from holding a connection.
@@ -52,8 +52,7 @@ func (svc *SSEHandler) handleSseConnect(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// establish a client event channel for sending messages back to the client
-	sseChan := make(chan sessions.SSEEvent)
-	cs.AddSSEClient(sseChan)
+	sseChan := cs.CreateSSEChan()
 
 	// TODO: if this is a first connection of the client send a connected event
 
@@ -69,16 +68,16 @@ func (svc *SSEHandler) handleSseConnect(w http.ResponseWriter, r *http.Request) 
 		// wait for message, or writer closing
 		select {
 		case sseMsg, ok := <-sseChan: // received event
-			slog.Info("SseHandler: sending sse event to client",
-				slog.String("remote", r.RemoteAddr),
-				slog.String("clientID", cs.GetClientID()),
-				slog.String("eventType", sseMsg.EventType),
-				slog.Bool("ok", ok),
-			)
+
 			if !ok { // channel was closed by session
 				done = true
 				break
 			}
+			slog.Info("SseHandler: sending sse event to client",
+				slog.String("remote", r.RemoteAddr),
+				slog.String("clientID", cs.GetClientID()),
+				slog.String("eventType", sseMsg.EventType),
+			)
 			// WARNING: messages are send as MIME type "text/event-stream", which is defined as
 			// "Each message is sent as a block of text terminated by a pair of newlines. "
 			//https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
@@ -96,12 +95,12 @@ func (svc *SSEHandler) handleSseConnect(w http.ResponseWriter, r *http.Request) 
 			break
 		case <-r.Context().Done(): // remote client connection closed
 			slog.Info("Remote client disconnected (read context)")
-			close(sseChan)
+			//close(sseChan)
 			done = true
 			break
 		}
 	}
-	cs.RemoveSSEClient(sseChan)
+	cs.DeleteSSEChan(sseChan)
 	// TODO: if all connections are closed for this client send a disconnected event
 
 	slog.Info("SseHandler: sse connection closed",
@@ -135,27 +134,36 @@ func (svc *SSEHandler) registerWithGosse(r chi.Router) {
 		}
 
 		// establish a client event channel for sending messages back to the client
-		sseChan := make(chan sessions.SSEEvent)
-		cs.AddSSEClient(sseChan)
+		ctx := sseSession.Req.Context()
+		sseChan := cs.CreateSSEChan()
+		done := false
 		go func() {
-			for ev := range sseChan {
-				sseMsg := sse.Message{}
-				sseMsg.AppendData(ev.Payload)
-				sseMsg.ID, _ = sse.NewID(ev.ID)
-				sseMsg.Type, err = sse.NewType(ev.EventType)
-				// FIXME: go-sse uses a fixed buffer size (default 64k). How to send
-				// larger messages? (eg RPC results)
-				// Option 1: return an error
-				// Option 2: split the message and recombine at the receiving end
-				//
-				err = sseSession.Send(&sseMsg)
-				if err != nil {
-					slog.Error("failed sending message", "err", err)
-				} else {
-					_ = sseSession.Flush()
+			for !done {
+				select {
+				case ev, ok := <-sseChan:
+					if !ok { // channel was closed by session
+						done = true
+						break
+					}
+
+					sseMsg := sse.Message{}
+					sseMsg.AppendData(ev.Payload)
+					sseMsg.ID, _ = sse.NewID(ev.ID)
+					sseMsg.Type, err = sse.NewType(ev.EventType)
+					err = sseSession.Send(&sseMsg)
+					if err != nil {
+						slog.Error("failed sending message", "err", err)
+					} else {
+						_ = sseSession.Flush()
+					}
+
+				case <-ctx.Done(): // remote client connection closed
+					slog.Info("Remote client disconnected (req context)")
+					done = true
+					break
 				}
 			}
-			cs.RemoveSSEClient(sseChan)
+			cs.DeleteSSEChan(sseChan)
 			// TODO: if all connections are closed for this client send a disconnected event
 			slog.Info("SseHandler: Session closed", "clientID", cs.GetClientID())
 		}()

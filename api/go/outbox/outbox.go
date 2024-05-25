@@ -1,6 +1,6 @@
 // Package outbox with types and interfaces for using this service with agent 'digitwin'
 // DO NOT EDIT. This file is auto generated. Any changes will be overwritten.
-// Generated 19 May 24 09:16 PDT.
+// Generated 24 May 24 13:34 PDT.
 package outbox
 
 import "encoding/json"
@@ -32,10 +32,10 @@ type ReadLatestArgs struct {
 	ThingID string `json:"thingID"`
 
 	// Keys The event/property IDs to read or empty to read all latest values
-	Keys []string `json:"keys,omitEmpty"`
+	Keys []string `json:"keys,omitempty"`
 
 	// Since Only return values updated since
-	Since string `json:"since,omitEmpty"`
+	Since string `json:"since,omitempty"`
 }
 
 // ReadLatestResp defines the response of the readLatest function
@@ -43,7 +43,7 @@ type ReadLatestArgs struct {
 type ReadLatestResp struct {
 
 	// Values JSON encoded map of key:ThingMessage objects
-	Values string `json:"Values,omitEmpty"`
+	Values string `json:"Values,omitempty"`
 }
 
 const RemoveValueMethod = "removeValue"
@@ -53,7 +53,7 @@ const RemoveValueMethod = "removeValue"
 type RemoveValueArgs struct {
 
 	// MessageID ID of the message to remove
-	MessageID string `json:"messageID,omitEmpty"`
+	MessageID string `json:"messageID,omitempty"`
 }
 
 // ReadLatest client method - Read Latest.
@@ -94,22 +94,21 @@ func NewActionHandler(svc IOutboxService) func(*things.ThingMessage) api.Deliver
 	return func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 		var err error
 		var resp interface{}
-		stat.Completed(msg, nil)
 		switch msg.Key {
-		case "removeValue":
-			args := RemoveValueArgs{}
-			err = json.Unmarshal(msg.Data, &args)
-			if err == nil {
-				err = svc.RemoveValue(args)
-			} else {
-				err = errors.New("bad function argument: " + err.Error())
-			}
-			break
 		case "readLatest":
 			args := ReadLatestArgs{}
 			err = json.Unmarshal(msg.Data, &args)
 			if err == nil {
 				resp, err = svc.ReadLatest(args)
+			} else {
+				err = errors.New("bad function argument: " + err.Error())
+			}
+			break
+		case "removeValue":
+			args := RemoveValueArgs{}
+			err = json.Unmarshal(msg.Data, &args)
+			if err == nil {
+				err = svc.RemoveValue(args)
 			} else {
 				err = errors.New("bad function argument: " + err.Error())
 			}
@@ -121,9 +120,7 @@ func NewActionHandler(svc IOutboxService) func(*things.ThingMessage) api.Deliver
 		if resp != nil {
 			stat.Reply, _ = json.Marshal(resp)
 		}
-		if err != nil {
-			stat.Error = err.Error()
-		}
+		stat.Completed(msg, err)
 		return stat
 	}
 }

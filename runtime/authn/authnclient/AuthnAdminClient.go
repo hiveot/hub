@@ -14,33 +14,32 @@ type AuthnAdminClient struct {
 	dtThingID string
 }
 
-// AddClient adds a new client
-func (svc *AuthnAdminClient) AddClient(
-	clientType api.ClientType, clientID string, displayName string,
-	pubKey string, password string) (err error) {
+// AddUser adds a new user client
+func (svc *AuthnAdminClient) AddUser(
+	clientID string, displayName string, password string) (err error) {
 
-	args := api.AddClientArgs{
+	args := api.AddUserArgs{
+		ClientID:    clientID,
+		DisplayName: displayName,
+		Password:    password,
+	}
+	err = svc.hc.Rpc(svc.dtThingID, api.AddUserMethod, &args, nil)
+	return err
+}
+
+// AddAgent adds a device, service or admin user client and generates a token file
+func (svc *AuthnAdminClient) AddAgent(
+	clientType api.ClientType, clientID string, displayName string, pubKey string) (token string, err error) {
+
+	args := api.AddAgentArgs{
 		ClientType:  clientType,
 		ClientID:    clientID,
 		DisplayName: displayName,
 		PubKey:      pubKey,
-		Password:    password,
 	}
-	err = svc.hc.Rpc(svc.dtThingID, api.AddClientMethod, &args, nil)
-	return err
-}
-
-// AddService adds a service or admin user client and generates a token file
-func (svc *AuthnAdminClient) AddService(
-	clientType api.ClientType, clientID string, displayName string) (err error) {
-
-	args := api.AddServiceArgs{
-		ClientType:  clientType,
-		ClientID:    clientID,
-		DisplayName: displayName,
-	}
-	err = svc.hc.Rpc(svc.dtThingID, api.AddServiceMethod, &args, nil)
-	return err
+	resp := api.AddAgentResp{}
+	err = svc.hc.Rpc(svc.dtThingID, api.AddAgentMethod, &args, &resp)
+	return resp.Token, err
 }
 
 // GetClientProfile request a client's profile

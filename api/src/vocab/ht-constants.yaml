@@ -25,7 +25,6 @@ MessageTypes:
 # DigiTwinRestPaths defines the REST API paths of the DigiTwin service HTTPS binding.
 # This is subject to change as definitions for the query parameters, arguments and responses need to be included.
 # FIXME: this is part of the rest API and doesn't belong here
-# TODO: migrate this to an OpenAPI (swagger) specification.
 DigiTwinRestPaths:
   version: "0.1"
   link: "github.com/hiveot/hub/api/vocab/ht-constants.yaml"
@@ -42,8 +41,9 @@ DigiTwinRestPaths:
     #--- general REST interface
     # SSE connection path
     ConnectSSEPath:   "/sse"
-    # SSE connection path (tbd)
-    #ConnectWSSPath:   "/wss"
+    # Pub/Sub event paths. use '+' for wildcards
+    PostSubscribePath: "/subscribe/{thingID}/{key}"
+    PostUnsubscribePath: "/unsubscribe/{thingID}/{key}"
 
     #--- Authentication service paths
     PostLoginPath:    "/authn/login"

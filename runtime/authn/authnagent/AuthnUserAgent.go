@@ -40,8 +40,8 @@ func (h *AuthnUserHandler) HandleMessage(
 			return h.HandleUpdatePubKey(msg)
 		}
 	}
-	stat.Error = fmt.Sprintf("unknown action '%s' for service '%s'", msg.Key, msg.ThingID)
-	stat.Status = api.DeliveryFailed
+	err := fmt.Errorf("unknown action '%s' for service '%s'", msg.Key, msg.ThingID)
+	stat.Failed(msg, err)
 	return stat
 }
 func (h *AuthnUserHandler) HandleGetProfile(
@@ -50,13 +50,9 @@ func (h *AuthnUserHandler) HandleGetProfile(
 	prof, err := h.svc.GetProfile(msg.SenderID)
 	if err == nil {
 		resp := api.GetProfileResp{Profile: prof}
-		stat.Status = api.DeliveryCompleted
 		stat.Reply, err = json.Marshal(resp)
 	}
-	if err != nil {
-		stat.Error = err.Error()
-		stat.Status = api.DeliveryFailed
-	}
+	stat.Completed(msg, err)
 	return stat
 }
 
@@ -71,14 +67,10 @@ func (h *AuthnUserHandler) HandleLogin(
 		err = err2
 		if err == nil {
 			resp := api.LoginResp{Token: token}
-			stat.Status = api.DeliveryCompleted
 			stat.Reply, err = json.Marshal(resp)
 		}
 	}
-	if err != nil {
-		stat.Error = err.Error()
-		stat.Status = api.DeliveryFailed
-	}
+	stat.Completed(msg, err)
 	return stat
 }
 
@@ -87,7 +79,6 @@ func (h *AuthnUserHandler) HandleRefresh(
 	args := api.RefreshTokenArgs{}
 	err := json.Unmarshal(msg.Data, &args)
 	if err == nil {
-		stat.Status = api.DeliveryCompleted
 		newToken, err2 := h.svc.RefreshToken(msg.SenderID, args.OldToken)
 		err = err2
 		if err == nil {
@@ -95,10 +86,7 @@ func (h *AuthnUserHandler) HandleRefresh(
 			stat.Reply, err = json.Marshal(resp)
 		}
 	}
-	if err != nil {
-		stat.Error = err.Error()
-		stat.Status = api.DeliveryFailed
-	}
+	stat.Completed(msg, err)
 	return stat
 }
 func (h *AuthnUserHandler) HandleUpdatePassword(
@@ -107,28 +95,20 @@ func (h *AuthnUserHandler) HandleUpdatePassword(
 	args := api.UpdatePasswordArgs{}
 	err := json.Unmarshal(msg.Data, &args)
 	if err == nil {
-		stat.Status = api.DeliveryCompleted
 		err = h.svc.UpdatePassword(msg.SenderID, args.NewPassword)
 	}
-	if err != nil {
-		stat.Error = err.Error()
-		stat.Status = api.DeliveryFailed
-	}
+	stat.Completed(msg, err)
 	return stat
 }
-func (h *AuthnUserHandler) HandleUpdateName(
-	msg *things.ThingMessage) (stat api.DeliveryStatus) {
+
+func (h *AuthnUserHandler) HandleUpdateName(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 
 	args := api.UpdateNameArgs{}
 	err := json.Unmarshal(msg.Data, &args)
 	if err == nil {
-		stat.Status = api.DeliveryCompleted
 		err = h.svc.UpdateName(msg.SenderID, args.NewName)
 	}
-	if err != nil {
-		stat.Error = err.Error()
-		stat.Status = api.DeliveryFailed
-	}
+	stat.Completed(msg, err)
 	return stat
 }
 
@@ -138,13 +118,9 @@ func (h *AuthnUserHandler) HandleUpdatePubKey(
 	var args api.UpdatePubKeyArgs
 	err := json.Unmarshal(msg.Data, &args)
 	if err == nil {
-		stat.Status = api.DeliveryCompleted
 		err = h.svc.UpdatePubKey(msg.SenderID, args.PubKeyPem)
 	}
-	if err != nil {
-		stat.Error = err.Error()
-		stat.Status = api.DeliveryFailed
-	}
+	stat.Completed(msg, err)
 	return stat
 }
 

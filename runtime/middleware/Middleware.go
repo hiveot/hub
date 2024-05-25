@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 )
@@ -43,21 +44,18 @@ func (svc *Middleware) AddMiddlewareHandler(handler MiddlewareHandler) {
 func (svc *Middleware) HandleMessage(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 	var err error
 
-	//
 	for _, handler := range svc.mwChain {
 		msg, err = handler(msg)
 		if err != nil {
-			stat.Error = err.Error()
-			stat.MessageID = msg.MessageID
-			stat.Status = api.DeliveryFailed
+			stat.Failed(msg, err)
 			return stat
 		}
 	}
 	if svc.handler != nil {
 		return svc.handler(msg)
 	}
-	stat.Status = api.DeliveryFailed
-	stat.Error = "No handler for messages is set"
+	err = fmt.Errorf("No handler for messages is set")
+	stat.Failed(msg, err)
 	return stat
 }
 

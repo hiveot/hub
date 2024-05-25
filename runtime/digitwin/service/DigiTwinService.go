@@ -41,7 +41,7 @@ type DigitwinService struct {
 //
 // In this case the service wears two hats, one to process and direct the message flow (this handler)
 // and second, to give clients access to the digitwin API, which is handled by the agent.
-func (svc *DigitwinService) HandleMessage(msg *things.ThingMessage) api.DeliveryStatus {
+func (svc *DigitwinService) HandleMessage(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 	// action request go to the inbox to be passed on to the destination
 	if msg.MessageType == vocab.MessageTypeAction {
 		return svc.Inbox.HandleActionFlow(msg)

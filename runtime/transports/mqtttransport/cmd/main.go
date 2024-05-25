@@ -3,12 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/hiveot/hub/core/auth/authapi"
-	"github.com/hiveot/hub/core/auth/authservice"
-	"github.com/hiveot/hub/core/msgserver/mqttmsgserver/service"
 	"github.com/hiveot/hub/lib/discovery"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/runtime/transports/mqtttransport/service"
 	"net/url"
 	"os"
 	"strconv"
@@ -43,7 +41,7 @@ func main() {
 	}
 
 	// setup the core configuration
-	hubCfg := config_old.NewHubCoreConfig()
+	hubCfg := config.NewHubCoreConfig()
 	err := hubCfg.Setup(&env, "mqtt", false)
 	if err != nil {
 		fmt.Println("ERROR:", err.Error())
@@ -59,7 +57,7 @@ func main() {
 
 // run starts the server and core services
 // This does not return until a signal is received
-func run(cfg *config_old.HubCoreConfig) error {
+func run(cfg *config.HubCoreConfig) error {
 	var err error
 
 	msgServer := service.NewMqttMsgServer(&cfg.MqttServer, authapi.DefaultRolePermissions)

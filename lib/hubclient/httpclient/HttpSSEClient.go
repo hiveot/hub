@@ -47,7 +47,7 @@ type HttpSSEClient struct {
 	// client side handler that receives actions from the server
 	_actionHandler api.MessageHandler
 	// client side handler that receives all non-action messages from the server
-	_eventHandler api.MessageHandler
+	_eventHandler api.EventHandler
 	// map of messageID to delivery status update channel
 	_correlData map[string]chan *api.DeliveryStatus
 }
@@ -68,16 +68,18 @@ func (cl *HttpSSEClient) ConnectSSE(client *http.Client) error {
 	if err != nil {
 		return err
 	}
+	slog.Info("ConnectSSE", slog.String("sseURL", sseURL))
 
 	// use context to disconnect the client
 	sseCtx, sseCancelFn := context.WithCancel(context.Background())
 	cl.sseCancelFn = sseCancelFn
 	req = req.WithContext(sseCtx)
 
-	//r.Header.Set("Content-Type", "text/event-stream")
+	//sse client upgrade will set this to stream
 	req.Header.Set("Content-Type", "application/json")
 
 	conn := sse.NewConnection(req)
+
 	// increase buffer size to 1M
 	// TODO: make limit configurable
 	//https://github.com/tmaxmax/go-sse/issues/32
@@ -90,8 +92,11 @@ func (cl *HttpSSEClient) ConnectSSE(client *http.Client) error {
 	_ = remover
 	go func() {
 		// connect and report an error if connection ends due to reason other than context cancelled
-		if err := conn.Connect(); err != nil && !errors.Is(err, context.Canceled) {
-			slog.Error("SSE connection failed", "err", err.Error())
+		err := conn.Connect()
+		if err != nil && !errors.Is(err, context.Canceled) {
+			slog.Error("SSE connection failed (server shutdown or connection interrupted)",
+				"clientID", cl.clientID,
+				"err", err.Error())
 		}
 		remover()
 	}()
@@ -164,6 +169,7 @@ func (cl *HttpSSEClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
 // Disconnect from the MQTT broker and unsubscribe from all topics and set
 // device state to disconnected
 func (cl *HttpSSEClient) Disconnect() {
+	slog.Warn("HttpSSEClient.Disconnect")
 	cl.mux.Lock()
 	defer cl.mux.Unlock()
 	if cl._sseChan != nil {
@@ -233,26 +239,38 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		} else if cl._eventHandler != nil {
 			// pass event to client as this is an unsolicited event
 			// it could be a delayed confirmation of delivery
-			stat = cl._eventHandler(rxMsg)
+			cl._eventHandler(rxMsg)
 		} else {
 			// missing rpc or message handler
 			slog.Error("handleSSEEvent, no handler registered for client",
 				"clientID", cl.ClientID())
 			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, delivery update ignored"))
 		}
-	} else if rxMsg.MessageType == vocab.MessageTypeEvent && cl._eventHandler != nil {
-		// pass event to handler, if set
-		stat = cl._eventHandler(rxMsg)
-	} else if rxMsg.MessageType == vocab.MessageTypeAction && cl._actionHandler != nil {
-		// pass action to agent for delivery to thing
-		stat = cl._actionHandler(rxMsg)
+	} else if rxMsg.MessageType == vocab.MessageTypeEvent {
+		if cl._eventHandler != nil {
+			// pass event to handler, if set
+			cl._eventHandler(rxMsg)
+		} else {
+			slog.Warn("handleSSEEvent, no event handler registered. Event ignored.",
+				slog.String("key", rxMsg.Key),
+				slog.String("clientID", cl.ClientID()))
+		}
+	} else if rxMsg.MessageType == vocab.MessageTypeAction {
+		if cl._actionHandler != nil {
+			// pass action to agent for delivery to thing
+			stat = cl._actionHandler(rxMsg)
+		} else {
+			slog.Warn("handleSSEEvent, no action handler registered. Action ignored.",
+				slog.String("key", rxMsg.Key),
+				slog.String("clientID", cl.ClientID()))
+			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
+		}
+		cl.SendDeliveryUpdate(rxMsg.ThingID, stat)
 	} else {
-		slog.Error("handleSSEEvent, no handler registered for client",
-			"clientID", cl.ClientID())
+		slog.Warn("handleSSEEvent, unknown message type. Message ignored.",
+			slog.String("message type", rxMsg.MessageType),
+			slog.String("clientID", cl.ClientID()))
 		stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
-	}
-	// only actions need a delivery update
-	if rxMsg.MessageType == vocab.MessageTypeAction {
 		cl.SendDeliveryUpdate(rxMsg.ThingID, stat)
 	}
 }
@@ -260,7 +278,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 // PubAction publishes an action message and waits for an answer or until timeout
 // In order to receive replies, an inbox subscription is added on the first request.
 // An error is returned if delivery failed or succeeded but the action itself failed
-func (cl *HttpSSEClient) PubAction(thingID string, key string, payload []byte) (stat api.DeliveryStatus, err error) {
+func (cl *HttpSSEClient) PubAction(thingID string, key string, payload []byte) (stat api.DeliveryStatus) {
 	slog.Info("PubAction",
 		slog.String("thingID", thingID), slog.String("key", key))
 	vars := map[string]string{"thingID": thingID, "key": key}
@@ -273,11 +291,8 @@ func (cl *HttpSSEClient) PubAction(thingID string, key string, payload []byte) (
 	if err != nil {
 		stat.Status = api.DeliveryFailed
 		stat.Error = err.Error()
-	} else if stat.Error != "" {
-		// if the status contains an error return it instead
-		err = errors.New(stat.Error)
 	}
-	return stat, err
+	return stat
 }
 
 // PubActionWithQueryParams publishes an action with query parameters
@@ -307,8 +322,8 @@ func (cl *HttpSSEClient) PubActionWithQueryParams(
 }
 
 // PubEvent publishes an event message and returns
-func (cl *HttpSSEClient) PubEvent(
-	thingID string, key string, payload []byte) (stat api.DeliveryStatus, err error) {
+// This returns an error if the connection with the server is broken
+func (cl *HttpSSEClient) PubEvent(thingID string, key string, payload []byte) error {
 
 	slog.Info("PubEvent",
 		slog.String("me", cl.clientID),
@@ -317,15 +332,8 @@ func (cl *HttpSSEClient) PubEvent(
 	)
 	vars := map[string]string{"thingID": thingID, "key": key}
 	eventPath := utils.Substitute(vocab.PostEventPath, vars)
-	resp, err := cl.tlsClient.Post(eventPath, payload)
-	if err == nil {
-		err = json.Unmarshal(resp, &stat)
-	}
-	if err != nil {
-		stat.Status = api.DeliveryFailed
-		stat.Error = err.Error()
-	}
-	return stat, err
+	_, err := cl.tlsClient.Post(eventPath, payload)
+	return err
 }
 
 // RefreshToken refreshes the authentication token
@@ -412,7 +420,7 @@ func (cl *HttpSSEClient) Rpc(
 func (cl *HttpSSEClient) SendDeliveryUpdate(thingID string, stat api.DeliveryStatus) {
 	statJSON, _ := json.Marshal(&stat)
 	// thing
-	cl.PubEvent(thingID, vocab.EventTypeDeliveryUpdate, statJSON)
+	_ = cl.PubEvent(thingID, vocab.EventTypeDeliveryUpdate, statJSON)
 }
 
 // SetConnectHandler sets the notification handler of connection status changes
@@ -431,7 +439,7 @@ func (cl *HttpSSEClient) SetActionHandler(cb api.MessageHandler) {
 }
 
 // SetEventHandler set the single handler that receives all subscribed events.
-func (cl *HttpSSEClient) SetEventHandler(cb api.MessageHandler) {
+func (cl *HttpSSEClient) SetEventHandler(cb api.EventHandler) {
 	cl.mux.Lock()
 	cl._eventHandler = cb
 	cl.mux.Unlock()
@@ -477,21 +485,30 @@ func (cl *HttpSSEClient) SetEventHandler(cb api.MessageHandler) {
 //	}()
 //}
 
-// Subscribe subscribes to a topic.
+// Subscribe subscribes to thing events.
 // Use SetEventHandler to receive subscribed events or SetRequestHandler for actions
-func (cl *HttpSSEClient) Subscribe(thingID string) error {
-	go func() {
-		//err := cl.sseClient.SubscribeRaw(func(sseMsg *sse.Event) {
-		//	slog.Info("SubscribeRaw received sse event:", "msg", sseMsg)
-		//})
-		//_ = err
-	}()
-	// TODO: subscribe to what?
-	return nil
+func (cl *HttpSSEClient) Subscribe(thingID string, key string) error {
+	if thingID == "" {
+		thingID = "+"
+	}
+	if key == "" {
+		key = "+"
+	}
+	vars := map[string]string{"thingID": thingID, "key": key}
+	subscribePath := utils.Substitute(vocab.PostSubscribePath, vars)
+	_, err := cl.tlsClient.Post(subscribePath, nil)
+	return err
 }
 
-func (cl *HttpSSEClient) Unsubscribe(thingID string) {
-
+// Unsubscribe from thing events
+func (cl *HttpSSEClient) Unsubscribe(thingID string) error {
+	if thingID == "" {
+		thingID = "+"
+	}
+	vars := map[string]string{"thingID": thingID}
+	unsubscribePath := utils.Substitute(vocab.PostUnsubscribePath, vars)
+	_, err := cl.tlsClient.Post(unsubscribePath, nil)
+	return err
 }
 
 // WaitForStatusUpdate waits for an async status update or until timeout

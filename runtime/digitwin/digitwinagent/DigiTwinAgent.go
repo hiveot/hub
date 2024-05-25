@@ -1,6 +1,7 @@
 package digitwinagent
 
 import (
+	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/directory"
 	"github.com/hiveot/hub/api/go/inbox"
@@ -30,6 +31,15 @@ type DigiTwinAgent struct {
 	outboxHandler api.MessageHandler
 }
 
+// HandleEvent dispatches events to digitwin sub-services
+func (agent *DigiTwinAgent) HandleEvent(msg *things.ThingMessage) (err error) {
+	stat := agent.HandleMessage(msg)
+	if stat.Error != "" {
+		err = errors.New(stat.Error)
+	}
+	return err
+}
+
 // HandleMessage dispatches requests to the service capabilities identified by their thingID
 func (agent *DigiTwinAgent) HandleMessage(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 	if msg.ThingID == directory.ServiceID {
@@ -52,7 +62,7 @@ func StartDigiTwinAgent(svc *service.DigitwinService, cl hubclient.IHubClient) (
 	var err error
 	agent := DigiTwinAgent{ag: cl, svc: svc}
 	cl.SetActionHandler(agent.HandleMessage)
-	cl.SetEventHandler(agent.HandleMessage)
+	cl.SetEventHandler(agent.HandleEvent)
 	// each of the digitwin services implements an API that can be accessed through actions.
 	agent.directoryHandler = directory.NewActionHandler(agent.svc.Directory)
 	agent.inboxHandler = inbox.NewActionHandler(agent.svc.Inbox)

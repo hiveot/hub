@@ -24,8 +24,7 @@ func startStateService(cleanStart bool) (
 	ts = testenv.StartTestServer(cleanStart)
 
 	// the service needs a server connection
-	hc1, token1 := ts.AddConnectClient(
-		api.ClientTypeService, stateapi.AgentID, api.ClientRoleService)
+	hc1, token1 := ts.AddConnectAgent(api.ClientTypeService, stateapi.AgentID)
 	_ = token1
 
 	storeDir := path.Join(ts.TestDir, "test-state")
@@ -37,8 +36,7 @@ func startStateService(cleanStart bool) (
 	}
 
 	// connect as a user to the service above
-	hc2, token2 := ts.AddConnectClient(
-		api.ClientTypeUser, "user1", api.ClientRoleViewer)
+	hc2, token2 := ts.AddConnectUser("user1", api.ClientRoleViewer)
 	_ = token2
 	stateCl = stateclient.NewStateClient(hc2)
 	time.Sleep(time.Millisecond)
@@ -180,10 +178,10 @@ func TestGetDifferentClientBuckets(t *testing.T) {
 	_ = stateCl
 	defer stopFn()
 
-	hc1, token1 := ts.AddConnectClient(api.ClientTypeAgent, clientID1, api.ClientRoleAgent)
+	hc1, token1 := ts.AddConnectAgent(api.ClientTypeAgent, clientID1)
 	require.NotEmpty(t, token1)
 	defer hc1.Disconnect()
-	hc2, token2 := ts.AddConnectClient(api.ClientTypeService, clientID2, api.ClientRoleService)
+	hc2, token2 := ts.AddConnectAgent(api.ClientTypeService, clientID2)
 	require.NotEmpty(t, token2)
 	defer hc2.Disconnect()
 

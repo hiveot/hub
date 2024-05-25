@@ -104,6 +104,9 @@ func HandleListServices(hc hubclient.IHubClient) error {
 			entry.Status,
 		)
 	}
+	// for testing
+	//time.Sleep(time.Second * 1)
+	//hc.Disconnect()
 	return nil
 }
 

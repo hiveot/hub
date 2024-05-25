@@ -21,7 +21,6 @@ func (svc *AuthnService) Start() error {
 	if err == nil {
 		err = svc.AdminSvc.Start()
 		if err == nil {
-			svc.UserSvc = NewAuthnUserService(svc.AuthnStore, svc.SessionAuth)
 			err = svc.UserSvc.Start()
 		}
 	}
@@ -36,7 +35,6 @@ func (svc *AuthnService) Stop() {
 }
 
 // NewAuthnService creates an instance of the authentication services
-// The 'AdminSvc' and 'UserSvc' can be used directly.
 func NewAuthnService(
 	cfg *authn.AuthnConfig,
 	authnStore api.IAuthnStore,
@@ -46,7 +44,7 @@ func NewAuthnService(
 		AuthnStore:  authnStore,
 		SessionAuth: sessionAuth,
 		AdminSvc:    NewAuthnAdminService(cfg, authnStore, sessionAuth),
-		UserSvc:     nil, // set on start
+		UserSvc:     NewAuthnUserService(authnStore, sessionAuth),
 	}
 	return svc
 }

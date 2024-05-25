@@ -36,13 +36,16 @@ const TokenFileExt = ".token"
 //	certDir is the location of the CA cert and key/token files
 //	core optional core selection. Fallback is to auto determine based on URL.
 //	 password optional for a user login
-func ConnectToHub(fullURL string, clientID string, certDir string, core string, password string) (
+func ConnectToHub(fullURL string, clientID string, certDir string, password string) (
 	hc hubclient.IHubClient, err error) {
 
 	// 1. determine the actual address
 	if fullURL == "" {
 		// return after first result
-		fullURL, core = discovery.LocateHub(time.Second, true)
+		fullURL = discovery.LocateHub(time.Second, true)
+		if fullURL == "" {
+			return nil, fmt.Errorf("Hub not found")
+		}
 	}
 	if clientID == "" {
 		return nil, fmt.Errorf("missing clientID")
@@ -55,6 +58,9 @@ func ConnectToHub(fullURL string, clientID string, certDir string, core string, 
 	}
 	// 3. Determine which protocol to use and setup the key and token filenames
 	hc = NewHubClient(fullURL, clientID, caCert)
+	if hc == nil {
+		return nil, fmt.Errorf("unable to create hub client for URL: %s", fullURL)
+	}
 
 	// 4. Connect and auth with token from file
 	slog.Info("connecting to", "serverURL", fullURL)
@@ -128,6 +134,9 @@ func NewHubClient(fullURL string, clientID string, caCert *x509.Certificate) (hc
 	} else if clType == "" {
 		// use NewClient on the embedded server
 		//hc = embedded.NewEmbeddedClient(clientID, nil)
+	}
+	if hc == nil {
+		slog.Error("Unknown client type in URL schema", "clientType", clType, "url", fullURL)
 	}
 	return hc
 }

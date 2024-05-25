@@ -28,7 +28,8 @@ func (agent *AuthnAgent) HandleMessage(msg *things.ThingMessage) (stat api.Deliv
 	} else if thingID == api.AuthnUserServiceID {
 		return agent.userHandler(msg)
 	}
-	stat.Failed(msg, fmt.Errorf("unknown authn service capability '%s'", msg.ThingID))
+	err := fmt.Errorf("unknown authn service capability '%s'", msg.ThingID)
+	stat.Failed(msg, err)
 	return stat
 }
 

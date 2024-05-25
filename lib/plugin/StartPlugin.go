@@ -34,7 +34,7 @@ type IPlugin interface {
 func StartPlugin(plugin IPlugin, clientID string, certsDir string) {
 
 	// locate the hub, load CA certificate, load service key and token and connect
-	hc, err := connect.ConnectToHub("", clientID, certsDir, "", "")
+	hc, err := connect.ConnectToHub("", clientID, certsDir, "")
 	if err != nil {
 		slog.Error("Failed connecting to the Hub", "err", err)
 		os.Exit(1)

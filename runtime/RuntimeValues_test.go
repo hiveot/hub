@@ -27,20 +27,20 @@ func TestHttpsGetActions(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 	// agent receives actions and sends events
-	cl1, _ := ts.AddConnectClient(api.ClientTypeAgent, agentID, api.ClientRoleAgent)
+	cl1, _ := ts.AddConnectAgent(api.ClientTypeAgent, agentID)
 	defer cl1.Disconnect()
 	// consumer sends actions and receives events
-	cl2, _ := ts.AddConnectClient(api.ClientTypeUser, userID, api.ClientRoleManager)
+	cl2, _ := ts.AddConnectUser(userID, api.ClientRoleManager)
 	defer cl2.Disconnect()
 
 	// consumer publish an action to the agent
-	stat, err := cl2.PubAction(dtThing1ID, key1, []byte(data))
+	stat := cl2.PubAction(dtThing1ID, key1, []byte(data))
 	require.Empty(t, stat.Error)
 
 	// read the latest actions from the digitwin inbox
 	args := inbox.ReadLatestArgs{ThingID: dtThing1ID}
 	resp := inbox.ReadLatestResp{}
-	err = cl2.Rpc(inbox.DThingID, inbox.ReadLatestMethod, &args, &resp)
+	err := cl2.Rpc(inbox.DThingID, inbox.ReadLatestMethod, &args, &resp)
 	require.NoError(t, err)
 
 	actionMsg := resp.ThingValues[key1]
@@ -60,19 +60,18 @@ func TestHttpsGetEvents(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 	// agent publishes events
-	cl1, _ := ts.AddConnectClient(api.ClientTypeAgent, agentID, api.ClientRoleAgent)
+	cl1, _ := ts.AddConnectAgent(api.ClientTypeAgent, agentID)
 	defer cl1.Disconnect()
 
 	// FIXME: this event reaches the agent but it hasn't subscribed. (unnecesary traffic)
 	// FIXME: todo subscription is not implemented in embedded and https clients
 	// FIXME: todo authorization to publish an event - middleware or transport?
 	// FIXME: unmarshal error
-	stat, err := cl1.PubEvent(agThingID, key1, []byte(data))
-	assert.Equal(t, api.DeliveryCompleted, stat.Status)
+	err := cl1.PubEvent(agThingID, key1, []byte(data))
 	assert.NoError(t, err)
 
 	// consumer reads the posted event
-	cl, token := ts.AddConnectClient(api.ClientTypeUser, userID, api.ClientRoleManager)
+	cl, token := ts.AddConnectUser(userID, api.ClientRoleManager)
 	defer cl.Disconnect()
 	// read using a plain old http client
 	hostPort := fmt.Sprintf("localhost:%d", ts.Port)

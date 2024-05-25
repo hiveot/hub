@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-const testPort = 8444
+const testPort = 8445
 
 var certBundle = certs.CreateTestCertBundle()
 var hostPort = fmt.Sprintf("localhost:%d", testPort)
@@ -67,7 +67,7 @@ var dummyAuthenticator = &DummyAuthenticator{}
 func startHttpsBinding(msgHandler api.MessageHandler) *httpstransport.HttpsTransport {
 	config := httpstransport.NewHttpsTransportConfig()
 	config.Port = testPort
-	svc := httpstransport.NewHttpsBinding(&config,
+	svc := httpstransport.NewHttpSSETransport(&config,
 		certBundle.ClientKey, certBundle.ServerCert, certBundle.CaCert,
 		dummyAuthenticator)
 	err := svc.Start(msgHandler)
@@ -109,7 +109,7 @@ func TestStartStop(t *testing.T) {
 	t.Log("TestStartStop")
 	config := httpstransport.NewHttpsTransportConfig()
 	config.Port = testPort
-	svc := httpstransport.NewHttpsBinding(&config,
+	svc := httpstransport.NewHttpSSETransport(&config,
 		certBundle.ClientKey, certBundle.ServerCert, certBundle.CaCert,
 		dummyAuthenticator,
 	)
@@ -256,24 +256,15 @@ func TestPostEventAction(t *testing.T) {
 	assert.NotNil(t, cs)
 
 	// 2b. connect a client
-	//sessionToken, err := dummyAuthenticator.Login(testLogin, testPassword, "")
-	//require.NoError(t, err)
-	//cl := tlsclient.NewTLSClient(hostPort, certBundle.CaCert, time.Second*120)
-	//cl.ConnectWithToken(agentID, sessionToken)
 	cl := httpclient.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
 	token, err := cl.ConnectWithPassword(testPassword)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 
 	// 3. publish two events
-	// the path must match that in the config
-	//vars := map[string]string{"thingID": thingID, "key": eventKey}
-	//eventPath := utils.Substitute(vocab.PostEventPath, vars)
-	//_, err = cl.Post(eventPath, testMsg)
-	//_, err = cl.Post(eventPath, testMsg)
-	stat, err := cl.PubEvent(thingID, eventKey, []byte(testMsg))
+	err = cl.PubEvent(thingID, eventKey, []byte(testMsg))
 	require.NoError(t, err)
-	stat, err = cl.PubEvent(thingID, eventKey, []byte(testMsg))
+	err = cl.PubEvent(thingID, eventKey, []byte(testMsg))
 	require.NoError(t, err)
 
 	// 4. verify that the handler received it
@@ -284,10 +275,7 @@ func TestPostEventAction(t *testing.T) {
 	}
 
 	// 5. publish an action
-	//vars := map[string]string{"thingID": thingID, "key": actionKey}
-	//actionPath := utils.Substitute(vocab.PostActionPath, vars)
-	//_, err = cl.Post(actionPath, testMsg)
-	stat, err = cl.PubAction(thingID, actionKey, []byte(testMsg))
+	stat := cl.PubAction(thingID, actionKey, []byte(testMsg))
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 100)
 	assert.NotEmpty(t, stat.Reply)
@@ -295,7 +283,6 @@ func TestPostEventAction(t *testing.T) {
 		assert.Equal(t, vocab.MessageTypeAction, rxMsg.MessageType)
 		assert.Equal(t, testMsg, string(rxMsg.Data))
 	}
-
 	cl.Disconnect()
 }
 
@@ -304,9 +291,7 @@ func TestPubSubSSE(t *testing.T) {
 	t.Log("TestPubSubSSE")
 	var rxMsg *things.ThingMessage
 	var testMsg = "hello world"
-	//var agentID = "agent1"
 	var thingID = "thing1"
-	//var actionKey = "action1"
 	var eventKey = "event11"
 
 	// 1. start the transport
@@ -331,22 +316,58 @@ func TestPubSubSSE(t *testing.T) {
 	time.Sleep(time.Millisecond * 3)
 
 	// 3. register the handler for events
-	cl.SetEventHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	cl.SetEventHandler(func(msg *things.ThingMessage) error {
 		rxMsg = msg
-		stat.Status = api.DeliveryCompleted
-		return stat
+		return nil
 	})
 
 	// 4. publish an event using the hub client, the server will invoke the message handler
 	// which in turn will publish this to the listeners over sse, including this client.
-	stat, err := cl.PubEvent(thingID, eventKey, []byte(testMsg))
+	err = cl.PubEvent(thingID, eventKey, []byte(testMsg))
 	assert.NoError(t, err)
-	assert.Equal(t, api.DeliveryCompleted, stat.Status)
 	time.Sleep(time.Millisecond * 10)
 	//
 	require.NotNil(t, rxMsg)
 	assert.Equal(t, thingID, rxMsg.ThingID)
 	assert.Equal(t, testLogin, rxMsg.SenderID)
 	assert.Equal(t, eventKey, rxMsg.Key)
+}
 
+// Restarting the server should invalidate sessions
+func TestRestart(t *testing.T) {
+	var rxMsg *things.ThingMessage
+	var testMsg = "hello world"
+	var thingID = "thing1"
+	var eventKey = "event11"
+
+	// 1. start the binding
+	svc := startHttpsBinding(
+		func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
+			return stat
+		})
+
+	// 2. connect a service client
+	cl := httpclient.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
+	token, err := cl.ConnectWithPassword(testPassword)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, token)
+
+	// restart the server. This should invalidate session auth
+	svc.Stop()
+	err = svc.Start(func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
+		rxMsg = tv
+		stat.Reply = []byte(testMsg)
+		stat.Status = api.DeliveryCompleted
+		return stat
+	})
+	require.NoError(t, err)
+	defer svc.Stop()
+
+	// 3. publish an event should fail without a login
+	err = cl.PubEvent(thingID, eventKey, []byte(testMsg))
+	require.Error(t, err)
+
+	require.Nil(t, rxMsg)
+	//assert.Equal(t, eventKey, rxMsg.Key)
+	//assert.Equal(t, thingID, rxMsg.ThingID)
 }

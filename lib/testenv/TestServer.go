@@ -59,18 +59,14 @@ type TestServer struct {
 	Runtime *runtime.Runtime
 }
 
-// AddConnectClient creates a new test client of the given type and role,
-// and returns a hub client.
-// The hub client is an implementation of the default transport.
-// This also returns a new authentication token for reconnecting
+// AddConnectUser creates a new test user with the given role,
+// and returns a hub client and a new session token.
 // In case of error this panics.
-func (test *TestServer) AddConnectClient(
-	clientType api.ClientType, clientID string, clientRole string) (
-	cl hubclient.IHubClient, token string) {
+func (test *TestServer) AddConnectUser(
+	clientID string, clientRole string) (cl hubclient.IHubClient, token string) {
 
 	password := clientID
-	err := test.Runtime.AuthnSvc.AdminSvc.AddClient(
-		clientType, clientID, clientID, "", password)
+	err := test.Runtime.AuthnSvc.AdminSvc.AddUser(clientID, clientID, password)
 	if err == nil {
 		err = test.Runtime.AuthzSvc.SetClientRole(clientID, clientRole)
 	}
@@ -88,6 +84,34 @@ func (test *TestServer) AddConnectClient(
 	return cl, token
 }
 
+// AddConnectAgent creates a new agent test client.
+// Agents use non-session tokens and survive a server restart.
+// This returns the agent's connection token.
+//
+// clientType can be one of ClientTypeAgent or ClientTypeService
+func (test *TestServer) AddConnectAgent(
+	clientType api.ClientType, clientID string) (
+	cl hubclient.IHubClient, token string) {
+
+	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(
+		clientType, clientID, clientID, "")
+	if err == nil {
+		err = test.Runtime.AuthzSvc.SetClientRole(clientID, api.ClientRoleAgent)
+	}
+	if err != nil {
+		panic("Failed adding client:" + err.Error())
+	}
+
+	hostPort := fmt.Sprintf("localhost:%d", test.Port)
+	cl = httpclient.NewHttpSSEClient(hostPort, clientID, test.Certs.CaCert)
+	_, err = cl.ConnectWithToken(token)
+	if err != nil {
+		panic("Failed connecting using token. ClientID=" + clientID)
+	}
+
+	return cl, token
+}
+
 // AddTD adds a test TD document using the embedded connection to the runtime
 // if td is nil then a random TD will be added
 func (test *TestServer) AddTD(agentID string, td *things.TD) *things.TD {
@@ -97,7 +121,7 @@ func (test *TestServer) AddTD(agentID string, td *things.TD) *things.TD {
 	}
 	tdJSON, _ := json.Marshal(td)
 	ag := test.Runtime.TransportsMgr.GetEmbedded().NewClient(agentID)
-	_, err := ag.PubEvent(td.ID, vocab.EventTypeTD, tdJSON)
+	err := ag.PubEvent(td.ID, vocab.EventTypeTD, tdJSON)
 	if err != nil {
 		slog.Error("Failed adding TD")
 	}
@@ -155,7 +179,7 @@ func (test *TestServer) Start(clean bool) {
 	}
 	test.AppEnv = plugin.GetAppEnvironment(test.TestDir, false)
 	//
-	test.Config.Protocols.HttpsBinding.Port = test.Port
+	test.Config.Transports.HttpsTransport.Port = test.Port
 	test.Config.CaCert = test.Certs.CaCert
 	test.Config.CaKey = test.Certs.CaKey
 	test.Config.ServerKey = test.Certs.ServerKey

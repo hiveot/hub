@@ -11,6 +11,7 @@ import (
 	"github.com/hiveot/hub/runtime/tlsserver"
 	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
 	"io"
+	"log/slog"
 	"net/http"
 )
 
@@ -36,13 +37,14 @@ func (svc *HttpsTransport) HandleGetEvents(w http.ResponseWriter, r *http.Reques
 		vocab.MessageTypeAction, outbox.DThingID, outbox.ReadLatestMethod, argsJSON, cs.GetClientID())
 	stat := svc.handleMessage(msg)
 	var reply []byte
-	if stat.Error != "" {
-		err = errors.New(stat.Error)
-	} else {
+	if stat.Error == "" {
 		resp := outbox.ReadLatestResp{}
 		_ = json.Unmarshal(stat.Reply, &resp)
 		// The response values are already serialized
 		reply = []byte(resp.Values)
+		err = nil
+	} else {
+		err = errors.New(stat.Error)
 	}
 	svc.writeReply(w, reply, err)
 }
@@ -131,4 +133,26 @@ func (svc *HttpsTransport) HandlePostRefresh(w http.ResponseWriter, r *http.Requ
 	svc.writeReply(w, reply, err)
 	// TODO: update client session cookie with new token
 	//svc.sessionManager.SetSessionCookie(cs.sessionID,newToken)
+}
+
+// HandleSubscribe handles a subscription request
+func (svc *HttpsTransport) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
+	slog.Info("HandleSubscribe")
+	cs, thingID, key, _, err := svc.getRequestParams(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	cs.Subscribe(thingID, key)
+}
+
+// HandleUnsubscribe handles removal of a subscription request
+func (svc *HttpsTransport) HandleUnsubscribe(w http.ResponseWriter, r *http.Request) {
+	slog.Info("HandleUnsubscribe")
+	cs, thingID, key, _, err := svc.getRequestParams(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	cs.Unsubscribe(thingID, key)
 }

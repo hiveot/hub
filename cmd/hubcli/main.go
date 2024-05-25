@@ -9,7 +9,6 @@ import (
 	"github.com/hiveot/hub/cmd/hubcli/idprovcli"
 	"github.com/hiveot/hub/cmd/hubcli/launchercli"
 	"github.com/hiveot/hub/cmd/hubcli/pubsubcli"
-	"github.com/hiveot/hub/cmd/hubcli/setup"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/logging"
@@ -30,7 +29,7 @@ var nowrap bool
 // commandline:  hubcli command options
 
 func main() {
-	var hc *hubclient.HubClient
+	var hc hubclient.IHubClient
 	var verbose bool
 	var loginID = "admin"
 	var password = ""
@@ -101,8 +100,7 @@ func main() {
 			if nowrap {
 				fmt.Printf(utils.WrapOff)
 			}
-			// todo: don't connect when running setup
-			hc, err = connect.ConnectToHub(serverURL, loginID, certsDir, "", password)
+			hc, err = connect.ConnectToHub(serverURL, loginID, certsDir, password)
 			if err != nil {
 				slog.Warn("Unable to connect to the server", "err", err)
 			}
@@ -113,7 +111,6 @@ func main() {
 			// these commands work without a server connection
 			certs.CreateCACommand(&certsDir),
 			certs.ViewCACommand(&certsDir),
-			setup.SetupCommand(&env),
 
 			authcli.AuthAddUserCommand(&hc),
 			authcli.AuthAddServiceCommand(&hc, &env.CertsDir),
@@ -127,7 +124,7 @@ func main() {
 
 			directorycli.DirectoryListCommand(&hc),
 
-			historycli.HistoryLatestCommand(&hc),
+			//historycli.HistoryLatestCommand(&hc),
 			historycli.HistoryListCommand(&hc),
 
 			pubsubcli.PubActionCommand(&hc),

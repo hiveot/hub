@@ -68,7 +68,7 @@ func DiscoverService(serviceType string, waitTime time.Duration, firstResult boo
 // This first checks if a local connection can be made on the default port.
 // Secondly, perform a DNS-SD search.
 // If firstResult is set then return immediately after the first result or searchTime
-func LocateHub(searchTime time.Duration, firstResult bool) (fullURL string, core string) {
+func LocateHub(searchTime time.Duration, firstResult bool) (fullURL string) {
 	if searchTime <= 0 {
 		searchTime = time.Second * 3
 	}
@@ -80,9 +80,8 @@ func LocateHub(searchTime time.Duration, firstResult bool) (fullURL string, core
 	if err != nil {
 		// failed, nothing to be found
 		slog.Warn("LocateHub: Hub not found")
-		return "", ""
+		return ""
 	}
-	core = params["core"]
 	rawURL, found := params["rawurl"]
 	if !found {
 		rawURL = fmt.Sprintf("tcp://%s:%d%s", addr, port, params["path"])
@@ -90,6 +89,6 @@ func LocateHub(searchTime time.Duration, firstResult bool) (fullURL string, core
 	slog.Info("LocateHub",
 		slog.Int("Nr records", len(records)),
 		slog.String("fullURL", fullURL),
-		slog.String("core", core))
-	return rawURL, core
+	)
+	return rawURL
 }

@@ -22,9 +22,9 @@ func Benchmark_PubSubEvent(b *testing.B) {
 	ts, _ := testenv.StartTestServer(core, false)
 	defer ts.Stop()
 
-	cl1, _ := ts.AddConnectClient("publisher", authapi.ClientTypeDevice, authapi.ClientRoleDevice)
+	cl1, _ := ts.AddConnectUser("publisher", authapi.ClientTypeDevice, authapi.ClientRoleDevice)
 	defer cl1.Disconnect()
-	cl2, _ := ts.AddConnectClient("sub", authapi.ClientTypeUser, authapi.ClientRoleOperator)
+	cl2, _ := ts.AddConnectUser("sub", authapi.ClientTypeUser, authapi.ClientRoleOperator)
 	defer cl2.Disconnect()
 	_ = cl2.SubEvents("publisher", "", "")
 	cl2.SetEventHandler(func(msg *things.ThingMessage) {
@@ -65,9 +65,9 @@ func Benchmark_Request(b *testing.B) {
 	ts, _ := testenv.StartTestServer(core, false)
 	defer ts.Stop()
 
-	cl1, _ := ts.AddConnectClient("client1", authapi.ClientTypeUser, authapi.ClientRoleAdmin)
+	cl1, _ := ts.AddConnectUser("client1", authapi.ClientTypeUser, authapi.ClientRoleAdmin)
 	defer cl1.Disconnect()
-	cl2, _ := ts.AddConnectClient("rpc", authapi.ClientTypeService, authapi.ClientRoleService)
+	cl2, _ := ts.AddConnectUser("rpc", authapi.ClientTypeService, authapi.ClientRoleService)
 	defer cl2.Disconnect()
 
 	cl2.SetRPCHandler(func(msg *things.ThingMessage) ([]byte, error) {

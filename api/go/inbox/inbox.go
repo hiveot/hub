@@ -1,6 +1,6 @@
 // Package inbox with types and interfaces for using this service with agent 'digitwin'
 // DO NOT EDIT. This file is auto generated. Any changes will be overwritten.
-// Generated 19 May 24 09:16 PDT.
+// Generated 24 May 24 13:34 PDT.
 package inbox
 
 import "encoding/json"
@@ -32,10 +32,10 @@ type ReadLatestArgs struct {
 	ThingID string `json:"thingID"`
 
 	// Keys The action keys to read or empty to read all latest values
-	Keys []string `json:"keys,omitEmpty"`
+	Keys []string `json:"keys,omitempty"`
 
 	// Since Only return values updated since
-	Since string `json:"since,omitEmpty"`
+	Since string `json:"since,omitempty"`
 }
 
 // ReadLatestResp defines the response of the readLatest function
@@ -43,7 +43,7 @@ type ReadLatestArgs struct {
 type ReadLatestResp struct {
 
 	// ThingValues map of key:ThingValue objects
-	ThingValues things.ThingMessageMap `json:"thingValues,omitEmpty"`
+	ThingValues things.ThingMessageMap `json:"thingValues,omitempty"`
 }
 
 // ReadLatest client method - Read latest actions.
@@ -73,7 +73,6 @@ func NewActionHandler(svc IInboxService) func(*things.ThingMessage) api.Delivery
 	return func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 		var err error
 		var resp interface{}
-		stat.Completed(msg, nil)
 		switch msg.Key {
 		case "readLatest":
 			args := ReadLatestArgs{}
@@ -91,9 +90,7 @@ func NewActionHandler(svc IInboxService) func(*things.ThingMessage) api.Delivery
 		if resp != nil {
 			stat.Reply, _ = json.Marshal(resp)
 		}
-		if err != nil {
-			stat.Error = err.Error()
-		}
+		stat.Completed(msg, err)
 		return stat
 	}
 }

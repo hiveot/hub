@@ -23,7 +23,7 @@ func main() {
 	_ = env.LoadConfig(&cfg)
 
 	// the service uses the bucket store to store history
-	store, err := bucketstore.NewBucketStore(cfg.StoreDirectory, "history", cfg.Backend)
+	store, err := bucketstore.NewBucketStore(storesDir, "history", cfg.Backend)
 	if err == nil {
 		err = store.Open()
 	}
@@ -33,5 +33,5 @@ func main() {
 		panic(err.Error())
 	}
 	svc := service.NewHistoryService(store)
-	plugin.StartPlugin(svc, &env)
+	plugin.StartPlugin(svc, env.ClientID, env.CertsDir)
 }

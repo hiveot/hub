@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/services/history/historyapi"
 	"log/slog"
 	"strconv"
 	"time"
@@ -41,7 +42,7 @@ func (svc *AddHistory) encodeValue(tv *things.ThingMessage) (key string, val []b
 	key = strconv.FormatInt(timestamp, 10) + "/" + tv.Key
 	if tv.MessageType == vocab.MessageTypeAction {
 		key = key + "/a"
-	} else if tv.MessageType == vocab.MessageTypeProperty {
+	} else if tv.MessageType == historyapi.MessageTypeProperty {
 		key = key + "/p"
 	} else {
 		key = key + "/e"
@@ -95,7 +96,7 @@ func (svc *AddHistory) AddProperties(msg *things.ThingMessage) error {
 	for propName, propValue := range propMap {
 		propValueString := fmt.Sprint(propValue)
 		// store this as a property message to differentiate from events
-		tv := things.NewThingMessage(vocab.MessageTypeProperty,
+		tv := things.NewThingMessage(historyapi.MessageTypeProperty,
 			msg.ThingID, propName, []byte(propValueString), msg.SenderID)
 		tv.CreatedMSec = msg.CreatedMSec
 		//

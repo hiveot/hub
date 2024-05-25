@@ -107,25 +107,13 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 		slog.Info("Adding plugin service client with key and token",
 			"pluginName", pluginName, "certsDir", svc.env.CertsDir, "tokenPath", tokenPath)
 
-		//pluginKP, err := svc.hc.LoadCreateKeyPair(pluginName, svc.env.CertsDir)
-		//if err != nil {
-		//	slog.Error("Fail saving key for service client. Continuing... ",
-		//		"err", err, "pluginName", pluginName)
-		//}
-		//err = svc.mngAuth.AddClient(api.ClientTypeService, pluginName, "plugin", pluginKP.ExportPublic(), "")
-
 		// add a service account and generate a new token file in the keys directory
 		// the service must have read access to this directory, or the keys must be
-		// copied by the administrator.
-		err = svc.mngAuth.AddService(api.ClientTypeService, pluginName, pluginName)
+		// copied elsewhere by the administrator.
+		_, err = svc.mngAuth.AddAgent(api.ClientTypeService, pluginName, pluginName, "")
 		if err != nil {
 			slog.Error("Unable to add plugin to hub and create credentials. Continuing anyways", "err", err)
 		}
-		//else {
-		//	// remove old and save new auth token
-		//	_ = os.Remove(tokenPath)
-		//	err = os.WriteFile(tokenPath, []byte(token), 0400)
-		//}
 	}
 
 	// step 5: start the command and setup pluginInfo

@@ -194,18 +194,18 @@ func (svc *LauncherService) Start() error {
 		}
 	}
 
-	// 3: start listening to action requests
-	StartLauncherAgent(svc, svc.hc)
-
-	// 4: a connection to the authn service bus is needed to add service accounts
+	// 3: a connection to the hub is needed to receive requests
 	if svc.hc == nil {
 		svc.hc, err = connect.ConnectToHub(
-			svc.env.ServerURL, svc.env.ClientID, svc.env.CertsDir, "", "")
+			svc.env.ServerURL, svc.env.ClientID, svc.env.CertsDir, "")
 		if err != nil {
 			err = fmt.Errorf("failed starting launcher service: %w", err)
 			return err
 		}
 	}
+
+	// 4: start listening to action requests
+	StartLauncherAgent(svc, svc.hc)
 
 	// the auth service is used to create plugin credentials
 	svc.mngAuth = authnclient.NewAuthnAdminClient(svc.hc)

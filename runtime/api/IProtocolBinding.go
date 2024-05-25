@@ -60,6 +60,8 @@ type DeliveryStatus struct {
 }
 
 // Completed is a simple helper that sets the message delivery status to completed.
+// Use this when the message is delivered to the service.
+// This applies to delivery, not processing.
 // Primarily intended to make sure the messageID is not forgotten.
 func (stat *DeliveryStatus) Completed(msg *things.ThingMessage, err error) {
 	stat.Status = DeliveryCompleted
@@ -70,6 +72,7 @@ func (stat *DeliveryStatus) Completed(msg *things.ThingMessage, err error) {
 }
 
 // Failed is a simple helper that sets the message delivery status to failed with error.
+// This applies to failed delivery, not processing.
 // Primarily intended to make sure the messageID is not forgotten.
 func (stat *DeliveryStatus) Failed(msg *things.ThingMessage, err error) {
 	stat.Status = DeliveryFailed
@@ -80,7 +83,7 @@ func (stat *DeliveryStatus) Failed(msg *things.ThingMessage, err error) {
 }
 
 // EventHandler processes an event without return value
-type EventHandler func(msg *things.ThingMessage)
+type EventHandler func(msg *things.ThingMessage) error
 
 // MessageHandler defines the method that processes an action or event message and
 // returns a delivery status.
@@ -109,7 +112,7 @@ type ITransportBinding interface {
 	//
 	// This returns a delivery status, and a reply if delivery is completed.
 	// If delivery is not completed then a status update will be returned asynchronously
-	// through a 'EventTypeDelivery' event.
+	// through a 'EventTypeDelivery' event and no error is returned.
 	SendToClient(clientID string, msg *things.ThingMessage) (stat DeliveryStatus, found bool)
 
 	// SendEvent publishes an event message to all subscribers of this protocol binding

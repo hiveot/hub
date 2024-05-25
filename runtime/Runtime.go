@@ -16,7 +16,8 @@ import (
 
 const DefaultDigiTwinStoreFilename = "digitwin.kvbtree"
 
-// Runtime is the Hub runtime
+// Runtime is the Hub runtime. This is the bare-bone core of the hub that operates the
+// communication protocols with services for auth, inbox, outbox and directory.
 type Runtime struct {
 	cfg *RuntimeConfig
 
@@ -25,11 +26,14 @@ type Runtime struct {
 	AuthzSvc      *authz.AuthzService
 	DigitwinStore buckets.IBucketStore
 	DigitwinSvc   *service4.DigitwinService
-	//HistorySvc    *service2.HistoryService
 	Middleware    *middleware.Middleware
 	TransportsMgr *transports.TransportsManager
 }
 
+// Start the Hub runtime
+// This verifies and repairs the setup if needed by creating missing directories and
+// generating the server keys and certificate files if missing.
+// This uses the directory structure obtained from the app environment.
 func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	err := r.cfg.Setup(env)
 
@@ -53,7 +57,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	// the protocol manager receives messages from clients (source) and
 	// sends messages to connected clients (sink)
 	r.TransportsMgr, err = transports.StartProtocolManager(
-		&r.cfg.Protocols, r.cfg.ServerKey, r.cfg.ServerCert, r.cfg.CaCert,
+		&r.cfg.Transports, r.cfg.ServerKey, r.cfg.ServerCert, r.cfg.CaCert,
 		r.AuthnSvc.SessionAuth, r.Middleware.HandleMessage)
 	if err != nil {
 		return err

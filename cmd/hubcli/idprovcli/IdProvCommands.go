@@ -2,11 +2,10 @@ package idprovcli
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"github.com/hiveot/hub/services/idprov/idprovclient"
-
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
 
 	"github.com/hiveot/hub/lib/hubclient"
@@ -96,7 +95,7 @@ func HandlePreApprove(hc hubclient.IHubClient, deviceID string, pubKey string, m
 	cl := idprovclient.NewIdProvManageClient(hc)
 	approvals := []idprovapi.PreApprovedClient{{
 		ClientID:   deviceID,
-		ClientType: string(api.ClientTypeAgent),
+		ClientType: api.ClientTypeAgent,
 		MAC:        mac,
 		PubKey:     pubKey,
 	}}

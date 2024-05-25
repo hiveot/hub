@@ -50,7 +50,7 @@ func GenSchemaAttr(l *utils.L, attrList []SchemaAttr) {
 		} else {
 			omitEmpty := ""
 			if !attr.Required {
-				omitEmpty = ",omitEmpty"
+				omitEmpty = ",omitempty"
 			}
 			l.Add("%s %s `json:\"%s%s\"`", attr.AttrName, attr.AttrType, attr.Key, omitEmpty)
 		}

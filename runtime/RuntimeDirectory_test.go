@@ -22,31 +22,29 @@ func TestAddRemoveTD(t *testing.T) {
 
 	r := startRuntime()
 	defer r.Stop()
-	ag, _ := ts.AddConnectClient(api.ClientTypeAgent, agentID, api.ClientRoleAgent)
+	ag, _ := ts.AddConnectAgent(api.ClientTypeAgent, agentID)
 	ag.SetActionHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 		stat.Status = api.DeliveryCompleted
 		return
 	})
 	defer ag.Disconnect()
-	cl, _ := ts.AddConnectClient(api.ClientTypeUser, userID, api.ClientRoleManager)
-	cl.SetEventHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
-		stat.Status = api.DeliveryCompleted
-		return
+	cl, _ := ts.AddConnectUser(userID, api.ClientRoleManager)
+	cl.SetEventHandler(func(msg *things.ThingMessage) error {
+		return nil
 	})
 	defer cl.Disconnect()
 
 	// Add the TD by sending it as an event
 	td1 := things.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
 	td1JSON, _ := json.Marshal(td1)
-	stat, err := ag.PubEvent(agThing1ID, vocab.EventTypeTD, td1JSON)
-	assert.Equal(t, api.DeliveryCompleted, stat.Status)
+	err := ag.PubEvent(agThing1ID, vocab.EventTypeTD, td1JSON)
 	assert.NoError(t, err)
 
 	// Get returns a serialized TD object
 	args := directory.ReadTDArgs{ThingID: dtThing1ID}
 	argsJSON, _ := json.Marshal(args)
-	stat, err = cl.PubAction(directory.DThingID, directory.ReadTDMethod, argsJSON)
-	require.NoError(t, err) // no client handler error
+	stat := cl.PubAction(directory.DThingID, directory.ReadTDMethod, argsJSON)
+	require.Empty(t, stat.Error) // no client handler error
 	require.Equal(t, api.DeliveryCompleted, stat.Status)
 
 	// double unmarshal needed, one for message, second for TD payload
@@ -69,12 +67,12 @@ func TestAddRemoveTD(t *testing.T) {
 	//stat = cl.Rpc(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
 	args4 := directory.RemoveTDArgs{ThingID: dtThing1ID}
 	args4JSON, _ := json.Marshal(args4)
-	stat, err = cl.PubAction(directory.DThingID, directory.RemoveTDMethod, args4JSON)
+	stat = cl.PubAction(directory.DThingID, directory.RemoveTDMethod, args4JSON)
 	require.Empty(t, stat.Error)
 
 	// after removal, getTD should return an error but delivery is successful
-	stat, err = cl.PubAction(directory.DThingID, directory.ReadTDMethod, args4JSON)
-	require.Error(t, err)
+	stat = cl.PubAction(directory.DThingID, directory.ReadTDMethod, args4JSON)
+	require.NotEmpty(t, stat.Error)
 	require.Equal(t, api.DeliveryCompleted, stat.Status)
 }
 
@@ -88,9 +86,9 @@ func TestReadTDs(t *testing.T) {
 
 	r := startRuntime()
 	defer r.Stop()
-	ag, _ := ts.AddConnectClient(api.ClientTypeAgent, agentID, api.ClientRoleAgent)
+	ag, _ := ts.AddConnectAgent(api.ClientTypeAgent, agentID)
 	defer ag.Disconnect()
-	cl, _ := ts.AddConnectClient(api.ClientTypeUser, userID, api.ClientRoleManager)
+	cl, _ := ts.AddConnectUser(userID, api.ClientRoleManager)
 	defer cl.Disconnect()
 
 	// add a whole bunch of things

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/net"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime/authn"
@@ -24,22 +25,10 @@ const DefaultServerKeyFile = "hubKey.pem"
 // RuntimeConfig holds the digital twin runtime and protocol bindings configuration
 type RuntimeConfig struct {
 
-	// enable mDNS discovery
-	EnableMDNS bool `yaml:"enableMDNS"`
-
-	// Enable the GRPC protocol binding, default is false.
-	EnableGRPC bool `yaml:"enableGRPC,omitempty"`
-	// Enable the HTTPS protocol binding, default is false.
-	EnableHTTPS bool `yaml:"enableHTTPS,omitempty"`
-	// Enable the MQTT protocol binding, default is false.
-	EnableMQTT bool `yaml:"enableMQTT,omitempty"`
-	// Enable the NATS protocol binding, default is false.
-	EnableNATS bool `yaml:"enableNATS,omitempty"`
-
 	// middleware and services config. These all work out of the box with their defaults.
-	Authn     authn.AuthnConfig          `yaml:"authn"`
-	Authz     authz.AuthzConfig          `yaml:"authz"`
-	Protocols transports.ProtocolsConfig `yaml:"protocols"`
+	Authn      authn.AuthnConfig          `yaml:"authn"`
+	Authz      authz.AuthzConfig          `yaml:"authz"`
+	Transports transports.ProtocolsConfig `yaml:"transports"`
 
 	// Runtime logging
 	LogLevel string `yaml:"logLevel,omitempty"` // default: warn
@@ -146,7 +135,7 @@ func (cfg *RuntimeConfig) setupCerts(env *plugin.AppEnvironment) {
 
 	// digital twin runtime
 	if cfg.ServerCert == nil {
-		serverID := "dtr-" + "hostname"
+		serverID := "dtr-" + hostName
 		ou := "hiveot"
 		outboundIP := net.GetOutboundIP("")
 		names := []string{"localhost", "127.0.0.1", hostName, outboundIP.String()}
@@ -231,8 +220,10 @@ func (cfg *RuntimeConfig) setupDirectories(env *plugin.AppEnvironment) error {
 //	env holds the application directory environment
 func (cfg *RuntimeConfig) Setup(env *plugin.AppEnvironment) error {
 	var err error
+	logging.SetLogging(cfg.LogLevel, cfg.LogFile)
 	slog.Info("Digital Twin Runtime setup",
 		slog.String("home", env.HomeDir),
+		slog.String("config", env.ConfigFile),
 	)
 
 	// 0: Load config file if given
@@ -271,15 +262,11 @@ func (cfg *RuntimeConfig) Setup(env *plugin.AppEnvironment) error {
 // The CA and Server certificate and keys must be set after creation.
 func NewRuntimeConfig() *RuntimeConfig {
 	cfg := &RuntimeConfig{
-		EnableHTTPS: false,
-		EnableMQTT:  false,
-		EnableNATS:  false,
-		EnableGRPC:  false,
-		Authn:       authn.NewAuthnConfig(),
-		Authz:       authz.NewAuthzConfig(),
-		Protocols:   transports.NewProtocolsConfig(),
-		LogLevel:    "warning", // error, warning, info, debug
-		LogFile:     "",        // no logfile
+		Authn:      authn.NewAuthnConfig(),
+		Authz:      authz.NewAuthzConfig(),
+		Transports: transports.NewProtocolsConfig(),
+		LogLevel:   "info", // error, warning, info, debug
+		LogFile:    "",     // no logfile
 
 		CaCertFile:     certs.DefaultCaCertFile,
 		CaKeyFile:      certs.DefaultCaKeyFile,

@@ -26,8 +26,10 @@ type HttpsTransport struct {
 	// port and path configuration
 	config *HttpsTransportConfig
 
-	// server key
-	privKey keys.IHiveKey
+	// server cert/keys
+	privKey    keys.IHiveKey
+	serverCert *tls.Certificate
+	caCert     *x509.Certificate
 
 	// TLS server and router
 	httpServer *tlsserver.TLSServer
@@ -88,6 +90,8 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 		// these allows the binding to work as a transport for agents and consumers
 		r.Post(vocab.PostActionPath, svc.HandlePostAction)
 		r.Post(vocab.PostEventPath, svc.HandlePostEvent)
+		r.Post(vocab.PostSubscribePath, svc.HandleSubscribe)
+		r.Post(vocab.PostUnsubscribePath, svc.HandleUnsubscribe)
 
 		// register rest api for built-in easy auth refresh and logout
 		r.Post(vocab.PostRefreshPath, svc.HandlePostRefresh)
@@ -230,14 +234,14 @@ func (svc *HttpsTransport) SendToClient(
 			err = fmt.Errorf("client '%s' is not reachable", clientID)
 			found = false
 		} else {
-			// completion status is send asynchroneously by the agent
+			// completion status is sent asynchroneously by the agent
 			stat.Status = api.DeliveryDelivered
 			found = true
 		}
 	}
+
 	if err != nil {
-		stat.Error = err.Error()
-		stat.Status = api.DeliveryFailed
+		stat.Failed(msg, err)
 	}
 	return stat, found
 }
@@ -245,6 +249,9 @@ func (svc *HttpsTransport) SendToClient(
 // Start the https server and listen for incoming connection requests
 func (svc *HttpsTransport) Start(handler api.MessageHandler) error {
 	slog.Info("Starting HttpsTransport")
+	svc.httpServer, svc.router = tlsserver.NewTLSServer(
+		svc.config.Host, uint(svc.config.Port), svc.serverCert, svc.caCert)
+
 	svc.handleMessage = handler
 	svc.sseHandler = sse.NewSSEHandler(svc.sessionAuth)
 	svc.createRoutes(svc.router)
@@ -266,7 +273,7 @@ func (svc *HttpsTransport) Stop() {
 
 }
 
-// NewHttpsBinding creates a new instance of the HTTPS Server with JWT authentication
+// NewHttpSSETransport creates a new instance of the HTTPS Server with JWT authentication
 // and endpoints for bindings.
 //
 //	config
@@ -274,22 +281,21 @@ func (svc *HttpsTransport) Stop() {
 //	caCert
 //	sessionAuth for creating and validating authentication tokens
 //	handler
-func NewHttpsBinding(config *HttpsTransportConfig,
+func NewHttpSSETransport(config *HttpsTransportConfig,
 	privKey keys.IHiveKey,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	sessionAuth api.IAuthenticator,
 ) *HttpsTransport {
 
-	httpServer, r := tlsserver.NewTLSServer(
-		config.Host, uint(config.Port), serverCert, caCert)
-
 	svc := HttpsTransport{
 		sessionAuth: sessionAuth,
 		config:      config,
+		serverCert:  serverCert,
+		caCert:      caCert,
 		privKey:     privKey,
-		httpServer:  httpServer,
-		router:      r,
+		//httpServer:  httpServer,
+		//router:      r,
 	}
 	return &svc
 }

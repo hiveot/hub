@@ -34,7 +34,7 @@ func main() {
 		_ = svc.Stop()
 		os.Exit(1)
 	}
-
+	slog.Warn("Launcher has started")
 	// wait for a stop signal
 	service.WaitForSignal()
 	err = svc.Stop()

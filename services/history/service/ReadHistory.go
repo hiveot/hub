@@ -30,6 +30,7 @@ func (svc *ReadHistory) GetCursor(
 	slog.Debug("GetCursor for bucket: ", "addr", thingAddr)
 	bucket := svc.bucketStore.GetBucket(thingAddr)
 	cursor, err := bucket.Cursor()
+	//
 	if err != nil {
 		return nil, err
 	}

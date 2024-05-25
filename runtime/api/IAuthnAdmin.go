@@ -5,11 +5,11 @@ const AuthnAdminServiceID = "authnmin"
 
 // admin methods
 const (
-	// AddClientMethod requests to add a new client
-	AddClientMethod = "addClient"
+	// AddUserMethod requests to add a new client
+	AddUserMethod = "addUser"
 
-	// AddServiceMethod requests to add/update a service account with auth token
-	AddServiceMethod = "addService"
+	// AddAgentMethod requests to add/update a device or service account with auth token
+	AddAgentMethod = "addAgent"
 
 	// GetClientProfileMethod requests the profile of a client
 	GetClientProfileMethod = "getClientProfile"
@@ -44,28 +44,28 @@ type AuthnEntry struct {
 	Role string `yaml:"role" json:"role"`
 }
 
-// AddClientArgs arguments for adding a new client
-type AddClientArgs struct {
-	ClientType  ClientType `json:"clientType"`
-	ClientID    string     `json:"clientID"`
-	DisplayName string     `json:"displayName"`
-	PubKey      string     `json:"pubKey,omitempty"`
-	Password    string     `json:"password,omitempty"`
+// AddUserArgs arguments for adding a new client
+type AddUserArgs struct {
+	ClientID    string `json:"clientID"`
+	DisplayName string `json:"displayName"`
+	Password    string `json:"password,omitempty"`
 }
 
-// AddServiceArgs adds a new service client with a keys and token file
+// AddAgentArgs adds a new service client with a keys and token file
 // Intended for creating an account for local services or administrators that can
 // read the keys and token from the keys directory. Used by the launcher and hub cli.
-type AddServiceArgs struct {
-	// ClientType is typically a service or (admin) user
+type AddAgentArgs struct {
+	// Agent client type ClientTypeService or ClientTypeAgent
 	ClientType ClientType `json:"clientType"`
 	// ClientID (agentID) of the service or administrator
 	ClientID string `json:"clientID"`
 	// DisplayName
 	DisplayName string `json:"displayName,omitempty"`
-	// ValiditySec is the optional validity of the token before it must be renewed
-	// use 0 for the default. See ConnectWithToken for additional info.
-	ValiditySec int `json:"validitySec,omitempty"`
+	// Public key of agent or "" to generate one
+	PubKey string `json:"pubKey,omitempty"`
+}
+type AddAgentResp struct {
+	Token string `json:"token"`
 }
 
 // GetClientProfileArgs arguments for requesting a client's profile

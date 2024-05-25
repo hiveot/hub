@@ -49,7 +49,7 @@ func decodeValue(bucketID string, storageKey string, data []byte) (thingValue *t
 		if parts[2] == "a" {
 			messageType = vocab.MessageTypeAction
 		} else if parts[2] == "p" {
-			messageType = vocab.MessageTypeProperty
+			messageType = historyapi.MessageTypeProperty
 		}
 	}
 	if len(parts) > 3 {

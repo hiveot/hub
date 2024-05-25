@@ -1,6 +1,6 @@
 // Package directory with types and interfaces for using this service with agent 'digitwin'
 // DO NOT EDIT. This file is auto generated. Any changes will be overwritten.
-// Generated 19 May 24 09:16 PDT.
+// Generated 24 May 24 13:34 PDT.
 package directory
 
 import "encoding/json"
@@ -47,10 +47,10 @@ const ReadTDsMethod = "readTDs"
 type ReadTDsArgs struct {
 
 	// Offset Offset
-	Offset int `json:"offset,omitEmpty"`
+	Offset int `json:"offset,omitempty"`
 
 	// Limit Limit
-	Limit int `json:"limit,omitEmpty"`
+	Limit int `json:"limit,omitempty"`
 }
 
 // ReadTDsResp defines the response of the readTDs function
@@ -68,7 +68,7 @@ const RemoveTDMethod = "removeTD"
 type RemoveTDArgs struct {
 
 	// ThingID Digital Twin ThingID of the Thing to remove
-	ThingID string `json:"thingID,omitEmpty"`
+	ThingID string `json:"thingID,omitempty"`
 }
 
 const QueryTDsMethod = "queryTDs"
@@ -78,13 +78,13 @@ const QueryTDsMethod = "queryTDs"
 type QueryTDsArgs struct {
 
 	// Query Query expression (tbd)
-	Query string `json:"query,omitEmpty"`
+	Query string `json:"query,omitempty"`
 
 	// Offset Number of results to skip
-	Offset int `json:"offset,omitEmpty"`
+	Offset int `json:"offset,omitempty"`
 
 	// Limit Maximum number of entries to return
-	Limit int `json:"limit,omitEmpty"`
+	Limit int `json:"limit,omitempty"`
 }
 
 // QueryTDsResp defines the response of the queryTDs function
@@ -93,20 +93,6 @@ type QueryTDsResp struct {
 
 	// Output List of JSON encoded TD documents
 	Output []string `json:"output"`
-}
-
-// ReadTDs client method - Read TDs.
-// Read a batch of TD documents
-func ReadTDs(hc hubclient.IHubClient, args ReadTDsArgs) (resp ReadTDsResp, err error) {
-	err = hc.Rpc(DThingID, "readTDs", &args, &resp)
-	return
-}
-
-// RemoveTD client method - Remove TD.
-// Remove a Thing TD document from the digital twin directory and value stores
-func RemoveTD(hc hubclient.IHubClient, args RemoveTDArgs) (err error) {
-	err = hc.Rpc(DThingID, "removeTD", &args, nil)
-	return
 }
 
 // QueryTDs client method - Query TDs.
@@ -123,10 +109,28 @@ func ReadTD(hc hubclient.IHubClient, args ReadTDArgs) (resp ReadTDResp, err erro
 	return
 }
 
+// ReadTDs client method - Read TDs.
+// Read a batch of TD documents
+func ReadTDs(hc hubclient.IHubClient, args ReadTDsArgs) (resp ReadTDsResp, err error) {
+	err = hc.Rpc(DThingID, "readTDs", &args, &resp)
+	return
+}
+
+// RemoveTD client method - Remove TD.
+// Remove a Thing TD document from the digital twin directory and value stores
+func RemoveTD(hc hubclient.IHubClient, args RemoveTDArgs) (err error) {
+	err = hc.Rpc(DThingID, "removeTD", &args, nil)
+	return
+}
+
 // IDirectoryService defines the interface of the 'Directory' service
 //
 // This defines a method for each of the actions in the TD.
 type IDirectoryService interface {
+
+	// QueryTDs Query TDs
+	// Query Thing TD documents from the directory
+	QueryTDs(args QueryTDsArgs) (QueryTDsResp, error)
 
 	// ReadTD Read TD
 	// This returns a JSON encoded TD document
@@ -139,10 +143,6 @@ type IDirectoryService interface {
 	// RemoveTD Remove TD
 	// Remove a Thing TD document from the digital twin directory and value stores
 	RemoveTD(args RemoveTDArgs) error
-
-	// QueryTDs Query TDs
-	// Query Thing TD documents from the directory
-	QueryTDs(args QueryTDsArgs) (QueryTDsResp, error)
 }
 
 // NewActionHandler returns a server handler for Thing 'dtw:digitwin:directory' actions.
@@ -155,26 +155,7 @@ func NewActionHandler(svc IDirectoryService) func(*things.ThingMessage) api.Deli
 	return func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 		var err error
 		var resp interface{}
-		stat.Completed(msg, nil)
 		switch msg.Key {
-		case "removeTD":
-			args := RemoveTDArgs{}
-			err = json.Unmarshal(msg.Data, &args)
-			if err == nil {
-				err = svc.RemoveTD(args)
-			} else {
-				err = errors.New("bad function argument: " + err.Error())
-			}
-			break
-		case "queryTDs":
-			args := QueryTDsArgs{}
-			err = json.Unmarshal(msg.Data, &args)
-			if err == nil {
-				resp, err = svc.QueryTDs(args)
-			} else {
-				err = errors.New("bad function argument: " + err.Error())
-			}
-			break
 		case "readTD":
 			args := ReadTDArgs{}
 			err = json.Unmarshal(msg.Data, &args)
@@ -193,6 +174,24 @@ func NewActionHandler(svc IDirectoryService) func(*things.ThingMessage) api.Deli
 				err = errors.New("bad function argument: " + err.Error())
 			}
 			break
+		case "removeTD":
+			args := RemoveTDArgs{}
+			err = json.Unmarshal(msg.Data, &args)
+			if err == nil {
+				err = svc.RemoveTD(args)
+			} else {
+				err = errors.New("bad function argument: " + err.Error())
+			}
+			break
+		case "queryTDs":
+			args := QueryTDsArgs{}
+			err = json.Unmarshal(msg.Data, &args)
+			if err == nil {
+				resp, err = svc.QueryTDs(args)
+			} else {
+				err = errors.New("bad function argument: " + err.Error())
+			}
+			break
 		default:
 			err = errors.New("Unknown Method '" + msg.Key + "' of service '" + msg.ThingID + "'")
 			stat.Failed(msg, err)
@@ -200,9 +199,7 @@ func NewActionHandler(svc IDirectoryService) func(*things.ThingMessage) api.Deli
 		if resp != nil {
 			stat.Reply, _ = json.Marshal(resp)
 		}
-		if err != nil {
-			stat.Error = err.Error()
-		}
+		stat.Completed(msg, err)
 		return stat
 	}
 }

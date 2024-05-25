@@ -67,7 +67,7 @@ func AddSessionFromToken(sessionAuth api.IAuthenticator) func(next http.Handler)
 			if err != nil {
 				// If no session is found then the session token is invalid. This can
 				// happen after the user logs out.
-				slog.Warn("Session '%s' is not valid:", "sid", sid, "err", err)
+				slog.Warn("Session is not valid:", "sid", sid, "err", err)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}

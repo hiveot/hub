@@ -42,7 +42,7 @@ func TestLogin(t *testing.T) {
 	const clientID = "user1"
 
 	r := startRuntime()
-	cl, _ := ts.AddConnectClient(api.ClientTypeUser, clientID, api.ClientRoleManager)
+	cl, _ := ts.AddConnectUser(clientID, api.ClientRoleManager)
 	t2, err := cl.RefreshToken()
 	require.NoError(t, err)
 	assert.NotEmpty(t, t2)
@@ -55,7 +55,6 @@ func TestLogin(t *testing.T) {
 func TestActionWithDeliveryConfirmation(t *testing.T) {
 	const agentID = "agent1"
 	const userID = "user1"
-	const pass1 = "pass1"
 	const thingID = "thing1"
 	const actionID = "action1"
 	var actionPayload = "payload1"
@@ -65,8 +64,8 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 
 	r := startRuntime()
 	defer r.Stop()
-	cl1, _ := ts.AddConnectClient(api.ClientTypeAgent, agentID, api.ClientRoleAgent)
-	cl2, _ := ts.AddConnectClient(api.ClientTypeUser, userID, api.ClientRoleManager)
+	cl1, _ := ts.AddConnectAgent(api.ClientTypeAgent, agentID)
+	cl2, _ := ts.AddConnectUser(userID, api.ClientRoleManager)
 
 	// connect the agent and user clients
 	defer cl1.Disconnect()
@@ -84,24 +83,22 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 
 	// users receives delivery updates when sending actions
 	deliveryCtx, deliveryCtxComplete := context.WithTimeout(context.Background(), time.Minute*10)
-	cl2.SetEventHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	cl2.SetEventHandler(func(msg *things.ThingMessage) (err error) {
 		if msg.Key == vocab.EventTypeDeliveryUpdate {
 			// delivery updates are only invoked on for non-rpc actions
-			err := json.Unmarshal(msg.Data, &stat3)
+			err = json.Unmarshal(msg.Data, &stat3)
 			require.NoError(t, err)
 			slog.Info(fmt.Sprintf("reply: %s", stat3.Reply))
 		}
-		stat.Status = api.DeliveryCompleted
 		defer deliveryCtxComplete()
-		return stat
+		return err
 	})
 
 	// client sends action to agent and expect a 'delivered' result
 	// The RPC method returns an error if no reply is received
-	dtThingID := things.MakeDigiTwinThingID(agentID, thingID)
-	stat2, err := cl2.PubAction(dtThingID, actionID, []byte(actionPayload))
-	_ = stat2
-	require.NoError(t, err)
+	dThingID := things.MakeDigiTwinThingID(agentID, thingID)
+	stat2 := cl2.PubAction(dThingID, actionID, []byte(actionPayload))
+	require.Empty(t, stat2.Error)
 
 	// wait for delivery completion
 	select {
@@ -118,4 +115,64 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	assert.Equal(t, actionID, rxMsg.Key)
 	assert.Equal(t, vocab.MessageTypeAction, rxMsg.MessageType)
 
+}
+
+// Services and agents should auto-reconnect when server is restarted
+func TestServiceReconnect(t *testing.T) {
+	const agentID = "agent1"
+	const userID = "user1"
+	const thingID = "thing1"
+	const actionID = "action1"
+	var rxMsg *things.ThingMessage
+	var actionPayload = "payload1"
+	var expectedReply = actionPayload + ".reply"
+
+	r := startRuntime()
+
+	// give server time to start up before connecting
+	time.Sleep(time.Millisecond * 10)
+
+	cl1, cl1Token := ts.AddConnectAgent(api.ClientTypeAgent, agentID)
+	defer cl1.Disconnect()
+
+	// Agent receives action request which we'll handle here
+	cl1.SetActionHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+		var req string
+		rxMsg = msg
+		stat.Completed(msg, nil)
+		_ = json.Unmarshal(msg.Data, &req)
+		stat.Reply, _ = json.Marshal(req + ".reply")
+		slog.Info("agent1 delivery complete", "messageID", msg.MessageID)
+		return stat
+	})
+
+	// give connection time to be established before stopping the server
+	time.Sleep(time.Millisecond * 10)
+
+	// after restarting the server, cl1's connection should automatically be re-established
+	// TBD what is the go-sse reconnect algorithm? How to know it triggered?
+	r.Stop()
+	time.Sleep(time.Millisecond * 10)
+	err := r.Start(&ts.AppEnv)
+	require.NoError(t, err)
+	defer r.Stop()
+
+	cl2, _ := ts.AddConnectUser(userID, api.ClientRoleManager)
+	defer cl2.Disconnect()
+	// FIXME: detect a reconnect
+	time.Sleep(time.Second * 5)
+
+	// FIXME. this should not be needed
+	_, err = cl1.ConnectWithToken(cl1Token)
+	require.NoError(t, err)
+	time.Sleep(time.Millisecond * 10)
+
+	// this rpc call succeeds after agent1 has automatically reconnected
+	dThingID := things.MakeDigiTwinThingID(agentID, thingID)
+	var reply string
+	err = cl2.Rpc(dThingID, actionID, &actionPayload, &reply)
+
+	require.NoError(t, err, "auto-reconnect didn't take place")
+	require.NotNil(t, rxMsg)
+	require.Equal(t, expectedReply, string(reply))
 }

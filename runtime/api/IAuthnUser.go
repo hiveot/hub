@@ -36,9 +36,13 @@ const (
 type ClientType string
 
 const (
-	ClientTypeAgent   ClientType = "agent"
+	// ClientTypeAgent is used for clients that are IoT devices.
+	ClientTypeAgent ClientType = "agent"
+	// ClientTypeService is used for agents that provide a service. Services have
+	// additional permissions to publish actions and receive events.
 	ClientTypeService ClientType = "service"
-	ClientTypeUser    ClientType = "user"
+	// ClientTypeUser is used for end-users. End user auth tokens are restricted to a session.
+	ClientTypeUser ClientType = "user"
 )
 
 // ClientProfile contains client information of sources and users

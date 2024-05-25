@@ -25,9 +25,14 @@ func TestClientUpdatePubKey(t *testing.T) {
 	userCl := authnclient.NewAuthnUserClient(ehc)
 
 	// add user to test with. don't set the public key yet
-	err := svc.AdminSvc.AddClient(
+	prof, err := svc.AdminSvc.AddClient(
 		api.ClientTypeUser, tu1ID, tu1ID, "user1", "")
 	require.NoError(t, err)
+	assert.Equal(t, tu1ID, prof.ClientID)
+	assert.Equal(t, tu1ID, prof.DisplayName)
+	assert.Equal(t, "user1", prof.PubKey)
+	assert.NotEmpty(t, prof.TokenValiditySec)
+	assert.NotEmpty(t, prof.UpdatedMsec)
 
 	// update the public key
 	kp := keys.NewKey(keys.KeyTypeECDSA)
@@ -38,7 +43,7 @@ func TestClientUpdatePubKey(t *testing.T) {
 	assert.NoError(t, err)
 
 	// check result
-	prof, err := userCl.GetProfile()
+	prof, err = userCl.GetProfile()
 	require.NoError(t, err)
 	assert.Equal(t, tu1ID, prof.ClientID)
 	assert.Equal(t, kp.ExportPublic(), prof.PubKey)
@@ -60,7 +65,7 @@ func TestLoginRefresh(t *testing.T) {
 	// add user to test with
 	tu1Key := keys.NewKey(keys.KeyTypeECDSA)
 	tu1KeyPub := tu1Key.ExportPublic()
-	err := svc.AdminSvc.AddClient(
+	_, err := svc.AdminSvc.AddClient(
 		api.ClientTypeUser, tu1ID, "testuser1", tu1KeyPub, "")
 	require.NoError(t, err)
 
@@ -115,7 +120,7 @@ func TestUpdatePassword(t *testing.T) {
 	userCl := authnclient.NewAuthnUserClient(ecl)
 
 	// add user to test with
-	err := svc.AdminSvc.AddClient(
+	_, err := svc.AdminSvc.AddClient(
 		api.ClientTypeUser, tu1ID, tu1Name, "", "oldpass")
 	require.NoError(t, err)
 
@@ -162,7 +167,7 @@ func TestUpdateName(t *testing.T) {
 	userCl := authnclient.NewAuthnUserClient(ecl)
 
 	// add user to test with
-	err := svc.AdminSvc.AddClient(
+	_, err := svc.AdminSvc.AddClient(
 		api.ClientTypeUser, tu1ID, tu1Name, "", "oldpass")
 	require.NoError(t, err)
 

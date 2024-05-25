@@ -25,6 +25,7 @@ type AuthzAgent struct {
 // HandleMessage an event or action message for the authz service
 // This message is send by the protocol client connected to this agent
 func (agent *AuthzAgent) HandleMessage(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	var err error
 	if msg.ThingID == api.AuthzThingID {
 		if msg.MessageType == vocab.MessageTypeAction {
 			switch msg.Key {
@@ -34,11 +35,11 @@ func (agent *AuthzAgent) HandleMessage(msg *things.ThingMessage) (stat api.Deliv
 				return agent.SetClientRole(msg)
 			}
 		}
-		stat.Error = fmt.Sprintf("unknown authz action '%s' for capability '%s'", msg.Key, msg.ThingID)
+		err = fmt.Errorf("unknown authz action '%s' for capability '%s'", msg.Key, msg.ThingID)
 	} else {
-		stat.Error = fmt.Sprintf("unknown authz service capability '%s'", msg.ThingID)
+		err = fmt.Errorf("unknown authz service capability '%s'", msg.ThingID)
 	}
-	stat.Status = api.DeliveryFailed
+	stat.Completed(msg, err)
 	return stat
 }
 
@@ -48,7 +49,6 @@ func (agent *AuthzAgent) GetClientRole(
 	var args api.GetClientRoleArgs
 	err := json.Unmarshal(msg.Data, &args)
 	if err == nil {
-		stat.Status = api.DeliveryCompleted
 		role, err2 := agent.svc.GetClientRole(args.ClientID)
 		err = err2
 		if err == nil {
@@ -56,25 +56,17 @@ func (agent *AuthzAgent) GetClientRole(
 			stat.Reply, err = json.Marshal(resp)
 		}
 	}
-	if err != nil {
-		stat.Status = api.DeliveryFailed
-		stat.Error = err.Error()
-	}
+	stat.Completed(msg, err)
 	return stat
 }
 
-func (agent *AuthzAgent) SetClientRole(
-	msg *things.ThingMessage) (stat api.DeliveryStatus) {
+func (agent *AuthzAgent) SetClientRole(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 	var args api.SetClientRoleArgs
 	err := json.Unmarshal(msg.Data, &args)
 	if err == nil {
-		stat.Status = api.DeliveryCompleted
 		err = agent.svc.SetClientRole(args.ClientID, args.Role)
 	}
-	if err != nil {
-		stat.Status = api.DeliveryFailed
-		stat.Error = err.Error()
-	}
+	stat.Completed(msg, err)
 	return stat
 }
 

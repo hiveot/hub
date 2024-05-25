@@ -4,7 +4,6 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 )
 
@@ -75,16 +74,15 @@ func (svc *HistoryService) Start(hc hubclient.IHubClient) (err error) {
 		svc.addHistory = NewAddHistory(svc.bucketStore, svc.manageHistSvc, nil)
 
 		// add events to the history filtered through the retention manager
-		err = svc.hc.Subscribe("")
-		svc.hc.SetEventHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+		err = svc.hc.Subscribe("", "")
+		svc.hc.SetEventHandler(func(msg *things.ThingMessage) (err error) {
 			slog.Debug("received event",
 				slog.String("senderID", msg.SenderID),
 				slog.String("thingID", msg.ThingID),
 				slog.String("key", msg.Key),
 				slog.Int64("createdMSec", msg.CreatedMSec))
-			_ = svc.addHistory.AddEvent(msg)
-			stat.Completed(msg, nil)
-			return stat
+			err = svc.addHistory.AddEvent(msg)
+			return err
 		})
 		// register the history service methods
 		StartHistoryAgent(svc, svc.hc)
@@ -101,7 +99,7 @@ func (svc *HistoryService) Start(hc hubclient.IHubClient) (err error) {
 		// TODO: add action history. Note that the agent also subscribes to actions,
 		// so if we subscribe here we must invoke the agent from here
 
-		err = svc.hc.Subscribe("")
+		err = svc.hc.Subscribe("", "")
 	}
 
 	return err

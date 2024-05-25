@@ -106,8 +106,8 @@ func (svc *DigiTwinInbox) HandleActionFlow(msg *things.ThingMessage) (status api
 	DThingID := msg.ThingID
 	agentID, serviceID := things.SplitDigiTwinThingID(DThingID)
 	if agentID == "" {
-		actionRecord.DeliveryStatus.Status = api.DeliveryFailed
-		actionRecord.DeliveryStatus.Error = fmt.Sprintf("Agent for thing '%s' not found", msg.ThingID)
+		err = fmt.Errorf("agent for thing '%s' not found", msg.ThingID)
+		actionRecord.DeliveryStatus.Failed(msg, err)
 		return actionRecord.DeliveryStatus
 	}
 	// the message itself is forwarded to the agent using the device's service
@@ -128,17 +128,16 @@ func (svc *DigiTwinInbox) HandleActionFlow(msg *things.ThingMessage) (status api
 // The message payload contains a DeliveryStatus object
 //
 // This updates the status of the inbox record and notifies the sender.
-func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) api.DeliveryStatus {
+func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 	slog.Info("HandleDeliveryUpdate",
 		slog.String("thingID", msg.ThingID),
 		slog.String("MessageID", msg.MessageID),
 		slog.String("SenderID", msg.SenderID))
 
 	var inboxRecord InboxRecord
-	newStatus := api.DeliveryStatus{}
-	err := json.Unmarshal(msg.Data, &newStatus)
+	err := json.Unmarshal(msg.Data, &stat)
 	if err == nil {
-		inboxRecord, err = svc.GetRecord(newStatus.MessageID)
+		inboxRecord, err = svc.GetRecord(stat.MessageID)
 	}
 	// error checking that the update does belong to the right thing action
 	if err == nil {
@@ -146,24 +145,26 @@ func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) api.Del
 		thingAgentID, thingID := things.SplitDigiTwinThingID(inboxRecord.Request.ThingID)
 		if thingAgentID != msg.SenderID {
 			err = fmt.Errorf("HandleDeliveryUpdate: status update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
-				newStatus.MessageID, msg.ThingID, thingAgentID, msg.SenderID)
+				stat.MessageID, msg.ThingID, thingAgentID, msg.SenderID)
 		} else if thingID != msg.ThingID {
 			err = fmt.Errorf("HandleDeliveryUpdate: status update '%s' of thing '%s' does not match the thingID '%s' in the inbox. Update ignored.",
-				newStatus.MessageID, msg.ThingID, thingAgentID)
+				stat.MessageID, msg.ThingID, thingAgentID)
 		}
 	}
 	if err == nil {
 		// update the action delivery status
-		err = svc.SetStatus(newStatus)
+		err = svc.SetStatus(stat)
 		// notify the action sender of the delivery update
 		msg2 := *msg
 		svc.pm.SendToClient(inboxRecord.Request.SenderID, &msg2)
 	}
 	if err != nil {
 		slog.Warn(err.Error())
+		err = nil
 	}
 	// the delivery update is delivered
-	return api.DeliveryStatus{MessageID: msg.MessageID, Status: api.DeliveryCompleted}
+	stat.Completed(msg, err)
+	return stat
 }
 
 // NotifyStatus sends a delivery status message to the consumer

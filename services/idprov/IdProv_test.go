@@ -37,7 +37,7 @@ func newIdProvService() (
 	hc hubclient.IHubClient,
 	stopFn func()) {
 
-	hc, token1 := testServer.AddConnectClient(api.ClientTypeService, idprovapi.AgentID, api.ClientRoleService)
+	hc, token1 := testServer.AddConnectAgent(api.ClientTypeService, idprovapi.AgentID)
 	_ = token1
 	svc = service.NewIdProvService(testPort, testServer.Certs.ServerCert, testServer.Certs.CaCert)
 	err := svc.Start(hc)
@@ -49,7 +49,7 @@ func newIdProvService() (
 	//_ = ag
 
 	// create an end user client for testing
-	hc2, token2 := testServer.AddConnectClient(api.ClientTypeUser, "test-client", api.ClientRoleManager)
+	hc2, token2 := testServer.AddConnectUser("test-client", api.ClientRoleManager)
 	_ = token2
 	if err != nil {
 		panic("can't connect operator")

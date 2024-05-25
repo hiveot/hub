@@ -30,8 +30,7 @@ func startService() (cl *certsclient.CertsClient, stopFunc func()) {
 	ts = testenv.StartTestServer(true)
 
 	// the service needs a server connection
-	hc1, token1 := ts.AddConnectClient(
-		api.ClientTypeService, certsapi.AgentID, api.ClientRoleService)
+	hc1, token1 := ts.AddConnectAgent(api.ClientTypeService, certsapi.AgentID)
 	_ = token1
 
 	//storeDir := path.Join(ts.TestDir, "test-certs")
@@ -43,8 +42,7 @@ func startService() (cl *certsclient.CertsClient, stopFunc func()) {
 	}
 
 	//--- connect the certs client as admin
-	hc2, _ := ts.AddConnectClient(
-		api.ClientTypeUser, "admin1", api.ClientRoleAdmin)
+	hc2, _ := ts.AddConnectUser("admin1", api.ClientRoleAdmin)
 	certClient := certsclient.NewCertsClient(hc2)
 
 	return certClient, func() {

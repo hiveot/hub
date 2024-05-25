@@ -1,6 +1,7 @@
 package embedded
 
 import (
+	"errors"
 	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/embedded"
@@ -42,27 +43,33 @@ func (svc *EmbeddedTransport) NewClient(agentID string) hubclient.IHubClient {
 // Embedded clients are guaranteed to receive the message.
 // This returns an error if the message cannot be delivered.
 func (svc *EmbeddedTransport) SendToClient(
-	clientID string, action *things.ThingMessage) (stat api.DeliveryStatus, found bool) {
+	clientID string, msg *things.ThingMessage) (stat api.DeliveryStatus, found bool) {
 
 	handler, found := svc.handlers[clientID]
 	if found {
-		stat = handler(action)
+		stat = handler(msg)
 	} else {
-		stat.Failed(action, fmt.Errorf("SendToClient: unknown client: %s", clientID))
+		err := fmt.Errorf("SendToClient: unknown client: %s", clientID)
+		stat.Failed(msg, err)
 	}
 	return stat, found
 }
 
 // SendEvent publishes an event message to all subscribers of this protocol binding
 func (svc *EmbeddedTransport) SendEvent(event *things.ThingMessage) (stat api.DeliveryStatus) {
+	stat.Failed(event, errors.New("no handlers for event"))
 	for agentID, agent := range svc.handlers {
 		// FIXME: only send to subscribers
-		// don't send events back to their agent
+		// don't send events back to the sender
 		if agentID != event.SenderID {
-			stat = agent(event)
+			// keep a non-error result
+			stat2 := agent(event)
+			if stat2.Error == "" {
+				stat = stat2
+			}
 		}
 	}
-	return
+	return stat
 }
 
 // Start the protocol binding

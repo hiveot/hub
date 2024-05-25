@@ -28,7 +28,7 @@ type EmbeddedClient struct {
 	// client side handler that receives actions from the server
 	receiveActionHandler api.MessageHandler
 	// client side handler that receives all non-action messages from the server
-	receiveEventHandler api.MessageHandler
+	receiveEventHandler api.EventHandler
 }
 
 // ConnectWithCert always succeeds as a direct connection doesn't need a certificate
@@ -71,38 +71,38 @@ func (cl *EmbeddedClient) ReceiveMessage(msg *things.ThingMessage) (stat api.Del
 		}
 	} else {
 		if cl.receiveEventHandler != nil {
-			return cl.receiveEventHandler(msg)
+			err := cl.receiveEventHandler(msg)
+			stat.Completed(msg, err)
+			return stat
 		}
 	}
 	// The delivery is complete. Too bad the handler isn't registered. This is almost
 	// certainly a bug in the client code, so lets make clear this isn't a transport problem.
-	stat.Completed(msg, fmt.Errorf("no receive handler set for client '%s'", cl.clientID))
+	err := fmt.Errorf("no receive handler set for client '%s'", cl.clientID)
+	stat.Completed(msg, err)
 	return stat
 }
 
 // PubAction publishes an action request.
 // Since this is a direct call, the response include a reply.
 func (cl *EmbeddedClient) PubAction(
-	thingID string, key string, payload []byte) (stat api.DeliveryStatus, err error) {
+	thingID string, key string, payload []byte) (stat api.DeliveryStatus) {
 
 	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, payload, cl.clientID)
 	stat = cl.sendMessage(msg)
-	if stat.Error != "" {
-		err = errors.New(stat.Error)
-	}
-	return stat, err
+	return stat
 }
 
 // PubEvent publishes an event style message without waiting for a response.
 func (cl *EmbeddedClient) PubEvent(
-	thingID string, key string, payload []byte) (stat api.DeliveryStatus, err error) {
+	thingID string, key string, payload []byte) error {
 
 	msg := things.NewThingMessage(vocab.MessageTypeEvent, thingID, key, payload, cl.clientID)
-	stat = cl.sendMessage(msg)
+	stat := cl.sendMessage(msg)
 	if stat.Error != "" {
-		err = errors.New(stat.Error)
+		return errors.New(stat.Error)
 	}
-	return stat, err
+	return nil
 }
 
 // RefreshToken does nothing as tokens aren't used
@@ -144,7 +144,7 @@ func (cl *EmbeddedClient) SetActionHandler(cb api.MessageHandler) {
 
 // SetEventHandler set the handler that receives all subscribed messages.
 // Use 'Subscribe' to set the type of events and actions to receive
-func (cl *EmbeddedClient) SetEventHandler(cb api.MessageHandler) {
+func (cl *EmbeddedClient) SetEventHandler(cb api.EventHandler) {
 	cl.receiveEventHandler = cb
 }
 
@@ -157,14 +157,15 @@ func (cl *EmbeddedClient) SetEventHandler(cb api.MessageHandler) {
 // Subscriptions remain in effect when the connection with the messaging server is interrupted.
 //
 //	thingID is the ID of the Thing whose events to receive or "" for events from all things
-func (cl *EmbeddedClient) Subscribe(thingID string) error {
+//	key is the event type to receive or "" for any event type
+func (cl *EmbeddedClient) Subscribe(thingID string, key string) error {
 	return fmt.Errorf("not implemented")
 }
 
 // Unsubscribe removes a previous event subscription.
 // No more events or requests will be received after Unsubscribe.
-func (cl *EmbeddedClient) Unsubscribe(thingID string) {
-	//
+func (cl *EmbeddedClient) Unsubscribe(thingID string) error {
+	return fmt.Errorf("Unsubscribe not implemented")
 }
 
 // NewEmbeddedClient returns an embedded hub client for connecting to embedded services.

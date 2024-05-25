@@ -42,10 +42,7 @@ func startTestAuthnService(testHash string) (
 		panic("Error starting authn admin service:" + err.Error())
 	}
 	ag, err := authnagent.StartAuthnAgent(svc, nil)
-	//adminHandler = authnagent.NewAuthnAdminHandler(svc.AdminSvc)
-	//userHandler = authnagent.NewAuthnUserHandler(svc.UserSvc)
 
-	//return svc, adminHandler, userHandler, func() {
 	return svc, ag.HandleMessage, func() {
 		svc.Stop()
 

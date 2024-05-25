@@ -66,7 +66,7 @@ func BenchmarkAddEvents(b *testing.B) {
 
 	for _, tbl := range DataSizeTable {
 		testData, _ := makeValueBatch("device1", tbl.dataSize, tbl.nrThings, timespanMonth)
-		svc, readHist, stopFn := startHistoryService()
+		svc, readHist, stopFn := startHistoryService(true)
 		time.Sleep(time.Millisecond)
 		// build a dataset in the store
 		addBulkHistory(svc, tbl.dataSize, 10, timespanSec)

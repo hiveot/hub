@@ -26,7 +26,6 @@ func GenServiceHandler(l *utils.L, serviceName string, td *things.TD) {
 	l.Indent++
 	l.Add("var err error")
 	l.Add("var resp interface{}")
-	l.Add("stat.Completed(msg, nil)")
 
 	l.Add("switch msg.Key {")
 	l.Indent++
@@ -42,10 +41,8 @@ func GenServiceHandler(l *utils.L, serviceName string, td *things.TD) {
 	l.Add("if resp != nil {")
 	l.Add("   stat.Reply, _ = json.Marshal(resp)")
 	l.Add("}")
-	l.Add("if err != nil {")
-	l.Add("   stat.Error = err.Error()")
-	l.Add("}")
 
+	l.Add("stat.Completed(msg, err)")
 	l.Add("return stat")
 	l.Indent--
 	l.Add("}")

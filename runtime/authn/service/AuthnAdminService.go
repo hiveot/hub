@@ -24,54 +24,38 @@ type AuthnAdminService struct {
 	sessionAuth api.IAuthenticator
 }
 
-// AddClient adds a new client to the service.
+// AddUser adds a consumer account to the service.
 // This updates the client info if the client already exists.
 //
-// The public key is only required for services and agents.
-// TODO: use the public key for nonce verification
-//
 //	clientID is the ID of the service, agent or user
-//	clientType is one of ClientTypeAgent, ClientTypeService or ClientTypeUser
 //	displayName is the friendly name for presentation
-//	pubKey is the client's serialized public key if available. Required for services and agents.
 //	password is the optional login password. Intended for users if no other credentials are available.
-func (svc *AuthnAdminService) AddClient(
-	clientType api.ClientType,
-	clientID string, displayName string,
-	pubKey string, password string) (err error) {
+func (svc *AuthnAdminService) AddUser(
+	clientID string, displayName string, password string) (err error) {
 
-	slog.Info("AddClient",
-		slog.String("clientID", clientID),
-		slog.String("clientType", string(clientType)))
+	slog.Info("AddUser", slog.String("clientID", clientID))
 
-	if clientType != api.ClientTypeAgent &&
-		clientType != api.ClientTypeUser &&
-		clientType != api.ClientTypeService {
-		err = fmt.Errorf("AddClient: Client type '%s' for client '%s' is not a valid client type",
-			clientType, clientID)
-		return err
-	} else if clientID == "" {
+	if clientID == "" {
 		err = fmt.Errorf("AddClient: ClientID is missing")
 		return err
-	}
-	validitySec := svc.cfg.UserTokenValiditySec
-	if clientType == api.ClientTypeService {
-		validitySec = svc.cfg.ServiceTokenValiditySec
-	} else if clientType == api.ClientTypeAgent {
-		validitySec = svc.cfg.AgentTokenValiditySec
 	}
 	if displayName == "" {
 		displayName = clientID
 	}
 	prof, err := svc.authnStore.GetProfile(clientID)
 	if err != nil {
+		// new profile
 		prof = api.ClientProfile{
 			ClientID:         clientID,
-			ClientType:       clientType,
+			ClientType:       api.ClientTypeUser,
 			DisplayName:      displayName,
-			PubKey:           pubKey,
-			TokenValiditySec: validitySec,
+			TokenValiditySec: svc.cfg.UserTokenValiditySec,
 		}
+	} else {
+		prof.DisplayName = displayName
+		prof.ClientType = api.ClientTypeUser
+		prof.DisplayName = displayName
+		prof.TokenValiditySec = svc.cfg.UserTokenValiditySec
 	}
 	err = svc.authnStore.Add(clientID, prof)
 	if password != "" {
@@ -80,25 +64,56 @@ func (svc *AuthnAdminService) AddClient(
 	return err
 }
 
-// AddService adds or updates a service account with key and auth token file.
-// Intended for creating service and admin accounts.
-func (svc *AuthnAdminService) AddService(clientType api.ClientType,
-	clientID string, displayName string, validitySec int) error {
+// AddAgent adds or updates a device or service account with key and auth token file.
+// Intended for creating service, device and admin accounts.
+// Agents are provided with non-session auth tokens which survive a server restart.
+//
+//	clientType is the agent type, ClientTypeService or ClientTypeAgent
+//	The public key is only required for services and agents.
+//	TODO: use the public key for nonce verification
+func (svc *AuthnAdminService) AddAgent(
+	clientType api.ClientType, clientID string, displayName string, pubKey string) (
+	authToken string, err error) {
 
-	slog.Info("AddService", slog.String("clientID", clientID))
-	kp, err := keys.LoadCreateKeyPair(clientID, svc.cfg.KeysDir, svc.cfg.DefaultKeyType)
-	if err == nil {
-		err = svc.AddClient(clientType, clientID, displayName, kp.ExportPublic(), "")
+	var prof api.ClientProfile
+	if clientID == "" || clientType == "" {
+		return "", fmt.Errorf("Missing clientType or clientID")
+	}
+	slog.Info("AddAgent", slog.String("clientID", clientID))
+	// agents typically create their own key pair
+	// services typically don't and have their keys saved on (re)creation
+	if pubKey == "" {
+		kp, err2 := keys.LoadCreateKeyPair(clientID, svc.cfg.KeysDir, svc.cfg.DefaultKeyType)
+		err = err2
+		if err == nil {
+			pubKey = kp.ExportPublic()
+		}
 	}
 	if err == nil {
-		authToken := svc.sessionAuth.CreateSessionToken(clientID, "", validitySec)
+		tokenValiditySec := svc.cfg.AgentTokenValiditySec
+		if clientType == api.ClientTypeService {
+			tokenValiditySec = svc.cfg.ServiceTokenValiditySec
+		}
+		// new profile
+		prof = api.ClientProfile{
+			ClientID:         clientID,
+			ClientType:       api.ClientTypeUser,
+			DisplayName:      displayName,
+			PubKey:           pubKey,
+			TokenValiditySec: tokenValiditySec,
+		}
+		err = svc.authnStore.Add(clientID, prof)
+	}
+	if err == nil {
+		// agent tokens are not restricted to a session
+		authToken = svc.sessionAuth.CreateSessionToken(clientID, "", prof.TokenValiditySec)
 
 		// remove the readonly token file if it exists, to be able to overwrite
 		tokenFile := path.Join(svc.cfg.KeysDir, clientID+connect.TokenFileExt)
 		_ = os.Remove(tokenFile)
 		err = os.WriteFile(tokenFile, []byte(authToken), 0400)
 	}
-	return err
+	return authToken, err
 }
 
 // GetEntries provide a list of known clients
@@ -156,16 +171,14 @@ func (svc *AuthnAdminService) Start() error {
 
 	// Ensure the launcher service and admin user exist and has a saved key and auth token
 	launcherID := svc.cfg.LauncherAccountID
-	err := svc.AddService(api.ClientTypeService,
-		launcherID, "Launcher Service", svc.cfg.ServiceTokenValiditySec)
+	_, err := svc.AddAgent(api.ClientTypeService, launcherID, "Launcher Service", "")
 	if err != nil {
 		err = fmt.Errorf("failed to setup the launcher account: %w", err)
 	}
 
-	// ensure the admin user exists and has a saved key and auth token
+	// ensure the admin user/service exists and has a saved key and auth token
 	adminID := svc.cfg.AdminAccountID
-	err = svc.AddService(api.ClientTypeUser,
-		adminID, "Administrator", svc.cfg.AgentTokenValiditySec)
+	_, err = svc.AddAgent(api.ClientTypeAgent, adminID, "Administrator", "")
 	if err != nil {
 		err = fmt.Errorf("failed to setup the admin account: %w", err)
 	}
