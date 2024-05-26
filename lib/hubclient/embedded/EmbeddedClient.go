@@ -105,6 +105,18 @@ func (cl *EmbeddedClient) PubEvent(
 	return nil
 }
 
+// PubProps publishes a properties map
+func (cl *EmbeddedClient) PubProps(thingID string, props map[string]string) error {
+	payload, _ := json.Marshal(props)
+	return cl.PubEvent(thingID, vocab.EventTypeProperties, payload)
+}
+
+// PubTD publishes a TD event
+func (cl *EmbeddedClient) PubTD(td *things.TD) error {
+	payload, _ := json.Marshal(td)
+	return cl.PubEvent(td.ID, vocab.EventTypeTD, payload)
+}
+
 // RefreshToken does nothing as tokens aren't used
 func (cl *EmbeddedClient) RefreshToken() (newToken string, err error) {
 	return "dummytoken", nil

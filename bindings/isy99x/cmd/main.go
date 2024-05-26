@@ -13,5 +13,5 @@ func main() {
 	cfg := config.NewIsy99xConfig()
 	_ = env.LoadConfig(&cfg)
 	binding := service.NewIsyBinding(cfg)
-	plugin.StartPlugin(binding, &env)
+	plugin.StartPlugin(binding, env.ClientID, env.CertsDir)
 }

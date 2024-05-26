@@ -1,4 +1,4 @@
-<mxfile host="Electron" modified="2024-03-26T05:11:04.347Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.1.0 Chrome/120.0.6099.109 Electron/28.1.0 Safari/537.36" etag="JU3IIaLD5_XGjNl84ani" version="24.1.0" type="device" pages="6">
+<mxfile host="Electron" modified="2024-05-26T00:42:53.574Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.4.8 Chrome/124.0.6367.207 Electron/30.0.6 Safari/537.36" etag="bGO9Afl2BhWH5mUeiYme" version="24.4.8" type="device" pages="6">
   <diagram name="hub overview" id="kqEpKYBQ45Mwrk5tQ66D">
     <mxGraphModel dx="1728" dy="974" grid="1" gridSize="5" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#E6E6E6" math="0" shadow="0">
       <root>
@@ -361,7 +361,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="VK8YIoU0Tkf_7aTmhNJv" name="digitwin overview">
-    <mxGraphModel dx="988" dy="557" grid="1" gridSize="5" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#E6E6E6" math="0" shadow="0">
+    <mxGraphModel dx="819" dy="470" grid="1" gridSize="5" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#E6E6E6" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" style="locked=1;" parent="0" />
@@ -588,7 +588,7 @@
         <mxCell id="CAScQImpDgagB9gkNi-D-18" value="" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#526359;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.parameter_store;" parent="CAScQImpDgagB9gkNi-D-19" vertex="1">
           <mxGeometry x="23.75" y="10" width="12.5" height="13" as="geometry" />
         </mxCell>
-        <mxCell id="CAScQImpDgagB9gkNi-D-24" value="Embedded Servers" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#5257A1;" parent="8O2uawOGH-FbcPCOpxYq-6" vertex="1">
+        <mxCell id="CAScQImpDgagB9gkNi-D-24" value="Transport Protocols" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#5257A1;" parent="8O2uawOGH-FbcPCOpxYq-6" vertex="1">
           <mxGeometry x="220" y="115" width="60" height="30" as="geometry" />
         </mxCell>
         <mxCell id="ghlQFxYoNMWG6734pyOj-1" value="" style="group;connectable=1;" parent="8O2uawOGH-FbcPCOpxYq-6" vertex="1" connectable="0">
@@ -661,6 +661,9 @@
         </mxCell>
         <mxCell id="gnbtx26UPk3lCzklCRV0-2" value="" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/azure_stack/User_Subscriptions.svg;" parent="8O2uawOGH-FbcPCOpxYq-6" vertex="1">
           <mxGeometry x="666" y="274.27" width="18" height="17.47" as="geometry" />
+        </mxCell>
+        <mxCell id="6BQP_lByThFZ5vUnJ3vZ-1" value="Transport Protocols" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#5257A1;" vertex="1" parent="8O2uawOGH-FbcPCOpxYq-6">
+          <mxGeometry x="565" y="115" width="60" height="30" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

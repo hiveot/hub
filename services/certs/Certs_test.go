@@ -30,7 +30,7 @@ func startService() (cl *certsclient.CertsClient, stopFunc func()) {
 	ts = testenv.StartTestServer(true)
 
 	// the service needs a server connection
-	hc1, token1 := ts.AddConnectAgent(api.ClientTypeService, certsapi.AgentID)
+	hc1, token1 := ts.AddConnectService(certsapi.AgentID)
 	_ = token1
 
 	//storeDir := path.Join(ts.TestDir, "test-certs")

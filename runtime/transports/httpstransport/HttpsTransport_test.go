@@ -320,6 +320,8 @@ func TestPubSubSSE(t *testing.T) {
 		rxMsg = msg
 		return nil
 	})
+	err = cl.Subscribe(thingID, "")
+	require.NoError(t, err)
 
 	// 4. publish an event using the hub client, the server will invoke the message handler
 	// which in turn will publish this to the listeners over sse, including this client.

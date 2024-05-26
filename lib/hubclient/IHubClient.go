@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 )
 
@@ -149,6 +150,19 @@ type IHubClient interface {
 	//
 	// This returns an error if the event cannot not be delivered to the hub
 	PubEvent(thingID string, key string, payload []byte) error
+
+	// PubProps publishes a property value map event.
+	// It returns as soon as delivery to the hub is confirmed.
+	// This is intended for agents, not for consumers.
+	//	thingID is the ID of the device (not including the digital twin ID)
+	//	props is the property key-value map to publish where value is the serialized representation
+	PubProps(thingID string, props map[string]string) error
+
+	// PubTD publishes an TD document event.
+	// It returns as soon as delivery to the hub is confirmed.
+	// This is intended for agents, not for consumers.
+	//	td is the Thing Description document describing the Thing
+	PubTD(td *things.TD) error
 
 	// RefreshToken refreshes the authentication token
 	// The resulting token can be used with 'ConnectWithJWT'

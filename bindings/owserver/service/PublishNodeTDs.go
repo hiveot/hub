@@ -59,7 +59,7 @@ var ActuatorTypeVocab = map[string]struct {
 }{
 	// "BarometricPressureHg": vocab.PropNameAtmosphericPressure, // unit Hg
 	"ClearAlarms": {Title: "Clear Alarms"},
-	"Relay":       {VocabType: vocab.ActionSwitchOff, Title: "Relay", DataType: vocab.vocab.WoTDataTypeBool},
+	"Relay":       {VocabType: vocab.ActionSwitchOff, Title: "Relay", DataType: vocab.WoTDataTypeBool},
 }
 
 // PropAttrVocab defines known property/configuration attributes

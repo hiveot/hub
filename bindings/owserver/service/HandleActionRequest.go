@@ -2,40 +2,56 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 	"time"
 )
 
 // HandleActionRequest handles requests to activate inputs
-func (svc *OWServerBinding) HandleActionRequest(action *things.ThingMessage) (reply []byte, err error) {
+func (svc *OWServerBinding) HandleActionRequest(action *things.ThingMessage) (stat api.DeliveryStatus) {
 	var attr eds.OneWireAttr
 	slog.Info("HandleActionRequest",
-		slog.String("agentID", action.AgentID),
 		slog.String("thingID", action.ThingID),
-		slog.String("action", action.Name),
+		slog.String("key", action.Key),
 		slog.String("payload", string(action.Data)))
 
+	if action.Key == vocab.ActionTypeProperties {
+		return svc.HandleConfigRequest(action)
+	}
+
 	// TODO: lookup the action Title used by the EDS
-	edsName := action.Name
+	edsName := action.Key
 
 	// determine the value. Booleans are submitted as integers
-	actionValue := action.Data
+	var actionValue string
+	err := json.Unmarshal(action.Data, &actionValue)
+	if err != nil {
+		stat.Completed(action, err)
+		return
+	}
 
 	node, found := svc.nodes[action.ThingID]
-	if found {
-		attr, found = node.Attr[action.Name]
-	}
 	if !found {
-		err := fmt.Errorf("action '%s' on unknown attribute '%s'",
-			action.Name, attr.ID)
-		return nil, err
+		err = fmt.Errorf("ID '%s' is not a known node", action.ThingID)
+		stat.Completed(action, err)
+		return stat
+	}
+	attr, found = node.Attr[action.Key]
+	if !found {
+		err = fmt.Errorf("node '%s' found but it doesn't have an action '%s'",
+			action.ThingID, action.Key)
+		stat.Completed(action, err)
+		return stat
 	} else if !attr.Writable {
-		err := fmt.Errorf("action '%s' on read-only attribute '%s'",
-			action.Name, attr.ID)
-		return nil, err
+		err = fmt.Errorf("node '%s' action '%s' is a read-only attribute",
+			action.ThingID, action.Key)
+		stat.Completed(action, err)
+		return stat
 	}
 
 	// the thingID is the device identifier, eg the ROMId
@@ -50,7 +66,8 @@ func (svc *OWServerBinding) HandleActionRequest(action *things.ThingMessage) (re
 	_ = svc.RefreshPropertyValues()
 
 	if err != nil {
-		err = fmt.Errorf("action '%s' failed: %w", action.Name, err)
+		err = fmt.Errorf("action '%s' failed: %w", action.Key, err)
 	}
-	return nil, err
+	stat.Completed(action, err)
+	return stat
 }

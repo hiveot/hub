@@ -141,7 +141,10 @@ func (sm *SessionManager) SendEvent(msg *things.ThingMessage) (stat api.Delivery
 
 	for id, session := range sm.sidSessions {
 		_ = id
-		_ = session.SendSSE(vocab.MessageTypeEvent, string(payload))
+		// don't send event to self
+		if session.IsSubscribed(msg.ThingID, msg.Key) {
+			_ = session.SendSSE(vocab.MessageTypeEvent, string(payload))
+		}
 	}
 	if len(sm.sidSessions) > 0 {
 		stat.Completed(msg, nil)

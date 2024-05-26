@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/lib/plugin"
@@ -51,6 +52,13 @@ func (svc *IsyBinding) PublishIsyTDs() (err error) {
 	return err
 }
 
+func (svc *IsyBinding) PubEvents(thingID string, evMap map[string]string) {
+	for k, v := range evMap {
+		vJson, _ := json.Marshal(v)
+		svc.hc.PubEvent(thingID, k, vJson)
+	}
+}
+
 // PublishValues reads and publishes property/event values of the binding, gateway and nodes
 // Set onlyChanges to only publish changed values as events
 func (svc *IsyBinding) PublishValues(onlyChanges bool) error {
@@ -66,7 +74,11 @@ func (svc *IsyBinding) PublishValues(onlyChanges bool) error {
 		slog.Error(err.Error())
 		return err
 	}
-	err = svc.hc.PubEvents(bindingID, events)
+	for k, v := range events {
+		payload, _ := json.Marshal(v)
+		err = svc.hc.PubEvent(bindingID, k, payload)
+
+	}
 
 	// publish the gateway device values
 	err = svc.IsyGW.ReadGatewayValues()
@@ -78,7 +90,7 @@ func (svc *IsyBinding) PublishValues(onlyChanges bool) error {
 	props, events = svc.IsyGW.GetValues(onlyChanges)
 	if len(props) > 0 {
 		_ = svc.hc.PubProps(svc.IsyGW.GetID(), props)
-		_ = svc.hc.PubEvents(svc.IsyGW.GetID(), events)
+		svc.PubEvents(svc.IsyGW.GetID(), events)
 	}
 
 	// read and publish props of each node
@@ -90,7 +102,7 @@ func (svc *IsyBinding) PublishValues(onlyChanges bool) error {
 			_ = svc.hc.PubProps(thing.GetID(), props)
 			// send an event for each of the changed values
 			if onlyChanges {
-				_ = svc.hc.PubEvents(thing.GetID(), props)
+				svc.PubEvents(thing.GetID(), props)
 			}
 		}
 	}

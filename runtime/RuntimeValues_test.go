@@ -27,7 +27,7 @@ func TestHttpsGetActions(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 	// agent receives actions and sends events
-	cl1, _ := ts.AddConnectAgent(api.ClientTypeAgent, agentID)
+	cl1, _ := ts.AddConnectAgent(agentID)
 	defer cl1.Disconnect()
 	// consumer sends actions and receives events
 	cl2, _ := ts.AddConnectUser(userID, api.ClientRoleManager)
@@ -60,7 +60,7 @@ func TestHttpsGetEvents(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 	// agent publishes events
-	cl1, _ := ts.AddConnectAgent(api.ClientTypeAgent, agentID)
+	cl1, _ := ts.AddConnectAgent(agentID)
 	defer cl1.Disconnect()
 
 	// FIXME: this event reaches the agent but it hasn't subscribed. (unnecesary traffic)

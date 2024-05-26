@@ -41,35 +41,36 @@ func (it *IsyDimmerThing) GetTD() *things.TD {
 	return td
 }
 
-func (it *IsyDimmerThing) HandleConfigRequest(tv *things.ThingMessage) (err error) {
-	return errors.New("unknown config: " + tv.Name)
+func (it *IsyDimmerThing) HandleConfigRequest(action *things.ThingMessage) (err error) {
+	return errors.New("unknown config: " + action.Key)
 }
 
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsyDimmerThing) HandleActionRequest(tv *things.ThingMessage) (err error) {
+func (it *IsyDimmerThing) HandleActionRequest(action *things.ThingMessage) (err error) {
 	var restPath = ""
 	var newValue = ""
+	// FIXME: action keys are node attributes keys, not vocab @types (or are they?)
 	// supported actions: on, off
-	if tv.Name == vocab.ActionDimmerSet {
-		newValue = string(tv.Data)
+	if action.Key == vocab.ActionDimmerSet {
+		newValue = string(action.Data)
 		restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
 
-		//} else if tv.Name == vocab.VocabActionDecrement {
+		//} else if action.Name == vocab.VocabActionDecrement {
 		//	restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
-		//} else if tv.Name == vocab.VocabActionIncrement {
+		//} else if action.Name == vocab.VocabActionIncrement {
 		//	restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
 	} else {
 		// unknown action
-		err = fmt.Errorf("HandleActionRequest. Unknown action: '%s'", tv.Name)
+		err = fmt.Errorf("HandleActionRequest. Unknown action: '%s'", action.Key)
 		return err
 	}
 
 	err = it.isyAPI.SendRequest("GET", restPath, "", nil)
 	if err == nil {
 		// TODO: handle event from gateway using websockets. For now just assume this worked.
-		err = it.HandleValueUpdate(tv.Name, "", newValue)
+		err = it.HandleValueUpdate(action.Key, "", newValue)
 	}
 
 	return err

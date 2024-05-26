@@ -22,7 +22,7 @@ func TestAddRemoveTD(t *testing.T) {
 
 	r := startRuntime()
 	defer r.Stop()
-	ag, _ := ts.AddConnectAgent(api.ClientTypeAgent, agentID)
+	ag, _ := ts.AddConnectAgent(agentID)
 	ag.SetActionHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 		stat.Status = api.DeliveryCompleted
 		return
@@ -86,7 +86,7 @@ func TestReadTDs(t *testing.T) {
 
 	r := startRuntime()
 	defer r.Stop()
-	ag, _ := ts.AddConnectAgent(api.ClientTypeAgent, agentID)
+	ag, _ := ts.AddConnectAgent(agentID)
 	defer ag.Disconnect()
 	cl, _ := ts.AddConnectUser(userID, api.ClientRoleManager)
 	defer cl.Disconnect()

@@ -87,26 +87,50 @@ func (test *TestServer) AddConnectUser(
 // AddConnectAgent creates a new agent test client.
 // Agents use non-session tokens and survive a server restart.
 // This returns the agent's connection token.
-//
-// clientType can be one of ClientTypeAgent or ClientTypeService
 func (test *TestServer) AddConnectAgent(
-	clientType api.ClientType, clientID string) (
-	cl hubclient.IHubClient, token string) {
+	agentID string) (cl hubclient.IHubClient, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(
-		clientType, clientID, clientID, "")
+		api.ClientTypeAgent, agentID, agentID, "")
 	if err == nil {
-		err = test.Runtime.AuthzSvc.SetClientRole(clientID, api.ClientRoleAgent)
+		err = test.Runtime.AuthzSvc.SetClientRole(agentID, api.ClientRoleAgent)
 	}
 	if err != nil {
 		panic("Failed adding client:" + err.Error())
 	}
 
 	hostPort := fmt.Sprintf("localhost:%d", test.Port)
-	cl = httpclient.NewHttpSSEClient(hostPort, clientID, test.Certs.CaCert)
+	cl = httpclient.NewHttpSSEClient(hostPort, agentID, test.Certs.CaCert)
 	_, err = cl.ConnectWithToken(token)
 	if err != nil {
-		panic("Failed connecting using token. ClientID=" + clientID)
+		panic("Failed connecting using token. ClientID=" + agentID)
+	}
+
+	return cl, token
+}
+
+// AddConnectService creates a new service test client.
+// Services are agents and use non-session tokens and survive a server restart.
+// This returns the service's connection token.
+//
+// clientType can be one of ClientTypeAgent or ClientTypeService
+func (test *TestServer) AddConnectService(serviceID string) (
+	cl hubclient.IHubClient, token string) {
+
+	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(
+		api.ClientTypeService, serviceID, serviceID, "")
+	if err == nil {
+		err = test.Runtime.AuthzSvc.SetClientRole(serviceID, api.ClientRoleService)
+	}
+	if err != nil {
+		panic("Failed adding client:" + err.Error())
+	}
+
+	hostPort := fmt.Sprintf("localhost:%d", test.Port)
+	cl = httpclient.NewHttpSSEClient(hostPort, serviceID, test.Certs.CaCert)
+	_, err = cl.ConnectWithToken(token)
+	if err != nil {
+		panic("Failed connecting using token. serviceID=" + serviceID)
 	}
 
 	return cl, token
@@ -184,12 +208,12 @@ func (test *TestServer) Start(clean bool) {
 	test.Config.CaKey = test.Certs.CaKey
 	test.Config.ServerKey = test.Certs.ServerKey
 	test.Config.ServerCert = test.Certs.ServerCert
-	err := test.Config.Setup(&test.AppEnv)
-	if err != nil {
-		panic("unable to setup test server config")
-	}
+	//err := test.Config.Setup(&test.AppEnv)
+	//if err != nil {
+	//	panic("unable to setup test server config")
+	//}
 	test.Runtime = runtime.NewRuntime(test.Config)
-	err = test.Runtime.Start(&test.AppEnv)
+	err := test.Runtime.Start(&test.AppEnv)
 	if err != nil {
 		panic("unable to start test server runtime")
 	}

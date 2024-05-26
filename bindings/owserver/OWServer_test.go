@@ -4,11 +4,10 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
-	"github.com/hiveot/hub/core/auth/authapi"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 	"os"
 	"path"
@@ -28,7 +27,7 @@ var core = "mqtt"
 var tempFolder string
 var owsConfig config.OWServerConfig
 var owsSimulationFile string // simulation file
-var testServer *testenv.TestServer
+var ts *testenv.TestServer
 
 // TestMain run test server and use the project test folder as the home folder.
 // All tests are run using the simulation file.
@@ -44,14 +43,14 @@ func TestMain(m *testing.M) {
 	owsConfig = *config.NewConfig()
 	owsConfig.OWServerURL = owsSimulationFile
 	//
-	testServer, err = testenv.StartTestServer(core, true)
+	ts = testenv.StartTestServer(true)
 	if err != nil {
 		panic("unable to start test server: " + err.Error())
 	}
 	result := m.Run()
 	time.Sleep(time.Millisecond)
 
-	testServer.Stop()
+	ts.Stop()
 	if result == 0 {
 		_ = os.RemoveAll(tempFolder)
 	}
@@ -62,11 +61,10 @@ func TestStartStop(t *testing.T) {
 	t.Log("--- TestStartStop ---")
 	const device1ID = "device1"
 
-	hc, err := testServer.AddConnectUser(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
-	require.NoError(t, err)
+	hc, _ := ts.AddConnectAgent(device1ID)
 	defer hc.Disconnect()
 	svc := service.NewOWServerBinding(&owsConfig)
-	err = svc.Start(hc)
+	err := svc.Start(hc)
 	assert.NoError(t, err)
 	defer svc.Stop()
 	time.Sleep(time.Second)
@@ -77,17 +75,16 @@ func TestPoll(t *testing.T) {
 	const device1ID = "device1"
 
 	t.Log("--- TestPoll ---")
-	hc, err := testServer.AddConnectUser(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
-	require.NoError(t, err)
+	hc, _ := ts.AddConnectAgent(device1ID)
 	defer hc.Disconnect()
 	svc := service.NewOWServerBinding(&owsConfig)
 
 	// Count the number of received TD events
-	err = hc.SubEvents("", "", "")
+	err := hc.Subscribe("", "")
 	require.NoError(t, err)
-	hc.SetEventHandler(func(ev *things.ThingMessage) {
-		slog.Info("received event", "id", ev.Name)
-		if ev.Name == transports.EventTypeProps {
+	hc.SetEventHandler(func(ev *things.ThingMessage) error {
+		slog.Info("received event", "id", ev.Key)
+		if ev.Key == vocab.EventTypeProperties {
 			var value map[string]interface{}
 			err2 := ser.Unmarshal(ev.Data, &value)
 			assert.NoError(t, err2)
@@ -97,6 +94,7 @@ func TestPoll(t *testing.T) {
 			assert.NoError(t, err2)
 		}
 		tdCount.Add(1)
+		return nil
 	})
 	assert.NoError(t, err)
 
@@ -116,14 +114,13 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 	t.Log("--- TestPollInvalidEDSAddress ---")
 	const device1ID = "device1"
 
-	hc, err := testServer.AddConnectUser(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
-	require.NoError(t, err)
+	hc, _ := ts.AddConnectAgent(device1ID)
 	defer hc.Disconnect()
 
 	badConfig := owsConfig // copy
 	badConfig.OWServerURL = "http://invalidAddress/"
 	svc := service.NewOWServerBinding(&badConfig)
-	err = svc.Start(hc)
+	err := svc.Start(hc)
 	assert.NoError(t, err)
 	defer svc.Stop()
 
@@ -135,20 +132,19 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 
 func TestAction(t *testing.T) {
 	t.Log("--- TestAction ---")
-	const device1ID = "device1"
+	const agentID = "agent-1"
 	const user1ID = "operator1"
 	// node in test data
-	const nodeID = "C100100000267C7E"
-	//var nodeAddr = things.MakeThingAddr(owsConfig.ID, nodeID)
-	var actionName = vocab.ActionSwitchOn
-	var actionValue = ([]byte)("1")
+	const thingID = "C100100000267C7E"
+	var dThingID = things.MakeDigiTwinThingID(agentID, thingID)
+	var actionName = "RelayFunction" // the action attribute as defined by the device
+	var actionValue = "1"
 
-	hc, err := testServer.AddConnectUser(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
-	require.NoError(t, err)
+	hc, _ := ts.AddConnectAgent(agentID)
 	defer hc.Disconnect()
 
 	svc := service.NewOWServerBinding(&owsConfig)
-	err = svc.Start(hc)
+	err := svc.Start(hc)
 	require.NoError(t, err)
 	defer svc.Stop()
 
@@ -156,14 +152,14 @@ func TestAction(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	hc2, err := testServer.AddConnectUser(user1ID, authapi.ClientTypeUser, authapi.ClientRoleOperator)
+	hc2, _ := ts.AddConnectUser(user1ID, api.ClientRoleOperator)
 	require.NoError(t, err)
 	defer hc2.Disconnect()
-	reply, err := hc.PubAction(device1ID, nodeID, actionName, actionValue)
+	err = hc2.Rpc(dThingID, actionName, &actionValue, nil)
+	// can't write to a simulation
 	assert.Error(t, err)
-	_ = reply
 
-	//time.Sleep(time.Second*10)  // debugging delay
+	time.Sleep(time.Second * 1) // debugging delay
 }
 
 func TestConfig(t *testing.T) {
@@ -176,12 +172,11 @@ func TestConfig(t *testing.T) {
 	var configName = "LEDFunction"
 	var configValue = ([]byte)("1")
 
-	hc, err := testServer.AddConnectUser(device1ID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
-	require.NoError(t, err)
+	hc, _ := ts.AddConnectAgent(device1ID)
 	defer hc.Disconnect()
 
 	svc := service.NewOWServerBinding(&owsConfig)
-	err = svc.Start(hc)
+	err := svc.Start(hc)
 	require.NoError(t, err)
 	defer svc.Stop()
 
@@ -189,10 +184,11 @@ func TestConfig(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	hc2, err := testServer.AddConnectUser(user1ID, authapi.ClientTypeUser, authapi.ClientRoleManager)
-	require.NoError(t, err)
+	hc2, _ := ts.AddConnectUser(user1ID, api.ClientRoleManager)
 	defer hc2.Disconnect()
-	err = hc2.PubConfig(device1ID, nodeID, configName, configValue)
+	dThingID := things.MakeDigiTwinThingID(device1ID, nodeID)
+	err = hc2.Rpc(dThingID, configName, &configValue, nil)
+	// can't write to a simulation. How to test for real?
 	assert.Error(t, err)
 
 	//time.Sleep(time.Second*10)  // debugging delay

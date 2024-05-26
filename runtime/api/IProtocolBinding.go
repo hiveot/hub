@@ -63,23 +63,25 @@ type DeliveryStatus struct {
 // Use this when the message is delivered to the service.
 // This applies to delivery, not processing.
 // Primarily intended to make sure the messageID is not forgotten.
-func (stat *DeliveryStatus) Completed(msg *things.ThingMessage, err error) {
+func (stat *DeliveryStatus) Completed(msg *things.ThingMessage, err error) *DeliveryStatus {
 	stat.Status = DeliveryCompleted
 	stat.MessageID = msg.MessageID
 	if err != nil {
 		stat.Error = err.Error()
 	}
+	return stat
 }
 
 // Failed is a simple helper that sets the message delivery status to failed with error.
 // This applies to failed delivery, not processing.
 // Primarily intended to make sure the messageID is not forgotten.
-func (stat *DeliveryStatus) Failed(msg *things.ThingMessage, err error) {
+func (stat *DeliveryStatus) Failed(msg *things.ThingMessage, err error) *DeliveryStatus {
 	stat.Status = DeliveryFailed
 	stat.MessageID = msg.MessageID
 	if err != nil {
 		stat.Error = err.Error()
 	}
+	return stat
 }
 
 // EventHandler processes an event without return value

@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 	"sync"
 	"time"
@@ -22,7 +23,7 @@ type IsyBinding struct {
 
 	// Configuration of this protocol binding
 	config *config.Isy99xConfig
-	hc     *hubclient.HubClient
+	hc     hubclient.IHubClient
 
 	thingID string           // ID of the binding Thing
 	isyAPI  *IsyAPI          // methods for communicating met ISY gateway device
@@ -48,60 +49,74 @@ type IsyBinding struct {
 //}
 
 // HandleActionRequest passes the action request to the associated Thing.
-func (svc *IsyBinding) handleActionRequest(tv *things.ThingMessage) (reply []byte, err error) {
+func (svc *IsyBinding) handleActionRequest(action *things.ThingMessage) (stat api.DeliveryStatus) {
+	if action.Key == vocab.ActionTypeProperties {
+		return svc.handleConfigRequest(action)
+	}
+
 	slog.Info("handleActionRequest",
-		slog.String("thingID", tv.ThingID),
-		slog.String("name", tv.Name),
-		slog.String("senderID", tv.SenderID))
+		slog.String("thingID", action.ThingID),
+		slog.String("key", action.Key),
+		slog.String("senderID", action.SenderID))
 
 	if !svc.isyAPI.IsConnected() {
-		return nil, fmt.Errorf("No connection with the gateway")
+		slog.Warn(stat.Error)
+		stat.Completed(action, fmt.Errorf("No connection with the gateway"))
+		return
 	}
-	isyThing := svc.IsyGW.GetIsyThing(tv.ThingID)
+	isyThing := svc.IsyGW.GetIsyThing(action.ThingID)
 	if isyThing == nil {
-		err = fmt.Errorf("handleActionRequest: thing '%s' not found", tv.ThingID)
-		slog.Warn(err.Error())
+		stat.Completed(action, fmt.Errorf("handleActionRequest: thing '%s' not found", action.ThingID))
+		slog.Warn(stat.Error)
+		return
 	}
-	if isyThing != nil {
-		err = isyThing.HandleActionRequest(tv)
-	}
-	return nil, err
+	err := isyThing.HandleActionRequest(action)
+	stat.Completed(action, err)
+	return
 }
 
 // handleConfigRequest for handling binding, gateway and node configuration changes
-func (svc *IsyBinding) handleConfigRequest(tv *things.ThingMessage) (err error) {
+func (svc *IsyBinding) handleConfigRequest(action *things.ThingMessage) (stat api.DeliveryStatus) {
 
 	slog.Info("handleConfigRequest",
-		slog.String("thingID", tv.ThingID),
-		slog.String("name", tv.Name),
-		slog.String("senderID", tv.SenderID))
+		slog.String("thingID", action.ThingID),
+		slog.String("key", action.Key),
+		slog.String("senderID", action.SenderID))
 
 	// configuring the binding doesn't require a connection with the gateway
-	if tv.ThingID == svc.thingID {
-		err = svc.HandleBindingConfig(tv)
-		return err
+	if action.ThingID == svc.thingID {
+		err := svc.HandleBindingConfig(action)
+		stat.Completed(action, err)
+		return
 	}
 
 	if !svc.isyAPI.IsConnected() {
-		return fmt.Errorf("no connection with the gateway")
+		// this is a delivery failure
+		stat.Failed(action, fmt.Errorf("no connection with the gateway"))
+		slog.Warn(stat.Error)
+		return
 	}
 
 	// pass request to the Thing
-	isyThing := svc.IsyGW.GetIsyThing(tv.ThingID)
+	isyThing := svc.IsyGW.GetIsyThing(action.ThingID)
 	if isyThing == nil {
-		err = fmt.Errorf("handleActionRequest: thing '%s' not found", tv.ThingID)
-		slog.Warn(err.Error())
-	} else {
-		err = isyThing.HandleConfigRequest(tv)
-		//
+		stat.Failed(action, fmt.Errorf("handleActionRequest: thing '%s' not found", action.ThingID))
+		slog.Warn(stat.Error)
+		return
+	}
+	err := isyThing.HandleConfigRequest(action)
+	stat.Completed(action, err)
+
+	// publish changed values after returning
+	go func() {
 		_ = svc.PublishValues(true)
 		// re-submit the TD if the title changes
-		if tv.Name == vocab.PropDeviceTitle {
+		if action.Key == vocab.PropDeviceTitle {
 			td := isyThing.GetTD()
 			_ = svc.hc.PubTD(td)
 		}
-	}
-	return err
+	}()
+	return stat
 }
 
 // Start the ISY99x protocol binding.
@@ -109,8 +124,8 @@ func (svc *IsyBinding) handleConfigRequest(tv *things.ThingMessage) (err error) 
 // If no connection can be made the heartbeat will retry periodically until stopped.
 //
 // This publishes a TD for this binding, starts a background polling heartbeat.
-func (svc *IsyBinding) Start(hc *hubclient.HubClient) (err error) {
-	slog.Warn("Starting Isy99x binding")
+func (svc *IsyBinding) Start(hc hubclient.IHubClient) (err error) {
+	slog.Info("Starting Isy99x binding")
 	svc.hc = hc
 	svc.thingID = hc.ClientID()
 	if svc.config.LogLevel != "" {
@@ -126,7 +141,6 @@ func (svc *IsyBinding) Start(hc *hubclient.HubClient) (err error) {
 
 	// subscribe to action requests
 	svc.hc.SetActionHandler(svc.handleActionRequest)
-	svc.hc.SetConfigHandler(svc.handleConfigRequest)
 
 	// last, start polling heartbeat
 	svc.stopHeartbeatFn = svc.startHeartbeat()
@@ -136,7 +150,7 @@ func (svc *IsyBinding) Start(hc *hubclient.HubClient) (err error) {
 // Stop the heartbeat and remove subscriptions
 // This does not close the given hubclient connection.
 func (svc *IsyBinding) Stop() {
-	slog.Warn("Stopping the ISY99x Binding")
+	slog.Info("Stopping the ISY99x Binding")
 	//svc.isRunning.Store(false)
 	if svc.stopHeartbeatFn != nil {
 		svc.stopHeartbeatFn()

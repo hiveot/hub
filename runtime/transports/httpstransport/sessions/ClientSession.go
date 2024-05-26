@@ -1,11 +1,8 @@
 package sessions
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 	"sync"
 	"time"
@@ -40,6 +37,9 @@ type ClientSession struct {
 	// SSE event channels for this session
 	// Each SSE connection is added to this list
 	sseClients []chan SSEEvent
+
+	// ThingID's subscribed to
+	subscriptions map[string]string
 }
 
 // Close the session
@@ -90,6 +90,24 @@ func (cs *ClientSession) GetSessionID() string {
 	return cs.sessionID
 }
 
+// IsSubscribed returns true  if this client session has subscribed to events from the Thing and optionally key
+// TODO: add more fine-grained multi-key subscription
+func (cs *ClientSession) IsSubscribed(dThingID string, key string) bool {
+	subKey, hasSubscription := cs.subscriptions[dThingID]
+	if !hasSubscription {
+		// also check for wildcard subscription
+		subKey, hasSubscription = cs.subscriptions["+"]
+		if !hasSubscription {
+			return false
+		}
+	}
+	// subscribed to any event
+	if subKey == "" || subKey == "+" || key == "" {
+		return true
+	}
+	return subKey == key
+}
+
 // onConnectChange is invoked on disconnect/reconnect
 func (cs *ClientSession) onConnectChange(stat hubclient.HubTransportStatus) {
 	slog.Info("connection change",
@@ -105,46 +123,46 @@ func (cs *ClientSession) onConnectChange(stat hubclient.HubTransportStatus) {
 }
 
 // onEvent passes incoming events from the Hub to the SSE client(s)
-func (cs *ClientSession) onEvent(msg *things.ThingMessage) {
-	cs.mux.RLock()
-	defer cs.mux.RUnlock()
-	slog.Info("received event", slog.String("thingID", msg.ThingID),
-		slog.String("id", msg.Key))
-	if msg.Key == vocab.EventTypeTD {
-		// Publish sse event indicating the Thing TD has changed.
-		// The UI that displays this event can use this as a trigger to reload the
-		// fragment that displays this TD:
-		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}"
-		_ = cs.SendSSE(msg.ThingID, "")
-	} else if msg.Key == vocab.EventTypeProperties {
-		// Publish an sse event for each of the properties
-		// The UI that displays this event can use this as a trigger to load the
-		// property value:
-		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}/{{k}}"
-		props := make(map[string]string)
-		err := json.Unmarshal([]byte(msg.Data), &props)
-		if err == nil {
-			for k, v := range props {
-				thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, k)
-				_ = cs.SendSSE(thingAddr, v)
-				thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, k)
-				_ = cs.SendSSE(thingAddr, msg.GetUpdated())
-			}
-		}
-	} else {
-		// Publish sse event indicating the event affordance or value has changed.
-		// The UI that displays this event can use this as a trigger to reload the
-		// fragment that displays this event:
-		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}/{{$k}}"
-		// where $k is the event ID
-		thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, msg.Key)
-		_ = cs.SendSSE(thingAddr, string(msg.Data))
-		// TODO: improve on this crude way to update the 'updated' field
-		// Can the value contain an object with a value and updated field instead?
-		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Key)
-		_ = cs.SendSSE(thingAddr, msg.GetUpdated())
-	}
-}
+//func (cs *ClientSession) onEvent(msg *things.ThingMessage) {
+//	cs.mux.RLock()
+//	defer cs.mux.RUnlock()
+//	slog.Info("received event", slog.String("thingID", msg.ThingID),
+//		slog.String("id", msg.Key))
+//	if msg.Key == vocab.EventTypeTD {
+//		// Publish sse event indicating the Thing TD has changed.
+//		// The UI that displays this event can use this as a trigger to reload the
+//		// fragment that displays this TD:
+//		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}"
+//		_ = cs.SendSSE(msg.ThingID, "")
+//	} else if msg.Key == vocab.EventTypeProperties {
+//		// Publish an sse event for each of the properties
+//		// The UI that displays this event can use this as a trigger to load the
+//		// property value:
+//		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}/{{k}}"
+//		props := make(map[string]string)
+//		err := json.Unmarshal([]byte(msg.Data), &props)
+//		if err == nil {
+//			for k, v := range props {
+//				thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, k)
+//				_ = cs.SendSSE(thingAddr, v)
+//				thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, k)
+//				_ = cs.SendSSE(thingAddr, msg.GetUpdated())
+//			}
+//		}
+//	} else {
+//		// Publish sse event indicating the event affordance or value has changed.
+//		// The UI that displays this event can use this as a trigger to reload the
+//		// fragment that displays this event:
+//		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}/{{$k}}"
+//		// where $k is the event ID
+//		thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, msg.Key)
+//		_ = cs.SendSSE(thingAddr, string(msg.Data))
+//		// TODO: improve on this crude way to update the 'updated' field
+//		// Can the value contain an object with a value and updated field instead?
+//		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Key)
+//		_ = cs.SendSSE(thingAddr, msg.GetUpdated())
+//	}
+//}
 
 // SendSSE encodes and sends an SSE event to clients of this session
 // Intended to send events to clients over sse.
@@ -172,12 +190,12 @@ func (cs *ClientSession) SendSSE(eventType string, payload string) int {
 
 // Subscribe adds the event subscription for this session client
 func (cs *ClientSession) Subscribe(dThingID string, key string) {
-
+	cs.subscriptions[dThingID] = key
 }
 
 // Unsubscribe removes the event subscription for this session client
 func (cs *ClientSession) Unsubscribe(dThingID string, key string) {
-
+	delete(cs.subscriptions, dThingID)
 }
 
 // NewClientSession creates a new client session
@@ -192,8 +210,9 @@ func NewClientSession(sessionID string, clientID string, remoteAddr string) *Cli
 		clientID:   clientID,
 		remoteAddr: remoteAddr,
 		// TODO: assess need for buffering
-		sseClients:   make([]chan SSEEvent, 0),
-		lastActivity: time.Now(),
+		sseClients:    make([]chan SSEEvent, 0),
+		lastActivity:  time.Now(),
+		subscriptions: make(map[string]string),
 	}
 
 	return &cs

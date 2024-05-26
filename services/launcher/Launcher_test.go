@@ -43,7 +43,7 @@ func startService() (l *launcherclient.LauncherClient, stopFn func()) {
 
 	testServer = testenv.StartTestServer(true)
 
-	hc1, _ := testServer.AddConnectAgent(api.ClientTypeService, launcherID)
+	hc1, _ := testServer.AddConnectService(launcherID)
 	var launcherConfig = config.NewLauncherConfig()
 	launcherConfig.AttachStderr = true
 	launcherConfig.AttachStdout = false

@@ -59,7 +59,7 @@ func startHistoryService(clean bool) (
 	}
 
 	// the service needs a server connection
-	hc, _ := ts.AddConnectAgent(api.ClientTypeService, historyapi.AgentID)
+	hc, _ := ts.AddConnectService(historyapi.AgentID)
 	svc = service.NewHistoryService(histStore)
 	if err == nil {
 		err = svc.Start(hc)
@@ -560,7 +560,7 @@ func TestPubSub(t *testing.T) {
 	defer stopFn()
 	_ = svc
 
-	hc1, _ := ts.AddConnectAgent(api.ClientTypeAgent, agent1ID)
+	hc1, _ := ts.AddConnectService(agent1ID)
 	defer hc1.Disconnect()
 	// publish events
 	names := []string{
@@ -642,7 +642,7 @@ func TestManageRetention(t *testing.T) {
 	}
 
 	// connect as device1 and publish two events, one to be retained
-	hc2, _ := ts.AddConnectAgent(api.ClientTypeAgent, device1ID)
+	hc2, _ := ts.AddConnectService(device1ID)
 	require.NoError(t, err)
 	defer hc2.Disconnect()
 	err = hc2.PubEvent(thing0ID, event1Name, []byte("hi)"))

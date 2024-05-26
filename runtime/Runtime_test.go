@@ -64,7 +64,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 
 	r := startRuntime()
 	defer r.Stop()
-	cl1, _ := ts.AddConnectAgent(api.ClientTypeAgent, agentID)
+	cl1, _ := ts.AddConnectAgent(agentID)
 	cl2, _ := ts.AddConnectUser(userID, api.ClientRoleManager)
 
 	// connect the agent and user clients
@@ -132,7 +132,7 @@ func TestServiceReconnect(t *testing.T) {
 	// give server time to start up before connecting
 	time.Sleep(time.Millisecond * 10)
 
-	cl1, cl1Token := ts.AddConnectAgent(api.ClientTypeAgent, agentID)
+	cl1, cl1Token := ts.AddConnectAgent(agentID)
 	defer cl1.Disconnect()
 
 	// Agent receives action request which we'll handle here

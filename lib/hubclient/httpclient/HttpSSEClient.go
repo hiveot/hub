@@ -169,7 +169,7 @@ func (cl *HttpSSEClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
 // Disconnect from the MQTT broker and unsubscribe from all topics and set
 // device state to disconnected
 func (cl *HttpSSEClient) Disconnect() {
-	slog.Warn("HttpSSEClient.Disconnect")
+	slog.Info("HttpSSEClient.Disconnect")
 	cl.mux.Lock()
 	defer cl.mux.Unlock()
 	if cl._sseChan != nil {
@@ -194,6 +194,8 @@ func (cl *HttpSSEClient) GetStatus() hubclient.HubTransportStatus {
 }
 
 func (cl *HttpSSEClient) GetTlsClient() *tlsclient.TLSClient {
+	cl.mux.RLock()
+	defer cl.mux.RUnlock()
 	return cl.tlsClient
 }
 
@@ -284,6 +286,14 @@ func (cl *HttpSSEClient) PubAction(thingID string, key string, payload []byte) (
 	vars := map[string]string{"thingID": thingID, "key": key}
 	eventPath := utils.Substitute(vocab.PostActionPath, vars)
 	// the reply is a delivery status
+	cl.mux.RLock()
+	defer cl.mux.RUnlock()
+	if cl.tlsClient == nil {
+		stat.Status = api.DeliveryFailed
+		stat.Error = "PubAction. Client connection was closed"
+		slog.Error(stat.Error)
+		return stat
+	}
 	resp, err := cl.tlsClient.Post(eventPath, payload)
 	if err == nil {
 		err = json.Unmarshal(resp, &stat)
@@ -297,7 +307,7 @@ func (cl *HttpSSEClient) PubAction(thingID string, key string, payload []byte) (
 
 // PubActionWithQueryParams publishes an action with query parameters
 func (cl *HttpSSEClient) PubActionWithQueryParams(
-	thingID string, key string, payload []byte, params map[string]string) (stat api.DeliveryStatus, err error) {
+	thingID string, key string, payload []byte, params map[string]string) (stat api.DeliveryStatus) {
 	slog.Info("PubActionWithQueryParams",
 		slog.String("thingID", thingID),
 		slog.String("key", key),
@@ -307,6 +317,15 @@ func (cl *HttpSSEClient) PubActionWithQueryParams(
 	actionPath := utils.Substitute(vocab.PostActionPath, vars)
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, actionPath)
 	// the reply is a delivery status
+
+	cl.mux.RLock()
+	defer cl.mux.RUnlock()
+	if cl.tlsClient == nil {
+		stat.Status = api.DeliveryFailed
+		stat.Error = "PubAction. Client connection was closed"
+		slog.Error(stat.Error)
+		return stat
+	}
 	reply, err := cl.tlsClient.Invoke("POST", serverURL, payload, params)
 	if err == nil {
 		err = json.Unmarshal(reply, &stat)
@@ -314,17 +333,13 @@ func (cl *HttpSSEClient) PubActionWithQueryParams(
 	if err != nil {
 		stat.Status = api.DeliveryFailed
 		stat.Error = err.Error()
-	} else if stat.Error != "" {
-		// if the status contains an error return it instead
-		err = errors.New(stat.Error)
 	}
-	return stat, err
+	return stat
 }
 
 // PubEvent publishes an event message and returns
 // This returns an error if the connection with the server is broken
 func (cl *HttpSSEClient) PubEvent(thingID string, key string, payload []byte) error {
-
 	slog.Info("PubEvent",
 		slog.String("me", cl.clientID),
 		slog.String("device thingID", thingID),
@@ -332,8 +347,25 @@ func (cl *HttpSSEClient) PubEvent(thingID string, key string, payload []byte) er
 	)
 	vars := map[string]string{"thingID": thingID, "key": key}
 	eventPath := utils.Substitute(vocab.PostEventPath, vars)
+	cl.mux.RLock()
+	defer cl.mux.RUnlock()
+	if cl.tlsClient == nil {
+		return fmt.Errorf("PubEvent. Client connection was closed")
+	}
 	_, err := cl.tlsClient.Post(eventPath, payload)
 	return err
+}
+
+// PubProps publishes a properties map
+func (cl *HttpSSEClient) PubProps(thingID string, props map[string]string) error {
+	payload, _ := json.Marshal(props)
+	return cl.PubEvent(thingID, vocab.EventTypeProperties, payload)
+}
+
+// PubTD publishes a TD event
+func (cl *HttpSSEClient) PubTD(td *things.TD) error {
+	payload, _ := json.Marshal(td)
+	return cl.PubEvent(td.ID, vocab.EventTypeTD, payload)
 }
 
 // RefreshToken refreshes the authentication token
@@ -378,10 +410,10 @@ func (cl *HttpSSEClient) Rpc(
 
 	// invoke with query parameters to provide the message ID
 	qparams := map[string]string{"messageID": messageID}
-	stat, err := cl.PubActionWithQueryParams(thingID, key, data, qparams)
+	stat := cl.PubActionWithQueryParams(thingID, key, data, qparams)
 
 	// wait for a response on the message channel
-	if err == nil && !(stat.Status == api.DeliveryCompleted || stat.Status == api.DeliveryFailed) {
+	if !(stat.Status == api.DeliveryCompleted || stat.Status == api.DeliveryFailed) {
 		stat, err = cl.WaitForStatusUpdate(rChan, messageID, cl.timeout)
 	}
 	cl.mux.Lock()

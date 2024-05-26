@@ -1,8 +1,6 @@
 package service
 
 import (
-	"github.com/hiveot/hub/lib/hubclient/transports"
-	"github.com/hiveot/hub/lib/ser"
 	"strconv"
 	"time"
 
@@ -43,7 +41,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err err
 	// Iterate the devices and their properties
 	for _, node := range nodes {
 		// send all changed property attributes in a single properties event
-		attrMap := make(map[string]string)
+		attrMap := make(map[string]interface{})
 		//thingID := things.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
 		thingID := node.ROMId
 
@@ -74,8 +72,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err err
 			}
 		}
 		if len(attrMap) > 0 {
-			attrMapJSON, _ := ser.Marshal(attrMap)
-			err = svc.hc.PubEvent(thingID, transports.EventTypeProps, attrMapJSON)
+			err = svc.hc.PubProps(thingID, attrMap)
 		}
 	}
 	return err

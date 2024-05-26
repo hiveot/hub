@@ -3,7 +3,6 @@ package isy99x_test
 import (
 	"github.com/hiveot/hub/bindings/isy99x/config"
 	"github.com/hiveot/hub/bindings/isy99x/service"
-	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"os"
@@ -31,7 +30,7 @@ var core = "mqtt"
 
 // set in TestMain
 var tempDir = path.Join(os.TempDir(), "test-isy99x")
-var testServer *testenv.TestServer
+var ts *testenv.TestServer
 
 // TestMain run test server and use the project test folder as the home folder.
 // All tests are run using the simulation file.
@@ -46,7 +45,7 @@ func TestMain(m *testing.M) {
 	appConfig.IsyAddress = simulationRoot
 
 	//
-	testServer, err = testenv.StartTestServer(core, true)
+	ts = testenv.StartTestServer(true)
 	if err != nil {
 		panic("unable to start test server: " + err.Error())
 	}
@@ -54,7 +53,7 @@ func TestMain(m *testing.M) {
 	result := m.Run()
 	time.Sleep(time.Second)
 
-	testServer.Stop()
+	ts.Stop()
 	if result == 0 {
 		_ = os.RemoveAll(tempDir)
 	}
@@ -66,11 +65,13 @@ func TestStartStop(t *testing.T) {
 	os.Remove(nodesFile)
 
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	hc, err := testServer.AddConnectUser("isy99", authapi.ClientTypeService, authapi.ClientRoleService)
-	require.NoError(t, err)
+	hc, _ := ts.AddConnectService("isy99")
+	defer hc.Disconnect()
 
 	svc := service.NewIsyBinding(appConfig)
-	err = svc.Start(hc)
+	err := svc.Start(hc)
+	require.NoError(t, err)
+	defer svc.Stop()
 
 	err = svc.IsyGW.ReadIsyThings()
 	require.NoError(t, err)
@@ -79,44 +80,42 @@ func TestStartStop(t *testing.T) {
 	devices := svc.IsyGW.GetIsyThings()
 	assert.True(t, len(devices) > 5, "Expected 6 ISY nodes. Got fewer.")
 
-	svc.Stop()
 	time.Sleep(time.Millisecond)
 }
 
 func TestBadAddress(t *testing.T) {
 	os.Remove(nodesFile)
 
-	hc, err := testServer.AddConnectUser("isy99", authapi.ClientTypeService, authapi.ClientRoleService)
-	require.NoError(t, err)
+	hc, _ := ts.AddConnectService("isy99")
+	defer hc.Disconnect()
 
 	// error case - use real url
 	badConfig := *appConfig
 	badConfig.IsyAddress = "localhost"
 	svc := service.NewIsyBinding(&badConfig)
-	err = svc.Start(hc)
+	err := svc.Start(hc)
 	assert.NoError(t, err)
+	defer svc.Stop()
+
 	err = svc.IsyGW.ReadIsyThings()
 	assert.Error(t, err)
 	time.Sleep(time.Millisecond * 100)
-
-	svc.Stop()
-	time.Sleep(time.Millisecond * 1)
 }
 
 func TestIsyAppPoll(t *testing.T) {
 	os.Remove(nodesFile)
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	hc, err := testServer.AddConnectUser("isy99", authapi.ClientTypeService, authapi.ClientRoleService)
-	require.NoError(t, err)
+	hc, _ := ts.AddConnectService("isy99")
+	defer hc.Disconnect()
 
 	svc := service.NewIsyBinding(appConfig)
-	err = svc.Start(hc)
+	err := svc.Start(hc)
 	require.NoError(t, err)
+	defer svc.Stop()
 
 	err = svc.PublishIsyTDs()
 	assert.NoError(t, err)
 	time.Sleep(2 * time.Second)
-	svc.Stop()
 }
 
 // This simulates the switch
@@ -126,11 +125,11 @@ func TestSwitch(t *testing.T) {
 
 	os.Remove(nodesFile)
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	hc, err := testServer.AddConnectUser("isy99", authapi.ClientTypeService, authapi.ClientRoleService)
-	require.NoError(t, err)
+	hc, _ := ts.AddConnectService("isy99")
+	defer hc.Disconnect()
 
 	svc := service.NewIsyBinding(appConfig)
-	err = svc.Start(hc)
+	err := svc.Start(hc)
 	require.NoError(t, err)
 	defer svc.Stop()
 

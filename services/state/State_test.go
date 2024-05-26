@@ -24,7 +24,7 @@ func startStateService(cleanStart bool) (
 	ts = testenv.StartTestServer(cleanStart)
 
 	// the service needs a server connection
-	hc1, token1 := ts.AddConnectAgent(api.ClientTypeService, stateapi.AgentID)
+	hc1, token1 := ts.AddConnectService(stateapi.AgentID)
 	_ = token1
 
 	storeDir := path.Join(ts.TestDir, "test-state")
@@ -178,10 +178,10 @@ func TestGetDifferentClientBuckets(t *testing.T) {
 	_ = stateCl
 	defer stopFn()
 
-	hc1, token1 := ts.AddConnectAgent(api.ClientTypeAgent, clientID1)
+	hc1, token1 := ts.AddConnectAgent(clientID1)
 	require.NotEmpty(t, token1)
 	defer hc1.Disconnect()
-	hc2, token2 := ts.AddConnectAgent(api.ClientTypeService, clientID2)
+	hc2, token2 := ts.AddConnectService(clientID2)
 	require.NotEmpty(t, token2)
 	defer hc2.Disconnect()
 

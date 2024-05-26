@@ -37,7 +37,7 @@ func newIdProvService() (
 	hc hubclient.IHubClient,
 	stopFn func()) {
 
-	hc, token1 := testServer.AddConnectAgent(api.ClientTypeService, idprovapi.AgentID)
+	hc, token1 := testServer.AddConnectService(idprovapi.AgentID)
 	_ = token1
 	svc = service.NewIdProvService(testPort, testServer.Certs.ServerCert, testServer.Certs.CaCert)
 	err := svc.Start(hc)

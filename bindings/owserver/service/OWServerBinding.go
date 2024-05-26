@@ -31,7 +31,7 @@ type OWServerBinding struct {
 	edsAPI *eds.EdsAPI
 
 	// hub client to publish TDs and values and receive actions
-	hc *hubclient.HubClient
+	hc hubclient.IHubClient
 
 	// track the last value for change detection
 	// map of [node/device ID] [attribute Title] value
@@ -75,8 +75,8 @@ func (svc *OWServerBinding) CreateBindingTD() *things.TD {
 }
 
 // MakeBindingProps generates a properties map for attribute and config properties of this binding
-func (svc *OWServerBinding) MakeBindingProps() map[string]string {
-	pv := make(map[string]string)
+func (svc *OWServerBinding) MakeBindingProps() map[string]interface{} {
+	pv := make(map[string]interface{})
 	pv[bindingValuePollIntervalID] = fmt.Sprintf("%d", svc.config.PollInterval)
 	pv[bindingTDIntervalID] = fmt.Sprintf("%d", svc.config.TDInterval)
 	pv[bindingValuePublishIntervalID] = fmt.Sprintf("%d", svc.config.RepublishInterval)
@@ -89,8 +89,8 @@ func (svc *OWServerBinding) MakeBindingProps() map[string]string {
 // This publishes a TD for this binding, starts a background heartbeat.
 //
 //	hc is the connection with the hubClient to use.
-func (svc *OWServerBinding) Start(hc *hubclient.HubClient) (err error) {
-	slog.Warn("Starting OWServer binding")
+func (svc *OWServerBinding) Start(hc hubclient.IHubClient) (err error) {
+	slog.Info("Starting OWServer binding")
 	if svc.config.LogLevel != "" {
 		logging.SetLogging(svc.config.LogLevel, "")
 	}
@@ -104,7 +104,7 @@ func (svc *OWServerBinding) Start(hc *hubclient.HubClient) (err error) {
 
 	// subscribe to action and configuration requests
 	svc.hc.SetActionHandler(svc.HandleActionRequest)
-	svc.hc.SetConfigHandler(svc.HandleConfigRequest)
+	//svc.hc.SetEventHandler(svc.HandleConfigRequest)
 
 	//myProfile := authclient.NewProfileClient(svc.hc)
 	//err = myProfile.SetServicePermissions(WriteConfigCap, []string{
@@ -162,7 +162,7 @@ func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
 // Stop the heartbeat and remove subscriptions
 // This does not close the given hubclient connection.
 func (svc *OWServerBinding) Stop() {
-	slog.Warn("Stopping OWServer binding")
+	slog.Info("Stopping OWServer binding")
 
 	if svc.stopFn != nil {
 		svc.stopFn()

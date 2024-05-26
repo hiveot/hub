@@ -40,24 +40,25 @@ func (it *IsySwitchThing) GetTD() *things.TD {
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsySwitchThing) HandleActionRequest(tv *things.ThingMessage) (err error) {
+func (it *IsySwitchThing) HandleActionRequest(action *things.ThingMessage) (err error) {
 	var restPath = ""
 	var newValue = ""
+	// FIXME: action keys are the raw keys, not @type
 	// supported actions: on, off
-	if tv.Name == vocab2.ActionSwitchOn {
+	if action.Key == vocab2.ActionSwitchOn {
 		newValue = "DON"
-	} else if tv.Name == vocab2.ActionSwitchOff {
+	} else if action.Key == vocab2.ActionSwitchOff {
 		newValue = "DOF"
-	} else if tv.Name == vocab2.ActionSwitchToggle {
+	} else if action.Key == vocab2.ActionSwitchToggle {
 		newValue = "DOF"
-		oldValue, found := it.propValues.GetValue(tv.Name)
+		oldValue, found := it.propValues.GetValue(action.Key)
 		if !found || oldValue == "DOF" {
 			newValue = "DON"
 		}
 	} else {
 		// unknown action
 		newValue = ""
-		err = fmt.Errorf("HandleActionRequest. Unknown action: %s", tv.Name)
+		err = fmt.Errorf("HandleActionRequest. Unknown action: %s", action.Key)
 		return err
 	}
 
@@ -65,7 +66,7 @@ func (it *IsySwitchThing) HandleActionRequest(tv *things.ThingMessage) (err erro
 	err = it.isyAPI.SendRequest("GET", restPath, "", nil)
 	if err == nil {
 		// TODO: handle event from gateway using websockets. For now just assume this worked.
-		err = it.HandleValueUpdate(tv.Name, "", newValue)
+		err = it.HandleValueUpdate(action.Key, "", newValue)
 		//it.currentProps[actionID] = newValue
 	}
 	return err
