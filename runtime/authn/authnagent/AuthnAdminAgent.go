@@ -19,7 +19,7 @@ type AuthnAdminHandler struct {
 }
 
 // HandleMessage an event or action message for the authn admin service
-// This handle action messages with the AuthnAdminServiceID ThingID.
+// This handle action messages with the AuthnManageServiceID ThingID.
 func (h *AuthnAdminHandler) HandleMessage(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 	if msg.MessageType == vocab.MessageTypeAction {
 		// handle authn admin actions
@@ -27,8 +27,10 @@ func (h *AuthnAdminHandler) HandleMessage(msg *things.ThingMessage) (stat api.De
 		switch msg.Key {
 		case api.AddAgentMethod:
 			return h.AddAgent(msg)
-		case api.AddUserMethod:
-			return h.AddUser(msg)
+		case api.AddConsumerMethod:
+			return h.AddConsumer(msg)
+		case api.AddServiceMethod:
+			return h.AddService(msg)
 		case api.GetClientProfileMethod:
 			return h.GetClientProfile(msg)
 		case api.GetProfilesMethod:
@@ -48,27 +50,40 @@ func (h *AuthnAdminHandler) HandleMessage(msg *things.ThingMessage) (stat api.De
 	return stat
 }
 
-func (h *AuthnAdminHandler) AddUser(
-	msg *things.ThingMessage) (stat api.DeliveryStatus) {
-
-	var args api.AddUserArgs
+func (h *AuthnAdminHandler) AddAgent(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	var args api.AddAgentArgs
 	err := json.Unmarshal(msg.Data, &args)
 	if err == nil {
-		err = h.svc.AddUser(args.ClientID, args.DisplayName, args.Password)
+		token, err2 := h.svc.AddAgent(args.AgentID, args.DisplayName, args.PubKey)
+		err = err2
+		if err == nil {
+			resp := api.AddAgentResp{Token: token}
+			stat.Reply, err = json.Marshal(resp)
+		}
+	}
+	stat.Completed(msg, err)
+	return stat
+}
+func (h *AuthnAdminHandler) AddConsumer(
+	msg *things.ThingMessage) (stat api.DeliveryStatus) {
+
+	var args api.AddConsumerArgs
+	err := json.Unmarshal(msg.Data, &args)
+	if err == nil {
+		err = h.svc.AddConsumer(args.ClientID, args.DisplayName, args.Password)
 	}
 	stat.Completed(msg, err)
 	return stat
 }
 
-func (h *AuthnAdminHandler) AddAgent(msg *things.ThingMessage) (stat api.DeliveryStatus) {
-	var args api.AddAgentArgs
+func (h *AuthnAdminHandler) AddService(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	var args api.AddServiceArgs
 	err := json.Unmarshal(msg.Data, &args)
 	if err == nil {
-		token, err2 := h.svc.AddAgent(
-			args.ClientType, args.ClientID, args.DisplayName, args.PubKey)
+		token, err2 := h.svc.AddService(args.AgentID, args.DisplayName, args.PubKey)
 		err = err2
 		if err == nil {
-			resp := api.AddAgentResp{Token: token}
+			resp := api.AddServiceResp{Token: token}
 			stat.Reply, err = json.Marshal(resp)
 		}
 	}

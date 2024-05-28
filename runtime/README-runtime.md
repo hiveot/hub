@@ -68,8 +68,6 @@ Applying an action can result in a state change in the device. In this case the 
 
 When the digital twin inbox receives a status update from the agent, it is passed to the consumer that sent the request, if it is online. If the consumer is offline then the status update is not repeated. On connecting the consumer can obtain the latest values from the outbox.
 
-
-
 ## Transport Protocols
 
 A transport protocol is an embedded server that listens for incoming connections and authenticates the client. Transport protocols can also push messages to connected clients based on their subscriptions. 

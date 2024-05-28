@@ -21,7 +21,7 @@ func AddSessionToContext() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var clientID string
-			var hc *hubclient.HubClient
+			var hc hubclient.IHubClient
 
 			// get the session
 			cs, claims, err := sessionmanager.GetSessionFromCookie(r)

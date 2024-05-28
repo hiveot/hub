@@ -41,7 +41,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err err
 	// Iterate the devices and their properties
 	for _, node := range nodes {
 		// send all changed property attributes in a single properties event
-		attrMap := make(map[string]interface{})
+		attrMap := make(map[string]string)
 		//thingID := things.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
 		thingID := node.ROMId
 

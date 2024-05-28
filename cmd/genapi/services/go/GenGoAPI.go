@@ -15,7 +15,7 @@ import (
 // to talk to the Hub. All actions are invoked through this transport.
 //
 // This generates:
-// * ThingID: "{Title(thingID)}ServiceID"
+// * ThingID: "{Title(thingID)}AgentID"
 // * Define types used in actions
 // * Define a client function for each action
 // * Define a service interface for handling an action
@@ -46,9 +46,9 @@ func GenGoAPIFromTD(td *things.TD, outfile string) (err error) {
 	l.Add("")
 	l.Add("// AgentID is the connection ID of the agent managing the Thing.")
 	l.Add("const AgentID = \"%s\"", agentID)
-	l.Add("// ServiceID is the internal thingID of the device/service as used by agents.")
+	l.Add("// AgentID is the internal thingID of the device/service as used by agents.")
 	l.Add("// Agents use this to publish events and subscribe to actions")
-	l.Add("const ServiceID = \"%s\"", serviceID)
+	l.Add("const AgentID = \"%s\"", serviceID)
 	l.Add("// DThingID is the Digitwin thingID as used by agents. Digitwin adds the dtw:{agent} prefix to the serviceID")
 	l.Add("// Consumers use this to publish actions and subscribe to events")
 	l.Add("const DThingID = \"%s\"", dThingID)

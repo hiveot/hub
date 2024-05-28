@@ -7,11 +7,8 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/authz"
+	"github.com/hiveot/hub/runtime/authz/service"
 )
-
-// AuthzAgentID is the agent's connection ID used addressing its capabilities
-const AuthzAgentID = "authz"
 
 // AuthzAgent serves the message based interface to the authz service API.
 // This converts the request messages into API calls and converts the result
@@ -19,14 +16,17 @@ const AuthzAgentID = "authz"
 // The main entry point is the HandleMessage function.
 type AuthzAgent struct {
 	hc  hubclient.IHubClient
-	svc *authz.AuthzService
+	svc *service.AuthzService
 }
 
 // HandleMessage an event or action message for the authz service
 // This message is send by the protocol client connected to this agent
 func (agent *AuthzAgent) HandleMessage(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 	var err error
-	if msg.ThingID == api.AuthzThingID {
+	// if the message has an authn agent prefix then remove it.
+	// This can happen if invoked directly through an embedded client
+	_, thingID := things.SplitDigiTwinThingID(msg.ThingID)
+	if thingID == api.AuthzManageServiceID {
 		if msg.MessageType == vocab.MessageTypeAction {
 			switch msg.Key {
 			case api.GetClientRoleMethod:
@@ -35,9 +35,17 @@ func (agent *AuthzAgent) HandleMessage(msg *things.ThingMessage) (stat api.Deliv
 				return agent.SetClientRole(msg)
 			}
 		}
-		err = fmt.Errorf("unknown authz action '%s' for capability '%s'", msg.Key, msg.ThingID)
+		err = fmt.Errorf("Authz: unknown action '%s' for service '%s'", msg.Key, msg.ThingID)
+	} else if thingID == api.AuthzUserServiceID {
+		if msg.MessageType == vocab.MessageTypeAction {
+			switch msg.Key {
+			case api.SetPermissionsMethod:
+				return agent.SetPermissions(msg)
+			}
+		}
+		err = fmt.Errorf("Authz: unknown action '%s' for service '%s'", msg.Key, msg.ThingID)
 	} else {
-		err = fmt.Errorf("unknown authz service capability '%s'", msg.ThingID)
+		err = fmt.Errorf("Authz: unknown service '%s'", msg.ThingID)
 	}
 	stat.Completed(msg, err)
 	return stat
@@ -69,6 +77,15 @@ func (agent *AuthzAgent) SetClientRole(msg *things.ThingMessage) (stat api.Deliv
 	stat.Completed(msg, err)
 	return stat
 }
+func (agent *AuthzAgent) SetPermissions(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	var args api.ThingPermissions
+	err := json.Unmarshal(msg.Data, &args)
+	if err == nil {
+		err = agent.svc.SetPermissions(msg.SenderID, args)
+	}
+	stat.Completed(msg, err)
+	return stat
+}
 
 // StartAuthzAgent creates a new instance of the agent handling authorization service requests
 // If hc is nil then use the HandleMessage method directly to pass messages to the agent,
@@ -76,7 +93,7 @@ func (agent *AuthzAgent) SetClientRole(msg *things.ThingMessage) (stat api.Deliv
 //
 //	svc is the authorization service whose capabilities to expose
 //	hc is the optional message client used to publish and subscribe
-func StartAuthzAgent(svc *authz.AuthzService, hc hubclient.IHubClient) (*AuthzAgent, error) {
+func StartAuthzAgent(svc *service.AuthzService, hc hubclient.IHubClient) (*AuthzAgent, error) {
 	var err error
 	agent := AuthzAgent{svc: svc, hc: hc}
 	if hc != nil {

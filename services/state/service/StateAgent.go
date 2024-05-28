@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/authz/authzclient"
 	"github.com/hiveot/hub/services/state/stateapi"
 )
 
@@ -97,19 +98,23 @@ func StartStateAgent(svc *StateService, hc hubclient.IHubClient) *StateAgent {
 	if hc != nil {
 		agent.hc.SetActionHandler(agent.HandleMessage)
 	}
-	// FIXME: REINSTATE AUTHORIZATION FOR SERVICES
+
 	// Set the required permissions for using this service
 	// any user roles can read and write their state
-	//serviceProfile := authnclient.NewAuthnUserClient(svc.hc)
-	//err = serviceProfile.SetServicePermissions(stateapi.StorageCap, []string{
-	//	api.ClientRoleViewer,
-	//	api.ClientRoleOperator,
-	//	api.ClientRoleManager,
-	//	api.ClientRoleAdmin,
-	//	api.ClientRoleAgent,
-	//	api.ClientRoleService})
-	//if err != nil {
-	//	return err
-	//}
+	authzClient := authzclient.NewAuthzUserClient(hc)
+	err := authzClient.SetPermissions(api.ThingPermissions{
+		AgentID: stateapi.AgentID,
+		ThingID: stateapi.StorageServiceID,
+		Allow: []string{
+			api.ClientRoleViewer,
+			api.ClientRoleOperator,
+			api.ClientRoleManager,
+			api.ClientRoleAdmin,
+			api.ClientRoleAgent,
+			api.ClientRoleService}})
+
+	if err != nil {
+		return nil
+	}
 	return &agent
 }

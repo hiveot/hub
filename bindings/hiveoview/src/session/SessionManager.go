@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"github.com/google/uuid"
-	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/keys"
@@ -31,8 +30,6 @@ type SessionManager struct {
 	hubURL string
 	// Hub CA certificate
 	caCert *x509.Certificate
-	// Hub core if known (mqtt or nats)
-	core string
 
 	// keys to use for clients that have no public key set
 	tokenKP keys.IHiveKey
@@ -48,7 +45,7 @@ type SessionManager struct {
 //
 // This returns the new session instance or nil with an error if a session could not be created.
 func (sm *SessionManager) ActivateNewSession(
-	w http.ResponseWriter, r *http.Request, hc *hubclient.HubClient) (*ClientSession, error) {
+	w http.ResponseWriter, r *http.Request, hc hubclient.IHubClient) (*ClientSession, error) {
 	var cs *ClientSession
 	var sessionID string
 
@@ -78,25 +75,26 @@ func (sm *SessionManager) ActivateNewSession(
 	sm.mux.Unlock()
 
 	// 3. Get a new auth token from the Hub auth service
-	profileClient := authclient.NewProfileClient(hc)
-	authToken, err := profileClient.RefreshToken()
-	if err != nil && sm.tokenKP != nil {
-		// Oops, refresh failed. This happens if the account has no public key set. (quite common)
-		// Try to recover by ensuring a public key exists on the account.
-		// This fallback is only useful in case authenticating takes place through this service,
-		// as other clients won't have this public key.
-		prof, err2 := profileClient.GetProfile()
-		err = err2
-		if err == nil {
-			// use this service key-pair
-			if prof.PubKey == "" {
-				pubKey := sm.tokenKP.ExportPublic()
-				err = profileClient.UpdatePubKey(pubKey)
-			}
-			// retry getting a token
-			authToken, err = profileClient.RefreshToken()
-		}
-	}
+	//profileClient := authnclient.NewAuthnUserClient(hc)
+	//authToken, err := profileClient.RefreshToken()
+	authToken, err := hc.RefreshToken()
+	//if err != nil && sm.tokenKP != nil {
+	//	// Oops, refresh failed. This happens if the account has no public key set. (quite common)
+	//	// Try to recover by ensuring a public key exists on the account.
+	//	// This fallback is only useful in case authenticating takes place through this service,
+	//	// as other clients won't have this public key.
+	//	prof, err2 := profileClient.GetProfile()
+	//	err = err2
+	//	if err == nil {
+	//		// use this service key-pair
+	//		if prof.PubKey == "" {
+	//			pubKey := sm.tokenKP.ExportPublic()
+	//			err = profileClient.UpdatePubKey(hc.ClientID(), pubKey)
+	//		}
+	//		// retry getting a token
+	//		authToken, err = profileClient.RefreshToken()
+	//	}
+	//}
 	if err != nil {
 		slog.Warn("Failed refreshing auth token. Session remains active.",
 			"err", err.Error())
@@ -125,17 +123,17 @@ func (sm *SessionManager) Close(sessionID string) error {
 }
 
 // ConnectWithPassword creates a new hub client and connect it to the hub using password login
-func (sm *SessionManager) ConnectWithPassword(loginID string, password string) (*hubclient.HubClient, error) {
-	hc := connect.NewHubClient(sm.hubURL, loginID, sm.caCert, sm.core)
-	err := hc.ConnectWithPassword(password)
+func (sm *SessionManager) ConnectWithPassword(loginID string, password string) (hubclient.IHubClient, error) {
+	hc := connect.NewHubClient(sm.hubURL, loginID, sm.caCert)
+	_, err := hc.ConnectWithPassword(password)
 	// subscribe to updates
 	return hc, err
 }
 
 // ConnectWithToken creates a new hub client and connect it to the hub using token login
-func (sm *SessionManager) ConnectWithToken(loginID string, authToken string) (*hubclient.HubClient, error) {
-	hc := connect.NewHubClient(sm.hubURL, loginID, sm.caCert, sm.core)
-	err := hc.ConnectWithToken(sm.tokenKP, authToken)
+func (sm *SessionManager) ConnectWithToken(loginID string, authToken string) (hubclient.IHubClient, error) {
+	hc := connect.NewHubClient(sm.hubURL, loginID, sm.caCert)
+	_, err := hc.ConnectWithToken(authToken)
 	return hc, err
 }
 
@@ -179,12 +177,10 @@ func (sm *SessionManager) GetSessionFromCookie(r *http.Request) (*ClientSession,
 //	signingKey for cookies
 //	caCert of the messaging server
 //	tokenKP optional keys to use for refreshing tokens of authenticated users
-func (sm *SessionManager) Init(hubURL string, core string,
-	signingKey *ecdsa.PrivateKey, caCert *x509.Certificate,
+func (sm *SessionManager) Init(hubURL string, signingKey *ecdsa.PrivateKey, caCert *x509.Certificate,
 	tokenKP keys.IHiveKey) {
 	sm.hubURL = hubURL
 	sm.caCert = caCert
-	sm.core = core
 	sm.signingKey = signingKey
 	sm.tokenKP = tokenKP
 }

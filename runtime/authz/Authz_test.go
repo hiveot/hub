@@ -4,11 +4,13 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient/embedded"
 	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authz"
 	"github.com/hiveot/hub/runtime/authz/authzagent"
 	"github.com/hiveot/hub/runtime/authz/authzclient"
+	"github.com/hiveot/hub/runtime/authz/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -33,7 +35,7 @@ func TestMain(m *testing.M) {
 // Test starting and stopping authorization service
 func TestStartStop(t *testing.T) {
 	cfg := authz.NewAuthzConfig()
-	svc := authz.NewAuthzService(&cfg, nil)
+	svc := service.NewAuthzService(&cfg, nil)
 	err := svc.Start()
 	require.NoError(t, err)
 	svc.Stop()
@@ -46,7 +48,7 @@ func TestSetRole(t *testing.T) {
 	// start the authz server
 	cfg := authz.NewAuthzConfig()
 	authnStore := authnstore.NewAuthnFileStore(passwordFile, "")
-	svc := authz.NewAuthzService(&cfg, authnStore)
+	svc := service.NewAuthzService(&cfg, authnStore)
 	err := svc.Start()
 	require.NoError(t, err)
 	defer svc.Stop()
@@ -63,7 +65,7 @@ func TestSetRole(t *testing.T) {
 
 	handler, _ := authzagent.StartAuthzAgent(svc, nil)
 	ecl := embedded.NewEmbeddedClient(client1ID, handler.HandleMessage)
-	authzCl := authzclient.NewAuthzClient(ecl)
+	authzCl := authzclient.NewAuthzManageClient(ecl)
 
 	// set the role
 	err = authzCl.SetClientRole(client1ID, client1Role)
@@ -76,29 +78,24 @@ func TestSetRole(t *testing.T) {
 }
 
 func TestHasPermission(t *testing.T) {
-	const client1ID = "client1"
-	const client1Role = api.ClientRoleAgent
+	const senderID = "sender-1"
+	const client1Role = api.ClientRoleOperator
+	const thingID = ""
+	const key = ""
 	cfg := authz.NewAuthzConfig()
 	cfg.Setup(testDir)
 	authnStore := authnstore.NewAuthnFileStore(passwordFile, "")
-	svc := authz.NewAuthzService(&cfg, authnStore)
+	svc := service.NewAuthzService(&cfg, authnStore)
 	err := svc.Start()
 	require.NoError(t, err)
 	defer svc.Stop()
 
-	err = authnStore.Add(client1ID, api.ClientProfile{ClientID: client1ID, ClientType: api.ClientTypeUser})
+	err = authnStore.Add(senderID, api.ClientProfile{ClientID: senderID, ClientType: api.ClientTypeUser})
 	require.NoError(t, err)
-	err = svc.SetClientRole(client1ID, client1Role)
+	err = svc.SetClientRole(senderID, client1Role)
 	assert.NoError(t, err)
-	hasperm := svc.HasPermission(client1ID, vocab.MessageTypeEvent, true)
-	assert.True(t, hasperm)
-	//
-	hasperm = svc.CanPubAction(client1ID)
-	assert.False(t, hasperm)
-	hasperm = svc.CanPubEvent(client1ID)
-	assert.True(t, hasperm)
-	hasperm = svc.CanSubEvent(client1ID)
-	assert.False(t, hasperm)
-	hasperm = svc.CanSubAction(client1ID)
+	// consumers have permission to publish actions
+	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, nil, senderID)
+	hasperm := svc.HasPermission(msg, true)
 	assert.True(t, hasperm)
 }

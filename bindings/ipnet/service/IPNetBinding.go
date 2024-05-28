@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 	"time"
 )
@@ -14,7 +15,7 @@ import (
 type IPNetBinding struct {
 	config *config.IPNetConfig
 	// Hub connection
-	hc *hubclient.HubClient
+	hc hubclient.IHubClient
 
 	// discovered devices
 	devicesMap      map[string]*IPDeviceInfo
@@ -22,12 +23,14 @@ type IPNetBinding struct {
 }
 
 // ActionHandler handle action requests
-func (svc *IPNetBinding) ActionHandler(msg *things.ThingMessage) ([]byte, error) {
-	return nil, fmt.Errorf("unknown action '%s'", msg.Name)
+func (svc *IPNetBinding) ActionHandler(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	stat.Completed(msg, fmt.Errorf("unknown action '%s'", msg.Key))
+	slog.Warn(stat.Error)
+	return stat
 }
 
 // Start the binding
-func (svc *IPNetBinding) Start(hc *hubclient.HubClient) (err error) {
+func (svc *IPNetBinding) Start(hc hubclient.IHubClient) (err error) {
 	if svc.config.LogLevel != "" {
 		logging.SetLogging(svc.config.LogLevel, "")
 	}

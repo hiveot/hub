@@ -1,15 +1,18 @@
 package api
 
-// AuthnAdminServiceID is the ThingID of the authentication admin service
-const AuthnAdminServiceID = "authnmin"
+// AuthnManageServiceID is the ThingID of the authentication admin service
+const AuthnManageServiceID = "manage"
 
 // admin methods
 const (
-	// AddUserMethod requests to add a new client
-	AddUserMethod = "addUser"
-
 	// AddAgentMethod requests to add/update a device or service account with auth token
 	AddAgentMethod = "addAgent"
+
+	// AddConsumerMethod requests to add a new end-user client
+	AddConsumerMethod = "addConsumer"
+
+	// AddServiceMethod requests to add a new service
+	AddServiceMethod = "addService"
 
 	// GetClientProfileMethod requests the profile of a client
 	GetClientProfileMethod = "getClientProfile"
@@ -30,6 +33,45 @@ const (
 	UpdateClientProfileMethod = "updateClientProfile"
 )
 
+// AddAgentArgs adds a new device agent client.
+// Intended for creating an account for IoT device agents.
+type AddAgentArgs struct {
+	// AgentID of the service or administrator
+	AgentID string `json:"clientID"`
+	// DisplayName
+	DisplayName string `json:"displayName,omitempty"`
+	// Public key of agent or "" to generate one
+	PubKey string `json:"pubKey,omitempty"`
+}
+type AddAgentResp struct {
+	Token string `json:"token"`
+}
+
+// AddConsumerArgs arguments for adding a new client
+type AddConsumerArgs struct {
+	// ClientID login ID of the end-user
+	ClientID string `json:"clientID"`
+	// Friendly name of the end-user
+	DisplayName string `json:"displayName"`
+	// Password authentication
+	Password string `json:"password,omitempty"`
+}
+
+// AddServiceArgs adds a new service agent account with a keys and token file
+// Intended for creating an account for local services or administrators that can
+// read the keys and token from the keys directory. Used by the launcher and hub cli.
+type AddServiceArgs struct {
+	// AgentID that provides services
+	AgentID string `json:"agentID"`
+	// DisplayName
+	DisplayName string `json:"displayName,omitempty"`
+	// Public key of agent or "" to generate one
+	PubKey string `json:"pubKey,omitempty"`
+}
+type AddServiceResp struct {
+	Token string `json:"token"`
+}
+
 // AuthnEntry containing client profile and password hash
 // For internal use.
 type AuthnEntry struct {
@@ -42,30 +84,6 @@ type AuthnEntry struct {
 	// Client 'base role'. Authz can add agent/thing specific roles in the future.
 	// This is set when creating a user and updated with SetRole. Authz reads it.
 	Role string `yaml:"role" json:"role"`
-}
-
-// AddUserArgs arguments for adding a new client
-type AddUserArgs struct {
-	ClientID    string `json:"clientID"`
-	DisplayName string `json:"displayName"`
-	Password    string `json:"password,omitempty"`
-}
-
-// AddAgentArgs adds a new service client with a keys and token file
-// Intended for creating an account for local services or administrators that can
-// read the keys and token from the keys directory. Used by the launcher and hub cli.
-type AddAgentArgs struct {
-	// Agent client type ClientTypeService or ClientTypeAgent
-	ClientType ClientType `json:"clientType"`
-	// ClientID (agentID) of the service or administrator
-	ClientID string `json:"clientID"`
-	// DisplayName
-	DisplayName string `json:"displayName,omitempty"`
-	// Public key of agent or "" to generate one
-	PubKey string `json:"pubKey,omitempty"`
-}
-type AddAgentResp struct {
-	Token string `json:"token"`
 }
 
 // GetClientProfileArgs arguments for requesting a client's profile

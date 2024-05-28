@@ -4,16 +4,17 @@ This binding connects to a ZWave USB-Stick controller, and publishes events to t
 
 ## Status
 
-This binding is alpha and needs further testing.
+This binding is being converted to use the new digital twin runtime. It is not functional.
 
 TODO:
 
-1. Nats transport javascript client
 1. ZWave stick reconnect support (Recover after serial port removal)
 1. Detect and track health of nodes; dropped messages, etc.
     * timeouts; dropped messages
     * list of neighbours
-1. Improve mapping of zwave-js VID names to hiveot property/event/action vocabulary. A. map of vid names to vocab names in the driver, and/or B. just publish native values and manage mapping on the Hub C. define proper handling of multi-value properties
+1. Improve mapping of zwave-js VID names to hiveot property/event/action vocabulary. 
+   A. map of vid names to vocab names in the driver, and/or 
+   B. just publish native values and manage mapping on the Hub C. define proper handling of multi-value properties
 1. Include DataSchema in controller configurations for properties that aren't in the zwave-js vids.
 1. Dimming duration is currently not supported
 

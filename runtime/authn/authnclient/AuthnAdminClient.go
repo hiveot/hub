@@ -14,31 +14,44 @@ type AuthnAdminClient struct {
 	dtThingID string
 }
 
-// AddUser adds a new user client
-func (svc *AuthnAdminClient) AddUser(
+// AddConsumer adds a new consumer (end-user) client
+func (svc *AuthnAdminClient) AddConsumer(
 	clientID string, displayName string, password string) (err error) {
 
-	args := api.AddUserArgs{
+	args := api.AddConsumerArgs{
 		ClientID:    clientID,
 		DisplayName: displayName,
 		Password:    password,
 	}
-	err = svc.hc.Rpc(svc.dtThingID, api.AddUserMethod, &args, nil)
+	err = svc.hc.Rpc(svc.dtThingID, api.AddConsumerMethod, &args, nil)
 	return err
 }
 
-// AddAgent adds a device, service or admin user client and generates a token file
+// AddAgent adds a device agent client and generates a token file
 func (svc *AuthnAdminClient) AddAgent(
-	clientType api.ClientType, clientID string, displayName string, pubKey string) (token string, err error) {
+	agentID string, displayName string, pubKey string) (token string, err error) {
 
 	args := api.AddAgentArgs{
-		ClientType:  clientType,
-		ClientID:    clientID,
+		AgentID:     agentID,
 		DisplayName: displayName,
 		PubKey:      pubKey,
 	}
 	resp := api.AddAgentResp{}
 	err = svc.hc.Rpc(svc.dtThingID, api.AddAgentMethod, &args, &resp)
+	return resp.Token, err
+}
+
+// AddService adds a service client and generates a token file
+func (svc *AuthnAdminClient) AddService(
+	agentID string, displayName string, pubKey string) (token string, err error) {
+
+	args := api.AddServiceArgs{
+		AgentID:     agentID,
+		DisplayName: displayName,
+		PubKey:      pubKey,
+	}
+	resp := api.AddAgentResp{}
+	err = svc.hc.Rpc(svc.dtThingID, api.AddServiceMethod, &args, &resp)
 	return resp.Token, err
 }
 
@@ -91,7 +104,7 @@ func (svc *AuthnAdminClient) UpdateClientProfile(profile api.ClientProfile) erro
 func NewAuthnAdminClient(hc hubclient.IHubClient) *AuthnAdminClient {
 	cl := AuthnAdminClient{
 		hc:        hc,
-		dtThingID: things.MakeDigiTwinThingID(api.AuthnAgentID, api.AuthnAdminServiceID),
+		dtThingID: things.MakeDigiTwinThingID(api.AuthnAgentID, api.AuthnManageServiceID),
 	}
 	return &cl
 }

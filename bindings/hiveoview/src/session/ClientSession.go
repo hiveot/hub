@@ -3,10 +3,10 @@ package session
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/core/state/stateclient"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/services/state/stateclient"
 	"log/slog"
 	"sync"
 	"time"
@@ -36,7 +36,7 @@ type ClientSession struct {
 	lastActivity time.Time
 
 	// The associated hub client for pub/sub
-	hc *hubclient.HubClient
+	hc hubclient.IHubClient
 	// session mutex for updating sse and activity
 	mux sync.RWMutex
 
@@ -85,7 +85,7 @@ func (cs *ClientSession) GetStatus() hubclient.HubTransportStatus {
 }
 
 // GetHubClient returns the hub client connection for use in pub/sub
-func (cs *ClientSession) GetHubClient() *hubclient.HubClient {
+func (cs *ClientSession) GetHubClient() hubclient.IHubClient {
 	return cs.hc
 }
 
@@ -111,7 +111,7 @@ func (cs *ClientSession) onConnectChange(stat hubclient.HubTransportStatus) {
 }
 
 // onEvent passes incoming events from the Hub to the SSE client(s)
-func (cs *ClientSession) onEvent(msg *things.ThingMessage) {
+func (cs *ClientSession) onEvent(msg *things.ThingMessage) error {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
 	// FIXME: HOW TO IMPLEMENT DATA BINDING WITH HTMX fragments?
@@ -138,26 +138,26 @@ func (cs *ClientSession) onEvent(msg *things.ThingMessage) {
 	//      ? hx-trigger="sse:<thingID>" could this work?
 
 	slog.Info("received event", slog.String("thingID", msg.ThingID),
-		slog.String("id", msg.Name))
-	if msg.Name == transports.EventTypeTD {
+		slog.String("id", msg.Key))
+	if msg.Key == vocab.EventTypeTD {
 		// Publish sse event indicating the Thing TD has changed.
 		// The UI that displays this event can use this as a trigger to reload the
 		// fragment that displays this TD:
-		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}"
-		thingAddr := fmt.Sprintf("%s/%s", msg.AgentID, msg.ThingID)
+		//    hx-trigger="sse:{{.Thing.ThingID}}"
+		thingAddr := msg.ThingID
 		_ = cs.SendSSE(thingAddr, "")
-	} else if msg.Name == transports.EventTypeProps {
+	} else if msg.Key == vocab.EventTypeProperties {
 		// Publish an sse event for each of the properties
 		// The UI that displays this event can use this as a trigger to load the
 		// property value:
-		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}/{{k}}"
+		//    hx-trigger="sse:{{.Thing.ThingID}}/{{k}}"
 		props := make(map[string]string)
 		err := json.Unmarshal(msg.Data, &props)
 		if err == nil {
 			for k, v := range props {
-				thingAddr := fmt.Sprintf("%s/%s/%s", msg.AgentID, msg.ThingID, k)
+				thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, k)
 				_ = cs.SendSSE(thingAddr, v)
-				thingAddr = fmt.Sprintf("%s/%s/%s/updated", msg.AgentID, msg.ThingID, k)
+				thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, k)
 				_ = cs.SendSSE(thingAddr, msg.GetUpdated())
 			}
 		}
@@ -165,16 +165,17 @@ func (cs *ClientSession) onEvent(msg *things.ThingMessage) {
 		// Publish sse event indicating the event affordance or value has changed.
 		// The UI that displays this event can use this as a trigger to reload the
 		// fragment that displays this event:
-		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}/{{$k}}"
+		//    hx-trigger="sse:{{.Thing.ThingID}}/{{$k}}"
 		// where $k is the event ID
-		thingAddr := fmt.Sprintf("%s/%s/%s", msg.AgentID, msg.ThingID, msg.Name)
+		thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, msg.Key)
 		_ = cs.SendSSE(thingAddr, string(msg.Data))
 		// TODO: improve on this crude way to update the 'updated' field
 		// Can the value contain an object with a value and updated field instead?
 		// htmx sse-swap does allow cherry picking the content unfortunately.
-		thingAddr = fmt.Sprintf("%s/%s/%s/updated", msg.AgentID, msg.ThingID, msg.Name)
+		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Key)
 		_ = cs.SendSSE(thingAddr, msg.GetUpdated())
 	}
+	return nil
 }
 
 func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {
@@ -190,15 +191,15 @@ func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {
 }
 
 // ReplaceHubClient replaces this session's hub client
-func (cs *ClientSession) ReplaceHubClient(newHC *hubclient.HubClient) {
+func (cs *ClientSession) ReplaceHubClient(newHC hubclient.IHubClient) {
 	// ensure the old client is disconnected
 	if cs.hc != nil {
 		cs.hc.Disconnect()
 		cs.hc.SetEventHandler(nil)
-		cs.hc.SetConnectionHandler(nil)
+		cs.hc.SetConnectHandler(nil)
 	}
 	cs.hc = newHC
-	cs.hc.SetConnectionHandler(cs.onConnectChange)
+	cs.hc.SetConnectHandler(cs.onConnectChange)
 	cs.hc.SetEventHandler(cs.onEvent)
 }
 
@@ -232,7 +233,7 @@ func (cs *ClientSession) SendSSE(event string, content string) error {
 //
 // note that expiry is a placeholder for now used to refresh auth token.
 // it should be obtained from the login authentication/refresh.
-func NewClientSession(sessionID string, hc *hubclient.HubClient, remoteAddr string) *ClientSession {
+func NewClientSession(sessionID string, hc hubclient.IHubClient, remoteAddr string) *ClientSession {
 	cs := ClientSession{
 		sessionID:  sessionID,
 		clientID:   hc.ClientID(),
@@ -243,7 +244,7 @@ func NewClientSession(sessionID string, hc *hubclient.HubClient, remoteAddr stri
 		lastActivity: time.Now(),
 	}
 	hc.SetEventHandler(cs.onEvent)
-	hc.SetConnectionHandler(cs.onConnectChange)
+	hc.SetConnectHandler(cs.onConnectChange)
 
 	// restore the session data model
 	stateCl := stateclient.NewStateClient(hc)
@@ -251,13 +252,15 @@ func NewClientSession(sessionID string, hc *hubclient.HubClient, remoteAddr stri
 	_ = found
 	_ = err
 	if len(cs.clientModel.Agents) > 0 {
-		for _, agent := range cs.clientModel.Agents {
-			// subscribe to TD and value events
-			err = hc.SubEvents(agent, "", "")
-		}
+		// TODO: with digitwin it is no longer possible to subscribe to an agent, its all or nothing
+		//
+		//for _, agent := range cs.clientModel.Agents {
+		// subscribe to TD and value events
+		err = hc.Subscribe("", "")
+		//}
 	} else {
 		// no agent set so subscribe to all agents
-		err = hc.SubEvents("", "", "")
+		err = hc.Subscribe("", "")
 	}
 	// subscribe to configured agents
 	return &cs

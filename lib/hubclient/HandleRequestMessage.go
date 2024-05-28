@@ -1,7 +1,6 @@
 package hubclient
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/lib/ser"
@@ -9,11 +8,11 @@ import (
 )
 
 // ServiceContext with context provided to services
-type ServiceContext struct {
-	context.Context
-	// SenderID of the caller
-	SenderID string
-}
+//type ServiceContext struct {
+//	context.Context
+//	// SenderID of the caller
+//	SenderID string
+//}
 
 // HandleRequestMessage unmarshal a request message parameters, passes it to the associated method,
 // and marshals the result. Intended to remove boilerplate from RPC service request handlers.

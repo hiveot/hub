@@ -22,7 +22,8 @@ const bindingMake = "make"
 
 // OWServerBinding is the hub protocol binding plugin for capturing 1-wire OWServer V2 Data
 type OWServerBinding struct {
-	thingID string
+	// Connecting ID and service ID of this binding
+	agentID string
 
 	// Configuration of this protocol binding
 	config *config.OWServerConfig
@@ -48,9 +49,10 @@ type OWServerBinding struct {
 	mu     sync.Mutex
 }
 
-// CreateBindingTD generates a TD document for this binding
+// CreateBindingTD generates a TD document for this binding. Its thingID is the same as its agentID
 func (svc *OWServerBinding) CreateBindingTD() *things.TD {
-	td := things.NewTD(svc.thingID, "OWServer binding", vocab2.ThingServiceAdapter)
+	// This binding exposes a TD describing itself.
+	td := things.NewTD(svc.agentID, "OWServer binding", vocab2.ThingServiceAdapter)
 	td.Description = "Driver for the OWServer V2 Gateway 1-wire interface"
 
 	prop := td.AddProperty(bindingMake, vocab2.PropDeviceMake,
@@ -75,8 +77,8 @@ func (svc *OWServerBinding) CreateBindingTD() *things.TD {
 }
 
 // MakeBindingProps generates a properties map for attribute and config properties of this binding
-func (svc *OWServerBinding) MakeBindingProps() map[string]interface{} {
-	pv := make(map[string]interface{})
+func (svc *OWServerBinding) MakeBindingProps() map[string]string {
+	pv := make(map[string]string)
 	pv[bindingValuePollIntervalID] = fmt.Sprintf("%d", svc.config.PollInterval)
 	pv[bindingTDIntervalID] = fmt.Sprintf("%d", svc.config.TDInterval)
 	pv[bindingValuePublishIntervalID] = fmt.Sprintf("%d", svc.config.RepublishInterval)
@@ -95,22 +97,21 @@ func (svc *OWServerBinding) Start(hc hubclient.IHubClient) (err error) {
 		logging.SetLogging(svc.config.LogLevel, "")
 	}
 	svc.hc = hc
-	svc.thingID = hc.ClientID()
+	svc.agentID = hc.ClientID()
 	// Create the adapter for the OWServer 1-wire gateway
 	svc.edsAPI = eds.NewEdsAPI(
 		svc.config.OWServerURL, svc.config.OWServerLogin, svc.config.OWServerPassword)
 
-	// TODO: restore svc configuration
-
 	// subscribe to action and configuration requests
 	svc.hc.SetActionHandler(svc.HandleActionRequest)
-	//svc.hc.SetEventHandler(svc.HandleConfigRequest)
 
-	//myProfile := authclient.NewProfileClient(svc.hc)
-	//err = myProfile.SetServicePermissions(WriteConfigCap, []string{
-	//	authapi.ClientRoleManager,
-	//	authapi.ClientRoleAdmin,
-	//	authapi.ClientRoleService})
+	// tbd: set the default permissions for managing this binding. is this needed?
+	//authzClient := authzclient.NewAuthzClient(hc)
+	//err = authzClient.SetPermissions(svc.agentID, svc.agentID,
+	//	[]string{
+	//		api.ClientRoleManager,
+	//		api.ClientRoleAdmin,
+	//		api.ClientRoleService})
 
 	// publish this binding's TD document
 	td := svc.CreateBindingTD()

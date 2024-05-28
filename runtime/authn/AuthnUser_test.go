@@ -25,7 +25,7 @@ func TestClientUpdatePubKey(t *testing.T) {
 	userCl := authnclient.NewAuthnUserClient(ehc)
 
 	// add user to test with. don't set the public key yet
-	err := svc.AdminSvc.AddUser(tu1ID, tu1ID, "user1")
+	err := svc.AdminSvc.AddConsumer(tu1ID, tu1ID, "user1")
 	prof, err := svc.AdminSvc.GetClientProfile(tu1ID)
 	require.NoError(t, err)
 	assert.Equal(t, tu1ID, prof.ClientID)
@@ -62,7 +62,7 @@ func TestLoginRefresh(t *testing.T) {
 	userCl := authnclient.NewAuthnUserClient(ecl)
 
 	// add user to test with
-	err := svc.AdminSvc.AddUser(tu1ID, "testuser1", "")
+	err := svc.AdminSvc.AddConsumer(tu1ID, "testuser1", "")
 	require.NoError(t, err)
 
 	err = userCl.UpdatePassword(tu1Pass)
@@ -116,7 +116,7 @@ func TestUpdatePassword(t *testing.T) {
 	userCl := authnclient.NewAuthnUserClient(ecl)
 
 	// add user to test with
-	err := svc.AdminSvc.AddUser(tu1ID, tu1Name, "oldpass")
+	err := svc.AdminSvc.AddConsumer(tu1ID, tu1Name, "oldpass")
 	require.NoError(t, err)
 
 	// login should succeed
@@ -162,7 +162,7 @@ func TestUpdateName(t *testing.T) {
 	userCl := authnclient.NewAuthnUserClient(ecl)
 
 	// add user to test with
-	err := svc.AdminSvc.AddUser(tu1ID, tu1Name, "oldpass")
+	err := svc.AdminSvc.AddConsumer(tu1ID, tu1Name, "oldpass")
 	require.NoError(t, err)
 
 	prof1, err := userCl.GetProfile()

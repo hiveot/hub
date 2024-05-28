@@ -4,7 +4,7 @@ import "github.com/hiveot/hub/lib/keys"
 
 // ClientAuthInfo defines client authentication and authorization information
 type ClientAuthInfo struct {
-	// UserID, ServiceID or AgentID of the client
+	// UserID, AgentID or AgentID of the client
 	ClientID string
 
 	// ClientType identifies the client as a ClientTypeDevice, ClientTypeService or ClientTypeUser

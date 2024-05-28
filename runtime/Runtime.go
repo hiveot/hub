@@ -6,8 +6,8 @@ import (
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/authnagent"
 	"github.com/hiveot/hub/runtime/authn/service"
-	"github.com/hiveot/hub/runtime/authz"
 	"github.com/hiveot/hub/runtime/authz/authzagent"
+	service2 "github.com/hiveot/hub/runtime/authz/service"
 	"github.com/hiveot/hub/runtime/digitwin/digitwinagent"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/middleware"
@@ -23,7 +23,7 @@ type Runtime struct {
 
 	//AuthnStore api.IAuthnStore
 	AuthnSvc      *service.AuthnService
-	AuthzSvc      *authz.AuthzService
+	AuthzSvc      *service2.AuthzService
 	DigitwinStore buckets.IBucketStore
 	DigitwinSvc   *service4.DigitwinService
 	Middleware    *middleware.Middleware
@@ -49,7 +49,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	if err != nil {
 		return err
 	}
-	r.AuthzSvc, err = authz.StartAuthzService(&r.cfg.Authz, r.AuthnSvc.AuthnStore)
+	r.AuthzSvc, err = service2.StartAuthzService(&r.cfg.Authz, r.AuthnSvc.AuthnStore)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		_, err = authnagent.StartAuthnAgent(r.AuthnSvc, cl2)
 	}
 	if err == nil {
-		cl3 := embeddedBinding.NewClient(authzagent.AuthzAgentID)
+		cl3 := embeddedBinding.NewClient(api.AuthzAgentID)
 		_, err = authzagent.StartAuthzAgent(r.AuthzSvc, cl3)
 	}
 	// last, set the handlers for f

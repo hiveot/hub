@@ -19,7 +19,7 @@ type AuthnUserHandler struct {
 }
 
 // HandleMessage an event or action message for the authn admin service
-// This handle action messages with the AuthnAdminServiceID ThingID.
+// This handle action messages with the AuthnManageServiceID ThingID.
 func (h *AuthnUserHandler) HandleMessage(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
 

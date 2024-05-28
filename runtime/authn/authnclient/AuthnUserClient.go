@@ -7,7 +7,8 @@ import (
 	"github.com/hiveot/hub/runtime/api"
 )
 
-// AuthnUserClient is the client side (un)marshaller for user messages.
+// AuthnUserClient is the client side (un)marshaller for client messages.
+// User in this context means agent, service or consumer.
 // This contains messaging serialization methods for use by end-users including
 // agents, services and regular users.
 // The main functions are to login, refresh tokens and change name and password.

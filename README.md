@@ -13,10 +13,11 @@ Status: The Hub core is currently being reworked to use a "[digital twins runtim
 TODO before alpha:
 1. Rework existing IoT bindings to work with the digital twin runtime
    * ~~1-wire protocol binding using owserver-v2 gateway (bindings/owserver)~~
-   * insteon binding using isy99x gateway (bindings/isy99x)
+   * ~~insteon binding using isy99x gateway (bindings/isy99x)~~
    * zwave protocol binding using zwavejs (bindings/zwavejs)
 2. Rework the web client using html/htmx and go templates (bindings/hiveoview)
 3. improve the https protocol binding
+   * support subscribing to Thing events from an agent (tbd is this really needed?)
    * Rework role authorization (viewer, operator, manager, admin)
    * Support client certificate authentication
    * Support websockets are return channel

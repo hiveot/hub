@@ -20,10 +20,10 @@ type AuthnAgent struct {
 
 // HandleMessage dispatches requests to the service capabilities identified by their thingID
 func (agent *AuthnAgent) HandleMessage(msg *things.ThingMessage) (stat api.DeliveryStatus) {
-	// if the message has a authn agent prefix then remove it.
+	// if the message has an authn agent prefix then remove it.
 	// This can happen if invoked directly through an embedded client
 	_, thingID := things.SplitDigiTwinThingID(msg.ThingID)
-	if thingID == api.AuthnAdminServiceID {
+	if thingID == api.AuthnManageServiceID {
 		return agent.adminHandler(msg)
 	} else if thingID == api.AuthnUserServiceID {
 		return agent.userHandler(msg)

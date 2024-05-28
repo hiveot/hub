@@ -66,7 +66,7 @@ func (test *TestServer) AddConnectUser(
 	clientID string, clientRole string) (cl hubclient.IHubClient, token string) {
 
 	password := clientID
-	err := test.Runtime.AuthnSvc.AdminSvc.AddUser(clientID, clientID, password)
+	err := test.Runtime.AuthnSvc.AdminSvc.AddConsumer(clientID, clientID, password)
 	if err == nil {
 		err = test.Runtime.AuthzSvc.SetClientRole(clientID, clientRole)
 	}
@@ -90,8 +90,7 @@ func (test *TestServer) AddConnectUser(
 func (test *TestServer) AddConnectAgent(
 	agentID string) (cl hubclient.IHubClient, token string) {
 
-	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(
-		api.ClientTypeAgent, agentID, agentID, "")
+	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(agentID, agentID, "")
 	if err == nil {
 		err = test.Runtime.AuthzSvc.SetClientRole(agentID, api.ClientRoleAgent)
 	}
@@ -117,8 +116,7 @@ func (test *TestServer) AddConnectAgent(
 func (test *TestServer) AddConnectService(serviceID string) (
 	cl hubclient.IHubClient, token string) {
 
-	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(
-		api.ClientTypeService, serviceID, serviceID, "")
+	token, err := test.Runtime.AuthnSvc.AdminSvc.AddService(serviceID, serviceID, "")
 	if err == nil {
 		err = test.Runtime.AuthzSvc.SetClientRole(serviceID, api.ClientRoleService)
 	}

@@ -4,6 +4,9 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/authz/authzclient"
+	"github.com/hiveot/hub/services/history/historyapi"
 	"log/slog"
 )
 
@@ -56,13 +59,13 @@ func (svc *HistoryService) Start(hc hubclient.IHubClient) (err error) {
 	}
 	// Set the required permissions for using this service
 	// any user roles can view the directory
-	//myProfile := NewProfileClient(svc.hc)
-	//err = myProfile.SetServicePermissions(historyapi.ReadHistoryCap, []string{
-	//	api.ClientRoleViewer,
-	//	api.ClientRoleOperator,
-	//	api.ClientRoleManager,
-	//	api.ClientRoleAdmin,
-	//	api.ClientRoleService})
+	authzClient := authzclient.NewAuthzUserClient(hc)
+	err = authzClient.SetPermissions(api.ThingPermissions{
+		AgentID: hc.ClientID(),
+		ThingID: historyapi.ReadHistoryServiceID,
+		Deny:    []string{api.ClientRoleNone},
+	})
+
 	//if err == nil {
 	//	// only admin role can manage the history
 	//	err = myProfile.SetServicePermissions(historyapi.ManageHistoryThingID, []string{api.ClientRoleAdmin})

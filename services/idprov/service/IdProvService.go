@@ -4,6 +4,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/authz/authzclient"
+	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"log/slog"
 )
 
@@ -55,14 +58,19 @@ func (svc *IdProvService) Start(hc hubclient.IHubClient) (err error) {
 	if err != nil {
 		return err
 	}
-	// FIXME: FIX THE SERVICE AUTHORIZATION
+
 	// Set the required permissions for using this service
 	// any user roles can view the directory
 	//myProfile := authnclient.NewAuthnUserClient(svc.hc)
-	//err = myProfile.SetServicePermissions(idprovapi.ManageProvisioningCap, []string{
-	//	authapi.ClientRoleManager,
-	//	authapi.ClientRoleAdmin,
-	//	authapi.ClientRoleService})
+	authzClient := authzclient.NewAuthzUserClient(hc)
+	err = authzClient.SetPermissions(api.ThingPermissions{
+		AgentID: hc.ClientID(),
+		ThingID: idprovapi.ManageServiceID,
+		Allow: []string{
+			api.ClientRoleManager,
+			api.ClientRoleAdmin,
+			api.ClientRoleService},
+	})
 	if err != nil {
 		return err
 	}

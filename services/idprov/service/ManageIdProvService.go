@@ -160,8 +160,7 @@ func (svc *ManageIdProvService) SubmitRequest(senderID string, args *idprovapi.P
 		}
 
 		status.Pending = false
-		token, err = svc.authSvc.AddAgent(
-			status.ClientType, status.ClientID, status.ClientID, status.PubKey)
+		token, err = svc.authSvc.AddAgent(status.ClientID, status.ClientID, status.PubKey)
 
 		if err != nil {
 			return nil, err

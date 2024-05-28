@@ -21,8 +21,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 )
 
-// var homeFolder string
-var core = "mqtt"
+// TODO: switch for testing with real owserver
 
 var tempFolder string
 var owsConfig config.OWServerConfig
@@ -38,6 +37,8 @@ func TestMain(m *testing.M) {
 	cwd, _ := os.Getwd()
 	homeFolder := path.Join(cwd, "./docs")
 	owsSimulationFile = "file://" + path.Join(homeFolder, "owserver-simulation.xml")
+	// uncomment the next line to discover and test with a real owserver
+	//owsSimulationFile = ""
 	logging.SetLogging("info", "")
 
 	owsConfig = *config.NewConfig()
@@ -48,7 +49,8 @@ func TestMain(m *testing.M) {
 		panic("unable to start test server: " + err.Error())
 	}
 	result := m.Run()
-	time.Sleep(time.Millisecond)
+	time.Sleep(time.Millisecond * 10)
+	println("stopping testserver")
 
 	ts.Stop()
 	if result == 0 {
@@ -67,7 +69,7 @@ func TestStartStop(t *testing.T) {
 	err := svc.Start(hc)
 	assert.NoError(t, err)
 	defer svc.Stop()
-	time.Sleep(time.Second)
+	//time.Sleep(time.Second)
 }
 
 func TestPoll(t *testing.T) {
@@ -159,7 +161,7 @@ func TestAction(t *testing.T) {
 	// can't write to a simulation
 	assert.Error(t, err)
 
-	time.Sleep(time.Second * 1) // debugging delay
+	//time.Sleep(time.Second * 1) // debugging delay
 }
 
 func TestConfig(t *testing.T) {

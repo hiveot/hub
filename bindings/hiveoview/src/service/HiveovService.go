@@ -20,11 +20,10 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/login"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/status"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/thing"
-	"github.com/hiveot/hub/core/auth/authapi"
-	"github.com/hiveot/hub/core/auth/authclient"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/authz/authzclient"
 	"log/slog"
 	"net/http"
 	"os"
@@ -46,7 +45,7 @@ type HiveovService struct {
 
 	// hc hub client of this service.
 	// This client's CA and URL is also used to establish client sessions.
-	hc *hubclient.HubClient
+	hc hubclient.IHubClient
 
 	// cookie signing
 	signingKey *ecdsa.PrivateKey
@@ -144,23 +143,22 @@ func (svc *HiveovService) CreateHiveoviewTD() *things.TD {
 }
 
 // Start the web server and publish the service's own TD.
-func (svc *HiveovService) Start(hc *hubclient.HubClient) error {
+func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 	slog.Warn("Starting HiveovService", "clientID", hc.ClientID())
 	svc.hc = hc
 
 	// publish a TD for each service capability and set allowable roles
 	// in this case only a management capability is published
-	myProfile := authclient.NewProfileClient(svc.hc)
-	err := myProfile.SetServicePermissions(hiveoviewapi.HiveoviewServiceID, []string{
-		authapi.ClientRoleAdmin,
-		authapi.ClientRoleService})
+	authzClient := authzclient.NewAuthzClient(svc.hc)
+	err := authzClient.SetServicePermissions(hiveoviewapi.HiveoviewServiceID, []string{
+		api.ClientRoleAdmin, api.ClientRoleService})
 	if err != nil {
 		slog.Error("failed to set the hiveoview service permissions", "err", err.Error())
 	}
 
 	myTD := svc.CreateHiveoviewTD()
 	myTDJSON, _ := json.Marshal(myTD)
-	err = svc.hc.PubEvent(hiveoviewapi.HiveoviewServiceID, transports.EventTypeTD, myTDJSON)
+	err = svc.hc.PubEvent(hiveoviewapi.HiveoviewServiceID, vocab2.EventTypeTD, myTDJSON)
 	if err != nil {
 		slog.Error("failed to publish the hiveoview service TD", "err", err.Error())
 	}

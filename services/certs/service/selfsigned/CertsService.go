@@ -133,7 +133,7 @@ func (svc *SelfSignedCertsService) _createUserCert(userID string, pubKey keys.IH
 
 // CreateDeviceCert creates a CA signed certificate for mutual authentication by IoT devices in PEM format
 func (svc *SelfSignedCertsService) CreateDeviceCert(
-	ctx hubclient.ServiceContext, args certsapi.CreateDeviceCertArgs) (certsapi.CreateCertResp, error) {
+	args certsapi.CreateDeviceCertArgs) (certsapi.CreateCertResp, error) {
 	//deviceID string, pubKeyPEM string, durationDays int) (
 	//certPEM string, caCertPEM string, err error) {
 	var cert *x509.Certificate
@@ -156,7 +156,7 @@ func (svc *SelfSignedCertsService) CreateDeviceCert(
 
 // CreateServiceCert creates a CA signed service certificate for mutual authentication between services
 func (svc *SelfSignedCertsService) CreateServiceCert(
-	ctx hubclient.ServiceContext, args certsapi.CreateServiceCertArgs) (certsapi.CreateCertResp, error) {
+	args certsapi.CreateServiceCertArgs) (certsapi.CreateCertResp, error) {
 	var cert *x509.Certificate
 
 	slog.Info("Creating service certificate",
@@ -177,7 +177,7 @@ func (svc *SelfSignedCertsService) CreateServiceCert(
 
 // CreateUserCert creates a client certificate for end-users
 func (svc *SelfSignedCertsService) CreateUserCert(
-	ctx hubclient.ServiceContext, args certsapi.CreateUserCertArgs) (certsapi.CreateCertResp, error) {
+	args certsapi.CreateUserCertArgs) (certsapi.CreateCertResp, error) {
 	//userID string, pubKeyPEM string, validityDays int) (
 	//certPEM string, caCertPEM string, err error) {
 	var cert *x509.Certificate
@@ -215,7 +215,7 @@ func (svc *SelfSignedCertsService) Stop() {
 }
 
 // VerifyCert verifies whether the given certificate is a valid client certificate
-func (svc *SelfSignedCertsService) VerifyCert(ctx hubclient.ServiceContext, args certsapi.VerifyCertArgs) error {
+func (svc *SelfSignedCertsService) VerifyCert(args certsapi.VerifyCertArgs) error {
 
 	opts := x509.VerifyOptions{
 		Roots:     svc.caCertPool,
