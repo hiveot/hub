@@ -6,13 +6,11 @@ Manage Hub client profiles and corresponding authentication keys.
 
 ## Status
 
-This service is being reworked for the Digital Twin Runtime. It is functional but not yet used.
-
-Implementation of custom roles is not yet complete. 
+This service is functional but breaking changes should be expected.
 
 ## Scope
 
-In-scope is to provide identity management for users, devices, and services on the local network, with support for password, static key, and token based authentication.
+In-scope is to provide identity management for users, devices, and services on the local network, with support for password, certificate, and token based authentication.
 
 ## Summary
 

@@ -6,9 +6,11 @@ Manage authorization of client requests based on their role.
 
 ## Status
 
-This service is being reworked for the Digital Twin Runtime. It is currently broken.
+This service is functional but breaking changes should be expected.
 
-Implementation of custom roles is not yet complete. 
+TODOs:
+* Authorization of actions and subscriptions is not yet hooked into the runtime.
+* Implementation of custom roles is not yet complete.
 
 ## Summary
 

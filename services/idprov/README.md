@@ -11,7 +11,7 @@ Provisioned devices receive a device token that can be used to authenticate them
 This service is being converted to work with the HiveOT digital twin runtime. Breaking changes can still be expected.
 
 TODO:
-1. run as external service for the new runtime
+1. ~~run as external service for the new runtime~~
 1. Add monitoring for rogue DNS-SD publications 
 2. TBD: Checks if multiple connections are made by the same device using different device IDs
 3. TBD: flag suspect devices

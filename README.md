@@ -8,27 +8,27 @@ The Hub for the *Hive-of-Things* provides a secure [runtime](runtime/README-runt
 
 ## Project Status
 
-Status: The Hub core is currently being reworked to use a "[digital twins runtime](runtime/README-runtime.md)" with multiple concurrent protocol support. (May 2024). 
+Status: The Hub core is currently being reworked to use the "[digital twins runtime](runtime/README-runtime.md)" with multiple concurrent protocol support. (May 2024). 
 
 TODO before alpha:
 1. Rework existing IoT bindings to work with the digital twin runtime
    * ~~1-wire protocol binding using owserver-v2 gateway (bindings/owserver)~~
    * ~~insteon binding using isy99x gateway (bindings/isy99x)~~
+   * ipnet network scanner
    * zwave protocol binding using zwavejs (bindings/zwavejs)
-2. Rework the web client using html/htmx and go templates (bindings/hiveoview)
+   * hiveoview web client
+2. Complete the web client with a dashboard and configuration capabilities (bindings/hiveoview)
 3. improve the https protocol binding
-   * support subscribing to Thing events from an agent (tbd is this really needed?)
-   * Rework role authorization (viewer, operator, manager, admin)
+   * ~~support subscribing to Thing events~~ 
+   * Integrate role authorization (viewer, operator, manager, admin)
    * Support client certificate authentication
    * Support websockets are return channel
-   * Support HTTPS over UDS for local services
+   * Support UDS for local services
 4. improve the embedded protocol binding (for internal services) 
-   *. add basic subscription support 
-   *. add role based authorization support
+   * add subscription support to reduce traffic/processing
 5. Support for Forms sections in TDD documents describing the protocols to interact with a Thing.
 
 Future Roadmap:
-1. Add more fine-grained subscription support
 1. rework mqtt transport protocol
 1. rework the nats transport protocol
 1. add gRPC protocol binding

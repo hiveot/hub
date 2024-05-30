@@ -2,19 +2,18 @@
 
 ## Objective
 
-Provide historical reading of thing events and actions using the bucket store, independent of the message bus used.
-
+Provide historical reading of thing events and actions using the bucket store.
 
 ## Status
 
-This service is functional.
+This service is functional but breaking changes can still be expected.
 
 TODO:
 1. Capture actions
-2. Storage of event retention.
-3. Hubcli commands for managing retention.
+2. Query support 
+3. Selective retention of events and actions with hubcli support
 4. Support auto expiry of events
-4. Support for removal of outlier values
+5. Support for removal of outlier values
 
 
 ## Summary

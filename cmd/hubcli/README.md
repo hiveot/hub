@@ -7,9 +7,6 @@ Commandline interface for managing Hub services.
 The status of the Hub CLI Alpha.
 It is functional but breaking changes might happen. CLI for services are still being added.
 
-TODO:
-
-- subscriptions don't persist after auto-reconnect.
 
 ## Summary
 

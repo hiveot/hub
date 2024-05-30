@@ -1,17 +1,37 @@
-# HiveOT Runtime Routing
+# HiveOT Digital Twin Runtime 
 
 ## Status 
 
-In development
+The runtime is in alpha. It is functional but breaking changes should be expected.
+
+Todo:
+* authorization of actions, events and subscriptions
+* digitwin directory 
+   * add forms for supported protocols
+   * support dynamic TD's that only:
+      * include writable properties only if the client is allowed to write them
+      * include only actions that client is allowed to use
+* Transports:
+  * mqtt embedded server
+  * nats embedded server, or remove altogether
+  * websocket support for http needs to be added
+  * uds transport needs to be added for local services
+  * discovery should be changed to match the WoT specifications
+* Middleware:
+  * Rate control 
+  * tbd
+* Testing:
+  * Improve test coverage
+  * Add performance testing comparing transports
 
 ## Summary
 
-The HiveOT runtime provides routing of events and actions through multiple protocols.
-The runtime contains a digital twin service that consists of a Thing directory, value store and history store.
+The HiveOT runtime provides routing of events and actions between devices, services and consumers using one or multiple transport protocols.
+The runtime contains a digital twin service that consists of a thing directory, event outbox and action inbox.
 
 The protocol transports pass authenticated messages to the digital twin service which directs events to the outbox for further distribution and actions to the inbox for distribution to the actual Thing.
 
-The hub differentiates two types of clients, agents and consumers. Agents are IoT devices or services while consumers are users or other services. Agents send events and receive actions while consumers send actions and subscribe to events.
+The hub differentiates three types of clients: IoT agents, services, and consumers. Agents are IoT devices that provide device information, services transform information, while consumers use information. Agents and services send events and receive actions while consumers send actions and subscribe to events.
 
 
 ### Events
@@ -27,6 +47,8 @@ The outbox retains events until they expire which can vary between immediately t
 
 Consumers can request the latest event and property values of a Thing from the outbox.
 
+![Event Flow](../docs/event-flow.jpg)
+
 ### Actions
 Actions are messages targeted at a specific Thing or service. Consumers publish action requests while agents receive these requests. Each can use their own protocol binding.
 
@@ -38,6 +60,8 @@ The general action delivery flow is:
 Agents send a status update when actions are applied and completed:
 > Thing -> agent -> transport protocol -> [digital twin inbox]
 >   [digital twin inbox] -> transport protocol -> consumer
+
+![Action Flow](../docs/action-flow.jpg)
 
 Action requests are delivered by the transport protocol binding to the digital twin inbox for the targeted Thing. Action requests always return with a delivery status containing the delivery progress and possibly a reply value. The action flow can hold one of the following delivery status values: 
 * pending   - the action is received by the hub, placed in the outbox, but not yet delivered to the thing agent 
@@ -81,31 +105,17 @@ If a transport protocol does not support a return channel then it can fall back 
 
 ## RPC requests
 
-Some Hub clients support RPC style requests for available services. These requests are implemented as actions where the service is identified with a ThingID and the method name using the Thing action key.
+Some Hub clients use RPC style requests for reading available services. An rpc request is implemented as an action for the service and waiting for delivery update event containing the response.
 
 RPC requests are implemented client side. When a consumer sends an RPC request, the protocol client waits for a delivery update event from the Hub before returning the result. This works independently from the protocol used by the agent.
 
 
 ## Built-in Services
 
-The runtime includes the built-in services to support the digital twin:
-1. Authentication service. Intended for use by transport protocols to verify a client's identity. An RPC interface provides the ability to manage clients including agents, consumers and services.
+The runtime includes essential built-in services to support the digital twin:
+1. Authentication service. Intended for use by transport protocols to authenticate and verify a client's identity. The service client provides an RPC interface for managing clients including agents, consumers and services.
 2. Authorization service. Intended for use by transport protocols to verify the ability of clients to publish or subscribe to certain agents, depending on the client's role.
 3. Digital Twin services:
    a. The directory service stores TD documents
-   b. The inbox service stores and forwards Thing events received from agents
-   c. The outbox service stores and forwards Thing actions sent by consumers
-   An RPC interface provides the facility to query the directory and the latest values from the inbox and outbox.
-
-## Core Services
-
-Core register their RPC endpoints by publishing a TD describing the available interface and method names. The service instance is an agent that offers one or more services. Each service corresponds to a Thing ID. The method names are defines as actions. The Thing @type attribute defines the type of service using the hiveot vocabulary.
-
-Includd core services are Launcher,  Certificate, Device Provisioning, History, and client State storage services. 
-
-## Bindings
-
-IoT Bindings are agents that convert IoT protocols to HiveOT Hub protocols using the WoT TDD document to describe properties, events and actions for each of the Things the agent manages.
-
-For example, 1-wire, z-wave bindings support the use of one-wire and z-wave devices through actions send to and events received from the digital twin.
-
+   b. The outbox service stores and forwards Thing events received from agents
+   c. The inbox service stores and forwards Thing actions sent by consumers

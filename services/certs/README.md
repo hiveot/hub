@@ -6,7 +6,7 @@ Manage certificates for authentication of hub clients.
 
 ## Status
 
-This service is functional and can issue IoT device certificates, service certificates and end-user certificates using a self-signed CA.
+This service is reworked to work with the digital twin runtime. It is not functional.
 
 Future:
 - Support for lets encrypt to obtain client certificates
