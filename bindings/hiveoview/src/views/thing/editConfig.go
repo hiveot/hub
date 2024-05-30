@@ -1,13 +1,13 @@
 package thing
 
 import (
-	"encoding/json"
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
-	"github.com/hiveot/hub/core/directory/dirclient"
-	"github.com/hiveot/hub/core/history/historyclient"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/digitwin/digitwinclient"
 	"log/slog"
 	"net/http"
 )
@@ -16,7 +16,6 @@ import (
 // This sets the data properties for AgentID, ThingID, Key and Config
 func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 	var prop *things.PropertyAffordance
-	var td things.TD
 	var value string
 	data := make(map[string]any)
 	agentID := r.URL.Query().Get("agentID")
@@ -26,19 +25,17 @@ func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 	mySession, err := session.GetSessionFromContext(r)
 	if err == nil {
 		hc := mySession.GetHubClient()
-		rd := dirclient.NewReadDirectoryClient(hc)
-		tv, err := rd.GetTD(agentID, thingID)
+		dcl := digitwinclient.NewDirectoryClient(hc)
+		//rd := dirclient.NewReadDirectoryClient(hc)
+		td, err := dcl.ReadTD(thingID)
 		if err == nil {
-			err = json.Unmarshal([]byte(tv.Data), &td)
-			if err == nil {
-				prop = td.GetProperty(propKey)
-			}
+			prop = td.GetProperty(propKey)
 		}
 		if err == nil {
-			rh := historyclient.NewReadHistoryClient(hc)
-			tvs, _ := rh.GetLatest(agentID, thingID, []string{propKey})
-			if tvs != nil && len(tvs) > 0 {
-				value = string(tvs.ToString(propKey))
+			ocl := digitwinclient.NewOutboxClient(hc)
+			eventValues, _ := ocl.ReadLatest(thingID)
+			if eventValues != nil && len(eventValues) > 0 {
+				value = string(eventValues.ToString(propKey))
 			}
 		}
 	}
@@ -58,23 +55,27 @@ func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 // * key
 // The posted form value contains a 'value' field
 func PostThingConfig(w http.ResponseWriter, r *http.Request) {
-	agentID := chi.URLParam(r, "agentID")
+	//agentID := chi.URLParam(r, "agentID")
 	thingID := chi.URLParam(r, "thingID")
 	propKey := chi.URLParam(r, "propKey")
 	value := r.FormValue("value")
+	stat := api.DeliveryStatus{}
 	//
 	mySession, err := session.GetSessionFromContext(r)
 	hc := mySession.GetHubClient()
 	if err == nil {
 		slog.Info("Updating config",
-			"agentID", agentID, "thingID", thingID,
-			"propKey", propKey, "value", value)
-		err = hc.PubConfig(agentID, thingID, propKey, []byte(value))
+			slog.String("thingID", thingID),
+			slog.String("propKey", propKey),
+			slog.String("value", value))
+		stat = hc.PubAction(thingID, propKey, []byte(value))
+		if stat.Error != "" {
+			err = errors.New(stat.Error)
+		}
 	}
 	if err != nil {
 		slog.Warn("PostThingConfig failed",
 			slog.String("remoteAddr", r.RemoteAddr),
-			slog.String("agentID", agentID),
 			slog.String("thingID", thingID),
 			slog.String("propKey", propKey),
 			slog.String("err", err.Error()))
@@ -87,7 +88,8 @@ func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = mySession.SendSSE("notify", "success: Configuration '"+propKey+"' updated")
+	// TODO: map delivery status to language
+	_ = mySession.SendSSE("notify", "Delivery Status for '"+propKey+"': "+stat.Status)
 
 	w.WriteHeader(http.StatusOK)
 

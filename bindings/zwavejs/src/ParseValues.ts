@@ -1,8 +1,7 @@
 import {getEnumMemberName, NodeStatus, ZWaveNode, ZWavePlusNodeType, ZWavePlusRoleType,} from "zwave-js";
 import {InterviewStage, SecurityClass} from '@zwave-js/core';
-import * as vocab from "@hivelib/api/ht-vocab";
+import * as vocab from "@hivelib/api/vocab/ht-vocab";
 import {getPropID} from "./getPropID";
-import {PropDeviceDescription, PropDeviceSoftwareVersion} from "@hivelib/api/ht-vocab";
 
 
 // Value map for node values
@@ -45,7 +44,7 @@ export class ParseValues {
         //--- Node read-only attributes that are common to many nodes
         this.setIf("associationCount", node.deviceConfig?.associations?.size);
         this.setIf("canSleep", node.canSleep);
-        this.setIf(PropDeviceDescription, node.deviceConfig?.description);
+        this.setIf(vocab.PropDeviceDescription, node.deviceConfig?.description);
 
         if (node.deviceClass) {
             this.setIf("deviceClassBasic", node.deviceClass.basic.label);

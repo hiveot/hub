@@ -1,11 +1,11 @@
 import type {ZWaveController, ZWaveNode} from "zwave-js";
 import {RFRegion} from "zwave-js";
-import type {ThingTD} from "@hivelib/things/ThingTD";
+import type {TD} from "@hivelib/things/TD";
 import {DataSchema} from "@hivelib/things/dataSchema";
-import {WoTDataTypeNone, WoTDataTypeString} from "@hivelib/api/wot-vocab";
+import {WoTDataTypeNone, WoTDataTypeString} from "@hivelib/api/vocab/wot-vocab";
 
 // parseController adds controller actions and attributes to the Thing TD
-export function parseController(td: ThingTD, ctl: ZWaveController) {
+export function parseController(td: TD, ctl: ZWaveController) {
     // td.AddProperty("sdkVersion", "Z-Wave SDK version", DataType.String, ctl.sdkVersion.toString());
     // td.AddProperty("homeID", "Network ID", DataType.Number, ctl.homeId.toString());
 

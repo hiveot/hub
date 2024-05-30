@@ -1,12 +1,11 @@
 package directory
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
-	"github.com/hiveot/hub/core/directory/dirclient"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/digitwin/digitwinclient"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -23,36 +22,31 @@ type DirectoryData struct {
 	Groups map[string]*DirGroup
 }
 
-// Sort the given list of things and group them by publishing agent
+// Sort the given list of things by thingID and group them by publishing agent
 // this returns a map of groups each containing an array of thing values
-func sortByPublisher(tvList []things.ThingMessage) *DirectoryData {
+func sortByThingID(tdList []*things.TD) *DirectoryData {
 	dirData := &DirectoryData{
 		Groups: make(map[string]*DirGroup),
 	}
 
-	// sort by agent+thingID for now
-	sort.Slice(tvList, func(i, j int) bool {
-		item1 := tvList[i]
-		item2 := tvList[j]
-		return item1.AgentID+item1.ThingID < item2.AgentID+item2.ThingID
+	// sort by digitwin thingID for now
+	sort.Slice(tdList, func(i, j int) bool {
+		item1 := tdList[i]
+		item2 := tdList[j]
+		return item1.ID < item2.ID
 	})
-	for _, tv := range tvList {
-		tplGroup, found := dirData.Groups[tv.SenderID]
+	// group Things by their agent. The agent is the thing prefix
+	for _, td := range tdList {
+		agentID, _ := things.SplitDigiTwinThingID(td.ID)
+		tplGroup, found := dirData.Groups[agentID]
 		if !found {
 			tplGroup = &DirGroup{
-				AgentID: tv.SenderID,
+				AgentID: agentID,
 				Things:  make([]*things.TD, 0),
 			}
-			dirData.Groups[tv.SenderID] = tplGroup
+			dirData.Groups[agentID] = tplGroup
 		}
-		td := things.TD{}
-		err := json.Unmarshal([]byte(tv.Data), &td)
-		if err == nil {
-			tplGroup.Things = append(tplGroup.Things, &td)
-			if len(tplGroup.Things) == 0 {
-				slog.Error("append failed")
-			}
-		}
+		tplGroup.Things = append(tplGroup.Things, td)
 	}
 	return dirData
 }
@@ -69,12 +63,14 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	// 1: get session
 	mySession, err := session.GetSessionFromContext(r)
 	if err == nil {
+		//thingsList := make([]things.TD, 0)
 		hc := mySession.GetHubClient()
-		rd := dirclient.NewReadDirectoryClient(hc)
-		thingsList, err2 := rd.GetTDs(0, 100)
+		dcl := digitwinclient.NewDirectoryClient(hc)
+		thingsList, err2 := dcl.ReadTDs(0, 200)
+		//resp, err2 := directory.ReadTDs(hc, directory.ReadTDsArgs{Limit: 200})
 		err = err2
 		if err == nil {
-			dirGroups := sortByPublisher(thingsList)
+			dirGroups := sortByThingID(thingsList)
 			data["Directory"] = dirGroups
 		} else {
 			// the 'Directory' attribute is used by html know if to reload

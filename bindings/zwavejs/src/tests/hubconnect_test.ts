@@ -2,7 +2,7 @@
 
 import process from "node:process";
 import * as tslog from 'tslog';
-import {NewHubClient} from "@hivelib/hubclient/HubClient.js";
+import {NewHubClient} from "@hivelib/hubclient/httpclient/HubClient.js";
 
 const log = new tslog.Logger({name: "TTT"})
 

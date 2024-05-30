@@ -3,14 +3,13 @@
 import { MqttTransport } from "./transports/mqtttransport/MqttTransport";
 import { env, exit } from "process";
 import * as process from "process";
-import { HubClient, NewHubClient } from "./HubClient";
-import { IHubTransport } from './transports/IHubTransport';
-import { ThingValue } from "../things/ThingValue";
+import { HubClient, NewHubClient } from "@hivelib/hubclient/httpclient/HubClient";
+import { IHubClient } from './IHubClient';
+import { ThingMessage } from "../things/ThingMessage";
 
 let hc: HubClient
-let tp: IHubTransport
-const core = "mqtt"
-const testURL = "mqtts://127.0.0.1:8883"
+let tp: IHubClient
+const testURL = "https://127.0.0.1:9883"
 
 async function test1() {
     let lastMsg = ""
@@ -22,19 +21,19 @@ async function test1() {
     const testPass = "testpass"
     let caCertPEM = ""
     //running instance
-    let hc = NewHubClient(testURL, testClient, caCertPEM, core)
+    let hc = NewHubClient(testURL, testClient, caCertPEM)
 
-    hc.setActionHandler((tv: ThingValue) => {
-        console.log("Received action: " + tv.name)
+    hc.setActionHandler((tv: ThingMessage) => {
+        console.log("Received action: " + tv.key)
         return "action"
     })
 
-    hc.setEventHandler((tv: ThingValue) => {
-        console.log("onEvent: " + tv.name + ": " + tv.data)
+    hc.setEventHandler((tv: ThingMessage) => {
+        console.log("onEvent: " + tv.key + ": " + tv.data)
     })
 
-    hc.setConfigHandler((tv: ThingValue) => {
-        console.log("onConfig: " + tv.name)
+    hc.setConfigHandler((tv: ThingMessage) => {
+        console.log("onConfig: " + tv.key)
         return true
     })
 

@@ -9,6 +9,12 @@ import (
 type ThingMessage struct {
 	//--- required fields to be filled-in by the sender
 
+	// ThingID of the thing this value applies to.
+	// For messages from/to agents this is the agent ThingID
+	// For messages to/from consumers this is the digitwin ThingID
+	// This is required.
+	ThingID string `json:"thingID"`
+
 	// Key of the event, action or property as defined in the TD property/event/action map.
 	// This is required.
 	Key string `json:"key"`
@@ -22,12 +28,6 @@ type ThingMessage struct {
 	// This is required and used in authorization of the sender and routing of messages.
 	// The underlying protocol binding MUST set this to the authenticated client.
 	SenderID string `json:"senderID"`
-
-	// ThingID of the thing this value applies to.
-	// For messages from/to agents this is the agent ThingID
-	// For messages to/from consumers this is the digitwin ThingID
-	// This is required.
-	ThingID string `json:"thingID"`
 
 	//--- optional fields
 

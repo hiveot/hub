@@ -1,9 +1,9 @@
-import { HubClient, NewHubClient } from "@hivelib/hubclient/HubClient"
-import { IHubTransport } from "@hivelib/hubclient/transports/IHubTransport"
+import { HubClient, NewHubClient } from "@hivelib/hubclient/httpclient/HubClient"
+import { IHubClient } from "@hivelib/hubclient/IHubClient"
 import { StateClient } from "./stateclient"
 
 let hc: HubClient
-let tp: IHubTransport
+let tp: IHubClient
 const core = "mqtt"
 const testURL = "mqtts://127.0.0.1:8883"
 

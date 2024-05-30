@@ -1,14 +1,14 @@
-import type { IHiveKey } from "@hivelib/keys/IHiveKey";
-import type { ConnectionStatus, IHubTransport } from "../IHubTransport";
+import type { IHiveKey } from "@keys/IHiveKey";
+import type { ConnectionStatus, IHubClient } from "../IHubClient";
 import * as tslog from 'tslog';
 import type { SubscriptionOptions, ConnectionOptions, NatsConnection } from "nats.ws";
 import { connect, nkeyAuthenticator, nkeys, StringCodec } from "nats.ws";
-import { natsKey } from "@hivelib/keys/natsKey";
+import { natsKey } from "@keys/natsKey";
 
 const log = new tslog.Logger()
 
 
-export class NatsTransport implements IHubTransport {
+export class NatsTransport implements IHubClient {
     // expect nats://addr:port/ 
     fullURL: string
     clientID: string

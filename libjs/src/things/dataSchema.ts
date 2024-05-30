@@ -1,6 +1,6 @@
 // Definition of the DataSchema used in TD affordances
 
-import {WoTDataTypeNone} from "../api/wot-vocab.js"
+import {WoTDataTypeNone} from "../api/vocab/wot-vocab.js"
 
 export class DataSchema extends Object {
     public constructor(init?: Partial<DataSchema>) {

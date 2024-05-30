@@ -10,16 +10,13 @@
 //	   "data": [{byte array}],
 //	   "created": {int64},   // msec since epoc
 //	}
-export class ThingValue extends Object {
-
-    // AgentID is the ID of the device or service that owns the Thing
-    public agentID: string = ""
+export class ThingMessage extends Object {
 
     // ThingID or capabilityID of the thing itself
     public thingID: string = ""
 
-    // Name of event, action or property as defined in the TD event/action map.
-    public name: string = ""
+    // Key of event, action or property as defined in the TD event/action map.
+    public key: string = ""
 
     // Data with serialized value payload, as defined by the TD affordance DataSchema
     public data: string = ""
@@ -35,11 +32,14 @@ export class ThingValue extends Object {
     // Sequence of the message from its creator. Intended to prevent replay attacks.
     //sequence: bigint
 
-    // ID of the publisher of the value
-    // For events this is the agentID
-    // For actions,config and rpc this is the remote user sending the request
+    // Type of message: MessageTypeAction, MessageTypeEvent;
+    // This is required.
+    public messageType: string = ""
+
+    // senderID is the account ID of the agent, service or user sending the message
+    // to the hub.
+    // This is required and used in authorization of the sender and routing of messages.
+    // The underlying protocol binding MUST set this to the authenticated client.
     public senderID: string = ""
 
-    // Type of value, event, action, config, rpc
-    public valueType: string = ""
 }

@@ -1,15 +1,13 @@
 package thing
 
 import (
-	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
-	"github.com/hiveot/hub/core/directory/dirclient"
-	"github.com/hiveot/hub/core/history/historyclient"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/digitwin/digitwinclient"
 	"log/slog"
 	"net/http"
 )
@@ -22,7 +20,7 @@ type DetailsTemplateData struct {
 	MakeModel  string
 	Name       string
 	DeviceType string
-	TD         things.TD
+	TD         *things.TD
 	// These lists are sorted by property/event/action name
 	Attributes map[string]*things.PropertyAffordance
 	Config     map[string]*things.PropertyAffordance
@@ -30,10 +28,10 @@ type DetailsTemplateData struct {
 }
 
 // return a map with the latest property values of a thing or nil if failed
-func getLatest(agentID string, thingID string, hc *hubclient.HubClient) (things.ThingMessageMap, error) {
+func getLatest(thingID string, hc hubclient.IHubClient) (things.ThingMessageMap, error) {
 	data := things.NewThingMessageMap()
-	rh := historyclient.NewReadHistoryClient(hc)
-	tvs, err := rh.GetLatest(agentID, thingID, nil)
+	ocl := digitwinclient.NewOutboxClient(hc)
+	tvs, err := ocl.ReadLatest(thingID)
 	if err != nil {
 		return data, err
 	}
@@ -64,11 +62,11 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	mySession, err := session.GetSessionFromContext(r)
 	if err == nil {
 		hc := mySession.GetHubClient()
-		rd := dirclient.NewReadDirectoryClient(hc)
-		tv, err2 := rd.GetTD(agentID, thingID)
+		rd := digitwinclient.NewDirectoryClient(hc)
+		td, err2 := rd.ReadTD(thingID)
+		thingData.TD = td
 		err = err2
 		if err == nil {
-			err = json.Unmarshal([]byte(tv.Data), &thingData.TD)
 			// split properties into attributes and configuration
 			for k, prop := range thingData.TD.Properties {
 				if prop.ReadOnly {
@@ -79,7 +77,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// get the latest values if available
-			propMap, err2 := getLatest(agentID, thingID, hc)
+			propMap, err2 := getLatest(thingID, hc)
 			err = err2
 			thingData.Values = propMap
 			thingData.DeviceType = thingData.TD.AtType

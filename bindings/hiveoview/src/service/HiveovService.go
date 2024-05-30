@@ -149,9 +149,12 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 
 	// publish a TD for each service capability and set allowable roles
 	// in this case only a management capability is published
-	authzClient := authzclient.NewAuthzClient(svc.hc)
-	err := authzClient.SetServicePermissions(hiveoviewapi.HiveoviewServiceID, []string{
-		api.ClientRoleAdmin, api.ClientRoleService})
+	authzClient := authzclient.NewAuthzUserClient(svc.hc)
+	err := authzClient.SetPermissions(api.ThingPermissions{
+		AgentID: hc.ClientID(),
+		ThingID: hiveoviewapi.HiveoviewServiceID,
+		Allow:   []string{api.ClientRoleAdmin, api.ClientRoleService},
+	})
 	if err != nil {
 		slog.Error("failed to set the hiveoview service permissions", "err", err.Error())
 	}
@@ -166,7 +169,7 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 	// Setup the handling of incoming web sessions
 	sm := session.GetSessionManager()
 	connStat := hc.GetStatus()
-	sm.Init(connStat.HubURL, connStat.Core, svc.signingKey, connStat.CaCert, svc.hc.ClientKP())
+	sm.Init(connStat.HubURL, svc.signingKey, connStat.CaCert)
 
 	// parse the templates
 	svc.tm.ParseAllTemplates()

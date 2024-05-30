@@ -1,4 +1,4 @@
-import { HubClient } from '../hubclient/HubClient';
+import { HubClient } from '@hivelib/hubclient/httpclient/HubClient';
 
 // duplicated from stateapi.go
 const ServiceName = "state"

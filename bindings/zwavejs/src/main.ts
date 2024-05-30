@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import {env, exit} from "process";
-import {NewHubClient} from "@hivelib/hubclient/HubClient"
+import {NewHubClient} from "@hivelib/hubclient/httpclient/HubClient"
 import {ZwaveJSBinding} from "./ZWaveJSBinding";
 import path from "path";
 import {locateHub} from "@hivelib/hubclient/locateHub";
@@ -43,9 +43,8 @@ async function main() {
     if (!appConfig.hubURL) {
         let uc = await locateHub()
         appConfig.hubURL = uc.hubURL
-        core = uc.core
     }
-    let hc = NewHubClient(appConfig.hubURL, appConfig.loginID, appConfig.caCertPEM, core)
+    let hc = NewHubClient(appConfig.hubURL, appConfig.loginID, appConfig.caCertPEM)
 
     // need a key to connect, load or create it
     // note that the HubClient determines the key type

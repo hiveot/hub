@@ -10,8 +10,8 @@ import {
     ZWavePlusRoleType
 } from "zwave-js";
 import {CommandClasses, InterviewStage} from '@zwave-js/core';
-import {ActionAffordance, EventAffordance, PropertyAffordance, ThingTD} from "@hivelib/things/ThingTD";
-import * as vocab from "@hivelib/api/ht-vocab";
+import {ActionAffordance, EventAffordance, PropertyAffordance, TD} from "@hivelib/things/TD";
+import * as vocab from "@hivelib/api/vocab/ht-vocab";
 import type {ZWAPI} from "./ZWAPI";
 import {logVid} from "./logVid";
 import {getPropID} from "./getPropID";
@@ -24,12 +24,11 @@ import {
     WoTDataTypeNone,
     WoTDataTypeNumber,
     WoTDataTypeString
-} from "@hivelib/api/wot-vocab";
-import {PropDeviceSoftwareVersion} from "@hivelib/api/ht-vocab";
+} from "@hivelib/api/vocab/wot-vocab";
 
 
 // Add the ZWave value data to the TD as an action
-function addAction(td: ThingTD, node: ZWaveNode, vid: TranslatedValueID, actionID: string, va: VidAffordance): ActionAffordance {
+function addAction(td: TD, node: ZWaveNode, vid: TranslatedValueID, actionID: string, va: VidAffordance): ActionAffordance {
     // let vidMeta = node.getValueMetadata(vid)
 
     // actions without input have no schema. How to identify these?
@@ -48,7 +47,7 @@ function addAction(td: ThingTD, node: ZWaveNode, vid: TranslatedValueID, actionI
 }
 
 // Add the ZWave value data to the TD as an attribute property
-function addAttribute(td: ThingTD, node: ZWaveNode, vid: TranslatedValueID, propID: string, va: VidAffordance): PropertyAffordance {
+function addAttribute(td: TD, node: ZWaveNode, vid: TranslatedValueID, propID: string, va: VidAffordance): PropertyAffordance {
 
     let prop = td.AddProperty(propID, va?.atType, "", WoTDataTypeNone)
     // SetDataSchema also sets the title and data type
@@ -57,7 +56,7 @@ function addAttribute(td: ThingTD, node: ZWaveNode, vid: TranslatedValueID, prop
 }
 
 // Add the ZWave VID to the TD as a configuration property
-function addConfig(td: ThingTD, node: ZWaveNode, vid: TranslatedValueID, propID: string, va: VidAffordance): PropertyAffordance {
+function addConfig(td: TD, node: ZWaveNode, vid: TranslatedValueID, propID: string, va: VidAffordance): PropertyAffordance {
     let prop = td.AddProperty(propID, va.atType, "", WoTDataTypeNone)
     prop.readOnly = false
     // SetDataSchema also sets the title and data type
@@ -68,7 +67,7 @@ function addConfig(td: ThingTD, node: ZWaveNode, vid: TranslatedValueID, propID:
 }
 
 // Add the ZWave VID to the TD as an event
-function addEvent(td: ThingTD, node: ZWaveNode, vid: TranslatedValueID, eventID: string, va: VidAffordance): EventAffordance {
+function addEvent(td: TD, node: ZWaveNode, vid: TranslatedValueID, eventID: string, va: VidAffordance): EventAffordance {
 
     let schema = new DataSchema()
     SetDataSchema(schema, node, vid)
@@ -92,8 +91,8 @@ function addEvent(td: ThingTD, node: ZWaveNode, vid: TranslatedValueID, eventID:
 // @param node: the zwave node definition
 // @param vidLogFD: optional file handle to log VID info to CSV for further analysis
 // @param maxNrScenes: limit the nr of scenes in the TD as it would bloat the TD to a massive size.
-export function parseNode(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | undefined, maxNrScenes: number): ThingTD {
-    let td: ThingTD;
+export function parseNode(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | undefined, maxNrScenes: number): TD {
+    let td: TD;
 
     //--- Step 1: TD definition
     let deviceID = zwapi.getDeviceID(node.id)
@@ -113,7 +112,7 @@ export function parseNode(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     // if (node.deviceConfig) {
     //     description = node.deviceConfig.description
     // }
-    td = new ThingTD(deviceID, deviceType, title, description);
+    td = new TD(deviceID, deviceType, title, description);
 
     //--- Step 2: Add read-only attributes that are common to many nodes
     // since none of these have standard property names, use the ZWave name instead.
@@ -161,7 +160,7 @@ export function parseNode(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     td.AddPropertyIf(node.protocolVersion, "protocolVersion", "",
         "ZWave protocol version", WoTDataTypeString);
 
-    td.AddPropertyIf(node.sdkVersion, "", PropDeviceSoftwareVersion,
+    td.AddPropertyIf(node.sdkVersion, "", vocab.PropDeviceSoftwareVersion,
         "SDK version", WoTDataTypeString);
     if (node.status) {
         td.AddProperty("", vocab.PropDeviceStatus,

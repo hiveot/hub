@@ -34,7 +34,7 @@ func (svc *IPNetBinding) Start(hc hubclient.IHubClient) (err error) {
 	if svc.config.LogLevel != "" {
 		logging.SetLogging(svc.config.LogLevel, "")
 	}
-	slog.Warn("Starting the IpNet binding", "logLevel", svc.config.LogLevel)
+	slog.Info("Starting the IpNet binding", "logLevel", svc.config.LogLevel)
 
 	svc.hc = hc
 
@@ -72,7 +72,7 @@ func (svc *IPNetBinding) startHeartbeat() (stopFn func()) {
 
 // Stop the binding
 func (svc *IPNetBinding) Stop() {
-	slog.Warn("Stopping the IPNet binding")
+	slog.Info("Stopping the IPNet binding")
 	if svc.stopHeartbeatFn != nil {
 		svc.stopHeartbeatFn()
 		svc.stopHeartbeatFn = nil

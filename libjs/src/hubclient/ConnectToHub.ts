@@ -1,4 +1,4 @@
-import { HubClient } from "./HubClient";
+import { HubClient } from "@hivelib/hubclient/httpclient/HubClient";
 
 
 

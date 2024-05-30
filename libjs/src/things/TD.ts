@@ -86,7 +86,7 @@ export class PropertyAffordance extends DataSchema {
 
 /** Thing description document
  */
-export class ThingTD extends Object {
+export class TD extends Object {
 
     /**
      * Create a new instance of Thing Description document
@@ -235,7 +235,7 @@ export class ThingTD extends Object {
 
 
     // Convert the actions map into an array for display
-    public static GetThingActions = (td: ThingTD): Array<ActionAffordance> => {
+    public static GetThingActions = (td: TD): Array<ActionAffordance> => {
         let res = new Array<ActionAffordance>()
         if (!!td && !!td.actions) {
             for (let [key, val] of Object.entries(td.actions)) {
@@ -248,7 +248,7 @@ export class ThingTD extends Object {
 
     // Convert readonly properties into an array for display
     // Returns table of {key, tdproperty}
-    public static GetAttributeNames = (td: ThingTD): string[] => {
+    public static GetAttributeNames = (td: TD): string[] => {
         let res = Array<string>()
         if (!!td && !!td.properties) {
             for (let [key, val] of Object.entries(td.properties)) {
@@ -262,7 +262,7 @@ export class ThingTD extends Object {
 
 
     // Returns names of configuration properties
-    public static GetConfigurationNames = (td: ThingTD): string[] => {
+    public static GetConfigurationNames = (td: TD): string[] => {
         let res = Array<string>()
         if (!!td && !!td.properties) {
             for (let [key, val] of Object.entries(td.properties)) {
@@ -274,7 +274,7 @@ export class ThingTD extends Object {
         return res
     }
 
-    public static GetThingEvents = (td: ThingTD): Array<EventAffordance> => {
+    public static GetThingEvents = (td: TD): Array<EventAffordance> => {
         let res = Array<EventAffordance>()
         if (!!td && !!td.events) {
             for (let [key, val] of Object.entries(td.events)) {
@@ -286,7 +286,7 @@ export class ThingTD extends Object {
 
 
     // Return the TD property with the given ID
-    public static GetThingProperty = (td: ThingTD, propID: string): PropertyAffordance | undefined => {
+    public static GetThingProperty = (td: TD, propID: string): PropertyAffordance | undefined => {
         let tdProp: PropertyAffordance | undefined = undefined
         if (!!td && !!td.properties) {
             tdProp = td.properties[propID]

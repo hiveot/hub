@@ -9,14 +9,14 @@ import (
 	"github.com/hiveot/hub/runtime/api"
 )
 
-// inbox implementation depends on the underlying transport.
+// MessageTypeINBOX implementation depends on the underlying transport.
 // this is the commonly used name for it.
-const MessageTypeINBOX = "_INBOX"
+//const MessageTypeINBOX = "_INBOX"
 
-// ISubscription interface to underlying subscription mechanism
-type ISubscription interface {
-	Unsubscribe() error
-}
+//// ISubscription interface to underlying subscription mechanism
+//type ISubscription interface {
+//	Unsubscribe() error
+//}
 
 type ConnectionStatus string
 
@@ -55,8 +55,6 @@ type HubTransportStatus struct {
 	HubURL string
 	// CA used to connect
 	CaCert *x509.Certificate
-	// The transport core, eg mqtt or nats
-	Core string
 	// the client ID to identify as
 	ClientID string
 
@@ -84,12 +82,11 @@ type IHubClient interface {
 	// ConnectWithPassword connects to the messaging server using password authentication.
 	// If a connection already exists it will be closed first.
 	//
-	// This returns a connection token that can be used with ConnectWithJWT.
+	// This returns a connection token that can be used with ConnectWithToken.
 	//
-	//  loginID is the client's ID (typically consumers)
 	//  password is created when registering the user with the auth service.
 	//
-	// This authentication method must be supported by all clients
+	// This authentication method must be supported by all transport implementations.
 	ConnectWithPassword(password string) (newToken string, err error)
 
 	// ConnectWithToken connects to the messaging server using an authentication token.
@@ -99,7 +96,7 @@ type IHubClient interface {
 	// and pub/private keys provided when creating an instance of the hub client.
 	//  token is created by the auth service.
 	//
-	// This authentication method must be supported by all transports
+	// This authentication method must be supported by all transport implementations.
 	ConnectWithToken(token string) (newToken string, err error)
 
 	// CreateKeyPair returns a new set of serialized public/private key pair.
@@ -135,14 +132,14 @@ type IHubClient interface {
 	//  payload with serialized message to publish
 	//
 	// This returns a delivery status with serialized response message if delivered
-	PubAction(thingID string, key string, payload []byte) api.DeliveryStatus
+	PubAction(dThingID string, key string, payload []byte) api.DeliveryStatus
 
 	// PubEvent publishes an event style message without a response.
 	// It returns as soon as delivery to the hub is confirmed.
 	// This is intended for agents, not for consumers.
 	//
-	// Events are published using their native ID, not the digital twin ID. The Hub
-	// outbox broadcasts this event using the digital twin ID.
+	// Events are published by agents using their native ID, not the digital twin ID.
+	// The Hub outbox broadcasts this event using the digital twin ID.
 	//
 	//	thingID native ID of the thing whose event is published
 	//	key ID of the event

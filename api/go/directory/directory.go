@@ -18,7 +18,7 @@ const ServiceID = "directory"
 
 // DThingID is the Digitwin thingID as used by agents. Digitwin adds the dtw:{agent} prefix to the serviceID
 // Consumers use this to publish actions and subscribe to events
-const DThingID = "dtw:digitwin:directory"
+var DThingID = things.MakeDigiTwinThingID(AgentID, ServiceID)
 
 // Argument and Response struct for action of Thing 'dtw:digitwin:directory'
 

@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const appID = "isy99"
+//const appID = "isy99"
 
 // For testing, IsyGW.isyRequest simulates reading isy from file using the path:
 //

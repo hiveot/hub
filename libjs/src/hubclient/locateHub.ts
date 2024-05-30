@@ -7,7 +7,7 @@ const log = new tslog.Logger()
 
 // locateHub uses DNS-SD to search the hiveot record of the hub gateway for up to 5 seconds.
 // If found, it returns with its websocket address wss://<addr>:<port>/<path>
-export async function locateHub(): Promise<{ hubURL: string, core: string }> {
+export async function locateHub(): Promise<{ hubURL: string }> {
     return new Promise((resolve, reject) => {
         const locator = new Bonjour();
         locator.findOne({ type: HIVEOT_HUB_SERVICE }, 5000, function (service: any) {
@@ -18,7 +18,6 @@ export async function locateHub(): Promise<{ hubURL: string, core: string }> {
             // from nodejs, only websockets can be used for the capnp connection
             let addr = service.addresses[0];
             let kv = service.txt;
-            let core = kv["core"];
             let wssPort = kv["wss"];
             let wssPath = kv["path"];
             if (wssPort) {
@@ -27,7 +26,7 @@ export async function locateHub(): Promise<{ hubURL: string, core: string }> {
                 addr = kv["rawurl"]
             }
             log.info("found service: ", addr);
-            resolve({ hubURL: addr, core: core });
+            resolve({ hubURL: addr});
         });
     });
 }

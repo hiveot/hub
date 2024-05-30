@@ -4,13 +4,13 @@ import {InterviewStage} from "zwave-js";
 import {parseNode} from "./parseNode";
 import {ParseValues} from "./ParseValues";
 import {ZWAPI} from "./ZWAPI.js";
-import {HubClient} from "@hivelib/hubclient/HubClient";
+import {HubClient} from "@hivelib/hubclient/httpclient/HubClient";
 import {parseController} from "./parseController";
 import {logVid} from "./logVid";
 import {getPropID} from "./getPropID";
-import * as vocab from "@hivelib/api/ht-vocab";
+import * as vocab from "@hivelib/api/vocab/ht-vocab";
 import fs from "fs";
-import {ThingValue} from "@hivelib/things/ThingValue";
+import {ThingMessage} from "@hivelib/things/ThingMessage";
 import {BindingConfig} from "./BindingConfig";
 import * as tslog from 'tslog';
 
@@ -53,15 +53,15 @@ export class ZwaveJSBinding {
 
 
     // handle controller actions as defined in the TD
-    handleActionRequest(tv: ThingValue): string {
-        let actionLower = tv.name.toLowerCase()
+    handleActionRequest(tv: ThingMessage): string {
+        let actionLower = tv.key.toLowerCase()
         let targetNode: ZWaveNode | undefined
         let node = this.zwapi.getNodeByDeviceID(tv.thingID)
         if (node == undefined) {
             log.error("handleActionRequest: ZWave node for thingID", tv.thingID, "does not exist")
             return ""
         }
-        log.info("action:" + tv.name)
+        log.info("action:" + tv.key)
         // controller specific commands (see parseController)
         switch (actionLower) {
             case "begininclusion":
@@ -137,7 +137,7 @@ export class ZwaveJSBinding {
     }
 
     // handle configuration requests as defined in the TD
-    handleConfigRequest(tv: ThingValue): boolean {
+    handleConfigRequest(tv: ThingMessage): boolean {
         return false
     }
 
@@ -247,7 +247,7 @@ export class ZwaveJSBinding {
         this.hc.setActionHandler(this.handleActionRequest)
         this.hc.setConfigHandler(this.handleConfigRequest)
 
-        this.zwapi.connectLoop(this.config);
+        await this.zwapi.connectLoop(this.config);
     }
 
     // Stop the binding and disconnect from the ZWave controller

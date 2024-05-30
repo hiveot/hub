@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/connect"
-	"github.com/hiveot/hub/lib/keys"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -30,9 +29,6 @@ type SessionManager struct {
 	hubURL string
 	// Hub CA certificate
 	caCert *x509.Certificate
-
-	// keys to use for clients that have no public key set
-	tokenKP keys.IHiveKey
 }
 
 // ActivateNewSession (re)activates a new session for a newly connected hub client.
@@ -176,13 +172,11 @@ func (sm *SessionManager) GetSessionFromCookie(r *http.Request) (*ClientSession,
 //	messaging core to use or "" for auto-detection
 //	signingKey for cookies
 //	caCert of the messaging server
-//	tokenKP optional keys to use for refreshing tokens of authenticated users
-func (sm *SessionManager) Init(hubURL string, signingKey *ecdsa.PrivateKey, caCert *x509.Certificate,
-	tokenKP keys.IHiveKey) {
+func (sm *SessionManager) Init(
+	hubURL string, signingKey *ecdsa.PrivateKey, caCert *x509.Certificate) {
 	sm.hubURL = hubURL
 	sm.caCert = caCert
 	sm.signingKey = signingKey
-	sm.tokenKP = tokenKP
 }
 
 // The global session manager instance.

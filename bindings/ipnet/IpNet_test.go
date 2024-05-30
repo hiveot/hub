@@ -12,9 +12,6 @@ import (
 	"time"
 )
 
-// var homeFolder string
-var core = "mqtt"
-
 var tempFolder string
 var ts *testenv.TestServer
 
@@ -47,7 +44,9 @@ func TestStartStop(t *testing.T) {
 	}
 	svc := service.NewIpNetBinding(&cfg)
 	hc, _ := ts.AddConnectService("ipnet")
+	defer hc.Disconnect()
 	err := svc.Start(hc)
+
 	require.NoError(t, err)
 	defer svc.Stop()
 	time.Sleep(time.Second)
