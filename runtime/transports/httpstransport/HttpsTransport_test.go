@@ -136,9 +136,9 @@ func TestLoginRefresh(t *testing.T) {
 	assert.NotEmpty(t, token)
 
 	// refresh should succeed
-	token, err = cl.RefreshToken()
+	newToken, err := cl.RefreshToken(token)
 	assert.NoError(t, err)
-	assert.NotEmpty(t, token)
+	assert.NotEmpty(t, newToken)
 
 	// end the session
 	cl.Disconnect()
@@ -146,12 +146,12 @@ func TestLoginRefresh(t *testing.T) {
 	// should be able to reconnect with the new token
 	// NOTE: the runtime session manager doesn't allow this as
 	// the session no longer exists, but the authenticator doesn't care.
-	token, err = cl.ConnectWithToken(token)
+	token2, err := cl.ConnectWithToken(newToken)
 	require.NoError(t, err)
-	assert.NotEmpty(t, token)
-	token2, err := cl.RefreshToken()
-	assert.NoError(t, err)
 	assert.NotEmpty(t, token2)
+	token3, err := cl.RefreshToken(token2)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, token3)
 
 	// end the session
 	cl.Disconnect()
@@ -178,9 +178,9 @@ func TestBadLogin(t *testing.T) {
 	token, err = cl.ConnectWithPassword("badpass")
 	assert.Error(t, err)
 	assert.Empty(t, token)
-	token, err = cl.RefreshToken()
+	token2, err := cl.RefreshToken(token)
 	assert.Error(t, err)
-	assert.Empty(t, token)
+	assert.Empty(t, token2)
 	// close should always succeed
 	cl.Disconnect()
 
@@ -206,14 +206,14 @@ func TestBadRefresh(t *testing.T) {
 	token, err := cl.ConnectWithToken("badtoken")
 	assert.Error(t, err)
 	assert.Empty(t, token)
-	token, err = cl.RefreshToken()
+	token, err = cl.RefreshToken(token)
 	assert.Error(t, err)
 	assert.Empty(t, token)
 
 	// get a valid token and connect with a bad clientid
 	token, err = cl.ConnectWithPassword(testPassword)
 	assert.NoError(t, err)
-	validToken, err := cl.RefreshToken()
+	validToken, err := cl.RefreshToken(token)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, validToken)
 	cl.Disconnect()
@@ -223,7 +223,7 @@ func TestBadRefresh(t *testing.T) {
 	token, err = cl2.ConnectWithToken(validToken)
 	assert.Error(t, err)
 	assert.Empty(t, token)
-	token, err = cl2.RefreshToken()
+	token, err = cl2.RefreshToken(token)
 	assert.Error(t, err)
 	assert.Empty(t, token)
 }
@@ -337,6 +337,7 @@ func TestPubSubSSE(t *testing.T) {
 
 // Restarting the server should invalidate sessions
 func TestRestart(t *testing.T) {
+	t.Log("TestRestart")
 	var rxMsg *things.ThingMessage
 	var testMsg = "hello world"
 	var thingID = "thing1"

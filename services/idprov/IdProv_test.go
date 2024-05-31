@@ -26,8 +26,6 @@ import (
 var testFolder = path.Join(os.TempDir(), "test-provisioning")
 var testPort = uint(23001)
 
-const core = "mqtt"
-
 // the following are set by the testmain
 var testServer *testenv.TestServer
 
@@ -106,7 +104,7 @@ func TestAutomaticProvisioning(t *testing.T) {
 	// next, provisioning should succeed
 	idProvServerURL := fmt.Sprintf("localhost:%d", testPort)
 	tlsClient := tlsclient.NewTLSClient(idProvServerURL, testServer.Certs.CaCert, 0)
-	tlsClient.ConnectNoAuth()
+	//tlsClient.ConnectNoAuth()
 	status, token1, err := idprovclient.SubmitIdProvRequest(
 		device1ID, device1KP.ExportPublic(), "", tlsClient)
 	require.NoError(t, err)
@@ -189,7 +187,7 @@ func TestManualProvisioning(t *testing.T) {
 	// request provisioning
 	idProvServerAddr := fmt.Sprintf("localhost:%d", testPort)
 	tlsClient := tlsclient.NewTLSClient(idProvServerAddr, testServer.Certs.CaCert, 0)
-	tlsClient.ConnectNoAuth()
+	//tlsClient.ConnectNoAuth()
 	status, token, err := idprovclient.SubmitIdProvRequest(device1ID, device1PubPEM, "", tlsClient)
 	require.NoError(t, err)
 

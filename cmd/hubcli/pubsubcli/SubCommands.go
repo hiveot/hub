@@ -86,8 +86,8 @@ func HandleSubTD(hc hubclient.IHubClient) error {
 func HandleSubEvents(hc hubclient.IHubClient, agentID string, thingID string, name string) error {
 	fmt.Printf("Subscribing to agentID: '%s', thingID: '%s', name: '%s'\n\n", agentID, thingID, name)
 
-	fmt.Printf("Time             Agent ID             Thing ID                  Event Name                     Value\n")
-	fmt.Printf("---------------  -------------------  ------------------------  -----------------------------  ---------\n")
+	fmt.Printf("Time             Agent ID        Thing ID                       Event Name                     Value\n")
+	fmt.Printf("---------------  --------------- -----------------------------  -----------------------------  ---------\n")
 
 	err := hc.Subscribe(thingID, name)
 	hc.SetEventHandler(func(msg *things.ThingMessage) error {
@@ -105,7 +105,7 @@ func HandleSubEvents(hc hubclient.IHubClient, agentID string, thingID string, na
 				td.Title, td.AtType, len(td.Properties), len(td.Events), len(td.Actions))
 		}
 
-		fmt.Printf("%-16.16s %-20.20s %-25.25s %-30.30s %-40.40s\n",
+		fmt.Printf("%-16.16s %-15.15s %-30.30s %-30.30s %-40.40s\n",
 			timeStr, msg.SenderID, msg.ThingID, msg.Key, value)
 		return nil
 	})

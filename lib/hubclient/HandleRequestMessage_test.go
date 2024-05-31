@@ -44,24 +44,24 @@ func Method4DataAndErrorResult() (M1Res, error) {
 	res := M1Res{R1: "data and err"}
 	return res, fmt.Errorf("data and error")
 }
-func Method5StringArg(arg1 string) (string, error) {
+func Method5StringArg(sender string, arg1 string) (string, error) {
 	slog.Info("received string arg", "arg1", arg1)
 	return arg1, nil
 }
-func Method6IntArg(arg1 int) (int, error) {
+func Method6IntArg(sender string, arg1 int) (int, error) {
 	slog.Info("received int arg", "arg1", arg1)
 	return arg1, nil
 }
-func Method7ByteArrayArg(arg1 []byte) ([]byte, error) {
+func Method7ByteArrayArg(sender string, arg1 []byte) ([]byte, error) {
 	slog.Info("received array arg", "arg1", arg1)
 	return arg1, nil
 }
-func Method8TwoArgs(arg1 string, arg2 int) (string, error) {
+func Method8TwoArgs(sender string, arg1 string, arg2 int) (string, error) {
 	// this fails as arg2 is an int
 	slog.Info("received 2 args", "arg1", arg1, "arg2", arg2)
 	return arg1, nil
 }
-func Method9ThreeRes(arg1 string) (string, string, error) {
+func Method9ThreeRes(sender string, arg1 string) (string, string, error) {
 	slog.Info("returning 3 results should fail", "arg1", arg1)
 	return arg1, arg1, nil
 }
@@ -76,7 +76,7 @@ func TestHandleRequestMessage(t *testing.T) {
 	}
 	argsJson, _ := ser.Marshal(args)
 
-	data, err := hubclient.HandleRequestMessage(Method1Ref, argsJson)
+	data, err := hubclient.HandleRequestMessage(senderID, Method1Ref, argsJson)
 	require.NoError(t, err)
 	m1res := M1Res{}
 	err = json.Unmarshal(data, &m1res)
@@ -89,7 +89,7 @@ func TestHandleRequestMessage(t *testing.T) {
 		P2: 6,
 	}
 	argsJson, _ = ser.Marshal(args)
-	data, err = hubclient.HandleRequestMessage(Method1Val, argsJson)
+	data, err = hubclient.HandleRequestMessage(senderID, Method1Val, argsJson)
 	require.NoError(t, err)
 	m1res = M1Res{}
 	err = json.Unmarshal(data, &m1res)
@@ -99,28 +99,28 @@ func TestHandleRequestMessage(t *testing.T) {
 
 func TestHandleRequestNoArgs(t *testing.T) {
 	// pass args by reference
-	data, err := hubclient.HandleRequestMessage(Method2NoArgs, nil)
+	data, err := hubclient.HandleRequestMessage(senderID, Method2NoArgs, nil)
 	require.NoError(t, err)
 	assert.Nil(t, data)
 }
 
 func TestErrorResult(t *testing.T) {
 	// pass args by reference
-	data, err := hubclient.HandleRequestMessage(Method3ErrorResult, nil)
+	data, err := hubclient.HandleRequestMessage(senderID, Method3ErrorResult, nil)
 	require.Error(t, err)
 	assert.Nil(t, data)
 }
 
 func TestDataAndErrorResult(t *testing.T) {
 	// check this doesnt fail somehow
-	_, err := hubclient.HandleRequestMessage(Method4DataAndErrorResult, nil)
+	_, err := hubclient.HandleRequestMessage(senderID, Method4DataAndErrorResult, nil)
 	require.Error(t, err)
 }
 
 func TestStringArgs(t *testing.T) {
-	// check this doesnt fail somehow
+	// check this doesn't fail somehow
 	sargJson, _ := json.Marshal("Hello world")
-	data, err := hubclient.HandleRequestMessage(Method5StringArg, sargJson)
+	data, err := hubclient.HandleRequestMessage(senderID, Method5StringArg, sargJson)
 	require.NoError(t, err)
 
 	var result string
@@ -132,7 +132,7 @@ func TestStringArgs(t *testing.T) {
 func TestIntArgs(t *testing.T) {
 	// check this doesnt fail somehow
 	sargJson, _ := json.Marshal(25)
-	data, err := hubclient.HandleRequestMessage(Method6IntArg, sargJson)
+	data, err := hubclient.HandleRequestMessage(senderID, Method6IntArg, sargJson)
 	require.NoError(t, err)
 
 	var result int
@@ -143,7 +143,7 @@ func TestIntArgs(t *testing.T) {
 func TestByteArrayArgs(t *testing.T) {
 	args := []byte{1, 2, 3}
 	argJson, _ := json.Marshal(args)
-	data, err := hubclient.HandleRequestMessage(Method7ByteArrayArg, argJson)
+	data, err := hubclient.HandleRequestMessage(senderID, Method7ByteArrayArg, argJson)
 	require.NoError(t, err)
 
 	var result []byte
@@ -154,14 +154,14 @@ func TestByteArrayArgs(t *testing.T) {
 func TestTwoArgsFail(t *testing.T) {
 	sargJson, _ := json.Marshal("Hello world")
 	// this method has 2 args, we only pass 1. Does it blow up?
-	data, err := hubclient.HandleRequestMessage(Method8TwoArgs, sargJson)
+	data, err := hubclient.HandleRequestMessage(senderID, Method8TwoArgs, sargJson)
 	assert.Error(t, err)
 	assert.Nil(t, data)
 }
 func TestThreeResFail(t *testing.T) {
 	sargJson, _ := json.Marshal("Hello world")
 	// this method has 3 results. Does it blow up?
-	data, err := hubclient.HandleRequestMessage(Method9ThreeRes, sargJson)
+	data, err := hubclient.HandleRequestMessage(senderID, Method9ThreeRes, sargJson)
 	assert.Error(t, err)
 	assert.Nil(t, data)
 }
@@ -205,7 +205,7 @@ func Benchmark_Overhead(b *testing.B) {
 				count2++
 				// pass args by reference
 				argsJson, _ := ser.Marshal(m1args)
-				data, err := hubclient.HandleRequestMessage(Method1Ref, argsJson)
+				data, err := hubclient.HandleRequestMessage(senderID, Method1Ref, argsJson)
 				_ = err
 				m1res := M1Res{}
 				err = json.Unmarshal(data, &m1res)

@@ -42,7 +42,7 @@ func AddSessionToContext() func(next http.Handler) http.Handler {
 			}
 			// activate the session with the new connection
 			if err == nil {
-				cs, err = sessionmanager.ActivateNewSession(w, r, hc)
+				cs, err = sessionmanager.ActivateNewSession(w, r, hc, claims.AuthToken)
 			}
 			if err != nil {
 				slog.Warn("AddSessionToContext: Request without an auth cookie. Redirect to login.",

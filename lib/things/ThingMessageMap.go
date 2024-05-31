@@ -32,6 +32,16 @@ func (vm *ThingMessageMap) GetUpdated(key string) string {
 	return tv.GetUpdated()
 }
 
+// GetSenderID returns the senderID of a property, or "" if it doesn't exist
+// intended for use in template as .Values.GetSenderID $key
+func (vm *ThingMessageMap) GetSenderID(key string) string {
+	tv := vm.Get(key)
+	if tv == nil {
+		return ""
+	}
+	return tv.SenderID
+}
+
 // ToString returns the value of a property as text, or "" if it doesn't exist
 // intended for use in template as .Values.ToString $key
 func (vm ThingMessageMap) ToString(key string) string {

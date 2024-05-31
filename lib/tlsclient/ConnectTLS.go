@@ -11,11 +11,11 @@ import (
 //
 //	serverURL full URL:  tls/tcp/tcps://host:8883,  wss://host:9001
 //	clientCert to login with. Nil to not use client certs
-//	caCert of the server to connect to (recommended). Nil to not verify the server connection.
+//	caCert of the server to setup to (recommended). Nil to not verify the server connection.
 func ConnectTLS(serverURL string, clientCert *tls.Certificate, caCert *x509.Certificate) (
 	*tls.Conn, error) {
 
-	// connect always uses TLS
+	// setup always uses TLS
 	caCertPool := x509.NewCertPool()
 	if caCert != nil {
 		caCertPool.AddCert(caCert)

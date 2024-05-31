@@ -31,9 +31,9 @@ type EmbeddedClient struct {
 	receiveEventHandler api.EventHandler
 }
 
-// ConnectWithCert always succeeds as a direct connection doesn't need a certificate
-func (cl *EmbeddedClient) ConnectWithCert(kp keys.IHiveKey, cert *tls.Certificate) (token string, err error) {
-	return "dummytoken", nil
+// ConnectWithClientCert always succeeds as a direct connection doesn't need a certificate
+func (cl *EmbeddedClient) ConnectWithClientCert(kp keys.IHiveKey, cert *tls.Certificate) error {
+	return nil
 }
 
 // ConnectWithPassword always succeeds as a direct connection doesn't need a password
@@ -56,11 +56,15 @@ func (cl *EmbeddedClient) CreateKeyPair() (kp keys.IHiveKey) {
 func (cl *EmbeddedClient) Disconnect() {
 }
 
-func (cl *EmbeddedClient) GetStatus() hubclient.HubTransportStatus {
-	return hubclient.HubTransportStatus{
+func (cl *EmbeddedClient) GetStatus() hubclient.TransportStatus {
+	return hubclient.TransportStatus{
 		ClientID:         cl.clientID,
 		ConnectionStatus: hubclient.Connected,
 	}
+}
+
+func (cl *EmbeddedClient) Logout() error {
+	return nil
 }
 
 // ReceiveMessage receives a message from the server for this client
@@ -118,7 +122,7 @@ func (cl *EmbeddedClient) PubTD(td *things.TD) error {
 }
 
 // RefreshToken does nothing as tokens aren't used
-func (cl *EmbeddedClient) RefreshToken() (newToken string, err error) {
+func (cl *EmbeddedClient) RefreshToken(_ string) (newToken string, err error) {
 	return "dummytoken", nil
 }
 
@@ -145,7 +149,7 @@ func (cl *EmbeddedClient) Rpc(
 }
 
 // SetConnectHandler does nothing as connection is always established
-func (cl *EmbeddedClient) SetConnectHandler(cb func(status hubclient.HubTransportStatus)) {
+func (cl *EmbeddedClient) SetConnectHandler(cb func(status hubclient.TransportStatus)) {
 	return
 }
 

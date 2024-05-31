@@ -79,7 +79,7 @@ func (cs *ClientSession) Close() {
 //	 * connected when connected to the hub
 //	 * connecting or disconnected when not connected
 //	info with a human description
-func (cs *ClientSession) GetStatus() hubclient.HubTransportStatus {
+func (cs *ClientSession) GetStatus() hubclient.TransportStatus {
 	status := cs.hc.GetStatus()
 	return status
 }
@@ -97,7 +97,7 @@ func (cs *ClientSession) IsActive() bool {
 }
 
 // onConnectChange is invoked on disconnect/reconnect
-func (cs *ClientSession) onConnectChange(stat hubclient.HubTransportStatus) {
+func (cs *ClientSession) onConnectChange(stat hubclient.TransportStatus) {
 	slog.Info("connection change",
 		slog.String("clientID", stat.ClientID),
 		slog.String("status", string(stat.ConnectionStatus)))

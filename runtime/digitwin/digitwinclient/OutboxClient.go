@@ -19,7 +19,7 @@ type OutboxClient struct {
 func (cl *OutboxClient) ReadLatest(dThingID string) (values things.ThingMessageMap, err error) {
 	args := outbox.ReadLatestArgs{ThingID: dThingID}
 	resp := outbox.ReadLatestResp{}
-	err = cl.hc.Rpc(dThingID, outbox.ReadLatestMethod, &args, &resp)
+	err = cl.hc.Rpc(cl.dThingID, outbox.ReadLatestMethod, &args, &resp)
 	if err != nil {
 		return nil, err
 	}

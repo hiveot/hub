@@ -1,3 +1,8 @@
+{{/*Display the details of a thing with title, description, timestamp, attributes, events and actions */}}
+
+{{- /*{{.}} is a map. Field "ThingID" contains is thing.DetailsTemplateData*/ -}}
+{{- /*impossible to define this with gotype, unless it is not a map*/ -}}
+
 {{if .Thing}}
 	<article
 				hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}"

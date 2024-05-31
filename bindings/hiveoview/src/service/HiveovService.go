@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	vocab2 "github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/hiveoviewapi"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
@@ -129,14 +129,14 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 // CreateHiveoviewTD creates a new Thing TD document describing the service capability
 func (svc *HiveovService) CreateHiveoviewTD() *things.TD {
 	title := "Web Server"
-	deviceType := vocab2.ThingService
+	deviceType := vocab.ThingService
 	td := things.NewTD(hiveoviewapi.HiveoviewServiceID, title, deviceType)
 	// TODO: add properties: uptime, max nr clients
 
 	td.AddEvent("activeSessions", "", "Nr Sessions", "Number of currently active sessions",
 		&things.DataSchema{
 			//AtType: vocab.SessionCount,
-			Type: vocab2.WoTDataTypeInteger,
+			Type: vocab.WoTDataTypeInteger,
 		})
 
 	return td
@@ -144,7 +144,7 @@ func (svc *HiveovService) CreateHiveoviewTD() *things.TD {
 
 // Start the web server and publish the service's own TD.
 func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
-	slog.Warn("Starting HiveovService", "clientID", hc.ClientID())
+	slog.Info("Starting HiveovService", "clientID", hc.ClientID())
 	svc.hc = hc
 
 	// publish a TD for each service capability and set allowable roles
@@ -161,7 +161,7 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 
 	myTD := svc.CreateHiveoviewTD()
 	myTDJSON, _ := json.Marshal(myTD)
-	err = svc.hc.PubEvent(hiveoviewapi.HiveoviewServiceID, vocab2.EventTypeTD, myTDJSON)
+	err = svc.hc.PubEvent(hiveoviewapi.HiveoviewServiceID, vocab.EventTypeTD, myTDJSON)
 	if err != nil {
 		slog.Error("failed to publish the hiveoview service TD", "err", err.Error())
 	}
@@ -193,6 +193,7 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 }
 
 func (svc *HiveovService) Stop() {
+	slog.Info("Stopping HiveovService")
 	// TODO: send event the service has stopped
 	svc.hc.Disconnect()
 	//svc.router.Stop()

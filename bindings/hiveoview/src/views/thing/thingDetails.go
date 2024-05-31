@@ -59,6 +59,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	data["Thing"] = thingData
 	data["Title"] = "details of thing"
 
+	// Read the TD being displayed and its latest values
 	mySession, err := session.GetSessionFromContext(r)
 	if err == nil {
 		hc := mySession.GetHubClient()

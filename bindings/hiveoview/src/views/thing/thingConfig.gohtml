@@ -1,5 +1,6 @@
 <!--Thing configuration list-->
 <!--@param '.' object of type thing.DetailsTemplateData -->
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.DetailsTemplateData*/ -}}
 
 <ul class="h-grid-table thing-config" striped border>
 	<li>
@@ -15,7 +16,6 @@
 	</li>
 
     {{range $k, $v := .Config}}
-        {{- /*gotype: github.com/hiveot/hub/lib/things.PropertyAffordance*/ -}}
 				<li>
 					<div class="h-show-sm">{{/*icon*/}}</div>
 					<div class="id-title">
@@ -43,7 +43,7 @@
 					<div class="h-show-lg">{{$v.Description}}</div>
 					<div class="h-show-sm"
 					     sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
-					     title="Updated: {{$.Values.GetUpdated $k}} by {{($.Values.SenderID $k)}}"
+					     title="Updated: {{$.Values.GetUpdated $k}} by {{($.Values.GetSenderID $k)}}"
 					>
               {{$.Values.GetUpdated $k}}
 					</div>

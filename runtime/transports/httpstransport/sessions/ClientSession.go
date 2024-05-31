@@ -109,7 +109,7 @@ func (cs *ClientSession) IsSubscribed(dThingID string, key string) bool {
 }
 
 // onConnectChange is invoked on disconnect/reconnect
-func (cs *ClientSession) onConnectChange(stat hubclient.HubTransportStatus) {
+func (cs *ClientSession) onConnectChange(stat hubclient.TransportStatus) {
 	slog.Info("connection change",
 		slog.String("clientID", stat.ClientID),
 		slog.String("status", string(stat.ConnectionStatus)))

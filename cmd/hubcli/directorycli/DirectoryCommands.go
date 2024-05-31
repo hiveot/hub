@@ -1,6 +1,7 @@
 package directorycli
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/araddon/dateparse"
@@ -38,7 +39,7 @@ func DirectoryListCommand(hc *hubclient.IHubClient) *cli.Command {
 				if !verbose {
 					err = HandleListThing(*hc, cCtx.Args().First())
 				} else {
-					err = HandleListThingVerbose(*hc, cCtx.Args().First(), cCtx.Args().Get(1))
+					err = HandleListThingVerbose(*hc, cCtx.Args().First())
 				}
 			}
 			return err
@@ -173,13 +174,15 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 }
 
 // HandleListThingVerbose lists a Thing full TD
-func HandleListThingVerbose(hc hubclient.IHubClient, pubID, thingID string) error {
+func HandleListThingVerbose(hc hubclient.IHubClient, thingID string) error {
 	resp, err := directory.ReadTD(hc, directory.ReadTDArgs{ThingID: thingID})
 
 	if err != nil {
 		return err
 	}
-	fmt.Println("TD of", pubID, thingID)
-	fmt.Printf("%s\n", resp.Output)
+	fmt.Println("TD of", thingID)
+	var buf bytes.Buffer
+	_ = json.Indent(&buf, []byte(resp.Output), "", "\t")
+	fmt.Printf("%s\n", buf.Bytes())
 	return err
 }

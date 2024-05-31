@@ -26,7 +26,7 @@ func PostLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// step 1: authenticate with the password
-	hc, err := sm.ConnectWithPassword(loginID, password)
+	hc, newToken, err := sm.ConnectWithPassword(loginID, password)
 	if err != nil {
 		slog.Warn("PostLogin failed",
 			slog.String("remoteAddr", r.RemoteAddr),
@@ -38,7 +38,7 @@ func PostLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// TODO: session age from config
-	_, _ = sm.ActivateNewSession(w, r, hc)
+	_, _ = sm.ActivateNewSession(w, r, hc, newToken)
 
 	// update the session. This ensures an active session exists and the
 	// cookie contains the existing or new session ID with a fresh auth token.

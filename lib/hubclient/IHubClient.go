@@ -50,7 +50,7 @@ const (
 
 var ErrorUnauthorized = errors.New(string(Unauthorized))
 
-type HubTransportStatus struct {
+type TransportStatus struct {
 	// URL of the hub
 	HubURL string
 	// CA used to connect
@@ -75,9 +75,9 @@ type IHubClient interface {
 	// ClientID returns the agent or user clientID for this hub client
 	ClientID() string
 
-	// ConnectWithCert connects to the server using a client certificate.
+	// ConnectWithClientCert connects to the server using a client certificate.
 	// This authentication method is optional
-	ConnectWithCert(kp keys.IHiveKey, cert *tls.Certificate) (token string, err error)
+	ConnectWithClientCert(kp keys.IHiveKey, cert *tls.Certificate) (err error)
 
 	// ConnectWithPassword connects to the messaging server using password authentication.
 	// If a connection already exists it will be closed first.
@@ -105,11 +105,15 @@ type IHubClient interface {
 	CreateKeyPair() (kp keys.IHiveKey)
 
 	// Disconnect from the messaging server.
-	// This removes all subscriptions.
+	// This retains the session and allows a reconnect with the session token.
+	// See Logout for invalidating existing sessions
 	Disconnect()
 
 	// GetStatus returns the current transport connection status
-	GetStatus() HubTransportStatus
+	GetStatus() TransportStatus
+
+	// Logout of the hub and invalidate the connected session token
+	Logout() error
 
 	// PubAction publishes an action request and returns as soon as the request is delivered
 	// to the Hub inbox.
@@ -162,8 +166,8 @@ type IHubClient interface {
 	PubTD(td *things.TD) error
 
 	// RefreshToken refreshes the authentication token
-	// The resulting token can be used with 'ConnectWithJWT'
-	RefreshToken() (newToken string, err error)
+	// The resulting token can be used with 'ConnectWithToken'
+	RefreshToken(oldToken string) (newToken string, err error)
 
 	// Rpc makes a RPC call using an action and waits for a delivery confirmation event.
 	//
@@ -189,7 +193,7 @@ type IHubClient interface {
 	SetActionHandler(cb api.MessageHandler)
 
 	// SetConnectHandler sets the notification handler of connection status changes
-	SetConnectHandler(cb func(status HubTransportStatus))
+	SetConnectHandler(cb func(status TransportStatus))
 
 	// SetEventHandler set the handler that receives all subscribed events, and other
 	// message types, subscribed to by this client.

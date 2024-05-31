@@ -40,7 +40,6 @@ func HandleRequestMessage(senderID string, method interface{}, payload []byte) (
 	// magic spells found at: https://github.com/a8m/reflect-examples#call-function-with-list-of-arguments-and-validate-return-values
 	// and here: https://stackoverflow.com/questions/45679408/unmarshal-json-to-reflected-struct
 	// First determine the type of argument of the method and whether it is passed by value or reference
-	// this handler only support a single argument that has to be a struct by value or reference
 	methodValue := reflect.ValueOf(method)
 	methodType := methodValue.Type()
 	argv := make([]reflect.Value, methodType.NumIn())
@@ -50,7 +49,7 @@ func HandleRequestMessage(senderID string, method interface{}, payload []byte) (
 		// determine the type of argument, expect the senderID string as first arg
 		argType := methodType.In(i)
 		argKind := argType.Name()
-		argIsSenderID := argKind == "string"
+		argIsSenderID := i == 0 && argKind == "string"
 		if argIsSenderID {
 			// first argument is the sender clientID
 			argv[i] = reflect.ValueOf(senderID)

@@ -16,7 +16,7 @@ import (
 // TODO: option to enable/disable the request server
 
 // DefaultIDProvPort is the default listening port for https requests
-const DefaultIDProvPort = 9444
+const DefaultIDProvPort = 8445
 
 // Start the service.
 // Preconditions:

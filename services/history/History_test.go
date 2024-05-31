@@ -656,10 +656,10 @@ func TestManageRetention(t *testing.T) {
 	cursor, releaseFn, err := readHist.GetCursor(dThing0ID, "")
 	require.NoError(t, err)
 	histEv1, valid, _ := cursor.First()
-	require.True(t, valid, "missing the first event")
+	assert.True(t, valid, "missing the first event")
 	assert.Equal(t, event1Name, histEv1.Key)
 	histEv2, valid2, _ := cursor.Next()
-	require.False(t, valid2, "second event should not be there")
+	assert.False(t, valid2, "second event should not be there")
 	_ = histEv2
 	releaseFn()
 

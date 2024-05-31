@@ -41,7 +41,7 @@ type SessionManager struct {
 //
 // This returns the new session instance or nil with an error if a session could not be created.
 func (sm *SessionManager) ActivateNewSession(
-	w http.ResponseWriter, r *http.Request, hc hubclient.IHubClient) (*ClientSession, error) {
+	w http.ResponseWriter, r *http.Request, hc hubclient.IHubClient, authToken string) (*ClientSession, error) {
 	var cs *ClientSession
 	var sessionID string
 
@@ -72,8 +72,8 @@ func (sm *SessionManager) ActivateNewSession(
 
 	// 3. Get a new auth token from the Hub auth service
 	//profileClient := authnclient.NewAuthnUserClient(hc)
-	//authToken, err := profileClient.RefreshToken()
-	authToken, err := hc.RefreshToken()
+	authToken, err = hc.RefreshToken(authToken)
+
 	//if err != nil && sm.tokenKP != nil {
 	//	// Oops, refresh failed. This happens if the account has no public key set. (quite common)
 	//	// Try to recover by ensuring a public key exists on the account.
@@ -99,8 +99,8 @@ func (sm *SessionManager) ActivateNewSession(
 
 	// 4. Keep the session for 14 days
 	maxAge := 3600 * 24 * 14
-	SetSessionCookie(w, sessionID, hc.ClientID(), authToken, maxAge, sm.signingKey)
-	return cs, nil
+	err = SetSessionCookie(w, sessionID, hc.ClientID(), authToken, maxAge, sm.signingKey)
+	return cs, err
 }
 
 // Close closes the hub connection and event channel, removes the session
@@ -119,11 +119,14 @@ func (sm *SessionManager) Close(sessionID string) error {
 }
 
 // ConnectWithPassword creates a new hub client and connect it to the hub using password login
-func (sm *SessionManager) ConnectWithPassword(loginID string, password string) (hubclient.IHubClient, error) {
-	hc := connect.NewHubClient(sm.hubURL, loginID, sm.caCert)
-	_, err := hc.ConnectWithPassword(password)
+// This returns a new token for future logins
+func (sm *SessionManager) ConnectWithPassword(loginID string, password string) (
+	hc hubclient.IHubClient, newToken string, err error) {
+
+	hc = connect.NewHubClient(sm.hubURL, loginID, sm.caCert)
+	newToken, err = hc.ConnectWithPassword(password)
 	// subscribe to updates
-	return hc, err
+	return hc, newToken, err
 }
 
 // ConnectWithToken creates a new hub client and connect it to the hub using token login

@@ -30,7 +30,7 @@
 					<div class="h-show-lg">{{$v.Description}}</div>
 					<div class="h-show-md"
 					     sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
-					     title="Updated: {{$.Values.GetUpdated $k}} by {{($.Values.SenderID $k)}}">
+					     title="Updated: {{$.Values.GetUpdated $k}} by {{($.Values.GetSenderID $k)}}">
               {{$.Values.GetUpdated $k}}
 					</div>
 				</li>

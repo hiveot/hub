@@ -6,10 +6,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/runtime/api"
 	"golang.org/x/net/publicsuffix"
 	"io"
 	"log/slog"
@@ -44,7 +42,7 @@ const (
 
 // TLSClient is a simple TLS Client with authentication using certificates or JWT authentication with login/pw
 type TLSClient struct {
-	// host and port of the server to connect to
+	// host and port of the server to setup to
 	hostPort        string
 	loginPath       string // path on server to login
 	refreshPath     string // path on server to refresh token
@@ -80,49 +78,16 @@ func (cl *TLSClient) Close() {
 	}
 }
 
-// connect sets-up the http client with TLS transport
-func (cl *TLSClient) connect() *http.Client {
-	// the CA certificate is set in NewTLSClient
-	tlsConfig := &tls.Config{
-		RootCAs:            cl.caCertPool,
-		InsecureSkipVerify: !cl.checkServerCert,
-	}
-
-	tlsTransport := http.DefaultTransport
-	tlsTransport.(*http.Transport).TLSClientConfig = tlsConfig
-
-	// FIXME:
-	// 1 does this work if the server is connected using an IP address?
-	// 2. How are cookies stored between sessions?
-	cjarOpts := &cookiejar.Options{PublicSuffixList: publicsuffix.List}
-	cjar, err := cookiejar.New(cjarOpts)
-	if err != nil {
-		err = fmt.Errorf("NewTLSClient: error setting cookiejar. The use of bearer tokens might not work: %w", err)
-		slog.Error(err.Error())
-	}
-
-	return &http.Client{
-		Transport: tlsTransport,
-		Timeout:   cl.timeout,
-		Jar:       cjar,
-	}
-}
-
-// ConnectNoAuth creates a connection with the server without client authentication
-// Only requests that do not require authentication will succeed
-func (cl *TLSClient) ConnectNoAuth() {
-	cl.httpClient = cl.connect()
-}
-
 // ConnectWithBasicAuth creates a server connection using the configured authentication
-// Intended to connect to services that do not support JWT authentication
-//func (cl *TLSClient) ConnectWithBasicAuth(userID string, passwd string) {
-//	cl.clientID = userID
-//	//cl.basicSecret = passwd
-//	// Invoke() will use basic auth if basicSecret is set
+// Intended to setup to services that do not support JWT authentication
 //
-//	cl.httpClient = cl.connect()
-//}
+//	func (cl *TLSClient) ConnectWithBasicAuth(userID string, passwd string) {
+//		cl.clientID = userID
+//		//cl.basicSecret = passwd
+//		// Invoke() will use basic auth if basicSecret is set
+//
+//		cl.httpClient = cl.setup()
+//	}
 
 // ConnectWithClientCert creates a connection with the server using a client certificate for mutual authentication.
 // The provided certificate must be signed by the server's CA.
@@ -176,52 +141,16 @@ func (cl *TLSClient) ConnectWithClientCert(clientCert *tls.Certificate) (err err
 	return nil
 }
 
-// ConnectWithToken Sets login ID and secret for JWT authentication using a
+// ConnectWithToken Sets login ID and secret for bearer token authentication using a
 // token obtained at login or elsewhere.
-// This refreshes the token and returns a new refreshed token.
 //
 // No error is returned as this just sets up the token and http client. No messages are send yet.
 func (cl *TLSClient) ConnectWithToken(loginID string, token string) {
 	cl.clientID = loginID
 	cl.bearerToken = token
-	cl.httpClient = cl.connect()
-}
-
-// ConnectWithPassword requests JWT tokens using loginID/password
-// If a CA certificate is not available then insecure-skip-verify is used to allow
-// connection to an unverified server (leap of faith).
-//
-// The server returns a JwtAuthResponse message with a jwt bearer token for use in the authorization header.
-//
-//	loginID username or application ID to identify as.
-//	secret to authenticate with.
-//
-// Returns new auth token if successful or an error if setting up of authentication failed.
-func (cl *TLSClient) ConnectWithPassword(loginID string, secret string) (token string, err error) {
-	cl.clientID = loginID
-
-	loginURL := fmt.Sprintf("https://%s%s", cl.hostPort, cl.loginPath)
-
-	// create tlsTransport
-	cl.httpClient = cl.connect()
-
-	loginMessage := api.LoginArgs{
-		ClientID: loginID,
-		Password: secret,
+	if cl.httpClient != nil {
+		cl.httpClient = cl.setup()
 	}
-	resp, err2 := cl.Invoke("POST", loginURL, loginMessage, nil)
-	if err2 != nil {
-		err = fmt.Errorf("ConnectWithPassword: login to %s failed. %s", loginURL, err2)
-		return "", err
-	}
-	reply := api.LoginResp{}
-	err = json.Unmarshal(resp, &reply)
-	if err != nil {
-		err = fmt.Errorf("ConnectWithPassword: Login to %s has unexpected response message: %s", loginURL, err)
-		return "", err
-	}
-	cl.bearerToken = reply.Token
-	return cl.bearerToken, err
 }
 
 // Delete sends a delete message
@@ -305,16 +234,17 @@ func (cl *TLSClient) Invoke(method string, url string,
 		return nil, err
 	}
 	respBody, err := io.ReadAll(resp.Body)
-	if resp.StatusCode >= 400 {
-		msg := fmt.Sprintf("%s: %s", resp.Status, respBody)
+	if resp.StatusCode == 401 {
+		err = fmt.Errorf("%s", resp.Status)
+	} else if resp.StatusCode > 400 && resp.StatusCode < 500 {
+		err = fmt.Errorf("%s: %s", resp.Status, respBody)
 		if resp.Status == "" {
-			msg = fmt.Sprintf("%d (%s): %s", resp.StatusCode, resp.Status, respBody)
+			err = fmt.Errorf("%d (%s): %s", resp.StatusCode, resp.Status, respBody)
 		}
-		err = errors.New(msg)
-	}
-	if err != nil {
+	} else if resp.StatusCode >= 500 {
+		err = fmt.Errorf("Error %d (%s): %s", resp.StatusCode, resp.Status, respBody)
+	} else if err != nil {
 		err = fmt.Errorf("Invoke: Error %s %s: %w", method, url, err)
-		return nil, err
 	}
 	return respBody, err
 }
@@ -342,12 +272,12 @@ func (cl *TLSClient) NewRequest(method string, fullURL string, body []byte) (*ht
 	return req, nil
 }
 
-// Logout from the server and end the session
-func (cl *TLSClient) Logout() error {
-	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, vocab.PostLogoutPath)
-	_, err := cl.Invoke("POST", serverURL, http.NoBody, nil)
-	return err
-}
+//// Logout from the server and end the session
+//func (cl *TLSClient) Logout() error {
+//	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, vocab.PostLogoutPath)
+//	_, err := cl.Invoke("POST", serverURL, http.NoBody, nil)
+//	return err
+//}
 
 // Patch sends a patch message with json payload
 // If msg is a string then it is considered to be already serialized.
@@ -385,10 +315,43 @@ func (cl *TLSClient) Put(path string, msg interface{}) ([]byte, error) {
 	return cl.Invoke("PUT", serverURL, msg, nil)
 }
 
+// setup sets-up the http client with TLS transport
+func (cl *TLSClient) setup() *http.Client {
+	// the CA certificate is set in NewTLSClient
+	tlsConfig := &tls.Config{
+		RootCAs:            cl.caCertPool,
+		InsecureSkipVerify: !cl.checkServerCert,
+	}
+
+	tlsTransport := http.DefaultTransport
+	tlsTransport.(*http.Transport).TLSClientConfig = tlsConfig
+
+	// FIXME:
+	// 1 does this work if the server is connected using an IP address?
+	// 2. How are cookies stored between sessions?
+	cjarOpts := &cookiejar.Options{PublicSuffixList: publicsuffix.List}
+	cjar, err := cookiejar.New(cjarOpts)
+	if err != nil {
+		err = fmt.Errorf("NewTLSClient: error setting cookiejar. The use of bearer tokens might not work: %w", err)
+		slog.Error(err.Error())
+	}
+
+	return &http.Client{
+		Transport: tlsTransport,
+		Timeout:   cl.timeout,
+		Jar:       cjar,
+	}
+}
+
+//// SetBearerToken sets the authentication token for the http header
+//func (cl *TLSClient) SetBearerToken(token string) {
+//	cl.bearerToken = token
+//}
+
 // NewTLSClient creates a new TLS Client instance.
-// Use connect/Close to open and close connections
+// Use setup/Close to open and close connections
 //
-//	hostPort is the server hostname or IP address and port to connect to
+//	hostPort is the server hostname or IP address and port to setup to
 //	caCert with the x509 CA certificate, nil if not available
 //	timeout duration of the request or 0 for default of 10 seconds
 //
@@ -414,8 +377,8 @@ func NewTLSClient(hostPort string, caCert *x509.Certificate, timeout time.Durati
 	}
 
 	cl := &TLSClient{
-		hostPort:        hostPort,
-		loginPath:       vocab.PostLoginPath,
+		hostPort: hostPort,
+		//loginPath:       vocab.PostLoginPath,
 		refreshPath:     vocab.PostRefreshPath,
 		timeout:         timeout,
 		caCertPool:      caCertPool,
@@ -423,5 +386,7 @@ func NewTLSClient(hostPort string, caCert *x509.Certificate, timeout time.Durati
 		checkServerCert: checkServerCert,
 	}
 
+	// setup the connection
+	cl.httpClient = cl.setup()
 	return cl
 }

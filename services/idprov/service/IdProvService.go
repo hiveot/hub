@@ -10,9 +10,10 @@ import (
 	"log/slog"
 )
 
-const DefaultIoTCertValidityDays = 14
-const ApprovedSecret = "approved"
-const DefaultRetrySec = 12 * 3600
+//
+//const DefaultIoTCertValidityDays = 14
+//const ApprovedSecret = "approved"
+//const DefaultRetrySec = 12 * 3600
 
 // IdProvService handles provisioning requests from devices and services.
 // This starts listening on the provisioning port using a server certificate signed by the Hub CA.
@@ -60,8 +61,6 @@ func (svc *IdProvService) Start(hc hubclient.IHubClient) (err error) {
 	}
 
 	// Set the required permissions for using this service
-	// any user roles can view the directory
-	//myProfile := authnclient.NewAuthnUserClient(svc.hc)
 	authzClient := authzclient.NewAuthzUserClient(hc)
 	err = authzClient.SetPermissions(api.ThingPermissions{
 		AgentID: hc.ClientID(),

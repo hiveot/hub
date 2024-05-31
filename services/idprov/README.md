@@ -52,7 +52,7 @@ The highest risk exists when a server CA is not installed on the devices, the de
 
 ## Usage
 
-On startup, the IDProv server publishes a DNS-SD record on the local network. IoT devices can discovery it using the idprov client 'discover' function. Alternatively, IoT devices are provided directly with the server address and port.
+On startup, the IDProv server publishes a DNS-SD record on the local network. IoT devices can discovery it using the idprov client 'discover' function. Alternatively, IoT devices are provided directly with the server address and port. The default port is 8445.
 
 Once the idprov server is discovered, devices submit a provisioning request including their ID, out-of-band secret and public key. Once approved the server returns an auth token and server URL that are stored by the device. Periodically the Device renews the token using the auth services midway the token validity period.
 

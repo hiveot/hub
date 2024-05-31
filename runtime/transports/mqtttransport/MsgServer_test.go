@@ -47,7 +47,7 @@ func TestReconnect(t *testing.T) {
 		slog.Info("received event")
 		rxChan <- string(tv.Data)
 	})
-	hc1.SetConnectionHandler(func(status hubclient.HubTransportStatus) {
+	hc1.SetConnectionHandler(func(status hubclient.TransportStatus) {
 		t.Logf("onconnect callback: status=%s, info=%s", status.ConnectionStatus, status.LastError)
 		if status.ConnectionStatus == hubclient.Connected {
 			connectedCh <- status.ConnectionStatus

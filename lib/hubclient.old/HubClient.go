@@ -45,7 +45,7 @@ type HubClient struct {
 
 	actionHandler     func(msg *things.ThingMessage) (reply []byte, err error)
 	configHandler     func(msg *things.ThingMessage) error
-	connectionHandler func(status hubclient.HubTransportStatus)
+	connectionHandler func(status hubclient.TransportStatus)
 	eventHandler      func(msg *things.ThingMessage)
 	rpcHandler        func(msg *things.ThingMessage) (reply []byte, err error)
 }
@@ -181,14 +181,14 @@ func (hc *HubClient) Disconnect() {
 }
 
 // GetStatus returns the transport connection status
-func (hc *HubClient) GetStatus() hubclient.HubTransportStatus {
+func (hc *HubClient) GetStatus() hubclient.TransportStatus {
 	return hc.transport.GetStatus()
 }
 
 // onConnect is invoked when the connection status changes.
 // This cancels the connection attempt if 'retry' is set to false.
 // This passes the info through to the handler, if set.
-func (hc *HubClient) onConnect(status hubclient.HubTransportStatus) {
+func (hc *HubClient) onConnect(status hubclient.TransportStatus) {
 	//hc.connectionStatus = status
 	//hc.connectionInfo = info
 	retryConnect := hc.retryConnect.Load()
@@ -456,7 +456,7 @@ func (hc *HubClient) onRequest(addr string, payload []byte) (reply []byte, err e
 //}
 
 // SetConnectionHandler sets the callback for connection status changes.
-func (hc *HubClient) SetConnectionHandler(handler func(status hubclient.HubTransportStatus)) {
+func (hc *HubClient) SetConnectionHandler(handler func(status hubclient.TransportStatus)) {
 	hc.mux.Lock()
 	hc.connectionHandler = handler
 	hc.mux.Unlock()

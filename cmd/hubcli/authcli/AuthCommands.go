@@ -172,9 +172,9 @@ func HandleAddUser(
 
 	newPassword := GeneratePassword(9, true)
 	authnAdmin := authnclient.NewAuthnAdminClient(hc)
-	authzAdmin := authzclient.NewAuthzClient(hc)
+	authzAdmin := authzclient.NewAuthzManageClient(hc)
 
-	err = authnAdmin.AddClient(api.ClientTypeUser, loginID, displayName, newPassword, "")
+	err = authnAdmin.AddConsumer(loginID, displayName, newPassword)
 	prof, _ := authnAdmin.GetClientProfile(loginID)
 	_ = authnAdmin.UpdateClientProfile(prof)
 	_ = authzAdmin.SetClientRole(loginID, role)
@@ -218,8 +218,8 @@ func HandleAddService(
 		slog.Error("Failed creating or loading key", "err", err.Error())
 		return
 	}
-	err = authnAdmin.AddClient(
-		api.ClientTypeService, serviceID, displayName, kp.ExportPrivate(), "")
+	authToken, err := authnAdmin.AddService(serviceID, displayName, kp.ExportPrivate())
+	_ = authToken
 	if err != nil {
 		slog.Error("Failed adding service",
 			"serviceID", serviceID, "err", err.Error())
@@ -229,15 +229,15 @@ func HandleAddService(
 	}
 
 	// service needs an auth token, remove existing
-	tokenFile := serviceID + ".token"
-	tokenPath := path.Join(certsDir, tokenFile)
-	if _, err = os.Stat(tokenPath); errors.Is(err, os.ErrNotExist) {
-		authToken, _ := authnAdmin.NewAuthToken(serviceID, 0)
-		err = os.WriteFile(tokenPath, []byte(authToken), 0400)
-		fmt.Printf("Auth token written to file '%s'\n", tokenPath)
-	} else {
-		fmt.Printf("Token file %s already exists. No changes made.\n", tokenPath)
-	}
+	//tokenFile := serviceID + ".token"
+	//tokenPath := path.Join(certsDir, tokenFile)
+	//if _, err = os.Stat(tokenPath); errors.Is(err, os.ErrNotExist) {
+	//	authToken, _ := authnAdmin.NewAuthToken(serviceID, 0)
+	//	err = os.WriteFile(tokenPath, []byte(authToken), 0400)
+	//	fmt.Printf("Auth token written to file '%s'\n", tokenPath)
+	//} else {
+	//	fmt.Printf("Token file %s already exists. No changes made.\n", tokenPath)
+	//}
 
 	if err != nil {
 		fmt.Println("Error: " + err.Error())
@@ -249,7 +249,7 @@ func HandleAddService(
 func HandleListClients(hc hubclient.IHubClient) (err error) {
 
 	authnAdmin := authnclient.NewAuthnAdminClient(hc)
-	authzAdmin := authzclient.NewAuthzClient(hc)
+	authzAdmin := authzclient.NewAuthzManageClient(hc)
 	profileList, err := authnAdmin.GetProfiles()
 
 	fmt.Println("Users")
@@ -320,7 +320,7 @@ func HandleSetPassword(hc hubclient.IHubClient, loginID string, newPassword stri
 //	loginID is the ID or email of the user
 //	newPassword can be empty to auto-generate a password
 func HandleSetRole(hc hubclient.IHubClient, loginID string, newRole string) error {
-	authzAdmin := authzclient.NewAuthzClient(hc)
+	authzAdmin := authzclient.NewAuthzManageClient(hc)
 
 	err := authzAdmin.SetClientRole(loginID, newRole)
 

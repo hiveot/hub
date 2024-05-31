@@ -37,9 +37,9 @@ type NatsTransport struct {
 	// TLS configuration to use in connecting
 	tlsConfig *tls.Config
 	timeout   time.Duration
-	status    hubclient.HubTransportStatus
+	status    hubclient.TransportStatus
 
-	connectHandler func(status hubclient.HubTransportStatus)
+	connectHandler func(status hubclient.TransportStatus)
 	eventHandler   func(addr string, payload []byte)
 	requestHandler func(addr string, payload []byte) (reply []byte, err error, donotreply bool)
 }
@@ -188,7 +188,7 @@ func (nt *NatsTransport) Disconnect() {
 }
 
 // GetStatus Return the transport connection info
-func (nt *NatsTransport) GetStatus() hubclient.HubTransportStatus {
+func (nt *NatsTransport) GetStatus() hubclient.TransportStatus {
 	return nt.status
 }
 
@@ -361,7 +361,7 @@ func startEventMessageHandler(nsub *nats.Subscription, cb func(msg *things.Thing
 }
 
 // SetConnectHandler sets the notification handler of connection status changes
-func (nt *NatsTransport) SetConnectHandler(cb func(status hubclient.HubTransportStatus)) {
+func (nt *NatsTransport) SetConnectHandler(cb func(status hubclient.TransportStatus)) {
 	if cb == nil {
 		panic("nil handler not allowed")
 	}
@@ -519,10 +519,10 @@ func NewNatsTransport(url string, clientID string, caCert *x509.Certificate) *Na
 		clientID:  clientID,
 		timeout:   time.Duration(DefaultTimeoutSec) * time.Second,
 		tlsConfig: tlsConfig,
-		connectHandler: func(status hubclient.HubTransportStatus) {
+		connectHandler: func(status hubclient.TransportStatus) {
 			slog.Info("connection status change", "newStatus", status.ConnectionStatus, "last error", status.LastError)
 		},
-		status: hubclient.HubTransportStatus{
+		status: hubclient.TransportStatus{
 			CaCert:           caCert,
 			HubURL:           url,
 			ClientID:         clientID,

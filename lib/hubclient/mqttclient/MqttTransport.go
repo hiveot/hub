@@ -54,11 +54,11 @@ type MqttHubTransport struct {
 	mux             sync.RWMutex
 	_connectID      string
 	_correlData     map[string]chan *paho.Publish
-	_status         hubclient.HubTransportStatus
+	_status         hubclient.TransportStatus
 	_inboxTopic     string // set on first request, cleared on disconnect
 	_pahoClient     *autopaho.ConnectionManager
 	_subscriptions  map[string]bool
-	_connectHandler func(status hubclient.HubTransportStatus)
+	_connectHandler func(status hubclient.TransportStatus)
 	_eventHandler   func(addr string, payload []byte)
 	_requestHandler func(addr string, payload []byte) (reply []byte, err error, donotreply bool)
 }
@@ -256,7 +256,7 @@ func (tp *MqttHubTransport) Disconnect() {
 }
 
 // GetStatus Return the transport connection info
-func (tp *MqttHubTransport) GetStatus() hubclient.HubTransportStatus {
+func (tp *MqttHubTransport) GetStatus() hubclient.TransportStatus {
 	tp.mux.RLock()
 	defer tp.mux.RUnlock()
 	return tp._status
@@ -607,7 +607,7 @@ func (tp *MqttHubTransport) sendReply(req *paho.Publish, payload []byte, errResp
 }
 
 // SetConnectHandler sets the notification handler of connection status changes
-func (tp *MqttHubTransport) SetConnectHandler(cb func(status hubclient.HubTransportStatus)) {
+func (tp *MqttHubTransport) SetConnectHandler(cb func(status hubclient.TransportStatus)) {
 	if cb == nil {
 		panic("nil handler not allowed")
 	}
@@ -713,13 +713,13 @@ func NewMqttTransport(fullURL string, clientID string, caCert *x509.Certificate)
 		_correlData:    make(map[string]chan *paho.Publish),
 		_subscriptions: make(map[string]bool),
 		// default, log status
-		_connectHandler: func(status hubclient.HubTransportStatus) {
+		_connectHandler: func(status hubclient.TransportStatus) {
 			slog.Info("connection status change",
 				"newStatus", status.ConnectionStatus,
 				"lastError", status.LastError,
 				"clientID", clientID)
 		},
-		_status: hubclient.HubTransportStatus{
+		_status: hubclient.TransportStatus{
 			CaCert:           caCert,
 			HubURL:           fullURL,
 			ClientID:         clientID,
