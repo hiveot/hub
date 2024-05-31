@@ -66,7 +66,7 @@ func (cs *ClientSession) CreateSSEChan() chan SSEEvent {
 
 // DeleteSSEChan deletes a previously created SSE channel and closes it.
 func (cs *ClientSession) DeleteSSEChan(c chan SSEEvent) {
-	slog.Info("DeleteSSEChan channel", "clientID", cs.clientID)
+	slog.Debug("DeleteSSEChan channel", "clientID", cs.clientID)
 	cs.mux.Lock()
 	defer cs.mux.Unlock()
 	for i, sseClient := range cs.sseClients {
@@ -171,7 +171,7 @@ func (cs *ClientSession) SendSSE(eventType string, payload string) int {
 	count := 0
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
-	slog.Info("hub sending message to client over sse:",
+	slog.Debug("hub sending message to client over sse:",
 		slog.String("destination clientID", cs.clientID),
 		slog.String("eventType", eventType),
 		slog.Int("nr connections", len(cs.sseClients)))

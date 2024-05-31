@@ -41,6 +41,11 @@ export class DeliveryStatus extends Object{
     error?: string =""
     // Reply in case delivery status is completed
     reply?: string =""
+
+    Completed(msg: ThingMessage) {
+        this.messageID = msg.messageID
+        this.status = DeliveryProgress.DeliveryCompleted
+    }
 }
 
 // export class HubTransportStatus extends Object {
@@ -112,6 +117,9 @@ export interface IHubClient {
     //  @param payload with serialized message to publish
     pubAction(thingID: string, key: string, payload: string): Promise<DeliveryStatus>;
 
+    // PubConfig publishes a configuration change request for one or more writable properties
+    pubConfig(thingID: string, key: string, payload: string): Promise<DeliveryStatus>;
+
     // getStatus returns the current transport connection status
     // getStatus(): HubTransportStatus
 
@@ -129,7 +137,7 @@ export interface IHubClient {
     pubEvent(thingID: string, key:string, payload: string): Promise<DeliveryStatus>;
 
 
-    // PubProps publishes a property value map event.
+    // PubProps publishes a property values event.
     // It returns as soon as delivery to the hub is confirmed.
     // This is intended for agents, not for consumers.
     //
@@ -165,7 +173,7 @@ export interface IHubClient {
     //	args is the address of a struct containing the arguments to marshal
     //
     // This returns the data or throws an error if failed
-    rpc(dThingID: string, key: string, args: any, reply: any): Promise<any>
+    rpc(dThingID: string, key: string, args: any): Promise<any>
 
     // Set the handler for incoming action request.
     setActionHandler(cb: MessageHandler):void

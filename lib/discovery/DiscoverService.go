@@ -82,13 +82,13 @@ func LocateHub(searchTime time.Duration, firstResult bool) (fullURL string) {
 		slog.Warn("LocateHub: Hub not found")
 		return ""
 	}
-	rawURL, found := params["rawurl"]
+	fullURL, found := params["rawurl"]
 	if !found {
-		rawURL = fmt.Sprintf("tcp://%s:%d%s", addr, port, params["path"])
+		fullURL = fmt.Sprintf("tcp://%s:%d%s", addr, port, params["path"])
 	}
 	slog.Info("LocateHub",
 		slog.Int("Nr records", len(records)),
 		slog.String("fullURL", fullURL),
 	)
-	return rawURL
+	return fullURL
 }

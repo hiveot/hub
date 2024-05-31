@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import {env, exit} from "process";
-import {NewHubClient} from "@hivelib/hubclient/httpclient/HubClient"
 import {ZwaveJSBinding} from "./ZWaveJSBinding";
 import path from "path";
 import {locateHub} from "@hivelib/hubclient/locateHub";
 import fs from "fs";
 import {BindingConfig} from "./BindingConfig";
 import * as tslog from 'tslog';
+import {ConnectToHub} from "@hivelib/hubclient/ConnectToHub";
 
 const log = new tslog.Logger({name: "zwavejs"})
 
@@ -39,22 +39,26 @@ async function main() {
     }
 
     //--- Step 2: Connect to the Hub
-    let core = ""
-    if (!appConfig.hubURL) {
-        let uc = await locateHub()
-        appConfig.hubURL = uc.hubURL
+    let hc =await ConnectToHub(appConfig.hubURL, appConfig.loginID, appConfig.caCertPEM)
+    if (!hc) {
+        throw("Unable to connect to the hub")
     }
-    let hc = NewHubClient(appConfig.hubURL, appConfig.loginID, appConfig.caCertPEM)
+    //
+    // if (!appConfig.hubURL) {
+    //     let uc = await locateHub()
+    //     appConfig.hubURL = uc.hubURL
+    // }
+    // let hc = NewHubClient(appConfig.hubURL, appConfig.loginID, appConfig.caCertPEM)
 
     // need a key to connect, load or create it
     // note that the HubClient determines the key type
-    let kp = hc.createKeyPair()
-    if (appConfig.clientKey) {
-        kp.importPrivate(appConfig.clientKey)
-    } else {
-        fs.writeFileSync(appConfig.keyFile, kp.exportPrivate())
-    }
-    await hc.connectWithToken(kp, appConfig.loginToken)
+    // let kp = hc.createKeyPair()
+    // if (appConfig.clientKey) {
+    //     kp.importPrivate(appConfig.clientKey)
+    // } else {
+    //     fs.writeFileSync(appConfig.keyFile, kp.exportPrivate())
+    // }
+    await hc.connectWithToken(appConfig.loginToken)
 
     //--- Step 3: Start the binding and zwavejs driver
     let binding = new ZwaveJSBinding(hc, appConfig);

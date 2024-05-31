@@ -285,11 +285,10 @@ export class HttpSSEClient implements IHubClient {
 
     // PubAction publishes a request for changing a Thing's configuration.
     // The configuration is a writable property as defined in the Thing's TD.
-    async pubConfig(agentID: string, thingID: string, propName: string, propValue: string): Promise<boolean> {
-        log.info("pubConfig. agentID:", agentID, ", thingID:", thingID, ", propName:", propName)
-
-        let accepted = await this.pubAction(thingID, ActionTypeProperties, propValue)
-        return (!!accepted)
+    async pubConfig(thingID: string, propName: string, propValue: string): Promise<DeliveryStatus> {
+        let props = {propName:propValue}
+        let propsJson = JSON.stringify(props)
+        return  this.pubAction(thingID, ActionTypeProperties, propsJson)
     }
 
     // PubEvent publishes a Thing event. The payload is an event value as per TD document.
@@ -314,36 +313,24 @@ export class HttpSSEClient implements IHubClient {
     }
 
     // Publish a Thing properties event
-    // Ignored if props map is empty
     async pubProps(thingID: string, props: Map<string,string>): Promise<DeliveryStatus> {
         // if (length(props.) > 0) {
         let propsJSON = JSON.stringify(props, null, ' ');
-        if (propsJSON.length > 2) {
-            return this.pubEvent(thingID, EventTypeProperties, propsJSON);
-        }
-        let stat: DeliveryStatus = {
-            messageID: "",
-            status: DeliveryProgress.DeliveryDelivered,
-            error: "",
-        }
-        return stat
+         return this.pubEvent(thingID, EventTypeProperties, propsJSON);
     }
 
 
     // Rpc publishes an RPC request to a service and waits for a response.
     // Intended for users and services to invoke RPC to services.
-    async rpc(dThingID: string, methodName: string, args: any, reply: any): Promise<any> {
+    async rpc(dThingID: string, methodName: string, args: any): Promise<any> {
 
         let payload = JSON.stringify(args)
         let stat = await this.pubAction(dThingID,methodName, payload);
         if (stat.error != "") {
-            return stat.error
-        } else if (stat.reply) {
-            // FIXME: use provided type
-            reply = JSON.parse(stat.reply)
-            return reply
+            throw stat.error
         }
-        return
+        // TODO: wait for status update reply
+        return stat
     }
 
     // PubTD publishes an event with a Thing TD document.

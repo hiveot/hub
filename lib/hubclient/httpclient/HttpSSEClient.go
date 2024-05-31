@@ -359,6 +359,13 @@ func (cl *HttpSSEClient) PubAction(thingID string, key string, payload []byte) (
 	return stat
 }
 
+// PubConfig publishes a configuration change request
+func (cl *HttpSSEClient) PubConfig(thingID string, key string, value string) (stat api.DeliveryStatus) {
+	props := map[string]string{key: value}
+	propsJson, _ := json.Marshal(props)
+	return cl.PubAction(thingID, vocab.ActionTypeProperties, propsJson)
+}
+
 // PubActionWithQueryParams publishes an action with query parameters
 func (cl *HttpSSEClient) PubActionWithQueryParams(
 	thingID string, key string, payload []byte, params map[string]string) (stat api.DeliveryStatus) {
@@ -505,6 +512,11 @@ func (cl *HttpSSEClient) Rpc(
 // Intended for agents that have processed an incoming action request and need to send
 // a reply and confirm that the action has applied.
 func (cl *HttpSSEClient) SendDeliveryUpdate(thingID string, stat api.DeliveryStatus) {
+	slog.Info("SendDeliveryUpdate",
+		slog.String("thingID", thingID),
+		slog.String("Status", stat.Status),
+		slog.String("MessageID", stat.MessageID),
+	)
 	statJSON, _ := json.Marshal(&stat)
 	// thing
 	_ = cl.PubEvent(thingID, vocab.EventTypeDeliveryUpdate, statJSON)
@@ -633,7 +645,7 @@ func NewHttpSSEClient(hostPort string, clientID string, caCert *x509.Certificate
 		slog.Info("NewHttpSSEClient: No CA certificate. InsecureSkipVerify used",
 			slog.String("destination", hostPort))
 	} else {
-		slog.Info("NewHttpSSEClient: CA certificate",
+		slog.Debug("NewHttpSSEClient: CA certificate",
 			slog.String("destination", hostPort),
 			slog.String("caCert CN", caCert.Subject.CommonName))
 		caCertPool.AddCert(caCert)

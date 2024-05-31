@@ -138,6 +138,10 @@ type IHubClient interface {
 	// This returns a delivery status with serialized response message if delivered
 	PubAction(dThingID string, key string, payload []byte) api.DeliveryStatus
 
+	// PubConfig publishes a configuration change request for one or more writable properties
+	// Value is a serialized value based on the PropertyAffordances in the TD
+	PubConfig(dThingID string, key string, value string) api.DeliveryStatus
+
 	// PubEvent publishes an event style message without a response.
 	// It returns as soon as delivery to the hub is confirmed.
 	// This is intended for agents, not for consumers.
@@ -152,7 +156,7 @@ type IHubClient interface {
 	// This returns an error if the event cannot not be delivered to the hub
 	PubEvent(thingID string, key string, payload []byte) error
 
-	// PubProps publishes a property value map event.
+	// PubProps publishes a property values event.
 	// It returns as soon as delivery to the hub is confirmed.
 	// This is intended for agents, not for consumers.
 	//	thingID is the ID of the device (not including the digital twin ID)

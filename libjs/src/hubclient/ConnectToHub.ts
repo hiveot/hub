@@ -1,4 +1,7 @@
-import { HubClient } from "@hivelib/hubclient/httpclient/HubClient";
+import {IHubClient} from "@hivelib/hubclient/IHubClient";
+import {locateHub} from "@hivelib/hubclient/locateHub";
+import path from "path";
+import {HttpSSEClient} from "@hivelib/hubclient/httpclient/HttpSSEClient";
 
 
 
@@ -17,34 +20,21 @@ import { HubClient } from "@hivelib/hubclient/httpclient/HubClient";
 //	fullURL is the scheme://addr:port/[wspath] the server is listening on
 //	clientID to connect as. Also used for the key and token file names
 //	certDir is the location of the CA cert and key/token files
-//	core optional core selection. Fallback is to auto determine based on URL.
+// This throws an error if a connection cannot be made
+export async function ConnectToHub(
+    fullURL: string, clientID: string, caCertPem: string): Promise<IHubClient> {
 
-// export function ConnectToHub(fullURL: string, clientID: string, certDir: string,
-//                              core: string): HubClient {
-//
-//     // 1. determine the actual address
-//     if (fullURL == "") {
-//         // return after first result
-//         fullURL, core = LocateHub(true)
-//     }
-//     if (clientID == "") {
-//         return null
-//     }
-//     // 2. obtain the CA public cert to verify the server
-//     let caCertFile = path.Join(certDir, keys.DefaultCaCertFile)
-//     caCert, err := keys.LoadX509CertFromPEM(caCertFile)
-//     if err != nil {
-//         return nil, err
-//     }
-//     // 3. Determine which core to use and setup the key and token filenames
-//     // By convention the key/token filename format is "{name}.key/{name}.token"
-//     hc = NewHubClient(fullURL, clientID, caCert, core)
-//
-//     // 4. Connect and auth with token from file
-//     slog.Info("connecting to", "serverURL", fullURL)
-//     err = hc.ConnectWithTokenFile(certDir)
-//     if err != nil {
-//         return nil, err
-//     }
-//     return hc, err
-// }
+    // 1. determine the actual address
+    if (fullURL == "") {
+        // return after first result
+        let uc = await locateHub()
+        fullURL = uc.hubURL
+    }
+    if (clientID == ""||fullURL == "") {
+        throw("Missing clientID or hub URL")
+    }
+    // 2. Determine the client protocol to use
+    // TODO: support multiple client protocols
+    let hc = new HttpSSEClient(fullURL, clientID, caCertPem)
+    return hc
+}

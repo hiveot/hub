@@ -97,6 +97,13 @@ func (cl *EmbeddedClient) PubAction(
 	return stat
 }
 
+// PubConfig publishes a configuration change request
+func (cl *EmbeddedClient) PubConfig(thingID string, key string, value string) (stat api.DeliveryStatus) {
+	props := map[string]string{key: value}
+	propsJson, _ := json.Marshal(props)
+	return cl.PubAction(thingID, vocab.ActionTypeProperties, propsJson)
+}
+
 // PubEvent publishes an event style message without waiting for a response.
 func (cl *EmbeddedClient) PubEvent(
 	thingID string, key string, payload []byte) error {

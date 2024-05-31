@@ -92,6 +92,13 @@ func (svc *DigiTwinInbox) HandleActionFlow(msg *things.ThingMessage) (status api
 	// all latest values are stored
 	svc.latest.StoreMessage(msg)
 
+	// TODO: log in a separate message log
+	slog.Info("inbox:HandleActionFlow",
+		slog.String("ThingID", msg.ThingID),
+		slog.String("Key", msg.Key),
+		slog.String("SenderID", msg.SenderID),
+		slog.String("MessageID", msg.MessageID),
+	)
 	// Store the service request in the svc and forward it to its agent
 	// store the request. This already uses the digitwin thingID
 	actionRecord, err := svc.AddAction(msg)
@@ -118,9 +125,6 @@ func (svc *DigiTwinInbox) HandleActionFlow(msg *things.ThingMessage) (status api
 	actionRecord.DeliveryStatus = stat
 
 	// Status updates from agents are sent as events and always asynchronously.
-	//
-	// TODO: TBD use channels with a timeout to wait for potential immediate reply or have this
-	// handled by the transport?
 	return actionRecord.DeliveryStatus
 }
 
@@ -129,18 +133,23 @@ func (svc *DigiTwinInbox) HandleActionFlow(msg *things.ThingMessage) (status api
 //
 // This updates the status of the inbox record and notifies the sender.
 func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) (stat api.DeliveryStatus) {
-	slog.Info("HandleDeliveryUpdate",
-		slog.String("thingID", msg.ThingID),
-		slog.String("MessageID", msg.MessageID),
-		slog.String("SenderID", msg.SenderID))
-
 	var inboxRecord InboxRecord
 	err := json.Unmarshal(msg.Data, &stat)
+
 	if err == nil {
 		inboxRecord, err = svc.GetRecord(stat.MessageID)
 	}
+
 	// error checking that the update does belong to the right thing action
 	if err == nil {
+		slog.Info("inbox:DeliveryUpdate ",
+			slog.String("ThingID", inboxRecord.Request.ThingID),
+			slog.String("Key", inboxRecord.Request.Key),
+			slog.String("SenderID", msg.SenderID),
+			slog.String("MessageID", stat.MessageID),
+			slog.String("Status", stat.Status),
+		)
+
 		// the sender (agents) must match
 		thingAgentID, thingID := things.SplitDigiTwinThingID(inboxRecord.Request.ThingID)
 		if thingAgentID != msg.SenderID {

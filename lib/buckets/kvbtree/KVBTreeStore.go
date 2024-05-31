@@ -160,14 +160,14 @@ func writeStoreFile(storePath string, docs map[string]map[string][]byte) error {
 
 // autoSaveLoop periodically saves changes to the store
 func (store *KVBTreeStore) autoSaveLoop() {
-	slog.Info("auto-save loop started")
+	slog.Debug("auto-save loop started")
 
 	defer close(store.backgroundLoopEnded)
 
 	for {
 		select {
 		case <-store.backgroundLoopEnding:
-			slog.Info("Autosave loop ended")
+			slog.Debug("Autosave loop ended")
 			return
 		case <-time.After(store.writeDelay):
 			//store.mutex.Lock()
@@ -191,7 +191,7 @@ func (store *KVBTreeStore) autoSaveLoop() {
 // If any changes are remaining then write to disk now.
 func (store *KVBTreeStore) Close() error {
 	var err error
-	slog.Info("closing store for client", "storePath", store.storePath)
+	slog.Debug("closing store for client", "storePath", store.storePath)
 
 	if store.buckets == nil || store.backgroundLoopEnding == nil {
 		return fmt.Errorf("store already closed")
