@@ -296,7 +296,7 @@ class HToast extends HTMLElement {
     }
 
     constructor() {
-        super();
+        super(); 
         this.innerHTML = template;
         this.duration = DEFAULT_DURATION; // default value when not set
         if (this.id) {
@@ -309,7 +309,7 @@ class HToast extends HTMLElement {
         // handle toast events send to the dom
         document.addEventListener("toast", (ev) => {
             if (ev.detail) {
-                this.showToast(ev.detail.type, ev.detail.text)
+                this.showToast(ev.detail.type, ev.detail.text, duration)
             } else {
                 console.error("Received toast event but 'detail' field is empty")
             }
@@ -363,7 +363,13 @@ class HToast extends HTMLElement {
      */
     showToast = (ttype, text, timeout) => {
         if (!timeout) {
-            timeout = this.duration
+            console.log("timeout",timeout)
+            // provide more time to read errors
+            if (ttype === "error") {
+                timeout = this.duration*2
+            } else {
+                timeout = this.duration
+            }
         }
         // Getting the icon and text for the toast based on the id passed
         const {icon, prefix} = this.toastDetails[ttype];

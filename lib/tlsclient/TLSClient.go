@@ -197,7 +197,7 @@ func (cl *TLSClient) Invoke(method string, url string,
 		err = fmt.Errorf("Invoke: '%s'. Client is not started", url)
 		return nil, err
 	}
-	slog.Info("TLSClient.Invoke", "method", method, "url", url)
+	slog.Debug("TLSClient.Invoke", "method", method, "url", url)
 
 	// careful, a double // in the path causes a 301 and changes post to get
 	// url := fmt.Sprintf("https://%s%s", hostPort, path)
@@ -369,7 +369,7 @@ func NewTLSClient(hostPort string, caCert *x509.Certificate, timeout time.Durati
 			slog.String("destination", hostPort))
 		checkServerCert = false
 	} else {
-		slog.Info("NewTLSClient: CA certificate",
+		slog.Debug("NewTLSClient: CA certificate",
 			slog.String("destination", hostPort),
 			slog.String("caCert CN", caCert.Subject.CommonName))
 		caCertPool.AddCert(caCert)

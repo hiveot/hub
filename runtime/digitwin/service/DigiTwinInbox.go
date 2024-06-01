@@ -144,10 +144,11 @@ func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) (stat a
 	if err == nil {
 		slog.Info("inbox:DeliveryUpdate ",
 			slog.String("ThingID", inboxRecord.Request.ThingID),
-			slog.String("Key", inboxRecord.Request.Key),
-			slog.String("SenderID", msg.SenderID),
+			//slog.String("Key", inboxRecord.Request.Key),
+			//slog.String("SenderID", msg.SenderID),
 			slog.String("MessageID", stat.MessageID),
 			slog.String("Status", stat.Status),
+			slog.String("error", stat.Error),
 		)
 
 		// the sender (agents) must match

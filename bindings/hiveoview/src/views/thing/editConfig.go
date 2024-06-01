@@ -81,7 +81,7 @@ func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 			slog.String("err", err.Error()))
 
 		// notify UI via SSE. This is handled by a toast component.
-		_ = mySession.SendSSE("notify", "error:"+err.Error())
+		mySession.SendNotify(session.NotifyError, err.Error())
 
 		// todo, differentiate between server error, invalid value and unauthorized
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -89,7 +89,9 @@ func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: map delivery status to language
-	_ = mySession.SendSSE("notify", "Delivery Status for '"+propKey+"': "+stat.Status)
+
+	// the async reply will contain status update
+	//mySession.SendNotify(session.NotifyInfo, "Delivery Status for '"+propKey+"': "+stat.Status)
 
 	w.WriteHeader(http.StatusOK)
 

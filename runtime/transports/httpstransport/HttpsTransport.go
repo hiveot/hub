@@ -149,6 +149,8 @@ func (svc *HttpsTransport) writeReply(w http.ResponseWriter, payload []byte, err
 		return
 	}
 	if payload != nil {
+		// If no header is written then w.Write writes a StatusOK
+		// for some reason this is only a problem when the client reconnects
 		_, _ = w.Write(payload)
 	}
 	w.WriteHeader(http.StatusOK)
@@ -170,7 +172,7 @@ func (svc *HttpsTransport) GetProtocolInfo() api.ProtocolInfo {
 	return inf
 }
 
-// HandlePostAction passes a posted action to the router
+// HandlePostAction passes a posted action to the handler
 // this contains optional query parameter for messageID
 func (svc *HttpsTransport) HandlePostAction(w http.ResponseWriter, r *http.Request) {
 	cs, thingID, key, body, err := svc.getRequestParams(r)

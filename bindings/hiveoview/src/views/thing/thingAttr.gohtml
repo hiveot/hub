@@ -22,14 +22,14 @@
 					<span>{{$v.Title}}</span>
 				</div>
 				<div>
-					<span sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
+					<span sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
               {{$.Values.ToString $k}}
 					</span>
             {{$v.UnitSymbol}}
 				</div>
 				<div class="h-show-lg">{{$v.Description}}</div>
 				<div class="h-show-md"
-				     sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
+				     sse-swap="{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
 				     title="Updated: {{$.Values.GetUpdated $k}}  by {{($.Values.GetSenderID $k)}}">
             {{$.Values.GetUpdated $k}}</div>
 			</li>

@@ -5,6 +5,8 @@
 The runtime is in alpha. It is functional but breaking changes should be expected.
 
 Todo:
+* FIXME auto-reconnect; this currently doesn't work well (superfluous write header)
+  (happens when restarting the runtime without restarting the services/bindings)
 * authorization of actions, events and subscriptions
 * digitwin directory 
    * add forms for supported protocols

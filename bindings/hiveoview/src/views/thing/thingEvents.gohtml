@@ -26,14 +26,14 @@
 					</div>
 					<div>
 						{{/* Dynamic refresh of value on sse event*/}}
-						<span sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
+						<span sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
 								{{$.Values.ToString $k}}
 						</span>
               {{$v.Data.UnitSymbol}}
 					</div>
 					<div class="h-show-lg">{{$v.Description}}</div>
 {{/*TODO: improve on this rather crude way to refresh the derived 'updated' field when value changes?*/}}
-					<div sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
+					<div sse-swap="{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
 									class="h-show-md"
 						>{{$.Values.GetUpdated $k}}</div>
 				</li>

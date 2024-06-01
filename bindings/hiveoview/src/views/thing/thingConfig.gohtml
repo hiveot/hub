@@ -24,16 +24,16 @@
 					</div>
 					<div>
 						<button class="outline" style="border:none;
-						display:inline-flex; gap: 5px;
-						align-items: center; padding:0"
-						        hx-trigger="click"
-						        hx-get="/app/thing/editConfig"
-						        hx-vals='{"agentID":"{{$.AgentID}}","thingID":"{{$.ThingID}}","key":"{{$k}}"}'
-						        hx-target="#editConfigModal"
+							display:inline-flex; gap: 5px;
+							align-items: center; padding:0"
+			        hx-trigger="click"
+			        hx-get="/app/thing/editConfig"
+			        hx-vals='{"agentID":"{{$.AgentID}}","thingID":"{{$.ThingID}}","key":"{{$k}}"}'
+			        hx-target="#editConfigModal" hx-swap="innerHTML"
 						>
 							<iconify-icon style="padding: 0 10px" icon="mdi:pencil"></iconify-icon>
                 {{/*replace show value on sse event*/}}
-							<span sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
+							<span sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
 							{{$.Values.ToString $k}}
 							</span>
                 {{$v.UnitSymbol}}
@@ -42,7 +42,7 @@
 					<div class="h-show-md">{{$v.Default}}</div>
 					<div class="h-show-lg">{{$v.Description}}</div>
 					<div class="h-show-sm"
-					     sse-swap="{{$.AgentID}}/{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
+					     sse-swap="{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
 					     title="Updated: {{$.Values.GetUpdated $k}} by {{($.Values.GetSenderID $k)}}"
 					>
               {{$.Values.GetUpdated $k}}

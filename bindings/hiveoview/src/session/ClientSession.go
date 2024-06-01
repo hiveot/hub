@@ -6,10 +6,20 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/services/state/stateclient"
 	"log/slog"
 	"sync"
 	"time"
+)
+
+type NotifyType string
+
+const (
+	NotifyInfo    NotifyType = "info"
+	NotifySuccess NotifyType = "success"
+	NotifyError   NotifyType = "error"
+	NotifyWarning NotifyType = "warning"
 )
 
 type SSEEvent struct {
@@ -52,9 +62,9 @@ func (cs *ClientSession) AddSSEClient(c chan SSEEvent) {
 
 	go func() {
 		if cs.IsActive() {
-			cs.SendSSE("notify", "success:Connected to the Hub")
+			cs.SendNotify(NotifySuccess, "Connected to the Hub")
 		} else {
-			cs.SendSSE("notify", "error:Not connected to the Hub")
+			cs.SendNotify(NotifyError, "Not connected to the Hub")
 		}
 	}()
 }
@@ -102,11 +112,11 @@ func (cs *ClientSession) onConnectChange(stat hubclient.TransportStatus) {
 		slog.String("clientID", stat.ClientID),
 		slog.String("status", string(stat.ConnectionStatus)))
 	if stat.ConnectionStatus == hubclient.Connected {
-		cs.SendSSE("notify", "success:Connection with Hub successful")
+		cs.SendNotify(NotifySuccess, "Connection with Hub successful")
 	} else if stat.ConnectionStatus == hubclient.Connecting {
-		cs.SendSSE("notify", "warning:Attempt to reconnect to the Hub")
+		cs.SendNotify(NotifyWarning, "Attempt to reconnect to the Hub")
 	} else {
-		cs.SendSSE("notify", "warning:Connection changed: "+string(stat.ConnectionStatus))
+		cs.SendNotify(NotifyWarning, "Connection changed: "+string(stat.ConnectionStatus))
 	}
 }
 
@@ -145,7 +155,7 @@ func (cs *ClientSession) onEvent(msg *things.ThingMessage) error {
 		// fragment that displays this TD:
 		//    hx-trigger="sse:{{.Thing.ThingID}}"
 		thingAddr := msg.ThingID
-		_ = cs.SendSSE(thingAddr, "")
+		cs.SendSSE(thingAddr, "")
 	} else if msg.Key == vocab.EventTypeProperties {
 		// Publish an sse event for each of the properties
 		// The UI that displays this event can use this as a trigger to load the
@@ -156,10 +166,22 @@ func (cs *ClientSession) onEvent(msg *things.ThingMessage) error {
 		if err == nil {
 			for k, v := range props {
 				thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, k)
-				_ = cs.SendSSE(thingAddr, v)
+				cs.SendSSE(thingAddr, v)
 				thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, k)
-				_ = cs.SendSSE(thingAddr, msg.GetUpdated())
+				cs.SendSSE(thingAddr, msg.GetUpdated())
 			}
+		}
+	} else if msg.Key == vocab.EventTypeDeliveryUpdate {
+		// report unhandled delivery updates
+		// for now just pass it to the notification toaster
+		stat := api.DeliveryStatus{}
+		_ = json.Unmarshal(msg.Data, &stat)
+		if stat.Error != "" {
+			cs.SendNotify(NotifyError, stat.Error)
+		} else if stat.Status == api.DeliveryCompleted {
+			cs.SendNotify(NotifySuccess, "Action successful")
+		} else {
+			cs.SendNotify(NotifyWarning, "Action delivery: "+stat.Status)
 		}
 	} else {
 		// Publish sse event indicating the event affordance or value has changed.
@@ -168,12 +190,12 @@ func (cs *ClientSession) onEvent(msg *things.ThingMessage) error {
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{$k}}"
 		// where $k is the event ID
 		thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, msg.Key)
-		_ = cs.SendSSE(thingAddr, string(msg.Data))
+		cs.SendSSE(thingAddr, string(msg.Data))
 		// TODO: improve on this crude way to update the 'updated' field
 		// Can the value contain an object with a value and updated field instead?
 		// htmx sse-swap does allow cherry picking the content unfortunately.
 		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Key)
-		_ = cs.SendSSE(thingAddr, msg.GetUpdated())
+		cs.SendSSE(thingAddr, msg.GetUpdated())
 	}
 	return nil
 }
@@ -215,16 +237,23 @@ func (cs *ClientSession) SaveState() error {
 	return err
 }
 
+func (cs *ClientSession) SendNotify(ntype NotifyType, text string) {
+	cs.mux.RLock()
+	defer cs.mux.RUnlock()
+	for _, c := range cs.sseClients {
+		c <- SSEEvent{Event: "notify", Payload: string(ntype) + ":" + text}
+	}
+}
+
 // SendSSE encodes and sends an SSE event to clients of this session
 // Intended to notify the browser of changes.
-func (cs *ClientSession) SendSSE(event string, content string) error {
+func (cs *ClientSession) SendSSE(event string, content string) {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
 	slog.Info("sending sse event", "event", event, "nr clients", len(cs.sseClients))
 	for _, c := range cs.sseClients {
 		c <- SSEEvent{event, content}
 	}
-	return nil
 }
 
 // NewClientSession creates a new client session for the given Hub connection

@@ -260,7 +260,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		return
 	}
 	stat.MessageID = rxMsg.MessageID
-	slog.Info("handleSSEEvent. Received message",
+	slog.Debug("handleSSEEvent. Received message",
 		//slog.String("Comment", string(event.Comment)),
 		slog.String("me", cl._status.ClientID),
 		slog.String("messageType", rxMsg.MessageType),
