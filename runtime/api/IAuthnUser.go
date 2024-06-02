@@ -75,9 +75,11 @@ type LoginArgs struct {
 	//Nonce string `json:"nonce"`
 }
 
-// LoginResp contains the authentication token if login is successful
+// LoginResp contains the authentication token if login is successful and a new
+// session ID.
 type LoginResp struct {
-	Token string `json:"token"`
+	Token     string `json:"token"`
+	SessionID string `json:"sessionID"`
 }
 
 // GetProfileResp response message to get the current client's profile.

@@ -4,7 +4,6 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
-	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
@@ -88,11 +87,11 @@ func TestPoll(t *testing.T) {
 		slog.Info("received event", "id", ev.Key)
 		if ev.Key == vocab.EventTypeProperties {
 			var value map[string]interface{}
-			err2 := ser.Unmarshal(ev.Data, &value)
+			err2 := ev.Unmarshal(&value)
 			assert.NoError(t, err2)
 		} else {
 			var value interface{}
-			err2 := ser.Unmarshal(ev.Data, &value)
+			err2 := ev.Unmarshal(&value)
 			assert.NoError(t, err2)
 		}
 		tdCount.Add(1)

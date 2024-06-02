@@ -28,7 +28,7 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 		// see https://javascript.info/server-sent-events#reconnection
 		_, _ = fmt.Fprintf(w, "retry: %s\nevent:%s\n\n",
 			"30000", "logout")
-		// this result code doesn't seem to work
+		// this result code doesn't seem to work?
 		w.WriteHeader(http.StatusUnauthorized)
 		w.(http.Flusher).Flush()
 		return
@@ -50,7 +50,7 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 		// wait for message, or writer closing
 		select {
 		case sseMsg, ok := <-sseChan: // received event
-			slog.Info("SseHandler: received event from sseChan",
+			slog.Debug("SseHandler: received event from sseChan",
 				slog.String("remote", r.RemoteAddr),
 				slog.String("clientID", cs.clientID),
 				slog.String("event", sseMsg.Event),

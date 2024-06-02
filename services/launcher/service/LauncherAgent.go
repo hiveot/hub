@@ -31,7 +31,7 @@ import (
 //func (agent *LauncherAgent) List(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 //	args := launcherapi.ListArgs{}
 //	resp := launcherapi.ListResp{}
-//	err := json.Unmarshal(msg.Data, &args)
+//	err := msg.Unmarshal( &args)
 //	if err == nil {
 //		resp, err = agent.svc.List(args)
 //	}
@@ -45,7 +45,7 @@ import (
 //func (agent *LauncherAgent) StartPlugin(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 //	args := launcherapi.StartPluginArgs{}
 //	resp := launcherapi.StartPluginResp{}
-//	err := json.Unmarshal(msg.Data, &args)
+//	err := msg.Unmarshal( &args)
 //	if err == nil {
 //		resp, err = agent.svc.StartPlugin(args)
 //	}
@@ -59,7 +59,7 @@ import (
 //func (agent *LauncherAgent) StopPlugin(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 //	args := launcherapi.StopPluginArgs{}
 //	resp := launcherapi.StopPluginResp{}
-//	err := json.Unmarshal(msg.Data, &args)
+//	err := msg.Unmarshal( &args)
 //	if err == nil {
 //		resp, err = agent.svc.StopPlugin(args)
 //	}

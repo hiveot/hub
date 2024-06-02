@@ -21,6 +21,7 @@ import (
 //  1. close session after not being used for X seconds
 //  2. Send notification if a client connects and disconnects
 //     needed to send push notifications to clients (primarily agents and services)
+//  3. Persist sessions between restart (to restore login) - config option?
 type SessionManager struct {
 	// existing sessions by sessionID (remoteAddr)
 	sidSessions map[string]*ClientSession
@@ -39,7 +40,10 @@ type SessionManager struct {
 func (sm *SessionManager) NewSession(clientID string, remoteAddr string, sessionID string) (*ClientSession, error) {
 	var cs *ClientSession
 
-	slog.Info("NewSession")
+	slog.Info("NewSession",
+		slog.String("clientID", clientID),
+		slog.String("remoteAddr", remoteAddr),
+		slog.String("sessionID", sessionID))
 	if sessionID == "" {
 		sessionID = uuid.NewString()
 	}

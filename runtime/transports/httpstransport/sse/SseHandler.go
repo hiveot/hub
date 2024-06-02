@@ -43,10 +43,13 @@ func (svc *SSEHandler) handleSseConnect(w http.ResponseWriter, r *http.Request) 
 		// set retry to a large number
 		// while this doesn't redirect, it does stop it from holding a connection.
 		// see https://javascript.info/server-sent-events#reconnection
-		_, _ = fmt.Fprintf(w, "retry: %s\nevent:%s\n\n",
+		//_, _ = fmt.Fprintf(w, "retry: %s\nevent:%s\n\n",
+		//	"30000", "logout")
+		//// this result code doesn't seem to work
+		//w.WriteHeader(http.StatusUnauthorized)
+		errMsg := fmt.Sprintf("retry: %s\nevent:%s\n\n",
 			"30000", "logout")
-		// this result code doesn't seem to work
-		w.WriteHeader(http.StatusUnauthorized)
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		w.(http.Flusher).Flush()
 		return
 	}

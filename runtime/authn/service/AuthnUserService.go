@@ -29,6 +29,14 @@ func (svc *AuthnUserService) GetProfile(clientID string) (api.ClientProfile, err
 	return entry, err
 }
 
+// Login and return a session token
+func (svc *AuthnUserService) Login(
+	clientID string, password string) (token string, sessionID string, err error) {
+	// a user login always creates a session token
+	token, sessionID, err = svc.sessionAuth.Login(clientID, password, sessionID)
+	return token, sessionID, err
+}
+
 // Start the user facing authentication service.
 func (svc *AuthnUserService) Start() error {
 	slog.Info("starting AuthnService")
@@ -40,18 +48,10 @@ func (svc *AuthnUserService) Stop() {
 	slog.Info("Stopping AuthnUserService")
 }
 
-// Login and return a session token
-func (svc *AuthnUserService) Login(
-	clientID string, password string, sessionID string) (token string, err error) {
-	// a user login always creates a session token
-	token, sessionID, err = svc.sessionAuth.Login(clientID, password, sessionID)
-	return token, err
-}
-
 // RefreshToken requests a new token based on the old token
 func (svc *AuthnUserService) RefreshToken(clientID string, oldToken string) (newToken string, err error) {
-	prof, err := svc.authnStore.GetProfile(clientID)
-	newToken, err = svc.sessionAuth.RefreshToken(clientID, oldToken, prof.TokenValiditySec)
+	//prof, err := svc.authnStore.GetProfile(clientID)
+	newToken, err = svc.sessionAuth.RefreshToken(clientID, oldToken)
 	return newToken, err
 }
 

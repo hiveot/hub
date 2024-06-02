@@ -45,7 +45,7 @@ func (svc *DigitwinDirectory) HandleTDEvent(
 	dtThingID := things.MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
 
 	td := things.TD{}
-	err := json.Unmarshal(msg.Data, &td)
+	err := msg.Unmarshal(&td)
 	if err == nil {
 		td.ID = dtThingID
 		err = svc.UpdateThing(msg.SenderID, dtThingID, &td)
@@ -183,6 +183,7 @@ func (svc *DigitwinDirectory) Stop() {
 	slog.Info("Stopping DigitwinDirectory")
 	if svc.tdBucket != nil {
 		_ = svc.tdBucket.Close()
+		svc.tdBucket = nil
 	}
 }
 

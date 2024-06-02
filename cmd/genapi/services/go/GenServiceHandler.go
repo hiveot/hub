@@ -61,7 +61,7 @@ func GenActionHandler(l *utils.L, serviceType string, key string, action *things
 	l.Indent++
 	if action.Input != nil {
 		l.Add("args := %sArgs{}", methodName)
-		l.Add("err = json.Unmarshal(msg.Data, &args)")
+		l.Add("err = msg.Unmarshal(&args)")
 		argsString = "args"
 	}
 	// build the result string, either an error or a response struct with an error

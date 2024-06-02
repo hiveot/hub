@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-const testPort = 8445
+const testPort = 9445
 
 var certBundle = certs.CreateTestCertBundle()
 var hostPort = fmt.Sprintf("localhost:%d", testPort)
@@ -48,7 +48,7 @@ func (d *DummyAuthenticator) CreateSessionToken(clientID, sessionID string, vali
 	return testToken
 }
 
-func (d *DummyAuthenticator) RefreshToken(clientID string, oldToken string, validitySec int) (newToken string, err error) {
+func (d *DummyAuthenticator) RefreshToken(clientID string, oldToken string) (newToken string, err error) {
 	return testToken, nil
 }
 

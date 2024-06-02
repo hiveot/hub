@@ -1,6 +1,6 @@
 // Package outbox with types and interfaces for using this service with agent 'digitwin'
 // DO NOT EDIT. This file is auto generated. Any changes will be overwritten.
-// Generated 24 May 24 13:34 PDT.
+// Generated 01 Jun 24 20:18 PDT.
 package outbox
 
 import "encoding/json"
@@ -18,9 +18,19 @@ const ServiceID = "outbox"
 
 // DThingID is the Digitwin thingID as used by agents. Digitwin adds the dtw:{agent} prefix to the serviceID
 // Consumers use this to publish actions and subscribe to events
-var DThingID = things.MakeDigiTwinThingID(AgentID, ServiceID)
+const DThingID = "dtw:digitwin:outbox"
 
 // Argument and Response struct for action of Thing 'dtw:digitwin:outbox'
+
+const RemoveValueMethod = "removeValue"
+
+// RemoveValueArgs defines the arguments of the removeValue function
+// Remove Thing Value - Remove a value
+type RemoveValueArgs struct {
+
+	// MessageID ID of the message to remove
+	MessageID string `json:"messageID,omitempty"`
+}
 
 const ReadLatestMethod = "readLatest"
 
@@ -44,16 +54,6 @@ type ReadLatestResp struct {
 
 	// Values JSON encoded map of key:ThingMessage objects
 	Values string `json:"Values,omitempty"`
-}
-
-const RemoveValueMethod = "removeValue"
-
-// RemoveValueArgs defines the arguments of the removeValue function
-// Remove Thing Value - Remove a value
-type RemoveValueArgs struct {
-
-	// MessageID ID of the message to remove
-	MessageID string `json:"messageID,omitempty"`
 }
 
 // ReadLatest client method - Read Latest.
@@ -97,7 +97,7 @@ func NewActionHandler(svc IOutboxService) func(*things.ThingMessage) api.Deliver
 		switch msg.Key {
 		case "readLatest":
 			args := ReadLatestArgs{}
-			err = json.Unmarshal(msg.Data, &args)
+			err = msg.Unmarshal(&args)
 			if err == nil {
 				resp, err = svc.ReadLatest(args)
 			} else {
@@ -106,7 +106,7 @@ func NewActionHandler(svc IOutboxService) func(*things.ThingMessage) api.Deliver
 			break
 		case "removeValue":
 			args := RemoveValueArgs{}
-			err = json.Unmarshal(msg.Data, &args)
+			err = msg.Unmarshal(&args)
 			if err == nil {
 				err = svc.RemoveValue(args)
 			} else {

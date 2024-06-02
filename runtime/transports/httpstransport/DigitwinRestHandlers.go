@@ -105,8 +105,9 @@ func (svc *HttpsTransport) HandlePostLogin(w http.ResponseWriter, r *http.Reques
 
 	reply := api.LoginResp{Token: token}
 	resp, err := json.Marshal(reply)
+	// write sets statusOK
 	_, _ = w.Write(resp)
-	w.WriteHeader(http.StatusOK)
+	//w.WriteHeader(http.StatusOK)
 	// TODO: set client session cookie
 	//svc.sessionManager.SetSessionCookie(cs.sessionID,token)
 }
@@ -124,7 +125,7 @@ func (svc *HttpsTransport) HandlePostRefresh(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if err == nil {
-		newToken, err = svc.sessionAuth.RefreshToken(cs.GetClientID(), args.OldToken, 0)
+		newToken, err = svc.sessionAuth.RefreshToken(cs.GetClientID(), args.OldToken)
 	}
 	if err == nil {
 		resp := &api.RefreshTokenResp{Token: newToken}

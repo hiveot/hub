@@ -3,7 +3,6 @@ package sessions
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/tlsserver"
 	"log/slog"
@@ -40,16 +39,19 @@ func AddSessionFromToken(sessionAuth api.IAuthenticator) func(next http.Handler)
 			var cs *ClientSession
 			bearerToken, err := tlsserver.GetBearerToken(r)
 			if err != nil {
-				w.WriteHeader(http.StatusUnauthorized)
-				slog.Warn("AddSessionFromToken: " + err.Error())
-				_, _ = fmt.Fprint(w, "AddSessionFromToken: "+err.Error())
+				errMsg := "AddSessionFromToken: " + err.Error()
+				http.Error(w, errMsg, http.StatusUnauthorized)
+				slog.Warn(errMsg)
 				return
 			}
 			//check if the token is properly signed
 			cid, sid, err := sessionAuth.ValidateToken(bearerToken)
 			if err != nil || cid == "" {
-				slog.Warn("Invalid session token:", "err", err)
-				w.WriteHeader(http.StatusUnauthorized)
+				errMsg := "Invalid session token"
+				http.Error(w, errMsg, http.StatusUnauthorized)
+
+				slog.Warn("Invalid session token:",
+					"err", err, "clientID", cid)
 				return
 			}
 

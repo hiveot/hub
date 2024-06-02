@@ -150,10 +150,11 @@ func (svc *HttpsTransport) writeReply(w http.ResponseWriter, payload []byte, err
 	}
 	if payload != nil {
 		// If no header is written then w.Write writes a StatusOK
-		// for some reason this is only a problem when the client reconnects
 		_, _ = w.Write(payload)
+	} else {
+		// Only write header if no data is written
+		w.WriteHeader(http.StatusOK)
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 // GetProtocolInfo returns info on the protocol supported by this binding

@@ -90,10 +90,10 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 			makeValue := propMap.Get(makeID)
 			modelValue := propMap.Get(modelID)
 			if makeValue != nil {
-				thingData.MakeModel = string(makeValue.Data) + ", "
+				thingData.MakeModel = makeValue.DataAsText() + ", "
 			}
 			if modelValue != nil {
-				thingData.MakeModel = thingData.MakeModel + string(modelValue.Data)
+				thingData.MakeModel = thingData.MakeModel + modelValue.DataAsText()
 			}
 			// use name from configuration if available. Fall back to title.
 			thingData.Name = thingData.Values.ToString(vocab.PropDeviceTitle)

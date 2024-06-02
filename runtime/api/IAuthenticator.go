@@ -14,7 +14,12 @@ type IAuthenticator interface {
 	CreateSessionToken(clientID, sessionID string, validitySec int) (token string)
 
 	// RefreshToken the session token and retain its session ID
-	RefreshToken(clientID string, oldToken string, validitySec int) (newToken string, err error)
+	//
+	//	clientID Client whose token to refresh
+	//	oldToken must be valid
+	//
+	// This returns a new token or an error if the old token isn't valid or doesn't match clientID
+	RefreshToken(clientID string, oldToken string) (newToken string, err error)
 
 	// ValidateToken the session token and return the corresponding clientID and sessionID
 	// If a sessionID is provided or the token contains a sessionID then the MUST match.

@@ -39,7 +39,6 @@ type HttpSSEClient struct {
 	mux                sync.RWMutex
 	sseClient          *sse.Client
 	tlsClient          *tlsclient.TLSClient
-	bearerToken        string
 	_maxSSEMessageSize int
 	_status            hubclient.TransportStatus
 	_sseChan           chan *sse.Event
@@ -153,7 +152,6 @@ func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 	}
 	// store the bearer token further requests
 	cl.tlsClient.ConnectWithToken(cl._status.ClientID, reply.Token)
-	cl.bearerToken = reply.Token
 
 	// If the server is reachable. Open the return channel using SSE
 	cl._status.ConnectionStatus = hubclient.Connected
@@ -179,7 +177,6 @@ func (cl *HttpSSEClient) ConnectWithToken(token string) (newToken string, err er
 		cl.tlsClient = nil
 	}
 
-	cl.bearerToken = token
 	cl.tlsClient = tlsclient.NewTLSClient(cl.hostPort, cl._status.CaCert, time.Second*120)
 	cl.tlsClient.ConnectWithToken(cl._status.ClientID, token)
 
@@ -190,8 +187,6 @@ func (cl *HttpSSEClient) ConnectWithToken(token string) (newToken string, err er
 	} else {
 		cl._status.ConnectionStatus = hubclient.Connected
 		cl._status.HubURL = fmt.Sprintf("https://%s", cl.hostPort)
-		//cl.tlsClient.SetBearerToken(newToken)
-		cl.bearerToken = newToken
 		// establish the sse connection if a path is set
 		if cl.ssePath != "" {
 			// if the return channel fails then this is still considered connected
@@ -448,7 +443,8 @@ func (cl *HttpSSEClient) RefreshToken(oldToken string) (newToken string, err err
 
 		if err == nil {
 			newToken = reply.Token
-			cl.bearerToken = newToken
+			// reconnect using the new token
+			cl.tlsClient.ConnectWithToken(cl.ClientID(), reply.Token)
 		}
 	}
 	return newToken, err
@@ -543,46 +539,6 @@ func (cl *HttpSSEClient) SetEventHandler(cb api.EventHandler) {
 	cl._eventHandler = cb
 	cl.mux.Unlock()
 }
-
-// startTMaxSSEListener starts the SSE listener using the tmaxmax/go-sse/v2 library
-// This will invoke tp._eventHandler if set.
-// This ends when _sseChan is closed.
-//func (tp *HttpSSEClient) startR3labsSSEListener() {
-//
-//	tp.sseClient = sse.NewClient(sseURL)
-//	tp.sseClient.Connection = client
-//	tp.sseClient.Headers["Authorization"] = "bearer " + tp.bearerToken
-//
-//	tp.sseClient.OnDisconnect(func(c *sse.Client) {
-//		slog.Warn("ConnectSSE: disconnected")
-//	})
-//	go func() {
-//		// FIXME: stream name, multiple subscriptions?
-//		err := tp.sseClient.Subscribe("", func(sseMsg *sse.Event) {
-//
-//			slog.Info("startSSEListener. Received message",
-//				slog.String("Comment", string(sseMsg.Comment)),
-//				slog.String("ID", string(sseMsg.ID)),
-//				slog.String("event", string(sseMsg.Event)),
-//				slog.Int("size", len(sseMsg.Data)),
-//			)
-//			if tp._eventHandler != nil {
-//				addr := string(sseMsg.ID)
-//				parts := strings.Split(addr, "/")
-//				key := ""
-//				thingID := parts[0]
-//				if len(parts) > 1 {
-//					key = parts[1]
-//				}
-//				tp._eventHandler(thingID, key, sseMsg.Data)
-//			}
-//		})
-//		slog.Info("SSE listener ended")
-//		if err != nil {
-//			slog.Warn("StartSSEListener error", "err", err)
-//		}
-//	}()
-//}
 
 // Subscribe subscribes to thing events.
 // Use SetEventHandler to receive subscribed events or SetRequestHandler for actions

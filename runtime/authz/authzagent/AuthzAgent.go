@@ -55,7 +55,7 @@ func (agent *AuthzAgent) GetClientRole(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
 
 	var args api.GetClientRoleArgs
-	err := json.Unmarshal(msg.Data, &args)
+	err := msg.Unmarshal(&args)
 	if err == nil {
 		role, err2 := agent.svc.GetClientRole(args.ClientID)
 		err = err2
@@ -70,7 +70,7 @@ func (agent *AuthzAgent) GetClientRole(
 
 func (agent *AuthzAgent) SetClientRole(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 	var args api.SetClientRoleArgs
-	err := json.Unmarshal(msg.Data, &args)
+	err := msg.Unmarshal(&args)
 	if err == nil {
 		err = agent.svc.SetClientRole(args.ClientID, args.Role)
 	}
@@ -79,7 +79,7 @@ func (agent *AuthzAgent) SetClientRole(msg *things.ThingMessage) (stat api.Deliv
 }
 func (agent *AuthzAgent) SetPermissions(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 	var args api.ThingPermissions
-	err := json.Unmarshal(msg.Data, &args)
+	err := msg.Unmarshal(&args)
 	if err == nil {
 		err = agent.svc.SetPermissions(msg.SenderID, args)
 	}

@@ -1,6 +1,7 @@
 package things
 
 import (
+	"encoding/json"
 	"github.com/google/uuid"
 	"time"
 )
@@ -42,6 +43,30 @@ type ThingMessage struct {
 	// MessageID of the message. Intended to detect duplicates and send replies.
 	// Optional. The hub will generate a unique messageID if omitted.
 	MessageID string `json:"messageID,omitempty"`
+}
+
+// DataAsText return a text representation of the data that is independent of
+// the message serialization used.
+// FIXME: This is a placeholder as the serialization method is a bit of a question.
+// How does the TD describe the data serialization used? Is this part of the protocol?
+// Should the transport convert it?
+func (tm *ThingMessage) DataAsText() string {
+	if tm.Data == nil {
+		return ""
+	}
+	return string(tm.Data)
+}
+
+// Unmarshal the data into the given type.
+// FIXME: This is a placeholder as the serialization method is a bit of a question.
+// How does the TD describe the data serialization used? Is this part of the protocol?
+// Should the transport convert it?
+// This returns an error if unmarshalling fails.
+func (tm *ThingMessage) Unmarshal(arg interface{}) error {
+	if tm.Data == nil {
+		arg = nil
+	}
+	return json.Unmarshal(tm.Data, arg)
 }
 
 // GetUpdated is a helper function to return the formatted time the data was last updated.

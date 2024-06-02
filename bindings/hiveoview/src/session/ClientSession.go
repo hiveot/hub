@@ -1,7 +1,6 @@
 package session
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -162,7 +161,7 @@ func (cs *ClientSession) onEvent(msg *things.ThingMessage) error {
 		// property value:
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{k}}"
 		props := make(map[string]string)
-		err := json.Unmarshal(msg.Data, &props)
+		err := msg.Unmarshal(&props)
 		if err == nil {
 			for k, v := range props {
 				thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, k)
@@ -175,7 +174,7 @@ func (cs *ClientSession) onEvent(msg *things.ThingMessage) error {
 		// report unhandled delivery updates
 		// for now just pass it to the notification toaster
 		stat := api.DeliveryStatus{}
-		_ = json.Unmarshal(msg.Data, &stat)
+		_ = msg.Unmarshal(&stat)
 		if stat.Error != "" {
 			cs.SendNotify(NotifyError, stat.Error)
 		} else if stat.Status == api.DeliveryCompleted {
@@ -190,7 +189,7 @@ func (cs *ClientSession) onEvent(msg *things.ThingMessage) error {
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{$k}}"
 		// where $k is the event ID
 		thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, msg.Key)
-		cs.SendSSE(thingAddr, string(msg.Data))
+		cs.SendSSE(thingAddr, msg.DataAsText())
 		// TODO: improve on this crude way to update the 'updated' field
 		// Can the value contain an object with a value and updated field instead?
 		// htmx sse-swap does allow cherry picking the content unfortunately.
@@ -250,7 +249,7 @@ func (cs *ClientSession) SendNotify(ntype NotifyType, text string) {
 func (cs *ClientSession) SendSSE(event string, content string) {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
-	slog.Info("sending sse event", "event", event, "nr clients", len(cs.sseClients))
+	slog.Debug("sending sse event", "event", event, "nr clients", len(cs.sseClients))
 	for _, c := range cs.sseClients {
 		c <- SSEEvent{event, content}
 	}

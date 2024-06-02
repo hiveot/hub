@@ -41,24 +41,10 @@ func TestAddRemoveTD(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Get returns a serialized TD object
-	args := directory.ReadTDArgs{ThingID: dtThing1ID}
-	argsJSON, _ := json.Marshal(args)
-	stat := cl.PubAction(directory.DThingID, directory.ReadTDMethod, argsJSON)
-	require.Empty(t, stat.Error) // no client handler error
-	require.Equal(t, api.DeliveryCompleted, stat.Status)
-
-	// double unmarshal needed, one for message, second for TD payload
-	resp := directory.ReadTDResp{}
-	err = json.Unmarshal(stat.Reply, &resp)
-	require.NoError(t, err)
-	td2 := things.TD{}
-	err = json.Unmarshal([]byte(resp.Output), &td2)
-	require.NoError(t, err)
-	assert.Equal(t, dtThing1ID, td2.ID)
-
 	// use the generated directory client rpc method
+	args := directory.ReadTDArgs{ThingID: dtThing1ID}
 	td3 := things.TD{}
-	resp, err = directory.ReadTD(cl, args)
+	resp, err := directory.ReadTD(cl, args)
 	require.NoError(t, err)
 	err = json.Unmarshal([]byte(resp.Output), &td3)
 	require.NoError(t, err)
@@ -67,10 +53,10 @@ func TestAddRemoveTD(t *testing.T) {
 	//stat = cl.Rpc(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
 	args4 := directory.RemoveTDArgs{ThingID: dtThing1ID}
 	args4JSON, _ := json.Marshal(args4)
-	stat = cl.PubAction(directory.DThingID, directory.RemoveTDMethod, args4JSON)
+	stat := cl.PubAction(directory.DThingID, directory.RemoveTDMethod, args4JSON)
 	require.Empty(t, stat.Error)
 
-	// after removal, getTD should return an error but delivery is successful
+	// after removal of the TD, getTD should return an error but delivery is successful
 	stat = cl.PubAction(directory.DThingID, directory.ReadTDMethod, args4JSON)
 	require.NotEmpty(t, stat.Error)
 	require.Equal(t, api.DeliveryCompleted, stat.Status)

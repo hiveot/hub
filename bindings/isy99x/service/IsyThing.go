@@ -134,7 +134,7 @@ func (it *IsyThing) HandleActionRequest(tv *things.ThingMessage) (err error) {
 func (it *IsyThing) HandleConfigRequest(action *things.ThingMessage) (err error) {
 	// The title is the friendly name of the node
 	if action.Key == vocab.PropDeviceTitle {
-		newName := string(action.Data)
+		newName := action.DataAsText()
 		err = it.isyAPI.Rename(it.nodeID, newName)
 		if err == nil {
 			// TODO: use WebSocket to receive confirmation of change

@@ -134,7 +134,7 @@ func (svc *DigiTwinInbox) HandleActionFlow(msg *things.ThingMessage) (status api
 // This updates the status of the inbox record and notifies the sender.
 func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 	var inboxRecord InboxRecord
-	err := json.Unmarshal(msg.Data, &stat)
+	err := msg.Unmarshal(&stat)
 
 	if err == nil {
 		inboxRecord, err = svc.GetRecord(stat.MessageID)
@@ -213,6 +213,7 @@ func (svc *DigiTwinInbox) Start() error {
 }
 func (svc *DigiTwinInbox) Stop() {
 	_ = svc.actionRecords.Close()
+	svc.latest.Stop()
 }
 
 // NewDigiTwinInbox returns a new instance of the inbox service using the given storage bucket

@@ -138,16 +138,15 @@ func (svc *TemplateManager) RenderFragment(w http.ResponseWriter, name string, d
 	defer svc.renderMux.Unlock()
 	tpl, err := svc.GetTemplate(name)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		slog.Error(err.Error())
-		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 	err = tpl.Execute(w, data)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		slog.Error("rendering template failed", "err", err)
-		_, _ = w.Write([]byte("template render error: " + err.Error()))
+		errMsg := "template render error: " + err.Error()
+		http.Error(w, errMsg, http.StatusInternalServerError)
+		slog.Error(errMsg)
 		return
 	}
 }
@@ -183,15 +182,15 @@ func (svc *TemplateManager) RenderFull(w http.ResponseWriter, name string, data 
 		_, err = baseT.AddParseTree("embed", tpl.Tree)
 	}
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte("template error: " + err.Error()))
+		errMsg := "template error: " + err.Error()
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 	err = baseT.Execute(w, data)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		slog.Error("rendering template failed", "err", err)
-		_, _ = w.Write([]byte("template render error: " + err.Error()))
+		errMsg := "rendering template failed: " + err.Error()
+		http.Error(w, errMsg, http.StatusInternalServerError)
+		slog.Error(errMsg)
 		return
 	}
 }

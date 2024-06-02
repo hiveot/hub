@@ -45,7 +45,7 @@ func AddSessionToContext() func(next http.Handler) http.Handler {
 				cs, err = sessionmanager.ActivateNewSession(w, r, hc, claims.AuthToken)
 			}
 			if err != nil {
-				slog.Warn("AddSessionToContext: Request without an auth cookie. Redirect to login.",
+				slog.Warn("AddSessionToContext: Session is no longer valid. Redirect to login.",
 					slog.String("remoteAdd", r.RemoteAddr),
 					slog.String("url", r.URL.String()))
 				time.Sleep(time.Second)

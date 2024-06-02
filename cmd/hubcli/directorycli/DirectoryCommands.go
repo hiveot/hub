@@ -119,7 +119,7 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 		prop, found := tdDoc.Properties[key]
 		if found && prop.ReadOnly {
 			value := valueMap.ToString(key)
-			fmt.Printf(" %-30s %-40.40s %s%-15.15v%s %.80s\n",
+			fmt.Printf(" %-30s %-40.40s %s%-15.15v%s %-.80s\n",
 				key, prop.Title, utils.COGreen, value, utils.COReset, prop.Description)
 		}
 	}
@@ -130,8 +130,8 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 	for _, key := range keys {
 		prop, found := tdDoc.Properties[key]
 		if found && !prop.ReadOnly {
-			value := valueMap[key]
-			fmt.Printf(" %-30s %-40.40s %-10s %s%-20.20v%s %.80s\n",
+			value := valueMap.ToString(key)
+			fmt.Printf(" %-30s %-40.40s %-10.10s %s%-15.15s%s %-.80s\n",
 				key, prop.Title, prop.Type, utils.COBlue, value, utils.COReset, prop.Description)
 		}
 	}

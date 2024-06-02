@@ -54,7 +54,7 @@ func (it *IsyDimmerThing) HandleActionRequest(action *things.ThingMessage) (err 
 	// FIXME: action keys are node attributes keys, not vocab @types (or are they?)
 	// supported actions: on, off
 	if action.Key == vocab.ActionDimmerSet {
-		newValue = string(action.Data)
+		newValue = action.DataAsText()
 		restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
 
 		//} else if action.Name == vocab.VocabActionDecrement {

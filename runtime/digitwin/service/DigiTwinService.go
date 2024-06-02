@@ -18,6 +18,9 @@ import (
 // It manages storage of events, actions and communicates with agents and consumers using the
 // protocol manager. It uses a helper to manage the mapping of things to the agents that serve them.
 type DigitwinService struct {
+	// underlying store for the directory, inbox and outbox
+	store buckets.IBucketStore
+
 	// The directory stores digitwin TDD documents
 	Directory *DigitwinDirectory
 	// The inbox handles incoming action requests from consumers
@@ -61,7 +64,13 @@ func (svc *DigitwinService) HandleMessage(msg *things.ThingMessage) (stat api.De
 // Start the digitwin service with inbox, outbox and Thing directory
 func (svc *DigitwinService) Start() (err error) {
 	slog.Info("Starting DigitwinService")
-	err = svc.Directory.Start()
+	err = svc.store.Open()
+	svc.Inbox = NewDigiTwinInbox(svc.store, svc.pm)
+	svc.Outbox = NewDigiTwinOutbox(svc.store, svc.pm)
+	svc.Directory = NewDigitwinDirectory(svc.store)
+	if err == nil {
+		err = svc.Directory.Start()
+	}
 	if err == nil {
 		err = svc.Outbox.Start()
 	}
@@ -78,20 +87,19 @@ func (svc *DigitwinService) Stop() {
 	svc.Inbox.Stop()
 	svc.Directory.Stop()
 	slog.Info("Stopping DigitwinService")
+	svc.store.Close()
 }
 
 // NewDigitwinService creates a new instance of the Digitwin service
 // The digitwin service is responsible for representing a Thing to consumers.
 //
 //	pm is the protocol manager used to communicate with agents and consumers
-//	store is the bucket store for inbox and outbox storage
+//	store is the bucket store for inbox and outbox storage. It will be opened on start and closed on stop
 func NewDigitwinService(pm api.ITransportBinding, store buckets.IBucketStore) *DigitwinService {
 	svc := &DigitwinService{
-		Inbox:     NewDigiTwinInbox(store, pm),
-		Outbox:    NewDigiTwinOutbox(store, pm),
-		Directory: NewDigitwinDirectory(store),
-		pm:        pm,
-		mux:       sync.RWMutex{},
+		store: store,
+		pm:    pm,
+		mux:   sync.RWMutex{},
 	}
 	return svc
 }
@@ -108,7 +116,6 @@ func StartDigitwinService(
 
 	storePath := path.Join(storesDir, "digitwin", "digitwin.store")
 	store = kvbtree.NewKVStore(storePath)
-	err = store.Open()
 	if err == nil {
 		svc = NewDigitwinService(pm, store)
 		err = svc.Start()

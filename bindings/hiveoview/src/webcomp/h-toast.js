@@ -363,7 +363,6 @@ class HToast extends HTMLElement {
      */
     showToast = (ttype, text, timeout) => {
         if (!timeout) {
-            console.log("timeout",timeout)
             // provide more time to read errors
             if (ttype === "error") {
                 timeout = this.duration*2

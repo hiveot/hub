@@ -234,9 +234,12 @@ func (cl *TLSClient) Invoke(method string, url string,
 		return nil, err
 	}
 	respBody, err := io.ReadAll(resp.Body)
+	// response body MUST be closed
+	_ = resp.Body.Close()
+
 	if resp.StatusCode == 401 {
 		err = fmt.Errorf("%s", resp.Status)
-	} else if resp.StatusCode > 400 && resp.StatusCode < 500 {
+	} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
 		err = fmt.Errorf("%s: %s", resp.Status, respBody)
 		if resp.Status == "" {
 			err = fmt.Errorf("%d (%s): %s", resp.StatusCode, resp.Status, respBody)

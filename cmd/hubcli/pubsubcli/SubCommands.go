@@ -1,7 +1,6 @@
 package pubsubcli
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
@@ -66,7 +65,7 @@ func HandleSubTD(hc hubclient.IHubClient) error {
 	hc.SetEventHandler(func(msg *things.ThingMessage) error {
 		var td things.TD
 		//fmt.Printf("%s\n", event.ValueJSON)
-		err := json.Unmarshal(msg.Data, &td)
+		err := msg.Unmarshal(&td)
 		if err == nil {
 			modifiedTime, _ := dateparse.ParseAny(td.Modified) // can be in any TZ
 			timeStr := utils.FormatMSE(modifiedTime.In(time.Local).UnixMilli(), false)
@@ -96,11 +95,11 @@ func HandleSubEvents(hc hubclient.IHubClient, agentID string, thingID string, na
 		value := fmt.Sprintf("%-.30s", msg.Data)
 		if msg.Key == vocab.EventTypeProperties {
 			var props map[string]interface{}
-			_ = json.Unmarshal(msg.Data, &props)
+			_ = msg.Unmarshal(&props)
 			value = fmt.Sprintf("%d properties", len(props))
 		} else if msg.Key == vocab.EventTypeTD {
 			var td things.TD
-			_ = json.Unmarshal(msg.Data, &td)
+			_ = msg.Unmarshal(&td)
 			value = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
 				td.Title, td.AtType, len(td.Properties), len(td.Events), len(td.Actions))
 		}

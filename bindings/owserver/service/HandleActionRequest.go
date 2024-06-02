@@ -2,7 +2,6 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
@@ -18,7 +17,8 @@ func (svc *OWServerBinding) HandleActionRequest(action *things.ThingMessage) (st
 	slog.Info("HandleActionRequest",
 		slog.String("thingID", action.ThingID),
 		slog.String("key", action.Key),
-		slog.String("payload", string(action.Data)))
+		slog.String("payload", action.DataAsText()),
+	)
 
 	if action.Key == vocab.ActionTypeProperties {
 		return svc.HandleConfigRequest(action)
@@ -27,35 +27,34 @@ func (svc *OWServerBinding) HandleActionRequest(action *things.ThingMessage) (st
 	// TODO: lookup the action Title used by the EDS
 	edsName := action.Key
 
-	// determine the value. Booleans are submitted as integers
-	var actionValue string
-	err := json.Unmarshal(action.Data, &actionValue)
-	if err != nil {
-		stat.Completed(action, err)
-		return
-	}
-
 	node, found := svc.nodes[action.ThingID]
 	if !found {
-		err = fmt.Errorf("ID '%s' is not a known node", action.ThingID)
-		stat.Completed(action, err)
+		// delivery failed as the thingID doesn't exist
+		err := fmt.Errorf("ID '%s' is not a known node", action.ThingID)
+		stat.Failed(action, err)
 		return stat
 	}
 	attr, found = node.Attr[action.Key]
 	if !found {
-		err = fmt.Errorf("node '%s' found but it doesn't have an action '%s'",
+		// delivery completed with error
+		err := fmt.Errorf("node '%s' found but it doesn't have an action '%s'",
 			action.ThingID, action.Key)
 		stat.Completed(action, err)
 		return stat
 	} else if !attr.Writable {
-		err = fmt.Errorf("node '%s' action '%s' is a read-only attribute",
+		// delivery completed with error
+		err := fmt.Errorf("node '%s' action '%s' is a read-only attribute",
 			action.ThingID, action.Key)
 		stat.Completed(action, err)
 		return stat
 	}
 
+	// Determine the value.
+	// FIXME: when building the TD, Booleans are defined as enum integers
+	actionValue := action.DataAsText()
+
 	// the thingID is the device identifier, eg the ROMId
-	err = svc.edsAPI.WriteData(action.ThingID, edsName, string(actionValue))
+	err := svc.edsAPI.WriteData(action.ThingID, edsName, string(actionValue))
 
 	// read the result
 	time.Sleep(time.Second)

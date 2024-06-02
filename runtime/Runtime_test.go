@@ -44,9 +44,13 @@ func TestLogin(t *testing.T) {
 	r := startRuntime()
 	cl, token := ts.AddConnectUser(clientID, api.ClientRoleManager)
 	_ = token
-	//t2, err := cl.RefreshToken(token)
-	//require.NoError(t, err)
-	//assert.NotEmpty(t, t2)
+	t2, err := cl.RefreshToken(token)
+	require.NoError(t, err)
+	assert.NotEmpty(t, t2)
+	// use the refresh token
+	t3, err := cl.RefreshToken(t2)
+	_ = t3
+	require.NoError(t, err)
 
 	cl.Disconnect()
 	r.Stop()
@@ -77,7 +81,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 		rxMsg = msg
 		stat.Completed(msg, nil)
 		//stat.Failed(msg, fmt.Errorf("failuretest"))
-		stat.Reply = []byte(string(msg.Data) + ".reply")
+		stat.Reply = []byte(msg.DataAsText() + ".reply")
 		slog.Info("agent1 delivery complete", "messageID", msg.MessageID)
 		return stat
 	})
@@ -87,7 +91,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	cl2.SetEventHandler(func(msg *things.ThingMessage) (err error) {
 		if msg.Key == vocab.EventTypeDeliveryUpdate {
 			// delivery updates are only invoked on for non-rpc actions
-			err = json.Unmarshal(msg.Data, &stat3)
+			err = msg.Unmarshal(&stat3)
 			require.NoError(t, err)
 			slog.Info(fmt.Sprintf("reply: %s", stat3.Reply))
 		}
@@ -141,7 +145,7 @@ func TestServiceReconnect(t *testing.T) {
 		var req string
 		rxMsg = msg
 		stat.Completed(msg, nil)
-		_ = json.Unmarshal(msg.Data, &req)
+		_ = msg.Unmarshal(&req)
 		stat.Reply, _ = json.Marshal(req + ".reply")
 		slog.Info("agent1 delivery complete", "messageID", msg.MessageID)
 		return stat

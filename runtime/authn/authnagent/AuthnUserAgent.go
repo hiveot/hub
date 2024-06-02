@@ -56,17 +56,16 @@ func (h *AuthnUserHandler) HandleGetProfile(
 	return stat
 }
 
-// FIXME: support sessionID in login token through context.
 func (h *AuthnUserHandler) HandleLogin(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
 
 	args := api.LoginArgs{}
-	err := json.Unmarshal(msg.Data, &args)
+	err := msg.Unmarshal(&args)
 	if err == nil {
-		token, err2 := h.svc.Login(args.ClientID, args.Password, "")
+		token, sessionID, err2 := h.svc.Login(args.ClientID, args.Password)
 		err = err2
 		if err == nil {
-			resp := api.LoginResp{Token: token}
+			resp := api.LoginResp{Token: token, SessionID: sessionID}
 			stat.Reply, err = json.Marshal(resp)
 		}
 	}
@@ -77,7 +76,7 @@ func (h *AuthnUserHandler) HandleLogin(
 func (h *AuthnUserHandler) HandleRefresh(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
 	args := api.RefreshTokenArgs{}
-	err := json.Unmarshal(msg.Data, &args)
+	err := msg.Unmarshal(&args)
 	if err == nil {
 		newToken, err2 := h.svc.RefreshToken(msg.SenderID, args.OldToken)
 		err = err2
@@ -93,7 +92,7 @@ func (h *AuthnUserHandler) HandleUpdatePassword(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
 
 	args := api.UpdatePasswordArgs{}
-	err := json.Unmarshal(msg.Data, &args)
+	err := msg.Unmarshal(&args)
 	if err == nil {
 		err = h.svc.UpdatePassword(msg.SenderID, args.NewPassword)
 	}
@@ -104,7 +103,7 @@ func (h *AuthnUserHandler) HandleUpdatePassword(
 func (h *AuthnUserHandler) HandleUpdateName(msg *things.ThingMessage) (stat api.DeliveryStatus) {
 
 	args := api.UpdateNameArgs{}
-	err := json.Unmarshal(msg.Data, &args)
+	err := msg.Unmarshal(&args)
 	if err == nil {
 		err = h.svc.UpdateName(msg.SenderID, args.NewName)
 	}
@@ -116,7 +115,7 @@ func (h *AuthnUserHandler) HandleUpdatePubKey(
 	msg *things.ThingMessage) (stat api.DeliveryStatus) {
 
 	var args api.UpdatePubKeyArgs
-	err := json.Unmarshal(msg.Data, &args)
+	err := msg.Unmarshal(&args)
 	if err == nil {
 		err = h.svc.UpdatePubKey(msg.SenderID, args.PubKeyPem)
 	}

@@ -12,7 +12,7 @@ func (svc *OWServerBinding) HandleConfigRequest(msg *things.ThingMessage) (stat 
 	slog.Info("HandleConfigRequest",
 		slog.String("thingID", msg.ThingID),
 		slog.String("property", msg.Key),
-		slog.String("payload", string(msg.Data)))
+		slog.String("payload", msg.DataAsText()))
 
 	// the thingID is the ROMId of the device to configure
 	// the Name is the attributeID of the property to configure
@@ -32,7 +32,7 @@ func (svc *OWServerBinding) HandleConfigRequest(msg *things.ThingMessage) (stat 
 		stat.Completed(msg, err)
 		return
 	}
-	err := svc.edsAPI.WriteData(msg.ThingID, msg.Key, string(msg.Data))
+	err := svc.edsAPI.WriteData(msg.ThingID, msg.Key, msg.DataAsText())
 	stat.Completed(msg, err)
 	return
 }

@@ -199,7 +199,7 @@ func (svc *DigiTwinLatestStore) StoreMessage(msg *things.ThingMessage) {
 			// the value holds a map of property name:value pairs, add each one individually
 			// in order to retain the sender and created timestamp.
 			props := make(map[string]any)
-			err := json.Unmarshal(msg.Data, &props)
+			err := msg.Unmarshal(&props)
 			if err != nil {
 				slog.Warn("StoreEvent; Error unmarshalling props. Ignored.",
 					slog.String("err", err.Error()),
@@ -246,6 +246,7 @@ func (svc *DigiTwinLatestStore) StoreMessage(msg *things.ThingMessage) {
 
 // NewDigiTwinLatestStore returns a new instance of the latest-messages store using the
 // given storage bucket for persistence.
+// the bucket will be closed on stop
 func NewDigiTwinLatestStore(bucket buckets.IBucket) *DigiTwinLatestStore {
 	svc := &DigiTwinLatestStore{
 		bucket:        bucket,

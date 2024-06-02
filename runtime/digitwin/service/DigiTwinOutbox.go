@@ -70,9 +70,12 @@ func (svc *DigiTwinOutbox) RemoveValue(args outbox.RemoveValueArgs) error {
 }
 
 func (svc *DigiTwinOutbox) Start() error {
+	// the 'latestStore' loads on demand
 	return nil
 }
 func (svc *DigiTwinOutbox) Stop() {
+	svc.latest.Stop()
+	_ = svc.bucket.Close()
 }
 
 // NewDigiTwinOutbox returns a new instance of the outbox using the given storage bucket

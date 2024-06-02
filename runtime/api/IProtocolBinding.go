@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"github.com/hiveot/hub/lib/things"
 )
 
@@ -82,6 +83,16 @@ func (stat *DeliveryStatus) Failed(msg *things.ThingMessage, err error) *Deliver
 		stat.Error = err.Error()
 	}
 	return stat
+}
+
+// Unmarshal the reply data returned in stat
+// This returns an error if unmarshalling fails or false if status does not have any data
+func (stat *DeliveryStatus) Unmarshal(args interface{}) (error, bool) {
+	if stat.Reply == nil {
+		return nil, false
+	}
+	err := json.Unmarshal(stat.Reply, args)
+	return err, true
 }
 
 // EventHandler processes an event without return value

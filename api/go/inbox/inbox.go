@@ -1,6 +1,6 @@
 // Package inbox with types and interfaces for using this service with agent 'digitwin'
 // DO NOT EDIT. This file is auto generated. Any changes will be overwritten.
-// Generated 24 May 24 13:34 PDT.
+// Generated 01 Jun 24 20:18 PDT.
 package inbox
 
 import "encoding/json"
@@ -18,7 +18,7 @@ const ServiceID = "inbox"
 
 // DThingID is the Digitwin thingID as used by agents. Digitwin adds the dtw:{agent} prefix to the serviceID
 // Consumers use this to publish actions and subscribe to events
-var DThingID = things.MakeDigiTwinThingID(AgentID, ServiceID)
+const DThingID = "dtw:digitwin:inbox"
 
 // Argument and Response struct for action of Thing 'dtw:digitwin:inbox'
 
@@ -28,14 +28,14 @@ const ReadLatestMethod = "readLatest"
 // Read latest actions - Read the latest request value of each action of a Thing
 type ReadLatestArgs struct {
 
+	// Since Only return values updated since
+	Since string `json:"since,omitempty"`
+
 	// ThingID ID of the Thing to read
 	ThingID string `json:"thingID"`
 
 	// Keys The action keys to read or empty to read all latest values
 	Keys []string `json:"keys,omitempty"`
-
-	// Since Only return values updated since
-	Since string `json:"since,omitempty"`
 }
 
 // ReadLatestResp defines the response of the readLatest function
@@ -76,7 +76,7 @@ func NewActionHandler(svc IInboxService) func(*things.ThingMessage) api.Delivery
 		switch msg.Key {
 		case "readLatest":
 			args := ReadLatestArgs{}
-			err = json.Unmarshal(msg.Data, &args)
+			err = msg.Unmarshal(&args)
 			if err == nil {
 				resp, err = svc.ReadLatest(args)
 			} else {

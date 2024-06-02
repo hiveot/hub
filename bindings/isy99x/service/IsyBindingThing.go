@@ -66,7 +66,7 @@ func (svc *IsyBinding) HandleBindingConfig(action *things.ThingMessage) error {
 	err := fmt.Errorf("unknown configuration request '%s' from '%s'", action.Key, action.SenderID)
 	switch action.Key {
 	case vocab2.PropNetAddress:
-		svc.config.IsyAddress = string(action.Data)
+		svc.config.IsyAddress = action.DataAsText()
 		err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
 		if err == nil {
 			svc.IsyGW.Init(svc.isyAPI)

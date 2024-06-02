@@ -134,18 +134,22 @@ func (svc *JWTAuthenticator) Login(clientID, password, sessionID string) (token 
 // RefreshToken issues a new authentication token for the authenticated user.
 // This returns a refreshed token carrying the same session id as the old token.
 // the old token must be a valid jwt token belonging to the clientID.
-func (svc *JWTAuthenticator) RefreshToken(clientID string, oldToken string, validitySec int) (token string, err error) {
+func (svc *JWTAuthenticator) RefreshToken(clientID string, oldToken string) (token string, err error) {
 	// verify the token
 	tokenClientID, sessionID, err := svc.DecodeSessionToken(oldToken, "", "")
 	if err == nil && tokenClientID != clientID {
 		err = fmt.Errorf("RefreshToken:Token client '%s' differs from client '%s'", tokenClientID, clientID)
 	}
 	if err != nil {
-		err = fmt.Errorf("RefreshToken: invalid oldToken of client %s: %w", clientID, err)
 		slog.Warn(err.Error())
 		return "", err
 	}
-	token = svc.CreateSessionToken(clientID, sessionID, validitySec)
+	userProf, err := svc.authnStore.GetProfile(clientID)
+	if err != nil {
+		slog.Warn(err.Error())
+		return "", err
+	}
+	token = svc.CreateSessionToken(clientID, sessionID, userProf.TokenValiditySec)
 	return token, err
 }
 

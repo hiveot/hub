@@ -1,7 +1,6 @@
 package historycli
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
@@ -125,11 +124,11 @@ func HandleListEvents(hc hubclient.IHubClient, dThingID string, name string, lim
 	count := 0
 	for tv, valid, err := cursor.First(); err == nil && valid && count < limit; tv, valid, err = cursor.Next() {
 		count++
-		value := string(tv.Data)
+		value := tv.DataAsText()
 		// show number of properties
 		if tv.Key == vocab.EventTypeProperties {
 			props := make(map[string]string)
-			_ = json.Unmarshal(tv.Data, &props)
+			_ = tv.Unmarshal(&props)
 			value = fmt.Sprintf("(%d properties)", len(props))
 		}
 

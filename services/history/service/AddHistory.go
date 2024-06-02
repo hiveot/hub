@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
@@ -85,7 +84,7 @@ func (svc *AddHistory) AddAction(actionValue *things.ThingMessage) error {
 // This splits the property map and adds then as individual key-values
 func (svc *AddHistory) AddProperties(msg *things.ThingMessage) error {
 	propMap := make(map[string]any)
-	err := json.Unmarshal(msg.Data, &propMap)
+	err := msg.Unmarshal(&propMap)
 	if err != nil {
 		return err
 	}
