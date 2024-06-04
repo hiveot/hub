@@ -3,14 +3,14 @@ package mqtttransport_test
 import (
 	"crypto/x509"
 	"fmt"
-	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
-	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
+	"github.com/hiveot/hub/lib/hubclient/mqttclient"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/transports/mqtttransport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
@@ -46,50 +46,49 @@ var TestService1ID = "service1"
 var TestService1Key = keys.NewKey(keys.KeyTypeECDSA)
 var TestService1PubPEM = TestService1Key.ExportPublic()
 
-var adminAuthInfo = msgserver_old.ClientAuthInfo{
+var adminAuthInfo = mqtttransport.ClientAuthInfo{
 	ClientID:   TestAdminUserID,
-	ClientType: authapi.ClientTypeUser,
+	ClientType: api.ClientTypeUser,
 	PubKey:     TestAdminUserPubPEM,
-	Role:       authapi.ClientRoleAdmin,
+	Role:       api.ClientRoleAdmin,
 }
-var deviceAuthInfo = msgserver_old.ClientAuthInfo{
+var deviceAuthInfo = mqtttransport.ClientAuthInfo{
 	ClientID:   TestDevice1ID,
-	ClientType: authapi.ClientTypeDevice,
+	ClientType: api.ClientTypeAgent,
 	PubKey:     TestDevice1PubPEM,
-	Role:       authapi.ClientRoleDevice,
+	Role:       api.ClientRoleAgent,
 }
-var mqttTestClients = []msgserver_old.ClientAuthInfo{
+var mqttTestClients = []mqtttransport.ClientAuthInfo{
 	adminAuthInfo,
 	deviceAuthInfo,
 	{
 		ClientID:     TestUser1ID,
-		ClientType:   authapi.ClientTypeUser,
+		ClientType:   api.ClientTypeUser,
 		PasswordHash: string(TestUser1bcrypt),
-		Role:         authapi.ClientRoleViewer,
+		Role:         api.ClientRoleViewer,
 	},
 	{
 		ClientID:     TestUser2ID,
-		ClientType:   authapi.ClientTypeUser,
+		ClientType:   api.ClientTypeUser,
 		PubKey:       TestUser2PubPEM,
 		PasswordHash: string(TestUser2bcrypt),
-		Role:         authapi.ClientRoleOperator,
+		Role:         api.ClientRoleOperator,
 	},
 	{
 		ClientID:   TestService1ID,
-		ClientType: authapi.ClientTypeService,
+		ClientType: api.ClientTypeService,
 		PubKey:     TestService1PubPEM,
-		Role:       authapi.ClientRoleAdmin,
+		Role:       api.ClientRoleAdmin,
 	},
 }
 
-func newTransport(srv msgserver_old.IMsgServer, clientID string, caCert *x509.Certificate) hubclient.IHubClient {
+func newTransport(srv mqtttransport.IMsgServer, clientID string, caCert *x509.Certificate) hubclient.IHubClient {
 	url, _, _ := srv.GetServerURLs()
-	//cl := mqtttransport_org.NewMqttTransportOrg(url, clientID, caCert)
-	cl := mqtttransport.NewMqttTransport(url, clientID, caCert)
+	cl := mqttclient.NewMqttTransport(url, clientID, caCert)
 	return cl
 }
 
-func startServer(withAuth bool) (msgserver_old.IMsgServer, *certs.TestCertBundle) {
+func startServer(withAuth bool) (mqtttransport.IMsgServer, *certs.TestCertBundle) {
 	srv, certBundle, err := testenv.StartMqttTestServer()
 	if err != nil {
 		panic("failed to start mqtt server")

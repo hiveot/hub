@@ -86,8 +86,8 @@ func (svc *DigiTwinInbox) GetRecord(messageID string) (r InboxRecord, err error)
 // Action requests for the digital twin services directory, inbox and outbox
 // are handled directly.
 //
-// Note that incoming action requests use the ThingID of virtual device, not the physical
-// device.
+// Note that incoming action requests use the digital twin ThingID, not the physical
+// device ID.
 func (svc *DigiTwinInbox) HandleActionFlow(msg *things.ThingMessage) (status api.DeliveryStatus) {
 	// all latest values are stored
 	svc.latest.StoreMessage(msg)

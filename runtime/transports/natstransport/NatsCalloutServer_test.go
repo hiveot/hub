@@ -1,10 +1,10 @@
 package natstransport_test
 
 import (
-	"github.com/hiveot/hub/core/auth/authapi"
-	"github.com/hiveot/hub/core/msgserver/natsmsgserver/callouthook"
-	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/transports/mqtttransport"
+	"github.com/hiveot/hub/runtime/transports/natstransport/callouthook"
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,12 +50,12 @@ func TestValidateToken(t *testing.T) {
 	// enable callout so a jwt token can be generated
 	_, err = callouthook.EnableNatsCalloutHook(s)
 	assert.NoError(t, err)
-	token, err := s.CreateToken(msgserver_old.ClientAuthInfo{
+	token, err := s.CreateToken(mqtttransport.ClientAuthInfo{
 		ClientID:     TestDevice1ID,
-		ClientType:   authapi.ClientTypeDevice,
+		ClientType:   api.ClientTypeUser,
 		PubKey:       TestDevice1NPub,
 		PasswordHash: "",
-		Role:         authapi.ClientRoleManager,
+		Role:         api.ClientRoleManager,
 	})
 	require.NoError(t, err)
 

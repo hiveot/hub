@@ -1,8 +1,9 @@
 package natstransport_test
 
 import (
-	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/transports/mqtttransport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -19,7 +20,7 @@ func TestPermissions(t *testing.T) {
 	_ = certBundle
 	_ = cfg
 
-	roles := []string{authapi.ClientRoleViewer}
+	roles := []string{api.ClientRoleViewer}
 	s.SetServicePermissions("myservice", "capability", roles)
 }
 
@@ -38,7 +39,7 @@ func TestToken(t *testing.T) {
 
 	_ = certBundle
 	_ = cfg
-	clInfo := msgserver_old.ClientAuthInfo{
+	clInfo := mqtttransport.ClientAuthInfo{
 		ClientID:   user2ID,
 		ClientType: authapi.ClientTypeUser,
 		PubKey:     kp.ExportPublic(),

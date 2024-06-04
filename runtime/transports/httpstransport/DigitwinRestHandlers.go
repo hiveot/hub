@@ -68,6 +68,7 @@ func (svc *HttpsTransport) HandlePostLogout(w http.ResponseWriter, r *http.Reque
 }
 
 // HandlePostLogin handles a login request and a new session, posted by a consumer
+// This uses the configured session authenticator.
 func (svc *HttpsTransport) HandlePostLogin(w http.ResponseWriter, r *http.Request) {
 	sm := sessions.GetSessionManager()
 
@@ -112,6 +113,9 @@ func (svc *HttpsTransport) HandlePostLogin(w http.ResponseWriter, r *http.Reques
 	//svc.sessionManager.SetSessionCookie(cs.sessionID,token)
 }
 
+// HandlePostRefresh refreshes the auth token using the session authenticator.
+// The session authenticator is that of the authn service. This allows testing with a dummy
+// authenticator without having to run the authn service.
 func (svc *HttpsTransport) HandlePostRefresh(w http.ResponseWriter, r *http.Request) {
 	var newToken string
 	args := api.RefreshTokenArgs{}

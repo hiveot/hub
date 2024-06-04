@@ -4,8 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	msgserver_old "github.com/hiveot/hub/core/msgserver.old"
-	"github.com/hiveot/hub/core/msgserver/mqttmsgserver"
+	"github.com/hiveot/hub/runtime/transports/mqtttransport"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/listeners"
 	"log/slog"
@@ -19,7 +18,7 @@ type MqttMsgServer struct {
 	// this carries the mochi auth hook
 	MqttAuthHook
 
-	Config *mqttmsgserver.MqttServerConfig
+	Config *mqtttransport.MqttServerConfig
 
 	// urls the server is listening on
 	tlsURL string

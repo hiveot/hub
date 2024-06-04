@@ -2,10 +2,10 @@ package mqtttransport_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -19,7 +19,7 @@ func Benchmark_PubSubEvent(b *testing.B) {
 	txCount := atomic.Int32{}
 	rxCount := atomic.Int32{}
 
-	ts, _ := testenv.StartTestServer(core, false)
+	ts, _ := testenv.StartTestServer(false)
 	defer ts.Stop()
 
 	cl1, _ := ts.AddConnectUser("publisher", authapi.ClientTypeDevice, authapi.ClientRoleDevice)
@@ -62,15 +62,15 @@ func Benchmark_Request(b *testing.B) {
 	txCount := atomic.Int32{}
 	rxCount := atomic.Int32{}
 
-	ts, _ := testenv.StartTestServer(core, false)
+	ts := testenv.StartTestServer(false)
 	defer ts.Stop()
 
-	cl1, _ := ts.AddConnectUser("client1", authapi.ClientTypeUser, authapi.ClientRoleAdmin)
+	cl1, _ := ts.AddConnectUser("client1", api.ClientRoleAdmin)
 	defer cl1.Disconnect()
-	cl2, _ := ts.AddConnectUser("rpc", authapi.ClientTypeService, authapi.ClientRoleService)
+	cl2, _ := ts.AddConnectService("rpc")
 	defer cl2.Disconnect()
 
-	cl2.SetRPCHandler(func(msg *things.ThingMessage) ([]byte, error) {
+	cl2.SetActionHandler(func(msg *things.ThingMessage) ([]byte, error) {
 		rxCount.Add(1)
 		return msg.Data, nil
 	})
@@ -83,7 +83,7 @@ func Benchmark_Request(b *testing.B) {
 				txCount.Add(1)
 				req := "request"
 				repl := ""
-				err := cl1.PubRPCRequest("rpc", "cap1", "method1", &req, &repl)
+				err := cl1.Rpc("rpc", "cap1", "method1", &req, &repl)
 				_ = err
 				if req != repl {
 					b.Error("request doesn't match reply")

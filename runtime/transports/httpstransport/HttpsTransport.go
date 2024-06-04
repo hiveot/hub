@@ -14,7 +14,7 @@ import (
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/tlsserver"
 	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
-	"github.com/hiveot/hub/runtime/transports/httpstransport/sse"
+	"github.com/hiveot/hub/runtime/transports/httpstransport/sseserver"
 	"io"
 	"log/slog"
 	"net/http"
@@ -41,8 +41,8 @@ type HttpsTransport struct {
 	// sessionAuth for logging in and validating session tokens
 	sessionAuth api.IAuthenticator
 
-	// handlers for SSE server push connections
-	sseHandler *sse.SSEHandler
+	// SSE server push connections
+	sseServer *sseserver.SSEServer
 }
 
 // setup the chain of routes used by the service and return the router
@@ -66,23 +66,41 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 	//	[]byte("32-byte-long-auth-key"),
 	//	csrf.SameSite(csrf.SameSiteStrictMode))
 
-	//-- add the routes and middleware
-	//router.Use(middleware.Logger) // todo: proper logging strategy
+	//-- add the middleware before routes
 	router.Use(middleware.Recoverer)
+	//router.Use(middleware.Logger) // todo: proper logging strategy
+	//router.Use(middleware.Recoverer)
 	//router.Use(csrfMiddleware)
-	router.Use(middleware.Compress(5,
-		"text/html", "text/css", "text/javascript", "image/svg+xml"))
+	//router.Use(middleware.Compress(5,
+	//	"text/html", "text/css", "text/javascript", "image/svg+xml"))
 
-	//--- public routes do not require a Hub connection
+	//--- public routes do not require an authenticated session
 	router.Group(func(r chi.Router) {
+		r.Use(middleware.Recoverer)
+		r.Use(middleware.Compress(5,
+			"text/html", "text/css", "text/javascript", "image/svg+xml"))
 
 		//r.Get("/static/*", staticFileServer.ServeHTTP)
 		// build-in REST API for easy login to obtain a token
 		r.Post(vocab.PostLoginPath, svc.HandlePostLogin)
 	})
+	//--- sse
+	router.Group(func(r chi.Router) {
+		// compression doesnt work with go-sse server?
+		//r.Use(middleware.Compress(5,
+		//	"text/html", "text/css", "text/javascript", "image/svg+xml"))
+
+		// client sessions authenticate the sender
+		r.Use(sessions.AddSessionFromToken(svc.sessionAuth))
+		r.HandleFunc(vocab.ConnectSSEPath, svc.sseServer.ServeHTTP)
+	})
 
 	//--- private routes that requires authentication
 	router.Group(func(r chi.Router) {
+		r.Use(middleware.Recoverer)
+		r.Use(middleware.Compress(5,
+			"text/html", "text/css", "text/javascript", "image/svg+xml"))
+
 		// client sessions authenticate the sender
 		r.Use(sessions.AddSessionFromToken(svc.sessionAuth))
 
@@ -106,7 +124,7 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 		r.Get(vocab.GetThingsPath, svc.HandleGetThings)
 
 		// sse return channels
-		svc.sseHandler.RegisterMethods(r)
+		//svc.sseHandler.RegisterMethods(r)
 		//r.Get(vocab.ConnectWSPath, svc.handleWSConnect)
 	})
 
@@ -256,7 +274,7 @@ func (svc *HttpsTransport) Start(handler api.MessageHandler) error {
 		svc.config.Host, uint(svc.config.Port), svc.serverCert, svc.caCert)
 
 	svc.handleMessage = handler
-	svc.sseHandler = sse.NewSSEHandler(svc.sessionAuth)
+	svc.sseServer = sseserver.NewSSEServer()
 	svc.createRoutes(svc.router)
 	err := svc.httpServer.Start()
 	return err
@@ -270,7 +288,7 @@ func (svc *HttpsTransport) Stop() {
 	// (closing the TLS server does not shut down active connections)
 	sm := sessions.GetSessionManager()
 	sm.CloseAll()
-	svc.sseHandler.Stop()
+	svc.sseServer.Stop()
 
 	svc.httpServer.Stop()
 

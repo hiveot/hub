@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
+	"github.com/hiveot/hub/lib/hubclient/mqttclient"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/net"
 	"log/slog"
@@ -76,7 +76,7 @@ func (cfg *MqttServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 		cfg.LogLevel = "warn"
 	}
 	if cfg.InMemUDSName == "" {
-		cfg.InMemUDSName = mqtttransport.MqttInMemUDSProd
+		cfg.InMemUDSName = mqttclient.MqttInMemUDSProd
 	}
 
 	// Step 2: generate missing certificates

@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/httpclient"
+	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime"
@@ -75,7 +75,7 @@ func (test *TestServer) AddConnectUser(
 	}
 
 	hostPort := fmt.Sprintf("localhost:%d", test.Port)
-	cl = httpclient.NewHttpSSEClient(hostPort, clientID, test.Certs.CaCert)
+	cl = httpsse.NewHttpSSEClient(hostPort, clientID, test.Certs.CaCert)
 	token, err = cl.ConnectWithPassword(password)
 
 	if err != nil {
@@ -99,7 +99,7 @@ func (test *TestServer) AddConnectAgent(
 	}
 
 	hostPort := fmt.Sprintf("localhost:%d", test.Port)
-	cl = httpclient.NewHttpSSEClient(hostPort, agentID, test.Certs.CaCert)
+	cl = httpsse.NewHttpSSEClient(hostPort, agentID, test.Certs.CaCert)
 	_, err = cl.ConnectWithToken(token)
 	if err != nil {
 		panic("Failed connecting using token. ClientID=" + agentID)
@@ -125,7 +125,7 @@ func (test *TestServer) AddConnectService(serviceID string) (
 	}
 
 	hostPort := fmt.Sprintf("localhost:%d", test.Port)
-	cl = httpclient.NewHttpSSEClient(hostPort, serviceID, test.Certs.CaCert)
+	cl = httpsse.NewHttpSSEClient(hostPort, serviceID, test.Certs.CaCert)
 	_, err = cl.ConnectWithToken(token)
 	if err != nil {
 		panic("Failed connecting using token. serviceID=" + serviceID)

@@ -4,10 +4,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/net"
+	"github.com/hiveot/hub/runtime/authn"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nkeys"
 	"log/slog"
@@ -148,7 +148,7 @@ func (cfg *NatsServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 
 	// Step 4: generate derived keys
 	if cfg.AdminUserKP == nil {
-		cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(authapi.DefaultAdminUserID, keysDir, writeChanges)
+		cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(authn.DefaultAdminUserID, keysDir, writeChanges)
 	}
 	if cfg.CoreServiceKP == nil {
 		cfg.CoreServiceKP, _ = nkeys.CreateUser()

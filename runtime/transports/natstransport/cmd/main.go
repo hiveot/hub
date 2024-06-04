@@ -3,12 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/hiveot/hub/core/auth/authapi"
-	"github.com/hiveot/hub/core/auth/authservice"
-	"github.com/hiveot/hub/core/msgserver/natsmsgserver/service"
 	"github.com/hiveot/hub/lib/discovery"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/runtime/transports/natstransport/service"
 	"net/url"
 	"os"
 	"strconv"

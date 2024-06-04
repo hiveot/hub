@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubclient/httpclient"
+	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsclient"
@@ -29,7 +29,8 @@ var hostPort = fmt.Sprintf("localhost:%d", testPort)
 // This implements the authn.IAuthenticator interface.
 const testLogin = "testlogin"
 const testPassword = "testpass"
-const testToken = "testtoken"
+const userToken = "usertoken"
+const serviceToken = "servicetoken"
 
 type DummyAuthenticator struct{}
 
@@ -40,23 +41,26 @@ func (d *DummyAuthenticator) Login(clientID string, password string, sessionID s
 		sessionID = "testsession"
 	}
 	if password == testPassword && clientID == testLogin {
-		return testToken, sessionID, nil
+		return userToken, sessionID, nil
 	}
 	return "", "", fmt.Errorf("Invalid login")
 }
 func (d *DummyAuthenticator) CreateSessionToken(clientID, sessionID string, validitySec int) (token string) {
-	return testToken
+	return userToken
 }
 
 func (d *DummyAuthenticator) RefreshToken(clientID string, oldToken string) (newToken string, err error) {
-	return testToken, nil
+	return oldToken, nil
 }
 
 func (d *DummyAuthenticator) ValidateToken(token string) (clientID string, sessionID string, err error) {
-	if token != testToken {
-		return "", "", fmt.Errorf("invalid login")
+	if token == userToken {
+		return testLogin, "testsession", nil
+	} else if token == serviceToken {
+		return testLogin, "", nil
 	}
-	return testLogin, "testsession", nil
+	return "", "", fmt.Errorf("invalid login")
+
 }
 
 var dummyAuthenticator = &DummyAuthenticator{}
@@ -93,7 +97,7 @@ func createConnectClient(clientID string) *tlsclient.TLSClient {
 	_ = sid
 
 	cl := tlsclient.NewTLSClient(hostPort, certBundle.CaCert, time.Second*120)
-	cl.ConnectWithToken(clientID, sessionToken)
+	cl.ConnectWithToken(sessionToken)
 	return cl
 }
 
@@ -130,7 +134,7 @@ func TestLoginRefresh(t *testing.T) {
 		})
 	defer svc.Stop()
 
-	cl := httpclient.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
 	token, err := cl.ConnectWithPassword(testPassword)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
@@ -168,7 +172,7 @@ func TestBadLogin(t *testing.T) {
 	defer svc.Stop()
 
 	// check if this test still works with a valid login
-	cl := httpclient.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
 	//cl := tlsclient.NewTLSClient(hostPort, certBundle.CaCert, time.Second*120)
 	token, err := cl.ConnectWithPassword(testPassword)
 	assert.NoError(t, err)
@@ -185,7 +189,7 @@ func TestBadLogin(t *testing.T) {
 	cl.Disconnect()
 
 	// bad client ID
-	cl2 := httpclient.NewHttpSSEClient(hostPort, "badID", certBundle.CaCert)
+	cl2 := httpsse.NewHttpSSEClient(hostPort, "badID", certBundle.CaCert)
 	token, err = cl2.ConnectWithPassword(testPassword)
 	assert.Error(t, err)
 	assert.Empty(t, token)
@@ -200,7 +204,7 @@ func TestBadRefresh(t *testing.T) {
 		})
 	defer svc.Stop()
 
-	cl := httpclient.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
 
 	// set the token
 	token, err := cl.ConnectWithToken("badtoken")
@@ -218,7 +222,7 @@ func TestBadRefresh(t *testing.T) {
 	assert.NotEmpty(t, validToken)
 	cl.Disconnect()
 	//
-	cl2 := httpclient.NewHttpSSEClient(hostPort, "badlogin", certBundle.CaCert)
+	cl2 := httpsse.NewHttpSSEClient(hostPort, "badlogin", certBundle.CaCert)
 	defer cl2.Disconnect()
 	token, err = cl2.ConnectWithToken(validToken)
 	assert.Error(t, err)
@@ -256,7 +260,7 @@ func TestPostEventAction(t *testing.T) {
 	assert.NotNil(t, cs)
 
 	// 2b. connect a client
-	cl := httpclient.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
 	token, err := cl.ConnectWithPassword(testPassword)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
@@ -306,7 +310,7 @@ func TestPubSubSSE(t *testing.T) {
 	defer svc.Stop()
 
 	// 2. connect with a client
-	cl := httpclient.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
 	token, err := cl.ConnectWithPassword(testPassword)
 	require.NoError(t, err)
 	assert.NotEmpty(t, token)
@@ -350,7 +354,7 @@ func TestRestart(t *testing.T) {
 		})
 
 	// 2. connect a service client
-	cl := httpclient.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
 	token, err := cl.ConnectWithPassword(testPassword)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
@@ -373,4 +377,75 @@ func TestRestart(t *testing.T) {
 	require.Nil(t, rxMsg)
 	//assert.Equal(t, eventKey, rxMsg.Key)
 	//assert.Equal(t, thingID, rxMsg.ThingID)
+}
+
+// Auto-reconnect using hub client and server
+func TestReconnect(t *testing.T) {
+	t.Log("TestReconnect")
+	var thingID = "thing1"
+	var actionKey = "action1"
+	var actionHandler func(*things.ThingMessage) api.DeliveryStatus
+
+	// 1. start the binding. Set the action handler separately
+	svc := startHttpsBinding(
+		func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+			if actionHandler != nil {
+				return actionHandler(msg)
+			}
+			stat.Failed(msg, fmt.Errorf("No test action handler"))
+			return stat
+		})
+	defer svc.Stop()
+
+	// this test handler receives an action, returns a 'delivered status',
+	// and sends a completed status through the sse return channel (SendToClient)
+	actionHandler = func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
+		stat.Status = api.DeliveryDelivered
+		if tv.MessageType == vocab.MessageTypeEvent {
+			// ignore events
+			return stat
+		}
+		// send a delivery status update asynchronously which uses the SSE return channel
+		go func() {
+			var stat2 api.DeliveryStatus
+			stat2.Completed(tv, nil)
+			stat2.Reply = tv.Data
+			stat2Json := stat2.Marshal()
+			tm2 := things.NewThingMessage(
+				vocab.MessageTypeEvent, tv.SenderID, vocab.EventTypeDeliveryUpdate, stat2Json, thingID)
+
+			svc.SendToClient(tv.SenderID, tm2)
+		}()
+		stat.Status = api.DeliveryApplied
+		return stat
+	}
+
+	// 2. connect a service client. Service auth tokens remain valid between sessions.
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
+	defer cl.Disconnect()
+	token, err := cl.ConnectWithToken(serviceToken)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, token)
+	//  Give some time for the SSE connection to be established
+	time.Sleep(time.Second * 1)
+
+	// 3. restart the server.
+	t.Log("--- restarting the server ---")
+	svc.Stop()
+	time.Sleep(time.Millisecond * 10)
+	err = svc.Start(actionHandler)
+	require.NoError(t, err)
+	t.Log("--- server restarted ---")
+
+	// give client time to reconnect
+	time.Sleep(time.Second * 1)
+	// publish event to rekindle the connection
+	cl.PubEvent("dummything", "dummyKey", nil)
+	// 4. The SSE return channel should reconnect automatically
+	var rpcArgs string = "rpc test"
+	var rpcResp string
+	err = cl.Rpc(thingID, actionKey, &rpcArgs, &rpcResp)
+	assert.NoError(t, err)
+	assert.Equal(t, rpcArgs, rpcResp)
+
 }

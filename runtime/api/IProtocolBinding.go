@@ -95,6 +95,12 @@ func (stat *DeliveryStatus) Unmarshal(args interface{}) (error, bool) {
 	return err, true
 }
 
+// Marshal the status update for transport
+func (stat *DeliveryStatus) Marshal() []byte {
+	statJson, _ := json.Marshal(stat)
+	return statJson
+}
+
 // EventHandler processes an event without return value
 type EventHandler func(msg *things.ThingMessage) error
 

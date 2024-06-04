@@ -281,7 +281,7 @@ func TestAuthJWT(t *testing.T) {
 	err = json.Unmarshal(resp, &reply)
 
 	// reconnect using the given token
-	cl.ConnectWithToken(user1, reply.Token)
+	cl.ConnectWithToken(reply.Token)
 	_, err = cl.Get(path3)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, path3Hit)
@@ -292,7 +292,6 @@ func TestAuthJWT(t *testing.T) {
 
 func TestAuthJWTFail(t *testing.T) {
 	pathHello1 := "/hello"
-	user1 := "user1"
 
 	// setup server and client environment
 	mux := http.NewServeMux()
@@ -306,7 +305,7 @@ func TestAuthJWTFail(t *testing.T) {
 	})
 	//
 	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert, 0)
-	cl.ConnectWithToken(user1, "badtoken")
+	cl.ConnectWithToken("badtoken")
 	resp, err := cl.Post(pathHello1, "test")
 	assert.Empty(t, resp)
 	// unauthorized

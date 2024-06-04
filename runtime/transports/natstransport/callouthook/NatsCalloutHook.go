@@ -2,7 +2,7 @@ package callouthook
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/core/msgserver/natsmsgserver/service"
+	"github.com/hiveot/hub/runtime/transports/natstransport/service"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"

@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
-	msgserver_old "github.com/hiveot/hub/core/msgserver.old"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
-	"github.com/hiveot/hub/lib/hubclient/transports/mqtttransport"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/runtime/authn/jwtauth"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/transports/mqtttransport"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/packets"
 	"golang.org/x/crypto/bcrypt"
@@ -24,10 +22,10 @@ type MqttAuthHook struct {
 	mqtt.HookBase
 
 	// map of known clients by ID for quick lookup during auth
-	authClients map[string]msgserver_old.ClientAuthInfo
+	authClients map[string]mqtttransport.ClientAuthInfo
 
 	// map of role to role permissions
-	rolePermissions map[string][]msgserver_old.RolePermission
+	rolePermissions map[string][]api.RolePermission
 
 	authMux sync.RWMutex
 
@@ -38,12 +36,12 @@ type MqttAuthHook struct {
 	//jwtTokenMustBeKnownUser bool
 
 	// ServicePermissions defines for each role the service capability that can be used
-	servicePermissions map[string][]msgserver_old.RolePermission
+	servicePermissions map[string][]api.RolePermission
 }
 
 // ApplyAuth apply update user authentication and authorization settings
-func (hook *MqttAuthHook) ApplyAuth(clients []msgserver_old.ClientAuthInfo) error {
-	authClients := map[string]msgserver_old.ClientAuthInfo{}
+func (hook *MqttAuthHook) ApplyAuth(clients []mqtttransport.ClientAuthInfo) error {
+	authClients := map[string]mqtttransport.ClientAuthInfo{}
 	for _, clientInfo := range clients {
 		authClients[clientInfo.ClientID] = clientInfo
 	}
@@ -62,14 +60,14 @@ func (hook *MqttAuthHook) CreateKeyPair() (kp keys.IHiveKey) {
 }
 
 // CreateToken creates a new JWT authtoken for a client.
-func (hook *MqttAuthHook) CreateToken(authInfo msgserver_old.ClientAuthInfo) (token string, err error) {
+func (hook *MqttAuthHook) CreateToken(authInfo mqtttransport.ClientAuthInfo) (token string, err error) {
 	token, err = jwtauth.CreateToken(authInfo, hook.signingKey)
 	return token, err
 }
 
 // GetClientAuth returns the client auth info for the given ID
 // This returns an error if the client is not found
-func (hook *MqttAuthHook) GetClientAuth(clientID string) (msgserver_old.ClientAuthInfo, error) {
+func (hook *MqttAuthHook) GetClientAuth(clientID string) (mqtttransport.ClientAuthInfo, error) {
 	hook.authMux.RLock()
 	clientAuth, found := hook.authClients[clientID]
 	hook.authMux.RUnlock()
@@ -80,7 +78,7 @@ func (hook *MqttAuthHook) GetClientAuth(clientID string) (msgserver_old.ClientAu
 }
 
 // GetRolePermissions returns the role permissions for the given clientID
-func (hook *MqttAuthHook) GetRolePermissions(role string, clientID string) ([]msgserver_old.RolePermission, bool) {
+func (hook *MqttAuthHook) GetRolePermissions(role string, clientID string) ([]api.RolePermission, bool) {
 	// TODO: speed things up a bit by pre-calculating on login
 	// take the role's permissions
 	rolePerm, found := hook.rolePermissions[role]
@@ -291,7 +289,7 @@ func (hook *MqttAuthHook) Provides(b byte) bool {
 // rolePerms is a map of [role] to a list of permissions that role has.
 // A default set of permissions for predefined roles is available in the auth api.
 func (hook *MqttAuthHook) SetRolePermissions(
-	rolePerms map[string][]msgserver_old.RolePermission) {
+	rolePerms map[string][]api.RolePermission) {
 
 	hook.authMux.Lock()
 	hook.rolePermissions = rolePerms
@@ -309,9 +307,9 @@ func (hook *MqttAuthHook) SetServicePermissions(
 		// add the role if needed
 		rp := hook.servicePermissions[role]
 		if rp == nil {
-			rp = []msgserver_old.RolePermission{}
+			rp = []api.RolePermission{}
 		}
-		rp = append(rp, msgserver_old.RolePermission{
+		rp = append(rp, api.RolePermission{
 			MsgType:  transports.MessageTypeRPC,
 			AgentID:  serviceID,
 			ThingID:  capability,
@@ -336,7 +334,7 @@ func (hook *MqttAuthHook) ValidateToken(
 }
 
 func (hook *MqttAuthHook) ValidatePassword(
-	loginID string, password string) (info msgserver_old.ClientAuthInfo, err error) {
+	loginID string, password string) (info mqtttransport.ClientAuthInfo, err error) {
 	cinfo, found := hook.authClients[loginID]
 	if !found {
 		return cinfo, fmt.Errorf("ValidatePassword: Unknown user '%s", loginID)
@@ -361,7 +359,7 @@ func NewMqttAuthHook(signingKey keys.IHiveKey) *MqttAuthHook {
 		rolePermissions:    nil,
 		authMux:            sync.RWMutex{},
 		signingKey:         signingKey,
-		servicePermissions: make(map[string][]msgserver_old.RolePermission),
+		servicePermissions: make(map[string][]api.RolePermission),
 	}
 	return hook
 }

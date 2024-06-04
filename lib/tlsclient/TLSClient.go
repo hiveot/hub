@@ -2,61 +2,28 @@
 package tlsclient
 
 import (
-	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
 	"golang.org/x/net/publicsuffix"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/cookiejar"
-	"net/url"
 	"time"
-)
-
-// Authentication methods for use with ConnectWithLoginID
-// Use AuthMethodDefault unless there is a good reason not to
-const (
-	AuthMethodBasic  = "basic"  // basic auth for backwards compatibility when connecting
-	AuthMethodDigest = "digest" // digest auth for backwards compatibility when connecting
-	AuthMethodNone   = ""       // disable authentication, for testing
-	AuthMethodJwt    = "jwt"    // JSON web token for use with WoST server (default)
-)
-
-// standardized query parameter names for querying servers
-const (
-	// ParamOffset offset in case of multiple requests
-	ParamOffset = "offset"
-	// ParamLimit contains maximum number of results
-	ParamLimit = "limit"
-	// ParamQuery contains a query
-	ParamQuery = "queryparams"
-	// ParamUpdatedSince contains a ISO8601 datetime
-	ParamUpdatedSince = "updatedSince"
-	// ParamThings contains a list of Thing IDs to query for
-	ParamThings = "things"
 )
 
 // TLSClient is a simple TLS Client with authentication using certificates or JWT authentication with login/pw
 type TLSClient struct {
 	// host and port of the server to setup to
-	hostPort        string
-	loginPath       string // path on server to login
-	refreshPath     string // path on server to refresh token
-	caCert          *x509.Certificate
-	caCertPool      *x509.CertPool
-	httpClient      *http.Client
-	timeout         time.Duration
-	checkServerCert bool
+	hostPort   string
+	caCert     *x509.Certificate
+	httpClient *http.Client
+	timeout    time.Duration
 
 	// client certificate mutual authentication
 	clientCert *tls.Certificate
-
-	// User ID for authentication
-	clientID string
 
 	// JWT bearer token after login, refresh, or external source
 	// Invoke will use this if set.
@@ -96,8 +63,6 @@ func (cl *TLSClient) Close() {
 //
 // Returns nil if successful, or an error if connection failed
 func (cl *TLSClient) ConnectWithClientCert(clientCert *tls.Certificate) (err error) {
-	var clientCertList = make([]tls.Certificate, 0)
-
 	if clientCert == nil {
 		err = fmt.Errorf("TLSClient.ConnectWithClientCert, No client key/certificate provided")
 		slog.Error(err.Error())
@@ -106,8 +71,12 @@ func (cl *TLSClient) ConnectWithClientCert(clientCert *tls.Certificate) (err err
 
 	// test if the given cert is valid for our CA
 	if cl.caCert != nil {
+		caCertPool := x509.NewCertPool()
+		if cl.caCert != nil {
+			caCertPool.AddCert(cl.caCert)
+		}
 		opts := x509.VerifyOptions{
-			Roots:     cl.caCertPool,
+			Roots:     caCertPool,
 			KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		}
 		x509Cert, err := x509.ParseCertificate(clientCert.Certificate[0])
@@ -123,21 +92,8 @@ func (cl *TLSClient) ConnectWithClientCert(clientCert *tls.Certificate) (err err
 		}
 	}
 	cl.clientCert = clientCert
-	clientCertList = append(clientCertList, *clientCert)
+	cl.httpClient = CreateHttp2TLSClient(cl.caCert, clientCert, cl.timeout)
 
-	tlsConfig := &tls.Config{
-		RootCAs:            cl.caCertPool,
-		Certificates:       clientCertList,
-		InsecureSkipVerify: !cl.checkServerCert,
-	}
-
-	tlsTransport := http.DefaultTransport
-	tlsTransport.(*http.Transport).TLSClientConfig = tlsConfig
-
-	cl.httpClient = &http.Client{
-		Transport: tlsTransport,
-		Timeout:   cl.timeout,
-	}
 	return nil
 }
 
@@ -145,8 +101,7 @@ func (cl *TLSClient) ConnectWithClientCert(clientCert *tls.Certificate) (err err
 // token obtained at login or elsewhere.
 //
 // No error is returned as this just sets up the token and http client. No messages are send yet.
-func (cl *TLSClient) ConnectWithToken(loginID string, token string) {
-	cl.clientID = loginID
+func (cl *TLSClient) ConnectWithToken(token string) {
 	cl.bearerToken = token
 	if cl.httpClient != nil {
 		cl.httpClient = cl.setup()
@@ -212,7 +167,7 @@ func (cl *TLSClient) Invoke(method string, url string,
 			body, _ = json.Marshal(msg)
 		}
 	}
-	req, err = cl.NewRequest(method, url, body)
+	req, err = NewRequest(method, url, cl.bearerToken, body)
 	// optional query parameters
 	if qParams != nil {
 		qValues := req.URL.Query()
@@ -250,29 +205,6 @@ func (cl *TLSClient) Invoke(method string, url string,
 		err = fmt.Errorf("Invoke: Error %s %s: %w", method, url, err)
 	}
 	return respBody, err
-}
-
-// NewRequest creates a request object containing a bearer token if available
-func (cl *TLSClient) NewRequest(method string, fullURL string, body []byte) (*http.Request, error) {
-	bodyReader := bytes.NewReader(body)
-	req, err := http.NewRequest(method, fullURL, bodyReader)
-
-	if err != nil {
-		return nil, err
-	}
-
-	// set the intended destination
-	// in web browser this is the origin that provided the web page,
-	// here it means the server that we'd like to talk to.
-	parts, err := url.Parse(fullURL)
-	origin := fmt.Sprintf("%s://%s", parts.Scheme, parts.Host)
-	req.Header.Set("Origin", origin)
-	if cl.bearerToken != "" {
-		req.Header.Add("Authorization", "bearer "+cl.bearerToken)
-	} else {
-		// no authentication
-	}
-	return req, nil
 }
 
 //// Logout from the server and end the session
@@ -320,14 +252,8 @@ func (cl *TLSClient) Put(path string, msg interface{}) ([]byte, error) {
 
 // setup sets-up the http client with TLS transport
 func (cl *TLSClient) setup() *http.Client {
-	// the CA certificate is set in NewTLSClient
-	tlsConfig := &tls.Config{
-		RootCAs:            cl.caCertPool,
-		InsecureSkipVerify: !cl.checkServerCert,
-	}
-
-	tlsTransport := http.DefaultTransport
-	tlsTransport.(*http.Transport).TLSClientConfig = tlsConfig
+	//// the CA certificate is set in NewTLSClient
+	httpClient := CreateHttp2TLSClient(cl.caCert, nil, cl.timeout)
 
 	// FIXME:
 	// 1 does this work if the server is connected using an IP address?
@@ -338,12 +264,8 @@ func (cl *TLSClient) setup() *http.Client {
 		err = fmt.Errorf("NewTLSClient: error setting cookiejar. The use of bearer tokens might not work: %w", err)
 		slog.Error(err.Error())
 	}
-
-	return &http.Client{
-		Transport: tlsTransport,
-		Timeout:   cl.timeout,
-		Jar:       cjar,
-	}
+	httpClient.Jar = cjar
+	return httpClient
 }
 
 //// SetBearerToken sets the authentication token for the http header
@@ -360,8 +282,6 @@ func (cl *TLSClient) setup() *http.Client {
 //
 // returns TLS client for submitting requests
 func NewTLSClient(hostPort string, caCert *x509.Certificate, timeout time.Duration) *TLSClient {
-	var checkServerCert bool
-	caCertPool := x509.NewCertPool()
 	if timeout == 0 {
 		timeout = time.Second * 10
 	}
@@ -370,23 +290,12 @@ func NewTLSClient(hostPort string, caCert *x509.Certificate, timeout time.Durati
 	if caCert == nil {
 		slog.Info("NewTLSClient: No CA certificate. InsecureSkipVerify used",
 			slog.String("destination", hostPort))
-		checkServerCert = false
-	} else {
-		slog.Debug("NewTLSClient: CA certificate",
-			slog.String("destination", hostPort),
-			slog.String("caCert CN", caCert.Subject.CommonName))
-		caCertPool.AddCert(caCert)
-		checkServerCert = true
 	}
 
 	cl := &TLSClient{
 		hostPort: hostPort,
-		//loginPath:       vocab.PostLoginPath,
-		refreshPath:     vocab.PostRefreshPath,
-		timeout:         timeout,
-		caCertPool:      caCertPool,
-		caCert:          caCert,
-		checkServerCert: checkServerCert,
+		timeout:  timeout,
+		caCert:   caCert,
 	}
 
 	// setup the connection

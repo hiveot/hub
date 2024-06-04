@@ -2,7 +2,6 @@ package mqtttransport_test
 
 import (
 	"context"
-	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
@@ -14,13 +13,8 @@ import (
 	"time"
 )
 
-const core = "mqtt"
-
 func startTestServer() *testenv.TestServer {
-	srv, err := testenv.StartTestServer(core, true)
-	if err != nil {
-		panic(err)
-	}
+	srv := testenv.StartTestServer(true)
 	return srv
 }
 
@@ -37,7 +31,7 @@ func TestReconnect(t *testing.T) {
 	ts := startTestServer()
 
 	// connect client and subscribe
-	hc1, err := ts.AddConnectUser(deviceID, authapi.ClientTypeDevice, authapi.ClientRoleDevice)
+	hc1, err := ts.AddConnectAgent(deviceID)
 	hc1.SetRetryConnect(true)
 	require.NoError(t, err)
 	defer hc1.Disconnect()

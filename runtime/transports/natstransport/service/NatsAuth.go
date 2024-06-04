@@ -3,10 +3,7 @@ package service
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/hiveot/hub/core/auth/authapi"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/transports"
-	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/nats-io/jwt/v2"
 	"github.com/nats-io/nats-server/v2/server"
@@ -24,13 +21,13 @@ import (
 //
 //	Role permissions can be changed with 'SetRolePermissions'.
 //	Service permissions can be set with 'SetServicePermissions'
-func (srv *NatsMsgServer) ApplyAuth(clients []msgserver_old.ClientAuthInfo) error {
+func (srv *NatsMsgServer) ApplyAuth(clients []ClientAuthInfo) error {
 
 	// password users authenticate with password while nkey users authenticate with key-pairs.
 	// clients can use both.
 	pwUsers := []*server.User{}
 	nkeyUsers := []*server.NkeyUser{}
-	authClients := map[string]msgserver_old.ClientAuthInfo{}
+	authClients := map[string]ClientAuthInfo{}
 
 	// keep the core, admin and system users
 	coreServicePub, _ := srv.Config.CoreServiceKP.PublicKey()
@@ -94,7 +91,7 @@ func (srv *NatsMsgServer) CreateKeyPair() keys.IHiveKey {
 // CreateToken create a new authentication token for a client
 // In NKey mode this returns the public key.
 // In Callout mode this returns a JWT token with permissions.
-func (srv *NatsMsgServer) CreateToken(authInfo msgserver_old.ClientAuthInfo) (token string, err error) {
+func (srv *NatsMsgServer) CreateToken(authInfo ClientAuthInfo) (token string, err error) {
 	//
 	if srv.NatsOpts.AuthCallout != nil {
 		token, err = srv.CreateJWTToken(authInfo)

@@ -1,13 +1,11 @@
 package natstransport_test
 
 import (
-	"github.com/hiveot/hub/core/auth/authapi"
-	"github.com/hiveot/hub/core/msgserver/natsmsgserver/service"
-	"github.com/hiveot/hub/lib/hubclient/transports"
-	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/transports/natstransport/service"
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,12 +40,12 @@ var TestService1ID = "service1"
 var TestService1NKey, _ = nkeys.CreateUser()
 var TestService1NPub, _ = TestService1NKey.PublicKey()
 
-var NatsTestClients = []msgserver_old.ClientAuthInfo{
+var NatsTestClients = []ClientAuthInfo{
 	{
 		ClientID:   TestAdminUserID,
-		ClientType: authapi.ClientTypeUser,
+		ClientType: api.ClientTypeUser,
 		PubKey:     TestAdminUserNPub,
-		Role:       authapi.ClientRoleAdmin,
+		Role:       api.ClientRoleAdmin,
 	},
 	{
 		ClientID:   TestDevice1ID,

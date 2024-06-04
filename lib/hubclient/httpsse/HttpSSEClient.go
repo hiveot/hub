@@ -1,4 +1,4 @@
-package httpclient
+package httpsse
 
 import (
 	"context"
@@ -17,7 +17,6 @@ import (
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
-	"net/http"
 	"sync"
 	"time"
 )
@@ -55,54 +54,6 @@ type HttpSSEClient struct {
 // ClientID returns the client's connection ID
 func (cl *HttpSSEClient) ClientID() string {
 	return cl._status.ClientID
-}
-
-// ConnectSSE establishes a sse session over the Hub HTTPS connection.
-// All hub messages are send as type ThingMessage, containing thingID, key, payload and sender
-func (cl *HttpSSEClient) ConnectSSE(client *http.Client) error {
-	// FIXME. what if serverURL contains a schema?
-	sseURL := fmt.Sprintf("https://%s%s", cl.hostPort, cl.ssePath)
-
-	//r, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, sseURL, http.NoBody)
-	req, err := cl.tlsClient.NewRequest("GET", sseURL, []byte{})
-	if err != nil {
-		return err
-	}
-	slog.Info("ConnectSSE", slog.String("sseURL", sseURL))
-
-	// use context to disconnect the client
-	sseCtx, sseCancelFn := context.WithCancel(context.Background())
-	cl.sseCancelFn = sseCancelFn
-	req = req.WithContext(sseCtx)
-
-	//sse client upgrade will set this to stream
-	req.Header.Set("Content-Type", "application/json")
-
-	conn := sse.NewConnection(req)
-
-	// increase buffer size to 1M
-	// TODO: make limit configurable
-	//https://github.com/tmaxmax/go-sse/issues/32
-	newBuf := make([]byte, 0, 1024*65)
-	conn.Buffer(newBuf, cl._maxSSEMessageSize)
-
-	//conn.Parser.Buffer = make([]byte, 1000000) // test 1MB buffer
-
-	remover := conn.SubscribeToAll(cl.handleSSEEvent)
-	_ = remover
-	go func() {
-		// connect and report an error if connection ends due to reason other than context cancelled
-		err := conn.Connect()
-		if err != nil && !errors.Is(err, context.Canceled) {
-			slog.Error("SSE connection failed (server shutdown or connection interrupted)",
-				"clientID", cl._status.ClientID,
-				"err", err.Error())
-		}
-		remover()
-	}()
-	//c.Connection = client
-	//cl.startR3labsSSEListener()
-	return nil
 }
 
 // ConnectWithClientCert creates a connection with the server using a client certificate for mutual authentication.
@@ -151,7 +102,7 @@ func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 		return "", err
 	}
 	// store the bearer token further requests
-	cl.tlsClient.ConnectWithToken(cl._status.ClientID, reply.Token)
+	cl.tlsClient.ConnectWithToken(reply.Token)
 
 	// If the server is reachable. Open the return channel using SSE
 	cl._status.ConnectionStatus = hubclient.Connected
@@ -159,7 +110,8 @@ func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 
 	// establish the sse connection if a path is set
 	if cl.ssePath != "" {
-		err = cl.ConnectSSE(cl.tlsClient.GetHttpClient())
+		sseURL := fmt.Sprintf("https://%s%s", cl.hostPort, cl.ssePath)
+		err = cl.ConnectSSE(sseURL, reply.Token, cl.tlsClient.GetHttpClient())
 		cl._status.LastError = err
 	}
 	return reply.Token, err
@@ -178,7 +130,7 @@ func (cl *HttpSSEClient) ConnectWithToken(token string) (newToken string, err er
 	}
 
 	cl.tlsClient = tlsclient.NewTLSClient(cl.hostPort, cl._status.CaCert, time.Second*120)
-	cl.tlsClient.ConnectWithToken(cl._status.ClientID, token)
+	cl.tlsClient.ConnectWithToken(token)
 
 	newToken, err = cl.RefreshToken(token)
 	if err != nil {
@@ -189,8 +141,9 @@ func (cl *HttpSSEClient) ConnectWithToken(token string) (newToken string, err er
 		cl._status.HubURL = fmt.Sprintf("https://%s", cl.hostPort)
 		// establish the sse connection if a path is set
 		if cl.ssePath != "" {
-			// if the return channel fails then this is still considered connected
-			err = cl.ConnectSSE(cl.tlsClient.GetHttpClient())
+			// if the return channel fails then the client is still considered connected
+			sseURL := fmt.Sprintf("https://%s%s", cl.hostPort, cl.ssePath)
+			err = cl.ConnectSSE(sseURL, newToken, cl.tlsClient.GetHttpClient())
 			cl._status.LastError = err
 		}
 	}
@@ -444,7 +397,7 @@ func (cl *HttpSSEClient) RefreshToken(oldToken string) (newToken string, err err
 		if err == nil {
 			newToken = reply.Token
 			// reconnect using the new token
-			cl.tlsClient.ConnectWithToken(cl.ClientID(), reply.Token)
+			cl.tlsClient.ConnectWithToken(reply.Token)
 		}
 	}
 	return newToken, err

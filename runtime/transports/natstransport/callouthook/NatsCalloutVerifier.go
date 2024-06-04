@@ -3,8 +3,8 @@ package callouthook
 import (
 	"crypto/x509"
 	"fmt"
-	"github.com/hiveot/hub/core/msgserver/natsmsgserver/service"
 	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/runtime/transports/natstransport/service"
 	"github.com/nats-io/jwt/v2"
 	"log/slog"
 )

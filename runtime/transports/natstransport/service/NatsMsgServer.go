@@ -5,10 +5,8 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/core/msgserver/natsmsgserver"
-	"github.com/hiveot/hub/lib/hubclient/transports"
-	"github.com/hiveot/hub/lib/hubclient/transports/natstransport"
 	"github.com/hiveot/hub/lib/net"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
@@ -28,12 +26,12 @@ type NatsMsgServer struct {
 	ns       *server.Server
 
 	// map of known clients by ID for quick lookup during auth
-	authClients map[string]msgserver_old.ClientAuthInfo
+	authClients map[string]api.ClientAuthInfo
 
 	// map of permissions for each role
-	rolePermissions map[string][]msgserver_old.RolePermission
+	rolePermissions map[string][]api.RolePermission
 	// map of permissions for each service
-	servicePermissions map[string][]msgserver_old.RolePermission
+	servicePermissions map[string][]api.RolePermission
 
 	// connection urls the server is listening on
 	tlsURL string
