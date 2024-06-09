@@ -118,20 +118,20 @@ func (svc *HttpsTransport) HandlePostLogin(w http.ResponseWriter, r *http.Reques
 // The session authenticator is that of the authn service. This allows testing with a dummy
 // authenticator without having to run the authn service.
 func (svc *HttpsTransport) HandlePostRefresh(w http.ResponseWriter, r *http.Request) {
-	var oldToken string
 	var newToken string
 	var resp []byte
 
-	//var reply []byte
+	args := authn.UserRefreshTokenArgs{}
 	cs, _, _, data, err := svc.getRequestParams(r)
 	if err == nil {
-		err = json.Unmarshal(data, &oldToken)
+		err = json.Unmarshal(data, &args)
 	}
-	if err != nil {
+	// the session owner must match the token requested client ID
+	if err != nil || cs.GetClientID() != args.ClientID {
 		http.Error(w, "bad login", http.StatusUnauthorized)
 		return
 	}
-	newToken, err = svc.authenticator.RefreshToken(cs.GetClientID(), oldToken)
+	newToken, err = svc.authenticator.RefreshToken(args.ClientID, args.OldToken)
 	if err == nil {
 		resp, err = json.Marshal(newToken)
 	}

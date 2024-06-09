@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/hiveoviewapi"
@@ -23,7 +24,6 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/authz/authzclient"
 	"log/slog"
 	"net/http"
 	"os"
@@ -149,8 +149,8 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 
 	// publish a TD for each service capability and set allowable roles
 	// in this case only a management capability is published
-	authzClient := authzclient.NewAuthzUserClient(svc.hc)
-	err := authzClient.SetPermissions(api.ThingPermissions{
+	authzClient := authz.NewUserClient(svc.hc)
+	err := authzClient.SetPermissions(authz.ThingPermissions{
 		AgentID: hc.ClientID(),
 		ThingID: hiveoviewapi.HiveoviewServiceID,
 		Allow:   []string{api.ClientRoleAdmin, api.ClientRoleService},

@@ -75,7 +75,7 @@ func TestLoginRefresh(t *testing.T) {
 	require.NoError(t, err)
 
 	// RefreshToken the token
-	token2, err := userCl.RefreshToken(resp.Token)
+	token2, err := userCl.RefreshToken(authn.UserRefreshTokenArgs{tu1ID, resp.Token})
 	require.NoError(t, err)
 	require.NotEmpty(t, resp.Token)
 
@@ -96,7 +96,7 @@ func TestLoginRefreshFail(t *testing.T) {
 	userCl := authn.NewUserClient(ecl)
 
 	// RefreshToken the token non-existing
-	resp, err := userCl.RefreshToken("badToken")
+	resp, err := userCl.RefreshToken(authn.UserRefreshTokenArgs{tu1ID, "badToken"})
 	_ = resp
 	require.Error(t, err)
 }

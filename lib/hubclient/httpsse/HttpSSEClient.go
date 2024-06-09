@@ -21,8 +21,6 @@ import (
 	"time"
 )
 
-const refreshPath = vocab.PostRefreshPath
-
 // HttpSSEClient manages the hub server connection with hub event and action messaging using autopaho.
 // This implements the IHubClient interface.
 type HttpSSEClient struct {
@@ -386,9 +384,13 @@ func (cl *HttpSSEClient) PubTD(td *things.TD) error {
 // RefreshToken refreshes the authentication token
 // The resulting token can be used with 'ConnectWithJWT'
 func (cl *HttpSSEClient) RefreshToken(oldToken string) (newToken string, err error) {
-	refreshURL := fmt.Sprintf("https://%s%s", cl.hostPort, refreshPath)
+	refreshURL := fmt.Sprintf("https://%s%s", cl.hostPort, vocab.PostRefreshPath)
 
-	data, _ := json.Marshal(oldToken)
+	args := authn.UserRefreshTokenArgs{
+		ClientID: cl._status.ClientID,
+		OldToken: oldToken,
+	}
+	data, _ := json.Marshal(args)
 	// the bearer token holds the old token
 	resp, err := cl.tlsClient.Invoke("POST", refreshURL, data, nil)
 	// set the new token as the bearer token

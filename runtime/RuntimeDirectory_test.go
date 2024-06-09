@@ -49,13 +49,12 @@ func TestAddRemoveTD(t *testing.T) {
 	assert.Equal(t, dtThing1ID, td3.ID)
 
 	//stat = cl.Rpc(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
-	args4 := digitwin.DirectoryRemoveTDArgs{ThingID: dtThing1ID}
-	args4JSON, _ := json.Marshal(args4)
-	stat := cl.PubAction(digitwin.DirectoryServiceID, digitwin.DirectoryRemoveTDMethod, args4JSON)
+	args4JSON, _ := json.Marshal(dtThing1ID)
+	stat := cl.PubAction(digitwin.DirectoryDThingID, digitwin.DirectoryRemoveTDMethod, args4JSON)
 	require.Empty(t, stat.Error)
 
 	// after removal of the TD, getTD should return an error but delivery is successful
-	stat = cl.PubAction(digitwin.DirectoryServiceID, digitwin.DirectoryReadTDMethod, args4JSON)
+	stat = cl.PubAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, args4JSON)
 	require.NotEmpty(t, stat.Error)
 	require.Equal(t, hubclient.DeliveryCompleted, stat.Status)
 }

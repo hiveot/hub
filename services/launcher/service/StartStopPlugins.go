@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
 	"github.com/struCoder/pidusage"
@@ -109,7 +110,7 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 		// add a service account and generate a new token file in the keys directory
 		// the service must have read access to this directory, or the keys must be
 		// copied elsewhere by the administrator.
-		_, err = svc.mngAuth.AddService(pluginName, pluginName, "")
+		_, err = svc.mngAuth.AddService(authn.AdminAddServiceArgs{pluginName, pluginName, ""})
 		if err != nil {
 			slog.Error("Unable to add plugin to hub and create credentials. Continuing anyways", "err", err)
 		}

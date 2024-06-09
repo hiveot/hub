@@ -3,7 +3,7 @@ DIST_FOLDER=./dist
 BIN_FOLDER=./dist/bin
 PLUGINS_FOLDER=./dist/plugins
 INSTALL_HOME=~/bin/hiveot
-GENAPI=go run cmd/genapi/main.go
+GENAPI=go run cmd/tdd2api/main.go
 .DEFAULT_GOAL := help
 
 .FORCE: 
@@ -13,12 +13,9 @@ all: runtime services bindings hubcli   ## Build Core, Bindings and hubcli
 # --- Runtime services
 
 runtime: .FORCE
-	$(GENAPI) -o api runtime/authn/tdd/user.json
-	$(GENAPI) -o api runtime/authn/tdd/admin.json
-	$(GENAPI) -o api runtime/authz/tdd/admin.json
-	$(GENAPI) -o api runtime/digitwin/tdd/directory.json
-	$(GENAPI) -o api runtime/digitwin/tdd/inbox.json
-	$(GENAPI) -o api runtime/digitwin/tdd/outbox.json
+	$(GENAPI) ggo runtime/authn/tdd
+	$(GENAPI) ggo runtime/authz/tdd
+	$(GENAPI) ggo runtime/digitwin/tdd
 	go build -o $(BIN_FOLDER)/$@ runtime/cmd/main.go
 
 services: launcher state idprov certs history

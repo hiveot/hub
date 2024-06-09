@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/api/go/directory"
-	"github.com/hiveot/hub/api/go/outbox"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/runtime/digitwin/digitwinclient"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"time"
@@ -50,16 +49,13 @@ func DirectoryListCommand(hc *hubclient.IHubClient) *cli.Command {
 // HandleListDirectory lists the directory content
 func HandleListDirectory(hc hubclient.IHubClient) (err error) {
 	// todo: iterate with offset and limit
-	args := directory.ReadTDsArgs{Offset: 0, Limit: 300}
-	resp, err := directory.ReadTDs(hc, args)
+	tdList, err := digitwinclient.ReadTDs(hc, 0, 300)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Thing ID                            @type                               Title                                #props  #events #actions   GetUpdated         \n")
 	fmt.Printf("----------------------------------  ----------------------------------  -----------------------------------  ------  ------- --------   -----------------------------\n")
-	for _, tdJSON := range resp.Output {
-		var tdDoc things.TD
-		err = json.Unmarshal([]byte(tdJSON), &tdDoc)
+	for _, tdDoc := range tdList {
 		var utime time.Time
 		if tdDoc.Modified != "" {
 			utime, err = dateparse.ParseAny(tdDoc.Modified)
@@ -85,21 +81,11 @@ func HandleListDirectory(hc hubclient.IHubClient) (err error) {
 
 // HandleListThing lists details of a Thing in the directory
 func HandleListThing(hc hubclient.IHubClient, thingID string) error {
-	var tdDoc things.TD
-
-	tdResp, err := directory.ReadTD(hc,
-		directory.ReadTDArgs{ThingID: thingID})
+	tdDoc, err := digitwinclient.ReadTD(hc, thingID)
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal([]byte(tdResp.Output), &tdDoc)
-	if err != nil {
-		return err
-	}
-	latestResp, err := outbox.ReadLatest(hc,
-		outbox.ReadLatestArgs{ThingID: thingID})
-	valueMap := things.ThingMessageMap{}
-	err = json.Unmarshal([]byte(latestResp.Values), &valueMap)
+	valueMap, err := digitwinclient.ReadOutbox(hc, thingID)
 
 	if err != nil {
 		slog.Error("Unable to read history:", "err", err)
@@ -175,14 +161,15 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 
 // HandleListThingVerbose lists a Thing full TD
 func HandleListThingVerbose(hc hubclient.IHubClient, thingID string) error {
-	resp, err := directory.ReadTD(hc, directory.ReadTDArgs{ThingID: thingID})
+	dirCl := digitwin.NewDirectoryClient(hc)
+	tdJSON, err := dirCl.ReadTD(thingID)
 
 	if err != nil {
 		return err
 	}
 	fmt.Println("TD of", thingID)
 	var buf bytes.Buffer
-	_ = json.Indent(&buf, []byte(resp.Output), "", "\t")
+	_ = json.Indent(&buf, []byte(tdJSON), "", "\t")
 	fmt.Printf("%s\n", buf.Bytes())
 	return err
 }

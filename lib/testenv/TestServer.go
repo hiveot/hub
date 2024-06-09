@@ -3,6 +3,8 @@ package testenv
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -66,9 +68,11 @@ func (test *TestServer) AddConnectUser(
 	clientID string, clientRole string) (cl hubclient.IHubClient, token string) {
 
 	password := clientID
-	err := test.Runtime.AuthnSvc.AdminSvc.AddConsumer(clientID, clientID, password)
+	err := test.Runtime.AuthnSvc.AdminSvc.AddConsumer(clientID,
+		authn.AdminAddConsumerArgs{clientID, "my name", password})
 	if err == nil {
-		err = test.Runtime.AuthzSvc.SetClientRole(clientID, clientRole)
+		err = test.Runtime.AuthzSvc.SetClientRole(clientID,
+			authz.AdminSetClientRoleArgs{clientID, clientRole})
 	}
 	if err != nil {
 		panic("Failed adding client:" + err.Error())
@@ -90,9 +94,12 @@ func (test *TestServer) AddConnectUser(
 func (test *TestServer) AddConnectAgent(
 	agentID string) (cl hubclient.IHubClient, token string) {
 
-	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(agentID, agentID, "")
+	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(agentID,
+		authn.AdminAddAgentArgs{agentID, "agent name", ""})
+
 	if err == nil {
-		err = test.Runtime.AuthzSvc.SetClientRole(agentID, api.ClientRoleAgent)
+		err = test.Runtime.AuthzSvc.SetClientRole(agentID,
+			authz.AdminSetClientRoleArgs{agentID, api.ClientRoleAgent})
 	}
 	if err != nil {
 		panic("Failed adding client:" + err.Error())
@@ -116,9 +123,11 @@ func (test *TestServer) AddConnectAgent(
 func (test *TestServer) AddConnectService(serviceID string) (
 	cl hubclient.IHubClient, token string) {
 
-	token, err := test.Runtime.AuthnSvc.AdminSvc.AddService(serviceID, serviceID, "")
+	token, err := test.Runtime.AuthnSvc.AdminSvc.AddService(serviceID,
+		authn.AdminAddServiceArgs{serviceID, "service name", ""})
 	if err == nil {
-		err = test.Runtime.AuthzSvc.SetClientRole(serviceID, api.ClientRoleService)
+		err = test.Runtime.AuthzSvc.SetClientRole(serviceID,
+			authz.AdminSetClientRoleArgs{serviceID, api.ClientRoleService})
 	}
 	if err != nil {
 		panic("Failed adding client:" + err.Error())

@@ -1,9 +1,9 @@
 package idprovclient
 
 import (
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 )
 
@@ -24,7 +24,7 @@ func (cl *ManageIdProvClient) call(method string, args interface{}, resp interfa
 }
 
 // ApproveRequest approves a pending provisioning request
-func (cl *ManageIdProvClient) ApproveRequest(ClientID string, clientType api.ClientType) error {
+func (cl *ManageIdProvClient) ApproveRequest(ClientID string, clientType authn.ClientType) error {
 	args := idprovapi.ApproveRequestArgs{
 		ClientID:   ClientID,
 		ClientType: clientType,
@@ -71,7 +71,7 @@ func (cl *ManageIdProvClient) SubmitRequest(
 
 	args := idprovapi.SubmitRequestArgs{
 		ClientID:   clientID,
-		ClientType: api.ClientTypeAgent,
+		ClientType: authn.ClientTypeAgent,
 		PubKey:     pubKey,
 		MAC:        mac,
 	}

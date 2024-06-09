@@ -133,8 +133,17 @@
       "idempotent": false,
       "safe": false,
       "input": {
-        "title": "Old Token",
-        "type": "string"
+        "type": "object",
+        "properties": {
+          "clientID": {
+            "title": "ClientID",
+            "type": "string"
+          },
+          "oldToken": {
+            "title": "Old Token",
+            "type": "string"
+          }
+        }
       },
       "output": {
         "title": "Token",

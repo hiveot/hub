@@ -1,6 +1,8 @@
 package idprovapi
 
-import "github.com/hiveot/hub/runtime/api"
+import (
+	"github.com/hiveot/hub/api/go/authn"
+)
 
 // ProvisioningServerType defines the discovery type for the provisioning
 // this will be published as _provisioning._hiveot._tcp
@@ -17,7 +19,7 @@ type ProvisionStatus struct {
 	ClientID string `json:"clientID,omitempty"`
 
 	// ClientType is either ClientTypeDevice or ClientTypeService
-	ClientType api.ClientType `json:"clientType"`
+	ClientType authn.ClientType `json:"clientType"`
 
 	// PubKey holds the device's public key
 	PubKey string `json:"pubKey"`

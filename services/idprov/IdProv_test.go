@@ -2,6 +2,7 @@ package idprov_test
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/keys"
@@ -94,9 +95,9 @@ func TestAutomaticProvisioning(t *testing.T) {
 
 	approvedDevices := make([]idprovapi.PreApprovedClient, 2)
 	approvedDevices[0] = idprovapi.PreApprovedClient{
-		ClientID: device1ID, ClientType: api.ClientTypeAgent, PubKey: device1KP.ExportPublic()}
+		ClientID: device1ID, ClientType: authn.ClientTypeAgent, PubKey: device1KP.ExportPublic()}
 	approvedDevices[1] = idprovapi.PreApprovedClient{
-		ClientID: device2ID, ClientType: api.ClientTypeAgent, PubKey: device2KP.ExportPublic()}
+		ClientID: device2ID, ClientType: authn.ClientTypeAgent, PubKey: device2KP.ExportPublic()}
 
 	err := mngCl.PreApproveDevices(approvedDevices)
 	assert.NoError(t, err)
@@ -205,7 +206,7 @@ func TestManualProvisioning(t *testing.T) {
 	assert.True(t, len(approvedList) == 0)
 
 	// Stage 2: approve the request
-	err = mngCl.ApproveRequest(device1ID, api.ClientTypeAgent)
+	err = mngCl.ApproveRequest(device1ID, authn.ClientTypeAgent)
 	assert.NoError(t, err)
 
 	// provisioning request should now succeed

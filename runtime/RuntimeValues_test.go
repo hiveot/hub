@@ -38,11 +38,11 @@ func TestHttpsGetActions(t *testing.T) {
 
 	// read the latest actions from the digitwin inbox
 	args := digitwin.InboxReadLatestArgs{ThingID: dtThing1ID}
-	resp := digitwin.InboxReadLatestResp{}
+	resp := things.ThingMessageMap{}
 	err := cl2.Rpc(digitwin.InboxDThingID, digitwin.InboxReadLatestMethod, &args, &resp)
 	require.NoError(t, err)
 
-	actionMsg := resp.ThingValues[key1]
+	actionMsg := resp[key1]
 	require.NotNil(t, actionMsg)
 	assert.Equal(t, data, string(actionMsg.Data))
 }
@@ -95,5 +95,5 @@ func TestHttpsGetEvents(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	tmm = things.ThingMessageMap{}
-	err = json.Unmarshal([]byte(resp.Values), &tmm)
+	err = json.Unmarshal([]byte(resp), &tmm)
 }

@@ -1,11 +1,11 @@
 package service
 
 import (
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/authz/authzclient"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"log/slog"
 )
@@ -59,8 +59,8 @@ func (svc *HistoryService) Start(hc hubclient.IHubClient) (err error) {
 	}
 	// Set the required permissions for using this service
 	// any user roles can view the directory
-	authzClient := authzclient.NewAuthzUserClient(hc)
-	err = authzClient.SetPermissions(api.ThingPermissions{
+	authzClient := authz.NewUserClient(hc)
+	err = authzClient.SetPermissions(authz.ThingPermissions{
 		AgentID: hc.ClientID(),
 		ThingID: historyapi.ReadHistoryServiceID,
 		Deny:    []string{api.ClientRoleNone},

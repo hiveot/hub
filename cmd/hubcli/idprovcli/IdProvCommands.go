@@ -2,8 +2,8 @@ package idprovcli
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"github.com/hiveot/hub/services/idprov/idprovclient"
 	"github.com/urfave/cli/v2"
@@ -95,7 +95,7 @@ func HandlePreApprove(hc hubclient.IHubClient, deviceID string, pubKey string, m
 	cl := idprovclient.NewIdProvManageClient(hc)
 	approvals := []idprovapi.PreApprovedClient{{
 		ClientID:   deviceID,
-		ClientType: api.ClientTypeAgent,
+		ClientType: authn.ClientTypeAgent,
 		MAC:        mac,
 		PubKey:     pubKey,
 	}}
@@ -109,7 +109,7 @@ func HandlePreApprove(hc hubclient.IHubClient, deviceID string, pubKey string, m
 //	deviceID is the ID of the device to approve
 func HandleApproveRequest(hc hubclient.IHubClient, deviceID string) error {
 	cl := idprovclient.NewIdProvManageClient(hc)
-	err := cl.ApproveRequest(deviceID, api.ClientTypeAgent)
+	err := cl.ApproveRequest(deviceID, authn.ClientTypeAgent)
 
 	return err
 }

@@ -3,12 +3,12 @@ package authcli
 import (
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/authn/authnclient"
-	"github.com/hiveot/hub/runtime/authz/authzclient"
 	"golang.org/x/exp/rand"
 	"log/slog"
 	"os"
@@ -171,13 +171,13 @@ func HandleAddUser(
 	hc hubclient.IHubClient, loginID string, displayName string, role string) (err error) {
 
 	newPassword := GeneratePassword(9, true)
-	authnAdmin := authnclient.NewAuthnAdminClient(hc)
-	authzAdmin := authzclient.NewAuthzManageClient(hc)
+	authnAdmin := authn.NewAdminClient(hc)
+	authzAdmin := authz.NewAdminClient(hc)
 
-	err = authnAdmin.AddConsumer(loginID, displayName, newPassword)
+	err = authnAdmin.AddConsumer(authn.AdminAddConsumerArgs{loginID, displayName, newPassword})
 	prof, _ := authnAdmin.GetClientProfile(loginID)
 	_ = authnAdmin.UpdateClientProfile(prof)
-	_ = authzAdmin.SetClientRole(loginID, role)
+	_ = authzAdmin.SetClientRole(authz.AdminSetClientRoleArgs{loginID, role})
 	if err != nil {
 		fmt.Println("Error: " + err.Error())
 	} else if newPassword != "" {
@@ -199,7 +199,7 @@ func HandleAddService(
 	var kp keys.IHiveKey
 	//TODO: use standardized extensions from launcher
 	keyFile := serviceID + ".key"
-	authnAdmin := authnclient.NewAuthnAdminClient(hc)
+	authnAdmin := authn.NewAdminClient(hc)
 
 	// if a key exists, use it
 	keyPath := path.Join(certsDir, keyFile)
@@ -218,7 +218,7 @@ func HandleAddService(
 		slog.Error("Failed creating or loading key", "err", err.Error())
 		return
 	}
-	authToken, err := authnAdmin.AddService(serviceID, displayName, kp.ExportPrivate())
+	authToken, err := authnAdmin.AddService(authn.AdminAddServiceArgs{serviceID, displayName, kp.ExportPrivate()})
 	_ = authToken
 	if err != nil {
 		slog.Error("Failed adding service",
@@ -248,21 +248,21 @@ func HandleAddService(
 // HandleListClients shows a list of user profiles
 func HandleListClients(hc hubclient.IHubClient) (err error) {
 
-	authnAdmin := authnclient.NewAuthnAdminClient(hc)
-	authzAdmin := authzclient.NewAuthzManageClient(hc)
+	authnAdmin := authn.NewAdminClient(hc)
+	authzAdmin := authz.NewAdminClient(hc)
 	profileList, err := authnAdmin.GetProfiles()
 
 	fmt.Println("Users")
 	fmt.Println("Login ID             Display Name              Role            GetUpdated")
 	fmt.Println("--------             ------------              ----            -------")
 	for _, profile := range profileList {
-		if profile.ClientType == api.ClientTypeUser {
+		if profile.ClientType == authn.ClientTypeConsumer {
 			role, _ := authzAdmin.GetClientRole(profile.ClientID)
 			fmt.Printf("%-20s %-25s %-15s %s\n",
 				profile.ClientID,
 				profile.DisplayName,
 				role,
-				utils.FormatMSE(profile.UpdatedMsec, false),
+				utils.FormatMSE(profile.Updated, false),
 			)
 		}
 	}
@@ -271,11 +271,11 @@ func HandleListClients(hc hubclient.IHubClient) (err error) {
 	fmt.Println("SenderID             Type            GetUpdated")
 	fmt.Println("--------             ----            -------")
 	for _, profile := range profileList {
-		if profile.ClientType != api.ClientTypeUser {
+		if profile.ClientType != authn.ClientTypeConsumer {
 			fmt.Printf("%-20s %-15s %s\n",
 				profile.ClientID,
 				profile.ClientType,
-				utils.FormatMSE(profile.UpdatedMsec, false),
+				utils.FormatMSE(profile.Updated, false),
 			)
 		}
 	}
@@ -284,7 +284,7 @@ func HandleListClients(hc hubclient.IHubClient) (err error) {
 
 // HandleRemoveClient removes a user
 func HandleRemoveClient(hc hubclient.IHubClient, clientID string) (err error) {
-	authnAdmin := authnclient.NewAuthnAdminClient(hc)
+	authnAdmin := authn.NewAdminClient(hc)
 	err = authnAdmin.RemoveClient(clientID)
 
 	if err != nil {
@@ -304,8 +304,8 @@ func HandleSetPassword(hc hubclient.IHubClient, loginID string, newPassword stri
 	if newPassword == "" {
 		newPassword = GeneratePassword(9, true)
 	}
-	authnAdmin := authnclient.NewAuthnAdminClient(hc)
-	err := authnAdmin.SetClientPassword(loginID, newPassword)
+	authnAdmin := authn.NewAdminClient(hc)
+	err := authnAdmin.SetClientPassword(authn.AdminSetClientPasswordArgs{loginID, newPassword})
 
 	if err != nil {
 		fmt.Println("Error: " + err.Error())
@@ -320,9 +320,9 @@ func HandleSetPassword(hc hubclient.IHubClient, loginID string, newPassword stri
 //	loginID is the ID or email of the user
 //	newPassword can be empty to auto-generate a password
 func HandleSetRole(hc hubclient.IHubClient, loginID string, newRole string) error {
-	authzAdmin := authzclient.NewAuthzManageClient(hc)
+	authzAdmin := authz.NewAdminClient(hc)
 
-	err := authzAdmin.SetClientRole(loginID, newRole)
+	err := authzAdmin.SetClientRole(authz.AdminSetClientRoleArgs{loginID, newRole})
 
 	if err != nil {
 		fmt.Println("Error: " + err.Error())

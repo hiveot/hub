@@ -2,8 +2,8 @@ package service
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/runtime/authn/authnclient"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"log/slog"
 	"sync"
@@ -19,7 +19,7 @@ type ManageIdProvService struct {
 	//
 	hc hubclient.IHubClient
 	// client of authn service used to create tokens
-	authSvc *authnclient.AuthnAdminClient
+	authSvc *authn.AdminClient
 	// mutex to guard access to maps
 	mux sync.RWMutex
 }
@@ -160,7 +160,7 @@ func (svc *ManageIdProvService) SubmitRequest(senderID string, args *idprovapi.P
 		}
 
 		status.Pending = false
-		token, err = svc.authSvc.AddAgent(status.ClientID, status.ClientID, status.PubKey)
+		token, err = svc.authSvc.AddAgent(authn.AdminAddAgentArgs{status.ClientID, status.ClientID, status.PubKey})
 
 		if err != nil {
 			return nil, err
@@ -201,6 +201,6 @@ func StartManageIdProvService(hc hubclient.IHubClient) *ManageIdProvService {
 	}
 
 	// the auth service is used to create credentials
-	svc.authSvc = authnclient.NewAuthnAdminClient(svc.hc)
+	svc.authSvc = authn.NewAdminClient(svc.hc)
 	return svc
 }

@@ -3,10 +3,10 @@ package service
 import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/runtime/authn/authnclient"
 	"github.com/hiveot/hub/services/launcher/config"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
 	"log/slog"
@@ -34,7 +34,7 @@ type LauncherService struct {
 	// hub messaging client
 	hc hubclient.IHubClient
 	// auth service to generate plugin keys and tokens
-	mngAuth *authnclient.AuthnAdminClient
+	mngAuth *authn.AdminClient
 
 	// mutex to keep things safe
 	mux sync.Mutex
@@ -208,7 +208,7 @@ func (svc *LauncherService) Start() error {
 	StartLauncherAgent(svc, svc.hc)
 
 	// the auth service is used to create plugin credentials
-	svc.mngAuth = authnclient.NewAuthnAdminClient(svc.hc)
+	svc.mngAuth = authn.NewAdminClient(svc.hc)
 
 	// start listening to requests
 	//svc.mngSub, err = svc.hc.SubRPCRequest(launcher.ManageCapability, svc.HandleRequest)

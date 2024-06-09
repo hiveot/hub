@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
@@ -16,6 +17,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path"
 	"testing"
 	"time"
 
@@ -229,7 +231,7 @@ func TestAuthJWT(t *testing.T) {
 	mux := http.NewServeMux()
 	// Handle a jwt login
 	mux.HandleFunc(pathLogin1, func(resp http.ResponseWriter, req *http.Request) {
-		var authMsg api.LoginArgs
+		path.Split(pathLogin1)
 		slog.Info("TestAuthJWT: login")
 		body, err := io.ReadAll(req.Body)
 		assert.NoError(t, err)
@@ -270,14 +272,14 @@ func TestAuthJWT(t *testing.T) {
 	assert.NoError(t, err)
 	//
 	loginURL := fmt.Sprintf("https://%s%s", testAddress, vocab.PostLoginPath)
-	loginMessage := api.LoginArgs{
+	loginMessage := authn.UserLoginArgs{
 		ClientID: user1,
 		Password: password1,
 	}
 	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert, 0)
 	resp, err := cl.Invoke("POST", loginURL, loginMessage, nil)
 	require.NoError(t, err)
-	reply := api.LoginResp{}
+	reply := authn.UserLoginResp{}
 	err = json.Unmarshal(resp, &reply)
 
 	// reconnect using the given token

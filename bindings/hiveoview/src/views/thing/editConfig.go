@@ -25,15 +25,14 @@ func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 	mySession, err := session.GetSessionFromContext(r)
 	if err == nil {
 		hc := mySession.GetHubClient()
-		dcl := digitwinclient.NewDirectoryClient(hc)
-		//rd := dirclient.NewReadDirectoryClient(hc)
-		td, err := dcl.ReadTD(thingID)
+		//dcl := digitwin.NewDirectoryClient(hc)
+		//rd := digitwinclient.NewDirectoryClient(hc)
+		td, err := digitwinclient.ReadTD(hc, thingID)
 		if err == nil {
 			prop = td.GetProperty(propKey)
 		}
 		if err == nil {
-			ocl := digitwinclient.NewOutboxClient(hc)
-			eventValues, _ := ocl.ReadLatest(thingID)
+			eventValues, _ := digitwinclient.ReadOutbox(hc, thingID)
 			if eventValues != nil && len(eventValues) > 0 {
 				value = string(eventValues.ToString(propKey))
 			}

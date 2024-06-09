@@ -97,9 +97,10 @@ func TestSetGet1(t *testing.T) {
 	assert.True(t, found)
 	assert.Equal(t, val1, val2)
 
-	// check if it persists
+	// restart service to check if it persists
 	stopFn()
 	_, stateCl, stopFn = startStateService(false)
+	//
 	found, err = stateCl.Get(key1, &val3)
 	assert.NoError(t, err)
 	assert.True(t, found)

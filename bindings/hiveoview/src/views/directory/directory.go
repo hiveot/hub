@@ -65,8 +65,7 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		//thingsList := make([]things.TD, 0)
 		hc := mySession.GetHubClient()
-		dcl := digitwinclient.NewDirectoryClient(hc)
-		thingsList, err2 := dcl.ReadTDs(0, 200)
+		thingsList, err2 := digitwinclient.ReadTDs(hc, 0, 200)
 		//resp, err2 := directory.ReadTDs(hc, directory.ReadTDsArgs{Limit: 200})
 		err = err2
 		if err == nil {

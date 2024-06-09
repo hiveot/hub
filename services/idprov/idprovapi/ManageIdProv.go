@@ -1,6 +1,8 @@
 package idprovapi
 
-import "github.com/hiveot/hub/runtime/api"
+import (
+	"github.com/hiveot/hub/api/go/authn"
+)
 
 // AgentID is the connect ID of the agent connecting to the Hub
 const AgentID = "idprov"
@@ -34,7 +36,7 @@ type ApproveRequestArgs struct {
 	// ClientID of an approved device or service
 	ClientID string `json:"clientID"`
 	// ClientType to assign to the approval
-	ClientType api.ClientType `json:"clientType"`
+	ClientType authn.ClientType `json:"clientType"`
 }
 
 type GetRequestsArgs struct {
@@ -52,7 +54,7 @@ type PreApprovedClient struct {
 	// AgentID of a pre-approved device or service
 	ClientID string `json:"clientID,omitempty"`
 	// client is a device or service
-	ClientType api.ClientType `json:"clientType"`
+	ClientType authn.ClientType `json:"clientType"`
 	// Optional MAC for extra checking
 	MAC string `json:"mac"`
 	// Device or service public key used to issue tokens
@@ -71,7 +73,7 @@ type SubmitRequestArgs struct {
 	// ClientID of the device or service
 	ClientID string `json:"clientID,omitempty"`
 	// client is a device or service (default is ClientTypeDevice)
-	ClientType api.ClientType `json:"clientType"`
+	ClientType authn.ClientType `json:"clientType"`
 	// Optional MAC if available
 	MAC string `json:"mac"`
 	// Device or service public key used to issue tokens (required)

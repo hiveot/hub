@@ -96,11 +96,11 @@ func (cl *CertsClient) VerifyCert(
 //
 //	hc is the hub client connection to use
 func NewCertsClient(hc hubclient.IHubClient) *CertsClient {
-	agentID := certsapi.AgentID
+	agentID := certsapi.CertsAdminAgentID
 
 	cl := CertsClient{
 		hc:       hc,
-		dThingID: things.MakeDigiTwinThingID(agentID, certsapi.ManageCertsServiceID),
+		dThingID: things.MakeDigiTwinThingID(agentID, certsapi.CertsAdminThingID),
 	}
 	return &cl
 }
