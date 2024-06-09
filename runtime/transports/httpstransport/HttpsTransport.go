@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
@@ -36,10 +37,10 @@ type HttpsTransport struct {
 	router     *chi.Mux
 
 	// callback handler for incoming events,actions and rpc messages
-	handleMessage api.MessageHandler
+	handleMessage hubclient.MessageHandler
 
-	// sessionAuth for logging in and validating session tokens
-	sessionAuth api.IAuthenticator
+	// authenticator for logging in and validating session tokens
+	authenticator api.IAuthenticator
 
 	// SSE server push connections
 	sseServer *sseserver.SSEServer
@@ -91,7 +92,7 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 		//	"text/html", "text/css", "text/javascript", "image/svg+xml"))
 
 		// client sessions authenticate the sender
-		r.Use(sessions.AddSessionFromToken(svc.sessionAuth))
+		r.Use(sessions.AddSessionFromToken(svc.authenticator))
 		r.HandleFunc(vocab.ConnectSSEPath, svc.sseServer.ServeHTTP)
 	})
 
@@ -102,7 +103,7 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 			"text/html", "text/css", "text/javascript", "image/svg+xml"))
 
 		// client sessions authenticate the sender
-		r.Use(sessions.AddSessionFromToken(svc.sessionAuth))
+		r.Use(sessions.AddSessionFromToken(svc.authenticator))
 
 		// register the general purpose event and action message transport
 		// these allows the binding to work as a transport for agents and consumers
@@ -236,14 +237,14 @@ func (svc *HttpsTransport) HandlePostEvent(w http.ResponseWriter, r *http.Reques
 
 // SendEvent an event message to subscribers.
 // This passes it to SSE handlers of active sessions
-func (svc *HttpsTransport) SendEvent(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+func (svc *HttpsTransport) SendEvent(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	sm := sessions.GetSessionManager()
 	return sm.SendEvent(msg)
 }
 
 // SendToClient sends a message to a connected agent or consumer.
 func (svc *HttpsTransport) SendToClient(
-	clientID string, msg *things.ThingMessage) (stat api.DeliveryStatus, found bool) {
+	clientID string, msg *things.ThingMessage) (stat hubclient.DeliveryStatus, found bool) {
 
 	stat.MessageID = msg.MessageID
 	sm := sessions.GetSessionManager()
@@ -256,7 +257,7 @@ func (svc *HttpsTransport) SendToClient(
 			found = false
 		} else {
 			// completion status is sent asynchroneously by the agent
-			stat.Status = api.DeliveryDelivered
+			stat.Status = hubclient.DeliveryDelivered
 			found = true
 		}
 	}
@@ -268,7 +269,7 @@ func (svc *HttpsTransport) SendToClient(
 }
 
 // Start the https server and listen for incoming connection requests
-func (svc *HttpsTransport) Start(handler api.MessageHandler) error {
+func (svc *HttpsTransport) Start(handler hubclient.MessageHandler) error {
 	slog.Info("Starting HttpsTransport")
 	svc.httpServer, svc.router = tlsserver.NewTLSServer(
 		svc.config.Host, uint(svc.config.Port), svc.serverCert, svc.caCert)
@@ -306,15 +307,15 @@ func NewHttpSSETransport(config *HttpsTransportConfig,
 	privKey keys.IHiveKey,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
-	sessionAuth api.IAuthenticator,
+	authenticator api.IAuthenticator,
 ) *HttpsTransport {
 
 	svc := HttpsTransport{
-		sessionAuth: sessionAuth,
-		config:      config,
-		serverCert:  serverCert,
-		caCert:      caCert,
-		privKey:     privKey,
+		authenticator: authenticator,
+		config:        config,
+		serverCert:    serverCert,
+		caCert:        caCert,
+		privKey:       privKey,
 		//httpServer:  httpServer,
 		//router:      r,
 	}

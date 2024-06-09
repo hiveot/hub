@@ -5,8 +5,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/digitwin/digitwinclient"
 	"log/slog"
 	"net/http"
@@ -59,7 +59,7 @@ func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	propKey := chi.URLParam(r, "propKey")
 	value := r.FormValue("value")
-	stat := api.DeliveryStatus{}
+	stat := hubclient.DeliveryStatus{}
 	//
 	mySession, err := session.GetSessionFromContext(r)
 	hc := mySession.GetHubClient()

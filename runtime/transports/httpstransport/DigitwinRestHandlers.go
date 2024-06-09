@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/api/go/outbox"
+	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/tlsserver"
 	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
 	"io"
@@ -27,21 +27,21 @@ func (svc *HttpsTransport) HandleGetEvents(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// this request can simply be turned into an action message.
-	args := outbox.ReadLatestArgs{ThingID: thingID}
+	args := digitwin.OutboxReadLatestArgs{ThingID: thingID}
 	// only a single key is supported at the moment
 	if key != "" {
 		args.Keys = []string{key}
 	}
 	argsJSON, _ := json.Marshal(args)
-	msg := things.NewThingMessage(
-		vocab.MessageTypeAction, outbox.DThingID, outbox.ReadLatestMethod, argsJSON, cs.GetClientID())
+	msg := things.NewThingMessage(vocab.MessageTypeAction,
+		digitwin.OutboxDThingID, digitwin.OutboxReadLatestMethod, argsJSON, cs.GetClientID())
 	stat := svc.handleMessage(msg)
 	var reply []byte
 	if stat.Error == "" {
-		resp := outbox.ReadLatestResp{}
+		var resp string
 		_ = json.Unmarshal(stat.Reply, &resp)
 		// The response values are already serialized
-		reply = []byte(resp.Values)
+		reply = []byte(resp)
 		err = nil
 	} else {
 		err = errors.New(stat.Error)
@@ -72,7 +72,8 @@ func (svc *HttpsTransport) HandlePostLogout(w http.ResponseWriter, r *http.Reque
 func (svc *HttpsTransport) HandlePostLogin(w http.ResponseWriter, r *http.Request) {
 	sm := sessions.GetSessionManager()
 
-	args := api.LoginArgs{}
+	args := authn.UserLoginArgs{}
+	resp := authn.UserLoginResp{}
 	// credentials are in a json payload
 	data, err := io.ReadAll(r.Body)
 	if err == nil {
@@ -82,17 +83,17 @@ func (svc *HttpsTransport) HandlePostLogin(w http.ResponseWriter, r *http.Reques
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	err = json.Unmarshal(data, &args)
-	// login generates a new session ID
-	token, sid, err := svc.sessionAuth.Login(args.ClientID, args.Password, "")
+	token, sid, err := svc.authenticator.Login(args.ClientID, args.Password)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
 	}
-	// if a session exists, remove it
+	// remove existing session, if any
 	oldToken, err := tlsserver.GetBearerToken(r)
 	if err == nil {
-		_, oldSid, err := svc.sessionAuth.ValidateToken(oldToken)
+		_, oldSid, err := svc.authenticator.ValidateToken(oldToken)
 		if err == nil {
 			_ = sm.Close(oldSid)
 		}
@@ -103,11 +104,11 @@ func (svc *HttpsTransport) HandlePostLogin(w http.ResponseWriter, r *http.Reques
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
-
-	reply := api.LoginResp{Token: token}
-	resp, err := json.Marshal(reply)
+	resp.SessionID = sid
+	resp.Token = token
+	respJson, err := json.Marshal(resp)
 	// write sets statusOK
-	_, _ = w.Write(resp)
+	_, _ = w.Write(respJson)
 	//w.WriteHeader(http.StatusOK)
 	// TODO: set client session cookie
 	//svc.sessionManager.SetSessionCookie(cs.sessionID,token)
@@ -117,25 +118,24 @@ func (svc *HttpsTransport) HandlePostLogin(w http.ResponseWriter, r *http.Reques
 // The session authenticator is that of the authn service. This allows testing with a dummy
 // authenticator without having to run the authn service.
 func (svc *HttpsTransport) HandlePostRefresh(w http.ResponseWriter, r *http.Request) {
+	var oldToken string
 	var newToken string
-	args := api.RefreshTokenArgs{}
-	var reply []byte
+	var resp []byte
+
+	//var reply []byte
 	cs, _, _, data, err := svc.getRequestParams(r)
 	if err == nil {
-		err = json.Unmarshal(data, &args)
+		err = json.Unmarshal(data, &oldToken)
 	}
-	if cs.GetClientID() != args.ClientID {
+	if err != nil {
 		http.Error(w, "bad login", http.StatusUnauthorized)
 		return
 	}
+	newToken, err = svc.authenticator.RefreshToken(cs.GetClientID(), oldToken)
 	if err == nil {
-		newToken, err = svc.sessionAuth.RefreshToken(cs.GetClientID(), args.OldToken)
+		resp, err = json.Marshal(newToken)
 	}
-	if err == nil {
-		resp := &api.RefreshTokenResp{Token: newToken}
-		reply, err = json.Marshal(resp)
-	}
-	svc.writeReply(w, reply, err)
+	svc.writeReply(w, resp, err)
 	// TODO: update client session cookie with new token
 	//svc.sessionManager.SetSessionCookie(cs.sessionID,newToken)
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/net"
-	"github.com/hiveot/hub/runtime/authn"
+	"github.com/hiveot/hub/runtime/authn/config"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nkeys"
 	"log/slog"
@@ -148,7 +148,7 @@ func (cfg *NatsServerConfig) Setup(keysDir, storesDir string, writeChanges bool)
 
 	// Step 4: generate derived keys
 	if cfg.AdminUserKP == nil {
-		cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(authn.DefaultAdminUserID, keysDir, writeChanges)
+		cfg.AdminUserKP, _ = cfg.LoadCreateUserKP(config.DefaultAdminUserID, keysDir, writeChanges)
 	}
 	if cfg.CoreServiceKP == nil {
 		cfg.CoreServiceKP, _ = nkeys.CreateUser()

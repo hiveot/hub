@@ -3,10 +3,10 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/inbox"
-	"github.com/hiveot/hub/api/go/outbox"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
@@ -21,7 +21,7 @@ type InboxRecord struct {
 	// The message to deliver. This contains the digital twin's thingID.
 	Request things.ThingMessage `json:"request"`
 	// The current delivery status
-	DeliveryStatus api.DeliveryStatus `json:"deliveryStatus"`
+	DeliveryStatus hubclient.DeliveryStatus `json:"deliveryStatus"`
 	// Time the request was delivered to the agent
 	DeliveredMSec int64 `json:"delivered"`
 	// Time the request was received
@@ -55,9 +55,9 @@ func (svc *DigiTwinInbox) AddAction(msg *things.ThingMessage) (InboxRecord, erro
 	record := InboxRecord{
 		// store a copy of the message
 		Request: *msg,
-		DeliveryStatus: api.DeliveryStatus{
+		DeliveryStatus: hubclient.DeliveryStatus{
 			MessageID: msg.MessageID,
-			Status:    api.DeliveryPending,
+			Status:    hubclient.DeliveryPending,
 			Reply:     nil,
 		},
 		ReceivedMSec:  time.Now().UnixMilli(),
@@ -88,7 +88,7 @@ func (svc *DigiTwinInbox) GetRecord(messageID string) (r InboxRecord, err error)
 //
 // Note that incoming action requests use the digital twin ThingID, not the physical
 // device ID.
-func (svc *DigiTwinInbox) HandleActionFlow(msg *things.ThingMessage) (status api.DeliveryStatus) {
+func (svc *DigiTwinInbox) HandleActionFlow(msg *things.ThingMessage) (status hubclient.DeliveryStatus) {
 	// all latest values are stored
 	svc.latest.StoreMessage(msg)
 
@@ -119,7 +119,7 @@ func (svc *DigiTwinInbox) HandleActionFlow(msg *things.ThingMessage) (status api
 	}
 	// the message itself is forwarded to the agent using the device's service
 	msg.ThingID = serviceID
-	actionRecord.DeliveryStatus.Status = api.DeliveryPending
+	actionRecord.DeliveryStatus.Status = hubclient.DeliveryPending
 
 	stat, _ := svc.pm.SendToClient(agentID, msg)
 	actionRecord.DeliveryStatus = stat
@@ -132,7 +132,7 @@ func (svc *DigiTwinInbox) HandleActionFlow(msg *things.ThingMessage) (status api
 // The message payload contains a DeliveryStatus object
 //
 // This updates the status of the inbox record and notifies the sender.
-func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	var inboxRecord InboxRecord
 	err := msg.Unmarshal(&stat)
 
@@ -183,20 +183,22 @@ func (svc *DigiTwinInbox) NotifyStatus(messageID string) {
 }
 
 // ReadLatest returns the latest value of each action of a thing
-func (svc *DigiTwinInbox) ReadLatest(args inbox.ReadLatestArgs) (inbox.ReadLatestResp, error) {
-	recs, err := svc.latest.ReadLatest(vocab.MessageTypeAction, args.ThingID, nil, "")
-	resp := inbox.ReadLatestResp{ThingValues: recs}
-	return resp, err
+func (svc *DigiTwinInbox) ReadLatest(
+	senderID string, args digitwin.InboxReadLatestArgs) (things.ThingMessageMap, error) {
+
+	valueMap, err := svc.latest.ReadLatest(vocab.MessageTypeAction, args.ThingID, nil, "")
+	return valueMap, err
 }
 
 // RemoveValue Remove Thing action value
 // Intended to remove outliers
-func (svc *DigiTwinInbox) RemoveValue(args outbox.RemoveValueArgs) error {
+func (svc *DigiTwinInbox) RemoveValue(senderID string, messageID string) error {
+
 	return fmt.Errorf("not yet implemented")
 }
 
 // SetStatus updates the delivery status of a request
-func (svc *DigiTwinInbox) SetStatus(status api.DeliveryStatus) error {
+func (svc *DigiTwinInbox) SetStatus(status hubclient.DeliveryStatus) error {
 	record, err := svc.GetRecord(status.MessageID)
 	if err == nil {
 		record.DeliveryStatus = status

@@ -3,9 +3,10 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/outbox"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 )
@@ -27,7 +28,7 @@ type DigiTwinOutbox struct {
 }
 
 // HandleEvent adds an event to the outbox
-func (svc *DigiTwinOutbox) HandleEvent(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+func (svc *DigiTwinOutbox) HandleEvent(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	// events use 'raw' thingIDs, only known to agents.
 	// Digitwin adds the "ht:{agentID}:" prefix, as the event now belongs to the virtual digital twin.
 	// Same procedure at the DigiTwinDirectory
@@ -53,19 +54,21 @@ func (svc *DigiTwinOutbox) HandleEvent(msg *things.ThingMessage) (stat api.Deliv
 
 // ReadLatest returns the latest values of a thing
 // Read the latest value(s) of a Thing
-func (svc *DigiTwinOutbox) ReadLatest(
-	args outbox.ReadLatestArgs) (outbox.ReadLatestResp, error) {
+func (svc *DigiTwinOutbox) ReadLatest(senderID string,
+	args digitwin.OutboxReadLatestArgs) (values string, err error) {
 
 	recs, err := svc.latest.ReadLatest(
 		vocab.MessageTypeEvent, args.ThingID, args.Keys, args.Since)
-	recsJSON, _ := json.Marshal(recs)
-	resp := outbox.ReadLatestResp{Values: string(recsJSON)}
-	return resp, err
+	if err == nil {
+		recsJSON, _ := json.Marshal(recs)
+		values = string(recsJSON)
+	}
+	return values, err
 }
 
 // RemoveValue Remove Thing event value
 // Intended to remove outliers
-func (svc *DigiTwinOutbox) RemoveValue(args outbox.RemoveValueArgs) error {
+func (svc *DigiTwinOutbox) RemoveValue(senderID string, messageID string) error {
 	return fmt.Errorf("not yet implemented")
 }
 

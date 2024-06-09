@@ -1,0 +1,84 @@
+{
+  "@context":[ "https://www.w3.org/2022/wot/td/v1.1",
+    {"ht": "https://www.hiveot.net/vocab/v0.1"}
+  ],
+  "@type": "Service",
+  "id": "dtw:authz:user",
+  "title": "Authorization Client Services",
+  "description": "HiveOT runtime service for services setting permissions",
+  "version": {
+    "instance": "0.1.0"
+  },
+  "created": "2024-06-04T17:00:00.000Z",
+  "modified": "2024-06-04T17:00:00.000Z",
+  "support": "https://www.github.com/hiveot/hub",
+  "security": ["bearer"],
+  "securityDefinitions": {
+    "bearer": {
+    }
+  },
+  "forms": [{
+    "op": "readallproperties",
+    "contentType": "application/json",
+    "href": "/things/{thingID}/properties"
+  }],
+  "schemaDefinitions": {
+    "ThingPermissions": {
+      "title": "Thing Permissions",
+      "description": "This defines the roles that have permissions to access this thing",
+      "comments": ["Used by agents and services to set the roles that can invoke actions on a service.",
+          "These permissions are default recommendations made by the service provider.",
+          "The authz service can override these defaults with another configuration."],
+      "type": "object",
+      "properties": {
+        "agentID": {
+          "type": "string",
+          "title": "Agent ID",
+          "description": "The agent granting the permissions."
+        },
+        "thingID": {
+          "type": "string",
+          "title": "Thing ID",
+          "description": "ThingID of the service whose permissions are set.",
+          "comments": ["This is the ThingID as send by the agent, without the digitwin prefix."]
+        },
+        "allow": {
+          "type": "array",
+          "title": "Roles",
+          "description": "Roles allowed access to a Thing",
+          "items": {
+            "type": "string",
+            "title": "Role",
+            "description": "Role allowed access to a Thing"
+          }
+        },
+        "deny": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "title": "Role",
+            "description": "Role denied access to the Thing"
+          }
+        }
+      }
+    }
+  },
+  "properties": {
+  },
+  "events": {
+  },
+  "actions": {
+
+    "setPermissions": {
+      "@type": "ht:function",
+      "title": "Set Permissions",
+      "description": "Set the roles that can use a Thing or service",
+      "idempotent": true,
+      "input": {
+        "type": "ThingPermissions",
+        "title": "Permissions"
+      }
+    }
+  },
+  "links": []
+}

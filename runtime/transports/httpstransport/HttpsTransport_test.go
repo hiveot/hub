@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsclient"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/transports/httpstransport"
 	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
 	"github.com/stretchr/testify/assert"
@@ -31,36 +31,45 @@ const testLogin = "testlogin"
 const testPassword = "testpass"
 const userToken = "usertoken"
 const serviceToken = "servicetoken"
+const testSessionID = "testSession"
 
 type DummyAuthenticator struct{}
 
-func (d *DummyAuthenticator) Login(clientID string, password string, sessionID string) (token string, sid string, err error) {
-	if sessionID == "" {
-		//uid, _ := uuid.NewUUID()
-		//sessionID = uid.String()
-		sessionID = "testsession"
+func (d *DummyAuthenticator) CreateSessionToken(
+	clientID, sessionID string, validitySec int) (token string) {
+	if sessionID != "" {
+		return userToken
 	}
-	if password == testPassword && clientID == testLogin {
-		return userToken, sessionID, nil
-	}
-	return "", "", fmt.Errorf("Invalid login")
-}
-func (d *DummyAuthenticator) CreateSessionToken(clientID, sessionID string, validitySec int) (token string) {
-	return userToken
+	return serviceToken
 }
 
-func (d *DummyAuthenticator) RefreshToken(clientID string, oldToken string) (newToken string, err error) {
+func (d *DummyAuthenticator) Login(
+	clientID string, password string) (token string, sessionID string, err error) {
+
+	if password == testPassword && clientID == testLogin {
+		return userToken, testSessionID, err
+	}
+	return token, sessionID, fmt.Errorf("Invalid login")
+}
+func (d *DummyAuthenticator) ValidatePassword(clientID string, password string) (err error) {
+	return nil
+}
+
+func (d *DummyAuthenticator) RefreshToken(
+	senderID string, oldToken string) (newToken string, err error) {
 	return oldToken, nil
 }
 
-func (d *DummyAuthenticator) ValidateToken(token string) (clientID string, sessionID string, err error) {
+func (d *DummyAuthenticator) ValidateToken(
+	token string) (clientID string, sessionID string, err error) {
+
 	if token == userToken {
-		return testLogin, "testsession", nil
+		return testLogin, testSessionID, nil
 	} else if token == serviceToken {
 		return testLogin, "", nil
 	}
-	return "", "", fmt.Errorf("invalid login")
-
+	err = fmt.Errorf("invalid login")
+	return clientID, sessionID, err
 }
 
 var dummyAuthenticator = &DummyAuthenticator{}
@@ -68,7 +77,7 @@ var dummyAuthenticator = &DummyAuthenticator{}
 // ---------
 // startHttpsBinding starts the binding service
 // intended to handle the boilerplate
-func startHttpsBinding(msgHandler api.MessageHandler) *httpstransport.HttpsTransport {
+func startHttpsBinding(msgHandler hubclient.MessageHandler) *httpstransport.HttpsTransport {
 	config := httpstransport.NewHttpsTransportConfig()
 	config.Port = testPort
 	svc := httpstransport.NewHttpSSETransport(&config,
@@ -93,11 +102,10 @@ func createConnectClient(clientID string) *tlsclient.TLSClient {
 	}
 
 	// 2b. connect a client
-	sessionToken, sid, err := dummyAuthenticator.Login(testLogin, testPassword, "")
-	_ = sid
-
+	token, sessionID, err := dummyAuthenticator.Login(testLogin, testPassword)
+	_ = sessionID
 	cl := tlsclient.NewTLSClient(hostPort, certBundle.CaCert, time.Second*120)
-	cl.ConnectWithToken(sessionToken)
+	cl.ConnectWithToken(token)
 	return cl
 }
 
@@ -117,8 +125,8 @@ func TestStartStop(t *testing.T) {
 		certBundle.ClientKey, certBundle.ServerCert, certBundle.CaCert,
 		dummyAuthenticator,
 	)
-	err := svc.Start(func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
-		stat.Status = api.DeliveryCompleted
+	err := svc.Start(func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+		stat.Status = hubclient.DeliveryCompleted
 		return stat
 	})
 	assert.NoError(t, err)
@@ -128,7 +136,7 @@ func TestStartStop(t *testing.T) {
 func TestLoginRefresh(t *testing.T) {
 	t.Log("TestLoginRefresh")
 	svc := startHttpsBinding(
-		func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
+		func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 			assert.Fail(t, "should not get here")
 			return stat
 		})
@@ -165,7 +173,7 @@ func TestLoginRefresh(t *testing.T) {
 func TestBadLogin(t *testing.T) {
 	t.Log("TestBadLogin")
 	svc := startHttpsBinding(
-		func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
+		func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 			assert.Fail(t, "should not get here")
 			return stat
 		})
@@ -198,7 +206,7 @@ func TestBadLogin(t *testing.T) {
 func TestBadRefresh(t *testing.T) {
 	t.Log("TestBadRefresh")
 	svc := startHttpsBinding(
-		func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
+		func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 			assert.Fail(t, "should not get here")
 			return stat
 		})
@@ -244,10 +252,10 @@ func TestPostEventAction(t *testing.T) {
 
 	// 1. start the binding
 	svc := startHttpsBinding(
-		func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
+		func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 			rxMsg = tv
 			stat.Reply = []byte(testMsg)
-			stat.Status = api.DeliveryCompleted
+			stat.Status = hubclient.DeliveryCompleted
 			return stat
 		})
 	defer svc.Stop()
@@ -301,7 +309,7 @@ func TestPubSubSSE(t *testing.T) {
 	// 1. start the transport
 	var svc *httpstransport.HttpsTransport
 	svc = startHttpsBinding(
-		func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
+		func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 			// broadcast event to subscribers
 			slog.Info("broadcasting event")
 			stat = svc.SendEvent(tv)
@@ -349,7 +357,7 @@ func TestRestart(t *testing.T) {
 
 	// 1. start the binding
 	svc := startHttpsBinding(
-		func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
+		func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 			return stat
 		})
 
@@ -361,10 +369,10 @@ func TestRestart(t *testing.T) {
 
 	// restart the server. This should invalidate session auth
 	svc.Stop()
-	err = svc.Start(func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
+	err = svc.Start(func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		rxMsg = tv
 		stat.Reply = []byte(testMsg)
-		stat.Status = api.DeliveryCompleted
+		stat.Status = hubclient.DeliveryCompleted
 		return stat
 	})
 	require.NoError(t, err)
@@ -384,11 +392,11 @@ func TestReconnect(t *testing.T) {
 	t.Log("TestReconnect")
 	var thingID = "thing1"
 	var actionKey = "action1"
-	var actionHandler func(*things.ThingMessage) api.DeliveryStatus
+	var actionHandler func(*things.ThingMessage) hubclient.DeliveryStatus
 
 	// 1. start the binding. Set the action handler separately
 	svc := startHttpsBinding(
-		func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+		func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 			if actionHandler != nil {
 				return actionHandler(msg)
 			}
@@ -399,15 +407,15 @@ func TestReconnect(t *testing.T) {
 
 	// this test handler receives an action, returns a 'delivered status',
 	// and sends a completed status through the sse return channel (SendToClient)
-	actionHandler = func(tv *things.ThingMessage) (stat api.DeliveryStatus) {
-		stat.Status = api.DeliveryDelivered
+	actionHandler = func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+		stat.Status = hubclient.DeliveryDelivered
 		if tv.MessageType == vocab.MessageTypeEvent {
 			// ignore events
 			return stat
 		}
 		// send a delivery status update asynchronously which uses the SSE return channel
 		go func() {
-			var stat2 api.DeliveryStatus
+			var stat2 hubclient.DeliveryStatus
 			stat2.Completed(tv, nil)
 			stat2.Reply = tv.Data
 			stat2Json := stat2.Marshal()
@@ -416,7 +424,7 @@ func TestReconnect(t *testing.T) {
 
 			svc.SendToClient(tv.SenderID, tm2)
 		}()
-		stat.Status = api.DeliveryApplied
+		stat.Status = hubclient.DeliveryApplied
 		return stat
 	}
 
@@ -426,6 +434,9 @@ func TestReconnect(t *testing.T) {
 	token, err := cl.ConnectWithToken(serviceToken)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
+
+	//cl.PubEvent("dummything", "dummyKey", nil)
+
 	//  Give some time for the SSE connection to be established
 	time.Sleep(time.Second * 1)
 
@@ -438,7 +449,7 @@ func TestReconnect(t *testing.T) {
 	t.Log("--- server restarted ---")
 
 	// give client time to reconnect
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 3)
 	// publish event to rekindle the connection
 	cl.PubEvent("dummything", "dummyKey", nil)
 	// 4. The SSE return channel should reconnect automatically

@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/transports"
 	"github.com/hiveot/hub/services/history/historyapi"
 )
@@ -40,7 +39,7 @@ func StartHistoryAgent(
 	}
 	rah := transports.NewAgentHandler(historyapi.ReadHistoryServiceID, readHistoryMethods)
 	mah := transports.NewAgentHandler(historyapi.ManageHistoryServiceID, manageHistoryMethods)
-	hc.SetActionHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	hc.SetActionHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		if msg.MessageType == vocab.MessageTypeAction {
 			if msg.ThingID == historyapi.ReadHistoryServiceID {
 				return rah.HandleMessage(msg)

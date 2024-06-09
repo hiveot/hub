@@ -1,9 +1,9 @@
 package service
 
 import (
-	"crypto/x509"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/authn"
+	"github.com/hiveot/hub/runtime/authn/config"
 	"log/slog"
 )
 
@@ -11,30 +11,37 @@ import (
 // such as agents, services and end-users.
 type AuthnUserService struct {
 	authnStore api.IAuthnStore
-	caCert     *x509.Certificate
 
-	cfg *authn.AuthnConfig
-
-	// key used to create and verify session tokens
-	//signingKey keys.IHiveKey
+	cfg *config.AuthnConfig
 
 	// the authenticator for jwt tokens
 	sessionAuth api.IAuthenticator
 }
 
 // GetProfile returns a client's profile
-func (svc *AuthnUserService) GetProfile(clientID string) (api.ClientProfile, error) {
+func (svc *AuthnUserService) GetProfile(
+	senderID string) (resp authn.ClientProfile, err error) {
 
-	entry, err := svc.authnStore.GetProfile(clientID)
-	return entry, err
+	prof, err := svc.authnStore.GetProfile(senderID)
+	return prof, err
 }
 
-// Login and return a session token
-func (svc *AuthnUserService) Login(
-	clientID string, password string) (token string, sessionID string, err error) {
-	// a user login always creates a session token
-	token, sessionID, err = svc.sessionAuth.Login(clientID, password, sessionID)
-	return token, sessionID, err
+// Login with password and return a new session token
+func (svc *AuthnUserService) Login(_ string,
+	args authn.UserLoginArgs) (resp authn.UserLoginResp, err error) {
+
+	token, sid, err := svc.sessionAuth.Login(args.ClientID, args.Password)
+	resp.Token = token
+	resp.SessionID = sid
+	return resp, err
+}
+
+// RefreshToken requests a new token based on the old token
+func (svc *AuthnUserService) RefreshToken(
+	senderID string, oldToken string) (newToken string, err error) {
+
+	newToken, err = svc.sessionAuth.RefreshToken(senderID, oldToken)
+	return newToken, err
 }
 
 // Start the user facing authentication service.
@@ -48,49 +55,54 @@ func (svc *AuthnUserService) Stop() {
 	slog.Info("Stopping AuthnUserService")
 }
 
-// RefreshToken requests a new token based on the old token
-func (svc *AuthnUserService) RefreshToken(clientID string, oldToken string) (newToken string, err error) {
-	//prof, err := svc.authnStore.GetProfile(clientID)
-	newToken, err = svc.sessionAuth.RefreshToken(clientID, oldToken)
-	return newToken, err
+func (svc *AuthnUserService) UpdateName(senderID string, newName string) error {
+
+	slog.Info("UpdateName", "clientID", senderID, "newName", newName)
+	prof, err := svc.authnStore.GetProfile(senderID)
+	if err == nil {
+		prof.DisplayName = newName
+		err = svc.authnStore.UpdateProfile(senderID, prof)
+	}
+	if err != nil {
+		slog.Error("Failed changing name",
+			"clientID", senderID, "err", err.Error())
+	}
+	return err
+}
+func (svc *AuthnUserService) UpdatePassword(senderID string, password string) error {
+
+	slog.Info("SetClientPassword", "senderID", senderID)
+	err := svc.authnStore.SetPassword(senderID, password)
+	if err != nil {
+		slog.Error("Failed changing password",
+			"senderID", senderID, "err", err.Error())
+	}
+	return err
+}
+func (svc *AuthnUserService) UpdatePubKey(senderID string, pubKeyPEM string) error {
+
+	slog.Info("UpdatePubKey", "clientID", senderID)
+	prof, err := svc.authnStore.GetProfile(senderID)
+	if err == nil {
+		prof.PubKey = pubKeyPEM
+		err = svc.authnStore.UpdateProfile(senderID, prof)
+	}
+	if err != nil {
+		slog.Error("Failed updating public key",
+			"clientID", senderID, "err", err.Error())
+	}
+	return err
 }
 
 // ValidateToken verifies that the given token is valid
-func (svc *AuthnUserService) ValidateToken(token string) (clientID string, sessionID string, err error) {
-	return svc.sessionAuth.ValidateToken(token)
-}
+func (svc *AuthnUserService) ValidateToken(senderID string, token string) (
+	resp authn.UserValidateTokenResp, err error) {
 
-func (svc *AuthnUserService) UpdateName(clientID string, newName string) error {
-	slog.Info("UpdateName", "clientID", clientID, "newName", newName)
-	prof, err := svc.authnStore.GetProfile(clientID)
-	if err == nil {
-		prof.DisplayName = newName
-		err = svc.authnStore.UpdateProfile(clientID, prof)
-	}
-	if err != nil {
-		slog.Error("Failed changing password", "clientID", clientID, "err", err.Error())
-	}
-	return err
-}
-func (svc *AuthnUserService) UpdatePassword(clientID string, password string) error {
-	slog.Info("SetClientPassword", "clientID", clientID)
-	err := svc.authnStore.SetPassword(clientID, password)
-	if err != nil {
-		slog.Error("Failed changing password", "clientID", clientID, "err", err.Error())
-	}
-	return err
-}
-func (svc *AuthnUserService) UpdatePubKey(clientID string, pubKey string) error {
-	slog.Info("UpdatePubKey", "clientID", clientID)
-	prof, err := svc.authnStore.GetProfile(clientID)
-	if err == nil {
-		prof.PubKey = pubKey
-		err = svc.authnStore.UpdateProfile(clientID, prof)
-	}
-	if err != nil {
-		slog.Error("Failed updating public key", "clientID", clientID, "err", err.Error())
-	}
-	return err
+	cid, sid, err := svc.sessionAuth.ValidateToken(token)
+	resp.ClientID = cid
+	resp.SessionID = sid
+	resp.Error = err.Error()
+	return resp, nil
 }
 
 // NewAuthnUserService creates an end-user authentication service instance for
@@ -106,12 +118,14 @@ func (svc *AuthnUserService) UpdatePubKey(clientID string, pubKey string) error 
 //	authnStore is the client and credentials store. Must be opened before starting this service.
 //	sessionAuth is the authenticator returned by the admin service.
 func NewAuthnUserService(
+	cfg *config.AuthnConfig,
 	authnStore api.IAuthnStore,
-	sessionAuth api.IAuthenticator) *AuthnUserService {
+	authenticator api.IAuthenticator) *AuthnUserService {
 
 	authnSvc := &AuthnUserService{
+		cfg:         cfg,
 		authnStore:  authnStore,
-		sessionAuth: sessionAuth,
+		sessionAuth: authenticator,
 	}
 	return authnSvc
 }

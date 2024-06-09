@@ -1,6 +1,7 @@
 package authz
 
 import (
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
@@ -121,8 +122,10 @@ var DefaultRolePermissions = map[string][]api.RolePermission{
 type AuthzConfig struct {
 	// map of role to permissions of that role
 	RolePermissions map[string][]api.RolePermission `yaml:"RolePermissions"`
+
 	// map of service dThingID  to the allow/deny roles that can invoke it
-	ThingPermissions map[string]api.ThingPermissions `yaml:"ServicePermissions"`
+	ThingPermissions map[string]authz.ThingPermissions `yaml:"ServicePermissions"`
+
 	// file with configured permissions
 	aclFile string `yaml:"aclFile"`
 
@@ -130,18 +133,19 @@ type AuthzConfig struct {
 	mux sync.RWMutex
 }
 
-func (cfg *AuthzConfig) GetPermissions(thingID string) (api.ThingPermissions, bool) {
+func (cfg *AuthzConfig) GetPermissions(dThingID string) (authz.ThingPermissions, bool) {
 	cfg.mux.Lock()
 	defer cfg.mux.Unlock()
-	perm, found := cfg.ThingPermissions[thingID]
+	perm, found := cfg.ThingPermissions[dThingID]
 	return perm, found
 }
 
 // SetPermissions defines Thing specific permissions
-func (cfg *AuthzConfig) SetPermissions(perms api.ThingPermissions) {
+// Intended for storing digital-twin thing permissions
+func (cfg *AuthzConfig) SetPermissions(perms authz.ThingPermissions) {
 	cfg.mux.Lock()
 	defer cfg.mux.Unlock()
-	dThingID := things.MakeDigiTwinThingID(perms.AgentID, perms.ThingID)
+	dThingID := things.MakeDigiTwinThingID("", perms.ThingID)
 	cfg.ThingPermissions[dThingID] = perms
 }
 
@@ -160,7 +164,7 @@ func (cfg *AuthzConfig) Setup(storesDir string) {
 func NewAuthzConfig() AuthzConfig {
 	cfg := AuthzConfig{
 		RolePermissions:  DefaultRolePermissions,
-		ThingPermissions: make(map[string]api.ThingPermissions),
+		ThingPermissions: make(map[string]authz.ThingPermissions),
 	}
 	return cfg
 }

@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/authn/config"
 	"log/slog"
 	"time"
 )
@@ -19,6 +21,10 @@ type JWTAuthenticator struct {
 	signingKey keys.IHiveKey
 	// authentication store for login verification
 	authnStore api.IAuthnStore
+	//
+	AgentTokenValiditySec    int
+	ConsumerTokenValiditySec int
+	ServiceTokenValiditySec  int
 }
 
 // CreateSessionToken creates a new session token for the client
@@ -29,7 +35,7 @@ type JWTAuthenticator struct {
 //
 // This returns the token
 func (svc *JWTAuthenticator) CreateSessionToken(
-	clientID string, sessionID string, validitySec int) string {
+	clientID string, sessionID string, validitySec int) (token string) {
 
 	// TODO: add support for nonce challenge with client pubkey
 
@@ -115,42 +121,50 @@ func (svc *JWTAuthenticator) DecodeSessionToken(token string, signedNonce string
 //	sessionID of the new session or "" to generate a new session ID
 //
 // This returns a session token, its session ID, or an error if failed
-func (svc *JWTAuthenticator) Login(clientID, password, sessionID string) (token string, sid string, err error) {
+func (svc *JWTAuthenticator) Login(clientID string, password string) (token string, sid string, err error) {
 
-	clientProfile, err := svc.authnStore.VerifyPassword(clientID, password)
-	_ = clientProfile
+	// a user login always creates a session token
+	err = svc.ValidatePassword(clientID, password)
 	if err != nil {
 		return "", "", err
 	}
-	if sessionID == "" {
-		uid, _ := uuid.NewUUID()
-		sessionID = uid.String()
-	}
-	validitySec := clientProfile.TokenValiditySec
-	token = svc.CreateSessionToken(clientID, sessionID, validitySec)
+
+	// password login always uses the consumer token validity
+	uid, _ := uuid.NewUUID()
+	sessionID := uid.String()
+	token = svc.CreateSessionToken(clientID, sessionID, svc.ConsumerTokenValiditySec)
+
 	return token, sessionID, err
 }
 
-// RefreshToken issues a new authentication token for the authenticated user.
-// This returns a refreshed token carrying the same session id as the old token.
-// the old token must be a valid jwt token belonging to the clientID.
-func (svc *JWTAuthenticator) RefreshToken(clientID string, oldToken string) (token string, err error) {
-	// verify the token
-	tokenClientID, sessionID, err := svc.DecodeSessionToken(oldToken, "", "")
-	if err == nil && tokenClientID != clientID {
-		err = fmt.Errorf("RefreshToken:Token client '%s' differs from client '%s'", tokenClientID, clientID)
+// RefreshToken requests a new token based on the old token
+func (svc *JWTAuthenticator) RefreshToken(
+	senderID string, oldToken string) (newToken string, err error) {
+
+	clientID, sessionID, err := svc.ValidateToken(oldToken)
+	if err != nil || clientID != senderID {
+		return newToken, fmt.Errorf("ClientID mismatch")
 	}
-	if err != nil {
-		slog.Warn(err.Error())
-		return "", err
+	// must still be a valid client
+	prof, err := svc.authnStore.GetProfile(senderID)
+	_ = prof
+	if err != nil || prof.Disabled {
+		return newToken, fmt.Errorf("Profile for '%s' is disabled", clientID)
 	}
-	userProf, err := svc.authnStore.GetProfile(clientID)
-	if err != nil {
-		slog.Warn(err.Error())
-		return "", err
+	validitySec := svc.ConsumerTokenValiditySec
+	if prof.ClientType == authn.ClientTypeAgent {
+		validitySec = svc.AgentTokenValiditySec
+	} else if prof.ClientType == authn.ClientTypeService {
+		validitySec = svc.ServiceTokenValiditySec
 	}
-	token = svc.CreateSessionToken(clientID, sessionID, userProf.TokenValiditySec)
-	return token, err
+	newToken = svc.CreateSessionToken(clientID, sessionID, validitySec)
+	return newToken, err
+}
+
+func (svc *JWTAuthenticator) ValidatePassword(clientID, password string) (err error) {
+	clientProfile, err := svc.authnStore.VerifyPassword(clientID, password)
+	_ = clientProfile
+	return err
 }
 
 // ValidateToken the session token
@@ -166,6 +180,10 @@ func NewJWTAuthenticator(authnStore api.IAuthnStore, signingKey keys.IHiveKey) *
 	svc := JWTAuthenticator{
 		signingKey: signingKey,
 		authnStore: authnStore,
+		// validity can be changed by user of this service
+		AgentTokenValiditySec:    config.DefaultAgentTokenValiditySec,
+		ConsumerTokenValiditySec: config.DefaultConsumerTokenValiditySec,
+		ServiceTokenValiditySec:  config.DefaultServiceTokenValiditySec,
 	}
 	return &svc
 }

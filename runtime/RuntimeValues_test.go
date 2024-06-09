@@ -3,8 +3,7 @@ package runtime_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/inbox"
-	"github.com/hiveot/hub/api/go/outbox"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsclient"
@@ -38,9 +37,9 @@ func TestHttpsGetActions(t *testing.T) {
 	require.Empty(t, stat.Error)
 
 	// read the latest actions from the digitwin inbox
-	args := inbox.ReadLatestArgs{ThingID: dtThing1ID}
-	resp := inbox.ReadLatestResp{}
-	err := cl2.Rpc(inbox.DThingID, inbox.ReadLatestMethod, &args, &resp)
+	args := digitwin.InboxReadLatestArgs{ThingID: dtThing1ID}
+	resp := digitwin.InboxReadLatestResp{}
+	err := cl2.Rpc(digitwin.InboxDThingID, digitwin.InboxReadLatestMethod, &args, &resp)
 	require.NoError(t, err)
 
 	actionMsg := resp.ThingValues[key1]
@@ -76,7 +75,7 @@ func TestHttpsGetEvents(t *testing.T) {
 	// read using a plain old http client
 	hostPort := fmt.Sprintf("localhost:%d", ts.Port)
 	tlsClient := tlsclient.NewTLSClient(hostPort, ts.Certs.CaCert, time.Minute)
-	tlsClient.ConnectWithToken(userID, token)
+	tlsClient.ConnectWithToken(token)
 
 	// read latest using the experimental http REST API (which needs a swagger definition)
 	vars := map[string]string{"thingID": dtThingID}
@@ -90,8 +89,9 @@ func TestHttpsGetEvents(t *testing.T) {
 	require.NotZero(t, len(tmm))
 
 	// read latest using the generated RPC client
-	args := outbox.ReadLatestArgs{ThingID: dtThingID}
-	resp, err := outbox.ReadLatest(cl, args)
+	args := digitwin.OutboxReadLatestArgs{ThingID: dtThingID}
+	outboxCl := digitwin.NewOutboxClient(cl)
+	resp, err := outboxCl.ReadLatest(args)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	tmm = things.ThingMessageMap{}

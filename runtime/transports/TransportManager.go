@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
@@ -28,7 +29,7 @@ type TransportsManager struct {
 	//grpcTransport     api.ITransportBinding
 
 	// handler to pass incoming messages to
-	handler func(tv *things.ThingMessage) api.DeliveryStatus
+	handler func(tv *things.ThingMessage) hubclient.DeliveryStatus
 }
 
 // GetEmbedded returns the embedded transport protocol
@@ -68,7 +69,7 @@ func (svc *TransportsManager) GetProtocolInfo() (pi api.ProtocolInfo) {
 // TODO: optimize to use the most efficient protocol
 // TODO: sending to multiple instances of the same client? (multiple browser tabs?)
 func (svc *TransportsManager) SendToClient(
-	clientID string, msg *things.ThingMessage) (stat api.DeliveryStatus, found bool) {
+	clientID string, msg *things.ThingMessage) (stat hubclient.DeliveryStatus, found bool) {
 
 	// for now simply send the action request to enabled protocol handlers
 	if svc.embeddedTransport != nil {
@@ -91,7 +92,7 @@ func (svc *TransportsManager) SendToClient(
 // SendEvent sends a event to all subscribers
 // This returns an error if the event had no subscribers
 func (svc *TransportsManager) SendEvent(
-	msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 
 	// delivery fails if there are no subscribers. Does this matter?
 	stat.Failed(msg, errors.New("event has no subscribers"))
@@ -119,7 +120,7 @@ func (svc *TransportsManager) SendEvent(
 }
 
 // Start the protocol servers
-func (svc *TransportsManager) Start(handler api.MessageHandler) error {
+func (svc *TransportsManager) Start(handler hubclient.MessageHandler) error {
 	svc.handler = handler
 	if svc.embeddedTransport != nil {
 		err := svc.embeddedTransport.Start(handler)
@@ -171,7 +172,7 @@ func (svc *TransportsManager) Stop() {
 // to be used to register embedded services.
 func NewTransportManager(cfg *ProtocolsConfig,
 	privKey keys.IHiveKey, serverCert *tls.Certificate, caCert *x509.Certificate,
-	sessionAuth api.IAuthenticator) *TransportsManager {
+	authenticator api.IAuthenticator) *TransportsManager {
 
 	svc := TransportsManager{
 		// the embedded transport protocol is required for the runtime
@@ -185,7 +186,7 @@ func NewTransportManager(cfg *ProtocolsConfig,
 		svc.httpsTransport = httpstransport.NewHttpSSETransport(
 			&cfg.HttpsTransport,
 			privKey, serverCert, caCert,
-			sessionAuth)
+			authenticator)
 	}
 	if cfg.EnableMQTT {
 		//svc.mqttTransport = mqtttransport.NewMqttTransport(
@@ -201,10 +202,13 @@ func NewTransportManager(cfg *ProtocolsConfig,
 // This instantiates enabled protocol bindings, including the embedded binding
 // to be used to register embedded services.
 func StartProtocolManager(cfg *ProtocolsConfig,
-	privKey keys.IHiveKey, serverCert *tls.Certificate, caCert *x509.Certificate,
-	sessionAuth api.IAuthenticator, handler api.MessageHandler) (*TransportsManager, error) {
+	privKey keys.IHiveKey,
+	serverCert *tls.Certificate,
+	caCert *x509.Certificate,
+	authenticator api.IAuthenticator,
+	handler hubclient.MessageHandler) (*TransportsManager, error) {
 
-	svc := NewTransportManager(cfg, privKey, serverCert, caCert, sessionAuth)
+	svc := NewTransportManager(cfg, privKey, serverCert, caCert, authenticator)
 	err := svc.Start(handler)
 
 	return svc, err

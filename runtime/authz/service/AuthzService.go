@@ -2,6 +2,8 @@ package service
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
+	authz2 "github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authz"
 	"log/slog"
@@ -18,15 +20,15 @@ type AuthzService struct {
 	authnStore api.IAuthnStore
 }
 
-// CreateRole adds a new custom role
-func (svc *AuthzService) CreateRole(role string) error {
+// CreateCustomRole adds a new custom role
+func (svc *AuthzService) CreateCustomRole(role string) error {
 	// FIXME:implement
 	slog.Error("CreateRole is not yet implemented")
 	return nil
 }
 
-// DeleteRole deletes a custom role
-func (svc *AuthzService) DeleteRole(role string) error {
+// DeleteCustomRole deletes a custom role
+func (svc *AuthzService) DeleteCustomRole(role string) error {
 	// FIXME:implement
 	slog.Error("DeleteRole is not yet implemented")
 	return nil
@@ -58,7 +60,7 @@ func (svc *AuthzService) DeleteRole(role string) error {
 //}
 
 // GetClientRole returns the role assigned to the client or an error
-func (svc *AuthzService) GetClientRole(clientID string) (string, error) {
+func (svc *AuthzService) GetClientRole(senderID string, clientID string) (string, error) {
 	// this simply returns the default role stored with the client
 	// in future more roles could be added in which case authz will need its own store.
 	role, err := svc.authnStore.GetRole(clientID)
@@ -66,21 +68,24 @@ func (svc *AuthzService) GetClientRole(clientID string) (string, error) {
 }
 
 // GetRolePermissions returns the permissions for the given role
-func (svc *AuthzService) GetRolePermissions(role string) ([]api.RolePermission, bool) {
+func (svc *AuthzService) GetRolePermissions(senderID string, role string) ([]api.RolePermission, bool) {
 	rolePerm, found := svc.cfg.RolePermissions[role]
 	return rolePerm, found
 }
 
 // SetClientRole sets the role of a client in the authz store
-func (svc *AuthzService) SetClientRole(clientID string, role string) error {
+func (svc *AuthzService) SetClientRole(senderID string, args authz2.AdminSetClientRoleArgs) error {
 	// okay, we lied, it uses the authn store
-	return svc.authnStore.SetRole(clientID, role)
+	return svc.authnStore.SetRole(args.ClientID, args.Role)
 }
 
 // SetPermissions sets the client roles that are allowed to use an agent's service.
 // Intended for use by services and agents to set the roles that have access to it.
 // This fails if the caller is not a service or agent.
-func (svc *AuthzService) SetPermissions(senderID string, perms api.ThingPermissions) error {
+//
+//	senderID is the agent or service that sets the permissions
+//	perms are the permissions being set
+func (svc *AuthzService) SetPermissions(senderID string, perms authz2.ThingPermissions) error {
 	// the sender must be a service
 	slog.Info("SetPermissions",
 		slog.String("senderID", senderID),
@@ -98,7 +103,7 @@ func (svc *AuthzService) SetPermissions(senderID string, perms api.ThingPermissi
 		// unless the sender is an admin (todo), it cannot set permissions for someone else
 		return fmt.Errorf(
 			"sender '%s' cannot set permissions for agent '%s'", senderID, perms.AgentID)
-	} else if clientProfile.ClientType == api.ClientTypeUser {
+	} else if clientProfile.ClientType == authn.ClientTypeConsumer {
 		return fmt.Errorf(
 			"'%s' is a consumer and consumers cannot set permissions", senderID)
 	}

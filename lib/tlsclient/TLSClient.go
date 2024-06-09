@@ -283,7 +283,7 @@ func (cl *TLSClient) setup() *http.Client {
 // returns TLS client for submitting requests
 func NewTLSClient(hostPort string, caCert *x509.Certificate, timeout time.Duration) *TLSClient {
 	if timeout == 0 {
-		timeout = time.Second * 10
+		timeout = time.Second * 30
 	}
 
 	// Use CA certificate for server authentication if it exists

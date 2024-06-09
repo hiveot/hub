@@ -17,7 +17,7 @@ type StateAgent struct {
 }
 
 // HandleMessage dispatches requests to the service capabilities
-func (agent *StateAgent) HandleMessage(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+func (agent *StateAgent) HandleMessage(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	if msg.ThingID == stateapi.StorageServiceID {
 		switch msg.Key {
 		case stateapi.DeleteMethod:
@@ -36,14 +36,14 @@ func (agent *StateAgent) HandleMessage(msg *things.ThingMessage) (stat api.Deliv
 		"unknown action '%s' for service '%s'", msg.Key, msg.ThingID))
 	return stat
 }
-func (agent *StateAgent) Delete(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+func (agent *StateAgent) Delete(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	args := stateapi.DeleteArgs{}
 	err := msg.Unmarshal(&args)
 	err = agent.svc.Delete(msg.SenderID, args.Key)
 	stat.Completed(msg, err)
 	return stat
 }
-func (agent *StateAgent) Get(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+func (agent *StateAgent) Get(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	args := stateapi.GetArgs{}
 	resp := stateapi.GetResp{}
 	err := msg.Unmarshal(&args)
@@ -54,7 +54,7 @@ func (agent *StateAgent) Get(msg *things.ThingMessage) (stat api.DeliveryStatus)
 	stat.Reply, _ = json.Marshal(resp)
 	return stat
 }
-func (agent *StateAgent) GetMultiple(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+func (agent *StateAgent) GetMultiple(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	args := stateapi.GetMultipleArgs{}
 	resp := stateapi.GetMultipleResp{}
 	err := msg.Unmarshal(&args)
@@ -63,14 +63,14 @@ func (agent *StateAgent) GetMultiple(msg *things.ThingMessage) (stat api.Deliver
 	stat.Reply, _ = json.Marshal(resp)
 	return stat
 }
-func (agent *StateAgent) Set(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+func (agent *StateAgent) Set(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	args := stateapi.SetArgs{}
 	err := msg.Unmarshal(&args)
 	err = agent.svc.Set(msg.SenderID, args.Key, args.Value)
 	stat.Completed(msg, err)
 	return stat
 }
-func (agent *StateAgent) SetMultiple(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+func (agent *StateAgent) SetMultiple(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	args := stateapi.SetMultipleArgs{}
 	err := msg.Unmarshal(&args)
 	err = agent.svc.SetMultiple(msg.SenderID, args.KV)

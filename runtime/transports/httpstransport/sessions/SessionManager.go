@@ -7,9 +7,9 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 	"sync"
 	"time"
@@ -138,7 +138,7 @@ func (sm *SessionManager) Init(hubURL string, core string,
 
 // SendEvent passs an event to all sessions
 // Returns true if at least one session received the event or false if no session are available
-func (sm *SessionManager) SendEvent(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+func (sm *SessionManager) SendEvent(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	sm.mux.RLock()
 	defer sm.mux.RUnlock()
 	payload, _ := json.Marshal(msg)

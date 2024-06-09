@@ -3,9 +3,9 @@ package middleware_test
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/middleware"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -24,9 +24,9 @@ func TestHandleEvent(t *testing.T) {
 	mwh2Count := 0
 
 	mw := middleware.NewMiddleware()
-	mw.SetMessageHandler(func(msg *things.ThingMessage) api.DeliveryStatus {
-		var res api.DeliveryStatus
-		res.Status = api.DeliveryCompleted
+	mw.SetMessageHandler(func(msg *things.ThingMessage) hubclient.DeliveryStatus {
+		var res hubclient.DeliveryStatus
+		res.Status = hubclient.DeliveryCompleted
 		res.Reply = msg.Data
 		return res
 	})
@@ -51,9 +51,9 @@ func TestHandleEvent(t *testing.T) {
 func TestHandlerError(t *testing.T) {
 	const payload = "hello"
 	mw := middleware.NewMiddleware()
-	mw.SetMessageHandler(func(msg *things.ThingMessage) api.DeliveryStatus {
-		var res api.DeliveryStatus
-		res.Status = api.DeliveryFailed
+	mw.SetMessageHandler(func(msg *things.ThingMessage) hubclient.DeliveryStatus {
+		var res hubclient.DeliveryStatus
+		res.Status = hubclient.DeliveryFailed
 		res.Error = "Failed reply"
 		return res
 	})
@@ -68,7 +68,7 @@ func TestHandlerError(t *testing.T) {
 	stat := mw.HandleMessage(tv1)
 	assert.Equal(t, mwh1Count, 1)
 	assert.NotEmpty(t, stat.Error)
-	assert.Equal(t, api.DeliveryFailed, stat.Status)
+	assert.Equal(t, hubclient.DeliveryFailed, stat.Status)
 }
 
 func TestMiddlewareError(t *testing.T) {
@@ -77,9 +77,9 @@ func TestMiddlewareError(t *testing.T) {
 	mwh2Count := 0
 
 	mw := middleware.NewMiddleware()
-	mw.SetMessageHandler(func(msg *things.ThingMessage) api.DeliveryStatus {
+	mw.SetMessageHandler(func(msg *things.ThingMessage) hubclient.DeliveryStatus {
 		assert.Fail(t, "should not get here")
-		var res api.DeliveryStatus
+		var res hubclient.DeliveryStatus
 		return res
 	})
 
@@ -96,7 +96,7 @@ func TestMiddlewareError(t *testing.T) {
 	msg := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", []byte(payload), "sender1")
 	stat := mw.HandleMessage(msg)
 	assert.NotEmpty(t, stat.Error)
-	assert.Equal(t, api.DeliveryFailed, stat.Status)
+	assert.Equal(t, hubclient.DeliveryFailed, stat.Status)
 	assert.Equal(t, mwh1Count, 1)
 	assert.Equal(t, mwh2Count, 0)
 }

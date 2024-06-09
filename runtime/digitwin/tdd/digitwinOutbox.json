@@ -1,0 +1,120 @@
+{
+	"@context":[ "https://www.w3.org/2022/wot/td/v1.1",
+		{"ht": "https://www.hiveot.net/vocab/v0.1"}
+	],
+	"@type": "Service",
+	"id": "dtw:digitwin:outbox",
+	"title": "DigiTwin Outbox",
+	"description": "HiveOT digital twin outbox event storage",
+	"version": {
+		"instance": "0.1.0"
+	},
+	"created": "2024-04-26T17:00:00.000Z",
+	"modified": "2024-04-26T17:00:00.000Z",
+	"support": "https://www.github.com/hiveot/hub",
+	"security": ["bearer"],
+	"securityDefinitions": {
+		"bearer": {
+			"description": "HTTP protocol authentication",
+			"name": "authentication",
+			"alg": "es256",
+			"format": "jwt",
+			"scheme": "bearer",
+			"in": "header"
+		}
+	},
+	"forms": [{
+		"op": "readallproperties",
+		"contentType": "application/json",
+		"href": "/things/{thingID}/properties"
+	}],
+	"properties": {
+	},
+	"events": {
+		"valueUpdated": {
+			"title": "Thing property updated",
+			"description": "A Thing's property value was updated",
+			"data": {
+				"type": "object",
+				"properties": {
+					"thingID": {
+						"title": "Thing ID",
+						"description": "ID of the Thing that was updated",
+						"type": "string"
+					},
+					"key": {
+						"title": "Property key",
+						"description": "ID of the property that was updated",
+						"type": "string"
+					},
+					"value": {
+						"title": "New value",
+						"description": "The new value of the property",
+						"type": "string"
+					}
+				}
+			},
+			"forms": []
+		}
+	},
+	"actions": {
+		"readLatest": {
+			"@type": "ht:function",
+			"title": "Read Latest",
+			"description": "Read the latest value(s) of a Thing",
+			"safe": true,
+			"idempotent": true,
+			"forms": [{
+				"op": "?",
+				"href": "things/{thingID}/readLatest",
+				"contentType": "application/json",
+				"https:methodName": "GET"
+			}],
+			"input": {
+				"type": "object",
+				"required": ["thingID"],
+				"properties": {
+					"thingID": {
+						"title": "Thing ID",
+						"description": "ID of the Thing to read",
+						"type": "string"
+					},
+					"keys": {
+						"title": "Value Key",
+						"description": "The event/property IDs to read or empty to read all latest values",
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"since": {
+						"title": "Since",
+						"description": "Only return values updated since",
+						"type": "dateTime"
+					}
+				}
+			},
+			"output": {
+				"title": "Value map",
+				"description": "JSON encoded map of key:ThingMessage objects",
+				"comment": "this returns a map of key:ThingValue objects. Too much work to describe here in detail",
+				"type": "string",
+				"forms": []
+			}
+		},
+		"removeValue": {
+			"@type": "ht:function",
+			"title": "Remove Thing Value",
+			"description": "Remove a value",
+			"safe": false,
+			"idempotent": true,
+			"input": {
+				"title": "Message ID",
+				"description": "ID of the message to remove",
+				"type": "string"
+			},
+			"forms": []
+		}
+	},
+	"links": []
+}

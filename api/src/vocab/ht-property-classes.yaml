@@ -20,7 +20,7 @@ PropertyClasses:
   namespace: "ht"
   vocab:
     # ht:prop:alarm properties for alarm status
-    # TODO: determine better subcategory
+    # TODO: determine better subcategory - look into existing standards
     PropAlarmStatus:
       class: "ht:prop:alarm:status"
       title: "Alarm state"

@@ -24,9 +24,14 @@ type DataSchema struct {
 	// Provides a multi-language human-readable titles
 	Titles []string `json:"titles,omitempty"`
 	// Provides additional (human-readable) information based on a default language
+	// this can be a string or array for multi-line description.
 	Description string `json:"description,omitempty"`
 	// Provides additional nulti-language information
 	Descriptions []string `json:"descriptions,omitempty"`
+
+	// Optional comments for additional multi-line descriptions
+	// Not part of the WoT spec as it doesn't support multi-line descriptions
+	Comments []string `json:"comments,omitempty"`
 
 	// Provides a constant value of any type as per data Schema
 	Const any `json:"const,omitempty"`

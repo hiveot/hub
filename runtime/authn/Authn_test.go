@@ -2,10 +2,9 @@ package authn_test
 
 import (
 	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/authn"
-	"github.com/hiveot/hub/runtime/authn/authnagent"
+	"github.com/hiveot/hub/runtime/authn/config"
 	"github.com/hiveot/hub/runtime/authn/service"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -16,14 +15,14 @@ import (
 
 var certBundle = certs.CreateTestCertBundle()
 var testDir = path.Join(os.TempDir(), "test-authn")
-var authnConfig authn.AuthnConfig
-var defaultHash = authn.PWHASH_ARGON2id
+var authnConfig config.AuthnConfig
+var defaultHash = config.PWHASH_ARGON2id
 
 // This test file sets up the environment for testing authn admin and client services.
 
 // launch the authn service and return the server side message handlers for using and managing it.
 func startTestAuthnService(testHash string) (
-	svc *service.AuthnService, messageHandler api.MessageHandler, stopFn func()) {
+	svc *service.AuthnService, messageHandler hubclient.MessageHandler, stopFn func()) {
 
 	_ = os.RemoveAll(testDir)
 	_ = os.MkdirAll(testDir, 0700)
@@ -31,7 +30,7 @@ func startTestAuthnService(testHash string) (
 	// the password file to use
 	passwordFile := path.Join(testDir, "test.passwd")
 
-	authnConfig = authn.NewAuthnConfig()
+	authnConfig = config.NewAuthnConfig()
 	authnConfig.Setup(testDir, testDir)
 	authnConfig.PasswordFile = passwordFile
 	authnConfig.AgentTokenValiditySec = 100
@@ -41,7 +40,7 @@ func startTestAuthnService(testHash string) (
 	if err != nil {
 		panic("Error starting authn admin service:" + err.Error())
 	}
-	ag, err := authnagent.StartAuthnAgent(svc, nil)
+	ag, err := service.StartAuthnAgent(svc, nil)
 
 	return svc, ag.HandleMessage, func() {
 		svc.Stop()

@@ -6,12 +6,7 @@ import (
 	"errors"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 )
-
-// MessageTypeINBOX implementation depends on the underlying transport.
-// this is the commonly used name for it.
-//const MessageTypeINBOX = "_INBOX"
 
 //// ISubscription interface to underlying subscription mechanism
 //type ISubscription interface {
@@ -50,6 +45,7 @@ const (
 
 var ErrorUnauthorized = errors.New(string(Unauthorized))
 
+// TransportStatus connection status of a hub client transport
 type TransportStatus struct {
 	// URL of the hub
 	HubURL string
@@ -69,6 +65,16 @@ type TransportStatus struct {
 	SupportsKeysAuth     bool
 	SupportsTokenAuth    bool
 }
+
+// EventHandler processes an event without return value
+type EventHandler func(msg *things.ThingMessage) error
+
+// MessageHandler defines the method that processes an action or event message and
+// returns a delivery status.
+//
+// As actions are targeted to an agent, the delivery status is that of delivery	to the agent.
+// As events are broadcast, the delivery status is that of delivery to at least one subscriber.
+type MessageHandler func(msg *things.ThingMessage) DeliveryStatus
 
 // IHubClient defines the interface of the client that connects to a messaging server.
 type IHubClient interface {
@@ -136,11 +142,11 @@ type IHubClient interface {
 	//  payload with serialized message to publish
 	//
 	// This returns a delivery status with serialized response message if delivered
-	PubAction(dThingID string, key string, payload []byte) api.DeliveryStatus
+	PubAction(dThingID string, key string, payload []byte) DeliveryStatus
 
 	// PubConfig publishes a configuration change request for one or more writable properties
 	// Value is a serialized value based on the PropertyAffordances in the TD
-	PubConfig(dThingID string, key string, value string) api.DeliveryStatus
+	PubConfig(dThingID string, key string, value string) DeliveryStatus
 
 	// PubEvent publishes an event style message without a response.
 	// It returns as soon as delivery to the hub is confirmed.
@@ -194,7 +200,7 @@ type IHubClient interface {
 	// SetActionHandler set the handler that receives all actions directed at this client
 	// This replaces any previously set action handler.
 	//
-	SetActionHandler(cb api.MessageHandler)
+	SetActionHandler(cb MessageHandler)
 
 	// SetConnectHandler sets the notification handler of connection status changes
 	SetConnectHandler(cb func(status TransportStatus))
@@ -205,7 +211,7 @@ type IHubClient interface {
 	// This replaces any previously set event handler.
 	//
 	// See also 'Subscribe' to set the ThingIDs this client receives messages for.
-	SetEventHandler(cb api.EventHandler)
+	SetEventHandler(cb EventHandler)
 
 	// Subscribe adds a subscription for events from the given ThingID.
 	//

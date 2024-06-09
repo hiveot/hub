@@ -9,7 +9,6 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 	"sync"
 	"time"
@@ -49,7 +48,7 @@ type IsyBinding struct {
 //}
 
 // HandleActionRequest passes the action request to the associated Thing.
-func (svc *IsyBinding) handleActionRequest(action *things.ThingMessage) (stat api.DeliveryStatus) {
+func (svc *IsyBinding) handleActionRequest(action *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	if action.Key == vocab.ActionTypeProperties {
 		return svc.handleConfigRequest(action)
 	}
@@ -76,7 +75,7 @@ func (svc *IsyBinding) handleActionRequest(action *things.ThingMessage) (stat ap
 }
 
 // handleConfigRequest for handling binding, gateway and node configuration changes
-func (svc *IsyBinding) handleConfigRequest(action *things.ThingMessage) (stat api.DeliveryStatus) {
+func (svc *IsyBinding) handleConfigRequest(action *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 
 	slog.Info("handleConfigRequest",
 		slog.String("thingID", action.ThingID),

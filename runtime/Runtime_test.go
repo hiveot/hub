@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime"
@@ -65,7 +66,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	var actionPayload = "payload1"
 	var expectedReply = actionPayload + ".reply"
 	var rxMsg *things.ThingMessage
-	var stat3 api.DeliveryStatus
+	var stat3 hubclient.DeliveryStatus
 
 	r := startRuntime()
 	defer r.Stop()
@@ -77,7 +78,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	defer cl2.Disconnect()
 
 	// Agent receives action request which we'll handle here
-	cl1.SetActionHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	cl1.SetActionHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		rxMsg = msg
 		stat.Completed(msg, nil)
 		//stat.Failed(msg, fmt.Errorf("failuretest"))
@@ -112,7 +113,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// verify final result
-	require.Equal(t, api.DeliveryCompleted, stat3.Status)
+	require.Equal(t, hubclient.DeliveryCompleted, stat3.Status)
 	require.Empty(t, stat3.Error)
 	require.NotNil(t, rxMsg)
 	assert.Equal(t, expectedReply, string(stat3.Reply))
@@ -141,7 +142,7 @@ func TestServiceReconnect(t *testing.T) {
 	defer cl1.Disconnect()
 
 	// Agent receives action request which we'll handle here
-	cl1.SetActionHandler(func(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	cl1.SetActionHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		var req string
 		rxMsg = msg
 		stat.Completed(msg, nil)

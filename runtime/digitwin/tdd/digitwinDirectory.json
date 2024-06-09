@@ -1,0 +1,179 @@
+{
+	"@context":[ "https://www.w3.org/2022/wot/td/v1.1",
+		{"ht": "https://www.hiveot.net/vocab/v0.1"}
+	],
+	"@type": "Service",
+	"id": "dtw:digitwin:directory",
+	"title": "DigiTwin Directory Service",
+	"description": "HiveOT digital twin directory service",
+	"version": {
+		"instance": "0.1.0"
+	},
+	"created": "2024-04-21T17:00:00.000Z",
+	"modified": "2024-04-21T17:00:00.000Z",
+	"support": "https://www.github.com/hiveot/hub",
+	"security": ["bearer"],
+	"securityDefinitions": {
+		"bearer": {
+			"description": "HTTP protocol authentication",
+			"name": "authentication",
+			"alg": "es256",
+			"format": "jwt",
+			"scheme": "bearer",
+			"in": "header"
+		}
+	},
+	"forms": [{
+		"op": "readallproperties",
+		"contentType": "application/json",
+		"href": "/things/{thingID}/properties"
+	}],
+	"properties": {
+	},
+	"events": {
+		"thingAdded": {
+			"title": "Thing Added",
+			"description": "A new Thing TD was added to the directory",
+			"data": {
+				"title": "thingID",
+				"description": "ID of the Thing that was added",
+				"type": "string"
+			},
+			"forms": [{"href": "/sse","subprotocol": "sse"}]
+		},
+		"thingRemoved": {
+			"title": "Thing Removed",
+			"description": "A Thing TD was removed from the directory",
+			"data": {
+				"title": "thingID",
+				"description": "ID of the Thing that was removed",
+				"type": "string"
+			},
+			"forms": [{"href": "/sse","subprotocol": "sse"}]
+		}
+	},
+	"actions": {
+		"readTD": {
+			"@type": "ht:function",
+			"title": "Read TD",
+			"description": "This returns a JSON encoded TD document",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"title": "Thing ID",
+				"description": "Digital Twin Thing ID of the Thing to read",
+				"type": "string"
+			},
+			"output": {
+				"title": "TDD",
+				"description": "A JSON encoded Thing Description Document",
+				"question": "How to link to the TD as a complex type?",
+				"type": "string"
+			},
+			"forms": [{
+				"href": "things/{thingID}/readTD",
+				"contentType": "application/json",
+				"https:methodName": "GET"
+			}]
+		},
+		"readTDs": {
+			"@type": "ht:function",
+			"title": "Read TDs",
+			"description": "Read a batch of TD documents",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"type": "object",
+				"properties": {
+					"offset": {
+						"title": "Offset",
+						"type": "integer",
+						"minimum": 0,
+						"default": 0
+					},
+					"limit": {
+						"title": "Limit",
+						"type": "integer",
+						"minimum": 1,
+						"default": 100
+					}
+				}
+			},
+			"output": {
+				"title": "TD list",
+				"description": "List of JSON encoded TD documents",
+				"type": "array",
+				"items": {
+					"type": "string"
+				}
+			},
+			"forms": [{
+				"href": "things/{thingID}/readTDs",
+				"contentType": "application/json",
+				"https:methodName": "GET"
+			}]
+		},
+		"removeTD": {
+			"@type": "ht:function",
+			"title": "Remove TD",
+			"description": "Remove a Thing TD document from the digital twin directory and value stores",
+			"safe": false,
+			"idempotent": true,
+			"input": {
+				"title": "thingID",
+				"description": "Digital Twin ThingID of the Thing to remove",
+				"type": "string"
+			},
+			"forms": [{
+				"href": "things/{thingID}/removeTD",
+				"contentType": "application/json",
+				"https:methodName": "POST"
+			}]
+		},
+		"queryTDs": {
+			"@type": "ht:function",
+			"title": "Query TDs",
+			"description": "Query Thing TD documents from the directory",
+			"safe": false,
+			"idempotent": true,
+			"input": {
+				"type": "object",
+				"properties": {
+					"query": {
+						"title": "Query Things",
+						"description": "Query expression (tbd)",
+						"type": "string"
+					},
+					"offset": {
+						"title": "Result offset",
+						"description": "Number of results to skip",
+						"type": "integer",
+						"minimum": 0,
+						"default": 0
+					},
+					"limit": {
+						"title": "Max entries",
+						"description": "Maximum number of entries to return",
+						"type": "integer",
+						"minimum": 1,
+						"default": 100
+					}
+				}
+			},
+			"output": {
+				"title": "TDD List",
+				"description": "List of JSON encoded TD documents",
+				"type": "array",
+				"items": {
+					"type": "string"
+				}
+			},
+			"forms": [{
+				"href": "things/{thingID}/queryTDs",
+				"contentType": "application/json",
+				"https:methodName": "GET"
+			}]
+		}
+	},
+	"links": []
+}

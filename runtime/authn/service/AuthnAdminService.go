@@ -2,10 +2,11 @@ package service
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/authn"
+	"github.com/hiveot/hub/runtime/authn/config"
 	"log/slog"
 	"os"
 	"path"
@@ -15,7 +16,7 @@ import (
 type AuthnAdminService struct {
 	authnStore api.IAuthnStore
 
-	cfg *authn.AuthnConfig
+	cfg *config.AuthnConfig
 
 	// key used to create and verify session tokens
 	signingKey keys.IHiveKey
@@ -30,36 +31,36 @@ type AuthnAdminService struct {
 //	clientID is the ID of the service, agent or user
 //	displayName is the friendly name for presentation
 //	password is the optional login password. Intended for users if no other credentials are available.
-func (svc *AuthnAdminService) AddConsumer(
-	clientID string, displayName string, password string) (err error) {
+func (svc *AuthnAdminService) AddConsumer(senderID string, args authn.AdminAddConsumerArgs) (err error) {
+	//clientID string, displayName string, password string) (err error) {
 
-	slog.Info("AddUser", slog.String("clientID", clientID))
+	slog.Info("AddUser", slog.String("clientID", args.ClientID))
 
-	if clientID == "" {
+	if args.ClientID == "" {
 		err = fmt.Errorf("AddClient: ClientID is missing")
 		return err
 	}
-	if displayName == "" {
-		displayName = clientID
+	if args.DisplayName == "" {
+		args.DisplayName = args.ClientID
 	}
-	prof, err := svc.authnStore.GetProfile(clientID)
+	prof, err := svc.authnStore.GetProfile(args.ClientID)
 	if err != nil {
 		// new profile
-		prof = api.ClientProfile{
-			ClientID:         clientID,
-			ClientType:       api.ClientTypeUser,
-			DisplayName:      displayName,
-			TokenValiditySec: svc.cfg.UserTokenValiditySec,
+		prof = authn.ClientProfile{
+			ClientID:    args.ClientID,
+			ClientType:  authn.ClientTypeConsumer,
+			DisplayName: args.DisplayName,
+			//TokenValiditySec: svc.cfg.ConsumerTokenValiditySec,
 		}
 	} else {
-		prof.DisplayName = displayName
-		prof.ClientType = api.ClientTypeUser
-		prof.DisplayName = displayName
-		prof.TokenValiditySec = svc.cfg.UserTokenValiditySec
+		prof.DisplayName = args.DisplayName
+		prof.ClientType = authn.ClientTypeConsumer
+		prof.DisplayName = args.DisplayName
+		//prof.TokenValiditySec = svc.cfg.ConsumerTokenValiditySec
 	}
-	err = svc.authnStore.Add(clientID, prof)
-	if password != "" {
-		err = svc.authnStore.SetPassword(clientID, password)
+	err = svc.authnStore.Add(args.ClientID, prof)
+	if args.Password != "" {
+		err = svc.authnStore.SetPassword(args.ClientID, args.Password)
 	}
 	return err
 }
@@ -69,42 +70,44 @@ func (svc *AuthnAdminService) AddConsumer(
 // Agents should store their own key and token files.
 //
 //	TODO: use the public key for nonce verification
-func (svc *AuthnAdminService) AddAgent(agentID string, displayName string, pubKey string) (
-	authToken string, err error) {
+func (svc *AuthnAdminService) AddAgent(senderID string,
+	args authn.AdminAddAgentArgs) (token string, err error) {
 
-	var prof api.ClientProfile
-	if agentID == "" {
-		return "", fmt.Errorf("Missing agentID")
+	var prof authn.ClientProfile
+	if args.ClientID == "" {
+		return token, fmt.Errorf("missing clientID")
 	}
-	slog.Info("AddAgent", slog.String("agentID", agentID))
+	slog.Info("AddAgent", slog.String("agentID", args.ClientID))
 	// agents typically create their own key pair
 	// services typically don't and have their keys saved on (re)creation
-	if pubKey == "" {
-		kp, err2 := keys.LoadCreateKeyPair(agentID, svc.cfg.KeysDir, svc.cfg.DefaultKeyType)
+	if args.PubKey == "" {
+		kp, err2 := keys.LoadCreateKeyPair(
+			args.ClientID, svc.cfg.KeysDir, svc.cfg.DefaultKeyType)
 		err = err2
 		if err == nil {
-			pubKey = kp.ExportPublic()
+			args.PubKey = kp.ExportPublic()
 		}
 	}
 	if err == nil {
 		// new profile
-		prof = api.ClientProfile{
-			ClientID:         agentID,
-			ClientType:       api.ClientTypeAgent,
-			DisplayName:      displayName,
-			PubKey:           pubKey,
-			TokenValiditySec: svc.cfg.AgentTokenValiditySec,
+		prof = authn.ClientProfile{
+			ClientID:    args.ClientID,
+			ClientType:  authn.ClientTypeAgent,
+			DisplayName: args.DisplayName,
+			PubKey:      args.PubKey,
+			//TokenValiditySec: svc.cfg.AgentTokenValiditySec,
 		}
-		err = svc.authnStore.Add(agentID, prof)
+		err = svc.authnStore.Add(args.ClientID, prof)
 		if err == nil {
-			err = svc.authnStore.SetRole(agentID, api.ClientRoleAgent)
+			err = svc.authnStore.SetRole(args.ClientID, api.ClientRoleAgent)
 		}
 	}
 	if err == nil {
 		// agent tokens are not restricted to a session
-		authToken = svc.sessionAuth.CreateSessionToken(agentID, "", prof.TokenValiditySec)
+		token = svc.sessionAuth.CreateSessionToken(
+			args.ClientID, "", svc.cfg.AgentTokenValiditySec)
 	}
-	return authToken, err
+	return token, err
 }
 
 // AddService adds or updates a service account with the service role and key and auth token files.
@@ -114,79 +117,87 @@ func (svc *AuthnAdminService) AddAgent(agentID string, displayName string, pubKe
 // the .key and .token extension.
 //
 //	TODO: use the public key for nonce verification
-func (svc *AuthnAdminService) AddService(agentID string, displayName string, pubKey string) (
-	authToken string, err error) {
+func (svc *AuthnAdminService) AddService(senderID string,
+	args authn.AdminAddServiceArgs) (token string, err error) {
 
-	var prof api.ClientProfile
-	if agentID == "" {
-		return "", fmt.Errorf("missing serviceID")
+	var prof authn.ClientProfile
+	if args.ClientID == "" {
+		return token, fmt.Errorf("missing serviceID")
 	}
-	slog.Info("AddService", slog.String("agentID", agentID))
+	slog.Info("AddService", slog.String("agentID", args.ClientID))
 	// agents typically create their own key pair
 	// services typically don't and have their keys saved on (re)creation
-	if pubKey == "" {
-		kp, err2 := keys.LoadCreateKeyPair(agentID, svc.cfg.KeysDir, svc.cfg.DefaultKeyType)
+	if args.PubKey == "" {
+		kp, err2 := keys.LoadCreateKeyPair(args.ClientID, svc.cfg.KeysDir, svc.cfg.DefaultKeyType)
 		err = err2
 		if err == nil {
-			pubKey = kp.ExportPublic()
+			args.PubKey = kp.ExportPublic()
 		}
 	}
 	if err == nil {
-		tokenValiditySec := svc.cfg.ServiceTokenValiditySec
+		//tokenValiditySec := svc.cfg.ServiceTokenValiditySec
 		// new profile
-		prof = api.ClientProfile{
-			ClientID:         agentID,
-			ClientType:       api.ClientTypeService,
-			DisplayName:      displayName,
-			PubKey:           pubKey,
-			TokenValiditySec: tokenValiditySec,
+		prof = authn.ClientProfile{
+			ClientID:    args.ClientID,
+			ClientType:  authn.ClientTypeService,
+			DisplayName: args.DisplayName,
+			PubKey:      args.PubKey,
+			//TokenValiditySec: tokenValiditySec,
 		}
-		err = svc.authnStore.Add(agentID, prof)
+		err = svc.authnStore.Add(args.ClientID, prof)
 		if err == nil {
-			err = svc.authnStore.SetRole(agentID, api.ClientRoleService)
+			err = svc.authnStore.SetRole(args.ClientID, api.ClientRoleService)
 		}
 	}
 	if err == nil {
-		// agent tokens are not restricted to a session
-		authToken = svc.sessionAuth.CreateSessionToken(agentID, "", prof.TokenValiditySec)
+		// service tokens are not restricted to a session
+		token = svc.sessionAuth.CreateSessionToken(
+			args.ClientID, "", svc.cfg.ServiceTokenValiditySec)
 
 		// remove the readonly token file if it exists, to be able to overwrite
-		tokenFile := path.Join(svc.cfg.KeysDir, agentID+connect.TokenFileExt)
+		tokenFile := path.Join(svc.cfg.KeysDir, args.ClientID+connect.TokenFileExt)
 		_ = os.Remove(tokenFile)
-		err = os.WriteFile(tokenFile, []byte(authToken), 0400)
+		err = os.WriteFile(tokenFile, []byte(token), 0400)
 	}
-	return authToken, err
+	return token, err
 }
 
-// GetEntries provide a list of known clients
+// GetEntries provide a list of known clients. (internal function)
 // An entry is a profile with a password hash.
 func (svc *AuthnAdminService) GetEntries() (entries []api.AuthnEntry) {
 	return svc.authnStore.GetEntries()
 }
 
 // GetClientProfile returns a client's profile
-func (svc *AuthnAdminService) GetClientProfile(clientID string) (api.ClientProfile, error) {
+func (svc *AuthnAdminService) GetClientProfile(
+	_ string, clientID string) (prof authn.ClientProfile, err error) {
 
-	entry, err := svc.authnStore.GetProfile(clientID)
-	return entry, err
+	prof, err = svc.authnStore.GetProfile(clientID)
+	return prof, err
 }
 
 // GetProfiles returns a list of all known client profiles
-func (svc *AuthnAdminService) GetProfiles() ([]api.ClientProfile, error) {
+func (svc *AuthnAdminService) GetProfiles(
+	_ string) (clientProfiles []authn.ClientProfile, err error) {
+
 	profiles, err := svc.authnStore.GetProfiles()
 	return profiles, err
 }
 
-// NewAuthToken creates a new authentication token for a service or agent
+// NewAuthToken creates a new authentication token for a service or agent.
 // This token is not tied to a session so should only be handed out to services or agents
-func (svc *AuthnAdminService) NewAuthToken(clientID string, validitySec int) (token string, err error) {
+func (svc *AuthnAdminService) NewAuthToken(_ string, clientID string) (token string, err error) {
+
 	prof, err := svc.authnStore.GetProfile(clientID)
+	_ = prof
 	if err == nil {
-		if validitySec == 0 {
-			validitySec = prof.TokenValiditySec
-		}
-		if validitySec == 0 {
-			validitySec = authn.DefaultAgentTokenValiditySec
+		validitySec := 1
+		if prof.ClientType == authn.ClientTypeAgent {
+			validitySec = svc.cfg.AgentTokenValiditySec
+		} else if prof.ClientType == authn.ClientTypeService {
+			validitySec = svc.cfg.ServiceTokenValiditySec
+		} else {
+			validitySec = svc.cfg.ConsumerTokenValiditySec
 		}
 		token = svc.sessionAuth.CreateSessionToken(clientID, "", validitySec)
 	}
@@ -194,8 +205,8 @@ func (svc *AuthnAdminService) NewAuthToken(clientID string, validitySec int) (to
 }
 
 // RemoveClient removes a client and disables authentication
-func (svc *AuthnAdminService) RemoveClient(clientID string) error {
-	slog.Info("RemoveClient", "clientID", clientID)
+func (svc *AuthnAdminService) RemoveClient(senderID string, clientID string) error {
+	slog.Info("RemoveClient", "clientID", clientID, "senderID", senderID)
 	err := svc.authnStore.Remove(clientID)
 	return err
 }
@@ -207,20 +218,22 @@ func (svc *AuthnAdminService) Start() error {
 	slog.Info("starting AuthnAdminService")
 
 	// ensure the password hash algo is valid
-	if svc.cfg.Encryption != authn.PWHASH_BCRYPT && svc.cfg.Encryption != authn.PWHASH_ARGON2id {
+	if svc.cfg.Encryption != config.PWHASH_BCRYPT && svc.cfg.Encryption != config.PWHASH_ARGON2id {
 		return fmt.Errorf("Start: Invalid password hash algo: %s", svc.cfg.Encryption)
 	}
 
 	// Ensure the launcher service and admin user exist and has a saved key and auth token
 	launcherID := svc.cfg.LauncherAccountID
-	_, err := svc.AddService(launcherID, "Launcher Service", "")
+	_, err := svc.AddService("", authn.AdminAddServiceArgs{
+		ClientID: launcherID, DisplayName: "Launcher Service", PubKey: ""})
 	if err != nil {
 		err = fmt.Errorf("failed to setup the launcher account: %w", err)
 	}
 
 	// ensure the admin user/service exists and has a saved key and auth token
 	adminID := svc.cfg.AdminAccountID
-	_, err = svc.AddService(adminID, "Administrator", "")
+	_, err = svc.AddService("", authn.AdminAddServiceArgs{
+		ClientID: adminID, DisplayName: "Administrator", PubKey: ""})
 	if err != nil {
 		err = fmt.Errorf("failed to setup the admin account: %w", err)
 	}
@@ -228,11 +241,12 @@ func (svc *AuthnAdminService) Start() error {
 }
 
 // SetClientPassword sets a new client password
-func (svc *AuthnAdminService) SetClientPassword(clientID string, password string) error {
-	slog.Info("UpdateClientPassword", "clientID", clientID)
-	err := svc.authnStore.SetPassword(clientID, password)
+func (svc *AuthnAdminService) SetClientPassword(senderID string,
+	args authn.AdminSetClientPasswordArgs) error {
+	slog.Info("UpdateClientPassword", "clientID", args.ClientID)
+	err := svc.authnStore.SetPassword(args.ClientID, args.Password)
 	if err != nil {
-		slog.Error("Failed changing password", "clientID", clientID, "err", err.Error())
+		slog.Error("Failed changing password", "clientID", args.ClientID, "err", err.Error())
 	}
 	return err
 }
@@ -240,8 +254,12 @@ func (svc *AuthnAdminService) SetClientPassword(clientID string, password string
 // UpdateClientProfile update the client profile.
 //
 //	profile is the new updated client profile
-func (svc *AuthnAdminService) UpdateClientProfile(profile api.ClientProfile) error {
-	slog.Info("UpdateClientProfile", slog.String("clientID", profile.ClientID))
+func (svc *AuthnAdminService) UpdateClientProfile(
+	senderID string, profile authn.ClientProfile) error {
+
+	slog.Info("UpdateClientProfile",
+		slog.String("clientID", profile.ClientID),
+		slog.String("senderID", senderID))
 	err := svc.authnStore.UpdateProfile(profile.ClientID, profile)
 	return err
 }
@@ -260,7 +278,7 @@ func (svc *AuthnAdminService) Stop() {
 //	authnStore is the client and credentials store. Must be opened before starting this service.
 //	msgServer used to apply changes to users, devices and services
 func NewAuthnAdminService(
-	authConfig *authn.AuthnConfig,
+	authConfig *config.AuthnConfig,
 	authnStore api.IAuthnStore,
 	sessionAuth api.IAuthenticator) *AuthnAdminService {
 

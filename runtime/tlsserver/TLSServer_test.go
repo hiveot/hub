@@ -78,7 +78,7 @@ func TestNoAuth(t *testing.T) {
 
 	cl := tlsclient.NewTLSClient(clientHostPort, nil, time.Second*120)
 	require.NoError(t, err)
-	cl.ConnectNoAuth()
+	//cl.ConnectNoAuth()
 	_, err = cl.Get(path1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, path1Hit)
@@ -90,7 +90,7 @@ func TestNoAuth(t *testing.T) {
 func TestTokenAuth(t *testing.T) {
 	path1 := "/test1"
 	path1Hit := 0
-	loginID1 := "user1"
+	//loginID1 := "user1"
 	token1 := "abcd"
 
 	// setup server and client environment
@@ -118,7 +118,7 @@ func TestTokenAuth(t *testing.T) {
 	// create a client and login
 	cl := tlsclient.NewTLSClient(clientHostPort, testCerts.CaCert, time.Second*120)
 	assert.NoError(t, err)
-	cl.ConnectWithToken(loginID1, token1)
+	cl.ConnectWithToken(token1)
 
 	// test the auth with a GET request
 	_, err = cl.Get(path1)
@@ -127,10 +127,10 @@ func TestTokenAuth(t *testing.T) {
 
 	// test a failed login
 	cl.Close()
-	cl.ConnectWithToken(loginID1, "wrongpassword")
+	cl.ConnectWithToken("wrongpassword")
 	_, err = cl.Get(path1)
 	assert.Error(t, err)
-	assert.Equal(t, 2, path1Hit) // should not increase
+	assert.Equal(t, 1, path1Hit) // should not increase
 
 	cl.Close()
 	srv.Stop()

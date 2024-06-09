@@ -33,7 +33,7 @@ const SessionContextID = "session"
 // If no valid session is found this will reply with an unauthorized status code.
 //
 // pubKey is the public key from the keypair used in creating the session token.
-func AddSessionFromToken(sessionAuth api.IAuthenticator) func(next http.Handler) http.Handler {
+func AddSessionFromToken(userAuthn api.IAuthenticator) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var cs *ClientSession
@@ -45,7 +45,7 @@ func AddSessionFromToken(sessionAuth api.IAuthenticator) func(next http.Handler)
 				return
 			}
 			//check if the token is properly signed
-			cid, sid, err := sessionAuth.ValidateToken(bearerToken)
+			cid, sid, err := userAuthn.ValidateToken(bearerToken)
 			if err != nil || cid == "" {
 				errMsg := "Invalid session token"
 				http.Error(w, errMsg, http.StatusUnauthorized)

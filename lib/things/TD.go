@@ -15,15 +15,16 @@ const HiveOTContext = "https://www.hiveot.net/vocab/v0.1"
 // Its structure is:
 //
 //	{
-//	     @context: <WoTTDContext>, {"ht":<HiveOTContext>},
-//	     @type: <deviceType>,
-//	     id: <thingID>,
-//	     title: <human description>,  (why is this not a property?)
-//	     modified: <iso8601>,
-//	     actions: {actionID: ActionAffordance, ...},
-//	     events:  {eventID: EventAffordance, ...},
-//	     properties: {propID: PropertyAffordance, ...}
-//	}
+//		@context: <WoTTDContext>, {"ht":<HiveOTContext>},
+//		@type: <deviceType>,
+//		id: <thingID>,
+//		title: <human description>,  (why is this not a property?)
+//		modified: <iso8601>,
+//		schemaDefinitions: {...},
+//		actions: {actionID: ActionAffordance, ...},
+//		events:  {eventID: EventAffordance, ...},
+//		properties: {propID: PropertyAffordance, ...}
+//	 }
 type TD struct {
 
 	// JSON-LD keyword to define shorthand names called terms that are used throughout a TD document. Required.
@@ -68,6 +69,8 @@ type TD struct {
 	Title string `json:"title"`
 	// Human-readable titles in the different languages
 	Titles map[string]string `json:"titles,omitempty"`
+
+	SchemaDefinitions map[string]*DataSchema `json:"schemaDefinitions,omitempty"`
 
 	// All properties-based interaction affordances of the things
 	Properties map[string]*PropertyAffordance `json:"properties,omitempty"`

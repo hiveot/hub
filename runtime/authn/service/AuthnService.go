@@ -2,9 +2,9 @@ package service
 
 import (
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/authn"
 	"github.com/hiveot/hub/runtime/authn/authenticator"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
+	"github.com/hiveot/hub/runtime/authn/config"
 )
 
 type AuthnService struct {
@@ -36,7 +36,7 @@ func (svc *AuthnService) Stop() {
 
 // NewAuthnService creates an instance of the authentication services
 func NewAuthnService(
-	cfg *authn.AuthnConfig,
+	cfg *config.AuthnConfig,
 	authnStore api.IAuthnStore,
 	sessionAuth api.IAuthenticator) *AuthnService {
 
@@ -44,7 +44,7 @@ func NewAuthnService(
 		AuthnStore:  authnStore,
 		SessionAuth: sessionAuth,
 		AdminSvc:    NewAuthnAdminService(cfg, authnStore, sessionAuth),
-		UserSvc:     NewAuthnUserService(authnStore, sessionAuth),
+		UserSvc:     NewAuthnUserService(cfg, authnStore, sessionAuth),
 	}
 	return svc
 }
@@ -52,11 +52,15 @@ func NewAuthnService(
 // StartAuthnService creates and start the authn administration service
 // with the given config.
 // This creates a password store and authenticator.
-func StartAuthnService(cfg *authn.AuthnConfig) (*AuthnService, error) {
+func StartAuthnService(cfg *config.AuthnConfig) (*AuthnService, error) {
 
 	authnStore := authnstore.NewAuthnFileStore(cfg.PasswordFile, cfg.Encryption)
 	sessionAuth := authenticator.NewJWTAuthenticatorFromFile(
 		authnStore, cfg.KeysDir, cfg.DefaultKeyType)
+	sessionAuth.AgentTokenValiditySec = cfg.AgentTokenValiditySec
+	sessionAuth.ConsumerTokenValiditySec = cfg.ConsumerTokenValiditySec
+	sessionAuth.ServiceTokenValiditySec = cfg.ServiceTokenValiditySec
+
 	svc := NewAuthnService(cfg, authnStore, sessionAuth)
 	err := svc.Start()
 	return svc, err

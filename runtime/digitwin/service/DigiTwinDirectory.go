@@ -3,10 +3,10 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/directory"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 	"sync"
 )
@@ -38,7 +38,7 @@ type DigitwinDirectory struct {
 // digital twin format.
 // TODO: Update the forms to match current protocols.
 func (svc *DigitwinDirectory) HandleTDEvent(
-	msg *things.ThingMessage) (stat api.DeliveryStatus) {
+	msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 
 	// events use 'agent' thingIDs, only known to agents.
 	// Digitwin adds the "dtw:{agentID}:" prefix, as the event now belongs to the virtual digital twin.
@@ -98,30 +98,36 @@ func (svc *DigitwinDirectory) LoadCacheFromStore() error {
 }
 
 // QueryTDs query the collection of TD documents
-func (svc *DigitwinDirectory) QueryTDs(args directory.QueryTDsArgs) (resp directory.QueryTDsResp, err error) {
+func (svc *DigitwinDirectory) QueryTDs(senderID string,
+	args digitwin.DirectoryQueryTDsArgs) (resp []string, err error) {
+
 	// TBD: query based on what?
 	return resp, fmt.Errorf("not yet implemented")
 }
 
 // ReadTD returns the TD document in json format for the given Thing ID
-func (svc *DigitwinDirectory) ReadTD(args directory.ReadTDArgs) (resp directory.ReadTDResp, err error) {
+func (svc *DigitwinDirectory) ReadTD(
+	senderID string, thingID string) (resp string, err error) {
+
 	svc.cachemux.RLock()
 	defer svc.cachemux.RUnlock()
-	td, found := svc.tdCache[args.ThingID]
+	td, found := svc.tdCache[thingID]
 	if !found {
-		err = fmt.Errorf("Thing with ID '%s' not found", args.ThingID)
+		err = fmt.Errorf("Thing with ID '%s' not found", thingID)
 		return resp, err
 	}
 	// TODO: re-marshalling is inefficient. Do this on startup
 	tdJSON, _ := json.Marshal(td)
-	return directory.ReadTDResp{Output: string(tdJSON)}, err
+	return string(tdJSON), err
 }
 
 // ReadTDs returns a list of TD documents
 //
 //	offset is the offset in the list
 //	limit is the maximum number of records to return
-func (svc *DigitwinDirectory) ReadTDs(args directory.ReadTDsArgs) (resp directory.ReadTDsResp, err error) {
+func (svc *DigitwinDirectory) ReadTDs(senderID string,
+	args digitwin.DirectoryReadTDsArgs) (resp []string, err error) {
+
 	tdList := make([]string, 0, args.Limit)
 	svc.cachemux.RLock()
 	defer svc.cachemux.RUnlock()
@@ -129,8 +135,7 @@ func (svc *DigitwinDirectory) ReadTDs(args directory.ReadTDsArgs) (resp director
 	// skip offset items (maps are not consistent between iterations)
 	if args.Offset >= len(svc.thingKeys) {
 		// empty result
-		resp.Output = tdList
-		return resp, nil
+		return tdList, nil
 	}
 	if args.Offset+args.Limit > len(svc.thingKeys) {
 		args.Limit = len(svc.thingKeys) - args.Offset
@@ -143,22 +148,22 @@ func (svc *DigitwinDirectory) ReadTDs(args directory.ReadTDsArgs) (resp director
 		tdjson, _ := json.Marshal(v)
 		tdList = append(tdList, string(tdjson))
 	}
-	resp.Output = tdList
-	return resp, nil
+	return tdList, nil
 }
 
 // RemoveTD deletes the TD document from the given agent with the ThingID
-func (svc *DigitwinDirectory) RemoveTD(args directory.RemoveTDArgs) error {
+func (svc *DigitwinDirectory) RemoveTD(senderID string, thingID string) error {
+
 	slog.Info("RemoveThing",
-		slog.String("thingID", args.ThingID))
+		slog.String("thingID", thingID))
 	// remove from both cache and bucket
-	err := svc.tdBucket.Delete(args.ThingID)
+	err := svc.tdBucket.Delete(thingID)
 	svc.cachemux.Lock()
 	defer svc.cachemux.Unlock()
-	delete(svc.tdCache, args.ThingID)
+	delete(svc.tdCache, thingID)
 	// delete from the index array. A bit primitive but it works
 	for i, key := range svc.thingKeys {
-		if key == args.ThingID {
+		if key == thingID {
 			svc.thingKeys[i] = svc.thingKeys[len(svc.thingKeys)-1]
 			svc.thingKeys = svc.thingKeys[:len(svc.thingKeys)-1]
 			break
@@ -188,8 +193,11 @@ func (svc *DigitwinDirectory) Stop() {
 }
 
 // UpdateThing adds or updates the Thing Description document
+// intended for internal use, so not a TDD action.
 // Added things are written to the store.
-func (svc *DigitwinDirectory) UpdateThing(senderID string, dtThingID string, tdd *things.TD) error {
+func (svc *DigitwinDirectory) UpdateThing(
+	senderID string, dtThingID string, tdd *things.TD) error {
+
 	slog.Info("UpdateThing",
 		slog.String("senderID", senderID),
 		slog.String("dtThingID", dtThingID))

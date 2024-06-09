@@ -1,6 +1,8 @@
 package authz_test
 
 import (
+	"github.com/hiveot/hub/api/go/authn"
+	authz2 "github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient/embedded"
 	"github.com/hiveot/hub/lib/logging"
@@ -9,7 +11,6 @@ import (
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authz"
 	"github.com/hiveot/hub/runtime/authz/authzagent"
-	"github.com/hiveot/hub/runtime/authz/authzclient"
 	"github.com/hiveot/hub/runtime/authz/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,9 +55,9 @@ func TestSetRole(t *testing.T) {
 	defer svc.Stop()
 
 	// add the user whose role to set
-	err = authnStore.Add(client1ID, api.ClientProfile{
+	err = authnStore.Add(client1ID, authn.ClientProfile{
 		ClientID:    client1ID,
-		ClientType:  api.ClientTypeUser,
+		ClientType:  authn.ClientTypeConsumer,
 		DisplayName: "user 1",
 	})
 	assert.NoError(t, err)
@@ -65,10 +66,10 @@ func TestSetRole(t *testing.T) {
 
 	handler, _ := authzagent.StartAuthzAgent(svc, nil)
 	ecl := embedded.NewEmbeddedClient(client1ID, handler.HandleMessage)
-	authzCl := authzclient.NewAuthzManageClient(ecl)
+	authzCl := authz2.NewAdminClient(ecl)
 
 	// set the role
-	err = authzCl.SetClientRole(client1ID, client1Role)
+	err = authzCl.SetClientRole(authz2.AdminSetClientRoleArgs{client1ID, client1Role})
 	require.NoError(t, err)
 
 	// get the role
@@ -90,9 +91,10 @@ func TestHasPermission(t *testing.T) {
 	require.NoError(t, err)
 	defer svc.Stop()
 
-	err = authnStore.Add(senderID, api.ClientProfile{ClientID: senderID, ClientType: api.ClientTypeUser})
+	err = authnStore.Add(senderID,
+		authn.ClientProfile{ClientID: senderID, ClientType: authn.ClientTypeConsumer})
 	require.NoError(t, err)
-	err = svc.SetClientRole(senderID, client1Role)
+	err = svc.SetClientRole(senderID, authz2.AdminSetClientRoleArgs{senderID, client1Role})
 	assert.NoError(t, err)
 	// consumers have permission to publish actions
 	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, nil, senderID)

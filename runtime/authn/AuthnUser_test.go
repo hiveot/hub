@@ -1,10 +1,9 @@
 package authn_test
 
 import (
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/hubclient/embedded"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/authn/authnclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -22,68 +21,66 @@ func TestClientUpdatePubKey(t *testing.T) {
 	// Option2: client accepts agentID to use
 	//   this allows connecting to different agents instead of hardcoding one.
 	//   not an issue for auth though.
-	userCl := authnclient.NewAuthnUserClient(ehc)
+	userCl := authn.NewUserClient(ehc)
 
 	// add user to test with. don't set the public key yet
-	err := svc.AdminSvc.AddConsumer(tu1ID, tu1ID, "user1")
-	prof, err := svc.AdminSvc.GetClientProfile(tu1ID)
+	err := svc.AdminSvc.AddConsumer("",
+		authn.AdminAddConsumerArgs{tu1ID, tu1ID, "user1"})
+	profile, err := svc.AdminSvc.GetClientProfile("", tu1ID)
 	require.NoError(t, err)
-	assert.Equal(t, tu1ID, prof.ClientID)
-	assert.Equal(t, tu1ID, prof.DisplayName)
-	assert.NotEmpty(t, prof.TokenValiditySec)
-	assert.NotEmpty(t, prof.UpdatedMsec)
+	assert.Equal(t, tu1ID, profile.ClientID)
+	assert.Equal(t, tu1ID, profile.DisplayName)
+	assert.NotEmpty(t, profile.Updated)
 
 	// update the public key
 	kp := keys.NewKey(keys.KeyTypeECDSA)
-	prof1, err := svc.UserSvc.GetProfile(tu1ID)
-	assert.Equal(t, tu1ID, prof1.ClientID)
+	profile2, err := svc.UserSvc.GetProfile(tu1ID)
+	assert.Equal(t, tu1ID, profile2.ClientID)
 	require.NoError(t, err)
-	err = userCl.UpdatePubKey(tu1ID, kp.ExportPublic())
+	err = userCl.UpdatePubKey(kp.ExportPublic())
 	assert.NoError(t, err)
 
 	// check result
-	prof, err = userCl.GetProfile()
+	profile3, err := userCl.GetProfile()
 	require.NoError(t, err)
-	assert.Equal(t, tu1ID, prof.ClientID)
-	assert.Equal(t, kp.ExportPublic(), prof.PubKey)
+	assert.Equal(t, tu1ID, profile3.ClientID)
+	assert.Equal(t, kp.ExportPublic(), profile3.PubKey)
 }
 
 // Note: RefreshToken is only possible when using JWT.
 func TestLoginRefresh(t *testing.T) {
 	var tu1ID = "tu1ID"
 	var tu1Pass = "tu1Pass"
-	var authToken1 string
-	var authToken2 string
 
 	svc, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// create the client that connects directly to the user service
 	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
-	userCl := authnclient.NewAuthnUserClient(ecl)
+	userCl := authn.NewUserClient(ecl)
 
 	// add user to test with
-	err := svc.AdminSvc.AddConsumer(tu1ID, "testuser1", "")
+	err := svc.AdminSvc.AddConsumer(tu1ID, authn.AdminAddConsumerArgs{tu1ID, "testuser1", ""})
 	require.NoError(t, err)
 
 	err = userCl.UpdatePassword(tu1Pass)
 	require.NoError(t, err)
 
 	// FIXME: how to provide a sessionID??
-	authToken1, err = userCl.Login(tu1ID, tu1Pass)
+	resp, err := userCl.Login(authn.UserLoginArgs{tu1ID, tu1Pass})
 	require.NoError(t, err)
 
-	cid2, sid2, err := svc.SessionAuth.ValidateToken(authToken1)
+	cid2, sid2, err := svc.SessionAuth.ValidateToken(resp.Token)
 	assert.Equal(t, tu1ID, cid2)
 	assert.NotEmpty(t, sid2)
 	require.NoError(t, err)
 
 	// RefreshToken the token
-	authToken2, err = userCl.RefreshToken(authToken1)
+	token2, err := userCl.RefreshToken(resp.Token)
 	require.NoError(t, err)
-	require.NotEmpty(t, authToken2)
+	require.NotEmpty(t, resp.Token)
 
 	// ValidateToken the new token
-	cid3, sid3, err := svc.SessionAuth.ValidateToken(authToken2)
+	cid3, sid3, err := svc.SessionAuth.ValidateToken(token2)
 	assert.Equal(t, tu1ID, cid3)
 	assert.Equal(t, sid2, sid3)
 	require.NoError(t, err)
@@ -96,11 +93,11 @@ func TestLoginRefreshFail(t *testing.T) {
 	defer stopFn()
 	// create the client that connects directly to the user service
 	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
-	userCl := authnclient.NewAuthnUserClient(ecl)
+	userCl := authn.NewUserClient(ecl)
 
 	// RefreshToken the token non-existing
-	token, err := userCl.RefreshToken("badToken")
-	_ = token
+	resp, err := userCl.RefreshToken("badToken")
+	_ = resp
 	require.Error(t, err)
 }
 
@@ -113,14 +110,14 @@ func TestUpdatePassword(t *testing.T) {
 	defer stopFn()
 	// create the client that connects directly to the user service
 	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
-	userCl := authnclient.NewAuthnUserClient(ecl)
+	userCl := authn.NewUserClient(ecl)
 
 	// add user to test with
-	err := svc.AdminSvc.AddConsumer(tu1ID, tu1Name, "oldpass")
+	err := svc.AdminSvc.AddConsumer(tu1ID, authn.AdminAddConsumerArgs{tu1ID, tu1Name, "oldpass"})
 	require.NoError(t, err)
 
 	// login should succeed
-	_, err = userCl.Login(tu1ID, "oldpass")
+	_, err = userCl.Login(authn.UserLoginArgs{tu1ID, "oldpass"})
 	require.NoError(t, err)
 
 	// change password
@@ -129,11 +126,11 @@ func TestUpdatePassword(t *testing.T) {
 
 	// login with old password should now fail
 	//t.Log("an error is expected logging in with the old password")
-	_, err = userCl.Login(tu1ID, "oldpass")
+	_, err = userCl.Login(authn.UserLoginArgs{tu1ID, "oldpass"})
 	require.Error(t, err)
 
 	// re-login with new password
-	_, err = userCl.Login(tu1ID, "newpass")
+	_, err = userCl.Login(authn.UserLoginArgs{tu1ID, "newpass"})
 	require.NoError(t, err)
 }
 
@@ -143,7 +140,7 @@ func TestUpdatePasswordFail(t *testing.T) {
 	defer stopFn()
 	// create the client that connects directly to the user service
 	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
-	userCl := authnclient.NewAuthnUserClient(ecl)
+	userCl := authn.NewUserClient(ecl)
 
 	err := userCl.UpdatePassword("newpass")
 	assert.Error(t, err)
@@ -159,29 +156,29 @@ func TestUpdateName(t *testing.T) {
 	defer stopFn()
 	// create the client that connects directly to the user service
 	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
-	userCl := authnclient.NewAuthnUserClient(ecl)
+	userCl := authn.NewUserClient(ecl)
 
 	// add user to test with
-	err := svc.AdminSvc.AddConsumer(tu1ID, tu1Name, "oldpass")
+	err := svc.AdminSvc.AddConsumer(tu1ID, authn.AdminAddConsumerArgs{tu1ID, tu1Name, "oldpass"})
 	require.NoError(t, err)
 
-	prof1, err := userCl.GetProfile()
+	profile, err := userCl.GetProfile()
 	require.NoError(t, err)
-	assert.Equal(t, tu1Name, prof1.DisplayName)
+	assert.Equal(t, tu1Name, profile.DisplayName)
 
 	err = userCl.UpdateName(tu2Name)
 	require.NoError(t, err)
-	prof2, err := userCl.GetProfile()
+	profile2, err := userCl.GetProfile()
 	require.NoError(t, err)
 
-	assert.Equal(t, tu2Name, prof2.DisplayName)
+	assert.Equal(t, tu2Name, profile2.DisplayName)
 }
 
 func TestBadUserCommand(t *testing.T) {
 	_, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	ecl := embedded.NewEmbeddedClient("client1", userHandler)
-	err := ecl.Rpc(api.AuthnUserServiceID, "badmethod", nil, nil)
+	err := ecl.Rpc(authn.UserServiceID, "badmethod", nil, nil)
 	require.Error(t, err)
 
 }

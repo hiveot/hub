@@ -1,5 +1,7 @@
 package httpstransport
 
+import "github.com/hiveot/hub/runtime/authn/config"
+
 const DefaultHttpsPort = 8444
 
 // HttpsTransportConfig contains the configuration of the HTTPS server binding,
@@ -17,16 +19,21 @@ type HttpsTransportConfig struct {
 	// Port is the server TLS port, default is 8444
 	// This port handles http, websocket and sse requests
 	Port int `yaml:"port,omitempty"`
+
+	// token validity when logging in using REST
+	// Default is DefaultConsumerTokenValiditySec
+	ConsumerTokenValiditySec int `yaml:"consumerTokenValiditySec"`
 }
 
 // NewHttpsTransportConfig creates a new instance of the https binding configuration
 // with default values
 func NewHttpsTransportConfig() HttpsTransportConfig {
 	cfg := HttpsTransportConfig{
-		Host:      "",
-		Port:      DefaultHttpsPort,
-		EnableSSE: false,
-		EnableWS:  false,
+		Host:                     "",
+		Port:                     DefaultHttpsPort,
+		EnableSSE:                false,
+		EnableWS:                 false,
+		ConsumerTokenValiditySec: config.DefaultConsumerTokenValiditySec,
 	}
 	return cfg
 }

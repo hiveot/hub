@@ -2,13 +2,13 @@ package service
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 )
 
 // HandleConfigRequest handles requests to configure the service or devices
-func (svc *OWServerBinding) HandleConfigRequest(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+func (svc *OWServerBinding) HandleConfigRequest(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	slog.Info("HandleConfigRequest",
 		slog.String("thingID", msg.ThingID),
 		slog.String("property", msg.Key),

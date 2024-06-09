@@ -2,7 +2,6 @@ package digitwin_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/directory"
 	"github.com/hiveot/hub/lib/logging"
 	"testing"
 )
@@ -46,7 +45,7 @@ func Benchmark_ReadTD(b *testing.B) {
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)
-				td, err := svc.ReadTD(directory.ReadTDArgs{ThingID: thingID})
+				td, err := svc.ReadTD("senderID", thingID)
 				_ = td
 				_ = err
 			}

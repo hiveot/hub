@@ -17,6 +17,8 @@ type ActionAffordance struct {
 	Description string `json:"description,omitempty"`
 	// Provides additional nulti-language information
 	Descriptions []string `json:"descriptions,omitempty"`
+	// Multiline description
+	Comments []string `json:"comments,omitempty"`
 
 	// Form hypermedia controls to describe how an operation can be performed
 	// Forms are serializations of Protocol Bindings.

@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/services/state/stateclient"
 	"log/slog"
 	"sync"
@@ -173,11 +172,11 @@ func (cs *ClientSession) onEvent(msg *things.ThingMessage) error {
 	} else if msg.Key == vocab.EventTypeDeliveryUpdate {
 		// report unhandled delivery updates
 		// for now just pass it to the notification toaster
-		stat := api.DeliveryStatus{}
+		stat := hubclient.DeliveryStatus{}
 		_ = msg.Unmarshal(&stat)
 		if stat.Error != "" {
 			cs.SendNotify(NotifyError, stat.Error)
-		} else if stat.Status == api.DeliveryCompleted {
+		} else if stat.Status == hubclient.DeliveryCompleted {
 			cs.SendNotify(NotifySuccess, "Action successful")
 		} else {
 			cs.SendNotify(NotifyWarning, "Action delivery: "+stat.Status)

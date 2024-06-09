@@ -2,8 +2,8 @@ package middleware
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 )
 
 // MiddlewareHandler for processing a message through the middleware chain until an error
@@ -12,7 +12,7 @@ import (
 type MiddlewareHandler func(msg *things.ThingMessage) (*things.ThingMessage, error)
 
 // MessageHandler handles the message after the middleware
-type MessageHandler func(msg *things.ThingMessage) api.DeliveryStatus
+type MessageHandler func(msg *things.ThingMessage) hubclient.DeliveryStatus
 
 // Middleware service for passing events and actions through a chain of services
 type Middleware struct {
@@ -41,7 +41,7 @@ func (svc *Middleware) AddMiddlewareHandler(handler MiddlewareHandler) {
 // forward the request, based on the policy. (TODO)
 //
 // The middleware chain is intended to validate, enrich, and process the event, action and rpc messages.
-func (svc *Middleware) HandleMessage(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+func (svc *Middleware) HandleMessage(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	var err error
 
 	for _, handler := range svc.mwChain {

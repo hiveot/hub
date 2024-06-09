@@ -9,7 +9,6 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 )
 
 // EmbeddedClient is a hub client that connects directly to the embedded protocol binding.
@@ -24,11 +23,11 @@ type EmbeddedClient struct {
 	// The connected client/agent
 	clientID string
 	// sendMessage from the client to the protocol binding server
-	sendMessage api.MessageHandler
+	sendMessage hubclient.MessageHandler
 	// client side handler that receives actions from the server
-	receiveActionHandler api.MessageHandler
+	receiveActionHandler hubclient.MessageHandler
 	// client side handler that receives all non-action messages from the server
-	receiveEventHandler api.EventHandler
+	receiveEventHandler hubclient.EventHandler
 }
 
 // ConnectWithClientCert always succeeds as a direct connection doesn't need a certificate
@@ -68,7 +67,7 @@ func (cl *EmbeddedClient) Logout() error {
 }
 
 // ReceiveMessage receives a message from the server for this client
-func (cl *EmbeddedClient) ReceiveMessage(msg *things.ThingMessage) (stat api.DeliveryStatus) {
+func (cl *EmbeddedClient) ReceiveMessage(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	if msg.MessageType == vocab.MessageTypeAction {
 		if cl.receiveActionHandler != nil {
 			return cl.receiveActionHandler(msg)
@@ -90,7 +89,7 @@ func (cl *EmbeddedClient) ReceiveMessage(msg *things.ThingMessage) (stat api.Del
 // PubAction publishes an action request.
 // Since this is a direct call, the response include a reply.
 func (cl *EmbeddedClient) PubAction(
-	thingID string, key string, payload []byte) (stat api.DeliveryStatus) {
+	thingID string, key string, payload []byte) (stat hubclient.DeliveryStatus) {
 
 	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, payload, cl.clientID)
 	stat = cl.sendMessage(msg)
@@ -98,7 +97,7 @@ func (cl *EmbeddedClient) PubAction(
 }
 
 // PubConfig publishes a configuration change request
-func (cl *EmbeddedClient) PubConfig(thingID string, key string, value string) (stat api.DeliveryStatus) {
+func (cl *EmbeddedClient) PubConfig(thingID string, key string, value string) (stat hubclient.DeliveryStatus) {
 	props := map[string]string{key: value}
 	propsJson, _ := json.Marshal(props)
 	return cl.PubAction(thingID, vocab.ActionTypeProperties, propsJson)
@@ -161,13 +160,13 @@ func (cl *EmbeddedClient) SetConnectHandler(cb func(status hubclient.TransportSt
 }
 
 // SetActionHandler set the handler that receives all subscribed action messages.
-func (cl *EmbeddedClient) SetActionHandler(cb api.MessageHandler) {
+func (cl *EmbeddedClient) SetActionHandler(cb hubclient.MessageHandler) {
 	cl.receiveActionHandler = cb
 }
 
 // SetEventHandler set the handler that receives all subscribed messages.
 // Use 'Subscribe' to set the type of events and actions to receive
-func (cl *EmbeddedClient) SetEventHandler(cb api.EventHandler) {
+func (cl *EmbeddedClient) SetEventHandler(cb hubclient.EventHandler) {
 	cl.receiveEventHandler = cb
 }
 
@@ -206,7 +205,7 @@ func (cl *EmbeddedClient) Unsubscribe(thingID string) error {
 //
 // Intended for testing and clients that are also embedded, such as services calling other
 // services.
-func NewEmbeddedClient(clientID string, serverHandler api.MessageHandler) *EmbeddedClient {
+func NewEmbeddedClient(clientID string, serverHandler hubclient.MessageHandler) *EmbeddedClient {
 	cl := EmbeddedClient{
 		clientID:    clientID,
 		sendMessage: serverHandler,

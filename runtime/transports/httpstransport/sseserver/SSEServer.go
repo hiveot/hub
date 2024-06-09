@@ -25,6 +25,8 @@ func (srv *SSEServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// NOTE! The Content-Type header must be set to text/event-stream otherwise
 		// go-sse client will not retry after graceful disconnect.
 		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Connection", "keep-alive")
+
 		srv.gosse.ServeHTTP(w, r)
 	} else {
 		HTServeHttp(w, r)

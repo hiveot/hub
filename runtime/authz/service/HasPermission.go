@@ -10,7 +10,7 @@ import (
 // This returns true if the client has permission, false if the client does not have the permission
 // See also HasServicePermissions to check if clients can invoke specific services
 func (svc *AuthzService) HasRolePermission(msg *things.ThingMessage, isPub bool) bool {
-	role, err := svc.GetClientRole(msg.SenderID)
+	role, err := svc.GetClientRole(msg.SenderID, msg.SenderID)
 	if err != nil || role == "" {
 		// unknown client or missing role
 		return false
@@ -46,7 +46,7 @@ func (svc *AuthzService) HasThingPermission(msg *things.ThingMessage, isPub bool
 	if !found {
 		return false
 	}
-	clientRole, err := svc.GetClientRole(msg.SenderID)
+	clientRole, err := svc.GetClientRole(msg.SenderID, msg.SenderID)
 	if err != nil {
 		return false
 	}
@@ -67,8 +67,12 @@ func (svc *AuthzService) HasThingPermission(msg *things.ThingMessage, isPub bool
 	return false
 }
 
-// HasPermission returns whether the client has permission to pub or sub a message type
-// This returns true if the client has permission, false if the client does not have the permission
+// HasPermission returns whether the client has permission to pub or sub a message type.
+//
+// This returns true if the client has permission, false if the client does not have the permission.
+//
+// This applies Thing specific permissions if set, or general role based permissions
+// when the Thing does not have specific permissions set.
 func (svc *AuthzService) HasPermission(msg *things.ThingMessage, isPub bool) (hasPerm bool) {
 	//If a thing permission exists then it has priority
 	_, found := svc.cfg.GetPermissions(msg.ThingID)

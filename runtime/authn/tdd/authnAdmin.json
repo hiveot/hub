@@ -1,0 +1,232 @@
+{
+  "@context":[ "https://www.w3.org/2022/wot/td/v1.1",
+    {"ht": "https://www.hiveot.net/vocab/v0.1"}
+  ],
+  "@type": "Service",
+  "id": "dtw:authn:admin",
+  "title": "Authentication Administration Service",
+  "description": "HiveOT runtime service for administration of consumers, Thing agents and services",
+  "version": {
+    "instance": "0.1.0"
+  },
+  "created": "2024-06-04T17:00:00.000Z",
+  "modified": "2024-06-04T17:00:00.000Z",
+  "support": "https://www.github.com/hiveot/hub",
+  "security": ["bearer"],
+  "securityDefinitions": {
+    "bearer": {
+    }
+  },
+  "forms": [{
+    "op": "readallproperties",
+    "contentType": "application/json",
+    "href": "/things/{thingID}/properties"
+  }],
+  "comment": "TODO: how to reference ClientProfile defined in the user service?",
+  "links": [],
+
+  "properties": {
+    "nrClients": {
+      "title": "Number of clients",
+      "type": "integer",
+      "readOnly": true
+    }
+  },
+
+  "events": {
+    "added": {
+      "title": "Client Added",
+      "description": "A new client was added",
+      "data": {
+        "title": "Client ID",
+        "type": "string"
+      }
+    },
+
+    "removed": {
+      "title": "Client Removed",
+      "description": "A client was removed",
+      "data": {
+        "title": "Client ID",
+        "type": "string"
+      }
+    }
+  },
+
+  "actions": {
+    "addAgent": {
+      "@type": "ht:function",
+      "title": "Add Agent",
+      "description": "Create an account for IoT device agents",
+      "idempotent": true,
+      "input": {
+        "type": "object",
+        "title": "Agent Info",
+        "properties": {
+          "clientID": {
+            "title": "Client ID",
+            "type": "string"
+          },
+          "displayName": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "pubKey": {
+            "title": "Public Key",
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "title": "Token",
+        "description": "Agent authentication token",
+        "type": "string"
+      }
+    },
+
+    "addConsumer": {
+      "@type": "ht:function",
+      "title": "Add Consumer",
+      "description": "Add an end-user client",
+      "idempotent": true,
+      "input": {
+        "type": "object",
+        "title": "Consumer Info",
+        "properties": {
+          "clientID": {
+            "title": "Client ID",
+            "type": "string"
+          },
+          "displayName": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          }
+        }
+      }
+    },
+
+    "addService": {
+      "@type": "ht:function",
+      "title": "Add Service",
+      "description": "Add a service account",
+      "idempotent": true,
+      "input": {
+        "type": "object",
+        "Title": "Service Info",
+        "properties": {
+          "clientID": {
+            "title": "Client ID",
+            "type": "string"
+          },
+          "displayName": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "pubKey": {
+            "title": "Public Key",
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "title":"Token",
+        "description": "Service authentication token",
+        "type": "string"
+      }
+    },
+
+    "getClientProfile": {
+      "@type": "ht:function",
+      "title": "Get Client Profile",
+      "description": "Get the profile information describing a client",
+      "idempotent": true,
+      "input": {
+          "title": "Client ID",
+          "type": "string"
+      },
+      "output": {
+        "title": "Profile",
+        "type": "ClientProfile"
+      }
+    },
+
+    "getProfiles": {
+      "@type": "ht:function",
+      "title": "Get Profiles",
+      "description": "Get a list of all client profiles",
+      "idempotent": true,
+      "output": {
+        "type": "array",
+        "title": "Client Profiles",
+        "items": {
+          "title": "Client Profile",
+          "type": "ClientProfile"
+        }
+      }
+    },
+
+    "newAuthToken": {
+      "@type": "ht:function",
+      "title": "New Authentication Token",
+      "description": "Obtain a new authentication token for an agent or service",
+      "idempotent": false,
+      "input": {
+        "title": "Client ID",
+        "type": "string"
+      },
+      "output": {
+        "title": "Token",
+        "description": "New service or agent authentication token",
+        "type": "string"
+      }
+    },
+
+    "removeClient": {
+      "@type": "ht:function",
+      "title": "Remove Client",
+      "description": "Remove a client account",
+      "idempotent": false,
+      "input": {
+        "title": "Client ID",
+        "type": "string"
+      }
+    },
+
+    "setClientPassword": {
+      "@type": "ht:function",
+      "title": "Set Client Password",
+      "description": "Update the password of a consumer",
+      "idempotent": false,
+      "input": {
+        "title": "Client Info",
+        "description": "Client ID and password",
+        "type": "object",
+        "properties": {
+          "clientID": {
+            "title": "Client ID",
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          }
+        }
+      }
+    },
+
+    "updateClientProfile": {
+      "@type": "ht:function",
+      "title": "Update Client Profile",
+      "description": "Update the details of a client",
+      "idempotent": false,
+      "input": {
+        "title": "Client Profile",
+        "type": "ClientProfile"
+      }
+    }
+  }
+}

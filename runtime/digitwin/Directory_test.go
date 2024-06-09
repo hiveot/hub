@@ -2,7 +2,7 @@ package digitwin_test
 
 import (
 	"encoding/json"
-	"github.com/hiveot/hub/api/go/directory"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -43,8 +43,8 @@ func startDirectory(clean bool) (
 	}
 
 	// use direct transport to pass messages to the service
-	msgHandler := directory.NewActionHandler(svc)
-	cl = embedded.NewEmbeddedClient(directory.AgentID, msgHandler)
+	msgHandler := digitwin.NewDirectoryHandler(svc)
+	cl = embedded.NewEmbeddedClient(digitwin.DirectoryAgentID, msgHandler)
 
 	return svc, cl, func() {
 		svc.Stop()
@@ -60,7 +60,7 @@ func createTDDoc(thingID string, title string) *things.TD {
 
 func TestStartStopDirectory(t *testing.T) {
 	var thingIDs = []string{"thing1", "thing2", "thing3", "thing4"}
-	svc, mt, stopFunc := startDirectory(true)
+	svc, hc, stopFunc := startDirectory(true)
 
 	// add TDs
 	for _, thingID := range thingIDs {
@@ -69,19 +69,17 @@ func TestStartStopDirectory(t *testing.T) {
 		require.NoError(t, err)
 	}
 	// viewers should be able to read the directory
-	args := directory.ReadTDsArgs{Limit: 10, Offset: 0}
-	resp, err := directory.ReadTDs(mt, args)
+	tdList, err := digitwinclient.ReadTDs(hc, 0, 10)
 	assert.NoError(t, err, "Cant read directory. Did the service set client permissions?")
-	assert.Equal(t, len(thingIDs), len(resp.Output))
+	assert.Equal(t, len(thingIDs), len(tdList))
 
 	// stop and start again, the update should be reloaded
 	stopFunc()
 
-	svc, mt, stopFunc = startDirectory(false)
+	svc, hc, stopFunc = startDirectory(false)
 	defer stopFunc()
-	args = directory.ReadTDsArgs{Limit: 10, Offset: 0}
-	resp, err = directory.ReadTDs(mt, args)
-	assert.Equal(t, len(thingIDs), len(resp.Output))
+	tdList, err = digitwinclient.ReadTDs(hc, 0, 10)
+	assert.Equal(t, len(thingIDs), len(tdList))
 }
 
 func TestAddRemoveTD(t *testing.T) {
@@ -101,16 +99,15 @@ func TestAddRemoveTD(t *testing.T) {
 	assert.NoError(t, err)
 
 	// use the client wrapper to read
-	cl := digitwinclient.NewDirectoryClient(hc)
-	td, err := cl.ReadTD(dThing1ID)
+	td, err := digitwinclient.ReadTD(hc, dThing1ID)
 	require.NoError(t, err)
 	assert.Equal(t, dThing1ID, td.ID)
 
 	// after removal, getTD should return nil
-	err = svc.RemoveTD(directory.RemoveTDArgs{ThingID: dThing1ID})
+	err = svc.RemoveTD("senderID", dThing1ID)
 	assert.NoError(t, err)
 
-	td3, err := cl.ReadTD(dThing1ID)
+	td3, err := digitwinclient.ReadTD(hc, dThing1ID)
 	assert.Empty(t, td3)
 	assert.Error(t, err)
 }
@@ -121,7 +118,7 @@ func TestHandleTDEvent(t *testing.T) {
 	const title1 = "title1"
 	//var dtThing1ID = things.MakeDigiTwinThingID(agentID, rawThing1ID)
 
-	svc, cl, stopFunc := startDirectory(true)
+	svc, hc, stopFunc := startDirectory(true)
 	//msgHandler := digitwinhandler.NewDigiTwinHandler(svc)
 	defer stopFunc()
 
@@ -138,53 +135,28 @@ func TestHandleTDEvent(t *testing.T) {
 	stat = svc.HandleTDEvent(msg)
 	assert.Empty(t, stat.Error)
 
-	resp, err := directory.ReadTDs(cl, directory.ReadTDsArgs{Limit: 10})
-	assert.Equal(t, 1, len(resp.Output))
+	tdList, err := digitwinclient.ReadTDs(hc, 0, 10)
+	assert.Equal(t, 1, len(tdList))
 	assert.NoError(t, err)
 }
 
 func TestGetTDsFail(t *testing.T) {
 	const clientID = "client1"
-	svc, cl, stopFunc := startDirectory(true)
+	svc, hc, stopFunc := startDirectory(true)
 	_ = svc
 	defer stopFunc()
-	resp, err := directory.ReadTDs(cl, directory.ReadTDsArgs{Limit: 10})
+	tdList, err := digitwinclient.ReadTDs(hc, 0, 10)
 	require.NoError(t, err)
-	require.Empty(t, resp.Output)
+	require.Empty(t, tdList)
 
-	resp, err = directory.ReadTDs(cl, directory.ReadTDsArgs{Limit: 10, Offset: 10})
+	tdList, err = digitwinclient.ReadTDs(hc, 10, 10)
 	require.NoError(t, err)
-	require.Empty(t, resp.Output)
+	require.Empty(t, tdList)
 
 	// bad clientID
-	resp2, err := directory.ReadTD(cl, directory.ReadTDArgs{ThingID: "badid"})
+	resp2, err := digitwinclient.ReadTD(hc, "badid")
 	require.Error(t, err)
-	require.Empty(t, resp2.Output)
-}
-
-func TestListTDs(t *testing.T) {
-	const agentID = "agent1"
-	const rawThing1ID = "thing1"
-	const title1 = "title1"
-	var dtThing1ID = things.MakeDigiTwinThingID(agentID, rawThing1ID)
-
-	svc, hc, stopFunc := startDirectory(true)
-	defer stopFunc()
-
-	tdDoc1 := createTDDoc(dtThing1ID, title1)
-
-	err := svc.UpdateThing(agentID, dtThing1ID, tdDoc1)
-	require.NoError(t, err)
-
-	// use the client wrapper
-	cl := digitwinclient.NewDirectoryClient(hc)
-	tdList, err := cl.ReadTDs(0, 100)
-	require.NoError(t, err)
-
-	assert.NotNil(t, tdList)
-	require.True(t, len(tdList) > 0)
-
-	//	slog.Infof("--- TestListTDs end ---")
+	require.Empty(t, resp2)
 }
 
 //func TestQueryTDs(t *testing.T) {

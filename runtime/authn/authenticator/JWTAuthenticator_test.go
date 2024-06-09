@@ -14,7 +14,7 @@ var authnStore api.IAuthnStore
 
 func TestCreateSessionToken(t *testing.T) {
 	const clientID = "user1"
-	const clientType = api.ClientTypeUser
+	//const clientType = authn.ClientTypeConsumer
 	sessionID := "session1"
 
 	signingKey := keys.NewEcdsaKey()
@@ -29,12 +29,8 @@ func TestCreateSessionToken(t *testing.T) {
 	require.Equal(t, clientID, cid2)
 	require.Equal(t, sessionID, sid2)
 
-	// refresh
-	newToken, err := svc.RefreshToken(clientID, token1, 100)
-	require.NoError(t, err)
-
 	// validate the new token
-	cid3, sid3, err := svc.ValidateToken(newToken)
+	cid3, sid3, err := svc.ValidateToken(token1)
 	require.NoError(t, err)
 	require.Equal(t, clientID, cid3)
 	require.Equal(t, sessionID, sid3)
@@ -42,7 +38,7 @@ func TestCreateSessionToken(t *testing.T) {
 
 func TestBadTokens(t *testing.T) {
 	const clientID = "user1"
-	const clientType = api.ClientTypeUser
+	//const clientType = authn.ClientTypeConsumer
 	sessionID := "session1"
 
 	signingKey := keys.NewEcdsaKey()
@@ -54,9 +50,9 @@ func TestBadTokens(t *testing.T) {
 	// try to refresh as a different client
 
 	// refresh
-	newToken, err := svc.RefreshToken("badclient", token1, 100)
+	badToken := token1 + "-bad"
+	_, _, err := svc.ValidateToken(badToken)
 	require.Error(t, err)
-	assert.Empty(t, newToken)
 
 	// expired
 	token2 := svc.CreateSessionToken(clientID, sessionID, -100)
