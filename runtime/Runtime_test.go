@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"log/slog"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -130,7 +131,7 @@ func TestServiceReconnect(t *testing.T) {
 	const userID = "user1"
 	const thingID = "thing1"
 	const actionID = "action1"
-	var rxMsg *things.ThingMessage
+	var rxMsg atomic.Pointer[*things.ThingMessage]
 	var actionPayload = "payload1"
 	var expectedReply = actionPayload + ".reply"
 
@@ -145,7 +146,7 @@ func TestServiceReconnect(t *testing.T) {
 	// Agent receives action request which we'll handle here
 	cl1.SetActionHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		var req string
-		rxMsg = msg
+		rxMsg.Store(&msg)
 		stat.Completed(msg, nil)
 		_ = msg.Unmarshal(&req)
 		stat.Reply, _ = json.Marshal(req + ".reply")
@@ -180,7 +181,8 @@ func TestServiceReconnect(t *testing.T) {
 	err = cl2.Rpc(dThingID, actionID, &actionPayload, &reply)
 
 	require.NoError(t, err, "auto-reconnect didn't take place")
-	require.NotNil(t, rxMsg)
+	rx2 := rxMsg.Load()
+	require.NotNil(t, rx2)
 	require.Equal(t, expectedReply, string(reply))
 }
 

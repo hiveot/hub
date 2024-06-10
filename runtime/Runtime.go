@@ -48,10 +48,12 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	if err != nil {
 		return err
 	}
+	// start authorization service and hook into the middleware
 	r.AuthzSvc, err = service2.StartAuthzService(&r.cfg.Authz, r.AuthnSvc.AuthnStore)
 	if err != nil {
 		return err
 	}
+	r.Middleware.AddMiddlewareHandler(r.AuthzSvc.HasPubPermission)
 
 	// the protocol manager receives messages from clients (source) and
 	// sends messages to connected clients (sink)

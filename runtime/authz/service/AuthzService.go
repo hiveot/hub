@@ -68,7 +68,7 @@ func (svc *AuthzService) GetClientRole(senderID string, clientID string) (string
 }
 
 // GetRolePermissions returns the permissions for the given role
-func (svc *AuthzService) GetRolePermissions(senderID string, role string) ([]api.RolePermission, bool) {
+func (svc *AuthzService) GetRolePermissions(senderID string, role string) ([]authz.RolePermission, bool) {
 	rolePerm, found := svc.cfg.RolePermissions[role]
 	return rolePerm, found
 }

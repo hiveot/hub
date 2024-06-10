@@ -12,7 +12,6 @@ import (
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 	"sync"
-	"time"
 )
 
 // SessionManager tracks client sessions using their authentication token.
@@ -98,7 +97,7 @@ func (sm *SessionManager) GetSession(sessionID string) (*ClientSession, error) {
 	if !found {
 		return nil, errors.New("sessionID '" + sessionID + "' not found")
 	}
-	session.lastActivity = time.Now()
+	session.UpdateLastActivity()
 	return session, nil
 }
 
@@ -120,7 +119,7 @@ func (sm *SessionManager) GetSessionByClientID(clientID string) (*ClientSession,
 	if !found {
 		return nil, errors.New("clientID '" + clientID + "' has no sessions")
 	}
-	session.lastActivity = time.Now()
+	session.UpdateLastActivity()
 	return session, nil
 }
 

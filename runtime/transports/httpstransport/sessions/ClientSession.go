@@ -79,20 +79,29 @@ func (cs *ClientSession) DeleteSSEChan(c chan SSEEvent) {
 }
 
 func (cs *ClientSession) GetClientID() string {
+	cs.mux.RLock()
+	defer cs.mux.RUnlock()
 	return cs.clientID
 }
 
 // GetNrConnections returns the number of SSE connections for the session
 func (cs *ClientSession) GetNrConnections() int {
+	cs.mux.RLock()
+	defer cs.mux.RUnlock()
 	return len(cs.sseClients)
 }
 func (cs *ClientSession) GetSessionID() string {
+	cs.mux.RLock()
+	defer cs.mux.RUnlock()
 	return cs.sessionID
 }
 
 // IsSubscribed returns true  if this client session has subscribed to events from the Thing and optionally key
 // TODO: add more fine-grained multi-key subscription
 func (cs *ClientSession) IsSubscribed(dThingID string, key string) bool {
+	cs.mux.RLock()
+	defer cs.mux.RUnlock()
+
 	subKey, hasSubscription := cs.subscriptions[dThingID]
 	if !hasSubscription {
 		// also check for wildcard subscription
@@ -190,12 +199,23 @@ func (cs *ClientSession) SendSSE(eventType string, payload string) int {
 
 // Subscribe adds the event subscription for this session client
 func (cs *ClientSession) Subscribe(dThingID string, key string) {
+	cs.mux.Lock()
+	defer cs.mux.Unlock()
 	cs.subscriptions[dThingID] = key
 }
 
 // Unsubscribe removes the event subscription for this session client
 func (cs *ClientSession) Unsubscribe(dThingID string, key string) {
+	cs.mux.Lock()
+	defer cs.mux.Unlock()
 	delete(cs.subscriptions, dThingID)
+}
+
+// UpdateLastActivity sets the current time
+func (cs *ClientSession) UpdateLastActivity() {
+	cs.mux.Lock()
+	defer cs.mux.Unlock()
+	cs.lastActivity = time.Now()
 }
 
 // NewClientSession creates a new client session

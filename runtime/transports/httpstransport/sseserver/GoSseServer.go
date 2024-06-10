@@ -33,7 +33,7 @@ func NewGoSSEServer() *sse.Server {
 
 		// establish a client event channel for sending messages back to the client
 		ctx := sseSession.Req.Context()
-		sseChan := cs.CreateSSEChan()
+		sseChan := cs.CreateSSEChan() // for this server
 		done := false
 		go func() {
 			for !done {
@@ -48,11 +48,14 @@ func NewGoSSEServer() *sse.Server {
 					sseMsg.AppendData(ev.Payload)
 					sseMsg.ID, _ = sse.NewID(ev.ID)
 					sseMsg.Type, err = sse.NewType(ev.EventType)
-					err = sseSession.Send(&sseMsg)
+					// FIXME: it causes a race condition in http
+					//err = sseSession.Send(&sseMsg)
+					err = sub.Client.Send(&sseMsg)
 					if err != nil {
 						slog.Error("failed sending message", "err", err)
 					} else {
-						_ = sseSession.Flush()
+						//_ = sseSession.Flush()
+						_ = sub.Client.Flush()
 					}
 
 				case <-ctx.Done(): // remote client connection closed

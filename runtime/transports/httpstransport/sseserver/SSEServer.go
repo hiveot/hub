@@ -41,7 +41,9 @@ func (svc *SSEServer) Stop() {
 func NewSSEServer() *SSEServer {
 	srv := SSEServer{
 		// disable gosse to fall back to the built-in test server
-		gosse: NewGoSSEServer(),
+		// disabled for now due to race conditions
+		//    https://github.com/tmaxmax/go-sse/issues/35
+		//gosse: NewGoSSEServer(),
 	}
 	return &srv
 }

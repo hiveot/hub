@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"log/slog"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -301,7 +302,7 @@ func TestPostEventAction(t *testing.T) {
 // Test publish subscribe using sse
 func TestPubSubSSE(t *testing.T) {
 	t.Log("TestPubSubSSE")
-	var rxMsg *things.ThingMessage
+	var rxMsg atomic.Pointer[*things.ThingMessage]
 	var testMsg = "hello world"
 	var thingID = "thing1"
 	var eventKey = "event11"
@@ -329,7 +330,7 @@ func TestPubSubSSE(t *testing.T) {
 
 	// 3. register the handler for events
 	cl.SetEventHandler(func(msg *things.ThingMessage) error {
-		rxMsg = msg
+		rxMsg.Store(&msg)
 		return nil
 	})
 	err = cl.Subscribe(thingID, "")
@@ -341,10 +342,11 @@ func TestPubSubSSE(t *testing.T) {
 	assert.NoError(t, err)
 	time.Sleep(time.Millisecond * 10)
 	//
-	require.NotNil(t, rxMsg)
-	assert.Equal(t, thingID, rxMsg.ThingID)
-	assert.Equal(t, testLogin, rxMsg.SenderID)
-	assert.Equal(t, eventKey, rxMsg.Key)
+	rxMsg2 := *rxMsg.Load()
+	require.NotNil(t, rxMsg2)
+	assert.Equal(t, thingID, rxMsg2.ThingID)
+	assert.Equal(t, testLogin, rxMsg2.SenderID)
+	assert.Equal(t, eventKey, rxMsg2.Key)
 }
 
 // Restarting the server should invalidate sessions

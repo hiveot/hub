@@ -1,8 +1,10 @@
 package service
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/lib/things"
 	"golang.org/x/exp/slices"
+	"log/slog"
 )
 
 // HasRolePermission returns whether the client has pub/sub permission based on their role.
@@ -82,4 +84,29 @@ func (svc *AuthzService) HasPermission(msg *things.ThingMessage, isPub bool) (ha
 		hasPerm = svc.HasRolePermission(msg, isPub)
 	}
 	return hasPerm
+}
+
+// HasPubPermission returns whether a sender can publish the given message
+//
+// This returns an error if the client doesn't have permission
+func (svc *AuthzService) HasPubPermission(msg *things.ThingMessage) (*things.ThingMessage, error) {
+	var hasPerm bool
+	//If a thing permission exists then it has priority
+	_, found := svc.cfg.GetPermissions(msg.ThingID)
+	if found {
+		// the publish is for known thing, set with SetPermission()
+		hasPerm = svc.HasThingPermission(msg, true)
+	} else {
+		hasPerm = svc.HasRolePermission(msg, true)
+	}
+	if !hasPerm {
+		slog.Warn("Sender has no permissions to publish",
+			slog.String("senderID", msg.SenderID),
+			slog.String("messageType", msg.MessageType),
+			slog.String("thingID", msg.ThingID),
+			slog.String("key", msg.Key),
+		)
+		return msg, fmt.Errorf("Permission denied")
+	}
+	return msg, nil
 }

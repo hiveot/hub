@@ -10,18 +10,12 @@ import (
 	"github.com/hiveot/hub/services/certs/certsclient"
 	"github.com/hiveot/hub/services/certs/service/selfsigned"
 	"os"
-	"path"
 	"testing"
 
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-var testDir = path.Join(os.TempDir(), "test-certs")
-
-// the following are set by the testmain
-var serverURL string
 
 var ts *testenv.TestServer
 

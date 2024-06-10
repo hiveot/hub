@@ -5,10 +5,11 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 	"path"
 	"sync"
 )
+
+const DefaultAclFilename = "authz.acl"
 
 // role and their permissions. This controls whether clients can publish actions,
 // publish events and subscribe to events.
@@ -46,8 +47,25 @@ import (
 // history manage:
 //            manager, admin, service
 
+// RolePermission defines authorization for a role.
+// Each permission defines the source/things the user can pub/sub to.
+type RolePermission struct {
+	//// device or service publishing the Thing data, or "" for all
+	//AgentID string
+	// thingID or capability, or "" for all
+	ThingID string
+	// rpc, event, action, config, or "" for all message types
+	MsgType string
+	// action name or "" for all actions
+	MsgKey string
+	// allow publishing of this message
+	AllowPub bool
+	// allow subscribing to this message
+	AllowSub bool
+}
+
 // agents can publish events, replies and subscribe to their own actions and config
-var agentPermissions = []api.RolePermission{
+var agentPermissions = []RolePermission{
 	{
 		MsgType:  vocab.MessageTypeEvent,
 		AllowPub: true,
@@ -58,7 +76,7 @@ var agentPermissions = []api.RolePermission{
 }
 
 // services can pub/sub anything
-var servicePermissions = []api.RolePermission{
+var servicePermissions = []RolePermission{
 	{
 		MsgType:  vocab.MessageTypeEvent,
 		AllowPub: true,
@@ -70,14 +88,14 @@ var servicePermissions = []api.RolePermission{
 }
 
 // viewers can subscribe to events from all things
-var viewerPermissions = []api.RolePermission{{
+var viewerPermissions = []RolePermission{{
 	MsgType:  vocab.MessageTypeEvent,
 	AllowSub: true,
 }}
 
 // operators can subscribe to events and publish things actions
 // operators cannot configure things
-var operatorPermissions = []api.RolePermission{
+var operatorPermissions = []RolePermission{
 	{
 		MsgType:  vocab.MessageTypeEvent,
 		AllowSub: true,
@@ -94,7 +112,7 @@ var operatorPermissions = []api.RolePermission{
 }
 
 // managers can sub all events and pub all actions
-var managerPermissions = []api.RolePermission{
+var managerPermissions = []RolePermission{
 	{
 		MsgType:  vocab.MessageTypeEvent,
 		AllowSub: true,
@@ -109,7 +127,7 @@ var managerPermissions = []api.RolePermission{
 var adminPermissions = append(managerPermissions)
 
 // DefaultRolePermissions contains the default pub/sub permissions for each user role
-var DefaultRolePermissions = map[string][]api.RolePermission{
+var DefaultRolePermissions = map[string][]RolePermission{
 	authn.ClientRoleNone:     nil,
 	authn.ClientRoleAgent:    agentPermissions,
 	authn.ClientRoleService:  servicePermissions,
@@ -122,7 +140,7 @@ var DefaultRolePermissions = map[string][]api.RolePermission{
 // AuthzConfig holds the authorization permissions for client roles
 type AuthzConfig struct {
 	// map of role to permissions of that role
-	RolePermissions map[string][]api.RolePermission `yaml:"RolePermissions"`
+	RolePermissions map[string][]RolePermission `yaml:"RolePermissions"`
 
 	// map of service dThingID  to the allow/deny roles that can invoke it
 	ThingPermissions map[string]authz.ThingPermissions `yaml:"ServicePermissions"`
@@ -155,7 +173,7 @@ func (cfg *AuthzConfig) SetPermissions(perms authz.ThingPermissions) {
 //	storesDir is the default storage root directory ($HOME/stores)
 func (cfg *AuthzConfig) Setup(storesDir string) {
 	if cfg.aclFile == "" {
-		cfg.aclFile = api.DefaultAclFilename
+		cfg.aclFile = DefaultAclFilename
 	}
 	if !path.IsAbs(cfg.aclFile) {
 		cfg.aclFile = path.Join(storesDir, "authz", cfg.aclFile)
