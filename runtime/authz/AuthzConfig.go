@@ -1,6 +1,7 @@
 package authz
 
 import (
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
@@ -109,13 +110,13 @@ var adminPermissions = append(managerPermissions)
 
 // DefaultRolePermissions contains the default pub/sub permissions for each user role
 var DefaultRolePermissions = map[string][]api.RolePermission{
-	api.ClientRoleNone:     nil,
-	api.ClientRoleAgent:    agentPermissions,
-	api.ClientRoleService:  servicePermissions,
-	api.ClientRoleViewer:   viewerPermissions,
-	api.ClientRoleOperator: operatorPermissions,
-	api.ClientRoleManager:  managerPermissions,
-	api.ClientRoleAdmin:    adminPermissions,
+	authn.ClientRoleNone:     nil,
+	authn.ClientRoleAgent:    agentPermissions,
+	authn.ClientRoleService:  servicePermissions,
+	authn.ClientRoleViewer:   viewerPermissions,
+	authn.ClientRoleOperator: operatorPermissions,
+	authn.ClientRoleManager:  managerPermissions,
+	authn.ClientRoleAdmin:    adminPermissions,
 }
 
 // AuthzConfig holds the authorization permissions for client roles
@@ -145,7 +146,7 @@ func (cfg *AuthzConfig) GetPermissions(dThingID string) (authz.ThingPermissions,
 func (cfg *AuthzConfig) SetPermissions(perms authz.ThingPermissions) {
 	cfg.mux.Lock()
 	defer cfg.mux.Unlock()
-	dThingID := things.MakeDigiTwinThingID("", perms.ThingID)
+	dThingID := things.MakeDigiTwinThingID(perms.AgentID, perms.ThingID)
 	cfg.ThingPermissions[dThingID] = perms
 }
 

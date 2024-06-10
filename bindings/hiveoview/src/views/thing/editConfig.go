@@ -1,13 +1,14 @@
 package thing
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/digitwin/digitwinclient"
 	"log/slog"
 	"net/http"
 )
@@ -24,17 +25,24 @@ func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 
 	mySession, err := session.GetSessionFromContext(r)
 	if err == nil {
+
 		hc := mySession.GetHubClient()
 		//dcl := digitwin.NewDirectoryClient(hc)
 		//rd := digitwinclient.NewDirectoryClient(hc)
-		td, err := digitwinclient.ReadTD(hc, thingID)
+		tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
+
 		if err == nil {
+			td := things.TD{}
+			err = json.Unmarshal([]byte(tdJson), &td)
 			prop = td.GetProperty(propKey)
 		}
 		if err == nil {
-			eventValues, _ := digitwinclient.ReadOutbox(hc, thingID)
-			if eventValues != nil && len(eventValues) > 0 {
-				value = string(eventValues.ToString(propKey))
+			eventValues, err2 := digitwin.OutboxReadLatest(hc, nil, "", thingID)
+			err = err2
+			valueMap := things.ThingMessageMap{}
+			_ = json.Unmarshal([]byte(eventValues), &valueMap)
+			if err == nil && valueMap != nil && len(valueMap) > 0 {
+				value = valueMap.ToString(propKey)
 			}
 		}
 	}

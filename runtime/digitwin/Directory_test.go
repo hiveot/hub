@@ -8,8 +8,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/embedded"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/digitwin/digitwinclient"
-	service2 "github.com/hiveot/hub/runtime/digitwin/service"
+	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -23,7 +22,7 @@ var dirStorePath = path.Join(testDirFolder, "directory.data")
 // startService initializes a service and a client
 // This doesn't use any transport.
 func startDirectory(clean bool) (
-	svc *service2.DigitwinDirectory,
+	svc *service.DigitwinDirectory,
 	cl hubclient.IHubClient,
 	stopFn func()) {
 
@@ -36,7 +35,7 @@ func startDirectory(clean bool) (
 		panic("unable to open the digital twin bucket store")
 	}
 
-	svc = service2.NewDigitwinDirectory(store)
+	svc = service.NewDigitwinDirectory(store)
 	err = svc.Start()
 	if err != nil {
 		panic("unable to start the directory service")
@@ -69,7 +68,7 @@ func TestStartStopDirectory(t *testing.T) {
 		require.NoError(t, err)
 	}
 	// viewers should be able to read the directory
-	tdList, err := digitwinclient.ReadTDs(hc, 0, 10)
+	tdList, err := digitwin.DirectoryReadTDs(hc, 10, 0)
 	assert.NoError(t, err, "Cant read directory. Did the service set client permissions?")
 	assert.Equal(t, len(thingIDs), len(tdList))
 
@@ -78,7 +77,7 @@ func TestStartStopDirectory(t *testing.T) {
 
 	svc, hc, stopFunc = startDirectory(false)
 	defer stopFunc()
-	tdList, err = digitwinclient.ReadTDs(hc, 0, 10)
+	tdList, err = digitwin.DirectoryReadTDs(hc, 10, 0)
 	assert.Equal(t, len(thingIDs), len(tdList))
 }
 
@@ -99,7 +98,10 @@ func TestAddRemoveTD(t *testing.T) {
 	assert.NoError(t, err)
 
 	// use the client wrapper to read
-	td, err := digitwinclient.ReadTD(hc, dThing1ID)
+	tdJSON, err := digitwin.DirectoryReadTD(hc, dThing1ID)
+	require.NoError(t, err)
+	var td things.TD
+	err = json.Unmarshal([]byte(tdJSON), &td)
 	require.NoError(t, err)
 	assert.Equal(t, dThing1ID, td.ID)
 
@@ -107,7 +109,7 @@ func TestAddRemoveTD(t *testing.T) {
 	err = svc.RemoveTD("senderID", dThing1ID)
 	assert.NoError(t, err)
 
-	td3, err := digitwinclient.ReadTD(hc, dThing1ID)
+	td3, err := digitwin.DirectoryReadTD(hc, dThing1ID)
 	assert.Empty(t, td3)
 	assert.Error(t, err)
 }
@@ -135,7 +137,7 @@ func TestHandleTDEvent(t *testing.T) {
 	stat = svc.HandleTDEvent(msg)
 	assert.Empty(t, stat.Error)
 
-	tdList, err := digitwinclient.ReadTDs(hc, 0, 10)
+	tdList, err := digitwin.DirectoryReadTDs(hc, 10, 0)
 	assert.Equal(t, 1, len(tdList))
 	assert.NoError(t, err)
 }
@@ -145,18 +147,18 @@ func TestGetTDsFail(t *testing.T) {
 	svc, hc, stopFunc := startDirectory(true)
 	_ = svc
 	defer stopFunc()
-	tdList, err := digitwinclient.ReadTDs(hc, 0, 10)
+	tdJsonList, err := digitwin.DirectoryReadTDs(hc, 10, 0)
 	require.NoError(t, err)
-	require.Empty(t, tdList)
+	require.Empty(t, tdJsonList)
 
-	tdList, err = digitwinclient.ReadTDs(hc, 10, 10)
+	tdJsonList, err = digitwin.DirectoryReadTDs(hc, 10, 10)
 	require.NoError(t, err)
-	require.Empty(t, tdList)
+	require.Empty(t, tdJsonList)
 
 	// bad clientID
-	resp2, err := digitwinclient.ReadTD(hc, "badid")
+	tdJson, err := digitwin.DirectoryReadTD(hc, "badid")
 	require.Error(t, err)
-	require.Empty(t, resp2)
+	require.Empty(t, tdJson)
 }
 
 //func TestQueryTDs(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/plugin"
@@ -33,8 +34,6 @@ type LauncherService struct {
 
 	// hub messaging client
 	hc hubclient.IHubClient
-	// auth service to generate plugin keys and tokens
-	mngAuth *authn.AdminClient
 
 	// mutex to keep things safe
 	mux sync.Mutex
@@ -204,22 +203,16 @@ func (svc *LauncherService) Start() error {
 		}
 	}
 
+	// permissions for using this service
+	err = authz.UserSetPermissions(svc.hc, authz.ThingPermissions{
+		AgentID: svc.hc.ClientID(),
+		ThingID: launcherapi.ManageServiceID,
+		Allow:   []string{authn.ClientRoleManager, authn.ClientRoleAdmin, authn.ClientRoleService},
+		Deny:    nil,
+	})
+
 	// 4: start listening to action requests
 	StartLauncherAgent(svc, svc.hc)
-
-	// the auth service is used to create plugin credentials
-	svc.mngAuth = authn.NewAdminClient(svc.hc)
-
-	// start listening to requests
-	//svc.mngSub, err = svc.hc.SubRPCRequest(launcher.ManageCapability, svc.HandleRequest)
-	//svc.hc.SetRPCCapability(launcherapi.ManageCapability,
-	//	map[string]interface{}{
-	//		launcherapi.ListMethod:            svc.List,
-	//		launcherapi.StartPluginMethod:     svc.StartPlugin,
-	//		launcherapi.StartAllPluginsMethod: svc.StartAllPlugins,
-	//		launcherapi.StopPluginMethod:      svc.StopPlugin,
-	//		launcherapi.StopAllPluginsMethod:  svc.StopAllPlugins,
-	//	})
 
 	// 5: autostart the configured 'autostart' plugins
 	// Log errors but do not stop the launcher

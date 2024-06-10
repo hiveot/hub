@@ -7,10 +7,8 @@ import (
 	"github.com/hiveot/hub/lib/hubclient/embedded"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authz"
-	"github.com/hiveot/hub/runtime/authz/authzagent"
 	"github.com/hiveot/hub/runtime/authz/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,7 +43,7 @@ func TestStartStop(t *testing.T) {
 // Test Get/Set role
 func TestSetRole(t *testing.T) {
 	const client1ID = "client1"
-	const client1Role = api.ClientRoleAgent
+	const client1Role = authn.ClientRoleAgent
 	// start the authz server
 	cfg := authz.NewAuthzConfig()
 	authnStore := authnstore.NewAuthnFileStore(passwordFile, "")
@@ -64,23 +62,22 @@ func TestSetRole(t *testing.T) {
 
 	// connect the client marshaller to the server agent
 
-	handler, _ := authzagent.StartAuthzAgent(svc, nil)
-	ecl := embedded.NewEmbeddedClient(client1ID, handler.HandleMessage)
-	authzCl := authz2.NewAdminClient(ecl)
+	handler, _ := service.StartAuthzAgent(svc, nil)
+	hc := embedded.NewEmbeddedClient(client1ID, handler.HandleMessage)
 
 	// set the role
-	err = authzCl.SetClientRole(authz2.AdminSetClientRoleArgs{client1ID, client1Role})
+	err = authz2.AdminSetClientRole(hc, client1ID, client1Role)
 	require.NoError(t, err)
 
 	// get the role
-	role, err := authzCl.GetClientRole(client1ID)
+	role, err := authz2.AdminGetClientRole(hc, client1ID)
 	require.NoError(t, err)
 	require.Equal(t, client1Role, role)
 }
 
 func TestHasPermission(t *testing.T) {
 	const senderID = "sender-1"
-	const client1Role = api.ClientRoleOperator
+	const client1Role = authn.ClientRoleOperator
 	const thingID = ""
 	const key = ""
 	cfg := authz.NewAuthzConfig()

@@ -123,7 +123,8 @@ func (svc *DigitwinDirectory) ReadTD(
 
 // ReadTDs returns a list of TD documents
 //
-//	offset is the offset in the list
+// args: offset is the offset in the list
+//
 //	limit is the maximum number of records to return
 func (svc *DigitwinDirectory) ReadTDs(senderID string,
 	args digitwin.DirectoryReadTDsArgs) (resp []string, err error) {

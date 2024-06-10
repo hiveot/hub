@@ -27,44 +27,44 @@ const DefaultAclFilename = "authz.acl"
 //)
 
 // Predefined user roles.
-const (
-
-	// ClientRoleNone indicates that the user has no particular role. It can not do anything until
-	// the role is upgraded to viewer or better.
-	//  Read permissions: none
-	//  Write permissions: none
-	ClientRoleNone = ""
-
-	// ClientRoleAdmin lets a client publish and subscribe to any sources and invoke all services
-	//  Read permissions: subEvents, subActions
-	//  Write permissions: pubEvents, pubActions, pubConfig
-	ClientRoleAdmin = "admin"
-
-	// ClientRoleAgent lets a device agent publish thing events and subscribe to device actions
-	//  Read permissions: subActions
-	//  Write permissions: pubTDs, pubEvents
-	ClientRoleAgent = "agent"
-
-	// ClientRoleManager lets a client subscribe to Thing TD, events, publish actions and update configuration
-	//  Read permissions: subEvents
-	//  Write permissions: pubActions, pubConfig
-	ClientRoleManager = "manager"
-
-	// ClientRoleOperator lets a client subscribe to events and publish actions
-	//  Read permissions: subEvents
-	//  Write permissions: pubActions
-	ClientRoleOperator = "operator"
-
-	// ClientRoleService lets a client acts as an admin user and a device
-	//  Read permissions: subEvents, subActions, subConfig
-	//  Write permissions: pubEvents, pubActions, pubConfig
-	ClientRoleService = "service"
-
-	// ClientRoleViewer lets a client subscribe to Thing TD and Thing Events
-	//  Read permissions: subEvents
-	//  Write permissions: none
-	ClientRoleViewer = "viewer"
-)
+//const (
+//
+//	// ClientRoleNone indicates that the user has no particular role. It can not do anything until
+//	// the role is upgraded to viewer or better.
+//	//  Read permissions: none
+//	//  Write permissions: none
+//	ClientRoleNone = ""
+//
+//	// ClientRoleAdmin lets a client publish and subscribe to any sources and invoke all services
+//	//  Read permissions: subEvents, subActions
+//	//  Write permissions: pubEvents, pubActions, pubConfig
+//	ClientRoleAdmin = "admin"
+//
+//	// ClientRoleAgent lets a device agent publish thing events and subscribe to device actions
+//	//  Read permissions: subActions
+//	//  Write permissions: pubTDs, pubEvents
+//	ClientRoleAgent = "agent"
+//
+//	// ClientRoleManager lets a client subscribe to Thing TD, events, publish actions and update configuration
+//	//  Read permissions: subEvents
+//	//  Write permissions: pubActions, pubConfig
+//	ClientRoleManager = "manager"
+//
+//	// ClientRoleOperator lets a client subscribe to events and publish actions
+//	//  Read permissions: subEvents
+//	//  Write permissions: pubActions
+//	ClientRoleOperator = "operator"
+//
+//	// ClientRoleService lets a client acts as an admin user and a device
+//	//  Read permissions: subEvents, subActions, subConfig
+//	//  Write permissions: pubEvents, pubActions, pubConfig
+//	ClientRoleService = "service"
+//
+//	// ClientRoleViewer lets a client subscribe to Thing TD and Thing Events
+//	//  Read permissions: subEvents
+//	//  Write permissions: none
+//	ClientRoleViewer = "viewer"
+//)
 
 // RolePermission defines authorization for a role.
 // Each permission defines the source/things the user can pub/sub to.

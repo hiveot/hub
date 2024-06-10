@@ -3,6 +3,8 @@ package service
 import (
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
@@ -51,15 +53,33 @@ func (agent *DigiTwinAgent) HandleMessage(msg *things.ThingMessage) (stat hubcli
 // This uses the given connected transport for publish events and subscribing to actions
 // ag is optional for subscribing to Things. Set to nil use HandleMessage directly.
 // the transport must be closed by the called after use.
-func StartDigiTwinAgent(svc *DigitwinService, cl hubclient.IHubClient) (*DigiTwinAgent, error) {
+func StartDigiTwinAgent(svc *DigitwinService, hc hubclient.IHubClient) (*DigiTwinAgent, error) {
 	var err error
-	agent := DigiTwinAgent{ag: cl, svc: svc}
-	cl.SetActionHandler(agent.HandleMessage)
-	cl.SetEventHandler(agent.HandleEvent)
+	agent := DigiTwinAgent{ag: hc, svc: svc}
+	hc.SetActionHandler(agent.HandleMessage)
+	hc.SetEventHandler(agent.HandleEvent)
 	// each of the digitwin services implements an API that can be accessed through actions.
 	agent.directoryHandler = digitwin.NewDirectoryHandler(agent.svc.Directory)
 	agent.inboxHandler = digitwin.NewInboxHandler(agent.svc.Inbox)
 	agent.outboxHandler = digitwin.NewOutboxHandler(agent.svc.Outbox)
 	// agents do not need to subscribe to receive actions directed at them as authenticating is sufficient
+
+	// set permissions for using these services
+	err = authz.UserSetPermissions(hc, authz.ThingPermissions{
+		AgentID: hc.ClientID(),
+		ThingID: digitwin.DirectoryServiceID,
+		Deny:    []string{authn.ClientRoleNone},
+	})
+	err = authz.UserSetPermissions(hc, authz.ThingPermissions{
+		AgentID: hc.ClientID(),
+		ThingID: digitwin.InboxServiceID,
+		Deny:    []string{authn.ClientRoleNone, authn.ClientRoleViewer},
+	})
+	err = authz.UserSetPermissions(hc, authz.ThingPermissions{
+		AgentID: hc.ClientID(),
+		ThingID: digitwin.OutboxServiceID,
+		Deny:    []string{authn.ClientRoleNone},
+	})
+
 	return &agent, err
 }

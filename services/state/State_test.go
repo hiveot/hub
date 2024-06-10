@@ -1,9 +1,9 @@
 package state_test
 
 import (
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/services/state/service"
 	"github.com/hiveot/hub/services/state/stateapi"
 	"github.com/hiveot/hub/services/state/stateclient"
@@ -36,7 +36,7 @@ func startStateService(cleanStart bool) (
 	}
 
 	// connect as a user to the service above
-	hc2, token2 := ts.AddConnectUser("user1", api.ClientRoleViewer)
+	hc2, token2 := ts.AddConnectUser("user1", authn.ClientRoleViewer)
 	_ = token2
 	stateCl = stateclient.NewStateClient(hc2)
 	time.Sleep(time.Millisecond)

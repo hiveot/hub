@@ -18,8 +18,6 @@ type ManageIdProvService struct {
 
 	//
 	hc hubclient.IHubClient
-	// client of authn service used to create tokens
-	authSvc *authn.AdminClient
 	// mutex to guard access to maps
 	mux sync.RWMutex
 }
@@ -160,7 +158,7 @@ func (svc *ManageIdProvService) SubmitRequest(senderID string, args *idprovapi.P
 		}
 
 		status.Pending = false
-		token, err = svc.authSvc.AddAgent(authn.AdminAddAgentArgs{status.ClientID, status.ClientID, status.PubKey})
+		token, err = authn.AdminAddAgent(svc.hc, status.ClientID, status.ClientID, status.PubKey)
 
 		if err != nil {
 			return nil, err
@@ -200,7 +198,5 @@ func StartManageIdProvService(hc hubclient.IHubClient) *ManageIdProvService {
 		hc:       hc,
 	}
 
-	// the auth service is used to create credentials
-	svc.authSvc = authn.NewAdminClient(svc.hc)
 	return svc
 }

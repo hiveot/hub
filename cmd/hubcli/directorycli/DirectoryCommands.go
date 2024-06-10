@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/runtime/digitwin/digitwinclient"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"time"
@@ -49,8 +49,10 @@ func DirectoryListCommand(hc *hubclient.IHubClient) *cli.Command {
 // HandleListDirectory lists the directory content
 func HandleListDirectory(hc hubclient.IHubClient) (err error) {
 	// todo: iterate with offset and limit
-	tdList, err := digitwinclient.ReadTDs(hc, 0, 300)
-	if err != nil {
+	tdListJson, err := digitwin.DirectoryReadTDs(hc, 0, 300)
+	tdList, err2 := things.UnmarshalTDList(tdListJson)
+
+	if err != nil || err2 != nil {
 		return err
 	}
 	fmt.Printf("Thing ID                            @type                               Title                                #props  #events #actions   GetUpdated         \n")
@@ -81,11 +83,13 @@ func HandleListDirectory(hc hubclient.IHubClient) (err error) {
 
 // HandleListThing lists details of a Thing in the directory
 func HandleListThing(hc hubclient.IHubClient, thingID string) error {
-	tdDoc, err := digitwinclient.ReadTD(hc, thingID)
-	if err != nil {
+	tdDocJson, err := digitwin.DirectoryReadTD(hc, thingID)
+	tdDoc, err2 := things.UnmarshalTD(tdDocJson)
+	if err != nil || err2 != nil {
 		return err
 	}
-	valueMap, err := digitwinclient.ReadOutbox(hc, thingID)
+	valueMapJson, err := digitwin.OutboxReadLatest(hc, nil, "", thingID)
+	valueMap, _ := things.UnmarshalThingValueMap(valueMapJson)
 
 	if err != nil {
 		slog.Error("Unable to read history:", "err", err)
@@ -161,8 +165,7 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 
 // HandleListThingVerbose lists a Thing full TD
 func HandleListThingVerbose(hc hubclient.IHubClient, thingID string) error {
-	dirCl := digitwin.NewDirectoryClient(hc)
-	tdJSON, err := dirCl.ReadTD(thingID)
+	tdJSON, err := digitwin.DirectoryReadTD(hc, thingID)
 
 	if err != nil {
 		return err

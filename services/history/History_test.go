@@ -3,11 +3,11 @@ package history_test
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/history/service"
@@ -69,7 +69,7 @@ func startHistoryService(clean bool) (
 	}
 
 	// create an end user client for testing
-	hc2, _ := ts.AddConnectUser(testClientID, api.ClientRoleOperator)
+	hc2, _ := ts.AddConnectUser(testClientID, authn.ClientRoleOperator)
 	if err != nil {
 		panic("can't connect operator")
 	}
@@ -614,7 +614,7 @@ func TestManageRetention(t *testing.T) {
 	addBulkHistory(store, 1000, 5, 1000)
 
 	// connect as an admin user
-	hc1, _ := ts.AddConnectUser(client1ID, api.ClientRoleAdmin)
+	hc1, _ := ts.AddConnectUser(client1ID, authn.ClientRoleAdmin)
 	mngHist := historyclient.NewManageHistoryClient(hc1)
 
 	// should be able to read the current retention rules. Expect the default rules.

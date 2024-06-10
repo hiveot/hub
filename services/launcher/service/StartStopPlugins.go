@@ -110,7 +110,7 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 		// add a service account and generate a new token file in the keys directory
 		// the service must have read access to this directory, or the keys must be
 		// copied elsewhere by the administrator.
-		_, err = svc.mngAuth.AddService(authn.AdminAddServiceArgs{pluginName, pluginName, ""})
+		_, err = authn.AdminAddService(svc.hc, pluginName, pluginName, "")
 		if err != nil {
 			slog.Error("Unable to add plugin to hub and create credentials. Continuing anyways", "err", err)
 		}

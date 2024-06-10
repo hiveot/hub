@@ -116,7 +116,7 @@ func (store *AuthnFileStore) GetRole(clientID string) (role string, err error) {
 	entry, found := store.entries[clientID]
 	if !found {
 		err = fmt.Errorf("clientID '%s' does not exist", clientID)
-		return api.ClientRoleNone, err
+		return "", err
 	}
 	return entry.Role, nil
 }

@@ -3,9 +3,9 @@ package service
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"log/slog"
 )
@@ -61,14 +61,13 @@ func (svc *IdProvService) Start(hc hubclient.IHubClient) (err error) {
 	}
 
 	// Set the required permissions for using this service
-	authzClient := authz.NewUserClient(hc)
-	err = authzClient.SetPermissions(authz.ThingPermissions{
+	err = authz.UserSetPermissions(hc, authz.ThingPermissions{
 		AgentID: hc.ClientID(),
 		ThingID: idprovapi.ManageServiceID,
 		Allow: []string{
-			api.ClientRoleManager,
-			api.ClientRoleAdmin,
-			api.ClientRoleService},
+			authn.ClientRoleManager,
+			authn.ClientRoleAdmin,
+			authn.ClientRoleService},
 	})
 	if err != nil {
 		return err

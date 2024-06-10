@@ -1,9 +1,12 @@
 package service
 
 import (
+	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/services/state/stateapi"
 	"log/slog"
 	"path"
 )
@@ -81,9 +84,19 @@ func (svc *StateService) Start(hc hubclient.IHubClient) (err error) {
 	svc.store = kvbtree.NewKVStore(storePath)
 
 	err = svc.store.Open()
-	if err == nil && hc != nil {
-		StartStateAgent(svc, hc)
+	if err != nil {
+		return err
 	}
+	// Anyone with a role can store their state
+	err = authz.UserSetPermissions(hc, authz.ThingPermissions{
+		AgentID: hc.ClientID(),
+		ThingID: stateapi.StorageServiceID,
+		Deny:    []string{authn.ClientRoleNone},
+	})
+	if err != nil {
+		return err
+	}
+	StartStateAgent(svc, hc)
 	return err
 }
 

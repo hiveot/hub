@@ -3,10 +3,8 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/services/state/stateapi"
 )
 
@@ -97,24 +95,6 @@ func StartStateAgent(svc *StateService, hc hubclient.IHubClient) *StateAgent {
 	agent := StateAgent{hc: hc, svc: svc}
 	if hc != nil {
 		agent.hc.SetActionHandler(agent.HandleMessage)
-	}
-
-	// Set the required permissions for using this service
-	// any user roles can read and write their state
-	authzClient := authz.NewUserClient(hc)
-	err := authzClient.SetPermissions(authz.ThingPermissions{
-		AgentID: stateapi.AgentID,
-		ThingID: stateapi.StorageServiceID,
-		Allow: []string{
-			api.ClientRoleViewer,
-			api.ClientRoleOperator,
-			api.ClientRoleManager,
-			api.ClientRoleAdmin,
-			api.ClientRoleAgent,
-			api.ClientRoleService}})
-
-	if err != nil {
-		return nil
 	}
 	return &agent
 }

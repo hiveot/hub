@@ -12,7 +12,6 @@ import (
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime"
-	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 	"math/rand"
 	"os"
@@ -99,7 +98,7 @@ func (test *TestServer) AddConnectAgent(
 
 	if err == nil {
 		err = test.Runtime.AuthzSvc.SetClientRole(agentID,
-			authz.AdminSetClientRoleArgs{agentID, api.ClientRoleAgent})
+			authz.AdminSetClientRoleArgs{agentID, authn.ClientRoleAgent})
 	}
 	if err != nil {
 		panic("Failed adding client:" + err.Error())
@@ -127,7 +126,7 @@ func (test *TestServer) AddConnectService(serviceID string) (
 		authn.AdminAddServiceArgs{serviceID, "service name", ""})
 	if err == nil {
 		err = test.Runtime.AuthzSvc.SetClientRole(serviceID,
-			authz.AdminSetClientRoleArgs{serviceID, api.ClientRoleService})
+			authz.AdminSetClientRoleArgs{serviceID, authn.ClientRoleService})
 	}
 	if err != nil {
 		panic("Failed adding client:" + err.Error())
@@ -222,7 +221,7 @@ func (test *TestServer) Start(clean bool) {
 	test.Runtime = runtime.NewRuntime(test.Config)
 	err := test.Runtime.Start(&test.AppEnv)
 	if err != nil {
-		panic("unable to start test server runtime")
+		panic("unable to start test server runtime: " + err.Error())
 	}
 }
 

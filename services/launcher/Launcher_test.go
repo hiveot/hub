@@ -1,9 +1,9 @@
 package launcher_test
 
 import (
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/services/launcher/config"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
 	"github.com/hiveot/hub/services/launcher/launcherclient"
@@ -20,7 +20,6 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 )
 
-var core = "nats"
 var homeDir = "/tmp/test-launcher"
 var logDir = "/tmp/test-launcher"
 
@@ -38,7 +37,7 @@ var testServer *testenv.TestServer
 //}}
 
 func startService() (l *launcherclient.LauncherClient, stopFn func()) {
-	const launcherID = launcherapi.AgentID + "-test"
+	const launcherID = launcherapi.AgentID
 	const adminID = "admin"
 
 	testServer = testenv.StartTestServer(true)
@@ -63,7 +62,7 @@ func startService() (l *launcherclient.LauncherClient, stopFn func()) {
 	//agent := service.StartLauncherAgent(svc, hc1)
 	//_ = agent
 	//--- connect the launcher user
-	hc2, _ := testServer.AddConnectUser(adminID, api.ClientRoleAdmin)
+	hc2, _ := testServer.AddConnectUser(adminID, authn.ClientRoleAdmin)
 	cl := launcherclient.NewLauncherClient(launcherID, hc2)
 	return cl, func() {
 		hc2.Disconnect()
@@ -91,6 +90,8 @@ func TestStartStop(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
+	userID := "user1"
+
 	svc, cancelFunc := startService()
 	defer cancelFunc()
 	require.NotNil(t, svc)
@@ -98,6 +99,13 @@ func TestList(t *testing.T) {
 	info, err := svc.List(false)
 	require.NoError(t, err)
 	assert.Greater(t, len(info), 10)
+
+	hc, _ := testServer.AddConnectUser(userID, authn.ClientRoleNone)
+	defer hc.Disconnect()
+	cl := launcherclient.NewLauncherClient("", hc)
+	info2, err := cl.List(false)
+	require.Error(t, err, "user without role should not be able to use launcher")
+	require.Empty(t, info2)
 }
 
 func TestStartYes(t *testing.T) {

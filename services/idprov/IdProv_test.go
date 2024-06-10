@@ -8,7 +8,6 @@ import (
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/tlsclient"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"github.com/hiveot/hub/services/idprov/idprovclient"
 	"github.com/hiveot/hub/services/idprov/service"
@@ -48,7 +47,7 @@ func newIdProvService() (
 	//_ = ag
 
 	// create an end user client for testing
-	hc2, token2 := testServer.AddConnectUser("test-client", api.ClientRoleManager)
+	hc2, token2 := testServer.AddConnectUser("test-client", authn.ClientRoleManager)
 	_ = token2
 	if err != nil {
 		panic("can't connect operator")

@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
@@ -43,7 +44,7 @@ func TestLogin(t *testing.T) {
 	const clientID = "user1"
 
 	r := startRuntime()
-	cl, token := ts.AddConnectUser(clientID, api.ClientRoleManager)
+	cl, token := ts.AddConnectUser(clientID, authn.ClientRoleManager)
 	_ = token
 	t2, err := cl.RefreshToken(token)
 	require.NoError(t, err)
@@ -71,7 +72,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 	cl1, _ := ts.AddConnectAgent(agentID)
-	cl2, _ := ts.AddConnectUser(userID, api.ClientRoleManager)
+	cl2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
 
 	// connect the agent and user clients
 	defer cl1.Disconnect()
@@ -163,7 +164,7 @@ func TestServiceReconnect(t *testing.T) {
 	require.NoError(t, err)
 	defer r.Stop()
 
-	cl2, _ := ts.AddConnectUser(userID, api.ClientRoleManager)
+	cl2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
 	defer cl2.Disconnect()
 	// FIXME: detect a reconnect
 	time.Sleep(time.Second * 5)
@@ -181,4 +182,27 @@ func TestServiceReconnect(t *testing.T) {
 	require.NoError(t, err, "auto-reconnect didn't take place")
 	require.NotNil(t, rxMsg)
 	require.Equal(t, expectedReply, string(reply))
+}
+
+// test that regular users don't have admin access to authn, authz
+func TestAccess(t *testing.T) {
+	const clientID = "user1"
+
+	r := startRuntime()
+	defer r.Stop()
+
+	hc, token := ts.AddConnectUser(clientID, authn.ClientRoleViewer)
+	defer hc.Disconnect()
+	_ = token
+
+	// regulars users should not have authn and authz admin access
+	prof, err := authn.AdminGetProfiles(hc)
+	require.Error(t, err, "regular users should not have access to authn.Admin")
+	require.Empty(t, prof)
+	//time.Sleep(time.Millisecond * 100)
+
+	role, err := authz.AdminGetClientRole(hc, clientID)
+	require.Error(t, err, "regular users should not have access to authz.Admin")
+	require.Empty(t, role)
+	//time.Sleep(time.Millisecond * 100)
 }

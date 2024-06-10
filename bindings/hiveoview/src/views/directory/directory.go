@@ -1,11 +1,12 @@
 package directory
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/digitwin/digitwinclient"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -59,17 +60,25 @@ func sortByThingID(tdList []*things.TD) *DirectoryData {
 // E.g.: /directory/#directory
 func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	var data = make(map[string]any)
+	var tdList []*things.TD
 
 	// 1: get session
 	mySession, err := session.GetSessionFromContext(r)
 	if err == nil {
 		//thingsList := make([]things.TD, 0)
 		hc := mySession.GetHubClient()
-		thingsList, err2 := digitwinclient.ReadTDs(hc, 0, 200)
+		thingsList, err2 := digitwin.DirectoryReadTDs(hc, 0, 200)
+		for _, tdJson := range thingsList {
+			td := things.TD{}
+			err = json.Unmarshal([]byte(tdJson), &td)
+			if err == nil {
+				tdList = append(tdList, &td)
+			}
+		}
 		//resp, err2 := directory.ReadTDs(hc, directory.ReadTDsArgs{Limit: 200})
 		err = err2
 		if err == nil {
-			dirGroups := sortByThingID(thingsList)
+			dirGroups := sortByThingID(tdList)
 			data["Directory"] = dirGroups
 		} else {
 			// the 'Directory' attribute is used by html know if to reload

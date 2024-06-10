@@ -96,7 +96,7 @@ func (svc *AuthzService) SetPermissions(senderID string, perms authz2.ThingPermi
 	role, _ := svc.authnStore.GetRole(senderID)
 	if err != nil {
 		return err
-	} else if role == api.ClientRoleAdmin {
+	} else if role == authn.ClientRoleAdmin {
 		// administrators can set permissions for others
 		slog.Info("Administrator setting role")
 	} else if senderID != perms.AgentID {
@@ -114,6 +114,7 @@ func (svc *AuthzService) SetPermissions(senderID string, perms authz2.ThingPermi
 
 // Start starts the authorization service
 func (svc *AuthzService) Start() error {
+	// fixme: set permissions
 	slog.Info("Starting AuthzService")
 	return nil
 }

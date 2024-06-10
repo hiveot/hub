@@ -22,52 +22,51 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 
 	svc, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	mt := embedded.NewEmbeddedClient(serviceID, adminHandler)
-	adminCl := authn.NewAdminClient(mt)
+	hc := embedded.NewEmbeddedClient(serviceID, adminHandler)
 
-	err := adminCl.AddConsumer(authn.AdminAddConsumerArgs{"user1", "user 1", "pass1"})
+	err := authn.AdminAddConsumer(hc, "user1", "user 1", "pass1")
 	assert.NoError(t, err)
 	// duplicate should update
-	err = adminCl.AddConsumer(authn.AdminAddConsumerArgs{"user1", "user 1 updated", "pass1"})
+	err = authn.AdminAddConsumer(hc, "user1", "user 1 updated", "pass1")
 	assert.NoError(t, err)
 
-	err = adminCl.AddConsumer(authn.AdminAddConsumerArgs{"user2", "user 2", "pass2"})
+	err = authn.AdminAddConsumer(hc, "user2", "user 2", "pass2")
 	assert.NoError(t, err)
-	err = adminCl.AddConsumer(authn.AdminAddConsumerArgs{"user3", "user 3", "pass2"})
+	err = authn.AdminAddConsumer(hc, "user3", "user 3", "pass2")
 	assert.NoError(t, err)
-	err = adminCl.AddConsumer(authn.AdminAddConsumerArgs{"user4", "user 4", "pass2"})
-	assert.NoError(t, err)
-
-	_, err = adminCl.AddAgent(authn.AdminAddAgentArgs{deviceID, "agent 1", deviceKeyPub})
+	err = authn.AdminAddConsumer(hc, "user4", "user 4", "pass2")
 	assert.NoError(t, err)
 
-	_, err = adminCl.AddService(authn.AdminAddServiceArgs{serviceID, "service 1", serviceKeyPub})
+	_, err = authn.AdminAddAgent(hc, deviceID, "agent 1", deviceKeyPub)
+	assert.NoError(t, err)
+
+	_, err = authn.AdminAddService(hc, serviceID, "service 1", serviceKeyPub)
 	assert.NoError(t, err)
 
 	// update the server. users can connect and have unlimited access
-	profiles, err := adminCl.GetProfiles()
+	profiles, err := authn.AdminGetProfiles(hc)
 	require.NoError(t, err)
 	assert.Equal(t, 6+2, len(profiles))
 
-	err = adminCl.RemoveClient("user1")
+	err = authn.AdminRemoveClient(hc, "user1")
 	assert.NoError(t, err)
-	err = adminCl.RemoveClient("user1") // remove is idempotent
+	err = authn.AdminRemoveClient(hc, "user1") // remove is idempotent
 	assert.NoError(t, err)
-	err = adminCl.RemoveClient("user2")
+	err = authn.AdminRemoveClient(hc, "user2")
 	assert.NoError(t, err)
-	err = adminCl.RemoveClient(deviceID)
+	err = authn.AdminRemoveClient(hc, deviceID)
 	assert.NoError(t, err)
-	err = adminCl.RemoveClient(serviceID)
+	err = authn.AdminRemoveClient(hc, serviceID)
 	assert.NoError(t, err)
 
-	profiles, err = adminCl.GetProfiles()
+	profiles, err = authn.AdminGetProfiles(hc)
 	require.NoError(t, err)
 	assert.Equal(t, 2+2, len(profiles))
 
 	clEntries := svc.AdminSvc.GetEntries()
 	assert.Equal(t, 2+2, len(clEntries))
 
-	err = adminCl.AddConsumer(authn.AdminAddConsumerArgs{"user1", "user 1", "pass1"})
+	err = authn.AdminAddConsumer(hc, "user1", "user 1", "pass1")
 	assert.NoError(t, err)
 }
 
@@ -76,15 +75,14 @@ func TestAddRemoveClientsFail(t *testing.T) {
 	const adminID = "administrator-1"
 	_, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	mt := embedded.NewEmbeddedClient(adminID, adminHandler)
-	adminCl := authn.NewAdminClient(mt)
+	hc := embedded.NewEmbeddedClient(adminID, adminHandler)
 
 	// missing clientID should fail
-	_, err := adminCl.AddService(authn.AdminAddServiceArgs{"", "user 1", ""})
+	_, err := authn.AdminAddService(hc, "", "user 1", "")
 	assert.Error(t, err)
 
 	// a bad key is not an error
-	err = adminCl.AddConsumer(authn.AdminAddConsumerArgs{"user2", "user 2", "badkey"})
+	err = authn.AdminAddConsumer(hc, "user2", "user 2", "badkey")
 	assert.NoError(t, err)
 }
 
@@ -96,16 +94,15 @@ func TestUpdateClientPassword(t *testing.T) {
 
 	svc, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	mt := embedded.NewEmbeddedClient(adminID, adminHandler)
-	adminCl := authn.NewAdminClient(mt)
+	hc := embedded.NewEmbeddedClient(adminID, adminHandler)
 
-	err := adminCl.AddConsumer(authn.AdminAddConsumerArgs{tu1ID, "user 1", tuPass1})
+	err := authn.AdminAddConsumer(hc, tu1ID, "user 1", tuPass1)
 	require.NoError(t, err)
 
 	err = svc.SessionAuth.ValidatePassword(tu1ID, tuPass1)
 	require.NoError(t, err)
 
-	err = adminCl.SetClientPassword(authn.AdminSetClientPasswordArgs{tu1ID, tuPass2})
+	err = authn.AdminSetClientPassword(hc, tu1ID, tuPass2)
 	require.NoError(t, err)
 
 	err = svc.SessionAuth.ValidatePassword(tu1ID, tuPass1)
@@ -123,10 +120,9 @@ func TestUpdatePubKey(t *testing.T) {
 	svc, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	hc := embedded.NewEmbeddedClient(adminID, adminHandler)
-	adminCl := authn.NewAdminClient(hc)
 
 	// add user to test with. don't set the public key yet
-	err := adminCl.AddConsumer(authn.AdminAddConsumerArgs{tu1ID, "user 2", tu1Pass})
+	err := authn.AdminAddConsumer(hc, tu1ID, "user 2", tu1Pass)
 	require.NoError(t, err)
 	//
 	token := svc.SessionAuth.CreateSessionToken(tu1ID, "", 0)
@@ -134,14 +130,14 @@ func TestUpdatePubKey(t *testing.T) {
 
 	// update the public key
 	kp := keys.NewKey(keys.KeyTypeECDSA)
-	profile, err := adminCl.GetClientProfile(tu1ID)
+	profile, err := authn.AdminGetClientProfile(hc, tu1ID)
 	require.NoError(t, err)
 	profile.PubKey = kp.ExportPublic()
-	err = adminCl.UpdateClientProfile(profile)
+	err = authn.AdminUpdateClientProfile(hc, profile)
 	assert.NoError(t, err)
 
 	// check result
-	profile2, err := adminCl.GetClientProfile(tu1ID)
+	profile2, err := authn.AdminGetClientProfile(hc, tu1ID)
 	require.NoError(t, err)
 	assert.Equal(t, kp.ExportPublic(), profile2.PubKey)
 }
@@ -154,14 +150,13 @@ func TestNewAuthToken(t *testing.T) {
 	svc, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	hc := embedded.NewEmbeddedClient(adminID, adminHandler)
-	adminCl := authn.NewAdminClient(hc)
 
 	// add agent to test with and connect
-	_, err := adminCl.AddAgent(authn.AdminAddAgentArgs{tu1ID, tu1Name, ""})
+	_, err := authn.AdminAddAgent(hc, tu1ID, tu1Name, "")
 	require.NoError(t, err)
 
 	// get a new token
-	token, err := adminCl.NewAuthToken(tu1ID)
+	token, err := authn.AdminNewAuthToken(hc, tu1ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 
@@ -179,25 +174,23 @@ func TestUpdateProfile(t *testing.T) {
 	const adminID = "administrator-1"
 	_, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	mt := embedded.NewEmbeddedClient(adminID, adminHandler)
-	adminCl := authn.NewAdminClient(mt)
+	hc := embedded.NewEmbeddedClient(adminID, adminHandler)
 
 	// add user to test with and connect
-	err := adminCl.AddConsumer(
-		authn.AdminAddConsumerArgs{tu1ID, tu1Name, "pass0"})
+	err := authn.AdminAddConsumer(hc, tu1ID, tu1Name, "pass0")
 	require.NoError(t, err)
 	//tu1Key, _ := testServer.MsgServer.CreateKP()
 
 	// update display name
 	const newDisplayName = "new display name"
-	profile, err := adminCl.GetClientProfile(tu1ID)
+	profile, err := authn.AdminGetClientProfile(hc, tu1ID)
 	require.NoError(t, err)
 	profile.DisplayName = newDisplayName
-	err = adminCl.UpdateClientProfile(profile)
+	err = authn.AdminUpdateClientProfile(hc, profile)
 	assert.NoError(t, err)
 
 	// verify
-	profile2, err := adminCl.GetClientProfile(tu1ID)
+	profile2, err := authn.AdminGetClientProfile(hc, tu1ID)
 
 	require.NoError(t, err)
 	assert.Equal(t, newDisplayName, profile2.DisplayName)
@@ -208,10 +201,9 @@ func TestUpdateProfileFail(t *testing.T) {
 
 	_, adminHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	mt := embedded.NewEmbeddedClient(adminID, adminHandler)
-	adminCl := authn.NewAdminClient(mt)
+	hc := embedded.NewEmbeddedClient(adminID, adminHandler)
 
-	err := adminCl.UpdateClientProfile(authn.ClientProfile{ClientID: "badclient"})
+	err := authn.AdminUpdateClientProfile(hc, authn.ClientProfile{ClientID: "badclient"})
 	assert.Error(t, err)
 }
 

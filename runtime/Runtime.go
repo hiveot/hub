@@ -7,7 +7,6 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime/authn/service"
-	"github.com/hiveot/hub/runtime/authz/authzagent"
 	service2 "github.com/hiveot/hub/runtime/authz/service"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/middleware"
@@ -77,20 +76,35 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		r.Middleware.SetMessageHandler(r.DigitwinSvc.HandleMessage)
 	}
 
-	// last, connect the embedded services via a direct client
+	// last:
+	// ensure authz and digitwin are registered agents
 	embeddedBinding := r.TransportsMgr.GetEmbedded()
-	cl1 := embeddedBinding.NewClient(digitwin.DirectoryAgentID)
-	_, err = service4.StartDigiTwinAgent(r.DigitwinSvc, cl1)
 
 	if err == nil {
 		cl2 := embeddedBinding.NewClient(authn.AdminAgentID)
 		_, err = service.StartAuthnAgent(r.AuthnSvc, cl2)
 	}
 	if err == nil {
+		// provide access to the authz agent
+		prof := authn.ClientProfile{
+			ClientID:   authz.AdminAgentID,
+			ClientType: authn.ClientTypeService,
+		}
+		_ = r.AuthnSvc.AuthnStore.Add(authz.AdminAgentID, prof)
+		_ = r.AuthnSvc.AuthnStore.SetRole(authz.AdminAgentID, authn.ClientRoleService)
 		cl3 := embeddedBinding.NewClient(authz.AdminAgentID)
-		_, err = authzagent.StartAuthzAgent(r.AuthzSvc, cl3)
+		_, err = service2.StartAuthzAgent(r.AuthzSvc, cl3)
 	}
-	// last, set the handlers for f
+	if err == nil {
+		prof := authn.ClientProfile{
+			ClientID:   digitwin.DirectoryAgentID,
+			ClientType: authn.ClientTypeService,
+		}
+		_ = r.AuthnSvc.AuthnStore.Add(digitwin.DirectoryAgentID, prof)
+		_ = r.AuthnSvc.AuthnStore.SetRole(digitwin.DirectoryAgentID, authn.ClientRoleService)
+		cl1 := embeddedBinding.NewClient(digitwin.DirectoryAgentID)
+		_, err = service4.StartDigiTwinAgent(r.DigitwinSvc, cl1)
+	}
 	return err
 }
 

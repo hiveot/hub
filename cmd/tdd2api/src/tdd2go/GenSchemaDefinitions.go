@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
+	"log/slog"
 )
 
 // GenSchemaDefinitions generates data structs and constants defined in schema definitions
@@ -101,17 +102,23 @@ func GenSchemaDefOneOf(l *utils.L, enumTypeName string, ds *things.DataSchema) {
 	l.Indent++
 	for _, dsEnum := range ds.OneOf {
 		enumValue := dsEnum.Const
+		if enumValue == nil {
+			slog.Error("Missing oneOf value in 'const' field")
+			continue
+		}
 		enumValueName := ""
+		// The enum name is the typename followed by the value in title case
 		if ds.Type == "string" {
 			enumValueName = ToTitle(enumValue.(string))
 		} else {
 			enumValueName = fmt.Sprintf("%v", enumValue)
 		}
 		valueTitle := enumTypeName + enumValueName
-		//l.Add("")
-		l.Add("// %s for %s", valueTitle, dsEnum.Description)
+		l.Add("")
+		l.Add("// %s for %s", valueTitle, dsEnum.Title)
+		GenDescription(l, dsEnum.Description, dsEnum.Comments)
 		if ds.Type == "string" {
-			l.Add("%s %s = \"%s\"", valueTitle, enumTypeName, enumValue)
+			l.Add("%s = \"%s\"", valueTitle, enumValue)
 		} else {
 			l.Add("%s %s = %v", valueTitle, enumTypeName, enumValue)
 		}

@@ -1,12 +1,12 @@
 package owserver_test
 
 import (
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 	"os"
 	"path"
@@ -153,7 +153,7 @@ func TestAction(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	hc2, _ := ts.AddConnectUser(user1ID, api.ClientRoleOperator)
+	hc2, _ := ts.AddConnectUser(user1ID, authn.ClientRoleOperator)
 	require.NoError(t, err)
 	defer hc2.Disconnect()
 	err = hc2.Rpc(dThingID, actionName, &actionValue, nil)
@@ -185,7 +185,7 @@ func TestConfig(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	hc2, _ := ts.AddConnectUser(user1ID, api.ClientRoleManager)
+	hc2, _ := ts.AddConnectUser(user1ID, authn.ClientRoleManager)
 	defer hc2.Disconnect()
 	dThingID := things.MakeDigiTwinThingID(device1ID, nodeID)
 	err = hc2.Rpc(dThingID, configName, &configValue, nil)

@@ -1,11 +1,11 @@
-package authzagent
+package service
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/authz/service"
 )
 
 // AuthzAgent serves the message based interface to the authz service API.
@@ -14,7 +14,7 @@ import (
 // The main entry point is the HandleMessage function.
 type AuthzAgent struct {
 	hc           hubclient.IHubClient
-	svc          *service.AuthzService
+	svc          *AuthzService
 	adminHandler hubclient.MessageHandler
 	userHandler  hubclient.MessageHandler
 }
@@ -42,7 +42,7 @@ func (agent *AuthzAgent) HandleMessage(msg *things.ThingMessage) (stat hubclient
 //
 //	svc is the authorization service whose capabilities to expose
 //	hc is the optional message client used to publish and subscribe
-func StartAuthzAgent(svc *service.AuthzService, hc hubclient.IHubClient) (*AuthzAgent, error) {
+func StartAuthzAgent(svc *AuthzService, hc hubclient.IHubClient) (*AuthzAgent, error) {
 	var err error
 	agent := AuthzAgent{svc: svc, hc: hc}
 	agent.adminHandler = authz.NewAdminHandler(svc)
@@ -52,6 +52,21 @@ func StartAuthzAgent(svc *service.AuthzService, hc hubclient.IHubClient) (*Authz
 		agent.hc.SetActionHandler(agent.HandleMessage)
 		// agents don't need to subscribe to receive actions directed at them
 		//err = agent.hc.Subscribe(api.AuthzThingID)
+	}
+
+	// set permissions for using these services
+	err = svc.SetPermissions(authz.AdminAgentID, authz.ThingPermissions{
+		AgentID: authz.AdminAgentID,
+		ThingID: authz.AdminServiceID,
+		Allow:   []string{authn.ClientRoleAdmin, authn.ClientRoleManager},
+	})
+	if err == nil {
+		err = svc.SetPermissions(authz.UserAgentID, authz.ThingPermissions{
+			AgentID: authz.UserAgentID,
+			ThingID: authz.UserServiceID,
+			Allow: []string{authn.ClientRoleAgent, authn.ClientRoleService,
+				authn.ClientRoleAdmin, authn.ClientRoleManager, authn.ClientRoleOperator},
+		})
 	}
 	return &agent, err
 }

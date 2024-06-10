@@ -23,6 +23,7 @@
     "href": "/things/{thingID}/properties"
   }],
   "schemaDefinitions": {
+
   },
   "properties": {
   },

@@ -2,12 +2,11 @@ package runtime_test
 
 import (
 	"encoding/json"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/digitwin/digitwinclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -30,7 +29,7 @@ func TestAddRemoveTD(t *testing.T) {
 		return
 	})
 	defer ag.Disconnect()
-	cl, _ := ts.AddConnectUser(userID, api.ClientRoleManager)
+	cl, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
 	cl.SetEventHandler(func(msg *things.ThingMessage) error {
 		return nil
 	})
@@ -44,7 +43,10 @@ func TestAddRemoveTD(t *testing.T) {
 
 	// Get returns a serialized TD object
 	// use the helper directory client rpc method
-	td3, err := digitwinclient.ReadTD(cl, dtThing1ID)
+	td3Json, err := digitwin.DirectoryReadTD(cl, dtThing1ID)
+	require.NoError(t, err)
+	var td3 things.TD
+	err = json.Unmarshal([]byte(td3Json), &td3)
 	require.NoError(t, err)
 	assert.Equal(t, dtThing1ID, td3.ID)
 
@@ -71,7 +73,7 @@ func TestReadTDs(t *testing.T) {
 	defer r.Stop()
 	ag, _ := ts.AddConnectAgent(agentID)
 	defer ag.Disconnect()
-	cl, _ := ts.AddConnectUser(userID, api.ClientRoleManager)
+	cl, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
 	defer cl.Disconnect()
 
 	// add a whole bunch of things
@@ -83,7 +85,7 @@ func TestReadTDs(t *testing.T) {
 
 	// GetThings returns a serialized TD object
 	// try this with the generated client api and the client rpc method
-	tdList, err := digitwinclient.ReadTDs(cl, 02, 333)
+	tdList, err := digitwin.DirectoryReadTDs(cl, 333, 02)
 	require.NoError(t, err)
 	require.Greater(t, len(tdList), 3)
 

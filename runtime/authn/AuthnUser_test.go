@@ -14,14 +14,13 @@ func TestClientUpdatePubKey(t *testing.T) {
 
 	svc, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
-	ehc := embedded.NewEmbeddedClient(tu1ID, userHandler)
+	hc := embedded.NewEmbeddedClient(tu1ID, userHandler)
 	// PROBLEM: this client connects directly to the agent with the digitwin thingID.
 	// The agent however expects the native thingID.
 	// Option1: agent removes the digitwin prefix if used.
 	// Option2: client accepts agentID to use
 	//   this allows connecting to different agents instead of hardcoding one.
 	//   not an issue for auth though.
-	userCl := authn.NewUserClient(ehc)
 
 	// add user to test with. don't set the public key yet
 	err := svc.AdminSvc.AddConsumer("",
@@ -37,11 +36,11 @@ func TestClientUpdatePubKey(t *testing.T) {
 	profile2, err := svc.UserSvc.GetProfile(tu1ID)
 	assert.Equal(t, tu1ID, profile2.ClientID)
 	require.NoError(t, err)
-	err = userCl.UpdatePubKey(kp.ExportPublic())
+	err = authn.UserUpdatePubKey(hc, kp.ExportPublic())
 	assert.NoError(t, err)
 
 	// check result
-	profile3, err := userCl.GetProfile()
+	profile3, err := authn.UserGetProfile(hc)
 	require.NoError(t, err)
 	assert.Equal(t, tu1ID, profile3.ClientID)
 	assert.Equal(t, kp.ExportPublic(), profile3.PubKey)
@@ -55,18 +54,17 @@ func TestLoginRefresh(t *testing.T) {
 	svc, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// create the client that connects directly to the user service
-	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
-	userCl := authn.NewUserClient(ecl)
+	hc := embedded.NewEmbeddedClient(tu1ID, userHandler)
 
 	// add user to test with
 	err := svc.AdminSvc.AddConsumer(tu1ID, authn.AdminAddConsumerArgs{tu1ID, "testuser1", ""})
 	require.NoError(t, err)
 
-	err = userCl.UpdatePassword(tu1Pass)
+	err = authn.UserUpdatePassword(hc, tu1Pass)
 	require.NoError(t, err)
 
 	// FIXME: how to provide a sessionID??
-	resp, err := userCl.Login(authn.UserLoginArgs{tu1ID, tu1Pass})
+	resp, err := authn.UserLogin(hc, tu1ID, tu1Pass)
 	require.NoError(t, err)
 
 	cid2, sid2, err := svc.SessionAuth.ValidateToken(resp.Token)
@@ -75,7 +73,7 @@ func TestLoginRefresh(t *testing.T) {
 	require.NoError(t, err)
 
 	// RefreshToken the token
-	token2, err := userCl.RefreshToken(authn.UserRefreshTokenArgs{tu1ID, resp.Token})
+	token2, err := authn.UserRefreshToken(hc, tu1ID, resp.Token)
 	require.NoError(t, err)
 	require.NotEmpty(t, resp.Token)
 
@@ -92,11 +90,10 @@ func TestLoginRefreshFail(t *testing.T) {
 	_, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// create the client that connects directly to the user service
-	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
-	userCl := authn.NewUserClient(ecl)
+	hc := embedded.NewEmbeddedClient(tu1ID, userHandler)
 
 	// RefreshToken the token non-existing
-	resp, err := userCl.RefreshToken(authn.UserRefreshTokenArgs{tu1ID, "badToken"})
+	resp, err := authn.UserRefreshToken(hc, tu1ID, "badToken")
 	_ = resp
 	require.Error(t, err)
 }
@@ -109,28 +106,27 @@ func TestUpdatePassword(t *testing.T) {
 	svc, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// create the client that connects directly to the user service
-	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
-	userCl := authn.NewUserClient(ecl)
+	hc := embedded.NewEmbeddedClient(tu1ID, userHandler)
 
 	// add user to test with
 	err := svc.AdminSvc.AddConsumer(tu1ID, authn.AdminAddConsumerArgs{tu1ID, tu1Name, "oldpass"})
 	require.NoError(t, err)
 
 	// login should succeed
-	_, err = userCl.Login(authn.UserLoginArgs{tu1ID, "oldpass"})
+	_, err = authn.UserLogin(hc, tu1ID, "oldpass")
 	require.NoError(t, err)
 
 	// change password
-	err = userCl.UpdatePassword("newpass")
+	err = authn.UserUpdatePassword(hc, "newpass")
 	require.NoError(t, err)
 
 	// login with old password should now fail
 	//t.Log("an error is expected logging in with the old password")
-	_, err = userCl.Login(authn.UserLoginArgs{tu1ID, "oldpass"})
+	_, err = authn.UserLogin(hc, tu1ID, "oldpass")
 	require.Error(t, err)
 
 	// re-login with new password
-	_, err = userCl.Login(authn.UserLoginArgs{tu1ID, "newpass"})
+	_, err = authn.UserLogin(hc, tu1ID, "newpass")
 	require.NoError(t, err)
 }
 
@@ -139,10 +135,9 @@ func TestUpdatePasswordFail(t *testing.T) {
 	_, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// create the client that connects directly to the user service
-	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
-	userCl := authn.NewUserClient(ecl)
+	hc := embedded.NewEmbeddedClient(tu1ID, userHandler)
 
-	err := userCl.UpdatePassword("newpass")
+	err := authn.UserUpdatePassword(hc, "newpass")
 	assert.Error(t, err)
 }
 
@@ -155,20 +150,19 @@ func TestUpdateName(t *testing.T) {
 	svc, userHandler, stopFn := startTestAuthnService(defaultHash)
 	defer stopFn()
 	// create the client that connects directly to the user service
-	ecl := embedded.NewEmbeddedClient(tu1ID, userHandler)
-	userCl := authn.NewUserClient(ecl)
+	hc := embedded.NewEmbeddedClient(tu1ID, userHandler)
 
 	// add user to test with
 	err := svc.AdminSvc.AddConsumer(tu1ID, authn.AdminAddConsumerArgs{tu1ID, tu1Name, "oldpass"})
 	require.NoError(t, err)
 
-	profile, err := userCl.GetProfile()
+	profile, err := authn.UserGetProfile(hc)
 	require.NoError(t, err)
 	assert.Equal(t, tu1Name, profile.DisplayName)
 
-	err = userCl.UpdateName(tu2Name)
+	err = authn.UserUpdateName(hc, tu2Name)
 	require.NoError(t, err)
-	profile2, err := userCl.GetProfile()
+	profile2, err := authn.UserGetProfile(hc)
 	require.NoError(t, err)
 
 	assert.Equal(t, tu2Name, profile2.DisplayName)

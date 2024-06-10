@@ -1,13 +1,14 @@
 package thing
 
 import (
+	"encoding/json"
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/digitwin/digitwinclient"
 	"log/slog"
 	"net/http"
 )
@@ -30,10 +31,12 @@ type DetailsTemplateData struct {
 // return a map with the latest property values of a thing or nil if failed
 func getLatest(thingID string, hc hubclient.IHubClient) (things.ThingMessageMap, error) {
 	data := things.NewThingMessageMap()
-	tvs, err := digitwinclient.ReadOutbox(hc, thingID)
+	tvsJson, err := digitwin.OutboxReadLatest(hc, nil, "", thingID)
 	if err != nil {
 		return data, err
 	}
+	tvs := things.ThingMessageMap{}
+	_ = json.Unmarshal([]byte(tvsJson), &tvs)
 	for _, tv := range tvs {
 		data.Set(tv.Key, tv)
 	}
@@ -62,8 +65,10 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	mySession, err := session.GetSessionFromContext(r)
 	if err == nil {
 		hc := mySession.GetHubClient()
-		td, err2 := digitwinclient.ReadTD(hc, thingID)
-		thingData.TD = td
+		tdJson, err2 := digitwin.DirectoryReadTD(hc, thingID)
+		td := things.TD{}
+		_ = json.Unmarshal([]byte(tdJson), &td)
+		thingData.TD = &td
 		err = err2
 		if err == nil {
 			// split properties into attributes and configuration

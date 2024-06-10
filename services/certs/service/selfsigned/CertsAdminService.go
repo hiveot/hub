@@ -5,6 +5,8 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
@@ -205,6 +207,15 @@ func (svc *SelfSignedCertsService) Start(hc hubclient.IHubClient) (err error) {
 	slog.Info("Starting certs service", "serviceID", hc.ClientID())
 	// for testing, hc can be nil
 	svc.hc = hc
+
+	// permissions for using this service are for admin only
+	err = authz.UserSetPermissions(svc.hc, authz.ThingPermissions{
+		AgentID: svc.hc.ClientID(),
+		ThingID: certsapi.CertsAdminThingID,
+		Allow:   []string{authn.ClientRoleAdmin},
+		Deny:    nil,
+	})
+
 	StartCertsAgent(svc, hc)
 	return err
 }

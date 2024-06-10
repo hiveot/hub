@@ -99,7 +99,7 @@ func (svc *AuthnAdminService) AddAgent(senderID string,
 		}
 		err = svc.authnStore.Add(args.ClientID, prof)
 		if err == nil {
-			err = svc.authnStore.SetRole(args.ClientID, api.ClientRoleAgent)
+			err = svc.authnStore.SetRole(args.ClientID, authn.ClientRoleAgent)
 		}
 	}
 	if err == nil {
@@ -146,7 +146,7 @@ func (svc *AuthnAdminService) AddService(senderID string,
 		}
 		err = svc.authnStore.Add(args.ClientID, prof)
 		if err == nil {
-			err = svc.authnStore.SetRole(args.ClientID, api.ClientRoleService)
+			err = svc.authnStore.SetRole(args.ClientID, authn.ClientRoleService)
 		}
 	}
 	if err == nil {
