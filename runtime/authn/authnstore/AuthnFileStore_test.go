@@ -378,7 +378,7 @@ func TestUpdate(t *testing.T) {
 
 func TestSetRole(t *testing.T) {
 	const user1 = "user1"
-	const role1 = api.ClientRoleAgent
+	const role1 = authn2.ClientRoleAgent
 
 	_ = os.Remove(unpwFilePath)
 	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath, "")

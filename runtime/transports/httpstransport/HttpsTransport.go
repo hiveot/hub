@@ -289,10 +289,8 @@ func (svc *HttpsTransport) Stop() {
 	// (closing the TLS server does not shut down active connections)
 	sm := sessions.GetSessionManager()
 	sm.CloseAll()
-	svc.sseServer.Stop()
-
 	svc.httpServer.Stop()
-
+	svc.sseServer.Stop()
 }
 
 // NewHttpSSETransport creates a new instance of the HTTPS Server with JWT authentication

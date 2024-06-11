@@ -194,11 +194,6 @@ func (test *TestServer) CreateTestTD(i int) (td *things.TD) {
 	return td
 }
 
-// Stop the test server
-func (test *TestServer) Stop() {
-	test.Runtime.Stop()
-}
-
 // Start the test server.
 // This panics if something goes wrong.
 func (test *TestServer) Start(clean bool) {
@@ -223,6 +218,11 @@ func (test *TestServer) Start(clean bool) {
 	if err != nil {
 		panic("unable to start test server runtime: " + err.Error())
 	}
+}
+
+// Stop the test server
+func (test *TestServer) Stop() {
+	test.Runtime.Stop()
 }
 
 func NewTestServer() *TestServer {

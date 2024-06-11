@@ -12,7 +12,6 @@ import (
 	"github.com/hiveot/hub/services/idprov/idprovclient"
 	"github.com/hiveot/hub/services/idprov/service"
 	"os"
-	"path"
 	"testing"
 	"time"
 
@@ -23,11 +22,10 @@ import (
 )
 
 // when testing using the capnp RPC
-var testFolder = path.Join(os.TempDir(), "test-provisioning")
 var testPort = uint(23001)
 
 // the following are set by the testmain
-var testServer *testenv.TestServer
+var ts *testenv.TestServer
 
 // Create a new store, delete if it already exists
 func newIdProvService() (
@@ -35,9 +33,10 @@ func newIdProvService() (
 	hc hubclient.IHubClient,
 	stopFn func()) {
 
-	hc, token1 := testServer.AddConnectService(idprovapi.AgentID)
+	ts = testenv.StartTestServer(true)
+	hc, token1 := ts.AddConnectService(idprovapi.AgentID)
 	_ = token1
-	svc = service.NewIdProvService(testPort, testServer.Certs.ServerCert, testServer.Certs.CaCert)
+	svc = service.NewIdProvService(testPort, ts.Certs.ServerCert, ts.Certs.CaCert)
 	err := svc.Start(hc)
 	if err != nil {
 		panic("failed starting service: " + err.Error())
@@ -47,7 +46,7 @@ func newIdProvService() (
 	//_ = ag
 
 	// create an end user client for testing
-	hc2, token2 := testServer.AddConnectUser("test-client", authn.ClientRoleManager)
+	hc2, token2 := ts.AddConnectUser("test-client", authn.ClientRoleManager)
 	_ = token2
 	if err != nil {
 		panic("can't connect operator")
@@ -56,18 +55,15 @@ func newIdProvService() (
 		hc2.Disconnect()
 		svc.Stop()
 		hc.Disconnect()
+		ts.Stop()
 	}
 }
 
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
 
-	_ = os.RemoveAll(testFolder)
-	_ = os.MkdirAll(testFolder, 0700)
-
-	testServer = testenv.StartTestServer(true)
-
 	res := m.Run()
+
 	os.Exit(res)
 }
 
@@ -103,7 +99,7 @@ func TestAutomaticProvisioning(t *testing.T) {
 
 	// next, provisioning should succeed
 	idProvServerURL := fmt.Sprintf("localhost:%d", testPort)
-	tlsClient := tlsclient.NewTLSClient(idProvServerURL, testServer.Certs.CaCert, 0)
+	tlsClient := tlsclient.NewTLSClient(idProvServerURL, ts.Certs.CaCert, 0)
 	//tlsClient.ConnectNoAuth()
 	status, token1, err := idprovclient.SubmitIdProvRequest(
 		device1ID, device1KP.ExportPublic(), "", tlsClient)
@@ -127,8 +123,8 @@ func TestAutomaticProvisioning(t *testing.T) {
 	assert.True(t, hasDevice1)
 
 	// token should be used to connect
-	srvURL := testServer.Runtime.TransportsMgr.GetConnectURL()
-	hc1 := connect.NewHubClient(srvURL, device1ID, testServer.Certs.CaCert)
+	srvURL := ts.Runtime.TransportsMgr.GetConnectURL()
+	hc1 := connect.NewHubClient(srvURL, device1ID, ts.Certs.CaCert)
 	//hc1.SetRetryConnect(false)
 	newToken, err := hc1.ConnectWithToken(token1)
 	require.NotEmpty(t, newToken)
@@ -156,7 +152,7 @@ func TestAutomaticProvisioningBadParameters(t *testing.T) {
 
 	// test missing deviceID
 	idProvServerURL := "localhost:9002"
-	tlsClient := tlsclient.NewTLSClient(idProvServerURL, testServer.Certs.CaCert, 0)
+	tlsClient := tlsclient.NewTLSClient(idProvServerURL, ts.Certs.CaCert, 0)
 	status, tokenEnc, err := idprovclient.SubmitIdProvRequest(
 		"", device1PubPEM, "", tlsClient)
 	assert.Error(t, err)
@@ -186,7 +182,7 @@ func TestManualProvisioning(t *testing.T) {
 
 	// request provisioning
 	idProvServerAddr := fmt.Sprintf("localhost:%d", testPort)
-	tlsClient := tlsclient.NewTLSClient(idProvServerAddr, testServer.Certs.CaCert, 0)
+	tlsClient := tlsclient.NewTLSClient(idProvServerAddr, ts.Certs.CaCert, 0)
 	//tlsClient.ConnectNoAuth()
 	status, token, err := idprovclient.SubmitIdProvRequest(device1ID, device1PubPEM, "", tlsClient)
 	require.NoError(t, err)

@@ -114,13 +114,20 @@ func (srv *TLSServer) Start() error {
 }
 
 // Stop the TLS server and close all connections
-// this waits until all connections are closed
+// this waits until for up to 3 seconds for connections are closed. After that
+// continue.
 func (srv *TLSServer) Stop() {
 	slog.Info("Stopping TLS server")
 
 	if srv.httpServer != nil {
 		// note that this does not close existing connections
-		srv.httpServer.Shutdown(context.Background())
+		ctx, cancelFn := context.WithTimeout(context.Background(), time.Second*3)
+		err := srv.httpServer.Shutdown(ctx)
+		if err != nil {
+			slog.Error("Stop: TLS server graceful shutdown failed. Forcing Close", "err", err.Error())
+			_ = srv.httpServer.Close()
+		}
+		cancelFn()
 	}
 }
 

@@ -156,15 +156,17 @@ func (svc *TransportsManager) Stop() {
 	if svc.discoveryTransport != nil {
 		svc.discoveryTransport.Stop()
 	}
-	if svc.embeddedTransport != nil {
-		svc.embeddedTransport.Stop()
-	}
 	if svc.httpsTransport != nil {
 		svc.httpsTransport.Stop()
 	}
 	if svc.mqttTransport != nil {
 		svc.mqttTransport.Stop()
 	}
+	if svc.embeddedTransport != nil {
+		svc.embeddedTransport.Stop()
+	}
+	slog.Info("Runtime transport stopped")
+
 }
 
 // NewTransportManager creates a new instance of the protocol manager.

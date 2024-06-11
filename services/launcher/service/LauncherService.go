@@ -226,7 +226,11 @@ func (svc *LauncherService) Start() error {
 // Stop the launcher and all running plugins
 func (svc *LauncherService) Stop() error {
 	slog.Info("Stopping launcher service")
+
 	svc.isRunning.Store(false)
+
+	_ = svc.serviceWatcher.Close()
+
 	err := svc.StopAllPlugins(&launcherapi.StopAllPluginsArgs{IncludingRuntime: true})
 	return err
 }

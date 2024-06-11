@@ -9,7 +9,7 @@ import (
 	"github.com/hiveot/hub/services/state/stateclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"log"
+	"log/slog"
 	"os"
 	"path"
 	"testing"
@@ -42,7 +42,9 @@ func startStateService(cleanStart bool) (
 	time.Sleep(time.Millisecond)
 	return svc, stateCl, func() {
 		hc2.Disconnect()
+		slog.Warn("Disconnected " + hc2.ClientID())
 		hc1.Disconnect()
+		slog.Warn("Disconnected " + hc1.ClientID())
 		svc.Stop()
 		ts.Stop()
 	}
@@ -50,7 +52,6 @@ func startStateService(cleanStart bool) (
 
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
-	log.Print("old logger")
 	res := m.Run()
 	os.Exit(res)
 }
@@ -58,9 +59,8 @@ func TestMain(m *testing.M) {
 func TestStartStop(t *testing.T) {
 	t.Log("--- TestStartStop ---")
 	_, stateCl, stopFn := startStateService(true)
+	defer stopFn()
 	assert.NotNil(t, stateCl)
-
-	stopFn()
 }
 
 func TestStartStopBadLocation(t *testing.T) {

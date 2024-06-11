@@ -66,8 +66,8 @@ func startService() (l *launcherclient.LauncherClient, stopFn func()) {
 	cl := launcherclient.NewLauncherClient(launcherID, hc2)
 	return cl, func() {
 		hc2.Disconnect()
-		_ = svc.Stop()
 		hc1.Disconnect()
+		_ = svc.Stop()
 		testServer.Stop()
 	}
 }

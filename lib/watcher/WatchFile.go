@@ -49,7 +49,7 @@ func WatchFile(path string,
 			select {
 			case event, ok := <-watcher.Events:
 				if !ok {
-					slog.Debug("No more events. Ending watch for file.",
+					slog.Info("No more events. Ending watch for file.",
 						"path", path, "event", event.String())
 					callbackTimer.Stop()
 					return

@@ -266,6 +266,8 @@ func (store *AuthnFileStore) SetPasswordHash(loginID string, hash string) (err e
 
 // SetRole changes the client's default role
 func (store *AuthnFileStore) SetRole(clientID string, role string) error {
+	store.mutex.Lock()
+	defer store.mutex.Unlock()
 	entry, found := store.entries[clientID]
 	if !found {
 		return fmt.Errorf("SetRole: Client '%s' not found", clientID)

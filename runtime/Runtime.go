@@ -11,6 +11,7 @@ import (
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/middleware"
 	"github.com/hiveot/hub/runtime/transports"
+	"log/slog"
 )
 
 const DefaultDigiTwinStoreFilename = "digitwin.kvbtree"
@@ -111,21 +112,19 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 }
 
 func (r *Runtime) Stop() {
-	if r.TransportsMgr != nil {
-		r.TransportsMgr.Stop()
-	}
-	//if r.HistorySvc != nil {
-	//	r.HistorySvc.Stop()
-	//}
-	if r.DigitwinSvc != nil {
-		r.DigitwinSvc.Stop()
+	if r.AuthnSvc != nil {
+		r.AuthnSvc.Stop()
 	}
 	if r.AuthzSvc != nil {
 		r.AuthzSvc.Stop()
 	}
-	if r.AuthnSvc != nil {
-		r.AuthnSvc.Stop()
+	if r.DigitwinSvc != nil {
+		r.DigitwinSvc.Stop()
 	}
+	if r.TransportsMgr != nil {
+		r.TransportsMgr.Stop()
+	}
+	slog.Info("HiveOT Hub Runtime Stopped")
 }
 
 func NewRuntime(cfg *RuntimeConfig) *Runtime {
