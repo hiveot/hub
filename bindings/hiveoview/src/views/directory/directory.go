@@ -67,7 +67,7 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		//thingsList := make([]things.TD, 0)
 		hc := mySession.GetHubClient()
-		thingsList, err2 := digitwin.DirectoryReadTDs(hc, 0, 200)
+		thingsList, err2 := digitwin.DirectoryReadTDs(hc, 300, 0)
 		for _, tdJson := range thingsList {
 			td := things.TD{}
 			err = json.Unmarshal([]byte(tdJson), &td)

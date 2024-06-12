@@ -41,7 +41,7 @@ func (svc *OWServerBinding) setPrevValue(nodeID, attrName string, value any) {
 // Only changed properties are included.
 // Sensor values are send as individual events.
 // All values are sent as text.
-func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err error) {
+func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bool) (err error) {
 
 	// Iterate the devices and their properties
 	for _, node := range nodes {
@@ -63,13 +63,13 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode) (err err
 				// do nothing when ignore is set
 			} else if found && info.IsEvent {
 				valueStr, changed := svc.GetValueChange(attrID, attr.Value, info, nodeTD)
-				if changed {
+				if changed || force {
 					err = svc.hc.PubEvent(nodeTD.ID, attrID, []byte(valueStr))
 				}
 			} else if !found || info.IsProp {
 				// first and unknown values are always changed
 				valueStr, changed := svc.GetValueChange(attrID, attr.Value, info, nodeTD)
-				if changed {
+				if changed || force {
 					propMap[attrID] = valueStr
 				}
 			}
@@ -92,6 +92,7 @@ func (svc *OWServerBinding) GetValueChange(
 	// parse all data values to their native types and compare if they changed
 	// since the previous stored value.
 	prevValue, prevFound := svc.getPrevValue(td.ID, attrKey)
+
 	switch info.DataType {
 	case vocab.WoTDataTypeNumber:
 		valueFloat, err2 := strconv.ParseFloat(attrValue, 32)
@@ -100,6 +101,8 @@ func (svc *OWServerBinding) GetValueChange(
 		if prevFound {
 			valueDiff = math.Abs(valueFloat - prevValue.value.(float64))
 			changed = valueDiff >= info.ChangeNotify
+			slog.Debug("GetValueChange", "key", attrKey,
+				"oldValue", prevValue.value, "newValue", attrValue, "diff", valueDiff)
 		} else {
 			changed = true
 		}
@@ -162,7 +165,7 @@ func (svc *OWServerBinding) RefreshPropertyValues() error {
 	nodes, err := svc.edsAPI.PollNodes()
 	//nodeValueMap, err := svc.PollNodeValues()
 	if err == nil {
-		err = svc.PublishNodeValues(nodes)
+		err = svc.PublishNodeValues(nodes, false)
 	}
 	return err
 }

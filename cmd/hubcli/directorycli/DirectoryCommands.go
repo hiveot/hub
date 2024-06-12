@@ -49,7 +49,7 @@ func DirectoryListCommand(hc *hubclient.IHubClient) *cli.Command {
 // HandleListDirectory lists the directory content
 func HandleListDirectory(hc hubclient.IHubClient) (err error) {
 	// todo: iterate with offset and limit
-	tdListJson, err := digitwin.DirectoryReadTDs(hc, 0, 300)
+	tdListJson, err := digitwin.DirectoryReadTDs(hc, 300, 0)
 	tdList, err2 := things.UnmarshalTDList(tdListJson)
 
 	if err != nil || err2 != nil {

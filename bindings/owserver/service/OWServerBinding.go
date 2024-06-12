@@ -45,9 +45,6 @@ type OWServerBinding struct {
 	// nodes by thingID. Used in handling action requests
 	nodes map[string]*eds.OneWireNode
 
-	// Map of previous node values [nodeID][attrName]value
-	// nodeValues map[string]map[string]string
-
 	// stop the heartbeat
 	stopFn func()
 	// lock value updates
@@ -140,10 +137,12 @@ func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
 	slog.Info("Starting heartBeat", "TD publish interval", svc.config.TDInterval, "polling", svc.config.PollInterval)
 	var tdCountDown = 0
 	var pollCountDown = 0
+	var republishCountDown = svc.config.RepublishInterval
 
 	stopFn = plugin.StartHeartbeat(time.Second, func() {
 		tdCountDown--
 		pollCountDown--
+		republishCountDown--
 		if pollCountDown <= 0 {
 			// polling nodes and values takes one call
 			nodes, err := svc.PollNodes()
@@ -153,8 +152,12 @@ func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
 					err = svc.PublishNodeTDs(nodes)
 					tdCountDown = svc.config.TDInterval
 				}
-				// publish changed values
-				err = svc.PublishNodeValues(nodes)
+				// publish changed values or periodically for publishing all values
+				forceRepublish := pollCountDown < 0
+				if pollCountDown <= 0 {
+					pollCountDown = svc.config.RepublishInterval
+				}
+				err = svc.PublishNodeValues(nodes, forceRepublish)
 			}
 			pollCountDown = svc.config.PollInterval
 			// slow down if polling fails
