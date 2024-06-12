@@ -25,25 +25,18 @@ func (n *XMLNode) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 
 // OneWireNode with info on each node
 type OneWireNode struct {
-	//DeviceType string // derived from Family
-	Family string
-	// ThingID     string
-	//NodeID      string // ROM ID
+	Family      string
 	ROMId       string
 	Name        string // FIXME: Node model nr? title? can it be renamed?
 	Description string
 	Attr        map[string]OneWireAttr // attribute by ID
 }
 
-// OneWireAttr with info on each node attribute, property, event or action
+// OneWireAttr with info on each node key, unit, and value
 type OneWireAttr struct {
-	ID string // attribute instance ID, eg Name, Family, ROMId, ...
-	//Name string // attribute Title for humans
-	//VocabType  string // attribute type from vocabulary, if any, eg 'temperature', ...
+	// ID is the attribute instance ID, eg Name, Family, ROMId, ...
+	ID       string
 	Unit     string
 	Writable bool
 	Value    string
-	//IsActuator bool
-	//IsSensor   bool   // sensors emit events on change
-	//DataType string // vocab data type, "string", "number", "boolean", ""
 }

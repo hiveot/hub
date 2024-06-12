@@ -4,6 +4,7 @@ package things
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
+	"strconv"
 )
 
 // DataSchema with metadata  that describes the data format used. It can be used for validation.
@@ -141,4 +142,56 @@ func (ds *DataSchema) UnitSymbol() string {
 		return ds.Unit
 	}
 	return unit.Symbol
+}
+
+// FormatAsText formats the given input value according to the data schema
+// Numeric values are rounded to the given precision
+func (ds *DataSchema) FormatAsText(rawValue string, precision int) string {
+	var textValue string
+	if ds.Type == vocab.WoTDataTypeNumber {
+		valueFloat, err := strconv.ParseFloat(rawValue, 32)
+		textValue = strconv.FormatFloat(valueFloat, 'f', precision, 32)
+		_ = err
+	} else if ds.Type == vocab.WoTDataTypeInteger {
+		valueInt, err := strconv.ParseInt(rawValue, 10, 32)
+		textValue = strconv.FormatInt(valueInt, 10)
+		_ = err
+	} else if ds.Type == vocab.WoTDataTypeUnsignedInt {
+		valueUInt, err := strconv.ParseUint(rawValue, 10, 32)
+		textValue = strconv.FormatUint(valueUInt, 10)
+		_ = err
+	} else if ds.Type == vocab.WoTDataTypeBool {
+		valueBool, err := strconv.ParseBool(rawValue)
+		textValue = strconv.FormatBool(valueBool)
+		_ = err
+	} else {
+		textValue = rawValue
+	}
+	return textValue
+}
+
+// FormatAsNumber formats the given input value according to the data schema
+// Numeric values are rounded to the given precision
+func (ds *DataSchema) FormatAsNumber(rawValue string, precision int) string {
+	var textValue string
+	if ds.Type == vocab.WoTDataTypeNumber {
+		valueFloat, err := strconv.ParseFloat(rawValue, 32)
+		textValue = strconv.FormatFloat(valueFloat, 'f', precision, 32)
+		_ = err
+	} else if ds.Type == vocab.WoTDataTypeInteger {
+		valueInt, err := strconv.ParseInt(rawValue, 10, 32)
+		textValue = strconv.FormatInt(valueInt, 10)
+		_ = err
+	} else if ds.Type == vocab.WoTDataTypeUnsignedInt {
+		valueUInt, err := strconv.ParseUint(rawValue, 10, 32)
+		textValue = strconv.FormatUint(valueUInt, 10)
+		_ = err
+	} else if ds.Type == vocab.WoTDataTypeBool {
+		valueBool, err := strconv.ParseBool(rawValue)
+		textValue = strconv.FormatBool(valueBool)
+		_ = err
+	} else {
+		textValue = rawValue
+	}
+	return textValue
 }

@@ -23,7 +23,7 @@ type OWServerConfig struct {
 	OWServerPassword string `yaml:"owServerPassword,omitempty"`
 
 	// TDInterval optional override interval of republishing the full TD, in seconds.
-	// Default is 12 hours
+	// Default is on startup and every 24 hours
 	TDInterval int `yaml:"tdInterval,omitempty"`
 
 	// PollInterval optional override interval of polling Thing values, in seconds.
@@ -41,7 +41,7 @@ func NewConfig() *OWServerConfig {
 
 	// ensure valid defaults
 	cfg.LogLevel = ""
-	cfg.TDInterval = 3600 * 12
+	cfg.TDInterval = 3600 * 24
 	cfg.PollInterval = 60
 	cfg.RepublishInterval = 3600
 	//cfg.AuthTokenFile = "owserver.token"

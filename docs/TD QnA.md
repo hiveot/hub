@@ -43,7 +43,7 @@ TODO: check if forms accounts for this.
 * How best to define these for use by multiple things?  
 * This is probably a JSON-LD or vocabulary related question, but it is a common case that would be helpful to have an example of. How to do this for maximum interoperability?
 * Current Solution: add a dataschema with single or enum constants to 'schemaDefinitions'
-  The code generator creates the constants in the scope of the agent defining the thing.
+  The code generator creates the type and constants in the scope of the agent defining the thing.
 
 9. Would it be out of scope to use a TD to define a service API? Has this been done before?
  * The idea for hiveot is to define the directory, value storage, history storage, authentication and other services using a TD and generate the API with documentation from it.  
@@ -59,7 +59,7 @@ TODO: check if forms accounts for this.
 11. How to add a description to enum values?
 > Use-case: If an input has a restricted set of values, the consumer will have to select one of those values. Enum values however do not have a presentable title or description.
 * How to present enum values?
-* Current workaround: Don't use enum. Use oneOf instead which is an array of dataschema. Store the values in each entry as a const value.
+* Current workaround: Don't use enum. Use oneOf instead which is an array of dataschema. Store the values in each entry in the 'const' field.
 
 12. How to add a multi-line description?
 > Use-case: documenting properties, inputs or outputs can sometimes take more than a single line. However the TDD only accepts a single string and JSON doesn't do multi-line strings.
@@ -68,3 +68,17 @@ TODO: check if forms accounts for this.
 12. Does a propertyAffordance have a required field?
 > The example https://www.w3.org/TR/wot-scripting-api/#approaches-to-wot-application-development shows a 'required' field used in a property affordance. However, the [TD PropertyAffordance](https://www.w3.org/TR/wot-thing-description11/#propertyaffordance) does not define it. 
 * Just an observation. A required boolean field in a dataschema from the example above is easier to use than a 'required' field in objectschema that contains the names of required fields in the object. Having both however makes it worse.
+
+13. The PropertyAffordance relationship with dataschema is confusing
+> Quote: Property instances are also instances of the class DataSchema. Therefore, it can contain the type, unit, readOnly and writeOnly members, among others."
+
+What if a property is a number. Is the property affordances inheritance tree depending
+on the data type? Eg the inheritance of a 'number' property:
+> PropertyAffordance -> InteractionAffordance -> NumberSchema -> DataSchema
+ 
+With an array property:
+> PropertyAffordance -> InteractionAffordance -> ArraySchema -> DataSchema
+
+* The problem is that I'm unable to implement this in a maintainable and easy to use fashion in golang.
+* Workaround: flatten the property affordance with fields for all data schemas
+  and let the 'type' field determine which fields are used.

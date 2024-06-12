@@ -34,6 +34,10 @@ type OWServerBinding struct {
 	// hub client to publish TDs and values and receive actions
 	hc hubclient.IHubClient
 
+	// The discovered and publishable things, containing instructions on
+	// if and how properties and events are published
+	things map[string]*things.TD
+
 	// track the last value for change detection
 	// map of [node/device ID] [attribute Title] value
 	values map[string]map[string]NodeValueStamp
@@ -46,7 +50,8 @@ type OWServerBinding struct {
 
 	// stop the heartbeat
 	stopFn func()
-	mu     sync.Mutex
+	// lock value updates
+	mux sync.RWMutex
 }
 
 // CreateBindingTD generates a TD document for this binding. Its thingID is the same as its agentID
@@ -115,6 +120,7 @@ func (svc *OWServerBinding) Start(hc hubclient.IHubClient) (err error) {
 
 	// publish this binding's TD document
 	td := svc.CreateBindingTD()
+	svc.things[td.ID] = td
 	err = svc.hc.PubTD(td)
 	if err != nil {
 		slog.Error("failed publishing service TD. Continuing...",
@@ -129,7 +135,7 @@ func (svc *OWServerBinding) Start(hc hubclient.IHubClient) (err error) {
 	return nil
 }
 
-// heartbeat polls the EDS server every X seconds and publishes updates
+// heartbeat polls the EDS server every X seconds and publishes TD and value updates
 func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
 	slog.Info("Starting heartBeat", "TD publish interval", svc.config.TDInterval, "polling", svc.config.PollInterval)
 	var tdCountDown = 0
@@ -181,6 +187,7 @@ func NewOWServerBinding(config *config.OWServerConfig) *OWServerBinding {
 		config: config,
 		values: make(map[string]map[string]NodeValueStamp),
 		nodes:  make(map[string]*eds.OneWireNode),
+		things: make(map[string]*things.TD),
 	}
 	return svc
 }

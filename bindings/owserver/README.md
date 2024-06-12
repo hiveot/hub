@@ -5,7 +5,7 @@ HiveOT protocol binding for the EDS OWServer-v2 1-wire gateway.
 
 ## Objective
 
-Convert EDS OWServer 1-wire devices to WoT Things.
+Make EDS OWServer 1-wire devices available as WoT Things.
 
 ## Status
 
@@ -16,10 +16,6 @@ Limitations:
 * Use of polling
 * Limited support for 1-wire node types. Mostly sensors.
 * Use of the HA7Net gateway is not supported
-* The vocabulary mapping of property/event/action names is inconsistent. This needs to be fixed in hiveot itself first.
-
-Above limitations can be resolved with some development and 1-wire devices for testing.
-
 
 ## Summary
 
@@ -46,6 +42,6 @@ This binding:
 
 ## Usage
 
-This binding plugin runs out of the box. Build and install with the hub plugins into the installation ./plugins folder and start it using the launcher.
+This binding plugin runs out of the box. Build and install with the hub plugins into the installation hiveot/plugins folder and start it using the launcher.
 
 Out of the box it will use MDNS discovery to locate an owserver gateway on the network. Once started, the binding is added to the directory, as is the discovered owserver gateway. It can be viewed using the cli or hiveoview web server.
