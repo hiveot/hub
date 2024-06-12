@@ -136,7 +136,7 @@ var AttrConfig = map[string]AttrConversion{
 	},
 	"Health": {IsEvent: true,
 		Title:    "Health 0-7",
-		DataType: vocab.WoTDataTypeNumber,
+		DataType: vocab.WoTDataTypeNumber, Precision: 0,
 	},
 	"HeatIndex": {Ignore: true},
 	"HostName": {IsProp: true,
