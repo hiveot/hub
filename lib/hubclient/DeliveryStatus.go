@@ -56,8 +56,8 @@ type DeliveryStatus struct {
 	Status string `json:"progress"`
 	// Error in case delivery status is failed
 	Error string `json:"error,omitempty"`
-	// Reply in case delivery status is completed
-	Reply []byte `json:"reply,omitempty"`
+	// Serialized reply in case delivery status is completed
+	Reply string `json:"reply,omitempty"`
 }
 
 // Completed is a simple helper that sets the message delivery status to completed.
@@ -85,18 +85,25 @@ func (stat *DeliveryStatus) Failed(msg *things.ThingMessage, err error) *Deliver
 	return stat
 }
 
-// Unmarshal the reply data returned in stat
+// UnmarshalReply the reply data in this status into the given data type
 // This returns an error if unmarshalling fails or false if status does not have any data
-func (stat *DeliveryStatus) Unmarshal(args interface{}) (error, bool) {
-	if stat.Reply == nil {
+func (stat *DeliveryStatus) UnmarshalReply(reply interface{}) (error, bool) {
+	if stat.Reply == "" {
 		return nil, false
 	}
-	err := json.Unmarshal(stat.Reply, args)
+	err := json.Unmarshal([]byte(stat.Reply), reply)
 	return err, true
 }
 
-// Marshal the status update for transport
+// Marshal the status message itself for transport
 func (stat *DeliveryStatus) Marshal() []byte {
 	statJson, _ := json.Marshal(stat)
 	return statJson
+}
+
+// MarshalReply store the serialized reply data into the delivery status
+func (stat *DeliveryStatus) MarshalReply(reply interface{}) error {
+	replyData, err := json.Marshal(reply)
+	stat.Reply = string(replyData)
+	return err
 }

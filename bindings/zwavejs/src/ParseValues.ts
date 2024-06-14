@@ -1,12 +1,12 @@
 import {getEnumMemberName, NodeStatus, ZWaveNode, ZWavePlusNodeType, ZWavePlusRoleType,} from "zwave-js";
 import {InterviewStage, SecurityClass} from '@zwave-js/core';
 import * as vocab from "@hivelib/api/vocab/ht-vocab";
-import {getPropID} from "./getPropID";
+import {getPropKey} from "./getPropKey";
 
 
 // Value map for node values
 export class ParseValues {
-    values: { [key: string]: unknown }
+    values: { [key: string]: string }
 
     // @param node: create the map for this node
     constructor(node?: ZWaveNode) {
@@ -20,7 +20,7 @@ export class ParseValues {
     // Set a value if it is not undefined
     setIf(key: string, val: unknown) {
         if (val != undefined) {
-            this.values[key] = val
+            this.values[key] = val.toString()
         }
     }
 
@@ -50,7 +50,7 @@ export class ParseValues {
             this.setIf("deviceClassBasic", node.deviceClass.basic.label);
             this.setIf("deviceClassGeneric", node.deviceClass.generic.label);
             this.setIf("deviceClassSpecific", node.deviceClass.specific.label);
-            this.setIf("supportedCCs", node.deviceClass.generic.supportedCCs);
+            // this.setIf("supportedCCs", node.deviceClass.generic.supportedCCs);
         }
         this.setIf("endpointCount", node.getEndpointCount().toString());
         // this.setIf("dc.firmwareVersion", node.deviceConfig?.firmwareVersion);
@@ -101,7 +101,7 @@ export class ParseValues {
         let vids = node.getDefinedValueIDs()
         for (let vid of vids) {
             let vidValue = node.getValue(vid)
-            let propID = getPropID(vid)
+            let propID = getPropKey(vid)
             this.setIf(propID, vidValue)
         }
     }

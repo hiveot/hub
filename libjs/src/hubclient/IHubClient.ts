@@ -7,6 +7,7 @@ import {TD} from "@hivelib/things/TD";
 export enum ConnectionStatus {
     Connected = "connected",
     Connecting = "connecting",
+    ConnectFailed  = "connectFailed",
     Disconnected = "disconnected",
 }
 
@@ -42,43 +43,21 @@ export class DeliveryStatus extends Object{
     // Reply in case delivery status is completed
     reply?: string =""
 
-    Completed(msg: ThingMessage) {
+    Completed(msg: ThingMessage, err?: Error) {
         this.messageID = msg.messageID
         this.status = DeliveryProgress.DeliveryCompleted
+        if (err) {
+            this.error = err.name + ": " + err.message
+        }
+    }
+    Failed(msg: ThingMessage, err: Error|undefined) {
+        this.messageID = msg.messageID
+        this.status = DeliveryProgress.DeliveryFailed
+        if (err) {
+            this.error = err.name + ": " + err.message
+        }
     }
 }
-
-// export class HubTransportStatus extends Object {
-//     // URL of the hub
-//     hubURL: string
-//     // CA used to connect
-//     caCert: *x509.Certificate
-//     // the client ID to identify as
-//     clientID: string
-//
-//     // The current connection status
-//     connectionStatus: ConnectionStatus
-//     // The last connection error message, if any
-//     lastError: string//error
-//
-//     // flags indicating the supported protocols
-//     supportsCertAuth:     boolean
-//     supportsPasswordAuth: boolean
-//     supportsKeysAuth:     boolean
-//     supportsTokenAuth:    boolean
-// }
-
-// MessageTypeINBOX special inbox prefix for RPCs
-// reserved event and action names
-// export enum MessageType {
-//     Action = "action",
-//     Config = "config",
-//     Event = "event",
-//     RPC = "rpc",
-//     INBOX = "_INBOX",
-//     TD = "$td",
-//     Props = "$properties"
-// }
 
 export type EventHandler = (msg:ThingMessage)=>void;
 
@@ -86,11 +65,6 @@ export type MessageHandler = (msg:ThingMessage)=>DeliveryStatus;
 
 // IHubClient defines the interface of the hub transport client.
 export interface IHubClient {
-    // addressTokens returns the address separator and wildcard tokens used by the transport
-    // @result sep is the address separator. eg "." for nats, "/" for mqtt and redis
-    // @result wc is the address wildcard. "*" for nats, "+" for mqtt
-    // @result rem is the address remainder. "" for nats; "#" for mqtt
-    // addressTokens(): { sep: string, wc: string, rem: string };
 
     // ConnectWithPassword connects to the hub using password authentication.
     // @param password is created when registering the user with the auth service.
@@ -115,10 +89,10 @@ export interface IHubClient {
     //	@param dThingID the digital twin ID for whom the action is intended
     //	@param key is the action ID or method name of the action to invoke
     //  @param payload with serialized message to publish
-    pubAction(thingID: string, key: string, payload: string): Promise<DeliveryStatus>;
+    pubAction(dThingID: string, key: string, payload: string): Promise<DeliveryStatus>;
 
     // PubConfig publishes a configuration change request for one or more writable properties
-    pubConfig(thingID: string, key: string, payload: string): Promise<DeliveryStatus>;
+    pubConfig(dThingID: string, key: string, payload: string): Promise<DeliveryStatus>;
 
     // getStatus returns the current transport connection status
     // getStatus(): HubTransportStatus
@@ -129,7 +103,7 @@ export interface IHubClient {
     // Events are published by agents using their native ID, not the digital twin ID.
     // The Hub outbox broadcasts this event using the digital twin ID.
     //
-    //	thingID native ID of the thing whose event is published
+    //	thingID native thingID as provided by the agent
     //	key ID of the event
     //	payload with serialized message to publish
     //
@@ -141,11 +115,11 @@ export interface IHubClient {
     // It returns as soon as delivery to the hub is confirmed.
     // This is intended for agents, not for consumers.
     //
-    // @param thingID is the ID of the device (not including the digital twin ID)
+    // @param thingID is the native thingID of the device (not including the digital twin ID)
     // @param props is the property key-value map to publish where value is the serialized representation
     //
     // This throws an error if the event cannot not be delivered to the hub
-    pubProps(thingID: string, props: Map<string,string>): Promise<DeliveryStatus>;
+    pubProps(thingID: string, props: {[key:string]:string}): Promise<DeliveryStatus>;
 
     // PubTD publishes an TD document event.
     // It returns as soon as delivery to the hub is confirmed.
@@ -156,7 +130,7 @@ export interface IHubClient {
 
     // RefreshToken refreshes the authentication token
     // The resulting token can be used with 'ConnectWithJWT'
-    refreshToken(): Promise<DeliveryStatus>
+    refreshToken(): Promise<string>
 
     // Rpc makes a RPC call using an action and waits for a delivery confirmation event.
     //

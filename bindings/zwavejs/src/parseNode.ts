@@ -14,7 +14,7 @@ import {ActionAffordance, EventAffordance, PropertyAffordance, TD} from "@hiveli
 import * as vocab from "@hivelib/api/vocab/ht-vocab";
 import type {ZWAPI} from "./ZWAPI";
 import {logVid} from "./logVid";
-import {getPropID} from "./getPropID";
+import {getPropKey} from "./getPropKey";
 import {getVidAffordance, VidAffordance} from "./getVidAffordance";
 import {getDeviceType} from "./getDeviceType";
 import {DataSchema} from "@hivelib/things/dataSchema";
@@ -228,13 +228,13 @@ export function parseNode(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
         let va = getVidAffordance(node, vid, maxNrScenes)
 
         // let pt = getPropType(node, vid)
-        let propID = getPropID(vid)
+        let propID = getPropKey(vid)
         if (va) {
             logVid(vidLogFD, node, vid, propID, va)
         }
 
         // the vid is either config, attr, action or event based on CC
-        switch (va?.affordance) {
+        switch (va?.messageType) {
             case "action":
                 addAction(td, node, vid, propID, va)
                 break;

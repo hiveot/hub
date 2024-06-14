@@ -141,9 +141,9 @@ func (cl *EmbeddedClient) Rpc(
 	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, payload, cl.clientID)
 	// this sendMessage is synchronous
 	stat := cl.sendMessage(msg)
-	if stat.Error == "" && stat.Reply != nil {
+	if stat.Error == "" {
 		// delivery might be completed but an unmarshal error causes it to fail
-		err := json.Unmarshal(stat.Reply, resp)
+		err, _ := stat.UnmarshalReply(resp)
 		if err != nil {
 			stat.Error = err.Error()
 		}

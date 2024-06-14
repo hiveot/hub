@@ -40,7 +40,7 @@ func GenServiceHandler(l *utils.L, serviceTitle string, td *things.TD) {
 	l.Add("}")
 
 	l.Add("if resp != nil {")
-	l.Add("   stat.Reply, _ = json.Marshal(resp)")
+	l.Add("   stat.MarshalReply(resp)")
 	l.Add("}")
 
 	l.Add("stat.Completed(msg, err)")

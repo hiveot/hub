@@ -2,14 +2,17 @@ package runtime_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 func TestAddRemoveTD(t *testing.T) {
@@ -88,5 +91,40 @@ func TestReadTDs(t *testing.T) {
 	tdList, err := digitwin.DirectoryReadTDs(cl, 333, 02)
 	require.NoError(t, err)
 	require.Greater(t, len(tdList), 3)
+	args := []byte("{\"limit\":10}")
+	stat := cl.PubAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDsMethod, args)
+	assert.Empty(t, stat.Error)
+	assert.NotEmpty(t, stat.Reply)
+}
 
+func TestReadTDsRest(t *testing.T) {
+	t.Log("--- TestReadTDs using the rest api ---")
+
+	const agentID = "agent1"
+	const userID = "user1"
+
+	r := startRuntime()
+	defer r.Stop()
+	ag, _ := ts.AddConnectAgent(agentID)
+	defer ag.Disconnect()
+	cl, token := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	defer cl.Disconnect()
+
+	// add a whole bunch of things
+	ts.AddTDs(agentID, 100)
+
+	serverURL := fmt.Sprintf("localhost:%d", ts.Port)
+	cl2 := tlsclient.NewTLSClient(serverURL, ts.Certs.CaCert, time.Second*30)
+	cl2.ConnectWithToken(token)
+
+	data, err := cl2.Get(vocab.GetThingsPath)
+	require.NoError(t, err)
+
+	// tds are sent as an array of JSON, first unpack the array of JSON strings
+	tdJSONList := []string{}
+	err = json.Unmarshal(data, &tdJSONList)
+	require.NoError(t, err)
+	tdList, err := things.UnmarshalTDList(tdJSONList)
+	require.NoError(t, err)
+	require.Equal(t, 100, len(tdList))
 }

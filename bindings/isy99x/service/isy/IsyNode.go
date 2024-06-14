@@ -1,4 +1,4 @@
-package service
+package isy
 
 // IsyNodes Collection of ISY99x nodes. Example:
 // <nodes>

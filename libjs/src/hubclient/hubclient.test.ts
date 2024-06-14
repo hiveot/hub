@@ -6,7 +6,7 @@ import { ThingMessage } from "../things/ThingMessage";
 import {ConnectToHub} from "@hivelib/hubclient/ConnectToHub";
 
 let hc: IHubClient
-const testURL = "https://127.0.0.1:9883"
+const baseURL = "https://localhost:8444"
 
 async function test1() {
     let lastMsg = ""
@@ -18,7 +18,7 @@ async function test1() {
     const testPass = "testpass"
     let caCertPEM = ""
     //running instance
-    let hc =await ConnectToHub(testURL, testClient, caCertPEM)
+    let hc =await ConnectToHub(baseURL, testClient, caCertPEM)
 
     hc.setActionHandler((tv: ThingMessage):DeliveryStatus => {
         console.log("Received action: " + tv.key)

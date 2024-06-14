@@ -80,3 +80,8 @@ To autostart the binding add it to the autostart section of the launcher.yaml co
 
 Each binding instance on the network must have a unique serviceID. This allows for multiple zwave controllers in different areas. To run multiple instances with different service IDs rename the executable. For example to zwavejs-1, zwavejs-2, etc. The launcher generates keys and tokens for each separately. Each instance will publish the discovered Things and events under their own serviceID.
 
+
+## Testing
+
+OMG the pain!
+You'd hope that intellij allows you to just run it, but no such luck.

@@ -22,19 +22,19 @@ import {HttpSSEClient} from "@hivelib/hubclient/httpclient/HttpSSEClient";
 //	certDir is the location of the CA cert and key/token files
 // This throws an error if a connection cannot be made
 export async function ConnectToHub(
-    fullURL: string, clientID: string, caCertPem: string): Promise<IHubClient> {
+    baseURL: string, clientID: string, caCertPem: string, disableCertCheck: boolean): Promise<IHubClient> {
 
     // 1. determine the actual address
-    if (fullURL == "") {
+    if (baseURL == "") {
         // return after first result
         let uc = await locateHub()
-        fullURL = uc.hubURL
+        baseURL = uc.hubURL
     }
-    if (clientID == ""||fullURL == "") {
+    if (clientID == ""||baseURL == "") {
         throw("Missing clientID or hub URL")
     }
     // 2. Determine the client protocol to use
     // TODO: support multiple client protocols
-    let hc = new HttpSSEClient(fullURL, clientID, caCertPem)
+    let hc = new HttpSSEClient(baseURL, clientID, caCertPem, disableCertCheck)
     return hc
 }

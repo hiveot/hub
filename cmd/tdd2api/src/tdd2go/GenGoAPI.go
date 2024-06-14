@@ -43,7 +43,6 @@ func GenGoAPIFromTD(td *things.TD, outFile string) (err error) {
 	l.Add("package %s", agentID)
 
 	l.Add("")
-	l.Add("import \"encoding/json\"")
 	l.Add("import \"errors\"")
 	l.Add("import \"github.com/hiveot/hub/lib/things\"")
 	l.Add("import \"github.com/hiveot/hub/lib/hubclient\"")

@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/lib/things"
 	"strings"
 	"sync"
@@ -38,7 +39,7 @@ type IIsyThing interface {
 	// HandleValueUpdate updates the Thing properties with value obtained via the ISY gateway
 	HandleValueUpdate(propID string, uom string, newValue string) error
 	// Init assigns the ISY connection and node this Thing represents
-	Init(ic *IsyAPI, thingID string, node *IsyNode, prodInfo InsteonProduct, hwVersion string)
+	Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string)
 }
 
 // IsyThing is the generic base of Things constructed out of ISY Insteon nodes.
@@ -64,7 +65,7 @@ type IsyThing struct {
 	mux sync.RWMutex
 
 	// REST/SOAP/WS connection to the ISY hub
-	isyAPI *IsyAPI
+	isyAPI *isy.IsyAPI
 }
 
 // GetID returns the ThingID for the node it represents.
@@ -160,7 +161,7 @@ func (it *IsyThing) HandleValueUpdate(propID string, uom string, newValue string
 // Init initializes the IsyThing base class
 // This determines the device type from prodInfo and sets property values for
 // product and model.
-func (it *IsyThing) Init(ic *IsyAPI, thingID string, node *IsyNode, prodInfo InsteonProduct, hwVersion string) {
+func (it *IsyThing) Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string) {
 	var found bool
 	it.mux.Lock()
 	defer it.mux.Unlock()

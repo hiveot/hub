@@ -11,28 +11,34 @@ The Hub for the *Hive-of-Things* provides a secure [runtime](runtime/README-runt
 Status: The Hub core is currently being reworked to use the "[digital twins runtime](runtime/README-runtime.md)" with multiple concurrent protocol support. (May 2024). 
 
 TODO before alpha:
-1. Rework existing IoT bindings to work with the digital twin runtime
+1. ~~Implement digitwin runtime in golang~~
+2. ~~generate golang api's from TD definitions (tdd2go)~~
+3. Generate javascript apis (for use by zwavejs)
+4. Rework existing IoT bindings to work with the digital twin runtime
    * ~~1-wire protocol binding using owserver-v2 gateway (bindings/owserver)~~
-   * ~~insteon binding using isy99x gateway (bindings/isy99x)~~
-   * ~~ipnet network scanner~~
+   * insteon binding using isy99x gateway (bindings/isy99x)
+   * ipnet network scanner
    * zwave protocol binding using zwavejs (bindings/zwavejs)
-   * ~~hiveoview web client~~
-   * generate services api's using TD definition (tdd2go)
-2. Minimal web client with a dashboard and configuration capabilities (bindings/hiveoview)
-3. improve the https protocol binding
+5. Minimal web client  (bindings/hiveoview)
+   * ~~directory viewer~~
+   * ~~configuration editing~~
+   * dashboard 
+   * admin panel for managing users and devices; starting/stopping of services
+6. improve the https protocol binding
    * ~~support subscribing to Thing events~~ 
    * Integrate role authorization (viewer, operator, manager, admin)
    * Support client certificate authentication
    * Support websockets are return channel
    * Support UDS for local services
-4. improve the embedded protocol binding (for internal services) 
+7. improve the embedded protocol binding (for internal services) 
    * improve subscription support to reduce traffic/processing
-5. Support for Forms sections in TDD documents describing the protocols to interact with a Thing.
+8. Support for Forms sections in TDD documents describing the protocols to interact with a Thing.
+9. Revisit the vocabulary to integrate or adopt existing vocabularies where possible
+10. Generate python apis
 
 Future Roadmap:
 1. rework mqtt transport protocol
 1. rework the nats transport protocol
-1. add gRPC protocol binding
 1. support Action queues for delayed delivery to offline agents
 
 

@@ -452,7 +452,7 @@ func (cl *HttpSSEClient) Rpc(
 	}
 	// only once completed will there be a reply as a result
 	if err == nil && resp != nil {
-		err = json.Unmarshal(stat.Reply, resp)
+		err, _ = stat.UnmarshalReply(resp)
 	}
 	return err
 }

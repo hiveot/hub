@@ -77,20 +77,27 @@ func TestHttpsGetEvents(t *testing.T) {
 	tlsClient := tlsclient.NewTLSClient(hostPort, ts.Certs.CaCert, time.Minute)
 	tlsClient.ConnectWithToken(token)
 
-	// read latest using the experimental http REST API (which needs a swagger definition)
+	// read latest using the experimental http REST API
 	vars := map[string]string{"thingID": dtThingID}
 	eventPath := utils.Substitute(vocab.GetEventsPath, vars)
 	reply, err := tlsClient.Get(eventPath)
 	require.NoError(t, err)
 	require.NotNil(t, reply)
-	tmm := things.ThingMessageMap{}
-	err = json.Unmarshal(reply, &tmm)
-	require.NoError(t, err)
-	require.NotZero(t, len(tmm))
 
+	d2 := make(map[string]things.ThingMessage)
+	err = json.Unmarshal(reply, &d2)
+
+	tmm1 := things.ThingMessageMap{}
+	err = json.Unmarshal(reply, &tmm1)
+	require.NoError(t, err)
+	require.NotZero(t, len(tmm1))
+
+	// read latest using the generated client
 	resp, err := digitwin.OutboxReadLatest(hc, nil, "", dtThingID)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	tmm = things.ThingMessageMap{}
-	err = json.Unmarshal([]byte(resp), &tmm)
+	tmm2 := things.ThingMessageMap{}
+	err = json.Unmarshal([]byte(resp), &tmm2)
+	require.NoError(t, err)
+	require.Equal(t, len(tmm1), len(tmm2))
 }

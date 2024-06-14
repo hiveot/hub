@@ -77,7 +77,6 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 
 	//--- public routes do not require an authenticated session
 	router.Group(func(r chi.Router) {
-		r.Use(middleware.Recoverer)
 		r.Use(middleware.Compress(5,
 			"text/html", "text/css", "text/javascript", "image/svg+xml"))
 
@@ -98,7 +97,6 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 
 	//--- private routes that requires authentication
 	router.Group(func(r chi.Router) {
-		r.Use(middleware.Recoverer)
 		r.Use(middleware.Compress(5,
 			"text/html", "text/css", "text/javascript", "image/svg+xml"))
 
@@ -251,7 +249,7 @@ func (svc *HttpsTransport) SendToClient(
 	cs, err := sm.GetSessionByClientID(clientID)
 	if err == nil {
 		payload, _ := json.Marshal(msg)
-		count := cs.SendSSE(msg.MessageType, string(payload))
+		count := cs.SendSSE(msg.MessageID, msg.MessageType, string(payload))
 		if count == 0 {
 			err = fmt.Errorf("client '%s' is not reachable", clientID)
 			found = false

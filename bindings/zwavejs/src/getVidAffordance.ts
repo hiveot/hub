@@ -3,10 +3,10 @@ import {CommandClasses, ValueID} from "@zwave-js/core";
 import * as vocab from "@hivelib/api/vocab/ht-vocab.js";
 
 
-// ValueID to Affordance classification
+// ValueID to message type classification
 export interface VidAffordance {
     atType: string, // @type of the property, event or action, "" if not known
-    affordance: "action" | "event" | "attr" | "config" | undefined
+    messageType: "action" | "event" | "attr" | "config" | undefined
 }
 
 // Override of zwavejs VID to HiveOT action, event, config or attributes
@@ -20,23 +20,23 @@ const overrideMap: Map<string, Partial<VidAffordance> | undefined> = new Map([
     ["32-restorePrevious", {}],
 
     // Binary Switch 0x25 (37) is an actuator
-    ["37-currentValue", {atType: vocab.PropSwitch, affordance: "event"}],
-    ["37-targetValue", {atType: vocab.ActionSwitch, affordance: "action"}],
+    ["37-currentValue", {atType: vocab.PropSwitch, messageType: "event"}],
+    ["37-targetValue", {atType: vocab.ActionSwitch, messageType: "action"}],
 
     // Multilevel Switch (38) is an actuator
 
     // Binary Sensor (48)
-    ["48-Any", {atType: vocab.PropAlarmStatus, affordance: "event"}],
+    ["48-Any", {atType: vocab.PropAlarmStatus, messageType: "event"}],
 
     // Meter - electrical
-    ["50-value-65537", {atType: vocab.PropElectricEnergy, affordance: "event"}],
-    ["50-value-66049", {atType: vocab.PropElectricPower, affordance: "event"}],
-    ["50-value-66561", {atType: vocab.PropElectricVoltage, affordance: "event"}],
-    ["50-value-66817", {atType: vocab.PropElectricCurrent, affordance: "event"}],
-    ["50-reset", {affordance: "config"}], // for managers, not operators
+    ["50-value-65537", {atType: vocab.PropElectricEnergy, messageType: "event"}],
+    ["50-value-66049", {atType: vocab.PropElectricPower, messageType: "event"}],
+    ["50-value-66561", {atType: vocab.PropElectricVoltage, messageType: "event"}],
+    ["50-value-66817", {atType: vocab.PropElectricCurrent, messageType: "event"}],
+    ["50-reset", {messageType: "config"}], // for managers, not operators
 
     // Notification
-    ["113-Home Security-Motion sensor status", {atType: vocab.PropAlarmMotion, affordance: "event"}],
+    ["113-Home Security-Motion sensor status", {atType: vocab.PropAlarmMotion, messageType: "event"}],
 ]);
 
 
@@ -173,7 +173,7 @@ export function getVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: num
     let atType = ""
     let va: VidAffordance = {
         atType: atType,
-        affordance: affordance
+        messageType: affordance
     }
 
     // Apply values from an override
@@ -189,9 +189,9 @@ export function getVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: num
         if (override.atType != undefined) {
             va.atType = override.atType
         }
-        if (override.affordance != undefined) {
-            va.affordance = override.affordance
+        if (override.messageType != undefined) {
+            va.messageType = override.messageType
         }
     }
-    return va.affordance ? va : undefined
+    return va.messageType ? va : undefined
 }

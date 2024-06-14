@@ -1,7 +1,6 @@
 package sessions
 
 import (
-	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
 	"sync"
@@ -29,7 +28,6 @@ type ClientSession struct {
 	remoteAddr string
 
 	lastActivity time.Time
-	sequenceNr   int
 
 	// session mutex for updating sse and activity
 	mux sync.RWMutex
@@ -123,11 +121,11 @@ func (cs *ClientSession) onConnectChange(stat hubclient.TransportStatus) {
 		slog.String("clientID", stat.ClientID),
 		slog.String("status", string(stat.ConnectionStatus)))
 	if stat.ConnectionStatus == hubclient.Connected {
-		cs.SendSSE("notify", "success:Connection with Hub successful")
+		cs.SendSSE("success", "notify", "success:Connection with Hub successful")
 	} else if stat.ConnectionStatus == hubclient.Connecting {
-		cs.SendSSE("notify", "warning:Attempt to reconnect to the Hub")
+		cs.SendSSE("reconnecting", "notify", "warning:Attempt to reconnect to the Hub")
 	} else {
-		cs.SendSSE("notify", "warning:Connection changed: "+string(stat.ConnectionStatus))
+		cs.SendSSE("changed", "notify", "warning:Connection changed: "+string(stat.ConnectionStatus))
 	}
 }
 
@@ -176,19 +174,18 @@ func (cs *ClientSession) onConnectChange(stat hubclient.TransportStatus) {
 // SendSSE encodes and sends an SSE event to clients of this session
 // Intended to send events to clients over sse.
 // This returns the number of events being sent, or 0 if no client sessions exist
-func (cs *ClientSession) SendSSE(eventType string, payload string) int {
+func (cs *ClientSession) SendSSE(messageID string, eventType string, payload string) int {
 	count := 0
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
 	slog.Debug("hub sending message to client over sse:",
+		slog.String("messageID", messageID),
 		slog.String("destination clientID", cs.clientID),
 		slog.String("eventType", eventType),
 		slog.Int("nr connections", len(cs.sseClients)))
-	cs.sequenceNr++
-	eventID := fmt.Sprintf("%d", cs.sequenceNr)
 	for _, c := range cs.sseClients {
 		c <- SSEEvent{
-			ID:        eventID,
+			ID:        messageID,
 			EventType: eventType,
 			Payload:   payload,
 		}

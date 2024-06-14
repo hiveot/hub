@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/config"
+	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 	"sync"
@@ -25,7 +27,7 @@ type IsyBinding struct {
 	hc     hubclient.IHubClient
 
 	thingID string           // ID of the binding Thing
-	isyAPI  *IsyAPI          // methods for communicating met ISY gateway device
+	isyAPI  *isy.IsyAPI      // methods for communicating met ISY gateway device
 	IsyGW   *IsyGatewayThing // ISY gateway access
 
 	// is gateway currently reachable?
@@ -38,84 +40,95 @@ type IsyBinding struct {
 	stopHeartbeatFn func()
 }
 
-//
-//// GetValues returns the property values of the binding Thing
-//func (svc *IsyBinding) GetValues(onlyChanges bool) map[string]string {
-//	props := make(map[string]string)
-//	props[vocab.VocabPollInterval] = fmt.Sprintf("%d", svc.config.PollInterval)
-//	props[vocab.VocabGatewayAddress] = svc.config.IsyAddress
-//	return props
-//}
+// CreateBindingTD generates a TD document for this binding containing properties,
+// event and action definitions.
+func (svc *IsyBinding) CreateBindingTD() *things.TD {
+	td := things.NewTD(svc.thingID, "ISY99x binding", vocab.ThingServiceAdapter)
 
-// HandleActionRequest passes the action request to the associated Thing.
-func (svc *IsyBinding) handleActionRequest(action *things.ThingMessage) (stat hubclient.DeliveryStatus) {
-	if action.Key == vocab.ActionTypeProperties {
-		return svc.handleConfigRequest(action)
-	}
+	// binding attributes
+	prop := td.AddProperty("connectionStatus", "",
+		"Connection Status", vocab.WoTDataTypeString)
+	prop.Description = "Whether the Binding has a connection to an ISY gateway"
+	//
+	prop = td.AddProperty(vocab.PropDeviceMake, vocab.PropDeviceMake,
+		"Manufacturer", vocab.WoTDataTypeString)
+	prop.Description = "Developer of the binding"
 
-	slog.Info("handleActionRequest",
-		slog.String("thingID", action.ThingID),
-		slog.String("key", action.Key),
-		slog.String("senderID", action.SenderID))
+	// TODO: persist configuration
+	//binding config
+	prop = td.AddProperty(vocab.PropDevicePollinterval, vocab.PropDevicePollinterval,
+		"Poll Interval", vocab.WoTDataTypeInteger)
+	prop.Description = "Interval the binding polls the gateway for data value updates."
+	prop.Unit = vocab.UnitSecond
+	prop.ReadOnly = false
+	//
+	prop = td.AddPropertyAsString("loginName", "", "Login name")
+	prop.Description = "ISY99x gateway login name."
+	prop.ReadOnly = false
+	//
+	prop = td.AddPropertyAsString("password", "", "Password")
+	prop.Description = "ISY99x gateway password."
+	prop.ReadOnly = false
+	prop.WriteOnly = true
+	//
+	prop = td.AddProperty(vocab.PropNetAddress, vocab.PropNetAddress,
+		"Network Address", vocab.WoTDataTypeString)
+	prop.Description = "ISY99x gateway IP address; empty to auto discover."
+	prop.ReadOnly = false
 
-	if !svc.isyAPI.IsConnected() {
-		slog.Warn(stat.Error)
-		stat.Completed(action, fmt.Errorf("No connection with the gateway"))
-		return
-	}
-	isyThing := svc.IsyGW.GetIsyThing(action.ThingID)
-	if isyThing == nil {
-		stat.Completed(action, fmt.Errorf("handleActionRequest: thing '%s' not found", action.ThingID))
-		slog.Warn(stat.Error)
-		return
-	}
-	err := isyThing.HandleActionRequest(action)
-	stat.Completed(action, err)
-	return
+	// binding events
+	ev := td.AddEvent("", vocab.PropNetConnection, "Connection status", vocab.WoTDataTypeNone, nil)
+	ev.Description = "Status of connection to OWServer gateway changed"
+
+	// no binding actions
+	return td
 }
 
-// handleConfigRequest for handling binding, gateway and node configuration changes
-func (svc *IsyBinding) handleConfigRequest(action *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+// GetBindingPropValues returns the property/event values of this binding
+func (svc *IsyBinding) GetBindingPropValues(onlyChanges bool) (map[string]string, map[string]string) {
+	props := make(map[string]string)
+	props[vocab.PropDevicePollinterval] = fmt.Sprintf("%d", svc.config.PollInterval)
+	props[vocab.PropNetAddress] = svc.config.IsyAddress
+	props["loginName"] = svc.config.LoginName
+	props[vocab.PropDeviceMake] = "Hive Of Things"
 
-	slog.Info("handleConfigRequest",
-		slog.String("thingID", action.ThingID),
-		slog.String("key", action.Key),
-		slog.String("senderID", action.SenderID))
-
-	// configuring the binding doesn't require a connection with the gateway
-	if action.ThingID == svc.thingID {
-		err := svc.HandleBindingConfig(action)
-		stat.Completed(action, err)
-		return
+	connStatus := "disconnnected"
+	if svc.isyAPI.IsConnected() {
+		connStatus = "connected"
 	}
+	events := make(map[string]string)
+	events[vocab.PropNetConnection] = connStatus
+	//
 
-	if !svc.isyAPI.IsConnected() {
-		// this is a delivery failure
-		stat.Failed(action, fmt.Errorf("no connection with the gateway"))
-		slog.Warn(stat.Error)
-		return
-	}
+	return props, events
+}
 
-	// pass request to the Thing
-	isyThing := svc.IsyGW.GetIsyThing(action.ThingID)
-	if isyThing == nil {
-		stat.Failed(action, fmt.Errorf("handleActionRequest: thing '%s' not found", action.ThingID))
-		slog.Warn(stat.Error)
-		return
-	}
-	err := isyThing.HandleConfigRequest(action)
-	stat.Completed(action, err)
-
-	// publish changed values after returning
-	go func() {
-		_ = svc.PublishValues(true)
-		// re-submit the TD if the title changes
-		if action.Key == vocab.PropDeviceTitle {
-			td := isyThing.GetTD()
-			_ = svc.hc.PubTD(td)
+// HandleBindingConfig configures the binding.
+func (svc *IsyBinding) HandleBindingConfig(action *things.ThingMessage) error {
+	err := fmt.Errorf("unknown configuration request '%s' from '%s'", action.Key, action.SenderID)
+	// connection settings to connect to the gateway
+	// FIXME: persist this configuration
+	switch action.Key {
+	case vocab.PropNetAddress:
+		svc.config.IsyAddress = action.DataAsText()
+		err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+		if err == nil {
+			svc.IsyGW.Init(svc.isyAPI)
 		}
-	}()
-	return stat
+	case "loginName":
+		svc.config.LoginName = action.DataAsText()
+		err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+		if err == nil {
+			svc.IsyGW.Init(svc.isyAPI)
+		}
+	case "password":
+		svc.config.Password = action.DataAsText()
+		err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+		if err == nil {
+			svc.IsyGW.Init(svc.isyAPI)
+		}
+	}
+	return err
 }
 
 // Start the ISY99x protocol binding.
@@ -133,7 +146,7 @@ func (svc *IsyBinding) Start(hc hubclient.IHubClient) (err error) {
 	svc.prodMap, err = LoadProductMapCSV("")
 
 	//// 'IsyThings' use the 'isy connection' to talk to the gateway
-	svc.isyAPI = NewIsyAPI()
+	svc.isyAPI = isy.NewIsyAPI()
 	svc.IsyGW = NewIsyGateway(svc.prodMap)
 	_ = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
 	svc.IsyGW.Init(svc.isyAPI)
@@ -144,6 +157,51 @@ func (svc *IsyBinding) Start(hc hubclient.IHubClient) (err error) {
 	// last, start polling heartbeat
 	svc.stopHeartbeatFn = svc.startHeartbeat()
 	return err
+}
+
+// heartbeat polls the gateway device every X seconds and publishes updates
+// This returns a stop function that can be used to end the loop
+func (svc *IsyBinding) startHeartbeat() (stopFn func()) {
+
+	var tdCountDown = 0
+	var pollCountDown = 0
+	var isConnected = false
+	var onlyChanges = false
+	var err error
+
+	stopFn = plugin.StartHeartbeat(time.Second, func() {
+		// if no gateway connection exists, try to reestablish a connection to the gateway
+		isConnected = svc.isyAPI.IsConnected()
+		if !isConnected {
+			err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+			if err == nil {
+				// re-establish the gateway device connection
+				svc.IsyGW.Init(svc.isyAPI)
+			}
+			isConnected = svc.isyAPI.IsConnected()
+		}
+
+		// publish node TDs and values
+		tdCountDown--
+		if isConnected && tdCountDown <= 0 {
+			err = svc.PublishNodeTDs()
+			tdCountDown = svc.config.TDInterval
+			// after publishing the TD, republish all values
+			onlyChanges = false
+		}
+		// publish changes to sensor/actuator values
+		pollCountDown--
+		if isConnected && pollCountDown <= 0 {
+			err = svc.PublishNodeValues(onlyChanges)
+			pollCountDown = svc.config.PollInterval
+			// slow down if this fails. Don't flood the logs
+			if err != nil {
+				pollCountDown = svc.config.PollInterval * 5
+			}
+			onlyChanges = true
+		}
+	})
+	return stopFn
 }
 
 // Stop the heartbeat and remove subscriptions

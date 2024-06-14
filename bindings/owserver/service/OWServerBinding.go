@@ -53,7 +53,8 @@ type OWServerBinding struct {
 
 // CreateBindingTD generates a TD document for this binding. Its thingID is the same as its agentID
 func (svc *OWServerBinding) CreateBindingTD() *things.TD {
-	// This binding exposes a TD describing itself.
+	// This binding exposes the TD of itself.
+	// Currently its configuration comes from file.
 	td := things.NewTD(svc.agentID, "OWServer binding", vocab2.ThingServiceAdapter)
 	td.Description = "Driver for the OWServer V2 Gateway 1-wire interface"
 
@@ -78,8 +79,8 @@ func (svc *OWServerBinding) CreateBindingTD() *things.TD {
 	return td
 }
 
-// MakeBindingProps generates a properties map for attribute and config properties of this binding
-func (svc *OWServerBinding) MakeBindingProps() map[string]string {
+// GetBindingPropValues generates a properties map for attribute and config properties of this binding
+func (svc *OWServerBinding) GetBindingPropValues() map[string]string {
 	pv := make(map[string]string)
 	pv[bindingValuePollIntervalID] = fmt.Sprintf("%d", svc.config.PollInterval)
 	pv[bindingTDIntervalID] = fmt.Sprintf("%d", svc.config.TDInterval)
@@ -123,7 +124,7 @@ func (svc *OWServerBinding) Start(hc hubclient.IHubClient) (err error) {
 		slog.Error("failed publishing service TD. Continuing...",
 			slog.String("err", err.Error()))
 	} else {
-		props := svc.MakeBindingProps()
+		props := svc.GetBindingPropValues()
 		_ = svc.hc.PubProps(td.ID, props)
 	}
 

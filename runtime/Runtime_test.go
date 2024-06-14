@@ -2,7 +2,6 @@ package runtime_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
@@ -84,7 +83,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 		rxMsg = msg
 		stat.Completed(msg, nil)
 		//stat.Failed(msg, fmt.Errorf("failuretest"))
-		stat.Reply = []byte(msg.DataAsText() + ".reply")
+		stat.Reply = msg.DataAsText() + ".reply"
 		slog.Info("agent1 delivery complete", "messageID", msg.MessageID)
 		return stat
 	})
@@ -149,7 +148,7 @@ func TestServiceReconnect(t *testing.T) {
 		rxMsg.Store(&msg)
 		stat.Completed(msg, nil)
 		_ = msg.Unmarshal(&req)
-		stat.Reply, _ = json.Marshal(req + ".reply")
+		_ = stat.MarshalReply(req + ".reply")
 		slog.Info("agent1 delivery complete", "messageID", msg.MessageID)
 		return stat
 	})

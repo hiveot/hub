@@ -3,7 +3,6 @@ package httpstransport
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
@@ -13,6 +12,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 )
 
 // Experimental Digitwin REST handlers
@@ -39,7 +39,10 @@ func (svc *HttpsTransport) HandleGetEvents(w http.ResponseWriter, r *http.Reques
 	var reply []byte
 	if stat.Error == "" {
 		var resp string
-		_ = json.Unmarshal(stat.Reply, &resp)
+		// the serialized response contains a serialized message map.
+		// this double serialization is because the outbox response is defined
+		// as a serialized message map. Just reply with the once-serialized map
+		err, _ = stat.UnmarshalReply(&resp)
 		// The response values are already serialized
 		reply = []byte(resp)
 		err = nil
@@ -52,8 +55,41 @@ func (svc *HttpsTransport) HandleGetEvents(w http.ResponseWriter, r *http.Reques
 // HandleGetThings returns a list of things in the directory
 // No parameters
 func (svc *HttpsTransport) HandleGetThings(w http.ResponseWriter, r *http.Request) {
-	svc.writeReply(w, nil, fmt.Errorf("Not yet implemented"))
+	cs, _, _, _, err := svc.getRequestParams(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	// this request can simply be turned into an action message.
+	limit := 100
+	offset := 0
+	if r.URL.Query().Has("limit") {
+		limitStr := r.URL.Query().Get("limit")
+		limit32, _ := strconv.ParseInt(limitStr, 10, 32)
+		limit = int(limit32)
+	}
+	if r.URL.Query().Has("offset") {
+		offsetStr := r.URL.Query().Get("offset")
+		offset32, _ := strconv.ParseInt(offsetStr, 10, 32)
+		offset = int(offset32)
+	}
+	args := digitwin.DirectoryReadTDsArgs{Limit: limit, Offset: offset}
+	argsJSON, _ := json.Marshal(args)
+	msg := things.NewThingMessage(vocab.MessageTypeAction,
+		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDsMethod, argsJSON, cs.GetClientID())
 
+	stat := svc.handleMessage(msg)
+
+	var reply []byte
+	if stat.Error == "" {
+		// the response is a serialized list of serialized TDs
+		// just return as-is
+		reply = []byte(stat.Reply)
+		err = nil
+	} else {
+		err = errors.New(stat.Error)
+	}
+	svc.writeReply(w, reply, err)
 }
 
 func (svc *HttpsTransport) HandlePostLogout(w http.ResponseWriter, r *http.Request) {
@@ -72,6 +108,8 @@ func (svc *HttpsTransport) HandlePostLogout(w http.ResponseWriter, r *http.Reque
 func (svc *HttpsTransport) HandlePostLogin(w http.ResponseWriter, r *http.Request) {
 	sm := sessions.GetSessionManager()
 
+	slog.Warn("HandlePostLogin:", "host", r.Host)
+
 	args := authn.UserLoginArgs{}
 	resp := authn.UserLoginResp{}
 	// credentials are in a json payload
@@ -80,12 +118,14 @@ func (svc *HttpsTransport) HandlePostLogin(w http.ResponseWriter, r *http.Reques
 		err = json.Unmarshal(data, &args)
 	}
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
+		slog.Warn("HandlePostLogin: parameter error", "err", err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 	token, sid, err := svc.authenticator.Login(args.ClientID, args.Password)
 	if err != nil {
 		if err != nil {
+			slog.Warn("HandlePostLogin: authentication error", "clientID", args.ClientID)
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
@@ -101,6 +141,7 @@ func (svc *HttpsTransport) HandlePostLogin(w http.ResponseWriter, r *http.Reques
 	// create the session for this token
 	_, err = sm.NewSession(args.ClientID, r.RemoteAddr, sid)
 	if err != nil {
+		slog.Warn("HandlePostLogin: session error", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
@@ -109,6 +150,7 @@ func (svc *HttpsTransport) HandlePostLogin(w http.ResponseWriter, r *http.Reques
 	respJson, err := json.Marshal(resp)
 	// write sets statusOK
 	_, _ = w.Write(respJson)
+	slog.Info("HandlePostLogin: success", "clientID", args.ClientID)
 	//w.WriteHeader(http.StatusOK)
 	// TODO: set client session cookie
 	//svc.sessionManager.SetSessionCookie(cs.sessionID,token)

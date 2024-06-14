@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
@@ -49,7 +48,7 @@ func (agent *StateAgent) Get(msg *things.ThingMessage) (stat hubclient.DeliveryS
 	resp.Value, err = agent.svc.Get(msg.SenderID, args.Key)
 	stat.Completed(msg, err)
 	resp.Found = (err == nil)
-	stat.Reply, _ = json.Marshal(resp)
+	_ = stat.MarshalReply(resp)
 	return stat
 }
 func (agent *StateAgent) GetMultiple(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
@@ -58,7 +57,7 @@ func (agent *StateAgent) GetMultiple(msg *things.ThingMessage) (stat hubclient.D
 	err := msg.Unmarshal(&args)
 	resp.KV, err = agent.svc.GetMultiple(msg.SenderID, args.Keys)
 	stat.Completed(msg, err)
-	stat.Reply, _ = json.Marshal(resp)
+	_ = stat.MarshalReply(resp)
 	return stat
 }
 func (agent *StateAgent) Set(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {

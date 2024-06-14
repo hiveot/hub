@@ -1,24 +1,23 @@
-import { HubClient, NewHubClient } from "@hivelib/hubclient/httpclient/HubClient"
+import { HttpSSEClient } from "@hivelib/hubclient/httpclient/HttpSSEClient"
 import { IHubClient } from "@hivelib/hubclient/IHubClient"
 import { StateClient } from "./stateclient"
 
-let hc: HubClient
+let hc: IHubClient
 let tp: IHubClient
-const core = "mqtt"
-const testURL = "mqtts://127.0.0.1:8883"
+const testURL = "https://127.0.0.1:"+9883
 
 
 process.on("uncaughtException", (err: any) => {
     console.error("uncaughtException", err)
 })
 
-async function connect(): Promise<HubClient> {
+async function connect(): Promise<IHubClient> {
     // the server must have a test client 
     const clientID = "test"
     const testPass = "testpass"
     let caCertPEM = ""
     //running instance
-    let hc = NewHubClient(testURL, clientID, caCertPEM, core)
+    let hc = new HttpSSEClient(testURL, clientID, caCertPEM)
     await hc.connectWithPassword(testPass)
     return hc
 }

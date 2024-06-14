@@ -25,7 +25,7 @@ func (agent *AgentHandler) InvokeMethod(
 	method interface{}, msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 
 	respData, err := hubclient.HandleRequestMessage(msg.SenderID, method, msg.Data)
-	stat.Reply = respData
+	stat.Reply = string(respData)
 	stat.Completed(msg, err)
 	return stat
 }

@@ -106,6 +106,7 @@ Support for audio and video is desirable but is not supported by IoT protocols.
 * no best practices with examples; per use-case?
 * no IoT vocabulary, everyone has to roll their own
 * affordances need inheritance which isn't always support (eg golang)
+* property affordance inheritance depends on data type
 * multiple types for same property (single item vs list)
 * forms/protocols unclear (2023)
 * thingID uniqueness; using agentID in address 

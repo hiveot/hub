@@ -22,16 +22,18 @@ import {
     PostUnsubscribePath
 } from "@hivelib/api/vocab/ht-vocab";
 import * as http2 from "node:http2";
+import {string} from "yaml/dist/schema/common/string";
 
 
 const log = new tslog.Logger()
 
-// HubClient implements the javascript client for connecting to the hub,
-// using one of available transports.
+// HubClient implements the javascript client for connecting to the hub
+// using HTTPS and SSE for the return channel.
 export class HttpSSEClient implements IHubClient {
     _clientID: string;
-    _url: string;
+    _baseURL: string;
     _caCertPem: string;
+    _disableCertCheck: boolean
     _http2Client: http2.ClientHttp2Session|undefined;
 
     isInitialized: boolean = false;
@@ -47,12 +49,20 @@ export class HttpSSEClient implements IHubClient {
     // client handler for subscribed events
     eventHandler: EventHandler | null = null;
 
-    // Hub Client
-    // @param clientID connected as
-    constructor(url: string, clientID: string, caCertPem: string) {
-        this._url = url
+    // Instantiate the Hub Client.
+    //
+    // The flag disableCertCheck is intended for use with self-signed certificate
+    // on the local network where the CA is not available.
+    //
+    // @param hostPort: of server to connect to or empty for auto-discovery
+    // @param clientID: connected as this client
+    // @param caCertPem: verify server against this CA certificate
+    // @param disableCertCheck: don't check the (self signed) server certificate
+    constructor(hostPort: string, clientID: string, caCertPem: string, disableCertCheck: boolean) {
+        this._baseURL = hostPort
         this._clientID = clientID;
         this._caCertPem = caCertPem;
+        this._disableCertCheck = disableCertCheck;
         this.connStatus = ConnectionStatus.Disconnected;
         this.connInfo = ConnInfo.NotConnected;
     }
@@ -70,36 +80,31 @@ export class HttpSSEClient implements IHubClient {
     // setup a TLS connection with the hub
     async connect():Promise<http2.ClientHttp2Session> {
 
-        let opts:  http2.SecureClientSessionOptions = {
-            path: this._url,
-            ca: this._caCertPem,
-            timeout: 10000, // msec???
+        if (this._disableCertCheck) {
+            log.warn("Disabling server certificate check.")
         }
-        let client = http2.connect(this._url, opts)
+        let opts:  http2.SecureClientSessionOptions = {
+            timeout: 10000, // msec???
+            "rejectUnauthorized": !this._disableCertCheck
+        }
+        if (!!this._caCertPem) {
+            opts.ca = this._caCertPem
+        }
+        this._http2Client = http2.connect(this._baseURL, opts)
 
-        // client.setEncoding('utf8');
-        client.on('connect', ()=>{
-            console.log('connected')
-            this.onConnection(ConnectionStatus.Connected, "")
-        })
-        client.on('data', (data) => {
-            console.log("data:",data);
-            this.handleMessage(data)
-        });
-        client.on('end', () => {
-            console.log('server ends connection');
-            this.disconnect()
-        });
         // When an error occurs, show it.
-        client.on('error', (error)=> {
+        this._http2Client.on('error', (error)=> {
             console.error(error);
-            this.disconnect()
+            // this.disconnect()
             // Close the connection after the error occurred.
             // client.destroy();
         });
+        this._http2Client.on('end', () => {
+            console.log('server ends connection');
+            this.disconnect()
+        });
 
-        this._http2Client= client
-        return client
+        return this._http2Client
     }
 
     // ConnectWithPassword connects to the Hub server using the clientID and password.
@@ -109,24 +114,24 @@ export class HttpSSEClient implements IHubClient {
         await this.connect()
         // invoke a login request
         let loginArgs = {
-            "login":this._clientID,
+            "clientID":this._clientID,
             "password": password,
         }
-        let loginMsg = JSON.stringify(loginArgs)
-        let stat = await this.postRequest(PostLoginPath,loginMsg)
-        if (stat.reply) {
-            token = JSON.parse(stat.reply )
+        let loginResp = {
+            sessionID: "",
+            token: ""
         }
-        return token
+        let loginMsg = JSON.stringify(loginArgs)
+        let resp = await this.postRequest(PostLoginPath,loginMsg)
+        loginResp = JSON.parse(resp)
+        this.authToken = loginResp.token
+        return loginResp.token
     }
     // connect and login to the Hub gateway using a JWT token
     // host is the server address
     async connectWithToken(jwtToken: string):Promise<string> {
         this.authToken=jwtToken
         await this.connect()
-
-        // c.setHeader()
-        // FIXME: todo
         return ""
     }
 
@@ -137,16 +142,16 @@ export class HttpSSEClient implements IHubClient {
 
     // disconnect if connected
     async disconnect() {
+        if (this._http2Client) {
+            this._http2Client.close();
+            this._http2Client = undefined
+        }
         if (this.connStatus != ConnectionStatus.Disconnected) {
-
+            this.connStatus = ConnectionStatus.Disconnected
         }
     }
 
-    handleMessage(payload:any) {
-        log.info("HubClient handleMessage. size="+payload.size)
-    }
-
-    // callback handler invoked when the connection status has changed
+    // callback handler invoked when the SSE connection status has changed
     onConnection(status: ConnectionStatus, info: string) {
         this.connStatus = status
         this.connInfo = info
@@ -238,31 +243,38 @@ export class HttpSSEClient implements IHubClient {
 
 
     // post a request to the path with the given payload
-    async postRequest(path:string, payload?: string):Promise<DeliveryStatus> {
-        let stat = new DeliveryStatus()
+    async postRequest(path:string, payload: string):Promise<string> {
+        return new Promise((resolve,reject)=> {
+            let replyData: string = ""
 
-        let req = this._http2Client?.request({
-            path: path,
-            authorization: "bearer "+this.authToken,
-            ca: this._caCertPem,
-        })
-        if (!req) {
-            throw("postRequest: no connection")
-        }
-        if (payload) {
-            req.write(payload)
-        }
-        req.setEncoding('utf8');
-        req.on('data', (data) => {
-            stat.status = DeliveryProgress.DeliveryDelivered
-            console.log("postRequest on data:",data);
-            stat = JSON.parse(data)
+            if (!this._http2Client) {
+                throw ("not connected")
+            }
+            let req = this._http2Client.request({
+                origin: this._baseURL,
+                authorization: "bearer "+this.authToken,
+                ':path': path,
+                ":method": "POST",
+                "content-type": "application/json",
+                "content-length": Buffer.byteLength(payload),
+            })
+            req.setEncoding('utf8');
+
+            req.on('data', (chunk) => {
+                replyData = replyData + chunk
+            });
+            req.on('end', () => {
+                req.destroy()
+                log.info(`postRequest to ${path}. Received reply. size=`+ replyData.length)
+                resolve(replyData)
+            });
+            req.on('error', (err) => {
+                reject(err)
+                req.destroy()
+            });
+            // write the body and complete the request
+            req.end(payload)
         });
-        req.on('end', () => {
-            console.log('postRequest on end');
-        });
-        req.end()
-        return stat
     }
 
     // PubAction publishes a request for action from a Thing.
@@ -274,13 +286,14 @@ export class HttpSSEClient implements IHubClient {
     //
     // This returns the serialized reply data or null in case of no reply data
     async pubAction(thingID: string, key: string, payload: string): Promise<DeliveryStatus> {
-        log.info("pubAction. thingID:", thingID, ", key:", key)
+            log.info("pubAction. thingID:", thingID, ", key:", key)
 
-        let actionPath = PostActionPath.replace("{thingID}",thingID)
-        actionPath = actionPath.replace("{key}",key)
+            let actionPath = PostActionPath.replace("{thingID}", thingID)
+            actionPath = actionPath.replace("{key}", key)
 
-        let stat = this.postRequest(actionPath, payload);
-        return stat
+            let resp = await this.postRequest(actionPath, payload)
+            let stat: DeliveryStatus = JSON.parse(resp)
+            return stat
     }
 
     // PubAction publishes a request for changing a Thing's configuration.
@@ -309,11 +322,13 @@ export class HttpSSEClient implements IHubClient {
         let eventPath = PostEventPath.replace("{thingID}",thingID)
         eventPath = eventPath.replace("{key}",key)
 
-        return await this.postRequest(eventPath, payload)
+        let resp = await this.postRequest(eventPath, payload)
+        let stat: DeliveryStatus = JSON.parse(resp)
+        return stat
     }
 
     // Publish a Thing properties event
-    async pubProps(thingID: string, props: Map<string,string>): Promise<DeliveryStatus> {
+    async pubProps(thingID: string, props: {[key:string]:string}): Promise<DeliveryStatus> {
         // if (length(props.) > 0) {
         let propsJSON = JSON.stringify(props, null, ' ');
          return this.pubEvent(thingID, EventTypeProperties, propsJSON);
@@ -341,35 +356,29 @@ export class HttpSSEClient implements IHubClient {
     }
 
 
-    refreshToken(): Promise<DeliveryStatus> {
+    // obtain a new token
+    async refreshToken(): Promise<string> {
 
         let refreshPath = PostRefreshPath.replace("{thingID}","authn")
         refreshPath = refreshPath.replace("{key}","refreshMethod")
-        let stat =  this.postRequest(refreshPath);
-        return stat
+        let resp =  await this.postRequest(refreshPath,"");
+        let stat: DeliveryStatus = JSON.parse(resp)
+        let newToken = stat?.reply ? stat?.reply : ""
+        this.authToken = newToken
+        return newToken
     }
 
     // set the handler of thing action requests and subscribe to action requests
-    setActionHandler(handler: (tv: ThingMessage) => DeliveryStatus) {
+    setActionHandler(handler: MessageHandler) {
         this.actionHandler = handler
     }
 
-    // set the handler of thing configuration requests
-    // setConfigHandler(handler: (tv: ThingMessage) => boolean) {
-    //     this.configHandler = handler
-    //     // handler of requests is the same for actions, config and rpc
-    //     this.setRequestHandler(this.onRequest.bind(this))
-    //     let addr = this._makeAddress(MessageType.Config, this.clientID, "", "", "")
-    //     this.subscribe(addr)
-    // }
-
-    // set the handler of thing configuration requests
-    setConnectionHandler(handler: (status: ConnectionStatus, info: string) => boolean) {
+    setConnectHandler(handler: (status: ConnectionStatus, info: string) => void): void {
         this.connectHandler = handler
     }
 
     // set the handler for subscribed events
-    setEventHandler(handler: (tv: ThingMessage) => void): void {
+    setEventHandler(handler: EventHandler): void {
         this.eventHandler = handler
     }
 
@@ -406,16 +415,14 @@ export class HttpSSEClient implements IHubClient {
 
         let subscribePath = PostSubscribePath.replace("{thingID}",dThingID)
         subscribePath = subscribePath.replace("{key}",key)
-        await this.postRequest(subscribePath)
+        await this.postRequest(subscribePath,"")
     }
 
     async unsubscribe(dThingID: string) {
 
         let subscribePath = PostUnsubscribePath.replace("{thingID}",dThingID)
         subscribePath = subscribePath.replace("{key}","+")
-        await this.postRequest(subscribePath)
+        await this.postRequest(subscribePath,"")
     }
 
-    setConnectHandler(handler: (status: ConnectionStatus, info: string) => void): void {
-    }
 }

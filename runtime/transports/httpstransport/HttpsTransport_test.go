@@ -255,7 +255,7 @@ func TestPostEventAction(t *testing.T) {
 	svc := startHttpsBinding(
 		func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 			rxMsg = tv
-			stat.Reply = []byte(testMsg)
+			stat.Reply = testMsg
 			stat.Status = hubclient.DeliveryCompleted
 			return stat
 		})
@@ -373,7 +373,7 @@ func TestRestart(t *testing.T) {
 	svc.Stop()
 	err = svc.Start(func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		rxMsg = tv
-		stat.Reply = []byte(testMsg)
+		stat.Reply = testMsg
 		stat.Status = hubclient.DeliveryCompleted
 		return stat
 	})
@@ -419,7 +419,7 @@ func TestReconnect(t *testing.T) {
 		go func() {
 			var stat2 hubclient.DeliveryStatus
 			stat2.Completed(tv, nil)
-			stat2.Reply = tv.Data
+			stat2.Reply = string(tv.Data)
 			stat2Json := stat2.Marshal()
 			tm2 := things.NewThingMessage(
 				vocab.MessageTypeEvent, tv.SenderID, vocab.EventTypeDeliveryUpdate, stat2Json, thingID)

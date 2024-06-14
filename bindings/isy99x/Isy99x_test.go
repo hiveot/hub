@@ -113,7 +113,7 @@ func TestIsyAppPoll(t *testing.T) {
 	require.NoError(t, err)
 	defer svc.Stop()
 
-	err = svc.PublishIsyTDs()
+	err = svc.PublishNodeTDs()
 	assert.NoError(t, err)
 	time.Sleep(2 * time.Second)
 }
@@ -133,7 +133,7 @@ func TestSwitch(t *testing.T) {
 	require.NoError(t, err)
 	defer svc.Stop()
 
-	err = svc.PublishIsyTDs()
+	err = svc.PublishNodeTDs()
 	assert.NoError(t, err)
 	// some time to publish stuff
 	time.Sleep(1 * time.Second)

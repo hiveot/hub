@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 	"strconv"
@@ -29,7 +30,7 @@ const (
 type IsyGatewayThing struct {
 
 	// REST/SOAP/WS connection to the ISY hub
-	ic *IsyAPI
+	ic *isy.IsyAPI
 
 	// The gateway thingID
 	thingID string
@@ -153,7 +154,7 @@ func nodeID2ThingID(nodeID string) string {
 }
 
 // AddIsyThing adds a representing of an Insteon device
-func (igw *IsyGatewayThing) AddIsyThing(node *IsyNode) error {
+func (igw *IsyGatewayThing) AddIsyThing(node *isy.IsyNode) error {
 	var isyThing IIsyThing
 	var err error
 
@@ -291,6 +292,7 @@ func (igw *IsyGatewayThing) GetTD() *things.TD {
 	prop = td.AddPropertyAsBool(PropIDDHCP, "", "DHCP enabled")
 	prop.ReadOnly = false
 	prop = td.AddPropertyAsString("", vocab.PropNetIP4, "IP address")
+	prop.Description = "Configure gateway fix IP address"
 	prop.ReadOnly = igw.Network.Interface.IsDHCP == false
 	prop = td.AddPropertyAsString(PropIDLogin, "", "Gateway login name")
 	prop.ReadOnly = false
@@ -328,7 +330,7 @@ func (igw *IsyGatewayThing) GetTD() *things.TD {
 
 // Init re-initializes the gateway Thing for use and load the gateway configuration/
 // This removes prior use nodes for a fresh start.
-func (igw *IsyGatewayThing) Init(ic *IsyAPI) {
+func (igw *IsyGatewayThing) Init(ic *isy.IsyAPI) {
 	igw.ic = ic
 	igw.thingID = ic.GetID()
 	igw.things = make(map[string]IIsyThing)
@@ -373,7 +375,7 @@ func (igw *IsyGatewayThing) ReadGatewayValues() (err error) {
 
 	pv.SetValue("ProductID", igw.Configuration.Product.ID)
 	pv.SetValue(PropIDDHCP, strconv.FormatBool(igw.Network.Interface.IsDHCP)) // true or false
-	pv.SetValue(PropIDLogin, igw.ic.login)
+	//pv.SetValue(PropIDLogin, igw.Configuration.LoginName)
 
 	// isy provides NTP stamp in local time, not in GMT!
 	sunrise := int64(igw.Time.Sunrise-igw.Time.TMZOffset) - NTP_OFFSET
@@ -426,7 +428,7 @@ func (igw *IsyGatewayThing) ReadIsyNodeValues() error {
 		return fmt.Errorf("No ISY connection")
 	}
 
-	isyStatus := IsyStatus{}
+	isyStatus := isy.IsyStatus{}
 	err := igw.ic.SendRequest("GET", "/rest/status", "", &isyStatus)
 	for _, node := range isyStatus.Nodes {
 		propID := node.Prop.ID

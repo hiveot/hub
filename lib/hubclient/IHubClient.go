@@ -3,7 +3,6 @@ package hubclient
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
 )
@@ -30,20 +29,6 @@ const (
 	// Unauthorized login name or password
 	Unauthorized ConnectionStatus = "unauthorized"
 )
-
-// MessageTypeINBOX special inbox prefix for RPCs
-// reserved event and action names
-const (
-// MessageTypeAction = "action"
-// MessageTypeConfig = "config"
-// MessageTypeEvent  = "event"
-// MessageTypeRPC    = "rpc"
-// MessageTypeINBOX  = "_INBOX"
-// EventTypeTD       = "$td"
-// EventTypeProps    = "$properties"
-)
-
-var ErrorUnauthorized = errors.New(string(Unauthorized))
 
 // TransportStatus connection status of a hub client transport
 type TransportStatus struct {
@@ -155,7 +140,7 @@ type IHubClient interface {
 	// Events are published by agents using their native ID, not the digital twin ID.
 	// The Hub outbox broadcasts this event using the digital twin ID.
 	//
-	//	thingID native ID of the thing whose event is published
+	//	thingID native ID of the thing as used by the agent
 	//	key ID of the event
 	//	payload with serialized message to publish
 	//
@@ -165,7 +150,8 @@ type IHubClient interface {
 	// PubProps publishes a property values event.
 	// It returns as soon as delivery to the hub is confirmed.
 	// This is intended for agents, not for consumers.
-	//	thingID is the ID of the device (not including the digital twin ID)
+	//
+	//	thingID is the native ID of the device (not including the digital twin ID)
 	//	props is the property key-value map to publish where value is the serialized representation
 	PubProps(thingID string, props map[string]string) error
 

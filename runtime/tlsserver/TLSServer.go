@@ -70,8 +70,9 @@ func (srv *TLSServer) Start() error {
 				slog.Debug("TLSServer.AllowOriginFunc: Cors origin Is True", "origin", orig)
 				return true
 			}
-			slog.Warn("TLSServer.AllowOriginFunc: Cors: missing origin")
-			return false
+			slog.Warn("TLSServer.AllowOriginFunc: Cors: missing origin:", "origin", orig)
+			// for testing
+			return true
 		},
 		// default allowed headers is "Origin", "Accept", "Content-Type", "X-Requested-With" (missing authorization)
 		AllowedHeaders: []string{"Origin", "Accept", "Content-Type", "Authorization", "Headers"},

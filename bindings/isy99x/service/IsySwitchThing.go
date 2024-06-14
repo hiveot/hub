@@ -2,7 +2,8 @@ package service
 
 import (
 	"fmt"
-	vocab2 "github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/lib/things"
 )
 
@@ -20,14 +21,14 @@ func (it *IsySwitchThing) GetPropValues(onlyChanges bool) map[string]string {
 func (it *IsySwitchThing) GetTD() *things.TD {
 	td := it.IsyThing.GetTD()
 	// value of switch property ID "ST" is "0" or "255"
-	td.AddEvent("ST", vocab2.PropSwitchOnOff, "On/Off", "",
-		&things.DataSchema{Type: vocab2.WoTDataTypeBool})
+	td.AddEvent("ST", vocab.PropSwitchOnOff, "On/Off", "",
+		&things.DataSchema{Type: vocab.WoTDataTypeBool})
 
 	// AddSwitchEvent is short for adding an event for a switch
 	//td.AddSwitchEvent(vocab.PropSwitchOnOff, "On/Off changed")
-	td.AddSwitchAction(vocab2.ActionSwitchOn, "Switch on")
-	td.AddSwitchAction(vocab2.ActionSwitchOff, "Switch off")
-	td.AddSwitchAction(vocab2.ActionSwitchToggle, "Toggle switch")
+	td.AddSwitchAction(vocab.ActionSwitchOn, "Switch on")
+	td.AddSwitchAction(vocab.ActionSwitchOff, "Switch off")
+	td.AddSwitchAction(vocab.ActionSwitchToggle, "Toggle switch")
 
 	return td
 }
@@ -45,11 +46,11 @@ func (it *IsySwitchThing) HandleActionRequest(action *things.ThingMessage) (err 
 	var newValue = ""
 	// FIXME: action keys are the raw keys, not @type
 	// supported actions: on, off
-	if action.Key == vocab2.ActionSwitchOn {
+	if action.Key == vocab.ActionSwitchOn {
 		newValue = "DON"
-	} else if action.Key == vocab2.ActionSwitchOff {
+	} else if action.Key == vocab.ActionSwitchOff {
 		newValue = "DOF"
-	} else if action.Key == vocab2.ActionSwitchToggle {
+	} else if action.Key == vocab.ActionSwitchToggle {
 		newValue = "DOF"
 		oldValue, found := it.propValues.GetValue(action.Key)
 		if !found || oldValue == "DOF" {
@@ -91,7 +92,7 @@ func (it *IsySwitchThing) HandleValueUpdate(propID string, uom string, newValue 
 // Init initializes the IsyThing base class
 // This determines the device type from prodInfo and sets property values for
 // product and model.
-func (it *IsySwitchThing) Init(ic *IsyAPI, thingID string, node *IsyNode, prodInfo InsteonProduct, hwVersion string) {
+func (it *IsySwitchThing) Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string) {
 	it.IsyThing.Init(ic, thingID, node, prodInfo, hwVersion)
 }
 

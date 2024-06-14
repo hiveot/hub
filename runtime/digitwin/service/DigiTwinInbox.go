@@ -58,7 +58,6 @@ func (svc *DigiTwinInbox) AddAction(msg *things.ThingMessage) (InboxRecord, erro
 		DeliveryStatus: hubclient.DeliveryStatus{
 			MessageID: msg.MessageID,
 			Status:    hubclient.DeliveryPending,
-			Reply:     nil,
 		},
 		ReceivedMSec:  time.Now().UnixMilli(),
 		DeliveredMSec: 0,

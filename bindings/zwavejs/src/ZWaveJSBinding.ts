@@ -4,15 +4,16 @@ import {InterviewStage} from "zwave-js";
 import {parseNode} from "./parseNode";
 import {ParseValues} from "./ParseValues";
 import {ZWAPI} from "./ZWAPI.js";
-import {HubClient} from "@hivelib/hubclient/httpclient/HubClient";
 import {parseController} from "./parseController";
 import {logVid} from "./logVid";
-import {getPropID} from "./getPropID";
+import {getPropKey} from "./getPropKey";
 import * as vocab from "@hivelib/api/vocab/ht-vocab";
+import {ActionTypeProperties} from "@hivelib/api/vocab/ht-vocab";
 import fs from "fs";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import {BindingConfig} from "./BindingConfig";
 import * as tslog from 'tslog';
+import {DeliveryProgress, DeliveryStatus, IHubClient} from "@hivelib/hubclient/IHubClient";
 
 const log = new tslog.Logger()
 
@@ -28,7 +29,7 @@ const log = new tslog.Logger()
 //
 export class ZwaveJSBinding {
     // id: string = "zwave";
-    hc: HubClient;
+    hc: IHubClient;
     zwapi: ZWAPI;
     // the last received values for each node by deviceID
     lastValues = new Map<string, ParseValues>(); // nodeId: ValueMap
@@ -39,7 +40,7 @@ export class ZwaveJSBinding {
 
     // @param hapi: connectd Hub API to publish and subscribe
     // @param vidLogFile: optional csv file to write discovered VID and metadata records
-    constructor(hc: HubClient, config: BindingConfig) {
+    constructor(hc: IHubClient, config: BindingConfig) {
         this.hc = hc;
         this.config = config
         // zwapi handles the zwavejs specific details
@@ -53,15 +54,21 @@ export class ZwaveJSBinding {
 
 
     // handle controller actions as defined in the TD
-    handleActionRequest(tv: ThingMessage): string {
-        let actionLower = tv.key.toLowerCase()
+    handleActionRequest(tm: ThingMessage): DeliveryStatus {
+        let stat = new DeliveryStatus()
+
+        let actionLower = tm.key.toLowerCase()
         let targetNode: ZWaveNode | undefined
-        let node = this.zwapi.getNodeByDeviceID(tv.thingID)
+        let node = this.zwapi.getNodeByDeviceID(tm.thingID)
         if (node == undefined) {
-            log.error("handleActionRequest: ZWave node for thingID", tv.thingID, "does not exist")
-            return ""
+            let errMsg = new Error("handleActionRequest: node for thingID" + tm.thingID + "does not exist")
+            stat.Failed(tm,errMsg)
+            return stat
         }
-        log.info("action:" + tv.key)
+        if (tm.key == ActionTypeProperties) {
+            return this.handleConfigRequest(tm)
+        }
+        log.info("action:" + tm.key)
         // controller specific commands (see parseController)
         switch (actionLower) {
             case "begininclusion":
@@ -84,19 +91,19 @@ export class ZwaveJSBinding {
                 this.zwapi.driver.controller.stopRebuildingRoutes()
                 break;
             case "getnodeneighbors": // param nodeID
-                targetNode = this.zwapi.getNodeByDeviceID(tv.thingID)
+                targetNode = this.zwapi.getNodeByDeviceID(tm.thingID)
                 if (targetNode) {
                     this.zwapi.driver.controller.getNodeNeighbors(targetNode.id).then();
                 }
                 break;
             case "rebuildnoderoutes": // param nodeID
-                targetNode = this.zwapi.getNodeByDeviceID(tv.thingID)
+                targetNode = this.zwapi.getNodeByDeviceID(tm.thingID)
                 if (targetNode) {
                     this.zwapi.driver.controller.rebuildNodeRoutes(targetNode.id).then();
                 }
                 break;
             case "removefailednode": // param nodeID
-                targetNode = this.zwapi.getNodeByDeviceID(tv.thingID)
+                targetNode = this.zwapi.getNodeByDeviceID(tm.thingID)
                 if (targetNode) {
                     this.zwapi.driver.controller.removeFailedNode(targetNode.id).then();
                 }
@@ -110,7 +117,7 @@ export class ZwaveJSBinding {
                 break;
             case "ping":
                 node.ping().then((success) => {
-                    this.hc.pubEvent(tv.thingID, "ping", success ? "success" : "fail")
+                    this.hc.pubEvent(tm.thingID, "ping", success ? "success" : "fail")
                 })
                 break;
             case "refreshinfo":
@@ -126,19 +133,23 @@ export class ZwaveJSBinding {
                 // VID based configuration and actions
                 //  currently propertyIDs are also accepted.
                 for (let vid of node.getDefinedValueIDs()) {
-                    let propID = getPropID(vid)
+                    let propID = getPropKey(vid)
                     if (propID.toLowerCase() == actionLower) {
-                        this.zwapi.setValue(node, vid, tv.data)
+                        this.zwapi.setValue(node, vid, tm.data)
                         break;
                     }
                 }
         }
-        return ""
+        stat.Completed(tm)
+        return stat
     }
 
     // handle configuration requests as defined in the TD
-    handleConfigRequest(tv: ThingMessage): boolean {
-        return false
+    handleConfigRequest(tv: ThingMessage):  DeliveryStatus {
+        let stat = new DeliveryStatus()
+        stat.error = "todo handle config"
+        stat.status = DeliveryProgress.DeliveryFailed
+        return stat
     }
 
     // Driver failed, possibly due to removal of USB stick. Restart.
@@ -188,7 +199,7 @@ export class ZwaveJSBinding {
         if (lastNodeValues) {
             diffValues = lastNodeValues.diffValues(newValues)
         }
-        this.hc.pubProperties(thingTD.id, diffValues.values).then()
+        this.hc.pubProps(thingTD.id, diffValues.values).then()
         this.lastValues.set(thingTD.id, newValues);
 
     }
@@ -197,19 +208,23 @@ export class ZwaveJSBinding {
     // This publishes an event if the value changed or 'publishOnlyChanges' is false
     // @param node: The node whos values have updated
     // @param vid: zwave value id
-    // @param newValue: the updated value
+    // @param newValue: the updated value converted to a string
     handleValueUpdate(node: ZWaveNode, vid: TranslatedValueID, newValue: unknown) {
         let deviceID = this.zwapi.getDeviceID(node.id)
-        let propID = getPropID(vid)
+        let propID = getPropKey(vid)
         let valueMap = this.lastValues.get(deviceID);
         // update the map of recent values
         let lastValue = valueMap?.values[propID]
         if (valueMap && (lastValue !== newValue || !this.config.publishOnlyChanges)) {
-            valueMap.values[propID] = newValue
-            //
-            let serValue = JSON.stringify(newValue)
-            log.info("handleValueUpdate: publish event for deviceID="+deviceID+", propID="+propID+"" )
-            this.hc.pubEvent(deviceID, propID, serValue)
+            // TODO: convert the value to text using a precision
+            // Determine if value changed enough to publish
+            if (newValue != undefined) {
+                valueMap.values[propID] = newValue.toString()
+                //
+                let serValue = JSON.stringify(newValue)
+                log.info("handleValueUpdate: publish event for deviceID=" + deviceID + ", propID=" + propID + "")
+                this.hc.pubEvent(deviceID, propID, serValue)
+            }
         } else {
             // for debugging
             log.info("handleValueUpdate: unchanged value deviceID="+deviceID+", propID="+propID+" (ignored)" )
@@ -245,7 +260,6 @@ export class ZwaveJSBinding {
             logVid(this.vidCsvFD)
         }
         this.hc.setActionHandler(this.handleActionRequest)
-        this.hc.setConfigHandler(this.handleConfigRequest)
 
         await this.zwapi.connectLoop(this.config);
     }
