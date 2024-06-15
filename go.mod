@@ -23,7 +23,6 @@ require (
 	github.com/nats-io/nats-server/v2 v2.10.11
 	github.com/nats-io/nats.go v1.33.1
 	github.com/nats-io/nkeys v0.4.7
-	github.com/r3labs/sse v0.0.0-20210224172625-26fe804710bc
 	github.com/rs/cors v1.10.1
 	github.com/samber/lo v1.39.0
 	github.com/stretchr/testify v1.8.4
@@ -33,10 +32,10 @@ require (
 	github.com/tmaxmax/go-sse v0.9.0-pre.2
 	github.com/urfave/cli/v2 v2.27.1
 	go.etcd.io/bbolt v1.3.9
-	golang.org/x/crypto v0.20.0
+	golang.org/x/crypto v0.21.0
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225
-	golang.org/x/net v0.21.0
-	golang.org/x/sys v0.17.0
+	golang.org/x/net v0.23.0
+	golang.org/x/sys v0.18.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -77,5 +76,4 @@ require (
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.18.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
-	gopkg.in/cenkalti/backoff.v1 v1.1.0 // indirect
 )
