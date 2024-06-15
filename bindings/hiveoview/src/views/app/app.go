@@ -31,7 +31,7 @@ func RenderAppPages(w http.ResponseWriter, r *http.Request, data map[string]any)
 		data = map[string]any{}
 	}
 	GetAppHeadProps(data, "HiveOT", "/static/logo.svg")
-	data["Status"] = GetConnectStatus(r)
+	data["Progress"] = GetConnectStatus(r)
 
 	//render the full page base > app.html
 	views.TM.RenderFull(w, AppTemplate, data)

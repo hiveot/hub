@@ -108,8 +108,6 @@ func (svc *HttpsTransport) HandlePostLogout(w http.ResponseWriter, r *http.Reque
 func (svc *HttpsTransport) HandlePostLogin(w http.ResponseWriter, r *http.Request) {
 	sm := sessions.GetSessionManager()
 
-	slog.Warn("HandlePostLogin:", "host", r.Host)
-
 	args := authn.UserLoginArgs{}
 	resp := authn.UserLoginResp{}
 	// credentials are in a json payload
@@ -184,12 +182,18 @@ func (svc *HttpsTransport) HandlePostRefresh(w http.ResponseWriter, r *http.Requ
 
 // HandleSubscribe handles a subscription request
 func (svc *HttpsTransport) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
-	slog.Info("HandleSubscribe")
 	cs, thingID, key, _, err := svc.getRequestParams(r)
 	if err != nil {
+		slog.Warn("HandleSubscribe", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	slog.Info("HandleSubscribe",
+		slog.String("clientID", cs.GetClientID()),
+		slog.String("thingID", thingID),
+		slog.String("key", key),
+		slog.String("sessionID", cs.GetSessionID()),
+		slog.Int("nr sse connections", cs.GetNrConnections()))
 	cs.Subscribe(thingID, key)
 }
 

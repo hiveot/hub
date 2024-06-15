@@ -127,7 +127,7 @@ func TestStartStop(t *testing.T) {
 		dummyAuthenticator,
 	)
 	err := svc.Start(func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
-		stat.Status = hubclient.DeliveryCompleted
+		stat.Progress = hubclient.DeliveryCompleted
 		return stat
 	})
 	assert.NoError(t, err)
@@ -256,7 +256,7 @@ func TestPostEventAction(t *testing.T) {
 		func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 			rxMsg = tv
 			stat.Reply = testMsg
-			stat.Status = hubclient.DeliveryCompleted
+			stat.Progress = hubclient.DeliveryCompleted
 			return stat
 		})
 	defer svc.Stop()
@@ -374,7 +374,7 @@ func TestRestart(t *testing.T) {
 	err = svc.Start(func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		rxMsg = tv
 		stat.Reply = testMsg
-		stat.Status = hubclient.DeliveryCompleted
+		stat.Progress = hubclient.DeliveryCompleted
 		return stat
 	})
 	require.NoError(t, err)
@@ -410,7 +410,7 @@ func TestReconnect(t *testing.T) {
 	// this test handler receives an action, returns a 'delivered status',
 	// and sends a completed status through the sse return channel (SendToClient)
 	actionHandler = func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
-		stat.Status = hubclient.DeliveryDelivered
+		stat.Progress = hubclient.DeliveryDelivered
 		if tv.MessageType == vocab.MessageTypeEvent {
 			// ignore events
 			return stat
@@ -426,7 +426,7 @@ func TestReconnect(t *testing.T) {
 
 			svc.SendToClient(tv.SenderID, tm2)
 		}()
-		stat.Status = hubclient.DeliveryApplied
+		stat.Progress = hubclient.DeliveryApplied
 		return stat
 	}
 

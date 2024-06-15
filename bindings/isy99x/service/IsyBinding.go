@@ -47,7 +47,7 @@ func (svc *IsyBinding) CreateBindingTD() *things.TD {
 
 	// binding attributes
 	prop := td.AddProperty("connectionStatus", "",
-		"Connection Status", vocab.WoTDataTypeString)
+		"Connection Progress", vocab.WoTDataTypeString)
 	prop.Description = "Whether the Binding has a connection to an ISY gateway"
 	//
 	prop = td.AddProperty(vocab.PropDeviceMake, vocab.PropDeviceMake,
@@ -78,7 +78,7 @@ func (svc *IsyBinding) CreateBindingTD() *things.TD {
 
 	// binding events
 	ev := td.AddEvent("", vocab.PropNetConnection, "Connection status", vocab.WoTDataTypeNone, nil)
-	ev.Description = "Status of connection to OWServer gateway changed"
+	ev.Description = "Progress of connection to OWServer gateway changed"
 
 	// no binding actions
 	return td

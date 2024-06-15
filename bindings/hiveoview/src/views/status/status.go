@@ -12,7 +12,7 @@ func RenderStatus(w http.ResponseWriter, r *http.Request) {
 	status := app.GetConnectStatus(r)
 
 	data := map[string]any{}
-	data["Status"] = status
+	data["Progress"] = status
 
 	// full render or fragment render
 	app.RenderAppOrFragment(w, r, TemplateFile, data)

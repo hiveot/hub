@@ -255,7 +255,7 @@ func (svc *HttpsTransport) SendToClient(
 			found = false
 		} else {
 			// completion status is sent asynchroneously by the agent
-			stat.Status = hubclient.DeliveryDelivered
+			stat.Progress = hubclient.DeliveryDelivered
 			found = true
 		}
 	}

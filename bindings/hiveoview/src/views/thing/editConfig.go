@@ -100,7 +100,7 @@ func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 	// TODO: map delivery status to language
 
 	// the async reply will contain status update
-	//mySession.SendNotify(session.NotifyInfo, "Delivery Status for '"+propKey+"': "+stat.Status)
+	//mySession.SendNotify(session.NotifyInfo, "Delivery Progress for '"+propKey+"': "+stat.Progress)
 
 	w.WriteHeader(http.StatusOK)
 

@@ -295,7 +295,7 @@ func (cl *HttpSSEClient) PubAction(thingID string, key string, payload []byte) (
 	cl.mux.RLock()
 	defer cl.mux.RUnlock()
 	if cl.tlsClient == nil {
-		stat.Status = hubclient.DeliveryFailed
+		stat.Progress = hubclient.DeliveryFailed
 		stat.Error = "PubAction. Client connection was closed"
 		slog.Error(stat.Error)
 		return stat
@@ -305,7 +305,7 @@ func (cl *HttpSSEClient) PubAction(thingID string, key string, payload []byte) (
 		err = json.Unmarshal(resp, &stat)
 	}
 	if err != nil {
-		stat.Status = hubclient.DeliveryFailed
+		stat.Progress = hubclient.DeliveryFailed
 		stat.Error = err.Error()
 	}
 	return stat
@@ -334,7 +334,7 @@ func (cl *HttpSSEClient) PubActionWithQueryParams(
 	cl.mux.RLock()
 	defer cl.mux.RUnlock()
 	if cl.tlsClient == nil {
-		stat.Status = hubclient.DeliveryFailed
+		stat.Progress = hubclient.DeliveryFailed
 		stat.Error = "PubAction. Client connection was closed"
 		slog.Error(stat.Error)
 		return stat
@@ -344,7 +344,7 @@ func (cl *HttpSSEClient) PubActionWithQueryParams(
 		err = json.Unmarshal(reply, &stat)
 	}
 	if err != nil {
-		stat.Status = hubclient.DeliveryFailed
+		stat.Progress = hubclient.DeliveryFailed
 		stat.Error = err.Error()
 	}
 	return stat
@@ -426,7 +426,7 @@ func (cl *HttpSSEClient) Rpc(
 	stat := cl.PubActionWithQueryParams(thingID, key, data, qparams)
 
 	// wait for a response on the message channel
-	if !(stat.Status == hubclient.DeliveryCompleted || stat.Status == hubclient.DeliveryFailed) {
+	if !(stat.Progress == hubclient.DeliveryCompleted || stat.Progress == hubclient.DeliveryFailed) {
 		stat, err = cl.WaitForStatusUpdate(rChan, messageID, cl.timeout)
 	}
 	cl.mux.Lock()
@@ -446,9 +446,9 @@ func (cl *HttpSSEClient) Rpc(
 			slog.String("resp", stat.MessageID))
 	}
 	// when not completed return an error
-	if err == nil && stat.Status != hubclient.DeliveryCompleted {
+	if err == nil && stat.Progress != hubclient.DeliveryCompleted {
 		// delivery not
-		err = errors.New("Delivery not complete. Status: " + stat.Status)
+		err = errors.New("Delivery not complete. Progress: " + stat.Progress)
 	}
 	// only once completed will there be a reply as a result
 	if err == nil && resp != nil {
@@ -465,7 +465,7 @@ func (cl *HttpSSEClient) Rpc(
 func (cl *HttpSSEClient) SendDeliveryUpdate(thingID string, stat hubclient.DeliveryStatus) {
 	slog.Info("SendDeliveryUpdate",
 		slog.String("thingID", thingID),
-		slog.String("Status", stat.Status),
+		slog.String("Progress", stat.Progress),
 		slog.String("MessageID", stat.MessageID),
 	)
 	statJSON, _ := json.Marshal(&stat)

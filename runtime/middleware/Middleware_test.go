@@ -26,7 +26,7 @@ func TestHandleEvent(t *testing.T) {
 	mw := middleware.NewMiddleware()
 	mw.SetMessageHandler(func(msg *things.ThingMessage) hubclient.DeliveryStatus {
 		var res hubclient.DeliveryStatus
-		res.Status = hubclient.DeliveryCompleted
+		res.Progress = hubclient.DeliveryCompleted
 		res.Reply = msg.Data
 		return res
 	})
@@ -53,7 +53,7 @@ func TestHandlerError(t *testing.T) {
 	mw := middleware.NewMiddleware()
 	mw.SetMessageHandler(func(msg *things.ThingMessage) hubclient.DeliveryStatus {
 		var res hubclient.DeliveryStatus
-		res.Status = hubclient.DeliveryFailed
+		res.Progress = hubclient.DeliveryFailed
 		res.Error = "Failed reply"
 		return res
 	})
@@ -68,7 +68,7 @@ func TestHandlerError(t *testing.T) {
 	stat := mw.HandleMessage(tv1)
 	assert.Equal(t, mwh1Count, 1)
 	assert.NotEmpty(t, stat.Error)
-	assert.Equal(t, hubclient.DeliveryFailed, stat.Status)
+	assert.Equal(t, hubclient.DeliveryFailed, stat.Progress)
 }
 
 func TestMiddlewareError(t *testing.T) {
@@ -96,7 +96,7 @@ func TestMiddlewareError(t *testing.T) {
 	msg := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", []byte(payload), "sender1")
 	stat := mw.HandleMessage(msg)
 	assert.NotEmpty(t, stat.Error)
-	assert.Equal(t, hubclient.DeliveryFailed, stat.Status)
+	assert.Equal(t, hubclient.DeliveryFailed, stat.Progress)
 	assert.Equal(t, mwh1Count, 1)
 	assert.Equal(t, mwh2Count, 0)
 }

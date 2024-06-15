@@ -195,6 +195,9 @@ func (cs *ClientSession) SendSSE(messageID string, eventType string, payload str
 }
 
 // Subscribe adds the event subscription for this session client
+//
+//	dThingID is the digitwin thingID whose events to subscribe to, or '+' for any
+//	key is the event key to subscribe to or '+' for any
 func (cs *ClientSession) Subscribe(dThingID string, key string) {
 	cs.mux.Lock()
 	defer cs.mux.Unlock()

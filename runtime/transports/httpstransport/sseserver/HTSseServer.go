@@ -49,6 +49,7 @@ func HTServeHttp(w http.ResponseWriter, r *http.Request) {
 		slog.String("RemoteAddr", r.RemoteAddr),
 		slog.String("clientID", cs.GetClientID()),
 		slog.String("protocol", r.Proto),
+		slog.String("sessionID", cs.GetSessionID()),
 		slog.Int("nr sse connections", cs.GetNrConnections()),
 	)
 	//var sseMsg SSEEvent
@@ -64,9 +65,9 @@ func HTServeHttp(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			slog.Info("SseHandler: sending sse event to client",
-				slog.String("remote", r.RemoteAddr),
+				slog.String("sessionID", cs.GetSessionID()),
 				slog.String("clientID", cs.GetClientID()),
-				slog.String("eventType", sseMsg.EventType),
+				slog.String("sse eventType", sseMsg.EventType),
 			)
 			// WARNING: messages are send as MIME type "text/event-stream", which is defined as
 			// "Each message is sent as a block of text terminated by a pair of newlines. "
@@ -84,7 +85,7 @@ func HTServeHttp(w http.ResponseWriter, r *http.Request) {
 			w.(http.Flusher).Flush()
 			break
 		case <-r.Context().Done(): // remote client connection closed
-			slog.Info("Remote client disconnected (read context)")
+			slog.Debug("Remote client disconnected (read context)")
 			//close(sseChan)
 			done = true
 			break
@@ -93,7 +94,7 @@ func HTServeHttp(w http.ResponseWriter, r *http.Request) {
 	cs.DeleteSSEChan(sseChan)
 	// TODO: if all connections are closed for this client send a disconnected event
 
-	slog.Info("SseHandler: sse connection closed",
+	slog.Debug("SseHandler: sse connection closed",
 		slog.String("remote", r.RemoteAddr),
 		slog.String("clientID", cs.GetClientID()),
 		slog.Int("nr sse connections", cs.GetNrConnections()),

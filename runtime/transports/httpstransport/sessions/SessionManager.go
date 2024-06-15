@@ -39,7 +39,7 @@ type SessionManager struct {
 func (sm *SessionManager) NewSession(clientID string, remoteAddr string, sessionID string) (*ClientSession, error) {
 	var cs *ClientSession
 
-	slog.Info("NewSession",
+	slog.Debug("NewSession",
 		slog.String("clientID", clientID),
 		slog.String("remoteAddr", remoteAddr),
 		slog.String("sessionID", sessionID))

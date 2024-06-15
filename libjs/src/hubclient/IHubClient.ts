@@ -37,7 +37,7 @@ export class DeliveryStatus extends Object{
     // Request ID
     messageID: string = ""
     // Updated delivery status
-    status: DeliveryProgress|undefined
+    progress: DeliveryProgress|undefined
     // Error in case delivery status is failed
     error?: string =""
     // Reply in case delivery status is completed
@@ -45,14 +45,14 @@ export class DeliveryStatus extends Object{
 
     Completed(msg: ThingMessage, err?: Error) {
         this.messageID = msg.messageID
-        this.status = DeliveryProgress.DeliveryCompleted
+        this.progress = DeliveryProgress.DeliveryCompleted
         if (err) {
             this.error = err.name + ": " + err.message
         }
     }
     Failed(msg: ThingMessage, err: Error|undefined) {
         this.messageID = msg.messageID
-        this.status = DeliveryProgress.DeliveryFailed
+        this.progress = DeliveryProgress.DeliveryFailed
         if (err) {
             this.error = err.name + ": " + err.message
         }
@@ -184,8 +184,8 @@ export interface IHubClient {
     //
     // Subscriptions remain in effect when the connection with the messaging server is interrupted.
     //
-    //  dThingID is the digital twin ID of the Thing to subscribe to.
-    //	key is the type of event to subscribe to or "" for all events
+    //  dThingID is the digital twin ID of the Thing to subscribe to. "" or "+" for any
+    //	key is the type of event to subscribe to or "" for all events, "" or "+" for any
     subscribe(dThingID: string, key:string): Promise<void>;
 
 // Unsubscribe removes a previous event subscription.

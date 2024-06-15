@@ -213,7 +213,7 @@ func (svc *AuthnAdminService) RemoveClient(senderID string, clientID string) err
 
 // Start the authentication service.
 // The provided user store must be opened first.
-// This creates accounts for the admin user and launcher if they don't exist.
+// This creates accounts for the authn service, the admin user, and launcher if they don't exist.
 func (svc *AuthnAdminService) Start() error {
 	slog.Info("starting AuthnAdminService")
 
@@ -222,9 +222,14 @@ func (svc *AuthnAdminService) Start() error {
 		return fmt.Errorf("Start: Invalid password hash algo: %s", svc.cfg.Encryption)
 	}
 
+	// ensure the authn service exists so authz can verify permissions later on
+	authnID := authn.AdminAgentID
+	_, err := svc.AddService("", authn.AdminAddServiceArgs{
+		ClientID: authnID, DisplayName: "Authn Service", PubKey: ""})
+
 	// Ensure the launcher service and admin user exist and has a saved key and auth token
 	launcherID := svc.cfg.LauncherAccountID
-	_, err := svc.AddService("", authn.AdminAddServiceArgs{
+	_, err = svc.AddService("", authn.AdminAddServiceArgs{
 		ClientID: launcherID, DisplayName: "Launcher Service", PubKey: ""})
 	if err != nil {
 		err = fmt.Errorf("failed to setup the launcher account: %w", err)

@@ -71,7 +71,7 @@ func HandleListServices(hc hubclient.IHubClient) error {
 	}
 	lc := launcherclient.NewLauncherClient("", hc)
 
-	fmt.Println("Service                      Size   Starts       PID    CPU   Memory   Status    Since                Last Error")
+	fmt.Println("Service                      Size   Starts       PID    CPU   Memory   Progress    Since                Last Error")
 	fmt.Println("-------                      ----   ------   -------   ----   ------   -------   -------------------  -----------")
 	entries, err := lc.List(false)
 	if err != nil {

@@ -5,7 +5,7 @@ The SSE event 'connectStatus is used to trigger an update of this fragment.
 -->
 
 <!--TODO use SSE event to instant update changes-->
-{{- /* .Status: gotype:ConnectStatus*/ -}}
+{{- /* .Progress: gotype:ConnectStatus*/ -}}
 <button hx-get="/app/connectStatus" hx-trigger="click, every 600s"
         hx-swap="outerHTML"
         class="outline h-icon-button"

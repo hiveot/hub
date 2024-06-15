@@ -220,7 +220,7 @@ func NewEmbeddedClient(clientID string, serverHandler hubclient.MessageHandler) 
 //		data, _ := json.Marshal(args)
 //		tv := things.NewThingMessage(vocab.MessageTypeAction, thingID, method, data, clientID)
 //		stat := handler(tv)
-//		if stat.Status == api.DeliveryCompleted && stat.Reply != nil {
+//		if stat.Progress == api.DeliveryCompleted && stat.Reply != nil {
 //			err := json.Unmarshal(stat.Reply, &reply)
 //			return err
 //		} else if stat.Error != "" {

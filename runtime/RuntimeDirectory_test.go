@@ -28,7 +28,7 @@ func TestAddRemoveTD(t *testing.T) {
 	defer r.Stop()
 	ag, _ := ts.AddConnectAgent(agentID)
 	ag.SetActionHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
-		stat.Status = hubclient.DeliveryCompleted
+		stat.Progress = hubclient.DeliveryCompleted
 		return
 	})
 	defer ag.Disconnect()
@@ -61,7 +61,7 @@ func TestAddRemoveTD(t *testing.T) {
 	// after removal of the TD, getTD should return an error but delivery is successful
 	stat = cl.PubAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, args4JSON)
 	require.NotEmpty(t, stat.Error)
-	require.Equal(t, hubclient.DeliveryCompleted, stat.Status)
+	require.Equal(t, hubclient.DeliveryCompleted, stat.Progress)
 }
 
 func TestReadTDs(t *testing.T) {

@@ -93,8 +93,8 @@ type IBucket interface {
 	// If the transaction fails an error is returned and no changes are made.
 	SetMultiple(docs map[string][]byte) (err error)
 
-	// Status returns the bucket status
-	//Status() BucketStoreStatus
+	// Progress returns the bucket status
+	//Progress() BucketStoreStatus
 }
 
 // IBucketCursor provides the prev/next cursor based iterator on a range

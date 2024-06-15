@@ -9,15 +9,16 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc && tsc-alias",
-    "test": "tsx src/hubclient/transports/transports.test.ts",
+    "test": "tsx src/hubclient/hubclient.test.ts",
     "jest": "jest"
   },
   "comment": "type commonjs is critical for successful typescript build. Forget TS otherwise",
   "type": "commonjs",
   "dependencies": {
     "bonjour-service": "^1.1.1",
-    "commander": "^11.1.0",
+    "commander": "^12.1.0",
     "debug": "^4.3.4",
+    "eventsource": "^2.0.2",
     "mqtt": "^5.2.1",
     "nats.ws": "^1.19.1",
     "tslog": "^4.9.2",
@@ -30,7 +31,7 @@
     "ts-jest": "^29.1.1",
     "tsc": "^2.0.4",
     "tsc-alias": "^1.8.8",
-    "tsx": "^3.14.0",
+    "tsx": "^4.15.5",
     "typescript": "^5.2.2"
   }
 }

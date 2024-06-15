@@ -57,7 +57,7 @@ func (svc *DigiTwinInbox) AddAction(msg *things.ThingMessage) (InboxRecord, erro
 		Request: *msg,
 		DeliveryStatus: hubclient.DeliveryStatus{
 			MessageID: msg.MessageID,
-			Status:    hubclient.DeliveryPending,
+			Progress:  hubclient.DeliveryPending,
 		},
 		ReceivedMSec:  time.Now().UnixMilli(),
 		DeliveredMSec: 0,
@@ -112,18 +112,19 @@ func (svc *DigiTwinInbox) HandleActionFlow(msg *things.ThingMessage) (status hub
 	DThingID := msg.ThingID
 	agentID, serviceID := things.SplitDigiTwinThingID(DThingID)
 	if agentID == "" {
-		err = fmt.Errorf("agent for thing '%s' not found", msg.ThingID)
+		err = fmt.Errorf("agent '%s' for thing '%s' not found", agentID, msg.ThingID)
+		slog.Warn(err.Error())
 		actionRecord.DeliveryStatus.Failed(msg, err)
 		return actionRecord.DeliveryStatus
 	}
 	// the message itself is forwarded to the agent using the device's service
 	msg.ThingID = serviceID
-	actionRecord.DeliveryStatus.Status = hubclient.DeliveryPending
+	actionRecord.DeliveryStatus.Progress = hubclient.DeliveryPending
 
 	stat, _ := svc.pm.SendToClient(agentID, msg)
 	actionRecord.DeliveryStatus = stat
 
-	// Status updates from agents are sent as events and always asynchronously.
+	// Progress updates from agents are sent as events and always asynchronously.
 	return actionRecord.DeliveryStatus
 }
 
@@ -146,7 +147,7 @@ func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) (stat h
 			//slog.String("Key", inboxRecord.Request.Key),
 			//slog.String("SenderID", msg.SenderID),
 			slog.String("MessageID", stat.MessageID),
-			slog.String("Status", stat.Status),
+			slog.String("Progress", stat.Progress),
 			slog.String("error", stat.Error),
 		)
 

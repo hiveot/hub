@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
+	"log/slog"
 )
 
 // AuthzAgent serves the message based interface to the authz service API.
@@ -54,12 +55,29 @@ func StartAuthzAgent(svc *AuthzService, hc hubclient.IHubClient) (*AuthzAgent, e
 		//err = agent.hc.Subscribe(api.AuthzThingID)
 	}
 
-	// set permissions for using these services
-	err = svc.SetPermissions(authz.AdminAgentID, authz.ThingPermissions{
-		AgentID: authz.AdminAgentID,
-		ThingID: authz.AdminServiceID,
-		Allow:   []string{authn.ClientRoleAdmin, authn.ClientRoleManager},
+	// set permissions for using the authn services as authz wasn't yet running
+	err = svc.SetPermissions(authn.AdminAgentID, authz.ThingPermissions{
+		AgentID: authn.AdminAgentID,
+		ThingID: authn.AdminServiceID,
+		Allow:   []string{authn.ClientRoleService, authn.ClientRoleAdmin, authn.ClientRoleManager},
 	})
+	if err == nil {
+		// all users with a role can GetProfile and refresh their token
+		err = svc.SetPermissions(authn.UserAgentID, authz.ThingPermissions{
+			AgentID: authn.UserAgentID,
+			ThingID: authn.UserServiceID,
+			Deny:    []string{authn.ClientRoleNone, ""},
+		})
+	}
+
+	// set permissions for using the authz services
+	if err == nil {
+		err = svc.SetPermissions(authz.AdminAgentID, authz.ThingPermissions{
+			AgentID: authz.AdminAgentID,
+			ThingID: authz.AdminServiceID,
+			Allow:   []string{authn.ClientRoleService, authn.ClientRoleAdmin, authn.ClientRoleManager},
+		})
+	}
 	if err == nil {
 		err = svc.SetPermissions(authz.UserAgentID, authz.ThingPermissions{
 			AgentID: authz.UserAgentID,
@@ -67,6 +85,10 @@ func StartAuthzAgent(svc *AuthzService, hc hubclient.IHubClient) (*AuthzAgent, e
 			Allow: []string{authn.ClientRoleAgent, authn.ClientRoleService,
 				authn.ClientRoleAdmin, authn.ClientRoleManager, authn.ClientRoleOperator},
 		})
+	}
+	if err != nil {
+		slog.Error("StartAuthzAgent failed. Continuing anyways", "err", err.Error())
+		err = nil
 	}
 	return &agent, err
 }

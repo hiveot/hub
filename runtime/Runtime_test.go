@@ -114,7 +114,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// verify final result
-	require.Equal(t, hubclient.DeliveryCompleted, stat3.Status)
+	require.Equal(t, hubclient.DeliveryCompleted, stat3.Progress)
 	require.Empty(t, stat3.Error)
 	require.NotNil(t, rxMsg)
 	assert.Equal(t, expectedReply, string(stat3.Reply))

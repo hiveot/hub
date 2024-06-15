@@ -176,10 +176,10 @@ func (cs *ClientSession) onEvent(msg *things.ThingMessage) error {
 		_ = msg.Unmarshal(&stat)
 		if stat.Error != "" {
 			cs.SendNotify(NotifyError, stat.Error)
-		} else if stat.Status == hubclient.DeliveryCompleted {
+		} else if stat.Progress == hubclient.DeliveryCompleted {
 			cs.SendNotify(NotifySuccess, "Action successful")
 		} else {
-			cs.SendNotify(NotifyWarning, "Action delivery: "+stat.Status)
+			cs.SendNotify(NotifyWarning, "Action delivery: "+stat.Progress)
 		}
 	} else {
 		// Publish sse event indicating the event affordance or value has changed.
