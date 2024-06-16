@@ -19,6 +19,7 @@ import {getVidAffordance, VidAffordance} from "./getVidAffordance";
 import {getDeviceType} from "./getDeviceType";
 import {DataSchema} from "@hivelib/things/dataSchema";
 import {
+    WoTDataTypeAnyURI,
     WoTDataTypeArray,
     WoTDataTypeBool,
     WoTDataTypeNone,
@@ -91,7 +92,7 @@ function addEvent(td: TD, node: ZWaveNode, vid: TranslatedValueID, eventID: stri
 // @param node: the zwave node definition
 // @param vidLogFD: optional file handle to log VID info to CSV for further analysis
 // @param maxNrScenes: limit the nr of scenes in the TD as it would bloat the TD to a massive size.
-export function parseNode(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | undefined, maxNrScenes: number): TD {
+export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | undefined, maxNrScenes: number): TD {
     let td: TD;
 
     //--- Step 1: TD definition
@@ -119,8 +120,12 @@ export function parseNode(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     // these names must match those used in parseNodeValues()
     td.AddProperty("associationCount", "", "Association Count",
         WoTDataTypeNumber);
+
     td.AddPropertyIf(node.canSleep, "canSleep", "",
         "Device sleeps to conserve battery", WoTDataTypeBool);
+
+    td.AddPropertyIf(node.deviceDatabaseUrl, "deviceDatabaseURL", "",
+        "Link to database with device information", WoTDataTypeAnyURI);
     td.AddProperty("",vocab.PropDeviceDescription,
         "Description", WoTDataTypeString);
     td.AddProperty("endpointCount", "",
@@ -145,7 +150,9 @@ export function parseNode(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
         "Device is a ZWave controller", WoTDataTypeBool);
     td.AddPropertyIf(node.keepAwake, "keepAwake", "",
         "Device stays awake a bit longer before sending it to sleep", WoTDataTypeBool);
-    td.AddPropertyIf(node.label, "", vocab.PropDeviceTitle, "", WoTDataTypeString);
+    td.AddPropertyIf(node.label, "nodeLabel", vocab.PropDeviceModel, "Device label", WoTDataTypeString);
+    // the node.lable is editable and use for both the TD title as well as the "title property"
+    td.AddPropertyIf(node.name, "", vocab.PropDeviceTitle, "", WoTDataTypeString);
     td.AddPropertyIf(node.manufacturerId, "manufacturerId", "",
         "Manufacturer ID", WoTDataTypeString);
     td.AddPropertyIf(node.deviceConfig?.manufacturer, "", vocab.PropDeviceMake,
@@ -193,10 +200,14 @@ export function parseNode(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     td.AddPropertyIf(node.zwavePlusVersion, "zwavePlusVersion", "",
         "Z-Wave+ Version", WoTDataTypeNumber);
 
-    // writable configuration properties that are not VIDs
+    // ??? writable configuration properties that are not VIDs ???
+    // how to write these without a vid?
     prop = td.AddProperty("", vocab.PropDeviceTitle,
         "Device Name", WoTDataTypeString)
     prop.readOnly = false
+
+
+    // actions
 
     let action = td.AddAction("checkLifelineHealth", "",
         "Check connection health", WoTDataTypeNone)
@@ -228,24 +239,24 @@ export function parseNode(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
         let va = getVidAffordance(node, vid, maxNrScenes)
 
         // let pt = getPropType(node, vid)
-        let propID = getPropKey(vid)
+        let tdPropKey = getPropKey(vid)
         if (va) {
-            logVid(vidLogFD, node, vid, propID, va)
+            logVid(vidLogFD, node, vid, tdPropKey, va)
         }
 
         // the vid is either config, attr, action or event based on CC
         switch (va?.messageType) {
             case "action":
-                addAction(td, node, vid, propID, va)
+                addAction(td, node, vid, tdPropKey, va)
                 break;
             case "event":
-                addEvent(td, node, vid, propID, va)
+                addEvent(td, node, vid, tdPropKey, va)
                 break;
             case "config":
-                addConfig(td, node, vid, propID, va)
+                addConfig(td, node, vid, tdPropKey, va)
                 break;
             case "attr":
-                addAttribute(td, node, vid, propID, va)
+                addAttribute(td, node, vid, tdPropKey, va)
                 break;
             default:
             // ignore this vid

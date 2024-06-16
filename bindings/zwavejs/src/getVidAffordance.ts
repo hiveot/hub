@@ -3,7 +3,7 @@ import {CommandClasses, ValueID} from "@zwave-js/core";
 import * as vocab from "@hivelib/api/vocab/ht-vocab.js";
 
 
-// ValueID to message type classification
+// ValueID to TD event,action or property affordance type
 export interface VidAffordance {
     atType: string, // @type of the property, event or action, "" if not known
     messageType: "action" | "event" | "attr" | "config" | undefined
@@ -47,7 +47,9 @@ const overrideMap: Map<string, Partial<VidAffordance> | undefined> = new Map([
 //  attr: the vid is read-only, not an event, and has a value or default
 //  config: the vid is writable, not an action, and has a value or default
 //  undefined if the vid CC is deprecated or the vid is to be ignored
-function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number): "action" | "event" | "config" | "attr" | undefined {
+function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number):
+       "action" | "event" | "config" | "attr" | undefined {
+
     let vidMeta = node.getValueMetadata(vid)
 
     // 1. Binary Switch: targetValue is a config, not an action;

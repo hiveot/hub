@@ -39,22 +39,6 @@ func (svc *EmbeddedTransport) NewClient(agentID string) hubclient.IHubClient {
 	return cl
 }
 
-// SendToClient sends a request to an embedded client.
-// Embedded clients are guaranteed to receive the message.
-// This returns an error if the message cannot be delivered.
-func (svc *EmbeddedTransport) SendToClient(
-	clientID string, msg *things.ThingMessage) (stat hubclient.DeliveryStatus, found bool) {
-
-	handler, found := svc.handlers[clientID]
-	if found {
-		stat = handler(msg)
-	} else {
-		err := fmt.Errorf("SendToClient: unknown client: %s", clientID)
-		stat.Failed(msg, err)
-	}
-	return stat, found
-}
-
 // SendEvent publishes an event message to all subscribers of this protocol binding
 func (svc *EmbeddedTransport) SendEvent(event *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	stat.Failed(event, errors.New("no handlers for event"))
@@ -70,6 +54,22 @@ func (svc *EmbeddedTransport) SendEvent(event *things.ThingMessage) (stat hubcli
 		}
 	}
 	return stat
+}
+
+// SendToClient sends a request to an embedded client.
+// Embedded clients are guaranteed to receive the message.
+// This returns an error if the message cannot be delivered.
+func (svc *EmbeddedTransport) SendToClient(
+	clientID string, msg *things.ThingMessage) (stat hubclient.DeliveryStatus, found bool) {
+
+	handler, found := svc.handlers[clientID]
+	if found {
+		stat = handler(msg)
+	} else {
+		err := fmt.Errorf("SendToClient: unknown client: %s", clientID)
+		stat.Failed(msg, err)
+	}
+	return stat, found
 }
 
 // Start the protocol binding

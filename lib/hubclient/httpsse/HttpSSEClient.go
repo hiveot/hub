@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
@@ -239,7 +240,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		} else if cl._eventHandler != nil {
 			// pass event to client as this is an unsolicited event
 			// it could be a delayed confirmation of delivery
-			cl._eventHandler(rxMsg)
+			_ = cl._eventHandler(rxMsg)
 		} else {
 			// missing rpc or message handler
 			slog.Error("handleSSEEvent, no handler registered for client",
@@ -249,7 +250,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	} else if rxMsg.MessageType == vocab.MessageTypeEvent {
 		if cl._eventHandler != nil {
 			// pass event to handler, if set
-			cl._eventHandler(rxMsg)
+			_ = cl._eventHandler(rxMsg)
 		} else {
 			slog.Warn("handleSSEEvent, no event handler registered. Event ignored.",
 				slog.String("key", rxMsg.Key),
@@ -265,13 +266,13 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 				slog.String("clientID", cl.ClientID()))
 			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
 		}
-		cl.SendDeliveryUpdate(rxMsg.ThingID, stat)
+		cl.SendDeliveryUpdate(stat)
 	} else {
 		slog.Warn("handleSSEEvent, unknown message type. Message ignored.",
 			slog.String("message type", rxMsg.MessageType),
 			slog.String("clientID", cl.ClientID()))
 		stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
-		cl.SendDeliveryUpdate(rxMsg.ThingID, stat)
+		cl.SendDeliveryUpdate(stat)
 	}
 }
 
@@ -460,17 +461,16 @@ func (cl *HttpSSEClient) Rpc(
 // SendDeliveryUpdate sends a delivery status update to the hub.
 // The hub's inbox will update the status of the action and notify the original sender.
 //
-// Intended for agents that have processed an incoming action request and need to send
-// a reply and confirm that the action has applied.
-func (cl *HttpSSEClient) SendDeliveryUpdate(thingID string, stat hubclient.DeliveryStatus) {
+// Intended for agents that have processed an incoming action request asynchronously
+// and need to send an update on further progress.
+func (cl *HttpSSEClient) SendDeliveryUpdate(stat hubclient.DeliveryStatus) {
 	slog.Info("SendDeliveryUpdate",
-		slog.String("thingID", thingID),
 		slog.String("Progress", stat.Progress),
 		slog.String("MessageID", stat.MessageID),
 	)
 	statJSON, _ := json.Marshal(&stat)
 	// thing
-	_ = cl.PubEvent(thingID, vocab.EventTypeDeliveryUpdate, statJSON)
+	_ = cl.PubEvent(digitwin.InboxDThingID, vocab.EventTypeDeliveryUpdate, statJSON)
 }
 
 // SetConnectHandler sets the notification handler of connection status changes

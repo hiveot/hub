@@ -183,6 +183,13 @@ type IHubClient interface {
 	// This returns an error if delivery failed or an error was returned
 	Rpc(dThingID string, key string, args interface{}, resp interface{}) error
 
+	// SendDeliveryUpdate sends a delivery progress update to the hub.
+	// The hub's inbox will update the status of the action and notify the original sender.
+	//
+	// Intended for agents that have processed an incoming action request asynchronously
+	// and need to send an update on further progress.
+	SendDeliveryUpdate(stat DeliveryStatus)
+
 	// SetActionHandler set the handler that receives all actions directed at this client
 	// This replaces any previously set action handler.
 	//

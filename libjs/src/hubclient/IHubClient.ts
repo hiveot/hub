@@ -27,9 +27,27 @@ export enum ConnInfo {
 }
 
 export enum DeliveryProgress {
+    // DeliveryApplied is an optional step where the request has been applied to the Thing by the
+    // agent and the agent is waiting for confirmation.
+    DeliveryApplied = "applied",
+
+    // DeliveryCompleted the request has been received and applied by the agent and
+    // a result or error is received.
     DeliveryCompleted = "completed",
+
+    // DeliveryDelivered the request is delivered to the Thing's agent and awaiting further
+    // confirmation.
     DeliveryDelivered = "delivered",
+
+    // DeliveryFailed the request could not be delivered to the agent or the agent can
+    // not deliver the request to the Thing.
     DeliveryFailed = "failed",
+
+    // DeliveryWaiting optional step where the request is delivered to the agent but
+    // the agent is waiting to apply it to the Thing, for example when the device is asleep.
+    // This status is sent by the agent.
+    // An additional progress update from the agent can be expected.
+    DeliveryWaiting = "waiting"
 }
 
 // DeliveryStatus holds the progress of action request delivery
@@ -49,6 +67,12 @@ export class DeliveryStatus extends Object{
         if (err) {
             this.error = err.name + ": " + err.message
         }
+    }
+    // set status update to applied. A final status update is expected
+    Applied(msg: ThingMessage) {
+        this.messageID = msg.messageID
+        this.progress = DeliveryProgress.DeliveryApplied
+        this.error = undefined
     }
     Failed(msg: ThingMessage, err: Error|undefined) {
         this.messageID = msg.messageID
@@ -148,6 +172,13 @@ export interface IHubClient {
     //
     // This returns the data or throws an error if failed
     rpc(dThingID: string, key: string, args: any): Promise<any>
+
+    // SendDeliveryUpdate sends a delivery progress update to the hub.
+    // The hub's inbox will update the status of the action and notify the original sender.
+    //
+    // Intended for agents that have processed an incoming action request asynchronously
+    // and need to send an update on further progress.
+    sendDeliveryUpdate(stat: DeliveryStatus):void
 
     // Set the handler for incoming action request.
     setActionHandler(cb: MessageHandler):void

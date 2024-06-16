@@ -10,7 +10,7 @@ import {
 import type {IHiveKey} from "@keys/IHiveKey";
 import * as tslog from 'tslog';
 import {
-    ActionTypeProperties, ConnectSSEPath,
+    ActionTypeProperties, ConnectSSEPath, EventTypeDeliveryUpdate,
     EventTypeProperties,
     EventTypeTD, MessageTypeAction, MessageTypeEvent,
     PostActionPath,
@@ -179,15 +179,21 @@ export class HttpSSEClient implements IHubClient {
 
     // Handle incoming messages and pass them to the event handler
     onMessage(tm: ThingMessage): void {
-        if (tm.messageType == MessageTypeEvent) {
-            if (this.eventHandler) {
-                this.eventHandler(tm)
+        try {
+            if (tm.messageType == MessageTypeEvent) {
+                if (this.eventHandler) {
+                    this.eventHandler(tm)
+                }
             }
-        }
-        if (tm.messageType == MessageTypeAction) {
-            if (this.actionHandler) {
-                this.actionHandler(tm)
+            // action responses are sent back to the sender
+            if (tm.messageType == MessageTypeAction) {
+                if (this.actionHandler) {
+                    let stat = this.actionHandler(tm)
+                    this.sendDeliveryUpdate(stat)
+                }
             }
+        } catch (e) {
+            hclog.error("Exception handling message '"+tm.thingID+":"+tm.key+"':", e)
         }
     }
 
@@ -297,6 +303,13 @@ export class HttpSSEClient implements IHubClient {
          return this.pubEvent(thingID, EventTypeProperties, propsJSON);
     }
 
+    // PubTD publishes an event with a Thing TD document.
+    // The client's authentication ID will be used as the agentID of the event.
+    async pubTD(td: TD) {
+        let tdJSON = JSON.stringify(td, null, ' ');
+        return this.pubEvent(td.id, EventTypeTD, tdJSON);
+    }
+
 
     // Rpc publishes an RPC request to a service and waits for a response.
     // Intended for users and services to invoke RPC to services.
@@ -309,13 +322,6 @@ export class HttpSSEClient implements IHubClient {
         }
         // TODO: wait for status update reply
         return stat
-    }
-
-    // PubTD publishes an event with a Thing TD document.
-    // The client's authentication ID will be used as the agentID of the event.
-    async pubTD(td: TD) {
-        let tdJSON = JSON.stringify(td, null, ' ');
-        return this.pubEvent(td.id, EventTypeTD, tdJSON);
     }
 
 
@@ -338,6 +344,16 @@ export class HttpSSEClient implements IHubClient {
             hclog.error("refreshToken failed: ",e)
             throw e
         }
+    }
+
+    // send a delivery status update back to the sender of the action
+    // @param msg: action message that was received
+    // @param stat: status to return
+    sendDeliveryUpdate(stat: DeliveryStatus):void {
+        let statJSON = JSON.stringify(stat)
+        // TODO: use the digitwin inbox ID
+        // thingID is ignored as the messageID is used to link to the sender
+        this.pubEvent("dtw::inbox", EventTypeDeliveryUpdate, statJSON)
     }
 
     // set the handler of thing action requests and subscribe to action requests

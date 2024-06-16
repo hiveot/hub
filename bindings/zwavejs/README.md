@@ -4,10 +4,11 @@ This binding connects to a ZWave USB-Stick controller, and publishes events to t
 
 ## Status
 
-This binding is being converted to use the new digital twin runtime. It is not functional.
+This binding is under development and only partially implemented. Setting device configuration isn't yet supported. 
+It is functional but breaking changes are to be expected.
 
 TODO:
-
+1. Report heal network status/progress of a node
 1. ZWave stick reconnect support (Recover after serial port removal)
 1. Detect and track health of nodes; dropped messages, etc.
     * timeouts; dropped messages
@@ -17,6 +18,28 @@ TODO:
    B. just publish native values and manage mapping on the Hub C. define proper handling of multi-value properties
 1. Include DataSchema in controller configurations for properties that aren't in the zwave-js vids.
 1. Dimming duration is currently not supported
+1. Change back to JS using JSDoc for types. Simplifying the build process.
+
+
+## Mapping zwave VID to TD property, event and action keys
+
+Values of ZWaveJS nodes are identified by so-called value ID's or VID's.
+
+For an overview see: https://zwave-js.github.io/node-zwave-js/#/api/valueid?id=valueid
+
+A VID is an object with 4 fields, two are optional:
+* commandClass - numeric identifier of the [command class](https://zwave-js.github.io/node-zwave-js/#/api/CCs/index) [required]
+* property - the identifier of the property
+* endpoint - in case multiple resources exist in the same device. Default is 0. See also: https://community.silabs.com/s/article/z-wave-multi-channel-end-points
+* propertyKey - optional sub-address multiple values of a node. 
+
+This binding uses the VID to construct a key for properties, events and actions:
+  key = {commandClass}-{property}-{endpoint}[-{propertyKey}] 
+
+Where propertyKey is omitted if not applicable. The endpoint is always provided and set to 0 for the default default.
+
+
+
 
 ## Building with esbuild
 
@@ -47,7 +70,7 @@ Build with:
 run it:
 > dist/zwavejs --clientID testsvc --home ~/bin/hiveot
 
-TODO: Clean up this build mess.
+TODO: Clean up this build mess. Switch back to JS.
 
 ## Installation
 

@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
+	"log/slog"
 )
 
 // EmbeddedClient is a hub client that connects directly to the embedded protocol binding.
@@ -152,6 +154,16 @@ func (cl *EmbeddedClient) Rpc(
 		return errors.New(stat.Error)
 	}
 	return nil
+}
+
+func (svc *EmbeddedClient) SendDeliveryUpdate(stat hubclient.DeliveryStatus) {
+	slog.Info("SendDeliveryUpdate",
+		slog.String("Progress", stat.Progress),
+		slog.String("MessageID", stat.MessageID),
+	)
+	statJSON, _ := json.Marshal(&stat)
+	// thing
+	_ = svc.PubEvent(digitwin.InboxDThingID, vocab.EventTypeDeliveryUpdate, statJSON)
 }
 
 // SetConnectHandler does nothing as connection is always established

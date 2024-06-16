@@ -77,7 +77,7 @@ func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 			slog.String("value", value))
 
 		// don't make this an rpc as the response time isn't always known with sleeping devices
-		stat = hc.PubAction(thingID, propKey, []byte(value))
+		stat = hc.PubConfig(thingID, propKey, value)
 		if stat.Error != "" {
 			err = errors.New(stat.Error)
 		}

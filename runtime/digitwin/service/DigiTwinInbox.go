@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
@@ -73,6 +74,8 @@ func (svc *DigiTwinInbox) GetRecord(messageID string) (r InboxRecord, err error)
 	value, err := svc.actionRecords.Get(messageID)
 	if err == nil {
 		err = json.Unmarshal(value, &r)
+	} else {
+		err = errors.New("Inbox GetRecord messageID '" + messageID + "' not found.")
 	}
 	return r, err
 }
@@ -153,12 +156,10 @@ func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) (stat h
 
 		// the sender (agents) must match
 		thingAgentID, thingID := things.SplitDigiTwinThingID(inboxRecord.Request.ThingID)
+		_ = thingID
 		if thingAgentID != msg.SenderID {
 			err = fmt.Errorf("HandleDeliveryUpdate: status update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
 				stat.MessageID, msg.ThingID, thingAgentID, msg.SenderID)
-		} else if thingID != msg.ThingID {
-			err = fmt.Errorf("HandleDeliveryUpdate: status update '%s' of thing '%s' does not match the thingID '%s' in the inbox. Update ignored.",
-				stat.MessageID, msg.ThingID, thingAgentID)
 		}
 	}
 	if err == nil {
@@ -169,7 +170,10 @@ func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) (stat h
 		svc.pm.SendToClient(inboxRecord.Request.SenderID, &msg2)
 	}
 	if err != nil {
-		slog.Warn(err.Error())
+		slog.Warn("inbox:HandleDeliveryUpdate",
+			slog.String("senderID", msg.SenderID),
+			slog.String("thingID", msg.ThingID),
+			slog.String("err", err.Error()))
 		err = nil
 	}
 	// the delivery update is delivered

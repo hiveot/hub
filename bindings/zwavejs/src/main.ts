@@ -39,7 +39,7 @@ async function main() {
     }
 
     //--- Step 2: Connect to the Hub
-    let hc =await ConnectToHub(appConfig.hubURL, appConfig.loginID, appConfig.caCertPEM)
+    let hc =await ConnectToHub(appConfig.hubURL, appConfig.loginID, appConfig.caCertPEM, false)
     if (!hc) {
         throw("Unable to connect to the hub")
     }

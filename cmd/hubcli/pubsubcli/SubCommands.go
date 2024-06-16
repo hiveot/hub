@@ -97,6 +97,12 @@ func HandleSubEvents(hc hubclient.IHubClient, agentID string, thingID string, na
 			var props map[string]interface{}
 			_ = msg.Unmarshal(&props)
 			value = fmt.Sprintf("%d properties", len(props))
+			// if its only a single property then show the value
+			if len(props) == 1 {
+				for key, val := range props {
+					value = fmt.Sprintf("{%s=%s}", key, val)
+				}
+			}
 		} else if msg.Key == vocab.EventTypeTD {
 			var td things.TD
 			_ = msg.Unmarshal(&td)

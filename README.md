@@ -13,7 +13,7 @@ Status: The Hub core is currently being reworked to use the "[digital twins runt
 TODO before alpha:
 1. ~~Implement digitwin runtime in golang~~
 2. ~~generate golang api's from TD definitions (tdd2go)~~
-3. Generate javascript apis (for use by zwavejs)
+3. javascript hubclient with SSE callback channel (for use by zwavejs)
 4. Rework existing IoT bindings to work with the digital twin runtime
    * ~~1-wire protocol binding using owserver-v2 gateway (bindings/owserver)~~
    * insteon binding using isy99x gateway (bindings/isy99x)
@@ -24,17 +24,18 @@ TODO before alpha:
    * ~~configuration editing~~
    * dashboard 
    * admin panel for managing users and devices; starting/stopping of services
-6. improve the https protocol binding
+6. Support for Forms sections in TDD documents describing the protocols to interact with a Thing.
+7. improve the https protocol binding
    * ~~support subscribing to Thing events~~ 
-   * Integrate role authorization (viewer, operator, manager, admin)
+   * ~~Integrate role authorization (viewer, operator, manager, admin)~~
    * Support client certificate authentication
-   * Support websockets are return channel
+   * Support websockets as return channel
    * Support UDS for local services
-7. improve the embedded protocol binding (for internal services) 
+8. improve the embedded protocol binding (for internal services) 
    * improve subscription support to reduce traffic/processing
-8. Support for Forms sections in TDD documents describing the protocols to interact with a Thing.
 9. Revisit the vocabulary to integrate or adopt existing vocabularies where possible
-10. Generate python apis
+10. Javascript tdd2js client api generator
+11. Python tdd2py client api generator
 
 Future Roadmap:
 1. rework mqtt transport protocol

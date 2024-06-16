@@ -44,6 +44,7 @@ export class ParseValues {
         //--- Node read-only attributes that are common to many nodes
         this.setIf("associationCount", node.deviceConfig?.associations?.size);
         this.setIf("canSleep", node.canSleep);
+        this.setIf("deviceDatabaseURL", node.deviceDatabaseUrl);
         this.setIf(vocab.PropDeviceDescription, node.deviceConfig?.description);
 
         if (node.deviceClass) {
@@ -69,7 +70,9 @@ export class ParseValues {
         this.setIf("isRouting", node.isRouting);
         this.setIf("isControllerNode", node.isControllerNode)
         this.setIf("keepAwake", node.keepAwake);
-        this.setIf(vocab.PropDeviceTitle, node.deviceConfig?.label)
+        this.setIf(vocab.PropDeviceTitle, node.name)
+        // this.setIf("label", node.deviceConfig?.label)
+        this.setIf("nodeLabel", node.label)
         this.setIf("manufacturerId", node.manufacturerId);
         this.setIf(vocab.PropDeviceMake, node.deviceConfig?.manufacturer);
 
@@ -104,6 +107,12 @@ export class ParseValues {
             let propID = getPropKey(vid)
             this.setIf(propID, vidValue)
         }
+        // let nameVid = {
+        //     commandClass:0x77, endpoint:0, property: "name"}
+        // let cname = node.getValue(nameVid)
+        // if (cname) {
+        //     console.log("Found it!")
+        // }
     }
 
 }

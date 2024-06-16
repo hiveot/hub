@@ -2,9 +2,10 @@
 
 import process from "node:process";
 import * as tslog from 'tslog';
-import {DeliveryStatus, IHubClient} from './IHubClient';
-import { ThingMessage } from "../things/ThingMessage";
+import {DeliveryProgress, DeliveryStatus} from './IHubClient';
+import {ThingMessage} from "../things/ThingMessage";
 import {ConnectToHub} from "@hivelib/hubclient/ConnectToHub";
+import {EventTypeDeliveryUpdate} from "@hivelib/api/vocab/ht-vocab";
 
 const log = new tslog.Logger({name: "HCTest"})
 
@@ -15,9 +16,9 @@ process.on("uncaughtException", (err: any) => {
 // URL of a functional runtime
 let caCertPEM = ""
 const baseURL = "https://localhost:8444"
-const testSvc = "testsvc"
+const testSvcID = "testsvc"
 const testSvcPass = "testpass"
-const testClient = "test"
+const testClientID = "test"
 const testPass = "test22"
 
 // test connecting with password and token refresh
@@ -25,7 +26,7 @@ async function test1() {
     let token: string
 
     //running instance
-    let hc = await ConnectToHub(baseURL, testClient, caCertPEM, true)
+    let hc = await ConnectToHub(baseURL, testClientID, caCertPEM, true)
     try {
         token = await hc.connectWithPassword(testPass)
         if (token == "") {
@@ -51,7 +52,7 @@ async function test2() {
     let token: string
 
     //running instance
-    let hc = await ConnectToHub(baseURL, testSvc, caCertPEM, true)
+    let hc = await ConnectToHub(baseURL, testSvcID, caCertPEM, true)
     try {
         token = await hc.connectWithPassword(testSvcPass)
     } catch(e) {
@@ -74,7 +75,7 @@ async function test3() {
     let token: string
 
     //running instance
-    let hc =await ConnectToHub(baseURL, testClient, caCertPEM,true)
+    let hc =await ConnectToHub(baseURL, testClientID, caCertPEM,true)
     try {
         token = await hc.connectWithPassword(testPass)
 
@@ -132,9 +133,10 @@ async function test4() {
     let clToken = ""
     let ev1Count = 0
     let actionCount = 0
+    let actionDelivery: DeliveryStatus|undefined
 
     // connect a service that sends events
-    let hcSvc = await ConnectToHub(baseURL, testSvc, caCertPEM, true)
+    let hcSvc = await ConnectToHub(baseURL, testSvcID, caCertPEM, true)
     try {
         svcToken = await hcSvc.connectWithPassword(testSvcPass)
     } catch(e) {
@@ -143,7 +145,7 @@ async function test4() {
     }
 
     // connect a client that listens for events
-    let hcCl = await ConnectToHub(baseURL, testClient, caCertPEM, true)
+    let hcCl = await ConnectToHub(baseURL, testClientID, caCertPEM, true)
     try {
         clToken = await hcCl.connectWithPassword(testPass)
     } catch (err) {
@@ -162,6 +164,10 @@ async function test4() {
                 let data = Buffer.from(tm.data,"base64").toString()
                 log.info("Received event: "+tm.key+"; data="+data)
                 ev1Count++
+            } else if (tm.key == EventTypeDeliveryUpdate) {
+                // FIXME: why is data base64 encoded?
+                let data = Buffer.from(tm.data,"base64").toString()
+                actionDelivery = JSON.parse(data)
             }
         })
         // set an action handler for the service
@@ -185,22 +191,29 @@ async function test4() {
         log.error("failed publishing event: "+stat.error)
     }
 
-    // round 4, send an action
-    let stat2 = await hcCl.pubAction(testSvc,"action1", "how are you")
+    // round 4, send an action to the digitwin thing of the test service
+    let dtwThing1ID = "dtw:"+testSvcID+":thing1"
+    let stat2 = await hcCl.pubAction(dtwThing1ID,"action1", "how are you")
     if (stat2.error) {
         log.error("failed publishing action: "+stat2.error)
+    } else if (stat2.progress != DeliveryProgress.DeliveryDelivered) {
+        log.error("unexpected reply: "+stat2.progress)
     }
 
-    // wait 1 minute for events
-    await new Promise(resolve => setTimeout(resolve, 600000));
+    // wait for events
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     if (ev1Count != 1) {
         log.error("received " + ev1Count + " events. Expected 1")
     } else {
-        log.info("test4 success. Received an event")
+        log.info("test4 event success. Received an event")
     }
     if (actionCount != 1) {
         log.error("received " + actionCount + " actions. Expected 1")
+    } else if (!actionDelivery || actionDelivery.progress != DeliveryProgress.DeliveryCompleted) {
+        log.error("test4 action sent but missing delivery confirmation")
+    } else {
+        log.info("test4 action success. Received an action confirmation")
     }
     hcSvc.disconnect()
     hcCl.disconnect()
@@ -210,10 +223,10 @@ async function test4() {
 // describe("test connect", () => {
 //     it('should connect', async () => {
 //         //running instance
-//         const testClient = "test"
+//         const testClientID = "test"
 //         const testPass = "testpass"
 //         let caCertPEM = ""
-//         let hc = NewHubClient(testURL, testClient, caCertPEM, core)
+//         let hc = NewHubClient(testURL, testClientID, caCertPEM, core)
 //         await hc.connectWithPassword(testPass)
 
 //     })

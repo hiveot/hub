@@ -1,7 +1,7 @@
 // ZWaveJSBinding.ts holds the entry point to the zwave binding along with its configuration
 import type {TranslatedValueID, ZWaveNode} from "zwave-js";
 import {InterviewStage} from "zwave-js";
-import {parseNode} from "./parseNode";
+import {getNodeTD} from "./getNodeTD";
 import {ParseValues} from "./ParseValues";
 import {ZWAPI} from "./ZWAPI.js";
 import {parseController} from "./parseController";
@@ -14,6 +14,7 @@ import {ThingMessage} from "@hivelib/things/ThingMessage";
 import {BindingConfig} from "./BindingConfig";
 import * as tslog from 'tslog';
 import {DeliveryProgress, DeliveryStatus, IHubClient} from "@hivelib/hubclient/IHubClient";
+import {handleActionRequest} from "@zwavejs/handleActionRequest";
 
 const log = new tslog.Logger()
 
@@ -53,105 +54,6 @@ export class ZwaveJSBinding {
     }
 
 
-    // handle controller actions as defined in the TD
-    handleActionRequest(tm: ThingMessage): DeliveryStatus {
-        let stat = new DeliveryStatus()
-
-        let actionLower = tm.key.toLowerCase()
-        let targetNode: ZWaveNode | undefined
-        let node = this.zwapi.getNodeByDeviceID(tm.thingID)
-        if (node == undefined) {
-            let errMsg = new Error("handleActionRequest: node for thingID" + tm.thingID + "does not exist")
-            stat.Failed(tm,errMsg)
-            return stat
-        }
-        if (tm.key == ActionTypeProperties) {
-            return this.handleConfigRequest(tm)
-        }
-        log.info("action:" + tm.key)
-        // controller specific commands (see parseController)
-        switch (actionLower) {
-            case "begininclusion":
-                this.zwapi.driver.controller.beginInclusion().then()
-                break;
-            case "stopinclusion":
-                this.zwapi.driver.controller.stopInclusion().then()
-                break;
-            case "beginexclusion":
-                this.zwapi.driver.controller.beginExclusion().then()
-                break;
-            case "stopexclusion":
-                this.zwapi.driver.controller.stopExclusion().then()
-                break;
-
-            case "beginrebuildingroutes":
-                this.zwapi.driver.controller.beginRebuildingRoutes()
-                break;
-            case "stoprebuildingroutes":
-                this.zwapi.driver.controller.stopRebuildingRoutes()
-                break;
-            case "getnodeneighbors": // param nodeID
-                targetNode = this.zwapi.getNodeByDeviceID(tm.thingID)
-                if (targetNode) {
-                    this.zwapi.driver.controller.getNodeNeighbors(targetNode.id).then();
-                }
-                break;
-            case "rebuildnoderoutes": // param nodeID
-                targetNode = this.zwapi.getNodeByDeviceID(tm.thingID)
-                if (targetNode) {
-                    this.zwapi.driver.controller.rebuildNodeRoutes(targetNode.id).then();
-                }
-                break;
-            case "removefailednode": // param nodeID
-                targetNode = this.zwapi.getNodeByDeviceID(tm.thingID)
-                if (targetNode) {
-                    this.zwapi.driver.controller.removeFailedNode(targetNode.id).then();
-                }
-                break;
-            // Special management actions that are accessible by writing configuration updates that are not VIDs
-            // case PropTypes.Name.toLowerCase():  // FIXME: what is this. set name ???
-            //     node.name = params;
-            //     break;
-            case "checklifelinehealth":
-                node.checkLifelineHealth().then()
-                break;
-            case "ping":
-                node.ping().then((success) => {
-                    this.hc.pubEvent(tm.thingID, "ping", success ? "success" : "fail")
-                })
-                break;
-            case "refreshinfo":
-                // do not use when node interview is not yet complete
-                if (node.interviewStage == InterviewStage.Complete) {
-                    node.refreshInfo({waitForWakeup: true}).then()
-                }
-                break;
-            case "refreshvalues":
-                node.refreshValues().then()
-                break;
-            default:
-                // VID based configuration and actions
-                //  currently propertyIDs are also accepted.
-                for (let vid of node.getDefinedValueIDs()) {
-                    let propID = getPropKey(vid)
-                    if (propID.toLowerCase() == actionLower) {
-                        this.zwapi.setValue(node, vid, tm.data)
-                        break;
-                    }
-                }
-        }
-        stat.Completed(tm)
-        return stat
-    }
-
-    // handle configuration requests as defined in the TD
-    handleConfigRequest(tv: ThingMessage):  DeliveryStatus {
-        let stat = new DeliveryStatus()
-        stat.error = "todo handle config"
-        stat.status = DeliveryProgress.DeliveryFailed
-        return stat
-    }
-
     // Driver failed, possibly due to removal of USB stick. Restart.
     handleDriverError(e: Error): void {
         log.error("driver error");
@@ -184,7 +86,7 @@ export class ZwaveJSBinding {
     // This publishes the TD and its property values
     handleNodeUpdate(node: ZWaveNode) {
         log.info("handleNodeUpdate:node:", node.id);
-        let thingTD = parseNode(this.zwapi, node, this.vidCsvFD, this.config.maxNrScenes);
+        let thingTD = getNodeTD(this.zwapi, node, this.vidCsvFD, this.config.maxNrScenes);
 
         if (node.isControllerNode) {
             parseController(thingTD, this.zwapi.driver.controller)
@@ -197,7 +99,8 @@ export class ZwaveJSBinding {
         let lastNodeValues = this.lastValues.get(thingTD.id)
         let diffValues = newValues
         if (lastNodeValues) {
-            diffValues = lastNodeValues.diffValues(newValues)
+            // diffValues = lastNodeValues.diffValues(newValues)
+            diffValues = newValues.diffValues(lastNodeValues)
         }
         this.hc.pubProps(thingTD.id, diffValues.values).then()
         this.lastValues.set(thingTD.id, newValues);
@@ -206,7 +109,7 @@ export class ZwaveJSBinding {
 
     // Handle update of a node's value.
     // This publishes an event if the value changed or 'publishOnlyChanges' is false
-    // @param node: The node whos values have updated
+    // @param node: The node whose values have updated
     // @param vid: zwave value id
     // @param newValue: the updated value converted to a string
     handleValueUpdate(node: ZWaveNode, vid: TranslatedValueID, newValue: unknown) {
@@ -259,7 +162,10 @@ export class ZwaveJSBinding {
             this.vidCsvFD = fs.openSync(this.config.vidCsvFile, "w+", 0o640)
             logVid(this.vidCsvFD)
         }
-        this.hc.setActionHandler(this.handleActionRequest)
+        this.hc.setActionHandler( (msg):DeliveryStatus => {
+            let stat = handleActionRequest(msg,this.zwapi, this.hc)
+            return stat
+        })
 
         await this.zwapi.connectLoop(this.config);
     }
