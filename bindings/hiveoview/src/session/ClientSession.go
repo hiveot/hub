@@ -122,28 +122,6 @@ func (cs *ClientSession) onConnectChange(stat hubclient.TransportStatus) {
 func (cs *ClientSession) onEvent(msg *things.ThingMessage) error {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
-	// FIXME: HOW TO IMPLEMENT DATA BINDING WITH HTMX fragments?
-	// A: use alpine.js databinding. Include JS objects that the element binds to
-	//    and use sse events to trigger a reload of the object.
-	//
-	//    pro: * one and two-way data binding provided by Alpine
-	//    con: * risk duplicating server/client state
-	//         * dependent on the Alpine-js kitchen sink
-	//
-	// B: use sse event to reload data associated fragments.
-	//    (one event can affect multiple fragments)
-	//
-	//    pro: * isolation between data updates and fragment reload (separation of concerns)
-	//         * support 1-many relationship for data-fragments
-	//    con: * have to manually manage many fragments and event names
-	//         * all fragments must have unique IDs
-	//         * fragment reloads can cause unintended side effects like layout changes.
-	//           for example the open/close state of a 'details' element is reset after reload.
-	//
-	// Q: is there a need for client side state to bind to?
-	// Q: does htmx has an extension to facilitate data binding?
-	//		hx-trigger="customers from:body" ??? how to trigger specific TD ID?
-	//      ? hx-trigger="sse:<thingID>" could this work?
 
 	slog.Info("received event", slog.String("thingID", msg.ThingID),
 		slog.String("id", msg.Key))

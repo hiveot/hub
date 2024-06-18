@@ -15,11 +15,10 @@ import {
     ZWaveNodeValueRemovedArgs,
     ZWaveNodeValueUpdatedArgs,
 } from "zwave-js";
-import fs, { opendir } from "fs";
-import { Logger } from "tslog";
-import { CommandClasses } from '@zwave-js/core';
+import fs from "fs";
+import {Logger} from "tslog";
+import {CommandClasses, ValueID} from '@zwave-js/core';
 import path from "path";
-import { buffer } from "stream/consumers";
 
 const tslog = new Logger({ name: "ZWAPI" })
 
@@ -389,64 +388,43 @@ export class ZWAPI {
             this.onStateUpdate(node, "awake")
         });
     }
+}
 
-
-    // Set the Vid value
-    // This converts the given value into the right format
-    // @param node: node whose value to set
-    // @param vid: valueID parameter to set
-    // @param params: parameters containing the value(s) to set
-    setValue(node: ZWaveNode, vid: TranslatedValueID, params: string) {
-        let dataToSet: unknown
-        let vidMeta = node.getValueMetadata(vid)
-
-        switch (vidMeta.type) {
-            case "boolean":
-                dataToSet = !(params.toLowerCase() == "false" || params == "0")
-                break;
-            case "number":
-            case "color":
-            case "duration":
-                // convert enum names to values
-                let numMeta = vidMeta as ValueMetadataNumeric
-                if (numMeta && numMeta.states) {
-                    dataToSet = getEnumFromMemberName(numMeta.states, params)
-                } else {
-                    dataToSet = Number(params)
-                }
-                if (isNaN(dataToSet as number)) {
-                    dataToSet = undefined
-                }
-                break;
-            case "string":
-                dataToSet = String(params);
-                break
-            case "any":
-                dataToSet = params;
-                break;
-            case "boolean[]":
-            case "buffer":
-            case "number[]":
-            case "string[]":
-                // TODO: handle arrays
-                tslog.error(`setValue: Unsupported type ${vidMeta.type}`)
-                break;
-        }
-        if (dataToSet != undefined) {
-            node.setValue(vid, dataToSet, {})
-                .then((accepted) => {
-                    if (accepted) {
-                        // success
-                    } else {
-                        tslog.error("setValue: failed. (why?)")
-                    }
-                })
-                .catch((reason) => {
-                    tslog.error(`Failed setting value. Reason: ${reason}`)
-                })
-        }
+// convert the string value to a type suitable for the vid
+export function stringToValue(value:string, node: ZWaveNode, vid:ValueID ):any {
+    let vidMeta = node.getValueMetadata(vid)
+    if (!vidMeta) {
+        return undefined
     }
-
+    let vl = value.toLowerCase()
+    switch (vidMeta.type) {
+        case "string": return value;
+        case "boolean":
+            if (value === "" || vl ==="false" || value === "0" || vl==="disabled") {
+                return false
+            }
+            return true
+        case "number":
+        case "duration":
+        case "color":
+            let numMeta = vidMeta as ValueMetadataNumeric;
+            let dataToSet: number|undefined
+            if (numMeta && numMeta.states) {
+                dataToSet = getEnumFromMemberName(numMeta.states, value)
+            } else {
+                dataToSet = parseInt(value,10)
+            }
+            if (isNaN(dataToSet as number)) {
+                dataToSet = undefined
+            }
+            return dataToSet
+        case "boolean[]":
+        case "number[]":
+        case "string[]":
+            // TODO: support of arrays
+            tslog.error("getNewValueOfType data type '"+vidMeta.type+"' is not supported")
+    }
+    return value
 }
 
 // Determine which serial port is available
@@ -465,7 +443,6 @@ function findSerialPort(): string {
 
     // force an error
     return "/dev/serialportnotfound"
-
 }
 
 

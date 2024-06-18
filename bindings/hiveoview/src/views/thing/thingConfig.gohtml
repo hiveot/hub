@@ -2,7 +2,7 @@
 <!--@param '.' object of type thing.DetailsTemplateData -->
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.DetailsTemplateData*/ -}}
 
-<ul class="h-grid-table thing-config" striped border>
+<ul class="h-grid-table thing-config" striped border >
 	<li>
 		<div class="h-show-sm">{{/*icon*/}}</div>
 		<div class="id-title">
@@ -32,8 +32,9 @@
 			        hx-target="#editConfigModal" hx-swap="innerHTML"
 						>
 							<iconify-icon style="padding: 0 10px" icon="mdi:pencil"></iconify-icon>
-                {{/*replace show value on sse event*/}}
-							<span sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
+                {{/*replace show value on sse event, sent by ClientSession.go:onEvent */}}
+							{{/*properties and events use the same namespace*/}}
+							<span sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML" hx-target="this">
 							{{$.Values.ToString $k}}
 							</span>
                 {{$v.UnitSymbol}}
@@ -42,8 +43,7 @@
 					<div class="h-show-md">{{$v.Default}}</div>
 					<div class="h-show-lg">{{$v.Description}}</div>
 					<div class="h-show-sm"
-					     sse-swap="{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
-					     title="Updated: {{$.Values.GetUpdated $k}} by {{($.Values.GetSenderID $k)}}"
+					     sse-swap="{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML" hx-target="this"
 					>
               {{$.Values.GetUpdated $k}}
 					</div>

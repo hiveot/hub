@@ -63,7 +63,7 @@ func GetConnectStatus(r *http.Request) *ConnectStatus {
 func RenderConnectStatus(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{}
 	status := GetConnectStatus(r)
-	data["Progress"] = status
+	data["Status"] = status
 
 	// render with base or as fragment
 	views.TM.RenderTemplate(w, r, ConnectStatusTemplate, data)

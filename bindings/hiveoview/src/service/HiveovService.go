@@ -117,9 +117,9 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 		r.Get("/app/dashboard", dashboard.RenderDashboard)
 		r.Get("/app/dashboard/{page}", dashboard.RenderDashboard) // TODO: support multiple pages
 		r.Get("/app/directory", directory.RenderDirectory)
-		r.Get("/app/thing/{agentID}/{thingID}", thing.RenderThingDetails)
+		r.Get("/app/thing/{thingID}", thing.RenderThingDetails)
 		r.Get("/app/thing/editConfig", thing.RenderEditThingConfig)
-		r.Post("/app/thing/{agentID}/{thingID}/{propKey}", thing.PostThingConfig)
+		r.Post("/app/thing/{thingID}/{propKey}", thing.PostThingConfig)
 		r.Get("/app/status", status.RenderStatus)
 	})
 

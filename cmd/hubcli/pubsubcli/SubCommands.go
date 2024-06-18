@@ -30,26 +30,22 @@ func SubEventsCommand(hc *hubclient.IHubClient) *cli.Command {
 	return &cli.Command{
 		Name:      "subev",
 		Usage:     "Subscribe to Thing events",
-		ArgsUsage: "[<agentID> [<thingID>]]",
+		ArgsUsage: "[<thingID> [<key>]]",
 		Category:  "pubsub",
 		Action: func(cCtx *cli.Context) error {
-			agentID := ""
 			thingID := ""
-			name := ""
+			key := ""
 			if cCtx.NArg() > 0 {
-				agentID = cCtx.Args().Get(0)
+				thingID = cCtx.Args().Get(0)
 			}
 			if cCtx.NArg() > 1 {
-				thingID = cCtx.Args().Get(1)
+				key = cCtx.Args().Get(1)
 			}
 			if cCtx.NArg() > 2 {
-				name = cCtx.Args().Get(2)
-			}
-			if cCtx.NArg() > 3 {
 				return fmt.Errorf("Unexpected arguments")
 			}
 
-			err := HandleSubEvents(*hc, agentID, thingID, name)
+			err := HandleSubEvents(*hc, thingID, key)
 			return err
 		},
 	}
@@ -63,27 +59,32 @@ func HandleSubTD(hc hubclient.IHubClient) error {
 		return err
 	}
 	hc.SetEventHandler(func(msg *things.ThingMessage) error {
+		// only look for TD events, ignore directed events
+		if msg.Key != vocab.EventTypeTD {
+			return nil
+		}
+
 		var td things.TD
 		//fmt.Printf("%s\n", event.ValueJSON)
 		err := msg.Unmarshal(&td)
 		if err == nil {
 			modifiedTime, _ := dateparse.ParseAny(td.Modified) // can be in any TZ
 			timeStr := utils.FormatMSE(modifiedTime.In(time.Local).UnixMilli(), false)
-			fmt.Printf("%-20.20s %-25.25s %-30.30s %-20.20s %-18.18s\n",
+			fmt.Printf("%-20.20s %-35.35s %-30.30s %-30.30s %-30.30s\n",
 				msg.SenderID, msg.ThingID, td.Title, td.AtType, timeStr)
 		}
 		return nil
 	})
-	fmt.Printf("Agent ID             Thing ID                  Title                          @type                GetUpdated           \n")
-	fmt.Printf("-------------------  ------------------------  -----------------------------  -------------------  --------------------\n")
+	fmt.Printf("Sender ID            Thing ID                            Title                          @type                          Updated                       \n")
+	fmt.Printf("-------------------  ----------------------------------  -----------------------------  -----------------------------  ------------------------------\n")
 
 	time.Sleep(time.Hour * 24)
 	return nil
 }
 
 // HandleSubEvents subscribes and prints events
-func HandleSubEvents(hc hubclient.IHubClient, agentID string, thingID string, name string) error {
-	fmt.Printf("Subscribing to agentID: '%s', thingID: '%s', name: '%s'\n\n", agentID, thingID, name)
+func HandleSubEvents(hc hubclient.IHubClient, thingID string, name string) error {
+	fmt.Printf("Subscribing to  thingID: '%s', name: '%s'\n\n", thingID, name)
 
 	fmt.Printf("Time             Agent ID        Thing ID                       Event Name                     Value\n")
 	fmt.Printf("---------------  --------------- -----------------------------  -----------------------------  ---------\n")

@@ -151,8 +151,14 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     td.AddPropertyIf(node.keepAwake, "keepAwake", "",
         "Device stays awake a bit longer before sending it to sleep", WoTDataTypeBool);
     td.AddPropertyIf(node.label, "nodeLabel", vocab.PropDeviceModel, "Device label", WoTDataTypeString);
-    // the node.lable is editable and use for both the TD title as well as the "title property"
-    td.AddPropertyIf(node.name, "", vocab.PropDeviceTitle, "", WoTDataTypeString);
+
+    // the node.name is editable and use for both the TD title as well as the "title property"
+    let prop = td.AddProperty("", vocab.PropDeviceTitle, "Device name", WoTDataTypeString);
+    prop.readOnly = false
+    prop = td.AddProperty("", vocab.PropLocation, "Device location",  WoTDataTypeString);
+    prop.readOnly = false
+    prop.description = "Description of the device location"
+
     td.AddPropertyIf(node.manufacturerId, "manufacturerId", "",
         "Manufacturer ID", WoTDataTypeString);
     td.AddPropertyIf(node.deviceConfig?.manufacturer, "", vocab.PropDeviceMake,
@@ -182,7 +188,7 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     // always show whether this is ZWave+
     td.AddProperty("zwavePlusNodeType", "",
         "ZWave+ Node Type", WoTDataTypeNumber)
-    let prop = td.AddProperty("zwavePlusNodeTypeName", "",
+    prop = td.AddProperty("zwavePlusNodeTypeName", "",
         "ZWave+ Node Type Name", WoTDataTypeString)
     if (node.zwavePlusNodeType != undefined) {
         prop.SetAsEnum(ZWavePlusNodeType)
@@ -199,13 +205,6 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     }
     td.AddPropertyIf(node.zwavePlusVersion, "zwavePlusVersion", "",
         "Z-Wave+ Version", WoTDataTypeNumber);
-
-    // ??? writable configuration properties that are not VIDs ???
-    // how to write these without a vid?
-    prop = td.AddProperty("", vocab.PropDeviceTitle,
-        "Device Name", WoTDataTypeString)
-    prop.readOnly = false
-
 
     // actions
 

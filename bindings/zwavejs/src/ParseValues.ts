@@ -70,7 +70,10 @@ export class ParseValues {
         this.setIf("isRouting", node.isRouting);
         this.setIf("isControllerNode", node.isControllerNode)
         this.setIf("keepAwake", node.keepAwake);
+
         this.setIf(vocab.PropDeviceTitle, node.name)
+        this.setIf(vocab.PropLocation, node.location)
+
         // this.setIf("label", node.deviceConfig?.label)
         this.setIf("nodeLabel", node.label)
         this.setIf("manufacturerId", node.manufacturerId);

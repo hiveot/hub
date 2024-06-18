@@ -31,28 +31,50 @@ func RenderAppPages(w http.ResponseWriter, r *http.Request, data map[string]any)
 		data = map[string]any{}
 	}
 	GetAppHeadProps(data, "HiveOT", "/static/logo.svg")
-	data["Progress"] = GetConnectStatus(r)
+	data["Status"] = GetConnectStatus(r)
 
 	//render the full page base > app.html
 	views.TM.RenderFull(w, AppTemplate, data)
 }
 
-// RenderAppOrFragment renders the full html for a page in app.html using the given data,
-// or if hx-request is set and hx-boost is not, just the fragment.
+// RenderAppOrFragment renders the page fragment, or the full app page followed
+// by the fragment if this is a full page reload.
 //
-// This is a one-stop shop for rendering a page both as a fragment or a full reload (from a bookmark)
+// A page fragment is a fragment that shows one of the main pages defined in
+// app.gohtml.
 //
-// This just renders the page, it does not select it for viewing (which is a client side concern)
+// A full reload is needed when hx-request is not set or boost is on. In this
+// case do a full page reload. For example hitting F5 page reload forces
+// the browser to re-render the whole page.
 //
-// fragmentHtml is the html file contain the fragment to render.
-// data contains the fragment data, also used in full render.
-func RenderAppOrFragment(w http.ResponseWriter, r *http.Request, fragmentHtml string, data map[string]any) {
+// If hx-request is set and boost is off then just render the fragment using
+// the given fragment data.
+//
+// app.gohtml is designed to select/render the main page fragments based on
+// the url target:
+//
+//		<div id="directory" class="hidden" displayIfTarget="/app/directory">
+//	      {{template "directory.gohtml" .}}
+//	 </div>
+//
+// If the URL matches the target, the fragment will be included in the render
+// without any data. These page fragments have a trigger that forces a fragment
+// reload the first time its shown: {{$trigger := "intersect once"}}
+//
+// This in turns reloads the same URL as the fragment, in which case the
+// go code does include the fragment data. app.go (this file) doesn't have
+// to know anything about the fragment's data.
+//
+// pageFragment is the html file contain the fragment to render.
+// data contains the page fragment data. Not used in full render.
+func RenderAppOrFragment(w http.ResponseWriter, r *http.Request, pageFragment string, data any) {
 
 	isFragment := r.Header.Get("HX-Request") != ""
 	isBoosted := r.Header.Get("HX-Boosted") != ""
 	if isFragment && !isBoosted {
-		views.TM.RenderFragment(w, fragmentHtml, data)
+		views.TM.RenderFragment(w, pageFragment, data)
 	} else {
-		RenderAppPages(w, r, data)
+		// app pages fetches its own app data
+		RenderAppPages(w, r, nil)
 	}
 }

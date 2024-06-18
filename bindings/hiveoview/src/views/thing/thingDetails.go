@@ -16,10 +16,11 @@ import (
 const TemplateFile = "thingDetails.gohtml"
 
 type DetailsTemplateData struct {
+	Title      string
 	AgentID    string
 	ThingID    string
 	MakeModel  string
-	Name       string
+	ThingName  string
 	DeviceType string
 	TD         *things.TD
 	// These lists are sorted by property/event/action name
@@ -46,20 +47,17 @@ func getLatest(thingID string, hc hubclient.IHubClient) (things.ThingMessageMap,
 
 // RenderThingDetails renders thing details view fragment 'thingDetails.html'
 // URL parameters:
-// @param agentID of the publisher
 // @param thingID to view
 func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
-	data := make(map[string]any)
-	agentID := chi.URLParam(r, "agentID")
 	thingID := chi.URLParam(r, "thingID")
+	agentID, _ := things.SplitDigiTwinThingID(thingID)
 	thingData := &DetailsTemplateData{
 		Attributes: make(map[string]*things.PropertyAffordance),
 		Config:     make(map[string]*things.PropertyAffordance),
+		AgentID:    agentID,
+		ThingID:    thingID,
+		Title:      "details of thing",
 	}
-	thingData.ThingID = thingID
-	thingData.AgentID = agentID
-	data["Thing"] = thingData
-	data["Title"] = "details of thing"
 
 	// Read the TD being displayed and its latest values
 	mySession, err := session.GetSessionFromContext(r)
@@ -99,16 +97,16 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 				thingData.MakeModel = thingData.MakeModel + modelValue.DataAsText()
 			}
 			// use name from configuration if available. Fall back to title.
-			thingData.Name = thingData.Values.ToString(vocab.PropDeviceTitle)
-			if thingData.Name == "" {
-				thingData.Name = thingData.TD.Title
+			thingData.ThingName = thingData.Values.ToString(vocab.PropDeviceTitle)
+			if thingData.ThingName == "" {
+				thingData.ThingName = thingData.TD.Title
 			}
 		}
 	}
 	if err != nil {
 		slog.Error("Failed loading Thing info",
-			"agentID", agentID, "thingID", thingID, "err", err.Error())
+			"thingID", thingID, "err", err.Error())
 	}
 	// full render or fragment render
-	app.RenderAppOrFragment(w, r, TemplateFile, data)
+	app.RenderAppOrFragment(w, r, TemplateFile, thingData)
 }

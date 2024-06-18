@@ -35,7 +35,7 @@ func (svc *EmbeddedTransport) NewClient(agentID string) hubclient.IHubClient {
 	cl := embedded.NewEmbeddedClient(agentID, svc.handleMessageFromClient)
 
 	// to send messages from binding to client it must be registered
-	svc.handlers[agentID] = cl.ReceiveMessage
+	svc.handlers[agentID] = cl.HandleMessage
 	return cl
 }
 
@@ -46,11 +46,16 @@ func (svc *EmbeddedTransport) SendEvent(event *things.ThingMessage) (stat hubcli
 		// FIXME: only send to subscribers
 		// don't send events back to the sender
 		if agentID != event.SenderID {
-			// keep a non-error result
-			stat2 := agent(event)
-			if stat2.Error == "" {
-				stat = stat2
-			}
+
+			// TODO: until subscription is needed by embedded clients,
+			//  simply don't send them any events.
+			// authn and authz  dont need to subscribe to events
+			// embedded client will still receive directed events.
+			_ = agent
+			//stat2 := agent(event)
+			//if stat2.Error == "" {
+			//	stat = stat2
+			//}
 		}
 	}
 	return stat

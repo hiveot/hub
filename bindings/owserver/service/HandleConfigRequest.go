@@ -24,15 +24,34 @@ func (svc *OWServerBinding) HandleConfigRequest(msg *things.ThingMessage) (stat 
 		stat.Failed(msg, err)
 		return
 	}
-	attr := node.Attr[msg.Key]
-	if !attr.Writable {
-		err := fmt.Errorf(
-			"HandleConfigRequest: Thing '%s', property '%s' is not writable", msg.ThingID, msg.Key)
+	valueMap := map[string]string{}
+	err := msg.Unmarshal(&valueMap)
+	if err != nil {
+		err := fmt.Errorf("HandleConfigRequest: Invalid properties:", err.Error())
 		slog.Warn(err.Error())
 		stat.Completed(msg, err)
-		return
+		return stat
 	}
-	err := svc.edsAPI.WriteData(msg.ThingID, msg.Key, msg.DataAsText())
+	// keep the last error as a result value
+	// iterate all properties
+	for key, val := range valueMap {
+		attr, found := node.Attr[key]
+		if !found {
+			err = fmt.Errorf("HandleConfigRequest: '%s not a property of Thing '%s' found",
+				key, msg.ThingID)
+			slog.Warn(err.Error())
+			continue
+		} else if !attr.Writable {
+			err := fmt.Errorf(
+				"HandleConfigRequest: property '%s' of Thing '%s' is not writable", key, msg.ThingID)
+			slog.Warn(err.Error())
+			continue
+		}
+		err2 := svc.edsAPI.WriteData(msg.ThingID, key, val)
+		if err2 != nil {
+			err = err2
+		}
+	}
 	stat.Completed(msg, err)
 	return
 }

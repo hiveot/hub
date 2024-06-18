@@ -22,7 +22,7 @@ func HTServeHttp(w http.ResponseWriter, r *http.Request) {
 	// authentication/login.
 	cs, err := sessions.GetSessionFromContext(r)
 	if cs == nil || err != nil {
-		slog.Warn("No session available, telling client to delay retry to 30 seconds")
+		slog.Warn("No session available, telling client to delay retry to 10 seconds")
 
 		// set retry to a large number
 		// while this doesn't redirect, it does stop it from holding a connection.
@@ -33,7 +33,7 @@ func HTServeHttp(w http.ResponseWriter, r *http.Request) {
 
 		// NOTE: the above works while the below does not???
 		errMsg := fmt.Sprintf("retry: %s\nevent:%s\n\n",
-			"30000", "logout")
+			"10000", "logout")
 		http.Error(w, errMsg, http.StatusUnauthorized)
 		//w.Write([]byte(errMsg))
 		w.(http.Flusher).Flush()

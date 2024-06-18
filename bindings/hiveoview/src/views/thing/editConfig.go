@@ -13,15 +13,27 @@ import (
 	"net/http"
 )
 
+type EditConfigTemplateData struct {
+	AgentID string
+	ThingID string
+	Key     string
+	Config  *things.PropertyAffordance
+	Value   string
+}
+
 // RenderEditThingConfig renders the view for editing Thing configuration property
 // This sets the data properties for AgentID, ThingID, Key and Config
 func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
-	var prop *things.PropertyAffordance
-	var value string
-	data := make(map[string]any)
-	agentID := r.URL.Query().Get("agentID")
 	thingID := r.URL.Query().Get("thingID")
 	propKey := r.URL.Query().Get("key")
+	agentID, _ := things.SplitDigiTwinThingID(thingID)
+
+	var propAff *things.PropertyAffordance
+	var value string
+	//data := make(map[string]any)
+	//agentID := r.URL.Query().Get("agentID")
+	//thingID := r.URL.Query().Get("thingID")
+	//propKey := r.URL.Query().Get("key")
 
 	mySession, err := session.GetSessionFromContext(r)
 	if err == nil {
@@ -34,7 +46,7 @@ func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			td := things.TD{}
 			err = json.Unmarshal([]byte(tdJson), &td)
-			prop = td.GetProperty(propKey)
+			propAff = td.GetProperty(propKey)
 		}
 		if err == nil {
 			eventValues, err2 := digitwin.OutboxReadLatest(hc, nil, "", thingID)
@@ -46,12 +58,18 @@ func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	data["AgentID"] = agentID
-	data["ThingID"] = thingID
-	data["Key"] = propKey
-	data["Config"] = prop
-	data["Value"] = value
-
+	if err != nil {
+		slog.Error("RenderEditThingConfig:", "err", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	data := EditConfigTemplateData{
+		AgentID: agentID,
+		ThingID: thingID,
+		Key:     propKey,
+		Value:   value,
+		Config:  propAff,
+	}
 	app.RenderAppOrFragment(w, r, "editConfig.gohtml", data)
 }
 
@@ -62,7 +80,6 @@ func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 // * key
 // The posted form value contains a 'value' field
 func PostThingConfig(w http.ResponseWriter, r *http.Request) {
-	//agentID := chi.URLParam(r, "agentID")
 	thingID := chi.URLParam(r, "thingID")
 	propKey := chi.URLParam(r, "propKey")
 	value := r.FormValue("value")

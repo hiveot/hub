@@ -64,12 +64,8 @@ func (cl *EmbeddedClient) GetStatus() hubclient.TransportStatus {
 	}
 }
 
-func (cl *EmbeddedClient) Logout() error {
-	return nil
-}
-
-// ReceiveMessage receives a message from the server for this client
-func (cl *EmbeddedClient) ReceiveMessage(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+// HandleMessage receives a message from the embedded transport for this client
+func (cl *EmbeddedClient) HandleMessage(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	if msg.MessageType == vocab.MessageTypeAction {
 		if cl.receiveActionHandler != nil {
 			return cl.receiveActionHandler(msg)
@@ -84,8 +80,14 @@ func (cl *EmbeddedClient) ReceiveMessage(msg *things.ThingMessage) (stat hubclie
 	// The delivery is complete. Too bad the handler isn't registered. This is almost
 	// certainly a bug in the client code, so lets make clear this isn't a transport problem.
 	err := fmt.Errorf("no receive handler set for client '%s'", cl.clientID)
+	slog.Error("HandleMessage",
+		"err", err.Error(), "thingID", msg.ThingID, "key", msg.Key)
 	stat.Completed(msg, err)
 	return stat
+}
+
+func (cl *EmbeddedClient) Logout() error {
+	return nil
 }
 
 // PubAction publishes an action request.

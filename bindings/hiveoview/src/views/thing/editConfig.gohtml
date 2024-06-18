@@ -1,8 +1,5 @@
 {{/*Edit Thing Configuration Modal*/}}
-{{/*@param AgentID  Thing publisher*/}}
-{{/*@param ThingID  Thing ID */}}
-{{/*@param Key  with configuration key*/}}
-{{/*@param Config containing the PropertyAffordance object*/}}
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.EditConfigTemplateData*/ -}}
 
 <h-modal show showClose showCancel showSubmit>
 	<article>
@@ -12,7 +9,7 @@
 		<main>
 			<form id="edit-config-form">
 				<fieldset>
-					<label for="agent-id">Agent ID: {{.AgentID}}</label>
+					<label for="agent-id">Agent: {{.AgentID}}</label>
 					<input id="agent-id" readonly placeholder="{{.AgentID}}"/>
 
 					<label for="thing-id">Thing ID: </label>
@@ -37,9 +34,9 @@
 
             {{else if eq .Config.Type "number"}}
                 {{/*	=== Numeric Input ===*/}}
-                {{if .Config.NumberMinimum}}
+                {{if .Config.Minimum}}
                     {{/*FIXME: don't hard code rounding*/}}
-                    {{$minmax = printf " [%0.01f-%0.01f]" .Config.NumberMinimum .Config.NumberMaximum }}
+                    {{$minmax = printf " [%0.01f-%0.01f]" .Config.Minimum .Config.Maximum }}
                 {{end}}
 								<input id="config-input" name="value"
 								       autofocus autocomplete="off" type="number"
@@ -50,8 +47,8 @@
 
             {{else if eq .Config.Type "integer"}}
                 {{/*	=== Integer Input ===*/}}
-                {{if .Config.IntegerMinimum}}
-                    {{$minmax = printf " [%d-%d]" .Config.IntegerMinimum .Config.IntegerMaximum }}
+                {{if .Config.Minimum}}
+                    {{$minmax = printf " [%d-%d]" .Config.Minimum .Config.Maximum }}
                 {{end}}
 								<input id="config-input" name="value"
 								       autofocus autocomplete="off" type="number"
@@ -83,7 +80,7 @@
 		        class="secondary">Cancel
 		</button>
 		<button type="submit"
-		        hx-post="/app/thing/{{.AgentID}}/{{.ThingID}}/{{.Key}}"
+		        hx-post="/app/thing/{{.ThingID}}/{{.Key}}"
 		        hx-include="#edit-config-form"
 		        hx-swap="none"
 		        hx-on::after-request="onSubmitCompleted(event, this)"

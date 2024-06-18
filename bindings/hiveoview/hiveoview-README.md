@@ -6,14 +6,12 @@ Hive of Things Viewer, written in golang, html/htmx, web components, and sse usi
 
 This viewer is in early development. The information below is subject to change.
 
-### Phase 1: SSR infrastructure and session management
+### Phase 1: SSR infrastructure and session management [done]
 
 1. Setup a server with HTML template renderer [done]
 2. Define Html templates for base layout, dashboard, about, and login pages [done]
 3. Support SSE connections for dynamic updates [done]
-4. Session management for MQTT hub connections and sse support to push events [done]
-5. MQTT Authentication in client session [done]
-6. NATS Authentication in client session (todo: session auth without keys)
+4. Session management for hub connections support for push events [done]
 7. Push connection status update. Present status view. [done]
 
 ### Phase 2: Directory view
@@ -24,7 +22,8 @@ This viewer is in early development. The information below is subject to change.
 4. Thing details view [done]
 5. Thing configuration edit [done]
 6. Configuration of title (if supported by Thing) [partial]
-7. Server push of property and event values
+7. Server push of property and event values [done]
+8. Raw TD info
 
 ### Phase 3: Dashboard
 
@@ -33,13 +32,13 @@ This viewer is in early development. The information below is subject to change.
 3. Value tile with a single Thing value with min/max
 4. Card tile with values from Things
 5. Line chart tile with value history
-    Phase 4: Live updates
 6. Subscribe to Thing values from tiles
 7. Refresh tile
 
 ### Phase 4: iteration 2  (tbd, based on learnings)
-1. Subscribe to and organize Things by IoT Agents
-2. Migrate to digital twin model 
+1. Layout improvements for small screens
+2. Subscribe to and organize Things by IoT Agents
+2. Migrate to digital twin model [done]
 3. Distinguish between basic and advanced attr/config/events
 4. Indication of pending configuration update (owserver updates can take 10 seconds)
 

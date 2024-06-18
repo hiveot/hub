@@ -6,6 +6,9 @@
  -->
 
 <!--After an initial load without data, auto-reload when viewed. -->
+
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/directory.DirectoryTemplateData */ -}}
+
 {{$trigger := "intersect once"}}
 {{if .Directory}}
     {{$trigger = "click from:#reload-directory"}}
@@ -45,9 +48,9 @@
 					<ul class="directory-table h-grid-table" striped border>
 						<li>
 							<div class="h-show-md"></div>
-							<div>Thing ID</div>
+							<div class="h-show-xl">Thing ID</div>
 							<div>Name</div>
-							<div class="h-show-sm">Type</div>
+							<div>Type</div>
 							<div class="h-show-lg">Outputs</div>
 							<div class="h-show-lg">Actions</div>
 							<div class="h-show-xl">Updated</div>
@@ -55,16 +58,15 @@
 						</li>
 
 						<!--=== for TD in .Things ===-->
-              {{$agentID := .AgentID}}
+							{{- /* TODO: re-render when a new TD is added */ -}}
               {{range .Things}}
 								<li>
 									<div class="h-show-md" title="Show TD">
 										<h-device-icon deviceType={{.AtType}}></h-device-icon>
 									</div>
-									<div>
-										<!-- hx-push-url does not trigger popState so how to show result?-->
-										<a href="/app/thing/{{$agentID}}/{{.ID}}"
-										   hx-get="/app/thing/{{$agentID}}/{{.ID}}"
+									<div class="h-show-xl">
+										<a href="/app/thing/{{.ID}}"
+										   hx-get="/app/thing/{{.ID}}"
 										   hx-target="#thing"
 										   hx-swap="innerHtml"
 										   hx-trigger="click"
@@ -72,9 +74,17 @@
 										>{{.ID}}
 										</a>
 									</div>
-									<div>{{.Title}}</div>
-{{/*									<div class="h-show-sm">{{.AtType}}</div>*/}}
-									<div class="h-show-sm">{{.GetAtTypeVocab}}</div>
+									<div>
+										<a href="/app/thing/{{.ID}}"
+										   hx-get="/app/thing/{{.ID}}"
+										   hx-target="#thing"
+										   hx-swap="innerHtml"
+										   hx-trigger="click"
+										   onclick="navigateTo(null,this.href)"
+										>{{.Title}}
+										</a>
+									</div>
+									<div>{{.GetAtTypeVocab}}</div>
 									<div class="h-show-lg">{{len .Events}} outputs</div>
 									<div class="h-show-lg">{{len .Actions}} actions</div>
 									<div class="h-show-xl">{{.GetUpdated}}</div>
@@ -107,28 +117,27 @@
 
     @media (max-width: 576px) {
         .directory-table {
-            /*xs, show column 2, 3 */
+            /*xs, show column 3 (Title), 4 (Type) */
             grid-template-columns:
-				            minmax(150px, max-content) minmax(100px, 1fr);
+				            minmax(150px, 1fr)
+				            minmax(100px, 1fr);
         }
     }
 
     @media (min-width: 576px) {
         .directory-table {
-            /*sm, show column 2,3,4 */
+            /*sm, show column 3,4 */
             grid-template-columns:
 				      minmax(150px, max-content)
-				      minmax(150px, 1fr)
               minmax(100px, 1fr);
         }
     }
 
     @media (min-width: 768px) {
         .directory-table {
-            /*md,show column 1,2,3,4*/
+            /*md,show column 1,3,4*/
             grid-template-columns:
 	            60px
-              minmax(150px, max-content)
               minmax(150px, 1fr)
               minmax(100px, 1fr)
         }
@@ -136,10 +145,9 @@
 
     @media (min-width: 1024px) {
         .directory-table {
-            /*lg, show 1,2,3,4,5,6 */
+            /*lg, show 1,3,4,5,6 */
             grid-template-columns:
 				      60px
-			        minmax(150px, max-content)
 			        minmax(150px, 1fr)
 			        minmax(100px, 1fr)
 			        minmax(100px, 150px)

@@ -135,7 +135,7 @@ func (sm *SessionManager) Init(hubURL string, core string,
 	tokenKP keys.IHiveKey) {
 }
 
-// SendEvent passs an event to all sessions
+// SendEvent passs an event to sessions of subscribers
 // Returns true if at least one session received the event or false if no session are available
 func (sm *SessionManager) SendEvent(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	sm.mux.RLock()

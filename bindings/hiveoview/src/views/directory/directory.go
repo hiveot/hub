@@ -23,6 +23,11 @@ type DirectoryData struct {
 	Groups map[string]*DirGroup
 }
 
+type DirectoryTemplateData struct {
+	Directory *DirectoryData
+	PageNr    int
+}
+
 // Sort the given list of things by thingID and group them by publishing agent
 // this returns a map of groups each containing an array of thing values
 func sortByThingID(tdList []*things.TD) *DirectoryData {
@@ -59,7 +64,8 @@ func sortByThingID(tdList []*things.TD) *DirectoryData {
 // To view the directory, the #directory hash must be included at the end of the URL.
 // E.g.: /directory/#directory
 func RenderDirectory(w http.ResponseWriter, r *http.Request) {
-	var data = make(map[string]any)
+	//var data = make(map[string]any)
+	data := DirectoryTemplateData{}
 	var tdList []*things.TD
 
 	// 1: get session
@@ -79,7 +85,8 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 		err = err2
 		if err == nil {
 			dirGroups := sortByThingID(tdList)
-			data["Directory"] = dirGroups
+			//data["Directory"] = dirGroups
+			data.Directory = dirGroups
 		} else {
 			// the 'Directory' attribute is used by html know if to reload
 			err = fmt.Errorf("unable to load directory: %w", err)
@@ -95,8 +102,9 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 		session.SessionLogout(w, r)
 		return
 	}
-	data["PageNr"] = 1
+	data.PageNr = 1
 
 	// full render or fragment render
 	app.RenderAppOrFragment(w, r, DirectoryTemplate, data)
+
 }

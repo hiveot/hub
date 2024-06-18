@@ -14,7 +14,6 @@ func PubActionCommand(hc *hubclient.IHubClient) *cli.Command {
 		Usage:     "Publish action for Thing",
 		ArgsUsage: "<thingID> <action> [<value>]",
 		Description: "Request an action from a Thing, where:\n" +
-			"  pubID:   ID of the publisher of the Thing as shown by 'hubapi ld'\n" +
 			"  thingID: ID of the Thing to invoke\n" +
 			"  action:  Action to invoke as listed in the Thing's TD document\n" +
 			"  value:   Optional value if required by the action",
@@ -24,8 +23,8 @@ func PubActionCommand(hc *hubclient.IHubClient) *cli.Command {
 				return fmt.Errorf("missing arguments")
 			}
 			dThingID := cCtx.Args().First()
-			action := cCtx.Args().Get(2)
-			args := cCtx.Args().Get(3)
+			action := cCtx.Args().Get(1)
+			args := cCtx.Args().Get(2)
 			err := HandlePubActions(*hc, dThingID, action, args)
 			return err
 		},

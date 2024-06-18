@@ -56,7 +56,7 @@ func (svc *DigitwinService) HandleMessage(msg *things.ThingMessage) (stat hubcli
 	}
 	// TD event updates the directory and are broadcast to subscribers
 	if msg.Key == vocab.EventTypeTD {
-		return svc.Directory.HandleTDEvent(msg)
+		svc.Directory.HandleTDEvent(msg)
 	}
 	// regular events to be broadcast to subscribers
 	return svc.Outbox.HandleEvent(msg)

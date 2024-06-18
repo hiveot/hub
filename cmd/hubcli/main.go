@@ -102,7 +102,8 @@ func main() {
 			}
 			hc, err = connect.ConnectToHub(serverURL, loginID, certsDir, password)
 			if err != nil {
-				slog.Warn("Unable to connect to the server", "err", err)
+				slog.Error("Unable to connect to the server", "err", err)
+				return err
 			}
 			return nil
 		},
