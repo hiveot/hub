@@ -155,8 +155,9 @@ func (svc *DigitwinDirectory) ReadTDs(senderID string,
 // RemoveTD deletes the TD document from the given agent with the ThingID
 func (svc *DigitwinDirectory) RemoveTD(senderID string, thingID string) error {
 
-	slog.Info("RemoveThing",
-		slog.String("thingID", thingID))
+	slog.Info("RemoveTD",
+		slog.String("thingID", thingID),
+		slog.String("senderID", senderID))
 	// remove from both cache and bucket
 	err := svc.tdBucket.Delete(thingID)
 	svc.cachemux.Lock()

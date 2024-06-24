@@ -74,11 +74,8 @@ func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 // PostThingConfig handles posting of a thing configuration update
-// URL parameters:
-// * agentID
-// * thingID
-// * key
 // The posted form value contains a 'value' field
+// TODO: use the form method from the TD - once forms are added
 func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	propKey := chi.URLParam(r, "propKey")
@@ -86,15 +83,15 @@ func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 	stat := hubclient.DeliveryStatus{}
 	//
 	mySession, err := session.GetSessionFromContext(r)
-	hc := mySession.GetHubClient()
 	if err == nil {
+		hc := mySession.GetHubClient()
 		slog.Info("Updating config",
 			slog.String("thingID", thingID),
 			slog.String("propKey", propKey),
 			slog.String("value", value))
 
 		// don't make this an rpc as the response time isn't always known with sleeping devices
-		stat = hc.PubConfig(thingID, propKey, value)
+		stat = hc.PubProperty(thingID, propKey, value)
 		if stat.Error != "" {
 			err = errors.New(stat.Error)
 		}

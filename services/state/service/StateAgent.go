@@ -93,7 +93,7 @@ func NewStateAgent(svc *StateService) *StateAgent {
 func StartStateAgent(svc *StateService, hc hubclient.IHubClient) *StateAgent {
 	agent := StateAgent{hc: hc, svc: svc}
 	if hc != nil {
-		agent.hc.SetActionHandler(agent.HandleMessage)
+		agent.hc.SetMessageHandler(agent.HandleMessage)
 	}
 	return &agent
 }

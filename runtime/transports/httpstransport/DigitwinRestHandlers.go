@@ -21,7 +21,7 @@ import (
 // HandleGetEvents returns a list of latest messages from a Thing
 // Parameters: thingID
 func (svc *HttpsTransport) HandleGetEvents(w http.ResponseWriter, r *http.Request) {
-	cs, thingID, key, _, err := svc.getRequestParams(r)
+	cs, _, thingID, key, _, err := svc.getRequestParams(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -34,7 +34,9 @@ func (svc *HttpsTransport) HandleGetEvents(w http.ResponseWriter, r *http.Reques
 	}
 	argsJSON, _ := json.Marshal(args)
 	msg := things.NewThingMessage(vocab.MessageTypeAction,
-		digitwin.OutboxDThingID, digitwin.OutboxReadLatestMethod, argsJSON, cs.GetClientID())
+		digitwin.OutboxDThingID, digitwin.OutboxReadLatestMethod,
+		string(argsJSON), cs.GetClientID())
+
 	stat := svc.handleMessage(msg)
 	var reply []byte
 	if stat.Error == "" {
@@ -55,7 +57,7 @@ func (svc *HttpsTransport) HandleGetEvents(w http.ResponseWriter, r *http.Reques
 // HandleGetThings returns a list of things in the directory
 // No parameters
 func (svc *HttpsTransport) HandleGetThings(w http.ResponseWriter, r *http.Request) {
-	cs, _, _, _, err := svc.getRequestParams(r)
+	cs, _, _, _, _, err := svc.getRequestParams(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -76,7 +78,8 @@ func (svc *HttpsTransport) HandleGetThings(w http.ResponseWriter, r *http.Reques
 	args := digitwin.DirectoryReadTDsArgs{Limit: limit, Offset: offset}
 	argsJSON, _ := json.Marshal(args)
 	msg := things.NewThingMessage(vocab.MessageTypeAction,
-		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDsMethod, argsJSON, cs.GetClientID())
+		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDsMethod,
+		string(argsJSON), cs.GetClientID())
 
 	stat := svc.handleMessage(msg)
 
@@ -92,8 +95,36 @@ func (svc *HttpsTransport) HandleGetThings(w http.ResponseWriter, r *http.Reques
 	svc.writeReply(w, reply, err)
 }
 
+// HandleGetThing returns the TD of a thing in the directory
+// URL parameter {thingID}
+func (svc *HttpsTransport) HandleGetThing(w http.ResponseWriter, r *http.Request) {
+	cs, _, thingID, _, _, err := svc.getRequestParams(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	// FIXME: are single text arguments serialized?
+	// payload is always serialized ?
+	data, _ := json.Marshal(thingID)
+	msg := things.NewThingMessage(vocab.MessageTypeAction,
+		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod,
+		string(data), cs.GetClientID())
+	stat := svc.handleMessage(msg)
+
+	var reply []byte
+	if stat.Error == "" {
+		// the response is a serialized TD
+		// just return as-is
+		reply = []byte(stat.Reply)
+		err = nil
+	} else {
+		err = errors.New(stat.Error)
+	}
+	svc.writeReply(w, reply, err)
+}
+
 func (svc *HttpsTransport) HandlePostLogout(w http.ResponseWriter, r *http.Request) {
-	cs, _, _, _, err := svc.getRequestParams(r)
+	cs, _, _, _, _, err := svc.getRequestParams(r)
 	if err != nil {
 		return
 	}
@@ -162,7 +193,7 @@ func (svc *HttpsTransport) HandlePostRefresh(w http.ResponseWriter, r *http.Requ
 	var resp []byte
 
 	args := authn.UserRefreshTokenArgs{}
-	cs, _, _, data, err := svc.getRequestParams(r)
+	cs, _, _, _, data, err := svc.getRequestParams(r)
 	if err == nil {
 		err = json.Unmarshal(data, &args)
 	}
@@ -182,7 +213,7 @@ func (svc *HttpsTransport) HandlePostRefresh(w http.ResponseWriter, r *http.Requ
 
 // HandleSubscribe handles a subscription request
 func (svc *HttpsTransport) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
-	cs, thingID, key, _, err := svc.getRequestParams(r)
+	cs, _, thingID, key, _, err := svc.getRequestParams(r)
 	if err != nil {
 		slog.Warn("HandleSubscribe", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -200,7 +231,7 @@ func (svc *HttpsTransport) HandleSubscribe(w http.ResponseWriter, r *http.Reques
 // HandleUnsubscribe handles removal of a subscription request
 func (svc *HttpsTransport) HandleUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	slog.Info("HandleUnsubscribe")
-	cs, thingID, key, _, err := svc.getRequestParams(r)
+	cs, _, thingID, key, _, err := svc.getRequestParams(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

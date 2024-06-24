@@ -108,7 +108,7 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 
 		ev := things.NewThingMessage(vocab.MessageTypeEvent,
 			dThingID, names[randomName],
-			[]byte(fmt.Sprintf("%2.3f", randomValue)), "",
+			fmt.Sprintf("%2.3f", randomValue), "",
 		)
 		ev.SenderID = agentID
 		ev.CreatedMSec = randomTime.UnixMilli()
@@ -189,13 +189,13 @@ func TestAddGetEvent(t *testing.T) {
 	dThing1ID := things.MakeDigiTwinThingID(agent1ID, thing1ID)
 	ev1_1 := &things.ThingMessage{MessageType: vocab.MessageTypeEvent,
 		SenderID: agent1ID, ThingID: dThing1ID, Key: evTemperature,
-		Data: []byte("12.5"), CreatedMSec: fivemago.UnixMilli()}
+		Data: "12.5", CreatedMSec: fivemago.UnixMilli()}
 	err := addHist.AddEvent(ev1_1)
 	assert.NoError(t, err)
 	// add thing1 humidity from 55 minutes ago
 	ev1_2 := &things.ThingMessage{MessageType: vocab.MessageTypeEvent,
 		SenderID: agent1ID, ThingID: dThing1ID, Key: evHumidity,
-		Data: []byte("70"), CreatedMSec: fiftyfivemago.UnixMilli()}
+		Data: "70", CreatedMSec: fiftyfivemago.UnixMilli()}
 	err = addHist.AddEvent(ev1_2)
 	assert.NoError(t, err)
 
@@ -203,14 +203,14 @@ func TestAddGetEvent(t *testing.T) {
 	dThing2ID := things.MakeDigiTwinThingID(agent1ID, thing2ID)
 	ev2_1 := &things.ThingMessage{MessageType: vocab.MessageTypeEvent,
 		SenderID: agent1ID, ThingID: dThing2ID, Key: evHumidity,
-		Data: []byte("50"), CreatedMSec: fivemago.UnixMilli()}
+		Data: "50", CreatedMSec: fivemago.UnixMilli()}
 	err = addHist.AddEvent(ev2_1)
 	assert.NoError(t, err)
 
 	// add thing2 temperature from 55 minutes ago
 	ev2_2 := &things.ThingMessage{MessageType: vocab.MessageTypeEvent,
 		SenderID: agent1ID, ThingID: dThing2ID, Key: evTemperature,
-		Data: []byte("17.5"), CreatedMSec: fiftyfivemago.UnixMilli()}
+		Data: "17.5", CreatedMSec: fiftyfivemago.UnixMilli()}
 	err = addHist.AddEvent(ev2_2)
 	assert.NoError(t, err)
 
@@ -276,14 +276,14 @@ func TestAddPropertiesEvent(t *testing.T) {
 		SenderID:    agent1,
 		ThingID:     dThing1ID,
 		Key:         vocab.ActionSwitchOnOff,
-		Data:        []byte("on"),
+		Data:        "on",
 		MessageType: vocab.MessageTypeAction,
 	}
 	event1 := &things.ThingMessage{
 		SenderID:    agent1,
 		ThingID:     dThing1ID,
 		Key:         vocab.PropEnvTemperature,
-		Data:        []byte(temp1),
+		Data:        temp1,
 		MessageType: vocab.MessageTypeEvent,
 	}
 	badEvent1 := &things.ThingMessage{
@@ -319,7 +319,7 @@ func TestAddPropertiesEvent(t *testing.T) {
 		SenderID: agent1,
 		ThingID:  dThing1ID,
 		Key:      vocab.EventTypeProperties,
-		Data:     propsValue,
+		Data:     string(propsValue),
 	}
 
 	// in total add 5 properties
@@ -575,7 +575,7 @@ func TestPubSub(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		val := strconv.Itoa(i + 1)
 		// events are published by the agent using their native thingID
-		err := hc1.PubEvent(thing0ID, names[i], []byte(val))
+		err := hc1.PubEvent(thing0ID, names[i], val)
 		assert.NoError(t, err)
 		// make sure timestamp differs
 		time.Sleep(time.Millisecond * 3)
@@ -645,9 +645,9 @@ func TestManageRetention(t *testing.T) {
 	hc2, _ := ts.AddConnectService(device1ID)
 	require.NoError(t, err)
 	defer hc2.Disconnect()
-	err = hc2.PubEvent(thing0ID, event1Name, []byte("hi)"))
+	err = hc2.PubEvent(thing0ID, event1Name, "hi)")
 	assert.NoError(t, err)
-	err = hc2.PubEvent(thing0ID, event2Name, []byte("hi)"))
+	err = hc2.PubEvent(thing0ID, event2Name, "hi)")
 	assert.NoError(t, err)
 	// give it some time to persist the bucket
 	time.Sleep(time.Millisecond * 100)

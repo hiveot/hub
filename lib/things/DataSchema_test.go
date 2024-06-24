@@ -26,16 +26,16 @@ func TestStringSchema(t *testing.T) {
 func TestObjectSchema(t *testing.T) {
 	os := DataSchema{
 		Type:       vocab.WoTDataTypeObject,
-		Properties: make(map[string]DataSchema),
+		Properties: make(map[string]*DataSchema),
 	}
-	os.Properties["stringProp"] = DataSchema{
+	os.Properties["stringProp"] = &DataSchema{
 		Type:            vocab.WoTDataTypeString,
 		StringMinLength: 10,
 	}
-	os.Properties["intProp"] = DataSchema{
-		Type:          vocab.vocab.WoTDataTypeInteger,
-		NumberMinimum: 10,
-		NumberMaximum: 20,
+	os.Properties["intProp"] = &DataSchema{
+		Type:    vocab.WoTDataTypeInteger,
+		Minimum: 10,
+		Maximum: 20,
 	}
 	enc1, err := ser.Marshal(os)
 	assert.NoError(t, err)
@@ -48,6 +48,6 @@ func TestObjectSchema(t *testing.T) {
 	err = ser.Unmarshal(enc1, &as)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 10, int(as.Properties["intProp"].NumberMinimum))
+	assert.Equal(t, 10, int(as.Properties["intProp"].Minimum))
 
 }

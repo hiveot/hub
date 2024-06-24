@@ -39,13 +39,17 @@ func StartHistoryAgent(
 	}
 	rah := transports.NewAgentHandler(historyapi.ReadHistoryServiceID, readHistoryMethods)
 	mah := transports.NewAgentHandler(historyapi.ManageHistoryServiceID, manageHistoryMethods)
-	hc.SetActionHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
-		if msg.MessageType == vocab.MessageTypeAction {
+	// receive messages for events and agent requests
+	hc.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+		if msg.MessageType == vocab.MessageTypeAction || msg.MessageType == vocab.MessageTypeProperty {
 			if msg.ThingID == historyapi.ReadHistoryServiceID {
 				return rah.HandleMessage(msg)
 			} else if msg.ThingID == historyapi.ManageHistoryServiceID {
 				return mah.HandleMessage(msg)
 			}
+		} else if msg.MessageType == vocab.MessageTypeEvent {
+			err := svc.addHistory.AddEvent(msg)
+			return stat.Completed(msg, err)
 		}
 		stat.Failed(msg, fmt.Errorf("Unhandled message"))
 		return stat

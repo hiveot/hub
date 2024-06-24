@@ -35,7 +35,7 @@ import (
 //   - func([string]) ()
 //
 // where type1 and type2 can be a struct or native type, or a pointer to a struct or native type.
-func HandleRequestMessage(senderID string, method interface{}, payload []byte) (respData []byte, err error) {
+func HandleRequestMessage(senderID string, method interface{}, payload string) (respData string, err error) {
 
 	// magic spells found at: https://github.com/a8m/reflect-examples#call-function-with-list-of-arguments-and-validate-return-values
 	// and here: https://stackoverflow.com/questions/45679408/unmarshal-json-to-reflected-struct
@@ -63,15 +63,15 @@ func HandleRequestMessage(senderID string, method interface{}, payload []byte) (
 			if argIsRef {
 				// n1El is a struct pointer value?
 				// for some reason, unmarshall still needs to receive the address of it
-				err = ser.Unmarshal(payload, n1El.Addr().Interface())
+				err = ser.Unmarshal([]byte(payload), n1El.Addr().Interface())
 				argv[i] = reflect.ValueOf(n1El.Interface())
 			} else {
 				// n1El is the value, unmarshal to its address
-				err = ser.Unmarshal(payload, n1El.Addr().Interface())
+				err = ser.Unmarshal([]byte(payload), n1El.Addr().Interface())
 				argv[i] = reflect.ValueOf(n1El.Interface())
 			}
 			if err != nil {
-				return nil, fmt.Errorf("failed unmarshal request: %s", err)
+				return "", fmt.Errorf("failed unmarshal request: %s", err)
 			}
 		}
 
@@ -94,7 +94,7 @@ func HandleRequestMessage(senderID string, method interface{}, payload []byte) (
 		v1 := resValues[1]
 		errResp = v1.Interface()
 	} else {
-		return nil,
+		return "",
 			errors.New("method has more than 2 result params. This is not supported")
 	}
 	if errResp == nil {
@@ -106,7 +106,9 @@ func HandleRequestMessage(senderID string, method interface{}, payload []byte) (
 	if err == nil {
 		// marshal the response if arguments are given
 		if resp != nil {
-			respData, err = ser.Marshal(resp)
+			respJSON, err2 := ser.Marshal(resp)
+			err = err2
+			respData = string(respJSON)
 		}
 	}
 	return respData, err

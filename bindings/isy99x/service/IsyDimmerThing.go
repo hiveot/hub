@@ -26,8 +26,8 @@ func (it *IsyDimmerThing) GetTD() *things.TD {
 
 	a := td.AddDimmerAction(vocab.ActionDimmerSet)
 	a.Input.Unit = vocab.UnitPercent
-	a.Input.NumberMinimum = 0
-	a.Input.NumberMaximum = 100
+	a.Input.Minimum = 0
+	a.Input.Maximum = 100
 	// TODO: increment and decrement
 	//a = td.AddDimmerAction(vocab.VocabActionDecrement)
 	//a.Input.Unit = vocab.UnitNamePercent

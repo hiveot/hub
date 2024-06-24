@@ -2,19 +2,19 @@
 import type {TranslatedValueID, ZWaveNode} from "zwave-js";
 import {InterviewStage} from "zwave-js";
 import {getNodeTD} from "./getNodeTD";
-import {ParseValues} from "./ParseValues";
+import {NodeValues} from "./NodeValues";
 import {ZWAPI} from "./ZWAPI.js";
 import {parseController} from "./parseController";
 import {logVid} from "./logVid";
 import {getPropKey} from "./getPropKey";
 import * as vocab from "@hivelib/api/vocab/ht-vocab";
-import {ActionTypeProperties} from "@hivelib/api/vocab/ht-vocab";
 import fs from "fs";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import {BindingConfig} from "./BindingConfig";
 import * as tslog from 'tslog';
 import {DeliveryProgress, DeliveryStatus, IHubClient} from "@hivelib/hubclient/IHubClient";
-import {handleActionRequest} from "@zwavejs/handleActionRequest";
+import {handleHubMessage} from "@zwavejs/handleHubMessage";
+import {ValueID} from "@zwave-js/core";
 
 const log = new tslog.Logger()
 
@@ -33,7 +33,7 @@ export class ZwaveJSBinding {
     hc: IHubClient;
     zwapi: ZWAPI;
     // the last received values for each node by deviceID
-    lastValues = new Map<string, ParseValues>(); // nodeId: ValueMap
+    lastValues = new Map<string, NodeValues>(); // nodeId: ValueMap
 
     vidCsvFD: number | undefined
     config: BindingConfig
@@ -56,7 +56,7 @@ export class ZwaveJSBinding {
 
     // Driver failed, possibly due to removal of USB stick. Restart.
     handleDriverError(e: Error): void {
-        log.error("driver error");
+        log.error("driver error",e);
     }
 
     // Handle update of one of the node state flags
@@ -95,7 +95,7 @@ export class ZwaveJSBinding {
         this.hc.pubTD(thingTD)
 
         // publish the thing property (attr, config) values
-        let newValues = new ParseValues(node);
+        let newValues = new NodeValues(node);
         let lastNodeValues = this.lastValues.get(thingTD.id)
         let diffValues = newValues
         if (lastNodeValues) {
@@ -112,7 +112,7 @@ export class ZwaveJSBinding {
     // @param node: The node whose values have updated
     // @param vid: zwave value id
     // @param newValue: the updated value converted to a string
-    handleValueUpdate(node: ZWaveNode, vid: TranslatedValueID, newValue: unknown) {
+    handleValueUpdate(node: ZWaveNode, vid: ValueID, newValue: unknown) {
         let deviceID = this.zwapi.getDeviceID(node.id)
         let propID = getPropKey(vid)
         let valueMap = this.lastValues.get(deviceID);
@@ -122,11 +122,10 @@ export class ZwaveJSBinding {
             // TODO: convert the value to text using a precision
             // Determine if value changed enough to publish
             if (newValue != undefined) {
-                valueMap.values[propID] = newValue.toString()
-                //
-                let serValue = JSON.stringify(newValue)
+                let newValueStr = newValue.toString()
+                valueMap.values[propID] = newValueStr
                 log.info("handleValueUpdate: publish event for deviceID=" + deviceID + ", propID=" + propID + "")
-                this.hc.pubEvent(deviceID, propID, serValue)
+                this.hc.pubEvent(deviceID, propID, newValueStr)
             }
         } else {
             // for debugging
@@ -162,8 +161,8 @@ export class ZwaveJSBinding {
             this.vidCsvFD = fs.openSync(this.config.vidCsvFile, "w+", 0o640)
             logVid(this.vidCsvFD)
         }
-        this.hc.setActionHandler( (msg):DeliveryStatus => {
-            let stat = handleActionRequest(msg,this.zwapi, this.hc)
+        this.hc.setMessageHandler( (msg:ThingMessage):DeliveryStatus => {
+            let stat = handleHubMessage(msg,this.zwapi, this.hc)
             return stat
         })
 

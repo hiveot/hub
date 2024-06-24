@@ -1,5 +1,5 @@
 // Package genvocab for generating vocabulary
-package vocabs
+package vocab
 
 import (
 	"fmt"

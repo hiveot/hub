@@ -90,6 +90,6 @@ func StartLauncherAgent(svc *LauncherService, hc hubclient.IHubClient) *transpor
 
 	ah := transports.NewAgentHandler(launcherapi.ManageServiceID, methods)
 
-	hc.SetActionHandler(ah.HandleMessage)
+	hc.SetMessageHandler(ah.HandleMessage)
 	return ah
 }

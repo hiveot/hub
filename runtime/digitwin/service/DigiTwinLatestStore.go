@@ -211,7 +211,7 @@ func (svc *DigiTwinLatestStore) StoreMessage(msg *things.ThingMessage) {
 			for propName, propValue := range props {
 				propValueString := fmt.Sprint(propValue)
 				tv := things.NewThingMessage(vocab.MessageTypeEvent,
-					msg.ThingID, propName, []byte(propValueString), msg.SenderID)
+					msg.ThingID, propName, propValueString, msg.SenderID)
 				tv.CreatedMSec = msg.CreatedMSec
 
 				// in case events arrive out of order, only update if the msg is newer

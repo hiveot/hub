@@ -127,11 +127,7 @@ type IHubClient interface {
 	//  payload with serialized message to publish
 	//
 	// This returns a delivery status with serialized response message if delivered
-	PubAction(dThingID string, key string, payload []byte) DeliveryStatus
-
-	// PubConfig publishes a configuration change request for one or more writable properties
-	// Value is a serialized value based on the PropertyAffordances in the TD
-	PubConfig(dThingID string, key string, value string) DeliveryStatus
+	PubAction(dThingID string, key string, payload string) DeliveryStatus
 
 	// PubEvent publishes an event style message without a response.
 	// It returns as soon as delivery to the hub is confirmed.
@@ -145,7 +141,11 @@ type IHubClient interface {
 	//	payload with serialized message to publish
 	//
 	// This returns an error if the event cannot not be delivered to the hub
-	PubEvent(thingID string, key string, payload []byte) error
+	PubEvent(thingID string, key string, payload string) error
+
+	// PubProperty publishes a property change request
+	// Value is a serialized value based on the PropertyAffordances in the TD
+	PubProperty(dThingID string, key string, value string) DeliveryStatus
 
 	// PubProps publishes a property values event.
 	// It returns as soon as delivery to the hub is confirmed.
@@ -190,28 +190,21 @@ type IHubClient interface {
 	// and need to send an update on further progress.
 	SendDeliveryUpdate(stat DeliveryStatus)
 
-	// SetActionHandler set the handler that receives all actions directed at this client
-	// This replaces any previously set action handler.
+	// SetMessageHandler adds a handler for messages from the hub.
+	// This replaces any previously set handler.
+	// The handler should return a DeliveryStatus response for action and
+	// property messages. This response is ignored for events.
 	//
-	SetActionHandler(cb MessageHandler)
+	// To receive events use the 'Subscribe' method to set the events to listen for.
+	SetMessageHandler(cb MessageHandler)
 
 	// SetConnectHandler sets the notification handler of connection status changes
 	SetConnectHandler(cb func(status TransportStatus))
-
-	// SetEventHandler set the handler that receives all subscribed events, and other
-	// message types, subscribed to by this client.
-	//
-	// This replaces any previously set event handler.
-	//
-	// See also 'Subscribe' to set the ThingIDs this client receives messages for.
-	SetEventHandler(cb EventHandler)
 
 	// Subscribe adds a subscription for events from the given ThingID.
 	//
 	// This is for events only. Actions directed to this client are automatically passed
 	// to this client's messageHandler.
-	//
-	// Subscriptions remain in effect when the connection with the messaging server is interrupted.
 	//
 	//  dThingID is the digital twin ID of the Thing to subscribe to.
 	//	key is the type of event to subscribe to or "" for all events

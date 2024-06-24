@@ -27,7 +27,7 @@ type EmbeddedClient struct {
 	// sendMessage from the client to the protocol binding server
 	sendMessage hubclient.MessageHandler
 	// client side handler that receives actions from the server
-	receiveActionHandler hubclient.MessageHandler
+	messageHandler hubclient.MessageHandler
 	// client side handler that receives all non-action messages from the server
 	receiveEventHandler hubclient.EventHandler
 }
@@ -66,9 +66,9 @@ func (cl *EmbeddedClient) GetStatus() hubclient.TransportStatus {
 
 // HandleMessage receives a message from the embedded transport for this client
 func (cl *EmbeddedClient) HandleMessage(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
-	if msg.MessageType == vocab.MessageTypeAction {
-		if cl.receiveActionHandler != nil {
-			return cl.receiveActionHandler(msg)
+	if msg.MessageType == vocab.MessageTypeAction || msg.MessageType == vocab.MessageTypeProperty {
+		if cl.messageHandler != nil {
+			return cl.messageHandler(msg)
 		}
 	} else {
 		if cl.receiveEventHandler != nil {
@@ -93,23 +93,24 @@ func (cl *EmbeddedClient) Logout() error {
 // PubAction publishes an action request.
 // Since this is a direct call, the response include a reply.
 func (cl *EmbeddedClient) PubAction(
-	thingID string, key string, payload []byte) (stat hubclient.DeliveryStatus) {
+	thingID string, key string, payload string) (stat hubclient.DeliveryStatus) {
 
 	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, payload, cl.clientID)
 	stat = cl.sendMessage(msg)
 	return stat
 }
 
-// PubConfig publishes a configuration change request
-func (cl *EmbeddedClient) PubConfig(thingID string, key string, value string) (stat hubclient.DeliveryStatus) {
-	props := map[string]string{key: value}
-	propsJson, _ := json.Marshal(props)
-	return cl.PubAction(thingID, vocab.ActionTypeProperties, propsJson)
+// PubProperty publishes a configuration change request
+func (cl *EmbeddedClient) PubProperty(thingID string, key string, value string) (stat hubclient.DeliveryStatus) {
+
+	msg := things.NewThingMessage(vocab.MessageTypeProperty, thingID, key, value, cl.clientID)
+	stat = cl.sendMessage(msg)
+	return stat
 }
 
 // PubEvent publishes an event style message without waiting for a response.
 func (cl *EmbeddedClient) PubEvent(
-	thingID string, key string, payload []byte) error {
+	thingID string, key string, payload string) error {
 
 	msg := things.NewThingMessage(vocab.MessageTypeEvent, thingID, key, payload, cl.clientID)
 	stat := cl.sendMessage(msg)
@@ -122,13 +123,13 @@ func (cl *EmbeddedClient) PubEvent(
 // PubProps publishes a properties map
 func (cl *EmbeddedClient) PubProps(thingID string, props map[string]string) error {
 	payload, _ := json.Marshal(props)
-	return cl.PubEvent(thingID, vocab.EventTypeProperties, payload)
+	return cl.PubEvent(thingID, vocab.EventTypeProperties, string(payload))
 }
 
 // PubTD publishes a TD event
 func (cl *EmbeddedClient) PubTD(td *things.TD) error {
 	payload, _ := json.Marshal(td)
-	return cl.PubEvent(td.ID, vocab.EventTypeTD, payload)
+	return cl.PubEvent(td.ID, vocab.EventTypeTD, string(payload))
 }
 
 // RefreshToken does nothing as tokens aren't used
@@ -142,7 +143,7 @@ func (cl *EmbeddedClient) Rpc(
 	thingID string, key string, args interface{}, resp interface{}) error {
 
 	payload, _ := json.Marshal(args)
-	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, payload, cl.clientID)
+	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, string(payload), cl.clientID)
 	// this sendMessage is synchronous
 	stat := cl.sendMessage(msg)
 	if stat.Error == "" {
@@ -165,7 +166,7 @@ func (svc *EmbeddedClient) SendDeliveryUpdate(stat hubclient.DeliveryStatus) {
 	)
 	statJSON, _ := json.Marshal(&stat)
 	// thing
-	_ = svc.PubEvent(digitwin.InboxDThingID, vocab.EventTypeDeliveryUpdate, statJSON)
+	_ = svc.PubEvent(digitwin.InboxDThingID, vocab.EventTypeDeliveryUpdate, string(statJSON))
 }
 
 // SetConnectHandler does nothing as connection is always established
@@ -173,15 +174,9 @@ func (cl *EmbeddedClient) SetConnectHandler(cb func(status hubclient.TransportSt
 	return
 }
 
-// SetActionHandler set the handler that receives all subscribed action messages.
-func (cl *EmbeddedClient) SetActionHandler(cb hubclient.MessageHandler) {
-	cl.receiveActionHandler = cb
-}
-
-// SetEventHandler set the handler that receives all subscribed messages.
-// Use 'Subscribe' to set the type of events and actions to receive
-func (cl *EmbeddedClient) SetEventHandler(cb hubclient.EventHandler) {
-	cl.receiveEventHandler = cb
+// SetMessageHandler set the handler that receives all messages.
+func (cl *EmbeddedClient) SetMessageHandler(cb hubclient.MessageHandler) {
+	cl.messageHandler = cb
 }
 
 // Subscribe adds a subscription for one or more events. Events will be passed to

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Age converts the given time to the current age format h m s ago
+// Age converts the given time to the current age format h m s
 func Age(t time.Time) string {
 	dur := int(time.Now().Sub(t).Round(time.Second).Seconds())
 	days := dur / (24 * 3600)

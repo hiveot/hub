@@ -58,7 +58,7 @@ func (svc *DigiTwinInbox) AddAction(msg *things.ThingMessage) (InboxRecord, erro
 		Request: *msg,
 		DeliveryStatus: hubclient.DeliveryStatus{
 			MessageID: msg.MessageID,
-			Progress:  hubclient.DeliveryPending,
+			Progress:  hubclient.DeliveredToInbox,
 		},
 		ReceivedMSec:  time.Now().UnixMilli(),
 		DeliveredMSec: 0,
@@ -80,7 +80,7 @@ func (svc *DigiTwinInbox) GetRecord(messageID string) (r InboxRecord, err error)
 	return r, err
 }
 
-// HandleActionFlow receives a new action request from a consumer.
+// HandleActionFlow receives a new action or property request from a consumer.
 // This stores the action and forwards the request to the Thing's agent.
 // This returns a possible reply and a delivery status. The reply is nil if the delivery
 // is still in progress. If an error occurs then the delivery status contains the error.
@@ -122,7 +122,7 @@ func (svc *DigiTwinInbox) HandleActionFlow(msg *things.ThingMessage) (status hub
 	}
 	// the message itself is forwarded to the agent using the device's service
 	msg.ThingID = serviceID
-	actionRecord.DeliveryStatus.Progress = hubclient.DeliveryPending
+	actionRecord.DeliveryStatus.Progress = hubclient.DeliveredToInbox
 
 	stat, _ := svc.pm.SendToClient(agentID, msg)
 	actionRecord.DeliveryStatus = stat
@@ -191,6 +191,7 @@ func (svc *DigiTwinInbox) ReadLatest(
 	senderID string, args digitwin.InboxReadLatestArgs) (things.ThingMessageMap, error) {
 
 	valueMap, err := svc.latest.ReadLatest(vocab.MessageTypeAction, args.ThingID, nil, "")
+	// FIXME: read props as well
 	return valueMap, err
 }
 

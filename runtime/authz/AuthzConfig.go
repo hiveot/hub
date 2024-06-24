@@ -72,6 +72,9 @@ var agentPermissions = []RolePermission{
 	}, {
 		MsgType:  vocab.MessageTypeAction,
 		AllowSub: true,
+	}, {
+		MsgType:  vocab.MessageTypeProperty,
+		AllowSub: true,
 	},
 }
 
@@ -83,6 +86,9 @@ var servicePermissions = []RolePermission{
 		AllowSub: true,
 	}, {
 		MsgType:  vocab.MessageTypeAction,
+		AllowPub: true,
+	}, {
+		MsgType:  vocab.MessageTypeProperty,
 		AllowPub: true,
 	},
 }
@@ -101,9 +107,8 @@ var operatorPermissions = []RolePermission{
 		AllowSub: true,
 	}, {
 		// action to change properties is not allowed
-		MsgType:  vocab.MessageTypeAction,
-		MsgKey:   vocab.ActionTypeProperties,
-		AllowPub: false,
+		MsgType:  vocab.MessageTypeProperty,
+		AllowPub: true,
 	}, {
 		// any other actions are allowed
 		MsgType:  vocab.MessageTypeAction,
@@ -116,6 +121,10 @@ var managerPermissions = []RolePermission{
 	{
 		MsgType:  vocab.MessageTypeEvent,
 		AllowSub: true,
+	}, {
+		// action to change properties is not allowed
+		MsgType:  vocab.MessageTypeProperty,
+		AllowPub: true,
 	}, {
 		MsgType:  vocab.MessageTypeAction,
 		AllowPub: true,

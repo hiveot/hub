@@ -10,14 +10,12 @@ import {
 import type {IHiveKey} from "@keys/IHiveKey";
 import * as tslog from 'tslog';
 import {
-    ActionTypeProperties, ConnectSSEPath, EventTypeDeliveryUpdate,
+    ConnectSSEPath, EventTypeDeliveryUpdate,
     EventTypeProperties,
-    EventTypeTD, MessageTypeAction, MessageTypeEvent,
-    PostActionPath,
-    PostEventPath,
+    EventTypeTD, MessageTypeAction, MessageTypeEvent, MessageTypeProperty,
+    PostMessagePath,
     PostLoginPath, PostRefreshPath,
-    PostSubscribePath,
-    PostUnsubscribePath
+    PostSubscribePath,  PostUnsubscribePath
 } from "@hivelib/api/vocab/ht-vocab";
 import * as http2 from "node:http2";
 import {connectSSE} from "@hivelib/hubclient/httpclient/connectSSE";
@@ -43,12 +41,10 @@ export class HttpSSEClient implements IHubClient {
     // the auth token when using connectWithToken
     authToken: string;
 
-    // client handler for action requests of things published by this client, if any.
-    actionHandler: MessageHandler | null = null;
     // client handler for connection status change
     connectHandler: ((status: ConnectionStatus, info: ConnInfo) => void) | null = null
-    // client handler for subscribed events
-    eventHandler: EventHandler | null = null;
+    // client handler for incoming messages from the hub.
+    messageHandler: MessageHandler | null = null;
 
     // Instantiate the Hub Client.
     //
@@ -177,23 +173,21 @@ export class HttpSSEClient implements IHubClient {
         }
     }
 
-    // Handle incoming messages and pass them to the event handler
-    onMessage(tm: ThingMessage): void {
+    // Handle incoming messages from the hub and pass them to handler
+    onMessage(msg: ThingMessage): void {
         try {
-            if (tm.messageType == MessageTypeEvent) {
-                if (this.eventHandler) {
-                    this.eventHandler(tm)
-                }
-            }
-            // action responses are sent back to the sender
-            if (tm.messageType == MessageTypeAction) {
-                if (this.actionHandler) {
-                    let stat = this.actionHandler(tm)
+            if (this.messageHandler) {
+                let stat = this.messageHandler(msg)
+                if (msg.messageType !== MessageTypeEvent && stat.progress && stat.messageID) {
                     this.sendDeliveryUpdate(stat)
                 }
             }
         } catch (e) {
-            hclog.error("Exception handling message '"+tm.thingID+":"+tm.key+"':", e)
+            let errText = `Error handling hub message sender=${msg.senderID}, messageType=${msg.messageType}, thingID=${msg.thingID}, key=${msg.key}, error=${e}`
+            hclog.warn(errText)
+            let stat = new DeliveryStatus()
+            stat.Failed(msg,errText)
+            this.sendDeliveryUpdate(stat)
         }
     }
 
@@ -257,20 +251,31 @@ export class HttpSSEClient implements IHubClient {
     async pubAction(thingID: string, key: string, payload: string): Promise<DeliveryStatus> {
             hclog.info("pubAction. thingID:", thingID, ", key:", key)
 
-            let actionPath = PostActionPath.replace("{thingID}", thingID)
-            actionPath = actionPath.replace("{key}", key)
+            let actionPath = PostMessagePath.replace("{thingID}", thingID)
+        actionPath = actionPath.replace("{key}", key)
+        actionPath = actionPath.replace("{messageType}", MessageTypeAction)
 
             let resp = await this.postRequest(actionPath, payload)
             let stat: DeliveryStatus = JSON.parse(resp)
             return stat
     }
 
-    // PubAction publishes a request for changing a Thing's configuration.
+    // pubProperty publishes a request for changing a Thing's property.
     // The configuration is a writable property as defined in the Thing's TD.
-    async pubConfig(thingID: string, propName: string, propValue: string): Promise<DeliveryStatus> {
-        let props = {propName:propValue}
+    async pubProperty(thingID: string, key: string, propValue: string): Promise<DeliveryStatus> {
+        hclog.info("pubProperty. thingID:", thingID, ", key:", key)
+
+        // fixme; prop payload
+        let props = {key:propValue}
         let propsJson = JSON.stringify(props)
-        return  this.pubAction(thingID, ActionTypeProperties, propsJson)
+
+        let propPath = PostMessagePath.replace("{thingID}", thingID)
+        propPath = propPath.replace("{key}", key)
+        propPath = propPath.replace("{messageType}", MessageTypeProperty)
+
+        let resp = await this.postRequest(propPath, propsJson)
+        let stat: DeliveryStatus = JSON.parse(resp)
+        return stat
     }
 
     // PubEvent publishes a Thing event. The payload is an event value as per TD document.
@@ -288,8 +293,10 @@ export class HttpSSEClient implements IHubClient {
     //	@param eventName: is one of the predefined events as described in the Thing TD
     //	@param payload: is the serialized event value, or nil if the event has no value
     async pubEvent(thingID: string, key: string, payload: string):Promise<DeliveryStatus> {
-        let eventPath = PostEventPath.replace("{thingID}",thingID)
-        eventPath = eventPath.replace("{key}",key)
+
+        let eventPath = PostMessagePath.replace("{thingID}", thingID)
+        eventPath = eventPath.replace("{key}", key)
+        eventPath = eventPath.replace("{messageType}", MessageTypeEvent)
 
         let resp = await this.postRequest(eventPath, payload)
         let stat: DeliveryStatus = JSON.parse(resp)
@@ -324,6 +331,13 @@ export class HttpSSEClient implements IHubClient {
         return stat
     }
 
+    // Read Thing definitions from the directory
+    // @param publisherID whose things to read or "" for all publishers
+    // @param thingID whose to read or "" for all things of the publisher(s)
+    // async readDirectory(agentID: string, thingID: string): Promise<string> {
+    // 	return global.hapiReadDirectory(publisherID, thingID);
+    // }
+
 
     // obtain a new token
     async refreshToken(): Promise<string> {
@@ -356,37 +370,21 @@ export class HttpSSEClient implements IHubClient {
         this.pubEvent("dtw::inbox", EventTypeDeliveryUpdate, statJSON)
     }
 
-    // set the handler of thing action requests and subscribe to action requests
-    setActionHandler(handler: MessageHandler) {
-        this.actionHandler = handler
-    }
 
     setConnectHandler(handler: (status: ConnectionStatus, info: string) => void): void {
         this.connectHandler = handler
     }
 
-    // set the handler for subscribed events
-    setEventHandler(handler: EventHandler): void {
-        this.eventHandler = handler
-    }
-
-    // set the handler of rpc requests
-    // setRPCHandler(handler: (tv: ThingMessage) => string) {
-    //     this.rpcHandler = handler
-    //     // handler of requests is the same for actions, config and rpc
-    //     this.tp.setRequestHandler(this.onRequest.bind(this))
-    //     let addr = this._makeAddress(MessageType.RPC, this.clientID, "", "", "")
-    //     this.tp.subscribe(addr)
+    // set the handler of incoming messages such as action requests or events
     //
-    // }
-
-
-    // Read Thing definitions from the directory
-    // @param publisherID whose things to read or "" for all publishers
-    // @param thingID whose to read or "" for all things of the publisher(s)
-    // async readDirectory(agentID: string, thingID: string): Promise<string> {
-    // 	return global.hapiReadDirectory(publisherID, thingID);
-    // }
+    // The handler should return a DeliveryStatus containing the delivery progress.
+    // This is ignored for events.
+    //
+    // Event messages are not received until the subscribe method is invoked with
+    // the event keys to subscribe to.
+    setMessageHandler(handler: MessageHandler) {
+        this.messageHandler = handler
+    }
 
     // Subscribe to events from things.
     //

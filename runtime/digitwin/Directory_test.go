@@ -128,7 +128,7 @@ func TestHandleTDEvent(t *testing.T) {
 	tdDoc1 := createTDDoc(rawThing1ID, title1)
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
 	msg := things.NewThingMessage(vocab.MessageTypeEvent, rawThing1ID,
-		vocab.EventTypeTD, tdDoc1Json, agentID)
+		vocab.EventTypeTD, string(tdDoc1Json), agentID)
 	stat := svc.HandleTDEvent(msg)
 	assert.Empty(t, stat.Error)
 

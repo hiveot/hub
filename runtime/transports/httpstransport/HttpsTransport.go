@@ -105,26 +105,18 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 
 		// register the general purpose event and action message transport
 		// these allows the binding to work as a transport for agents and consumers
-		r.Post(vocab.PostActionPath, svc.HandlePostAction)
-		r.Post(vocab.PostEventPath, svc.HandlePostEvent)
+		r.Post(vocab.PostMessagePath, svc.HandlePostMessage)
 		r.Post(vocab.PostSubscribePath, svc.HandleSubscribe)
 		r.Post(vocab.PostUnsubscribePath, svc.HandleUnsubscribe)
 
-		// register rest api for built-in easy auth refresh and logout
+		// rest api for easy auth refresh and logout
 		r.Post(vocab.PostRefreshPath, svc.HandlePostRefresh)
 		r.Post(vocab.PostLogoutPath, svc.HandlePostLogout)
 
-		// register rest api for built-in services
-		//svc.authnHandler.RegisterMethods(r)
-		//svc.dtDirectoryHandler.RegisterMethods(r)
-		//svc.dtValuesHandler.RegisterMethods(r)
-		//svc.dtHistoryHandler.RegisterMethods(r)
+		// rest api for reading events or tds
 		r.Get(vocab.GetEventsPath, svc.HandleGetEvents)
 		r.Get(vocab.GetThingsPath, svc.HandleGetThings)
-
-		// sse return channels
-		//svc.sseHandler.RegisterMethods(r)
-		//r.Get(vocab.ConnectWSPath, svc.handleWSConnect)
+		r.Get(vocab.GetThingPath, svc.HandleGetThing)
 	})
 
 	return router
@@ -136,7 +128,7 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 // this returns an error. Note that the session middleware handler will block any request
 // that requires a session.
 func (svc *HttpsTransport) getRequestParams(r *http.Request) (
-	session *sessions.ClientSession, thingID string, key string, body []byte, err error) {
+	session *sessions.ClientSession, messageType string, thingID string, key string, body []byte, err error) {
 	// get the required client session of this agent
 	ctxSession := r.Context().Value(sessions.SessionContextID)
 	if ctxSession == nil {
@@ -145,7 +137,7 @@ func (svc *HttpsTransport) getRequestParams(r *http.Request) (
 		err = fmt.Errorf("Missing session for request '%s' from '%s'",
 			r.RequestURI, r.RemoteAddr)
 		slog.Error(err.Error())
-		return nil, "", "", nil, err
+		return nil, messageType, "", "", nil, err
 	}
 	cs := ctxSession.(*sessions.ClientSession)
 
@@ -153,9 +145,10 @@ func (svc *HttpsTransport) getRequestParams(r *http.Request) (
 	// URLParam names are defined by the path variables set in the router.
 	thingID = chi.URLParam(r, "thingID")
 	key = chi.URLParam(r, "key")
+	messageType = chi.URLParam(r, "messageType")
 	body, _ = io.ReadAll(r.Body)
 
-	return cs, thingID, key, body, err
+	return cs, messageType, thingID, key, body, err
 }
 
 // writeReply is a convenience function that writes a reply to a request.
@@ -190,10 +183,10 @@ func (svc *HttpsTransport) GetProtocolInfo() api.ProtocolInfo {
 	return inf
 }
 
-// HandlePostAction passes a posted action to the handler
+// HandlePostMessage passes a posted action, event or property request to the handler
 // this contains optional query parameter for messageID
-func (svc *HttpsTransport) HandlePostAction(w http.ResponseWriter, r *http.Request) {
-	cs, thingID, key, body, err := svc.getRequestParams(r)
+func (svc *HttpsTransport) HandlePostMessage(w http.ResponseWriter, r *http.Request) {
+	cs, messageType, thingID, key, body, err := svc.getRequestParams(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -204,28 +197,7 @@ func (svc *HttpsTransport) HandlePostAction(w http.ResponseWriter, r *http.Reque
 	}
 	// this request can simply be turned into an action message.
 	msg := things.NewThingMessage(
-		vocab.MessageTypeAction, thingID, key, body, cs.GetClientID())
-	msg.MessageID = messageID
-
-	stat := svc.handleMessage(msg)
-	reply, err := json.Marshal(&stat)
-	svc.writeReply(w, reply, err)
-}
-
-// HandlePostEvent passes a posted event to the router
-func (svc *HttpsTransport) HandlePostEvent(w http.ResponseWriter, r *http.Request) {
-	cs, thingID, key, body, err := svc.getRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	messageID := r.URL.Query().Get("messageID")
-	if messageID == "" {
-		messageID = uuid.NewString()
-	}
-	// this request can simply be turned into an event message.
-	msg := things.NewThingMessage(
-		vocab.MessageTypeEvent, thingID, key, body, cs.GetClientID())
+		messageType, thingID, key, string(body), cs.GetClientID())
 	msg.MessageID = messageID
 
 	stat := svc.handleMessage(msg)
@@ -255,7 +227,7 @@ func (svc *HttpsTransport) SendToClient(
 			found = false
 		} else {
 			// completion status is sent asynchroneously by the agent
-			stat.Progress = hubclient.DeliveryDelivered
+			stat.Progress = hubclient.DeliveredToAgent
 			found = true
 		}
 	}

@@ -275,9 +275,9 @@ func TestPostEventAction(t *testing.T) {
 	require.NotEmpty(t, token)
 
 	// 3. publish two events
-	err = cl.PubEvent(thingID, eventKey, []byte(testMsg))
+	err = cl.PubEvent(thingID, eventKey, testMsg)
 	require.NoError(t, err)
-	err = cl.PubEvent(thingID, eventKey, []byte(testMsg))
+	err = cl.PubEvent(thingID, eventKey, testMsg)
 	require.NoError(t, err)
 
 	// 4. verify that the handler received it
@@ -288,7 +288,7 @@ func TestPostEventAction(t *testing.T) {
 	}
 
 	// 5. publish an action
-	stat := cl.PubAction(thingID, actionKey, []byte(testMsg))
+	stat := cl.PubAction(thingID, actionKey, testMsg)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 100)
 	assert.NotEmpty(t, stat.Reply)
@@ -329,16 +329,17 @@ func TestPubSubSSE(t *testing.T) {
 	time.Sleep(time.Millisecond * 3)
 
 	// 3. register the handler for events
-	cl.SetEventHandler(func(msg *things.ThingMessage) error {
-		rxMsg.Store(&msg)
-		return nil
-	})
+	cl.SetMessageHandler(
+		func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+			rxMsg.Store(&msg)
+			return stat.Completed(msg, nil)
+		})
 	err = cl.Subscribe(thingID, "")
 	require.NoError(t, err)
 
 	// 4. publish an event using the hub client, the server will invoke the message handler
 	// which in turn will publish this to the listeners over sse, including this client.
-	err = cl.PubEvent(thingID, eventKey, []byte(testMsg))
+	err = cl.PubEvent(thingID, eventKey, testMsg)
 	assert.NoError(t, err)
 	time.Sleep(time.Millisecond * 10)
 	//
@@ -381,7 +382,7 @@ func TestRestart(t *testing.T) {
 	defer svc.Stop()
 
 	// 3. publish an event should fail without a login
-	err = cl.PubEvent(thingID, eventKey, []byte(testMsg))
+	err = cl.PubEvent(thingID, eventKey, testMsg)
 	require.Error(t, err)
 
 	require.Nil(t, rxMsg)
@@ -410,7 +411,7 @@ func TestReconnect(t *testing.T) {
 	// this test handler receives an action, returns a 'delivered status',
 	// and sends a completed status through the sse return channel (SendToClient)
 	actionHandler = func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
-		stat.Progress = hubclient.DeliveryDelivered
+		stat.Progress = hubclient.DeliveredToAgent
 		if tv.MessageType == vocab.MessageTypeEvent {
 			// ignore events
 			return stat
@@ -453,7 +454,7 @@ func TestReconnect(t *testing.T) {
 	// give client time to reconnect
 	time.Sleep(time.Second * 3)
 	// publish event to rekindle the connection
-	cl.PubEvent("dummything", "dummyKey", nil)
+	cl.PubEvent("dummything", "dummyKey", "")
 	// 4. The SSE return channel should reconnect automatically
 	var rpcArgs string = "rpc test"
 	var rpcResp string

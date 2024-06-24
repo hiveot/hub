@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
@@ -74,16 +75,19 @@ func TestStartStop(t *testing.T) {
 func TestPoll(t *testing.T) {
 	var tdCount atomic.Int32
 	const device1ID = "device1"
+	const userID = "user1"
 
 	t.Log("--- TestPoll ---")
 	hc, _ := ts.AddConnectAgent(device1ID)
 	defer hc.Disconnect()
+	hc2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	defer hc2.Disconnect()
 	svc := service.NewOWServerBinding(&owsConfig)
 
 	// Count the number of received TD events
-	err := hc.Subscribe("", "")
+	err := hc2.Subscribe("", "")
 	require.NoError(t, err)
-	hc.SetEventHandler(func(ev *things.ThingMessage) error {
+	hc2.SetMessageHandler(func(ev *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		slog.Info("received event", "id", ev.Key)
 		if ev.Key == vocab.EventTypeProperties {
 			var value map[string]interface{}
@@ -95,7 +99,7 @@ func TestPoll(t *testing.T) {
 			assert.NoError(t, err2)
 		}
 		tdCount.Add(1)
-		return nil
+		return stat.Completed(ev, nil)
 	})
 	assert.NoError(t, err)
 

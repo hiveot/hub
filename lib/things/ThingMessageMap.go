@@ -49,7 +49,7 @@ func (vm ThingMessageMap) ToString(key string) string {
 	if tv == nil {
 		return ""
 	}
-	return string(tv.Data)
+	return tv.Data
 }
 
 // Set a property value in the map

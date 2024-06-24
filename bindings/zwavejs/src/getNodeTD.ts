@@ -118,7 +118,7 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     //--- Step 2: Add read-only attributes that are common to many nodes
     // since none of these have standard property names, use the ZWave name instead.
     // these names must match those used in parseNodeValues()
-    td.AddProperty("associationCount", "", "Association Count",
+    let prop = td.AddProperty("associationCount", "", "Association Count",
         WoTDataTypeNumber);
 
     td.AddPropertyIf(node.canSleep, "canSleep", "",
@@ -142,29 +142,26 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     }
     td.AddPropertyIf(node.isListening, "isListening", "",
         "Device always listens", WoTDataTypeBool);
-    td.AddPropertyIf(node.isSecure, "isSecure", "",
-        "Device communicates securely with controller", WoTDataTypeBool);
-    td.AddPropertyIf(node.isRouting, "isRouting", "",
-        "Device support message routing/forwarding (if listening)", WoTDataTypeBool);
+    td.AddPropertyIf(node.isSecure, "isSecure", "", "Secured",WoTDataTypeBool,
+        "Device communicates securely with controller", );
+    td.AddPropertyIf(node.isRouting, "isRouting", "", "Routing Device",WoTDataTypeBool,
+        "Device support message routing/forwarding (if listening)", );
     td.AddPropertyIf(node.isControllerNode, "isControllerNode", "",
         "Device is a ZWave controller", WoTDataTypeBool);
-    td.AddPropertyIf(node.keepAwake, "keepAwake", "",
-        "Device stays awake a bit longer before sending it to sleep", WoTDataTypeBool);
-    td.AddPropertyIf(node.label, "nodeLabel", vocab.PropDeviceModel, "Device label", WoTDataTypeString);
+    td.AddPropertyIf(node.keepAwake, "keepAwake", "","Keep Awake", WoTDataTypeBool,
+        "Device stays awake a bit longer before sending it to sleep")
+    td.AddPropertyIf(node.label, "nodeLabel", vocab.PropDeviceModel, "Manufacturer device label", WoTDataTypeString);
+    td.AddProperty("lastseen", "", "Last Seen", WoTDataTypeString)
+        .description = "Time this node was last seen"
 
-    // the node.name is editable and use for both the TD title as well as the "title property"
-    let prop = td.AddProperty("", vocab.PropDeviceTitle, "Device name", WoTDataTypeString);
-    prop.readOnly = false
-    prop = td.AddProperty("", vocab.PropLocation, "Device location",  WoTDataTypeString);
-    prop.readOnly = false
-    prop.description = "Description of the device location"
 
     td.AddPropertyIf(node.manufacturerId, "manufacturerId", "",
         "Manufacturer ID", WoTDataTypeString);
     td.AddPropertyIf(node.deviceConfig?.manufacturer, "", vocab.PropDeviceMake,
         "Manufacturer", WoTDataTypeString);
     td.AddPropertyIf(node.maxDataRate, "maxDataRate", "",
-        "Device maximum communication data rate", WoTDataTypeNumber);
+         WoTDataTypeNumber,
+        "Device maximum communication data rate");
     if (node.nodeType) {
         td.AddProperty("nodeType", "", "ZWave node type", WoTDataTypeNumber).SetAsEnum(NodeType)
     }
@@ -232,8 +229,35 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
 
     //--- Step 4: add properties, events, and actions from the ValueIDs
 
-    let vids = node.getDefinedValueIDs()
+    //--- FIXME: use the CC for device title and location
+    // Currently the name and location VID (CC 119) is only included when a
+    // name and location is set, so create the Vid here manually to ensure it is
+    // always there.
+    // Reading this CC 119 does work and returns the value set with node.name and
+    // node.location.
+    let titleCC = CommandClasses["Node Naming and Location"] // 119
+    let nameVid = {
+        commandClass: titleCC,
+        endpoint: 0,
+        property: "name"
+    }
+    let titleKey = getPropKey(nameVid)
+    prop = td.AddProperty(titleKey, vocab.PropDeviceTitle, "Device name", WoTDataTypeString);
+    prop.readOnly = false
+    prop.description = "Custom device name/title"
 
+    let locationVid = {
+        commandClass: titleCC,
+        endpoint: 0,
+        property: "location"
+    }
+    let locationKey = getPropKey(locationVid)
+    prop = td.AddProperty(locationKey, vocab.PropLocation, "Device location",  WoTDataTypeString);
+    prop.readOnly = false
+    prop.description = "Description of the device location"
+
+    // now continue with the other vids
+    let vids = node.getDefinedValueIDs()
     for (let vid of vids) {
         let va = getVidAffordance(node, vid, maxNrScenes)
 

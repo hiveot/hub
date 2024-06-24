@@ -4,6 +4,7 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/ser"
+	"github.com/hiveot/hub/lib/utils"
 	"sync"
 	"time"
 )
@@ -335,6 +336,16 @@ func (tdoc *TD) GetPropertyOfType(atType string) (string, *PropertyAffordance) {
 		}
 	}
 	return "", nil
+}
+
+// GetAge is a helper function to return the age of the TD.
+func (tdoc *TD) GetAge() string {
+	modifiedTime, err := dateparse.ParseAny(tdoc.Modified)
+	if err != nil {
+		return tdoc.Modified
+	}
+	age := utils.Age(modifiedTime)
+	return age
 }
 
 // GetUpdated is a helper function to return the formatted time the thing was last updated.

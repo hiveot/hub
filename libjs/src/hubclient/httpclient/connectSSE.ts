@@ -1,7 +1,8 @@
 import * as tslog from 'tslog';
 import {EventHandler} from "@hivelib/hubclient/IHubClient";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
-var EventSource = require('eventsource')
+// var EventSource = require('eventsource')
+import EventSource from 'eventsource'
 
 const hclog = new tslog.Logger()
 
@@ -27,6 +28,10 @@ export function  connectSSE(
         handler(msg)
     })
     source.addEventListener("event",(e:any)=>{
+        let msg: ThingMessage = JSON.parse(e.data)
+        handler(msg)
+    })
+    source.addEventListener("property",(e:any)=>{
         let msg: ThingMessage = JSON.parse(e.data)
         handler(msg)
     })

@@ -50,6 +50,9 @@ func (svc *DigitwinService) HandleMessage(msg *things.ThingMessage) (stat hubcli
 	if msg.MessageType == vocab.MessageTypeAction {
 		return svc.Inbox.HandleActionFlow(msg)
 	}
+	if msg.MessageType == vocab.MessageTypeProperty {
+		return svc.Inbox.HandleActionFlow(msg)
+	}
 	// action delivery update event, send by client
 	if msg.Key == vocab.EventTypeDeliveryUpdate {
 		return svc.Inbox.HandleDeliveryUpdate(msg)

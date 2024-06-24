@@ -7,9 +7,6 @@ import (
 // ReadHistoryServiceID is the ID of the service exposed by the agent
 const ReadHistoryServiceID = "read"
 
-// MessageTypeProperty is internal to the history service to store property type messages
-const MessageTypeProperty = "property"
-
 // Read history methods
 const (
 	// CursorNextNMethod returns a batch of next N historical values

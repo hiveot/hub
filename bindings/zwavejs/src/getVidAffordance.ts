@@ -5,12 +5,16 @@ import * as vocab from "@hivelib/api/vocab/ht-vocab.js";
 
 // ValueID to TD event,action or property affordance type
 export interface VidAffordance {
-    atType: string, // @type of the property, event or action, "" if not known
+    // @type of the property, event or action, "" if not known
+    atType: string,
+    // attr is read-only property; config is writable property
     messageType: "action" | "event" | "attr" | "config" | undefined
 }
 
-// Override of zwavejs VID to HiveOT action, event, config or attributes
-// This allows fine-grained adjustments of the default rules for mapping VIDs.
+// Override map of zwavejs VID to HiveOT action, event, config or attributes.
+//
+// This overrides the vid derived message type to allow fine-grained adjustments
+// of the default rules for mapping VIDs.
 // Key is the VID {CC}-{propertyName}[-{propertyKey}] (if propertyKey exists)
 const overrideMap: Map<string, Partial<VidAffordance> | undefined> = new Map([
     // Basic 0x20 (32): ignore these VIDs as there are more specific ones

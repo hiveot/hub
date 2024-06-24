@@ -46,7 +46,7 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 	// update the server. users can connect and have unlimited access
 	profiles, err := authn.AdminGetProfiles(hc)
 	require.NoError(t, err)
-	assert.Equal(t, 6+2, len(profiles))
+	assert.Equal(t, 6+3, len(profiles))
 
 	err = authn.AdminRemoveClient(hc, "user1")
 	assert.NoError(t, err)
@@ -61,10 +61,10 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 
 	profiles, err = authn.AdminGetProfiles(hc)
 	require.NoError(t, err)
-	assert.Equal(t, 2+2, len(profiles))
+	assert.Equal(t, 2+3, len(profiles))
 
 	clEntries := svc.AdminSvc.GetEntries()
-	assert.Equal(t, 2+2, len(clEntries))
+	assert.Equal(t, 2+3, len(clEntries))
 
 	err = authn.AdminAddConsumer(hc, "user1", "user 1", "pass1")
 	assert.NoError(t, err)

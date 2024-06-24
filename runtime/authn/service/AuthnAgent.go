@@ -48,7 +48,7 @@ func StartAuthnAgent(
 	agent.adminHandler = authn.NewAdminHandler(svc.AdminSvc)
 	agent.userHandler = authn.NewUserHandler(svc.UserSvc)
 	if hc != nil {
-		agent.hc.SetActionHandler(agent.HandleMessage)
+		agent.hc.SetMessageHandler(agent.HandleMessage)
 	}
 	return &agent, err
 }

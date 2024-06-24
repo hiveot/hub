@@ -106,7 +106,7 @@ func (svc *OWServerBinding) Start(hc hubclient.IHubClient) (err error) {
 		svc.config.OWServerURL, svc.config.OWServerLogin, svc.config.OWServerPassword)
 
 	// subscribe to action and configuration requests
-	svc.hc.SetActionHandler(svc.HandleActionRequest)
+	svc.hc.SetMessageHandler(svc.HandleActionRequest)
 
 	// tbd: set the default permissions for managing this binding. is this needed?
 	//authzClient := authzclient.NewAuthzClient(hc)

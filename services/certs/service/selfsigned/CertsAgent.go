@@ -22,6 +22,6 @@ func StartCertsAgent(svc *SelfSignedCertsService, hc hubclient.IHubClient) *tran
 	}
 
 	ah := transports.NewAgentHandler(certsapi.CertsAdminThingID, methods)
-	hc.SetActionHandler(ah.HandleMessage)
+	hc.SetMessageHandler(ah.HandleMessage)
 	return ah
 }

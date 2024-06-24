@@ -152,7 +152,7 @@ func (svc *IsyBinding) Start(hc hubclient.IHubClient) (err error) {
 	svc.IsyGW.Init(svc.isyAPI)
 
 	// subscribe to action requests
-	svc.hc.SetActionHandler(svc.handleActionRequest)
+	svc.hc.SetMessageHandler(svc.handleActionRequest)
 
 	// last, start polling heartbeat
 	svc.stopHeartbeatFn = svc.startHeartbeat()

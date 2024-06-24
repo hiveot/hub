@@ -10,7 +10,7 @@ import (
 
 // HandleActionRequest passes the action request to the associated Thing.
 func (svc *IsyBinding) handleActionRequest(action *things.ThingMessage) (stat hubclient.DeliveryStatus) {
-	if action.Key == vocab.ActionTypeProperties {
+	if action.MessageType == vocab.MessageTypeProperty {
 		return svc.handleConfigRequest(action)
 	}
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/services/history/historyapi"
 	"log/slog"
 	"strconv"
 	"time"
@@ -25,29 +24,29 @@ type AddHistory struct {
 // encode a ThingMessage into a single key value pair for easy storage and filtering.
 // Encoding generates a key as: timestampMsec/name/a|e|p/sender,
 // where a|e|p indicates action, event or property
-func (svc *AddHistory) encodeValue(tv *things.ThingMessage) (key string, val []byte) {
+func (svc *AddHistory) encodeValue(msg *things.ThingMessage) (key string, val string) {
 	var err error
 	ts := time.Now()
-	if tv.CreatedMSec > 0 {
-		ts = time.UnixMilli(tv.CreatedMSec)
+	if msg.CreatedMSec > 0 {
+		ts = time.UnixMilli(msg.CreatedMSec)
 		if err != nil {
-			slog.Warn("Invalid CreatedMSec time. Using current time instead", "created", tv.CreatedMSec)
+			slog.Warn("Invalid CreatedMSec time. Using current time instead", "created", msg.CreatedMSec)
 			ts = time.Now()
 		}
 	}
 
 	// the index uses milliseconds for timestamp
 	timestamp := ts.UnixMilli()
-	key = strconv.FormatInt(timestamp, 10) + "/" + tv.Key
-	if tv.MessageType == vocab.MessageTypeAction {
+	key = strconv.FormatInt(timestamp, 10) + "/" + msg.Key
+	if msg.MessageType == vocab.MessageTypeAction {
 		key = key + "/a"
-	} else if tv.MessageType == historyapi.MessageTypeProperty {
+	} else if msg.MessageType == vocab.MessageTypeProperty {
 		key = key + "/p"
 	} else {
 		key = key + "/e"
 	}
-	key = key + "/" + tv.SenderID
-	val = tv.Data
+	key = key + "/" + msg.SenderID
+	val = msg.Data
 	return key, val
 }
 
@@ -72,7 +71,7 @@ func (svc *AddHistory) AddAction(actionValue *things.ThingMessage) error {
 	}
 	key, val := svc.encodeValue(actionValue)
 	bucket := svc.store.GetBucket(dThingID)
-	err = bucket.Set(key, val)
+	err = bucket.Set(key, []byte(val))
 	_ = bucket.Close()
 	if svc.onAddedValue != nil {
 		svc.onAddedValue(actionValue)
@@ -95,14 +94,14 @@ func (svc *AddHistory) AddProperties(msg *things.ThingMessage) error {
 	for propName, propValue := range propMap {
 		propValueString := fmt.Sprint(propValue)
 		// store this as a property message to differentiate from events
-		tv := things.NewThingMessage(historyapi.MessageTypeProperty,
-			msg.ThingID, propName, []byte(propValueString), msg.SenderID)
+		tv := things.NewThingMessage(vocab.MessageTypeProperty,
+			msg.ThingID, propName, propValueString, msg.SenderID)
 		tv.CreatedMSec = msg.CreatedMSec
 		//
 
 		storageKey, val := svc.encodeValue(msg)
 
-		err = bucket.Set(storageKey, val)
+		err = bucket.Set(storageKey, []byte(val))
 	}
 	_ = bucket.Close()
 	return err
@@ -143,7 +142,7 @@ func (svc *AddHistory) AddEvent(msg *things.ThingMessage) error {
 	thingAddr := msg.ThingID // the digitwin ID with the agent prefix
 	bucket := svc.store.GetBucket(thingAddr)
 
-	err = bucket.Set(storageKey, val)
+	err = bucket.Set(storageKey, []byte(val))
 	if err != nil {
 		slog.Error("AddMessage storage error", "err", err)
 	}
@@ -157,6 +156,9 @@ func (svc *AddHistory) AddEvent(msg *things.ThingMessage) error {
 // AddMessage adds an event, action or properties to the history store
 func (svc *AddHistory) AddMessage(msg *things.ThingMessage) error {
 	if msg.MessageType == vocab.MessageTypeAction {
+		return svc.AddAction(msg)
+	}
+	if msg.MessageType == vocab.MessageTypeProperty {
 		return svc.AddAction(msg)
 	}
 	if msg.Key == vocab.EventTypeProperties {
@@ -191,7 +193,7 @@ func (svc *AddHistory) AddMessages(msgList []*things.ThingMessage) (err error) {
 		}
 		if retain {
 			key, value := svc.encodeValue(eventValue)
-			kvpairs[key] = value
+			kvpairs[key] = []byte(value)
 			// notify owner to update things properties
 			if svc.onAddedValue != nil {
 				svc.onAddedValue(eventValue)

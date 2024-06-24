@@ -32,9 +32,10 @@ const filterContextKey = "name"
 //
 //	bucketID is the ID of the bucket, which is the digital twin thingID
 //	storageKey is the value's key, which is defined as timestamp/valueKey
+//	data is the stored message data
 //
 // This returns the value, or nil if the key is invalid
-func decodeValue(bucketID string, storageKey string, data []byte) (thingValue *things.ThingMessage, valid bool) {
+func decodeValue(bucketID string, storageKey string, data string) (thingValue *things.ThingMessage, valid bool) {
 
 	// key is constructed as  timestamp/name/{a|e|c}/sender, where sender can be omitted
 	parts := strings.Split(storageKey, "/")
@@ -49,15 +50,18 @@ func decodeValue(bucketID string, storageKey string, data []byte) (thingValue *t
 		if parts[2] == "a" {
 			messageType = vocab.MessageTypeAction
 		} else if parts[2] == "p" {
-			messageType = historyapi.MessageTypeProperty
+			messageType = vocab.MessageTypeProperty
 		}
 	}
 	if len(parts) > 3 {
 		senderID = parts[3]
 	}
+	// FIXME: keep the messageID? serialize the ThingMessage
+	messageID := ""
 
 	thingValue = &things.ThingMessage{
 		ThingID:     bucketID, // digital twin thingID that includes the agent prefix
+		MessageID:   messageID,
 		Key:         key,
 		Data:        data,
 		CreatedMSec: millisec,
@@ -101,7 +105,7 @@ func (svc *ReadHistory) findNextName(
 			}
 			if name == parts[1] {
 				// found a match. Decode and return it
-				thingValue, found = decodeValue(cursor.BucketID(), k, v)
+				thingValue, found = decodeValue(cursor.BucketID(), k, string(v))
 				return
 			}
 			// name doesn't match. Skip this entry
@@ -141,7 +145,7 @@ func (svc *ReadHistory) findPrevName(
 			}
 			if name == parts[1] {
 				// found a match. Decode and return it
-				thingValue, found = decodeValue(cursor.BucketID(), k, v)
+				thingValue, found = decodeValue(cursor.BucketID(), k, string(v))
 				return
 			}
 			// name doesn't match. Skip this entry
@@ -163,7 +167,7 @@ func (svc *ReadHistory) First(senderID string, args historyapi.CursorArgs) (*his
 		return nil, nil
 	}
 
-	thingValue, valid := decodeValue(cursor.BucketID(), k, v)
+	thingValue, valid := decodeValue(cursor.BucketID(), k, string(v))
 	filterName := ci.Filter
 	if valid && filterName != "" && thingValue.Key != filterName {
 		thingValue, valid = svc.findNextName(cursor, filterName, until)
@@ -195,7 +199,7 @@ func (svc *ReadHistory) Last(senderID string, args historyapi.CursorArgs) (*hist
 		// bucket is empty
 		return resp, nil
 	}
-	thingValue, valid := decodeValue(cursor.BucketID(), k, v)
+	thingValue, valid := decodeValue(cursor.BucketID(), k, string(v))
 	filterName := ci.Filter
 	if valid && filterName != "" && thingValue.Key != filterName {
 		thingValue, valid = svc.findPrevName(cursor, filterName, until)
@@ -221,7 +225,7 @@ func (svc *ReadHistory) Next(senderID string, args historyapi.CursorArgs) (*hist
 	if !valid {
 		return resp, nil
 	}
-	thingValue, valid := decodeValue(cursor.BucketID(), k, v)
+	thingValue, valid := decodeValue(cursor.BucketID(), k, string(v))
 	filterName := ci.Filter
 	if valid && filterName != "" && filterName != thingValue.Key {
 		until := time.Now()
@@ -276,7 +280,7 @@ func (svc *ReadHistory) Prev(senderID string, args historyapi.CursorArgs) (*hist
 	if !valid {
 		return resp, nil
 	}
-	thingValue, valid := decodeValue(cursor.BucketID(), k, v)
+	thingValue, valid := decodeValue(cursor.BucketID(), k, string(v))
 	filterName := ci.Filter
 	if valid && filterName != "" && filterName != thingValue.Key {
 		thingValue, valid = svc.findPrevName(cursor, filterName, until)
@@ -347,7 +351,7 @@ func (svc *ReadHistory) Seek(senderID string, args historyapi.CursorSeekArgs) (*
 		// bucket is empty
 		return resp, nil
 	}
-	thingValue, valid := decodeValue(cursor.BucketID(), k, v)
+	thingValue, valid := decodeValue(cursor.BucketID(), k, string(v))
 	filterName := ci.Filter
 	if valid && filterName != "" && thingValue.Key != filterName {
 		thingValue, valid = svc.findNextName(cursor, filterName, until)

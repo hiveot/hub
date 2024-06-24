@@ -79,7 +79,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	defer cl2.Disconnect()
 
 	// Agent receives action request which we'll handle here
-	cl1.SetActionHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	cl1.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		rxMsg = msg
 		stat.Completed(msg, nil)
 		//stat.Failed(msg, fmt.Errorf("failuretest"))
@@ -90,21 +90,21 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 
 	// users receives delivery updates when sending actions
 	deliveryCtx, deliveryCtxComplete := context.WithTimeout(context.Background(), time.Minute*10)
-	cl2.SetEventHandler(func(msg *things.ThingMessage) (err error) {
+	cl2.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		if msg.Key == vocab.EventTypeDeliveryUpdate {
 			// delivery updates are only invoked on for non-rpc actions
-			err = msg.Unmarshal(&stat3)
+			err := msg.Unmarshal(&stat3)
 			require.NoError(t, err)
 			slog.Info(fmt.Sprintf("reply: %s", stat3.Reply))
 		}
 		defer deliveryCtxComplete()
-		return err
+		return stat
 	})
 
 	// client sends action to agent and expect a 'delivered' result
 	// The RPC method returns an error if no reply is received
 	dThingID := things.MakeDigiTwinThingID(agentID, thingID)
-	stat2 := cl2.PubAction(dThingID, actionID, []byte(actionPayload))
+	stat2 := cl2.PubAction(dThingID, actionID, actionPayload)
 	require.Empty(t, stat2.Error)
 
 	// wait for delivery completion
@@ -143,7 +143,7 @@ func TestServiceReconnect(t *testing.T) {
 	defer cl1.Disconnect()
 
 	// Agent receives action request which we'll handle here
-	cl1.SetActionHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	cl1.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		var req string
 		rxMsg.Store(&msg)
 		stat.Completed(msg, nil)

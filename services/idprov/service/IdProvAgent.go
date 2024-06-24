@@ -24,7 +24,7 @@ func StartIdProvAgent(svc *ManageIdProvService, hc hubclient.IHubClient) *transp
 		idprovapi.SubmitRequestMethod:     svc.SubmitRequest,
 	}
 	ah := transports.NewAgentHandler(idprovapi.ManageServiceID, methods)
-	hc.SetActionHandler(ah.HandleMessage)
+	hc.SetMessageHandler(ah.HandleMessage)
 
 	return ah
 }

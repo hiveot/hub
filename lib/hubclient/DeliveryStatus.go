@@ -12,34 +12,40 @@ import (
 // A successful delivery flow can take these steps, where waiting and applied are optional:
 // pending -> delivered -> [waiting -> [applied ->]] completed
 const (
-	// DeliveryPending the request is pending delivery to the Thing's agent.
+	// DeliveredToInbox the request has been received and queued by the inbox and
+	// awaiting further delivery to the agent.
 	// This status is sent by the Hub inbox.
-	// An additional progress update from the hub can be expected.
-	DeliveryPending = "pending"
-	// DeliveryDelivered the request is delivered to the Thing's agent and awaiting further
+	// An additional progress update from the can be expected.
+	DeliveredToInbox = "inbox"
+
+	// DeliveredToAgent the request is delivered to the Thing's agent and awaiting further
 	// updates. This is set by the server when the message is handed off to the agent.
-	// This status is sent by the Hub inbox.
-	// An additional progress update from the agent is expected.
-	DeliveryDelivered = "delivered"
-	// DeliveryWaiting optional step where the request is delivered to the agent but
-	// the agent is waiting to apply it to the Thing, for example when the device is asleep.
+	// This status is sent by the Hub inbox and an additional progress update from
+	// the agent is expected.
+	DeliveredToAgent = "agent"
+
+	// DeliveryWaiting optional step where the agent is waiting to apply it to
+	// the Thing, for example when the device is asleep.
 	// This status is sent by the agent.
 	// An additional progress update from the agent can be expected.
 	DeliveryWaiting = "waiting"
-	// DeliveryApplied optional step where the request has been applied to the Thing by the
-	// agent and the agent is waiting for confirmation.
+
+	// DeliveryApplied is a step where the request has been applied to the Thing by the
+	// agent and the agent is waiting for acceptance.
 	// Intended for device actions that take time to complete.
 	// This status is sent by the agent.
 	// An additional progress update from the agent can be expected.
 	DeliveryApplied = "applied"
-	// DeliveryCompleted the request has been received and applied by the agent and
-	// all steps are completed.
+
+	// DeliveryCompleted the request has been applied and a result received.
+	// All steps are completed.
 	// If unmarshalling or processing fails by the client then the delivery was still
 	// completed and an error is included in the delivery progress update.
 	// This status is sent by the agent and is final. No additional progress updates will be sent.
 	DeliveryCompleted = "completed"
+
 	// DeliveryFailed the request could not be delivered to the agent or the agent can
-	// not deliver the request to the Thing. (if the agent is the Thing then this is the same thing)
+	// not apply the request to the Thing. (if the agent is the Thing then this is the same thing)
 	// Only use this to indicate a delivery problem between Hub and Thing, not for
 	// processing or marshalling problems.
 	// Use the error field with progress DeliveryCompleted in case of processing errors.
@@ -64,25 +70,25 @@ type DeliveryStatus struct {
 // Use this when the message is delivered to the service.
 // This applies to delivery, not processing.
 // Primarily intended to make sure the messageID is not forgotten.
-func (stat *DeliveryStatus) Completed(msg *things.ThingMessage, err error) *DeliveryStatus {
+func (stat *DeliveryStatus) Completed(msg *things.ThingMessage, err error) DeliveryStatus {
 	stat.Progress = DeliveryCompleted
 	stat.MessageID = msg.MessageID
 	if err != nil {
 		stat.Error = err.Error()
 	}
-	return stat
+	return *stat
 }
 
 // Failed is a simple helper that sets the message delivery status to failed with error.
 // This applies to failed delivery, not processing.
 // Primarily intended to make sure the messageID is not forgotten.
-func (stat *DeliveryStatus) Failed(msg *things.ThingMessage, err error) *DeliveryStatus {
+func (stat *DeliveryStatus) Failed(msg *things.ThingMessage, err error) DeliveryStatus {
 	stat.Progress = DeliveryFailed
 	stat.MessageID = msg.MessageID
 	if err != nil {
 		stat.Error = err.Error()
 	}
-	return stat
+	return *stat
 }
 
 // UnmarshalReply the reply data in this status into the given data type
@@ -96,9 +102,9 @@ func (stat *DeliveryStatus) UnmarshalReply(reply interface{}) (error, bool) {
 }
 
 // Marshal the status message itself for transport
-func (stat *DeliveryStatus) Marshal() []byte {
+func (stat *DeliveryStatus) Marshal() string {
 	statJson, _ := json.Marshal(stat)
-	return statJson
+	return string(statJson)
 }
 
 // MarshalReply store the serialized reply data into the delivery status

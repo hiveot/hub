@@ -45,4 +45,11 @@ export class ThingMessage extends Object {
     // The underlying protocol binding MUST set this to the authenticated client.
     public senderID: string = ""
 
+    // unmarshal the payload and return the object
+    unmarshal(): unknown {
+        if (this.data) {
+            return JSON.parse(this.data)
+        }
+        return undefined
+    }
 }

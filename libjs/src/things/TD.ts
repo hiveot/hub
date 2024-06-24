@@ -225,10 +225,11 @@ export class TD extends Object {
     // @param title is the title used in the property. Leave empty to use the name.
     // @param dataType is the type of data the property holds, DataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
     AddPropertyIf(initialValue: any, id: string, propType: string, title: string,
-                  dataType: string): PropertyAffordance | undefined {
+                  dataType: string, description?:string): PropertyAffordance | undefined {
 
         if (initialValue != undefined) {
-            return this.AddProperty(id, propType, title, dataType)
+            let prop =  this.AddProperty(id, propType, title, dataType)
+            prop.description = description
         }
         return undefined
     }

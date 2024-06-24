@@ -38,7 +38,7 @@ type ThingMessage struct {
 
 	// Data converted to text from the type defined by the TD affordance DataSchema.
 	// This can be omitted if no data is associated with the event or action.
-	Data []byte `json:"data,omitempty"`
+	Data string `json:"data,omitempty"`
 
 	// MessageID of the message. Intended to detect duplicates and send replies.
 	// Optional. The hub will generate a unique messageID if omitted.
@@ -47,26 +47,24 @@ type ThingMessage struct {
 
 // DataAsText return a text representation of the data that is independent of
 // the message serialization used.
-// FIXME: This is a placeholder as the serialization method is a bit of a question.
 // How does the TD describe the data serialization used? Is this part of the protocol?
 // Should the transport convert it?
 func (tm *ThingMessage) DataAsText() string {
-	if tm.Data == nil {
+	if tm.Data == "" {
 		return ""
 	}
 	return string(tm.Data)
 }
 
 // Unmarshal the data into the given type.
-// FIXME: This is a placeholder as the serialization method is a bit of a question.
 // How does the TD describe the data serialization used? Is this part of the protocol?
 // Should the transport convert it?
 // This returns an error if unmarshalling fails.
 func (tm *ThingMessage) Unmarshal(arg interface{}) error {
-	if tm.Data == nil {
+	if tm.Data == "" {
 		arg = nil
 	}
-	return json.Unmarshal(tm.Data, arg)
+	return json.Unmarshal([]byte(tm.Data), arg)
 }
 
 // GetUpdated is a helper function to return the formatted time the data was last updated.
@@ -85,7 +83,7 @@ func (tm *ThingMessage) GetUpdated() string {
 //	key is the property, event or action key of the value as described in the thing TD
 //	data is the message serialized payload as defined in the corresponding TD dataschema.
 //	senderID is the accountID of the creator of the value
-func NewThingMessage(messageType, thingID, key string, data []byte, senderID string) *ThingMessage {
+func NewThingMessage(messageType, thingID, key string, data string, senderID string) *ThingMessage {
 	return &ThingMessage{
 		CreatedMSec: time.Now().UnixMilli(),
 		Data:        data,

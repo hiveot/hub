@@ -93,8 +93,12 @@ func TestHasPermission(t *testing.T) {
 	require.NoError(t, err)
 	err = svc.SetClientRole(senderID, authz2.AdminSetClientRoleArgs{senderID, client1Role})
 	assert.NoError(t, err)
-	// consumers have permission to publish actions
-	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, nil, senderID)
+	// consumers have permission to publish actions and property requests
+	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, "", senderID)
 	hasperm := svc.HasPermission(msg, true)
+	assert.True(t, hasperm)
+
+	msg = things.NewThingMessage(vocab.MessageTypeProperty, thingID, key, "", senderID)
+	hasperm = svc.HasPermission(msg, true)
 	assert.True(t, hasperm)
 }

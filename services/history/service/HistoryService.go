@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"log/slog"
 )
@@ -78,15 +77,21 @@ func (svc *HistoryService) Start(hc hubclient.IHubClient) (err error) {
 
 		// add events to the history filtered through the retention manager
 		err = svc.hc.Subscribe("", "")
-		svc.hc.SetEventHandler(func(msg *things.ThingMessage) (err error) {
-			slog.Debug("received event",
-				slog.String("senderID", msg.SenderID),
-				slog.String("thingID", msg.ThingID),
-				slog.String("key", msg.Key),
-				slog.Int64("createdMSec", msg.CreatedMSec))
-			err = svc.addHistory.AddEvent(msg)
-			return err
-		})
+		// agent receives the messages instead
+		//svc.hc.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+		//	if msg.MessageType == vocab.MessageTypeEvent {
+		//		slog.Debug("received event",
+		//			slog.String("senderID", msg.SenderID),
+		//			slog.String("thingID", msg.ThingID),
+		//			slog.String("key", msg.Key),
+		//			slog.Int64("createdMSec", msg.CreatedMSec))
+		//		err = svc.addHistory.AddEvent(msg)
+		//		stat.Completed(msg, err)
+		//	} else {
+		//
+		//	}
+		//	return stat
+		//})
 
 		// register the history service methods
 		StartHistoryAgent(svc, svc.hc)

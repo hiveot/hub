@@ -4,15 +4,16 @@ import * as vocab from "@hivelib/api/vocab/ht-vocab";
 import {getPropKey} from "./getPropKey";
 
 
-// Value map for node values
-export class ParseValues {
+// NodeValues holds the latest values of a single node
+export class NodeValues {
     values: { [key: string]: string }
 
     // @param node: create the map for this node
     constructor(node?: ZWaveNode) {
         this.values = {}
         if (node) {
-            this.parseNodeValues(node)
+            // load the latest node values into the values map
+            this.updateNodeValues(node)
         }
     }
 
@@ -26,8 +27,8 @@ export class ParseValues {
 
     // compare the current value map with an old map and return a new value map with the differences 
     // This only returns values if they exist in the current map.
-    diffValues(oldValues: ParseValues): ParseValues {
-        let diffMap = new ParseValues()
+    diffValues(oldValues: NodeValues): NodeValues {
+        let diffMap = new NodeValues()
         for (let key in Object(this.values)) {
             let oldVal = oldValues.values[key]
             let newVal = this.values[key]
@@ -39,7 +40,7 @@ export class ParseValues {
     }
 
     // parseNodeValues updates the value map with the latest node value
-    parseNodeValues(node: ZWaveNode) {
+    updateNodeValues(node: ZWaveNode) {
 
         //--- Node read-only attributes that are common to many nodes
         this.setIf("associationCount", node.deviceConfig?.associations?.size);
@@ -69,10 +70,8 @@ export class ParseValues {
         this.setIf("isSecure", node.isSecure);
         this.setIf("isRouting", node.isRouting);
         this.setIf("isControllerNode", node.isControllerNode)
+        this.setIf("lastSeen", node.statistics.lastSeen)
         this.setIf("keepAwake", node.keepAwake);
-
-        this.setIf(vocab.PropDeviceTitle, node.name)
-        this.setIf(vocab.PropLocation, node.location)
 
         // this.setIf("label", node.deviceConfig?.label)
         this.setIf("nodeLabel", node.label)
@@ -104,6 +103,11 @@ export class ParseValues {
         this.setIf("zwavePlusVersion", node.zwavePlusVersion);
 
         // add value ID values
+
+        // name and location now use the CC, which appears if previously set
+        // FIXME: deviceTitle prop should not be a key but a type
+        // this.setIf(vocab.PropDeviceTitle, node.name) - not used?
+
         let vids = node.getDefinedValueIDs()
         for (let vid of vids) {
             let vidValue = node.getValue(vid)

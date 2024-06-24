@@ -1,8 +1,8 @@
 {{/*Display the details of a thing with title, description, timestamp, attributes, events and actions */}}
 
-		<script>
-			function setDetailOpenStatus(){}
-		</script>
+{{/*		<script>*/}}
+{{/*			function setDetailOpenStatus(){}*/}}
+{{/*		</script>*/}}
 
 
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.DetailsTemplateData */ -}}
@@ -20,10 +20,23 @@
 				hx-get="/app/thing/{{.ThingID}}"
 				class="h-panel container-fluid">
 
-		<details open>
-			<summary id="detailsSummary" class="outline">
-				<h4>{{.TD.Title}}</h4>
+		<!--===Thing Summary header===-->
+
+		<details open >
+			<summary id="detailsSummary" class="outline h-row" >
+				<h4 style="display:contents" >{{.TD.Title}}</h4>
+				<div class="h-grow"></div>
+				<!--=== button to delete this TD ===-->
+				<button title="Delete TD" slot="button" class="h-icon-button  outline"
+				        hx-trigger="click"
+				        hx-get="/app/thing/{{.ThingID}}/confirmDeleteTDDialog"
+								hx-target="#confirmDialog" hx-swap="innerHTML"
+				>
+					<iconify-icon icon="mdi:trash-can-outline"></iconify-icon>
+				</button>
+
 			</summary>
+
 			<ul class="h-grid-table details-header">
 				<label for="deviceName">Title:</label>
 				<input id="deviceName" readonly
@@ -41,13 +54,26 @@
                value="{{$.TD.GetUpdated}}"/>
 
 				<label for="agentID">Thing ID:</label>
-				<input id="agentID" readonly style="margin: 0; text-overflow: ellipsis; "
-				       value="{{.ThingID}}"/>
+				<div class="h-row">
+					<input id="agentIDz" readonly style="margin: 0; text-overflow: ellipsis; "
+					       value="{{.ThingID}}"/>
+
+					<!--=== button to open the raw TD in a new tab ===-->
+					<button for="agentIDz" title="view raw TD document"  class="h-icon-button outline">
+						<a href="/app/thing/{{.ThingID}}/raw" target="_blank">
+						<iconify-icon icon="mdi:text-box-outline"></iconify-icon>
+						</a>
+					</button>
+				</div>
+
+				<div class="h-grow"></div>
+
 			</ul>
 		</details>
 		<p></p>
 
 		<!--===Thing Attributes===-->
+
 		<details id="detailsAttr">
 			<summary class="outline">
 				<span style="font-size: medium"><strong>Attributes</strong></span>
@@ -67,6 +93,7 @@
 		</details>
 
 		<!--===Thing Events===-->
+
 		<hr/>
 		<details id="detailsEvents" open>
 			<summary class="outline">
@@ -77,6 +104,7 @@
 		</details>
 
 		<!--===Thing Actions===-->
+
 		<hr/>
 		<details id="detailsActions">
 			<summary class="outline">
@@ -87,6 +115,7 @@
 		</details>
 
 	</article>
+	<div id="confirmDialog"></div>
 
 	<style>
       /*container holding multiple values in a grid row/column

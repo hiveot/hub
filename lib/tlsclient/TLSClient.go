@@ -140,7 +140,7 @@ func (cl *TLSClient) GetHttpClient() *http.Client {
 //	url: full URL to invoke
 //	msg contains the request body as a string or object
 //	qParams: optional map with query parameters
-func (cl *TLSClient) Invoke(method string, url string,
+func (cl *TLSClient) Invoke(method string, requrl string,
 	msg interface{}, qParams map[string]string) ([]byte, error) {
 
 	var body []byte
@@ -149,13 +149,13 @@ func (cl *TLSClient) Invoke(method string, url string,
 	contentType := "application/json"
 
 	if cl == nil || cl.httpClient == nil {
-		err = fmt.Errorf("Invoke: '%s'. Client is not started", url)
+		err = fmt.Errorf("Invoke: '%s'. Client is not started", requrl)
 		return nil, err
 	}
-	slog.Debug("TLSClient.Invoke", "method", method, "url", url)
+	slog.Debug("TLSClient.Invoke", "method", method, "requrl", requrl)
 
 	// careful, a double // in the path causes a 301 and changes post to get
-	// url := fmt.Sprintf("https://%s%s", hostPort, path)
+	// requrl := fmt.Sprintf("https://%s%s", hostPort, path)
 	if msg != nil {
 		// only marshal to JSON if this isn't a string
 		switch msgWithType := msg.(type) {
@@ -167,7 +167,7 @@ func (cl *TLSClient) Invoke(method string, url string,
 			body, _ = json.Marshal(msg)
 		}
 	}
-	req, err = NewRequest(method, url, cl.bearerToken, body)
+	req, err = NewRequest(method, requrl, cl.bearerToken, body)
 	// optional query parameters
 	if qParams != nil {
 		qValues := req.URL.Query()
@@ -185,7 +185,7 @@ func (cl *TLSClient) Invoke(method string, url string,
 
 	resp, err := cl.httpClient.Do(req)
 	if err != nil {
-		err = fmt.Errorf("Invoke: %s %s: %w", method, url, err)
+		err = fmt.Errorf("Invoke: %s %s: %w", method, requrl, err)
 		return nil, err
 	}
 	respBody, err := io.ReadAll(resp.Body)
@@ -201,8 +201,9 @@ func (cl *TLSClient) Invoke(method string, url string,
 		}
 	} else if resp.StatusCode >= 500 {
 		err = fmt.Errorf("Error %d (%s): %s", resp.StatusCode, resp.Status, respBody)
+		slog.Error("Invoke returned internal server error", "requrl", requrl, "err", err.Error())
 	} else if err != nil {
-		err = fmt.Errorf("Invoke: Error %s %s: %w", method, url, err)
+		err = fmt.Errorf("Invoke: Error %s %s: %w", method, requrl, err)
 	}
 	return respBody, err
 }

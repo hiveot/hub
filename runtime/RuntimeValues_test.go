@@ -33,7 +33,7 @@ func TestHttpsGetActions(t *testing.T) {
 	defer cl2.Disconnect()
 
 	// consumer publish an action to the agent
-	stat := cl2.PubAction(dtThing1ID, key1, []byte(data))
+	stat := cl2.PubAction(dtThing1ID, key1, data)
 	require.Empty(t, stat.Error)
 
 	// read the latest actions from the digitwin inbox
@@ -66,7 +66,7 @@ func TestHttpsGetEvents(t *testing.T) {
 	// FIXME: todo subscription is not implemented in embedded and https clients
 	// FIXME: todo authorization to publish an event - middleware or transport?
 	// FIXME: unmarshal error
-	err := hc.PubEvent(agThingID, key1, []byte(data))
+	err := hc.PubEvent(agThingID, key1, data)
 	assert.NoError(t, err)
 
 	// consumer reads the posted event

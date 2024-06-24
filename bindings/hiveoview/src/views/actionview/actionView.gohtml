@@ -1,0 +1,40 @@
+<!--Action view template
+    The action view displays the input and progress of an action.
+    Used to initiate a new action, show the status of an action in progress and
+    can be used to view historical actions.
+ -->
+
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/actionview.ActionViewData */ -}}
+
+
+
+<h-modal show showClose showCancel showSubmit>
+    <article>
+        <header class="h-row-centered" style="height: 60px">
+            <h3>Action</h3>
+        </header>
+
+        {{if .action.Input}}
+        <form id="edit-config-form">
+            <label>Input: </label>
+            <fieldset>
+                <label>Input: </label>
+                <input readonly placeholder="{{.AgentID}}"/>
+            </fieldset>
+        </form>
+        {{end}}
+
+        <label>Progress</label>
+        <input readonly title="{{.stat.Progress}}"/>
+        <label>Action ID</label>
+        <input readonly title="{{.stat.MessageID}}"/>
+
+        {{if .action.Output}}
+        <form id="edit-config-form">
+            <label>Result: </label>
+            <input readonly title="{{.stat.Reply}}"/>
+        </form>
+        {{end}}
+
+    </article>
+</h-modal>

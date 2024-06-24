@@ -20,7 +20,7 @@ func (svc *OWServerBinding) HandleActionRequest(action *things.ThingMessage) (st
 		slog.String("payload", action.DataAsText()),
 	)
 
-	if action.Key == vocab.ActionTypeProperties {
+	if action.MessageType == vocab.MessageTypeProperty {
 		return svc.HandleConfigRequest(action)
 	}
 

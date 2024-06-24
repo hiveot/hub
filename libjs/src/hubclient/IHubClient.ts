@@ -27,27 +27,42 @@ export enum ConnInfo {
 }
 
 export enum DeliveryProgress {
-    // DeliveryApplied is an optional step where the request has been applied to the Thing by the
-    // agent and the agent is waiting for confirmation.
-    DeliveryApplied = "applied",
 
-    // DeliveryCompleted the request has been received and applied by the agent and
-    // a result or error is received.
-    DeliveryCompleted = "completed",
+    // DeliveryToAgent the request is delivered to the Thing's agent by the inbox.
+    // The agent is expected to send a delivery update.
+    DeliveryToAgent = "agent",
 
-    // DeliveryDelivered the request is delivered to the Thing's agent and awaiting further
-    // confirmation.
-    DeliveryDelivered = "delivered",
-
-    // DeliveryFailed the request could not be delivered to the agent or the agent can
-    // not deliver the request to the Thing.
-    DeliveryFailed = "failed",
-
-    // DeliveryWaiting optional step where the request is delivered to the agent but
-    // the agent is waiting to apply it to the Thing, for example when the device is asleep.
+    // DeliveryWaiting optional step where the agent is waiting to apply it to
+    // the Thing, for example when the device is asleep.
     // This status is sent by the agent.
     // An additional progress update from the agent can be expected.
-    DeliveryWaiting = "waiting"
+    DeliveryWaiting = "waiting",
+
+    // DeliveryApplied is a step where the request has been applied to the Thing by the
+    // agent.
+    // If the device is busy processing then a confirmation 'DeliverySuccess'
+    // is sent when the device confirms execution.
+    // If the device fails to execute the request an error is included and the
+    // workflow has ended.
+    DeliveryApplied = "applied",
+
+    // DeliverySuccess the request has been applied by the agent and the device
+    // has executed the request successfully.
+    // Obtaining a result is not always possible for example when a device is asleep.
+    // In that case 'applied' is the last known status sent.
+    //
+    // Issue: if a node asynchronously notifies that an update changed a value without
+    // a link to the request, then how to update the status of the request to completed?
+    // Should the inbox that sees a value event for an action that is in state
+    // 'applied' change it to 'result'?
+    //
+    DeliveryCompleted = "completed",
+
+    // DeliveryFailed the request could not be delivered to the agent or the agent can
+    // not deliver the request to the Thing. This ends the delivery process.
+    // The error field contains the error message describing the failure.
+    DeliveryFailed = "failed",
+
 }
 
 // DeliveryStatus holds the progress of action request delivery
@@ -56,7 +71,7 @@ export class DeliveryStatus extends Object{
     messageID: string = ""
     // Updated delivery status
     progress: DeliveryProgress|undefined
-    // Error in case delivery status is failed
+    // Error in case delivery status has ended without completion.
     error?: string =""
     // Reply in case delivery status is completed
     reply?: string =""
@@ -74,11 +89,13 @@ export class DeliveryStatus extends Object{
         this.progress = DeliveryProgress.DeliveryApplied
         this.error = undefined
     }
-    Failed(msg: ThingMessage, err: Error|undefined) {
+    Failed(msg: ThingMessage, err: Error|string|undefined) {
         this.messageID = msg.messageID
         this.progress = DeliveryProgress.DeliveryFailed
-        if (err) {
+        if (err instanceof Error) {
             this.error = err.name + ": " + err.message
+        } else {
+            this.error = err
         }
     }
 }
@@ -115,9 +132,6 @@ export interface IHubClient {
     //  @param payload with serialized message to publish
     pubAction(dThingID: string, key: string, payload: string): Promise<DeliveryStatus>;
 
-    // PubConfig publishes a configuration change request for one or more writable properties
-    pubConfig(dThingID: string, key: string, payload: string): Promise<DeliveryStatus>;
-
     // getStatus returns the current transport connection status
     // getStatus(): HubTransportStatus
 
@@ -134,6 +148,9 @@ export interface IHubClient {
     // This throws an error if the event cannot not be delivered to the hub
     pubEvent(thingID: string, key:string, payload: string): Promise<DeliveryStatus>;
 
+    // pubProperty publishes a configuration change request for a property
+    // @param dThingID is the digitwin thingID is provided by the directory
+    pubProperty(dThingID: string, key: string, payload: string): Promise<DeliveryStatus>;
 
     // PubProps publishes a property values event.
     // It returns as soon as delivery to the hub is confirmed.
@@ -180,9 +197,6 @@ export interface IHubClient {
     // and need to send an update on further progress.
     sendDeliveryUpdate(stat: DeliveryStatus):void
 
-    // Set the handler for incoming action request.
-    setActionHandler(cb: MessageHandler):void
-
 
     // set handler that is notified of changes in connection status and an error in
     // case of an  unintentional disconnect.
@@ -200,13 +214,9 @@ export interface IHubClient {
     setConnectHandler(handler: (status: ConnectionStatus, info: string) => void): void
 
 
-    // setEventHandler set the handler that receives all subscribed events, and other
-    // message types, subscribed to by this client.
-    //
-    // This replaces any previously set event handler.
-    //
-    // See also 'Subscribe' to set the ThingIDs this client receives messages for.
-    setEventHandler(handler: EventHandler): void
+    // Set the handler for incoming requests.
+    // This replaces any previously set handler.
+    setMessageHandler(cb: MessageHandler):void
 
     // Subscribe adds a subscription for events from the given ThingID.
     //

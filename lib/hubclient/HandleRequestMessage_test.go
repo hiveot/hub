@@ -76,10 +76,10 @@ func TestHandleRequestMessage(t *testing.T) {
 	}
 	argsJson, _ := ser.Marshal(args)
 
-	data, err := hubclient.HandleRequestMessage(senderID, Method1Ref, argsJson)
+	data, err := hubclient.HandleRequestMessage(senderID, Method1Ref, string(argsJson))
 	require.NoError(t, err)
 	m1res := M1Res{}
-	err = json.Unmarshal(data, &m1res)
+	err = json.Unmarshal([]byte(data), &m1res)
 	require.NoError(t, err)
 	assert.Equal(t, args.P1, m1res.R1)
 
@@ -89,42 +89,42 @@ func TestHandleRequestMessage(t *testing.T) {
 		P2: 6,
 	}
 	argsJson, _ = ser.Marshal(args)
-	data, err = hubclient.HandleRequestMessage(senderID, Method1Val, argsJson)
+	data, err = hubclient.HandleRequestMessage(senderID, Method1Val, string(argsJson))
 	require.NoError(t, err)
 	m1res = M1Res{}
-	err = json.Unmarshal(data, &m1res)
+	err = json.Unmarshal([]byte(data), &m1res)
 	require.NoError(t, err)
 	assert.Equal(t, args.P1, m1res.R1)
 }
 
 func TestHandleRequestNoArgs(t *testing.T) {
 	// pass args by reference
-	data, err := hubclient.HandleRequestMessage(senderID, Method2NoArgs, nil)
+	data, err := hubclient.HandleRequestMessage(senderID, Method2NoArgs, "")
 	require.NoError(t, err)
-	assert.Nil(t, data)
+	assert.Empty(t, data)
 }
 
 func TestErrorResult(t *testing.T) {
 	// pass args by reference
-	data, err := hubclient.HandleRequestMessage(senderID, Method3ErrorResult, nil)
+	data, err := hubclient.HandleRequestMessage(senderID, Method3ErrorResult, "")
 	require.Error(t, err)
-	assert.Nil(t, data)
+	assert.Empty(t, data)
 }
 
 func TestDataAndErrorResult(t *testing.T) {
 	// check this doesnt fail somehow
-	_, err := hubclient.HandleRequestMessage(senderID, Method4DataAndErrorResult, nil)
+	_, err := hubclient.HandleRequestMessage(senderID, Method4DataAndErrorResult, "")
 	require.Error(t, err)
 }
 
 func TestStringArgs(t *testing.T) {
 	// check this doesn't fail somehow
 	sargJson, _ := json.Marshal("Hello world")
-	data, err := hubclient.HandleRequestMessage(senderID, Method5StringArg, sargJson)
+	data, err := hubclient.HandleRequestMessage(senderID, Method5StringArg, string(sargJson))
 	require.NoError(t, err)
 
 	var result string
-	err = json.Unmarshal(data, &result)
+	err = json.Unmarshal([]byte(data), &result)
 	require.Equal(t, "Hello world", result)
 	require.NoError(t, err)
 }
@@ -132,38 +132,38 @@ func TestStringArgs(t *testing.T) {
 func TestIntArgs(t *testing.T) {
 	// check this doesnt fail somehow
 	sargJson, _ := json.Marshal(25)
-	data, err := hubclient.HandleRequestMessage(senderID, Method6IntArg, sargJson)
+	data, err := hubclient.HandleRequestMessage(senderID, Method6IntArg, string(sargJson))
 	require.NoError(t, err)
 
 	var result int
-	err = json.Unmarshal(data, &result)
+	err = json.Unmarshal([]byte(data), &result)
 	require.Equal(t, 25, result)
 	require.NoError(t, err)
 }
 func TestByteArrayArgs(t *testing.T) {
 	args := []byte{1, 2, 3}
 	argJson, _ := json.Marshal(args)
-	data, err := hubclient.HandleRequestMessage(senderID, Method7ByteArrayArg, argJson)
+	data, err := hubclient.HandleRequestMessage(senderID, Method7ByteArrayArg, string(argJson))
 	require.NoError(t, err)
 
 	var result []byte
-	err = json.Unmarshal(data, &result)
+	err = json.Unmarshal([]byte(data), &result)
 	require.Equal(t, args, result)
 	require.NoError(t, err)
 }
 func TestTwoArgsFail(t *testing.T) {
 	sargJson, _ := json.Marshal("Hello world")
 	// this method has 2 args, we only pass 1. Does it blow up?
-	data, err := hubclient.HandleRequestMessage(senderID, Method8TwoArgs, sargJson)
+	data, err := hubclient.HandleRequestMessage(senderID, Method8TwoArgs, string(sargJson))
 	assert.Error(t, err)
-	assert.Nil(t, data)
+	assert.Empty(t, data)
 }
 func TestThreeResFail(t *testing.T) {
 	sargJson, _ := json.Marshal("Hello world")
 	// this method has 3 results. Does it blow up?
-	data, err := hubclient.HandleRequestMessage(senderID, Method9ThreeRes, sargJson)
+	data, err := hubclient.HandleRequestMessage(senderID, Method9ThreeRes, string(sargJson))
 	assert.Error(t, err)
-	assert.Nil(t, data)
+	assert.Empty(t, data)
 }
 func Benchmark_Overhead(b *testing.B) {
 	m1args := M1Args{
@@ -205,10 +205,10 @@ func Benchmark_Overhead(b *testing.B) {
 				count2++
 				// pass args by reference
 				argsJson, _ := ser.Marshal(m1args)
-				data, err := hubclient.HandleRequestMessage(senderID, Method1Ref, argsJson)
+				data, err := hubclient.HandleRequestMessage(senderID, Method1Ref, string(argsJson))
 				_ = err
 				m1res := M1Res{}
-				err = json.Unmarshal(data, &m1res)
+				err = json.Unmarshal([]byte(data), &m1res)
 			}
 		})
 	t3 := time.Now()

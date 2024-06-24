@@ -1,26 +1,24 @@
-<!--Thing configuration list-->
-<!--@param '.' object of type thing.DetailsTemplateData -->
+<!--Table with writable properties of a Thing-->
+
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.DetailsTemplateData*/ -}}
 
 <ul class="h-grid-table thing-config" striped border >
 	<li>
 		<div class="h-show-sm">{{/*icon*/}}</div>
-		<div class="id-title">
-			<small><i>ID</i></small>
-			<span>Title</span>
-		</div>
+		<div class="id-title">Configuration Name</div>
 		<div style="padding-left: 60px">Value</div>
 		<div class="h-show-md">Default</div>
 		<div class="h-show-lg">Description</div>
 		<div class="h-show-sm">Updated</div>
 	</li>
 
-    {{range $k, $v := .Config}}
+    {{/*	Iterate the sorted writable property keys */}}
+    {{range $k := .ConfigKeys}}
+      {{$v := index $.Config $k}}
 				<li>
-					<div class="h-show-sm">{{/*icon*/}}</div>
-					<div class="id-title">
-						<small><i>{{$k}}</i></small>
-						<span>{{$v.Title}}</span>
+					<div class="h-show-md">{{/*icon*/}}</div>
+					<div class="id-title" title="key: {{$k}}">
+						{{$v.Title}}
 					</div>
 					<div>
 						<button class="outline" style="border:none;
@@ -70,9 +68,8 @@
 
     @media (width >= 576px) and (width < 768px) {
         .thing-config {
-            /*sm, show column 1,2,3,6 */
+            /*sm, show column 2,3,6 */
             grid-template-columns:
-				        40px /* icon*/
                 minmax(200px, max-content) /*name*/
                 minmax(100px, max-content) /*value*/
 				        minmax(100px, 1fr); /*updated*/
@@ -96,7 +93,7 @@
             /*lg, show all columns*/
             grid-template-columns:
 				        40px /*icon*/
-                minmax(200px, max-content) /*id-title*/
+                minmax(200px, 1fr) /*id-title*/
                 minmax(100px, max-content) /*value*/
                 minmax(100px, max-content) /*default*/
                 minmax(100px, 1fr) /*description*/

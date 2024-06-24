@@ -40,10 +40,8 @@ type HttpSSEClient struct {
 	_sseChan           chan *sse.Event
 	_subscriptions     map[string]bool
 	_connectHandler    func(status hubclient.TransportStatus)
-	// client side handler that receives actions from the server
-	_actionHandler hubclient.MessageHandler
-	// client side handler that receives all non-action messages from the server
-	_eventHandler hubclient.EventHandler
+	// client side handler that receives messages from the server
+	_messageHandler hubclient.MessageHandler
 	// map of messageID to delivery status update channel
 	_correlData map[string]chan *hubclient.DeliveryStatus
 }
@@ -227,7 +225,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	if rxMsg.MessageType == vocab.MessageTypeEvent && rxMsg.Key == vocab.EventTypeDeliveryUpdate {
 		// this client is receiving a delivery update from a previous action.
 		cl.mux.RLock()
-		err = json.Unmarshal(rxMsg.Data, &stat)
+		err = json.Unmarshal([]byte(rxMsg.Data), &stat)
 		rChan, _ := cl._correlData[stat.MessageID]
 		cl.mux.RUnlock()
 		if rChan != nil {
@@ -237,10 +235,10 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 			delete(cl._correlData, rxMsg.MessageID)
 			cl.mux.Unlock()
 			return
-		} else if cl._eventHandler != nil {
+		} else if cl._messageHandler != nil {
 			// pass event to client as this is an unsolicited event
 			// it could be a delayed confirmation of delivery
-			_ = cl._eventHandler(rxMsg)
+			_ = cl._messageHandler(rxMsg)
 		} else {
 			// missing rpc or message handler
 			slog.Error("handleSSEEvent, no handler registered for client",
@@ -248,18 +246,18 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, delivery update ignored"))
 		}
 	} else if rxMsg.MessageType == vocab.MessageTypeEvent {
-		if cl._eventHandler != nil {
+		if cl._messageHandler != nil {
 			// pass event to handler, if set
-			_ = cl._eventHandler(rxMsg)
+			_ = cl._messageHandler(rxMsg)
 		} else {
 			slog.Warn("handleSSEEvent, no event handler registered. Event ignored.",
 				slog.String("key", rxMsg.Key),
 				slog.String("clientID", cl.ClientID()))
 		}
-	} else if rxMsg.MessageType == vocab.MessageTypeAction {
-		if cl._actionHandler != nil {
+	} else if rxMsg.MessageType == vocab.MessageTypeAction || rxMsg.MessageType == vocab.MessageTypeProperty {
+		if cl._messageHandler != nil {
 			// pass action to agent for delivery to thing
-			stat = cl._actionHandler(rxMsg)
+			stat = cl._messageHandler(rxMsg)
 		} else {
 			slog.Warn("handleSSEEvent, no action handler registered. Action ignored.",
 				slog.String("key", rxMsg.Key),
@@ -284,15 +282,22 @@ func (cl *HttpSSEClient) Logout() error {
 	return err
 }
 
-// PubAction publishes an action message and waits for an answer or until timeout
-// In order to receive replies, an inbox subscription is added on the first request.
-// An error is returned if delivery failed or succeeded but the action itself failed
-func (cl *HttpSSEClient) PubAction(thingID string, key string, payload []byte) (stat hubclient.DeliveryStatus) {
-	slog.Info("PubAction",
-		slog.String("thingID", thingID), slog.String("key", key))
-	vars := map[string]string{"thingID": thingID, "key": key}
-	eventPath := utils.Substitute(vocab.PostActionPath, vars)
-	// the reply is a delivery status
+// Publish an action, event or property message and return the delivery status
+//
+//	messageType to publish: MessageTypeAction|Event|Property
+//	thingID to publish as or to: events are published for the thing and actions to publish to the thingID
+//	key is the event/action/property key being published or modified
+//	payload is the optional serialized message content or nil if nothing to send
+//	queryParams optional key-value pairs to pass along as query parameters
+func (cl *HttpSSEClient) postMessage(
+	messageType string, thingID string, key string, payload interface{}, queryParams map[string]string) (
+	stat hubclient.DeliveryStatus) {
+
+	vars := map[string]string{
+		"thingID":     thingID,
+		"messageType": messageType,
+		"key":         key}
+	messagePath := utils.Substitute(vocab.PostMessagePath, vars)
 	cl.mux.RLock()
 	defer cl.mux.RUnlock()
 	if cl.tlsClient == nil {
@@ -301,47 +306,10 @@ func (cl *HttpSSEClient) PubAction(thingID string, key string, payload []byte) (
 		slog.Error(stat.Error)
 		return stat
 	}
-	resp, err := cl.tlsClient.Post(eventPath, payload)
-	if err == nil {
-		err = json.Unmarshal(resp, &stat)
-	}
-	if err != nil {
-		stat.Progress = hubclient.DeliveryFailed
-		stat.Error = err.Error()
-	}
-	return stat
-}
-
-// PubConfig publishes a configuration change request
-func (cl *HttpSSEClient) PubConfig(thingID string, key string, value string) (stat hubclient.DeliveryStatus) {
-	props := map[string]string{key: value}
-	propsJson, _ := json.Marshal(props)
-	return cl.PubAction(thingID, vocab.ActionTypeProperties, propsJson)
-}
-
-// PubActionWithQueryParams publishes an action with query parameters
-func (cl *HttpSSEClient) PubActionWithQueryParams(
-	thingID string, key string, payload []byte, params map[string]string) (stat hubclient.DeliveryStatus) {
-	slog.Info("PubActionWithQueryParams",
-		slog.String("thingID", thingID),
-		slog.String("key", key),
-	)
-
-	vars := map[string]string{"thingID": thingID, "key": key}
-	actionPath := utils.Substitute(vocab.PostActionPath, vars)
-	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, actionPath)
-	// the reply is a delivery status
-
-	cl.mux.RLock()
-	defer cl.mux.RUnlock()
-	if cl.tlsClient == nil {
-		stat.Progress = hubclient.DeliveryFailed
-		stat.Error = "PubAction. Client connection was closed"
-		slog.Error(stat.Error)
-		return stat
-	}
-	reply, err := cl.tlsClient.Invoke("POST", serverURL, payload, params)
-	if err == nil {
+	//resp, err := cl.tlsClient.Post(messagePath, payload)
+	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, messagePath)
+	reply, err := cl.tlsClient.Invoke("POST", serverURL, payload, queryParams)
+	if err == nil && reply != nil && len(reply) > 0 {
 		err = json.Unmarshal(reply, &stat)
 	}
 	if err != nil {
@@ -351,35 +319,67 @@ func (cl *HttpSSEClient) PubActionWithQueryParams(
 	return stat
 }
 
+// PubAction publishes an action message and waits for an answer or until timeout
+// In order to receive replies, an inbox subscription is added on the first request.
+// An error is returned if delivery failed or succeeded but the action itself failed
+func (cl *HttpSSEClient) PubAction(thingID string, key string, payload string) (stat hubclient.DeliveryStatus) {
+	slog.Info("PubAction",
+		slog.String("thingID", thingID),
+		slog.String("key", key))
+	stat = cl.postMessage(vocab.MessageTypeAction, thingID, key, payload, nil)
+	return stat
+}
+
+// PubActionWithQueryParams publishes an action with query parameters
+func (cl *HttpSSEClient) PubActionWithQueryParams(
+	thingID string, key string, payload string, params map[string]string) (stat hubclient.DeliveryStatus) {
+	slog.Info("PubActionWithQueryParams",
+		slog.String("thingID", thingID),
+		slog.String("key", key),
+	)
+	stat = cl.postMessage(vocab.MessageTypeAction, thingID, key, payload, params)
+	return stat
+}
+
 // PubEvent publishes an event message and returns
 // This returns an error if the connection with the server is broken
-func (cl *HttpSSEClient) PubEvent(thingID string, key string, payload []byte) error {
+func (cl *HttpSSEClient) PubEvent(thingID string, key string, payload string) error {
 	slog.Info("PubEvent",
 		slog.String("me", cl._status.ClientID),
 		slog.String("device thingID", thingID),
 		slog.String("key", key),
 	)
-	vars := map[string]string{"thingID": thingID, "key": key}
-	eventPath := utils.Substitute(vocab.PostEventPath, vars)
-	cl.mux.RLock()
-	defer cl.mux.RUnlock()
-	if cl.tlsClient == nil {
-		return fmt.Errorf("PubEvent. Client connection was closed")
+	stat := cl.postMessage(vocab.MessageTypeEvent, thingID, key, payload, nil)
+	if stat.Error != "" {
+		return errors.New(stat.Error)
 	}
-	_, err := cl.tlsClient.Post(eventPath, payload)
-	return err
+	return nil
 }
 
-// PubProps publishes a properties map
+// PubProperty publishes a configuration change request
+// This is similar to publishing an action but only affects properties.
+func (cl *HttpSSEClient) PubProperty(thingID string, key string, value string) (
+	stat hubclient.DeliveryStatus) {
+	slog.Info("PubProperty",
+		slog.String("me", cl._status.ClientID),
+		slog.String("thingID", thingID),
+		slog.String("key", key),
+	)
+	stat = cl.postMessage(vocab.MessageTypeProperty, thingID, key, value, nil)
+	return stat
+}
+
+// PubProps publishes a properties map event
+// Intended for use by agents to publish all properties at once
 func (cl *HttpSSEClient) PubProps(thingID string, props map[string]string) error {
 	payload, _ := json.Marshal(props)
-	return cl.PubEvent(thingID, vocab.EventTypeProperties, payload)
+	return cl.PubEvent(thingID, vocab.EventTypeProperties, string(payload))
 }
 
 // PubTD publishes a TD event
 func (cl *HttpSSEClient) PubTD(td *things.TD) error {
 	payload, _ := json.Marshal(td)
-	return cl.PubEvent(td.ID, vocab.EventTypeTD, payload)
+	return cl.PubEvent(td.ID, vocab.EventTypeTD, string(payload))
 }
 
 // RefreshToken refreshes the authentication token
@@ -406,12 +406,13 @@ func (cl *HttpSSEClient) RefreshToken(oldToken string) (newToken string, err err
 	return newToken, err
 }
 
-// Rpc invokes an action and unmarshal a response.
+// Rpc marshals arguments, invokes an action and unmarshal a response.
 // Intended to remove some boilerplate
 func (cl *HttpSSEClient) Rpc(
 	thingID string, key string, args interface{}, resp interface{}) (err error) {
 
 	var data []byte
+	// FIXME: should args be marshalled if already a string or byte array?
 	if args != nil {
 		data, _ = json.Marshal(args)
 	}
@@ -424,7 +425,7 @@ func (cl *HttpSSEClient) Rpc(
 
 	// invoke with query parameters to provide the message ID
 	qparams := map[string]string{"messageID": messageID}
-	stat := cl.PubActionWithQueryParams(thingID, key, data, qparams)
+	stat := cl.PubActionWithQueryParams(thingID, key, string(data), qparams)
 
 	// wait for a response on the message channel
 	if !(stat.Progress == hubclient.DeliveryCompleted || stat.Progress == hubclient.DeliveryFailed) {
@@ -468,7 +469,7 @@ func (cl *HttpSSEClient) SendDeliveryUpdate(stat hubclient.DeliveryStatus) {
 		slog.String("Progress", stat.Progress),
 		slog.String("MessageID", stat.MessageID),
 	)
-	statJSON, _ := json.Marshal(&stat)
+	statJSON := stat.Marshal()
 	// thing
 	_ = cl.PubEvent(digitwin.InboxDThingID, vocab.EventTypeDeliveryUpdate, statJSON)
 }
@@ -480,18 +481,10 @@ func (cl *HttpSSEClient) SetConnectHandler(cb func(status hubclient.TransportSta
 	cl.mux.Unlock()
 }
 
-// SetActionHandler set the single handler that receives all actions directed to this client.
-// Actions do not need subscription.
-func (cl *HttpSSEClient) SetActionHandler(cb hubclient.MessageHandler) {
+// SetMessageHandler set the single handler that receives all messages from the hub.
+func (cl *HttpSSEClient) SetMessageHandler(cb hubclient.MessageHandler) {
 	cl.mux.Lock()
-	cl._actionHandler = cb
-	cl.mux.Unlock()
-}
-
-// SetEventHandler set the single handler that receives all subscribed events.
-func (cl *HttpSSEClient) SetEventHandler(cb hubclient.EventHandler) {
-	cl.mux.Lock()
-	cl._eventHandler = cb
+	cl._messageHandler = cb
 	cl.mux.Unlock()
 }
 

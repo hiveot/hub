@@ -118,7 +118,10 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 		r.Get("/app/dashboard/{page}", dashboard.RenderDashboard) // TODO: support multiple pages
 		r.Get("/app/directory", directory.RenderDirectory)
 		r.Get("/app/thing/{thingID}", thing.RenderThingDetails)
+		r.Get("/app/thing/{thingID}/raw", thing.RenderTDRaw)
 		r.Get("/app/thing/editConfig", thing.RenderEditThingConfig)
+		r.Get("/app/thing/{thingID}/confirmDeleteTDDialog", thing.RenderConfirmDeleteTDDialog)
+		r.Post("/app/thing/{thingID}/deleteTD", thing.PostDeleteTD)
 		r.Post("/app/thing/{thingID}/{propKey}", thing.PostThingConfig)
 		r.Get("/app/status", status.RenderStatus)
 	})
@@ -160,7 +163,7 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 
 	myTD := svc.CreateHiveoviewTD()
 	myTDJSON, _ := json.Marshal(myTD)
-	err = svc.hc.PubEvent(hiveoviewapi.HiveoviewServiceID, vocab.EventTypeTD, myTDJSON)
+	err = svc.hc.PubEvent(hiveoviewapi.HiveoviewServiceID, vocab.EventTypeTD, string(myTDJSON))
 	if err != nil {
 		slog.Error("failed to publish the hiveoview service TD", "err", err.Error())
 	}

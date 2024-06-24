@@ -54,8 +54,8 @@ type ClientSession struct {
 }
 
 func (cs *ClientSession) AddSSEClient(c chan SSEEvent) {
-	cs.mux.RLock()
-	defer cs.mux.RUnlock()
+	cs.mux.Lock()
+	defer cs.mux.Unlock()
 	cs.sseClients = append(cs.sseClients, c)
 
 	go func() {
@@ -118,12 +118,14 @@ func (cs *ClientSession) onConnectChange(stat hubclient.TransportStatus) {
 	}
 }
 
-// onEvent passes incoming events from the Hub to the SSE client(s)
-func (cs *ClientSession) onEvent(msg *things.ThingMessage) error {
+// onMessage passes incoming messages from the Hub to the SSE client(s)
+func (cs *ClientSession) onMessage(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
 
-	slog.Info("received event", slog.String("thingID", msg.ThingID),
+	slog.Info("received message",
+		slog.String("type", msg.MessageType),
+		slog.String("thingID", msg.ThingID),
 		slog.String("id", msg.Key))
 	if msg.Key == vocab.EventTypeTD {
 		// Publish sse event indicating the Thing TD has changed.
@@ -173,12 +175,12 @@ func (cs *ClientSession) onEvent(msg *things.ThingMessage) error {
 		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Key)
 		cs.SendSSE(thingAddr, msg.GetUpdated())
 	}
-	return nil
+	return stat.Completed(msg, nil)
 }
 
 func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {
-	cs.mux.RLock()
-	defer cs.mux.RUnlock()
+	cs.mux.Lock()
+	defer cs.mux.Unlock()
 	for i, sseClient := range cs.sseClients {
 		if sseClient == c {
 			// delete(cs.sseClients,i)
@@ -193,12 +195,12 @@ func (cs *ClientSession) ReplaceHubClient(newHC hubclient.IHubClient) {
 	// ensure the old client is disconnected
 	if cs.hc != nil {
 		cs.hc.Disconnect()
-		cs.hc.SetEventHandler(nil)
+		cs.hc.SetMessageHandler(nil)
 		cs.hc.SetConnectHandler(nil)
 	}
 	cs.hc = newHC
 	cs.hc.SetConnectHandler(cs.onConnectChange)
-	cs.hc.SetEventHandler(cs.onEvent)
+	cs.hc.SetMessageHandler(cs.onMessage)
 }
 
 // SaveState stores the current model to the server
@@ -248,7 +250,7 @@ func NewClientSession(sessionID string, hc hubclient.IHubClient, remoteAddr stri
 		sseClients:   make([]chan SSEEvent, 0),
 		lastActivity: time.Now(),
 	}
-	hc.SetEventHandler(cs.onEvent)
+	hc.SetMessageHandler(cs.onMessage)
 	hc.SetConnectHandler(cs.onConnectChange)
 
 	// restore the session data model

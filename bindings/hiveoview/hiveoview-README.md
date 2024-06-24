@@ -23,7 +23,18 @@ This viewer is in early development. The information below is subject to change.
 5. Thing configuration edit [done]
 6. Configuration of title (if supported by Thing) [partial]
 7. Server push of property and event values [done]
-8. Raw TD info
+8. View raw TD [done]
+9. Delete TD w dialog [done]
+10. Invoke action with dialog
+11. Fix edit property dialog showing raw value instead of enum text 
+todo at some point
+- is text still serialized? event if data is a string?
+  - what about stringified numbers. serialize again?
+- only show edit button if the user has permissions to edit
+- briefly fade in/out a highlight of a changed value
+- color value based on age
+- sort on various columns
+- remember open/closed sections on page details (session storage) 
 
 ### Phase 3: Dashboard
 

@@ -38,7 +38,7 @@ func (svc *IPNetBinding) Start(hc hubclient.IHubClient) (err error) {
 	svc.hc = hc
 
 	// register the action handler
-	svc.hc.SetActionHandler(svc.ActionHandler)
+	svc.hc.SetMessageHandler(svc.ActionHandler)
 
 	// publish this binding's TD document
 	td := svc.MakeBindingTD()

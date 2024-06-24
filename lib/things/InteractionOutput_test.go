@@ -57,7 +57,7 @@ func TestString(t *testing.T) {
 }
 
 func TestObject(t *testing.T) {
-	schema := &DataSchema{Type: vocab.vocab.WoTDataTypeObject}
+	schema := &DataSchema{Type: vocab.WoTDataTypeObject}
 	type User struct {
 		Name        string
 		Age         int

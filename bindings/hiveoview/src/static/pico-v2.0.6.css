@@ -1,6 +1,6 @@
 @charset "UTF-8";
 /*!
- * Pico CSS ✨ v2.0.0-rc3 (https://picocss.com)
+ * Pico CSS ✨ v2.0.6 (https://picocss.com)
  * Copyright 2019-2024 - Licensed under MIT
  */
 /**
@@ -8,7 +8,7 @@
  */
 :root {
   --pico-font-family-emoji: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --pico-font-family-sans-serif: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, var(--pico-font-family-emoji);
+  --pico-font-family-sans-serif: system-ui, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, Helvetica, Arial, "Helvetica Neue", sans-serif, var(--pico-font-family-emoji);
   --pico-font-family-monospace: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace, var(--pico-font-family-emoji);
   --pico-font-family: var(--pico-font-family-sans-serif);
   --pico-line-height: 1.5;
@@ -69,12 +69,6 @@
   :root {
     --pico-font-size: 131.25%;
   }
-}
-:root details summary[role=button]:not(.outline)::after {
-  filter: brightness(0) invert(1);
-}
-:root [aria-busy=true]:not(input, select, textarea):is(button, [type=submit], [type=button], [type=reset], [role=button]):not(.outline)::before {
-  filter: brightness(0) invert(1);
 }
 
 a {
@@ -218,6 +212,14 @@ nav details.dropdown summary:focus-visible {
   --pico-form-element-spacing-horizontal: 2rem;
 }
 
+details summary[role=button]:not(.outline)::after {
+  filter: brightness(0) invert(1);
+}
+
+[aria-busy=true]:not(input, select, textarea):is(button, [type=submit], [type=button], [type=reset], [role=button]):not(.outline)::before {
+  filter: brightness(0) invert(1);
+}
+
 /**
  * Color schemes
  */
@@ -287,8 +289,6 @@ nav details.dropdown summary:focus-visible {
   --pico-form-element-active-background-color: #fff;
   --pico-form-element-active-border-color: var(--pico-primary-border);
   --pico-form-element-focus-color: var(--pico-primary-border);
-  --pico-form-element-disabled-background-color: var(--pico-form-element-background-color);
-  --pico-form-element-disabled-border-color: var(--pico-form-element-border-color);
   --pico-form-element-disabled-opacity: 0.5;
   --pico-form-element-invalid-border-color: #b86a6b;
   --pico-form-element-invalid-active-border-color: #c84f48;
@@ -297,8 +297,9 @@ nav details.dropdown summary:focus-visible {
   --pico-form-element-valid-active-border-color: #279977;
   --pico-form-element-valid-focus-color: var(--pico-form-element-valid-active-border-color);
   --pico-switch-background-color: #bfc7d9;
-  --pico-switch-color: var(--pico-primary-inverse);
   --pico-switch-checked-background-color: var(--pico-primary-background);
+  --pico-switch-color: #fff;
+  --pico-switch-thumb-box-shadow: 0 0 0 rgba(0, 0, 0, 0);
   --pico-range-border-color: #dfe3eb;
   --pico-range-active-border-color: #bfc7d9;
   --pico-range-thumb-border-color: var(--pico-background-color);
@@ -379,7 +380,7 @@ nav details.dropdown summary:focus-visible {
     --pico-contrast-hover-underline: var(--pico-contrast-hover);
     --pico-contrast-focus: rgba(207, 213, 226, 0.25);
     --pico-contrast-inverse: #000;
-    --pico-box-shadow: 0.0145rem 0.029rem 0.174rem rgba(0, 0, 0, 0.01698), 0.0335rem 0.067rem 0.402rem rgba(0, 0, 0, 0.024), 0.0625rem 0.125rem 0.75rem rgba(0, 0, 0, 0.03), 0.1125rem 0.225rem 1.35rem rgba(0, 0, 0, 0.036), 0.2085rem 0.417rem 2.502rem rgba(0, 0, 0, 0.04302), 0.5rem 1rem 6rem rgba(0, 0, 0, 0.06), 0 0 0 0.0625rem rgba(0, 0, 0, 0.015);
+    --pico-box-shadow: 0.0145rem 0.029rem 0.174rem rgba(7, 9, 12, 0.01698), 0.0335rem 0.067rem 0.402rem rgba(7, 9, 12, 0.024), 0.0625rem 0.125rem 0.75rem rgba(7, 9, 12, 0.03), 0.1125rem 0.225rem 1.35rem rgba(7, 9, 12, 0.036), 0.2085rem 0.417rem 2.502rem rgba(7, 9, 12, 0.04302), 0.5rem 1rem 6rem rgba(7, 9, 12, 0.06), 0 0 0 0.0625rem rgba(7, 9, 12, 0.015);
     --pico-h1-color: #f0f1f3;
     --pico-h2-color: #e0e3e7;
     --pico-h3-color: #c2c7d0;
@@ -408,8 +409,6 @@ nav details.dropdown summary:focus-visible {
     --pico-form-element-active-background-color: #1a1f28;
     --pico-form-element-active-border-color: var(--pico-primary-border);
     --pico-form-element-focus-color: var(--pico-primary-border);
-    --pico-form-element-disabled-background-color: var(--pico-form-element-background-color);
-    --pico-form-element-disabled-border-color: var(--pico-form-element-border-color);
     --pico-form-element-disabled-opacity: 0.5;
     --pico-form-element-invalid-border-color: #964a50;
     --pico-form-element-invalid-active-border-color: #b7403b;
@@ -418,8 +417,9 @@ nav details.dropdown summary:focus-visible {
     --pico-form-element-valid-active-border-color: #16896a;
     --pico-form-element-valid-focus-color: var(--pico-form-element-valid-active-border-color);
     --pico-switch-background-color: #333c4e;
-    --pico-switch-color: var(--pico-primary-inverse);
     --pico-switch-checked-background-color: var(--pico-primary-background);
+    --pico-switch-color: #fff;
+    --pico-switch-thumb-box-shadow: 0 0 0 rgba(0, 0, 0, 0);
     --pico-range-border-color: #202632;
     --pico-range-active-border-color: #2a3140;
     --pico-range-thumb-border-color: var(--pico-background-color);
@@ -503,7 +503,7 @@ nav details.dropdown summary:focus-visible {
   --pico-contrast-hover-underline: var(--pico-contrast-hover);
   --pico-contrast-focus: rgba(207, 213, 226, 0.25);
   --pico-contrast-inverse: #000;
-  --pico-box-shadow: 0.0145rem 0.029rem 0.174rem rgba(0, 0, 0, 0.01698), 0.0335rem 0.067rem 0.402rem rgba(0, 0, 0, 0.024), 0.0625rem 0.125rem 0.75rem rgba(0, 0, 0, 0.03), 0.1125rem 0.225rem 1.35rem rgba(0, 0, 0, 0.036), 0.2085rem 0.417rem 2.502rem rgba(0, 0, 0, 0.04302), 0.5rem 1rem 6rem rgba(0, 0, 0, 0.06), 0 0 0 0.0625rem rgba(0, 0, 0, 0.015);
+  --pico-box-shadow: 0.0145rem 0.029rem 0.174rem rgba(7, 9, 12, 0.01698), 0.0335rem 0.067rem 0.402rem rgba(7, 9, 12, 0.024), 0.0625rem 0.125rem 0.75rem rgba(7, 9, 12, 0.03), 0.1125rem 0.225rem 1.35rem rgba(7, 9, 12, 0.036), 0.2085rem 0.417rem 2.502rem rgba(7, 9, 12, 0.04302), 0.5rem 1rem 6rem rgba(7, 9, 12, 0.06), 0 0 0 0.0625rem rgba(7, 9, 12, 0.015);
   --pico-h1-color: #f0f1f3;
   --pico-h2-color: #e0e3e7;
   --pico-h3-color: #c2c7d0;
@@ -532,8 +532,6 @@ nav details.dropdown summary:focus-visible {
   --pico-form-element-active-background-color: #1a1f28;
   --pico-form-element-active-border-color: var(--pico-primary-border);
   --pico-form-element-focus-color: var(--pico-primary-border);
-  --pico-form-element-disabled-background-color: var(--pico-form-element-background-color);
-  --pico-form-element-disabled-border-color: var(--pico-form-element-border-color);
   --pico-form-element-disabled-opacity: 0.5;
   --pico-form-element-invalid-border-color: #964a50;
   --pico-form-element-invalid-active-border-color: #b7403b;
@@ -542,8 +540,9 @@ nav details.dropdown summary:focus-visible {
   --pico-form-element-valid-active-border-color: #16896a;
   --pico-form-element-valid-focus-color: var(--pico-form-element-valid-active-border-color);
   --pico-switch-background-color: #333c4e;
-  --pico-switch-color: var(--pico-primary-inverse);
   --pico-switch-checked-background-color: var(--pico-primary-background);
+  --pico-switch-color: #fff;
+  --pico-switch-thumb-box-shadow: 0 0 0 rgba(0, 0, 0, 0);
   --pico-range-border-color: #202632;
   --pico-range-active-border-color: #2a3140;
   --pico-range-thumb-border-color: var(--pico-background-color);
@@ -629,7 +628,6 @@ progress,
   text-underline-offset: var(--pico-text-underline-offset);
   text-rendering: optimizeLegibility;
   overflow-wrap: break-word;
-  cursor: default;
   -moz-tab-size: 4;
   -o-tab-size: 4;
   tab-size: 4;
@@ -651,6 +649,13 @@ body > header,
 body > main,
 body > footer {
   padding-block: var(--pico-block-spacing-vertical);
+}
+
+/**
+ * Section
+ */
+section {
+  margin-bottom: var(--pico-block-spacing-vertical);
 }
 
 /**
@@ -694,13 +699,6 @@ body > footer {
 }
 
 /**
- * Section
- */
-section {
-  margin-bottom: var(--pico-block-spacing-vertical);
-}
-
-/**
  * Grid
  * Minimal grid system with auto-layout columns
  */
@@ -720,71 +718,10 @@ section {
 }
 
 /**
- * Horizontal scroller (<figure>)
+ * Overflow auto
  */
-figure {
-  display: block;
-  margin: 0;
-  padding: 0;
-  overflow-x: auto;
-}
-figure figcaption {
-  padding: calc(var(--pico-spacing) * 0.5) 0;
-  color: var(--pico-muted-color);
-}
-
-/**
- * Link
- */
-:where(a:not([role=button])),
-[role=link] {
-  --pico-color: var(--pico-primary);
-  --pico-background-color: transparent;
-  --pico-underline: var(--pico-primary-underline);
-  outline: none;
-  background-color: var(--pico-background-color);
-  color: var(--pico-color);
-  -webkit-text-decoration: var(--pico-text-decoration);
-  text-decoration: var(--pico-text-decoration);
-  text-decoration-color: var(--pico-underline);
-  text-underline-offset: 0.125em;
-  transition: background-color var(--pico-transition), color var(--pico-transition), box-shadow var(--pico-transition), -webkit-text-decoration var(--pico-transition);
-  transition: background-color var(--pico-transition), color var(--pico-transition), text-decoration var(--pico-transition), box-shadow var(--pico-transition);
-  transition: background-color var(--pico-transition), color var(--pico-transition), text-decoration var(--pico-transition), box-shadow var(--pico-transition), -webkit-text-decoration var(--pico-transition);
-}
-:where(a:not([role=button])):is([aria-current]:not([aria-current=false]), :hover, :active, :focus),
-[role=link]:is([aria-current]:not([aria-current=false]), :hover, :active, :focus) {
-  --pico-color: var(--pico-primary-hover);
-  --pico-underline: var(--pico-primary-hover-underline);
-  --pico-text-decoration: underline;
-}
-:where(a:not([role=button])):focus-visible,
-[role=link]:focus-visible {
-  box-shadow: 0 0 0 var(--pico-outline-width) var(--pico-primary-focus);
-}
-:where(a:not([role=button])).secondary,
-[role=link].secondary {
-  --pico-color: var(--pico-secondary);
-  --pico-underline: var(--pico-secondary-underline);
-}
-:where(a:not([role=button])).secondary:is([aria-current]:not([aria-current=false]), :hover, :active, :focus),
-[role=link].secondary:is([aria-current]:not([aria-current=false]), :hover, :active, :focus) {
-  --pico-color: var(--pico-secondary-hover);
-  --pico-underline: var(--pico-secondary-hover-underline);
-}
-:where(a:not([role=button])).contrast,
-[role=link].contrast {
-  --pico-color: var(--pico-contrast);
-  --pico-underline: var(--pico-contrast-underline);
-}
-:where(a:not([role=button])).contrast:is([aria-current]:not([aria-current=false]), :hover, :active, :focus),
-[role=link].contrast:is([aria-current]:not([aria-current=false]), :hover, :active, :focus) {
-  --pico-color: var(--pico-contrast-hover);
-  --pico-underline: var(--pico-contrast-hover-underline);
-}
-
-a[role=button] {
-  display: inline-block;
+.overflow-auto {
+  overflow: auto;
 }
 
 /**
@@ -944,38 +881,57 @@ del {
 }
 
 /**
- * Embedded content
+ * Link
  */
-:where(audio, canvas, iframe, img, svg, video) {
-  vertical-align: middle;
+:where(a:not([role=button])),
+[role=link] {
+  --pico-color: var(--pico-primary);
+  --pico-background-color: transparent;
+  --pico-underline: var(--pico-primary-underline);
+  outline: none;
+  background-color: var(--pico-background-color);
+  color: var(--pico-color);
+  -webkit-text-decoration: var(--pico-text-decoration);
+  text-decoration: var(--pico-text-decoration);
+  text-decoration-color: var(--pico-underline);
+  text-underline-offset: 0.125em;
+  transition: background-color var(--pico-transition), color var(--pico-transition), box-shadow var(--pico-transition), -webkit-text-decoration var(--pico-transition);
+  transition: background-color var(--pico-transition), color var(--pico-transition), text-decoration var(--pico-transition), box-shadow var(--pico-transition);
+  transition: background-color var(--pico-transition), color var(--pico-transition), text-decoration var(--pico-transition), box-shadow var(--pico-transition), -webkit-text-decoration var(--pico-transition);
+}
+:where(a:not([role=button])):is([aria-current]:not([aria-current=false]), :hover, :active, :focus),
+[role=link]:is([aria-current]:not([aria-current=false]), :hover, :active, :focus) {
+  --pico-color: var(--pico-primary-hover);
+  --pico-underline: var(--pico-primary-hover-underline);
+  --pico-text-decoration: underline;
+}
+:where(a:not([role=button])):focus-visible,
+[role=link]:focus-visible {
+  box-shadow: 0 0 0 var(--pico-outline-width) var(--pico-primary-focus);
+}
+:where(a:not([role=button])).secondary,
+[role=link].secondary {
+  --pico-color: var(--pico-secondary);
+  --pico-underline: var(--pico-secondary-underline);
+}
+:where(a:not([role=button])).secondary:is([aria-current]:not([aria-current=false]), :hover, :active, :focus),
+[role=link].secondary:is([aria-current]:not([aria-current=false]), :hover, :active, :focus) {
+  --pico-color: var(--pico-secondary-hover);
+  --pico-underline: var(--pico-secondary-hover-underline);
+}
+:where(a:not([role=button])).contrast,
+[role=link].contrast {
+  --pico-color: var(--pico-contrast);
+  --pico-underline: var(--pico-contrast-underline);
+}
+:where(a:not([role=button])).contrast:is([aria-current]:not([aria-current=false]), :hover, :active, :focus),
+[role=link].contrast:is([aria-current]:not([aria-current=false]), :hover, :active, :focus) {
+  --pico-color: var(--pico-contrast-hover);
+  --pico-underline: var(--pico-contrast-hover-underline);
 }
 
-audio,
-video {
+a[role=button] {
   display: inline-block;
-}
-
-audio:not([controls]) {
-  display: none;
-  height: 0;
-}
-
-:where(iframe) {
-  border-style: none;
-}
-
-img {
-  max-width: 100%;
-  height: auto;
-  border-style: none;
-}
-
-:where(svg:not([fill])) {
-  fill: currentColor;
-}
-
-svg:not(:root) {
-  overflow: hidden;
 }
 
 /**
@@ -1168,6 +1124,41 @@ table.striped tbody tr:nth-child(odd) td {
 }
 
 /**
+ * Embedded content
+ */
+:where(audio, canvas, iframe, img, svg, video) {
+  vertical-align: middle;
+}
+
+audio,
+video {
+  display: inline-block;
+}
+
+audio:not([controls]) {
+  display: none;
+  height: 0;
+}
+
+:where(iframe) {
+  border-style: none;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  border-style: none;
+}
+
+:where(svg:not([fill])) {
+  fill: currentColor;
+}
+
+svg:not(:root) {
+  overflow: hidden;
+}
+
+/**
  * Code
  */
 pre,
@@ -1220,6 +1211,19 @@ kbd {
   background-color: var(--pico-code-kbd-background-color);
   color: var(--pico-code-kbd-color);
   vertical-align: baseline;
+}
+
+/**
+ * Figure
+ */
+figure {
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+figure figcaption {
+  padding: calc(var(--pico-spacing) * 0.5) 0;
+  color: var(--pico-muted-color);
 }
 
 /**
@@ -1409,8 +1413,6 @@ select[disabled],
 textarea[disabled],
 label[aria-disabled=true],
 :where(fieldset[disabled]) :is(input:not([type=submit], [type=button], [type=reset]), select, textarea) {
-  --pico-background-color: var(--pico-form-element-disabled-background-color);
-  --pico-border-color: var(--pico-form-element-disabled-border-color);
   opacity: var(--pico-form-element-disabled-opacity);
   pointer-events: none;
 }
@@ -1509,6 +1511,7 @@ select:not([multiple], [size]) {
 }
 select[multiple] option:checked {
   background: var(--pico-form-element-selected-background-color);
+  color: var(--pico-form-element-color);
 }
 
 [dir=rtl] select:not([multiple], [size]) {
@@ -1624,10 +1627,11 @@ label:has([type=checkbox], [type=radio]) {
 }
 [type=checkbox][role=switch]:before {
   display: block;
-  width: calc(1.25em - var(--pico-border-width) * 2);
+  aspect-ratio: 1;
   height: 100%;
   border-radius: 50%;
   background-color: var(--pico-color);
+  box-shadow: var(--pico-switch-thumb-box-shadow);
   content: "";
   transition: margin 0.1s ease-in-out;
 }
@@ -1641,7 +1645,7 @@ label:has([type=checkbox], [type=radio]) {
   background-image: none;
 }
 [type=checkbox][role=switch]:checked::before {
-  margin-inline-start: calc(1.125em - var(--pico-border-width));
+  margin-inline-start: calc(2.25em - 1.25em);
 }
 [type=checkbox][role=switch][disabled] {
   --pico-background-color: var(--pico-border-color);
@@ -1853,7 +1857,7 @@ input:not([type=checkbox], [type=radio], [type=range], [type=file])[type=time] {
 input:not([type=checkbox], [type=radio], [type=range], [type=file])[type=search] {
   padding-inline-start: calc(var(--pico-form-element-spacing-horizontal) + 1.75rem);
   background-image: var(--pico-icon-search);
-  background-position: center left 1.125rem;
+  background-position: center left calc(var(--pico-form-element-spacing-horizontal) + 0.125rem);
   background-size: 1rem auto;
   background-repeat: no-repeat;
 }
@@ -2048,6 +2052,9 @@ nav details.dropdown {
   display: inline;
   margin: calc(var(--pico-nav-element-spacing-vertical) * -1) 0;
 }
+nav details.dropdown summary::after {
+  transform: rotate(0deg) translateX(0rem);
+}
 nav details.dropdown summary:not([role]) {
   height: calc(1rem * var(--pico-line-height) + var(--pico-nav-link-spacing-vertical) * 2);
   padding: calc(var(--pico-nav-link-spacing-vertical) - var(--pico-border-width) * 2) var(--pico-nav-link-spacing-horizontal);
@@ -2142,23 +2149,11 @@ label > details.dropdown {
 /**
  * Group ([role="group"], [role="search"])
  */
-form[role=search], form[role=group] {
-  width: 100%;
-}
-
-[role=search] > *:first-child {
-  border-top-left-radius: 5rem;
-  border-bottom-left-radius: 5rem;
-}
-[role=search] > *:last-child {
-  border-top-right-radius: 5rem;
-  border-bottom-right-radius: 5rem;
-}
-
 [role=search],
 [role=group] {
   display: inline-flex;
   position: relative;
+  width: 100%;
   margin-bottom: var(--pico-spacing);
   border-radius: var(--pico-border-radius);
   box-shadow: var(--pico-group-box-shadow, 0 0 0 rgba(0, 0, 0, 0));
@@ -2258,14 +2253,25 @@ form[role=search], form[role=group] {
   }
   [role=search] button:focus,
   [role=search] [type=submit]:focus,
+  [role=search] [type=reset]:focus,
   [role=search] [type=button]:focus,
   [role=search] [role=button]:focus,
   [role=group] button:focus,
   [role=group] [type=submit]:focus,
+  [role=group] [type=reset]:focus,
   [role=group] [type=button]:focus,
   [role=group] [role=button]:focus {
     box-shadow: none;
   }
+}
+
+[role=search] > *:first-child {
+  border-top-left-radius: 5rem;
+  border-bottom-left-radius: 5rem;
+}
+[role=search] > *:last-child {
+  border-top-right-radius: 5rem;
+  border-bottom-right-radius: 5rem;
 }
 
 /**
@@ -2279,7 +2285,7 @@ form[role=search], form[role=group] {
   width: 1em;
   height: 1em;
   background-image: var(--pico-icon-loading);
-  background-size: 1rem auto;
+  background-size: 1em auto;
   background-repeat: no-repeat;
   content: "";
   vertical-align: -0.125em;
@@ -2347,9 +2353,10 @@ dialog article {
 dialog article > header > * {
   margin-bottom: 0;
 }
-dialog article > header .close, dialog article > header a[rel=prev] {
+dialog article > header .close, dialog article > header :is(a, button)[rel=prev] {
   margin: 0;
   margin-left: var(--pico-spacing);
+  padding: 0;
   float: right;
 }
 dialog article > footer {
@@ -2363,21 +2370,23 @@ dialog article > footer button:not(:first-of-type),
 dialog article > footer [role=button]:not(:first-of-type) {
   margin-left: calc(var(--pico-spacing) * 0.5);
 }
-dialog article .close, dialog article a[rel=prev] {
+dialog article .close, dialog article :is(a, button)[rel=prev] {
   display: block;
   width: 1rem;
   height: 1rem;
   margin-top: calc(var(--pico-spacing) * -1);
   margin-bottom: var(--pico-spacing);
   margin-left: auto;
+  border: none;
   background-image: var(--pico-icon-close);
   background-position: center;
   background-size: auto 1rem;
   background-repeat: no-repeat;
+  background-color: transparent;
   opacity: 0.5;
   transition: opacity var(--pico-transition);
 }
-dialog article .close:is([aria-current]:not([aria-current=false]), :hover, :active, :focus), dialog article a[rel=prev]:is([aria-current]:not([aria-current=false]), :hover, :active, :focus) {
+dialog article .close:is([aria-current]:not([aria-current=false]), :hover, :active, :focus), dialog article :is(a, button)[rel=prev]:is([aria-current]:not([aria-current=false]), :hover, :active, :focus) {
   opacity: 1;
 }
 dialog:not([open]), dialog[open=false] {
@@ -2444,6 +2453,7 @@ nav ul {
 
 nav {
   justify-content: space-between;
+  overflow: visible;
 }
 nav ol,
 nav ul {
@@ -2476,6 +2486,7 @@ nav li :where(a, [role=link]):not(:hover) {
 }
 nav li button,
 nav li [role=button],
+nav li [type=button],
 nav li input:not([type=checkbox], [type=radio], [type=range], [type=file]),
 nav li select {
   height: auto;
@@ -2789,5 +2800,3 @@ textarea,
     transition-duration: 0s !important;
   }
 }
-
-/*# sourceMappingURL=pico.css.map */

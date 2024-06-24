@@ -9,7 +9,7 @@ import (
 func (svc *IsyBinding) PubEvents(thingID string, evMap map[string]string) {
 	for k, v := range evMap {
 		vJson, _ := json.Marshal(v)
-		svc.hc.PubEvent(thingID, k, vJson)
+		svc.hc.PubEvent(thingID, k, string(vJson))
 	}
 }
 
@@ -30,7 +30,7 @@ func (svc *IsyBinding) PublishNodeValues(onlyChanges bool) error {
 	}
 	for k, v := range events {
 		payload, _ := json.Marshal(v)
-		err = svc.hc.PubEvent(bindingID, k, payload)
+		err = svc.hc.PubEvent(bindingID, k, string(payload))
 
 	}
 

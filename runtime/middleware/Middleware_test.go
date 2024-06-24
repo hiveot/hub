@@ -40,7 +40,7 @@ func TestHandleEvent(t *testing.T) {
 		return tv, nil
 	})
 
-	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", []byte(payload), "sender1")
+	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", payload, "sender1")
 	stat := mw.HandleMessage(tv1)
 	assert.Empty(t, stat.Error)
 	assert.Equal(t, payload, string(stat.Reply))
@@ -64,7 +64,7 @@ func TestHandlerError(t *testing.T) {
 		return tv, nil
 	})
 
-	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", []byte(payload), "sender1")
+	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", payload, "sender1")
 	stat := mw.HandleMessage(tv1)
 	assert.Equal(t, mwh1Count, 1)
 	assert.NotEmpty(t, stat.Error)
@@ -93,7 +93,7 @@ func TestMiddlewareError(t *testing.T) {
 		return tv, nil
 	})
 
-	msg := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", []byte(payload), "sender1")
+	msg := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", payload, "sender1")
 	stat := mw.HandleMessage(msg)
 	assert.NotEmpty(t, stat.Error)
 	assert.Equal(t, hubclient.DeliveryFailed, stat.Progress)

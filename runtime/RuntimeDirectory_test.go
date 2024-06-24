@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsclient"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -27,21 +28,22 @@ func TestAddRemoveTD(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 	ag, _ := ts.AddConnectAgent(agentID)
-	ag.SetActionHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	ag.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		stat.Progress = hubclient.DeliveryCompleted
 		return
 	})
 	defer ag.Disconnect()
 	cl, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
-	cl.SetEventHandler(func(msg *things.ThingMessage) error {
-		return nil
+	cl.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+		// result is ignored for events
+		return stat
 	})
 	defer cl.Disconnect()
 
 	// Add the TD by sending it as an event
 	td1 := things.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
 	td1JSON, _ := json.Marshal(td1)
-	err := ag.PubEvent(agThing1ID, vocab.EventTypeTD, td1JSON)
+	err := ag.PubEvent(agThing1ID, vocab.EventTypeTD, string(td1JSON))
 	assert.NoError(t, err)
 
 	// Get returns a serialized TD object
@@ -55,11 +57,11 @@ func TestAddRemoveTD(t *testing.T) {
 
 	//stat = cl.Rpc(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
 	args4JSON, _ := json.Marshal(dtThing1ID)
-	stat := cl.PubAction(digitwin.DirectoryDThingID, digitwin.DirectoryRemoveTDMethod, args4JSON)
+	stat := cl.PubAction(digitwin.DirectoryDThingID, digitwin.DirectoryRemoveTDMethod, string(args4JSON))
 	require.Empty(t, stat.Error)
 
 	// after removal of the TD, getTD should return an error but delivery is successful
-	stat = cl.PubAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, args4JSON)
+	stat = cl.PubAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, string(args4JSON))
 	require.NotEmpty(t, stat.Error)
 	require.Equal(t, hubclient.DeliveryCompleted, stat.Progress)
 }
@@ -91,7 +93,7 @@ func TestReadTDs(t *testing.T) {
 	tdList, err := digitwin.DirectoryReadTDs(cl, 333, 02)
 	require.NoError(t, err)
 	require.Greater(t, len(tdList), 3)
-	args := []byte("{\"limit\":10}")
+	args := "{\"limit\":10}"
 	stat := cl.PubAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDsMethod, args)
 	assert.Empty(t, stat.Error)
 	assert.NotEmpty(t, stat.Reply)
@@ -127,4 +129,11 @@ func TestReadTDsRest(t *testing.T) {
 	tdList, err := things.UnmarshalTDList(tdJSONList)
 	require.NoError(t, err)
 	require.Equal(t, 100, len(tdList))
+
+	// read a single td
+	vars := map[string]string{"thingID": tdList[0].ID}
+	getThingPath := utils.Substitute(vocab.GetThingPath, vars)
+	data, err = cl2.Get(getThingPath)
+	require.NoError(t, err)
+
 }

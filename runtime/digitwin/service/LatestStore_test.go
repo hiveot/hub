@@ -61,7 +61,8 @@ func createValueBatch(svc *service.DigiTwinLatestStore,
 
 		ev := things.NewThingMessage(vocab.MessageTypeEvent,
 			thingID, valueNames[randomName],
-			[]byte(fmt.Sprintf("%2.3f", randomValue)), "sender1",
+			fmt.Sprintf("%2.3f", randomValue),
+			"sender1",
 		)
 		ev.CreatedMSec = randomTime.UnixMilli()
 
@@ -176,7 +177,7 @@ func TestAddPropsEvent(t *testing.T) {
 	defer closeFn()
 
 	msg := things.NewThingMessage(vocab.MessageTypeEvent,
-		thing1ID, vocab.EventTypeProperties, serProps, "sender")
+		thing1ID, vocab.EventTypeProperties, string(serProps), "sender")
 	svc.StoreMessage(msg)
 
 	values1, err := svc.ReadLatest(vocab.MessageTypeEvent, thing1ID, valueNames, "")
@@ -202,7 +203,7 @@ func TestAddBadProps(t *testing.T) {
 	svc, closeFn := startLatestStore(true)
 	defer closeFn()
 	msg := things.NewThingMessage(vocab.MessageTypeEvent,
-		thing1ID, vocab.EventTypeProperties, serProps, "sender")
+		thing1ID, vocab.EventTypeProperties, string(serProps), "sender")
 	svc.StoreMessage(msg)
 
 	//// action is ignored

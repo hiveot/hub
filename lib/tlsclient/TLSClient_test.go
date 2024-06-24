@@ -11,13 +11,11 @@ import (
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/tlsclient"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/stretchr/testify/require"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
-	"path"
 	"testing"
 	"time"
 
@@ -231,7 +229,8 @@ func TestAuthJWT(t *testing.T) {
 	mux := http.NewServeMux()
 	// Handle a jwt login
 	mux.HandleFunc(pathLogin1, func(resp http.ResponseWriter, req *http.Request) {
-		path.Split(pathLogin1)
+		authMsg := authn.UserLoginArgs{}
+		loginResp := authn.UserLoginResp{}
 		slog.Info("TestAuthJWT: login")
 		body, err := io.ReadAll(req.Body)
 		assert.NoError(t, err)
@@ -251,7 +250,7 @@ func TestAuthJWT(t *testing.T) {
 			token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 			newToken, err := token.SignedString(secret)
 			assert.NoError(t, err)
-			loginResp := api.LoginResp{Token: newToken}
+			loginResp = authn.UserLoginResp{Token: newToken}
 			data, _ := json.Marshal(loginResp)
 			_, _ = resp.Write(data)
 		} else {

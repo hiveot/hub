@@ -50,7 +50,7 @@ func StartAuthzAgent(svc *AuthzService, hc hubclient.IHubClient) (*AuthzAgent, e
 	agent.userHandler = authz.NewUserHandler(svc)
 
 	if hc != nil {
-		agent.hc.SetActionHandler(agent.HandleMessage)
+		agent.hc.SetMessageHandler(agent.HandleMessage)
 		// agents don't need to subscribe to receive actions directed at them
 		//err = agent.hc.Subscribe(api.AuthzThingID)
 	}

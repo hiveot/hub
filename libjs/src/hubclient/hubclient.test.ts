@@ -5,7 +5,7 @@ import * as tslog from 'tslog';
 import {DeliveryProgress, DeliveryStatus} from './IHubClient';
 import {ThingMessage} from "../things/ThingMessage";
 import {ConnectToHub} from "@hivelib/hubclient/ConnectToHub";
-import {EventTypeDeliveryUpdate} from "@hivelib/api/vocab/ht-vocab";
+import {EventTypeDeliveryUpdate, MessageTypeAction} from "@hivelib/api/vocab/ht-vocab";
 
 const log = new tslog.Logger({name: "HCTest"})
 
@@ -79,15 +79,11 @@ async function test3() {
     try {
         token = await hc.connectWithPassword(testPass)
 
-        hc.setActionHandler((tv: ThingMessage):DeliveryStatus => {
-            log.info("Received action: " + tv.key)
+        hc.setMessageHandler((tv: ThingMessage):DeliveryStatus => {
+            log.info("Received message: type="+tv.messageType+"; key=" + tv.key)
             let stat = new DeliveryStatus()
             stat.Completed(tv)
             return stat
-        })
-
-        hc.setEventHandler((tv: ThingMessage) => {
-            log.info("onEvent: " + tv.key + ": " + tv.data)
         })
         token = await hc.refreshToken()
     } catch (err) {
@@ -106,7 +102,7 @@ async function test3() {
         }
 
         // publish a config request
-        stat = await hc.pubConfig("thing1", "prop1", "10")
+        stat = await hc.pubProperty("thing1", "prop1", "10")
         if (stat.error != "") {
             throw ("pubConfig failed: " + stat)
         }
@@ -157,7 +153,8 @@ async function test4() {
     try {
         await hcCl.subscribe("dtw:testsvc:thing1","")
         // await hcCl.subscribe("","")
-        hcCl.setEventHandler((tm: ThingMessage)=>{
+        hcCl.setMessageHandler((tm: ThingMessage):DeliveryStatus=>{
+            let stat = new DeliveryStatus()
             if (tm.thingID == "dtw:testsvc:thing1") {
                 // let data = JSON.parse(tm.data)
                 // FIXME: why is data base64 encoded?
@@ -165,17 +162,14 @@ async function test4() {
                 log.info("Received event: "+tm.key+"; data="+data)
                 ev1Count++
             } else if (tm.key == EventTypeDeliveryUpdate) {
-                // FIXME: why is data base64 encoded?
+                // FIXME: why is data base64 encoded? => data type in golang was []byte; changed to string
                 let data = Buffer.from(tm.data,"base64").toString()
                 actionDelivery = JSON.parse(data)
+            } else if (tm.messageType == MessageTypeAction) {
+                actionCount++
+                stat.reply = "success"
             }
-        })
-        // set an action handler for the service
-        hcSvc.setActionHandler((tm:ThingMessage):DeliveryStatus=>{
-            let stat = new DeliveryStatus()
             stat.Completed(tm)
-            stat.reply = "success"
-            actionCount++
             return stat
         })
     } catch(e) {
@@ -196,7 +190,7 @@ async function test4() {
     let stat2 = await hcCl.pubAction(dtwThing1ID,"action1", "how are you")
     if (stat2.error) {
         log.error("failed publishing action: "+stat2.error)
-    } else if (stat2.progress != DeliveryProgress.DeliveryDelivered) {
+    } else if (stat2.progress != DeliveryProgress.DeliveryToAgent) {
         log.error("unexpected reply: "+stat2.progress)
     }
 

@@ -75,6 +75,7 @@
 	</article>
 
 	<footer class="h-row" style="width:100%">
+    {{- /*close-modal is handled by h-modal component*/ -}}
 		<button id="cancelBtn"
 		        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
 		        class="secondary">Cancel
@@ -91,6 +92,7 @@
 </h-modal>
 
 <script>
+    // Ugly to have to do this!
     function onSubmitCompleted(ev, btn) {
         ev.stopImmediatePropagation()
         let details = ev.detail

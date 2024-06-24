@@ -151,7 +151,7 @@ func (test *TestServer) AddTD(agentID string, td *things.TD) *things.TD {
 	}
 	tdJSON, _ := json.Marshal(td)
 	ag := test.Runtime.TransportsMgr.GetEmbedded().NewClient(agentID)
-	err := ag.PubEvent(td.ID, vocab.EventTypeTD, tdJSON)
+	err := ag.PubEvent(td.ID, vocab.EventTypeTD, string(tdJSON))
 	if err != nil {
 		slog.Error("Failed adding TD")
 	}
