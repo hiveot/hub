@@ -1,13 +1,21 @@
-import {getEnumMemberName, NodeStatus, ZWaveNode, ZWavePlusNodeType, ZWavePlusRoleType,} from "zwave-js";
+import {
+    getEnumMemberName,
+    NodeStatus,
+    ZWaveNode,
+    ZWavePlusNodeType,
+    ZWavePlusRoleType,
+} from "zwave-js";
 import {InterviewStage, SecurityClass} from '@zwave-js/core';
 import * as vocab from "@hivelib/api/vocab/ht-vocab";
 import {getPropKey} from "./getPropKey";
+import {getVidValue} from "@zwavejs/ZWAPI";
 
 
 // NodeValues holds the latest values of a single node
 export class NodeValues {
     values: { [key: string]: string }
 
+    // @param zwapi: driver to read node vid value
     // @param node: create the map for this node
     constructor(node?: ZWaveNode) {
         this.values = {}
@@ -110,7 +118,7 @@ export class NodeValues {
 
         let vids = node.getDefinedValueIDs()
         for (let vid of vids) {
-            let vidValue = node.getValue(vid)
+            let vidValue = getVidValue(node, vid)
             let propID = getPropKey(vid)
             this.setIf(propID, vidValue)
         }

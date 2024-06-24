@@ -1,11 +1,10 @@
-// ZWaveJSBinding.ts holds the entry point to the zwave binding along with its configuration
-import {InterviewStage, SetValueStatus, TranslatedValueID, ZWaveNode} from "zwave-js";
+// ZWaveJSBinding.ts holds the entry point to the ZWave binding along with its configuration
+import {InterviewStage,  ZWaveNode} from "zwave-js";
 import {getPropVid} from "./getPropKey";
-import * as vocab from "@hivelib/api/vocab/ht-vocab";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as tslog from 'tslog';
-import {DeliveryProgress, DeliveryStatus, IHubClient} from "@hivelib/hubclient/IHubClient";
-import {stringToValue, ZWAPI} from "@zwavejs/ZWAPI";
+import { DeliveryStatus, IHubClient} from "@hivelib/hubclient/IHubClient";
+import {getVidValue, ZWAPI} from "@zwavejs/ZWAPI";
 import {MessageTypeProperty} from "@hivelib/api/vocab/ht-vocab";
 import {handleConfigRequest, setValue} from "@zwavejs/handleConfigRequest";
 
@@ -103,7 +102,7 @@ export function  handleHubMessage(msg: ThingMessage, zwapi: ZWAPI, hc: IHubClien
                         stat.messageID = msg.messageID
                         // async update
                         hc.sendDeliveryUpdate(stat)
-                        let newValue = node.getValue(propVid)
+                        let newValue = getVidValue(node, propVid)
                         zwapi.onValueUpdate(node, propVid, newValue)
                     })
 

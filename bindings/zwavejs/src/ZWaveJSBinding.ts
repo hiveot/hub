@@ -12,7 +12,7 @@ import fs from "fs";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import {BindingConfig} from "./BindingConfig";
 import * as tslog from 'tslog';
-import {DeliveryProgress, DeliveryStatus, IHubClient} from "@hivelib/hubclient/IHubClient";
+import {DeliveryStatus, IHubClient} from "@hivelib/hubclient/IHubClient";
 import {handleHubMessage} from "@zwavejs/handleHubMessage";
 import {ValueID} from "@zwave-js/core";
 

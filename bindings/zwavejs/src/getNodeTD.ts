@@ -304,8 +304,8 @@ function SetDataSchema(ds: DataSchema | undefined, node: ZWaveNode, vid: Transla
     }
     let vidMeta = node.getValueMetadata(vid)
     ds.title = vidMeta.label ? vidMeta.label : vid.propertyName
-    let value = node.getValue(vid)
-    let valueName = value != undefined ? String(value) : undefined
+    // let value = node.getValue(vid)
+    // let valueName = value != undefined ? String(value) : undefined
 
     if (!vidMeta.readable) {
         ds.readOnly = false
@@ -342,6 +342,7 @@ function SetDataSchema(ds: DataSchema | undefined, node: ZWaveNode, vid: Transla
 
             // if a list of states exist then the number is an enum.
             // convert the enum and use strings instead of numeric values
+            // See also NodeValues for sending the string value
             if (vmn.states && Object.keys(vmn.states).length > 0) {
                 ds.type = WoTDataTypeString
                 // valueName = vmn.states[value as number]
@@ -353,11 +354,9 @@ function SetDataSchema(ds: DataSchema | undefined, node: ZWaveNode, vid: Transla
                 // prop.allowManualEntry = (vmeta as ConfigurationMetadata).allowManualEntry || false
                 ds.enum = []
                 for (const k in vmn.states) {
-                    ds.enum.push({
-                        text: vmn.states[k],
-                        value: parseInt(k),
-                    })
+                    ds.enum.push(vmn.states[k])
                 }
+                ds.default = vmn.states[vmn.default]
             }
 
         }

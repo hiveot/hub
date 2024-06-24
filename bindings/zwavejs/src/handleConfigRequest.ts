@@ -5,7 +5,7 @@ import * as vocab from "@hivelib/api/vocab/ht-vocab";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as tslog from 'tslog';
 import {DeliveryProgress, DeliveryStatus, IHubClient} from "@hivelib/hubclient/IHubClient";
-import {stringToValue, ZWAPI} from "@zwavejs/ZWAPI";
+import {getVidValue, stringToValue, ZWAPI} from "@zwavejs/ZWAPI";
 import {MessageTypeProperty} from "@hivelib/api/vocab/ht-vocab";
 
 const log = new tslog.Logger()
@@ -52,7 +52,7 @@ export function handleConfigRequest(
                 // notify the sender of the update (with messageID)
                 hc.sendDeliveryUpdate(stat)
                 // notify everyone else (no messageID)
-                let newValue = node.getValue(propVid)
+                let newValue = getVidValue(node, propVid)
                 zwapi.onValueUpdate(node, propValue, newValue)
 
                 // TODO: intercept the value update and send it as a status update

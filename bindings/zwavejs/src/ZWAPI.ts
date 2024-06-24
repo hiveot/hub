@@ -65,6 +65,7 @@ export class ZWAPI {
     onStateUpdate: (node: ZWaveNode, newState: string) => void;
 
     // callback to notify of a change in VID value
+    // note that enum values have been converted automatically to their text representation
     onValueUpdate: (node: ZWaveNode, v: TranslatedValueID, newValue: unknown) => void;
 
     // discovered nodes
@@ -189,7 +190,7 @@ export class ZWAPI {
                         tslog.info("connectLoop: connect successful")
                     })
                     .catch((e) => {
-                        tslog.error("connectLoop: no connection with controller");
+                        tslog.error("connectLoop: no connection with controller",e);
                         //retry
                         this.doReconnect = true
                     })
@@ -228,12 +229,6 @@ export class ZWAPI {
         let node = this.driver.controller.nodes.get(nodeID)
         return node
     }
-
-    // return the map of discovered ZWave nodes
-    // getNodes(): ReadonlyThrowingMap<number, ZWaveNode> {
-    //   return this.driver.controller.nodes
-    // }
-
 
     // Driver is ready.
     handleDriverReady() {
@@ -339,7 +334,8 @@ export class ZWAPI {
         node.on("metadata updated", (node: ZWaveNode, args: ZWaveNodeMetadataUpdatedArgs) => {
             // FIXME: this is invoked even when metadata isn't updated. What to do?
             // this.onNodeUpdate(node)
-            let newValue = node.getValue(args)
+            // let newValue = node.getValue(args)
+            let newValue = getVidValue(node,args)
             this.onValueUpdate(node, args, newValue)
             tslog.info(`Node ${node.id} value metadata updated`,
                 "property", args.property,
@@ -379,8 +375,11 @@ export class ZWAPI {
         });
 
         node.on("value updated", (node: ZWaveNode, args: ZWaveNodeValueUpdatedArgs) => {
-            // tslog.info("Node ", node.id, " value updated: args=", args, "vidMeta=", vidMeta);
-            this.onValueUpdate(node, args, args.newValue)
+            tslog.debug("Node ", node.id, " value updated: args=", args);
+            // convert enums
+            let newVidValue = getVidValue(node,args)
+            this.onValueUpdate(node, args, newVidValue)
+            // this.onValueUpdate(node, args, args.newValue)
         });
 
         node.on("wake up", (node: ZWaveNode) => {
@@ -391,6 +390,7 @@ export class ZWAPI {
 }
 
 // convert the string value to a type suitable for the vid
+// If the vid is an enum then convert the enum label to its internal value
 export function stringToValue(value:string, node: ZWaveNode, vid:ValueID ):any {
     let vidMeta = node.getValueMetadata(vid)
     if (!vidMeta) {
@@ -457,4 +457,30 @@ function getEnumFromMemberName(enumeration: Record<number, string>, name: string
     }
     // in case the enum is optional and the name is a number already
     return Number(name)
+}
+
+
+// return the map of discovered ZWave nodes
+// getNodes(): ReadonlyThrowingMap<number, ZWaveNode> {
+//   return this.driver.controller.nodes
+// }
+
+// getVidValue returns the value of the node VID
+// If the vid is an enum then return the text representation of the internal value,
+// otherwise return the native value.
+// Intended to transparently deal with enums.
+// See also SetValue which does the reverse
+export function getVidValue(node: ZWaveNode, vid:ValueID):any {
+    let vidMeta = node.getValueMetadata(vid)
+    let value = node.getValue(vid)
+    switch (vidMeta.type) {
+        case "number":
+            let vmn = vidMeta as ValueMetadataNumeric;
+            if (vmn.states) {
+                value = vmn.states[value]
+            }
+        default:
+        // do nothing, return the value as-is
+    }
+    return value
 }

@@ -5,6 +5,7 @@ import type { ConfigurationMetadata, ValueMetadataBuffer } from "@zwave-js/core"
 import { CommandClasses, ConfigValueFormat } from "@zwave-js/core";
 import type { VidAffordance } from "./getVidAffordance";
 import fs from "fs";
+import {getVidValue} from "@zwavejs/ZWAPI";
 
 export function logVid(logFd: number | undefined, node?: ZWaveNode, vid?: TranslatedValueID,
     propID?: string, va?: VidAffordance) {
@@ -27,10 +28,9 @@ export function logVid(logFd: number | undefined, node?: ZWaveNode, vid?: Transl
     }
     let defaultValue = vm.default?.toString() || ""
     let description = vm.description || ""
-    let format = ""
     let min = ""
     let max = ""
-    let other = ""
+    let other = vm.valueChangeOptions?.toString() || "";
     let prop = vid.property?.toString() || ""
     let propName = vid.propertyName || ""
     let propKey = vid.propertyKey?.toString() || ""
@@ -39,7 +39,7 @@ export function logVid(logFd: number | undefined, node?: ZWaveNode, vid?: Transl
     let time = dt.toString()
     let dataType = vm.type
     let unit = ""
-    let vidValue = node.getValue(vid)
+    let vidValue = getVidValue(node, vid)
     if (vid.commandClass == CommandClasses.Configuration) {
         let vmc = vm as ConfigurationMetadata
         if (vmc) {
@@ -84,7 +84,6 @@ export function logVid(logFd: number | undefined, node?: ZWaveNode, vid?: Transl
             max = vidStr.maxLength?.toString() || "";
             break;
     }
-    other = vm.valueChangeOptions?.toString() || "";
 
 
     let vidLine = `${time};${node.id};${vid?.commandClass};${vid?.commandClassName};${vid?.endpoint};` +
