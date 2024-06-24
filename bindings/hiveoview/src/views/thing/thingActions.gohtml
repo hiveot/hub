@@ -5,7 +5,7 @@
 <ul class="h-grid-table thing-actions" striped border>
 	<li>
 		<div class="h-show-sm">{{/*icon*/}}</div>
-		<div class="id-title">Action Name</div>
+		<div>Action Name</div>
 		<div class="h-show-lg">Type</div>
 		<div >Last Value</div>
 		<div class="h-show-lg">Description</div>
@@ -16,7 +16,7 @@
         {{- /*gotype: github.com/hiveot/hub/lib/things.ActionAffordance*/ -}}
 				<li>
 					<div class="h-show-sm">{{/*icon*/}}</div>
-					<div class="id-title" title="key: {{$k}}">{{$v.Title}}</div>
+					<div title="key: {{$k}}">{{$v.Title}}</div>
 					<div class="h-show-lg">{{$v.ActionType}}</div>
 					<div
 					     sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">

@@ -22,15 +22,14 @@
             {{if .Config.Enum }}
                 {{/*	=== Enum Selection Input ===*/}}
                 {{/* add a select with list of options for the .Config.Enum values */}}
-								<select id="config-input" name="value"
-								        autofocus placeholder="{{$iv}}">
+								<select id="config-input" name="value" autofocus>
                     {{ range $enumValue := .Config.Enum}}
-											<option {{if eq $enumValue.text $iv}} selected {{end}}>
-                          {{$enumValue.text}}
+											<option {{if eq $enumValue $iv}} selected {{end}}>
+                          {{$enumValue}}
 											</option>
                     {{end}}
 								</select>
-								<small>Current value: {{$iv}}</small>
+								<small>Current value: {{$iv}}  (Default: {{.Config.Default}})</small>
 
             {{else if eq .Config.Type "number"}}
                 {{/*	=== Numeric Input ===*/}}

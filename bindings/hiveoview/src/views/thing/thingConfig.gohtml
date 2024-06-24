@@ -4,10 +4,10 @@
 
 <ul class="h-grid-table thing-config" striped border >
 	<li>
-		<div class="h-show-sm">{{/*icon*/}}</div>
-		<div class="id-title">Configuration Name</div>
+		<div class="h-show-md">{{/*icon*/}}</div>
+		<div>Configuration Name</div>
 		<div style="padding-left: 60px">Value</div>
-		<div class="h-show-md">Default</div>
+		<div class="h-show-lg">Default</div>
 		<div class="h-show-lg">Description</div>
 		<div class="h-show-sm">Updated</div>
 	</li>
@@ -17,7 +17,7 @@
       {{$v := index $.Config $k}}
 				<li>
 					<div class="h-show-md">{{/*icon*/}}</div>
-					<div class="id-title" title="key: {{$k}}">
+					<div title="key: {{$k}}">
 						{{$v.Title}}
 					</div>
 					<div>
@@ -38,7 +38,7 @@
                 {{$v.UnitSymbol}}
 						</button>
 					</div>
-					<div class="h-show-md">{{$v.Default}}</div>
+					<div class="h-show-lg">{{$v.Default}}</div>
 					<div class="h-show-lg">{{$v.Description}}</div>
 					<div class="h-show-sm"
 					     sse-swap="{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML" hx-target="this"
@@ -61,8 +61,8 @@
         .thing-config {
             /*xs, show column 2,3 */
             grid-template-columns:
-                minmax(200px, max-content) /*name*/
-                minmax(100px, 1fr);
+                minmax(200px, 1fr) /*name*/
+                minmax(100px, max-content);
         }
     }
 
@@ -70,21 +70,20 @@
         .thing-config {
             /*sm, show column 2,3,6 */
             grid-template-columns:
-                minmax(200px, max-content) /*name*/
+                minmax(200px,1fr) /*name*/
                 minmax(100px, max-content) /*value*/
-				        minmax(100px, 1fr); /*updated*/
+				        minmax(100px, max-content); /*updated*/
         }
     }
 
     @media (width >= 768px) and (width < 1024px) {
         .thing-config {
-            /*md,show column 1,2,3,4, 6 */
+            /*md,show column 1,2,3, 6 */
             grid-template-columns:
 				        40px /*icon*/
-                minmax(200px, max-content) /*ID/title*/
+                minmax(200px, 1fr) /*name*/
                 minmax(100px, max-content) /*value*/
-				        minmax(100px, max-content) /*default*/
-                minmax(100px, 1fr); /*updated*/
+                minmax(max-content, max-content); /*updated*/
         }
     }
 
@@ -93,10 +92,10 @@
             /*lg, show all columns*/
             grid-template-columns:
 				        40px /*icon*/
-                minmax(200px, 1fr) /*id-title*/
+                minmax(200px, 1fr) /*name*/
                 minmax(100px, max-content) /*value*/
                 minmax(100px, max-content) /*default*/
-                minmax(100px, 1fr) /*description*/
+                minmax(100px, 2fr) /*description*/
                 minmax(100px, max-content); /*updated*/
             }
     }

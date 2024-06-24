@@ -30,17 +30,10 @@ func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 
 	var propAff *things.PropertyAffordance
 	var value string
-	//data := make(map[string]any)
-	//agentID := r.URL.Query().Get("agentID")
-	//thingID := r.URL.Query().Get("thingID")
-	//propKey := r.URL.Query().Get("key")
-
 	mySession, err := session.GetSessionFromContext(r)
 	if err == nil {
 
 		hc := mySession.GetHubClient()
-		//dcl := digitwin.NewDirectoryClient(hc)
-		//rd := digitwinclient.NewDirectoryClient(hc)
 		tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
 
 		if err == nil {

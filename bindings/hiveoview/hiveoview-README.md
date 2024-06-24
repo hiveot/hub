@@ -26,7 +26,7 @@ This viewer is in early development. The information below is subject to change.
 8. View raw TD [done]
 9. Delete TD w dialog [done]
 10. Invoke action with dialog
-11. Fix edit property dialog showing raw value instead of enum text 
+11. DataSchema component with text,number,bool,enum,on-off 
 todo at some point
 - is text still serialized? event if data is a string?
   - what about stringified numbers. serialize again?
