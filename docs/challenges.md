@@ -16,25 +16,27 @@ What is the problem?
 1. Devices either do not get security updates or they are not applied. Exposing devices with security holes to the internet can quickly get them to be Pwnd by attackers. 
 2. The cost of building, testing and updating secure software is high and for cheap devices it can be prohibitive.  
 3. Security is hard. The knowledge needed to build a fully secure IoT device is extensive and not many people know it all.
-4. Security is not just affected by the device software but also the ecosystem it is used in. How are users managed? How are roles/permissions managed? How are the devices integrated? How is software updated? Many regular home users are just happy if they can get to see their camera on the internet and many don't have the skills needed to do this securely. Arguably they shouldn't need to but the reality is  different.
-5. The information produced is not verifyable. 
+4. Security is not just affected by the device software but also the ecosystem it is used in. How are users managed? How are roles/permissions managed? How are the devices integrated? How is software updated? Many regular home users are just happy if they can get to see their camera on the internet and most don't have the skills needed to do this securely. 
+5. There is a lack of transparency by many device manufacturers regarding the software used and known weaknesses. 
 
 How are these issues addressed?
 
 One part of the solution is rather simple. Do not let anything connect to the devices. If the devices don't listen for connections or can't be connected to then these connections are no longer an attack vector. Do not depend on security including user management of these devices.  
 
-Instead, use a Hub and spokes model and let the device connect to a Hub. Hubs are nearly ubiquitous so the concept of using one is not new. What is new is that the devices only connect to this Hub instead of the other way around. This does create a new problem however, how does a device locate a Hub? This is where provisioning comes in.
+Instead, use a Hub and spokes model and let the device connect to a Hub. Hubs are nearly ubiquitous so the concept of using one is not new. What is new is that the devices only connect to this Hub instead of the other way around. This does create a new problem however, how does a device locate a Hub? This is where discovery and provisioning comes in.
 
-A single Hub is easier to secure and update than each individual device. Authentication and user authorization can be centralized in the Hub. Again, nothing new as existing home automation Hubs already follow this model. IoT devices can remain dumb and therefore require fewer resources and can be cheaper.
+A single Hub is easier to secure and update than each individual device. Authentication and user authorization can be centralized in the Hub. Again, nothing new as existing home automation Hubs already follow this model. IoT devices can remain dumb and therefore require fewer resources and can be cheaper. 
+
+The current market trent to include full web servers on smart devices is counter this approach however. Since there is no globally accepted standard on managing these devices centrally this is understandable. Hopefully emergence of standards such as W3C WoT (Web of Things) will drive a change with device manufacturers.    
 
 ## Provisioning
-2. Devices and Services need provisioning for machine authentication. There is not an established way to provision a device so an out of band 'provisioning' protocol was made. 
+2. Devices and Services need provisioning for machine based authentication. There is not an established way to provision a device so an out of band 'provisioning' protocol was made. 
 
 ## Ontology
 
 How to describe IoT devices?
 
-I initially established a standard called iotdomain-standard', then tried NGSI's approach but it got bulky and needs a separate server, and eventually caught up with W3C's Web of Things. So, take a look at [W3C's Thing Description](https://www.w3.org/TR/wot-thing-description11/) document.
+I initially established a standard called iotdomain-standard', then tried NGSI's approach but it got bulky and needs a separate server, and eventually caught up with W3C's Web of Things. So, take a look at [W3C's Thing Description](https://www.w3.org/TR/wot-thing-description11/) documentation and rejoice.
 
 A related issue is vocabulary. Who is responsible for standardizing the terminology used in events, properties and actions?
 a. The publishing device maps internal to standardized vocabulary
@@ -45,25 +47,24 @@ Option a. is chosen because it constrains the mapping domain knowledge to the in
 
 How to define a vocabulary? Unfortunately there is no globally accepted vocabulary (yet), so one is put together using W3C or other standards. This is work in progress.
 
-
-
 ## Authorization
 
-1. How to shape authorization? Can everyone access everything? Clearly not. HiveOT resolved this using groups where members can access Things in that group. A simple role system differentiate between viewers that can receive events, controllers that can request actions, and administrators that can set configuration.
+1. How to shape authorization? Can everyone access everything? Clearly not. HiveOT resolved this using role based authorization. A simple role system differentiate between viewers that can receive events, operators that can request actions, and administrators that can set configuration.
 
 ## Communication Protocol
 
-1. How to communicate between devices and Hub services, between users and Hub, and between multiple Hubs? Use messaging, REST, or RPC for communication? 
-   a. Initially iotdomain was message based but ran into the problem that some services require request-response. REST doesn't support callbacks and WebSockets has no standard for 2-way messaging. WoT talks a great deal about http access which is not an option as devices cannot be accessed directly. NGSI is API based.
-  b. HiveOT tried RPC using gRPC and eventually Capn'proto. Capn'proto has the more versatile IDL and turned out to be stable and very fast. gRPC is very constrained, probably good enough for Google, but limited for defining a full API.
-  c. Finally, coming full circle, we're back at messaging using either MQTT-v5 or NATS. Both support building RPC style messages, providing best of both worlds.
+1. How to communicate between devices, services, and consumers, each with their own manufactorers and implementations? What protocols to use and how to interoperate? Do consumers need to support all protocols?
+  a. Initially iotdomain was message based but ran into the problem that some services require request-response. REST doesn't support callbacks and WebSockets has no standard for 2-way messaging. WoT talks a great deal about http access which is not an option as devices cannot be accessed directly. NGSI is API based.
+  b. HiveOT first tried RPC using gRPC and eventually Capn'proto. Capn'proto has the more versatile IDL and turned out to be stable and very fast. gRPC is very constrained, probably good enough for Google, but too limited for defining a full API.
+  c. The next iteration was messaging based using either MQTT-v5 or NATS. Both support building RPC style messages, providing best of both worlds. However, consumers need to know which one to use and http is not supported.
+  d. Finally the current iteration supports multiple protocols use for agents, services and consumers. Each can use the protocols that are available to them without needing to know what the device agent protocols are. This approach is by far the most flexible of all iterations. By including the available protocols in [TDD Forms](https://www.w3.org/TR/wot-thing-description11/#form-serialization-json),  clients can choose what works best for them.
 
 2. How to receive data real time?
     a. Message bus seems ideal here as they support subscription. So this is a no-brainer.
     b. Capn'proto supports callbacks (yeah, pretty amazing) but routing data via multiple hubs or proxies is more of a challenge.
 
 3. Other concerns:
-- high latency/non realtime of pubsub. Message round trip should remain under 1 msec, including audio, video and especially data.
+- high latency/non realtime of pubsub. Message round trip ideally remains under 1 msec, including audio, video and especially data.
 - not always confirmation of delivery (messaging vs rpc)
 - Lack of support for audio and video.
 - session based vs send and forget (rpc vs messaging)
@@ -83,30 +84,46 @@ How to define a vocabulary? Unfortunately there is no globally accepted vocabula
 
 - How to define API's and data types for use across languages. Protobuf has wide support but is very limited. It doesn't even support constants. and capnproto are one of the few options
 
+Again, the W3C WoT standard has this covered. Information model serialization is defined using JSON. Forms can define the content serialization using the 'contentType' attribute.
+
 ## Message Routing
 
 1. How to route messages? IoT data can be shared locally and possibly remotely. When semi-realtime is important, then some kind of message oriented streaming protocol is needed. What is the acceptable latency?
-   2. Routing messages is easier as it involves mainly addressing while RPC's are point-to-point. 
-   3. Some message bus protocols such as MQTT allow bridging of multiple brokers. 
+2. Routing messages is easier as it involves mainly addressing while RPC's are point-to-point. 
+3. Some message bus protocols such as MQTT allow bridging of multiple brokers.
+
+The above questions are resolved using the Hub as a central point of access. This does not support real-time streaming data but can be used in establishing a streaming connection between provider and consumer.
 
 ## Simplicity
 
 The goal has always been to provide an IoT solution that is simple, secure, fast, reliable, light weight, extensible, and easy to deploy.
 
-While the last iteration using capnp RPC was fast, secure, reliable, and easy to deploy, it lacked support for javascript and required a rather impressive amount of boilerplate. 
+While the iteration using capnp RPC was fast, secure, reliable, and easy to deploy, it lacked support for javascript and required a rather impressive amount of boilerplate. 
+
+The current 'digitwin' iteration has a simple light-weight core that meets these objectives without requiring a large server and lots of memory. Deployment is simply installation of a few binaries without the need to run docker containers. A mid-sized local hub runs fine on a raspberry pi 2 with 1GB of memory. Of course it is always possible to deploy using containers. 
 
 
 ## Lack of Audio And Video
 
 Support for audio and video is desirable but is not supported by IoT protocols.
+Streaming media is best done using their own protocols due to their latency and cpu requirements. The hub is however well suited for setting up media streams. A protocol binding for this purpose is planned.
 
 
 ## WoT TD
-* no titles for enum values, workaround use oneOf
-* no best practices with examples; per use-case?
-* no IoT vocabulary, everyone has to roll their own
-* affordances need inheritance which isn't always support (eg golang)
-* property affordance inheritance depends on data type
-* multiple types for same property (single item vs list)
-* forms/protocols unclear (2023)
-* thingID uniqueness; using agentID in address 
+
+While the WoT TD covers a lot of use-cases, there are few workarounds needed:
+
+1. Enum values have no label/title. 
+   The workaround is to use oneOf instead.
+2. No best practices with examples for various use-cases. 
+   This is being addressed and a [developer resources website](https://www.w3.org/WoT/developers/) has been added. 
+3. No IoT vocabulary, everyone has to roll their own.
+   This remains an issue. The workaround is to establish a hiveot vocabulary using the "ht:" context prefix. Some better alternatives might be available but this need further investigation.  
+4. Interaction affordances are difficult to implement in strongly typed languages like golang. The inheritance model cannot be implemented. For example, a PropertyAffordance inherits from dataschema but each data type has its own dataschema. 
+    The workaround is to define a 'flat' dataschema that contains all properties of all dataschemas. Ugly but it works with a minor naming collision.
+5. Multiple types for same property (single item vs list)
+    The current workaround is to use 'any' type for those properties that can be either a string or list and use inspection in runtime to determine which one to use. Yes, yuckie.  
+6. Forms/protocols unclear (2023). This is mostly due to my ignorance and will be resolved soon. WoT folks have been very helpful in providing guidance. (Thank you!)
+    Things do get a bit wordy though as each action/event/property will have a set of forms, one for each supported protocol.  
+* ThingID uniqueness; using agentID in address 
+    This is resolved by letting agents use anything as thingID as long as only valid characters are used, and have the digital twin runtime prefix the thing-ID it with the agent ID.

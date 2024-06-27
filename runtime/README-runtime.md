@@ -5,10 +5,8 @@
 The runtime is in alpha. It is functional but breaking changes should be expected.
 
 Todo:
-* FIXME auto-reconnect; this currently doesn't work well (superfluous write header)
-  (happens when restarting the runtime without restarting the services/bindings)
-* authorization of actions, events and subscriptions
-* digitwin directory 
+* authorization of subscriptions in the HTTPS/SSE transport
+* digitwin directory: 
    * add forms for supported protocols
    * support dynamic TD's that only:
       * include writable properties only if the client is allowed to write them
@@ -29,7 +27,7 @@ Todo:
 ## Summary
 
 The HiveOT runtime provides routing of events and actions between devices, services and consumers using one or multiple transport protocols.
-The runtime contains a digital twin service that consists of a thing directory, event outbox and action inbox.
+The runtime contains a digital twin service that consists of a thing directory, event outbox and action inbox, along with authentication, authorization and transport services.
 
 The protocol transports pass authenticated messages to the digital twin service which directs events to the outbox for further distribution and actions to the inbox for distribution to the actual Thing.
 

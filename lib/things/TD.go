@@ -90,15 +90,15 @@ type TD struct {
 	// in securityDefinitions.
 	// In HiveOT security is handled by the Hub. HiveOT Things will use the NoSecurityScheme type
 	//Security string `json:"security"`
+	// FIXME: make WoT compliant and include the transport protocols authentication
 	Security any `json:"security"`
 
 	// Set of named security configurations (definitions only).
 	// Not actually applied unless names are used in a security name-value pair. (why is this mandatory then?)
+	// FIXME: make WoT compliant and include the transport protocols authentication
 	SecurityDefinitions map[string]SecurityScheme `json:"securityDefinitions"`
 
-	// profile: todo
-	// schemaDefinitions: todo
-	// uriVariables: todo
+	// for use to access writable data, when TD's are updated on the fly by agents.
 	updateMutex sync.RWMutex
 }
 

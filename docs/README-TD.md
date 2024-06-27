@@ -1,7 +1,7 @@
 # HiveOT use of the TD - under development
 
 HiveOT intends to be compliant with the WoT Thing Description specification.
-The latest known draft at the time of writing is [Mar 2022](https://www.w3.org/TR/wot-thing-description11/#thing)
+The latest known draft at the time of writing is [Dec 2023](https://www.w3.org/TR/wot-thing-description11/#thing)
 
 Interpreting this specification is done as a best effort. In case where discrepancies are reported they will be corrected when possible as long as they do not conflict with the HiveOT core paradigm of 'Things do not run servers'.
 
@@ -18,9 +18,9 @@ Most IoT 'things' are pieces of hardware that have embedded software that manage
 HiveOT makes the following distinction based on the primary role of the device. These are identified by their device type as provided in the TD @type field and defined in the HiveOT vocabulary.
 
 * A gateway is a device that provides access to other Things. A Z-Wave controller USB-stick is a gateway that uses the Z-Wave protocol to connect to Z-Wave devices. A gateway is a Thing independent of the Things it provides access to and can have its own inputs, outputs or configuration.
-* An agent is a Thing that publishes Thing information to the HiveOT Hub. A publisher has authorization to publish and subscribe to the things it is the publisher of. For the Z-Wave agent publishes Thing information of the Z-Wave controller and the devices obtained from that controller.
+* An agent is a service that communicates with the Hub to publishes Thing information and receive action requests. An agent has authorization to publish and subscribe to the things it is the publisher of. For example, the Z-Wave agent publishes Thing information of the Z-Wave controller and the devices obtained from that controller.
 * An I/O device is a Thing whose primary role is to provide access to inputs and outputs and has its own attributes and configuration.
-* A Hub bridge is a software device that connects two Hubs and shares configured Thing information between them.
+* A Hub bridge is a software device that connects two Hubs and shares select Thing information between them.
 * A service is a software Thing that offers a capability in the IoT ecosystem. For example, a history service provides a history of Thing values.
 
 ## Thing Description Document (TD)
@@ -31,21 +31,25 @@ The Thing Description document is a [W3C WoT standard](https://www.w3.org/TR/wot
 
 The TD documents contains a set of attributes to describe a Thing. The attributes used in HiveOT are:
 
-| name       | mandatory | description                                           |
-|------------|-----------|-------------------------------------------------------|
-| @context   | mandatory | "http://www.w3.org/ns/td"                             |
-| @type      | optional  | Thing device type as per vocabulary                   |
-| id         | required  | Unique Thing ID, option in WoT but required in HiveOT |
-| title      | mandatory | Human readable description of the Thing               |
-| modified   | optional  | ISO8601 date this document was last updated           |
-| properties | optional  | Map of thing attributes, state and configuration      |
-| version    | optional  | Thing version as a map of {'instance':version}        |
-| actions    | optional  | Map of action objects supported by the Thing          |
-| events     | optional  | Map of event objects as submitted by the Thing        |
+| name              | description                                                 |
+|-------------------|-------------------------------------------------------------|
+| @context          | "http://www.w3.org/ns/td"                                   |
+| @type             | Thing device type as per vocabulary                         |
+| id                | Unique Thing ID, option in WoT but required in HiveOT       |
+| title             | Human readable description of the Thing (mandatory)         |
+| modified          | ISO8601 date this document was last updated                 |
+| properties        | Map of thing attributes, state and configuration            |
+| version           | Thing version as a map of {'instance':version}              |
+| actions           | Map of action objects supported by the Thing                |
+| events            | Map of event objects as submitted by the Thing              |
+| schemaDefinitions | data schema for use in multiple actions or events           |
+| Forms             | Thing operations that are not properties, events or actions |
+| Security          | Names of security definitions                               |
+|SecurityDefinitions| Security definitions for authenticationwith the hub         |
 
-note: Consumers do not connect directly to the IoT device. Communication protocols, authentication & authorization is handled by the Hub services. As a result, forms and security definitions in the TD do not appy to the IoT device and are not used in the TD.
+note: Consumers do not connect directly to the IoT device. Communication protocols, authentication & authorization is handled by the Hub services. As a result, forms and security definitions in the TD apply to access of the Hub.
 
-* HiveOT compatible IoT devices can simply use the 'nosec' security type when creating their TD and use a NoSecurityScheme as securityDefinition.
+* HiveOT compatible IoT devices can simply use the 'nosec' security type when creating their TD and use a NoSecurityScheme as securityDefinition. The hub will modify this section.
 * Consumers, which access devices via 'Consumed Things' (a remote instance of the thing with properties and values), only need to know how connect to the Hub service. No knowledge of the IoT device protocol is needed.
 
 ### @context - mandatory
@@ -78,6 +82,7 @@ HiveOT classification is inspired by ETSI Saref classifications, found here: htt
 The basis for HiveOT's device classification is a hierarchy that can be extended with specialization terms to narrow down the classification. The full list of HiveOT device classes can be found in [api/vocab/ht-device-classes.yaml]("../api/vocab/ht-device-classes.yaml")
 
 Top level categories in the HiveOT thing classification vocabulary are:
+The vocab below is an example. Please use the vocabulary defined with the project.  
 ```
 * ht:actuator - electric device for controlling an external observable feature of interest
 * ht:appliance - class of devices for performing tasks for occupant use
@@ -101,8 +106,8 @@ For example:
 Services have their own namespace:
 ```
 * ht:service - general purpose service offering capabilities
-	* ht:service:directory - directory service offering a directory of information
-	* ht:service:history - history service offering stored messages
+* ht:service:directory - directory service offering a directory of information
+* ht:service:history - history service offering stored messages
 ```
 
 For the full list of Thing classes, see [ht-thing-classes.yaml](../api/src/vocab/ht-thing-classes.yaml). Note that this list is an initial attempt for a core classification of IoT devices and services. When a more suited standard is found, it might replace this one. For this reason the vocabulary definitions are imported at runtime and mapped from their keys. See the section on vocabulary maps below.
@@ -115,15 +120,13 @@ With the core device types standardized, the related device title and descriptio
 
 The 'id' field uniquely identifies the Thing using a URI.
 
-The WoT standard requires the ID to start with the "urn:" prefix. HiveOT doesn't care as this rule doesn't seems to be providing a capability used by HiveOT. However, for the sake of consistency it applies this rule as well.
+The WoT standard defines the ID to start with the "urn:" prefix. HiveOT uses the 'dtw:{agentID}' prefix for things.
 
-HiveOT uses the hardware device identification where possible. For example, zwave node 15 on homeID "aabbccdd" would have an 'id' value of "urn:aabbccdd-15".
-
-Since thing IDs are defined by the device or service they are not guaranteed to be globally unique.
+HiveOT uses the hardware device identification where possible. For example, zwave node 15 on homeID "aabbccdd" would have an 'id' value of "aabbccdd.15". When published by an agent with account ID 'zwavejs' the digitwin Thing-ID will be "dtw:zwavejs:aaabbbcc.15".
 
 In case of protocol binding services, also called agents, Things are addressed indirectly via the agent that published the Thing information. For example, to address a zwave node, both the zwave agent ID and the node Thing ID are needed. As a benefit, separating these parts makes it simpler to filter a group of Things based on their agent.
 
-The agent is also a Thing and has its own thingID. If multiple instances of an agent exist on the same hub they must have different IDs. For example, the zwave agent service that operatess a controller has by default an id of 'zwave' (the service name). When using two zwave controllers on the same hub, each instance must have a unique agent ID, eg zwave-1 and zwave-2. The easiest way to accomplish this is to rename the agent binary and copy it as the default ID is the binary name. Each binary will get its own thing with its own configuration and authentication. Note that this is required whether the service lives on the same system or two systems.
+The agent-ID must be unique on the Hub. If multiple instances of an agent exist on the same hub they must have different IDs. For example, the zwave-js agent service that operates a controller has by default an id of 'zwavejs' (the service name). When using two zwave controllers on the same hub, each instance must have a unique agent ID, eg zwavejs-1 and zwavejs-2. Since the hub uses the binary name as the default agent ID, the easiest way to use multiple instances is to rename the agent binary. Each binary will get its own thing with its own configuration and authentication. 
 
 When sharing things between hubs, the hub prefixes the agent ID with its own hub ID, separated by a colon. So 'hub-1:zwave-1' is the agent ID for all zwave-1 Things from the hub with ID 'hub-1'. When the hub is configured to share events from node-5 of zwave-1, its events are therefore passed on to other hubs with agent ID of 'hub-1:zwave-1' and thing ID 'node-5'. When the hub receives an action request for a thing it removes its own prefix from the publisher ID and passes it to the agent that matches the remainder of the agent ID, eg 'zwave-1'.
 
@@ -137,7 +140,7 @@ HiveOT uses the following 'Property' attributes to describe properties:
 
 ### Property ID
 
-The property ID is the key in the TD property map. This ID is used when publishing property value updates, events, and actions. The same property key can be used in the event and action affordance map when they are related to the same property.
+The property ID is the key in the TD property map. This ID is used when publishing property value updates, events, and actions. The hub treats the keys for properties, events and actions as separate keys. Hence there are separate messages for publishing properties, events and actions.
 
 Property ID's can be anything, although it is recommended to use the property classification. If multiple instances exist then append a sequence number or other distinctive part. For example 'temperature-1'.
 
@@ -147,37 +150,40 @@ Property IDs are not used as a classification or purpose of the property. For th
 
 Properties are defined with the so-called [property affordance](https://www.w3.org/TR/wot-thing-description11/#propertyaffordance). The property affordance defines a set of attributes used to describe the property.
 
-| Attribute   | WoT      | description                                                                                       |
-|-------------|----------|---------------------------------------------------------------------------------------------------|
-| @type       | optional | property type classification (see [1])                                                            | 
-| type        | optional | WoT defined data-type: string, number, integer, boolean, object, array, or null                   |
-| title       | optional | Short human readable label for the property. Not needed if property @type classification is used. |
-| description | optional | Longer human readable description. Not needed if property @type classification is used.           |
-| enum        | optional | Restricted set of values [2]                                                                      |
-| unit        | optional | unit of the value                                                                                 |
-| readOnly    | optional | true for Thing attributes, false for configuration                                                |
-| writeOnly   | optional | true for non-readable values like passwords.                                                      |
-| default     | optional | Default value to use if no value is provided                                                      |
-| minimum     | optional | type number/integer: Minimum range value for numbers                                              |
-| maximum     | optional | type number/integer: Maximum range value for numbers                                              |
-| minLength   | optional | type string: Minimum length of a string                                                           |
-| maxLength   | optional | type string: Maximum length of a string                                                           |                               
+| Attribute   | description                                                                                       |
+|-------------|---------------------------------------------------------------------------------------------------|
+| @type       | property type classification (see [1])                                                            | 
+| type        | WoT defined data-type: string, number, integer, boolean, object, array, or null [2]               |
+| title       | Short human readable label for the property. Not needed if property @type classification is used. |
+| description | Longer human readable description. Not needed if property @type classification is used.           |
+| enum        | Restricted set of values [3]                                                                      |
+| oneOf       | Restricted set of values with their own dataschema [3]                                            |
+| unit        | unit of the value                                                                                 |
+| readOnly    | true for Thing attributes, false for configuration                                                |
+| writeOnly   | true for non-readable values like passwords.                                                      |
+| default     | Default value to use if no value is provided                                                      |
+| minimum     | type number/integer: Minimum range value for numbers                                              |
+| maximum     | type number/integer: Maximum range value for numbers                                              |
+| minLength   | type string: Minimum length of a string                                                           |
+| maxLength   | type string: Maximum length of a string                                                           |
+| forms       | in development [4]                                                                                |
+
 Notes:
 
 1. Just like the TD @type, the property @type provides a standard classification of the property. The list of core property classes are defined in the vocabulary.
-2. Enum values are machine identifiers. They are not translatable as this would change their value. Unfortunately the WoT TD standard does not define a method to relate an enum value to a title or description. HiveOT partly works around this by using the @type classification for presentation of enum values for standard properties.
-3. Forms are not used. The WoT specifies Forms to define the protocol for operations. In HiveOT all operations operate via a message bus with a simple address scheme. There is therefore no use for Forms. In addition, requiring a Forms section in every single property description causes unnecessary bloat that needs to be generated, parsed and stored by exposed and consumed things.
-4. In HiveOT the namespace for properties, events and actions is shared. A property ID MUST refer to the same device attribute in the properties, events and actions map.
-5. The use of readOnly and writeOnly attributes can be somewhat ambiguous. In HiveOT, if 'writeOnly' is true then the value can be set but not read and the value of readOnly is ignored. For example a password can be written but not read. When both writeOnly and readOnly are false then the property is writable.
+2. type. WoT defines native types. HiveOT also allows the use of types defined in schemaDefinitions. This is contentious as WoT only allows schemaDefinitions in the forms 'AdditionalExpectedResponse' section. 
+3. Enum values are machine identifiers. They are not translatable as this would change their value. Unfortunately the WoT TD standard does not define a method to relate an enum value to a title or description. HiveOT partly works around this by using the @type classification for presentation of enum values for standard properties.
+4. Forms in development. The WoT specifies Forms to define the protocol for operations. In HiveOT all operations operate via a message bus with a simple address scheme. There is therefore no use for Forms. In addition, requiring a Forms section in every single property description causes unnecessary bloat that needs to be generated, parsed and stored by exposed and consumed things.
+5. In HiveOT the namespace for properties, events and actions is shared. A property ID MUST refer to the same device attribute in the properties, events and actions map.
+6. The use of readOnly and writeOnly attributes can be somewhat ambiguous. In HiveOT, if 'writeOnly' is true then the value can be set but not read and the value of readOnly is ignored. For example a password can be written but not read. When both writeOnly and readOnly are false then the property is writable.
 
 ## Events
 
 Where properties contain the last known state value of a Thing, events are used to notify of changes to the state.
 
-Events are primarily defined for values that related to the purpose of the Thing. For example, a multisensor device has events for each of the sensor values, but not for the individual attributes or configuration properties. Additional events can be defined for values that are critical to operations, for example a low battery event.
+Events are primarily defined for values that relate to the purpose of the device or service. For example, a multi-sensor device has events for each of the sensor values, but not for the individual attributes or configuration properties. Additional events can be defined for values that are critical to operations, for example a low battery event.
 
-> Note: In many cases a corresponding property exists with the same ID that contains the most recent value.
-> Note: a separate 'properties' event is sent periodically containing a map of all properties that have changed. The delay between a change and sending an update should not exceed 1 minute.
+> Note: A separate '$properties' event is sent periodically containing a map of all properties that have changed. The delay between a change and sending an update should not exceed 1 minute.
 
 The TD events affordance section defines the attributes used to describe events. This is similar to how properties are defined.
 
@@ -190,7 +196,6 @@ TD Events map:
       "data": {
         dataSchema
       },
-      "dataResponse: {EventResponseData}"
     }
   }
 }
@@ -204,19 +209,19 @@ Where:
 
 The [TD EventAffordance](https://www.w3.org/TR/wot-thing-description11/#eventaffordance) also describes optional event response, subscription and cancellation attributes. These are not used in HiveOT as subscription is handled by the Hub.
 
-### The "properties" Event
+### The "@properties" Event
 
-In HiveOT, changes to property values are sent using the "properties" event. Rather than sending a separate event for each property, HiveOT bundles changes to properties into a 'properties' event. This event contains a map of property ID-value pairs.
+In HiveOT, changes to property values are sent using the "properties" event. Rather than sending a separate event for each property, bindings can bundle changes to properties into a '@properties' event. This event contains a map of property ID-value pairs.
 
-The 'properties' event can be delayed up to a minute to allow time for collecting multiple changes to be included. This is an optimization that can be configurable.
+The '@properties' event can be delayed up to a minute to allow time for collecting multiple changes to be included. This is an optimization that can be configurable. The use of this with the hub is optional.
 
-As the 'properties' event is part of the HiveOT standard, it does not have to be included in the 'events' section of the TDs (but is recommended).  (should this be part of a HiveOT @context? tbd)
+TODO: As the '@properties' event is part of the HiveOT standard, it does not have to be included in the 'events' section of the TDs (but is recommended). This needs to be reviewed and can possibly go into the top level forms section.
 
-TD 'properties' event description:
+TD '@properties' event description:
 ```json
 {
   "events": {
-    "properties": {
+    "@properties": {
       "data": {
         "title": "Map of property name and new value pairs",
         "type": "object"
@@ -241,7 +246,7 @@ Actions are used to control inputs and change the value of configuration propert
 The format of actions is defined in the Thing Description document
 through [action affordances](https://www.w3.org/TR/wot-thing-description/#actionaffordance).
 
-Similar to events, the actionID is the instance name of the action. By default this matches the action's @type classification from the vocabulary. In case the device supports multiple actions of the same type, like a multi-button switch, the action ID contains the instance ID while the '@type' attribute contains the action type classification.
+Similar to events, the action key is the instance name of the action. This can match the action's @type classification from the vocabulary or be the name of the function from the underlying device. In case the device supports identical actions on multiple endpoints, like a multi-button switch, the action keys must be unique for each instance.
 
 ```
 {
@@ -294,15 +299,16 @@ The action message to turn the switch on then looks like this:
 }
 ```
 
-### The 'properties' Action
+### The 'properties' Message
 
-Similar to a properties Event, HiveOT standardizes a "properties" action. To change a configuration value, a properties action must be submitted containing a map of property ID-value pairs to update. When defining the 'hiveot' @context in the TD, no additional action affordance is needed to write properties. (TODO describe how to do this)
+Similar to events and actions, HiveOT standardizes a "properties" message. To change a configuration value, a properties message can be submitted to a dThing containing the property new value. When defining the 'hiveot' @context in the TD, no additional action affordance is needed to write properties. (TODO describe how to do this)
 
-For example, when the Thing configuration property called "alarmThreshold" changes, the 'properties' action payload contains:
+For example, when the Thing configuration property called "alarmThreshold" changes, the 'properties' message key is alarmThreshold with the new value as json encoded payload:
 
 ```json
+publish: dThingID/alarmThreshold
 {
-  "alarmThreshold": 25
+  25
 }
 ```
 
@@ -321,6 +327,8 @@ The main criteria is that the ID used in the property, event, and action map ref
 For example, a media player has a property of @type 'ht:prop:media:muted'. This can be used directly as a property ID. When the device internal muted state changes to true, an event with the id 'ht:prop:media:muted' is published. However, the action to mute the player would use a different ID: "ht:action:media:mute", since the action is only a request and does not represent the state of the device. If accepted the event will confirm the request.
 
 ### How to track the progress of an action and prevent ghost actions?
+
+TODO: update this with the DeliveryStatus response message.
 
 Handling action requests is complicated due to the multiple intermediaries that are involved, the delayed handling due to communication delays, and the ability for some devices to sleep to conserve power. The request can be delayed or aborted at any step along the way.
 
