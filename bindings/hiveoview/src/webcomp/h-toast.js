@@ -15,7 +15,7 @@
  *   html: <h-toast top|bottom left|right horizontal|vertical duration="1000"></h-toast>
  *   JS: window.toast.showToast(type, text, 3000)
  *   HTMX: <div sse-swap="info" hx-target="#toast" hx-swap="beforeend"></div>
- *   Event:  document.dispatchEvent(new CustomEvent("toast", {detail: {type: "info", text: "hello"}}))
+ *   Event:  document.dispatchEvent(new CustomEvent("toast", {detail: {type: "info", text: "hello"[, duration: msec]}}))
 
  *
  * @attr top|bottom placement of the toast (default is top)
@@ -309,6 +309,9 @@ class HToast extends HTMLElement {
         // handle toast events send to the dom
         document.addEventListener("toast", (ev) => {
             if (ev.detail) {
+                if (!ev.detail.duration) {
+                    duration = ev.detail.duration
+                }
                 this.showToast(ev.detail.type, ev.detail.text, duration)
             } else {
                 console.error("Received toast event but 'detail' field is empty")
@@ -335,7 +338,7 @@ class HToast extends HTMLElement {
     // to create toast notifications for certain sse events.
     //
     // NOTE: this seems like a rather inefficient way of receiving events from sse,
-    // maybe better to add a custom sse handler without htmx.
+    // maybe better to add a JS sse handler without htmx.
     observeChildren(cb) {
         let observer = new MutationObserver(
             (mutations) => {
@@ -365,7 +368,9 @@ class HToast extends HTMLElement {
         if (!timeout) {
             // provide more time to read errors
             if (ttype === "error") {
-                timeout = this.duration*2
+                timeout = this.duration * 5
+            } else if (ttype === "warning") {
+                timeout = this.duration*3
             } else {
                 timeout = this.duration
             }

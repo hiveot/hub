@@ -24,10 +24,13 @@
 <script>
     function showBody() {
         let dt = window['HDarkToggle']
-        dt.setThemeFromLocalStorage()
-        document.body.hidden = false
-        window.displayIfTarget(window.location.pathname)
-        window.selectNavTargets("", window.location.href)
+		    if (dt) {
+            dt.setThemeFromLocalStorage()
+
+            document.body.hidden = false
+            window.displayIfTarget(window.location.pathname)
+            window.selectNavTargets("", window.location.href)
+        }
     }
 
     // listen for URL changes and re-activate the targets by setting the h-target class

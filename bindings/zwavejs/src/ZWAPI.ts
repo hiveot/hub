@@ -375,7 +375,7 @@ export class ZWAPI {
         });
 
         node.on("value updated", (node: ZWaveNode, args: ZWaveNodeValueUpdatedArgs) => {
-            tslog.debug("Node ", node.id, " value updated: args=", args);
+            // tslog.debug("Node ", node.id, " value updated: args=", args);
             // convert enums
             let newVidValue = getVidValue(node,args)
             this.onValueUpdate(node, args, newVidValue)

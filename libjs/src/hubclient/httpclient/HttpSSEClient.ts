@@ -3,7 +3,6 @@ import {
     ConnectionStatus,
     ConnInfo,
     DeliveryStatus,
-    EventHandler,
     IHubClient,
     MessageHandler
 } from "../IHubClient.js";
@@ -20,6 +19,7 @@ import {
 import * as http2 from "node:http2";
 import {connectSSE} from "@hivelib/hubclient/httpclient/connectSSE";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
+import * as https from "node:https";
 
 
 const hclog = new tslog.Logger()
@@ -191,6 +191,30 @@ export class HttpSSEClient implements IHubClient {
         }
     }
 
+    // try using postRequest using fetch api
+    // HOW TO SET THE CA? https://sebtrif.xyz/blog/2019-10-03-client-side-ssl-in-node-js-with-fetch/
+    // async postRequest(path:string, payload: string):Promise<string> {
+    //     return new Promise((resolve,reject)=> {
+    //
+    //         const req = https.request({
+    //             hostname: this._baseURL,
+    //             origin: this._baseURL,
+    //             auth:  "bearer "+this.authToken,
+    //             path: path,
+    //             method: "POST",
+    //             ca: this._caCertPem,
+    //             "content-type": "application/json",
+    //             // "content-length": Buffer.byteLength(payload),
+    //
+    //         },
+    //         res => {
+    //             res.on('data',function(data){
+    //
+    //              });
+    //         })
+    //         req.headers[""] = ""
+    //     })
+    // }
 
     // post a request to the path with the given payload
     async postRequest(path:string, payload: string):Promise<string> {
@@ -224,10 +248,11 @@ export class HttpSSEClient implements IHubClient {
             });
             req.on('end', () => {
                 req.destroy()
-                hclog.info(`postRequest to ${path}. Received reply. size=`+ replyData.length)
                 if (statusCode>=400) {
+                    hclog.warn(`postRequest status code  ${statusCode}`)
                     reject("Error "+statusCode+": "+replyData)
                 } else {
+                    hclog.info(`postRequest to ${path}. Received reply. size=`+ replyData.length)
                     resolve(replyData)
                 }
             });

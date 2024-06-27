@@ -15,7 +15,6 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/hiveoviewapi"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views"
-	"github.com/hiveot/hub/bindings/hiveoview/src/views/about"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/directory"
@@ -112,18 +111,33 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 		// see also:https://medium.com/gravel-engineering/i-find-it-hard-to-reuse-root-template-in-go-htmx-so-i-made-my-own-little-tools-to-solve-it-df881eed7e4d
 		// these renderer full page or fragments for non hx-boost hx-requests
 		r.Get("/", app.RenderApp)
-		r.Get("/app/about", about.RenderAbout)
+		r.Get("/app/about", app.RenderAbout)
+
+		// dashboard
+		r.Get("/dashboard", dashboard.RenderDashboard)
+		r.Get("/dashboard/{page}", dashboard.RenderDashboard) // TODO: support multiple pages
+
+		// directory view and thing information
+		r.Get("/directory", directory.RenderDirectory)
+		r.Get("/thing/confirmDeleteTDDialog/{thingID}", thing.RenderConfirmDeleteTDDialog)
+		r.Post("/thing/deleteTD/{thingID}", thing.PostDeleteTD)
+
+		// Thing details view
+		r.Get("/thing/details/{thingID}", thing.RenderThingDetails)
+		r.Get("/thing/raw/{thingID}", thing.RenderTDRaw)
+
+		// Thing configuration
+		r.Get("/thing/configEdit/{thingID}/{key}", thing.RenderConfigEditDialog)
+		r.Post("/thing/configEdit/{thingID}/{key}", thing.PostThingConfig)
+
+		// Thing action views
+		r.Get("/thing/actionDialog/{thingID}/{key}", thing.RenderActionDialog)
+		r.Post("/thing/actionStart/{thingID}/{key}", thing.PostStartAction)
+
+		// Status components
+		r.Get("/status", status.RenderStatus)
 		r.Get("/app/connectStatus", app.RenderConnectStatus)
-		r.Get("/app/dashboard", dashboard.RenderDashboard)
-		r.Get("/app/dashboard/{page}", dashboard.RenderDashboard) // TODO: support multiple pages
-		r.Get("/app/directory", directory.RenderDirectory)
-		r.Get("/app/thing/{thingID}", thing.RenderThingDetails)
-		r.Get("/app/thing/{thingID}/raw", thing.RenderTDRaw)
-		r.Get("/app/thing/editConfig", thing.RenderEditThingConfig)
-		r.Get("/app/thing/{thingID}/confirmDeleteTDDialog", thing.RenderConfirmDeleteTDDialog)
-		r.Post("/app/thing/{thingID}/deleteTD", thing.PostDeleteTD)
-		r.Post("/app/thing/{thingID}/{propKey}", thing.PostThingConfig)
-		r.Get("/app/status", status.RenderStatus)
+		r.Get("/app/progress/{messageID}", thing.RenderProgress)
 	})
 
 	return router

@@ -71,12 +71,12 @@ func (cs *ClientSession) AddSSEClient(c chan SSEEvent) {
 // This closes the hub connection and SSE data channels
 func (cs *ClientSession) Close() {
 	cs.mux.Lock()
-	defer cs.mux.Unlock()
 	for _, sseChan := range cs.sseClients {
 		close(sseChan)
 	}
-	cs.hc.Disconnect()
 	cs.sseClients = nil
+	cs.mux.Unlock()
+	cs.hc.Disconnect()
 }
 
 // GetStatus returns the status of hub connection
@@ -106,16 +106,32 @@ func (cs *ClientSession) IsActive() bool {
 
 // onConnectChange is invoked on disconnect/reconnect
 func (cs *ClientSession) onConnectChange(stat hubclient.TransportStatus) {
+	lastErrText := ""
+	if stat.LastError != nil {
+		lastErrText = stat.LastError.Error()
+	}
 	slog.Info("connection change",
 		slog.String("clientID", stat.ClientID),
-		slog.String("status", string(stat.ConnectionStatus)))
+		slog.String("status", string(stat.ConnectionStatus)),
+		slog.String("lastError", lastErrText))
+
 	if stat.ConnectionStatus == hubclient.Connected {
-		cs.SendNotify(NotifySuccess, "Connection with Hub successful")
+		cs.SendNotify(NotifySuccess, "Connection established with the Hub")
 	} else if stat.ConnectionStatus == hubclient.Connecting {
-		cs.SendNotify(NotifyWarning, "Attempt to reconnect to the Hub")
+		cs.SendNotify(NotifyWarning, "Reconnecting to the Hub... stand by")
+	} else if stat.ConnectionStatus == hubclient.ConnectFailed {
+		// this happens after a server restart as it invalidates user sessions
+		// redirect to the login page
+		cs.SendNotify(NotifyWarning, "Connection with Hub refused")
+	} else if stat.ConnectionStatus == hubclient.Disconnected {
+		cs.SendNotify(NotifyWarning, "Disconnected")
 	} else {
-		cs.SendNotify(NotifyWarning, "Connection changed: "+string(stat.ConnectionStatus))
+		// catchall
+		cs.SendNotify(NotifyWarning, "Connection failed: "+stat.LastError.Error())
 	}
+	// connectStatus triggers a reload of the connection status icon.
+	// If the connection is lost then the router in HiveovService will redirect to login instead.
+	cs.SendSSE("connectStatus", string(stat.ConnectionStatus))
 }
 
 // onMessage passes incoming messages from the Hub to the SSE client(s)
@@ -154,6 +170,8 @@ func (cs *ClientSession) onMessage(msg *things.ThingMessage) (stat hubclient.Del
 		// for now just pass it to the notification toaster
 		stat := hubclient.DeliveryStatus{}
 		_ = msg.Unmarshal(&stat)
+		// TODO: figure out a way to replace the existing notification if the messageID
+		//  is the same (status changes from applied to delivered)
 		if stat.Error != "" {
 			cs.SendNotify(NotifyError, stat.Error)
 		} else if stat.Progress == hubclient.DeliveryCompleted {

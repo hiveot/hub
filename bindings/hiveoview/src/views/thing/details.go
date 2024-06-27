@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-const TemplateFile = "thingDetails.gohtml"
+const TemplateFile = "details.gohtml"
 
 type DetailsTemplateData struct {
 	Title      string

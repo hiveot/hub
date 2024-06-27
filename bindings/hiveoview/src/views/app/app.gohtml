@@ -14,20 +14,20 @@
 			eg: hx-get="/dashboard" hx-target="#dashboard" hx-swap="innerHtml"
 	 -->
 	<div class="app-pages" tabindex="1" style="outline: none">
-		<div id="status" class="hidden" displayIfTarget="/app/status">
+		<div id="status" class="hidden" displayIfTarget="/status">
         {{template "status.gohtml" .}}
 		</div>
-		<div id="dashboard" class="hidden" displayIfTarget="/app/dashboard">
+		<div id="dashboard" class="hidden" displayIfTarget="/dashboard">
         {{template "dashboard.gohtml" .}}
 		</div>
-		<div id="directory" class="hidden" displayIfTarget="/app/directory">
+		<div id="directory" class="hidden" displayIfTarget="/directory">
         {{template "directory.gohtml" .}}
 		</div>
 		<div id="about" class="hidden" displayIfTarget="/app/about">
         {{template "about.gohtml" .}}
 		</div>
-		<div id="thing" class="hidden" displayIfTarget="/app/thing">
-        {{template "thingDetails.gohtml" .}}
+		<div id="thing" class="hidden" displayIfTarget="/thing">
+        {{template "details.gohtml" .}}
 		</div>
 	</div>
 

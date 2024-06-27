@@ -75,6 +75,7 @@ function addEvent(td: TD, node: ZWaveNode, vid: TranslatedValueID, eventID: stri
 
     let ev = td.AddEvent(eventID, va.atType, schema.title || eventID, schema.description, schema)
 
+    // SetDataSchema use the dataschema title, not the event data title
     if (ev.data) {
         ev.data.title = undefined
         ev.data.description = undefined
@@ -304,6 +305,9 @@ function SetDataSchema(ds: DataSchema | undefined, node: ZWaveNode, vid: Transla
     }
     let vidMeta = node.getValueMetadata(vid)
     ds.title = vidMeta.label ? vidMeta.label : vid.propertyName
+    if (vid.endpoint) {
+        ds.title += " - ("+vid.endpoint+")"
+    }
     // let value = node.getValue(vid)
     // let valueName = value != undefined ? String(value) : undefined
 

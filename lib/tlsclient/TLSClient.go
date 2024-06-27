@@ -112,7 +112,7 @@ func (cl *TLSClient) ConnectWithToken(token string) {
 // Note that delete methods do not allow a body, or a 405 is returned.
 //
 //	path to invoke
-func (cl *TLSClient) Delete(path string) ([]byte, error) {
+func (cl *TLSClient) Delete(path string) ([]byte, int, error) {
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
 	return cl.Invoke("DELETE", serverURL, nil, nil)
@@ -121,7 +121,7 @@ func (cl *TLSClient) Delete(path string) ([]byte, error) {
 // Get is a convenience function to send a request
 //
 //	path to invoke
-func (cl *TLSClient) Get(path string) ([]byte, error) {
+func (cl *TLSClient) Get(path string) ([]byte, int, error) {
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
 	return cl.Invoke("GET", serverURL, nil, nil)
 }
@@ -140,8 +140,10 @@ func (cl *TLSClient) GetHttpClient() *http.Client {
 //	url: full URL to invoke
 //	msg contains the request body as a string or object
 //	qParams: optional map with query parameters
+//
+// This returns the response data, return status code or an error
 func (cl *TLSClient) Invoke(method string, requrl string,
-	msg interface{}, qParams map[string]string) ([]byte, error) {
+	msg interface{}, qParams map[string]string) ([]byte, int, error) {
 
 	var body []byte
 	var err error
@@ -150,7 +152,7 @@ func (cl *TLSClient) Invoke(method string, requrl string,
 
 	if cl == nil || cl.httpClient == nil {
 		err = fmt.Errorf("Invoke: '%s'. Client is not started", requrl)
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 	slog.Debug("TLSClient.Invoke", "method", method, "requrl", requrl)
 
@@ -177,7 +179,7 @@ func (cl *TLSClient) Invoke(method string, requrl string,
 		req.URL.RawQuery = qValues.Encode()
 	}
 	if err != nil {
-		return nil, err
+		return nil, http.StatusInternalServerError, err
 	}
 
 	// set headers
@@ -186,11 +188,14 @@ func (cl *TLSClient) Invoke(method string, requrl string,
 	resp, err := cl.httpClient.Do(req)
 	if err != nil {
 		err = fmt.Errorf("Invoke: %s %s: %w", method, requrl, err)
-		return nil, err
+		slog.Error(err.Error())
+		return nil, 500, err
 	}
 	respBody, err := io.ReadAll(resp.Body)
 	// response body MUST be closed
 	_ = resp.Body.Close()
+
+	// FIXME: detect difference between connect and unauthenticated
 
 	if resp.StatusCode == 401 {
 		err = fmt.Errorf("%s", resp.Status)
@@ -205,7 +210,7 @@ func (cl *TLSClient) Invoke(method string, requrl string,
 	} else if err != nil {
 		err = fmt.Errorf("Invoke: Error %s %s: %w", method, requrl, err)
 	}
-	return respBody, err
+	return respBody, resp.StatusCode, err
 }
 
 //// Logout from the server and end the session
@@ -221,7 +226,7 @@ func (cl *TLSClient) Invoke(method string, requrl string,
 //
 //	path to invoke
 //	msg contains the request body as a string or object
-func (cl *TLSClient) Patch(path string, msg interface{}) ([]byte, error) {
+func (cl *TLSClient) Patch(path string, msg interface{}) ([]byte, int, error) {
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
 	return cl.Invoke("PATCH", serverURL, msg, nil)
@@ -233,7 +238,7 @@ func (cl *TLSClient) Patch(path string, msg interface{}) ([]byte, error) {
 //
 //	path to invoke
 //	msg contains the request body as a string or object
-func (cl *TLSClient) Post(path string, msg interface{}) ([]byte, error) {
+func (cl *TLSClient) Post(path string, msg interface{}) ([]byte, int, error) {
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
 	return cl.Invoke("POST", serverURL, msg, nil)
@@ -245,7 +250,7 @@ func (cl *TLSClient) Post(path string, msg interface{}) ([]byte, error) {
 //
 //	path to invoke
 //	msg contains the request body as a string or object
-func (cl *TLSClient) Put(path string, msg interface{}) ([]byte, error) {
+func (cl *TLSClient) Put(path string, msg interface{}) ([]byte, int, error) {
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
 	return cl.Invoke("PUT", serverURL, msg, nil)

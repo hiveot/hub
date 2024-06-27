@@ -1,12 +1,21 @@
 <!-- connection status
 The SSE event 'connectStatus is used to trigger an update of this fragment.
+
+NOTE: If triggering this component on connection status change causes the server to
+ redirect to login if authentication fails. This is intentional as it is the only
+ way to initiate a redirect when the SSE connection drops.
+
 @param conn_icon: "link", "link_off"
 @param conn_status: tooltip text
+
+FIXME: The intent was to trigger a manual reload with click event, however,
+ hx-trigger doesnt support multiple triggers in combination with sse:connectStatus.
+
 -->
 
-<!--TODO use SSE event to instant update changes-->
 {{- /* .Status: gotype:ConnectStatus*/ -}}
-<button hx-get="/app/connectStatus" hx-trigger="click, every 600s"
+<button hx-get="/app/connectStatus"
+        hx-trigger="sse:connectStatus"
         hx-swap="outerHTML"
         class="outline h-icon-button"
         style="border: 1px solid {{if .Status.IsConnected}}green{{else}}red{{end}};"

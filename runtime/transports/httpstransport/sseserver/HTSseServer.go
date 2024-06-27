@@ -64,7 +64,7 @@ func HTServeHttp(w http.ResponseWriter, r *http.Request) {
 				done = true
 				break
 			}
-			slog.Info("SseHandler: sending sse event to client",
+			slog.Debug("SseHandler: sending sse event to client",
 				slog.String("sessionID", cs.GetSessionID()),
 				slog.String("clientID", cs.GetClientID()),
 				slog.String("sse eventType", sseMsg.EventType),

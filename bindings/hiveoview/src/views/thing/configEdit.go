@@ -13,20 +13,11 @@ import (
 	"net/http"
 )
 
-type EditConfigTemplateData struct {
-	AgentID string
-	ThingID string
-	Key     string
-	Config  *things.PropertyAffordance
-	Value   string
-}
-
-// RenderEditThingConfig renders the view for editing Thing configuration property
+// RenderConfigEditDialog renders the view for editing Thing configuration property
 // This sets the data properties for AgentID, ThingID, Key and Config
-func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
-	thingID := r.URL.Query().Get("thingID")
-	propKey := r.URL.Query().Get("key")
-	agentID, _ := things.SplitDigiTwinThingID(thingID)
+func RenderConfigEditDialog(w http.ResponseWriter, r *http.Request) {
+	thingID := chi.URLParam(r, "thingID")
+	propKey := chi.URLParam(r, "key")
 
 	var propAff *things.PropertyAffordance
 	var value string
@@ -52,18 +43,18 @@ func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err != nil {
-		slog.Error("RenderEditThingConfig:", "err", err.Error())
+		slog.Error("RenderEditConfigDialog:", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	data := EditConfigTemplateData{
-		AgentID: agentID,
-		ThingID: thingID,
-		Key:     propKey,
-		Value:   value,
-		Config:  propAff,
+	data := IOSchema{
+		ThingID:    thingID,
+		Key:        propKey,
+		DataSchema: &propAff.DataSchema,
+		//Value:      fmt.Sprintf("%v", value),
+		Value: value,
 	}
-	app.RenderAppOrFragment(w, r, "editConfig.gohtml", data)
+	app.RenderAppOrFragment(w, r, "configEdit.gohtml", data)
 }
 
 // PostThingConfig handles posting of a thing configuration update
@@ -71,7 +62,7 @@ func RenderEditThingConfig(w http.ResponseWriter, r *http.Request) {
 // TODO: use the form method from the TD - once forms are added
 func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
-	propKey := chi.URLParam(r, "propKey")
+	propKey := chi.URLParam(r, "key")
 	value := r.FormValue("value")
 	stat := hubclient.DeliveryStatus{}
 	//

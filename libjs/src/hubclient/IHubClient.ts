@@ -190,7 +190,7 @@ export interface IHubClient {
     // This returns the data or throws an error if failed
     rpc(dThingID: string, key: string, args: any): Promise<any>
 
-    // SendDeliveryUpdate sends a delivery progress update to the hub.
+    // SendDeliveryUpdate sends a delivery progress update event to the hub.
     // The hub's inbox will update the status of the action and notify the original sender.
     //
     // Intended for agents that have processed an incoming action request asynchronously

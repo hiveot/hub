@@ -25,9 +25,8 @@
 							display:inline-flex; gap: 5px;
 							align-items: center; padding:0"
 			        hx-trigger="click"
-			        hx-get="/app/thing/editConfig"
-			        hx-vals='{"agentID":"{{$.AgentID}}","thingID":"{{$.ThingID}}","key":"{{$k}}"}'
-			        hx-target="#editConfigModal" hx-swap="innerHTML"
+			        hx-get="/thing/configEdit/{{$.ThingID}}/{{$k}}"
+			        hx-target="#configModal" hx-swap="innerHTML"
 						>
 							<iconify-icon style="padding: 0 10px" icon="mdi:pencil"></iconify-icon>
                 {{/*replace show value on sse event, sent by ClientSession.go:onEvent */}}
@@ -49,7 +48,7 @@
 				</li>
     {{end}}
 </ul>
-<div id="editConfigModal"></div>
+<div id="configModal"></div>
 
 <style>
 

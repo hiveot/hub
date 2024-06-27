@@ -21,20 +21,25 @@ This viewer is in early development. The information below is subject to change.
 3. Use Htmx to interactively browse the directory [done]
 4. Thing details view [done]
 5. Thing configuration edit [done]
-6. Configuration of title (if supported by Thing) [partial]
+6. Configuration of title (if supported by Thing) [done]
 7. Server push of property and event values [done]
 8. View raw TD [done]
 9. Delete TD w dialog [done]
-10. Invoke action with dialog
-11. DataSchema component with text,number,bool,enum,on-off 
+10. Dialog to invoke action [partial]
+11. Re-usable DataSchema component with text,number,bool,enum,on-off
+12. Show history of value
+13. Fixes:
+    - directory: list things in name order instead of key order
 todo at some point
-- is text still serialized? event if data is a string?
-  - what about stringified numbers. serialize again?
 - only show edit button if the user has permissions to edit
 - briefly fade in/out a highlight of a changed value
-- color value based on age
+- color value based on age - red is older than 3 days
 - sort on various columns
-- remember open/closed sections on page details (session storage) 
+- remember open/closed sections on page details (session storage)
+- fix handling of server restart
+   * force logout after runtime restart (the sse reconnect will fail as users need to reauth)
+   * f5 has 2 notications, success connected and unauthenticated, but doesn't return to login page
+   * fails receiving zwavejs delivery status updates until zwavejs restart ??? 
 
 ### Phase 3: Dashboard
 

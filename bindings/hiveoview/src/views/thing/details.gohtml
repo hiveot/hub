@@ -17,7 +17,7 @@
 	<article
 				hx-trigger="sse:{{.ThingID}}"
 				hx-swap="outerHTML"
-				hx-get="/app/thing/{{.ThingID}}"
+				hx-get="/thing/details/{{.ThingID}}"
 				class="h-panel container-fluid">
 
 		<!--===Thing Summary header===-->
@@ -29,7 +29,7 @@
 				<!--=== button to delete this TD ===-->
 				<button title="Delete TD" slot="button" class="h-icon-button  outline"
 				        hx-trigger="click"
-				        hx-get="/app/thing/{{.ThingID}}/confirmDeleteTDDialog"
+				        hx-get="/thing/confirmDeleteTDDialog/{{.ThingID}}"
 								hx-target="#confirmDialog" hx-swap="innerHTML"
 				>
 					<iconify-icon icon="mdi:trash-can-outline"></iconify-icon>
@@ -60,7 +60,7 @@
 
 					<!--=== button to open the raw TD in a new tab ===-->
 					<button for="agentIDz" title="view raw TD document"  class="h-icon-button outline">
-						<a href="/app/thing/{{.ThingID}}/raw" target="_blank">
+						<a href="/thing/raw/{{.ThingID}}" target="_blank">
 						<iconify-icon icon="mdi:text-box-outline"></iconify-icon>
 						</a>
 					</button>
@@ -79,7 +79,7 @@
 				<span style="font-size: medium"><strong>Attributes</strong></span>
 				<span> ({{len .Attributes}})</span>
 			</summary>
-        {{template "thingAttr.gohtml" .}}
+        {{template "attrList.gohtml" .}}
 		</details>
 
 		<!--===Thing Configuration===-->
@@ -89,7 +89,7 @@
 				<span style="font-size: medium"><strong>Configuration</strong></span>
 				<span> ({{len .Config}})</span>
 			</summary>
-				{{template "thingConfig.gohtml" .}}
+				{{template "configList.gohtml" .}}
 		</details>
 
 		<!--===Thing Events===-->
@@ -100,7 +100,7 @@
 				<span style="font-size: medium"><strong>Events</strong></span>
 				<span> ({{len .TD.Events}})</span>
 			</summary>
-        {{template "thingEvents.gohtml" .}}
+        {{template "eventList.gohtml" .}}
 		</details>
 
 		<!--===Thing Actions===-->
@@ -111,7 +111,7 @@
 				<span style="font-size: medium"><strong>Actions</strong></span>
 				<span> ({{len .TD.Actions}})</span>
 			</summary>
-        {{template "thingActions.gohtml" .}}
+        {{template "actionList.gohtml" .}}
 		</details>
 
 	</article>

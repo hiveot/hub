@@ -11,7 +11,7 @@
 {{end}}
 
 <main class="container-fluid"
-      hx-get="/app/directory"
+      hx-get="/directory"
       hx-trigger="{{$trigger}}"
       hx-target="this"
       hx-swap="outerHTML">
@@ -61,10 +61,10 @@
 									<div class="h-show-sm" title="Show TD">
 										<h-device-icon deviceType={{.AtType}}></h-device-icon>
 									</div>
-                  {{/*ThingID*/}}
+                  {{/*Show ThingID on big screens */}}
 									<div class="h-show-xl">
-										<a href="/app/thing/{{.ID}}"
-										   hx-get="/app/thing/{{.ID}}"
+										<a href="/thing/details/{{.ID}}"
+										   hx-get="/thing/details/{{.ID}}"
 										   hx-target="#thing"
 										   hx-swap="innerHtml"
 										   hx-trigger="click"
@@ -74,8 +74,8 @@
 									</div>
                    {{/*Title*/}}
 									<div>
-										<a href="/app/thing/{{.ID}}"
-										   hx-get="/app/thing/{{.ID}}"
+										<a href="/thing/details/{{.ID}}"
+										   hx-get="/thing/details/{{.ID}}"
 										   hx-target="#thing"
 										   hx-swap="innerHtml"
 										   hx-trigger="click"

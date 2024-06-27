@@ -147,11 +147,9 @@ func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) (stat h
 	if err == nil {
 		slog.Info("inbox:DeliveryUpdate ",
 			slog.String("ThingID", inboxRecord.Request.ThingID),
-			//slog.String("Key", inboxRecord.Request.Key),
-			//slog.String("SenderID", msg.SenderID),
-			slog.String("MessageID", stat.MessageID),
 			slog.String("Progress", stat.Progress),
 			slog.String("error", stat.Error),
+			slog.String("MessageID", stat.MessageID),
 		)
 
 		// the sender (agents) must match
@@ -173,7 +171,9 @@ func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) (stat h
 		slog.Warn("inbox:HandleDeliveryUpdate",
 			slog.String("senderID", msg.SenderID),
 			slog.String("thingID", msg.ThingID),
-			slog.String("err", err.Error()))
+			slog.String("err", err.Error()),
+			slog.String("MessageID", stat.MessageID),
+		)
 		err = nil
 	}
 	// the delivery update is delivered

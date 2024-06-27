@@ -1,0 +1,58 @@
+<!--Action dialog template
+    The action dialog displays the input and progress of an action.
+    Used to initiate a new action, show the status of an action in progress and
+    can be used to view historical actions.
+    Once submitted successfully this is replaced with a delivery progress content.
+ -->
+
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.ActionDialogData */ -}}
+
+<h-modal show showClose showCancel showSubmit>
+    <article>
+        <header class="h-row-centered" style="height: 60px">
+            <h3>{{.Action.Title}}</h3>
+        </header>
+
+        <label>Action ID</label>
+        <input readonly  value="{{.Key}}"/>
+
+        <form id="action-input-form">
+
+            {{if .Input}}
+                {{template "ioschema.gohtml" .Input}}
+            {{end}}
+        </form>
+
+        {{if .Status.Progress}}
+        <div>status {{.Status.Progress}}</div>
+        {{end}}
+
+    </article>
+
+    <footer class="h-row" style="width:100%">
+        {{- /*close-modal is handled by h-modal component*/ -}}
+        <button id="cancelBtn"
+                onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+                class="secondary">Cancel
+        </button>
+        <button type="submit"
+                hx-post="/thing/actionStart/{{.ThingID}}/{{.Key}}"
+                hx-include="#action-input-form"
+                hx-swap="none"
+                hx-on::after-request="onSubmitCompleted(event, this)"
+                style="margin-bottom: 0">Submit
+        </button>
+    </footer>
+</h-modal>
+
+<script>
+    // The dialog remains active until completed
+    function onSubmitCompleted(ev, btn) {
+        ev.stopImmediatePropagation()
+        let details = ev.detail
+        if (details.successful) {
+            modal = btn.parentElement.parentElement
+            // modal.closeModal()
+        }
+    }
+</script>

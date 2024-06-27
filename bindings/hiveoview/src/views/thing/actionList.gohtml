@@ -16,7 +16,17 @@
         {{- /*gotype: github.com/hiveot/hub/lib/things.ActionAffordance*/ -}}
 				<li>
 					<div class="h-show-sm">{{/*icon*/}}</div>
-					<div title="key: {{$k}}">{{$v.Title}}</div>
+					<div title="key: {{$k}}">
+						<button class="outline" style="border:none;
+										display:inline-flex; gap: 5px;
+										align-items: center; padding:0"
+						        hx-trigger="click"
+						        hx-get="/thing/actionDialog/{{$.ThingID}}/{{$k}}"
+						        hx-target="#actionModal" hx-swap="innerHTML"
+						>
+	            {{$v.Title}}
+						</button>
+					</div>
 					<div class="h-show-lg">{{$v.ActionType}}</div>
 					<div
 					     sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
@@ -38,6 +48,7 @@
 			</li>
     {{end}}
 </ul>
+<div id="actionModal"></div>
 
 
 <style>
