@@ -345,6 +345,14 @@ func (cl *HttpSSEClient) PubAction(thingID string, key string, payload string) (
 		slog.String("thingID", thingID),
 		slog.String("key", key))
 	stat = cl.postMessage(vocab.MessageTypeAction, thingID, key, payload, nil)
+	slog.Info("PubAction",
+		slog.String("me", cl._status.ClientID),
+		slog.String("thingID", thingID),
+		slog.String("key", key),
+		slog.String("payload", payload),
+		slog.String("messageID", stat.MessageID),
+		slog.String("progress", stat.Progress),
+	)
 	return stat
 }
 
@@ -378,12 +386,15 @@ func (cl *HttpSSEClient) PubEvent(thingID string, key string, payload string) er
 // This is similar to publishing an action but only affects properties.
 func (cl *HttpSSEClient) PubProperty(thingID string, key string, value string) (
 	stat hubclient.DeliveryStatus) {
+	stat = cl.postMessage(vocab.MessageTypeProperty, thingID, key, value, nil)
 	slog.Info("PubProperty",
 		slog.String("me", cl._status.ClientID),
 		slog.String("thingID", thingID),
 		slog.String("key", key),
+		slog.String("value", value),
+		slog.String("messageID", stat.MessageID),
+		slog.String("progress", stat.Progress),
 	)
-	stat = cl.postMessage(vocab.MessageTypeProperty, thingID, key, value, nil)
 	return stat
 }
 

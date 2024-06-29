@@ -145,8 +145,9 @@ func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) (stat h
 
 	// error checking that the update does belong to the right thing action
 	if err == nil {
-		slog.Info("inbox:DeliveryUpdate ",
+		slog.Info("inbox:HandleDeliveryUpdate ",
 			slog.String("ThingID", inboxRecord.Request.ThingID),
+			slog.String("Key", inboxRecord.Request.Key),
 			slog.String("Progress", stat.Progress),
 			slog.String("error", stat.Error),
 			slog.String("MessageID", stat.MessageID),
@@ -156,7 +157,7 @@ func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) (stat h
 		thingAgentID, thingID := things.SplitDigiTwinThingID(inboxRecord.Request.ThingID)
 		_ = thingID
 		if thingAgentID != msg.SenderID {
-			err = fmt.Errorf("HandleDeliveryUpdate: status update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
+			err = fmt.Errorf("inbox:HandleDeliveryUpdate: status update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
 				stat.MessageID, msg.ThingID, thingAgentID, msg.SenderID)
 		}
 	}
