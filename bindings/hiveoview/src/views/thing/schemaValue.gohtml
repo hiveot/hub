@@ -1,10 +1,10 @@
-<!--Datascheme form
-    This form presents a field from a dataschema.
+<!--schemaValue form
+    This form presents an input value defined by a dataschema.
 
     TODO: support for object type with multiple properties
  -->
 
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.IOSchema*/ -}}
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.SchemaValue*/ -}}
 
 {{$minmax := ""}}
 {{$iv := .Value}}
@@ -12,7 +12,7 @@
 {{if .DataSchema.Enum }}
     {{/*	=== Enum Selection Input ===*/}}
     {{/* add a select with list of options for the .DataSchema.Enum values */}}
-		<select id="config-input" name="value" autofocus>
+		<select id="input-{{.Key}}" name="{{.Key}}" autofocus>
         {{ range $enumValue := .DataSchema.Enum}}
 					<option {{if eq $enumValue $iv}} selected {{end}}>
               {{$enumValue}}
@@ -27,7 +27,7 @@
         {{/*FIXME: don't hard code rounding*/}}
         {{$minmax = printf " [%0.01f-%0.01f]" .DataSchema.Minimum .DataSchema.Maximum }}
     {{end}}
-		<input id="config-input" name="value"
+		<input id="input-{{.Key}}" name="{{.Key}}"
 		       autofocus autocomplete="off" type="number"
 		       placeholder="{{$iv}}"
 		       value="{{$iv}}"
@@ -39,7 +39,7 @@
     {{if .DataSchema.Minimum}}
         {{$minmax = printf " [%d-%d]" .DataSchema.Minimum .DataSchema.Maximum }}
     {{end}}
-		<input id="config-input" name="value"
+		<input id="input-{{.Key}}" name="{{.Key}}"
 		       autofocus autocomplete="off" type="number"
 		       placeholder="{{$iv}}"
 		/>
@@ -47,13 +47,20 @@
 
 {{else if eq .DataSchema.Type "boolean"}}
     {{/*	=== Boolean Input ===*/}}
-		<input id="config-input" name="value"
-		       type="checkbox" role="switch" autofocus
+{{/*    <h-switch name="value" off="Off" on="On" value="{{$iv}}"></h-switch>*/}}
+	<div style="border:solid 1px var(--pico-form-element-border-color);
+              padding:var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal); ">
+    Off
+	  <input id="input-{{.Key}}" name="{{.Key}}"
+		       value="1"
+		       style="margin-left:10px; margin-right:10px"
+		       type="checkbox" role="switch" aria-invalid="false" autofocus
             {{if eq $iv "true"}} checked {{end}}/>
-
+	    On
+	</div>
 {{else}}
     {{/*	=== Text Input ===*/}}
-		<input id="config-input" name="value"
+		<input id="input-{{.Key}}" name="{{.Key}}"
 		       autofocus autocomplete="off"
 		       placeholder="{{$iv}}" value="{{$iv}}"/>
 		<small>Current value: {{$iv}}</small>

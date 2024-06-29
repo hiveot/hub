@@ -13,13 +13,21 @@
             <h3>{{.Action.Title}}</h3>
         </header>
 
-        <label>Action ID</label>
-        <input readonly  value="{{.Key}}"/>
+        <label>Description</label>
+        <input readonly  placeholder="{{.Action.Description}}"/>
+
+        <label>Last updated</label>
+        <input readonly placeholder="{{.PrevValue.GetUpdated}}"/>
+
+        <label>Last Value</label>
+        <input readonly  placeholder="{{.PrevValue.DataAsText}}"/>
 
         <form id="action-input-form">
-
             {{if .Input}}
-                {{template "ioschema.gohtml" .Input}}
+                {{/* include the data type in the request to avoid an extra directory request*/}}
+                <input hidden name="dataType" value="{{.Input.DataSchema.Type}}" />
+                <label>New value</label>
+                {{template "schemaValue.gohtml" .Input}}
             {{end}}
         </form>
 

@@ -2,13 +2,10 @@ package thing
 
 import "github.com/hiveot/hub/lib/things"
 
-// IOSchema contains the thing interaction affordance input or output data schema
-// with its value.
+// SchemaValue contains the schema and value of an input or output
 // Intended for rendering a single field
-type IOSchema struct {
-	// Thing this schema belongs to
-	ThingID string
-	// Key the dataschema belongs to
+type SchemaValue struct {
+	// Interaction affordance key the dataschema belongs to
 	Key string
 
 	// DataSchema describing the information

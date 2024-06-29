@@ -142,7 +142,9 @@ func (cs *ClientSession) onMessage(msg *things.ThingMessage) (stat hubclient.Del
 	slog.Info("received message",
 		slog.String("type", msg.MessageType),
 		slog.String("thingID", msg.ThingID),
-		slog.String("id", msg.Key))
+		slog.String("key", msg.Key),
+		slog.String("data", msg.Data),
+		slog.String("messageID", msg.MessageID))
 	if msg.Key == vocab.EventTypeTD {
 		// Publish sse event indicating the Thing TD has changed.
 		// The UI that displays this event can use this as a trigger to reload the

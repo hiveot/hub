@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -22,12 +23,14 @@ type ActionDialogData struct {
 	Key string
 	// the action being viewed in case of an action
 	Action *thing.ActionAffordance
-	Input  *IOSchema
-	Output *IOSchema
+	Input  *SchemaValue
+	Output *SchemaValue
 	// the message with the action
 	Msg thing.ThingMessage
-	// Delivery status
+	// current delivery status
 	Status hubclient.DeliveryStatus
+	// Previous input value
+	PrevValue *thing.ThingMessage
 }
 
 // RenderActionDialog renders the action dialog.
@@ -40,6 +43,7 @@ func RenderActionDialog(w http.ResponseWriter, r *http.Request) {
 	td := thing.TD{}
 	//action := thing.ActionAffordance{}
 	tdJson := ""
+	lastAction := &thing.ThingMessage{}
 
 	// Read the TD being displayed
 	mySession, err := session.GetSessionFromContext(r)
@@ -49,6 +53,10 @@ func RenderActionDialog(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			err = json.Unmarshal([]byte(tdJson), &td)
 		}
+		resp, err := digitwin.InboxReadLatest(hc, []string{key}, "", thingID)
+		if err == nil {
+			lastAction = resp.Get(key)
+		}
 	}
 	action, found := td.Actions[key]
 	if !found {
@@ -56,22 +64,21 @@ func RenderActionDialog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := ActionDialogData{
-		ThingID: thingID,
-		Key:     key,
-		TD:      &td,
-		Action:  action,
+		ThingID:   thingID,
+		Key:       key,
+		TD:        &td,
+		Action:    action,
+		PrevValue: lastAction,
 	}
 	if action.Input != nil {
-		data.Input = &IOSchema{
-			ThingID:    thingID,
+		data.Input = &SchemaValue{
 			Key:        key,
 			DataSchema: action.Input,
-			Value:      "",
+			Value:      lastAction.DataAsText(),
 		}
 	}
 	if action.Output != nil {
-		data.Output = &IOSchema{
-			ThingID:    thingID,
+		data.Output = &SchemaValue{
 			Key:        key,
 			DataSchema: action.Output,
 			Value:      "",
@@ -90,10 +97,17 @@ func RenderProgress(w http.ResponseWriter, r *http.Request) {
 	_ = messageID
 }
 
+// post the request to start an action
 func PostStartAction(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	actionKey := chi.URLParam(r, "key")
-	value := r.FormValue("value")
+
+	dataType := r.FormValue("dataType")
+	value := r.FormValue(actionKey)
+	// Uglyness: HTML switch inputs don't submit a value if they are off
+	if value == "" && dataType == vocab.WoTDataTypeBool {
+		value = "0"
+	}
 	stat := hubclient.DeliveryStatus{}
 	//
 	mySession, err := session.GetSessionFromContext(r)
