@@ -75,7 +75,7 @@ export function handleConfigRequest(
 // @param vid: valueID parameter to set
 // @param value: stringified value to set, if any
 // this returns a delivery status for returning to the hub
-export async function setValue(node: ZWaveNode, vid: TranslatedValueID, value: string): Promise<DeliveryStatus> {
+export async function setValue(node: ZWaveNode, vid: TranslatedValueID, value: any): Promise<DeliveryStatus> {
     return new Promise<DeliveryStatus>( (resolve, reject) => {
         let dataToSet: unknown
         let stat = new DeliveryStatus()

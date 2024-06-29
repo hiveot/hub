@@ -13,7 +13,7 @@ import {ThingMessage} from "@hivelib/things/ThingMessage";
 import {BindingConfig} from "./BindingConfig";
 import * as tslog from 'tslog';
 import {DeliveryStatus, IHubClient} from "@hivelib/hubclient/IHubClient";
-import {handleHubMessage} from "@zwavejs/handleHubMessage";
+import {handleActionRequest} from "@zwavejs/handleActionRequest";
 import {ValueID} from "@zwave-js/core";
 
 const log = new tslog.Logger()
@@ -162,7 +162,7 @@ export class ZwaveJSBinding {
             logVid(this.vidCsvFD)
         }
         this.hc.setMessageHandler( (msg:ThingMessage):DeliveryStatus => {
-            let stat = handleHubMessage(msg,this.zwapi, this.hc)
+            let stat = handleActionRequest(msg,this.zwapi, this.hc)
             return stat
         })
 

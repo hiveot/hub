@@ -15,7 +15,7 @@ const log = new tslog.Logger()
 // handle controller actions as defined in the TD
 // Normally this returns the delivery status to the caller.
 // If delivery is in progress then use 'hc' to send further status updates.
-export function  handleHubMessage(msg: ThingMessage, zwapi: ZWAPI, hc: IHubClient): DeliveryStatus {
+export function  handleActionRequest(msg: ThingMessage, zwapi: ZWAPI, hc: IHubClient): DeliveryStatus {
     let stat = new DeliveryStatus()
     let errMsg: string = ""
     let actionLower = msg.key.toLowerCase()
@@ -30,11 +30,17 @@ export function  handleHubMessage(msg: ThingMessage, zwapi: ZWAPI, hc: IHubClien
     if (msg.messageType == MessageTypeProperty) {
         return handleConfigRequest(msg, node, zwapi, hc)
     }
-    let payload = ""
-    if (msg.data) {
-        payload = Buffer.from(msg.data, "base64").toString()
-    }
-    log.info("action: " + msg.key + " - value: " + payload)
+    // unmarshal the payload
+    // FIXME: who does the (un)marshalling? If the form defines the
+    //  contentCoding and contentType then
+    // is this up to the protocol client? (as multiple protocols can be supported)
+    // argument encoding?
+    // response encoding? hiveot wraps the reply in a delivery status message with a reply field
+    // what happens when consumer and agent use different protocol encodings?
+
+
+    let payload = msg.unmarshal()
+    log.info("action: " + msg.key + " - value: " + msg.data)
     // controller specific commands (see parseController)
     switch (actionLower) {
         case "begininclusion":

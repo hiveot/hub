@@ -476,6 +476,7 @@ export function getVidValue(node: ZWaveNode, vid:ValueID):any {
     switch (vidMeta.type) {
         case "number":
             let vmn = vidMeta as ValueMetadataNumeric;
+            // if this vid has enum values then convert the value to its numeric equivalent
             if (vmn.states) {
                 value = vmn.states[value]
             }
