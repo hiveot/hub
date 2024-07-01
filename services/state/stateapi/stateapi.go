@@ -38,7 +38,7 @@ type GetResp struct {
 	// Flag, the record was found (true)
 	Found bool `json:"found"`
 	// Data, the raw data of the record
-	Value string `json:"value"`
+	Value any `json:"value"`
 }
 
 type GetMultipleArgs struct {
@@ -47,14 +47,14 @@ type GetMultipleArgs struct {
 
 type GetMultipleResp struct {
 	// Key-values that were found
-	KV map[string]string `json:"kv"`
+	KV map[string]any `json:"kv"`
 }
 
 type SetArgs struct {
 	Key   string `json:"key"`
-	Value string `json:"value"`
+	Value any    `json:"value"`
 }
 
 type SetMultipleArgs struct {
-	KV map[string]string `json:"kv"`
+	KV map[string]any `json:"kv"`
 }

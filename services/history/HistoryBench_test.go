@@ -20,17 +20,17 @@ const timespanYear = timespanDay * 365
 
 // $go test -bench=BenchmarkAddEvents -benchtime=3s -run ^#
 //
-//                                      ---------------  MQTT/NATS BROKER --------------
-//	DBSize #Things                      kvbtree (msec)    pebble (msec)     bbolt (msec)
-//	 10K      10    add 1K single (*)       2.5             4.7             4600/4600
-//	 10K      10    add 1K batch (*)        1.2             2.4               76/72
-//	 10K      10    get 1K single         330/125         324/130            300/130
-//	 10K      10    get 1K batch          5.5/4.3           7                5.5/4.3
+//                                      ---------------  MQTT/NATS BROKER --------------     HTTPSSE runtime
+//	DBSize #Things                      kvbtree (msec)    pebble (msec)     bbolt (msec)      pebble (msec)
+//	 10K      10    add 1K single (*)       2.5             4.7             4600/4600             8.4
+//	 10K      10    add 1K batch (*)        1.2             2.4               76/72               4.4
+//	 10K      10    get 1K single         330/125         324/130            300/130           1600     (!! ouch)
+//	 10K      10    get 1K batch          5.5/4.3           7                5.5/4.3             55     (!!)
 //
-//	100K      10    add 1K single (*)       2.9             4.3             4900/4900
-//	100K      10    add 1K batch (*)        1.4             2.4               84/82
-//	100K      10    get 1K single         340/130         320/128            325/130
-//	100K      10    get 1K batch          6.0/4.2           7                5.2/4.3
+//	100K      10    add 1K single (*)       2.9             4.3             4900/4900             8.9
+//	100K      10    add 1K batch (*)        1.4             2.4               84/82               4.7
+//	100K      10    get 1K single         340/130         320/128            325/130           1650     (!! ouch)
+//	100K      10    get 1K batch          6.0/4.2           7                5.2/4.3             52
 //
 //	  1M     100    add 1K single (*)       2.9             5.7             5500
 //	  1M     100    add 1K batch (*)        1.4             3.1              580
@@ -44,6 +44,8 @@ const timespanYear = timespanDay * 365
 //
 // (*) NOTE1: adding events without message bus
 //     NOTE2: get 1K single/batch test uses message bus RPC calls and are thus much higher
+//     NOTE3: the new digitwin runtime using HTTP/SSE is half as fast, as expected, but the get 1K single is horrendous!
+//            looks like crypto is taking the bulk of it. Is it the re-auth?
 
 var DataSizeTable = []struct {
 	dataSize int

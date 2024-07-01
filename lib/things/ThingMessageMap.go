@@ -1,5 +1,9 @@
 package things
 
+import (
+	"encoding/json"
+)
+
 // ThingMessageMap map of message event or action keys to value
 type ThingMessageMap map[string]*ThingMessage
 
@@ -24,7 +28,7 @@ func (vm ThingMessageMap) Get(key string) *ThingMessage {
 
 // GetUpdated returns the timestamp of a property, or "" if it doesn't exist
 // intended for use in template as .Values.GetUpdated $key
-func (vm *ThingMessageMap) GetUpdated(key string) string {
+func (vm ThingMessageMap) GetUpdated(key string) string {
 	tv := vm.Get(key)
 	if tv == nil {
 		return ""
@@ -34,7 +38,7 @@ func (vm *ThingMessageMap) GetUpdated(key string) string {
 
 // GetSenderID returns the senderID of a property, or "" if it doesn't exist
 // intended for use in template as .Values.GetSenderID $key
-func (vm *ThingMessageMap) GetSenderID(key string) string {
+func (vm ThingMessageMap) GetSenderID(key string) string {
 	tv := vm.Get(key)
 	if tv == nil {
 		return ""
@@ -49,7 +53,7 @@ func (vm ThingMessageMap) ToString(key string) string {
 	if tv == nil {
 		return ""
 	}
-	return tv.Data
+	return tv.DataAsText()
 }
 
 // Set a property value in the map
@@ -62,4 +66,14 @@ func (vm ThingMessageMap) Set(key string, tv *ThingMessage) {
 func NewThingMessageMap() ThingMessageMap {
 	vm := make(ThingMessageMap)
 	return vm
+}
+
+// NewThingMessageMapFromSource creates a new thing message map from an
+// unmarshalled version.
+// Intended to convert from a deserialized type that a transport returns
+func NewThingMessageMapFromSource(source map[string]any) (ThingMessageMap, error) {
+	raw, _ := json.Marshal(source)
+	tmm := ThingMessageMap{}
+	err := json.Unmarshal(raw, &tmm)
+	return tmm, err
 }

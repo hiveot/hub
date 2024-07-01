@@ -25,7 +25,6 @@ func main() {
 		fmt.Println()
 	}
 	env := plugin.GetAppEnvironment("", true)
-	//env.Core = "mqtt"
 	logging.SetLogging(env.LogLevel, "")
 	fmt.Println("home: ", env.HomeDir)
 	if len(flag.Args()) > 0 {

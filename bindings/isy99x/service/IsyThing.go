@@ -29,7 +29,7 @@ type IIsyThing interface {
 	// GetID returns the thingID of the node
 	GetID() string
 	// GetValues returns the property values of the thing
-	GetPropValues(onlyChanges bool) map[string]string
+	GetPropValues(onlyChanges bool) map[string]any
 	// GetTD returns the generated TD document describing the Thing
 	GetTD() *things.TD
 	// HandleActionRequest passes incoming actions to the Thing for execution
@@ -76,7 +76,7 @@ func (it *IsyThing) GetID() string {
 }
 
 // GetPropValues returns the property values
-func (it *IsyThing) GetPropValues(onlyChanges bool) map[string]string {
+func (it *IsyThing) GetPropValues(onlyChanges bool) map[string]any {
 	propValues := it.propValues.GetValues(onlyChanges)
 	return propValues
 }
@@ -84,9 +84,10 @@ func (it *IsyThing) GetPropValues(onlyChanges bool) map[string]string {
 // GetTD return a basic TD document that describes the Thing represented here.
 // The parent should add properties, events and actions specific to their capabilities.
 func (it *IsyThing) GetTD() *things.TD {
-	title, _ := it.propValues.GetValue(vocab.PropDeviceTitle)
-	if title == "" {
-		title = it.productInfo.ProductName
+	title := it.productInfo.ProductName
+	titleProp, _ := it.propValues.GetValue(vocab.PropDeviceTitle)
+	if titleProp == nil {
+		title, _ = titleProp.(string)
 	}
 	it.mux.RLock()
 	td := things.NewTD(it.thingID, title, it.deviceType)

@@ -214,18 +214,23 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
 
     action = td.AddAction("ping", "", "Ping", WoTDataTypeNone)
     action.description = "Ping the device"
-    // todo: what type of response is expected
+    action.output=new DataSchema({
+        "title": "Duration",
+        "type": WoTDataTypeNumber,
+        "unit": "msec"
+    })
+    // todo: what type of response is expected: latency in msec
 
     action = td.AddAction("refreshInfo", "", "Refresh Device Info", WoTDataTypeNone)
     action.description = "Resets (almost) all information about this node and forces a fresh interview. " +
         "Ignored when interview is in progress. After this action, the node will no longer be ready. This can take a long time."
-    // todo: what type of response is expected
+    // todo: what type of response is expected: progress status updates until completed
 
 
     action = td.AddAction("refreshValues", "", "Refresh Device Values", WoTDataTypeNone)
     action.description = "Refresh all non-static sensor and actuator values. " +
         "Use sparingly. This can take a long time and generate a lot of traffic."
-    // todo: what type of response is expected
+    // todo: what type of response is expected: progress status updates until completed
 
 
     //--- Step 4: add properties, events, and actions from the ValueIDs

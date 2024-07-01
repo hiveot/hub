@@ -22,7 +22,7 @@ func addRecords(stateCl *stateclient.StateClient, count int) {
 	// Don't exceed the max transaction size
 	for iBatch := 0; iBatch < nrBatches; iBatch++ {
 
-		docs := make(map[string]string)
+		docs := make(map[string]any)
 		for i := 0; i < batchSize && count > 0; i++ {
 			k := randstr.String(12)
 			v := randstr.String(100)
@@ -58,7 +58,7 @@ func addRecords(stateCl *stateclient.StateClient, count int) {
 //   - the capnp RPC over Unix Domain Sockets call overhead is around 0.13 msec.
 //
 // With the digitwin http RPC transport (round trip)
-//   - the http RPC over http call overhead is around 0.8 msec
+//   - the http RPC over http call overhead is around 0.8 msec, so numbers are 8 times higher
 var DataSizeTable = []struct {
 	dataSize int
 	nrSets   int
@@ -133,7 +133,7 @@ func BenchmarkSetMultiple(b *testing.B) {
 		addRecords(stateCl, tbl.dataSize)
 
 		// build a set of data to test with
-		multiple := make(map[string]string)
+		multiple := make(map[string]any)
 		_ = multiple
 		for i := 0; i < tbl.nrSets; i++ {
 			td := testData[i]

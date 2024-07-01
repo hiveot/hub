@@ -16,6 +16,7 @@ import (
 	"math/rand"
 	"os"
 	"path"
+	"time"
 )
 
 // TestDir is the default test directory
@@ -78,7 +79,7 @@ func (test *TestServer) AddConnectUser(
 	}
 
 	hostPort := fmt.Sprintf("localhost:%d", test.Port)
-	cl = httpsse.NewHttpSSEClient(hostPort, clientID, test.Certs.CaCert)
+	cl = httpsse.NewHttpSSEClient(hostPort, clientID, test.Certs.CaCert, time.Minute)
 	token, err = cl.ConnectWithPassword(password)
 
 	if err != nil {
@@ -105,7 +106,7 @@ func (test *TestServer) AddConnectAgent(
 	}
 
 	hostPort := fmt.Sprintf("localhost:%d", test.Port)
-	cl = httpsse.NewHttpSSEClient(hostPort, agentID, test.Certs.CaCert)
+	cl = httpsse.NewHttpSSEClient(hostPort, agentID, test.Certs.CaCert, time.Minute)
 	_, err = cl.ConnectWithToken(token)
 	if err != nil {
 		panic("Failed connecting using token. ClientID=" + agentID)
@@ -133,7 +134,7 @@ func (test *TestServer) AddConnectService(serviceID string) (
 	}
 
 	hostPort := fmt.Sprintf("localhost:%d", test.Port)
-	cl = httpsse.NewHttpSSEClient(hostPort, serviceID, test.Certs.CaCert)
+	cl = httpsse.NewHttpSSEClient(hostPort, serviceID, test.Certs.CaCert, time.Minute)
 	_, err = cl.ConnectWithToken(token)
 	if err != nil {
 		panic("Failed connecting using token. serviceID=" + serviceID)

@@ -69,7 +69,7 @@ func GenActionHandler(l *utils.L, serviceTitle string, key string, action *thing
 			goType := GoTypeFromSchema(action.Input)
 			l.Add("var args %s", goType)
 		}
-		l.Add("err = msg.Unmarshal(&args)")
+		l.Add("err = msg.Decode(&args)")
 		argsString += ", args"
 	}
 	// build the result string, either an error or a response struct with an error

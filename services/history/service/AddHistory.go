@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
@@ -11,6 +12,8 @@ import (
 	"github.com/hiveot/hub/lib/things"
 )
 
+const DefaultMaxMessageSize = 30
+
 // AddHistory adds events and actions of any Thing
 type AddHistory struct {
 	// store with a bucket for each Thing
@@ -19,12 +22,14 @@ type AddHistory struct {
 	onAddedValue func(ev *things.ThingMessage)
 	//
 	retentionMgr *ManageHistory
+	// Maximum message size in bytes.
+	MaxMessageSize int
 }
 
 // encode a ThingMessage into a single key value pair for easy storage and filtering.
 // Encoding generates a key as: timestampMsec/name/a|e|p/sender,
-// where a|e|p indicates action, event or property
-func (svc *AddHistory) encodeValue(msg *things.ThingMessage) (key string, val string) {
+// where a|e|p indicates message type "action", "event" or "property"
+func (svc *AddHistory) encodeValue(msg *things.ThingMessage) (key string, data []byte) {
 	var err error
 	ts := time.Now()
 	if msg.CreatedMSec > 0 {
@@ -46,8 +51,8 @@ func (svc *AddHistory) encodeValue(msg *things.ThingMessage) (key string, val st
 		key = key + "/e"
 	}
 	key = key + "/" + msg.SenderID
-	val = msg.Data
-	return key, val
+	data, _ = json.Marshal(msg.Data)
+	return key, data
 }
 
 // AddAction adds a Thing action with the given name and value to the action history
@@ -71,7 +76,7 @@ func (svc *AddHistory) AddAction(actionValue *things.ThingMessage) error {
 	}
 	key, val := svc.encodeValue(actionValue)
 	bucket := svc.store.GetBucket(dThingID)
-	err = bucket.Set(key, []byte(val))
+	err = bucket.Set(key, val)
 	_ = bucket.Close()
 	if svc.onAddedValue != nil {
 		svc.onAddedValue(actionValue)
@@ -83,7 +88,7 @@ func (svc *AddHistory) AddAction(actionValue *things.ThingMessage) error {
 // This splits the property map and adds then as individual key-values
 func (svc *AddHistory) AddProperties(msg *things.ThingMessage) error {
 	propMap := make(map[string]any)
-	err := msg.Unmarshal(&propMap)
+	err := msg.Decode(&propMap)
 	if err != nil {
 		return err
 	}
@@ -101,7 +106,7 @@ func (svc *AddHistory) AddProperties(msg *things.ThingMessage) error {
 
 		storageKey, val := svc.encodeValue(msg)
 
-		err = bucket.Set(storageKey, []byte(val))
+		err = bucket.Set(storageKey, val)
 	}
 	_ = bucket.Close()
 	return err
@@ -116,10 +121,7 @@ func (svc *AddHistory) AddEvent(msg *things.ThingMessage) error {
 	if msg.Key == vocab.EventTypeProperties {
 		return svc.AddProperties(msg)
 	}
-	valueStr := msg.Data
-	if len(valueStr) > 20 {
-		valueStr = valueStr[:20]
-	}
+
 	retain, err := svc.validateValue(msg)
 	if err != nil {
 		slog.Warn("invalid event", "name", msg.Key, "err", err)
@@ -130,19 +132,22 @@ func (svc *AddHistory) AddEvent(msg *things.ThingMessage) error {
 		return nil
 	}
 
-	storageKey, val := svc.encodeValue(msg)
+	storageKey, data := svc.encodeValue(msg)
+	if len(data) > svc.MaxMessageSize {
+		data = data[:svc.MaxMessageSize]
+	}
 
-	slog.Info("AddEvent",
+	slog.Debug("AddEvent",
 		slog.String("senderID", msg.SenderID),
 		slog.String("thingID", msg.ThingID),
 		slog.String("key", msg.Key),
-		slog.String("value", string(valueStr)),
+		slog.Any("data", data),
 		slog.String("storageKey", storageKey))
 
 	thingAddr := msg.ThingID // the digitwin ID with the agent prefix
 	bucket := svc.store.GetBucket(thingAddr)
 
-	err = bucket.Set(storageKey, []byte(val))
+	err = bucket.Set(storageKey, data)
 	if err != nil {
 		slog.Error("AddMessage storage error", "err", err)
 	}
@@ -247,9 +252,10 @@ func NewAddHistory(
 	retentionMgr *ManageHistory,
 	onAddedValue func(value *things.ThingMessage)) *AddHistory {
 	svc := &AddHistory{
-		store:        store,
-		retentionMgr: retentionMgr,
-		onAddedValue: onAddedValue,
+		store:          store,
+		retentionMgr:   retentionMgr,
+		onAddedValue:   onAddedValue,
+		MaxMessageSize: DefaultMaxMessageSize,
 	}
 
 	return svc

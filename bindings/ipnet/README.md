@@ -7,6 +7,8 @@ The IPNet binding discovers devices on the network and tracks their uptime.
 In development. Migration from an older version.
 This initially only finds IP and MAC addresses of devices on the network.
 
+TODO: switch to using https://github.com/Ullaakut/nmap
+
 Limitations:
 * TODO: remote configuration
 * TODO: port scan configuration
@@ -54,8 +56,9 @@ Example, the discovery of raspberry pi on 10.3.3.20 with MAC AA:BB:CC:DD:EE:FF
 
 ## Dependencies
 
-Application dependencies
-* nmap
+Application dependencies:
+* nmap: This uses the 'nmap' utility for scanning the network. 
+On ubuntu: sudo apt install nmap 
 
 Go package dependencies
 * github.com/mostlygeek/arp

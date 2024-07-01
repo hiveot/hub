@@ -63,6 +63,7 @@ type DeliveryStatus struct {
 	// Error in case delivery or processing has failed
 	Error string `json:"error,omitempty"`
 	// Serialized reply in case delivery and processing has completed
+	// FIXME: change reply to any type and return native value
 	Reply string `json:"reply,omitempty"`
 }
 

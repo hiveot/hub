@@ -79,7 +79,7 @@ func TestNoAuth(t *testing.T) {
 	cl := tlsclient.NewTLSClient(clientHostPort, nil, time.Second*120)
 	require.NoError(t, err)
 	//cl.ConnectNoAuth()
-	_, err = cl.Get(path1)
+	_, _, err = cl.Get(path1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, path1Hit)
 
@@ -121,14 +121,14 @@ func TestTokenAuth(t *testing.T) {
 	cl.ConnectWithToken(token1)
 
 	// test the auth with a GET request
-	_, err = cl.Get(path1)
+	_, _, err = cl.Get(path1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, path1Hit)
 
 	// test a failed login
 	cl.Close()
 	cl.ConnectWithToken("wrongpassword")
-	_, err = cl.Get(path1)
+	_, _, err = cl.Get(path1)
 	assert.Error(t, err)
 	assert.Equal(t, 1, path1Hit) // should not increase
 
@@ -225,7 +225,7 @@ func TestWriteResponse(t *testing.T) {
 	err = cl.ConnectWithClientCert(testCerts.ClientCert)
 	assert.NoError(t, err)
 
-	reply, err := cl.Get(path2)
+	reply, _, err := cl.Get(path2)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, path2Hit)
 	assert.Equal(t, message, string(reply))

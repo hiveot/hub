@@ -25,7 +25,7 @@ func (svc *OWServerBinding) HandleConfigRequest(msg *things.ThingMessage) (stat 
 		return
 	}
 	valueMap := map[string]string{}
-	err := msg.Unmarshal(&valueMap)
+	err := msg.Decode(&valueMap)
 	if err != nil {
 		err := fmt.Errorf("HandleConfigRequest: Invalid properties: %s", err.Error())
 		slog.Warn(err.Error())

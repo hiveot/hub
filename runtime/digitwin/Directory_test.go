@@ -180,7 +180,7 @@ func TestGetTDsFail(t *testing.T) {
 //	assert.NotNil(t, tdList)
 //	assert.True(t, len(tdList) > 0)
 //	el0 := things.TD{}
-//	json.Unmarshal([]byte(tdList[0]), &el0)
+//	json.Decode([]byte(tdList[0]), &el0)
 //	assert.Equal(t, thing1ID, el0.ID)
 //	assert.Equal(t, title1, el0.Title)
 //}

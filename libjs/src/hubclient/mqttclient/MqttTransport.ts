@@ -198,7 +198,7 @@ export class MqttTransport implements IHubClient {
     }
 
     // send an event and return immediately
-    public async pubEvent(address: string, payload: string): Promise<void> {
+    public async pubEvent(thingID: string, key:string, payload: any): Promise<DeliveryStatus> {
         if (this.mcl) {
 
             let opts: mqtt.IClientPublishOptions = {

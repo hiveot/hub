@@ -79,6 +79,34 @@ on the data type? Eg the inheritance of a 'number' property:
 With an array property:
 > PropertyAffordance -> InteractionAffordance -> ArraySchema -> DataSchema
 
-* The problem is that I'm unable to implement this in a maintainable and easy to use fashion in golang.
-* Workaround: flatten the property affordance with fields for all data schemas
+* The problem is that this cannot be implemented in golang using data structs.
+* Workaround: flatten the dataschema with fields for all types of data schema
   and let the 'type' field determine which fields are used.
+
+14. Where does the encoding/decoding of input and output payloads take place?
+TD Forms define a "contentType" field that describes the encoding of the payload.
+
+Answer: encoding is handled in the transport protocol. The forms in the TD contain the available transport protocols and its encoding, for every single property, event and action affordance.
+
+Note1: Internally, the Hub transport client and server use an 'any' parameter for passing data. This is marshalled according to the transport protocol encoding, which is described in the TDD Forms.
+
+Note2: The inbox, outbox, and history stores must handle their own encoding. This is decoupled from the transport protocols.
+
+15. How does the IoT device know what type the data is in?
+When receiving actions or properties, agents expect to receive inputs in the same format as was defined in the TD. Consumers receiving events and property values rely on the TD dataschema to interpret the data format for presentation or analysis.
+Eg, pass an integer as a boolean or vice versa. The transport protocol decodes the data into its native format. When receiving events, clients therefore can only receive data with the 'any' type for the value produced by the unmarshaller. That means that when handling this, it must be cast to its expected native type before use. If the type doesn't match then this would have to fail gracefully.
+
+16. Is it correct that the client must convert the data type? 
+ISSUE: complex data types that are returned by actions must be converted to the proper complex data type. Unmarshalling to interface{} (golang) however returns a non compatible object as the unmarshaller doesn't know the actual data type. Thus, this doesn't work.
+Workaround: Return the wire format and provide an unmarshal method to the client where the client can provide the expected data type.
+
+17. How to define the ThingMessage wrapper in SSE messages?
+When the server sends data to a client over SSE, it must include additional info such as senderID, thingID, affordance key and messageID. In http these can be put in the url and query parameters. With the SSE transport both the payload and metadata are embedded into a ThingMessage struct. How to describe this?
+
+18. How to describe a map of objects in the action output dataschema?
+
+19. How to describe basic vs advanced properties, events and actions in the TD?
+    * option1: use the ht vocabulary to indicate basic properties
+    * option2: add to the @context
+
+20. How to link an event received over SSE containing the result of an action to a corresponding action?

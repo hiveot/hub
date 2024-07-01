@@ -116,18 +116,20 @@ type IHubClient interface {
 	//    sent asynchronously. This can take a while if the device is asleep.
 	// 2. Invoke a method on a service and retrieve a result.
 	//    In most cases it is recommended to use the 'Rpc' method for this as it waits
-	//    and correlates the delivery status event with the request and returns the result.
+	//    and correlates the delivery status event with the request and converts
+	//    the result to the appropriate type.
 	//
-	// Embedded services respond with a completed status and the result in the Reply field.
+	// Embedded services respond with a completed status and the unmarshalled
+	// result in the Reply field.
 	// Actions aimed to IoT devices and non embedded services will return a delivery status
 	// update separately through a delivery event.
 	//
 	//	dThingID the digital twin ID for whom the action is intended
 	//	key is the action ID or method name of the action to invoke
-	//  payload with serialized message to publish
+	//  value with message data to publish in native format
 	//
 	// This returns a delivery status with serialized response message if delivered
-	PubAction(dThingID string, key string, payload string) DeliveryStatus
+	PubAction(dThingID string, key string, value any) DeliveryStatus
 
 	// PubEvent publishes an event style message without a response.
 	// It returns as soon as delivery to the hub is confirmed.
@@ -138,22 +140,22 @@ type IHubClient interface {
 	//
 	//	thingID native ID of the thing as used by the agent
 	//	key ID of the event
-	//	payload with serialized message to publish
+	//	value with native data to publish, as per TD dataschema
 	//
 	// This returns an error if the event cannot not be delivered to the hub
-	PubEvent(thingID string, key string, payload string) error
+	PubEvent(thingID string, key string, value any) error
 
 	// PubProperty publishes a property change request
-	// Value is a serialized value based on the PropertyAffordances in the TD
-	PubProperty(dThingID string, key string, value string) DeliveryStatus
+	// Value is a value based on the PropertyAffordances in the TD
+	PubProperty(dThingID string, key string, value any) DeliveryStatus
 
 	// PubProps publishes a property values event.
 	// It returns as soon as delivery to the hub is confirmed.
 	// This is intended for agents, not for consumers.
 	//
 	//	thingID is the native ID of the device (not including the digital twin ID)
-	//	props is the property key-value map to publish where value is the serialized representation
-	PubProps(thingID string, props map[string]string) error
+	//	props is the property key-value map to publish where value is the native value
+	PubProps(thingID string, props map[string]any) error
 
 	// PubTD publishes an TD document event.
 	// It returns as soon as delivery to the hub is confirmed.

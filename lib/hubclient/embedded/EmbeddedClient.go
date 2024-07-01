@@ -24,7 +24,9 @@ import (
 type EmbeddedClient struct {
 	// The connected client/agent
 	clientID string
-	// sendMessage from the client to the protocol binding server
+	// sendMessage data from the client to the protocol binding server
+	// note that internally, message data is wrapped in a ThingMessage object.
+	// the wire format that serializes the data doesn't apply here.
 	sendMessage hubclient.MessageHandler
 	// client side handler that receives actions from the server
 	messageHandler hubclient.MessageHandler
@@ -93,26 +95,26 @@ func (cl *EmbeddedClient) Logout() error {
 // PubAction publishes an action request.
 // Since this is a direct call, the response include a reply.
 func (cl *EmbeddedClient) PubAction(
-	thingID string, key string, payload string) (stat hubclient.DeliveryStatus) {
+	thingID string, key string, data any) (stat hubclient.DeliveryStatus) {
 
-	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, payload, cl.clientID)
+	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, data, cl.clientID)
 	stat = cl.sendMessage(msg)
 	return stat
 }
 
 // PubProperty publishes a configuration change request
-func (cl *EmbeddedClient) PubProperty(thingID string, key string, value string) (stat hubclient.DeliveryStatus) {
+func (cl *EmbeddedClient) PubProperty(thingID string, key string, data any) (stat hubclient.DeliveryStatus) {
 
-	msg := things.NewThingMessage(vocab.MessageTypeProperty, thingID, key, value, cl.clientID)
+	msg := things.NewThingMessage(vocab.MessageTypeProperty, thingID, key, data, cl.clientID)
 	stat = cl.sendMessage(msg)
 	return stat
 }
 
 // PubEvent publishes an event style message without waiting for a response.
 func (cl *EmbeddedClient) PubEvent(
-	thingID string, key string, payload string) error {
+	thingID string, key string, data any) error {
 
-	msg := things.NewThingMessage(vocab.MessageTypeEvent, thingID, key, payload, cl.clientID)
+	msg := things.NewThingMessage(vocab.MessageTypeEvent, thingID, key, data, cl.clientID)
 	stat := cl.sendMessage(msg)
 	if stat.Error != "" {
 		return errors.New(stat.Error)
@@ -121,7 +123,7 @@ func (cl *EmbeddedClient) PubEvent(
 }
 
 // PubProps publishes a properties map
-func (cl *EmbeddedClient) PubProps(thingID string, props map[string]string) error {
+func (cl *EmbeddedClient) PubProps(thingID string, props map[string]any) error {
 	payload, _ := json.Marshal(props)
 	return cl.PubEvent(thingID, vocab.EventTypeProperties, string(payload))
 }
@@ -142,10 +144,11 @@ func (cl *EmbeddedClient) RefreshToken(_ string) (newToken string, err error) {
 func (cl *EmbeddedClient) Rpc(
 	thingID string, key string, args interface{}, resp interface{}) error {
 
-	payload, _ := json.Marshal(args)
-	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, string(payload), cl.clientID)
+	// the internal wire format is a ThingMessage struct
+	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, args, cl.clientID)
 	// this sendMessage is synchronous
 	stat := cl.sendMessage(msg)
+	// the internal response format is a DeliveryStatus struct
 	if stat.Error == "" {
 		// delivery might be completed but an unmarshal error causes it to fail
 		err, _ := stat.UnmarshalReply(resp)
@@ -180,7 +183,7 @@ func (cl *EmbeddedClient) SetMessageHandler(cb hubclient.MessageHandler) {
 }
 
 // Subscribe adds a subscription for one or more events. Events will be passed to
-// the handler set with SetventHandler.
+// the handler set with SetMessageHandler.
 //
 // Actions directed at this client are automatically passed in. No need to subscribe.
 //
@@ -230,7 +233,7 @@ func NewEmbeddedClient(clientID string, serverHandler hubclient.MessageHandler) 
 //		tv := things.NewThingMessage(vocab.MessageTypeAction, thingID, method, data, clientID)
 //		stat := handler(tv)
 //		if stat.Progress == api.DeliveryCompleted && stat.Reply != nil {
-//			err := json.Unmarshal(stat.Reply, &reply)
+//			err := json.Decode(stat.Reply, &reply)
 //			return err
 //		} else if stat.Error != "" {
 //			return errors.New(stat.Error)

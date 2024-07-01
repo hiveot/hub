@@ -1,4 +1,4 @@
-package tlsserver_old
+package old
 
 import (
 	"github.com/hiveot/hub/lib/certs"

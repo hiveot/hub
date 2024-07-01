@@ -40,8 +40,7 @@ func getLatest(thingID string, hc hubclient.IHubClient) (things.ThingMessageMap,
 	if err != nil {
 		return data, err
 	}
-	tvs := things.ThingMessageMap{}
-	_ = json.Unmarshal([]byte(tvsJson), &tvs)
+	tvs, _ := things.NewThingMessageMapFromSource(tvsJson)
 	for _, tv := range tvs {
 		data.Set(tv.Key, tv)
 	}
@@ -101,7 +100,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 				return strings.ToLower(prop1.Title) < strings.ToLower(prop2.Title)
 			})
 
-			// get the latest values if available
+			// get the latest event/property values from the outbox
 			propMap, err2 := getLatest(thingID, hc)
 			err = err2
 			thingData.Values = propMap

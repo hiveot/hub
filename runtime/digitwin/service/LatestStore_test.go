@@ -22,7 +22,7 @@ var valueStorePath = path.Join(testValueFolder, "values.store")
 var valueNames = []string{"temperature", "humidity", "pressure", "wind", "speed", "switch", "location", "sensor-A", "sensor-B", "sensor-C"}
 
 func startLatestStore(clean bool) (
-	svc *service.DigiTwinLatestStore,
+	svc *service.DigiTwinInOutboxStore,
 	stopFn func()) {
 
 	if clean {
@@ -47,7 +47,7 @@ func startLatestStore(clean bool) (
 }
 
 // generate a random batch of values for testing
-func createValueBatch(svc *service.DigiTwinLatestStore,
+func createValueBatch(svc *service.DigiTwinInOutboxStore,
 	nrValues int, thingIDs []string, timespanSec int) (batch []*things.ThingMessage) {
 
 	valueBatch := make([]*things.ThingMessage, 0, nrValues)
@@ -167,17 +167,16 @@ func TestGetEvents(t *testing.T) {
 
 func TestAddPropsEvent(t *testing.T) {
 	thing1ID := "thing1"
-	pev := make(map[string]string)
-	pev["temperature"] = "10"
-	pev["humidity"] = "33"
-	pev["switch"] = "false"
-	serProps, _ := json.Marshal(pev)
+	pev := make(map[string]any)
+	pev["temperature"] = 10.5
+	pev["humidity"] = 33
+	pev["switch"] = false
 
 	svc, closeFn := startLatestStore(true)
 	defer closeFn()
 
 	msg := things.NewThingMessage(vocab.MessageTypeEvent,
-		thing1ID, vocab.EventTypeProperties, string(serProps), "sender")
+		thing1ID, vocab.EventTypeProperties, pev, "sender")
 	svc.StoreMessage(msg)
 
 	values1, err := svc.ReadLatest(vocab.MessageTypeEvent, thing1ID, valueNames, "")

@@ -2,6 +2,7 @@ package owserver_test
 
 import (
 	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
@@ -27,6 +28,9 @@ var tempFolder string
 var owsConfig config.OWServerConfig
 var owsSimulationFile string // simulation file
 var ts *testenv.TestServer
+
+const agentID = "owserver"
+const device1ID = "2A000003BB170B28" // <-- from the simulation file
 
 // TestMain run test server and use the project test folder as the home folder.
 // All tests are run using the simulation file.
@@ -61,24 +65,26 @@ func TestMain(m *testing.M) {
 
 func TestStartStop(t *testing.T) {
 	t.Log("--- TestStartStop ---")
-	const device1ID = "device1"
 
-	hc, _ := ts.AddConnectAgent(device1ID)
-	defer hc.Disconnect()
 	svc := service.NewOWServerBinding(&owsConfig)
+
+	hc, _ := ts.AddConnectAgent(agentID)
+	require.Equal(t, hubclient.Connected, hc.GetStatus().ConnectionStatus)
+	defer hc.Disconnect()
+
 	err := svc.Start(hc)
-	assert.NoError(t, err)
-	defer svc.Stop()
-	//time.Sleep(time.Second)
+	require.NoError(t, err)
+	// give heartbeat time to run
+	time.Sleep(time.Millisecond * 1)
+	svc.Stop()
 }
 
 func TestPoll(t *testing.T) {
 	var tdCount atomic.Int32
-	const device1ID = "device1"
 	const userID = "user1"
 
 	t.Log("--- TestPoll ---")
-	hc, _ := ts.AddConnectAgent(device1ID)
+	hc, _ := ts.AddConnectAgent(agentID)
 	defer hc.Disconnect()
 	hc2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
 	defer hc2.Disconnect()
@@ -91,11 +97,11 @@ func TestPoll(t *testing.T) {
 		slog.Info("received event", "id", ev.Key)
 		if ev.Key == vocab.EventTypeProperties {
 			var value map[string]interface{}
-			err2 := ev.Unmarshal(&value)
+			err2 := ev.Decode(&value)
 			assert.NoError(t, err2)
 		} else {
 			var value interface{}
-			err2 := ev.Unmarshal(&value)
+			err2 := ev.Decode(&value)
 			assert.NoError(t, err2)
 		}
 		tdCount.Add(1)
@@ -106,30 +112,36 @@ func TestPoll(t *testing.T) {
 	// start the service which publishes TDs
 	err = svc.Start(hc)
 	require.NoError(t, err)
-	defer svc.Stop()
 
-	// wait until startup poll completed
-	time.Sleep(time.Millisecond * 200)
+	// give heartbeat a chance to run. stop will wait for it to complete
+	time.Sleep(time.Millisecond * 1)
+	svc.Stop()
 
 	// the simulation file contains 3 things. The service is 1 Thing.
 	assert.GreaterOrEqual(t, tdCount.Load(), int32(4))
+
+	// get events from the outbox
+	dThingID := things.MakeDigiTwinThingID(agentID, device1ID)
+	events, err := digitwin.OutboxReadLatest(hc2, nil, "", dThingID)
+	require.NoError(t, err)
+	require.True(t, len(events) > 1)
 }
 
 func TestPollInvalidEDSAddress(t *testing.T) {
 	t.Log("--- TestPollInvalidEDSAddress ---")
-	const device1ID = "device1"
 
-	hc, _ := ts.AddConnectAgent(device1ID)
+	hc, _ := ts.AddConnectAgent(agentID)
 	defer hc.Disconnect()
 
 	badConfig := owsConfig // copy
 	badConfig.OWServerURL = "http://invalidAddress/"
 	svc := service.NewOWServerBinding(&badConfig)
+
 	err := svc.Start(hc)
 	assert.NoError(t, err)
-	defer svc.Stop()
-
-	time.Sleep(time.Millisecond * 10)
+	// give heartbeat a chance to run. stop will wait for it to complete
+	time.Sleep(time.Millisecond * 1)
+	svc.Stop()
 
 	_, err = svc.PollNodes()
 	assert.Error(t, err)
@@ -137,11 +149,9 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 
 func TestAction(t *testing.T) {
 	t.Log("--- TestAction ---")
-	const agentID = "agent-1"
 	const user1ID = "operator1"
 	// node in test data
-	const thingID = "C100100000267C7E"
-	var dThingID = things.MakeDigiTwinThingID(agentID, thingID)
+	var dThingID = things.MakeDigiTwinThingID(agentID, device1ID)
 	var actionName = "RelayFunction" // the action attribute as defined by the device
 	var actionValue = "1"
 
@@ -169,15 +179,11 @@ func TestAction(t *testing.T) {
 
 func TestConfig(t *testing.T) {
 	t.Log("--- TestConfig ---")
-	const device1ID = "device1"
 	const user1ID = "manager1"
-	// node in test data
-	const nodeID = "C100100000267C7E"
-	//var nodeAddr = things.MakeThingAddr(owsConfig.ID, nodeID)
 	var configName = "LEDFunction"
 	var configValue = ([]byte)("1")
 
-	hc, _ := ts.AddConnectAgent(device1ID)
+	hc, _ := ts.AddConnectAgent(agentID)
 	defer hc.Disconnect()
 
 	svc := service.NewOWServerBinding(&owsConfig)
@@ -185,13 +191,13 @@ func TestConfig(t *testing.T) {
 	require.NoError(t, err)
 	defer svc.Stop()
 
-	// give Start time to run
+	// give heartbeat time to run
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
 	hc2, _ := ts.AddConnectUser(user1ID, authn.ClientRoleManager)
 	defer hc2.Disconnect()
-	dThingID := things.MakeDigiTwinThingID(device1ID, nodeID)
+	dThingID := things.MakeDigiTwinThingID(agentID, device1ID)
 	err = hc2.Rpc(dThingID, configName, &configValue, nil)
 	// can't write to a simulation. How to test for real?
 	assert.Error(t, err)

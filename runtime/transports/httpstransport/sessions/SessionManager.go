@@ -3,7 +3,6 @@ package sessions
 import (
 	"crypto/ecdsa"
 	"crypto/x509"
-	"encoding/json"
 	"errors"
 	"github.com/google/uuid"
 	"github.com/hiveot/hub/api/go/vocab"
@@ -140,13 +139,12 @@ func (sm *SessionManager) Init(hubURL string, core string,
 func (sm *SessionManager) SendEvent(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	sm.mux.RLock()
 	defer sm.mux.RUnlock()
-	payload, _ := json.Marshal(msg)
 
 	for id, session := range sm.sidSessions {
 		_ = id
 		// don't send event to self
 		if session.IsSubscribed(msg.ThingID, msg.Key) {
-			_ = session.SendSSE(msg.MessageID, vocab.MessageTypeEvent, string(payload))
+			_ = session.SendSSE(msg.MessageID, vocab.MessageTypeEvent, msg)
 		}
 	}
 	if len(sm.sidSessions) > 0 {

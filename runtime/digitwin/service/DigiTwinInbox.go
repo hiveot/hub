@@ -46,7 +46,7 @@ type DigiTwinInbox struct {
 	// The inbox storage buckets with action records by message ID.
 	actionRecords buckets.IBucket
 	// latest actions store for reading the last received actions
-	latest *DigiTwinLatestStore
+	latest *DigiTwinInOutboxStore
 	// protocol manager to send updates to clients
 	pm api.ITransportBinding
 }
@@ -137,7 +137,7 @@ func (svc *DigiTwinInbox) HandleActionFlow(msg *things.ThingMessage) (status hub
 // This updates the status of the inbox record and notifies the sender.
 func (svc *DigiTwinInbox) HandleDeliveryUpdate(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	var inboxRecord InboxRecord
-	err := msg.Unmarshal(&stat)
+	err := msg.Decode(&stat)
 
 	if err == nil {
 		inboxRecord, err = svc.GetRecord(stat.MessageID)

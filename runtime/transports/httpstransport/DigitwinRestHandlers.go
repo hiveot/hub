@@ -32,26 +32,26 @@ func (svc *HttpsTransport) HandleGetEvents(w http.ResponseWriter, r *http.Reques
 	if key != "" {
 		args.Keys = []string{key}
 	}
-	argsJSON, _ := json.Marshal(args)
+	//argsJSON, _ := json.Marshal(args)
 	msg := things.NewThingMessage(vocab.MessageTypeAction,
 		digitwin.OutboxDThingID, digitwin.OutboxReadLatestMethod,
-		string(argsJSON), cs.GetClientID())
+		args, cs.GetClientID())
 
 	stat := svc.handleMessage(msg)
-	var reply []byte
+	//var reply []byte
 	if stat.Error == "" {
-		var resp string
+		//var resp string
 		// the serialized response contains a serialized message map.
 		// this double serialization is because the outbox response is defined
 		// as a serialized message map. Just reply with the once-serialized map
-		err, _ = stat.UnmarshalReply(&resp)
+		//err, _ = stat.UnmarshalReply(&resp)
 		// The response values are already serialized
-		reply = []byte(resp)
+		//reply = []byte(resp)
 		err = nil
 	} else {
 		err = errors.New(stat.Error)
 	}
-	svc.writeReply(w, reply, err)
+	svc.writeReply(w, []byte(stat.Reply), err)
 }
 
 // HandleGetThings returns a list of things in the directory
@@ -76,10 +76,10 @@ func (svc *HttpsTransport) HandleGetThings(w http.ResponseWriter, r *http.Reques
 		offset = int(offset32)
 	}
 	args := digitwin.DirectoryReadTDsArgs{Limit: limit, Offset: offset}
-	argsJSON, _ := json.Marshal(args)
+	//argsJSON, _ := json.Marshal(args)
 	msg := things.NewThingMessage(vocab.MessageTypeAction,
 		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDsMethod,
-		string(argsJSON), cs.GetClientID())
+		args, cs.GetClientID())
 
 	stat := svc.handleMessage(msg)
 
@@ -105,10 +105,9 @@ func (svc *HttpsTransport) HandleGetThing(w http.ResponseWriter, r *http.Request
 	}
 	// FIXME: are single text arguments serialized?
 	// payload is always serialized ?
-	data, _ := json.Marshal(thingID)
 	msg := things.NewThingMessage(vocab.MessageTypeAction,
 		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod,
-		string(data), cs.GetClientID())
+		thingID, cs.GetClientID())
 	stat := svc.handleMessage(msg)
 
 	var reply []byte

@@ -25,11 +25,10 @@ This viewer is in early development. The information below is subject to change.
 7. Server push of property and event values [done]
 8. View raw TD [done]
 9. Delete TD w dialog [done]
-10. Dialog to invoke action [partial]
-11. Re-usable DataSchema component with text,number,bool,enum,on-off
+10. Dialog to invoke action [done]
+11. Show progress of action and config changes
+11. Re-usable DataSchema component/template with text,number,bool,enum,on-off [partial]
 12. Show history of value
-13. Fixes:
-    - directory: list things in name order instead of key order
 todo at some point
 - only show edit button if the user has permissions to edit
 - briefly fade in/out a highlight of a changed value
@@ -40,6 +39,8 @@ todo at some point
    * force logout after runtime restart (the sse reconnect will fail as users need to reauth)
    * f5 has 2 notications, success connected and unauthenticated, but doesn't return to login page
    * fails receiving zwavejs delivery status updates until zwavejs restart ??? 
+- disable actions and config for things that are not reachable because the agent is offline 
+  * api to get agent/thing status and Listen for the agent connect/disconnect event, sent by the runtime (todo)
 
 ### Phase 3: Dashboard
 
@@ -53,9 +54,8 @@ todo at some point
 
 ### Phase 4: iteration 2  (tbd, based on learnings)
 1. Layout improvements for small screens
-2. Subscribe to and organize Things by IoT Agents
 2. Migrate to digital twin model [done]
-3. Distinguish between basic and advanced attr/config/events
+3. Distinguish between basic and advanced attr/config/events - todo; how to describe this in the TD?
 4. Indication of pending configuration update (owserver updates can take 10 seconds)
 
 

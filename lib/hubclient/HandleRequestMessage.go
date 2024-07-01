@@ -1,6 +1,7 @@
 package hubclient
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/lib/ser"
@@ -35,7 +36,7 @@ import (
 //   - func([string]) ()
 //
 // where type1 and type2 can be a struct or native type, or a pointer to a struct or native type.
-func HandleRequestMessage(senderID string, method interface{}, payload string) (respData string, err error) {
+func HandleRequestMessage(senderID string, method interface{}, data any) (respData string, err error) {
 
 	// magic spells found at: https://github.com/a8m/reflect-examples#call-function-with-list-of-arguments-and-validate-return-values
 	// and here: https://stackoverflow.com/questions/45679408/unmarshal-json-to-reflected-struct
@@ -44,6 +45,9 @@ func HandleRequestMessage(senderID string, method interface{}, payload string) (
 	methodType := methodValue.Type()
 	argv := make([]reflect.Value, methodType.NumIn())
 	nrArgs := methodType.NumIn()
+
+	// TODO: IMPROVE ON THIS
+	payload, _ := json.Marshal(data)
 
 	for i := 0; i < nrArgs; i++ {
 		// determine the type of argument, expect the senderID string as first arg

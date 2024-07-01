@@ -20,9 +20,9 @@ func (svc *IPNetBinding) MakeBindingTD() *things.TD {
 	prop = td.AddPropertyAsInt("deviceCount", "", "Nr discovered devices")
 	return td
 }
-func (svc *IPNetBinding) MakeBindingProps() map[string]string {
-	pv := make(map[string]string)
-	pv[vocab2.PropDevicePollinterval] = fmt.Sprintf("%d", svc.config.PollInterval)
+func (svc *IPNetBinding) MakeBindingProps() map[string]any {
+	pv := make(map[string]any)
+	pv[vocab2.PropDevicePollinterval] = svc.config.PollInterval
 	pv["deviceCount"] = fmt.Sprintf("%d", len(svc.devicesMap))
 	return pv
 }

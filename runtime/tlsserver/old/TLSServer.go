@@ -1,5 +1,5 @@
 // Package tlsserver with TLS server for use by plugins and testing
-package tlsserver_old
+package old
 
 import (
 	"context"

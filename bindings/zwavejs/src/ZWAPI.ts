@@ -19,6 +19,7 @@ import fs from "fs";
 import {Logger} from "tslog";
 import {CommandClasses, ValueID} from '@zwave-js/core';
 import path from "path";
+import type {SetValueResult} from "@zwave-js/cc/build/index_safe";
 
 const tslog = new Logger({ name: "ZWAPI" })
 
@@ -339,7 +340,7 @@ export class ZWAPI {
             this.onValueUpdate(node, args, newValue)
             tslog.info(`Node ${node.id} value metadata updated`,
                 "property", args.property,
-                "propkeyname", args.propertyKeyName,
+                "propertyKeyName", args.propertyKeyName,
                 "newValue", newValue,
             );
         });
@@ -391,41 +392,41 @@ export class ZWAPI {
 
 // convert the string value to a type suitable for the vid
 // If the vid is an enum then convert the enum label to its internal value
-export function stringToValue(value:string, node: ZWaveNode, vid:ValueID ):any {
-    let vidMeta = node.getValueMetadata(vid)
-    if (!vidMeta) {
-        return undefined
-    }
-    let vl = value.toLowerCase()
-    switch (vidMeta.type) {
-        case "string": return value;
-        case "boolean":
-            if (value === "" || vl ==="false" || value === "0" || vl==="disabled") {
-                return false
-            }
-            return true
-        case "number":
-        case "duration":
-        case "color":
-            let numMeta = vidMeta as ValueMetadataNumeric;
-            let dataToSet: number|undefined
-            if (numMeta && numMeta.states) {
-                dataToSet = getEnumFromMemberName(numMeta.states, value)
-            } else {
-                dataToSet = parseInt(value,10)
-            }
-            if (isNaN(dataToSet as number)) {
-                dataToSet = undefined
-            }
-            return dataToSet
-        case "boolean[]":
-        case "number[]":
-        case "string[]":
-            // TODO: support of arrays
-            tslog.error("getNewValueOfType data type '"+vidMeta.type+"' is not supported")
-    }
-    return value
-}
+// export function stringToValue(value:string, node: ZWaveNode, vid:ValueID ):any {
+//     let vidMeta = node.getValueMetadata(vid)
+//     if (!vidMeta) {
+//         return undefined
+//     }
+//     let vl = value.toLowerCase()
+//     switch (vidMeta.type) {
+//         case "string": return value;
+//         case "boolean":
+//             if (value === "" || vl ==="false" || value === "0" || vl==="disabled") {
+//                 return false
+//             }
+//             return true
+//         case "number":
+//         case "duration":
+//         case "color":
+//             let numMeta = vidMeta as ValueMetadataNumeric;
+//             let dataToSet: number|undefined
+//             if (numMeta && numMeta.states) {
+//                 dataToSet = getEnumFromMemberName(numMeta.states, value)
+//             } else {
+//                 dataToSet = parseInt(value,10)
+//             }
+//             if (isNaN(dataToSet as number)) {
+//                 dataToSet = undefined
+//             }
+//             return dataToSet
+//         case "boolean[]":
+//         case "number[]":
+//         case "string[]":
+//             // TODO: support of arrays
+//             tslog.error("getNewValueOfType data type '"+vidMeta.type+"' is not supported")
+//     }
+//     return value
+// }
 
 // Determine which serial port is available
 function findSerialPort(): string {
@@ -448,7 +449,7 @@ function findSerialPort(): string {
 
 // Revert the enum name to its number
 // This is the opposite of getEnumMemberName
-function getEnumFromMemberName(enumeration: Record<number, string>, name: string): number | undefined {
+export function getEnumFromMemberName(enumeration: Record<number, string>, name: string): number | undefined {
     for (let key in enumeration) {
         let val = enumeration[key]
         if (val.toLowerCase() == name.toLowerCase()) {
@@ -473,15 +474,12 @@ function getEnumFromMemberName(enumeration: Record<number, string>, name: string
 export function getVidValue(node: ZWaveNode, vid:ValueID):any {
     let vidMeta = node.getValueMetadata(vid)
     let value = node.getValue(vid)
-    switch (vidMeta.type) {
-        case "number":
-            let vmn = vidMeta as ValueMetadataNumeric;
-            // if this vid has enum values then convert the value to its numeric equivalent
-            if (vmn.states) {
-                value = vmn.states[value]
-            }
-        default:
-        // do nothing, return the value as-is
+    if (vidMeta.type === "number") {
+        let vmn = vidMeta as ValueMetadataNumeric;
+        // if this vid has enum values then convert the value to its numeric equivalent
+        if (vmn.states) {
+            value = vmn.states[value]
+        }
     }
     return value
 }

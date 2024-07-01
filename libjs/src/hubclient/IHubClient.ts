@@ -74,9 +74,10 @@ export class DeliveryStatus extends Object{
     // Error in case delivery status has ended without completion.
     error?: string =""
     // Reply in case delivery status is completed
+    // FIXME: change reply to any
     reply?: string =""
 
-    Completed(msg: ThingMessage, err?: Error) {
+    completed(msg: ThingMessage, err?: Error) {
         this.messageID = msg.messageID
         this.progress = DeliveryProgress.DeliveryCompleted
         if (err) {
@@ -84,12 +85,12 @@ export class DeliveryStatus extends Object{
         }
     }
     // set status update to applied. A final status update is expected
-    Applied(msg: ThingMessage) {
+    applied(msg: ThingMessage) {
         this.messageID = msg.messageID
         this.progress = DeliveryProgress.DeliveryApplied
         this.error = undefined
     }
-    Failed(msg: ThingMessage, err: Error|string|undefined) {
+    failed(msg: ThingMessage, err: Error|string|undefined) {
         this.messageID = msg.messageID
         this.progress = DeliveryProgress.DeliveryFailed
         if (err instanceof Error) {
@@ -129,8 +130,9 @@ export interface IHubClient {
     //
     //	@param dThingID the digital twin ID for whom the action is intended
     //	@param key is the action ID or method name of the action to invoke
-    //  @param payload with serialized message to publish
-    pubAction(dThingID: string, key: string, payload: string): Promise<DeliveryStatus>;
+    //	@param payload to publish in native format as per TD
+    //
+    pubAction(dThingID: string, key: string, payload: any): Promise<DeliveryStatus>;
 
     // getStatus returns the current transport connection status
     // getStatus(): HubTransportStatus
@@ -141,26 +143,28 @@ export interface IHubClient {
     // Events are published by agents using their native ID, not the digital twin ID.
     // The Hub outbox broadcasts this event using the digital twin ID.
     //
-    //	thingID native thingID as provided by the agent
-    //	key ID of the event
-    //	payload with serialized message to publish
+    //	@param thingID native thingID as provided by the agent
+    //	@param key ID of the event
+    //	@param payload to publish in native format as per TD
     //
     // This throws an error if the event cannot not be delivered to the hub
-    pubEvent(thingID: string, key:string, payload: string): Promise<DeliveryStatus>;
+    pubEvent(thingID: string, key:string, payload: any): Promise<DeliveryStatus>;
 
     // pubProperty publishes a configuration change request for a property
-    // @param dThingID is the digitwin thingID is provided by the directory
-    pubProperty(dThingID: string, key: string, payload: string): Promise<DeliveryStatus>;
+    //  @param dThingID is the digitwin thingID is provided by the directory
+    //	@param key ID of the property
+    //	@param payload to publish in native format as per TD
+    pubProperty(dThingID: string, key: string, payload: any): Promise<DeliveryStatus>;
 
     // PubProps publishes a property values event.
     // It returns as soon as delivery to the hub is confirmed.
     // This is intended for agents, not for consumers.
     //
     // @param thingID is the native thingID of the device (not including the digital twin ID)
-    // @param props is the property key-value map to publish where value is the serialized representation
+    // @param props is the property key-value map to publish where value is their native format
     //
     // This throws an error if the event cannot not be delivered to the hub
-    pubProps(thingID: string, props: {[key:string]:string}): Promise<DeliveryStatus>;
+    pubProps(thingID: string, props: {[key:string]:any}): Promise<DeliveryStatus>;
 
     // PubTD publishes an TD document event.
     // It returns as soon as delivery to the hub is confirmed.

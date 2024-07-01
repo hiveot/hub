@@ -13,7 +13,7 @@ type IsyDimmerThing struct {
 }
 
 // GetValues returns the property and event values for publication
-func (it *IsyDimmerThing) GetValues(onlyChanges bool) map[string]string {
+func (it *IsyDimmerThing) GetValues(onlyChanges bool) map[string]any {
 	propValues := it.IsyThing.GetPropValues(onlyChanges)
 	propValues[vocab.PropSwitchDimmer] = propValues[vocab.PropSwitchDimmer]
 	return propValues

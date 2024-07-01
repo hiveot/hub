@@ -93,7 +93,7 @@ func TestSetGet1(t *testing.T) {
 	assert.NoError(t, err)
 
 	found, err := stateCl.Get(key1, &val2)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, found)
 	assert.Equal(t, val1, val2)
 
@@ -104,6 +104,7 @@ func TestSetGet1(t *testing.T) {
 	found, err = stateCl.Get(key1, &val3)
 	assert.NoError(t, err)
 	assert.True(t, found)
+	assert.Equal(t, val1, val2)
 	assert.Equal(t, val1, val3)
 
 }
@@ -114,7 +115,7 @@ func TestSetGetMultiple(t *testing.T) {
 	const key2 = "key2"
 	var val1 = "value 1"
 	var val2 = "value 2"
-	data := map[string]string{
+	data := map[string]any{
 		key1: val1,
 		key2: val2,
 	}

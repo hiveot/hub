@@ -97,8 +97,9 @@
 			"output": {
 				"title": "Value map",
 				"description": "JSON encoded map of key:ThingMessage objects",
-				"comment": "this returns a map of key:ThingValue objects. Too much work to describe here in detail",
-				"type": "string",
+				"comment": "this returns a map of key:ThingMessage objects. No idea how to describe it",
+				"type": "object",
+				"@type": "ht:ThingMessageMap",
 				"forms": []
 			}
 		},

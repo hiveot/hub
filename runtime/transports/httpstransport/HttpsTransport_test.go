@@ -2,6 +2,7 @@ package httpstransport_test
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -143,7 +144,7 @@ func TestLoginRefresh(t *testing.T) {
 		})
 	defer svc.Stop()
 
-	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert, time.Minute)
 	token, err := cl.ConnectWithPassword(testPassword)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
@@ -181,7 +182,7 @@ func TestBadLogin(t *testing.T) {
 	defer svc.Stop()
 
 	// check if this test still works with a valid login
-	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert, time.Minute)
 	//cl := tlsclient.NewTLSClient(hostPort, certBundle.CaCert, time.Second*120)
 	token, err := cl.ConnectWithPassword(testPassword)
 	assert.NoError(t, err)
@@ -198,7 +199,7 @@ func TestBadLogin(t *testing.T) {
 	cl.Disconnect()
 
 	// bad client ID
-	cl2 := httpsse.NewHttpSSEClient(hostPort, "badID", certBundle.CaCert)
+	cl2 := httpsse.NewHttpSSEClient(hostPort, "badID", certBundle.CaCert, time.Minute)
 	token, err = cl2.ConnectWithPassword(testPassword)
 	assert.Error(t, err)
 	assert.Empty(t, token)
@@ -213,7 +214,7 @@ func TestBadRefresh(t *testing.T) {
 		})
 	defer svc.Stop()
 
-	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert, time.Minute)
 
 	// set the token
 	token, err := cl.ConnectWithToken("badtoken")
@@ -231,7 +232,7 @@ func TestBadRefresh(t *testing.T) {
 	assert.NotEmpty(t, validToken)
 	cl.Disconnect()
 	//
-	cl2 := httpsse.NewHttpSSEClient(hostPort, "badlogin", certBundle.CaCert)
+	cl2 := httpsse.NewHttpSSEClient(hostPort, "badlogin", certBundle.CaCert, time.Minute)
 	defer cl2.Disconnect()
 	token, err = cl2.ConnectWithToken(validToken)
 	assert.Error(t, err)
@@ -257,6 +258,7 @@ func TestPostEventAction(t *testing.T) {
 			rxMsg = tv
 			stat.Reply = testMsg
 			stat.Progress = hubclient.DeliveryCompleted
+			stat.MessageID = uuid.New().String()
 			return stat
 		})
 	defer svc.Stop()
@@ -269,7 +271,7 @@ func TestPostEventAction(t *testing.T) {
 	assert.NotNil(t, cs)
 
 	// 2b. connect a client
-	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert, time.Minute)
 	token, err := cl.ConnectWithPassword(testPassword)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
@@ -284,7 +286,7 @@ func TestPostEventAction(t *testing.T) {
 	assert.NoError(t, err)
 	if assert.NotNil(t, rxMsg) {
 		assert.Equal(t, vocab.MessageTypeEvent, rxMsg.MessageType)
-		assert.Equal(t, testMsg, string(rxMsg.Data))
+		assert.Equal(t, testMsg, rxMsg.Data.(string))
 	}
 
 	// 5. publish an action
@@ -294,7 +296,7 @@ func TestPostEventAction(t *testing.T) {
 	assert.NotEmpty(t, stat.Reply)
 	if assert.NotNil(t, rxMsg) {
 		assert.Equal(t, vocab.MessageTypeAction, rxMsg.MessageType)
-		assert.Equal(t, testMsg, string(rxMsg.Data))
+		assert.Equal(t, testMsg, rxMsg.Data.(string))
 	}
 	cl.Disconnect()
 }
@@ -319,7 +321,7 @@ func TestPubSubSSE(t *testing.T) {
 	defer svc.Stop()
 
 	// 2. connect with a client
-	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert, time.Minute)
 	token, err := cl.ConnectWithPassword(testPassword)
 	require.NoError(t, err)
 	assert.NotEmpty(t, token)
@@ -343,11 +345,11 @@ func TestPubSubSSE(t *testing.T) {
 	assert.NoError(t, err)
 	time.Sleep(time.Millisecond * 10)
 	//
-	rxMsg2 := *rxMsg.Load()
+	rxMsg2 := rxMsg.Load()
 	require.NotNil(t, rxMsg2)
-	assert.Equal(t, thingID, rxMsg2.ThingID)
-	assert.Equal(t, testLogin, rxMsg2.SenderID)
-	assert.Equal(t, eventKey, rxMsg2.Key)
+	assert.Equal(t, thingID, (*rxMsg2).ThingID)
+	assert.Equal(t, testLogin, (*rxMsg2).SenderID)
+	assert.Equal(t, eventKey, (*rxMsg2).Key)
 }
 
 // Restarting the server should invalidate sessions
@@ -365,7 +367,7 @@ func TestRestart(t *testing.T) {
 		})
 
 	// 2. connect a service client
-	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert, time.Minute)
 	token, err := cl.ConnectWithPassword(testPassword)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
@@ -420,10 +422,9 @@ func TestReconnect(t *testing.T) {
 		go func() {
 			var stat2 hubclient.DeliveryStatus
 			stat2.Completed(tv, nil)
-			stat2.Reply = string(tv.Data)
-			stat2Json := stat2.Marshal()
+			stat2.Reply = tv.Data.(string)
 			tm2 := things.NewThingMessage(
-				vocab.MessageTypeEvent, tv.SenderID, vocab.EventTypeDeliveryUpdate, stat2Json, thingID)
+				vocab.MessageTypeEvent, tv.SenderID, vocab.EventTypeDeliveryUpdate, stat2, thingID)
 
 			svc.SendToClient(tv.SenderID, tm2)
 		}()
@@ -432,7 +433,7 @@ func TestReconnect(t *testing.T) {
 	}
 
 	// 2. connect a service client. Service auth tokens remain valid between sessions.
-	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert, time.Minute)
 	defer cl.Disconnect()
 	token, err := cl.ConnectWithToken(serviceToken)
 	assert.NoError(t, err)

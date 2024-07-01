@@ -2,6 +2,7 @@ package things
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/google/uuid"
 	"time"
 )
@@ -36,9 +37,11 @@ type ThingMessage struct {
 	// Optional. This will be set to 'now' if omitted.
 	CreatedMSec int64 `json:"created,omitempty"`
 
-	// Data converted to text from the type defined by the TD affordance DataSchema.
-	// This can be omitted if no data is associated with the event or action.
-	Data string `json:"data,omitempty"`
+	// Data in the native format as described in the TD affordance dataschema.
+	Data any `json:"data,omitempty"`
+
+	// Raw is the serialized message data
+	//Raw []byte `json:"-"`
 
 	// MessageID of the message. Intended to detect duplicates and send replies.
 	// Optional. The hub will generate a unique messageID if omitted.
@@ -50,21 +53,11 @@ type ThingMessage struct {
 // How does the TD describe the data serialization used? Is this part of the protocol?
 // Should the transport convert it?
 func (tm *ThingMessage) DataAsText() string {
-	if tm.Data == "" {
+	if tm.Data == nil {
 		return ""
 	}
-	return string(tm.Data)
-}
-
-// Unmarshal the data into the given type.
-// How does the TD describe the data serialization used? Is this part of the protocol?
-// Should the transport convert it?
-// This returns an error if unmarshalling fails.
-func (tm *ThingMessage) Unmarshal(arg interface{}) error {
-	if tm.Data == "" {
-		arg = nil
-	}
-	return json.Unmarshal([]byte(tm.Data), arg)
+	dataAsText := fmt.Sprintf("%v", tm.Data)
+	return dataAsText
 }
 
 // GetUpdated is a helper function to return the formatted time the data was last updated.
@@ -74,6 +67,18 @@ func (tm *ThingMessage) GetUpdated() string {
 	return created.Format(time.RFC822)
 }
 
+// Decode converts the any-type to the given interface type.
+// This returns an error if unmarshalling fails.
+func (tm *ThingMessage) Decode(arg interface{}) error {
+	if tm.Data == nil {
+		arg = nil
+	}
+	// the ugly workaround is to marshal/unmarshal using json.
+	// TODO: more efficient method to convert the any type to the given type.
+	jsonData, _ := json.Marshal(tm.Data)
+	return json.Unmarshal(jsonData, arg)
+}
+
 // NewThingMessage creates a new ThingMessage object with the address of the things,
 // the message action, event or rpc key, and the serialized value data.
 // This copies the value buffer.
@@ -81,9 +86,9 @@ func (tm *ThingMessage) GetUpdated() string {
 //	messageType is the type of value: action, event, config, rpc request
 //	thingID is the thing the value applies to (destination of action or source of event)
 //	key is the property, event or action key of the value as described in the thing TD
-//	data is the message serialized payload as defined in the corresponding TD dataschema.
+//	data is the native message data as defined in the corresponding TD dataschema.
 //	senderID is the accountID of the creator of the value
-func NewThingMessage(messageType, thingID, key string, data string, senderID string) *ThingMessage {
+func NewThingMessage(messageType, thingID, key string, data any, senderID string) *ThingMessage {
 	return &ThingMessage{
 		CreatedMSec: time.Now().UnixMilli(),
 		Data:        data,

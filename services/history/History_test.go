@@ -1,7 +1,6 @@
 package history_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/vocab"
@@ -314,12 +313,11 @@ func TestAddPropertiesEvent(t *testing.T) {
 	propsList[vocab.PropDeviceBattery] = []byte("50")
 	propsList[vocab.PropEnvCpuload] = []byte("30")
 	propsList[vocab.PropSwitchOnOff] = []byte("off")
-	propsValue, _ := json.Marshal(propsList)
 	props1 := &things.ThingMessage{
 		SenderID: agent1,
 		ThingID:  dThing1ID,
 		Key:      vocab.EventTypeProperties,
-		Data:     string(propsValue),
+		Data:     propsList,
 	}
 
 	// in total add 5 properties
@@ -363,44 +361,6 @@ func TestAddPropertiesEvent(t *testing.T) {
 	//assert.Equal(t, vocab.MessageTypeAction, props[vocab.ActionSwitchOnOff].MessageType)
 
 }
-
-//func TestGetLatest(t *testing.T) {
-//	t.Log("--- TestGetLatest ---")
-//	const count = 1000
-//	const agent1ID = "device1"
-//	const thing1ID = thingIDPrefix + "0" // matches a percentage of the random things
-//
-//	store, readHist, closeFn := startHistoryService()
-//	defer closeFn()
-//
-//	// 10 sensors -> 1 sample per minute, 60 per hour -> 600
-//	highestFromAdded := addBulkHistory(store, count, 1, 3600*24*30)
-//
-//	values, err := readHist.GetLatest(agent1ID, thing1ID, nil)
-//	require.NoError(t, err)
-//	assert.NotNil(t, values)
-//
-//	cursor, releaseFn, err := readHist.GetCursor(agent1ID, thing1ID, "")
-//	defer releaseFn()
-//
-//	t.Logf("Received %d values", len(values))
-//	assert.Greater(t, len(values), 0, "Expected multiple properties, got none")
-//	// compare the results with the highest value tracked during creation of the test data
-//	for _, val := range values {
-//		t.Logf("Result; name '%s'; created: %d", val.Key, val.CreatedMSec)
-//		highest := highestFromAdded[val.Key]
-//		if assert.NotNil(t, highest) {
-//			t.Logf("Expect %s: %v", highest.Key, highest.CreatedMSec)
-//			assert.Equal(t, highest.CreatedMSec, val.CreatedMSec)
-//		}
-//	}
-//	// getting the Last should get the same result
-//	lastItem, valid, _ := cursor.Last()
-//	highest := highestFromAdded[lastItem.Key]
-//
-//	assert.True(t, valid)
-//	assert.Equal(t, lastItem.CreatedMSec, highest.CreatedMSec)
-//}
 
 func TestPrevNext(t *testing.T) {
 	t.Log("--- TestPrevNext ---")

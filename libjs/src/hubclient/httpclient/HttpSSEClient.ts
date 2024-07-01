@@ -31,7 +31,7 @@ export class HttpSSEClient implements IHubClient {
     _baseURL: string;
     _caCertPem: string;
     _disableCertCheck: boolean
-    _http2Client: http2.ClientHttp2Session|undefined;
+    _http2Client: http2.ClientHttp2Session | undefined;
     _ssePath: string;
     _sseClient: any;
 
@@ -77,12 +77,12 @@ export class HttpSSEClient implements IHubClient {
     }
 
     // setup a TLS connection with the hub
-    async connect():Promise<http2.ClientHttp2Session> {
+    async connect(): Promise<http2.ClientHttp2Session> {
 
         if (this._disableCertCheck) {
             hclog.warn("Disabling server certificate check.")
         }
-        let opts:  http2.SecureClientSessionOptions = {
+        let opts: http2.SecureClientSessionOptions = {
             timeout: 10000, // msec???
             "rejectUnauthorized": !this._disableCertCheck
         }
@@ -92,7 +92,7 @@ export class HttpSSEClient implements IHubClient {
         this._http2Client = http2.connect(this._baseURL, opts)
 
         // When an error occurs, show it.
-        this._http2Client.on('error', (error)=> {
+        this._http2Client.on('error', (error) => {
             console.error(error);
             // this.disconnect()
             // Close the connection after the error occurred.
@@ -107,24 +107,23 @@ export class HttpSSEClient implements IHubClient {
     }
 
     // ConnectWithPassword connects to the Hub server using the clientID and password.
-    async connectWithPassword(password: string):Promise<string> {
+    async connectWithPassword(password: string): Promise<string> {
         // establish a session
         await this.connect()
         // invoke a login request
         let loginArgs = {
-            "clientID":this._clientID,
+            "clientID": this._clientID,
             "password": password,
         }
         let loginResp = {
             sessionID: "",
             token: ""
         }
-        let loginMsg = JSON.stringify(loginArgs)
-        let resp = await this.postRequest(PostLoginPath,loginMsg)
+        let resp = await this.postRequest(PostLoginPath, loginArgs)
         loginResp = JSON.parse(resp)
         this.authToken = loginResp.token
         // with the new auth token a SSE return channel can be established
-        this._sseClient = connectSSE(this._baseURL,this._ssePath,this.authToken,
+        this._sseClient = connectSSE(this._baseURL, this._ssePath, this.authToken,
             this.onMessage.bind(this))
 
         return loginResp.token
@@ -132,15 +131,15 @@ export class HttpSSEClient implements IHubClient {
 
     // connect and login to the Hub gateway using a JWT token
     // host is the server address
-    async connectWithToken(jwtToken: string):Promise<string> {
-        this.authToken=jwtToken
+    async connectWithToken(jwtToken: string): Promise<string> {
+        this.authToken = jwtToken
         await this.connect()
-        this._sseClient = connectSSE(this._baseURL,this._ssePath,this.authToken,
+        this._sseClient = connectSSE(this._baseURL, this._ssePath, this.authToken,
             this.onMessage.bind(this))
         return ""
     }
 
-    createKeyPair(): IHiveKey|undefined {
+    createKeyPair(): IHiveKey | undefined {
         // FIXME:todo
         return
     }
@@ -186,7 +185,7 @@ export class HttpSSEClient implements IHubClient {
             let errText = `Error handling hub message sender=${msg.senderID}, messageType=${msg.messageType}, thingID=${msg.thingID}, key=${msg.key}, error=${e}`
             hclog.warn(errText)
             let stat = new DeliveryStatus()
-            stat.Failed(msg,errText)
+            stat.failed(msg, errText)
             this.sendDeliveryUpdate(stat)
         }
     }
@@ -216,18 +215,19 @@ export class HttpSSEClient implements IHubClient {
     //     })
     // }
 
-    // post a request to the path with the given payload
-    async postRequest(path:string, payload: string):Promise<string> {
-        return new Promise((resolve,reject)=> {
+    // post a request to the path after serializing the given data
+    async postRequest(path: string, data: any): Promise<string> {
+        return new Promise((resolve, reject) => {
             let replyData: string = ""
             let statusCode: number
+            let payload = JSON.stringify(data)
 
             if (!this._http2Client) {
                 throw ("not connected")
             }
             let req = this._http2Client.request({
                 origin: this._baseURL,
-                authorization: "bearer "+this.authToken,
+                authorization: "bearer " + this.authToken,
                 ':path': path,
                 ":method": "POST",
                 "content-type": "application/json",
@@ -235,7 +235,7 @@ export class HttpSSEClient implements IHubClient {
             })
             req.setEncoding('utf8');
 
-            req.on('response', (r)=>{
+            req.on('response', (r) => {
                 if (r[":status"]) {
                     statusCode = r[":status"]
                     if (statusCode >= 400) {
@@ -248,11 +248,11 @@ export class HttpSSEClient implements IHubClient {
             });
             req.on('end', () => {
                 req.destroy()
-                if (statusCode>=400) {
+                if (statusCode >= 400) {
                     hclog.warn(`postRequest status code  ${statusCode}`)
-                    reject("Error "+statusCode+": "+replyData)
+                    reject("Error " + statusCode + ": " + replyData)
                 } else {
-                    hclog.info(`postRequest to ${path}. Received reply. size=`+ replyData.length)
+                    // hclog.info(`postRequest to ${path}. Received reply. size=` + replyData.length)
                     resolve(replyData)
                 }
             });
@@ -270,35 +270,31 @@ export class HttpSSEClient implements IHubClient {
     //	@param agentID: of the device or service that handles the action.
     //	@param thingID: is the destination thingID to whom the action applies.
     //	name is the name of the action as described in the Thing's TD
-    //	payload is the optional serialized message of the action as described in the Thing's TD
+    //	payload is the optional action arguments to be serialized and transported
     //
     // This returns the serialized reply data or null in case of no reply data
-    async pubAction(thingID: string, key: string, payload: string): Promise<DeliveryStatus> {
-            hclog.info("pubAction. thingID:", thingID, ", key:", key)
+    async pubAction(thingID: string, key: string, payload: any): Promise<DeliveryStatus> {
+        hclog.info("pubAction. thingID:", thingID, ", key:", key)
 
-            let actionPath = PostMessagePath.replace("{thingID}", thingID)
+        let actionPath = PostMessagePath.replace("{thingID}", thingID)
         actionPath = actionPath.replace("{key}", key)
         actionPath = actionPath.replace("{messageType}", MessageTypeAction)
 
-            let resp = await this.postRequest(actionPath, payload)
-            let stat: DeliveryStatus = JSON.parse(resp)
-            return stat
+        let resp = await this.postRequest(actionPath, payload)
+        let stat: DeliveryStatus = JSON.parse(resp)
+        return stat
     }
 
     // pubProperty publishes a request for changing a Thing's property.
     // The configuration is a writable property as defined in the Thing's TD.
-    async pubProperty(thingID: string, key: string, propValue: string): Promise<DeliveryStatus> {
+    async pubProperty(thingID: string, key: string, propValue: any): Promise<DeliveryStatus> {
         hclog.info("pubProperty. thingID:", thingID, ", key:", key)
-
-        // fixme; prop payload
-        let props = {key:propValue}
-        let propsJson = JSON.stringify(props)
 
         let propPath = PostMessagePath.replace("{thingID}", thingID)
         propPath = propPath.replace("{key}", key)
         propPath = propPath.replace("{messageType}", MessageTypeProperty)
 
-        let resp = await this.postRequest(propPath, propsJson)
+        let resp = await this.postRequest(propPath, propValue)
         let stat: DeliveryStatus = JSON.parse(resp)
         return stat
     }
@@ -317,7 +313,8 @@ export class HttpSSEClient implements IHubClient {
     //	@param thingID: of the Thing whose event is published
     //	@param eventName: is one of the predefined events as described in the Thing TD
     //	@param payload: is the serialized event value, or nil if the event has no value
-    async pubEvent(thingID: string, key: string, payload: string):Promise<DeliveryStatus> {
+    async pubEvent(thingID: string, key: string, payload: any): Promise<DeliveryStatus> {
+        hclog.info("pubEvent. thingID:", thingID, ", key:", key)
 
         let eventPath = PostMessagePath.replace("{thingID}", thingID)
         eventPath = eventPath.replace("{key}", key)
@@ -329,14 +326,12 @@ export class HttpSSEClient implements IHubClient {
     }
 
     // Publish a Thing properties event
-    async pubProps(thingID: string, props: {[key:string]:string}): Promise<DeliveryStatus> {
-        // if (length(props.) > 0) {
-        let propsJSON = JSON.stringify(props, null, ' ');
-         return this.pubEvent(thingID, EventTypeProperties, propsJSON);
+    async pubProps(thingID: string, props: { [key: string]: any }): Promise<DeliveryStatus> {
+        return this.pubEvent(thingID, EventTypeProperties, props);
     }
 
     // PubTD publishes an event with a Thing TD document.
-    // The client's authentication ID will be used as the agentID of the event.
+    // This serializes the TD into JSON as per WoT specification
     async pubTD(td: TD) {
         let tdJSON = JSON.stringify(td, null, ' ');
         return this.pubEvent(td.id, EventTypeTD, tdJSON);
@@ -347,8 +342,7 @@ export class HttpSSEClient implements IHubClient {
     // Intended for users and services to invoke RPC to services.
     async rpc(dThingID: string, methodName: string, args: any): Promise<any> {
 
-        let payload = JSON.stringify(args)
-        let stat = await this.pubAction(dThingID,methodName, payload);
+        let stat = await this.pubAction(dThingID, methodName, args);
         if (stat.error != "") {
             throw stat.error
         }
@@ -367,20 +361,19 @@ export class HttpSSEClient implements IHubClient {
     // obtain a new token
     async refreshToken(): Promise<string> {
 
-        let refreshPath = PostRefreshPath.replace("{thingID}","authn")
-        refreshPath = refreshPath.replace("{key}","refreshMethod")
+        let refreshPath = PostRefreshPath.replace("{thingID}", "authn")
+        refreshPath = refreshPath.replace("{key}", "refreshMethod")
         // TODO use generated API
         let args = {
             clientID: this.clientID,
             oldToken: this.authToken,
         }
         try {
-            let argsJson = JSON.stringify(args)
-            let resp = await this.postRequest(refreshPath, argsJson);
+            let resp = await this.postRequest(refreshPath, args);
             this.authToken = JSON.parse(resp)
             return this.authToken
-        } catch (e){
-            hclog.error("refreshToken failed: ",e)
+        } catch (e) {
+            hclog.error("refreshToken failed: ", e)
             throw e
         }
     }
@@ -388,11 +381,10 @@ export class HttpSSEClient implements IHubClient {
     // send a delivery status update back to the sender of the action
     // @param msg: action message that was received
     // @param stat: status to return
-    sendDeliveryUpdate(stat: DeliveryStatus):void {
-        let statJSON = JSON.stringify(stat)
+    sendDeliveryUpdate(stat: DeliveryStatus): void {
         // TODO: use the digitwin inbox ID
         // thingID is ignored as the messageID is used to link to the sender
-        this.pubEvent("dtw::inbox", EventTypeDeliveryUpdate, statJSON)
+        this.pubEvent("dtw::inbox", EventTypeDeliveryUpdate, stat)
     }
 
 
@@ -428,17 +420,17 @@ export class HttpSSEClient implements IHubClient {
         if (key == "") {
             key = "+"
         }
-        let subscribePath = PostSubscribePath.replace("{thingID}",dThingID)
-        subscribePath = subscribePath.replace("{key}",key)
-        await this.postRequest(subscribePath,"")
+        let subscribePath = PostSubscribePath.replace("{thingID}", dThingID)
+        subscribePath = subscribePath.replace("{key}", key)
+        await this.postRequest(subscribePath, "")
 
     }
 
     async unsubscribe(dThingID: string) {
 
-        let subscribePath = PostUnsubscribePath.replace("{thingID}",dThingID)
-        subscribePath = subscribePath.replace("{key}","+")
-        await this.postRequest(subscribePath,"")
+        let subscribePath = PostUnsubscribePath.replace("{thingID}", dThingID)
+        subscribePath = subscribePath.replace("{key}", "+")
+        await this.postRequest(subscribePath, "")
     }
 
 }

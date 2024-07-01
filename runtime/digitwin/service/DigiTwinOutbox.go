@@ -24,7 +24,7 @@ const LatestEventsBucketName = "latestEvents"
 type DigiTwinOutbox struct {
 	pm     api.ITransportBinding
 	bucket buckets.IBucket
-	latest *DigiTwinLatestStore
+	latest *DigiTwinInOutboxStore
 }
 
 // HandleEvent adds an event to the outbox
@@ -55,13 +55,16 @@ func (svc *DigiTwinOutbox) HandleEvent(msg *things.ThingMessage) (stat hubclient
 // ReadLatest returns the latest values of a thing
 // Read the latest value(s) of a Thing
 func (svc *DigiTwinOutbox) ReadLatest(senderID string,
-	args digitwin.OutboxReadLatestArgs) (values string, err error) {
+	args digitwin.OutboxReadLatestArgs) (values map[string]any, err error) {
 
 	recs, err := svc.latest.ReadLatest(
 		vocab.MessageTypeEvent, args.ThingID, args.Keys, args.Since)
 	if err == nil {
-		recsJSON, _ := json.Marshal(recs)
-		values = string(recsJSON)
+		// this mapping is ugly. It can't be described with a TD dataschema :'(
+		values = make(map[string]any)
+		for key, val := range recs {
+			values[key] = val
+		}
 	}
 	return values, err
 }

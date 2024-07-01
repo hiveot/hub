@@ -94,7 +94,7 @@ func TestNoCA(t *testing.T) {
 	err = cl.ConnectWithClientCert(authBundle.ClientCert)
 	assert.NoError(t, err)
 
-	_, err = cl.Get(path1)
+	_, _, err = cl.Get(path1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, path1Hit)
 	cl.Close()
@@ -102,7 +102,7 @@ func TestNoCA(t *testing.T) {
 	// No authentication
 	cl = tlsclient.NewTLSClient(testAddress, nil, 0)
 
-	_, err = cl.Get(path1)
+	_, _, err = cl.Get(path1)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, path1Hit)
 
@@ -144,15 +144,15 @@ func TestAuthClientCert(t *testing.T) {
 	assert.NoError(t, err)
 
 	//
-	_, err = cl.Get(path1)
+	_, _, err = cl.Get(path1)
 	assert.NoError(t, err)
-	_, err = cl.Post(path1, "")
+	_, _, err = cl.Post(path1, nil)
 	assert.NoError(t, err)
-	_, err = cl.Put(path1, "")
+	_, _, err = cl.Put(path1, nil)
 	assert.NoError(t, err)
-	_, err = cl.Delete(path1)
+	_, _, err = cl.Delete(path1)
 	assert.NoError(t, err)
-	_, err = cl.Patch(path1, "")
+	_, _, err = cl.Patch(path1, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, 5, path1Hit)
 
@@ -162,7 +162,7 @@ func TestAuthClientCert(t *testing.T) {
 
 func TestNotStarted(t *testing.T) {
 	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert, 0)
-	_, err := cl.Get("/notstarted")
+	_, _, err := cl.Get("/notstarted")
 	assert.Error(t, err)
 	cl.Close()
 }
@@ -194,7 +194,7 @@ func TestNoServer(t *testing.T) {
 	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert, 0)
 	err := cl.ConnectWithClientCert(authBundle.ClientCert)
 	assert.NoError(t, err)
-	_, err = cl.Get("/noserver")
+	_, _, err = cl.Get("/noserver")
 	assert.Error(t, err)
 	cl.Close()
 }
@@ -208,7 +208,7 @@ func TestCert404(t *testing.T) {
 	err = cl.ConnectWithClientCert(authBundle.ClientCert)
 	assert.NoError(t, err)
 
-	_, err = cl.Get("/pathnotfound")
+	_, _, err = cl.Get("/pathnotfound")
 	assert.Error(t, err)
 
 	cl.Close()
@@ -276,14 +276,15 @@ func TestAuthJWT(t *testing.T) {
 		Password: password1,
 	}
 	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert, 0)
-	resp, err := cl.Invoke("POST", loginURL, loginMessage, nil)
+	jsonArgs, _ := json.Marshal(loginMessage)
+	resp, _, err := cl.Invoke("POST", loginURL, jsonArgs, nil)
 	require.NoError(t, err)
 	reply := authn.UserLoginResp{}
 	err = json.Unmarshal(resp, &reply)
 
 	// reconnect using the given token
 	cl.ConnectWithToken(reply.Token)
-	_, err = cl.Get(path3)
+	_, _, err = cl.Get(path3)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, path3Hit)
 
@@ -307,7 +308,7 @@ func TestAuthJWTFail(t *testing.T) {
 	//
 	cl := tlsclient.NewTLSClient(testAddress, authBundle.CaCert, 0)
 	cl.ConnectWithToken("badtoken")
-	resp, err := cl.Post(pathHello1, "test")
+	resp, _, err := cl.Post(pathHello1, []byte("test"))
 	assert.Empty(t, resp)
 	// unauthorized
 	assert.Error(t, err)

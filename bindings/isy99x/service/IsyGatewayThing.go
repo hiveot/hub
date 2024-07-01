@@ -256,10 +256,10 @@ func (igw *IsyGatewayThing) GetIsyThings() []IIsyThing {
 
 // GetValues returns the current or changed property and event values.
 // onlyChanges only provides changed properties and event values
-func (igw *IsyGatewayThing) GetValues(onlyChanges bool) (map[string]string, map[string]string) {
+func (igw *IsyGatewayThing) GetValues(onlyChanges bool) (map[string]any, map[string]any) {
 	values := igw.propValues.GetValues(onlyChanges)
 	// TODO: add event values. Currently the TD does not list events.
-	events := make(map[string]string)
+	events := make(map[string]any)
 	return values, events
 }
 

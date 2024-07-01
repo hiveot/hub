@@ -89,14 +89,21 @@ func TestReadTDs(t *testing.T) {
 	//assert.Empty(t, stat.Error)
 
 	// GetThings returns a serialized TD object
-	// try this with the generated client api and the client rpc method
-	tdList, err := digitwin.DirectoryReadTDs(cl, 333, 02)
-	require.NoError(t, err)
-	require.Greater(t, len(tdList), 3)
-	args := "{\"limit\":10}"
+	// 1. Use actions
+	args := digitwin.DirectoryReadTDsArgs{Limit: 10}
 	stat := cl.PubAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDsMethod, args)
-	assert.Empty(t, stat.Error)
+	require.Empty(t, stat.Error)
 	assert.NotEmpty(t, stat.Reply)
+	tdList1 := []string{}
+	err, hasData := stat.UnmarshalReply(&tdList1)
+	require.NoError(t, err)
+	require.True(t, hasData)
+	require.True(t, len(tdList1) > 0)
+
+	// 2. Try it the easy way
+	tdList2, err := digitwin.DirectoryReadTDs(cl, 333, 02)
+	require.NoError(t, err)
+	require.True(t, len(tdList2) > 0)
 }
 
 func TestReadTDsRest(t *testing.T) {
@@ -119,7 +126,7 @@ func TestReadTDsRest(t *testing.T) {
 	cl2 := tlsclient.NewTLSClient(serverURL, ts.Certs.CaCert, time.Second*30)
 	cl2.ConnectWithToken(token)
 
-	data, err := cl2.Get(vocab.GetThingsPath)
+	data, _, err := cl2.Get(vocab.GetThingsPath)
 	require.NoError(t, err)
 
 	// tds are sent as an array of JSON, first unpack the array of JSON strings
@@ -133,7 +140,7 @@ func TestReadTDsRest(t *testing.T) {
 	// read a single td
 	vars := map[string]string{"thingID": tdList[0].ID}
 	getThingPath := utils.Substitute(vocab.GetThingPath, vars)
-	data, err = cl2.Get(getThingPath)
+	data, _, err = cl2.Get(getThingPath)
 	require.NoError(t, err)
 
 }

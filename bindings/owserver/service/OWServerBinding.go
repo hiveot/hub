@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	vocab2 "github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
@@ -47,6 +46,7 @@ type OWServerBinding struct {
 
 	// stop the heartbeat
 	stopFn func()
+
 	// lock value updates
 	mux sync.RWMutex
 }
@@ -80,11 +80,11 @@ func (svc *OWServerBinding) CreateBindingTD() *things.TD {
 }
 
 // GetBindingPropValues generates a properties map for attribute and config properties of this binding
-func (svc *OWServerBinding) GetBindingPropValues() map[string]string {
-	pv := make(map[string]string)
-	pv[bindingValuePollIntervalID] = fmt.Sprintf("%d", svc.config.PollInterval)
-	pv[bindingTDIntervalID] = fmt.Sprintf("%d", svc.config.TDInterval)
-	pv[bindingValuePublishIntervalID] = fmt.Sprintf("%d", svc.config.RepublishInterval)
+func (svc *OWServerBinding) GetBindingPropValues() map[string]any {
+	pv := make(map[string]any)
+	pv[bindingValuePollIntervalID] = svc.config.PollInterval
+	pv[bindingTDIntervalID] = svc.config.TDInterval
+	pv[bindingValuePublishIntervalID] = svc.config.RepublishInterval
 	pv[bindingOWServerAddressID] = svc.config.OWServerURL
 	pv[bindingMake] = "HiveOT"
 	return pv
@@ -145,9 +145,13 @@ func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
 		pollCountDown--
 		republishCountDown--
 		if pollCountDown <= 0 {
-			// polling nodes and values takes one call
+			// polling nodes and values takes one call.
+			// Since this can take some time, check if client is closed before using it.
 			nodes, err := svc.PollNodes()
-			if err == nil {
+			svc.mux.RLock()
+			isConnected := svc.hc.GetStatus().ConnectionStatus == hubclient.Connected
+			svc.mux.RUnlock()
+			if err == nil && isConnected {
 				if tdCountDown <= 0 {
 					// Every TDInterval publish the full TD's
 					err = svc.PublishNodeTDs(nodes)
@@ -177,8 +181,8 @@ func (svc *OWServerBinding) Stop() {
 
 	if svc.stopFn != nil {
 		svc.stopFn()
-		svc.stopFn = nil
 	}
+	slog.Info("OWServer binding stopped")
 }
 
 // NewOWServerBinding creates a new OWServer Protocol Binding service

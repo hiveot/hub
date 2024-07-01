@@ -6,7 +6,8 @@ import * as tslog from 'tslog';
 import { DeliveryStatus, IHubClient} from "@hivelib/hubclient/IHubClient";
 import {getVidValue, ZWAPI} from "@zwavejs/ZWAPI";
 import {MessageTypeProperty} from "@hivelib/api/vocab/ht-vocab";
-import {handleConfigRequest, setValue} from "@zwavejs/handleConfigRequest";
+import {handleConfigRequest} from "@zwavejs/handleConfigRequest";
+import {setValue} from "@zwavejs/setValue";
 
 const log = new tslog.Logger()
 
@@ -15,7 +16,9 @@ const log = new tslog.Logger()
 // handle controller actions as defined in the TD
 // Normally this returns the delivery status to the caller.
 // If delivery is in progress then use 'hc' to send further status updates.
-export function  handleActionRequest(msg: ThingMessage, zwapi: ZWAPI, hc: IHubClient): DeliveryStatus {
+export function  handleActionRequest(
+    msg: ThingMessage, zwapi: ZWAPI, hc: IHubClient): DeliveryStatus {
+
     let stat = new DeliveryStatus()
     let errMsg: string = ""
     let actionLower = msg.key.toLowerCase()
@@ -23,7 +26,7 @@ export function  handleActionRequest(msg: ThingMessage, zwapi: ZWAPI, hc: IHubCl
     let node = zwapi.getNodeByDeviceID(msg.thingID)
     if (node == undefined) {
         let errMsg = new Error("handleActionRequest: node for thingID" + msg.thingID + "does not exist")
-        stat.Failed(msg, errMsg)
+        stat.failed(msg, errMsg)
         log.error(errMsg)
         return stat
     }
@@ -39,8 +42,10 @@ export function  handleActionRequest(msg: ThingMessage, zwapi: ZWAPI, hc: IHubCl
     // what happens when consumer and agent use different protocol encodings?
 
 
-    let payload = msg.unmarshal()
+    let actionValue = msg.data
     log.info("action: " + msg.key + " - value: " + msg.data)
+    // be optimistic :)
+    stat.completed(msg)
     // controller specific commands (see parseController)
     switch (actionLower) {
         case "begininclusion":
@@ -87,6 +92,18 @@ export function  handleActionRequest(msg: ThingMessage, zwapi: ZWAPI, hc: IHubCl
         case "checklifelinehealth":
             node.checkLifelineHealth().then()
             break;
+        case "ping":
+            stat.applied(msg)
+            let startTime = performance.now()
+            node.ping().then((success:boolean)=>{
+                let endTime = performance.now()
+                let msec = Math.round(endTime-startTime)
+                stat.completed(msg)
+                stat.reply = (msec).toString()
+                log.info("ping: "+msec+" msec")
+                hc.sendDeliveryUpdate(stat)
+            })
+            break;
         case "refreshinfo":
             // do not use when node interview is not yet complete
             if (node.interviewStage == InterviewStage.Complete) {
@@ -103,7 +120,7 @@ export function  handleActionRequest(msg: ThingMessage, zwapi: ZWAPI, hc: IHubCl
             // FIXME: only allow defined actions
             let propVid = getPropVid(msg.key)
             if (propVid) {
-                setValue( node, propVid, payload)
+                setValue( node, propVid, actionValue)
                     .then(stat => {
                         stat.messageID = msg.messageID
                         // async update
@@ -119,7 +136,6 @@ export function  handleActionRequest(msg: ThingMessage, zwapi: ZWAPI, hc: IHubCl
                 errMsg = "action '" + msg.key + "' is not a known action for thing '" + msg.thingID + "'"
             }
     }
-    stat.Completed(msg)
     if (errMsg) {
         stat.error = errMsg
         log.error(errMsg)

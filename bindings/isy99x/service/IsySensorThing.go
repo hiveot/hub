@@ -11,7 +11,7 @@ type IsySensorThing struct {
 }
 
 // GetPropValues returns the property and event values for publication
-func (it *IsySensorThing) GetPropValues(onlyChanges bool) map[string]string {
+func (it *IsySensorThing) GetPropValues(onlyChanges bool) map[string]any {
 	propValues := it.IsyThing.GetPropValues(onlyChanges)
 	return propValues
 }

@@ -66,7 +66,7 @@ func HandleSubTD(hc hubclient.IHubClient) error {
 
 		var td things.TD
 		//fmt.Printf("%s\n", event.ValueJSON)
-		err := msg.Unmarshal(&td)
+		err := msg.Decode(&td)
 		if err == nil {
 			modifiedTime, _ := dateparse.ParseAny(td.Modified) // can be in any TZ
 			timeStr := utils.FormatMSE(modifiedTime.In(time.Local).UnixMilli(), false)
@@ -93,26 +93,30 @@ func HandleSubEvents(hc hubclient.IHubClient, thingID string, name string) error
 	hc.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		createdTime := time.UnixMilli(msg.CreatedMSec)
 		timeStr := createdTime.Format("15:04:05.000")
-		value := fmt.Sprintf("%-.30s", msg.Data)
+
+		valueStr := msg.DataAsText()
+
 		if msg.Key == vocab.EventTypeProperties {
 			var props map[string]interface{}
-			_ = msg.Unmarshal(&props)
-			value = fmt.Sprintf("%d properties", len(props))
+			_ = msg.Decode(&props)
+
+			valueStr = fmt.Sprintf("%d properties", len(props))
+
 			// if its only a single property then show the value
 			if len(props) == 1 {
 				for key, val := range props {
-					value = fmt.Sprintf("{%s=%s}", key, val)
+					valueStr = fmt.Sprintf("{%s=%v}", key, val)
 				}
 			}
 		} else if msg.Key == vocab.EventTypeTD {
 			var td things.TD
-			_ = msg.Unmarshal(&td)
-			value = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
+			_ = msg.Decode(&td)
+			valueStr = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
 				td.Title, td.AtType, len(td.Properties), len(td.Events), len(td.Actions))
 		}
 
 		fmt.Printf("%-16.16s %-15.15s %-30.30s %-30.30s %-40.40s\n",
-			timeStr, msg.SenderID, msg.ThingID, msg.Key, value)
+			timeStr, msg.SenderID, msg.ThingID, msg.Key, valueStr)
 		return stat.Completed(msg, nil)
 	})
 	if err != nil {

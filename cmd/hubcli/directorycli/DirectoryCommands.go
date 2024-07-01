@@ -89,7 +89,8 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 		return err
 	}
 	valueMapJson, err := digitwin.OutboxReadLatest(hc, nil, "", thingID)
-	valueMap, _ := things.UnmarshalThingValueMap(valueMapJson)
+	valueMap, _ := things.NewThingMessageMapFromSource(valueMapJson)
+	//valueMap, _ := things.UnmarshalThingValueMap(valueMapJson)
 
 	if err != nil {
 		slog.Error("Unable to read history:", "err", err)

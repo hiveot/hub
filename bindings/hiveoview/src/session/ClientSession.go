@@ -143,7 +143,7 @@ func (cs *ClientSession) onMessage(msg *things.ThingMessage) (stat hubclient.Del
 		slog.String("type", msg.MessageType),
 		slog.String("thingID", msg.ThingID),
 		slog.String("key", msg.Key),
-		slog.String("data", msg.Data),
+		//slog.Any("data", msg.Data),
 		slog.String("messageID", msg.MessageID))
 	if msg.Key == vocab.EventTypeTD {
 		// Publish sse event indicating the Thing TD has changed.
@@ -158,7 +158,7 @@ func (cs *ClientSession) onMessage(msg *things.ThingMessage) (stat hubclient.Del
 		// property value:
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{k}}"
 		props := make(map[string]string)
-		err := msg.Unmarshal(&props)
+		err := msg.Decode(&props)
 		if err == nil {
 			for k, v := range props {
 				thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, k)
@@ -171,7 +171,7 @@ func (cs *ClientSession) onMessage(msg *things.ThingMessage) (stat hubclient.Del
 		// report unhandled delivery updates
 		// for now just pass it to the notification toaster
 		stat := hubclient.DeliveryStatus{}
-		_ = msg.Unmarshal(&stat)
+		_ = msg.Decode(&stat)
 		// TODO: figure out a way to replace the existing notification if the messageID
 		//  is the same (status changes from applied to delivered)
 		if stat.Error != "" {

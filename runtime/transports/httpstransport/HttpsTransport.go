@@ -184,9 +184,13 @@ func (svc *HttpsTransport) GetProtocolInfo() api.ProtocolInfo {
 }
 
 // HandlePostMessage passes a posted action, event or property request to the handler
+// This unmarshals the payload and constructs a ThingMessage instance to pass to the handler.
 // this contains optional query parameter for messageID
 func (svc *HttpsTransport) HandlePostMessage(w http.ResponseWriter, r *http.Request) {
 	cs, messageType, thingID, key, body, err := svc.getRequestParams(r)
+
+	var payload any
+
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -195,9 +199,16 @@ func (svc *HttpsTransport) HandlePostMessage(w http.ResponseWriter, r *http.Requ
 	if messageID == "" {
 		messageID = uuid.NewString()
 	}
+	if body != nil {
+		err = json.Unmarshal(body, &payload)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+
 	// this request can simply be turned into an action message.
 	msg := things.NewThingMessage(
-		messageType, thingID, key, string(body), cs.GetClientID())
+		messageType, thingID, key, payload, cs.GetClientID())
 	msg.MessageID = messageID
 
 	stat := svc.handleMessage(msg)
@@ -220,8 +231,7 @@ func (svc *HttpsTransport) SendToClient(
 	sm := sessions.GetSessionManager()
 	cs, err := sm.GetSessionByClientID(clientID)
 	if err == nil {
-		payload, _ := json.Marshal(msg)
-		count := cs.SendSSE(msg.MessageID, msg.MessageType, string(payload))
+		count := cs.SendSSE(msg.MessageID, msg.MessageType, msg)
 		if count == 0 {
 			err = fmt.Errorf("client '%s' is not reachable", clientID)
 			found = false

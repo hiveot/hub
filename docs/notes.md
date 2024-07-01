@@ -1,4 +1,6 @@
-# Its All Streams Anyways
+# Scratchpad Notes
+
+## Its All Streams Anyways
 
 Considerations and learnings from the evolution of hiveot...
 
@@ -75,14 +77,13 @@ How to define a vocabulary? Unfortunately there is no globally accepted vocabula
 ## Data Serialization
 
 1. How to serialize data? Boilerplate code for RPC wrappers can get tedious, especially capnp requires a lot of code. Every single RPC api needs boilerplate for parameter marshalling and unmarshalling.
-   2. Message based approach has less boilerplate as only the data definitions need to be defined, not the API parameter/responses that are used to pass those messages. 
-   3. There are also more ways to define messages vs RPC APIs. The serialization of messages can be configurable as the transport doesn't care. 
-   4. gRPC and capn'proto tie the serialization to the RPC and its hard to separate.  
+2. Message based approach has less boilerplate as only the data definitions need to be defined, not the API parameter/responses that are used to pass those messages. 
+3. There are also more ways to define messages vs RPC APIs. The serialization of messages can be configurable as the transport doesn't care. 
+4. gRPC and capn'proto tie the serialization to the RPC and its hard to separate.  
 
 - Limited performance of serialization. json is slow while capnproto is fast but requires a lot of coding. Protobuf is somewhere in the middle but still requires a significant amount of boilerplate.
 
-
-- How to define API's and data types for use across languages. Protobuf has wide support but is very limited. It doesn't even support constants. and capnproto are one of the few options
+- How to define API's and data types for use across languages. Protobuf has wide support but doesn't support constants and enums. capnproto is one of the few options.
 
 Again, the W3C WoT standard has this covered. Information model serialization is defined using JSON. Forms can define the content serialization using the 'contentType' attribute.
 
@@ -127,3 +128,49 @@ While the WoT TD covers a lot of use-cases, there are few workarounds needed:
     Things do get a bit wordy though as each action/event/property will have a set of forms, one for each supported protocol.  
 * ThingID uniqueness; using agentID in address 
     This is resolved by letting agents use anything as thingID as long as only valid characters are used, and have the digital twin runtime prefix the thing-ID it with the agent ID.
+
+
+
+## Encoding data
+
+1. agent publishes a TD
+A TD is send and received as JSON. But this text is still to be marshalled and transferred over the wire.
+   Treat this as sending text
+if encoding is application/json then use json.Marshal(tdJSON) - (yes double marshal)
+if encoding is application/text then send as-is. (it is already text)
+ 
+
+1. agent publishes native type: text, number, boolean
+if encoding is application/json, then marshal as json
+if encoding is application/text, then stringify as text, 
+examples:
+   * application/text:  "text" => "text"
+   * application/text:  8 => "8"
+   * application/text:  true => "true"
+
+1. agent publishes complex type: object
+if encoding is application/json then marshal object to json
+if encoding is application/text then write as base64 encoded binary blob. (how?)
+examples:
+   * application/json:  struct { a int, b string} => { "a": 5, "b", "hello" } 
+   
+
+## Decoding data
+
+1. consumer or service receives a TD message
+The TD was transferred as text (itself encoded as a json document).
+If encoding is application/json, the unmarshal to string
+If encoding is application/text, then return as-is. 
+
+
+
+## Tracking delivery progress
+Action requests can take a while to reach its destination. The delivery to the inbox is immediately known but what the agent does with it isn't.
+
+> ACTION flow: consumer -> inbox ?-> agent ?-> device
+
+* Agent connectivity might be intermittent. Some agents might sleep periodically to conserve power.  
+* Similarly to agents, devices might be asleep to conserve power. Only when it wakes up it will respond to the action.
+* High latency networks favour asynchronous handling of responses to avoid blocking the client.
+
+This means that the reply isn't always readily available and can be delivered later. To support these use-cases, reply data is sent asynchronously.

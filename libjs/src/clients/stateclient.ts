@@ -1,8 +1,8 @@
-import { HubClient } from '@hivelib/hubclient/httpclient/HubClient';
+import {IHubClient} from "@hivelib/hubclient/IHubClient";
 
 // duplicated from stateapi.go
-const ServiceName = "state"
-const StorageCap = "store"
+const AgentID = "state"      // the state binding agentID
+const StateStoreID = "store" // thingID of the storage service
 const DeleteMethod = "delete"
 const GetMethod = "get"
 const GetMultipleMethod = "getMultiple"
@@ -12,10 +12,11 @@ const SetMultipleMethod = "setMultiple"
 
 // Marshaller for invoke state service method using the given hub client
 export class StateClient {
-    hc: HubClient
+    hc: IHubClient
 
-    constructor(hc: HubClient) {
+    constructor(hc: IHubClient) {
         this.hc = hc
+        this.serviceID = makeDigitwinID(AgentID, StateStoreID)
     }
 
     // Delete a key
@@ -23,7 +24,7 @@ export class StateClient {
         let args = {
             key: key
         }
-        return await this.hc.pubRPCRequest(ServiceName, StorageCap, DeleteMethod, args)
+        return await this.hc.rpc(StateStoreID, DeleteMethod, args)
     }
 
     // Get the value of a key
@@ -36,7 +37,7 @@ export class StateClient {
             found: boolean
             value: string
         }
-        let resp: RespType = await this.hc.pubRPCRequest(ServiceName, StorageCap, GetMethod, args)
+        let resp: RespType = await this.hc.rpc(StateStoreID, GetMethod, args)
         return { value: resp.value, found: resp.found }
     }
 
@@ -48,7 +49,7 @@ export class StateClient {
         type RespType = {
             kv: { [index: string]: string }
         }
-        let resp: RespType = await this.hc.pubRPCRequest(ServiceName, StorageCap, GetMultipleMethod, args)
+        let resp: RespType = await this.hc.rpc(StateStoreID, GetMultipleMethod, args)
 
         return resp.kv
     }
@@ -59,7 +60,7 @@ export class StateClient {
             key: key,
             value: data
         }
-        let resp = await this.hc.pubRPCRequest(ServiceName, StorageCap, SetMethod, args)
+        let resp = await this.hc.rpc(StateStoreID, SetMethod, args)
         return
     }
 
@@ -68,7 +69,7 @@ export class StateClient {
         let args = {
             kv: kv
         }
-        let resp = await this.hc.pubRPCRequest(ServiceName, StorageCap, SetMultipleMethod, args)
+        let resp = await this.hc.rpc(StateStoreID, SetMultipleMethod, args)
         return resp
     }
 }

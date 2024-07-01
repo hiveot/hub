@@ -18,8 +18,8 @@ export class ThingMessage extends Object {
     // Key of event, action or property as defined in the TD event/action map.
     public key: string = ""
 
-    // Data with serialized value payload, as defined by the TD affordance DataSchema
-    public data: string = ""
+    // Data in native format, as defined by the TD affordance DataSchema
+    public data: any = ""
 
     // Timestamp the value was created in unix time, msec since Epoch Jan 1st,1970 00:00 utc
     public createdMSec: number = 0

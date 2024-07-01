@@ -39,8 +39,8 @@ export class ZwaveJSBinding {
     config: BindingConfig
 
 
-    // @param hapi: connectd Hub API to publish and subscribe
-    // @param vidLogFile: optional csv file to write discovered VID and metadata records
+    // @param hc: Hub client to publish and subscribe
+    // @param config: binding configuration
     constructor(hc: IHubClient, config: BindingConfig) {
         this.hc = hc;
         this.config = config
@@ -119,13 +119,12 @@ export class ZwaveJSBinding {
         // update the map of recent values
         let lastValue = valueMap?.values[propID]
         if (valueMap && (lastValue !== newValue || !this.config.publishOnlyChanges)) {
-            // TODO: convert the value to text using a precision
+            // TODO: round the value using a precision
             // Determine if value changed enough to publish
             if (newValue != undefined) {
-                let newValueStr = newValue.toString()
-                valueMap.values[propID] = newValueStr
+                valueMap.values[propID] = newValue
                 log.info("handleValueUpdate: publish event for deviceID=" + deviceID + ", propID=" + propID + "")
-                this.hc.pubEvent(deviceID, propID, newValueStr)
+                this.hc.pubEvent(deviceID, propID, newValue)
             }
         } else {
             // for debugging

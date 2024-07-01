@@ -11,7 +11,7 @@ import (
 //  1. looks-up the method name and obtains the registered method
 //     2a. if the method has an argument (args struct) then
 //     2.1 Instantiate the args struct
-//     2.2 Unmarshal the message request data into the arguments struct
+//     2.2 Decode the message request data into the arguments struct
 //     2.3 invoke the method with the argument
 //     2b. if the method doesn't have an argument
 //     2.4 invoke the method without an argument

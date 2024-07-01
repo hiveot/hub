@@ -1,6 +1,7 @@
 package sessions
 
 import (
+	"encoding/json"
 	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
 	"sync"
@@ -147,7 +148,7 @@ func (cs *ClientSession) onConnectChange(stat hubclient.TransportStatus) {
 //		// property value:
 //		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}/{{k}}"
 //		props := make(map[string]string)
-//		err := json.Unmarshal([]byte(msg.Data), &props)
+//		err := json.Decode([]byte(msg.Data), &props)
 //		if err == nil {
 //			for k, v := range props {
 //				thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, k)
@@ -174,7 +175,7 @@ func (cs *ClientSession) onConnectChange(stat hubclient.TransportStatus) {
 // SendSSE encodes and sends an SSE event to clients of this session
 // Intended to send events to clients over sse.
 // This returns the number of events being sent, or 0 if no client sessions exist
-func (cs *ClientSession) SendSSE(messageID string, eventType string, payload string) int {
+func (cs *ClientSession) SendSSE(messageID string, eventType string, data any) int {
 	count := 0
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
@@ -183,11 +184,13 @@ func (cs *ClientSession) SendSSE(messageID string, eventType string, payload str
 		slog.String("destination clientID", cs.clientID),
 		slog.String("eventType", eventType),
 		slog.Int("nr connections", len(cs.sseClients)))
+
+	payload, _ := json.Marshal(data)
 	for _, c := range cs.sseClients {
 		c <- SSEEvent{
 			ID:        messageID,
 			EventType: eventType,
-			Payload:   payload,
+			Payload:   string(payload),
 		}
 		count++
 	}

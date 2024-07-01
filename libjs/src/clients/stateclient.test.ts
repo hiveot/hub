@@ -17,7 +17,7 @@ async function connect(): Promise<IHubClient> {
     const testPass = "testpass"
     let caCertPEM = ""
     //running instance
-    let hc = new HttpSSEClient(testURL, clientID, caCertPEM)
+    let hc = new HttpSSEClient(testURL, clientID, caCertPEM, true)
     await hc.connectWithPassword(testPass)
     return hc
 }

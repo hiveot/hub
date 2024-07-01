@@ -44,7 +44,7 @@ func TestHttpsGetActions(t *testing.T) {
 
 	actionMsg := resp[key1]
 	require.NotNil(t, actionMsg)
-	assert.Equal(t, data, string(actionMsg.Data))
+	assert.Equal(t, data, actionMsg.Data)
 }
 
 // Get events from the outbox using the experimental http REST api
@@ -62,10 +62,6 @@ func TestHttpsGetEvents(t *testing.T) {
 	hc, _ := ts.AddConnectAgent(agentID)
 	defer hc.Disconnect()
 
-	// FIXME: this event reaches the agent but it hasn't subscribed. (unnecesary traffic)
-	// FIXME: todo subscription is not implemented in embedded and https clients
-	// FIXME: todo authorization to publish an event - middleware or transport?
-	// FIXME: unmarshal error
 	err := hc.PubEvent(agThingID, key1, data)
 	assert.NoError(t, err)
 
@@ -80,12 +76,9 @@ func TestHttpsGetEvents(t *testing.T) {
 	// read latest using the experimental http REST API
 	vars := map[string]string{"thingID": dtThingID}
 	eventPath := utils.Substitute(vocab.GetEventsPath, vars)
-	reply, err := tlsClient.Get(eventPath)
+	reply, _, err := tlsClient.Get(eventPath)
 	require.NoError(t, err)
 	require.NotNil(t, reply)
-
-	d2 := make(map[string]things.ThingMessage)
-	err = json.Unmarshal(reply, &d2)
 
 	tmm1 := things.ThingMessageMap{}
 	err = json.Unmarshal(reply, &tmm1)
@@ -96,8 +89,43 @@ func TestHttpsGetEvents(t *testing.T) {
 	resp, err := digitwin.OutboxReadLatest(hc, nil, "", dtThingID)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	tmm2 := things.ThingMessageMap{}
-	err = json.Unmarshal([]byte(resp), &tmm2)
+	tmm2, err := things.NewThingMessageMapFromSource(resp)
 	require.NoError(t, err)
 	require.Equal(t, len(tmm1), len(tmm2))
+}
+
+// Get events from the outbox using the experimental http REST api
+func TestHttpsGetProps(t *testing.T) {
+	const agentID = "agent1"
+	const agThingID = "thing1"
+	const key1 = "key1"
+	const key2 = "key2"
+	const userID = "user1"
+	const data1 = "Hello world"
+	const data2 = 25
+	var dtThingID = things.MakeDigiTwinThingID(agentID, agThingID)
+
+	r := startRuntime()
+	defer r.Stop()
+	// agent publishes events
+	hc, _ := ts.AddConnectAgent(agentID)
+	defer hc.Disconnect()
+
+	propMap := map[string]any{}
+	propMap[key1] = data1
+	propMap[key2] = data2
+	err := hc.PubProps(agThingID, propMap)
+	require.NoError(t, err)
+	//
+	// consumer read properties
+	cl2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	defer cl2.Disconnect()
+	data, err := digitwin.OutboxReadLatest(hc, nil, "", dtThingID)
+	require.NoError(t, err)
+
+	vmm, err := things.NewThingMessageMapFromSource(data)
+	require.NoError(t, err)
+	// note: golang unmarshals integers as float64.
+	data2raw := vmm[key2].Data.(float64)
+	require.Equal(t, data2, int(data2raw))
 }

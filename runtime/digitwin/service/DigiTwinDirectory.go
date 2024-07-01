@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/buckets"
@@ -34,18 +35,27 @@ type DigitwinDirectory struct {
 }
 
 // HandleTDEvent updates a TD when receiving a TD event, sent by agents.
-// Note that the TD is that as provided by the agent. The directory converts it to the
-// digital twin format.
+// Note that the TD is that as provided by the agent in json format.
+// The directory converts it to the digital twin format.
 // TODO: Update the forms to match current protocols.
+//
+// The provided TD is a json document
 func (svc *DigitwinDirectory) HandleTDEvent(
 	msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	var err error
 
 	// events use 'agent' thingIDs, only known to agents.
 	// Digitwin adds the "dtw:{agentID}:" prefix, as the event now belongs to the virtual digital twin.
 	dtThingID := things.MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
 
 	td := things.TD{}
-	err := msg.Unmarshal(&td)
+	// we know the argument is a string with TD document text. It can be immediately converted to TD object
+	tdJSON, ok := msg.Data.(string)
+	if !ok {
+		err = errors.New("HandleTDEvent: Message does not contain the TD in JSON format")
+	} else {
+		err = json.Unmarshal([]byte(tdJSON), &td)
+	}
 	if err == nil {
 		td.ID = dtThingID
 		err = svc.UpdateThing(msg.SenderID, dtThingID, &td)

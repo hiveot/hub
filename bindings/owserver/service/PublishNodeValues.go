@@ -46,7 +46,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 	// Iterate the devices and their properties
 	for _, node := range nodes {
 		// send all changed property attributes in a single properties event
-		propMap := make(map[string]string)
+		propMap := make(map[string]any)
 		//thingID := things.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
 		thingID := node.ROMId
 		svc.mux.RLock()
@@ -62,15 +62,15 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 			if found && info.Ignore {
 				// do nothing when ignore is set
 			} else if found && info.IsEvent {
-				valueStr, changed := svc.GetValueChange(attrID, attr.Value, info, nodeTD)
+				value, changed := svc.GetValueChange(attrID, attr.Value, info, nodeTD)
 				if changed || force {
-					err = svc.hc.PubEvent(nodeTD.ID, attrID, valueStr)
+					err = svc.hc.PubEvent(nodeTD.ID, attrID, value)
 				}
 			} else if !found || info.IsProp {
 				// first and unknown values are always changed
-				valueStr, changed := svc.GetValueChange(attrID, attr.Value, info, nodeTD)
+				value, changed := svc.GetValueChange(attrID, attr.Value, info, nodeTD)
 				if changed || force {
-					propMap[attrID] = valueStr
+					propMap[attrID] = value
 				}
 			}
 		}
@@ -81,11 +81,11 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 	return err
 }
 
-// GetValueChange formats the attribute value and track changes to the
+// GetValueChange parses the attribute value and track changes to the
 // value using the attribute conversion settings.
 func (svc *OWServerBinding) GetValueChange(
 	attrKey string, attrValue string, info AttrConversion, td *things.TD) (
-	strValue string, changed bool) {
+	value any, changed bool) {
 
 	var err error
 
@@ -96,10 +96,13 @@ func (svc *OWServerBinding) GetValueChange(
 	switch info.DataType {
 	case vocab.WoTDataTypeNumber:
 		valueFloat, err2 := strconv.ParseFloat(attrValue, 32)
+		prec := math.Pow10(info.Precision)
+		roundedInt := int(valueFloat * prec)
+		roundedFloat := float64(roundedInt) / prec
 		err = err2
 		valueDiff := 0.0
 		if prevFound {
-			valueDiff = math.Abs(valueFloat - prevValue.value.(float64))
+			valueDiff = math.Abs(roundedFloat - prevValue.value.(float64))
 			changed = valueDiff >= info.ChangeNotify
 			slog.Debug("GetValueChange", "key", attrKey,
 				"oldValue", prevValue.value, "newValue", attrValue, "diff", valueDiff)
@@ -107,10 +110,10 @@ func (svc *OWServerBinding) GetValueChange(
 			changed = true
 		}
 		if changed {
-			svc.setPrevValue(td.ID, attrKey, valueFloat)
+			svc.setPrevValue(td.ID, attrKey, roundedFloat)
 		}
-		// return the formatted result
-		strValue = strconv.FormatFloat(valueFloat, 'f', info.Precision, 32)
+		// return the rounded /truncated result
+		value = roundedFloat
 
 	case vocab.WoTDataTypeInteger, vocab.WoTDataTypeUnsignedInt:
 		valueInt64, err2 := strconv.ParseInt(attrValue, 10, 32)
@@ -129,7 +132,7 @@ func (svc *OWServerBinding) GetValueChange(
 		if changed {
 			svc.setPrevValue(td.ID, attrKey, valueInt)
 		}
-		strValue = strconv.FormatInt(valueInt64, 10)
+		value = valueInt
 
 	case vocab.WoTDataTypeBool:
 		valueBool, err2 := strconv.ParseBool(attrValue)
@@ -142,22 +145,22 @@ func (svc *OWServerBinding) GetValueChange(
 		if changed {
 			svc.setPrevValue(td.ID, attrKey, valueBool)
 		}
-		strValue = strconv.FormatBool(valueBool)
+		value = valueBool
 	default: // strings and other values
-		strValue = attrValue
+		value = attrValue
 		if prevFound {
-			changed = strValue != prevValue.value.(string)
+			changed = value != prevValue.value.(string)
 		} else {
 			changed = true
 		}
 		if changed {
-			svc.setPrevValue(td.ID, attrKey, strValue)
+			svc.setPrevValue(td.ID, attrKey, value)
 		}
 	}
 	if err != nil {
 		slog.Error("value conversion error", "err", err.Error)
 	}
-	return strValue, changed
+	return value, changed
 }
 
 // RefreshPropertyValues polls the OWServer hub for changed Thing values

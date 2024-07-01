@@ -1,14 +1,13 @@
 package stateclient
 
 import (
+	"encoding/json"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/services/state/stateapi"
 )
 
-// StateClient is a marshaller for service messages using a provided hub connection.
-// This uses the default serializer to marshal and unmarshal messages.
+// StateClient is a the friendly client for service messages using a provided hub connection.
 type StateClient struct {
 	// dThingID digital twin service ID of the state management
 	dThingID string
@@ -24,7 +23,7 @@ func (cl *StateClient) Delete(key string) error {
 	return err
 }
 
-// Get reads and unmarshals the record with the given key.
+// Get reads  the record with the given key.
 // If the key doesn't exist this returns an empty record.
 func (cl *StateClient) Get(key string, record interface{}) (found bool, err error) {
 
@@ -35,14 +34,16 @@ func (cl *StateClient) Get(key string, record interface{}) (found bool, err erro
 		return false, err
 	}
 	if resp.Found {
-		err = ser.Unmarshal([]byte(resp.Value), record)
+		// FIXME: find a more efficient way to convert the type
+		//record = resp.Value
+		tmpJSON, _ := json.Marshal(resp.Value)
+		err = json.Unmarshal(tmpJSON, record)
 	}
 	return resp.Found, err
 }
 
 // GetMultiple reads multiple records with the given keys.
-// This marshalling and unmarshalling is up to the caller.
-func (cl *StateClient) GetMultiple(keys []string) (values map[string]string, err error) {
+func (cl *StateClient) GetMultiple(keys []string) (values map[string]any, err error) {
 
 	req := stateapi.GetMultipleArgs{Keys: keys}
 	resp := stateapi.GetMultipleResp{}
@@ -53,19 +54,15 @@ func (cl *StateClient) GetMultiple(keys []string) (values map[string]string, err
 	return resp.KV, err
 }
 
-// Set marshals and writes a record
-func (cl *StateClient) Set(key string, record interface{}) error {
-	value, err := ser.Marshal(record)
-	if err != nil {
-		return err
-	}
-	req := stateapi.SetArgs{Key: key, Value: string(value)}
-	err = cl.hc.Rpc(cl.dThingID, stateapi.SetMethod, &req, nil)
+// Set stores a record by the given key
+func (cl *StateClient) Set(key string, value interface{}) error {
+	req := stateapi.SetArgs{Key: key, Value: value}
+	err := cl.hc.Rpc(cl.dThingID, stateapi.SetMethod, &req, nil)
 	return err
 }
 
 // SetMultiple writes multiple record
-func (cl *StateClient) SetMultiple(kv map[string]string) error {
+func (cl *StateClient) SetMultiple(kv map[string]any) error {
 	req := stateapi.SetMultipleArgs{KV: kv}
 	err := cl.hc.Rpc(cl.dThingID, stateapi.SetMultipleMethod, &req, nil)
 	return err

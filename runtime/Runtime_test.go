@@ -93,7 +93,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	cl2.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		if msg.Key == vocab.EventTypeDeliveryUpdate {
 			// delivery updates are only invoked on for non-rpc actions
-			err := msg.Unmarshal(&stat3)
+			err := msg.Decode(&stat3)
 			require.NoError(t, err)
 			slog.Info(fmt.Sprintf("reply: %s", stat3.Reply))
 		}
@@ -147,7 +147,7 @@ func TestServiceReconnect(t *testing.T) {
 		var req string
 		rxMsg.Store(&msg)
 		stat.Completed(msg, nil)
-		_ = msg.Unmarshal(&req)
+		_ = msg.Decode(&req)
 		_ = stat.MarshalReply(req + ".reply")
 		slog.Info("agent1 delivery complete", "messageID", msg.MessageID)
 		return stat

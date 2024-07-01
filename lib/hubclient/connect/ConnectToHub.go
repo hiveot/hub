@@ -18,6 +18,7 @@ import (
 // TokenFileExt defines the filename extension under which client tokens are stored
 // in the keys directory.
 const TokenFileExt = ".token"
+const DefaultTimeout = time.Second * 3
 
 // ConnectToHub helper function to connect to the Hub using existing token and key files.
 // This assumes that CA cert, user keys and auth token have already been set up and
@@ -130,7 +131,7 @@ func NewHubClient(fullURL string, clientID string, caCert *x509.Certificate) (hc
 	} else if clType == "uds" {
 		// FIXME: add support UDS connections for local services
 	} else if clType == "https" || clType == "tls" {
-		hc = httpsse.NewHttpSSEClient(parts.Host, clientID, caCert)
+		hc = httpsse.NewHttpSSEClient(parts.Host, clientID, caCert, DefaultTimeout)
 	} else if clType == "" {
 		// use NewClient on the embedded server
 		//hc = embedded.NewEmbeddedClient(clientID, nil)

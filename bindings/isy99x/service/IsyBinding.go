@@ -85,9 +85,9 @@ func (svc *IsyBinding) CreateBindingTD() *things.TD {
 }
 
 // GetBindingPropValues returns the property/event values of this binding
-func (svc *IsyBinding) GetBindingPropValues(onlyChanges bool) (map[string]string, map[string]string) {
-	props := make(map[string]string)
-	props[vocab.PropDevicePollinterval] = fmt.Sprintf("%d", svc.config.PollInterval)
+func (svc *IsyBinding) GetBindingPropValues(onlyChanges bool) (map[string]any, map[string]any) {
+	props := make(map[string]any)
+	props[vocab.PropDevicePollinterval] = svc.config.PollInterval
 	props[vocab.PropNetAddress] = svc.config.IsyAddress
 	props["loginName"] = svc.config.LoginName
 	props[vocab.PropDeviceMake] = "Hive Of Things"
@@ -96,7 +96,7 @@ func (svc *IsyBinding) GetBindingPropValues(onlyChanges bool) (map[string]string
 	if svc.isyAPI.IsConnected() {
 		connStatus = "connected"
 	}
-	events := make(map[string]string)
+	events := make(map[string]any)
 	events[vocab.PropNetConnection] = connStatus
 	//
 

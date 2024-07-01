@@ -13,7 +13,7 @@ import {getVidValue} from "@zwavejs/ZWAPI";
 
 // NodeValues holds the latest values of a single node
 export class NodeValues {
-    values: { [key: string]: string }
+    values: { [key: string]: any }
 
     // @param zwapi: driver to read node vid value
     // @param node: create the map for this node
@@ -29,7 +29,7 @@ export class NodeValues {
     // Set a value if it is not undefined
     setIf(key: string, val: unknown) {
         if (val != undefined) {
-            this.values[key] = val.toString()
+            this.values[key] = val
         }
     }
 
@@ -62,9 +62,9 @@ export class NodeValues {
             this.setIf("deviceClassSpecific", node.deviceClass.specific.label);
             // this.setIf("supportedCCs", node.deviceClass.generic.supportedCCs);
         }
-        this.setIf("endpointCount", node.getEndpointCount().toString());
+        this.setIf("endpointCount", node.getEndpointCount());
         // this.setIf("dc.firmwareVersion", node.deviceConfig?.firmwareVersion);
-        this.setIf(vocab.PropDeviceFirmwareVersion, node.firmwareVersion?.toString());
+        this.setIf(vocab.PropDeviceFirmwareVersion, node.firmwareVersion||"n/a");
 
         if (node.getHighestSecurityClass()) {
             let classID = node.getHighestSecurityClass() as number

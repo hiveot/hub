@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/net"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime/authn/config"
@@ -220,7 +219,7 @@ func (cfg *RuntimeConfig) setupDirectories(env *plugin.AppEnvironment) error {
 //	env holds the application directory environment
 func (cfg *RuntimeConfig) Setup(env *plugin.AppEnvironment) error {
 	var err error
-	logging.SetLogging(cfg.LogLevel, cfg.LogFile)
+	//logging.SetLogging(cfg.LogLevel, cfg.LogFile)
 	slog.Info("Digital Twin Runtime setup",
 		slog.String("home", env.HomeDir),
 		slog.String("config", env.ConfigFile),

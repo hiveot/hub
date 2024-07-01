@@ -516,7 +516,7 @@ func TestPrevNextN(t *testing.T) {
 //		}
 //	}`
 //
-//	err := json.Unmarshal([]byte(jsonDoc), &store)
+//	err := json.Decode([]byte(jsonDoc), &store)
 //	assert.NoError(t, err)
 //
 //	jpExpr, err := jp.ParseString(query1)
@@ -585,7 +585,7 @@ func TestPrevNextN(t *testing.T) {
 //	require.Equal(t, 2, len(resp))
 //
 //	var readTD1 things.ThingDescription
-//	err = json.Unmarshal([]byte(resp[0]), &readTD1)
+//	err = json.Decode([]byte(resp[0]), &readTD1)
 //	require.NoError(t, err)
 //	read1type := readTD1.AtType
 //	assert.Equal(t, string(vocab.DeviceTypeSensor), read1type)

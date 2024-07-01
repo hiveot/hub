@@ -21,7 +21,7 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 	cs, claims, err := sessionmanager.GetSessionFromCookie(r)
 	_ = claims
 	if cs == nil || !cs.IsActive() || err != nil {
-		slog.Warn("No session available, delay retry to 10 seconds")
+		slog.Warn("SSE Connection attempt but no session exists. Delay retry to 10 seconds")
 
 		// set retry to a large number
 		// while this doesn't redirect, it does stop it from holding a connection.

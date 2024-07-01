@@ -6,10 +6,9 @@ import (
 	"log/slog"
 )
 
-func (svc *IsyBinding) PubEvents(thingID string, evMap map[string]string) {
+func (svc *IsyBinding) PubEvents(thingID string, evMap map[string]any) {
 	for k, v := range evMap {
-		vJson, _ := json.Marshal(v)
-		svc.hc.PubEvent(thingID, k, string(vJson))
+		_ = svc.hc.PubEvent(thingID, k, v)
 	}
 }
 

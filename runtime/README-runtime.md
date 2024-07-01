@@ -17,6 +17,7 @@ Todo:
   * websocket support for http needs to be added
   * uds transport needs to be added for local services
   * discovery should be changed to match the WoT specifications
+  * improve performance of the http/sse transport
 * Middleware:
   * Rate control 
   * tbd

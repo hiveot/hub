@@ -34,6 +34,10 @@ export class ActionAffordance extends InteractionAffordance {
      * Input data for the action when applicable
      */
     public input?: DataSchema = undefined
+    /**
+     * Output data for the action when applicable
+     */
+    public output?: DataSchema = undefined
 
     /**
      * Action is idempotent. Repeated calls have the same result.
