@@ -23,7 +23,7 @@ require (
 	github.com/nats-io/nats-server/v2 v2.10.11
 	github.com/nats-io/nats.go v1.33.1
 	github.com/nats-io/nkeys v0.4.7
-	github.com/rs/cors v1.10.1
+	github.com/rs/cors v1.11.0
 	github.com/samber/lo v1.39.0
 	github.com/stretchr/testify v1.8.4
 	github.com/struCoder/pidusage v0.2.1
