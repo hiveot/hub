@@ -25,7 +25,9 @@
 						<span sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
 								{{$.Values.ToString $k}}
 						</span>
+							{{if $v.Data}}
               {{$v.Data.UnitSymbol}}
+						{{end}}
 					</div>
 					<div class="h-show-lg">{{$v.Description}}</div>
 {{/*TODO: improve on this rather crude way to refresh the derived 'updated' field when value changes?*/}}

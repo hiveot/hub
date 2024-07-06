@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/history/service"
@@ -64,7 +65,7 @@ func startHistoryService(clean bool) (
 		err = svc.Start(hc)
 	}
 	if err != nil {
-		panic("Failed starting the state service: " + err.Error())
+		panic("DeliveryFailed starting the state service: " + err.Error())
 	}
 
 	// create an end user client for testing
@@ -110,12 +111,12 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 			fmt.Sprintf("%2.3f", randomValue), "",
 		)
 		ev.SenderID = agentID
-		ev.CreatedMSec = randomTime.UnixMilli()
+		ev.Created = randomTime.Format(utils.RFC3339Milli)
 
 		// track the actual most recent event for the name for things 3
 		if randomID == 0 {
 			if _, exists := highest[ev.Key]; !exists ||
-				highest[ev.Key].CreatedMSec < ev.CreatedMSec {
+				highest[ev.Key].Created < ev.Created {
 				highest[ev.Key] = ev
 			}
 		}
@@ -186,30 +187,38 @@ func TestAddGetEvent(t *testing.T) {
 	// add thing1 temperature from 5 minutes ago
 	addHist := svc.GetAddHistory()
 	dThing1ID := things.MakeDigiTwinThingID(agent1ID, thing1ID)
-	ev1_1 := &things.ThingMessage{MessageType: vocab.MessageTypeEvent,
-		SenderID: agent1ID, ThingID: dThing1ID, Key: evTemperature,
-		Data: "12.5", CreatedMSec: fivemago.UnixMilli()}
+	ev1_1 := &things.ThingMessage{
+		MessageType: vocab.MessageTypeEvent,
+		SenderID:    agent1ID, ThingID: dThing1ID, Key: evTemperature,
+		Data: "12.5", Created: fivemago.Format(utils.RFC3339Milli),
+	}
 	err := addHist.AddEvent(ev1_1)
 	assert.NoError(t, err)
 	// add thing1 humidity from 55 minutes ago
-	ev1_2 := &things.ThingMessage{MessageType: vocab.MessageTypeEvent,
-		SenderID: agent1ID, ThingID: dThing1ID, Key: evHumidity,
-		Data: "70", CreatedMSec: fiftyfivemago.UnixMilli()}
+	ev1_2 := &things.ThingMessage{
+		MessageType: vocab.MessageTypeEvent,
+		SenderID:    agent1ID, ThingID: dThing1ID, Key: evHumidity,
+		Data: "70", Created: fiftyfivemago.Format(utils.RFC3339Milli),
+	}
 	err = addHist.AddEvent(ev1_2)
 	assert.NoError(t, err)
 
 	// add thing2 humidity from 5 minutes ago
 	dThing2ID := things.MakeDigiTwinThingID(agent1ID, thing2ID)
-	ev2_1 := &things.ThingMessage{MessageType: vocab.MessageTypeEvent,
-		SenderID: agent1ID, ThingID: dThing2ID, Key: evHumidity,
-		Data: "50", CreatedMSec: fivemago.UnixMilli()}
+	ev2_1 := &things.ThingMessage{
+		MessageType: vocab.MessageTypeEvent,
+		SenderID:    agent1ID, ThingID: dThing2ID, Key: evHumidity,
+		Data: "50", Created: fivemago.Format(utils.RFC3339Milli),
+	}
 	err = addHist.AddEvent(ev2_1)
 	assert.NoError(t, err)
 
 	// add thing2 temperature from 55 minutes ago
-	ev2_2 := &things.ThingMessage{MessageType: vocab.MessageTypeEvent,
-		SenderID: agent1ID, ThingID: dThing2ID, Key: evTemperature,
-		Data: "17.5", CreatedMSec: fiftyfivemago.UnixMilli()}
+	ev2_2 := &things.ThingMessage{
+		MessageType: vocab.MessageTypeEvent,
+		SenderID:    agent1ID, ThingID: dThing2ID, Key: evTemperature,
+		Data: "17.5", Created: fiftyfivemago.Format(utils.RFC3339Milli),
+	}
 	err = addHist.AddEvent(ev2_2)
 	assert.NoError(t, err)
 
@@ -217,8 +226,8 @@ func TestAddGetEvent(t *testing.T) {
 	cursor1, c1Release, err := readHist.GetCursor(dThing1ID, "")
 
 	// seek must return the things humidity added 55 minutes ago, not 5 minutes ago
-	timeAfter := time.Now().Add(-time.Minute * 300).UnixMilli()
-	tv1, valid, err := cursor1.Seek(timeAfter)
+	timeAfter := time.Now().Add(-time.Minute * 300)
+	tv1, valid, err := cursor1.Seek(timeAfter.Format(utils.RFC3339Milli))
 	if assert.NoError(t, err) && assert.True(t, valid) {
 		assert.Equal(t, dThing1ID, tv1.ThingID)
 		assert.Equal(t, evHumidity, tv1.Key)
@@ -231,15 +240,15 @@ func TestAddGetEvent(t *testing.T) {
 	}
 
 	// Test 2: get events of things 1 newer than 30 minutes ago - expect 1 temperature
-	timeAfter = time.Now().Add(-time.Minute * 30).UnixMilli()
+	timeAfter = time.Now().Add(-time.Minute * 30)
 
 	// do we need to get a new cursor?
 	//readHistory = svc.CapReadHistory()
-	tv3, valid, _ := cursor1.Seek(timeAfter)
+	tv3, valid, _ := cursor1.Seek(timeAfter.Format(utils.RFC3339Milli))
 	if assert.True(t, valid) {
 		assert.Equal(t, dThing1ID, tv3.ThingID) // must match the filtered id1
 		assert.Equal(t, evTemperature, tv3.Key) // must match evTemperature from 5 minutes ago
-		assert.Equal(t, fivemago.UnixMilli(), tv3.CreatedMSec)
+		assert.Equal(t, fivemago.Format(utils.RFC3339Milli), tv3.Created)
 	}
 	c1Release()
 	// Stop the service before phase 2
@@ -301,7 +310,7 @@ func TestAddPropertiesEvent(t *testing.T) {
 		SenderID:    agent1,
 		ThingID:     dThing1ID,
 		Key:         "baddate",
-		CreatedMSec: -1,
+		Created:     "-1",
 		MessageType: vocab.MessageTypeEvent,
 	}
 	badEvent4 := &things.ThingMessage{
@@ -403,7 +412,7 @@ func TestPrevNext(t *testing.T) {
 	item0b, valid, err := cursor.Prev()
 	require.NoError(t, err)
 	assert.True(t, valid)
-	assert.Equal(t, item0.CreatedMSec, item0b.CreatedMSec)
+	assert.Equal(t, item0.Created, item0b.Created)
 
 	// can't skip before the beginning of time
 	iteminv, valid, err := cursor.Prev()
@@ -413,7 +422,7 @@ func TestPrevNext(t *testing.T) {
 
 	// seek to item11 should succeed
 	item11 := items2to11[9]
-	item11b, valid, err := cursor.Seek(item11.CreatedMSec)
+	item11b, valid, err := cursor.Seek(item11.Created)
 	require.NoError(t, err)
 	assert.True(t, valid)
 	assert.Equal(t, item11.Key, item11b.Key)
@@ -461,7 +470,7 @@ func TestPrevNextFiltered(t *testing.T) {
 	// reached first item
 	item0b, valid, err := cursor.Prev()
 	assert.True(t, valid)
-	assert.Equal(t, item0.CreatedMSec, item0b.CreatedMSec)
+	assert.Equal(t, item0.Created, item0b.Created)
 	assert.Equal(t, propName, item0b.Key)
 
 	// can't skip before the beginning of time
@@ -471,7 +480,7 @@ func TestPrevNextFiltered(t *testing.T) {
 
 	// seek to item11 should succeed
 	item11 := items2to11[9]
-	item11b, valid, err := cursor.Seek(item11.CreatedMSec)
+	item11b, valid, err := cursor.Seek(item11.Created)
 	assert.True(t, valid)
 	assert.Equal(t, item11.Key, item11b.Key)
 

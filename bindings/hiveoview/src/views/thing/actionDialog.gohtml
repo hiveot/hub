@@ -15,15 +15,15 @@
 
         <label for="actionDescription">Description</label>
         <textarea  readonly id="actionDescription"
-                   style="field-sizing:normal"
                   placeholder="{{.Action.Description}}"></textarea>
 
         {{if .PrevValue}}
-            <label>Last updated</label>
-            <input readonly placeholder="{{.PrevValue.GetUpdated}}"/>
-
-            <label>Last Value</label>
-            <input readonly  placeholder="{{.PrevValue.DataAsText}}"/>
+            <label for="actionUpdated">Previous Action</label>
+            <input id="actionUpdated" readonly placeholder="{{.LastUpdated}} ({{.LastUpdatedAge}} ago)"/>
+            {{if .PrevValue.Input}}
+                <label for="prevValueInput">Previous Action Value</label>
+                <input id="prevValueInput" readonly  placeholder="{{.PrevValue.Input.Data}}"/>
+            {{end}}
         {{end}}
 
         <form id="action-input-form">
@@ -62,7 +62,7 @@
         let details = ev.detail
         if (details.successful) {
             modal = btn.parentElement.parentElement
-            // modal.closeModal()
+            modal.closeModal()
         }
     }
 </script>

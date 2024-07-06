@@ -74,27 +74,25 @@ func TestHandleRequestMessage(t *testing.T) {
 		P1: "agent1",
 		P2: 5,
 	}
-	argsJson, _ := ser.Marshal(args)
-
-	data, err := hubclient.HandleRequestMessage(senderID, Method1Ref, string(argsJson))
+	data, err := hubclient.HandleRequestMessage(senderID, Method1Ref, args)
 	require.NoError(t, err)
-	m1res := M1Res{}
-	err = json.Unmarshal([]byte(data), &m1res)
-	require.NoError(t, err)
-	assert.Equal(t, args.P1, m1res.R1)
+	m1resp, ok := data.(*M1Res)
+	require.True(t, ok)
 
-	// pass args by value
+	//err = json.Unmarshal([]byte(data), &m1resp)
+	require.Equal(t, args.P1, m1resp.R1)
+
+	// pass args and response by value
 	args = M1Args{
 		P1: "agent2",
 		P2: 6,
 	}
-	argsJson, _ = ser.Marshal(args)
-	data, err = hubclient.HandleRequestMessage(senderID, Method1Val, string(argsJson))
+	data, err = hubclient.HandleRequestMessage(senderID, Method1Val, args)
 	require.NoError(t, err)
-	m1res = M1Res{}
-	err = json.Unmarshal([]byte(data), &m1res)
+	m1resVal, ok := data.(M1Res)
+	require.True(t, ok)
 	require.NoError(t, err)
-	assert.Equal(t, args.P1, m1res.R1)
+	assert.Equal(t, args.P1, m1resVal.R1)
 }
 
 func TestHandleRequestNoArgs(t *testing.T) {
@@ -119,35 +117,32 @@ func TestDataAndErrorResult(t *testing.T) {
 
 func TestStringArgs(t *testing.T) {
 	// check this doesn't fail somehow
-	sargJson, _ := json.Marshal("Hello world")
-	data, err := hubclient.HandleRequestMessage(senderID, Method5StringArg, string(sargJson))
-	require.NoError(t, err)
+	sargs := "Hello world"
 
-	var result string
-	err = json.Unmarshal([]byte(data), &result)
+	data, err := hubclient.HandleRequestMessage(senderID, Method5StringArg, sargs)
+	require.NoError(t, err)
+	result := data.(string)
+
 	require.Equal(t, "Hello world", result)
 	require.NoError(t, err)
 }
 
 func TestIntArgs(t *testing.T) {
 	// check this doesnt fail somehow
-	sargJson, _ := json.Marshal(25)
-	data, err := hubclient.HandleRequestMessage(senderID, Method6IntArg, string(sargJson))
+	sarg := 25
+	data, err := hubclient.HandleRequestMessage(senderID, Method6IntArg, sarg)
 	require.NoError(t, err)
+	result := data.(int)
 
-	var result int
-	err = json.Unmarshal([]byte(data), &result)
 	require.Equal(t, 25, result)
 	require.NoError(t, err)
 }
 func TestByteArrayArgs(t *testing.T) {
 	args := []byte{1, 2, 3}
-	argJson, _ := json.Marshal(args)
-	data, err := hubclient.HandleRequestMessage(senderID, Method7ByteArrayArg, string(argJson))
+	data, err := hubclient.HandleRequestMessage(senderID, Method7ByteArrayArg, args)
 	require.NoError(t, err)
 
-	var result []byte
-	err = json.Unmarshal([]byte(data), &result)
+	result := data.([]byte)
 	require.Equal(t, args, result)
 	require.NoError(t, err)
 }
@@ -159,9 +154,9 @@ func TestTwoArgsFail(t *testing.T) {
 	assert.Empty(t, data)
 }
 func TestThreeResFail(t *testing.T) {
-	sargJson, _ := json.Marshal("Hello world")
+	sarg := "Hello world"
 	// this method has 3 results. Does it blow up?
-	data, err := hubclient.HandleRequestMessage(senderID, Method9ThreeRes, string(sargJson))
+	data, err := hubclient.HandleRequestMessage(senderID, Method9ThreeRes, sarg)
 	assert.Error(t, err)
 	assert.Empty(t, data)
 }
@@ -172,6 +167,7 @@ func Benchmark_Overhead(b *testing.B) {
 	}
 	count1 := uint64(0)
 	count2 := uint64(0)
+	// 0.32 ns/op
 	b.Run("direct call, no marshalling",
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
@@ -182,6 +178,7 @@ func Benchmark_Overhead(b *testing.B) {
 			}
 		})
 	t1 := time.Now()
+	// 2673 ns/op  (2.5 usec for marshalling)
 	b.Run("direct call, with marshalling",
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
@@ -199,16 +196,17 @@ func Benchmark_Overhead(b *testing.B) {
 			}
 		})
 	t2 := time.Now()
+	// 3545 ns/op (3.5 usec for reflection handling overhead
 	b.Run("indirect call",
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				count2++
 				// pass args by reference
-				argsJson, _ := ser.Marshal(m1args)
-				data, err := hubclient.HandleRequestMessage(senderID, Method1Ref, string(argsJson))
+				data, err := hubclient.HandleRequestMessage(senderID, Method1Ref, &m1args)
 				_ = err
-				m1res := M1Res{}
-				err = json.Unmarshal([]byte(data), &m1res)
+				m1res, ok := data.(*M1Res)
+				require.True(b, ok)
+				require.NotEmpty(b, m1res)
 			}
 		})
 	t3 := time.Now()

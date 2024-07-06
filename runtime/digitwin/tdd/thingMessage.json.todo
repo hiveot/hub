@@ -1,0 +1,49 @@
+{
+  "$id": "thingMessage",
+  "title": "Thing Message",
+  "description": "ThingMessage holds an event or action received from agents, services or consumers",
+  "type": "object",
+  "properties": {
+    "thingID": {
+      "type": "string",
+      "title": "Thing-ID",
+      "description": "Thing or Service ID of the Thing this message applies to",
+      "comments": [
+        "For messages from/to agents this is the agent ThingID",
+        "For messages to/from consumers this is the digitwin ThingID"
+      ]
+    },
+    "key": {
+      "type": "string",
+      "title": "Key",
+      "description": "Key of the event, action or property as defined in the TD maps"
+    },
+    "messageType": {
+      "title": "Message Type",
+      "type": "string",
+      "description": "Type of message this value was sent as: (MessageTypeEvent, MessageTypeAction...)",
+      "enum": ["action", "event", "property"]
+    },
+    "senderID": {
+      "title": "Sender ID",
+      "type": "string",
+      "description": "Account ID of the agent, service or consumer sending the message."
+    },
+    "created": {
+      "title": "Created",
+      "type": "dateTime",
+      "description": "Timestamp the value was created using RFC3339milli"
+    },
+    "data": {
+      "title": "Data",
+      "type": "any",
+      "description": "Data in the native format as described in the TD affordance data-schema"
+    },
+    "messageID": {
+      "title": "Message ID",
+      "type": "string",
+      "description": "Unique message ID"
+    }
+  },
+  "required": ["messageType", "thingID", "key", "senderID"]
+}

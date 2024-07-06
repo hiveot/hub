@@ -23,18 +23,22 @@ import (
 	"time"
 )
 
-// HttpSSEClient manages the hub server connection with hub event and action messaging using autopaho.
+// HttpSSEClient manages the connection to the hub server using http/2.
 // This implements the IHubClient interface.
+// This client creates two http/2 connections, one for posting messages and
+// one for a sse connection to establish a return channel.
 type HttpSSEClient struct {
 	hostPort string
 	ssePath  string
 	caCert   *x509.Certificate
 
 	timeout time.Duration // request timeout
-	// _ variables are mux protected
-	sseCancelFn        context.CancelFunc
-	mux                sync.RWMutex
-	sseClient          *sse.Client
+	// '_' variables are mux protected
+	mux         sync.RWMutex
+	sseCancelFn context.CancelFunc
+	// sseClient is the TLS client with the SSE connection
+	//sseClient *tlsclient.TLSClient
+	// tlsClient is the TLS client used for posting events
 	tlsClient          *tlsclient.TLSClient
 	_maxSSEMessageSize int
 	_status            hubclient.TransportStatus
@@ -48,8 +52,12 @@ type HttpSSEClient struct {
 }
 
 // ClientID returns the client's connection ID
-func (cl *HttpSSEClient) ClientID() string {
-	return cl._status.ClientID
+func (hc *HttpSSEClient) ClientID() string {
+	return hc._status.ClientID
+}
+
+func (hc *HttpSSEClient) connect() (err error) {
+	return nil
 }
 
 // ConnectWithClientCert creates a connection with the server using a client certificate for mutual authentication.
@@ -59,24 +67,23 @@ func (cl *HttpSSEClient) ClientID() string {
 //	clientCert client tls certificate containing x509 cert and private key
 //
 // Returns nil if successful, or an error if connection failed
-func (cl *HttpSSEClient) ConnectWithClientCert(kp keys.IHiveKey, clientCert *tls.Certificate) (err error) {
-	cl.mux.RLock()
-	defer cl.mux.RUnlock()
-	_ = kp
-	err = cl.tlsClient.ConnectWithClientCert(clientCert)
-	return err
-}
+//func (cl *HttpSSEClient) ConnectWithClientCert(kp keys.IHiveKey, clientCert *tls.Certificate) (err error) {
+//	cl.mux.RLock()
+//	defer cl.mux.RUnlock()
+//	_ = kp
+//	cl.tlsClient = tlsclient.NewTLSClient(cl.hostPort, clientCert, cl.caCert, cl.timeout)
+//	return err
+//}
 
 // ConnectWithPassword connects to the Hub TLS server using a login ID and password
 // and obtain an auth token for use with ConnectWithToken.
 func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, err error) {
 	cl.mux.Lock()
-	tlsClient := tlsclient.NewTLSClient(cl.hostPort, cl._status.CaCert, cl.timeout)
 	// remove existing connection
 	if cl.tlsClient != nil {
 		cl.tlsClient.Close()
 	}
-	cl.tlsClient = tlsClient
+	cl.tlsClient = tlsclient.NewTLSClient(cl.hostPort, nil, cl.caCert, cl.timeout)
 	loginURL := fmt.Sprintf("https://%s%s", cl.hostPort, vocab.PostLoginPath)
 	cl.mux.Unlock()
 
@@ -85,7 +92,7 @@ func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 		Password: password,
 	}
 	argsJSON, _ := json.Marshal(loginMessage)
-	resp, statusCode, err2 := tlsClient.Invoke("POST", loginURL, argsJSON, nil)
+	resp, statusCode, err2 := cl.tlsClient.Invoke("POST", loginURL, argsJSON, nil)
 	if err2 != nil {
 		err = fmt.Errorf("%d: Login failed: %s", statusCode, err2)
 		return "", err
@@ -98,14 +105,14 @@ func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 		return "", err
 	}
 	// store the bearer token further requests
-	tlsClient.ConnectWithToken(reply.Token)
+	cl.tlsClient.SetAuthToken(reply.Token)
 
-	// establish the sse connection if a path is set
+	// create a second client to establish the sse connection if a path is set
 	if cl.ssePath != "" {
 		sseURL := fmt.Sprintf("https://%s%s", cl.hostPort, cl.ssePath)
 		// use a new http client instance to set an indefinite timeout for the sse connection
 		//sseClient := cl.tlsClient.GetHttpClient()
-		sseClient := tlsclient.CreateHttp2TLSClient(cl.caCert, nil, 0)
+		sseClient := tlsclient.NewHttp2TLSClient(cl.caCert, nil, 0)
 		err = cl.ConnectSSE(sseURL, reply.Token, sseClient, cl.handleSSEDisconnect)
 	}
 	// If the server is reachable. Open the return channel using SSE
@@ -120,33 +127,34 @@ func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 //	jwtToken is the token previously obtained with login or refresh.
 func (cl *HttpSSEClient) ConnectWithToken(token string) (newToken string, err error) {
 	cl.mux.Lock()
-	tcl := tlsclient.NewTLSClient(cl.hostPort, cl._status.CaCert, cl.timeout)
 	if cl.tlsClient != nil {
 		cl.tlsClient.Close()
 	}
-	cl.tlsClient = tcl
+	cl.tlsClient = tlsclient.NewTLSClient(cl.hostPort, nil, cl._status.CaCert, cl.timeout)
 	cl._status.HubURL = fmt.Sprintf("https://%s", cl.hostPort)
 	cl.mux.Unlock()
+	cl.tlsClient.SetAuthToken(token)
 
-	tcl.ConnectWithToken(token)
-
+	// Refresh the auth token and verify the connection works.
 	newToken, err = cl.RefreshToken(token)
 	if err != nil {
 		cl.SetConnectionStatus(hubclient.ConnectFailed, err)
-	} else {
-		// establish the sse connection if a path is set
-		if cl.ssePath != "" {
-			// if the return channel fails then the client is still considered connected
-			sseURL := fmt.Sprintf("https://%s%s", cl.hostPort, cl.ssePath)
-
-			// separate client with a long timeout for sse
-			// use a new http client instance to set an indefinite timeout for the sse connection
-			sseClient := tlsclient.CreateHttp2TLSClient(cl.caCert, nil, 0)
-			//sseClient := cl.tlsClient.GetHttpClient()
-			err = cl.ConnectSSE(sseURL, newToken, sseClient, cl.handleSSEDisconnect)
-		}
-		cl.SetConnectionStatus(hubclient.Connected, err)
+		return "", err
 	}
+	cl.tlsClient.SetAuthToken(newToken)
+
+	// establish the sse connection if a path is set
+	if cl.ssePath != "" {
+		// if the return channel fails then the client is still considered connected
+		sseURL := fmt.Sprintf("https://%s%s", cl.hostPort, cl.ssePath)
+
+		// separate client with a long timeout for sse
+		// use a new http client instance to set an indefinite timeout for the sse connection
+		//httpClient := cl.tlsClient.GetHttpClient()
+		httpClient := tlsclient.NewHttp2TLSClient(cl.caCert, nil, 0)
+		err = cl.ConnectSSE(sseURL, newToken, httpClient, cl.handleSSEDisconnect)
+	}
+	cl.SetConnectionStatus(hubclient.Connected, err)
 
 	return newToken, err
 }
@@ -364,7 +372,7 @@ func (cl *HttpSSEClient) RefreshToken(oldToken string) (newToken string, err err
 
 		if err == nil {
 			// reconnect using the new token
-			cl.tlsClient.ConnectWithToken(newToken)
+			cl.tlsClient.SetAuthToken(newToken)
 		}
 	} else if statusCode == http.StatusUnauthorized {
 		err = errors.New("Unauthenticated")
@@ -389,8 +397,12 @@ func (cl *HttpSSEClient) Rpc(
 	qparams := map[string]string{"messageID": messageID}
 	stat := cl.PubActionWithQueryParams(thingID, key, args, qparams)
 
-	// wait for a response on the message channel
-	if !(stat.Progress == hubclient.DeliveryCompleted || stat.Progress == hubclient.DeliveryFailed) {
+	// Intermediate status update such as 'applied' are not errors. Wait longer.
+	for {
+		if stat.Progress == hubclient.DeliveryCompleted || stat.Progress == hubclient.DeliveryFailed {
+			break
+		}
+		// after each update wait at most cl.timeout and fail
 		stat, err = cl.WaitForStatusUpdate(rChan, messageID, cl.timeout)
 	}
 	cl.mux.Lock()
@@ -411,12 +423,11 @@ func (cl *HttpSSEClient) Rpc(
 	}
 	// when not completed return an error
 	if err == nil && stat.Progress != hubclient.DeliveryCompleted {
-		// delivery not
 		err = errors.New("Delivery not complete. Progress: " + stat.Progress)
 	}
 	// only once completed will there be a reply as a result
 	if err == nil && resp != nil {
-		err, _ = stat.UnmarshalReply(resp)
+		err, _ = stat.Decode(resp)
 	}
 	return err
 }
@@ -523,14 +534,17 @@ func (cl *HttpSSEClient) WaitForStatusUpdate(
 // NewHttpSSEClient creates a new instance of the htpp client with a SSE return-channel.
 //
 // fullURL is the url with schema. If omitted this uses the in-memory UDS address,
-// which only works with ConnectWithToken.
+// which only works with SetAuthToken.
 //
 //	hostPort of broker to connect to, without the scheme
 //	clientID to connect as
+//	clientCert optional client certificate to connect with
 //	keyPair with previously saved serialized public/private key pair, or "" to create one
 //	caCert of the server to validate the server or nil to not check the server cert
 //	timeout for waiting for response. 0 to use the default.
-func NewHttpSSEClient(hostPort string, clientID string, caCert *x509.Certificate, timeout time.Duration) *HttpSSEClient {
+func NewHttpSSEClient(hostPort string, clientID string,
+	clientCert *tls.Certificate, caCert *x509.Certificate, timeout time.Duration) *HttpSSEClient {
+
 	caCertPool := x509.NewCertPool()
 
 	// Use CA certificate for server authentication if it exists

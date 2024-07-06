@@ -82,8 +82,8 @@ type CursorReleaseArgs struct {
 type CursorSeekArgs struct {
 	// Cursor identifier obtained with GetCursor
 	CursorKey string `json:"cursorKey"`
-	// timestamp in msec since epoc to find
-	TimeStampMSec int64 `json:"timeStampMSec"`
+	// timestamp in rfc8601 format
+	TimeStamp string `json:"timeStamp"`
 }
 
 // returns CursorSingleResp

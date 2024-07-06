@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+const DefaultClientTimeout = time.Second * 30
+
 // TLSClient is a simple TLS Client with authentication using certificates or JWT authentication with login/pw
 type TLSClient struct {
 	// host and port of the server to setup to
@@ -41,69 +43,6 @@ func (cl *TLSClient) Close() {
 	if cl.httpClient != nil {
 		cl.httpClient.CloseIdleConnections()
 		cl.httpClient = nil
-	}
-}
-
-// ConnectWithBasicAuth creates a server connection using the configured authentication
-// Intended to setup to services that do not support JWT authentication
-//
-//	func (cl *TLSClient) ConnectWithBasicAuth(userID string, passwd string) {
-//		cl.clientID = userID
-//		//cl.basicSecret = passwd
-//		// Invoke() will use basic auth if basicSecret is set
-//
-//		cl.httpClient = cl.setup()
-//	}
-
-// ConnectWithClientCert creates a connection with the server using a client certificate for mutual authentication.
-// The provided certificate must be signed by the server's CA.
-//
-//	clientCert client tls certificate containing x509 cert and private key
-//
-// Returns nil if successful, or an error if connection failed
-func (cl *TLSClient) ConnectWithClientCert(clientCert *tls.Certificate) (err error) {
-	if clientCert == nil {
-		err = fmt.Errorf("TLSClient.ConnectWithClientCert, No client key/certificate provided")
-		slog.Error(err.Error())
-		return err
-	}
-
-	// test if the given cert is valid for our CA
-	if cl.caCert != nil {
-		caCertPool := x509.NewCertPool()
-		if cl.caCert != nil {
-			caCertPool.AddCert(cl.caCert)
-		}
-		opts := x509.VerifyOptions{
-			Roots:     caCertPool,
-			KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-		}
-		x509Cert, err := x509.ParseCertificate(clientCert.Certificate[0])
-		if err == nil {
-			// FIXME: TestCertAuth: certificate specifies incompatible key usage
-			// why? Is the certpool invalid? Yet the test succeeds
-			_, err = x509Cert.Verify(opts)
-		}
-		if err != nil {
-			err = fmt.Errorf("ConnectWithClientCert: certificate verfication failed: %w", err)
-			slog.Error(err.Error())
-			return err
-		}
-	}
-	cl.clientCert = clientCert
-	cl.httpClient = CreateHttp2TLSClient(cl.caCert, clientCert, cl.timeout)
-
-	return nil
-}
-
-// ConnectWithToken Sets login ID and secret for bearer token authentication using a
-// token obtained at login or elsewhere.
-//
-// No error is returned as this just sets up the token and http client. No messages are send yet.
-func (cl *TLSClient) ConnectWithToken(token string) {
-	cl.bearerToken = token
-	if cl.httpClient != nil {
-		cl.httpClient = cl.setup()
 	}
 }
 
@@ -249,22 +188,12 @@ func (cl *TLSClient) Put(
 	return cl.Invoke("PUT", serverURL, body, nil)
 }
 
-// setup sets-up the http client with TLS transport
-func (cl *TLSClient) setup() *http.Client {
-	//// the CA certificate is set in NewTLSClient
-	httpClient := CreateHttp2TLSClient(cl.caCert, nil, cl.timeout)
-
-	// FIXME:
-	// 1 does this work if the server is connected using an IP address?
-	// 2. How are cookies stored between sessions?
-	cjarOpts := &cookiejar.Options{PublicSuffixList: publicsuffix.List}
-	cjar, err := cookiejar.New(cjarOpts)
-	if err != nil {
-		err = fmt.Errorf("NewTLSClient: error setting cookiejar. The use of bearer tokens might not work: %w", err)
-		slog.Error(err.Error())
-	}
-	httpClient.Jar = cjar
-	return httpClient
+// SetAuthToken Sets login ID and secret for bearer token authentication using a
+// token obtained at login or elsewhere.
+//
+// No error is returned as this just sets up the token for future use. No messages are send yet.
+func (cl *TLSClient) SetAuthToken(token string) {
+	cl.bearerToken = token
 }
 
 //// SetBearerToken sets the authentication token for the http header
@@ -276,13 +205,14 @@ func (cl *TLSClient) setup() *http.Client {
 // Use setup/Close to open and close connections
 //
 //	hostPort is the server hostname or IP address and port to setup to
+//	clientCert is an option client certificate used to connect
 //	caCert with the x509 CA certificate, nil if not available
 //	timeout duration of the request or 0 for default of 10 seconds
 //
 // returns TLS client for submitting requests
-func NewTLSClient(hostPort string, caCert *x509.Certificate, timeout time.Duration) *TLSClient {
+func NewTLSClient(hostPort string, clientCert *tls.Certificate, caCert *x509.Certificate, timeout time.Duration) *TLSClient {
 	if timeout == 0 {
-		timeout = time.Second * 30
+		timeout = DefaultClientTimeout
 	}
 
 	// Use CA certificate for server authentication if it exists
@@ -291,13 +221,51 @@ func NewTLSClient(hostPort string, caCert *x509.Certificate, timeout time.Durati
 			slog.String("destination", hostPort))
 	}
 
+	// cert verification
+	// if a client cert is given then test if it is valid for our CA.
+	// this detects problems with certs that can be hard to track down
+	if caCert != nil && clientCert != nil {
+		caCertPool := x509.NewCertPool()
+		caCertPool.AddCert(caCert)
+
+		opts := x509.VerifyOptions{
+			Roots:     caCertPool,
+			KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		}
+		x509Cert, err := x509.ParseCertificate(clientCert.Certificate[0])
+		if err == nil {
+			// FIXME: TestCertAuth: certificate specifies incompatible key usage
+			// why? Is the certpool invalid? Yet the test succeeds
+			_, err = x509Cert.Verify(opts)
+		}
+		if err != nil {
+			err = fmt.Errorf("NewTLSClient: certificate verfication failed: %w. Continuing for now.", err)
+			slog.Error(err.Error())
+		}
+	}
+	// create the client
+	httpClient := NewHttp2TLSClient(caCert, clientCert, timeout)
+
+	// add a cookie jar for storing cookies
+	// FIXME:
+	// 1 does this work if the server is connected using an IP address?
+	// 2. How are cookies stored between sessions?
+	cjarOpts := &cookiejar.Options{PublicSuffixList: publicsuffix.List}
+	cjar, err := cookiejar.New(cjarOpts)
+	if err != nil {
+		err = fmt.Errorf("NewTLSClient: error setting cookiejar. The use of bearer tokens might not persist. Continuing: %w", err)
+		slog.Error(err.Error())
+		err = nil
+	}
+	httpClient.Jar = cjar
+
 	cl := &TLSClient{
-		hostPort: hostPort,
-		timeout:  timeout,
-		caCert:   caCert,
+		hostPort:   hostPort,
+		httpClient: httpClient,
+		timeout:    timeout,
+		clientCert: clientCert,
+		caCert:     caCert,
 	}
 
-	// setup the connection
-	cl.httpClient = cl.setup()
 	return cl
 }

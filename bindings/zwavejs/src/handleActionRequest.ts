@@ -98,9 +98,8 @@ export function  handleActionRequest(
             node.ping().then((success:boolean)=>{
                 let endTime = performance.now()
                 let msec = Math.round(endTime-startTime)
-                stat.completed(msg)
-                stat.reply = (msec).toString()
-                log.info("ping: "+msec+" msec")
+                stat.completed(msg, msec)
+                log.info("ping '"+msg.thingID+"': "+msec+" msec")
                 hc.sendDeliveryUpdate(stat)
             })
             break;

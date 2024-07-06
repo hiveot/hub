@@ -28,48 +28,108 @@
 		"contentType": "application/json",
 		"href": "/things/{thingID}/properties"
 	}],
-	"properties": {
+	"schemaDefinitions": {
+
+		"inboxRecord": {
+			"title": "Inbox Record",
+			"type": "object",
+			"description": "Record of action request and delivery progress",
+			"properties": {
+				"delivered": {
+					"title": "Delivered Timestamp",
+					"description": "DateTime in RFC3339milli the action was delivered to the device agent",
+					"type": "string"
+				},
+				"error": {
+					"description": "Error if the request could not be completed",
+					"type": "string"
+				},
+				"input": {
+					"title": "Action Input",
+					"description": "Action input parameters",
+					"comment": "there is no type as it can by anything"
+				},
+				"key": {
+					"description": "Action key to invoke",
+					"type": "string"
+				},
+				"messageID": {
+					"description": "Message ID linking requests and delivery updates",
+					"type": "string"
+				},
+				"messageType": {
+					"description": "Message action types",
+					"type": "string",
+					"enum": ["action", "properties"]
+				},
+				"progress": {
+					"description": "Delivery progress",
+					"type": "string",
+					"enum": [
+						"queued",
+						"received",
+						"applied",
+						"completed",
+						"failed"
+					]
+				},
+				"received": {
+					"title": "Received Timestamp",
+					"description": "DateTime in RFC3339milli the action was received by the inbox",
+					"type": "string"
+				},
+				"senderID": {
+					"description": "Connection ID of the sender. Used to send delivery updates.",
+					"type": "string"
+				},
+				"thingID": {
+					"description": "Digitwin Thing ID the action is directed at",
+					"type": "string"
+				},
+				"timestamp": {
+					"title": "Timestamp of creation",
+					"description": "Timestamp in milliseconds since epoch this record was created",
+					"type": "integer"
+				},
+				"updated": {
+					"title": "Updated Timestamp",
+					"description": "DateTime in RFC3339milli the delivery status was last updated",
+					"type": "string"
+				}
+			}
+		}
 	},
 	"events": {
 	},
 	"actions": {
 		"readLatest": {
 			"@type": "ht:function",
-			"title": "Read latest actions",
-			"description": "Read the latest request value of each action of a Thing",
+			"title": "Read Latest",
+			"description": "Read the latest Thing action record from the inbox",
 			"safe": true,
 			"idempotent": true,
 			"input": {
 				"type": "object",
-				"required": [
-					"thingID"
-				],
 				"properties": {
 					"thingID": {
 						"title": "Thing ID",
 						"description": "ID of the Thing to read",
 						"type": "string"
 					},
-					"keys": {
+					"key": {
 						"title": "Value Key",
-						"description": "The action keys to read or empty to read all latest values",
-						"type": "array",
-						"items": {
-							"type": "string"
-						}
-					},
-					"since": {
-						"title": "Since",
-						"description": "Only return values updated since",
-						"type": "dateTime"
+						"description": "The action key to read",
+						"type": "string"
 					}
-				}
+				},
+				"required": ["thingID","key"]
 			},
 			"output": {
-				"title": "Value Map",
-				"description": "map of key:ThingMessage objects",
-				"comment": "this returns a map of key:ThingMessage objects. Too complicated to describe here in detail",
-				"type": "things.ThingMessageMap"
+				"title": "Inbox Record",
+				"description": "Action records",
+				"comment": "InboxRecord as described in schemaDefinitions",
+				"type": "object",
+				"$ref": "inboxRecord"
 			},
 			"forms": [
 				{

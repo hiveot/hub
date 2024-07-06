@@ -110,7 +110,7 @@ func (cs *ClientSession) onConnectChange(stat hubclient.TransportStatus) {
 	if stat.LastError != nil {
 		lastErrText = stat.LastError.Error()
 	}
-	slog.Info("connection change",
+	slog.Info("onConnectChange",
 		slog.String("clientID", stat.ClientID),
 		slog.String("status", string(stat.ConnectionStatus)),
 		slog.String("lastError", lastErrText))
@@ -195,7 +195,7 @@ func (cs *ClientSession) onMessage(msg *things.ThingMessage) (stat hubclient.Del
 		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Key)
 		cs.SendSSE(thingAddr, msg.GetUpdated())
 	}
-	return stat.Completed(msg, nil)
+	return stat.Completed(msg, nil, nil)
 }
 
 func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {

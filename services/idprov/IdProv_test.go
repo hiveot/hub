@@ -99,7 +99,7 @@ func TestAutomaticProvisioning(t *testing.T) {
 
 	// next, provisioning should succeed
 	idProvServerURL := fmt.Sprintf("localhost:%d", testPort)
-	tlsClient := tlsclient.NewTLSClient(idProvServerURL, ts.Certs.CaCert, 0)
+	tlsClient := tlsclient.NewTLSClient(idProvServerURL, nil, ts.Certs.CaCert, 0)
 	//tlsClient.ConnectNoAuth()
 	status, token1, err := idprovclient.SubmitIdProvRequest(
 		device1ID, device1KP.ExportPublic(), "", tlsClient)
@@ -152,7 +152,7 @@ func TestAutomaticProvisioningBadParameters(t *testing.T) {
 
 	// test missing deviceID
 	idProvServerURL := "localhost:9002"
-	tlsClient := tlsclient.NewTLSClient(idProvServerURL, ts.Certs.CaCert, 0)
+	tlsClient := tlsclient.NewTLSClient(idProvServerURL, nil, ts.Certs.CaCert, 0)
 	status, tokenEnc, err := idprovclient.SubmitIdProvRequest(
 		"", device1PubPEM, "", tlsClient)
 	assert.Error(t, err)
@@ -182,7 +182,7 @@ func TestManualProvisioning(t *testing.T) {
 
 	// request provisioning
 	idProvServerAddr := fmt.Sprintf("localhost:%d", testPort)
-	tlsClient := tlsclient.NewTLSClient(idProvServerAddr, ts.Certs.CaCert, 0)
+	tlsClient := tlsclient.NewTLSClient(idProvServerAddr, nil, ts.Certs.CaCert, 0)
 	//tlsClient.ConnectNoAuth()
 	status, token, err := idprovclient.SubmitIdProvRequest(device1ID, device1PubPEM, "", tlsClient)
 	require.NoError(t, err)

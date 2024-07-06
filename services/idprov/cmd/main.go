@@ -37,7 +37,7 @@ func main() {
 	serverKeyPath := path.Join(env.CertsDir, runtime.DefaultServerKeyFile)
 	serverCert, err := certs.LoadTLSCertFromPEM(serverCertPath, serverKeyPath)
 	if err != nil {
-		slog.Error("idprov: Failed loading server certificate", "err", err)
+		slog.Error("idprov: DeliveryFailed loading server certificate", "err", err)
 		os.Exit(1)
 	}
 

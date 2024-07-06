@@ -1,8 +1,10 @@
 package service
 
 import (
+	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"log/slog"
 	"strconv"
@@ -42,7 +44,8 @@ func decodeValue(bucketID string, storageKey string, data string) (thingValue *t
 	if len(parts) < 2 {
 		return thingValue, false
 	}
-	millisec, _ := strconv.ParseInt(parts[0], 10, 64)
+	createdMsec, _ := strconv.ParseInt(parts[0], 10, 64)
+	createdTime := time.UnixMilli(createdMsec)
 	key := parts[1]
 	senderID := ""
 	messageType := vocab.MessageTypeEvent
@@ -64,7 +67,7 @@ func decodeValue(bucketID string, storageKey string, data string) (thingValue *t
 		MessageID:   messageID,
 		Key:         key,
 		Data:        data,
-		CreatedMSec: millisec,
+		Created:     createdTime.Format(utils.RFC3339Milli),
 		MessageType: messageType,
 		SenderID:    senderID,
 	}
@@ -330,7 +333,7 @@ func (svc *ReadHistory) Seek(senderID string, args historyapi.CursorSeekArgs) (*
 	//ts, err := dateparse.ParseAny(timestampMsec)
 	//if err != nil {
 	slog.Info("Seek using timestamp",
-		slog.Int64("timestampMsec", args.TimeStampMSec),
+		slog.String("timestamp", args.TimeStamp),
 	)
 
 	cursor, ci, err := svc.cursorCache.Get(args.CursorKey, senderID, true)
@@ -340,7 +343,9 @@ func (svc *ReadHistory) Seek(senderID string, args historyapi.CursorSeekArgs) (*
 
 	// search the first occurrence at or after the given timestamp
 	// the buck index uses the stringified timestamp
-	searchKey := strconv.FormatInt(args.TimeStampMSec, 10) //+ "/" + thingValue.ID
+	ts, _ := dateparse.ParseAny(args.TimeStamp)
+	msec := ts.UnixMilli()
+	searchKey := strconv.FormatInt(msec, 10) //+ "/" + thingValue.ID
 
 	k, v, valid := cursor.Seek(searchKey)
 	resp := &historyapi.CursorSingleResp{

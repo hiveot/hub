@@ -1,7 +1,6 @@
 package service_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
@@ -22,7 +21,7 @@ var valueStorePath = path.Join(testValueFolder, "values.store")
 var valueNames = []string{"temperature", "humidity", "pressure", "wind", "speed", "switch", "location", "sensor-A", "sensor-B", "sensor-C"}
 
 func startLatestStore(clean bool) (
-	svc *service.DigiTwinInOutboxStore,
+	svc *service.DigiTwinLatestStore,
 	stopFn func()) {
 
 	if clean {
@@ -47,7 +46,7 @@ func startLatestStore(clean bool) (
 }
 
 // generate a random batch of values for testing
-func createValueBatch(svc *service.DigiTwinInOutboxStore,
+func createValueBatch(svc *service.DigiTwinLatestStore,
 	nrValues int, thingIDs []string, timespanSec int) (batch []*things.ThingMessage) {
 
 	valueBatch := make([]*things.ThingMessage, 0, nrValues)
@@ -64,7 +63,7 @@ func createValueBatch(svc *service.DigiTwinInOutboxStore,
 			fmt.Sprintf("%2.3f", randomValue),
 			"sender1",
 		)
-		ev.CreatedMSec = randomTime.UnixMilli()
+		ev.Created = randomTime.Format(time.RFC3339)
 
 		svc.StoreMessage(ev)
 		valueBatch = append(valueBatch, ev)
@@ -197,12 +196,11 @@ func TestAddPropsFail(t *testing.T) {
 func TestAddBadProps(t *testing.T) {
 	thing1ID := "thing1"
 	badProps := []string{"bad1", "bad2"}
-	serProps, _ := json.Marshal(badProps)
 
 	svc, closeFn := startLatestStore(true)
 	defer closeFn()
 	msg := things.NewThingMessage(vocab.MessageTypeEvent,
-		thing1ID, vocab.EventTypeProperties, string(serProps), "sender")
+		thing1ID, vocab.EventTypeProperties, badProps, "sender")
 	svc.StoreMessage(msg)
 
 	//// action is ignored

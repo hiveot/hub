@@ -4,14 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
 	"net/http"
+	"time"
 )
 
 // ActionDialogData with data for the action window
@@ -30,7 +33,11 @@ type ActionDialogData struct {
 	// current delivery status
 	Status hubclient.DeliveryStatus
 	// Previous input value
-	PrevValue *things.ThingMessage
+	PrevValue *digitwin.InboxRecord
+	// timestamp the action was last performed
+	LastUpdated string
+	// duration the action was last performed
+	LastUpdatedAge string
 }
 
 // Return the action affordance
@@ -59,49 +66,48 @@ func getActionAff(hc hubclient.IHubClient, thingID string, key string) (
 func RenderActionDialog(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	key := chi.URLParam(r, "key")
-	var td *things.TD
-	var actionAff *things.ActionAffordance
 	var hc hubclient.IHubClient
+	var lastAction *digitwin.InboxRecord
 
-	lastAction := &things.ThingMessage{}
-
+	data := ActionDialogData{
+		ThingID: thingID,
+		Key:     key,
+	}
 	// Read the TD being displayed
 	mySession, err := session.GetSessionFromContext(r)
 	if err == nil {
 		hc = mySession.GetHubClient()
-		td, actionAff, err = getActionAff(hc, thingID, key)
+		data.TD, data.Action, err = getActionAff(hc, thingID, key)
 	}
 	// last action that was submitted
 	if err == nil {
-		resp, err := digitwin.InboxReadLatest(hc, []string{key}, "", thingID)
-		if err == nil {
-			lastAction = resp.Get(key)
+		// reading a latest value is optional
+		lastActionRecord, err2 := digitwin.InboxReadLatest(hc, key, thingID)
+		if err2 == nil {
+			data.PrevValue = &lastActionRecord
+			updatedTime, _ := dateparse.ParseAny(lastActionRecord.Updated)
+			data.LastUpdated = updatedTime.Format(time.RFC1123)
+			data.LastUpdatedAge = utils.Age(updatedTime)
 		}
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	data := ActionDialogData{
-		ThingID:   thingID,
-		Key:       key,
-		TD:        td,
-		Action:    actionAff,
-		PrevValue: lastAction,
-	}
-	if actionAff.Input != nil {
+
+	if data.Action.Input != nil {
 		data.Input = &SchemaValue{
 			ThingID:    thingID,
 			Key:        key,
-			DataSchema: actionAff.Input,
-			Value:      lastAction.DataAsText(),
+			DataSchema: data.Action.Input,
+			Value:      fmt.Sprintf("%v", lastAction.Input),
 		}
 	}
-	if actionAff.Output != nil {
+	if data.Action.Output != nil {
 		data.Output = &SchemaValue{
 			ThingID:    thingID,
 			Key:        key,
-			DataSchema: actionAff.Output,
+			DataSchema: data.Action.Output,
 			Value:      "",
 		}
 	}
@@ -129,6 +135,7 @@ func PostStartAction(w http.ResponseWriter, r *http.Request) {
 	actionKey := chi.URLParam(r, "key")
 	valueStr := r.FormValue(actionKey)
 	newValue = valueStr
+	reply := ""
 
 	stat := hubclient.DeliveryStatus{}
 	//
@@ -152,9 +159,14 @@ func PostStartAction(w http.ResponseWriter, r *http.Request) {
 			slog.Any("newValue", newValue))
 
 		// don't make this an rpc as the response time isn't always known with sleeping devices
-		stat = hc.PubAction(thingID, actionKey, newValue)
+		//stat = hc.PubAction(thingID, actionKey, newValue)
+		var resp interface{}
+		err = hc.Rpc(thingID, actionKey, newValue, &resp)
 		if stat.Error != "" {
 			err = errors.New(stat.Error)
+		} else if resp != nil {
+			// stringify the reply for presenting in the notification
+			reply = fmt.Sprintf("%v", resp)
 		}
 	}
 	if err != nil {
@@ -175,7 +187,9 @@ func PostStartAction(w http.ResponseWriter, r *http.Request) {
 	// TODO: map delivery status to language
 
 	// the async reply will contain status update
-	mySession.SendNotify(session.NotifyInfo, "Delivery Progress for '"+actionKey+"': "+stat.Progress)
+	//mySession.SendNotify(session.NotifyInfo, "Delivery Progress for '"+actionKey+"': "+stat.Progress)
+	notificationText := fmt.Sprintf("Action %s: %v %s", actionKey, reply, actionAff.Output.Unit)
+	mySession.SendNotify(session.NotifySuccess, notificationText)
 
 	w.WriteHeader(http.StatusOK)
 

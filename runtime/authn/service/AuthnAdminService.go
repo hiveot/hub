@@ -251,7 +251,7 @@ func (svc *AuthnAdminService) SetClientPassword(senderID string,
 	slog.Info("UpdateClientPassword", "clientID", args.ClientID)
 	err := svc.authnStore.SetPassword(args.ClientID, args.Password)
 	if err != nil {
-		slog.Error("Failed changing password", "clientID", args.ClientID, "err", err.Error())
+		slog.Error("DeliveryFailed changing password", "clientID", args.ClientID, "err", err.Error())
 	}
 	return err
 }

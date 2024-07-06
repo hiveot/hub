@@ -3,7 +3,6 @@ package historycli
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/urfave/cli/v2"
 
@@ -134,7 +133,7 @@ func HandleListEvents(hc hubclient.IHubClient, dThingID string, name string, lim
 
 		fmt.Printf("%-30s %-30s %-20.20s %-30.30s\n",
 			tv.ThingID,
-			utils.FormatMSE(tv.CreatedMSec, false),
+			tv.GetUpdated(),
 			tv.Key,
 			value,
 		)

@@ -29,7 +29,7 @@ func (agent *StateAgent) HandleMessage(msg *things.ThingMessage) (stat hubclient
 			return agent.SetMultiple(msg)
 		}
 	}
-	stat.Failed(msg, fmt.Errorf(
+	stat.DeliveryFailed(msg, fmt.Errorf(
 		"unknown action '%s' for service '%s'", msg.Key, msg.ThingID))
 	return stat
 }
@@ -37,7 +37,7 @@ func (agent *StateAgent) Delete(msg *things.ThingMessage) (stat hubclient.Delive
 	args := stateapi.DeleteArgs{}
 	err := msg.Decode(&args)
 	err = agent.svc.Delete(msg.SenderID, args.Key)
-	stat.Completed(msg, err)
+	stat.Completed(msg, nil, err)
 	return stat
 }
 func (agent *StateAgent) Get(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
@@ -46,9 +46,8 @@ func (agent *StateAgent) Get(msg *things.ThingMessage) (stat hubclient.DeliveryS
 	err := msg.Decode(&args)
 	resp.Key = args.Key
 	resp.Value, err = agent.svc.Get(msg.SenderID, args.Key)
-	stat.Completed(msg, err)
 	resp.Found = (err == nil)
-	_ = stat.MarshalReply(resp)
+	stat.Completed(msg, resp, err)
 	return stat
 }
 func (agent *StateAgent) GetMultiple(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
@@ -56,22 +55,21 @@ func (agent *StateAgent) GetMultiple(msg *things.ThingMessage) (stat hubclient.D
 	resp := stateapi.GetMultipleResp{}
 	err := msg.Decode(&args)
 	resp.KV, err = agent.svc.GetMultiple(msg.SenderID, args.Keys)
-	stat.Completed(msg, err)
-	_ = stat.MarshalReply(resp)
+	stat.Completed(msg, resp, err)
 	return stat
 }
 func (agent *StateAgent) Set(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	args := stateapi.SetArgs{}
 	err := msg.Decode(&args)
 	err = agent.svc.Set(msg.SenderID, args.Key, args.Value)
-	stat.Completed(msg, err)
+	stat.Completed(msg, nil, err)
 	return stat
 }
 func (agent *StateAgent) SetMultiple(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	args := stateapi.SetMultipleArgs{}
 	err := msg.Decode(&args)
 	err = agent.svc.SetMultiple(msg.SenderID, args.KV)
-	stat.Completed(msg, err)
+	stat.Completed(msg, nil, err)
 	return stat
 }
 

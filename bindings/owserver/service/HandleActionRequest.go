@@ -31,7 +31,7 @@ func (svc *OWServerBinding) HandleActionRequest(action *things.ThingMessage) (st
 	if !found {
 		// delivery failed as the thingID doesn't exist
 		err := fmt.Errorf("ID '%s' is not a known node", action.ThingID)
-		stat.Failed(action, err)
+		stat.DeliveryFailed(action, err)
 		return stat
 	}
 	attr, found = node.Attr[action.Key]
@@ -39,13 +39,13 @@ func (svc *OWServerBinding) HandleActionRequest(action *things.ThingMessage) (st
 		// delivery completed with error
 		err := fmt.Errorf("node '%s' found but it doesn't have an action '%s'",
 			action.ThingID, action.Key)
-		stat.Completed(action, err)
+		stat.Completed(action, nil, err)
 		return stat
 	} else if !attr.Writable {
 		// delivery completed with error
 		err := fmt.Errorf("node '%s' action '%s' is a read-only attribute",
 			action.ThingID, action.Key)
-		stat.Completed(action, err)
+		stat.Completed(action, nil, err)
 		return stat
 	}
 
@@ -67,6 +67,6 @@ func (svc *OWServerBinding) HandleActionRequest(action *things.ThingMessage) (st
 	if err != nil {
 		err = fmt.Errorf("action '%s' failed: %w", action.Key, err)
 	}
-	stat.Completed(action, err)
+	stat.Completed(action, nil, err)
 	return stat
 }

@@ -19,13 +19,13 @@ func (svc *IsyBinding) handleConfigRequest(action *things.ThingMessage) (stat hu
 	// configuring the binding doesn't require a connection with the gateway
 	if action.ThingID == svc.thingID {
 		err := svc.HandleBindingConfig(action)
-		stat.Completed(action, err)
+		stat.Completed(action, nil, err)
 		return
 	}
 
 	if !svc.isyAPI.IsConnected() {
 		// this is a delivery failure
-		stat.Failed(action, fmt.Errorf("no connection with the gateway"))
+		stat.DeliveryFailed(action, fmt.Errorf("no connection with the gateway"))
 		slog.Warn(stat.Error)
 		return
 	}
@@ -33,12 +33,12 @@ func (svc *IsyBinding) handleConfigRequest(action *things.ThingMessage) (stat hu
 	// pass request to the Thing
 	isyThing := svc.IsyGW.GetIsyThing(action.ThingID)
 	if isyThing == nil {
-		stat.Failed(action, fmt.Errorf("handleActionRequest: thing '%s' not found", action.ThingID))
+		stat.DeliveryFailed(action, fmt.Errorf("handleActionRequest: thing '%s' not found", action.ThingID))
 		slog.Warn(stat.Error)
 		return
 	}
 	err := isyThing.HandleConfigRequest(action)
-	stat.Completed(action, err)
+	stat.Completed(action, nil, err)
 
 	// publish changed values after returning
 	go func() {

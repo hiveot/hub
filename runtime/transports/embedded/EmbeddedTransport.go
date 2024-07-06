@@ -41,7 +41,7 @@ func (svc *EmbeddedTransport) NewClient(agentID string) hubclient.IHubClient {
 
 // SendEvent publishes an event message to all subscribers of this protocol binding
 func (svc *EmbeddedTransport) SendEvent(event *things.ThingMessage) (stat hubclient.DeliveryStatus) {
-	stat.Failed(event, errors.New("no handlers for event"))
+	stat.DeliveryFailed(event, errors.New("no handlers for event"))
 	for agentID, agent := range svc.handlers {
 		// FIXME: only send to subscribers
 		// don't send events back to the sender
@@ -72,7 +72,7 @@ func (svc *EmbeddedTransport) SendToClient(
 		stat = handler(msg)
 	} else {
 		err := fmt.Errorf("SendToClient: unknown client: %s", clientID)
-		stat.Failed(msg, err)
+		stat.DeliveryFailed(msg, err)
 	}
 	return stat, found
 }

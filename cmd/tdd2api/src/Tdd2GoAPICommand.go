@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/cmd/tdd2api/src/tdd2go"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/urfave/cli/v2"
 	"os"
 	"path"
@@ -72,13 +73,44 @@ func HandleTdd2Go(sourceDir string, outDirBase string) error {
 		if err == nil {
 			err = json.Unmarshal(tdJSON, &td)
 			if err != nil {
-				err = fmt.Errorf("%s at offset %d", err.Error(), err.(*json.SyntaxError).Offset)
+				err = fmt.Errorf("Unmarshal error %s", err.Error())
 			}
 		}
 		outputStatus := "Failed"
 		_, sourceFile := path.Split(fullPath)
 		sourceExt := path.Ext(sourceFile)
 		sourceNoExt := sourceFile[:(len(sourceFile) - len(sourceExt))]
+		if td.AtContext == nil {
+			var outFile string
+			var packageName string
+			var typeName string
+			// not a TD, assume this is a standalone dataschema
+			var ds things.DataSchema
+			err = json.Unmarshal(tdJSON, &ds)
+
+			// FIXME: using @type as package/type name is an experiment
+			if ds.AtType != "" {
+				parts := strings.Split(ds.AtType, "/")
+				packageName = parts[0]
+				if len(parts) > 1 {
+					outFile = path.Join(outDirBase, ds.AtType+".go")
+					typeName = parts[1]
+				}
+			} else {
+				// default package
+				packageName = "hub"
+				typeName = sourceNoExt
+			}
+			outFile = path.Join(outDirBase, packageName, typeName+".go")
+			l := &utils.L{}
+			idTitle := tdd2go.ToTitle(typeName)
+			l.Add("package " + packageName)
+			l.Add("")
+			tdd2go.GenSchemaDefStruct(l, sourceNoExt, idTitle, &ds)
+			err = l.Write(outFile)
+
+			break
+		}
 
 		agentID, _ := things.SplitDigiTwinThingID(td.ID)
 		outFile := path.Join(outDirBase, agentID, sourceNoExt+".go")

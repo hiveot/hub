@@ -13,13 +13,11 @@ import (
 
 const LatestBucketName = "latestMessages"
 
-// DigiTwinInOutboxStore is the digital twin storage for storing the current
+// DigiTwinLatestStore is the digital twin storage for storing the current
 // state of Things.
-// When used by the inbox it stores the last request of an action with key.
 // When used by the outbox it holds the last event and property value.
 // This store is intended for obtaining the current state of things.
-// For historical values see the DigiTwinHistoryStore.
-type DigiTwinInOutboxStore struct {
+type DigiTwinLatestStore struct {
 	// The message storage bucket
 	bucket buckets.IBucket
 
@@ -32,7 +30,7 @@ type DigiTwinInOutboxStore struct {
 }
 
 // AddEvent stores the event, sent by agent, in the bucket
-//func (store *DigiTwinInOutboxStore) AddEvent(msg *things.ThingMessage) {
+//func (store *DigiTwinLatestStore) AddEvent(msg *things.ThingMessage) {
 //
 //	addr := fmt.Sprintf("%s", msg.SenderID, msg.ThingID, msg.MessageType, msg.Key)
 //	msgJSON, _ := json.Marshal(msg)
@@ -48,7 +46,7 @@ type DigiTwinInOutboxStore struct {
 // To be invoked before reading and writing Thing properties to ensure the cache is loaded.
 // This immediately returns if a record for the Thing was already loaded.
 // Returns true if a cache value exists, false if the thingID was added to the cache
-func (svc *DigiTwinInOutboxStore) LoadLatest(thingID string) (cached bool) {
+func (svc *DigiTwinLatestStore) LoadLatest(thingID string) (cached bool) {
 	svc.cacheMux.Lock()
 	props, found := svc.cache[thingID]
 	defer svc.cacheMux.Unlock()
@@ -76,13 +74,13 @@ func (svc *DigiTwinInOutboxStore) LoadLatest(thingID string) (cached bool) {
 
 // ReadLatest returns the latest values send to digital twin Things.
 //
-//	msgType type of message, MessageTypeAction, MessageTypeEvent, MessageTypeProperties
-//	thingID whose actions to return
+//	msgType type of message, MessageTypeEvent, MessageTypeProperties
+//	thingID whose events to return
 //	keys  optional keys of message types to filter on
 //	since optional ISO timestamp with time since which to return the messages
 //
 //	keys optional filter for the values to read or nil to read all
-func (svc *DigiTwinInOutboxStore) ReadLatest(msgType string, thingID string, keys []string, since string) (
+func (svc *DigiTwinLatestStore) ReadLatest(msgType string, thingID string, keys []string, since string) (
 	messages things.ThingMessageMap, err error) {
 
 	messages = things.NewThingMessageMap()
@@ -92,7 +90,7 @@ func (svc *DigiTwinInOutboxStore) ReadLatest(msgType string, thingID string, key
 	defer svc.cacheMux.RUnlock()
 	cachedMessages, found := svc.cache[thingID]
 	if !found {
-		return nil, fmt.Errorf("ReadActions. Unknown thingID '%s'", thingID)
+		return nil, fmt.Errorf("ReadLatest. Unknown thingID '%s'", thingID)
 	}
 	// get each specified value
 	if keys != nil && len(keys) > 0 {
@@ -120,7 +118,8 @@ func (svc *DigiTwinInOutboxStore) ReadLatest(msgType string, thingID string, key
 		}
 		validMessages := things.NewThingMessageMap()
 		for k, v := range messages {
-			if sinceTime.UnixMilli() <= v.CreatedMSec {
+			createdTime, _ := dateparse.ParseAny(v.Created)
+			if sinceTime.UnixMilli() <= createdTime.UnixMilli() {
 				validMessages.Set(k, v)
 			}
 		}
@@ -132,7 +131,7 @@ func (svc *DigiTwinInOutboxStore) ReadLatest(msgType string, thingID string, key
 // Remove removes a value from the latest values send to digital twin Things.
 //
 //	messageID to remove
-func (svc *DigiTwinInOutboxStore) Remove(thingID string, key string) (err error) {
+func (svc *DigiTwinLatestStore) Remove(thingID string, key string) (err error) {
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 	thingCache, _ := svc.cache[thingID]
@@ -146,7 +145,7 @@ func (svc *DigiTwinInOutboxStore) Remove(thingID string, key string) (err error)
 
 // SaveChanges writes modified cached messages to the underlying store.
 // this returns the last encountered error, although writing is attempted for all changes
-func (svc *DigiTwinInOutboxStore) SaveChanges() (err error) {
+func (svc *DigiTwinLatestStore) SaveChanges() (err error) {
 
 	// try to minimize the lock time for each Thing
 	// start with using a read lock to collect the IDs of Things that changed
@@ -182,16 +181,16 @@ func (svc *DigiTwinInOutboxStore) SaveChanges() (err error) {
 	}
 	return err
 }
-func (svc *DigiTwinInOutboxStore) Start() error {
+func (svc *DigiTwinLatestStore) Start() error {
 	return nil
 }
-func (svc *DigiTwinInOutboxStore) Stop() {
+func (svc *DigiTwinLatestStore) Stop() {
 	_ = svc.SaveChanges()
 	_ = svc.bucket.Close()
 }
 
-// StoreMessage stores the latest event, property or action values
-func (svc *DigiTwinInOutboxStore) StoreMessage(msg *things.ThingMessage) {
+// StoreMessage stores the latest event or property values
+func (svc *DigiTwinLatestStore) StoreMessage(msg *things.ThingMessage) {
 
 	svc.LoadLatest(msg.ThingID)
 	svc.cacheMux.Lock()
@@ -215,11 +214,11 @@ func (svc *DigiTwinInOutboxStore) StoreMessage(msg *things.ThingMessage) {
 				//propValueString := fmt.Sprint(propValue)
 				tm := things.NewThingMessage(vocab.MessageTypeEvent,
 					msg.ThingID, propName, propValue, msg.SenderID)
-				tm.CreatedMSec = msg.CreatedMSec
+				tm.Created = msg.Created
 
 				// in case events arrive out of order, only update if the msg is newer
 				existingLatest := thingCache.Get(propName)
-				if existingLatest == nil || tm.CreatedMSec > existingLatest.CreatedMSec {
+				if existingLatest == nil || tm.Created > existingLatest.Created {
 					thingCache.Set(propName, tm)
 				}
 			}
@@ -230,17 +229,16 @@ func (svc *DigiTwinInOutboxStore) StoreMessage(msg *things.ThingMessage) {
 			// Thing events
 			// in case events arrive out of order, only update if the msg is newer
 			existingLatest := thingCache.Get(msg.Key)
-			if existingLatest == nil || msg.CreatedMSec > existingLatest.CreatedMSec {
+			if existingLatest == nil || msg.Created > existingLatest.Created {
 				thingCache.Set(msg.Key, msg)
 				svc.changedThings[msg.ThingID] = true
 			}
 		}
 	} else {
-		// TODO: split namespace as currently all events,actions and properties share the same namespace
-		// Thing actions
-		// in case actions arrive out of order, only update if the msg is newer
+		// TODO: split namespace as currently events and properties share the same namespace
+		// in case messages arrive out of order, only update if the msg is newer
 		existingLatest := thingCache.Get(msg.Key)
-		if existingLatest == nil || msg.CreatedMSec > existingLatest.CreatedMSec {
+		if existingLatest == nil || msg.Created > existingLatest.Created {
 			thingCache.Set(msg.Key, msg)
 			svc.changedThings[msg.ThingID] = true
 		}
@@ -250,8 +248,8 @@ func (svc *DigiTwinInOutboxStore) StoreMessage(msg *things.ThingMessage) {
 // NewDigiTwinLatestStore returns a new instance of the latest-messages store using the
 // given storage bucket for persistence.
 // the bucket will be closed on stop
-func NewDigiTwinLatestStore(bucket buckets.IBucket) *DigiTwinInOutboxStore {
-	svc := &DigiTwinInOutboxStore{
+func NewDigiTwinLatestStore(bucket buckets.IBucket) *DigiTwinLatestStore {
+	svc := &DigiTwinLatestStore{
 		bucket:        bucket,
 		cache:         make(map[string]things.ThingMessageMap),
 		changedThings: make(map[string]bool),

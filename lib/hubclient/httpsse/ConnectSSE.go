@@ -41,11 +41,12 @@ func (cl *HttpSSEClient) ConnectSSE(
 	//req.Header.Add("Connection", "keep-alive")
 
 	cl.sseCancelFn = sseCancelFn
-
-	sseClient := sse.Client{
+	sseClient := &sse.Client{
 		HTTPClient: httpClient,
 		OnRetry: func(err error, _ time.Duration) {
 			slog.Info("SSE Connection retry", "err", err)
+			// TODO: how to be notified if the connection is restored?
+			//  workaround: in handleSSEEvent, update the connection status
 			cl.SetConnectionStatus(hubclient.Connecting, err)
 		},
 	}
@@ -60,7 +61,6 @@ func (cl *HttpSSEClient) ConnectSSE(
 	remover := conn.SubscribeToAll(cl.handleSSEEvent)
 	go func() {
 		// connect and report an error if connection ends due to reason other than context cancelled
-		// FIXME: detect 'connecting' status and notify
 		err := conn.Connect()
 
 		if connError, ok := err.(*sse.ConnectionError); ok {
@@ -78,6 +78,8 @@ func (cl *HttpSSEClient) ConnectSSE(
 		onDisconnect(err)
 		//
 	}()
+	// FIXME: use a channel to wait for the SSE connection to be established
+	time.Sleep(time.Millisecond * 3)
 	return nil
 }
 
@@ -88,16 +90,24 @@ func (cl *HttpSSEClient) ConnectSSE(
 func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	var stat hubclient.DeliveryStatus
 
-	rxMsg := &things.ThingMessage{}
-	// TODO: how to specify the ThingMessage as a response object in the TDD?
+	// WORKAROUND since go-sse has no callback for a successful reconnect, simulate one here
+	// as soon as data is received
+	if cl._status.ConnectionStatus != hubclient.Connected {
+		// success!
+		slog.Warn("handleSSEEvent: connection re-established")
+		cl.SetConnectionStatus(hubclient.Connected, nil)
+	}
+
 	// ThingMessage is needed to pass messageID, messageType, thingID, key, and sender,
 	// as there is no facility in SSE to include metadata.
 	// SSE payload is json marshalled by the sse client
+	rxMsg := &things.ThingMessage{}
 	err := cl.Unmarshal([]byte(event.Data), rxMsg)
 	if err != nil {
 		slog.Error("handleSSEEvent; Received non-ThingMessage sse event. Ignored",
 			"eventType", event.Type,
-			"LastEventID", event.LastEventID)
+			"LastEventID", event.LastEventID,
+			"err", err.Error())
 		return
 	}
 	stat.MessageID = rxMsg.MessageID
@@ -139,7 +149,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 			// missing rpc or message handler
 			slog.Error("handleSSEEvent, no handler registered for client",
 				"clientID", cl.ClientID())
-			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, delivery update ignored"))
+			stat.DeliveryFailed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, delivery update ignored"))
 		}
 	} else if rxMsg.MessageType == vocab.MessageTypeEvent {
 		if cl._messageHandler != nil {
@@ -158,14 +168,14 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 			slog.Warn("handleSSEEvent, no action handler registered. Action ignored.",
 				slog.String("key", rxMsg.Key),
 				slog.String("clientID", cl.ClientID()))
-			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
+			stat.DeliveryFailed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
 		}
 		cl.SendDeliveryUpdate(stat)
 	} else {
 		slog.Warn("handleSSEEvent, unknown message type. Message ignored.",
 			slog.String("message type", rxMsg.MessageType),
 			slog.String("clientID", cl.ClientID()))
-		stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
+		stat.DeliveryFailed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
 		cl.SendDeliveryUpdate(stat)
 	}
 }

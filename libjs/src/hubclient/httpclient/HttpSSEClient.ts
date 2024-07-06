@@ -31,7 +31,7 @@ export class HttpSSEClient implements IHubClient {
     _baseURL: string;
     _caCertPem: string;
     _disableCertCheck: boolean
-    _http2Client: http2.ClientHttp2Session | undefined;
+    _http2Session: http2.ClientHttp2Session | undefined;
     _ssePath: string;
     _sseClient: any;
 
@@ -89,21 +89,28 @@ export class HttpSSEClient implements IHubClient {
         if (!!this._caCertPem) {
             opts.ca = this._caCertPem
         }
-        this._http2Client = http2.connect(this._baseURL, opts)
+        this._http2Session = http2.connect(this._baseURL, opts)
 
         // When an error occurs, show it.
-        this._http2Client.on('error', (error) => {
-            console.error(error);
+        this._http2Session.on('close', () => {
+            console.warn("connection has closed");
             // this.disconnect()
-            // Close the connection after the error occurred.
-            // client.destroy();
         });
-        this._http2Client.on('end', () => {
-            console.log('server ends connection');
+        this._http2Session.on('connect', (ev) => {
+            hclog.info("connected to server");
+        });
+        this._http2Session.on('error', (error) => {
+            console.error("connection error: "+error);
+        });
+        this._http2Session.on('frameError', (error) => {
+            console.error(error);
+        });
+        this._http2Session.on('end', () => {
+            console.log('server ended the connection');
             this.disconnect()
         });
 
-        return this._http2Client
+        return this._http2Session
     }
 
     // ConnectWithPassword connects to the Hub server using the clientID and password.
@@ -150,9 +157,9 @@ export class HttpSSEClient implements IHubClient {
             this._sseClient.close()
             this._sseClient = undefined
         }
-        if (this._http2Client) {
-            this._http2Client.close();
-            this._http2Client = undefined
+        if (this._http2Session) {
+            this._http2Session.close();
+            this._http2Session = undefined
         }
         if (this.connStatus != ConnectionStatus.Disconnected) {
             this.connStatus = ConnectionStatus.Disconnected
@@ -217,52 +224,64 @@ export class HttpSSEClient implements IHubClient {
 
     // post a request to the path after serializing the given data
     async postRequest(path: string, data: any): Promise<string> {
+        // if the session is invalid, restart it
+        if (this._http2Session?.closed) {
+            // this._http2Client.
+            hclog.error("postRequest but connection is closed")
+            await this.connect()
+        }
+
         return new Promise((resolve, reject) => {
             let replyData: string = ""
             let statusCode: number
             let payload = JSON.stringify(data)
 
-            if (!this._http2Client) {
-                throw ("not connected")
-            }
-            let req = this._http2Client.request({
-                origin: this._baseURL,
-                authorization: "bearer " + this.authToken,
-                ':path': path,
-                ":method": "POST",
-                "content-type": "application/json",
-                "content-length": Buffer.byteLength(payload),
-            })
-            req.setEncoding('utf8');
+            try {
+                if (!this._http2Session) {
+                    throw ("not connected")
+                }
+                let req = this._http2Session.request({
+                    origin: this._baseURL,
+                    authorization: "bearer " + this.authToken,
+                    ':path': path,
+                    ":method": "POST",
+                    "content-type": "application/json",
+                    "content-length": Buffer.byteLength(payload),
+                })
+                req.setEncoding('utf8');
 
-            req.on('response', (r) => {
-                if (r[":status"]) {
-                    statusCode = r[":status"]
-                    if (statusCode >= 400) {
-                        hclog.warn(`Request '${path}' returned status code '${statusCode}'`)
+                req.on('response', (r) => {
+                    if (r[":status"]) {
+                        statusCode = r[":status"]
+                        if (statusCode >= 400) {
+                            hclog.warn(`postRequest '${path}' returned status code '${statusCode}'`)
+                        }
                     }
-                }
-            })
-            req.on('data', (chunk) => {
-                replyData = replyData + chunk
-            });
-            req.on('end', () => {
-                req.destroy()
-                if (statusCode >= 400) {
-                    hclog.warn(`postRequest status code  ${statusCode}`)
-                    reject("Error " + statusCode + ": " + replyData)
-                } else {
-                    // hclog.info(`postRequest to ${path}. Received reply. size=` + replyData.length)
-                    resolve(replyData)
-                }
-            });
-            req.on('error', (err) => {
-                req.destroy()
-                reject(err)
-            });
-            // write the body and complete the request
-            req.end(payload)
-        });
+                })
+                req.on('data', (chunk) => {
+                    replyData = replyData + chunk
+                });
+                req.on('end', () => {
+                    req.destroy()
+                    if (statusCode >= 400) {
+                        hclog.warn(`postRequest status code  ${statusCode}`)
+                        reject("Error " + statusCode + ": " + replyData)
+                    } else {
+                        // hclog.info(`postRequest to ${path}. Received reply. size=` + replyData.length)
+                        resolve(replyData)
+                    }
+                });
+                req.on('error', (err) => {
+                    req.destroy()
+                    reject(err)
+                });
+                // write the body and complete the request
+                req.end(payload)
+            } catch (e) {
+                hclog.warn(`postRequest unexpected exception:`,e)
+                reject(e)
+            }
+        })
     }
 
     // PubAction publishes a request for action from a Thing.
@@ -384,7 +403,7 @@ export class HttpSSEClient implements IHubClient {
     sendDeliveryUpdate(stat: DeliveryStatus): void {
         // TODO: use the digitwin inbox ID
         // thingID is ignored as the messageID is used to link to the sender
-        this.pubEvent("dtw::inbox", EventTypeDeliveryUpdate, stat)
+        this.pubEvent("dtw:digitwin:inbox", EventTypeDeliveryUpdate, stat)
     }
 
 

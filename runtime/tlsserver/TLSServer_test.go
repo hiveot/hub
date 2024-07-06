@@ -118,7 +118,7 @@ func TestTokenAuth(t *testing.T) {
 	// create a client and login
 	cl := tlsclient.NewTLSClient(clientHostPort, testCerts.CaCert, time.Second*120)
 	assert.NoError(t, err)
-	cl.ConnectWithToken(token1)
+	cl.SetAuthToken(token1)
 
 	// test the auth with a GET request
 	_, _, err = cl.Get(path1)
@@ -127,7 +127,7 @@ func TestTokenAuth(t *testing.T) {
 
 	// test a failed login
 	cl.Close()
-	cl.ConnectWithToken("wrongpassword")
+	cl.SetAuthToken("wrongpassword")
 	_, _, err = cl.Get(path1)
 	assert.Error(t, err)
 	assert.Equal(t, 1, path1Hit) // should not increase

@@ -148,9 +148,9 @@ func (sm *SessionManager) SendEvent(msg *things.ThingMessage) (stat hubclient.De
 		}
 	}
 	if len(sm.sidSessions) > 0 {
-		stat.Completed(msg, nil)
+		stat.Completed(msg, nil, nil)
 	} else {
-		stat.Failed(msg, errors.New("no active sessions"))
+		stat.DeliveryFailed(msg, errors.New("no active sessions"))
 	}
 	return stat
 }

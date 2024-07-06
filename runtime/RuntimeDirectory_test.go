@@ -93,9 +93,9 @@ func TestReadTDs(t *testing.T) {
 	args := digitwin.DirectoryReadTDsArgs{Limit: 10}
 	stat := cl.PubAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDsMethod, args)
 	require.Empty(t, stat.Error)
-	assert.NotEmpty(t, stat.Reply)
+	assert.NotNil(t, stat.Reply)
 	tdList1 := []string{}
-	err, hasData := stat.UnmarshalReply(&tdList1)
+	err, hasData := stat.Decode(&tdList1)
 	require.NoError(t, err)
 	require.True(t, hasData)
 	require.True(t, len(tdList1) > 0)
@@ -123,8 +123,8 @@ func TestReadTDsRest(t *testing.T) {
 	ts.AddTDs(agentID, 100)
 
 	serverURL := fmt.Sprintf("localhost:%d", ts.Port)
-	cl2 := tlsclient.NewTLSClient(serverURL, ts.Certs.CaCert, time.Second*30)
-	cl2.ConnectWithToken(token)
+	cl2 := tlsclient.NewTLSClient(serverURL, nil, ts.Certs.CaCert, time.Second*30)
+	cl2.SetAuthToken(token)
 
 	data, _, err := cl2.Get(vocab.GetThingsPath)
 	require.NoError(t, err)

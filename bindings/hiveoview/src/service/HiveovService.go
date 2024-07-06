@@ -199,7 +199,7 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 		err = http.ListenAndServe(addr, router)
 		if err != nil {
 			// TODO: close gracefully
-			slog.Error("Failed starting server", "err", err)
+			slog.Error("DeliveryFailed starting server", "err", err)
 			// service must exit on close
 			time.Sleep(time.Second)
 			os.Exit(0)

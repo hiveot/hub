@@ -14,7 +14,7 @@ import (
 
 const TDBucketName = "td"
 
-// DigitwinDirectory the Digitwin Directory stores, reads and queries TD documents
+// DigitwinDirectoryService the Digitwin Directory stores, reads and queries TD documents
 // This service keeps an in-memory Thing Description instance backed by a persistent bucket store.
 //
 // When a TDD is received, its ID is replaced by that of the digitwin thingID and its form entries
@@ -22,7 +22,7 @@ const TDBucketName = "td"
 // store.
 //
 // Read and query methods using the in-memory cache for fast performance.
-type DigitwinDirectory struct {
+type DigitwinDirectoryService struct {
 	store    buckets.IBucketStore
 	tdBucket buckets.IBucket
 
@@ -40,7 +40,7 @@ type DigitwinDirectory struct {
 // TODO: Update the forms to match current protocols.
 //
 // The provided TD is a json document
-func (svc *DigitwinDirectory) HandleTDEvent(
+func (svc *DigitwinDirectoryService) HandleTDEvent(
 	msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	var err error
 
@@ -63,16 +63,16 @@ func (svc *DigitwinDirectory) HandleTDEvent(
 	}
 	if err != nil {
 		stat.Error = fmt.Sprintf(
-			"StoreEvent. Failed updating TD of Agent/Thing '%s/%s': %s",
+			"StoreEvent. DeliveryFailed updating TD of Agent/Thing '%s/%s': %s",
 			msg.SenderID, msg.ThingID, err.Error())
 		slog.Error(stat.Error)
 	}
-	stat.Completed(msg, err)
+	stat.Completed(msg, nil, err)
 	return stat
 }
 
 // LoadCacheFromStore loads the cache from store
-func (svc *DigitwinDirectory) LoadCacheFromStore() error {
+func (svc *DigitwinDirectoryService) LoadCacheFromStore() error {
 	svc.cachemux.Lock()
 	defer svc.cachemux.Unlock()
 	cursor, err := svc.tdBucket.Cursor()
@@ -108,7 +108,7 @@ func (svc *DigitwinDirectory) LoadCacheFromStore() error {
 }
 
 // QueryTDs query the collection of TD documents
-func (svc *DigitwinDirectory) QueryTDs(senderID string,
+func (svc *DigitwinDirectoryService) QueryTDs(senderID string,
 	args digitwin.DirectoryQueryTDsArgs) (resp []string, err error) {
 
 	// TBD: query based on what?
@@ -116,7 +116,7 @@ func (svc *DigitwinDirectory) QueryTDs(senderID string,
 }
 
 // ReadTD returns the TD document in json format for the given Thing ID
-func (svc *DigitwinDirectory) ReadTD(
+func (svc *DigitwinDirectoryService) ReadTD(
 	senderID string, thingID string) (resp string, err error) {
 
 	svc.cachemux.RLock()
@@ -136,7 +136,7 @@ func (svc *DigitwinDirectory) ReadTD(
 // args: offset is the offset in the list
 //
 //	limit is the maximum number of records to return
-func (svc *DigitwinDirectory) ReadTDs(senderID string,
+func (svc *DigitwinDirectoryService) ReadTDs(senderID string,
 	args digitwin.DirectoryReadTDsArgs) (resp []string, err error) {
 
 	tdList := make([]string, 0, args.Limit)
@@ -163,7 +163,7 @@ func (svc *DigitwinDirectory) ReadTDs(senderID string,
 }
 
 // RemoveTD deletes the TD document from the given agent with the ThingID
-func (svc *DigitwinDirectory) RemoveTD(senderID string, thingID string) error {
+func (svc *DigitwinDirectoryService) RemoveTD(senderID string, thingID string) error {
 
 	slog.Info("RemoveTD",
 		slog.String("thingID", thingID),
@@ -185,8 +185,8 @@ func (svc *DigitwinDirectory) RemoveTD(senderID string, thingID string) error {
 }
 
 // Start the directory service and open the directory stored TD bucket
-func (svc *DigitwinDirectory) Start() (err error) {
-	slog.Info("Starting DigitwinDirectory")
+func (svc *DigitwinDirectoryService) Start() (err error) {
+	slog.Info("Starting DigitwinDirectoryService")
 	// fill the in-memory cache
 	err = svc.LoadCacheFromStore()
 	if err != nil {
@@ -196,8 +196,8 @@ func (svc *DigitwinDirectory) Start() (err error) {
 }
 
 // Stop the service
-func (svc *DigitwinDirectory) Stop() {
-	slog.Info("Stopping DigitwinDirectory")
+func (svc *DigitwinDirectoryService) Stop() {
+	slog.Info("Stopping DigitwinDirectoryService")
 	if svc.tdBucket != nil {
 		_ = svc.tdBucket.Close()
 		svc.tdBucket = nil
@@ -207,7 +207,7 @@ func (svc *DigitwinDirectory) Stop() {
 // UpdateThing adds or updates the Thing Description document
 // intended for internal use, so not a TDD action.
 // Added things are written to the store.
-func (svc *DigitwinDirectory) UpdateThing(
+func (svc *DigitwinDirectoryService) UpdateThing(
 	senderID string, dtThingID string, tdd *things.TD) error {
 
 	slog.Info("UpdateThing",
@@ -234,9 +234,9 @@ func (svc *DigitwinDirectory) UpdateThing(
 // NewDigitwinDirectory creates a new service instance for the directory of Thing TD documents.
 //
 //	store is an instance of the bucket store to store the directory data. This is opened by 'Start' and closed by 'Stop'
-func NewDigitwinDirectory(store buckets.IBucketStore) *DigitwinDirectory {
+func NewDigitwinDirectory(store buckets.IBucketStore) *DigitwinDirectoryService {
 	tdBucket := store.GetBucket(TDBucketName)
-	svc := &DigitwinDirectory{
+	svc := &DigitwinDirectoryService{
 		store:    store,
 		tdBucket: tdBucket,
 	}

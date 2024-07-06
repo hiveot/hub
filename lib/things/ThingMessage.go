@@ -3,11 +3,13 @@ package things
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/araddon/dateparse"
 	"github.com/google/uuid"
+	"github.com/hiveot/hub/lib/utils"
 	"time"
 )
 
-// ThingMessage holds an event or action received from agents, services or end-users.
+// ThingMessage holds an event or action received from agents, services or consumers.
 type ThingMessage struct {
 	//--- required fields to be filled-in by the sender
 
@@ -33,9 +35,9 @@ type ThingMessage struct {
 
 	//--- optional fields
 
-	// Timestamp the value was created in msec since Epoch Jan 1st,1970 00:00 utc
+	// Timestamp the value was created using RFC3339milli
 	// Optional. This will be set to 'now' if omitted.
-	CreatedMSec int64 `json:"created,omitempty"`
+	Created string `json:"created,omitempty"`
 
 	// Data in the native format as described in the TD affordance dataschema.
 	Data any `json:"data,omitempty"`
@@ -63,8 +65,8 @@ func (tm *ThingMessage) DataAsText() string {
 // GetUpdated is a helper function to return the formatted time the data was last updated.
 // This uses the time format RFC822 ("02 Jan 06 15:04 MST")
 func (tm *ThingMessage) GetUpdated() string {
-	created := time.Unix(tm.CreatedMSec/1000, 0).Local()
-	return created.Format(time.RFC822)
+	createdTime, _ := dateparse.ParseAny(tm.Created)
+	return createdTime.Format(time.RFC822)
 }
 
 // Decode converts the any-type to the given interface type.
@@ -90,7 +92,7 @@ func (tm *ThingMessage) Decode(arg interface{}) error {
 //	senderID is the accountID of the creator of the value
 func NewThingMessage(messageType, thingID, key string, data any, senderID string) *ThingMessage {
 	return &ThingMessage{
-		CreatedMSec: time.Now().UnixMilli(),
+		Created:     time.Now().Format(utils.RFC3339Milli),
 		Data:        data,
 		Key:         key,
 		MessageID:   uuid.NewString(),

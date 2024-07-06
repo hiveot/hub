@@ -211,13 +211,13 @@ func HandleAddService(
 		fmt.Printf("Private key loaded from file '%s'\n", keyPath)
 	}
 	if err != nil {
-		slog.Error("Failed creating or loading key", "err", err.Error())
+		slog.Error("DeliveryFailed creating or loading key", "err", err.Error())
 		return
 	}
 	authToken, err := authn.AdminAddService(hc, serviceID, displayName, kp.ExportPrivate())
 	_ = authToken
 	if err != nil {
-		slog.Error("Failed adding service",
+		slog.Error("DeliveryFailed adding service",
 			"serviceID", serviceID, "err", err.Error())
 		return
 	} else {

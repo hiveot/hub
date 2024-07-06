@@ -36,26 +36,27 @@ func getPropAff(hc hubclient.IHubClient, thingID string, key string) (
 // this pulls the TD from the server (todo: consider using a local cache)
 func getConfigValue(
 	hc hubclient.IHubClient, thingID string, key string) (sv SchemaValue, err error) {
-	var found bool
+	var valueStr string
 
 	td, propAff, err := getPropAff(hc, thingID, key)
 	_ = td
-
-	keys := []string{key}
-	propValues, err := digitwin.OutboxReadLatest(hc, keys, "", thingID)
 	if err != nil {
 		return sv, err
 	}
-	// convert the property value to string for presentation
-	// TODO: make this simpler
-	tmRaw, found := propValues[key]
-	tm := things.ThingMessage{}
-	tmJson, err := json.Marshal(tmRaw)
-	_ = json.Unmarshal(tmJson, &tm)
-	if !found {
-		return sv, fmt.Errorf("value for thingID/property '%s/%s' not found", thingID, key)
+
+	keys := []string{key}
+	propValues, err := digitwin.OutboxReadLatest(hc, keys, "", thingID)
+	if err == nil {
+		// convert the property value to string for presentation
+		// TODO: make this simpler
+		tmRaw, found := propValues[key]
+		if found {
+			tm := things.ThingMessage{}
+			tmJson, _ := json.Marshal(tmRaw)
+			_ = json.Unmarshal(tmJson, &tm)
+			valueStr = fmt.Sprintf("%v", tm.Data)
+		}
 	}
-	valueStr := fmt.Sprintf("%v", tm.Data)
 	sv = SchemaValue{
 		//TD:         &td,
 		ThingID:    thingID,

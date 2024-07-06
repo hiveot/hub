@@ -25,8 +25,12 @@ func GenSchemaDefinitions(l *utils.L, serviceTitle string, td *things.TD) {
 		idTitle := ToTitle(id)
 
 		if sd.Type == "object" {
-			// define an agent wide data struct
-			GenSchemaDefStruct(l, agentID, idTitle, sd)
+			if sd.Ref == "" {
+				// define an agent wide data struct
+				GenSchemaDefStruct(l, agentID, idTitle, sd)
+			} else {
+				// nothing to do here
+			}
 		} else if sd.Enum != nil {
 			GenSchemaDefEnum(l, idTitle, sd)
 		} else if sd.OneOf != nil {

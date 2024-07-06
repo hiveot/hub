@@ -5,16 +5,15 @@ import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/services/certs/certsapi"
 	"github.com/hiveot/hub/services/certs/certsclient"
 	"github.com/hiveot/hub/services/certs/service/selfsigned"
-	"os"
-	"testing"
-
-	"github.com/hiveot/hub/lib/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"os"
+	"testing"
 )
 
 var ts *testenv.TestServer
@@ -64,10 +63,12 @@ func TestMain(m *testing.M) {
 //}
 
 func TestCreateDeviceCert(t *testing.T) {
+	t.Log("--- TestCreateDeviceCert ---")
 	deviceID := "device1"
 
 	cl, cancelFunc := startService()
 	defer cancelFunc()
+
 	k := keys.NewKey(keys.KeyTypeECDSA)
 	pubKeyPEM := k.ExportPublic()
 
@@ -97,10 +98,12 @@ func TestCreateDeviceCert(t *testing.T) {
 	}
 	_, err = deviceCert.Verify(opts)
 	assert.NoError(t, err)
+	t.Log("--- TestCreateDeviceCert ended ---")
 }
 
 // test device cert with bad parameters
 func TestDeviceCertBadParms(t *testing.T) {
+	t.Log("--- TestDeviceCertBadParms ---")
 	deviceID := "device1"
 
 	// test creating hub certificate
@@ -119,10 +122,12 @@ func TestDeviceCertBadParms(t *testing.T) {
 	certPEM, _, err = cl.CreateDeviceCert(deviceID, "", 1)
 	require.Error(t, err)
 	assert.Empty(t, certPEM)
+	t.Log("--- TestDeviceCertBadParms ended ---")
 
 }
 
 func TestCreateServiceCert(t *testing.T) {
+	t.Log("--- TestCreateServiceCert ---")
 	// test creating hub certificate
 	const serviceID = "testService"
 	names := []string{"127.0.0.1", "localhost"}
@@ -152,10 +157,12 @@ func TestCreateServiceCert(t *testing.T) {
 	}
 	_, err = serviceCert.Verify(opts)
 	assert.NoError(t, err)
+	t.Log("--- TestCreateServiceCert ended ---")
 }
 
 // test with bad parameters
 func TestServiceCertBadParms(t *testing.T) {
+	t.Log("--- TestServiceCertBadParms ---")
 	const serviceID = "testService"
 	hostnames := []string{"127.0.0.1"}
 
@@ -191,10 +198,12 @@ func TestServiceCertBadParms(t *testing.T) {
 		serviceID, "", hostnames, 1)
 	require.Error(t, err)
 	require.Empty(t, serviceCertPEM)
+	t.Log("--- TestServiceCertBadParms ended ---")
 
 }
 
 func TestCreateUserCert(t *testing.T) {
+	t.Log("--- TestCreateUserCert ---")
 	userID := "bob"
 	// test creating hub certificate
 	cl, cancelFunc := startService()
@@ -225,4 +234,5 @@ func TestCreateUserCert(t *testing.T) {
 	}
 	_, err = userCert.Verify(opts)
 	assert.NoError(t, err)
+	t.Log("--- TestCreateUserCert ended ---")
 }

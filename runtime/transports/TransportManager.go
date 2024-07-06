@@ -84,7 +84,7 @@ func (svc *TransportsManager) SendToClient(
 	if !found {
 		// if no subscribers exist then delivery fails
 		err := fmt.Errorf("TransportsManager.SendToClient: Destination '%s' not found", clientID)
-		stat.Failed(msg, err)
+		stat.DeliveryFailed(msg, err)
 	}
 	return stat, found
 }
@@ -95,7 +95,7 @@ func (svc *TransportsManager) SendEvent(
 	msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 
 	// delivery fails if there are no subscribers. Does this matter?
-	stat.Failed(msg, errors.New("event has no subscribers"))
+	stat.DeliveryFailed(msg, errors.New("event has no subscribers"))
 
 	// for now simply send the action request to enabled protocol handlers
 	if svc.embeddedTransport != nil {

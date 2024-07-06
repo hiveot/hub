@@ -27,16 +27,12 @@ export enum ConnInfo {
 }
 
 export enum DeliveryProgress {
+    // DeliveredToInbox the request is delivery to the digitwin inbox
+    DeliveredToInbox = "inbox",
 
     // DeliveryToAgent the request is delivered to the Thing's agent by the inbox.
     // The agent is expected to send a delivery update.
-    DeliveryToAgent = "agent",
-
-    // DeliveryWaiting optional step where the agent is waiting to apply it to
-    // the Thing, for example when the device is asleep.
-    // This status is sent by the agent.
-    // An additional progress update from the agent can be expected.
-    DeliveryWaiting = "waiting",
+    DeliveryToAgent = "received",
 
     // DeliveryApplied is a step where the request has been applied to the Thing by the
     // agent.
@@ -74,11 +70,11 @@ export class DeliveryStatus extends Object{
     // Error in case delivery status has ended without completion.
     error?: string =""
     // Reply in case delivery status is completed
-    // FIXME: change reply to any
-    reply?: string =""
+    reply?: any =""
 
-    completed(msg: ThingMessage, err?: Error) {
+    completed(msg: ThingMessage, reply?:any, err?: Error) {
         this.messageID = msg.messageID
+        this.reply = reply
         this.progress = DeliveryProgress.DeliveryCompleted
         if (err) {
             this.error = err.name + ": " + err.message

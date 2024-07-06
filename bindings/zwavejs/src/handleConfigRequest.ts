@@ -63,7 +63,7 @@ export function handleConfigRequest(
     // delivery completed with error
     if (errMsg) {
         log.error(errMsg)
-        stat.completed(msg, errMsg)
+        stat.completed(msg, undefined, errMsg)
     }
     return stat
 }

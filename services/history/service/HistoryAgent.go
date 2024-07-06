@@ -49,9 +49,9 @@ func StartHistoryAgent(
 			}
 		} else if msg.MessageType == vocab.MessageTypeEvent {
 			err := svc.addHistory.AddEvent(msg)
-			return stat.Completed(msg, err)
+			return stat.Completed(msg, nil, err)
 		}
-		stat.Failed(msg, fmt.Errorf("Unhandled message"))
+		stat.DeliveryFailed(msg, fmt.Errorf("Unhandled message"))
 		return stat
 	})
 }

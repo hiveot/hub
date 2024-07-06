@@ -92,7 +92,7 @@ func (sm *SessionManager) ActivateNewSession(
 	//	}
 	//}
 	if err != nil {
-		slog.Warn("Failed refreshing auth token. Session remains active.",
+		slog.Warn("DeliveryFailed refreshing auth token. Session remains active.",
 			"err", err.Error())
 
 	}

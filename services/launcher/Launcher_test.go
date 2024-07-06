@@ -100,6 +100,21 @@ func TestList(t *testing.T) {
 	require.NoError(t, err)
 	assert.Greater(t, len(info), 10)
 
+	hc, _ := testServer.AddConnectUser(userID, authn.ClientRoleAdmin)
+	defer hc.Disconnect()
+	cl := launcherclient.NewLauncherClient("", hc)
+	info2, err := cl.List(false)
+	require.NoError(t, err)
+	require.NotEmpty(t, info2)
+}
+
+func TestListNoPermission(t *testing.T) {
+	userID := "user1"
+
+	svc, cancelFunc := startService()
+	defer cancelFunc()
+	require.NotNil(t, svc)
+
 	hc, _ := testServer.AddConnectUser(userID, authn.ClientRoleNone)
 	defer hc.Disconnect()
 	cl := launcherclient.NewLauncherClient("", hc)

@@ -41,9 +41,16 @@ func GoTypeFromSchema(ds *things.DataSchema) string {
 	case vocab.WoTDataTypeUnsignedInt:
 		return "uint64"
 	case vocab.WoTDataTypeObject:
-		//return "interface{}"
-		return "map[string]interface{}"
+		if ds.Ref != "" {
+			// Only local references are supported
+			return ToTitle(ds.Ref)
+		} else {
+			return "map[string]interface{}"
+		}
+	case "":
+		return "any"
 	default:
+		// inject the given type. This is not json-schema standard
 		return ds.Type
 	}
 }

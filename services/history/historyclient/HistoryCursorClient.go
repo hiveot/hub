@@ -90,12 +90,13 @@ func (cl *HistoryCursorClient) Release() {
 }
 
 // Seek the starting point for iterating the history
-func (cl *HistoryCursorClient) Seek(timeStampMSec int64) (
+// timeStamp in ISO8106 format
+func (cl *HistoryCursorClient) Seek(timeStamp string) (
 	thingValue *things.ThingMessage, valid bool, err error) {
 
 	req := historyapi.CursorSeekArgs{
-		CursorKey:     cl.cursorKey,
-		TimeStampMSec: timeStampMSec,
+		CursorKey: cl.cursorKey,
+		TimeStamp: timeStamp,
 	}
 	resp := historyapi.CursorSingleResp{}
 	err = cl.hc.Rpc(cl.dThingID, historyapi.CursorSeekMethod, &req, &resp)

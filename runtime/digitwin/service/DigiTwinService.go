@@ -23,11 +23,11 @@ type DigitwinService struct {
 	store buckets.IBucketStore
 
 	// The directory stores digitwin TDD documents
-	Directory *DigitwinDirectory
+	Directory *DigitwinDirectoryService
 	// The inbox handles incoming action requests from consumers
-	Inbox *DigiTwinInbox
+	Inbox *DigiTwinInboxService
 	// The outbox receives events from agents and can be queried by consumers
-	Outbox *DigiTwinOutbox
+	Outbox *DigiTwinOutboxService
 
 	mux sync.RWMutex
 	// The protocol manager communicates with agents and consumers

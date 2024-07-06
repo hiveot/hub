@@ -19,7 +19,7 @@ func GenDataSchemaFields(l *utils.L, key string, ds *things.DataSchema) {
 	//schemaAttr := GetSchemaAttr(key, ds)
 	//if schemaAttr.Nested != nil {
 	if len(ds.Properties) > 0 {
-		//GenSchemaAttr(l, schemaAttr.Nested)
+		// field is a dataschema
 		GenSchemaAttr(l, ds.Properties)
 	} else {
 		props := map[string]*things.DataSchema{key: ds}
@@ -45,6 +45,13 @@ func GenSchemaAttr(l *utils.L, attrMap map[string]*things.DataSchema) {
 		if attr.Properties != nil {
 			// nested struct
 			GenSchemaAttr(l, attr.Properties)
+		} else if attr.Ref != "" {
+			// field is a reference to a dataschema
+			typeName := ToTitle(attr.Ref)
+			l.Add("%s %s", keyTitle, typeName)
+		} else if len(attr.AdditionalProperties) > 0 {
+			// field is a map of dataschema
+			//GenSchemaAttr(l, attr.AdditionalProperties)
 		} else {
 			omitEmpty := ""
 			isRequired := false

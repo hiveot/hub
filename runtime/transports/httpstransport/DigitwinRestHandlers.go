@@ -2,7 +2,6 @@ package httpstransport
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
@@ -38,20 +37,7 @@ func (svc *HttpsTransport) HandleGetEvents(w http.ResponseWriter, r *http.Reques
 		args, cs.GetClientID())
 
 	stat := svc.handleMessage(msg)
-	//var reply []byte
-	if stat.Error == "" {
-		//var resp string
-		// the serialized response contains a serialized message map.
-		// this double serialization is because the outbox response is defined
-		// as a serialized message map. Just reply with the once-serialized map
-		//err, _ = stat.UnmarshalReply(&resp)
-		// The response values are already serialized
-		//reply = []byte(resp)
-		err = nil
-	} else {
-		err = errors.New(stat.Error)
-	}
-	svc.writeReply(w, []byte(stat.Reply), err)
+	svc.writeStatReply(w, stat)
 }
 
 // HandleGetThings returns a list of things in the directory
@@ -82,17 +68,7 @@ func (svc *HttpsTransport) HandleGetThings(w http.ResponseWriter, r *http.Reques
 		args, cs.GetClientID())
 
 	stat := svc.handleMessage(msg)
-
-	var reply []byte
-	if stat.Error == "" {
-		// the response is a serialized list of serialized TDs
-		// just return as-is
-		reply = []byte(stat.Reply)
-		err = nil
-	} else {
-		err = errors.New(stat.Error)
-	}
-	svc.writeReply(w, reply, err)
+	svc.writeStatReply(w, stat)
 }
 
 // HandleGetThing returns the TD of a thing in the directory
@@ -109,17 +85,7 @@ func (svc *HttpsTransport) HandleGetThing(w http.ResponseWriter, r *http.Request
 		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod,
 		thingID, cs.GetClientID())
 	stat := svc.handleMessage(msg)
-
-	var reply []byte
-	if stat.Error == "" {
-		// the response is a serialized TD
-		// just return as-is
-		reply = []byte(stat.Reply)
-		err = nil
-	} else {
-		err = errors.New(stat.Error)
-	}
-	svc.writeReply(w, reply, err)
+	svc.writeStatReply(w, stat)
 }
 
 func (svc *HttpsTransport) HandlePostLogout(w http.ResponseWriter, r *http.Request) {

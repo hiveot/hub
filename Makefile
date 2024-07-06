@@ -12,11 +12,14 @@ all: runtime services bindings hubcli   ## Build Core, Bindings and hubcli
 
 # --- Runtime services
 
-runtime: .FORCE
+api: .FORCE
 	$(GENAPI) vocab
 	$(GENAPI) ggo runtime/authn/tdd
 	$(GENAPI) ggo runtime/authz/tdd
 	$(GENAPI) ggo runtime/digitwin/tdd
+
+runtime: .FORCE
+	mkdir -p $(BIN_FOLDER)
 	go build -o $(BIN_FOLDER)/$@ runtime/cmd/main.go
 
 services: launcher state idprov certs history

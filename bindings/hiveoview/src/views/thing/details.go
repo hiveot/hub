@@ -129,7 +129,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err != nil {
-		slog.Error("Failed loading Thing info",
+		slog.Error("DeliveryFailed loading Thing info",
 			"thingID", thingID, "err", err.Error())
 		mySession.SendNotify(session.NotifyError, err.Error())
 	}

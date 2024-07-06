@@ -7,8 +7,8 @@ import (
 )
 
 // Simple performance test update/read using embedded client (no network overhead)
-// Benchmark_GetTD/update_TD_docs-4    5600 ns/op
-// Benchmark_GetTD/read_TD_docs-4      1400 ns/op
+// Benchmark_GetTD/update_TD_docs-4    5500 ns/op
+// Benchmark_GetTD/read_TD_docs-4      1200 ns/op
 func Benchmark_ReadTD(b *testing.B) {
 	b.Log("--- Benchmark_ReadTD start ---")
 	defer b.Log("--- Benchmark_GetTD end ---")
@@ -28,6 +28,7 @@ func Benchmark_ReadTD(b *testing.B) {
 		// old values kept for future comparison:
 		// nats: 120 usec/op
 		// mqtt: 290 usec/op
+		// direct: 5 usec/op
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)
@@ -42,6 +43,7 @@ func Benchmark_ReadTD(b *testing.B) {
 		// old values kept for future comparison:
 		// Nats: 130 usec/op
 		// Mqtt: 330 usec/op
+		// Direct: 1.2 usec/op
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)

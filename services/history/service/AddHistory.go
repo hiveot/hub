@@ -3,8 +3,10 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
 	"strconv"
 	"time"
@@ -31,17 +33,17 @@ type AddHistory struct {
 // where a|e|p indicates message type "action", "event" or "property"
 func (svc *AddHistory) encodeValue(msg *things.ThingMessage) (key string, data []byte) {
 	var err error
-	ts := time.Now()
-	if msg.CreatedMSec > 0 {
-		ts = time.UnixMilli(msg.CreatedMSec)
+	createdTime := time.Now()
+	if msg.Created != "" {
+		createdTime, err = dateparse.ParseAny(msg.Created)
 		if err != nil {
-			slog.Warn("Invalid CreatedMSec time. Using current time instead", "created", msg.CreatedMSec)
-			ts = time.Now()
+			slog.Warn("Invalid Created time. Using current time instead", "created", msg.Created)
+			createdTime = time.Now()
 		}
 	}
 
 	// the index uses milliseconds for timestamp
-	timestamp := ts.UnixMilli()
+	timestamp := createdTime.UnixMilli()
 	key = strconv.FormatInt(timestamp, 10) + "/" + msg.Key
 	if msg.MessageType == vocab.MessageTypeAction {
 		key = key + "/a"
@@ -101,7 +103,7 @@ func (svc *AddHistory) AddProperties(msg *things.ThingMessage) error {
 		// store this as a property message to differentiate from events
 		tv := things.NewThingMessage(vocab.MessageTypeProperty,
 			msg.ThingID, propName, propValueString, msg.SenderID)
-		tv.CreatedMSec = msg.CreatedMSec
+		tv.Created = msg.Created
 		//
 
 		storageKey, val := svc.encodeValue(msg)
@@ -227,8 +229,8 @@ func (svc *AddHistory) validateValue(tv *things.ThingMessage) (retained bool, er
 	if tv.SenderID == "" {
 		return false, fmt.Errorf("missing sender for event or action for things '%s'", tv.ThingID)
 	}
-	if tv.CreatedMSec == 0 {
-		tv.CreatedMSec = time.Now().UnixMilli()
+	if tv.Created == "" {
+		tv.Created = time.Now().Format(utils.RFC3339Milli)
 	}
 	if svc.retentionMgr != nil {
 		retain, rule := svc.retentionMgr._IsRetained(tv)

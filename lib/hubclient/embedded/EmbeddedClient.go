@@ -75,7 +75,7 @@ func (cl *EmbeddedClient) HandleMessage(msg *things.ThingMessage) (stat hubclien
 	} else {
 		if cl.receiveEventHandler != nil {
 			err := cl.receiveEventHandler(msg)
-			stat.Completed(msg, err)
+			stat.Completed(msg, nil, err)
 			return stat
 		}
 	}
@@ -84,7 +84,7 @@ func (cl *EmbeddedClient) HandleMessage(msg *things.ThingMessage) (stat hubclien
 	err := fmt.Errorf("no receive handler set for client '%s'", cl.clientID)
 	slog.Error("HandleMessage",
 		"err", err.Error(), "thingID", msg.ThingID, "key", msg.Key)
-	stat.Completed(msg, err)
+	stat.Completed(msg, nil, err)
 	return stat
 }
 
@@ -151,7 +151,7 @@ func (cl *EmbeddedClient) Rpc(
 	// the internal response format is a DeliveryStatus struct
 	if stat.Error == "" {
 		// delivery might be completed but an unmarshal error causes it to fail
-		err, _ := stat.UnmarshalReply(resp)
+		err, _ := stat.Decode(resp)
 		if err != nil {
 			stat.Error = err.Error()
 		}

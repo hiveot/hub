@@ -35,15 +35,11 @@ func GenServiceHandler(l *utils.L, serviceTitle string, td *things.TD) {
 	}
 	l.Add("default:")
 	l.Add("	err = errors.New(\"Unknown Method '\"+msg.Key+\"' of service '\"+msg.ThingID+\"'\")")
-	l.Add("	stat.Failed(msg,err)")
+	l.Add("	stat.DeliveryFailed(msg,err)")
 	l.Indent--
 	l.Add("}")
 
-	l.Add("if resp != nil {")
-	l.Add("   stat.MarshalReply(resp)")
-	l.Add("}")
-
-	l.Add("stat.Completed(msg, err)")
+	l.Add("stat.Completed(msg, resp, err)")
 	l.Add("return stat")
 	l.Indent--
 	l.Add("}")
@@ -51,7 +47,7 @@ func GenServiceHandler(l *utils.L, serviceTitle string, td *things.TD) {
 	l.Add("}")
 }
 
-// GenActionHandler add a unmarshaller handler for its service.
+// GenActionHandler add an unmarshaller handler for its service.
 // This unmarshal the request, invokes the service, and marshals the response
 // key is the key of the action affordance in the TD
 func GenActionHandler(l *utils.L, serviceTitle string, key string, action *things.ActionAffordance) {

@@ -25,8 +25,7 @@ func (agent *AgentHandler) InvokeMethod(
 	method interface{}, msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 
 	respData, err := hubclient.HandleRequestMessage(msg.SenderID, method, msg.Data)
-	stat.Reply = string(respData)
-	stat.Completed(msg, err)
+	stat.Completed(msg, respData, err)
 	return stat
 }
 
@@ -37,7 +36,7 @@ func (agent *AgentHandler) HandleMessage(msg *things.ThingMessage) (stat hubclie
 			return agent.InvokeMethod(method, msg)
 		}
 	}
-	stat.Failed(msg, fmt.Errorf(
+	stat.DeliveryFailed(msg, fmt.Errorf(
 		"Agent for service '%s' does not have method '%s'", agent.thingID, msg.Key))
 	return stat
 }

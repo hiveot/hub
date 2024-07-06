@@ -21,16 +21,16 @@ func (svc *IsyBinding) handleActionRequest(action *things.ThingMessage) (stat hu
 
 	if !svc.isyAPI.IsConnected() {
 		slog.Warn(stat.Error)
-		stat.Completed(action, fmt.Errorf("No connection with the gateway"))
+		stat.Completed(action, nil, fmt.Errorf("No connection with the gateway"))
 		return
 	}
 	isyThing := svc.IsyGW.GetIsyThing(action.ThingID)
 	if isyThing == nil {
-		stat.Completed(action, fmt.Errorf("handleActionRequest: thing '%s' not found", action.ThingID))
+		stat.Completed(action, nil, fmt.Errorf("handleActionRequest: thing '%s' not found", action.ThingID))
 		slog.Warn(stat.Error)
 		return
 	}
 	err := isyThing.HandleActionRequest(action)
-	stat.Completed(action, err)
+	stat.Completed(action, nil, err)
 	return
 }

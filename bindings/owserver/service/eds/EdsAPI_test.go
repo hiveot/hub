@@ -48,7 +48,7 @@ func TestReadEdsFromGW(t *testing.T) {
 	require.NoError(t, err, "Live OWServer not found")
 
 	rootNode, err := eds.ReadEds(edsAddress, "", "")
-	assert.NoError(t, err, "Failed reading EDS gateway")
+	assert.NoError(t, err, "DeliveryFailed reading EDS gateway")
 	require.NotNil(t, rootNode, "Expected root node")
 	assert.GreaterOrEqual(t, len(rootNode.Nodes), 3, "Expected at least 3 nodes")
 }

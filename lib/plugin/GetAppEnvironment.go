@@ -117,7 +117,7 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 	clientID := path.Base(os.Args[0])
 	logLevel := os.Getenv("LOGLEVEL")
 	if logLevel == "" {
-		logLevel = "warning"
+		logLevel = "info"
 	}
 	serverURL := ""
 	//serverCore := ""

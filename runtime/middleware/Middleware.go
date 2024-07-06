@@ -47,7 +47,7 @@ func (svc *Middleware) HandleMessage(msg *things.ThingMessage) (stat hubclient.D
 	for _, handler := range svc.mwChain {
 		msg, err = handler(msg)
 		if err != nil {
-			stat.Failed(msg, err)
+			stat.DeliveryFailed(msg, err)
 			return stat
 		}
 	}
@@ -55,7 +55,7 @@ func (svc *Middleware) HandleMessage(msg *things.ThingMessage) (stat hubclient.D
 		return svc.handler(msg)
 	}
 	err = fmt.Errorf("No handler for messages is set")
-	stat.Failed(msg, err)
+	stat.DeliveryFailed(msg, err)
 	return stat
 }
 

@@ -79,7 +79,7 @@ func (test *TestServer) AddConnectUser(
 	}
 
 	hostPort := fmt.Sprintf("localhost:%d", test.Port)
-	cl = httpsse.NewHttpSSEClient(hostPort, clientID, test.Certs.CaCert, time.Minute)
+	cl = httpsse.NewHttpSSEClient(hostPort, clientID, nil, test.Certs.CaCert, time.Minute)
 	token, err = cl.ConnectWithPassword(password)
 
 	if err != nil {
@@ -102,14 +102,14 @@ func (test *TestServer) AddConnectAgent(
 			authz.AdminSetClientRoleArgs{agentID, authn.ClientRoleAgent})
 	}
 	if err != nil {
-		panic("Failed adding client:" + err.Error())
+		panic("AddConnectAgent: Failed adding client:" + err.Error())
 	}
 
 	hostPort := fmt.Sprintf("localhost:%d", test.Port)
-	cl = httpsse.NewHttpSSEClient(hostPort, agentID, test.Certs.CaCert, time.Minute)
+	cl = httpsse.NewHttpSSEClient(hostPort, agentID, nil, test.Certs.CaCert, time.Minute)
 	_, err = cl.ConnectWithToken(token)
 	if err != nil {
-		panic("Failed connecting using token. ClientID=" + agentID)
+		panic("AddConnectAgent: Failed connecting using token. ClientID=" + agentID)
 	}
 
 	return cl, token
@@ -130,14 +130,14 @@ func (test *TestServer) AddConnectService(serviceID string) (
 			authz.AdminSetClientRoleArgs{serviceID, authn.ClientRoleService})
 	}
 	if err != nil {
-		panic("Failed adding client:" + err.Error())
+		panic("AddConnectService: Failed adding client:" + err.Error())
 	}
 
 	hostPort := fmt.Sprintf("localhost:%d", test.Port)
-	cl = httpsse.NewHttpSSEClient(hostPort, serviceID, test.Certs.CaCert, time.Minute)
+	cl = httpsse.NewHttpSSEClient(hostPort, serviceID, nil, test.Certs.CaCert, time.Minute)
 	_, err = cl.ConnectWithToken(token)
 	if err != nil {
-		panic("Failed connecting using token. serviceID=" + serviceID)
+		panic("AddConnectService: Failed connecting using token. serviceID=" + serviceID)
 	}
 
 	return cl, token
@@ -154,7 +154,7 @@ func (test *TestServer) AddTD(agentID string, td *things.TD) *things.TD {
 	ag := test.Runtime.TransportsMgr.GetEmbedded().NewClient(agentID)
 	err := ag.PubEvent(td.ID, vocab.EventTypeTD, string(tdJSON))
 	if err != nil {
-		slog.Error("Failed adding TD")
+		slog.Error("AddTD: Failed adding TD")
 	}
 	return td
 }

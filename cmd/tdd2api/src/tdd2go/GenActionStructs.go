@@ -61,14 +61,20 @@ func GenActionResp(l *utils.L, serviceTitle string, key string, action *things.A
 	l.Add("// %s%sResp defines the response of the %s function", serviceTitle, typeName, key)
 	l.Add("// %s - %s", action.Title, action.Description)
 	GenDescription(l, action.Output.Description, action.Output.Comments)
-	l.Add("type %s%sResp struct {", serviceTitle, typeName)
-	// output is a dataschema which can be a native value or an object with multiple fields
-	// if this is a native value then name it 'Output'
-	//attrList := GetSchemaAttrs("output", action.Output)
-	l.Indent++
-	GenDataSchemaFields(l, "output", action.Output)
-	//GenDataSchemaParams(l, attrList)
-	l.Indent--
-	l.Add("}")
+	if action.Output.Ref != "" {
+		// use ref type as response type
+		titleType := ToTitle(action.Output.Ref)
+		l.Add("type %s%sResp %s", serviceTitle, typeName, titleType)
+	} else {
+		l.Add("type %s%sResp struct {", serviceTitle, typeName)
+		// output is a dataschema which can be a native value or an object with multiple fields
+		// if this is a native value then name it 'Output'
+		//attrList := GetSchemaAttrs("output", action.Output)
+		l.Indent++
+		GenDataSchemaFields(l, "output", action.Output)
+		//GenDataSchemaParams(l, attrList)
+		l.Indent--
+		l.Add("}")
+	}
 	l.Add("")
 }

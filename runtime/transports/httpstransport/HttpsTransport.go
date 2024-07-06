@@ -151,6 +151,24 @@ func (svc *HttpsTransport) getRequestParams(r *http.Request) (
 	return cs, messageType, thingID, key, body, err
 }
 
+// writeStatReply is a convenience function that writes the reply in a delivery status message
+// If stat has an error then write a bad request with the error as payload
+func (svc *HttpsTransport) writeStatReply(w http.ResponseWriter, stat hubclient.DeliveryStatus) {
+	if stat.Error != "" {
+		http.Error(w, stat.Error, http.StatusBadRequest)
+		return
+	}
+	if stat.Reply != nil {
+		// this transport uses json encoding
+		payload, _ := json.Marshal(stat.Reply)
+		// If no header is written then w.Write writes a StatusOK
+		_, _ = w.Write(payload)
+	} else {
+		// Only write header if no data is written
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
 // writeReply is a convenience function that writes a reply to a request.
 // If the reply has an error then write a bad request with the error as payload
 func (svc *HttpsTransport) writeReply(w http.ResponseWriter, payload []byte, err error) {
@@ -243,7 +261,7 @@ func (svc *HttpsTransport) SendToClient(
 	}
 
 	if err != nil {
-		stat.Failed(msg, err)
+		stat.DeliveryFailed(msg, err)
 	}
 	return stat, found
 }

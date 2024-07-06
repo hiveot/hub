@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime"
@@ -23,6 +24,7 @@ var ts *testenv.TestServer
 
 // start the test runtime
 func startRuntime() *runtime.Runtime {
+	logging.SetLogging("info", "")
 	ts = testenv.StartTestServer(true)
 	return ts.Runtime
 }
@@ -81,15 +83,15 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	// Agent receives action request which we'll handle here
 	cl1.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		rxMsg = msg
-		stat.Completed(msg, nil)
-		//stat.Failed(msg, fmt.Errorf("failuretest"))
-		stat.Reply = msg.DataAsText() + ".reply"
-		slog.Info("agent1 delivery complete", "messageID", msg.MessageID)
+		reply := msg.DataAsText() + ".reply"
+		stat.Completed(msg, reply, nil)
+		//stat.DeliveryFailed(msg, fmt.Errorf("failuretest"))
+		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "messageID", msg.MessageID)
 		return stat
 	})
 
 	// users receives delivery updates when sending actions
-	deliveryCtx, deliveryCtxComplete := context.WithTimeout(context.Background(), time.Minute*10)
+	deliveryCtx, deliveryCtxComplete := context.WithTimeout(context.Background(), time.Minute*1)
 	cl2.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		if msg.Key == vocab.EventTypeDeliveryUpdate {
 			// delivery updates are only invoked on for non-rpc actions
@@ -100,7 +102,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 		defer deliveryCtxComplete()
 		return stat
 	})
-
+	time.Sleep(time.Millisecond * 10)
 	// client sends action to agent and expect a 'delivered' result
 	// The RPC method returns an error if no reply is received
 	dThingID := things.MakeDigiTwinThingID(agentID, thingID)
@@ -117,7 +119,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	require.Equal(t, hubclient.DeliveryCompleted, stat3.Progress)
 	require.Empty(t, stat3.Error)
 	require.NotNil(t, rxMsg)
-	assert.Equal(t, expectedReply, string(stat3.Reply))
+	assert.Equal(t, expectedReply, stat3.Reply)
 	assert.Equal(t, thingID, rxMsg.ThingID)
 	assert.Equal(t, actionID, rxMsg.Key)
 	assert.Equal(t, vocab.MessageTypeAction, rxMsg.MessageType)
@@ -140,15 +142,15 @@ func TestServiceReconnect(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	cl1, cl1Token := ts.AddConnectAgent(agentID)
+	_ = cl1Token
 	defer cl1.Disconnect()
 
 	// Agent receives action request which we'll handle here
 	cl1.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		var req string
 		rxMsg.Store(&msg)
-		stat.Completed(msg, nil)
 		_ = msg.Decode(&req)
-		_ = stat.MarshalReply(req + ".reply")
+		stat.Completed(msg, req+".reply", nil)
 		slog.Info("agent1 delivery complete", "messageID", msg.MessageID)
 		return stat
 	})
@@ -167,10 +169,10 @@ func TestServiceReconnect(t *testing.T) {
 	cl2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
 	defer cl2.Disconnect()
 	// FIXME: detect a reconnect
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 3)
 
 	// FIXME. this should not be needed
-	_, err = cl1.ConnectWithToken(cl1Token)
+	//_, err = cl1.ConnectWithToken(cl1Token)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 10)
 

@@ -105,7 +105,7 @@ func TestPoll(t *testing.T) {
 			assert.NoError(t, err2)
 		}
 		tdCount.Add(1)
-		return stat.Completed(ev, nil)
+		return stat.Completed(ev, nil, nil)
 	})
 	assert.NoError(t, err)
 

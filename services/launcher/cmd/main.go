@@ -19,7 +19,7 @@ func main() {
 	cfg.LogLevel = env.LogLevel
 	err := env.LoadConfig(&cfg)
 	if err != nil {
-		slog.Error("Failed loading launcher config: ", "err", err)
+		slog.Error("DeliveryFailed loading launcher config: ", "err", err)
 		os.Exit(1)
 	}
 	logging.SetLogging(cfg.LogLevel, "")
@@ -29,7 +29,7 @@ func main() {
 	svc := service.NewLauncherService(env, cfg, nil)
 	err = svc.Start()
 	if err != nil {
-		slog.Error("Failed starting launcher: ", "err", err)
+		slog.Error("DeliveryFailed starting launcher: ", "err", err)
 		// we're going to exit. Don't leave the core running
 		_ = svc.Stop()
 		os.Exit(1)

@@ -10,7 +10,8 @@ import (
 	"time"
 )
 
-func CreateHttp2TLSClient(caCert *x509.Certificate, clientCert *tls.Certificate, timeout time.Duration) *http.Client {
+// NewHttp2TLSClient creates a http client setup for http/2
+func NewHttp2TLSClient(caCert *x509.Certificate, clientCert *tls.Certificate, timeout time.Duration) *http.Client {
 	var clientCertList []tls.Certificate
 
 	// the CA certificate is set in NewTLSClient

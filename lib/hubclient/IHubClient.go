@@ -1,7 +1,6 @@
 package hubclient
 
 import (
-	"crypto/tls"
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
@@ -68,7 +67,7 @@ type IHubClient interface {
 
 	// ConnectWithClientCert connects to the server using a client certificate.
 	// This authentication method is optional
-	ConnectWithClientCert(kp keys.IHiveKey, cert *tls.Certificate) (err error)
+	//ConnectWithClientCert(kp keys.IHiveKey, cert *tls.Certificate) (err error)
 
 	// ConnectWithPassword connects to the messaging server using password authentication.
 	// If a connection already exists it will be closed first.
@@ -164,7 +163,7 @@ type IHubClient interface {
 	PubTD(td *things.TD) error
 
 	// RefreshToken refreshes the authentication token
-	// The resulting token can be used with 'ConnectWithToken'
+	// The resulting token can be used with 'SetAuthToken'
 	RefreshToken(oldToken string) (newToken string, err error)
 
 	// Rpc makes a RPC call using an action and waits for a delivery confirmation event.

@@ -103,6 +103,11 @@ type DataSchema struct {
 	Properties map[string]*DataSchema `json:"properties,omitempty"`
 	// Defines which members of the object type are mandatory
 	Required []string `json:"required,omitempty"`
+	// reference to a schema defined in $defs or elsewhere
+	Ref string `json:"$ref"`
+	// object schema is a map with the data type defined in AdditionalProperties
+	// this datatype can be a dataschema or a $ref string
+	AdditionalProperties map[string]any `json:"additionalProperties,omitempty"`
 
 	// StringSchema with metadata describing data of type string.
 	// This Subclass is indicated by the value string assigned to type in DataSchema instances.

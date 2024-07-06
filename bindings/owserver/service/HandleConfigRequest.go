@@ -9,10 +9,12 @@ import (
 
 // HandleConfigRequest handles requests to configure the service or devices
 func (svc *OWServerBinding) HandleConfigRequest(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	var err error
+	valueStr := msg.DataAsText()
 	slog.Info("HandleConfigRequest",
 		slog.String("thingID", msg.ThingID),
 		slog.String("property", msg.Key),
-		slog.String("payload", msg.DataAsText()))
+		slog.String("payload", valueStr))
 
 	// the thingID is the ROMId of the device to configure
 	// the Name is the attributeID of the property to configure
@@ -21,37 +23,22 @@ func (svc *OWServerBinding) HandleConfigRequest(msg *things.ThingMessage) (stat 
 		// unable to delivery to Thing
 		err := fmt.Errorf("HandleConfigRequest: Thing '%s' not found", msg.ThingID)
 		slog.Warn(err.Error())
-		stat.Failed(msg, err)
+		stat.DeliveryFailed(msg, err)
 		return
 	}
-	valueMap := map[string]string{}
-	err := msg.Decode(&valueMap)
-	if err != nil {
-		err := fmt.Errorf("HandleConfigRequest: Invalid properties: %s", err.Error())
+	attr, found := node.Attr[msg.Key]
+	if !found {
+		err = fmt.Errorf("HandleConfigRequest: '%s not a property of Thing '%s' found",
+			msg.Key, msg.ThingID)
 		slog.Warn(err.Error())
-		stat.Completed(msg, err)
-		return stat
+	} else if !attr.Writable {
+		err := fmt.Errorf(
+			"HandleConfigRequest: property '%s' of Thing '%s' is not writable",
+			msg.Key, msg.ThingID)
+		slog.Warn(err.Error())
+	} else {
+		err = svc.edsAPI.WriteData(msg.ThingID, msg.Key, valueStr)
 	}
-	// keep the last error as a result value
-	// iterate all properties
-	for key, val := range valueMap {
-		attr, found := node.Attr[key]
-		if !found {
-			err = fmt.Errorf("HandleConfigRequest: '%s not a property of Thing '%s' found",
-				key, msg.ThingID)
-			slog.Warn(err.Error())
-			continue
-		} else if !attr.Writable {
-			err := fmt.Errorf(
-				"HandleConfigRequest: property '%s' of Thing '%s' is not writable", key, msg.ThingID)
-			slog.Warn(err.Error())
-			continue
-		}
-		err2 := svc.edsAPI.WriteData(msg.ThingID, key, val)
-		if err2 != nil {
-			err = err2
-		}
-	}
-	stat.Completed(msg, err)
+	stat.Completed(msg, nil, err)
 	return
 }

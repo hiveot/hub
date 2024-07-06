@@ -18,17 +18,11 @@ const (
 	// An additional progress update from the can be expected.
 	DeliveredToInbox = "inbox"
 
-	// DeliveredToAgent the request is delivered to the Thing's agent and awaiting further
+	// DeliveredToAgent the request is received by the Thing's agent and awaiting further
 	// updates. This is set by the server when the message is handed off to the agent.
 	// This status is sent by the Hub inbox and an additional progress update from
 	// the agent is expected.
-	DeliveredToAgent = "agent"
-
-	// DeliveryWaiting optional step where the agent is waiting to apply it to
-	// the Thing, for example when the device is asleep.
-	// This status is sent by the agent.
-	// An additional progress update from the agent can be expected.
-	DeliveryWaiting = "waiting"
+	DeliveredToAgent = "received"
 
 	// DeliveryApplied is a step where the request has been applied to the Thing by the
 	// agent and the agent is waiting for acceptance.
@@ -63,27 +57,43 @@ type DeliveryStatus struct {
 	// Error in case delivery or processing has failed
 	Error string `json:"error,omitempty"`
 	// Serialized reply in case delivery and processing has completed
-	// FIXME: change reply to any type and return native value
-	Reply string `json:"reply,omitempty"`
+	Reply any `json:"reply,omitempty"`
 }
 
-// Completed is a simple helper that sets the message delivery progress to completed.
-// Use this when the message is delivered to the service.
-// This applies to delivery, not processing.
+// Applied is a simple helper that sets the message delivery progress to applied,
+// and associates the message.
+//
+// Use this  when the request has been applied to the device but not yet completed.
+//
 // Primarily intended to make sure the messageID is not forgotten.
-func (stat *DeliveryStatus) Completed(msg *things.ThingMessage, err error) DeliveryStatus {
+func (stat *DeliveryStatus) Applied(msg *things.ThingMessage) DeliveryStatus {
+	stat.Progress = DeliveryApplied
+	stat.MessageID = msg.MessageID
+	return *stat
+}
+
+// Completed is a simple helper that sets the message delivery progress to completed,
+// associates the message and sets the reply data or error.
+//
+// # Use this  when the processing has been completed without or with error
+//
+// Primarily intended to make sure the messageID is not forgotten.
+func (stat *DeliveryStatus) Completed(msg *things.ThingMessage, reply any, err error) DeliveryStatus {
 	stat.Progress = DeliveryCompleted
 	stat.MessageID = msg.MessageID
+	stat.Reply = reply
 	if err != nil {
 		stat.Error = err.Error()
 	}
 	return *stat
 }
 
-// Failed is a simple helper that sets the message delivery status to failed with error.
-// This applies to failed delivery, not processing.
+// DeliveryFailed is a simple helper that sets the message delivery status to failed with error.
+//
+// Use this if the messages cannot be delivered to the final destination.
+//
 // Primarily intended to make sure the messageID is not forgotten.
-func (stat *DeliveryStatus) Failed(msg *things.ThingMessage, err error) DeliveryStatus {
+func (stat *DeliveryStatus) DeliveryFailed(msg *things.ThingMessage, err error) DeliveryStatus {
 	stat.Progress = DeliveryFailed
 	stat.MessageID = msg.MessageID
 	if err != nil {
@@ -92,25 +102,15 @@ func (stat *DeliveryStatus) Failed(msg *things.ThingMessage, err error) Delivery
 	return *stat
 }
 
-// UnmarshalReply the reply data in this status into the given data type
-// This returns an error if unmarshalling fails or false if status does not have any data
-func (stat *DeliveryStatus) UnmarshalReply(reply interface{}) (error, bool) {
-	if stat.Reply == "" {
+// Decode converts the native type into the given data type
+func (stat *DeliveryStatus) Decode(reply interface{}) (error, bool) {
+	if stat.Reply == nil {
 		return nil, false
 	}
-	err := json.Unmarshal([]byte(stat.Reply), reply)
+
+	// the ugly workaround is to marshal/unmarshal using json.
+	// TODO: more efficient method to convert the any type to the given type.
+	jsonData, _ := json.Marshal(stat.Reply)
+	err := json.Unmarshal(jsonData, reply)
 	return err, true
-}
-
-// Marshal the status message itself for transport
-func (stat *DeliveryStatus) Marshal() string {
-	statJson, _ := json.Marshal(stat)
-	return string(statJson)
-}
-
-// MarshalReply store the serialized reply data into the delivery status
-func (stat *DeliveryStatus) MarshalReply(reply interface{}) error {
-	replyData, err := json.Marshal(reply)
-	stat.Reply = string(replyData)
-	return err
 }

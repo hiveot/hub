@@ -2,7 +2,6 @@ package httpstransport_test
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -106,8 +105,8 @@ func createConnectClient(clientID string) *tlsclient.TLSClient {
 	// 2b. connect a client
 	token, sessionID, err := dummyAuthenticator.Login(testLogin, testPassword)
 	_ = sessionID
-	cl := tlsclient.NewTLSClient(hostPort, certBundle.CaCert, time.Second*120)
-	cl.ConnectWithToken(token)
+	cl := tlsclient.NewTLSClient(hostPort, nil, certBundle.CaCert, time.Second*120)
+	cl.SetAuthToken(token)
 	return cl
 }
 
@@ -144,7 +143,7 @@ func TestLoginRefresh(t *testing.T) {
 		})
 	defer svc.Stop()
 
-	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert, time.Minute)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, nil, certBundle.CaCert, time.Minute)
 	token, err := cl.ConnectWithPassword(testPassword)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
@@ -182,7 +181,7 @@ func TestBadLogin(t *testing.T) {
 	defer svc.Stop()
 
 	// check if this test still works with a valid login
-	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert, time.Minute)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, nil, certBundle.CaCert, time.Minute)
 	//cl := tlsclient.NewTLSClient(hostPort, certBundle.CaCert, time.Second*120)
 	token, err := cl.ConnectWithPassword(testPassword)
 	assert.NoError(t, err)
@@ -199,7 +198,7 @@ func TestBadLogin(t *testing.T) {
 	cl.Disconnect()
 
 	// bad client ID
-	cl2 := httpsse.NewHttpSSEClient(hostPort, "badID", certBundle.CaCert, time.Minute)
+	cl2 := httpsse.NewHttpSSEClient(hostPort, "badID", nil, certBundle.CaCert, time.Minute)
 	token, err = cl2.ConnectWithPassword(testPassword)
 	assert.Error(t, err)
 	assert.Empty(t, token)
@@ -214,7 +213,7 @@ func TestBadRefresh(t *testing.T) {
 		})
 	defer svc.Stop()
 
-	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert, time.Minute)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, nil, certBundle.CaCert, time.Minute)
 
 	// set the token
 	token, err := cl.ConnectWithToken("badtoken")
@@ -232,7 +231,7 @@ func TestBadRefresh(t *testing.T) {
 	assert.NotEmpty(t, validToken)
 	cl.Disconnect()
 	//
-	cl2 := httpsse.NewHttpSSEClient(hostPort, "badlogin", certBundle.CaCert, time.Minute)
+	cl2 := httpsse.NewHttpSSEClient(hostPort, "badlogin", nil, certBundle.CaCert, time.Minute)
 	defer cl2.Disconnect()
 	token, err = cl2.ConnectWithToken(validToken)
 	assert.Error(t, err)
@@ -256,9 +255,8 @@ func TestPostEventAction(t *testing.T) {
 	svc := startHttpsBinding(
 		func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 			rxMsg = tv
-			stat.Reply = testMsg
-			stat.Progress = hubclient.DeliveryCompleted
-			stat.MessageID = uuid.New().String()
+			stat.Completed(tv, testMsg, nil)
+			//stat.MessageID = uuid.New().String()
 			return stat
 		})
 	defer svc.Stop()
@@ -271,7 +269,7 @@ func TestPostEventAction(t *testing.T) {
 	assert.NotNil(t, cs)
 
 	// 2b. connect a client
-	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert, time.Minute)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, nil, certBundle.CaCert, time.Minute)
 	token, err := cl.ConnectWithPassword(testPassword)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
@@ -321,7 +319,7 @@ func TestPubSubSSE(t *testing.T) {
 	defer svc.Stop()
 
 	// 2. connect with a client
-	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert, time.Minute)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, nil, certBundle.CaCert, time.Minute)
 	token, err := cl.ConnectWithPassword(testPassword)
 	require.NoError(t, err)
 	assert.NotEmpty(t, token)
@@ -334,7 +332,7 @@ func TestPubSubSSE(t *testing.T) {
 	cl.SetMessageHandler(
 		func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 			rxMsg.Store(&msg)
-			return stat.Completed(msg, nil)
+			return stat.Completed(msg, nil, nil)
 		})
 	err = cl.Subscribe(thingID, "")
 	require.NoError(t, err)
@@ -367,19 +365,20 @@ func TestRestart(t *testing.T) {
 		})
 
 	// 2. connect a service client
-	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert, time.Minute)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, nil, certBundle.CaCert, time.Minute)
 	token, err := cl.ConnectWithPassword(testPassword)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 
 	// restart the server. This should invalidate session auth
+	t.Log("--- Stopping the server ---")
 	svc.Stop()
 	err = svc.Start(func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 		rxMsg = tv
-		stat.Reply = testMsg
-		stat.Progress = hubclient.DeliveryCompleted
+		stat.Completed(tv, testMsg, nil)
 		return stat
 	})
+	t.Log("--- Restarted the server ---")
 	require.NoError(t, err)
 	defer svc.Stop()
 
@@ -405,7 +404,7 @@ func TestReconnect(t *testing.T) {
 			if actionHandler != nil {
 				return actionHandler(msg)
 			}
-			stat.Failed(msg, fmt.Errorf("No test action handler"))
+			stat.DeliveryFailed(msg, fmt.Errorf("No test action handler"))
 			return stat
 		})
 	defer svc.Stop()
@@ -421,8 +420,7 @@ func TestReconnect(t *testing.T) {
 		// send a delivery status update asynchronously which uses the SSE return channel
 		go func() {
 			var stat2 hubclient.DeliveryStatus
-			stat2.Completed(tv, nil)
-			stat2.Reply = tv.Data.(string)
+			stat2.Completed(tv, tv.Data, nil)
 			tm2 := things.NewThingMessage(
 				vocab.MessageTypeEvent, tv.SenderID, vocab.EventTypeDeliveryUpdate, stat2, thingID)
 
@@ -433,7 +431,7 @@ func TestReconnect(t *testing.T) {
 	}
 
 	// 2. connect a service client. Service auth tokens remain valid between sessions.
-	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, certBundle.CaCert, time.Minute)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, nil, certBundle.CaCert, time.Minute)
 	defer cl.Disconnect()
 	token, err := cl.ConnectWithToken(serviceToken)
 	assert.NoError(t, err)
@@ -441,7 +439,7 @@ func TestReconnect(t *testing.T) {
 
 	//cl.PubEvent("dummything", "dummyKey", nil)
 
-	//  Give some time for the SSE connection to be established
+	//  Give some time for the SSE connection to be re-established
 	time.Sleep(time.Second * 1)
 
 	// 3. restart the server.

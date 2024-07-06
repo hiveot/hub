@@ -28,7 +28,7 @@ func (agent *AuthnAgent) HandleMessage(msg *things.ThingMessage) (stat hubclient
 		return agent.userHandler(msg)
 	}
 	err := fmt.Errorf("unknown authn service capability '%s'", msg.ThingID)
-	stat.Failed(msg, err)
+	stat.DeliveryFailed(msg, err)
 	return stat
 }
 

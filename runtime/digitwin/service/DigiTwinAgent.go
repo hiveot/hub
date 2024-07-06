@@ -35,7 +35,7 @@ func (agent *DigiTwinAgent) HandleMessage(msg *things.ThingMessage) (stat hubcli
 		return agent.outboxHandler(msg)
 	}
 
-	stat.Failed(msg, fmt.Errorf("unknown digitwin service thingID '%s'", msg.ThingID))
+	stat.DeliveryFailed(msg, fmt.Errorf("unknown digitwin service thingID '%s'", msg.ThingID))
 	return stat
 }
 

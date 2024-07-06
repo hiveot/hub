@@ -22,7 +22,7 @@ var dirStorePath = path.Join(testDirFolder, "directory.data")
 // startService initializes a service and a client
 // This doesn't use any transport.
 func startDirectory(clean bool) (
-	svc *service.DigitwinDirectory,
+	svc *service.DigitwinDirectoryService,
 	cl hubclient.IHubClient,
 	stopFn func()) {
 

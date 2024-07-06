@@ -37,14 +37,11 @@ func TestHttpsGetActions(t *testing.T) {
 	require.Empty(t, stat.Error)
 
 	// read the latest actions from the digitwin inbox
-	args := digitwin.InboxReadLatestArgs{ThingID: dtThing1ID}
-	resp := things.ThingMessageMap{}
+	args := digitwin.InboxReadLatestArgs{ThingID: dtThing1ID, Key: key1}
+	resp := digitwin.InboxRecord{}
 	err := cl2.Rpc(digitwin.InboxDThingID, digitwin.InboxReadLatestMethod, &args, &resp)
 	require.NoError(t, err)
-
-	actionMsg := resp[key1]
-	require.NotNil(t, actionMsg)
-	assert.Equal(t, data, actionMsg.Data)
+	require.Equal(t, stat.MessageID, resp.MessageID)
 }
 
 // Get events from the outbox using the experimental http REST api
@@ -70,8 +67,8 @@ func TestHttpsGetEvents(t *testing.T) {
 	defer cl.Disconnect()
 	// read using a plain old http client
 	hostPort := fmt.Sprintf("localhost:%d", ts.Port)
-	tlsClient := tlsclient.NewTLSClient(hostPort, ts.Certs.CaCert, time.Minute)
-	tlsClient.ConnectWithToken(token)
+	tlsClient := tlsclient.NewTLSClient(hostPort, nil, ts.Certs.CaCert, time.Minute)
+	tlsClient.SetAuthToken(token)
 
 	// read latest using the experimental http REST API
 	vars := map[string]string{"thingID": dtThingID}
