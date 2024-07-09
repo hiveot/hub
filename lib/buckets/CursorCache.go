@@ -145,11 +145,13 @@ func (cc *CursorCache) GetCursorsByOwner(ownerID string) []*CursorInfo {
 
 // Release releases the cursor and removes the cursor from the tracker
 // If a bucket was included it will be closed as well.
-func (cc *CursorCache) Release(cursorKey string, clientID string) error {
+func (cc *CursorCache) Release(clientID string, cursorKey string) error {
+	slog.Info("Release", "cursorKey", cursorKey)
 	cc.mux.Lock()
 	defer cc.mux.Unlock()
 	ci, found := cc.cursorsByKey[cursorKey]
 	if !found {
+		slog.Error("Release. Cursor not found", "clientID", clientID, "cursorKey", cursorKey)
 		return nil
 	}
 	if ci.OwnerID != clientID {

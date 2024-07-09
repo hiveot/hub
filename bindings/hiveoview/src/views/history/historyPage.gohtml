@@ -9,9 +9,10 @@
 	<div
 					hx-trigger="intersect once"
 					hx-swap="outerHTML"
-					hx-get="">reloading page fragment...</div>
-{{else}}
+					hx-get="">reloading page fragment...
+	</div>
 
+{{else}}
 
 <main class="container-fluid">
 
@@ -23,8 +24,10 @@
         {{else}}
 					hx-get="/history/{{.ThingID}}/{{.Key}}?time={{.Timestamp}}"
         {{end}}
+				hx-target="#historyPage"
+				hx-swap="innerHTML"
 				class="h-panel container-fluid"
->
+	>
 	<ul class="h-grid-table history-header" style="grid-column-gap: 10px;  align-items: baseline">
 		<label for="histDeviceName">History of:</label>
 		<input id="histDeviceName" readonly

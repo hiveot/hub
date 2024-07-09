@@ -44,7 +44,11 @@ func CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing.TD) {
 			prop := tdoc.AddProperty(attrID, propType, title, dataType)
 			unit := attrInfo.Unit
 			if attr.Unit != "" {
-				unit, _ = UnitNameVocab[attr.Unit]
+				unitID, found := UnitNameVocab[attr.Unit]
+				if found {
+					unitInfo := vocab.UnitClassesMap[unitID]
+					unit = unitInfo.Symbol
+				}
 			}
 			prop.Unit = unit
 			// non-sensors are attributes. Writable attributes are configuration.

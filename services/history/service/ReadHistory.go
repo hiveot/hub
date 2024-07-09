@@ -27,7 +27,7 @@ func (svc *ReadHistory) GetCursor(
 		return nil, fmt.Errorf("missing thingID")
 	}
 	thingAddr := args.ThingID
-	slog.Debug("GetCursor for bucket: ", "addr", thingAddr)
+	slog.Info("GetCursor for bucket: ", "addr", thingAddr)
 	bucket := svc.bucketStore.GetBucket(thingAddr)
 	cursor, err := bucket.Cursor()
 	//
