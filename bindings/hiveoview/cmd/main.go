@@ -5,14 +5,18 @@ import (
 	"flag"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/hiveot/hub/bindings/hiveoview/src/service"
+	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/runtime"
 	"log/slog"
 	"os"
 	"path"
 )
 
-const port = 8080 // default webserver port
+const port = 8443 // default webserver TLS port
+const serverCertFile = runtime.DefaultServerCertFile
+const serverKeyFile = runtime.DefaultServerKeyFile
 
 // During development, run with 'air' and set home to a working hiveot directory
 // that has certs.
@@ -60,8 +64,17 @@ func main() {
 		cwd, _ := os.Getwd()
 		rootPath = path.Join(cwd, "bindings/hiveoview/src")
 	}
+	// A server certificate is needed in the certs directory
+	serverCertPath := path.Join(env.CertsDir, serverCertFile)
+	serverKeyPath := path.Join(env.CertsDir, serverKeyFile)
+	serverCert, err := certs.LoadTLSCertFromPEM(serverCertPath, serverKeyPath)
+	if err != nil {
+		slog.Error("Unable to load server certificate: " + err.Error())
+		return
+	}
+	svc := service.NewHiveovService(
+		serverPort, false, signingKey, rootPath, serverCert, env.CaCert)
 
-	svc := service.NewHiveovService(serverPort, false, signingKey, rootPath)
 	// StartPlugin will connect to the hub and wait for signal to end
 	plugin.StartPlugin(svc, env.ClientID, env.CertsDir)
 }

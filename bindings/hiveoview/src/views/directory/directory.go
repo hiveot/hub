@@ -12,7 +12,7 @@ import (
 	"sort"
 )
 
-const DirectoryTemplate = "directory.gohtml"
+const DirectoryTemplate = "directoryPage.gohtml"
 
 type DirGroup struct {
 	AgentID string
@@ -74,38 +74,41 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	var tdList []*things.TD
 
 	// 1: get session
-	mySession, err := session.GetSessionFromContext(r)
-	if err == nil {
-		//thingsList := make([]things.TD, 0)
-		hc := mySession.GetHubClient()
-		thingsList, err2 := digitwin.DirectoryReadTDs(hc, 300, 0)
-		for _, tdJson := range thingsList {
-			td := things.TD{}
-			err = json.Unmarshal([]byte(tdJson), &td)
-			if err == nil {
-				tdList = append(tdList, &td)
-			}
-		}
-		//resp, err2 := directory.ReadTDs(hc, directory.ReadTDsArgs{Limit: 200})
-		err = err2
-		if err == nil {
-			dirGroups := groupThings(tdList)
-			sortGroupThings(dirGroups)
-			//data["Directory"] = dirGroups
-			data.Directory = dirGroups
-		} else {
-			// the 'Directory' attribute is used by html know if to reload
-			err = fmt.Errorf("unable to load directory: %w", err)
-			slog.Error(err.Error())
-		}
-	}
+	mySession, hc, err := session.GetSessionFromContext(r)
 	if err != nil {
 		slog.Info("failed getting session. Redirecting to login", "err", err.Error())
-		// assume this is an auth issue, maybe the browser was still open or a bookmark was used
+		// assume this is an auth issue or expired session
 		//mySession.Close()
 		//http.Error(w, err.Error(), http.StatusUnauthorized)
+
 		// FIXME: logout doesn't update URL to /login (need navigateto?)
 		session.SessionLogout(w, r)
+		return
+	}
+
+	//thingsList := make([]things.TD, 0)
+	thingsList, err2 := digitwin.DirectoryReadTDs(hc, 300, 0)
+	for _, tdJson := range thingsList {
+		td := things.TD{}
+		err = json.Unmarshal([]byte(tdJson), &td)
+		if err == nil {
+			tdList = append(tdList, &td)
+		}
+	}
+	//resp, err2 := directory.ReadTDs(hc, directory.ReadTDsArgs{Limit: 200})
+	err = err2
+	if err == nil {
+		dirGroups := groupThings(tdList)
+		sortGroupThings(dirGroups)
+		data.Directory = dirGroups
+	} else {
+		// the 'Directory' attribute is used by html know if to reload
+		err = fmt.Errorf("unable to load directory: %w", err)
+		slog.Error(err.Error())
+	}
+
+	if err != nil {
+		mySession.WriteError(w, err, 0)
 		return
 	}
 	data.PageNr = 1

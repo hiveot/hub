@@ -20,7 +20,7 @@ import (
 // TLSServer is a simple TLS MsgServer supporting BASIC, Jwt and client certificate authentication
 type TLSServer struct {
 	address    string
-	port       uint
+	port       int
 	caCert     *x509.Certificate
 	serverCert *tls.Certificate
 	httpServer *http.Server
@@ -121,7 +121,7 @@ func (srv *TLSServer) Stop() {
 	slog.Info("Stopping TLS server")
 
 	if srv.httpServer != nil {
-		// note that this does not close existing connections
+		// note that this does not (cannot?) close existing client connections
 		ctx, cancelFn := context.WithTimeout(context.Background(), time.Second*3)
 		err := srv.httpServer.Shutdown(ctx)
 		if err != nil {
@@ -143,7 +143,7 @@ func (srv *TLSServer) Stop() {
 //	caCert         CA certificate to verify client certificates
 //
 // returns TLS server and router for handling requests
-func NewTLSServer(address string, port uint,
+func NewTLSServer(address string, port int,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 ) (*TLSServer, *chi.Mux) {

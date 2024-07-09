@@ -74,9 +74,8 @@ func RenderConfigEditDialog(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	propKey := chi.URLParam(r, "key")
 
-	mySession, err := session.GetSessionFromContext(r)
+	_, hc, err := session.GetSessionFromContext(r)
 	if err == nil {
-		hc := mySession.GetHubClient()
 		cv, err = getConfigValue(hc, thingID, propKey)
 	}
 	if err != nil {
@@ -100,9 +99,8 @@ func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 	propKey := chi.URLParam(r, "key")
 	valueStr := r.FormValue(propKey)
 
-	mySession, err := session.GetSessionFromContext(r)
+	mySession, hc, err := session.GetSessionFromContext(r)
 	if err == nil {
-		hc = mySession.GetHubClient()
 		td, propAff, err = getPropAff(hc, thingID, propKey)
 		_ = td
 	}
@@ -128,11 +126,8 @@ func PostThingConfig(w http.ResponseWriter, r *http.Request) {
 			slog.String("propKey", propKey),
 			slog.String("err", err.Error()))
 
-		// notify UI via SSE. This is handled by a toast component.
-		mySession.SendNotify(session.NotifyError, err.Error())
-
 		// todo, differentiate between error causes, eg 500 server error, 503 service not available, 400 invalid value and 401 unauthorized
-		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		mySession.WriteError(w, err, http.StatusServiceUnavailable)
 		return
 	}
 

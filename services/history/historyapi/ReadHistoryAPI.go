@@ -7,13 +7,22 @@ import (
 // ReadHistoryServiceID is the ID of the service exposed by the agent
 const ReadHistoryServiceID = "read"
 
+// DefaultLimit nr items of none provided
+const DefaultLimit = 100
+
 // Read history methods
 const (
 	// CursorNextNMethod returns a batch of next N historical values
 	CursorNextNMethod = "cursorNextN"
 
+	// CursorNextUntilMethod reads until the given end time or limit is reached
+	CursorNextUntilMethod = "cursorNextUntil"
+
 	// CursorPrevNMethod returns a batch of prior N historical values
 	CursorPrevNMethod = "cursorPrevN"
+
+	// CursorPrevUntilMethod reads until the given start time or limit is reached
+	CursorPrevUntilMethod = "cursorPrevUntil"
 
 	// CursorReleaseMethod releases the cursor and resources
 	// This MUST be called after the cursor is not longer used.
@@ -31,7 +40,7 @@ const (
 	GetCursorMethod = "getCursor"
 )
 
-// cursor methods that take the key as arg and returns a value
+// cursor methods that take the key as arg and returns a single value
 const (
 	// CursorFirstMethod return the oldest value in the history
 	CursorFirstMethod = "cursorFirst"
@@ -72,6 +81,17 @@ type CursorNResp struct {
 	Values []*things.ThingMessage `json:"values"`
 	// There are still items remaining.
 	ItemsRemaining bool `json:"itemsRemaining"`
+}
+
+// CursorUntilArgs arguments for next-until or prev-until cursor
+// TimeStamp is the start time to reach for prev-until or end-time for next-until
+type CursorUntilArgs struct {
+	// Cursor identifier obtained with GetCursor
+	CursorKey string `json:"cursorKey"`
+	// timestamp in rfc8601 format or 'now' for default
+	TimeStamp string `json:"timeStamp"`
+	// limit nr of results or 0 for default
+	Limit int `json:"limit"`
 }
 
 type CursorReleaseArgs struct {

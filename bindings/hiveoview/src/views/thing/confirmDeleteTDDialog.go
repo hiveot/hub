@@ -24,17 +24,19 @@ func RenderConfirmDeleteTDDialog(w http.ResponseWriter, r *http.Request) {
 	tdJson := ""
 
 	// Read the TD being displayed and its latest values
-	mySession, err := session.GetSessionFromContext(r)
+	mySession, hc, err := session.GetSessionFromContext(r)
+	if err != nil {
+		// TODO: redirect to login?
+		mySession.WriteError(w, err, http.StatusBadRequest)
+		return
+	}
+
+	tdJson, err = digitwin.DirectoryReadTD(hc, thingID)
 	if err == nil {
-		hc := mySession.GetHubClient()
-		tdJson, err = digitwin.DirectoryReadTD(hc, thingID)
-		if err == nil {
-			err = json.Unmarshal([]byte(tdJson), &td)
-		}
+		err = json.Unmarshal([]byte(tdJson), &td)
 	}
 	if err != nil {
-		mySession.SendNotify(session.NotifyError, err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		mySession.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 	data := ConfirmDeleteTDTemplateData{
@@ -52,14 +54,18 @@ func PostDeleteTD(w http.ResponseWriter, r *http.Request) {
 	var hc hubclient.IHubClient
 
 	// get the hub client connection and read the existing TD
-	mySession, err := session.GetSessionFromContext(r)
-	if err == nil {
-		hc = mySession.GetHubClient()
-		tdJSON, err = digitwin.DirectoryReadTD(hc, thingID)
-		if err == nil {
-			err = json.Unmarshal([]byte(tdJSON), &td)
-		}
+	mySession, hc, err := session.GetSessionFromContext(r)
+	if err != nil {
+		// TODO: redirect to login?
+		mySession.WriteError(w, err, http.StatusBadRequest)
+		return
 	}
+
+	tdJSON, err = digitwin.DirectoryReadTD(hc, thingID)
+	if err == nil {
+		err = json.Unmarshal([]byte(tdJSON), &td)
+	}
+
 	// delete the TD
 	if err == nil {
 		slog.Info("Deleting TD", slog.String("thingID", thingID))
@@ -68,11 +74,8 @@ func PostDeleteTD(w http.ResponseWriter, r *http.Request) {
 
 	// report the result
 	if err != nil {
-		slog.Warn("PostDeleteTD failed", "err", err.Error())
-		// notify UI via SSE. This is handled by a toast component.
-		mySession.SendNotify(session.NotifyError, err.Error())
-
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		mySession.WriteError(w, err, http.StatusInternalServerError)
+		return
 	}
 
 	msgText := fmt.Sprintf("Thing '%s' successfully removed from the directory", td.Title)

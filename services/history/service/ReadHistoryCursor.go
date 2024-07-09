@@ -214,6 +214,7 @@ func (svc *ReadHistory) Last(senderID string, args historyapi.CursorArgs) (*hist
 
 // Next moves the cursor to the next key from the current cursor
 // First() or Seek must have been called first.
+// This returns an error if the cursor is not found.
 func (svc *ReadHistory) Next(senderID string, args historyapi.CursorArgs) (*historyapi.CursorSingleResp, error) {
 
 	cursor, ci, err := svc.cursorCache.Get(args.CursorKey, senderID, true)
@@ -247,18 +248,60 @@ func (svc *ReadHistory) Next(senderID string, args historyapi.CursorArgs) (*hist
 // Intended to speed up with batch iterations over rpc.
 func (svc *ReadHistory) NextN(senderID string, args historyapi.CursorNArgs) (*historyapi.CursorNResp, error) {
 
-	values := make([]*things.ThingMessage, 0, args.Limit)
+	limit := args.Limit
+	if limit <= 0 {
+		limit = historyapi.DefaultLimit
+	}
+	values := make([]*things.ThingMessage, 0, limit)
 	nextArgs := historyapi.CursorArgs{CursorKey: args.CursorKey}
 	itemsRemaining := true
 
 	// tbd is it faster to use NextN and sort the keys?
-	for i := 0; i < args.Limit; i++ {
+	for i := 0; i < limit; i++ {
 		nextResp, err := svc.Next(senderID, nextArgs)
 		if !nextResp.Valid || err != nil {
 			itemsRemaining = false
 			break
 		}
 		values = append(values, nextResp.Value)
+	}
+	resp := &historyapi.CursorNResp{}
+	resp.Values = values
+	resp.ItemsRemaining = itemsRemaining
+	return resp, nil
+}
+
+// NextUntil reads a batch of items until the end-time or limit is reached
+func (svc *ReadHistory) NextUntil(senderID string, args historyapi.CursorUntilArgs) (
+	*historyapi.CursorNResp, error) {
+
+	limit := args.Limit
+	if limit == 0 {
+		limit = historyapi.DefaultLimit
+	}
+	endTime, _ := dateparse.ParseAny(args.TimeStamp)
+	values := make([]*things.ThingMessage, 0, limit)
+	nextArgs := historyapi.CursorArgs{CursorKey: args.CursorKey}
+	itemsRemaining := true
+
+	// tbd is it faster to use NextN and sort the keys?
+	for i := 0; i < limit; i++ {
+		nextResp, err := svc.Next(senderID, nextArgs)
+		if !nextResp.Valid || err != nil {
+			itemsRemaining = false
+			break
+		}
+		stamp, err := dateparse.ParseAny(nextResp.Value.Created)
+		if err != nil {
+			break
+		}
+		if stamp.Compare(endTime) <= 0 {
+			// value timestamp is before endtime
+			values = append(values, nextResp.Value)
+		} else {
+			itemsRemaining = false
+			break
+		}
 	}
 	resp := &historyapi.CursorNResp{}
 	resp.Values = values
@@ -299,18 +342,61 @@ func (svc *ReadHistory) Prev(senderID string, args historyapi.CursorArgs) (*hist
 // Intended to speed up with batch iterations over rpc.
 func (svc *ReadHistory) PrevN(senderID string, args historyapi.CursorNArgs) (*historyapi.CursorNResp, error) {
 
-	values := make([]*things.ThingMessage, 0, args.Limit)
+	limit := args.Limit
+	if limit <= 0 {
+		limit = historyapi.DefaultLimit
+	}
+	values := make([]*things.ThingMessage, 0, limit)
 	prevArgs := historyapi.CursorArgs{CursorKey: args.CursorKey}
 	itemsRemaining := true
 
 	// tbd is it faster to use NextN and sort the keys? - for a remote store yes
-	for i := 0; i < args.Limit; i++ {
+	for i := 0; i < limit; i++ {
 		prevResp, err := svc.Prev(senderID, prevArgs)
 		if !prevResp.Valid || err != nil {
 			itemsRemaining = false
 			break
 		}
 		values = append(values, prevResp.Value)
+	}
+	resp := &historyapi.CursorNResp{}
+	resp.Values = values
+	resp.ItemsRemaining = itemsRemaining
+	return resp, nil
+}
+
+// PrevUntil reads back in time until a start-time is reached
+func (svc *ReadHistory) PrevUntil(senderID string, args historyapi.CursorUntilArgs) (
+	*historyapi.CursorNResp, error) {
+
+	// TODO: reduce code duplication
+	limit := args.Limit
+	if limit == 0 {
+		limit = historyapi.DefaultLimit
+	}
+	timeStamp, _ := dateparse.ParseAny(args.TimeStamp)
+	values := make([]*things.ThingMessage, 0, limit)
+	cursorArgs := historyapi.CursorArgs{CursorKey: args.CursorKey}
+	itemsRemaining := true
+
+	// tbd is it faster to use NextN and sort the keys?
+	for i := 0; i < limit; i++ {
+		resp, err := svc.Prev(senderID, cursorArgs)
+		if !resp.Valid || err != nil {
+			itemsRemaining = false
+			break
+		}
+		stamp, err := dateparse.ParseAny(resp.Value.Created)
+		if err != nil {
+			break
+		}
+		if stamp.Compare(timeStamp) >= 0 {
+			// value timestamp is after start-time
+			values = append(values, resp.Value)
+		} else {
+			itemsRemaining = false
+			break
+		}
 	}
 	resp := &historyapi.CursorNResp{}
 	resp.Values = values
@@ -327,6 +413,7 @@ func (svc *ReadHistory) Release(senderID string, args historyapi.CursorReleaseAr
 
 // Seek positions the cursor at the given searchKey and corresponding value.
 // If the key is not found, the next key is returned.
+// This returns an error if the cursor is not found.
 func (svc *ReadHistory) Seek(senderID string, args historyapi.CursorSeekArgs) (*historyapi.CursorSingleResp, error) {
 
 	until := time.Now()

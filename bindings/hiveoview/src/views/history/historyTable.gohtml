@@ -1,0 +1,36 @@
+{{/*Display a table of event values from the history */}}
+
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/history.HistoryTemplateData */ -}}
+
+	<ul class="history-table h-grid-table" striped border>
+			{{/* Table Header*/}}
+			<li>
+				<div>Time</div>
+				<div>Value</div>
+			</li>
+
+			{{/* Table values*/}}
+			{{range .Values}}
+					<li>
+						<div>{{.GetUpdated "WT"}}</div>
+						<div>{{.DataAsText}} {{$.Aff.Data.Unit}}</div>
+					</li>
+			{{end}}
+	</ul>
+
+
+
+<style>
+
+    /*xs, show column 1 (time), 2 (value) */
+		.history-table {
+	    grid-template-columns:
+	        minmax(200px, max-content )
+	        minmax(100px, max-content)
+		}
+
+      .history-header {
+          grid-template-columns: max-content 1fr;
+      }
+
+</style>

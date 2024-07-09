@@ -27,15 +27,17 @@ func StartHistoryAgent(
 		historyapi.SetRetentionRulesMethod: svc.manageHistSvc.SetRetentionRules,
 	}
 	readHistoryMethods := map[string]interface{}{
-		historyapi.CursorFirstMethod:   svc.readHistSvc.First,
-		historyapi.CursorLastMethod:    svc.readHistSvc.Last,
-		historyapi.CursorNextMethod:    svc.readHistSvc.Next,
-		historyapi.CursorNextNMethod:   svc.readHistSvc.NextN,
-		historyapi.CursorPrevMethod:    svc.readHistSvc.Prev,
-		historyapi.CursorPrevNMethod:   svc.readHistSvc.PrevN,
-		historyapi.CursorReleaseMethod: svc.readHistSvc.Release,
-		historyapi.CursorSeekMethod:    svc.readHistSvc.Seek,
-		historyapi.GetCursorMethod:     svc.readHistSvc.GetCursor,
+		historyapi.CursorFirstMethod:     svc.readHistSvc.First,
+		historyapi.CursorLastMethod:      svc.readHistSvc.Last,
+		historyapi.CursorNextMethod:      svc.readHistSvc.Next,
+		historyapi.CursorNextNMethod:     svc.readHistSvc.NextN,
+		historyapi.CursorNextUntilMethod: svc.readHistSvc.NextUntil,
+		historyapi.CursorPrevMethod:      svc.readHistSvc.Prev,
+		historyapi.CursorPrevNMethod:     svc.readHistSvc.PrevN,
+		historyapi.CursorPrevUntilMethod: svc.readHistSvc.PrevUntil,
+		historyapi.CursorReleaseMethod:   svc.readHistSvc.Release,
+		historyapi.CursorSeekMethod:      svc.readHistSvc.Seek,
+		historyapi.GetCursorMethod:       svc.readHistSvc.GetCursor,
 	}
 	rah := transports.NewAgentHandler(historyapi.ReadHistoryServiceID, readHistoryMethods)
 	mah := transports.NewAgentHandler(historyapi.ManageHistoryServiceID, manageHistoryMethods)

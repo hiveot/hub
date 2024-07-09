@@ -270,7 +270,7 @@ func (svc *HttpsTransport) SendToClient(
 func (svc *HttpsTransport) Start(handler hubclient.MessageHandler) error {
 	slog.Info("Starting HttpsTransport")
 	svc.httpServer, svc.router = tlsserver.NewTLSServer(
-		svc.config.Host, uint(svc.config.Port), svc.serverCert, svc.caCert)
+		svc.config.Host, svc.config.Port, svc.serverCert, svc.caCert)
 
 	svc.handleMessage = handler
 	svc.sseServer = sseserver.NewSSEServer()

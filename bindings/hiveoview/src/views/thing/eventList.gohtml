@@ -3,6 +3,7 @@
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.DetailsTemplateData*/ -}}
 
 <ul class="h-grid-table thing-events" striped border>
+	{{/* Header*/}}
 	<li>
 		<div class="h-show-sm">{{/*icon*/}}</div>
 		<div>Event Name</div>
@@ -11,38 +12,48 @@
 		<div class="h-show-md">Updated</div>
 	</li>
 
-    {{range $k,$v := .TD.Events}}
-        {{- /*gotype: github.com/hiveot/hub/lib/things.EventAffordance*/ -}}
+	{{range $k,$v := .TD.Events}}
+		{{- /*gotype: github.com/hiveot/hub/lib/things.EventAffordance*/ -}}
 
-        {{- /*auto reload row on event changes*/ -}}
-				<li>
-					<div class="h-show-sm">{{/*icon*/}}</div>
-					<div title="key: {{$k}}">
-						{{$v.Title}}
-					</div>
-					<div>
-						{{/* Dynamic refresh of value on sse event*/}}
-						<span sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
-								{{$.Values.ToString $k}}
-						</span>
-							{{if $v.Data}}
-              {{$v.Data.UnitSymbol}}
-						{{end}}
-					</div>
-					<div class="h-show-lg">{{$v.Description}}</div>
-{{/*TODO: improve on this rather crude way to refresh the derived 'updated' field when value changes?*/}}
-					<div sse-swap="{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
-									class="h-show-md"
-						>{{$.Values.GetUpdated $k}}</div>
-				</li>
-    {{end}}
-    {{if not .TD.Events}}
-			<li>
-				<div style="grid-column: 1/5 ">
-					<i>No events defined</i>
-				</div>
-			</li>
-    {{end}}
+		{{- /*auto reload row on event changes*/ -}}
+		<li>
+		<div class="h-show-sm">{{/*icon*/}}</div>
+		<div title="key: {{$k}}">
+			{{$v.Title}}
+		</div>
+		<div>
+        {{/* open last 24 hours history*/}}
+			<a title="View history"
+			   href="/history/{{$.ThingID}}/{{$k}}"
+			   hx-get="/history/{{$.ThingID}}/{{$k}}"
+			   hx-target="#historyPage"
+			   hx-swap="innerHtml"
+			   hx-trigger="click"
+			   onclick="navigateTo(null,this.href)"
+			>
+				{{/* Dynamic refresh of value on sse event*/}}
+				<span sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
+						{{$.Values.ToString $k}}
+				</span>
+				{{if $v.Data}}
+			    {{$v.Data.UnitSymbol}}
+				{{end}}
+			</a>
+		</div>
+		<div class="h-show-lg">{{$v.Description}}</div>
+		{{/*TODO: improve on this rather crude way to refresh the derived 'updated' field when value changes?*/}}
+		<div sse-swap="{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
+						class="h-show-md"
+			>{{$.Values.GetUpdated $k}}</div>
+		</li>
+	{{end}}
+	{{if not .TD.Events}}
+		<li>
+			<div style="grid-column: 1/5 ">
+				<i>No events defined</i>
+			</div>
+		</li>
+	{{end}}
 </ul>
 
 

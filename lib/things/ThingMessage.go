@@ -63,10 +63,22 @@ func (tm *ThingMessage) DataAsText() string {
 }
 
 // GetUpdated is a helper function to return the formatted time the data was last updated.
-// This uses the time format RFC822 ("02 Jan 06 15:04 MST")
-func (tm *ThingMessage) GetUpdated() string {
+// The default format is RFC822 ("02 Jan 06 15:04 MST")
+// Optionally "WT" is weekday, time (Mon, 14:31:01 PDT)
+// or, provide the time format directly, eg: "02 Jan 06 15:04 MST" for rfc822
+func (tm *ThingMessage) GetUpdated(format ...string) (updated string) {
 	createdTime, _ := dateparse.ParseAny(tm.Created)
-	return createdTime.Format(time.RFC822)
+	if format != nil && len(format) == 1 {
+		if format[0] == "WT" {
+			// Format weekday, time
+			updated = createdTime.Format("Mon, 15:04:05 MST")
+		} else {
+			updated = createdTime.Format(format[0])
+		}
+	} else {
+		updated = createdTime.Format(time.RFC822)
+	}
+	return updated
 }
 
 // Decode converts the any-type to the given interface type.

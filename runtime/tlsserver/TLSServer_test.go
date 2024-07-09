@@ -17,7 +17,7 @@ import (
 )
 
 var serverAddress string
-var serverPort uint = 4444
+var serverPort int = 9444
 var clientHostPort string
 var testCerts certs.TestCertBundle
 
@@ -76,7 +76,7 @@ func TestNoAuth(t *testing.T) {
 	err := srv.Start()
 	assert.NoError(t, err)
 
-	cl := tlsclient.NewTLSClient(clientHostPort, nil, time.Second*120)
+	cl := tlsclient.NewTLSClient(clientHostPort, nil, testCerts.CaCert, time.Second*120)
 	require.NoError(t, err)
 	//cl.ConnectNoAuth()
 	_, _, err = cl.Get(path1)
@@ -116,7 +116,7 @@ func TestTokenAuth(t *testing.T) {
 	assert.NoError(t, err)
 
 	// create a client and login
-	cl := tlsclient.NewTLSClient(clientHostPort, testCerts.CaCert, time.Second*120)
+	cl := tlsclient.NewTLSClient(clientHostPort, nil, testCerts.CaCert, time.Second*120)
 	assert.NoError(t, err)
 	cl.SetAuthToken(token1)
 
@@ -220,10 +220,8 @@ func TestWriteResponse(t *testing.T) {
 		path2Hit++
 	})
 
-	cl := tlsclient.NewTLSClient(clientHostPort, testCerts.CaCert, time.Second*120)
+	cl := tlsclient.NewTLSClient(clientHostPort, nil, testCerts.CaCert, time.Second*120)
 	require.NoError(t, err)
-	err = cl.ConnectWithClientCert(testCerts.ClientCert)
-	assert.NoError(t, err)
 
 	reply, _, err := cl.Get(path2)
 	assert.NoError(t, err)

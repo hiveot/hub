@@ -12,9 +12,6 @@ import (
 	"sync"
 )
 
-// FIXME: this ID belongs to the agent of this service
-//const DigitwinAgentID = "digitwin"
-
 // The DigitwinService orchestrates the flow of events and actions with Thing agents and consumers
 // It manages storage of events, actions and communicates with agents and consumers using the
 // protocol manager. It uses a helper to manage the mapping of things to the agents that serve them.
@@ -91,7 +88,7 @@ func (svc *DigitwinService) Stop() {
 	svc.Inbox.Stop()
 	svc.Directory.Stop()
 	slog.Info("Stopping DigitwinService")
-	svc.store.Close()
+	_ = svc.store.Close()
 }
 
 // NewDigitwinService creates a new instance of the Digitwin service

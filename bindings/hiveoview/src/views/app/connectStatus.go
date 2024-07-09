@@ -25,7 +25,7 @@ type ConnectStatus struct {
 
 // GetConnectStatus returns the description of the connection status
 func GetConnectStatus(r *http.Request) *ConnectStatus {
-	cs, _ := session.GetSessionFromContext(r)
+	cs, hc, _ := session.GetSessionFromContext(r)
 	status := &ConnectStatus{
 		IconName:    "link-off",
 		Description: "disconnected",
@@ -36,7 +36,7 @@ func GetConnectStatus(r *http.Request) *ConnectStatus {
 		status.Description = "Session not established"
 	} else {
 		cStat := cs.GetStatus()
-		status.LoginID = cs.GetHubClient().ClientID()
+		status.LoginID = hc.ClientID()
 		if cStat.LastError != nil {
 			status.Error = cStat.LastError.Error()
 		}

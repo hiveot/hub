@@ -200,10 +200,10 @@ func NewTransportManager(cfg *ProtocolsConfig,
 	return &svc
 }
 
-// StartProtocolManager starts a new instance of the protocol manager.
+// StartTransportManager starts a new instance of the transport manager.
 // This instantiates enabled protocol bindings, including the embedded binding
 // to be used to register embedded services.
-func StartProtocolManager(cfg *ProtocolsConfig,
+func StartTransportManager(cfg *ProtocolsConfig,
 	privKey keys.IHiveKey,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,

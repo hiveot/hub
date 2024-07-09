@@ -172,7 +172,6 @@ func (sm *SessionManager) GetSessionFromCookie(r *http.Request) (*ClientSession,
 // Init initializes the session manager
 //
 //	hubURL with address of the hub message bus
-//	messaging core to use or "" for auto-detection
 //	signingKey for cookies
 //	caCert of the messaging server
 func (sm *SessionManager) Init(

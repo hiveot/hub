@@ -1,12 +1,15 @@
 package session
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/services/state/stateclient"
 	"log/slog"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -210,6 +213,16 @@ func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {
 	}
 }
 
+// ReadTD is a simple helper to read and unmarshal a TD
+func (cs *ClientSession) ReadTD(thingID string) (*things.TD, error) {
+	td := &things.TD{}
+	tdJson, err := digitwin.DirectoryReadTD(cs.hc, thingID)
+	if err == nil {
+		err = json.Unmarshal([]byte(tdJson), &td)
+	}
+	return td, err
+}
+
 // ReplaceHubClient replaces this session's hub client
 func (cs *ClientSession) ReplaceHubClient(newHC hubclient.IHubClient) {
 	// ensure the old client is disconnected
@@ -252,6 +265,23 @@ func (cs *ClientSession) SendSSE(event string, content string) {
 	for _, c := range cs.sseClients {
 		c <- SSEEvent{event, content}
 	}
+}
+
+// WriteError handles reporting of an error in this session
+// This logs the error, sends a SSE notification.
+// If no httpCode is given then this renders an error message
+// If an httpCode is given then this returns the status code
+func (cs *ClientSession) WriteError(w http.ResponseWriter, err error, httpCode int) {
+	slog.Error(err.Error())
+	cs.SendNotify(NotifyError, err.Error())
+	if httpCode == 0 {
+		output := "Oops: " + err.Error()
+		// Write returns http OK
+		_, _ = w.Write([]byte(output))
+		return
+	}
+
+	http.Error(w, err.Error(), httpCode)
 }
 
 // NewClientSession creates a new client session for the given Hub connection

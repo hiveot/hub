@@ -22,7 +22,7 @@ import (
 )
 
 // when testing using the capnp RPC
-var testPort = uint(23001)
+var testPort = 23001
 
 // the following are set by the testmain
 var ts *testenv.TestServer

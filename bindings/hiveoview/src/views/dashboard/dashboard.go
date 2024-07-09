@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-const DashboardTemplate = "dashboard.gohtml"
+const DashboardTemplate = "dashboardPage.gohtml"
 
 // RenderDashboard renders the dashboard page or fragment
 // This is intended for use from a htmx-get request with a target selector

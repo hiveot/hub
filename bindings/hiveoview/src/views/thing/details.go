@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-const TemplateFile = "details.gohtml"
+const TemplateFile = "detailsPage.gohtml"
 
 type DetailsTemplateData struct {
 	Title      string
@@ -31,6 +31,8 @@ type DetailsTemplateData struct {
 	ConfigKeys []string
 	Config     map[string]*things.PropertyAffordance
 	Values     things.ThingMessageMap
+	//
+
 }
 
 // return a map with the latest property values of a thing or nil if failed
@@ -65,9 +67,8 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Read the TD being displayed and its latest values
-	mySession, err := session.GetSessionFromContext(r)
+	mySession, hc, err := session.GetSessionFromContext(r)
 	if err == nil {
-		hc := mySession.GetHubClient()
 		tdJson, err2 := digitwin.DirectoryReadTD(hc, thingID)
 		td := things.TD{}
 		_ = json.Unmarshal([]byte(tdJson), &td)
@@ -142,9 +143,8 @@ func RenderTDRaw(w http.ResponseWriter, r *http.Request) {
 	var tdJSON string
 	var tdPretty []byte
 	// Read the TD being displayed and its latest values
-	mySession, err := session.GetSessionFromContext(r)
+	_, hc, err := session.GetSessionFromContext(r)
 	if err == nil {
-		hc := mySession.GetHubClient()
 		tdJSON, err = digitwin.DirectoryReadTD(hc, thingID)
 		// re-marshal with pretty-print JSON
 		var tdObj any

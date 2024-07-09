@@ -29,7 +29,7 @@ func GenSchemaDefinitions(l *utils.L, serviceTitle string, td *things.TD) {
 				// define an agent wide data struct
 				GenSchemaDefStruct(l, agentID, idTitle, sd)
 			} else {
-				// nothing to do here
+				// $ref links to an existing schema. Nothing to do here.
 			}
 		} else if sd.Enum != nil {
 			GenSchemaDefEnum(l, idTitle, sd)

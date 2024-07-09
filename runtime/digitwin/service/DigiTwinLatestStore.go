@@ -11,8 +11,6 @@ import (
 	"sync"
 )
 
-const LatestBucketName = "latestMessages"
-
 // DigiTwinLatestStore is the digital twin storage for storing the current
 // state of Things.
 // When used by the outbox it holds the last event and property value.

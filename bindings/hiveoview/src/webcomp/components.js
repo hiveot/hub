@@ -8,3 +8,4 @@ import "../webcomp/h-loading.js";
 import "../webcomp/h-modal.js";
 import "../webcomp/h-toast.js"
 import "../webcomp/h-utils.js";
+import "../webcomp/h-details-group.js";

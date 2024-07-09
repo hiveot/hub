@@ -36,7 +36,7 @@ type IdProvService struct {
 	ManageIdProv *ManageIdProvService
 
 	// server listening port
-	port uint
+	port int
 	// server TLS certificate
 	serverCert *tls.Certificate
 	// hiveot CA that signed the server cert
@@ -95,7 +95,7 @@ func (svc *IdProvService) Stop() {
 }
 
 // NewIdProvService creates a new provisioning service instance
-func NewIdProvService(port uint, serverCert *tls.Certificate, caCert *x509.Certificate) *IdProvService {
+func NewIdProvService(port int, serverCert *tls.Certificate, caCert *x509.Certificate) *IdProvService {
 	svc := &IdProvService{
 		port:       port,
 		serverCert: serverCert,

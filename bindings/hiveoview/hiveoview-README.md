@@ -7,37 +7,19 @@ Hive of Things Viewer, written in golang, html/htmx, web components, and sse usi
 This viewer is in early development. The information below is subject to change.
 
 ### Phase 1: SSR infrastructure and session management [done]
-
-1. Setup a server with HTML template renderer [done]
-2. Define Html templates for base layout, dashboard, about, and login pages [done]
-3. Support SSE connections for dynamic updates [done]
-4. Session management for hub connections support for push events [done]
-7. Push connection status update. Present status view. [done]
-
 ### Phase 2: Directory view
-
-1. Directory view using SSR rendering in golang [done]
-2. Responsive layout [done]
-3. Use Htmx to interactively browse the directory [done]
-4. Thing details view [done]
-5. Thing configuration edit [done]
-6. Configuration of title (if supported by Thing) [done]
-7. Server push of property and event values [done]
-8. View raw TD [done]
-9. Delete TD w dialog [done]
-10. Dialog to invoke action [done]
 11. Show progress of action and config changes
 11. Re-usable DataSchema component/template with text,number,bool,enum,on-off [partial]
-12. Show history of value
-todo at some point
+12. Show history of events
+Todo at some point...
 - only show edit button if the user has permissions to edit
 - briefly fade in/out a highlight of a changed value
 - color value based on age - red is older than 3 days
 - sort on various columns
-- remember open/closed sections on page details (session storage)
+- remember open/closed sections on page details (session storage) [done]
 - fix handling of server restart
    * force logout after runtime restart (the sse reconnect will fail as users need to reauth)
-   * f5 has 2 notications, success connected and unauthenticated, but doesn't return to login page
+   * F5 has 2 notifications, success connected and unauthenticated, but doesn't return to login page.
    * fails receiving zwavejs delivery status updates until zwavejs restart ??? 
 - disable actions and config for things that are not reachable because the agent is offline 
   * api to get agent/thing status and Listen for the agent connect/disconnect event, sent by the runtime (todo)

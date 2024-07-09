@@ -38,14 +38,20 @@ func GenActionArgs(l *utils.L, serviceTitle string, key string, action *things.A
 	l.Add("// %s%sArgs defines the arguments of the %s function", serviceTitle, typeName, key)
 	l.Add("// %s - %s", action.Title, action.Description)
 	GenDescription(l, action.Input.Description, action.Input.Comments)
-	l.Add("type %s%sArgs struct {", serviceTitle, typeName)
-	// input is a dataschema which can be a native value or an object with multiple fields
-	// if this is a native value then name it 'Input'
-	//attrList := GetSchemaAttrs("Input", action.Input)
-	l.Indent++
-	GenDataSchemaFields(l, "input", action.Input)
-	l.Indent--
-	l.Add("}")
+	if action.Input.Ref != "" {
+		// use ref type as arg type
+		titleType := ToTitle(action.Output.Ref)
+		l.Add("type %s%sArgs %s", serviceTitle, typeName, titleType)
+	} else {
+		l.Add("type %s%sArgs struct {", serviceTitle, typeName)
+		// input is a dataschema which can be a native value or an object with multiple fields
+		// if this is a native value then name it 'Input'
+		//attrList := GetSchemaAttrs("Input", action.Input)
+		l.Indent++
+		GenDataSchemaFields(l, "input", action.Input)
+		l.Indent--
+		l.Add("}")
+	}
 	l.Add("")
 }
 

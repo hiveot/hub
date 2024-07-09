@@ -74,9 +74,13 @@ func RenderActionDialog(w http.ResponseWriter, r *http.Request) {
 		Key:     key,
 	}
 	// Read the TD being displayed
-	mySession, err := session.GetSessionFromContext(r)
+	mySession, hc, err := session.GetSessionFromContext(r)
+	if err != nil {
+		// TODO: redirect?
+		mySession.WriteError(w, err, http.StatusBadRequest)
+		return
+	}
 	if err == nil {
-		hc = mySession.GetHubClient()
 		data.TD, data.Action, err = getActionAff(hc, thingID, key)
 	}
 	// last action that was submitted
@@ -91,7 +95,7 @@ func RenderActionDialog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		mySession.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -139,14 +143,14 @@ func PostStartAction(w http.ResponseWriter, r *http.Request) {
 
 	stat := hubclient.DeliveryStatus{}
 	//
-	mySession, err := session.GetSessionFromContext(r)
-	if err == nil {
-		hc = mySession.GetHubClient()
-
-		// convert the value from string to the data type
-		td, actionAff, err = getActionAff(hc, thingID, actionKey)
-		_ = td
+	mySession, hc, err := session.GetSessionFromContext(r)
+	if err != nil {
+		mySession.WriteError(w, err, http.StatusBadRequest)
 	}
+
+	// convert the value from string to the data type
+	td, actionAff, err = getActionAff(hc, thingID, actionKey)
+	_ = td
 	if err == nil {
 		if actionAff.Input != nil {
 			newValue, err = things.ConvertToNative(valueStr, actionAff.Input)
@@ -177,10 +181,8 @@ func PostStartAction(w http.ResponseWriter, r *http.Request) {
 			slog.String("err", err.Error()))
 
 		// notify UI via SSE. This is handled by a toast component.
-		mySession.SendNotify(session.NotifyError, err.Error())
-
 		// todo, differentiate between server error, invalid value and unauthorized
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		mySession.WriteError(w, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -188,7 +190,11 @@ func PostStartAction(w http.ResponseWriter, r *http.Request) {
 
 	// the async reply will contain status update
 	//mySession.SendNotify(session.NotifyInfo, "Delivery Progress for '"+actionKey+"': "+stat.Progress)
-	notificationText := fmt.Sprintf("Action %s: %v %s", actionKey, reply, actionAff.Output.Unit)
+	unit := ""
+	if actionAff.Output != nil {
+		unit = actionAff.Output.Unit
+	}
+	notificationText := fmt.Sprintf("Action %s: %v %s", actionKey, reply, unit)
 	mySession.SendNotify(session.NotifySuccess, notificationText)
 
 	w.WriteHeader(http.StatusOK)

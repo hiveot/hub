@@ -1,8 +1,5 @@
 {{/*Display the details of a thing with title, description, timestamp, attributes, events and actions */}}
 
-{{/*		<script>*/}}
-{{/*			function setDetailOpenStatus(){}*/}}
-{{/*		</script>*/}}
 
 
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.DetailsTemplateData */ -}}
@@ -22,7 +19,6 @@
 
 		<!--===Thing Summary header===-->
 
-		<details open >
 			<summary id="detailsSummary" class="outline h-row" >
 				<h4 style="display:contents" >{{.TD.Title}}</h4>
 				<div class="h-grow"></div>
@@ -46,20 +42,20 @@
 				<label for="manufacturer">Device Description:</label>
 				<input id="manufacturer" type="text" readonly
 				       style="margin: 0; text-overflow: ellipsis;"
-				       value="{{.MakeModel}}  {{.TD.Description}}"/>
+				       value="{{.MakeModel}} {{.TD.Description}}"/>
 
 				<label for="updated">Updated:</label>
 				<input id="updated" type="text" readonly
 				       style="margin: 0; text-overflow: ellipsis;"
                value="{{$.TD.GetUpdated}}"/>
 
-				<label for="agentID">Thing ID:</label>
+				<label for="thingID">Thing ID:</label>
 				<div class="h-row">
-					<input id="agentIDz" readonly style="margin: 0; text-overflow: ellipsis; "
+					<input id="thingID" readonly style="margin: 0; text-overflow: ellipsis; "
 					       value="{{.ThingID}}"/>
 
 					<!--=== button to open the raw TD in a new tab ===-->
-					<button for="agentIDz" title="view raw TD document"  class="h-icon-button outline">
+					<button for="agentID" title="view raw TD document"  class="h-icon-button outline">
 						<a href="/thing/raw/{{.ThingID}}" target="_blank">
 						<iconify-icon icon="mdi:text-box-outline"></iconify-icon>
 						</a>
@@ -69,12 +65,12 @@
 				<div class="h-grow"></div>
 
 			</ul>
-		</details>
+
 		<p></p>
 
+	<h-details-group id="thingDetails" group-name="thingDetails">
 		<!--===Thing Attributes===-->
-
-		<details id="detailsAttr">
+		<details id="detailsAttr" >
 			<summary class="outline">
 				<span style="font-size: medium"><strong>Attributes</strong></span>
 				<span> ({{len .Attributes}})</span>
@@ -84,7 +80,7 @@
 
 		<!--===Thing Configuration===-->
 		<hr/>
-		<details id="detailsConfig">
+		<details id="detailsConfig" >
 			<summary class="outline">
 				<span style="font-size: medium"><strong>Configuration</strong></span>
 				<span> ({{len .Config}})</span>
@@ -95,7 +91,7 @@
 		<!--===Thing Events===-->
 
 		<hr/>
-		<details id="detailsEvents" open>
+		<details id="detailsEvents" >
 			<summary class="outline">
 				<span style="font-size: medium"><strong>Events</strong></span>
 				<span> ({{len .TD.Events}})</span>
@@ -113,9 +109,11 @@
 			</summary>
         {{template "actionList.gohtml" .}}
 		</details>
+</h-details-group>
 
 	</article>
 	<div id="confirmDialog"></div>
+
 
 	<style>
 

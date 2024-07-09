@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-const TemplateFile = "about.gohtml"
+const TemplateFile = "aboutPage.gohtml"
 
 func RenderAbout(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{}

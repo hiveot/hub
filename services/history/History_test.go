@@ -2,6 +2,7 @@ package history_test
 
 import (
 	"fmt"
+	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
@@ -91,6 +92,7 @@ func startHistoryService(clean bool) (
 //}
 
 // generate a random batch of event values for testing
+// timespanSec is the range of timestamps up until now
 func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 	batch []*things.ThingMessage, highest map[string]*things.ThingMessage) {
 
@@ -227,7 +229,7 @@ func TestAddGetEvent(t *testing.T) {
 
 	// seek must return the things humidity added 55 minutes ago, not 5 minutes ago
 	timeAfter := time.Now().Add(-time.Minute * 300)
-	tv1, valid, err := cursor1.Seek(timeAfter.Format(utils.RFC3339Milli))
+	tv1, valid, err := cursor1.Seek(timeAfter)
 	if assert.NoError(t, err) && assert.True(t, valid) {
 		assert.Equal(t, dThing1ID, tv1.ThingID)
 		assert.Equal(t, evHumidity, tv1.Key)
@@ -244,7 +246,7 @@ func TestAddGetEvent(t *testing.T) {
 
 	// do we need to get a new cursor?
 	//readHistory = svc.CapReadHistory()
-	tv3, valid, _ := cursor1.Seek(timeAfter.Format(utils.RFC3339Milli))
+	tv3, valid, _ := cursor1.Seek(timeAfter)
 	if assert.True(t, valid) {
 		assert.Equal(t, dThing1ID, tv3.ThingID) // must match the filtered id1
 		assert.Equal(t, evTemperature, tv3.Key) // must match evTemperature from 5 minutes ago
@@ -371,6 +373,27 @@ func TestAddPropertiesEvent(t *testing.T) {
 
 }
 
+func TestGetInfo(t *testing.T) {
+	t.Log("--- TestGetInfo ---")
+	//const agentID = "device1"
+	//const thing0ID = thingIDPrefix + "0"
+	//var dThing0ID = things.MakeDigiTwinThingID(agentID, thing0ID)
+
+	// TODO: add GetInfo
+	store, readHist, stopFn := startHistoryService(true)
+	defer stopFn()
+	_ = readHist
+	addBulkHistory(store, 1000, 5, 1000)
+
+	//info := store.Info()
+	//t.Logf("Store ID:%s, records:%d", info.Id, info.NrRecords)
+
+	//info := readHistory.Info(ctx)
+	//assert.NotEmpty(t, info.Engine)
+	//assert.NotEmpty(t, info.Id)
+	//t.Logf("ID:%s records:%d", info.Id, info.NrRecords)
+}
+
 func TestPrevNext(t *testing.T) {
 	t.Log("--- TestPrevNext ---")
 	const count = 1000
@@ -422,7 +445,8 @@ func TestPrevNext(t *testing.T) {
 
 	// seek to item11 should succeed
 	item11 := items2to11[9]
-	item11b, valid, err := cursor.Seek(item11.Created)
+	timeStamp, _ := dateparse.ParseAny(item11.Created)
+	item11b, valid, err := cursor.Seek(timeStamp)
 	require.NoError(t, err)
 	assert.True(t, valid)
 	assert.Equal(t, item11.Key, item11b.Key)
@@ -480,7 +504,8 @@ func TestPrevNextFiltered(t *testing.T) {
 
 	// seek to item11 should succeed
 	item11 := items2to11[9]
-	item11b, valid, err := cursor.Seek(item11.Created)
+	timeStamp, _ := dateparse.ParseAny(item11.Created)
+	item11b, valid, err := cursor.Seek(timeStamp)
 	assert.True(t, valid)
 	assert.Equal(t, item11.Key, item11b.Key)
 
@@ -492,25 +517,45 @@ func TestPrevNextFiltered(t *testing.T) {
 	cursor.Release()
 }
 
-func TestGetInfo(t *testing.T) {
-	t.Log("--- TestGetInfo ---")
-	//const agentID = "device1"
-	//const thing0ID = thingIDPrefix + "0"
-	//var dThing0ID = things.MakeDigiTwinThingID(agentID, thing0ID)
+func TestNextPrevUntil(t *testing.T) {
+	t.Log("--- TestNextUntil ---")
+	const count = 1000
+	const agentID = "device1"
+	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
+	var dThing0ID = things.MakeDigiTwinThingID(agentID, thing0ID)
 
-	// TODO: add GetInfo
-	store, readHist, stopFn := startHistoryService(true)
-	defer stopFn()
-	_ = readHist
-	addBulkHistory(store, 1000, 5, 1000)
+	store, readHist, closeFn := startHistoryService(true)
+	defer closeFn()
 
-	//info := store.Info()
-	//t.Logf("Store ID:%s, records:%d", info.Id, info.NrRecords)
+	// 1 sensors -> 1000/24 hours is approx 41/hour
+	_ = addBulkHistory(store, count, 1, 3600*24)
 
-	//info := readHistory.Info(ctx)
-	//assert.NotEmpty(t, info.Engine)
-	//assert.NotEmpty(t, info.Id)
-	//t.Logf("ID:%s records:%d", info.Id, info.NrRecords)
+	cursor, releaseFn, _ := readHist.GetCursor(dThing0ID, "")
+	defer releaseFn()
+	assert.NotNil(t, cursor)
+
+	// start 20 hours ago
+	startTime := time.Now().Add(-20 * time.Hour)
+	item0, valid, err := cursor.Seek(startTime)
+	require.NoError(t, err)
+	assert.True(t, valid)
+	assert.NotEmpty(t, item0)
+
+	// read an hour's worth. Expect around 41 results
+	endTime := startTime.Add(time.Hour)
+	batch, itemsRemaining, err := cursor.NextUntil(endTime, 100)
+	require.NoError(t, err)
+	batch = append([]*things.ThingMessage{item0}, batch...)
+	assert.False(t, itemsRemaining)
+	assert.True(t, len(batch) > 20)
+	assert.True(t, len(batch) < 60)
+
+	// read backwards again
+	batch2, itemsRemaining, err := cursor.PrevUntil(startTime, 100)
+	require.NoError(t, err)
+	assert.False(t, itemsRemaining)
+	assert.Equal(t, len(batch), len(batch2))
+
 }
 
 func TestPubSub(t *testing.T) {

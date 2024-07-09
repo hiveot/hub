@@ -4,13 +4,13 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"encoding/json"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/hiveoviewapi"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
@@ -18,11 +18,12 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/directory"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/history"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/login"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/status"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/thing"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/tlsserver"
 	"log/slog"
 	"net/http"
 	"os"
@@ -38,9 +39,15 @@ type HiveovService struct {
 	dev          bool // development configuration
 	shouldUpdate bool
 	router       chi.Router
+
 	// filesystem location of the ./static, webcomp, and ./views template root folder
 	rootPath string
 	tm       *views.TemplateManager
+
+	// tls server
+	serverCert *tls.Certificate
+	caCert     *x509.Certificate
+	tlsServer  *tlsserver.TLSServer
 
 	// hc hub client of this service.
 	// This client's CA and URL is also used to establish client sessions.
@@ -55,7 +62,7 @@ type HiveovService struct {
 
 // setup the chain of routes used by the service and return the router
 // rootPath points to the filesystem containing /static and template files
-func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
+func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Handler {
 	var staticFileServer http.Handler
 
 	if rootPath == "" {
@@ -68,7 +75,6 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 		// during development when run from the 'hub' project directory
 		staticFileServer = http.FileServer(http.Dir(rootPath))
 	}
-	router := chi.NewRouter()
 
 	// TODO: add csrf support in posts
 	//csrfMiddleware := csrf.Protect(
@@ -134,6 +140,9 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 		r.Get("/thing/actionDialog/{thingID}/{key}", thing.RenderActionDialog)
 		r.Post("/thing/actionStart/{thingID}/{key}", thing.PostStartAction)
 
+		// History view. Optional query params 'timestamp' and 'duration'
+		r.Get("/history/{thingID}/{key}", history.RenderHistoryPage)
+
 		// Status components
 		r.Get("/status", status.RenderStatus)
 		r.Get("/app/connectStatus", app.RenderConnectStatus)
@@ -141,22 +150,6 @@ func (svc *HiveovService) createRoutes(rootPath string) http.Handler {
 	})
 
 	return router
-}
-
-// CreateHiveoviewTD creates a new Thing TD document describing the service capability
-func (svc *HiveovService) CreateHiveoviewTD() *things.TD {
-	title := "Web Server"
-	deviceType := vocab.ThingService
-	td := things.NewTD(hiveoviewapi.HiveoviewServiceID, title, deviceType)
-	// TODO: add properties: uptime, max nr clients
-
-	td.AddEvent("activeSessions", "", "Nr Sessions", "Number of currently active sessions",
-		&things.DataSchema{
-			//AtType: vocab.SessionCount,
-			Type: vocab.WoTDataTypeInteger,
-		})
-
-	return td
 }
 
 // Start the web server and publish the service's own TD.
@@ -175,13 +168,6 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 		slog.Error("failed to set the hiveoview service permissions", "err", err.Error())
 	}
 
-	myTD := svc.CreateHiveoviewTD()
-	myTDJSON, _ := json.Marshal(myTD)
-	err = svc.hc.PubEvent(hiveoviewapi.HiveoviewServiceID, vocab.EventTypeTD, string(myTDJSON))
-	if err != nil {
-		slog.Error("failed to publish the hiveoview service TD", "err", err.Error())
-	}
-
 	// Setup the handling of incoming web sessions
 	sm := session.GetSessionManager()
 	connStat := hc.GetStatus()
@@ -190,21 +176,35 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 	// parse the templates
 	svc.tm.ParseAllTemplates()
 
-	// add the routes
-	router := svc.createRoutes(svc.rootPath)
+	// Start the TLS server for serving the UI
+	if svc.serverCert != nil {
+		tlsServer, router := tlsserver.NewTLSServer(
+			"", svc.port, svc.serverCert, svc.caCert)
 
-	// TODO: change into TLS using a signed server certificate
-	addr := fmt.Sprintf(":%d", svc.port)
-	go func() {
-		err = http.ListenAndServe(addr, router)
-		if err != nil {
-			// TODO: close gracefully
-			slog.Error("DeliveryFailed starting server", "err", err)
-			// service must exit on close
-			time.Sleep(time.Second)
-			os.Exit(0)
-		}
-	}()
+		svc.createRoutes(router, svc.rootPath)
+		svc.tlsServer = tlsServer
+		err = tlsServer.Start()
+	} else {
+		// add the routes
+		router := chi.NewRouter()
+		svc.createRoutes(router, svc.rootPath)
+
+		// For testing and debugging without certificate
+		addr := fmt.Sprintf(":%d", svc.port)
+		go func() {
+			err = http.ListenAndServe(addr, router)
+			if err != nil {
+				// TODO: close gracefully
+				slog.Error("DeliveryFailed starting server", "err", err)
+				// service must exit on close
+				time.Sleep(time.Second)
+				os.Exit(0)
+			}
+		}()
+	}
+	// last, publish this service's TD
+	_ = svc.PublishServiceTD()
+
 	return nil
 }
 
@@ -212,6 +212,9 @@ func (svc *HiveovService) Stop() {
 	slog.Info("Stopping HiveovService")
 	// TODO: send event the service has stopped
 	svc.hc.Disconnect()
+	if svc.tlsServer != nil {
+		svc.tlsServer.Stop()
+	}
 	//svc.router.Stop()
 
 	//if err != nil {
@@ -226,12 +229,15 @@ func (svc *HiveovService) Stop() {
 // This must contain static/, views/ and webc/ directories.
 // If empty, the embedded filesystem is used.
 //
-// serverPort is the port of the web server will listen on
-// debug to enable debugging output
-// signingKey used to sign cookies. Using nil means that a server restart will invalidate the cookies
-// rootPath
+//	serverPort is the port of the web server will listen on
+//	debug to enable debugging output
+//	signingKey used to sign cookies. Using nil means that a server restart will invalidate the cookies
+//	rootPath containing the templates in the given folder or "" to use the embedded templates
+//	serverCert server TLS certificate
+//	caCert server CA certificate
 func NewHiveovService(serverPort int, debug bool,
 	signingKey *ecdsa.PrivateKey, rootPath string,
+	serverCert *tls.Certificate, caCert *x509.Certificate,
 ) *HiveovService {
 	templatePath := rootPath
 	if rootPath != "" {
@@ -248,6 +254,8 @@ func NewHiveovService(serverPort int, debug bool,
 		signingKey:   signingKey,
 		rootPath:     rootPath,
 		tm:           tm,
+		serverCert:   serverCert,
+		caCert:       caCert,
 	}
 	return &svc
 }

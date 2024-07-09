@@ -11,36 +11,25 @@ The Hub for the *Hive-of-Things* provides a secure [runtime](runtime/README-runt
 Status: The Hub core is currently being reworked to use the "[digital twins runtime](runtime/README-runtime.md)" with multiple concurrent protocol support. (May 2024). 
 
 TODO before alpha:
-1. ~~Implement digitwin runtime in golang~~
-2. ~~generate golang api's from TD definitions (tdd2go)~~
-3. javascript hubclient with SSE callback channel (for use by zwavejs)
-4. Rework existing IoT bindings to work with the digital twin runtime
-   * ~~1-wire protocol binding using owserver-v2 gateway (bindings/owserver)~~
-   * insteon binding using isy99x gateway (bindings/isy99x)
-   * ipnet network scanner
-   * zwave protocol binding using zwavejs (bindings/zwavejs)
 5. Minimal web client  (bindings/hiveoview)
    * ~~directory viewer~~
    * ~~configuration editing~~
    * dashboard 
    * admin panel for managing users and devices; starting/stopping of services
 6. Support for Forms sections in TDD documents describing the protocols to interact with a Thing.
-7. improve the https protocol binding
-   * ~~support subscribing to Thing events~~ 
-   * ~~Integrate role authorization (viewer, operator, manager, admin)~~
-   * Support client certificate authentication
-   * Support websockets as return channel
-   * Support UDS for local services
 8. improve the embedded protocol binding (for internal services) 
    * improve subscription support to reduce traffic/processing
 9. Revisit the vocabulary to integrate or adopt existing vocabularies where possible
-10. Javascript tdd2js client api generator
-11. Python tdd2py client api generator
 
 Future Roadmap:
-1. rework mqtt transport protocol
-1. rework the nats transport protocol
-1. support Action queues for delayed delivery to offline agents
+1. Support client certificate authentication
+2. Support websockets as return channel
+3. Support UDS for local services
+4. rework mqtt transport protocol
+5. rework the nats transport protocol
+6. support Action queues for delayed delivery to offline agents
+10. Javascript tdd2js client api generator
+11. Python tdd2py client api generator
 
 
 Integrations

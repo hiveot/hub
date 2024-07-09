@@ -25,16 +25,16 @@
 		        title="Reload directory">
 			<iconify-icon icon="mdi:refresh"></iconify-icon>
 		</button>
-
 	</header>
 
 	<div>
 		<!--=== for {.Publisher, .Things} in .Groups ===-->
+		<h-details-group id="directoryGroups" group-name="directoryGroup">
       {{range .Directory.Groups}}
 
 				<hr/>
 				<!-- Table of all things from template ".Things" data-->
-				<details>
+				<details id="{{.AgentID}}-things">
 					<summary class="outline">
 						<span>Publisher:</span>
 						<span style="font-size: medium"><strong>{{.AgentID}}</strong></span>
@@ -65,7 +65,7 @@
 									<div class="h-show-xl">
 										<a href="/thing/details/{{.ID}}"
 										   hx-get="/thing/details/{{.ID}}"
-										   hx-target="#thing"
+										   hx-target="#thingPage"
 										   hx-swap="innerHtml"
 										   hx-trigger="click"
 										   onclick="navigateTo(null,this.href)"
@@ -76,7 +76,7 @@
 									<div>
 										<a href="/thing/details/{{.ID}}"
 										   hx-get="/thing/details/{{.ID}}"
-										   hx-target="#thing"
+										   hx-target="#thingPage"
 										   hx-swap="innerHtml"
 										   hx-trigger="click"
 										   onclick="navigateTo(null,this.href)"
@@ -102,6 +102,7 @@
 					</ul>
 				</details>
       {{end}}
+		</h-details-group>
 	</div>
 	<hr/>
 

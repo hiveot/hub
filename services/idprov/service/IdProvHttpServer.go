@@ -51,7 +51,7 @@ func (srv *IdProvHttpServer) handleRequest(w http.ResponseWriter, req *http.Requ
 
 // StartIdProvHttpServer starts the http server to handle provisioning requests
 func StartIdProvHttpServer(
-	port uint, serverCert *tls.Certificate, caCert *x509.Certificate, mng *ManageIdProvService) (*IdProvHttpServer, error) {
+	port int, serverCert *tls.Certificate, caCert *x509.Certificate, mng *ManageIdProvService) (*IdProvHttpServer, error) {
 
 	tlsServer, mux := tlsserver.NewTLSServer("", port, serverCert, caCert)
 	_ = mux

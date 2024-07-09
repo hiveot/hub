@@ -8,7 +8,7 @@
     <script src="../src/static/htmx.min.js"></script>
     <script src="../src/static/sse.js"></script>
     <script src="../src/static/iconify-icon.min.js"></script>
-    <link rel="stylesheet" href="../src/static/pico-v2.0.0-rc3.css"/>
+    <link rel="stylesheet" href="../src/static/pico-v2.0.6.css"/>
 
     <link rel="stylesheet" href="../src/webcomp/h-theme.css"/>
     <link rel="stylesheet" href="../src/webcomp/h-classes.css"/>
@@ -146,6 +146,23 @@
                         <switch on='{onoff}'></switch>
                     </li>
                 </h-simple-table>
+            </td>
+        </tr>
+
+        <!--=== h-details-group ===-->
+        <tr>
+            <td>h-details-group</td>
+            <td>
+                <h-details-group group-name="testdetails">
+                    <details id="summary1">
+                        <summary>Section 1</summary>
+                        Element 1
+                    </details>
+                    <details id="summary2">
+                        <summary>Section 2</summary>
+                        Element 2
+                    </details>
+                </h-details-group>
             </td>
         </tr>
 
