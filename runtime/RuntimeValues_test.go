@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
@@ -72,7 +72,7 @@ func TestHttpsGetEvents(t *testing.T) {
 
 	// read latest using the experimental http REST API
 	vars := map[string]string{"thingID": dtThingID}
-	eventPath := utils.Substitute(vocab.GetEventsPath, vars)
+	eventPath := utils.Substitute(httpsse.GetReadAllEventsPath, vars)
 	reply, _, err := tlsClient.Get(eventPath)
 	require.NoError(t, err)
 	require.NotNil(t, reply)
@@ -83,7 +83,7 @@ func TestHttpsGetEvents(t *testing.T) {
 	require.NotZero(t, len(tmm1))
 
 	// read latest using the generated client
-	resp, err := digitwin.OutboxReadLatest(hc, nil, "", dtThingID)
+	resp, err := digitwin.OutboxReadLatest(hc, nil, "", "", dtThingID)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	tmm2, err := things.NewThingMessageMapFromSource(resp)
@@ -117,7 +117,7 @@ func TestHttpsGetProps(t *testing.T) {
 	// consumer read properties
 	cl2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
 	defer cl2.Disconnect()
-	data, err := digitwin.OutboxReadLatest(hc, nil, "", dtThingID)
+	data, err := digitwin.OutboxReadLatest(hc, nil, "", "", dtThingID)
 	require.NoError(t, err)
 
 	vmm, err := things.NewThingMessageMapFromSource(data)

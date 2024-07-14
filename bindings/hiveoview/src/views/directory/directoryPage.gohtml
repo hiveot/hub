@@ -1,120 +1,52 @@
-<!--Directory template
- -->
-
+<!--Display a list of Things grouped by agent -->
 
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/directory.DirectoryTemplateData */ -}}
 
 <!--After an initial load without data, auto-reload fragment when viewed. -->
-{{$trigger := "intersect once"}}
-{{if .Directory}}
-    {{$trigger = "click from:#reload-directory"}}
-{{end}}
 
-<main class="container-fluid"
-      hx-get="/directory"
-      hx-trigger="{{$trigger}}"
-      hx-target="this"
-      hx-swap="outerHTML">
+{{if not .Directory}}
+<div hx-trigger="intersect once"
+     hx-get=""
+     hx-swap="outerHTML"
+>
+	<p>Reloading directory data...</p>
+	<h-loading ></h-loading>
+</div>
 
-	<!-- Header with a 'reload' button that triggers the htmx-get request above-->
-	<header class="directory-header h-row">
-		<div class="h-grow"></div>
-		<h4 style="margin-top: 1rem; margin-bottom: 0; margin-right: 5px;">Device & Service Directory</h4>
-		<div class="h-grow"></div>
-		<button id="reload-directory" class="outline h-icon-button"
-		        title="Reload directory">
-			<iconify-icon icon="mdi:refresh"></iconify-icon>
-		</button>
-	</header>
+{{else}}
 
-	<div>
+
+<main hx-get=""
+      hx-trigger="click from:#reload-directory"
+      class="container-fluid"
+      hx-target="#detailsPage"
+      hx-swap="innerHTML"
+		>
+
+		<!-- Header with a 'reload' button that triggers the htmx-get request above-->
+		<header class="directory-header h-row">
+				<div class="h-grow"></div>
+				<h4 style="margin-top: 1rem; margin-bottom: 0; margin-right: 5px;">Device & Service Directory</h4>
+				<div class="h-grow"></div>
+				<button id="reload-directory" class="outline h-icon-button"
+				        title="Reload directory">
+						<iconify-icon icon="mdi:refresh"></iconify-icon>
+				</button>
+		</header>
+
 		<!--=== for {.Publisher, .Things} in .Groups ===-->
 		<h-details-group id="directoryGroups" group-name="directoryGroup">
-      {{range .Directory.Groups}}
-
-				<hr/>
-				<!-- Table of all things from template ".Things" data-->
-				<details id="{{.AgentID}}-things">
-					<summary class="outline">
-						<span>Publisher:</span>
-						<span style="font-size: medium"><strong>{{.AgentID}}</strong></span>
-						<span>- {{len .Things}} things</span>
-					</summary>
-
-					<ul class="directory-table h-grid-table" striped border>
-						<li>
-							<div class="h-show-sm"></div>
-							<div class="h-show-xl">Thing ID</div>
-							<div>Name</div>
-							<div class="h-show-md">Type</div>
-							<div class="h-show-lg">Outputs</div>
-							<div class="h-show-lg">Actions</div>
-							<div class="h-show-xs">Updated</div>
-							<!--            <div scope="col">Description</div>-->
-						</li>
-
-						<!--=== for TD in .Things ===-->
-							{{- /* TODO: re-render when a new TD is added */ -}}
-              {{range .Things}}
-								<li>
-									{{/*Icon*/}}
-									<div class="h-show-sm" title="Show TD">
-										<h-device-icon deviceType={{.AtType}}></h-device-icon>
-									</div>
-                  {{/*Show ThingID on big screens */}}
-									<div class="h-show-xl">
-										<a href="/thing/details/{{.ID}}"
-										   hx-get="/thing/details/{{.ID}}"
-										   hx-target="#thingPage"
-										   hx-swap="innerHtml"
-										   hx-trigger="click"
-										   onclick="navigateTo(null,this.href)"
-										>{{.ID}}
-										</a>
-									</div>
-                   {{/*Title*/}}
-									<div>
-										<a href="/thing/details/{{.ID}}"
-										   hx-get="/thing/details/{{.ID}}"
-										   hx-target="#thingPage"
-										   hx-swap="innerHtml"
-										   hx-trigger="click"
-										   onclick="navigateTo(null,this.href)"
-										>{{.Title}}
-										</a>
-									</div>
-                  {{/*Type*/}}
-									<div class="h-show-md">{{.GetAtTypeVocab}}</div>
-                  {{/*Outputs*/}}
-									<div class="h-show-lg">{{len .Events}} outputs</div>
-                    {{/*Actions*/}}
-									<div class="h-show-lg">{{len .Actions}} actions</div>
-                    {{/*Updated*/}}
-									<div class="h-show-xs">{{.GetUpdated}}</div>
-								</li>
-              {{end}}
-
-						<tfoot>
-						<li>
-							<!--                    <div colspan="3">Nr Things: {{ len .Things }}</div>-->
-						</li>
-						</tfoot>
-					</ul>
-				</details>
-      {{end}}
+        {{range .Directory.Groups}}
+						<hr/>
+					  {{template "directoryGroup.gohtml" .}}
+        {{end}}
 		</h-details-group>
-	</div>
-	<hr/>
+		<hr/>
 
-	<!-- TODO: add pager with first, prev, next, nr entries per page
+		<!-- TODO: add pager with first, prev, next, nr entries per page
 				or, use continuous scrolling.
 			-->
-
-    {{if not .Directory}}
-			<h-loading></h-loading>
-    {{end}}
-
-</main>
+  </main>
 
 
 <style>
@@ -175,5 +107,6 @@
 			        minmax(100px, 200px);
         }
     }
-
 </style>
+{{end}}
+

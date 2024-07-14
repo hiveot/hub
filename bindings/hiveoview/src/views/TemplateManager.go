@@ -113,18 +113,22 @@ func (svc *TemplateManager) parseTemplateFiles(t *template.Template, files fs.FS
 // With the HX-Request header, the page is injected in the request target
 // (usually the Body element) without a full page reload.
 //
+// With hx-boost header, the full template is rendered but the browser will
+// swap the body of the result into the body of the page so all the scripts
+// and headers and sse aren't reloaded.
+//
 //	w is the writer to render to
 //	name is the name of the template to render
 //	data contains a map of variables to pass to the template renderer
-func (svc *TemplateManager) RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data any) {
-	isFragment := r.Header.Get("HX-Request") != ""
-	isBoosted := r.Header.Get("HX-Boosted") != ""
-	if isFragment && !isBoosted {
-		svc.RenderFragment(w, name, data)
-	} else {
-		svc.RenderFull(w, name, data)
-	}
-}
+//func (svc *TemplateManager) RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data any) {
+//	isFragment := r.Header.Get("HX-Request") != ""
+//	isBoosted := r.Header.Get("HX-Boosted") != ""
+//	if isFragment && !isBoosted {
+//		svc.RenderFragment(w, name, data)
+//	} else {
+//		svc.RenderFull(w, name, data)
+//	}
+//}
 
 // RenderFragment renders the template 'name' with the given data without base template.
 // Intended to be used with hx-target pointing to the page in which to render the fragment.
@@ -156,10 +160,10 @@ func (svc *TemplateManager) RenderFragment(w http.ResponseWriter, name string, d
 //
 // If a template has an error, the error is returned to the user instead along with a 500 error.
 //
-//	 w is the writer to render into
-//		t is the template bundle to lookup base and name
-//		name is the name of the template to render
-//		data contains a map of variables to pass to the template renderer
+//	w is the writer to render into
+//	t is the template bundle to lookup base and name
+//	name is the name of the template to render
+//	data contains the data structure to pass to the template renderer
 func (svc *TemplateManager) RenderFull(w http.ResponseWriter, name string, data any) {
 	slog.Info("RenderFull", "template", name)
 	svc.renderMux.Lock()
@@ -194,53 +198,6 @@ func (svc *TemplateManager) RenderFull(w http.ResponseWriter, name string, data 
 		return
 	}
 }
-
-// RenderWithOverlay embeds the template 'name' into the overlay template and executes.
-// The base template uses the 'embed' field.
-// If a template has an error, the error is returned to the user instead along with a 500 error.
-//
-//	name is the name of the template to render
-//	overlay is the optional overlay to use. "" for the default overlay layout.html.
-//func RenderWithOverlay(w http.ResponseWriter, t *template.Template, name string, overlay string, data map[string]any) {
-//	renderMux.Lock()
-//	defer renderMux.Unlock()
-//
-//	if overlay == "" {
-//		overlay = "layout.html"
-//	}
-//	overlayT := t.Lookup(overlay)
-//	overlayT, err := overlayT.Clone()
-//	if err != nil {
-//		w.WriteHeader(http.StatusInternalServerError)
-//		slog.Error("Cloning overlay failed", "err", err)
-//		_, _ = w.Write([]byte("overlay error: " + err.Error()))
-//		return
-//	}
-//	tpl := t.Lookup(name)
-//	if tpl == nil || tpl.Tree == nil {
-//		err = errors.New("missing or invalid template: " + name)
-//	} else {
-//		// problem with error "cannot Clone ... after it has executed"
-//		tpl, err = tpl.Clone()
-//		// This is where the magic happens: replace the 'embed' template with the given template.
-//		if err == nil {
-//			_, err = overlayT.AddParseTree("embed", tpl.Tree)
-//		}
-//	}
-//	if err != nil {
-//		w.WriteHeader(http.StatusInternalServerError)
-//		slog.Error("merging templates failed", "err", err)
-//		_, _ = w.Write([]byte("template error: " + err.Error()))
-//		return
-//	}
-//	err = overlayT.Execute(w, data)
-//	if err != nil {
-//		w.WriteHeader(http.StatusInternalServerError)
-//		slog.Error("rendering template failed", "err", err)
-//		_, _ = w.Write([]byte("template render error: " + err.Error()))
-//		return
-//	}
-//}
 
 // InitTemplateManager initializes the template manager singleton
 // templatePath provides a path to a live filesystem where the templates resides.

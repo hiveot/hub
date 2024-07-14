@@ -63,8 +63,8 @@ async function test2() {
     let stat = await hc.pubEvent("thing1", "event1", "hello world")
     if (stat.error) {
         log.error("pubEvent failed:",stat.error)
-    } else if (stat.progress != "completed") {
-        log.error("pubEvent status not delivered but:", stat.progress)
+    } else if (stat.progress != DeliveryProgress.DeliveryCompleted) {
+        log.error("pubEvent status not 'completed': progress=", stat.progress)
     }
     hc.disconnect()
 }
@@ -82,7 +82,7 @@ async function test3() {
         hc.setMessageHandler((tv: ThingMessage):DeliveryStatus => {
             log.info("Received message: type="+tv.messageType+"; key=" + tv.key)
             let stat = new DeliveryStatus()
-            stat.Completed(tv)
+            stat.completed(tv)
             return stat
         })
         token = await hc.refreshToken()
@@ -96,6 +96,7 @@ async function test3() {
         await hc.subscribe("", "")
 
         // publish an action request
+        // FIXME: the thingID must be an existing digitwin ID
         let stat = await hc.pubAction("thing1", "action1", "1")
         if (stat.error != "") {
             throw ("pubAction failed: " + stat.error)
@@ -156,20 +157,17 @@ async function test4() {
         hcCl.setMessageHandler((tm: ThingMessage):DeliveryStatus=>{
             let stat = new DeliveryStatus()
             if (tm.thingID == "dtw:testsvc:thing1") {
-                // let data = JSON.parse(tm.data)
-                // FIXME: why is data base64 encoded?
-                let data = Buffer.from(tm.data,"base64").toString()
-                log.info("Received event: "+tm.key+"; data="+data)
+                log.info("Received event: "+tm.key+"; data="+tm.data)
                 ev1Count++
             } else if (tm.key == EventTypeDeliveryUpdate) {
                 // FIXME: why is data base64 encoded? => data type in golang was []byte; changed to string
-                let data = Buffer.from(tm.data,"base64").toString()
-                actionDelivery = JSON.parse(data)
+                // let data = Buffer.from(tm.data,"base64").toString()
+                actionDelivery = JSON.parse(tm.data)
             } else if (tm.messageType == MessageTypeAction) {
                 actionCount++
                 stat.reply = "success"
             }
-            stat.Completed(tm)
+            stat.completed(tm)
             return stat
         })
     } catch(e) {
@@ -226,7 +224,8 @@ async function test4() {
 //     })
 // })
 
+// These tests require a running test environment
 // test1()
-// test2()
-// test3()
-test1()
+//  test2()
+ // test3()
+test4()

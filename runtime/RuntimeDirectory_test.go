@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
@@ -126,7 +127,7 @@ func TestReadTDsRest(t *testing.T) {
 	cl2 := tlsclient.NewTLSClient(serverURL, nil, ts.Certs.CaCert, time.Second*30)
 	cl2.SetAuthToken(token)
 
-	data, _, err := cl2.Get(vocab.GetThingsPath)
+	data, _, err := cl2.Get(httpsse.GetThingsPath)
 	require.NoError(t, err)
 
 	// tds are sent as an array of JSON, first unpack the array of JSON strings
@@ -139,7 +140,7 @@ func TestReadTDsRest(t *testing.T) {
 
 	// read a single td
 	vars := map[string]string{"thingID": tdList[0].ID}
-	getThingPath := utils.Substitute(vocab.GetThingPath, vars)
+	getThingPath := utils.Substitute(httpsse.GetThingPath, vars)
 	data, _, err = cl2.Get(getThingPath)
 	require.NoError(t, err)
 

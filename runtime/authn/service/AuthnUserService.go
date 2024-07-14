@@ -68,7 +68,7 @@ func (svc *AuthnUserService) UpdateName(senderID string, newName string) error {
 		err = svc.authnStore.UpdateProfile(senderID, prof)
 	}
 	if err != nil {
-		slog.Error("DeliveryFailed changing name",
+		slog.Error("Failed changing name",
 			"clientID", senderID, "err", err.Error())
 	}
 	return err
@@ -78,7 +78,7 @@ func (svc *AuthnUserService) UpdatePassword(senderID string, password string) er
 	slog.Info("SetClientPassword", "senderID", senderID)
 	err := svc.authnStore.SetPassword(senderID, password)
 	if err != nil {
-		slog.Error("DeliveryFailed changing password",
+		slog.Error("Failed changing password",
 			"senderID", senderID, "err", err.Error())
 	}
 	return err
@@ -92,7 +92,7 @@ func (svc *AuthnUserService) UpdatePubKey(senderID string, pubKeyPEM string) err
 		err = svc.authnStore.UpdateProfile(senderID, prof)
 	}
 	if err != nil {
-		slog.Error("DeliveryFailed updating public key",
+		slog.Error("Failed updating public key",
 			"clientID", senderID, "err", err.Error())
 	}
 	return err

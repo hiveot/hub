@@ -2,7 +2,6 @@ package app
 
 import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
-	"github.com/hiveot/hub/bindings/hiveoview/src/views"
 	"github.com/hiveot/hub/lib/hubclient"
 	"net/http"
 )
@@ -66,5 +65,6 @@ func RenderConnectStatus(w http.ResponseWriter, r *http.Request) {
 	data["Status"] = status
 
 	// render with base or as fragment
-	views.TM.RenderTemplate(w, r, ConnectStatusTemplate, data)
+	//views.TM.RenderTemplate(w, r, ConnectStatusTemplate, data)
+	RenderAppOrFragment(w, r, ConnectStatusTemplate, data)
 }

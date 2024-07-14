@@ -6,11 +6,12 @@ package things
 // request. In Thing Descriptions, the form context is the surrounding Object, such as Properties, Actions, and
 // Events or the Thing itself for meta-interactions.
 // (I this isn't clear then you are not alone)
-type Form struct {
-	Href        string `json:"href"`
-	ContentType string `json:"contentType"`
+type Form map[string]string
 
-	// operations types of a form as per https://www.w3.org/TR/wot-thing-description11/#form
-	// readproperty, writeproperty, ...
-	Op string `json:"op"`
-}
+//Href        string `json:"href"`
+//ContentType string `json:"contentType"`
+//
+//// operations types of a form as per https://www.w3.org/TR/wot-thing-description11/#form
+//// readproperty, writeproperty, ...
+//Op string `json:"op"`
+//}

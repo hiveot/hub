@@ -20,14 +20,19 @@
 					{{$v.Title}}
 				</div>
 				<div>
-					<span sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
+					<span sse-swap="{{$.ThingID}}/{{$k}}"
+					      hx-swap="innerHTML"
+					      hx-target="this"
+					>
               {{$.Values.ToString $k}}
 					</span>
             {{$v.UnitSymbol}}
 				</div>
 				<div class="h-show-lg">{{$v.Description}}</div>
 				<div class="h-show-md"
-				     sse-swap="{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
+				     sse-swap="{{$.ThingID}}/{{$k}}/updated"
+				     hx-swap="innerHTML"
+				     hx-target="this"
 				     title="Updated: {{$.Values.GetUpdated $k}}  by {{($.Values.GetSenderID $k)}}">
             {{$.Values.GetUpdated $k}}</div>
 			</li>

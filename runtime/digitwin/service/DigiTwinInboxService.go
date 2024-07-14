@@ -273,7 +273,7 @@ func (svc *DigiTwinInboxService) Stop() {
 
 // NewDigiTwinInbox returns a new instance of the inbox service.
 // the store to persist the cache between restarts - not currently used
-// pm is the protocolbinding api for sending clients delivery status messages
+// tb is the protocolbinding api for sending clients delivery status messages
 func NewDigiTwinInbox(bucketStore buckets.IBucketStore, pm api.ITransportBinding) *DigiTwinInboxService {
 	dtInbox := &DigiTwinInboxService{
 		activeCache: make(map[string]*digitwin.InboxRecord),

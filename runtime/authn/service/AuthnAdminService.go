@@ -68,8 +68,6 @@ func (svc *AuthnAdminService) AddConsumer(senderID string, args authn.AdminAddCo
 // AddAgent adds or updates a device agent account and assigns the agent role.
 // Agents are provided with non-session auth tokens which survive a server restart.
 // Agents should store their own key and token files.
-//
-//	TODO: use the public key for nonce verification
 func (svc *AuthnAdminService) AddAgent(senderID string,
 	args authn.AdminAddAgentArgs) (token string, err error) {
 
@@ -115,8 +113,6 @@ func (svc *AuthnAdminService) AddAgent(senderID string,
 // Services are provided with non-session auth tokens which survive a server restart.
 // Service keys and tokens are saved in the certs directory under the service name with
 // the .key and .token extension.
-//
-//	TODO: use the public key for nonce verification
 func (svc *AuthnAdminService) AddService(senderID string,
 	args authn.AdminAddServiceArgs) (token string, err error) {
 
@@ -251,7 +247,7 @@ func (svc *AuthnAdminService) SetClientPassword(senderID string,
 	slog.Info("UpdateClientPassword", "clientID", args.ClientID)
 	err := svc.authnStore.SetPassword(args.ClientID, args.Password)
 	if err != nil {
-		slog.Error("DeliveryFailed changing password", "clientID", args.ClientID, "err", err.Error())
+		slog.Error("Failed changing password", "clientID", args.ClientID, "err", err.Error())
 	}
 	return err
 }

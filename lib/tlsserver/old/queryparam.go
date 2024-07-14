@@ -2,7 +2,6 @@ package old
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/tlsclient"
 	"net/http"
 	"strconv"
 )
@@ -30,24 +29,6 @@ func (srv *TLSServer) GetQueryInt(
 		}
 	}
 	return int(value64), err
-}
-
-// GetQueryLimitOffset reads the limit and offset query parameters of a given request.
-// These query parameters have standardized names to limit the size of API results.
-// Provide a defaultLimit for use if limit is not provided. This is also the maximum limit.
-// Offset is 0 by default.
-// Returns limit and offset or an error if the query parameter is incorrect
-func (srv *TLSServer) GetQueryLimitOffset(request *http.Request, defaultLimit int) (limit int, offset int, err error) {
-
-	// offset and limit are optionally provided through query params
-	limit, err = srv.GetQueryInt(request, tlsclient.ParamLimit, defaultLimit)
-	if defaultLimit != 0 && limit > defaultLimit {
-		limit = defaultLimit
-	}
-	if err == nil {
-		offset, err = srv.GetQueryInt(request, tlsclient.ParamOffset, 0)
-	}
-	return limit, offset, err
 }
 
 // GetQueryString reads the request query parameter and returns the first string

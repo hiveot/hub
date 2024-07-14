@@ -72,13 +72,23 @@ window.selectNavTargets = (oldURL, newURL) => {
     })
 }
 
-// Handler to navigate to a new URL without a browser reload.
-// This pushes the new URL, displays the new targets and sets focus to the new target.
-// returns false to stop propagation in case of an onclick handler.
+// Navigate to a new URL without a browser reload.
+// This:
+// 1. stops the event propagation (otherwise htmx can throw an exception),
+// 2. preventDefault to avoid a full page reload
+// 3. pushes the new URL on the history
+// 4. set the h-target class on the element matching the URL to highlight navigation element on the header menu
+// 5. set the display style on elements with the displayIfTarget attribute of the URL to
+//    show the newly selected page and set the focus to this element.
+//
+// This supports a fragment re-render of the given URL, so the given URL must have
+// a server side renderer. When hx-boost is used there is no need for hx-get and hx-swap.
+//
 // Note that this does not trigger a popstate event.
 //
 // @param ev optional the event that triggered the request that will be stopped
 // @param newURL is the destination URL
+// This returns false to stop propagation in case of an onclick handler.
 window.navigateTo = (ev, newURL) => {
     // FIXME: event is deprecated. how to stop propagation?
     if (ev) {

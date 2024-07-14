@@ -8,9 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -35,7 +35,6 @@ type TLSServer struct {
 //   - headers "Origin", "Accept", "Content-Type", "X-Requested-With"
 func (srv *TLSServer) Start() error {
 	var err error
-	var mutex = sync.Mutex{}
 
 	slog.Info("Starting TLS server", "address", srv.address, "port", srv.port)
 	if srv.caCert == nil || srv.serverCert == nil {
@@ -69,9 +68,12 @@ func (srv *TLSServer) Start() error {
 			} else if strings.HasPrefix(orig, "https://"+srv.address) {
 				slog.Debug("TLSServer.AllowOriginFunc: Cors origin Is True", "origin", orig)
 				return true
+			} else if orig == "" {
+				// same-origin is allowed
+				return true
 			}
-			slog.Warn("TLSServer.AllowOriginFunc: Cors: missing origin:", "origin", orig)
-			// for testing
+			slog.Warn("TLSServer.AllowOriginFunc: Cors: invalid origin:", "origin", orig)
+			// for testing just warn about missing origin
 			return true
 		},
 		// default allowed headers is "Origin", "Accept", "Content-Type", "X-Requested-With" (missing authorization)
@@ -92,25 +94,22 @@ func (srv *TLSServer) Start() error {
 		Handler:   handler,
 		TLSConfig: serverTLSConf,
 	}
+	l, err := net.Listen("tcp", srv.httpServer.Addr)
+	if err != nil {
+		return err
+	}
 	// mutex to capture error result in case startup in the background failed
 	go func() {
 		// serverTLSConf contains certificate and key
-		err2 := srv.httpServer.ListenAndServeTLS("", "")
+		err2 := srv.httpServer.ServeTLS(l, "", "")
+		//err2 := srv.httpServer.ListenAndServeTLS("", "")
 		if err2 != nil && !errors.Is(err2, http.ErrServerClosed) {
-			mutex.Lock()
-			//t := err2.Error()
-			err = fmt.Errorf("ListenAndServeTLS: %s", err2.Error())
+			err = fmt.Errorf("TLS Server start error: %s", err2.Error())
 			slog.Error(err.Error())
-			mutex.Unlock()
 		} else {
 			slog.Info("TLSServer stopped")
 		}
 	}()
-	// Make sure the server is listening before continuing
-	// TODO: how?
-	time.Sleep(time.Millisecond)
-	mutex.Lock()
-	defer mutex.Unlock()
 	return err
 }
 

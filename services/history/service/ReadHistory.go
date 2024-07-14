@@ -2,7 +2,9 @@ package service
 
 import (
 	"fmt"
+	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"log/slog"
 	"time"
@@ -18,11 +20,14 @@ type ReadHistory struct {
 	isRunning bool
 }
 
-// GetCursor returns an iterator for ThingValues containing a TD document
-// The inactivity lifespan is currently fixed to 1 minute.
+// GetCursor returns an iterator for ThingMessage objects.
 func (svc *ReadHistory) GetCursor(
 	senderID string, args historyapi.GetCursorArgs) (*historyapi.GetCursorResp, error) {
 
+	lifespan := time.Minute
+	if args.LifespanSec != 0 {
+		lifespan = time.Duration(args.LifespanSec) * time.Second
+	}
 	if args.ThingID == "" {
 		return nil, fmt.Errorf("missing thingID")
 	}
@@ -34,9 +39,59 @@ func (svc *ReadHistory) GetCursor(
 	if err != nil {
 		return nil, err
 	}
-	key := svc.cursorCache.Add(cursor, bucket, senderID, args.FilterOnKey, time.Minute)
+	key := svc.cursorCache.Add(cursor, bucket, senderID, args.FilterOnKey, lifespan)
 	resp := &historyapi.GetCursorResp{CursorKey: key}
 	return resp, nil
+}
+
+// internal read history function
+func (svc *ReadHistory) readHistory(
+	thingID string, filterOnKey string, timestamp string, durationSec int, limit int) (
+	values []*things.ThingMessage, itemsRemaining bool, err error) {
+
+	values = make([]*things.ThingMessage, 0)
+
+	if thingID == "" {
+		return nil, false, fmt.Errorf("missing thingID")
+	}
+	bucket := svc.bucketStore.GetBucket(thingID)
+	cursor, err := bucket.Cursor()
+	if err != nil {
+		return nil, false, err
+	}
+	defer cursor.Release()
+
+	ts, _ := dateparse.ParseAny(timestamp)
+	item0, valid := svc.seek(cursor, ts, filterOnKey)
+	if valid {
+		// item0 is nil when seek afer the last available item
+		values = append(values, item0)
+	}
+	var batch []*things.ThingMessage
+	until := ts.Add(time.Duration(durationSec) * time.Second)
+	if durationSec > 0 {
+		// read forward in time
+		batch, itemsRemaining = svc.nextN(cursor, filterOnKey, until, 1000)
+	} else {
+		// read backwards in time
+		batch, itemsRemaining = svc.prevN(cursor, filterOnKey, until, 1000)
+	}
+	values = append(values, batch...)
+	return values, itemsRemaining, err
+}
+
+// ReadHistory the history for the given time, duration and limit
+// For more extensive result use the cursor
+// To go back in time use the negative duration.
+func (svc *ReadHistory) ReadHistory(
+	_ string, args historyapi.ReadHistoryArgs) (resp historyapi.ReadHistoryResp, err error) {
+
+	items, remaining, err := svc.readHistory(
+		args.ThingID, args.FilterOnKey, args.Timestamp, args.Duration, args.Limit)
+
+	resp.Values = items
+	resp.ItemsRemaining = remaining
+	return resp, err
 }
 
 // Start the read history handler.

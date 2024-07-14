@@ -31,7 +31,7 @@ func main() {
 	slog.Info("Loading CA certificate and key", "dir", env.CertsDir)
 	caCert, err = certs.LoadX509CertFromPEM(caCertPath)
 	if err != nil {
-		slog.Error("DeliveryFailed loading CA certificate",
+		slog.Error("Failed loading CA certificate",
 			"caCertPath", caCertPath, "err", err)
 		os.Exit(1)
 	}

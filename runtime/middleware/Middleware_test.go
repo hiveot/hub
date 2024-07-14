@@ -52,7 +52,7 @@ func TestHandlerError(t *testing.T) {
 	mw.SetMessageHandler(func(msg *things.ThingMessage) hubclient.DeliveryStatus {
 		var res hubclient.DeliveryStatus
 		res.Progress = hubclient.DeliveryFailed
-		res.Error = "DeliveryFailed reply"
+		res.Error = "Failed reply"
 		return res
 	})
 	mwh1Count := 0

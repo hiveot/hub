@@ -1,39 +1,43 @@
 {{/*Display the details of a thing with title, description, timestamp, attributes, events and actions */}}
 
-
-
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.DetailsTemplateData */ -}}
+
+<!--After an initial load without data, auto-reload fragment when viewed. -->
 {{if not .ThingID}}
-	<div
-		hx-trigger="intersect once"
-		hx-swap="outerHTML"
-		hx-get="">reloading page fragment...</div>
-{{end}}
+<div hx-trigger="intersect once"
+     hx-get=""
+     hx-swap="outerHTML"
+>
+	<p>Reloading Thing details data...</p>
+	<h-loading ></h-loading>
+</div>
 
-{{if .ThingID}}
-	<article
-				hx-trigger="sse:{{.ThingID}}"
-				hx-swap="outerHTML"
-				hx-get="/thing/details/{{.ThingID}}"
-				class="h-panel container-fluid">
+{{else}}
 
-		<!--===Thing Summary header===-->
+<article
+		hx-trigger="sse:{{.ThingID}}"
+		hx-get="/thing/details/{{.ThingID}}"
+		hx-swap="innerHTML"
+		hx-target="#detailsPage"
+		class="h-panel container-fluid">
 
-			<summary id="detailsSummary" class="outline h-row" >
+	<!--===Thing Summary header===-->
+
+		<summary id="detailsSummary" class="outline h-row" >
 				<h4 style="display:contents" >{{.TD.Title}}</h4>
 				<div class="h-grow"></div>
 				<!--=== button to delete this TD ===-->
 				<button title="Delete TD" slot="button" class="h-icon-button  outline"
 				        hx-trigger="click"
 				        hx-get="/thing/confirmDeleteTDDialog/{{.ThingID}}"
-								hx-target="#confirmDialog" hx-swap="innerHTML"
+								hx-target="#confirmDialog"
+								hx-swap="innerHTML"
 				>
 					<iconify-icon icon="mdi:trash-can-outline"></iconify-icon>
 				</button>
+		</summary>
 
-			</summary>
-
-			<ul class="h-grid-table details-header">
+		<ul class="h-grid-table details-header">
 				<label for="deviceName">Title:</label>
 				<input id="deviceName" readonly
 				       style="margin: 0; text-overflow: ellipsis; background:none;"
@@ -51,85 +55,83 @@
 
 				<label for="thingID">Thing ID:</label>
 				<div class="h-row">
-					<input id="thingID" readonly style="margin: 0; text-overflow: ellipsis; "
-					       value="{{.ThingID}}"/>
+						<input id="thingID" readonly style="margin: 0; text-overflow: ellipsis; "
+					      value="{{.ThingID}}"/>
 
-					<!--=== button to open the raw TD in a new tab ===-->
-					<button for="agentID" title="view raw TD document"  class="h-icon-button outline">
-						<a href="/thing/raw/{{.ThingID}}" target="_blank">
-						<iconify-icon icon="mdi:text-box-outline"></iconify-icon>
-						</a>
-					</button>
+						<!--=== button to open the raw TD in a new tab ===-->
+						<button for="agentID" title="view raw TD document"  class="h-icon-button outline">
+								<a href="/thing/raw/{{.ThingID}}" target="_blank">
+								<iconify-icon icon="mdi:text-box-outline"></iconify-icon>
+								</a>
+						</button>
 				</div>
 
 				<div class="h-grow"></div>
-
-			</ul>
-
+		</ul>
 		<p></p>
 
-	<h-details-group id="thingDetails" group-name="thingDetails">
-		<!--===Thing Attributes===-->
-		<details id="detailsAttr" >
-			<summary class="outline">
-				<span style="font-size: medium"><strong>Attributes</strong></span>
-				<span> ({{len .Attributes}})</span>
-			</summary>
-        {{template "attrList.gohtml" .}}
-		</details>
+		<h-details-group id="thingDetails" group-name="thingDetails">
+				<!--===Thing Attributes===-->
+				<details id="detailsAttr" >
+						<summary class="outline">
+							<span style="font-size: medium"><strong>Attributes</strong></span>
+							<span> ({{len .Attributes}})</span>
+						</summary>
+		        {{template "attrList.gohtml" .}}
+				</details>
 
-		<!--===Thing Configuration===-->
-		<hr/>
-		<details id="detailsConfig" >
-			<summary class="outline">
-				<span style="font-size: medium"><strong>Configuration</strong></span>
-				<span> ({{len .Config}})</span>
-			</summary>
-				{{template "configList.gohtml" .}}
-		</details>
+				<!--===Thing Configuration===-->
+				<hr/>
+				<details id="detailsConfig" >
+						<summary class="outline">
+								<span style="font-size: medium"><strong>Configuration</strong></span>
+								<span> ({{len .Config}})</span>
+						</summary>
+						{{template "configList.gohtml" .}}
+				</details>
 
-		<!--===Thing Events===-->
+				<!--===Thing Events===-->
 
-		<hr/>
-		<details id="detailsEvents" >
-			<summary class="outline">
-				<span style="font-size: medium"><strong>Events</strong></span>
-				<span> ({{len .TD.Events}})</span>
-			</summary>
-        {{template "eventList.gohtml" .}}
-		</details>
+				<hr/>
+				<details id="detailsEvents" >
+						<summary class="outline">
+								<span style="font-size: medium"><strong>Events</strong></span>
+								<span> ({{len .TD.Events}})</span>
+						</summary>
+		        {{template "eventList.gohtml" .}}
+				</details>
 
-		<!--===Thing Actions===-->
+				<!--===Thing Actions===-->
 
-		<hr/>
-		<details id="detailsActions">
-			<summary class="outline">
-				<span style="font-size: medium"><strong>Actions</strong></span>
-				<span> ({{len .TD.Actions}})</span>
-			</summary>
-        {{template "actionList.gohtml" .}}
-		</details>
-</h-details-group>
-
-	</article>
-	<div id="confirmDialog"></div>
+				<hr/>
+				<details id="detailsActions">
+						<summary class="outline">
+								<span style="font-size: medium"><strong>Actions</strong></span>
+								<span> ({{len .TD.Actions}})</span>
+						</summary>
+						{{template "actionList.gohtml" .}}
+				</details>
+		</h-details-group>
 
 
-	<style>
+</article>
+<div id="confirmDialog"></div>
 
 
-      /* responsive columns for the details page heading*/
+<style>
+  /* responsive columns for the details page heading*/
+    .details-header {
+      grid-column-gap: 10px;
+      align-items: baseline;
+
+      /*grid-template-columns: max-content 1fr;*/
+    }
+
+    @media (width >= 576px) {
       .details-header {
-          grid-column-gap: 10px;
-          align-items: baseline;
-
-          /*grid-template-columns: max-content 1fr;*/
+          grid-template-columns: max-content 1fr;
       }
+    }
+</style>
 
-      @media (width >= 576px) {
-          .details-header {
-              grid-template-columns: max-content 1fr;
-          }
-      }
-	</style>
 {{end}}

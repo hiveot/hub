@@ -23,10 +23,58 @@ import (
 	"time"
 )
 
+// Paths used by this protocol binding - SYNC with HttpSSEClient.ts
+//
+// These are currently hard coded to allow services and bindings to use the runtime.
+//
+// The idea is that the TDD defines them but that isn't usable from a service.
+// Do the hub runtime services require a TD to be used?
+//
+// Yes? chicken and egg problem as to get the TD you need to use the directory service
+// Is the directory an exception?
+// No? hard coding these paths isn't ideal either, even if its in a client library
+// Another consideration is that the args and results struct are already hard coded.
+// This clearly needs more thoughts. What is needed for machines to use the TD for
+// basic functions such as pub/sub actions, events and read the directory?
+//
+// For now hard-code the runtime paths in this client library. Investigate if they
+// can be derived from the TD (that is the whole goal for using WoT TDs after all)
+const (
+	// Form paths that apply to all TDs at the top level
+	// SYNC with HttpSSEClient.ts
+	GetReadAllEventsPath         = "/events/{thingID}"
+	GetReadAllPropertiesPath     = "/properties/{thingID}"
+	PostSubscribeAllEventsPath   = "/subscribe/{thingID}"
+	PostUnsubscribeAllEventsPath = "/unsubscribe/{thingID}"
+	ConnectSSEPath               = "/sse"
+
+	// Form paths for accessing TDD directory
+	GetThingPath  = "/tdd/{thingID}"
+	GetThingsPath = "/tdd" // query param offset=, limit=
+	PostThingPath = "/tdd/{thingID}"
+
+	// Form paths for accessing Actions
+	PostInvokeActionPath = "/action/{thingID}/{key}"
+
+	// Form paths for accessing Events
+	PostPublishEventPath = "/event/{thingID}/{key}"
+
+	// Form paths for accessing Properties
+	PostWritePropertyPath = "/property/{thingID}/{key}"
+
+	// authn service - used in authn TD
+	PostLoginPath   = "/login"
+	PostLogoutPath  = "/logout"
+	PostRefreshPath = "/refresh"
+)
+
 // HttpSSEClient manages the connection to the hub server using http/2.
 // This implements the IHubClient interface.
 // This client creates two http/2 connections, one for posting messages and
 // one for a sse connection to establish a return channel.
+//
+// This clients implements the REST API supported by the digitwin runtime services,
+// specifically the directory, inbox, outbox, authn
 type HttpSSEClient struct {
 	hostPort string
 	ssePath  string
@@ -84,7 +132,7 @@ func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 		cl.tlsClient.Close()
 	}
 	cl.tlsClient = tlsclient.NewTLSClient(cl.hostPort, nil, cl.caCert, cl.timeout)
-	loginURL := fmt.Sprintf("https://%s%s", cl.hostPort, vocab.PostLoginPath)
+	loginURL := fmt.Sprintf("https://%s%s", cl.hostPort, PostLoginPath)
 	cl.mux.Unlock()
 
 	loginMessage := authn.UserLoginArgs{
@@ -216,7 +264,7 @@ func (cl *HttpSSEClient) handleSSEDisconnect(err error) {
 
 // Logout from the server and end the session
 func (cl *HttpSSEClient) Logout() error {
-	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, vocab.PostLogoutPath)
+	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, PostLogoutPath)
 	//_, err := cl.Invoke("POST", serverURL, http.NoBody, nil)
 	_, statusCode, err := cl.tlsClient.Post(serverURL, nil)
 	_ = statusCode
@@ -231,20 +279,19 @@ func (cl *HttpSSEClient) Marshal(data any) []byte {
 
 // Publish an action, event or property message and return the delivery status
 //
-//	messageType to publish: MessageTypeAction|Event|Property
+//	path used to publish PostActionPath/PostEventPath/...
 //	thingID to publish as or to: events are published for the thing and actions to publish to the thingID
 //	key is the event/action/property key being published or modified
 //	data is the native message payload to transfer that will be serialized
 //	queryParams optional key-value pairs to pass along as query parameters
 func (cl *HttpSSEClient) postMessage(
-	messageType string, thingID string, key string, data any, queryParams map[string]string) (
+	postPath string, thingID string, key string, data any, queryParams map[string]string) (
 	stat hubclient.DeliveryStatus) {
 
 	vars := map[string]string{
-		"thingID":     thingID,
-		"messageType": messageType,
-		"key":         key}
-	messagePath := utils.Substitute(vocab.PostMessagePath, vars)
+		"thingID": thingID,
+		"key":     key}
+	messagePath := utils.Substitute(postPath, vars)
 	cl.mux.RLock()
 	defer cl.mux.RUnlock()
 	if cl.tlsClient == nil {
@@ -285,7 +332,7 @@ func (cl *HttpSSEClient) PubAction(thingID string, key string, data any) (stat h
 	slog.Debug("PubAction",
 		slog.String("thingID", thingID),
 		slog.String("key", key))
-	stat = cl.postMessage(vocab.MessageTypeAction, thingID, key, data, nil)
+	stat = cl.postMessage(PostInvokeActionPath, thingID, key, data, nil)
 	slog.Info("PubAction",
 		slog.String("me", cl._status.ClientID),
 		slog.String("thingID", thingID),
@@ -304,7 +351,7 @@ func (cl *HttpSSEClient) PubActionWithQueryParams(
 		slog.String("thingID", thingID),
 		slog.String("key", key),
 	)
-	stat = cl.postMessage(vocab.MessageTypeAction, thingID, key, data, params)
+	stat = cl.postMessage(PostInvokeActionPath, thingID, key, data, params)
 	return stat
 }
 
@@ -316,7 +363,7 @@ func (cl *HttpSSEClient) PubEvent(thingID string, key string, data any) error {
 		slog.String("device thingID", thingID),
 		slog.String("key", key),
 	)
-	stat := cl.postMessage(vocab.MessageTypeEvent, thingID, key, data, nil)
+	stat := cl.postMessage(PostPublishEventPath, thingID, key, data, nil)
 	if stat.Error != "" {
 		return errors.New(stat.Error)
 	}
@@ -327,7 +374,7 @@ func (cl *HttpSSEClient) PubEvent(thingID string, key string, data any) error {
 // This is similar to publishing an action but only affects properties.
 func (cl *HttpSSEClient) PubProperty(thingID string, key string, data any) (
 	stat hubclient.DeliveryStatus) {
-	stat = cl.postMessage(vocab.MessageTypeProperty, thingID, key, data, nil)
+	stat = cl.postMessage(PostWritePropertyPath, thingID, key, data, nil)
 	slog.Info("PubProperty",
 		slog.String("me", cl._status.ClientID),
 		slog.String("thingID", thingID),
@@ -355,7 +402,7 @@ func (cl *HttpSSEClient) PubTD(td *things.TD) error {
 // RefreshToken refreshes the authentication token
 // The resulting token can be used with 'ConnectWithJWT'
 func (cl *HttpSSEClient) RefreshToken(oldToken string) (newToken string, err error) {
-	refreshURL := fmt.Sprintf("https://%s%s", cl.hostPort, vocab.PostRefreshPath)
+	refreshURL := fmt.Sprintf("https://%s%s", cl.hostPort, PostRefreshPath)
 
 	args := authn.UserRefreshTokenArgs{
 		ClientID: cl._status.ClientID,
@@ -491,7 +538,7 @@ func (cl *HttpSSEClient) Subscribe(thingID string, key string) error {
 		key = "+"
 	}
 	vars := map[string]string{"thingID": thingID, "key": key}
-	subscribePath := utils.Substitute(vocab.PostSubscribePath, vars)
+	subscribePath := utils.Substitute(PostSubscribeAllEventsPath, vars)
 	_, _, err := cl.tlsClient.Post(subscribePath, nil)
 	return err
 }
@@ -508,7 +555,7 @@ func (cl *HttpSSEClient) Unsubscribe(thingID string) error {
 		thingID = "+"
 	}
 	vars := map[string]string{"thingID": thingID}
-	unsubscribePath := utils.Substitute(vocab.PostUnsubscribePath, vars)
+	unsubscribePath := utils.Substitute(PostUnsubscribeAllEventsPath, vars)
 	_, _, err := cl.tlsClient.Post(unsubscribePath, nil)
 	return err
 }
@@ -577,7 +624,7 @@ func NewHttpSSEClient(hostPort string, clientID string,
 		// max delay 3 seconds before a response is expected
 		timeout:     timeout,
 		hostPort:    hostPort,
-		ssePath:     vocab.ConnectSSEPath,
+		ssePath:     ConnectSSEPath,
 		_sseChan:    make(chan *sse.Event),
 		_correlData: make(map[string]chan *hubclient.DeliveryStatus),
 		// max message size for bulk reads is 10MB.

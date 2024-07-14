@@ -45,7 +45,7 @@ func getConfigValue(
 	}
 
 	keys := []string{key}
-	propValues, err := digitwin.OutboxReadLatest(hc, keys, "", thingID)
+	propValues, err := digitwin.OutboxReadLatest(hc, keys, "", "", thingID)
 	if err == nil {
 		// convert the property value to string for presentation
 		// TODO: make this simpler

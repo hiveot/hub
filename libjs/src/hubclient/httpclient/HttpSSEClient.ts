@@ -1,7 +1,6 @@
 import {TD} from '../../things/TD.js';
 import {
     ConnectionStatus,
-    ConnInfo,
     DeliveryStatus,
     IHubClient,
     MessageHandler
@@ -9,17 +8,42 @@ import {
 import type {IHiveKey} from "@keys/IHiveKey";
 import * as tslog from 'tslog';
 import {
-    ConnectSSEPath, EventTypeDeliveryUpdate,
+     EventTypeDeliveryUpdate,
     EventTypeProperties,
     EventTypeTD, MessageTypeAction, MessageTypeEvent, MessageTypeProperty,
-    PostMessagePath,
-    PostLoginPath, PostRefreshPath,
-    PostSubscribePath,  PostUnsubscribePath
 } from "@hivelib/api/vocab/ht-vocab";
 import * as http2 from "node:http2";
 import {connectSSE} from "@hivelib/hubclient/httpclient/connectSSE";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as https from "node:https";
+
+
+// Form paths that apply to all TDs at the top level
+// SYNC with HttpSSEClient.go
+const GetReadAllEventsPath= "/events/{thingID}"
+const GetReadAllPropertiesPath= "/properties/{thingID}"
+const PostSubscribeAllEventsPath   = "/subscribe/{thingID}"
+const PostUnsubscribeAllEventsPath = "/unsubscribe/{thingID}"
+const ConnectSSEPath      = "/sse"
+
+// Form paths for accessing TDD directory
+const GetThingPath= "/tdd/{thingID}"
+const GetThingsPath= "/tdd" // query param offset=, limit=
+const PostThingPath    = "/tdd/{thingID}"
+
+// Form paths for accessing actions
+const PostInvokeActionPath   = "/action/{thingID}/{key}"
+
+// Form paths for accessing events
+const PostPublishEventPath    = "/event/{thingID}/{key}"
+
+// Form paths for accessing properties
+const PostWritePropertyPath = "/property/{thingID}/{key}"
+
+// authn service - used in authn
+const PostLoginPath   = "/login"
+const PostLogoutPath  = "/logout"
+const PostRefreshPath = "/refresh"
 
 
 const hclog = new tslog.Logger()
@@ -37,12 +61,11 @@ export class HttpSSEClient implements IHubClient {
 
     isInitialized: boolean = false;
     connStatus: ConnectionStatus;
-    connInfo: string;
     // the auth token when using connectWithToken
     authToken: string;
 
     // client handler for connection status change
-    connectHandler: ((status: ConnectionStatus, info: ConnInfo) => void) | null = null
+    connectHandler: ((status: ConnectionStatus) => void) | null = null
     // client handler for incoming messages from the hub.
     messageHandler: MessageHandler | null = null;
 
@@ -62,7 +85,6 @@ export class HttpSSEClient implements IHubClient {
         this._disableCertCheck = disableCertCheck;
         this._ssePath = ConnectSSEPath
         this.connStatus = ConnectionStatus.Disconnected;
-        this.connInfo = ConnInfo.NotConnected;
         this.authToken = ""
     }
 
@@ -72,8 +94,8 @@ export class HttpSSEClient implements IHubClient {
     }
 
     // return the current connection status
-    get connectionStatus(): { status: ConnectionStatus, info: string } {
-        return {status: this.connStatus, info: this.connInfo};
+    get connectionStatus(): { status: ConnectionStatus } {
+        return {status: this.connStatus};
     }
 
     // setup a TLS connection with the hub
@@ -93,8 +115,9 @@ export class HttpSSEClient implements IHubClient {
 
         // When an error occurs, show it.
         this._http2Session.on('close', () => {
-            console.warn("connection has closed");
-            // this.disconnect()
+            console.info("connection has closed");
+            // cleanup
+            this.disconnect()
         });
         this._http2Session.on('connect', (ev) => {
             hclog.info("connected to server");
@@ -166,11 +189,12 @@ export class HttpSSEClient implements IHubClient {
         }
     }
 
+    // TODO: logout
+
     // callback handler invoked when the SSE connection status has changed
-    onConnection(status: ConnectionStatus, info: string) {
+    onConnection(status: ConnectionStatus) {
         this.connStatus = status
-        this.connInfo = info
-        if (this.connStatus == ConnectionStatus.Connected) {
+        if (this.connStatus === ConnectionStatus.Connected) {
             hclog.info('HubClient connected');
         } else if (this.connStatus == ConnectionStatus.Connecting) {
             hclog.info('HubClient attempt connecting');
@@ -222,7 +246,7 @@ export class HttpSSEClient implements IHubClient {
     //     })
     // }
 
-    // post a request to the path after serializing the given data
+    // post a request to the path with the given data
     async postRequest(path: string, data: any): Promise<string> {
         // if the session is invalid, restart it
         if (this._http2Session?.closed) {
@@ -248,6 +272,7 @@ export class HttpSSEClient implements IHubClient {
                     "content-type": "application/json",
                     "content-length": Buffer.byteLength(payload),
                 })
+
                 req.setEncoding('utf8');
 
                 req.on('response', (r) => {
@@ -295,9 +320,8 @@ export class HttpSSEClient implements IHubClient {
     async pubAction(thingID: string, key: string, payload: any): Promise<DeliveryStatus> {
         hclog.info("pubAction. thingID:", thingID, ", key:", key)
 
-        let actionPath = PostMessagePath.replace("{thingID}", thingID)
+        let actionPath = PostInvokeActionPath.replace("{thingID}", thingID)
         actionPath = actionPath.replace("{key}", key)
-        actionPath = actionPath.replace("{messageType}", MessageTypeAction)
 
         let resp = await this.postRequest(actionPath, payload)
         let stat: DeliveryStatus = JSON.parse(resp)
@@ -309,9 +333,8 @@ export class HttpSSEClient implements IHubClient {
     async pubProperty(thingID: string, key: string, propValue: any): Promise<DeliveryStatus> {
         hclog.info("pubProperty. thingID:", thingID, ", key:", key)
 
-        let propPath = PostMessagePath.replace("{thingID}", thingID)
+        let propPath = PostWritePropertyPath.replace("{thingID}", thingID)
         propPath = propPath.replace("{key}", key)
-        propPath = propPath.replace("{messageType}", MessageTypeProperty)
 
         let resp = await this.postRequest(propPath, propValue)
         let stat: DeliveryStatus = JSON.parse(resp)
@@ -335,9 +358,8 @@ export class HttpSSEClient implements IHubClient {
     async pubEvent(thingID: string, key: string, payload: any): Promise<DeliveryStatus> {
         hclog.info("pubEvent. thingID:", thingID, ", key:", key)
 
-        let eventPath = PostMessagePath.replace("{thingID}", thingID)
+        let eventPath = PostPublishEventPath.replace("{thingID}", thingID)
         eventPath = eventPath.replace("{key}", key)
-        eventPath = eventPath.replace("{messageType}", MessageTypeEvent)
 
         let resp = await this.postRequest(eventPath, payload)
         let stat: DeliveryStatus = JSON.parse(resp)
@@ -407,7 +429,7 @@ export class HttpSSEClient implements IHubClient {
     }
 
 
-    setConnectHandler(handler: (status: ConnectionStatus, info: string) => void): void {
+    setConnectHandler(handler: (status: ConnectionStatus) => void): void {
         this.connectHandler = handler
     }
 
@@ -439,7 +461,7 @@ export class HttpSSEClient implements IHubClient {
         if (key == "") {
             key = "+"
         }
-        let subscribePath = PostSubscribePath.replace("{thingID}", dThingID)
+        let subscribePath = PostSubscribeAllEventsPath.replace("{thingID}", dThingID)
         subscribePath = subscribePath.replace("{key}", key)
         await this.postRequest(subscribePath, "")
 
@@ -447,7 +469,7 @@ export class HttpSSEClient implements IHubClient {
 
     async unsubscribe(dThingID: string) {
 
-        let subscribePath = PostUnsubscribePath.replace("{thingID}", dThingID)
+        let subscribePath = PostUnsubscribeAllEventsPath.replace("{thingID}", dThingID)
         subscribePath = subscribePath.replace("{key}", "+")
         await this.postRequest(subscribePath, "")
     }

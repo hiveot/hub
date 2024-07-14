@@ -16,69 +16,64 @@
 
 <main class="container-fluid">
 
-	<article
-        {{/* only trigger when showing current day, don't include the timestamp so the new value shows up */}}
-        {{if .IsToday}}
+		<article
+        {{/* auto refresh on updates when showing the current day */}}
+        {{if eq .CompareToday 0}}
 					hx-trigger="sse:{{.ThingID}}/{{.Key}}"
 					hx-get="/history/{{.ThingID}}/{{.Key}}"
-        {{else}}
-					hx-get="/history/{{.ThingID}}/{{.Key}}?time={{.Timestamp}}"
+					hx-target="#historyPage"
+					hx-swap="innerHTML"
         {{end}}
-				hx-target="#historyPage"
-				hx-swap="innerHTML"
 				class="h-panel container-fluid"
-	>
-	<ul class="h-grid-table history-header" style="grid-column-gap: 10px;  align-items: baseline">
-		<label for="histDeviceName">History of:</label>
-		<input id="histDeviceName" readonly
-		       title="{{.ThingID}}/{{.Key}}"
-		       style="margin: 0; text-overflow: ellipsis; background:none;"
-		       value="{{.TD.Title}} {{.Aff.Title}}"/>
+		>
+		<ul class="h-grid-table history-header" style="grid-column-gap: 10px;  align-items: baseline">
+				<label for="histDeviceName">History of:</label>
+				<input id="histDeviceName" readonly
+				       title="{{.ThingID}}/{{.Key}}"
+				       style="margin: 0; text-overflow: ellipsis; background:none;"
+				       value="{{.TD.Title}} {{.Aff.Title}}"/>
 
-		<label for="histDate">Date:</label>
-		<div class="h-row">
-			<input id="histDate" readonly
-			       style="margin: 0; text-overflow: ellipsis; background:none; width:auto"
-			       value="{{.Timestamp.Format "Mon, 02 Jan 2006"}}"/>
+				<label for="histDate">Date:</label>
+						<div class="h-row">
+								<input id="histDate" readonly
+								       style="margin: 0; text-overflow: ellipsis; background:none; width:auto"
+								       value="{{.Timestamp.Format "Mon, 02 Jan 2006"}}"/>
 
-			<a href="/history/{{.ThingID}}/{{.Key}}?time={{ .PrevDay }}"
-			   hx-get="/history/{{.ThingID}}/{{.Key}}?time={{ .PrevDay }}"
-			   hx-target="#historyPage"
-			   hx-swap="innerHTML"
-			   onclick="navigateTo(null,this.href)"
-			>
-				Previous Day
-			</a>
-			<a href="/history/{{.ThingID}}/{{.Key}}?time={{ .NextDay }}"
-			   hx-get="/history/{{.ThingID}}/{{.Key}}?time={{ .NextDay }}"
-			   hx-target="#historyPage"
-			   hx-swap="innerHTML"
-			   onclick="navigateTo(null,this.href)"
-			>
-				Next Day
-			</a>
-			{{if not .IsToday}}
-			<a href="/history/{{.ThingID}}/{{.Key}}"
-			   hx-get="/history/{{.ThingID}}/{{.Key}}"
-			   hx-target="#historyPage"
-			   hx-swap="innerHTML"
-			   onclick="navigateTo(null,this.href)"
-			>
-				Today
-			</a>
-			{{end}}
-		</div>
+								<a href="/history/{{.ThingID}}/{{.Key}}?time={{ .PrevDay }}"
+									   hx-get="/history/{{.ThingID}}/{{.Key}}?time={{ .PrevDay }}"
+									   hx-target="#historyPage"
+									   hx-swap="innerHTML"
+									>
+										Previous Day
+								</a>
+							{{if eq .CompareToday -1}}
+								<a href="/history/{{.ThingID}}/{{.Key}}?time={{ .NextDay }}"
+									   hx-get="/history/{{.ThingID}}/{{.Key}}?time={{ .NextDay }}"
+									   hx-target="#historyPage"
+									   hx-swap="innerHTML"
+								>
+										Next Day
+								</a>
+							{{end}}
+							{{if ne .CompareToday 0}}
+							<a href="/history/{{.ThingID}}/{{.Key}}"
+								   hx-get="/history/{{.ThingID}}/{{.Key}}"
+								   hx-target="#historyPage"
+								   hx-swap="innerHTML"
+							>
+								Today
+							</a>
+							{{end}}
+						</div>
 
-		<label for="nrItems">Nr of entries:</label>
-		<input id="nrItems" readonly
-		       style="margin: 0; text-overflow: ellipsis; background:none;"
-		       value="{{len .Values}} in 24 hours"/>
-	</ul>
+				<label for="nrItems">Nr of entries:</label>
+				<input id="nrItems" readonly
+				       style="margin: 0; text-overflow: ellipsis; background:none;"
+				       value="{{len .Values}} in the previous 24 hours"/>
+		</ul>
 
-{{/*	Todo: add history controls */}}
-
-	{{template "historyTable.gohtml" .}}
-	</article>
+			{{template "historyTable.gohtml" .}}
+		</article>
 </main>
 
 {{end}}

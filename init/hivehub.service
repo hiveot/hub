@@ -8,7 +8,6 @@ After=network.target network-online.target
 PartOf=hiveot.target
 
 [Service]
-#PIDFile=/run/hub.%i.pid
 PIDFile=/run/hivehub.pid
 Nice=10
 
@@ -19,7 +18,6 @@ Group=hiveot
 # Auto restart the service after 1 minute when it aborts
 # NOTE: change the home folder to the appropriate folder when running locally
 WorkingDirectory=/opt/hivehub
-#ExecStart=/home/hiveot/bin/hivehub/bin/hub
 ExecStart=/opt/hivehub/bin/launcher
 Restart=on-failure
 RestartSec=60

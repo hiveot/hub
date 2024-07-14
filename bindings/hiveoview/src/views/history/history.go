@@ -40,16 +40,19 @@ func (ht HistoryTemplateData) PrevDay() time.Time {
 	return ht.Timestamp.Add(-time.Hour * 24)
 }
 
-// IsToday returns true if the timestamp is that of today
+// CompareToday returns 0 if the timestamp is that of local time somewhere today
+// this returns -1 if time is less than today and 1 if greater than today
+//
 // 'today' is different in that it refreshes if a value changes
-func (ht HistoryTemplateData) IsToday() bool {
-	// these times are in local time as 'today' is a local concept of time
+func (ht HistoryTemplateData) CompareToday() int {
+	// 'today' accepts any time in the current local day
 	yy, mm, dd := time.Now().Date()
 	tsYY, tsmm, tsdd := ht.Timestamp.Date()
 	if yy == tsYY && mm == tsmm && dd == tsdd {
-		return true
+		return 0
 	}
-	return false
+	diff := ht.Timestamp.Compare(time.Now())
+	return diff
 }
 
 // ReadHistoryData reads the history of a thing event
@@ -60,31 +63,12 @@ func (ht HistoryTemplateData) IsToday() bool {
 func ReadHistoryData(hc hubclient.IHubClient, thingID string, key string,
 	timestamp time.Time, durationSec int) (items []*things.ThingMessage, itemsRemaining bool, err error) {
 
+	limit := 1000
 	items = make([]*things.ThingMessage, 0)
 	var batch []*things.ThingMessage
 
 	hist := historyclient.NewReadHistoryClient(hc)
-	histCursor, releaseFn, err := hist.GetCursor(thingID, key)
-	if err != nil {
-		return nil, false, err
-	}
-	defer releaseFn()
-
-	tm, itemsRemaining, err := histCursor.Seek(timestamp)
-	if err != nil {
-		return nil, false, err
-	}
-	// tm is nil when search for 'now'
-	if tm != nil {
-		items = append(items, tm)
-	}
-	if durationSec > 0 {
-		endTime := timestamp.Add(time.Duration(durationSec) * time.Second)
-		batch, itemsRemaining, err = histCursor.NextUntil(endTime, 1000)
-	} else {
-		startTime := timestamp.Add(time.Duration(durationSec) * time.Second)
-		batch, itemsRemaining, err = histCursor.PrevUntil(startTime, 1000)
-	}
+	batch, itemsRemaining, err = hist.ReadHistory(thingID, key, timestamp, durationSec, limit)
 	items = append(items, batch...)
 	return items, itemsRemaining, nil
 }

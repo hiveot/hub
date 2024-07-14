@@ -18,6 +18,11 @@ type ProtocolInfo struct {
 // ITransportBinding is the interface implemented by all protocol bindings
 type ITransportBinding interface {
 
+	// AddTDForms add Forms to the TD for communication with the digital twin
+	// using this transport binding.
+	// This adds the operations for reading/writing properties, events and actions
+	AddTDForms(td *things.TD)
+
 	// GetProtocolInfo returns information on the protocol provided by the binding.
 	GetProtocolInfo() ProtocolInfo
 

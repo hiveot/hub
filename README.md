@@ -11,17 +11,19 @@ The Hub for the *Hive-of-Things* provides a secure [runtime](runtime/README-runt
 Status: The Hub core is currently being reworked to use the "[digital twins runtime](runtime/README-runtime.md)" with multiple concurrent protocol support. (May 2024). 
 
 TODO before alpha:
-5. Minimal web client  (bindings/hiveoview)
-   * ~~directory viewer~~
-   * ~~configuration editing~~
+1. Minimal web client  (bindings/hiveoview)
    * dashboard 
-   * admin panel for managing users and devices; starting/stopping of services
-6. Support for Forms sections in TDD documents describing the protocols to interact with a Thing.
-8. improve the embedded protocol binding (for internal services) 
-   * improve subscription support to reduce traffic/processing
-9. Revisit the vocabulary to integrate or adopt existing vocabularies where possible
+   * admin panel for managing users and devices
+   * admin panel for starting/stopping of services
+   * Only show option to edit config and send actions if the user has permissions
+1. Support for Forms sections in TDD documents describing the protocols to interact with a Thing.
+1. Revisit the vocabulary to integrate or adopt existing vocabularies where possible
 
 Future Roadmap:
+1. improve the embedded protocol binding (for internal services)
+   * improve subscription support to reduce traffic/processing
+1. All services and bindings should send an event when started and stopped
+2. All services and bindings should support a ping method
 1. Support client certificate authentication
 2. Support websockets as return channel
 3. Support UDS for local services
@@ -62,16 +64,16 @@ Last but not least, the 'hive' can be expanded by connecting multiple hubs to ea
 
 ## Build From Source
 
-To build the hub and plugins from source, a Linux system with golang 1.21 or newer must be available for the target system. To build zwavejs nodejs is used. hivoview is golang based and does not require any additional build tools. All builds can be done by running make.
+Building the Hub takes place in 2 parts: core and protocol bindings. 
 
 Prerequisites:
 
 1. An x86 or arm based Linux system. Ubuntu, Debian, Raspberrian
 2. Golang 1.21 or newer (with GOPATH set)
 3. GCC Make any 2020+ version
-5. nodejs v18+ (for building zwavejs)
+5. nodejs v18+ (for building zwavejs binding)
 
-### Build Hub And CLI
+### Build Hub Core
 
 1. Download source code:
 
@@ -80,10 +82,17 @@ git clone git@github.com:hiveot/hub
 cd hub
 ``` 
 
-2. Build the hub
+2. Build the Hub core, Services and Protocol bindings
 
+The quickest way:
+> make all
+
+If something goes wrong, build parts separately in order of dependency:
 ```sh
-make all
+make runtime
+make hubcli
+make services
+make bindings
 ```
 
 After the build is successful, the distribution files can be found in the 'dist' folder that can be deployed to the installation directory.
@@ -98,14 +107,12 @@ dist / stores - plugin data storage directory
 
 ## Install To User (Easiest)
 
-When installed to user, the hub is installed into a user's bin directory and runs under that user's permissions.
-
-This is the simplest way to install and run hiveot.
+Installing to user is great for running a test setup to develop new bindings or just see how things work. The hub is installed into the user's bin directory and runs under that user's permissions.
 
 For example, for a user named 'hub' the installation home is '/home/hub/bin/hiveot'.
 
-To build and install from source, run
-> make all && make install
+To install to user after a successful build, run
+> make install
 
 This copies the distribution files to ~/bin/hiveot. The method can also be used to upgrade an existing installation. Executables are always replaced but only new configuration files are installed. Existing configuration remains untouched to prevent wrecking your working setup.
 
@@ -123,6 +130,7 @@ For systemd installation to run as user 'hiveot'. When changing the user and fol
 
 ```sh
 sudo mkdir -P /opt/hiveot/bin
+sudo mkdir -P /opt/hiveot/plugins
 sudo mkdir -P /etc/hiveot/conf.d/ 
 sudo mkdir -P /etc/hiveot/certs/ 
 sudo mkdir /var/log/hiveot/   
@@ -135,6 +143,7 @@ tar -xf hiveot.tgz
 sudo cp config/* /etc/hiveot/conf.d
 sudo vi /etc/hiveot/hub.yaml    - and edit the config, log, plugin folders
 sudo cp -a bin/* /opt/hiveot
+sudo cp -a plugins/* /opt/hiveot
 ```
 
 Add /opt/hiveot/bin to the path
@@ -152,31 +161,37 @@ sudo chown -R hiveot:hiveot /var/lib/hiveot
 
 ## Docker Installation
 
-This is planned for the future.
+This is considered for the future.
 
 ## Configuration
 
-All Hub services will run out of the box with their default configuration. Service can use an optional yaml based configuration file found in the config folder.
+All Hub services will run out of the box with their default configuration. Some services use an optional yaml based configuration file found in the config folder. 
 
-### Generate a CA certificate
+Most important configs:
+* launcher.yaml  section 'autostart' lists the services to run at startup
 
-Before starting the hub, a CA certificate must be created. By default, the hub generates a self-signed CA certificate. It is possible to use a CA certificate from a 3rd party source, but this isn't needed when used on the local network.
+A typical service or protocol binding publishes its configuration options with its TD to allow centralized configuration by managers or administrators. This is up to each service to support.  
 
-Generate the CA certificate using the CLI:
+### CA certificate
+
+Before starting the hub, a CA certificate must be created. By default, the runtime generates a self-signed CA certificate if none is found. It is possible to use a CA certificate from a 3rd party source, but this isn't needed when used on the local network.
+
+The CLI can be used to view the currently used CA and server certificate:
+```sh
+cd ~/bin/hiveot        # when installed locally
+bin/hubcli vca    
+```
+
+To force generating a new self-signed CA certificate using the CLI:
 
 ```sh
 cd ~/bin/hiveot        # when installed locally
-bin/hubcli ca create    
+bin/hubcli cca --force
 ```
-
-### Service Autostart Configuration
-
-To configure autostart of services and protocol binding plugins, edit the provided launcher.yaml and add the plugins to the autostart section.
-> vi config/launcher.yaml
 
 ### Systemd Configuration
 
-Automatic startup after boot is supported through a systemd service. This can be used when installed system wide or as a user.
+Automatic startup after boot is supported through a systemd service. This can be used when installed system-wide or as a user.
 
 ```shell
 vi init/hiveot.service    #  (edit user, group, paths)

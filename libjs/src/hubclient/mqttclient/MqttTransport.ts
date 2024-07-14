@@ -1,6 +1,6 @@
 
 // MqttTransport
-import { ConnInfo, ConnectionStatus } from "../IHubClient";
+import { ConnInfo, ConnectionInfo } from "../IHubClient";
 import type { IHubClient } from "../IHubClient";
 import * as mqtt from 'mqtt';
 import * as os from "os";
@@ -23,7 +23,7 @@ export class MqttTransport implements IHubClient {
     qos: QoS = 0
 
     // application handler of connection status change
-    connectHandler: null | ((status: ConnectionStatus, info: string) => void) = null;
+    connectHandler: null | ((status: ConnectionInfo, info: string) => void) = null;
     // application handler of incoming messages
     eventHandler: null | ((topic: string, payload: string) => void) = null;
     // application handler of incoming request-response messages
@@ -91,7 +91,7 @@ export class MqttTransport implements IHubClient {
                 }
                 resolve()
                 if (this.connectHandler) {
-                    this.connectHandler(ConnectionStatus.Connected, ConnInfo.Success)
+                    this.connectHandler(ConnectionInfo.Connected, ConnInfo.Success)
                 }
             })
             this.mcl.on("disconnect", (packet: mqtt.IDisconnectPacket) => {
@@ -102,7 +102,7 @@ export class MqttTransport implements IHubClient {
                     err = new Error(reason + ":" + packet.properties?.reasonString)
                 }
                 if (this.connectHandler) {
-                    this.connectHandler(ConnectionStatus.Disconnected, err?.message || "")
+                    this.connectHandler(ConnectionInfo.Disconnected, err?.message || "")
                 }
             })
 
@@ -284,7 +284,7 @@ export class MqttTransport implements IHubClient {
     }
 
     // Set the callback of connect/disconnect updates
-    public setConnectHandler(handler: (status: ConnectionStatus, info: string) => void): void {
+    public setConnectHandler(handler: (status: ConnectionInfo, info: string) => void): void {
         this.connectHandler = handler
     }
 

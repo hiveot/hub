@@ -28,13 +28,16 @@
 						</button>
 					</div>
 					<div class="h-show-lg">{{$v.ActionType}}</div>
-					<div
-					     sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
+					<div sse-swap="{{$.ThingID}}/{{$k}}"
+					     hx-target="this"
+					     hx-swap="innerHTML">
 						{{$.Values.ToString $k}}
 					</div>
 					<div class="h-show-lg">{{$v.Description}}</div>
 					<div class="h-show-md"
-					     sse-swap="{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
+					     sse-swap="{{$.ThingID}}/{{$k}}/updated"
+					     hx-swap="innerHTML"
+					     hx-target="this"
 					     title="Updated: {{$.Values.GetUpdated $k}} by {{($.Values.GetSenderID $k)}}">
               {{$.Values.GetUpdated $k}}
 					</div>

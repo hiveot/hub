@@ -11,30 +11,20 @@ const AppTemplate = "app.gohtml"
 func RenderApp(w http.ResponseWriter, r *http.Request) {
 
 	// no specific fragment data
-	data := map[string]any{}
-	RenderAppPages(w, r, data)
+	RenderAppPages(w, r, nil)
 }
 
 // RenderAppPages renders the full html for a page in app.html.
-// Instead of rendering a fragment, this renders the full application html
-// with provided fragment data included.
-//
-// Usage: 1. Load the fragment data of the page to display
-//  2. Select the app page to be viewed, whose fragment data was provided
-//     e.g. append #pageName to the URL.
-//  3. Render the full page with the data of the selected page.
-//  4. All further navigation should render fragments using htmx.
-func RenderAppPages(w http.ResponseWriter, r *http.Request, data map[string]any) {
-
-	// 1a. full pages need the app title and header data
-	if data == nil {
-		data = map[string]any{}
-	}
-	GetAppHeadProps(data, "HiveOT", "/static/logo.svg")
-	data["Status"] = GetConnectStatus(r)
+// Use this to load a new page or a boosted page.
+// data is the data expected for the page to load. Use nil to default to app head
+// containing the connect status for the header.
+func RenderAppPages(w http.ResponseWriter, r *http.Request, data any) {
 
 	//render the full page base > app.html
-	views.TM.RenderFull(w, AppTemplate, data)
+	// Data can be the current app page
+	// data must contain the app header properties, eg connection status
+	//views.TM.RenderFull(w, AppTemplate, data)
+	views.TM.RenderFull(w, AppTemplate, nil)
 }
 
 // RenderAppOrFragment renders the page fragment, or the full app page followed
@@ -71,10 +61,13 @@ func RenderAppOrFragment(w http.ResponseWriter, r *http.Request, pageFragment st
 
 	isFragment := r.Header.Get("HX-Request") != ""
 	isBoosted := r.Header.Get("HX-Boosted") != ""
+	// When the hx-boosted header is present the full page must be rendered as
+	// the browser will inject the body of the rendered page into the body of
+	// the browser page without doing a full page reload.
 	if isFragment && !isBoosted {
 		views.TM.RenderFragment(w, pageFragment, data)
 	} else {
 		// app pages fetches its own app data
-		RenderAppPages(w, r, nil)
+		RenderAppPages(w, r, data)
 	}
 }

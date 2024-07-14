@@ -1,0 +1,79 @@
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/directory.DirGroup */ -}}
+
+<!-- Table of all things from template ".Things" data-->
+<details id="{{.AgentID}}-things"
+         hx-trigger="click from:#reload-directory"
+>
+	<summary class="outline">
+		<span>Publisher:</span>
+		<span style="font-size: medium"><strong>{{.AgentID}}</strong></span>
+		<span>- {{len .Things}} things</span>
+	</summary>
+
+	<ul class="directory-table h-grid-table" striped border>
+		<li>
+			<div class="h-show-sm"></div>
+			<div class="h-show-xl">Thing ID</div>
+			<div>Name</div>
+			<div class="h-show-md">Type</div>
+			<div class="h-show-lg">Outputs</div>
+			<div class="h-show-lg">Actions</div>
+			<div class="h-show-xs">Updated</div>
+			<!--            <div scope="col">Description</div>-->
+		</li>
+
+		<!--=== for TD in .Things ===-->
+      {{range .Things}}
+				<li>
+	          {{/*Icon*/}}
+						<div class="h-show-sm" title="Show TD">
+							<h-device-icon deviceType={{.AtType}}></h-device-icon>
+						</div>
+
+            {{/*Show ThingID on big screens */}}
+						<div class="h-show-xl">
+							<a href="/thing/details/{{.ID}}"
+							   hx-get="/thing/details/{{.ID}}"
+						     hx-target="#detailsPage"
+						     hx-swap="innerHTML"
+						     hx-on::after-request="window.navigateTo(null,this.href)"
+							>{{.ID}}
+							</a>
+						</div>
+
+	          {{/*Title*/}}
+						<div>
+							<a href="/thing/details/{{.ID}}"
+							   hx-get="/thing/details/{{.ID}}"
+							   hx-target="#detailsPage"
+							   hx-swap="innerHTML"
+							   hx-on::after-request="window.navigateTo(null,this.href)"
+
+                 {{/*	onclick with event fails as the event is cancelled and doesnt trigger fragment reload*/}}
+                 {{/*	onclick with null fails as htmx throws nil exception */}}
+									{{/*	onclick="window.navigateTo(event,'/thing/details/{{.ID}}')"*/}}
+							>{{.Title}}
+							</a>
+						</div>
+
+            {{/*Type*/}}
+						<div class="h-show-md">{{.GetAtTypeVocab}}</div>
+
+						{{/*Outputs*/}}
+						<div class="h-show-lg">{{len .Events}} outputs</div>
+
+						{{/*Actions*/}}
+						<div class="h-show-lg">{{len .Actions}} actions</div>
+
+						{{/*Updated*/}}
+						<div class="h-show-xs">{{.GetUpdated}}</div>
+				</li>
+      {{end}}
+
+		<tfoot>
+		<li>
+			<!--   <div colspan="3">Nr Things: {{ len .Things }}</div>-->
+		</li>
+		</tfoot>
+	</ul>
+</details>

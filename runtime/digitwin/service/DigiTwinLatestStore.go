@@ -72,7 +72,7 @@ func (svc *DigiTwinLatestStore) LoadLatest(thingID string) (cached bool) {
 
 // ReadLatest returns the latest values send to digital twin Things.
 //
-//	msgType type of message, MessageTypeEvent, MessageTypeProperties
+//	msgType type of message to read, MessageTypeEvent, MessageTypeProperties
 //	thingID whose events to return
 //	keys  optional keys of message types to filter on
 //	since optional ISO timestamp with time since which to return the messages

@@ -1,5 +1,5 @@
 import type { IHiveKey } from "@keys/IHiveKey";
-import type { ConnectionStatus, IHubClient } from "../IHubClient";
+import type { ConnectionInfo, IHubClient } from "../IHubClient";
 import * as tslog from 'tslog';
 import type { SubscriptionOptions, ConnectionOptions, NatsConnection } from "nats.ws";
 import { connect, nkeyAuthenticator, nkeys, StringCodec } from "nats.ws";
@@ -17,7 +17,7 @@ export class NatsTransport implements IHubClient {
     nc: NatsConnection | undefined
 
     // application handler of connection status change
-    connectHandler: null | ((connectStatus: ConnectionStatus, info: string) => void) = null;
+    connectHandler: null | ((connectStatus: ConnectionInfo, info: string) => void) = null;
     // application handler of incoming messages
     eventHandler: null | ((topic: string, payload: string) => void) = null;
     // application handler of incoming request-response messages
@@ -105,7 +105,7 @@ export class NatsTransport implements IHubClient {
 
 
     // Set the callback of connect/disconnect updates
-    public setConnectHandler(handler: (connectStatus: ConnectionStatus, info: string) => void) {
+    public setConnectHandler(handler: (connectStatus: ConnectionInfo, info: string) => void) {
         this.connectHandler = handler
     }
 

@@ -21,6 +21,11 @@ type EmbeddedTransport struct {
 	handleMessageFromClient hubclient.MessageHandler
 }
 
+// AddTDForms does not apply to the embedded service
+func (svc *EmbeddedTransport) AddTDForms(td *things.TD) {
+	// nothing to do here
+}
+
 // GetProtocolInfo returns information on the protocol provided by the binding.
 // This binding is only for embedded services to pub/sub events and actions.
 func (svc *EmbeddedTransport) GetProtocolInfo() api.ProtocolInfo {

@@ -27,8 +27,8 @@ type DigitwinService struct {
 	Outbox *DigiTwinOutboxService
 
 	mux sync.RWMutex
-	// The protocol manager communicates with agents and consumers
-	pm api.ITransportBinding
+	// The transport binding (manager) to communicate with agents and consumers
+	tb api.ITransportBinding
 }
 
 // HandleMessage is the main ingress point of the messages flow to the digital twin entities.
@@ -55,8 +55,9 @@ func (svc *DigitwinService) HandleMessage(msg *things.ThingMessage) (stat hubcli
 		return svc.Inbox.HandleDeliveryUpdate(msg)
 	}
 	// TD event updates the directory and are broadcast to subscribers
+	// this upgrades the TD with forms for accessing the digitwin
 	if msg.Key == vocab.EventTypeTD {
-		svc.Directory.HandleTDEvent(msg)
+		svc.Directory.HandleTDEvent(msg, svc.tb)
 	}
 	// regular events to be broadcast to subscribers
 	return svc.Outbox.HandleEvent(msg)
@@ -66,8 +67,8 @@ func (svc *DigitwinService) HandleMessage(msg *things.ThingMessage) (stat hubcli
 func (svc *DigitwinService) Start() (err error) {
 	slog.Info("Starting DigitwinService")
 	err = svc.store.Open()
-	svc.Inbox = NewDigiTwinInbox(svc.store, svc.pm)
-	svc.Outbox = NewDigiTwinOutbox(svc.store, svc.pm)
+	svc.Inbox = NewDigiTwinInbox(svc.store, svc.tb)
+	svc.Outbox = NewDigiTwinOutbox(svc.store, svc.tb)
 	svc.Directory = NewDigitwinDirectory(svc.store)
 	if err == nil {
 		err = svc.Directory.Start()
@@ -94,12 +95,12 @@ func (svc *DigitwinService) Stop() {
 // NewDigitwinService creates a new instance of the Digitwin service
 // The digitwin service is responsible for representing a Thing to consumers.
 //
-//	pm is the protocol manager used to communicate with agents and consumers
+//	tb is the protocol manager used to communicate with agents and consumers
 //	store is the bucket store for inbox and outbox storage. It will be opened on start and closed on stop
-func NewDigitwinService(pm api.ITransportBinding, store buckets.IBucketStore) *DigitwinService {
+func NewDigitwinService(tm api.ITransportBinding, store buckets.IBucketStore) *DigitwinService {
 	svc := &DigitwinService{
 		store: store,
-		pm:    pm,
+		tb:    tm,
 		mux:   sync.RWMutex{},
 	}
 	return svc
@@ -109,7 +110,7 @@ func NewDigitwinService(pm api.ITransportBinding, store buckets.IBucketStore) *D
 // This creates a bucket store for the directory, inbox, and outbox.
 //
 // storesDir is the directory where to create the digitwin storage
-// pm is the protocol binding or manager used to send messages to clients
+// tb is the protocol binding or manager used to send messages to clients
 func StartDigitwinService(
 	storesDir string, pm api.ITransportBinding) (svc *DigitwinService, err error) {
 

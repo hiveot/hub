@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -23,7 +24,7 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/status"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/thing"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/runtime/tlsserver"
+	"github.com/hiveot/hub/lib/tlsserver"
 	"log/slog"
 	"net/http"
 	"os"
@@ -117,6 +118,7 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 		// see also:https://medium.com/gravel-engineering/i-find-it-hard-to-reuse-root-template-in-go-htmx-so-i-made-my-own-little-tools-to-solve-it-df881eed7e4d
 		// these renderer full page or fragments for non hx-boost hx-requests
 		r.Get("/", app.RenderApp)
+		r.Get("/app/appHead", app.RenderAppHead)
 		r.Get("/app/about", app.RenderAbout)
 
 		// dashboard
@@ -193,10 +195,8 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 		addr := fmt.Sprintf(":%d", svc.port)
 		go func() {
 			err = http.ListenAndServe(addr, router)
-			if err != nil {
-				// TODO: close gracefully
-				slog.Error("DeliveryFailed starting server", "err", err)
-				// service must exit on close
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				slog.Error("Failed starting server", "err", err)
 				time.Sleep(time.Second)
 				os.Exit(0)
 			}

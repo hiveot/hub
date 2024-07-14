@@ -17,11 +17,6 @@
     "bearer": {
     }
   },
-  "forms": [{
-    "op": "readallproperties",
-    "contentType": "application/json",
-    "href": "/things/{thingID}/properties"
-  }],
   "comment": "TODO: how to reference ClientProfile defined in the user service?",
   "links": [],
 

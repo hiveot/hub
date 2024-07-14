@@ -1,8 +1,24 @@
-{{define "appHead"}}
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/app.AppHeadTemplateData*/ -}}
 
-	<nav class="container-fluid h-row">
+
+{{if not .Logo}}
+
+	<nav class="container-fluid h-row"
+	     hx-trigger="load"
+	     hx-get="/app/appHead"
+	     hx-target="#appHead"
+	     hx-swap="innerHTML">
+	</nav>
+
+{{else}}
+
+<nav class="container-fluid h-row"
+	     hx-get="/app/appHead"
+	     hx-target="#appHead"
+	     hx-swap="innerHTML"
+	>
 		<a href="/status" onclick="window.navigateTo(event,this.href)">
-			<h-brand title="HiveOT" logo="{{.logo}}"></h-brand>
+			<h-brand title="HiveOT" logo="{{.Logo}}"></h-brand>
 		</a>
 
 		<!-- === Tabs for selecting (not loading) application pages === -->

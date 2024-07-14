@@ -21,18 +21,16 @@ type AuthzService struct {
 }
 
 // CreateCustomRole adds a new custom role
-func (svc *AuthzService) CreateCustomRole(role string) error {
-	// FIXME:implement
-	slog.Error("CreateRole is not yet implemented")
-	return nil
-}
+//func (svc *AuthzService) CreateCustomRole(role string) error {
+//	slog.Error("CreateRole is not yet implemented")
+//	return nil
+//}
 
 // DeleteCustomRole deletes a custom role
-func (svc *AuthzService) DeleteCustomRole(role string) error {
-	// FIXME:implement
-	slog.Error("DeleteRole is not yet implemented")
-	return nil
-}
+//func (svc *AuthzService) DeleteCustomRole(role string) error {
+//	slog.Error("DeleteRole is not yet implemented")
+//	return nil
+//}
 
 //
 //// CanPubAction checks if the given client can publish actions
@@ -100,7 +98,7 @@ func (svc *AuthzService) SetPermissions(senderID string, perms authz2.ThingPermi
 		// administrators can set permissions for others
 		slog.Info("Administrator setting role")
 	} else if senderID != perms.AgentID {
-		// unless the sender is an admin (todo), it cannot set permissions for someone else
+		// unless the sender is an admin, it cannot set permissions for someone else
 		return fmt.Errorf(
 			"sender '%s' cannot set permissions for agent '%s'", senderID, perms.AgentID)
 	} else if clientProfile.ClientType == authn.ClientTypeConsumer {
@@ -114,7 +112,6 @@ func (svc *AuthzService) SetPermissions(senderID string, perms authz2.ThingPermi
 
 // Start starts the authorization service
 func (svc *AuthzService) Start() error {
-	// fixme: set permissions
 	slog.Info("Starting AuthzService")
 	return nil
 }

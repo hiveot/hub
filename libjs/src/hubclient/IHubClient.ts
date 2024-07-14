@@ -9,22 +9,24 @@ export enum ConnectionStatus {
     Connecting = "connecting",
     ConnectFailed  = "connectFailed",
     Disconnected = "disconnected",
+    // Unauthorized login name or password
+    Unauthorized = "unauthorized"
 }
-
-export enum ConnInfo {
-    // connection successful
-    Success = "success",
-    // ConnInfoUnauthorized credentials invalid
-    Unauthorized = "unauthorized",
-    // ConnInfoUnreachable unable to reach the server during the initial connection attempt
-    Unreachable = "unreachable",
-    // ConnInfoServerDisconnected a server disconnect message was received.
-    ServerDisconnected = "serverDisconnected",
-    // NetworkDisconnected connection has dropped. Caused by disconnecting the network somewhere
-    NetworkDisconnected = "networkDisconnected",
-    // NotConnected means the client has yet to connect
-    NotConnected = "notConnected"
-}
+//
+// export enum ConnInfo {
+//     // connection successful
+//     Success = "success",
+//     // ConnInfoUnauthorized credentials invalid
+//     Unauthorized = "unauthorized",
+//     // ConnInfoUnreachable unable to reach the server during the initial connection attempt
+//     Unreachable = "unreachable",
+//     // ConnInfoServerDisconnected a server disconnect message was received.
+//     ServerDisconnected = "serverDisconnected",
+//     // NetworkDisconnected connection has dropped. Caused by disconnecting the network somewhere
+//     NetworkDisconnected = "networkDisconnected",
+//     // NotConnected means the client has yet to connect
+//     NotConnected = "notConnected"
+// }
 
 export enum DeliveryProgress {
     // DeliveredToInbox the request is delivery to the digitwin inbox
@@ -206,12 +208,11 @@ export interface IHubClient {
     // after a short delay. If a connection is re-established then the onConnect
     // handler will be invoked.
     //
-    //  connected is true if a connection is established or false if disconnected.
-    //  info contains human presentable information when available.
+    //  status contains the connection status, eg connected, disconnected
     //
     // If a reconnect is to take place with a different password or token then 
     // call disconnect(), followed by connectWithXyz().
-    setConnectHandler(handler: (status: ConnectionStatus, info: string) => void): void
+    setConnectHandler(handler: (status: ConnectionStatus) => void): void
 
 
     // Set the handler for incoming requests.

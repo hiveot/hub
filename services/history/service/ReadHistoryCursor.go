@@ -74,88 +74,6 @@ func decodeValue(bucketID string, storageKey string, data string) (thingValue *t
 	return thingValue, true
 }
 
-// findNextName iterates the cursor until the next value containing 'name' is found and the
-// timestamp doesn't exceed untilTime.
-// A successive call with an increased timestamp should return the next batch of results. Intended
-// to iterated an hours/day/week at a time.
-// This returns the next value, or nil if the value was not found.
-//
-//	cursor to iterate
-//	name is the event name to match
-//	until is the time not to exceed in the result. Intended to avoid unnecessary iteration in range queries
-func (svc *ReadHistory) findNextName(
-	cursor buckets.IBucketCursor, name string, until time.Time) (thingValue *things.ThingMessage, found bool) {
-	found = false
-	for {
-		k, v, valid := cursor.Next()
-		if !valid {
-			// key is invalid. This means we reached the end of cursor
-			return nil, false
-		}
-		// key is constructed as  {timestamp}/{valueName}/{a|e|c}/{sender}
-		parts := strings.Split(k, "/")
-		if len(parts) != 4 {
-			// key exists but is invalid. skip this entry
-			slog.Warn("findNextName: invalid key", "key", k)
-		} else {
-			// check timestamp and name must match
-			timestampmsec, _ := strconv.ParseInt(parts[0], 10, 64)
-			if timestampmsec > until.UnixMilli() {
-				// we passed the given time limit
-				// undo the last step so that followup requests with a new time limit can include this result
-				cursor.Prev()
-				return thingValue, false
-			}
-			if name == parts[1] {
-				// found a match. Decode and return it
-				thingValue, found = decodeValue(cursor.BucketID(), k, string(v))
-				return
-			}
-			// name doesn't match. Skip this entry
-		}
-	}
-}
-
-// findPrevName iterates the cursor until the previous value containing 'name' is found and the
-// timestamp is not before 'until' time.
-// A successive call with an increased timestamp should return the next batch of results. Intended
-// to iterate an hours/day/week at a time.
-// This returns the previous value, or nil if the value was not found.
-//
-//	name is the event name to match
-//	until is the time not to exceed in the result. Intended to avoid unnecesary iteration in range queries
-func (svc *ReadHistory) findPrevName(
-	cursor buckets.IBucketCursor, name string, until time.Time) (thingValue *things.ThingMessage, found bool) {
-	found = false
-	for {
-		k, v, valid := cursor.Prev()
-		if !valid {
-			// key is invalid. This means we reached the beginning of cursor
-			return thingValue, false
-		}
-		// key is constructed as  {timestamp}/{valueName}/{a|e|c}/sender
-		parts := strings.Split(k, "/")
-		if len(parts) != 4 {
-			// key exists but is invalid. skip this entry
-		} else {
-			// check timestamp and name must match
-			timestampmsec, _ := strconv.ParseInt(parts[0], 10, 64)
-			if timestampmsec < until.UnixMilli() {
-				// we passed the given time limit
-				// undo the last step so that followup requests with a new time limit can include this result
-				cursor.Next()
-				return thingValue, false
-			}
-			if name == parts[1] {
-				// found a match. Decode and return it
-				thingValue, found = decodeValue(cursor.BucketID(), k, string(v))
-				return
-			}
-			// name doesn't match. Skip this entry
-		}
-	}
-}
-
 // First returns the oldest value in the history
 func (svc *ReadHistory) First(senderID string, args historyapi.CursorArgs) (*historyapi.CursorSingleResp, error) {
 	until := time.Now()
@@ -173,7 +91,7 @@ func (svc *ReadHistory) First(senderID string, args historyapi.CursorArgs) (*his
 	thingValue, valid := decodeValue(cursor.BucketID(), k, string(v))
 	filterName := ci.Filter
 	if valid && filterName != "" && thingValue.Key != filterName {
-		thingValue, valid = svc.findNextName(cursor, filterName, until)
+		thingValue, valid = svc.next(cursor, filterName, until)
 	}
 	resp := historyapi.CursorSingleResp{
 		Value: thingValue,
@@ -205,11 +123,57 @@ func (svc *ReadHistory) Last(senderID string, args historyapi.CursorArgs) (*hist
 	thingValue, valid := decodeValue(cursor.BucketID(), k, string(v))
 	filterName := ci.Filter
 	if valid && filterName != "" && thingValue.Key != filterName {
-		thingValue, valid = svc.findPrevName(cursor, filterName, until)
+		// search back to the last valid value
+		thingValue, valid = svc.prev(cursor, filterName, until)
 	}
 	resp.Value = thingValue
 	resp.Valid = valid
 	return resp, nil
+}
+
+// next iterates the cursor until the next value containing 'name' is found and the
+// timestamp doesn't exceed untilTime.
+// A successive call with an increased timestamp should return the next batch of results. Intended
+// to iterated an hours/day/week at a time.
+// This returns the next value, or nil if the value was not found.
+//
+//	cursor to iterate
+//	name is the event name to match
+//	until is the time not to exceed in the result. Intended to avoid unnecessary iteration in range queries
+func (svc *ReadHistory) next(
+	cursor buckets.IBucketCursor, key string, until time.Time) (
+	thingValue *things.ThingMessage, found bool) {
+
+	untilMilli := until.UnixMilli()
+	found = false
+	for {
+		k, v, valid := cursor.Next()
+		if !valid {
+			// key is invalid. This means we reached the end of cursor
+			return nil, false
+		}
+		// key is constructed as  {timestamp}/{valueName}/{a|e|c}/{sender}
+		parts := strings.Split(k, "/")
+		if len(parts) != 4 {
+			// key exists but is invalid. skip this entry
+			slog.Warn("findNextName: invalid key", "key", k)
+		} else {
+			// check timestamp and name must match
+			timestampmsec, _ := strconv.ParseInt(parts[0], 10, 64)
+			if untilMilli > 0 && timestampmsec > untilMilli {
+				// we passed the given time limit
+				// undo the last step so that followup requests with a new time limit can include this result
+				cursor.Prev()
+				return thingValue, false
+			}
+			if key == "" || key == parts[1] {
+				// found a match. Decode and return it
+				thingValue, found = decodeValue(cursor.BucketID(), k, string(v))
+				return thingValue, found
+			}
+			// name doesn't match. Skip this entry
+		}
+	}
 }
 
 // Next moves the cursor to the next key from the current cursor
@@ -221,25 +185,33 @@ func (svc *ReadHistory) Next(senderID string, args historyapi.CursorArgs) (*hist
 	if err != nil {
 		return nil, err
 	}
-	k, v, valid := cursor.Next()
-	resp := &historyapi.CursorSingleResp{
-		Value: nil,
+	until := time.Now()
+	value, valid := svc.next(cursor, ci.Filter, until)
+	resp := historyapi.CursorSingleResp{
+		Value: value,
 		Valid: valid,
 	}
-	if !valid {
-		return resp, nil
-	}
-	thingValue, valid := decodeValue(cursor.BucketID(), k, string(v))
-	filterName := ci.Filter
-	if valid && filterName != "" && filterName != thingValue.Key {
-		until := time.Now()
-		thingValue, valid = svc.findNextName(cursor, filterName, until)
-	}
 
-	resp.Value = thingValue
-	resp.Valid = valid
+	return &resp, nil
+}
 
-	return resp, nil
+// Read the next number of items until time or count limit is reached
+func (svc *ReadHistory) nextN(
+	cursor buckets.IBucketCursor, filterKey string, endTime time.Time, limit int) (
+	items []*things.ThingMessage, itemsRemaining bool) {
+
+	items = make([]*things.ThingMessage, 0, limit)
+	itemsRemaining = true
+
+	for i := 0; i < limit; i++ {
+		value, valid := svc.next(cursor, filterKey, endTime)
+		if !valid {
+			itemsRemaining = false
+			break
+		}
+		items = append(items, value)
+	}
+	return items, itemsRemaining
 }
 
 // NextN moves the cursor to the next N places from the current cursor
@@ -248,156 +220,131 @@ func (svc *ReadHistory) Next(senderID string, args historyapi.CursorArgs) (*hist
 // Intended to speed up with batch iterations over rpc.
 func (svc *ReadHistory) NextN(senderID string, args historyapi.CursorNArgs) (*historyapi.CursorNResp, error) {
 
+	until := time.Now()
+	if args.Until != "" {
+		until, _ = dateparse.ParseAny(args.Until)
+	}
 	limit := args.Limit
 	if limit <= 0 {
 		limit = historyapi.DefaultLimit
 	}
-	values := make([]*things.ThingMessage, 0, limit)
-	nextArgs := historyapi.CursorArgs{CursorKey: args.CursorKey}
-	itemsRemaining := true
-
-	// tbd is it faster to use NextN and sort the keys?
-	for i := 0; i < limit; i++ {
-		nextResp, err := svc.Next(senderID, nextArgs)
-		if !nextResp.Valid || err != nil {
-			itemsRemaining = false
-			break
-		}
-		values = append(values, nextResp.Value)
+	cursor, ci, err := svc.cursorCache.Get(args.CursorKey, senderID, true)
+	if err != nil {
+		return nil, err
 	}
+	values, itemsRemaining := svc.nextN(cursor, ci.Filter, until, limit)
+
 	resp := &historyapi.CursorNResp{}
 	resp.Values = values
 	resp.ItemsRemaining = itemsRemaining
 	return resp, nil
 }
 
-// NextUntil reads a batch of items until the end-time or limit is reached
-func (svc *ReadHistory) NextUntil(senderID string, args historyapi.CursorUntilArgs) (
-	*historyapi.CursorNResp, error) {
+// prev iterates the cursor until the previous value passes the filters and the
+// timestamp is not before 'until' time.
+//
+// This supports 2 filters, a key of the value and a timestamp.
+// Since key and timestamp are part of the bucket key these checks are fast.
+//
+// This returns the previous value, or nil if the value was not found.
+//
+//	cursor is a valid bucket cursor
+//	key is the event key to match or "" for all keys
+//	until is the limit of the time to read. Intended for time-range queries and
+//	to avoid unnecessary iteration in range queries
+func (svc *ReadHistory) prev(
+	cursor buckets.IBucketCursor, key string, until time.Time) (
+	thingValue *things.ThingMessage, found bool) {
 
-	limit := args.Limit
-	if limit == 0 {
-		limit = historyapi.DefaultLimit
-	}
-	endTime, _ := dateparse.ParseAny(args.TimeStamp)
-	values := make([]*things.ThingMessage, 0, limit)
-	nextArgs := historyapi.CursorArgs{CursorKey: args.CursorKey}
-	itemsRemaining := true
-
-	// tbd is it faster to use NextN and sort the keys?
-	for i := 0; i < limit; i++ {
-		nextResp, err := svc.Next(senderID, nextArgs)
-		if !nextResp.Valid || err != nil {
-			itemsRemaining = false
-			break
+	untilMilli := until.UnixMilli()
+	found = false
+	for {
+		k, v, valid := cursor.Prev()
+		if !valid {
+			// key is invalid. This means we reached the beginning of cursor
+			return thingValue, false
 		}
-		stamp, err := dateparse.ParseAny(nextResp.Value.Created)
-		if err != nil {
-			break
-		}
-		if stamp.Compare(endTime) <= 0 {
-			// value timestamp is before endtime
-			values = append(values, nextResp.Value)
+		// key is constructed as  {timestamp}/{valueName}/{a|e|c}/sender
+		parts := strings.Split(k, "/")
+		if len(parts) != 4 {
+			// key exists but is invalid. skip this entry
 		} else {
+			// check timestamp and name must match
+			timestampmsec, _ := strconv.ParseInt(parts[0], 10, 64)
+			if timestampmsec < untilMilli {
+				// we passed the given time limit
+				// undo the last step so that followup requests with a new time limit can include this result
+				cursor.Next()
+				return nil, false
+			}
+
+			if key == "" || key == parts[1] {
+				// found a match. Decode and return it
+				thingValue, found = decodeValue(cursor.BucketID(), k, string(v))
+				return thingValue, found
+			}
+			// filter doesn't match. Skip this entry
+		}
+	}
+}
+
+// Read the previous number of items until time or count limit is reached
+func (svc *ReadHistory) prevN(
+	cursor buckets.IBucketCursor, filterKey string, endTime time.Time, limit int) (
+	items []*things.ThingMessage, itemsRemaining bool) {
+
+	items = make([]*things.ThingMessage, 0, limit)
+	itemsRemaining = true
+
+	for i := 0; i < limit; i++ {
+		value, valid := svc.prev(cursor, filterKey, endTime)
+		if !valid {
 			itemsRemaining = false
 			break
 		}
+		items = append(items, value)
 	}
-	resp := &historyapi.CursorNResp{}
-	resp.Values = values
-	resp.ItemsRemaining = itemsRemaining
-	return resp, nil
+	return items, itemsRemaining
 }
 
 // Prev moves the cursor to the previous key from the current cursor
 // Last() or Seek must have been called first.
-func (svc *ReadHistory) Prev(senderID string, args historyapi.CursorArgs) (*historyapi.CursorSingleResp, error) {
+func (svc *ReadHistory) Prev(
+	senderID string, args historyapi.CursorArgs) (*historyapi.CursorSingleResp, error) {
 
 	until := time.Time{}
 	cursor, ci, err := svc.cursorCache.Get(args.CursorKey, senderID, true)
 	if err != nil {
 		return nil, err
 	}
-	k, v, valid := cursor.Prev()
-	resp := &historyapi.CursorSingleResp{
-		Value: nil,
+	value, valid := svc.prev(cursor, ci.Filter, until)
+	resp := historyapi.CursorSingleResp{
+		Value: value,
 		Valid: valid,
 	}
-	if !valid {
-		return resp, nil
-	}
-	thingValue, valid := decodeValue(cursor.BucketID(), k, string(v))
-	filterName := ci.Filter
-	if valid && filterName != "" && filterName != thingValue.Key {
-		thingValue, valid = svc.findPrevName(cursor, filterName, until)
-	}
-	resp.Value = thingValue
-	resp.Valid = valid
-	return resp, nil
+	return &resp, nil
 }
 
-// PrevN moves the cursor back N places from the current cursor
-// and return a list with N values in decremental time order.
-// itemsRemaining is true if the iterator has reached the beginning
-// Intended to speed up with batch iterations over rpc.
+// PrevN returns up to N results or until the time limit is reached.
+// itemsRemaining is true if the iterator has reached the count limit, indicating
+// that more items can be read before the time limit is reached.
 func (svc *ReadHistory) PrevN(senderID string, args historyapi.CursorNArgs) (*historyapi.CursorNResp, error) {
 
+	until := time.Time{} // zero time
+	if args.Until != "" {
+		until, _ = dateparse.ParseAny(args.Until)
+	}
 	limit := args.Limit
 	if limit <= 0 {
 		limit = historyapi.DefaultLimit
 	}
-	values := make([]*things.ThingMessage, 0, limit)
-	prevArgs := historyapi.CursorArgs{CursorKey: args.CursorKey}
-	itemsRemaining := true
-
-	// tbd is it faster to use NextN and sort the keys? - for a remote store yes
-	for i := 0; i < limit; i++ {
-		prevResp, err := svc.Prev(senderID, prevArgs)
-		if !prevResp.Valid || err != nil {
-			itemsRemaining = false
-			break
-		}
-		values = append(values, prevResp.Value)
+	cursor, ci, err := svc.cursorCache.Get(args.CursorKey, senderID, true)
+	if err != nil {
+		return nil, err
 	}
-	resp := &historyapi.CursorNResp{}
-	resp.Values = values
-	resp.ItemsRemaining = itemsRemaining
-	return resp, nil
-}
 
-// PrevUntil reads back in time until a start-time is reached
-func (svc *ReadHistory) PrevUntil(senderID string, args historyapi.CursorUntilArgs) (
-	*historyapi.CursorNResp, error) {
+	values, itemsRemaining := svc.prevN(cursor, ci.Filter, until, limit)
 
-	// TODO: reduce code duplication
-	limit := args.Limit
-	if limit == 0 {
-		limit = historyapi.DefaultLimit
-	}
-	timeStamp, _ := dateparse.ParseAny(args.TimeStamp)
-	values := make([]*things.ThingMessage, 0, limit)
-	cursorArgs := historyapi.CursorArgs{CursorKey: args.CursorKey}
-	itemsRemaining := true
-
-	// tbd is it faster to use NextN and sort the keys?
-	for i := 0; i < limit; i++ {
-		resp, err := svc.Prev(senderID, cursorArgs)
-		if !resp.Valid || err != nil {
-			itemsRemaining = false
-			break
-		}
-		stamp, err := dateparse.ParseAny(resp.Value.Created)
-		if err != nil {
-			break
-		}
-		if stamp.Compare(timeStamp) >= 0 {
-			// value timestamp is after start-time
-			values = append(values, resp.Value)
-		} else {
-			itemsRemaining = false
-			break
-		}
-	}
 	resp := &historyapi.CursorNResp{}
 	resp.Values = values
 	resp.ItemsRemaining = itemsRemaining
@@ -411,14 +358,34 @@ func (svc *ReadHistory) Release(senderID string, args historyapi.CursorReleaseAr
 	return svc.cursorCache.Release(senderID, args.CursorKey)
 }
 
+// seek internal function for seeking with a cursor
+func (svc *ReadHistory) seek(cursor buckets.IBucketCursor, ts time.Time, key string) (
+	tm *things.ThingMessage, valid bool) {
+	until := time.Now()
+
+	// search the first occurrence at or after the given timestamp
+	// the bucket index uses the stringified timestamp
+	msec := ts.UnixMilli()
+	searchKey := strconv.FormatInt(msec, 10)
+
+	k, v, valid := cursor.Seek(searchKey)
+	if !valid {
+		// bucket is empty, no error
+		return nil, valid
+	}
+	thingValue, valid := decodeValue(cursor.BucketID(), k, string(v))
+	if valid && key != "" && thingValue.Key != key {
+		thingValue, valid = svc.next(cursor, key, until)
+	}
+	return thingValue, valid
+}
+
 // Seek positions the cursor at the given searchKey and corresponding value.
 // If the key is not found, the next key is returned.
 // This returns an error if the cursor is not found.
-func (svc *ReadHistory) Seek(senderID string, args historyapi.CursorSeekArgs) (*historyapi.CursorSingleResp, error) {
+func (svc *ReadHistory) Seek(senderID string, args historyapi.CursorSeekArgs) (
+	*historyapi.CursorSingleResp, error) {
 
-	until := time.Now()
-	//ts, err := dateparse.ParseAny(timestampMsec)
-	//if err != nil {
 	slog.Info("Seek using timestamp",
 		slog.String("timestamp", args.TimeStamp),
 	)
@@ -431,25 +398,11 @@ func (svc *ReadHistory) Seek(senderID string, args historyapi.CursorSeekArgs) (*
 	// search the first occurrence at or after the given timestamp
 	// the buck index uses the stringified timestamp
 	ts, _ := dateparse.ParseAny(args.TimeStamp)
-	msec := ts.UnixMilli()
-	searchKey := strconv.FormatInt(msec, 10) //+ "/" + thingValue.ID
+	thingValue, valid := svc.seek(cursor, ts, ci.Filter)
 
-	k, v, valid := cursor.Seek(searchKey)
 	resp := &historyapi.CursorSingleResp{
-		Value: nil,
+		Value: thingValue,
 		Valid: valid,
 	}
-	if !valid {
-		// bucket is empty
-		return resp, nil
-	}
-	thingValue, valid := decodeValue(cursor.BucketID(), k, string(v))
-	filterName := ci.Filter
-	if valid && filterName != "" && thingValue.Key != filterName {
-		thingValue, valid = svc.findNextName(cursor, filterName, until)
-	}
-	resp.Value = thingValue
-	resp.Valid = valid
-
 	return resp, nil
 }

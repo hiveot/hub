@@ -174,6 +174,12 @@ func (tdoc *TD) AddEvent(
 	return evAff
 }
 
+// AddForms adds top level forms to the TD
+// Existing forms are retained.
+func (tdoc *TD) AddForms(forms []Form) {
+	tdoc.Forms = append(tdoc.Forms, forms...)
+}
+
 // AddProperty provides a simple way to add a read-only property to the TD.
 //
 // This returns the property affordance that can be augmented/modified directly

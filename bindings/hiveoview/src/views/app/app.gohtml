@@ -1,14 +1,16 @@
 <!--Main application view with header, page content and footer-->
 <!--javascript the regular get takes place-->
 
-<div id="app" class="app" hx-ext="sse" sse-connect="/sse">
+{{/*<div id="app" class="app" hx-ext="sse" sse-connect="/sse">*/}}
+<div id="app" class="app" >
 
     {{/*	The notify event is displayed by the toast popup. content is "type:message" */}}
-	<div sse-swap="notify" hx-target="#toast" hx-swap="beforeend"></div>
+		<div sse-swap="notify" hx-target="#toast" hx-swap="beforeend"></div>
 
-	<div class="app-head ">
-      {{block "appHead" .}}App header goes here {{end}}
-	</div>
+		{{/* The application header bar with menu */}}
+		<div id="appHead" class="app-head ">
+	      {{template "appHead.gohtml" .}}
+		</div>
 
 	<!-- These pages are updated using htmx fragments.
 			eg: hx-get="/dashboard" hx-target="#dashboard" hx-swap="innerHtml"
@@ -26,7 +28,7 @@
 		<div id="aboutPage" class="hidden" displayIfTarget="/app/about">
         {{template "aboutPage.gohtml" .}}
 		</div>
-		<div id="thingPage" class="hidden" displayIfTarget="/thing">
+		<div id="detailsPage" class="hidden" displayIfTarget="/thing">
         {{template "detailsPage.gohtml" .}}
 		</div>
 		<div id="historyPage" class="hidden" displayIfTarget="/history">

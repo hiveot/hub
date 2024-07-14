@@ -4,6 +4,7 @@ import (
 	"github.com/grandcat/zeroconf"
 	"github.com/hiveot/hub/lib/discovery"
 	"github.com/hiveot/hub/lib/net"
+	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 	"net/url"
 	"strconv"
@@ -14,6 +15,11 @@ type DiscoveryTransport struct {
 	cfg DiscoveryConfig
 	// service discovery using mDNS
 	disco *zeroconf.Server
+}
+
+// AddTDForms does not apply to the discovery service
+func (svc *DiscoveryTransport) AddTDForms(td *things.TD) {
+	// nothing to do here
 }
 
 // Start the discovery of the runtime service and include its transports

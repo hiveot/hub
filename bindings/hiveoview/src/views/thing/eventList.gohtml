@@ -32,7 +32,10 @@
 			   onclick="navigateTo(null,this.href)"
 			>
 				{{/* Dynamic refresh of value on sse event*/}}
-				<span sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML">
+				<span sse-swap="{{$.ThingID}}/{{$k}}"
+				      hx-swap="innerHTML"
+				      hx-target="this"
+				>
 						{{$.Values.ToString $k}}
 				</span>
 				{{if $v.Data}}
@@ -42,8 +45,10 @@
 		</div>
 		<div class="h-show-lg">{{$v.Description}}</div>
 		{{/*TODO: improve on this rather crude way to refresh the derived 'updated' field when value changes?*/}}
-		<div sse-swap="{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML"
-						class="h-show-md"
+		<div sse-swap="{{$.ThingID}}/{{$k}}/updated"
+		     hx-target="this"
+		     hx-swap="innerHTML"
+					class="h-show-md"
 			>{{$.Values.GetUpdated $k}}</div>
 		</li>
 	{{end}}

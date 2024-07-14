@@ -8,6 +8,7 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 	"sync"
 )
@@ -34,20 +35,21 @@ type DigitwinDirectoryService struct {
 	cachemux sync.RWMutex
 }
 
-// HandleTDEvent updates a TD when receiving a TD event, sent by agents.
-// Note that the TD is that as provided by the agent in json format.
-// The directory converts it to the digital twin format.
-// TODO: Update the forms to match current protocols.
+// HandleTDEvent receives and stores a TD from an IoT agent or service after upgrading it
+// to the digital twin version including Forms for protocol bindings.
 //
-// The provided TD is a json document
+//	tb is the transport binding whose protocols to add to the td
+//	msg is the thing message containing the JSON encoded TD.
 func (svc *DigitwinDirectoryService) HandleTDEvent(
-	msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	msg *things.ThingMessage, tb api.ITransportBinding) (stat hubclient.DeliveryStatus) {
 	var err error
 
+	// 1: create the digitwin ThingID for this TD
 	// events use 'agent' thingIDs, only known to agents.
 	// Digitwin adds the "dtw:{agentID}:" prefix, as the event now belongs to the virtual digital twin.
 	dtThingID := things.MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
 
+	// 2: parse the TD json
 	td := things.TD{}
 	// we know the argument is a string with TD document text. It can be immediately converted to TD object
 	tdJSON, ok := msg.Data.(string)
@@ -56,14 +58,20 @@ func (svc *DigitwinDirectoryService) HandleTDEvent(
 	} else {
 		err = json.Unmarshal([]byte(tdJSON), &td)
 	}
+	// 3: Upgrade the forms
 	if err == nil {
 		td.ID = dtThingID
-		err = svc.UpdateThing(msg.SenderID, dtThingID, &td)
-
+		tb.AddTDForms(&td)
 	}
+
+	// 4: store the digitwin TD in the directory
+	if err == nil {
+		err = svc.UpdateThing(msg.SenderID, dtThingID, &td)
+	}
+
 	if err != nil {
 		stat.Error = fmt.Sprintf(
-			"StoreEvent. DeliveryFailed updating TD of Agent/Thing '%s/%s': %s",
+			"StoreEvent. Failed updating TD of Agent/Thing '%s/%s': %s",
 			msg.SenderID, msg.ThingID, err.Error())
 		slog.Error(stat.Error)
 	}

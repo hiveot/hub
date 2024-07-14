@@ -66,7 +66,7 @@ func startHistoryService(clean bool) (
 		err = svc.Start(hc)
 	}
 	if err != nil {
-		panic("DeliveryFailed starting the state service: " + err.Error())
+		panic("Failed starting the state service: " + err.Error())
 	}
 
 	// create an end user client for testing
@@ -91,7 +91,7 @@ func startHistoryService(clean bool) (
 //	return store.(*mongohs.MongoHistoryServer).Stop()
 //}
 
-// generate a random batch of event values for testing
+// generate a random batch of property and event values for testing
 // timespanSec is the range of timestamps up until now
 func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 	batch []*things.ThingMessage, highest map[string]*things.ThingMessage) {
@@ -107,8 +107,13 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 		//
 		thingID := thingIDPrefix + strconv.Itoa(randomID)
 		dThingID := things.MakeDigiTwinThingID(agentID, thingID)
+		messageType := vocab.MessageTypeEvent
+		randomBool := rand.Intn(2)
+		if randomBool > 0 {
+			messageType = vocab.MessageTypeProperty
+		}
 
-		ev := things.NewThingMessage(vocab.MessageTypeEvent,
+		ev := things.NewThingMessage(messageType,
 			dThingID, names[randomName],
 			fmt.Sprintf("%2.3f", randomValue), "",
 		)
@@ -420,13 +425,13 @@ func TestPrevNext(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, valid)
 	assert.NotEmpty(t, item1)
-	items2to11, itemsRemaining, err := cursor.NextN(10)
+	items2to11, itemsRemaining, err := cursor.NextN(10, "")
 	require.NoError(t, err)
 	assert.True(t, itemsRemaining)
 	assert.Equal(t, 10, len(items2to11))
 
 	// go backwards
-	item10to1, itemsRemaining, err := cursor.PrevN(10)
+	item10to1, itemsRemaining, err := cursor.PrevN(10, "")
 	require.NoError(t, err)
 	assert.True(t, valid)
 	assert.Equal(t, 10, len(item10to1))
@@ -481,13 +486,13 @@ func TestPrevNextFiltered(t *testing.T) {
 	item1, valid, err := cursor.Next()
 	assert.True(t, valid)
 	assert.Equal(t, propName, item1.Key)
-	items2to11, itemsRemaining, err := cursor.NextN(10)
+	items2to11, itemsRemaining, err := cursor.NextN(10, "")
 	assert.True(t, itemsRemaining)
 	assert.Equal(t, 10, len(items2to11))
 	assert.Equal(t, propName, items2to11[9].Key)
 
 	// go backwards
-	item10to1, itemsRemaining, err := cursor.PrevN(10)
+	item10to1, itemsRemaining, err := cursor.PrevN(10, "")
 	assert.True(t, valid)
 	assert.Equal(t, 10, len(item10to1))
 
@@ -542,19 +547,49 @@ func TestNextPrevUntil(t *testing.T) {
 	assert.NotEmpty(t, item0)
 
 	// read an hour's worth. Expect around 41 results
-	endTime := startTime.Add(time.Hour)
-	batch, itemsRemaining, err := cursor.NextUntil(endTime, 100)
+	endTime := startTime.Add(time.Hour).Format(time.RFC3339)
+	// note, batch1 doesn't have item0
+	batch, itemsRemaining, err := cursor.NextN(100, endTime)
 	require.NoError(t, err)
-	batch = append([]*things.ThingMessage{item0}, batch...)
 	assert.False(t, itemsRemaining)
 	assert.True(t, len(batch) > 20)
 	assert.True(t, len(batch) < 60)
 
-	// read backwards again
-	batch2, itemsRemaining, err := cursor.PrevUntil(startTime, 100)
+	// read backwards again. note batch2 ends with item0
+	batch2, itemsRemaining, err := cursor.PrevN(100, startTime.Format(time.RFC3339))
 	require.NoError(t, err)
 	assert.False(t, itemsRemaining)
 	assert.Equal(t, len(batch), len(batch2))
+}
+
+func TestReadHistory(t *testing.T) {
+	t.Log("--- TestReadHistory ---")
+	const count = 1000
+	const agentID = "device1"
+	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
+	var dThing0ID = things.MakeDigiTwinThingID(agentID, thing0ID)
+
+	store, readHist, closeFn := startHistoryService(true)
+	defer closeFn()
+
+	// 1 sensors -> 1000/24 hours is approx 41/hour
+	_ = addBulkHistory(store, count, 1, 3600*24)
+
+	// start 20 hours ago and read an hour's worth
+	startTime := time.Now().Add(-20 * time.Hour)
+	items, remaining, err := readHist.ReadHistory(dThing0ID, "", startTime, 3600, 40)
+	require.NoError(t, err)
+	assert.False(t, remaining)
+	assert.NotEmpty(t, items)
+	assert.True(t, len(items) > 20)
+
+	// start 19 hours ago and read back in time
+	startTime = time.Now().Add(-19 * time.Hour)
+	items, remaining, err = readHist.ReadHistory(dThing0ID, "", startTime, -3600, 40)
+	require.NoError(t, err)
+	assert.False(t, remaining)
+	assert.NotEmpty(t, items)
+	assert.True(t, len(items) > 20)
 
 }
 
@@ -607,7 +642,7 @@ func TestPubSub(t *testing.T) {
 
 	// store
 
-	batched, _, _ := cursor.NextN(10)
+	batched, _, _ := cursor.NextN(10, "")
 	// expect 3 entries total from valid events (9 when retention manager isn't used)
 	assert.Equal(t, 9, len(batched))
 	releaseFn()

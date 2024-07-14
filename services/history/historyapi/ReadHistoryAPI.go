@@ -15,14 +15,8 @@ const (
 	// CursorNextNMethod returns a batch of next N historical values
 	CursorNextNMethod = "cursorNextN"
 
-	// CursorNextUntilMethod reads until the given end time or limit is reached
-	CursorNextUntilMethod = "cursorNextUntil"
-
 	// CursorPrevNMethod returns a batch of prior N historical values
 	CursorPrevNMethod = "cursorPrevN"
-
-	// CursorPrevUntilMethod reads until the given start time or limit is reached
-	CursorPrevUntilMethod = "cursorPrevUntil"
 
 	// CursorReleaseMethod releases the cursor and resources
 	// This MUST be called after the cursor is not longer used.
@@ -38,6 +32,9 @@ const (
 	// The cursor MUST be released after use.
 	// The cursor will expire after not being used for the default expiry period.
 	GetCursorMethod = "getCursor"
+
+	// ReadHistoryMethod reads the history up to a limit.
+	ReadHistoryMethod = "readHistory"
 )
 
 // cursor methods that take the key as arg and returns a single value
@@ -71,7 +68,9 @@ type CursorNArgs struct {
 	// Cursor identifier obtained with GetCursor
 	CursorKey string `json:"cursorKey"`
 	// Maximum number of results to return
-	Limit int `json:"limit"`
+	Limit int `json:"limit,omitempty"`
+	// Time until to keep reading or "" for up to 1 year
+	Until string `json:"until,omitempty"`
 }
 
 // CursorNResp contains the batch response to a cursor request
@@ -81,17 +80,6 @@ type CursorNResp struct {
 	Values []*things.ThingMessage `json:"values"`
 	// There are still items remaining.
 	ItemsRemaining bool `json:"itemsRemaining"`
-}
-
-// CursorUntilArgs arguments for next-until or prev-until cursor
-// TimeStamp is the start time to reach for prev-until or end-time for next-until
-type CursorUntilArgs struct {
-	// Cursor identifier obtained with GetCursor
-	CursorKey string `json:"cursorKey"`
-	// timestamp in rfc8601 format or 'now' for default
-	TimeStamp string `json:"timeStamp"`
-	// limit nr of results or 0 for default
-	Limit int `json:"limit"`
 }
 
 type CursorReleaseArgs struct {
@@ -114,9 +102,34 @@ type GetCursorArgs struct {
 	ThingID string `json:"thingID"`
 	// Optional filter value to search for a specific key
 	FilterOnKey string `json:"filterOnKey,omitempty"`
+	// optional lifespan. Default is 1 minute
+	LifespanSec int `json:"lifespan"`
 }
 type GetCursorResp struct {
 	// Cursor identifier
 	// The cursor MUST be released after use.
 	CursorKey string `json:"cursorKey"`
+}
+
+// ReadHistoryArgs arguments for reading a batch of historical values
+type ReadHistoryArgs struct {
+	// Thing to read values from
+	ThingID string `json:"thingID"`
+	// Optional filter value to search for a specific event key
+	FilterOnKey string `json:"filterOnKey,omitempty"`
+	// Timestamp in RFC3339 format or 'now' for default
+	Timestamp string `json:"timeStamp"`
+	// Duration to read or 0 for previous 24 hours (-3600*24)
+	Duration int `json:"duration"`
+	// limit nr of results or 0 for default of 1000
+	Limit int `json:"limit"`
+}
+
+// ReadHistoryResp contains the batch response to a reading history values
+type ReadHistoryResp struct {
+	// Returns up to 'Limit' iterated values.
+	// This will be an empty list when trying to read past the last value.
+	Values []*things.ThingMessage `json:"values"`
+	// There are still items remaining.
+	ItemsRemaining bool `json:"itemsRemaining"`
 }

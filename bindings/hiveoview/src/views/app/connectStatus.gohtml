@@ -12,11 +12,24 @@ FIXME: The intent was to trigger a manual reload with click event, however,
  hx-trigger doesnt support multiple triggers in combination with sse:connectStatus.
 
 -->
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/app/AppHeaderTemplateData */ -}}
 
-{{- /* .Status: gotype:ConnectStatus*/ -}}
+{{if not .Status}}
+
+<button
+				hx-get="/app/connectStatus"
+				hx-trigger="intersect once"
+				hx-swap="outerHTML"
+				hx-target="this"
+			>
+</button>
+
+{{else}}
+
 <button hx-get="/app/connectStatus"
         hx-trigger="sse:connectStatus"
         hx-swap="outerHTML"
+        hx-target="this"
         class="outline h-icon-button"
         style="border: 1px solid {{if .Status.IsConnected}}green{{else}}red{{end}};"
         title='{{or .Status.Description "not yet connected"}}'
@@ -24,4 +37,4 @@ FIXME: The intent was to trigger a manual reload with click event, however,
 	<iconify-icon icon='mdi:{{or .Status.IconName  "link-off"}}'></iconify-icon>
 </button>
 
-
+{{end}}

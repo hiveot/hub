@@ -89,6 +89,10 @@ func readStoreFile(storePath string) (docs map[string]map[string][]byte, err err
 	var rawData []byte
 	rawData, err = os.ReadFile(storePath)
 	if err == nil {
+		if len(rawData) > 100000000 {
+			slog.Warn("KVBTreeStore size getting large.",
+				"file", storePath, "size in MB", len(rawData)/1024/1024)
+		}
 		err = json.Unmarshal(rawData, &docs)
 
 		if err != nil {

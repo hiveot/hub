@@ -9,7 +9,6 @@ import (
 	"testing"
 )
 
-// TODO get store instance and populate with test user
 var authnStore api.IAuthnStore
 
 func TestCreateSessionToken(t *testing.T) {

@@ -1,8 +1,6 @@
 # definition of WoT vocabulary used to generate source files
 
 # This is subject to change as definitions for the query parameters, arguments and responses need to be included.
-# FIXME: this is part of the rest API and doesn't belong here
-# TODO: migrate this to an OpenAPI (swagger) specification.
 WoTVocab:
   version: "0.1"
   link: "github.com/hiveot/hub/api/vocab/wot-vocab.yaml"

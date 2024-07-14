@@ -15,7 +15,7 @@ import (
 	"log/slog"
 )
 
-// TransportsManager aggregates multiple protocol bindings and manages the starting,
+// TransportsManager aggregates multiple transport protocol bindings and manages the starting,
 // stopping and routing of protocol messages.
 // This implements the ITransportBinding interface like the protocols it manages.
 type TransportsManager struct {
@@ -30,6 +30,16 @@ type TransportsManager struct {
 
 	// handler to pass incoming messages to
 	handler func(tv *things.ThingMessage) hubclient.DeliveryStatus
+}
+
+// AddTDForms adds forms for all active transports
+func (svc *TransportsManager) AddTDForms(td *things.TD) {
+	if svc.httpsTransport != nil {
+		svc.httpsTransport.AddTDForms(td)
+	}
+	if svc.mqttTransport != nil {
+		svc.mqttTransport.AddTDForms(td)
+	}
 }
 
 // GetEmbedded returns the embedded transport protocol

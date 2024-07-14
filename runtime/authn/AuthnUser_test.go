@@ -63,7 +63,6 @@ func TestLoginRefresh(t *testing.T) {
 	err = authn.UserUpdatePassword(hc, tu1Pass)
 	require.NoError(t, err)
 
-	// FIXME: how to provide a sessionID??
 	resp, err := authn.UserLogin(hc, tu1ID, tu1Pass)
 	require.NoError(t, err)
 

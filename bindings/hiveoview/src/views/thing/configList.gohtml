@@ -40,7 +40,9 @@
 					<div class="h-show-lg">{{$v.Default}}</div>
 					<div class="h-show-lg">{{$v.Description}}</div>
 					<div class="h-show-sm"
-					     sse-swap="{{$.ThingID}}/{{$k}}/updated" hx-swap="innerHTML" hx-target="this"
+					     sse-swap="{{$.ThingID}}/{{$k}}/updated"
+					     hx-swap="innerHTML"
+					     hx-target="this"
 					>
               {{$.Values.GetUpdated $k}}
 					</div>

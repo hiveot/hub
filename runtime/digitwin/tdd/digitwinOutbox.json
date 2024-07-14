@@ -23,11 +23,6 @@
 			"in": "header"
 		}
 	},
-	"forms": [{
-		"op": "readallproperties",
-		"contentType": "application/json",
-		"href": "/things/{thingID}/properties"
-	}],
 	"properties": {
 	},
 	"events": {
@@ -53,8 +48,7 @@
 						"type": "string"
 					}
 				}
-			},
-			"forms": []
+			}
 		}
 	},
 	"actions": {
@@ -63,13 +57,7 @@
 			"title": "Read Latest",
 			"description": "Read the latest value(s) of a Thing",
 			"safe": true,
-			"idempotent": true,
-			"forms": [{
-				"op": "?",
-				"href": "things/{thingID}/readLatest",
-				"contentType": "application/json",
-				"https:methodName": "GET"
-			}],
+			"idempotent": true
 			"input": {
 				"type": "object",
 				"required": ["thingID"],
@@ -78,6 +66,12 @@
 						"title": "Thing ID",
 						"description": "ID of the Thing to read",
 						"type": "string"
+					},
+					"messageType": {
+						"title": "Message Type",
+						"description": "Message type to read, eg events or properties",
+						"type": "string",
+						"enum": ["events", "properties"]
 					},
 					"keys": {
 						"title": "Value Key",
@@ -100,7 +94,6 @@
 				"comment": "this returns a map of key:ThingMessage objects. No idea how to describe it",
 				"type": "object",
 				"@type": "ht:ThingMessageMap",
-				"forms": []
 			}
 		},
 		"removeValue": {
@@ -113,8 +106,7 @@
 				"title": "Message ID",
 				"description": "ID of the message to remove",
 				"type": "string"
-			},
-			"forms": []
+			}
 		}
 	},
 	"links": []

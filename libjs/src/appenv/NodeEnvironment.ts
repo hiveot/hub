@@ -259,7 +259,6 @@ export class NodeEnvironment extends Object {
     // This throws an error if loading or parsing the config file fails.
     // Returns normally if the config file doesn't exist or is loaded successfully.
     public loadConfigFile(path: string): void {
-        // TODO: support browser using local storage
         let cfgData: Buffer | undefined
         try {
             cfgData = fs.readFileSync(path)

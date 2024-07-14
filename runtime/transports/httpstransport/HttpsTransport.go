@@ -7,13 +7,12 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/google/uuid"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/tlsserver"
 	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
 	"github.com/hiveot/hub/runtime/transports/httpstransport/sseserver"
 	"io"
@@ -82,7 +81,7 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 
 		//r.Get("/static/*", staticFileServer.ServeHTTP)
 		// build-in REST API for easy login to obtain a token
-		r.Post(vocab.PostLoginPath, svc.HandlePostLogin)
+		r.Post(httpsse.PostLoginPath, svc.HandlePostLogin)
 	})
 	//--- sse
 	router.Group(func(r chi.Router) {
@@ -92,7 +91,7 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 
 		// client sessions authenticate the sender
 		r.Use(sessions.AddSessionFromToken(svc.authenticator))
-		r.HandleFunc(vocab.ConnectSSEPath, svc.sseServer.ServeHTTP)
+		r.HandleFunc(httpsse.ConnectSSEPath, svc.sseServer.ServeHTTP)
 	})
 
 	//--- private routes that requires authentication
@@ -103,20 +102,29 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 		// client sessions authenticate the sender
 		r.Use(sessions.AddSessionFromToken(svc.authenticator))
 
-		// register the general purpose event and action message transport
-		// these allows the binding to work as a transport for agents and consumers
-		r.Post(vocab.PostMessagePath, svc.HandlePostMessage)
-		r.Post(vocab.PostSubscribePath, svc.HandleSubscribe)
-		r.Post(vocab.PostUnsubscribePath, svc.HandleUnsubscribe)
+		// rest api for top level methods
+		r.Get(httpsse.GetReadAllEventsPath, svc.HandleReadAllEvents)
+		r.Get(httpsse.GetReadAllPropertiesPath, svc.HandleReadAllProperties)
+		r.Get(httpsse.GetThingPath, svc.HandleGetThing)
+		r.Get(httpsse.GetThingsPath, svc.HandleGetThings)
+		r.Post(httpsse.PostThingPath, svc.HandlePostThing)
+		r.Post(httpsse.PostSubscribeAllEventsPath, svc.HandleSubscribeAllEvents)
+		r.Post(httpsse.PostUnsubscribeAllEventsPath, svc.HandleUnsubscribeAllEvents)
 
-		// rest api for easy auth refresh and logout
-		r.Post(vocab.PostRefreshPath, svc.HandlePostRefresh)
-		r.Post(vocab.PostLogoutPath, svc.HandlePostLogout)
+		// rest API for directory methods
 
-		// rest api for reading events or tds
-		r.Get(vocab.GetEventsPath, svc.HandleGetEvents)
-		r.Get(vocab.GetThingsPath, svc.HandleGetThings)
-		r.Get(vocab.GetThingPath, svc.HandleGetThing)
+		// rest API for action methods
+		r.Post(httpsse.PostInvokeActionPath, svc.HandlePostInvokeAction)
+
+		// rest API for events methods
+		r.Post(httpsse.PostPublishEventPath, svc.HandlePostPublishEvent)
+
+		// rest API for properties methods
+		r.Post(httpsse.PostWritePropertyPath, svc.HandlePostWriteProperty)
+
+		// authn service
+		r.Post(httpsse.PostRefreshPath, svc.HandlePostRefresh)
+		r.Post(httpsse.PostLogoutPath, svc.HandlePostLogout)
 	})
 
 	return router
@@ -127,8 +135,11 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 // The session context is set by the http middleware. If the session is not available then
 // this returns an error. Note that the session middleware handler will block any request
 // that requires a session.
+//
+// This returns the session, messageType
 func (svc *HttpsTransport) getRequestParams(r *http.Request) (
 	session *sessions.ClientSession, messageType string, thingID string, key string, body []byte, err error) {
+
 	// get the required client session of this agent
 	ctxSession := r.Context().Value(sessions.SessionContextID)
 	if ctxSession == nil {
@@ -199,39 +210,6 @@ func (svc *HttpsTransport) GetProtocolInfo() api.ProtocolInfo {
 		Transport: "https",
 	}
 	return inf
-}
-
-// HandlePostMessage passes a posted action, event or property request to the handler
-// This unmarshals the payload and constructs a ThingMessage instance to pass to the handler.
-// this contains optional query parameter for messageID
-func (svc *HttpsTransport) HandlePostMessage(w http.ResponseWriter, r *http.Request) {
-	cs, messageType, thingID, key, body, err := svc.getRequestParams(r)
-
-	var payload any
-
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	messageID := r.URL.Query().Get("messageID")
-	if messageID == "" {
-		messageID = uuid.NewString()
-	}
-	if body != nil {
-		err = json.Unmarshal(body, &payload)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
-	}
-
-	// this request can simply be turned into an action message.
-	msg := things.NewThingMessage(
-		messageType, thingID, key, payload, cs.GetClientID())
-	msg.MessageID = messageID
-
-	stat := svc.handleMessage(msg)
-	reply, err := json.Marshal(&stat)
-	svc.writeReply(w, reply, err)
 }
 
 // SendEvent an event message to subscribers.

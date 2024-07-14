@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"github.com/hiveot/hub/runtime/tlsserver"
+	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"io"
 	"log/slog"

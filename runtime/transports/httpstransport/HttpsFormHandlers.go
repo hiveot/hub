@@ -2,11 +2,12 @@ package httpstransport
 
 import (
 	"encoding/json"
+	"github.com/google/uuid"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
-	"github.com/hiveot/hub/runtime/tlsserver"
+	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
 	"io"
 	"log/slog"
@@ -14,31 +15,7 @@ import (
 	"strconv"
 )
 
-// Experimental Digitwin REST handlers
-// A convenience api to login, logout, read the directory and values of things
-
-// HandleGetEvents returns a list of latest messages from a Thing
-// Parameters: thingID
-func (svc *HttpsTransport) HandleGetEvents(w http.ResponseWriter, r *http.Request) {
-	cs, _, thingID, key, _, err := svc.getRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	// this request can simply be turned into an action message.
-	args := digitwin.OutboxReadLatestArgs{ThingID: thingID}
-	// only a single key is supported at the moment
-	if key != "" {
-		args.Keys = []string{key}
-	}
-	//argsJSON, _ := json.Marshal(args)
-	msg := things.NewThingMessage(vocab.MessageTypeAction,
-		digitwin.OutboxDThingID, digitwin.OutboxReadLatestMethod,
-		args, cs.GetClientID())
-
-	stat := svc.handleMessage(msg)
-	svc.writeStatReply(w, stat)
-}
+// Protocol handler implementation for support Form operations.
 
 // HandleGetThings returns a list of things in the directory
 // No parameters
@@ -150,6 +127,51 @@ func (svc *HttpsTransport) HandlePostLogin(w http.ResponseWriter, r *http.Reques
 	//svc.sessionManager.SetSessionCookie(cs.sessionID,token)
 }
 
+func (svc *HttpsTransport) HandlePostInvokeAction(w http.ResponseWriter, r *http.Request) {
+	svc.handlePostMessage(vocab.MessageTypeAction, w, r)
+}
+func (svc *HttpsTransport) HandlePostPublishEvent(w http.ResponseWriter, r *http.Request) {
+	svc.handlePostMessage(vocab.MessageTypeEvent, w, r)
+}
+func (svc *HttpsTransport) HandlePostWriteProperty(w http.ResponseWriter, r *http.Request) {
+	svc.handlePostMessage(vocab.MessageTypeProperty, w, r)
+}
+func (svc *HttpsTransport) HandlePostThing(w http.ResponseWriter, r *http.Request) {
+	svc.handlePostMessage(vocab.MessageTypeTDD, w, r)
+}
+
+// handlePostMessage passes a posted action, event, property or TD request to the handler
+// This unmarshals the payload and constructs a ThingMessage instance to pass to the handler.
+// this contains optional query parameter for messageID
+func (svc *HttpsTransport) handlePostMessage(messageType string, w http.ResponseWriter, r *http.Request) {
+	cs, _, thingID, key, body, err := svc.getRequestParams(r)
+	var payload any
+
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	messageID := r.URL.Query().Get("messageID")
+	if messageID == "" {
+		messageID = uuid.NewString()
+	}
+	if body != nil {
+		err = json.Unmarshal(body, &payload)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+
+	// this request can simply be turned into an action message.
+	msg := things.NewThingMessage(
+		messageType, thingID, key, payload, cs.GetClientID())
+	msg.MessageID = messageID
+
+	stat := svc.handleMessage(msg)
+	reply, err := json.Marshal(&stat)
+	svc.writeReply(w, reply, err)
+}
+
 // HandlePostRefresh refreshes the auth token using the session authenticator.
 // The session authenticator is that of the authn service. This allows testing with a dummy
 // authenticator without having to run the authn service.
@@ -176,8 +198,53 @@ func (svc *HttpsTransport) HandlePostRefresh(w http.ResponseWriter, r *http.Requ
 	//svc.sessionManager.SetSessionCookie(cs.sessionID,newToken)
 }
 
-// HandleSubscribe handles a subscription request
-func (svc *HttpsTransport) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
+// HandleReadAllEvents returns a list of latest event values from a Thing
+// Parameters: thingID
+func (svc *HttpsTransport) HandleReadAllEvents(w http.ResponseWriter, r *http.Request) {
+	cs, _, thingID, key, _, err := svc.getRequestParams(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	// this request can simply be turned into an action message.
+	args := digitwin.OutboxReadLatestArgs{
+		ThingID: thingID,
+	}
+	// only a single key is supported at the moment
+	if key != "" {
+		args.Keys = []string{key}
+	}
+	//argsJSON, _ := json.Marshal(args)
+	msg := things.NewThingMessage(vocab.MessageTypeAction,
+		digitwin.OutboxDThingID, digitwin.OutboxReadLatestMethod,
+		args, cs.GetClientID())
+
+	stat := svc.handleMessage(msg)
+	svc.writeStatReply(w, stat)
+}
+
+// HandleReadAllProperties was added to the top level TD form. Handle it here.
+func (svc *HttpsTransport) HandleReadAllProperties(w http.ResponseWriter, r *http.Request) {
+	cs, _, thingID, _, _, err := svc.getRequestParams(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	// this request can simply be turned into an action message to the outbox.
+	args := digitwin.OutboxReadLatestArgs{
+		MessageType: "events",
+		ThingID:     thingID,
+	}
+	msg := things.NewThingMessage(vocab.MessageTypeAction,
+		digitwin.OutboxDThingID, digitwin.OutboxReadLatestMethod,
+		args, cs.GetClientID())
+
+	stat := svc.handleMessage(msg)
+	svc.writeStatReply(w, stat)
+}
+
+// HandleSubscribeAllEvents handles a subscription request
+func (svc *HttpsTransport) HandleSubscribeAllEvents(w http.ResponseWriter, r *http.Request) {
 	cs, _, thingID, key, _, err := svc.getRequestParams(r)
 	if err != nil {
 		slog.Warn("HandleSubscribe", "err", err.Error())
@@ -193,8 +260,8 @@ func (svc *HttpsTransport) HandleSubscribe(w http.ResponseWriter, r *http.Reques
 	cs.Subscribe(thingID, key)
 }
 
-// HandleUnsubscribe handles removal of a subscription request
-func (svc *HttpsTransport) HandleUnsubscribe(w http.ResponseWriter, r *http.Request) {
+// HandleUnsubscribeAllEvents handles removal of a subscription request
+func (svc *HttpsTransport) HandleUnsubscribeAllEvents(w http.ResponseWriter, r *http.Request) {
 	slog.Info("HandleUnsubscribe")
 	cs, _, thingID, key, _, err := svc.getRequestParams(r)
 	if err != nil {

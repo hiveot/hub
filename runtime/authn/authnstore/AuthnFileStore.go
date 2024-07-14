@@ -227,7 +227,6 @@ func (store *AuthnFileStore) SetPassword(loginID string, password string) (err e
 		return fmt.Errorf("password too short (%d chars)", len(password))
 	}
 	if store.hashAlgo == config.PWHASH_ARGON2id {
-		// TODO: tweak to something reasonable and test timing. default of 64MB is not suitable for small systems
 		params := argon2id.DefaultParams
 		params.Memory = 16 * 1024
 		params.Iterations = 2
@@ -285,7 +284,6 @@ func (store *AuthnFileStore) UpdateProfile(senderID string, profile authn2.Clien
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	// TODO: verify sender exi
 	entry, found := store.entries[senderID]
 	if !found {
 		return fmt.Errorf("UpdateProfile: SenderID='%s' not found", senderID)

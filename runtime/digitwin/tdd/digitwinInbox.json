@@ -23,11 +23,6 @@
 			"in": "header"
 		}
 	},
-	"forms": [{
-		"op": "readallproperties",
-		"contentType": "application/json",
-		"href": "/things/{thingID}/properties"
-	}],
 	"schemaDefinitions": {
 
 		"inboxRecord": {
@@ -130,15 +125,7 @@
 				"comment": "InboxRecord as described in schemaDefinitions",
 				"type": "object",
 				"$ref": "inboxRecord"
-			},
-			"forms": [
-				{
-					"op": "?",
-					"href": "things/{thingID}/readLatest",
-					"contentType": "application/json",
-					"https:methodName": "GET"
-				}
-			]
+			}
 		}
 
 	},

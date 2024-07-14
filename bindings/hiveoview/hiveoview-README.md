@@ -60,9 +60,11 @@ Each tile can present itself as a card or history graph using information from t
 
 ## Implementation
 
-This viewer is implemented using golang, echo, go html templates, htmx, beercss and a sprinkle of javascript where needed. No UI framework such as react, vue, or svelte is used in the creation of this viewer. Instead HTML is rendered server side using htmx and go templates, styled using beercss and served using echo. For each client session a mqtt/nats client is created to receive thing updates.
+This viewer is implemented using golang, chi, go html templates, htmx, picocss and a sprinkle of javascript where needed. No UI framework such as react, vue, or svelte is used in the creation of this viewer. Instead HTML is rendered server side using htmx and go templates, styled using picocss and served using chi router. 
 
 ## Build & Installation
+
+
 
 ### Development Auto Reload
 

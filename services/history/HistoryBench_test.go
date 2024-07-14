@@ -22,15 +22,15 @@ const timespanYear = timespanDay * 365
 //
 //                                      ---------------  MQTT/NATS BROKER --------------     HTTPSSE runtime
 //	DBSize #Things                      kvbtree (msec)    pebble (msec)     bbolt (msec)      pebble (msec)
-//	 10K      10    add 1K single (*)       2.5             4.7             4600/4600             8.4
-//	 10K      10    add 1K batch (*)        1.2             2.4               76/72               4.4
-//	 10K      10    get 1K single         330/125         324/130            300/130           1600     (!! ouch)
-//	 10K      10    get 1K batch          5.5/4.3           7                5.5/4.3             55     (!!)
+//	 10K      10    add 1K single (*)       2.5             4.7             4600/4600             6.6
+//	 10K      10    add 1K batch (*)        1.2             2.4               76/72               3.7
+//	 10K      10    get 1K single         330/125         324/130            300/130            940     (!! ouch)
+//	 10K      10    get 1K batch          5.5/4.3           7                5.5/4.3             33     (!!)
 //
-//	100K      10    add 1K single (*)       2.9             4.3             4900/4900             8.9
-//	100K      10    add 1K batch (*)        1.4             2.4               84/82               4.7
-//	100K      10    get 1K single         340/130         320/128            325/130           1650     (!! ouch)
-//	100K      10    get 1K batch          6.0/4.2           7                5.2/4.3             52
+//	100K      10    add 1K single (*)       2.9             4.3             4900/4900             6.2
+//	100K      10    add 1K batch (*)        1.4             2.4               84/82               3.5
+//	100K      10    get 1K single         340/130         320/128            325/130            880     (!! ouch)
+//	100K      10    get 1K batch          6.0/4.2           7                5.2/4.3             32
 //
 //	  1M     100    add 1K single (*)       2.9             5.7             5500
 //	  1M     100    add 1K batch (*)        1.4             3.1              580
@@ -126,7 +126,7 @@ func BenchmarkAddEvents(b *testing.B) {
 					tv, _, _ := cursor.First()
 					assert.NotEmpty(b, tv)
 					if tbl.nrSets > 1 {
-						tvBatch, _, _ := cursor.NextN(tbl.nrSets - 1)
+						tvBatch, _, _ := cursor.NextN(tbl.nrSets-1, "")
 						if !assert.True(b, len(tvBatch) > 0,
 							fmt.Sprintf("counting only '%d' records. Expected at least '%d'.", len(tvBatch), tbl.nrSets)) {
 							break

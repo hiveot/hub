@@ -8,7 +8,7 @@ GENAPI=go run cmd/tdd2api/main.go
 
 .FORCE: 
 
-all: runtime services bindings hubcli   ## Build Core, Bindings and hubcli
+all: runtime hubcli services bindings    ## Build Core, Bindings and hubcli
 
 # --- Runtime services
 

@@ -38,7 +38,7 @@ type DetailsTemplateData struct {
 // return a map with the latest property values of a thing or nil if failed
 func getLatest(thingID string, hc hubclient.IHubClient) (things.ThingMessageMap, error) {
 	data := things.NewThingMessageMap()
-	tvsJson, err := digitwin.OutboxReadLatest(hc, nil, "", thingID)
+	tvsJson, err := digitwin.OutboxReadLatest(hc, nil, "", "", thingID)
 	if err != nil {
 		return data, err
 	}
@@ -130,7 +130,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err != nil {
-		slog.Error("DeliveryFailed loading Thing info",
+		slog.Error("Failed loading Thing info",
 			"thingID", thingID, "err", err.Error())
 		mySession.SendNotify(session.NotifyError, err.Error())
 	}

@@ -23,11 +23,6 @@
 			"in": "header"
 		}
 	},
-	"forms": [{
-		"op": "readallproperties",
-		"contentType": "application/json",
-		"href": "/things/{thingID}/properties"
-	}],
 	"properties": {
 	},
 	"events": {
@@ -38,8 +33,7 @@
 				"title": "thingID",
 				"description": "ID of the Thing that was added",
 				"type": "string"
-			},
-			"forms": [{"href": "/sse","subprotocol": "sse"}]
+			}
 		},
 		"thingRemoved": {
 			"title": "Thing Removed",
@@ -48,8 +42,7 @@
 				"title": "thingID",
 				"description": "ID of the Thing that was removed",
 				"type": "string"
-			},
-			"forms": [{"href": "/sse","subprotocol": "sse"}]
+			}
 		}
 	},
 	"actions": {
@@ -69,12 +62,7 @@
 				"description": "A JSON encoded Thing Description Document",
 				"question": "How to link to the TD as a complex type?",
 				"type": "string"
-			},
-			"forms": [{
-				"href": "things/{thingID}/readTD",
-				"contentType": "application/json",
-				"https:methodName": "GET"
-			}]
+			}
 		},
 		"readTDs": {
 			"@type": "ht:function",
@@ -106,12 +94,7 @@
 				"items": {
 					"type": "string"
 				}
-			},
-			"forms": [{
-				"href": "things/{thingID}/readTDs",
-				"contentType": "application/json",
-				"https:methodName": "GET"
-			}]
+			}
 		},
 		"removeTD": {
 			"@type": "ht:function",
@@ -123,12 +106,7 @@
 				"title": "thingID",
 				"description": "Digital Twin ThingID of the Thing to remove",
 				"type": "string"
-			},
-			"forms": [{
-				"href": "things/{thingID}/removeTD",
-				"contentType": "application/json",
-				"https:methodName": "POST"
-			}]
+			}
 		},
 		"queryTDs": {
 			"@type": "ht:function",
@@ -167,12 +145,7 @@
 				"items": {
 					"type": "string"
 				}
-			},
-			"forms": [{
-				"href": "things/{thingID}/queryTDs",
-				"contentType": "application/json",
-				"https:methodName": "GET"
-			}]
+			}
 		}
 	},
 	"links": []

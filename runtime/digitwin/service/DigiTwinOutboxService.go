@@ -36,11 +36,27 @@ func (svc *DigiTwinOutboxService) HandleEvent(msg *things.ThingMessage) (stat hu
 	svc.latest.StoreMessage(msg)
 
 	// send the event to subscribers
-	_ = svc.pm.SendEvent(msg)
+	stat = svc.pm.SendEvent(msg)
 	return stat
 }
 
-// ReadLatest returns the latest values of a thing
+// ReadAllProperties returns the current property values of a thing
+func (svc *DigiTwinOutboxService) ReadAllProperties(senderID string,
+	args digitwin.OutboxReadLatestArgs) (values map[string]any, err error) {
+
+	recs, err := svc.latest.ReadLatest(
+		vocab.MessageTypeProperty, args.ThingID, args.Keys, args.Since)
+	if err == nil {
+		// this mapping is ugly. It can't be described with a TD dataschema :'(
+		values = make(map[string]any)
+		for key, val := range recs {
+			values[key] = val
+		}
+	}
+	return values, err
+}
+
+// ReadLatest returns the latest event values of a thing
 // Read the latest value(s) of a Thing
 func (svc *DigiTwinOutboxService) ReadLatest(senderID string,
 	args digitwin.OutboxReadLatestArgs) (values map[string]any, err error) {
