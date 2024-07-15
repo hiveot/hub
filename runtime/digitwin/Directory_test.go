@@ -35,7 +35,7 @@ func startDirectory(clean bool) (
 		panic("unable to open the digital twin bucket store")
 	}
 
-	svc = service.NewDigitwinDirectory(store)
+	svc = service.NewDigitwinDirectory(store, nil)
 	err = svc.Start()
 	if err != nil {
 		panic("unable to start the directory service")
@@ -64,7 +64,8 @@ func TestStartStopDirectory(t *testing.T) {
 	// add TDs
 	for _, thingID := range thingIDs {
 		td := createTDDoc(thingID, thingID)
-		err := svc.UpdateThing("test", thingID, td)
+		tddjson, _ := json.Marshal(td)
+		err := svc.UpdateTD("test", string(tddjson))
 		require.NoError(t, err)
 	}
 	// viewers should be able to read the directory
@@ -90,11 +91,11 @@ func TestAddRemoveTD(t *testing.T) {
 	svc, hc, stopFunc := startDirectory(true)
 	defer stopFunc()
 
-	// use the digital-twin thingID for this TD doc as the directory is updated
-	// directly with this document. Normally the runtime converts the agent's ThingID
-	// to that of the digitwin.
-	tdDoc1 := createTDDoc(dThing1ID, title1)
-	err := svc.UpdateThing(agentID, dThing1ID, tdDoc1)
+	// use the native thingID for this TD doc as the directory converts it to
+	// the digital twin ID using the given agent that owns the TD.
+	tdDoc1 := createTDDoc(thing1ID, title1)
+	tddjson, _ := json.Marshal(tdDoc1)
+	err := svc.UpdateTD(agentID, string(tddjson))
 	assert.NoError(t, err)
 
 	// use the client wrapper to read

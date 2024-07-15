@@ -122,7 +122,7 @@ func TestPoll(t *testing.T) {
 
 	// get events from the outbox
 	dThingID := things.MakeDigiTwinThingID(agentID, device1ID)
-	events, err := digitwin.OutboxReadLatest(hc2, nil, "", dThingID)
+	events, err := digitwin.OutboxReadLatest(hc2, nil, vocab.MessageTypeEvent, "", dThingID)
 	require.NoError(t, err)
 	require.True(t, len(events) > 1)
 }

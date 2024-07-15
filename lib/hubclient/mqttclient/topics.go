@@ -4,9 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"strings"
 )
+
+const MessageTypeInbox = "inbox"
 
 // MakeTopic creates a mqtt message  topic optionally with wildcards
 // This uses the hiveot topic format: {msgType}/{deviceID}/{thingID}/{name}[/{clientID}]
@@ -57,7 +58,7 @@ func SplitTopic(topic string) (msgType, agentID, thingID, name string, senderID 
 	parts := strings.Split(topic, "/")
 
 	// inbox topics are short
-	if len(parts) >= 1 && parts[0] == hubclient.MessageTypeINBOX {
+	if len(parts) >= 1 && parts[0] == MessageTypeInbox {
 		msgType = parts[0]
 		if len(parts) >= 2 {
 			agentID = parts[1]

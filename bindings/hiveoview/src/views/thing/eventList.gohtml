@@ -44,7 +44,6 @@
 			</a>
 		</div>
 		<div class="h-show-lg">{{$v.Description}}</div>
-		{{/*TODO: improve on this rather crude way to refresh the derived 'updated' field when value changes?*/}}
 		<div sse-swap="{{$.ThingID}}/{{$k}}/updated"
 		     hx-target="this"
 		     hx-swap="innerHTML"

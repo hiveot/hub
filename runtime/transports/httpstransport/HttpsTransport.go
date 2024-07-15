@@ -107,7 +107,6 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 		r.Get(httpsse.GetReadAllPropertiesPath, svc.HandleReadAllProperties)
 		r.Get(httpsse.GetThingPath, svc.HandleGetThing)
 		r.Get(httpsse.GetThingsPath, svc.HandleGetThings)
-		r.Post(httpsse.PostThingPath, svc.HandlePostThing)
 		r.Post(httpsse.PostSubscribeAllEventsPath, svc.HandleSubscribeAllEvents)
 		r.Post(httpsse.PostUnsubscribeAllEventsPath, svc.HandleUnsubscribeAllEvents)
 

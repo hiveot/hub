@@ -35,7 +35,7 @@ func (svc *DigiTwinOutboxService) HandleEvent(msg *things.ThingMessage) (stat hu
 	// store for reading the last received events
 	svc.latest.StoreMessage(msg)
 
-	// send the event to subscribers
+	// broadcast the event to subscribers
 	stat = svc.pm.SendEvent(msg)
 	return stat
 }

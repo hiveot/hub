@@ -57,7 +57,7 @@ func (svc *DigitwinService) HandleMessage(msg *things.ThingMessage) (stat hubcli
 	// TD event updates the directory and are broadcast to subscribers
 	// this upgrades the TD with forms for accessing the digitwin
 	if msg.Key == vocab.EventTypeTD {
-		svc.Directory.HandleTDEvent(msg, svc.tb)
+		return svc.Directory.HandleTDEvent(msg)
 	}
 	// regular events to be broadcast to subscribers
 	return svc.Outbox.HandleEvent(msg)
@@ -69,7 +69,7 @@ func (svc *DigitwinService) Start() (err error) {
 	err = svc.store.Open()
 	svc.Inbox = NewDigiTwinInbox(svc.store, svc.tb)
 	svc.Outbox = NewDigiTwinOutbox(svc.store, svc.tb)
-	svc.Directory = NewDigitwinDirectory(svc.store)
+	svc.Directory = NewDigitwinDirectory(svc.store, svc.tb)
 	if err == nil {
 		err = svc.Directory.Start()
 	}

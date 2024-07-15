@@ -110,3 +110,6 @@ When the server sends data to a client over SSE, it must include additional info
     * option2: add to the @context
 
 20. How to link an event received over SSE containing the result of an action to a corresponding action?
+
+21. Can authorization rules (eg required roles) be applied to a TD? 
+Use case: Only show allowed actions to a user. 

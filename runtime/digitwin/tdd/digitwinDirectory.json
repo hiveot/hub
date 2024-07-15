@@ -33,7 +33,8 @@
 				"title": "thingID",
 				"description": "ID of the Thing that was added",
 				"type": "string"
-			}
+			},
+			"scopes": ["*"]
 		},
 		"thingRemoved": {
 			"title": "Thing Removed",
@@ -42,7 +43,8 @@
 				"title": "thingID",
 				"description": "ID of the Thing that was removed",
 				"type": "string"
-			}
+			},
+			"scopes": ["*"]
 		}
 	},
 	"actions": {
@@ -58,11 +60,12 @@
 				"type": "string"
 			},
 			"output": {
-				"title": "TDD",
+				"title": "TD",
 				"description": "A JSON encoded Thing Description Document",
 				"question": "How to link to the TD as a complex type?",
 				"type": "string"
-			}
+			},
+			"scopes": ["*"]
 		},
 		"readTDs": {
 			"@type": "ht:function",
@@ -87,6 +90,7 @@
 					}
 				}
 			},
+			"scopes": ["*"],
 			"output": {
 				"title": "TD list",
 				"description": "List of JSON encoded TD documents",
@@ -106,7 +110,8 @@
 				"title": "thingID",
 				"description": "Digital Twin ThingID of the Thing to remove",
 				"type": "string"
-			}
+			},
+			"scopes": ["admin", "service", "agent","manager"]
 		},
 		"queryTDs": {
 			"@type": "ht:function",
@@ -145,7 +150,22 @@
 				"items": {
 					"type": "string"
 				}
-			}
+			},
+			"scopes": ["admin", "service", "agent","manager","operator","viewer"]
+		},
+		"updateTD": {
+			"@type": "ht:function",
+			"title": "Update TD",
+			"description": "Update the TD in the directory",
+			"comment": "This is an agent's TD using the agent's thing ID (not the DTW thingID)",
+			"idempotent": true,
+			"input": {
+				"title": "TD",
+				"description": "Device TD document in JSON format",
+				"comment": "The TD document will be upgraded to represent the digital twin",
+				"type": "string"
+			},
+			"scopes": ["service", "agent"]
 		}
 	},
 	"links": []

@@ -3,13 +3,13 @@ package mqtttransport_test
 import (
 	"crypto/x509"
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/mqttclient"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/transports/mqtttransport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,37 +48,37 @@ var TestService1PubPEM = TestService1Key.ExportPublic()
 
 var adminAuthInfo = mqtttransport.ClientAuthInfo{
 	ClientID:   TestAdminUserID,
-	ClientType: api.ClientTypeUser,
+	ClientType: authn.ClientTypeConsumer,
 	PubKey:     TestAdminUserPubPEM,
-	Role:       api.ClientRoleAdmin,
+	Role:       authn.ClientRoleAdmin,
 }
 var deviceAuthInfo = mqtttransport.ClientAuthInfo{
 	ClientID:   TestDevice1ID,
-	ClientType: api.ClientTypeAgent,
+	ClientType: authn.ClientTypeAgent,
 	PubKey:     TestDevice1PubPEM,
-	Role:       api.ClientRoleAgent,
+	Role:       authn.ClientRoleAgent,
 }
 var mqttTestClients = []mqtttransport.ClientAuthInfo{
 	adminAuthInfo,
 	deviceAuthInfo,
 	{
 		ClientID:     TestUser1ID,
-		ClientType:   api.ClientTypeUser,
+		ClientType:   authn.ClientTypeConsumer,
 		PasswordHash: string(TestUser1bcrypt),
-		Role:         api.ClientRoleViewer,
+		Role:         authn.ClientRoleViewer,
 	},
 	{
 		ClientID:     TestUser2ID,
-		ClientType:   api.ClientTypeUser,
+		ClientType:   authn.ClientTypeConsumer,
 		PubKey:       TestUser2PubPEM,
 		PasswordHash: string(TestUser2bcrypt),
-		Role:         api.ClientRoleOperator,
+		Role:         authn.ClientRoleOperator,
 	},
 	{
 		ClientID:   TestService1ID,
-		ClientType: api.ClientTypeService,
+		ClientType: authn.ClientTypeService,
 		PubKey:     TestService1PubPEM,
-		Role:       api.ClientRoleAdmin,
+		Role:       authn.ClientRoleAdmin,
 	},
 }
 
@@ -119,7 +119,7 @@ func TestMain(m *testing.M) {
 //	_ = srv.ApplyAuth(mqttTestClients)
 //
 //	key, _ := certs.CreateECDSAKeys()
-//	clientCert, err := certs.CreateClientCert(TestUser1ID, authapi.ClientRoleAdmin,
+//	clientCert, err := certs.CreateClientCert(TestUser1ID, authauthn.ClientRoleAdmin,
 //		1, &key.PublicKey, certBundle.CaCert, certBundle.CaKey)
 //	require.NoError(t, err)
 //	serverURL, _, _ := srv.GetServerURLs()

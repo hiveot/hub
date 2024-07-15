@@ -1,6 +1,7 @@
 package digitwin_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/lib/logging"
 	"testing"
@@ -8,7 +9,7 @@ import (
 
 // Simple performance test update/read using embedded client (no network overhead)
 // Benchmark_GetTD/update_TD_docs-4    5500 ns/op
-// Benchmark_GetTD/read_TD_docs-4      1200 ns/op
+// Benchmark_GetTD/read_TD_docs-4       600 ns/op
 func Benchmark_ReadTD(b *testing.B) {
 	b.Log("--- Benchmark_ReadTD start ---")
 	defer b.Log("--- Benchmark_GetTD end ---")
@@ -33,7 +34,8 @@ func Benchmark_ReadTD(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				thingID := fmt.Sprintf("%s-%d", thing1ID, n)
 				tdDoc1 := createTDDoc(thingID, title1)
-				err := svc.UpdateThing(senderID, thingID, tdDoc1)
+				tdjson, _ := json.Marshal(tdDoc1)
+				err := svc.UpdateTD(senderID, string(tdjson))
 				_ = err
 			}
 		})

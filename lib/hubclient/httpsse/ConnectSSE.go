@@ -90,9 +90,12 @@ func (cl *HttpSSEClient) ConnectSSE(
 func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	var stat hubclient.DeliveryStatus
 
+	cl.mux.RLock()
+	connStatus := cl._status.ConnectionStatus
+	cl.mux.RUnlock()
 	// WORKAROUND since go-sse has no callback for a successful reconnect, simulate one here
-	// as soon as data is received
-	if cl._status.ConnectionStatus != hubclient.Connected {
+	// as soon as data is received. The server could send a 'ping' event on connect.
+	if connStatus != hubclient.Connected {
 		// success!
 		slog.Warn("handleSSEEvent: connection re-established")
 		cl.SetConnectionStatus(hubclient.Connected, nil)

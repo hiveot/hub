@@ -136,8 +136,9 @@ func (svc *HttpsTransport) HandlePostPublishEvent(w http.ResponseWriter, r *http
 func (svc *HttpsTransport) HandlePostWriteProperty(w http.ResponseWriter, r *http.Request) {
 	svc.handlePostMessage(vocab.MessageTypeProperty, w, r)
 }
-func (svc *HttpsTransport) HandlePostThing(w http.ResponseWriter, r *http.Request) {
-	svc.handlePostMessage(vocab.MessageTypeTDD, w, r)
+func (svc *HttpsTransport) HandlePostTDD(w http.ResponseWriter, r *http.Request) {
+	// TDD are posted as events with the $td key
+	svc.handlePostMessage(vocab.MessageTypeEvent, w, r)
 }
 
 // handlePostMessage passes a posted action, event, property or TD request to the handler
@@ -162,7 +163,7 @@ func (svc *HttpsTransport) handlePostMessage(messageType string, w http.Response
 		}
 	}
 
-	// this request can simply be turned into an action message.
+	// turn the request into a Thing Message
 	msg := things.NewThingMessage(
 		messageType, thingID, key, payload, cs.GetClientID())
 	msg.MessageID = messageID

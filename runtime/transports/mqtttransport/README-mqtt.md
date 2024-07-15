@@ -1,6 +1,12 @@
 # HiveOT MQTT Core
 
-The HiveOT MQTT messaging core uses mochi-co' embedded mqtt as the built-in message broker. 
+The HiveOT MQTT messaging core uses mochi-co' embedded mqtt as the built-in message broker.
+
+## Status - NOT FUNCTIONAL
+
+This transport is being reworked for use with the HiveOT runtime. It is currently broken.
+
+
 
 ## Mochi-co MQTT Authentication (planned)
 

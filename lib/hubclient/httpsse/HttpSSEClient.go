@@ -48,10 +48,9 @@ const (
 	PostUnsubscribeAllEventsPath = "/unsubscribe/{thingID}"
 	ConnectSSEPath               = "/sse"
 
-	// Form paths for accessing TDD directory
+	// Form paths for accessing TD directory
 	GetThingPath  = "/tdd/{thingID}"
 	GetThingsPath = "/tdd" // query param offset=, limit=
-	PostThingPath = "/tdd/{thingID}"
 
 	// Form paths for accessing Actions
 	PostInvokeActionPath = "/action/{thingID}/{key}"

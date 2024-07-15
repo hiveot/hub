@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/stretchr/testify/require"
@@ -206,7 +206,7 @@ func TestCert404(t *testing.T) {
 }
 
 func TestAuthJWT(t *testing.T) {
-	pathLogin1 := vocab.PostLoginPath
+	pathLogin1 := httpsse.PostLoginPath
 	pathLogin2 := "/login2"
 	path3 := "/test3"
 	path3Hit := 0
@@ -260,7 +260,7 @@ func TestAuthJWT(t *testing.T) {
 	srv, err := startTestServer(mux)
 	assert.NoError(t, err)
 	//
-	loginURL := fmt.Sprintf("https://%s%s", testAddress, vocab.PostLoginPath)
+	loginURL := fmt.Sprintf("https://%s%s", testAddress, httpsse.PostLoginPath)
 	loginMessage := authn.UserLoginArgs{
 		ClientID: user1,
 		Password: password1,

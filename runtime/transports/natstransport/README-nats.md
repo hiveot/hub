@@ -2,8 +2,13 @@
 
 HiveOT configuration for NATS JetStream based messaging.
 
+## Status - NOT FUNCTIONAL
 
-## Configuration
+This transport is being reworked for use with the HiveOT runtime. It is currently broken.
+
+The stuff below is old
+
+## Configuration - OLD
 
 HiveOT runs out of the box with an embedded nats messaging and streaming server. This server is configured to runs with TLS over TCP and WebSocket on the default NATS ports.
 
