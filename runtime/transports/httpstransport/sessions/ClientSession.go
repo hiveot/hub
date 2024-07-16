@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
 	"sync"
@@ -13,9 +14,6 @@ type SSEEvent struct {
 	ID        string // event ID
 	Payload   string // message content
 }
-
-// DefaultExpiryHours TODO: set default expiry in config
-const DefaultExpiryHours = 72
 
 // ClientSession of a client connected over http.
 // If this client subscribes using sse then sse event channels are kept.
@@ -37,7 +35,8 @@ type ClientSession struct {
 	// Each SSE connection is added to this list
 	sseClients []chan SSEEvent
 
-	// ThingID's subscribed to
+	// Map of current subscriptions: thingID . key
+	// where key can be a wildcard '+'
 	subscriptions map[string]string
 }
 
@@ -54,11 +53,13 @@ func (cs *ClientSession) Close() {
 }
 
 // CreateSSEChan creates a new SSE channel to communicate with.
+// The channel has a buffer of 1 to allow sending a ping message on connect
+// and to allow concurrent broadcasting of events to multiple channels.
 // Call DeleteSSEClient to close and clean up
 func (cs *ClientSession) CreateSSEChan() chan SSEEvent {
 	cs.mux.Lock()
 	defer cs.mux.Unlock()
-	sseChan := make(chan SSEEvent)
+	sseChan := make(chan SSEEvent, 1)
 	cs.sseClients = append(cs.sseClients, sseChan)
 	return sseChan
 }
@@ -95,25 +96,35 @@ func (cs *ClientSession) GetSessionID() string {
 	return cs.sessionID
 }
 
-// IsSubscribed returns true  if this client session has subscribed to events from the Thing and optionally key
-// TODO: add more fine-grained multi-key subscription
+// IsSubscribed returns true  if this client session has subscribed to events from the Thing and key
 func (cs *ClientSession) IsSubscribed(dThingID string, key string) bool {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
 
-	subKey, hasSubscription := cs.subscriptions[dThingID]
-	if !hasSubscription {
-		// also check for wildcard subscription
-		subKey, hasSubscription = cs.subscriptions["+"]
-		if !hasSubscription {
-			return false
-		}
-	}
-	// subscribed to any event
-	if subKey == "" || subKey == "+" || key == "" {
+	subKey := fmt.Sprintf("%s.%s", dThingID, key)
+	_, hasSubscription := cs.subscriptions[subKey]
+	if hasSubscription {
 		return true
 	}
-	return subKey == key
+	// check if subscription for this thing with any key exists
+	subKey = fmt.Sprintf("%s.+", dThingID)
+	_, hasSubscription = cs.subscriptions[subKey]
+	if hasSubscription {
+		return true
+	}
+	// check if subscription for any thing with this key exists
+	subKey = fmt.Sprintf("+.%s", key)
+	_, hasSubscription = cs.subscriptions[subKey]
+	if hasSubscription {
+		return true
+	}
+	// check if subscription for any thing with any key exists
+	subKey = fmt.Sprintf("+.+")
+	_, hasSubscription = cs.subscriptions[subKey]
+	if hasSubscription {
+		return true
+	}
+	return hasSubscription
 }
 
 // onConnectChange is invoked on disconnect/reconnect
@@ -129,48 +140,6 @@ func (cs *ClientSession) onConnectChange(stat hubclient.TransportStatus) {
 		cs.SendSSE("changed", "notify", "warning:Connection changed: "+string(stat.ConnectionStatus))
 	}
 }
-
-// onEvent passes incoming events from the Hub to the SSE client(s)
-//func (cs *ClientSession) onEvent(msg *things.ThingMessage) {
-//	cs.mux.RLock()
-//	defer cs.mux.RUnlock()
-//	slog.Info("received event", slog.String("thingID", msg.ThingID),
-//		slog.String("id", msg.Key))
-//	if msg.Key == vocab.EventTypeTD {
-//		// Publish sse event indicating the Thing TD has changed.
-//		// The UI that displays this event can use this as a trigger to reload the
-//		// fragment that displays this TD:
-//		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}"
-//		_ = cs.SendSSE(msg.ThingID, "")
-//	} else if msg.Key == vocab.EventTypeProperties {
-//		// Publish an sse event for each of the properties
-//		// The UI that displays this event can use this as a trigger to load the
-//		// property value:
-//		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}/{{k}}"
-//		props := make(map[string]string)
-//		err := json.Decode([]byte(msg.Data), &props)
-//		if err == nil {
-//			for k, v := range props {
-//				thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, k)
-//				_ = cs.SendSSE(thingAddr, v)
-//				thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, k)
-//				_ = cs.SendSSE(thingAddr, msg.GetUpdated())
-//			}
-//		}
-//	} else {
-//		// Publish sse event indicating the event affordance or value has changed.
-//		// The UI that displays this event can use this as a trigger to reload the
-//		// fragment that displays this event:
-//		//    hx-trigger="sse:{{.Thing.AgentID}}/{{.Thing.ThingID}}/{{$k}}"
-//		// where $k is the event ID
-//		thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, msg.Key)
-//		_ = cs.SendSSE(thingAddr, string(msg.Data))
-//		// TODO: improve on this crude way to update the 'updated' field
-//		// Can the value contain an object with a value and updated field instead?
-//		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Key)
-//		_ = cs.SendSSE(thingAddr, msg.GetUpdated())
-//	}
-//}
 
 // SendSSE encodes and sends an SSE event to clients of this session
 // Intended to send events to clients over sse.
@@ -199,19 +168,23 @@ func (cs *ClientSession) SendSSE(messageID string, eventType string, data any) i
 
 // Subscribe adds the event subscription for this session client
 //
-//	dThingID is the digitwin thingID whose events to subscribe to, or '+' for any
-//	key is the event key to subscribe to or '+' for any
+//	dThingID is the digitwin thingID whose events to subscribe to, or "" for any
+//	key is the event key to subscribe to or "" for any
 func (cs *ClientSession) Subscribe(dThingID string, key string) {
 	cs.mux.Lock()
 	defer cs.mux.Unlock()
-	cs.subscriptions[dThingID] = key
+
+	subKey := fmt.Sprintf("%s.%s", dThingID, key)
+	cs.subscriptions[subKey] = key
 }
 
 // Unsubscribe removes the event subscription for this session client
+// This must match the dThingID and key of Subscribe
 func (cs *ClientSession) Unsubscribe(dThingID string, key string) {
 	cs.mux.Lock()
 	defer cs.mux.Unlock()
-	delete(cs.subscriptions, dThingID)
+	subKey := fmt.Sprintf("%s.%s", dThingID, key)
+	delete(cs.subscriptions, subKey)
 }
 
 // UpdateLastActivity sets the current time
@@ -229,10 +202,9 @@ func (cs *ClientSession) UpdateLastActivity() {
 // it should be obtained from the login authentication/refresh.
 func NewClientSession(sessionID string, clientID string, remoteAddr string) *ClientSession {
 	cs := ClientSession{
-		sessionID:  sessionID,
-		clientID:   clientID,
-		remoteAddr: remoteAddr,
-		// TODO: assess need for buffering
+		sessionID:     sessionID,
+		clientID:      clientID,
+		remoteAddr:    remoteAddr,
 		sseClients:    make([]chan SSEEvent, 0),
 		lastActivity:  time.Now(),
 		subscriptions: make(map[string]string),

@@ -29,7 +29,7 @@
 			   hx-target="#historyPage"
 			   hx-swap="innerHtml"
 			   hx-trigger="click"
-			   onclick="navigateTo(null,this.href)"
+			   hx-on::after-request="navigateTo(null,this.href)"
 			>
 				{{/* Dynamic refresh of value on sse event*/}}
 				<span sse-swap="{{$.ThingID}}/{{$k}}"

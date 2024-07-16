@@ -19,6 +19,7 @@
 		<article
         {{/* auto refresh on updates when showing the current day */}}
         {{if eq .CompareToday 0}}
+{{/*	        FIXME: sse names cannot have spaces*/}}
 					hx-trigger="sse:{{.ThingID}}/{{.Key}}"
 					hx-get="/history/{{.ThingID}}/{{.Key}}"
 					hx-target="#historyPage"

@@ -48,12 +48,10 @@ func (svc *EmbeddedTransport) NewClient(agentID string) hubclient.IHubClient {
 func (svc *EmbeddedTransport) SendEvent(event *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	stat.DeliveryFailed(event, errors.New("no handlers for event"))
 	for agentID, agent := range svc.handlers {
-		// FIXME: only send to subscribers
+		// TODO: until subscription is needed by embedded clients, simply don't send them any events.
 		// don't send events back to the sender
 		if agentID != event.SenderID {
 
-			// TODO: until subscription is needed by embedded clients,
-			//  simply don't send them any events.
 			// authn and authz  dont need to subscribe to events
 			// embedded client will still receive directed events.
 			_ = agent

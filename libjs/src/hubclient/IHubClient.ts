@@ -226,11 +226,11 @@ export interface IHubClient {
     //
     // Subscriptions remain in effect when the connection with the messaging server is interrupted.
     //
-    //  dThingID is the digital twin ID of the Thing to subscribe to. "" or "+" for any
-    //	key is the type of event to subscribe to or "" for all events, "" or "+" for any
+    //  dThingID is the digital twin ID of the Thing to subscribe to. ""  for any
+    //	key is the type of event to subscribe to or "" for all events, "" for any
     subscribe(dThingID: string, key:string): Promise<void>;
 
 // Unsubscribe removes a previous event subscription.
 // No more events or requests will be received after Unsubscribe.
-    unsubscribe(dThingID: string): void;
+    unsubscribe(dThingID: string, key: string): void;
 }

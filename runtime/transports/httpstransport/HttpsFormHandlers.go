@@ -56,8 +56,6 @@ func (svc *HttpsTransport) HandleGetThing(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	// FIXME: are single text arguments serialized?
-	// payload is always serialized ?
 	msg := things.NewThingMessage(vocab.MessageTypeAction,
 		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod,
 		thingID, cs.GetClientID())
@@ -70,10 +68,8 @@ func (svc *HttpsTransport) HandlePostLogout(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		return
 	}
-	// logout closes the session
+	// logout closes the session which invalidates it
 	cs.Close()
-	// TODO: remove client session cookie
-	//svc.sessionManager.ClearSessionCookie(cs.sessionID)
 }
 
 // HandlePostLogin handles a login request and a new session, posted by a consumer
@@ -244,8 +240,8 @@ func (svc *HttpsTransport) HandleReadAllProperties(w http.ResponseWriter, r *htt
 	svc.writeStatReply(w, stat)
 }
 
-// HandleSubscribeAllEvents handles a subscription request
-func (svc *HttpsTransport) HandleSubscribeAllEvents(w http.ResponseWriter, r *http.Request) {
+// HandleSubscribeEvents handles a subscription request
+func (svc *HttpsTransport) HandleSubscribeEvents(w http.ResponseWriter, r *http.Request) {
 	cs, _, thingID, key, _, err := svc.getRequestParams(r)
 	if err != nil {
 		slog.Warn("HandleSubscribe", "err", err.Error())
@@ -261,8 +257,8 @@ func (svc *HttpsTransport) HandleSubscribeAllEvents(w http.ResponseWriter, r *ht
 	cs.Subscribe(thingID, key)
 }
 
-// HandleUnsubscribeAllEvents handles removal of a subscription request
-func (svc *HttpsTransport) HandleUnsubscribeAllEvents(w http.ResponseWriter, r *http.Request) {
+// HandleUnsubscribeEvents handles removal of a subscription request
+func (svc *HttpsTransport) HandleUnsubscribeEvents(w http.ResponseWriter, r *http.Request) {
 	slog.Info("HandleUnsubscribe")
 	cs, _, thingID, key, _, err := svc.getRequestParams(r)
 	if err != nil {

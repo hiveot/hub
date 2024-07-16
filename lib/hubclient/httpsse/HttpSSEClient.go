@@ -44,8 +44,10 @@ const (
 	// SYNC with HttpSSEClient.ts
 	GetReadAllEventsPath         = "/events/{thingID}"
 	GetReadAllPropertiesPath     = "/properties/{thingID}"
-	PostSubscribeAllEventsPath   = "/subscribe/{thingID}"
-	PostUnsubscribeAllEventsPath = "/unsubscribe/{thingID}"
+	PostSubscribeAllEventsPath   = "/subscribe/{thingID}/+"
+	PostUnsubscribeAllEventsPath = "/unsubscribe/{thingID}/+"
+	PostSubscribeEventPath       = "/subscribe/{thingID}/{key}"
+	PostUnsubscribeEventPath     = "/unsubscribe/{thingID}/{key}"
 	ConnectSSEPath               = "/sse"
 
 	// Form paths for accessing TD directory
@@ -527,7 +529,7 @@ func (cl *HttpSSEClient) SetMessageHandler(cb hubclient.MessageHandler) {
 	cl.mux.Unlock()
 }
 
-// Subscribe subscribes to thing events.
+// Subscribe subscribes to a single event of one or more thing.
 // Use SetEventHandler to receive subscribed events or SetRequestHandler for actions
 func (cl *HttpSSEClient) Subscribe(thingID string, key string) error {
 	if thingID == "" {
@@ -537,7 +539,7 @@ func (cl *HttpSSEClient) Subscribe(thingID string, key string) error {
 		key = "+"
 	}
 	vars := map[string]string{"thingID": thingID, "key": key}
-	subscribePath := utils.Substitute(PostSubscribeAllEventsPath, vars)
+	subscribePath := utils.Substitute(PostSubscribeEventPath, vars)
 	_, _, err := cl.tlsClient.Post(subscribePath, nil)
 	return err
 }
@@ -548,13 +550,16 @@ func (cl *HttpSSEClient) Unmarshal(raw []byte, reply interface{}) error {
 	return err
 }
 
-// Unsubscribe from thing events
-func (cl *HttpSSEClient) Unsubscribe(thingID string) error {
+// Unsubscribe from thing event(s)
+func (cl *HttpSSEClient) Unsubscribe(thingID string, key string) error {
 	if thingID == "" {
 		thingID = "+"
 	}
-	vars := map[string]string{"thingID": thingID}
-	unsubscribePath := utils.Substitute(PostUnsubscribeAllEventsPath, vars)
+	if key == "" {
+		key = "+"
+	}
+	vars := map[string]string{"thingID": thingID, "key": key}
+	unsubscribePath := utils.Substitute(PostUnsubscribeEventPath, vars)
 	_, _, err := cl.tlsClient.Post(unsubscribePath, nil)
 	return err
 }

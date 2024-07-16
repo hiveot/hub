@@ -198,7 +198,7 @@ func (cl *EmbeddedClient) Subscribe(thingID string, key string) error {
 
 // Unsubscribe removes a previous event subscription.
 // No more events or requests will be received after Unsubscribe.
-func (cl *EmbeddedClient) Unsubscribe(thingID string) error {
+func (cl *EmbeddedClient) Unsubscribe(thingID string, key string) error {
 	return fmt.Errorf("Unsubscribe not implemented")
 }
 

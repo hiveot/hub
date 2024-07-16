@@ -107,8 +107,10 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 		r.Get(httpsse.GetReadAllPropertiesPath, svc.HandleReadAllProperties)
 		r.Get(httpsse.GetThingPath, svc.HandleGetThing)
 		r.Get(httpsse.GetThingsPath, svc.HandleGetThings)
-		r.Post(httpsse.PostSubscribeAllEventsPath, svc.HandleSubscribeAllEvents)
-		r.Post(httpsse.PostUnsubscribeAllEventsPath, svc.HandleUnsubscribeAllEvents)
+		//r.Post(httpsse.PostSubscribeAllEventsPath, svc.HandleSubscribeEvents)
+		//r.Post(httpsse.PostUnsubscribeAllEventsPath, svc.HandleUnsubscribeEvents)
+		r.Post(httpsse.PostSubscribeEventPath, svc.HandleSubscribeEvents)
+		r.Post(httpsse.PostUnsubscribeEventPath, svc.HandleUnsubscribeEvents)
 
 		// rest API for directory methods
 
@@ -219,14 +221,21 @@ func (svc *HttpsTransport) SendEvent(msg *things.ThingMessage) (stat hubclient.D
 }
 
 // SendToClient sends a message to a connected agent or consumer.
+// TODO: sending a delivery update to the client should use the sessionID to guarantee
+//
+//	that the correct session receives the update. The current workaround is to
+//	send the message to all sessions
 func (svc *HttpsTransport) SendToClient(
 	clientID string, msg *things.ThingMessage) (stat hubclient.DeliveryStatus, found bool) {
 
 	stat.MessageID = msg.MessageID
 	sm := sessions.GetSessionManager()
-	cs, err := sm.GetSessionByClientID(clientID)
+	csList, err := sm.GetSessionsByClientID(clientID)
+	count := 0
 	if err == nil {
-		count := cs.SendSSE(msg.MessageID, msg.MessageType, msg)
+		for _, cs := range csList {
+			count += cs.SendSSE(msg.MessageID, msg.MessageType, msg)
+		}
 		if count == 0 {
 			err = fmt.Errorf("client '%s' is not reachable", clientID)
 			found = false

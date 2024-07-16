@@ -48,10 +48,6 @@
 							   hx-target="#detailsPage"
 							   hx-swap="innerHTML"
 							   hx-on::after-request="window.navigateTo(null,this.href)"
-
-                 {{/*	onclick with event fails as the event is cancelled and doesnt trigger fragment reload*/}}
-                 {{/*	onclick with null fails as htmx throws nil exception */}}
-									{{/*	onclick="window.navigateTo(event,'/thing/details/{{.ID}}')"*/}}
 							>{{.Title}}
 							</a>
 						</div>

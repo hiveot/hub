@@ -22,14 +22,14 @@ const timespanYear = timespanDay * 365
 //
 //                                      ---------------  MQTT/NATS BROKER --------------     HTTPSSE runtime
 //	DBSize #Things                      kvbtree (msec)    pebble (msec)     bbolt (msec)      pebble (msec)
-//	 10K      10    add 1K single (*)       2.5             4.7             4600/4600             6.6
-//	 10K      10    add 1K batch (*)        1.2             2.4               76/72               3.7
-//	 10K      10    get 1K single         330/125         324/130            300/130            940     (!! ouch)
-//	 10K      10    get 1K batch          5.5/4.3           7                5.5/4.3             33     (!!)
+//	 10K      10    add 1K single (*)       2.5             4.7             4600/4600             6.0
+//	 10K      10    add 1K batch (*)        1.2             2.4               76/72               3.6
+//	 10K      10    get 1K single         330/125         324/130            300/130            890     (!! ouch)
+//	 10K      10    get 1K batch          5.5/4.3           7                5.5/4.3             31     (!!)
 //
-//	100K      10    add 1K single (*)       2.9             4.3             4900/4900             6.2
-//	100K      10    add 1K batch (*)        1.4             2.4               84/82               3.5
-//	100K      10    get 1K single         340/130         320/128            325/130            880     (!! ouch)
+//	100K      10    add 1K single (*)       2.9             4.3             4900/4900             5.6
+//	100K      10    add 1K batch (*)        1.4             2.4               84/82               3.3
+//	100K      10    get 1K single         340/130         320/128            325/130            890     (!! ouch)
 //	100K      10    get 1K batch          6.0/4.2           7                5.2/4.3             32
 //
 //	  1M     100    add 1K single (*)       2.9             5.7             5500

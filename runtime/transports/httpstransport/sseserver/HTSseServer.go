@@ -2,6 +2,7 @@ package sseserver
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
 	"log/slog"
 	"net/http"
@@ -43,7 +44,9 @@ func HTServeHttp(w http.ResponseWriter, r *http.Request) {
 	// establish a client event channel for sending messages back to the client
 	sseChan := cs.CreateSSEChan()
 
-	// TODO: if this is a first connection of the client send a connected event
+	// Send a ping event as the go-sse client doesn't have a 'connected callback'
+	pingEvent := sessions.SSEEvent{EventType: hubclient.PingMessage}
+	sseChan <- pingEvent
 
 	slog.Info("SseHandler. New SSE connection",
 		slog.String("RemoteAddr", r.RemoteAddr),
@@ -73,7 +76,6 @@ func HTServeHttp(w http.ResponseWriter, r *http.Request) {
 			// "Each message is sent as a block of text terminated by a pair of newlines. "
 			//https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
 			//_, err := fmt.Fprintf(w, "event: time\ndata: <div sse-swap='time'>%s</div>\n\n", data)
-			// FIXME: There seems to be a 64K limit. Probably at the go-sse receiver side
 			n, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
 				sseMsg.EventType, sseMsg.Payload)
 			_ = n

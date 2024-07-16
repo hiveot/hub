@@ -190,13 +190,10 @@ func (cs *ClientSession) onMessage(msg *things.ThingMessage) (stat hubclient.Del
 		// fragment that displays this event:
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{$k}}"
 		// where $k is the event ID
-		thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, msg.Key)
-		cs.SendSSE(thingAddr, msg.DataAsText())
-		// TODO: improve on this crude way to update the 'updated' field
-		// Can the value contain an object with a value and updated field instead?
-		// htmx sse-swap does allow cherry picking the content unfortunately.
-		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Key)
-		cs.SendSSE(thingAddr, msg.GetUpdated())
+		eventName := fmt.Sprintf("%s/%s", msg.ThingID, msg.Key)
+		cs.SendSSE(eventName, msg.DataAsText())
+		eventName = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Key)
+		cs.SendSSE(eventName, msg.GetUpdated())
 	}
 	return stat.Completed(msg, nil, nil)
 }

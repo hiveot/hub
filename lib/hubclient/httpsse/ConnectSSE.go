@@ -100,6 +100,10 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		slog.Warn("handleSSEEvent: connection re-established")
 		cl.SetConnectionStatus(hubclient.Connected, nil)
 	}
+	// no further processing of a ping needed
+	if event.Type == hubclient.PingMessage {
+		return
+	}
 
 	// ThingMessage is needed to pass messageID, messageType, thingID, key, and sender,
 	// as there is no facility in SSE to include metadata.

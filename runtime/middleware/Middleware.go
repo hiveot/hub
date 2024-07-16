@@ -8,7 +8,6 @@ import (
 
 // MiddlewareHandler for processing a message through the middleware chain until an error
 // is returned.
-// TODO: add functions for rate control and authorization
 type MiddlewareHandler func(msg *things.ThingMessage) (*things.ThingMessage, error)
 
 // MessageHandler handles the message after the middleware
@@ -32,13 +31,6 @@ func (svc *Middleware) AddMiddlewareHandler(handler MiddlewareHandler) {
 
 // HandleMessage passes an incoming message through the middleware chain and on to
 // the registered handlers.
-//
-// Events are handled separate from targeted messages such as actions.
-// Actions are passed to the handler registered for the thingID. If no handler
-// exists then the default handler is invoked.
-//
-// The default handler can lookup the destination device and decide to queue or
-// forward the request, based on the policy. (TODO)
 //
 // The middleware chain is intended to validate, enrich, and process the event, action and rpc messages.
 func (svc *Middleware) HandleMessage(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {

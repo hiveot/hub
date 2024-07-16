@@ -11,6 +11,7 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 )
@@ -18,10 +19,11 @@ import (
 const HistoryPageTemplate = "historyPage.gohtml"
 
 type HistoryTemplateData struct {
-	ThingID      string
-	Key          string
-	TimestampStr string
-	DurationSec  int
+	HxTriggerName string
+	ThingID       string
+	Key           string
+	TimestampStr  string
+	DurationSec   int
 	//
 	Timestamp      time.Time
 	TD             *things.TD
@@ -93,12 +95,14 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 		durationSec = -24 * 3600
 	}
 
+	// key events are escaped as SSE doesn't allow spaces and slashes
 	data := HistoryTemplateData{
-		ThingID:      thingID,
-		Key:          key,
-		TimestampStr: timestampStr,
-		Timestamp:    timestamp,
-		DurationSec:  int(durationSec),
+		HxTriggerName: url.QueryEscape(thingID + "/" + key),
+		ThingID:       thingID,
+		Key:           key,
+		TimestampStr:  timestampStr,
+		Timestamp:     timestamp,
+		DurationSec:   int(durationSec),
 	}
 
 	// Read the TD being displayed and its latest values

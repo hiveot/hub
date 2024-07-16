@@ -17,15 +17,12 @@ import (
 //
 // TODO:
 //  1. close session after not being used for X seconds
-//  2. Send notification if a client connects and disconnects
-//     needed to send push notifications to clients (primarily agents and services)
-//  3. Persist sessions between restart (to restore login) - config option?
+//  2. Persist sessions between restart (to restore login) - config option?
 type SessionManager struct {
 	// existing sessions by sessionID (remoteAddr)
 	sidSessions map[string]*ClientSession
 	// existing sessions by clientID
-	// FIXME: what if a client connects multiple times? Should this be an array?
-	clientSessions map[string]*ClientSession
+	clientSessions map[string][]*ClientSession
 	// mutex to access the sessions
 	mux sync.RWMutex
 }
@@ -48,7 +45,13 @@ func (sm *SessionManager) NewSession(clientID string, remoteAddr string, session
 	cs = NewClientSession(sessionID, clientID, remoteAddr)
 	sm.mux.Lock()
 	sm.sidSessions[sessionID] = cs
-	sm.clientSessions[clientID] = cs
+	existingSessions, found := sm.clientSessions[clientID]
+	if !found {
+		existingSessions = []*ClientSession{cs}
+	} else {
+		existingSessions = append(existingSessions, cs)
+	}
+	sm.clientSessions[clientID] = existingSessions
 	sm.mux.Unlock()
 	return cs, nil
 }
@@ -65,7 +68,20 @@ func (sm *SessionManager) Close(sessionID string) error {
 	}
 	si.Close()
 	delete(sm.sidSessions, sessionID)
-	delete(sm.clientSessions, si.clientID)
+	// remove the session from the clientID to sessions map
+	sessions, found := sm.clientSessions[si.clientID]
+	if found {
+		for i, session := range sessions {
+			if session.sessionID == sessionID {
+				sessions[i] = sessions[len(sessions)-1]
+				sessions = sessions[:len(sessions)-1]
+				break
+			}
+		}
+		if len(sessions) == 0 {
+			delete(sm.clientSessions, si.clientID)
+		}
+	}
 	return nil
 }
 
@@ -80,7 +96,7 @@ func (sm *SessionManager) CloseAll() {
 		session.Close()
 	}
 	sm.sidSessions = make(map[string]*ClientSession)
-	sm.clientSessions = make(map[string]*ClientSession)
+	sm.clientSessions = make(map[string][]*ClientSession)
 }
 
 // GetSession returns the client session if available
@@ -100,26 +116,22 @@ func (sm *SessionManager) GetSession(sessionID string) (*ClientSession, error) {
 	return session, nil
 }
 
-// GetSessionByClientID returns the latest client session by the client's ID
+// GetSessionsByClientID returns the latest client sessions by client's ID.
 // An error is returned if the clientID does not have a session
-// Intended for lookup of agents.
-// TODO: if a client has multiple sessions and one closes then return one of the others.
-// This currently forgets the client if one of its sessions closes. This is fine for
-// agents as they typically only have a single session.
-func (sm *SessionManager) GetSessionByClientID(clientID string) (*ClientSession, error) {
+// Intended for lookup of agents or consumers to send directed messages.
+func (sm *SessionManager) GetSessionsByClientID(clientID string) ([]*ClientSession, error) {
 	sm.mux.RLock()
 	defer sm.mux.RUnlock()
 
 	if clientID == "" {
 		return nil, errors.New("missing clientID")
 	}
-	// FIXME: a client that has multiple sessions will only see the last one
-	session, found := sm.clientSessions[clientID]
-	if !found {
+	sessions, found := sm.clientSessions[clientID]
+	if !found || len(sessions) == 0 {
 		return nil, errors.New("clientID '" + clientID + "' has no sessions")
 	}
-	session.UpdateLastActivity()
-	return session, nil
+	//sessions[0].UpdateLastActivity()
+	return sessions, nil
 }
 
 // Init initializes the session manager
@@ -160,7 +172,7 @@ func (sm *SessionManager) SendEvent(msg *things.ThingMessage) (stat hubclient.De
 var sessionmanager = func() *SessionManager {
 	sm := &SessionManager{
 		sidSessions:    make(map[string]*ClientSession),
-		clientSessions: make(map[string]*ClientSession),
+		clientSessions: make(map[string][]*ClientSession),
 	}
 	return sm
 }()

@@ -135,7 +135,6 @@ func (svc *DigiTwinInboxService) GetRecord(messageID string) (r digitwin.InboxRe
 // Note that incoming action requests use the digital twin ThingID, not the physical
 // device ID.
 func (svc *DigiTwinInboxService) HandleActionFlow(msg *things.ThingMessage) (status hubclient.DeliveryStatus) {
-	// TODO: log in a separate message log
 	slog.Info("inbox:HandleActionFlow",
 		slog.String("ThingID", msg.ThingID),
 		slog.String("Key", msg.Key),

@@ -1,6 +1,7 @@
 package sseserver
 
 import (
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
@@ -34,6 +35,9 @@ func NewGoSSEServer() *sse.Server {
 		// establish a client event channel for sending messages back to the client
 		ctx := sseSession.Req.Context()
 		sseChan := cs.CreateSSEChan() // for this server
+		// Send a ping event as the go-sse client doesn't have a 'connected callback'
+		sseChan <- sessions.SSEEvent{EventType: hubclient.PingMessage}
+
 		done := false
 		go func() {
 			for !done {

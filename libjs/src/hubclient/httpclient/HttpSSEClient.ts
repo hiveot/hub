@@ -22,8 +22,8 @@ import * as https from "node:https";
 // SYNC with HttpSSEClient.go
 const GetReadAllEventsPath= "/events/{thingID}"
 const GetReadAllPropertiesPath= "/properties/{thingID}"
-const PostSubscribeAllEventsPath   = "/subscribe/{thingID}"
-const PostUnsubscribeAllEventsPath = "/unsubscribe/{thingID}"
+const PostSubscribeEventsPath   = "/subscribe/{thingID}/{key}"
+const PostUnsubscribeEventsPath = "/unsubscribe/{thingID}/{key}"
 const ConnectSSEPath      = "/sse"
 
 // Form paths for accessing TDD directory
@@ -453,24 +453,31 @@ export class HttpSSEClient implements IHubClient {
     // a frequent subscribe/unsubscribe.
     //
     // @param dThingID: optional filter of the thing whose events are published; "" for all things
-    // @param eventID: optional filter on the event name; "" for all event names.
+    // @param key: optional filter on the event name; "" for all event names.
     async subscribe(dThingID: string, key: string): Promise<void> {
-        if (dThingID == "") {
+
+        if (!dThingID) {
             dThingID = "+"
         }
-        if (key == "") {
+        if (!key) {
             key = "+"
         }
-        let subscribePath = PostSubscribeAllEventsPath.replace("{thingID}", dThingID)
+        let subscribePath = PostSubscribeEventsPath.replace("{thingID}", dThingID)
         subscribePath = subscribePath.replace("{key}", key)
         await this.postRequest(subscribePath, "")
 
     }
 
-    async unsubscribe(dThingID: string) {
+    async unsubscribe(dThingID: string, key: string) {
 
-        let subscribePath = PostUnsubscribeAllEventsPath.replace("{thingID}", dThingID)
-        subscribePath = subscribePath.replace("{key}", "+")
+        if (!dThingID) {
+            dThingID = "+"
+        }
+        if (!key) {
+            key = "+"
+        }
+        let subscribePath = PostUnsubscribeEventsPath.replace("{thingID}", dThingID)
+        subscribePath = subscribePath.replace("{key}", key)
         await this.postRequest(subscribePath, "")
     }
 

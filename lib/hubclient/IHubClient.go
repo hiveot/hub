@@ -11,6 +11,9 @@ import (
 //	Unsubscribe() error
 //}
 
+// PingMessage can be used by the server to ping the client that the connection is ready
+const PingMessage = "ping"
+
 type ConnectionStatus string
 
 const (
@@ -212,6 +215,6 @@ type IHubClient interface {
 	Subscribe(dThingID string, key string) error
 
 	// Unsubscribe removes a previous event subscription.
-	// No more events or requests will be received after Unsubscribe.
-	Unsubscribe(dThingID string) error
+	// dThingID and key must match that of Subscribe
+	Unsubscribe(dThingID string, key string) error
 }

@@ -135,8 +135,6 @@ func (svc *DigiTwinLatestStore) Remove(thingID string, key string) (err error) {
 	thingCache, _ := svc.cache[thingID]
 	if thingCache != nil {
 		delete(thingCache, key)
-		// TODO remove from bucket
-		//svc.bucket.Delete()
 	}
 	return err
 }
