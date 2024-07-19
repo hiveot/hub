@@ -171,11 +171,6 @@ func TestServiceReconnect(t *testing.T) {
 	// FIXME: detect a reconnect
 	time.Sleep(time.Second * 3)
 
-	// FIXME. this should not be needed
-	//_, err = cl1.ConnectWithToken(cl1Token)
-	require.NoError(t, err)
-	time.Sleep(time.Millisecond * 10)
-
 	// this rpc call succeeds after agent1 has automatically reconnected
 	dThingID := things.MakeDigiTwinThingID(agentID, thingID)
 	var reply string

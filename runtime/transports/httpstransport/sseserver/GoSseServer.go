@@ -7,6 +7,9 @@ import (
 	"log/slog"
 )
 
+// NewGoSSEServer uses the golang SSE server from the go-sse project
+// This cant be used unfortunately as it doesn't support sending events to
+// individual connections. It is designed for broadcasting events.
 func NewGoSSEServer() *sse.Server {
 
 	gosse := &sse.Server{}
@@ -23,9 +26,6 @@ func NewGoSSEServer() *sse.Server {
 			slog.String("protocol", sseSession.Req.Proto),
 		)
 
-		// TODO use subscription topics
-		// TODO use last event ID
-		//lastEventID := htSession.lastEventID
 		sub := sse.Subscription{
 			Client:      sseSession,
 			LastEventID: sseSession.LastEventID,
@@ -52,7 +52,9 @@ func NewGoSSEServer() *sse.Server {
 					sseMsg.AppendData(ev.Payload)
 					sseMsg.ID, _ = sse.NewID(ev.ID)
 					sseMsg.Type, err = sse.NewType(ev.EventType)
-					// FIXME: it causes a race condition in http
+					// FIXME: using sub.Client.Send is not the intended way to send
+					// messages. It causes a race condition in http:
+					// See: https://github.com/tmaxmax/go-sse/discussions/36
 					//err = sseSession.Send(&sseMsg)
 					err = sub.Client.Send(&sseMsg)
 					if err != nil {
@@ -70,7 +72,6 @@ func NewGoSSEServer() *sse.Server {
 			}
 			cs.DeleteSSEChan(sseChan)
 
-			// TODO: if all connections are closed for this client send a disconnected event
 			slog.Info("SseHandler: Session closed", "clientID", cs.GetClientID())
 		}()
 

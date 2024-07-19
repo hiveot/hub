@@ -10,36 +10,39 @@ Manage running of Hub plugins and monitor their status.
 
 ## Features
 
-1. Start core if configured
+1. Start runtime core if configured
 1. List, Start and Stop available plugins including the message bus core
 1. Generate a client auth certificate for plugins before start
 1. Set logging output to log files for each plugin
 1. Plugin autostart on startup. Use launcher.yaml config file.
 
 Future:
+1. Track launched services by PID 
+1. Detect services that were manually started
 1. Track memory and CPU usage.
 1. Auto restart service if exit with error
 1. Restart service if resources (CPU, Memory) exceed configured thresholds
 1. Send event when services are started and stopped
 1. Send event when resource usage exceeds limits
-1. Share status with instances running on distributed computers
-2. Transfer eligible services to best available runtimes 
+2. TBD: support distributed services with launchers running on remote systems 
+1. TBD: Share status with instances running on distributed computers
+2. TBD: Transfer eligible services to best available runtimes 
 
 ## Summary
 
 The launcher is a service for starting, stopping and monitoring Hub plugins follow this workflow:
 ```
-1. Launcher starts the core as per config
+1. Launcher starts the hub runtime as per config
    * launcher clientID is that of the binary name 
-   * hub core creates the admin and launcher key-token credentials if they don't exist
-2. Launcher connects to the message server with launcher key/token credentials
+   * hub runtime creates the admin and launcher key-token credentials if they don't exist
+2. Launcher connects to the hub with launcher key/token credentials
    * Connect to the auth clients service to be able to create plugin key/tokens 
 3. Launcher starts each plugin in order of config
    * Create the plugin key/token files if they don't exist
    * Start the plugin
       * plugin loads key and token from files
-      * plugin connects to core
-      * plugin registers authz for roles
+      * plugin connects to hub runtime
+      * plugin registers authz for roles allowed to use it
       * plugin waits for SIGTERM signal to stop
    * publish event
 ```

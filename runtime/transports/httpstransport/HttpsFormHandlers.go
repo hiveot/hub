@@ -119,7 +119,7 @@ func (svc *HttpsTransport) HandlePostLogin(w http.ResponseWriter, r *http.Reques
 	_, _ = w.Write(respJson)
 	slog.Info("HandlePostLogin: success", "clientID", args.ClientID)
 	//w.WriteHeader(http.StatusOK)
-	// TODO: set client session cookie
+	// TODO: set client session cookie for browser clients
 	//svc.sessionManager.SetSessionCookie(cs.sessionID,token)
 }
 
@@ -152,7 +152,7 @@ func (svc *HttpsTransport) handlePostMessage(messageType string, w http.Response
 	if messageID == "" {
 		messageID = uuid.NewString()
 	}
-	if body != nil {
+	if body != nil && len(body) > 0 {
 		err = json.Unmarshal(body, &payload)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -231,6 +231,26 @@ func (svc *HttpsTransport) HandleReadAllProperties(w http.ResponseWriter, r *htt
 	args := digitwin.OutboxReadLatestArgs{
 		MessageType: "events",
 		ThingID:     thingID,
+	}
+	msg := things.NewThingMessage(vocab.MessageTypeAction,
+		digitwin.OutboxDThingID, digitwin.OutboxReadLatestMethod,
+		args, cs.GetClientID())
+
+	stat := svc.handleMessage(msg)
+	svc.writeStatReply(w, stat)
+}
+
+func (svc *HttpsTransport) HandleReadProperty(w http.ResponseWriter, r *http.Request) {
+	cs, _, thingID, key, _, err := svc.getRequestParams(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	// this request can simply be turned into an action message to the outbox.
+	args := digitwin.OutboxReadLatestArgs{
+		MessageType: "events",
+		ThingID:     thingID,
+		Keys:        []string{key},
 	}
 	msg := things.NewThingMessage(vocab.MessageTypeAction,
 		digitwin.OutboxDThingID, digitwin.OutboxReadLatestMethod,

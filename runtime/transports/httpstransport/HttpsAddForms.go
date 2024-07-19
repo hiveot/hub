@@ -42,9 +42,9 @@ func (svc *HttpsTransport) AddEventsForms(td *things.TD) {
 	for key, propAff := range td.Events {
 		// the only allowed protocol method is to subscribe to events
 		params := map[string]string{"thingID": td.ID, "key": key}
-		methodPath := utils.Substitute(httpsse.PostPublishEventPath, params)
+		methodPath := utils.Substitute(httpsse.PostSubscribeEventPath, params)
 		propAff.Forms = append(propAff.Forms, things.Form{
-			"op":             "publishevent",
+			"op":             "subscribeevent",
 			"href":           methodPath,
 			"contentType":    "application/json",
 			"htv:methodName": "Post",
@@ -56,11 +56,21 @@ func (svc *HttpsTransport) AddEventsForms(td *things.TD) {
 // intended for consumers of the digitwin Thing
 func (svc *HttpsTransport) AddPropertiesForms(td *things.TD) {
 	for propKey, propAff := range td.Properties {
-		// the only allowed protocol method is to set the property
+		// the allowed protocol methods are to get and set the property
 		params := map[string]string{"thingID": td.ID, "key": propKey}
-		methodPath := utils.Substitute(httpsse.PostWritePropertyPath, params)
+
+		methodPath := utils.Substitute(httpsse.PostReadPropertyPath, params)
 		propForm := things.Form{
-			"op":             "writepropery",
+			"op":             "writeproperty",
+			"href":           methodPath,
+			"contentType":    "application/json",
+			"htv:methodName": "Get",
+		}
+		propAff.Forms = append(propAff.Forms, propForm)
+
+		methodPath = utils.Substitute(httpsse.PostWritePropertyPath, params)
+		propForm = things.Form{
+			"op":             "writeproperty",
 			"href":           methodPath,
 			"contentType":    "application/json",
 			"htv:methodName": "Post",

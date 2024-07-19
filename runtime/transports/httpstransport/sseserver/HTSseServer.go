@@ -23,7 +23,7 @@ func HTServeHttp(w http.ResponseWriter, r *http.Request) {
 	// authentication/login.
 	cs, err := sessions.GetSessionFromContext(r)
 	if cs == nil || err != nil {
-		slog.Warn("No session available, telling client to delay retry to 10 seconds")
+		slog.Warn("No session available yet, telling client to delay retry to 10 seconds")
 
 		// set retry to a large number
 		// while this doesn't redirect, it does stop it from holding a connection.
@@ -62,6 +62,7 @@ func HTServeHttp(w http.ResponseWriter, r *http.Request) {
 		// wait for message, or writer closing
 		select {
 		case sseMsg, ok := <-sseChan: // received event
+			var err error
 
 			if !ok { // channel was closed by session
 				done = true
@@ -72,14 +73,13 @@ func HTServeHttp(w http.ResponseWriter, r *http.Request) {
 				slog.String("clientID", cs.GetClientID()),
 				slog.String("sse eventType", sseMsg.EventType),
 			)
-			// WARNING: messages are send as MIME type "text/event-stream", which is defined as
-			// "Each message is sent as a block of text terminated by a pair of newlines. "
-			//https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
-			//_, err := fmt.Fprintf(w, "event: time\ndata: <div sse-swap='time'>%s</div>\n\n", data)
-			n, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
-				sseMsg.EventType, sseMsg.Payload)
-			_ = n
-			//_, err := fmt.Fprint(w, sseMsg)
+			if sseMsg.ID == "" {
+				_, err = fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
+					sseMsg.EventType, sseMsg.Payload)
+			} else {
+				_, err = fmt.Fprintf(w, "event: %s\nid:%s\ndata: %s\n\n",
+					sseMsg.EventType, sseMsg.ID, sseMsg.Payload)
+			}
 			if err != nil {
 				slog.Error("Error writing event", "event", sseMsg.EventType,
 					"size", len(sseMsg.Payload))
@@ -94,7 +94,6 @@ func HTServeHttp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	cs.DeleteSSEChan(sseChan)
-	// TODO: if all connections are closed for this client send a disconnected event
 
 	slog.Debug("SseHandler: sse connection closed",
 		slog.String("remote", r.RemoteAddr),

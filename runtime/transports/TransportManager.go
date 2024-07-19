@@ -73,11 +73,14 @@ func (svc *TransportsManager) GetProtocolInfo() (pi api.ProtocolInfo) {
 //	return svc.bindings
 //}
 
-// SendToClient sends a message to a connected agent or consumer client
-// If an agent is connected through multiple protocols then this stops
-// after the first successful delivery.
-// TODO: optimize to use the most efficient protocol
-// TODO: sending to multiple instances of the same client? (multiple browser tabs?)
+// SendToClient sends a message to a connected agent or consumer client.
+// If an agent is connected through multiple protocols then this stops after the first
+// successful delivery. ?
+//
+// TODO: can the sessionID be used instead of the clientID in case a client has multiple connections?
+//
+//	Maybe support both sending to clientID and sessionID. Notifications can go to all sessions
+//	of a client while response of API requests are go the the session that sent it.
 func (svc *TransportsManager) SendToClient(
 	clientID string, msg *things.ThingMessage) (stat hubclient.DeliveryStatus, found bool) {
 

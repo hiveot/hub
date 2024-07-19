@@ -50,7 +50,6 @@ func (svc *SelfSignedCertsService) _createDeviceCert(
 		svc.caKey,
 		validityDays)
 
-	// TODO: send Thing event (services are things too)
 	return cert, err
 }
 
@@ -111,7 +110,6 @@ func (svc *SelfSignedCertsService) _createServiceCert(
 		cert, err = x509.ParseCertificate(certDer)
 	}
 
-	// TODO: send Thing event (services are things too)
 	return cert, err
 }
 
@@ -129,7 +127,6 @@ func (svc *SelfSignedCertsService) _createUserCert(userID string, pubKey keys.IH
 		svc.caCert,
 		svc.caKey,
 		validityDays)
-	// TODO: send Thing event (services are things too)
 	return cert, err
 }
 
@@ -173,7 +170,8 @@ func (svc *SelfSignedCertsService) CreateServiceCert(
 		resp.CertPEM = certs.X509CertToPEM(cert)
 		resp.CaCertPEM = svc.caCertPEM
 	}
-	// TODO: send event. is there a use-case for limiting service events to roles?
+	// TODO: publish an event when a new cert is created. Only admin/manager/service roles
+	//  can subscribe to these.
 	return resp, err
 }
 

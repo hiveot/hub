@@ -5,7 +5,7 @@ import (
 )
 
 // EmbeddedViews contains all html templates
-// FIXME: for some reason "views/*.gohtml" does not work
+// NOTE: for some reason "views/*.gohtml" does not work
 //
 //go:embed views
 var EmbeddedViews embed.FS

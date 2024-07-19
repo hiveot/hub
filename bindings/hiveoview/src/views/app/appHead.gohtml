@@ -1,7 +1,7 @@
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/app.AppHeadTemplateData*/ -}}
 
 
-{{if not .Logo}}
+{{if not .Ready}}
 
 	<nav class="container-fluid h-row"
 	     hx-trigger="load"
@@ -12,12 +12,8 @@
 
 {{else}}
 
-<nav class="container-fluid h-row"
-	     hx-get="/app/appHead"
-	     hx-target="#appHead"
-	     hx-swap="innerHTML"
-	>
-		<a href="/status" onclick="window.navigateTo(event,this.href)">
+<nav class="container-fluid h-row">
+		<a href="/status">
 			<h-brand title="HiveOT" logo="{{.Logo}}"></h-brand>
 		</a>
 
@@ -25,11 +21,19 @@
 		<!-- The h-navbar css highlights the li with class 'h-target', set by selectURLTargets() -->
 		<ul class="h-navbar">
 			<!-- TODO: use a link component which handles the onclick and stop propagation-->
-			<li><a href="/dashboard" onclick="window.navigateTo(event,this.href)">
+			<li><a href="/dashboard"
+			       hx-on::click="window.navigateTo(none,this.href)"
+			       hx-swap="none"
+				>
 					Dashboard</a></li>
-			<li><a href="/directory" onclick="window.navigateTo(event,this.href)">
+			<li><a href="/directory"
+			       hx-get="/directory"
+			       hx-on::click="window.navigateTo(none,this.href)"
+			       hx-swap="none"
+				>
 					Directory</a></li>
-			<li><a href="/notifications" onclick="window.navigateTo(event,this.href)">
+			<li><a href="/notifications"
+			  >
 					Notifications</a></li>
 		</ul>
 

@@ -12,7 +12,7 @@ This service is being converted to work with the HiveOT digital twin runtime. Br
 
 TODO:
 1. ~~run as external service for the new runtime~~
-1. Add monitoring for rogue DNS-SD publications 
+2. Add monitoring for rogue DNS-SD publications 
 2. TBD: Checks if multiple connections are made by the same device using different device IDs
 3. TBD: flag suspect devices
 4. TBD: MAC address check during provisioning
@@ -35,7 +35,7 @@ The typical use-case is that upon installation of one or more IoT devices, the a
 
 Devices that are pre-loaded with the server CA certificate, are secured against a rogue server as establishing a connection with this server will only succeed with the valid server.
 
-Devices that do not possess the server CA certificate are subject to a man-in-the-middle attack that relays the provisioning request to the actual service to obtain a device token.
+Devices that do not possess the server CA certificate are susceptible to a man-in-the-middle attack that relays the provisioning request to the actual service to obtain a device token.
 To mitigate the risk of issuing tokens to rogue agents, the Hub:
 1. monitors the network for DNS-SD records of provisioning servers. If a rogue provisioning server is detected it notifies the administrator and disables the provisioning process until the administrator re-enables it. (todo)
 2. Checks if multiple provisioning requests come from the same device. Flag the device for review. (todo)

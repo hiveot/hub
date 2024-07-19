@@ -28,7 +28,7 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 
-	// step 1: pre-checks
+	// step 1: pre-launch checks
 	pluginInfo := svc.plugins[pluginName]
 	if pluginInfo == nil {
 		err = fmt.Errorf("plugin ID '%s' not found", pluginName)
@@ -164,8 +164,7 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 		svc.cmds = append(svc.cmds[:i], svc.cmds[i+1:]...) // this is so daft!
 	}()
 
-	// Give it some time to get up and running in case it is needed as a dependency
-	// TODO: wait for channel
+	// Give it some time to get up and running in case this service is needed as a dependency of another
 	time.Sleep(time.Millisecond * 100)
 
 	// check if its still running

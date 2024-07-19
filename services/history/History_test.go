@@ -384,12 +384,12 @@ func TestGetInfo(t *testing.T) {
 	//const thing0ID = thingIDPrefix + "0"
 	//var dThing0ID = things.MakeDigiTwinThingID(agentID, thing0ID)
 
-	// TODO: add GetInfo
 	store, readHist, stopFn := startHistoryService(true)
 	defer stopFn()
 	_ = readHist
 	addBulkHistory(store, 1000, 5, 1000)
 
+	// TODO: add GetInfo for store statistics
 	//info := store.Info()
 	//t.Logf("Store ID:%s, records:%d", info.Id, info.NrRecords)
 

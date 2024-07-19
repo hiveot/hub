@@ -34,7 +34,7 @@ func (cl *StateClient) Get(key string, record interface{}) (found bool, err erro
 		return false, err
 	}
 	if resp.Found {
-		// FIXME: find a more efficient way to convert the type
+		// TODO: find a more efficient way to convert the type
 		//record = resp.Value
 		tmpJSON, _ := json.Marshal(resp.Value)
 		err = json.Unmarshal(tmpJSON, record)

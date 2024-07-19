@@ -2,16 +2,18 @@
 
 ## Status 
 
-The runtime is in alpha. It is functional but breaking changes should be expected.
+The runtime is in alpha. It is functional but breaking changes can be expected.
 
 Todo:
 * authorization of subscriptions in the HTTPS/SSE transport
 * digitwin directory: 
-   * add forms for supported protocols
+   * add forms for supported protocols (in progress)
    * support dynamic TD's that only:
       * include writable properties only if the client is allowed to write them
       * include only actions that client is allowed to use
 * Transports:
+  * centralized session management?
+  * support wait for action response so clients can receive replies synchronously
   * mqtt embedded server
   * nats embedded server, or remove altogether
   * websocket support for http needs to be added
@@ -27,16 +29,31 @@ Todo:
 
 ## Summary
 
-The HiveOT runtime provides routing of events and actions between devices, services and consumers using one or multiple transport protocols.
-The runtime contains a digital twin service that consists of a thing directory, event outbox and action inbox, along with authentication, authorization and transport services.
+The HiveOT runtime provides routing of events and actions between devices, services and
+consumers using one or multiple transport protocols. The runtime serves digital twins of 
+IoT devices to consumers, containing the device Thing Definition and state. 
 
-The protocol transports pass authenticated messages to the digital twin service which directs events to the outbox for further distribution and actions to the inbox for distribution to the actual Thing.
+The runtime includes services for messaging, authentication and authorization and 
+managing digital twin instances of IoT devices and services. It contains:
+* Transport manager that aggregates protocol bindings for communication with devices, services and consumers
+* Authentication service authenticates connections to the transport protocols
+* Authorization service for authorizing the sending and receiving of messages by authenticated clients
+* Digitwin inbox handles action requests from consumers and forwards it to the actual IoT devices and services
+* Digitwin outbox receives events from IoT devices and forwards it to eligible subscribers
+* Digitwin directory serves the inventory of available devices with their digital twin Thing Definition
 
-The hub differentiates three types of clients: IoT agents, services, and consumers. Agents are IoT devices that provide device information, services transform information, while consumers use information. Agents and services send events and receive actions while consumers send actions and subscribe to events.
+The hub differentiates three types of clients: IoT agents, consumers and services. Agents are clients that 
+can operate on IoT devices or run stand-alone, and represent one or more IoT devices. They form a bridge
+between the native IoT device protocol and the Hub's WoT standards. Consumers are end-users that read information
+from the digital twins and send action requests to the digital twins. Services can act as agents and consumers.
+Services enrich information received from the digital twin devices and publish the results.
 
+The ditgital twin part of the runtime is designed around the W3C WoT standards and
+handles Thing Description Documents, events, actions and properties.
 
 ### Events
-Event messages follow a publish/subscribe approach. Thing agents publish events while consumers subscribe to Thing events. Each can use their own protocol binding.
+Event messages follow a publish/subscribe approach. Thing agents publish events while consumers
+subscribe to Thing events. Each can use their own protocol binding.
 
 The general event flow is:
 > thing -> agent -> transport protocol -> [digital twin outbox]

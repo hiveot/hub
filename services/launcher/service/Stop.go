@@ -42,15 +42,20 @@ func Stop(name string, pid int) error {
 	// On Linux FindProcess always succeeds
 	err = nil
 	// if signal is 0, no signal is sent but error checking is still performed.
+	// NOTE: This should return an error if the process has ended
 	err = process.Signal(syscall.Signal(0))
 	if err == nil {
-		// since sigterm fails, the gloves come off
-		// This can lead to orphaned child processes though.
-		// FIXME: wait with timeout to kill the process
-		err = process.Kill()
+		// no error. process still running
 		msg := fmt.Sprintf(
 			"Stopping service '%s' with PID %d failed. Attempt a kill: %s", name, pid, err)
 		slog.Error(msg)
+
+		// since sigterm fails, the gloves come off
+		// This can lead to orphaned child processes though.
+		err = process.Kill()
+		if err != nil {
+			slog.Error("Kill returned error: " + err.Error())
+		}
 	} else {
 		// the error confirms that the process has ended
 		err = nil

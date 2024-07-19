@@ -35,7 +35,7 @@ type ClientSession struct {
 	// Each SSE connection is added to this list
 	sseClients []chan SSEEvent
 
-	// Map of current subscriptions: thingID . key
+	// Map of current subscriptions: {thingID}.{key}
 	// where key can be a wildcard '+'
 	subscriptions map[string]string
 }

@@ -1,6 +1,7 @@
 package state_test
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
@@ -52,19 +53,20 @@ func startStateService(cleanStart bool) (
 
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
+
 	res := m.Run()
 	os.Exit(res)
 }
 
 func TestStartStop(t *testing.T) {
-	t.Log("--- TestStartStop ---")
+	fmt.Println("--- TestStartStop ---")
 	_, stateCl, stopFn := startStateService(true)
 	defer stopFn()
 	assert.NotNil(t, stateCl)
 }
 
 func TestStartStopBadLocation(t *testing.T) {
-	t.Log("--- TestStartStopBadLocation ---")
+	fmt.Println("--- TestStartStopBadLocation ---")
 
 	_, _, stopFn := startStateService(true)
 	defer stopFn()
@@ -80,7 +82,7 @@ func TestStartStopBadLocation(t *testing.T) {
 }
 
 func TestSetGet1(t *testing.T) {
-	t.Log("--- TestSetGet1 ---")
+	fmt.Println("--- TestSetGet1 ---")
 	const key1 = "key1"
 	var val1 = "value 1"
 	var val2 = ""
@@ -110,7 +112,7 @@ func TestSetGet1(t *testing.T) {
 }
 
 func TestSetGetMultiple(t *testing.T) {
-	t.Log("--- TestSetGetMultiple ---")
+	fmt.Println("--- TestSetGetMultiple ---")
 	const key1 = "key1"
 	const key2 = "key2"
 	var val1 = "value 1"
@@ -135,7 +137,7 @@ func TestSetGetMultiple(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	t.Log("--- TestDelete ---")
+	fmt.Println("--- TestDelete ---")
 	const key1 = "key1"
 	var val1 = "value 1"
 	var val2 = ""
@@ -168,7 +170,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestGetDifferentClientBuckets(t *testing.T) {
-	t.Log("--- TestGetDifferentClientBuckets ---")
+	fmt.Println("--- TestGetDifferentClientBuckets ---")
 	const clientID1 = "test-client1"
 	const clientID2 = "test-client2"
 	const key1 = "key1"
@@ -207,7 +209,7 @@ func TestGetDifferentClientBuckets(t *testing.T) {
 }
 
 //func TestCursor(t *testing.T) {
-//	t.Log("--- TestCursor ---")
+//	fmt.Println("--- TestCursor ---")
 //	const clientID1 = "test-client1"
 //	const appID = "test-app"
 //	const key1 = "key1"

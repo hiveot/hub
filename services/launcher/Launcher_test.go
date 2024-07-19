@@ -1,6 +1,7 @@
 package launcher_test
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/testenv"
@@ -83,6 +84,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
+	fmt.Printf("---%s---\n", t.Name())
 	svc, cancelFunc := startService()
 	assert.NotNil(t, svc)
 	time.Sleep(time.Millisecond)
@@ -90,6 +92,7 @@ func TestStartStop(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
+	fmt.Printf("---%s---\n", t.Name())
 	userID := "user1"
 
 	svc, cancelFunc := startService()
@@ -109,6 +112,7 @@ func TestList(t *testing.T) {
 }
 
 func TestListNoPermission(t *testing.T) {
+	fmt.Printf("---%s---\n", t.Name())
 	userID := "user1"
 
 	svc, cancelFunc := startService()
@@ -124,6 +128,7 @@ func TestListNoPermission(t *testing.T) {
 }
 
 func TestStartYes(t *testing.T) {
+	fmt.Printf("---%s---\n", t.Name())
 	// remove logfile from previous run
 	logFile := path.Join(logDir, "yes.log")
 	_ = os.Remove(logFile)
@@ -150,6 +155,8 @@ func TestStartYes(t *testing.T) {
 }
 
 func TestStartBadName(t *testing.T) {
+	fmt.Printf("---%s---\n", t.Name())
+
 	svc, cancelFunc := startService()
 	defer cancelFunc()
 	assert.NotNil(t, svc)
@@ -162,6 +169,7 @@ func TestStartBadName(t *testing.T) {
 }
 
 func TestStartStopTwice(t *testing.T) {
+	fmt.Printf("---%s---\n", t.Name())
 	svc, cancelFunc := startService()
 	defer cancelFunc()
 	assert.NotNil(t, svc)
@@ -187,6 +195,7 @@ func TestStartStopTwice(t *testing.T) {
 }
 
 func TestStartStopAll(t *testing.T) {
+	fmt.Printf("---%s---\n", t.Name())
 	svc, cancelFunc := startService()
 	defer cancelFunc()
 	assert.NotNil(t, svc)

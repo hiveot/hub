@@ -15,7 +15,6 @@ import (
 
 // Add records to the state store
 func addRecords(stateCl *stateclient.StateClient, count int) {
-	// FIXME: SSE connection can handle only 65K messages :(
 	const batchSize = 1405
 	nrBatches := (count / batchSize) + 1
 

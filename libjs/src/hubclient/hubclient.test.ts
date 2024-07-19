@@ -73,6 +73,9 @@ async function test2() {
 async function test3() {
     let lastMsg = ""
     let token: string
+    const thingID = "dtw:agent1:thing1"
+
+    // todo have agent publish TD of thing1 and listen for actions
 
     //running instance
     let hc =await ConnectToHub(baseURL, testClientID, caCertPEM,true)
@@ -96,8 +99,7 @@ async function test3() {
         await hc.subscribe("", "")
 
         // publish an action request
-        // FIXME: the thingID must be an existing digitwin ID
-        let stat = await hc.pubAction("thing1", "action1", "1")
+        let stat = await hc.pubAction(thingID, "action1", "1")
         if (stat.error != "") {
             throw ("pubAction failed: " + stat.error)
         }

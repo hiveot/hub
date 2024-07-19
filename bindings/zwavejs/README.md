@@ -4,11 +4,12 @@ This binding connects to a ZWave USB-Stick controller, and publishes events to t
 
 ## Status
 
-This binding is under development and only partially implemented. Setting device configuration isn't yet supported. 
-It is functional but breaking changes are to be expected.
+This binding is functional but only offers basic functionality. 
+Breaking changes are to be expected, especially in the way property/event/action keys are constructed. 
 
 TODO:
-1. Report heal network status/progress of a node
+1. Reconnect to Hub if the runtime restarts (javascript HttpSseClient bug)
+2. Report heal network status/progress of a node
 1. ZWave stick reconnect support (Recover after serial port removal)
 1. Detect and track health of nodes; dropped messages, etc.
     * timeouts; dropped messages

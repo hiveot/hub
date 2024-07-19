@@ -22,7 +22,6 @@ func main() {
 	storePath := path.Join(env.StoresDir, env.ClientID)
 	svc := service.NewStateService(storePath)
 
-	// TODO: support multiple instances at the client side.
 	// The agentID is fixed as stateapi.StateAgentID so the client API knows who to call.
 	env.ClientID = stateapi.AgentID
 	plugin.StartPlugin(svc, env.ClientID, env.CertsDir)

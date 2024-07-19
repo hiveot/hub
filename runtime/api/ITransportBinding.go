@@ -15,7 +15,7 @@ type ProtocolInfo struct {
 	Transport string `json:"transport"`
 }
 
-// ITransportBinding is the interface implemented by all protocol bindings
+// ITransportBinding is the interface implemented by all transport protocol bindings
 type ITransportBinding interface {
 
 	// AddTDForms add Forms to the TD for communication with the digital twin

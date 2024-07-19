@@ -121,6 +121,7 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 		r.Post(httpsse.PostPublishEventPath, svc.HandlePostPublishEvent)
 
 		// rest API for properties methods
+		r.Post(httpsse.PostReadPropertyPath, svc.HandleReadProperty)
 		r.Post(httpsse.PostWritePropertyPath, svc.HandlePostWriteProperty)
 
 		// authn service
@@ -198,7 +199,6 @@ func (svc *HttpsTransport) writeReply(w http.ResponseWriter, payload []byte, err
 }
 
 // GetProtocolInfo returns info on the protocol supported by this binding
-// TODO: this is a placeholder and will change to include all information needed for TD forms.
 func (svc *HttpsTransport) GetProtocolInfo() api.ProtocolInfo {
 	hostName := svc.config.Host
 	if hostName == "" {
@@ -221,10 +221,8 @@ func (svc *HttpsTransport) SendEvent(msg *things.ThingMessage) (stat hubclient.D
 }
 
 // SendToClient sends a message to a connected agent or consumer.
-// TODO: sending a delivery update to the client should use the sessionID to guarantee
-//
-//	that the correct session receives the update. The current workaround is to
-//	send the message to all sessions
+// This sends the message to all sessions of this client. This might not be what is
+// intended ...
 func (svc *HttpsTransport) SendToClient(
 	clientID string, msg *things.ThingMessage) (stat hubclient.DeliveryStatus, found bool) {
 

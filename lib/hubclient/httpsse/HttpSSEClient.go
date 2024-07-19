@@ -61,6 +61,7 @@ const (
 	PostPublishEventPath = "/event/{thingID}/{key}"
 
 	// Form paths for accessing Properties
+	PostReadPropertyPath  = "/property/{thingID}/{key}"
 	PostWritePropertyPath = "/property/{thingID}/{key}"
 
 	// authn service - used in authn TD

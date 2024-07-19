@@ -6,8 +6,7 @@ import (
 
 // ProvisioningServerType defines the discovery type for the provisioning
 // this will be published as _provisioning._hiveot._tcp
-// FIXME: look also at the wot discovery specification
-// TODO: is there a benefit in embedding this into the runtime?
+// TODO: look also at the wot discovery specification
 const ProvisioningServerType = "idprov"
 
 // ProvisionRequestPath to post a request provisioning through the HTTP endpoint
