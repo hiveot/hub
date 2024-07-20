@@ -1,15 +1,14 @@
 <!--After an initial load without data, auto-reload when viewed. -->
-{{$trigger := "intersect once"}}
-{{if .Status}}
-    {{$trigger = "click from:#reload-status"}}
-{{end}}
+{{if not .Status}}
+		<div hx-trigger="load"
+			hx-get="/status"
+		     hx-target="this"
+		     hx-swap="outerHTML"
+		>
+		</div>
+{{else}}
 
-<div class=" h-col" style="height:100%"
-     hx-get="/app/status"
-     hx-trigger="{{$trigger}}"
-     hx-target="this"
-     hx-swap="outerHTML"
->
+<div class=" h-col" style="height:100%">
 
 	<p>Login ID: {{.Status.LoginID}}</p>
 	<p>Connection Status: {{.Status.Description}}</p>
@@ -28,3 +27,6 @@
         background-color: var(--pico-contrast-inverse);
     }
 </style>
+
+
+{{end}}

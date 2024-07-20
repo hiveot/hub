@@ -16,22 +16,13 @@
 {{else}}
 
 
-<main hx-get=""
-      hx-trigger="click from:#reload-directory"
-      class="container-fluid"
-      hx-target="#detailsPage"
-      hx-swap="innerHTML"
-		>
+<main class="container-fluid"	>
 
 		<!-- Header with a 'reload' button that triggers the htmx-get request above-->
 		<header class="directory-header h-row">
-				<div class="h-grow"></div>
-				<h4 style="margin-top: 1rem; margin-bottom: 0; margin-right: 5px;">Device & Service Directory</h4>
-				<div class="h-grow"></div>
-				<button id="reload-directory" class="outline h-icon-button"
-				        title="Reload directory">
-						<iconify-icon icon="mdi:refresh"></iconify-icon>
-				</button>
+				<h4 style="margin-top: 1rem; margin-bottom: 0; margin-right: 5px;">
+					Device & Service Directory
+				</h4>
 		</header>
 
 		<!--=== for {.Publisher, .Things} in .Groups ===-->

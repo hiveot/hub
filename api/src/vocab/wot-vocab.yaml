@@ -61,3 +61,30 @@ WoTVocab:
     WoTBearerSecurityScheme : "BearerSecurityScheme"
     WoTPSKSecurityScheme    : "PSKSecurityScheme"
     WoTOAuth2SecurityScheme : "OAuth2SecurityScheme"
+
+    #--- Form operations
+    # Properties
+    WotOpObserveAllProperties : "observeallproperties"
+    WoTOpObserveProperty        : "observeproperty"
+    WotOpReadAllProperties      : "readallproperties"
+    WotOpReadMultipleProperties : "readmultipleproperties"
+    WoTOpReadProperty           : "readproperty"
+    WotOpWriteAllProperties     : "writeallproperties"
+    WotOpWriteMultipleProperties : "writemultipleproperties"
+    WoTOpWriteProperty          : "writeproperty"
+    WotOpUnobserveAllProperties : "unobserveallproperties"
+    WoTOpUnobserveProperty      : "unobserveroperty"
+
+    # Events
+    WotOpSubscribeAllEvents : "subscribeallevents"
+    WotOpSubscribeEvent : "subscribeevent"
+    WotOpUnsubscribeAllEvents : "unsubscribeallevents"
+    WotOpUnsubscribeEvent : "unsubscribeevent"
+
+    # Actions
+    WotOpCancelAction : "cancelaction"
+    WotOpInvokeAction : "invokeaction"
+    WotOpQueryAllAction : "queryallactions"
+    WotOpQueryAction : "queryaction"
+
+

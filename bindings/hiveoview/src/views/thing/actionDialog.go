@@ -67,7 +67,7 @@ func RenderActionDialog(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	key := chi.URLParam(r, "key")
 	var hc hubclient.IHubClient
-	var lastAction *digitwin.InboxRecord
+	//var lastAction *digitwin.InboxRecord
 
 	data := ActionDialogData{
 		ThingID: thingID,
@@ -99,12 +99,16 @@ func RenderActionDialog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	prevInputValue := ""
+	if data.PrevValue != nil && data.PrevValue.Input != nil {
+		prevInputValue = fmt.Sprintf("%v", data.PrevValue.Input)
+	}
 	if data.Action.Input != nil {
 		data.Input = &SchemaValue{
 			ThingID:    thingID,
 			Key:        key,
 			DataSchema: data.Action.Input,
-			Value:      fmt.Sprintf("%v", lastAction.Input),
+			Value:      prevInputValue,
 		}
 	}
 	if data.Action.Output != nil {
@@ -137,6 +141,7 @@ func PostStartAction(w http.ResponseWriter, r *http.Request) {
 
 	thingID := chi.URLParam(r, "thingID")
 	actionKey := chi.URLParam(r, "key")
+	// booleans from form are non-values. Treat as false
 	valueStr := r.FormValue(actionKey)
 	newValue = valueStr
 	reply := ""

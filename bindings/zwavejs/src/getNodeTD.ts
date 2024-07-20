@@ -126,7 +126,7 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
         "Device sleeps to conserve battery", WoTDataTypeBool);
 
     td.AddPropertyIf(node.deviceDatabaseUrl, "deviceDatabaseURL", "",
-        "Link to database with device information", WoTDataTypeAnyURI);
+        "Link to database with device information", WoTDataTypeString);
     td.AddProperty("",vocab.PropDeviceDescription,
         "Description", WoTDataTypeString);
     td.AddProperty("endpointCount", "",

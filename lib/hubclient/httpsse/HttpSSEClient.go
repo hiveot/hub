@@ -60,9 +60,8 @@ const (
 	// Form paths for accessing Events
 	PostPublishEventPath = "/event/{thingID}/{key}"
 
-	// Form paths for accessing Properties
-	PostReadPropertyPath  = "/property/{thingID}/{key}"
-	PostWritePropertyPath = "/property/{thingID}/{key}"
+	// Form paths for read/writing Properties
+	FormPropertyPath = "/property/{thingID}/{key}"
 
 	// authn service - used in authn TD
 	PostLoginPath   = "/login"
@@ -281,19 +280,20 @@ func (cl *HttpSSEClient) Marshal(data any) []byte {
 
 // Publish an action, event or property message and return the delivery status
 //
+//	methodName is http.MetodPost for actions, http.MethodPut/MethodGet for properties
 //	path used to publish PostActionPath/PostEventPath/...
 //	thingID to publish as or to: events are published for the thing and actions to publish to the thingID
 //	key is the event/action/property key being published or modified
 //	data is the native message payload to transfer that will be serialized
 //	queryParams optional key-value pairs to pass along as query parameters
-func (cl *HttpSSEClient) postMessage(
-	postPath string, thingID string, key string, data any, queryParams map[string]string) (
+func (cl *HttpSSEClient) pubMessage(methodName string,
+	methodPath string, thingID string, key string, data any, queryParams map[string]string) (
 	stat hubclient.DeliveryStatus) {
 
 	vars := map[string]string{
 		"thingID": thingID,
 		"key":     key}
-	messagePath := utils.Substitute(postPath, vars)
+	messagePath := utils.Substitute(methodPath, vars)
 	cl.mux.RLock()
 	defer cl.mux.RUnlock()
 	if cl.tlsClient == nil {
@@ -305,7 +305,7 @@ func (cl *HttpSSEClient) postMessage(
 	//resp, err := cl.tlsClient.Post(messagePath, payload)
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, messagePath)
 	serData := cl.Marshal(data)
-	reply, statusCode, err := cl.tlsClient.Invoke("POST", serverURL, serData, queryParams)
+	reply, statusCode, err := cl.tlsClient.Invoke(methodName, serverURL, serData, queryParams)
 
 	// TODO: detect difference between not connected and unauthenticated
 	// FIXME: should reply payload be a DeliveryStatus for every single message? Is there another way?
@@ -334,7 +334,7 @@ func (cl *HttpSSEClient) PubAction(thingID string, key string, data any) (stat h
 	slog.Debug("PubAction",
 		slog.String("thingID", thingID),
 		slog.String("key", key))
-	stat = cl.postMessage(PostInvokeActionPath, thingID, key, data, nil)
+	stat = cl.pubMessage(http.MethodPost, PostInvokeActionPath, thingID, key, data, nil)
 	slog.Info("PubAction",
 		slog.String("me", cl._status.ClientID),
 		slog.String("thingID", thingID),
@@ -353,7 +353,7 @@ func (cl *HttpSSEClient) PubActionWithQueryParams(
 		slog.String("thingID", thingID),
 		slog.String("key", key),
 	)
-	stat = cl.postMessage(PostInvokeActionPath, thingID, key, data, params)
+	stat = cl.pubMessage(http.MethodPost, PostInvokeActionPath, thingID, key, data, params)
 	return stat
 }
 
@@ -365,7 +365,7 @@ func (cl *HttpSSEClient) PubEvent(thingID string, key string, data any) error {
 		slog.String("device thingID", thingID),
 		slog.String("key", key),
 	)
-	stat := cl.postMessage(PostPublishEventPath, thingID, key, data, nil)
+	stat := cl.pubMessage(http.MethodPost, PostPublishEventPath, thingID, key, data, nil)
 	if stat.Error != "" {
 		return errors.New(stat.Error)
 	}
@@ -376,7 +376,7 @@ func (cl *HttpSSEClient) PubEvent(thingID string, key string, data any) error {
 // This is similar to publishing an action but only affects properties.
 func (cl *HttpSSEClient) PubProperty(thingID string, key string, data any) (
 	stat hubclient.DeliveryStatus) {
-	stat = cl.postMessage(PostWritePropertyPath, thingID, key, data, nil)
+	stat = cl.pubMessage(http.MethodPut, FormPropertyPath, thingID, key, data, nil)
 	slog.Info("PubProperty",
 		slog.String("me", cl._status.ClientID),
 		slog.String("thingID", thingID),

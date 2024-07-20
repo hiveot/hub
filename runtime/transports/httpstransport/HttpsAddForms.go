@@ -1,6 +1,7 @@
 package httpstransport
 
 import (
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
@@ -28,9 +29,9 @@ func (svc *HttpsTransport) AddActionForms(td *things.TD) {
 		params := map[string]string{"thingID": td.ID, "key": key}
 		methodPath := utils.Substitute(httpsse.PostInvokeActionPath, params)
 		propAff.Forms = append(propAff.Forms, things.Form{
-			"op":             "write",
-			"href":           methodPath,
-			"contentType":    "application/json",
+			"op":   vocab.WotOpInvokeAction,
+			"href": methodPath,
+			//"contentType":    "application/json",  // default
 			"htv:methodName": "Post",
 		})
 	}
@@ -44,10 +45,10 @@ func (svc *HttpsTransport) AddEventsForms(td *things.TD) {
 		params := map[string]string{"thingID": td.ID, "key": key}
 		methodPath := utils.Substitute(httpsse.PostSubscribeEventPath, params)
 		propAff.Forms = append(propAff.Forms, things.Form{
-			"op":             "subscribeevent",
-			"href":           methodPath,
-			"contentType":    "application/json",
-			"htv:methodName": "Post",
+			"op":   vocab.WotOpSubscribeEvent,
+			"href": methodPath,
+			//"contentType": "application/json",  // default
+			"subprotocol": "longpoll",
 		})
 	}
 }
@@ -56,26 +57,31 @@ func (svc *HttpsTransport) AddEventsForms(td *things.TD) {
 // intended for consumers of the digitwin Thing
 func (svc *HttpsTransport) AddPropertiesForms(td *things.TD) {
 	for propKey, propAff := range td.Properties {
+		propAff.Forms = make([]things.Form, 0)
+
 		// the allowed protocol methods are to get and set the property
 		params := map[string]string{"thingID": td.ID, "key": propKey}
 
-		methodPath := utils.Substitute(httpsse.PostReadPropertyPath, params)
-		propForm := things.Form{
-			"op":             "writeproperty",
-			"href":           methodPath,
-			"contentType":    "application/json",
-			"htv:methodName": "Get",
+		//propAff.Forms = append(propAff.Forms, propForm)
+		methodPath := utils.Substitute(httpsse.FormPropertyPath, params)
+		if !propAff.WriteOnly {
+			propForm := things.Form{
+				"op":   vocab.WoTOpReadProperty,
+				"href": methodPath,
+				// contentType defaults to application/json
+				// htv:methodName defaults to GET
+			}
+			propAff.Forms = append(propAff.Forms, propForm)
 		}
-		propAff.Forms = append(propAff.Forms, propForm)
-
-		methodPath = utils.Substitute(httpsse.PostWritePropertyPath, params)
-		propForm = things.Form{
-			"op":             "writeproperty",
-			"href":           methodPath,
-			"contentType":    "application/json",
-			"htv:methodName": "Post",
+		if !propAff.ReadOnly {
+			propForm := things.Form{
+				"op":   vocab.WoTOpWriteProperty,
+				"href": methodPath,
+				// contentType defaults to application/json
+				// htv:methodName defaults to PUT
+			}
+			propAff.Forms = append(propAff.Forms, propForm)
 		}
-		propAff.Forms = append(propAff.Forms, propForm)
 	}
 }
 
@@ -85,30 +91,35 @@ func (svc *HttpsTransport) AddTopLevelForms(td *things.TD) {
 	params := map[string]string{"thingID": td.ID}
 	methodPath := utils.Substitute(httpsse.GetReadAllEventsPath, params)
 	td.Forms = append(td.Forms, things.Form{
-		"op":             "readallevents",
+		"op":             "readallevents", // not a WoT operation
 		"href":           methodPath,
 		"contentType":    "application/json",
 		"htv:methodName": "Get",
 	})
 	methodPath = utils.Substitute(httpsse.GetReadAllPropertiesPath, params)
 	td.Forms = append(td.Forms, things.Form{
-		"op":             "readallproperties",
-		"href":           methodPath,
-		"contentType":    "application/json",
-		"htv:methodName": "Get",
+		"op":   vocab.WotOpReadAllProperties,
+		"href": methodPath,
+		// contentType defaults to application/json
+		// htv:methodName defaults to GET
 	})
 	methodPath = utils.Substitute(httpsse.PostSubscribeAllEventsPath, params)
 	td.Forms = append(td.Forms, things.Form{
-		"op":             "subscribeallevents",
-		"href":           methodPath,
-		"contentType":    "application/json",
-		"htv:methodName": "Post",
+		"op":          vocab.WotOpSubscribeAllEvents,
+		"href":        methodPath,
+		"subprotocol": "sse",
+		// TODO: SSE subprotocol
 	})
 	methodPath = utils.Substitute(httpsse.PostUnsubscribeAllEventsPath, params)
 	td.Forms = append(td.Forms, things.Form{
-		"op":             "unsubscribeallevents",
-		"href":           methodPath,
-		"contentType":    "application/json",
-		"htv:methodName": "Post",
+		"op":          vocab.WotOpUnsubscribeAllEvents,
+		"href":        methodPath,
+		"subprotocol": "sse",
+		// TODO: SSE subprotocol
 	})
+
+	// this binding uses the BearerSecurityScheme
+	td.Security = "bearer"
+	td.SecurityDefinitions = map[string]things.SecurityScheme{
+		"bearer": {Scheme: "bearer", Alg: "ES256", Format: "jwt", In: "header"}}
 }

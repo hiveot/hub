@@ -1,9 +1,7 @@
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/directory.DirGroup */ -}}
 
 <!-- Table of all things from template ".Things" data-->
-<details id="{{.AgentID}}-things"
-         hx-trigger="click from:#reload-directory"
->
+<details id="{{.AgentID}}-things">
 	<summary class="outline">
 		<span>Publisher:</span>
 		<span style="font-size: medium"><strong>{{.AgentID}}</strong></span>
@@ -36,7 +34,7 @@
 							   hx-get="/thing/details/{{.ID}}"
 						     hx-target="#detailsPage"
 						     hx-swap="innerHTML"
-						     hx-on::after-request="window.navigateTo(null,this.href)"
+						     hx-on::after-request="window.navigateTo(event,this.href)"
 							>{{.ID}}
 							</a>
 						</div>
@@ -47,7 +45,7 @@
 							   hx-get="/thing/details/{{.ID}}"
 							   hx-target="#detailsPage"
 							   hx-swap="innerHTML"
-							   hx-on::after-request="window.navigateTo(null,this.href)"
+							   hx-on::after-request="window.navigateTo(event,this.href)"
 							>{{.Title}}
 							</a>
 						</div>

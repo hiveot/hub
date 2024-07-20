@@ -13,7 +13,12 @@
 {{else}}
 
 <nav class="container-fluid h-row">
-		<a href="/status">
+		<a href="/status"
+		   hx-get="/status"
+		   hx-swap="innerHTML"
+		   hx-target="#statusPage"
+		   hx-on::after-request="window.navigateTo(event,this.href)"
+		>
 			<h-brand title="HiveOT" logo="{{.Logo}}"></h-brand>
 		</a>
 
@@ -21,18 +26,26 @@
 		<!-- The h-navbar css highlights the li with class 'h-target', set by selectURLTargets() -->
 		<ul class="h-navbar">
 			<!-- TODO: use a link component which handles the onclick and stop propagation-->
+		{{/*	The navigation buttons both select and reload the page*/}}
 			<li><a href="/dashboard"
-			       hx-on::click="window.navigateTo(none,this.href)"
-			       hx-swap="none"
+			       hx-get="/dashboard"
+			       hx-target="#dashboardPage"
+			       hx-on::after-request="window.navigateTo(event,this.href)"
+			       hx-swap="innerHTML"
 				>
 					Dashboard</a></li>
 			<li><a href="/directory"
 			       hx-get="/directory"
-			       hx-on::click="window.navigateTo(none,this.href)"
-			       hx-swap="none"
+			       hx-target="#directoryPage"
+			       hx-on::after-request="window.navigateTo(event,this.href)"
+			       hx-swap="innerHTML"
 				>
 					Directory</a></li>
 			<li><a href="/notifications"
+			       hx-get="/notifications"
+			       hx-target="#notificationsPage"
+			       hx-on::after-request="window.navigateTo(event,this.href)"
+			       hx-swap="innerHTML"
 			  >
 					Notifications</a></li>
 		</ul>

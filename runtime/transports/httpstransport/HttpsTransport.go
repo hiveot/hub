@@ -121,8 +121,8 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 		r.Post(httpsse.PostPublishEventPath, svc.HandlePostPublishEvent)
 
 		// rest API for properties methods
-		r.Post(httpsse.PostReadPropertyPath, svc.HandleReadProperty)
-		r.Post(httpsse.PostWritePropertyPath, svc.HandlePostWriteProperty)
+		r.Get(httpsse.FormPropertyPath, svc.HandleReadProperty)
+		r.Put(httpsse.FormPropertyPath, svc.HandleWriteProperty)
 
 		// authn service
 		r.Post(httpsse.PostRefreshPath, svc.HandlePostRefresh)

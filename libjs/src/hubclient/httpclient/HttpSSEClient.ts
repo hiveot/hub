@@ -149,7 +149,7 @@ export class HttpSSEClient implements IHubClient {
             sessionID: "",
             token: ""
         }
-        let resp = await this.postRequest(PostLoginPath, loginArgs)
+        let resp = await this.pubMessage("POST", PostLoginPath, loginArgs)
         loginResp = JSON.parse(resp)
         this.authToken = loginResp.token
         // with the new auth token a SSE return channel can be established
@@ -221,9 +221,9 @@ export class HttpSSEClient implements IHubClient {
         }
     }
 
-    // try using postRequest using fetch api
+    // try using pubMessage using fetch api
     // HOW TO SET THE CA? https://sebtrif.xyz/blog/2019-10-03-client-side-ssl-in-node-js-with-fetch/
-    // async postRequest(path:string, payload: string):Promise<string> {
+    // async pubMessage(path:string, payload: string):Promise<string> {
     //     return new Promise((resolve,reject)=> {
     //
     //         const req = https.request({
@@ -246,12 +246,12 @@ export class HttpSSEClient implements IHubClient {
     //     })
     // }
 
-    // post a request to the path with the given data
-    async postRequest(path: string, data: any): Promise<string> {
+    // publish a request to the path with the given data
+    async pubMessage(methodName: string, path: string, data: any): Promise<string> {
         // if the session is invalid, restart it
         if (this._http2Session?.closed) {
             // this._http2Client.
-            hclog.error("postRequest but connection is closed")
+            hclog.error("pubMessage but connection is closed")
             await this.connect()
         }
 
@@ -268,7 +268,7 @@ export class HttpSSEClient implements IHubClient {
                     origin: this._baseURL,
                     authorization: "bearer " + this.authToken,
                     ':path': path,
-                    ":method": "POST",
+                    ":method": methodName,
                     "content-type": "application/json",
                     "content-length": Buffer.byteLength(payload),
                 })
@@ -279,7 +279,7 @@ export class HttpSSEClient implements IHubClient {
                     if (r[":status"]) {
                         statusCode = r[":status"]
                         if (statusCode >= 400) {
-                            hclog.warn(`postRequest '${path}' returned status code '${statusCode}'`)
+                            hclog.warn(`pubMessage '${path}' returned status code '${statusCode}'`)
                         }
                     }
                 })
@@ -289,10 +289,10 @@ export class HttpSSEClient implements IHubClient {
                 req.on('end', () => {
                     req.destroy()
                     if (statusCode >= 400) {
-                        hclog.warn(`postRequest status code  ${statusCode}`)
+                        hclog.warn(`pubMessage status code  ${statusCode}`)
                         reject("Error " + statusCode + ": " + replyData)
                     } else {
-                        // hclog.info(`postRequest to ${path}. Received reply. size=` + replyData.length)
+                        // hclog.info(`pubMessage to ${path}. Received reply. size=` + replyData.length)
                         resolve(replyData)
                     }
                 });
@@ -303,7 +303,7 @@ export class HttpSSEClient implements IHubClient {
                 // write the body and complete the request
                 req.end(payload)
             } catch (e) {
-                hclog.warn(`postRequest unexpected exception:`,e)
+                hclog.warn(`pubMessage unexpected exception:`,e)
                 reject(e)
             }
         })
@@ -323,7 +323,7 @@ export class HttpSSEClient implements IHubClient {
         let actionPath = PostInvokeActionPath.replace("{thingID}", thingID)
         actionPath = actionPath.replace("{key}", key)
 
-        let resp = await this.postRequest(actionPath, payload)
+        let resp = await this.pubMessage("POST",actionPath, payload)
         let stat: DeliveryStatus = JSON.parse(resp)
         return stat
     }
@@ -336,7 +336,7 @@ export class HttpSSEClient implements IHubClient {
         let propPath = PostWritePropertyPath.replace("{thingID}", thingID)
         propPath = propPath.replace("{key}", key)
 
-        let resp = await this.postRequest(propPath, propValue)
+        let resp = await this.pubMessage("PUT",propPath, propValue)
         let stat: DeliveryStatus = JSON.parse(resp)
         return stat
     }
@@ -361,7 +361,7 @@ export class HttpSSEClient implements IHubClient {
         let eventPath = PostPublishEventPath.replace("{thingID}", thingID)
         eventPath = eventPath.replace("{key}", key)
 
-        let resp = await this.postRequest(eventPath, payload)
+        let resp = await this.pubMessage("POST",eventPath, payload)
         let stat: DeliveryStatus = JSON.parse(resp)
         return stat
     }
@@ -410,7 +410,7 @@ export class HttpSSEClient implements IHubClient {
             oldToken: this.authToken,
         }
         try {
-            let resp = await this.postRequest(refreshPath, args);
+            let resp = await this.pubMessage("POST",refreshPath, args);
             this.authToken = JSON.parse(resp)
             return this.authToken
         } catch (e) {
@@ -464,7 +464,7 @@ export class HttpSSEClient implements IHubClient {
         }
         let subscribePath = PostSubscribeEventsPath.replace("{thingID}", dThingID)
         subscribePath = subscribePath.replace("{key}", key)
-        await this.postRequest(subscribePath, "")
+        await this.pubMessage("POST", subscribePath, "")
 
     }
 
@@ -478,7 +478,7 @@ export class HttpSSEClient implements IHubClient {
         }
         let subscribePath = PostUnsubscribeEventsPath.replace("{thingID}", dThingID)
         subscribePath = subscribePath.replace("{key}", key)
-        await this.postRequest(subscribePath, "")
+        await this.pubMessage("POST", subscribePath, "")
     }
 
 }

@@ -129,7 +129,7 @@ func (svc *HttpsTransport) HandlePostInvokeAction(w http.ResponseWriter, r *http
 func (svc *HttpsTransport) HandlePostPublishEvent(w http.ResponseWriter, r *http.Request) {
 	svc.handlePostMessage(vocab.MessageTypeEvent, w, r)
 }
-func (svc *HttpsTransport) HandlePostWriteProperty(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpsTransport) HandleWriteProperty(w http.ResponseWriter, r *http.Request) {
 	svc.handlePostMessage(vocab.MessageTypeProperty, w, r)
 }
 func (svc *HttpsTransport) HandlePostTDD(w http.ResponseWriter, r *http.Request) {

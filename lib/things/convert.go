@@ -37,6 +37,10 @@ func UnmarshalTDList(tdListJSON []string) (tdList []*TD, err error) {
 // if the dataschema is an object or an array then strVal is assumed to be json encoded
 func ConvertToNative(strVal string, dataSchema *DataSchema) (val any, err error) {
 	if strVal == "" {
+		// nil value boolean input are always treated as false.
+		if dataSchema.Type == vocab.WoTDataTypeBool {
+			return false, nil
+		}
 		return nil, nil
 	} else if dataSchema == nil {
 		slog.Error("ConvertToNative: nil DataSchema")

@@ -14,8 +14,8 @@ type PropertyAffordance struct {
 	// @type, title(s) and description(s) are already defined in the embedded DataSchema struct
 
 	// Form hypermedia controls to describe how an operation can be performed
-	// Forms are serializations of Protocol Bindings.
-	Forms []Form `json:"forms,omitempty"`
+	// Forms are serializations of Protocol Bindings. Don't omit if empty as forms are mandatory.
+	Forms []Form `json:"forms"`
 
 	// Define URI template variables according to [RFC6570] as collection based on DataSchema declarations.
 	// ... right

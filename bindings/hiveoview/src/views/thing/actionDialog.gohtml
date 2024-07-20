@@ -20,9 +20,9 @@
         {{if .PrevValue}}
             <label for="actionUpdated">Previous Action</label>
             <input id="actionUpdated" readonly placeholder="{{.LastUpdated}} ({{.LastUpdatedAge}} ago)"/>
-            {{if .PrevValue.Input}}
+            {{if .Input }}
                 <label for="prevValueInput">Previous Action Value</label>
-                <input id="prevValueInput" readonly  placeholder="{{.PrevValue.Input.Data}}"/>
+                <input id="prevValueInput" readonly  placeholder="{{.Input.Value}}"/>
             {{end}}
         {{end}}
 
