@@ -16,7 +16,7 @@
 
 <main class="container-fluid">
 
-		<article
+		<article  style="width:100%; height: 100%"
         {{/* auto refresh on updates when showing the current day */}}
         {{if eq .CompareToday 0}}
 {{/*	        NOTE: sse names cannot have spaces*/}}
@@ -27,53 +27,58 @@
         {{end}}
 				class="h-panel container-fluid"
 		>
-		<ul class="h-grid-table history-header" style="grid-column-gap: 10px;  align-items: baseline">
-				<label for="histDeviceName">History of:</label>
-				<input id="histDeviceName" readonly
-				       title="{{.ThingID}}/{{.Key}}"
-				       style="margin: 0; text-overflow: ellipsis; background:none;"
-				       value="{{.TD.Title}} {{.Aff.Title}}"/>
+    {{/*	History header section with Thing title, date and nr of history values in the last 24 hours*/}}
+				<ul class="h-grid-table history-header" style="grid-column-gap: 10px;  align-items: baseline">
+						<label for="histDeviceName">History of:</label>
+						<input id="histDeviceName" readonly
+						       title="{{.ThingID}}/{{.Key}}"
+						       style="margin: 0; text-overflow: ellipsis; background:none;"
+						       value="{{.TD.Title}} {{.Aff.Title}}"/>
 
-				<label for="histDate">Date:</label>
-						<div class="h-row">
-								<input id="histDate" readonly
-								       style="margin: 0; text-overflow: ellipsis; background:none; width:auto"
-								       value="{{.Timestamp.Format "Mon, 02 Jan 2006"}}"/>
+						<label for="histDate">Date:</label>
+								<div class="h-row">
+										<input id="histDate" readonly
+										       style="margin: 0; text-overflow: ellipsis; background:none; width:auto"
+										       value="{{.Timestamp.Format "Mon, 02 Jan 2006"}}"/>
 
-								<a href="/history/{{.ThingID}}/{{.Key}}?time={{ .PrevDay }}"
-									   hx-get="/history/{{.ThingID}}/{{.Key}}?time={{ .PrevDay }}"
-									   hx-target="#historyPage"
-									   hx-swap="innerHTML"
+										<a href="/history/{{.ThingID}}/{{.Key}}?time={{ .PrevDay }}"
+											   hx-get="/history/{{.ThingID}}/{{.Key}}?time={{ .PrevDay }}"
+											   hx-target="#historyPage"
+											   hx-swap="innerHTML"
+											>
+												Previous Day
+										</a>
+									{{if eq .CompareToday -1}}
+										<a href="/history/{{.ThingID}}/{{.Key}}?time={{ .NextDay }}"
+											   hx-get="/history/{{.ThingID}}/{{.Key}}?time={{ .NextDay }}"
+											   hx-target="#historyPage"
+											   hx-swap="innerHTML"
+										>
+												Next Day
+										</a>
+									{{end}}
+									{{if ne .CompareToday 0}}
+									<a href="/history/{{.ThingID}}/{{.Key}}"
+										   hx-get="/history/{{.ThingID}}/{{.Key}}"
+										   hx-target="#historyPage"
+										   hx-swap="innerHTML"
 									>
-										Previous Day
-								</a>
-							{{if eq .CompareToday -1}}
-								<a href="/history/{{.ThingID}}/{{.Key}}?time={{ .NextDay }}"
-									   hx-get="/history/{{.ThingID}}/{{.Key}}?time={{ .NextDay }}"
-									   hx-target="#historyPage"
-									   hx-swap="innerHTML"
-								>
-										Next Day
-								</a>
-							{{end}}
-							{{if ne .CompareToday 0}}
-							<a href="/history/{{.ThingID}}/{{.Key}}"
-								   hx-get="/history/{{.ThingID}}/{{.Key}}"
-								   hx-target="#historyPage"
-								   hx-swap="innerHTML"
-							>
-								Today
-							</a>
-							{{end}}
-						</div>
+										Today
+									</a>
+									{{end}}
+								</div>
 
-				<label for="nrItems">Nr of entries:</label>
-				<input id="nrItems" readonly
-				       style="margin: 0; text-overflow: ellipsis; background:none;"
-				       value="{{len .Values}} in the previous 24 hours"/>
-		</ul>
+						<label for="nrItems">Nr of entries:</label>
+						<input id="nrItems" readonly
+						       style="margin: 0; text-overflow: ellipsis; background:none;"
+						       value="{{len .Values}} in the previous 24 hours"/>
+				</ul>
 
-			{{template "historyTable.gohtml" .}}
+				{{/* Show a chart besides the table */}}
+			<div class="h-row" style="align-items:start; height:100%">
+            {{template "historyTable.gohtml" .}}
+            {{template "historyChart.gohtml" .}}
+				</div>
 		</article>
 </main>
 

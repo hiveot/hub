@@ -1,6 +1,7 @@
 // List of web components used in this project
 // import "../static/hyperscript.org@0.9.12.js"
 import "../webcomp/h-brand.js";
+import "./h-timechart.js";
 import "../webcomp/h-dark-toggle.js";
 import "../webcomp/h-device-icon.js";
 import "../webcomp/h-dropdown.js";

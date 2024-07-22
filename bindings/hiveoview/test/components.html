@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <meta name="description" content="Component Viewer">
 
-    <script src="../src/static/htmx.min.js"></script>
-    <script src="../src/static/sse.js"></script>
+    <script src="../src/static/htmx.org@2.0.1.js"></script>
+    <script src="../src/static/sse-2.2.0.js"></script>
     <script src="../src/static/iconify-icon.min.js"></script>
     <link rel="stylesheet" href="../src/static/pico-v2.0.6.css"/>
 
@@ -18,7 +18,6 @@
 
 
 <script id="model-data" type="application/json">
-
 </script>
 
 
@@ -156,20 +155,49 @@
                 <h-details-group group-name="testdetails">
                     <details id="summary1">
                         <summary>Section 1</summary>
-                        Element 1
+                        <div style="border:1px grey solid">Content of Section 1</div>
                     </details>
                     <details id="summary2">
                         <summary>Section 2</summary>
-                        Element 2
+                        <div style="border:1px grey solid">Content of Section 2</div>
                     </details>
                 </h-details-group>
             </td>
         </tr>
 
+        <!--=== h-chartjs ===-->
+        <tr>
+            <td>h-chart</td>
+            <td>
+                <h-timechart id="chart1">
+                </h-timechart>
+            </td>
+        </tr>
         </tbody>
     </table>
 
 </main>
+
+<script>
+    const timeSeries1 = [
+        {x: '2024-01-02T08:55:00', y:22},
+        {x: '2024-01-02T13:25:00', y:15},
+        {x: '2024-01-04T05:44:20', y:13},
+        {x: '2024-01-05T22:15:05', y:33},
+    ]
+    const timeSeries2 = [
+        {x: '2024-01-03T01:25:00', y:17},
+        {x: '2024-01-03T05:35:00', y:18},
+        {x: '2024-01-04T13:15:00', y:23},
+        {x: '2024-01-05T03:23:00', y:15},
+    ]
+    document.addEventListener('DOMContentLoaded', function() {
+        let chart1 = document.getElementById("chart1")
+        chart1.setTimeSeries(0, "series1", timeSeries1)
+        chart1.setTimeSeries(1, "series2", timeSeries2)
+
+    }, false);
+</script>
 
 
 </body>

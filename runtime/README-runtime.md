@@ -13,13 +13,13 @@ Todo:
       * include only actions that client is allowed to use
 * Transports:
   * centralized session management?
-  * support wait for action response so clients can receive replies synchronously
-  * mqtt embedded server
-  * nats embedded server, or remove altogether
-  * websocket support for http needs to be added
-  * uds transport needs to be added for local services
+  * standard way to tracking action progress
+  * support wait for action response so http clients can receive replies without events
+  * http/websocket sub-protocol (see strawman proposal)
+  * mqtt transport protocol 
+  * nats transport protocol
+  * uds transport protocol needs to be added for local services
   * discovery should be changed to match the WoT specifications
-  * improve performance of the http/sse transport
 * Middleware:
   * Rate control 
   * tbd

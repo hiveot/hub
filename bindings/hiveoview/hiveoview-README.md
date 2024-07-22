@@ -8,6 +8,7 @@ This viewer is in early development. The information below is subject to change.
 
 ### Phase 1: SSR infrastructure and session management [done]
 ### Phase 2: Directory view
+10. Chart for history (web component)
 11. Show progress of action and config changes
 11. Re-usable DataSchema component/template with text,number,bool,enum,on-off [partial]
 12. Show history of events
