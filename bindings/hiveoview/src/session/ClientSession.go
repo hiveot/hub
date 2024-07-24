@@ -156,7 +156,7 @@ func (cs *ClientSession) onMessage(msg *things.ThingMessage) (stat hubclient.Del
 		thingAddr := msg.ThingID
 		cs.SendSSE(thingAddr, "")
 	} else if msg.Key == vocab.EventTypeProperties {
-		// Publish an sse event for each of the properties
+		// Publish a sse event for each of the properties
 		// The UI that displays this event can use this as a trigger to load the
 		// property value:
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{k}}"

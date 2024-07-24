@@ -144,6 +144,7 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 
 		// History view. Optional query params 'timestamp' and 'duration'
 		r.Get("/history/{thingID}/{key}", history.RenderHistoryPage)
+		r.Get("/latestValue/{thingID}/{key}", history.RenderHistoryLatest)
 
 		// Status components
 		r.Get("/status", status.RenderStatus)

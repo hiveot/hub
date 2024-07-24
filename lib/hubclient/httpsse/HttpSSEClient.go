@@ -58,6 +58,7 @@ const (
 	PostInvokeActionPath = "/action/{thingID}/{key}"
 
 	// Form paths for accessing Events
+	GetReadEventPath     = "/event/{thingID}/{key}"
 	PostPublishEventPath = "/event/{thingID}/{key}"
 
 	// Form paths for read/writing Properties

@@ -118,6 +118,8 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 		r.Post(httpsse.PostInvokeActionPath, svc.HandlePostInvokeAction)
 
 		// rest API for events methods
+		// fixme: event values are in the same namespace
+		r.Get(httpsse.GetReadEventPath, svc.HandleReadProperty)
 		r.Post(httpsse.PostPublishEventPath, svc.HandlePostPublishEvent)
 
 		// rest API for properties methods

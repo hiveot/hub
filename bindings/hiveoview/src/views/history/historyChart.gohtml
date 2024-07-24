@@ -1,27 +1,45 @@
 {{/*Display a timeline of event values from the history */}}
 
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/history.HistoryTemplateData */ -}}
-<h-timechart id="historyChart" style="flex-grow:1; height:100%">
+<h-timechart id="historyChart" style="flex-grow:1; height:100%"
+		chart-title='{{.Timestamp.Format "Mon, 02 Jan 2006"}}'
+        {{if eq .CompareToday 0}}
+	        sse-swap="{{.ThingID}}/{{.Key}}"
+	        hx-target="this"
+	        hx-swap="none"
+	        hx-on::sse-before-message="updateChart(event)"
+				{{end}}
+>
 </h-timechart>
 
 <script>
 
-		// https://stackoverflow.com/questions/75651261/variable-already-been-declared-after-loading-modal-via-htmx-after-first-load
-		// FIXME: don't reload the whole page, just update the data and the chart
-		var historyChartTimeSeries = [
 
-		// load the data for the history chart
-    {{range .Values}}
-		{ x: {{.Created}}, y: {{.DataAsText}} },
-		{{end}}
+		// https://stackoverflow.com/questions/75651261/variable-already-been-declared-after-loading-modal-via-htmx-after-first-load
+		var historyChartTimeSeries = [
+			// load the data for the history chart
+      {{range .Values}}
+			{ x: {{.Created}}, y: {{.DataAsText}} },
+			{{end}}
 		]
 
-		// function loadTimeData() {
+
+    // initialize the chart
     var chart1 = document.getElementById("historyChart")
 		chart1.addEventListener('on-timechart-ready', ()=>{
         chart1.setTimeSeries(0, {{.Aff.Title}}, historyChartTimeSeries)
-
 		})
-        // chart1.setTimeSeries(1, "series2", timeSeries2)
-    // }
+
+    // updateChart uses the SSE event to add a value to the chart
+    // However to get the timestamp, the event itself should contain the ThingMessage,
+    // rather than just the value.
+    // As a workaround just use 'now' as the timestamp
+    updateChart = (event) => {
+
+        console.log("updateChart:", event)
+        event.preventDefault()
+
+        let newValue =event.detail.data
+        event.target.addValue(null, newValue)
+    }
 </script>

@@ -2,9 +2,18 @@
 
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/history.HistoryTemplateData */ -}}
 
+{{/*FIXME: don't update the chart here*/}}
 	<ul class="history-table h-grid-table" striped border>
+
 			{{/* Table Header*/}}
-			<li>
+			<li id="hist-table-title"
+        {{if eq .CompareToday 0}}
+	        hx-trigger="sse:{{.ThingID}}/{{.Key}}"
+     	    hx-get="/latestValue/{{.ThingID}}/{{.Key}}"
+			    hx-target="this"
+			    hx-swap="afterend"
+        {{end}}
+			>
 				<div>Time</div>
 				<div>Value</div>
 			</li>
@@ -17,8 +26,6 @@
 					</li>
 			{{end}}
 	</ul>
-
-
 
 <style>
 

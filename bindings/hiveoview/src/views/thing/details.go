@@ -36,7 +36,10 @@ type DetailsTemplateData struct {
 }
 
 // return a map with the latest property values of a thing or nil if failed
-func getLatest(thingID string, hc hubclient.IHubClient) (things.ThingMessageMap, error) {
+// TODO: The generated API doesnt know return types because WoT TD has no
+//
+//	place to defined them. Find a better solution.
+func GetLatest(thingID string, hc hubclient.IHubClient) (things.ThingMessageMap, error) {
 	data := things.NewThingMessageMap()
 	tvsJson, err := digitwin.OutboxReadLatest(hc, nil, "", "", thingID)
 	if err != nil {
@@ -102,7 +105,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 			})
 
 			// get the latest event/property values from the outbox
-			propMap, err2 := getLatest(thingID, hc)
+			propMap, err2 := GetLatest(thingID, hc)
 			err = err2
 			thingData.Values = propMap
 			thingData.DeviceType = thingData.TD.AtType
