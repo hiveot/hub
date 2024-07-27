@@ -17,6 +17,7 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/comps"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/directory"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/history"
@@ -144,7 +145,7 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 
 		// History view. Optional query params 'timestamp' and 'duration'
 		r.Get("/history/{thingID}/{key}", history.RenderHistoryPage)
-		r.Get("/latestValue/{thingID}/{key}", history.RenderHistoryLatest)
+		r.Get("/latestValue/{thingID}/{key}", comps.RenderHistoryLatest)
 
 		// Status components
 		r.Get("/status", status.RenderStatus)

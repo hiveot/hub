@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/comps"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
@@ -26,8 +27,8 @@ type ActionDialogData struct {
 	Key string
 	// the action being viewed in case of an action
 	Action *things.ActionAffordance
-	Input  *SchemaValue
-	Output *SchemaValue
+	Input  *comps.SchemaValue
+	Output *comps.SchemaValue
 	// the message with the action
 	Msg things.ThingMessage
 	// current delivery status
@@ -104,7 +105,7 @@ func RenderActionDialog(w http.ResponseWriter, r *http.Request) {
 		prevInputValue = fmt.Sprintf("%v", data.PrevValue.Input)
 	}
 	if data.Action.Input != nil {
-		data.Input = &SchemaValue{
+		data.Input = &comps.SchemaValue{
 			ThingID:    thingID,
 			Key:        key,
 			DataSchema: data.Action.Input,
@@ -112,7 +113,7 @@ func RenderActionDialog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if data.Action.Output != nil {
-		data.Output = &SchemaValue{
+		data.Output = &comps.SchemaValue{
 			ThingID:    thingID,
 			Key:        key,
 			DataSchema: data.Action.Output,

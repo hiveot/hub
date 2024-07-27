@@ -1,5 +1,6 @@
 // List of web components used in this project
-// import "../static/hyperscript.org@0.9.12.js"
+// these components are general purpose and do not depend on hiveoview
+
 import "../webcomp/h-brand.js";
 import "./h-timechart.js";
 import "../webcomp/h-dark-toggle.js";

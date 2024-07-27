@@ -10,6 +10,7 @@
 		<div>Value</div>
 		<div class="h-show-lg">Description</div>
 		<div class="h-show-md">Updated</div>
+		<div class="h-show-lg">History</div>
 	</li>
 
 	{{range $k,$v := .TD.Events}}
@@ -17,40 +18,55 @@
 
 		{{- /*auto reload row on event changes*/ -}}
 		<li>
-		<div class="h-show-sm">{{/*icon*/}}</div>
-		<div title="key: {{$k}}">
-			{{$v.Title}}
-		</div>
-		<div>
-        {{/* open last 24 hours history*/}}
-			<a title="View history"
-			   href="/history/{{$.ThingID}}/{{$k}}"
-			   hx-get="/history/{{$.ThingID}}/{{$k}}"
-			   hx-target="#historyPage"
-			   hx-swap="innerHtml"
-			   hx-trigger="click"
-			   hx-on::after-request="navigateTo(null,this.href)"
-			>
-				{{/* Dynamic refresh of value on sse event*/}}
-				<span sse-swap="{{$.ThingID}}/{{$k}}"
-				      hx-swap="innerHTML"
-				      hx-target="this"
+			{{/*	Icon*/}}
+			<div class="h-show-sm">{{/*icon*/}}</div>
+
+			{{/* Event Name*/}}
+			<div title="key: {{$k}}">
+				{{$v.Title}}
+			</div>
+
+			{{/*value*/}}
+			<div>
+	        {{/* open last 24 hours history*/}}
+				<a title="View history"
+				   href="/history/{{$.ThingID}}/{{$k}}"
+				   hx-get="/history/{{$.ThingID}}/{{$k}}"
+				   hx-target="#historyPage"
+				   hx-swap="innerHtml"
+				   hx-trigger="click"
+				   hx-on::after-request="navigateTo(null,this.href)"
 				>
-						{{$.Values.ToString $k}}
-				</span>
-				{{if $v.Data}}
-			    {{$v.Data.UnitSymbol}}
-				{{end}}
-			</a>
-		</div>
-		<div class="h-show-lg">{{$v.Description}}</div>
-		<div sse-swap="{{$.ThingID}}/{{$k}}/updated"
-		     hx-target="this"
-		     hx-swap="innerHTML"
-					class="h-show-md"
-			>{{$.Values.GetUpdated $k}}</div>
+					{{/* Dynamic refresh of value on sse event*/}}
+					<span sse-swap="{{$.ThingID}}/{{$k}}"
+					      hx-swap="innerHTML"
+					      hx-target="this"
+					>
+							{{$.Values.ToString $k}}
+					</span>
+					{{if $v.Data}}
+				    {{$v.Data.UnitSymbol}}
+					{{end}}
+				</a>
+			</div>
+			<div class="h-show-lg">{{$v.Description}}</div>
+
+      {{/*	Updated*/}}
+			<div sse-swap="{{$.ThingID}}/{{$k}}/updated"
+			     hx-target="this"
+			     hx-swap="innerHTML"
+						class="h-show-md"
+				>{{$.Values.GetUpdated $k}}
+			</div>
+
+	    {{/*	history*/}}
+			<div class="h-show-lg" style="height:200px">
+				{{template "historyChart.gohtml" $.GetHistory $k }}
+				hist
+			</div>
 		</li>
 	{{end}}
+
 	{{if not .TD.Events}}
 		<li>
 			<div style="grid-column: 1/5 ">
@@ -95,7 +111,8 @@
               minmax(200px, max-content) /*name*/
               minmax(100px, max-content) /*value*/
 			        minmax(100px, 1fr) /*description*/
-		        minmax(100px, max-content); /*updated*/
+ 		          minmax(100px, max-content) /*updated*/
+              minmax(200px, 400px); /*history*/
         }
     }
 

@@ -35,7 +35,6 @@ const PROGRESS_BAR_ANIMATION = "progressbar"
 const DEFAULT_DURATION = 3000  // msec showing toast
 const template = `
 
-
 <style>
 h-toast{
     position: fixed;

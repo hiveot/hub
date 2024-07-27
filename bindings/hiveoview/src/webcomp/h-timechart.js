@@ -9,6 +9,8 @@
 // properties:
 //  chart-type: line
 //  chart-title: brand title text
+//  timestamp: end time of the history
+//  duration: time window to show in seconds
 //
 
 // Note: chartjs requires import of a date library. date-fns or luxon will do
@@ -18,11 +20,20 @@
 
 export const PropChartType = "chart-type"
 export const PropChartTitle = "chart-title"
-// FIXME: generate random ID for canvas for multiple instances
+export const PropTimestamp = "timestamp"
+export const PropDuration = "duration"
+
+
 // https://www.chartjs.org/docs/latest/configuration/responsive.html
-const template = `
-    <div  style="position:relative; width:100%; height:60vh" 
+const template = document.createElement('template')
+template.innerHTML = `
+    <div  style="position:relative; width:100%; height:inherit; 
+    display:flex; align-items:center; justify-content:center" 
+     
     >
+        <div id="_noDataText" style="font-style: italic; font-size: large; color: gray; font-weight: bold;">
+            No data
+        </div>
         <canvas id="_myChart" style="position:absolute; padding: 5px; margin:5px" ></canvas>
     </div>  
 `
@@ -106,6 +117,9 @@ export class HTimechart extends HTMLElement {
                 }
             },
             plugins: {
+                legend: {
+                    display: false
+                },
                 title: {
                     display: true,
                     text: "title"
@@ -118,15 +132,34 @@ export class HTimechart extends HTMLElement {
     }
 
     static get observedAttributes() {
-        return [ PropChartType, PropChartTitle]
+        return [ PropChartType, PropChartTitle, PropTimestamp, PropDuration]
     }
-
 
     constructor() {
         super();
+
+        const shadowRoot = this.attachShadow({mode: "open"});
+        shadowRoot.append(template.content.cloneNode(true));
+        let chartCanvas = shadowRoot.getElementById("_myChart")
+        this.chartCanvas = chartCanvas.getContext("2d")
+
         this.chartType = 'line'
         this.chartTitle = undefined
-        this.innerHTML = template;
+        this.timestamp = luxon.DateTime.now().toISO()
+        this.duration = -24*3600  // 1 day
+        // this.innerHTML = template;
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (name === PropChartTitle) {
+            this.chartTitle = newValue
+        } else if (name === PropChartType) {
+            this.chartType = newValue
+        } else if (name === PropTimestamp) {
+            this.timestamp = newValue
+        } else if (name === PropDuration) {
+            this.duration = parseInt(newValue)
+        }
     }
 
     connectedCallback() {
@@ -135,6 +168,16 @@ export class HTimechart extends HTMLElement {
             cancelable: false,
             composed: true
         })
+        this.noDataEl = this.shadowRoot.getElementById("_noDataText")
+
+        let dataEl = this.querySelector('data')
+        if (dataEl) {
+            let tableData = JSON.parse(dataEl.innerText)
+            let tableTitle = dataEl.getAttribute('title')
+            if (tableData) {
+                this.setTimeSeries(0, tableTitle,tableData)
+            }
+        }
         this.render();
         this.dispatchEvent(readyEvent);
     }
@@ -146,26 +189,20 @@ export class HTimechart extends HTMLElement {
         }
     }
 
-    attributeChangedCallback(name, oldValue, newValue) {
-        if (name === PropChartTitle) {
-            this.chartTitle = newValue
-        } else if (name === PropChartType) {
-            this.chartType = newValue
-        }
-    }
 
     render = () => {
         if (this.chart) {
             this.chart.destroy();
             this.chart = null;
         }
-        let chartCanvas = document.getElementById('_myChart').getContext("2d");
+        // let chartCanvas = this.getElementById('_myChart').getContext("2d");
+        // let chartCanvas = shadowRoot.querySelector("[canvas]").getContext("2d");
         this.config.type = this.chartType
         this.config.options.plugins.title = {
             display: (!!this.chartTitle),
             text:  this.chartTitle
         }
-        this.chart = new Chart(chartCanvas, this.config);
+        this.chart = new Chart(this.chartCanvas, this.config);
     }
 
     // experiment inject a value
@@ -180,18 +217,24 @@ export class HTimechart extends HTMLElement {
 
 
         let endTime = luxon.DateTime.fromISO(time)
-        let newStartTime = endTime.plus({hours: -24, minutes:-30}).toISO()
-        let newEndTime = endTime.plus({minute:30}).toISO()
+        if (endTime > this.timestamp) {
+            this.timestamp = endTime
+        }
+        let newStartTime = endTime.plus((this.duration-1800)*1000)
+        let newEndTime = endTime.plus({minute:30})
 
         // modify the start time so its exactly 24 hours before the end time
-        this.config.options.scales.x.min = newStartTime;
-        this.config.options.scales.x.max = newEndTime;
+        this.config.options.scales.x.min = newStartTime.toISO();
+        this.config.options.scales.x.max = newEndTime.toISO();
 
 
         this.chart.update();
     }
 
-    // Insert or replace a chartjs dataset at the given index
+    // Insert or replace a chartjs dataset at the given index.
+    //
+    // Before render is called: changes will be used right away
+    // After render was called: call this.chart.update() to apply the changes.
     //
     // @param nr is the index to insert it at
     // @param ds is the array of [{x:timestamp,y:value},...]
@@ -202,21 +245,32 @@ export class HTimechart extends HTMLElement {
         this.config.data.datasets[nr] = ds;
         // let startItem = ds.data.at(-1)
         // let startTime = luxon.DateTime.fromISO(startItem["x"])
-        let endItem = ds.data.at(0)
-        let endTime = luxon.DateTime.fromISO(endItem["x"])
+        let endTime = luxon.DateTime.fromISO(this.timestamp)
+        let startTime = endTime.plus(this.duration*1000)
 
-        let newStartTime = endTime.plus({hours: -24, minutes:-30}).toISO()
-        let newEndTime = luxon.DateTime.fromISO(endItem["x"]).plus({minute:30}).toISO()
+        this.config.options.scales.x.min = startTime.toISO();
+        this.config.options.scales.x.max = endTime.toISO();
 
-        // modify the start time so its exactly 24 hours before the end time
-        this.config.options.scales.x.min = newStartTime;
-        this.config.options.scales.x.max = newEndTime;
-
-        this.chart.update();
+        if (ds.data.length > 0) {
+            this.noDataEl.style.display = "none"
+            // let endItem = ds.data.at(0)
+            // let endTime = luxon.DateTime.fromISO(endItem["x"])
+            //
+            // let newStartTime = endTime.plus({hours: -24, minutes: -30}).toISO()
+            // let newEndTime = luxon.DateTime.fromISO(endItem["x"]).plus({minute: 30}).toISO()
+            //
+            // // modify the start time so its exactly 24 hours before the end time
+            // this.config.options.scales.x.min = newStartTime;
+            // this.config.options.scales.x.max = newEndTime;
+        } else {
+            this.noDataEl.style.display = "flex"
+        }
     }
 
     // Set a new time series to display.
     // This is a simple helper function for common use-case.
+    //
+    // call this.chart.update() after render;
     //
     // @param nr is the series index, 0 for default, 1... for multiple series
     // @param label is the label of this series
@@ -230,6 +284,9 @@ export class HTimechart extends HTMLElement {
         }
         if (label) {
             ds.label = label;
+            this.config.options.plugins.legend.display = true
+        } else {
+            this.config.options.plugins.legend.display = false
         }
         this.setDataSet(nr, ds);
     }

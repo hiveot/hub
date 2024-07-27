@@ -1,0 +1,34 @@
+{{/*Display a timeline of event values from the history */}}
+
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/comps.HistorySourceData*/ -}}
+<h-timechart id="historyChart" style="flex-grow:1; height:inherit"
+		chart-title='{{.Timestamp.Format "Mon, 02 Jan 2006"}}'
+    data-source="historyChartTimeSeries"
+    timestamp="{{.TimestampStr}}"
+
+		{{/* Auto-update chart when looking at today*/}}
+    {{if eq .CompareToday 0}}
+	      sse-swap="{{.ThingID}}/{{.Key}}"
+	      hx-target="this"
+	      hx-swap="none"
+	      hx-on::sse-before-message="updateChart(event)"
+		{{end}}
+>
+	{{/* optionally inject a json encoded array with data to show as {x:time,y:value} here */}}
+	<data title="{{.DataSchema.UnitSymbol}}">{{ .AsJSON }}</data>
+</h-timechart>
+
+<script>
+    // updateChart uses the SSE event to add a value to the chart
+    // However to get the timestamp, the event itself should contain the ThingMessage,
+    // rather than just the value.
+    // As a workaround just use 'now' as the timestamp
+    updateChart = (event) => {
+
+        console.log("updateChart:", event)
+        event.preventDefault()
+
+        let newValue =event.detail.data
+        event.target.addValue(null, newValue)
+    }
+</script>

@@ -7,12 +7,14 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/comps"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 )
 
 const TemplateFile = "detailsPage.gohtml"
@@ -25,20 +27,28 @@ type DetailsTemplateData struct {
 	ThingName  string
 	DeviceType string
 	TD         *things.TD
-	// These lists are sorted by property/event/action name
+	// split the properties in attributes and config for presentation
 	AttrKeys   []string
 	Attributes map[string]*things.PropertyAffordance
 	ConfigKeys []string
 	Config     map[string]*things.PropertyAffordance
-	Values     things.ThingMessageMap
+	// latest value of properties
+	Values things.ThingMessageMap
 	//
-
+	hc hubclient.IHubClient
 }
 
-// return a map with the latest property values of a thing or nil if failed
+// obtain the 24 hour history for the given key
+func (dt *DetailsTemplateData) GetHistory(key string) *comps.HistorySourceData {
+	timestamp := time.Now()
+	hsd, err := comps.NewHistorySourceData(dt.hc, dt.TD, key, timestamp, -24*3600)
+	_ = err
+	return hsd
+}
+
+// GetLatest returns a map with the latest property values of a thing or nil if failed
 // TODO: The generated API doesnt know return types because WoT TD has no
-//
-//	place to defined them. Find a better solution.
+// place to defined them. Find a better solution.
 func GetLatest(thingID string, hc hubclient.IHubClient) (things.ThingMessageMap, error) {
 	data := things.NewThingMessageMap()
 	tvsJson, err := digitwin.OutboxReadLatest(hc, nil, "", "", thingID)
@@ -72,6 +82,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	// Read the TD being displayed and its latest values
 	mySession, hc, err := session.GetSessionFromContext(r)
 	if err == nil {
+		thingData.hc = hc
 		tdJson, err2 := digitwin.DirectoryReadTD(hc, thingID)
 		td := things.TD{}
 		_ = json.Unmarshal([]byte(tdJson), &td)

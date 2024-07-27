@@ -4,7 +4,7 @@
 
 <!--After an initial load without data, auto-reload fragment when viewed. -->
 
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/history.HistoryTemplateData */ -}}
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/comps.HistorySourceData*/ -}}
 {{if not .ThingID}}
 	<div
 					hx-trigger="intersect once"
@@ -14,30 +14,18 @@
 
 {{else}}
 
-<main class="container-fluid">
+<main class="container-fluid" style="height:100%">
 
 		<article  style="width:100%; height: 100%"
-{{/*		          hx-on::after-swap="alert('hi 0')"*/}}
-
-            {{/* auto refresh on updates when showing the current day */}}
-        {{if eq .CompareToday 0}}
-{{/*	        NOTE: sse names cannot have spaces*/}}
-
-{{/*					hx-trigger="sse:{{.ThingID}}/{{.Key}}"*/}}
-{{/*					hx-get="/history/{{.ThingID}}/{{.Key}}"*/}}
-{{/*					hx-target="#historyPage"*/}}
-{{/*					hx-swap="innerHTML"*/}}
-
-        {{end}}
 				class="h-panel container-fluid"
 		>
-    {{/*	History header section with Thing title, date and nr of history values in the last 24 hours*/}}
+       {{/*	History header section with Thing title, date and nr of history values in the last 24 hours*/}}
 				<ul class="h-grid-table history-header" style="grid-column-gap: 10px;  align-items: baseline">
 						<label for="histDeviceName">History of:</label>
 						<input id="histDeviceName" readonly
 						       title="{{.ThingID}}/{{.Key}}"
 						       style="margin: 0; text-overflow: ellipsis; background:none;"
-						       value="{{.TD.Title}} {{.Aff.Title}}"/>
+						       value="{{.Title}} {{.DataSchema.Title}}"/>
 
 						<label for="histDate">Date:</label>
 								<div class="h-row">
@@ -79,9 +67,11 @@
 				</ul>
 
 				{{/* Show a chart besides the table */}}
-			<div class="h-row" style="align-items:start; height:100%">
+			<div class="h-row" style="align-items:start; flex-grow:1; overflow:auto">
             {{template "historyTable.gohtml" .}}
+					<div style="height:100%; flex-grow:1">
             {{template "historyChart.gohtml" .}}
+					</div>
 				</div>
 		</article>
 </main>

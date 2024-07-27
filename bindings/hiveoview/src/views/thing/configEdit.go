@@ -8,6 +8,7 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/comps"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"log/slog"
@@ -35,7 +36,7 @@ func getPropAff(hc hubclient.IHubClient, thingID string, key string) (
 // obtain a schema value instance from a thingID and key
 // this pulls the TD from the server (todo: consider using a local cache)
 func getConfigValue(
-	hc hubclient.IHubClient, thingID string, key string) (sv SchemaValue, err error) {
+	hc hubclient.IHubClient, thingID string, key string) (sv comps.SchemaValue, err error) {
 	var valueStr string
 
 	td, propAff, err := getPropAff(hc, thingID, key)
@@ -57,7 +58,7 @@ func getConfigValue(
 			valueStr = fmt.Sprintf("%v", tm.Data)
 		}
 	}
-	sv = SchemaValue{
+	sv = comps.SchemaValue{
 		//TD:         &td,
 		ThingID:    thingID,
 		Key:        key,
@@ -70,7 +71,7 @@ func getConfigValue(
 // RenderConfigEditDialog renders the view for editing Thing configuration property
 // This sets the data properties for AgentID, ThingID, Key and Config
 func RenderConfigEditDialog(w http.ResponseWriter, r *http.Request) {
-	var cv SchemaValue
+	var cv comps.SchemaValue
 	thingID := chi.URLParam(r, "thingID")
 	propKey := chi.URLParam(r, "key")
 

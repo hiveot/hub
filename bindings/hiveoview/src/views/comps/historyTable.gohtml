@@ -1,31 +1,30 @@
 {{/*Display a table of event values from the history */}}
 
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/history.HistoryTemplateData */ -}}
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/comps.HistorySourceData*/ -}}
 
-{{/*FIXME: don't update the chart here*/}}
-	<ul class="history-table h-grid-table" striped border>
+<ul class="history-table h-grid-table" style="overflow:auto; height:100%;margin:0" striped border>
 
-			{{/* Table Header*/}}
-			<li id="hist-table-title"
+		{{/* Table Header*/}}
+		<li id="hist-table-title"
         {{if eq .CompareToday 0}}
 	        hx-trigger="sse:{{.ThingID}}/{{.Key}}"
      	    hx-get="/latestValue/{{.ThingID}}/{{.Key}}"
 			    hx-target="this"
 			    hx-swap="afterend"
         {{end}}
-			>
+				>
 				<div>Time</div>
 				<div>Value</div>
-			</li>
+		</li>
 
-			{{/* Table values*/}}
-			{{range .Values}}
-					<li>
+		{{/* Table values*/}}
+		{{range .Values}}
+				<li>
 						<div>{{.GetUpdated "WT"}}</div>
-						<div>{{.DataAsText}} {{$.Aff.Data.UnitSymbol}}</div>
-					</li>
-			{{end}}
-	</ul>
+						<div>{{.DataAsText}} {{$.DataSchema.UnitSymbol}}</div>
+				</li>
+		{{end}}
+</ul>
 
 <style>
 
