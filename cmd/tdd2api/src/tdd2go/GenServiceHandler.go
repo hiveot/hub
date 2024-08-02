@@ -7,7 +7,7 @@ import (
 
 // GenServiceHandler generates a function that returns a handler that unmarshal a request and invoke service
 // The signature is: GetActionHandler(service I...Service) MessageHandler
-func GenServiceHandler(l *utils.L, serviceTitle string, td *things.TD) {
+func GenServiceHandler(l *utils.SL, serviceTitle string, td *things.TD) {
 	// ServiceType is the type of the service implementation that handles the messages
 	//serviceType := ToTitle(td.GetID()) + "Service"
 	interfaceName := "I" + serviceTitle + "Service"
@@ -50,7 +50,7 @@ func GenServiceHandler(l *utils.L, serviceTitle string, td *things.TD) {
 // GenActionHandler add an unmarshaller handler for its service.
 // This unmarshal the request, invokes the service, and marshals the response
 // key is the key of the action affordance in the TD
-func GenActionHandler(l *utils.L, serviceTitle string, key string, action *things.ActionAffordance) {
+func GenActionHandler(l *utils.SL, serviceTitle string, key string, action *things.ActionAffordance) {
 	methodName := Key2ID(key)
 	// build the argument string
 	argsString := "senderID" // all handlers receive the sender ID

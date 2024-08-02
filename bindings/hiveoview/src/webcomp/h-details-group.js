@@ -19,7 +19,7 @@ class HDetailsGroup extends HTMLElement {
             ["details"])
 
         eList.forEach((item) => {
-            console.log("found item: ",item.id)
+            //console.log("found item: ",item.id)
             item.name = this.groupName
             item.addEventListener("toggle", this.onToggle.bind(this))
         })

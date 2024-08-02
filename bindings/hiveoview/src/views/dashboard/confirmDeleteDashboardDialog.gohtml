@@ -1,0 +1,50 @@
+<!-- Confirm dialog -->
+
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard.ConfirmDeleteDashboardTemplateData*/ -}}
+
+<h-modal show showClose showCancel showSubmit>
+	<article>
+		<header class="h-row-centered">
+			<h3>Confirm Delete Dashboard</h3>
+		</header>
+
+		<form id="confirm-form">
+			<fieldset>
+				<label for="dashboard-title-id">Dashboard Name</label>
+				<input id="dashboard-title-id" readonly value="{{.Dashboard.Title}}"/>
+
+				<label for="dashboard-id">Dashboard ID</label>
+				<input id="dashboard-id" readonly value="{{.Dashboard.ID}}"/>
+
+			</fieldset>
+		</form>
+	</article>
+
+
+	<footer class="h-row" style="width:100%">
+    {{- /*close-modal is handled by h-modal component*/ -}}
+		<button id="cancelBtn"
+		        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+		        class="secondary">Cancel
+		</button>
+		<button type="submit"
+		        hx-delete="/dashboard/{{.Dashboard.ID}}'"
+		        hx-swap="none"
+		        hx-on::after-request="onSubmitCompleted(event, this)"
+		        style="margin-bottom: 0">Submit
+		</button>
+	</footer>
+</h-modal>
+
+
+<script>
+		// Ugly to have to do this!
+    function onSubmitCompleted(ev, btn) {
+        ev.stopImmediatePropagation()
+        let details = ev.detail
+        if (details.successful) {
+            modal = btn.parentElement.parentElement
+            modal.closeModal()
+        }
+    }
+</script>

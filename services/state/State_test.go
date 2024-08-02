@@ -102,6 +102,7 @@ func TestSetGet1(t *testing.T) {
 	// restart service to check if it persists
 	stopFn()
 	_, stateCl, stopFn = startStateService(false)
+	defer stopFn()
 	//
 	found, err = stateCl.Get(key1, &val3)
 	assert.NoError(t, err)
@@ -117,7 +118,7 @@ func TestSetGetMultiple(t *testing.T) {
 	const key2 = "key2"
 	var val1 = "value 1"
 	var val2 = "value 2"
-	data := map[string]any{
+	data := map[string]string{
 		key1: val1,
 		key2: val2,
 	}

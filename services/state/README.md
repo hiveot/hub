@@ -7,7 +7,7 @@ The state service provides a simple key-value storage service to store applicati
 
 This service is functional but breaking changes can still be expected.
 
-TODO:
+Future:
 1. Limit the amount of data per client, nr records and record size 
 2. Support for auto-expiry of keys.
 

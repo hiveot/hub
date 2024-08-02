@@ -37,8 +37,9 @@ func TestHandleEvent(t *testing.T) {
 		mwh2Count++
 		return tv, nil
 	})
+	mw.AddMiddlewareHandler(middleware.EscapeIDKey)
 
-	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", payload, "sender1")
+	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key 1", payload, "sender1")
 	stat := mw.HandleMessage(tv1)
 	assert.Empty(t, stat.Error)
 	assert.Equal(t, payload, stat.Reply)

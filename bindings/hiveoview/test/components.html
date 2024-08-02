@@ -3,12 +3,19 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <meta name="description" content="Component Viewer">
+    <meta name="description" content="Component Viewer"/>
 
     <script src="../src/static/htmx.org@2.0.1.js"></script>
-    <script src="../src/static/sse-2.2.0.js"></script>
-    <script src="../src/static/iconify-icon.min.js"></script>
+    <script src="../src/static/sse-2.2.1.js"></script>
     <link rel="stylesheet" href="../src/static/pico-v2.0.6.css"/>
+
+    <script src="../src/static/chartjs-4.4.3.min.js"></script>
+    <script src="../src/static/luxon-3.4.4.min.js"></script>
+    <script src="../src/static/chartjs-adapter-luxon-1.3.1.js"></script>
+    <script src="../src/static/iconify-icon.min.js"></script>
+
+    <link rel="stylesheet" href="../src/static/gridstack-10.3.1.min.css"/>
+    <script src="../src/static/gridstack-all.10.3.1.min.js"></script>
 
     <link rel="stylesheet" href="../src/webcomp/h-theme.css"/>
     <link rel="stylesheet" href="../src/webcomp/h-classes.css"/>
@@ -129,24 +136,7 @@
         </tr>
 
         <!-- === h-simple-table  ===-->
-        <tr>
-            <td>
-                <span>h-simple-table</span>
-            </td>
-            <td>
-                <h-data id="model-data" hx-next="/app/data/more">
-                    {'label':'Item 1', 'val':'value 1',"onoff":"on"},
-                    {'label':'Item 2', 'val':'value 2',"onoff":"off"}
-                </h-data>
-                <h-simple-table id="mode-table" data="#model-data">
-                    <li col="1" title="Name" field="label" field-type="text"></li>
-                    <li col="2" title="Value" field="val" field-type="number"></li>
-                    <li col="3" title="On/Off" field="onoff">
-                        <switch on='{onoff}'></switch>
-                    </li>
-                </h-simple-table>
-            </td>
-        </tr>
+
 
         <!--=== h-details-group ===-->
         <tr>
@@ -169,8 +159,23 @@
         <tr>
             <td>h-chart</td>
             <td>
-                <h-timechart id="chart1">
+                <h-timechart id="chart1" style="height:200px"
+                             timestamp="2024-07-28T21:00:00-07:00">
+                    <data title="Series 1">
+                        [{"x":"2024-07-28T08:08:22.55-0700","y":0},
+                        {"x":"2024-07-28T12:04:11.269-0700","y":12},
+                        {"x":"2024-07-28T16:39:36.972-0700","y":15},
+                        {"x":"2024-07-28T19:35:26.196-0700","y":27}]
+                    </data>
                 </h-timechart>
+            </td>
+        </tr>
+
+        <!--=== gridstack ===-->
+        <tr>
+            <td>gridstack</td>
+            <td>
+                <div class="grid-stack"></div>
             </td>
         </tr>
         </tbody>
@@ -179,24 +184,36 @@
 </main>
 
 <script>
-    const timeSeries1 = [
-        {x: '2024-01-02T08:55:00', y:22},
-        {x: '2024-01-02T13:25:00', y:15},
-        {x: '2024-01-04T05:44:20', y:13},
-        {x: '2024-01-05T22:15:05', y:33},
-    ]
-    const timeSeries2 = [
-        {x: '2024-01-03T01:25:00', y:17},
-        {x: '2024-01-03T05:35:00', y:18},
-        {x: '2024-01-04T13:15:00', y:23},
-        {x: '2024-01-05T03:23:00', y:15},
-    ]
     document.addEventListener('DOMContentLoaded', function() {
-        let chart1 = document.getElementById("chart1")
-        chart1.setTimeSeries(0, "series1", timeSeries1)
-        chart1.setTimeSeries(1, "series2", timeSeries2)
-
+        startGridStack()
     }, false);
+    function startGridStack() {
+
+        var count = 0;
+        var items = [
+            {x: 0, y: 0, w: 2, h: 2},
+            {x: 2, y: 0, w: 2},
+        ];
+        items.forEach(w => w.content = String(count++));
+
+        var options = { // put in gridstack options here
+            float: false
+        };
+        var grid = GridStack.init(options).load(items);
+
+
+        addNewWidget = function () {
+            var node = {
+                x: Math.round(12 * Math.random()),
+                y: Math.round(5 * Math.random()),
+                w: Math.round(1 + 3 * Math.random()),
+                h: Math.round(1 + 3 * Math.random()),
+                content: String(count++)
+            };
+            grid.addWidget(node);
+            return false;
+        };
+    }
 </script>
 
 
@@ -209,6 +226,15 @@
     /*https://stackoverflow.com/questions/64213037/how-to-avoid-that-slot-elements-in-web-components-appear-before-the-rest-is-rend*/
     *:not(:defined) {
         /*display: none;*/
+    }
+
+    .grid-stack {
+        background: lightgoldenrodyellow;
+    }
+    .grid-stack-item-content {
+        color: #2c3e50;
+        text-align: center;
+        background-color: #18bc9c;
     }
 
 </style>

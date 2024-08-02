@@ -44,7 +44,7 @@ func (cl *HttpSSEClient) ConnectSSE(
 	sseClient := &sse.Client{
 		HTTPClient: httpClient,
 		OnRetry: func(err error, _ time.Duration) {
-			slog.Info("SSE Connection retry", "err", err)
+			slog.Info("SSE Connection retry", "err", err, "clientID", cl._status.ClientID)
 			// TODO: how to be notified if the connection is restored?
 			//  workaround: in handleSSEEvent, update the connection status
 			cl.SetConnectionStatus(hubclient.Connecting, err)

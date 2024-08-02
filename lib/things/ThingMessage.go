@@ -52,8 +52,6 @@ type ThingMessage struct {
 
 // DataAsText return a text representation of the data that is independent of
 // the message serialization used.
-// How does the TD describe the data serialization used? Is this part of the protocol?
-// Should the transport convert it?
 func (tm *ThingMessage) DataAsText() string {
 	if tm.Data == nil {
 		return ""

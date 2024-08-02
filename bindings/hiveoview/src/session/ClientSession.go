@@ -16,6 +16,9 @@ import (
 
 type NotifyType string
 
+// the key under which client session data is stored
+const HiveOViewDataKey = "hiveoview"
+
 const (
 	NotifyInfo    NotifyType = "info"
 	NotifySuccess NotifyType = "success"
@@ -36,8 +39,10 @@ type ClientSession struct {
 	// ID of this session
 	sessionID string
 
-	// Client subscription and dashboard model, loaded from the state service
-	clientModel ClientModel
+	// Client session data, loaded from the state service
+	clientModel ClientDataModel
+	// Client session data has been updated, ready to write to the state service
+	clientModelChanged bool
 
 	// ClientID is the login ID of the user
 	clientID string
@@ -45,6 +50,7 @@ type ClientSession struct {
 	remoteAddr string
 
 	lastActivity time.Time
+	lastError    error
 
 	// The associated hub client for pub/sub
 	hc hubclient.IHubClient
@@ -82,6 +88,11 @@ func (cs *ClientSession) Close() {
 	cs.hc.Disconnect()
 }
 
+// GetClientData returns the hiveoview data model of this client
+func (cs *ClientSession) GetClientData() ClientDataModel {
+	return cs.clientModel
+}
+
 // GetStatus returns the status of hub connection
 // This returns:
 //
@@ -105,6 +116,21 @@ func (cs *ClientSession) IsActive() bool {
 	status := cs.hc.GetStatus()
 	return status.ConnectionStatus == hubclient.Connected ||
 		status.ConnectionStatus == hubclient.Connecting
+}
+
+// LoadState loads the client session state containing dashboard and other model data,
+// and clear 'clientModelChanged' status
+func (cs *ClientSession) LoadState() error {
+	stateCl := stateclient.NewStateClient(cs.hc)
+	// split loads
+	found, err := stateCl.Get(HiveOViewDataKey, &cs.clientModel.Dashboards)
+	_ = found
+	if err != nil {
+		cs.lastError = err
+		return err
+	}
+	cs.clientModelChanged = false
+	return nil
 }
 
 // onConnectChange is invoked on disconnect/reconnect
@@ -198,6 +224,8 @@ func (cs *ClientSession) onMessage(msg *things.ThingMessage) (stat hubclient.Del
 	return stat.Completed(msg, nil, nil)
 }
 
+// RemoveSSEClient removes a disconnected client from the session
+// If the session state has changed then store the session data
 func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {
 	cs.mux.Lock()
 	defer cs.mux.Unlock()
@@ -207,6 +235,15 @@ func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {
 			cs.sseClients = append(cs.sseClients[:i], cs.sseClients[i+1:]...)
 			break
 		}
+	}
+	if cs.clientModelChanged {
+		err := cs.SaveState()
+		if err == nil {
+			cs.clientModelChanged = false
+		} else {
+			cs.lastError = err
+		}
+
 	}
 }
 
@@ -233,16 +270,29 @@ func (cs *ClientSession) ReplaceHubClient(newHC hubclient.IHubClient) {
 	cs.hc.SetMessageHandler(cs.onMessage)
 }
 
-// SaveState stores the current model to the server
+// SaveState stores the current client session model using the state service,
+// if 'clientModelChanged' is set.
+//
+// This returns an error if the state service is not reachable.
 func (cs *ClientSession) SaveState() error {
+	if !cs.clientModelChanged {
+		return nil
+	}
+
 	stateCl := stateclient.NewStateClient(cs.GetHubClient())
-	err := stateCl.Set(cs.clientID, &cs.clientModel)
-	//if err != nil {
-	//	slog.Error("unable to save session state",
-	//		slog.String("clientID", cs.clientID),
-	//		slog.String("err", err.Error()))
-	//}
+	err := stateCl.Set(HiveOViewDataKey, cs.clientModel.Dashboards)
+	if err != nil {
+		cs.lastError = err
+		return err
+	}
+	cs.clientModelChanged = false
 	return err
+}
+
+// SetClientData update the hiveoview data model of this client
+func (cs *ClientSession) SetClientData(data ClientDataModel) {
+	cs.clientModel = data
+	cs.clientModelChanged = true
 }
 
 func (cs *ClientSession) SendNotify(ntype NotifyType, text string) {
@@ -265,12 +315,19 @@ func (cs *ClientSession) SendSSE(event string, content string) {
 }
 
 // WriteError handles reporting of an error in this session
+//
 // This logs the error, sends a SSE notification.
+// If err is nil then write the httpCode result
 // If no httpCode is given then this renders an error message
 // If an httpCode is given then this returns the status code
 func (cs *ClientSession) WriteError(w http.ResponseWriter, err error, httpCode int) {
+	if err == nil {
+		w.WriteHeader(httpCode)
+		return
+	}
 	slog.Error(err.Error())
 	cs.SendNotify(NotifyError, err.Error())
+
 	if httpCode == 0 {
 		output := "Oops: " + err.Error()
 		// Write returns http OK
@@ -289,33 +346,31 @@ func (cs *ClientSession) WriteError(w http.ResponseWriter, err error, httpCode i
 // it should be obtained from the login authentication/refresh.
 func NewClientSession(sessionID string, hc hubclient.IHubClient, remoteAddr string) *ClientSession {
 	cs := ClientSession{
-		sessionID:  sessionID,
-		clientID:   hc.ClientID(),
-		remoteAddr: remoteAddr,
-		hc:         hc,
-		// TODO: assess need for buffering
+		sessionID:    sessionID,
+		clientID:     hc.ClientID(),
+		remoteAddr:   remoteAddr,
+		hc:           hc,
 		sseClients:   make([]chan SSEEvent, 0),
 		lastActivity: time.Now(),
+		clientModel: ClientDataModel{
+			Dashboards: make(map[string]DashboardDefinition, 0),
+		},
 	}
 	hc.SetMessageHandler(cs.onMessage)
 	hc.SetConnectHandler(cs.onConnectChange)
 
 	// restore the session data model
-	stateCl := stateclient.NewStateClient(hc)
-	found, err := stateCl.Get(hc.ClientID(), &cs.clientModel)
-	_ = found
-	_ = err
-	if len(cs.clientModel.Agents) > 0 {
-		// TODO: with digitwin it is no longer possible to subscribe to an agent, its all or nothing
-		//
-		//for _, agent := range cs.clientModel.Agents {
-		// subscribe to TD and value events
-		err = hc.Subscribe("", "")
-		//}
-	} else {
-		// no agent set so subscribe to all agents
-		err = hc.Subscribe("", "")
+	err := cs.LoadState()
+	if err != nil {
+		slog.Warn("unable to load client state from state service: ", err.Error())
+		cs.lastError = err
 	}
-	// subscribe to configured agents
+
+	// TODO: selectively subscribe instead of everything
+	err = hc.Subscribe("", "")
+	if err != nil {
+		cs.lastError = err
+	}
+
 	return &cs
 }

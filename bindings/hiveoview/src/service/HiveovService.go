@@ -122,9 +122,16 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 		r.Get("/app/appHead", app.RenderAppHead)
 		r.Get("/app/about", app.RenderAbout)
 
-		// dashboard
+		// dashboards
 		r.Get("/dashboard", dashboard.RenderDashboard)
-		r.Get("/dashboard/{page}", dashboard.RenderDashboard) // TODO: support multiple pages
+		r.Get("/dashboard/{page}", dashboard.RenderDashboard)
+		r.Get("/dashboard/{page}/confirmDeleteDashboard", dashboard.RenderConfirmDeleteDashboard)
+		r.Get("/dashboard/{page}/{widgetID}/editWidget", dashboard.RenderEditTile)
+		r.Get("/dashboard/{page}/{widgetID}/configDeleteWidget", dashboard.RenderConfirmDeleteTile)
+		r.Post("/dashboard/{page}", dashboard.HandleUpdateDashboard)
+		r.Post("/dashboard/{page}/{widgetID}", dashboard.HandleUpdateTile)
+		r.Delete("/dashboard/{page}", dashboard.HandleDeleteDashboard)
+		r.Delete("/dashboard/{page}/{widgetID}", dashboard.HandleDeleteTile)
 
 		// directory view and thing information
 		r.Get("/directory", directory.RenderDirectory)

@@ -102,7 +102,7 @@ func HandleTdd2Go(sourceDir string, outDirBase string) error {
 				typeName = sourceNoExt
 			}
 			outFile = path.Join(outDirBase, packageName, typeName+".go")
-			l := &utils.L{}
+			l := &utils.SL{}
 			idTitle := tdd2go.ToTitle(typeName)
 			l.Add("package " + packageName)
 			l.Add("")

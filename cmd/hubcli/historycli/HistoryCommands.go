@@ -121,7 +121,7 @@ func HandleListEvents(hc hubclient.IHubClient, dThingID string, name string, lim
 	fmt.Println("ThingID                        Timestamp                      Event                Value (truncated)")
 	fmt.Println("-----------                    ---------                      -----                ---------------- ")
 	count := 0
-	for tv, valid, err := cursor.First(); err == nil && valid && count < limit; tv, valid, err = cursor.Next() {
+	for tv, valid, err := cursor.Last(); err == nil && valid && count < limit; tv, valid, err = cursor.Prev() {
 		count++
 		value := tv.DataAsText()
 		// show number of properties

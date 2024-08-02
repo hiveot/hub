@@ -7,61 +7,67 @@ Hive of Things Viewer, written in golang, html/htmx, web components, and sse usi
 This viewer is in early development. The information below is subject to change.
 
 ### Phase 1: SSR infrastructure and session management [done]
-### Phase 2: Directory view
-10. Chart for history (web component)
-11. Show progress of action and config changes
-11. Re-usable DataSchema component/template with text,number,bool,enum,on-off [partial]
-12. Show history of events
-Todo at some point...
-- only show edit button if the user has permissions to edit
-- briefly fade in/out a highlight of a changed value
-- color value based on age - red is older than 3 days
-- sort on various columns
-- remember open/closed sections on page details (session storage) [done]
-- fix handling of server restart
-   * force logout after runtime restart (the sse reconnect will fail as users need to reauth)
-   * F5 has 2 notifications, success connected and unauthenticated, but doesn't return to login page.
-   * fails receiving zwavejs delivery status updates until zwavejs restart ??? 
-- disable actions and config for things that are not reachable because the agent is offline 
-  * api to get agent/thing status and Listen for the agent connect/disconnect event, sent by the runtime (todo)
+### Phase 2: Directory view [done]
+### Phase 3: Dashboard [in progress]
 
-### Phase 3: Dashboard
+1. Dashboard grid engine with persistent configuration [in progress]
+2. Edit 'Tile' dialog - edit title, tile type, sources
+2. Text tile with a single Thing value shown as text
+3. Table tile with one or more values from Things in a table
+4. Line chart tile with value history
+5. Gauge tile 
+2. Add/remove dashboards 
 
-1. Add/remove dashboard pages
-2. Tiling engine in HTML/HTMX with persistent configuration
-3. Value tile with a single Thing value with min/max
-4. Card tile with values from Things
-5. Line chart tile with value history
-6. Subscribe to Thing values from tiles
-7. Refresh tile
+### Phase 4: Improvements
+* Show progress of action in the same toast instead of a new toast
+* Re-usable DataSchema component/template with text,number,bool,enum,on-off
+* only show edit button if the user has permissions to edit
+* briefly fade in/out a highlight of a changed value (css transition?)
+* color value based on age - red is older than 3 days
+* force re-login when SSE receives unauthorized error (after server restart)
+* show value error status in tiles
+- disable actions and edits for things that are not reachable (agent offline) 
 
 ### Phase 4: iteration 2  (tbd, based on learnings)
 1. Layout improvements for small screens
-2. Migrate to digital twin model [done]
-3. Distinguish between basic and advanced attr/config/events - todo; how to describe this in the TD?
-4. Indication of pending configuration update (owserver updates can take 10 seconds)
+2. Distinguish between basic and advanced attr/config/events using @type
+   (TD does not support this facility, so use a config with @type values for basic values)
+3. Indication of pending configuration update (owserver updates can take 10 seconds)
 
 
 ## Objective
 
 Provide a reference implementation of a viewer on IoT data using the Hive Of Things backend. This includes a dashboard for presenting 'Thing' (device) outputs and controls for inputs.
 
-Use HTMX with bare minimum of javascript. Just HTML, HTMX, CSS, Golang and maybe a sprinkle of plain javascript as needed. No frameworks, no nodejs, no JS/TS/CSS compile step. Single binary for easy deployment.
+Use HTMX with bare minimum of javascript. Just HTML, HTMX, CSS, Golang and web components. No frameworks, no nodejs, no JS/TS/CSS compile step. Single binary for easy deployment. 
 
 ## Summary
 
 This service provides a web viewer for displaying IoT data.
 
-It primary views are login, directory and a live dashboard that updates as values change. The dashboard consists of
-tiles that present single or multiple values. Multiple presentations are available.
+It primary views are login, directory and one or more live dashboards that dynamically update as values change. The dashboard consists of tiles that present single or multiple values. Multiple dashboard pages can be added.
 
-The frontend is generated from HTML/CSS templates and uses HTMx for interactivity
-It presents a dashboard with tiles that can be configured to display 'thing' values.
-Each tile can present itself as a card or history graph using information from the directory and history service.
+The frontend is generated from HTML/CSS templates and uses HTMX for interactivity. It presents a directory and a dashboard with tiles that can be configured to display 'thing' values.
 
 ## Implementation
 
-This viewer is implemented using golang, chi, go html templates, htmx, picocss and a sprinkle of javascript where needed. No UI framework such as react, vue, or svelte is used in the creation of this viewer. Instead HTML is rendered server side using htmx and go templates, styled using picocss and served using chi router. 
+This viewer is implemented using golang, chi, go html templates, htmx, picocss and a sprinkle of javascript where needed. No UI framework such as react, vue, or svelte is used in the creation of this viewer. Instead HTML is rendered server side using htmx and go templates, styled using picocss and served using chi router. Web components are used for providing client side behavior.
+
+Dashboards:
+
+The dashboard consists of a collection of tiles arranged in a grid. Tiles can be added, removed, moved and resized.
+
+Each tile has a presentation type that determines if it is text, a table, graph or gauge. Additional types can be added easily. Types are mapped to a html template that is inserted in the grid.
+
+The tile editor constructs a html element from the configuration and stores this for rendering.
+
+Data can be provided to tiles in multiple ways:
+1. Statically during render. The tile contains all the data.
+2. Dynamically after render. The tile uses htmx hx-get to load the data when mounted to the DOM.
+3. Dynamically on sse events using htmx hx-trigger or sse-swap statements that are part of the tile.
+
+Dashboards are stored with layout and tile configuration. The layout is 
+
 
 ## Build & Installation
 

@@ -1,26 +1,103 @@
 <!--After an initial load without data, auto-reload when viewed. -->
-{{$trigger := "intersect once"}}
-{{if .Dashboard}}
-{{$trigger = "click"}}
-{{end}}
 
-<div class="dashboard container-fluid"
-     hx-get="/dashboard"
-     hx-trigger="{{$trigger}}"
-     hx-target="this"
-     hx-swap="outerHTML"
-     tabindex="1">
 
-    Welcome to the dashboard
-
-    {{if not .Dashboard2}}
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard.DashboardTemplateData*/ -}}
+{{if not .Dashboard}}
+<div  hx-trigger="intersect once"
+        hx-swap="outerHTML"
+        hx-get="">
+    <p>reloading page fragment...</p>
     <h-loading></h-loading>
+</div>
+
+{{else}}
+
+
+<main class="dashboard container-fluid" >
 
     <div>
-        <p>Placeholder for dashboard </p>
+    Welcome to the dashboard {{.Dashboard.Title}}
+        <button onClick="newTile()">New tile</button>
+        <button class="outline" style="border:none;
+							display:inline-flex; gap: 5px;
+							align-items: center; padding:0"
+                hx-trigger="click"
+                hx-get="/dashboard/{{.Dashboard.ID}}//editTile"
+                hx-target="#tileEditDialog" hx-swap="innerHTML"
+        >New tile</button>
+
+        <button onClick="grid.removeAll()"
+                hx-trigger="click"
+                hx-get="/dashboard/{{.Dashboard.ID}}/confirmDeleteDashboard"
+                hx-target="#confirmDeleteDashboard"
+                hx-swap="innerHTML"
+        >Delete Dashboard</button>
     </div>
-    {{end}}
-</div>
+
+    {{/* change event: When layout changes push the new layout to the server*/}}
+    <div class="grid-stack"
+         hx-trigger="change"
+         hx-post="/dashboard/{{.Dashboard.ID}}"
+         hx-vals='js:{layout: saveLayout()}'
+         hx-swap="none"
+    >
+        {{range .Dashboard.Tiles }}
+        <div class="grid-stack-item" gs-id="{{.ID}}">
+            <div class="grid-stack-item-content">
+                <main>
+                    <header class="tile-header h-row">
+                        <span></span>
+                        <div>{{.Title}}</div>
+{{/*                        <div class="h-grow"></div>*/}}
+                        <button slot="button" class="h-icon-button  outline"
+                        style="border:none">
+                            <iconify-icon icon="mdi:menu"></iconify-icon>
+                        </button>
+
+                    </header>
+                    <div class="tile-content">body of item 0</div>
+                </main>
+            </div>
+        </div>
+        {{end}}
+
+    </div>
+</main>
+<div id="tileEditDialog"></div>
+
+<script>
+
+    var grid;
+    startGridStack();
+
+    function startGridStack() {
+        // debugger;
+        var options = { // put in gridstack options here
+            float: false,
+            // handle: ".tile-header" // only allow dragging by the header
+        };
+        grid = GridStack.init(options)//.load(serializedData);
+
+        {{if .Dashboard.GridLayout}}
+        let layout = JSON.parse("{{.Dashboard.GridLayout}}");
+        grid.load(layout)
+        {{end}}
+    }
+
+    function saveLayout() {
+        let dashData = grid.save(saveContent=false)
+        let ser = JSON.stringify(dashData)
+        // debugger
+        return ser
+    }
+
+    function newTile() {
+        // todo: open editor
+        grid.addTile()
+    }
+
+</script>
+
 
 <style>
     .dashboard {
@@ -31,5 +108,37 @@
         flex-direction: column;
     }
 
+    .grid-stack {
+    }
+    .grid-stack-item {
+    }
+    .grid-stack-item-content {
+        /*color: #2c3e50;*/
+        text-align: center;
+        /*background-color: #18bc9c;*/
+        background-color: var(--pico-form-element-background-color);
+        border: gray 1px solid;
+        border-radius: 3px;
+    }
+
+    .tile-header {
+        background-color: var(--pico-background-color);
+        color: var(--pico-color);
+        /*background-color: var(--pico-form-element-background-color);*/
+        justify-content:space-between;
+        font-size: 1.1em;
+        min-height: 20px;
+        padding: 6px;
+        cursor:move;
+    }
+    .tile-content{
+        display:flex;
+        width:100%;
+        height:100%;
+        overflow:auto;
+        padding:0;
+    }
+
 </style>
 <!--end of dashboard-->
+{{end}}

@@ -1,0 +1,28 @@
+<!--Tile editor dialog-->
+
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard.EditTileTemplateData*/ -}}
+
+<h-modal show showClose showCancel showSubmit>
+		<article  style="min-width: 400px">
+				<header class="h-row-centered" style="height: 60px">
+						<h3>{{.Tile.Title}}</h3>
+				</header>
+			<main>
+				<form id="edit-tile-form">
+
+					<fieldset>
+						<label for="tile-id">Tile ID: </label>
+						<input id="tile-id" readonly placeholder="{{.Tile.ID}}"/>
+
+						<label for="title-id">Title: </label>
+						<input id="title-id" readonly placeholder="{{.Tile.Title}}"/>
+
+						<label for="type-id">Tile Type: </label>
+						<input id="type-id" readonly placeholder="{{.Tile.Type}}"/>
+
+
+					</fieldset>
+				</form>
+			</main>		</article>
+</h-modal>
+

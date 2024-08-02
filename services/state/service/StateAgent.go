@@ -45,8 +45,7 @@ func (agent *StateAgent) Get(msg *things.ThingMessage) (stat hubclient.DeliveryS
 	resp := stateapi.GetResp{}
 	err := msg.Decode(&args)
 	resp.Key = args.Key
-	resp.Value, err = agent.svc.Get(msg.SenderID, args.Key)
-	resp.Found = (err == nil)
+	resp.Value, resp.Found, err = agent.svc.Get(msg.SenderID, args.Key)
 	stat.Completed(msg, resp, err)
 	return stat
 }

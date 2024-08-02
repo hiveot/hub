@@ -12,7 +12,7 @@ import (
 //	l is the output lines with generated source code
 //	key is the field name of the dataschema
 //	ds is the dataschema to generate
-func GenDataSchemaFields(l *utils.L, key string, ds *things.DataSchema) {
+func GenDataSchemaFields(l *utils.SL, key string, ds *things.DataSchema) {
 	// get the list of attributes in this schema
 	//attrList := GetSchemaAttrs(key, ds, true)
 	// the top level attribute can be a single attribute or a list of properties
@@ -31,8 +31,8 @@ func GenDataSchemaFields(l *utils.L, key string, ds *things.DataSchema) {
 //
 //	attrMap contains a map of attribute keys with their description
 //
-// func GenSchemaAttr(l *utils.L, attrList []SchemaAttr) {
-func GenSchemaAttr(l *utils.L, attrMap map[string]*things.DataSchema) {
+// func GenSchemaAttr(l *utils.SL, attrList []SchemaAttr) {
+func GenSchemaAttr(l *utils.SL, attrMap map[string]*things.DataSchema) {
 
 	keys := utils.OrderedMapKeys(attrMap)
 	for _, key := range keys {

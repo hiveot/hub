@@ -13,7 +13,7 @@ import (
 // invoke the method using the provided messaging transport.
 //
 // The TD document must be a digital twin received version
-func GenServiceClient(l *utils.L, serviceTitle string, td *things.TD) {
+func GenServiceClient(l *utils.SL, serviceTitle string, td *things.TD) {
 
 	//l.Add("// %sClient client for talking to the '%s' service", serviceTitle, td.ID)
 	//l.Add("type %sClient struct {", serviceTitle)
@@ -50,7 +50,7 @@ func GenServiceClient(l *utils.L, serviceTitle string, td *things.TD) {
 //	serviceTitle  title-case thingID of the service without the agent prefix
 //	key with the service action method.
 //	action affordance describing the input and output parameters
-func GenActionMethod(l *utils.L, serviceTitle string, key string, action *things.ActionAffordance) {
+func GenActionMethod(l *utils.SL, serviceTitle string, key string, action *things.ActionAffordance) {
 	argsString := "hc hubclient.IHubClient"
 	respString := "err error"
 	invokeArgs := "nil"

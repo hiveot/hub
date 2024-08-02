@@ -6,6 +6,7 @@ import "./h-timechart.js";
 import "../webcomp/h-dark-toggle.js";
 import "../webcomp/h-device-icon.js";
 import "../webcomp/h-dropdown.js";
+import "../webcomp/h-gridlayout.js"
 import "../webcomp/h-loading.js";
 import "../webcomp/h-modal.js";
 import "../webcomp/h-toast.js"

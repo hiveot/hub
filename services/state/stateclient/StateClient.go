@@ -34,16 +34,13 @@ func (cl *StateClient) Get(key string, record interface{}) (found bool, err erro
 		return false, err
 	}
 	if resp.Found {
-		// TODO: find a more efficient way to convert the type
-		//record = resp.Value
-		tmpJSON, _ := json.Marshal(resp.Value)
-		err = json.Unmarshal(tmpJSON, record)
+		err = json.Unmarshal([]byte(resp.Value), record)
 	}
 	return resp.Found, err
 }
 
-// GetMultiple reads multiple records with the given keys.
-func (cl *StateClient) GetMultiple(keys []string) (values map[string]any, err error) {
+// GetMultiple reads multiple serialized records with the given keys.
+func (cl *StateClient) GetMultiple(keys []string) (values map[string]string, err error) {
 
 	req := stateapi.GetMultipleArgs{Keys: keys}
 	resp := stateapi.GetMultipleResp{}
@@ -54,15 +51,16 @@ func (cl *StateClient) GetMultiple(keys []string) (values map[string]any, err er
 	return resp.KV, err
 }
 
-// Set stores a record by the given key
-func (cl *StateClient) Set(key string, value interface{}) error {
-	req := stateapi.SetArgs{Key: key, Value: value}
+// Set serializes and stores a record by the given key
+func (cl *StateClient) Set(key string, record interface{}) error {
+	data, _ := json.Marshal(record)
+	req := stateapi.SetArgs{Key: key, Value: string(data)}
 	err := cl.hc.Rpc(cl.dThingID, stateapi.SetMethod, &req, nil)
 	return err
 }
 
-// SetMultiple writes multiple record
-func (cl *StateClient) SetMultiple(kv map[string]any) error {
+// SetMultiple writes multiple serialized records
+func (cl *StateClient) SetMultiple(kv map[string]string) error {
 	req := stateapi.SetMultipleArgs{KV: kv}
 	err := cl.hc.Rpc(cl.dThingID, stateapi.SetMultipleMethod, &req, nil)
 	return err

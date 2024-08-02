@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/buckets"
@@ -28,39 +27,41 @@ func (svc *StateService) Delete(clientID string, key string) (err error) {
 	return err
 }
 
-func (svc *StateService) Get(clientID string, key string) (value any, err error) {
+func (svc *StateService) Get(clientID string, key string) (value string, found bool, err error) {
 	bucket := svc.store.GetBucket(clientID)
 	data, err := bucket.Get(key)
 	// bucket returns an error if key is not found.
 	if err == nil {
-		_ = bucket.Close()
-		err = json.Unmarshal(data, &value)
+		value = string(data)
+		found = true
+	} else {
+		// this key doesn't exist yet in the bucket. This is okay.
+		err = nil
+		found = false
 	}
+	_ = bucket.Close()
 	return
 }
 
-func (svc *StateService) GetMultiple(clientID string, keys []string) (map[string]any, error) {
+func (svc *StateService) GetMultiple(clientID string, keys []string) (map[string]string, error) {
 
 	bucket := svc.store.GetBucket(clientID)
 	kvRaw, err := bucket.GetMultiple(keys)
 	err = bucket.Close()
 	// convert values back to string
-	kvMap := make(map[string]any)
+	kvMap := make(map[string]string)
 	for k, v := range kvRaw {
-		var data any
-		err = json.Unmarshal(v, &data)
-		kvMap[k] = data
+		kvMap[k] = string(v)
 	}
 	return kvMap, err
 }
 
-func (svc *StateService) Set(clientID string, key string, value any) (err error) {
+func (svc *StateService) Set(clientID string, key string, value string) (err error) {
 
 	slog.Info("Set", slog.String("key", key))
 	bucket := svc.store.GetBucket(clientID)
-	data, _ := json.Marshal(value)
 	// bucket returns an error if key is invalid
-	err = bucket.Set(key, data)
+	err = bucket.Set(key, []byte(value))
 	if err != nil {
 		slog.Warn("Set; Invalid key", slog.String("key", key))
 	}
@@ -68,13 +69,12 @@ func (svc *StateService) Set(clientID string, key string, value any) (err error)
 	return err
 }
 
-func (svc *StateService) SetMultiple(clientID string, kv map[string]any) (err error) {
+func (svc *StateService) SetMultiple(clientID string, kv map[string]string) (err error) {
 	slog.Info("SetMultiple", slog.Int("count", len(kv)))
 	// convert to string :(
 	storage := make(map[string][]byte)
 	for k, v := range kv {
-		data, _ := json.Marshal(v)
-		storage[k] = data
+		storage[k] = []byte(v)
 	}
 
 	bucket := svc.store.GetBucket(clientID)

@@ -55,6 +55,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		return err
 	}
 	r.Middleware.AddMiddlewareHandler(r.AuthzSvc.HasPubPermission)
+	r.Middleware.AddMiddlewareHandler(middleware.EscapeIDKey)
 
 	// the protocol manager receives messages from clients (source) and
 	// sends messages to connected clients (sink)

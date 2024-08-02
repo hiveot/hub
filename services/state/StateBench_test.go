@@ -21,7 +21,7 @@ func addRecords(stateCl *stateclient.StateClient, count int) {
 	// Don't exceed the max transaction size
 	for iBatch := 0; iBatch < nrBatches; iBatch++ {
 
-		docs := make(map[string]any)
+		docs := make(map[string]string)
 		for i := 0; i < batchSize && count > 0; i++ {
 			k := randstr.String(12)
 			v := randstr.String(100)
@@ -132,7 +132,7 @@ func BenchmarkSetMultiple(b *testing.B) {
 		addRecords(stateCl, tbl.dataSize)
 
 		// build a set of data to test with
-		multiple := make(map[string]any)
+		multiple := make(map[string]string)
 		_ = multiple
 		for i := 0; i < tbl.nrSets; i++ {
 			td := testData[i]

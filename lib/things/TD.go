@@ -1,10 +1,12 @@
 package things
 
 import (
+	"encoding/json"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/utils"
+	"strings"
 	"sync"
 	"time"
 )
@@ -271,6 +273,31 @@ func (tdoc *TD) AsMap() map[string]interface{} {
 	return asMap
 }
 
+// EscapeKeys replace spaces in property, event and action keys with dashes
+func (tdoc *TD) EscapeKeys() {
+	// NOTE: this does not modify links and refs. Those must be valid.
+	newProps := make(map[string]*PropertyAffordance)
+	for k, v := range tdoc.Properties {
+		kesc := strings.ReplaceAll(k, " ", "-")
+		newProps[kesc] = v
+	}
+	tdoc.Properties = newProps
+
+	newEvents := make(map[string]*EventAffordance)
+	for k, v := range tdoc.Events {
+		kesc := strings.ReplaceAll(k, " ", "-")
+		newEvents[kesc] = v
+	}
+	tdoc.Events = newEvents
+
+	newActions := make(map[string]*ActionAffordance)
+	for k, v := range tdoc.Actions {
+		kesc := strings.ReplaceAll(k, " ", "-")
+		newActions[kesc] = v
+	}
+	tdoc.Actions = newActions
+}
+
 // tbd json-ld parsers:
 // Most popular; https://github.com/xeipuuv/gojsonschema
 // Other:  https://github.com/piprate/json-gold
@@ -371,12 +398,21 @@ func (tdoc *TD) GetID() string {
 	return tdoc.ID
 }
 
+// LoadFromJSON loads this TD from the given JSON encoded string
+// This also ensures that the ID and keys are path valid
+func (tdoc *TD) LoadFromJSON(tddJSON string) error {
+	err := json.Unmarshal([]byte(tddJSON), &tdoc)
+	tdoc.EscapeKeys()
+	return err
+}
+
 // UpdateAction adds a new or replaces an existing action affordance of actionID. Intended for creating TDs.
 //
 //	name is the name under which to store the action affordance.
 //
 // This returns the added action affordance
 func (tdoc *TD) UpdateAction(name string, affordance *ActionAffordance) *ActionAffordance {
+	name = strings.ReplaceAll(name, " ", "-")
 	tdoc.updateMutex.Lock()
 	defer tdoc.updateMutex.Unlock()
 	tdoc.Actions[name] = affordance
@@ -389,6 +425,7 @@ func (tdoc *TD) UpdateAction(name string, affordance *ActionAffordance) *ActionA
 //
 // This returns the added event affordance.
 func (tdoc *TD) UpdateEvent(name string, affordance *EventAffordance) *EventAffordance {
+	name = strings.ReplaceAll(name, " ", "-")
 	tdoc.updateMutex.Lock()
 	defer tdoc.updateMutex.Unlock()
 	tdoc.Events[name] = affordance
@@ -410,6 +447,7 @@ func (tdoc *TD) UpdateForms(formList []Form) {
 //
 // This returns the added affordance to support chaining
 func (tdoc *TD) UpdateProperty(name string, affordance *PropertyAffordance) *PropertyAffordance {
+	name = strings.ReplaceAll(name, " ", "-")
 	tdoc.updateMutex.Lock()
 	defer tdoc.updateMutex.Unlock()
 	tdoc.Properties[name] = affordance
@@ -451,6 +489,7 @@ func (tdoc *TD) UpdateTitleDescription(title string, description string) {
 //		     properties: {name: TDProperty, ...}
 //		}
 func NewTD(thingID string, title string, deviceType string) *TD {
+	thingID = strings.ReplaceAll(thingID, " ", "-")
 
 	td := TD{
 		AtContext: []any{

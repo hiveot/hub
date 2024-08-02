@@ -7,7 +7,7 @@ import (
 
 // GenActionStructs generates argument and response structs for actions defined in the TD.
 // This returns and array of lines of code or an error
-func GenActionStructs(l *utils.L, serviceTitle string, td *things.TD) {
+func GenActionStructs(l *utils.SL, serviceTitle string, td *things.TD) {
 	l.Indent = 0
 	l.Add("//--- Argument and Response struct for action of Thing '%s' ---", td.ID)
 	l.Add("")
@@ -27,7 +27,7 @@ func GenActionStructs(l *utils.L, serviceTitle string, td *things.TD) {
 
 // GenActionArgs generates the arguments struct of the given action, if any
 // Argument structs are named the '{key}'Args where key is modified to remove invalid chars
-func GenActionArgs(l *utils.L, serviceTitle string, key string, action *things.ActionAffordance) {
+func GenActionArgs(l *utils.SL, serviceTitle string, key string, action *things.ActionAffordance) {
 
 	// no need if the input is not a struct
 	if action.Input == nil || action.Input.Type != "object" {
@@ -57,7 +57,7 @@ func GenActionArgs(l *utils.L, serviceTitle string, key string, action *things.A
 
 // GenActionResp generates the response struct of the given action, if any.
 // Response structs are named the {key}Resp where key is modified to remove invalid chars
-func GenActionResp(l *utils.L, serviceTitle string, key string, action *things.ActionAffordance) {
+func GenActionResp(l *utils.SL, serviceTitle string, key string, action *things.ActionAffordance) {
 	// no need if the output is not a struct
 	if action.Output == nil || action.Output.Type != "object" {
 		return

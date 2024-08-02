@@ -1,35 +1,34 @@
-// This is a simple time series chart component wrapper around chartjs.
-//
-// Intended to easily present sensor data as a line, area or bar graph without
-// having to wade through the expansive chartjs documentation.
-//
-// The default graph type is line, but setting a data series can overwrite this
-//
-//
-// properties:
-//  chart-type: line
-//  chart-title: brand title text
-//  timestamp: end time of the history
-//  duration: time window to show in seconds
-//
+/**
+ * h-timechart.js is a simple time series chart component wrapper around chartjs.
+ *
+ * Intended to easily present sensor data as a line, area or bar graph without
+ * having to wade through the expansive chartjs documentation.
+ *
+ * The default graph type is line, but setting a data series can overwrite this
+ *
+ * properties:
+ *  chart-type: line
+ *  chart-title: brand title text
+ *  timestamp: end time of the history
+ *  duration: time window to show in seconds
+ */
 
 // Note: chartjs requires import of a date library. date-fns or luxon will do
 // import  '../static/chartjs-4.4.3.js'
-// import  '../static/chartjs-4.4.1.umd.js'
-// import  '../static/chartjs-adapter-date-fns.bundle-v3.0.0.min.js'
+// import  '../static/luxon-3.4.4.min.js'
 
 export const PropChartType = "chart-type"
 export const PropChartTitle = "chart-title"
 export const PropTimestamp = "timestamp"
 export const PropDuration = "duration"
+export const PropStepped = "stepped"
 
 
 // https://www.chartjs.org/docs/latest/configuration/responsive.html
 const template = document.createElement('template')
 template.innerHTML = `
     <div  style="position:relative; width:100%; height:inherit; 
-    display:flex; align-items:center; justify-content:center" 
-     
+        display:flex; align-items:center; justify-content:center" 
     >
         <div id="_noDataText" style="font-style: italic; font-size: large; color: gray; font-weight: bold;">
             No data
@@ -174,8 +173,9 @@ export class HTimechart extends HTMLElement {
         if (dataEl) {
             let tableData = JSON.parse(dataEl.innerText)
             let tableTitle = dataEl.getAttribute('title')
+            let stepped = dataEl.getAttribute(PropStepped)
             if (tableData) {
-                this.setTimeSeries(0, tableTitle,tableData)
+                this.setTimeSeries(0, tableTitle, tableData, stepped)
             }
         }
         this.render();
@@ -243,25 +243,15 @@ export class HTimechart extends HTMLElement {
         // NOTE2: this expects the time range to be newest to oldest, the further in the older it gets
         // FIXME: the intended end time is needed in case of missing data
         this.config.data.datasets[nr] = ds;
-        // let startItem = ds.data.at(-1)
-        // let startTime = luxon.DateTime.fromISO(startItem["x"])
         let endTime = luxon.DateTime.fromISO(this.timestamp)
         let startTime = endTime.plus(this.duration*1000)
 
         this.config.options.scales.x.min = startTime.toISO();
         this.config.options.scales.x.max = endTime.toISO();
 
+        // if there is no data then show the No-Data element
         if (ds.data.length > 0) {
             this.noDataEl.style.display = "none"
-            // let endItem = ds.data.at(0)
-            // let endTime = luxon.DateTime.fromISO(endItem["x"])
-            //
-            // let newStartTime = endTime.plus({hours: -24, minutes: -30}).toISO()
-            // let newEndTime = luxon.DateTime.fromISO(endItem["x"]).plus({minute: 30}).toISO()
-            //
-            // // modify the start time so its exactly 24 hours before the end time
-            // this.config.options.scales.x.min = newStartTime;
-            // this.config.options.scales.x.max = newEndTime;
         } else {
             this.noDataEl.style.display = "flex"
         }
@@ -270,17 +260,23 @@ export class HTimechart extends HTMLElement {
     // Set a new time series to display.
     // This is a simple helper function for common use-case.
     //
-    // call this.chart.update() after render;
+    // call 'this.chart.update()' after render;
     //
     // @param nr is the series index, 0 for default, 1... for multiple series
     // @param label is the label of this series
     // @param timePoints is an array of: {x:timestamp, y:value} in reverse order (newest first)
-    setTimeSeries = (nr, label, timePoints) => {
+    // @param stepped to show a stepped graph (boolean)
+    setTimeSeries = (nr, label, timePoints, stepped) => {
         // construct a replacement dataset
+        console.log("setTimeSeries", timePoints.length, "items", "label=",label)
         let ds = {
             // label: label,
             data: timePoints,
             borderWidth: 1
+        }
+        if (stepped) {
+            ds.stepped = "after"
+            ds.fill = false
         }
         if (label) {
             ds.label = label;

@@ -13,6 +13,7 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -22,7 +23,7 @@ import (
 const addRowTemplate = `
 	<li>
  		<div>%s</div>
-		<div>%v</div>
+		<div>%v %s</div>
 	</li>
 `
 
@@ -32,29 +33,40 @@ type HistorySourceData struct {
 	ThingID    string
 	Title      string // allow override to data description
 	Key        string
-	DataSchema *things.DataSchema // dataschema of event/property key
+	DataSchema things.DataSchema // dataschema of event/property key
 
 	// history information
 	Timestamp      time.Time
 	TimestampStr   string
 	DurationSec    int
 	Values         []*things.ThingMessage
-	Unit           string
 	ItemsRemaining bool // for paging, if supported
 }
 
 type HistoryDataTable struct {
 	X string `json:"x"`
-	Y string `json:"y"`
+	Y any    `json:"y"`
 }
 
 // AsJSON returns the values as a json string
+// Booleans are converted to 0 and 1
 func (ht HistorySourceData) AsJSON() string {
 	dataList := []HistoryDataTable{}
 
 	for _, m := range ht.Values {
+		yValue := m.Data
+		if ht.DataSchema.Type == vocab.WoTDataTypeBool {
+			boolValue, _ := strconv.ParseBool(m.DataAsText())
+			yValue = 0
+			if boolValue {
+				yValue = 1
+			}
+
+		}
+		//dataList = append(dataList,
+		//	HistoryDataTable{X: m.Created, Y: m.DataAsText()})
 		dataList = append(dataList,
-			HistoryDataTable{X: m.Created, Y: m.DataAsText()})
+			HistoryDataTable{X: m.Created, Y: yValue})
 	}
 	dataJSON, _ := json.Marshal(dataList)
 	return string(dataJSON)
@@ -102,22 +114,22 @@ func NewHistorySourceData(hc hubclient.IHubClient,
 		Timestamp:    timestamp,
 		TimestampStr: timestamp.Format(utils.RFC3339Milli),
 		DurationSec:  duration,
-		//DataSchema:     nil,
-		Unit:           "",
+		//DataSchema:     nil,  // see below
 		Values:         nil,
 		ItemsRemaining: false,
 	}
 	evAff := td.GetEvent(key)
 	if evAff != nil {
-		hs.DataSchema = evAff.Data
+		hs.DataSchema = *evAff.Data
+		hs.Title = td.Title + ", " + evAff.Title
+		hs.DataSchema.Title = evAff.Title
 	} else {
 		propAff := td.GetProperty(key)
 		if propAff != nil {
-			hs.DataSchema = &propAff.DataSchema
+			hs.DataSchema = propAff.DataSchema
+			hs.Title = td.Title + ", " + propAff.Title
+			hs.DataSchema.Title = propAff.Title
 		}
-	}
-	if hs.DataSchema != nil {
-		hs.Unit = hs.DataSchema.UnitSymbol()
 	}
 
 	limit := 1000
@@ -160,8 +172,9 @@ func RenderHistoryLatest(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		tm := evmap[key]
 		if tm != nil {
+			// TODO: get unit symbol
 			fragment := fmt.Sprintf(addRowTemplate,
-				tm.GetUpdated("WT"), tm.Data)
+				tm.GetUpdated("WT"), tm.Data, "")
 
 			_, _ = w.Write([]byte(fragment))
 			return

@@ -3,6 +3,7 @@ package things_test
 import (
 	vocab2 "github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/things"
+	"strings"
 	"testing"
 	"time"
 
@@ -78,7 +79,6 @@ func TestMissingAffordance(t *testing.T) {
 	ev := tdoc.GetEvent("event1")
 	assert.Nil(t, ev)
 }
-
 func TestAddProp(t *testing.T) {
 	thingID := "urn:thing1"
 	tdoc := things.NewTD(thingID, "test TD", vocab2.ThingSensor)
@@ -90,6 +90,27 @@ func TestAddProp(t *testing.T) {
 
 	prop := tdoc.GetProperty("prop1")
 	assert.NotNil(t, prop)
+	time.Sleep(time.Millisecond)
+	prop = tdoc.GetProperty("prop2")
+	assert.NotNil(t, prop)
+}
+
+// test that IDs with spaces are escaped
+func TestAddPropBadIDs(t *testing.T) {
+	thingID := "urn:thing 1"
+	propID := "prop 1"
+	tdoc := things.NewTD(thingID, "test TD", vocab2.ThingSensor)
+	tdoc.AddProperty(propID, "", "test property", vocab2.WoTDataTypeBool)
+
+	go func() {
+		tdoc.AddProperty("prop2", "", "test property2", vocab2.WoTDataTypeString)
+	}()
+
+	prop := tdoc.GetProperty(propID)
+	assert.Nil(t, prop)
+	prop = tdoc.GetProperty(strings.ReplaceAll(propID, " ", "-"))
+	assert.NotNil(t, prop)
+
 	time.Sleep(time.Millisecond)
 	prop = tdoc.GetProperty("prop2")
 	assert.NotNil(t, prop)

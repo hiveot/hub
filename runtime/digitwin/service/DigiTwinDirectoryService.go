@@ -11,6 +11,7 @@ import (
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
+	"strings"
 	"sync"
 )
 
@@ -48,51 +49,6 @@ func (svc *DigitwinDirectoryService) HandleTDEvent(msg *things.ThingMessage) (st
 	stat.Completed(msg, nil, err)
 	return stat
 }
-
-// HandleTDEvent receives and stores a TD from an IoT agent or service after upgrading it
-// to the digital twin version including Forms for protocol bindings.
-//
-//	msg is the thing message containing the JSON encoded TD.
-//	tb is the transport binding whose protocols to add to the td, or nil when no protocols to add
-//func (svc *DigitwinDirectoryService) HandleTDEvent(
-//	msg *things.ThingMessage, tb api.ITransportBinding) (stat hubclient.DeliveryStatus) {
-//	var err error
-//
-//	// 1: create the digitwin ThingID for this TD
-//	// events use 'agent' thingIDs, only known to agents.
-//	// Digitwin adds the "dtw:{agentID}:" prefix, as the event now belongs to the virtual digital twin.
-//	dtThingID := things.MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
-//
-//	// 2: parse the TD json
-//	td := things.TD{}
-//	// we know the argument is a string with TD document text. It can be immediately converted to TD object
-//	tdJSON, ok := msg.Data.(string)
-//	if !ok {
-//		err = errors.New("HandleTDEvent: Message does not contain the TD in JSON format")
-//	} else {
-//		err = json.Unmarshal([]byte(tdJSON), &td)
-//	}
-//	// 3: Upgrade the forms
-//	if err == nil && tb != nil {
-//		td.ID = dtThingID
-//		tb.AddTDForms(&td)
-//	}
-//
-//	// 4: store the digitwin TD in the directory
-//	if err == nil {
-//		tddjson, _ := json.Marshal(&td)
-//		err = svc.updateThing(msg.SenderID, dtThingID, string(tddjson))
-//	}
-//
-//	if err != nil {
-//		stat.Error = fmt.Sprintf(
-//			"StoreEvent. Failed updating TD of Agent/Thing '%s/%s': %s",
-//			msg.SenderID, msg.ThingID, err.Error())
-//		slog.Error(stat.Error)
-//	}
-//	stat.Completed(msg, nil, err)
-//	return stat
-//}
 
 // LoadCacheFromStore loads the cache from store into memory
 func (svc *DigitwinDirectoryService) LoadCacheFromStore() error {
@@ -242,6 +198,7 @@ func (svc *DigitwinDirectoryService) updateThing(
 
 // UpdateTD handles the action to update a TD in the directory. This upgrades the TD
 // to the digital twin version including Forms for protocol bindings.
+// This also replaces spaces in thingID and keys with dashes
 //
 //	senderID is the agent and owner of the TD
 //	tddjson is the json encoded TD
@@ -251,12 +208,14 @@ func (svc *DigitwinDirectoryService) UpdateTD(senderID string, tddjson string) e
 	// 1: parse the TD json
 	td := things.TD{}
 	// we know the argument is a string with TD document text. It can be immediately converted to TD object
-	err = json.Unmarshal([]byte(tddjson), &td)
+	err = td.LoadFromJSON(tddjson)
+
 	if err != nil {
 		err = errors.New("UpdateTD: Message does not contain the TD in JSON format")
 	} else {
-		err = json.Unmarshal([]byte(tddjson), &td)
+		td.ID = strings.ReplaceAll(td.ID, " ", "-")
 	}
+
 	if err != nil {
 		return err
 	}
@@ -266,6 +225,9 @@ func (svc *DigitwinDirectoryService) UpdateTD(senderID string, tddjson string) e
 	// Digitwin adds the "dtw:{agentID}:" prefix, as the event now belongs to the virtual digital twin.
 	dtThingID := things.MakeDigiTwinThingID(senderID, td.ID)
 	td.ID = dtThingID
+
+	// 2: modify the TD to escape all keys as they are used in paths
+	td.EscapeKeys()
 
 	// 3: Upgrade the forms with the transports
 	if svc.tb != nil {
