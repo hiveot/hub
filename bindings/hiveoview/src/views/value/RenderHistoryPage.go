@@ -1,4 +1,4 @@
-package history
+package value
 
 import (
 	"github.com/araddon/dateparse"
@@ -12,25 +12,7 @@ import (
 	"time"
 )
 
-const HistoryPageTemplate = "historyPage.gohtml"
-
-// ReadHistoryData reads the history of a thing event
-// This returns a list of event messages in 'latest-first sort order'
-//
-//	timestamp is the start time to search at
-//	durationSec is positive to search forward and negative to search backwards
-//func ReadHistoryData(hc hubclient.IHubClient, thingID string, key string,
-//	timestamp time.Time, durationSec int) (items []*things.ThingMessage, itemsRemaining bool, err error) {
-//
-//	limit := 1000
-//	items = make([]*things.ThingMessage, 0)
-//	var batch []*things.ThingMessage
-//
-//	hist := historyclient.NewReadHistoryClient(hc)
-//	batch, itemsRemaining, err = hist.ReadHistory(thingID, key, timestamp, durationSec, limit)
-//	items = append(items, batch...)
-//	return items, itemsRemaining, nil
-//}
+const RenderHistoryTemplate = "RenderHistoryPage.gohtml"
 
 // RenderHistoryPage renders a table with historical values
 // URL parameters:
@@ -67,7 +49,7 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := comps.NewHistorySourceData(
+	data, err := comps.NewHistoryTemplateData(
 		hc, td, key, timestamp, int(durationSec))
 
 	if err != nil {
@@ -76,5 +58,5 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// full render or fragment render
-	app.RenderAppOrFragment(w, r, HistoryPageTemplate, data)
+	app.RenderAppOrFragment(w, r, RenderHistoryTemplate, data)
 }

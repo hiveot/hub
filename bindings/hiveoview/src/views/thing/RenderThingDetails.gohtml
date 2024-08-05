@@ -16,7 +16,7 @@
 
 <article
 		hx-trigger="sse:{{.ThingID}}"
-		hx-get="/thing/details/{{.ThingID}}"
+		hx-get=""
 		hx-swap="innerHTML"
 		hx-target="#detailsPage"
 		class="h-panel container-fluid">
@@ -29,7 +29,7 @@
 				<!--=== button to delete this TD ===-->
 				<button title="Delete TD" slot="button" class="h-icon-button  outline"
 				        hx-trigger="click"
-				        hx-get="/thing/confirmDeleteTDDialog/{{.ThingID}}"
+				        hx-get="{{.RenderConfirmDeleteTDPath}}"
 								hx-target="#confirmDialog"
 								hx-swap="innerHTML"
 				>

@@ -1,6 +1,6 @@
 <!--Tile editor dialog-->
 
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard.EditTileTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.ConfigTileTemplateData*/ -}}
 
 <h-modal show showClose showCancel showSubmit>
 		<article  style="min-width: 400px">
@@ -23,6 +23,21 @@
 
 					</fieldset>
 				</form>
-			</main>		</article>
+			</main>
+		</article>
+
+	<footer class="h-row" style="width:100%">
+      {{- /*close-modal is handled by h-modal component*/ -}}
+		<button id="cancelBtn"
+		        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+		        class="secondary">Cancel
+		</button>
+		<button type="submit"
+		        hx-delete="{{.SubmitConfigTilePath}}"
+		        hx-swap="none"
+		        hx-on::after-request="onSubmitCompleted(event, this)"
+		        style="margin-bottom: 0">Submit
+		</button>
+	</footer>
 </h-modal>
 

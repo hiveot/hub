@@ -1,4 +1,4 @@
-package thing
+package directory
 
 import (
 	"encoding/json"
@@ -6,51 +6,20 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
-	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/lib/hubclient"
-	thing "github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 	"net/http"
 )
 
-type ConfirmDeleteTDTemplateData struct {
-	ThingID string
-	TD      *thing.TD
-}
+// redirect path after deleting the TD
+const RenderDirectoryPath = "/directory"
 
-func RenderConfirmDeleteTDDialog(w http.ResponseWriter, r *http.Request) {
-	thingID := chi.URLParam(r, "thingID")
-	td := thing.TD{}
-	tdJson := ""
-
-	// Read the TD being displayed and its latest values
-	mySession, hc, err := session.GetSessionFromContext(r)
-	if err != nil {
-		// TODO: redirect to login?
-		mySession.WriteError(w, err, http.StatusBadRequest)
-		return
-	}
-
-	tdJson, err = digitwin.DirectoryReadTD(hc, thingID)
-	if err == nil {
-		err = json.Unmarshal([]byte(tdJson), &td)
-	}
-	if err != nil {
-		mySession.WriteError(w, err, http.StatusBadRequest)
-		return
-	}
-	data := ConfirmDeleteTDTemplateData{
-		ThingID: thingID,
-		TD:      &td,
-	}
-	app.RenderAppOrFragment(w, r, "confirmDeleteTDDialog.gohtml", data)
-}
-
-// PostDeleteTD handles removal of a thing TD document
-func PostDeleteTD(w http.ResponseWriter, r *http.Request) {
+// SubmitDeleteTD handles removal of a thing TD document
+func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	tdJSON := ""
-	td := thing.TD{}
+	td := things.TD{}
 	var hc hubclient.IHubClient
 
 	// get the hub client connection and read the existing TD
@@ -85,6 +54,6 @@ func PostDeleteTD(w http.ResponseWriter, r *http.Request) {
 	// http.Redirect doesn't work but using HX-Redirect header does.
 	// see also: https://www.reddit.com/r/htmx/comments/188oqx5/htmx_form_submission_issue_redirecting_on_success/
 	//http.Redirect(w, r, "/app/directory", http.StatusMovedPermanently)
-	w.Header().Add("HX-Redirect", "/app/directory")
+	w.Header().Add("HX-Redirect", RenderDirectoryPath)
 	w.WriteHeader(http.StatusOK)
 }

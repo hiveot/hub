@@ -57,9 +57,9 @@ func GetConnectStatus(r *http.Request) *ConnectStatus {
 	return status
 }
 
-// RenderConnectStatus renders the presentation of the client connection to the Hub message bus.
+// RenderConnectionStatus renders the presentation of the client connection to the Hub message bus.
 // This only renders the fragment. On a full page refresh this renders inside the base.html
-func RenderConnectStatus(w http.ResponseWriter, r *http.Request) {
+func RenderConnectionStatus(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{}
 	status := GetConnectStatus(r)
 	data["Status"] = status

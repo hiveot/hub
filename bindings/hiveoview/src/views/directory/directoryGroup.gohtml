@@ -30,8 +30,8 @@
 
             {{/*Show ThingID on big screens */}}
 						<div class="h-show-xl">
-							<a href="/thing/details/{{.ID}}"
-							   hx-get="/thing/details/{{.ID}}"
+							<a href="/thing/{{.ID}}/details"
+							   hx-get="/thing/{{.ID}}/details"
 						     hx-target="#detailsPage"
 						     hx-swap="innerHTML"
 						     hx-on::after-request="window.navigateTo(event,this.href)"
@@ -41,8 +41,8 @@
 
 	          {{/*Title*/}}
 						<div>
-							<a href="/thing/details/{{.ID}}"
-							   hx-get="/thing/details/{{.ID}}"
+							<a href="/thing/{{.ID}}/details"
+							   hx-get="/thing/{{.ID}}/details"
 							   hx-target="#detailsPage"
 							   hx-swap="innerHTML"
 							   hx-on::after-request="window.navigateTo(event,this.href)"

@@ -20,10 +20,11 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/comps"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/directory"
-	"github.com/hiveot/hub/bindings/hiveoview/src/views/history"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/login"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/status"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/thing"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/tile"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/value"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/tlsserver"
 	"log/slog"
@@ -112,6 +113,7 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 	})
 
 	//--- private routes that requires a valid session
+	// NOTE: these paths must match those defined in the render functions
 	router.Group(func(r chi.Router) {
 		// these routes must be authenticated otherwise redirect to /login
 		r.Use(session.AddSessionToContext())
@@ -122,42 +124,48 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 		r.Get("/app/appHead", app.RenderAppHead)
 		r.Get("/app/about", app.RenderAbout)
 
-		// dashboards
-		r.Get("/dashboard", dashboard.RenderDashboard)
-		r.Get("/dashboard/{page}", dashboard.RenderDashboard)
-		r.Get("/dashboard/{page}/confirmDeleteDashboard", dashboard.RenderConfirmDeleteDashboard)
-		r.Get("/dashboard/{page}/{widgetID}/editWidget", dashboard.RenderEditTile)
-		r.Get("/dashboard/{page}/{widgetID}/configDeleteWidget", dashboard.RenderConfirmDeleteTile)
-		r.Post("/dashboard/{page}", dashboard.HandleUpdateDashboard)
-		r.Post("/dashboard/{page}/{widgetID}", dashboard.HandleUpdateTile)
-		r.Delete("/dashboard/{page}", dashboard.HandleDeleteDashboard)
-		r.Delete("/dashboard/{page}/{widgetID}", dashboard.HandleDeleteTile)
+		// dashboard endpoints
+		r.Get("/dashboard", dashboard.RenderDashboardPage)
+		r.Get("/dashboard/{dashboardID}", dashboard.RenderDashboardPage)
+		r.Get("/dashboard/{dashboardID}/confirmDelete", dashboard.RenderConfirmDeleteDashboard)
+		r.Get("/dashboard/{dashboardID}/config", dashboard.RenderConfigDashboard)
+		r.Post("/dashboard/{dashboardID}/layout", dashboard.SubmitDashboardLayout)
+		r.Post("/dashboard/{dashboardID}/config", dashboard.SubmitConfigDashboard)
+		r.Delete("/dashboard/{dashboardID}", dashboard.SubmitDeleteDashboard)
 
-		// directory view and thing information
+		// dashboard tiles
+		r.Get("/tile/{dashboardID}", tile.RenderConfigTile)
+		r.Get("/tile/{dashboardID}/{tileID}", tile.RenderTile)
+		r.Get("/tile/{dashboardID}/{tileID}/confirmDelete", tile.RenderConfirmDeleteTile)
+		r.Get("/tile/{dashboardID}/{tileID}/config", tile.RenderConfigTile)
+		r.Post("/tile/{dashboardID}/{tileID}", tile.SubmitConfigTile)
+		r.Delete("/tile/{dashboardID}/{tileID}", tile.SubmitDeleteTile)
+
+		// directory endpoints
 		r.Get("/directory", directory.RenderDirectory)
-		r.Get("/thing/confirmDeleteTDDialog/{thingID}", thing.RenderConfirmDeleteTDDialog)
-		r.Post("/thing/deleteTD/{thingID}", thing.PostDeleteTD)
+		r.Get("/directory/{thingID}/confirmDeleteTD", directory.RenderConfirmDeleteTD)
+		r.Delete("/directory/{thingID}", directory.SubmitDeleteTD)
 
 		// Thing details view
-		r.Get("/thing/details/{thingID}", thing.RenderThingDetails)
-		r.Get("/thing/raw/{thingID}", thing.RenderTDRaw)
+		r.Get("/thing/{thingID}/details", thing.RenderThingDetails)
+		r.Get("/thing/{thingID}/raw", thing.RenderThingRaw)
+
+		// Actions
+		r.Get("/action/{thingID}/{key}/request", thing.RenderActionRequest)
+		r.Post("/action/{thingID}/{key}", thing.SubmitActionRequest)
 
 		// Thing configuration
-		r.Get("/thing/configEdit/{thingID}/{key}", thing.RenderConfigEditDialog)
-		r.Post("/thing/configEdit/{thingID}/{key}", thing.PostThingConfig)
+		r.Get("/property/{thingID}/{key}/edit", thing.RenderEditProperty)
+		r.Post("/property/{thingID}/{key}", thing.SubmitProperty)
 
-		// Thing action views
-		r.Get("/thing/actionDialog/{thingID}/{key}", thing.RenderActionDialog)
-		r.Post("/thing/actionStart/{thingID}/{key}", thing.PostStartAction)
-
-		// History view. Optional query params 'timestamp' and 'duration'
-		r.Get("/history/{thingID}/{key}", history.RenderHistoryPage)
-		r.Get("/latestValue/{thingID}/{key}", comps.RenderHistoryLatest)
+		// Event/Property/Action value history. Optional query params 'timestamp' and 'duration'
+		r.Get("/value/{thingID}/{key}/history", value.RenderHistoryPage)
+		r.Get("/value/{thingID}/{key}/latest", comps.RenderLatestValueRow)
 
 		// Status components
 		r.Get("/status", status.RenderStatus)
-		r.Get("/app/connectStatus", app.RenderConnectStatus)
-		r.Get("/app/progress/{messageID}", thing.RenderProgress)
+		r.Get("/status/connection", app.RenderConnectionStatus)
+		r.Get("/status/action/{messageID}", thing.RenderActionProgress)
 	})
 
 	return router

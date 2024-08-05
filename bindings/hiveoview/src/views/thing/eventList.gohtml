@@ -30,8 +30,8 @@
 			<div>
 	        {{/* open last 24 hours history*/}}
 				<a title="View history"
-				   href="/history/{{$.ThingID}}/{{$k}}"
-				   hx-get="/history/{{$.ThingID}}/{{$k}}"
+				   href="/value/{{$.ThingID}}/{{$k}}/history"
+				   hx-get="/value/{{$.ThingID}}/{{$k}}/history"
 				   hx-target="#historyPage"
 				   hx-swap="innerHtml"
 				   hx-trigger="click"

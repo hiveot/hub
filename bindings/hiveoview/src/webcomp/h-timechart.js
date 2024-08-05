@@ -173,7 +173,8 @@ export class HTimechart extends HTMLElement {
         if (dataEl) {
             let tableData = JSON.parse(dataEl.innerText)
             let tableTitle = dataEl.getAttribute('title')
-            let stepped = dataEl.getAttribute(PropStepped)
+            let steppedProp = dataEl.getAttribute(PropStepped)
+            let stepped = (steppedProp.toLowerCase()==="true")
             if (tableData) {
                 this.setTimeSeries(0, tableTitle, tableData, stepped)
             }
@@ -277,6 +278,8 @@ export class HTimechart extends HTMLElement {
         if (stepped) {
             ds.stepped = "after"
             ds.fill = false
+        } else {
+            ds.tension = 1 // bezier curve tension
         }
         if (label) {
             ds.label = label;

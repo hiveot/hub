@@ -12,39 +12,33 @@ import (
 	"sort"
 )
 
-const DirectoryTemplate = "directoryPage.gohtml"
+const DirectoryTemplate = "RenderDirectory.gohtml"
 
 type DirGroup struct {
 	AgentID string
 	Things  []*things.TD
 }
 
-type DirectoryData struct {
-	Groups map[string]*DirGroup
-}
-
 type DirectoryTemplateData struct {
-	Directory *DirectoryData
-	PageNr    int
+	Groups map[string]*DirGroup
+	PageNr int
 }
 
 // Group the thing list by agent
 // this returns a map of groups each containing an array of thing values
-func groupThings(tdList []*things.TD) *DirectoryData {
-	dirData := &DirectoryData{
-		Groups: make(map[string]*DirGroup),
-	}
+func groupThings(tdList []*things.TD) map[string]*DirGroup {
+	dirData := make(map[string]*DirGroup)
 
 	// group Things by their agent. The agent is the thing prefix
 	for _, td := range tdList {
 		agentID, _ := things.SplitDigiTwinThingID(td.ID)
-		tplGroup, found := dirData.Groups[agentID]
+		tplGroup, found := dirData[agentID]
 		if !found {
 			tplGroup = &DirGroup{
 				AgentID: agentID,
 				Things:  make([]*things.TD, 0),
 			}
-			dirData.Groups[agentID] = tplGroup
+			dirData[agentID] = tplGroup
 		}
 		tplGroup.Things = append(tplGroup.Things, td)
 	}
@@ -52,8 +46,8 @@ func groupThings(tdList []*things.TD) *DirectoryData {
 }
 
 // Sort the things in each group
-func sortGroupThings(dir *DirectoryData) {
-	for _, grp := range dir.Groups {
+func sortGroupThings(dirGroups map[string]*DirGroup) {
+	for _, grp := range dirGroups {
 		sort.Slice(grp.Things, func(i, j int) bool {
 			tdI := grp.Things[i]
 			tdJ := grp.Things[j]
@@ -70,7 +64,6 @@ func sortGroupThings(dir *DirectoryData) {
 // E.g.: /directory/#directory
 func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	//var data = make(map[string]any)
-	data := DirectoryTemplateData{}
 	var tdList []*things.TD
 
 	// 1: get session
@@ -96,11 +89,12 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	//resp, err2 := directory.ReadTDs(hc, directory.ReadTDsArgs{Limit: 200})
+	data := DirectoryTemplateData{}
 	err = err2
 	if err == nil {
 		dirGroups := groupThings(tdList)
 		sortGroupThings(dirGroups)
-		data.Directory = dirGroups
+		data.Groups = dirGroups
 	} else {
 		// the 'Directory' attribute is used by html know if to reload
 		err = fmt.Errorf("unable to load directory: %w", err)
@@ -115,5 +109,4 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 
 	// full render or fragment render
 	app.RenderAppOrFragment(w, r, DirectoryTemplate, data)
-
 }

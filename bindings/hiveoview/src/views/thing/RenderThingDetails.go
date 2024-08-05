@@ -10,6 +10,7 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/comps"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -17,9 +18,12 @@ import (
 	"time"
 )
 
-const TemplateFile = "detailsPage.gohtml"
+const TemplateFile = "RenderThingDetails.gohtml"
+const RenderActionRequestPath = "/action/{thingID}/{key}/request"
+const RenderEditPropertyPath = "/property/{thingID}/{key}/edit"
+const RenderConfirmDeleteTDPath = "/directory/{thingID}/confirmDeleteTDDialog"
 
-type DetailsTemplateData struct {
+type ThingDetailsTemplateData struct {
 	Title      string
 	AgentID    string
 	ThingID    string
@@ -36,14 +40,29 @@ type DetailsTemplateData struct {
 	Values things.ThingMessageMap
 	//
 	hc hubclient.IHubClient
+
+	// URLs
+	RenderConfirmDeleteTDPath string
 }
 
 // obtain the 24 hour history for the given key
-func (dt *DetailsTemplateData) GetHistory(key string) *comps.HistorySourceData {
+func (dt *ThingDetailsTemplateData) GetHistory(key string) *comps.HistoryTemplateData {
 	timestamp := time.Now()
-	hsd, err := comps.NewHistorySourceData(dt.hc, dt.TD, key, timestamp, -24*3600)
+	hsd, err := comps.NewHistoryTemplateData(dt.hc, dt.TD, key, timestamp, -24*3600)
 	_ = err
 	return hsd
+}
+
+// GetRenderEditPropertyPath returns the URL path for editing a property
+func (dt *ThingDetailsTemplateData) GetRenderEditPropertyPath(key string) string {
+	pathArgs := map[string]string{"thingID": dt.ThingID, "key": key}
+	return utils.Substitute(RenderEditPropertyPath, pathArgs)
+}
+
+// GetRenderActionPath returns the URL path for rendering an action request
+func (dt *ThingDetailsTemplateData) GetRenderActionPath(key string) string {
+	pathArgs := map[string]string{"thingID": dt.ThingID, "key": key}
+	return utils.Substitute(RenderActionRequestPath, pathArgs)
 }
 
 // GetLatest returns a map with the latest property values of a thing or nil if failed
@@ -69,14 +88,17 @@ func GetLatest(thingID string, hc hubclient.IHubClient) (things.ThingMessageMap,
 func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	agentID, _ := things.SplitDigiTwinThingID(thingID)
-	thingData := &DetailsTemplateData{
-		Attributes: make(map[string]*things.PropertyAffordance),
-		AttrKeys:   make([]string, 0),
-		Config:     make(map[string]*things.PropertyAffordance),
-		ConfigKeys: make([]string, 0),
-		AgentID:    agentID,
-		ThingID:    thingID,
-		Title:      "details of thing",
+
+	pathParams := map[string]string{"thingID": thingID}
+	thingData := &ThingDetailsTemplateData{
+		Attributes:                make(map[string]*things.PropertyAffordance),
+		AttrKeys:                  make([]string, 0),
+		Config:                    make(map[string]*things.PropertyAffordance),
+		ConfigKeys:                make([]string, 0),
+		AgentID:                   agentID,
+		ThingID:                   thingID,
+		Title:                     "details of thing",
+		RenderConfirmDeleteTDPath: utils.Substitute(RenderConfirmDeleteTDPath, pathParams),
 	}
 
 	// Read the TD being displayed and its latest values
@@ -150,22 +172,4 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	}
 	// full render or fragment render
 	app.RenderAppOrFragment(w, r, TemplateFile, thingData)
-}
-
-func RenderTDRaw(w http.ResponseWriter, r *http.Request) {
-	thingID := chi.URLParam(r, "thingID")
-	var tdJSON string
-	var tdPretty []byte
-	// Read the TD being displayed and its latest values
-	_, hc, err := session.GetSessionFromContext(r)
-	if err == nil {
-		tdJSON, err = digitwin.DirectoryReadTD(hc, thingID)
-		// re-marshal with pretty-print JSON
-		var tdObj any
-		_ = json.Unmarshal([]byte(tdJSON), &tdObj)
-		tdPretty, _ = json.MarshalIndent(tdObj, "", "    ")
-	}
-	w.Write(tdPretty)
-	w.WriteHeader(http.StatusOK)
-
 }

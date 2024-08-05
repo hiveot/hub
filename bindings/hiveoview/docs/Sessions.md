@@ -99,9 +99,9 @@ Using multiple accounts in the same browser is currently not supported as there 
 To support multiple accounts in the same browser it could be done as follows:
 
 After login the application URL contains an account prefix {prefix}:
-> https://myhiveot-address/{prefix}/{page}
+> https://myhiveot-address/{prefix}/{dashboardID}
 
-Where {prefix} is an arbitrary string and {page} is the page to view.
+Where {prefix} is an arbitrary string and {dashboardID} is the page to view.
 
 The URL with prefix is also used to load HTMX fragments on:
 

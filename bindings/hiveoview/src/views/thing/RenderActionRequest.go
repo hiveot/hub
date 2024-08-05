@@ -2,7 +2,6 @@ package thing
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
@@ -13,13 +12,15 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
-	"log/slog"
 	"net/http"
 	"time"
 )
 
-// ActionDialogData with data for the action window
-type ActionDialogData struct {
+const RenderActionRequestTemplate = "RenderActionRequest.gohtml"
+const SubmitActionRequestPath = "/action/{thingID}/{key}"
+
+// ActionRequestTemplateData with data for the action request view
+type ActionRequestTemplateData struct {
 	// The thing the action belongs to
 	ThingID string
 	TD      *things.TD
@@ -39,6 +40,9 @@ type ActionDialogData struct {
 	LastUpdated string
 	// duration the action was last performed
 	LastUpdatedAge string
+
+	//
+	SubmitActionRequestPath string
 }
 
 // Return the action affordance
@@ -60,17 +64,17 @@ func getActionAff(hc hubclient.IHubClient, thingID string, key string) (
 	return td, actionAff, nil
 }
 
-// RenderActionDialog renders the action dialog.
+// RenderActionRequest renders the action dialog.
 // Path: /things/{thingID/{key}
 //
 //	@param thingID this is the URL parameter
-func RenderActionDialog(w http.ResponseWriter, r *http.Request) {
+func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	key := chi.URLParam(r, "key")
 	var hc hubclient.IHubClient
 	//var lastAction *digitwin.InboxRecord
 
-	data := ActionDialogData{
+	data := ActionRequestTemplateData{
 		ThingID: thingID,
 		Key:     key,
 	}
@@ -120,89 +124,18 @@ func RenderActionDialog(w http.ResponseWriter, r *http.Request) {
 			Value:      "",
 		}
 	}
-	app.RenderAppOrFragment(w, r, "actionDialog.gohtml", data)
+	pathArgs := map[string]string{"thingID": data.ThingID, "key": data.Key}
+	data.SubmitActionRequestPath = utils.Substitute(SubmitActionRequestPath, pathArgs)
+
+	app.RenderAppOrFragment(w, r, RenderActionRequestTemplate, data)
 }
 
-// RenderProgress renders the action progress status component.
-// Path: /app/progress/{messageID}
+// RenderActionProgress renders the action progress status component.
+// TODO
 //
 //	@param thingID this is the URL parameter
-func RenderProgress(w http.ResponseWriter, r *http.Request) {
+func RenderActionProgress(w http.ResponseWriter, r *http.Request) {
 	messageID := chi.URLParam(r, "messageID")
 	//action := thing.ActionAffordance{}
 	_ = messageID
-}
-
-// PostStartAction posts the request to start an action
-func PostStartAction(w http.ResponseWriter, r *http.Request) {
-	var td *things.TD
-	var actionAff *things.ActionAffordance
-	var newValue any
-	var hc hubclient.IHubClient
-
-	thingID := chi.URLParam(r, "thingID")
-	actionKey := chi.URLParam(r, "key")
-	// booleans from form are non-values. Treat as false
-	valueStr := r.FormValue(actionKey)
-	newValue = valueStr
-	reply := ""
-
-	stat := hubclient.DeliveryStatus{}
-	//
-	mySession, hc, err := session.GetSessionFromContext(r)
-	if err != nil {
-		mySession.WriteError(w, err, http.StatusBadRequest)
-	}
-
-	// convert the value from string to the data type
-	td, actionAff, err = getActionAff(hc, thingID, actionKey)
-	_ = td
-	if err == nil {
-		if actionAff.Input != nil {
-			newValue, err = things.ConvertToNative(valueStr, actionAff.Input)
-		}
-	}
-	if err == nil {
-		slog.Info("PostStartAction starting",
-			slog.String("thingID", thingID),
-			slog.String("actionKey", actionKey),
-			slog.Any("newValue", newValue))
-
-		// don't make this an rpc as the response time isn't always known with sleeping devices
-		//stat = hc.PubAction(thingID, actionKey, newValue)
-		var resp interface{}
-		err = hc.Rpc(thingID, actionKey, newValue, &resp)
-		if stat.Error != "" {
-			err = errors.New(stat.Error)
-		} else if resp != nil {
-			// stringify the reply for presenting in the notification
-			reply = fmt.Sprintf("%v", resp)
-		}
-	}
-	if err != nil {
-		slog.Warn("PostStartAction failed",
-			slog.String("remoteAddr", r.RemoteAddr),
-			slog.String("thingID", thingID),
-			slog.String("actionKey", actionKey),
-			slog.String("err", err.Error()))
-
-		// notify UI via SSE. This is handled by a toast component.
-		// todo, differentiate between server error, invalid value and unauthorized
-		mySession.WriteError(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	// TODO: map delivery status to language
-
-	// the async reply will contain status update
-	//mySession.SendNotify(session.NotifyInfo, "Delivery Progress for '"+actionKey+"': "+stat.Progress)
-	unit := ""
-	if actionAff.Output != nil {
-		unit = actionAff.Output.Unit
-	}
-	notificationText := fmt.Sprintf("Action %s: %v %s", actionKey, reply, unit)
-	mySession.SendNotify(session.NotifySuccess, notificationText)
-
-	w.WriteHeader(http.StatusOK)
-
 }

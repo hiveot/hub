@@ -1,5 +1,10 @@
 package session
 
+import (
+	"github.com/google/uuid"
+	"sync"
+)
+
 // Tile types
 const (
 	TileTypeText      = "text"
@@ -47,64 +52,151 @@ type DashboardDefinition struct {
 	ID string `json:"id"`
 	// Title of the dashboard
 	Title string `json:"title"`
-	// Tiles used in this dashboard
-	Tiles map[string]DashboardTile `json:"tiles"`
+	// Tiles are the IDs used in this dashboard
+	// the value is currently not used
+	Tiles map[string]bool `json:"tiles"`
+	// Next ID to use
+	NextTileID int `json:"nextTileID"`
+
 	// serialized layout
 	// eg []{"id":,"x":,"y":,"w":,"h":}
 	GridLayout string `json:"layout"`
 }
 
-// ClientDataModel containing the persisted client data such dashboard configurations
-// this is stored in either the browser session store or the state store.
+// ClientDataModel containing the persisted client data including
+// UI preferences and dashboard configurations.
 type ClientDataModel struct {
+	mux         sync.RWMutex // mutex to protect the maps below
+	dataChanged bool
 
-	// client dashboard(s)
-	Dashboards map[string]DashboardDefinition `json:"dashboards"`
+	// client dashboard(s) - do not use directly
+	Dashboards map[string]*DashboardDefinition `json:"dashboards"`
+	Tiles      map[string]*DashboardTile       `json:"tiles"`
 
-	// UI configuration ...
+	// UI preferences ...
+}
+
+// Changed returns whether the model has changed
+func (model *ClientDataModel) Changed() bool {
+	model.mux.RLock()
+	defer model.mux.RUnlock()
+	return model.dataChanged
 }
 
 // DeleteDashboard removes a dashboard from the model
 func (model *ClientDataModel) DeleteDashboard(id string) {
+	model.mux.Lock()
+	defer model.mux.Unlock()
+
 	delete(model.Dashboards, id)
+	model.dataChanged = true
 }
 
 // GetDashboard returns a dashboard with the given ID
-func (model *ClientDataModel) GetDashboard(id string) (DashboardDefinition, bool) {
+func (model *ClientDataModel) GetDashboard(id string) (d DashboardDefinition, found bool) {
+	model.mux.RLock()
+	defer model.mux.RUnlock()
 	dashboard, found := model.Dashboards[id]
-	return dashboard, found
+	if found {
+		return *dashboard, found
+	}
+	return
 }
 
 // GetFirstDashboard returns the first dashboard in the map
 // This returns a new empty dashboard if there are no dashboards
 func (model *ClientDataModel) GetFirstDashboard() (d DashboardDefinition) {
+	model.mux.RLock()
+	defer model.mux.RUnlock()
 	if len(model.Dashboards) == 0 {
 		d = model.NewDashboard("default", "New Dashboard")
 	}
-	for _, d = range model.Dashboards {
+	for _, first := range model.Dashboards {
+		d = *first
 		break
 	}
 	return d
 }
 
-func (model *ClientDataModel) NewDashboard(ID string, title string) (d DashboardDefinition) {
+// NewDashboard create a new dashboard instance with a single default tile.
+// Call UpdateDashboard to add it to the model.
+func (model *ClientDataModel) NewDashboard(
+	ID string, title string) (d DashboardDefinition) {
+
+	if ID == "" {
+		ID = uuid.NewString()
+	}
 	d.ID = "default"
-	d.Title = "New Dashboard"
+	d.Title = title
 	d.GridLayout = ""
-	d.Tiles = make(map[string]DashboardTile)
+	d.Tiles = make(map[string]bool)
+	// add a default tile to show. This tile has the dashboard ID
+	newTile := model.NewTile(ID+"-tile", "Edit Me", TileTypeText)
+	model.Tiles[newTile.ID] = &newTile
+	d.Tiles[newTile.ID] = true
 	return d
 }
 
-// UpdateDashboard replaces a dashboard in the model
+// UpdateDashboard adds or replaces a dashboard in the model
 func (model *ClientDataModel) UpdateDashboard(dashboard *DashboardDefinition) {
-	model.Dashboards[dashboard.ID] = *dashboard
+	model.mux.Lock()
+	defer model.mux.Unlock()
+	model.Dashboards[dashboard.ID] = dashboard
+	model.dataChanged = true
 }
 
-// UpdateTile replaces a dashboard tile in the model
-func (model *ClientDataModel) UpdateTile(dashboardID string, tile DashboardTile) {
-	dashboard, found := model.Dashboards[dashboardID]
-	if !found {
-		dashboard = model.NewDashboard(dashboardID, "New Dashboard")
+// GetTile returns a tile in the model
+func (model *ClientDataModel) GetTile(id string) (DashboardTile, bool) {
+	model.mux.RLock()
+	defer model.mux.RUnlock()
+
+	tile, found := model.Tiles[id]
+	return *tile, found
+}
+
+// NewTile creates a new dashboard tile.
+// Call UpdateTile to add it to the model
+//
+//	 id is the tile ID, or use "" to generate a uuid
+//	 title is the title of the Tile
+//		tileType is the type of Tile
+func (model *ClientDataModel) NewTile(
+	id string, title string, tileType string) DashboardTile {
+	if id == "" {
+		id = uuid.NewString()
 	}
-	dashboard.Tiles[tile.ID] = tile
+	tile := DashboardTile{
+		ID:       id,
+		Title:    title,
+		TileType: tileType,
+		Sources:  make([]TileSource, 0),
+	}
+	return tile
+}
+
+// SetChanged sets or clears the 'changed' state of the model.
+// Intended to clear it after saving
+func (model *ClientDataModel) SetChanged(newValue bool) {
+	model.mux.Lock()
+	defer model.mux.Unlock()
+	model.dataChanged = newValue
+}
+
+// UpdateTile adds or replaces a tile in the model
+func (model *ClientDataModel) UpdateTile(tile *DashboardTile) {
+	model.mux.Lock()
+	defer model.mux.Unlock()
+
+	model.Tiles[tile.ID] = tile
+	model.dataChanged = true
+}
+
+func NewClientDataModel() *ClientDataModel {
+	model := ClientDataModel{
+		mux:         sync.RWMutex{},
+		dataChanged: false,
+		Dashboards:  make(map[string]*DashboardDefinition),
+		Tiles:       make(map[string]*DashboardTile),
+	}
+	return &model
 }

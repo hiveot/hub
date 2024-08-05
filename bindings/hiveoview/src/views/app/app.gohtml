@@ -1,8 +1,8 @@
 <!--Main application view with header, page content and footer-->
 <!--javascript the regular get takes place-->
 
-{{/*<div id="app" class="app" hx-ext="sse" sse-connect="/sse">*/}}
-<div id="app" class="app" >
+{{/*SSE connect once user is logged in*/}}
+<div id="app" class="app" hx-ext="sse" sse-connect="/sse" >
 
     {{/*	The notify event is displayed by the toast popup. content is "type:message" */}}
 		<div sse-swap="notify" hx-target="#toast" hx-swap="beforeend"></div>
@@ -20,19 +20,19 @@
         {{template "status.gohtml" .}}
 		</div>
 		<div id="dashboardPage" class="hidden" displayIfTarget="/dashboard" style="height:100%">
-        {{template "dashboardPage.gohtml" .}}
+        {{template "RenderDashboard.gohtml" .}}
 		</div>
 		<div id="directoryPage" class="hidden" displayIfTarget="/directory">
-        {{template "directoryPage.gohtml" .}}
+        {{template "RenderDirectory.gohtml" .}}
 		</div>
 		<div id="aboutPage" class="hidden" displayIfTarget="/app/about">
         {{template "aboutPage.gohtml" .}}
 		</div>
 		<div id="detailsPage" class="hidden" displayIfTarget="/thing" style="height:100%">
-        {{template "detailsPage.gohtml" .}}
+        {{template "RenderThingDetails.gohtml" .}}
 		</div>
-		<div id="historyPage" class="hidden" displayIfTarget="/history" style="height:100%">
-        {{template "historyPage.gohtml" .}}
+		<div id="historyPage" class="hidden" displayIfTarget="/value" style="height:100%">
+        {{template "RenderHistoryPage.gohtml" .}}
 		</div>
 	</div>
 

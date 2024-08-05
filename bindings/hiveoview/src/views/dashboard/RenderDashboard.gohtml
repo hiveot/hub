@@ -1,7 +1,7 @@
 <!--After an initial load without data, auto-reload when viewed. -->
 
 
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard.DashboardTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard.DashboardPageTemplateData*/ -}}
 {{if not .Dashboard}}
 <div  hx-trigger="intersect once"
         hx-swap="outerHTML"
@@ -22,13 +22,13 @@
 							display:inline-flex; gap: 5px;
 							align-items: center; padding:0"
                 hx-trigger="click"
-                hx-get="/dashboard/{{.Dashboard.ID}}//editTile"
-                hx-target="#tileEditDialog" hx-swap="innerHTML"
+                hx-get="{{.RenderNewTilePath}}"
+                hx-target="#editTileDialog" hx-swap="innerHTML"
         >New tile</button>
 
         <button onClick="grid.removeAll()"
                 hx-trigger="click"
-                hx-get="/dashboard/{{.Dashboard.ID}}/confirmDeleteDashboard"
+                hx-get="{{.RenderConfirmDeleteDashboardPath}}"
                 hx-target="#confirmDeleteDashboard"
                 hx-swap="innerHTML"
         >Delete Dashboard</button>
@@ -37,33 +37,31 @@
     {{/* change event: When layout changes push the new layout to the server*/}}
     <div class="grid-stack"
          hx-trigger="change"
-         hx-post="/dashboard/{{.Dashboard.ID}}"
+         hx-post="{{.SubmitDashboardLayoutPath}}"
          hx-vals='js:{layout: saveLayout()}'
          hx-swap="none"
     >
-        {{range .Dashboard.Tiles }}
+        {{range .Tiles }}
         <div class="grid-stack-item" gs-id="{{.ID}}">
             <div class="grid-stack-item-content">
-                <main>
                     <header class="tile-header h-row">
                         <span></span>
                         <div>{{.Title}}</div>
 {{/*                        <div class="h-grow"></div>*/}}
                         <button slot="button" class="h-icon-button  outline"
-                        style="border:none">
+                            style="border:none">
                             <iconify-icon icon="mdi:menu"></iconify-icon>
                         </button>
 
                     </header>
                     <div class="tile-content">body of item 0</div>
-                </main>
             </div>
         </div>
         {{end}}
 
     </div>
 </main>
-<div id="tileEditDialog"></div>
+<div id="editTileDialog"></div>
 
 <script>
 
@@ -115,10 +113,14 @@
     .grid-stack-item-content {
         /*color: #2c3e50;*/
         text-align: center;
+        display:flex;
+        flex-direction:column;
         /*background-color: #18bc9c;*/
         background-color: var(--pico-form-element-background-color);
-        border: gray 1px solid;
-        border-radius: 3px;
+        border-color: var(--pico-background-color);
+        border: var(--pico-background-color) 1px solid;
+        border-radius: 5px;
+        box-shadow: var(--pico-box-shadow);
     }
 
     .tile-header {
@@ -137,6 +139,7 @@
         height:100%;
         overflow:auto;
         padding:0;
+        /*background-color: var(--pico-background-color);*/
     }
 
 </style>

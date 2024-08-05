@@ -1,23 +1,21 @@
-<!-- Confirm dialog -->
+<!-- Render confirm deleting dashboard -->
 
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.ConfirmDeleteTDTemplateData */ -}}
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.ConfirmDeleteTileTemplateData*/ -}}
 
 <h-modal show showClose showCancel showSubmit>
 	<article>
 		<header class="h-row-centered">
-			<h3>Confirm Delete TD Document</h3>
+			<h3>Confirm Delete Tile</h3>
 		</header>
 
 		<form id="confirm-form">
 			<fieldset>
-				<label for="td-title-id">Thing Name</label>
-				<input id="td-title-id" readonly value="{{.TD.Title}}"/>
+				<label for="dashboard-title-id">Dashboard Name</label>
+				<input id="dashboard-title-id" readonly value="{{.Dashboard.Title}}"/>
 
-				<label for="thing-id">Thing ID</label>
-				<input id="thing-id" readonly value="{{.ThingID}}"/>
+				<label for="tile-id">Tile Name</label>
+				<input id="tile-id" readonly value="{{.Tile.Title}}"/>
 
-				<label for="last-updated">Last Updated</label>
-				<input id="last-updated" readonly value="{{.TD.GetAge}} ago"/>
 			</fieldset>
 		</form>
 	</article>
@@ -30,7 +28,7 @@
 		        class="secondary">Cancel
 		</button>
 		<button type="submit"
-		        hx-post="/app/thing/{{.ThingID}}/deleteTD"
+		        hx-delete="{{.SubmitDeleteTilePath}}"
 		        hx-swap="none"
 		        hx-on::after-request="onSubmitCompleted(event, this)"
 		        style="margin-bottom: 0">Submit

@@ -40,9 +40,7 @@ type ClientSession struct {
 	sessionID string
 
 	// Client session data, loaded from the state service
-	clientModel ClientDataModel
-	// Client session data has been updated, ready to write to the state service
-	clientModelChanged bool
+	clientModel *ClientDataModel
 
 	// ClientID is the login ID of the user
 	clientID string
@@ -89,7 +87,7 @@ func (cs *ClientSession) Close() {
 }
 
 // GetClientData returns the hiveoview data model of this client
-func (cs *ClientSession) GetClientData() ClientDataModel {
+func (cs *ClientSession) GetClientData() *ClientDataModel {
 	return cs.clientModel
 }
 
@@ -122,14 +120,14 @@ func (cs *ClientSession) IsActive() bool {
 // and clear 'clientModelChanged' status
 func (cs *ClientSession) LoadState() error {
 	stateCl := stateclient.NewStateClient(cs.hc)
-	// split loads
-	found, err := stateCl.Get(HiveOViewDataKey, &cs.clientModel.Dashboards)
+
+	cs.clientModel = NewClientDataModel()
+	found, err := stateCl.Get(HiveOViewDataKey, &cs.clientModel)
 	_ = found
 	if err != nil {
 		cs.lastError = err
 		return err
 	}
-	cs.clientModelChanged = false
 	return nil
 }
 
@@ -236,11 +234,9 @@ func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {
 			break
 		}
 	}
-	if cs.clientModelChanged {
+	if cs.clientModel.Changed() {
 		err := cs.SaveState()
-		if err == nil {
-			cs.clientModelChanged = false
-		} else {
+		if err != nil {
 			cs.lastError = err
 		}
 
@@ -275,25 +271,25 @@ func (cs *ClientSession) ReplaceHubClient(newHC hubclient.IHubClient) {
 //
 // This returns an error if the state service is not reachable.
 func (cs *ClientSession) SaveState() error {
-	if !cs.clientModelChanged {
+	if !cs.clientModel.Changed() {
 		return nil
 	}
 
 	stateCl := stateclient.NewStateClient(cs.GetHubClient())
-	err := stateCl.Set(HiveOViewDataKey, cs.clientModel.Dashboards)
+	err := stateCl.Set(HiveOViewDataKey, &cs.clientModel)
 	if err != nil {
 		cs.lastError = err
 		return err
 	}
-	cs.clientModelChanged = false
+	cs.clientModel.SetChanged(false)
 	return err
 }
 
 // SetClientData update the hiveoview data model of this client
-func (cs *ClientSession) SetClientData(data ClientDataModel) {
-	cs.clientModel = data
-	cs.clientModelChanged = true
-}
+//func (cs *ClientSession) SetClientData(data ClientDataModel) {
+//	cs.clientModel = data
+//	cs.clientModelChanged = true
+//}
 
 func (cs *ClientSession) SendNotify(ntype NotifyType, text string) {
 	cs.mux.RLock()
@@ -352,9 +348,7 @@ func NewClientSession(sessionID string, hc hubclient.IHubClient, remoteAddr stri
 		hc:           hc,
 		sseClients:   make([]chan SSEEvent, 0),
 		lastActivity: time.Now(),
-		clientModel: ClientDataModel{
-			Dashboards: make(map[string]DashboardDefinition, 0),
-		},
+		clientModel:  NewClientDataModel(),
 	}
 	hc.SetMessageHandler(cs.onMessage)
 	hc.SetConnectHandler(cs.onConnectChange)

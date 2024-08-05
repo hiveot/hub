@@ -1,6 +1,6 @@
 <!--Thing actions list-->
 <!--@param '.' object of type thing.DetailsTemplateData -->
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.DetailsTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.ThingDetailsTemplateData*/ -}}
 
 <ul class="h-grid-table thing-actions" striped border>
 	<li>
@@ -21,7 +21,7 @@
 										display:inline-flex; gap: 5px;
 										align-items: center; padding:0"
 						        hx-trigger="click"
-						        hx-get="/thing/actionDialog/{{$.ThingID}}/{{$k}}"
+						        hx-get="{{$.GetRenderActionPath $k}}"
 						        hx-target="#actionModal" hx-swap="innerHTML"
 						>
 	            {{$v.Title}}

@@ -5,7 +5,7 @@
     Once submitted successfully this is replaced with a delivery progress content.
  -->
 
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.ActionDialogData */ -}}
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.ActionRequestTemplateData*/ -}}
 
 <h-modal show showClose showCancel showSubmit>
     <article  style="min-width: 400px">
@@ -46,7 +46,7 @@
                 class="secondary">Cancel
         </button>
         <button type="submit"
-                hx-post="/thing/actionStart/{{.ThingID}}/{{.Key}}"
+                hx-post="{{.SubmitActionRequestPath}}"
                 hx-include="#action-input-form"
                 hx-swap="none"
                 hx-on::after-request="onSubmitCompleted(event, this)"

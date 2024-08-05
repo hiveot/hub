@@ -1,4 +1,4 @@
-<!-- Confirm dialog -->
+<!-- Render confirm deleting dashboard -->
 
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard.ConfirmDeleteDashboardTemplateData*/ -}}
 
@@ -28,7 +28,7 @@
 		        class="secondary">Cancel
 		</button>
 		<button type="submit"
-		        hx-delete="/dashboard/{{.Dashboard.ID}}'"
+		        hx-delete="{{.SubmitDeleteDashboardPath}}"
 		        hx-swap="none"
 		        hx-on::after-request="onSubmitCompleted(event, this)"
 		        style="margin-bottom: 0">Submit

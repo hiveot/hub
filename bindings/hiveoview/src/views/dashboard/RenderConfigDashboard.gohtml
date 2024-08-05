@@ -1,0 +1,35 @@
+<!-- Render dashboard config editor -->
+
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard.ConfigDashboardTemplateData*/ -}}
+
+<h-modal show showClose showCancel showSubmit>
+	<article>
+		<header class="h-row-centered">
+			<h3>Dashboard Configuration</h3>
+		</header>
+
+		<form id="confirm-form">
+			<fieldset>
+				<label for="dashboard-title-id">Dashboard Name</label>
+				<input id="dashboard-title-id" readonly value="{{.Dashboard.Title}}"/>
+
+			</fieldset>
+		</form>
+	</article>
+
+
+	<footer class="h-row" style="width:100%">
+      {{- /*close-modal is handled by h-modal component*/ -}}
+		<button id="cancelBtn"
+		        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+		        class="secondary">Cancel
+		</button>
+		<button type="submit"
+		        hx-post="{{.SubmitConfigDashboard}}"
+		        hx-swap="none"
+		        hx-on::after-request="onSubmitCompleted(event, this)"
+		        style="margin-bottom: 0">Submit
+		</button>
+	</footer>
+
+</h-modal>
