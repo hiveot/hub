@@ -15,6 +15,7 @@ import (
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
 	"github.com/hiveot/hub/runtime/transports/httpstransport/sseserver"
+	"github.com/teris-io/shortid"
 	"io"
 	"log/slog"
 	"net/http"
@@ -36,7 +37,7 @@ type HttpsTransport struct {
 	router     *chi.Mux
 
 	// callback handler for incoming events,actions and rpc messages
-	handleMessage hubclient.MessageHandler
+	handler hubclient.MessageHandler
 
 	// authenticator for logging in and validating session tokens
 	authenticator api.IAuthenticator
@@ -166,6 +167,15 @@ func (svc *HttpsTransport) getRequestParams(r *http.Request) (
 	return cs, messageType, thingID, key, body, err
 }
 
+// receive a message from a client and ensure it has a message ID
+// https transport apply a 'h-' messageID prefix for troubleshooting
+func (svc *HttpsTransport) handleMessage(msg *things.ThingMessage) hubclient.DeliveryStatus {
+	if msg.MessageID == "" {
+		msg.MessageID = "h-" + shortid.MustGenerate()
+	}
+	return svc.handler(msg)
+}
+
 // writeStatReply is a convenience function that writes the reply in a delivery status message
 // If stat has an error then write a bad request with the error as payload
 func (svc *HttpsTransport) writeStatReply(w http.ResponseWriter, stat hubclient.DeliveryStatus) {
@@ -258,7 +268,7 @@ func (svc *HttpsTransport) Start(handler hubclient.MessageHandler) error {
 	svc.httpServer, svc.router = tlsserver.NewTLSServer(
 		svc.config.Host, svc.config.Port, svc.serverCert, svc.caCert)
 
-	svc.handleMessage = handler
+	svc.handler = handler
 	svc.sseServer = sseserver.NewSSEServer()
 	svc.createRoutes(svc.router)
 	err := svc.httpServer.Start()

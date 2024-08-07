@@ -11,9 +11,9 @@ const HandleRenderDefaultDashboardPath = "/dashboard"
 
 // SubmitDeleteDashboard applies deleting a dashboard
 func SubmitDeleteDashboard(w http.ResponseWriter, r *http.Request) {
-	cs, cdc, err := getDashboardContext(r, false)
+	sess, cdc, err := getDashboardContext(r, false)
 	if err != nil {
-		cs.WriteError(w, err, http.StatusBadRequest)
+		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -22,11 +22,17 @@ func SubmitDeleteDashboard(w http.ResponseWriter, r *http.Request) {
 	cdc.clientModel.DeleteDashboard(cdc.dashboardID)
 
 	msgText := fmt.Sprintf("Dashboard '%s' removed from the directory", cdc.dashboardID)
-	cs.SendNotify(session.NotifySuccess, msgText)
-	// navigate back to the default dashboard.
-	// http.Redirect doesn't work but using HX-Redirect header does.
-	// see also: https://www.reddit.com/r/htmx/comments/188oqx5/htmx_form_submission_issue_redirecting_on_success/
-	//http.Redirect(w, r, "/app/dashboard", http.StatusMovedPermanently)
-	w.Header().Add("HX-Redirect", HandleRenderDefaultDashboardPath)
+	sess.SendNotify(session.NotifySuccess, msgText)
+
+	// navigate back to the default dashboard. Notes:
+	// 1. http.Redirect doesn't work
+	// 2. Setting the HX-Redirect header does but does a full page reload.
+	// 3. hx-location works with boost, but needs a target:
+	//    See https://htmx.org/headers/hx-location/
+	// todo; standardize this type of navigation along with the templates
+	w.Header().Add("HX-Location", fmt.Sprintf(
+		"{\"path\":\"%s\", \"target\":\"%s\"}",
+		HandleRenderDefaultDashboardPath, "#dashboardPage"))
+
 	w.WriteHeader(http.StatusOK)
 }

@@ -37,15 +37,15 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 	// key events are escaped as SSE doesn't allow spaces and slashes
 
 	// Read the TD being displayed and its latest values
-	mySession, hc, err := session.GetSessionFromContext(r)
+	sess, hc, err := session.GetSessionFromContext(r)
 	if err != nil {
-		mySession.WriteError(w, err, 0)
+		sess.WriteError(w, err, 0)
 		return
 	}
 	// read the TD
-	td, err := mySession.ReadTD(thingID)
+	td, err := sess.ReadTD(thingID)
 	if err != nil {
-		mySession.WriteError(w, err, 0)
+		sess.WriteError(w, err, 0)
 		return
 	}
 
@@ -53,10 +53,11 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 		hc, td, key, timestamp, int(durationSec))
 
 	if err != nil {
-		mySession.WriteError(w, err, 0)
+		sess.WriteError(w, err, 0)
 		return
 	}
 
 	// full render or fragment render
-	app.RenderAppOrFragment(w, r, RenderHistoryTemplate, data)
+	buff, err := app.RenderAppOrFragment(r, RenderHistoryTemplate, data)
+	sess.WritePage(w, buff, err)
 }

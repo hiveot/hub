@@ -1,6 +1,9 @@
 package app
 
-import "net/http"
+import (
+	"github.com/hiveot/hub/bindings/hiveoview/src/session"
+	"net/http"
+)
 
 const AppHeadTemplate = "appHead.gohtml"
 
@@ -16,11 +19,14 @@ type AppHeadTemplateData struct {
 // RenderAppHead renders the app header fragment
 func RenderAppHead(w http.ResponseWriter, r *http.Request) {
 
+	sess, _, _ := session.GetSessionFromContext(r)
+
 	data := AppHeadTemplateData{
 		Ready:  true,
 		Logo:   "/static/logo.svg",
 		Title:  "HiveOT",
 		Status: GetConnectStatus(r),
 	}
-	RenderAppOrFragment(w, r, AppHeadTemplate, data)
+	buff, err := RenderAppOrFragment(r, AppHeadTemplate, data)
+	sess.WritePage(w, buff, err)
 }

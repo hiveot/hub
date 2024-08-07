@@ -1,6 +1,7 @@
 package directory
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
@@ -65,9 +66,10 @@ func sortGroupThings(dirGroups map[string]*DirGroup) {
 func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	//var data = make(map[string]any)
 	var tdList []*things.TD
+	var buff *bytes.Buffer
 
 	// 1: get session
-	mySession, hc, err := session.GetSessionFromContext(r)
+	sess, hc, err := session.GetSessionFromContext(r)
 	if err != nil {
 		slog.Info("failed getting session. Redirecting to login", "err", err.Error())
 		// assume this is an auth issue or expired session
@@ -101,12 +103,11 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 		slog.Error(err.Error())
 	}
 
-	if err != nil {
-		mySession.WriteError(w, err, 0)
-		return
-	}
-	data.PageNr = 1
+	if err == nil {
+		data.PageNr = 1
 
-	// full render or fragment render
-	app.RenderAppOrFragment(w, r, DirectoryTemplate, data)
+		// full render or fragment render
+		buff, err = app.RenderAppOrFragment(r, DirectoryTemplate, data)
+	}
+	sess.WritePage(w, buff, err)
 }

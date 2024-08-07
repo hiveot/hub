@@ -7,7 +7,8 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 )
 
-// AddTDForms add forms to the given TD containing protocol information to access the digital twin things
+// AddTDForms add WoT forms to the given TD containing protocol information to
+// access the digital twin things.
 // In short:
 // 1. TD level forms for readallproperties, readproperty, writeproperty
 // 2. Event level form to subscribe to events via SSE

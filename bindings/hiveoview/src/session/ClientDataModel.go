@@ -1,7 +1,7 @@
 package session
 
 import (
-	"github.com/google/uuid"
+	"github.com/teris-io/shortid"
 	"sync"
 )
 
@@ -124,7 +124,7 @@ func (model *ClientDataModel) NewDashboard(
 	ID string, title string) (d DashboardDefinition) {
 
 	if ID == "" {
-		ID = uuid.NewString()
+		ID = shortid.MustGenerate()
 	}
 	d.ID = "default"
 	d.Title = title
@@ -145,25 +145,28 @@ func (model *ClientDataModel) UpdateDashboard(dashboard *DashboardDefinition) {
 	model.dataChanged = true
 }
 
-// GetTile returns a tile in the model
-func (model *ClientDataModel) GetTile(id string) (DashboardTile, bool) {
+// GetTile returns a tile in the model with a flag if it was found
+func (model *ClientDataModel) GetTile(id string) (tile DashboardTile, found bool) {
 	model.mux.RLock()
 	defer model.mux.RUnlock()
 
-	tile, found := model.Tiles[id]
-	return *tile, found
+	tileRef, found := model.Tiles[id]
+	if found {
+		tile = *tileRef
+	}
+	return tile, found
 }
 
 // NewTile creates a new dashboard tile.
 // Call UpdateTile to add it to the model
 //
-//	 id is the tile ID, or use "" to generate a uuid
+//	 id is the tile ID, or use "" to generate a short-id
 //	 title is the title of the Tile
 //		tileType is the type of Tile
 func (model *ClientDataModel) NewTile(
 	id string, title string, tileType string) DashboardTile {
 	if id == "" {
-		id = uuid.NewString()
+		id = shortid.MustGenerate()
 	}
 	tile := DashboardTile{
 		ID:       id,

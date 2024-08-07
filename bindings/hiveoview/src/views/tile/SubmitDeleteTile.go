@@ -8,15 +8,15 @@ import (
 // SubmitDeleteTile removes a tile from the dashboard
 // Right now it is assumed that a tile is only used in a single dashboard
 func SubmitDeleteTile(w http.ResponseWriter, r *http.Request) {
-	cs, ctc, err := getTileContext(r, true)
+	sess, ctc, err := GetTileContext(r, true)
 	if err != nil {
-		cs.WriteError(w, err, http.StatusBadRequest)
+		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 
 	err = r.ParseForm()
 	if err != nil {
-		cs.WriteError(w, err, http.StatusBadRequest)
+		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -28,7 +28,7 @@ func SubmitDeleteTile(w http.ResponseWriter, r *http.Request) {
 	)
 	delete(ctc.dashboard.Tiles, ctc.tileID)
 	ctc.clientModel.UpdateDashboard(&ctc.dashboard)
-	err = cs.SaveState()
+	err = sess.SaveState()
 
-	cs.WriteError(w, err, http.StatusOK)
+	sess.WriteError(w, err, http.StatusOK)
 }

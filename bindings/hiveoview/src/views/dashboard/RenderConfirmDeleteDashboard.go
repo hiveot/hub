@@ -17,9 +17,9 @@ type ConfirmDeleteDashboardTemplateData struct {
 // RenderConfirmDeleteDashboard renders confirmation dialog for deleting a dashboard
 func RenderConfirmDeleteDashboard(w http.ResponseWriter, r *http.Request) {
 
-	cs, cdc, err := getDashboardContext(r, false)
+	sess, cdc, err := getDashboardContext(r, false)
 	if err != nil {
-		cs.WriteError(w, err, http.StatusBadRequest)
+		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 	// setup the rendering data
@@ -27,5 +27,6 @@ func RenderConfirmDeleteDashboard(w http.ResponseWriter, r *http.Request) {
 		Dashboard:                 cdc.dashboard,
 		SubmitDeleteDashboardPath: getDashboardPath(SubmitDeleteDashboardPath, cdc),
 	}
-	app.RenderAppOrFragment(w, r, RenderConfirmDeleteDashboardTemplate, data)
+	buff, err := app.RenderAppOrFragment(r, RenderConfirmDeleteDashboardTemplate, data)
+	sess.WritePage(w, buff, err)
 }

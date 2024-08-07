@@ -57,5 +57,4 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 
 	// the async reply will contain status update
 	w.WriteHeader(http.StatusOK)
-
 }

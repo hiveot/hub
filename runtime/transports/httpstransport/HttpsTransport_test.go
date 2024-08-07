@@ -13,6 +13,7 @@ import (
 	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/teris-io/shortid"
 	"log/slog"
 	"os"
 	"sync/atomic"
@@ -241,7 +242,7 @@ func TestBadRefresh(t *testing.T) {
 	assert.Empty(t, token)
 }
 
-// Test posting an event
+// Test posting an event and action
 func TestPostEventAction(t *testing.T) {
 	t.Log("TestPostEventAction")
 	var rxMsg *things.ThingMessage
@@ -256,7 +257,6 @@ func TestPostEventAction(t *testing.T) {
 		func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 			rxMsg = tv
 			stat.Completed(tv, testMsg, nil)
-			//stat.MessageID = uuid.New().String()
 			return stat
 		})
 	defer svc.Stop()
@@ -264,7 +264,7 @@ func TestPostEventAction(t *testing.T) {
 	// 2a. create a session for connecting a client
 	// (normally this happens when a session token is issued on authentication)
 	sm := sessions.GetSessionManager()
-	cs, err := sm.NewSession(agentID, "remote addr", "")
+	cs, err := sm.NewSession(agentID, "remote addr", "test")
 	assert.NoError(t, err)
 	assert.NotNil(t, cs)
 
@@ -297,6 +297,23 @@ func TestPostEventAction(t *testing.T) {
 		assert.Equal(t, testMsg, rxMsg.Data.(string))
 	}
 	cl.Disconnect()
+}
+
+// shortIDs are used in various places
+func TestShortID(t *testing.T) {
+	total := 100000
+	idCounts := make(map[string]int)
+	for i := 0; i < total; i++ {
+		newID := shortid.MustGenerate()
+		idCounts[newID]++
+	}
+	// check they are unique
+	for id, count := range idCounts {
+		assert.LessOrEqual(t, 1, count)
+		_ = id
+	}
+	// must have same nr of unique IDs as total
+	assert.Equal(t, total, len(idCounts))
 }
 
 // Test publish subscribe using sse

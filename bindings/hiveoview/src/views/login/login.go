@@ -5,6 +5,8 @@ import (
 	"net/http"
 )
 
+const LoginTemplateFile = "login.gohtml"
+
 // RenderLogin renders the login form
 func RenderLogin(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
@@ -19,5 +21,7 @@ func RenderLogin(w http.ResponseWriter, r *http.Request) {
 	// FIXME: delete the post from history so that a back button press doesn't re-post login cred.
 	// apparently the cache control doesn't help for this.
 	w.Header().Add("Cache-Control", "no-cache, max-age=0, must-revalidate, no-store")
-	views.TM.RenderFull(w, "login.gohtml", data)
+	buff, err := views.TM.RenderFull(LoginTemplateFile, data)
+	_ = err
+	_, _ = buff.WriteTo(w)
 }

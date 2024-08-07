@@ -8,11 +8,9 @@ require (
 	github.com/alexedwards/argon2id v1.0.0
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/cockroachdb/pebble v1.1.0
-	github.com/eclipse/paho.golang v0.21.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/golang-jwt/jwt/v5 v5.2.0
-	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/grandcat/zeroconf v1.0.0
 	github.com/huin/goupnp v1.3.0
@@ -27,6 +25,7 @@ require (
 	github.com/samber/lo v1.39.0
 	github.com/stretchr/testify v1.8.4
 	github.com/struCoder/pidusage v0.2.1
+	github.com/teris-io/shortid v0.0.0-20220617161101-71ec9f2aa569
 	github.com/thanhpk/randstr v1.0.6
 	github.com/tidwall/btree v1.7.0
 	github.com/tmaxmax/go-sse v0.9.0-pre.2

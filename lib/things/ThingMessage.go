@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/araddon/dateparse"
-	"github.com/google/uuid"
 	"github.com/hiveot/hub/lib/utils"
 	"time"
 )
@@ -105,7 +104,6 @@ func NewThingMessage(messageType, thingID, key string, data any, senderID string
 		Created:     time.Now().Format(utils.RFC3339Milli),
 		Data:        data,
 		Key:         key,
-		MessageID:   uuid.NewString(),
 		MessageType: messageType,
 		SenderID:    senderID,
 		ThingID:     thingID,

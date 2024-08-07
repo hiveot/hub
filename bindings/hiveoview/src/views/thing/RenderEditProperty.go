@@ -81,13 +81,12 @@ func getConfigValue(
 // RenderEditProperty renders the view for Thing property configuration
 // This sets the data properties for AgentID, ThingID, Key and Config
 func RenderEditProperty(w http.ResponseWriter, r *http.Request) {
+	var data RenderEditPropertyTemplateData
 
 	thingID := chi.URLParam(r, "thingID")
 	propKey := chi.URLParam(r, "key")
 
-	var data RenderEditPropertyTemplateData
-
-	_, hc, err := session.GetSessionFromContext(r)
+	sess, hc, err := session.GetSessionFromContext(r)
 	if err == nil {
 		data, err = getConfigValue(hc, thingID, propKey)
 	}
@@ -98,5 +97,6 @@ func RenderEditProperty(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	app.RenderAppOrFragment(w, r, RenderEditPropertyTemplate, data)
+	buff, err := app.RenderAppOrFragment(r, RenderEditPropertyTemplate, data)
+	sess.WritePage(w, buff, err)
 }

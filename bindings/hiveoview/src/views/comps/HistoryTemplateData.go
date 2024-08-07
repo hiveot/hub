@@ -12,6 +12,7 @@ import (
 )
 
 const RenderHistoryPath = "/value/{thingID}/{key}/history?time="
+const RenderHistoryLatestRowPath = "/value/{thingID}/{key}/latest"
 
 // HistoryTemplateData holds the data for rendering a history table or graph
 type HistoryTemplateData struct {
@@ -29,9 +30,10 @@ type HistoryTemplateData struct {
 	ItemsRemaining bool // for paging, if supported
 
 	// navigation paths
-	PrevDayPath string
-	NextDayPath string
-	TodayPath   string
+	RenderHistoryLatestRow string // table row
+	PrevDayPath            string
+	NextDayPath            string
+	TodayPath              string
 }
 
 type HistoryDataTable struct {
@@ -137,6 +139,6 @@ func NewHistoryTemplateData(hc hubclient.IHubClient,
 	hs.PrevDayPath = utils.Substitute(RenderHistoryPath+prevDayTime, pathParams)
 	hs.NextDayPath = utils.Substitute(RenderHistoryPath+nextDayTime, pathParams)
 	hs.TodayPath = utils.Substitute(RenderHistoryPath+todayTime, pathParams)
-
+	hs.RenderHistoryLatestRow = utils.Substitute(RenderHistoryLatestRowPath, pathParams)
 	return &hs, err
 }

@@ -1,6 +1,7 @@
 package session
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
@@ -334,6 +335,16 @@ func (cs *ClientSession) WriteError(w http.ResponseWriter, err error, httpCode i
 	http.Error(w, err.Error(), httpCode)
 }
 
+// WritePage writes a rendered html page or reports the error
+// Errors are sent to the UI with the notify event.
+func (cs *ClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffer, err error) {
+	if err != nil {
+		cs.WriteError(w, err, http.StatusInternalServerError)
+	} else {
+		_, _ = buff.WriteTo(w)
+	}
+}
+
 // NewClientSession creates a new client session for the given Hub connection
 // Intended for use by the session manager.
 // This subscribes to events for configured agents.
@@ -356,7 +367,8 @@ func NewClientSession(sessionID string, hc hubclient.IHubClient, remoteAddr stri
 	// restore the session data model
 	err := cs.LoadState()
 	if err != nil {
-		slog.Warn("unable to load client state from state service: ", err.Error())
+		slog.Warn("unable to load client state from state service",
+			"clientID", cs.clientID, "err", err.Error())
 		cs.lastError = err
 	}
 

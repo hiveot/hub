@@ -7,24 +7,31 @@ import (
 )
 
 const RenderDashboardTemplate = "RenderDashboard.gohtml"
-const RenderNewTilePath = "/tile/{dashboardID}"
 const RenderConfirmDeleteDashboardPath = "/dashboard/{dashboardID}/confirmDelete"
 const SubmitDashboardLayoutPath = "/dashboard/{dashboardID}/layout"
+
+// const RenderEditTilePath = "/tile/{dashboardID}/{tileID}/edit"
+const RenderNewTilePath = "/tile/{dashboardID}/new"
+
+// const RenderNewTilePath = "/tile/{dashboardID}/{tileID}/edit"
+const RenderConfirmDeleteTilePath = "/tile/{dashboardID}/{tileID}/confirmDelete"
 
 type DashboardPageTemplateData struct {
 	Dashboard                        *session.DashboardDefinition
 	Tiles                            []session.DashboardTile
-	RenderNewTilePath                string
 	RenderConfirmDeleteDashboardPath string
 	SubmitDashboardLayoutPath        string
+
+	RenderNewTilePath           string
+	RenderConfirmDeleteTilePath string
 }
 
 // RenderDashboardPage renders the dashboard page or fragment
 func RenderDashboardPage(w http.ResponseWriter, r *http.Request) {
 	data := DashboardPageTemplateData{}
-	cs, cdc, err := getDashboardContext(r, true)
+	sess, cdc, err := getDashboardContext(r, true)
 	if err != nil {
-		cs.WriteError(w, err, 0)
+		sess.WriteError(w, err, 0)
 		return
 	}
 	data.Dashboard = &cdc.dashboard
@@ -36,9 +43,15 @@ func RenderDashboardPage(w http.ResponseWriter, r *http.Request) {
 		}
 		data.Tiles = append(data.Tiles, tile)
 	}
-	data.RenderNewTilePath = getDashboardPath(RenderNewTilePath, cdc)
+	// dashboard paths
 	data.RenderConfirmDeleteDashboardPath = getDashboardPath(RenderConfirmDeleteDashboardPath, cdc)
 	data.SubmitDashboardLayoutPath = getDashboardPath(SubmitDashboardLayoutPath, cdc)
+
+	// tile paths
+	data.RenderNewTilePath = getDashboardPath(RenderNewTilePath, cdc)
+	data.RenderConfirmDeleteTilePath = getDashboardPath(RenderConfirmDeleteTilePath, cdc)
+
 	// full render or fragment render
-	app.RenderAppOrFragment(w, r, RenderDashboardTemplate, data)
+	buff, err := app.RenderAppOrFragment(r, RenderDashboardTemplate, data)
+	sess.WritePage(w, buff, err)
 }

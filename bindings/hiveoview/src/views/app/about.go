@@ -8,5 +8,7 @@ const TemplateFile = "aboutPage.gohtml"
 
 func RenderAbout(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{}
-	RenderAppOrFragment(w, r, TemplateFile, data)
+	buff, err := RenderAppOrFragment(r, TemplateFile, data)
+	_ = err
+	buff.WriteTo(w)
 }

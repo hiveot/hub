@@ -2,7 +2,6 @@ package httpstransport
 
 import (
 	"encoding/json"
-	"github.com/google/uuid"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
@@ -15,7 +14,7 @@ import (
 	"strconv"
 )
 
-// Protocol handler implementation for support Form operations.
+// Protocol handler implementation for support WoT TD Form operations.
 
 // HandleGetThings returns a list of things in the directory
 // No parameters
@@ -149,9 +148,7 @@ func (svc *HttpsTransport) handlePostMessage(messageType string, w http.Response
 		return
 	}
 	messageID := r.URL.Query().Get("messageID")
-	if messageID == "" {
-		messageID = uuid.NewString()
-	}
+
 	if body != nil && len(body) > 0 {
 		err = json.Unmarshal(body, &payload)
 		if err != nil {

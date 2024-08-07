@@ -133,15 +133,15 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 		r.Post("/dashboard/{dashboardID}/config", dashboard.SubmitConfigDashboard)
 		r.Delete("/dashboard/{dashboardID}", dashboard.SubmitDeleteDashboard)
 
-		// dashboard tiles
-		r.Get("/tile/{dashboardID}", tile.RenderConfigTile)
+		// Dashboard tiles
+		r.Get("/tile/{dashboardID}/new", tile.RenderNewTile)
 		r.Get("/tile/{dashboardID}/{tileID}", tile.RenderTile)
 		r.Get("/tile/{dashboardID}/{tileID}/confirmDelete", tile.RenderConfirmDeleteTile)
-		r.Get("/tile/{dashboardID}/{tileID}/config", tile.RenderConfigTile)
+		r.Get("/tile/{dashboardID}/{tileID}/edit", tile.RenderEditTile)
 		r.Post("/tile/{dashboardID}/{tileID}", tile.SubmitConfigTile)
 		r.Delete("/tile/{dashboardID}/{tileID}", tile.SubmitDeleteTile)
 
-		// directory endpoints
+		// Directory endpoints
 		r.Get("/directory", directory.RenderDirectory)
 		r.Get("/directory/{thingID}/confirmDeleteTD", directory.RenderConfirmDeleteTD)
 		r.Delete("/directory/{thingID}", directory.SubmitDeleteTD)
@@ -150,15 +150,15 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 		r.Get("/thing/{thingID}/details", thing.RenderThingDetails)
 		r.Get("/thing/{thingID}/raw", thing.RenderThingRaw)
 
-		// Actions
+		// Performing Actions
 		r.Get("/action/{thingID}/{key}/request", thing.RenderActionRequest)
 		r.Post("/action/{thingID}/{key}", thing.SubmitActionRequest)
 
-		// Thing configuration
+		// Editing Thing properties
 		r.Get("/property/{thingID}/{key}/edit", thing.RenderEditProperty)
 		r.Post("/property/{thingID}/{key}", thing.SubmitProperty)
 
-		// Event/Property/Action value history. Optional query params 'timestamp' and 'duration'
+		// value history. Optional query params 'timestamp' and 'duration'
 		r.Get("/value/{thingID}/{key}/history", value.RenderHistoryPage)
 		r.Get("/value/{thingID}/{key}/latest", comps.RenderLatestValueRow)
 

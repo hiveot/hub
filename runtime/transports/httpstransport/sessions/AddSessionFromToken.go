@@ -57,7 +57,8 @@ func AddSessionFromToken(userAuthn api.IAuthenticator) func(next http.Handler) h
 
 			if sid == "" {
 				// service/devices don't have a session-id in their token. These tokens
-				// remain valid until they expire. Use the client-id as the session ID.
+				// remain valid until they expire. Use the client-id as the session ID
+				// as only a single instance is allowed.
 				cs, err = sessionmanager.GetSession(cid)
 				if cs == nil {
 					cs, err = sessionmanager.NewSession(cid, r.RemoteAddr, cid)

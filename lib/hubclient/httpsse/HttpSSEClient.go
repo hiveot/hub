@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
@@ -16,6 +15,7 @@ import (
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/teris-io/shortid"
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
 	"net/http"
@@ -437,7 +437,7 @@ func (cl *HttpSSEClient) Rpc(
 	thingID string, key string, args interface{}, resp interface{}) (err error) {
 
 	// a messageID is needed before the action is published in order to match it with the reply
-	messageID := "rpc-" + uuid.NewString()
+	messageID := "rpc-" + shortid.MustGenerate()
 	rChan := make(chan *hubclient.DeliveryStatus)
 	cl.mux.Lock()
 	cl._correlData[messageID] = rChan

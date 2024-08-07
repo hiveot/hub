@@ -79,10 +79,10 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		Key:     key,
 	}
 	// Read the TD being displayed
-	mySession, hc, err := session.GetSessionFromContext(r)
+	sess, hc, err := session.GetSessionFromContext(r)
 	if err != nil {
 		// TODO: redirect?
-		mySession.WriteError(w, err, http.StatusBadRequest)
+		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 	if err == nil {
@@ -100,7 +100,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err != nil {
-		mySession.WriteError(w, err, http.StatusBadRequest)
+		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -127,7 +127,8 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 	pathArgs := map[string]string{"thingID": data.ThingID, "key": data.Key}
 	data.SubmitActionRequestPath = utils.Substitute(SubmitActionRequestPath, pathArgs)
 
-	app.RenderAppOrFragment(w, r, RenderActionRequestTemplate, data)
+	buff, err := app.RenderAppOrFragment(r, RenderActionRequestTemplate, data)
+	sess.WritePage(w, buff, err)
 }
 
 // RenderActionProgress renders the action progress status component.

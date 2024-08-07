@@ -3,9 +3,9 @@ package tile
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/teris-io/shortid"
 	"net/http"
 )
 
@@ -22,7 +22,7 @@ type ClientTileContext struct {
 const URLParamDashboardID = "dashboardID"
 const URLParamTileID = "tileID"
 
-// getTileContext is a helper to read session, dashboard and tile from
+// GetTileContext is a helper to read session, dashboard and tile from
 // the request context.
 //
 // This reads 'dashboardID' and 'tileID' URL parameters, and looks up the
@@ -30,22 +30,22 @@ const URLParamTileID = "tileID"
 //   - if no dashboardID is given or found, then this fails
 //   - if no tileID is given and mustExist is true then this fails
 //   - if no tile was found and mustExist is false then a new one is created
-func getTileContext(r *http.Request, mustExist bool) (
+func GetTileContext(r *http.Request, mustExist bool) (
 	*session.ClientSession, ClientTileContext, error) {
 
 	var found bool
 	ctc := ClientTileContext{}
-	cs, hc, err := session.GetSessionFromContext(r)
+	sess, hc, err := session.GetSessionFromContext(r)
 	if err != nil {
-		return cs, ctc, err
+		return sess, ctc, err
 	}
 	ctc.clientID = hc.ClientID()
-	ctc.clientModel = cs.GetClientData()
+	ctc.clientModel = sess.GetClientData()
 	ctc.dashboardID = chi.URLParam(r, URLParamDashboardID)
 	ctc.dashboard, found = ctc.clientModel.GetDashboard(ctc.dashboardID)
 	if !found {
 		err = fmt.Errorf("Dashboard with ID '%s' not found", ctc.dashboardID)
-		return cs, ctc, err
+		return sess, ctc, err
 	}
 
 	ctc.tileID = chi.URLParam(r, URLParamTileID)
@@ -53,15 +53,15 @@ func getTileContext(r *http.Request, mustExist bool) (
 	if !found {
 		if mustExist {
 			err = fmt.Errorf("Tile with ID '%s' not found", ctc.tileID)
-			return cs, ctc, err
+			return sess, ctc, err
 		}
 		if ctc.tileID == "" {
-			ctc.tileID = uuid.NewString()
+			ctc.tileID = shortid.MustGenerate()
 		}
 		ctc.tile = ctc.clientModel.NewTile(ctc.tileID, "New Tile", session.TileTypeText)
 	}
 
-	return cs, ctc, nil
+	return sess, ctc, nil
 }
 
 // substitute the directoryID and tileID in the given path

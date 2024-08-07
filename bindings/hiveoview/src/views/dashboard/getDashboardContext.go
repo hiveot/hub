@@ -31,12 +31,12 @@ func getDashboardContext(r *http.Request, createDashboard bool) (
 
 	var found bool
 	cdc := ClientDashboardContext{}
-	cs, hc, err := session.GetSessionFromContext(r)
+	sess, hc, err := session.GetSessionFromContext(r)
 	if err != nil {
-		return cs, cdc, err
+		return sess, cdc, err
 	}
 	cdc.clientID = hc.ClientID()
-	cdc.clientModel = cs.GetClientData()
+	cdc.clientModel = sess.GetClientData()
 	cdc.dashboardID = chi.URLParam(r, URLParamDashboardID)
 	if cdc.dashboardID == "" {
 		if len(cdc.clientModel.Dashboards) > 0 {
@@ -52,10 +52,10 @@ func getDashboardContext(r *http.Request, createDashboard bool) (
 			cdc.dashboard = cdc.clientModel.NewDashboard(cdc.dashboardID, "New Dashboard")
 		} else {
 			err = fmt.Errorf("Dashboard with ID '%s' not found", cdc.dashboardID)
-			return cs, cdc, err
+			return sess, cdc, err
 		}
 	}
-	return cs, cdc, nil
+	return sess, cdc, nil
 }
 
 // substitute the directory ID in the given path

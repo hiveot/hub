@@ -1,13 +1,13 @@
 package views
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"html/template"
 	"io/fs"
 	"log/slog"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -133,51 +133,58 @@ func (svc *TemplateManager) parseTemplateFiles(t *template.Template, files fs.FS
 // RenderFragment renders the template 'name' with the given data without base template.
 // Intended to be used with hx-target pointing to the page in which to render the fragment.
 //
-//	w is the writer to render to
 //	name is the name of the template to render
 //	data is a map with template variables and their values
-func (svc *TemplateManager) RenderFragment(w http.ResponseWriter, name string, data any) {
+//
+// This returns the rendered template html or an error if failed.
+func (svc *TemplateManager) RenderFragment(name string, data any) (
+	buff *bytes.Buffer, err error) {
+
+	buff = new(bytes.Buffer)
 	slog.Info("RenderPartial", "template", name)
+
 	svc.renderMux.Lock()
 	defer svc.renderMux.Unlock()
 	tpl, err := svc.GetTemplate(name)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		slog.Error(err.Error())
-		return
+		return buff, err
 	}
-	err = tpl.Execute(w, data)
+
+	err = tpl.Execute(buff, data)
 	if err != nil {
-		errMsg := "template render error: " + err.Error()
-		http.Error(w, errMsg, http.StatusInternalServerError)
-		slog.Error(errMsg)
-		return
+		err = fmt.Errorf("template render error: %w", err)
+		slog.Error(err.Error())
+		return buff, err
 	}
+	return buff, nil
 }
 
 // RenderFull embeds the template 'name' into the base template and executes.
 // The base template contains the 'embed' field where the template is injected into.
 //
-// If a template has an error, the error is returned to the user instead along with a 500 error.
-//
-//	w is the writer to render into
 //	t is the template bundle to lookup base and name
 //	name is the name of the template to render
 //	data contains the data structure to pass to the template renderer
-func (svc *TemplateManager) RenderFull(w http.ResponseWriter, name string, data any) {
+//
+// This returns a buffer with the template or an error if rendering fails
+func (svc *TemplateManager) RenderFull(name string, data any) (
+	buff *bytes.Buffer, err error) {
+
 	slog.Info("RenderFull", "template", name)
+	buff = new(bytes.Buffer)
+
+	// protect access to data?
 	svc.renderMux.Lock()
 	defer svc.renderMux.Unlock()
-
 	baseT, err := svc.GetTemplate(baseTemplateName)
 	//baseT := svc.allTemplates.Lookup(baseTemplateName)
 	if baseT == nil {
 		// filesystem incorrect?uh oh
-		slog.Error("Can't read the base template.",
-			"templateFile", baseTemplateName,
-			"err", err)
-		_, _ = w.Write([]byte("template not found: " + baseTemplateName))
-		return
+		err = fmt.Errorf("base template '%s' not found: %w",
+			baseTemplateName, err)
+		slog.Error(err.Error())
+		return buff, err
 	}
 
 	tpl, err := svc.GetTemplate(name)
@@ -186,17 +193,17 @@ func (svc *TemplateManager) RenderFull(w http.ResponseWriter, name string, data 
 		_, err = baseT.AddParseTree("embed", tpl.Tree)
 	}
 	if err != nil {
-		errMsg := "template error: " + err.Error()
-		http.Error(w, errMsg, http.StatusInternalServerError)
-		return
+		err = fmt.Errorf("parsing templates error: %w", err)
+		slog.Error(err.Error())
+		return buff, err
 	}
-	err = baseT.Execute(w, data)
+	err = baseT.Execute(buff, data)
 	if err != nil {
-		errMsg := "rendering template failed: " + err.Error()
-		http.Error(w, errMsg, http.StatusInternalServerError)
-		slog.Error(errMsg)
-		return
+		err = fmt.Errorf("rendering template failed: %w", err)
+		slog.Error(err.Error())
+		return buff, err
 	}
+	return buff, nil
 }
 
 // InitTemplateManager initializes the template manager singleton

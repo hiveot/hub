@@ -63,8 +63,10 @@ func RenderConnectionStatus(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{}
 	status := GetConnectStatus(r)
 	data["Status"] = status
+	sess, _, _ := session.GetSessionFromContext(r)
 
 	// render with base or as fragment
 	//views.TM.RenderTemplate(w, r, ConnectStatusTemplate, data)
-	RenderAppOrFragment(w, r, ConnectStatusTemplate, data)
+	buff, err := RenderAppOrFragment(r, ConnectStatusTemplate, data)
+	sess.WritePage(w, buff, err)
 }

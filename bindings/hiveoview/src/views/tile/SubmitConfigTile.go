@@ -10,9 +10,9 @@ import (
 // SubmitConfigTile updated or creates a tile and adds it to the dashboard
 func SubmitConfigTile(w http.ResponseWriter, r *http.Request) {
 
-	cs, cdc, err := getTileContext(r, false)
+	sess, cdc, err := GetTileContext(r, false)
 	if err != nil {
-		cs.WriteError(w, err, http.StatusBadRequest)
+		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 	err = r.ParseForm()
@@ -30,7 +30,7 @@ func SubmitConfigTile(w http.ResponseWriter, r *http.Request) {
 		cdc.clientModel.Tiles[tile.ID] = &tile
 		cdc.dashboard.Tiles[tile.ID] = true
 		cdc.clientModel.UpdateDashboard(&cdc.dashboard)
-		err = cs.SaveState()
+		err = sess.SaveState()
 	}
-	cs.WriteError(w, err, http.StatusOK)
+	sess.WriteError(w, err, http.StatusOK)
 }

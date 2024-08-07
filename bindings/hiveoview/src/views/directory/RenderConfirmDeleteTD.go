@@ -26,10 +26,10 @@ func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 	tdJson := ""
 
 	// Read the TD being displayed and its latest values
-	mySession, hc, err := session.GetSessionFromContext(r)
+	sess, hc, err := session.GetSessionFromContext(r)
 	if err != nil {
 		// TODO: redirect to login?
-		mySession.WriteError(w, err, http.StatusBadRequest)
+		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -38,7 +38,7 @@ func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 		err = json.Unmarshal([]byte(tdJson), &td)
 	}
 	if err != nil {
-		mySession.WriteError(w, err, http.StatusBadRequest)
+		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 	tdParams := map[string]string{"thingID": thingID}
@@ -47,5 +47,6 @@ func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 		TD:                 &td,
 		SubmitDeleteTDPath: utils.Substitute(SubmitDeleteTDPath, tdParams),
 	}
-	app.RenderAppOrFragment(w, r, RenderConfirmDeleteTDTemplate, data)
+	buff, err := app.RenderAppOrFragment(r, RenderConfirmDeleteTDTemplate, data)
+	sess.WritePage(w, buff, err)
 }

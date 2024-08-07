@@ -8,9 +8,9 @@ import (
 // SubmitConfigDashboard updates a the dashboard configuration
 func SubmitConfigDashboard(w http.ResponseWriter, r *http.Request) {
 
-	cs, cdc, err := getDashboardContext(r, true)
+	sess, cdc, err := getDashboardContext(r, true)
 	if err != nil {
-		cs.WriteError(w, err, http.StatusBadRequest)
+		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -21,7 +21,7 @@ func SubmitConfigDashboard(w http.ResponseWriter, r *http.Request) {
 
 	cdc.dashboard.Title = newTitle
 	cdc.clientModel.UpdateDashboard(&cdc.dashboard)
-	err = cs.SaveState()
+	_ = sess.SaveState()
 
 	// refresh the dashboard
 	w.WriteHeader(http.StatusOK)

@@ -5,11 +5,11 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/config"
+	"github.com/teris-io/shortid"
 	"log/slog"
 	"time"
 )
@@ -130,8 +130,7 @@ func (svc *JWTAuthenticator) Login(clientID string, password string) (token stri
 	}
 
 	// password login always uses the consumer token validity
-	uid, _ := uuid.NewUUID()
-	sessionID := uid.String()
+	sessionID := shortid.MustGenerate()
 	token = svc.CreateSessionToken(clientID, sessionID, svc.ConsumerTokenValiditySec)
 
 	return token, sessionID, err

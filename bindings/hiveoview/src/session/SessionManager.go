@@ -4,9 +4,9 @@ import (
 	"crypto/ecdsa"
 	"crypto/x509"
 	"errors"
-	"github.com/google/uuid"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/connect"
+	"github.com/teris-io/shortid"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -62,7 +62,7 @@ func (sm *SessionManager) ActivateNewSession(
 	// 2. create a new session using the given connection, if any
 	// re-use the session ID if there was one.
 	if sessionID == "" {
-		sessionID = uuid.NewString()
+		sessionID = shortid.MustGenerate()
 	}
 	// create a session for this connection and subscribe to events from configured agents.
 	cs = NewClientSession(sessionID, hc, r.RemoteAddr)

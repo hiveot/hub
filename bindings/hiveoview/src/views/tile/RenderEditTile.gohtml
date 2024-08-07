@@ -1,6 +1,6 @@
 <!--Tile editor dialog-->
 
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.ConfigTileTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.EditTileTemplateData*/ -}}
 
 <h-modal show showClose showCancel showSubmit>
 		<article  style="min-width: 400px">
@@ -18,9 +18,7 @@
 						<input id="title-id" readonly placeholder="{{.Tile.Title}}"/>
 
 						<label for="type-id">Tile Type: </label>
-						<input id="type-id" readonly placeholder="{{.Tile.Type}}"/>
-
-
+						<input id="type-id" readonly placeholder="{{.Tile.TileType}}"/>
 					</fieldset>
 				</form>
 			</main>

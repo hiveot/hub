@@ -134,14 +134,14 @@ func TestGetEvents(t *testing.T) {
 	require.NotNil(t, values)
 	d0 := time.Now().Sub(t0)
 
-	// 2nd time from cache
+	// 2nd time from cache should be faster
 	t1 := time.Now()
 	values2, err := svc.ReadLatest(vocab.MessageTypeEvent, thing1ID, nil, "")
 	require.NoError(t, err)
 	require.NotNil(t, values2)
 	d1 := time.Now().Sub(t1)
 
-	assert.Less(t, d1, d0)
+	assert.Less(t, d1, d0, "reading from cache is not faster?")
 
 	values3, err := svc.ReadLatest(vocab.MessageTypeEvent, thing1ID, valueNames, "")
 	require.NoError(t, err)

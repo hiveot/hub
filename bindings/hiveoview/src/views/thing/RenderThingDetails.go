@@ -102,7 +102,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Read the TD being displayed and its latest values
-	mySession, hc, err := session.GetSessionFromContext(r)
+	sess, hc, err := session.GetSessionFromContext(r)
 	if err == nil {
 		thingData.hc = hc
 		tdJson, err2 := digitwin.DirectoryReadTD(hc, thingID)
@@ -168,8 +168,9 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("Failed loading Thing info",
 			"thingID", thingID, "err", err.Error())
-		mySession.SendNotify(session.NotifyError, err.Error())
+		sess.SendNotify(session.NotifyError, err.Error())
 	}
 	// full render or fragment render
-	app.RenderAppOrFragment(w, r, TemplateFile, thingData)
+	buff, err := app.RenderAppOrFragment(r, TemplateFile, thingData)
+	sess.WritePage(w, buff, err)
 }

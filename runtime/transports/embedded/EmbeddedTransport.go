@@ -7,11 +7,12 @@ import (
 	"github.com/hiveot/hub/lib/hubclient/embedded"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/teris-io/shortid"
 )
 
 // EmbeddedTransport is a singleton for transporting messages for embedded service agents
 type EmbeddedTransport struct {
-	// map of session handlers by agent IDs
+	// map of incoming message handlers for each agent by agentID
 	// Used in SendEvent and SendToClient
 	handlers map[string]hubclient.MessageHandler
 
@@ -33,11 +34,20 @@ func (svc *EmbeddedTransport) GetProtocolInfo() api.ProtocolInfo {
 	return inf
 }
 
+// receive a message from a client and ensure it has a message ID
+// embedded transport use a 'e-' messageID prefix for troubleshooting
+func (svc *EmbeddedTransport) handleMessage(msg *things.ThingMessage) hubclient.DeliveryStatus {
+	if msg.MessageID == "" {
+		msg.MessageID = "e-" + shortid.MustGenerate()
+	}
+	return svc.handleMessageFromClient(msg)
+}
+
 // NewClient create a new messaging client that is already connected to the protocol server.
 // It is directly for use by embedded services.
 func (svc *EmbeddedTransport) NewClient(agentID string) hubclient.IHubClient {
 	// the transport sends messages from client to this binding
-	cl := embedded.NewEmbeddedClient(agentID, svc.handleMessageFromClient)
+	cl := embedded.NewEmbeddedClient(agentID, svc.handleMessage)
 
 	// to send messages from binding to client it must be registered
 	svc.handlers[agentID] = cl.HandleMessage
@@ -45,8 +55,10 @@ func (svc *EmbeddedTransport) NewClient(agentID string) hubclient.IHubClient {
 }
 
 // SendEvent publishes an event message to all subscribers of this protocol binding
+// TODO: currently the embedded services don't send events
 func (svc *EmbeddedTransport) SendEvent(event *things.ThingMessage) (stat hubclient.DeliveryStatus) {
 	stat.DeliveryFailed(event, errors.New("no handlers for event"))
+
 	for agentID, agent := range svc.handlers {
 		// TODO: until subscription is needed by embedded clients, simply don't send them any events.
 		// don't send events back to the sender

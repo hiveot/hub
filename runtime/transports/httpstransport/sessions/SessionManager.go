@@ -4,7 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/x509"
 	"errors"
-	"github.com/google/uuid"
+	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
@@ -29,7 +29,7 @@ type SessionManager struct {
 
 // NewSession creates a new session for the given clientID and remote address.
 // The clientID must already have been authorized first.
-// sessionID is optional sessionID if one exists.
+// sessionID is a required sessionID. This will fail if missing.
 //
 // This returns the new session instance or an error if the client has too many sessions.
 func (sm *SessionManager) NewSession(clientID string, remoteAddr string, sessionID string) (*ClientSession, error) {
@@ -40,7 +40,7 @@ func (sm *SessionManager) NewSession(clientID string, remoteAddr string, session
 		slog.String("remoteAddr", remoteAddr),
 		slog.String("sessionID", sessionID))
 	if sessionID == "" {
-		sessionID = uuid.NewString()
+		return nil, fmt.Errorf("NewSession for client '%s' is missing a sessionID", clientID)
 	}
 	cs = NewClientSession(sessionID, clientID, remoteAddr)
 	sm.mux.Lock()

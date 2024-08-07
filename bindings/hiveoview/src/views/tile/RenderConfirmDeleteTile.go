@@ -17,9 +17,9 @@ type ConfirmDeleteTileTemplateData struct {
 
 func RenderConfirmDeleteTile(w http.ResponseWriter, r *http.Request) {
 
-	cs, ctc, err := getTileContext(r, true)
+	sess, ctc, err := GetTileContext(r, true)
 	if err != nil {
-		cs.WriteError(w, err, http.StatusBadRequest)
+		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 	data := ConfirmDeleteTileTemplateData{
@@ -27,5 +27,6 @@ func RenderConfirmDeleteTile(w http.ResponseWriter, r *http.Request) {
 		Tile:                 ctc.tile,
 		SubmitDeleteTilePath: getTilePath(SubmitDeleteTilePath, ctc),
 	}
-	app.RenderAppOrFragment(w, r, ConfirmDeleteTileTemplate, data)
+	buff, err := app.RenderAppOrFragment(r, ConfirmDeleteTileTemplate, data)
+	sess.WritePage(w, buff, err)
 }

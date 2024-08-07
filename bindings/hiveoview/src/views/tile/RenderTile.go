@@ -7,25 +7,31 @@ import (
 )
 
 const RenderTileTemplate = "RenderTile.gohtml"
+const RenderEditTilePath = "/tile/{dashboardID}/{tileID}/edit"
 
-type TileTemplateData struct {
+type RenderTileTemplateData struct {
 	Dashboard session.DashboardDefinition
 	// Title to display
 	Tile session.DashboardTile
+	//
+	RenderEditTilePath string
 }
 
 // RenderTile renders the single Tile element
 // TODO: values from the sources
 func RenderTile(w http.ResponseWriter, r *http.Request) {
-	data := TileTemplateData{}
 
-	cs, ctc, err := getTileContext(r, true)
+	sess, ctc, err := GetTileContext(r, true)
 	if err != nil {
-		cs.WriteError(w, err, http.StatusBadRequest)
+		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
-	data.Dashboard = ctc.dashboard
-	data.Tile = ctc.tile
-	app.RenderAppOrFragment(w, r, RenderTileTemplate, data)
-
+	//pathArgs := map[string]string{"dashboardID": ctc.dashboardID, "tileID": ctc.tileID}
+	//data := RenderTileTemplateData{
+	//	Dashboard:          ctc.dashboard,
+	//	Tile:               ctc.tile,
+	//	RenderEditTilePath: utils.Substitute(RenderEditTilePath, pathArgs),
+	//}
+	buff, err := app.RenderAppOrFragment(r, RenderTileTemplate, ctc.tile)
+	sess.WritePage(w, buff, err)
 }

@@ -12,12 +12,14 @@ import (
 	"github.com/hiveot/hub/runtime/transports/discotransport"
 	"github.com/hiveot/hub/runtime/transports/embedded"
 	"github.com/hiveot/hub/runtime/transports/httpstransport"
+	"github.com/teris-io/shortid"
 	"log/slog"
 )
 
 // TransportsManager aggregates multiple transport protocol bindings and manages the starting,
 // stopping and routing of protocol messages.
 // This implements the ITransportBinding interface like the protocols it manages.
+// Incoming messages without an ID are assigned a new messageID
 type TransportsManager struct {
 	// protocol transport bindings for events, actions and rpc requests
 	// The embedded binding can be used directly with embedded services
@@ -66,6 +68,26 @@ func (svc *TransportsManager) GetProtocolInfo() (pi api.ProtocolInfo) {
 		return svc.httpsTransport.GetProtocolInfo()
 	}
 	return
+}
+
+// receive a message and ensure it has a message ID
+func (svc *TransportsManager) handleMessage(msg *things.ThingMessage) hubclient.DeliveryStatus {
+	if msg.MessageID == "" {
+		msg.MessageID = shortid.MustGenerate()
+	}
+	stat := svc.handler(msg)
+	// help detect problems with message ID mismatch
+	if stat.MessageID != msg.MessageID {
+		slog.Error("Delivery status has missing messageID",
+			"thingID", msg.ThingID,
+			"messageType", msg.MessageType,
+			"key", msg.Key,
+			"request messageID", msg.MessageID,
+			"status messageID", stat.MessageID,
+			"senderID", msg.SenderID,
+		)
+	}
+	return stat
 }
 
 //// GetProtocols returns a list of active server protocol bindings
@@ -136,19 +158,19 @@ func (svc *TransportsManager) SendEvent(
 func (svc *TransportsManager) Start(handler hubclient.MessageHandler) error {
 	svc.handler = handler
 	if svc.embeddedTransport != nil {
-		err := svc.embeddedTransport.Start(handler)
+		err := svc.embeddedTransport.Start(svc.handler)
 		if err != nil {
 			slog.Error("Embedded transport start error:", "err", err)
 		}
 	}
 	if svc.httpsTransport != nil {
-		err := svc.httpsTransport.Start(handler)
+		err := svc.httpsTransport.Start(svc.handler)
 		if err != nil {
 			slog.Error("HttpSSE transport start error:", "err", err)
 		}
 	}
 	if svc.mqttTransport != nil {
-		err := svc.mqttTransport.Start(handler)
+		err := svc.mqttTransport.Start(svc.handler)
 		if err != nil {
 			slog.Error("MQTT transport start error:", "err", err)
 		}

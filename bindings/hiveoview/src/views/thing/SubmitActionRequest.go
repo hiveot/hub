@@ -82,5 +82,4 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	mySession.SendNotify(session.NotifySuccess, notificationText)
 
 	w.WriteHeader(http.StatusOK)
-
 }

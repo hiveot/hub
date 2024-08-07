@@ -43,6 +43,7 @@ func TestAddActionBadMsg(t *testing.T) {
 
 	// good params
 	msg := things.NewThingMessage(msgType, thingID, key, nil, senderID)
+	msg.MessageID = "t1"
 	rec, err := svc.AddAction(msg)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rec)
@@ -53,14 +54,17 @@ func TestAddActionBadMsg(t *testing.T) {
 
 	// missing thingID
 	msg = things.NewThingMessage(msgType, "", key, nil, senderID)
+	msg.MessageID = "t1"
 	rec, err = svc.AddAction(msg)
 	assert.Error(t, err)
 	// missing key
 	msg = things.NewThingMessage(msgType, thingID, "", nil, senderID)
+	msg.MessageID = "t1"
 	rec, err = svc.AddAction(msg)
 	assert.Error(t, err)
 	// missing sender
 	msg = things.NewThingMessage(msgType, thingID, key, nil, "")
+	msg.MessageID = "t1"
 	rec, err = svc.AddAction(msg)
 	assert.Error(t, err)
 	// missing messageID
@@ -80,6 +84,7 @@ func TestReadLatest(t *testing.T) {
 	defer stopFunc()
 
 	msg := things.NewThingMessage(msgType, thingID, key, "data", senderID)
+	msg.MessageID = "t1"
 	rec, err := svc.AddAction(msg)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rec)
@@ -119,6 +124,7 @@ func TestUpdateDeliveryStatus(t *testing.T) {
 	defer stopFunc()
 
 	msg := things.NewThingMessage(msgType, thingID, key, "data", senderID)
+	msg.MessageID = "t1"
 	rec, err := svc.AddAction(msg)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rec)
@@ -164,6 +170,7 @@ func TestBadDeliveryStatus(t *testing.T) {
 	defer stopFunc()
 
 	msg := things.NewThingMessage(msgType, thingID, key, "data", senderID)
+	msg.MessageID = "t1"
 	rec, err := svc.AddAction(msg)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rec)

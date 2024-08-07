@@ -14,14 +14,20 @@ func RenderThingRaw(w http.ResponseWriter, r *http.Request) {
 	var tdJSON string
 	var tdPretty []byte
 	// Read the TD being displayed and its latest values
-	_, hc, err := session.GetSessionFromContext(r)
+	sess, hc, err := session.GetSessionFromContext(r)
 	if err == nil {
 		tdJSON, err = digitwin.DirectoryReadTD(hc, thingID)
+	}
+	if err == nil {
 		// re-marshal with pretty-print JSON
 		var tdObj any
-		_ = json.Unmarshal([]byte(tdJSON), &tdObj)
+		err = json.Unmarshal([]byte(tdJSON), &tdObj)
 		tdPretty, _ = json.MarshalIndent(tdObj, "", "    ")
 	}
-	w.Write(tdPretty)
-	w.WriteHeader(http.StatusOK)
+	if err != nil {
+		sess.WriteError(w, err, http.StatusInternalServerError)
+	} else {
+		w.Write(tdPretty)
+		w.WriteHeader(http.StatusOK)
+	}
 }

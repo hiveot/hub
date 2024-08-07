@@ -14,9 +14,9 @@ import (
 //	"layout": { "id":{tileID}, "x":x,"y":y,"w":w,"h",h}
 func SubmitDashboardLayout(w http.ResponseWriter, r *http.Request) {
 
-	cs, cdc, err := getDashboardContext(r, true)
+	sess, cdc, err := getDashboardContext(r, true)
 	if err != nil {
-		cs.WriteError(w, err, http.StatusBadRequest)
+		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 	slog.Info("SubmitDashboardLayout", "ClientID", cdc.clientID,
@@ -45,11 +45,11 @@ func SubmitDashboardLayout(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Warn("SubmitDashboardLayout error",
 			"dashboardID", cdc.dashboard.ID, "err", err.Error())
-		cs.WriteError(w, err, http.StatusBadRequest)
+		sess.WriteError(w, err, http.StatusBadRequest)
 	}
 
 	// save the updated dashboard
 	cdc.clientModel.UpdateDashboard(&cdc.dashboard)
-	err = cs.SaveState()
-	cs.WriteError(w, err, http.StatusOK)
+	_ = sess.SaveState()
+	sess.WriteError(w, err, http.StatusOK)
 }
