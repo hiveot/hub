@@ -1,21 +1,51 @@
 <!--Tile editor dialog-->
 
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/session.DashboardTile*/ -}}
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
 
-{{if not .ID}}
+{{if .ReRenderTilePath}}
+{{/*	hx-params="none" hides hx-vals defined in parent*/}}
 <div  hx-trigger="intersect once"
       hx-swap="outerHTML"
-      hx-get="">
-	<p>reloading page fragment...</p>
+      hx-params="none"
+      hx-get="{{.ReRenderTilePath}}">
+	<p>reloading tile fragment...</p>
 	<h-loading></h-loading>
 </div>
 
 {{else}}
 
-<div class="h-col-centered h-grow" style="justify-content:center">
-Hello world
-</div>
+	<header class="tile-header h-row">
+		<span></span>
+		<div style="cursor:move; flex-grow:1; text-align:center"
+						title="{{.Tile.ID}}">{{.Tile.Title}}</div>
+      {{template "tileMenu.gohtml" .}}
+	</header>
+	<div class="tile-content">
+
+		<div class="h-col-centered h-grow" style="justify-content:center">
+			This is a {{.Tile.TileType}} tile.
+		</div>
+
+	</div>
+
+
 <style>
+
+    .tile-header {
+        background-color: var(--pico-background-color);
+        color: var(--pico-color);
+        font-size: 1.1em;
+        min-height: 20px;
+        padding: 6px;
+    }
+    .tile-content{
+        /*display:flex;*/
+        /*flex-grow:1;*/
+        /*overflow:auto;*/
+        /*padding:0;*/
+        /*justify-content:center;*/
+        /*align-items:center;*/
+    }
 
 </style>
 {{end}}

@@ -43,7 +43,7 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// read the TD
-	td, err := sess.ReadTD(thingID)
+	td, err := session.ReadTD(hc, thingID)
 	if err != nil {
 		sess.WriteError(w, err, 0)
 		return

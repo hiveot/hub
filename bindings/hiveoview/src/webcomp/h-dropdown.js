@@ -18,7 +18,9 @@ template.innerHTML = `
        <div button >
            <!-- named slot 'button' to replace the default button-->
            <slot  name="button" button-slot>
-              <button>menu</button>
+                <button role="button" class="menu-button" style="border:none">
+                      <iconify-icon style="font-size:20px" icon="mdi:menu"></iconify-icon>
+                </button>
            </slot>
        </div>
 
@@ -28,7 +30,7 @@ template.innerHTML = `
     </div>
     
   <style>
-  
+
   /* center in the parent container */
   :host {
       display: inline-flex;
@@ -46,20 +48,19 @@ template.innerHTML = `
       so the dropdown position is correct when using position rightXyz */
     display: inline-flex; 
   }
-  .button {
-     /*z-index:1;*/
-  }
+  
   .content {
     position: absolute;
     width: max-content;
+    outline: none;  /* remove fat border*/
     background-color: var(--menu-bg-color);
     border: var(--pico-border-width) solid var(--pico-form-element-border-color);
 
-/*instead of display none, use clip-path to hide the menu, along with z-index.
- * z-index is set to -1 so it won't be in the way of other elements when hidden.
- * see each of the position styles for the clip-path best suited for the placement.
- * clip-path is awesome! see also https://bennettfeely.com/clippy/
- */
+    /*instead of display none, use clip-path to hide the menu, along with z-index.
+     * z-index is set to -1 so it won't be in the way of other elements when hidden.
+     * see each of the position styles for the clip-path best suited for the placement.
+     * clip-path is awesome! see also https://bennettfeely.com/clippy/
+     */
     transition: all 300ms ease;
 }
   .content.bottom {
@@ -150,7 +151,13 @@ template.innerHTML = `
       /* allow room for box shadow */
       clip-path: inset(-20px -20px -20px -20px); 
   }
-  
+  .menu-button {
+     background-color: transparent;
+     display: flex;
+     flex-direction: row;
+     /*color:var(--pico-color);*/
+     color:var(--pico-primary);
+}    
 </style>  
 `;
 
@@ -194,7 +201,10 @@ class HDropdown extends HTMLElement {
         // either the default button or the provided button.
         this.elButton = shadowRoot.querySelector("[button]");
         this.elButtonSlot = this.elButton.children[0]
-        this.elButtonSlot.addEventListener("click", this.toggleMenu.bind(this))
+        this.elButtonSlot.addEventListener("click", ()=>{
+            // console.log("menu click toggle menu")
+            this.toggleMenu()
+        })
         // if we're about to click on the button then ignore the focus event that
         // is the result of this click, to prevent the menu from toggling to open.
         this.elButtonSlot.addEventListener("mousedown", (ev) => {
@@ -211,14 +221,23 @@ class HDropdown extends HTMLElement {
             this.contentChild.tabIndex = -1
         }
         // when losing focus in the dropdown, close it.
-        this.elContent.addEventListener("blur", this.hideContent.bind(this))
+        this.elContent.addEventListener("blur", ()=>{
+            // console.log("elContent blur event")
+            // FIXME: workaround for htmx triggers being swallowed when selecting
+            // a menu item.
+            setTimeout(()=>{
+                this.hideContent()
+            },100)
+        })
 
         // credits: react-autocomplete. ignore the blur event
+        // console.log("startup clear ignoreBlur")
         this.ignoreBlur = false
     }
 
 
     attributeChangedCallback(name, oldValue, newValue) {
+        console.log("attributeChangedCallback",name,"=",newValue)
         // console.log("attributeChangedCallback: " + name + "=" + newValue);
         if (name === "position") {
             this.elContent.classList.remove(oldValue)
@@ -252,6 +271,10 @@ class HDropdown extends HTMLElement {
     }
 
     connectedCallback() {
+
+        // https://htmx.org/examples/web-components/
+        // htmx.process(this.daShadow) // Tell HTMX about this component's shadow DOM
+        // htmx.process(this.elContent) // Tell HTMX about this component's shadow DOM
     }
 
     // correct the position of the content if it moves past the right of the window
@@ -260,7 +283,6 @@ class HDropdown extends HTMLElement {
         // inspired by http://www.quirksmode.org/js/findpos.html
 
         let width = this.elContent.offsetWidth
-        let contentBox = this.elContent.getBoundingClientRect()
         let offsetLeft = this.elContent.offsetLeft
         let parentEl = this.elContent.offsetParent
         while (parentEl) {
@@ -313,6 +335,7 @@ class HDropdown extends HTMLElement {
             // show content to determine size
             this.correctContentPosition()
         }
+        // console.log("clear ignoreBlur (toggleMenu)")
         this.ignoreBlur = false
     }
 

@@ -5,7 +5,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/teris-io/shortid"
 	"net/http"
 )
 
@@ -13,7 +12,7 @@ type ClientTileContext struct {
 	clientID    string
 	clientModel *session.ClientDataModel
 	dashboardID string
-	dashboard   session.DashboardDefinition
+	dashboard   session.DashboardModel
 	tileID      string
 	tile        session.DashboardTile
 }
@@ -49,16 +48,13 @@ func GetTileContext(r *http.Request, mustExist bool) (
 	}
 
 	ctc.tileID = chi.URLParam(r, URLParamTileID)
-	ctc.tile, found = ctc.clientModel.GetTile(ctc.tileID)
+	ctc.tile, found = ctc.dashboard.GetTile(ctc.tileID)
 	if !found {
 		if mustExist {
 			err = fmt.Errorf("Tile with ID '%s' not found", ctc.tileID)
 			return sess, ctc, err
 		}
-		if ctc.tileID == "" {
-			ctc.tileID = shortid.MustGenerate()
-		}
-		ctc.tile = ctc.clientModel.NewTile(ctc.tileID, "New Tile", session.TileTypeText)
+		ctc.tile = ctc.dashboard.NewTile(ctc.tileID, "New Tile", session.TileTypeText)
 	}
 
 	return sess, ctc, nil

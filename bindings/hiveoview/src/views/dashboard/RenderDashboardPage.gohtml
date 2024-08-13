@@ -38,26 +38,11 @@
          hx-vals='js:{layout: saveLayout()}'
          hx-swap="none"
     >
-        {{range .Tiles }}
-        <div class="grid-stack-item" gs-id="{{.ID}}"
+        {{range $k,$v := .Dashboard.Tiles }}
+        <div class="grid-stack-item" gs-id="{{$k}}"
              gs-size-to-content="false">
-            <div class="grid-stack-item-content">
-                <header class="tile-header h-row">
-                    <span></span>
-                    <div>{{.Title}}</div>
-                    {{/* <div class="h-grow"></div>*/}}
-                    <button slot="button" class="h-icon-button outline"
-                            style="border:none"
-                            hx-target="#dashboardDialog"
-                            hx-get="/tile/{{$.Dashboard.ID}}/{{.ID}}/edit"
-                            hx-swap="innerHTML"
-                    >
-                        <iconify-icon icon="mdi:menu"></iconify-icon>
-                    </button>
-                </header>
-                <div class="tile-content">
-                    {{template "RenderTile.gohtml" .}}
-                </div>
+            <div class="grid-stack-item-content" style="overflow:unset">
+               {{template "RenderTile.gohtml" $.GetTileTemplateData $k}}
             </div>
         </div>
         {{end}}
@@ -83,17 +68,22 @@
 
         {{if .Dashboard.GridLayout}}
         let layout = JSON.parse("{{.Dashboard.GridLayout}}");
-        grid.load(layout)
+        if (layout) {
+            grid.load(layout,false)
+        }
         {{end}}
     }
 
     function saveLayout() {
         let dashData = grid.save(saveContent=false)
-        let ser = JSON.stringify(dashData)
-        // debugger
-        return ser
+        if (dashData) {
+            return JSON.stringify(dashData)
+        }
+        return ""
     }
-
+    function update() {
+        grid.update();
+    }
 
 </script>
 
@@ -114,38 +104,20 @@
     .grid-stack-item {
     }
     .grid-stack-item-content {
-        /*color: #2c3e50;*/
-        /*width: 100%;*/
-        /*height: 100%;*/
-        /*text-align: center;*/
+
+        /*Allow overflow for menu*/
+        overflow: unset;
+
         display:flex;
         flex-direction:column;
-        /*background-color: #18bc9c;*/
         background-color: var(--pico-form-element-background-color);
         border-color: var(--pico-background-color);
         border: var(--pico-background-color) 1px solid;
         border-radius: 5px;
         box-shadow: var(--pico-box-shadow);
     }
-
-    .tile-header {
-        background-color: var(--pico-background-color);
-        color: var(--pico-color);
-        /*background-color: var(--pico-form-element-background-color);*/
-        justify-content:space-between;
-        font-size: 1.1em;
-        min-height: 20px;
-        padding: 6px;
-        cursor:move;
-    }
-    .tile-content{
-        display:flex;
-        flex-grow:1;
-        overflow:auto;
-        padding:0;
-        justify-content:center;
-        align-items:center;
-        /*background-color: var(--pico-background-color);*/
+    .ui-resizable-handle {
+        z-index:6 !important;
     }
 
 </style>

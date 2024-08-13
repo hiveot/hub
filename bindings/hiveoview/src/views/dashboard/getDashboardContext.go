@@ -12,7 +12,7 @@ type ClientDashboardContext struct {
 	clientID    string
 	clientModel *session.ClientDataModel
 	dashboardID string
-	dashboard   session.DashboardDefinition
+	dashboard   session.DashboardModel
 }
 
 // URL parameters used
@@ -49,7 +49,7 @@ func getDashboardContext(r *http.Request, createDashboard bool) (
 	cdc.dashboard, found = cdc.clientModel.GetDashboard(cdc.dashboardID)
 	if !found {
 		if createDashboard {
-			cdc.dashboard = cdc.clientModel.NewDashboard(cdc.dashboardID, "New Dashboard")
+			cdc.dashboard = session.NewDashboard(cdc.dashboardID, "New Dashboard")
 		} else {
 			err = fmt.Errorf("Dashboard with ID '%s' not found", cdc.dashboardID)
 			return sess, cdc, err

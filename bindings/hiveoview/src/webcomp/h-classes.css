@@ -96,10 +96,11 @@
     flex-grow: 1;
 }
 
-/* button class with only an icon
+/* button class with an icon, without any margins
  */
 .h-icon-button {
     padding: 8px;
+    margin: 0;
     display: flex;
     flex-direction: row;
     border: var(--pico-border-width) solid var(--pico-form-element-border-color);
@@ -189,13 +190,24 @@
  * HiveOT Web Component default internal styles
  *==========================================================================
  */
-h-dropdown > li {
+h-dropdown  li {
     list-style: none;
+    background-color: var(--pico-dropdown-background-color);
+    /* lists in dropdown are padded on the items to clearer show selection*/
+    padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
 }
 
-h-dropdown > ul {
-    /*padding-left: 0;*/
-    padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
+h-dropdown  ul {
+    flex-direction:column;
+    background-color: var(--pico-dropdown-background-color);
+    padding-left: 0;
+}
+
+ul li {
+    background-color: var(--pico-dropdown-background-color);
+}
+ul li:hover{
+    background-color: var(--pico-dropdown-hover-background-color);
 }
 
 h-modal {
@@ -226,6 +238,8 @@ h-modal {
 
 /*Navbar buttons style*/
 .h-navbar li {
+    background-color: var(--pico-dropdown-background-color);
+
     color: var(--pico-color);
     overflow: hidden;
     outline: none;
@@ -248,4 +262,6 @@ h-modal {
 
 .h-navbar li:hover {
     color: var(--pico-text-decoration);
+    background-color: var(--pico-dropdown-hover-background-color);
 }
+

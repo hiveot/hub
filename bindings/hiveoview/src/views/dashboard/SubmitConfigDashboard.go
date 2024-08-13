@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-// SubmitConfigDashboard updates a the dashboard configuration
+// SubmitConfigDashboard updates the dashboard configuration
 func SubmitConfigDashboard(w http.ResponseWriter, r *http.Request) {
 
 	sess, cdc, err := getDashboardContext(r, true)

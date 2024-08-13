@@ -10,7 +10,7 @@ const RenderConfirmDeleteDashboardTemplate = "RenderConfirmDeleteDashboard.gohtm
 const SubmitDeleteDashboardPath = "/dashboard/{dashboardID}"
 
 type ConfirmDeleteDashboardTemplateData struct {
-	Dashboard                 session.DashboardDefinition
+	Dashboard                 session.DashboardModel
 	SubmitDeleteDashboardPath string
 }
 

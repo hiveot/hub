@@ -6,11 +6,11 @@ import (
 	"net/http"
 )
 
-const ConfirmDeleteTileTemplate = "renderConfirmDeleteTile.gohtml"
-const SubmitDeleteTilePath = "/dashboard/{dashboardID}/{tileID}"
+const ConfirmDeleteTileTemplate = "RenderConfirmDeleteTile.gohtml"
+const SubmitDeleteTilePath = "/tile/{dashboardID}/{tileID}"
 
 type ConfirmDeleteTileTemplateData struct {
-	Dashboard            session.DashboardDefinition
+	Dashboard            session.DashboardModel
 	Tile                 session.DashboardTile
 	SubmitDeleteTilePath string
 }

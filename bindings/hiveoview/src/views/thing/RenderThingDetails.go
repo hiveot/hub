@@ -21,7 +21,7 @@ import (
 const TemplateFile = "RenderThingDetails.gohtml"
 const RenderActionRequestPath = "/action/{thingID}/{key}/request"
 const RenderEditPropertyPath = "/property/{thingID}/{key}/edit"
-const RenderConfirmDeleteTDPath = "/directory/{thingID}/confirmDeleteTDDialog"
+const RenderConfirmDeleteTDPath = "/directory/{thingID}/confirmDelete"
 
 type ThingDetailsTemplateData struct {
 	Title      string

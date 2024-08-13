@@ -1,0 +1,45 @@
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
+
+<!-- dropdown menu -->
+<h-dropdown position="bottomright" >
+
+    <ul class="h-shadow" style="margin:0; padding:10px"
+        hx-params="none"
+        hx-swap="innerHTML">
+        <li  hx-get="{{.RenderEditTilePath}}"
+            hx-target="#dashboardDialog">
+            <iconify-icon icon='mdi:edit'></iconify-icon>
+            Edit Tile
+         </li>
+        <li disabled>
+            <iconify-icon icon='mdi:content-copy'></iconify-icon>
+            Copy Tile
+        </li>
+        <li disabled>
+            <iconify-icon icon='mdi:content-paste'></iconify-icon>
+            Paste Tile
+        </li>
+
+        <li class="h-horizontal-divider"></li>
+        {{/* this element doesn't trigger unless hx-on is used */}}
+        <li  hx-get="{{.RenderConfirmDeleteTilePath}}"
+             hx-target="#dashboardDialog"
+            >
+            <iconify-icon icon='mdi:delete'></iconify-icon>
+            Delete Tile
+        </li>
+    </ul>
+</h-dropdown>
+
+<style>
+
+    h-dropdown li {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 7px;
+        width: 100%;
+
+    }
+</style>
+

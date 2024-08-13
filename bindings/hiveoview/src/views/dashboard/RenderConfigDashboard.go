@@ -10,7 +10,7 @@ const ConfigDashboardTemplateFile = "RenderConfigDashboard.gohtml"
 const SubmitConfigDashboardPath = "/dashboard/{dashboardID}/config" // POST
 
 type ConfigDashboardTemplateData struct {
-	Dashboard             session.DashboardDefinition
+	Dashboard             session.DashboardModel
 	SubmitConfigDashboard string
 }
 

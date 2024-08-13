@@ -2,9 +2,7 @@ package session
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/things"
@@ -35,13 +33,16 @@ type SSEEvent struct {
 // DefaultExpiryHours TODO: set default expiry in config
 const DefaultExpiryHours = 72
 
-// ClientSession of a web client containing a hub connection
+// ClientSession manages the connection and state of a web client session.
 type ClientSession struct {
 	// ID of this session
 	sessionID string
 
 	// Client session data, loaded from the state service
 	clientModel *ClientDataModel
+
+	// Client view model for generating re-usable data
+	//viewModel *ClientViewModel
 
 	// ClientID is the login ID of the user
 	clientID string
@@ -244,16 +245,6 @@ func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {
 	}
 }
 
-// ReadTD is a simple helper to read and unmarshal a TD
-func (cs *ClientSession) ReadTD(thingID string) (*things.TD, error) {
-	td := &things.TD{}
-	tdJson, err := digitwin.DirectoryReadTD(cs.hc, thingID)
-	if err == nil {
-		err = json.Unmarshal([]byte(tdJson), &td)
-	}
-	return td, err
-}
-
 // ReplaceHubClient replaces this session's hub client
 func (cs *ClientSession) ReplaceHubClient(newHC hubclient.IHubClient) {
 	// ensure the old client is disconnected
@@ -369,6 +360,7 @@ func NewClientSession(sessionID string, hc hubclient.IHubClient, remoteAddr stri
 	if err != nil {
 		slog.Warn("unable to load client state from state service",
 			"clientID", cs.clientID, "err", err.Error())
+		cs.SendNotify(NotifyWarning, "Unable to restore session: "+err.Error())
 		cs.lastError = err
 	}
 

@@ -3,6 +3,7 @@ package tile
 import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
+	"github.com/teris-io/shortid"
 	"net/http"
 )
 
@@ -10,9 +11,18 @@ const EditTileTemplate = "RenderEditTile.gohtml"
 const SubmitTilePath = "/tile/{dashboardID}/{tileID}"
 
 type EditTileTemplateData struct {
-	Dashboard            session.DashboardDefinition
-	Tile                 session.DashboardTile
-	SubmitConfigTilePath string
+	Dashboard          session.DashboardModel
+	Tile               session.DashboardTile
+	SubmitEditTilePath string
+	TileTypeLabels     map[string]string
+}
+
+func (data EditTileTemplateData) GetTypeLabel(typeID string) string {
+	label, found := session.TileTypesLabels[typeID]
+	if !found {
+		return typeID
+	}
+	return label
 }
 
 // RenderEditTile renders the Tile editor dialog
@@ -23,10 +33,15 @@ func RenderEditTile(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
+	// assign a 'new tile' ID if needed
+	if ctc.tileID == "" {
+		ctc.tileID = shortid.MustGenerate()
+	}
 	data := EditTileTemplateData{
-		Dashboard:            ctc.dashboard,
-		Tile:                 ctc.tile,
-		SubmitConfigTilePath: getTilePath(SubmitTilePath, ctc),
+		Dashboard:          ctc.dashboard,
+		Tile:               ctc.tile,
+		SubmitEditTilePath: getTilePath(SubmitTilePath, ctc),
+		TileTypeLabels:     session.TileTypesLabels,
 	}
 	buff, err := app.RenderAppOrFragment(r, EditTileTemplate, data)
 	sess.WritePage(w, buff, err)
