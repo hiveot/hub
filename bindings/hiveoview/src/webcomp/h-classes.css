@@ -231,7 +231,7 @@ h-modal {
     margin-left: 1rem !important;
 
     border-radius: 3px;
-    @media screen and (max-width: 800px) {
+    @media screen and (max-width: 600px) {
         display: none;
     }
 }

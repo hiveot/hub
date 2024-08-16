@@ -42,7 +42,7 @@ type ClientSession struct {
 	clientModel *ClientDataModel
 
 	// Client view model for generating re-usable data
-	//viewModel *ClientViewModel
+	viewModel *ClientViewModel
 
 	// ClientID is the login ID of the user
 	clientID string
@@ -93,6 +93,16 @@ func (cs *ClientSession) GetClientData() *ClientDataModel {
 	return cs.clientModel
 }
 
+// GetViewModel returns the hiveoview view model of this client
+func (cs *ClientSession) GetViewModel() *ClientViewModel {
+	return cs.viewModel
+}
+
+// GetHubClient returns the hub client connection for use in pub/sub
+func (cs *ClientSession) GetHubClient() hubclient.IHubClient {
+	return cs.hc
+}
+
 // GetStatus returns the status of hub connection
 // This returns:
 //
@@ -104,11 +114,6 @@ func (cs *ClientSession) GetClientData() *ClientDataModel {
 func (cs *ClientSession) GetStatus() hubclient.TransportStatus {
 	status := cs.hc.GetStatus()
 	return status
-}
-
-// GetHubClient returns the hub client connection for use in pub/sub
-func (cs *ClientSession) GetHubClient() hubclient.IHubClient {
-	return cs.hc
 }
 
 // IsActive returns whether the session has a connection to the Hub or is in the process of connecting.
@@ -283,6 +288,10 @@ func (cs *ClientSession) SaveState() error {
 //	cs.clientModelChanged = true
 //}
 
+// SendNotify sends a 'notify' event for showing in a toast popup.
+// To send an SSE event use SendSSE()
+//
+//	ntype is the toast notification type: "info", "error", "warning"
 func (cs *ClientSession) SendNotify(ntype NotifyType, text string) {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
@@ -351,6 +360,7 @@ func NewClientSession(sessionID string, hc hubclient.IHubClient, remoteAddr stri
 		sseClients:   make([]chan SSEEvent, 0),
 		lastActivity: time.Now(),
 		clientModel:  NewClientDataModel(),
+		viewModel:    NewClientViewModel(hc),
 	}
 	hc.SetMessageHandler(cs.onMessage)
 	hc.SetConnectHandler(cs.onConnectChange)

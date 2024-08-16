@@ -1,15 +1,14 @@
 package tile
 
 import (
-	"encoding/json"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"log/slog"
 	"net/http"
+	"strings"
 )
 
 // SubmitEditTile updated or creates a tile and adds it to the dashboard
 func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
-
 	sess, cdc, err := GetTileContext(r, false)
 	if err != nil {
 		sess.WriteError(w, err, http.StatusBadRequest)
@@ -24,15 +23,32 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	)
 	newTitle := r.FormValue("title")
 	tileType := r.FormValue("tileType")
-	sources := r.FormValue("sources")
+	sources, hasSources := r.Form["sources"]
 	_ = sources
+	_ = hasSources
 
-	tile := cdc.dashboard.NewTile(cdc.tileID, "", session.TileTypeText)
+	tile, found := cdc.dashboard.GetTile(cdc.tileID)
+	if !found {
+		// this is a new tile
+		tile = cdc.dashboard.NewTile(cdc.tileID, "", session.TileTypeText)
+	}
 	tile.Title = newTitle
 	tile.TileType = tileType
+	tile.Sources = make([]session.TileSource, 0)
 	// TODO: get list of sources from the form
-	if sources != "" {
-		err = json.Unmarshal([]byte(sources), &tile.Sources)
+	if sources != nil {
+		// each source consists of thingID/key/title
+		for _, s := range sources {
+			parts := strings.Split(s, "/")
+			if len(parts) > 2 {
+				tileSource := session.TileSource{
+					ThingID: parts[0],
+					Key:     parts[1],
+					Title:   parts[2],
+				}
+				tile.Sources = append(tile.Sources, tileSource)
+			}
+		}
 	}
 
 	// add the new tile to the dashboard
@@ -41,7 +57,15 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	// save the new dashboard and tile
 	err = sess.SaveState()
 
-	// TODO: sse notify change of tile so it is re-rendered
-
+	if found {
+		// Notify the UI that the tile has changed. The eventName was provided
+		// in RenderTile.
+		eventName := strings.ReplaceAll(TileUpdatedEvent, "{tileID}", tile.ID)
+		sess.SendSSE(eventName, "")
+	} else {
+		// this is a new tile. Notify the dashboard
+		eventName := strings.ReplaceAll(DashboardUpdatedEvent, "{dashboardID}", cdc.dashboardID)
+		sess.SendSSE(eventName, "")
+	}
 	sess.WriteError(w, err, http.StatusOK)
 }

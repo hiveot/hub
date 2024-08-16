@@ -1,0 +1,83 @@
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.RenderSelectSourcesTemplateData*/ -}}
+
+{{/*Show a list of agents containing things, containing events to select from*/}}
+<h-modal show showClose showCancel showSubmit; style="z-index:99">
+		<header class="h-row-centered" style="height: 60px">
+			<h4>Add Tile Sources</h4>
+		</header>
+		{{$data := .}}
+
+		<main style="overflow-y:auto;  height:80vh">
+
+				{{/* Each agent has a grouped list of things*/}}
+        {{range .AgentThings}}
+				<hr/>
+
+				{{/* use name attribute to auto-close sections when a new one is selected*/}}
+				<details name="agentgroup" style="min-width:50vw">
+						<summary>
+							<span>{{.AgentID}} ({{len .Things}} Things)</span>
+						</summary>
+							<!--=== for TD in .Things ===-->
+						<ul>
+            {{range .Things}}
+            {{if .Events}}
+	            {{$thing := .}}
+	            <li>
+							<details id="thingDetails">
+								<summary>
+									<span>{{.Title}}</span>
+									<span> ({{len .Events}} events)</span>
+								</summary>
+
+								<!--=== for EventAffordance in .TD ===-->
+								<ul class="h-grid-table thing-events" striped border>
+                    {{/* Header*/}}
+										<li>
+											<div>Event Name</div>
+											<div>Value</div>
+											<div class="h-show-md">Updated</div>
+										</li>
+                    {{range $k,$v := .Events}}
+                    {{- /*gotype: github.com/hiveot/hub/lib/things.EventAffordance*/ -}}
+										<li>
+											{{/*Get the html of the source to add to the list of sources*/}}
+											<div>
+												<a href="#"
+											     hx-swap="beforeend scroll:bottom"
+											     hx-trigger="click"
+											     hx-target="#edit-tile-sources"
+											     hx-get="/tile/{{$thing.ID}}/{{$k}}/sourceRow"
+												>
+														{{.Title}}
+												</a>
+											</div>
+											<div>{{$data.GetValue $thing.ID $k}} {{if $v.Data}}{{$v.Data.UnitSymbol}}{{end}}</div>
+											<div>{{$data.GetUpdated $thing.ID $k}}</div>
+										</li>
+                    {{end}}
+	            </ul>
+							</details>
+	            </li>
+            {{/* end if .Events*/}}
+						{{end}}
+            {{/* end range .Things*/}}
+						{{end}}
+						</ul>
+				</details>
+      {{/* end range .AgentThings*/}}
+			{{end}}
+
+
+		</main>
+</h-modal>
+
+
+<style>
+	.thing-events {
+			grid-template-columns: minmax(100px, 1fr)
+			minmax(100px, max-content)
+			minmax(100px, max-content)
+	}
+
+</style>

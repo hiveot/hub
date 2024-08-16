@@ -18,7 +18,7 @@ template.innerHTML = `
        <div button >
            <!-- named slot 'button' to replace the default button-->
            <slot  name="button" button-slot>
-                <button role="button" class="menu-button" style="border:none">
+                <button role="button" class="icon-button menu-button" style="border:none">
                       <iconify-icon style="font-size:20px" icon="mdi:menu"></iconify-icon>
                 </button>
            </slot>
@@ -196,6 +196,7 @@ class HDropdown extends HTMLElement {
         super();
         const shadowRoot = this.attachShadow({mode: "open"});
         shadowRoot.append(template.content.cloneNode(true));
+        this.daShadow = shadowRoot
 
         // we need the click event from the child in the button slot to show
         // either the default button or the provided button.
@@ -237,8 +238,7 @@ class HDropdown extends HTMLElement {
 
 
     attributeChangedCallback(name, oldValue, newValue) {
-        console.log("attributeChangedCallback",name,"=",newValue)
-        // console.log("attributeChangedCallback: " + name + "=" + newValue);
+        // console.log("attributeChangedCallback",name,"=",newValue)
         if (name === "position") {
             this.elContent.classList.remove(oldValue)
             this.elContent.classList.add(newValue)
@@ -273,8 +273,7 @@ class HDropdown extends HTMLElement {
     connectedCallback() {
 
         // https://htmx.org/examples/web-components/
-        // htmx.process(this.daShadow) // Tell HTMX about this component's shadow DOM
-        // htmx.process(this.elContent) // Tell HTMX about this component's shadow DOM
+        htmx.process(this.daShadow) // Tell HTMX about this component's shadow DOM
     }
 
     // correct the position of the content if it moves past the right of the window

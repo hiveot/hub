@@ -2,7 +2,7 @@
 
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
 
-{{if .ReRenderTilePath}}
+{{if not .Tile.ID}}
 {{/*	hx-params="none" hides hx-vals defined in parent*/}}
 <div  hx-trigger="intersect once"
       hx-swap="outerHTML"
@@ -13,12 +13,18 @@
 </div>
 
 {{else}}
+<div id="{{.Tile.ID}}"
+     hx-trigger="sse:{{.TileUpdatedEvent}}"
+     hx-swap="outerHTML"
+     hx-params="none"
+     hx-get="{{.ReRenderTilePath}}"
+     >
 
 	<header class="tile-header h-row">
 		<span></span>
 		<div style="cursor:move; flex-grow:1; text-align:center"
 						title="{{.Tile.ID}}">{{.Tile.Title}}</div>
-      {{template "tileMenu.gohtml" .}}
+    {{template "tileMenu.gohtml" .}}
 	</header>
 	<div class="tile-content">
 
@@ -27,7 +33,7 @@
 		</div>
 
 	</div>
-
+</div>
 
 <style>
 

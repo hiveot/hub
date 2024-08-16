@@ -8,16 +8,20 @@
 			<h3>Confirm Delete Tile</h3>
 		</header>
 
-		<form id="confirm-form">
-			<fieldset>
-				<label for="dashboard-title-id">Dashboard Name</label>
-				<input id="dashboard-title-id" readonly value="{{.Dashboard.Title}}"/>
+		<main>
+			<form id="confirm-form">
+				<fieldset>
+					{{/* Set autofocus to allow ESC to close the modal. ...  what!?*/}}
+					<label for="dashboard-title-id">Dashboard Name</label>
+					<input id="dashboard-title-id" autofocus readonly value="{{.Dashboard.Title}}"/>
 
-				<label for="tile-id">Tile Name</label>
-				<input id="tile-id" readonly value="{{.Tile.Title}}"/>
+					<label for="tile-id">Tile Name</label>
+					<input id="tile-id" readonly value="{{.Tile.Title}}"/>
 
-			</fieldset>
-		</form>
+				</fieldset>
+			</form>
+		</main>
+
 	</article>
 
 
@@ -29,6 +33,7 @@
 		</button>
 		<button type="submit"
 		        hx-delete="{{.SubmitDeleteTilePath}}"
+		        hx-include="#confirm-form"
 		        hx-swap="none"
 		        hx-on::after-request="onSubmitCompleted(event, this)"
 		        style="margin-bottom: 0">Submit

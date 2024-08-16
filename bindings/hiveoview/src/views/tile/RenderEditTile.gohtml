@@ -3,10 +3,8 @@
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.EditTileTemplateData*/ -}}
 
 <h-modal show showClose showCancel showSubmit
-         showCancel
-         showSubmit="Submit"
 >
-		<article  style="min-width: 400px;">
+		<article  style="min-width: 400px; max-width:90vw">
 				<header class="h-row-centered" style="height: 60px">
 						<h3>Edit Tile</h3>
 				</header>
@@ -31,29 +29,40 @@
 						</select>
 						<small>Current value: {{.GetTypeLabel .Tile.TileType}}</small>
 
-						<label for="tile-sources" class="h-row">Sources:
+						<label for="edit-tile-sources" class="h-row">Sources:
 							<button type="button" class="outline h-icon-button"
 							        title="Add Source"
-							        hx-target="#sourceSelection"
-							        hx-get="/tile/{{$.Dashboard.ID}}/{{.Tile.ID}}/sources"
+							        hx-target="#selectSourcesDialog"
+							        hx-get="{{.RenderSelectTileSourcesPath}}"
 							        hx-swap="innerHTML"
 							>
 								<iconify-icon icon='mdi:playlist-plus'></iconify-icon>
 							</button>
 						</label>
-						<ul id="tile-sources"  name="sources"
+						<ul id="edit-tile-sources"
 						    class="h-grid-table tile-sources-table" striped border>
               {{/* Header*/}}
 							<li>
-								<div>-</div>
-								<div>Name</div>
+								<div></div>
+								<div>Thing</div>
+								<div>Event</div>
 								<div>Value</div>
+								<div>Updated</div>
 							</li>
               {{range $k,$v := .Tile.Sources}}
 	                <li>
-		                <div>-</div>
-		                <div>{{$k}}</div>
-		                <div>{{$v}}</div>
+										{{/* The hidden input is used to submit list of sources with the form*/}}
+		                <input type="hidden" name="sources"
+		                       value="{{$v.ThingID}}/{{$v.Key}}/{{$v.Title}}"/>
+		                <button type="button" class="h-row outline h-icon-button"
+		                        onclick="deleteRow(this.parentNode)"
+		                >
+			                <iconify-icon icon="mdi:delete"></iconify-icon>
+		                </button>
+		                <div class="h-row">{{$v.ThingID}}</div>
+		                <div class="h-row">{{$v.Title}}</div>
+		                <div class="h-row">{{$.GetValue $v.ThingID $v.Key}}</div>
+		                <div class="h-row">{{$.GetUpdated  $v.ThingID $v.Key}}</div>
 	                </li>
 							{{end}}
 						</ul>
@@ -77,23 +86,30 @@
 		        style="margin-bottom: 0">Submit
 		</button>
 	</footer>
-	<div id="sourceSelection"></div>
 </h-modal>
 
-<div id="selectSourceDialog"></div>
+<div id="selectSourcesDialog"></div>
 
 <style>
     .tile-sources-table {
         grid-template-columns:
-	        40px/*icon*/
+          max-content /*delete icon*/
 	        minmax(200px, max-content) /*Name*/
-	        minmax(100px, 1fr); /*value*/
+	        minmax(200px, max-content) /*Name*/
+	        minmax(200px, 1fr) /*Value*/
+	        minmax(100px, max-content); /*value*/
     }
 </style>
 
 
 <script>
-    // // Ugly to have to do this!
+		// delete the table row
+		function deleteRow(rowEl) {
+        let table = rowEl.parentNode;
+        table.removeChild(rowEl);
+    }
+
+    // Ugly to have to do this!
     function onSubmitCompleted(ev, btn) {
         ev.stopImmediatePropagation()
         let details = ev.detail

@@ -2,7 +2,9 @@
 
 <!-- dropdown menu -->
 <h-dropdown position="bottomright" >
-
+    <button slot="button" class="h-icon-button outline" style="border:none">
+        <iconify-icon icon="mdi:menu"></iconify-icon>
+    </button>
     <ul class="h-shadow" style="margin:0; padding:10px"
         hx-params="none"
         hx-swap="innerHTML">
@@ -21,7 +23,7 @@
         </li>
 
         <li class="h-horizontal-divider"></li>
-        {{/* this element doesn't trigger unless hx-on is used */}}
+
         <li  hx-get="{{.RenderConfirmDeleteTilePath}}"
              hx-target="#dashboardDialog"
             >

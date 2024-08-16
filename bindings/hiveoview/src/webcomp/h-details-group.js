@@ -4,13 +4,15 @@
  *    this will make them behave as an according where only one element is open.
  * 2. On first render open the last saved 'details' element
  * 3. On opening a different section, save the element into session storage
+ *
+ * @attr group-name to use or empty for a generated one
  */
 
 class HDetailsGroup extends HTMLElement {
 
     constructor() {
         super();
-        this.groupName = ""
+        this.groupName = 'id' + (new Date()).getTime();
         // this.innerHTML = template;
     }
 

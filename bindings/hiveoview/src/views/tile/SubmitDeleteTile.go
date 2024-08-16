@@ -3,6 +3,7 @@ package tile
 import (
 	"log/slog"
 	"net/http"
+	"strings"
 )
 
 // SubmitDeleteTile removes a tile from the dashboard
@@ -29,6 +30,10 @@ func SubmitDeleteTile(w http.ResponseWriter, r *http.Request) {
 	delete(ctc.dashboard.Tiles, ctc.tileID)
 	ctc.clientModel.UpdateDashboard(&ctc.dashboard)
 	err = sess.SaveState()
+
+	// Notify the UI that the tile has been removed.
+	eventName := strings.ReplaceAll(DashboardUpdatedEvent, "{dashboardID}", ctc.dashboardID)
+	sess.SendSSE(eventName, "")
 
 	sess.WriteError(w, err, http.StatusOK)
 }

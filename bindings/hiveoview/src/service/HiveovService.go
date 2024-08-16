@@ -17,14 +17,13 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
-	"github.com/hiveot/hub/bindings/hiveoview/src/views/comps"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/directory"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/history"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/login"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/status"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/thing"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/tile"
-	"github.com/hiveot/hub/bindings/hiveoview/src/views/value"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/tlsserver"
 	"log/slog"
@@ -155,13 +154,14 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 		r.Get("/tile/{dashboardID}/{tileID}", tile.RenderTile)
 		r.Get("/tile/{dashboardID}/{tileID}/confirmDelete", tile.RenderConfirmDeleteTile)
 		r.Get("/tile/{dashboardID}/{tileID}/edit", tile.RenderEditTile)
-		r.Get("/tile/{dashboardID}/{tileID}/sources", tile.RenderSources)
+		r.Get("/tile/{dashboardID}/{tileID}/selectSources", tile.RenderSelectSources)
+		r.Get("/tile/{thingID}/{key}/sourceRow", tile.RenderTileSourceRow)
 		r.Post("/tile/{dashboardID}/{tileID}", tile.SubmitEditTile)
 		r.Delete("/tile/{dashboardID}/{tileID}", tile.SubmitDeleteTile)
 
 		// value history. Optional query params 'timestamp' and 'duration'
-		r.Get("/value/{thingID}/{key}/history", value.RenderHistoryPage)
-		r.Get("/value/{thingID}/{key}/latest", comps.RenderLatestValueRow)
+		r.Get("/value/{thingID}/{key}/history", history.RenderHistoryPage)
+		r.Get("/value/{thingID}/{key}/latest", history.RenderLatestValueRow)
 
 		// Status components
 		r.Get("/status", status.RenderStatus)

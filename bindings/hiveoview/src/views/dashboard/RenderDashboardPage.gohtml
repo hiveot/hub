@@ -13,8 +13,12 @@
 {{else}}
 
 
-<main class="dashboard container-fluid" >
-
+{{/*Show the dashboard. Reload when tiles are deleted*/}}
+<main class="dashboard container-fluid"
+      hx-get=""
+      hx-trigger="sse:{{.DashboardUpdatedEvent}}"
+      hx-swap="outerHTML"
+>
     <div>
     Dashboard: {{.Dashboard.Title}} :
         <button hx-trigger="click"
@@ -31,22 +35,25 @@
         >Delete Dashboard</button>
     </div>
 
-    {{/* change event: When layout changes push the new layout to the server*/}}
-    <div class="grid-stack"
-         hx-trigger="change"
-         hx-post="{{.SubmitDashboardLayoutPath}}"
-         hx-vals='js:{layout: saveLayout()}'
-         hx-swap="none"
-    >
-        {{range $k,$v := .Dashboard.Tiles }}
-        <div class="grid-stack-item" gs-id="{{$k}}"
-             gs-size-to-content="false">
-            <div class="grid-stack-item-content" style="overflow:unset">
-               {{template "RenderTile.gohtml" $.GetTileTemplateData $k}}
+    {{/* Add a div to ensure filling the screen size*/}}
+    <div style="flex-grow:1">
+        {{/* change event: When layout changes push the new layout to the server*/}}
+        <div class="grid-stack"
+             hx-trigger="change"
+             hx-post="{{.SubmitDashboardLayoutPath}}"
+             hx-vals='js:{layout: saveLayout()}'
+             hx-swap="none"
+        >
+            {{range $k,$v := .Dashboard.Tiles }}
+            <div class="grid-stack-item" gs-id="{{$k}}" gs-min-h="4"
+                 gs-size-to-content="false">
+                <div class="grid-stack-item-content" style="overflow:unset">
+                   {{template "RenderTile.gohtml" $.GetTileTemplateData $k}}
+                </div>
             </div>
-        </div>
-        {{end}}
+            {{end}}
 
+        </div>
     </div>
 </main>
 <div id="dashboardDialog"></div>
@@ -59,10 +66,16 @@
     function startGridStack() {
         // debugger;
         var options = { // put in gridstack options here
-            float: false,
-            // handle: ".tile-header" // only allow dragging by the header
-            cellHeight: 'initial', // 0, auto
-            staticGrid:false,  // allow resize in edit mode
+            animate:true,
+            float: true,        // allow cells to move anywhere
+            cellHeight: 30,     // fix the row height to avoid scaling content
+            staticGrid:false,   // allow resize in edit mode
+            minRow: 3,
+            columnOpts: {
+                layout: "moveResize",
+                breakpointForWindow:false,
+                breakpoints: [{w: 300, c: 1}, {w: 600, c: 4}, {w: 800, c: 8}, {w:1200, c:12}]
+            }
         };
         grid = GridStack.init(options)//.load(serializedData);
 
@@ -97,10 +110,7 @@
         flex-direction: column;
     }
 
-    .grid-stack {
-        /*use the full available space*/
-        flex-grow:1;
-    }
+
     .grid-stack-item {
     }
     .grid-stack-item-content {

@@ -17,7 +17,7 @@ const DirectoryTemplate = "RenderDirectory.gohtml"
 //}
 
 type DirectoryTemplateData struct {
-	Groups map[string]*session.AgentThings
+	Groups []*session.AgentThings
 	//PageNr      int
 }
 
@@ -33,20 +33,21 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	var buff *bytes.Buffer
 
 	// 1: get session
-	sess, hc, err := session.GetSessionFromContext(r)
+	sess, _, err := session.GetSessionFromContext(r)
 	if err != nil {
 		sess.WriteError(w, err, 0)
 		return
 	}
+	v := sess.GetViewModel()
 
-	tdMap, err := session.ReadDirectory(hc)
+	tdMap, err := v.ReadDirectory()
 	if err != nil {
 		err = fmt.Errorf("unable to load directory: %w", err)
 		slog.Error(err.Error())
 		sess.SendNotify(session.NotifyError, err.Error())
 	}
 
-	agentGroups := session.GroupByAgent(tdMap)
+	agentGroups := v.GroupByAgent(tdMap)
 	data := DirectoryTemplateData{}
 	data.Groups = agentGroups
 

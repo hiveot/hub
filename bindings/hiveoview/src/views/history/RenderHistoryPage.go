@@ -1,11 +1,10 @@
-package value
+package history
 
 import (
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
-	"github.com/hiveot/hub/bindings/hiveoview/src/views/comps"
 	"github.com/hiveot/hub/lib/utils"
 	"net/http"
 	"strconv"
@@ -37,20 +36,21 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 	// key events are escaped as SSE doesn't allow spaces and slashes
 
 	// Read the TD being displayed and its latest values
-	sess, hc, err := session.GetSessionFromContext(r)
+	sess, _, err := session.GetSessionFromContext(r)
 	if err != nil {
 		sess.WriteError(w, err, 0)
 		return
 	}
+	vm := sess.GetViewModel()
 	// read the TD
-	td, err := session.ReadTD(hc, thingID)
+	td, err := vm.GetTD(thingID)
 	if err != nil {
 		sess.WriteError(w, err, 0)
 		return
 	}
 
-	data, err := comps.NewHistoryTemplateData(
-		hc, td, key, timestamp, int(durationSec))
+	data, err := NewHistoryTemplateData(
+		vm, td, key, timestamp, int(durationSec))
 
 	if err != nil {
 		sess.WriteError(w, err, 0)

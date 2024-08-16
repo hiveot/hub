@@ -7,8 +7,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
-	"github.com/hiveot/hub/bindings/hiveoview/src/views/comps"
-	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/history"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
@@ -38,17 +37,17 @@ type ThingDetailsTemplateData struct {
 	Config     map[string]*things.PropertyAffordance
 	// latest value of properties
 	Values things.ThingMessageMap
-	//
-	hc hubclient.IHubClient
+
+	VM *session.ClientViewModel
 
 	// URLs
 	RenderConfirmDeleteTDPath string
 }
 
-// obtain the 24 hour history for the given key
-func (dt *ThingDetailsTemplateData) GetHistory(key string) *comps.HistoryTemplateData {
+// GetHistory returns the 24 hour history for the given key
+func (dt *ThingDetailsTemplateData) GetHistory(key string) *history.HistoryTemplateData {
 	timestamp := time.Now()
-	hsd, err := comps.NewHistoryTemplateData(dt.hc, dt.TD, key, timestamp, -24*3600)
+	hsd, err := history.NewHistoryTemplateData(dt.VM, dt.TD, key, timestamp, -24*3600)
 	_ = err
 	return hsd
 }
@@ -65,22 +64,23 @@ func (dt *ThingDetailsTemplateData) GetRenderActionPath(key string) string {
 	return utils.Substitute(RenderActionRequestPath, pathArgs)
 }
 
-// GetLatest returns a map with the latest property values of a thing or nil if failed
-// TODO: The generated API doesnt know return types because WoT TD has no
-// place to defined them. Find a better solution.
-func GetLatest(thingID string, hc hubclient.IHubClient) (things.ThingMessageMap, error) {
-	data := things.NewThingMessageMap()
-	tvsJson, err := digitwin.OutboxReadLatest(hc, nil, "", "", thingID)
-	if err != nil {
-		return data, err
-	}
-	tvs, _ := things.NewThingMessageMapFromSource(tvsJson)
-	for _, tv := range tvs {
-		data.Set(tv.Key, tv)
-	}
-	//_ = data.of("")
-	return data, nil
-}
+//
+//// GetLatest returns a map with the latest property values of a thing or nil if failed
+//// TODO: The generated API doesnt know return types because WoT TD has no
+//// place to define them. Find a better solution.
+//func GetLatest(thingID string, hc hubclient.IHubClient) (things.ThingMessageMap, error) {
+//	data := things.NewThingMessageMap()
+//	tvsJson, err := digitwin.OutboxReadLatest(hc, nil, "", "", thingID)
+//	if err != nil {
+//		return data, err
+//	}
+//	tvs, _ := things.NewThingMessageMapFromSource(tvsJson)
+//	for _, tv := range tvs {
+//		data.Set(tv.Key, tv)
+//	}
+//	//_ = data.of("")
+//	return data, nil
+//}
 
 // RenderThingDetails renders thing details view fragment 'thingDetails.html'
 // URL parameters:
@@ -103,8 +103,9 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 
 	// Read the TD being displayed and its latest values
 	sess, hc, err := session.GetSessionFromContext(r)
+	vm := sess.GetViewModel()
 	if err == nil {
-		thingData.hc = hc
+		thingData.VM = vm
 		tdJson, err2 := digitwin.DirectoryReadTD(hc, thingID)
 		td := things.TD{}
 		_ = json.Unmarshal([]byte(tdJson), &td)
@@ -138,7 +139,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 			})
 
 			// get the latest event/property values from the outbox
-			propMap, err2 := GetLatest(thingID, hc)
+			propMap, err2 := vm.GetLatest(thingID)
 			err = err2
 			thingData.Values = propMap
 			thingData.DeviceType = thingData.TD.AtType

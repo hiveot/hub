@@ -12,19 +12,24 @@ const RenderConfirmDeleteTilePath = "/tile/{dashboardID}/{tileID}/confirmDelete"
 const RenderEditTilePath = "/tile/{dashboardID}/{tileID}/edit"
 const RenderTilePath = "/tile/{dashboardID}/{tileID}"
 
+// event to notify the dashboard that a redraw is needed
+const DashboardUpdatedEvent = "dashboard-updated-{dashboardID}"
+const TileUpdatedEvent = "tile-updated-{tileID}"
+
 type RenderTileTemplateData struct {
 	DashboardID string
 	// Title to display
 	Tile       session.DashboardTile
 	TileLabels map[string]string
 
-	// path for re-rendering the tile. Used by the dashboard template.
-	//Only used when requiring a call to RenderTile to populate the data.
+	// path for re-rendering the tile
 	ReRenderTilePath string
 	// path to rendering edit-tile dialog
 	RenderEditTilePath string
 	// path to rendering confirmation dialog
 	RenderConfirmDeleteTilePath string
+	// eventID to refresh the tile
+	TileUpdatedEvent string
 }
 
 // RenderTile renders the single Tile element
@@ -40,9 +45,10 @@ func RenderTile(w http.ResponseWriter, r *http.Request) {
 	data := RenderTileTemplateData{
 		DashboardID:                 ctc.dashboardID,
 		Tile:                        ctc.tile,
-		ReRenderTilePath:            "", // no rerender as the data is now available
 		RenderEditTilePath:          utils.Substitute(RenderEditTilePath, pathArgs),
 		RenderConfirmDeleteTilePath: utils.Substitute(RenderConfirmDeleteTilePath, pathArgs),
+		ReRenderTilePath:            utils.Substitute(RenderTilePath, pathArgs),
+		TileUpdatedEvent:            utils.Substitute(TileUpdatedEvent, pathArgs),
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderTileTemplate, data)
 	sess.WritePage(w, buff, err)

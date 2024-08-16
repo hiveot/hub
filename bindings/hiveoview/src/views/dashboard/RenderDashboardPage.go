@@ -25,6 +25,7 @@ type DashboardPageTemplateData struct {
 	SubmitDashboardLayoutPath        string
 	RenderNewTilePath                string
 	RenderConfirmDeleteTilePath      string
+	DashboardUpdatedEvent            string
 }
 
 // GetTileTemplateData returns empty rendering data for rendering a tile.
@@ -57,6 +58,7 @@ func RenderDashboardPage(w http.ResponseWriter, r *http.Request) {
 	// tile paths
 	data.RenderNewTilePath = getDashboardPath(RenderNewTilePath, cdc)
 	data.RenderConfirmDeleteTilePath = getDashboardPath(RenderConfirmDeleteTilePath, cdc)
+	data.DashboardUpdatedEvent = getDashboardPath(tile.DashboardUpdatedEvent, cdc)
 
 	// full render or fragment render
 	buff, err := app.RenderAppOrFragment(r, RenderDashboardTemplate, data)

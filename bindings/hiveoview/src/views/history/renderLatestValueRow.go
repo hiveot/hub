@@ -1,4 +1,4 @@
-package comps
+package history
 
 import (
 	"errors"

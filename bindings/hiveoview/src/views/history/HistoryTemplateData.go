@@ -1,12 +1,11 @@
-package comps
+package history
 
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/services/history/historyclient"
 	"strconv"
 	"time"
 )
@@ -92,10 +91,11 @@ func (ht HistoryTemplateData) CompareToday() int {
 
 // NewHistoryTemplateData reads the event or property history for the given time range
 //
+//	vm is the viewModel used to read the data
 //	key is the key of the event or property in the TD
 //	timestamp of the end-time of the history range
 //	duration nr of seconds to read (negative for history)
-func NewHistoryTemplateData(hc hubclient.IHubClient,
+func NewHistoryTemplateData(vm *session.ClientViewModel,
 	td *things.TD, key string, timestamp time.Time, duration int) (*HistoryTemplateData, error) {
 
 	var err error
@@ -128,8 +128,7 @@ func NewHistoryTemplateData(hc hubclient.IHubClient,
 	limit := 1000
 	hs.Values = make([]*things.ThingMessage, 0)
 
-	hist := historyclient.NewReadHistoryClient(hc)
-	hs.Values, hs.ItemsRemaining, err = hist.ReadHistory(td.ID, key, timestamp, duration, limit)
+	hs.Values, hs.ItemsRemaining, err = vm.ReadHistory(td.ID, key, timestamp, duration, limit)
 
 	// Add the URL paths for navigating around the history
 	pathParams := map[string]string{"thingID": td.ID, "key": key}
