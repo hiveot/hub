@@ -9,8 +9,9 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime"
+	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
@@ -68,7 +69,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	const actionID = "action1"
 	var actionPayload = "payload1"
 	var expectedReply = actionPayload + ".reply"
-	var rxMsg *things.ThingMessage
+	var rxMsg *hubclient.ThingMessage
 	var stat3 hubclient.DeliveryStatus
 
 	r := startRuntime()
@@ -81,21 +82,21 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	defer cl2.Disconnect()
 
 	// Agent receives action request which we'll handle here
-	cl1.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		rxMsg = msg
 		reply := msg.DataAsText() + ".reply"
 		stat.Completed(msg, reply, nil)
-		//stat.DeliveryFailed(msg, fmt.Errorf("failuretest"))
+		//stat.Failed(msg, fmt.Errorf("failuretest"))
 		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "messageID", msg.MessageID)
 		return stat
 	})
 
 	// users receives delivery updates when sending actions
 	deliveryCtx, deliveryCtxComplete := context.WithTimeout(context.Background(), time.Minute*1)
-	cl2.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	cl2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		if msg.Key == vocab.EventTypeDeliveryUpdate {
 			// delivery updates are only invoked on for non-rpc actions
-			err := msg.Decode(&stat3)
+			err := utils.DecodeAsObject(msg.Data, &stat3)
 			require.NoError(t, err)
 			slog.Info(fmt.Sprintf("reply: %s", stat3.Reply))
 		}
@@ -105,7 +106,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 	// client sends action to agent and expect a 'delivered' result
 	// The RPC method returns an error if no reply is received
-	dThingID := things.MakeDigiTwinThingID(agentID, thingID)
+	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
 	stat2 := cl2.PubAction(dThingID, actionID, actionPayload)
 	require.Empty(t, stat2.Error)
 
@@ -132,7 +133,7 @@ func TestServiceReconnect(t *testing.T) {
 	const userID = "user1"
 	const thingID = "thing1"
 	const actionID = "action1"
-	var rxMsg atomic.Pointer[*things.ThingMessage]
+	var rxMsg atomic.Pointer[*hubclient.ThingMessage]
 	var actionPayload = "payload1"
 	var expectedReply = actionPayload + ".reply"
 
@@ -146,10 +147,10 @@ func TestServiceReconnect(t *testing.T) {
 	defer cl1.Disconnect()
 
 	// Agent receives action request which we'll handle here
-	cl1.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		var req string
 		rxMsg.Store(&msg)
-		_ = msg.Decode(&req)
+		_ = utils.DecodeAsObject(msg.Data, &req)
 		stat.Completed(msg, req+".reply", nil)
 		slog.Info("agent1 delivery complete", "messageID", msg.MessageID)
 		return stat
@@ -172,7 +173,7 @@ func TestServiceReconnect(t *testing.T) {
 	time.Sleep(time.Second * 3)
 
 	// this rpc call succeeds after agent1 has automatically reconnected
-	dThingID := things.MakeDigiTwinThingID(agentID, thingID)
+	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
 	var reply string
 	err = cl2.Rpc(dThingID, actionID, &actionPayload, &reply)
 

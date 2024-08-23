@@ -6,6 +6,7 @@ import (
 	vocab2 "github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"math/rand"
 	"os"
@@ -16,8 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/hiveot/hub/lib/logging"
-
-	"github.com/hiveot/hub/lib/things"
 )
 
 var testBucketID = "default"
@@ -63,24 +62,24 @@ func openNewStore() (store buckets.IBucketStore, err error) {
 }
 
 // Create a TD document
-func createTD(id string) *things.TD {
-	td := &things.TD{
+func createTD(id string) *tdd.TD {
+	td := &tdd.TD{
 		ID:         id,
 		Title:      fmt.Sprintf("test TD %s", id),
 		AtType:     vocab2.ThingSensor,
-		Properties: make(map[string]*things.PropertyAffordance),
-		Events:     make(map[string]*things.EventAffordance),
+		Properties: make(map[string]*tdd.PropertyAffordance),
+		Events:     make(map[string]*tdd.EventAffordance),
 	}
-	td.Properties[vocab2.PropDeviceTitle] = &things.PropertyAffordance{
-		DataSchema: things.DataSchema{
+	td.Properties[vocab2.PropDeviceTitle] = &tdd.PropertyAffordance{
+		DataSchema: tdd.DataSchema{
 			Title:       "Sensor title",
 			Description: "This is a smart sensor",
 			Type:        vocab2.WoTDataTypeString,
 			Default:     "Default value",
 		},
 	}
-	td.Properties[vocab2.PropDeviceSoftwareVersion] = &things.PropertyAffordance{
-		DataSchema: things.DataSchema{
+	td.Properties[vocab2.PropDeviceSoftwareVersion] = &tdd.PropertyAffordance{
+		DataSchema: tdd.DataSchema{
 			Title:       "Version",
 			Description: "Embedded firmware",
 			Type:        vocab2.WoTDataTypeString,
@@ -88,18 +87,18 @@ func createTD(id string) *things.TD {
 			Const:       "v1.0",
 		},
 	}
-	td.Events[vocab2.PropEnvTemperature] = &things.EventAffordance{
+	td.Events[vocab2.PropEnvTemperature] = &tdd.EventAffordance{
 		Title:       "Event 1",
 		Description: "ID of this event",
-		Data: &things.DataSchema{
+		Data: tdd.DataSchema{
 			Type:        vocab2.WoTDataTypeString,
 			Const:       "123",
 			Title:       "Event name data",
 			Description: "String with friendly name of the event"},
 	}
-	td.Events[vocab2.PropDeviceBattery] = &things.EventAffordance{
+	td.Events[vocab2.PropDeviceBattery] = &tdd.EventAffordance{
 		Title: "Event 2",
-		Data: &things.DataSchema{
+		Data: tdd.DataSchema{
 			Type:        vocab2.WoTDataTypeInteger,
 			Title:       "Battery level",
 			Unit:        vocab2.UnitPercent,
@@ -371,7 +370,7 @@ func TestSeek(t *testing.T) {
 	k2, v2, valid2 := cursor.Seek(k1)
 	assert.True(t, valid2)
 	assert.Equal(t, k1, k2)
-	assert.Equal(t, v1, v2)
+	assert.Equal(t, string(v1), string(v2))
 
 	// test that keys increment
 	for i := 0; i < seekCount; i++ {

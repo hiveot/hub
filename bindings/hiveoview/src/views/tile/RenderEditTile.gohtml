@@ -4,15 +4,15 @@
 
 <h-modal show showClose showCancel showSubmit
 >
-		<article  style="min-width: 400px; max-width:90vw">
+		<article class="edit-tile">
 				<header class="h-row-centered" style="height: 60px">
 						<h3>Edit Tile</h3>
 				</header>
 			<main>
-				<form id="edit-tile-form">
+				<form id="edit-tile-form" style="overflow:auto">
 
 					<fieldset>
-						<label title="ID: {{.Tile.ID}}"
+						<label title="Tile ID: {{.Tile.ID}}"
 										for="tile-title">Title: </label>
 						<input id="tile-title" name="title" required
 						       value="{{.Tile.Title}}" placeholder="{{.Tile.Title}}"
@@ -44,8 +44,7 @@
               {{/* Header*/}}
 							<li>
 								<div></div>
-								<div>Thing</div>
-								<div>Event</div>
+								<div>Thing Event</div>
 								<div>Value</div>
 								<div>Updated</div>
 							</li>
@@ -53,14 +52,14 @@
 	                <li>
 										{{/* The hidden input is used to submit list of sources with the form*/}}
 		                <input type="hidden" name="sources"
-		                       value="{{$v.ThingID}}/{{$v.Key}}/{{$v.Title}}"/>
+		                       value="{{$v.ThingID}}/{{$v.Key}}"/>
 		                <button type="button" class="h-row outline h-icon-button"
 		                        onclick="deleteRow(this.parentNode)"
 		                >
 			                <iconify-icon icon="mdi:delete"></iconify-icon>
 		                </button>
-		                <div class="h-row">{{$v.ThingID}}</div>
-		                <div class="h-row">{{$v.Title}}</div>
+				            <input name="sourceTitles" value="{{$v.Title}}"
+				                       title="{{$v.ThingID}}/{{$v.Key}}"/>
 		                <div class="h-row">{{$.GetValue $v.ThingID $v.Key}}</div>
 		                <div class="h-row">{{$.GetUpdated  $v.ThingID $v.Key}}</div>
 	                </li>
@@ -91,10 +90,15 @@
 <div id="selectSourcesDialog"></div>
 
 <style>
+		.edit-tile {
+				min-width: 400px;
+				max-width:90vw;
+				max-height:90vh;
+				overflow-y: auto;
+    }
     .tile-sources-table {
         grid-template-columns:
           max-content /*delete icon*/
-	        minmax(200px, max-content) /*Name*/
 	        minmax(200px, max-content) /*Name*/
 	        minmax(200px, 1fr) /*Value*/
 	        minmax(100px, max-content); /*value*/

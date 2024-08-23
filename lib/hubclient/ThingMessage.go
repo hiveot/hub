@@ -1,7 +1,6 @@
-package things
+package hubclient
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/lib/utils"
@@ -76,18 +75,6 @@ func (tm *ThingMessage) GetUpdated(format ...string) (updated string) {
 		updated = createdTime.Format(time.RFC822)
 	}
 	return updated
-}
-
-// Decode converts the any-type to the given interface type.
-// This returns an error if unmarshalling fails.
-func (tm *ThingMessage) Decode(arg interface{}) error {
-	if tm.Data == nil {
-		arg = nil
-	}
-	// the ugly workaround is to marshal/unmarshal using json.
-	// TODO: more efficient method to convert the any type to the given type.
-	jsonData, _ := json.Marshal(tm.Data)
-	return json.Unmarshal(jsonData, arg)
 }
 
 // NewThingMessage creates a new ThingMessage object with the address of the things,

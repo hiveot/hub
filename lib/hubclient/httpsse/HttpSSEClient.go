@@ -12,7 +12,6 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/teris-io/shortid"
@@ -396,10 +395,9 @@ func (cl *HttpSSEClient) PubProps(thingID string, props map[string]any) error {
 }
 
 // PubTD publishes a TD event
-func (cl *HttpSSEClient) PubTD(td *things.TD) error {
+func (cl *HttpSSEClient) PubTD(thingID string, tdJSON string) error {
 	// TDs are published in JSON encoding as per spec
-	payload, _ := json.Marshal(td)
-	return cl.PubEvent(td.ID, vocab.EventTypeTD, string(payload))
+	return cl.PubEvent(thingID, vocab.EventTypeTD, tdJSON)
 }
 
 // RefreshToken refreshes the authentication token

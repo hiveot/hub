@@ -7,8 +7,8 @@ import (
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/embedded"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/digitwin/service"
+	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -52,8 +52,8 @@ func startDirectory(clean bool) (
 }
 
 // generate a JSON serialized TD document
-func createTDDoc(thingID string, title string) *things.TD {
-	td := things.NewTD(thingID, title, vocab.ThingDevice)
+func createTDDoc(thingID string, title string) *tdd.TD {
+	td := tdd.NewTD(thingID, title, vocab.ThingDevice)
 	return td
 }
 
@@ -86,7 +86,7 @@ func TestAddRemoveTD(t *testing.T) {
 	const agentID = "agent1"
 	const thing1ID = "thing1"
 	const title1 = "title1"
-	var dThing1ID = things.MakeDigiTwinThingID(agentID, thing1ID)
+	var dThing1ID = tdd.MakeDigiTwinThingID(agentID, thing1ID)
 
 	svc, hc, stopFunc := startDirectory(true)
 	defer stopFunc()
@@ -101,7 +101,7 @@ func TestAddRemoveTD(t *testing.T) {
 	// use the client wrapper to read
 	tdJSON, err := digitwin.DirectoryReadTD(hc, dThing1ID)
 	require.NoError(t, err)
-	var td things.TD
+	var td tdd.TD
 	err = json.Unmarshal([]byte(tdJSON), &td)
 	require.NoError(t, err)
 	assert.Equal(t, dThing1ID, td.ID)
@@ -128,7 +128,7 @@ func TestHandleTDEvent(t *testing.T) {
 	// events should be handled
 	tdDoc1 := createTDDoc(rawThing1ID, title1)
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
-	msg := things.NewThingMessage(vocab.MessageTypeEvent, rawThing1ID,
+	msg := hubclient.NewThingMessage(vocab.MessageTypeEvent, rawThing1ID,
 		vocab.EventTypeTD, string(tdDoc1Json), agentID)
 	stat := svc.HandleTDEvent(msg)
 	assert.Empty(t, stat.Error)

@@ -3,7 +3,7 @@ package tile
 import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/wot/consumedthing"
 	"github.com/teris-io/shortid"
 	"net/http"
 )
@@ -16,9 +16,12 @@ type EditTileTemplateData struct {
 	Dashboard session.DashboardModel
 	Tile      session.DashboardTile
 	// Values of the tile sources by thingID/key
-	SourceValues things.ThingMessageMap
+	Values map[string]*consumedthing.InteractionOutput
 	// human labels for each tile type
 	TileTypeLabels map[string]string
+	// client view model for everything else
+	VM *session.ClientViewModel
+
 	// navigation paths
 	RenderSelectTileSourcesPath string // dialog for tile sources selector
 	SubmitEditTilePath          string // submit the edited tile
@@ -34,14 +37,15 @@ func (data EditTileTemplateData) GetTypeLabel(typeID string) string {
 
 // GetValue returns the value of a tile source
 func (data EditTileTemplateData) GetValue(thingID, key string) string {
-	v, found := data.SourceValues[thingID+"/"+key]
+	v, found := data.Values[thingID+"/"+key]
 	if !found {
 		return ""
 	}
-	return v.DataAsText()
+	unitSymbol := v.Schema.UnitSymbol()
+	return v.ValueAsString() + " " + unitSymbol
 }
 func (data EditTileTemplateData) GetUpdated(thingID, key string) string {
-	v, found := data.SourceValues[thingID+"/"+key]
+	v, found := data.Values[thingID+"/"+key]
 	if !found {
 		return ""
 	}
@@ -61,13 +65,18 @@ func RenderEditTile(w http.ResponseWriter, r *http.Request) {
 		ctc.tileID = shortid.MustGenerate()
 	}
 	vm := sess.GetViewModel()
+	cts := sess.GetConsumedThingsSession()
 	// include the current values of the selected sources
 	// the template uses "thingID/key" to obtain the value
-	values := make(things.ThingMessageMap)
+	values := make(map[string]*consumedthing.InteractionOutput)
 	for _, tileSource := range ctc.tile.Sources {
-		v, err := vm.GetValue(tileSource.ThingID, tileSource.Key)
+		cs, err := cts.Consume(tileSource.ThingID)
 		if err == nil {
-			values[tileSource.ThingID+"/"+tileSource.Key] = v
+			val := cs.ReadEvent(tileSource.Key)
+			//v, err := vm.GetValue(tileSource.ThingID, tileSource.Key)
+			if val != nil {
+				values[tileSource.ThingID+"/"+tileSource.Key] = val
+			}
 		}
 	}
 	data := EditTileTemplateData{
@@ -76,7 +85,8 @@ func RenderEditTile(w http.ResponseWriter, r *http.Request) {
 		TileTypeLabels:              session.TileTypesLabels,
 		RenderSelectTileSourcesPath: getTilePath(RenderSelectTileSourcesPath, ctc),
 		SubmitEditTilePath:          getTilePath(SubmitTilePath, ctc),
-		SourceValues:                values,
+		Values:                      values,
+		VM:                          vm,
 	}
 	buff, err := app.RenderAppOrFragment(r, EditTileTemplate, data)
 	sess.WritePage(w, buff, err)

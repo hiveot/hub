@@ -1,4 +1,4 @@
-package things
+package tdd
 
 // SecurityScheme
 type SecurityScheme struct {

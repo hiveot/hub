@@ -10,7 +10,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/wot/tdd"
 )
 
 // SubTDCommand shows TD publications
@@ -58,15 +58,16 @@ func HandleSubTD(hc hubclient.IHubClient) error {
 	if err != nil {
 		return err
 	}
-	hc.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		// only look for TD events, ignore directed events
 		if msg.Key != vocab.EventTypeTD {
 			return stat.Completed(msg, nil, nil)
 		}
 
-		var td things.TD
+		var td tdd.TD
 		//fmt.Printf("%s\n", event.ValueJSON)
-		err := msg.Decode(&td)
+		err := utils.DecodeAsObject(msg.Data, &td)
+
 		if err == nil {
 			modifiedTime, _ := dateparse.ParseAny(td.Modified) // can be in any TZ
 			timeStr := utils.FormatMSE(modifiedTime.In(time.Local).UnixMilli(), false)
@@ -90,7 +91,7 @@ func HandleSubEvents(hc hubclient.IHubClient, thingID string, name string) error
 	fmt.Printf("---------------  --------------- -----------------------------  -----------------------------  ---------\n")
 
 	err := hc.Subscribe(thingID, name)
-	hc.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		createdTime, _ := dateparse.ParseAny(msg.Created)
 		timeStr := createdTime.Format("15:04:05.000")
 
@@ -98,7 +99,7 @@ func HandleSubEvents(hc hubclient.IHubClient, thingID string, name string) error
 
 		if msg.Key == vocab.EventTypeProperties {
 			var props map[string]interface{}
-			_ = msg.Decode(&props)
+			_ = utils.DecodeAsObject(msg.Data, &props)
 
 			valueStr = fmt.Sprintf("%d properties", len(props))
 
@@ -109,8 +110,8 @@ func HandleSubEvents(hc hubclient.IHubClient, thingID string, name string) error
 				}
 			}
 		} else if msg.Key == vocab.EventTypeTD {
-			var td things.TD
-			_ = msg.Decode(&td)
+			var td tdd.TD
+			_ = utils.DecodeAsObject(msg.Data, &td)
 			valueStr = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
 				td.Title, td.AtType, len(td.Properties), len(td.Events), len(td.Actions))
 		}

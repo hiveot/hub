@@ -10,8 +10,8 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"math/rand"
 	"os"
@@ -145,7 +145,7 @@ func (test *TestServer) AddConnectService(serviceID string) (
 
 // AddTD adds a test TD document using the embedded connection to the runtime
 // if td is nil then a random TD will be added
-func (test *TestServer) AddTD(agentID string, td *things.TD) *things.TD {
+func (test *TestServer) AddTD(agentID string, td *tdd.TD) *tdd.TD {
 	if td == nil {
 		i := rand.Intn(99882)
 		td = test.CreateTestTD(i)
@@ -170,7 +170,7 @@ func (test *TestServer) AddTDs(agentID string, count int) {
 //
 // The first 10 are predefined and always the same. A higher number generates at random.
 // i is the index.
-func (test *TestServer) CreateTestTD(i int) (td *things.TD) {
+func (test *TestServer) CreateTestTD(i int) (td *tdd.TD) {
 	tdi := testTDs[0]
 	if i < len(testTDs) {
 		tdi = testTDs[i]
@@ -178,7 +178,7 @@ func (test *TestServer) CreateTestTD(i int) (td *things.TD) {
 		tdi.ID = fmt.Sprintf("thing-%d", rand.Intn(99823))
 	}
 
-	td = things.NewTD(tdi.ID, tdi.Title, tdi.DeviceType)
+	td = tdd.NewTD(tdi.ID, tdi.Title, tdi.DeviceType)
 	// add random properties
 	for n := 0; n < tdi.NrProps; n++ {
 		td.AddProperty(fmt.Sprintf("prop-%d", n), PropTypes[n], "title-"+PropTypes[n], vocab.WoTDataTypeString)

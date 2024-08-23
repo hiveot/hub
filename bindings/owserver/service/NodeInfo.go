@@ -2,7 +2,7 @@ package service
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
-	thing "github.com/hiveot/hub/lib/things"
+	thing "github.com/hiveot/hub/wot/tdd"
 )
 
 // define 1-wire node information

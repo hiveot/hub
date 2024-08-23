@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/middleware"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -24,22 +23,22 @@ func TestHandleEvent(t *testing.T) {
 	mwh2Count := 0
 
 	mw := middleware.NewMiddleware()
-	mw.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	mw.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		stat.Completed(msg, msg.Data, nil)
 		return stat
 	})
 
-	mw.AddMiddlewareHandler(func(tv *things.ThingMessage) (*things.ThingMessage, error) {
+	mw.AddMiddlewareHandler(func(tv *hubclient.ThingMessage) (*hubclient.ThingMessage, error) {
 		mwh1Count++
 		return tv, nil
 	})
-	mw.AddMiddlewareHandler(func(tv *things.ThingMessage) (*things.ThingMessage, error) {
+	mw.AddMiddlewareHandler(func(tv *hubclient.ThingMessage) (*hubclient.ThingMessage, error) {
 		mwh2Count++
 		return tv, nil
 	})
 	mw.AddMiddlewareHandler(middleware.EscapeIDKey)
 
-	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key 1", payload, "sender1")
+	tv1 := hubclient.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key 1", payload, "sender1")
 	stat := mw.HandleMessage(tv1)
 	assert.Empty(t, stat.Error)
 	assert.Equal(t, payload, stat.Reply)
@@ -50,7 +49,7 @@ func TestHandleEvent(t *testing.T) {
 func TestHandlerError(t *testing.T) {
 	const payload = "hello"
 	mw := middleware.NewMiddleware()
-	mw.SetMessageHandler(func(msg *things.ThingMessage) hubclient.DeliveryStatus {
+	mw.SetMessageHandler(func(msg *hubclient.ThingMessage) hubclient.DeliveryStatus {
 		var res hubclient.DeliveryStatus
 		res.Progress = hubclient.DeliveryFailed
 		res.Error = "Failed reply"
@@ -58,12 +57,12 @@ func TestHandlerError(t *testing.T) {
 	})
 	mwh1Count := 0
 
-	mw.AddMiddlewareHandler(func(tv *things.ThingMessage) (*things.ThingMessage, error) {
+	mw.AddMiddlewareHandler(func(tv *hubclient.ThingMessage) (*hubclient.ThingMessage, error) {
 		mwh1Count++
 		return tv, nil
 	})
 
-	tv1 := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", payload, "sender1")
+	tv1 := hubclient.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", payload, "sender1")
 	stat := mw.HandleMessage(tv1)
 	assert.Equal(t, mwh1Count, 1)
 	assert.NotEmpty(t, stat.Error)
@@ -76,23 +75,23 @@ func TestMiddlewareError(t *testing.T) {
 	mwh2Count := 0
 
 	mw := middleware.NewMiddleware()
-	mw.SetMessageHandler(func(msg *things.ThingMessage) hubclient.DeliveryStatus {
+	mw.SetMessageHandler(func(msg *hubclient.ThingMessage) hubclient.DeliveryStatus {
 		assert.Fail(t, "should not get here")
 		var res hubclient.DeliveryStatus
 		return res
 	})
 
-	mw.AddMiddlewareHandler(func(tv *things.ThingMessage) (*things.ThingMessage, error) {
+	mw.AddMiddlewareHandler(func(tv *hubclient.ThingMessage) (*hubclient.ThingMessage, error) {
 		mwh1Count++
 		return tv, fmt.Errorf("this is a error for testing error handling")
 	})
 
-	mw.AddMiddlewareHandler(func(tv *things.ThingMessage) (*things.ThingMessage, error) {
+	mw.AddMiddlewareHandler(func(tv *hubclient.ThingMessage) (*hubclient.ThingMessage, error) {
 		mwh2Count++
 		return tv, nil
 	})
 
-	msg := things.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", payload, "sender1")
+	msg := hubclient.NewThingMessage(vocab.MessageTypeEvent, "thing1", "key1", payload, "sender1")
 	stat := mw.HandleMessage(msg)
 	assert.NotEmpty(t, stat.Error)
 	assert.Equal(t, hubclient.DeliveryFailed, stat.Progress)

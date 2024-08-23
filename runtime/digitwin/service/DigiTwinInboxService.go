@@ -5,9 +5,9 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"sync"
 	"time"
@@ -42,7 +42,7 @@ type DigiTwinInboxService struct {
 }
 
 // AddAction adds a new action request to the inbox.
-func (svc *DigiTwinInboxService) AddAction(msg *things.ThingMessage) (rec digitwin.InboxRecord, err error) {
+func (svc *DigiTwinInboxService) AddAction(msg *hubclient.ThingMessage) (rec digitwin.InboxRecord, err error) {
 	if msg.MessageID == "" || msg.ThingID == "" || msg.Key == "" || msg.SenderID == "" {
 		err = fmt.Errorf(
 			"action is missing required a parameter; senderID '%s', thingID '%s', key '%s', messageID '%s'",
@@ -134,7 +134,7 @@ func (svc *DigiTwinInboxService) GetRecord(messageID string) (r digitwin.InboxRe
 //
 // Note that incoming action requests use the digital twin ThingID, not the physical
 // device ID.
-func (svc *DigiTwinInboxService) HandleActionFlow(msg *things.ThingMessage) (status hubclient.DeliveryStatus) {
+func (svc *DigiTwinInboxService) HandleActionFlow(msg *hubclient.ThingMessage) (status hubclient.DeliveryStatus) {
 	slog.Info("inbox:HandleActionFlow",
 		slog.String("ThingID", msg.ThingID),
 		slog.String("Key", msg.Key),
@@ -153,7 +153,7 @@ func (svc *DigiTwinInboxService) HandleActionFlow(msg *things.ThingMessage) (sta
 	// split the virtual thingID into the agent and serviceID
 	// the agent is required to find the destination and the agent uses the native thingID (serviceID)
 	DThingID := msg.ThingID
-	agentID, serviceID := things.SplitDigiTwinThingID(DThingID)
+	agentID, serviceID := tdd.SplitDigiTwinThingID(DThingID)
 	if agentID == "" {
 		err = fmt.Errorf("agent '%s' for thing '%s' not found", agentID, msg.ThingID)
 		slog.Warn(err.Error())
@@ -190,10 +190,10 @@ func (svc *DigiTwinInboxService) HandleActionFlow(msg *things.ThingMessage) (sta
 // This updates the status of the inbox record and notifies the sender.
 //
 // If the message is no longer in the active cache then it is ignored.
-func (svc *DigiTwinInboxService) HandleDeliveryUpdate(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (svc *DigiTwinInboxService) HandleDeliveryUpdate(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	var inboxRecord digitwin.InboxRecord
 
-	err := msg.Decode(&stat)
+	err := utils.DecodeAsObject(msg.Data, &stat)
 	if err == nil {
 		inboxRecord, err = svc.GetRecord(stat.MessageID)
 	}
@@ -214,7 +214,7 @@ func (svc *DigiTwinInboxService) HandleDeliveryUpdate(msg *things.ThingMessage) 
 	)
 
 	// the sender (agents) must be the thing agent
-	thingAgentID, thingID := things.SplitDigiTwinThingID(inboxRecord.ThingID)
+	thingAgentID, thingID := tdd.SplitDigiTwinThingID(inboxRecord.ThingID)
 	_ = thingID
 	if thingAgentID != msg.SenderID {
 		err = fmt.Errorf("inbox:HandleDeliveryUpdate: status update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",

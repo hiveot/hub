@@ -1,8 +1,8 @@
-package things_test
+package tdd_test
 
 import (
 	vocab2 "github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/wot/tdd"
 	"strings"
 	"testing"
 	"time"
@@ -12,13 +12,13 @@ import (
 
 func TestCreateTD(t *testing.T) {
 	thingID := "urn:thing1"
-	tdoc := things.NewTD(thingID, "test TD", vocab2.ThingSensor)
+	tdoc := tdd.NewTD(thingID, "test TD", vocab2.ThingSensor)
 	assert.NotNil(t, tdoc)
 
 	// Set version
 	//versions := map[string]string{"Software": "v10.1", "Hardware": "v2.0"}
-	propAffordance := &things.PropertyAffordance{
-		DataSchema: things.DataSchema{
+	propAffordance := &tdd.PropertyAffordance{
+		DataSchema: tdd.DataSchema{
 			Type:  vocab2.WoTDataTypeArray,
 			Title: "version",
 		},
@@ -26,8 +26,8 @@ func TestCreateTD(t *testing.T) {
 	tdoc.UpdateProperty(vocab2.PropDeviceSoftwareVersion, propAffordance)
 
 	// Define TD property
-	propAffordance = &things.PropertyAffordance{
-		DataSchema: things.DataSchema{
+	propAffordance = &tdd.PropertyAffordance{
+		DataSchema: tdd.DataSchema{
 			Type: vocab2.WoTDataTypeString,
 			Enum: make([]interface{}, 0), //{"value1", "value2"},
 			Unit: "C",
@@ -46,15 +46,15 @@ func TestCreateTD(t *testing.T) {
 
 	tdoc.UpdateTitleDescription("title", "description")
 
-	tdoc.UpdateAction("action1", &things.ActionAffordance{})
+	tdoc.UpdateAction("action1", &tdd.ActionAffordance{})
 	action := tdoc.GetAction("action1")
 	assert.NotNil(t, action)
 
-	tdoc.UpdateEvent("event1", &things.EventAffordance{})
+	tdoc.UpdateEvent("event1", &tdd.EventAffordance{})
 	ev := tdoc.GetEvent("event1")
 	assert.NotNil(t, ev)
 
-	tdoc.UpdateForms([]things.Form{})
+	tdoc.UpdateForms([]tdd.Form{})
 
 	tid2 := tdoc.GetID()
 	assert.Equal(t, thingID, tid2)
@@ -67,7 +67,7 @@ func TestMissingAffordance(t *testing.T) {
 	thingID := "urn:thing1"
 
 	// test return nil if no affordance is found
-	tdoc := things.NewTD(thingID, "test TD", vocab2.ThingSensor)
+	tdoc := tdd.NewTD(thingID, "test TD", vocab2.ThingSensor)
 	assert.NotNil(t, tdoc)
 
 	prop := tdoc.GetProperty("prop1")
@@ -81,7 +81,7 @@ func TestMissingAffordance(t *testing.T) {
 }
 func TestAddProp(t *testing.T) {
 	thingID := "urn:thing1"
-	tdoc := things.NewTD(thingID, "test TD", vocab2.ThingSensor)
+	tdoc := tdd.NewTD(thingID, "test TD", vocab2.ThingSensor)
 	tdoc.AddProperty("prop1", "", "test property", vocab2.WoTDataTypeBool)
 
 	go func() {
@@ -99,7 +99,7 @@ func TestAddProp(t *testing.T) {
 func TestAddPropBadIDs(t *testing.T) {
 	thingID := "urn:thing 1"
 	propID := "prop 1"
-	tdoc := things.NewTD(thingID, "test TD", vocab2.ThingSensor)
+	tdoc := tdd.NewTD(thingID, "test TD", vocab2.ThingSensor)
 	tdoc.AddProperty(propID, "", "test property", vocab2.WoTDataTypeBool)
 
 	go func() {
@@ -118,7 +118,7 @@ func TestAddPropBadIDs(t *testing.T) {
 
 func TestAddEvent(t *testing.T) {
 	thingID := "urn:thing1"
-	tdoc := things.NewTD(thingID, "test TD", vocab2.ThingSensor)
+	tdoc := tdd.NewTD(thingID, "test TD", vocab2.ThingSensor)
 	tdoc.AddEvent("event1", "", "Test Event", "", nil)
 
 	go func() {
@@ -134,7 +134,7 @@ func TestAddEvent(t *testing.T) {
 
 func TestAddAction(t *testing.T) {
 	thingID := "urn:thing1"
-	tdoc := things.NewTD(thingID, "test TD", vocab2.ThingSensor)
+	tdoc := tdd.NewTD(thingID, "test TD", vocab2.ThingSensor)
 	tdoc.AddAction("action1", "test", "Test Action", "", nil)
 
 	go func() {

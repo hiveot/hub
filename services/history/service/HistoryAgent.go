@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/transports"
 	"github.com/hiveot/hub/services/history/historyapi"
 )
@@ -41,7 +40,7 @@ func StartHistoryAgent(
 	rah := transports.NewAgentHandler(historyapi.ReadHistoryServiceID, readHistoryMethods)
 	mah := transports.NewAgentHandler(historyapi.ManageHistoryServiceID, manageHistoryMethods)
 	// receive messages for events and agent requests
-	hc.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		if msg.MessageType == vocab.MessageTypeAction || msg.MessageType == vocab.MessageTypeProperty {
 			if msg.ThingID == historyapi.ReadHistoryServiceID {
 				return rah.HandleMessage(msg)
@@ -52,7 +51,7 @@ func StartHistoryAgent(
 			err := svc.addHistory.AddEvent(msg)
 			return stat.Completed(msg, nil, err)
 		}
-		stat.DeliveryFailed(msg, fmt.Errorf("Unhandled message"))
+		stat.Failed(msg, fmt.Errorf("Unhandled message"))
 		return stat
 	})
 }

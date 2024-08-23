@@ -8,8 +8,9 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/history"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -29,14 +30,14 @@ type ThingDetailsTemplateData struct {
 	MakeModel  string
 	ThingName  string
 	DeviceType string
-	TD         *things.TD
+	TD         *tdd.TD
 	// split the properties in attributes and config for presentation
 	AttrKeys   []string
-	Attributes map[string]*things.PropertyAffordance
+	Attributes map[string]*tdd.PropertyAffordance
 	ConfigKeys []string
-	Config     map[string]*things.PropertyAffordance
+	Config     map[string]*tdd.PropertyAffordance
 	// latest value of properties
-	Values things.ThingMessageMap
+	Values hubclient.ThingMessageMap
 
 	VM *session.ClientViewModel
 
@@ -64,36 +65,18 @@ func (dt *ThingDetailsTemplateData) GetRenderActionPath(key string) string {
 	return utils.Substitute(RenderActionRequestPath, pathArgs)
 }
 
-//
-//// GetLatest returns a map with the latest property values of a thing or nil if failed
-//// TODO: The generated API doesnt know return types because WoT TD has no
-//// place to define them. Find a better solution.
-//func GetLatest(thingID string, hc hubclient.IHubClient) (things.ThingMessageMap, error) {
-//	data := things.NewThingMessageMap()
-//	tvsJson, err := digitwin.OutboxReadLatest(hc, nil, "", "", thingID)
-//	if err != nil {
-//		return data, err
-//	}
-//	tvs, _ := things.NewThingMessageMapFromSource(tvsJson)
-//	for _, tv := range tvs {
-//		data.Set(tv.Key, tv)
-//	}
-//	//_ = data.of("")
-//	return data, nil
-//}
-
 // RenderThingDetails renders thing details view fragment 'thingDetails.html'
 // URL parameters:
 // @param thingID to view
 func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
-	agentID, _ := things.SplitDigiTwinThingID(thingID)
+	agentID, _ := tdd.SplitDigiTwinThingID(thingID)
 
 	pathParams := map[string]string{"thingID": thingID}
 	thingData := &ThingDetailsTemplateData{
-		Attributes:                make(map[string]*things.PropertyAffordance),
+		Attributes:                make(map[string]*tdd.PropertyAffordance),
 		AttrKeys:                  make([]string, 0),
-		Config:                    make(map[string]*things.PropertyAffordance),
+		Config:                    make(map[string]*tdd.PropertyAffordance),
 		ConfigKeys:                make([]string, 0),
 		AgentID:                   agentID,
 		ThingID:                   thingID,
@@ -107,7 +90,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		thingData.VM = vm
 		tdJson, err2 := digitwin.DirectoryReadTD(hc, thingID)
-		td := things.TD{}
+		td := tdd.TD{}
 		_ = json.Unmarshal([]byte(tdJson), &td)
 		thingData.TD = &td
 		err = err2

@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/state/stateapi"
 )
 
@@ -14,7 +14,7 @@ type StateAgent struct {
 }
 
 // HandleMessage dispatches requests to the service capabilities
-func (agent *StateAgent) HandleMessage(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (agent *StateAgent) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	if msg.ThingID == stateapi.StorageServiceID {
 		switch msg.Key {
 		case stateapi.DeleteMethod:
@@ -29,44 +29,44 @@ func (agent *StateAgent) HandleMessage(msg *things.ThingMessage) (stat hubclient
 			return agent.SetMultiple(msg)
 		}
 	}
-	stat.DeliveryFailed(msg, fmt.Errorf(
+	stat.Failed(msg, fmt.Errorf(
 		"unknown action '%s' for service '%s'", msg.Key, msg.ThingID))
 	return stat
 }
-func (agent *StateAgent) Delete(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (agent *StateAgent) Delete(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	args := stateapi.DeleteArgs{}
-	err := msg.Decode(&args)
+	err := utils.DecodeAsObject(msg.Data, &args)
 	err = agent.svc.Delete(msg.SenderID, args.Key)
 	stat.Completed(msg, nil, err)
 	return stat
 }
-func (agent *StateAgent) Get(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (agent *StateAgent) Get(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	args := stateapi.GetArgs{}
 	resp := stateapi.GetResp{}
-	err := msg.Decode(&args)
+	err := utils.DecodeAsObject(msg.Data, &args)
 	resp.Key = args.Key
 	resp.Value, resp.Found, err = agent.svc.Get(msg.SenderID, args.Key)
 	stat.Completed(msg, resp, err)
 	return stat
 }
-func (agent *StateAgent) GetMultiple(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (agent *StateAgent) GetMultiple(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	args := stateapi.GetMultipleArgs{}
 	resp := stateapi.GetMultipleResp{}
-	err := msg.Decode(&args)
+	err := utils.DecodeAsObject(msg.Data, &args)
 	resp.KV, err = agent.svc.GetMultiple(msg.SenderID, args.Keys)
 	stat.Completed(msg, resp, err)
 	return stat
 }
-func (agent *StateAgent) Set(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (agent *StateAgent) Set(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	args := stateapi.SetArgs{}
-	err := msg.Decode(&args)
+	err := utils.DecodeAsObject(msg.Data, &args)
 	err = agent.svc.Set(msg.SenderID, args.Key, args.Value)
 	stat.Completed(msg, nil, err)
 	return stat
 }
-func (agent *StateAgent) SetMultiple(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (agent *StateAgent) SetMultiple(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	args := stateapi.SetMultipleArgs{}
-	err := msg.Decode(&args)
+	err := utils.DecodeAsObject(msg.Data, &args)
 	err = agent.svc.SetMultiple(msg.SenderID, args.KV)
 	stat.Completed(msg, nil, err)
 	return stat

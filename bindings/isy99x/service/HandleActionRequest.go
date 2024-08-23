@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 )
 
 // HandleActionRequest passes the action request to the associated Thing.
-func (svc *IsyBinding) handleActionRequest(action *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (svc *IsyBinding) handleActionRequest(action *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	if action.MessageType == vocab.MessageTypeProperty {
 		return svc.handleConfigRequest(action)
 	}

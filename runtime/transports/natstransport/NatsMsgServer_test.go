@@ -3,9 +3,9 @@ package natstransport_test
 import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/transports/natstransport/service"
+	"github.com/hiveot/hub/wot/tdd"
 	"github.com/nats-io/nkeys"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -242,7 +242,7 @@ func TestEventsStream(t *testing.T) {
 
 	// create the stream consumer and listen for events
 	sub, err := tp1.SubStream(service.EventsIntakeStreamName, false,
-		func(msg *things.ThingMessage) {
+		func(msg *hubclient.ThingMessage) {
 			slog.Info("received event", "event name", msg.Name)
 			rxChan <- string(msg.Data)
 		})

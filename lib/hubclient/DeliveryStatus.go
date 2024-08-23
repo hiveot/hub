@@ -2,7 +2,6 @@ package hubclient
 
 import (
 	"encoding/json"
-	"github.com/hiveot/hub/lib/things"
 )
 
 // Delivery progress status values. These values only apply to the delivery process
@@ -66,7 +65,7 @@ type DeliveryStatus struct {
 // Use this  when the request has been applied to the device but not yet completed.
 //
 // Primarily intended to make sure the messageID is not forgotten.
-func (stat *DeliveryStatus) Applied(msg *things.ThingMessage) DeliveryStatus {
+func (stat *DeliveryStatus) Applied(msg *ThingMessage) DeliveryStatus {
 	stat.Progress = DeliveryApplied
 	stat.MessageID = msg.MessageID
 	return *stat
@@ -78,7 +77,7 @@ func (stat *DeliveryStatus) Applied(msg *things.ThingMessage) DeliveryStatus {
 // # Use this  when the processing has been completed without or with error
 //
 // Primarily intended to make sure the messageID is not forgotten.
-func (stat *DeliveryStatus) Completed(msg *things.ThingMessage, reply any, err error) DeliveryStatus {
+func (stat *DeliveryStatus) Completed(msg *ThingMessage, reply any, err error) DeliveryStatus {
 	stat.Progress = DeliveryCompleted
 	stat.MessageID = msg.MessageID
 	stat.Reply = reply
@@ -88,12 +87,12 @@ func (stat *DeliveryStatus) Completed(msg *things.ThingMessage, reply any, err e
 	return *stat
 }
 
-// DeliveryFailed is a simple helper that sets the message delivery status to failed with error.
+// Failed is a simple helper that sets the message delivery status to failed with error.
 //
 // Use this if the messages cannot be delivered to the final destination.
 //
 // Primarily intended to make sure the messageID is not forgotten.
-func (stat *DeliveryStatus) DeliveryFailed(msg *things.ThingMessage, err error) DeliveryStatus {
+func (stat *DeliveryStatus) Failed(msg *ThingMessage, err error) DeliveryStatus {
 	stat.Progress = DeliveryFailed
 	stat.MessageID = msg.MessageID
 	if err != nil {

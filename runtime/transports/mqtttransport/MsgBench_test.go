@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/wot/tdd"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -27,7 +27,7 @@ func Benchmark_PubSubEvent(b *testing.B) {
 	cl2, _ := ts.AddConnectUser("sub", authapi.ClientTypeUser, authapi.ClientRoleOperator)
 	defer cl2.Disconnect()
 	_ = cl2.SubEvents("publisher", "", "")
-	cl2.SetEventHandler(func(msg *things.ThingMessage) {
+	cl2.SetEventHandler(func(msg *hubclient.ThingMessage) {
 		//time.Sleep(time.Millisecond * 10)
 		rxCount.Add(1)
 	})
@@ -70,7 +70,7 @@ func Benchmark_Request(b *testing.B) {
 	cl2, _ := ts.AddConnectService("rpc")
 	defer cl2.Disconnect()
 
-	cl2.SetActionHandler(func(msg *things.ThingMessage) ([]byte, error) {
+	cl2.SetActionHandler(func(msg *hubclient.ThingMessage) ([]byte, error) {
 		rxCount.Add(1)
 		return msg.Data, nil
 	})

@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"net/http"
 )
@@ -19,7 +19,7 @@ const RenderDirectoryPath = "/directory"
 func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	tdJSON := ""
-	td := things.TD{}
+	td := tdd.TD{}
 	var hc hubclient.IHubClient
 
 	// get the hub client connection and read the existing TD

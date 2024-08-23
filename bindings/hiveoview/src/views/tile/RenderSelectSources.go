@@ -3,7 +3,7 @@ package tile
 import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/hubclient"
 	"net/http"
 )
 
@@ -12,7 +12,7 @@ const RenderSelectSourceTemplateFile = "RenderSelectSources.gohtml"
 type RenderSelectSourcesTemplateData struct {
 	AgentThings []*session.AgentThings
 	// map of thing latest event values
-	Values map[string]things.ThingMessageMap
+	Values map[string]hubclient.ThingMessageMap
 }
 
 // GetUpdated returns the update timestamp of the latest event value
@@ -50,10 +50,11 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	vm := sess.GetViewModel()
+	cts := sess.GetConsumedThingsSession()
 	// provide a list of things for each agent and show a nested
 	// list of events per thing: agent -> thing title -> event title
 	// each list is sorted by title.
-	tds, err := vm.ReadDirectory()
+	tds, err := cts.ReadDirectory(false)
 	if err != nil {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
@@ -61,7 +62,7 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 	// this gets all values of all things. Maybe more efficient
 	// to establish a shared cache?
 	data := RenderSelectSourcesTemplateData{
-		Values: make(map[string]things.ThingMessageMap),
+		Values: make(map[string]hubclient.ThingMessageMap),
 	}
 	data.AgentThings = vm.GroupByAgent(tds)
 	for thingID, _ := range tds {

@@ -2,7 +2,7 @@ package tdd2go
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/wot/tdd"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -15,7 +15,7 @@ import (
 
 // GoTypeFromSchema returns the golang type of a dataschema type,
 // or the non-standard type if this not a WoT type.
-func GoTypeFromSchema(ds *things.DataSchema) string {
+func GoTypeFromSchema(ds *tdd.DataSchema) string {
 	switch ds.Type {
 	case vocab.WoTDataTypeAnyURI:
 		return "string"

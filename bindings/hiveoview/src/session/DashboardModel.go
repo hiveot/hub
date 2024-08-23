@@ -34,8 +34,6 @@ type TileSource struct {
 	Key string `json:"key"`
 	// title of the source, defaults to affordance title
 	Title string `json:"title"`
-	// source value unit from dataschema
-	UnitSymbol string `json:"unitSymbol"`
 }
 
 // Affordance returns the event affordance of the tile source
@@ -59,7 +57,7 @@ type TileSource struct {
 //	return ds
 //}
 
-// DashboardTile defines the content of a dashboard tile
+// DashboardTile defines the configuration of a dashboard tile
 type DashboardTile struct {
 	// ID of the tile, links to the ID in the layout
 	ID string `json:"ID"`

@@ -4,9 +4,9 @@ import (
 	"github.com/hiveot/hub/api/go/authn"
 	authz2 "github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/embedded"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authz"
 	"github.com/hiveot/hub/runtime/authz/service"
@@ -94,11 +94,11 @@ func TestHasPermission(t *testing.T) {
 	err = svc.SetClientRole(senderID, authz2.AdminSetClientRoleArgs{senderID, client1Role})
 	assert.NoError(t, err)
 	// consumers have permission to publish actions and property requests
-	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, "", senderID)
+	msg := hubclient.NewThingMessage(vocab.MessageTypeAction, thingID, key, "", senderID)
 	hasperm := svc.HasPermission(msg, true)
 	assert.True(t, hasperm)
 
-	msg = things.NewThingMessage(vocab.MessageTypeProperty, thingID, key, "", senderID)
+	msg = hubclient.NewThingMessage(vocab.MessageTypeProperty, thingID, key, "", senderID)
 	hasperm = svc.HasPermission(msg, true)
 	assert.True(t, hasperm)
 }

@@ -2,9 +2,9 @@ package historyclient
 
 import (
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyapi"
+	"github.com/hiveot/hub/wot/tdd"
 	"time"
 )
 
@@ -20,7 +20,7 @@ type HistoryCursorClient struct {
 
 // First positions the cursor at the first key in the ordered list
 // This returns an error if the cursor has expired or is not found.
-func (cl *HistoryCursorClient) First() (thingValue *things.ThingMessage, valid bool, err error) {
+func (cl *HistoryCursorClient) First() (thingValue *hubclient.ThingMessage, valid bool, err error) {
 	req := historyapi.CursorArgs{
 		CursorKey: cl.cursorKey,
 	}
@@ -31,7 +31,7 @@ func (cl *HistoryCursorClient) First() (thingValue *things.ThingMessage, valid b
 
 // Last positions the cursor at the last key in the ordered list
 // This returns an error if the cursor has expired or is not found.
-func (cl *HistoryCursorClient) Last() (thingValue *things.ThingMessage, valid bool, err error) {
+func (cl *HistoryCursorClient) Last() (thingValue *hubclient.ThingMessage, valid bool, err error) {
 	req := historyapi.CursorArgs{
 		CursorKey: cl.cursorKey,
 	}
@@ -42,7 +42,7 @@ func (cl *HistoryCursorClient) Last() (thingValue *things.ThingMessage, valid bo
 
 // Next moves the cursor to the next key from the current cursor
 // This returns an error if the cursor has expired or is not found.
-func (cl *HistoryCursorClient) Next() (thingValue *things.ThingMessage, valid bool, err error) {
+func (cl *HistoryCursorClient) Next() (thingValue *hubclient.ThingMessage, valid bool, err error) {
 	req := historyapi.CursorArgs{
 		CursorKey: cl.cursorKey,
 	}
@@ -53,7 +53,7 @@ func (cl *HistoryCursorClient) Next() (thingValue *things.ThingMessage, valid bo
 
 // NextN moves the cursor to the next N steps from the current cursor
 // This returns an error if the cursor has expired or is not found.
-func (cl *HistoryCursorClient) NextN(limit int, until string) (batch []*things.ThingMessage, itemsRemaining bool, err error) {
+func (cl *HistoryCursorClient) NextN(limit int, until string) (batch []*hubclient.ThingMessage, itemsRemaining bool, err error) {
 	req := historyapi.CursorNArgs{
 		CursorKey: cl.cursorKey,
 		Until:     until,
@@ -66,7 +66,7 @@ func (cl *HistoryCursorClient) NextN(limit int, until string) (batch []*things.T
 
 // Prev moves the cursor to the previous key from the current cursor
 // This returns an error if the cursor has expired or is not found.
-func (cl *HistoryCursorClient) Prev() (thingValue *things.ThingMessage, valid bool, err error) {
+func (cl *HistoryCursorClient) Prev() (thingValue *hubclient.ThingMessage, valid bool, err error) {
 	req := historyapi.CursorArgs{
 		CursorKey: cl.cursorKey,
 	}
@@ -77,7 +77,7 @@ func (cl *HistoryCursorClient) Prev() (thingValue *things.ThingMessage, valid bo
 
 // PrevN moves the cursor to the previous N steps from the current cursor
 // This returns an error if the cursor has expired or is not found.
-func (cl *HistoryCursorClient) PrevN(limit int, until string) (batch []*things.ThingMessage, itemsRemaining bool, err error) {
+func (cl *HistoryCursorClient) PrevN(limit int, until string) (batch []*hubclient.ThingMessage, itemsRemaining bool, err error) {
 	req := historyapi.CursorNArgs{
 		CursorKey: cl.cursorKey,
 		Until:     until,
@@ -102,7 +102,7 @@ func (cl *HistoryCursorClient) Release() {
 // timeStamp in ISO8106 format
 // This returns an error if the cursor has expired or is not found.
 func (cl *HistoryCursorClient) Seek(timeStamp time.Time) (
-	thingValue *things.ThingMessage, valid bool, err error) {
+	thingValue *hubclient.ThingMessage, valid bool, err error) {
 	timeStampStr := timeStamp.Format(utils.RFC3339Milli)
 	req := historyapi.CursorSeekArgs{
 		CursorKey: cl.cursorKey,
@@ -125,7 +125,7 @@ func NewHistoryCursorClient(hc hubclient.IHubClient, cursorKey string) *HistoryC
 	cl := &HistoryCursorClient{
 		cursorKey: cursorKey,
 		// history cursor serviceID
-		dThingID: things.MakeDigiTwinThingID(agentID, serviceID),
+		dThingID: tdd.MakeDigiTwinThingID(agentID, serviceID),
 		hc:       hc,
 	}
 	return cl

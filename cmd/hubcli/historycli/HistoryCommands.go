@@ -3,6 +3,7 @@ package historycli
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/urfave/cli/v2"
 
@@ -121,20 +122,20 @@ func HandleListEvents(hc hubclient.IHubClient, dThingID string, name string, lim
 	fmt.Println("ThingID                        Timestamp                      Event                Value (truncated)")
 	fmt.Println("-----------                    ---------                      -----                ---------------- ")
 	count := 0
-	for tv, valid, err := cursor.Last(); err == nil && valid && count < limit; tv, valid, err = cursor.Prev() {
+	for msg, valid, err := cursor.Last(); err == nil && valid && count < limit; msg, valid, err = cursor.Prev() {
 		count++
-		value := tv.DataAsText()
+		value := msg.DataAsText()
 		// show number of properties
-		if tv.Key == vocab.EventTypeProperties {
+		if msg.Key == vocab.EventTypeProperties {
 			props := make(map[string]string)
-			_ = tv.Decode(&props)
+			_ = utils.DecodeAsObject(msg.Data, &props)
 			value = fmt.Sprintf("(%d properties)", len(props))
 		}
 
 		fmt.Printf("%-30s %-30s %-20.20s %-30.30s\n",
-			tv.ThingID,
-			tv.GetUpdated(),
-			tv.Key,
+			msg.ThingID,
+			msg.GetUpdated(),
+			msg.Key,
 			value,
 		)
 	}

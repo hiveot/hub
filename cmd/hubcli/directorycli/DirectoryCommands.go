@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"time"
@@ -50,7 +50,7 @@ func DirectoryListCommand(hc *hubclient.IHubClient) *cli.Command {
 func HandleListDirectory(hc hubclient.IHubClient) (err error) {
 	// todo: iterate with offset and limit
 	tdListJson, err := digitwin.DirectoryReadTDs(hc, 300, 0)
-	tdList, err2 := things.UnmarshalTDList(tdListJson)
+	tdList, err2 := tdd.UnmarshalTDList(tdListJson)
 
 	if err != nil || err2 != nil {
 		return err
@@ -84,12 +84,12 @@ func HandleListDirectory(hc hubclient.IHubClient) (err error) {
 // HandleListThing lists details of a Thing in the directory
 func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 	tdDocJson, err := digitwin.DirectoryReadTD(hc, thingID)
-	tdDoc, err2 := things.UnmarshalTD(tdDocJson)
+	tdDoc, err2 := tdd.UnmarshalTD(tdDocJson)
 	if err != nil || err2 != nil {
 		return err
 	}
 	valueMapJson, err := digitwin.OutboxReadLatest(hc, nil, "", "", thingID)
-	valueMap, _ := things.NewThingMessageMapFromSource(valueMapJson)
+	valueMap, _ := hubclient.NewThingMessageMapFromSource(valueMapJson)
 	//valueMap, _ := things.UnmarshalThingValueMap(valueMapJson)
 
 	if err != nil {
@@ -134,11 +134,11 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 	for _, key := range keys {
 		ev := tdDoc.Events[key]
 		dataType := "(n/a)"
-		if ev.Data != nil {
+		if ev.Data.Type != "" {
 			dataType = ev.Data.Type
 		}
 		value := valueMap.ToString(key)
-		if ev.Data != nil {
+		if ev.Data.Type != "" {
 			//initialValue = ev.Data.InitialValue
 		}
 		fmt.Printf(" %-30s %-25.25s %-40.40s %-10.10v %s%-15.15s%s %.80s\n",

@@ -2,15 +2,15 @@ package tdd2go
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 )
 
 // GenSchemaDefinitions generates data structs and constants defined in schema definitions
-func GenSchemaDefinitions(l *utils.SL, serviceTitle string, td *things.TD) {
+func GenSchemaDefinitions(l *utils.SL, serviceTitle string, td *tdd.TD) {
 
-	agentID, _ := things.SplitDigiTwinThingID(td.ID)
+	agentID, _ := tdd.SplitDigiTwinThingID(td.ID)
 
 	if len(td.SchemaDefinitions) > 0 {
 		l.Add("")
@@ -45,7 +45,7 @@ func GenSchemaDefinitions(l *utils.SL, serviceTitle string, td *things.TD) {
 }
 
 // GenSchemaDefStruct generates a data struct scoped to the agent from schema definition
-func GenSchemaDefStruct(l *utils.SL, agentID string, idTitle string, ds *things.DataSchema) {
+func GenSchemaDefStruct(l *utils.SL, agentID string, idTitle string, ds *tdd.DataSchema) {
 	l.Add("// %s defines a %s data schema of the %s agent.", idTitle, ds.Title, agentID)
 	GenDescription(l, ds.Description, ds.Comments)
 	l.Add("type %s struct {", idTitle)
@@ -60,14 +60,14 @@ func GenSchemaDefStruct(l *utils.SL, agentID string, idTitle string, ds *things.
 }
 
 // GenSchemaDefConst generates a constant value from schema definition
-func GenSchemaDefConst(l *utils.SL, title string, ds *things.DataSchema) {
+func GenSchemaDefConst(l *utils.SL, title string, ds *tdd.DataSchema) {
 	l.Add("")
 	l.Add("// %s constant with %s", title, ds.Description)
 	l.Add("const %s = %s", title, ds.Const)
 }
 
 // GenSchemaDefEnum generates enum type and constants from schema definition
-func GenSchemaDefEnum(l *utils.SL, enumTypeName string, ds *things.DataSchema) {
+func GenSchemaDefEnum(l *utils.SL, enumTypeName string, ds *tdd.DataSchema) {
 
 	goType := GoTypeFromSchema(ds)
 
@@ -97,7 +97,7 @@ func GenSchemaDefEnum(l *utils.SL, enumTypeName string, ds *things.DataSchema) {
 }
 
 // GenSchemaDefOneOf generates enum constants from 'onOff' schema definition
-func GenSchemaDefOneOf(l *utils.SL, enumTypeName string, ds *things.DataSchema) {
+func GenSchemaDefOneOf(l *utils.SL, enumTypeName string, ds *tdd.DataSchema) {
 	goType := GoTypeFromSchema(ds)
 	l.Add("// %s enumerator", enumTypeName)
 	GenDescription(l, ds.Description, ds.Comments)

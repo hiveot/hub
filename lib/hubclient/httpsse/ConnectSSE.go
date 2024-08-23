@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
 	"net/http"
@@ -108,7 +108,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	// ThingMessage is needed to pass messageID, messageType, thingID, key, and sender,
 	// as there is no facility in SSE to include metadata.
 	// SSE payload is json marshalled by the sse client
-	rxMsg := &things.ThingMessage{}
+	rxMsg := &hubclient.ThingMessage{}
 	err := cl.Unmarshal([]byte(event.Data), rxMsg)
 	if err != nil {
 		slog.Error("handleSSEEvent; Received non-ThingMessage sse event. Ignored",
@@ -132,7 +132,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	if rxMsg.MessageType == vocab.MessageTypeEvent && rxMsg.Key == vocab.EventTypeDeliveryUpdate {
 		// this client is receiving a delivery update from a previous action.
 		// The payload is a deliverystatus object
-		err = rxMsg.Decode(&stat)
+		err = utils.DecodeAsObject(rxMsg.Data, &stat)
 		if err != nil || stat.MessageID == "" {
 			slog.Error("SSE message of type delivery update is missing messageID or not a DeliveryStatus ", "err", err)
 			return
@@ -143,7 +143,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		cl.mux.RUnlock()
 		if rChan != nil {
 			rChan <- &stat
-			// if status == DeliveryCompleted || status == DeliveryFailed {
+			// if status == DeliveryCompleted || status == Failed {
 			cl.mux.Lock()
 			delete(cl._correlData, rxMsg.MessageID)
 			cl.mux.Unlock()
@@ -156,7 +156,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 			// missing rpc or message handler
 			slog.Error("handleSSEEvent, no handler registered for client",
 				"clientID", cl.ClientID())
-			stat.DeliveryFailed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, delivery update ignored"))
+			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, delivery update ignored"))
 		}
 	} else if rxMsg.MessageType == vocab.MessageTypeEvent {
 		if cl._messageHandler != nil {
@@ -175,14 +175,14 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 			slog.Warn("handleSSEEvent, no action handler registered. Action ignored.",
 				slog.String("key", rxMsg.Key),
 				slog.String("clientID", cl.ClientID()))
-			stat.DeliveryFailed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
+			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
 		}
 		cl.SendDeliveryUpdate(stat)
 	} else {
 		slog.Warn("handleSSEEvent, unknown message type. Message ignored.",
 			slog.String("message type", rxMsg.MessageType),
 			slog.String("clientID", cl.ClientID()))
-		stat.DeliveryFailed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
+		stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
 		cl.SendDeliveryUpdate(stat)
 	}
 }

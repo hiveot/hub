@@ -5,7 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 )
 
@@ -22,18 +22,18 @@ type AuthzAgent struct {
 
 // HandleMessage an event or action message for the authz service
 // This message is send by the protocol client connected to this agent
-func (agent *AuthzAgent) HandleMessage(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (agent *AuthzAgent) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	var err error
 	// if the message has an authn agent prefix then remove it.
 	// This can happen if invoked directly through an embedded client
-	_, thingID := things.SplitDigiTwinThingID(msg.ThingID)
+	_, thingID := tdd.SplitDigiTwinThingID(msg.ThingID)
 	if thingID == authz.AdminServiceID {
 		return agent.adminHandler(msg)
 	} else if thingID == authz.UserServiceID {
 		return agent.userHandler(msg)
 	}
 	err = fmt.Errorf("unknown authz service capability '%s'", msg.ThingID)
-	stat.DeliveryFailed(msg, err)
+	stat.Failed(msg, err)
 	return stat
 }
 

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/embedded"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/wot/tdd"
 	"github.com/teris-io/shortid"
 )
 
@@ -23,7 +23,7 @@ type EmbeddedTransport struct {
 }
 
 // AddTDForms does not apply to the embedded service
-func (svc *EmbeddedTransport) AddTDForms(td *things.TD) {
+func (svc *EmbeddedTransport) AddTDForms(td *tdd.TD) {
 	// nothing to do here
 }
 
@@ -36,7 +36,7 @@ func (svc *EmbeddedTransport) GetProtocolInfo() api.ProtocolInfo {
 
 // receive a message from a client and ensure it has a message ID
 // embedded transport use a 'e-' messageID prefix for troubleshooting
-func (svc *EmbeddedTransport) handleMessage(msg *things.ThingMessage) hubclient.DeliveryStatus {
+func (svc *EmbeddedTransport) handleMessage(msg *hubclient.ThingMessage) hubclient.DeliveryStatus {
 	if msg.MessageID == "" {
 		msg.MessageID = "e-" + shortid.MustGenerate()
 	}
@@ -56,8 +56,8 @@ func (svc *EmbeddedTransport) NewClient(agentID string) hubclient.IHubClient {
 
 // SendEvent publishes an event message to all subscribers of this protocol binding
 // TODO: currently the embedded services don't send events
-func (svc *EmbeddedTransport) SendEvent(event *things.ThingMessage) (stat hubclient.DeliveryStatus) {
-	stat.DeliveryFailed(event, errors.New("no handlers for event"))
+func (svc *EmbeddedTransport) SendEvent(event *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	stat.Failed(event, errors.New("no handlers for event"))
 
 	for agentID, agent := range svc.handlers {
 		// TODO: until subscription is needed by embedded clients, simply don't send them any events.
@@ -80,14 +80,14 @@ func (svc *EmbeddedTransport) SendEvent(event *things.ThingMessage) (stat hubcli
 // Embedded clients are guaranteed to receive the message.
 // This returns an error if the message cannot be delivered.
 func (svc *EmbeddedTransport) SendToClient(
-	clientID string, msg *things.ThingMessage) (stat hubclient.DeliveryStatus, found bool) {
+	clientID string, msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus, found bool) {
 
 	handler, found := svc.handlers[clientID]
 	if found {
 		stat = handler(msg)
 	} else {
 		err := fmt.Errorf("SendToClient: unknown client: %s", clientID)
-		stat.DeliveryFailed(msg, err)
+		stat.Failed(msg, err)
 	}
 	return stat, found
 }

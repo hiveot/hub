@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -47,9 +47,9 @@ func startLatestStore(clean bool) (
 
 // generate a random batch of values for testing
 func createValueBatch(svc *service.DigiTwinLatestStore,
-	nrValues int, thingIDs []string, timespanSec int) (batch []*things.ThingMessage) {
+	nrValues int, thingIDs []string, timespanSec int) (batch []*hubclient.ThingMessage) {
 
-	valueBatch := make([]*things.ThingMessage, 0, nrValues)
+	valueBatch := make([]*hubclient.ThingMessage, 0, nrValues)
 	for j := 0; j < nrValues; j++ {
 		thingIndex := rand.Intn(len(thingIDs))
 		thingID := thingIDs[thingIndex]
@@ -58,7 +58,7 @@ func createValueBatch(svc *service.DigiTwinLatestStore,
 		randomSeconds := time.Duration(rand.Intn(timespanSec)) * time.Second
 		randomTime := time.Now().Add(-randomSeconds)
 
-		ev := things.NewThingMessage(vocab.MessageTypeEvent,
+		ev := hubclient.NewThingMessage(vocab.MessageTypeEvent,
 			thingID, valueNames[randomName],
 			fmt.Sprintf("%2.3f", randomValue),
 			"sender1",
@@ -174,7 +174,7 @@ func TestAddPropsEvent(t *testing.T) {
 	svc, closeFn := startLatestStore(true)
 	defer closeFn()
 
-	msg := things.NewThingMessage(vocab.MessageTypeEvent,
+	msg := hubclient.NewThingMessage(vocab.MessageTypeEvent,
 		thing1ID, vocab.EventTypeProperties, pev, "sender")
 	svc.StoreMessage(msg)
 
@@ -199,7 +199,7 @@ func TestAddBadProps(t *testing.T) {
 
 	svc, closeFn := startLatestStore(true)
 	defer closeFn()
-	msg := things.NewThingMessage(vocab.MessageTypeEvent,
+	msg := hubclient.NewThingMessage(vocab.MessageTypeEvent,
 		thing1ID, vocab.EventTypeProperties, badProps, "sender")
 	svc.StoreMessage(msg)
 

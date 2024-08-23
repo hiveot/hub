@@ -6,15 +6,15 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"net/http"
 )
 
 // SubmitActionRequest posts the request to start an action
 func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
-	var td *things.TD
-	var actionAff *things.ActionAffordance
+	var td *tdd.TD
+	var actionAff *tdd.ActionAffordance
 	var newValue any
 	var hc hubclient.IHubClient
 
@@ -37,7 +37,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	_ = td
 	if err == nil {
 		if actionAff.Input != nil {
-			newValue, err = things.ConvertToNative(valueStr, actionAff.Input)
+			newValue, err = tdd.ConvertToNative(valueStr, actionAff.Input)
 		}
 	}
 	if err == nil {

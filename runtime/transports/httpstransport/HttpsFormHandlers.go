@@ -5,7 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
 	"io"
@@ -39,7 +39,7 @@ func (svc *HttpsTransport) HandleGetThings(w http.ResponseWriter, r *http.Reques
 	}
 	args := digitwin.DirectoryReadTDsArgs{Limit: limit, Offset: offset}
 	//argsJSON, _ := json.Marshal(args)
-	msg := things.NewThingMessage(vocab.MessageTypeAction,
+	msg := hubclient.NewThingMessage(vocab.MessageTypeAction,
 		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDsMethod,
 		args, cs.GetClientID())
 
@@ -55,7 +55,7 @@ func (svc *HttpsTransport) HandleGetThing(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	msg := things.NewThingMessage(vocab.MessageTypeAction,
+	msg := hubclient.NewThingMessage(vocab.MessageTypeAction,
 		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod,
 		thingID, cs.GetClientID())
 	stat := svc.handleMessage(msg)
@@ -157,7 +157,7 @@ func (svc *HttpsTransport) handlePostMessage(messageType string, w http.Response
 	}
 
 	// turn the request into a Thing Message
-	msg := things.NewThingMessage(
+	msg := hubclient.NewThingMessage(
 		messageType, thingID, key, payload, cs.GetClientID())
 	msg.MessageID = messageID
 
@@ -209,7 +209,7 @@ func (svc *HttpsTransport) HandleReadAllEvents(w http.ResponseWriter, r *http.Re
 		args.Keys = []string{key}
 	}
 	//argsJSON, _ := json.Marshal(args)
-	msg := things.NewThingMessage(vocab.MessageTypeAction,
+	msg := hubclient.NewThingMessage(vocab.MessageTypeAction,
 		digitwin.OutboxDThingID, digitwin.OutboxReadLatestMethod,
 		args, cs.GetClientID())
 
@@ -229,7 +229,7 @@ func (svc *HttpsTransport) HandleReadAllProperties(w http.ResponseWriter, r *htt
 		MessageType: "events",
 		ThingID:     thingID,
 	}
-	msg := things.NewThingMessage(vocab.MessageTypeAction,
+	msg := hubclient.NewThingMessage(vocab.MessageTypeAction,
 		digitwin.OutboxDThingID, digitwin.OutboxReadLatestMethod,
 		args, cs.GetClientID())
 
@@ -249,7 +249,7 @@ func (svc *HttpsTransport) HandleReadProperty(w http.ResponseWriter, r *http.Req
 		ThingID:     thingID,
 		Keys:        []string{key},
 	}
-	msg := things.NewThingMessage(vocab.MessageTypeAction,
+	msg := hubclient.NewThingMessage(vocab.MessageTypeAction,
 		digitwin.OutboxDThingID, digitwin.OutboxReadLatestMethod,
 		args, cs.GetClientID())
 

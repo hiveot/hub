@@ -9,7 +9,6 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 )
 
@@ -67,7 +66,7 @@ func (cl *EmbeddedClient) GetStatus() hubclient.TransportStatus {
 }
 
 // HandleMessage receives a message from the embedded transport for this client
-func (cl *EmbeddedClient) HandleMessage(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (cl *EmbeddedClient) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	if msg.MessageType == vocab.MessageTypeAction || msg.MessageType == vocab.MessageTypeProperty {
 		if cl.messageHandler != nil {
 			return cl.messageHandler(msg)
@@ -97,7 +96,7 @@ func (cl *EmbeddedClient) Logout() error {
 func (cl *EmbeddedClient) PubAction(
 	thingID string, key string, data any) (stat hubclient.DeliveryStatus) {
 
-	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, data, cl.clientID)
+	msg := hubclient.NewThingMessage(vocab.MessageTypeAction, thingID, key, data, cl.clientID)
 	stat = cl.sendMessage(msg)
 	return stat
 }
@@ -105,7 +104,7 @@ func (cl *EmbeddedClient) PubAction(
 // PubProperty publishes a configuration change request
 func (cl *EmbeddedClient) PubProperty(thingID string, key string, data any) (stat hubclient.DeliveryStatus) {
 
-	msg := things.NewThingMessage(vocab.MessageTypeProperty, thingID, key, data, cl.clientID)
+	msg := hubclient.NewThingMessage(vocab.MessageTypeProperty, thingID, key, data, cl.clientID)
 	stat = cl.sendMessage(msg)
 	return stat
 }
@@ -114,7 +113,7 @@ func (cl *EmbeddedClient) PubProperty(thingID string, key string, data any) (sta
 func (cl *EmbeddedClient) PubEvent(
 	thingID string, key string, data any) error {
 
-	msg := things.NewThingMessage(vocab.MessageTypeEvent, thingID, key, data, cl.clientID)
+	msg := hubclient.NewThingMessage(vocab.MessageTypeEvent, thingID, key, data, cl.clientID)
 	stat := cl.sendMessage(msg)
 	if stat.Error != "" {
 		return errors.New(stat.Error)
@@ -128,10 +127,9 @@ func (cl *EmbeddedClient) PubProps(thingID string, props map[string]any) error {
 	return cl.PubEvent(thingID, vocab.EventTypeProperties, string(payload))
 }
 
-// PubTD publishes a TD event
-func (cl *EmbeddedClient) PubTD(td *things.TD) error {
-	payload, _ := json.Marshal(td)
-	return cl.PubEvent(td.ID, vocab.EventTypeTD, string(payload))
+// PubTD publishes an agent's TD
+func (cl *EmbeddedClient) PubTD(thingID string, tdJSON string) error {
+	return cl.PubEvent(thingID, vocab.EventTypeTD, tdJSON)
 }
 
 // RefreshToken does nothing as tokens aren't used
@@ -145,7 +143,7 @@ func (cl *EmbeddedClient) Rpc(
 	thingID string, key string, args interface{}, resp interface{}) error {
 
 	// the internal wire format is a ThingMessage struct
-	msg := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, args, cl.clientID)
+	msg := hubclient.NewThingMessage(vocab.MessageTypeAction, thingID, key, args, cl.clientID)
 	// this sendMessage is synchronous
 	stat := cl.sendMessage(msg)
 	// the internal response format is a DeliveryStatus struct

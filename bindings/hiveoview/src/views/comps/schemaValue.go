@@ -1,6 +1,6 @@
 package comps
 
-import "github.com/hiveot/hub/lib/things"
+import "github.com/hiveot/hub/wot/tdd"
 
 // SchemaValue contains the schema and value of an input or output
 // Intended for rendering a single field.
@@ -10,7 +10,7 @@ type SchemaValue struct {
 	Key string
 
 	// DataSchema describing the information
-	DataSchema *things.DataSchema
+	DataSchema *tdd.DataSchema
 	// The corresponding value as string, number, or other type
 	Value string
 }

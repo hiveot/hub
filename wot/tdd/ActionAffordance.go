@@ -1,5 +1,5 @@
 // Package things with API interface definitions for the ExposedThing and ConsumedThing classes
-package things
+package tdd
 
 // ActionAffordance metadata that defines how to invoke a function of a Thing to manipulate
 // its state, eg toggle lamp on/off or trigger a process

@@ -1,9 +1,10 @@
 package service
 
 import (
+	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
-	thing "github.com/hiveot/hub/lib/things"
+	thing "github.com/hiveot/hub/wot/tdd"
 )
 
 // CreateTDFromNode converts the 1-wire node into a TD that describes the node.
@@ -115,8 +116,9 @@ func (svc *OWServerBinding) PollNodes() ([]*eds.OneWireNode, error) {
 func (svc *OWServerBinding) PublishNodeTDs(nodes []*eds.OneWireNode) (err error) {
 	for _, node := range nodes {
 		td := CreateTDFromNode(node)
+		tdJSON, _ := json.Marshal(td)
 		svc.things[td.ID] = td
-		err2 := svc.hc.PubTD(td)
+		err2 := svc.hc.PubTD(td.ID, string(tdJSON))
 		if err2 != nil {
 			err = err2
 		} else {

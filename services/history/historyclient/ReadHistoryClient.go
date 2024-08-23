@@ -2,8 +2,8 @@ package historyclient
 
 import (
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/services/history/historyapi"
+	"github.com/hiveot/hub/wot/tdd"
 	"time"
 )
 
@@ -45,7 +45,7 @@ func (cl *ReadHistoryClient) GetCursor(thingID string, filterOnKey string) (
 // to continue reading the next page.
 func (cl *ReadHistoryClient) ReadHistory(thingID string, filterOnKey string,
 	timestamp time.Time, duration int, limit int) (
-	batch []*things.ThingMessage, itemsRemaining bool, err error) {
+	batch []*hubclient.ThingMessage, itemsRemaining bool, err error) {
 
 	args := historyapi.ReadHistoryArgs{
 		ThingID:     thingID,
@@ -64,7 +64,7 @@ func NewReadHistoryClient(hc hubclient.IHubClient) *ReadHistoryClient {
 	agentID := historyapi.AgentID
 	histCl := ReadHistoryClient{
 		hc:       hc,
-		dThingID: things.MakeDigiTwinThingID(agentID, historyapi.ReadHistoryServiceID),
+		dThingID: tdd.MakeDigiTwinThingID(agentID, historyapi.ReadHistoryServiceID),
 	}
 	return &histCl
 }

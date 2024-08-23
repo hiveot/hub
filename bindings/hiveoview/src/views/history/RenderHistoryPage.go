@@ -41,16 +41,17 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, 0)
 		return
 	}
+	cts := sess.GetConsumedThingsSession()
 	vm := sess.GetViewModel()
 	// read the TD
-	td, err := vm.GetTD(thingID)
+	ct, err := cts.Consume(thingID)
 	if err != nil {
 		sess.WriteError(w, err, 0)
 		return
 	}
 
 	data, err := NewHistoryTemplateData(
-		vm, td, key, timestamp, int(durationSec))
+		vm, ct.GetThingDescription(), key, timestamp, int(durationSec))
 
 	if err != nil {
 		sess.WriteError(w, err, 0)

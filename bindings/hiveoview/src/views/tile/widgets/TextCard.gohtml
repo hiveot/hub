@@ -1,0 +1,36 @@
+<!--TextCard Tile renderer-->
+
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
+
+{{if eq (len .Tile.Sources) 1 }}
+		{{/* A single source is displayed as large text*/}}
+    {{$s := (index $.Tile.Sources 0)}}
+		<div class="h-col-centered h-grow" style="height:100%;font-size:1.5em; justify-content:center">
+			{{$.GetValue $s.ThingID $s.Key}}
+		</div>
+{{else}}
+		{{/* A list of sources is displayed as a table*/}}
+		<div class="h-col-centered h-grow"
+		     style="width:100%; height:100%; overflow:auto;color:gray; margin:0">
+		<table aria-label="GridTable" class="h-grid-table striped"
+		        style="margin:0;height:100%;grid-template-columns:1fr max-content">
+			<tbody style="display:contents">
+			{{range .Tile.Sources}}
+				<tr style="display:contents;">
+				<td>{{.Title}}</td>
+				<td style="text-wrap:nowrap; color:gray;
+				    "
+				>{{$.GetValue .ThingID .Key}}</td>
+				</tr>
+			{{end}}
+			</tbody>
+		</table>
+		</div>
+{{end}}
+
+<style>
+	.h-grid-table td{
+      border-top: 1px solid var(--pico-table-border-color);
+      border-left:1px solid var(--pico-table-border-color);
+	}
+</style>

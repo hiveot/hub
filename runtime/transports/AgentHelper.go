@@ -3,7 +3,6 @@ package transports
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 )
 
 // AgentHandler is a helper that maps messages to a Thing (service) invocation
@@ -22,21 +21,21 @@ type AgentHandler struct {
 }
 
 func (agent *AgentHandler) InvokeMethod(
-	method interface{}, msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	method interface{}, msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 
 	respData, err := hubclient.HandleRequestMessage(msg.SenderID, method, msg.Data)
 	stat.Completed(msg, respData, err)
 	return stat
 }
 
-func (agent *AgentHandler) HandleMessage(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (agent *AgentHandler) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	if msg.ThingID == agent.thingID {
 		method, found := agent.methods[msg.Key]
 		if found {
 			return agent.InvokeMethod(method, msg)
 		}
 	}
-	stat.DeliveryFailed(msg, fmt.Errorf(
+	stat.Failed(msg, fmt.Errorf(
 		"Agent for service '%s' does not have method '%s'", agent.thingID, msg.Key))
 	return stat
 }

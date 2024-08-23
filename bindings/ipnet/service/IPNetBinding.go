@@ -1,12 +1,12 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/bindings/ipnet/config"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 	"time"
 )
@@ -22,7 +22,7 @@ type IPNetBinding struct {
 }
 
 // ActionHandler handle action requests
-func (svc *IPNetBinding) ActionHandler(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (svc *IPNetBinding) ActionHandler(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	stat.Completed(msg, nil, fmt.Errorf("unknown action '%s'", msg.Key))
 	slog.Warn(stat.Error)
 	return stat
@@ -42,7 +42,8 @@ func (svc *IPNetBinding) Start(hc hubclient.IHubClient) (err error) {
 
 	// publish this binding's TD document
 	td := svc.MakeBindingTD()
-	err = svc.hc.PubTD(td)
+	tdJSON, _ := json.Marshal(td)
+	err = svc.hc.PubTD(td.ID, string(tdJSON))
 	if err != nil {
 		slog.Error("failed publishing service TD. Continuing...",
 			slog.String("err", err.Error()))

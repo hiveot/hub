@@ -2,8 +2,8 @@ package tdd2go
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 	"os"
 	"path"
 	"time"
@@ -23,10 +23,10 @@ import (
 // * Define a client function for each action
 // * Define a service interface for handling an action
 // * Define a message handler for invoking the service and returning a response
-func GenGoAPIFromTD(td *things.TD, outFile string) (err error) {
+func GenGoAPIFromTD(td *tdd.TD, outFile string) (err error) {
 
 	dThingID := td.ID
-	agentID, serviceID := things.SplitDigiTwinThingID(dThingID)
+	agentID, serviceID := tdd.SplitDigiTwinThingID(dThingID)
 	//agentTitle := ToTitle(agentID)
 	serviceTitle := ToTitle(serviceID)
 	//agentServiceTitle := agentTitle + serviceTitle
@@ -44,7 +44,7 @@ func GenGoAPIFromTD(td *things.TD, outFile string) (err error) {
 
 	l.Add("")
 	l.Add("import \"errors\"")
-	l.Add("import \"github.com/hiveot/hub/lib/things\"")
+	l.Add("import \"github.com/hiveot/hub/lib/utils\"")
 	l.Add("import \"github.com/hiveot/hub/lib/hubclient\"")
 	l.Add("")
 	l.Add("// %sAgentID is the connection ID of the agent managing the Thing.", serviceTitle)

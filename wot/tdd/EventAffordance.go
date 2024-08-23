@@ -1,5 +1,5 @@
 // Package things with API interface definitions for the ExposedThing and ConsumedThing classes
-package things
+package tdd
 
 // EventAffordance with metadata that describes an event source, which asynchronously pushes
 // event data to MemberRoles (e.g., overheating alerts).
@@ -28,7 +28,7 @@ type EventAffordance struct {
 	//---InteractionAffordance ends
 
 	// Data Schema of the event payload, if any. nil if the event comes without data
-	Data *DataSchema `json:"data,omitempty"`
+	Data DataSchema `json:"data,omitempty"`
 
 	// subscription is not applicable
 	// dataResponse is not applicable

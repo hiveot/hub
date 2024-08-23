@@ -3,8 +3,8 @@ package stateclient
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/services/state/stateapi"
+	"github.com/hiveot/hub/wot/tdd"
 )
 
 // StateClient is a the friendly client for service messages using a provided hub connection.
@@ -76,7 +76,7 @@ func NewStateClient(hc hubclient.IHubClient) *StateClient {
 	agentID := stateapi.AgentID
 	cl := StateClient{
 		hc:       hc,
-		dThingID: things.MakeDigiTwinThingID(agentID, stateapi.StorageServiceID),
+		dThingID: tdd.MakeDigiTwinThingID(agentID, stateapi.StorageServiceID),
 	}
 	return &cl
 }

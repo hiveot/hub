@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/wot/tdd"
 )
 
 // IsySwitchThing is a general-purpose on/off switch
@@ -18,11 +19,11 @@ func (it *IsySwitchThing) GetPropValues(onlyChanges bool) map[string]any {
 	return propValues
 }
 
-func (it *IsySwitchThing) GetTD() *things.TD {
+func (it *IsySwitchThing) GetTD() *tdd.TD {
 	td := it.IsyThing.GetTD()
 	// value of switch property ID "ST" is "0" or "255"
 	td.AddEvent("ST", vocab.PropSwitchOnOff, "On/Off", "",
-		&things.DataSchema{Type: vocab.WoTDataTypeBool})
+		&tdd.DataSchema{Type: vocab.WoTDataTypeBool})
 
 	// AddSwitchEvent is short for adding an event for a switch
 	//td.AddSwitchEvent(vocab.PropSwitchOnOff, "On/Off changed")
@@ -41,7 +42,7 @@ func (it *IsySwitchThing) GetTD() *things.TD {
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsySwitchThing) HandleActionRequest(action *things.ThingMessage) (err error) {
+func (it *IsySwitchThing) HandleActionRequest(action *hubclient.ThingMessage) (err error) {
 	var restPath = ""
 	var newValue = ""
 	// FIXME: action keys are the raw keys, not @type

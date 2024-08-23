@@ -6,7 +6,8 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/wot/tdd"
 	"net/http"
 )
 
@@ -51,10 +52,11 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, 0)
 		return
 	}
-	v := sess.GetViewModel()
-	var aff *things.EventAffordance
-	td, err := v.GetTD(thingID)
-	if err == nil {
+
+	cts := sess.GetConsumedThingsSession()
+	var aff *tdd.EventAffordance
+	td := cts.GetTD(thingID)
+	if td != nil {
 		aff = td.GetEvent(key)
 	}
 	if aff == nil {
@@ -69,30 +71,37 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, 0)
 		return
 	}
-	evmap, err := things.NewThingMessageMapFromSource(latestEvents)
+	evmap, err := hubclient.NewThingMessageMapFromSource(latestEvents)
 	if err == nil {
+		unitSymbol := aff.Data.UnitSymbol()
 		tm := evmap[key]
+		sourceRef := thingID + "/" + key
+		title := td.Title + ": " + aff.Title
+		latestValue := "n/a"
+		latestUpdated := "n/a"
+		// if no value was ever received then use n/a
 		if tm != nil {
-			unitSymbol := ""
-			if aff.Data != nil {
-				unitSymbol = aff.Data.UnitSymbol()
-			}
-			// the input hidden hold the real source value
-			htmlToAdd := fmt.Sprintf(
-				"<li><input type='hidden' name='sources' value='%s'"+
-					"<div>%s</div>"+
-					"<div>%s</div>"+
-					"<div>%s</div>"+
-					"<div>%s</div></li>",
-				thingID+"/"+key+"/"+td.Title+" "+aff.Title,
-				td.Title,
-				aff.Title,
-				tm.DataAsText()+" "+unitSymbol, tm.GetUpdated())
-
-			_, _ = w.Write([]byte(htmlToAdd))
-			return
+			latestValue = tm.DataAsText() + " " + unitSymbol
+			latestUpdated = tm.GetUpdated()
 		}
-		err = fmt.Errorf("cant find key: %s", key)
+		// the input hidden hold the real source value
+		// this must match the list in RenderEditTile.gohtml
+		// FIXME: this is ridiculous htmx. Use JS to simplify it.
+		htmlToAdd := fmt.Sprintf(""+
+			"<li>"+
+			"  <input type='hidden' name='sources' value='%s'/>"+
+			"  <button type='button' class='h-row outline h-icon-button'"+
+			"    onclick='deleteRow(this.parentNode)'>"+
+			"		<iconify-icon icon='mdi:delete'></iconify-icon>"+
+			"	</button>"+
+			"  <input name='sourceTitles' value='%s' title='%s'/>"+
+			"  <div>%s</div>"+
+			"  <div>%s</div>"+
+			"</li>",
+			sourceRef, title, sourceRef, latestValue, latestUpdated)
+
+		_, _ = w.Write([]byte(htmlToAdd))
+		return
 	}
 	sess.WriteError(w, err, 0)
 }

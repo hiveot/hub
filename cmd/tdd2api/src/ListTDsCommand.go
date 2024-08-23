@@ -3,7 +3,7 @@ package src
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/wot/tdd"
 	"github.com/urfave/cli/v2"
 	"os"
 	"path"
@@ -40,7 +40,7 @@ func HandleListTDs(sourceDir string) error {
 	fmt.Printf("Filename              Size (KB)  Title                 @Type                 properties  events  actions\n")
 	fmt.Printf("--------------------  ---------  --------------------  ---------------------        ---     ---      ---\n")
 	for _, entry := range entries {
-		td := things.TD{}
+		td := tdd.TD{}
 		fullpath := filepath.Join(sourceDir, entry.Name())
 		tdJSON, err := os.ReadFile(fullpath)
 		finfo, _ := entry.Info()

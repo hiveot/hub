@@ -1,4 +1,4 @@
-<!--Tile editor dialog-->
+<!--Tile renderer-->
 
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
 
@@ -13,7 +13,7 @@
 </div>
 
 {{else}}
-<div id="{{.Tile.ID}}"
+<div id="{{.Tile.ID}}" class="tile-panel"
      hx-trigger="sse:{{.TileUpdatedEvent}}"
      hx-swap="outerHTML"
      hx-params="none"
@@ -28,15 +28,29 @@
 	</header>
 	<div class="tile-content">
 
-		<div class="h-col-centered h-grow" style="justify-content:center">
-			This is a {{.Tile.TileType}} tile.
-		</div>
+    {{if eq .Tile.TileType "lineChart"}}
+      {{template "LineChart.gohtml" .}}
+    {{else if eq .Tile.TileType "barChart"}}
+      {{template "BarChart.gohtml" .}}
+    {{else if eq .Tile.TileType "areaChart"}}
+      {{template "AreaChart.gohtml" .}}
+    {{else if eq .Tile.TileType "image"}}
+      {{template "ImageCard.gohtml" .}}
+    {{else if eq .Tile.TileType "gauge"}}
+      {{template "GaugeCard.gohtml" .}}
+		{{else}}
+			{{template "TextCard.gohtml" .}}
+		{{end}}
 
 	</div>
 </div>
 
 <style>
-
+		.tile-panel {
+				display:flex;
+				flex-direction:column;
+				height:100%;
+		}
     .tile-header {
         background-color: var(--pico-background-color);
         color: var(--pico-color);
@@ -46,7 +60,7 @@
     }
     .tile-content{
         /*display:flex;*/
-        /*flex-grow:1;*/
+        flex-grow:1;
         /*overflow:auto;*/
         /*padding:0;*/
         /*justify-content:center;*/

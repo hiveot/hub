@@ -1,4 +1,4 @@
-package things
+package tdd
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"

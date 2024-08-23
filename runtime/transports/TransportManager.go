@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/transports/discotransport"
 	"github.com/hiveot/hub/runtime/transports/embedded"
 	"github.com/hiveot/hub/runtime/transports/httpstransport"
+	"github.com/hiveot/hub/wot/tdd"
 	"github.com/teris-io/shortid"
 	"log/slog"
 )
@@ -31,11 +31,11 @@ type TransportsManager struct {
 	//grpcTransport     api.ITransportBinding
 
 	// handler to pass incoming messages to
-	handler func(tv *things.ThingMessage) hubclient.DeliveryStatus
+	handler func(tv *hubclient.ThingMessage) hubclient.DeliveryStatus
 }
 
 // AddTDForms adds forms for all active transports
-func (svc *TransportsManager) AddTDForms(td *things.TD) {
+func (svc *TransportsManager) AddTDForms(td *tdd.TD) {
 	if svc.httpsTransport != nil {
 		svc.httpsTransport.AddTDForms(td)
 	}
@@ -71,7 +71,7 @@ func (svc *TransportsManager) GetProtocolInfo() (pi api.ProtocolInfo) {
 }
 
 // receive a message and ensure it has a message ID
-func (svc *TransportsManager) handleMessage(msg *things.ThingMessage) hubclient.DeliveryStatus {
+func (svc *TransportsManager) handleMessage(msg *hubclient.ThingMessage) hubclient.DeliveryStatus {
 	if msg.MessageID == "" {
 		msg.MessageID = shortid.MustGenerate()
 	}
@@ -104,7 +104,7 @@ func (svc *TransportsManager) handleMessage(msg *things.ThingMessage) hubclient.
 //	Maybe support both sending to clientID and sessionID. Notifications can go to all sessions
 //	of a client while response of API requests are go the the session that sent it.
 func (svc *TransportsManager) SendToClient(
-	clientID string, msg *things.ThingMessage) (stat hubclient.DeliveryStatus, found bool) {
+	clientID string, msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus, found bool) {
 
 	// for now simply send the action request to enabled protocol handlers
 	if svc.embeddedTransport != nil {
@@ -119,7 +119,7 @@ func (svc *TransportsManager) SendToClient(
 	if !found {
 		// if no subscribers exist then delivery fails
 		err := fmt.Errorf("TransportsManager.SendToClient: Destination '%s' not found", clientID)
-		stat.DeliveryFailed(msg, err)
+		stat.Failed(msg, err)
 	}
 	return stat, found
 }
@@ -127,10 +127,10 @@ func (svc *TransportsManager) SendToClient(
 // SendEvent sends a event to all subscribers
 // This returns an error if the event had no subscribers
 func (svc *TransportsManager) SendEvent(
-	msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 
 	// delivery fails if there are no subscribers. Does this matter?
-	stat.DeliveryFailed(msg, errors.New("event has no subscribers"))
+	stat.Failed(msg, errors.New("event has no subscribers"))
 
 	// for now simply send the action request to enabled protocol handlers
 	if svc.embeddedTransport != nil {

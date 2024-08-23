@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,7 +41,7 @@ func TestAddActionBadMsg(t *testing.T) {
 	defer stopFunc()
 
 	// good params
-	msg := things.NewThingMessage(msgType, thingID, key, nil, senderID)
+	msg := hubclient.NewThingMessage(msgType, thingID, key, nil, senderID)
 	msg.MessageID = "t1"
 	rec, err := svc.AddAction(msg)
 	assert.NoError(t, err)
@@ -53,22 +52,22 @@ func TestAddActionBadMsg(t *testing.T) {
 	assert.Error(t, err)
 
 	// missing thingID
-	msg = things.NewThingMessage(msgType, "", key, nil, senderID)
+	msg = hubclient.NewThingMessage(msgType, "", key, nil, senderID)
 	msg.MessageID = "t1"
 	rec, err = svc.AddAction(msg)
 	assert.Error(t, err)
 	// missing key
-	msg = things.NewThingMessage(msgType, thingID, "", nil, senderID)
+	msg = hubclient.NewThingMessage(msgType, thingID, "", nil, senderID)
 	msg.MessageID = "t1"
 	rec, err = svc.AddAction(msg)
 	assert.Error(t, err)
 	// missing sender
-	msg = things.NewThingMessage(msgType, thingID, key, nil, "")
+	msg = hubclient.NewThingMessage(msgType, thingID, key, nil, "")
 	msg.MessageID = "t1"
 	rec, err = svc.AddAction(msg)
 	assert.Error(t, err)
 	// missing messageID
-	msg = things.NewThingMessage(msgType, thingID, key, nil, senderID)
+	msg = hubclient.NewThingMessage(msgType, thingID, key, nil, senderID)
 	msg.MessageID = ""
 	rec, err = svc.AddAction(msg)
 	assert.Error(t, err)
@@ -83,7 +82,7 @@ func TestReadLatest(t *testing.T) {
 	svc, stopFunc := startInboxService(true)
 	defer stopFunc()
 
-	msg := things.NewThingMessage(msgType, thingID, key, "data", senderID)
+	msg := hubclient.NewThingMessage(msgType, thingID, key, "data", senderID)
 	msg.MessageID = "t1"
 	rec, err := svc.AddAction(msg)
 	assert.NoError(t, err)
@@ -123,7 +122,7 @@ func TestUpdateDeliveryStatus(t *testing.T) {
 	svc, stopFunc := startInboxService(true)
 	defer stopFunc()
 
-	msg := things.NewThingMessage(msgType, thingID, key, "data", senderID)
+	msg := hubclient.NewThingMessage(msgType, thingID, key, "data", senderID)
 	msg.MessageID = "t1"
 	rec, err := svc.AddAction(msg)
 	assert.NoError(t, err)
@@ -169,7 +168,7 @@ func TestBadDeliveryStatus(t *testing.T) {
 	svc, stopFunc := startInboxService(true)
 	defer stopFunc()
 
-	msg := things.NewThingMessage(msgType, thingID, key, "data", senderID)
+	msg := hubclient.NewThingMessage(msgType, thingID, key, "data", senderID)
 	msg.MessageID = "t1"
 	rec, err := svc.AddAction(msg)
 	assert.NoError(t, err)

@@ -5,7 +5,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
@@ -37,7 +37,7 @@ func TestReconnect(t *testing.T) {
 	defer hc1.Disconnect()
 	err = hc1.SubEvents(deviceID, "", "")
 	require.NoError(t, err)
-	hc1.SetEventHandler(func(tv *things.ThingMessage) {
+	hc1.SetEventHandler(func(tv *hubclient.ThingMessage) {
 		slog.Info("received event")
 		rxChan <- string(tv.Data)
 	})

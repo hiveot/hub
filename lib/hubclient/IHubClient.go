@@ -3,7 +3,6 @@ package hubclient
 import (
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/things"
 )
 
 //// ISubscription interface to underlying subscription mechanism
@@ -54,14 +53,14 @@ type TransportStatus struct {
 }
 
 // EventHandler processes an event without return value
-type EventHandler func(msg *things.ThingMessage) error
+type EventHandler func(msg *ThingMessage) error
 
 // MessageHandler defines the method that processes an action or event message and
 // returns a delivery status.
 //
 // As actions are targeted to an agent, the delivery status is that of delivery	to the agent.
 // As events are broadcast, the delivery status is that of delivery to at least one subscriber.
-type MessageHandler func(msg *things.ThingMessage) DeliveryStatus
+type MessageHandler func(msg *ThingMessage) DeliveryStatus
 
 // IHubClient defines the interface of the client that connects to a messaging server.
 type IHubClient interface {
@@ -162,8 +161,10 @@ type IHubClient interface {
 	// PubTD publishes an TD document event.
 	// It returns as soon as delivery to the hub is confirmed.
 	// This is intended for agents, not for consumers.
+	//	id is the Thing ID as seen by the agent (not the digitwin ID)
 	//	td is the Thing Description document describing the Thing
-	PubTD(td *things.TD) error
+	//PubTD(td *tdd.TD) error
+	PubTD(thingID string, tdJSON string) error
 
 	// RefreshToken refreshes the authentication token
 	// The resulting token can be used with 'SetAuthToken'
@@ -181,8 +182,8 @@ type IHubClient interface {
 	//
 	//	dThingID is the digital twin ID of the service providing the RPC method
 	//	key is the ID of the RPC method as described in the service TD action affordance
-	//	args is the address of a struct containing the arguments to marshal
-	//	resp is the address of a struct receiving the result values
+	//	args is the struct or type containing the arguments to marshal
+	//	resp is the address of a struct or type receiving the result values
 	//
 	// This returns an error if delivery failed or an error was returned
 	Rpc(dThingID string, key string, args interface{}, resp interface{}) error

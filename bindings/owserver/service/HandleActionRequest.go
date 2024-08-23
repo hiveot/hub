@@ -6,13 +6,12 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 	"time"
 )
 
 // HandleActionRequest handles requests to activate inputs
-func (svc *OWServerBinding) HandleActionRequest(action *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (svc *OWServerBinding) HandleActionRequest(action *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	var attr eds.OneWireAttr
 	slog.Info("HandleActionRequest",
 		slog.String("thingID", action.ThingID),
@@ -31,7 +30,7 @@ func (svc *OWServerBinding) HandleActionRequest(action *things.ThingMessage) (st
 	if !found {
 		// delivery failed as the thingID doesn't exist
 		err := fmt.Errorf("ID '%s' is not a known node", action.ThingID)
-		stat.DeliveryFailed(action, err)
+		stat.Failed(action, err)
 		return stat
 	}
 	attr, found = node.Attr[action.Key]

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/wot/tdd"
 )
 
 // AuthnAgent agent for the authentication services:
@@ -18,17 +18,17 @@ type AuthnAgent struct {
 }
 
 // HandleMessage dispatches requests to the service capabilities identified by their thingID
-func (agent *AuthnAgent) HandleMessage(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (agent *AuthnAgent) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	// if the message has an authn agent prefix then remove it.
 	// This can happen if invoked directly through an embedded client
-	_, thingID := things.SplitDigiTwinThingID(msg.ThingID)
+	_, thingID := tdd.SplitDigiTwinThingID(msg.ThingID)
 	if thingID == authn.AdminServiceID {
 		return agent.adminHandler(msg)
 	} else if thingID == authn.UserServiceID {
 		return agent.userHandler(msg)
 	}
 	err := fmt.Errorf("unknown authn service capability '%s'", msg.ThingID)
-	stat.DeliveryFailed(msg, err)
+	stat.Failed(msg, err)
 	return stat
 }
 

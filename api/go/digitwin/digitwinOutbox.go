@@ -3,8 +3,10 @@
 // Generated 10 Jul 24 09:24 PDT.
 package digitwin
 
-import "errors"
-import "github.com/hiveot/hub/lib/things"
+import (
+	"errors"
+	"github.com/hiveot/hub/lib/utils"
+)
 import "github.com/hiveot/hub/lib/hubclient"
 
 // OutboxAgentID is the connection ID of the agent managing the Thing.
@@ -98,15 +100,15 @@ type IOutboxService interface {
 // that implements the corresponding interface method.
 //
 // This returns the marshalled response data or an error.
-func NewOutboxHandler(svc IOutboxService) func(*things.ThingMessage) hubclient.DeliveryStatus {
-	return func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func NewOutboxHandler(svc IOutboxService) func(*hubclient.ThingMessage) hubclient.DeliveryStatus {
+	return func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		var err error
 		var resp interface{}
 		var senderID = msg.SenderID
 		switch msg.Key {
 		case "readLatest":
 			args := OutboxReadLatestArgs{}
-			err = msg.Decode(&args)
+			err = utils.DecodeAsObject(msg.Data, &args)
 			if err == nil {
 				resp, err = svc.ReadLatest(senderID, args)
 			} else {
@@ -115,16 +117,12 @@ func NewOutboxHandler(svc IOutboxService) func(*things.ThingMessage) hubclient.D
 			break
 		case "removeValue":
 			var args string
-			err = msg.Decode(&args)
-			if err == nil {
-				err = svc.RemoveValue(senderID, args)
-			} else {
-				err = errors.New("bad function argument: " + err.Error())
-			}
+			args = utils.DecodeAsString(msg.Data)
+			err = svc.RemoveValue(senderID, args)
 			break
 		default:
 			err = errors.New("Unknown Method '" + msg.Key + "' of service '" + msg.ThingID + "'")
-			stat.DeliveryFailed(msg, err)
+			stat.Failed(msg, err)
 		}
 		stat.Completed(msg, resp, err)
 		return stat

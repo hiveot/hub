@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -11,7 +12,8 @@ func (svc *IsyBinding) PublishNodeTDs() (err error) {
 	slog.Info("PublishNodeTDs Gateway and Nodes")
 
 	td := svc.CreateBindingTD()
-	err = svc.hc.PubTD(td)
+	tdJSON, _ := json.Marshal(td)
+	err = svc.hc.PubTD(td.ID, string(tdJSON))
 	if err != nil {
 		err = fmt.Errorf("failed publishing thing TD: %w", err)
 		slog.Error(err.Error())
@@ -23,7 +25,8 @@ func (svc *IsyBinding) PublishNodeTDs() (err error) {
 
 	td = svc.IsyGW.GetTD()
 	if td != nil {
-		err = svc.hc.PubTD(td)
+		tdJSON, _ = json.Marshal(td)
+		err = svc.hc.PubTD(td.ID, string(tdJSON))
 		if err != nil {
 			err = fmt.Errorf("failed publishing gateway TD: %w", err)
 			slog.Error(err.Error())
@@ -40,7 +43,8 @@ func (svc *IsyBinding) PublishNodeTDs() (err error) {
 		//things := svc.IsyGW.ReadThings()
 		for _, thing := range svc.IsyGW.GetIsyThings() {
 			td = thing.GetTD()
-			err = svc.hc.PubTD(td)
+			tdJSON, _ := json.Marshal(td)
+			err = svc.hc.PubTD(td.ID, string(tdJSON))
 			if err != nil {
 				slog.Error("PollIsyTDs", "err", err)
 			}

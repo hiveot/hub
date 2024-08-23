@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/cmd/tdd2api/src/tdd2go"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 	"github.com/urfave/cli/v2"
 	"os"
 	"path"
@@ -67,7 +67,7 @@ func HandleTdd2Go(sourceDir string, outDirBase string) error {
 	fmt.Printf("Source file           Size (KB)  ThingID                         Title                           Output                                    Progress\n")
 	fmt.Printf("--------------------  ---------  ------------------------------  ------------------------------  ----------------------------------------  ------\n")
 	for _, fullPath := range sourceFiles {
-		td := things.TD{}
+		td := tdd.TD{}
 		tdJSON, err := os.ReadFile(fullPath)
 		sizeKb := len(tdJSON) / 1024
 		if err == nil {
@@ -85,7 +85,7 @@ func HandleTdd2Go(sourceDir string, outDirBase string) error {
 			var packageName string
 			var typeName string
 			// not a TD, assume this is a standalone dataschema
-			var ds things.DataSchema
+			var ds tdd.DataSchema
 			err = json.Unmarshal(tdJSON, &ds)
 
 			// FIXME: using @type as package/type name is an experiment
@@ -112,7 +112,7 @@ func HandleTdd2Go(sourceDir string, outDirBase string) error {
 			break
 		}
 
-		agentID, _ := things.SplitDigiTwinThingID(td.ID)
+		agentID, _ := tdd.SplitDigiTwinThingID(td.ID)
 		outFile := path.Join(outDirBase, agentID, sourceNoExt+".go")
 
 		if err == nil {

@@ -1,4 +1,4 @@
-package things
+package hubclient
 
 import (
 	"encoding/json"

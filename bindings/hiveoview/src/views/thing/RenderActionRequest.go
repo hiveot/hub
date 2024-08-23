@@ -10,8 +10,8 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/comps"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 	"net/http"
 	"time"
 )
@@ -23,15 +23,15 @@ const SubmitActionRequestPath = "/action/{thingID}/{key}"
 type ActionRequestTemplateData struct {
 	// The thing the action belongs to
 	ThingID string
-	TD      *things.TD
+	TD      *tdd.TD
 	// key of action
 	Key string
 	// the action being viewed in case of an action
-	Action *things.ActionAffordance
+	Action *tdd.ActionAffordance
 	Input  *comps.SchemaValue
 	Output *comps.SchemaValue
 	// the message with the action
-	Msg things.ThingMessage
+	Msg hubclient.ThingMessage
 	// current delivery status
 	Status hubclient.DeliveryStatus
 	// Previous input value
@@ -47,7 +47,7 @@ type ActionRequestTemplateData struct {
 
 // Return the action affordance
 func getActionAff(hc hubclient.IHubClient, thingID string, key string) (
-	td *things.TD, actionAff *things.ActionAffordance, err error) {
+	td *tdd.TD, actionAff *tdd.ActionAffordance, err error) {
 
 	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
 	if err != nil {

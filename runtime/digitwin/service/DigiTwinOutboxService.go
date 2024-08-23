@@ -6,8 +6,8 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/wot/tdd"
 )
 
 const LatestEventsBucketName = "latestEvents"
@@ -25,11 +25,11 @@ type DigiTwinOutboxService struct {
 }
 
 // HandleEvent adds an event to the outbox
-func (svc *DigiTwinOutboxService) HandleEvent(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (svc *DigiTwinOutboxService) HandleEvent(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	// events use 'raw' thingIDs, only known to agents.
 	// Digitwin adds the "ht:{agentID}:" prefix, as the event now belongs to the virtual digital twin.
 	// Same procedure at the DigiTwinDirectory
-	dtThingID := things.MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
+	dtThingID := tdd.MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
 	msg.ThingID = dtThingID
 
 	// store for reading the last received events

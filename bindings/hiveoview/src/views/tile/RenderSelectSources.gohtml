@@ -1,7 +1,7 @@
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.RenderSelectSourcesTemplateData*/ -}}
 
 {{/*Show a list of agents containing things, containing events to select from*/}}
-<h-modal show showClose showCancel showSubmit; style="z-index:99">
+<h-modal show showClose style="z-index:99">
 		<header class="h-row-centered" style="height: 60px">
 			<h4>Add Tile Sources</h4>
 		</header>
@@ -31,7 +31,7 @@
 								</summary>
 
 								<!--=== for EventAffordance in .TD ===-->
-								<ul class="h-grid-table thing-events" striped border>
+								<ul class="h-grid-table select-thing-events" striped border>
                     {{/* Header*/}}
 										<li>
 											<div>Event Name</div>
@@ -39,7 +39,7 @@
 											<div class="h-show-md">Updated</div>
 										</li>
                     {{range $k,$v := .Events}}
-                    {{- /*gotype: github.com/hiveot/hub/lib/things.EventAffordance*/ -}}
+                    {{- /*gotype: github.com/hiveot/hub/wot/tdd.EventAffordance*/ -}}
 										<li>
 											{{/*Get the html of the source to add to the list of sources*/}}
 											<div>
@@ -67,17 +67,25 @@
 				</details>
       {{/* end range .AgentThings*/}}
 			{{end}}
-
-
 		</main>
+
+
+		<footer class="h-row-centered" style="width:100%">
+        {{- /*close-modal is handled by h-modal component*/ -}}
+			<button id="closelBtn" style="width:90%"
+			        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))">
+				Done
+			</button>
+		</footer>
 </h-modal>
 
 
 <style>
-	.thing-events {
-			grid-template-columns: minmax(100px, 1fr)
-			minmax(100px, max-content)
-			minmax(100px, max-content)
+	.select-thing-events {
+			grid-template-columns:
+				minmax(100px, 1fr)
+				minmax(100px, max-content)
+				minmax(100px, max-content);
 	}
 
 </style>

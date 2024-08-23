@@ -8,8 +8,8 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"strings"
 	"sync"
@@ -44,7 +44,7 @@ type DigitwinDirectoryService struct {
 //
 //	msg is the thing message containing the JSON encoded TD.
 //	tb is the transport binding whose protocols to add to the td, or nil when no protocols to add
-func (svc *DigitwinDirectoryService) HandleTDEvent(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (svc *DigitwinDirectoryService) HandleTDEvent(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	err := svc.UpdateTD(msg.SenderID, msg.DataAsText())
 	stat.Completed(msg, nil, err)
 	return stat
@@ -206,7 +206,7 @@ func (svc *DigitwinDirectoryService) UpdateTD(senderID string, tddjson string) e
 	var err error
 
 	// 1: parse the TD json
-	td := things.TD{}
+	td := tdd.TD{}
 	// we know the argument is a string with TD document text. It can be immediately converted to TD object
 	err = td.LoadFromJSON(tddjson)
 
@@ -223,7 +223,7 @@ func (svc *DigitwinDirectoryService) UpdateTD(senderID string, tddjson string) e
 	// 1: create the digitwin ThingID for this TD
 	// events use 'agent' thingIDs, only known to agents.
 	// Digitwin adds the "dtw:{agentID}:" prefix, as the event now belongs to the virtual digital twin.
-	dtThingID := things.MakeDigiTwinThingID(senderID, td.ID)
+	dtThingID := tdd.MakeDigiTwinThingID(senderID, td.ID)
 	td.ID = dtThingID
 
 	// 2: modify the TD to escape all keys as they are used in paths
@@ -241,7 +241,7 @@ func (svc *DigitwinDirectoryService) UpdateTD(senderID string, tddjson string) e
 	// 5: publish event with updated digitwin TD
 	if err == nil && svc.tb != nil {
 
-		ev := things.NewThingMessage(
+		ev := hubclient.NewThingMessage(
 			vocab.MessageTypeEvent, dtThingID, vocab.EventTypeTD, dtwTddjson, senderID)
 
 		svc.tb.SendEvent(ev)

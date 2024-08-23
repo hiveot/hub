@@ -8,8 +8,8 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"net/http"
 )
@@ -20,13 +20,13 @@ const RenderEditPropertyTemplate = "RenderEditProperty.gohtml"
 type RenderEditPropertyTemplateData struct {
 	ThingID            string
 	Key                string
-	DataSchema         *things.DataSchema
+	DataSchema         *tdd.DataSchema
 	Value              string
 	SubmitPropertyPath string
 }
 
 func getPropAff(hc hubclient.IHubClient, thingID string, key string) (
-	td *things.TD, propAff *things.PropertyAffordance, err error) {
+	td *tdd.TD, propAff *tdd.PropertyAffordance, err error) {
 
 	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
 	if err != nil {
@@ -62,7 +62,7 @@ func getConfigValue(
 		// TODO: make this simpler
 		tmRaw, found := propValues[key]
 		if found {
-			tm := things.ThingMessage{}
+			tm := hubclient.ThingMessage{}
 			tmJson, _ := json.Marshal(tmRaw)
 			_ = json.Unmarshal(tmJson, &tm)
 			valueStr = fmt.Sprintf("%v", tm.Data)

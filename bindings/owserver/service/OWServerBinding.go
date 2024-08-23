@@ -1,13 +1,14 @@
 package service
 
 import (
+	"encoding/json"
 	vocab2 "github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"sync"
 	"time"
@@ -35,7 +36,7 @@ type OWServerBinding struct {
 
 	// The discovered and publishable things, containing instructions on
 	// if and how properties and events are published
-	things map[string]*things.TD
+	things map[string]*tdd.TD
 
 	// track the last value for change detection
 	// map of [node/device ID] [attribute Title] value
@@ -52,10 +53,10 @@ type OWServerBinding struct {
 }
 
 // CreateBindingTD generates a TD document for this binding. Its thingID is the same as its agentID
-func (svc *OWServerBinding) CreateBindingTD() *things.TD {
+func (svc *OWServerBinding) CreateBindingTD() *tdd.TD {
 	// This binding exposes the TD of itself.
 	// Currently its configuration comes from file.
-	td := things.NewTD(svc.agentID, "OWServer binding", vocab2.ThingServiceAdapter)
+	td := tdd.NewTD(svc.agentID, "OWServer binding", vocab2.ThingServiceAdapter)
 	td.Description = "Driver for the OWServer V2 Gateway 1-wire interface"
 
 	prop := td.AddProperty(bindingMake, vocab2.PropDeviceMake,
@@ -119,7 +120,8 @@ func (svc *OWServerBinding) Start(hc hubclient.IHubClient) (err error) {
 	// publish this binding's TD document
 	td := svc.CreateBindingTD()
 	svc.things[td.ID] = td
-	err = svc.hc.PubTD(td)
+	tdJSON, _ := json.Marshal(td)
+	err = svc.hc.PubTD(td.ID, string(tdJSON))
 	if err != nil {
 		slog.Error("failed publishing service TD. Continuing...",
 			slog.String("err", err.Error()))
@@ -195,7 +197,7 @@ func NewOWServerBinding(config *config.OWServerConfig) *OWServerBinding {
 		config: config,
 		values: make(map[string]map[string]NodeValueStamp),
 		nodes:  make(map[string]*eds.OneWireNode),
-		things: make(map[string]*things.TD),
+		things: make(map[string]*tdd.TD),
 	}
 	return svc
 }

@@ -1,4 +1,6 @@
-package things
+package tdd
+
+import "github.com/hiveot/hub/lib/hubclient"
 
 // IThing is the interface implemented by local Thing instances.
 //
@@ -45,7 +47,7 @@ type IThing interface {
 	// action affordance, or is empty if no data is expected.
 	//
 	// tv contains the action name, value and sender
-	HandleActionRequest(tv *ThingMessage) error
+	HandleActionRequest(tv *hubclient.ThingMessage) error
 
 	// HandleConfigRequest applies an incoming config request to the Thing.
 	// Intended to be invoked by the hub connection handler.
@@ -55,7 +57,7 @@ type IThing interface {
 	// property affordance.
 	//
 	// tv contains the property name, value and sender
-	HandleConfigRequest(tv *ThingMessage) error
+	HandleConfigRequest(tv *hubclient.ThingMessage) error
 
 	// Rename applies a new friendly name to the Thing.
 	// If accepted, this updates the vocab.Name property.

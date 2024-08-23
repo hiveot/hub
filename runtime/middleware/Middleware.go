@@ -3,15 +3,14 @@ package middleware
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 )
 
 // MiddlewareHandler for processing a message through the middleware chain until an error
 // is returned.
-type MiddlewareHandler func(msg *things.ThingMessage) (*things.ThingMessage, error)
+type MiddlewareHandler func(msg *hubclient.ThingMessage) (*hubclient.ThingMessage, error)
 
 // MessageHandler handles the message after the middleware
-type MessageHandler func(msg *things.ThingMessage) hubclient.DeliveryStatus
+type MessageHandler func(msg *hubclient.ThingMessage) hubclient.DeliveryStatus
 
 // Middleware service for passing events and actions through a chain of services
 type Middleware struct {
@@ -33,13 +32,13 @@ func (svc *Middleware) AddMiddlewareHandler(handler MiddlewareHandler) {
 // the registered handlers.
 //
 // The middleware chain is intended to validate, enrich, and process the event, action and rpc messages.
-func (svc *Middleware) HandleMessage(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (svc *Middleware) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	var err error
 
 	for _, handler := range svc.mwChain {
 		msg, err = handler(msg)
 		if err != nil {
-			stat.DeliveryFailed(msg, err)
+			stat.Failed(msg, err)
 			return stat
 		}
 	}
@@ -47,7 +46,7 @@ func (svc *Middleware) HandleMessage(msg *things.ThingMessage) (stat hubclient.D
 		return svc.handler(msg)
 	}
 	err = fmt.Errorf("No handler for messages is set")
-	stat.DeliveryFailed(msg, err)
+	stat.Failed(msg, err)
 	return stat
 }
 

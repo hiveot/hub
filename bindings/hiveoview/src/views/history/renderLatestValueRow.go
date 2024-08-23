@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/hubclient"
 	"net/http"
 )
 
@@ -51,7 +51,7 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 		mySession.WriteError(w, err, 0)
 		return
 	}
-	evmap, err := things.NewThingMessageMapFromSource(latestEvents)
+	evmap, err := hubclient.NewThingMessageMapFromSource(latestEvents)
 	if err == nil {
 		tm := evmap[key]
 		if tm != nil {

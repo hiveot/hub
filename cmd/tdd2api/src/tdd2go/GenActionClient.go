@@ -2,8 +2,8 @@ package tdd2go
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 	"regexp"
 )
 
@@ -13,7 +13,7 @@ import (
 // invoke the method using the provided messaging transport.
 //
 // The TD document must be a digital twin received version
-func GenServiceClient(l *utils.SL, serviceTitle string, td *things.TD) {
+func GenServiceClient(l *utils.SL, serviceTitle string, td *tdd.TD) {
 
 	//l.Add("// %sClient client for talking to the '%s' service", serviceTitle, td.ID)
 	//l.Add("type %sClient struct {", serviceTitle)
@@ -50,7 +50,7 @@ func GenServiceClient(l *utils.SL, serviceTitle string, td *things.TD) {
 //	serviceTitle  title-case thingID of the service without the agent prefix
 //	key with the service action method.
 //	action affordance describing the input and output parameters
-func GenActionMethod(l *utils.SL, serviceTitle string, key string, action *things.ActionAffordance) {
+func GenActionMethod(l *utils.SL, serviceTitle string, key string, action *tdd.ActionAffordance) {
 	argsString := "hc hubclient.IHubClient"
 	respString := "err error"
 	invokeArgs := "nil"
@@ -133,7 +133,7 @@ func GenActionMethod(l *utils.SL, serviceTitle string, key string, action *thing
 // Generate a parameter name from the schema title.
 // Parameter names start with lower case and consist only of alpha-num chars
 // Intended to make the api more readable.
-func getParamName(defaultName string, ds *things.DataSchema) string {
+func getParamName(defaultName string, ds *tdd.DataSchema) string {
 	if ds.Title == "" {
 		return defaultName
 	}

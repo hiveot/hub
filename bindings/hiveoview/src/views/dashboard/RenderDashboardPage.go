@@ -35,7 +35,7 @@ func (data DashboardPageTemplateData) GetTileTemplateData(tileID string) tile.Re
 	pathArgs := map[string]string{"dashboardID": data.Dashboard.ID, "tileID": tileID}
 	renderTilePath := utils.Substitute(tile.RenderTilePath, pathArgs)
 	tileTemplateData := tile.RenderTileTemplateData{
-		DashboardID:      data.Dashboard.ID,
+		//DashboardID:      data.Dashboard.ID,
 		ReRenderTilePath: renderTilePath,
 	}
 	return tileTemplateData

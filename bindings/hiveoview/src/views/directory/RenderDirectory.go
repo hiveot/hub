@@ -38,9 +38,10 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, 0)
 		return
 	}
+	cts := sess.GetConsumedThingsSession()
 	v := sess.GetViewModel()
 
-	tdMap, err := v.ReadDirectory()
+	tdMap, err := cts.ReadDirectory(false)
 	if err != nil {
 		err = fmt.Errorf("unable to load directory: %w", err)
 		slog.Error(err.Error())

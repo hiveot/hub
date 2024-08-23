@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 )
 
 // DigiTwinAgent is the agent for access to the digitwin directory, inbox, and outbox.
@@ -26,7 +25,7 @@ type DigiTwinAgent struct {
 }
 
 // HandleMessage dispatches requests to the service capabilities identified by their thingID
-func (agent *DigiTwinAgent) HandleMessage(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (agent *DigiTwinAgent) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	if msg.ThingID == digitwin.DirectoryServiceID {
 		return agent.directoryHandler(msg)
 	} else if msg.ThingID == digitwin.InboxServiceID {
@@ -35,7 +34,7 @@ func (agent *DigiTwinAgent) HandleMessage(msg *things.ThingMessage) (stat hubcli
 		return agent.outboxHandler(msg)
 	}
 
-	stat.DeliveryFailed(msg, fmt.Errorf("unknown digitwin service thingID '%s'", msg.ThingID))
+	stat.Failed(msg, fmt.Errorf("unknown digitwin service thingID '%s'", msg.ThingID))
 	return stat
 }
 

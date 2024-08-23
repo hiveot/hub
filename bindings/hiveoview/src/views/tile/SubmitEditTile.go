@@ -23,9 +23,8 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	)
 	newTitle := r.FormValue("title")
 	tileType := r.FormValue("tileType")
-	sources, hasSources := r.Form["sources"]
-	_ = sources
-	_ = hasSources
+	sources, _ := r.Form["sources"]
+	sourceTitles, _ := r.Form["sourceTitles"]
 
 	tile, found := cdc.dashboard.GetTile(cdc.tileID)
 	if !found {
@@ -35,19 +34,27 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	tile.Title = newTitle
 	tile.TileType = tileType
 	tile.Sources = make([]session.TileSource, 0)
-	// TODO: get list of sources from the form
+	// Get the list of sources from the form
 	if sources != nil {
-		// each source consists of thingID/key/title
+		// each source consists of thingID/key
+		i := 0
 		for _, s := range sources {
+			sourceTitle := "?"
+			if i < len(sourceTitles) {
+				sourceTitle = sourceTitles[i]
+			}
 			parts := strings.Split(s, "/")
-			if len(parts) > 2 {
+			if len(parts) >= 2 {
 				tileSource := session.TileSource{
 					ThingID: parts[0],
 					Key:     parts[1],
-					Title:   parts[2],
+					Title:   sourceTitle,
+					// if key had "/" in them then re-join them
+					//Title: strings.Join(parts[2:], " / "),
 				}
 				tile.Sources = append(tile.Sources, tileSource)
 			}
+			i++
 		}
 	}
 

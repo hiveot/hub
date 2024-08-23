@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -21,7 +22,7 @@ func TestHttpsGetActions(t *testing.T) {
 	const agentID = "agent1"
 	const userID = "user1"
 	const data = "Hello world"
-	var dtThing1ID = things.MakeDigiTwinThingID(agentID, agThing1ID)
+	var dtThing1ID = tdd.MakeDigiTwinThingID(agentID, agThing1ID)
 
 	r := startRuntime()
 	defer r.Stop()
@@ -51,7 +52,7 @@ func TestHttpsGetEvents(t *testing.T) {
 	const key1 = "key1"
 	const userID = "user1"
 	const data = "Hello world"
-	var dtThingID = things.MakeDigiTwinThingID(agentID, agThingID)
+	var dtThingID = tdd.MakeDigiTwinThingID(agentID, agThingID)
 
 	r := startRuntime()
 	defer r.Stop()
@@ -77,7 +78,7 @@ func TestHttpsGetEvents(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, reply)
 
-	tmm1 := things.ThingMessageMap{}
+	tmm1 := hubclient.ThingMessageMap{}
 	err = json.Unmarshal(reply, &tmm1)
 	require.NoError(t, err)
 	require.NotZero(t, len(tmm1))
@@ -86,7 +87,7 @@ func TestHttpsGetEvents(t *testing.T) {
 	resp, err := digitwin.OutboxReadLatest(hc, nil, "", "", dtThingID)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	tmm2, err := things.NewThingMessageMapFromSource(resp)
+	tmm2, err := hubclient.NewThingMessageMapFromSource(resp)
 	require.NoError(t, err)
 	require.Equal(t, len(tmm1), len(tmm2))
 }
@@ -100,7 +101,7 @@ func TestHttpsGetProps(t *testing.T) {
 	const userID = "user1"
 	const data1 = "Hello world"
 	const data2 = 25
-	var dtThingID = things.MakeDigiTwinThingID(agentID, agThingID)
+	var dtThingID = tdd.MakeDigiTwinThingID(agentID, agThingID)
 
 	r := startRuntime()
 	defer r.Stop()
@@ -120,7 +121,7 @@ func TestHttpsGetProps(t *testing.T) {
 	data, err := digitwin.OutboxReadLatest(hc, nil, "", "", dtThingID)
 	require.NoError(t, err)
 
-	vmm, err := things.NewThingMessageMapFromSource(data)
+	vmm, err := hubclient.NewThingMessageMapFromSource(data)
 	require.NoError(t, err)
 	// note: golang unmarshals integers as float64.
 	data2raw := vmm[key2].Data.(float64)

@@ -4,7 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/wot/tdd"
 )
 
 // IsyDimmerThing is a general-purpose dimmer switch
@@ -19,7 +20,7 @@ func (it *IsyDimmerThing) GetValues(onlyChanges bool) map[string]any {
 	return propValues
 }
 
-func (it *IsyDimmerThing) GetTD() *things.TD {
+func (it *IsyDimmerThing) GetTD() *tdd.TD {
 	td := it.IsyThing.GetTD()
 	// AddSwitchEvent is short for adding an event for a switch
 	td.AddDimmerEvent(vocab.PropSwitchDimmer)
@@ -41,14 +42,14 @@ func (it *IsyDimmerThing) GetTD() *things.TD {
 	return td
 }
 
-func (it *IsyDimmerThing) HandleConfigRequest(action *things.ThingMessage) (err error) {
+func (it *IsyDimmerThing) HandleConfigRequest(action *hubclient.ThingMessage) (err error) {
 	return errors.New("unknown config: " + action.Key)
 }
 
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsyDimmerThing) HandleActionRequest(action *things.ThingMessage) (err error) {
+func (it *IsyDimmerThing) HandleActionRequest(action *hubclient.ThingMessage) (err error) {
 	var restPath = ""
 	var newValue = ""
 	// FIXME: action keys are node attributes keys, not vocab @types (or are they?)

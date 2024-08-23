@@ -5,7 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"net/http"
 )
@@ -15,8 +15,8 @@ import (
 // TODO: use the form method from the TD - once forms are added
 func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 	var newValue any
-	var td *things.TD
-	var propAff *things.PropertyAffordance
+	var td *tdd.TD
+	var propAff *tdd.PropertyAffordance
 	var hc hubclient.IHubClient
 	stat := hubclient.DeliveryStatus{}
 	thingID := chi.URLParam(r, "thingID")
@@ -35,7 +35,7 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 
 	// form values are strings. Convert to their native type before posting
 	if err == nil {
-		newValue, err = things.ConvertToNative(valueStr, &propAff.DataSchema)
+		newValue, err = tdd.ConvertToNative(valueStr, &propAff.DataSchema)
 
 		// don't make this an rpc as the response time isn't always known with sleeping devices
 		stat = hc.PubProperty(thingID, propKey, newValue)

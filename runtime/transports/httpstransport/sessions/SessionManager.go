@@ -8,7 +8,6 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 	"sync"
 )
@@ -148,7 +147,7 @@ func (sm *SessionManager) Init(hubURL string, core string,
 
 // SendEvent passs an event to sessions of subscribers
 // Returns true if at least one session received the event or false if no session are available
-func (sm *SessionManager) SendEvent(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (sm *SessionManager) SendEvent(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	sm.mux.RLock()
 	defer sm.mux.RUnlock()
 
@@ -162,7 +161,7 @@ func (sm *SessionManager) SendEvent(msg *things.ThingMessage) (stat hubclient.De
 	if len(sm.sidSessions) > 0 {
 		stat.Completed(msg, nil, nil)
 	} else {
-		stat.DeliveryFailed(msg, errors.New("no active sessions"))
+		stat.Failed(msg, errors.New("no active sessions"))
 	}
 	return stat
 }

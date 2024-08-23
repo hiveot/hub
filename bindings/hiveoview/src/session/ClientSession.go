@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/state/stateclient"
+	"github.com/hiveot/hub/wot/consumedthing"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -44,6 +45,9 @@ type ClientSession struct {
 	// Client view model for generating re-usable data
 	viewModel *ClientViewModel
 
+	// Holder of consumed things for this session
+	cts *consumedthing.ConsumedThingsSession
+
 	// ClientID is the login ID of the user
 	clientID string
 	// RemoteAddr of the user
@@ -69,7 +73,7 @@ func (cs *ClientSession) AddSSEClient(c chan SSEEvent) {
 
 	go func() {
 		if cs.IsActive() {
-			cs.SendNotify(NotifySuccess, "Connected to the Hub")
+			//cs.SendNotify(NotifySuccess, "Connected to the Hub")
 		} else {
 			cs.SendNotify(NotifyError, "Not connected to the Hub")
 		}
@@ -93,14 +97,19 @@ func (cs *ClientSession) GetClientData() *ClientDataModel {
 	return cs.clientModel
 }
 
-// GetViewModel returns the hiveoview view model of this client
-func (cs *ClientSession) GetViewModel() *ClientViewModel {
-	return cs.viewModel
-}
-
 // GetHubClient returns the hub client connection for use in pub/sub
 func (cs *ClientSession) GetHubClient() hubclient.IHubClient {
 	return cs.hc
+}
+
+// GetConsumedThingsSession returns the consumed things model of this client
+func (cs *ClientSession) GetConsumedThingsSession() *consumedthing.ConsumedThingsSession {
+	return cs.cts
+}
+
+// GetViewModel returns the hiveoview view model of this client
+func (cs *ClientSession) GetViewModel() *ClientViewModel {
+	return cs.viewModel
 }
 
 // GetStatus returns the status of hub connection
@@ -168,8 +177,8 @@ func (cs *ClientSession) onConnectChange(stat hubclient.TransportStatus) {
 	cs.SendSSE("connectStatus", string(stat.ConnectionStatus))
 }
 
-// onMessage passes incoming messages from the Hub to the SSE client(s)
-func (cs *ClientSession) onMessage(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+// onMessage notifies SSE clients of incoming messages from the Hub
+func (cs *ClientSession) onMessage(msg *hubclient.ThingMessage) {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
 
@@ -192,7 +201,7 @@ func (cs *ClientSession) onMessage(msg *things.ThingMessage) (stat hubclient.Del
 		// property value:
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{k}}"
 		props := make(map[string]string)
-		err := msg.Decode(&props)
+		err := utils.DecodeAsObject(msg.Data, &props)
 		if err == nil {
 			for k, v := range props {
 				thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, k)
@@ -205,7 +214,8 @@ func (cs *ClientSession) onMessage(msg *things.ThingMessage) (stat hubclient.Del
 		// report unhandled delivery updates
 		// for now just pass it to the notification toaster
 		stat := hubclient.DeliveryStatus{}
-		_ = msg.Decode(&stat)
+		_ = utils.DecodeAsObject(msg.Data, &stat)
+
 		// TODO: figure out a way to replace the existing notification if the messageID
 		//  is the same (status changes from applied to delivered)
 		if stat.Error != "" {
@@ -226,7 +236,6 @@ func (cs *ClientSession) onMessage(msg *things.ThingMessage) (stat hubclient.Del
 		eventName = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Key)
 		cs.SendSSE(eventName, msg.GetUpdated())
 	}
-	return stat.Completed(msg, nil, nil)
 }
 
 // RemoveSSEClient removes a disconnected client from the session
@@ -260,7 +269,7 @@ func (cs *ClientSession) ReplaceHubClient(newHC hubclient.IHubClient) {
 	}
 	cs.hc = newHC
 	cs.hc.SetConnectHandler(cs.onConnectChange)
-	cs.hc.SetMessageHandler(cs.onMessage)
+	cs.cts = consumedthing.NewConsumedThingsSession(cs.hc)
 }
 
 // SaveState stores the current client session model using the state service,
@@ -347,7 +356,6 @@ func (cs *ClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffer, er
 
 // NewClientSession creates a new client session for the given Hub connection
 // Intended for use by the session manager.
-// This subscribes to events for configured agents.
 //
 // note that expiry is a placeholder for now used to refresh auth token.
 // it should be obtained from the login authentication/refresh.
@@ -361,9 +369,12 @@ func NewClientSession(sessionID string, hc hubclient.IHubClient, remoteAddr stri
 		lastActivity: time.Now(),
 		clientModel:  NewClientDataModel(),
 		viewModel:    NewClientViewModel(hc),
+		cts:          consumedthing.NewConsumedThingsSession(hc),
 	}
-	hc.SetMessageHandler(cs.onMessage)
+	//hc.SetMessageHandler(cs.onMessage)
 	hc.SetConnectHandler(cs.onConnectChange)
+	// this is a bit quirky but its a transition period
+	cs.cts.SetEventHandler(cs.onMessage)
 
 	// restore the session data model
 	err := cs.LoadState()

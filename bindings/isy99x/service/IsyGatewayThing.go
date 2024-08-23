@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -45,7 +45,7 @@ type IsyGatewayThing struct {
 	newNodeFound bool
 
 	// current property values of this thing
-	propValues *things.PropertyValues
+	propValues *tdd.PropertyValues
 
 	// protect access to the 'things' map
 	mux sync.RWMutex
@@ -265,12 +265,12 @@ func (igw *IsyGatewayThing) GetValues(onlyChanges bool) (map[string]any, map[str
 
 // GetTD returns the Gateway TD document
 // This returns nil if the gateway wasn't initialized
-func (igw *IsyGatewayThing) GetTD() *things.TD {
+func (igw *IsyGatewayThing) GetTD() *tdd.TD {
 	if igw.ic == nil {
 		return nil
 	}
 
-	td := things.NewTD(igw.thingID, igw.Configuration.DeviceSpecs.Model, vocab.ThingNetGateway)
+	td := tdd.NewTD(igw.thingID, igw.Configuration.DeviceSpecs.Model, vocab.ThingNetGateway)
 	td.Description = igw.Configuration.DeviceSpecs.Make + "-" + igw.Configuration.DeviceSpecs.Model
 
 	//--- device read-only attributes
@@ -334,7 +334,7 @@ func (igw *IsyGatewayThing) Init(ic *isy.IsyAPI) {
 	igw.ic = ic
 	igw.thingID = ic.GetID()
 	igw.things = make(map[string]IIsyThing)
-	igw.propValues = things.NewPropertyValues()
+	igw.propValues = tdd.NewPropertyValues()
 
 	// values are used in TD title and description
 	_ = igw.ReadGatewayValues()
@@ -454,7 +454,7 @@ func NewIsyGateway(prodMap map[string]InsteonProduct) *IsyGatewayThing {
 	isyGW := &IsyGatewayThing{
 		prodMap:    prodMap,
 		things:     make(map[string]IIsyThing),
-		propValues: things.NewPropertyValues(),
+		propValues: tdd.NewPropertyValues(),
 	}
 	return isyGW
 }

@@ -6,8 +6,8 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
-	thing "github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 	"net/http"
 )
 
@@ -16,13 +16,13 @@ const SubmitDeleteTDPath = "/directory/{thingID}"
 
 type ConfirmDeleteTDTemplateData struct {
 	ThingID            string
-	TD                 *thing.TD
+	TD                 *tdd.TD
 	SubmitDeleteTDPath string
 }
 
 func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
-	td := thing.TD{}
+	td := tdd.TD{}
 	tdJson := ""
 
 	// Read the TD being displayed and its latest values

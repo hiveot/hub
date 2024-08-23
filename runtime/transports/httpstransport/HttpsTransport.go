@@ -10,7 +10,6 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
@@ -169,7 +168,7 @@ func (svc *HttpsTransport) getRequestParams(r *http.Request) (
 
 // receive a message from a client and ensure it has a message ID
 // https transport apply a 'h-' messageID prefix for troubleshooting
-func (svc *HttpsTransport) handleMessage(msg *things.ThingMessage) hubclient.DeliveryStatus {
+func (svc *HttpsTransport) handleMessage(msg *hubclient.ThingMessage) hubclient.DeliveryStatus {
 	if msg.MessageID == "" {
 		msg.MessageID = "h-" + shortid.MustGenerate()
 	}
@@ -227,7 +226,7 @@ func (svc *HttpsTransport) GetProtocolInfo() api.ProtocolInfo {
 
 // SendEvent an event message to subscribers.
 // This passes it to SSE handlers of active sessions
-func (svc *HttpsTransport) SendEvent(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (svc *HttpsTransport) SendEvent(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	sm := sessions.GetSessionManager()
 	return sm.SendEvent(msg)
 }
@@ -236,7 +235,7 @@ func (svc *HttpsTransport) SendEvent(msg *things.ThingMessage) (stat hubclient.D
 // This sends the message to all sessions of this client. This might not be what is
 // intended ...
 func (svc *HttpsTransport) SendToClient(
-	clientID string, msg *things.ThingMessage) (stat hubclient.DeliveryStatus, found bool) {
+	clientID string, msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus, found bool) {
 
 	stat.MessageID = msg.MessageID
 	sm := sessions.GetSessionManager()
@@ -257,7 +256,7 @@ func (svc *HttpsTransport) SendToClient(
 	}
 
 	if err != nil {
-		stat.DeliveryFailed(msg, err)
+		stat.Failed(msg, err)
 	}
 	return stat, found
 }

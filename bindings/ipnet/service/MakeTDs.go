@@ -4,13 +4,13 @@ import (
 	"fmt"
 	vocab2 "github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/ser"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/wot/tdd"
 )
 
 // MakeBindingTD generates a TD document for this binding
 // containing configuration properties, event and action definitions
-func (svc *IPNetBinding) MakeBindingTD() *things.TD {
-	td := things.NewTD(svc.config.AgentID, "IPNet binding", vocab2.ThingServiceAdapter)
+func (svc *IPNetBinding) MakeBindingTD() *tdd.TD {
+	td := tdd.NewTD(svc.config.AgentID, "IPNet binding", vocab2.ThingServiceAdapter)
 
 	// these are configured through the configuration file.
 	prop := td.AddPropertyAsInt(vocab2.PropDevicePollinterval, vocab2.PropDevicePollinterval, "Poll Interval")
@@ -28,10 +28,10 @@ func (svc *IPNetBinding) MakeBindingProps() map[string]any {
 }
 
 // MakeDeviceTD generates a TD document for discovered devices
-func (svc *IPNetBinding) MakeDeviceTD(deviceInfo *IPDeviceInfo) *things.TD {
+func (svc *IPNetBinding) MakeDeviceTD(deviceInfo *IPDeviceInfo) *tdd.TD {
 	thingID := "urn:" + deviceInfo.MAC
 	deviceName := deviceInfo.GetDefaultName()
-	td := things.NewTD(thingID, deviceName, vocab2.ThingNet)
+	td := tdd.NewTD(thingID, deviceName, vocab2.ThingNet)
 
 	// these are configured through the configuration file.
 	// FIXME: what is the best way to include a port list?

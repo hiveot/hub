@@ -1,6 +1,6 @@
 // Package things with Schema type definitions for the ExposedThing and ConsumedThing classes
 // as described here: https://www.w3.org/TR/wot-thing-description/#sec-data-schema-vocabulary-definition
-package things
+package tdd
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"

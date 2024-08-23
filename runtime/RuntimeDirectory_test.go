@@ -8,9 +8,9 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -24,25 +24,25 @@ func TestAddRemoveTD(t *testing.T) {
 	const agentID = "agent1"
 	const userID = "user1"
 	const agThing1ID = "thing1"
-	var dtThing1ID = things.MakeDigiTwinThingID(agentID, agThing1ID)
+	var dtThing1ID = tdd.MakeDigiTwinThingID(agentID, agThing1ID)
 
 	r := startRuntime()
 	defer r.Stop()
 	ag, _ := ts.AddConnectAgent(agentID)
-	ag.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	ag.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		stat.Progress = hubclient.DeliveryCompleted
 		return
 	})
 	defer ag.Disconnect()
 	cl, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
-	cl.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		// result is ignored for events
 		return stat
 	})
 	defer cl.Disconnect()
 
 	// Add the TD by sending it as an event
-	td1 := things.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
+	td1 := tdd.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
 	td1JSON, _ := json.Marshal(td1)
 	err := ag.PubEvent(agThing1ID, vocab.EventTypeTD, string(td1JSON))
 	assert.NoError(t, err)
@@ -51,7 +51,7 @@ func TestAddRemoveTD(t *testing.T) {
 	// use the helper directory client rpc method
 	td3Json, err := digitwin.DirectoryReadTD(cl, dtThing1ID)
 	require.NoError(t, err)
-	var td3 things.TD
+	var td3 tdd.TD
 	err = json.Unmarshal([]byte(td3Json), &td3)
 	require.NoError(t, err)
 	assert.Equal(t, dtThing1ID, td3.ID)
@@ -134,7 +134,7 @@ func TestReadTDsRest(t *testing.T) {
 	tdJSONList := []string{}
 	err = json.Unmarshal(data, &tdJSONList)
 	require.NoError(t, err)
-	tdList, err := things.UnmarshalTDList(tdJSONList)
+	tdList, err := tdd.UnmarshalTDList(tdJSONList)
 	require.NoError(t, err)
 	require.Equal(t, 100, len(tdList))
 

@@ -1,8 +1,8 @@
 package tdd2go
 
 import (
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 	"golang.org/x/exp/slices"
 )
 
@@ -12,7 +12,7 @@ import (
 //	l is the output lines with generated source code
 //	key is the field name of the dataschema
 //	ds is the dataschema to generate
-func GenDataSchemaFields(l *utils.SL, key string, ds *things.DataSchema) {
+func GenDataSchemaFields(l *utils.SL, key string, ds *tdd.DataSchema) {
 	// get the list of attributes in this schema
 	//attrList := GetSchemaAttrs(key, ds, true)
 	// the top level attribute can be a single attribute or a list of properties
@@ -22,7 +22,7 @@ func GenDataSchemaFields(l *utils.SL, key string, ds *things.DataSchema) {
 		// field is a dataschema
 		GenSchemaAttr(l, ds.Properties)
 	} else {
-		props := map[string]*things.DataSchema{key: ds}
+		props := map[string]*tdd.DataSchema{key: ds}
 		GenSchemaAttr(l, props)
 	}
 }
@@ -32,7 +32,7 @@ func GenDataSchemaFields(l *utils.SL, key string, ds *things.DataSchema) {
 //	attrMap contains a map of attribute keys with their description
 //
 // func GenSchemaAttr(l *utils.SL, attrList []SchemaAttr) {
-func GenSchemaAttr(l *utils.SL, attrMap map[string]*things.DataSchema) {
+func GenSchemaAttr(l *utils.SL, attrMap map[string]*tdd.DataSchema) {
 
 	keys := utils.OrderedMapKeys(attrMap)
 	for _, key := range keys {

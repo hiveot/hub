@@ -6,7 +6,8 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
 	"sync"
 )
@@ -20,7 +21,7 @@ type DigiTwinLatestStore struct {
 	bucket buckets.IBucket
 
 	// in-memory cache of the latest messages by digitwin thingID
-	cache map[string]things.ThingMessageMap
+	cache map[string]hubclient.ThingMessageMap
 	// mutex for read/writing the cache
 	cacheMux sync.RWMutex // mutex for the following two fields
 	// map of thingsIDs and their change status
@@ -56,14 +57,14 @@ func (svc *DigiTwinLatestStore) LoadLatest(thingID string) (cached bool) {
 
 	if val == nil {
 		// create a new record with things messages
-		props = things.NewThingMessageMap()
+		props = hubclient.NewThingMessageMap()
 	} else {
 		// decode the record with things properties
 		err := json.Unmarshal(val, &props)
 		if err != nil {
 			slog.Error("stored 'latest' properties of things can't be unmarshalled. Clean start.",
 				slog.String("thingID", thingID), slog.String("err", err.Error()))
-			props = things.NewThingMessageMap()
+			props = hubclient.NewThingMessageMap()
 		}
 	}
 	svc.cache[thingID] = props
@@ -79,9 +80,9 @@ func (svc *DigiTwinLatestStore) LoadLatest(thingID string) (cached bool) {
 //
 //	keys optional filter for the values to read or nil to read all
 func (svc *DigiTwinLatestStore) ReadLatest(msgType string, thingID string, keys []string, since string) (
-	messages things.ThingMessageMap, err error) {
+	messages hubclient.ThingMessageMap, err error) {
 
-	messages = things.NewThingMessageMap()
+	messages = hubclient.NewThingMessageMap()
 	svc.LoadLatest(thingID)
 
 	svc.cacheMux.RLock()
@@ -114,7 +115,7 @@ func (svc *DigiTwinLatestStore) ReadLatest(msgType string, thingID string, keys 
 			return nil, fmt.Errorf(
 				"ReadLatest: invalid since time '%s' for thingID '%s'", since, thingID)
 		}
-		validMessages := things.NewThingMessageMap()
+		validMessages := hubclient.NewThingMessageMap()
 		for k, v := range messages {
 			createdTime, _ := dateparse.ParseAny(v.Created)
 			if sinceTime.UnixMilli() <= createdTime.UnixMilli() {
@@ -186,7 +187,7 @@ func (svc *DigiTwinLatestStore) Stop() {
 }
 
 // StoreMessage stores the latest event or property values
-func (svc *DigiTwinLatestStore) StoreMessage(msg *things.ThingMessage) {
+func (svc *DigiTwinLatestStore) StoreMessage(msg *hubclient.ThingMessage) {
 
 	svc.LoadLatest(msg.ThingID)
 	svc.cacheMux.Lock()
@@ -197,7 +198,7 @@ func (svc *DigiTwinLatestStore) StoreMessage(msg *things.ThingMessage) {
 			// the value holds a map of property name:value pairs, add each one individually
 			// in order to retain the sender and created timestamp.
 			props := make(map[string]any)
-			err := msg.Decode(&props)
+			err := utils.DecodeAsObject(msg.Data, &props)
 			if err != nil {
 				slog.Warn("StoreEvent; Error unmarshalling props. Ignored.",
 					slog.String("err", err.Error()),
@@ -208,7 +209,7 @@ func (svc *DigiTwinLatestStore) StoreMessage(msg *things.ThingMessage) {
 			// turn each value into a ThingMessage object
 			for propName, propValue := range props {
 				//propValueString := fmt.Sprint(propValue)
-				tm := things.NewThingMessage(vocab.MessageTypeEvent,
+				tm := hubclient.NewThingMessage(vocab.MessageTypeEvent,
 					msg.ThingID, propName, propValue, msg.SenderID)
 				tm.Created = msg.Created
 
@@ -247,7 +248,7 @@ func (svc *DigiTwinLatestStore) StoreMessage(msg *things.ThingMessage) {
 func NewDigiTwinLatestStore(bucket buckets.IBucket) *DigiTwinLatestStore {
 	svc := &DigiTwinLatestStore{
 		bucket:        bucket,
-		cache:         make(map[string]things.ThingMessageMap),
+		cache:         make(map[string]hubclient.ThingMessageMap),
 		changedThings: make(map[string]bool),
 	}
 	return svc

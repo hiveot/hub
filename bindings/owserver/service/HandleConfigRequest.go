@@ -3,12 +3,11 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/things"
 	"log/slog"
 )
 
 // HandleConfigRequest handles requests to configure the service or devices
-func (svc *OWServerBinding) HandleConfigRequest(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (svc *OWServerBinding) HandleConfigRequest(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	var err error
 	valueStr := msg.DataAsText()
 	slog.Info("HandleConfigRequest",
@@ -23,7 +22,7 @@ func (svc *OWServerBinding) HandleConfigRequest(msg *things.ThingMessage) (stat 
 		// unable to delivery to Thing
 		err := fmt.Errorf("HandleConfigRequest: Thing '%s' not found", msg.ThingID)
 		slog.Warn(err.Error())
-		stat.DeliveryFailed(msg, err)
+		stat.Failed(msg, err)
 		return
 	}
 	attr, found := node.Attr[msg.Key]

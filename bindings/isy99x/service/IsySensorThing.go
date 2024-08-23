@@ -2,7 +2,8 @@ package service
 
 import (
 	"errors"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/wot/tdd"
 )
 
 // IsySensorThing is a general-purpose sensor
@@ -17,13 +18,13 @@ func (it *IsySensorThing) GetPropValues(onlyChanges bool) map[string]any {
 }
 
 // GetTD returns the TD document representing the node
-func (it *IsySensorThing) GetTD() *things.TD {
+func (it *IsySensorThing) GetTD() *tdd.TD {
 	td := it.IsyThing.GetTD()
 	// TODO: add sensor properties and events
 	return td
 }
 
-func (it *IsySensorThing) HandleConfigRequest(action *things.ThingMessage) (err error) {
+func (it *IsySensorThing) HandleConfigRequest(action *hubclient.ThingMessage) (err error) {
 	// TODO: sensor configuration
 	return errors.New("unknown config: " + action.Key)
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"sync"
 	"time"
@@ -42,8 +42,8 @@ type IsyBinding struct {
 
 // CreateBindingTD generates a TD document for this binding containing properties,
 // event and action definitions.
-func (svc *IsyBinding) CreateBindingTD() *things.TD {
-	td := things.NewTD(svc.thingID, "ISY99x binding", vocab.ThingServiceAdapter)
+func (svc *IsyBinding) CreateBindingTD() *tdd.TD {
+	td := tdd.NewTD(svc.thingID, "ISY99x binding", vocab.ThingServiceAdapter)
 
 	// binding attributes
 	prop := td.AddProperty("connectionStatus", "",
@@ -104,7 +104,7 @@ func (svc *IsyBinding) GetBindingPropValues(onlyChanges bool) (map[string]any, m
 }
 
 // HandleBindingConfig configures the binding.
-func (svc *IsyBinding) HandleBindingConfig(action *things.ThingMessage) error {
+func (svc *IsyBinding) HandleBindingConfig(action *hubclient.ThingMessage) error {
 	err := fmt.Errorf("unknown configuration request '%s' from '%s'", action.Key, action.SenderID)
 	// connection settings to connect to the gateway
 	// FIXME: persist this configuration

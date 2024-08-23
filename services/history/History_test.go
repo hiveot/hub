@@ -7,11 +7,13 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/history/service"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"math/rand"
 	"os"
@@ -23,8 +25,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/hiveot/hub/lib/logging"
-
-	"github.com/hiveot/hub/lib/things"
 )
 
 const thingIDPrefix = "things-"
@@ -94,10 +94,10 @@ func startHistoryService(clean bool) (
 // generate a random batch of property and event values for testing
 // timespanSec is the range of timestamps up until now
 func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
-	batch []*things.ThingMessage, highest map[string]*things.ThingMessage) {
+	batch []*hubclient.ThingMessage, highest map[string]*hubclient.ThingMessage) {
 
-	highest = make(map[string]*things.ThingMessage)
-	valueBatch := make([]*things.ThingMessage, 0, nrValues)
+	highest = make(map[string]*hubclient.ThingMessage)
+	valueBatch := make([]*hubclient.ThingMessage, 0, nrValues)
 	for j := 0; j < nrValues; j++ {
 		randomID := rand.Intn(nrThings)
 		randomName := rand.Intn(10)
@@ -106,14 +106,14 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 		randomTime := time.Now().Add(-randomSeconds)
 		//
 		thingID := thingIDPrefix + strconv.Itoa(randomID)
-		dThingID := things.MakeDigiTwinThingID(agentID, thingID)
+		dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
 		messageType := vocab.MessageTypeEvent
 		randomBool := rand.Intn(2)
 		if randomBool > 0 {
 			messageType = vocab.MessageTypeProperty
 		}
 
-		ev := things.NewThingMessage(messageType,
+		ev := hubclient.NewThingMessage(messageType,
 			dThingID, names[randomName],
 			fmt.Sprintf("%2.3f", randomValue), "",
 		)
@@ -133,7 +133,7 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 }
 
 // add some history to the store using publisher 'device1'
-func addBulkHistory(svc *service.HistoryService, count int, nrThings int, timespanSec int) (highest map[string]*things.ThingMessage) {
+func addBulkHistory(svc *service.HistoryService, count int, nrThings int, timespanSec int) (highest map[string]*hubclient.ThingMessage) {
 
 	const agentID = "device1"
 	var batchSize = 1000
@@ -193,8 +193,8 @@ func TestAddGetEvent(t *testing.T) {
 
 	// add thing1 temperature from 5 minutes ago
 	addHist := svc.GetAddHistory()
-	dThing1ID := things.MakeDigiTwinThingID(agent1ID, thing1ID)
-	ev1_1 := &things.ThingMessage{
+	dThing1ID := tdd.MakeDigiTwinThingID(agent1ID, thing1ID)
+	ev1_1 := &hubclient.ThingMessage{
 		MessageType: vocab.MessageTypeEvent,
 		SenderID:    agent1ID, ThingID: dThing1ID, Key: evTemperature,
 		Data: "12.5", Created: fivemago.Format(utils.RFC3339Milli),
@@ -202,7 +202,7 @@ func TestAddGetEvent(t *testing.T) {
 	err := addHist.AddEvent(ev1_1)
 	assert.NoError(t, err)
 	// add thing1 humidity from 55 minutes ago
-	ev1_2 := &things.ThingMessage{
+	ev1_2 := &hubclient.ThingMessage{
 		MessageType: vocab.MessageTypeEvent,
 		SenderID:    agent1ID, ThingID: dThing1ID, Key: evHumidity,
 		Data: "70", Created: fiftyfivemago.Format(utils.RFC3339Milli),
@@ -211,8 +211,8 @@ func TestAddGetEvent(t *testing.T) {
 	assert.NoError(t, err)
 
 	// add thing2 humidity from 5 minutes ago
-	dThing2ID := things.MakeDigiTwinThingID(agent1ID, thing2ID)
-	ev2_1 := &things.ThingMessage{
+	dThing2ID := tdd.MakeDigiTwinThingID(agent1ID, thing2ID)
+	ev2_1 := &hubclient.ThingMessage{
 		MessageType: vocab.MessageTypeEvent,
 		SenderID:    agent1ID, ThingID: dThing2ID, Key: evHumidity,
 		Data: "50", Created: fivemago.Format(utils.RFC3339Milli),
@@ -221,7 +221,7 @@ func TestAddGetEvent(t *testing.T) {
 	assert.NoError(t, err)
 
 	// add thing2 temperature from 55 minutes ago
-	ev2_2 := &things.ThingMessage{
+	ev2_2 := &hubclient.ThingMessage{
 		MessageType: vocab.MessageTypeEvent,
 		SenderID:    agent1ID, ThingID: dThing2ID, Key: evTemperature,
 		Data: "17.5", Created: fiftyfivemago.Format(utils.RFC3339Milli),
@@ -286,41 +286,41 @@ func TestAddPropertiesEvent(t *testing.T) {
 	svc, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
 
-	dThing1ID := things.MakeDigiTwinThingID(agent1, thing1ID)
-	action1 := &things.ThingMessage{
+	dThing1ID := tdd.MakeDigiTwinThingID(agent1, thing1ID)
+	action1 := &hubclient.ThingMessage{
 		SenderID:    agent1,
 		ThingID:     dThing1ID,
 		Key:         vocab.ActionSwitchOnOff,
 		Data:        "on",
 		MessageType: vocab.MessageTypeAction,
 	}
-	event1 := &things.ThingMessage{
+	event1 := &hubclient.ThingMessage{
 		SenderID:    agent1,
 		ThingID:     dThing1ID,
 		Key:         vocab.PropEnvTemperature,
 		Data:        temp1,
 		MessageType: vocab.MessageTypeEvent,
 	}
-	badEvent1 := &things.ThingMessage{
+	badEvent1 := &hubclient.ThingMessage{
 		SenderID:    agent1,
 		ThingID:     dThing1ID,
 		Key:         "", // missing name
 		MessageType: vocab.MessageTypeEvent,
 	}
-	badEvent2 := &things.ThingMessage{
+	badEvent2 := &hubclient.ThingMessage{
 		SenderID:    "", // missing publisher
 		ThingID:     dThing1ID,
 		Key:         "name",
 		MessageType: vocab.MessageTypeEvent,
 	}
-	badEvent3 := &things.ThingMessage{
+	badEvent3 := &hubclient.ThingMessage{
 		SenderID:    agent1,
 		ThingID:     dThing1ID,
 		Key:         "baddate",
 		Created:     "-1",
 		MessageType: vocab.MessageTypeEvent,
 	}
-	badEvent4 := &things.ThingMessage{
+	badEvent4 := &hubclient.ThingMessage{
 		SenderID: agent1,
 		ThingID:  "", // missing ID
 		Key:      "temperature",
@@ -329,7 +329,7 @@ func TestAddPropertiesEvent(t *testing.T) {
 	propsList[vocab.PropDeviceBattery] = []byte("50")
 	propsList[vocab.PropEnvCpuload] = []byte("30")
 	propsList[vocab.PropSwitchOnOff] = []byte("off")
-	props1 := &things.ThingMessage{
+	props1 := &hubclient.ThingMessage{
 		SenderID: agent1,
 		ThingID:  dThing1ID,
 		Key:      vocab.EventTypeProperties,
@@ -404,7 +404,7 @@ func TestPrevNext(t *testing.T) {
 	const count = 1000
 	const agentID = "device1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
-	var dThing0ID = things.MakeDigiTwinThingID(agentID, thing0ID)
+	var dThing0ID = tdd.MakeDigiTwinThingID(agentID, thing0ID)
 
 	store, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
@@ -463,7 +463,7 @@ func TestPrevNextFiltered(t *testing.T) {
 	const count = 1000
 	const agent1ID = "device1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
-	var dThing0ID = things.MakeDigiTwinThingID(agent1ID, thing0ID)
+	var dThing0ID = tdd.MakeDigiTwinThingID(agent1ID, thing0ID)
 
 	svc, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
@@ -527,7 +527,7 @@ func TestNextPrevUntil(t *testing.T) {
 	const count = 1000
 	const agentID = "device1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
-	var dThing0ID = things.MakeDigiTwinThingID(agentID, thing0ID)
+	var dThing0ID = tdd.MakeDigiTwinThingID(agentID, thing0ID)
 
 	store, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
@@ -567,7 +567,7 @@ func TestReadHistory(t *testing.T) {
 	const count = 1000
 	const agentID = "device1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
-	var dThing0ID = things.MakeDigiTwinThingID(agentID, thing0ID)
+	var dThing0ID = tdd.MakeDigiTwinThingID(agentID, thing0ID)
 
 	store, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
@@ -596,7 +596,7 @@ func TestReadHistory(t *testing.T) {
 func TestPubSub(t *testing.T) {
 	const agent1ID = "device1"
 	const thing0ID = thingIDPrefix + "0"
-	var dThing0ID = things.MakeDigiTwinThingID(agent1ID, thing0ID)
+	var dThing0ID = tdd.MakeDigiTwinThingID(agent1ID, thing0ID)
 
 	t.Log("--- TestPubSub ---")
 	// start the pubsub server
@@ -653,7 +653,7 @@ func TestManageRetention(t *testing.T) {
 	const client1ID = "admin"
 	const device1ID = "newdevice" // should not match existing test devices
 	const thing0ID = thingIDPrefix + "0"
-	var dThing0ID = things.MakeDigiTwinThingID(device1ID, thing0ID)
+	var dThing0ID = tdd.MakeDigiTwinThingID(device1ID, thing0ID)
 	const event1Name = "event1"
 	const event2Name = "notRetainedEvent"
 

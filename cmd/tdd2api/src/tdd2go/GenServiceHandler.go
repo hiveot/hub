@@ -1,13 +1,13 @@
 package tdd2go
 
 import (
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 )
 
 // GenServiceHandler generates a function that returns a handler that unmarshal a request and invoke service
 // The signature is: GetActionHandler(service I...Service) MessageHandler
-func GenServiceHandler(l *utils.SL, serviceTitle string, td *things.TD) {
+func GenServiceHandler(l *utils.SL, serviceTitle string, td *tdd.TD) {
 	// ServiceType is the type of the service implementation that handles the messages
 	//serviceType := ToTitle(td.GetID()) + "Service"
 	interfaceName := "I" + serviceTitle + "Service"
@@ -19,9 +19,9 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td *things.TD) {
 	l.Add("// that implements the corresponding interface method.")
 	l.Add("// ")
 	l.Add("// This returns the marshalled response data or an error.")
-	l.Add("func New%sHandler(svc %s)(func(*things.ThingMessage) hubclient.DeliveryStatus) {", serviceTitle, interfaceName)
+	l.Add("func New%sHandler(svc %s)(func(*hubclient.ThingMessage) hubclient.DeliveryStatus) {", serviceTitle, interfaceName)
 	l.Indent++
-	l.Add("return func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {")
+	l.Add("return func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {")
 
 	l.Indent++
 	l.Add("var err error")
@@ -35,7 +35,7 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td *things.TD) {
 	}
 	l.Add("default:")
 	l.Add("	err = errors.New(\"Unknown Method '\"+msg.Key+\"' of service '\"+msg.ThingID+\"'\")")
-	l.Add("	stat.DeliveryFailed(msg,err)")
+	l.Add("	stat.Failed(msg,err)")
 	l.Indent--
 	l.Add("}")
 
@@ -50,7 +50,7 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td *things.TD) {
 // GenActionHandler add an unmarshaller handler for its service.
 // This unmarshal the request, invokes the service, and marshals the response
 // key is the key of the action affordance in the TD
-func GenActionHandler(l *utils.SL, serviceTitle string, key string, action *things.ActionAffordance) {
+func GenActionHandler(l *utils.SL, serviceTitle string, key string, action *tdd.ActionAffordance) {
 	methodName := Key2ID(key)
 	// build the argument string
 	argsString := "senderID" // all handlers receive the sender ID
@@ -65,7 +65,8 @@ func GenActionHandler(l *utils.SL, serviceTitle string, key string, action *thin
 			goType := GoTypeFromSchema(action.Input)
 			l.Add("var args %s", goType)
 		}
-		l.Add("err = msg.Decode(&args)")
+		l.Add("err = utils.DecodeAsObject(msg.Data,&args)")
+
 		argsString += ", args"
 	}
 	// build the result string, either an error or a response struct with an error

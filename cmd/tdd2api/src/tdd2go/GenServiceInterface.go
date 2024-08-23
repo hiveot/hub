@@ -2,12 +2,12 @@ package tdd2go
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 )
 
 // GenServiceInterface generates the service interface for handling messages
-func GenServiceInterface(l *utils.SL, serviceTitle string, td *things.TD) {
+func GenServiceInterface(l *utils.SL, serviceTitle string, td *tdd.TD) {
 	// ServiceType is the interface of the service. Interface names start with 'I'
 	interfaceName := "I" + serviceTitle + "Service"
 	l.Add("")
@@ -28,7 +28,7 @@ func GenServiceInterface(l *utils.SL, serviceTitle string, td *things.TD) {
 // GenInterfaceMethod adds a method definition for an action.
 // The generated method arguments are the senderID and the value.
 // The value is either a native type or a struct, based on the TDD definition
-func GenInterfaceMethod(l *utils.SL, serviceTitle string, key string, action *things.ActionAffordance) {
+func GenInterfaceMethod(l *utils.SL, serviceTitle string, key string, action *tdd.ActionAffordance) {
 	//attrs := GetSchemaAttrs("arg", action.Input)
 	methodName := Key2ID(key)
 	argsString := "senderID string" // all methods receive the sender ID

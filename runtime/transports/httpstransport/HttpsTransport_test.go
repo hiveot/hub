@@ -7,7 +7,6 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/things"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/runtime/transports/httpstransport"
 	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
@@ -127,7 +126,7 @@ func TestStartStop(t *testing.T) {
 		certBundle.ClientKey, certBundle.ServerCert, certBundle.CaCert,
 		dummyAuthenticator,
 	)
-	err := svc.Start(func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	err := svc.Start(func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		stat.Progress = hubclient.DeliveryCompleted
 		return stat
 	})
@@ -138,7 +137,7 @@ func TestStartStop(t *testing.T) {
 func TestLoginRefresh(t *testing.T) {
 	t.Log("TestLoginRefresh")
 	svc := startHttpsBinding(
-		func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+		func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 			assert.Fail(t, "should not get here")
 			return stat
 		})
@@ -175,7 +174,7 @@ func TestLoginRefresh(t *testing.T) {
 func TestBadLogin(t *testing.T) {
 	t.Log("TestBadLogin")
 	svc := startHttpsBinding(
-		func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+		func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 			assert.Fail(t, "should not get here")
 			return stat
 		})
@@ -208,7 +207,7 @@ func TestBadLogin(t *testing.T) {
 func TestBadRefresh(t *testing.T) {
 	t.Log("TestBadRefresh")
 	svc := startHttpsBinding(
-		func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+		func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 			assert.Fail(t, "should not get here")
 			return stat
 		})
@@ -245,7 +244,7 @@ func TestBadRefresh(t *testing.T) {
 // Test posting an event and action
 func TestPostEventAction(t *testing.T) {
 	t.Log("TestPostEventAction")
-	var rxMsg *things.ThingMessage
+	var rxMsg *hubclient.ThingMessage
 	var testMsg = "hello world"
 	var agentID = "agent1"
 	var thingID = "thing1"
@@ -254,7 +253,7 @@ func TestPostEventAction(t *testing.T) {
 
 	// 1. start the binding
 	svc := startHttpsBinding(
-		func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+		func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 			rxMsg = tv
 			stat.Completed(tv, testMsg, nil)
 			return stat
@@ -319,7 +318,7 @@ func TestShortID(t *testing.T) {
 // Test publish subscribe using sse
 func TestPubSubSSE(t *testing.T) {
 	t.Log("TestPubSubSSE")
-	var rxMsg atomic.Pointer[*things.ThingMessage]
+	var rxMsg atomic.Pointer[*hubclient.ThingMessage]
 	var testMsg = "hello world"
 	var thingID = "thing1"
 	var eventKey = "event11"
@@ -327,7 +326,7 @@ func TestPubSubSSE(t *testing.T) {
 	// 1. start the transport
 	var svc *httpstransport.HttpsTransport
 	svc = startHttpsBinding(
-		func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+		func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 			// broadcast event to subscribers
 			slog.Info("broadcasting event")
 			stat = svc.SendEvent(tv)
@@ -347,7 +346,7 @@ func TestPubSubSSE(t *testing.T) {
 
 	// 3. register the handler for events
 	cl.SetMessageHandler(
-		func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+		func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 			rxMsg.Store(&msg)
 			return stat.Completed(msg, nil, nil)
 		})
@@ -370,14 +369,14 @@ func TestPubSubSSE(t *testing.T) {
 // Restarting the server should invalidate sessions
 func TestRestart(t *testing.T) {
 	t.Log("TestRestart")
-	var rxMsg *things.ThingMessage
+	var rxMsg *hubclient.ThingMessage
 	var testMsg = "hello world"
 	var thingID = "thing1"
 	var eventKey = "event11"
 
 	// 1. start the binding
 	svc := startHttpsBinding(
-		func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+		func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 			return stat
 		})
 
@@ -390,7 +389,7 @@ func TestRestart(t *testing.T) {
 	// restart the server. This should invalidate session auth
 	t.Log("--- Stopping the server ---")
 	svc.Stop()
-	err = svc.Start(func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	err = svc.Start(func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		rxMsg = tv
 		stat.Completed(tv, testMsg, nil)
 		return stat
@@ -413,22 +412,22 @@ func TestReconnect(t *testing.T) {
 	t.Log("TestReconnect")
 	var thingID = "thing1"
 	var actionKey = "action1"
-	var actionHandler func(*things.ThingMessage) hubclient.DeliveryStatus
+	var actionHandler func(*hubclient.ThingMessage) hubclient.DeliveryStatus
 
 	// 1. start the binding. Set the action handler separately
 	svc := startHttpsBinding(
-		func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+		func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 			if actionHandler != nil {
 				return actionHandler(msg)
 			}
-			stat.DeliveryFailed(msg, fmt.Errorf("No test action handler"))
+			stat.Failed(msg, fmt.Errorf("No test action handler"))
 			return stat
 		})
 	defer svc.Stop()
 
 	// this test handler receives an action, returns a 'delivered status',
 	// and sends a completed status through the sse return channel (SendToClient)
-	actionHandler = func(tv *things.ThingMessage) (stat hubclient.DeliveryStatus) {
+	actionHandler = func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		stat.Progress = hubclient.DeliveredToAgent
 		if tv.MessageType == vocab.MessageTypeEvent {
 			// ignore events
@@ -438,7 +437,7 @@ func TestReconnect(t *testing.T) {
 		go func() {
 			var stat2 hubclient.DeliveryStatus
 			stat2.Completed(tv, tv.Data, nil)
-			tm2 := things.NewThingMessage(
+			tm2 := hubclient.NewThingMessage(
 				vocab.MessageTypeEvent, tv.SenderID, vocab.EventTypeDeliveryUpdate, stat2, thingID)
 
 			svc.SendToClient(tv.SenderID, tm2)

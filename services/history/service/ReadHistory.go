@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"log/slog"
 	"time"
@@ -47,9 +47,9 @@ func (svc *ReadHistory) GetCursor(
 // internal read history function
 func (svc *ReadHistory) readHistory(
 	thingID string, filterOnKey string, timestamp string, durationSec int, limit int) (
-	values []*things.ThingMessage, itemsRemaining bool, err error) {
+	values []*hubclient.ThingMessage, itemsRemaining bool, err error) {
 
-	values = make([]*things.ThingMessage, 0)
+	values = make([]*hubclient.ThingMessage, 0)
 
 	if thingID == "" {
 		return nil, false, fmt.Errorf("missing thingID")
@@ -67,7 +67,7 @@ func (svc *ReadHistory) readHistory(
 		// item0 is nil when seek afer the last available item
 		values = append(values, item0)
 	}
-	var batch []*things.ThingMessage
+	var batch []*hubclient.ThingMessage
 	until := ts.Add(time.Duration(durationSec) * time.Second)
 	if durationSec > 0 {
 		// read forward in time

@@ -1,4 +1,4 @@
-package things
+package tdd
 
 import (
 	"encoding/json"
@@ -169,7 +169,10 @@ func (tdoc *TD) AddEvent(
 		EventType:   eventType,
 		Title:       title,
 		Description: description,
-		Data:        schema,
+		//Data:        *schema,
+	}
+	if schema != nil {
+		evAff.Data = *schema
 	}
 
 	tdoc.UpdateEvent(eventID, evAff)

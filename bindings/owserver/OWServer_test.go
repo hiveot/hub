@@ -8,7 +8,8 @@ import (
 	"github.com/hiveot/hub/bindings/owserver/service"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"os"
 	"path"
@@ -93,19 +94,19 @@ func TestPoll(t *testing.T) {
 	// Count the number of received TD events
 	err := hc2.Subscribe("", "")
 	require.NoError(t, err)
-	hc2.SetMessageHandler(func(ev *things.ThingMessage) (stat hubclient.DeliveryStatus) {
-		slog.Info("received event", "id", ev.Key)
-		if ev.Key == vocab.EventTypeProperties {
+	hc2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+		slog.Info("received event", "id", msg.Key)
+		if msg.Key == vocab.EventTypeProperties {
 			var value map[string]interface{}
-			err2 := ev.Decode(&value)
+			err2 := utils.DecodeAsObject(msg.Data, &value)
 			assert.NoError(t, err2)
 		} else {
 			var value interface{}
-			err2 := ev.Decode(&value)
+			err2 := utils.DecodeAsObject(msg.Data, &value)
 			assert.NoError(t, err2)
 		}
 		tdCount.Add(1)
-		return stat.Completed(ev, nil, nil)
+		return stat.Completed(msg, nil, nil)
 	})
 	assert.NoError(t, err)
 
@@ -121,7 +122,7 @@ func TestPoll(t *testing.T) {
 	assert.GreaterOrEqual(t, tdCount.Load(), int32(4))
 
 	// get events from the outbox
-	dThingID := things.MakeDigiTwinThingID(agentID, device1ID)
+	dThingID := tdd.MakeDigiTwinThingID(agentID, device1ID)
 	events, err := digitwin.OutboxReadLatest(hc2, nil, vocab.MessageTypeEvent, "", dThingID)
 	require.NoError(t, err)
 	require.True(t, len(events) > 1)
@@ -151,7 +152,7 @@ func TestAction(t *testing.T) {
 	t.Log("--- TestAction ---")
 	const user1ID = "operator1"
 	// node in test data
-	var dThingID = things.MakeDigiTwinThingID(agentID, device1ID)
+	var dThingID = tdd.MakeDigiTwinThingID(agentID, device1ID)
 	var actionName = "RelayFunction" // the action attribute as defined by the device
 	var actionValue = "1"
 
@@ -197,7 +198,7 @@ func TestConfig(t *testing.T) {
 	// note that the simulation file doesn't support writes so this logs an error
 	hc2, _ := ts.AddConnectUser(user1ID, authn.ClientRoleManager)
 	defer hc2.Disconnect()
-	dThingID := things.MakeDigiTwinThingID(agentID, device1ID)
+	dThingID := tdd.MakeDigiTwinThingID(agentID, device1ID)
 	err = hc2.Rpc(dThingID, configName, &configValue, nil)
 	// can't write to a simulation. How to test for real?
 	assert.Error(t, err)

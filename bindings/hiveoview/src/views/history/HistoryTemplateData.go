@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
-	"github.com/hiveot/hub/lib/things"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 	"strconv"
 	"time"
 )
@@ -15,17 +16,17 @@ const RenderHistoryLatestRowPath = "/value/{thingID}/{key}/latest"
 
 // HistoryTemplateData holds the data for rendering a history table or graph
 type HistoryTemplateData struct {
-	TD         *things.TD
+	TD         *tdd.TD
 	ThingID    string
 	Title      string // allow override to data description
 	Key        string
-	DataSchema things.DataSchema // dataschema of event/property key
+	DataSchema tdd.DataSchema // dataschema of event/property key
 
 	// history information
 	Timestamp      time.Time
 	TimestampStr   string
 	DurationSec    int
-	Values         []*things.ThingMessage
+	Values         []*hubclient.ThingMessage
 	ItemsRemaining bool // for paging, if supported
 
 	// navigation paths
@@ -96,7 +97,7 @@ func (ht HistoryTemplateData) CompareToday() int {
 //	timestamp of the end-time of the history range
 //	duration nr of seconds to read (negative for history)
 func NewHistoryTemplateData(vm *session.ClientViewModel,
-	td *things.TD, key string, timestamp time.Time, duration int) (*HistoryTemplateData, error) {
+	td *tdd.TD, key string, timestamp time.Time, duration int) (*HistoryTemplateData, error) {
 
 	var err error
 	hs := HistoryTemplateData{
@@ -113,7 +114,7 @@ func NewHistoryTemplateData(vm *session.ClientViewModel,
 	}
 	evAff := td.GetEvent(key)
 	if evAff != nil {
-		hs.DataSchema = *evAff.Data
+		hs.DataSchema = evAff.Data
 		hs.Title = td.Title + ", " + evAff.Title
 		hs.DataSchema.Title = evAff.Title
 	} else {
@@ -126,7 +127,7 @@ func NewHistoryTemplateData(vm *session.ClientViewModel,
 	}
 
 	limit := 1000
-	hs.Values = make([]*things.ThingMessage, 0)
+	hs.Values = make([]*hubclient.ThingMessage, 0)
 
 	hs.Values, hs.ItemsRemaining, err = vm.ReadHistory(td.ID, key, timestamp, duration, limit)
 
