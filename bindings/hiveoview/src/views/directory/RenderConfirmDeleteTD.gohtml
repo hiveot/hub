@@ -20,22 +20,23 @@
 				<input id="last-updated" readonly value="{{.TD.GetAge}} ago"/>
 			</fieldset>
 		</form>
+
+		<footer class="h-row">
+        {{- /*close-modal is handled by h-modal component*/ -}}
+			<button id="cancelBtn"
+			        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+			        class="secondary">Cancel
+			</button>
+			<button type="submit"
+			        hx-delete="{{.SubmitDeleteTDPath}}"
+			        hx-swap="none"
+			        hx-on::after-request="onSubmitCompleted(event, this)"
+			        style="margin-bottom: 0">Submit
+			</button>
+		</footer>
 	</article>
 
 
-	<footer class="h-row" style="width:100%">
-    {{- /*close-modal is handled by h-modal component*/ -}}
-		<button id="cancelBtn"
-		        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
-		        class="secondary">Cancel
-		</button>
-		<button type="submit"
-		        hx-delete="{{.SubmitDeleteTDPath}}"
-		        hx-swap="none"
-		        hx-on::after-request="onSubmitCompleted(event, this)"
-		        style="margin-bottom: 0">Submit
-		</button>
-	</footer>
 </h-modal>
 
 

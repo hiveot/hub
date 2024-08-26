@@ -2,11 +2,10 @@
 
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.EditTileTemplateData*/ -}}
 
-<h-modal show showClose showCancel showSubmit
->
-		<article class="edit-tile">
+<h-modal show showClose shadow>
+		<article>
 				<header class="h-row-centered" style="height: 60px">
-						<h3>Edit Tile</h3>
+						<h3 style="margin:0">Edit Tile</h3>
 				</header>
 			<main>
 				<form id="edit-tile-form" style="overflow:auto">
@@ -29,7 +28,7 @@
 						</select>
 						<small>Current value: {{.GetTypeLabel .Tile.TileType}}</small>
 
-						<label for="edit-tile-sources" class="h-row">Sources:
+						<label  class="h-row">Sources:
 							<button type="button" class="outline h-icon-button"
 							        title="Add Source"
 							        hx-target="#selectSourcesDialog"
@@ -59,6 +58,7 @@
 			                <iconify-icon icon="mdi:delete"></iconify-icon>
 		                </button>
 				            <input name="sourceTitles" value="{{$v.Title}}"
+				                   style="margin:0"
 				                       title="{{$v.ThingID}}/{{$v.Key}}"/>
 		                <div class="h-row">{{$.GetValue $v.ThingID $v.Key}}</div>
 		                <div class="h-row">{{$.GetUpdated  $v.ThingID $v.Key}}</div>
@@ -69,33 +69,27 @@
 					</fieldset>
 				</form>
 			</main>
-		</article>
 
-		<footer class="h-row" style="width:100%">
-      {{- /*close-modal is handled by h-modal component*/ -}}
-		<button id="cancelBtn"
-		        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
-		        class="secondary">Cancel
-		</button>
-		<button type="submit"
-		        hx-post="{{.SubmitEditTilePath}}"
-		        hx-include="#edit-tile-form"
-		        hx-swap="none"
-		        hx-on::after-request="onSubmitCompleted(event, this)"
-		        style="margin-bottom: 0">Submit
-		</button>
-	</footer>
+			<footer>
+	      {{- /*close-modal is handled by h-modal component*/ -}}
+			<button id="cancelBtn"
+			        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+			        class="secondary">Cancel
+			</button>
+			<button type="submit"
+			        hx-post="{{.SubmitEditTilePath}}"
+			        hx-include="#edit-tile-form"
+			        hx-swap="none"
+			        hx-on::after-request="onSubmitCompleted(event, this)"
+			        >Submit
+			</button>
+		</footer>
+	</article>
 </h-modal>
 
 <div id="selectSourcesDialog"></div>
 
 <style>
-		.edit-tile {
-				min-width: 400px;
-				max-width:90vw;
-				max-height:90vh;
-				overflow-y: auto;
-    }
     .tile-sources-table {
         grid-template-columns:
           max-content /*delete icon*/
@@ -103,6 +97,7 @@
 	        minmax(200px, 1fr) /*Value*/
 	        minmax(100px, max-content); /*value*/
     }
+
 </style>
 
 

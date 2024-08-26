@@ -49,6 +49,8 @@
 					{{end}}
 				</a>
 			</div>
+
+			{{/*Description*/}}
 			<div class="h-show-lg">{{$v.Description}}</div>
 
       {{/*	Updated*/}}
@@ -62,7 +64,6 @@
 	    {{/*	history*/}}
 			<div class="h-show-lg" style="height:200px">
 				{{template "historyChart.gohtml" $.GetHistory $k }}
-				hist
 			</div>
 		</li>
 	{{end}}

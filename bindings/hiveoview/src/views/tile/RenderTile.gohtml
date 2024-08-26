@@ -1,32 +1,36 @@
 <!--Tile renderer-->
 
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
+{{/*Tile CSS is defined in RenderDashboardPage.gohtml*/}}
+
 
 {{if not .Tile.ID}}
 {{/*	hx-params="none" hides hx-vals defined in parent*/}}
 <div  hx-trigger="intersect once"
       hx-swap="outerHTML"
       hx-params="none"
-      hx-get="{{.ReRenderTilePath}}">
+      hx-get="{{.ReRenderTilePath}}"
+>
 	<p>reloading tile fragment...</p>
 	<h-loading></h-loading>
 </div>
 
 {{else}}
-<div id="{{.Tile.ID}}" class="tile-panel"
+
+<section id="{{.Tile.ID}}" class="tile-panel"
      hx-trigger="sse:{{.TileUpdatedEvent}}"
      hx-swap="outerHTML"
      hx-params="none"
      hx-get="{{.ReRenderTilePath}}"
      >
-
-	<header class="tile-header h-row">
+	<header class="tile-header drag-target"
+	>
 		<span></span>
 		<div style="cursor:move; flex-grow:1; text-align:center"
 						title="{{.Tile.ID}}">{{.Tile.Title}}</div>
     {{template "tileMenu.gohtml" .}}
 	</header>
-	<div class="tile-content">
+	<main class="tile-content no-drag">
 
     {{if eq .Tile.TileType "lineChart"}}
       {{template "LineChart.gohtml" .}}
@@ -42,30 +46,7 @@
 			{{template "TextCard.gohtml" .}}
 		{{end}}
 
-	</div>
-</div>
+	</main>
+</section>
 
-<style>
-		.tile-panel {
-				display:flex;
-				flex-direction:column;
-				height:100%;
-		}
-    .tile-header {
-        background-color: var(--pico-background-color);
-        color: var(--pico-color);
-        font-size: 1.1em;
-        min-height: 20px;
-        padding: 6px;
-    }
-    .tile-content{
-        /*display:flex;*/
-        flex-grow:1;
-        /*overflow:auto;*/
-        /*padding:0;*/
-        /*justify-content:center;*/
-        /*align-items:center;*/
-    }
-
-</style>
 {{end}}

@@ -174,7 +174,7 @@ export class HTimechart extends HTMLElement {
             let tableData = JSON.parse(dataEl.innerText)
             let tableTitle = dataEl.getAttribute('title')
             let steppedProp = dataEl.getAttribute(PropStepped)
-            let stepped = (steppedProp.toLowerCase()==="true")
+            let stepped = (steppedProp?.toLowerCase()==="true")
             if (tableData) {
                 this.setTimeSeries(0, tableTitle, tableData, stepped)
             }
@@ -270,24 +270,25 @@ export class HTimechart extends HTMLElement {
     setTimeSeries = (nr, label, timePoints, stepped) => {
         // construct a replacement dataset
         console.log("setTimeSeries", timePoints.length, "items", "label=",label)
-        let ds = {
+        let dataset = {
             // label: label,
             data: timePoints,
             borderWidth: 1
         }
         if (stepped) {
-            ds.stepped = "after"
-            ds.fill = false
+            dataset.stepped = "after"
+            dataset.fill = false
         } else {
-            ds.tension = 1 // bezier curve tension
+            dataset.tension = 0.4 // bezier curve tension
+            // ds.fill = false
         }
         if (label) {
-            ds.label = label;
+            dataset.label = label;
             this.config.options.plugins.legend.display = true
         } else {
             this.config.options.plugins.legend.display = false
         }
-        this.setDataSet(nr, ds);
+        this.setDataSet(nr, dataset);
     }
 
 }

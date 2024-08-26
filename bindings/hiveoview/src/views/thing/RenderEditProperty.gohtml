@@ -2,41 +2,45 @@
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.RenderEditPropertyTemplateData*/ -}}
 
 
-<h-modal show showClose showCancel showSubmit>
+<h-modal show showClose shadow>
 	<article>
 		<header class="h-row-centered" style="height: 60px">
-			<h3>Edit Configuration</h3>
+			<h3 style="margin:0">Edit Configuration</h3>
 		</header>
-		<main>
-			<form id="edit-config-form">
 
-				<fieldset>
-					<label for="thing-id">Thing ID: </label>
-					<input id="thing-id"  readonly placeholder="{{.ThingID}}"/>
+		<form id="edit-config-form">
 
-					<label for="config-input">{{.DataSchema.Title}}</label>
+			<label for="propertyDescription">Property</label>
+        {{/* textarea doesnt resize so do this instead*/}}
+			<div id="propertyDescription"
+			     style="color:gray;
+                     border:1px solid var(--pico-form-element-border-color);
+                     padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
+                     margin-bottom: var(--pico-spacing);"
+			><i>{{.DataSchema.Description}}</i></div>
 
-   				{{template "schemaValue.gohtml" .}}
+				<label for="config-input">{{.DataSchema.Title}}</label>
 
-				</fieldset>
-			</form>
-		</main>
+        {{template "schemaValue.gohtml" .}}
+
+		</form>
+
+		<footer>
+        {{- /*close-modal is handled by h-modal component*/ -}}
+			<button id="cancelBtn"
+			        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+			        class="secondary">Cancel
+			</button>
+			<button type="submit"
+			        hx-post="{{.SubmitPropertyPath}}"
+			        hx-include="#edit-config-form"
+			        hx-swap="none"
+			        hx-on::after-request="onSubmitCompleted(event, this)"
+			        style="margin-bottom: 0">Submit
+			</button>
+		</footer>
+
 	</article>
-
-	<footer class="h-row" style="width:100%">
-    {{- /*close-modal is handled by h-modal component*/ -}}
-		<button id="cancelBtn"
-		        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
-		        class="secondary">Cancel
-		</button>
-		<button type="submit"
-		        hx-post="{{.SubmitPropertyPath}}"
-		        hx-include="#edit-config-form"
-		        hx-swap="none"
-		        hx-on::after-request="onSubmitCompleted(event, this)"
-		        style="margin-bottom: 0">Submit
-		</button>
-	</footer>
 
 </h-modal>
 
@@ -46,8 +50,8 @@
         ev.stopImmediatePropagation()
         let details = ev.detail
         if (details.successful) {
-            modal = btn.parentElement.parentElement
-            modal.closeModal()
+            let closeEv = new Event('close-modal',{bubbles:true})
+            btn.dispatchEvent(closeEv)
         }
     }
 </script>

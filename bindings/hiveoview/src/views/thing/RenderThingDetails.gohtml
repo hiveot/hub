@@ -19,7 +19,7 @@
 		hx-get=""
 		hx-swap="innerHTML"
 		hx-target="#detailsPage"
-		class="h-panel container-fluid">
+		>
 
 	<!--===Thing Summary header===-->
 
@@ -59,8 +59,8 @@
 					      value="{{.ThingID}}"/>
 
 						<!--=== button to open the raw TD in a new tab ===-->
-						<button for="agentID" title="view raw TD document"  class="h-icon-button outline">
-								<a href="/thing/raw/{{.ThingID}}" target="_blank">
+						<button title="view raw TD document"  class="h-icon-button outline">
+								<a href="{{.RenderRawTDPath}}" target="_blank">
 								<iconify-icon icon="mdi:text-box-outline"></iconify-icon>
 								</a>
 						</button>

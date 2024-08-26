@@ -8,61 +8,70 @@
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.ActionRequestTemplateData*/ -}}
 
 <h-modal show showClose showCancel showSubmit>
-    <article  style="min-width: 400px">
+    <article  style="min-width: 410px;max-width:80vw">
         <header class="h-row-centered" style="height: 60px">
             <h3>{{.Action.Title}}</h3>
         </header>
 
-        <label for="actionDescription">Description</label>
-        <textarea  readonly id="actionDescription"
-                  placeholder="{{.Action.Description}}"></textarea>
+        <main>
+            <form id="action-input-form">
+                <label for="actionDescription">Action</label>
+                {{/* textarea doesnt resize so do this instead*/}}
+                <div id="actionDescription"
+                     style="color:gray;
+                     border:1px solid var(--pico-form-element-border-color);
+                     padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
+                     margin-bottom: var(--pico-spacing);"
+                ><i>{{.Action.Description}}</i></div>
 
-        {{if .PrevValue}}
-            <label for="actionUpdated">Previous Action</label>
-            <input id="actionUpdated" readonly placeholder="{{.LastUpdated}} ({{.LastUpdatedAge}} ago)"/>
-            {{if .Input }}
-                <label for="prevValueInput">Previous Action Value</label>
-                <input id="prevValueInput" readonly  placeholder="{{.Input.Value}}"/>
+                {{if .PrevValue}}
+                    <label for="actionUpdated">Previous Action Time</label>
+                    <input id="actionUpdated" readonly
+                           placeholder="{{.LastUpdated}} ({{.LastUpdatedAge}} ago)"/>
+                    {{if .Input }}
+                        <label for="prevValueInput">Previous Action Value</label>
+                        <input id="prevValueInput" readonly  placeholder="{{.Input.Value}}"/>
+                    {{end}}
+                {{end}}
+
+                {{if .Input}}
+                    <label>New value</label>
+                    {{template "schemaValue.gohtml" .Input}}
+                {{end}}
+            </form>
+
+            {{if .Status.Progress}}
+            <div>status {{.Status.Progress}}</div>
             {{end}}
-        {{end}}
+        </main>
 
-        <form id="action-input-form">
-            {{if .Input}}
-                <label>New value</label>
-                {{template "schemaValue.gohtml" .Input}}
-            {{end}}
-        </form>
-
-        {{if .Status.Progress}}
-        <div>status {{.Status.Progress}}</div>
-        {{end}}
+        <footer>
+            {{- /*close-modal is handled by h-modal component*/ -}}
+            <button id="cancelBtn"
+                    onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+                    class="secondary">Cancel
+            </button>
+            <button type="submit"
+                    hx-post="{{.SubmitActionRequestPath}}"
+                    hx-include="#action-input-form"
+                    hx-swap="none"
+                    hx-on::after-request="onSubmitCompleted(event, this)"
+                    >Submit
+            </button>
+        </footer>
 
     </article>
-
-    <footer class="h-row" style="width:100%">
-        {{- /*close-modal is handled by h-modal component*/ -}}
-        <button id="cancelBtn"
-                onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
-                class="secondary">Cancel
-        </button>
-        <button type="submit"
-                hx-post="{{.SubmitActionRequestPath}}"
-                hx-include="#action-input-form"
-                hx-swap="none"
-                hx-on::after-request="onSubmitCompleted(event, this)"
-                style="margin-bottom: 0">Submit
-        </button>
-    </footer>
 </h-modal>
 
 <script>
+
     // The dialog remains active until completed
     function onSubmitCompleted(ev, btn) {
         ev.stopImmediatePropagation()
         let details = ev.detail
         if (details.successful) {
-            modal = btn.parentElement.parentElement
-            modal.closeModal()
+            let closeEv = new Event('close-modal',{bubbles:true})
+            btn.dispatchEvent(closeEv)
         }
     }
 </script>

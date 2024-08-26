@@ -64,7 +64,7 @@
         opacity: 1;
         background: #e3e2e1;
         border: solid 1px #999;
-        border-radius: 8px;
+        border-radius: var(--pico-card-border-radius);
 
     }
 

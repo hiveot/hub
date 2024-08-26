@@ -32,33 +32,9 @@
     background: linear-gradient(to right, var(--pico-background-color), var(--pico-color), var(--pico-background-color));
 }
 
-/* apply to a table to show using CSS grid
- */
-/*.h-grid-table {*/
-/*    display: grid;*/
-/*    border-collapse: collapse;*/
-/*    min-width: 100%;*/
-/*    border: 1px solid gray;*/
-
-/*    td {*/
-/*        overflow: hidden;*/
-/*        text-overflow: ellipsis;*/
-/*    }*/
-
-/*    thead, tbody, tr {*/
-/*        display: contents;*/
-/*    }*/
-
-/*    !*show an ellipsis in a span element that is using a flexbox parent*!*/
-
-/*    span {*/
-/*        display: block;*/
-/*        overflow: hidden;*/
-/*        white-space: nowrap;*/
-/*        text-overflow: ellipsis*/
-/*    }*/
-/*}*/
-
+/* h-grid-table is a simple table using grid layout and ul/li list items
+ * the first row is the table header.
+*/
 .h-grid-table {
     display: grid;
     padding: 0;
@@ -75,22 +51,28 @@
 
 .h-grid-table li div {
     font-weight: var(--pico-font-weight);
-    background-color: var(--pico-card-sectioning-background-color);
+    background-color: var(--pico-card-background-color);
     padding: calc(var(--pico-spacing) / 2) var(--pico-spacing);
 }
 
+.h-grid-table[striped] li:nth-child(even) div {
+    background-color: var(--pico-form-element-active-background-color);
+}
+/* table header override*/
 .h-grid-table li:first-child div {
     font-variant-caps: small-caps;
-    background-color: var(--pico-form-element-background-color);
     --pico-font-weight: 600;
-    /*border-bottom: 1px solid var(--pico-form-element-border-color);*/
     border-bottom: 1px solid var(--pico-form-element-active-border-color);
 }
 
-.h-grid-table[striped] li:nth-child(odd) div {
-    background-color: var(--pico-background-color);
+/* h-grid-table as a table instead of list. Use thead for th title*/
+.h-grid-table td {
+    background-color: var(--pico-backround-color);
+    border-bottom: 1px solid var(--pico-form-element-border-color);
 }
-
+.h-grid-table[striped] td:nth-child(even) div {
+    background-color: var(--pico-table-row-stripped-background-color);
+}
 
 .h-grow {
     flex-grow: 1;
@@ -147,11 +129,11 @@
 
 /* panel with background color and flex col*/
 .h-panel {
-    background-color: var(--pico-background-color);
-    display: flex;
-    flex-direction: column;
-    border: 1px solid var(--pico-border-color);
-    padding: var(--pico-block-spacing-horizontal) var(--pico-block-spacing-vertical);
+    /*background-color: var(--pico-background-color);*/
+    /*display: flex;*/
+    /*flex-direction: column;*/
+    /*border: 1px solid var(--pico-border-color);*/
+    /*padding: var(--pico-block-spacing-horizontal) var(--pico-block-spacing-vertical);*/
 }
 
 /* flexbox row with items centered */
@@ -210,17 +192,22 @@ ul li:hover{
     background-color: var(--pico-dropdown-hover-background-color);
 }
 
+/* modal with mask settings */
 h-modal {
     /*The opacity of the modal mask*/
-    --mask-opacity: 70%;
+    --mask-opacity: 80%;
     /*The background color of the modal mask*/
-    --mask-background: #dfe5e7;
+    --mask-background: var(--pico-background-color);
     /* the animation timing of opening and closing the modal */
     --animation-duration: 500ms;
 }
 
+/* the top level article (panel) inside a model has no bottom margin */
+h-modal > article {
+    margin:0;
+}
 /* Horizontal navigation bar
- * navbar highlights the tab with the href matching the url.
+ * h-navbar highlights the tab with the href matching the url.
  * this requires that
  */
 .h-navbar {
@@ -250,7 +237,6 @@ h-modal {
     text-transform: uppercase;
 
     transition: border .3s ease-in-out;
-    /*border-bottom: 2px solid var(--pico-form-element-border-color);*/
     border-bottom: 2px solid var(--pico-form-element-border-color);
 }
 

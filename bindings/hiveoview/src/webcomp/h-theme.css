@@ -28,6 +28,138 @@
 
 [data-theme=light],
 :root:not([data-theme=dark]) {
-    --pico-background-color: #eee;
+    /*okay, not really pico styles but it should be*/
+    --pico-header-background-color: #dce9f2;
+
+    --pico-card-border: 1px solid var(--pico-table-border-color);
+    --pico-card-border-color: green;
+    --pico-card-border-radius: 8px;
+}
+
+:root[data-theme=dark] {
+    --pico-header-background-color: #151722;
+    --pico-border-color: gray;
+    --pico-card-border: 1px solid var(--pico-table-border-color);
+    --pico-card-border-color: var(--pico-table-border-color);
+    --pico-card-border-radius: 8px;
 
 }
+
+/* Fix: element/icons within <a> are not vertically aligned */
+a {
+    display: flex;
+    align-items: center;
+}
+
+/* Fix: use article as card with header, footer and full width */
+article {
+    display:flex;
+    flex-direction: column;
+    width: 100%;
+    margin:0; /* allow header to be 100% */
+    box-sizing: border-box;  /*tbd use content box for header/footer? */
+}
+
+/* Fix: headers and footers are full width and should stand out */
+article header, article footer, footer  {
+    display: flex;
+    flex-direction: row;
+    background-color: var(--pico-header-background-color);
+    width: auto; /* 100% doesn't work due to box-sizing ?:(  */
+    gap: var(--pico-grid-row-gap);
+}
+/* Fix: submit button in a footer has no extra bottom margin as it isnt a form */
+article footer button[type=submit] {
+    margin:0;
+}
+/* Fix: article main should have the card background color */
+article main {
+    background-color: var(--pico-card-background-color)
+}
+
+/*---
+   Picocss's doesn't educate on what to use when and where. The intent is missing.
+   Below some notes and thoughts
+
+picocss container classes, when to use what:
+    class="container"
+        - fixed width with breakpoints slightly smaller than viewport size.
+        * usage ? no applicable use-cases
+    class="container-fluid"
+        - full width width container
+        - padding: pico spacing
+        - margin: auto
+        - background: form element background
+        * usage: centered content in a form
+
+picocss container elements
+    <section>
+        - add bottom margin
+        - display: block
+        * why use it: screen readers
+    <header>, <footer>, <main>
+        - display: block
+        * why use it: screen readers; semantic separation
+        * usage inside article
+        * pitfall: no visual indication for building page, eg background color
+    <article> (use as card) - this is the main work horse container
+        - padding pico block spacing vertical/horizontal
+        - border radius;
+        - background: pico-card-background-color
+        - box-shadow: pico-card-box-shadown
+        * article > header:
+            - margin top and bottom --pico-block-spacing-vertical
+            - margin left/right --pico-block-spacing-horizontal
+            - padding -- pico-block-spacing-vertical/horizontal
+            - border: top left/right --pico-border-radius
+            - background color --pico-card-sectioning-background-color
+        * use as a card with header and footer, main and border
+            - dialogs, popups
+    <form>
+        - display block;
+        - margin-top: 0
+        * usage: container for posting form data
+    <fieldset>
+        - display block
+        - width 100%, margin 0, padding 0; border: 0
+        - margin-inline start/end 2px
+        - padding block start, inline start, inline end
+        - min inline size: min content
+        - margin-bottom for stacking fieldsets
+        * use to group elements in a form
+        * with role="group" for horizontal fields in a vertical form
+
+
+Hiveoview layouts:
+    naming conventions in picocss are weird:
+        cards: use article
+        accordion: use '<details> <summary></summary> <p>...</p></details>
+
+
+    main body has header, main and footer
+    each page is a section containing articles (cards)
+    each dialog is an article (card) with header, main and footer
+        forms with fieldset
+    tiles are articles with header and main
+    dropdown menu are divs
+
+ PicoCss style issues:
+    1. picocss uses a lot of bottom padding/margin to separate elements
+       an element doesnt know what comes behind it so it shouldn't do this.
+       instead use grid spacing. We'll work with it for now but you might
+       see padding/margin resets in various places
+    1. <main> has no width/height by default
+    1. article is display block, but mostly flex is more useful for managing height
+        solution: set article to display flex col with 100% width
+    1. vertical alignment inside an <a> element is off as it is display block.
+        solution: set <a> display to flex and align-items center
+    1. footer width is not 100%
+    1. article with header don't work together
+       article has box-sizing border box with padding which misaligns header 100%
+
+    1. dialog has no border, rounded
+    2. tile header/footer background doesn't stand out
+    3. directory page layout is flex; can be block (faster render?)
+       (https://developer.chrome.com/blog/flexbox-layout-isn-t-slow)
+*/
+

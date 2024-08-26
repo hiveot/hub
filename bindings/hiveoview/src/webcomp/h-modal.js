@@ -28,34 +28,38 @@
 const closeIconSvg = "M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
 const template = document.createElement('template')
 template.innerHTML = `
-<div class="modal">  
+<div id="h-modal" class="h-modal">  
     
-    <div id="modal-mask" class="modal-mask"></div>
-    
-    <div modalContentSel class="modal-content ">
-    
-        <button id="modal-close-button" closeIconSel title="close me"
-                class="modal-close-button"
-               >
+    <div id="h-modal-mask" class="h-modal-mask"></div>
+
+    <div id="h-modal-content" modalContentSel class="h-modal-content ">
+        <button id="h-modal-close-button" closeIconSel title="close me"
+            class="h-modal-close-button"
+           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14px">
                 <title>close</title>
                 <path d=${closeIconSvg} />
             </svg>
         </button>
-        
-        <slot>modal empty slot content</slot>
+        <div class="h-modal-slot">
+            <slot>modal empty slot content</slot>
+        </div>
+      
     </div>
+   
+
 </div>
 
 <style>
   
- .modal {
+ .h-modal {
     position: fixed;
     top: 0;
     left: 0;
     bottom: 0;
     right: 0;
     display: none;
+    z-index:10;
     
     flex-direction: column; 
     align-items: center;
@@ -63,11 +67,11 @@ template.innerHTML = `
 }
   
   /*if the component has a show attribute set then show modal and fade in*/
-  :host([show]) .modal {
+  :host([show]) .h-modal {
     display: flex;
   }
     /* if animation is enabled then fade out */
-  :host([animate]) .modal {
+  :host([animate]) .h-modal {
     /*  fadeOut sets display:flex while animating, keeping the transition visible.*/
     animation-name: fadeOut;
     animation-duration: var(--animation-duration);
@@ -75,14 +79,14 @@ template.innerHTML = `
   }
 
   /*if animation is enabled then fade in*/
-  :host([show][animate]) .modal {
+  :host([show][animate]) .h-modal {
     animation-name: fadeIn;
     animation-duration: var(--animation-duration);
     animation-timing-function: ease;
     }
 
   /* mask closing when clicking outside the modal content */
-  .modal-mask {
+  .h-modal-mask {
     display: block;
     position: fixed;
     cursor: pointer;
@@ -90,11 +94,9 @@ template.innerHTML = `
     left: 0;
     bottom: 0;
     right: 0;
-    z-index: 1;
-    /*tabindex: -1;*/
+    z-index: 3;  /*same as h-modal-content*/
     opacity: var(--mask-opacity);
-    /*background-color: var(--mask-background);*/
-    background-color: var(--pico-background-color);
+    background-color: var(--mask-background);
 
   }
 
@@ -102,7 +104,7 @@ template.innerHTML = `
 /*The close button is show if the 'showclose' attribute is set
  it is placed relative to the model content div
 */
-.modal-close-button {
+.h-modal-close-button {
     display: none; /* hidden unless 'showclose' attr is set */
     position:absolute;
     z-index:4;
@@ -113,42 +115,53 @@ template.innerHTML = `
     align-items: center;
     justify-content: center;
     padding: 0px;
-    border-radius: 15px;
+    border-radius: 16px;  /* round button */
     border: 1px solid gray;
     cursor: pointer;
     transition: top 0.5s, right 0.5s ease;
 }
  /* show the close button if the h-modal element has the 'showclose' attr set*/
- :host([showclose]) .modal-close-button {
+ :host([showclose]) .h-modal-close-button {
       display: flex;
   } 
   /*On show of the modal, move the close button in position*/
-  :host([show]) .modal-close-button {
+  :host([show]) .h-modal-close-button {
     transition: top 1.5s, right 1.5s ease;
     top: -10px;
     right: -10px;
+    z-index:5; /*cover modal-content*/
   }
   
-.modal-content {
+.h-modal-content {
     /*position the content relative for the close button and the z-index to work*/
     position: relative;
+    z-index: 3; /* same as mask */
+  }
+  /*The slot has the border with rounded corners. This requires overflow
+   set to hidden otherwise the corners are cut off.
+   Unfortunately this will cut off the close button so the close button
+   must be set outside the div with overflow hidden*/
+.h-modal-slot {
+    /*position: relative;*/
     align-items: center;
     justify-content: center;
-    padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
-    z-index: 3;
     display: flex;
+    overflow:hidden; /*don't cut off rounded corners*/
     flex-direction: column;
     opacity: 1;
     background-color: var(--pico-background-color);
-    border: solid 1px #999;
-    border-radius: 8px;
-  }
+    border: 1px solid var(--pico-secondary-border);
+
+    border-radius: var(--pico-card-border-radius);
+}
+
 /*Show a box-shadow around the content if the modal has the 'shadow' attribute set */
-:host([shadow]) .modal-content {
-    box-shadow: 0px 5px 5px -3px rgba(0, 0, 0, 0.2),
-       0px 8px 10px 1px rgba(0, 0, 0, 0.14),
-       0px 3px 14px 2px rgba(0, 0, 0, 0.12);
-    } 
+:host([shadow]) .h-modal-content {
+
+  /*box-shadow: 0px 4px 8px -2px rgba(9, 30, 66, 0.35),*/
+  /*      0px 0px 0px 1px rgba(37,64,111,0.59);*/
+   box-shadow: var(--pico-box-shadow);
+    
 
 @keyframes fadeIn {
     0% {
@@ -209,6 +222,7 @@ class HModal extends HTMLElement {
         const shadowRoot = this.attachShadow({mode: "open"});
         // clone the template to support multiple instances
         shadowRoot.append(template.content.cloneNode(true));
+        this.classList.add("shadow")
 
     }
 
@@ -232,10 +246,10 @@ class HModal extends HTMLElement {
     connectedCallback() {
         // console.log("h-modal connectedCallback")
 
-        this.modalEl = this.shadowRoot.querySelector(".modal")
-        this.modalMaskEl = this.shadowRoot.getElementById("modal-mask")
-        this.modalCloseEl = this.shadowRoot.getElementById("modal-close-button")
-        this.modalContentEl = this.shadowRoot.querySelector(".modal-content")
+        this.modalEl = this.shadowRoot.getElementById("h-modal")
+        this.modalMaskEl = this.shadowRoot.getElementById("h-modal-mask")
+        this.modalCloseEl = this.shadowRoot.getElementById("h-modal-close-button")
+        this.modalContentEl = this.shadowRoot.getElementById("h-modal-content")
 
         this.modalCloseEl.addEventListener("click", this.closeModal.bind(this))
         this.modalMaskEl.addEventListener("click", this.closeModal.bind(this))

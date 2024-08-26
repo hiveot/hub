@@ -83,7 +83,7 @@ h-toast .toast{
     position: relative;
     overflow:hidden;
     list-style: none;
-    border-radius: 10px;
+    border-radius: var(--pico-card-border-radius);
     padding: 16px;
     margin-bottom: 10px;
     background: var(--toast-background);

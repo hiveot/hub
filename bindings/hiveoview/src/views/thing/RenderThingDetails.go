@@ -21,7 +21,8 @@ import (
 const TemplateFile = "RenderThingDetails.gohtml"
 const RenderActionRequestPath = "/action/{thingID}/{key}/request"
 const RenderEditPropertyPath = "/property/{thingID}/{key}/edit"
-const RenderConfirmDeleteTDPath = "/directory/{thingID}/confirmDelete"
+const RenderConfirmDeleteTDPath = "/directory/{thingID}/confirmDeleteTD"
+const RenderRawTDPath = "/thing/{thingID}/raw"
 
 type ThingDetailsTemplateData struct {
 	Title      string
@@ -43,6 +44,7 @@ type ThingDetailsTemplateData struct {
 
 	// URLs
 	RenderConfirmDeleteTDPath string
+	RenderRawTDPath           string
 }
 
 // GetHistory returns the 24 hour history for the given key
@@ -82,6 +84,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 		ThingID:                   thingID,
 		Title:                     "details of thing",
 		RenderConfirmDeleteTDPath: utils.Substitute(RenderConfirmDeleteTDPath, pathParams),
+		RenderRawTDPath:           utils.Substitute(RenderRawTDPath, pathParams),
 	}
 
 	// Read the TD being displayed and its latest values
