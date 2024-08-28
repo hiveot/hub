@@ -9,7 +9,30 @@
 		<div class="h-col-centered h-grow"
 		     style="height:100%;font-size:1.5em; justify-content:center"
 		>
-			{{$.GetValue $s.ThingID $s.Key}}
+			<a title="View history"
+			   href="/value/{{$s.ThingID}}/{{$s.Key}}/history"
+			   hx-get="/value/{{$s.ThingID}}/{{$s.Key}}/history"
+			   hx-target="#historyPage"
+			   hx-swap="innerHtml"
+			   hx-trigger="click"
+			   hx-on::after-request="navigateTo(null,this.href)"
+			>
+          {{/* Dynamic refresh of value on sse event*/}}
+				<span sse-swap="{{$s.ThingID}}/{{$s.Key}}"
+				      hx-swap="innerHTML"
+				      hx-target="this"
+				>
+							{{$.GetValue $s.ThingID $s.Key}}
+				</span> {{$.GetUnit $s.ThingID $s.Key}}
+
+					{{/* show age in small text at the bottom */}}
+				<span sse-swap="{{$s.ThingID}}/{{$s.Key}}/updated"
+				      hx-swap="innerHTML"
+				      hx-target="this"
+							style="position:absolute;right:0;bottom:0;font-size:0.6em;color:gray" >
+					{{$.GetUpdated $s.ThingID $s.Key}}
+				</span>
+			</a>
 		</div>
 
 {{else}}
@@ -23,12 +46,28 @@
 			<tbody style="display:contents">
 			{{range .Tile.Sources}}
 				<tr style="display:contents;">
-				<td>
-					<div>{{.Title}}</div>
-				</td>
-				<td style="text-wrap:nowrap; color:gray;">
-					<div>{{$.GetValue .ThingID .Key}}</div>
-				</td>
+
+					<td style="color:gray">
+						{{.Title}}
+					</td>
+
+					<td style="text-wrap:nowrap">
+						{{/* Wrap the value in a link to the history page*/}}
+						<a title="View history"
+						   href="/value/{{.ThingID}}/{{.Key}}/history"
+						   hx-get="/value/{{.ThingID}}/{{.Key}}/history"
+						   hx-target="#historyPage"
+						   hx-swap="innerHtml"
+						   hx-trigger="click"
+						   hx-on::after-request="navigateTo(null,this.href)"
+						>
+							<span sse-swap="{{.ThingID}}/{{.Key}}"
+									hx-swap="innerHTML"
+									hx-target="this">{{$.GetValue .ThingID .Key}}
+							</span> {{$.GetUnit .ThingID .Key}}
+						</a>
+					</td>
+
 				</tr>
 			{{end}}
 			</tbody>

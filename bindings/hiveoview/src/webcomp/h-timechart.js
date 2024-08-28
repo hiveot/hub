@@ -279,7 +279,7 @@ export class HTimechart extends HTMLElement {
             dataset.stepped = "after"
             dataset.fill = false
         } else {
-            dataset.tension = 0.4 // bezier curve tension
+            dataset.tension = 0 // bezier curve tension
             // ds.fill = false
         }
         if (label) {

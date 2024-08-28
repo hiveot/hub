@@ -5,7 +5,7 @@
 <h-modal show showClose showCancel showSubmit>
 	<article>
 		<header class="h-row-centered">
-			<h3>Confirm Delete TD Document</h3>
+			<h4 style="margin-bottom:0">Confirm Delete TD Document</h4>
 		</header>
 
 		<form id="confirm-form">
@@ -21,7 +21,7 @@
 			</fieldset>
 		</form>
 
-		<footer class="h-row">
+		<footer>
         {{- /*close-modal is handled by h-modal component*/ -}}
 			<button id="cancelBtn"
 			        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
@@ -46,8 +46,8 @@
         ev.stopImmediatePropagation()
         let details = ev.detail
         if (details.successful) {
-            modal = btn.parentElement.parentElement
-            modal.closeModal()
+            let closeEv = new Event('close-modal',{bubbles:true})
+            btn.dispatchEvent(closeEv)
         }
     }
 </script>

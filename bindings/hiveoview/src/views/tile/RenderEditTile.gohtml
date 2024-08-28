@@ -4,9 +4,9 @@
 
 <h-modal show showClose shadow>
 		<article>
-				<header class="h-row-centered" style="height: 60px">
-						<h3 style="margin:0">Edit Tile</h3>
-				</header>
+			<header class="h-row-centered" style="height: 60px">
+					<h3 style="margin:0">Edit Tile</h3>
+			</header>
 			<main>
 				<form id="edit-tile-form" style="overflow:auto">
 
@@ -59,7 +59,7 @@
 		                </button>
 				            <input name="sourceTitles" value="{{$v.Title}}"
 				                   style="margin:0"
-				                       title="{{$v.ThingID}}/{{$v.Key}}"/>
+				                   title="{{$v.ThingID}}/{{$v.Key}}"/>
 		                <div class="h-row">{{$.GetValue $v.ThingID $v.Key}}</div>
 		                <div class="h-row">{{$.GetUpdated  $v.ThingID $v.Key}}</div>
 	                </li>
@@ -113,8 +113,8 @@
         ev.stopImmediatePropagation()
         let details = ev.detail
         if (details.successful) {
-            modal = btn.parentElement.parentElement
-            modal.closeModal()
+            let closeEv = new Event('close-modal',{bubbles:true})
+            btn.dispatchEvent(closeEv)
         }
     }
 </script>

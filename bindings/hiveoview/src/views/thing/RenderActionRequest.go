@@ -8,7 +8,6 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
-	"github.com/hiveot/hub/bindings/hiveoview/src/views/comps"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
@@ -28,8 +27,8 @@ type ActionRequestTemplateData struct {
 	Key string
 	// the action being viewed in case of an action
 	Action *tdd.ActionAffordance
-	Input  *comps.SchemaValue
-	Output *comps.SchemaValue
+	Input  *SchemaValue
+	Output *SchemaValue
 	// the message with the action
 	Msg hubclient.ThingMessage
 	// current delivery status
@@ -109,7 +108,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		prevInputValue = fmt.Sprintf("%v", data.PrevValue.Input)
 	}
 	if data.Action.Input != nil {
-		data.Input = &comps.SchemaValue{
+		data.Input = &SchemaValue{
 			ThingID:    thingID,
 			Key:        key,
 			DataSchema: data.Action.Input,
@@ -117,7 +116,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if data.Action.Output != nil {
-		data.Output = &comps.SchemaValue{
+		data.Output = &SchemaValue{
 			ThingID:    thingID,
 			Key:        key,
 			DataSchema: data.Action.Output,

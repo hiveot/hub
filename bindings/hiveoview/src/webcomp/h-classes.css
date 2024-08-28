@@ -69,6 +69,8 @@
 .h-grid-table td {
     background-color: var(--pico-backround-color);
     border-bottom: 1px solid var(--pico-form-element-border-color);
+    align-items: center;
+    display:flex;
 }
 .h-grid-table[striped] td:nth-child(even) div {
     background-color: var(--pico-table-row-stripped-background-color);
@@ -126,16 +128,6 @@
 
 /** XXL: >= 15360*/
 
-
-/* panel with background color and flex col*/
-.h-panel {
-    /*background-color: var(--pico-background-color);*/
-    /*display: flex;*/
-    /*flex-direction: column;*/
-    /*border: 1px solid var(--pico-border-color);*/
-    /*padding: var(--pico-block-spacing-horizontal) var(--pico-block-spacing-vertical);*/
-}
-
 /* flexbox row with items centered */
 .h-row, .h-row-centered {
     display: flex;
@@ -172,23 +164,30 @@
  * HiveOT Web Component default internal styles
  *==========================================================================
  */
-h-dropdown  li {
+h-dropdown > ul > li {
     list-style: none;
+    display:flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    font-size: 1rem; /* counteract parent fonts */
+    text-transform: none;
     background-color: var(--pico-dropdown-background-color);
     /* lists in dropdown are padded on the items to clearer show selection*/
     padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
 }
 
-h-dropdown  ul {
+h-dropdown > ul {
     flex-direction:column;
     background-color: var(--pico-dropdown-background-color);
     padding-left: 0;
 }
 
-ul li {
+ul > li {
     background-color: var(--pico-dropdown-background-color);
 }
-ul li:hover{
+ul > li:hover{
     background-color: var(--pico-dropdown-hover-background-color);
 }
 
@@ -216,22 +215,24 @@ h-modal > article {
     gap: 0;
     padding: 0;
     margin-left: 1rem !important;
-
+    height:100%; /* horizontal only*/
     border-radius: 3px;
     @media screen and (max-width: 600px) {
         display: none;
     }
 }
 
-/*Navbar buttons style*/
-.h-navbar li {
+/*Navbar buttons style; navbar is applied to a ul */
+.h-navbar >  li {
     background-color: var(--pico-dropdown-background-color);
+    height:100%; /* horizontal only*/
 
     color: var(--pico-color);
-    overflow: hidden;
+    overflow: visible; /* dont cut off dropdown menu*/
     outline: none;
     cursor: pointer;
-    padding: 14px 16px;
+    /*padding: 12px 16px;*/
+    /*padding: 4px 4px;*/
 
     font-size: 0.9rem;
     text-transform: uppercase;
@@ -242,11 +243,11 @@ h-modal > article {
 
 /*If element has the 'h-target' set then show a thicker bottom border*/
 /*.h-navbar li:has(a.h-target) {*/
-.h-navbar li.h-target {
+.h-navbar > li.h-target {
     border-bottom: 2px solid var(--pico-primary-border);
 }
 
-.h-navbar li:hover {
+.h-navbar > li:hover {
     color: var(--pico-text-decoration);
     background-color: var(--pico-dropdown-hover-background-color);
 }

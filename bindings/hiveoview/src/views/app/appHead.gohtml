@@ -12,7 +12,7 @@
 
 {{else}}
 
-<nav class="container-fluid h-row">
+<nav class="container-fluid h-row" style="height:60px">
 		<a href="/status"
 		   hx-get="/status"
 		   hx-swap="innerHTML"
@@ -24,17 +24,25 @@
 
 		<!-- === Tabs for selecting (not loading) application pages === -->
 		<!-- The h-navbar css highlights the li with class 'h-target', set by selectURLTargets() -->
-		<ul class="h-navbar">
-			<!-- TODO: use a link component which handles the onclick and stop propagation-->
-		{{/*	The navigation buttons both select and reload the page*/}}
-			<li><a href="/dashboard"
-			       hx-get="/dashboard"
-			       hx-target="#dashboardPage"
-			       hx-on::after-request="window.navigateTo(event,this.href)"
-			       hx-swap="innerHTML"
-				>
-					Dashboard</a></li>
-			<li><a href="/directory"
+		<ul class="h-navbar" style="height:100%">
+			{{/*	The navigation buttons both select and reload the page*/}}
+			{{range .AppHeadDashboards}}
+				<li class="h-row" style="height:100%">
+						<a href="{{.RenderDashboardPath}}"
+				       hx-get="{{.RenderDashboardPath}}"
+				       hx-target="#dashboardPage"
+				       hx-on::after-request="window.navigateTo(event,this.href)"
+				       hx-swap="innerHTML"
+						>
+							{{.Title}}
+						</a>
+
+            {{template "dashboardMenu.gohtml" .}}
+				</li>
+			{{end}}
+
+			<li style="height:100%">
+				<a href="/directory"
 			       hx-get="/directory"
 			       hx-target="#directoryPage"
 			       hx-on::after-request="window.navigateTo(event,this.href)"

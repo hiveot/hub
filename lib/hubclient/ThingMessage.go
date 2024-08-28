@@ -60,14 +60,19 @@ func (tm *ThingMessage) DataAsText() string {
 
 // GetUpdated is a helper function to return the formatted time the data was last updated.
 // The default format is RFC822 ("02 Jan 06 15:04 MST")
-// Optionally "WT" is weekday, time (Mon, 14:31:01 PDT)
+// Optionally "WT" is weekday, time (Mon, 14:31:01 PDT) when less than a week old
 // or, provide the time format directly, eg: "02 Jan 06 15:04 MST" for rfc822
 func (tm *ThingMessage) GetUpdated(format ...string) (updated string) {
 	createdTime, _ := dateparse.ParseAny(tm.Created)
 	if format != nil && len(format) == 1 {
 		if format[0] == "WT" {
-			// Format weekday, time
-			updated = createdTime.Format("Mon, 15:04:05 MST")
+			// Format weekday, time if less than a week old
+			age := time.Now().Sub(createdTime)
+			if age < time.Hour*24*7 {
+				updated = createdTime.Format("Mon, 15:04:05 MST")
+			} else {
+				updated = createdTime.Format(time.RFC822)
+			}
 		} else {
 			updated = createdTime.Format(format[0])
 		}

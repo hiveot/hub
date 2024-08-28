@@ -36,27 +36,6 @@ type TileSource struct {
 	Title string `json:"title"`
 }
 
-// Affordance returns the event affordance of the tile source
-//func (source *TileSource) Affordance() *things.EventAffordance {
-//	td := source.TD()
-//	aff := td.GetEvent(source.Key)
-//	if aff == nil {
-//		// return a dummy
-//		aff = &things.EventAffordance{
-//			Data:  &things.DataSchema{},
-//			Title: "not found",
-//		}
-//	}
-//	return aff
-//}
-
-// Schema the dataschema of the tile source
-//func (source *TileSource) Schema() *things.DataSchema {
-//	aff := source.Affordance()
-//	ds := aff.Data
-//	return ds
-//}
-
 // DashboardTile defines the configuration of a dashboard tile
 type DashboardTile struct {
 	// ID of the tile, links to the ID in the layout
@@ -88,10 +67,7 @@ type DashboardModel struct {
 	// Tiles in this dashboard
 	Tiles map[string]DashboardTile `json:"tiles"`
 
-	// Next ID to use
-	NextTileID int `json:"nextTileID"`
-
-	// serialized layout
+	// Serialized layout from gridstack.js
 	// eg []{"id":,"x":,"y":,"w":,"h":}
 	GridLayout string `json:"layout"`
 }

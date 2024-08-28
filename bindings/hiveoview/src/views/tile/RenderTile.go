@@ -46,7 +46,37 @@ func (d RenderTileTemplateData) GetValue(thingID string, key string) string {
 	if iout == nil {
 		return "n/a"
 	}
-	val := iout.ValueAsString() + " " + iout.Schema.UnitSymbol()
+	val := iout.ValueAsString() // + " " + iout.Schema.UnitSymbol()
+	return val
+}
+
+// GetUnit return the value unit of a tile source
+func (d RenderTileTemplateData) GetUnit(thingID string, key string) string {
+
+	cs, err := d.cts.Consume(thingID)
+	if err != nil {
+		return ""
+	}
+	iout := cs.ReadEvent(key)
+	if iout == nil {
+		return ""
+	}
+	unitSymbol := iout.Schema.UnitSymbol()
+	return unitSymbol
+}
+
+// GetUpdated return the timestamp of a tile source value
+func (d RenderTileTemplateData) GetUpdated(thingID string, key string) string {
+
+	cs, err := d.cts.Consume(thingID)
+	if err != nil {
+		return "n/a"
+	}
+	iout := cs.ReadEvent(key)
+	if iout == nil {
+		return "n/a"
+	}
+	val := iout.GetUpdated()
 	return val
 }
 

@@ -314,7 +314,7 @@ func (cs *ClientSession) SendNotify(ntype NotifyType, text string) {
 func (cs *ClientSession) SendSSE(event string, content string) {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
-	slog.Debug("sending sse event", "event", event, "nr clients", len(cs.sseClients))
+	slog.Info("sending sse event", "event", event, "nr clients", len(cs.sseClients))
 	for _, c := range cs.sseClients {
 		c <- SSEEvent{event, content}
 	}

@@ -23,10 +23,10 @@ func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 	var hc hubclient.IHubClient
 
 	// get the hub client connection and read the existing TD
-	mySession, hc, err := session.GetSessionFromContext(r)
+	sess, hc, err := session.GetSessionFromContext(r)
 	if err != nil {
 		// TODO: redirect to login?
-		mySession.WriteError(w, err, http.StatusBadRequest)
+		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -40,16 +40,19 @@ func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 		slog.Info("Deleting TD", slog.String("thingID", thingID))
 		err = digitwin.DirectoryRemoveTD(hc, thingID)
 	}
+	cts := sess.GetConsumedThingsSession()
+	// reload the cached directory
+	cts.ReadDirectory(true)
 
 	// report the result
 	if err != nil {
-		mySession.WriteError(w, err, http.StatusInternalServerError)
+		sess.WriteError(w, err, http.StatusInternalServerError)
 		return
 	}
 
 	msgText := fmt.Sprintf("Thing '%s' successfully removed from the directory", td.Title)
 	slog.Info(msgText, "thingID", td.ID)
-	mySession.SendNotify(session.NotifySuccess, msgText)
+	sess.SendNotify(session.NotifySuccess, msgText)
 	// navigate back to the directory.
 	// http.Redirect doesn't work but using HX-Redirect header does.
 	// see also: https://www.reddit.com/r/htmx/comments/188oqx5/htmx_form_submission_issue_redirecting_on_success/

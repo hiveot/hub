@@ -83,9 +83,7 @@ func (cts *ConsumedThingsSession) handleMessage(
 				ct.td = td
 				//ct.OnEvent(msg)
 			}
-			return
-		}
-		if msg.Key == vocab.EventTypeProperties {
+		} else if msg.Key == vocab.EventTypeProperties {
 			// update consumed thing, if existing
 			ct, found := cts.consumedThings[msg.ThingID]
 			if found {
@@ -100,23 +98,24 @@ func (cts *ConsumedThingsSession) handleMessage(
 					}
 				}
 			}
-			return
-		}
-		if msg.Key == vocab.EventTypeDeliveryUpdate {
+		} else if msg.Key == vocab.EventTypeDeliveryUpdate {
 			// delivery status updates refer to actions
 			ct, found := cts.consumedThings[msg.ThingID]
 			if found {
 				ct.OnDeliveryUpdate(msg)
 			}
-			return
+		} else {
+			// this is a regular event
+			ct, found := cts.consumedThings[msg.ThingID]
+			if found {
+				ct.eventValues[msg.Key] = msg
+				ct.OnEvent(msg)
+			}
 		}
-		// this is a regular event
-		ct, found := cts.consumedThings[msg.ThingID]
-		if found {
-			ct.eventValues[msg.Key] = msg
-			ct.OnEvent(msg)
-		}
-		return
+	}
+	// pass it on to chained handler
+	if cts.eventHandler != nil {
+		cts.eventHandler(msg)
 	}
 	return stat
 }
@@ -141,6 +140,7 @@ func (cts *ConsumedThingsSession) GetTD(thingID string) *tdd.TD {
 // This currently limits the nr of things to ReadDirLimit.
 //
 // Set force to force a reload of the directory instead of using any cached TD documents.
+// TODO: reload when things were added or removed
 func (cts *ConsumedThingsSession) ReadDirectory(force bool) (map[string]*tdd.TD, error) {
 	cts.mux.RLock()
 	fullDirectoryRead := cts.fullDirectoryRead

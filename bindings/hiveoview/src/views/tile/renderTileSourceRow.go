@@ -94,7 +94,7 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 			"    onclick='deleteRow(this.parentNode)'>"+
 			"		<iconify-icon icon='mdi:delete'></iconify-icon>"+
 			"	</button>"+
-			"  <input name='sourceTitles' value='%s' title='%s'/>"+
+			"  <input name='sourceTitles' value='%s' title='%s' style='margin:0'/>"+
 			"  <div>%s</div>"+
 			"  <div>%s</div>"+
 			"</li>",

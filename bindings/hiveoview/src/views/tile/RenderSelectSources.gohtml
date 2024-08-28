@@ -2,8 +2,9 @@
 
 {{/*Show a list of agents containing things, containing events to select from*/}}
 <h-modal show showClose style="z-index:99">
+	<article>
 		<header class="h-row-centered" style="height: 60px">
-			<h4>Add Tile Sources</h4>
+			<h4 style="margin:0">Add Tile Sources</h4>
 		</header>
 		{{$data := .}}
 
@@ -69,14 +70,15 @@
 			{{end}}
 		</main>
 
-
-		<footer class="h-row-centered" style="width:100%">
+		<footer>
         {{- /*close-modal is handled by h-modal component*/ -}}
-			<button id="closelBtn" style="width:90%"
+			<button id="closelBtn" type="submit"
 			        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))">
 				Done
 			</button>
 		</footer>
+
+	</article>
 </h-modal>
 
 

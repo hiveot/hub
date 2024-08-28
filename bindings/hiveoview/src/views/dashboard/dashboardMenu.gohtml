@@ -1,0 +1,41 @@
+{{- /*gotype:AppHeadTemplateData*/ -}}
+
+<!-- dropdown menu -->
+<h-dropdown position="bottomright" >
+    <button slot="button" class="h-icon-button outline" style="border:none">
+        <iconify-icon icon="mdi:menu"></iconify-icon>
+    </button>
+
+    <ul class="h-shadow"
+        hx-params="none"
+        hx-swap="innerHTML"
+        hx-target="#dashboardDialog">
+
+        <li  hx-get="{{.RenderNewTilePath}}"
+             hx-target="#dashboardDialog">
+            <iconify-icon icon='mdi:tab-plus'></iconify-icon>
+            Add Tile
+        </li>
+
+        <li class="h-horizontal-divider"></li>
+
+        <li hx-get="{{.RenderEditDashboardPath}}">
+            <iconify-icon icon='mdi:view-dashboard-edit'></iconify-icon>
+            Edit Dashboard
+        </li>
+
+        <li hx-get="{{.RenderAddDashboardPath}}">
+            <iconify-icon icon='mdi:plus'></iconify-icon>
+            Add Dashboard
+        </li>
+
+        <li hx-get="{{.RenderConfirmDeleteDashboardPath}}"
+        >
+            <iconify-icon icon="mdi:delete"></iconify-icon>
+            Delete Dashboard
+        </li>
+
+    </ul>
+</h-dropdown>
+
+

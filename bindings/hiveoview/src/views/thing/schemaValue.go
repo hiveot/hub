@@ -1,4 +1,4 @@
-package comps
+package thing
 
 import "github.com/hiveot/hub/wot/tdd"
 

@@ -86,7 +86,7 @@ func (iout *InteractionOutput) ValueAsMap() map[string]interface{} {
 func NewInteractionOutput(tm *hubclient.ThingMessage, td *tdd.TD) *InteractionOutput {
 	io := &InteractionOutput{
 		key:     tm.Key,
-		updated: tm.GetUpdated(),
+		updated: tm.GetUpdated("WT"),
 		value:   tm.Data,
 	}
 	if td == nil {
