@@ -1,4 +1,4 @@
-{{- /*gotype:AppHeadTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/app.AppHeadDashboardData*/ -}}
 
 <!-- dropdown menu -->
 <h-dropdown position="bottomright" >
@@ -11,7 +11,7 @@
         hx-swap="innerHTML"
         hx-target="#dashboardDialog">
 
-        <li  hx-get="{{.RenderNewTilePath}}"
+        <li  hx-get="{{.RenderAddTilePath}}"
              hx-target="#dashboardDialog">
             <iconify-icon icon='mdi:tab-plus'></iconify-icon>
             Add Tile
@@ -30,6 +30,7 @@
         </li>
 
         <li hx-get="{{.RenderConfirmDeleteDashboardPath}}"
+            hx-trigger="click"
         >
             <iconify-icon icon="mdi:delete"></iconify-icon>
             Delete Dashboard

@@ -23,13 +23,13 @@
      hx-params="none"
      hx-get="{{.ReRenderTilePath}}"
      >
-	<header class="tile-header drag-target"
-	>
+	<nav  class="tile-header drag-target">
 		<span></span>
 		<div style="cursor:move; flex-grow:1; text-align:center"
 						title="{{.Tile.ID}}">{{.Tile.Title}}</div>
+		{{/* The menu works best within a pico css nav element*/}}
     {{template "tileMenu.gohtml" .}}
-	</header>
+	</nav>
 	<main class="tile-content no-drag">
 
     {{if eq .Tile.TileType "lineChart"}}

@@ -13,10 +13,7 @@
 {{else}}
 
 <nav class="container-fluid h-row" style="height:60px">
-		<a href="/status"
-		   hx-get="/status"
-		   hx-swap="innerHTML"
-		   hx-target="#statusPage"
+		<a href="{{.RenderAppAboutPath}}"
 		   hx-on::after-request="window.navigateTo(event,this.href)"
 		>
 			<h-brand title="HiveOT" logo="{{.Logo}}"></h-brand>
@@ -42,8 +39,8 @@
 			{{end}}
 
 			<li style="height:100%">
-				<a href="/directory"
-			       hx-get="/directory"
+				<a href="{{.RenderDirectoryPath}}"
+			       hx-get="{{.RenderDirectoryPath}}"
 			       hx-target="#directoryPage"
 			       hx-on::after-request="window.navigateTo(event,this.href)"
 			       hx-swap="innerHTML"

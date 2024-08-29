@@ -7,10 +7,13 @@ import (
 	"net/http"
 )
 
-// SubmitDashboardLayout updates the dashboard layout
-// @param {dashboardID} with the dashboard ID
-// Body is a form containing the new dashboard layout:
+// SubmitDashboardLayout stores the updated dashboard layout.
+// Invoked after dragging or resizing tiles in gridstack.
+// The layout format is that of gridstack.
 //
+// @param {dashboardID} with the dashboard ID
+//
+//	Body is a form containing a field 'layout' with a list of tile placements:
 //	"layout": { "id":{tileID}, "x":x,"y":y,"w":w,"h",h}
 func SubmitDashboardLayout(w http.ResponseWriter, r *http.Request) {
 

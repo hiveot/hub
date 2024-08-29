@@ -1,15 +1,17 @@
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
 
 <!-- dropdown menu -->
-<h-dropdown position="bottomright" >
+<h-dropdown position="bottomright">
     <button slot="button" class="h-icon-button outline" style="border:none">
         <iconify-icon icon="mdi:menu"></iconify-icon>
     </button>
-    <ul class="h-shadow" style="margin:0; padding:10px"
+
+    <ul
         hx-params="none"
-        hx-swap="innerHTML">
-        <li  hx-get="{{.RenderEditTilePath}}"
-            hx-target="#dashboardDialog">
+        hx-swap="innerHTML"
+        hx-target="#dashboardDialog">
+
+        <li  hx-get="{{.RenderEditTilePath}}">
             <iconify-icon icon='mdi:edit'></iconify-icon>
             Edit Tile
          </li>
@@ -24,11 +26,15 @@
 
         <li class="h-horizontal-divider"></li>
 
-        <li  hx-get="{{.RenderConfirmDeleteTilePath}}"
-             hx-target="#dashboardDialog"
-            >
+        {{/* FIXME: only button receives clicks when covering another tile*/}}
+        {{/* this needs a lot of css to look like a link*/}}
+        <li><button class="outline"
+                    style="border:none; display:flex;align-items:center;
+                    box-shadow:none;padding:0"
+               hx-get="{{.RenderConfirmDeleteTilePath}}">
             <iconify-icon icon='mdi:delete'></iconify-icon>
             Delete Tile
+            </button>
         </li>
     </ul>
 </h-dropdown>

@@ -21,6 +21,9 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 		slog.String("dashboardID", cdc.dashboardID),
 		slog.String("tileID", cdc.tileID),
 	)
+	// The edit tile form has a list of sources for the thingID/key and
+	// a list of titles of each source. This is the only way I knew on how
+	// to pass lists in Forms.
 	newTitle := r.FormValue("title")
 	tileType := r.FormValue("tileType")
 	sources, _ := r.Form["sources"]
@@ -34,7 +37,8 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	tile.Title = newTitle
 	tile.TileType = tileType
 	tile.Sources = make([]session.TileSource, 0)
-	// Get the list of sources from the form
+
+	// Convert the list of sources from the form to a TileSource object.
 	if sources != nil {
 		// each source consists of thingID/key
 		i := 0
@@ -49,8 +53,6 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 					ThingID: parts[0],
 					Key:     parts[1],
 					Title:   sourceTitle,
-					// if key had "/" in them then re-join them
-					//Title: strings.Join(parts[2:], " / "),
 				}
 				tile.Sources = append(tile.Sources, tileSource)
 			}

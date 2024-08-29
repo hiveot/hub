@@ -19,21 +19,6 @@
       hx-trigger="sse:{{.DashboardUpdatedEvent}}"
       hx-swap="outerHTML"
 >
-    <div>
-    Dashboard: {{.Dashboard.Title}} :
-        <button hx-trigger="click"
-                hx-get="{{.RenderNewTilePath}}"
-                hx-target="#dashboardDialog"
-                hx-swap="innerHTML"
-        >New tile</button>
-
-        <button
-                hx-trigger="click"
-                hx-get="{{.RenderConfirmDeleteDashboardPath}}"
-                hx-target="#dashboardDialog"
-                hx-swap="innerHTML"
-        >Delete Dashboard</button>
-    </div>
 
     {{/* Add a div to ensure filling the screen size*/}}
     <div style="flex-grow:1">
@@ -73,13 +58,13 @@
                 cancel: ".no-drag"
             },
             nomove:true,
-            float: true,        // allow cells to move anywhere
+            float: false,       // cells move to the top (false)
             cellHeight: 30,     // fix the row height to avoid scaling content
             staticGrid:false,   // allow resize in edit mode
             minRow: 3,
             columnOpts: {
                 layout: "moveResize",
-                breakpointForWindow:false,
+                breakpointForWindow:true,  // not sure what this does window vs grid size?
                 breakpoints: [{w: 300, c: 1}, {w: 600, c: 4}, {w: 800, c: 8}, {w:1200, c:12}]
             }
         };
@@ -93,6 +78,9 @@
         {{end}}
     }
 
+    // save the current layout.
+    // TODO: include the active breakpoint setting so that each breakpoint
+    // can have its own layout.
     function saveLayout() {
         let dashData = grid.save(saveContent=false)
         if (dashData) {

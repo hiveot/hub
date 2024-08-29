@@ -125,6 +125,7 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 
 		// dashboard endpoints
 		r.Get("/dashboard", dashboard.RenderDashboardPage)
+		r.Get("/dashboard/add", dashboard.RenderConfigDashboard)
 		r.Get("/dashboard/{dashboardID}", dashboard.RenderDashboardPage)
 		r.Get("/dashboard/{dashboardID}/confirmDelete", dashboard.RenderConfirmDeleteDashboard)
 		r.Get("/dashboard/{dashboardID}/config", dashboard.RenderConfigDashboard)
@@ -150,7 +151,7 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 		r.Post("/property/{thingID}/{key}", thing.SubmitProperty)
 
 		// Dashboard tiles
-		r.Get("/tile/{dashboardID}/new", tile.RenderEditTile)
+		r.Get("/tile/{dashboardID}/add", tile.RenderEditTile)
 		r.Get("/tile/{dashboardID}/{tileID}", tile.RenderTile)
 		r.Get("/tile/{dashboardID}/{tileID}/confirmDelete", tile.RenderConfirmDeleteTile)
 		r.Get("/tile/{dashboardID}/{tileID}/edit", tile.RenderEditTile)

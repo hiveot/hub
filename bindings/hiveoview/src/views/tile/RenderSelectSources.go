@@ -44,7 +44,7 @@ func (data RenderSelectSourcesTemplateData) GetValue(thingID string, key string)
 // RenderSelectSources renders the selection of Tile sources for adding to a tile
 func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 
-	sess, ctc, err := GetTileContext(r, true)
+	sess, _, err := session.GetSessionFromContext(r)
 	if err != nil {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
@@ -69,7 +69,6 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 		tm, _ := vm.GetLatest(thingID)
 		data.Values[thingID] = tm
 	}
-	_ = ctc
 	buff, err := app.RenderAppOrFragment(r, RenderSelectSourceTemplateFile, data)
 	sess.WritePage(w, buff, err)
 }
