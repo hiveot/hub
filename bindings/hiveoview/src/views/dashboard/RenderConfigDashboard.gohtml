@@ -9,14 +9,14 @@
 		</header>
 
 		<main>
-		<form id="config-dashboard-form">
+		<form tabindex="0" id="config-dashboard-form">
 			<fieldset>
 				<label for="dashboard-title-id">Dashboard Name</label>
-				<input id="dashboard-title-id" name="title" value="{{.Dashboard.Title}}"/>
+				<input autofocus tabindex="0" id="dashboard-title-id" name="title" value="{{.Dashboard.Title}}"/>
 
 			</fieldset>
 		</form>
-			</main>
+		</main>
 
 		<footer class="h-row">
         {{- /*close-modal is handled by h-modal component*/ -}}
