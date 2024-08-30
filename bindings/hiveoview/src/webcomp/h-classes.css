@@ -31,6 +31,11 @@
     align-items: center;
     background: linear-gradient(to right, var(--pico-background-color), var(--pico-color), var(--pico-background-color));
 }
+.h-vertical-divider {
+    height: 90%;
+    width: 1px;
+    background: var(--pico-accordion-border-color);
+}
 
 /* h-grid-table is a simple table using grid layout and ul/li list items
  * the first row is the table header.
@@ -178,10 +183,12 @@ h-dropdown > ul > li {
     padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
 }
 
-h-dropdown > ul {
+/* a dropdown menu is a list with box shadow, rounded corners */
+h-dropdown > ul:first-of-type {
     flex-direction:column;
-    background-color: var(--pico-dropdown-background-color);
-    padding-left: 0;
+    /* remove picocss nav ul margins that obscure box shadow */
+    margin-left:0;
+    margin-right:0;
 }
 
 ul > li {
@@ -218,7 +225,7 @@ h-modal > article {
     height:100%; /* horizontal only*/
     border-radius: 3px;
     @media screen and (max-width: 600px) {
-        display: none;
+        /*display: none;*/
     }
 }
 
@@ -231,6 +238,7 @@ h-modal > article {
     overflow: visible; /* dont cut off dropdown menu*/
     outline: none;
     cursor: pointer;
+    align-items:center;
     /*padding: 12px 16px;*/
     /*padding: 4px 4px;*/
 

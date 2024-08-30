@@ -53,8 +53,13 @@ template.innerHTML = `
     position: absolute;
     width: max-content;
     outline: none;  /* remove fat border*/
-    background-color: var(--menu-bg-color);
+    background-color: var(--pico-dropdown-background-color);
     border: var(--pico-border-width) solid var(--pico-form-element-border-color);
+    box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2),
+      0 8px 10px 1px rgba(0, 0, 0, 0.14),
+      0 3px 14px 2px rgba(0, 0, 0, 0.12);
+    border-radius: 5px;
+    overflow:auto;
 
     /*instead of display none, use clip-path to hide the menu, along with z-index.
      * z-index is set to -1 so it won't be in the way of other elements when hidden.

@@ -6,7 +6,7 @@
 	<li>
 		<div class="h-show-md">{{/*icon*/}}</div>
 		<div>Configuration Name</div>
-		<div style="padding-left: 60px">Value</div>
+		<div>Value</div>
 		<div class="h-show-lg">Default</div>
 		<div class="h-show-lg">Description</div>
 		<div class="h-show-sm">Updated</div>
@@ -17,19 +17,26 @@
       {{$v := index $.Config $k}}
 				<li>
 					<div class="h-show-md">{{/*icon*/}}</div>
-					<div title="key: {{$k}}">
-						{{$v.Title}}
-					</div>
+          {{/*	Configuration Name*/}}
 					<div>
-						<button class="outline" style="border:none;
-							display:inline-flex; gap: 5px;
-							align-items: center; padding:0"
+						<button class="link"
+	             title="key: {{$k}}"
+					     hx-trigger="click"
+					     hx-get="{{$.GetRenderEditPropertyPath $k}}"
+					     hx-target="#configModal" hx-swap="innerHTML"
+						>
+							{{$v.Title}}
+						</button>
+					</div>
+
+					{{/*	Value*/}}
+					<div>
+						<button class="link" style="display:inline-flex; gap: 5px;"
 			        hx-trigger="click"
 			        hx-get="{{$.GetRenderEditPropertyPath $k}}"
 			        hx-target="#configModal" hx-swap="innerHTML"
 						>
-							<iconify-icon style="padding: 0 10px" icon="mdi:pencil"></iconify-icon>
-                {{/*replace show value on sse event, sent by ClientSession.go:onEvent */}}
+              {{/*replace show value on sse event, sent by ClientSession.go:onEvent */}}
 							{{/*properties and events use the same namespace*/}}
 							<span sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML" hx-target="this">
 							{{$.Values.ToString $k}}

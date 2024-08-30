@@ -13,9 +13,9 @@ import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/bindings/hiveoview/src"
-	"github.com/hiveot/hub/bindings/hiveoview/src/hiveoviewapi"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/about"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/directory"
@@ -118,10 +118,10 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 		r.Use(session.AddSessionToContext())
 
 		// see also:https://medium.com/gravel-engineering/i-find-it-hard-to-reuse-root-template-in-go-htmx-so-i-made-my-own-little-tools-to-solve-it-df881eed7e4d
-		// these renderer full page or fragments for non hx-boost hx-requests
+		// these render full page or fragments for non hx-boost hx-requests
 		r.Get("/", app.RenderApp)
 		r.Get("/app/appHead", app.RenderAppHead)
-		r.Get("/app/about", app.RenderAbout)
+		r.Get("/about", about.RenderAboutPage)
 
 		// dashboard endpoints
 		r.Get("/dashboard", dashboard.RenderDashboardPage)
@@ -166,7 +166,7 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 
 		// Status components
 		r.Get("/status", status.RenderStatus)
-		r.Get("/status/connection", app.RenderConnectionStatus)
+		r.Get("/status/connection", app.RenderConnectStatus)
 		r.Get("/status/action/{messageID}", thing.RenderActionProgress)
 	})
 
@@ -182,7 +182,7 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 	// in this case only a management capability is published
 	err := authz.UserSetPermissions(hc, authz.ThingPermissions{
 		AgentID: hc.ClientID(),
-		ThingID: hiveoviewapi.HiveoviewServiceID,
+		ThingID: HiveoviewServiceID,
 		Allow:   []string{authn.ClientRoleAdmin, authn.ClientRoleService},
 	})
 	if err != nil {

@@ -1,18 +1,20 @@
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/app.AppHeadDashboardData*/ -}}
 
-<!-- dropdown menu -->
+<!-- dropdown menu
+    Menu triggered dialogs are targeted to the element 'dashboardMenuDialog'.
+    This element is placed in the parent appHead element instead of the dashboard
+    page to ensure it is always available, event when a different page is selected.
+-->
 <h-dropdown position="bottomright" >
     <button slot="button" class="h-icon-button outline" style="border:none">
         <iconify-icon icon="mdi:menu"></iconify-icon>
     </button>
 
-    <ul class="h-shadow"
-        hx-params="none"
+    <ul hx-params="none"
         hx-swap="innerHTML"
-        hx-target="#dashboardDialog">
+        hx-target="#dashboardMenuDialog">
 
-        <li  hx-get="{{.RenderAddTilePath}}"
-             hx-target="#dashboardDialog">
+        <li hx-get="{{.RenderAddTilePath}}">
             <iconify-icon icon='mdi:tab-plus'></iconify-icon>
             Add Tile
         </li>
@@ -38,5 +40,3 @@
 
     </ul>
 </h-dropdown>
-
-

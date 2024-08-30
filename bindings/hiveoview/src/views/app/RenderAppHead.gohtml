@@ -14,6 +14,8 @@
 
 <nav class="container-fluid h-row" style="height:60px">
 		<a href="{{.RenderAppAboutPath}}"
+		   hx-get="{{.RenderAppAboutPath}}"
+		   hx-target="#aboutPage"
 		   hx-on::after-request="window.navigateTo(event,this.href)"
 		>
 			<h-brand title="HiveOT" logo="{{.Logo}}"></h-brand>
@@ -21,25 +23,28 @@
 
 		<!-- === Tabs for selecting (not loading) application pages === -->
 		<!-- The h-navbar css highlights the li with class 'h-target', set by selectURLTargets() -->
-		<ul class="h-navbar" style="height:100%">
+		<ul class="h-navbar" style="height:100%;
+				border: 1px solid var(--pico-accordion-border-color)">
 			{{/*	The navigation buttons both select and reload the page*/}}
 			{{range .AppHeadDashboards}}
-				<li class="h-row" style="height:100%">
-						<a href="{{.RenderDashboardPath}}"
+				<li class="h-row">
+					<a href="{{.RenderDashboardPath}}"
 				       hx-get="{{.RenderDashboardPath}}"
 				       hx-target="#dashboardPage"
 				       hx-on::after-request="window.navigateTo(event,this.href)"
 				       hx-swap="innerHTML"
 						>
 							{{.Title}}
-						</a>
-
-            {{template "dashboardMenu.gohtml" .}}
+					</a>
+          {{template "dashboardMenu.gohtml" .}}
 				</li>
+				<div class="h-vertical-divider"></div>
 			{{end}}
 
-			<li style="height:100%">
-				<a href="{{.RenderDirectoryPath}}"
+			<li class="h-row">
+				{{/*counteract margin-right: -8*/}}
+				<a style="margin-right:0"
+								href="{{.RenderDirectoryPath}}"
 			       hx-get="{{.RenderDirectoryPath}}"
 			       hx-target="#directoryPage"
 			       hx-on::after-request="window.navigateTo(event,this.href)"
@@ -55,11 +60,14 @@
 		<h-dark-toggle></h-dark-toggle>
 
 		<!-- === Connection Status Indicator using htmx === -->
-      {{template "connectStatus.gohtml" .}}
+      {{template "RenderConnectStatus.gohtml" .}}
 
-      {{template "appMenu.gohtml" .}}
+      {{template "RenderAppMenu.gohtml" .}}
 
 	</nav>
+
+
+	<div id="dashboardMenuDialog"></div>
 
 	<style>
       .container-fluid {

@@ -9,7 +9,7 @@
 
 		{{/* The application header bar with menu */}}
 		<div id="appHead" class="app-head" hx-boost="on">
-	      {{template "appHead.gohtml" .}}
+	      {{template "RenderAppHead.gohtml" .}}
 		</div>
 
 	<!-- These pages are updated using htmx fragments.
@@ -25,8 +25,8 @@
 		<div id="directoryPage" class="hidden" displayIfTarget="/directory">
         {{template "RenderDirectory.gohtml" .}}
 		</div>
-		<div id="aboutPage" class="hidden" displayIfTarget="/app/about">
-        {{template "aboutPage.gohtml" .}}
+		<div id="aboutPage" class="hidden" displayIfTarget="/about">
+        {{template "RenderAboutPage.gohtml" .}}
 		</div>
 		<div id="detailsPage" class="hidden" displayIfTarget="/thing" style="height:100%">
         {{template "RenderThingDetails.gohtml" .}}

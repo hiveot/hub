@@ -1,0 +1,58 @@
+<!--about dialog -->
+
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/about.AboutPageTemplateData*/ -}}
+
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard.DashboardPageTemplateData*/ -}}
+{{if not .Version}}
+<div  hx-trigger="intersect once"
+      hx-swap="outerHTML"
+      hx-get="">
+	<p>reloading page fragment...</p>
+	<h-loading></h-loading>
+</div>
+
+{{else}}
+<h-modal show id="about" showClose class="about">
+	<article class="container" style="margin:1px">
+		<header class="h-row-centered" style="height: 60px">
+			<h3>About HiveOT</h3>
+		</header>
+		<main>
+		<div class="h-row" style="gap: 10px">
+			<img src="/static/logo.svg" alt="logo" style="height:60px"/>
+			<text>
+				<p>The Hive Of Things connects and shares IoT devices with services and consumers.</p>
+
+				<p>The heart of HiveOT is the Hub to which IoT devices, Services and Consumers connect.
+					Direct connections between consumers, services and devices are prohibited to improve security.</p>
+
+				<p>HiveOT is built using W3C Web Of Things (WoT) standards.</p>
+
+				<p>HiveOView provides a web view of devices known to the HiveOT Hub.
+					It presents a Thing dashboard and a view of the directory to manage devices.
+				</p>
+			</text>
+		</div>
+
+		<hr>
+		<div class="h-col">
+			<span>By: The HiveOT group of IoT enthusiasts.</span>
+			<span>Version: {{.Version}}</span>
+		</div>
+		</main>
+		<!-- foot is relative to accommodate the fixed github icon-->
+		<footer class="h-row-centered" style="position: relative">
+			<button class="button" onclick="navigateTo(event,'/')" style="margin-bottom: 0">Close</button>
+
+			<a href="https://github.com/hiveot" target="_blank" aria-label="github"
+			   style=" font-size: 0.5rem; position:absolute; right:20px; bottom:0px">
+				<i style="font-size: 12px">
+					<iconify-icon icon="mdi:github" title="github"></iconify-icon>
+				</i>
+			</a>
+
+		</footer>
+	</article>
+</h-modal>
+
+{{end}}

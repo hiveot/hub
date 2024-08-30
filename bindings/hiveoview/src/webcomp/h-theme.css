@@ -74,7 +74,21 @@ article footer button[type=submit] {
 }
 /* Fix: article main should have the card background color */
 article main {
+    padding: var(--pico-spacing);
     background-color: var(--pico-card-background-color)
+}
+
+/* A link button is a button that looks like a link without underline
+its content is aligned to line up icons with text
+*/
+button.link {
+    border:none;
+    color: var(--pico-primary);
+    background-color: transparent;
+    padding:0;
+    display: inline-flex;
+    align-items:center;
+    gap: 5px;
 }
 
 /*---

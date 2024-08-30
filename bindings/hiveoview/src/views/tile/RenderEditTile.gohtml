@@ -72,17 +72,17 @@
 
 			<footer>
 	      {{- /*close-modal is handled by h-modal component*/ -}}
-			<button id="cancelBtn"
-			        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
-			        class="secondary">Cancel
-			</button>
-			<button type="submit"
-			        hx-post="{{.SubmitEditTilePath}}"
-			        hx-include="#edit-tile-form"
-			        hx-swap="none"
-			        hx-on::after-request="onSubmitCompleted(event, this)"
-			        >Submit
-			</button>
+				<button id="cancelBtn"
+				        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+				        class="secondary">Cancel
+				</button>
+				<button type="submit"
+				        hx-post="{{.SubmitEditTilePath}}"
+				        hx-include="#edit-tile-form"
+				        hx-swap="none"
+				        hx-on::after-request="onSubmitCompleted(event, this)"
+				        >Submit
+				</button>
 		</footer>
 	</article>
 </h-modal>

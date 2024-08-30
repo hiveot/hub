@@ -6,15 +6,15 @@
         <iconify-icon icon="mdi:menu"></iconify-icon>
     </button>
 
-    <ul
-        hx-params="none"
+    <ul hx-params="none"
         hx-swap="innerHTML"
-        hx-target="#dashboardDialog">
+        hx-target="#tileMenuDialogs">
 
-        <li  hx-get="{{.RenderEditTilePath}}">
+        <li><button class="link"
+             hx-get="{{.RenderEditTilePath}}">
             <iconify-icon icon='mdi:edit'></iconify-icon>
             Edit Tile
-         </li>
+            </button></li>
         <li disabled>
             <iconify-icon icon='mdi:content-copy'></iconify-icon>
             Copy Tile
@@ -28,10 +28,8 @@
 
         {{/* FIXME: only button receives clicks when covering another tile*/}}
         {{/* this needs a lot of css to look like a link*/}}
-        <li><button class="outline"
-                    style="border:none; display:flex;align-items:center;
-                    box-shadow:none;padding:0"
-               hx-get="{{.RenderConfirmDeleteTilePath}}">
+        <li><button class="link"
+            hx-get="{{.RenderConfirmDeleteTilePath}}">
             <iconify-icon icon='mdi:delete'></iconify-icon>
             Delete Tile
             </button>

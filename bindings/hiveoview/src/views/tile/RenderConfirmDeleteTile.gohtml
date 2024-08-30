@@ -22,23 +22,22 @@
 			</form>
 		</main>
 
+		<footer class="h-row" >
+	    {{- /*close-modal is handled by h-modal component*/ -}}
+			<button id="cancelBtn"
+			        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+			        class="secondary">Cancel
+			</button>
+			<button type="submit"
+			        hx-delete="{{.SubmitDeleteTilePath}}"
+			        hx-include="#confirm-form"
+			        hx-swap="none"
+			        hx-on::after-request="onSubmitCompleted(event, this)"
+			        style="margin-bottom: 0">Submit
+			</button>
+		</footer>
+
 	</article>
-
-
-	<footer class="h-row" style="width:100%">
-    {{- /*close-modal is handled by h-modal component*/ -}}
-		<button id="cancelBtn"
-		        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
-		        class="secondary">Cancel
-		</button>
-		<button type="submit"
-		        hx-delete="{{.SubmitDeleteTilePath}}"
-		        hx-include="#confirm-form"
-		        hx-swap="none"
-		        hx-on::after-request="onSubmitCompleted(event, this)"
-		        style="margin-bottom: 0">Submit
-		</button>
-	</footer>
 </h-modal>
 
 
@@ -48,8 +47,8 @@
         ev.stopImmediatePropagation()
         let details = ev.detail
         if (details.successful) {
-            modal = btn.parentElement.parentElement
-            modal.closeModal()
+            let closeEv = new Event('close-modal',{bubbles:true})
+            btn.dispatchEvent(closeEv)
         }
     }
 </script>
