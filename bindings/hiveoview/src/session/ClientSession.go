@@ -34,8 +34,8 @@ type SSEEvent struct {
 // DefaultExpiryHours TODO: set default expiry in config
 const DefaultExpiryHours = 72
 
-// ClientSession manages the connection and state of a web client session.
-type ClientSession struct {
+// UISession manages the connection and state of a web session.
+type UISession struct {
 	// ID of this session
 	sessionID string
 
@@ -49,7 +49,7 @@ type ClientSession struct {
 	cts *consumedthing.ConsumedThingsSession
 
 	// ClientID is the login ID of the user
-	clientID string
+	//clientID string
 	// RemoteAddr of the user
 	remoteAddr string
 
@@ -66,23 +66,23 @@ type ClientSession struct {
 	sseClients []chan SSEEvent
 }
 
-func (cs *ClientSession) AddSSEClient(c chan SSEEvent) {
-	cs.mux.Lock()
-	defer cs.mux.Unlock()
-	cs.sseClients = append(cs.sseClients, c)
+//func (cs *UISession) AddSSEClient(c chan SSEEvent) {
+//	cs.mux.Lock()
+//	defer cs.mux.Unlock()
+//	cs.sseClients = append(cs.sseClients, c)
+//
+//	go func() {
+//		if cs.IsActive() {
+//			//cs.SendNotify(NotifySuccess, "Connected to the Hub")
+//		} else {
+//			cs.SendNotify(NotifyError, "Not connected to the Hub")
+//		}
+//	}()
+//}
 
-	go func() {
-		if cs.IsActive() {
-			//cs.SendNotify(NotifySuccess, "Connected to the Hub")
-		} else {
-			cs.SendNotify(NotifyError, "Not connected to the Hub")
-		}
-	}()
-}
-
-// Close the session and save its state.
+// Close the session.
 // This closes the hub connection and SSE data channels
-func (cs *ClientSession) Close() {
+func (cs *UISession) Close() {
 	cs.mux.Lock()
 	for _, sseChan := range cs.sseClients {
 		close(sseChan)
@@ -92,23 +92,48 @@ func (cs *ClientSession) Close() {
 	cs.hc.Disconnect()
 }
 
+// CloseSSEChan closes a previously created SSE channel and removes it.
+func (cs *UISession) CloseSSEChan(c chan SSEEvent) {
+	slog.Debug("DeleteSSEChan channel", "clientID", cs.hc.ClientID())
+	cs.mux.Lock()
+	defer cs.mux.Unlock()
+	for i, sseClient := range cs.sseClients {
+		if sseClient == c {
+			cs.sseClients = append(cs.sseClients[:i], cs.sseClients[i+1:]...)
+			break
+		}
+	}
+	close(c)
+}
+
+// CreateSSEChan creates a new SSE channel to communicate with.
+// The channel has a buffer of 1 to allow sending a ping message on connect.
+// Call CloseSSEClient to close and clean up
+func (cs *UISession) CreateSSEChan() chan SSEEvent {
+	cs.mux.Lock()
+	defer cs.mux.Unlock()
+	sseChan := make(chan SSEEvent, 1)
+	cs.sseClients = append(cs.sseClients, sseChan)
+	return sseChan
+}
+
 // GetClientData returns the hiveoview data model of this client
-func (cs *ClientSession) GetClientData() *ClientDataModel {
+func (cs *UISession) GetClientData() *ClientDataModel {
 	return cs.clientModel
 }
 
 // GetHubClient returns the hub client connection for use in pub/sub
-func (cs *ClientSession) GetHubClient() hubclient.IHubClient {
+func (cs *UISession) GetHubClient() hubclient.IHubClient {
 	return cs.hc
 }
 
 // GetConsumedThingsSession returns the consumed things model of this client
-func (cs *ClientSession) GetConsumedThingsSession() *consumedthing.ConsumedThingsSession {
+func (cs *UISession) GetConsumedThingsSession() *consumedthing.ConsumedThingsSession {
 	return cs.cts
 }
 
 // GetViewModel returns the hiveoview view model of this client
-func (cs *ClientSession) GetViewModel() *ClientViewModel {
+func (cs *UISession) GetViewModel() *ClientViewModel {
 	return cs.viewModel
 }
 
@@ -120,13 +145,13 @@ func (cs *ClientSession) GetViewModel() *ClientViewModel {
 //	 * connected when connected to the hub
 //	 * connecting or disconnected when not connected
 //	info with a human description
-func (cs *ClientSession) GetStatus() hubclient.TransportStatus {
+func (cs *UISession) GetStatus() hubclient.TransportStatus {
 	status := cs.hc.GetStatus()
 	return status
 }
 
 // IsActive returns whether the session has a connection to the Hub or is in the process of connecting.
-func (cs *ClientSession) IsActive() bool {
+func (cs *UISession) IsActive() bool {
 	status := cs.hc.GetStatus()
 	return status.ConnectionStatus == hubclient.Connected ||
 		status.ConnectionStatus == hubclient.Connecting
@@ -134,7 +159,7 @@ func (cs *ClientSession) IsActive() bool {
 
 // LoadState loads the client session state containing dashboard and other model data,
 // and clear 'clientModelChanged' status
-func (cs *ClientSession) LoadState() error {
+func (cs *UISession) LoadState() error {
 	stateCl := stateclient.NewStateClient(cs.hc)
 
 	cs.clientModel = NewClientDataModel()
@@ -148,7 +173,7 @@ func (cs *ClientSession) LoadState() error {
 }
 
 // onConnectChange is invoked on disconnect/reconnect
-func (cs *ClientSession) onConnectChange(stat hubclient.TransportStatus) {
+func (cs *UISession) onConnectChange(stat hubclient.TransportStatus) {
 	lastErrText := ""
 	if stat.LastError != nil {
 		lastErrText = stat.LastError.Error()
@@ -178,7 +203,7 @@ func (cs *ClientSession) onConnectChange(stat hubclient.TransportStatus) {
 }
 
 // onMessage notifies SSE clients of incoming messages from the Hub
-func (cs *ClientSession) onMessage(msg *hubclient.ThingMessage) {
+func (cs *UISession) onMessage(msg *hubclient.ThingMessage) {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
 
@@ -240,7 +265,7 @@ func (cs *ClientSession) onMessage(msg *hubclient.ThingMessage) {
 
 // RemoveSSEClient removes a disconnected client from the session
 // If the session state has changed then store the session data
-func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {
+func (cs *UISession) RemoveSSEClient(c chan SSEEvent) {
 	cs.mux.Lock()
 	defer cs.mux.Unlock()
 	for i, sseClient := range cs.sseClients {
@@ -260,7 +285,7 @@ func (cs *ClientSession) RemoveSSEClient(c chan SSEEvent) {
 }
 
 // ReplaceHubClient replaces this session's hub client
-func (cs *ClientSession) ReplaceHubClient(newHC hubclient.IHubClient) {
+func (cs *UISession) ReplaceHubClient(newHC hubclient.IHubClient) {
 	// ensure the old client is disconnected
 	if cs.hc != nil {
 		cs.hc.Disconnect()
@@ -276,7 +301,7 @@ func (cs *ClientSession) ReplaceHubClient(newHC hubclient.IHubClient) {
 // if 'clientModelChanged' is set.
 //
 // This returns an error if the state service is not reachable.
-func (cs *ClientSession) SaveState() error {
+func (cs *UISession) SaveState() error {
 	if !cs.clientModel.Changed() {
 		return nil
 	}
@@ -292,7 +317,7 @@ func (cs *ClientSession) SaveState() error {
 }
 
 // SetClientData update the hiveoview data model of this client
-//func (cs *ClientSession) SetClientData(data ClientDataModel) {
+//func (cs *UISession) SetClientData(data ClientDataModel) {
 //	cs.clientModel = data
 //	cs.clientModelChanged = true
 //}
@@ -301,7 +326,7 @@ func (cs *ClientSession) SaveState() error {
 // To send an SSE event use SendSSE()
 //
 //	ntype is the toast notification type: "info", "error", "warning"
-func (cs *ClientSession) SendNotify(ntype NotifyType, text string) {
+func (cs *UISession) SendNotify(ntype NotifyType, text string) {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
 	for _, c := range cs.sseClients {
@@ -311,7 +336,7 @@ func (cs *ClientSession) SendNotify(ntype NotifyType, text string) {
 
 // SendSSE encodes and sends an SSE event to clients of this session
 // Intended to notify the browser of changes.
-func (cs *ClientSession) SendSSE(event string, content string) {
+func (cs *UISession) SendSSE(event string, content string) {
 	cs.mux.RLock()
 	defer cs.mux.RUnlock()
 	slog.Debug("sending sse event", "event", event, "nr clients", len(cs.sseClients))
@@ -326,7 +351,7 @@ func (cs *ClientSession) SendSSE(event string, content string) {
 // If err is nil then write the httpCode result
 // If no httpCode is given then this renders an error message
 // If an httpCode is given then this returns the status code
-func (cs *ClientSession) WriteError(w http.ResponseWriter, err error, httpCode int) {
+func (cs *UISession) WriteError(w http.ResponseWriter, err error, httpCode int) {
 	if err == nil {
 		w.WriteHeader(httpCode)
 		return
@@ -346,7 +371,7 @@ func (cs *ClientSession) WriteError(w http.ResponseWriter, err error, httpCode i
 
 // WritePage writes a rendered html page or reports the error
 // Errors are sent to the UI with the notify event.
-func (cs *ClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffer, err error) {
+func (cs *UISession) WritePage(w http.ResponseWriter, buff *bytes.Buffer, err error) {
 	if err != nil {
 		cs.WriteError(w, err, http.StatusInternalServerError)
 	} else {
@@ -359,10 +384,9 @@ func (cs *ClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffer, er
 //
 // note that expiry is a placeholder for now used to refresh auth token.
 // it should be obtained from the login authentication/refresh.
-func NewClientSession(sessionID string, hc hubclient.IHubClient, remoteAddr string) *ClientSession {
-	cs := ClientSession{
+func NewClientSession(sessionID string, hc hubclient.IHubClient, remoteAddr string) *UISession {
+	cs := UISession{
 		sessionID:    sessionID,
-		clientID:     hc.ClientID(),
 		remoteAddr:   remoteAddr,
 		hc:           hc,
 		sseClients:   make([]chan SSEEvent, 0),
@@ -380,7 +404,7 @@ func NewClientSession(sessionID string, hc hubclient.IHubClient, remoteAddr stri
 	err := cs.LoadState()
 	if err != nil {
 		slog.Warn("unable to load client state from state service",
-			"clientID", cs.clientID, "err", err.Error())
+			"clientID", cs.hc.ClientID(), "err", err.Error())
 		cs.SendNotify(NotifyWarning, "Unable to restore session: "+err.Error())
 		cs.lastError = err
 	}

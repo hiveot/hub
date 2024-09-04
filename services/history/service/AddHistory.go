@@ -52,7 +52,9 @@ func (svc *AddHistory) encodeValue(msg *hubclient.ThingMessage) (key string, dat
 		key = key + "/e"
 	}
 	key = key + "/" + msg.SenderID
+	//if msg.Data != nil {
 	data, _ = json.Marshal(msg.Data)
+	//}
 	return key, data
 }
 

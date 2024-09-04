@@ -25,13 +25,13 @@ type ClientSession struct {
 	clientID string
 	// RemoteAddr of the user
 	remoteAddr string
-
+	// track last used time to auto-close inactive sessions
 	lastActivity time.Time
 
 	// session mutex for updating sse and activity
 	mux sync.RWMutex
 
-	// SSE event channels for this session
+	// The SSE event channel for this session.
 	// Each SSE connection is added to this list
 	sseClients []chan SSEEvent
 
@@ -52,30 +52,29 @@ func (cs *ClientSession) Close() {
 	cs.sseClients = nil
 }
 
+// CloseSSEChan closes a previously created SSE channel and removes it.
+func (cs *ClientSession) CloseSSEChan(c chan SSEEvent) {
+	slog.Debug("DeleteSSEChan channel", "clientID", cs.clientID)
+	cs.mux.Lock()
+	defer cs.mux.Unlock()
+	for i, sseClient := range cs.sseClients {
+		if sseClient == c {
+			cs.sseClients = append(cs.sseClients[:i], cs.sseClients[i+1:]...)
+			break
+		}
+	}
+	close(c)
+}
+
 // CreateSSEChan creates a new SSE channel to communicate with.
-// The channel has a buffer of 1 to allow sending a ping message on connect
-// and to allow concurrent broadcasting of events to multiple channels.
-// Call DeleteSSEClient to close and clean up
+// The channel has a buffer of 1 to allow sending a ping message on connect.
+// Call CloseSSEClient to close and clean up
 func (cs *ClientSession) CreateSSEChan() chan SSEEvent {
 	cs.mux.Lock()
 	defer cs.mux.Unlock()
 	sseChan := make(chan SSEEvent, 1)
 	cs.sseClients = append(cs.sseClients, sseChan)
 	return sseChan
-}
-
-// DeleteSSEChan deletes a previously created SSE channel and closes it.
-func (cs *ClientSession) DeleteSSEChan(c chan SSEEvent) {
-	slog.Debug("DeleteSSEChan channel", "clientID", cs.clientID)
-	cs.mux.Lock()
-	defer cs.mux.Unlock()
-	for i, sseClient := range cs.sseClients {
-		if sseClient == c {
-			// delete(cs.sseClients,i)
-			cs.sseClients = append(cs.sseClients[:i], cs.sseClients[i+1:]...)
-			break
-		}
-	}
 }
 
 func (cs *ClientSession) GetClientID() string {
@@ -144,6 +143,9 @@ func (cs *ClientSession) onConnectChange(stat hubclient.TransportStatus) {
 // SendSSE encodes and sends an SSE event to clients of this session
 // Intended to send events to clients over sse.
 // This returns the number of events being sent, or 0 if no client sessions exist
+//
+// note: when the receiver expects json encoded data, make sure data is of type
+// string, not a binary array.
 func (cs *ClientSession) SendSSE(messageID string, eventType string, data any) int {
 	count := 0
 	cs.mux.RLock()
@@ -156,7 +158,7 @@ func (cs *ClientSession) SendSSE(messageID string, eventType string, data any) i
 
 	payload, _ := json.Marshal(data)
 	for _, c := range cs.sseClients {
-		c <- SSEEvent{
+		c <- SSEEvent{ // FIXME: put a timeout on it to recover from lockup
 			ID:        messageID,
 			EventType: eventType,
 			Payload:   string(payload),

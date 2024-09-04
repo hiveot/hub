@@ -13,6 +13,7 @@ import (
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -143,5 +144,43 @@ func TestReadTDsRest(t *testing.T) {
 	getThingPath := utils.Substitute(httpsse.GetThingPath, vars)
 	data, _, err = cl2.Get(getThingPath)
 	require.NoError(t, err)
+}
 
+func TestTDEvent(t *testing.T) {
+	t.Log("--- TestTDEvent tests receiving TD update events ---")
+
+	const agentID = "agent1"
+	const userID = "user1"
+	tdCount := atomic.Int32{}
+
+	r := startRuntime()
+	defer r.Stop()
+	ag, _ := ts.AddConnectAgent(agentID)
+	defer ag.Disconnect()
+	cl, token := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	_ = token
+	defer cl.Disconnect()
+
+	// subscribe to TD events
+	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+		stat.Completed(msg, nil, nil)
+		if msg.Key == vocab.EventTypeTD {
+			// decode the TD
+			td := tdd.TD{}
+			payload := msg.DataAsText()
+			err := json.Unmarshal([]byte(payload), &td)
+			assert.NoError(t, err)
+			tdCount.Add(1)
+		}
+
+		return stat
+	})
+	err := cl.Subscribe("", "")
+	time.Sleep(time.Millisecond * 100)
+	require.NoError(t, err)
+
+	// add a TD
+	ts.AddTDs(agentID, 1)
+	time.Sleep(time.Millisecond * 1000)
+	assert.Equal(t, int32(1), tdCount.Load())
 }

@@ -63,6 +63,9 @@ func (tm *ThingMessage) DataAsText() string {
 // Optionally "WT" is weekday, time (Mon, 14:31:01 PDT) when less than a week old
 // or, provide the time format directly, eg: "02 Jan 06 15:04 MST" for rfc822
 func (tm *ThingMessage) GetUpdated(format ...string) (updated string) {
+	if tm.Created == "" {
+		return ""
+	}
 	createdTime, _ := dateparse.ParseAny(tm.Created)
 	if format != nil && len(format) == 1 {
 		if format[0] == "WT" {

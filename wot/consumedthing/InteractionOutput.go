@@ -1,7 +1,6 @@
 package consumedthing
 
 import (
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
@@ -13,6 +12,8 @@ import (
 type InteractionOutput struct {
 	// The property, event or action key
 	key string
+	// Title with the human name provided by the interaction affordance
+	Title string
 	// Schema describing the data from property, event or action affordance
 	Schema tdd.DataSchema
 	//
@@ -24,9 +25,16 @@ type InteractionOutput struct {
 	Progress hubclient.DeliveryStatus
 	// timestamp this was last updated
 	updated string
+	// senderID of last update
+	senderID string
 
 	// tm contains the message with the value received for this output
 	//tm hubclient.ThingMessage
+}
+
+// GetSenderID is a helper function to ID of the message sender
+func (iout *InteractionOutput) GetSenderID() string {
+	return iout.senderID
 }
 
 // GetUpdated is a helper function to return the formatted time the data was last updated.
@@ -37,7 +45,7 @@ func (iout *InteractionOutput) GetUpdated() string {
 	return iout.updated
 }
 
-// ValueAsArray returns the value as an array
+// ToArray returns the value as an array
 // The result depends on the Schema type
 //
 //	array: returns array of values as describe ni the Schema
@@ -46,31 +54,31 @@ func (iout *InteractionOutput) GetUpdated() string {
 //	int: returns a single element with integer
 //	object: returns a single element with object
 //	string: returns a single element with string
-func (iout *InteractionOutput) ValueAsArray() []interface{} {
+func (iout *InteractionOutput) ToArray() []interface{} {
 	objArr := make([]interface{}, 0)
 	err := utils.DecodeAsObject(iout.value, &objArr)
 	_ = err
 	return objArr
 }
 
-// ValueAsString returns the value as a string
-func (iout *InteractionOutput) ValueAsString() string {
+// ToString returns the value as a string
+func (iout *InteractionOutput) ToString() string {
 	return utils.DecodeAsString(iout.value)
 }
 
-// ValueAsBoolean returns the value as a boolean
-func (iout *InteractionOutput) ValueAsBoolean() bool {
+// ToBoolean returns the value as a boolean
+func (iout *InteractionOutput) ToBoolean() bool {
 	return utils.DecodeAsBool(iout.value)
 }
 
-// ValueAsInt returns the value as an integer
-func (iout *InteractionOutput) ValueAsInt() int {
+// ToInt returns the value as an integer
+func (iout *InteractionOutput) ToInt() int {
 	return utils.DecodeAsInt(iout.value)
 }
 
-// ValueAsMap returns the value as a key-value map
+// ToMap returns the value as a key-value map
 // Returns nil if no data was provided.
-func (iout *InteractionOutput) ValueAsMap() map[string]interface{} {
+func (iout *InteractionOutput) ToMap() map[string]interface{} {
 	o := make(map[string]interface{})
 	err := utils.DecodeAsObject(iout.value, &o)
 	if err != nil {
@@ -81,33 +89,52 @@ func (iout *InteractionOutput) ValueAsMap() map[string]interface{} {
 
 // NewInteractionOutput creates a new immutable interaction output from object data.
 //
+// As events are used to update property values, this uses the message Key to
+// determine whether this is a property, event or action IO.
+//
 //	tm is the received message with the data for this output
 //	td Thing Description document with schemas for the value. Use nil if schema is unknown.
 func NewInteractionOutput(tm *hubclient.ThingMessage, td *tdd.TD) *InteractionOutput {
 	io := &InteractionOutput{
-		key:     tm.Key,
-		updated: tm.GetUpdated("WT"),
-		value:   tm.Data,
+		key:      tm.Key,
+		senderID: tm.SenderID,
+		updated:  tm.GetUpdated("WT"),
+		value:    tm.Data,
 	}
 	if td == nil {
 		return io
 	}
-	if tm.MessageType == vocab.MessageTypeEvent {
-		eventAff, found := td.Events[tm.Key]
-		if found {
-			io.Schema = eventAff.Data
-			if len(eventAff.Forms) > 0 {
-				io.Form = &eventAff.Forms[0]
-			}
+
+	actionAff, found := td.Actions[tm.Key]
+	if found {
+		if actionAff.Output != nil {
+			io.Schema = *actionAff.Output
 		}
-	} else {
-		propAff, found := td.Properties[tm.Key]
-		if found {
-			io.Schema = propAff.DataSchema
-			if len(propAff.Forms) > 0 {
-				io.Form = &propAff.Forms[0]
-			}
+		io.Title = actionAff.Title
+		if len(actionAff.Forms) > 0 {
+			io.Form = &actionAff.Forms[0]
 		}
+		return io
 	}
+	eventAff, found := td.Events[tm.Key]
+	if found {
+		io.Schema = eventAff.Data
+		io.Title = eventAff.Title
+		if len(eventAff.Forms) > 0 {
+			io.Form = &eventAff.Forms[0]
+		}
+		return io
+	}
+
+	propAff, found := td.Properties[tm.Key]
+	if found {
+		io.Schema = propAff.DataSchema
+		io.Title = propAff.Title
+		if len(propAff.Forms) > 0 {
+			io.Form = &propAff.Forms[0]
+		}
+		return io
+	}
+	slog.Warn("message key not found in TD", "thingID", td.ID, "key", tm.Key, "messageType", tm.MessageType)
 	return io
 }

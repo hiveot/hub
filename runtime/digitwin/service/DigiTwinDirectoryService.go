@@ -197,7 +197,9 @@ func (svc *DigitwinDirectoryService) updateThing(
 }
 
 // UpdateTD handles the action to update a TD in the directory. This upgrades the TD
-// to the digital twin version including Forms for protocol bindings.
+// to the digital twin version including Forms for protocol bindings and
+// publishes an event with the updated TD.
+//
 // This also replaces spaces in thingID and keys with dashes
 //
 //	senderID is the agent and owner of the TD
@@ -242,7 +244,7 @@ func (svc *DigitwinDirectoryService) UpdateTD(senderID string, tddjson string) e
 	if err == nil && svc.tb != nil {
 
 		ev := hubclient.NewThingMessage(
-			vocab.MessageTypeEvent, dtThingID, vocab.EventTypeTD, dtwTddjson, senderID)
+			vocab.MessageTypeEvent, dtThingID, vocab.EventTypeTD, string(dtwTddjson), senderID)
 
 		svc.tb.SendEvent(ev)
 	}

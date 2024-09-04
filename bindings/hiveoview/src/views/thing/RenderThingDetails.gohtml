@@ -75,7 +75,7 @@
 				<details id="detailsAttr" >
 						<summary class="outline">
 							<span style="font-size: medium"><strong>Attributes</strong></span>
-							<span> ({{len .Attributes}})</span>
+							<span> ({{len .AttrKeys}})</span>
 						</summary>
 		        {{template "attrList.gohtml" .}}
 				</details>
@@ -85,7 +85,7 @@
 				<details id="detailsConfig" >
 						<summary class="outline">
 								<span style="font-size: medium"><strong>Configuration</strong></span>
-								<span> ({{len .Config}})</span>
+								<span> ({{len .ConfigKeys}})</span>
 						</summary>
 						{{template "configList.gohtml" .}}
 				</details>

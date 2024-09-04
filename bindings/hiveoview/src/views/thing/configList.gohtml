@@ -14,7 +14,7 @@
 
     {{/*	Iterate the sorted writable property keys */}}
     {{range $k := .ConfigKeys}}
-      {{$v := index $.Config $k}}
+      {{$v := $.GetValue $k}}
 				<li>
 					<div class="h-show-md">{{/*icon*/}}</div>
           {{/*	Configuration Name*/}}
@@ -39,19 +39,19 @@
               {{/*replace show value on sse event, sent by ClientSession.go:onEvent */}}
 							{{/*properties and events use the same namespace*/}}
 							<span sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML" hx-target="this">
-							{{$.Values.ToString $k}}
+							{{$v.ToString}}
 							</span>
-                {{$v.UnitSymbol}}
+                {{$v.Schema.UnitSymbol}}
 						</button>
 					</div>
-					<div class="h-show-lg">{{$v.Default}}</div>
-					<div class="h-show-lg">{{$v.Description}}</div>
+					<div class="h-show-lg">{{$v.Schema.Default}}</div>
+					<div class="h-show-lg">{{$v.Schema.Description}}</div>
 					<div class="h-show-sm"
 					     sse-swap="{{$.ThingID}}/{{$k}}/updated"
 					     hx-swap="innerHTML"
 					     hx-target="this"
 					>
-              {{$.Values.GetUpdated $k}}
+              {{$v.GetUpdated}}
 					</div>
 
 				</li>

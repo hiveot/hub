@@ -22,12 +22,13 @@ export const PropChartTitle = "chart-title"
 export const PropTimestamp = "timestamp"
 export const PropDuration = "duration"
 export const PropStepped = "stepped"
+export const PropNoLegend = "no-legend" // hide the legend
 
 
 // https://www.chartjs.org/docs/latest/configuration/responsive.html
 const template = document.createElement('template')
 template.innerHTML = `
-    <div  style="position:relative; width:100%; height:inherit; 
+    <div  style="position:relative; width:100%; height:100%; 
         display:flex; align-items:center; justify-content:center" 
     >
         <div id="_noDataText" style="font-style: italic; font-size: large; color: gray; font-weight: bold;">
@@ -39,7 +40,8 @@ template.innerHTML = `
 
 export class HTimechart extends HTMLElement {
     // value to highlight the y-axis row
-    highlightYrow = 20
+    highlightYrow = 20;
+    noLegend = false;
 
     // default chart configuration
     config ={
@@ -53,14 +55,14 @@ export class HTimechart extends HTMLElement {
             }]
         },
         options: {
+            animation: {
+                duration: 300
+            },
             layout: {
               padding: {
-                  right: 20
+                  right: 10
               }
               //   autopadding:false
-            },
-            animation: {
-                duration: 500
             },
             // spanGaps: 1000*60*60*5,
             // IMPORTANT: in order to resize properly, set responsive to true
@@ -69,6 +71,7 @@ export class HTimechart extends HTMLElement {
             // https://www.chartjs.org/docs/latest/configuration/responsive.html#configuration-options
             responsive: true,
             maintainAspectRatio: false,
+            stacked:false,
             scales: {
                 x: {
                     max: "2024-07-23T15:00:00.000-07:00",
@@ -99,21 +102,30 @@ export class HTimechart extends HTMLElement {
                         // round: "second"
                     }
                 },
-                y: {
-                    // min: -20,
-                    // max: 40,
-                    // beginAtZero: true,
-                    grid: {
-                        // test to highlight the row of a certain value
-                        color: (ctx)=> {
-                            return (ctx.tick.value === this.highlightYrow)?"green":'rgba(0,0,0,0.1)'
-                        }
-                    },
-                    ticks: {
-                        maxTicksLimit: 30,
-                        source: "auto"
-                    }
-                }
+                // y: {
+                //     grid: {
+                //         // test to highlight the row of a certain value
+                //         color: (ctx)=> {
+                //             return (ctx.tick.value === this.highlightYrow)?"green":'rgba(0,0,0,0.1)'
+                //         }
+                //     },
+                //     ticks: {
+                //         maxTicksLimit: 30,
+                //         source: "auto"
+                //     }
+                // },
+                // y1: {
+                //     // type: 'linear',
+                //     display:false,
+                //     position: 'right',
+                //     ticks: {
+                //         maxTicksLimit: 30,
+                //         source: "auto"
+                //     },
+                //     grid: {
+                //         drawOnChartArea: false, // only want the grid lines for one axis to show up
+                //     },
+                // }
             },
             plugins: {
                 legend: {
@@ -131,7 +143,8 @@ export class HTimechart extends HTMLElement {
     }
 
     static get observedAttributes() {
-        return [ PropChartType, PropChartTitle, PropTimestamp, PropDuration]
+        return [ PropChartType, PropChartTitle,
+            PropTimestamp, PropDuration, PropNoLegend]
     }
 
     constructor() {
@@ -154,10 +167,12 @@ export class HTimechart extends HTMLElement {
             this.chartTitle = newValue
         } else if (name === PropChartType) {
             this.chartType = newValue
-        } else if (name === PropTimestamp) {
-            this.timestamp = newValue
         } else if (name === PropDuration) {
             this.duration = parseInt(newValue)
+        } else if (name === PropNoLegend) {
+            this.noLegend = newValue !== "true"
+        } else if (name === PropTimestamp) {
+            this.timestamp = newValue
         }
     }
 
@@ -169,14 +184,17 @@ export class HTimechart extends HTMLElement {
         })
         this.noDataEl = this.shadowRoot.getElementById("_noDataText")
 
-        let dataEl = this.querySelector('data')
-        if (dataEl) {
-            let tableData = JSON.parse(dataEl.innerText)
-            let tableTitle = dataEl.getAttribute('title')
+        let dataElList = this.querySelectorAll('data')
+        for (let i = 0; i < dataElList.length; i++) {
+            let dataEl= dataElList[i]
+            let dataPoints = JSON.parse(dataEl.innerText)
+            let dataKey = dataEl.getAttribute('key')
+            let dataTitle = dataEl.getAttribute('title')
+            let dataUnit = dataEl.getAttribute('unit')
             let steppedProp = dataEl.getAttribute(PropStepped)
             let stepped = (steppedProp?.toLowerCase()==="true")
-            if (tableData) {
-                this.setTimeSeries(0, tableTitle, tableData, stepped)
+            if (dataPoints) {
+                this.setTimeSeries(i,dataKey, dataTitle, dataPoints, dataUnit, stepped)
             }
         }
         this.render();
@@ -208,14 +226,22 @@ export class HTimechart extends HTMLElement {
 
     // experiment inject a value
     // if time is empty then use 'now'
-    addValue = (time, val) => {
+    // key is the dataset key to add to. Default is the first one.
+    addValue = (time, val, key) => {
         if (!time) {
             time = luxon.DateTime.now().toISO()
         }
+        let ds = this.config.data.datasets[0];
+        // locate the dataset
+        for (let i = 0; i < this.config.data.datasets.length; i++) {
+            let hasKey = this.config.data.datasets[i].key === key;
+            if (hasKey) {
+                ds = this.config.data.datasets[i];
+                break
+            }
+        }
 
-        let ds = this.config.data.datasets[0].data;
-        ds.unshift({x:time,y:val})
-
+        ds.data.unshift({x:time,y:val})
 
         let endTime = luxon.DateTime.fromISO(time)
         if (endTime > this.timestamp) {
@@ -267,27 +293,54 @@ export class HTimechart extends HTMLElement {
     // @param label is the label of this series
     // @param timePoints is an array of: {x:timestamp, y:value} in reverse order (newest first)
     // @param stepped to show a stepped graph (boolean)
-    setTimeSeries = (nr, label, timePoints, stepped) => {
+    setTimeSeries = (nr,key, label, timePoints, dataUnit, stepped) => {
+        const colors = ["#1e81b0", "#e28743", "#459b44", "#d1c684"]
+
         // construct a replacement dataset
         console.log("setTimeSeries", timePoints.length, "items", "label=",label)
         let dataset = {
+            key:key,
             // label: label,
             data: timePoints,
-            borderWidth: 1
+            borderWidth: 1,
+            borderColor: colors[nr],
+            fill: false,
+            label: label + " " + dataUnit,
+            stepped: stepped?'after':false,
+            tension: stepped? 0 : 0.1,  // bezier curve tension
+            yAxisID: dataUnit
         }
-        if (stepped) {
-            dataset.stepped = "after"
-            dataset.fill = false
-        } else {
-            dataset.tension = 0 // bezier curve tension
-            // ds.fill = false
+        // Setup the y-axis scale for this dataset
+        // Scales are based on the data unit. Add a scale if it doesnt exist.
+        let hasScale= this.config.options.scales[dataUnit]
+        if (!hasScale) {
+            // the first scale is at the left, additional scales are on the right
+            let isFirstScale = (nr === 0);
+            this.config.options.scales[dataUnit] = {
+                // backgroundColor: 'green',
+                display: true,
+                position: isFirstScale ? 'left' : 'right',
+                grid: {
+                    // only want the grid lines for one axis to show up
+                    drawOnChartArea: isFirstScale,
+                },
+                // the ticks have the same color as the line
+                ticks: {
+                    color: colors[nr],
+                    callback: (val, index, ticks) => {
+                        return val + " " + dataUnit
+                    }
+                }
+            }
         }
-        if (label) {
-            dataset.label = label;
-            this.config.options.plugins.legend.display = true
-        } else {
-            this.config.options.plugins.legend.display = false
-        }
+
+        // fixme: per dataset setting?
+        // if (label) {
+            this.config.options.plugins.legend.display = !this.noLegend
+            this.config.options.plugins.legend.align = 'center' // start, center, end
+        // } else {
+        //     this.config.options.plugins.legend.display = false
+        // }
         this.setDataSet(nr, dataset);
     }
 

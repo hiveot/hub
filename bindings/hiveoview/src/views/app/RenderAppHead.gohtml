@@ -12,7 +12,8 @@
 
 {{else}}
 
-<nav class="container-fluid h-row" style="height:60px">
+
+<nav class="container-fluid  h-row" style="height:60px">
 		<a href="{{.RenderAppAboutPath}}"
 		   hx-get="{{.RenderAppAboutPath}}"
 		   hx-target="#aboutPage"
@@ -23,7 +24,7 @@
 
 		<!-- === Tabs for selecting (not loading) application pages === -->
 		<!-- The h-navbar css highlights the li with class 'h-target', set by selectURLTargets() -->
-		<ul class="h-navbar" style="height:100%;
+		<ul class="h-navbar h-show-sm " style="height:100%;
 				border: 1px solid var(--pico-accordion-border-color)">
 			{{/*	The navigation buttons both select and reload the page*/}}
 			{{range .AppHeadDashboards}}

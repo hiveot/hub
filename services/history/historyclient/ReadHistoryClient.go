@@ -44,14 +44,14 @@ func (cl *ReadHistoryClient) GetCursor(thingID string, filterOnKey string) (
 // or whether items were remaining. If items were remaining them use the last entry
 // to continue reading the next page.
 func (cl *ReadHistoryClient) ReadHistory(thingID string, filterOnKey string,
-	timestamp time.Time, duration int, limit int) (
+	timestamp time.Time, duration time.Duration, limit int) (
 	batch []*hubclient.ThingMessage, itemsRemaining bool, err error) {
 
 	args := historyapi.ReadHistoryArgs{
 		ThingID:     thingID,
 		FilterOnKey: filterOnKey,
 		Timestamp:   timestamp.Format(time.RFC3339),
-		Duration:    duration,
+		Duration:    int(duration.Seconds()),
 		Limit:       limit,
 	}
 	resp := historyapi.ReadHistoryResp{}

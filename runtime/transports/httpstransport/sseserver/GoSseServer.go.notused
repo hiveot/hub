@@ -70,7 +70,9 @@ func NewGoSSEServer() *sse.Server {
 					break
 				}
 			}
-			cs.DeleteSSEChan(sseChan)
+			// FIXME: risk of deadlock when writing is in progress as
+			//  no-one is reading anymore
+			go cs.CloseSSEChan(sseChan)
 
 			slog.Info("SseHandler: Session closed", "clientID", cs.GetClientID())
 		}()

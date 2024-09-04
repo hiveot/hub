@@ -3,9 +3,9 @@ package history
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/consumedthing"
 	"github.com/hiveot/hub/wot/tdd"
 	"strconv"
 	"time"
@@ -36,7 +36,7 @@ type HistoryTemplateData struct {
 	TodayPath              string
 }
 
-type HistoryDataTable struct {
+type HistoryDataPoint struct {
 	X string `json:"x"`
 	Y any    `json:"y"`
 }
@@ -44,7 +44,7 @@ type HistoryDataTable struct {
 // AsJSON returns the values as a json string
 // Booleans are converted to 0 and 1
 func (ht HistoryTemplateData) AsJSON() string {
-	dataList := []HistoryDataTable{}
+	dataList := []HistoryDataPoint{}
 
 	for _, m := range ht.Values {
 		yValue := m.Data
@@ -56,10 +56,8 @@ func (ht HistoryTemplateData) AsJSON() string {
 			}
 
 		}
-		//dataList = append(dataList,
-		//	HistoryDataTable{X: m.Created, Y: m.DataAsText()})
 		dataList = append(dataList,
-			HistoryDataTable{X: m.Created, Y: yValue})
+			HistoryDataPoint{X: m.Created, Y: yValue})
 	}
 	dataJSON, _ := json.Marshal(dataList)
 	return string(dataJSON)
@@ -92,14 +90,15 @@ func (ht HistoryTemplateData) CompareToday() int {
 
 // NewHistoryTemplateData reads the event or property history for the given time range
 //
-//	vm is the viewModel used to read the data
+//	ct is the consumed thing to read the data from
 //	key is the key of the event or property in the TD
 //	timestamp of the end-time of the history range
-//	duration nr of seconds to read (negative for history)
-func NewHistoryTemplateData(vm *session.ClientViewModel,
-	td *tdd.TD, key string, timestamp time.Time, duration int) (*HistoryTemplateData, error) {
+//	duration to read (negative for history)
+func NewHistoryTemplateData(
+	ct *consumedthing.ConsumedThing, key string, timestamp time.Time, duration time.Duration) (
+	data *HistoryTemplateData, err error) {
 
-	var err error
+	td := ct.GetThingDescription()
 	hs := HistoryTemplateData{
 		TD:           td,
 		ThingID:      td.ID,
@@ -107,7 +106,7 @@ func NewHistoryTemplateData(vm *session.ClientViewModel,
 		Title:        td.Title,
 		Timestamp:    timestamp,
 		TimestampStr: timestamp.Format(utils.RFC3339Milli),
-		DurationSec:  duration,
+		DurationSec:  int(duration.Seconds()),
 		//DataSchema:     nil,  // see below
 		Values:         nil,
 		ItemsRemaining: false,
@@ -126,10 +125,8 @@ func NewHistoryTemplateData(vm *session.ClientViewModel,
 		}
 	}
 
-	limit := 1000
-	hs.Values = make([]*hubclient.ThingMessage, 0)
-
-	hs.Values, hs.ItemsRemaining, err = vm.ReadHistory(td.ID, key, timestamp, duration, limit)
+	// TODO: (if needed) if items remaining, get the rest in an additional call
+	hs.Values, hs.ItemsRemaining, err = ct.ReadHistory(key, timestamp, duration)
 
 	// Add the URL paths for navigating around the history
 	pathParams := map[string]string{"thingID": td.ID, "key": key}

@@ -30,7 +30,7 @@ const URLParamTileID = "tileID"
 //   - if no tileID is given and mustExist is true then this fails
 //   - if no tile was found and mustExist is false then a new one is created
 func GetTileContext(r *http.Request, mustExist bool) (
-	*session.ClientSession, ClientTileContext, error) {
+	*session.UISession, ClientTileContext, error) {
 
 	var found bool
 	ctc := ClientTileContext{}

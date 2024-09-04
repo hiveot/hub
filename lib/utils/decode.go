@@ -23,6 +23,9 @@ func Decode(value any, arg interface{}) error {
 // DecodeAsString converts the value to a string
 // if value is already a string then it is returned as-is
 func DecodeAsString(value any) string {
+	if value == nil {
+		return ""
+	}
 	switch value.(type) {
 	case string:
 		return value.(string)
@@ -52,6 +55,7 @@ func DecodeAsBool(value any) bool {
 }
 
 // DecodeAsInt converts the value to an integer.
+// This accepts int, int64, *int, bool, uint, float32/64
 // If value is already an integer then it is returned as-is.
 func DecodeAsInt(value any) int {
 	i := 0
@@ -69,6 +73,10 @@ func DecodeAsInt(value any) int {
 		i = value.(int)
 	case uint:
 		i = int(value.(uint))
+	case float32:
+		i = int(value.(float32))
+	case float64:
+		i = int(value.(float64))
 	default:
 		slog.Warn("Can't convert value to a integer", "value", value)
 	}

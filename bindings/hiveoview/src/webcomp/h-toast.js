@@ -47,7 +47,7 @@ h-toast{
     align-items: center;
     width: 100%;
     
-    z-index: 1;
+    z-index: 99;
 
 /*TODO: use pico colors*/
   --dark: #34495E;

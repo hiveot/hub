@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/tlsclient"
@@ -126,4 +127,52 @@ func TestHttpsGetProps(t *testing.T) {
 	// note: golang unmarshals integers as float64.
 	data2raw := vmm[key2].Data.(float64)
 	require.Equal(t, data2, int(data2raw))
+}
+
+func TestSubscribeValues(t *testing.T) {
+	t.Log("--- TestSubscribeValues tests receiving value update events ---")
+	const agThingID = "thing1"
+
+	const agentID = "agent1"
+	const userID = "user1"
+	const key1 = "key1"
+	const key2 = "key2"
+	const data1 = "Hello world"
+	const data2 = 25
+	msgCount := 0
+
+	r := startRuntime()
+	defer r.Stop()
+	ag, _ := ts.AddConnectAgent(agentID)
+	defer ag.Disconnect()
+	hc, token := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	_ = token
+	defer hc.Disconnect()
+
+	// subscribe to events
+	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+		stat.Completed(msg, nil, nil)
+		if msg.Key == vocab.EventTypeProperties {
+			// decode the properties map
+			props := make(map[string]interface{})
+			err := utils.DecodeAsObject(msg.Data, &props)
+			assert.NoError(t, err)
+			assert.Equal(t, 2, len(props))
+			msgCount++
+		}
+
+		return stat
+	})
+	err := hc.Subscribe("", "")
+	require.NoError(t, err)
+	time.Sleep(time.Millisecond * 100)
+
+	propMap := map[string]any{}
+	propMap[key1] = data1
+	propMap[key2] = data2
+	err = ag.PubProps(agThingID, propMap)
+	require.NoError(t, err)
+
+	time.Sleep(time.Millisecond * 1000)
+	assert.Equal(t, 1, msgCount)
 }

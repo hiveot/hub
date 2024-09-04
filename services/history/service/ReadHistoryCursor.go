@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
@@ -33,10 +34,10 @@ const filterContextKey = "name"
 //
 //	bucketID is the ID of the bucket, which is the digital twin thingID
 //	storageKey is the value's key, which is defined as timestamp/valueKey
-//	data is the stored message data
+//	raw is the serialized message data
 //
 // This returns the value, or nil if the key is invalid
-func decodeValue(bucketID string, storageKey string, data string) (thingValue *hubclient.ThingMessage, valid bool) {
+func decodeValue(bucketID string, storageKey string, raw []byte) (thingValue *hubclient.ThingMessage, valid bool) {
 
 	// key is constructed as  timestamp/name/{a|e|c}/sender, where sender can be omitted
 	parts := strings.Split(storageKey, "/")
@@ -60,6 +61,12 @@ func decodeValue(bucketID string, storageKey string, data string) (thingValue *h
 	}
 	// FIXME: keep the messageID? serialize the ThingMessage
 	messageID := ""
+	var data interface{}
+	err := json.Unmarshal(raw, &data)
+	if err != nil {
+		slog.Error("decodeValue, unmarshal failure",
+			"thingID", bucketID, "key", key, "err", err.Error())
+	}
 
 	thingValue = &hubclient.ThingMessage{
 		ThingID:     bucketID, // digital twin thingID that includes the agent prefix
@@ -81,19 +88,19 @@ func (svc *ReadHistory) First(senderID string, args historyapi.CursorArgs) (*his
 	if err != nil {
 		return nil, err
 	}
-	k, v, valid := cursor.First()
+	k, raw, valid := cursor.First()
 	if !valid {
 		// bucket is empty
 		return nil, nil
 	}
 
-	thingValue, valid := decodeValue(cursor.BucketID(), k, string(v))
+	tm, valid := decodeValue(cursor.BucketID(), k, raw)
 	filterName := ci.Filter
-	if valid && filterName != "" && thingValue.Key != filterName {
-		thingValue, valid = svc.next(cursor, filterName, until)
+	if valid && filterName != "" && tm.Key != filterName {
+		tm, valid = svc.next(cursor, filterName, until)
 	}
 	resp := historyapi.CursorSingleResp{
-		Value: thingValue,
+		Value: tm,
 		Valid: valid,
 	}
 	return &resp, err
@@ -108,7 +115,7 @@ func (svc *ReadHistory) Last(senderID string, args historyapi.CursorArgs) (*hist
 	if err != nil {
 		return nil, err
 	}
-	k, v, valid := cursor.Last()
+	k, raw, valid := cursor.Last()
 
 	resp := &historyapi.CursorSingleResp{
 		Value: nil,
@@ -119,7 +126,7 @@ func (svc *ReadHistory) Last(senderID string, args historyapi.CursorArgs) (*hist
 		// bucket is empty
 		return resp, nil
 	}
-	thingValue, valid := decodeValue(cursor.BucketID(), k, string(v))
+	thingValue, valid := decodeValue(cursor.BucketID(), k, raw)
 	filterName := ci.Filter
 	if valid && filterName != "" && thingValue.Key != filterName {
 		// search back to the last valid value
@@ -146,7 +153,7 @@ func (svc *ReadHistory) next(
 	untilMilli := until.UnixMilli()
 	found = false
 	for {
-		k, v, valid := cursor.Next()
+		k, raw, valid := cursor.Next()
 		if !valid {
 			// key is invalid. This means we reached the end of cursor
 			return nil, false
@@ -167,7 +174,7 @@ func (svc *ReadHistory) next(
 			}
 			if key == "" || key == parts[1] {
 				// found a match. Decode and return it
-				thingValue, found = decodeValue(cursor.BucketID(), k, string(v))
+				thingValue, found = decodeValue(cursor.BucketID(), k, raw)
 				return thingValue, found
 			}
 			// name doesn't match. Skip this entry
@@ -258,7 +265,7 @@ func (svc *ReadHistory) prev(
 	untilMilli := until.UnixMilli()
 	found = false
 	for {
-		k, v, valid := cursor.Prev()
+		k, raw, valid := cursor.Prev()
 		if !valid {
 			// key is invalid. This means we reached the beginning of cursor
 			return thingValue, false
@@ -279,7 +286,7 @@ func (svc *ReadHistory) prev(
 
 			if key == "" || key == parts[1] {
 				// found a match. Decode and return it
-				thingValue, found = decodeValue(cursor.BucketID(), k, string(v))
+				thingValue, found = decodeValue(cursor.BucketID(), k, raw)
 				return thingValue, found
 			}
 			// filter doesn't match. Skip this entry
@@ -367,12 +374,12 @@ func (svc *ReadHistory) seek(cursor buckets.IBucketCursor, ts time.Time, key str
 	msec := ts.UnixMilli()
 	searchKey := strconv.FormatInt(msec, 10)
 
-	k, v, valid := cursor.Seek(searchKey)
+	k, raw, valid := cursor.Seek(searchKey)
 	if !valid {
 		// bucket is empty, no error
 		return nil, valid
 	}
-	thingValue, valid := decodeValue(cursor.BucketID(), k, string(v))
+	thingValue, valid := decodeValue(cursor.BucketID(), k, raw)
 	if valid && key != "" && thingValue.Key != key {
 		thingValue, valid = svc.next(cursor, key, until)
 	}

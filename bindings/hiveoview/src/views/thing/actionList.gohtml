@@ -12,8 +12,8 @@
 		<div class="h-show-md">Updated</div>
 	</li>
 
-    {{range $k,$v := .TD.Actions }}
-        {{- /*gotype: github.com/hiveot/hub/wot/tdd.ActionAffordance*/ -}}
+    {{range $k := .ActionKeys }}
+        {{$v := $.GetValue $k}}
 				<li>
 					<div class="h-show-sm">{{/*icon*/}}</div>
 					<div title="key: {{$k}}">
@@ -27,19 +27,19 @@
 	            {{$v.Title}}
 						</button>
 					</div>
-					<div class="h-show-lg">{{$v.ActionType}}</div>
+					<div class="h-show-lg">{{$v.Schema.Type}}</div>
 					<div sse-swap="{{$.ThingID}}/{{$k}}"
 					     hx-target="this"
 					     hx-swap="innerHTML">
-						{{$.Values.ToString $k}}
+						{{$v.ToString}}
 					</div>
-					<div class="h-show-lg">{{$v.Description}}</div>
+					<div class="h-show-lg">{{$v.Schema.Description}}</div>
 					<div class="h-show-md"
 					     sse-swap="{{$.ThingID}}/{{$k}}/updated"
 					     hx-swap="innerHTML"
 					     hx-target="this"
-					     title="Updated: {{$.Values.GetUpdated $k}} by {{($.Values.GetSenderID $k)}}">
-              {{$.Values.GetUpdated $k}}
+					     title="Updated: {{$v.GetUpdated}} by {{$v.GetSenderID}}">
+              {{$v.GetUpdated}}
 					</div>
 				</li>
     {{end}}

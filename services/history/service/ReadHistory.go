@@ -51,6 +51,9 @@ func (svc *ReadHistory) readHistory(
 
 	values = make([]*hubclient.ThingMessage, 0)
 
+	if limit <= 0 {
+		limit = historyapi.DefaultLimit
+	}
 	if thingID == "" {
 		return nil, false, fmt.Errorf("missing thingID")
 	}
@@ -71,10 +74,10 @@ func (svc *ReadHistory) readHistory(
 	until := ts.Add(time.Duration(durationSec) * time.Second)
 	if durationSec > 0 {
 		// read forward in time
-		batch, itemsRemaining = svc.nextN(cursor, filterOnKey, until, 1000)
+		batch, itemsRemaining = svc.nextN(cursor, filterOnKey, until, limit)
 	} else {
 		// read backwards in time
-		batch, itemsRemaining = svc.prevN(cursor, filterOnKey, until, 1000)
+		batch, itemsRemaining = svc.prevN(cursor, filterOnKey, until, limit)
 	}
 	values = append(values, batch...)
 	return values, itemsRemaining, err

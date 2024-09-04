@@ -3,9 +3,11 @@ package tile
 import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
+	"github.com/hiveot/hub/bindings/hiveoview/src/views/history"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/consumedthing"
 	"net/http"
+	"time"
 )
 
 const RenderTileTemplate = "RenderTile.gohtml"
@@ -35,6 +37,19 @@ type RenderTileTemplateData struct {
 	cts *consumedthing.ConsumedThingsSession
 }
 
+// GetHistory returns the 24 hour history for the given key.
+// This truncates the result if there are too many values in the range.
+// The max amount of values is the limit set in historyapi.DefaultLimit (1000)
+func (dt RenderTileTemplateData) GetHistory(thingID string, key string) *history.HistoryTemplateData {
+	timestamp := time.Now()
+	ct, err := dt.cts.Consume(thingID)
+
+	duration, _ := time.ParseDuration("-24h")
+	hsd, err := history.NewHistoryTemplateData(ct, key, timestamp, duration)
+	_ = err
+	return hsd
+}
+
 // GetValue return the latest value of a tile source
 func (d RenderTileTemplateData) GetValue(thingID string, key string) string {
 
@@ -46,7 +61,7 @@ func (d RenderTileTemplateData) GetValue(thingID string, key string) string {
 	if iout == nil {
 		return "n/a"
 	}
-	val := iout.ValueAsString() // + " " + iout.Schema.UnitSymbol()
+	val := iout.ToString() // + " " + iout.Schema.UnitSymbol()
 	return val
 }
 

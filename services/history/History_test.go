@@ -281,7 +281,7 @@ func TestAddPropertiesEvent(t *testing.T) {
 	//const clientID = "device0"
 	const thing1ID = thingIDPrefix + "0" // matches a percentage of the random things
 	const agent1 = "device1"
-	const temp1 = "55"
+	const temp1 = 55
 
 	svc, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
@@ -325,10 +325,10 @@ func TestAddPropertiesEvent(t *testing.T) {
 		ThingID:  "", // missing ID
 		Key:      "temperature",
 	}
-	propsList := make(map[string][]byte)
-	propsList[vocab.PropDeviceBattery] = []byte("50")
-	propsList[vocab.PropEnvCpuload] = []byte("30")
-	propsList[vocab.PropSwitchOnOff] = []byte("off")
+	propsList := make(map[string]interface{})
+	propsList[vocab.PropDeviceBattery] = 50
+	propsList[vocab.PropEnvCpuload] = 30
+	propsList[vocab.PropSwitchOnOff] = "off"
 	props1 := &hubclient.ThingMessage{
 		SenderID: agent1,
 		ThingID:  dThing1ID,
@@ -361,21 +361,23 @@ func TestAddPropertiesEvent(t *testing.T) {
 	defer releaseFn()
 	require.NoError(t, err)
 	msg, valid, err := c.First()
-	assert.True(t, valid)
+	require.True(t, valid)
 	assert.NotEmpty(t, msg)
-
-	// verify named properties from different sources
-	//props, err := readHist.GetLatest(agent1, thing1ID,
-	//	[]string{vocab.PropEnvTemperature, vocab.PropSwitchOnOff, vocab.ActionSwitchOnOff})
-	//assert.NoError(t, err)
-	//assert.Equal(t, 3, len(props))
-	//assert.Equal(t, vocab.PropEnvTemperature, props[vocab.PropEnvTemperature].Key)
-	//assert.Equal(t, []byte(temp1), props[vocab.PropEnvTemperature].Data)
-	//assert.Equal(t, vocab.MessageTypeEvent, props[vocab.PropEnvTemperature].MessageType)
-	//
-	//assert.Equal(t, vocab.PropSwitchOnOff, props[vocab.PropSwitchOnOff].Key)
-	//assert.Equal(t, vocab.MessageTypeAction, props[vocab.ActionSwitchOnOff].MessageType)
-
+	hasProps := false
+	for valid && err == nil {
+		if msg.Key == vocab.EventTypeProperties {
+			hasProps = true
+			props := make(map[string]interface{})
+			err = utils.DecodeAsObject(msg.Data, &props)
+			require.NoError(t, err)
+		} else if msg.Key == vocab.PropEnvTemperature {
+			dataInt := utils.DecodeAsInt(msg.Data)
+			require.Equal(t, temp1, dataInt)
+		}
+		msg, valid, err = c.Next()
+	}
+	require.NoError(t, err)
+	require.True(t, hasProps)
 }
 
 func TestGetInfo(t *testing.T) {
@@ -577,7 +579,8 @@ func TestReadHistory(t *testing.T) {
 
 	// start 20 hours ago and read an hour's worth
 	startTime := time.Now().Add(-20 * time.Hour)
-	items, remaining, err := readHist.ReadHistory(dThing0ID, "", startTime, 3600, 40)
+	duration := time.Hour
+	items, remaining, err := readHist.ReadHistory(dThing0ID, "", startTime, duration, 60)
 	require.NoError(t, err)
 	assert.False(t, remaining)
 	assert.NotEmpty(t, items)
@@ -585,7 +588,8 @@ func TestReadHistory(t *testing.T) {
 
 	// start 19 hours ago and read back in time
 	startTime = time.Now().Add(-19 * time.Hour)
-	items, remaining, err = readHist.ReadHistory(dThing0ID, "", startTime, -3600, 40)
+	duration = time.Duration(-1 * time.Hour)
+	items, remaining, err = readHist.ReadHistory(dThing0ID, "", startTime, duration, 60)
 	require.NoError(t, err)
 	assert.False(t, remaining)
 	assert.NotEmpty(t, items)

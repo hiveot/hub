@@ -64,7 +64,7 @@ func AddSessionFromToken(userAuthn api.IAuthenticator) func(next http.Handler) h
 					cs, err = sessionmanager.NewSession(cid, r.RemoteAddr, cid)
 				}
 			} else {
-				// A token with session-id must have a known session
+				// A token with session-id must have a known session created on login
 				cs, err = sessionmanager.GetSession(sid)
 			}
 			if err != nil {

@@ -34,11 +34,13 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 
 	// convert the value from string to the data type
 	td, actionAff, err = getActionAff(hc, thingID, actionKey)
-	_ = td
-	if err == nil {
-		if actionAff.Input != nil {
-			newValue, err = tdd.ConvertToNative(valueStr, actionAff.Input)
-		}
+	if err != nil || td == nil {
+		mySession.WriteError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	if actionAff.Input != nil {
+		newValue, err = tdd.ConvertToNative(valueStr, actionAff.Input)
 	}
 	if err == nil {
 		slog.Info("SubmitActionRequest starting",
@@ -66,6 +68,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 
 		// notify UI via SSE. This is handled by a toast component.
 		// todo, differentiate between server error, invalid value and unauthorized
+		err = fmt.Errorf("Thing '%s' is not reachable (%w)", td.Title, err)
 		mySession.WriteError(w, err, http.StatusInternalServerError)
 		return
 	}

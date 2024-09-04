@@ -13,8 +13,8 @@
 		<div class="h-show-lg">History</div>
 	</li>
 
-	{{range $k,$v := .TD.Events}}
-		{{- /*gotype: github.com/hiveot/hub/wot/tdd.EventAffordance*/ -}}
+	{{range $k := .EventKeys}}
+    {{$v := $.GetValue $k}}
 
 		{{- /*auto reload row on event changes*/ -}}
 		<li>
@@ -42,23 +42,23 @@
 					      hx-swap="innerHTML"
 					      hx-target="this"
 					>
-							{{$.Values.ToString $k}}
+							{{$v.ToString}}
 					</span>
-					{{if $v.Data}}
-				    {{$v.Data.UnitSymbol}}
+					{{if $v.Schema}}
+				    {{$v.Schema.UnitSymbol}}
 					{{end}}
 				</a>
 			</div>
 
 			{{/*Description*/}}
-			<div class="h-show-lg">{{$v.Description}}</div>
+			<div class="h-show-lg">{{$v.Schema.Description}}</div>
 
       {{/*	Updated*/}}
 			<div sse-swap="{{$.ThingID}}/{{$k}}/updated"
 			     hx-target="this"
 			     hx-swap="innerHTML"
 						class="h-show-md"
-				>{{$.Values.GetUpdated $k}}
+				>{{$v.GetUpdated}}
 			</div>
 
 	    {{/*	history*/}}

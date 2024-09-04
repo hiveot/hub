@@ -30,6 +30,8 @@
 :root:not([data-theme=dark]) {
     /*okay, not really pico styles but it should be*/
     --pico-header-background-color: #dce9f2;
+    --pico-form-element-active-background-color: #f8f8f8;
+    --pico-background-color: #eff1f0;
 
     --pico-card-border: 1px solid var(--pico-table-border-color);
     --pico-card-border-color: green;

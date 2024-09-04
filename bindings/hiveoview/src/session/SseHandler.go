@@ -35,28 +35,44 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// establish a client event channel
-	sseChan := make(chan SSEEvent)
-	cs.AddSSEClient(sseChan)
+	sseChan := cs.CreateSSEChan()
+	//sseChan := make(chan SSEEvent)
+	//cs.AddSSEClient(sseChan)
+	clientID := cs.GetHubClient().ClientID()
 
 	slog.Info("SseHandler. New SSE connection",
 		slog.String("RemoteAddr", r.RemoteAddr),
-		slog.String("clientID", cs.clientID),
+		slog.String("clientID", clientID),
 		slog.Int("nr sse connections", len(cs.sseClients)),
 	)
 	//var sseMsg SSEEvent
 
 	done := false
+
+	// close the channel when the connection drops
+	go func() {
+		select {
+		case <-r.Context().Done(): // remote client connection closed
+			slog.Debug("Remote client disconnected (read context)")
+			// close channel in the background when no-one is writing
+			// in the meantime keep reading. (DeleteSSEChan uses mutex lock)
+			go cs.CloseSSEChan(sseChan)
+		}
+	}()
+
+	// read the message channel until it closes
 	for !done { // sseMsg := range sseChan {
 		// wait for message, or writer closing
 		select {
 		case sseMsg, ok := <-sseChan: // received event
 			slog.Debug("SseHandler: received event from sseChan",
 				slog.String("remote", r.RemoteAddr),
-				slog.String("clientID", cs.clientID),
+				slog.String("clientID", clientID),
 				slog.String("event", sseMsg.Event),
 				slog.Bool("ok", ok),
 			)
 			if !ok { // channel was closed by session
+				// ending the read loop and returning will close the connection
 				done = true
 				break
 			}
@@ -66,21 +82,15 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 			//_, err := fmt.Fprintf(w, "event: time\ndata: <div sse-swap='time'>%s</div>\n\n", data)
 			_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
 				sseMsg.Event, sseMsg.Payload)
-			//_, err := fmt.Fprint(w, sseMsg)
+			// ignore write errors as the channel might be closing and must
+			// be read to avoid deadlock.
 			w.(http.Flusher).Flush()
-			break
-		case <-r.Context().Done(): // remote client connection closed
-			slog.Info("Remote client disconnected (read context)")
-			close(sseChan)
-			done = true
-			break
 		}
 	}
-	cs.RemoveSSEClient(sseChan)
 
 	slog.Info("SseHandler: sse connection closed",
 		slog.String("remote", r.RemoteAddr),
-		slog.String("clientID", cs.clientID),
+		slog.String("clientID", clientID),
 		slog.Int("nr sse connections", len(cs.sseClients)),
 	)
 }

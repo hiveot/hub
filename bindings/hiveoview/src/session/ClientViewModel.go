@@ -3,10 +3,8 @@ package session
 import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/wot/tdd"
 	"sort"
-	"time"
 )
 
 // ReadDirLimit is the maximum amount of TDs to read in one call
@@ -29,15 +27,15 @@ type ClientViewModel struct {
 }
 
 // ReadHistory returns historical values of a thing key
-func (v *ClientViewModel) ReadHistory(
-	thingID string, key string, timestamp time.Time, duration int, limit int) (
-	[]*hubclient.ThingMessage, bool, error) {
-
-	hist := historyclient.NewReadHistoryClient(v.hc)
-	values, itemsRemaining, err := hist.ReadHistory(
-		thingID, key, timestamp, duration, limit)
-	return values, itemsRemaining, err
-}
+//func (v *ClientViewModel) ReadHistory(
+//	thingID string, key string, timestamp time.Time, duration int, limit int) (
+//	[]*hubclient.ThingMessage, bool, error) {
+//
+//	hist := historyclient.NewReadHistoryClient(v.hc)
+//	values, itemsRemaining, err := hist.ReadHistory(
+//		thingID, key, timestamp, duration, limit)
+//	return values, itemsRemaining, err
+//}
 
 // GetLatest returns a map with the latest property values of a thing or nil if failed
 // TODO: The generated API doesnt know return types because WoT TD has no

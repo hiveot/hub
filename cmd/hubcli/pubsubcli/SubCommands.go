@@ -1,6 +1,7 @@
 package pubsubcli
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
@@ -111,7 +112,8 @@ func HandleSubEvents(hc hubclient.IHubClient, thingID string, name string) error
 			}
 		} else if msg.Key == vocab.EventTypeTD {
 			var td tdd.TD
-			_ = utils.DecodeAsObject(msg.Data, &td)
+			tdJSON := msg.DataAsText()
+			json.Unmarshal([]byte(tdJSON), &td)
 			valueStr = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
 				td.Title, td.AtType, len(td.Properties), len(td.Events), len(td.Actions))
 		}
