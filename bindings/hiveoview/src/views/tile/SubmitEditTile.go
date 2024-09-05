@@ -1,6 +1,7 @@
 package tile
 
 import (
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"log/slog"
 	"net/http"
@@ -69,11 +70,11 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	if found {
 		// Notify the UI that the tile has changed. The eventName was provided
 		// in RenderTile.
-		eventName := strings.ReplaceAll(TileUpdatedEvent, "{tileID}", tile.ID)
+		eventName := strings.ReplaceAll(src.TileUpdatedEvent, "{tileID}", tile.ID)
 		sess.SendSSE(eventName, "")
 	} else {
 		// this is a new tile. Notify the dashboard
-		eventName := strings.ReplaceAll(DashboardUpdatedEvent, "{dashboardID}", cdc.dashboardID)
+		eventName := strings.ReplaceAll(src.DashboardUpdatedEvent, "{dashboardID}", cdc.dashboardID)
 		sess.SendSSE(eventName, "")
 	}
 	sess.WriteError(w, err, http.StatusOK)

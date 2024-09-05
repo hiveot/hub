@@ -1,13 +1,13 @@
 package tile
 
 import (
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"net/http"
 )
 
 const ConfirmDeleteTileTemplate = "RenderConfirmDeleteTile.gohtml"
-const SubmitDeleteTilePath = "/tile/{dashboardID}/{tileID}"
 
 type ConfirmDeleteTileTemplateData struct {
 	Dashboard            session.DashboardModel
@@ -25,7 +25,7 @@ func RenderConfirmDeleteTile(w http.ResponseWriter, r *http.Request) {
 	data := ConfirmDeleteTileTemplateData{
 		Dashboard:            ctc.dashboard,
 		Tile:                 ctc.tile,
-		SubmitDeleteTilePath: getTilePath(SubmitDeleteTilePath, ctc),
+		SubmitDeleteTilePath: getTilePath(src.PostTileDeletePath, ctc),
 	}
 	buff, err := app.RenderAppOrFragment(r, ConfirmDeleteTileTemplate, data)
 	sess.WritePage(w, buff, err)

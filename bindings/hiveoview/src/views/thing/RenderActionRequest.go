@@ -6,6 +6,7 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -16,7 +17,6 @@ import (
 )
 
 const RenderActionRequestTemplate = "RenderActionRequest.gohtml"
-const SubmitActionRequestPath = "/action/{thingID}/{key}"
 
 // ActionRequestTemplateData with data for the action request view
 type ActionRequestTemplateData struct {
@@ -124,7 +124,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	pathArgs := map[string]string{"thingID": data.ThingID, "key": data.Key}
-	data.SubmitActionRequestPath = utils.Substitute(SubmitActionRequestPath, pathArgs)
+	data.SubmitActionRequestPath = utils.Substitute(src.PostActionRequestPath, pathArgs)
 
 	buff, err := app.RenderAppOrFragment(r, RenderActionRequestTemplate, data)
 	sess.WritePage(w, buff, err)

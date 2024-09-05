@@ -1,22 +1,13 @@
 package app
 
 import (
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/lib/utils"
 	"net/http"
 )
 
 const AppHeadTemplate = "RenderAppHead.gohtml"
-
-// dashboard paths
-const RenderAddDashboardPath = "/dashboard/add"
-const ReRenderAppHeadPath = "/app/appHead"
-const RenderAppAboutPath = "/about"
-const RenderDirectoryPath = "/directory"
-const RenderConfirmDeleteDashboardPath = "/dashboard/{dashboardID}/confirmDelete"
-const RenderDashboardPath = "/dashboard/{dashboardID}"
-const RenderEditDashboardPath = "/dashboard/{dashboardID}/config"
-const RenderAddTilePath = "/tile/{dashboardID}/add"
 
 //const AppMenuTemplate = "appMenu.gohtml"
 //const DashboardMenuTemplate = "dashboardMenu.gohtml"
@@ -58,9 +49,9 @@ func RenderAppHead(w http.ResponseWriter, r *http.Request) {
 		Title:               "HiveOT",
 		Status:              GetConnectStatus(r),
 		AppHeadDashboards:   []AppHeadDashboardData{},
-		ReRenderAppHeadPath: ReRenderAppHeadPath,
-		RenderAppAboutPath:  RenderAppAboutPath,
-		RenderDirectoryPath: RenderDirectoryPath,
+		ReRenderAppHeadPath: src.RenderAppHeadPath,
+		RenderAppAboutPath:  src.RenderAboutPath,
+		RenderDirectoryPath: src.RenderThingDirectoryPath,
 	}
 
 	// add the dashboards from the client data model to the menu
@@ -69,11 +60,11 @@ func RenderAppHead(w http.ResponseWriter, r *http.Request) {
 		dashboardData := AppHeadDashboardData{
 			ID:                               dashboardModel.ID,
 			Title:                            dashboardModel.Title,
-			RenderDashboardPath:              utils.Substitute(RenderDashboardPath, pathArgs),
-			RenderAddTilePath:                utils.Substitute(RenderAddTilePath, pathArgs),
-			RenderConfirmDeleteDashboardPath: utils.Substitute(RenderConfirmDeleteDashboardPath, pathArgs),
-			RenderEditDashboardPath:          utils.Substitute(RenderEditDashboardPath, pathArgs),
-			RenderAddDashboardPath:           utils.Substitute(RenderAddDashboardPath, pathArgs),
+			RenderDashboardPath:              utils.Substitute(src.RenderDashboardPath, pathArgs),
+			RenderAddTilePath:                utils.Substitute(src.RenderTileAddPath, pathArgs),
+			RenderConfirmDeleteDashboardPath: utils.Substitute(src.RenderDashboardConfirmDeletePath, pathArgs),
+			RenderEditDashboardPath:          utils.Substitute(src.PostDashboardConfigPath, pathArgs),
+			RenderAddDashboardPath:           utils.Substitute(src.RenderDashboardAddPath, pathArgs),
 		}
 		data.AppHeadDashboards = append(data.AppHeadDashboards, dashboardData)
 	}

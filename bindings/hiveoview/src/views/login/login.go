@@ -1,20 +1,30 @@
 package login
 
 import (
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views"
 	"net/http"
 )
 
 const LoginTemplateFile = "login.gohtml"
 
+type LoginTemplateData struct {
+	LoginID       string
+	LoginError    string
+	PostLoginPath string
+}
+
 // RenderLogin renders the login form
 func RenderLogin(w http.ResponseWriter, r *http.Request) {
-	data := map[string]any{
-		"loginID": "",
+	data := LoginTemplateData{
+		LoginID:       "",
+		LoginError:    "",
+		PostLoginPath: src.PostLoginPath,
 	}
+
 	loginError := r.URL.Query().Get("error")
 	if loginError != "" {
-		data["error"] = loginError
+		data.LoginError = loginError
 	}
 
 	// don't cache the login

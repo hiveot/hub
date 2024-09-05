@@ -1,13 +1,13 @@
 package dashboard
 
 import (
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"net/http"
 )
 
 const RenderConfirmDeleteDashboardTemplate = "RenderConfirmDeleteDashboard.gohtml"
-const SubmitDeleteDashboardPath = "/dashboard/{dashboardID}"
 
 type ConfirmDeleteDashboardTemplateData struct {
 	Dashboard                 session.DashboardModel
@@ -25,7 +25,7 @@ func RenderConfirmDeleteDashboard(w http.ResponseWriter, r *http.Request) {
 	// setup the rendering data
 	data := ConfirmDeleteDashboardTemplateData{
 		Dashboard:                 cdc.dashboard,
-		SubmitDeleteDashboardPath: getDashboardPath(SubmitDeleteDashboardPath, cdc),
+		SubmitDeleteDashboardPath: getDashboardPath(src.DeleteDashboardPath, cdc),
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderConfirmDeleteDashboardTemplate, data)
 	sess.WritePage(w, buff, err)

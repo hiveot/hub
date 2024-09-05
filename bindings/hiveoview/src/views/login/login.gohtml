@@ -1,16 +1,19 @@
 {{define "login.gohtml"}}
 
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/login.LoginTemplateData*/ -}}
+
+
 	<!--Login View
-	@param loginID: login email to display
-	@param error: optional if login previously failed
-	-->
+		@param loginID: login email to display
+		@param error: optional if login previously failed
+		-->
 	<dialog open id="login" class="login">
 		<article>
 			<header class="h-row-centered">
 				<h3>HiveOT Login</h3>
 			</header>
         {{/* hx-boost must be false to force reload and not show all views*/}}
-			<form action="/login" method="post" hx-boost="false">
+			<form action="{{.PostLoginPath}}" method="post" hx-boost="false">
 
 				<div>
 					<label for="loginID">Login email</label>

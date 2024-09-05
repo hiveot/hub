@@ -65,8 +65,9 @@
 			</div>
 
 			{{/* Show a table with a chart beside it */}}
-			<div class="h-row" style="align-items:start; flex-grow:1; overflow:auto">
-				<details open>
+			<div class="h-row" style="align-items:start; flex-grow:1; overflow:hidden">
+				<details closed style="height:100%">
+						<summary title="Show details"></summary>
 						{{template "historyTable.gohtml" .}}
 				</details>
 				<div class="h-show-xs" style="height:100%; flex-grow:1">

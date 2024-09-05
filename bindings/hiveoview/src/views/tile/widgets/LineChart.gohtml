@@ -13,14 +13,14 @@
 
 
     {{/* inject the json encoded array with data to show as {x:time,y:value} here */}}
-		<data title="{{.Title}}" unit="{{$hist.DataSchema.UnitSymbol}}" key="{{.Key}}"
+		<data title="{{$hist.Title}}" unit="{{$hist.DataSchema.UnitSymbol}}" key="{{$hist.Title}}"
 
             {{/* Auto-update chart when looking at today*/}}
             {{if eq $hist.CompareToday 0}}
 							sse-swap="{{$hist.ThingID}}/{{$hist.Key}}"
 							hx-target="this"
 							hx-swap="none"
-							hx-on::sse-before-message="updateChart(event, '{{.Key}}')"
+							hx-on::sse-before-message="updateChart(event, '{{$hist.Title}}')"
             {{end}}
 		>
         {{ $hist.AsJSON }}

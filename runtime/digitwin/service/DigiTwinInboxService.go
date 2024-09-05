@@ -36,7 +36,7 @@ type DigiTwinInboxService struct {
 	latestByKey map[string]*digitwin.InboxRecord
 
 	// protocol manager to send updates to clients
-	pm api.ITransportBinding
+	tb api.ITransportBinding
 	// mux to access the cache
 	mux sync.RWMutex
 }
@@ -96,22 +96,6 @@ func (svc *DigiTwinInboxService) AddDeliveryStatus(status hubclient.DeliveryStat
 	return err
 }
 
-// UpdateRecord stores an updated inbox record in the cache
-// If the delivery status is completed or failed then it is removed from the in-memory cache
-func (svc *DigiTwinInboxService) UpdateRecord(record digitwin.InboxRecord) {
-	svc.mux.Lock()
-	defer svc.mux.Unlock()
-	if record.Progress == hubclient.DeliveryCompleted || record.Progress == hubclient.DeliveryFailed {
-		// the action has completed. Remove it from the active cache
-		// keep the latest cache for use by readLatest
-		delete(svc.activeCache, record.MessageID)
-	} else {
-		svc.activeCache[record.MessageID] = &record
-	}
-	latestKey := record.ThingID + "." + record.Key
-	svc.latestByKey[latestKey] = &record
-}
-
 // GetRecord returns the delivery status of a request by its messageID
 func (svc *DigiTwinInboxService) GetRecord(messageID string) (r digitwin.InboxRecord, err error) {
 	svc.mux.RLock()
@@ -121,6 +105,12 @@ func (svc *DigiTwinInboxService) GetRecord(messageID string) (r digitwin.InboxRe
 		return r, fmt.Errorf("GetRecord, messageID '%s' not found", messageID)
 	}
 	return *record, nil
+}
+
+// GetTD returns the JSON encoded TD of this service
+func (svc *DigiTwinInboxService) GetTD() string {
+	tdDoc := digitwin.InboxTD
+	return tdDoc
 }
 
 // HandleActionFlow receives a new action or property request from a consumer.
@@ -172,7 +162,7 @@ func (svc *DigiTwinInboxService) HandleActionFlow(msg *hubclient.ThingMessage) (
 	msg.ThingID = serviceID
 	actionRecord.Progress = hubclient.DeliveredToInbox
 
-	stat, found := svc.pm.SendToClient(agentID, msg)
+	stat, found := svc.tb.SendToClient(agentID, msg)
 	if found {
 		actionRecord.Progress = stat.Progress
 		actionRecord.Delivered = time.Now().Format(utils.RFC3339Milli)
@@ -226,7 +216,7 @@ func (svc *DigiTwinInboxService) HandleDeliveryUpdate(msg *hubclient.ThingMessag
 		err = svc.AddDeliveryStatus(stat)
 		// notify the action sender of the delivery update
 		msg2 := *msg
-		svc.pm.SendToClient(inboxRecord.SenderID, &msg2)
+		svc.tb.SendToClient(inboxRecord.SenderID, &msg2)
 	}
 	if err != nil {
 		slog.Warn("inbox:HandleDeliveryUpdate",
@@ -258,7 +248,9 @@ func (svc *DigiTwinInboxService) ReadLatest(
 	return record, err
 }
 
+// Start the inbox service
 func (svc *DigiTwinInboxService) Start() error {
+
 	return nil
 }
 
@@ -270,14 +262,30 @@ func (svc *DigiTwinInboxService) Stop() {
 	svc.mux.Unlock()
 }
 
+// UpdateRecord stores an updated inbox record in the cache
+// If the delivery status is completed or failed then it is removed from the in-memory cache
+func (svc *DigiTwinInboxService) UpdateRecord(record digitwin.InboxRecord) {
+	svc.mux.Lock()
+	defer svc.mux.Unlock()
+	if record.Progress == hubclient.DeliveryCompleted || record.Progress == hubclient.DeliveryFailed {
+		// the action has completed. Remove it from the active cache
+		// keep the latest cache for use by readLatest
+		delete(svc.activeCache, record.MessageID)
+	} else {
+		svc.activeCache[record.MessageID] = &record
+	}
+	latestKey := record.ThingID + "." + record.Key
+	svc.latestByKey[latestKey] = &record
+}
+
 // NewDigiTwinInbox returns a new instance of the inbox service.
 // the store to persist the cache between restarts - not currently used
 // tb is the protocolbinding api for sending clients delivery status messages
-func NewDigiTwinInbox(bucketStore buckets.IBucketStore, pm api.ITransportBinding) *DigiTwinInboxService {
+func NewDigiTwinInbox(bucketStore buckets.IBucketStore, tb api.ITransportBinding) *DigiTwinInboxService {
 	dtInbox := &DigiTwinInboxService{
 		activeCache: make(map[string]*digitwin.InboxRecord),
 		latestByKey: make(map[string]*digitwin.InboxRecord),
-		pm:          pm,
+		tb:          tb,
 	}
 	return dtInbox
 }

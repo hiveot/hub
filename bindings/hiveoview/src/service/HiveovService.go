@@ -119,55 +119,54 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 
 		// see also:https://medium.com/gravel-engineering/i-find-it-hard-to-reuse-root-template-in-go-htmx-so-i-made-my-own-little-tools-to-solve-it-df881eed7e4d
 		// these render full page or fragments for non hx-boost hx-requests
-		r.Get("/", app.RenderApp)
-		r.Get("/app/appHead", app.RenderAppHead)
-		r.Get("/about", about.RenderAboutPage)
+		//r.Get("/", app.RenderApp)
+		r.Handle("/", http.RedirectHandler(src.RenderDashboardRootPath, http.StatusPermanentRedirect))
+		r.Get(src.RenderAppHeadPath, app.RenderAppHead)
+		r.Get(src.RenderAboutPath, about.RenderAboutPage)
 
 		// dashboard endpoints
-		r.Get("/dashboard", dashboard.RenderDashboardPage)
-		r.Get("/dashboard/add", dashboard.RenderConfigDashboard)
-		r.Get("/dashboard/{dashboardID}", dashboard.RenderDashboardPage)
-		r.Get("/dashboard/{dashboardID}/confirmDelete", dashboard.RenderConfirmDeleteDashboard)
-		r.Get("/dashboard/{dashboardID}/config", dashboard.RenderConfigDashboard)
-		r.Post("/dashboard/{dashboardID}/layout", dashboard.SubmitDashboardLayout)
-		r.Post("/dashboard/{dashboardID}/config", dashboard.SubmitConfigDashboard)
-		r.Delete("/dashboard/{dashboardID}", dashboard.SubmitDeleteDashboard)
+		r.Get(src.RenderDashboardRootPath, dashboard.RenderDashboardPage)
+		r.Get(src.RenderDashboardAddPath, dashboard.RenderConfigDashboard)
+		r.Get(src.RenderDashboardPath, dashboard.RenderDashboardPage)
+		r.Get(src.RenderDashboardConfirmDeletePath, dashboard.RenderConfirmDeleteDashboard)
+		r.Get(src.RenderDashboardEditPath, dashboard.RenderConfigDashboard)
+		r.Post(src.PostDashboardLayoutPath, dashboard.SubmitDashboardLayout)
+		r.Post(src.PostDashboardConfigPath, dashboard.SubmitConfigDashboard)
+		r.Delete(src.DeleteDashboardPath, dashboard.SubmitDeleteDashboard)
 
 		// Directory endpoints
-		r.Get("/directory", directory.RenderDirectory)
-		r.Get("/directory/{thingID}/confirmDeleteTD", directory.RenderConfirmDeleteTD)
-		r.Delete("/directory/{thingID}", directory.SubmitDeleteTD)
+		r.Get(src.RenderThingDirectoryPath, directory.RenderDirectory)
+		r.Get(src.RenderThingConfirmDeletePath, directory.RenderConfirmDeleteTD)
+		r.Delete(src.DeleteThingPath, directory.SubmitDeleteTD)
 
 		// Thing details view
-		r.Get("/thing/{thingID}/details", thing.RenderThingDetails)
-		r.Get("/thing/{thingID}/raw", thing.RenderThingRaw)
+		r.Get(src.RenderThingDetailsPath, thing.RenderThingDetails)
+		r.Get(src.RenderThingRawPath, thing.RenderThingRaw)
 
-		// Performing Actions
-		r.Get("/action/{thingID}/{key}/request", thing.RenderActionRequest)
-		r.Post("/action/{thingID}/{key}", thing.SubmitActionRequest)
-
-		// Editing Thing properties
-		r.Get("/property/{thingID}/{key}/edit", thing.RenderEditProperty)
-		r.Post("/property/{thingID}/{key}", thing.SubmitProperty)
+		// Performing Thing Actions and Configuration
+		r.Get(src.RenderActionRequestPath, thing.RenderActionRequest)
+		r.Get(src.RenderActionStatusPath, thing.RenderActionProgress)
+		r.Get(src.RenderThingPropertyEditPath, thing.RenderEditProperty)
+		r.Post(src.PostActionRequestPath, thing.SubmitActionRequest)
+		r.Post(src.PostThingPropertyEditPath, thing.SubmitProperty)
 
 		// Dashboard tiles
-		r.Get("/tile/{dashboardID}/add", tile.RenderEditTile)
-		r.Get("/tile/{dashboardID}/{tileID}", tile.RenderTile)
-		r.Get("/tile/{dashboardID}/{tileID}/confirmDelete", tile.RenderConfirmDeleteTile)
-		r.Get("/tile/{dashboardID}/{tileID}/edit", tile.RenderEditTile)
-		r.Get("/tile/{dashboardID}/{tileID}/selectSources", tile.RenderSelectSources)
+		r.Get(src.RenderTileAddPath, tile.RenderEditTile)
+		r.Get(src.RenderTilePath, tile.RenderTile)
+		r.Get(src.RenderTileConfirmDeletePath, tile.RenderConfirmDeleteTile)
+		r.Get(src.RenderTileEditPath, tile.RenderEditTile)
+		r.Get(src.RenderTileSelectSourcesPath, tile.RenderSelectSources)
 		r.Get("/tile/{thingID}/{key}/sourceRow", tile.RenderTileSourceRow)
-		r.Post("/tile/{dashboardID}/{tileID}", tile.SubmitEditTile)
-		r.Delete("/tile/{dashboardID}/{tileID}", tile.SubmitDeleteTile)
+		r.Post(src.PostTileEditPath, tile.SubmitEditTile)
+		r.Delete(src.PostTileDeletePath, tile.SubmitDeleteTile)
 
-		// value history. Optional query params 'timestamp' and 'duration'
-		r.Get("/value/{thingID}/{key}/history", history.RenderHistoryPage)
-		r.Get("/value/{thingID}/{key}/latest", history.RenderLatestValueRow)
+		// history. Optional query params 'timestamp' and 'duration'
+		r.Get(src.RenderHistoryPagePath, history.RenderHistoryPage)
+		r.Get(src.RenderHistoryLatestValueRowPath, history.RenderLatestValueRow)
 
 		// Status components
-		r.Get("/status", status.RenderStatus)
-		r.Get("/status/connection", app.RenderConnectStatus)
-		r.Get("/status/action/{messageID}", thing.RenderActionProgress)
+		r.Get(src.RenderStatusPath, status.RenderStatus)
+		r.Get(src.RenderConnectionStatusPath, app.RenderConnectStatus)
 	})
 
 	return router
@@ -182,7 +181,7 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 	// in this case only a management capability is published
 	err := authz.UserSetPermissions(hc, authz.ThingPermissions{
 		AgentID: hc.ClientID(),
-		ThingID: HiveoviewServiceID,
+		ThingID: src.HiveoviewServiceID,
 		Allow:   []string{authn.ClientRoleAdmin, authn.ClientRoleService},
 	})
 	if err != nil {
@@ -192,7 +191,7 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 	// Setup the handling of incoming web sessions
 	sm := session.GetSessionManager()
 	connStat := hc.GetStatus()
-	sm.Init(connStat.HubURL, svc.signingKey, connStat.CaCert)
+	sm.Init(connStat.HubURL, svc.signingKey, connStat.CaCert, hc)
 
 	// parse the templates
 	svc.tm.ParseAllTemplates()

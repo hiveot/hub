@@ -14,10 +14,10 @@
 			<div class="h-show-xl">Thing ID</div>
 			<div>Name</div>
 			<div class="h-show-md">Type</div>
-			<div class="h-show-lg">Outputs</div>
+			<div class="h-show-xl">Description</div>
+			<div class="h-show-lg">Events</div>
 			<div class="h-show-lg">Actions</div>
-			<div class="h-show-xs">Updated</div>
-			<!--            <div scope="col">Description</div>-->
+			<div class="h-show-xs">TD Updated</div>
 		</li>
 
 		<!--=== for TD in .Things ===-->
@@ -53,8 +53,11 @@
             {{/*Type*/}}
 						<div class="h-show-md">{{.GetAtTypeVocab}}</div>
 
-						{{/*Outputs*/}}
-						<div class="h-show-lg">{{len .Events}} outputs</div>
+            {{/*Description*/}}
+						<div class="h-show-xl">{{.Description}}</div>
+
+            {{/*Outputs*/}}
+						<div class="h-show-lg">{{len .Events}} events</div>
 
 						{{/*Actions*/}}
 						<div class="h-show-lg">{{len .Actions}} actions</div>

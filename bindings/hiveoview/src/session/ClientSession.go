@@ -97,13 +97,16 @@ func (cs *UISession) CloseSSEChan(c chan SSEEvent) {
 	slog.Debug("DeleteSSEChan channel", "clientID", cs.hc.ClientID())
 	cs.mux.Lock()
 	defer cs.mux.Unlock()
-	for i, sseClient := range cs.sseClients {
-		if sseClient == c {
-			cs.sseClients = append(cs.sseClients[:i], cs.sseClients[i+1:]...)
-			break
+	if cs.sseClients != nil {
+		for i, sseClient := range cs.sseClients {
+			if sseClient == c {
+				// FIXME: sometimes, when using the debugger, the channel is already closed.
+				cs.sseClients = append(cs.sseClients[:i], cs.sseClients[i+1:]...)
+				close(c)
+				break
+			}
 		}
 	}
-	close(c)
 }
 
 // CreateSSEChan creates a new SSE channel to communicate with.

@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/x509"
 	"errors"
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/teris-io/shortid"
@@ -29,6 +30,8 @@ type SessionManager struct {
 	hubURL string
 	// Hub CA certificate
 	caCert *x509.Certificate
+	// hub client for publishing events
+	hc hubclient.IHubClient
 }
 
 // ActivateNewSession (re)activates a new session for a newly connected hub client.
@@ -68,29 +71,12 @@ func (sm *SessionManager) ActivateNewSession(
 	cs = NewClientSession(sessionID, hc, r.RemoteAddr)
 	sm.mux.Lock()
 	sm.sessions[sessionID] = cs
+	nrSessions := len(sm.sessions)
 	sm.mux.Unlock()
 
 	// 3. Get a new auth token from the Hub auth service
 	//profileClient := authnclient.NewAuthnUserClient(hc)
 	authToken, err = hc.RefreshToken(authToken)
-
-	//if err != nil && sm.tokenKP != nil {
-	//	// Oops, refresh failed. This happens if the account has no public key set. (quite common)
-	//	// Try to recover by ensuring a public key exists on the account.
-	//	// This fallback is only useful in case authenticating takes place through this service,
-	//	// as other clients won't have this public key.
-	//	prof, err2 := profileClient.GetProfile()
-	//	err = err2
-	//	if err == nil {
-	//		// use this service key-pair
-	//		if prof.PubKey == "" {
-	//			pubKey := sm.tokenKP.ExportPublic()
-	//			err = profileClient.UpdatePubKey(hc.ClientID(), pubKey)
-	//		}
-	//		// retry getting a token
-	//		authToken, err = profileClient.RefreshToken()
-	//	}
-	//}
 	if err != nil {
 		slog.Warn("Failed refreshing auth token. Session remains active.",
 			"err", err.Error())
@@ -100,10 +86,15 @@ func (sm *SessionManager) ActivateNewSession(
 	// 4. Keep the session for 14 days
 	maxAge := 3600 * 24 * 14
 	err = SetSessionCookie(w, sessionID, hc.ClientID(), authToken, maxAge, sm.signingKey)
+
+	// 5. publish nr sessions
+	go sm.hc.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
+
 	return cs, err
+
 }
 
-// Close closes the hub connection and event channel, removes the session
+// Close closes a session's hub connection and event channel, removes the session
 func (sm *SessionManager) Close(sessionID string) error {
 	sm.mux.Lock()
 	defer sm.mux.Unlock()
@@ -115,6 +106,11 @@ func (sm *SessionManager) Close(sessionID string) error {
 	}
 	si.Close()
 	delete(sm.sessions, sessionID)
+	nrSessions := len(sm.sessions)
+
+	// 5. publish new nr of sessions
+	go sm.hc.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
+
 	return nil
 }
 
@@ -174,11 +170,13 @@ func (sm *SessionManager) GetSessionFromCookie(r *http.Request) (*UISession, *Se
 //	hubURL with address of the hub message bus
 //	signingKey for cookies
 //	caCert of the messaging server
+//	hc hub client to publish service events
 func (sm *SessionManager) Init(
-	hubURL string, signingKey *ecdsa.PrivateKey, caCert *x509.Certificate) {
+	hubURL string, signingKey *ecdsa.PrivateKey, caCert *x509.Certificate, hc hubclient.IHubClient) {
 	sm.hubURL = hubURL
 	sm.caCert = caCert
 	sm.signingKey = signingKey
+	sm.hc = hc
 }
 
 // The global session manager instance.

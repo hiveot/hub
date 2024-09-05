@@ -2,12 +2,11 @@ package dashboard
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"log/slog"
 	"net/http"
 )
-
-const HandleRenderDefaultDashboardPath = "/dashboard"
 
 // SubmitDeleteDashboard applies deleting a dashboard
 func SubmitDeleteDashboard(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +31,7 @@ func SubmitDeleteDashboard(w http.ResponseWriter, r *http.Request) {
 	// todo; standardize this type of navigation along with the templates
 	w.Header().Add("HX-Location", fmt.Sprintf(
 		"{\"path\":\"%s\", \"target\":\"%s\"}",
-		HandleRenderDefaultDashboardPath, "#dashboardPage"))
+		src.RenderDashboardRootPath, "#dashboardPage"))
 
 	w.WriteHeader(http.StatusOK)
 }

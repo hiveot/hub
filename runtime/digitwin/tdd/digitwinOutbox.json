@@ -57,7 +57,7 @@
 			"title": "Read Latest",
 			"description": "Read the latest value(s) of a Thing",
 			"safe": true,
-			"idempotent": true
+			"idempotent": true,
 			"input": {
 				"type": "object",
 				"required": ["thingID"],
@@ -93,7 +93,7 @@
 				"description": "JSON encoded map of key:ThingMessage objects",
 				"comment": "this returns a map of key:ThingMessage objects. No idea how to describe it",
 				"type": "object",
-				"@type": "ht:ThingMessageMap",
+				"@type": "ht:ThingMessageMap"
 			}
 		},
 		"removeValue": {

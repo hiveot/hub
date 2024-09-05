@@ -5,15 +5,13 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"net/http"
 )
-
-// redirect path after deleting the TD
-const RenderDirectoryPath = "/directory"
 
 // SubmitDeleteTD handles removal of a thing TD document
 func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
@@ -57,6 +55,6 @@ func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 	// http.Redirect doesn't work but using HX-Redirect header does.
 	// see also: https://www.reddit.com/r/htmx/comments/188oqx5/htmx_form_submission_issue_redirecting_on_success/
 	//http.Redirect(w, r, "/app/directory", http.StatusMovedPermanently)
-	w.Header().Add("HX-Redirect", RenderDirectoryPath)
+	w.Header().Add("HX-Redirect", src.RenderThingDirectoryPath)
 	w.WriteHeader(http.StatusOK)
 }

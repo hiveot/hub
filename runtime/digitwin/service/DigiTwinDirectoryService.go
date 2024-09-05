@@ -39,6 +39,12 @@ type DigitwinDirectoryService struct {
 	cachemux sync.RWMutex
 }
 
+// GetTD returns the JSON encoded TD of this service
+func (svc *DigitwinDirectoryService) GetTD() string {
+	tdDoc := digitwin.DirectoryTD
+	return tdDoc
+}
+
 // HandleTDEvent receives and stores a TD from an IoT agent or service after upgrading it
 // to the digital twin version including Forms for protocol bindings.
 //
@@ -196,9 +202,10 @@ func (svc *DigitwinDirectoryService) updateThing(
 	return err
 }
 
-// UpdateTD handles the action to update a TD in the directory. This upgrades the TD
-// to the digital twin version including Forms for protocol bindings and
-// publishes an event with the updated TD.
+// UpdateTD replaces or adds a TD in the directory.
+//
+// This upgrades the provided TD to the digital twin version including its
+// ID and Forms for protocol bindings, and publishes an event with the updated TD.
 //
 // This also replaces spaces in thingID and keys with dashes
 //

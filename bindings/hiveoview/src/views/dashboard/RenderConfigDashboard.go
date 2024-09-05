@@ -1,13 +1,13 @@
 package dashboard
 
 import (
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"net/http"
 )
 
 const ConfigDashboardTemplateFile = "RenderConfigDashboard.gohtml"
-const SubmitConfigDashboardPath = "/dashboard/{dashboardID}/config" // POST
 
 type ConfigDashboardTemplateData struct {
 	Dashboard             session.DashboardModel
@@ -23,7 +23,7 @@ func RenderConfigDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	data := ConfigDashboardTemplateData{
 		Dashboard:             cdc.dashboard,
-		SubmitConfigDashboard: getDashboardPath(SubmitConfigDashboardPath, cdc),
+		SubmitConfigDashboard: getDashboardPath(src.PostDashboardConfigPath, cdc),
 	}
 	buff, err := app.RenderAppOrFragment(r, ConfigDashboardTemplateFile, data)
 	sess.WritePage(w, buff, err)

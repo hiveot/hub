@@ -3,6 +3,7 @@ package history
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/consumedthing"
@@ -10,9 +11,6 @@ import (
 	"strconv"
 	"time"
 )
-
-const RenderHistoryPath = "/value/{thingID}/{key}/history?time="
-const RenderHistoryLatestRowPath = "/value/{thingID}/{key}/latest"
 
 // HistoryTemplateData holds the data for rendering a history table or graph
 type HistoryTemplateData struct {
@@ -133,9 +131,9 @@ func NewHistoryTemplateData(
 	prevDayTime := hs.PrevDay().Format(time.RFC3339)
 	nextDayTime := hs.NextDay().Format(time.RFC3339)
 	todayTime := time.Now().Format(time.RFC3339)
-	hs.PrevDayPath = utils.Substitute(RenderHistoryPath+prevDayTime, pathParams)
-	hs.NextDayPath = utils.Substitute(RenderHistoryPath+nextDayTime, pathParams)
-	hs.TodayPath = utils.Substitute(RenderHistoryPath+todayTime, pathParams)
-	hs.RenderHistoryLatestRow = utils.Substitute(RenderHistoryLatestRowPath, pathParams)
+	hs.PrevDayPath = utils.Substitute(src.RenderHistoryTimePath+prevDayTime, pathParams)
+	hs.NextDayPath = utils.Substitute(src.RenderHistoryTimePath+nextDayTime, pathParams)
+	hs.TodayPath = utils.Substitute(src.RenderHistoryTimePath+todayTime, pathParams)
+	hs.RenderHistoryLatestRow = utils.Substitute(src.RenderHistoryLatestValueRowPath, pathParams)
 	return &hs, err
 }

@@ -1,6 +1,7 @@
 package tdd2go
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
@@ -27,9 +28,7 @@ func GenGoAPIFromTD(td *tdd.TD, outFile string) (err error) {
 
 	dThingID := td.ID
 	agentID, serviceID := tdd.SplitDigiTwinThingID(dThingID)
-	//agentTitle := ToTitle(agentID)
 	serviceTitle := ToTitle(serviceID)
-	//agentServiceTitle := agentTitle + serviceTitle
 
 	if agentID == "" {
 		return fmt.Errorf("TD thingID does not have an agent prefix")
@@ -61,6 +60,14 @@ func GenGoAPIFromTD(td *tdd.TD, outFile string) (err error) {
 	GenServiceClient(l, serviceTitle, td)
 	GenServiceInterface(l, serviceTitle, td)
 	GenServiceHandler(l, serviceTitle, td)
+	// last, append the TD in json for publication
+	// yeah ugly. Revert the thingID to that of the service as seen by the agent
+	// this is needed to be able to publish the TD
+	td.ID = serviceID
+	tdDoc, _ := json.Marshal(td)
+	l.Add("")
+	l.Add("// %sTD contains the raw TD of this service for publication to the Hub", serviceTitle)
+	l.Add("const %sTD = `%s`", serviceTitle, tdDoc)
 
 	if l.Size() > 0 {
 		outDir := path.Dir(outFile)

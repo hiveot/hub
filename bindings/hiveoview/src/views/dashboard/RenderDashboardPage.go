@@ -1,6 +1,7 @@
 package dashboard
 
 import (
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/tile"
@@ -9,14 +10,6 @@ import (
 )
 
 const RenderDashboardTemplate = "RenderDashboardPage.gohtml"
-const RenderConfirmDeleteDashboardPath = "/dashboard/{dashboardID}/confirmDelete"
-const SubmitDashboardLayoutPath = "/dashboard/{dashboardID}/layout"
-
-// const RenderEditTilePath = "/tile/{dashboardID}/{tileID}/edit"
-const RenderNewTilePath = "/tile/{dashboardID}/new"
-
-// const RenderNewTilePath = "/tile/{dashboardID}/{tileID}/edit"
-const RenderConfirmDeleteTilePath = "/tile/{dashboardID}/{tileID}/confirmDelete"
 
 type DashboardPageTemplateData struct {
 	Dashboard session.DashboardModel
@@ -33,7 +26,7 @@ type DashboardPageTemplateData struct {
 func (data DashboardPageTemplateData) GetTileTemplateData(tileID string) tile.RenderTileTemplateData {
 
 	pathArgs := map[string]string{"dashboardID": data.Dashboard.ID, "tileID": tileID}
-	renderTilePath := utils.Substitute(tile.RenderTilePath, pathArgs)
+	renderTilePath := utils.Substitute(src.RenderTilePath, pathArgs)
 	tileTemplateData := tile.RenderTileTemplateData{
 		//DashboardID:      data.Dashboard.ID,
 		ReRenderTilePath: renderTilePath,
@@ -52,13 +45,13 @@ func RenderDashboardPage(w http.ResponseWriter, r *http.Request) {
 	data.Dashboard = cdc.dashboard
 
 	// dashboard paths
-	data.RenderConfirmDeleteDashboardPath = getDashboardPath(RenderConfirmDeleteDashboardPath, cdc)
-	data.SubmitDashboardLayoutPath = getDashboardPath(SubmitDashboardLayoutPath, cdc)
+	data.RenderConfirmDeleteDashboardPath = getDashboardPath(src.RenderDashboardConfirmDeletePath, cdc)
+	data.SubmitDashboardLayoutPath = getDashboardPath(src.PostDashboardLayoutPath, cdc)
 
 	// tile paths
-	data.RenderNewTilePath = getDashboardPath(RenderNewTilePath, cdc)
-	data.RenderConfirmDeleteTilePath = getDashboardPath(RenderConfirmDeleteTilePath, cdc)
-	data.DashboardUpdatedEvent = getDashboardPath(tile.DashboardUpdatedEvent, cdc)
+	data.RenderNewTilePath = getDashboardPath(src.RenderTileAddPath, cdc)
+	data.RenderConfirmDeleteTilePath = getDashboardPath(src.RenderTileConfirmDeletePath, cdc)
+	data.DashboardUpdatedEvent = getDashboardPath(src.DashboardUpdatedEvent, cdc)
 
 	// full render or fragment render
 	buff, err := app.RenderAppOrFragment(r, RenderDashboardTemplate, data)

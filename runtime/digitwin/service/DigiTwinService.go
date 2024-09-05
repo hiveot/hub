@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
@@ -78,7 +79,10 @@ func (svc *DigitwinService) Start() (err error) {
 	if err == nil {
 		err = svc.Inbox.Start()
 	}
-
+	// make the TDs of these services available
+	_ = svc.Directory.UpdateTD(digitwin.InboxAgentID, svc.Inbox.GetTD())
+	_ = svc.Directory.UpdateTD(digitwin.OutboxAgentID, svc.Outbox.GetTD())
+	_ = svc.Directory.UpdateTD(digitwin.DirectoryAgentID, svc.Directory.GetTD())
 	return err
 }
 

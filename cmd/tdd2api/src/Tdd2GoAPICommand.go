@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/urfave/cli/v2"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -49,9 +50,11 @@ func GetSourceFilesInDir(sourceDir string) ([]string, error) {
 		// filter on .json files
 		if strings.ToLower(ext) != ".json" {
 			continue
+		} else {
+			//fmt.Printf("Adding %s\n", name)
+			fullPath := filepath.Join(sourceDir, entry.Name())
+			sourceFiles = append(sourceFiles, fullPath)
 		}
-		fullPath := filepath.Join(sourceDir, entry.Name())
-		sourceFiles = append(sourceFiles, fullPath)
 	}
 	return sourceFiles, nil
 }
@@ -64,8 +67,8 @@ func HandleTdd2Go(sourceDir string, outDirBase string) error {
 	}
 	fmt.Printf("Source directory: %s\n", sourceDir)
 	//fmt.Printf("Destination base directory: %s\n", outDirBase)
-	fmt.Printf("Source file           Size (KB)  ThingID                         Title                           Output                                    Progress\n")
-	fmt.Printf("--------------------  ---------  ------------------------------  ------------------------------  ----------------------------------------  ------\n")
+	fmt.Printf("Source file               Size (KB)  ThingID                     Title                           Output                                    Progress\n")
+	fmt.Printf("------------------------  ---------  --------------------------  ------------------------------  ----------------------------------------  ------\n")
 	for _, fullPath := range sourceFiles {
 		td := tdd.TD{}
 		tdJSON, err := os.ReadFile(fullPath)
@@ -73,7 +76,9 @@ func HandleTdd2Go(sourceDir string, outDirBase string) error {
 		if err == nil {
 			err = json.Unmarshal(tdJSON, &td)
 			if err != nil {
-				err = fmt.Errorf("Unmarshal error %s", err.Error())
+				err = fmt.Errorf("Unmarshal error in file '%s': %w",
+					fullPath, err)
+				slog.Error(err.Error())
 			}
 		}
 		outputStatus := "Failed"
@@ -126,7 +131,7 @@ func HandleTdd2Go(sourceDir string, outDirBase string) error {
 			fmt.Printf("%-20.20s  %9d  ERROR: %s\n",
 				sourceFile, sizeKb, err.Error())
 		} else {
-			fmt.Printf("%-20.20s  %9d  %-30.30s  %-30.30s  %-40.40s  %s\n",
+			fmt.Printf("%-24.24s  %9d  %-26.26s  %-30.30s  %-40.40s  %s\n",
 				sourceFile, sizeKb, td.ID, td.Title, outFile, outputStatus)
 		}
 	}

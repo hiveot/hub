@@ -1,6 +1,7 @@
 package login
 
 import (
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"log/slog"
 	"net/http"
@@ -20,7 +21,7 @@ func PostLogin(w http.ResponseWriter, r *http.Request) {
 	loginID := r.FormValue("loginID")
 	password := r.FormValue("password")
 	if loginID == "" && password == "" {
-		http.Redirect(w, r, "/", http.StatusBadRequest)
+		http.Redirect(w, r, src.RenderLoginPath, http.StatusBadRequest)
 		//w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -34,7 +35,7 @@ func PostLogin(w http.ResponseWriter, r *http.Request) {
 			slog.String("err", err.Error()))
 		// do not cache the login form in the browser
 		w.Header().Add("Cache-Control", "no-cache, max-age=0, must-revalidate, no-store")
-		http.Redirect(w, r, "/login?error="+err.Error(), http.StatusSeeOther)
+		http.Redirect(w, r, src.RenderLoginPath+"?error="+err.Error(), http.StatusSeeOther)
 		return
 	}
 	// TODO: session age from config
@@ -50,5 +51,5 @@ func PostLogin(w http.ResponseWriter, r *http.Request) {
 	// do not cache the password
 	w.Header().Add("Cache-Control", "no-cache, max-age=0, must-revalidate, no-store")
 	// prevent the browser from re-posting on back button or refresh (POST-Redirect-GET) pattern
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, src.RenderDashboardRootPath, http.StatusSeeOther)
 }

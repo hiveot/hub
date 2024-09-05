@@ -6,7 +6,7 @@ import (
 )
 
 // GenServiceHandler generates a function that returns a handler that unmarshal a request and invoke service
-// The signature is: GetActionHandler(service I...Service) MessageHandler
+// The signature is: New<ThingID>Handler(service I...Service) MessageHandler
 func GenServiceHandler(l *utils.SL, serviceTitle string, td *tdd.TD) {
 	// ServiceType is the type of the service implementation that handles the messages
 	//serviceType := ToTitle(td.GetID()) + "Service"

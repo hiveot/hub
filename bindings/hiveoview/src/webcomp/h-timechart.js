@@ -296,6 +296,7 @@ export class HTimechart extends HTMLElement {
     setTimeSeries = (nr,key, label, timePoints, dataUnit, stepped) => {
         const colors = ["#1e81b0", "#e28743", "#459b44", "#d1c684"]
 
+        let yaxisID = dataUnit ? dataUnit : "default"
         // construct a replacement dataset
         console.log("setTimeSeries", timePoints.length, "items", "label=",label)
         let dataset = {
@@ -306,17 +307,18 @@ export class HTimechart extends HTMLElement {
             borderColor: colors[nr],
             fill: false,
             label: label + " " + dataUnit,
-            stepped: stepped?'after':false,
+            // stepped: stepped?'after':false,
+            stepped: 'after',
             tension: stepped? 0 : 0.1,  // bezier curve tension
-            yAxisID: dataUnit
+            yAxisID: yaxisID
         }
         // Setup the y-axis scale for this dataset
         // Scales are based on the data unit. Add a scale if it doesnt exist.
-        let hasScale= this.config.options.scales[dataUnit]
+        let hasScale= this.config.options.scales[yaxisID]
         if (!hasScale) {
             // the first scale is at the left, additional scales are on the right
             let isFirstScale = (nr === 0);
-            this.config.options.scales[dataUnit] = {
+            this.config.options.scales[yaxisID] = {
                 // backgroundColor: 'green',
                 display: true,
                 position: isFirstScale ? 'left' : 'right',
@@ -326,6 +328,8 @@ export class HTimechart extends HTMLElement {
                 },
                 // the ticks have the same color as the line
                 ticks: {
+                    // stepSize: 0.01,
+                    precision: 2,   // todo: use precision from DataSchema, if available
                     color: colors[nr],
                     callback: (val, index, ticks) => {
                         return val + " " + dataUnit
@@ -337,7 +341,7 @@ export class HTimechart extends HTMLElement {
         // fixme: per dataset setting?
         // if (label) {
             this.config.options.plugins.legend.display = !this.noLegend
-            this.config.options.plugins.legend.align = 'center' // start, center, end
+            this.config.options.plugins.legend.align = 'start' // start, center, end
         // } else {
         //     this.config.options.plugins.legend.display = false
         // }

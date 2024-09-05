@@ -24,6 +24,12 @@ type DigiTwinOutboxService struct {
 	latest *DigiTwinLatestStore
 }
 
+// GetTD returns the JSON encoded TD of this service
+func (svc *DigiTwinOutboxService) GetTD() string {
+	tdDoc := digitwin.OutboxTD
+	return tdDoc
+}
+
 // HandleEvent adds an event to the outbox
 func (svc *DigiTwinOutboxService) HandleEvent(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	// events use 'raw' thingIDs, only known to agents.

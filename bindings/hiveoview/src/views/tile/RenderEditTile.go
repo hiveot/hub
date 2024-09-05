@@ -1,6 +1,7 @@
 package tile
 
 import (
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/wot/consumedthing"
@@ -9,8 +10,6 @@ import (
 )
 
 const EditTileTemplate = "RenderEditTile.gohtml"
-const RenderSelectTileSourcesPath = "/tile/{dashboardID}/{tileID}/selectSources"
-const SubmitTilePath = "/tile/{dashboardID}/{tileID}"
 
 type EditTileTemplateData struct {
 	Dashboard session.DashboardModel
@@ -83,8 +82,8 @@ func RenderEditTile(w http.ResponseWriter, r *http.Request) {
 		Dashboard:                   ctc.dashboard,
 		Tile:                        ctc.tile,
 		TileTypeLabels:              session.TileTypesLabels,
-		RenderSelectTileSourcesPath: getTilePath(RenderSelectTileSourcesPath, ctc),
-		SubmitEditTilePath:          getTilePath(SubmitTilePath, ctc),
+		RenderSelectTileSourcesPath: getTilePath(src.RenderTileSelectSourcesPath, ctc),
+		SubmitEditTilePath:          getTilePath(src.PostTileEditPath, ctc),
 		Values:                      values,
 		VM:                          vm,
 	}

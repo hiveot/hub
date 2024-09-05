@@ -1,6 +1,7 @@
 package tile
 
 import (
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -32,7 +33,7 @@ func SubmitDeleteTile(w http.ResponseWriter, r *http.Request) {
 	err = sess.SaveState()
 
 	// Notify the UI that the tile has been removed.
-	eventName := strings.ReplaceAll(DashboardUpdatedEvent, "{dashboardID}", ctc.dashboardID)
+	eventName := strings.ReplaceAll(src.DashboardUpdatedEvent, "{dashboardID}", ctc.dashboardID)
 	sess.SendSSE(eventName, "")
 
 	sess.WriteError(w, err, http.StatusOK)

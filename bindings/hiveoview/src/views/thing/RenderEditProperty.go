@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -14,7 +15,6 @@ import (
 	"net/http"
 )
 
-const SubmitPropertyPath = "/property/{thingID}/{key}"
 const RenderEditPropertyTemplate = "RenderEditProperty.gohtml"
 
 type RenderEditPropertyTemplateData struct {
@@ -91,7 +91,7 @@ func RenderEditProperty(w http.ResponseWriter, r *http.Request) {
 		data, err = getConfigValue(hc, thingID, propKey)
 	}
 	pathParams := map[string]string{"thingID": thingID, "key": propKey}
-	data.SubmitPropertyPath = utils.Substitute(SubmitPropertyPath, pathParams)
+	data.SubmitPropertyPath = utils.Substitute(src.PostThingPropertyEditPath, pathParams)
 	if err != nil {
 		slog.Error("RenderEditConfigDialog:", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)

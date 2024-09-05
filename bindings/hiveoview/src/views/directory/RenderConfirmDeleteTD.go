@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/session"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/lib/utils"
@@ -12,7 +13,6 @@ import (
 )
 
 const RenderConfirmDeleteTDTemplate = "RenderConfirmDeleteTD.gohtml"
-const SubmitDeleteTDPath = "/directory/{thingID}"
 
 type ConfirmDeleteTDTemplateData struct {
 	ThingID            string
@@ -45,7 +45,7 @@ func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 	data := ConfirmDeleteTDTemplateData{
 		ThingID:            thingID,
 		TD:                 &td,
-		SubmitDeleteTDPath: utils.Substitute(SubmitDeleteTDPath, tdParams),
+		SubmitDeleteTDPath: utils.Substitute(src.DeleteThingPath, tdParams),
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderConfirmDeleteTDTemplate, data)
 	sess.WritePage(w, buff, err)
