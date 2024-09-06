@@ -17,9 +17,11 @@
 	    {{$v := $.GetValue $k}}
 			<li>
 				<div class="h-show-sm">{{/*icon*/}}</div>
+
 				<div title="key: {{$k}}">
 					{{$v.Title}}
 				</div>
+
 				<div>
 					<span sse-swap="{{$.ThingID}}/{{$k}}"
 					      hx-swap="innerHTML"
@@ -29,7 +31,9 @@
 					</span>
             {{$v.Schema.UnitSymbol}}
 				</div>
+
 				<div class="h-show-lg">{{$v.Schema.Description}}</div>
+
 				<div class="h-show-md"
 				     sse-swap="{{$.ThingID}}/{{$k}}/updated"
 				     hx-swap="innerHTML"

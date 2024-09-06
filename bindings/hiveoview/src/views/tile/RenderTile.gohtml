@@ -9,6 +9,7 @@
 <div  hx-trigger="intersect once"
       hx-swap="outerHTML"
       hx-params="none"
+      hx-target="this"
       hx-get="{{.ReRenderTilePath}}"
 >
 	<p>reloading tile fragment...</p>
@@ -21,6 +22,7 @@
      hx-trigger="sse:{{.TileUpdatedEvent}}"
      hx-swap="outerHTML"
      hx-params="none"
+     hx-target="this"
      hx-get="{{.ReRenderTilePath}}"
      >
 	<nav  class="tile-header drag-target">

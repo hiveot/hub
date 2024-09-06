@@ -23,7 +23,7 @@
 	             title="key: {{$k}}"
 					     hx-trigger="click"
 					     hx-get="{{$.GetRenderEditPropertyPath $k}}"
-					     hx-target="#configModal" hx-swap="innerHTML"
+					     hx-target="#modalLevel1"
 						>
 							{{$v.Title}}
 						</button>
@@ -34,7 +34,7 @@
 						<button class="link" style="display:inline-flex; gap: 5px;"
 			        hx-trigger="click"
 			        hx-get="{{$.GetRenderEditPropertyPath $k}}"
-			        hx-target="#configModal" hx-swap="innerHTML"
+			        hx-target="#modalLevel1"
 						>
               {{/*replace show value on sse event, sent by ClientSession.go:onEvent */}}
 							{{/*properties and events use the same namespace*/}}
@@ -44,8 +44,11 @@
                 {{$v.Schema.UnitSymbol}}
 						</button>
 					</div>
+
 					<div class="h-show-lg">{{$v.Schema.Default}}</div>
+
 					<div class="h-show-lg">{{$v.Schema.Description}}</div>
+
 					<div class="h-show-sm"
 					     sse-swap="{{$.ThingID}}/{{$k}}/updated"
 					     hx-swap="innerHTML"
@@ -57,7 +60,6 @@
 				</li>
     {{end}}
 </ul>
-<div id="configModal"></div>
 
 <style>
 

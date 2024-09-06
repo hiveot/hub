@@ -4,8 +4,9 @@
 {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/dashboard.DashboardPageTemplateData*/ -}}
 {{if not .Dashboard}}
 <div  hx-trigger="intersect once"
-        hx-swap="outerHTML"
-        hx-get="">
+      hx-get=""
+      hx-target="#dashboardPage"
+>
     <p>reloading page fragment...</p>
     <h-loading></h-loading>
 </div>
@@ -17,7 +18,7 @@
 <main class="dashboard"
       hx-get=""
       hx-trigger="sse:{{.DashboardUpdatedEvent}}"
-      hx-swap="outerHTML"
+      hx-target="#dashboardPage"
 >
 
     {{/* Add a div to ensure filling the screen size*/}}
@@ -42,10 +43,8 @@
         </div>
     </div>
 </main>
-{{/* Place to open dialogs from the tile menu*/}}
-<div id="tileMenuDialogs"></div>
-<script>
 
+<script>
     var grid;
     startGridStack();
 
@@ -94,9 +93,7 @@
 
 </script>
 
-
 <style>
-
     .dashboard {
         width: 100%;
         height: 100%;

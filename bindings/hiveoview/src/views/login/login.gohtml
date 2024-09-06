@@ -26,12 +26,12 @@
 					<label for="password">Password</label>
 					<input id="password" name="password"
 					       type="password"
-                 {{if .error}}aria-invalid="true" {{end}}
+                 {{if .LoginError}} aria-invalid="true" {{end}}
 					       autocomplete="off" value=""
 					       placeholder="password"
 					/>
-            {{if .error}}
-							<label class="danger">{{.error}}</label>
+            {{if .LoginError}}
+							<label class="danger">{{.LoginError}}</label>
             {{end}}
 				</div>
 

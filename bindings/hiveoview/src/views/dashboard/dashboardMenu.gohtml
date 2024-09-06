@@ -12,26 +12,34 @@
 
     <ul hx-params="none"
         hx-swap="innerHTML"
-        hx-target="#dashboardMenuDialog">
+        hx-target="#modalLevel1"
+    >
 
-        <li hx-get="{{.RenderAddTilePath}}">
+        <li hx-get="{{.RenderAddTilePath}}"
+            hx-target="#modalLevel1"
+        >
             <iconify-icon icon='mdi:tab-plus'></iconify-icon>
             Add Tile
         </li>
 
         <li class="h-horizontal-divider"></li>
 
-        <li hx-get="{{.RenderEditDashboardPath}}">
+        <li hx-get="{{.RenderEditDashboardPath}}"
+            hx-target="#modalLevel1"
+        >
             <iconify-icon icon='mdi:view-dashboard-edit'></iconify-icon>
             Edit Dashboard
         </li>
 
-        <li hx-get="{{.RenderAddDashboardPath}}">
+        <li hx-get="{{.RenderAddDashboardPath}}"
+            hx-target="#modalLevel1"
+        >
             <iconify-icon icon='mdi:plus'></iconify-icon>
             Add Dashboard
         </li>
 
         <li hx-get="{{.RenderConfirmDeleteDashboardPath}}"
+            hx-target="#modalLevel1"
             hx-trigger="click"
         >
             <iconify-icon icon="mdi:delete"></iconify-icon>

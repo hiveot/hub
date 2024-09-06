@@ -30,7 +30,7 @@
 				<button title="Delete TD" slot="button" class="h-icon-button  outline"
 				        hx-trigger="click"
 				        hx-get="{{.RenderConfirmDeleteTDPath}}"
-								hx-target="#confirmDialog"
+								hx-target="#modalLevel1"
 								hx-swap="innerHTML"
 				>
 					<iconify-icon icon="mdi:trash-can-outline"></iconify-icon>
@@ -112,10 +112,7 @@
 						{{template "actionList.gohtml" .}}
 				</details>
 		</h-details-group>
-
-
 </article>
-<div id="confirmDialog"></div>
 
 
 <style>

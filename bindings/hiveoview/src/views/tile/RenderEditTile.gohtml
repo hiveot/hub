@@ -8,7 +8,8 @@
 					<h3 style="margin:0">Edit Tile</h3>
 			</header>
 			<main>
-				<form id="edit-tile-form" style="overflow:auto">
+				<form id="edit-tile-form" style="overflow:auto"
+				>
 
 					<fieldset>
 						<label title="Tile ID: {{.Tile.ID}}"
@@ -31,7 +32,7 @@
 						<label  class="h-row">Sources:
 							<button type="button" class="outline h-icon-button"
 							        title="Add Source"
-							        hx-target="#selectSourcesDialog"
+							        hx-target="#modalLevel2"
 							        hx-get="{{.RenderSelectTileSourcesPath}}"
 							        hx-swap="innerHTML"
 							>
@@ -77,17 +78,15 @@
 				        class="secondary">Cancel
 				</button>
 				<button type="submit"
-				        hx-post="{{.SubmitEditTilePath}}"
 				        hx-include="#edit-tile-form"
+				        hx-post="{{.SubmitEditTilePath}}"
 				        hx-swap="none"
 				        hx-on::after-request="onSubmitCompleted(event, this)"
-				        >Submit
+				>Submit
 				</button>
 		</footer>
 	</article>
 </h-modal>
-
-<div id="selectSourcesDialog"></div>
 
 <style>
     .tile-sources-table {

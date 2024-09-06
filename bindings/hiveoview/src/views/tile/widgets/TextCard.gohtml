@@ -19,7 +19,7 @@
 			   hx-trigger="click"
 			   hx-on::after-request="navigateTo(null,this.href)"
 			>
-          {{/* Dynamic refresh of value on sse event*/}}
+        {{/* Dynamic refresh of value on sse event*/}}
 				<span sse-swap="{{$s.ThingID}}/{{$s.Key}}"
 				      hx-swap="innerHTML"
 				      hx-target="this"
@@ -27,7 +27,7 @@
 							{{$.GetValue $s.ThingID $s.Key}}
 				</span> {{$.GetUnit $s.ThingID $s.Key}}
 
-					{{/* show age in small text at the bottom */}}
+				{{/* show age in small text at the bottom */}}
 				<span sse-swap="{{$s.ThingID}}/{{$s.Key}}/updated"
 				      hx-swap="innerHTML"
 				      hx-target="this"

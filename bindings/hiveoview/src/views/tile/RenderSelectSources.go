@@ -70,5 +70,7 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 		data.Values[thingID] = tm
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderSelectSourceTemplateFile, data)
+
+	// TODO: TBD Retarget to #modalLevel2 so the gohtml doesn't need to know
 	sess.WritePage(w, buff, err)
 }

@@ -14,11 +14,11 @@ const RenderDashboardTemplate = "RenderDashboardPage.gohtml"
 type DashboardPageTemplateData struct {
 	Dashboard session.DashboardModel
 	// navigation
-	RenderConfirmDeleteDashboardPath string
-	SubmitDashboardLayoutPath        string
-	RenderNewTilePath                string
-	RenderConfirmDeleteTilePath      string
 	DashboardUpdatedEvent            string
+	RenderConfirmDeleteDashboardPath string
+	RenderConfirmDeleteTilePath      string
+	RenderNewTilePath                string
+	SubmitDashboardLayoutPath        string
 }
 
 // GetTileTemplateData returns empty rendering data for rendering a tile.

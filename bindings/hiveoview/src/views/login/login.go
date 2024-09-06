@@ -3,6 +3,7 @@ package login
 import (
 	"github.com/hiveot/hub/bindings/hiveoview/src"
 	"github.com/hiveot/hub/bindings/hiveoview/src/views"
+	"log/slog"
 	"net/http"
 )
 
@@ -32,6 +33,9 @@ func RenderLogin(w http.ResponseWriter, r *http.Request) {
 	// apparently the cache control doesn't help for this.
 	w.Header().Add("Cache-Control", "no-cache, max-age=0, must-revalidate, no-store")
 	buff, err := views.TM.RenderFull(LoginTemplateFile, data)
+	if err != nil {
+		slog.Error("Login render error:", "err", err.Error())
+	}
 	_ = err
 	_, _ = buff.WriteTo(w)
 }
