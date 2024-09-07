@@ -18,14 +18,27 @@
 	<article style="height: 100%">
 
      {{/*	History header section with Thing title, date and nr of history values in the last 24 hours*/}}
-			<div class="h-grid-table history-header" style="grid-column-gap: 10px;  align-items: baseline">
-					<label for="histDeviceName">History of:</label>
+			<div class="h-grid-table history-header"
+			     style="grid-column-gap: 10px;  align-items: baseline">
+				<label for="histDeviceName">History of:</label>
+				<div class="h-row">
 					<input id="histDeviceName" readonly
-					       title="{{.ThingID}}/{{.Key}}"
-					       style="margin: 0; text-overflow: ellipsis; background:none;"
+					       title="thing-ID: {{.ThingID}}/{{.Key}}"
+					       style="margin: 0; text-overflow: ellipsis; background:none; width:auto"
 					       value="{{.Title}}"/>
 
-					<label for="histDate">Date:</label>
+					<a href="/thing/{{.ThingID}}/details"
+ 						  hx-get="/thing/{{.ThingID}}/details"
+			        hx-target="#detailsPage"
+			        hx-swap="innerHTML"
+			        hx-on::after-request="window.navigateTo(event,this.href)"
+					   title="Open details..."
+			        >
+						<iconify-icon icon='mdi:page-next-outline'></iconify-icon>
+					</a>
+				</div>
+
+				<label for="histDate">Date:</label>
 							<div class="h-row">
 									<input id="histDate" readonly
 									       style="margin: 0; text-overflow: ellipsis; background:none; width:auto"

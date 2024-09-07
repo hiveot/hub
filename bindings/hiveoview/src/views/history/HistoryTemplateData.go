@@ -32,6 +32,7 @@ type HistoryTemplateData struct {
 	PrevDayPath            string
 	NextDayPath            string
 	TodayPath              string
+	RenderThingDetailsPath string
 }
 
 type HistoryDataPoint struct {
@@ -135,5 +136,6 @@ func NewHistoryTemplateData(
 	hs.NextDayPath = utils.Substitute(src.RenderHistoryTimePath+nextDayTime, pathParams)
 	hs.TodayPath = utils.Substitute(src.RenderHistoryTimePath+todayTime, pathParams)
 	hs.RenderHistoryLatestRow = utils.Substitute(src.RenderHistoryLatestValueRowPath, pathParams)
+	hs.RenderThingDetailsPath = utils.Substitute(src.RenderThingDetailsPath, pathParams)
 	return &hs, err
 }

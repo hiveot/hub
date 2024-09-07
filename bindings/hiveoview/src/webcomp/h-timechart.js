@@ -7,10 +7,16 @@
  * The default graph type is line, but setting a data series can overwrite this
  *
  * properties:
- *  chart-type: line
- *  chart-title: brand title text
- *  timestamp: end time of the history
- *  duration: time window to show in seconds
+ * - chart-type: line, area, bar, scatter,
+ * - chart-title: brand title text
+ * - timestamp: end time of the history
+ * - duration: time window to show in seconds
+ *
+ * Data element property overrides:
+ * - unit: unit of measurement to include on the axis and legend
+ * - key: unique key for this dataset. Used in 'addValue'.
+ * - color: color override for this dataset
+ * - chart-type: type of chart for this dataset
  */
 
 // Note: chartjs requires import of a date library. date-fns or luxon will do
@@ -23,6 +29,11 @@ export const PropTimestamp = "timestamp"
 export const PropDuration = "duration"
 export const PropStepped = "stepped"
 export const PropNoLegend = "no-legend" // hide the legend
+
+// Default colors for the datasets
+export const DefaultColors =
+    ["rgba(41,113,148,0.8)", "rgba(175,124,32,0.6)",
+        "rgba(106,167,78,0.8)", "rgba(209,198,132,0.8)"]
 
 
 // https://www.chartjs.org/docs/latest/configuration/responsive.html
@@ -73,6 +84,7 @@ export class HTimechart extends HTMLElement {
             maintainAspectRatio: false,
             stacked:false,
             scales: {
+                // Time axis
                 x: {
                     max: "2024-07-23T15:00:00.000-07:00",
                     grid: {
@@ -86,9 +98,11 @@ export class HTimechart extends HTMLElement {
                         dash: [2],
                         tickBorderDash: 10
                     },
+                    // clip:false,
                     ticks: {
                         // maxTicksLimit: 24,
-                        source: "auto"
+                        source: "auto",
+                        stepSize:60,
                     },
                     type: 'time',
                     time: {
@@ -102,32 +116,11 @@ export class HTimechart extends HTMLElement {
                         // round: "second"
                     }
                 },
-                // y: {
-                //     grid: {
-                //         // test to highlight the row of a certain value
-                //         color: (ctx)=> {
-                //             return (ctx.tick.value === this.highlightYrow)?"green":'rgba(0,0,0,0.1)'
-                //         }
-                //     },
-                //     ticks: {
-                //         maxTicksLimit: 30,
-                //         source: "auto"
-                //     }
-                // },
-                // y1: {
-                //     // type: 'linear',
-                //     display:false,
-                //     position: 'right',
-                //     ticks: {
-                //         maxTicksLimit: 30,
-                //         source: "auto"
-                //     },
-                //     grid: {
-                //         drawOnChartArea: false, // only want the grid lines for one axis to show up
-                //     },
-                // }
             },
             plugins: {
+                datalabels: {
+
+                },
                 legend: {
                     display: false
                 },
@@ -137,6 +130,7 @@ export class HTimechart extends HTMLElement {
                 },
                 tooltip: {
                     intersect:false,
+                    mode:'index',
                 }
             }
         }
@@ -188,13 +182,15 @@ export class HTimechart extends HTMLElement {
         for (let i = 0; i < dataElList.length; i++) {
             let dataEl= dataElList[i]
             let dataPoints = JSON.parse(dataEl.innerText)
+            let dataColor = dataEl.getAttribute('color')
             let dataKey = dataEl.getAttribute('key')
             let dataTitle = dataEl.getAttribute('title')
             let dataUnit = dataEl.getAttribute('unit')
             let steppedProp = dataEl.getAttribute(PropStepped)
             let stepped = (steppedProp?.toLowerCase()==="true")
             if (dataPoints) {
-                this.setTimeSeries(i,dataKey, dataTitle, dataPoints, dataUnit, stepped)
+                this.setTimeSeries(i, dataKey, dataTitle,
+                    dataPoints, dataUnit, stepped, dataColor)
             }
         }
         this.render();
@@ -210,13 +206,19 @@ export class HTimechart extends HTMLElement {
 
 
     render = () => {
+        let chartType = this.chartType
+        // area charts are line charts with fill
+        if (chartType === 'area') {
+            chartType = 'line';
+        }
+
         if (this.chart) {
             this.chart.destroy();
             this.chart = null;
         }
         // let chartCanvas = this.getElementById('_myChart').getContext("2d");
         // let chartCanvas = shadowRoot.querySelector("[canvas]").getContext("2d");
-        this.config.type = this.chartType
+        this.config.type = chartType
         this.config.options.plugins.title = {
             display: (!!this.chartTitle),
             text:  this.chartTitle
@@ -275,6 +277,7 @@ export class HTimechart extends HTMLElement {
 
         this.config.options.scales.x.min = startTime.toISO();
         this.config.options.scales.x.max = endTime.toISO();
+        // this.config.options.scales.x.clip= false;
 
         // if there is no data then show the No-Data element
         if (ds.data.length > 0) {
@@ -293,8 +296,17 @@ export class HTimechart extends HTMLElement {
     // @param label is the label of this series
     // @param timePoints is an array of: {x:timestamp, y:value} in reverse order (newest first)
     // @param stepped to show a stepped graph (boolean)
-    setTimeSeries = (nr,key, label, timePoints, dataUnit, stepped) => {
-        const colors = ["#1e81b0", "#e28743", "#459b44", "#d1c684"]
+    // @param dataColor optional override of the default color
+    setTimeSeries = (nr,key, label, timePoints, dataUnit, stepped, dataColor) => {
+
+        // assign a color
+        if (!dataColor) {
+            if (nr < DefaultColors.length) {
+                dataColor = DefaultColors[nr]
+            } else {
+                dataColor = DefaultColors[0]
+            }
+        }
 
         let yaxisID = dataUnit ? dataUnit : "default"
         // construct a replacement dataset
@@ -304,14 +316,26 @@ export class HTimechart extends HTMLElement {
             // label: label,
             data: timePoints,
             borderWidth: 1,
-            borderColor: colors[nr],
-            fill: false,
+            borderColor: dataColor,
+            backgroundColor: dataColor,
             label: label + " " + dataUnit,
-            // stepped: stepped?'after':false,
-            stepped: 'after',
-            tension: stepped? 0 : 0.1,  // bezier curve tension
+
+            // bar chart options
+            barThickness:3,
+            // barPercentage: 0.9,
+            // grouped: false,
+
+            // line chart options
+            stepped: stepped?'after':false,
+
+            // area chart options
+            fill: (this.chartType === "area"),
+
+            // stepped: 'after',
+            // tension: stepped? 0 : 0.1,  // bezier curve tension
             yAxisID: yaxisID
         }
+
         // Setup the y-axis scale for this dataset
         // Scales are based on the data unit. Add a scale if it doesnt exist.
         let hasScale= this.config.options.scales[yaxisID]
@@ -330,7 +354,7 @@ export class HTimechart extends HTMLElement {
                 ticks: {
                     // stepSize: 0.01,
                     precision: 2,   // todo: use precision from DataSchema, if available
-                    color: colors[nr],
+                    color: dataColor,
                     callback: (val, index, ticks) => {
                         return val + " " + dataUnit
                     }

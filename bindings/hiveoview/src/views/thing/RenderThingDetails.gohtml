@@ -54,12 +54,12 @@
                value="{{$.TD.GetUpdated}}"/>
 
 				<label for="thingID">Thing ID:</label>
-				<div class="h-row">
+				<div style="display:flex">
 						<input id="thingID" readonly style="margin: 0; text-overflow: ellipsis; "
 					      value="{{.ThingID}}"/>
 
 						<!--=== button to open the raw TD in a new tab ===-->
-						<button title="view raw TD document"  class="h-icon-button outline">
+						<button title="view raw TD document"  class="h-icon-button outline h-row">
 								<a href="{{.RenderRawTDPath}}" target="_blank">
 								<iconify-icon icon="mdi:text-box-outline"></iconify-icon>
 								</a>

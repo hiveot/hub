@@ -34,12 +34,15 @@
 	</nav>
 	<main class="tile-content no-drag">
 
-    {{if eq .Tile.TileType "lineChart"}}
-      {{template "LineChart.gohtml" .}}
-    {{else if eq .Tile.TileType "barChart"}}
-      {{template "BarChart.gohtml" .}}
-    {{else if eq .Tile.TileType "areaChart"}}
-      {{template "AreaChart.gohtml" .}}
+		{{/*The TileTypes are defined in DashboardModel.go*/}}
+    {{if eq .Tile.TileType "area"}}
+      {{template "Chart.gohtml" .}}
+    {{else if eq .Tile.TileType "bar"}}
+      {{template "Chart.gohtml" .}}
+		{{else if eq .Tile.TileType "line"}}
+			{{template "Chart.gohtml" .}}
+    {{else if eq .Tile.TileType "scatter"}}
+      {{template "Chart.gohtml" .}}
     {{else if eq .Tile.TileType "image"}}
       {{template "ImageCard.gohtml" .}}
     {{else if eq .Tile.TileType "gauge"}}

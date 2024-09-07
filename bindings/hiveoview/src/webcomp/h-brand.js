@@ -17,6 +17,7 @@ template.innerHTML = `
           .h-brand {
             display: flex;
             height: 90%;
+            gap: 10px;
             flex-direction: row;
             flex-wrap: nowrap;
             align-items: center;
@@ -29,7 +30,7 @@ template.innerHTML = `
         }
         .h-brand  img {
             /*tame the SVG icons size*/
-            height: 46px;
+            height: 36px;
         }
         :host {
         /* applies to shadow root (container of this component) itself*/

@@ -45,7 +45,7 @@ func RenderAppHead(w http.ResponseWriter, r *http.Request) {
 
 	data := AppHeadTemplateData{
 		Ready:               true,
-		Logo:                "/static/logo.svg",
+		Logo:                "/static/hiveot.svg",
 		Title:               "HiveOT",
 		Status:              GetConnectStatus(r),
 		AppHeadDashboards:   []AppHeadDashboardData{},

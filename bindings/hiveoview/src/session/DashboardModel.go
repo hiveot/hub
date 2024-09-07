@@ -5,22 +5,27 @@ import (
 )
 
 // Tile types as used in rendering templates
+// The chart types must match the types in h-timechart.js
 const (
-	TileTypeText      = "text" // table with multiple sources
-	TileTypeAreaChart = "areaChart"
-	TileTypeBarChart  = "barChart"
-	TileTypeLineChart = "lineChart"
-	TileTypeImage     = "image"
-	TileTypeGauge     = "gauge"
+	TileTypeText         = "text" // table with multiple sources
+	TileTypeAreaChart    = "area"
+	TileTypeBarChart     = "bar"
+	TileTypeLineChart    = "line"
+	TileTypeScatterChart = "scatter"
+	TileTypeImage        = "image"
+	TileTypeGauge        = "gauge"
 )
 
 var TileTypesLabels = map[string]string{
-	TileTypeAreaChart: "Area Chart",
-	TileTypeBarChart:  "Bar Chart",
-	TileTypeImage:     "Image",
-	TileTypeLineChart: "Line Chart",
-	TileTypeText:      "Text",
-	TileTypeGauge:     "Gauge",
+	TileTypeText: "Text",
+	// charts
+	TileTypeLineChart:    "Line Chart",
+	TileTypeAreaChart:    "Area Chart",
+	TileTypeBarChart:     "Bar Chart",
+	TileTypeScatterChart: "Scatter Chart",
+	// other
+	TileTypeImage: "Image",
+	TileTypeGauge: "Gauge",
 }
 
 // TileSource identifies the thing property/event to display

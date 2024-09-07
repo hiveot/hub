@@ -25,7 +25,7 @@
 				      hx-target="this"
 				>
 							{{$.GetValue $s.ThingID $s.Key}}
-				</span> {{$.GetUnit $s.ThingID $s.Key}}
+				</span> &nbsp; {{$.GetUnit $s.ThingID $s.Key}}
 
 				{{/* show age in small text at the bottom */}}
 				<span sse-swap="{{$s.ThingID}}/{{$s.Key}}/updated"
@@ -50,7 +50,15 @@
 				<tr style="display:contents;">
 
 					<td style="color:gray">
-						{{.Title}}
+						<a href="/thing/{{.ThingID}}/details"
+						   hx-get="/thing/{{.ThingID}}/details"
+						   hx-target="#detailsPage"
+						   hx-swap="innerHTML"
+						   hx-on::after-request="window.navigateTo(event,this.href)"
+						   title="Open details..."
+						>
+								{{.Title}}
+						</a>
 					</td>
 
 					<td style="text-wrap:nowrap">
@@ -65,8 +73,9 @@
 						>
 							<span sse-swap="{{.ThingID}}/{{.Key}}"
 									hx-swap="innerHTML"
-									hx-target="this">{{$.GetValue .ThingID .Key}}
-							</span> {{$.GetUnit .ThingID .Key}}
+									hx-target="this"> {{$.GetValue .ThingID .Key}}
+							</span>
+							&nbsp; {{$.GetUnit .ThingID .Key}}
 						</a>
 					</td>
 

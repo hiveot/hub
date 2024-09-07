@@ -32,6 +32,7 @@
     --pico-header-background-color: #dce9f2;
     --pico-form-element-active-background-color: #f8f8f8;
     --pico-background-color: #eff1f0;
+    --pico-table-border-color: #bfcae1;
 
     --pico-card-border: 1px solid var(--pico-table-border-color);
     --pico-card-border-color: green;
@@ -41,6 +42,8 @@
 :root[data-theme=dark] {
     --pico-header-background-color: #151722;
     --pico-border-color: gray;
+    --pico-table-border-color: #3d415a;
+
     --pico-card-border: 1px solid var(--pico-table-border-color);
     --pico-card-border-color: var(--pico-table-border-color);
     --pico-card-border-radius: 8px;
