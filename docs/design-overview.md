@@ -136,6 +136,39 @@ Use of this client is optional as consumers can use the TD forms to decide the p
 
 For convenience, client libraries are provided in Golang, Javascript and Python. (in development)
 
+### ConsumedThing
+
+Consumers can use the ConsumedThing output to read properties and events, and send action requests.
+
+A problem is that the WoT specification does not describe how to link writing properties or requesting actions to the events that signal the result of these requests. This is required to track the progress of actions and to display the last result of an action. Below is the HiveOT implementation of action tracking.
+
+WoT specifies an optional action output schema. How is this output delivered? using SSE/WS/MQTT definition in the Forms section? As the output isn't standardized how to generalize tracking of request progress? Also, seems more aimed and return result values rather than tracking progress. 
+
+Some options to consider:
+1. Define a 'delivery' event with the same message ID as the action or property change request. 
+   - pro: can track continuous updates of a request (opening/closing valves, blinds etc)
+   - pro: can cancel actions using the messageID (or is this a separate action?) 
+   - con: WoT doesn't specify how to include message IDs in actions and events. This needs support for a 'message envelope'.
+2. Link events by their key to that of corresponding action or property key.  
+   - pro: use existing data types
+   - con: can't link event instance to action instance (no messageID)
+   - con: define events for every single property/action???
+
+Question: Is the use of a message envelope with messageID a good way to track progress?
+There are two issues here: tracking of request delivery and tracking of request processing and result. Tracking delivery is a transport problem. Can they be combined?
+
+- Are message envelopes always available on all transports? 
+  - Not without a specification that requires it.
+
+Proposal:
+1. Define message envelopes in the TD using Forms. This requires some 'creative' specifications.
+  - All responses contain a messageID
+2. A message envelope can be defined top-level in the TD. no need to specify this for each interaction affordance.
+3. In HiveOT InteractionAffordances don't use forms (they are empty). Instead, top level specified messages are used for subscribing to events, writing properties and requesting actions. 
+4. Standardize a 'delivery' event containing delivery progress and possible output value as per schema defined in the property/action affordance, linked to the request by the messageID. 
+
+Write up a proper proposal for this and publish on the forum. Just to see what other ideas are out there.
+
 # Security
 
 Security is a first-class multi-layered feature of HiveOT.  

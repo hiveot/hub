@@ -59,7 +59,7 @@ func (dt *ThingDetailsTemplateData) GetSenderID(key string) string {
 	if !found {
 		return ""
 	}
-	return io.GetSenderID()
+	return io.SenderID
 }
 
 // GetUpdated returns the timestamp the value was last updated
@@ -68,7 +68,7 @@ func (dt *ThingDetailsTemplateData) GetUpdated(key string) string {
 	if !found {
 		return ""
 	}
-	return io.GetUpdated()
+	return io.Updated
 }
 
 // GetValue returns the interaction output of the last value of event or property
@@ -177,11 +177,16 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 		return strings.ToLower(act1.Title) < strings.ToLower(act2.Title)
 	})
 
-	// get the latest event/property values from the outbox
+	// get the latest event/property/action values
 	//propMap, err2 := vm.GetLatest(thingID)
 	//err = err2
-	propMap := thingData.CT.ReadAllProperties()
-	thingData.Values = propMap
+	valueMap := thingData.CT.ReadAllProperties()
+	eventValues := thingData.CT.ReadAllEvents()
+	for k, v := range eventValues {
+		valueMap[k] = v
+	}
+	thingData.Values = valueMap
+
 	thingData.DeviceType = td.AtType
 
 	// get the value of a make & model properties, if they exist
@@ -193,20 +198,20 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	//if makeValue != nil {
 	//	thingData.MakeModel = makeValue.DataAsText() + ", "
 	//}
-	makeValue, found := propMap[makeID]
+	makeValue, found := valueMap[makeID]
 	if found {
-		thingData.MakeModel = makeValue.ToString() + ", "
+		thingData.MakeModel = makeValue.Value.Text() + ", "
 	}
-	modelValue, found := propMap[modelID]
+	modelValue, found := valueMap[modelID]
 	if found {
-		thingData.MakeModel = thingData.MakeModel + modelValue.ToString()
+		thingData.MakeModel = thingData.MakeModel + modelValue.Value.Text()
 	}
 	// use name from configuration if available. Fall back to title.
 	//thingData.ThingName = thingData.Values.ToString(vocab.PropDeviceTitle)
 	propID, _ := td.GetPropertyOfType(vocab.PropDeviceTitle)
-	deviceTitleValue, found := propMap[propID]
+	deviceTitleValue, found := valueMap[propID]
 	if found {
-		thingData.ThingName = deviceTitleValue.ToString()
+		thingData.ThingName = deviceTitleValue.Value.Text()
 	}
 	if thingData.ThingName == "" {
 		thingData.ThingName = td.Title

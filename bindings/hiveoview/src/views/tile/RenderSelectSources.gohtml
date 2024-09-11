@@ -58,6 +58,35 @@
 										</li>
                     {{end}}
 	            </ul>
+
+								<!--=== for ActionAffordance in .TD ===-->
+								<ul class="h-grid-table select-thing-events" striped border>
+                    {{/* Header*/}}
+									<li>
+										<div>Action Name</div>
+										<div>Value</div>
+										<div class="h-show-md">Updated</div>
+									</li>
+                    {{range $k,$v := .Actions}}
+                        {{- /*gotype: github.com/hiveot/hub/wot/tdd.EventAffordance*/ -}}
+												<li>
+                            {{/*Get the html of the source to add to the list of sources*/}}
+													<div>
+														<a href="#"
+														   hx-swap="beforeend scroll:bottom"
+														   hx-trigger="click"
+														   hx-target="#edit-tile-sources"
+														   hx-get="/tile/{{$thing.ID}}/{{$k}}/sourceRow"
+														>
+                                {{.Title}}
+														</a>
+													</div>
+													<div>{{$data.GetValue $thing.ID $k}} {{if $v.Input}}{{$v.Input.UnitSymbol}}{{end}}</div>
+													<div>{{$data.GetUpdated $thing.ID $k}}</div>
+												</li>
+                    {{end}}
+								</ul>
+
 							</details>
 	            </li>
             {{/* end if .Events*/}}

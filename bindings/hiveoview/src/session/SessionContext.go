@@ -12,7 +12,7 @@ import (
 
 const SessionContextID = "session"
 
-// AddSessionToContext middleware adds a UISession object to the request context.
+// AddSessionToContext middleware adds a WebClientSession object to the request context.
 //
 // If no valid session is found and no cookie with auth token is present
 // then SessionLogout is invoked.
@@ -71,12 +71,12 @@ func AddSessionToContext() func(next http.Handler) http.Handler {
 // This returns an error if the session is not found or is not active.
 // Intended for use by http handlers.
 // Note: This should not be used in an SSE session.
-func GetSessionFromContext(r *http.Request) (*UISession, hubclient.IHubClient, error) {
+func GetSessionFromContext(r *http.Request) (*WebClientSession, hubclient.IHubClient, error) {
 	ctxSession := r.Context().Value(SessionContextID)
 	if ctxSession == nil {
 		return nil, nil, errors.New("no session in context")
 	}
-	session := ctxSession.(*UISession)
+	session := ctxSession.(*WebClientSession)
 	if !session.IsActive() {
 		return nil, nil, errors.New("session is not active")
 	}

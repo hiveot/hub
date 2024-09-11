@@ -110,18 +110,12 @@ func NewHistoryTemplateData(
 		Values:         nil,
 		ItemsRemaining: false,
 	}
-	evAff := td.GetEvent(key)
-	if evAff != nil {
-		hs.DataSchema = evAff.Data
-		hs.Title = td.Title + ", " + evAff.Title
-		hs.DataSchema.Title = evAff.Title
-	} else {
-		propAff := td.GetProperty(key)
-		if propAff != nil {
-			hs.DataSchema = propAff.DataSchema
-			hs.Title = td.Title + ", " + propAff.Title
-			hs.DataSchema.Title = propAff.Title
-		}
+	// Get the current schema for the value to show
+	iout, _ := ct.GetValue(key)
+	if iout != nil {
+		hs.DataSchema = iout.Schema
+		hs.Title = iout.Title + " of " + td.Title
+		hs.DataSchema.Title = hs.Title
 	}
 
 	// TODO: (if needed) if items remaining, get the rest in an additional call

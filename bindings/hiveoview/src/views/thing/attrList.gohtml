@@ -27,7 +27,7 @@
 					      hx-swap="innerHTML"
 					      hx-target="this"
 					>
-              {{$v.ToString}}
+              {{$v.Value.Text}}
 					</span>
             {{$v.Schema.UnitSymbol}}
 				</div>
@@ -38,7 +38,7 @@
 				     sse-swap="{{$.ThingID}}/{{$k}}/updated"
 				     hx-swap="innerHTML"
 				     hx-target="this"
-				     title="Updated: {{$v.GetUpdated}}  by {{($v.GetSenderID)}}">
+				     title="Updated: {{$v.GetUpdated}}  by {{($v.SenderID)}}">
             {{$v.GetUpdated}}</div>
 			</li>
     {{end}}

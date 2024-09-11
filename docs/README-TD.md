@@ -20,7 +20,6 @@ HiveOT makes the following distinction based on the primary role of the device. 
 * A gateway is a device that provides access to other Things. A Z-Wave controller USB-stick is a gateway that uses the Z-Wave protocol to connect to Z-Wave devices. A gateway is a Thing independent of the Things it provides access to and can have its own inputs, outputs or configuration.
 * An agent is a service that communicates with the Hub to publishes Thing information and receive action requests. An agent has authorization to publish and subscribe to the things it is the publisher of. For example, the Z-Wave agent publishes Thing information of the Z-Wave controller and the devices obtained from that controller.
 * An I/O device is a Thing whose primary role is to provide access to inputs and outputs and has its own attributes and configuration.
-* A Hub bridge is a software device that connects two Hubs and shares select Thing information between them.
 * A service is a software Thing that offers a capability in the IoT ecosystem. For example, a history service provides a history of Thing values.
 
 ## Thing Description Document (TD)
@@ -31,26 +30,26 @@ The Thing Description document is a [W3C WoT standard](https://www.w3.org/TR/wot
 
 The TD documents contains a set of attributes to describe a Thing. The attributes used in HiveOT are:
 
-| name              | description                                                 |
-|-------------------|-------------------------------------------------------------|
-| @context          | "http://www.w3.org/ns/td"                                   |
-| @type             | Thing device type as per vocabulary                         |
-| id                | Unique Thing ID, option in WoT but required in HiveOT       |
-| title             | Human readable description of the Thing (mandatory)         |
-| modified          | ISO8601 date this document was last updated                 |
-| properties        | Map of thing attributes, state and configuration            |
-| version           | Thing version as a map of {'instance':version}              |
-| actions           | Map of action objects supported by the Thing                |
-| events            | Map of event objects as submitted by the Thing              |
-| schemaDefinitions | data schema for use in multiple actions or events           |
-| Forms             | Thing operations that are not properties, events or actions |
-| Security          | Names of security definitions                               |
-|SecurityDefinitions| Security definitions for authenticationwith the hub         |
+| name              | description                                           |
+|-------------------|-------------------------------------------------------|
+| @context          | "http://www.w3.org/ns/td"                             |
+| @type             | Thing device type as per vocabulary                   |
+| id                | Unique Thing ID, option in WoT but required in HiveOT |
+| title             | Human readable description of the Thing (mandatory)   |
+| modified          | ISO8601 date this document was last updated           |
+| properties        | Map of thing attributes, state and configuration      |
+| version           | Thing version as a map of {'instance':version}        |
+| actions           | Map of action objects supported by the Thing          |
+| events            | Map of event objects as submitted by the Thing        |
+| schemaDefinitions | data schema for use in multiple actions or events     |
+| Forms             | Definition on how to perform operations on Things     |
+| Security          | Names of security definitions                         |
+|SecurityDefinitions| Security definitions for authenticationwith the hub   |
 
-note: Consumers do not connect directly to the IoT device. Communication protocols, authentication & authorization is handled by the Hub services. As a result, forms and security definitions in the TD apply to access of the Hub.
+note: HiveOT consumers do not connect directly to the IoT device. Communication protocols, authentication & authorization is handled by the Hub runtime. As a result, forms and security definitions in the TD describe how to access the Hub.
 
 * HiveOT compatible IoT devices can simply use the 'nosec' security type when creating their TD and use a NoSecurityScheme as securityDefinition. The hub will modify this section.
-* Consumers, which access devices via 'Consumed Things' (a remote instance of the thing with properties and values), only need to know how connect to the Hub service. No knowledge of the IoT device protocol is needed.
+* Consumers, which access devices via 'Consumed Things' (a remote instance of the thing with properties and values), only need to know how connect to the Hub service. No knowledge of the IoT device protocol is needed. The TD Form sections are modified to interact with a Thing's digital twin that resides on the Hub.
 
 ### @context - mandatory
 
@@ -179,13 +178,15 @@ Notes:
 
 ## Events
 
-Where properties contain the last known state value of a Thing, events are used to notify of changes to the state.
+Where properties contain the last known state value of a Thing, events are used to notify of changes to the state of a Thing, including properties and actions.
 
-Events are primarily defined for values that relate to the purpose of the device or service. For example, a multi-sensor device has events for each of the sensor values, but not for the individual attributes or configuration properties. Additional events can be defined for values that are critical to operations, for example a low battery event.
+Events are defined in the Events section of the TD along with a schema definition of the event content.
 
-> Note: A separate '$properties' event is sent periodically containing a map of all properties that have changed. The delay between a change and sending an update should not exceed 1 minute.
+Events are also sent to notify of changes to properties and output of actions. In this case event name (key) is that of the event or action. The action and property affordances in the TD implicitly define the events that notify of changes to properties and progress and output of actions. No event affordances should be defined for properties and actions as this would only duplicate the dataschema of properties and action outputs.
 
-The TD events affordance section defines the attributes used to describe events. This is similar to how properties are defined.
+> Note: In HiveOT an '$properties' event is sent periodically containing a map of values of properties that have changed. The delay between a change and sending an update should not exceed 1 minute. This should be treated as multiple individual events.
+
+The TD events affordance section defines the attributes used to describe events. This is similar to how properties are defined and action outputs are defined.
 
 TD Events map:
 ```
@@ -246,7 +247,7 @@ Actions are used to control inputs and change the value of configuration propert
 The format of actions is defined in the Thing Description document
 through [action affordances](https://www.w3.org/TR/wot-thing-description/#actionaffordance).
 
-Similar to events, the action key is the instance name of the action. This can match the action's @type classification from the vocabulary or be the name of the function from the underlying device. In case the device supports identical actions on multiple endpoints, like a multi-button switch, the action keys must be unique for each instance.
+The action key is the instance name of the action. In case the device supports identical actions on multiple endpoints, like a multi-button switch, the action keys must be unique for each instance.
 
 ```
 {
@@ -284,6 +285,10 @@ For example, the schema of an action to control an onoff switch might be defined
       "input": {
         "type": "boolean",
         "title": "turn the switch on or off"
+      },
+      "output": {
+        "type": "boolean",
+        "title": "new state of the switch"
       }
     }
   }
@@ -299,14 +304,18 @@ The action message to turn the switch on then looks like this:
 }
 ```
 
+In HiveOT actions result in events with the action name (key) and a payload described in the action output dataschema. These events are not defined in the events section of the TD but in the action affordance.
+
+
 ### The 'properties' Message
 
-Similar to events and actions, HiveOT standardizes a "properties" message. To change a configuration value, a properties message can be submitted to a dThing containing the property new value. When defining the 'hiveot' @context in the TD, no additional action affordance is needed to write properties. (TODO describe how to do this)
+Similar to events and actions, HiveOT standardizes a "properties" message. To change a configuration value, a properties request can be submitted to a digital twin Thing containing the property new value. The method is defined in the form 'writeproperty' operation.
 
-For example, when the Thing configuration property called "alarmThreshold" changes, the 'properties' message key is alarmThreshold with the new value as json encoded payload:
+For example, when the Thing configuration property called "alarmThreshold" changes, the form operation is writeproperty that contains the protocol specific method of writing a property.the payload contains the new value as described in the property affordance dataschema:
 
 ```json
-publish: dThingID/alarmThreshold
+mqtt pub: dThingID/alarmThreshold, or
+http post: "https://hostname:port/writeproperty/dThingID/alarmThreshold"
 {
   25
 }
@@ -316,13 +325,16 @@ publish: dThingID/alarmThreshold
 
 ### How to handle events, actions and properties with the same name?
 
-Sometimes the same property ID applies to an event and action. How should the agent create the TD to handle this?
+In HiveOT, action output and property changes result in an event with the action or property name. This is not part of the WoT standard but the way HiveOT notifies of these changes. These events are not described in the events section of the TD but in the action affordance and property affordances.
 
-For example, the onoff switch for controlling a light has a property with the current state, an event when the state changes and an action to request setting the new state. Perhaps even a writable property for controlling the state through configuration.
+A property affordance with the same name (key) as an action affordance represents the current output state of that action. Its dataschema is typically identical to the dataschema of the action output, if defined. 
 
-This can work seamlessly without conflict. A property, event and action affordance is defined all with the same ID, each in their respective map in the TD document. When an action request is received, the action affordance is used for constructing and validating the request. After the request is accepted and the device changes state, the corresponding property is updated and an event with the ID is published. If both a property and an event exist with the same name then two events are sent, one with the event ID and the second being the 'properties' event. Not that the properties event can be delayed to gather multiple successive changes.
+If an action affordance does not contain an output dataschema, and a property affordance with the same name is defined, then the property affordance is considered to be the output schema, and action events will be sent using the property affordance dataschema.
 
-The main criteria is that the ID used in the property, event, and action map refers to the same internal state of the device. If they differ then a different ID should be used.
+
+For example, an on/off switch for controlling a light is defined in its TD as a property with the current state, and an action to request setting the new state. No event needs to be defined as the action or property affordance are the implied event definition.
+
+The main criteria is that the name used in the property, event, and action map refers to the same internal state of the device. If they differ then a different ID should be used.
 
 For example, a media player has a property of @type 'ht:prop:media:muted'. This can be used directly as a property ID. When the device internal muted state changes to true, an event with the id 'ht:prop:media:muted' is published. However, the action to mute the player would use a different ID: "ht:action:media:mute", since the action is only a request and does not represent the state of the device. If accepted the event will confirm the request.
 
@@ -330,9 +342,9 @@ For example, a media player has a property of @type 'ht:prop:media:muted'. This 
 
 TODO: update this with the DeliveryStatus response message.
 
-Handling action requests is complicated due to the multiple intermediaries that are involved, the delayed handling due to communication delays, and the ability for some devices to sleep to conserve power. The request can be delayed or aborted at any step along the way.
+Tracking action progress is complicated due to the multiple intermediaries that are involved, the delayed handling due to communication delays, and the ability for some devices to sleep to conserve power. The request can be delayed or aborted at any step along the way.
 
-TODO: The following is a proposal on handling action lifecycles.
+The following is a proposal on handling action lifecycles.
 
 Many action requests are time sensitive. For example, a request to turn on a light might is likely not applicable an hour later. This could lead to 'ghost' actions. Ghost actions are actions that are 'lost in time' and are applied when they no longer should be.
 
@@ -344,23 +356,23 @@ The lifecycle states of an action are:
 1. requested - the request is sent but not yet acknowledged by the agent. This state is only known on the sending client.
 2. pending - the request is accepted by the agent. The agent responds with this status immediately, even if the underlying device is not reachable.
 3. accepted - the underlying device has accepted the request but not yet confirmed that it was applied. The agent can reply with this status immediately or it can be sent as a lifecycle event.
-4. success - the agent has received confirmation that the action has been applied. This is the endpoint of the request lifecycle. The agent can reply with this status immediate or it can be sent as a lifecycle event.
+4. completed - the agent has received confirmation that the action has been applied. This is the endpoint of the request lifecycle. The agent can reply with this status immediate or it can be sent as a lifecycle event.
 
 When things don't go to plan:
 5. aborted - the request is aborted by the user or agent, or has expired.
 
-Agents can immediately respond with the status pending, accepted, success or aborted. The status success and aborted indicate the end of the request lifecycle.
+Agents can immediately respond with the status pending, accepted, completed or aborted. The status completed and aborted indicate the end of the request lifecycle.
 
 When the agent responds with pending or accepted, it must include a request ID that can be used to abort a request, if supported, and to correlate them with action lifecycle events.
 
-While intermediate lifecycle events (pending or accepted) are optional, a completion event - success or aborted - MUST be sent by the agent when ending the action request lifecycle.
+While intermediate lifecycle events (pending or accepted) are optional, a completion event - completed or aborted - MUST be sent by the agent when ending the action request lifecycle.
 
-Action lifecycle events are events with the eventID lifecycle (see vocabulary) and a payload containing the action ID and the new status.
+Action lifecycle events are events with the eventID lifecycle (see vocabulary) and a payload containing the message ID and the new status.
 
 ```json
 {
-  "actionID": "...",
-  "status": "accepted|success|aborted",
+  "messageID": "...",
+  "status": "accepted|completed|aborted",
   "data": {}
 }
 ```
@@ -371,9 +383,9 @@ Where 'data' is optional response data to the action as defined in the TD action
 
 WoT's DataSchema (which is the base for properties, events and actions) includes an 'enum' field that is defined as an array of any type. It is intended to contain a restricted set of values.
 
-Unfortunately, while WoT's DataSchema does define an 'enum' value array for a property/event/action, it does not provide a way to define the title and description for these values. So how to present these enum values?
+Unfortunately, while WoT's DataSchema does define an 'enum' value array for a property/event/action, it does not provide a way to define the title and description for these values. So how to present these enum values to the consumer?
 
-This is has been discussed in the WoT group [here](https://github.com/w3c/wot-thing-description/issues/997#issuecomment-1865902885) where the proposed solution is the use 'oneOf', or to add an 'enumMap' attribute.
+This has been discussed in the WoT group [here](https://github.com/w3c/wot-thing-description/issues/997#issuecomment-1865902885) where the proposed solution is the use 'oneOf', or to add an 'enumMap' attribute.
 
 HiveOT chooses to use oneOf with an array of DataSchema to support enums with DataSchema annotations. The 'const' field defines the value while 'title' provides a human description. The use of '@type' is possible in case of a value from another vocabulary.
 
@@ -390,7 +402,7 @@ The WoT specification for a [Form](https://www.w3.org/TR/wot-thing-description11
 can be viewed as a statement of "To perform an operation type operation on form context, make a
 request method request to submission target" where the optional form fields may further describe the required request."
 
-HiveOT ignores forms, although support might be added in the future for allowing control via different protocol bindings. Agents can define form items but as they are not allowed to be servers they cannot provide direct endpoints.
+HiveOT only uses forms at the Thing level for operations to read/write properties and subscribe to events. Agents can define form items but as they are not allowed to be servers they cannot provide direct endpoints.
 
 ### SecuritySchema 'scheme' (1)
 

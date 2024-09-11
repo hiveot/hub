@@ -42,6 +42,8 @@ func (data RenderSelectSourcesTemplateData) GetValue(thingID string, key string)
 }
 
 // RenderSelectSources renders the selection of Tile sources for adding to a tile
+// A source is either an event or action.
+// TODO: split into properties, events and actions
 func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 
 	sess, _, err := session.GetSessionFromContext(r)

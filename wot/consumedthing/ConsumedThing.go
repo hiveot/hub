@@ -13,8 +13,6 @@ import (
 	"time"
 )
 
-type InteractionInput any //interface {}
-
 // PropertyReadMap maps property keys to their InteractionOutput object that
 // represents the property value.
 // Intended for reading properties.
@@ -57,7 +55,7 @@ type ConsumedThing struct {
 func (ct *ConsumedThing) buildInteractionOutputMap(tmm hubclient.ThingMessageMap) map[string]*InteractionOutput {
 	outMap := make(map[string]*InteractionOutput)
 	for key, tm := range tmm {
-		iout := NewInteractionOutput(tm, ct.td)
+		iout := NewInteractionOutputFromTM(tm, ct.td)
 		outMap[key] = iout
 	}
 	return outMap
@@ -65,11 +63,13 @@ func (ct *ConsumedThing) buildInteractionOutputMap(tmm hubclient.ThingMessageMap
 
 // Create an interactionOutput for the given thing message
 func (ct *ConsumedThing) buildInteractionOutput(tm *hubclient.ThingMessage) *InteractionOutput {
-	iout := NewInteractionOutput(tm, ct.td)
+	iout := NewInteractionOutputFromTM(tm, ct.td)
 	return iout
 }
 
-// GetValue returns the interaction output of the latest value of an event or property
+// GetValue returns the interaction output of the latest value of an event, property or
+// action output.
+//
 // This returns an empty interactionoutput if not found
 func (ct *ConsumedThing) GetValue(key string) (*InteractionOutput, bool) {
 	tm, found := ct.eventValues[key]
@@ -83,6 +83,7 @@ func (ct *ConsumedThing) GetValue(key string) (*InteractionOutput, bool) {
 		} // dummy
 		slog.Warn("Value not (yet) found for key ", "key", key, "thingID", ct.td.ID)
 	}
+	// add the dataschema for the value
 	iout := ct.buildInteractionOutput(tm)
 	return iout, found
 }
@@ -103,7 +104,7 @@ func (ct *ConsumedThing) InvokeAction(
 		vocab.MessageTypeAction, ct.td.ID, key, params, ct.hc.ClientID())
 
 	stat := ct.hc.PubAction(ct.td.ID, key, params)
-	o := NewInteractionOutput(tm, ct.td)
+	o := NewInteractionOutputFromTM(tm, ct.td)
 	o.Progress = stat
 	return o
 }
@@ -180,8 +181,8 @@ func (ct *ConsumedThing) OnPropertyUpdate(msg *hubclient.ThingMessage) {
 
 // ReadEvent returns the last known Thing event value
 // Call ReadAllEvents to refresh the values.
-func (ct *ConsumedThing) ReadEvent(key string) *InteractionOutput {
-	tm := ct.eventValues.Get(key)
+func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
+	tm := ct.eventValues.Get(name)
 	if tm == nil {
 		return nil
 	}
@@ -215,7 +216,7 @@ func (ct *ConsumedThing) ReadProperty(key string) *InteractionOutput {
 	return o
 }
 
-// ReadAllEvents reads all Thing event values.
+// ReadAllEvents reads all Thing event and action values.
 func (ct *ConsumedThing) ReadAllEvents() map[string]*InteractionOutput {
 	tmsJson, err := digitwin.OutboxReadLatest(
 		ct.hc, nil, vocab.MessageTypeEvent, "", ct.td.ID)
@@ -229,7 +230,8 @@ func (ct *ConsumedThing) ReadAllEvents() map[string]*InteractionOutput {
 	return ct.buildInteractionOutputMap(ct.eventValues)
 }
 
-// ReadAllProperties reads all Thing property values.
+// ReadAllProperties reads all Thing property values and returns them in a
+// map of InteractionOutputs.
 func (ct *ConsumedThing) ReadAllProperties() map[string]*InteractionOutput {
 	tmsJson, err := digitwin.OutboxReadLatest(
 		ct.hc, nil, vocab.MessageTypeProperty, "", ct.td.ID)

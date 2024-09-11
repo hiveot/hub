@@ -20,7 +20,7 @@ import (
 //  2. publish a login event on the message bus
 type SessionManager struct {
 	// existing sessions by sessionID (remoteAddr)
-	sessions map[string]*UISession
+	sessions map[string]*WebClientSession
 	// mutex to access the sessions
 	mux sync.RWMutex
 	// signing key for creating and verifying cookies
@@ -44,8 +44,8 @@ type SessionManager struct {
 //
 // This returns the new session instance or nil with an error if a session could not be created.
 func (sm *SessionManager) ActivateNewSession(
-	w http.ResponseWriter, r *http.Request, hc hubclient.IHubClient, authToken string) (*UISession, error) {
-	var cs *UISession
+	w http.ResponseWriter, r *http.Request, hc hubclient.IHubClient, authToken string) (*WebClientSession, error) {
+	var cs *WebClientSession
 	var sessionID string
 
 	slog.Info("ActivateNewSession", slog.String("clientID", hc.ClientID()))
@@ -134,7 +134,7 @@ func (sm *SessionManager) ConnectWithToken(loginID string, authToken string) (hu
 
 // GetSession returns the client session if available
 // An error is returned if the sessionID is not an existing session
-func (sm *SessionManager) GetSession(sessionID string) (*UISession, error) {
+func (sm *SessionManager) GetSession(sessionID string) (*WebClientSession, error) {
 	sm.mux.RLock()
 	defer sm.mux.RUnlock()
 
@@ -154,8 +154,8 @@ func (sm *SessionManager) GetSession(sessionID string) (*UISession, error) {
 //
 // If no session exists but a cookie is found then return the cookie claims.
 // If no valid cookie is found then return an error
-func (sm *SessionManager) GetSessionFromCookie(r *http.Request) (*UISession, *SessionClaims, error) {
-	var cs *UISession
+func (sm *SessionManager) GetSessionFromCookie(r *http.Request) (*WebClientSession, *SessionClaims, error) {
+	var cs *WebClientSession
 	claims, err := GetSessionCookie(r, &sm.signingKey.PublicKey)
 	if err != nil {
 		return nil, nil, err
@@ -183,7 +183,7 @@ func (sm *SessionManager) Init(
 // Init must be called before use.
 var sessionmanager = func() *SessionManager {
 	sm := &SessionManager{
-		sessions: make(map[string]*UISession),
+		sessions: make(map[string]*WebClientSession),
 	}
 	return sm
 }()

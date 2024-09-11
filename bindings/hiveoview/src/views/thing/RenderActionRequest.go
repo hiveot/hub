@@ -11,6 +11,7 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/consumedthing"
 	"github.com/hiveot/hub/wot/tdd"
 	"net/http"
 	"time"
@@ -22,23 +23,27 @@ const RenderActionRequestTemplate = "RenderActionRequest.gohtml"
 type ActionRequestTemplateData struct {
 	// The thing the action belongs to
 	ThingID string
-	TD      *tdd.TD
 	// key of action
 	Key string
-	// the action being viewed in case of an action
+
+	// the thing instance used to apply the action
+	CT *consumedthing.ConsumedThing
+
+	// Affordance of the action to issue containing the input dataschema
 	Action *tdd.ActionAffordance
-	Input  *SchemaValue
-	Output *SchemaValue
-	// the message with the action
-	Msg hubclient.ThingMessage
-	// current delivery status
-	Status hubclient.DeliveryStatus
-	// Previous input value
-	PrevValue *digitwin.InboxRecord
-	// timestamp the action was last performed
-	LastUpdated string
-	// duration the action was last performed
-	LastUpdatedAge string
+
+	// current state of the action
+	// This uses the last received value related to this action.
+	CurrentValue *consumedthing.InteractionOutput
+
+	// the previous action request record
+	LastActionRecord digitwin.InboxRecord
+	// previous action input (if any)
+	LastActionInput consumedthing.DataSchemaValue
+	// previous action timestamp (formatted)
+	LastActionTime string
+	// previous action age (formatted)
+	LastActionAge string
 
 	//
 	SubmitActionRequestPath string
@@ -64,7 +69,7 @@ func getActionAff(hc hubclient.IHubClient, thingID string, key string) (
 }
 
 // RenderActionRequest renders the action dialog.
-// Path: /things/{thingID/{key}
+// Path: /things/{thingID}/{key}
 //
 //	@param thingID this is the URL parameter
 func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
@@ -73,10 +78,6 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 	var hc hubclient.IHubClient
 	//var lastAction *digitwin.InboxRecord
 
-	data := ActionRequestTemplateData{
-		ThingID: thingID,
-		Key:     key,
-	}
 	// Read the TD being displayed
 	sess, hc, err := session.GetSessionFromContext(r)
 	if err != nil {
@@ -84,45 +85,36 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
-	if err == nil {
-		data.TD, data.Action, err = getActionAff(hc, thingID, key)
+	ct, err := sess.Consume(thingID)
+	if err != nil {
+		sess.WriteError(w, err, http.StatusBadRequest)
 	}
-	// last action that was submitted
-	if err == nil {
-		// reading a latest value is optional
-		lastActionRecord, err2 := digitwin.InboxReadLatest(hc, key, thingID)
-		if err2 == nil {
-			data.PrevValue = &lastActionRecord
-			updatedTime, _ := dateparse.ParseAny(lastActionRecord.Updated)
-			data.LastUpdated = updatedTime.Format(time.RFC1123)
-			data.LastUpdatedAge = utils.Age(updatedTime)
-		}
-	}
+
+	_, actionAff, err := getActionAff(hc, thingID, key)
 	if err != nil {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 
-	prevInputValue := ""
-	if data.PrevValue != nil && data.PrevValue.Input != nil {
-		prevInputValue = fmt.Sprintf("%v", data.PrevValue.Input)
+	data := ActionRequestTemplateData{
+		ThingID: thingID,
+		Key:     key,
+		Action:  actionAff,
+		CT:      ct,
 	}
-	if data.Action.Input != nil {
-		data.Input = &SchemaValue{
-			ThingID:    thingID,
-			Key:        key,
-			DataSchema: data.Action.Input,
-			Value:      prevInputValue,
-		}
+	data.CurrentValue, _ = ct.GetValue(key)
+
+	// get last action request that was received
+	// reading a latest value is optional
+	data.LastActionRecord, err = digitwin.InboxReadLatest(hc, key, thingID)
+	if err == nil {
+		//data.PrevValue = &lastActionRecord
+		updatedTime, _ := dateparse.ParseAny(data.LastActionRecord.Updated)
+		data.LastActionTime = updatedTime.Format(time.RFC1123)
+		data.LastActionAge = utils.Age(updatedTime)
+		data.LastActionInput = consumedthing.NewDataSchemaValue(data.LastActionRecord.Input)
 	}
-	if data.Action.Output != nil {
-		data.Output = &SchemaValue{
-			ThingID:    thingID,
-			Key:        key,
-			DataSchema: data.Action.Output,
-			Value:      "",
-		}
-	}
+
 	pathArgs := map[string]string{"thingID": data.ThingID, "key": data.Key}
 	data.SubmitActionRequestPath = utils.Substitute(src.PostActionRequestPath, pathArgs)
 

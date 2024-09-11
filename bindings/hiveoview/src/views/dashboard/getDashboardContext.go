@@ -27,7 +27,7 @@ const URLParamDashboardID = "dashboardID"
 //
 //	createDashboard creates a new dashboard if it isn't found (not saved)
 func getDashboardContext(r *http.Request, createDashboard bool) (
-	*session.UISession, ClientDashboardContext, error) {
+	*session.WebClientSession, ClientDashboardContext, error) {
 
 	var found bool
 	cdc := ClientDashboardContext{}

@@ -46,25 +46,47 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	key := chi.URLParam(r, "key")
 
-	// just format the data
 	sess, hc, err := session.GetSessionFromContext(r)
 	if err != nil {
 		sess.WriteError(w, err, 0)
 		return
 	}
 
+	// obtain the TD and the event/action affordance to display
+	var unitSymbol string
+	var title string
+	var schema *tdd.DataSchema
+	var latestValue = "n/a"
+	var latestUpdated = "n/a"
+	var sourceRef = thingID + "/" + key
+
+	var eventAff *tdd.EventAffordance
 	cts := sess.GetConsumedThingsSession()
-	var aff *tdd.EventAffordance
 	td := cts.GetTD(thingID)
 	if td != nil {
-		aff = td.GetEvent(key)
+		eventAff = td.GetEvent(key)
+		if eventAff != nil {
+			schema = &eventAff.Data
+			title = td.Title + ": " + eventAff.Title
+			unitSymbol = schema.UnitSymbol()
+		} else {
+			// tile source is an action. use the input schema if available
+			actionAff := td.GetAction(key)
+			if actionAff != nil {
+				schema = actionAff.Input
+				title = td.Title + ": " + actionAff.Title
+				unitSymbol = schema.UnitSymbol()
+			}
+		}
 	}
-	if aff == nil {
-		err = fmt.Errorf("thingID '%s' or event '%s' not found",
-			thingID, key)
-		sess.WriteError(w, err, 0)
-		return
-	}
+	//if aff == nil {
+	//	err = fmt.Errorf("thingID '%s' or event '%s' not found",
+	//		thingID, key)
+	//	sess.WriteError(w, err, 0)
+	//	return
+	//}
+
+	// get the latest event values of this source
 	latestEvents, err := digitwin.OutboxReadLatest(
 		hc, []string{key}, vocab.MessageTypeEvent, "", thingID)
 	if err != nil {
@@ -72,36 +94,33 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	evmap, err := hubclient.NewThingMessageMapFromSource(latestEvents)
-	if err == nil {
-		unitSymbol := aff.Data.UnitSymbol()
-		tm := evmap[key]
-		sourceRef := thingID + "/" + key
-		title := td.Title + ": " + aff.Title
-		latestValue := "n/a"
-		latestUpdated := "n/a"
-		// if no value was ever received then use n/a
-		if tm != nil {
-			latestValue = tm.DataAsText() + " " + unitSymbol
-			latestUpdated = tm.GetUpdated()
-		}
-		// the input hidden hold the real source value
-		// this must match the list in RenderEditTile.gohtml
-		// FIXME: this is ridiculous htmx. Use JS to simplify it.
-		htmlToAdd := fmt.Sprintf(""+
-			"<li>"+
-			"  <input type='hidden' name='sources' value='%s'/>"+
-			"  <button type='button' class='h-row outline h-icon-button'"+
-			"    onclick='deleteRow(this.parentNode)'>"+
-			"		<iconify-icon icon='mdi:delete'></iconify-icon>"+
-			"	</button>"+
-			"  <input name='sourceTitles' value='%s' title='%s' style='margin:0'/>"+
-			"  <div>%s</div>"+
-			"  <div>%s</div>"+
-			"</li>",
-			sourceRef, title, sourceRef, latestValue, latestUpdated)
-
-		_, _ = w.Write([]byte(htmlToAdd))
+	if err != nil {
+		sess.WriteError(w, err, 0)
 		return
 	}
-	sess.WriteError(w, err, 0)
+
+	tm := evmap[key]
+	// if no value was ever received then use n/a
+	if tm != nil {
+		latestValue = tm.DataAsText() + " " + unitSymbol
+		latestUpdated = tm.GetUpdated()
+	}
+	// the input hidden hold the real source value
+	// this must match the list in RenderEditTile.gohtml
+	// FIXME: this is ridiculous htmx. Use JS to simplify it.
+	htmlToAdd := fmt.Sprintf(""+
+		"<li>"+
+		"  <input type='hidden' name='sources' value='%s'/>"+
+		"  <button type='button' class='h-row outline h-icon-button'"+
+		"    onclick='deleteRow(this.parentNode)'>"+
+		"		<iconify-icon icon='mdi:delete'></iconify-icon>"+
+		"	</button>"+
+		"  <input name='sourceTitles' value='%s' title='%s' style='margin:0'/>"+
+		"  <div>%s</div>"+
+		"  <div>%s</div>"+
+		"</li>",
+		sourceRef, title, sourceRef, latestValue, latestUpdated)
+
+	_, _ = w.Write([]byte(htmlToAdd))
+	return
 }

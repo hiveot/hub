@@ -10,6 +10,7 @@ import (
 	"github.com/hiveot/hub/bindings/hiveoview/src/views/app"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/consumedthing"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"net/http"
@@ -18,10 +19,12 @@ import (
 const RenderEditPropertyTemplate = "RenderEditProperty.gohtml"
 
 type RenderEditPropertyTemplateData struct {
-	ThingID            string
-	Key                string
-	DataSchema         *tdd.DataSchema
-	Value              string
+	ThingID    string
+	Key        string
+	DataSchema *tdd.DataSchema
+	Value      string
+	// The last known value of the property to edit
+	PropertyValue      consumedthing.InteractionOutput
 	SubmitPropertyPath string
 }
 
@@ -48,6 +51,7 @@ func getPropAff(hc hubclient.IHubClient, thingID string, key string) (
 func getConfigValue(
 	hc hubclient.IHubClient, thingID string, key string) (sv RenderEditPropertyTemplateData, err error) {
 	var valueStr string
+	var dataValue any
 
 	td, propAff, err := getPropAff(hc, thingID, key)
 	_ = td
@@ -56,6 +60,8 @@ func getConfigValue(
 	}
 
 	keys := []string{key}
+	senderID := ""
+	updated := ""
 	propValues, err := digitwin.OutboxReadLatest(hc, keys, "", "", thingID)
 	if err == nil {
 		// convert the property value to string for presentation
@@ -65,7 +71,10 @@ func getConfigValue(
 			tm := hubclient.ThingMessage{}
 			tmJson, _ := json.Marshal(tmRaw)
 			_ = json.Unmarshal(tmJson, &tm)
+			dataValue = tm.Data
 			valueStr = fmt.Sprintf("%v", tm.Data)
+			senderID = tm.SenderID
+			updated = tm.GetUpdated()
 		}
 	}
 	sv = RenderEditPropertyTemplateData{
@@ -74,6 +83,14 @@ func getConfigValue(
 		Key:        key,
 		DataSchema: &propAff.DataSchema,
 		Value:      valueStr,
+		PropertyValue: consumedthing.InteractionOutput{
+			Key:      key,
+			Title:    propAff.Title,
+			Schema:   propAff.DataSchema,
+			Value:    consumedthing.NewDataSchemaValue(dataValue),
+			Updated:  updated,
+			SenderID: senderID,
+		},
 	}
 	return sv, nil
 }

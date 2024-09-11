@@ -39,7 +39,7 @@
               {{/*replace show value on sse event, sent by ClientSession.go:onEvent */}}
 							{{/*properties and events use the same namespace*/}}
 							<span sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML" hx-target="this">
-							{{$v.ToString}}
+							{{$v.Value.Text}}
 							</span>
                 {{$v.Schema.UnitSymbol}}
 						</button>

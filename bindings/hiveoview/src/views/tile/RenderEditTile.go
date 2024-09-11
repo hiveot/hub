@@ -41,7 +41,7 @@ func (data EditTileTemplateData) GetValue(thingID, key string) string {
 		return ""
 	}
 	unitSymbol := v.Schema.UnitSymbol()
-	return v.ToString() + " " + unitSymbol
+	return v.Value.Text() + " " + unitSymbol
 }
 func (data EditTileTemplateData) GetUpdated(thingID, key string) string {
 	v, found := data.Values[thingID+"/"+key]

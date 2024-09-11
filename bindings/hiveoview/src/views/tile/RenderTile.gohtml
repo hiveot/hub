@@ -18,13 +18,15 @@
 
 {{else}}
 
-<section id="{{.Tile.ID}}" class="tile-panel"
+	<section id="{{.Tile.ID}}" class="tile-panel"
      hx-trigger="sse:{{.TileUpdatedEvent}}"
      hx-swap="outerHTML"
-     hx-params="none"
      hx-target="this"
      hx-get="{{.ReRenderTilePath}}"
-     >
+		 {{/* prevent including input params from layout in all requests*/}}
+     hx-params="none"
+  >
+
 	<nav  class="tile-header drag-target">
 		<span></span>
 		<div style="cursor:move; flex-grow:1; text-align:center"

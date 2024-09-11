@@ -4,29 +4,25 @@ Hive of Things Viewer, written in golang, html/htmx, web components, and sse usi
 
 ## Status
 
-This viewer is in early development. The information below is subject to change.
+This viewer has reached alpha status with Phase 1-3 completed. The information below is subject to change.
 
 ### Phase 1: SSR infrastructure and session management [done]
 ### Phase 2: Directory view [done]
-### Phase 3: Dashboard [in progress]
+### Phase 3: Basic Dashboard [done]
 
-1. Dashboard grid engine with persistent configuration [in progress]
-2. Edit 'Tile' dialog - edit title, tile type, sources
-2. Text tile with a single Thing value shown as text
-3. Table tile with one or more values from Things in a table
-4. Line chart tile with value history
-5. Gauge tile 
-2. Add/remove dashboards 
 
-### Phase 4: Improvements
+### Phase 4: Enhancements [in progress]
+* Switch to use ConsumedThing for events and actions [in progress]
+* Embed the templates in binary build. 
+* Track action progress by linking events to action.
 * Show progress of action in the same toast instead of a new toast
-* Re-usable DataSchema component/template with text,number,bool,enum,on-off
+* Re-usable DataSchema component/template with text,number,bool,enum,on-off 
 * only show edit button if the user has permissions to edit
 * briefly fade in/out a highlight of a changed value (css transition?)
 * color value based on age - red is older than 3 days
-* force re-login when SSE receives unauthorized error (after server restart)
+* redirect to login when SSE receives unauthorized error (after server restart)
 * show value error status in tiles
-- disable actions and edits for things that are not reachable (agent offline) 
+- disable actions and edits for things that are not reachable (agent offline, no auth) 
 
 ### Phase 4: iteration 2  (tbd, based on learnings)
 1. Layout improvements for small screens
@@ -71,16 +67,16 @@ Dashboards are stored with layout and tile configuration. The layout is
 
 ## Build & Installation
 
-
+Run 'make' to build the viewer as a standalone executable.
 
 ### Development Auto Reload
 
-For auto reload of the application during development, install 'air':
+Tip: in the dev environment templates are reloaded on each render.
+
+Tip for auto reload of the application during development, install 'air':
 > go install github.com/cosmtrek/air
 
 This installs 'air' into ~/go/bin. Add ~/go/bin to your path if it doesn't exist.
 
 Run the application with 'air' from the development environment. This does not support breakpoints and does not run from
 the IDE.
-
-... todo ... lets get something working first

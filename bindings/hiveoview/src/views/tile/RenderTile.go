@@ -44,19 +44,28 @@ func (dt RenderTileTemplateData) GetHistory(thingID string, key string) *history
 	return hsd
 }
 
-// GetValue return the latest value of a tile source
-func (d RenderTileTemplateData) GetValue(thingID string, key string) string {
+// GetValue return the latest value of a tile source or nil if not found
+// If name is an action then include the action affordance input dataschema
+// instead of the event value schema.
+func (d RenderTileTemplateData) GetValue(thingID string, name string) (iout *consumedthing.InteractionOutput) {
 
 	cs, err := d.cts.Consume(thingID)
 	if err != nil {
-		return "n/a"
+		iout.Value = consumedthing.NewDataSchemaValue("n/a")
 	}
-	iout := cs.ReadEvent(key)
+	iout = cs.ReadEvent(name)
 	if iout == nil {
-		return "n/a"
+		iout = consumedthing.NewInteractionOutput(thingID, name, nil, nil, "")
+		return iout
 	}
-	val := iout.ToString() // + " " + iout.Schema.UnitSymbol()
-	return val
+	// if name is an action then get the input dataschema for allowing
+	// direct input of the action from the dashboard tile.
+	td := cs.GetThingDescription()
+	actionAff := td.GetAction(name)
+	if actionAff != nil && actionAff.Input != nil {
+		iout.Schema = *actionAff.Input
+	}
+	return iout
 }
 
 // GetUnit return the value unit of a tile source

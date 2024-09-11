@@ -13,7 +13,7 @@
 	</li>
 
     {{range $k := .ActionKeys }}
-        {{$v := $.GetValue $k}}
+        {{$iout := $.GetValue $k}}
 				<li>
 
 					<div class="h-show-sm">{{/*icon*/}}</div>
@@ -26,26 +26,23 @@
 						        hx-get="{{$.GetRenderActionPath $k}}"
 						        hx-target="#modalLevel1"
 						>
-	            {{$v.Title}}
+	            {{$iout.Title}}
 						</button>
 					</div>
 
-					<div class="h-show-lg">{{$v.Schema.Type}}</div>
-
-					<div sse-swap="{{$.ThingID}}/{{$k}}"
-					     hx-target="this"
-					     hx-swap="innerHTML">
-						{{$v.ToString}}
+					<div class="h-show-lg">{{$iout.Schema.Type}}</div>
+					<div>
+            {{template "RenderOutputValue.gohtml" $iout}}
 					</div>
 
-					<div class="h-show-lg">{{$v.Schema.Description}}</div>
+					<div class="h-show-lg">{{$iout.Schema.Description}}</div>
 
 					<div class="h-show-md"
 					     sse-swap="{{$.ThingID}}/{{$k}}/updated"
 					     hx-swap="innerHTML"
 					     hx-target="this"
-					     title="Updated: {{$v.GetUpdated}} by {{$v.GetSenderID}}">
-              {{$v.GetUpdated}}
+					     title="Updated: {{$iout.GetUpdated}} by {{$iout.SenderID}}">
+              {{$iout.GetUpdated}}
 					</div>
 				</li>
     {{end}}

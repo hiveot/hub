@@ -24,25 +24,31 @@
                      margin-bottom: var(--pico-spacing);"
                 ><i>{{.Action.Description}}</i></div>
 
-                {{if .PrevValue}}
+                {{if .LastActionRecord}}
                     <label for="actionUpdated">Previous Action Time</label>
                     <input id="actionUpdated" readonly
-                           placeholder="{{.LastUpdated}} ({{.LastUpdatedAge}} ago)"/>
-                    {{if .Input }}
-                        <label for="prevValueInput">Previous Action Value</label>
-                        <input id="prevValueInput" readonly  placeholder="{{.Input.Value}}"/>
+                           placeholder="{{.LastActionTime}} ({{.LastActionAge}} ago)"/>
+                    <label for="actionStatus">Previous Action Status</label>
+                    <input id="actionStatus" readonly
+                        placeholder="{{.LastActionRecord.Progress}}"/>
+                    {{if .Action.Input }}
+                        <label for="prevValueInput">Previous Action Input</label>
+                        <input id="prevValueInput" readonly
+                               placeholder="{{.LastActionInput.Text}}"/>
                     {{end}}
                 {{end}}
+                {{if .CurrentValue}}
+                    <label for="prevValueOutput">Current Value</label>
+                    {{template "RenderOutputValue.gohtml" .CurrentValue}}
+                {{end}}
 
-                {{if .Input}}
+                {{/* If input is required, use the last output as default value, if known */}}
+                {{if .Action.Input}}
                     <label>New value</label>
-                    {{template "schemaValue.gohtml" .Input}}
+                    {{template "RenderInputValue.gohtml" .CurrentValue}}
                 {{end}}
             </form>
 
-            {{if .Status.Progress}}
-            <div>status {{.Status.Progress}}</div>
-            {{end}}
         </main>
 
         <footer>
@@ -65,7 +71,7 @@
 
 <script>
 
-    // The dialog remains active until completed
+    // The dialog remains active until a completed event is received
     function onSubmitCompleted(ev, btn) {
         ev.stopImmediatePropagation()
         let details = ev.detail

@@ -14,7 +14,7 @@
 	</li>
 
 	{{range $k := .EventKeys}}
-    {{$v := $.GetValue $k}}
+    {{$iout := $.GetValue $k}}
 
 		{{- /*auto reload row on event changes*/ -}}
 		<li>
@@ -23,45 +23,27 @@
 
 			{{/* Event Name*/}}
 			<div title="key: {{$k}}">
-				{{$v.Title}}
+				{{$iout.Title}}
 			</div>
 
 			{{/*value*/}}
 			<div>
-	        {{/* open last 24 hours history*/}}
-				<a title="View history"
-				   href="/value/{{$.ThingID}}/{{$k}}/history"
-				   hx-get="/value/{{$.ThingID}}/{{$k}}/history"
-				   hx-target="#historyPage"
-				   hx-swap="innerHtml"
-				   hx-trigger="click"
-				   hx-on::after-request="navigateTo(null,this.href)"
-				>
-					{{/* Dynamic refresh of value on sse event*/}}
-					<span sse-swap="{{$.ThingID}}/{{$k}}"
-					      hx-swap="innerHTML"
-					      hx-target="this"
-					>
-							{{$v.ToString}}
-					</span>
-					{{if $v.Schema}}
-				    &nbsp;{{$v.Schema.UnitSymbol}}
-					{{end}}
-				</a>
+          {{/* Show the value itself. Render booleans as switches*/}}
+          {{template "RenderOutputValue.gohtml" $iout}}
 			</div>
 
 			{{/*Description*/}}
-			<div class="h-show-lg">{{$v.Schema.Description}}</div>
+			<div class="h-show-lg">{{$iout.Schema.Description}}</div>
 
       {{/*	Updated*/}}
 			<div sse-swap="{{$.ThingID}}/{{$k}}/updated"
 			     hx-target="this"
 			     hx-swap="innerHTML"
 						class="h-show-md"
-				>{{$v.GetUpdated}}
+				>{{$iout.GetUpdated}}
 			</div>
 
-	    {{/*	history*/}}
+	    {{/*history chart */}}
 			<div class="h-show-lg" style="height:200px">
 				{{template "historyChart.gohtml" $.GetHistory $k }}
 			</div>

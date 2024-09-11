@@ -19,9 +19,9 @@ func TestNilSchema(t *testing.T) {
 	data1 := "text"
 
 	tm := hubclient.NewThingMessage(vocab.MessageTypeEvent, thing1ID, key1ID, data1, "")
-	io := NewInteractionOutput(tm, nil)
+	io := NewInteractionOutputFromTM(tm, nil)
 
-	asValue := io.ToString()
+	asValue := io.Value.Text()
 	assert.Equal(t, data1, asValue)
 
 }
@@ -29,38 +29,38 @@ func TestNilSchema(t *testing.T) {
 func TestArray(t *testing.T) {
 	data1 := []string{"item 1", "item 2"}
 	tm := hubclient.NewThingMessage(vocab.MessageTypeEvent, thing1ID, key1ID, data1, "")
-	io := NewInteractionOutput(tm, nil)
-	asArray := io.ToArray()
+	io := NewInteractionOutputFromTM(tm, nil)
+	asArray := io.Value.Array()
 	assert.Len(t, asArray, 2)
 }
 
 func TestBool(t *testing.T) {
 	data1 := true
 	tm := hubclient.NewThingMessage(vocab.MessageTypeEvent, thing1ID, key1ID, data1, "")
-	io := NewInteractionOutput(tm, nil)
-	asBool := io.ToBoolean()
+	io := NewInteractionOutputFromTM(tm, nil)
+	asBool := io.Value.Boolean()
 	assert.Equal(t, true, asBool)
-	asString := io.ToString()
+	asString := io.Value.Text()
 	assert.Equal(t, "true", asString)
-	asInt := io.ToInt()
+	asInt := io.Value.Integer()
 	assert.Equal(t, 1, asInt)
 }
 
 func TestInt(t *testing.T) {
 	data1 := 42
 	tm := hubclient.NewThingMessage(vocab.MessageTypeEvent, thing1ID, key1ID, data1, "")
-	io := NewInteractionOutput(tm, nil)
-	asInt := io.ToInt()
+	io := NewInteractionOutputFromTM(tm, nil)
+	asInt := io.Value.Integer()
 	assert.Equal(t, 42, asInt)
-	asString := io.ToString()
+	asString := io.Value.Text()
 	assert.Equal(t, "42", asString)
 }
 
 func TestString(t *testing.T) {
 	data1 := "Hello world"
 	tm := hubclient.NewThingMessage(vocab.MessageTypeEvent, thing1ID, key1ID, data1, "")
-	io := NewInteractionOutput(tm, nil)
-	asString := io.ToString()
+	io := NewInteractionOutputFromTM(tm, nil)
+	asString := io.Value.Text()
 	assert.Equal(t, data1, asString)
 }
 
@@ -74,7 +74,7 @@ func TestObject(t *testing.T) {
 	}
 	data1 := User{Name: "Bob", Age: 10, Active: true, LastLoginAt: "today"}
 	tm := hubclient.NewThingMessage(vocab.MessageTypeEvent, thing1ID, key1ID, data1, "")
-	io := NewInteractionOutput(tm, nil)
-	asMap := io.ToMap()
+	io := NewInteractionOutputFromTM(tm, nil)
+	asMap := io.Value.Map()
 	assert.Equal(t, data1.Name, asMap["Name"])
 }
