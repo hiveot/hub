@@ -20,9 +20,9 @@ HiveOT golang packages provide the core services along with a starter set of pro
 	* idprov - provisioning service
 	* launcher - service for starting and stopping of plugins and generating authentication tokens for these services.
 	* state - state and configuration storage for services and clients
+	* hiveoview - SSR web client providing a directory and dashboard viewer of hiveot Things
   
 * bindings - example protocol bindings and other services
-	* hiveoview - SSR web client providing a directory and dashboard viewer of hiveot Things
 	* ipnet - ip network scanner
 	* isy99x - protocol binding for legacy ISY 99/994 gateways
 	* owserver - protocol binding for OWServer 1-wire gateways

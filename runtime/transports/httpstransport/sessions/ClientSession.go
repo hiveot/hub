@@ -60,10 +60,10 @@ func (cs *ClientSession) CloseSSEChan(c chan SSEEvent) {
 	for i, sseClient := range cs.sseClients {
 		if sseClient == c {
 			cs.sseClients = append(cs.sseClients[:i], cs.sseClients[i+1:]...)
+			close(c)
 			break
 		}
 	}
-	close(c)
 }
 
 // CreateSSEChan creates a new SSE channel to communicate with.

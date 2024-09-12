@@ -1,0 +1,103 @@
+<!--Thing actions list-->
+<!--@param '.' object of type thing.DetailsTemplateData -->
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.ThingDetailsTemplateData*/ -}}
+
+<ul class="h-grid-table thing-actions" striped border>
+	<li>
+		<div class="h-show-sm">{{/*icon*/}}</div>
+		<div>Action Name</div>
+		<div class="h-show-lg">Type</div>
+		<div >Last Value</div>
+		<div class="h-show-lg">Description</div>
+		<div class="h-show-md">Updated</div>
+	</li>
+
+    {{range $k := .ActionKeys }}
+        {{$iout := $.GetValue $k}}
+				<li>
+
+					<div class="h-show-sm">{{/*icon*/}}</div>
+
+					<div title="key: {{$k}}">
+						<button class="outline" style="border:none;
+										display:inline-flex; gap: 5px;
+										align-items: center; padding:0"
+						        hx-trigger="click"
+						        hx-get="{{$.GetRenderActionPath $k}}"
+						        hx-target="#modalLevel1"
+						>
+	            {{$iout.Title}}
+						</button>
+					</div>
+
+					<div class="h-show-lg">{{$iout.Schema.Type}}</div>
+					<div class="h-row">
+            {{template "RenderOutputValue.gohtml" $iout}}
+					</div>
+
+					<div class="h-show-lg">{{$iout.Schema.Description}}</div>
+
+					<div class="h-show-md"
+					     sse-swap="{{$.ThingID}}/{{$k}}/updated"
+					     hx-swap="innerHTML"
+					     hx-target="this"
+					     title="Updated: {{$iout.GetUpdated}} by {{$iout.SenderID}}">
+              {{$iout.GetUpdated}}
+					</div>
+				</li>
+    {{end}}
+    {{if not .TD.Actions}}
+			<li>
+				<div style="grid-column: 1/5 ">
+					<i>No actions defined...</i>
+				</div>
+			</li>
+    {{end}}
+</ul>
+
+<style>
+
+    @media (width < 576px) {
+        .thing-actions {
+            /*xs, show column 2, 4 */
+            grid-template-columns:
+				            minmax(200px, max-content) /* ID/title */
+				            minmax(100px, 1fr); /*type*/
+        }
+    }
+
+    @media (width >= 576px) {
+        .thing-actions {
+            /*sm, show column 1,2,4 */
+            grid-template-columns:
+				            40px   /* icon*/
+				            minmax(200px, max-content) /*ID/title*/
+				            minmax(100px, 1fr); /*type*/
+        }
+    }
+
+    @media (width >= 768px) {
+        .thing-actions {
+            /*md,show column 1,2,4,6 */
+            grid-template-columns:
+				            40px  /*icon*/
+				            minmax(200px, max-content) /*ID/title*/
+				            minmax(100px, max-content) /*last action*/
+				            minmax(100px, 1fr);        /*updated*/
+        }
+    }
+
+    @media (width >= 1024px) {
+        .thing-actions {
+            /*lg,show column 1-6 */
+            grid-template-columns:
+				            40px/*icon*/
+				            minmax(200px, max-content) /*name*/
+				            minmax(100px, max-content)/*type*/
+				            minmax(100px, max-content) /*last action*/
+				            minmax(100px, 1fr) /*description*/
+				            minmax(100px, max-content); /*date*/
+        }
+    }
+
+</style>

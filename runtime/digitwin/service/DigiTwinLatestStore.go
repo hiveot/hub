@@ -194,7 +194,7 @@ func (svc *DigiTwinLatestStore) StoreMessage(msg *hubclient.ThingMessage) {
 	defer svc.cacheMux.Unlock()
 	thingCache, _ := svc.cache[msg.ThingID]
 	if msg.MessageType == vocab.MessageTypeEvent {
-		if msg.Key == vocab.EventTypeProperties {
+		if msg.Key == vocab.EventNameProperties {
 			// the value holds a map of property name:value pairs, add each one individually
 			// in order to retain the sender and created timestamp.
 			props := make(map[string]any)
@@ -220,7 +220,7 @@ func (svc *DigiTwinLatestStore) StoreMessage(msg *hubclient.ThingMessage) {
 				}
 			}
 			svc.changedThings[msg.ThingID] = true
-		} else if msg.Key == vocab.EventTypeTD {
+		} else if msg.Key == vocab.EventNameTD {
 			// TD documents are handled by the directory
 		} else {
 			// Thing events

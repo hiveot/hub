@@ -175,7 +175,7 @@ func TestAddPropsEvent(t *testing.T) {
 	defer closeFn()
 
 	msg := hubclient.NewThingMessage(vocab.MessageTypeEvent,
-		thing1ID, vocab.EventTypeProperties, pev, "sender")
+		thing1ID, vocab.EventNameProperties, pev, "sender")
 	svc.StoreMessage(msg)
 
 	values1, err := svc.ReadLatest(vocab.MessageTypeEvent, thing1ID, valueNames, "")
@@ -200,7 +200,7 @@ func TestAddBadProps(t *testing.T) {
 	svc, closeFn := startLatestStore(true)
 	defer closeFn()
 	msg := hubclient.NewThingMessage(vocab.MessageTypeEvent,
-		thing1ID, vocab.EventTypeProperties, badProps, "sender")
+		thing1ID, vocab.EventNameProperties, badProps, "sender")
 	svc.StoreMessage(msg)
 
 	//// action is ignored

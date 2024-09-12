@@ -155,15 +155,15 @@ func (tdoc *TD) AddDimmerEvent(eventID string) *EventAffordance {
 //
 // If the event returns data then set the .Data field to a DataSchema instance that describes it.
 //
-//		eventID is the key under which it is stored in the affordance map.
-//	   If omitted, the eventType is used.
-//		eventType describes the type of event in HiveOT vocabulary if available, or "" if non-standard.
-//		title is the short display title of the event
-//		schema optional event data schema or nil if the event doesn't carry any data
+//	eventName is the name under which it is stored in the affordance map.
+//		If omitted, the eventType is used.
+//	eventType describes the type of event in HiveOT vocabulary if available, or "" if non-standard.
+//	title is the short display title of the event
+//	schema optional event data schema or nil if the event doesn't carry any data
 func (tdoc *TD) AddEvent(
-	eventID string, eventType string, title string, description string, schema *DataSchema) *EventAffordance {
-	if eventID == "" {
-		eventID = eventType
+	eventName string, eventType string, title string, description string, schema *DataSchema) *EventAffordance {
+	if eventName == "" {
+		eventName = eventType
 	}
 	evAff := &EventAffordance{
 		EventType:   eventType,
@@ -175,7 +175,7 @@ func (tdoc *TD) AddEvent(
 		evAff.Data = *schema
 	}
 
-	tdoc.UpdateEvent(eventID, evAff)
+	tdoc.UpdateEvent(eventName, evAff)
 	return evAff
 }
 
@@ -190,14 +190,14 @@ func (tdoc *TD) AddForms(forms []Form) {
 // This returns the property affordance that can be augmented/modified directly
 // By default the property is a read-only attribute.
 //
-//		propID is the key under which it is stored in the affordance map.
-//	   If omitted, the eventType is used.
-//		propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
-//		title is the short display title of the property.
-//		dataType is the type of data the property holds, WoTDataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
-func (tdoc *TD) AddProperty(propID string, propType string, title string, dataType string) *PropertyAffordance {
-	if propID == "" {
-		propID = propType
+//	propName is the name under which it is stored in the affordance map.
+//		If omitted, the eventType is used.
+//	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
+//	title is the short display title of the property.
+//	dataType is the type of data the property holds, WoTDataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
+func (tdoc *TD) AddProperty(propName string, propType string, title string, dataType string) *PropertyAffordance {
+	if propName == "" {
+		propName = propType
 	}
 	prop := &PropertyAffordance{
 		DataSchema: DataSchema{
@@ -208,34 +208,34 @@ func (tdoc *TD) AddProperty(propID string, propType string, title string, dataTy
 			//InitialValue: initialValue,
 		},
 	}
-	tdoc.UpdateProperty(propID, prop)
+	tdoc.UpdateProperty(propName, prop)
 	return prop
 }
 
 // AddPropertyAsString is short for adding a read-only string property
 //
 //	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
-func (tdoc *TD) AddPropertyAsString(name string, propType string, title string) *PropertyAffordance {
-	return tdoc.AddProperty(name, propType, title, vocab.WoTDataTypeString)
+func (tdoc *TD) AddPropertyAsString(propName string, propType string, title string) *PropertyAffordance {
+	return tdoc.AddProperty(propName, propType, title, vocab.WoTDataTypeString)
 }
 
 // AddPropertyAsBool is short for adding a read-only boolean property
 //
 //	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
-func (tdoc *TD) AddPropertyAsBool(name string, propType string, title string) *PropertyAffordance {
-	return tdoc.AddProperty(name, propType, title, vocab.WoTDataTypeBool)
+func (tdoc *TD) AddPropertyAsBool(propName string, propType string, title string) *PropertyAffordance {
+	return tdoc.AddProperty(propName, propType, title, vocab.WoTDataTypeBool)
 }
 
 // AddPropertyAsInt is short for adding a read-only integer property
 //
 //	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
-func (tdoc *TD) AddPropertyAsInt(name string, propType string, title string) *PropertyAffordance {
-	return tdoc.AddProperty(name, propType, title, vocab.WoTDataTypeInteger)
+func (tdoc *TD) AddPropertyAsInt(propName string, propType string, title string) *PropertyAffordance {
+	return tdoc.AddProperty(propName, propType, title, vocab.WoTDataTypeInteger)
 }
 
 // AddSwitchAction is short for adding an action to control an on/off switch
-func (tdoc *TD) AddSwitchAction(actionID string, title string) *ActionAffordance {
-	act := tdoc.AddAction(actionID, vocab.ActionSwitchOnOff, title, "",
+func (tdoc *TD) AddSwitchAction(actionName string, title string) *ActionAffordance {
+	act := tdoc.AddAction(actionName, vocab.ActionSwitchOnOff, title, "",
 		&DataSchema{
 			AtType: vocab.ActionSwitchOnOff,
 			Type:   vocab.WoTDataTypeBool,
@@ -245,8 +245,8 @@ func (tdoc *TD) AddSwitchAction(actionID string, title string) *ActionAffordance
 }
 
 // AddSwitchEvent is short for adding an event for a switch
-func (tdoc *TD) AddSwitchEvent(eventID string, title string) *EventAffordance {
-	ev := tdoc.AddEvent(eventID, vocab.PropSwitchOnOff, title, "",
+func (tdoc *TD) AddSwitchEvent(eventName string, title string) *EventAffordance {
+	ev := tdoc.AddEvent(eventName, vocab.PropSwitchOnOff, title, "",
 		&DataSchema{
 			AtType: vocab.PropSwitchOnOff,
 			Type:   vocab.WoTDataTypeBool,
@@ -256,8 +256,8 @@ func (tdoc *TD) AddSwitchEvent(eventID string, title string) *EventAffordance {
 }
 
 // AddSensorEvent is short for adding an event for a generic sensor
-func (tdoc *TD) AddSensorEvent(eventID string, title string) *EventAffordance {
-	ev := tdoc.AddEvent(eventID, vocab.PropEnv, title, "",
+func (tdoc *TD) AddSensorEvent(eventName string, title string) *EventAffordance {
+	ev := tdoc.AddEvent(eventName, vocab.PropEnv, title, "",
 		&DataSchema{
 			AtType: vocab.PropEnv,
 			Type:   vocab.WoTDataTypeNumber,
@@ -307,11 +307,11 @@ func (tdoc *TD) EscapeKeys() {
 
 // GetAction returns the action affordance with Schema for the action.
 // Returns nil if name is not an action or no affordance is defined.
-func (tdoc *TD) GetAction(name string) *ActionAffordance {
+func (tdoc *TD) GetAction(actionName string) *ActionAffordance {
 	tdoc.updateMutex.RLock()
 	defer tdoc.updateMutex.RUnlock()
 
-	actionAffordance, found := tdoc.Actions[name]
+	actionAffordance, found := tdoc.Actions[actionName]
 	if !found {
 		return nil
 	}
@@ -339,11 +339,11 @@ func (tdoc *TD) GetAtTypeVocab() string {
 }
 
 // GetEvent returns the Schema for the event or nil if the event doesn't exist
-func (tdoc *TD) GetEvent(name string) *EventAffordance {
+func (tdoc *TD) GetEvent(eventName string) *EventAffordance {
 	tdoc.updateMutex.RLock()
 	defer tdoc.updateMutex.RUnlock()
 
-	eventAffordance, found := tdoc.Events[name]
+	eventAffordance, found := tdoc.Events[eventName]
 	if !found {
 		return nil
 	}
@@ -351,10 +351,10 @@ func (tdoc *TD) GetEvent(name string) *EventAffordance {
 }
 
 // GetProperty returns the Schema and value for the property or nil if its key is not found.
-func (tdoc *TD) GetProperty(key string) *PropertyAffordance {
+func (tdoc *TD) GetProperty(propName string) *PropertyAffordance {
 	tdoc.updateMutex.RLock()
 	defer tdoc.updateMutex.RUnlock()
-	propAffordance, found := tdoc.Properties[key]
+	propAffordance, found := tdoc.Properties[propName]
 	if !found {
 		return nil
 	}
@@ -402,7 +402,6 @@ func (tdoc *TD) GetID() string {
 }
 
 // LoadFromJSON loads this TD from the given JSON encoded string
-// This also ensures that the ID and keys are path valid
 func (tdoc *TD) LoadFromJSON(tddJSON string) error {
 	err := json.Unmarshal([]byte(tddJSON), &tdoc)
 	tdoc.EscapeKeys()

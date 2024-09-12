@@ -126,7 +126,7 @@ func HandleListEvents(hc hubclient.IHubClient, dThingID string, name string, lim
 		count++
 		value := msg.DataAsText()
 		// show number of properties
-		if msg.Key == vocab.EventTypeProperties {
+		if msg.Key == vocab.EventNameProperties {
 			props := make(map[string]interface{})
 			_ = utils.DecodeAsObject(msg.Data, &props)
 			value = fmt.Sprintf("(%d properties)", len(props))

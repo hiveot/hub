@@ -68,12 +68,12 @@ type IThing interface {
 	// event affordance, or is empty if the event carriers no data.
 	//
 	// Intended for binding agents/publishers so they can publish an event with the changed value.
-	SetEventCB(func(eventID string, value string))
+	SetEventCB(func(eventName string, value string))
 
 	// SetPropCB sets the callback that is notified when a property change has taken place
 	// The value has been serialized in a format described in the Thing TD
 	// property affordance.
 	//
 	// Intended for binding agents/publishers so they can publish a property event with the changed value.
-	SetPropCB(func(propID string, value string))
+	SetPropCB(func(propName string, value string))
 }

@@ -129,7 +129,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	)
 
 	// always handle rpc response
-	if rxMsg.MessageType == vocab.MessageTypeEvent && rxMsg.Key == vocab.EventTypeDeliveryUpdate {
+	if rxMsg.MessageType == vocab.MessageTypeEvent && rxMsg.Key == vocab.EventNameDeliveryUpdate {
 		// this client is receiving a delivery update from a previous action.
 		// The payload is a deliverystatus object
 		err = utils.DecodeAsObject(rxMsg.Data, &stat)

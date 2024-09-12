@@ -1,0 +1,268 @@
+/*==========================================================================
+ * HiveOT utility classes
+ *==========================================================================
+ */
+
+
+/* set background transparent */
+.h-bg-transparent {
+    background-color: transparent;
+}
+
+/* simple border box with padding */
+.h-box {
+    border:1px solid var(--pico-form-element-border-color);
+    padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
+}
+
+.h-col, .h-col-centered {
+    display: flex;
+    flex-direction: column;
+}
+
+.h-col-centered {
+    align-items: center;
+}
+
+/* css horizontal divider for use between list items */
+.h-horizontal-divider {
+    width: 100%;
+    height: 1px;
+    margin: 6px 0;
+    padding: 0;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(to right, var(--pico-background-color), var(--pico-color), var(--pico-background-color));
+}
+.h-vertical-divider {
+    height: 90%;
+    width: 1px;
+    background: var(--pico-accordion-border-color);
+}
+
+/* h-grid-table is a simple table using grid layout and ul/li list items
+ * the first row is the table header.
+*/
+.h-grid-table {
+    display: grid;
+    padding: 0;
+}
+
+.h-grid-table[border] {
+    border: 1px solid var(--pico-form-element-border-color);
+}
+
+.h-grid-table li {
+    display: contents;
+    list-style: none;
+}
+
+.h-grid-table li div {
+    font-weight: var(--pico-font-weight);
+    background-color: var(--pico-card-background-color);
+    padding: calc(var(--pico-spacing) / 2) var(--pico-spacing);
+}
+
+.h-grid-table[striped] li:nth-child(even) div {
+    background-color: var(--pico-form-element-active-background-color);
+}
+/* table header override*/
+.h-grid-table li:first-child div {
+    font-variant-caps: small-caps;
+    --pico-font-weight: 600;
+    border-bottom: 1px solid var(--pico-form-element-active-border-color);
+}
+
+/* h-grid-table as a table instead of list. Use thead for th title*/
+.h-grid-table td {
+    background-color: var(--pico-backround-color);
+    border-bottom: 1px solid var(--pico-form-element-border-color);
+    align-items: center;
+    display:flex;
+}
+.h-grid-table[striped] td:nth-child(even) div {
+    background-color: var(--pico-table-row-stripped-background-color);
+}
+
+.h-grow {
+    flex-grow: 1;
+}
+
+/* button class with an icon, without any margins
+ */
+.h-icon-button {
+    padding: 8px;
+    margin: 0;
+    display: flex;
+    flex-direction: row;
+    border: var(--pico-border-width) solid var(--pico-form-element-border-color);
+}
+
+/*=== helpers to show columns or fields for responsive design ===*/
+
+/* XS (<576) */
+@media (width < 576px) {
+    .h-show-sm, .h-show-md, .h-show-lg, .h-show-xl {
+        display: none !important;
+    }
+}
+
+/* SM: 576-768 */
+@media (width >= 576px) and (width < 768px) {
+    .h-show-md, .h-show-lg, .h-show-xl {
+        display: none !important;
+    }
+}
+
+
+/* MD: 768-1024) show on medium and above; hide on small and below;  */
+@media (width >= 768px) and (width < 1024px) {
+    .h-show-lg, .h-show-xl {
+        display: none !important;
+    }
+}
+
+/*  LG: 1024-1280: show on large and above; hide on medium and below */
+@media (width >= 1024px) and (width < 1280px) {
+    .h-show-xl {
+        display: none !important; /*hide xs,sm,md,lg*/
+    }
+}
+
+/* XL (>=1200-1536); show on XL and above  */
+@media (width >= 1280px) {
+    /* disable nothing*/
+}
+
+/** XXL: >= 15360*/
+
+
+/* flexbox row with items horizontally centered */
+.h-row, .h-row-centered {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+
+.h-row-centered {
+    justify-content: center;
+}
+/* flexbox row with inline aligned items*/
+.h-row-inline {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+
+/* apply box shadow with opacity gradient */
+.h-shadow {
+    box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2),
+    0 8px 10px 1px rgba(0, 0, 0, 0.14),
+    0 3px 14px 2px rgba(0, 0, 0, 0.12);
+}
+
+/*.flex-center {*/
+/*    align-self: center;*/
+/*    justify-self: center;*/
+/*}*/
+
+
+/*==========================================================================
+ * HiveOT Web Component default internal styles
+ *==========================================================================
+ */
+h-dropdown > ul > li {
+    list-style: none;
+    display:flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    font-size: 1rem; /* counteract parent fonts */
+    text-transform: none;
+    background-color: var(--pico-dropdown-background-color);
+    /* lists in dropdown are padded on the items to clearer show selection*/
+    padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
+}
+
+/* a dropdown menu is a list with box shadow, rounded corners */
+h-dropdown > ul:first-of-type {
+    flex-direction:column;
+    /* remove picocss nav ul margins that obscure box shadow */
+    margin-left:0;
+    margin-right:0;
+}
+
+ul > li {
+    background-color: var(--pico-dropdown-background-color);
+}
+ul > li:hover{
+    background-color: var(--pico-dropdown-hover-background-color);
+}
+
+/* modal with mask settings */
+h-modal {
+    /*The opacity of the modal mask*/
+    --mask-opacity: 80%;
+    /*The background color of the modal mask*/
+    --mask-background: var(--pico-background-color);
+    /* the animation timing of opening and closing the modal */
+    --animation-duration: 500ms;
+}
+
+/* the top level article (panel) inside a model has no bottom margin */
+h-modal > article {
+    margin:0;
+}
+/* Horizontal navigation bar
+ * h-navbar highlights the tab with the href matching the url.
+ * this requires that
+ */
+.h-navbar {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    padding: 0;
+    margin-left: 1rem !important;
+    height:100%; /* horizontal only*/
+    border-radius: 3px;
+    @media screen and (max-width: 600px) {
+        /*display: none;*/
+    }
+}
+
+/*Navbar buttons style; navbar is applied to a ul */
+.h-navbar >  li {
+    background-color: var(--pico-dropdown-background-color);
+    height:100%; /* horizontal only*/
+
+    color: var(--pico-color);
+    overflow: visible; /* dont cut off dropdown menu*/
+    outline: none;
+    cursor: pointer;
+    align-items:center;
+    /*padding: 12px 16px;*/
+    /*padding: 4px 4px;*/
+
+    font-size: 0.9rem;
+    text-transform: uppercase;
+
+    transition: border .3s ease-in-out;
+    border-bottom: 2px solid var(--pico-form-element-border-color);
+}
+
+/*If element has the 'h-target' set then show a thicker bottom border*/
+/*.h-navbar li:has(a.h-target) {*/
+.h-navbar > li.h-target {
+    border-bottom: 2px solid var(--pico-primary-border);
+}
+
+.h-navbar > li:hover {
+    color: var(--pico-text-decoration);
+    background-color: var(--pico-dropdown-hover-background-color);
+}
+

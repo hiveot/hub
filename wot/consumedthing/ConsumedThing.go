@@ -36,9 +36,9 @@ type InteractionListener func(*InteractionOutput)
 type ConsumedThing struct {
 	hc hubclient.IHubClient
 	td *tdd.TD
-	// observer of property value changes
+	// observer of property value changes by property name
 	observers map[string]InteractionListener
-	// subscribers to events
+	// subscribers to events by eventName
 	subscribers map[string]InteractionListener
 
 	// action status values
@@ -71,17 +71,17 @@ func (ct *ConsumedThing) buildInteractionOutput(tm *hubclient.ThingMessage) *Int
 // action output.
 //
 // This returns an empty interactionoutput if not found
-func (ct *ConsumedThing) GetValue(key string) (*InteractionOutput, bool) {
-	tm, found := ct.eventValues[key]
+func (ct *ConsumedThing) GetValue(name string) (*InteractionOutput, bool) {
+	tm, found := ct.eventValues[name]
 	if !found {
-		tm, found = ct.propValues[key]
+		tm, found = ct.propValues[name]
 	}
 	if tm == nil {
 		tm = &hubclient.ThingMessage{
 			ThingID: ct.td.ID,
-			Key:     key,
+			Key:     name,
 		} // dummy
-		slog.Warn("Value not (yet) found for key ", "key", key, "thingID", ct.td.ID)
+		slog.Warn("Value not (yet) found for name ", "name", name, "thingID", ct.td.ID)
 	}
 	// add the dataschema for the value
 	iout := ct.buildInteractionOutput(tm)
@@ -94,16 +94,15 @@ func (ct *ConsumedThing) GetThingDescription() *tdd.TD {
 }
 
 // InvokeAction requests an action on the thing
-func (ct *ConsumedThing) InvokeAction(
-	key string, params InteractionInput) *InteractionOutput {
-	aff := ct.td.GetAction(key)
+func (ct *ConsumedThing) InvokeAction(name string, params InteractionInput) *InteractionOutput {
+	aff := ct.td.GetAction(name)
 	if aff == nil {
 		return nil
 	}
 	tm := hubclient.NewThingMessage(
-		vocab.MessageTypeAction, ct.td.ID, key, params, ct.hc.ClientID())
+		vocab.MessageTypeAction, ct.td.ID, name, params, ct.hc.ClientID())
 
-	stat := ct.hc.PubAction(ct.td.ID, key, params)
+	stat := ct.hc.PubAction(ct.td.ID, name, params)
 	o := NewInteractionOutputFromTM(tm, ct.td)
 	o.Progress = stat
 	return o
@@ -112,11 +111,11 @@ func (ct *ConsumedThing) InvokeAction(
 // ObserveProperty registers a handler to changes in property value.
 // Only a single subscription per property is allowed. This returns an error
 // if an existing observer is already registered.
-func (ct *ConsumedThing) ObserveProperty(key string, listener InteractionListener) error {
-	if _, found := ct.observers[key]; found {
+func (ct *ConsumedThing) ObserveProperty(name string, listener InteractionListener) error {
+	if _, found := ct.observers[name]; found {
 		return fmt.Errorf("A property observer is already registered")
 	}
-	ct.observers[key] = listener
+	ct.observers[name] = listener
 	return nil
 }
 
@@ -190,28 +189,28 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 	return io
 }
 
-// ReadHistory returns the history for the given key
+// ReadHistory returns the history for the given name
 // If the number of values exceed the maximum then this returns itemsRemaining
 // as true. An additional call can be made using the last returned timestamp to
 // get the remaining values.
-func (ct *ConsumedThing) ReadHistory(key string, timestamp time.Time, duration time.Duration) (values []*hubclient.ThingMessage, itemsRemaining bool, err error) {
+func (ct *ConsumedThing) ReadHistory(name string, timestamp time.Time, duration time.Duration) (values []*hubclient.ThingMessage, itemsRemaining bool, err error) {
 
 	hist := historyclient.NewReadHistoryClient(ct.hc)
 	values, itemsRemaining, err = hist.ReadHistory(
-		ct.td.ID, key, timestamp, duration, 0)
+		ct.td.ID, name, timestamp, duration, 0)
 
 	return values, itemsRemaining, err
 }
 
 // ReadProperty returns the last known Thing property value
 // Call ReadAllProperties to refresh the property values.
-func (ct *ConsumedThing) ReadProperty(key string) *InteractionOutput {
+func (ct *ConsumedThing) ReadProperty(name string) *InteractionOutput {
 
-	aff := ct.td.GetProperty(key)
+	aff := ct.td.GetProperty(name)
 	if aff == nil {
 		return nil
 	}
-	tm := ct.propValues.Get(key)
+	tm := ct.propValues.Get(name)
 	o := ct.buildInteractionOutput(tm)
 	return o
 }
@@ -245,13 +244,13 @@ func (ct *ConsumedThing) ReadAllProperties() map[string]*InteractionOutput {
 	return ct.buildInteractionOutputMap(ct.eventValues)
 }
 
-// SubscribeEvent sets the handler to invoke when event with the key is received
+// SubscribeEvent sets the handler to invoke when event with the name is received
 // This returns an error if an existing subscriber already exists
-func (ct *ConsumedThing) SubscribeEvent(key string, listener InteractionListener) error {
-	if _, found := ct.subscribers[key]; found {
+func (ct *ConsumedThing) SubscribeEvent(name string, listener InteractionListener) error {
+	if _, found := ct.subscribers[name]; found {
 		return fmt.Errorf("An event subscriber is already registered")
 	}
-	ct.subscribers[key] = listener
+	ct.subscribers[name] = listener
 	return nil
 }
 
@@ -262,9 +261,9 @@ func (ct *ConsumedThing) SubscribeEvent(key string, listener InteractionListener
 // Since writing a property can take some time, especially if the device is
 // asleep, the callback receives the first response containing a messageID.
 // If the request is not yet complete
-func (ct *ConsumedThing) WriteProperty(key string, value InteractionInput) hubclient.DeliveryStatus {
+func (ct *ConsumedThing) WriteProperty(name string, value InteractionInput) hubclient.DeliveryStatus {
 
-	stat := ct.hc.PubProperty(ct.td.ID, key, value)
+	stat := ct.hc.PubProperty(ct.td.ID, name, value)
 	// TODO: receive updates
 	return stat
 }

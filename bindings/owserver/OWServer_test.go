@@ -96,7 +96,7 @@ func TestPoll(t *testing.T) {
 	require.NoError(t, err)
 	hc2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		slog.Info("received event", "id", msg.Key)
-		if msg.Key == vocab.EventTypeProperties {
+		if msg.Key == vocab.EventNameProperties {
 			var value map[string]interface{}
 			err2 := utils.DecodeAsObject(msg.Data, &value)
 			assert.NoError(t, err2)

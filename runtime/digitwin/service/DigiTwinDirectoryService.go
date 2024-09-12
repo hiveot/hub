@@ -251,7 +251,7 @@ func (svc *DigitwinDirectoryService) UpdateTD(senderID string, tddjson string) e
 	if err == nil && svc.tb != nil {
 
 		ev := hubclient.NewThingMessage(
-			vocab.MessageTypeEvent, dtThingID, vocab.EventTypeTD, string(dtwTddjson), senderID)
+			vocab.MessageTypeEvent, dtThingID, vocab.EventNameTD, string(dtwTddjson), senderID)
 
 		svc.tb.SendEvent(ev)
 	}

@@ -45,7 +45,7 @@ func TestAddRemoveTD(t *testing.T) {
 	// Add the TD by sending it as an event
 	td1 := tdd.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
 	td1JSON, _ := json.Marshal(td1)
-	err := ag.PubEvent(agThing1ID, vocab.EventTypeTD, string(td1JSON))
+	err := ag.PubEvent(agThing1ID, vocab.EventNameTD, string(td1JSON))
 	assert.NoError(t, err)
 
 	// Get returns a serialized TD object
@@ -87,7 +87,7 @@ func TestReadTDs(t *testing.T) {
 	ts.AddTDs(agentID, 1200)
 
 	//td1JSON, _ := json.Marshal(td1)
-	//stat := ag.PubEvent(agThing1ID, vocab.EventTypeTD, td1JSON)
+	//stat := ag.PubEvent(agThing1ID, vocab.EventNameTD, td1JSON)
 	//assert.Empty(t, stat.Error)
 
 	// GetThings returns a serialized TD object
@@ -164,7 +164,7 @@ func TestTDEvent(t *testing.T) {
 	// subscribe to TD events
 	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		stat.Completed(msg, nil, nil)
-		if msg.Key == vocab.EventTypeTD {
+		if msg.Key == vocab.EventNameTD {
 			// decode the TD
 			td := tdd.TD{}
 			payload := msg.DataAsText()

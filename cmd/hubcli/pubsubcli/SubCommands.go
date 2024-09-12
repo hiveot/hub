@@ -55,13 +55,13 @@ func SubEventsCommand(hc *hubclient.IHubClient) *cli.Command {
 // HandleSubTD subscribes and prints TD publications
 func HandleSubTD(hc hubclient.IHubClient) error {
 
-	err := hc.Subscribe("", vocab.EventTypeTD)
+	err := hc.Subscribe("", vocab.EventNameTD)
 	if err != nil {
 		return err
 	}
 	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		// only look for TD events, ignore directed events
-		if msg.Key != vocab.EventTypeTD {
+		if msg.Key != vocab.EventNameTD {
 			return stat.Completed(msg, nil, nil)
 		}
 
@@ -98,7 +98,7 @@ func HandleSubEvents(hc hubclient.IHubClient, thingID string, name string) error
 
 		valueStr := msg.DataAsText()
 
-		if msg.Key == vocab.EventTypeProperties {
+		if msg.Key == vocab.EventNameProperties {
 			var props map[string]interface{}
 			_ = utils.DecodeAsObject(msg.Data, &props)
 
@@ -110,7 +110,7 @@ func HandleSubEvents(hc hubclient.IHubClient, thingID string, name string) error
 					valueStr = fmt.Sprintf("{%s=%v}", key, val)
 				}
 			}
-		} else if msg.Key == vocab.EventTypeTD {
+		} else if msg.Key == vocab.EventNameTD {
 			var td tdd.TD
 			tdJSON := msg.DataAsText()
 			json.Unmarshal([]byte(tdJSON), &td)

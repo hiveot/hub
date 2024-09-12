@@ -22,7 +22,7 @@ runtime: .FORCE
 	mkdir -p $(BIN_FOLDER)
 	go build -o $(BIN_FOLDER)/$@ runtime/cmd/main.go
 
-services: launcher state idprov certs history
+services: launcher state idprov certs history hiveoview
 
 launcher: .FORCE
 	go build -o $(BIN_FOLDER)/$@ services/$@/cmd/main.go
@@ -41,12 +41,13 @@ idprov: .FORCE
 state: .FORCE
 	go build -o $(PLUGINS_FOLDER)/$@ services/$@/cmd/main.go
 
+hiveoview: .FORCE ## build the SSR web viewer binding
+	go build -o $(PLUGINS_FOLDER)/$@  services/$@/cmd/main.go
+
+
 # --- protocol bindings
 
-bindings:  hiveoview ipnet isy99x owserver zwavejs   ## Build the protocol bindings
-
-hiveoview: .FORCE ## build the SSR web viewer binding
-	go build -o $(PLUGINS_FOLDER)/$@  bindings/$@/cmd/main.go
+bindings:  ipnet isy99x owserver zwavejs   ## Build the protocol bindings
 
 ipnet: .FORCE ## Build the ip network scanner protocol binding
 	go build -o $(PLUGINS_FOLDER)/$@  bindings/$@/cmd/main.go

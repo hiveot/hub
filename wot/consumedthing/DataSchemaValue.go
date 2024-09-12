@@ -39,7 +39,7 @@ func (v DataSchemaValue) Integer() int {
 	return utils.DecodeAsInt(v.raw)
 }
 
-// Map returns the value as a key-value map
+// Map returns the value as a name-value map
 // Returns nil if no data was provided.
 func (v DataSchemaValue) Map() map[string]interface{} {
 	o := make(map[string]interface{})

@@ -1,0 +1,32 @@
+<!--RenderCardInput.gohtml
+    Render the value for a card widget as inline input.
+
+ -->
+
+{{- /*gotype:github.com/hiveot/hub/wot/consumedthing.InteractionOutput*/ -}}
+
+{{if eq .Schema.Type "boolean"}}
+    {{/*	=== Boolean Input ===*/}}
+    {{/*    <h-switch name="value" off="Off" on="On" value="{{$iv}}"></h-switch>*/}}
+
+	      <input id="cb-1" type="checkbox" role="switch" name="{{.Name}}"
+	             sse-swap="{{.ThingID}}/{{.Name}}"
+	             hx-on::sse-before-message="this.checked=event.detail.data == 'true'?true:false"
+
+             hx-post="/action/{{.ThingID}}/{{.Name}}"
+             hx-vals='{"switch":"doit"}'
+             hx-params="{{.Name}}"
+             hx-swap="none"
+
+            {{/* Update on change event*/}}
+		        {{if .Value.Boolean}}checked{{end}}
+
+						{{/* Submit when value is manually changed*/}}
+        />
+{{else}}
+
+  <input id="input-{{.Name}}" name="{{.Name}}"
+         autofocus autocomplete="off"
+         placeholder="{{.Value.Text}}" value="{{.Value.Text}}"/>
+  <small>Current value: {{.Value.Text}}</small>
+{{end}}

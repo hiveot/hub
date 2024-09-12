@@ -74,12 +74,12 @@ func (cts *ConsumedThingsSession) handleMessage(
 		_, err := cts.ReadTD(msg.ThingID)
 		if err != nil {
 			slog.Error("Received message with thingID that doesn't exist",
-				"thingID", msg.ThingID, "key", msg.Key, "senderID", msg.SenderID)
+				"thingID", msg.ThingID, "name", msg.Key, "senderID", msg.SenderID)
 		}
 	}
 
 	if msg.MessageType == vocab.MessageTypeEvent {
-		if msg.Key == vocab.EventTypeTD {
+		if msg.Key == vocab.EventNameTD {
 			// reload the TD
 			td := &tdd.TD{}
 			err := json.Unmarshal([]byte(msg.DataAsText()), &td)
@@ -98,7 +98,7 @@ func (cts *ConsumedThingsSession) handleMessage(
 				ct.td = td
 				//ct.OnEvent(msg)
 			}
-		} else if msg.Key == vocab.EventTypeProperties {
+		} else if msg.Key == vocab.EventNameProperties {
 			// update consumed thing, if existing
 			cts.mux.Lock()
 			defer cts.mux.Unlock()
@@ -118,7 +118,7 @@ func (cts *ConsumedThingsSession) handleMessage(
 					}
 				}
 			}
-		} else if msg.Key == vocab.EventTypeDeliveryUpdate {
+		} else if msg.Key == vocab.EventNameDeliveryUpdate {
 			// delivery status updates refer to actions
 			cts.mux.RLock()
 			ct, found := cts.consumedThings[msg.ThingID]

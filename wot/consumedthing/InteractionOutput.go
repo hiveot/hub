@@ -13,8 +13,8 @@ import (
 type InteractionOutput struct {
 	// ID of the Thing whose output is exposed
 	ThingID string
-	// The property, event or action key
-	Key string
+	// The property, event or action name
+	Name string
 	// Title with the human name provided by the interaction affordance
 	Title string
 	// Schema describing the data from property, event or action affordance
@@ -73,7 +73,7 @@ func (iout *InteractionOutput) GetUpdated(format ...string) (updated string) {
 func NewInteractionOutputFromTM(tm *hubclient.ThingMessage, td *tdd.TD) *InteractionOutput {
 	io := &InteractionOutput{
 		ThingID:  tm.ThingID,
-		Key:      tm.Key,
+		Name:     tm.Key,
 		SenderID: tm.SenderID,
 		Updated:  tm.Created,
 		Value:    NewDataSchemaValue(tm.Data),
@@ -81,7 +81,7 @@ func NewInteractionOutputFromTM(tm *hubclient.ThingMessage, td *tdd.TD) *Interac
 	if td == nil {
 		return io
 	}
-	// if key is that of an event then use it
+	// if name is that of an event then use it
 	eventAff, found := td.Events[tm.Key]
 	if found {
 		io.Schema = eventAff.Data
@@ -91,7 +91,7 @@ func NewInteractionOutputFromTM(tm *hubclient.ThingMessage, td *tdd.TD) *Interac
 		}
 		return io
 	}
-	// if key is that of a property then use it
+	// if name is that of a property then use it
 	propAff, found := td.Properties[tm.Key]
 	if found {
 		io.Schema = propAff.DataSchema
@@ -101,7 +101,7 @@ func NewInteractionOutputFromTM(tm *hubclient.ThingMessage, td *tdd.TD) *Interac
 		}
 		return io
 	}
-	// last, if key is that of an action then use its output schema
+	// last, if name is that of an action then use its output schema
 	actionAff, found := td.Actions[tm.Key]
 	if found {
 		if actionAff.Output != nil {
@@ -117,17 +117,17 @@ func NewInteractionOutputFromTM(tm *hubclient.ThingMessage, td *tdd.TD) *Interac
 		return io
 	}
 
-	slog.Warn("message key not found in TD", "thingID", td.ID, "key", tm.Key, "messageType", tm.MessageType)
+	slog.Warn("message name not found in TD", "thingID", td.ID, "name", tm.Key, "messageType", tm.MessageType)
 	return io
 }
 
 // NewInteractionOutput creates a new immutable interaction output from
 // schema and raw value.
 //
-// As events are used to update property values, this uses the message Key to
+// As events are used to update property values, this uses the message Name to
 // determine whether this is a property, event or action IO.
 //
-//	key is the interaction affordance name the output belongs to
+//	name is the interaction affordance name the output belongs to
 //	schema is the schema info for data
 //	raw is the raw data
 //	created is the timestamp the data is created
@@ -139,7 +139,7 @@ func NewInteractionOutput(thingID string, key string, schema *tdd.DataSchema, ra
 	}
 	io := &InteractionOutput{
 		ThingID: thingID,
-		Key:     key,
+		Name:    key,
 		Updated: created,
 		Value:   NewDataSchemaValue(raw),
 	}

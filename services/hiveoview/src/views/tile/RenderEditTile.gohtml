@@ -1,0 +1,120 @@
+<!--Tile editor dialog-->
+
+{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.EditTileTemplateData*/ -}}
+
+<h-modal show showClose shadow>
+		<article>
+			<header class="h-row-centered" style="height: 60px">
+					<h3 style="margin:0">Edit Tile</h3>
+			</header>
+			<main>
+				<form id="edit-tile-form" style="overflow:auto"
+				>
+
+					<fieldset>
+						<label title="Tile ID: {{.Tile.ID}}"
+										for="tile-title">Title: </label>
+						<input autofocus id="tile-title" name="title" required
+						       value="{{.Tile.Title}}" placeholder="{{.Tile.Title}}"
+						/>
+
+						<label for="tile-type">Type: </label>
+						<select id="tile-type" name="tileType" autofocus>
+                {{ range $ttID, $ttLabel := .TileTypeLabels}}
+									<option value="{{$ttID}}"
+													{{if eq $ttID $.Tile.TileType}} selected {{end}}>
+                      {{$ttLabel}}
+									</option>
+                {{end}}
+						</select>
+						<small>Current value: {{.GetTypeLabel .Tile.TileType}}</small>
+
+						<label  class="h-row">Sources:
+							<button type="button" class="outline h-icon-button"
+							        title="Add Source"
+							        hx-target="#modalLevel2"
+							        hx-get="{{.RenderSelectTileSourcesPath}}"
+							        hx-swap="innerHTML"
+							>
+								<iconify-icon icon='mdi:playlist-plus'></iconify-icon>
+							</button>
+						</label>
+
+						<ul id="edit-tile-sources"
+						    class="h-grid-table tile-sources-table" striped border>
+              {{/* Header*/}}
+							<li>
+								<div></div>
+								<div>Thing Event</div>
+								<div>Value</div>
+								<div>Updated</div>
+							</li>
+              {{range $k,$v := .Tile.Sources}}
+	                <li>
+										{{/* The hidden input is used to submit list of sources with the form*/}}
+		                <input type="hidden" name="sources"
+		                       value="{{$v.ThingID}}/{{$v.Key}}"/>
+		                <button type="button" class="h-row outline h-icon-button"
+		                        onclick="deleteRow(this.parentNode)"
+		                >
+			                <iconify-icon icon="mdi:delete"></iconify-icon>
+		                </button>
+				            <input name="sourceTitles" value="{{$v.Title}}"
+				                   style="margin:0"
+				                   title="{{$v.ThingID}}/{{$v.Key}}"/>
+		                <div class="h-row">{{$.GetValue $v.ThingID $v.Key}}</div>
+		                <div class="h-row">{{$.GetUpdated  $v.ThingID $v.Key}}</div>
+	                </li>
+							{{end}}
+						</ul>
+
+					</fieldset>
+				</form>
+			</main>
+
+			<footer>
+	      {{- /*close-modal is handled by h-modal component*/ -}}
+				<button id="cancelBtn"
+				        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+				        class="secondary">Cancel
+				</button>
+				<button type="submit"
+				        hx-include="#edit-tile-form"
+				        hx-post="{{.SubmitEditTilePath}}"
+				        hx-swap="none"
+				        hx-on::after-request="onSubmitCompleted(event, this)"
+				>Submit
+				</button>
+		</footer>
+	</article>
+</h-modal>
+
+<style>
+    .tile-sources-table {
+        grid-template-columns:
+          max-content /*delete icon*/
+	        minmax(200px, max-content) /*Name*/
+	        minmax(200px, 1fr) /*Value*/
+	        minmax(100px, max-content); /*value*/
+    }
+
+</style>
+
+
+<script>
+		// delete the table row
+		function deleteRow(rowEl) {
+        let table = rowEl.parentNode;
+        table.removeChild(rowEl);
+    }
+
+    // Ugly to have to do this!
+    function onSubmitCompleted(ev, btn) {
+        ev.stopImmediatePropagation()
+        let details = ev.detail
+        if (details.successful) {
+            let closeEv = new Event('close-modal',{bubbles:true})
+            btn.dispatchEvent(closeEv)
+        }
+    }
+</script>

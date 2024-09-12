@@ -124,12 +124,12 @@ func (cl *EmbeddedClient) PubEvent(
 // PubProps publishes a properties map
 func (cl *EmbeddedClient) PubProps(thingID string, props map[string]any) error {
 	payload, _ := json.Marshal(props)
-	return cl.PubEvent(thingID, vocab.EventTypeProperties, string(payload))
+	return cl.PubEvent(thingID, vocab.EventNameProperties, string(payload))
 }
 
 // PubTD publishes an agent's TD
 func (cl *EmbeddedClient) PubTD(thingID string, tdJSON string) error {
-	return cl.PubEvent(thingID, vocab.EventTypeTD, tdJSON)
+	return cl.PubEvent(thingID, vocab.EventNameTD, tdJSON)
 }
 
 // RefreshToken does nothing as tokens aren't used
@@ -167,7 +167,7 @@ func (svc *EmbeddedClient) SendDeliveryUpdate(stat hubclient.DeliveryStatus) {
 	)
 	statJSON, _ := json.Marshal(&stat)
 	// thing
-	_ = svc.PubEvent(digitwin.InboxDThingID, vocab.EventTypeDeliveryUpdate, string(statJSON))
+	_ = svc.PubEvent(digitwin.InboxDThingID, vocab.EventNameDeliveryUpdate, string(statJSON))
 }
 
 // SetConnectHandler does nothing as connection is always established

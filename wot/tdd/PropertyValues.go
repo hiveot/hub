@@ -13,12 +13,12 @@ type PropertyValues struct {
 	mux     sync.RWMutex
 }
 
-// GetValue returns the string representation of the latest value for the given key
-// If the key doesn't exist this returns an empty string
-func (pv *PropertyValues) GetValue(key string) (value any, found bool) {
+// GetValue returns the string representation of the latest value for the given name
+// If the name doesn't exist this returns an empty string
+func (pv *PropertyValues) GetValue(name string) (value any, found bool) {
 	pv.mux.RLock()
 	defer pv.mux.RUnlock()
-	value, found = pv.latest[key]
+	value, found = pv.latest[name]
 	return value, found
 }
 
@@ -70,31 +70,31 @@ func (pv *PropertyValues) GetChanged(clear bool) map[string]any {
 	return changedValues
 }
 
-// SetValue update the properties with a string value
+// SetValue update the property 'name' with a string value
 // Returns true if changed.
-func (pv *PropertyValues) SetValue(key string, newValue any) {
+func (pv *PropertyValues) SetValue(name string, newValue any) {
 	pv.mux.Lock()
 	defer pv.mux.Unlock()
-	oldValue, found := pv.latest[key]
+	oldValue, found := pv.latest[name]
 	if !found || oldValue != newValue {
-		pv.latest[key] = newValue
-		pv.changed[key] = newValue
+		pv.latest[name] = newValue
+		pv.changed[name] = newValue
 	}
 }
 
 // SetValueBool sets the boolean true/false value in the property map
-func (pv *PropertyValues) SetValueBool(key string, newValue bool) {
+func (pv *PropertyValues) SetValueBool(name string, newValue bool) {
 	valueString := "false"
 	if newValue {
 		valueString = "true"
 	}
-	pv.SetValue(key, valueString)
+	pv.SetValue(name, valueString)
 }
 
 // SetValueInt sets the integer value in the property map
-func (pv *PropertyValues) SetValueInt(key string, newValue int) {
+func (pv *PropertyValues) SetValueInt(name string, newValue int) {
 	valueString := strconv.FormatInt(int64(newValue), 10)
-	pv.SetValue(key, valueString)
+	pv.SetValue(name, valueString)
 }
 
 // NewPropertyValues creates a new set of maps for storing and tracking changes to property values

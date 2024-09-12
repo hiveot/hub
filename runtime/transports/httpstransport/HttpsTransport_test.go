@@ -438,7 +438,7 @@ func TestReconnect(t *testing.T) {
 			var stat2 hubclient.DeliveryStatus
 			stat2.Completed(tv, tv.Data, nil)
 			tm2 := hubclient.NewThingMessage(
-				vocab.MessageTypeEvent, tv.SenderID, vocab.EventTypeDeliveryUpdate, stat2, thingID)
+				vocab.MessageTypeEvent, tv.SenderID, vocab.EventNameDeliveryUpdate, stat2, thingID)
 
 			svc.SendToClient(tv.SenderID, tm2)
 		}()

@@ -332,7 +332,7 @@ func TestAddPropertiesEvent(t *testing.T) {
 	props1 := &hubclient.ThingMessage{
 		SenderID: agent1,
 		ThingID:  dThing1ID,
-		Key:      vocab.EventTypeProperties,
+		Key:      vocab.EventNameProperties,
 		Data:     propsList,
 	}
 
@@ -365,7 +365,7 @@ func TestAddPropertiesEvent(t *testing.T) {
 	assert.NotEmpty(t, msg)
 	hasProps := false
 	for valid && err == nil {
-		if msg.Key == vocab.EventTypeProperties {
+		if msg.Key == vocab.EventNameProperties {
 			hasProps = true
 			props := make(map[string]interface{})
 			err = utils.DecodeAsObject(msg.Data, &props)

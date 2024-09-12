@@ -391,13 +391,13 @@ func (cl *HttpSSEClient) PubProperty(thingID string, key string, data any) (
 // PubProps publishes a properties map event
 // Intended for use by agents to publish all properties at once
 func (cl *HttpSSEClient) PubProps(thingID string, props map[string]any) error {
-	return cl.PubEvent(thingID, vocab.EventTypeProperties, props)
+	return cl.PubEvent(thingID, vocab.EventNameProperties, props)
 }
 
 // PubTD publishes a TD event
 func (cl *HttpSSEClient) PubTD(thingID string, tdJSON string) error {
 	// TDs are published in JSON encoding as per spec
-	return cl.PubEvent(thingID, vocab.EventTypeTD, tdJSON)
+	return cl.PubEvent(thingID, vocab.EventNameTD, tdJSON)
 }
 
 // RefreshToken refreshes the authentication token
@@ -491,7 +491,7 @@ func (cl *HttpSSEClient) SendDeliveryUpdate(stat hubclient.DeliveryStatus) {
 		slog.String("MessageID", stat.MessageID),
 	)
 	// thing
-	_ = cl.PubEvent(digitwin.InboxDThingID, vocab.EventTypeDeliveryUpdate, stat)
+	_ = cl.PubEvent(digitwin.InboxDThingID, vocab.EventNameDeliveryUpdate, stat)
 }
 
 // SetConnectionStatus updates the current connection status

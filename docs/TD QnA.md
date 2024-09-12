@@ -11,12 +11,12 @@
 > Use-case: When one or more property values have changed, consumers must be notified.
 * Sending them as an event would mean duplicating all properties in the TD as events which seems overkill and not the intended use.
 * Current solution: define a '$properties' event that contains a list of property values, similar to [webthings.io events resource](https://webthings.io/api/#events-resource).
+* Current solution: send an event with the property name without having to define an event for it.
 
 3. How to updates multiple properties? (SOLVED)
 >  Use-case: user applies changes to multiple properties values in one request.
-
 * Current solution: Similar to pt.2, define a "$properties" action that holds one or more property values.
-* Answer: The TD form defines "writemultipleproperties" and "readallproperties" operation type.
+* Answer: The TD form defines "writemultipleproperties" and "readallproperties" operation type. - investigate further
 
 4. How to identify the "meaning" of a property/event/action?
 > How does the consumer know a property or event holds a temperature?
@@ -30,13 +30,12 @@
 
 6. Is there an implied or intended relationship between properties, events/actions, or should they be considered independent?
 > Use-case 1: send an event if one or more properties change.
-* option1: send an event with the property
-* option2: is this where forms come in? 
+* option1: send an event with the property value
 > Use-case 2: send an event if an action has completed to notify other consumers.
-* Current solution: events and actions keys refer to the same aspect. When an action completes, an event with the same key notifies of this. However, this seems to imply that all actions need a corresponding event defined. 
+* Current solution: events and actions keys refer to the same Thing state. When an action completes, an event with the same name as the action notifies of this. The definition of action and property affordances imply a corresponding event. 
 
-7. How best to request reading the 'latest' value vs historical values of an event?
-TODO: check if forms accounts for this.
+7. How best to request reading the 'latest' value of an event?
+Can this be defined in a top level form in the TD as an expansion of 'readproperty'? or does this belong in the outbox/history services TD.   
 
 8. How to define global constants?
 > Use-case: Various properties, events and actions use the same type of values. For example, unit names, on/off and state values, etc.
@@ -54,7 +53,7 @@ TODO: check if forms accounts for this.
 10. 5.3.3.1 SecurityScheme
 > The forth paragraph: "Security schemes generally may require additional authentication parameters, such as a password or key. The location of this information is indicated by the value associated with the name in, often in combination with the value associated with name."
    
-* It would be nice if this made sense. So-far however, sense has not visited this paragraph. It is quite ambiguous. When removing the second sentence, sense returns to some degree. If this is important however then please know that this important sentence is lost to this reader.  
+* It would be nice if this made sense. So-far however, this has eluded me. It is quite ambiguous. When removing the second sentence, sense returns to some degree. If this is important however then please know that this important sentence is lost to this reader.  
 
 11. How to add a description to enum values?
 > Use-case: If an input has a restricted set of values, the consumer will have to select one of those values. Enum values however do not have a presentable title or description.
@@ -88,28 +87,29 @@ TD Forms define a "contentType" field that describes the encoding of the payload
 
 Answer: encoding is handled in the transport protocol. The forms in the TD contain the available transport protocols and its encoding, for every single property, event and action affordance.
 
-Note1: Internally, the Hub transport client and server use an 'any' parameter for passing data. This is marshalled according to the transport protocol encoding, which is described in the TDD Forms.
-
-Note2: The inbox, outbox, and history stores must handle their own encoding. This is decoupled from the transport protocols.
+Note: The inbox, outbox, and history stores must handle their own encoding. This is decoupled from the transport protocols.
 
 15. How does the IoT device know what type the data is in?
-When receiving actions or properties, agents expect to receive inputs in the same format as was defined in the TD. Consumers receiving events and property values rely on the TD dataschema to interpret the data format for presentation or analysis.
+Answer: When receiving actions or properties, agents expect to receive inputs in the same format as was defined in the TD. Consumers receiving events and property values rely on the TD dataschema to interpret the data format for presentation or analysis.
 Eg, pass an integer as a boolean or vice versa. The transport protocol decodes the data into its native format. When receiving events, clients therefore can only receive data with the 'any' type for the value produced by the unmarshaller. That means that when handling this, it must be cast to its expected native type before use. If the type doesn't match then this would have to fail gracefully.
 
-16. Is it correct that the client must convert the data type? 
-ISSUE: complex data types that are returned by actions must be converted to the proper complex data type. Unmarshalling to interface{} (golang) however returns a non compatible object as the unmarshaller doesn't know the actual data type. Thus, this doesn't work.
+16. Is it correct that the consumer must convert complex data types? 
+ISSUE (golang): complex data types that are returned by actions (as defined in the TD) must be converted to the proper complex data type in the consumer. Unmarshalling to interface{} (golang) however returns a non compatible object as the unmarshaller doesn't know the actual data type. Thus, this doesn't work for goland.
 Workaround: Return the wire format and provide an unmarshal method to the client where the client can provide the expected data type.
 
-17. How to define the ThingMessage wrapper in SSE messages?
-When the server sends data to a client over SSE, it must include additional info such as senderID, thingID, affordance key and messageID. In http these can be put in the url and query parameters. With the SSE transport both the payload and metadata are embedded into a ThingMessage struct. How to describe this?
+17. How to define the ThingMessage envelope in SSE messages?
+When the server sends data to a client over SSE, it must include additional info such as senderID, thingID, affordance key and messageID. In http these can be put in the url and query parameters. With the SSE transport both the payload and metadata are embedded into a ThingMessage envelope. How to describe this?
 
 18. How to describe a map of objects in the action output dataschema?
 
 19. How to describe basic vs advanced properties, events and actions in the TD?
-    * option1: use the ht vocabulary to indicate basic properties
-    * option2: add to the @context
+Use case: human consumers might be interested in some properties, events or actions but not all of them. The human consumer should be able to just look at the essential data without being overwhelmed with more advanced ones. Some zwave devices have close to 100 properties of which only a handful are useful to the regular consumer. How to differentiate them? 
+    * option1: use the ht vocabulary to indicate basic properties. This is not compatible with anything.
+    * option2: add to the @context. Yeah ...
+    * option3: start an initiative to combine all existing ontologies into a single world wide accepted ontology, vocabulary and classification of the majority of IoT devices with their properties, events and actions. This seems like a lot of work.
 
 20. How to link an event received over SSE containing the result of an action to a corresponding action?
+Use case: Consumer sends an action and expect its UI to show the progress and result of the action. 
 
 21. Can authorization rules (eg required roles) be applied to a TD? 
-Use case: Only show allowed actions to a user. 
+Use case: Only show allowed actions to a user based on their authorization. 

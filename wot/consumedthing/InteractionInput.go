@@ -8,8 +8,8 @@ import (
 // InteractionInput contains the last value and data schema of an input
 // Use NewInteractionInput to initialize
 type InteractionInput struct {
-	// The property, event or action key
-	key string
+	// The property, event or action name
+	name string
 	// Title with the human name provided by the interaction affordance
 	Title string
 	// Schema describing the data from property, event or action affordance
@@ -28,10 +28,10 @@ func (iin *InteractionInput) Value() DataSchemaValue {
 // NewInteractionInput creates a new interaction input for property or action
 //
 //	td Thing Description document with schemas for the value. Use nil if schema is unknown.
-//	key of the input property or action
+//	name of the input property or action
 func NewInteractionInput(td *tdd.TD, key string, defaultValue any) *InteractionInput {
 	io := &InteractionInput{
-		key:   key,
+		name:  key,
 		value: NewDataSchemaValue(defaultValue),
 	}
 	if td == nil {
@@ -59,6 +59,6 @@ func NewInteractionInput(td *tdd.TD, key string, defaultValue any) *InteractionI
 		io.Title = propAff.Title
 		return io
 	}
-	slog.Warn("message key not found in TD", "thingID", td.ID, "key", key)
+	slog.Warn("message name not found in TD", "thingID", td.ID, "name", key)
 	return io
 }

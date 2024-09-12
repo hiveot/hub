@@ -13,6 +13,7 @@ import (
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -139,7 +140,7 @@ func TestSubscribeValues(t *testing.T) {
 	const key2 = "key2"
 	const data1 = "Hello world"
 	const data2 = 25
-	msgCount := 0
+	var msgCount atomic.Int32
 
 	r := startRuntime()
 	defer r.Stop()
@@ -152,13 +153,13 @@ func TestSubscribeValues(t *testing.T) {
 	// subscribe to events
 	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		stat.Completed(msg, nil, nil)
-		if msg.Key == vocab.EventTypeProperties {
+		if msg.Key == vocab.EventNameProperties {
 			// decode the properties map
 			props := make(map[string]interface{})
 			err := utils.DecodeAsObject(msg.Data, &props)
 			assert.NoError(t, err)
 			assert.Equal(t, 2, len(props))
-			msgCount++
+			msgCount.Add(1)
 		}
 
 		return stat
@@ -174,5 +175,5 @@ func TestSubscribeValues(t *testing.T) {
 	require.NoError(t, err)
 
 	time.Sleep(time.Millisecond * 1000)
-	assert.Equal(t, 1, msgCount)
+	assert.Equal(t, int32(1), msgCount.Load())
 }
