@@ -241,7 +241,7 @@ func (ct *ConsumedThing) ReadAllProperties() map[string]*InteractionOutput {
 	if err != nil {
 		return nil
 	}
-	return ct.buildInteractionOutputMap(ct.eventValues)
+	return ct.buildInteractionOutputMap(ct.propValues)
 }
 
 // SubscribeEvent sets the handler to invoke when event with the name is received

@@ -260,7 +260,9 @@ func (svc *LauncherService) WatchPlugins() error {
 						return
 					}
 				case err := <-svc.serviceWatcher.Errors:
-					slog.Error("error", "err", err)
+					if err != nil {
+						slog.Error("error", "err", err)
+					}
 				}
 			}
 		}()

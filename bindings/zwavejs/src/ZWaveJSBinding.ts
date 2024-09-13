@@ -120,6 +120,7 @@ export class ZwaveJSBinding {
         let lastValue = valueMap?.values[propID]
         if (valueMap && (lastValue !== newValue || !this.config.publishOnlyChanges)) {
             // TODO: round the value using a precision
+            // TODO: republish after some time even when unchanged
             // Determine if value changed enough to publish
             if (newValue != undefined) {
                 valueMap.values[propID] = newValue

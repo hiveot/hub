@@ -15,9 +15,9 @@
 
     {{/* inject the json encoded array with data to show as {x:time,y:value} here */}}
 	  {{/* The chart type can be overridden per data set*/}}
-		<data title="{{$hist.Title}}"
+		<data title="{{.Title}}"
 		      unit="{{$hist.DataSchema.UnitSymbol}}"
-		      key="{{$hist.Title}}"
+		      key="{{.Title}}"
 		      chart-type="{{$.Tile.TileType}}"
 		      stepped="true"
 

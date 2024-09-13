@@ -125,7 +125,7 @@ func TestHttpsGetProps(t *testing.T) {
 
 	vmm, err := hubclient.NewThingMessageMapFromSource(data)
 	require.NoError(t, err)
-	// note: golang unmarshals integers as float64.
+	// note: golang unmarshalls integers as float64.
 	data2raw := vmm[key2].Data.(float64)
 	require.Equal(t, data2, int(data2raw))
 }

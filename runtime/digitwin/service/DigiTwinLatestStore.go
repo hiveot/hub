@@ -97,6 +97,9 @@ func (svc *DigiTwinLatestStore) ReadLatest(msgType string, thingID string, keys 
 		for _, name := range keys {
 			tm := cachedMessages.Get(name)
 			if tm != nil {
+				if tm.Name == "" {
+					slog.Error("ReadLatest. TM has no message name")
+				}
 				messages.Set(name, tm)
 			}
 		}
@@ -192,6 +195,9 @@ func (svc *DigiTwinLatestStore) StoreMessage(msg *hubclient.ThingMessage) {
 	svc.LoadLatest(msg.ThingID)
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
+	if msg.Name == "" {
+		slog.Error("StoreMessage. msg has no Name")
+	}
 	thingCache, _ := svc.cache[msg.ThingID]
 	if msg.MessageType == vocab.MessageTypeEvent {
 		if msg.Name == vocab.EventNameProperties {

@@ -23,7 +23,7 @@ export class BindingConfig extends NodeEnvironment implements IZWaveConfig {
     // cacheDir where zwavejs stores its discovered node info
     cacheDir: string | undefined        // alternate storage directory
     // flag, only publish changed values on value update
-    publishOnlyChanges: boolean = true
+    publishOnlyChanges: boolean = false
 
     // logging of discovered value IDs to CSV. Intended for testing
     vidCsvFile: string | undefined
