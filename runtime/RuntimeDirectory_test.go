@@ -164,7 +164,7 @@ func TestTDEvent(t *testing.T) {
 	// subscribe to TD events
 	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		stat.Completed(msg, nil, nil)
-		if msg.Key == vocab.EventNameTD {
+		if msg.Name == vocab.EventNameTD {
 			// decode the TD
 			td := tdd.TD{}
 			payload := msg.DataAsText()

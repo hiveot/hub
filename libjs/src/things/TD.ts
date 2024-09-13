@@ -252,7 +252,7 @@ export class TD extends Object {
 
 
     // Convert readonly properties into an array for display
-    // Returns table of {key, tdproperty}
+    // Returns table of {name, tdproperty}
     public static GetAttributeNames = (td: TD): string[] => {
         let res = Array<string>()
         if (!!td && !!td.properties) {

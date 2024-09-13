@@ -27,8 +27,8 @@ type RetentionRule struct {
 	// Optional, the rule applies to data from this (digital twin) Thing
 	ThingID string `yaml:"thingID,omitempty" json:"thingID,omitempty"`
 
-	// Optional, the rule applies to events or actions with this key
-	Key string `yaml:"key,omitempty"`
+	// Optional, the rule applies to events or actions with this name
+	Name string `yaml:"name,omitempty"`
 
 	// TODO: class of value, eg @type in the TD (eg, temperature, humidity)
 	//Type string `yaml:"type",json:"type"`
@@ -46,8 +46,8 @@ type RetentionRuleSet map[string][]*RetentionRule
 type GetRetentionRuleArgs struct {
 	// ThingID whose rule to get (digital twin ID) is optional
 	ThingID string `json:"thingID,omitempty"`
-	// Key of the event whose retention settings to get
-	Key string `json:"key,omitempty"`
+	// Name of the event whose retention settings to get
+	Name string `json:"name,omitempty"`
 }
 type GetRetentionRuleResp struct {
 	Rule *RetentionRule `json:"rule"`

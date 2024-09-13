@@ -37,7 +37,7 @@ func ExportToGolang(vclasses map[string]VocabClassMap, vconstants map[string]Voc
 
 	// Loop through the vocabulary constants
 	for constGroup, cm := range vconstants {
-		vocabKeys := utils.OrderedMapKeys(cm.Vocab)
+		vocabNames := utils.OrderedMapKeys(cm.Vocab)
 		lines = append(lines, "")
 		lines = append(lines, fmt.Sprintf("// type: %s", constGroup))
 		lines = append(lines, fmt.Sprintf("// version: %s", cm.Version))
@@ -45,9 +45,9 @@ func ExportToGolang(vclasses map[string]VocabClassMap, vconstants map[string]Voc
 		lines = append(lines, fmt.Sprintf("// source: %s", cm.Link))
 		lines = append(lines, fmt.Sprintf("// description: %s", cm.Description))
 		lines = append(lines, "const (")
-		for _, key := range vocabKeys {
-			value := cm.Vocab[key]
-			lines = append(lines, fmt.Sprintf("  %s = \"%s\"", key, value))
+		for _, name := range vocabNames {
+			value := cm.Vocab[name]
+			lines = append(lines, fmt.Sprintf("  %s = \"%s\"", name, value))
 		}
 		lines = append(lines, ")")
 		lines = append(lines, "// end of "+constGroup)
@@ -55,7 +55,7 @@ func ExportToGolang(vclasses map[string]VocabClassMap, vconstants map[string]Voc
 
 	// Loop through the vocabulary classes
 	for classType, cm := range vclasses {
-		vocabKeys := utils.OrderedMapKeys(cm.Vocab)
+		vocabNames := utils.OrderedMapKeys(cm.Vocab)
 
 		lines = append(lines, "")
 		lines = append(lines, fmt.Sprintf("// type: %s", classType))
@@ -64,9 +64,9 @@ func ExportToGolang(vclasses map[string]VocabClassMap, vconstants map[string]Voc
 		lines = append(lines, fmt.Sprintf("// source: %s", cm.Link))
 		lines = append(lines, fmt.Sprintf("// namespace: %s", cm.Namespace))
 		lines = append(lines, "const (")
-		for _, key := range vocabKeys {
-			classInfo := cm.Vocab[key]
-			lines = append(lines, fmt.Sprintf("  %s = \"%s\"", key, classInfo.ClassName))
+		for _, name := range vocabNames {
+			classInfo := cm.Vocab[name]
+			lines = append(lines, fmt.Sprintf("  %s = \"%s\"", name, classInfo.ClassName))
 		}
 		lines = append(lines, ")")
 		lines = append(lines, "// end of "+classType)
@@ -77,10 +77,10 @@ func ExportToGolang(vclasses map[string]VocabClassMap, vconstants map[string]Voc
 		lines = append(lines, fmt.Sprintf("var %sMap = map[string]struct {", classType))
 		lines = append(lines, "   Symbol string; Title string; Description string")
 		lines = append(lines, "} {")
-		for key, unitInfo := range cm.Vocab {
+		for name, unitInfo := range cm.Vocab {
 			lines = append(lines, fmt.Sprintf(
 				"  %s: {Symbol: \"%s\", Title: \"%s\", Description: \"%s\"},",
-				key, unitInfo.Symbol, unitInfo.Title, unitInfo.Description))
+				name, unitInfo.Symbol, unitInfo.Title, unitInfo.Description))
 		}
 		lines = append(lines, "}")
 		lines = append(lines, "")

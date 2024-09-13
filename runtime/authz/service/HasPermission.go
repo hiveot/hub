@@ -104,7 +104,7 @@ func (svc *AuthzService) HasPubPermission(msg *hubclient.ThingMessage) (*hubclie
 			slog.String("senderID", msg.SenderID),
 			slog.String("messageType", msg.MessageType),
 			slog.String("thingID", msg.ThingID),
-			slog.String("key", msg.Key),
+			slog.String("name", msg.Name),
 		)
 		return msg, fmt.Errorf("Permission denied")
 	}

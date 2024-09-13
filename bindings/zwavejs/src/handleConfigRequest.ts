@@ -1,6 +1,6 @@
 // ZWaveJSBinding.ts holds the entry point to the zwave binding along with its configuration
 import {SetValueStatus, TranslatedValueID, ValueMetadataNumeric, ZWaveNode} from "zwave-js";
-import {getPropVid} from "./getPropKey";
+import {getPropVid} from "./getPropName";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as tslog from 'tslog';
 import {DeliveryProgress, DeliveryStatus, IHubClient} from "@hivelib/hubclient/IHubClient";
@@ -18,7 +18,7 @@ export function handleConfigRequest(
     let stat = new DeliveryStatus()
     let errMsg: Error | undefined
 
-    let propKey = msg.key
+    let propKey = msg.name
     let propValue = msg.data
 
     stat.applied(msg)

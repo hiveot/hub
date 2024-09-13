@@ -105,10 +105,10 @@ func (svc *IsyBinding) GetBindingPropValues(onlyChanges bool) (map[string]any, m
 
 // HandleBindingConfig configures the binding.
 func (svc *IsyBinding) HandleBindingConfig(action *hubclient.ThingMessage) error {
-	err := fmt.Errorf("unknown configuration request '%s' from '%s'", action.Key, action.SenderID)
+	err := fmt.Errorf("unknown configuration request '%s' from '%s'", action.Name, action.SenderID)
 	// connection settings to connect to the gateway
 	// FIXME: persist this configuration
-	switch action.Key {
+	switch action.Name {
 	case vocab.PropNetAddress:
 		svc.config.IsyAddress = action.DataAsText()
 		err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)

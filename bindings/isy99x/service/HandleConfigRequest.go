@@ -13,7 +13,7 @@ func (svc *IsyBinding) handleConfigRequest(action *hubclient.ThingMessage) (stat
 
 	slog.Info("handleConfigRequest",
 		slog.String("thingID", action.ThingID),
-		slog.String("key", action.Key),
+		slog.String("name", action.Name),
 		slog.String("senderID", action.SenderID))
 
 	// configuring the binding doesn't require a connection with the gateway
@@ -44,7 +44,7 @@ func (svc *IsyBinding) handleConfigRequest(action *hubclient.ThingMessage) (stat
 	go func() {
 		_ = svc.PublishNodeValues(true)
 		// re-submit the TD if the title changes
-		if action.Key == vocab.PropDeviceTitle {
+		if action.Name == vocab.PropDeviceTitle {
 			td := isyThing.GetTD()
 			tdJSON, _ := json.Marshal(td)
 

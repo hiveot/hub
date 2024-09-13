@@ -7,7 +7,7 @@ import {
 } from "zwave-js";
 import {InterviewStage, SecurityClass} from '@zwave-js/core';
 import * as vocab from "@hivelib/api/vocab/ht-vocab";
-import {getPropKey} from "./getPropKey";
+import {getPropName} from "./getPropName";
 import {getVidValue} from "@zwavejs/ZWAPI";
 
 
@@ -27,9 +27,9 @@ export class NodeValues {
 
 
     // Set a value if it is not undefined
-    setIf(key: string, val: unknown) {
+    setIf(name: string, val: unknown) {
         if (val != undefined) {
-            this.values[key] = val
+            this.values[name] = val
         }
     }
 
@@ -37,11 +37,11 @@ export class NodeValues {
     // This only returns values if they exist in the current map.
     diffValues(oldValues: NodeValues): NodeValues {
         let diffMap = new NodeValues()
-        for (let key in Object(this.values)) {
-            let oldVal = oldValues.values[key]
-            let newVal = this.values[key]
+        for (let name in Object(this.values)) {
+            let oldVal = oldValues.values[name]
+            let newVal = this.values[name]
             if (newVal !== oldVal) {
-                diffMap.values[key] = newVal
+                diffMap.values[name] = newVal
             }
         }
         return diffMap
@@ -119,7 +119,7 @@ export class NodeValues {
         let vids = node.getDefinedValueIDs()
         for (let vid of vids) {
             let vidValue = getVidValue(node, vid)
-            let propID = getPropKey(vid)
+            let propID = getPropName(vid)
             this.setIf(propID, vidValue)
         }
         // let nameVid = {

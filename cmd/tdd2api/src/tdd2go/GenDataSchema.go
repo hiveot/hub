@@ -10,9 +10,9 @@ import (
 // Intended for generating fields in action, event, property affordances and schema definitions.
 //
 //	l is the output lines with generated source code
-//	key is the field name of the dataschema
+//	name is the field name of the dataschema
 //	ds is the dataschema to generate
-func GenDataSchemaFields(l *utils.SL, key string, ds *tdd.DataSchema) {
+func GenDataSchemaFields(l *utils.SL, name string, ds *tdd.DataSchema) {
 	// get the list of attributes in this schema
 	//attrList := GetSchemaAttrs(key, ds, true)
 	// the top level attribute can be a single attribute or a list of properties
@@ -22,20 +22,20 @@ func GenDataSchemaFields(l *utils.SL, key string, ds *tdd.DataSchema) {
 		// field is a dataschema
 		GenSchemaAttr(l, ds.Properties)
 	} else {
-		props := map[string]*tdd.DataSchema{key: ds}
+		props := map[string]*tdd.DataSchema{name: ds}
 		GenSchemaAttr(l, props)
 	}
 }
 
 // GenSchemaAttr generates the attribute fields of a dataschema
 //
-//	attrMap contains a map of attribute keys with their description
+//	attrMap contains a map of attribute name with their description
 //
 // func GenSchemaAttr(l *utils.SL, attrList []SchemaAttr) {
 func GenSchemaAttr(l *utils.SL, attrMap map[string]*tdd.DataSchema) {
 
-	keys := utils.OrderedMapKeys(attrMap)
-	for _, key := range keys {
+	names := utils.OrderedMapKeys(attrMap)
+	for _, key := range names {
 		attr := attrMap[key]
 		keyTitle := ToTitle(key)
 		goType := GoTypeFromSchema(attr)

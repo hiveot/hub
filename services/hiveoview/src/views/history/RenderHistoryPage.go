@@ -21,7 +21,7 @@ const RenderHistoryTemplate = "RenderHistoryPage.gohtml"
 // @param duration number of seconds to view. default is -24 hours
 func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
-	key := chi.URLParam(r, "key")
+	name := chi.URLParam(r, "name")
 	timestampStr := r.URL.Query().Get("time")
 	durationStr := r.URL.Query().Get("duration")
 	durationSec, _ := strconv.ParseInt(durationStr, 10, 32)
@@ -49,7 +49,7 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	duration := time.Second * time.Duration(durationSec)
-	data, err := NewHistoryTemplateData(ct, key, timestamp, duration)
+	data, err := NewHistoryTemplateData(ct, name, timestamp, duration)
 
 	if err != nil {
 		sess.WriteError(w, err, 0)

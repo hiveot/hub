@@ -52,7 +52,7 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 			if len(parts) >= 2 {
 				tileSource := session.TileSource{
 					ThingID: parts[0],
-					Key:     parts[1],
+					Name:    parts[1],
 					Title:   sourceTitle,
 				}
 				tile.Sources = append(tile.Sources, tileSource)

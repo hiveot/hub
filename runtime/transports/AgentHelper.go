@@ -30,13 +30,13 @@ func (agent *AgentHandler) InvokeMethod(
 
 func (agent *AgentHandler) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	if msg.ThingID == agent.thingID {
-		method, found := agent.methods[msg.Key]
+		method, found := agent.methods[msg.Name]
 		if found {
 			return agent.InvokeMethod(method, msg)
 		}
 	}
 	stat.Failed(msg, fmt.Errorf(
-		"Agent for service '%s' does not have method '%s'", agent.thingID, msg.Key))
+		"Agent for service '%s' does not have method '%s'", agent.thingID, msg.Name))
 	return stat
 }
 

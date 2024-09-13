@@ -51,7 +51,7 @@ func (svc *DigiTwinOutboxService) ReadAllProperties(senderID string,
 	args digitwin.OutboxReadLatestArgs) (values map[string]any, err error) {
 
 	recs, err := svc.latest.ReadLatest(
-		vocab.MessageTypeProperty, args.ThingID, args.Keys, args.Since)
+		vocab.MessageTypeProperty, args.ThingID, args.Names, args.Since)
 	if err == nil {
 		// this mapping is ugly. It can't be described with a TD dataschema :'(
 		values = make(map[string]any)
@@ -68,7 +68,7 @@ func (svc *DigiTwinOutboxService) ReadLatest(senderID string,
 	args digitwin.OutboxReadLatestArgs) (values map[string]any, err error) {
 
 	recs, err := svc.latest.ReadLatest(
-		vocab.MessageTypeEvent, args.ThingID, args.Keys, args.Since)
+		vocab.MessageTypeEvent, args.ThingID, args.Names, args.Since)
 	if err == nil {
 		// this mapping is ugly. It can't be described with a TD dataschema :'(
 		values = make(map[string]any)

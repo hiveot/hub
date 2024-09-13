@@ -88,7 +88,7 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 	if err != nil || err2 != nil {
 		return err
 	}
-	valueMapJson, err := digitwin.OutboxReadLatest(hc, nil, "", "", thingID)
+	valueMapJson, err := digitwin.OutboxReadLatest(hc, "", nil, "", thingID)
 	valueMap, _ := hubclient.NewThingMessageMapFromSource(valueMapJson)
 	//valueMap, _ := things.UnmarshalThingValueMap(valueMapJson)
 

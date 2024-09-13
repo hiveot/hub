@@ -4,25 +4,25 @@ import type {ValueID} from "@zwave-js/core";
 let  key2vidMap = new Map<string,ValueID>()
 
 
-// getPropID returns the property key for identifying the property used in
+// getPropName returns the property key for identifying the property used in
 // the TD property map and events.
 //
 //  Format: {vid.commandClass}-{vid.property}{vid.endpoint}[-{vid.propertyKey}]
 //
 // Used for TD properties, events, actions and for sending events
-export function getPropKey(vid: ValueID): string {
-    let propKey = String(vid.commandClass) + "-" + String(vid.property)
+export function getPropName(vid: ValueID): string {
+    let propName = String(vid.commandClass) + "-" + String(vid.property)
 
     if (vid.endpoint) {
-        propKey += "-" + vid.endpoint
+        propName += "-" + vid.endpoint
     } else {
-        propKey += "-0"
+        propName += "-0"
     }
     if (vid.propertyKey != undefined) {
-        propKey += "-" + String(vid.propertyKey)
+        propName += "-" + String(vid.propertyKey)
     }
-    key2vidMap.set(propKey, vid)
-    return propKey
+    key2vidMap.set(propName, vid)
+    return propName
 }
 
 // getPropVid reconstructs a vid from the property key.
@@ -32,8 +32,8 @@ export function getPropKey(vid: ValueID): string {
 // Intended for finding the vid to update configuration or initiate an action.
 //
 // The property key format is CC-property-endpoint[-propertyKey]
-export function getPropVid(key: string): ValueID|undefined {
+export function getPropVid(name: string): ValueID|undefined {
 
-    let vid = key2vidMap.get(key)
+    let vid = key2vidMap.get(name)
     return vid
 }

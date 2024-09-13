@@ -154,7 +154,7 @@ func (sm *SessionManager) SendEvent(msg *hubclient.ThingMessage) (stat hubclient
 	for id, session := range sm.sidSessions {
 		_ = id
 		// don't send event to self
-		if session.IsSubscribed(msg.ThingID, msg.Key) {
+		if session.IsSubscribed(msg.ThingID, msg.Name) {
 			_ = session.SendSSE(msg.MessageID, vocab.MessageTypeEvent, msg)
 		}
 	}

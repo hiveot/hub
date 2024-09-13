@@ -46,7 +46,7 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (thingValue *hu
 	}
 	createdMsec, _ := strconv.ParseInt(parts[0], 10, 64)
 	createdTime := time.UnixMilli(createdMsec)
-	key := parts[1]
+	name := parts[1]
 	senderID := ""
 	messageType := vocab.MessageTypeEvent
 	if len(parts) >= 2 {
@@ -65,13 +65,13 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (thingValue *hu
 	err := json.Unmarshal(raw, &data)
 	if err != nil {
 		slog.Error("decodeValue, unmarshal failure",
-			"thingID", bucketID, "key", key, "err", err.Error())
+			"thingID", bucketID, "name", name, "err", err.Error())
 	}
 
 	thingValue = &hubclient.ThingMessage{
 		ThingID:     bucketID, // digital twin thingID that includes the agent prefix
 		MessageID:   messageID,
-		Key:         key,
+		Name:        name,
 		Data:        data,
 		Created:     createdTime.Format(utils.RFC3339Milli),
 		MessageType: messageType,
@@ -96,7 +96,7 @@ func (svc *ReadHistory) First(senderID string, args historyapi.CursorArgs) (*his
 
 	tm, valid := decodeValue(cursor.BucketID(), k, raw)
 	filterName := ci.Filter
-	if valid && filterName != "" && tm.Key != filterName {
+	if valid && filterName != "" && tm.Name != filterName {
 		tm, valid = svc.next(cursor, filterName, until)
 	}
 	resp := historyapi.CursorSingleResp{
@@ -128,7 +128,7 @@ func (svc *ReadHistory) Last(senderID string, args historyapi.CursorArgs) (*hist
 	}
 	thingValue, valid := decodeValue(cursor.BucketID(), k, raw)
 	filterName := ci.Filter
-	if valid && filterName != "" && thingValue.Key != filterName {
+	if valid && filterName != "" && thingValue.Name != filterName {
 		// search back to the last valid value
 		thingValue, valid = svc.prev(cursor, filterName, until)
 	}
@@ -147,7 +147,7 @@ func (svc *ReadHistory) Last(senderID string, args historyapi.CursorArgs) (*hist
 //	name is the event name to match
 //	until is the time not to exceed in the result. Intended to avoid unnecessary iteration in range queries
 func (svc *ReadHistory) next(
-	cursor buckets.IBucketCursor, key string, until time.Time) (
+	cursor buckets.IBucketCursor, name string, until time.Time) (
 	thingValue *hubclient.ThingMessage, found bool) {
 
 	untilMilli := until.UnixMilli()
@@ -158,11 +158,11 @@ func (svc *ReadHistory) next(
 			// key is invalid. This means we reached the end of cursor
 			return nil, false
 		}
-		// key is constructed as  {timestamp}/{valueName}/{a|e|c}/{sender}
+		// key is constructed as  {timestamp}/{name}/{a|e|c}/{sender}
 		parts := strings.Split(k, "/")
 		if len(parts) != 4 {
 			// key exists but is invalid. skip this entry
-			slog.Warn("findNextName: invalid key", "key", k)
+			slog.Warn("findNextName: invalid name", "name", k)
 		} else {
 			// check timestamp and name must match
 			timestampmsec, _ := strconv.ParseInt(parts[0], 10, 64)
@@ -172,7 +172,7 @@ func (svc *ReadHistory) next(
 				cursor.Prev()
 				return thingValue, false
 			}
-			if key == "" || key == parts[1] {
+			if name == "" || name == parts[1] {
 				// found a match. Decode and return it
 				thingValue, found = decodeValue(cursor.BucketID(), k, raw)
 				return thingValue, found
@@ -380,7 +380,7 @@ func (svc *ReadHistory) seek(cursor buckets.IBucketCursor, ts time.Time, key str
 		return nil, valid
 	}
 	thingValue, valid := decodeValue(cursor.BucketID(), k, raw)
-	if valid && key != "" && thingValue.Key != key {
+	if valid && key != "" && thingValue.Name != key {
 		thingValue, valid = svc.next(cursor, key, until)
 	}
 	return thingValue, valid

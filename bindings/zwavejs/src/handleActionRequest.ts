@@ -1,6 +1,6 @@
 // ZWaveJSBinding.ts holds the entry point to the ZWave binding along with its configuration
 import {InterviewStage,  ZWaveNode} from "zwave-js";
-import {getPropVid} from "./getPropKey";
+import {getPropVid} from "./getPropName";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as tslog from 'tslog';
 import { DeliveryStatus, IHubClient} from "@hivelib/hubclient/IHubClient";
@@ -21,7 +21,7 @@ export function  handleActionRequest(
 
     let stat = new DeliveryStatus()
     let errMsg: string = ""
-    let actionLower = msg.key.toLowerCase()
+    let actionLower = msg.name.toLowerCase()
     let targetNode: ZWaveNode | undefined
     let node = zwapi.getNodeByDeviceID(msg.thingID)
     if (node == undefined) {
@@ -43,7 +43,7 @@ export function  handleActionRequest(
 
 
     let actionValue = msg.data
-    log.info("action: " + msg.key + " - value: " + msg.data)
+    log.info("action: " + msg.name + " - value: " + msg.data)
     // be optimistic :)
     stat.completed(msg)
     // controller specific commands (see parseController)
@@ -117,7 +117,7 @@ export function  handleActionRequest(
             // VID based configuration and actions
             //  currently propertyIDs are also accepted.
             // FIXME: only allow defined actions
-            let propVid = getPropVid(msg.key)
+            let propVid = getPropVid(msg.name)
             if (propVid) {
                 setValue( node, propVid, actionValue)
                     .then(stat => {
@@ -132,7 +132,7 @@ export function  handleActionRequest(
                 break;
             }
             if (!found) {
-                errMsg = "action '" + msg.key + "' is not a known action for thing '" + msg.thingID + "'"
+                errMsg = "action '" + msg.name + "' is not a known action for thing '" + msg.thingID + "'"
             }
     }
     if (errMsg) {

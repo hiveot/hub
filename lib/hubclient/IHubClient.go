@@ -126,11 +126,11 @@ type IHubClient interface {
 	// update separately through a delivery event.
 	//
 	//	dThingID the digital twin ID for whom the action is intended
-	//	key is the action ID or method name of the action to invoke
+	//	name of the action to invoke
 	//  value with message data to publish in native format
 	//
 	// This returns a delivery status with serialized response message if delivered
-	PubAction(dThingID string, key string, value any) DeliveryStatus
+	PubAction(dThingID string, name string, value any) DeliveryStatus
 
 	// PubEvent publishes an event style message without a response.
 	// It returns as soon as delivery to the hub is confirmed.
@@ -140,22 +140,22 @@ type IHubClient interface {
 	// The Hub outbox broadcasts this event using the digital twin ID.
 	//
 	//	thingID native ID of the thing as used by the agent
-	//	key ID of the event
+	//	name of the event to publish as described in the TD
 	//	value with native data to publish, as per TD dataschema
 	//
 	// This returns an error if the event cannot not be delivered to the hub
-	PubEvent(thingID string, key string, value any) error
+	PubEvent(thingID string, name string, value any) error
 
 	// PubProperty publishes a property change request
 	// Value is a value based on the PropertyAffordances in the TD
-	PubProperty(dThingID string, key string, value any) DeliveryStatus
+	PubProperty(dThingID string, name string, value any) DeliveryStatus
 
 	// PubProps publishes a property values event.
 	// It returns as soon as delivery to the hub is confirmed.
 	// This is intended for agents, not for consumers.
 	//
 	//	thingID is the native ID of the device (not including the digital twin ID)
-	//	props is the property key-value map to publish where value is the native value
+	//	props is the property name-value map to publish where value is the native value
 	PubProps(thingID string, props map[string]any) error
 
 	// PubTD publishes an TD document event.
@@ -181,12 +181,12 @@ type IHubClient interface {
 	// if available at build time. See cmd/genapi for the CLI.
 	//
 	//	dThingID is the digital twin ID of the service providing the RPC method
-	//	key is the ID of the RPC method as described in the service TD action affordance
+	//	name of the RPC method as described in the service TD action affordance
 	//	args is the struct or type containing the arguments to marshal
 	//	resp is the address of a struct or type receiving the result values
 	//
 	// This returns an error if delivery failed or an error was returned
-	Rpc(dThingID string, key string, args interface{}, resp interface{}) error
+	Rpc(dThingID string, name string, args interface{}, resp interface{}) error
 
 	// SendDeliveryUpdate sends a delivery progress update to the hub.
 	// The hub's inbox will update the status of the action and notify the original sender.
@@ -211,11 +211,11 @@ type IHubClient interface {
 	// This is for events only. Actions directed to this client are automatically passed
 	// to this client's messageHandler.
 	//
-	//  dThingID is the digital twin ID of the Thing to subscribe to.
-	//	key is the type of event to subscribe to or "" for all events
-	Subscribe(dThingID string, key string) error
+	//  dThingID is the digital twin Thing ID of the Thing to subscribe to.
+	//	name of the event to subscribe as described in the TD or "" for all events
+	Subscribe(dThingID string, name string) error
 
 	// Unsubscribe removes a previous event subscription.
 	// dThingID and key must match that of Subscribe
-	Unsubscribe(dThingID string, key string) error
+	Unsubscribe(dThingID string, name string) error
 }

@@ -44,7 +44,7 @@ import (
 // @param key of the event affordance to add as source
 func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
-	key := chi.URLParam(r, "key")
+	name := chi.URLParam(r, "name")
 
 	sess, hc, err := session.GetSessionFromContext(r)
 	if err != nil {
@@ -58,20 +58,20 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 	var schema *tdd.DataSchema
 	var latestValue = "n/a"
 	var latestUpdated = "n/a"
-	var sourceRef = thingID + "/" + key
+	var sourceRef = thingID + "/" + name
 
 	var eventAff *tdd.EventAffordance
 	cts := sess.GetConsumedThingsSession()
 	td := cts.GetTD(thingID)
 	if td != nil {
-		eventAff = td.GetEvent(key)
+		eventAff = td.GetEvent(name)
 		if eventAff != nil {
 			schema = &eventAff.Data
 			title = td.Title + ": " + eventAff.Title
 			unitSymbol = schema.UnitSymbol()
 		} else {
 			// tile source is an action. use the input schema if available
-			actionAff := td.GetAction(key)
+			actionAff := td.GetAction(name)
 			if actionAff != nil {
 				schema = actionAff.Input
 				title = td.Title + ": " + actionAff.Title
@@ -88,7 +88,7 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 
 	// get the latest event values of this source
 	latestEvents, err := digitwin.OutboxReadLatest(
-		hc, []string{key}, vocab.MessageTypeEvent, "", thingID)
+		hc, vocab.MessageTypeEvent, []string{name}, "", thingID)
 	if err != nil {
 		sess.WriteError(w, err, 0)
 		return
@@ -99,7 +99,7 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tm := evmap[key]
+	tm := evmap[name]
 	// if no value was ever received then use n/a
 	if tm != nil {
 		latestValue = tm.DataAsText() + " " + unitSymbol

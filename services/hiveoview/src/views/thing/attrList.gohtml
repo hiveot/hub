@@ -1,6 +1,6 @@
 <!--Thing attribute list-->
 <!--@param '.' object of type DetailsTemplateData -->
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.ThingDetailsTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/thing.ThingDetailsTemplateData*/ -}}
 
 <ul class="h-grid-table thing-attr " border striped>
 
@@ -12,18 +12,18 @@
 		<div class="h-show-md">Updated</div>
 	</li>
 
-    {{/*	Iterate the sorted read-only property keys */}}
-    {{range $k := .AttrKeys}}
-	    {{$v := $.GetValue $k}}
+    {{/*	Iterate the sorted read-only property names */}}
+    {{range $name := .AttrNames}}
+	    {{$v := $.GetValue $name}}
 			<li>
 				<div class="h-show-sm">{{/*icon*/}}</div>
 
-				<div title="key: {{$k}}">
+				<div title="name: {{$name}}">
 					{{$v.Title}}
 				</div>
 
 				<div>
-					<span sse-swap="{{$.ThingID}}/{{$k}}"
+					<span sse-swap="{{$.ThingID}}/{{$name}}"
 					      hx-swap="innerHTML"
 					      hx-target="this"
 					>
@@ -35,7 +35,7 @@
 				<div class="h-show-lg">{{$v.Schema.Description}}</div>
 
 				<div class="h-show-md"
-				     sse-swap="{{$.ThingID}}/{{$k}}/updated"
+				     sse-swap="{{$.ThingID}}/{{$name}}/updated"
 				     hx-swap="innerHTML"
 				     hx-target="this"
 				     title="Updated: {{$v.GetUpdated}}  by {{($v.SenderID)}}">

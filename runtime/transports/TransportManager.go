@@ -81,7 +81,7 @@ func (svc *TransportsManager) handleMessage(msg *hubclient.ThingMessage) hubclie
 		slog.Error("Delivery status has missing messageID",
 			"thingID", msg.ThingID,
 			"messageType", msg.MessageType,
-			"key", msg.Key,
+			"key", msg.Name,
 			"request messageID", msg.MessageID,
 			"status messageID", stat.MessageID,
 			"senderID", msg.SenderID,

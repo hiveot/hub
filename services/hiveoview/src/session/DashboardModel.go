@@ -35,8 +35,8 @@ var TileTypesLabels = map[string]string{
 type TileSource struct {
 	// ThingID source
 	ThingID string `json:"thingID"`
-	// Event/property key
-	Key string `json:"key"`
+	// Event/property name
+	Name string `json:"name"`
 	// title of the source, defaults to affordance title
 	Title string `json:"title"`
 }

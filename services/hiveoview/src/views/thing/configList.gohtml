@@ -1,6 +1,6 @@
 <!--Table with writable properties of a Thing-->
 
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.ThingDetailsTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/thing.ThingDetailsTemplateData*/ -}}
 
 <ul class="h-grid-table thing-config" striped border >
 	<li>
@@ -12,17 +12,17 @@
 		<div class="h-show-sm">Updated</div>
 	</li>
 
-    {{/*	Iterate the sorted writable property keys */}}
-    {{range $k := .ConfigKeys}}
-      {{$v := $.GetValue $k}}
+    {{/*	Iterate the sorted writable property names */}}
+    {{range $name := .ConfigNames}}
+      {{$v := $.GetValue $name}}
 				<li>
 					<div class="h-show-md">{{/*icon*/}}</div>
           {{/*	Configuration Name*/}}
 					<div>
 						<button class="link" style="text-align:left"
-	             title="key: {{$k}}"
+	             title="Name: {{$name}}"
 					     hx-trigger="click"
-					     hx-get="{{$.GetRenderEditPropertyPath $k}}"
+					     hx-get="{{$.GetRenderEditPropertyPath $name}}"
 					     hx-target="#modalLevel1"
 						>
 							{{$v.Title}}
@@ -33,12 +33,12 @@
 					<div>
 						<button class="link" style="display:inline-flex; gap: 5px;"
 			        hx-trigger="click"
-			        hx-get="{{$.GetRenderEditPropertyPath $k}}"
+			        hx-get="{{$.GetRenderEditPropertyPath $name}}"
 			        hx-target="#modalLevel1"
 						>
               {{/*replace show value on sse event, sent by ClientSession.go:onEvent */}}
 							{{/*properties and events use the same namespace*/}}
-							<span sse-swap="{{$.ThingID}}/{{$k}}" hx-swap="innerHTML" hx-target="this">
+							<span sse-swap="{{$.ThingID}}/{{$name}}" hx-swap="innerHTML" hx-target="this">
 							{{$v.Value.Text}}
 							</span>
                 {{$v.Schema.UnitSymbol}}
@@ -50,7 +50,7 @@
 					<div class="h-show-lg">{{$v.Schema.Description}}</div>
 
 					<div class="h-show-sm"
-					     sse-swap="{{$.ThingID}}/{{$k}}/updated"
+					     sse-swap="{{$.ThingID}}/{{$name}}/updated"
 					     hx-swap="innerHTML"
 					     hx-target="this"
 					>

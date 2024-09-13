@@ -15,7 +15,7 @@ func (svc *OWServerBinding) HandleActionRequest(action *hubclient.ThingMessage) 
 	var attr eds.OneWireAttr
 	slog.Info("HandleActionRequest",
 		slog.String("thingID", action.ThingID),
-		slog.String("key", action.Key),
+		slog.String("name", action.Name),
 		slog.String("payload", action.DataAsText()),
 	)
 
@@ -24,7 +24,7 @@ func (svc *OWServerBinding) HandleActionRequest(action *hubclient.ThingMessage) 
 	}
 
 	// TODO: lookup the action Title used by the EDS
-	edsName := action.Key
+	edsName := action.Name
 
 	node, found := svc.nodes[action.ThingID]
 	if !found {
@@ -33,17 +33,17 @@ func (svc *OWServerBinding) HandleActionRequest(action *hubclient.ThingMessage) 
 		stat.Failed(action, err)
 		return stat
 	}
-	attr, found = node.Attr[action.Key]
+	attr, found = node.Attr[action.Name]
 	if !found {
 		// delivery completed with error
 		err := fmt.Errorf("node '%s' found but it doesn't have an action '%s'",
-			action.ThingID, action.Key)
+			action.ThingID, action.Name)
 		stat.Completed(action, nil, err)
 		return stat
 	} else if !attr.Writable {
 		// delivery completed with error
 		err := fmt.Errorf("node '%s' action '%s' is a read-only attribute",
-			action.ThingID, action.Key)
+			action.ThingID, action.Name)
 		stat.Completed(action, nil, err)
 		return stat
 	}
@@ -64,7 +64,7 @@ func (svc *OWServerBinding) HandleActionRequest(action *hubclient.ThingMessage) 
 	_ = svc.RefreshPropertyValues()
 
 	if err != nil {
-		err = fmt.Errorf("action '%s' failed: %w", action.Key, err)
+		err = fmt.Errorf("action '%s' failed: %w", action.Name, err)
 	}
 	stat.Completed(action, nil, err)
 	return stat

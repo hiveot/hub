@@ -18,13 +18,13 @@ type ReadHistoryClient struct {
 // This returns a release function that MUST be called after completion.
 //
 //	thingID the event or action belongs to
-//	filterOnKey option filter on a specific event or action name
-func (cl *ReadHistoryClient) GetCursor(thingID string, filterOnKey string) (
+//	filterOnName option filter on a specific event or action name
+func (cl *ReadHistoryClient) GetCursor(thingID string, filterOnName string) (
 	cursor *HistoryCursorClient, releaseFn func(), err error) {
 
 	args := historyapi.GetCursorArgs{
-		ThingID:     thingID,
-		FilterOnKey: filterOnKey,
+		ThingID:      thingID,
+		FilterOnName: filterOnName,
 	}
 	resp := historyapi.GetCursorResp{}
 	err = cl.hc.Rpc(cl.dThingID, historyapi.GetCursorMethod, &args, &resp)
@@ -35,7 +35,7 @@ func (cl *ReadHistoryClient) GetCursor(thingID string, filterOnKey string) (
 // ReadHistory returns a list of historical messages in time order.
 //
 //	thingID the event or action belongs to
-//	filterOnKey option filter on a specific event or action name
+//	FilterOnName option filter on a specific event or action name
 //	timestamp to start/end
 //	duration number of seconds to return. Use negative number to go back in time.
 //	limit max nr of items to return. Use 0 for max limit
@@ -43,16 +43,16 @@ func (cl *ReadHistoryClient) GetCursor(thingID string, filterOnKey string) (
 // This returns a list of messages and a flag indicating of all duration was returned
 // or whether items were remaining. If items were remaining them use the last entry
 // to continue reading the next page.
-func (cl *ReadHistoryClient) ReadHistory(thingID string, filterOnKey string,
+func (cl *ReadHistoryClient) ReadHistory(thingID string, filterOnName string,
 	timestamp time.Time, duration time.Duration, limit int) (
 	batch []*hubclient.ThingMessage, itemsRemaining bool, err error) {
 
 	args := historyapi.ReadHistoryArgs{
-		ThingID:     thingID,
-		FilterOnKey: filterOnKey,
-		Timestamp:   timestamp.Format(time.RFC3339),
-		Duration:    int(duration.Seconds()),
-		Limit:       limit,
+		ThingID:      thingID,
+		FilterOnName: filterOnName,
+		Timestamp:    timestamp.Format(time.RFC3339),
+		Duration:     int(duration.Seconds()),
+		Limit:        limit,
 	}
 	resp := historyapi.ReadHistoryResp{}
 	err = cl.hc.Rpc(cl.dThingID, historyapi.ReadHistoryMethod, &args, &resp)

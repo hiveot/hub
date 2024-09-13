@@ -45,8 +45,8 @@ const (
 	GetReadAllPropertiesPath     = "/properties/{thingID}"
 	PostSubscribeAllEventsPath   = "/subscribe/{thingID}/+"
 	PostUnsubscribeAllEventsPath = "/unsubscribe/{thingID}/+"
-	PostSubscribeEventPath       = "/subscribe/{thingID}/{key}"
-	PostUnsubscribeEventPath     = "/unsubscribe/{thingID}/{key}"
+	PostSubscribeEventPath       = "/subscribe/{thingID}/{name}"
+	PostUnsubscribeEventPath     = "/unsubscribe/{thingID}/{name}"
 	ConnectSSEPath               = "/sse"
 
 	// Form paths for accessing TD directory
@@ -54,14 +54,14 @@ const (
 	GetThingsPath = "/tdd" // query param offset=, limit=
 
 	// Form paths for accessing Actions
-	PostInvokeActionPath = "/action/{thingID}/{key}"
+	PostInvokeActionPath = "/action/{thingID}/{name}"
 
 	// Form paths for accessing Events
-	GetReadEventPath     = "/event/{thingID}/{key}"
-	PostPublishEventPath = "/event/{thingID}/{key}"
+	GetReadEventPath     = "/event/{thingID}/{name}"
+	PostPublishEventPath = "/event/{thingID}/{name}"
 
 	// Form paths for read/writing Properties
-	FormPropertyPath = "/property/{thingID}/{key}"
+	FormPropertyPath = "/property/{thingID}/{name}"
 
 	// authn service - used in authn TD
 	PostLoginPath   = "/login"
@@ -162,9 +162,9 @@ func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 		// use a new http client instance to set an indefinite timeout for the sse connection
 		//sseClient := cl.tlsClient.GetHttpClient()
 		sseClient := tlsclient.NewHttp2TLSClient(cl.caCert, nil, 0)
+		// If the server is reachable. Open the return channel using SSE
 		err = cl.ConnectSSE(sseURL, reply.Token, sseClient, cl.handleSSEDisconnect)
 	}
-	// If the server is reachable. Open the return channel using SSE
 	cl.SetConnectionStatus(hubclient.Connected, err)
 
 	return reply.Token, err
@@ -280,19 +280,19 @@ func (cl *HttpSSEClient) Marshal(data any) []byte {
 
 // Publish an action, event or property message and return the delivery status
 //
-//	methodName is http.MetodPost for actions, http.MethodPut/MethodGet for properties
+//	methodName is http.MethodPost for actions, http.MethodPut/MethodGet for properties
 //	path used to publish PostActionPath/PostEventPath/...
 //	thingID to publish as or to: events are published for the thing and actions to publish to the thingID
-//	key is the event/action/property key being published or modified
+//	name is the event/action/property name being published or modified
 //	data is the native message payload to transfer that will be serialized
-//	queryParams optional key-value pairs to pass along as query parameters
+//	queryParams optional name-value pairs to pass along as query parameters
 func (cl *HttpSSEClient) pubMessage(methodName string,
-	methodPath string, thingID string, key string, data any, queryParams map[string]string) (
+	methodPath string, thingID string, name string, data any, queryParams map[string]string) (
 	stat hubclient.DeliveryStatus) {
 
 	vars := map[string]string{
 		"thingID": thingID,
-		"key":     key}
+		"name":    name}
 	messagePath := utils.Substitute(methodPath, vars)
 	cl.mux.RLock()
 	defer cl.mux.RUnlock()
@@ -330,15 +330,15 @@ func (cl *HttpSSEClient) pubMessage(methodName string,
 // PubAction publishes an action message and waits for an answer or until timeout
 // In order to receive replies, an inbox subscription is added on the first request.
 // An error is returned if delivery failed or succeeded but the action itself failed
-func (cl *HttpSSEClient) PubAction(thingID string, key string, data any) (stat hubclient.DeliveryStatus) {
+func (cl *HttpSSEClient) PubAction(thingID string, name string, data any) (stat hubclient.DeliveryStatus) {
 	slog.Debug("PubAction",
 		slog.String("thingID", thingID),
-		slog.String("key", key))
-	stat = cl.pubMessage(http.MethodPost, PostInvokeActionPath, thingID, key, data, nil)
+		slog.String("name", name))
+	stat = cl.pubMessage(http.MethodPost, PostInvokeActionPath, thingID, name, data, nil)
 	slog.Info("PubAction",
 		slog.String("me", cl._status.ClientID),
 		slog.String("thingID", thingID),
-		slog.String("key", key),
+		slog.String("name", name),
 		//slog.String("data", data),
 		slog.String("messageID", stat.MessageID),
 		slog.String("progress", stat.Progress),
@@ -348,24 +348,24 @@ func (cl *HttpSSEClient) PubAction(thingID string, key string, data any) (stat h
 
 // PubActionWithQueryParams publishes an action with query parameters
 func (cl *HttpSSEClient) PubActionWithQueryParams(
-	thingID string, key string, data any, params map[string]string) (stat hubclient.DeliveryStatus) {
+	thingID string, name string, data any, params map[string]string) (stat hubclient.DeliveryStatus) {
 	slog.Info("PubActionWithQueryParams",
 		slog.String("thingID", thingID),
-		slog.String("key", key),
+		slog.String("name", name),
 	)
-	stat = cl.pubMessage(http.MethodPost, PostInvokeActionPath, thingID, key, data, params)
+	stat = cl.pubMessage(http.MethodPost, PostInvokeActionPath, thingID, name, data, params)
 	return stat
 }
 
 // PubEvent publishes an event message and returns
 // This returns an error if the connection with the server is broken
-func (cl *HttpSSEClient) PubEvent(thingID string, key string, data any) error {
+func (cl *HttpSSEClient) PubEvent(thingID string, name string, data any) error {
 	slog.Info("PubEvent",
 		slog.String("me", cl._status.ClientID),
 		slog.String("device thingID", thingID),
-		slog.String("key", key),
+		slog.String("name", name),
 	)
-	stat := cl.pubMessage(http.MethodPost, PostPublishEventPath, thingID, key, data, nil)
+	stat := cl.pubMessage(http.MethodPost, PostPublishEventPath, thingID, name, data, nil)
 	if stat.Error != "" {
 		return errors.New(stat.Error)
 	}
@@ -374,13 +374,13 @@ func (cl *HttpSSEClient) PubEvent(thingID string, key string, data any) error {
 
 // PubProperty publishes a configuration change request
 // This is similar to publishing an action but only affects properties.
-func (cl *HttpSSEClient) PubProperty(thingID string, key string, data any) (
+func (cl *HttpSSEClient) PubProperty(thingID string, name string, data any) (
 	stat hubclient.DeliveryStatus) {
-	stat = cl.pubMessage(http.MethodPut, FormPropertyPath, thingID, key, data, nil)
+	stat = cl.pubMessage(http.MethodPut, FormPropertyPath, thingID, name, data, nil)
 	slog.Info("PubProperty",
 		slog.String("me", cl._status.ClientID),
 		slog.String("thingID", thingID),
-		slog.String("key", key),
+		slog.String("name", name),
 		//slog.String("value", value),
 		slog.String("messageID", stat.MessageID),
 		slog.String("progress", stat.Progress),
@@ -432,7 +432,7 @@ func (cl *HttpSSEClient) RefreshToken(oldToken string) (newToken string, err err
 // Rpc marshals arguments, invokes an action and unmarshal a response.
 // Intended to remove some boilerplate
 func (cl *HttpSSEClient) Rpc(
-	thingID string, key string, args interface{}, resp interface{}) (err error) {
+	thingID string, name string, args interface{}, resp interface{}) (err error) {
 
 	// a messageID is needed before the action is published in order to match it with the reply
 	messageID := "rpc-" + shortid.MustGenerate()
@@ -443,7 +443,7 @@ func (cl *HttpSSEClient) Rpc(
 
 	// invoke with query parameters to provide the message ID
 	qparams := map[string]string{"messageID": messageID}
-	stat := cl.PubActionWithQueryParams(thingID, key, args, qparams)
+	stat := cl.PubActionWithQueryParams(thingID, name, args, qparams)
 
 	// Intermediate status update such as 'applied' are not errors. Wait longer.
 	for {
@@ -465,7 +465,7 @@ func (cl *HttpSSEClient) Rpc(
 		slog.Warn("RPC request messageID does not match response. Bad response from remote service.",
 			slog.String("clientID", cl.ClientID()),
 			slog.String("service thingID", thingID),
-			slog.String("service method", key),
+			slog.String("service method", name),
 			slog.String("req", messageID),
 			slog.String("resp", stat.MessageID))
 	}
@@ -531,14 +531,14 @@ func (cl *HttpSSEClient) SetMessageHandler(cb hubclient.MessageHandler) {
 
 // Subscribe subscribes to a single event of one or more thing.
 // Use SetEventHandler to receive subscribed events or SetRequestHandler for actions
-func (cl *HttpSSEClient) Subscribe(thingID string, key string) error {
+func (cl *HttpSSEClient) Subscribe(thingID string, name string) error {
 	if thingID == "" {
 		thingID = "+"
 	}
-	if key == "" {
-		key = "+"
+	if name == "" {
+		name = "+"
 	}
-	vars := map[string]string{"thingID": thingID, "key": key}
+	vars := map[string]string{"thingID": thingID, "name": name}
 	subscribePath := utils.Substitute(PostSubscribeEventPath, vars)
 	_, _, err := cl.tlsClient.Post(subscribePath, nil)
 	return err
@@ -551,14 +551,14 @@ func (cl *HttpSSEClient) Unmarshal(raw []byte, reply interface{}) error {
 }
 
 // Unsubscribe from thing event(s)
-func (cl *HttpSSEClient) Unsubscribe(thingID string, key string) error {
+func (cl *HttpSSEClient) Unsubscribe(thingID string, name string) error {
 	if thingID == "" {
 		thingID = "+"
 	}
-	if key == "" {
-		key = "+"
+	if name == "" {
+		name = "+"
 	}
-	vars := map[string]string{"thingID": thingID, "key": key}
+	vars := map[string]string{"thingID": thingID, "name": name}
 	unsubscribePath := utils.Substitute(PostUnsubscribeEventPath, vars)
 	_, _, err := cl.tlsClient.Post(unsubscribePath, nil)
 	return err

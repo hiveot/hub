@@ -40,9 +40,9 @@ MessageTypes:
 
     # are properties and TD a type of event? - yes
     # are these described in the TD event? - no - this is a problem
-    EventTypeDeliveryUpdate: "$delivery"
-    EventTypeProperties:     "$properties"   # event with all thing property values
-    EventTypeTD:             "$td"           # event a td is updated - agents
+    EventNameDeliveryUpdate: "$delivery"
+    EventNameProperties:     "$properties"   # event with all thing property values
+    EventNameTD:             "$td"           # event a td is updated - agents
 
     # pub prop using   PATCH /thingID/property/propKey   by consumer
     # pub event using  PUT   /thingID/event/eventKey     by agent

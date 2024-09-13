@@ -83,7 +83,7 @@ async function test3() {
         token = await hc.connectWithPassword(testPass)
 
         hc.setMessageHandler((tv: ThingMessage):DeliveryStatus => {
-            log.info("Received message: type="+tv.messageType+"; key=" + tv.key)
+            log.info("Received message: type="+tv.messageType+"; key=" + tv.name)
             let stat = new DeliveryStatus()
             stat.completed(tv)
             return stat
@@ -159,9 +159,9 @@ async function test4() {
         hcCl.setMessageHandler((tm: ThingMessage):DeliveryStatus=>{
             let stat = new DeliveryStatus()
             if (tm.thingID == "dtw:testsvc:thing1") {
-                log.info("Received event: "+tm.key+"; data="+tm.data)
+                log.info("Received event: "+tm.name+"; data="+tm.data)
                 ev1Count++
-            } else if (tm.key == EventTypeDeliveryUpdate) {
+            } else if (tm.name == EventTypeDeliveryUpdate) {
                 // FIXME: why is data base64 encoded? => data type in golang was []byte; changed to string
                 // let data = Buffer.from(tm.data,"base64").toString()
                 actionDelivery = JSON.parse(tm.data)

@@ -28,13 +28,13 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td *tdd.TD) {
 	l.Add("var resp interface{}")
 	l.Add("var senderID = msg.SenderID")
 
-	l.Add("switch msg.Key {")
+	l.Add("switch msg.Name {")
 	l.Indent++
-	for key, action := range td.Actions {
-		GenActionHandler(l, serviceTitle, key, action)
+	for name, action := range td.Actions {
+		GenActionHandler(l, serviceTitle, name, action)
 	}
 	l.Add("default:")
-	l.Add("	err = errors.New(\"Unknown Method '\"+msg.Key+\"' of service '\"+msg.ThingID+\"'\")")
+	l.Add("	err = errors.New(\"Unknown Method '\"+msg.Name+\"' of service '\"+msg.ThingID+\"'\")")
 	l.Add("	stat.Failed(msg,err)")
 	l.Indent--
 	l.Add("}")
@@ -49,12 +49,12 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td *tdd.TD) {
 
 // GenActionHandler add an unmarshaller handler for its service.
 // This unmarshal the request, invokes the service, and marshals the response
-// key is the key of the action affordance in the TD
-func GenActionHandler(l *utils.SL, serviceTitle string, key string, action *tdd.ActionAffordance) {
-	methodName := Key2ID(key)
+// name  of the action affordance in the TD
+func GenActionHandler(l *utils.SL, serviceTitle string, name string, action *tdd.ActionAffordance) {
+	methodName := Key2ID(name)
 	// build the argument string
 	argsString := "senderID" // all handlers receive the sender ID
-	l.Add("case \"%s\":", key)
+	l.Add("case \"%s\":", name)
 	l.Indent++
 	if action.Input != nil {
 		if action.Input.Type == "object" && action.Input.Properties != nil {

@@ -220,17 +220,17 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 	slog.Info("received message",
 		slog.String("type", msg.MessageType),
 		slog.String("thingID", msg.ThingID),
-		slog.String("key", msg.Key),
-		//slog.Any("data", msg.Data),
+		slog.String("name", msg.Name),
+		slog.Any("data", msg.Data),
 		slog.String("messageID", msg.MessageID))
-	if msg.Key == vocab.EventNameTD {
+	if msg.Name == vocab.EventNameTD {
 		// Publish sse event indicating the Thing TD has changed.
 		// The UI that displays this event can use this as a trigger to reload the
 		// fragment that displays this TD:
 		//    hx-trigger="sse:{{.Thing.ThingID}}"
 		thingAddr := msg.ThingID
 		wcs.SendSSE(thingAddr, "")
-	} else if msg.Key == vocab.EventNameProperties {
+	} else if msg.Name == vocab.EventNameProperties {
 		// Publish a sse event for each of the properties
 		// The UI that displays this event can use this as a trigger to load the
 		// property value:
@@ -245,7 +245,7 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 				wcs.SendSSE(thingAddr, msg.GetUpdated())
 			}
 		}
-	} else if msg.Key == vocab.EventNameDeliveryUpdate {
+	} else if msg.Name == vocab.EventNameDeliveryUpdate {
 		// report unhandled delivery updates
 		// for now just pass it to the notification toaster
 		stat := hubclient.DeliveryStatus{}
@@ -266,9 +266,9 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		// fragment that displays this event:
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{$k}}"
 		// where $k is the event ID
-		eventName := fmt.Sprintf("%s/%s", msg.ThingID, msg.Key)
+		eventName := fmt.Sprintf("%s/%s", msg.ThingID, msg.Name)
 		wcs.SendSSE(eventName, msg.DataAsText())
-		eventName = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Key)
+		eventName = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Name)
 		wcs.SendSSE(eventName, msg.GetUpdated())
 	}
 }

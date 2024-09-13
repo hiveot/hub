@@ -46,7 +46,7 @@ type GetMultipleArgs struct {
 }
 
 type GetMultipleResp struct {
-	// Key-values that were found
+	// Name-values that were found
 	KV map[string]string `json:"kv"`
 }
 

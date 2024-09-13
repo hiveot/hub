@@ -35,7 +35,7 @@ const addRowTemplate = `
 // @param key whose value to return
 func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
-	key := chi.URLParam(r, "key")
+	name := chi.URLParam(r, "name")
 
 	// Read the TD being displayed and its latest values
 	mySession, hc, err := session.GetSessionFromContext(r)
@@ -46,14 +46,14 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 
 	//latestValues, err := thing.GetLatest(thingID, hc)
 	latestEvents, err := digitwin.OutboxReadLatest(
-		hc, []string{key}, vocab.MessageTypeEvent, "", thingID)
+		hc, vocab.MessageTypeEvent, []string{name}, "", thingID)
 	if err != nil {
 		mySession.WriteError(w, err, 0)
 		return
 	}
 	evmap, err := hubclient.NewThingMessageMapFromSource(latestEvents)
 	if err == nil {
-		tm := evmap[key]
+		tm := evmap[name]
 		if tm != nil {
 			// TODO: get unit symbol
 			fragment := fmt.Sprintf(addRowTemplate,
@@ -62,7 +62,7 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte(fragment))
 			return
 		}
-		err = errors.New("cant find key: " + key)
+		err = errors.New("cant find name: " + name)
 	}
 	mySession.WriteError(w, err, 0)
 }

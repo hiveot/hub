@@ -51,12 +51,12 @@ func (svc *DigitwinService) HandleMessage(msg *hubclient.ThingMessage) (stat hub
 		return svc.Inbox.HandleActionFlow(msg)
 	}
 	// action delivery update event, send by client
-	if msg.Key == vocab.EventNameDeliveryUpdate {
+	if msg.Name == vocab.EventNameDeliveryUpdate {
 		return svc.Inbox.HandleDeliveryUpdate(msg)
 	}
 	// TD event updates the directory and are broadcast to subscribers
 	// this upgrades the TD with forms for accessing the digitwin
-	if msg.Key == vocab.EventNameTD {
+	if msg.Name == vocab.EventNameTD {
 		return svc.Directory.HandleTDEvent(msg)
 	}
 	// regular events to be broadcast to subscribers

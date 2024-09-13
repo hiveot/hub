@@ -15,8 +15,8 @@ export class ThingMessage extends Object {
     // ThingID or capabilityID of the thing itself
     public thingID: string = ""
 
-    // Key of event, action or property as defined in the TD event/action map.
-    public key: string = ""
+    // Name of event, action or property as defined in the TD event/action map.
+    public name: string = ""
 
     // Data in native format, as defined by the TD affordance DataSchema
     public data: any = ""

@@ -132,7 +132,7 @@ func (svc *HttpsTransport) HandleWriteProperty(w http.ResponseWriter, r *http.Re
 	svc.handlePostMessage(vocab.MessageTypeProperty, w, r)
 }
 func (svc *HttpsTransport) HandlePostTDD(w http.ResponseWriter, r *http.Request) {
-	// TDD are posted as events with the $td key
+	// TDD are posted as events with the $td name
 	svc.handlePostMessage(vocab.MessageTypeEvent, w, r)
 }
 
@@ -140,7 +140,7 @@ func (svc *HttpsTransport) HandlePostTDD(w http.ResponseWriter, r *http.Request)
 // This unmarshals the payload and constructs a ThingMessage instance to pass to the handler.
 // this contains optional query parameter for messageID
 func (svc *HttpsTransport) handlePostMessage(messageType string, w http.ResponseWriter, r *http.Request) {
-	cs, _, thingID, key, body, err := svc.getRequestParams(r)
+	cs, _, thingID, name, body, err := svc.getRequestParams(r)
 	var payload any
 
 	if err != nil {
@@ -158,7 +158,7 @@ func (svc *HttpsTransport) handlePostMessage(messageType string, w http.Response
 
 	// turn the request into a Thing Message
 	msg := hubclient.NewThingMessage(
-		messageType, thingID, key, payload, cs.GetClientID())
+		messageType, thingID, name, payload, cs.GetClientID())
 	msg.MessageID = messageID
 
 	stat := svc.handleMessage(msg)
@@ -195,7 +195,7 @@ func (svc *HttpsTransport) HandlePostRefresh(w http.ResponseWriter, r *http.Requ
 // HandleReadAllEvents returns a list of latest event values from a Thing
 // Parameters: thingID
 func (svc *HttpsTransport) HandleReadAllEvents(w http.ResponseWriter, r *http.Request) {
-	cs, _, thingID, key, _, err := svc.getRequestParams(r)
+	cs, _, thingID, name, _, err := svc.getRequestParams(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -204,9 +204,9 @@ func (svc *HttpsTransport) HandleReadAllEvents(w http.ResponseWriter, r *http.Re
 	args := digitwin.OutboxReadLatestArgs{
 		ThingID: thingID,
 	}
-	// only a single key is supported at the moment
-	if key != "" {
-		args.Keys = []string{key}
+	// only a single name is supported at the moment
+	if name != "" {
+		args.Names = []string{name}
 	}
 	//argsJSON, _ := json.Marshal(args)
 	msg := hubclient.NewThingMessage(vocab.MessageTypeAction,
@@ -238,7 +238,7 @@ func (svc *HttpsTransport) HandleReadAllProperties(w http.ResponseWriter, r *htt
 }
 
 func (svc *HttpsTransport) HandleReadProperty(w http.ResponseWriter, r *http.Request) {
-	cs, _, thingID, key, _, err := svc.getRequestParams(r)
+	cs, _, thingID, name, _, err := svc.getRequestParams(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -247,7 +247,7 @@ func (svc *HttpsTransport) HandleReadProperty(w http.ResponseWriter, r *http.Req
 	args := digitwin.OutboxReadLatestArgs{
 		MessageType: "events",
 		ThingID:     thingID,
-		Keys:        []string{key},
+		Names:       []string{name},
 	}
 	msg := hubclient.NewThingMessage(vocab.MessageTypeAction,
 		digitwin.OutboxDThingID, digitwin.OutboxReadLatestMethod,
@@ -259,7 +259,7 @@ func (svc *HttpsTransport) HandleReadProperty(w http.ResponseWriter, r *http.Req
 
 // HandleSubscribeEvents handles a subscription request
 func (svc *HttpsTransport) HandleSubscribeEvents(w http.ResponseWriter, r *http.Request) {
-	cs, _, thingID, key, _, err := svc.getRequestParams(r)
+	cs, _, thingID, name, _, err := svc.getRequestParams(r)
 	if err != nil {
 		slog.Warn("HandleSubscribe", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -268,19 +268,19 @@ func (svc *HttpsTransport) HandleSubscribeEvents(w http.ResponseWriter, r *http.
 	slog.Info("HandleSubscribe",
 		slog.String("clientID", cs.GetClientID()),
 		slog.String("thingID", thingID),
-		slog.String("key", key),
+		slog.String("name", name),
 		slog.String("sessionID", cs.GetSessionID()),
 		slog.Int("nr sse connections", cs.GetNrConnections()))
-	cs.Subscribe(thingID, key)
+	cs.Subscribe(thingID, name)
 }
 
 // HandleUnsubscribeEvents handles removal of a subscription request
 func (svc *HttpsTransport) HandleUnsubscribeEvents(w http.ResponseWriter, r *http.Request) {
 	slog.Info("HandleUnsubscribe")
-	cs, _, thingID, key, _, err := svc.getRequestParams(r)
+	cs, _, thingID, name, _, err := svc.getRequestParams(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	cs.Unsubscribe(thingID, key)
+	cs.Unsubscribe(thingID, name)
 }

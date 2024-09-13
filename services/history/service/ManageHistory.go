@@ -30,7 +30,7 @@ type ManageHistory struct {
 func (svc *ManageHistory) _FindFirstRule(tv *hubclient.ThingMessage) *historyapi.RetentionRule {
 	// two sets of rules apply, those that match the name and those that don't filter by name
 	// rules with specified event names take precedence
-	rules1, found := svc.rules[tv.Key]
+	rules1, found := svc.rules[tv.Name]
 	if found {
 		// there is a potential to optimize this for a lot of rules by
 		// include a nested map of agentIDs and ThingIDs for fast lookup.
@@ -78,7 +78,7 @@ func (svc *ManageHistory) GetRetentionRule(senderID string, args *historyapi.Get
 	tv := hubclient.ThingMessage{
 		//AgentID: args.AgentID,
 		ThingID: args.ThingID,
-		Key:     args.Key,
+		Name:    args.Name,
 	}
 	rule := svc._FindFirstRule(&tv)
 	resp = &historyapi.GetRetentionRuleResp{Rule: rule}
@@ -97,7 +97,7 @@ func (svc *ManageHistory) SetRetentionRules(senderID string, args *historyapi.Se
 	// ensure that the name in the rule matches the key in the map
 	for key, nameRules := range args.Rules {
 		for _, rule := range nameRules {
-			rule.Key = key
+			rule.Name = key
 			ruleCount++
 		}
 	}

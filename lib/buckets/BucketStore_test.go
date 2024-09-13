@@ -281,7 +281,7 @@ func TestWriteRead(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Read again should fail
-	// (pebble throws a panic :(
+	// (pebble throws a panic :()
 	//_, err = store.Get(testBucketID, doc1ID)
 	//assert.Error(t, err)
 }
@@ -364,7 +364,7 @@ func TestSeek(t *testing.T) {
 		assert.NotEmpty(t, k1)
 		assert.NotEmpty(t, v1)
 	}
-	// k1 now holds the key at the base N'th record
+	// k1 now holds the key at the base Nth record
 
 	// seek of the current key should bring us back here, at the base Nth record
 	k2, v2, valid2 := cursor.Seek(k1)
@@ -429,7 +429,7 @@ func TestPrevNextN(t *testing.T) {
 	assert.True(t, itemsRemaining)
 	assert.Equal(t, seekCount-1, len(docs2))
 
-	// one step further we're at the begin again
+	// one step further we're at the beginning again
 	k2, v2, valid2 := cursor.Prev()
 	assert.True(t, valid2)
 	assert.Equal(t, k1, k2)

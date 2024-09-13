@@ -17,9 +17,9 @@ type ThingMessage struct {
 	// This is required.
 	ThingID string `json:"thingID"`
 
-	// Key of the event, action or property as defined in the TD property/event/action map.
+	// Name of the event, action or property as defined in the TD property/event/action map.
 	// This is required.
-	Key string `json:"key"`
+	Name string `json:"name"`
 
 	// Type of message this value was sent as: (MessageTypeEvent, MessageTypeAction...)
 	// This is required
@@ -86,19 +86,19 @@ func (tm *ThingMessage) GetUpdated(format ...string) (updated string) {
 }
 
 // NewThingMessage creates a new ThingMessage object with the address of the things,
-// the message action, event or rpc key, and the serialized value data.
+// the message action, event or rpc name, and the serialized value data.
 // This copies the value buffer.
 //
 //	messageType is the type of value: action, event, config, rpc request
 //	thingID is the thing the value applies to (destination of action or source of event)
-//	key is the property, event or action key of the value as described in the thing TD
+//	name is the property, event or action name as described in the thing TD
 //	data is the native message data as defined in the corresponding TD dataschema.
 //	senderID is the accountID of the creator of the value
-func NewThingMessage(messageType, thingID, key string, data any, senderID string) *ThingMessage {
+func NewThingMessage(messageType, thingID, name string, data any, senderID string) *ThingMessage {
 	return &ThingMessage{
 		Created:     time.Now().Format(utils.RFC3339Milli),
 		Data:        data,
-		Key:         key,
+		Name:        name,
 		MessageType: messageType,
 		SenderID:    senderID,
 		ThingID:     thingID,

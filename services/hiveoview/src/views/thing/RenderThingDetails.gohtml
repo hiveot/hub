@@ -1,6 +1,6 @@
 {{/*Display the details of a thing with title, description, timestamp, attributes, events and actions */}}
 
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.ThingDetailsTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/thing.ThingDetailsTemplateData*/ -}}
 
 <!--After an initial load without data, auto-reload fragment when viewed. -->
 {{if not .ThingID}}
@@ -75,7 +75,7 @@
 				<details id="detailsAttr" >
 						<summary class="outline">
 							<span style="font-size: medium"><strong>Attributes</strong></span>
-							<span> ({{len .AttrKeys}})</span>
+							<span> ({{len .AttrNames}})</span>
 						</summary>
 		        {{template "attrList.gohtml" .}}
 				</details>
@@ -85,7 +85,7 @@
 				<details id="detailsConfig" >
 						<summary class="outline">
 								<span style="font-size: medium"><strong>Configuration</strong></span>
-								<span> ({{len .ConfigKeys}})</span>
+								<span> ({{len .ConfigNames}})</span>
 						</summary>
 						{{template "configList.gohtml" .}}
 				</details>

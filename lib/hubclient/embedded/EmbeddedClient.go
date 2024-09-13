@@ -82,7 +82,7 @@ func (cl *EmbeddedClient) HandleMessage(msg *hubclient.ThingMessage) (stat hubcl
 	// certainly a bug in the client code, so lets make clear this isn't a transport problem.
 	err := fmt.Errorf("no receive handler set for client '%s'", cl.clientID)
 	slog.Error("HandleMessage",
-		"err", err.Error(), "thingID", msg.ThingID, "key", msg.Key)
+		"err", err.Error(), "thingID", msg.ThingID, "name", msg.Name)
 	stat.Completed(msg, nil, err)
 	return stat
 }
@@ -94,26 +94,26 @@ func (cl *EmbeddedClient) Logout() error {
 // PubAction publishes an action request.
 // Since this is a direct call, the response include a reply.
 func (cl *EmbeddedClient) PubAction(
-	thingID string, key string, data any) (stat hubclient.DeliveryStatus) {
+	thingID string, name string, data any) (stat hubclient.DeliveryStatus) {
 
-	msg := hubclient.NewThingMessage(vocab.MessageTypeAction, thingID, key, data, cl.clientID)
+	msg := hubclient.NewThingMessage(vocab.MessageTypeAction, thingID, name, data, cl.clientID)
 	stat = cl.sendMessage(msg)
 	return stat
 }
 
 // PubProperty publishes a configuration change request
-func (cl *EmbeddedClient) PubProperty(thingID string, key string, data any) (stat hubclient.DeliveryStatus) {
+func (cl *EmbeddedClient) PubProperty(thingID string, name string, data any) (stat hubclient.DeliveryStatus) {
 
-	msg := hubclient.NewThingMessage(vocab.MessageTypeProperty, thingID, key, data, cl.clientID)
+	msg := hubclient.NewThingMessage(vocab.MessageTypeProperty, thingID, name, data, cl.clientID)
 	stat = cl.sendMessage(msg)
 	return stat
 }
 
 // PubEvent publishes an event style message without waiting for a response.
 func (cl *EmbeddedClient) PubEvent(
-	thingID string, key string, data any) error {
+	thingID string, name string, data any) error {
 
-	msg := hubclient.NewThingMessage(vocab.MessageTypeEvent, thingID, key, data, cl.clientID)
+	msg := hubclient.NewThingMessage(vocab.MessageTypeEvent, thingID, name, data, cl.clientID)
 	stat := cl.sendMessage(msg)
 	if stat.Error != "" {
 		return errors.New(stat.Error)
@@ -140,10 +140,10 @@ func (cl *EmbeddedClient) RefreshToken(_ string) (newToken string, err error) {
 // Rpc makes a RPC call using an action and waits for a delivery confirmation.
 // The embedded client Rpc calls are synchronous so results are immediately available
 func (cl *EmbeddedClient) Rpc(
-	thingID string, key string, args interface{}, resp interface{}) error {
+	thingID string, name string, args interface{}, resp interface{}) error {
 
 	// the internal wire format is a ThingMessage struct
-	msg := hubclient.NewThingMessage(vocab.MessageTypeAction, thingID, key, args, cl.clientID)
+	msg := hubclient.NewThingMessage(vocab.MessageTypeAction, thingID, name, args, cl.clientID)
 	// this sendMessage is synchronous
 	stat := cl.sendMessage(msg)
 	// the internal response format is a DeliveryStatus struct
@@ -189,14 +189,14 @@ func (cl *EmbeddedClient) SetMessageHandler(cb hubclient.MessageHandler) {
 // Subscriptions remain in effect when the connection with the messaging server is interrupted.
 //
 //	thingID is the ID of the Thing whose events to receive or "" for events from all things
-//	key is the event type to receive or "" for any event type
-func (cl *EmbeddedClient) Subscribe(thingID string, key string) error {
+//	name is the event type to receive or "" for any event type
+func (cl *EmbeddedClient) Subscribe(thingID string, name string) error {
 	return fmt.Errorf("not implemented")
 }
 
 // Unsubscribe removes a previous event subscription.
 // No more events or requests will be received after Unsubscribe.
-func (cl *EmbeddedClient) Unsubscribe(thingID string, key string) error {
+func (cl *EmbeddedClient) Unsubscribe(thingID string, name string) error {
 	return fmt.Errorf("Unsubscribe not implemented")
 }
 
@@ -222,29 +222,3 @@ func NewEmbeddedClient(clientID string, serverHandler hubclient.MessageHandler) 
 	}
 	return &cl
 }
-
-//func(
-//	thingID string, method string, args interface{}, reply interface{}) error {
-//
-//	return func(thingID string, method string, args interface{}, reply interface{}) error {
-//		data, _ := json.Marshal(args)
-//		tv := things.NewThingMessage(vocab.MessageTypeAction, thingID, method, data, clientID)
-//		stat := handler(tv)
-//		if stat.Progress == api.DeliveryCompleted && stat.Reply != nil {
-//			err := json.Decode(stat.Reply, &reply)
-//			return err
-//		} else if stat.Error != "" {
-//			return errors.New(stat.Error)
-//		}
-//		return nil
-//	}
-//}
-
-// WriteActionMessage is a convenience function to create an action ThingMessage and pass it to
-// a handler for routing to its destination.
-// This returns the reply data or an error.
-//func WriteActionMessage(
-//	thingID string, key string, data []byte, senderID string, handler api.MessageHandler) api.DeliveryStatus {
-//	tv := things.NewThingMessage(vocab.MessageTypeAction, thingID, key, data, senderID)
-//	return handler(tv)
-//}

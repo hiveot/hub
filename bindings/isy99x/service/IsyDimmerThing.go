@@ -43,7 +43,7 @@ func (it *IsyDimmerThing) GetTD() *tdd.TD {
 }
 
 func (it *IsyDimmerThing) HandleConfigRequest(action *hubclient.ThingMessage) (err error) {
-	return errors.New("unknown config: " + action.Key)
+	return errors.New("unknown config: " + action.Name)
 }
 
 // HandleActionRequest handles request to execute an action on this device
@@ -54,7 +54,7 @@ func (it *IsyDimmerThing) HandleActionRequest(action *hubclient.ThingMessage) (e
 	var newValue = ""
 	// FIXME: action keys are node attributes keys, not vocab @types (or are they?)
 	// supported actions: on, off
-	if action.Key == vocab.ActionDimmerSet {
+	if action.Name == vocab.ActionDimmerSet {
 		newValue = action.DataAsText()
 		restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
 
@@ -64,14 +64,14 @@ func (it *IsyDimmerThing) HandleActionRequest(action *hubclient.ThingMessage) (e
 		//	restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
 	} else {
 		// unknown action
-		err = fmt.Errorf("HandleActionRequest. Unknown action: '%s'", action.Key)
+		err = fmt.Errorf("HandleActionRequest. Unknown action: '%s'", action.Name)
 		return err
 	}
 
 	err = it.isyAPI.SendRequest("GET", restPath, "", nil)
 	if err == nil {
 		// TODO: handle event from gateway using websockets. For now just assume this worked.
-		err = it.HandleValueUpdate(action.Key, "", newValue)
+		err = it.HandleValueUpdate(action.Name, "", newValue)
 	}
 
 	return err

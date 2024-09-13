@@ -26,7 +26,7 @@ func (it *IsySensorThing) GetTD() *tdd.TD {
 
 func (it *IsySensorThing) HandleConfigRequest(action *hubclient.ThingMessage) (err error) {
 	// TODO: sensor configuration
-	return errors.New("unknown config: " + action.Key)
+	return errors.New("unknown config: " + action.Name)
 }
 
 // NewIsySensorThing creates a ISY sensor device instance.

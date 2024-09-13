@@ -14,18 +14,18 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/tlsserver"
-	src2 "github.com/hiveot/hub/services/hiveoview/src"
-	session2 "github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/services/hiveoview/src"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views"
 	"github.com/hiveot/hub/services/hiveoview/src/views/about"
-	app2 "github.com/hiveot/hub/services/hiveoview/src/views/app"
-	dashboard2 "github.com/hiveot/hub/services/hiveoview/src/views/dashboard"
-	directory2 "github.com/hiveot/hub/services/hiveoview/src/views/directory"
-	history2 "github.com/hiveot/hub/services/hiveoview/src/views/history"
-	login2 "github.com/hiveot/hub/services/hiveoview/src/views/login"
+	"github.com/hiveot/hub/services/hiveoview/src/views/app"
+	"github.com/hiveot/hub/services/hiveoview/src/views/dashboard"
+	"github.com/hiveot/hub/services/hiveoview/src/views/directory"
+	"github.com/hiveot/hub/services/hiveoview/src/views/history"
+	"github.com/hiveot/hub/services/hiveoview/src/views/login"
 	"github.com/hiveot/hub/services/hiveoview/src/views/status"
-	thing2 "github.com/hiveot/hub/services/hiveoview/src/views/thing"
-	tile2 "github.com/hiveot/hub/services/hiveoview/src/views/tile"
+	"github.com/hiveot/hub/services/hiveoview/src/views/thing"
+	"github.com/hiveot/hub/services/hiveoview/src/views/tile"
 	"log/slog"
 	"net/http"
 	"os"
@@ -70,7 +70,7 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 	if rootPath == "" {
 		staticFileServer = http.FileServer(
 			&StaticFSWrapper{
-				FileSystem:   http.FS(src2.EmbeddedStatic),
+				FileSystem:   http.FS(src.EmbeddedStatic),
 				FixedModTime: time.Now(),
 			})
 	} else {
@@ -102,12 +102,12 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 		// full page routes
 		r.Get("/static/*", staticFileServer.ServeHTTP)
 		r.Get("/webcomp/*", staticFileServer.ServeHTTP)
-		r.Get("/login", login2.RenderLogin)
-		r.Post("/login", login2.PostLogin)
-		r.Get("/logout", session2.SessionLogout)
+		r.Get("/login", login.RenderLogin)
+		r.Post("/login", login.PostLogin)
+		r.Get("/logout", session.SessionLogout)
 
 		// sse has its own validation instead of using session context (which reconnects or redirects to /login)
-		r.Get("/sse", session2.SseHandler)
+		r.Get("/sse", session.SseHandler)
 
 	})
 
@@ -115,58 +115,58 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 	// NOTE: these paths must match those defined in the render functions
 	router.Group(func(r chi.Router) {
 		// these routes must be authenticated otherwise redirect to /login
-		r.Use(session2.AddSessionToContext())
+		r.Use(session.AddSessionToContext())
 
 		// see also:https://medium.com/gravel-engineering/i-find-it-hard-to-reuse-root-template-in-go-htmx-so-i-made-my-own-little-tools-to-solve-it-df881eed7e4d
 		// these render full page or fragments for non hx-boost hx-requests
 		//r.Get("/", app.RenderApp)
-		r.Handle("/", http.RedirectHandler(src2.RenderDashboardRootPath, http.StatusPermanentRedirect))
-		r.Get(src2.RenderAppHeadPath, app2.RenderAppHead)
-		r.Get(src2.RenderAboutPath, about.RenderAboutPage)
+		r.Handle("/", http.RedirectHandler(src.RenderDashboardRootPath, http.StatusPermanentRedirect))
+		r.Get(src.RenderAppHeadPath, app.RenderAppHead)
+		r.Get(src.RenderAboutPath, about.RenderAboutPage)
 
 		// dashboard endpoints
-		r.Get(src2.RenderDashboardRootPath, dashboard2.RenderDashboardPage)
-		r.Get(src2.RenderDashboardAddPath, dashboard2.RenderConfigDashboard)
-		r.Get(src2.RenderDashboardPath, dashboard2.RenderDashboardPage)
-		r.Get(src2.RenderDashboardConfirmDeletePath, dashboard2.RenderConfirmDeleteDashboard)
-		r.Get(src2.RenderDashboardEditPath, dashboard2.RenderConfigDashboard)
-		r.Post(src2.PostDashboardLayoutPath, dashboard2.SubmitDashboardLayout)
-		r.Post(src2.PostDashboardConfigPath, dashboard2.SubmitConfigDashboard)
-		r.Delete(src2.DeleteDashboardPath, dashboard2.SubmitDeleteDashboard)
+		r.Get(src.RenderDashboardRootPath, dashboard.RenderDashboardPage)
+		r.Get(src.RenderDashboardAddPath, dashboard.RenderConfigDashboard)
+		r.Get(src.RenderDashboardPath, dashboard.RenderDashboardPage)
+		r.Get(src.RenderDashboardConfirmDeletePath, dashboard.RenderConfirmDeleteDashboard)
+		r.Get(src.RenderDashboardEditPath, dashboard.RenderConfigDashboard)
+		r.Post(src.PostDashboardLayoutPath, dashboard.SubmitDashboardLayout)
+		r.Post(src.PostDashboardConfigPath, dashboard.SubmitConfigDashboard)
+		r.Delete(src.DeleteDashboardPath, dashboard.SubmitDeleteDashboard)
 
 		// Directory endpoints
-		r.Get(src2.RenderThingDirectoryPath, directory2.RenderDirectory)
-		r.Get(src2.RenderThingConfirmDeletePath, directory2.RenderConfirmDeleteTD)
-		r.Delete(src2.DeleteThingPath, directory2.SubmitDeleteTD)
+		r.Get(src.RenderThingDirectoryPath, directory.RenderDirectory)
+		r.Get(src.RenderThingConfirmDeletePath, directory.RenderConfirmDeleteTD)
+		r.Delete(src.DeleteThingPath, directory.SubmitDeleteTD)
 
 		// Thing details view
-		r.Get(src2.RenderThingDetailsPath, thing2.RenderThingDetails)
-		r.Get(src2.RenderThingRawPath, thing2.RenderThingRaw)
+		r.Get(src.RenderThingDetailsPath, thing.RenderThingDetails)
+		r.Get(src.RenderThingRawPath, thing.RenderThingRaw)
 
 		// Performing Thing Actions and Configuration
-		r.Get(src2.RenderActionRequestPath, thing2.RenderActionRequest)
-		r.Get(src2.RenderActionStatusPath, thing2.RenderActionProgress)
-		r.Get(src2.RenderThingPropertyEditPath, thing2.RenderEditProperty)
-		r.Post(src2.PostActionRequestPath, thing2.SubmitActionRequest)
-		r.Post(src2.PostThingPropertyEditPath, thing2.SubmitProperty)
+		r.Get(src.RenderActionRequestPath, thing.RenderActionRequest)
+		r.Get(src.RenderActionStatusPath, thing.RenderActionProgress)
+		r.Get(src.RenderThingPropertyEditPath, thing.RenderEditProperty)
+		r.Post(src.PostActionRequestPath, thing.SubmitActionRequest)
+		r.Post(src.PostThingPropertyEditPath, thing.SubmitProperty)
 
 		// Dashboard tiles
-		r.Get(src2.RenderTileAddPath, tile2.RenderEditTile)
-		r.Get(src2.RenderTilePath, tile2.RenderTile)
-		r.Get(src2.RenderTileConfirmDeletePath, tile2.RenderConfirmDeleteTile)
-		r.Get(src2.RenderTileEditPath, tile2.RenderEditTile)
-		r.Get(src2.RenderTileSelectSourcesPath, tile2.RenderSelectSources)
-		r.Get("/tile/{thingID}/{key}/sourceRow", tile2.RenderTileSourceRow)
-		r.Post(src2.PostTileEditPath, tile2.SubmitEditTile)
-		r.Delete(src2.PostTileDeletePath, tile2.SubmitDeleteTile)
+		r.Get(src.RenderTileAddPath, tile.RenderEditTile)
+		r.Get(src.RenderTilePath, tile.RenderTile)
+		r.Get(src.RenderTileConfirmDeletePath, tile.RenderConfirmDeleteTile)
+		r.Get(src.RenderTileEditPath, tile.RenderEditTile)
+		r.Get(src.RenderTileSelectSourcesPath, tile.RenderSelectSources)
+		r.Get("/tile/{thingID}/{name}/sourceRow", tile.RenderTileSourceRow)
+		r.Post(src.PostTileEditPath, tile.SubmitEditTile)
+		r.Delete(src.PostTileDeletePath, tile.SubmitDeleteTile)
 
 		// history. Optional query params 'timestamp' and 'duration'
-		r.Get(src2.RenderHistoryPagePath, history2.RenderHistoryPage)
-		r.Get(src2.RenderHistoryLatestValueRowPath, history2.RenderLatestValueRow)
+		r.Get(src.RenderHistoryPagePath, history.RenderHistoryPage)
+		r.Get(src.RenderHistoryLatestValueRowPath, history.RenderLatestValueRow)
 
 		// Status components
-		r.Get(src2.RenderStatusPath, status.RenderStatus)
-		r.Get(src2.RenderConnectionStatusPath, app2.RenderConnectStatus)
+		r.Get(src.RenderStatusPath, status.RenderStatus)
+		r.Get(src.RenderConnectionStatusPath, app.RenderConnectStatus)
 	})
 
 	return router
@@ -181,7 +181,7 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 	// in this case only a management capability is published
 	err := authz.UserSetPermissions(hc, authz.ThingPermissions{
 		AgentID: hc.ClientID(),
-		ThingID: src2.HiveoviewServiceID,
+		ThingID: src.HiveoviewServiceID,
 		Allow:   []string{authn.ClientRoleAdmin, authn.ClientRoleService},
 	})
 	if err != nil {
@@ -189,7 +189,7 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 	}
 
 	// Setup the handling of incoming web sessions
-	sm := session2.GetSessionManager()
+	sm := session.GetSessionManager()
 	connStat := hc.GetStatus()
 	sm.Init(connStat.HubURL, svc.signingKey, connStat.CaCert, hc)
 

@@ -142,7 +142,7 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 //
 // This returns the session, messageType
 func (svc *HttpsTransport) getRequestParams(r *http.Request) (
-	session *sessions.ClientSession, messageType string, thingID string, key string, body []byte, err error) {
+	session *sessions.ClientSession, messageType string, thingID string, name string, body []byte, err error) {
 
 	// get the required client session of this agent
 	ctxSession := r.Context().Value(sessions.SessionContextID)
@@ -159,11 +159,11 @@ func (svc *HttpsTransport) getRequestParams(r *http.Request) (
 	// build a message from the URL and payload
 	// URLParam names are defined by the path variables set in the router.
 	thingID = chi.URLParam(r, "thingID")
-	key = chi.URLParam(r, "key")
+	name = chi.URLParam(r, "name")
 	messageType = chi.URLParam(r, "messageType")
 	body, _ = io.ReadAll(r.Body)
 
-	return cs, messageType, thingID, key, body, err
+	return cs, messageType, thingID, name, body, err
 }
 
 // receive a message from a client and ensure it has a message ID

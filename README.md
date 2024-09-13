@@ -69,7 +69,7 @@ Building the Hub takes place in 2 parts: core and protocol bindings.
 Prerequisites:
 
 1. An x86 or arm based Linux system. Ubuntu, Debian, Raspberrian
-2. Golang 1.21 or newer (with GOPATH set)
+2. Golang 1.22 or newer (with GOPATH set)
 3. GCC Make any 2020+ version
 5. nodejs v18+ (for building zwavejs binding)
 

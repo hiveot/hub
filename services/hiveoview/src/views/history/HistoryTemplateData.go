@@ -17,7 +17,7 @@ type HistoryTemplateData struct {
 	TD         *tdd.TD
 	ThingID    string
 	Title      string // allow override to data description
-	Key        string
+	Name       string
 	DataSchema tdd.DataSchema // dataschema of event/property key
 
 	// history information
@@ -91,18 +91,18 @@ func (ht HistoryTemplateData) CompareToday() int {
 // NewHistoryTemplateData reads the event or property history for the given time range
 //
 //	ct is the consumed thing to read the data from
-//	key is the key of the event or property in the TD
+//	name of the event or property in the TD
 //	timestamp of the end-time of the history range
 //	duration to read (negative for history)
 func NewHistoryTemplateData(
-	ct *consumedthing.ConsumedThing, key string, timestamp time.Time, duration time.Duration) (
+	ct *consumedthing.ConsumedThing, name string, timestamp time.Time, duration time.Duration) (
 	data *HistoryTemplateData, err error) {
 
 	td := ct.GetThingDescription()
 	hs := HistoryTemplateData{
 		TD:           td,
 		ThingID:      td.ID,
-		Key:          key,
+		Name:         name,
 		Title:        td.Title,
 		Timestamp:    timestamp,
 		TimestampStr: timestamp.Format(utils.RFC3339Milli),
@@ -113,7 +113,7 @@ func NewHistoryTemplateData(
 		ItemsRemaining: false,
 	}
 	// Get the current schema for the value to show
-	iout, _ := ct.GetValue(key)
+	iout, _ := ct.GetValue(name)
 	if iout != nil {
 		hs.DataSchema = iout.Schema
 		hs.Title = iout.Title + " of " + td.Title
@@ -122,10 +122,10 @@ func NewHistoryTemplateData(
 	}
 
 	// TODO: (if needed) if items remaining, get the rest in an additional call
-	hs.Values, hs.ItemsRemaining, err = ct.ReadHistory(key, timestamp, duration)
+	hs.Values, hs.ItemsRemaining, err = ct.ReadHistory(name, timestamp, duration)
 
 	// Add the URL paths for navigating around the history
-	pathParams := map[string]string{"thingID": td.ID, "key": key}
+	pathParams := map[string]string{"thingID": td.ID, "name": name}
 	prevDayTime := hs.PrevDay().Format(time.RFC3339)
 	nextDayTime := hs.NextDay().Format(time.RFC3339)
 	todayTime := time.Now().Format(time.RFC3339)

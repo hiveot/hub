@@ -95,8 +95,8 @@ func TestPoll(t *testing.T) {
 	err := hc2.Subscribe("", "")
 	require.NoError(t, err)
 	hc2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
-		slog.Info("received event", "id", msg.Key)
-		if msg.Key == vocab.EventNameProperties {
+		slog.Info("received event", "id", msg.Name)
+		if msg.Name == vocab.EventNameProperties {
 			var value map[string]interface{}
 			err2 := utils.DecodeAsObject(msg.Data, &value)
 			assert.NoError(t, err2)
@@ -123,7 +123,7 @@ func TestPoll(t *testing.T) {
 
 	// get events from the outbox
 	dThingID := tdd.MakeDigiTwinThingID(agentID, device1ID)
-	events, err := digitwin.OutboxReadLatest(hc2, nil, vocab.MessageTypeEvent, "", dThingID)
+	events, err := digitwin.OutboxReadLatest(hc2, vocab.MessageTypeEvent, nil, "", dThingID)
 	require.NoError(t, err)
 	require.True(t, len(events) > 1)
 }

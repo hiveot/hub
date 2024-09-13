@@ -31,12 +31,12 @@ type DigiTwinLatestStore struct {
 // AddEvent stores the event, sent by agent, in the bucket
 //func (store *DigiTwinLatestStore) AddEvent(msg *things.ThingMessage) {
 //
-//	addr := fmt.Sprintf("%s", msg.SenderID, msg.ThingID, msg.MessageType, msg.Key)
+//	addr := fmt.Sprintf("%s", msg.SenderID, msg.ThingID, msg.MessageType, msg.Name)
 //	msgJSON, _ := json.Marshal(msg)
 //	err := store.bucket.Set(addr, msgJSON)
 //	if err != nil {
 //		slog.Error("Unexpected error storing event in outbox",
-//			"thingID", msg.ThingID, "key", msg.Key, "err", err.Error())
+//			"thingID", msg.ThingID, "name", msg.Name, "err", err.Error())
 //		return
 //	}
 //}
@@ -194,7 +194,7 @@ func (svc *DigiTwinLatestStore) StoreMessage(msg *hubclient.ThingMessage) {
 	defer svc.cacheMux.Unlock()
 	thingCache, _ := svc.cache[msg.ThingID]
 	if msg.MessageType == vocab.MessageTypeEvent {
-		if msg.Key == vocab.EventNameProperties {
+		if msg.Name == vocab.EventNameProperties {
 			// the value holds a map of property name:value pairs, add each one individually
 			// in order to retain the sender and created timestamp.
 			props := make(map[string]any)
@@ -220,23 +220,23 @@ func (svc *DigiTwinLatestStore) StoreMessage(msg *hubclient.ThingMessage) {
 				}
 			}
 			svc.changedThings[msg.ThingID] = true
-		} else if msg.Key == vocab.EventNameTD {
+		} else if msg.Name == vocab.EventNameTD {
 			// TD documents are handled by the directory
 		} else {
 			// Thing events
 			// in case events arrive out of order, only update if the msg is newer
-			existingLatest := thingCache.Get(msg.Key)
+			existingLatest := thingCache.Get(msg.Name)
 			if existingLatest == nil || msg.Created > existingLatest.Created {
-				thingCache.Set(msg.Key, msg)
+				thingCache.Set(msg.Name, msg)
 				svc.changedThings[msg.ThingID] = true
 			}
 		}
 	} else {
 		// TODO: split namespace as currently events and properties share the same namespace
 		// in case messages arrive out of order, only update if the msg is newer
-		existingLatest := thingCache.Get(msg.Key)
+		existingLatest := thingCache.Get(msg.Name)
 		if existingLatest == nil || msg.Created > existingLatest.Created {
-			thingCache.Set(msg.Key, msg)
+			thingCache.Set(msg.Name, msg)
 			svc.changedThings[msg.ThingID] = true
 		}
 	}

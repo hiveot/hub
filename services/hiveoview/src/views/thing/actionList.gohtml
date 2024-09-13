@@ -1,6 +1,6 @@
 <!--Thing actions list-->
 <!--@param '.' object of type thing.DetailsTemplateData -->
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.ThingDetailsTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/thing.ThingDetailsTemplateData*/ -}}
 
 <ul class="h-grid-table thing-actions" striped border>
 	<li>
@@ -12,18 +12,18 @@
 		<div class="h-show-md">Updated</div>
 	</li>
 
-    {{range $k := .ActionKeys }}
-        {{$iout := $.GetValue $k}}
+    {{range $name := .ActionNames }}
+        {{$iout := $.GetValue $name}}
 				<li>
 
 					<div class="h-show-sm">{{/*icon*/}}</div>
 
-					<div title="key: {{$k}}">
+					<div title="name: {{$name}}">
 						<button class="outline" style="border:none;
 										display:inline-flex; gap: 5px;
 										align-items: center; padding:0"
 						        hx-trigger="click"
-						        hx-get="{{$.GetRenderActionPath $k}}"
+						        hx-get="{{$.GetRenderActionPath $name}}"
 						        hx-target="#modalLevel1"
 						>
 	            {{$iout.Title}}
@@ -38,7 +38,7 @@
 					<div class="h-show-lg">{{$iout.Schema.Description}}</div>
 
 					<div class="h-show-md"
-					     sse-swap="{{$.ThingID}}/{{$k}}/updated"
+					     sse-swap="{{$.ThingID}}/{{$name}}/updated"
 					     hx-swap="innerHTML"
 					     hx-target="this"
 					     title="Updated: {{$iout.GetUpdated}} by {{$iout.SenderID}}">

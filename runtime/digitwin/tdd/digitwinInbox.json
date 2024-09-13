@@ -44,8 +44,8 @@
 					"description": "Action input parameters",
 					"comment": "there is no type as it can by anything"
 				},
-				"key": {
-					"description": "Action key to invoke",
+				"name": {
+					"description": "Action name to invoke",
 					"type": "string"
 				},
 				"messageID": {
@@ -111,13 +111,13 @@
 						"description": "ID of the Thing to read",
 						"type": "string"
 					},
-					"key": {
-						"title": "Value Key",
-						"description": "The action key to read",
+					"name": {
+						"title": "Name",
+						"description": "The action name to read",
 						"type": "string"
 					}
 				},
-				"required": ["thingID","key"]
+				"required": ["thingID","name"]
 			},
 			"output": {
 				"title": "Inbox Record",

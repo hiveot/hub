@@ -47,20 +47,20 @@ func (it *IsySwitchThing) HandleActionRequest(action *hubclient.ThingMessage) (e
 	var newValue = ""
 	// FIXME: action keys are the raw keys, not @type
 	// supported actions: on, off
-	if action.Key == vocab.ActionSwitchOn {
+	if action.Name == vocab.ActionSwitchOn {
 		newValue = "DON"
-	} else if action.Key == vocab.ActionSwitchOff {
+	} else if action.Name == vocab.ActionSwitchOff {
 		newValue = "DOF"
-	} else if action.Key == vocab.ActionSwitchToggle {
+	} else if action.Name == vocab.ActionSwitchToggle {
 		newValue = "DOF"
-		oldValue, found := it.propValues.GetValue(action.Key)
+		oldValue, found := it.propValues.GetValue(action.Name)
 		if !found || oldValue == "DOF" {
 			newValue = "DON"
 		}
 	} else {
 		// unknown action
 		newValue = ""
-		err = fmt.Errorf("HandleActionRequest. Unknown action: %s", action.Key)
+		err = fmt.Errorf("HandleActionRequest. Unknown action: %s", action.Name)
 		return err
 	}
 
@@ -68,7 +68,7 @@ func (it *IsySwitchThing) HandleActionRequest(action *hubclient.ThingMessage) (e
 	err = it.isyAPI.SendRequest("GET", restPath, "", nil)
 	if err == nil {
 		// TODO: handle event from gateway using websockets. For now just assume this worked.
-		err = it.HandleValueUpdate(action.Key, "", newValue)
+		err = it.HandleValueUpdate(action.Name, "", newValue)
 		//it.currentProps[actionID] = newValue
 	}
 	return err

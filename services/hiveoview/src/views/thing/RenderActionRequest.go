@@ -21,10 +21,9 @@ const RenderActionRequestTemplate = "RenderActionRequest.gohtml"
 
 // ActionRequestTemplateData with data for the action request view
 type ActionRequestTemplateData struct {
-	// The thing the action belongs to
+	// The thing and name the action belongs to
 	ThingID string
-	// key of action
-	Key string
+	Name    string
 
 	// the thing instance used to apply the action
 	CT *consumedthing.ConsumedThing
@@ -50,7 +49,7 @@ type ActionRequestTemplateData struct {
 }
 
 // Return the action affordance
-func getActionAff(hc hubclient.IHubClient, thingID string, key string) (
+func getActionAff(hc hubclient.IHubClient, thingID string, name string) (
 	td *tdd.TD, actionAff *tdd.ActionAffordance, err error) {
 
 	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
@@ -61,20 +60,20 @@ func getActionAff(hc hubclient.IHubClient, thingID string, key string) (
 	if err != nil {
 		return td, actionAff, err
 	}
-	actionAff = td.GetAction(key)
+	actionAff = td.GetAction(name)
 	if actionAff == nil {
-		return td, actionAff, fmt.Errorf("Action '%s' not found for Thing '%s'", key, thingID)
+		return td, actionAff, fmt.Errorf("Action '%s' not found for Thing '%s'", name, thingID)
 	}
 	return td, actionAff, nil
 }
 
 // RenderActionRequest renders the action dialog.
-// Path: /things/{thingID}/{key}
+// Path: /things/{thingID}/{name}
 //
 //	@param thingID this is the URL parameter
 func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
-	key := chi.URLParam(r, "key")
+	name := chi.URLParam(r, "name")
 	var hc hubclient.IHubClient
 	//var lastAction *digitwin.InboxRecord
 
@@ -90,7 +89,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusBadRequest)
 	}
 
-	_, actionAff, err := getActionAff(hc, thingID, key)
+	_, actionAff, err := getActionAff(hc, thingID, name)
 	if err != nil {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
@@ -98,18 +97,18 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 
 	data := ActionRequestTemplateData{
 		ThingID: thingID,
-		Key:     key,
+		Name:    name,
 		Action:  actionAff,
 		CT:      ct,
 	}
-	cv, found := ct.GetValue(key)
+	cv, found := ct.GetValue(name)
 	if found {
 		data.CurrentValue = cv
 	}
 
 	// get last action request that was received
 	// reading a latest value is optional
-	lar, err := digitwin.InboxReadLatest(hc, key, thingID)
+	lar, err := digitwin.InboxReadLatest(hc, name, thingID)
 	if err == nil {
 		data.LastActionRecord = &lar
 		//data.PrevValue = &lastActionRecord
@@ -119,7 +118,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		data.LastActionInput = consumedthing.NewDataSchemaValue(data.LastActionRecord.Input)
 	}
 
-	pathArgs := map[string]string{"thingID": data.ThingID, "key": data.Key}
+	pathArgs := map[string]string{"thingID": data.ThingID, "name": data.Name}
 	data.SubmitActionRequestPath = utils.Substitute(src.PostActionRequestPath, pathArgs)
 
 	buff, err := app.RenderAppOrFragment(r, RenderActionRequestTemplate, data)

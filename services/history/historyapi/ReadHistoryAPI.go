@@ -101,7 +101,7 @@ type GetCursorArgs struct {
 	// Digitwin thing providing the event to get (required)
 	ThingID string `json:"thingID"`
 	// Optional filter value to search for a specific key
-	FilterOnKey string `json:"filterOnKey,omitempty"`
+	FilterOnName string `json:"filterOnName,omitempty"`
 	// optional lifespan. Default is 1 minute
 	LifespanSec int `json:"lifespan"`
 }
@@ -115,8 +115,8 @@ type GetCursorResp struct {
 type ReadHistoryArgs struct {
 	// Thing to read values from
 	ThingID string `json:"thingID"`
-	// Optional filter value to search for a specific event key
-	FilterOnKey string `json:"filterOnKey,omitempty"`
+	// Optional filter value to search for a specific event name
+	FilterOnName string `json:"filterOnName,omitempty"`
 	// Timestamp in RFC3339 format or 'now' for default
 	Timestamp string `json:"timeStamp"`
 	// Duration to read or 0 for previous 24 hours (-3600*24)

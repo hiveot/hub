@@ -16,7 +16,7 @@ type StateAgent struct {
 // HandleMessage dispatches requests to the service capabilities
 func (agent *StateAgent) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 	if msg.ThingID == stateapi.StorageServiceID {
-		switch msg.Key {
+		switch msg.Name {
 		case stateapi.DeleteMethod:
 			return agent.Delete(msg)
 		case stateapi.GetMethod:
@@ -30,7 +30,7 @@ func (agent *StateAgent) HandleMessage(msg *hubclient.ThingMessage) (stat hubcli
 		}
 	}
 	stat.Failed(msg, fmt.Errorf(
-		"unknown action '%s' for service '%s'", msg.Key, msg.ThingID))
+		"unknown action '%s' for service '%s'", msg.Name, msg.ThingID))
 	return stat
 }
 func (agent *StateAgent) Delete(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {

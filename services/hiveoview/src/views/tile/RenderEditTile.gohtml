@@ -1,6 +1,6 @@
 <!--Tile editor dialog-->
 
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.EditTileTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/tile.EditTileTemplateData*/ -}}
 
 <h-modal show showClose shadow>
 		<article>
@@ -53,7 +53,7 @@
 	                <li>
 										{{/* The hidden input is used to submit list of sources with the form*/}}
 		                <input type="hidden" name="sources"
-		                       value="{{$v.ThingID}}/{{$v.Key}}"/>
+		                       value="{{$v.ThingID}}/{{$v.Name}}"/>
 		                <button type="button" class="h-row outline h-icon-button"
 		                        onclick="deleteRow(this.parentNode)"
 		                >
@@ -61,9 +61,9 @@
 		                </button>
 				            <input name="sourceTitles" value="{{$v.Title}}"
 				                   style="margin:0"
-				                   title="{{$v.ThingID}}/{{$v.Key}}"/>
-		                <div class="h-row">{{$.GetValue $v.ThingID $v.Key}}</div>
-		                <div class="h-row">{{$.GetUpdated  $v.ThingID $v.Key}}</div>
+				                   title="{{$v.ThingID}}/{{$v.Name}}"/>
+		                <div class="h-row">{{$.GetValue $v.ThingID $v.Name}}</div>
+		                <div class="h-row">{{$.GetUpdated  $v.ThingID $v.Name}}</div>
 	                </li>
 							{{end}}
 						</ul>

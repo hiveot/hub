@@ -7,15 +7,15 @@
 
 		{{/* Auto-update chart when looking at today*/}}
     {{if eq .CompareToday 0}}
-	      sse-swap="{{.ThingID}}/{{.Key}}"
+	      sse-swap="{{.ThingID}}/{{.Name}}"
 	      hx-target="this"
 	      hx-swap="none"
         {{/*addValue uses the SSE event to add a value to the chart*/}}
-	      hx-on::sse-before-message="this.addValue(null, event.detail.data, '{{.Key}}')"
+	      hx-on::sse-before-message="this.addValue(null, event.detail.data, '{{.Name}}')"
 		{{end}}
 >
 	{{/* inject the json encoded array with data to show as {x:time,y:value} here */}}
-	<data key="{{.Key}}"
+	<data key="{{.Name}}"
  			 title="{{.DataSchema.Title}}"
 		    unit="{{.DataSchema.UnitSymbol}}"
 	      stepped="{{.Stepped}}">
@@ -23,13 +23,3 @@
 	</data>
 
 </h-timechart>
-
-{{/*<script>*/}}
-{{/*    // updateChart uses the SSE event to add a value to the chart*/}}
-{{/*    // However to get the timestamp, the event itself should contain the ThingMessage,*/}}
-{{/*    // rather than just the value.*/}}
-{{/*    // As a workaround just use 'now' as the timestamp*/}}
-{{/*    updateChart = (event,key) => {*/}}
-{{/*        event.target.addValue(null, event.detail.data,key)*/}}
-{{/*    }*/}}
-{{/*</script>*/}}

@@ -83,7 +83,7 @@ func (svc *HistoryService) Start(hc hubclient.IHubClient) (err error) {
 		//		slog.Debug("received event",
 		//			slog.String("senderID", msg.SenderID),
 		//			slog.String("thingID", msg.ThingID),
-		//			slog.String("key", msg.Key),
+		//			slog.String("name", msg.Name),
 		//			slog.Int64("createdMSec", msg.CreatedMSec))
 		//		err = svc.addHistory.AddEvent(msg)
 		//		stat.Completed(msg, err)

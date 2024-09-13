@@ -363,7 +363,7 @@ func TestPubSubSSE(t *testing.T) {
 	require.NotNil(t, rxMsg2)
 	assert.Equal(t, thingID, (*rxMsg2).ThingID)
 	assert.Equal(t, testLogin, (*rxMsg2).SenderID)
-	assert.Equal(t, eventKey, (*rxMsg2).Key)
+	assert.Equal(t, eventKey, (*rxMsg2).Name)
 }
 
 // Restarting the server should invalidate sessions
@@ -403,7 +403,7 @@ func TestRestart(t *testing.T) {
 	require.Error(t, err)
 
 	require.Nil(t, rxMsg)
-	//assert.Equal(t, eventKey, rxMsg.Key)
+	//assert.Equal(t, eventKey, rxMsg.Name)
 	//assert.Equal(t, thingID, rxMsg.ThingID)
 }
 

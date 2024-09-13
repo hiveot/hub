@@ -84,14 +84,14 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 // GetValueChange parses the attribute value and track changes to the
 // value using the attribute conversion settings.
 func (svc *OWServerBinding) GetValueChange(
-	attrKey string, attrValue string, info AttrConversion, td *tdd.TD) (
+	attrName string, attrValue string, info AttrConversion, td *tdd.TD) (
 	value any, changed bool) {
 
 	var err error
 
 	// parse all data values to their native types and compare if they changed
 	// since the previous stored value.
-	prevValue, prevFound := svc.getPrevValue(td.ID, attrKey)
+	prevValue, prevFound := svc.getPrevValue(td.ID, attrName)
 
 	switch info.DataType {
 	case vocab.WoTDataTypeNumber:
@@ -104,13 +104,13 @@ func (svc *OWServerBinding) GetValueChange(
 		if prevFound {
 			valueDiff = math.Abs(roundedFloat - prevValue.value.(float64))
 			changed = valueDiff >= info.ChangeNotify
-			slog.Debug("GetValueChange", "key", attrKey,
+			slog.Debug("GetValueChange", "name", attrName,
 				"oldValue", prevValue.value, "newValue", attrValue, "diff", valueDiff)
 		} else {
 			changed = true
 		}
 		if changed {
-			svc.setPrevValue(td.ID, attrKey, roundedFloat)
+			svc.setPrevValue(td.ID, attrName, roundedFloat)
 		}
 		// return the rounded /truncated result
 		value = roundedFloat
@@ -130,7 +130,7 @@ func (svc *OWServerBinding) GetValueChange(
 			changed = true
 		}
 		if changed {
-			svc.setPrevValue(td.ID, attrKey, valueInt)
+			svc.setPrevValue(td.ID, attrName, valueInt)
 		}
 		value = valueInt
 
@@ -143,7 +143,7 @@ func (svc *OWServerBinding) GetValueChange(
 			changed = true
 		}
 		if changed {
-			svc.setPrevValue(td.ID, attrKey, valueBool)
+			svc.setPrevValue(td.ID, attrName, valueBool)
 		}
 		value = valueBool
 	default: // strings and other values
@@ -154,7 +154,7 @@ func (svc *OWServerBinding) GetValueChange(
 			changed = true
 		}
 		if changed {
-			svc.setPrevValue(td.ID, attrKey, value)
+			svc.setPrevValue(td.ID, attrName, value)
 		}
 	}
 	if err != nil {

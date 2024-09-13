@@ -43,10 +43,10 @@ type DigiTwinInboxService struct {
 
 // AddAction adds a new action request to the inbox.
 func (svc *DigiTwinInboxService) AddAction(msg *hubclient.ThingMessage) (rec digitwin.InboxRecord, err error) {
-	if msg.MessageID == "" || msg.ThingID == "" || msg.Key == "" || msg.SenderID == "" {
+	if msg.MessageID == "" || msg.ThingID == "" || msg.Name == "" || msg.SenderID == "" {
 		err = fmt.Errorf(
 			"action is missing required a parameter; senderID '%s', thingID '%s', key '%s', messageID '%s'",
-			msg.SenderID, msg.ThingID, msg.Key, msg.MessageID)
+			msg.SenderID, msg.ThingID, msg.Name, msg.MessageID)
 		slog.Warn(err.Error())
 		return
 	}
@@ -62,7 +62,7 @@ func (svc *DigiTwinInboxService) AddAction(msg *hubclient.ThingMessage) (rec dig
 	timestamp := receivedTS.UnixMilli()
 	record := &digitwin.InboxRecord{
 		Input:       msg.Data,
-		Key:         msg.Key,
+		Name:        msg.Name,
 		MessageID:   msg.MessageID,
 		MessageType: msg.MessageType,
 		Progress:    hubclient.DeliveredToInbox,
@@ -76,7 +76,7 @@ func (svc *DigiTwinInboxService) AddAction(msg *hubclient.ThingMessage) (rec dig
 
 	svc.mux.Lock()
 	svc.activeCache[record.MessageID] = record
-	latestKey := msg.ThingID + "." + msg.Key
+	latestKey := msg.ThingID + "." + msg.Name
 	svc.latestByKey[latestKey] = record
 	svc.mux.Unlock()
 	return *record, nil
@@ -127,7 +127,7 @@ func (svc *DigiTwinInboxService) GetTD() string {
 func (svc *DigiTwinInboxService) HandleActionFlow(msg *hubclient.ThingMessage) (status hubclient.DeliveryStatus) {
 	slog.Info("inbox:HandleActionFlow",
 		slog.String("ThingID", msg.ThingID),
-		slog.String("Key", msg.Key),
+		slog.String("Name", msg.Name),
 		slog.String("SenderID", msg.SenderID),
 		slog.String("MessageID", msg.MessageID),
 	)
@@ -197,7 +197,7 @@ func (svc *DigiTwinInboxService) HandleDeliveryUpdate(msg *hubclient.ThingMessag
 	// error checking that the update does belong to the right thing action
 	slog.Info("inbox:HandleDeliveryUpdate ",
 		slog.String("ThingID", inboxRecord.ThingID),
-		slog.String("Key", inboxRecord.Key),
+		slog.String("Name", inboxRecord.Name),
 		slog.String("Progress", stat.Progress),
 		slog.String("error", stat.Error),
 		slog.String("MessageID", stat.MessageID),
@@ -236,13 +236,13 @@ func (svc *DigiTwinInboxService) HandleDeliveryUpdate(msg *hubclient.ThingMessag
 func (svc *DigiTwinInboxService) ReadLatest(
 	senderID string, args digitwin.InboxReadLatestArgs) (record digitwin.InboxRecord, err error) {
 
-	latestKey := args.ThingID + "." + args.Key
+	latestKey := args.ThingID + "." + args.Name
 	svc.mux.RLock()
 	r, found := svc.latestByKey[latestKey]
 	if found {
 		record = *r
 	} else {
-		err = fmt.Errorf("ReadLatest: Inbox does not have the latest action record for thing/key '%s/%s'", args.ThingID, args.Key)
+		err = fmt.Errorf("ReadLatest: Inbox does not have the latest action record for thing/key '%s/%s'", args.ThingID, args.Name)
 	}
 	svc.mux.RUnlock()
 	return record, err
@@ -274,7 +274,7 @@ func (svc *DigiTwinInboxService) UpdateRecord(record digitwin.InboxRecord) {
 	} else {
 		svc.activeCache[record.MessageID] = &record
 	}
-	latestKey := record.ThingID + "." + record.Key
+	latestKey := record.ThingID + "." + record.Name
 	svc.latestByKey[latestKey] = &record
 }
 

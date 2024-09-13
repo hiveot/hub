@@ -34,12 +34,12 @@ type RenderTileTemplateData struct {
 // GetHistory returns the 24 hour history for the given key.
 // This truncates the result if there are too many values in the range.
 // The max amount of values is the limit set in historyapi.DefaultLimit (1000)
-func (dt RenderTileTemplateData) GetHistory(thingID string, key string) *history.HistoryTemplateData {
+func (dt RenderTileTemplateData) GetHistory(thingID string, name string) *history.HistoryTemplateData {
 	timestamp := time.Now()
 	ct, err := dt.cts.Consume(thingID)
 
 	duration, _ := time.ParseDuration("-24h")
-	hsd, err := history.NewHistoryTemplateData(ct, key, timestamp, duration)
+	hsd, err := history.NewHistoryTemplateData(ct, name, timestamp, duration)
 	_ = err
 	return hsd
 }
@@ -69,13 +69,13 @@ func (d RenderTileTemplateData) GetValue(thingID string, name string) (iout *con
 }
 
 // GetUnit return the value unit of a tile source
-func (d RenderTileTemplateData) GetUnit(thingID string, key string) string {
+func (d RenderTileTemplateData) GetUnit(thingID string, name string) string {
 
 	cs, err := d.cts.Consume(thingID)
 	if err != nil {
 		return ""
 	}
-	iout := cs.ReadEvent(key)
+	iout := cs.ReadEvent(name)
 	if iout == nil {
 		return ""
 	}
@@ -84,13 +84,13 @@ func (d RenderTileTemplateData) GetUnit(thingID string, key string) string {
 }
 
 // GetUpdated return the timestamp of a tile source value
-func (d RenderTileTemplateData) GetUpdated(thingID string, key string) string {
+func (d RenderTileTemplateData) GetUpdated(thingID string, name string) string {
 
 	cs, err := d.cts.Consume(thingID)
 	if err != nil {
 		return "n/a"
 	}
-	iout := cs.ReadEvent(key)
+	iout := cs.ReadEvent(name)
 	if iout == nil {
 		return "n/a"
 	}

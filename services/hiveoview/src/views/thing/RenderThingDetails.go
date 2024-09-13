@@ -29,10 +29,10 @@ type ThingDetailsTemplateData struct {
 	DeviceType string
 	TD         *tdd.TD
 	// split the properties in attributes and config for presentation
-	AttrKeys   []string
-	ConfigKeys []string
-	EventKeys  []string
-	ActionKeys []string
+	AttrNames   []string
+	ConfigNames []string
+	EventNames  []string
+	ActionNames []string
 
 	// latest value of properties
 	Values map[string]*consumedthing.InteractionOutput
@@ -44,18 +44,18 @@ type ThingDetailsTemplateData struct {
 	RenderRawTDPath           string
 }
 
-// GetHistory returns the previous 24 hour for the given key
-func (dt *ThingDetailsTemplateData) GetHistory(key string) *history.HistoryTemplateData {
+// GetHistory returns the previous 24 hour for the given name
+func (dt *ThingDetailsTemplateData) GetHistory(name string) *history.HistoryTemplateData {
 	timestamp := time.Now()
 	duration := time.Hour * time.Duration(-24)
-	hsd, err := history.NewHistoryTemplateData(dt.CT, key, timestamp, duration)
+	hsd, err := history.NewHistoryTemplateData(dt.CT, name, timestamp, duration)
 	_ = err
 	return hsd
 }
 
 // GetSenderID returns the last sender of a value
-func (dt *ThingDetailsTemplateData) GetSenderID(key string) string {
-	io, found := dt.Values[key]
+func (dt *ThingDetailsTemplateData) GetSenderID(name string) string {
+	io, found := dt.Values[name]
 	if !found {
 		return ""
 	}
@@ -63,8 +63,8 @@ func (dt *ThingDetailsTemplateData) GetSenderID(key string) string {
 }
 
 // GetUpdated returns the timestamp the value was last updated
-func (dt *ThingDetailsTemplateData) GetUpdated(key string) string {
-	io, found := dt.Values[key]
+func (dt *ThingDetailsTemplateData) GetUpdated(name string) string {
+	io, found := dt.Values[name]
 	if !found {
 		return ""
 	}
@@ -73,26 +73,26 @@ func (dt *ThingDetailsTemplateData) GetUpdated(key string) string {
 
 // GetValue returns the interaction output of the last value of event or property
 // If the value is unknown, a dummy value is returned to avoid crashing.
-func (dt *ThingDetailsTemplateData) GetValue(key string) *consumedthing.InteractionOutput {
+func (dt *ThingDetailsTemplateData) GetValue(name string) *consumedthing.InteractionOutput {
 	defer func() {
 		if r := recover(); r != nil {
-			slog.Error("PANIC RECOVERED", "key=", key)
+			slog.Error("PANIC RECOVERED", "name=", name)
 		}
 	}()
-	io, _ := dt.CT.GetValue(key)
+	io, _ := dt.CT.GetValue(name)
 	//_ = found //
 	return io
 }
 
 // GetRenderEditPropertyPath returns the URL path for editing a property
-func (dt *ThingDetailsTemplateData) GetRenderEditPropertyPath(key string) string {
-	pathArgs := map[string]string{"thingID": dt.ThingID, "key": key}
+func (dt *ThingDetailsTemplateData) GetRenderEditPropertyPath(name string) string {
+	pathArgs := map[string]string{"thingID": dt.ThingID, "name": name}
 	return utils.Substitute(src.RenderThingPropertyEditPath, pathArgs)
 }
 
 // GetRenderActionPath returns the URL path for rendering an action request
-func (dt *ThingDetailsTemplateData) GetRenderActionPath(key string) string {
-	pathArgs := map[string]string{"thingID": dt.ThingID, "key": key}
+func (dt *ThingDetailsTemplateData) GetRenderActionPath(name string) string {
+	pathArgs := map[string]string{"thingID": dt.ThingID, "name": name}
 	return utils.Substitute(src.RenderActionRequestPath, pathArgs)
 }
 
@@ -106,10 +106,10 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 
 	pathParams := map[string]string{"thingID": thingID}
 	thingData := &ThingDetailsTemplateData{
-		AttrKeys:                  make([]string, 0),
-		ConfigKeys:                make([]string, 0),
-		EventKeys:                 make([]string, 0),
-		ActionKeys:                make([]string, 0),
+		AttrNames:                 make([]string, 0),
+		ConfigNames:               make([]string, 0),
+		EventNames:                make([]string, 0),
+		ActionNames:               make([]string, 0),
 		AgentID:                   agentID,
 		ThingID:                   thingID,
 		Title:                     "details of thing",
@@ -132,47 +132,47 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	}
 	thingData.CT = ct
 
-	// split properties into attributes and configuration and update the keys list
+	// split properties into attributes and configuration and update the names list
 	td := thingData.CT.GetThingDescription()
 	thingData.TD = td
 	for k, prop := range td.Properties {
 		if prop.ReadOnly {
-			thingData.AttrKeys = append(thingData.AttrKeys, k)
+			thingData.AttrNames = append(thingData.AttrNames, k)
 			//thingData.Attributes[k] = prop
 		} else {
-			thingData.ConfigKeys = append(thingData.ConfigKeys, k)
+			thingData.ConfigNames = append(thingData.ConfigNames, k)
 			//thingData.Config[k] = prop
 		}
 	}
-	thingData.EventKeys = maps.Keys(td.Events)
-	thingData.ActionKeys = maps.Keys(td.Actions)
+	thingData.EventNames = maps.Keys(td.Events)
+	thingData.ActionNames = maps.Keys(td.Actions)
 
-	// sort the keys by name for presentation
-	sort.SliceStable(thingData.AttrKeys, func(i int, j int) bool {
-		k1 := thingData.AttrKeys[i]
+	// sort the name by title for presentation
+	sort.SliceStable(thingData.AttrNames, func(i int, j int) bool {
+		k1 := thingData.AttrNames[i]
 		prop1, _ := td.Properties[k1]
-		k2 := thingData.AttrKeys[j]
+		k2 := thingData.AttrNames[j]
 		prop2, _ := td.Properties[k2]
 		return strings.ToLower(prop1.Title) < strings.ToLower(prop2.Title)
 	})
-	sort.SliceStable(thingData.ConfigKeys, func(i int, j int) bool {
-		k1 := thingData.ConfigKeys[i]
+	sort.SliceStable(thingData.ConfigNames, func(i int, j int) bool {
+		k1 := thingData.ConfigNames[i]
 		prop1, _ := td.Properties[k1]
-		k2 := thingData.ConfigKeys[j]
+		k2 := thingData.ConfigNames[j]
 		prop2, _ := td.Properties[k2]
 		return strings.ToLower(prop1.Title) < strings.ToLower(prop2.Title)
 	})
-	sort.SliceStable(thingData.EventKeys, func(i int, j int) bool {
-		k1 := thingData.EventKeys[i]
+	sort.SliceStable(thingData.EventNames, func(i int, j int) bool {
+		k1 := thingData.EventNames[i]
 		ev1, _ := td.Events[k1]
-		k2 := thingData.EventKeys[j]
+		k2 := thingData.EventNames[j]
 		ev2, _ := td.Events[k2]
 		return strings.ToLower(ev1.Title) < strings.ToLower(ev2.Title)
 	})
-	sort.SliceStable(thingData.ActionKeys, func(i int, j int) bool {
-		k1 := thingData.ActionKeys[i]
+	sort.SliceStable(thingData.ActionNames, func(i int, j int) bool {
+		k1 := thingData.ActionNames[i]
 		act1, _ := td.Actions[k1]
-		k2 := thingData.ActionKeys[j]
+		k2 := thingData.ActionNames[j]
 		act2, _ := td.Actions[k2]
 		return strings.ToLower(act1.Title) < strings.ToLower(act2.Title)
 	})

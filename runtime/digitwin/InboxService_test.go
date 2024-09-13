@@ -77,18 +77,18 @@ func TestReadLatest(t *testing.T) {
 	const msgType = vocab.MessageTypeAction
 	const senderID = "User1"
 	const thingID = "Agent1:Thing1"
-	const key = "Key1"
+	const name1 = "Key1"
 
 	svc, stopFunc := startInboxService(true)
 	defer stopFunc()
 
-	msg := hubclient.NewThingMessage(msgType, thingID, key, "data", senderID)
+	msg := hubclient.NewThingMessage(msgType, thingID, name1, "data", senderID)
 	msg.MessageID = "t1"
 	rec, err := svc.AddAction(msg)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, rec)
 
-	args := digitwin.InboxReadLatestArgs{Key: key, ThingID: thingID}
+	args := digitwin.InboxReadLatestArgs{Name: name1, ThingID: thingID}
 	latest, err := svc.ReadLatest("", args)
 	assert.NoError(t, err)
 	assert.Equal(t, rec, latest)
@@ -98,14 +98,14 @@ func TestReadLatest(t *testing.T) {
 
 func TestStartReadLatestWhenEmpty(t *testing.T) {
 	const thingID = "Agent1:Thing1"
-	const key = "Key1"
+	const name = "Key1"
 
 	svc, stopFunc := startInboxService(true)
 	defer stopFunc()
 
 	// read an empty store
 	args := digitwin.InboxReadLatestArgs{
-		Key:     key,
+		Name:    name,
 		ThingID: thingID,
 	}
 	latest, err := svc.ReadLatest("", args)
@@ -117,12 +117,12 @@ func TestUpdateDeliveryStatus(t *testing.T) {
 	const msgType = vocab.MessageTypeAction
 	const senderID = "User1"
 	const thingID = "Agent1:Thing1"
-	const key = "Key1"
+	const name = "Key1"
 
 	svc, stopFunc := startInboxService(true)
 	defer stopFunc()
 
-	msg := hubclient.NewThingMessage(msgType, thingID, key, "data", senderID)
+	msg := hubclient.NewThingMessage(msgType, thingID, name, "data", senderID)
 	msg.MessageID = "t1"
 	rec, err := svc.AddAction(msg)
 	assert.NoError(t, err)
@@ -151,7 +151,7 @@ func TestUpdateDeliveryStatus(t *testing.T) {
 	require.Error(t, err)
 	require.Empty(t, rec3)
 
-	args := digitwin.InboxReadLatestArgs{Key: key, ThingID: thingID}
+	args := digitwin.InboxReadLatestArgs{Name: name, ThingID: thingID}
 	latest, err := svc.ReadLatest("", args)
 	assert.NoError(t, err)
 	assert.Equal(t, hubclient.DeliveryCompleted, latest.Progress)
@@ -163,12 +163,12 @@ func TestBadDeliveryStatus(t *testing.T) {
 	const msgType = vocab.MessageTypeAction
 	const senderID = "User1"
 	const thingID = "Agent1:Thing1"
-	const key = "Key1"
+	const name = "Key1"
 
 	svc, stopFunc := startInboxService(true)
 	defer stopFunc()
 
-	msg := hubclient.NewThingMessage(msgType, thingID, key, "data", senderID)
+	msg := hubclient.NewThingMessage(msgType, thingID, name, "data", senderID)
 	msg.MessageID = "t1"
 	rec, err := svc.AddAction(msg)
 	assert.NoError(t, err)
@@ -179,7 +179,7 @@ func TestBadDeliveryStatus(t *testing.T) {
 	require.Error(t, err)
 
 	// old status should remain
-	args := digitwin.InboxReadLatestArgs{Key: key, ThingID: thingID}
+	args := digitwin.InboxReadLatestArgs{Name: name, ThingID: thingID}
 	latest, err := svc.ReadLatest("", args)
 	assert.NoError(t, err)
 	assert.Equal(t, hubclient.DeliveredToInbox, latest.Progress)

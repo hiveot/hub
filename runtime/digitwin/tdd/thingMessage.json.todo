@@ -13,10 +13,10 @@
         "For messages to/from consumers this is the digitwin ThingID"
       ]
     },
-    "key": {
+    "name": {
       "type": "string",
-      "title": "Key",
-      "description": "Key of the event, action or property as defined in the TD maps"
+      "title": "name",
+      "description": "Name of the event, action or property as defined in the TD maps"
     },
     "messageType": {
       "title": "Message Type",

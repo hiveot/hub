@@ -12,7 +12,7 @@ func (svc *OWServerBinding) HandleConfigRequest(msg *hubclient.ThingMessage) (st
 	valueStr := msg.DataAsText()
 	slog.Info("HandleConfigRequest",
 		slog.String("thingID", msg.ThingID),
-		slog.String("property", msg.Key),
+		slog.String("property", msg.Name),
 		slog.String("payload", valueStr))
 
 	// the thingID is the ROMId of the device to configure
@@ -25,18 +25,18 @@ func (svc *OWServerBinding) HandleConfigRequest(msg *hubclient.ThingMessage) (st
 		stat.Failed(msg, err)
 		return
 	}
-	attr, found := node.Attr[msg.Key]
+	attr, found := node.Attr[msg.Name]
 	if !found {
 		err = fmt.Errorf("HandleConfigRequest: '%s not a property of Thing '%s' found",
-			msg.Key, msg.ThingID)
+			msg.Name, msg.ThingID)
 		slog.Warn(err.Error())
 	} else if !attr.Writable {
 		err := fmt.Errorf(
 			"HandleConfigRequest: property '%s' of Thing '%s' is not writable",
-			msg.Key, msg.ThingID)
+			msg.Name, msg.ThingID)
 		slog.Warn(err.Error())
 	} else {
-		err = svc.edsAPI.WriteData(msg.ThingID, msg.Key, valueStr)
+		err = svc.edsAPI.WriteData(msg.ThingID, msg.Name, valueStr)
 	}
 	stat.Completed(msg, nil, err)
 	return

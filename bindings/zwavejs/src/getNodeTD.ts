@@ -14,7 +14,7 @@ import {ActionAffordance, EventAffordance, PropertyAffordance, TD} from "@hiveli
 import * as vocab from "@hivelib/api/vocab/ht-vocab";
 import type {ZWAPI} from "./ZWAPI";
 import {logVid} from "./logVid";
-import {getPropKey} from "./getPropKey";
+import {getPropName} from "./getPropName";
 import {getVidAffordance, VidAffordance} from "./getVidAffordance";
 import {getDeviceType} from "./getDeviceType";
 import {DataSchema} from "@hivelib/things/dataSchema";
@@ -29,14 +29,14 @@ import {
 
 
 // Add the ZWave value data to the TD as an action
-function addAction(td: TD, node: ZWaveNode, vid: TranslatedValueID, actionID: string, va: VidAffordance): ActionAffordance {
+function addAction(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): ActionAffordance {
     // let vidMeta = node.getValueMetadata(vid)
 
     // actions without input have no schema. How to identify these?
     let schema = new DataSchema()
     SetDataSchema(schema, node, vid)
-    let action = td.AddAction(actionID, va.atType,
-        schema.title || actionID, schema.description, schema)
+    let action = td.AddAction(name, va.atType,
+        schema.title || name, schema.description, schema)
 
     if (action.input) {
         // The VID title, description belongs to the action, not the schema
@@ -48,17 +48,17 @@ function addAction(td: TD, node: ZWaveNode, vid: TranslatedValueID, actionID: st
 }
 
 // Add the ZWave value data to the TD as an attribute property
-function addAttribute(td: TD, node: ZWaveNode, vid: TranslatedValueID, propID: string, va: VidAffordance): PropertyAffordance {
+function addAttribute(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): PropertyAffordance {
 
-    let prop = td.AddProperty(propID, va?.atType, "", WoTDataTypeNone)
+    let prop = td.AddProperty(name, va?.atType, "", WoTDataTypeNone)
     // SetDataSchema also sets the title and data type
     SetDataSchema(prop, node, vid)
     return prop
 }
 
 // Add the ZWave VID to the TD as a configuration property
-function addConfig(td: TD, node: ZWaveNode, vid: TranslatedValueID, propID: string, va: VidAffordance): PropertyAffordance {
-    let prop = td.AddProperty(propID, va.atType, "", WoTDataTypeNone)
+function addConfig(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): PropertyAffordance {
+    let prop = td.AddProperty(name, va.atType, "", WoTDataTypeNone)
     prop.readOnly = false
     // SetDataSchema also sets the title and data type
     SetDataSchema(prop, node, vid)
@@ -68,12 +68,12 @@ function addConfig(td: TD, node: ZWaveNode, vid: TranslatedValueID, propID: stri
 }
 
 // Add the ZWave VID to the TD as an event
-function addEvent(td: TD, node: ZWaveNode, vid: TranslatedValueID, eventID: string, va: VidAffordance): EventAffordance {
+function addEvent(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): EventAffordance {
 
     let schema = new DataSchema()
     SetDataSchema(schema, node, vid)
 
-    let ev = td.AddEvent(eventID, va.atType, schema.title || eventID, schema.description, schema)
+    let ev = td.AddEvent(name, va.atType, schema.title || name, schema.description, schema)
 
     // SetDataSchema use the dataschema title, not the event data title
     if (ev.data) {
@@ -247,7 +247,7 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
         endpoint: 0,
         property: "name"
     }
-    let titleKey = getPropKey(nameVid)
+    let titleKey = getPropName(nameVid)
     prop = td.AddProperty(titleKey, vocab.PropDeviceTitle, "Device name", WoTDataTypeString);
     prop.readOnly = false
     prop.description = "Custom device name/title"
@@ -257,7 +257,7 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
         endpoint: 0,
         property: "location"
     }
-    let locationKey = getPropKey(locationVid)
+    let locationKey = getPropName(locationVid)
     prop = td.AddProperty(locationKey, vocab.PropLocation, "Device location",  WoTDataTypeString);
     prop.readOnly = false
     prop.description = "Description of the device location"
@@ -268,24 +268,24 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
         let va = getVidAffordance(node, vid, maxNrScenes)
 
         // let pt = getPropType(node, vid)
-        let tdPropKey = getPropKey(vid)
+        let tdPropName = getPropName(vid)
         if (va) {
-            logVid(vidLogFD, node, vid, tdPropKey, va)
+            logVid(vidLogFD, node, vid, tdPropName, va)
         }
 
         // the vid is either config, attr, action or event based on CC
         switch (va?.messageType) {
             case "action":
-                addAction(td, node, vid, tdPropKey, va)
+                addAction(td, node, vid, tdPropName, va)
                 break;
             case "event":
-                addEvent(td, node, vid, tdPropKey, va)
+                addEvent(td, node, vid, tdPropName, va)
                 break;
             case "config":
-                addConfig(td, node, vid, tdPropKey, va)
+                addConfig(td, node, vid, tdPropName, va)
                 break;
             case "attr":
-                addAttribute(td, node, vid, tdPropKey, va)
+                addAttribute(td, node, vid, tdPropName, va)
                 break;
             default:
             // ignore this vid

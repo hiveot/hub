@@ -17,10 +17,10 @@ func GenServiceInterface(l *utils.SL, serviceTitle string, td *tdd.TD) {
 	l.Add("// ")
 	l.Add("type %s interface {", interfaceName)
 
-	sortedActionKeys := utils.OrderedMapKeys(td.Actions)
-	for _, key := range sortedActionKeys {
-		action := td.Actions[key]
-		GenInterfaceMethod(l, serviceTitle, key, action)
+	sortedActionNames := utils.OrderedMapKeys(td.Actions)
+	for _, name := range sortedActionNames {
+		action := td.Actions[name]
+		GenInterfaceMethod(l, serviceTitle, name, action)
 	}
 	l.Add("}")
 }
@@ -28,9 +28,9 @@ func GenServiceInterface(l *utils.SL, serviceTitle string, td *tdd.TD) {
 // GenInterfaceMethod adds a method definition for an action.
 // The generated method arguments are the senderID and the value.
 // The value is either a native type or a struct, based on the TDD definition
-func GenInterfaceMethod(l *utils.SL, serviceTitle string, key string, action *tdd.ActionAffordance) {
+func GenInterfaceMethod(l *utils.SL, serviceTitle string, name string, action *tdd.ActionAffordance) {
 	//attrs := GetSchemaAttrs("arg", action.Input)
-	methodName := Key2ID(key)
+	methodName := Key2ID(name)
 	argsString := "senderID string" // all methods receive the sender ID
 	if action.Input != nil {
 		argName := getParamName("args", action.Input)

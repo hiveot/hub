@@ -16,7 +16,7 @@ import (
 )
 
 // ConnectSSE establishes a sse session over the Hub HTTPS connection.
-// All hub messages are send as type ThingMessage, containing thingID, key, payload and sender
+// All hub messages are send as type ThingMessage, containing thingID, name, payload and sender
 //
 // If the connection is interrupted, the sse connection retries with backoff period.
 // If an authentication error occurs then the onDisconnect handler is invoked with an error.
@@ -78,8 +78,9 @@ func (cl *HttpSSEClient) ConnectSSE(
 		onDisconnect(err)
 		//
 	}()
-	// FIXME: use a channel to wait for the SSE connection to be established
-	time.Sleep(time.Millisecond * 3)
+	// FIXME: wait for the SSE connection to be established
+	// If an RPC action is sent too early then no reply will be received.
+	time.Sleep(time.Millisecond * 10)
 	return nil
 }
 
@@ -105,7 +106,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		return
 	}
 
-	// ThingMessage is needed to pass messageID, messageType, thingID, key, and sender,
+	// ThingMessage is needed to pass messageID, messageType, thingID, name, and sender,
 	// as there is no facility in SSE to include metadata.
 	// SSE payload is json marshalled by the sse client
 	rxMsg := &hubclient.ThingMessage{}
@@ -123,13 +124,13 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		slog.String("me", cl._status.ClientID),
 		slog.String("messageType", rxMsg.MessageType),
 		slog.String("thingID", rxMsg.ThingID),
-		slog.String("key", rxMsg.Key),
+		slog.String("name", rxMsg.Name),
 		slog.String("messageID", rxMsg.MessageID),
 		slog.String("senderID", rxMsg.SenderID),
 	)
 
 	// always handle rpc response
-	if rxMsg.MessageType == vocab.MessageTypeEvent && rxMsg.Key == vocab.EventNameDeliveryUpdate {
+	if rxMsg.MessageType == vocab.MessageTypeEvent && rxMsg.Name == vocab.EventNameDeliveryUpdate {
 		// this client is receiving a delivery update from a previous action.
 		// The payload is a deliverystatus object
 		err = utils.DecodeAsObject(rxMsg.Data, &stat)
@@ -164,7 +165,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 			_ = cl._messageHandler(rxMsg)
 		} else {
 			slog.Warn("handleSSEEvent, no event handler registered. Event ignored.",
-				slog.String("key", rxMsg.Key),
+				slog.String("name", rxMsg.Name),
 				slog.String("clientID", cl.ClientID()))
 		}
 	} else if rxMsg.MessageType == vocab.MessageTypeAction || rxMsg.MessageType == vocab.MessageTypeProperty {
@@ -173,7 +174,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 			stat = cl._messageHandler(rxMsg)
 		} else {
 			slog.Warn("handleSSEEvent, no action handler registered. Action ignored.",
-				slog.String("key", rxMsg.Key),
+				slog.String("name", rxMsg.Name),
 				slog.String("clientID", cl.ClientID()))
 			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
 		}

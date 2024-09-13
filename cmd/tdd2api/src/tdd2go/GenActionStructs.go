@@ -26,7 +26,7 @@ func GenActionStructs(l *utils.SL, serviceTitle string, td *tdd.TD) {
 }
 
 // GenActionArgs generates the arguments struct of the given action, if any
-// Argument structs are named the '{key}'Args where key is modified to remove invalid chars
+// Argument structs are named the '{name}'Args where key is modified to remove invalid chars
 func GenActionArgs(l *utils.SL, serviceTitle string, key string, action *tdd.ActionAffordance) {
 
 	// no need if the input is not a struct
@@ -56,7 +56,7 @@ func GenActionArgs(l *utils.SL, serviceTitle string, key string, action *tdd.Act
 }
 
 // GenActionResp generates the response struct of the given action, if any.
-// Response structs are named the {key}Resp where key is modified to remove invalid chars
+// Response structs are named the {name}Resp where key is modified to remove invalid chars
 func GenActionResp(l *utils.SL, serviceTitle string, key string, action *tdd.ActionAffordance) {
 	// no need if the output is not a struct
 	if action.Output == nil || action.Output.Type != "object" {

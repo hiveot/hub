@@ -42,13 +42,13 @@ type ClientViewModel struct {
 // place to define them. Find a better solution.
 func (v *ClientViewModel) GetLatest(thingID string) (hubclient.ThingMessageMap, error) {
 	valuesMap := hubclient.NewThingMessageMap()
-	tvsJson, err := digitwin.OutboxReadLatest(v.hc, nil, "", "", thingID)
+	tvsJson, err := digitwin.OutboxReadLatest(v.hc, "", nil, "", thingID)
 	if err != nil {
 		return valuesMap, err
 	}
 	tvs, _ := hubclient.NewThingMessageMapFromSource(tvsJson)
 	for _, tv := range tvs {
-		valuesMap.Set(tv.Key, tv)
+		valuesMap.Set(tv.Name, tv)
 	}
 	return valuesMap, nil
 }
@@ -80,7 +80,7 @@ func (v *ClientViewModel) GetLatest(thingID string) (hubclient.ThingMessageMap, 
 //
 //	// TODO: cache this to avoid multiple reruns
 //	tmmapJson, err := digitwin.OutboxReadLatest(
-//		v.hc, []string{key}, vocab.MessageTypeEvent, "", thingID)
+//		v.hc, []string{name}, vocab.MessageTypeEvent, "", thingID)
 //	tmmap, _ := hubclient.NewThingMessageMapFromSource(tmmapJson)
 //	if err != nil {
 //		return nil, err

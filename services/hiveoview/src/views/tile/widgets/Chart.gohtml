@@ -1,6 +1,6 @@
 <!--Chart Tile renderer for lines, area, bars -->
 
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
 
 <div style="height:100%; width:100%">
 
@@ -10,8 +10,8 @@
     {{/* Each source is a line*/}}
     {{range .Tile.Sources}}
 
-    {{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/history.HistoryTemplateData*/ -}}
-    {{$hist := $.GetHistory .ThingID .Key}}
+    {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/history.HistoryTemplateData*/ -}}
+    {{$hist := $.GetHistory .ThingID .Name}}
 
     {{/* inject the json encoded array with data to show as {x:time,y:value} here */}}
 	  {{/* The chart type can be overridden per data set*/}}
@@ -23,7 +23,7 @@
 
           {{/* Auto-update chart when looking at today*/}}
           {{if eq $hist.CompareToday 0}}
-						sse-swap="{{$hist.ThingID}}/{{$hist.Key}}"
+						sse-swap="{{$hist.ThingID}}/{{$hist.Name}}"
 						hx-target="this"
 						hx-swap="none"
 						hx-on::sse-before-message="updateChart(event, '{{$hist.Title}}')"

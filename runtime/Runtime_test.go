@@ -94,7 +94,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	// users receives delivery updates when sending actions
 	deliveryCtx, deliveryCtxComplete := context.WithTimeout(context.Background(), time.Minute*1)
 	cl2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
-		if msg.Key == vocab.EventNameDeliveryUpdate {
+		if msg.Name == vocab.EventNameDeliveryUpdate {
 			// delivery updates are only invoked on for non-rpc actions
 			err := utils.DecodeAsObject(msg.Data, &stat3)
 			require.NoError(t, err)
@@ -122,7 +122,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	require.NotNil(t, rxMsg)
 	assert.Equal(t, expectedReply, stat3.Reply)
 	assert.Equal(t, thingID, rxMsg.ThingID)
-	assert.Equal(t, actionID, rxMsg.Key)
+	assert.Equal(t, actionID, rxMsg.Name)
 	assert.Equal(t, vocab.MessageTypeAction, rxMsg.MessageType)
 
 }

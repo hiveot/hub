@@ -39,7 +39,7 @@ func (svc *ReadHistory) GetCursor(
 	if err != nil {
 		return nil, err
 	}
-	key := svc.cursorCache.Add(cursor, bucket, senderID, args.FilterOnKey, lifespan)
+	key := svc.cursorCache.Add(cursor, bucket, senderID, args.FilterOnName, lifespan)
 	resp := &historyapi.GetCursorResp{CursorKey: key}
 	return resp, nil
 }
@@ -90,7 +90,7 @@ func (svc *ReadHistory) ReadHistory(
 	_ string, args historyapi.ReadHistoryArgs) (resp historyapi.ReadHistoryResp, err error) {
 
 	items, remaining, err := svc.readHistory(
-		args.ThingID, args.FilterOnKey, args.Timestamp, args.Duration, args.Limit)
+		args.ThingID, args.FilterOnName, args.Timestamp, args.Duration, args.Limit)
 
 	resp.Values = items
 	resp.ItemsRemaining = remaining

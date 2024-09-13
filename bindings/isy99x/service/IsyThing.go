@@ -136,7 +136,7 @@ func (it *IsyThing) HandleActionRequest(tv *hubclient.ThingMessage) (err error) 
 // HandleConfigRequest invokes the config handler of the specialized thing
 func (it *IsyThing) HandleConfigRequest(action *hubclient.ThingMessage) (err error) {
 	// The title is the friendly name of the node
-	if action.Key == vocab.PropDeviceTitle {
+	if action.Name == vocab.PropDeviceTitle {
 		newName := action.DataAsText()
 		err = it.isyAPI.Rename(it.nodeID, newName)
 		if err == nil {

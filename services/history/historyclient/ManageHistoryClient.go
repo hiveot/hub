@@ -18,10 +18,10 @@ type ManageHistoryClient struct {
 // returns nil if there is no retention rule for the event
 //
 //	eventName whose retention to return
-func (cl *ManageHistoryClient) GetRetentionRule(dThingID string, key string) (*historyapi.RetentionRule, error) {
+func (cl *ManageHistoryClient) GetRetentionRule(dThingID string, name string) (*historyapi.RetentionRule, error) {
 	args := historyapi.GetRetentionRuleArgs{
 		ThingID: dThingID,
-		Key:     key,
+		Name:    name,
 	}
 	resp := historyapi.GetRetentionRuleResp{}
 	err := cl.hc.Rpc(cl.dThingID, historyapi.GetRetentionRuleMethod, &args, &resp)

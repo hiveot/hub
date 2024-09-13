@@ -14,7 +14,7 @@ const EditTileTemplate = "RenderEditTile.gohtml"
 type EditTileTemplateData struct {
 	Dashboard session2.DashboardModel
 	Tile      session2.DashboardTile
-	// Values of the tile sources by thingID/key
+	// Values of the tile sources by thingID/name
 	Values map[string]*consumedthing.InteractionOutput
 	// human labels for each tile type
 	TileTypeLabels map[string]string
@@ -35,16 +35,16 @@ func (data EditTileTemplateData) GetTypeLabel(typeID string) string {
 }
 
 // GetValue returns the value of a tile source
-func (data EditTileTemplateData) GetValue(thingID, key string) string {
-	v, found := data.Values[thingID+"/"+key]
+func (data EditTileTemplateData) GetValue(thingID, name string) string {
+	v, found := data.Values[thingID+"/"+name]
 	if !found {
 		return ""
 	}
 	unitSymbol := v.Schema.UnitSymbol()
 	return v.Value.Text() + " " + unitSymbol
 }
-func (data EditTileTemplateData) GetUpdated(thingID, key string) string {
-	v, found := data.Values[thingID+"/"+key]
+func (data EditTileTemplateData) GetUpdated(thingID, name string) string {
+	v, found := data.Values[thingID+"/"+name]
 	if !found {
 		return ""
 	}
@@ -66,15 +66,15 @@ func RenderEditTile(w http.ResponseWriter, r *http.Request) {
 	vm := sess.GetViewModel()
 	cts := sess.GetConsumedThingsSession()
 	// include the current values of the selected sources
-	// the template uses "thingID/key" to obtain the value
+	// the template uses "thingID/name" to obtain the value
 	values := make(map[string]*consumedthing.InteractionOutput)
 	for _, tileSource := range ctc.tile.Sources {
 		cs, err := cts.Consume(tileSource.ThingID)
 		if err == nil {
-			val := cs.ReadEvent(tileSource.Key)
-			//v, err := vm.GetValue(tileSource.ThingID, tileSource.Key)
+			val := cs.ReadEvent(tileSource.Name)
+			//v, err := vm.GetValue(tileSource.ThingID, tileSource.Name)
 			if val != nil {
-				values[tileSource.ThingID+"/"+tileSource.Key] = val
+				values[tileSource.ThingID+"/"+tileSource.Name] = val
 			}
 		}
 	}

@@ -1,6 +1,6 @@
 <!--Thing event list-->
 <!--@param '.' object of type thing.DetailsTemplateData -->
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/thing.ThingDetailsTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/thing.ThingDetailsTemplateData*/ -}}
 
 <ul class="h-grid-table thing-events" striped border>
 	{{/* Header*/}}
@@ -13,8 +13,8 @@
 		<div class="h-show-lg">History</div>
 	</li>
 
-	{{range $k := .EventKeys}}
-    {{$iout := $.GetValue $k}}
+	{{range $name := .EventNames}}
+    {{$iout := $.GetValue $name}}
 
 		{{- /*auto reload row on event changes*/ -}}
 		<li>
@@ -22,7 +22,7 @@
 			<div class="h-show-sm">{{/*icon*/}}</div>
 
 			{{/* Event Name*/}}
-			<div title="key: {{$k}}">
+			<div title="Name: {{$name}}">
 				{{$iout.Title}}
 			</div>
 
@@ -36,7 +36,7 @@
 			<div class="h-show-lg">{{$iout.Schema.Description}}</div>
 
       {{/*	Updated*/}}
-			<div sse-swap="{{$.ThingID}}/{{$k}}/updated"
+			<div sse-swap="{{$.ThingID}}/{{$name}}/updated"
 			     hx-target="this"
 			     hx-swap="innerHTML"
 						class="h-show-md"
@@ -45,7 +45,7 @@
 
 	    {{/*history chart */}}
 			<div class="h-show-lg" style="height:200px">
-				{{template "historyChart.gohtml" $.GetHistory $k }}
+				{{template "historyChart.gohtml" $.GetHistory $name }}
 			</div>
 		</li>
 	{{end}}

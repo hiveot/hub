@@ -37,8 +37,8 @@
 						"description": "ID of the Thing that was updated",
 						"type": "string"
 					},
-					"key": {
-						"title": "Property key",
+					"name": {
+						"title": "Property name",
 						"description": "ID of the property that was updated",
 						"type": "string"
 					},
@@ -73,9 +73,9 @@
 						"type": "string",
 						"enum": ["events", "properties"]
 					},
-					"keys": {
-						"title": "Value Key",
-						"description": "The event/property IDs to read or empty to read all latest values",
+					"names": {
+						"title": "Value Names",
+						"description": "The event/property names to read or empty to read all latest values",
 						"type": "array",
 						"items": {
 							"type": "string"

@@ -15,7 +15,7 @@ func (svc *IsyBinding) handleActionRequest(action *hubclient.ThingMessage) (stat
 
 	slog.Info("handleActionRequest",
 		slog.String("thingID", action.ThingID),
-		slog.String("key", action.Key),
+		slog.String("name", action.Name),
 		slog.String("senderID", action.SenderID))
 
 	if !svc.isyAPI.IsConnected() {

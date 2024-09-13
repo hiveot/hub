@@ -79,7 +79,7 @@ func (ct *ConsumedThing) GetValue(name string) (*InteractionOutput, bool) {
 	if tm == nil {
 		tm = &hubclient.ThingMessage{
 			ThingID: ct.td.ID,
-			Key:     name,
+			Name:    name,
 		} // dummy
 		slog.Warn("Value not (yet) found for name ", "name", name, "thingID", ct.td.ID)
 	}
@@ -127,12 +127,12 @@ func (ct *ConsumedThing) ObserveProperty(name string, listener InteractionListen
 //	tm is the event message received from the hub. This isn't standard WoT so
 //	the objective is to remove the need for it.
 func (ct *ConsumedThing) OnDeliveryUpdate(msg *hubclient.ThingMessage) {
-	action, found := ct.actionValues[msg.Key]
+	action, found := ct.actionValues[msg.Name]
 	_ = action
 	if !found {
 		slog.Error("Action update without action?",
 			"thingID", msg.ThingID,
-			"action", msg.Key)
+			"action", msg.Name)
 		return
 	}
 	stat := hubclient.DeliveryStatus{}
@@ -140,10 +140,10 @@ func (ct *ConsumedThing) OnDeliveryUpdate(msg *hubclient.ThingMessage) {
 	if stat.Error != "" {
 		slog.Error("Delivery update invalid payload",
 			"thingID", msg.ThingID,
-			"action", msg.Key,
+			"action", msg.Name,
 			"err", err.Error())
 	}
-	ct.actionValues[msg.Key] = stat
+	ct.actionValues[msg.Name] = stat
 }
 
 // OnEvent handles receiving of an event.
@@ -154,8 +154,8 @@ func (ct *ConsumedThing) OnDeliveryUpdate(msg *hubclient.ThingMessage) {
 //	tm is the event message received from the hub. This isn't standard WoT so
 //	the objective is to remove the need for it.
 func (ct *ConsumedThing) OnEvent(msg *hubclient.ThingMessage) {
-	ct.eventValues[msg.Key] = msg
-	subscr, found := ct.subscribers[msg.Key]
+	ct.eventValues[msg.Name] = msg
+	subscr, found := ct.subscribers[msg.Name]
 	if found {
 		io := ct.buildInteractionOutput(msg)
 		subscr(io)
@@ -170,8 +170,8 @@ func (ct *ConsumedThing) OnEvent(msg *hubclient.ThingMessage) {
 //	msg is the property message received from the hub. This isn't standard WoT so
 //	the objective is to remove the need for it.
 func (ct *ConsumedThing) OnPropertyUpdate(msg *hubclient.ThingMessage) {
-	ct.propValues[msg.Key] = msg
-	observer, found := ct.observers[msg.Key]
+	ct.propValues[msg.Name] = msg
+	observer, found := ct.observers[msg.Name]
 	if found {
 		io := ct.buildInteractionOutput(msg)
 		observer(io)
@@ -218,7 +218,7 @@ func (ct *ConsumedThing) ReadProperty(name string) *InteractionOutput {
 // ReadAllEvents reads all Thing event and action values.
 func (ct *ConsumedThing) ReadAllEvents() map[string]*InteractionOutput {
 	tmsJson, err := digitwin.OutboxReadLatest(
-		ct.hc, nil, vocab.MessageTypeEvent, "", ct.td.ID)
+		ct.hc, vocab.MessageTypeEvent, nil, "", ct.td.ID)
 	if err != nil {
 		return nil
 	}
@@ -233,7 +233,7 @@ func (ct *ConsumedThing) ReadAllEvents() map[string]*InteractionOutput {
 // map of InteractionOutputs.
 func (ct *ConsumedThing) ReadAllProperties() map[string]*InteractionOutput {
 	tmsJson, err := digitwin.OutboxReadLatest(
-		ct.hc, nil, vocab.MessageTypeProperty, "", ct.td.ID)
+		ct.hc, vocab.MessageTypeProperty, nil, "", ct.td.ID)
 	if err != nil {
 		return nil
 	}

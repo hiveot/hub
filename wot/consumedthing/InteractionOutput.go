@@ -73,7 +73,7 @@ func (iout *InteractionOutput) GetUpdated(format ...string) (updated string) {
 func NewInteractionOutputFromTM(tm *hubclient.ThingMessage, td *tdd.TD) *InteractionOutput {
 	io := &InteractionOutput{
 		ThingID:  tm.ThingID,
-		Name:     tm.Key,
+		Name:     tm.Name,
 		SenderID: tm.SenderID,
 		Updated:  tm.Created,
 		Value:    NewDataSchemaValue(tm.Data),
@@ -82,7 +82,7 @@ func NewInteractionOutputFromTM(tm *hubclient.ThingMessage, td *tdd.TD) *Interac
 		return io
 	}
 	// if name is that of an event then use it
-	eventAff, found := td.Events[tm.Key]
+	eventAff, found := td.Events[tm.Name]
 	if found {
 		io.Schema = eventAff.Data
 		io.Title = eventAff.Title
@@ -92,7 +92,7 @@ func NewInteractionOutputFromTM(tm *hubclient.ThingMessage, td *tdd.TD) *Interac
 		return io
 	}
 	// if name is that of a property then use it
-	propAff, found := td.Properties[tm.Key]
+	propAff, found := td.Properties[tm.Name]
 	if found {
 		io.Schema = propAff.DataSchema
 		io.Title = propAff.Title
@@ -102,7 +102,7 @@ func NewInteractionOutputFromTM(tm *hubclient.ThingMessage, td *tdd.TD) *Interac
 		return io
 	}
 	// last, if name is that of an action then use its output schema
-	actionAff, found := td.Actions[tm.Key]
+	actionAff, found := td.Actions[tm.Name]
 	if found {
 		if actionAff.Output != nil {
 			io.Schema = *actionAff.Output
@@ -117,7 +117,7 @@ func NewInteractionOutputFromTM(tm *hubclient.ThingMessage, td *tdd.TD) *Interac
 		return io
 	}
 
-	slog.Warn("message name not found in TD", "thingID", td.ID, "name", tm.Key, "messageType", tm.MessageType)
+	slog.Warn("message name not found in TD", "thingID", td.ID, "name", tm.Name, "messageType", tm.MessageType)
 	return io
 }
 

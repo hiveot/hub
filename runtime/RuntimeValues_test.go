@@ -40,7 +40,7 @@ func TestHttpsGetActions(t *testing.T) {
 	require.Empty(t, stat.Error)
 
 	// read the latest actions from the digitwin inbox
-	args := digitwin.InboxReadLatestArgs{ThingID: dtThing1ID, Key: key1}
+	args := digitwin.InboxReadLatestArgs{ThingID: dtThing1ID, Name: key1}
 	resp := digitwin.InboxRecord{}
 	err := cl2.Rpc(digitwin.InboxDThingID, digitwin.InboxReadLatestMethod, &args, &resp)
 	require.NoError(t, err)
@@ -86,7 +86,7 @@ func TestHttpsGetEvents(t *testing.T) {
 	require.NotZero(t, len(tmm1))
 
 	// read latest using the generated client
-	resp, err := digitwin.OutboxReadLatest(hc, nil, "", "", dtThingID)
+	resp, err := digitwin.OutboxReadLatest(hc, "", nil, "", dtThingID)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	tmm2, err := hubclient.NewThingMessageMapFromSource(resp)
@@ -120,7 +120,7 @@ func TestHttpsGetProps(t *testing.T) {
 	// consumer read properties
 	cl2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
 	defer cl2.Disconnect()
-	data, err := digitwin.OutboxReadLatest(hc, nil, "", "", dtThingID)
+	data, err := digitwin.OutboxReadLatest(hc, "", nil, "", dtThingID)
 	require.NoError(t, err)
 
 	vmm, err := hubclient.NewThingMessageMapFromSource(data)
@@ -153,7 +153,7 @@ func TestSubscribeValues(t *testing.T) {
 	// subscribe to events
 	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		stat.Completed(msg, nil, nil)
-		if msg.Key == vocab.EventNameProperties {
+		if msg.Name == vocab.EventNameProperties {
 			// decode the properties map
 			props := make(map[string]interface{})
 			err := utils.DecodeAsObject(msg.Data, &props)

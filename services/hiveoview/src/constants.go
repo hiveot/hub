@@ -24,11 +24,11 @@ const (
 	PostLoginPath     = "/login"
 
 	// action paths
-	RenderActionRequestPath     = "/action/{thingID}/{key}/request"
+	RenderActionRequestPath     = "/action/{thingID}/{name}/request"
 	RenderActionStatusPath      = "/status/action/{messageID}"
-	RenderThingPropertyEditPath = "/property/{thingID}/{key}/edit"
-	PostActionRequestPath       = "/action/{thingID}/{key}"
-	PostThingPropertyEditPath   = "/property/{thingID}/{key}"
+	RenderThingPropertyEditPath = "/property/{thingID}/{name}/edit"
+	PostActionRequestPath       = "/action/{thingID}/{name}"
+	PostThingPropertyEditPath   = "/property/{thingID}/{name}"
 
 	// dashboard paths
 	RenderDashboardRootPath          = "/dashboard"
@@ -57,9 +57,9 @@ const (
 	DeleteThingPath              = "/directory/{thingID}"
 
 	// history paths (duplicated in eventList.gohtml)
-	RenderHistoryPagePath           = "/value/{thingID}/{key}/history"
-	RenderHistoryTimePath           = "/value/{thingID}/{key}/history?time="
-	RenderHistoryLatestValueRowPath = "/value/{thingID}/{key}/latest"
+	RenderHistoryPagePath           = "/value/{thingID}/{name}/history"
+	RenderHistoryTimePath           = "/value/{thingID}/{name}/history?time="
+	RenderHistoryLatestValueRowPath = "/value/{thingID}/{name}/latest"
 
 	// other paths
 	RenderStatusPath           = "/status"

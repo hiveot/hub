@@ -61,7 +61,7 @@ func HandleSubTD(hc hubclient.IHubClient) error {
 	}
 	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		// only look for TD events, ignore directed events
-		if msg.Key != vocab.EventNameTD {
+		if msg.Name != vocab.EventNameTD {
 			return stat.Completed(msg, nil, nil)
 		}
 
@@ -98,7 +98,7 @@ func HandleSubEvents(hc hubclient.IHubClient, thingID string, name string) error
 
 		valueStr := msg.DataAsText()
 
-		if msg.Key == vocab.EventNameProperties {
+		if msg.Name == vocab.EventNameProperties {
 			var props map[string]interface{}
 			_ = utils.DecodeAsObject(msg.Data, &props)
 
@@ -110,7 +110,7 @@ func HandleSubEvents(hc hubclient.IHubClient, thingID string, name string) error
 					valueStr = fmt.Sprintf("{%s=%v}", key, val)
 				}
 			}
-		} else if msg.Key == vocab.EventNameTD {
+		} else if msg.Name == vocab.EventNameTD {
 			var td tdd.TD
 			tdJSON := msg.DataAsText()
 			json.Unmarshal([]byte(tdJSON), &td)
@@ -119,7 +119,7 @@ func HandleSubEvents(hc hubclient.IHubClient, thingID string, name string) error
 		}
 
 		fmt.Printf("%-16.16s %-15.15s %-30.30s %-30.30s %-40.40s\n",
-			timeStr, msg.SenderID, msg.ThingID, msg.Key, valueStr)
+			timeStr, msg.SenderID, msg.ThingID, msg.Name, valueStr)
 		return stat.Completed(msg, nil, nil)
 	})
 	if err != nil {

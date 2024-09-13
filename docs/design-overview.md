@@ -63,7 +63,7 @@ Use of external protocol servers such as Redis can be accommodated with the cave
 
 The HTTPS/SSE/WS transport protocols open a listening TLS port for clients (both agents and consumers) to connect to. The connection handles publishing of events and actions, which are passed through the middleware and handled by the runtime as described below.
 
-The transport configuration defines the addressing used for properties, events, actions, and the directory service. The address pattern used is that of /things/{thingID}/.... For example "/things/{thingID}/{key}. REST GET requests are used to read values while PUT requests are used to update values. Actions use a POST request to initiate an action including requesting a change in property configuration value.
+The transport configuration defines the addressing used for properties, events, actions, and the directory service. The address pattern used is that of /things/{thingID}/.... For example "/things/{thingID}/{name}. REST GET requests are used to read values while PUT requests are used to update values. Actions use a POST request to initiate an action including requesting a change in property configuration value.
 
 These paths are included in the TD document forms, which describe how to access the values.
  
@@ -99,26 +99,26 @@ Event Flow:
 The event flow passes events published by Thing agents to the hub outbox. These events apply to Things managed by the agent. Once the hub receives an event it changes the thing-ID to that of the digital twin and stores it in the outbox. The outbox passes it on to the message bus transport which in turn publishes it to subscribers. 
 
 1. Agent -> Hub
-   Agent PUB: "event/{agentID}/{thingID}/{key}" 
+   Agent PUB: "event/{agentID}/{thingID}/{name}" 
    Hub SUB:   "event/+/+/#"
    * The Hub is authorized to listen to events from all agents
 
 2. Hub -> Consumer  (sender is the hub, dThingID is the digital twin's thingID)
-   Hub PUB:      "event/{hubID}/{dThingID}/{key}"
-   Consumer SUB: "event/{hubID}/{dThingID}/{key}"
+   Hub PUB:      "event/{hubID}/{dThingID}/{name}"
+   Consumer SUB: "event/{hubID}/{dThingID}/{name}"
    * The Hub is authorized to publish events on its own ID. The events contain the digital twin ThingID, instead of the agent provided thing-ID.
    * Consumers are authorized to subscribe to hub events depending on their role. 
 
 Action Flow:  (for property updates substitute "action" for "property")
 1. Consumer -> Hub (consumer publish actions to a digital twin Thing)
-   Consumer PUB:  "action/{hubID}/{dThingID}/{key}/{consumerID}"
+   Consumer PUB:  "action/{hubID}/{dThingID}/{name}/{consumerID}"
    Hub SUB:       "action/{hubID}/+/+/#"
    * Consumers are only allowed to publish actions to {hubID} 
    * The Hub subscribes to action requests made by consumers that are directed to the hub.
    * The Hub stores action requests in its inbox, to be delivery when the agent is available.
    
 2. Hub -> Agent (sender is hub)
-   Hub PUB:   "action/{agentID}/{thingID}/{key}/{hubID}
+   Hub PUB:   "action/{agentID}/{thingID}/{name}/{hubID}
    Agent SUB: "action/{agentID}/+/+/#"
    * The Hub publishes actions to the agent.
    * Action requests are send in the order they arrive.

@@ -25,9 +25,9 @@ func (svc *HttpsTransport) AddTDForms(td *tdd.TD) {
 // AddActionForms add forms Thing action affordance
 // intended for consumers of the digitwin Thing
 func (svc *HttpsTransport) AddActionForms(td *tdd.TD) {
-	for key, propAff := range td.Actions {
+	for name, propAff := range td.Actions {
 		// the only allowed protocol method is to set the property
-		params := map[string]string{"thingID": td.ID, "key": key}
+		params := map[string]string{"thingID": td.ID, "name": name}
 		methodPath := utils.Substitute(httpsse.PostInvokeActionPath, params)
 		propAff.Forms = append(propAff.Forms, tdd.Form{
 			"op":   vocab.WotOpInvokeAction,
@@ -41,9 +41,9 @@ func (svc *HttpsTransport) AddActionForms(td *tdd.TD) {
 // AddEventsForms add forms to subscribe to Thing events
 // intended for consumers of the digitwin Thing
 func (svc *HttpsTransport) AddEventsForms(td *tdd.TD) {
-	for key, propAff := range td.Events {
+	for name, propAff := range td.Events {
 		// the only allowed protocol method is to subscribe to events
-		params := map[string]string{"thingID": td.ID, "key": key}
+		params := map[string]string{"thingID": td.ID, "name": name}
 		methodPath := utils.Substitute(httpsse.PostSubscribeEventPath, params)
 		propAff.Forms = append(propAff.Forms, tdd.Form{
 			"op":   vocab.WotOpSubscribeEvent,
@@ -57,11 +57,11 @@ func (svc *HttpsTransport) AddEventsForms(td *tdd.TD) {
 // AddPropertiesForms add forms to read Thing property affordance
 // intended for consumers of the digitwin Thing
 func (svc *HttpsTransport) AddPropertiesForms(td *tdd.TD) {
-	for propKey, propAff := range td.Properties {
+	for name, propAff := range td.Properties {
 		propAff.Forms = make([]tdd.Form, 0)
 
 		// the allowed protocol methods are to get and set the property
-		params := map[string]string{"thingID": td.ID, "key": propKey}
+		params := map[string]string{"thingID": td.ID, "name": name}
 
 		//propAff.Forms = append(propAff.Forms, propForm)
 		methodPath := utils.Substitute(httpsse.FormPropertyPath, params)

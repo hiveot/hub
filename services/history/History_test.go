@@ -122,9 +122,9 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 
 		// track the actual most recent event for the name for things 3
 		if randomID == 0 {
-			if _, exists := highest[ev.Key]; !exists ||
-				highest[ev.Key].Created < ev.Created {
-				highest[ev.Key] = ev
+			if _, exists := highest[ev.Name]; !exists ||
+				highest[ev.Name].Created < ev.Created {
+				highest[ev.Name] = ev
 			}
 		}
 		valueBatch = append(valueBatch, ev)
@@ -196,7 +196,7 @@ func TestAddGetEvent(t *testing.T) {
 	dThing1ID := tdd.MakeDigiTwinThingID(agent1ID, thing1ID)
 	ev1_1 := &hubclient.ThingMessage{
 		MessageType: vocab.MessageTypeEvent,
-		SenderID:    agent1ID, ThingID: dThing1ID, Key: evTemperature,
+		SenderID:    agent1ID, ThingID: dThing1ID, Name: evTemperature,
 		Data: "12.5", Created: fivemago.Format(utils.RFC3339Milli),
 	}
 	err := addHist.AddEvent(ev1_1)
@@ -204,7 +204,7 @@ func TestAddGetEvent(t *testing.T) {
 	// add thing1 humidity from 55 minutes ago
 	ev1_2 := &hubclient.ThingMessage{
 		MessageType: vocab.MessageTypeEvent,
-		SenderID:    agent1ID, ThingID: dThing1ID, Key: evHumidity,
+		SenderID:    agent1ID, ThingID: dThing1ID, Name: evHumidity,
 		Data: "70", Created: fiftyfivemago.Format(utils.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev1_2)
@@ -214,7 +214,7 @@ func TestAddGetEvent(t *testing.T) {
 	dThing2ID := tdd.MakeDigiTwinThingID(agent1ID, thing2ID)
 	ev2_1 := &hubclient.ThingMessage{
 		MessageType: vocab.MessageTypeEvent,
-		SenderID:    agent1ID, ThingID: dThing2ID, Key: evHumidity,
+		SenderID:    agent1ID, ThingID: dThing2ID, Name: evHumidity,
 		Data: "50", Created: fivemago.Format(utils.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev2_1)
@@ -223,7 +223,7 @@ func TestAddGetEvent(t *testing.T) {
 	// add thing2 temperature from 55 minutes ago
 	ev2_2 := &hubclient.ThingMessage{
 		MessageType: vocab.MessageTypeEvent,
-		SenderID:    agent1ID, ThingID: dThing2ID, Key: evTemperature,
+		SenderID:    agent1ID, ThingID: dThing2ID, Name: evTemperature,
 		Data: "17.5", Created: fiftyfivemago.Format(utils.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev2_2)
@@ -237,12 +237,12 @@ func TestAddGetEvent(t *testing.T) {
 	tv1, valid, err := cursor1.Seek(timeAfter)
 	if assert.NoError(t, err) && assert.True(t, valid) {
 		assert.Equal(t, dThing1ID, tv1.ThingID)
-		assert.Equal(t, evHumidity, tv1.Key)
+		assert.Equal(t, evHumidity, tv1.Name)
 		// next finds the temperature from 5 minutes ago
 		tv2, valid, err := cursor1.Next()
 		assert.NoError(t, err)
 		if assert.True(t, valid) {
-			assert.Equal(t, evTemperature, tv2.Key)
+			assert.Equal(t, evTemperature, tv2.Name)
 		}
 	}
 
@@ -253,8 +253,8 @@ func TestAddGetEvent(t *testing.T) {
 	//readHistory = svc.CapReadHistory()
 	tv3, valid, _ := cursor1.Seek(timeAfter)
 	if assert.True(t, valid) {
-		assert.Equal(t, dThing1ID, tv3.ThingID) // must match the filtered id1
-		assert.Equal(t, evTemperature, tv3.Key) // must match evTemperature from 5 minutes ago
+		assert.Equal(t, dThing1ID, tv3.ThingID)  // must match the filtered id1
+		assert.Equal(t, evTemperature, tv3.Name) // must match evTemperature from 5 minutes ago
 		assert.Equal(t, fivemago.Format(utils.RFC3339Milli), tv3.Created)
 	}
 	c1Release()
@@ -272,7 +272,7 @@ func TestAddGetEvent(t *testing.T) {
 	tv4, valid, err := cursor2.First()
 	require.NoError(t, err)
 	require.True(t, valid)
-	assert.Equal(t, evTemperature, tv4.Key)
+	assert.Equal(t, evTemperature, tv4.Name)
 	releaseFn()
 }
 
@@ -290,40 +290,40 @@ func TestAddPropertiesEvent(t *testing.T) {
 	action1 := &hubclient.ThingMessage{
 		SenderID:    agent1,
 		ThingID:     dThing1ID,
-		Key:         vocab.ActionSwitchOnOff,
+		Name:        vocab.ActionSwitchOnOff,
 		Data:        "on",
 		MessageType: vocab.MessageTypeAction,
 	}
 	event1 := &hubclient.ThingMessage{
 		SenderID:    agent1,
 		ThingID:     dThing1ID,
-		Key:         vocab.PropEnvTemperature,
+		Name:        vocab.PropEnvTemperature,
 		Data:        temp1,
 		MessageType: vocab.MessageTypeEvent,
 	}
 	badEvent1 := &hubclient.ThingMessage{
 		SenderID:    agent1,
 		ThingID:     dThing1ID,
-		Key:         "", // missing name
+		Name:        "", // missing name
 		MessageType: vocab.MessageTypeEvent,
 	}
 	badEvent2 := &hubclient.ThingMessage{
 		SenderID:    "", // missing publisher
 		ThingID:     dThing1ID,
-		Key:         "name",
+		Name:        "name",
 		MessageType: vocab.MessageTypeEvent,
 	}
 	badEvent3 := &hubclient.ThingMessage{
 		SenderID:    agent1,
 		ThingID:     dThing1ID,
-		Key:         "baddate",
+		Name:        "baddate",
 		Created:     "-1",
 		MessageType: vocab.MessageTypeEvent,
 	}
 	badEvent4 := &hubclient.ThingMessage{
 		SenderID: agent1,
 		ThingID:  "", // missing ID
-		Key:      "temperature",
+		Name:     "temperature",
 	}
 	propsList := make(map[string]interface{})
 	propsList[vocab.PropDeviceBattery] = 50
@@ -332,7 +332,7 @@ func TestAddPropertiesEvent(t *testing.T) {
 	props1 := &hubclient.ThingMessage{
 		SenderID: agent1,
 		ThingID:  dThing1ID,
-		Key:      vocab.EventNameProperties,
+		Name:     vocab.EventNameProperties,
 		Data:     propsList,
 	}
 
@@ -365,12 +365,12 @@ func TestAddPropertiesEvent(t *testing.T) {
 	assert.NotEmpty(t, msg)
 	hasProps := false
 	for valid && err == nil {
-		if msg.Key == vocab.EventNameProperties {
+		if msg.Name == vocab.EventNameProperties {
 			hasProps = true
 			props := make(map[string]interface{})
 			err = utils.DecodeAsObject(msg.Data, &props)
 			require.NoError(t, err)
-		} else if msg.Key == vocab.PropEnvTemperature {
+		} else if msg.Name == vocab.PropEnvTemperature {
 			dataInt := utils.DecodeAsInt(msg.Data)
 			require.Equal(t, temp1, dataInt)
 		}
@@ -456,7 +456,7 @@ func TestPrevNext(t *testing.T) {
 	item11b, valid, err := cursor.Seek(timeStamp)
 	require.NoError(t, err)
 	assert.True(t, valid)
-	assert.Equal(t, item11.Key, item11b.Key)
+	assert.Equal(t, item11.Name, item11b.Name)
 }
 
 // filter on property name
@@ -482,16 +482,16 @@ func TestPrevNextFiltered(t *testing.T) {
 	item0, valid, err := cursor.First()
 	require.NoError(t, err)
 	assert.True(t, valid)
-	assert.Equal(t, propName, item0.Key)
+	assert.Equal(t, propName, item0.Name)
 
 	// further steps should still only return propName
 	item1, valid, err := cursor.Next()
 	assert.True(t, valid)
-	assert.Equal(t, propName, item1.Key)
+	assert.Equal(t, propName, item1.Name)
 	items2to11, itemsRemaining, err := cursor.NextN(10, "")
 	assert.True(t, itemsRemaining)
 	assert.Equal(t, 10, len(items2to11))
-	assert.Equal(t, propName, items2to11[9].Key)
+	assert.Equal(t, propName, items2to11[9].Name)
 
 	// go backwards
 	item10to1, itemsRemaining, err := cursor.PrevN(10, "")
@@ -502,7 +502,7 @@ func TestPrevNextFiltered(t *testing.T) {
 	item0b, valid, err := cursor.Prev()
 	assert.True(t, valid)
 	assert.Equal(t, item0.Created, item0b.Created)
-	assert.Equal(t, propName, item0b.Key)
+	assert.Equal(t, propName, item0b.Name)
 
 	// can't skip before the beginning of time
 	iteminv, valid, err := cursor.Prev()
@@ -514,12 +514,12 @@ func TestPrevNextFiltered(t *testing.T) {
 	timeStamp, _ := dateparse.ParseAny(item11.Created)
 	item11b, valid, err := cursor.Seek(timeStamp)
 	assert.True(t, valid)
-	assert.Equal(t, item11.Key, item11b.Key)
+	assert.Equal(t, item11.Name, item11b.Name)
 
 	// last item should be of the name
 	lastItem, valid, err := cursor.Last()
 	assert.True(t, valid)
-	assert.Equal(t, propName, lastItem.Key)
+	assert.Equal(t, propName, lastItem.Name)
 
 	cursor.Release()
 }
@@ -691,7 +691,7 @@ func TestManageRetention(t *testing.T) {
 	assert.NoError(t, err)
 	if assert.NotNil(t, rule) {
 		assert.Equal(t, "", rule.ThingID)
-		assert.Equal(t, event1Name, rule.Key)
+		assert.Equal(t, event1Name, rule.Name)
 	}
 
 	// connect as device1 and publish two events, one to be retained
@@ -710,7 +710,7 @@ func TestManageRetention(t *testing.T) {
 	require.NoError(t, err)
 	histEv1, valid, _ := cursor.First()
 	assert.True(t, valid, "missing the first event")
-	assert.Equal(t, event1Name, histEv1.Key)
+	assert.Equal(t, event1Name, histEv1.Name)
 	histEv2, valid2, _ := cursor.Next()
 	assert.False(t, valid2, "second event should not be there")
 	_ = histEv2

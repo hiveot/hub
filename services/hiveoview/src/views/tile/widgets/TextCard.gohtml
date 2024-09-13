@@ -2,13 +2,13 @@
      This presents a single value or a table with multiple values.
   -->
 
-{{- /*gotype:github.com/hiveot/hub/bindings/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
 
 {{if eq (len .Tile.Sources) 1 }}
 
 		{{/* A single source is displayed as large text*/}}
     {{$s := (index $.Tile.Sources 0)}}
-    {{$iout := $.GetValue $s.ThingID $s.Key}}
+    {{$iout := $.GetValue $s.ThingID $s.Name}}
 		<div class="h-col-centered h-grow"
 		     style="height:100%;font-size:1.5em; justify-content:center"
 		>
@@ -20,12 +20,12 @@
         {{end}}
 
 				{{/* show timestamp in small text at the bottom */}}
-				<span sse-swap="{{$s.ThingID}}/{{$s.Key}}/updated"
+				<span sse-swap="{{$s.ThingID}}/{{$s.Name}}/updated"
 				      hx-swap="innerHTML"
 				      hx-target="this"
 							style="position:absolute;right:10px;bottom:0;
 							font-size:0.5em;color:gray; font-style: italic;font-variant: small-caps" >
-					{{$.GetUpdated $s.ThingID $s.Key}}
+					{{$.GetUpdated $s.ThingID $s.Name}}
 				</span>
 
 		</div>
@@ -40,7 +40,7 @@
 		        style="grid-template-columns:1fr max-content">
 			<tbody style="display:contents">
 			{{range .Tile.Sources}}
-				{{$iout := $.GetValue .ThingID .Key}}
+				{{$iout := $.GetValue .ThingID .Name}}
 				<tr style="display:contents;">
 
 					{{/* Show the value title with a link to the details page*/}}

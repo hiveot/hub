@@ -27,10 +27,10 @@ type AddHistory struct {
 	MaxMessageSize int
 }
 
-// encode a ThingMessage into a single key value pair for easy storage and filtering.
+// encode a ThingMessage into a single storage key value pair for easy storage and filtering.
 // Encoding generates a key as: timestampMsec/name/a|e|p/sender,
 // where a|e|p indicates message type "action", "event" or "property"
-func (svc *AddHistory) encodeValue(msg *hubclient.ThingMessage) (key string, data []byte) {
+func (svc *AddHistory) encodeValue(msg *hubclient.ThingMessage) (storageKey string, data []byte) {
 	var err error
 	createdTime := time.Now()
 	if msg.Created != "" {
@@ -43,19 +43,19 @@ func (svc *AddHistory) encodeValue(msg *hubclient.ThingMessage) (key string, dat
 
 	// the index uses milliseconds for timestamp
 	timestamp := createdTime.UnixMilli()
-	key = strconv.FormatInt(timestamp, 10) + "/" + msg.Key
+	storageKey = strconv.FormatInt(timestamp, 10) + "/" + msg.Name
 	if msg.MessageType == vocab.MessageTypeAction {
-		key = key + "/a"
+		storageKey = storageKey + "/a"
 	} else if msg.MessageType == vocab.MessageTypeProperty {
-		key = key + "/p"
+		storageKey = storageKey + "/p"
 	} else {
-		key = key + "/e"
+		storageKey = storageKey + "/e"
 	}
-	key = key + "/" + msg.SenderID
+	storageKey = storageKey + "/" + msg.SenderID
 	//if msg.Data != nil {
 	data, _ = json.Marshal(msg.Data)
 	//}
-	return key, data
+	return storageKey, data
 }
 
 // AddAction adds a Thing action with the given name and value to the action history
@@ -64,7 +64,7 @@ func (svc *AddHistory) AddAction(actionValue *hubclient.ThingMessage) error {
 	slog.Info("AddAction",
 		slog.String("senderID", actionValue.SenderID),
 		slog.String("thingID", actionValue.ThingID),
-		slog.String("key", actionValue.Key))
+		slog.String("name", actionValue.Name))
 	// actions are always aimed at the digital twin ID
 	dThingID := actionValue.ThingID
 	retain, err := svc.validateValue(actionValue)
@@ -74,12 +74,12 @@ func (svc *AddHistory) AddAction(actionValue *hubclient.ThingMessage) error {
 	}
 	if !retain {
 		slog.Info("action value not retained",
-			slog.String("name", actionValue.Key))
+			slog.String("name", actionValue.Name))
 		return nil
 	}
-	key, val := svc.encodeValue(actionValue)
+	storageKey, val := svc.encodeValue(actionValue)
 	bucket := svc.store.GetBucket(dThingID)
-	err = bucket.Set(key, val)
+	err = bucket.Set(storageKey, val)
 	_ = bucket.Close()
 	if svc.onAddedValue != nil {
 		svc.onAddedValue(actionValue)
@@ -88,7 +88,7 @@ func (svc *AddHistory) AddAction(actionValue *hubclient.ThingMessage) error {
 }
 
 // AddProperties adds individual property values to the history
-// This splits the property map and adds then as individual key-values
+// This splits the property map and adds then as individual name-value pairs
 func (svc *AddHistory) AddProperties(msg *hubclient.ThingMessage) error {
 	propMap := make(map[string]any)
 	err := utils.DecodeAsObject(msg.Data, &propMap)
@@ -121,17 +121,17 @@ func (svc *AddHistory) AddProperties(msg *hubclient.ThingMessage) error {
 // These events must contain the digitwin thingID
 func (svc *AddHistory) AddEvent(msg *hubclient.ThingMessage) error {
 
-	if msg.Key == vocab.EventNameProperties {
+	if msg.Name == vocab.EventNameProperties {
 		return svc.AddProperties(msg)
 	}
 
 	retain, err := svc.validateValue(msg)
 	if err != nil {
-		slog.Warn("invalid event", "name", msg.Key, "err", err)
+		slog.Warn("invalid event", "name", msg.Name, "err", err)
 		return err
 	}
 	if !retain {
-		slog.Debug("event value not retained", slog.String("name", msg.Key))
+		slog.Debug("event value not retained", slog.String("name", msg.Name))
 		return nil
 	}
 
@@ -143,7 +143,7 @@ func (svc *AddHistory) AddEvent(msg *hubclient.ThingMessage) error {
 	slog.Debug("AddEvent",
 		slog.String("senderID", msg.SenderID),
 		slog.String("thingID", msg.ThingID),
-		slog.String("key", msg.Key),
+		slog.String("name", msg.Name),
 		slog.Any("data", data),
 		slog.String("storageKey", storageKey))
 
@@ -169,7 +169,7 @@ func (svc *AddHistory) AddMessage(msg *hubclient.ThingMessage) error {
 	if msg.MessageType == vocab.MessageTypeProperty {
 		return svc.AddAction(msg)
 	}
-	if msg.Key == vocab.EventNameProperties {
+	if msg.Name == vocab.EventNameProperties {
 		return svc.AddProperties(msg)
 	}
 	return svc.AddEvent(msg)
@@ -187,7 +187,7 @@ func (svc *AddHistory) AddMessages(msgList []*hubclient.ThingMessage) (err error
 	// encode events as K,V pair and group them by thingAddr
 	kvpairsByThingAddr := make(map[string]map[string][]byte)
 	for _, eventValue := range msgList {
-		// kvpairs hold a map of storage encoded value key and value
+		// kvpairs hold a map of storage encoded value name and value
 		thingAddr := eventValue.ThingID
 		kvpairs, found := kvpairsByThingAddr[thingAddr]
 		if !found {
@@ -196,7 +196,7 @@ func (svc *AddHistory) AddMessages(msgList []*hubclient.ThingMessage) (err error
 		}
 		retain, err := svc.validateValue(eventValue)
 		if err != nil {
-			slog.Warn("Invalid event value", slog.String("key", eventValue.Key))
+			slog.Warn("Invalid event value", slog.String("name", eventValue.Name))
 			return err
 		}
 		if retain {
@@ -222,10 +222,10 @@ func (svc *AddHistory) AddMessages(msgList []*hubclient.ThingMessage) (err error
 // retained returns true if the value is valid and passes the retention rules
 func (svc *AddHistory) validateValue(tv *hubclient.ThingMessage) (retained bool, err error) {
 	if tv.ThingID == "" {
-		return false, fmt.Errorf("missing thingID in value with value key '%s'", tv.Key)
+		return false, fmt.Errorf("missing thingID in value with value name '%s'", tv.Name)
 	}
-	if tv.Key == "" {
-		return false, fmt.Errorf("missing key for event or action for things '%s'", tv.ThingID)
+	if tv.Name == "" {
+		return false, fmt.Errorf("missing name for event or action for things '%s'", tv.ThingID)
 	}
 	if tv.SenderID == "" {
 		return false, fmt.Errorf("missing sender for event or action for things '%s'", tv.ThingID)
@@ -237,7 +237,7 @@ func (svc *AddHistory) validateValue(tv *hubclient.ThingMessage) (retained bool,
 		retain, rule := svc.retentionMgr._IsRetained(tv)
 		if rule == nil {
 			slog.Debug("no retention rule found for event",
-				slog.String("key", tv.Key), slog.Bool("retain", retain))
+				slog.String("name", tv.Name), slog.Bool("retain", retain))
 		}
 		return retain, nil
 	}

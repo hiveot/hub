@@ -7,7 +7,7 @@
 		{{/* Table Header*/}}
 		<li id="hist-table-title"
         {{if eq .CompareToday 0}}
-	        hx-trigger="sse:{{.ThingID}}/{{.Key}}"
+	        hx-trigger="sse:{{.ThingID}}/{{.Name}}"
      	    hx-get="{{.RenderHistoryLatestRow}}"
 			    hx-target="this"
 			    hx-swap="afterend"
