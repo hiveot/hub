@@ -141,6 +141,7 @@ func NewInteractionOutput(thingID string, key string, schema *tdd.DataSchema, ra
 		ThingID: thingID,
 		Name:    key,
 		Updated: created,
+		Schema:  *schema,
 		Value:   NewDataSchemaValue(raw),
 	}
 	return io

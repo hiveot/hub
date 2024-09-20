@@ -18,7 +18,7 @@ import (
 func SubTDCommand(hc *hubclient.IHubClient) *cli.Command {
 	return &cli.Command{
 		Name:     "subtd",
-		Usage:    "Subscribe to TD publications",
+		Usage:    "SubscribeEvent to TD publications",
 		Category: "pubsub",
 		Action: func(cCtx *cli.Context) error {
 			err := HandleSubTD(*hc)
@@ -30,7 +30,7 @@ func SubTDCommand(hc *hubclient.IHubClient) *cli.Command {
 func SubEventsCommand(hc *hubclient.IHubClient) *cli.Command {
 	return &cli.Command{
 		Name:      "subev",
-		Usage:     "Subscribe to Thing events",
+		Usage:     "SubscribeEvent to Thing events",
 		ArgsUsage: "[<thingID> [<key>]]",
 		Category:  "pubsub",
 		Action: func(cCtx *cli.Context) error {

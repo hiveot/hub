@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 )
 
@@ -58,6 +59,10 @@ func (cl *EmbeddedClient) CreateKeyPair() (kp keys.IHiveKey) {
 func (cl *EmbeddedClient) Disconnect() {
 }
 
+// GetProtocolType returns the type of protocol this client supports
+func (cl *EmbeddedClient) GetProtocolType() string {
+	return "embed"
+}
 func (cl *EmbeddedClient) GetStatus() hubclient.TransportStatus {
 	return hubclient.TransportStatus{
 		ClientID:         cl.clientID,
@@ -91,9 +96,9 @@ func (cl *EmbeddedClient) Logout() error {
 	return nil
 }
 
-// PubAction publishes an action request.
+// InvokeAction publishes an action request.
 // Since this is a direct call, the response include a reply.
-func (cl *EmbeddedClient) PubAction(
+func (cl *EmbeddedClient) InvokeAction(
 	thingID string, name string, data any) (stat hubclient.DeliveryStatus) {
 
 	msg := hubclient.NewThingMessage(vocab.MessageTypeAction, thingID, name, data, cl.clientID)
@@ -160,14 +165,22 @@ func (cl *EmbeddedClient) Rpc(
 	return nil
 }
 
-func (svc *EmbeddedClient) SendDeliveryUpdate(stat hubclient.DeliveryStatus) {
+func (cl *EmbeddedClient) SendDeliveryUpdate(stat hubclient.DeliveryStatus) {
 	slog.Info("SendDeliveryUpdate",
 		slog.String("Progress", stat.Progress),
 		slog.String("MessageID", stat.MessageID),
 	)
 	statJSON, _ := json.Marshal(&stat)
 	// thing
-	_ = svc.PubEvent(digitwin.InboxDThingID, vocab.EventNameDeliveryUpdate, string(statJSON))
+	_ = cl.PubEvent(digitwin.InboxDThingID, vocab.EventNameDeliveryUpdate, string(statJSON))
+}
+
+// SendOperation is temporary transition to support using TD forms
+func (cl *EmbeddedClient) SendOperation(
+	href string, op tdd.Form, data any) (stat hubclient.DeliveryStatus) {
+
+	slog.Info("SendOperation", "href", href, "op", op)
+	return stat
 }
 
 // SetConnectHandler does nothing as connection is always established
@@ -197,7 +210,7 @@ func (cl *EmbeddedClient) Subscribe(thingID string, name string) error {
 // Unsubscribe removes a previous event subscription.
 // No more events or requests will be received after Unsubscribe.
 func (cl *EmbeddedClient) Unsubscribe(thingID string, name string) error {
-	return fmt.Errorf("Unsubscribe not implemented")
+	return fmt.Errorf("UnsubscribeEvent not implemented")
 }
 
 // NewEmbeddedClient returns an embedded hub client for connecting to embedded services.

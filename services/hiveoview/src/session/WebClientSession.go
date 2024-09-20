@@ -40,9 +40,9 @@ type WebClientSession struct {
 	sessionID string
 
 	// Client session data, loaded from the state service
-	clientModel *ClientDataModel
+	clientState *ClientDataModel
 
-	// Client view model for generating re-usable data
+	// Client view model for generating presentation data
 	viewModel *ClientViewModel
 
 	// Holder of consumed things for this session
@@ -129,7 +129,7 @@ func (wcs *WebClientSession) CreateSSEChan() chan SSEEvent {
 
 // GetClientData returns the hiveoview data model of this client
 func (wcs *WebClientSession) GetClientData() *ClientDataModel {
-	return wcs.clientModel
+	return wcs.clientState
 }
 
 // GetHubClient returns the hub client connection for use in pub/sub
@@ -172,8 +172,8 @@ func (wcs *WebClientSession) IsActive() bool {
 func (wcs *WebClientSession) LoadState() error {
 	stateCl := stateclient.NewStateClient(wcs.hc)
 
-	wcs.clientModel = NewClientDataModel()
-	found, err := stateCl.Get(HiveOViewDataKey, &wcs.clientModel)
+	wcs.clientState = NewClientDataModel()
+	found, err := stateCl.Get(HiveOViewDataKey, &wcs.clientState)
 	_ = found
 	if err != nil {
 		wcs.lastError = err
@@ -285,7 +285,7 @@ func (wcs *WebClientSession) RemoveSSEClient(c chan SSEEvent) {
 			break
 		}
 	}
-	if wcs.clientModel.Changed() {
+	if wcs.clientState.Changed() {
 		err := wcs.SaveState()
 		if err != nil {
 			wcs.lastError = err
@@ -312,23 +312,23 @@ func (wcs *WebClientSession) ReplaceHubClient(newHC hubclient.IHubClient) {
 //
 // This returns an error if the state service is not reachable.
 func (wcs *WebClientSession) SaveState() error {
-	if !wcs.clientModel.Changed() {
+	if !wcs.clientState.Changed() {
 		return nil
 	}
 
 	stateCl := stateclient.NewStateClient(wcs.GetHubClient())
-	err := stateCl.Set(HiveOViewDataKey, &wcs.clientModel)
+	err := stateCl.Set(HiveOViewDataKey, &wcs.clientState)
 	if err != nil {
 		wcs.lastError = err
 		return err
 	}
-	wcs.clientModel.SetChanged(false)
+	wcs.clientState.SetChanged(false)
 	return err
 }
 
 // SetClientData update the hiveoview data model of this client
 //func (cs *WebClientSession) SetClientData(data ClientDataModel) {
-//	cs.clientModel = data
+//	cs.clientState = data
 //	cs.clientModelChanged = true
 //}
 
@@ -401,7 +401,7 @@ func NewClientSession(sessionID string, hc hubclient.IHubClient, remoteAddr stri
 		hc:           hc,
 		sseClients:   make([]chan SSEEvent, 0),
 		lastActivity: time.Now(),
-		clientModel:  NewClientDataModel(),
+		clientState:  NewClientDataModel(),
 		viewModel:    NewClientViewModel(hc),
 		cts:          consumedthing.NewConsumedThingsSession(hc),
 	}

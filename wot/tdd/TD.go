@@ -2,10 +2,12 @@ package tdd
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/utils"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -62,6 +64,9 @@ type TD struct {
 
 	// ISO8601 timestamp this document was last modified. See also 'Created'.
 	Modified string `json:"modified,omitempty"`
+
+	// Base URI for all relative URI references
+	Base string `json:"base,omitempty"`
 
 	// Information about the TD maintainer as URI scheme (e.g., mailto [RFC6068], tel [RFC3966], https).
 	Support string `json:"support,omitempty"`
@@ -348,6 +353,100 @@ func (tdoc *TD) GetEvent(eventName string) *EventAffordance {
 		return nil
 	}
 	return eventAffordance
+}
+
+// GetForm returns the form for the requested operation
+//
+// This:
+//
+// 1. determine the affordance or thing level to use based on the operation
+// 2. determine the base path to use
+// 3. determine the protocol binding to use from the href (https, mqtt, ...)
+// 4. determine which form matches the available protocol binding(s)
+//
+//	operation is the operation as defined in TD forms
+//	name is the name of property, event or action whose form to get
+//	protocol to get, eg: http, mqtt, coap
+func (tdoc *TD) GetForm(operation string, name string, protocol string) Form {
+	var f []Form
+
+	switch operation {
+	case
+		vocab.WotOpInvokeAction,
+		vocab.WotOpCancelAction,
+		vocab.WotOpQueryAction,
+		vocab.WotOpQueryAllAction,
+		"readaction",
+		"readallactions":
+		aff, _ := tdoc.Actions[name]
+		if aff != nil {
+			f = aff.Forms
+		}
+
+	case
+		vocab.WotOpObserveAllProperties,
+		vocab.WoTOpObserveProperty,
+		vocab.WotOpReadAllProperties,
+		vocab.WoTOpReadProperty,
+		vocab.WotOpReadMultipleProperties,
+		vocab.WotOpUnobserveAllProperties,
+		vocab.WoTOpUnobserveProperty,
+		vocab.WoTOpWriteProperty,
+		vocab.WotOpWriteAllProperties,
+		vocab.WotOpWriteMultipleProperties:
+		aff, _ := tdoc.Properties[name]
+		if aff != nil {
+			f = aff.Forms
+		}
+
+	case
+		vocab.WotOpSubscribeAllEvents,
+		vocab.WotOpSubscribeEvent,
+		vocab.WotOpUnsubscribeAllEvents,
+		vocab.WotOpUnsubscribeEvent,
+		"readallevents":
+		aff, _ := tdoc.Events[name]
+		if aff != nil {
+			f = aff.Forms
+		}
+	}
+	if f == nil {
+		f = tdoc.Forms
+	}
+	// find the form for this operation that has the currently used transport type
+	for _, form := range f {
+		op, found := form["op"]
+		if found && op == operation {
+			href, found := form.GetHRef()
+			if found {
+				if strings.HasPrefix(href, protocol) {
+					return form
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// GetFormHRef returns the URL of the form and injects the URI variables if provided.
+// If the form uses a relative href then prepend it with the base defined
+// in the TD.
+func (tdoc *TD) GetFormHRef(form Form, uriVars map[string]string) (string, error) {
+	href, found := form.GetHRef()
+	if !found {
+		return "", fmt.Errorf("Form has no href field")
+	}
+	uri, err := url.Parse(href)
+	if err != nil {
+		return "", err
+	}
+	if !uri.IsAbs() {
+		href, err = url.JoinPath(tdoc.Base, uri.Path)
+	}
+	if uriVars != nil {
+		href = utils.Substitute(href, uriVars)
+	}
+	return href, nil
 }
 
 // GetProperty returns the Schema and value for the property or nil if its key is not found.

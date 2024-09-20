@@ -5,8 +5,13 @@ package tdd
 // request method request to submission target" where the optional form fields may further describe the required
 // request. In Thing Descriptions, the form context is the surrounding Object, such as Properties, Actions, and
 // Events or the Thing itself for meta-interactions.
-// (I this isn't clear then you are not alone)
-type Form map[string]string
+type Form map[string]any
+
+// GetHRef returns the form's href field
+func (f Form) GetHRef() (string, bool) {
+	val, found := f["href"]
+	return val.(string), found
+}
 
 //Href        string `json:"href"`
 //ContentType string `json:"contentType"`

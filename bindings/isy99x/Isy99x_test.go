@@ -140,7 +140,7 @@ func TestSwitch(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	//
 	//// throw a switch
-	////cl := hc.PubAction("isy", nodeID, vocab.VocabValue, "true")
+	////cl := hc.InvokeAction("isy", nodeID, vocab.VocabValue, "true")
 	//svc.SwitchOnOff(deckThingLightsID, name, "true")
 	//deckSwitch := svc.GetNode(deckThingLightsID)
 	//require.NotNilf(t, deckSwitch, "Switch %s not found", deckLightsID)

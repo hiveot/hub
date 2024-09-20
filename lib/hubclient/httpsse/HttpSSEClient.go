@@ -14,6 +14,7 @@ import (
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 	"github.com/teris-io/shortid"
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
@@ -24,49 +25,29 @@ import (
 
 // Paths used by this protocol binding - SYNC with HttpSSEClient.ts
 //
-// These are currently hard coded to allow services and bindings to use the runtime.
-//
-// The idea is that the TDD defines them but that isn't usable from a service.
-// Do the hub runtime services require a TD to be used?
-//
-// Yes? chicken and egg problem as to get the TD you need to use the directory service
-// Is the directory an exception?
-// No? hard coding these paths isn't ideal either, even if its in a client library
-// Another consideration is that the args and results struct are already hard coded.
-// This clearly needs more thoughts. What is needed for machines to use the TD for
-// basic functions such as pub/sub actions, events and read the directory?
-//
-// For now hard-code the runtime paths in this client library. Investigate if they
-// can be derived from the TD (that is the whole goal for using WoT TDs after all)
+// THIS WILL BE REMOVED AFTER THE PROTOCOL BINDING PUBLISHES THESE IN THE TDD.
+// The hub client will need the TD (ConsumedThing) to determine the paths.
 const (
-	// Form paths that apply to all TDs at the top level
-	// SYNC with HttpSSEClient.ts
-	GetReadAllEventsPath         = "/events/{thingID}"
-	GetReadAllPropertiesPath     = "/properties/{thingID}"
-	PostSubscribeAllEventsPath   = "/subscribe/{thingID}/+"
-	PostUnsubscribeAllEventsPath = "/unsubscribe/{thingID}/+"
-	PostSubscribeEventPath       = "/subscribe/{thingID}/{name}"
-	PostUnsubscribeEventPath     = "/unsubscribe/{thingID}/{name}"
-	ConnectSSEPath               = "/sse"
+	ConnectSSEPath = "/sse"
+	// deprecated, use forms
+	PostInvokeActionPath      = "/digitwin/actions/{thingID}/{name}"
+	PostObservePropertiesPath = "/digitwin/observe/{thingID}/{name}"
+	PostSubscribeEventPath    = "/digitwin/subscribe/{thingID}/{name}"
+	PostUnsubscribeEventPath  = "/digitwin/unsubscribe/{thingID}/{name}"
+	PutWritePropertyPath      = "/digitwin/properties/{thingID}/{name}"
 
 	// Form paths for accessing TD directory
-	GetThingPath  = "/tdd/{thingID}"
-	GetThingsPath = "/tdd" // query param offset=, limit=
+	GetThingPath  = "/digitwin/directory/{thingID}"
+	GetThingsPath = "/digitwin/directory/+" // query param offset=, limit=
 
-	// Form paths for accessing Actions
-	PostInvokeActionPath = "/action/{thingID}/{name}"
-
-	// Form paths for accessing Events
-	GetReadEventPath     = "/event/{thingID}/{name}"
-	PostPublishEventPath = "/event/{thingID}/{name}"
-
-	// Form paths for read/writing Properties
-	FormPropertyPath = "/property/{thingID}/{name}"
+	PostAgentPublishEventPath   = "/agent/event/{thingID}/{name}"
+	PostAgentUpdatePropertyPath = "/agent/property/{thingID}/{name}"
+	PostAgentUpdateTDDPath      = "/agent/tdd/{thingID}"
 
 	// authn service - used in authn TD
-	PostLoginPath   = "/login"
-	PostLogoutPath  = "/logout"
-	PostRefreshPath = "/refresh"
+	PostLoginPath   = "/authn/login"
+	PostLogoutPath  = "/authn/logout"
+	PostRefreshPath = "/authn/refresh"
 )
 
 // HttpSSEClient manages the connection to the hub server using http/2.
@@ -238,6 +219,11 @@ func (cl *HttpSSEClient) Disconnect() {
 	}
 }
 
+// GetProtocolType returns the type of protocol this client supports
+func (cl *HttpSSEClient) GetProtocolType() string {
+	return "https"
+}
+
 // GetStatus Return the transport connection info
 func (cl *HttpSSEClient) GetStatus() hubclient.TransportStatus {
 	cl.mux.RLock()
@@ -298,7 +284,7 @@ func (cl *HttpSSEClient) pubMessage(methodName string,
 	defer cl.mux.RUnlock()
 	if cl.tlsClient == nil {
 		stat.Progress = hubclient.DeliveryFailed
-		stat.Error = "PubAction. Client connection was closed"
+		stat.Error = "InvokeAction. Client connection was closed"
 		slog.Error(stat.Error)
 		return stat
 	}
@@ -327,10 +313,27 @@ func (cl *HttpSSEClient) pubMessage(methodName string,
 	return stat
 }
 
-// PubAction publishes an action message and waits for an answer or until timeout
+// Publish a form message and return the delivery status
+//
+//	methodName is http.MethodPost for actions, http.MethodPut/MethodGet for properties
+//	path used to publish PostActionPath/PostEventPath/...
+//	thingID to publish as or to: events are published for the thing and actions to publish to the thingID
+//	name is the event/action/property name being published or modified
+//	data is the native message payload to transfer that will be serialized
+//	queryParams optional name-value pairs to pass along as query parameters
+func (cl *HttpSSEClient) pubFormMessage(op *tdd.Form,
+	dtThingID string, name string, data any, queryParams map[string]string) (
+	stat hubclient.DeliveryStatus) {
+
+	messagePath, _ := (*op).GetHRef()
+	stat = cl.pubMessage(http.MethodPost, messagePath, dtThingID, name, data, nil)
+	return stat
+}
+
+// InvokeAction publishes an action message and waits for an answer or until timeout
 // In order to receive replies, an inbox subscription is added on the first request.
 // An error is returned if delivery failed or succeeded but the action itself failed
-func (cl *HttpSSEClient) PubAction(thingID string, name string, data any) (stat hubclient.DeliveryStatus) {
+func (cl *HttpSSEClient) InvokeAction(thingID string, name string, data any) (stat hubclient.DeliveryStatus) {
 	slog.Debug("PubAction",
 		slog.String("thingID", thingID),
 		slog.String("name", name))
@@ -365,7 +368,7 @@ func (cl *HttpSSEClient) PubEvent(thingID string, name string, data any) error {
 		slog.String("device thingID", thingID),
 		slog.String("name", name),
 	)
-	stat := cl.pubMessage(http.MethodPost, PostPublishEventPath, thingID, name, data, nil)
+	stat := cl.pubMessage(http.MethodPost, PostAgentPublishEventPath, thingID, name, data, nil)
 	if stat.Error != "" {
 		return errors.New(stat.Error)
 	}
@@ -376,7 +379,7 @@ func (cl *HttpSSEClient) PubEvent(thingID string, name string, data any) error {
 // This is similar to publishing an action but only affects properties.
 func (cl *HttpSSEClient) PubProperty(thingID string, name string, data any) (
 	stat hubclient.DeliveryStatus) {
-	stat = cl.pubMessage(http.MethodPut, FormPropertyPath, thingID, name, data, nil)
+	stat = cl.pubMessage(http.MethodPut, PutWritePropertyPath, thingID, name, data, nil)
 	slog.Info("PubProperty",
 		slog.String("me", cl._status.ClientID),
 		slog.String("thingID", thingID),
@@ -492,6 +495,14 @@ func (cl *HttpSSEClient) SendDeliveryUpdate(stat hubclient.DeliveryStatus) {
 	)
 	// thing
 	_ = cl.PubEvent(digitwin.InboxDThingID, vocab.EventNameDeliveryUpdate, stat)
+}
+
+// SendOperation is temporary transition to support using TD forms
+func (cl *HttpSSEClient) SendOperation(
+	href string, op tdd.Form, data any) (stat hubclient.DeliveryStatus) {
+
+	slog.Info("SendOperation", "href", href, "op", op)
+	return stat
 }
 
 // SetConnectionStatus updates the current connection status

@@ -22,7 +22,7 @@
                      border:1px solid var(--pico-form-element-border-color);
                      padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
                      margin-bottom: var(--pico-spacing);"
-                ><i>{{.Action.Description}}</i></div>
+                ><i>{{.Description}}</i></div>
 
                 {{if .LastActionRecord}}
                 <label for="previousAction">Previous Action</label>
@@ -45,18 +45,12 @@
 
                 {{end}}
 
-                {{if .CurrentValue}}
-                    <label for="prevValueOutput">Current Value</label>
-                    <div class="h-row h-box" style="margin-bottom: var(--pico-spacing)">
-                       {{template "RenderOutputValue.gohtml" .CurrentValue}}
-                    </div>
-                {{end}}
 
-                {{/* If input is required, use the last output as default value, if known */}}
+                {{/* input is required*/}}
                 {{if .Action.Input}}
                 <div>
                     <label for="currValue">New value</label>
-                    {{template "RenderInputValue.gohtml" .CurrentValue}}
+                    {{template "RenderInputValue.gohtml" .InputValue}}
                 </div>
                 {{end}}
             </form>

@@ -22,8 +22,9 @@ const RenderActionRequestTemplate = "RenderActionRequest.gohtml"
 // ActionRequestTemplateData with data for the action request view
 type ActionRequestTemplateData struct {
 	// The thing and name the action belongs to
-	ThingID string
-	Name    string
+	ThingID     string
+	Name        string
+	Description string
 
 	// the thing instance used to apply the action
 	CT *consumedthing.ConsumedThing
@@ -31,13 +32,13 @@ type ActionRequestTemplateData struct {
 	// Affordance of the action to issue containing the input dataschema
 	Action *tdd.ActionAffordance
 
-	// current state of the action
-	// This uses the last received value related to this action.
-	CurrentValue *consumedthing.InteractionOutput
+	// input value to edit
+	// This defaults to the last action input
+	InputValue *consumedthing.InteractionOutput
 
 	// the previous action request record
 	LastActionRecord *digitwin.InboxRecord
-	// previous action input (if any)
+	// input value with previous action input (if any)
 	LastActionInput consumedthing.DataSchemaValue
 	// previous action timestamp (formatted)
 	LastActionTime string
@@ -100,10 +101,16 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		Name:    name,
 		Action:  actionAff,
 		CT:      ct,
+		InputValue: consumedthing.NewInteractionOutput(
+			thingID, name, actionAff.Input, nil, ""),
+		Description: actionAff.Description,
 	}
 	cv, found := ct.GetValue(name)
 	if found {
-		data.CurrentValue = cv
+		data.InputValue = cv
+	}
+	if data.Description == "" {
+		data.Description = actionAff.Title
 	}
 
 	// get last action request that was received

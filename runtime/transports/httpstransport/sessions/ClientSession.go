@@ -36,7 +36,7 @@ type ClientSession struct {
 	sseClients []chan SSEEvent
 
 	// Map of current subscriptions: {thingID}.{name}
-	// where key can be a wildcard '+'
+	// where name can be a wildcard '+'
 	subscriptions map[string]string
 }
 
@@ -168,24 +168,69 @@ func (cs *ClientSession) SendSSE(messageID string, eventType string, data any) i
 	return count
 }
 
-// Subscribe adds the event subscription for this session client
+// ObserveProperty adds the property observeevent subscription for this session client
 //
-//	dThingID is the digitwin thingID whose events to subscribe to, or "" for any
-//	key is the event key to subscribe to or "" for any
-func (cs *ClientSession) Subscribe(dThingID string, key string) {
+//	dThingID is the digitwin thingID whose property to observe to, or "" for any
+//	name is the property name to observe or "" for all
+func (cs *ClientSession) ObserveProperty(dThingID string, name string) {
 	cs.mux.Lock()
 	defer cs.mux.Unlock()
+	if dThingID == "" {
+		dThingID = "+"
+	}
+	if name == "" {
+		name = "+"
+	}
 
-	subKey := fmt.Sprintf("%s.%s", dThingID, key)
-	cs.subscriptions[subKey] = key
+	subKey := fmt.Sprintf("%s.%s", dThingID, name)
+	cs.subscriptions[subKey] = name
 }
 
-// Unsubscribe removes the event subscription for this session client
-// This must match the dThingID and key of Subscribe
-func (cs *ClientSession) Unsubscribe(dThingID string, key string) {
+// SubscribeEvent adds the event subscription for this session client
+//
+//	dThingID is the digitwin thingID whose events to subscribe to, or "" for any
+//	name is the event name to subscribe to or "" for any
+func (cs *ClientSession) SubscribeEvent(dThingID string, name string) {
 	cs.mux.Lock()
 	defer cs.mux.Unlock()
-	subKey := fmt.Sprintf("%s.%s", dThingID, key)
+	if dThingID == "" {
+		dThingID = "+"
+	}
+	if name == "" {
+		name = "+"
+	}
+
+	subKey := fmt.Sprintf("%s.%s", dThingID, name)
+	cs.subscriptions[subKey] = name
+}
+
+// UnsubscribeEvent removes the event subscription for this session client
+// This must match the dThingID and name of SubscribeEvent
+func (cs *ClientSession) UnsubscribeEvent(dThingID string, name string) {
+	cs.mux.Lock()
+	defer cs.mux.Unlock()
+	if dThingID == "" {
+		dThingID = "+"
+	}
+	if name == "" {
+		name = "+"
+	}
+	subKey := fmt.Sprintf("%s.%s", dThingID, name)
+	delete(cs.subscriptions, subKey)
+}
+
+// UnobserveProperty removes the property observe subscription for this session client
+// This must match the dThingID and name of ObserveProperty
+func (cs *ClientSession) UnobserveProperty(dThingID string, name string) {
+	cs.mux.Lock()
+	defer cs.mux.Unlock()
+	if dThingID == "" {
+		dThingID = "+"
+	}
+	if name == "" {
+		name = "+"
+	}
+	subKey := fmt.Sprintf("%s.%s", dThingID, name)
 	delete(cs.subscriptions, subKey)
 }
 

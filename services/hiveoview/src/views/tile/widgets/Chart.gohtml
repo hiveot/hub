@@ -26,7 +26,7 @@
 						sse-swap="{{$hist.ThingID}}/{{$hist.Name}}"
 						hx-target="this"
 						hx-swap="none"
-						hx-on::sse-before-message="updateChart(event, '{{$hist.Title}}')"
+						hx-on::sse-before-message="updateChart(event, '{{.Title}}')"
           {{end}}
 		>
         {{ $hist.AsJSON }}

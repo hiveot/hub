@@ -107,7 +107,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	// client sends action to agent and expect a 'delivered' result
 	// The RPC method returns an error if no reply is received
 	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
-	stat2 := cl2.PubAction(dThingID, actionID, actionPayload)
+	stat2 := cl2.InvokeAction(dThingID, actionID, actionPayload)
 	require.Empty(t, stat2.Error)
 
 	// wait for delivery completion

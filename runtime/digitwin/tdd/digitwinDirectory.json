@@ -51,7 +51,7 @@
 		"readTD": {
 			"@type": "ht:function",
 			"title": "Read TD",
-			"description": "This returns a JSON encoded TD document",
+			"description": "Return a JSON encoded TD document",
 			"safe": true,
 			"idempotent": true,
 			"input": {
@@ -62,7 +62,6 @@
 			"output": {
 				"title": "TD",
 				"description": "A JSON encoded Thing Description Document",
-				"question": "How to link to the TD as a complex type?",
 				"type": "string"
 			},
 			"scopes": ["*"]
@@ -78,12 +77,14 @@
 				"properties": {
 					"offset": {
 						"title": "Offset",
+						"description": "Start index in the list of TD documents",
 						"type": "integer",
 						"minimum": 0,
 						"default": 0
 					},
 					"limit": {
 						"title": "Limit",
+						"description": "Maximum number of documents to return",
 						"type": "integer",
 						"minimum": 1,
 						"default": 100
@@ -103,12 +104,12 @@
 		"removeTD": {
 			"@type": "ht:function",
 			"title": "Remove TD",
-			"description": "Remove a Thing TD document from the digital twin directory and value stores",
+			"description": "Remove a Thing TD document from the digital twin directory",
 			"safe": false,
 			"idempotent": true,
 			"input": {
-				"title": "thingID",
-				"description": "Digital Twin ThingID of the Thing to remove",
+				"title": "Thing ID",
+				"description": "Digital Twin Thing ID of the Thing to remove",
 				"type": "string"
 			},
 			"scopes": ["admin", "service", "agent","manager"]
@@ -124,7 +125,7 @@
 				"properties": {
 					"query": {
 						"title": "Query Things",
-						"description": "Query expression (tbd)",
+						"description": "JSON Query expression (tbd)",
 						"type": "string"
 					},
 					"offset": {
@@ -144,7 +145,7 @@
 				}
 			},
 			"output": {
-				"title": "TDD List",
+				"title": "TD documents",
 				"description": "List of JSON encoded TD documents",
 				"type": "array",
 				"items": {

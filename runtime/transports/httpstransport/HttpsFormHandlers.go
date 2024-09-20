@@ -16,15 +16,101 @@ import (
 
 // Protocol handler implementation for support WoT TD Form operations.
 
-// HandleGetThings returns a list of things in the directory
-// No parameters
-func (svc *HttpsTransport) HandleGetThings(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpsTransport) HandleAgentPublishEvent(w http.ResponseWriter, r *http.Request) {
+	svc.handlePostMessage(vocab.MessageTypeEvent, w, r)
+}
+func (svc *HttpsTransport) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	cs, _, _, _, _, err := svc.getRequestParams(r)
+	if err != nil {
+		return
+	}
+	// logout closes the session which invalidates it
+	cs.Close()
+}
+
+// HandleLogin handles a login request and a new session, posted by a consumer
+// This uses the configured session authenticator.
+func (svc *HttpsTransport) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	sm := sessions.GetSessionManager()
+
+	args := authn.UserLoginArgs{}
+	resp := authn.UserLoginResp{}
+	// credentials are in a json payload
+	data, err := io.ReadAll(r.Body)
+	if err == nil {
+		err = json.Unmarshal(data, &args)
+	}
+	if err != nil {
+		slog.Warn("HandleLogin: parameter error", "err", err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	token, sid, err := svc.authenticator.Login(args.ClientID, args.Password)
+	if err != nil {
+		if err != nil {
+			slog.Warn("HandleLogin: authentication error", "clientID", args.ClientID)
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+	}
+	// remove existing session, if any
+	oldToken, err := tlsserver.GetBearerToken(r)
+	if err == nil {
+		_, oldSid, err := svc.authenticator.ValidateToken(oldToken)
+		if err == nil {
+			_ = sm.Close(oldSid)
+		}
+	}
+	// create the session for this token
+	_, err = sm.NewSession(args.ClientID, r.RemoteAddr, sid)
+	if err != nil {
+		slog.Warn("HandleLogin: session error", "err", err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	resp.SessionID = sid
+	resp.Token = token
+	respJson, err := json.Marshal(resp)
+	// write sets statusOK
+	_, _ = w.Write(respJson)
+	slog.Info("HandleLogin: success", "clientID", args.ClientID)
+	//w.WriteHeader(http.StatusOK)
+	// TODO: set client session cookie for browser clients
+	//svc.sessionManager.SetSessionCookie(cs.sessionID,token)
+}
+
+func (svc *HttpsTransport) HandleInvokeAction(w http.ResponseWriter, r *http.Request) {
+	svc.handlePostMessage(vocab.MessageTypeAction, w, r)
+}
+
+// HandleReadThing returns the TD of a thing in the directory
+// URL parameter {thingID}
+func (svc *HttpsTransport) HandleReadThing(w http.ResponseWriter, r *http.Request) {
+	cs, _, thingID, _, _, err := svc.getRequestParams(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	msg := hubclient.NewThingMessage(vocab.MessageTypeAction,
+		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod,
+		thingID, cs.GetClientID())
+	stat := svc.handleMessage(msg)
+	svc.writeStatReply(w, stat)
+}
+
+// HandleReadAllThings returns a list of things in the directory
+//
+// Query params for paging:
+//
+//	limit=N, limit the number of results to N TD documents
+//	offset=N, skip the first N results in the result
+func (svc *HttpsTransport) HandleReadAllThings(w http.ResponseWriter, r *http.Request) {
 	cs, _, _, _, _, err := svc.getRequestParams(r)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	// this request can simply be turned into an action message.
+	// this request can simply be turned into an action message for the directory.
 	limit := 100
 	offset := 0
 	if r.URL.Query().Has("limit") {
@@ -47,91 +133,7 @@ func (svc *HttpsTransport) HandleGetThings(w http.ResponseWriter, r *http.Reques
 	svc.writeStatReply(w, stat)
 }
 
-// HandleGetThing returns the TD of a thing in the directory
-// URL parameter {thingID}
-func (svc *HttpsTransport) HandleGetThing(w http.ResponseWriter, r *http.Request) {
-	cs, _, thingID, _, _, err := svc.getRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	msg := hubclient.NewThingMessage(vocab.MessageTypeAction,
-		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod,
-		thingID, cs.GetClientID())
-	stat := svc.handleMessage(msg)
-	svc.writeStatReply(w, stat)
-}
-
-func (svc *HttpsTransport) HandlePostLogout(w http.ResponseWriter, r *http.Request) {
-	cs, _, _, _, _, err := svc.getRequestParams(r)
-	if err != nil {
-		return
-	}
-	// logout closes the session which invalidates it
-	cs.Close()
-}
-
-// HandlePostLogin handles a login request and a new session, posted by a consumer
-// This uses the configured session authenticator.
-func (svc *HttpsTransport) HandlePostLogin(w http.ResponseWriter, r *http.Request) {
-	sm := sessions.GetSessionManager()
-
-	args := authn.UserLoginArgs{}
-	resp := authn.UserLoginResp{}
-	// credentials are in a json payload
-	data, err := io.ReadAll(r.Body)
-	if err == nil {
-		err = json.Unmarshal(data, &args)
-	}
-	if err != nil {
-		slog.Warn("HandlePostLogin: parameter error", "err", err.Error())
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-	token, sid, err := svc.authenticator.Login(args.ClientID, args.Password)
-	if err != nil {
-		if err != nil {
-			slog.Warn("HandlePostLogin: authentication error", "clientID", args.ClientID)
-			http.Error(w, err.Error(), http.StatusUnauthorized)
-			return
-		}
-	}
-	// remove existing session, if any
-	oldToken, err := tlsserver.GetBearerToken(r)
-	if err == nil {
-		_, oldSid, err := svc.authenticator.ValidateToken(oldToken)
-		if err == nil {
-			_ = sm.Close(oldSid)
-		}
-	}
-	// create the session for this token
-	_, err = sm.NewSession(args.ClientID, r.RemoteAddr, sid)
-	if err != nil {
-		slog.Warn("HandlePostLogin: session error", "err", err.Error())
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-	resp.SessionID = sid
-	resp.Token = token
-	respJson, err := json.Marshal(resp)
-	// write sets statusOK
-	_, _ = w.Write(respJson)
-	slog.Info("HandlePostLogin: success", "clientID", args.ClientID)
-	//w.WriteHeader(http.StatusOK)
-	// TODO: set client session cookie for browser clients
-	//svc.sessionManager.SetSessionCookie(cs.sessionID,token)
-}
-
-func (svc *HttpsTransport) HandlePostInvokeAction(w http.ResponseWriter, r *http.Request) {
-	svc.handlePostMessage(vocab.MessageTypeAction, w, r)
-}
-func (svc *HttpsTransport) HandlePostPublishEvent(w http.ResponseWriter, r *http.Request) {
-	svc.handlePostMessage(vocab.MessageTypeEvent, w, r)
-}
-func (svc *HttpsTransport) HandleWriteProperty(w http.ResponseWriter, r *http.Request) {
-	svc.handlePostMessage(vocab.MessageTypeProperty, w, r)
-}
-func (svc *HttpsTransport) HandlePostTDD(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpsTransport) HandleAgentPostTDD(w http.ResponseWriter, r *http.Request) {
 	// TDD are posted as events with the $td name
 	svc.handlePostMessage(vocab.MessageTypeEvent, w, r)
 }
@@ -166,32 +168,6 @@ func (svc *HttpsTransport) handlePostMessage(messageType string, w http.Response
 	svc.writeReply(w, reply, err)
 }
 
-// HandlePostRefresh refreshes the auth token using the session authenticator.
-// The session authenticator is that of the authn service. This allows testing with a dummy
-// authenticator without having to run the authn service.
-func (svc *HttpsTransport) HandlePostRefresh(w http.ResponseWriter, r *http.Request) {
-	var newToken string
-	var resp []byte
-
-	args := authn.UserRefreshTokenArgs{}
-	cs, _, _, _, data, err := svc.getRequestParams(r)
-	if err == nil {
-		err = json.Unmarshal(data, &args)
-	}
-	// the session owner must match the token requested client ID
-	if err != nil || cs.GetClientID() != args.ClientID {
-		http.Error(w, "bad login", http.StatusUnauthorized)
-		return
-	}
-	newToken, err = svc.authenticator.RefreshToken(args.ClientID, args.OldToken)
-	if err == nil {
-		resp, err = json.Marshal(newToken)
-	}
-	svc.writeReply(w, resp, err)
-	// TODO: update client session cookie with new token
-	//svc.sessionManager.SetSessionCookie(cs.sessionID,newToken)
-}
-
 // HandleReadAllEvents returns a list of latest event values from a Thing
 // Parameters: thingID
 func (svc *HttpsTransport) HandleReadAllEvents(w http.ResponseWriter, r *http.Request) {
@@ -211,6 +187,31 @@ func (svc *HttpsTransport) HandleReadAllEvents(w http.ResponseWriter, r *http.Re
 	//argsJSON, _ := json.Marshal(args)
 	msg := hubclient.NewThingMessage(vocab.MessageTypeAction,
 		digitwin.OutboxDThingID, digitwin.OutboxReadLatestMethod,
+		args, cs.GetClientID())
+
+	stat := svc.handleMessage(msg)
+	svc.writeStatReply(w, stat)
+}
+
+// HandleReadAction returns a list of latest action requests of a Thing
+// Parameters: thingID
+func (svc *HttpsTransport) HandleReadAction(w http.ResponseWriter, r *http.Request) {
+	cs, _, thingID, name, _, err := svc.getRequestParams(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	// this request can simply be turned into an action message.
+	args := digitwin.InboxReadLatestArgs{
+		ThingID: thingID,
+	}
+	// only a single name is supported at the moment
+	if name != "" {
+		args.Name = name
+	}
+	//argsJSON, _ := json.Marshal(args)
+	msg := hubclient.NewThingMessage(vocab.MessageTypeAction,
+		digitwin.InboxDThingID, digitwin.InboxReadLatestMethod,
 		args, cs.GetClientID())
 
 	stat := svc.handleMessage(msg)
@@ -257,8 +258,51 @@ func (svc *HttpsTransport) HandleReadProperty(w http.ResponseWriter, r *http.Req
 	svc.writeStatReply(w, stat)
 }
 
-// HandleSubscribeEvents handles a subscription request
-func (svc *HttpsTransport) HandleSubscribeEvents(w http.ResponseWriter, r *http.Request) {
+// HandleRefresh refreshes the auth token using the session authenticator.
+// The session authenticator is that of the authn service. This allows testing with a dummy
+// authenticator without having to run the authn service.
+func (svc *HttpsTransport) HandleRefresh(w http.ResponseWriter, r *http.Request) {
+	var newToken string
+	var resp []byte
+
+	args := authn.UserRefreshTokenArgs{}
+	cs, _, _, _, data, err := svc.getRequestParams(r)
+	if err == nil {
+		err = json.Unmarshal(data, &args)
+	}
+	// the session owner must match the token requested client ID
+	if err != nil || cs.GetClientID() != args.ClientID {
+		http.Error(w, "bad login", http.StatusUnauthorized)
+		return
+	}
+	newToken, err = svc.authenticator.RefreshToken(args.ClientID, args.OldToken)
+	if err == nil {
+		resp, err = json.Marshal(newToken)
+	}
+	svc.writeReply(w, resp, err)
+	// TODO: update client session cookie with new token
+	//svc.sessionManager.SetSessionCookie(cs.sessionID,newToken)
+}
+
+// HandleObserve handles a property observe request for one or all properties
+func (svc *HttpsTransport) HandleObserve(w http.ResponseWriter, r *http.Request) {
+	cs, _, thingID, name, _, err := svc.getRequestParams(r)
+	if err != nil {
+		slog.Warn("HandleObserve", "err", err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	slog.Info("HandleObserve",
+		slog.String("clientID", cs.GetClientID()),
+		slog.String("thingID", thingID),
+		slog.String("name", name),
+		slog.String("sessionID", cs.GetSessionID()),
+		slog.Int("nr sse connections", cs.GetNrConnections()))
+	cs.ObserveProperty(thingID, name)
+}
+
+// HandleSubscribe handles a subscription request for one or all events
+func (svc *HttpsTransport) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
 	cs, _, thingID, name, _, err := svc.getRequestParams(r)
 	if err != nil {
 		slog.Warn("HandleSubscribe", "err", err.Error())
@@ -271,16 +315,32 @@ func (svc *HttpsTransport) HandleSubscribeEvents(w http.ResponseWriter, r *http.
 		slog.String("name", name),
 		slog.String("sessionID", cs.GetSessionID()),
 		slog.Int("nr sse connections", cs.GetNrConnections()))
-	cs.Subscribe(thingID, name)
+	cs.SubscribeEvent(thingID, name)
 }
 
-// HandleUnsubscribeEvents handles removal of a subscription request
-func (svc *HttpsTransport) HandleUnsubscribeEvents(w http.ResponseWriter, r *http.Request) {
+// HandleUnsubscribe handles removal of one or all event subscriptions
+func (svc *HttpsTransport) HandleUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	slog.Info("HandleUnsubscribe")
 	cs, _, thingID, name, _, err := svc.getRequestParams(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	cs.Unsubscribe(thingID, name)
+	cs.UnsubscribeEvent(thingID, name)
+}
+
+// HandleUnobserve handles removal of one or all property observe subscriptions
+func (svc *HttpsTransport) HandleUnobserve(w http.ResponseWriter, r *http.Request) {
+	slog.Info("HandleUnobserve")
+	cs, _, thingID, name, _, err := svc.getRequestParams(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	cs.UnobserveProperty(thingID, name)
+}
+
+// HandleWriteProperty handles the request to update a Thing property
+func (svc *HttpsTransport) HandleWriteProperty(w http.ResponseWriter, r *http.Request) {
+	svc.handlePostMessage(vocab.MessageTypeProperty, w, r)
 }

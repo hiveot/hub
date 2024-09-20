@@ -35,6 +35,7 @@ type InteractionListener func(*InteractionOutput)
 // This keeps a copy of the Thing's property and event values and updates on changes.
 type ConsumedThing struct {
 	hc hubclient.IHubClient
+
 	td *tdd.TD
 	// observer of property value changes by property name
 	observers map[string]InteractionListener
@@ -99,10 +100,23 @@ func (ct *ConsumedThing) InvokeAction(name string, params InteractionInput) *Int
 	if aff == nil {
 		return nil
 	}
+	// find the form that describes the protocol for invoking an action
+	actionForm := ct.td.GetForm(vocab.WotOpInvokeAction, name, ct.hc.GetProtocolType())
+
 	tm := hubclient.NewThingMessage(
 		vocab.MessageTypeAction, ct.td.ID, name, params, ct.hc.ClientID())
+	//
+	////stat := ct.hc.InvokeAction(ct.td.ID, name, params)
+	urlParams := map[string]string{
+		"thingID": ct.td.ID,
+		"name":    name,
+	}
+	href, err := ct.td.GetFormHRef(actionForm, urlParams)
+	if err != nil {
+		slog.Warn("InvokeAction", "err", err.Error())
+	}
+	stat := ct.hc.SendOperation(href, actionForm, params)
 
-	stat := ct.hc.PubAction(ct.td.ID, name, params)
 	o := NewInteractionOutputFromTM(tm, ct.td)
 	o.Progress = stat
 	return o

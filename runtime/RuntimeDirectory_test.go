@@ -59,11 +59,11 @@ func TestAddRemoveTD(t *testing.T) {
 
 	//stat = cl.Rpc(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
 	args4JSON, _ := json.Marshal(dtThing1ID)
-	stat := cl.PubAction(digitwin.DirectoryDThingID, digitwin.DirectoryRemoveTDMethod, string(args4JSON))
+	stat := cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryRemoveTDMethod, string(args4JSON))
 	require.Empty(t, stat.Error)
 
 	// after removal of the TD, getTD should return an error but delivery is successful
-	stat = cl.PubAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, string(args4JSON))
+	stat = cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, string(args4JSON))
 	require.NotEmpty(t, stat.Error)
 	require.Equal(t, hubclient.DeliveryCompleted, stat.Progress)
 }
@@ -93,7 +93,7 @@ func TestReadTDs(t *testing.T) {
 	// GetThings returns a serialized TD object
 	// 1. Use actions
 	args := digitwin.DirectoryReadTDsArgs{Limit: 10}
-	stat := cl.PubAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDsMethod, args)
+	stat := cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDsMethod, args)
 	require.Empty(t, stat.Error)
 	assert.NotNil(t, stat.Reply)
 	tdList1 := []string{}

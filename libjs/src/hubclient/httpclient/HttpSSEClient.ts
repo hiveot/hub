@@ -20,30 +20,30 @@ import * as https from "node:https";
 
 // Form paths that apply to all TDs at the top level
 // SYNC with HttpSSEClient.go
-const GetReadAllEventsPath= "/events/{thingID}"
-const GetReadAllPropertiesPath= "/properties/{thingID}"
-const PostSubscribeEventsPath   = "/subscribe/{thingID}/{name}"
-const PostUnsubscribeEventsPath = "/unsubscribe/{thingID}/{name}"
+const GetReadAllEventsPath= "/digitwin/events/{thingID}"
+const PostSubscribeEventsPath   = "/digitwin/subscribe/{thingID}/{name}"
+const PostUnsubscribeEventsPath = "/digitwin/unsubscribe/{thingID}/{name}"
 const ConnectSSEPath      = "/sse"
 
-// Form paths for accessing TDD directory
-const GetThingPath= "/tdd/{thingID}"
-const GetThingsPath= "/tdd" // query param offset=, limit=
-const PostThingPath    = "/tdd/{thingID}"
+// paths for accessing TDD directory
+const GetThingPath= "/digitwin/directory/{thingID}"
+const GetThingsPath= "/digitwin/directory" // query param offset=, limit=
+const PostThingPath    = "/agent/tdd/{thingID}"
 
-// Form paths for accessing actions
-const PostInvokeActionPath   = "/action/{thingID}/{name}"
+// paths for accessing actions
+const PostInvokeActionPath   = "/digitwin/actions/{thingID}/{name}"
 
-// Form paths for accessing events
-const PostPublishEventPath    = "/event/{thingID}/{name}"
+// paths for accessing events
+const PostPublishEventPath    = "/agent/event/{thingID}/{name}"
 
-// Form paths for accessing properties
-const PostWritePropertyPath = "/property/{thingID}/{name}"
+// paths for accessing properties
+const GetReadAllPropertiesPath= "/digitwin/properties/{thingID}"
+const PostWritePropertyPath = "/digitwin/properties/{thingID}/{name}"
 
 // authn service - used in authn
-const PostLoginPath   = "/login"
-const PostLogoutPath  = "/logout"
-const PostRefreshPath = "/refresh"
+const PostLoginPath   = "/authn/login"
+const PostLogoutPath  = "/authn/logout"
+const PostRefreshPath = "/authn/refresh"
 
 
 const hclog = new tslog.Logger()

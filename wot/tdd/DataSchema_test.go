@@ -1,8 +1,9 @@
-package tdd
+package tdd_test
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/ser"
+	"github.com/hiveot/hub/wot/tdd"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,28 +12,28 @@ import (
 // testing of marshalling and unmarshalling schemas
 
 func TestStringSchema(t *testing.T) {
-	ss := DataSchema{
+	ss := tdd.DataSchema{
 		Type:            vocab.WoTDataTypeString,
 		StringMinLength: 10,
 	}
 	enc1, err := ser.Marshal(ss)
 	assert.NoError(t, err)
 	//
-	ds := DataSchema{}
+	ds := tdd.DataSchema{}
 	err = ser.Unmarshal(enc1, &ds)
 	assert.NoError(t, err)
 }
 
 func TestObjectSchema(t *testing.T) {
-	os := DataSchema{
+	os := tdd.DataSchema{
 		Type:       vocab.WoTDataTypeObject,
-		Properties: make(map[string]*DataSchema),
+		Properties: make(map[string]*tdd.DataSchema),
 	}
-	os.Properties["stringProp"] = &DataSchema{
+	os.Properties["stringProp"] = &tdd.DataSchema{
 		Type:            vocab.WoTDataTypeString,
 		StringMinLength: 10,
 	}
-	os.Properties["intProp"] = &DataSchema{
+	os.Properties["intProp"] = &tdd.DataSchema{
 		Type:    vocab.WoTDataTypeInteger,
 		Minimum: 10,
 		Maximum: 20,
@@ -44,7 +45,7 @@ func TestObjectSchema(t *testing.T) {
 	err = ser.Unmarshal(enc1, &ds)
 	assert.NoError(t, err)
 
-	var as DataSchema
+	var as tdd.DataSchema
 	err = ser.Unmarshal(enc1, &as)
 	assert.NoError(t, err)
 

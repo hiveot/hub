@@ -287,7 +287,7 @@ func TestPostEventAction(t *testing.T) {
 	}
 
 	// 5. publish an action
-	stat := cl.PubAction(thingID, actionKey, testMsg)
+	stat := cl.InvokeAction(thingID, actionKey, testMsg)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 100)
 	assert.NotEmpty(t, stat.Reply)

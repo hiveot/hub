@@ -1,6 +1,5 @@
 // ZWaveJSBinding.ts holds the entry point to the zwave binding along with its configuration
-import type {TranslatedValueID, ZWaveNode} from "zwave-js";
-import {InterviewStage} from "zwave-js";
+import type {ZWaveNode} from "zwave-js";
 import {getNodeTD} from "./getNodeTD";
 import {NodeValues} from "./NodeValues";
 import {ZWAPI} from "./ZWAPI.js";

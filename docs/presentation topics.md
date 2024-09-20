@@ -32,6 +32,7 @@
      * The digital Twin Thing ID: dtw:agent:thing
      * Injecting Forms 
    * Challenges and Work In Progress
+     * Suspend past experiences. Past experience hinders with expectations and assumptions. The WoT standard is well thought out and should be followed from a clean slate. 
      * TD uses polymorphism and inheritance that Golang doesn't support.
      * Property affordance inherits from dataschema but the dataschema of each type is different. How can a PA inherit from a different schema depending on its type? Need a different PA for each type?
        * workaround: flatten the various dataschema types into a single type and let the 'type' field determine which fields can be used. No compiler protection here.

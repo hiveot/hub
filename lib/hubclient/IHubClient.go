@@ -3,6 +3,7 @@ package hubclient
 import (
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/wot/tdd"
 )
 
 //// ISubscription interface to underlying subscription mechanism
@@ -104,11 +105,16 @@ type IHubClient interface {
 	// GetStatus returns the current transport connection status
 	GetStatus() TransportStatus
 
+	// GetProtocolType returns the protocol type supported by this transport
+	// "https", "mqtt", "coap", ...
+	// See also: https://www.w3.org/TR/wot-binding-templates/#protocol-bindings-table
+	GetProtocolType() string
+
 	// Logout of the hub and invalidate the connected session token
 	Logout() error
 
-	// PubAction publishes an action request and returns as soon as the request is delivered
-	// to the Hub inbox.
+	// InvokeAction invokes an action request and returns as soon as the
+	// request is delivered to the Hub.
 	//
 	// There are two main use-cases for this.
 	// 1. Invoke an action on an IoT device and receive confirmation of delivery and
@@ -125,12 +131,15 @@ type IHubClient interface {
 	// Actions aimed to IoT devices and non embedded services will return a delivery status
 	// update separately through a delivery event.
 	//
-	//	dThingID the digital twin ID for whom the action is intended
-	//	name of the action to invoke
-	//  value with message data to publish in native format
+	//	url to invoke
+	//  data with action input as defined in its TD
 	//
 	// This returns a delivery status with serialized response message if delivered
-	PubAction(dThingID string, name string, value any) DeliveryStatus
+	//InvokeAction(dThingID string, name string, value any) DeliveryStatus
+	InvokeAction(thingID string, name string, data any) DeliveryStatus
+
+	// SendOperation is temporary transition to support using TD forms
+	SendOperation(href string, op tdd.Form, data any) DeliveryStatus
 
 	// PubEvent publishes an event style message without a response.
 	// It returns as soon as delivery to the hub is confirmed.
@@ -200,7 +209,7 @@ type IHubClient interface {
 	// The handler should return a DeliveryStatus response for action and
 	// property messages. This response is ignored for events.
 	//
-	// To receive events use the 'Subscribe' method to set the events to listen for.
+	// To receive events use the 'SubscribeEvent' method to set the events to listen for.
 	SetMessageHandler(cb MessageHandler)
 
 	// SetConnectHandler sets the notification handler of connection status changes

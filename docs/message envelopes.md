@@ -1,9 +1,9 @@
 # Message Envelopes
 
-Proposal for supporting message envelopes in WoT interaction.
+Considerations for supporting message envelopes in WoT interaction.
 
 Problem: 
-When sending request messages from consumer to things, there is currently no facility to asynchronously track the progress of delivery and the result of the request. Transport protocols such as MQTT, Websocket, SSE, HTTPS don't have a standard way of  linking requests and responses.
+When sending request messages from consumer to things, there is currently no facility to asynchronously track the progress of delivery and the result of the request. Transport protocols such as MQTT-3, Websocket, SSE, HTTPS don't have a standard way of linking requests and responses.
 
 Routing: There is no specification on how to address a Thing in a request or consumer in a response message. This is needed in asynchronous messaging via a Hub, Gateway or message bus.
 

@@ -8,7 +8,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/runtime/api"
@@ -81,7 +80,7 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 
 		//r.Get("/static/*", staticFileServer.ServeHTTP)
 		// build-in REST API for easy login to obtain a token
-		r.Post(httpsse.PostLoginPath, svc.HandlePostLogin)
+		r.Post(PostLoginPath, svc.HandleLogin)
 	})
 	//--- sse
 	router.Group(func(r chi.Router) {
@@ -91,10 +90,10 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 
 		// client sessions authenticate the sender
 		r.Use(sessions.AddSessionFromToken(svc.authenticator))
-		r.HandleFunc(httpsse.ConnectSSEPath, svc.sseServer.ServeHTTP)
+		r.HandleFunc(ConnectSSEPath, svc.sseServer.ServeHTTP)
 	})
 
-	//--- private routes that requires authentication
+	//--- private routes that requires authentication (as published in the TD)
 	router.Group(func(r chi.Router) {
 		r.Use(middleware.Compress(5,
 			"text/html", "text/css", "text/javascript", "image/svg+xml"))
@@ -102,33 +101,33 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 		// client sessions authenticate the sender
 		r.Use(sessions.AddSessionFromToken(svc.authenticator))
 
-		// rest api for top level methods
-		r.Get(httpsse.GetReadAllEventsPath, svc.HandleReadAllEvents)
-		r.Get(httpsse.GetReadAllPropertiesPath, svc.HandleReadAllProperties)
-		r.Get(httpsse.GetThingPath, svc.HandleGetThing)
-		r.Get(httpsse.GetThingsPath, svc.HandleGetThings)
-		//r.Post(httpsse.PostSubscribeAllEventsPath, svc.HandleSubscribeEvents)
-		//r.Post(httpsse.PostUnsubscribeAllEventsPath, svc.HandleUnsubscribeEvents)
-		r.Post(httpsse.PostSubscribeEventPath, svc.HandleSubscribeEvents)
-		r.Post(httpsse.PostUnsubscribeEventPath, svc.HandleUnsubscribeEvents)
+		//- properties methods
+		r.Get(GetReadAllPropertiesPath, svc.HandleReadAllProperties)
+		r.Get(GetReadPropertyPath, svc.HandleReadProperty)
+		r.Post(PostWritePropertyPath, svc.HandleWriteProperty)
+		r.Post(PostObserveAllPropertiesPath, svc.HandleObserve)
+		r.Post(PostObservePropertyPath, svc.HandleObserve)
 
-		// rest API for directory methods
+		//- events methods
+		r.Get(GetReadAllEventsPath, svc.HandleReadAllEvents)
+		r.Post(PostSubscribeEventPath, svc.HandleSubscribe)
+		r.Post(PostSubscribeAllEventsPath, svc.HandleSubscribe)
+		r.Post(PostUnsubscribeEventPath, svc.HandleUnsubscribe)
+		r.Post(PostUnsubscribeAllEventsPath, svc.HandleUnsubscribe)
+		r.Post(PostAgentPublishEventPath, svc.HandleAgentPublishEvent)
 
-		// rest API for action methods
-		r.Post(httpsse.PostInvokeActionPath, svc.HandlePostInvokeAction)
+		// actions methods
+		r.Get(GetReadActionPath, svc.HandleReadAction)
+		r.Get(GetReadAllActionsPath, svc.HandleReadAction)
+		r.Post(PostInvokeActionPath, svc.HandleInvokeAction)
 
-		// rest API for events methods
-		// fixme: event values are in the same namespace
-		r.Get(httpsse.GetReadEventPath, svc.HandleReadProperty)
-		r.Post(httpsse.PostPublishEventPath, svc.HandlePostPublishEvent)
-
-		// rest API for properties methods
-		r.Get(httpsse.FormPropertyPath, svc.HandleReadProperty)
-		r.Put(httpsse.FormPropertyPath, svc.HandleWriteProperty)
+		//- directory methods
+		r.Get(GetReadThingPath, svc.HandleReadThing)
+		r.Get(GetReadAllThingsPath, svc.HandleReadAllThings) // query params: offset,limit
 
 		// authn service
-		r.Post(httpsse.PostRefreshPath, svc.HandlePostRefresh)
-		r.Post(httpsse.PostLogoutPath, svc.HandlePostLogout)
+		r.Post(PostRefreshPath, svc.HandleRefresh)
+		r.Post(PostLogoutPath, svc.HandleLogout)
 	})
 
 	return router
@@ -140,7 +139,11 @@ func (svc *HttpsTransport) createRoutes(router *chi.Mux) http.Handler {
 // this returns an error. Note that the session middleware handler will block any request
 // that requires a session.
 //
-// This returns the session, messageType
+// This protocol binding reads two variables, {thingID} and {name} in the path.
+//
+//	{thingID} is the agent or digital twin thing ID
+//	{name} is the property, event or action name. '+' means 'all'
+//	{messageType} is a legacy variable that is phased out
 func (svc *HttpsTransport) getRequestParams(r *http.Request) (
 	session *sessions.ClientSession, messageType string, thingID string, name string, body []byte, err error) {
 

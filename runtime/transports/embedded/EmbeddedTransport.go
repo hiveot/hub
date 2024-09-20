@@ -34,6 +34,11 @@ func (svc *EmbeddedTransport) GetProtocolInfo() api.ProtocolInfo {
 	return inf
 }
 
+// GetProtocolType returns the type of protocol this client supports
+func (svc *EmbeddedTransport) GetProtocolType() string {
+	return "embed"
+}
+
 // receive a message from a client and ensure it has a message ID
 // embedded transport use a 'e-' messageID prefix for troubleshooting
 func (svc *EmbeddedTransport) handleMessage(msg *hubclient.ThingMessage) hubclient.DeliveryStatus {

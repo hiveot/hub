@@ -7,9 +7,9 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/runtime/transports/httpstransport"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,7 +36,7 @@ func TestHttpsGetActions(t *testing.T) {
 	defer cl2.Disconnect()
 
 	// consumer publish an action to the agent
-	stat := cl2.PubAction(dtThing1ID, key1, data)
+	stat := cl2.InvokeAction(dtThing1ID, key1, data)
 	require.Empty(t, stat.Error)
 
 	// read the latest actions from the digitwin inbox
@@ -73,9 +73,9 @@ func TestHttpsGetEvents(t *testing.T) {
 	tlsClient := tlsclient.NewTLSClient(hostPort, nil, ts.Certs.CaCert, time.Minute)
 	tlsClient.SetAuthToken(token)
 
-	// read latest using the experimental http REST API
+	// read latest using the http REST API
 	vars := map[string]string{"thingID": dtThingID}
-	eventPath := utils.Substitute(httpsse.GetReadAllEventsPath, vars)
+	eventPath := utils.Substitute(httpstransport.GetReadAllEventsPath, vars)
 	reply, _, err := tlsClient.Get(eventPath)
 	require.NoError(t, err)
 	require.NotNil(t, reply)

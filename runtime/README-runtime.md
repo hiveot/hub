@@ -4,28 +4,60 @@
 
 The runtime is in alpha. It is functional but breaking changes can be expected.
 
-Todo:
-* authorization of subscriptions in the HTTPS/SSE transport
-* digitwin directory: 
-   * add forms for supported protocols (in progress)
-   * support dynamic TD's that only:
-      * include writable properties only if the client is allowed to write them
-      * include only actions that client is allowed to use
-* Transports:
-  * centralized session management?
-  * standard way to tracking action progress
-  * support wait for action response so http clients can receive replies without events
-  * http/websocket sub-protocol (see strawman proposal)
-  * mqtt transport protocol 
-  * nats transport protocol
-  * uds transport protocol needs to be added for local services
-  * discovery should be changed to match the WoT specifications
-* Middleware:
-  * Rate control 
-  * tbd
-* Testing:
-  * Improve test coverage
-  * Add performance testing comparing transports
+
+
+
+Todo phase 1 - refactor digital twin design to be api centric 
+1. update design docs
+2. store digital twins as objects 
+3. internal api for use by transport protocols (no messages)
+4. 
+
+Todo phase 1 - bindings for consumed things
+2. Add forms to TD for supported protocols [in progress]
+2. rework IHubClient to:
+   * use Forms and operations
+   * connect, pub form, and sub form operations
+   * support both consumed things and exposed things
+3. Rework TD to handle polymorphism. Store TD in nested map and using decorator functions for accessing it.
+4. re-implement SSE sub-protocol as per spec.
+        * support observerproperty(ies)
+        * support subscribeevent(s)
+        * update consumed thing
+5. Rework runtime http binding to use sse-sc as a custom sub-protocol
+   * add to TDs
+   * config option to enable/disable
+   * change to use headers for subscription
+6. Add single-use sse sub-protocol - one sse connection per operation
+    * add to TDs
+    * config option to enable/disable
+   *  use headers for subscriptions
+
+Todo phase 2 - support exposed things
+1. Add a handcrafted digitwin TD for use by exposed things to connect, authn, publish events, and subscribe to actions and property writes.
+    * define operations
+    * publish the digitwin handcrafted TDs just like any other TD
+    * make it discoverable (see below)
+2. Add discovery of hub TD
+   * disco points to hub TD url
+   * exposed things download hub TD and use it to publish events, td and sub actions.
+2. Bindings (zwave, isy, 1-wire,...)
+    * use properties to represent action status
+
+Todo phase 3 - additional protocols
+1. add websocket sub-protocol (see strawman proposal)
+2. add mqtt transport protocol
+3. add uds transport protocol for local plugins
+4. discovery should be changed to match the WoT specifications
+
+
+Todo phase 4 - improvements
+1. Support dynamic TD's that only:
+   * only include writable properties that the client is allowed to write based on their role.
+   * include only actions that client is allowed to use based on their role.
+2. Testing:
+   * Improve test coverage
+   * Add performance testing comparing transports
 
 ## Summary
 

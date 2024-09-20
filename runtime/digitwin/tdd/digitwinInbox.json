@@ -23,6 +23,47 @@
 			"in": "header"
 		}
 	},
+	"forms": [{
+		"op": "observeallproperties",
+		"href": "/properties",
+		"htv:methodName": "GET",
+		"subprotocol": "sse",
+		"contentType": "text/event-stream",
+		"additionalResponses": [{
+			"success": false,
+			"schema": "error"
+		}]
+	},{
+		"op": "subscribeallevents",
+		"href": "/events",
+		"htv:methodName": "GET",
+		"subprotocol": "sse",
+		"contentType": "text/event-stream",
+		"additionalResponses": [{
+			"success": false,
+			"schema": "error"
+		}]
+	},{
+		"op": "invokeaction",
+		"href": "/action/{name}",
+		"contentType": "application/json",
+		"htv:methodName": "POST"
+	},{
+		"op": "readallproperties",
+		"href": "/properties",
+		"contentType": "application/json",
+		"htv:methodName": "GET"
+	},{
+		"op": "readproperty",
+		"href": "/property/{name}",
+		"contentType": "application/json",
+		"htv:methodName": "GET"
+	},{
+		"op": "writeproperty",
+		"href": "/property/{name}",
+		"contentType": "application/json",
+		"htv:methodName": "POST"
+	}],
 	"schemaDefinitions": {
 
 		"inboxRecord": {
