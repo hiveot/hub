@@ -9,7 +9,7 @@ The Hive is a network of one or more Hubs that exchange this information. A Hub 
 
 Each Hub is linked to one or more information agents such as IoT devices and services. Each agent provides one or more 'Things' with IoT information. Agents connect to a Hub through a provisioning process (more on that below). The Hub handles the authentication and authorization of messages from and to the agents. 
 
-The hearth of a Hub is the 'Digital Twin Runtime' which includes support for various transport protocols. It manages a store of Digital Twin of Things provided by connected devices. A Digital Twin is a digital replica of an actual Thing. It contains the Thing Description (TD) document and property, event and action state values of the Thing. Modifying a property on a Digital Twin will be passed on to the actual device. Changes to the state of the device will update the digital twin, which in turn updates subscribed consumers. Device agents and consumers can use any of the supported protocol bindings to connect to the Hub and publish or retrieve Thing information.
+The hearth of a Hub is the 'Digital Twin Runtime' which contains Digital Twins of Things and supports interaction through various transport protocols. A Digital Twin is a digital replica of an actual Thing. It contains the Thing Description (TD) document and property, event and action state values of the Thing. Writing a property on a Digital Twin will be passed on to the actual device (exposed Thing). Changes to the state of the device will update the digital twin, which in turn notify consumers. Device agents and consumers can use any of the supported protocol bindings to connect to the Hub and publish or retrieve Thing information.
 
 ![](digitwin-overview.jpg)
 
@@ -22,7 +22,7 @@ Agents need an account on the Hub before they are allowed to send or receive Thi
 Consumers typically login using username and password that are setup with the consumer's account. On successful login a consumer is issued an authentication token that is used for the actual authentication. Authentication tokens can also be issued through other identify verification means such as a client certification and (in future) oauth.   
 
 There are several types of agents:
-* An IoT device that implements the HiveOT api or protocol directly is both an agent and a Thing.
+* An IoT device that implements the HiveOT api or protocol directly is called an exposed Thing and acts both an agent and a Thing.
 * An IoT protocol binding that bridges an existing IoT protocol to the HiveOT hub. Example bindings are for zwave, zigbee, CoAP protocols, and for external data sources such as weather stations, email, sms message and so on.
 * A service that enriches information. For example, the history service provides the ability to query historical event data obtained from Things. 
 

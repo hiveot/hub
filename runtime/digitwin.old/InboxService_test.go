@@ -1,4 +1,4 @@
-package digitwin
+package digitwin_old
 
 import (
 	"github.com/hiveot/hub/api/go/digitwin"

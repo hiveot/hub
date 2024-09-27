@@ -219,18 +219,6 @@ func (cs *ClientSession) UnsubscribeEvent(dThingID string, name string) {
 	delete(cs.subscriptions, subKey)
 }
 
-// UnobserveAllProperties removes the observe subscription for all properties
-// This must match the dThingID
-func (cs *ClientSession) UnobserveAllProperties(dThingID string) {
-	cs.mux.Lock()
-	defer cs.mux.Unlock()
-	if dThingID == "" {
-		dThingID = "+"
-	}
-	subKey := fmt.Sprintf("%s.+", dThingID)
-	delete(cs.subscriptions, subKey)
-}
-
 // UnobserveProperty removes the property observe subscription for this session client
 // This must match the dThingID and name of ObserveProperty
 func (cs *ClientSession) UnobserveProperty(dThingID string, name string) {

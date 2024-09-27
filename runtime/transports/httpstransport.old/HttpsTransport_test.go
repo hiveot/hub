@@ -1,4 +1,4 @@
-package httpstransport_test
+package httpstransport_old_test
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/tlsclient"
-	"github.com/hiveot/hub/runtime/transports/httpstransport"
 	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -78,10 +77,10 @@ var dummyAuthenticator = &DummyAuthenticator{}
 // ---------
 // startHttpsBinding starts the binding service
 // intended to handle the boilerplate
-func startHttpsBinding(msgHandler hubclient.MessageHandler) *httpstransport.HttpsTransport {
-	config := httpstransport.NewHttpsTransportConfig()
+func startHttpsBinding(msgHandler hubclient.MessageHandler) *httpstransport_old.HttpsTransport {
+	config := httpstransport_old.NewHttpsTransportConfig()
 	config.Port = testPort
-	svc := httpstransport.NewHttpSSETransport(&config,
+	svc := httpstransport_old.NewHttpSSETransport(&config,
 		certBundle.ClientKey, certBundle.ServerCert, certBundle.CaCert,
 		dummyAuthenticator)
 	err := svc.Start(msgHandler)
@@ -120,9 +119,9 @@ func TestMain(m *testing.M) {
 
 func TestStartStop(t *testing.T) {
 	t.Log("TestStartStop")
-	config := httpstransport.NewHttpsTransportConfig()
+	config := httpstransport_old.NewHttpsTransportConfig()
 	config.Port = testPort
-	svc := httpstransport.NewHttpSSETransport(&config,
+	svc := httpstransport_old.NewHttpSSETransport(&config,
 		certBundle.ClientKey, certBundle.ServerCert, certBundle.CaCert,
 		dummyAuthenticator,
 	)
@@ -324,7 +323,7 @@ func TestPubSubSSE(t *testing.T) {
 	var eventKey = "event11"
 
 	// 1. start the transport
-	var svc *httpstransport.HttpsTransport
+	var svc *httpstransport_old.HttpsTransport
 	svc = startHttpsBinding(
 		func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 			// broadcast event to subscribers

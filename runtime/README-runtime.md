@@ -7,14 +7,123 @@ The runtime is in alpha. It is functional but breaking changes can be expected.
 
 
 
-Todo phase 1 - refactor digital twin design to be api centric 
-1. update design docs
-2. store digital twins as objects 
-3. internal api for use by transport protocols (no messages)
-4. 
+Todo phase 1 - refactor digital twin design  
 
-Todo phase 1 - bindings for consumed things
-2. Add forms to TD for supported protocols [in progress]
+1. store digital twins as objects, why? - ok
+   * Need to store both dtwThing and thing for form support?
+     * forwarding action needs form from thing TD  
+       * does it? how do agents connect / receive actions?
+   * store state, not messages
+     * why? separation of concerns;
+     * digitwin is state representation while messaging methods change.
+   * keep related data together (tds, events, props, actions)
+     * ease of caching; tds, events and props are often used together
+
+2. Are events stored in the digital twin? How many?  => 1
+   Yes, they are a reflection of the last known thing that happened.
+   A: store latest event only. This is not a history store.
+   B: store recent history, to support 'catch up' of reconnected consumers. (eg outbox)
+    * events are consumer facing, who can query the history store
+    * protocol specific capabilities can be handled in the protocol binding
+
+3. How to implement the safe-action flow and track progress?
+   Safe actions are stateless and return output based on the provided input.
+   Multiple safe actions can be in progress concurrently.
+   They are marked in the action affordance with the 'safe' flag.
+   * The digitwin runtime forwards requests immediately to the Exposed Thing, and returns the output in the same request. Eg, rpc style.
+   * Actions progress is not tracked. They are done on return.
+   * A rate limit can be applied by middleware.
+   
+4. How to implement the unsafe-action flow and track progress.
+   Unsafe actions affect the Thing state. 
+   Requests must be applied sequentially.
+   1. A consumer sends an action request to digitwin
+   2. Digitwin checks if there is already an ongoing action with this name
+      3. If an action is pending (not yet delivered) it is replaced
+      4. If an action is delivered - the request is rejected with reason
+      5. If an no action is pending, it is stored and forwarded. The response is returned to the consumer.
+         6. if agent is not reachable, status is pending. 
+         7. if agent is reachable it processes the request the response is returned and returned.
+            8. agent returns 'applied', 'completed', 'rejected'
+      9. Digitwin updates the corresponding property
+      10. Optionally agent updates the corresponding property
+
+5. When to use events vs properties? (option 2 - consumer centric)
+   * Properties are used to report persistent state (eg: there is always a state).
+     * Configurations are writable properties. They are manager focused.
+     * Immutable information are read-only properties. They are informational.
+   * Things that don't have internal state are always events. There is no state to present as property. 
+     * Motion detection trigger is an event but not a property.
+     * A doorbell trigger is an event but not a property.
+   * Consumer interaction are events. 
+     * Alarms are always events.
+     * Sensor updates are events as they are consumer focused. They can also be properties if they represent internal state. In this case they have the same name. 
+     * An actuator state change is an event as it is consumer focused. It can have a property to show the current actuator state.
+     * events are recorded in the history store
+   * Operators can do everything they need to do with events and actions 
+     * The last event value is available in digitwin
+   * The difference is intended purpose. Technically you can do everything with properties but that isn't the point.
+   * Most events have corresponding properties. These should have the same name.
+   * Properties don't replace event history. If it isnt state it isn't a property. 
+   * The decision is up to the Thing agent
+
+6. When to use actions vs properties?
+   If it is a consumer control related to the purpose of the thing, then it is an action.  
+     * Triggering an actuator is an action (lights, blinds, etc)
+     * Setting configuration is done with writable properties
+   * Properties can be used to indicate the progress of the action
+   * If it is not idempotent (same changes, different outcome) it is an action.
+   * Light/dimmer switch is a consumer action so an action.
+   
+7. How is action state stored in properties by digitwin?
+   The state affected by actions are available through properties.
+   A: Managed by the digitwin runtime. 
+      * action properties are objects containing:
+      * current value, progress, timestamp, pending request input, error
+      * progress follows a state machine: ready - pending - applied - rejected
+      * If an exposed thing defines properties with action names they are replaced.
+      pro: consistent presentation and behavior for consumers
+      con: depends on agent to update the state machine. open to failure
+   B: Managed by the exposed thing
+      pro: more accurate representation?
+      con: repeat implementation with different behavior and attributes
+
+8. How to track the action progress itself?
+   stages: received, delivered, applied, completed, aborted, rejected
+   * digitwin starts with received, and upgrade to delivered state when request is passed to agent; Next status is upgraded to Agent's result.  
+   * agent sends property value updates to digitwin (observed property)
+      property value is used to update the digitwin action property 
+      pro: use existing observed property facility
+      pro: state is represented through properties
+      pro: no need for messageID 
+      con: exposed thing must define a property for every (unsafe) action
+   * is action progress the same as state change? => no
+      'progress' follows action state machine.
+      'action state' is the value describing the internal state of the Thing that is affected by the action. 
+   * how to track slow actions progress?
+      action properties indicates intermediary and final state
+
+9. add observe properties api to transport bindings
+  * protocol level implementation
+  * how does hub register for observe properties at agent?
+    A: don't. this is implied - non standard
+    B: thing includes url in Form
+  * how to agents send events and prop changes?
+    * digitwin has pubevent and updateprop operations?
+  * how do agents receive invokeaction and writeproperty requests?
+    * A: agent Thing includes this in Forms?
+      * use subprotocol for defining these ops (eg return channel msg)
+        * don't use SSE as it needs multiple connections for each Thing  
+    * B: push it down connection return channel inside an envelope
+      * this is proprietary
+  * how do agents receive requests for multiple things?
+    * include a different sub-protocol form path in each TD
+
+10. add sse as per spec
+
+
+Todo phase 2 - bindings for consumed things
+1. Add forms to TD for supported protocols [in progress]
 2. rework IHubClient to:
    * use Forms and operations
    * connect, pub form, and sub form operations

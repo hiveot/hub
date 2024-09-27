@@ -1,4 +1,4 @@
-package digitwin_test
+package digitwin_old_test
 
 import (
 	"encoding/json"

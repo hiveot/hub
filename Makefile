@@ -13,7 +13,7 @@ all: api runtime hubcli services bindings    ## Build Core, Bindings and hubcli
 # --- Runtime services
 
 api: .FORCE
-	$(GENAPI) vocab
+	go run cmd/genvocab/main.go
 	$(GENAPI) ggo runtime/authn/tdd
 	$(GENAPI) ggo runtime/authz/tdd
 	$(GENAPI) ggo runtime/digitwin/tdd

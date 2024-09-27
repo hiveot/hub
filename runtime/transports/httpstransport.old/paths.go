@@ -1,4 +1,4 @@
-package httpstransport
+package httpstransport_old
 
 // Paths used by this protocol binding
 //

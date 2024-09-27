@@ -120,7 +120,9 @@ type TD struct {
 //	title is the short display title of the action
 //	description optional explanation of the action
 //	input with dataschema of the action input data, if any
-func (tdoc *TD) AddAction(name string, actionType string, title string, description string, input *DataSchema) *ActionAffordance {
+func (tdoc *TD) AddAction(name string, actionType string, title string, description string,
+	input *DataSchema) *ActionAffordance {
+
 	actionAff := &ActionAffordance{
 		ActionType:  actionType,
 		Title:       title,
@@ -136,10 +138,11 @@ func (tdoc *TD) AddAction(name string, actionType string, title string, descript
 //
 //	actionID is the instance ID of the action, unique within the Thing
 func (tdoc *TD) AddDimmerAction(actionID string) *ActionAffordance {
-	act := tdoc.AddAction(actionID, vocab.ActionDimmer, "", "", &DataSchema{
-		AtType: vocab.ActionDimmer,
-		Type:   vocab.WoTDataTypeInteger,
-	})
+	act := tdoc.AddAction(actionID, vocab.ActionDimmer, "", "",
+		&DataSchema{
+			AtType: vocab.ActionDimmer,
+			Type:   vocab.WoTDataTypeInteger,
+		})
 	return act
 }
 
@@ -148,10 +151,11 @@ func (tdoc *TD) AddDimmerAction(actionID string) *ActionAffordance {
 //
 //	eventID is the instance ID of the event, unique within the Thing
 func (tdoc *TD) AddDimmerEvent(eventID string) *EventAffordance {
-	ev := tdoc.AddEvent(eventID, vocab.PropSwitchDimmer, "", "", &DataSchema{
-		AtType: vocab.PropSwitchDimmer,
-		Type:   vocab.WoTDataTypeInteger,
-	})
+	ev := tdoc.AddEvent(eventID, vocab.PropSwitchDimmer, "", "",
+		&DataSchema{
+			AtType: vocab.PropSwitchDimmer,
+			Type:   vocab.WoTDataTypeInteger,
+		})
 	return ev
 }
 
@@ -166,7 +170,8 @@ func (tdoc *TD) AddDimmerEvent(eventID string) *EventAffordance {
 //	title is the short display title of the event
 //	schema optional event data schema or nil if the event doesn't carry any data
 func (tdoc *TD) AddEvent(
-	eventName string, eventType string, title string, description string, schema *DataSchema) *EventAffordance {
+	eventName string, eventType string, title string, description string,
+	schema *DataSchema) *EventAffordance {
 	if eventName == "" {
 		eventName = eventType
 	}
@@ -176,9 +181,7 @@ func (tdoc *TD) AddEvent(
 		Description: description,
 		//Data:        *schema,
 	}
-	if schema != nil {
-		evAff.Data = *schema
-	}
+	evAff.Data = schema
 
 	tdoc.UpdateEvent(eventName, evAff)
 	return evAff
@@ -220,21 +223,27 @@ func (tdoc *TD) AddProperty(propName string, propType string, title string, data
 // AddPropertyAsString is short for adding a read-only string property
 //
 //	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
-func (tdoc *TD) AddPropertyAsString(propName string, propType string, title string) *PropertyAffordance {
+func (tdoc *TD) AddPropertyAsString(
+	propName string, propType string, title string) *PropertyAffordance {
+
 	return tdoc.AddProperty(propName, propType, title, vocab.WoTDataTypeString)
 }
 
 // AddPropertyAsBool is short for adding a read-only boolean property
 //
 //	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
-func (tdoc *TD) AddPropertyAsBool(propName string, propType string, title string) *PropertyAffordance {
+func (tdoc *TD) AddPropertyAsBool(
+	propName string, propType string, title string) *PropertyAffordance {
+
 	return tdoc.AddProperty(propName, propType, title, vocab.WoTDataTypeBool)
 }
 
 // AddPropertyAsInt is short for adding a read-only integer property
 //
 //	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
-func (tdoc *TD) AddPropertyAsInt(propName string, propType string, title string) *PropertyAffordance {
+func (tdoc *TD) AddPropertyAsInt(
+	propName string, propType string, title string) *PropertyAffordance {
+
 	return tdoc.AddProperty(propName, propType, title, vocab.WoTDataTypeInteger)
 }
 
@@ -375,7 +384,7 @@ func (tdoc *TD) GetForm(operation string, name string, protocol string) Form {
 		vocab.WotOpInvokeAction,
 		vocab.WotOpCancelAction,
 		vocab.WotOpQueryAction,
-		vocab.WotOpQueryAllAction,
+		vocab.WotOpQueryAllActions,
 		"readaction",
 		"readallactions":
 		aff, _ := tdoc.Actions[name]

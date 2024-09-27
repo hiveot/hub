@@ -1,5 +1,23 @@
 # definition of constants used in hiveot
 
+# HiveOT operations
+Operations:
+  version: "0.1"
+  link: "github.com/hiveot/hub/api/vocab/ht-constants.yaml"
+  description: "HiveOT operations"
+  namespace: "ht"
+  vocab:
+    HTOpLogin: "login"
+    HTOpLogout: "logout"
+    HTOpRefresh: "refresh"
+    HTOpUpdateThing: "updatething"
+    HTOpPublishEvent: "publishevent"
+    HTOpUpdateProperty: "updateproperty"
+
+
+
+
+# MessageTypes is DEPRECATED. REPLACED BY FORMS
 MessageTypes:
   version: "0.1"
   link: "github.com/hiveot/hub/api/vocab/ht-constants.yaml"

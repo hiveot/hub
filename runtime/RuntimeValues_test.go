@@ -9,7 +9,6 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/runtime/transports/httpstransport"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -75,7 +74,7 @@ func TestHttpsGetEvents(t *testing.T) {
 
 	// read latest using the http REST API
 	vars := map[string]string{"thingID": dtThingID}
-	eventPath := utils.Substitute(httpstransport.GetReadAllEventsPath, vars)
+	eventPath := utils.Substitute(httpstransport_old.GetReadAllEventsPath, vars)
 	reply, _, err := tlsClient.Get(eventPath)
 	require.NoError(t, err)
 	require.NotNil(t, reply)

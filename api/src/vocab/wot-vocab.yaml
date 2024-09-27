@@ -84,7 +84,7 @@ WoTVocab:
     # Actions
     WotOpCancelAction : "cancelaction"
     WotOpInvokeAction : "invokeaction"
-    WotOpQueryAllAction : "queryallactions"
+    WotOpQueryAllActions : "queryallactions"
     WotOpQueryAction : "queryaction"
 
 

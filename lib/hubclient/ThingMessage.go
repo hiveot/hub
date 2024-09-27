@@ -40,9 +40,6 @@ type ThingMessage struct {
 	// Data in the native format as described in the TD affordance dataschema.
 	Data any `json:"data,omitempty"`
 
-	// Raw is the serialized message data
-	//Raw []byte `json:"-"`
-
 	// MessageID of the message. Intended to detect duplicates and send replies.
 	// Optional. The hub will generate a unique messageID if omitted.
 	MessageID string `json:"messageID,omitempty"`

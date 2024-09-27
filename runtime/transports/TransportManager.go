@@ -10,7 +10,6 @@ import (
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/transports/discotransport"
 	"github.com/hiveot/hub/runtime/transports/embedded"
-	"github.com/hiveot/hub/runtime/transports/httpstransport"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/teris-io/shortid"
 	"log/slog"
@@ -220,7 +219,7 @@ func NewTransportManager(cfg *ProtocolsConfig,
 		svc.discoveryTransport = discotransport.NewDiscoveryTransport(cfg.Discovery)
 	}
 	if cfg.EnableHTTPS {
-		svc.httpsTransport = httpstransport.NewHttpSSETransport(
+		svc.httpsTransport = httpstransport_old.NewHttpSSETransport(
 			&cfg.HttpsTransport,
 			privKey, serverCert, caCert,
 			authenticator)

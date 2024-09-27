@@ -1,7 +1,6 @@
-package src
+package vocab
 
 import (
-	"github.com/hiveot/hub/cmd/tdd2api/src/vocab"
 	"github.com/urfave/cli/v2"
 	"path"
 )
@@ -30,10 +29,10 @@ func GenVocabCommand() *cli.Command {
 }
 
 func GenVocab(vocabDir string) error {
-	err := vocab.GenVocabGo(vocabDir)
+	err := GenVocabGo(vocabDir)
 	println()
-	_ = vocab.GenVocabJS(vocabDir)
+	_ = GenVocabJS(vocabDir)
 	println()
-	_ = vocab.GenVocabPy(vocabDir)
+	_ = GenVocabPy(vocabDir)
 	return err
 }

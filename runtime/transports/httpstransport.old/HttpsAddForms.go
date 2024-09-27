@@ -1,6 +1,7 @@
-package httpstransport
+package httpstransport_old
 
 import (
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
 )
@@ -108,23 +109,111 @@ func (svc *HttpsTransport) AddTDForms(td *tdd.TD) {
 // AddThingLevelForms adds forms with protocol info to the TD, and its properties, events and actions
 // HiveOT mostly uses top level forms.
 func (svc *HttpsTransport) AddThingLevelForms(td *tdd.TD) {
-	// iterate the thing level operations
+	//--- actions
 	params := map[string]string{"thingID": td.ID}
-	for _, opInfo := range svc.operations {
-		if opInfo.isThingLevel {
-			methodPath := utils.Substitute(opInfo.url, params)
-			f := tdd.Form{
-				"op":             opInfo.op, // not a WoT operation
-				"href":           methodPath,
-				"contentType":    "application/json",
-				"htv:methodName": opInfo.method,
-			}
-			if opInfo.subprotocol != "" {
-				f["subprotocol"] = opInfo.subprotocol
-			}
-			td.Forms = append(td.Forms, f)
-		}
-	}
+	methodPath := utils.Substitute(GetReadAllActionsPath, params)
+	td.Forms = append(td.Forms, tdd.Form{
+		"op":             "readallactions", // not a WoT operation
+		"href":           methodPath,
+		"contentType":    "application/json",
+		"htv:methodName": "GET",
+	})
+	// read latest action is an inbox service operation
+	methodPath = utils.Substitute(GetReadActionPath, params)
+	td.Forms = append(td.Forms, tdd.Form{
+		"op":             "readaction", // not a WoT operation
+		"href":           methodPath,
+		"contentType":    "application/json",
+		"htv:methodName": "GET",
+	})
+	methodPath = utils.Substitute(PostInvokeActionPath, params)
+	td.Forms = append(td.Forms, tdd.Form{
+		"op":             vocab.WotOpInvokeAction, // not a WoT operation
+		"href":           methodPath,
+		"contentType":    "application/json",
+		"htv:methodName": "POST",
+	})
+
+	//--- events
+	methodPath = utils.Substitute(GetReadAllEventsPath, params)
+	td.Forms = append(td.Forms, tdd.Form{
+		"op":             "readallevents", // not a WoT operation
+		"href":           methodPath,
+		"contentType":    "application/json",
+		"htv:methodName": "GET",
+	})
+	methodPath = utils.Substitute(PostSubscribeAllEventsPath, params)
+	td.Forms = append(td.Forms, tdd.Form{
+		"op":              vocab.WotOpSubscribeAllEvents,
+		"href":            methodPath,
+		"htv:methodName":  "POST",
+		"contentType":     "application/json",
+		"subprotocol":     "sse",
+		"sse:href":        "/sse",
+		"sse:contentType": "text/event-stream",
+	})
+	methodPath = utils.Substitute(PostSubscribeEventPath, params)
+	td.Forms = append(td.Forms, tdd.Form{
+		"op":              vocab.WotOpSubscribeEvent,
+		"href":            methodPath,
+		"htv:methodName":  "POST",
+		"contentType":     "application/json",
+		"subprotocol":     "sse",
+		"sse:href":        "/sse",
+		"sse:contentType": "text/event-stream",
+	})
+
+	//--- properties
+	methodPath = utils.Substitute(GetReadAllPropertiesPath, params)
+	td.Forms = append(td.Forms, tdd.Form{
+		"op":             vocab.WotOpReadAllProperties,
+		"href":           methodPath,
+		"contentType":    "application/json",
+		"htv:methodName": "GET",
+	})
+
+	methodPath = utils.Substitute(PostUnsubscribeAllEventsPath, params)
+	td.Forms = append(td.Forms, tdd.Form{
+		"op":             vocab.WotOpUnsubscribeAllEvents,
+		"href":           methodPath,
+		"contentType":    "application/json",
+		"htv:methodName": "POST",
+	})
+	methodPath = utils.Substitute(PostObserveAllPropertiesPath, params)
+	td.Forms = append(td.Forms, tdd.Form{
+		"op":              vocab.WotOpObserveAllProperties,
+		"href":            methodPath,
+		"htv:methodName":  "POST",
+		"contentType":     "application/json",
+		"subprotocol":     "sse",
+		"sse:href":        "/sse",
+		"sse:contentType": "text/event-stream",
+	})
+	methodPath = utils.Substitute(PostObservePropertyPath, params)
+	td.Forms = append(td.Forms, tdd.Form{
+		"op":              vocab.WoTOpObserveProperty,
+		"href":            methodPath,
+		"htv:methodName":  "POST",
+		"contentType":     "application/json",
+		"subprotocol":     "sse",
+		"sse:href":        "/sse",
+		"sse:contentType": "text/event-stream",
+	})
+	methodPath = utils.Substitute(GetReadPropertyPath, params)
+	td.Forms = append(td.Forms, tdd.Form{
+		"op":             vocab.WoTOpReadProperty,
+		"href":           methodPath,
+		"contentType":    "application/json",
+		"htv:methodName": "GET",
+	})
+	methodPath = utils.Substitute(PostWritePropertyPath, params)
+	td.Forms = append(td.Forms, tdd.Form{
+		"op":             vocab.WoTOpWriteProperty,
+		"href":           methodPath,
+		"contentType":    "application/json",
+		"htv:methodName": "PUT",
+	})
+
 	// this binding uses the BearerSecurityScheme
 	td.Security = "bearer"
 	td.SecurityDefinitions = map[string]tdd.SecurityScheme{

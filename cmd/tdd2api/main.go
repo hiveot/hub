@@ -21,7 +21,7 @@ func main() {
 		Version:              Version,
 		// commands arguments are passed by reference so they are updated in the Before section
 		Commands: []*cli.Command{
-			src.GenVocabCommand(),
+			//src.GenVocabCommand(),
 			src.ListTDsCommand(),
 			src.Tdd2GoCommand(apiDir),
 		},

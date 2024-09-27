@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/utils"
 	"os"
+	"path"
 	"strings"
 	"time"
 )
@@ -18,6 +19,7 @@ func GenVocabPy(sourceDir string) error {
 		lines := ExportToPython(classes, constants)
 		data := strings.Join(lines, "\n")
 		println("Writing: " + pyFile)
+		err = os.MkdirAll(path.Dir(pyFile), 0755)
 		err = os.WriteFile(pyFile, []byte(data), 0664)
 	}
 	if err != nil {
