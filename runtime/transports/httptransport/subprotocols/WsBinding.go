@@ -1,8 +1,15 @@
 package subprotocols
 
-import "net/http"
+import (
+	"fmt"
+	"github.com/hiveot/hub/runtime/digitwin"
+	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
+	"net/http"
+)
 
+// Websocket subprotocol binding
 type WsBinding struct {
+	sm *sessions.SessionManager
 }
 
 // HandleObserveProperty adds the subscription for a property's change messages
@@ -43,4 +50,27 @@ func (b *WsBinding) HandleUnsubscribeEvent(w http.ResponseWriter, r *http.Reques
 // HandleUnsubscribeAllProperties removes the subscription
 func (b *WsBinding) HandleUnsubscribeAllProperties(w http.ResponseWriter, r *http.Request) {
 	// todo
+}
+
+// InvokeAction sends the action request for the thing to the agent
+func (b *WsBinding) InvokeAction(
+	agentID, thingID, name string, data any, messageID string) (
+	status string, output any, err error) {
+	return digitwin.StatusFailed, nil, fmt.Errorf("Not yet implemented")
+}
+
+// PublishEvent send an event to subscribers
+func (b *WsBinding) PublishEvent(dThingID, name string, data any, messageID string) {
+}
+
+// PublishProperty send a property change update to subscribers
+func (b *WsBinding) PublishProperty(dThingID, name string, data any, messageID string) {
+}
+
+// NewWsBinding returns a new websocket sub-protocol binding
+func NewWsBinding(sm *sessions.SessionManager) *WsBinding {
+	wsBinding := &WsBinding{
+		sm: sm,
+	}
+	return wsBinding
 }

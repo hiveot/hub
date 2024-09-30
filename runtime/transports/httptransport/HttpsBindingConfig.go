@@ -1,12 +1,12 @@
-package httpstransport
+package httptransport
 
 import "github.com/hiveot/hub/runtime/authn/config"
 
 const DefaultHttpsPort = 8444
 
-// HttpsTransportConfig contains the configuration of the HTTPS server binding,
+// HttpTransportConfig contains the configuration of the HTTPS server binding,
 // including the websocket and the sse configuration.
-type HttpsTransportConfig struct {
+type HttpTransportConfig struct {
 	// enable websocket support. Default is false.
 	EnableWS bool `yaml:"enableWS,omitempty"`
 
@@ -25,10 +25,10 @@ type HttpsTransportConfig struct {
 	ConsumerTokenValiditySec int `yaml:"consumerTokenValiditySec"`
 }
 
-// NewHttpsTransportConfig creates a new instance of the https binding configuration
+// NewHttpTransportConfig creates a new instance of the https binding configuration
 // with default values
-func NewHttpsTransportConfig() HttpsTransportConfig {
-	cfg := HttpsTransportConfig{
+func NewHttpTransportConfig() HttpTransportConfig {
+	cfg := HttpTransportConfig{
 		Host:                     "",
 		Port:                     DefaultHttpsPort,
 		EnableSSE:                false,

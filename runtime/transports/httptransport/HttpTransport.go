@@ -1,4 +1,4 @@
-package httpstransport
+package httptransport
 
 import (
 	"crypto/tls"
@@ -12,15 +12,15 @@ import (
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/runtime/digitwin/service"
-	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
-	"github.com/hiveot/hub/runtime/transports/httpstransport/subprotocols"
-	"io"
+	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
+	"github.com/hiveot/hub/runtime/transports/httptransport/subprotocols"
 	"log/slog"
 	"net/http"
 )
 
-type HttpsOperation struct {
+type HttpOperation struct {
 	op           string
 	method       string
 	subprotocol  string
@@ -29,11 +29,11 @@ type HttpsOperation struct {
 	isThingLevel bool
 }
 
-// HttpsTransport is the Hub transport binding for HTTPS
+// HttpTransport is the Hub transport binding for HTTPS
 // This wraps the library's https server and add routes and middleware for use in the binding
-type HttpsTransport struct {
+type HttpTransport struct {
 	// port and path configuration
-	config *HttpsTransportConfig
+	config *HttpTransportConfig
 
 	// server cert/keys
 	privKey    keys.IHiveKey
@@ -43,6 +43,7 @@ type HttpsTransport struct {
 	// TLS server and router
 	httpServer *tlsserver.TLSServer
 	router     *chi.Mux
+	//sm         *sessions.SessionManager
 
 	// subprotocol bindings
 	sse   *subprotocols.SseBinding
@@ -56,7 +57,7 @@ type HttpsTransport struct {
 	authenticator api.IAuthenticator
 
 	// Thing level operations
-	operations []HttpsOperation
+	operations []HttpOperation
 
 	// digitwin service
 	dtwService *service.DigitwinService
@@ -65,10 +66,10 @@ type HttpsTransport struct {
 // AddGetOp adds protocol binding operation with a URL and handler
 //
 // This is used to add Forms to the digitwin TDs
-func (svc *HttpsTransport) AddGetOp(r chi.Router,
+func (svc *HttpTransport) AddGetOp(r chi.Router,
 	op string, thingLevel bool, opURL string, handler http.HandlerFunc) {
 
-	svc.operations = append(svc.operations, HttpsOperation{
+	svc.operations = append(svc.operations, HttpOperation{
 		op:           op,
 		method:       http.MethodGet,
 		url:          opURL,
@@ -81,9 +82,9 @@ func (svc *HttpsTransport) AddGetOp(r chi.Router,
 // AddPostOp adds protocol binding operation with a URL and handler
 //
 // This is used to add Forms to the digitwin TDs
-func (svc *HttpsTransport) AddPostOp(r chi.Router,
+func (svc *HttpTransport) AddPostOp(r chi.Router,
 	op string, isThingLevel bool, opURL string, handler http.HandlerFunc) {
-	svc.operations = append(svc.operations, HttpsOperation{
+	svc.operations = append(svc.operations, HttpOperation{
 		op:           op,
 		method:       http.MethodPost,
 		url:          opURL,
@@ -94,7 +95,7 @@ func (svc *HttpsTransport) AddPostOp(r chi.Router,
 }
 
 // setup the chain of routes used by the service and return the router
-func (svc *HttpsTransport) createRoutes(router chi.Router) http.Handler {
+func (svc *HttpTransport) createRoutes(router chi.Router) http.Handler {
 
 	// TODO: is there a use for a static file server?
 	//var staticFileServer http.Handler
@@ -142,55 +143,53 @@ func (svc *HttpsTransport) createRoutes(router chi.Router) http.Handler {
 		// client sessions authenticate the sender
 		r.Use(sessions.AddSessionFromToken(svc.authenticator))
 
-		//- properties methods
+		//- direct methods for digital twins
 		svc.AddGetOp(r, vocab.WotOpReadAllProperties, true,
 			"/digitwin/properties/{thingID}", svc.HandleReadAllProperties)
 		svc.AddGetOp(r, vocab.WoTOpReadProperty, true,
 			"/digitwin/properties/{thingID}/{name}", svc.HandleReadProperty)
-
-		svc.AddPostOp(r, vocab.WotOpObserveAllProperties, true,
-			"/ssesc/digitwin/observe/{thingID}", svc.ssesc.HandleObserveAllProperties)
-		svc.AddPostOp(r, vocab.WotOpObserveAllProperties, true,
-			"/sse/digitwin/observe/{thingID}", svc.sse.HandleObserveAllProperties)
-		svc.AddPostOp(r, vocab.WotOpObserveAllProperties, true,
-			"/ws/digitwin/observe/{thingID}", svc.ws.HandleObserveAllProperties)
-
-		svc.AddPostOp(r, vocab.WoTOpObserveProperty, true,
-			"/ssesc/digitwin/observe/{thingID}/{name}", svc.ssesc.HandleObserveProperty)
-		svc.AddPostOp(r, vocab.WoTOpObserveProperty, true,
-			"/sse/digitwin/observe/{thingID}/{name}", svc.sse.HandleObserveProperty)
-		svc.AddPostOp(r, vocab.WoTOpObserveProperty, true,
-			"/ws/digitwin/observe/{thingID}/{name}", svc.ws.HandleObserveProperty)
-
-		svc.AddPostOp(r, vocab.WoTOpUnobserveProperty, true,
-			"/ssesc/digitwin/unobserve/{thingID}/{name}", svc.ssesc.HandleUnobserveProperty)
-		svc.AddPostOp(r, vocab.WotOpUnobserveAllProperties, true,
-			"/ssesc/digitwin/unobserve/{thingID}", svc.ssesc.HandleUnobserveAllProperties)
-
 		svc.AddPostOp(r, vocab.WoTOpWriteProperty, true,
 			"/digitwin/properties/{thingID}/{name}", svc.HandleWriteProperty)
-
-		//- events methods
-		svc.AddGetOp(r, "readallevents", true,
-			"/digitwin/events/{thingID}", svc.HandleReadAllEvents)
-		svc.AddGetOp(r, "readevent", true,
-			"/digitwin/events/{thingID}/{eventID}", svc.HandleReadEvent)
-		svc.AddPostOp(r, vocab.WotOpSubscribeEvent, true,
-			"/digitwin/subscribe/{thingID}/{name}", svc.ssesc.HandleSubscribeEvent)
-		svc.AddPostOp(r, vocab.WotOpSubscribeAllEvents, true,
-			"/digitwin/subscribe/{thingID}", svc.ssesc.HandleSubscribeEvent)
-		svc.AddPostOp(r, vocab.WotOpUnsubscribeAllEvents, true,
-			"/digitwin/unsubscribe/{thingID}", svc.ssesc.HandleUnsubscribeEvent)
-		svc.AddPostOp(r, vocab.WotOpUnsubscribeEvent, true,
-			"/digitwin/unsubscribe/{thingID}/{name}", svc.ssesc.HandleUnsubscribeEvent)
-
-		// actions methods
 		svc.AddGetOp(r, vocab.WotOpQueryAllActions, true,
 			"/digitwin/actions/{thingID}", svc.HandleQueryAllActions)
 		svc.AddGetOp(r, vocab.WotOpQueryAction, true,
 			"/digitwin/actions/{thingID}/{name}", svc.HandleQueryAction)
 		svc.AddPostOp(r, vocab.WotOpInvokeAction, true,
 			"/digitwin/actions/{thingID}/{name}", svc.HandleInvokeAction)
+		svc.AddGetOp(r, "readallevents", true,
+			"/digitwin/events/{thingID}", svc.HandleReadAllEvents)
+		svc.AddGetOp(r, "readevent", true,
+			"/digitwin/events/{thingID}/{eventID}", svc.HandleReadEvent)
+
+		// sse-sc subprotocol routes
+		svc.AddPostOp(r, vocab.WotOpObserveAllProperties, true,
+			"/ssesc/digitwin/observe/{thingID}", svc.ssesc.HandleObserveAllProperties)
+		svc.AddPostOp(r, vocab.WotOpSubscribeAllEvents, true,
+			"/ssesc/digitwin/subscribe/{thingID}", svc.ssesc.HandleSubscribeAllEvents)
+		svc.AddPostOp(r, vocab.WotOpSubscribeEvent, true,
+			"/ssesc/digitwin/subscribe/{thingID}/{name}", svc.ssesc.HandleSubscribeEvent)
+		svc.AddPostOp(r, vocab.WoTOpObserveProperty, true,
+			"/ssesc/digitwin/observe/{thingID}/{name}", svc.ssesc.HandleObserveProperty)
+		svc.AddPostOp(r, vocab.WotOpUnobserveAllProperties, true,
+			"/ssesc/digitwin/observe/{thingID}", svc.ssesc.HandleUnobserveAllProperties)
+		svc.AddPostOp(r, vocab.WoTOpUnobserveProperty, true,
+			"/ssesc/digitwin/unobserve/{thingID}/{name}", svc.ssesc.HandleUnobserveProperty)
+		svc.AddPostOp(r, vocab.WotOpUnsubscribeAllEvents, true,
+			"/ssesc/digitwin/unsubscribe/{thingID}", svc.ssesc.HandleUnsubscribeAllEvents)
+		svc.AddPostOp(r, vocab.WotOpUnsubscribeEvent, true,
+			"/ssesc/digitwin/unsubscribe/{thingID}/{name}", svc.ssesc.HandleUnsubscribeEvent)
+
+		// ws subprotocol routes
+		svc.AddPostOp(r, vocab.WotOpObserveAllProperties, true,
+			"/ws/digitwin/observe/{thingID}", svc.ws.HandleObserveAllProperties)
+		svc.AddPostOp(r, vocab.WoTOpObserveProperty, true,
+			"/ws/digitwin/observe/{thingID}/{name}", svc.ws.HandleObserveProperty)
+
+		// sse subprotocol routes
+		svc.AddPostOp(r, vocab.WotOpSubscribeAllEvents, true,
+			"/sse/digitwin/subscribe/{thingID}", svc.sse.HandleSubscribeAllEvents)
+		svc.AddPostOp(r, vocab.WotOpObserveAllProperties, true,
+			"/sse/digitwin/observe/{thingID}", svc.sse.HandleObserveAllProperties)
 
 		// digitwin directory actions. Are these operations?
 		svc.AddGetOp(r, vocab.HTOpReadThing, false,
@@ -212,54 +211,55 @@ func (svc *HttpsTransport) createRoutes(router chi.Router) http.Handler {
 		svc.AddPostOp(r, vocab.HTOpUpdateThing, false,
 			"/agent/tdd/{thingID}", svc.HandleUpdateThing)
 		svc.AddPostOp(r, vocab.HTOpPublishEvent, false,
-			"/agent/event/{thingID}/{name}", svc.HandleAgentPublishEvent)
+			"/agent/event/{thingID}/{name}", svc.HandlePublishEvent)
 		svc.AddPostOp(r, vocab.HTOpUpdateProperty, false,
-			"/agent/property/{thingID}/{name}", svc.HandleAgentPublishEvent)
+			"/agent/property/{thingID}/{name}", svc.HandleUpdateProperty)
 
 	})
 
 	return router
 }
 
-// getRequestParams reads the client session, URL parameters and body payload from the request.
 //
-// The session context is set by the http middleware. If the session is not available then
-// this returns an error. Note that the session middleware handler will block any request
-// that requires a session.
+//// getRequestParams reads the client session, URL parameters and body payload from the request.
+////
+//// The session context is set by the http middleware. If the session is not available then
+//// this returns an error. Note that the session middleware handler will block any request
+//// that requires a session.
+////
+//// This protocol binding reads two variables, {thingID} and {name} in the path.
+////
+////	{thingID} is the agent or digital twin thing ID
+////	{name} is the property, event or action name. '+' means 'all'
+////	{messageType} is a legacy variable that is phased out
+//func (svc *HttpTransport) getRequestParams(r *http.Request) (
+//	session *sessions.ClientSession, messageType string, thingID string, name string, body []byte, err error) {
 //
-// This protocol binding reads two variables, {thingID} and {name} in the path.
+//	// get the required client session of this agent
+//	ctxSession := r.Context().Value(sessions.SessionContextID)
+//	if ctxSession == nil {
+//		// This is an internal error. The middleware session handler would have blocked
+//		// a request that required a session before getting here.
+//		err = fmt.Errorf("Missing session for request '%s' from '%s'",
+//			r.RequestURI, r.RemoteAddr)
+//		slog.Error(err.Error())
+//		return nil, messageType, "", "", nil, err
+//	}
+//	cs := ctxSession.(*sessions.ClientSession)
 //
-//	{thingID} is the agent or digital twin thing ID
-//	{name} is the property, event or action name. '+' means 'all'
-//	{messageType} is a legacy variable that is phased out
-func (svc *HttpsTransport) getRequestParams(r *http.Request) (
-	session *sessions.ClientSession, messageType string, thingID string, name string, body []byte, err error) {
-
-	// get the required client session of this agent
-	ctxSession := r.Context().Value(sessions.SessionContextID)
-	if ctxSession == nil {
-		// This is an internal error. The middleware session handler would have blocked
-		// a request that required a session before getting here.
-		err = fmt.Errorf("Missing session for request '%s' from '%s'",
-			r.RequestURI, r.RemoteAddr)
-		slog.Error(err.Error())
-		return nil, messageType, "", "", nil, err
-	}
-	cs := ctxSession.(*sessions.ClientSession)
-
-	// build a message from the URL and payload
-	// URLParam names are defined by the path variables set in the router.
-	thingID = chi.URLParam(r, "thingID")
-	name = chi.URLParam(r, "name")
-	messageType = chi.URLParam(r, "messageType")
-	body, _ = io.ReadAll(r.Body)
-
-	return cs, messageType, thingID, name, body, err
-}
+//	// build a message from the URL and payload
+//	// URLParam names are defined by the path variables set in the router.
+//	thingID = chi.URLParam(r, "thingID")
+//	name = chi.URLParam(r, "name")
+//	messageType = chi.URLParam(r, "messageType")
+//	body, _ = io.ReadAll(r.Body)
+//
+//	return cs, messageType, thingID, name, body, err
+//}
 
 // receive a message from a client and ensure it has a message ID
 // https transport apply a 'h-' messageID prefix for troubleshooting
-//func (svc *HttpsTransport) handleMessage(msg *hubclient.ThingMessage) hubclient.DeliveryStatus {
+//func (svc *HttpTransport) handleMessage(msg *hubclient.ThingMessage) hubclient.DeliveryStatus {
 //	if msg.MessageID == "" {
 //		msg.MessageID = "h-" + shortid.MustGenerate()
 //	}
@@ -267,7 +267,7 @@ func (svc *HttpsTransport) getRequestParams(r *http.Request) (
 //}
 
 // GetProtocolInfo returns info on the protocol supported by this binding
-func (svc *HttpsTransport) GetProtocolInfo() api.ProtocolInfo {
+func (svc *HttpTransport) GetProtocolInfo() api.ProtocolInfo {
 	hostName := svc.config.Host
 	if hostName == "" {
 		hostName = "localhost"
@@ -281,30 +281,57 @@ func (svc *HttpsTransport) GetProtocolInfo() api.ProtocolInfo {
 	return inf
 }
 
-// InvokeActionToAgent sends a thing action request to the agent
+// InvokeAction sends a thing action request to the agent
 // This passes it to SSE/WS sub-protocol handlers of active sessions
-func (svc *HttpsTransport) InvokeActionToAgent(dThingID string, name string, input any) {
-	sm := sessions.GetSessionManager()
-	sm.InvokeAction(dThingID, name, input)
+func (svc *HttpTransport) InvokeAction(
+	agentID string, thingID string, name string, input any, messageID string) (
+	status string, output any, err error) {
+
+	if svc.ws != nil {
+		return svc.ws.InvokeAction(agentID, thingID, name, input, messageID)
+	}
+	if svc.ssesc != nil {
+		return svc.ssesc.InvokeAction(agentID, thingID, name, input, messageID)
+	}
+	if svc.sse != nil {
+		return svc.sse.InvokeAction(agentID, thingID, name, input, messageID)
+	}
+	return digitwin.StatusFailed, nil, fmt.Errorf("No sub-protocol bindings")
 }
 
-// PublishEventToSubscribers sends an event message to subscribers of this event.
+// PublishEvent sends an event message to subscribers of this event.
 // This passes it to SSE/WS sub-protocol handlers of active sessions
-func (svc *HttpsTransport) PublishEventToSubscribers(dThingID string, name string, value any) {
-	sm := sessions.GetSessionManager()
-	sm.PublishEvent(dThingID, name, value)
+func (svc *HttpTransport) PublishEvent(
+	dThingID string, name string, value any, messageID string) {
+	if svc.ws != nil {
+		svc.ws.PublishEvent(dThingID, name, value, messageID)
+	}
+	if svc.ssesc != nil {
+		svc.ssesc.PublishEvent(dThingID, name, value, messageID)
+	}
+	if svc.sse != nil {
+		svc.sse.PublishEvent(dThingID, name, value, messageID)
+	}
 }
 
-// PublishPropertyToObservers sends a property value message to observers of this property.
+// PublishProperty sends a property value update to observers of this property.
 // This passes it to SSE/WS sub-protocol handlers of active sessions
-func (svc *HttpsTransport) PublishPropertyToObservers(dThingID string, name string, value any) {
-	sm := sessions.GetSessionManager()
-	sm.PublishProperty(dThingID, name, value)
+func (svc *HttpTransport) PublishProperty(
+	dThingID string, name string, value any, messageID string) {
+	if svc.ws != nil {
+		svc.ws.PublishProperty(dThingID, name, value, messageID)
+	}
+	if svc.ssesc != nil {
+		svc.ssesc.PublishProperty(dThingID, name, value, messageID)
+	}
+	if svc.sse != nil {
+		svc.sse.PublishProperty(dThingID, name, value, messageID)
+	}
 }
 
 // Start the https server and listen for incoming connection requests
-func (svc *HttpsTransport) Start(handler hubclient.MessageHandler) error {
-	slog.Info("Starting HttpsTransport")
+func (svc *HttpTransport) Start(handler hubclient.MessageHandler) error {
+	slog.Info("Starting HttpTransport")
 	svc.httpServer, svc.router = tlsserver.NewTLSServer(
 		svc.config.Host, svc.config.Port, svc.serverCert, svc.caCert)
 
@@ -315,19 +342,19 @@ func (svc *HttpsTransport) Start(handler hubclient.MessageHandler) error {
 }
 
 // Stop the https server
-func (svc *HttpsTransport) Stop() {
-	slog.Info("Stopping HttpsTransport")
+func (svc *HttpTransport) Stop() {
+	slog.Info("Stopping HttpTransport")
 
 	// Shutdown remaining sessions to avoid hanging.
 	// (closing the TLS server does not shut down active connections)
-	sm := sessions.GetSessionManager()
-	sm.CloseAll()
+	//sm := sessions.GetSessionManager()
+	//sm.CloseAll()
 	svc.httpServer.Stop()
 }
 
 // writeError is a convenience function that logs and writes an error
 // If the reply has an error then write a bad request with the error as payload
-func (svc *HttpsTransport) writeError(w http.ResponseWriter, err error, code int) {
+func (svc *HttpTransport) writeError(w http.ResponseWriter, err error, code int) {
 	if code == 0 {
 		code = http.StatusBadRequest
 	}
@@ -340,7 +367,7 @@ func (svc *HttpsTransport) writeError(w http.ResponseWriter, err error, code int
 }
 
 // writeReply is a convenience function that serializes the data and writes it as a response.
-func (svc *HttpsTransport) writeReply(w http.ResponseWriter, data any) {
+func (svc *HttpTransport) writeReply(w http.ResponseWriter, data any) {
 	if data != nil {
 		// If no header is written then w.Write writes a StatusOK
 		payload, _ := json.Marshal(data)
@@ -351,29 +378,35 @@ func (svc *HttpsTransport) writeReply(w http.ResponseWriter, data any) {
 	}
 }
 
-// NewHttpSSETransport creates a new instance of the HTTPS Server with JWT authentication
-// and endpoints for bindings.
+// NewHttpTransport creates a new instance of the HTTPS Server with JWT authentication
+// and SSE/SSE-SC/WS sub-protocol bindings.
 //
 //	config
 //	privKey
 //	caCert
 //	sessionAuth for creating and validating authentication tokens
-//	dtwService that handles requests
-func NewHttpSSETransport(config *HttpsTransportConfig,
+//	dtwService that handles digital thing requests
+func NewHttpTransport(config *HttpTransportConfig,
 	privKey keys.IHiveKey,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	authenticator api.IAuthenticator,
 	dtwService *service.DigitwinService,
-) *HttpsTransport {
-
-	svc := HttpsTransport{
+) *HttpTransport {
+	// FIXME: do not use a global. the sessionmanager belongs to this transport binding.
+	//
+	sm := sessions.GetSessionManager()
+	svc := HttpTransport{
+		//sm:            sm,
 		authenticator: authenticator,
 		config:        config,
 		serverCert:    serverCert,
 		caCert:        caCert,
 		privKey:       privKey,
 		dtwService:    dtwService,
+		ws:            subprotocols.NewWsBinding(sm),
+		sse:           subprotocols.NewSseBinding(sm),
+		ssesc:         subprotocols.NewSseScBinding(sm),
 		//httpServer:  httpServer,
 		//router:      r,
 	}

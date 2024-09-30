@@ -93,10 +93,22 @@ func AddSessionFromToken(userAuthn api.IAuthenticator) func(next http.Handler) h
 // GetSessionFromContext returns the session object for the given request from the context.
 //
 // This should not be used in an SSE session.
-func GetSessionFromContext(r *http.Request) (*ClientSession, error) {
+//func GetSessionFromContext(r *http.Request) (*ClientSession, error) {
+//	ctxSession := r.Context().Value(SessionContextID)
+//	if ctxSession == nil {
+//		return nil, errors.New("no session in context")
+//	}
+//	return ctxSession.(*ClientSession), nil
+//}
+
+// GetSessionIdFromContext returns the session and clientID for the given request
+//
+// This should not be used in an SSE session.
+func GetSessionIdFromContext(r *http.Request) (sessionID string, clientID string, err error) {
 	ctxSession := r.Context().Value(SessionContextID)
 	if ctxSession == nil {
-		return nil, errors.New("no session in context")
+		return "", "", errors.New("no session in context")
 	}
-	return ctxSession.(*ClientSession), nil
+	cs := ctxSession.(*ClientSession)
+	return cs.sessionID, cs.clientID, nil
 }

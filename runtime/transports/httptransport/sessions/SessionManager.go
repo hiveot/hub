@@ -5,18 +5,16 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
 	"log/slog"
 	"sync"
 )
 
-// SessionManager tracks client sessions using their authentication token.
+// SessionManager tracks client authentication sessions
 //
 // TODO:
-//  1. close session after not being used for X seconds
-//  2. Persist sessions between restart (to restore login) - config option?
+//  1. Persist sessions between restart (to restore login) - config option?
+//  3. Move clientSessions with the sub-protocol bindings that manage their own sessions
 type SessionManager struct {
 	// existing sessions by sessionID (remoteAddr)
 	sidSessions map[string]*ClientSession
@@ -41,7 +39,7 @@ func (sm *SessionManager) NewSession(clientID string, remoteAddr string, session
 	if sessionID == "" {
 		return nil, fmt.Errorf("NewSession for client '%s' is missing a sessionID", clientID)
 	}
-	cs = NewClientSession(sessionID, clientID, remoteAddr)
+	cs = NewClientSession(sessionID, clientID)
 	sm.mux.Lock()
 	sm.sidSessions[sessionID] = cs
 	existingSessions, found := sm.clientSessions[clientID]
@@ -145,26 +143,62 @@ func (sm *SessionManager) Init(hubURL string, core string,
 	tokenKP keys.IHiveKey) {
 }
 
-// SendEvent pass an event to sessions of subscribers
-// Returns true if at least one session received the event or false if no session are available
-func (sm *SessionManager) SendEvent(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
-	sm.mux.RLock()
-	defer sm.mux.RUnlock()
+// InvokeAction passes an action request to the session of the given agent.
+// This returns a delivery status or an error if the request cannot be delivered.
+//
+// messageID is optional and can be useful to link to a previous action.
+//func (sm *SessionManager) InvokeAction(
+//	agentID string, thingID string, name string, data any, messageID string) (
+//	status string, output any, err error) {
+//
+//	sm.mux.RLock()
+//	defer sm.mux.RUnlock()
+//
+//	for id, session := range sm.sidSessions {
+//		_ = id
+//		if session.clientID == agentID && len(session.endpoints) > 0 {
+//			ep := session.endpoints[0]
+//			status, output, err = ep.InvokeAction(
+//				agentID, thingID, name, data, messageID)
+//			if err == nil {
+//				return status, output, err
+//			}
+//		}
+//	}
+//	slog.Warn("InvokeAction. Agent not connected",
+//		"agentID", agentID, "thingID", thingID, "action", name)
+//	return digitwin.StatusFailed, nil, fmt.Errorf("agent not connected")
+//}
 
-	for id, session := range sm.sidSessions {
-		_ = id
-		// don't send event to self
-		if session.IsSubscribed(msg.ThingID, msg.Name) {
-			_ = session.SendSSE(msg.MessageID, vocab.MessageTypeEvent, msg)
-		}
-	}
-	if len(sm.sidSessions) > 0 {
-		stat.Completed(msg, nil, nil)
-	} else {
-		stat.Failed(msg, errors.New("no active sessions"))
-	}
-	return stat
-}
+// PublishEvent sends an event to subscribers.
+// This is send-and-forget so it doesn't return anything.
+// messageID is optional and can be useful to link to a previous action.
+//func (sm *SessionManager) PublishEvent(
+//	dThingID string, name string, data any, messageID string) {
+//	sm.mux.RLock()
+//	defer sm.mux.RUnlock()
+//
+//	for _, session := range sm.sidSessions {
+//		for _, ep := range session.endpoints {
+//			ep.PublishEvent(dThingID, name, data, messageID)
+//		}
+//	}
+//}
+
+// PublishProperty sends an property change notification to subscribers.
+// This is send-and-forget so it doesn't return anything.
+// messageID is optional and can be useful to link to a previous action.
+//func (sm *SessionManager) PublishProperty(
+//	dThingID string, name string, data any, messageID string) {
+//	sm.mux.RLock()
+//	defer sm.mux.RUnlock()
+//
+//	for _, session := range sm.sidSessions {
+//		for _, ep := range session.endpoints {
+//			ep.PublishProperty(dThingID, name, data, messageID)
+//		}
+//	}
+//}
 
 // The global session manager instance.
 // Init must be called before use.

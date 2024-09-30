@@ -8,8 +8,10 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/transports/discotransport"
 	"github.com/hiveot/hub/runtime/transports/embedded"
+	"github.com/hiveot/hub/runtime/transports/httptransport"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/teris-io/shortid"
 	"log/slog"
@@ -208,7 +210,7 @@ func (svc *TransportsManager) Stop() {
 // to be used to register embedded services.
 func NewTransportManager(cfg *ProtocolsConfig,
 	privKey keys.IHiveKey, serverCert *tls.Certificate, caCert *x509.Certificate,
-	authenticator api.IAuthenticator) *TransportsManager {
+	authenticator api.IAuthenticator, dtwService *service.DigitwinService) *TransportsManager {
 
 	svc := TransportsManager{
 		// the embedded transport protocol is required for the runtime
@@ -219,10 +221,10 @@ func NewTransportManager(cfg *ProtocolsConfig,
 		svc.discoveryTransport = discotransport.NewDiscoveryTransport(cfg.Discovery)
 	}
 	if cfg.EnableHTTPS {
-		svc.httpsTransport = httpstransport_old.NewHttpSSETransport(
+		svc.httpsTransport = httptransport.NewHttpTransport(
 			&cfg.HttpsTransport,
 			privKey, serverCert, caCert,
-			authenticator)
+			authenticator, dtwService)
 	}
 	if cfg.EnableMQTT {
 		//svc.mqttTransport = mqtttransport.NewMqttTransport(

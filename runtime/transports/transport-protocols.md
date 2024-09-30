@@ -139,3 +139,69 @@ When subscribing, the consumed-thing client connects to the href URL if a connec
 
 ? yeah, how does this work?
 ? use 'additional '
+
+
+
+# HTTP Implementation
+
+Http server listens on 8443
+register routes for http requests.
+- each request carries an auth token
+- auth token contains client ID and session ID
+
+sse-sc subprotocol:
+* http binding -> [N]sub-protocol bindings
+* -> ws binding
+* -> sse binding
+* -> sse-sc binding
+*    manage connections:
+*     SSE-Connection:
+*        -> [header] -> connectionID
+*        -> [auth token] -> clientID, sessionID
+*        -> add/remove subscription -> []subscriptions
+*        -> invoke action to agent
+*        -> publish event, publish property to consumer
+*     Connect/disconnect: add/remove connection in map;
+*        How to determine connectionID from clientID/sessionID?
+*          cid = sessionID - one connection per session (no browsers) 
+*                optional cid or tabid header for browsers
+*        Multiple connections from one or more consumed things? 
+*          Yes: consumedthings adds cid=sessionID.thingID header
+*               subscription requests 
+*        auth token contains client type as agent?
+*        -> map[agentID]SSE-Connection
+*        -> map[consumerID.connectionID]SSE-Connection
+*     InvokeAction: 
+*       1. determine agentID and thingID
+*       2. lookup connection of agent -> how?
+*           A: iterate all connections - how many to expect? 
+*           B: separate map of [agentID]connectionID (agents have 1 connection)
+*       3. InvokeAction on connection
+* 
+*     manage subscriptions: -> A manage inside connection
+*     -> subscribe/unsubscribe (sessionID,connectionID,thing,name) 
+*     PublishEvent/Prop (dThingID,name):
+*       A: Manage subscription inside the connection
+*          If connection has subscription for (dThingID,name)
+*            then PublishEvent/Prop on connection
+*          pro: easy to manage. removing connection also removes subscription
+*          con: publish needs to iterate all connections
+*       B: Map of [subscription dTthingID.name] -> []connectionID
+*          pro: Efficient. Immediately find all connections to publish to
+*          con: adding/removing a connection needs iteration of all subscriptions
+    
+
+- [sessionid] -> []connection
+- or
+- binding: map[connectionID] -> connection
+-  multiple sessions per client
+-  multiple connections per session 
+- client -> session -> connection
+  - how do subscription requests identify the connection?
+  - A: by sessionID 
+    - issue: multiple browser tabs share the same subscription
+  - B: by connectionID  
+    - issue: subscriptions need to identify the connectionID
+    - connection header field for connectionID
+    - default to sessionID
+    - ending a session?

@@ -4,6 +4,7 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"os"

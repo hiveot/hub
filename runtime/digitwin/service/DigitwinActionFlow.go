@@ -2,6 +2,7 @@
 package service
 
 import (
+	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 )
@@ -9,7 +10,7 @@ import (
 // InvokeAction stores and passes an action request to the thing agent
 // This passes it on to the actual device or service.
 func (svc *DigitwinService) InvokeAction(
-	consumerID string, dThingID string, actionName string, input any) (output any, status string, err error) {
+	consumerID string, dThingID string, actionName string, input any, messageID string) (output any, status string, err error) {
 	slog.Info("InvokeAction")
 
 	err = svc.dtwStore.UpdateActionStart(consumerID, dThingID, actionName, input, "pending")
@@ -21,7 +22,7 @@ func (svc *DigitwinService) InvokeAction(
 	// pass the action to the agent and return the output
 	if svc.tb != nil {
 		// FIXME: make WoT interoperable
-		output, err = svc.tb.InvokeAction(agentID, thingID, actionName, input)
+		status, output, err = svc.tb.InvokeAction(agentID, thingID, actionName, input, messageID)
 	}
 	return output, status, err
 }

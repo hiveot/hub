@@ -1,4 +1,4 @@
-package httpstransport_test
+package httptransport_test
 
 import (
 	"fmt"
@@ -8,9 +8,9 @@ import (
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/tlsclient"
-	"github.com/hiveot/hub/runtime/transports/httpstransport"
-	httpstransport_old "github.com/hiveot/hub/runtime/transports/httpstransport.old"
-	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
+	"github.com/hiveot/hub/runtime/digitwin"
+	"github.com/hiveot/hub/runtime/transports/httptransport"
+	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/teris-io/shortid"
@@ -76,15 +76,24 @@ func (d *DummyAuthenticator) ValidateToken(
 
 var dummyAuthenticator = &DummyAuthenticator{}
 
+type DummyDigitwin struct{}
+
+func (d *DummyDigitwin) InvokeAction(dThingID string, name string, input any, messageID string) (
+	status string, output any, err error) {
+	return digitwin.StatusFailed, nil, fmt.Errorf("InvokeAction: not implemented")
+}
+
 // ---------
-// startHttpsBinding starts the binding service
+// startHttpsTransport starts the binding service
 // intended to handle the boilerplate
-func startHttpsBinding(msgHandler hubclient.MessageHandler) *httpstransport.HttpsTransport {
-	config := httpstransport.NewHttpsTransportConfig()
+func startHttpsTransport(msgHandler hubclient.MessageHandler) *httptransport.HttpTransport {
+	config := httptransport.NewHttpTransportConfig()
 	config.Port = testPort
-	svc := httpstransport.NewHttpSSETransport(&config,
+
+	// start sub-protocol servers
+	svc := httptransport.NewHttpTransport(&config,
 		certBundle.ClientKey, certBundle.ServerCert, certBundle.CaCert,
-		dummyAuthenticator)
+		dummyAuthenticator, nil)
 	err := svc.Start(msgHandler)
 	if err != nil {
 		panic("failed to start binding: " + err.Error())
@@ -121,12 +130,11 @@ func TestMain(m *testing.M) {
 
 func TestStartStop(t *testing.T) {
 	t.Log("TestStartStop")
-	config := httpstransport_old.NewHttpsTransportConfig()
+	config := httptransport.NewHttpTransportConfig()
 	config.Port = testPort
-	svc := httpstransport_old.NewHttpSSETransport(&config,
+	svc := httptransport.NewHttpTransport(&config,
 		certBundle.ClientKey, certBundle.ServerCert, certBundle.CaCert,
-		dummyAuthenticator,
-	)
+		dummyAuthenticator, nil)
 	err := svc.Start(func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		stat.Progress = hubclient.DeliveryCompleted
 		return stat
@@ -137,7 +145,7 @@ func TestStartStop(t *testing.T) {
 
 func TestLoginRefresh(t *testing.T) {
 	t.Log("TestLoginRefresh")
-	svc := startHttpsBinding(
+	svc := startHttpsTransport(
 		func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 			assert.Fail(t, "should not get here")
 			return stat
@@ -174,7 +182,7 @@ func TestLoginRefresh(t *testing.T) {
 
 func TestBadLogin(t *testing.T) {
 	t.Log("TestBadLogin")
-	svc := startHttpsBinding(
+	svc := startHttpsTransport(
 		func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 			assert.Fail(t, "should not get here")
 			return stat
@@ -207,7 +215,7 @@ func TestBadLogin(t *testing.T) {
 
 func TestBadRefresh(t *testing.T) {
 	t.Log("TestBadRefresh")
-	svc := startHttpsBinding(
+	svc := startHttpsTransport(
 		func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 			assert.Fail(t, "should not get here")
 			return stat
@@ -253,7 +261,7 @@ func TestPostEventAction(t *testing.T) {
 	var eventKey = "event11"
 
 	// 1. start the binding
-	svc := startHttpsBinding(
+	svc := startHttpsTransport(
 		func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 			rxMsg = tv
 			stat.Completed(tv, testMsg, nil)
@@ -325,12 +333,12 @@ func TestPubSubSSE(t *testing.T) {
 	var eventKey = "event11"
 
 	// 1. start the transport
-	var svc *httpstransport_old.HttpsTransport
-	svc = startHttpsBinding(
+	var svc *httptransport.HttpTransport
+	svc = startHttpsTransport(
 		func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 			// broadcast event to subscribers
 			slog.Info("broadcasting event")
-			stat = svc.SendEvent(tv)
+			svc.PublishEvent(tv.ThingID, tv.Name, tv.Data, tv.MessageID)
 			return stat
 		})
 	defer svc.Stop()
@@ -376,7 +384,7 @@ func TestRestart(t *testing.T) {
 	var eventKey = "event11"
 
 	// 1. start the binding
-	svc := startHttpsBinding(
+	svc := startHttpsTransport(
 		func(tv *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 			return stat
 		})
@@ -416,7 +424,7 @@ func TestReconnect(t *testing.T) {
 	var actionHandler func(*hubclient.ThingMessage) hubclient.DeliveryStatus
 
 	// 1. start the binding. Set the action handler separately
-	svc := startHttpsBinding(
+	svc := startHttpsTransport(
 		func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 			if actionHandler != nil {
 				return actionHandler(msg)
@@ -438,10 +446,10 @@ func TestReconnect(t *testing.T) {
 		go func() {
 			var stat2 hubclient.DeliveryStatus
 			stat2.Completed(tv, tv.Data, nil)
-			tm2 := hubclient.NewThingMessage(
-				vocab.MessageTypeEvent, tv.SenderID, vocab.EventNameDeliveryUpdate, stat2, thingID)
+			//tm2 := hubclient.NewThingMessage(
+			//	vocab.MessageTypeEvent, tv.SenderID, vocab.EventNameDeliveryUpdate, stat2, thingID)
 
-			svc.SendToClient(tv.SenderID, tm2)
+			//svc.SendToClient(tv.SenderID, tm2)
 		}()
 		stat.Progress = hubclient.DeliveryApplied
 		return stat

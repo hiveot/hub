@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/tlsserver"
-	"github.com/hiveot/hub/runtime/transports/httpstransport/sessions"
+	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
 	"io"
 	"log/slog"
 	"net/http"

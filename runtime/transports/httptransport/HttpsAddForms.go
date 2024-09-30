@@ -1,4 +1,4 @@
-package httpstransport
+package httptransport
 
 import (
 	"github.com/hiveot/hub/lib/utils"
@@ -34,7 +34,7 @@ import (
 //	}
 //
 // ```
-func (svc *HttpsTransport) AddTDForms(td *tdd.TD) {
+func (svc *HttpTransport) AddTDForms(td *tdd.TD) {
 	svc.AddThingLevelForms(td)
 	//svc.AddPropertiesForms(td)
 	//svc.AddEventsForms(td)
@@ -43,7 +43,7 @@ func (svc *HttpsTransport) AddTDForms(td *tdd.TD) {
 
 // AddActionForms add forms Thing action affordance
 // intended for consumers of the digitwin Thing
-//func (svc *HttpsTransport) AddActionForms(td *tdd.TD) {
+//func (svc *HttpTransport) AddActionForms(td *tdd.TD) {
 //for name, propAff := range td.Actions {
 //	params := map[string]string{"thingID": td.ID, "name": name}
 //	methodPath := utils.Substitute(httpsse.PostInvokeActionPath, params)
@@ -58,7 +58,7 @@ func (svc *HttpsTransport) AddTDForms(td *tdd.TD) {
 
 // AddEventsForms add forms to subscribe to Thing events
 // intended for consumers of the digitwin Thing
-//func (svc *HttpsTransport) AddEventsForms(td *tdd.TD) {
+//func (svc *HttpTransport) AddEventsForms(td *tdd.TD) {
 //	for name, propAff := range td.Events {
 //		// the only allowed protocol method is to subscribe to events
 //		params := map[string]string{"thingID": td.ID, "name": name}
@@ -75,7 +75,7 @@ func (svc *HttpsTransport) AddTDForms(td *tdd.TD) {
 
 // AddPropertiesForms add forms to read Thing property affordance
 // intended for consumers of the digitwin Thing
-//func (svc *HttpsTransport) AddPropertiesForms(td *tdd.TD) {
+//func (svc *HttpTransport) AddPropertiesForms(td *tdd.TD) {
 //for name, propAff := range td.Properties {
 //	propAff.Forms = make([]tdd.Form, 0)
 //
@@ -107,7 +107,7 @@ func (svc *HttpsTransport) AddTDForms(td *tdd.TD) {
 
 // AddThingLevelForms adds forms with protocol info to the TD, and its properties, events and actions
 // HiveOT mostly uses top level forms.
-func (svc *HttpsTransport) AddThingLevelForms(td *tdd.TD) {
+func (svc *HttpTransport) AddThingLevelForms(td *tdd.TD) {
 	// iterate the thing level operations
 	params := map[string]string{"thingID": td.ID}
 	for _, opInfo := range svc.operations {

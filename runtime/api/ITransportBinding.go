@@ -29,15 +29,35 @@ type ITransportBinding interface {
 	// InvokeAction sends a request to invoke an action to the agent with the given ID
 	// This returns the delivery status and optionally an output value or an error
 	//
-	// Only supported on bindings that support subscriptions
-	InvokeAction(agentID string, thingID string, name string, value any) (
+	// Only supported on bindings that support subscriptions. Bindings that
+	// do not support subscription return an error.
+	//
+	// This returns a delivery status and output if delivery is completed,
+	// or it returns an error if the agent is not available through this binding.
+	//
+	//	agentID is that of the agent that is the gateway for the thing
+	//	thingID is that of the thing as per agent (not the digital twin)
+	//	name is the name of the action as per thing action affordance
+	//	value is the raw value to encode and send to the thing
+	//	messageID is optional ID of the action. Used in linked events and property updates.
+	InvokeAction(agentID string, thingID string, name string, value any, messageID string) (
 		status string, output any, err error)
 
 	// PublishEvent publishes an event message to all subscribers of this protocol binding
-	PublishEvent(dThingID string, name, value any)
+	//
+	//	dThingID is the Thing ID of the digital twin
+	//	name is the name of the event as per digital twin event affordance
+	//	value is the raw event value as per event affordance data schema
+	//	messageID is the optional ID of a linked action
+	PublishEvent(dThingID string, name string, value any, messageID string)
 
 	// PublishProperty publishes a new property value to observers of the property
-	PublishProperty(dThingID string, name string, value any)
+	//
+	//	dThingID is the Thing ID of the digital twin
+	//	name is the name of the property as per digital twin property affordance
+	//	value is the raw property value as per property affordance data schema
+	//	messageID is the optional ID of a linked action
+	PublishProperty(dThingID string, name string, value any, messageID string)
 
 	// Start the protocol binding
 	//  handler is the handler that processes incoming messages

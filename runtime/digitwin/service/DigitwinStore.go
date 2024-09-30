@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"sync"
