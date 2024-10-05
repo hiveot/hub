@@ -7,9 +7,13 @@ Operations:
   description: "HiveOT operations"
   namespace: "ht"
   vocab:
+    # consumer operations
     HTOpLogin: "login"
     HTOpLogout: "logout"
     HTOpRefresh: "refresh"
+    HTOpReadAllThings: "readAllThings"
+    HTOpReadThing: "readThing"
+    # agent operations
     HTOpUpdateThing: "updatething"
     HTOpPublishEvent: "publishevent"
     HTOpUpdateProperty: "updateproperty"

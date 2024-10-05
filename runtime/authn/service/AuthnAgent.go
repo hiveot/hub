@@ -3,33 +3,34 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/wot/tdd"
 )
 
 // AuthnAgent agent for the authentication services:
 type AuthnAgent struct {
-	hc hubclient.IHubClient
-	//hc           *hubclient.HubClient
-	svc *AuthnService
-
-	adminHandler hubclient.MessageHandler
-	userHandler  hubclient.MessageHandler
+	adminHandler api.ActionHandler
+	userHandler  api.ActionHandler
 }
 
-// HandleMessage dispatches requests to the service capabilities identified by their thingID
-func (agent *AuthnAgent) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
-	// if the message has an authn agent prefix then remove it.
-	// This can happen if invoked directly through an embedded client
-	_, thingID := tdd.SplitDigiTwinThingID(msg.ThingID)
+// HandleAction authn services action request
+func (agent *AuthnAgent) HandleAction(
+	consumerID string, dThingID string, actionName string, input any, messageID string) (
+	status string, output any, err error) {
+
+	_, thingID := tdd.SplitDigiTwinThingID(dThingID)
 	if thingID == authn.AdminServiceID {
-		return agent.adminHandler(msg)
+		status, output, err = agent.adminHandler(consumerID, dThingID, actionName, input, messageID)
 	} else if thingID == authn.UserServiceID {
-		return agent.userHandler(msg)
+		status, output, err = agent.userHandler(consumerID, dThingID, actionName, input, messageID)
+	} else {
+		err = fmt.Errorf("unknown authn service capability '%s'", dThingID)
 	}
-	err := fmt.Errorf("unknown authn service capability '%s'", msg.ThingID)
-	stat.Failed(msg, err)
-	return stat
+	if err != nil {
+		status = digitwin.StatusFailed
+	}
+	return status, output, err
 }
 
 // StartAuthnAgent returns a new instance of the agent for the authentication services.
@@ -39,16 +40,10 @@ func (agent *AuthnAgent) HandleMessage(msg *hubclient.ThingMessage) (stat hubcli
 // for example when testing.
 //
 //	svc is the authentication service whose capabilities to expose
-//	hc is the optional message client connected to the server protocol
-func StartAuthnAgent(
-	svc *AuthnService, hc hubclient.IHubClient) (*AuthnAgent, error) {
-	var err error
-
-	agent := AuthnAgent{hc: hc, svc: svc}
-	agent.adminHandler = authn.NewAdminHandler(svc.AdminSvc)
-	agent.userHandler = authn.NewUserHandler(svc.UserSvc)
-	if hc != nil {
-		agent.hc.SetMessageHandler(agent.HandleMessage)
+func StartAuthnAgent(svc *AuthnService) *AuthnAgent {
+	agent := &AuthnAgent{
+		adminHandler: authn.NewHandleAdminAction(svc.AdminSvc),
+		userHandler:  authn.NewHandleUserAction(svc.UserSvc),
 	}
-	return &agent, err
+	return agent
 }

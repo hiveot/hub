@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/runtime/digitwin2/service"
+	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -51,14 +51,14 @@ func createTDDoc(thingID string, nrProps, nrEvents, nrActions int) *tdd.TD {
 	for range nrEvents {
 		name := utils.CreateRandomName("ev-", 0)
 		td.AddEvent(name, "", name, "",
-			tdd.DataSchema{
+			&tdd.DataSchema{
 				Type: vocab.WoTDataTypeInteger,
 			})
 	}
 	for range nrActions {
 		name := utils.CreateRandomName("act-", 0)
 		td.AddAction(name, "", name, "",
-			tdd.DataSchema{
+			&tdd.DataSchema{
 				Type: vocab.WoTDataTypeBool,
 			})
 	}
@@ -73,10 +73,10 @@ func TestStartStopService(t *testing.T) {
 	for _, thingID := range thingIDs {
 		td := createTDDoc(thingID, 1, 1, 1)
 		tddjson, _ := json.Marshal(td)
-		err := svc.UpdateTD("test", thingID, string(tddjson))
+		err := svc.DirSvc.UpdateDTD("test", string(tddjson))
 		require.NoError(t, err)
 	}
-	tds1, err := svc.ReadAllThings("", 0, 10)
+	tds1, err := svc.ReadAllDTDs("", 0, 10)
 	require.NoError(t, err)
 	require.Greater(t, len(tds1), 1)
 
@@ -85,6 +85,6 @@ func TestStartStopService(t *testing.T) {
 
 	svc, hc, stopFunc = startService(false)
 	defer stopFunc()
-	tds2, err := svc.ReadAllThings("", 0, 10)
+	tds2, err := svc.ReadAllDTDs("", 0, 10)
 	assert.Equal(t, len(tds1), len(tds2))
 }

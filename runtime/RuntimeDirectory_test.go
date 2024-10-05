@@ -45,12 +45,12 @@ func TestAddRemoveTD(t *testing.T) {
 	// Add the TD by sending it as an event
 	td1 := tdd.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
 	td1JSON, _ := json.Marshal(td1)
-	err := ag.PubEvent(agThing1ID, vocab.EventNameTD, string(td1JSON))
+	err := ag.PubEvent(agThing1ID, vocab.EventNameTD, string(td1JSON), "")
 	assert.NoError(t, err)
 
 	// Get returns a serialized TD object
 	// use the helper directory client rpc method
-	td3Json, err := digitwin.DirectoryReadTD(cl, dtThing1ID)
+	td3Json, err := digitwin.DirectoryReadDTD(cl, dtThing1ID)
 	require.NoError(t, err)
 	var td3 tdd.TD
 	err = json.Unmarshal([]byte(td3Json), &td3)
@@ -59,11 +59,11 @@ func TestAddRemoveTD(t *testing.T) {
 
 	//stat = cl.Rpc(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
 	args4JSON, _ := json.Marshal(dtThing1ID)
-	stat := cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryRemoveTDMethod, string(args4JSON))
+	stat := cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryRemoveDTDMethod, string(args4JSON), "")
 	require.Empty(t, stat.Error)
 
 	// after removal of the TD, getTD should return an error but delivery is successful
-	stat = cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, string(args4JSON))
+	stat = cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadDTDMethod, string(args4JSON), "")
 	require.NotEmpty(t, stat.Error)
 	require.Equal(t, hubclient.DeliveryCompleted, stat.Progress)
 }
@@ -92,8 +92,8 @@ func TestReadTDs(t *testing.T) {
 
 	// GetThings returns a serialized TD object
 	// 1. Use actions
-	args := digitwin.DirectoryReadTDsArgs{Limit: 10}
-	stat := cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDsMethod, args)
+	args := digitwin.DirectoryReadDTDsArgs{Limit: 10}
+	stat := cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadDTDsMethod, args, "")
 	require.Empty(t, stat.Error)
 	assert.NotNil(t, stat.Reply)
 	tdList1 := []string{}
@@ -103,7 +103,7 @@ func TestReadTDs(t *testing.T) {
 	require.True(t, len(tdList1) > 0)
 
 	// 2. Try it the easy way
-	tdList2, err := digitwin.DirectoryReadTDs(cl, 333, 02)
+	tdList2, err := digitwin.DirectoryReadDTDs(cl, 333, 02)
 	require.NoError(t, err)
 	require.True(t, len(tdList2) > 0)
 }
@@ -160,6 +160,16 @@ func TestTDEvent(t *testing.T) {
 	cl, token := ts.AddConnectUser(userID, authn.ClientRoleManager)
 	_ = token
 	defer cl.Disconnect()
+
+	// How to replace the message handler in the client?
+	// A: separate handlers for onwriteproperty, onevent, onaction, onproperty, ontd
+	// B: replace client with 'consumedThing' and 'exposedThing' instances
+	//     set handlers in these instances
+	// C: keep as-is for general purpose use
+	//    exposed and consumed thing instances use hubclient as a transport
+	//    hc converts the SSE,WS messages to a clientmessage and pass it to the handler
+	//    pro: fits existing clients
+	//    con: none?
 
 	// subscribe to TD events
 	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {

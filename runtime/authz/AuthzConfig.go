@@ -33,7 +33,7 @@ const DefaultAclFilename = "authz.acl"
 //
 // Services set their own default permissions on what roles can use them. Some examples:
 // digitwin directory service:
-//            readTD, readTDs, QueryTDs methods: all roles
+//            readTD, readTDs, QueryDTDs methods: all roles
 //            removeTD: manager, admin, service
 // digitwin inbox: (action store)
 //            readLatest: operator, manager, admin, service

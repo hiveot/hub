@@ -2,6 +2,7 @@ package digitwin_test
 
 import (
 	"encoding/json"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,26 +18,33 @@ func TestAddRemoveTD(t *testing.T) {
 
 	svc, _, stopFunc := startService(true)
 	defer stopFunc()
+	dirSvc := svc.DirSvc
 
 	// use the native thingID for this TD doc as the directory converts it to
 	// the digital twin ID using the given agent that owns the TD.
-	tdDoc1 := createTDDoc(thing1ID, 5, 4, 3)
-	tddjson, _ := json.Marshal(tdDoc1)
-	err := svc.UpdateTD(agentID, thing1ID, string(tddjson))
+	tdd1 := createTDDoc(thing1ID, 5, 4, 3)
+	tdd1JSON, _ := json.Marshal(tdd1)
+	err := dirSvc.UpdateDTD(agentID, string(tdd1JSON))
 	require.NoError(t, err)
 
 	dThingID := tdd.MakeDigiTwinThingID(agentID, thing1ID)
-	td1b, err := svc.ReadThing(consumerID, dThingID)
+	tdd2JSON, err := dirSvc.ReadDTD(consumerID, dThingID)
 	require.NoError(t, err)
-	assert.Equal(t, dThing1ID, td1b.ID)
+	require.NotEmpty(t, tdd2JSON)
+
+	dtdList, err := dirSvc.ReadDTDs(consumerID,
+		digitwin.DirectoryReadDTDsArgs{Limit: 10})
+	assert.NoError(t, err)
+	assert.NotEmpty(t, dtdList)
 
 	// after removal, getTD should return nil
-	err = svc.RemoveThing("senderID", dThing1ID)
+	err = dirSvc.RemoveDTD("senderID", dThing1ID)
 	assert.NoError(t, err)
 
-	td1c, err := svc.ReadThing(consumerID, dThingID)
+	td1c, err := dirSvc.ReadDTD(consumerID, dThingID)
 	assert.Error(t, err)
 	assert.Empty(t, td1c)
+
 }
 
 func TestGetTDsFail(t *testing.T) {
@@ -44,15 +52,16 @@ func TestGetTDsFail(t *testing.T) {
 
 	svc, _, stopFunc := startService(true)
 	defer stopFunc()
+	dirSvc := svc.DirSvc
 
 	// bad clientID
-	td1, err := svc.ReadThing("", "badid")
+	td1, err := dirSvc.ReadDTD("", "badid")
 	require.Error(t, err)
 	require.Empty(t, td1)
 
 	_ = svc
 	defer stopFunc()
-	tdList, err := svc.ReadAllThings("", 0, 10)
+	tdList, err := svc.ReadAllDTDs("", 0, 10)
 	require.NoError(t, err)
 	require.Empty(t, tdList)
 
@@ -68,11 +77,11 @@ func TestGetTDsFail(t *testing.T) {
 //	defer stopFunc()
 //
 //	tdDoc1 := createTDDoc(thing1ID, title1)
-//	err := svc.UpdateTD(senderID, thing1ID, tdDoc1)
+//	err := svc.UpdateDTD(senderID, thing1ID, tdDoc1)
 //	require.NoError(t, err)
 //
 //	jsonPathQuery := `$[?(@.id=="agent1:thing1")]`
-//	tdList, err := svc.QueryTDs(jsonPathQuery)
+//	tdList, err := svc.QueryDTDs(jsonPathQuery)
 //	require.NoError(t, err)
 //	assert.NotNil(t, tdList)
 //	assert.True(t, len(tdList) > 0)

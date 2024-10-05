@@ -1,10 +1,10 @@
 # Notes on transport protocols
 
-## The https transport protocol
+## The HTTP transport protocol
 
-The http transport protocol is divided in a basic and one or more sub-protocols.
+The HTTP transport protocol is divided in a basic and sub-protocols.
 
-### Https Basic
+### HTTP Basic
 
 It is rather simple for a server to listen for post and get commands over https and return the requested information. The path contains the thing ID and optionally property, event and action name. For example:
 
@@ -29,7 +29,7 @@ These operations can easily be described in a TD top level form as per [TD-1.1 s
 
 The real challenge comes to support consumers subscribing to events and observing properties. In addition, in case of the HiveOT hub, Thing agents also need to receive actions and write-property requests, as they don't run servers.
 
-### WoT SSE Sub-protocol (not supported)
+### WoT SSE Sub-protocol (not yet supported)
 
 The WoT SSE subprotocol provides a method to return subscribed events and observed properties over the SSE connection.
 
@@ -51,13 +51,13 @@ A form that could subscribe to all events of a Thing looks like:
 }
 ```
 
-Due to the mentioned limitations, and without an applicable use-case, HiveOT does not support the WoT SSE sub-protocol.
+Due to the mentioned limitations, and without an applicable use-case, HiveOT does not currently support the WoT SSE sub-protocol.
 
 ### Http SSE-SC Sub-protocol
 
 The HiveOT SSE-SC (SSE shared-connection) sub-protocol defines a way for a single SSE endpoint to be shared by all interaction affordances of one or more web things. 
 
-This is not a WoT sub-protocol and intended to overcome the limitations of the WoT SSE sub-protocol by allowing all interactions for all Things to take place over a single SSE connection regardless whether they use HTTP/1.1 or HTTP/2.
+This is not a WoT sub-protocol and intended to overcome the limitations of the WoT SSE sub-protocol by allowing interactions for all Things to take place over a single SSE connection regardless whether they use HTTP/1.1 or HTTP/2.
 
 It behaves more akin to the websocket sub-protocol in that event subscription and observe properties requests are posted by the consumer to the server. The subscribed events and properties are returned over the single existing connection. Just like with WS this adds the need to identify the resource whose information is sent.  
 
@@ -86,7 +86,7 @@ A form to subscribe to all events of a Thing could look like:
   ]
 }
 ```
-This introduces a 'connect' operation for establishing an sse connection. This operation is only needed once for all subscriptions. This establishes an SSE connection as per RFC or returns 401 when the consumer does not provide proper credentials connecting to the sse endpoint.
+This introduces a 'connect' operation for establishing the sse connection. This operation is only needed once for all subscriptions. This establishes an SSE connection as per RFC or returns 401 when the consumer does not provide proper credentials connecting to the sse endpoint.
 
 To subscribe to events, post to the subscribe endpoint with the thingID. This returns with a 200 code on success or 401 when the consumer is not allowed subscriptions to this Thing.
 
@@ -113,7 +113,7 @@ A form to subscribe to all events of a Thing could look like:
 }
 ```
 
-The only other specification is webthings.io: https://webthings.io/api/#protocol-handshake. This is an old specification and it is unclear if it is still valid. It contains an envelope with 'messageType' and 'data' fields. As these don't include a thingID and affordance name, HiveOT adds a 'topic' field that matches the mqtt binding.
+The only available specification is the so-called 'strawman proposal' https://docs.google.com/document/d/1KWv-aQfMgsqBFg0v4rVqzcVvzzisC7y4X4CMUYGc8rE from Ben Francis See also webthings.io: https://webthings.io/api/#protocol-handshake. 
 
 ```json
 {

@@ -2,7 +2,10 @@ package digitwin_test
 
 import (
 	"encoding/json"
+	digitwin2 "github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/runtime/digitwin"
+	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,38 +19,40 @@ func TestActionFlow(t *testing.T) {
 	const consumerID = "user1"
 	const actionName = "action1"
 	const actionValue = 25
+	const msgID = "msg1"
 	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
 
-	svc, _, stopFunc := startService(true)
+	svc, dtwStore, stopFunc := startService(true)
 	defer stopFunc()
 
 	// Create the native TD for invoking an action to
 	tdDoc1 := createTDDoc(thingID, 5, 4, 3)
-	actionSchema := tdd.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
+	actionSchema := &tdd.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
 	tdDoc1.AddAction(actionName, "", "action 1", "", actionSchema)
 	tddjson, _ := json.Marshal(tdDoc1)
-	err := svc.UpdateTD(agentID, thingID, string(tddjson))
+	err := svc.DirSvc.UpdateDTD(agentID, string(tddjson))
 	require.NoError(t, err)
 
-	// invoke the action
-	_, status, err = svc.InvokeAction(consumerID, dThingID, actionName, actionValue)
+	// update the action
+	err = dtwStore.UpdateActionStart(
+		consumerID, dThingID, actionName, actionValue, msgID)
 	require.NoError(t, err)
 
 	// check progress
-	act, err := svc.ReadAction(consumerID, dThingID, actionName)
+	v, err := svc.ReadAction(consumerID, dThingID, actionName)
 	require.NoError(t, err)
-	require.Equal(t, actionValue, act.Input)
+	require.Equal(t, actionValue, v.Input)
 
 	// complete the action
-	err = svc.UpdateActionProgress(agentID, thingID, actionName,
+	err = dtwStore.UpdateActionProgress(agentID, thingID, actionName,
 		digitwin.StatusCompleted, actionValue)
 	require.NoError(t, err)
 
 	// check status
-	act, err = svc.ReadAction(consumerID, dThingID, actionName)
+	v, err = svc.ReadAction(consumerID, dThingID, actionName)
 	require.NoError(t, err)
-	require.Equal(t, actionValue, act.Output)
-	require.Equal(t, digitwin.StatusCompleted, act.Status)
+	require.Equal(t, actionValue, v.Output)
+	require.Equal(t, digitwin.StatusCompleted, v.Status)
 
 	// read all actions
 	actList, err := svc.ReadAllActions(consumerID, dThingID)
@@ -66,7 +71,7 @@ func TestActionReadFail(t *testing.T) {
 	// add a TD with an action
 	tdDoc1 := createTDDoc(thingID, 4, 2, 1)
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
-	err := svc.UpdateTD(agentID, thingID, string(tdDoc1Json))
+	err := svc.DirSvc.UpdateDTD(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
 	_, err = svc.ReadAction("itsme", "badthingid", "someevent")
@@ -84,6 +89,49 @@ func TestInvokeActionErrors(t *testing.T) {
 	const consumerID = "user1"
 	const actionName = "action1"
 	const actionValue = 25
+	const msgID = "mid1"
+	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
+
+	svc, dtwStore, stopFunc := startService(true)
+	defer stopFunc()
+
+	// Create the native TD for invoking an action to
+	tdDoc1 := createTDDoc(thingID, 5, 4, 3)
+	actionSchema := &tdd.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
+	tdDoc1.AddAction(actionName, "", "action 1", "", actionSchema)
+	tddjson, _ := json.Marshal(tdDoc1)
+	err := svc.DirSvc.UpdateDTD(agentID, string(tddjson))
+	require.NoError(t, err)
+
+	// invoke the action with the wrong thing
+	err = dtwStore.UpdateActionStart(
+		consumerID, "badThingID", actionName, actionValue, msgID)
+	assert.Error(t, err)
+
+	// invoke the action with the wrong name
+	err = dtwStore.UpdateActionStart(
+		consumerID, dThingID, "badName", actionValue, msgID)
+	assert.Error(t, err)
+
+	// complete the action on wrong thing
+	err = dtwStore.UpdateActionProgress(agentID, "badThingID", actionName,
+		digitwin.StatusCompleted, actionValue)
+	assert.Error(t, err)
+
+	// complete the action on wrong action name
+	err = dtwStore.UpdateActionProgress(agentID, thingID, "badName",
+		digitwin.StatusCompleted, actionValue)
+	assert.Error(t, err)
+}
+
+func TestDigitwinAgentAction(t *testing.T) {
+	const agentID = "agent1"
+	const thingID = "thing1"
+	const title1 = "title1"
+	const consumerID = "user1"
+	const actionName = "action1"
+	const actionValue = 25
+	const msgID = "mid1"
 	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
 
 	svc, _, stopFunc := startService(true)
@@ -91,27 +139,34 @@ func TestInvokeActionErrors(t *testing.T) {
 
 	// Create the native TD for invoking an action to
 	tdDoc1 := createTDDoc(thingID, 5, 4, 3)
-	actionSchema := tdd.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
+	actionSchema := &tdd.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
 	tdDoc1.AddAction(actionName, "", "action 1", "", actionSchema)
-	tddjson, _ := json.Marshal(tdDoc1)
-	err := svc.UpdateTD(agentID, thingID, string(tddjson))
+	tddJSON1, _ := json.Marshal(tdDoc1)
+	err := svc.DirSvc.UpdateDTD(agentID, string(tddJSON1))
 	require.NoError(t, err)
+	tddJson2, err := svc.DirSvc.ReadDTD(consumerID, dThingID)
+	require.NoError(t, err)
+	require.NotEmpty(t, tddJson2)
 
-	// invoke the action with the wrong thing
-	err = svc.InvokeAction(consumerID, "badThingID", actionName, actionValue)
-	assert.Error(t, err)
+	// next, invoke the action to read the thing from the directory.
+	ag := service.NewDigitwinAgent(svc)
+	status, output, err := ag.HandleAction(consumerID,
+		digitwin2.DirectoryDThingID, digitwin2.DirectoryReadDTDMethod, dThingID, msgID)
+	require.NoError(t, err)
+	require.NotEmpty(t, output)
+	require.Equal(t, digitwin.StatusCompleted, status)
 
-	// invoke the action with the wrong name
-	err = svc.InvokeAction(consumerID, dThingID, "badName", actionValue)
-	assert.Error(t, err)
+	// last, a non-existing DTD should fail
+	status, output, err = ag.HandleAction(consumerID,
+		digitwin2.DirectoryDThingID, digitwin2.DirectoryReadDTDMethod, "badid", msgID)
+	require.Error(t, err)
+	// a non-existing method name should fail
+	status, output, err = ag.HandleAction(consumerID,
+		digitwin2.DirectoryDThingID, "badmethod", dThingID, msgID)
+	require.Error(t, err)
+	// a non-existing serviceID should fail
+	status, output, err = ag.HandleAction(consumerID,
+		"badservicename", digitwin2.DirectoryReadDTDMethod, dThingID, msgID)
+	require.Error(t, err)
 
-	// complete the action on wrong thing
-	err = svc.UpdateActionProgress(agentID, "badThingID", actionName,
-		digitwin.ActionStatusCompleted, actionValue)
-	assert.Error(t, err)
-
-	// complete the action on wrong action name
-	err = svc.UpdateActionProgress(agentID, thingID, "badName",
-		digitwin.ActionStatusCompleted, actionValue)
-	assert.Error(t, err)
 }

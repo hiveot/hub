@@ -77,3 +77,13 @@ func NewThingMessageMapFromSource(source map[string]any) (ThingMessageMap, error
 	err := json.Unmarshal(raw, &tmm)
 	return tmm, err
 }
+
+//
+//// NewPropertyListToMap creates a map from a property list
+//func NewPropertyListToMap(pl []digitwin.PropertyValue) map[string]digitwin.PropertyValue {
+//	propMap := make(map[string]digitwin.PropertyValue)
+//	for _, pv := range pl {
+//		propMap[pv.Name] = pv
+//	}
+//	return propMap
+//}

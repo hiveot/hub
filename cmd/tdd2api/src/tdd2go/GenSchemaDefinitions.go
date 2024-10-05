@@ -27,19 +27,19 @@ func GenSchemaDefinitions(l *utils.SL, serviceTitle string, td *tdd.TD) {
 		if sd.Type == "object" {
 			if sd.Ref == "" {
 				// define an agent wide data struct
-				GenSchemaDefStruct(l, agentID, idTitle, sd)
+				GenSchemaDefStruct(l, agentID, idTitle, &sd)
 			} else {
 				// $ref links to an existing schema. Nothing to do here.
 			}
 		} else if sd.Enum != nil {
-			GenSchemaDefEnum(l, idTitle, sd)
+			GenSchemaDefEnum(l, idTitle, &sd)
 		} else if sd.OneOf != nil {
-			GenSchemaDefOneOf(l, idTitle, sd)
+			GenSchemaDefOneOf(l, idTitle, &sd)
 		} else if sd.Default != "" {
 			// define an agent wide constant
-			GenSchemaDefConst(l, idTitle, sd)
+			GenSchemaDefConst(l, idTitle, &sd)
 		} else if sd.Const != nil {
-			GenSchemaDefConst(l, idTitle, sd)
+			GenSchemaDefConst(l, idTitle, &sd)
 		}
 	}
 }

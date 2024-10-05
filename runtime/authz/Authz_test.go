@@ -5,7 +5,6 @@ import (
 	authz2 "github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/embedded"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authz"
@@ -62,15 +61,20 @@ func TestSetRole(t *testing.T) {
 
 	// connect the client marshaller to the server agent
 
-	handler, _ := service.StartAuthzAgent(svc, nil)
-	hc := embedded.NewEmbeddedClient(client1ID, handler.HandleMessage)
+	//handler, _ := service.StartAuthzAgent(svc, nil)
+	//hc := embedded.NewEmbeddedClient(client1ID, handler.HandleMessage)
 
 	// set the role
-	err = authz2.AdminSetClientRole(hc, client1ID, client1Role)
-	require.NoError(t, err)
+	err = svc.SetClientRole(client1ID, authz2.AdminSetClientRoleArgs{
+		ClientID: client1ID,
+		Role:     client1Role,
+	})
+	//err = authz2.AdminSetClientRole(hc, client1ID, client1Role)
+	//require.NoError(t, err)
 
 	// get the role
-	role, err := authz2.AdminGetClientRole(hc, client1ID)
+	role, err := svc.GetClientRole(client1ID, client1ID)
+	//role, err := authz2.AdminGetClientRole(hc, client1ID)
 	require.NoError(t, err)
 	require.Equal(t, client1Role, role)
 }

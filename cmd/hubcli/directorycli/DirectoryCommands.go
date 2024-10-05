@@ -7,6 +7,7 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/urfave/cli/v2"
 	"log/slog"
@@ -49,7 +50,7 @@ func DirectoryListCommand(hc *hubclient.IHubClient) *cli.Command {
 // HandleListDirectory lists the directory content
 func HandleListDirectory(hc hubclient.IHubClient) (err error) {
 	// todo: iterate with offset and limit
-	tdListJson, err := digitwin.DirectoryReadTDs(hc, 300, 0)
+	tdListJson, err := digitwin.DirectoryReadDTDs(hc, 300, 0)
 	tdList, err2 := tdd.UnmarshalTDList(tdListJson)
 
 	if err != nil || err2 != nil {
@@ -83,14 +84,13 @@ func HandleListDirectory(hc hubclient.IHubClient) (err error) {
 
 // HandleListThing lists details of a Thing in the directory
 func HandleListThing(hc hubclient.IHubClient, thingID string) error {
-	tdDocJson, err := digitwin.DirectoryReadTD(hc, thingID)
+	tdDocJson, err := digitwin.DirectoryReadDTD(hc, thingID)
 	tdDoc, err2 := tdd.UnmarshalTD(tdDocJson)
 	if err != nil || err2 != nil {
 		return err
 	}
-	valueMapJson, err := digitwin.OutboxReadLatest(hc, "", nil, "", thingID)
-	valueMap, _ := hubclient.NewThingMessageMapFromSource(valueMapJson)
-	//valueMap, _ := things.UnmarshalThingValueMap(valueMapJson)
+	propValueList, err := digitwin.ValuesReadProperties(hc, nil, thingID)
+	propValueMap := api.PropertyListToMap(propValueList)
 
 	if err != nil {
 		slog.Error("Unable to read history:", "err", err)
@@ -109,7 +109,7 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 	for _, key := range keys {
 		prop, found := tdDoc.Properties[key]
 		if found && prop.ReadOnly {
-			value := valueMap.ToString(key)
+			value := propValueMap[key]
 			fmt.Printf(" %-30s %-40.40s %s%-15.15v%s %-.80s\n",
 				key, prop.Title, utils.COGreen, value, utils.COReset, prop.Description)
 		}
@@ -121,7 +121,7 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 	for _, key := range keys {
 		prop, found := tdDoc.Properties[key]
 		if found && !prop.ReadOnly {
-			value := valueMap.ToString(key)
+			value := propValueMap[key]
 			fmt.Printf(" %-30s %-40.40s %-10.10s %s%-15.15s%s %-.80s\n",
 				key, prop.Title, prop.Type, utils.COBlue, value, utils.COReset, prop.Description)
 		}
@@ -130,6 +130,8 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 	fmt.Println(utils.COYellow + "\nEvents:")
 	fmt.Println(" ID                             EventType                 Title                                    DataType   Value           Description")
 	fmt.Println(" -----------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
+	eventValueList, err := digitwin.ValuesReadEvents(hc, nil, thingID)
+	eventValueMap := api.EventListToMap(eventValueList)
 	keys = utils.OrderedMapKeys(tdDoc.Events)
 	for _, key := range keys {
 		ev := tdDoc.Events[key]
@@ -137,7 +139,7 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 		if ev.Data.Type != "" {
 			dataType = ev.Data.Type
 		}
-		value := valueMap.ToString(key)
+		value := eventValueMap[key]
 		if ev.Data.Type != "" {
 			//initialValue = ev.Data.InitialValue
 		}
@@ -148,11 +150,13 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 	fmt.Println(utils.CORed + "\nActions:")
 	fmt.Println(" ID                             ActionType                Title                                    Arg(s)     Value           Description")
 	fmt.Println(" -----------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
+	actionValueList, err := digitwin.ValuesReadProperties(hc, nil, thingID)
+	actionValueMap := api.PropertyListToMap(actionValueList)
 	keys = utils.OrderedMapKeys(tdDoc.Actions)
 	for _, key := range keys {
 		action := tdDoc.Actions[key]
 		dataType := "(n/a)"
-		value := valueMap.ToString(key)
+		value := actionValueMap[key]
 		if action.Input != nil {
 			dataType = action.Input.Type
 			//initialValue = action.Input.InitialValue
@@ -166,7 +170,7 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 
 // HandleListThingVerbose lists a Thing full TD
 func HandleListThingVerbose(hc hubclient.IHubClient, thingID string) error {
-	tdJSON, err := digitwin.DirectoryReadTD(hc, thingID)
+	tdJSON, err := digitwin.DirectoryReadDTD(hc, thingID)
 
 	if err != nil {
 		return err

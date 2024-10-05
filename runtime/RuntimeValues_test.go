@@ -7,8 +7,10 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +25,7 @@ func TestHttpsGetActions(t *testing.T) {
 	const agentID = "agent1"
 	const userID = "user1"
 	const data = "Hello world"
-	var dtThing1ID = tdd.MakeDigiTwinThingID(agentID, agThing1ID)
+	var dThing1ID = tdd.MakeDigiTwinThingID(agentID, agThing1ID)
 
 	r := startRuntime()
 	defer r.Stop()
@@ -34,16 +36,32 @@ func TestHttpsGetActions(t *testing.T) {
 	cl2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
 	defer cl2.Disconnect()
 
-	// consumer publish an action to the agent
-	stat := cl2.InvokeAction(dtThing1ID, key1, data)
+	// step 1: agent publishes a TD
+	td1 := ts.CreateTestTD(0)
+	td1JSON, _ := json.Marshal(td1)
+	err := digitwin.DirectoryUpdateDTD(cl1, string(td1JSON))
+	require.NoError(t, err)
+
+	// step 2: consumer publish an action to the agent
+	stat := cl2.InvokeAction(dThing1ID, key1, data, "")
 	require.Empty(t, stat.Error)
 
-	// read the latest actions from the digitwin inbox
-	args := digitwin.InboxReadLatestArgs{ThingID: dtThing1ID, Name: key1}
-	resp := digitwin.InboxRecord{}
-	err := cl2.Rpc(digitwin.InboxDThingID, digitwin.InboxReadLatestMethod, &args, &resp)
+	// step 3: read the latest actions from the digital twin
+	// first gets its TD
+	var td tdd.TD
+	stat = cl2.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadDTDMethod, dThing1ID, "")
+	err, _ = stat.Decode(&td)
 	require.NoError(t, err)
-	require.Equal(t, stat.MessageID, resp.MessageID)
+
+	// get the latest action values from the thing
+	// use the API generated from the digitwin TD document using tdd2api
+	valueList, err := digitwin.ValuesReadActions(cl2, nil, dThing1ID)
+	valueMap := api.ActionListToMap(valueList)
+
+	// value must match that of the action in step 1 and match its messageID
+	actVal := valueMap[key1]
+	assert.Equal(t, data, actVal.Input)
+	assert.Equal(t, stat.MessageID, actVal.MessageID)
 }
 
 // Get events from the outbox using the experimental http REST api
@@ -53,7 +71,7 @@ func TestHttpsGetEvents(t *testing.T) {
 	const key1 = "key1"
 	const userID = "user1"
 	const data = "Hello world"
-	var dtThingID = tdd.MakeDigiTwinThingID(agentID, agThingID)
+	var dThingID = tdd.MakeDigiTwinThingID(agentID, agThingID)
 
 	r := startRuntime()
 	defer r.Stop()
@@ -61,7 +79,7 @@ func TestHttpsGetEvents(t *testing.T) {
 	hc, _ := ts.AddConnectAgent(agentID)
 	defer hc.Disconnect()
 
-	err := hc.PubEvent(agThingID, key1, data)
+	err := hc.PubEvent(agThingID, key1, data, "")
 	assert.NoError(t, err)
 
 	// consumer reads the posted event
@@ -73,8 +91,8 @@ func TestHttpsGetEvents(t *testing.T) {
 	tlsClient.SetAuthToken(token)
 
 	// read latest using the http REST API
-	vars := map[string]string{"thingID": dtThingID}
-	eventPath := utils.Substitute(httpstransport_old.GetReadAllEventsPath, vars)
+	vars := map[string]string{"thingID": dThingID}
+	eventPath := utils.Substitute(httpsse.ReadAllEventsPath, vars)
 	reply, _, err := tlsClient.Get(eventPath)
 	require.NoError(t, err)
 	require.NotNil(t, reply)
@@ -85,15 +103,14 @@ func TestHttpsGetEvents(t *testing.T) {
 	require.NotZero(t, len(tmm1))
 
 	// read latest using the generated client
-	resp, err := digitwin.OutboxReadLatest(hc, "", nil, "", dtThingID)
+	valueList, err := digitwin.ValuesReadEvents(hc, nil, dThingID)
+	//resp, err := digitwin.OutboxReadLatest(hc, "", nil, "", dThingID)
 	require.NoError(t, err)
-	require.NotNil(t, resp)
-	tmm2, err := hubclient.NewThingMessageMapFromSource(resp)
-	require.NoError(t, err)
-	require.Equal(t, len(tmm1), len(tmm2))
+	require.NotNil(t, valueList)
+	valueMap := api.EventListToMap(valueList)
+	require.Equal(t, len(tmm1), len(valueMap))
 }
 
-// Get events from the outbox using the experimental http REST api
 func TestHttpsGetProps(t *testing.T) {
 	const agentID = "agent1"
 	const agThingID = "thing1"
@@ -102,11 +119,11 @@ func TestHttpsGetProps(t *testing.T) {
 	const userID = "user1"
 	const data1 = "Hello world"
 	const data2 = 25
-	var dtThingID = tdd.MakeDigiTwinThingID(agentID, agThingID)
+	var dThingID = tdd.MakeDigiTwinThingID(agentID, agThingID)
 
 	r := startRuntime()
 	defer r.Stop()
-	// agent publishes events
+	// agent publishes properties
 	hc, _ := ts.AddConnectAgent(agentID)
 	defer hc.Disconnect()
 
@@ -119,13 +136,13 @@ func TestHttpsGetProps(t *testing.T) {
 	// consumer read properties
 	cl2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
 	defer cl2.Disconnect()
-	data, err := digitwin.OutboxReadLatest(hc, "", nil, "", dtThingID)
+	valueList, err := digitwin.ValuesReadProperties(hc, nil, dThingID)
 	require.NoError(t, err)
+	require.NotNil(t, valueList)
+	valueMap := api.PropertyListToMap(valueList)
 
-	vmm, err := hubclient.NewThingMessageMapFromSource(data)
-	require.NoError(t, err)
 	// note: golang unmarshalls integers as float64.
-	data2raw := vmm[key2].Data.(float64)
+	data2raw := valueMap[key2].Data.(float64)
 	require.Equal(t, data2, int(data2raw))
 }
 

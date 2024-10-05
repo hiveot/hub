@@ -28,7 +28,7 @@ func SubmitIdProvRequest(clientID string, pubKey string, mac string, tlsClient *
 		MAC:      mac,
 	}
 	reqData, _ := ser.Marshal(req)
-	respData, _, err := tlsClient.Post(idprovapi.ProvisionRequestPath, reqData)
+	respData, _, _, err := tlsClient.Post(idprovapi.ProvisionRequestPath, reqData, "")
 	resp := idprovapi.ProvisionRequestResp{}
 	err = ser.Unmarshal(respData, &resp)
 	return resp.Status, resp.Token, err

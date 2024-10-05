@@ -1,15 +1,11 @@
 package runtime
 
 import (
-	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime/authn/service"
 	service2 "github.com/hiveot/hub/runtime/authz/service"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
-	"github.com/hiveot/hub/runtime/middleware"
+	"github.com/hiveot/hub/runtime/hubrouter"
 	"github.com/hiveot/hub/runtime/transports"
 	"log/slog"
 )
@@ -24,10 +20,12 @@ type Runtime struct {
 	//AuthnStore api.IAuthnStore
 	AuthnSvc      *service.AuthnService
 	AuthzSvc      *service2.AuthzService
-	DigitwinStore buckets.IBucketStore
+	AuthnAgent    *service.AuthnAgent
+	AuthzAgent    *service2.AuthzAgent
+	dtwStore      *service4.DigitwinStore
 	DigitwinSvc   *service4.DigitwinService
-	Middleware    *middleware.Middleware
-	TransportsMgr *transports.TransportsManager
+	HubRouter     *hubrouter.HubRouter
+	TransportsMgr *transports.TransportManager
 }
 
 // Start the Hub runtime
@@ -40,8 +38,6 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	if err != nil {
 		return err
 	}
-	// setup ingress middleware.
-	r.Middleware = middleware.NewMiddleware()
 
 	// startup
 	// setup the Authentication service
@@ -54,61 +50,34 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	if err != nil {
 		return err
 	}
-	r.Middleware.AddMiddlewareHandler(r.AuthzSvc.HasPubPermission)
-	r.Middleware.AddMiddlewareHandler(middleware.EscapeIDKey)
+	r.AuthnAgent = service.StartAuthnAgent(r.AuthnSvc)
+	r.AuthzAgent, err = service2.StartAuthzAgent(r.AuthzSvc)
+
+	// The digitwin service directs the message flow between agents and consumers
+	// It receives messages from the middleware and uses the protocol manager
+	// to send messages to clients.
+	r.DigitwinSvc, r.dtwStore, err = service4.StartDigitwinService(env.StoresDir)
+	dtwAgent := service4.NewDigitwinAgent(r.DigitwinSvc)
+	// The transport passes incoming messages on to the hub-router, which in
+	// turn updates the digital twin and forwards the requests.
+	r.HubRouter = hubrouter.NewHubRouter(r.dtwStore,
+		dtwAgent, r.AuthnAgent, r.AuthzAgent)
 
 	// the protocol manager receives messages from clients (source) and
 	// sends messages to connected clients (sink)
 	r.TransportsMgr, err = transports.StartTransportManager(
 		&r.cfg.Transports,
-		r.cfg.ServerKey,
 		r.cfg.ServerCert,
 		r.cfg.CaCert,
 		r.AuthnSvc.SessionAuth,
-		r.Middleware.HandleMessage)
+		r.HubRouter,
+		r.DigitwinSvc)
 	if err != nil {
 		return err
 	}
-
-	// The digitwin service directs the message flow between agents and consumers
-	// It receives messages from the middleware and uses the protocol manager
-	// to send messages to clients.
-	r.DigitwinSvc, err = service4.StartDigitwinService(env.StoresDir, r.TransportsMgr)
-
-	// The middleware validates messages and passes them on to the digitwin service
-	if err == nil {
-		r.Middleware.SetMessageHandler(r.DigitwinSvc.HandleMessage)
-	}
-
-	// last:
-	// ensure authz and digitwin are registered agents
-	embeddedBinding := r.TransportsMgr.GetEmbedded()
-
-	if err == nil {
-		cl2 := embeddedBinding.NewClient(authn.AdminAgentID)
-		_, err = service.StartAuthnAgent(r.AuthnSvc, cl2)
-	}
-	if err == nil {
-		// provide access to the authz agent
-		prof := authn.ClientProfile{
-			ClientID:   authz.AdminAgentID,
-			ClientType: authn.ClientTypeService,
-		}
-		_ = r.AuthnSvc.AuthnStore.Add(authz.AdminAgentID, prof)
-		_ = r.AuthnSvc.AuthnStore.SetRole(authz.AdminAgentID, authn.ClientRoleService)
-		cl3 := embeddedBinding.NewClient(authz.AdminAgentID)
-		_, err = service2.StartAuthzAgent(r.AuthzSvc, cl3)
-	}
-	if err == nil {
-		prof := authn.ClientProfile{
-			ClientID:   digitwin.DirectoryAgentID,
-			ClientType: authn.ClientTypeService,
-		}
-		_ = r.AuthnSvc.AuthnStore.Add(digitwin.DirectoryAgentID, prof)
-		_ = r.AuthnSvc.AuthnStore.SetRole(digitwin.DirectoryAgentID, authn.ClientRoleService)
-		cl1 := embeddedBinding.NewClient(digitwin.DirectoryAgentID)
-		_, err = service4.StartDigiTwinAgent(r.DigitwinSvc, cl1)
-	}
+	// outgoing messages are handled by the sub-protocols of this transport
+	r.DigitwinSvc.SetFormsHook(r.TransportsMgr.AddTDForms)
+	r.HubRouter.SetTransport(r.TransportsMgr)
 	return err
 }
 

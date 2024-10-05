@@ -3,96 +3,94 @@ package transports
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
-	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/digitwin/service"
+	"github.com/hiveot/hub/runtime/hubrouter"
 	"github.com/hiveot/hub/runtime/transports/discotransport"
-	"github.com/hiveot/hub/runtime/transports/embedded"
 	"github.com/hiveot/hub/runtime/transports/httptransport"
 	"github.com/hiveot/hub/wot/tdd"
-	"github.com/teris-io/shortid"
 	"log/slog"
 )
 
-// TransportsManager aggregates multiple transport protocol bindings and manages the starting,
+// TransportManager aggregates multiple transport protocol bindings and manages the starting,
 // stopping and routing of protocol messages.
 // This implements the ITransportBinding interface like the protocols it manages.
 // Incoming messages without an ID are assigned a new messageID
-type TransportsManager struct {
+type TransportManager struct {
 	// protocol transport bindings for events, actions and rpc requests
 	// The embedded binding can be used directly with embedded services
 	discoveryTransport *discotransport.DiscoveryTransport
-	embeddedTransport  *embedded.EmbeddedTransport
-	httpsTransport     api.ITransportBinding
-	mqttTransport      api.ITransportBinding
+	//embeddedTransport  *embedded.EmbeddedTransport
+	httpTransport *httptransport.HttpTransport
+	mqttTransport api.ITransportBinding
 	//natsTransport     api.ITransportBinding
 	//grpcTransport     api.ITransportBinding
+	dtwService *service.DigitwinService
 
 	// handler to pass incoming messages to
 	handler func(tv *hubclient.ThingMessage) hubclient.DeliveryStatus
 }
 
 // AddTDForms adds forms for all active transports
-func (svc *TransportsManager) AddTDForms(td *tdd.TD) {
-	if svc.httpsTransport != nil {
-		svc.httpsTransport.AddTDForms(td)
+func (svc *TransportManager) AddTDForms(td *tdd.TD) (err error) {
+	if svc.httpTransport != nil {
+		err = svc.httpTransport.AddTDForms(td)
 	}
-	if svc.mqttTransport != nil {
-		svc.mqttTransport.AddTDForms(td)
-	}
+	//if svc.mqttTransport != nil {
+	//	svc.mqttTransport.AddTDForms(td)
+	//}
+	return err
 }
 
 // GetEmbedded returns the embedded transport protocol
 // Intended to receive messages from, and send to, embedded services
-func (svc *TransportsManager) GetEmbedded() *embedded.EmbeddedTransport {
-	return svc.embeddedTransport
-}
+//func (svc *TransportManager) GetEmbedded() *embedded.EmbeddedTransport {
+//	return svc.embeddedTransport
+//}
 
 // GetConnectURL returns URL of the first protocol that has a baseurl
-func (svc *TransportsManager) GetConnectURL() (baseURL string) {
+func (svc *TransportManager) GetConnectURL() (baseURL string) {
 	// right now only https has a baseurl
-	if svc.httpsTransport != nil {
-		baseURL = svc.httpsTransport.GetProtocolInfo().BaseURL
+	if svc.httpTransport != nil {
+		baseURL = svc.httpTransport.GetProtocolInfo().BaseURL
 	}
-	if baseURL == "" && svc.mqttTransport != nil {
-		baseURL = svc.httpsTransport.GetProtocolInfo().BaseURL
-	}
+	//if baseURL == "" && svc.mqttTransport != nil {
+	//	baseURL = svc.mqttTransport.GetProtocolInfo().BaseURL
+	//}
 	return baseURL
 }
 
 // GetProtocolInfo returns information on the default protocol
-func (svc *TransportsManager) GetProtocolInfo() (pi api.ProtocolInfo) {
-	if svc.httpsTransport != nil {
-		return svc.httpsTransport.GetProtocolInfo()
+func (svc *TransportManager) GetProtocolInfo() (pi api.ProtocolInfo) {
+	if svc.httpTransport != nil {
+		return svc.httpTransport.GetProtocolInfo()
 	}
 	return
 }
 
 // receive a message and ensure it has a message ID
-func (svc *TransportsManager) handleMessage(msg *hubclient.ThingMessage) hubclient.DeliveryStatus {
-	if msg.MessageID == "" {
-		msg.MessageID = shortid.MustGenerate()
-	}
-	stat := svc.handler(msg)
-	// help detect problems with message ID mismatch
-	if stat.MessageID != msg.MessageID {
-		slog.Error("Delivery status has missing messageID",
-			"thingID", msg.ThingID,
-			"messageType", msg.MessageType,
-			"key", msg.Name,
-			"request messageID", msg.MessageID,
-			"status messageID", stat.MessageID,
-			"senderID", msg.SenderID,
-		)
-	}
-	return stat
-}
+//func (svc *TransportManager) handleMessage(msg *hubclient.ThingMessage) hubclient.DeliveryStatus {
+//	if msg.MessageID == "" {
+//		msg.MessageID = shortid.MustGenerate()
+//	}
+//	stat := svc.handler(msg)
+//	// help detect problems with message ID mismatch
+//	if stat.MessageID != msg.MessageID {
+//		slog.Error("Delivery status has missing messageID",
+//			"thingID", msg.ThingID,
+//			"messageType", msg.MessageType,
+//			"key", msg.Name,
+//			"request messageID", msg.MessageID,
+//			"status messageID", stat.MessageID,
+//			"senderID", msg.SenderID,
+//		)
+//	}
+//	return stat
+//}
 
 //// GetProtocols returns a list of active server protocol bindings
-//func (svc *TransportsManager) GetProtocols() []api.ITransportBinding {
+//func (svc *TransportManager) GetProtocols() []api.ITransportBinding {
 //	return svc.bindings
 //}
 
@@ -104,150 +102,141 @@ func (svc *TransportsManager) handleMessage(msg *hubclient.ThingMessage) hubclie
 //
 //	Maybe support both sending to clientID and sessionID. Notifications can go to all sessions
 //	of a client while response of API requests are go the the session that sent it.
-func (svc *TransportsManager) SendToClient(
-	clientID string, msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus, found bool) {
+//func (svc *TransportManager) SendToClient(
+//	clientID string, msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus, found bool) {
+//
+//	// for now simply send the action request to enabled protocol handlers
+//	if svc.embeddedTransport != nil {
+//		stat, found = svc.embeddedTransport.SendToClient(clientID, msg)
+//	}
+//	if !found && svc.httpTransport != nil {
+//		stat, found = svc.httpTransport.SendToClient(clientID, msg)
+//	}
+//	if !found && svc.mqttTransport != nil {
+//		stat, found = svc.mqttTransport.SendToClient(clientID, msg)
+//	}
+//	if !found {
+//		// if no subscribers exist then delivery fails
+//		err := fmt.Errorf("TransportManager.SendToClient: Destination '%s' not found", clientID)
+//		stat.Failed(msg, err)
+//	}
+//	return stat, found
+//}
 
-	// for now simply send the action request to enabled protocol handlers
-	if svc.embeddedTransport != nil {
-		stat, found = svc.embeddedTransport.SendToClient(clientID, msg)
+// InvokeAction invokes an action on an agent's Thing
+func (svc *TransportManager) InvokeAction(
+	agentID, thingID string, name string, value any, messageID string) (
+	status string, output any, err error) {
+
+	// send the action to the sub-protocol bindings until there is a match
+	//if svc.embeddedTransport != nil {
+	//	return svc.embeddedTransport.InvokeAction(agentID, tThingID, name, value, messageID)
+	//}
+	if svc.httpTransport != nil {
+		status, output, err = svc.httpTransport.InvokeAction(
+			agentID, thingID, name, value, messageID)
 	}
-	if !found && svc.httpsTransport != nil {
-		stat, found = svc.httpsTransport.SendToClient(clientID, msg)
+	if err != nil && svc.mqttTransport != nil {
+		//	svc.mqttTransport.InvokeAction(agentID, thingID, name, value, messageID)
+		//}
 	}
-	if !found && svc.mqttTransport != nil {
-		stat, found = svc.mqttTransport.SendToClient(clientID, msg)
-	}
-	if !found {
-		// if no subscribers exist then delivery fails
-		err := fmt.Errorf("TransportsManager.SendToClient: Destination '%s' not found", clientID)
-		stat.Failed(msg, err)
-	}
-	return stat, found
+	return status, output, err
 }
 
-// SendEvent sends a event to all subscribers
-// This returns an error if the event had no subscribers
-func (svc *TransportsManager) SendEvent(
-	msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+// PublishEvent sends a event to all subscribers
+func (svc *TransportManager) PublishEvent(
+	dThingID string, name string, value any, messageID string) {
 
-	// delivery fails if there are no subscribers. Does this matter?
-	stat.Failed(msg, errors.New("event has no subscribers"))
-
-	// for now simply send the action request to enabled protocol handlers
-	if svc.embeddedTransport != nil {
-		stat1 := svc.embeddedTransport.SendEvent(msg)
-		if stat1.Error == "" {
-			stat = stat1
-		}
+	// simply send the event request to the protocol handlers
+	//if svc.embeddedTransport != nil {
+	//	svc.embeddedTransport.PublishEvent(dThingID, name, value, messageID)
+	//}
+	if svc.httpTransport != nil {
+		svc.httpTransport.PublishEvent(dThingID, name, value, messageID)
 	}
-	if svc.httpsTransport != nil {
-		stat2 := svc.httpsTransport.SendEvent(msg)
-		if stat2.Error == "" {
-			stat = stat2
-		}
-	}
-	if svc.mqttTransport != nil {
-		stat3 := svc.mqttTransport.SendEvent(msg)
-		if stat3.Error == "" {
-			stat = stat3
-		}
-	}
-	return stat
+	//if svc.mqttTransport != nil {
+	//	svc.mqttTransport.PublishEvent(dThingID, name, value, messageID)
+	//}
 }
 
-// Start the protocol servers
-func (svc *TransportsManager) Start(handler hubclient.MessageHandler) error {
-	svc.handler = handler
-	if svc.embeddedTransport != nil {
-		err := svc.embeddedTransport.Start(svc.handler)
-		if err != nil {
-			slog.Error("Embedded transport start error:", "err", err)
-		}
+// PublishProperty passes it on to all property observers
+func (svc *TransportManager) PublishProperty(dThingID string, name string, value any, messageID string) {
+	if svc.httpTransport != nil {
+		svc.httpTransport.PublishProperty(dThingID, name, value, messageID)
 	}
-	if svc.httpsTransport != nil {
-		err := svc.httpsTransport.Start(svc.handler)
-		if err != nil {
-			slog.Error("HttpSSE transport start error:", "err", err)
-		}
-	}
-	if svc.mqttTransport != nil {
-		err := svc.mqttTransport.Start(svc.handler)
-		if err != nil {
-			slog.Error("MQTT transport start error:", "err", err)
-		}
-	}
-	if svc.discoveryTransport != nil {
-		// TODO: support multiple protocols in the discovery record
-		serverURL := svc.GetConnectURL()
-		err := svc.discoveryTransport.Start(serverURL)
-		if err != nil {
-			slog.Error("Servuce discovery start error:", "err", err)
-		}
-	}
-	return nil
 }
 
 // Stop the protocol servers
-func (svc *TransportsManager) Stop() {
+func (svc *TransportManager) Stop() {
 	if svc.discoveryTransport != nil {
 		svc.discoveryTransport.Stop()
 	}
-	if svc.httpsTransport != nil {
-		svc.httpsTransport.Stop()
+	if svc.httpTransport != nil {
+		svc.httpTransport.Stop()
 	}
-	if svc.mqttTransport != nil {
-		svc.mqttTransport.Stop()
-	}
-	if svc.embeddedTransport != nil {
-		svc.embeddedTransport.Stop()
-	}
+	//if svc.mqttTransport != nil {
+	//	svc.mqttTransport.Stop()
+	//}
+	//if svc.embeddedTransport != nil {
+	//	svc.embeddedTransport.Stop()
+	//}
 	slog.Info("Runtime transport stopped")
 
 }
 
-// NewTransportManager creates a new instance of the protocol manager.
-// This instantiates enabled protocol bindings, including the embedded binding
-// to be used to register embedded services.
-func NewTransportManager(cfg *ProtocolsConfig,
-	privKey keys.IHiveKey, serverCert *tls.Certificate, caCert *x509.Certificate,
-	authenticator api.IAuthenticator, dtwService *service.DigitwinService) *TransportsManager {
+func (svc *TransportManager) WriteProperty(agentID string, thingID string, name string,
+	value any, messageID string) (status string, err error) {
 
-	svc := TransportsManager{
-		// the embedded transport protocol is required for the runtime
-		// Embedded services are: authn, authz, directory, inbox, outbox services
-		embeddedTransport: embedded.NewEmbeddedBinding(),
+	// send the action to the sub-protocol bindings until there is a match
+	//if svc.embeddedTransport != nil {
+	//	 status,err = svc.embeddedTransport.WriteProperty(agentID, tThingID, name, value, messageID)
+	//}
+	if svc.httpTransport != nil {
+		status, err = svc.httpTransport.WriteProperty(
+			agentID, thingID, name, value, messageID)
 	}
-	if cfg.EnableDiscovery {
-		svc.discoveryTransport = discotransport.NewDiscoveryTransport(cfg.Discovery)
+	if err != nil && svc.mqttTransport != nil {
+		//	status,err = svc.mqttTransport.WriteProperty(agentID, thingID, name, value, messageID)
 	}
-	if cfg.EnableHTTPS {
-		svc.httpsTransport = httptransport.NewHttpTransport(
-			&cfg.HttpsTransport,
-			privKey, serverCert, caCert,
-			authenticator, dtwService)
-	}
-	if cfg.EnableMQTT {
-		//svc.mqttTransport = mqtttransport.NewMqttTransport(
-		//	&cfg.MqttTransport,
-		//	privKey, serverCert, caCert,
-		//	sessionAuth)
-	}
-
-	return &svc
+	return status, err
 }
 
 // StartTransportManager starts a new instance of the transport manager.
 // This instantiates enabled protocol bindings, including the embedded binding
 // to be used to register embedded services.
+//
+// The transport manager implements the ITransportBinding API.
 func StartTransportManager(cfg *ProtocolsConfig,
-	privKey keys.IHiveKey,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	authenticator api.IAuthenticator,
-	handler hubclient.MessageHandler) (*TransportsManager, error) {
+	hubRouter *hubrouter.HubRouter,
+	dtwService *service.DigitwinService,
+) (svc *TransportManager, err error) {
 
-	svc := NewTransportManager(cfg, privKey, serverCert, caCert, authenticator)
-	err := svc.Start(handler)
+	svc = &TransportManager{
+		dtwService: dtwService,
+	}
+	// the embedded transport protocol is required for the runtime
+	// Embedded services are: authn, authz, directory, inbox, outbox services
+	//svc.embeddedTransport = embedded.StartEmbeddedBinding()
+	if cfg.EnableDiscovery {
+		serverURL := svc.GetConnectURL()
+		svc.discoveryTransport = discotransport.StartDiscoveryTransport(
+			cfg.Discovery, serverURL)
+	}
+	if cfg.EnableHTTPS {
+		svc.httpTransport, err = httptransport.StartHttpTransport(
+			&cfg.HttpsTransport,
+			serverCert, caCert,
+			authenticator, hubRouter)
+	}
+	if cfg.EnableMQTT {
+		//svc.mqttTransport = mqtttransport.StartMqttTransport(
+		//	&cfg.MqttTransport,
+		//	privKey, serverCert, caCert,
+		//	sessionAuth)
+	}
 
 	return svc, err
 }

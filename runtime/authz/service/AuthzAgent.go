@@ -5,6 +5,8 @@ import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 )
@@ -16,25 +18,28 @@ import (
 type AuthzAgent struct {
 	hc           hubclient.IHubClient
 	svc          *AuthzService
-	adminHandler hubclient.MessageHandler
-	userHandler  hubclient.MessageHandler
+	adminHandler api.ActionHandler
+	userHandler  api.ActionHandler
 }
 
-// HandleMessage an event or action message for the authz service
-// This message is send by the protocol client connected to this agent
-func (agent *AuthzAgent) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
-	var err error
+// HandleAction authz service action handler
+func (agent *AuthzAgent) HandleAction(consumerID string, dThingID string, actionName string, input any, messageID string) (
+	status string, output any, err error) {
+
 	// if the message has an authn agent prefix then remove it.
 	// This can happen if invoked directly through an embedded client
-	_, thingID := tdd.SplitDigiTwinThingID(msg.ThingID)
+	_, thingID := tdd.SplitDigiTwinThingID(dThingID)
 	if thingID == authz.AdminServiceID {
-		return agent.adminHandler(msg)
+		status, output, err = agent.adminHandler(consumerID, dThingID, actionName, input, messageID)
 	} else if thingID == authz.UserServiceID {
-		return agent.userHandler(msg)
+		status, output, err = agent.userHandler(consumerID, dThingID, actionName, input, messageID)
+	} else {
+		err = fmt.Errorf("unknown authz service capability '%s'", dThingID)
 	}
-	err = fmt.Errorf("unknown authz service capability '%s'", msg.ThingID)
-	stat.Failed(msg, err)
-	return stat
+	if err != nil {
+		status = digitwin.StatusFailed
+	}
+	return status, output, err
 }
 
 // StartAuthzAgent creates a new instance of the agent handling authorization service requests
@@ -43,14 +48,11 @@ func (agent *AuthzAgent) HandleMessage(msg *hubclient.ThingMessage) (stat hubcli
 //
 //	svc is the authorization service whose capabilities to expose
 //	hc is the optional message client used to publish and subscribe
-func StartAuthzAgent(svc *AuthzService, hc hubclient.IHubClient) (*AuthzAgent, error) {
+func StartAuthzAgent(svc *AuthzService) (*AuthzAgent, error) {
 	var err error
-	agent := AuthzAgent{svc: svc, hc: hc}
-	agent.adminHandler = authz.NewAdminHandler(svc)
-	agent.userHandler = authz.NewUserHandler(svc)
-
-	if hc != nil {
-		agent.hc.SetMessageHandler(agent.HandleMessage)
+	agent := AuthzAgent{
+		adminHandler: authz.NewHandleAdminAction(svc),
+		userHandler:  authz.NewHandleUserAction(svc),
 	}
 
 	// set permissions for using the authn services as authz wasn't yet running

@@ -8,12 +8,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/runtime/digitwin/service"
+	"github.com/hiveot/hub/runtime/hubrouter"
 	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
 	"github.com/hiveot/hub/runtime/transports/httptransport/subprotocols"
 	"log/slog"
@@ -35,11 +34,6 @@ type HttpTransport struct {
 	// port and path configuration
 	config *HttpTransportConfig
 
-	// server cert/keys
-	privKey    keys.IHiveKey
-	serverCert *tls.Certificate
-	caCert     *x509.Certificate
-
 	// TLS server and router
 	httpServer *tlsserver.TLSServer
 	router     *chi.Mux
@@ -50,17 +44,17 @@ type HttpTransport struct {
 	ssesc *subprotocols.SseScBinding
 	ws    *subprotocols.WsBinding
 
-	// callback handler for incoming events,actions and rpc messages
-	handler hubclient.MessageHandler
-
 	// authenticator for logging in and validating session tokens
 	authenticator api.IAuthenticator
 
 	// Thing level operations
 	operations []HttpOperation
 
-	// digitwin service
-	dtwService *service.DigitwinService
+	// routing of action, event and property requests
+	hubRouter hubrouter.IHubRouter
+
+	// reading of digital twin info
+	dtwService service.DigitwinService
 }
 
 // AddGetOp adds protocol binding operation with a URL and handler
@@ -150,18 +144,22 @@ func (svc *HttpTransport) createRoutes(router chi.Router) http.Handler {
 			"/digitwin/properties/{thingID}/{name}", svc.HandleReadProperty)
 		svc.AddPostOp(r, vocab.WoTOpWriteProperty, true,
 			"/digitwin/properties/{thingID}/{name}", svc.HandleWriteProperty)
-		svc.AddGetOp(r, vocab.WotOpQueryAllActions, true,
-			"/digitwin/actions/{thingID}", svc.HandleQueryAllActions)
-		svc.AddGetOp(r, vocab.WotOpQueryAction, true,
-			"/digitwin/actions/{thingID}/{name}", svc.HandleQueryAction)
-		svc.AddPostOp(r, vocab.WotOpInvokeAction, true,
-			"/digitwin/actions/{thingID}/{name}", svc.HandleInvokeAction)
+
 		svc.AddGetOp(r, "readallevents", true,
 			"/digitwin/events/{thingID}", svc.HandleReadAllEvents)
 		svc.AddGetOp(r, "readevent", true,
 			"/digitwin/events/{thingID}/{eventID}", svc.HandleReadEvent)
 
+		svc.AddGetOp(r, vocab.WotOpQueryAllActions, true,
+			"/digitwin/actions/{thingID}", svc.HandleQueryAllActions)
+		svc.AddGetOp(r, vocab.WotOpQueryAction, true,
+			"/digitwin/actions/{thingID}/{name}", svc.HandleQueryAction)
+		svc.AddPostOp(r, vocab.WotOpInvokeAction, true,
+			"/digitwin/actions/{thingID}/{name}", svc.HandleActionRequest)
+
 		// sse-sc subprotocol routes
+		svc.AddGetOp(r, "connect", true,
+			"/ssesc", svc.ssesc.HandleConnect)
 		svc.AddPostOp(r, vocab.WotOpObserveAllProperties, true,
 			"/ssesc/digitwin/observe/{thingID}", svc.ssesc.HandleObserveAllProperties)
 		svc.AddPostOp(r, vocab.WotOpSubscribeAllEvents, true,
@@ -191,7 +189,7 @@ func (svc *HttpTransport) createRoutes(router chi.Router) http.Handler {
 		svc.AddPostOp(r, vocab.WotOpObserveAllProperties, true,
 			"/sse/digitwin/observe/{thingID}", svc.sse.HandleObserveAllProperties)
 
-		// digitwin directory actions. Are these operations?
+		// digitwin directory actions. Are these operations or actions?
 		svc.AddGetOp(r, vocab.HTOpReadThing, false,
 			"/digitwin/things/{thingID}", svc.HandleReadThing)
 		svc.AddGetOp(r, vocab.HTOpReadAllThings, false,
@@ -288,15 +286,19 @@ func (svc *HttpTransport) InvokeAction(
 	status string, output any, err error) {
 
 	if svc.ws != nil {
-		return svc.ws.InvokeAction(agentID, thingID, name, input, messageID)
+		status, output, err = svc.ws.InvokeAction(agentID, thingID, name, input, messageID)
 	}
 	if svc.ssesc != nil {
-		return svc.ssesc.InvokeAction(agentID, thingID, name, input, messageID)
+		status, output, err = svc.ssesc.InvokeAction(agentID, thingID, name, input, messageID)
 	}
-	if svc.sse != nil {
-		return svc.sse.InvokeAction(agentID, thingID, name, input, messageID)
+	if err != nil && svc.sse != nil {
+		status, output, err = svc.sse.InvokeAction(agentID, thingID, name, input, messageID)
 	}
-	return digitwin.StatusFailed, nil, fmt.Errorf("No sub-protocol bindings")
+	if err != nil {
+		status = digitwin.StatusFailed
+		err = fmt.Errorf("No sub-protocol bindings")
+	}
+	return status, output, err
 }
 
 // PublishEvent sends an event message to subscribers of this event.
@@ -329,16 +331,25 @@ func (svc *HttpTransport) PublishProperty(
 	}
 }
 
-// Start the https server and listen for incoming connection requests
-func (svc *HttpTransport) Start(handler hubclient.MessageHandler) error {
-	slog.Info("Starting HttpTransport")
-	svc.httpServer, svc.router = tlsserver.NewTLSServer(
-		svc.config.Host, svc.config.Port, svc.serverCert, svc.caCert)
+// WriteProperty sends a request to write a property to the agent with the given ID
+func (svc *HttpTransport) WriteProperty(
+	agentID string, thingID string, name string, input any, messageID string) (
+	status string, err error) {
 
-	svc.handler = handler
-	svc.createRoutes(svc.router)
-	err := svc.httpServer.Start()
-	return err
+	if svc.ws != nil {
+		status, err = svc.ws.WriteProperty(agentID, thingID, name, input, messageID)
+	}
+	if svc.ssesc != nil {
+		status, err = svc.ssesc.WriteProperty(agentID, thingID, name, input, messageID)
+	}
+	if err != nil && svc.sse != nil {
+		status, err = svc.sse.WriteProperty(agentID, thingID, name, input, messageID)
+	}
+	if err != nil {
+		status = digitwin.StatusFailed
+		err = fmt.Errorf("No sub-protocol bindings")
+	}
+	return status, err
 }
 
 // Stop the https server
@@ -378,37 +389,42 @@ func (svc *HttpTransport) writeReply(w http.ResponseWriter, data any) {
 	}
 }
 
-// NewHttpTransport creates a new instance of the HTTPS Server with JWT authentication
-// and SSE/SSE-SC/WS sub-protocol bindings.
+// StartHttpTransport creates and starts a new instance of the HTTPS Server
+// with JWT authentication and SSE/SSE-SC/WS sub-protocol bindings.
+//
+// Call stop to end the transport server.
 //
 //	config
 //	privKey
 //	caCert
 //	sessionAuth for creating and validating authentication tokens
 //	dtwService that handles digital thing requests
-func NewHttpTransport(config *HttpTransportConfig,
-	privKey keys.IHiveKey,
+func StartHttpTransport(config *HttpTransportConfig,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	authenticator api.IAuthenticator,
-	dtwService *service.DigitwinService,
-) *HttpTransport {
+	hubRouter hubrouter.IHubRouter,
+) (*HttpTransport, error) {
 	// FIXME: do not use a global. the sessionmanager belongs to this transport binding.
 	//
 	sm := sessions.GetSessionManager()
+
+	httpServer, router := tlsserver.NewTLSServer(
+		config.Host, config.Port, serverCert, caCert)
+
 	svc := HttpTransport{
-		//sm:            sm,
 		authenticator: authenticator,
 		config:        config,
-		serverCert:    serverCert,
-		caCert:        caCert,
-		privKey:       privKey,
-		dtwService:    dtwService,
-		ws:            subprotocols.NewWsBinding(sm),
-		sse:           subprotocols.NewSseBinding(sm),
-		ssesc:         subprotocols.NewSseScBinding(sm),
-		//httpServer:  httpServer,
-		//router:      r,
+		// subprotocol bindings need session info
+		ws:         subprotocols.NewWsBinding(sm),
+		sse:        subprotocols.NewSseBinding(sm),
+		ssesc:      subprotocols.NewSseScBinding(sm),
+		httpServer: httpServer,
+		router:     router,
+		hubRouter:  hubRouter,
 	}
-	return &svc
+
+	svc.createRoutes(svc.router)
+	err := svc.httpServer.Start()
+	return &svc, err
 }

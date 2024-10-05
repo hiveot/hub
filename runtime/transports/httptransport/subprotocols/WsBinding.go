@@ -67,6 +67,14 @@ func (b *WsBinding) PublishEvent(dThingID, name string, data any, messageID stri
 func (b *WsBinding) PublishProperty(dThingID, name string, data any, messageID string) {
 }
 
+// WriteProperty sends the request to update the thing to the agent
+func (b *WsBinding) WriteProperty(
+	agentID, thingID, name string, data any, messageID string) (
+	status string, err error) {
+
+	return digitwin.StatusFailed, fmt.Errorf("Not yet implemented")
+}
+
 // NewWsBinding returns a new websocket sub-protocol binding
 func NewWsBinding(sm *sessions.SessionManager) *WsBinding {
 	wsBinding := &WsBinding{

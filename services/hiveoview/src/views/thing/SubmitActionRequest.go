@@ -49,7 +49,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 			slog.Any("newValue", newValue))
 
 		// don't make this an rpc as the response time isn't always known with sleeping devices
-		//stat = hc.InvokeAction(thingID, actionName, newValue)
+		//stat = hc.HandleActionFlow(thingID, actionName, newValue)
 		var resp interface{}
 		err = hc.Rpc(thingID, actionName, newValue, &resp)
 		if stat.Error != "" {

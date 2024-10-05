@@ -50,7 +50,7 @@ func (jauth *JWTAuthenticator) AuthenticateRequest(resp http.ResponseWriter, req
 	// TODO: verify claims: iat, iss, aud
 
 	// hoora its valid
-	slog.Debug("JWTAuthenticator. InvokeAction by authenticated with valid JWT token")
+	slog.Debug("JWTAuthenticator. HandleActionFlow by authenticated with valid JWT token")
 	return claims.Username, true
 }
 

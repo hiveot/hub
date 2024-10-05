@@ -29,7 +29,7 @@ type EmbeddedClient struct {
 	// the wire format that serializes the data doesn't apply here.
 	sendMessage hubclient.MessageHandler
 	// client side handler that receives actions from the server
-	messageHandler hubclient.MessageHandler
+	//messageHandler hubclient.MessageHandler
 	// client side handler that receives all non-action messages from the server
 	receiveEventHandler hubclient.EventHandler
 }
@@ -71,26 +71,26 @@ func (cl *EmbeddedClient) GetStatus() hubclient.TransportStatus {
 }
 
 // HandleMessage receives a message from the embedded transport for this client
-func (cl *EmbeddedClient) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
-	if msg.MessageType == vocab.MessageTypeAction || msg.MessageType == vocab.MessageTypeProperty {
-		if cl.messageHandler != nil {
-			return cl.messageHandler(msg)
-		}
-	} else {
-		if cl.receiveEventHandler != nil {
-			err := cl.receiveEventHandler(msg)
-			stat.Completed(msg, nil, err)
-			return stat
-		}
-	}
-	// The delivery is complete. Too bad the handler isn't registered. This is almost
-	// certainly a bug in the client code, so lets make clear this isn't a transport problem.
-	err := fmt.Errorf("no receive handler set for client '%s'", cl.clientID)
-	slog.Error("HandleMessage",
-		"err", err.Error(), "thingID", msg.ThingID, "name", msg.Name)
-	stat.Completed(msg, nil, err)
-	return stat
-}
+//func (cl *EmbeddedClient) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+//	if msg.MessageType == vocab.MessageTypeAction || msg.MessageType == vocab.MessageTypeProperty {
+//		if cl.messageHandler != nil {
+//			return cl.messageHandler(msg)
+//		}
+//	} else {
+//		if cl.receiveEventHandler != nil {
+//			err := cl.receiveEventHandler(msg)
+//			stat.Completed(msg, nil, err)
+//			return stat
+//		}
+//	}
+//	// The delivery is complete. Too bad the handler isn't registered. This is almost
+//	// certainly a bug in the client code, so lets make clear this isn't a transport problem.
+//	err := fmt.Errorf("no receive handler set for client '%s'", cl.clientID)
+//	slog.Error("HandleMessage",
+//		"err", err.Error(), "thingID", msg.ThingID, "name", msg.Name)
+//	stat.Completed(msg, nil, err)
+//	return stat
+//}
 
 func (cl *EmbeddedClient) Logout() error {
 	return nil
@@ -189,9 +189,9 @@ func (cl *EmbeddedClient) SetConnectHandler(cb func(status hubclient.TransportSt
 }
 
 // SetMessageHandler set the handler that receives all messages.
-func (cl *EmbeddedClient) SetMessageHandler(cb hubclient.MessageHandler) {
-	cl.messageHandler = cb
-}
+//func (cl *EmbeddedClient) SetMessageHandler(cb hubclient.MessageHandler) {
+//	cl.messageHandler = cb
+//}
 
 // Subscribe adds a subscription for one or more events. Events will be passed to
 // the handler set with SetMessageHandler.
@@ -228,10 +228,10 @@ func (cl *EmbeddedClient) Unsubscribe(thingID string, name string) error {
 //
 // Intended for testing and clients that are also embedded, such as services calling other
 // services.
-func NewEmbeddedClient(clientID string, serverHandler hubclient.MessageHandler) *EmbeddedClient {
+func NewEmbeddedClient(clientID string) *EmbeddedClient {
 	cl := EmbeddedClient{
-		clientID:    clientID,
-		sendMessage: serverHandler,
+		clientID: clientID,
+		//sendMessage: serverHandler,
 	}
 	return &cl
 }

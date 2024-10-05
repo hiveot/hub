@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
 	"github.com/hiveot/hub/runtime/transports/httptransport/subprotocols"
@@ -80,7 +82,8 @@ func (svc *HttpTransport) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	svc.writeReply(w, &resp)
 }
 
-func (svc *HttpTransport) HandleInvokeAction(w http.ResponseWriter, r *http.Request) {
+// HandleActionRequest requests an action from the digital twin
+func (svc *HttpTransport) HandleActionRequest(w http.ResponseWriter, r *http.Request) {
 	clientID, dThingID, name, body, err := subprotocols.GetRequestParams(r)
 	var input any
 
@@ -96,10 +99,16 @@ func (svc *HttpTransport) HandleInvokeAction(w http.ResponseWriter, r *http.Requ
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 	}
-	messageID := "" // FIXME track progress
-	output, status, err := svc.dtwService.InvokeAction(
-		clientID, dThingID, name, input, messageID)
+	// The client can provide a messageID for actions. Useful for associating
+	// RPC type actions with a response.
+	reqID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
+	status, output, messageID, err := svc.hubRouter.HandleActionFlow(
+		clientID, dThingID, name, input, reqID)
 	_ = status
+	// provide the message id in the response
+	if messageID != "" {
+		w.Header().Set(tlsclient.HTTPMessageIDHeader, messageID)
+	}
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return
@@ -121,8 +130,9 @@ func (svc *HttpTransport) HandlePublishEvent(w http.ResponseWriter, r *http.Requ
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 	}
-
-	err = svc.dtwService.AddEventValue(clientID, thingID, name, evValue)
+	// pass the event to the digitwin service for further processing
+	messageID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
+	err = svc.hubRouter.HandleEventFlow(clientID, thingID, name, evValue, messageID)
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return
@@ -218,7 +228,9 @@ func (svc *HttpTransport) HandleReadAllThings(w http.ResponseWriter, r *http.Req
 		offset32, _ := strconv.ParseInt(offsetStr, 10, 32)
 		offset = int(offset32)
 	}
-	thingsList, err := svc.dtwService.ReadAllThings(clientID, offset, limit)
+	thingsList, err := svc.dtwService.DirSvc.ReadDTDs(clientID,
+		digitwin.DirectoryReadDTDsArgs{Offset: offset, Limit: limit},
+	)
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return
@@ -265,7 +277,7 @@ func (svc *HttpTransport) HandleReadThing(w http.ResponseWriter, r *http.Request
 		svc.writeError(w, err, http.StatusUnauthorized)
 		return
 	}
-	thing, err := svc.dtwService.ReadThing(clientID, thingID)
+	thing, err := svc.dtwService.DirSvc.ReadDTD(clientID, thingID)
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return
@@ -302,15 +314,18 @@ func (svc *HttpTransport) HandleRefresh(w http.ResponseWriter, r *http.Request) 
 // HandleUpdateThing agent sends a new TD document
 func (svc *HttpTransport) HandleUpdateThing(w http.ResponseWriter, r *http.Request) {
 	slog.Info("HandleUpdateThing")
-	clientID, thingID, _, body, err := subprotocols.GetRequestParams(r)
+	clientID, _, _, body, err := subprotocols.GetRequestParams(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	svc.dtwService.UpdateTD(clientID, thingID, string(body))
+	err = svc.dtwService.DirSvc.UpdateDTD(clientID, string(body))
+	if err != nil {
+		svc.writeError(w, err, http.StatusBadRequest)
+	}
 }
 
-// HandleUpdateProperty agent sends property update
+// HandleUpdateProperty agent sends property update notification
 func (svc *HttpTransport) HandleUpdateProperty(w http.ResponseWriter, r *http.Request) {
 	clientID, thingID, name, body, err := subprotocols.GetRequestParams(r)
 	var value any
@@ -324,8 +339,8 @@ func (svc *HttpTransport) HandleUpdateProperty(w http.ResponseWriter, r *http.Re
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 	}
-
-	err = svc.dtwService.UpdatePropertyValue(clientID, thingID, name, value)
+	messageID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
+	err = svc.hubRouter.HandleUpdatePropertyFlow(clientID, thingID, name, value, messageID)
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return
@@ -337,7 +352,7 @@ func (svc *HttpTransport) HandleUpdateProperty(w http.ResponseWriter, r *http.Re
 func (svc *HttpTransport) HandleWriteProperty(w http.ResponseWriter, r *http.Request) {
 
 	clientID, dThingID, name, body, err := subprotocols.GetRequestParams(r)
-	slog.Info("HandleWriteProperty",
+	slog.Info("HandleWritePropertyFlow",
 		"consumerID", clientID, "dThingID", dThingID, "name", name)
 
 	if err != nil {
@@ -345,13 +360,16 @@ func (svc *HttpTransport) HandleWriteProperty(w http.ResponseWriter, r *http.Req
 		return
 	}
 	var newValue any
+	var messageID string
 	err = json.Unmarshal(body, &newValue)
 	if err == nil {
-		_, err = svc.dtwService.WriteProperty(clientID, dThingID, name, newValue)
+		_, messageID, err = svc.hubRouter.HandleWritePropertyFlow(clientID, dThingID, name, newValue)
 	}
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return
+	} else {
+		w.Header().Set(tlsclient.HTTPMessageIDHeader, messageID)
 	}
 	svc.writeReply(w, nil)
 }

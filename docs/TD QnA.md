@@ -103,7 +103,8 @@ When the server sends data to a client over SSE, it must include additional info
 18. How to describe a map of objects in the action output dataschema?
 
 19. How to describe basic vs advanced properties, events and actions in the TD?
-Use case: human consumers might be interested in some properties, events or actions but not all of them. The human consumer should be able to just look at the essential data without being overwhelmed with more advanced ones. Some zwave devices have close to 100 properties of which only a handful are useful to the regular consumer. How to differentiate them? 
+Use case: human consumers might be interested in some properties, events or actions but not all of them. The human consumer should be able to just look at the essential data without being overwhelmed with more advanced ones. Some zwave devices have close to 100 properties of which only a handful are useful to the regular consumer. How to differentiate them?
+Note: check out https://webthings.io/schemas/
     * option1: use the ht vocabulary to indicate basic properties. This is not compatible with anything.
     * option2: add to the @context. Yeah ...
     * option3: start an initiative to combine all existing ontologies into a single world wide accepted ontology, vocabulary and classification of the majority of IoT devices with their properties, events and actions. This seems like a lot of work.

@@ -106,14 +106,14 @@ func (ct *ConsumedThing) InvokeAction(name string, params InteractionInput) *Int
 	tm := hubclient.NewThingMessage(
 		vocab.MessageTypeAction, ct.td.ID, name, params, ct.hc.ClientID())
 	//
-	////stat := ct.hc.InvokeAction(ct.td.ID, name, params)
+	////stat := ct.hc.HandleActionFlow(ct.td.ID, name, params)
 	urlParams := map[string]string{
 		"thingID": ct.td.ID,
 		"name":    name,
 	}
 	href, err := ct.td.GetFormHRef(actionForm, urlParams)
 	if err != nil {
-		slog.Warn("InvokeAction", "err", err.Error())
+		slog.Warn("HandleActionFlow", "err", err.Error())
 	}
 	stat := ct.hc.SendOperation(href, actionForm, params)
 

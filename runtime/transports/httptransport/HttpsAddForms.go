@@ -34,11 +34,12 @@ import (
 //	}
 //
 // ```
-func (svc *HttpTransport) AddTDForms(td *tdd.TD) {
+func (svc *HttpTransport) AddTDForms(td *tdd.TD) error {
 	svc.AddThingLevelForms(td)
 	//svc.AddPropertiesForms(td)
 	//svc.AddEventsForms(td)
 	//svc.AddActionForms(td)
+	return nil
 }
 
 // AddActionForms add forms Thing action affordance

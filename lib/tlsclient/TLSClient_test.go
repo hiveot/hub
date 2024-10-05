@@ -144,9 +144,9 @@ func TestAuthClientCert(t *testing.T) {
 	//
 	_, _, err = cl.Get(path1)
 	assert.NoError(t, err)
-	_, _, err = cl.Post(path1, nil)
+	_, _, _, err = cl.Post(path1, nil, "")
 	assert.NoError(t, err)
-	_, _, err = cl.Put(path1, nil)
+	_, _, _, err = cl.Put(path1, nil, "")
 	assert.NoError(t, err)
 	_, _, err = cl.Delete(path1)
 	assert.NoError(t, err)
@@ -213,6 +213,7 @@ func TestAuthJWT(t *testing.T) {
 	user1 := "user1"
 	password1 := "password1"
 	secret := make([]byte, 64)
+	msgID1 := "msgid-1"
 	_, _ = rand.Read(secret)
 
 	// setup server and client environment
@@ -225,6 +226,7 @@ func TestAuthJWT(t *testing.T) {
 		body, err := io.ReadAll(req.Body)
 		assert.NoError(t, err)
 		err = json.Unmarshal(body, &authMsg)
+		msgID := req.Header.Get(tlsclient.HTTPMessageIDHeader)
 		assert.NoError(t, err)
 		assert.Equal(t, user1, authMsg.ClientID)
 		assert.Equal(t, password1, authMsg.Password)
@@ -240,6 +242,7 @@ func TestAuthJWT(t *testing.T) {
 			token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 			newToken, err := token.SignedString(secret)
 			assert.NoError(t, err)
+			resp.Header().Set(tlsclient.HTTPMessageIDHeader, msgID)
 			loginResp = authn.UserLoginResp{Token: newToken}
 			data, _ := json.Marshal(loginResp)
 			_, _ = resp.Write(data)
@@ -267,8 +270,9 @@ func TestAuthJWT(t *testing.T) {
 	}
 	cl := tlsclient.NewTLSClient(testAddress, nil, authBundle.CaCert, 0)
 	jsonArgs, _ := json.Marshal(loginMessage)
-	resp, _, err := cl.Invoke("POST", loginURL, jsonArgs, nil)
+	resp, msgID2, _, err := cl.Invoke("POST", loginURL, jsonArgs, msgID1, nil)
 	require.NoError(t, err)
+	assert.Equal(t, msgID1, msgID2)
 	reply := authn.UserLoginResp{}
 	err = json.Unmarshal(resp, &reply)
 
@@ -284,6 +288,7 @@ func TestAuthJWT(t *testing.T) {
 
 func TestAuthJWTFail(t *testing.T) {
 	pathHello1 := "/hello"
+	messageID1 := "msgid-1"
 
 	// setup server and client environment
 	mux := http.NewServeMux()
@@ -298,7 +303,7 @@ func TestAuthJWTFail(t *testing.T) {
 	//
 	cl := tlsclient.NewTLSClient(testAddress, nil, authBundle.CaCert, 0)
 	cl.SetAuthToken("badtoken")
-	resp, _, err := cl.Post(pathHello1, []byte("test"))
+	resp, _, _, err := cl.Post(pathHello1, []byte("test"), messageID1)
 	assert.Empty(t, resp)
 	// unauthorized
 	assert.Error(t, err)

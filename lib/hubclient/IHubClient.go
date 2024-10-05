@@ -134,12 +134,11 @@ type IHubClient interface {
 	//	url to invoke
 	//  data with action input as defined in its TD
 	//
-	// This returns a delivery status with serialized response message if delivered
-	//InvokeAction(dThingID string, name string, value any) DeliveryStatus
-	InvokeAction(thingID string, name string, data any) DeliveryStatus
+	// This returns a delivery status with response data if delivered
+	InvokeAction(thingID string, name string, data any, messageID string) DeliveryStatus
 
 	// SendOperation is temporary transition to support using TD forms
-	SendOperation(href string, op tdd.Form, data any) DeliveryStatus
+	SendOperation(href string, op tdd.Form, data any, messageID string) DeliveryStatus
 
 	// PubEvent publishes an event style message without a response.
 	// It returns as soon as delivery to the hub is confirmed.
@@ -151,15 +150,12 @@ type IHubClient interface {
 	//	thingID native ID of the thing as used by the agent
 	//	name of the event to publish as described in the TD
 	//	value with native data to publish, as per TD dataschema
+	//	messageID if the event is in response to a request
 	//
 	// This returns an error if the event cannot not be delivered to the hub
-	PubEvent(thingID string, name string, value any) error
+	PubEvent(thingID string, name string, value any, messageID string) error
 
-	// PubProperty publishes a property change request
-	// Value is a value based on the PropertyAffordances in the TD
-	PubProperty(dThingID string, name string, value any) DeliveryStatus
-
-	// PubProps publishes a property values event.
+	// PubProps publishes a property value update event to the hub.
 	// It returns as soon as delivery to the hub is confirmed.
 	// This is intended for agents, not for consumers.
 	//
@@ -167,8 +163,9 @@ type IHubClient interface {
 	//	props is the property name-value map to publish where value is the native value
 	PubProps(thingID string, props map[string]any) error
 
-	// PubTD publishes an TD document event.
+	// PubTD publishes a TD document to the Hub.
 	// It returns as soon as delivery to the hub is confirmed.
+	//
 	// This is intended for agents, not for consumers.
 	//	id is the Thing ID as seen by the agent (not the digitwin ID)
 	//	td is the Thing Description document describing the Thing
@@ -202,7 +199,7 @@ type IHubClient interface {
 	//
 	// Intended for agents that have processed an incoming action request asynchronously
 	// and need to send an update on further progress.
-	SendDeliveryUpdate(stat DeliveryStatus)
+	SendDeliveryUpdate(status string, messageID string)
 
 	// SetMessageHandler adds a handler for messages from the hub.
 	// This replaces any previously set handler.
@@ -227,4 +224,12 @@ type IHubClient interface {
 	// Unsubscribe removes a previous event subscription.
 	// dThingID and key must match that of Subscribe
 	Unsubscribe(dThingID string, name string) error
+
+	// WriteProperty publishes a property change request
+	//
+	//	dThingID is the digital twin thingID whose property to write
+	//	name is the name of the property to write
+	//	Value is a value based on the PropertyAffordances in the TD
+	// This returns the delivery status and an error code if delivery fails
+	WriteProperty(dThingID string, name string, value any) DeliveryStatus
 }

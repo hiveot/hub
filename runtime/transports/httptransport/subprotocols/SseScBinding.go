@@ -189,7 +189,7 @@ func (c *SseScBinding) PublishProperty(dThingID, name string, data any, messageI
 	}
 }
 
-// WriteProperty sebds the write request for the thing to the agent
+// WriteProperty sends the write request for the thing property to the agent
 func (b *SseScBinding) WriteProperty(
 	agentID, thingID, name string, data any, messageID string) (
 	status string, err error) {

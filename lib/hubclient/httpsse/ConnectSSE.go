@@ -178,12 +178,12 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 				slog.String("clientID", cl.ClientID()))
 			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
 		}
-		cl.SendDeliveryUpdate(stat)
+		cl.SendDeliveryUpdate(stat.Progress, stat.MessageID)
 	} else {
 		slog.Warn("handleSSEEvent, unknown message type. Message ignored.",
 			slog.String("message type", rxMsg.MessageType),
 			slog.String("clientID", cl.ClientID()))
 		stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
-		cl.SendDeliveryUpdate(stat)
+		cl.SendDeliveryUpdate(stat.Progress, stat.MessageID)
 	}
 }

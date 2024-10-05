@@ -83,9 +83,9 @@ func (cs *ClientSession) GetSessionID() string {
 	return cs.sessionID
 }
 
-// InvokeAction invokes an action on the client if connected
+// HandleActionFlow invokes an action on the client if connected
 // This returns the delivery status and optional output, or an error if delivery is not available.
-//func (cs *ClientSession) InvokeAction(
+//func (cs *ClientSession) HandleActionFlow(
 //	agentID string, thingID string, name string, input any, messageID string) (
 //	status string, output any, err error) {
 //
@@ -93,10 +93,10 @@ func (cs *ClientSession) GetSessionID() string {
 //	defer cs.mux.RUnlock()
 //	if len(cs.endpoints) == 0 {
 //		return digitwin.StatusFailed, nil, fmt.Errorf(
-//			"InvokeAction: Agent '%s' not reachable", agentID)
+//			"HandleActionFlow: Agent '%s' not reachable", agentID)
 //	}
 //	for _, c := range cs.endpoints {
-//		status, output, err = c.InvokeAction(agentID, thingID, name, input, messageID)
+//		status, output, err = c.HandleActionFlow(agentID, thingID, name, input, messageID)
 //		if err != nil {
 //			return status, output, err
 //		}

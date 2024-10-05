@@ -1,4 +1,4 @@
-package middleware
+package hubrouter
 
 import (
 	"github.com/hiveot/hub/lib/hubclient"

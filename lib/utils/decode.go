@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -16,8 +17,8 @@ func Decode(value any, arg interface{}) error {
 	}
 	// the ugly workaround is to marshal/unmarshal using json.
 	// TODO: more efficient method to convert the any type to the given type.
-	jsonData, _ := json.Marshal(value)
-	return json.Unmarshal(jsonData, arg)
+	jsonData, _ := jsoniter.Marshal(value)
+	return jsoniter.Unmarshal(jsonData, arg)
 }
 
 // DecodeAsString converts the value to a string

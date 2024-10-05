@@ -9,7 +9,6 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -29,6 +28,7 @@ const HiveOTContext = "https://www.hiveot.net/vocab/v0.1"
 //		actions: {actionID: ActionAffordance, ...},
 //		events:  {eventID: EventAffordance, ...},
 //		properties: {propID: PropertyAffordance, ...}
+//		forms: [...]
 //	 }
 type TD struct {
 
@@ -78,7 +78,7 @@ type TD struct {
 	// Human-readable titles in the different languages
 	Titles map[string]string `json:"titles,omitempty"`
 
-	SchemaDefinitions map[string]*DataSchema `json:"schemaDefinitions,omitempty"`
+	SchemaDefinitions map[string]DataSchema `json:"schemaDefinitions,omitempty"`
 
 	// All properties-based interaction affordances of the things
 	Properties map[string]*PropertyAffordance `json:"properties,omitempty"`
@@ -106,7 +106,7 @@ type TD struct {
 	SecurityDefinitions map[string]SecurityScheme `json:"securityDefinitions"`
 
 	// for use to access writable data, when TD's are updated on the fly by agents.
-	updateMutex sync.RWMutex
+	//updateMutex sync.RWMutex
 }
 
 // AddAction provides a simple way to add an action affordance Schema to the TD.
@@ -281,8 +281,8 @@ func (tdoc *TD) AddSensorEvent(eventName string, title string) *EventAffordance 
 
 // AsMap returns the TD document as a key-value map
 func (tdoc *TD) AsMap() map[string]interface{} {
-	tdoc.updateMutex.RLock()
-	defer tdoc.updateMutex.RUnlock()
+	//tdoc.updateMutex.RLock()
+	//defer tdoc.updateMutex.RUnlock()
 
 	var asMap map[string]interface{}
 	asJSON, _ := ser.Marshal(tdoc)
@@ -322,8 +322,8 @@ func (tdoc *TD) EscapeKeys() {
 // GetAction returns the action affordance with Schema for the action.
 // Returns nil if name is not an action or no affordance is defined.
 func (tdoc *TD) GetAction(actionName string) *ActionAffordance {
-	tdoc.updateMutex.RLock()
-	defer tdoc.updateMutex.RUnlock()
+	//tdoc.updateMutex.RLock()
+	//defer tdoc.updateMutex.RUnlock()
 
 	actionAffordance, found := tdoc.Actions[actionName]
 	if !found {
@@ -354,8 +354,8 @@ func (tdoc *TD) GetAtTypeVocab() string {
 
 // GetEvent returns the Schema for the event or nil if the event doesn't exist
 func (tdoc *TD) GetEvent(eventName string) *EventAffordance {
-	tdoc.updateMutex.RLock()
-	defer tdoc.updateMutex.RUnlock()
+	//tdoc.updateMutex.RLock()
+	//defer tdoc.updateMutex.RUnlock()
 
 	eventAffordance, found := tdoc.Events[eventName]
 	if !found {
@@ -460,8 +460,8 @@ func (tdoc *TD) GetFormHRef(form Form, uriVars map[string]string) (string, error
 
 // GetProperty returns the Schema and value for the property or nil if its key is not found.
 func (tdoc *TD) GetProperty(propName string) *PropertyAffordance {
-	tdoc.updateMutex.RLock()
-	defer tdoc.updateMutex.RUnlock()
+	//tdoc.updateMutex.RLock()
+	//defer tdoc.updateMutex.RUnlock()
 	propAffordance, found := tdoc.Properties[propName]
 	if !found {
 		return nil
@@ -472,8 +472,8 @@ func (tdoc *TD) GetProperty(propName string) *PropertyAffordance {
 // GetPropertyOfType returns the first property affordance with the given @type
 // This returns the property ID and the property affordances, or nil if not found
 func (tdoc *TD) GetPropertyOfType(atType string) (string, *PropertyAffordance) {
-	tdoc.updateMutex.RLock()
-	defer tdoc.updateMutex.RUnlock()
+	//tdoc.updateMutex.RLock()
+	//defer tdoc.updateMutex.RUnlock()
 	for propID, prop := range tdoc.Properties {
 		if prop.AtType == atType {
 			return propID, prop
@@ -523,8 +523,8 @@ func (tdoc *TD) LoadFromJSON(tddJSON string) error {
 // This returns the added action affordance
 func (tdoc *TD) UpdateAction(name string, affordance *ActionAffordance) *ActionAffordance {
 	name = strings.ReplaceAll(name, " ", "-")
-	tdoc.updateMutex.Lock()
-	defer tdoc.updateMutex.Unlock()
+	//tdoc.updateMutex.Lock()
+	//defer tdoc.updateMutex.Unlock()
 	tdoc.Actions[name] = affordance
 	return affordance
 }
@@ -536,18 +536,16 @@ func (tdoc *TD) UpdateAction(name string, affordance *ActionAffordance) *ActionA
 // This returns the added event affordance.
 func (tdoc *TD) UpdateEvent(name string, affordance *EventAffordance) *EventAffordance {
 	name = strings.ReplaceAll(name, " ", "-")
-	tdoc.updateMutex.Lock()
-	defer tdoc.updateMutex.Unlock()
+	//tdoc.updateMutex.Lock()
+	//defer tdoc.updateMutex.Unlock()
 	tdoc.Events[name] = affordance
 	return affordance
 }
 
 // UpdateForms sets the top level forms section of the TD
-// NOTE: In HiveOT actions are always routed via the Hub using the Hub's protocol binding.
-// Under normal circumstances forms are therefore not needed.
 func (tdoc *TD) UpdateForms(formList []Form) {
-	tdoc.updateMutex.Lock()
-	defer tdoc.updateMutex.Unlock()
+	//tdoc.updateMutex.Lock()
+	//defer tdoc.updateMutex.Unlock()
 	tdoc.Forms = formList
 }
 
@@ -558,8 +556,8 @@ func (tdoc *TD) UpdateForms(formList []Form) {
 // This returns the added affordance to support chaining
 func (tdoc *TD) UpdateProperty(name string, affordance *PropertyAffordance) *PropertyAffordance {
 	name = strings.ReplaceAll(name, " ", "-")
-	tdoc.updateMutex.Lock()
-	defer tdoc.updateMutex.Unlock()
+	//tdoc.updateMutex.Lock()
+	//defer tdoc.updateMutex.Unlock()
 	tdoc.Properties[name] = affordance
 	return affordance
 }
@@ -569,8 +567,8 @@ func (tdoc *TD) UpdateProperty(name string, affordance *PropertyAffordance) *Pro
 //	title is the name of the device, equivalent to the vocab.PropDeviceName property.
 //	description is the device product description.
 func (tdoc *TD) UpdateTitleDescription(title string, description string) {
-	tdoc.updateMutex.Lock()
-	defer tdoc.updateMutex.Unlock()
+	//tdoc.updateMutex.Lock()
+	//defer tdoc.updateMutex.Unlock()
 	tdoc.Title = title
 	tdoc.Description = description
 }
@@ -621,7 +619,7 @@ func NewTD(thingID string, title string, deviceType string) *TD {
 		Security:            vocab.WoTNoSecurityScheme,
 		SecurityDefinitions: make(map[string]SecurityScheme),
 		Title:               title,
-		updateMutex:         sync.RWMutex{},
+		//updateMutex:         sync.RWMutex{},
 	}
 
 	return &td

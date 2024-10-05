@@ -143,7 +143,7 @@ func (test *TestServer) AddConnectService(serviceID string) (
 	return cl, token
 }
 
-// AddTD adds a test TD document using the embedded connection to the runtime
+// AddTD adds a test TD document to the runtime
 // if td is nil then a random TD will be added
 func (test *TestServer) AddTD(agentID string, td *tdd.TD) *tdd.TD {
 	if td == nil {
@@ -151,8 +151,9 @@ func (test *TestServer) AddTD(agentID string, td *tdd.TD) *tdd.TD {
 		td = test.CreateTestTD(i)
 	}
 	tdJSON, _ := json.Marshal(td)
-	ag := test.Runtime.TransportsMgr.GetEmbedded().NewClient(agentID)
-	err := ag.PubEvent(td.ID, vocab.EventNameTD, string(tdJSON))
+	err := test.Runtime.DigitwinSvc.DirSvc.UpdateDTD(agentID, string(tdJSON))
+	//ag := test.Runtime.TransportsMgr.GetEmbedded().NewClient(agentID)
+	//err := ag.PubEvent(td.ID, vocab.EventNameTD, string(tdJSON))
 	if err != nil {
 		slog.Error("AddTD: Failed adding TD")
 	}

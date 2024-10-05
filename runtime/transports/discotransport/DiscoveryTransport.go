@@ -22,9 +22,14 @@ func (svc *DiscoveryTransport) AddTDForms(td *tdd.TD) {
 	// nothing to do here
 }
 
-// Start the discovery of the runtime service and include its transports
-// TODO: support a record for each transport.
-func (svc *DiscoveryTransport) Start(serverURL string) error {
+func (svc *DiscoveryTransport) Stop() {
+	svc.disco.Shutdown()
+}
+
+func StartDiscoveryTransport(cfg DiscoveryConfig, serverURL string) *DiscoveryTransport {
+	svc := DiscoveryTransport{
+		cfg: cfg,
+	}
 	urlInfo, err := url.Parse(serverURL)
 	if err == nil {
 		port, _ := strconv.Atoi(urlInfo.Port())
@@ -38,16 +43,6 @@ func (svc *DiscoveryTransport) Start(serverURL string) error {
 	} else {
 		slog.Error("Can't start discovery. Invalid server URL",
 			"serverURL", serverURL)
-	}
-	return nil
-}
-func (svc *DiscoveryTransport) Stop() {
-	svc.disco.Shutdown()
-}
-
-func NewDiscoveryTransport(cfg DiscoveryConfig) *DiscoveryTransport {
-	svc := DiscoveryTransport{
-		cfg: cfg,
 	}
 	return &svc
 }

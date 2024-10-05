@@ -2,7 +2,6 @@ package authn_test
 
 import (
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/runtime/authn/config"
 	"github.com/hiveot/hub/runtime/authn/service"
@@ -22,7 +21,7 @@ var defaultHash = config.PWHASH_ARGON2id
 
 // launch the authn service and return the server side message handlers for using and managing it.
 func startTestAuthnService(testHash string) (
-	svc *service.AuthnService, messageHandler hubclient.MessageHandler, stopFn func()) {
+	svc *service.AuthnService, stopFn func()) {
 
 	_ = os.RemoveAll(testDir)
 	_ = os.MkdirAll(testDir, 0700)
@@ -40,9 +39,10 @@ func startTestAuthnService(testHash string) (
 	if err != nil {
 		panic("Error starting authn admin service:" + err.Error())
 	}
-	ag, err := service.StartAuthnAgent(svc, nil)
+	//ag, err := service.StartAuthnAgent(svc, nil)
 
-	return svc, ag.HandleMessage, func() {
+	//return svc, ag.HandleMessage, func() {
+	return svc, func() {
 		svc.Stop()
 
 		// let background tasks finish
@@ -64,7 +64,7 @@ func TestMain(m *testing.M) {
 // Start the authn service and list clients
 func TestStartStop(t *testing.T) {
 	// this creates the admin user key
-	svc, _, stopFn := startTestAuthnService(defaultHash)
+	svc, stopFn := startTestAuthnService(defaultHash)
 	assert.NotNil(t, svc.AdminSvc)
 	assert.NotNil(t, svc.UserSvc)
 	assert.NotNil(t, svc.AuthnStore)

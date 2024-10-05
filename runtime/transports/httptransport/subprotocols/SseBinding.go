@@ -47,6 +47,14 @@ func (b *SseBinding) PublishEvent(dThingID, name string, data any, messageID str
 func (b *SseBinding) PublishProperty(dThingID, name string, data any, messageID string) {
 }
 
+// WriteProperty sends the request to update the thing to the agent
+func (b *SseBinding) WriteProperty(
+	agentID, thingID, name string, data any, messageID string) (
+	status string, err error) {
+
+	return digitwin.StatusFailed, fmt.Errorf("Not yet implemented")
+}
+
 // NewSseBinding returns a new SSE sub-protocol binding
 //
 // sm is the session manager used to add new incoming sessions

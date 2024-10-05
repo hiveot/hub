@@ -2,6 +2,9 @@
 
 Generate an api from a WoT TD document.
 
+TODO: reduce the dependency on IHubClient and use Form operations instead.
+
+
 Usage: tdd2api tdd.json [-o out] [-l lang]
 
 ```Arguments:

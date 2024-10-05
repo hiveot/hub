@@ -15,6 +15,10 @@ import (
 
 const DefaultClientTimeout = time.Second * 30
 
+// HTTPMessageIDHeader defines the name of the HTTP message-id header field.
+// Intended for including a message ID in the request or response
+const HTTPMessageIDHeader = "message-id"
+
 // TLSClient is a simple TLS Client with authentication using certificates or JWT authentication with login/pw
 type TLSClient struct {
 	// host and port of the server to setup to
@@ -53,7 +57,9 @@ func (cl *TLSClient) Close() {
 func (cl *TLSClient) Delete(path string) (resp []byte, httpStatus int, err error) {
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	return cl.Invoke("DELETE", serverURL, nil, nil)
+	resp, _, httpStatus, err = cl.Invoke("DELETE", serverURL, nil, "", nil)
+	return resp, httpStatus, err
+
 }
 
 // Get is a convenience function to send a request
@@ -62,7 +68,8 @@ func (cl *TLSClient) Delete(path string) (resp []byte, httpStatus int, err error
 //	path to invoke
 func (cl *TLSClient) Get(path string) (resp []byte, httpStatus int, err error) {
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	return cl.Invoke("GET", serverURL, nil, nil)
+	resp, _, httpStatus, err = cl.Invoke("GET", serverURL, nil, "", nil)
+	return resp, httpStatus, err
 }
 
 // GetHttpClient returns the underlying HTTP client
@@ -79,18 +86,19 @@ func (cl *TLSClient) GetHttpClient() *http.Client {
 //	method: GET, PUT, POST, ...
 //	url: full URL to invoke
 //	body contains the serialized request body
+//	messageID: optional message ID to include in the request header
 //	qParams: optional map with query parameters
 //
-// This returns the serialized response data, return status code or an error
-func (cl *TLSClient) Invoke(method string, requrl string,
-	body []byte, qParams map[string]string) (resp []byte, httpStatus int, err error) {
+// This returns the serialized response data, a response message ID, return status code or an error
+func (cl *TLSClient) Invoke(method string, requrl string, body []byte, messageID string, qParams map[string]string) (
+	resp []byte, respMessageID string, httpStatus int, err error) {
 
 	var req *http.Request
 	contentType := "application/json"
 
 	if cl == nil || cl.httpClient == nil {
 		err = fmt.Errorf("Invoke: '%s'. Client is not started", requrl)
-		return nil, http.StatusInternalServerError, err
+		return nil, "", http.StatusInternalServerError, err
 	}
 	slog.Debug("TLSClient.Invoke", "method", method, "requrl", requrl)
 
@@ -105,19 +113,23 @@ func (cl *TLSClient) Invoke(method string, requrl string,
 		req.URL.RawQuery = qValues.Encode()
 	}
 	if err != nil {
-		return nil, http.StatusInternalServerError, err
+		return nil, "", http.StatusInternalServerError, err
 	}
 
 	// set headers
 	req.Header.Set("Content-Type", contentType)
+	if messageID != "" {
+		req.Header.Set(HTTPMessageIDHeader, messageID)
+	}
 
 	httpResp, err := cl.httpClient.Do(req)
 	if err != nil {
 		err = fmt.Errorf("Invoke: %s %s: %w", method, requrl, err)
 		slog.Error(err.Error())
-		return nil, 500, err
+		return nil, "", 500, err
 	}
 	respBody, err := io.ReadAll(httpResp.Body)
+	respMessageID = httpResp.Header.Get(HTTPMessageIDHeader)
 	// response body MUST be closed
 	_ = httpResp.Body.Close()
 	httpStatus = httpResp.StatusCode
@@ -137,7 +149,7 @@ func (cl *TLSClient) Invoke(method string, requrl string,
 	} else if err != nil {
 		err = fmt.Errorf("Invoke: Error %s %s: %w", method, requrl, err)
 	}
-	return respBody, httpStatus, err
+	return respBody, respMessageID, httpStatus, err
 }
 
 //// Logout from the server and end the session
@@ -158,7 +170,8 @@ func (cl *TLSClient) Patch(
 
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	return cl.Invoke("PATCH", serverURL, body, nil)
+	resp, _, statusCode, err = cl.Invoke("PATCH", serverURL, body, "", nil)
+	return resp, statusCode, err
 }
 
 // Post a message.
@@ -167,11 +180,12 @@ func (cl *TLSClient) Patch(
 //
 //	path to invoke
 //	body contains the serialized request body
+//	messageID optional field to link async requests and responses
 func (cl *TLSClient) Post(
-	path string, body []byte) (resp []byte, statusCode int, err error) {
+	path string, body []byte, messageID string) (resp []byte, respMessageID string, statusCode int, err error) {
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	return cl.Invoke("POST", serverURL, body, nil)
+	return cl.Invoke("POST", serverURL, body, messageID, nil)
 }
 
 // Put a message with json payload
@@ -180,12 +194,13 @@ func (cl *TLSClient) Post(
 //
 //	path to invoke
 //	body contains the serialized request body
-func (cl *TLSClient) Put(
-	path string, body []byte) (resp []byte, statusCode int, err error) {
+//	messageID optional field to link async requests and responses
+func (cl *TLSClient) Put(path string, body []byte, messageID string) (
+	resp []byte, respMessageID string, statusCode int, err error) {
 
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	return cl.Invoke("PUT", serverURL, body, nil)
+	return cl.Invoke("PUT", serverURL, body, messageID, nil)
 }
 
 // SetAuthToken Sets login ID and secret for bearer token authentication using a

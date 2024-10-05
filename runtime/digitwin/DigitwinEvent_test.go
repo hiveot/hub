@@ -15,25 +15,24 @@ func TestAddReadEvent(t *testing.T) {
 	const eventName = "event1"
 	const eventValue = 25
 
-	svc, _, stopFunc := startService(true)
+	svc, dtwStore, stopFunc := startService(true)
 	defer stopFunc()
 
 	// add a TD with an event
 	tdDoc1 := createTDDoc(thing1ID, 5, 3, 1)
 	tdDoc1.AddEvent(eventName, "", "event1", "Descr 1",
-		tdd.DataSchema{
+		&tdd.DataSchema{
 			Title: "type1",
 			Type:  vocab.WoTDataTypeInteger,
 		})
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
-	err := svc.UpdateTD(agent1ID, thing1ID, string(tdDoc1Json))
+	err := svc.DirSvc.UpdateDTD(agent1ID, string(tdDoc1Json))
 
 	// provide an event value
-	err = svc.AddEventValue(agent1ID, thing1ID, eventName, eventValue)
+	dThingID, err := dtwStore.UpdateEventValue(agent1ID, thing1ID, eventName, eventValue, "")
 	assert.NoError(t, err)
 
 	// Read the event value and all events
-	dThingID := tdd.MakeDigiTwinThingID(agent1ID, thing1ID)
 	ev2, err := svc.ReadEvent("user1", dThingID, eventName)
 	assert.NoError(t, err)
 	assert.Equal(t, eventValue, ev2.Data)
@@ -54,7 +53,7 @@ func TestEventReadFail(t *testing.T) {
 
 	tdDoc1 := createTDDoc(thingID, 4, 2, 1)
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
-	err := svc.UpdateTD(agentID, thingID, string(tdDoc1Json))
+	err := svc.DirSvc.UpdateDTD(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
 	_, err = svc.ReadEvent("itsme", "badthingid", "someevent")
@@ -70,24 +69,26 @@ func TestEventUpdateFail(t *testing.T) {
 	const thingID = "thing1"
 	const EventName = "event1"
 
-	svc, _, stopFunc := startService(true)
+	svc, dtwStore, stopFunc := startService(true)
 	defer stopFunc()
 
 	// add a TD with an event
 
 	tdDoc1 := createTDDoc(thingID, 4, 2, 1)
 	tdDoc1.AddEvent(EventName, "", "event1", "Descr 1",
-		tdd.DataSchema{
+		&tdd.DataSchema{
 			Title: "type1",
 			Type:  vocab.WoTDataTypeInteger,
 		})
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
-	err := svc.UpdateTD(agentID, thingID, string(tdDoc1Json))
+	err := svc.DirSvc.UpdateDTD(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
-	err = svc.AddEventValue(agentID, "notathing", EventName, 123)
+	_, err = dtwStore.UpdateEventValue(agentID, "notathing", EventName, 123, "")
 	assert.Error(t, err)
+
 	//event names not in the TD are accepted
-	err = svc.AddEventValue(agentID, thingID, "notanevent", 123)
+	dThingID2, err := dtwStore.UpdateEventValue(agentID, thingID, "notanevent", 123, "")
 	assert.NoError(t, err)
+	assert.NotEmpty(t, dThingID2)
 }

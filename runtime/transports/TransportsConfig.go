@@ -2,6 +2,7 @@ package transports
 
 import (
 	"github.com/hiveot/hub/runtime/transports/discotransport"
+	"github.com/hiveot/hub/runtime/transports/httptransport"
 )
 
 type ProtocolsConfig struct {
@@ -18,8 +19,8 @@ type ProtocolsConfig struct {
 	EnableNATS bool `yaml:"enableNATS,omitempty"`
 
 	// each protocol binding has its own config section
-	Discovery      discotransport.DiscoveryConfig          `yaml:"discovery"`
-	HttpsTransport httpstransport_old.HttpsTransportConfig `yaml:"httpsBinding"`
+	Discovery      discotransport.DiscoveryConfig    `yaml:"discovery"`
+	HttpsTransport httptransport.HttpTransportConfig `yaml:"httpsBinding"`
 	//MqttTransport  *MqttTransportConfig
 	//NatsTransport  *NatsTransportConfig
 	//GrpcTransport  *GrpcTransportConfig
@@ -35,7 +36,7 @@ func NewProtocolsConfig() ProtocolsConfig {
 		EnableNATS:      false,
 		EnableGRPC:      false,
 		Discovery:       discotransport.NewDiscoveryConfig(),
-		HttpsTransport:  httpstransport_old.NewHttpsTransportConfig(),
+		HttpsTransport:  httptransport.NewHttpTransportConfig(),
 	}
 	return cfg
 }

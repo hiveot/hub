@@ -62,7 +62,7 @@ func HandleSubTD(hc hubclient.IHubClient) error {
 	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		// only look for TD events, ignore directed events
 		if msg.Name != vocab.EventNameTD {
-			return stat.Completed(msg, nil, nil)
+			return *stat.Completed(msg, nil, nil)
 		}
 
 		var td tdd.TD
@@ -75,7 +75,7 @@ func HandleSubTD(hc hubclient.IHubClient) error {
 			fmt.Printf("%-20.20s %-35.35s %-30.30s %-30.30s %-30.30s\n",
 				msg.SenderID, msg.ThingID, td.Title, td.AtType, timeStr)
 		}
-		return stat.Completed(msg, nil, nil)
+		return *stat.Completed(msg, nil, nil)
 	})
 	fmt.Printf("Sender ID            Thing ID                            Title                          @type                          Updated                       \n")
 	fmt.Printf("-------------------  ----------------------------------  -----------------------------  -----------------------------  ------------------------------\n")
@@ -120,7 +120,7 @@ func HandleSubEvents(hc hubclient.IHubClient, thingID string, name string) error
 
 		fmt.Printf("%-16.16s %-15.15s %-30.30s %-30.30s %-40.40s\n",
 			timeStr, msg.SenderID, msg.ThingID, msg.Name, valueStr)
-		return stat.Completed(msg, nil, nil)
+		return *stat.Completed(msg, nil, nil)
 	})
 	if err != nil {
 		return err

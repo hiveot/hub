@@ -8,12 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/teris-io/shortid"
 	"github.com/tmaxmax/go-sse"
@@ -28,12 +28,14 @@ import (
 // THIS WILL BE REMOVED AFTER THE PROTOCOL BINDING PUBLISHES THESE IN THE TDD.
 // The hub client will need the TD (ConsumedThing) to determine the paths.
 const (
-	ConnectSSEPath = "/sse"
+	ReadAllEventsPath = "/digitwin/{thingID}/events"
+
+	ConnectSSEPath = "/ssesc"
 	// deprecated, use forms
 	PostInvokeActionPath      = "/digitwin/actions/{thingID}/{name}"
-	PostObservePropertiesPath = "/digitwin/observe/{thingID}/{name}"
-	PostSubscribeEventPath    = "/digitwin/subscribe/{thingID}/{name}"
-	PostUnsubscribeEventPath  = "/digitwin/unsubscribe/{thingID}/{name}"
+	PostObservePropertiesPath = "/ssesc/digitwin/observe/{thingID}/{name}"
+	PostSubscribeEventPath    = "/ssesc/digitwin/subscribe/{thingID}/{name}"
+	PostUnsubscribeEventPath  = "/ssesc/digitwin/unsubscribe/{thingID}/{name}"
 	PutWritePropertyPath      = "/digitwin/properties/{thingID}/{name}"
 
 	// Form paths for accessing TD directory
@@ -122,7 +124,7 @@ func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 		Password: password,
 	}
 	argsJSON, _ := json.Marshal(loginMessage)
-	resp, statusCode, err2 := cl.tlsClient.Invoke("POST", loginURL, argsJSON, nil)
+	resp, statusCode, _, err2 := cl.tlsClient.Invoke("POST", loginURL, argsJSON, "", nil)
 	if err2 != nil {
 		err = fmt.Errorf("%d: Login failed: %s", statusCode, err2)
 		return "", err
@@ -253,7 +255,7 @@ func (cl *HttpSSEClient) handleSSEDisconnect(err error) {
 func (cl *HttpSSEClient) Logout() error {
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, PostLogoutPath)
 	//_, err := cl.Invoke("POST", serverURL, http.NoBody, nil)
-	_, statusCode, err := cl.tlsClient.Post(serverURL, nil)
+	_, statusCode, _, err := cl.tlsClient.Post(serverURL, nil, "")
 	_ = statusCode
 	return err
 }
@@ -271,9 +273,12 @@ func (cl *HttpSSEClient) Marshal(data any) []byte {
 //	thingID to publish as or to: events are published for the thing and actions to publish to the thingID
 //	name is the event/action/property name being published or modified
 //	data is the native message payload to transfer that will be serialized
+//	messageID optional 'message-id' header value
 //	queryParams optional name-value pairs to pass along as query parameters
-func (cl *HttpSSEClient) pubMessage(methodName string,
-	methodPath string, thingID string, name string, data any, queryParams map[string]string) (
+//
+// This returns the response body and optional a response message with delivery status and messageID with a delivery status
+func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
+	thingID string, name string, data any, messageID string, queryParams map[string]string) (
 	stat hubclient.DeliveryStatus) {
 
 	vars := map[string]string{
@@ -284,66 +289,72 @@ func (cl *HttpSSEClient) pubMessage(methodName string,
 	defer cl.mux.RUnlock()
 	if cl.tlsClient == nil {
 		stat.Progress = hubclient.DeliveryFailed
-		stat.Error = "InvokeAction. Client connection was closed"
-		slog.Error(stat.Error)
+		stat.Error = errors.New("HandleActionFlow. Client connection was closed")
+		slog.Error(stat.Error.Error())
 		return stat
 	}
 	//resp, err := cl.tlsClient.Post(messagePath, payload)
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, messagePath)
 	serData := cl.Marshal(data)
-	reply, statusCode, err := cl.tlsClient.Invoke(methodName, serverURL, serData, queryParams)
+	reply, respMsgID, httpStatus, err := cl.tlsClient.Invoke(methodName, serverURL, serData, messageID, queryParams)
 
 	// TODO: detect difference between not connected and unauthenticated
-	// FIXME: should reply payload be a DeliveryStatus for every single message? Is there another way?
-	// option 1: delivery updates are always sent async, not as a response. what about messageID?
-	// option 2: pass delivery progress and messageID in response headers
-
-	if err == nil && reply != nil && len(reply) > 0 {
-		err = cl.Unmarshal(reply, &stat)
-	}
+	stat.Error = err
+	stat.MessageID = respMsgID
 	if err != nil {
 		stat.Progress = hubclient.DeliveryFailed
-		if statusCode == http.StatusUnauthorized {
-			stat.Error = "no longer authenticated"
-		} else {
-			stat.Error = err.Error()
+		if httpStatus == http.StatusUnauthorized {
+			err = errors.New("no longer authenticated")
 		}
-		slog.Error(stat.Error)
+	} else if reply != nil && len(reply) > 0 {
+		// FIXME: why do you need a reply to be completed?
+		err = cl.Unmarshal(reply, &stat.Reply)
+		stat.Progress = hubclient.DeliveryCompleted
+	} else {
+		// not an error and no reply. status is delivered
+		stat.Progress = hubclient.DeliveryPending
+	}
+	if err != nil {
+		slog.Error("PubMessage error", "err", err.Error())
 	}
 	return stat
 }
 
-// Publish a form message and return the delivery status
+// Publish a message using a TD operation and return the delivery status
 //
-//	methodName is http.MethodPost for actions, http.MethodPut/MethodGet for properties
-//	path used to publish PostActionPath/PostEventPath/...
-//	thingID to publish as or to: events are published for the thing and actions to publish to the thingID
-//	name is the event/action/property name being published or modified
-//	data is the native message payload to transfer that will be serialized
-//	queryParams optional name-value pairs to pass along as query parameters
+//	 op contains the TD operation for the http binding
+//		dThingID to publish as or to: events are published for the thing and actions to publish to the thingID
+//		name is the event/action/property name being published or modified
+//		data is the native message payload to transfer that will be serialized
+//		queryParams optional name-value pairs to pass along as query parameters
 func (cl *HttpSSEClient) pubFormMessage(op *tdd.Form,
-	dtThingID string, name string, data any, queryParams map[string]string) (
+	dtThingID string, name string, data any, messageID string, queryParams map[string]string) (
 	stat hubclient.DeliveryStatus) {
 
 	messagePath, _ := (*op).GetHRef()
-	stat = cl.pubMessage(http.MethodPost, messagePath, dtThingID, name, data, nil)
+	stat = cl.PubMessage(http.MethodPost, messagePath, dtThingID, name, data, messageID, queryParams)
 	return stat
 }
 
 // InvokeAction publishes an action message and waits for an answer or until timeout
 // In order to receive replies, an inbox subscription is added on the first request.
 // An error is returned if delivery failed or succeeded but the action itself failed
-func (cl *HttpSSEClient) InvokeAction(thingID string, name string, data any) (stat hubclient.DeliveryStatus) {
+func (cl *HttpSSEClient) InvokeAction(thingID string, name string, data any, messageID string) (
+	stat hubclient.DeliveryStatus) {
+
 	slog.Debug("PubAction",
 		slog.String("thingID", thingID),
 		slog.String("name", name))
-	stat = cl.pubMessage(http.MethodPost, PostInvokeActionPath, thingID, name, data, nil)
+
+	// FIXME: use TD form for this action
+	// FIXME: track message-ID's using headers instead of message envelope
+	stat = cl.PubMessage(http.MethodPost, PostInvokeActionPath, thingID, name, data, messageID, nil)
 	slog.Info("PubAction",
 		slog.String("me", cl._status.ClientID),
 		slog.String("thingID", thingID),
 		slog.String("name", name),
+		slog.String("messageID", messageID),
 		//slog.String("data", data),
-		slog.String("messageID", stat.MessageID),
 		slog.String("progress", stat.Progress),
 	)
 	return stat
@@ -351,41 +362,41 @@ func (cl *HttpSSEClient) InvokeAction(thingID string, name string, data any) (st
 
 // PubActionWithQueryParams publishes an action with query parameters
 func (cl *HttpSSEClient) PubActionWithQueryParams(
-	thingID string, name string, data any, params map[string]string) (stat hubclient.DeliveryStatus) {
+	thingID string, name string, data any, messageID string, params map[string]string) (
+	stat hubclient.DeliveryStatus) {
+
 	slog.Info("PubActionWithQueryParams",
 		slog.String("thingID", thingID),
 		slog.String("name", name),
 	)
-	stat = cl.pubMessage(http.MethodPost, PostInvokeActionPath, thingID, name, data, params)
+	stat = cl.PubMessage(http.MethodPost, PostInvokeActionPath, thingID, name, data, messageID, params)
 	return stat
 }
 
 // PubEvent publishes an event message and returns
 // This returns an error if the connection with the server is broken
-func (cl *HttpSSEClient) PubEvent(thingID string, name string, data any) error {
+func (cl *HttpSSEClient) PubEvent(thingID string, name string, data any, messageID string) error {
 	slog.Info("PubEvent",
 		slog.String("me", cl._status.ClientID),
 		slog.String("device thingID", thingID),
 		slog.String("name", name),
 	)
-	stat := cl.pubMessage(http.MethodPost, PostAgentPublishEventPath, thingID, name, data, nil)
-	if stat.Error != "" {
-		return errors.New(stat.Error)
-	}
-	return nil
+	stat := cl.PubMessage(http.MethodPost, PostAgentPublishEventPath, thingID, name, data, messageID, nil)
+	return stat.Error
 }
 
-// PubProperty publishes a configuration change request
-// This is similar to publishing an action but only affects properties.
-func (cl *HttpSSEClient) PubProperty(thingID string, name string, data any) (
+// WriteProperty publishes a configuration change request
+// This is similar to invoking an action but only affects properties.
+func (cl *HttpSSEClient) WriteProperty(thingID string, name string, data any) (
 	stat hubclient.DeliveryStatus) {
-	stat = cl.pubMessage(http.MethodPut, PutWritePropertyPath, thingID, name, data, nil)
+
+	// FIXME: get message id
+	stat = cl.PubMessage(http.MethodPut, PutWritePropertyPath, thingID, name, data, "", nil)
 	slog.Info("PubProperty",
 		slog.String("me", cl._status.ClientID),
 		slog.String("thingID", thingID),
 		slog.String("name", name),
 		//slog.String("value", value),
-		slog.String("messageID", stat.MessageID),
 		slog.String("progress", stat.Progress),
 	)
 	return stat
@@ -394,13 +405,13 @@ func (cl *HttpSSEClient) PubProperty(thingID string, name string, data any) (
 // PubProps publishes a properties map event
 // Intended for use by agents to publish all properties at once
 func (cl *HttpSSEClient) PubProps(thingID string, props map[string]any) error {
-	return cl.PubEvent(thingID, vocab.EventNameProperties, props)
+	return cl.PubEvent(thingID, vocab.EventNameProperties, props, "")
 }
 
 // PubTD publishes a TD event
 func (cl *HttpSSEClient) PubTD(thingID string, tdJSON string) error {
 	// TDs are published in JSON encoding as per spec
-	return cl.PubEvent(thingID, vocab.EventNameTD, tdJSON)
+	return cl.PubEvent(thingID, vocab.EventNameTD, tdJSON, "")
 }
 
 // RefreshToken refreshes the authentication token
@@ -414,7 +425,8 @@ func (cl *HttpSSEClient) RefreshToken(oldToken string) (newToken string, err err
 	}
 	data, _ := json.Marshal(args)
 	// the bearer token holds the old token
-	resp, statusCode, err := cl.tlsClient.Invoke("POST", refreshURL, data, nil)
+	resp, messageID, httpStatus, err := cl.tlsClient.Invoke("POST", refreshURL, data, "", nil)
+	_ = messageID
 
 	// set the new token as the bearer token
 	// FIXME: differentiate between not connected and unauthenticated
@@ -425,7 +437,7 @@ func (cl *HttpSSEClient) RefreshToken(oldToken string) (newToken string, err err
 			// reconnect using the new token
 			cl.tlsClient.SetAuthToken(newToken)
 		}
-	} else if statusCode == http.StatusUnauthorized {
+	} else if httpStatus == http.StatusUnauthorized {
 		err = errors.New("Unauthenticated")
 	}
 	// FIXME: detect difference between connect and unauthenticated
@@ -445,40 +457,27 @@ func (cl *HttpSSEClient) Rpc(
 	cl.mux.Unlock()
 
 	// invoke with query parameters to provide the message ID
-	qparams := map[string]string{"messageID": messageID}
-	stat := cl.PubActionWithQueryParams(thingID, name, args, qparams)
+	stat := cl.InvokeAction(thingID, name, args, messageID)
 
 	// Intermediate status update such as 'applied' are not errors. Wait longer.
 	for {
 		if stat.Progress == hubclient.DeliveryCompleted || stat.Progress == hubclient.DeliveryFailed {
 			break
 		}
-		// after each update wait at most cl.timeout and fail
+		// wait at most cl.timeout or until delivery completes or fails
 		stat, err = cl.WaitForStatusUpdate(rChan, messageID, cl.timeout)
 	}
 	cl.mux.Lock()
 	delete(cl._correlData, messageID)
 	cl.mux.Unlock()
-	if err == nil && stat.Error != "" {
-		err = errors.New(stat.Error)
-	}
-	if err == nil && stat.MessageID != messageID {
-		// this only happens if a direct response was received with a different messageID
-		// this can happen when the called function does not return a proper delivery status.
-		slog.Warn("RPC request messageID does not match response. Bad response from remote service.",
-			slog.String("clientID", cl.ClientID()),
-			slog.String("service thingID", thingID),
-			slog.String("service method", name),
-			slog.String("req", messageID),
-			slog.String("resp", stat.MessageID))
-	}
+
 	// when not completed return an error
 	if err == nil && stat.Progress != hubclient.DeliveryCompleted {
 		err = errors.New("Delivery not complete. Progress: " + stat.Progress)
 	}
 	// only once completed will there be a reply as a result
 	if err == nil && resp != nil {
-		err, _ = stat.Decode(resp)
+		err = utils.Decode(stat.Reply, resp)
 	}
 	return err
 }
@@ -488,20 +487,20 @@ func (cl *HttpSSEClient) Rpc(
 //
 // Intended for agents that have processed an incoming action request asynchronously
 // and need to send an update on further progress.
-func (cl *HttpSSEClient) SendDeliveryUpdate(stat hubclient.DeliveryStatus) {
+func (cl *HttpSSEClient) SendDeliveryUpdate(progress string, messageID string) {
 	slog.Info("SendDeliveryUpdate",
-		slog.String("Progress", stat.Progress),
-		slog.String("MessageID", stat.MessageID),
+		slog.String("Progress", progress),
+		slog.String("MessageID", messageID),
 	)
-	// thing
-	_ = cl.PubEvent(digitwin.InboxDThingID, vocab.EventNameDeliveryUpdate, stat)
+	cl.PubEvent(api.DigitwinServiceID, vocab.EventNameDeliveryUpdate, progress, messageID)
 }
 
 // SendOperation is temporary transition to support using TD forms
 func (cl *HttpSSEClient) SendOperation(
-	href string, op tdd.Form, data any) (stat hubclient.DeliveryStatus) {
+	href string, op tdd.Form, data any, messageID string) (stat hubclient.DeliveryStatus) {
 
 	slog.Info("SendOperation", "href", href, "op", op)
+	panic("Just a placeholder. Dont use this yet. Not implemented")
 	return stat
 }
 
@@ -551,7 +550,7 @@ func (cl *HttpSSEClient) Subscribe(thingID string, name string) error {
 	}
 	vars := map[string]string{"thingID": thingID, "name": name}
 	subscribePath := utils.Substitute(PostSubscribeEventPath, vars)
-	_, _, err := cl.tlsClient.Post(subscribePath, nil)
+	_, _, _, err := cl.tlsClient.Post(subscribePath, nil, "")
 	return err
 }
 
@@ -571,14 +570,18 @@ func (cl *HttpSSEClient) Unsubscribe(thingID string, name string) error {
 	}
 	vars := map[string]string{"thingID": thingID, "name": name}
 	unsubscribePath := utils.Substitute(PostUnsubscribeEventPath, vars)
-	_, _, err := cl.tlsClient.Post(unsubscribePath, nil)
+	_, _, _, err := cl.tlsClient.Post(unsubscribePath, nil, "")
 	return err
 }
 
 // WaitForStatusUpdate waits for an async status update or until timeout
 // This returns the status or an error if the messageID doesn't exist
+//
+// FIXME: this is currently broken as DeliveryStatus is removed.
+// This could still be supported in a non-wot way using $delivery events
 func (cl *HttpSSEClient) WaitForStatusUpdate(
-	statChan chan *hubclient.DeliveryStatus, messageID string, timeout time.Duration) (stat hubclient.DeliveryStatus, err error) {
+	statChan chan *hubclient.DeliveryStatus, messageID string, timeout time.Duration) (
+	stat hubclient.DeliveryStatus, err error) {
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()

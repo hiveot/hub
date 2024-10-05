@@ -143,11 +143,11 @@ func (sm *SessionManager) Init(hubURL string, core string,
 	tokenKP keys.IHiveKey) {
 }
 
-// InvokeAction passes an action request to the session of the given agent.
+// HandleActionFlow passes an action request to the session of the given agent.
 // This returns a delivery status or an error if the request cannot be delivered.
 //
 // messageID is optional and can be useful to link to a previous action.
-//func (sm *SessionManager) InvokeAction(
+//func (sm *SessionManager) HandleActionFlow(
 //	agentID string, thingID string, name string, data any, messageID string) (
 //	status string, output any, err error) {
 //
@@ -158,14 +158,14 @@ func (sm *SessionManager) Init(hubURL string, core string,
 //		_ = id
 //		if session.clientID == agentID && len(session.endpoints) > 0 {
 //			ep := session.endpoints[0]
-//			status, output, err = ep.InvokeAction(
+//			status, output, err = ep.HandleActionFlow(
 //				agentID, thingID, name, data, messageID)
 //			if err == nil {
 //				return status, output, err
 //			}
 //		}
 //	}
-//	slog.Warn("InvokeAction. Agent not connected",
+//	slog.Warn("HandleActionFlow. Agent not connected",
 //		"agentID", agentID, "thingID", thingID, "action", name)
 //	return digitwin.StatusFailed, nil, fmt.Errorf("agent not connected")
 //}

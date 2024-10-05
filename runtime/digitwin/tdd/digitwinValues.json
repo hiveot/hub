@@ -1,0 +1,298 @@
+{
+	"@context":[ "https://www.w3.org/2022/wot/td/v1.1",
+		{"ht": "https://www.hiveot.net/vocab/v0.1"}
+	],
+	"@type": "Service",
+	"id": "dtw:digitwin:values",
+	"title": "DigiTwin Values",
+	"description": "Last known property, event and action values",
+	"version": {
+		"instance": "0.1.0"
+	},
+	"created": "2024-10-04T17:00:00.000Z",
+	"modified": "2024-10-04T17:00:00.000Z",
+	"support": "https://www.github.com/hiveot/hub",
+	"security": ["bearer"],
+	"securityDefinitions": {
+		"bearer": {
+			"description": "HTTP protocol authentication",
+			"name": "authentication",
+			"alg": "es256",
+			"format": "jwt",
+			"scheme": "bearer",
+			"in": "header"
+		}
+	},
+
+	"schemaDefinitions": {
+		"ActionValue": {
+			"title": "Action Value",
+			"description": "Input value of the last action",
+			"type": "object",
+			"properties": {
+				"input": {
+					"title": "Action input",
+					"description": "Action input value",
+					"type": "any"
+				},
+				"messageID": {
+					"title": "Message ID",
+					"description": "Message ID of the action",
+					"type": "string"
+				},
+				"name": {
+					"title": "Action name",
+					"type": "string"
+				},
+				"output": {
+					"title": "Action output",
+					"description": "",
+					"type": "any"
+				},
+				"senderID": {
+					"title": "Consumer ID",
+					"type": "string"
+				},
+				"status": {
+					"title": "Write progress",
+					"description": "The last write request progress",
+					"enum": [
+						"pending",
+						"delivered",
+						"completed",
+						"rejected",
+						"aborted"
+					],
+					"type": "string"
+				},
+				"updated": {
+					"title": "Updated time",
+					"description": "Time the action was initiated",
+					"type": "dateTime"
+				}
+			}
+		},
+		"EventValue": {
+			"title": "Event Value",
+			"description": "Value and update data of an event",
+			"type": "object",
+			"properties": {
+				"data": {
+					"title": "Event payload",
+					"description": "Data in format as described by the thing's affordance",
+					"type": "any"
+				},
+				"name": {
+					"title": "Event name",
+					"type": "string"
+				},
+				"messageID": {
+					"title": "Message ID",
+					"description": "link to action or property triggering the event",
+					"type": "string"
+				},
+				"updated": {
+					"title": "Updated time",
+					"description": "Time the value was last updated",
+					"type": "dateTime"
+				}
+			}
+		},
+		"PropertyValue": {
+			"title": "Property Value",
+			"description": "Value and update data of a property",
+			"type": "object",
+			"properties": {
+				"data": {
+					"title": "Property value",
+					"description": "Data in format as described by the thing's property affordance",
+					"type": "any"
+				},
+				"messageID": {
+					"title": "Message ID",
+					"description": "link to action or property triggering the change",
+					"type": "string"
+				},
+				"name": {
+					"title": "Property name",
+					"type": "string"
+				},
+				"updated": {
+					"title": "Updated time",
+					"description": "Time the value was last updated",
+					"type": "dateTime"
+				},
+				"writeData": {
+					"title": "Input",
+					"description": "Input data requested by the sender",
+					"type": "any"
+				},
+				"writeMessageID": {
+					"title": "Write message ID",
+					"description": "MessageID of the write request",
+					"type": "string"
+				},
+				"writeSenderID": {
+					"title": "Write sender",
+					"description": "ID of the sender writing the property",
+					"type": "string"
+				},
+				"writeStatus": {
+					"title": "Write progress",
+					"description": "The last write request progress",
+					"enum": [
+						"pending",
+						"delivered",
+						"completed",
+						"rejected",
+						"aborted"
+					],
+					"type": "string"
+				},
+				"writeUpdated": {
+					"title": "Write time",
+					"description": "Time the last write was requested",
+					"type": "dateTime"
+				}
+			}
+		}
+
+	},
+	"events": {
+		"valueUpdated": {
+			"title": "Thing property updated",
+			"description": "A Thing's property value was updated",
+			"data": {
+				"type": "object",
+				"properties": {
+					"thingID": {
+						"title": "Thing ID",
+						"description": "ID of the Thing that was updated",
+						"type": "string"
+					},
+					"name": {
+						"title": "Property name",
+						"description": "ID of the property that was updated",
+						"type": "string"
+					},
+					"value": {
+						"title": "New value",
+						"description": "The new value of the property",
+						"type": "string"
+					}
+				}
+			}
+		}
+	},
+	"actions": {
+		"readActions": {
+			"@type": "ht:function",
+			"title": "Action status",
+			"description": "Read the latest action status",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"type": "object",
+				"required": ["thingID"],
+				"properties": {
+					"thingID": {
+						"title": "Thing ID",
+						"description": "ID of the Thing to read",
+						"type": "string"
+					},
+					"names": {
+						"title": "Action Names",
+						"description": "The action names to read or empty to read status of all actions",
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					}
+				}
+			},
+			"output": {
+				"title": "Action value map",
+				"description": "map of action name to status objects",
+				"comment": "No idea how to describe it, yet",
+				"type": "array",
+				"items": {
+					"title": "values",
+					"type": "ActionValue"
+				}
+			}
+		},
+		"readProperties": {
+			"@type": "ht:function",
+			"title": "Read properties/event values",
+			"description": "Read the latest property or event value(s)",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"type": "object",
+				"required": ["thingID"],
+				"properties": {
+					"thingID": {
+						"title": "Thing ID",
+						"description": "ID of the Thing to read",
+						"type": "string"
+					},
+					"names": {
+						"title": "Value Names",
+						"description": "The property/event names to read or empty to read all latest values",
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					}
+				}
+			},
+			"output": {
+				"title": "Property value map",
+				"description": "map of name:propertyvalue objects",
+				"type": "array",
+				"items": {
+					"type": "PropertyValue",
+					"title": "PropertyValue"
+				}
+			}
+		},
+		"readEvents": {
+			"@type": "ht:function",
+			"title": "Read event values",
+			"description": "Read the latest event value(s)",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"type": "object",
+				"required": [
+					"thingID"
+				],
+				"properties": {
+					"thingID": {
+						"title": "Thing ID",
+						"description": "ID of the Thing to read",
+						"type": "string"
+					},
+					"names": {
+						"title": "Value Names",
+						"description": "The event names to read or empty to read all latest values",
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					}
+				}
+			},
+			"output": {
+				"title": "Event values",
+				"description": "Most recent event value objects",
+				"type": "array",
+				"items": {
+					"type": "EventValue",
+					"title": "EventValue"
+				}
+			}
+		}
+	},
+	"links": []
+}

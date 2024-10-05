@@ -1,9 +1,12 @@
 package api
 
 import (
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/wot/tdd"
 )
+
+// API for service action handling
+type ActionHandler func(consumerID string, dThingID string, actionName string, input any, messageID string) (
+	status string, output any, err error)
 
 // ProtocolInfo contains information provided by the binding
 type ProtocolInfo struct {
@@ -18,15 +21,15 @@ type ProtocolInfo struct {
 // ITransportBinding is the interface implemented by all transport protocol bindings
 type ITransportBinding interface {
 
-	// AddTDForms add Forms to the TD for communication with the digital twin
-	// using this transport binding.
+	// AddTDForms adds the Forms for using this protocol bindings to the provided TD.
 	// This adds the operations for reading/writing properties, events and actions
-	AddTDForms(td *tdd.TD)
+	// Original forms must be removed first as they are no longer applicable.
+	AddTDForms(td *tdd.TD) error
 
 	// GetProtocolInfo returns information on the protocol provided by the binding.
 	GetProtocolInfo() ProtocolInfo
 
-	// InvokeAction sends a request to invoke an action to the agent with the given ID
+	// InvokeAction requests an action on an agent's Thing.
 	// This returns the delivery status and optionally an output value or an error
 	//
 	// Only supported on bindings that support subscriptions. Bindings that
@@ -61,13 +64,14 @@ type ITransportBinding interface {
 
 	// Start the protocol binding
 	//  handler is the handler that processes incoming messages
-	Start(handler hubclient.MessageHandler) error
+	//Start(handler hubclient.MessageHandler) error
 
 	// Stop the protocol binding
-	Stop()
+	//Stop()
 
 	// WriteProperty sends a request to write a property to the agent with the given ID
 	//
 	// Only supported on bindings that support subscriptions
-	WriteProperty(agentID string, thingID string, name string, value any) (status string, found bool, err error)
+	WriteProperty(agentID string, thingID string, name string,
+		value any, messageID string) (status string, err error)
 }

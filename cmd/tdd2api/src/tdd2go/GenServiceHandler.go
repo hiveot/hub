@@ -5,42 +5,46 @@ import (
 	"github.com/hiveot/hub/wot/tdd"
 )
 
-// GenServiceHandler generates a function that returns a handler that unmarshal a request and invoke service
-// The signature is: New<ThingID>Handler(service I...Service) MessageHandler
+// GenServiceHandler generates a function that returns an action handler that
+// unmarshals a request and invoke the requested service.
+//
+// The signature is: NewHandle<ThingID>Action(service I...Service) *HandleAction
+//
+//	func (agent *...)NewHandleAction(
+//	  consumerID string, dThingID string, actionName string, input any, messageID string
 func GenServiceHandler(l *utils.SL, serviceTitle string, td *tdd.TD) {
 	// ServiceType is the type of the service implementation that handles the messages
 	//serviceType := ToTitle(td.GetID()) + "Service"
 	interfaceName := "I" + serviceTitle + "Service"
 
 	l.Add("")
-	l.Add("// New%sHandler returns a server handler for Thing '%s' actions.", serviceTitle, td.ID)
+	l.Add("// NewHandle%sAction returns a server handler for Thing '%s' actions.", serviceTitle, td.ID)
 	l.Add("//")
 	l.Add("// This unmarshalls the request payload into an args struct and passes it to the service")
 	l.Add("// that implements the corresponding interface method.")
 	l.Add("// ")
 	l.Add("// This returns the marshalled response data or an error.")
-	l.Add("func New%sHandler(svc %s)(func(*hubclient.ThingMessage) hubclient.DeliveryStatus) {", serviceTitle, interfaceName)
+	l.Add("func NewHandle%sAction(svc %s)(func(consumerID, dThingID, name string, input any, messageID string) (string, any, error)) {", serviceTitle, interfaceName)
 	l.Indent++
-	l.Add("return func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {")
+	l.Add("return func(consumerID, dThingID, actionName string, input any, messageID string) (string, any, error) {")
 
 	l.Indent++
 	l.Add("var err error")
-	l.Add("var resp interface{}")
-	l.Add("var senderID = msg.SenderID")
+	l.Add("var status string = \"completed\"")
+	l.Add("var output any")
 
-	l.Add("switch msg.Name {")
+	l.Add("switch actionName {")
 	l.Indent++
 	for name, action := range td.Actions {
 		GenActionHandler(l, serviceTitle, name, action)
 	}
 	l.Add("default:")
-	l.Add("	err = errors.New(\"Unknown Method '\"+msg.Name+\"' of service '\"+msg.ThingID+\"'\")")
-	l.Add("	stat.Failed(msg,err)")
+	l.Add("	err = errors.New(\"Unknown Method '\"+actionName+\"' of service '\"+dThingID+\"'\")")
+	l.Add("  status = \"failed\"")
 	l.Indent--
 	l.Add("}")
 
-	l.Add("stat.Completed(msg, resp, err)")
-	l.Add("return stat")
+	l.Add("return status, output, err")
 	l.Indent--
 	l.Add("}")
 	l.Indent--
@@ -53,7 +57,7 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td *tdd.TD) {
 func GenActionHandler(l *utils.SL, serviceTitle string, name string, action *tdd.ActionAffordance) {
 	methodName := Key2ID(name)
 	// build the argument string
-	argsString := "senderID" // all handlers receive the sender ID
+	argsString := "consumerID" // all handlers receive the sender ID
 	l.Add("case \"%s\":", name)
 	l.Indent++
 	if action.Input != nil {
@@ -65,14 +69,14 @@ func GenActionHandler(l *utils.SL, serviceTitle string, name string, action *tdd
 			goType := GoTypeFromSchema(action.Input)
 			l.Add("var args %s", goType)
 		}
-		l.Add("err = utils.DecodeAsObject(msg.Data,&args)")
+		l.Add("err = utils.DecodeAsObject(input, &args)")
 
 		argsString += ", args"
 	}
 	// build the result string, either an error or a response struct with an error
 	resultString := "err"
 	if action.Output != nil {
-		resultString = "resp, err"
+		resultString = "output, err"
 	}
 	l.Add("if err == nil {")
 	l.Add("  %s = svc.%s(%s)", resultString, methodName, argsString)
