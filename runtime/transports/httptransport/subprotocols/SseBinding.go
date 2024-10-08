@@ -2,6 +2,7 @@ package subprotocols
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
 	"net/http"
@@ -45,6 +46,17 @@ func (b *SseBinding) PublishEvent(dThingID, name string, data any, messageID str
 
 // PublishProperty send a property change update to subscribers
 func (b *SseBinding) PublishProperty(dThingID, name string, data any, messageID string) {
+}
+
+func (b *SseBinding) SendActionResult(clientID string, stat hubclient.DeliveryStatus) (err error) {
+
+	// determine which connection is of the consumer
+	//for _, sseConn := range b.connections {
+	//	if sseConn.GetClientID() == clientID {
+	//		return sseConn.SendActionResult(stat)
+	//	}
+	//}
+	return fmt.Errorf("not implemented")
 }
 
 // WriteProperty sends the request to update the thing to the agent

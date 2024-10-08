@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/digitwin"
@@ -54,7 +55,7 @@ type HttpTransport struct {
 	hubRouter hubrouter.IHubRouter
 
 	// reading of digital twin info
-	dtwService service.DigitwinService
+	dtwService *service.DigitwinService
 }
 
 // AddGetOp adds protocol binding operation with a URL and handler
@@ -205,13 +206,15 @@ func (svc *HttpTransport) createRoutes(router chi.Router) http.Handler {
 			"/authn/logout", svc.HandleLogout)
 
 		// handlers for requests by agents
-		// These are included in the digitwin TD forms
+		// TODO: These should be included in the digitwin TD forms
 		svc.AddPostOp(r, vocab.HTOpUpdateThing, false,
 			"/agent/tdd/{thingID}", svc.HandleUpdateThing)
 		svc.AddPostOp(r, vocab.HTOpPublishEvent, false,
 			"/agent/event/{thingID}/{name}", svc.HandlePublishEvent)
 		svc.AddPostOp(r, vocab.HTOpUpdateProperty, false,
 			"/agent/property/{thingID}/{name}", svc.HandleUpdateProperty)
+		svc.AddPostOp(r, vocab.HTOpUpdateProperties, true,
+			"/agent/properties/{thingID}", svc.HandleUpdateMultipleProperties)
 
 	})
 
@@ -331,25 +334,18 @@ func (svc *HttpTransport) PublishProperty(
 	}
 }
 
-// WriteProperty sends a request to write a property to the agent with the given ID
-func (svc *HttpTransport) WriteProperty(
-	agentID string, thingID string, name string, input any, messageID string) (
-	status string, err error) {
-
+// Send the action update to the client
+func (svc *HttpTransport) SendActionResult(clientID string, stat hubclient.DeliveryStatus) (err error) {
 	if svc.ws != nil {
-		status, err = svc.ws.WriteProperty(agentID, thingID, name, input, messageID)
+		err = svc.ws.SendActionResult(clientID, stat)
 	}
-	if svc.ssesc != nil {
-		status, err = svc.ssesc.WriteProperty(agentID, thingID, name, input, messageID)
+	if err != nil && svc.ssesc != nil {
+		err = svc.ssesc.SendActionResult(clientID, stat)
 	}
 	if err != nil && svc.sse != nil {
-		status, err = svc.sse.WriteProperty(agentID, thingID, name, input, messageID)
+		err = svc.sse.SendActionResult(clientID, stat)
 	}
-	if err != nil {
-		status = digitwin.StatusFailed
-		err = fmt.Errorf("No sub-protocol bindings")
-	}
-	return status, err
+	return err
 }
 
 // Stop the https server
@@ -389,6 +385,27 @@ func (svc *HttpTransport) writeReply(w http.ResponseWriter, data any) {
 	}
 }
 
+// WriteProperty sends a request to write a property to the agent with the given ID
+func (svc *HttpTransport) WriteProperty(
+	agentID string, thingID string, name string, input any, messageID string) (
+	status string, err error) {
+
+	if svc.ws != nil {
+		status, err = svc.ws.WriteProperty(agentID, thingID, name, input, messageID)
+	}
+	if svc.ssesc != nil {
+		status, err = svc.ssesc.WriteProperty(agentID, thingID, name, input, messageID)
+	}
+	if err != nil && svc.sse != nil {
+		status, err = svc.sse.WriteProperty(agentID, thingID, name, input, messageID)
+	}
+	if err != nil {
+		status = digitwin.StatusFailed
+		err = fmt.Errorf("No sub-protocol bindings")
+	}
+	return status, err
+}
+
 // StartHttpTransport creates and starts a new instance of the HTTPS Server
 // with JWT authentication and SSE/SSE-SC/WS sub-protocol bindings.
 //
@@ -404,6 +421,7 @@ func StartHttpTransport(config *HttpTransportConfig,
 	caCert *x509.Certificate,
 	authenticator api.IAuthenticator,
 	hubRouter hubrouter.IHubRouter,
+	dtwService *service.DigitwinService,
 ) (*HttpTransport, error) {
 	// FIXME: do not use a global. the sessionmanager belongs to this transport binding.
 	//
@@ -422,6 +440,7 @@ func StartHttpTransport(config *HttpTransportConfig,
 		httpServer: httpServer,
 		router:     router,
 		hubRouter:  hubRouter,
+		dtwService: dtwService,
 	}
 
 	svc.createRoutes(svc.router)

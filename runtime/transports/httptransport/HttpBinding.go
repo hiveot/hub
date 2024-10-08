@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/tlsserver"
+	digitwin2 "github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
 	"github.com/hiveot/hub/runtime/transports/httptransport/subprotocols"
+	jsoniter "github.com/json-iterator/go"
 	"io"
 	"log/slog"
 	"net/http"
@@ -83,6 +86,8 @@ func (svc *HttpTransport) HandleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleActionRequest requests an action from the digital twin
+// NOTE: This returns a header with a dataschema if a schema from
+// additionalResponses is returned.
 func (svc *HttpTransport) HandleActionRequest(w http.ResponseWriter, r *http.Request) {
 	clientID, dThingID, name, body, err := subprotocols.GetRequestParams(r)
 	var input any
@@ -91,29 +96,69 @@ func (svc *HttpTransport) HandleActionRequest(w http.ResponseWriter, r *http.Req
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	//	messageID := r.URL.Query().Get("messageID")
-	//
 	if body != nil && len(body) > 0 {
 		err = json.Unmarshal(body, &input)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 	}
 	// The client can provide a messageID for actions. Useful for associating
 	// RPC type actions with a response.
 	reqID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
+
 	status, output, messageID, err := svc.hubRouter.HandleActionFlow(
 		clientID, dThingID, name, input, reqID)
-	_ = status
-	// provide the message id in the response
+
+	// there are 3 possible results:
+	// on status completed; return output
+	// on status failed: return http ok with DeliveryStatus containing error
+	// on status other: return  DeliveryStatus object with progress
+	//
+	// This means that the result is either out or a DeliveryStatus object
+	// Forms will have added:
+	// ```
+	//  "additionalResponses": [{
+	//                    "success": false,
+	//                    "contentType": "application/json",
+	//                    "schema": "DeliveryStatus"
+	//                }]
+	//```
 	if messageID != "" {
 		w.Header().Set(tlsclient.HTTPMessageIDHeader, messageID)
 	}
+
+	// in case of error include the return data schema
 	if err != nil {
-		svc.writeError(w, err, 0)
+		w.Header().Set("dataschema", "DeliveryStatus")
+		resp := hubclient.DeliveryStatus{
+			MessageID: messageID,
+			Progress:  status,
+			Error:     err.Error(),
+			Reply:     output,
+		}
+		svc.writeReply(w, resp)
 		return
 	}
-	svc.writeReply(w, output)
+	// if progress isn't completed then also return the delivery status
+	if status != digitwin2.StatusCompleted {
+		w.Header().Set("dataschema", "DeliveryStatus")
+		resp := hubclient.DeliveryStatus{
+			MessageID: messageID,
+			Progress:  status,
+			Reply:     output,
+		}
+		svc.writeReply(w, resp)
+		return
+	}
+
+	// success, write output
+	if output != nil {
+		svc.writeReply(w, output)
+	} else {
+		svc.writeReply(w, nil)
+	}
+	return
 }
 
 // HandlePublishEvent update digitwin with event published by agent
@@ -125,7 +170,7 @@ func (svc *HttpTransport) HandlePublishEvent(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if body != nil && len(body) > 0 {
-		err = json.Unmarshal(body, &evValue)
+		err = jsoniter.Unmarshal(body, &evValue)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -148,7 +193,7 @@ func (svc *HttpTransport) HandleQueryAllActions(w http.ResponseWriter, r *http.R
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	actList, err := svc.dtwService.ReadAllActions(clientID, dThingID)
+	actList, err := svc.dtwService.ValuesSvc.ReadAllActions(clientID, dThingID)
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return
@@ -164,7 +209,8 @@ func (svc *HttpTransport) HandleQueryAction(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	evList, err := svc.dtwService.ReadAction(clientID, dThingID, name)
+	evList, err := svc.dtwService.ValuesSvc.ReadAction(clientID,
+		digitwin.ValuesReadActionArgs{ThingID: dThingID, Name: name})
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return
@@ -180,7 +226,7 @@ func (svc *HttpTransport) HandleReadAllEvents(w http.ResponseWriter, r *http.Req
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	evList, err := svc.dtwService.ReadAllEvents(clientID, dThingID)
+	evList, err := svc.dtwService.ValuesSvc.ReadAllEvents(clientID, dThingID)
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return
@@ -195,7 +241,7 @@ func (svc *HttpTransport) HandleReadAllProperties(w http.ResponseWriter, r *http
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	thing, err := svc.dtwService.ReadAllProperties(clientID, dThingID)
+	thing, err := svc.dtwService.ValuesSvc.ReadAllProperties(clientID, dThingID)
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return
@@ -228,9 +274,7 @@ func (svc *HttpTransport) HandleReadAllThings(w http.ResponseWriter, r *http.Req
 		offset32, _ := strconv.ParseInt(offsetStr, 10, 32)
 		offset = int(offset32)
 	}
-	thingsList, err := svc.dtwService.DirSvc.ReadDTDs(clientID,
-		digitwin.DirectoryReadDTDsArgs{Offset: offset, Limit: limit},
-	)
+	thingsList, err := svc.dtwService.ReadAllDTDs(clientID, offset, limit)
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return
@@ -247,7 +291,8 @@ func (svc *HttpTransport) HandleReadEvent(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	evList, err := svc.dtwService.ReadEvent(clientID, dThingID, name)
+	evList, err := svc.dtwService.ValuesSvc.ReadEvent(clientID,
+		digitwin.ValuesReadEventArgs{ThingID: dThingID, Name: name})
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return
@@ -261,7 +306,8 @@ func (svc *HttpTransport) HandleReadProperty(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	thing, err := svc.dtwService.ReadProperty(clientID, dThingID, name)
+	thing, err := svc.dtwService.ValuesSvc.ReadProperty(clientID,
+		digitwin.ValuesReadPropertyArgs{ThingID: dThingID, Name: name})
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return
@@ -341,6 +387,30 @@ func (svc *HttpTransport) HandleUpdateProperty(w http.ResponseWriter, r *http.Re
 	}
 	messageID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
 	err = svc.hubRouter.HandleUpdatePropertyFlow(clientID, thingID, name, value, messageID)
+	if err != nil {
+		svc.writeError(w, err, 0)
+		return
+	}
+	svc.writeReply(w, nil)
+}
+
+// HandleUpdateMultipleProperties agent sends property update notification
+func (svc *HttpTransport) HandleUpdateMultipleProperties(w http.ResponseWriter, r *http.Request) {
+	clientID, thingID, _, body, err := subprotocols.GetRequestParams(r)
+	var propMap map[string]any
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	// expect a map of [key]value
+	if body != nil && len(body) > 0 {
+		err = json.Unmarshal(body, &propMap)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	}
+	messageID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
+	err = svc.hubRouter.HandleUpdatePropertyFlow(clientID, thingID, "", propMap, messageID)
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return

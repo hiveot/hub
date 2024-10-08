@@ -66,9 +66,9 @@
 			},
 			"scopes": ["*"]
 		},
-		"readDTDs": {
+		"readAllDTDs": {
 			"@type": "ht:function",
-			"title": "Read TDs",
+			"title": "Read all TDs",
 			"description": "Read a batch of TD documents",
 			"safe": true,
 			"idempotent": true,

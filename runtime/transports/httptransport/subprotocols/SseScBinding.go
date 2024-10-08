@@ -2,6 +2,7 @@ package subprotocols
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
 	"log/slog"
@@ -17,11 +18,11 @@ type SseScBinding struct {
 	mux sync.RWMutex
 
 	// map of sse connections by connection id
-	connections map[string]IProtocolConnection
+	connections map[string]IClientConnection
 }
 
 // determine the connection ID and return the associated connection
-func (b *SseScBinding) getConnection(r *http.Request) (IProtocolConnection, error) {
+func (b *SseScBinding) getConnection(r *http.Request) (IClientConnection, error) {
 	sessID, clientID, err := sessions.GetSessionIdFromContext(r)
 	_ = clientID
 	if err != nil {
@@ -70,7 +71,7 @@ func (b *SseScBinding) HandleConnect(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleObserveProperty handles a property observe request for one or all properties
-func (svc *SseScBinding) HandleObserveProperty(w http.ResponseWriter, r *http.Request) {
+func (b *SseScBinding) HandleObserveProperty(w http.ResponseWriter, r *http.Request) {
 	clientID, dThingID, name, _, err := GetRequestParams(r)
 	if err != nil {
 		slog.Warn("HandleObserve", "err", err.Error())
@@ -85,7 +86,7 @@ func (svc *SseScBinding) HandleObserveProperty(w http.ResponseWriter, r *http.Re
 	//slog.Int("nr sse connections", cs.GetNrConnections()))
 	//cs.ObserveProperty(thingID, name)
 
-	c, err := svc.getConnection(r)
+	c, err := b.getConnection(r)
 	if err == nil {
 		c.ObserveProperty(dThingID, name)
 	}
@@ -167,7 +168,7 @@ func (b *SseScBinding) InvokeAction(
 	// determine which connection is of the agent
 	for _, c := range b.connections {
 		if c.GetClientID() == agentID {
-			return c.InvokeAction(agentID, thingID, name, data, messageID)
+			return c.InvokeAction(thingID, name, data, messageID)
 		}
 	}
 
@@ -176,17 +177,27 @@ func (b *SseScBinding) InvokeAction(
 }
 
 // PublishEvent send an event to subscribers
-func (c *SseScBinding) PublishEvent(dThingID, name string, data any, messageID string) {
-	for _, c := range c.connections {
-		c.PublishEvent(dThingID, name, data, messageID)
+func (b *SseScBinding) PublishEvent(dThingID, name string, data any, messageID string) {
+	for _, sseConn := range b.connections {
+		sseConn.PublishEvent(dThingID, name, data, messageID)
 	}
 }
 
 // PublishProperty send a property change update to subscribers
-func (c *SseScBinding) PublishProperty(dThingID, name string, data any, messageID string) {
-	for _, c := range c.connections {
-		c.PublishEvent(dThingID, name, data, messageID)
+func (b *SseScBinding) PublishProperty(dThingID, name string, data any, messageID string) {
+	for _, sseConn := range b.connections {
+		sseConn.PublishProperty(dThingID, name, data, messageID)
 	}
+}
+func (b *SseScBinding) SendActionResult(clientID string, stat hubclient.DeliveryStatus) (err error) {
+
+	// determine which connection is of the consumer
+	for _, sseConn := range b.connections {
+		if sseConn.GetClientID() == clientID {
+			return sseConn.SendActionResult(stat)
+		}
+	}
+	return fmt.Errorf("not implemented")
 }
 
 // WriteProperty sends the write request for the thing property to the agent
@@ -195,9 +206,9 @@ func (b *SseScBinding) WriteProperty(
 	status string, err error) {
 
 	// determine which connection is of the agent
-	for _, c := range b.connections {
-		if c.GetClientID() == agentID {
-			return c.WriteProperty(agentID, thingID, name, data, messageID)
+	for _, sseConn := range b.connections {
+		if sseConn.GetClientID() == agentID {
+			return sseConn.WriteProperty(thingID, name, data, messageID)
 		}
 	}
 
@@ -209,7 +220,7 @@ func (b *SseScBinding) WriteProperty(
 func NewSseScBinding(sm *sessions.SessionManager) *SseScBinding {
 	b := &SseScBinding{
 		sm:          sm,
-		connections: make(map[string]IProtocolConnection),
+		connections: make(map[string]IClientConnection),
 	}
 	return b
 }

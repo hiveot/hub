@@ -1,5 +1,7 @@
 package hubrouter
 
+// IHubRouter is the interface of the handler of action,event and property update
+// messages received from consumers and agents.
 type IHubRouter interface {
 	// HandleActionFlow consumer sends request to invoke an action on the digital twin.
 	//

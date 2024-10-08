@@ -20,7 +20,7 @@ func (svc *IsyBinding) PublishNodeValues(onlyChanges bool) error {
 	// publish the binding's property and event values
 	props, events := svc.GetBindingPropValues(onlyChanges)
 	bindingID := svc.hc.ClientID()
-	err := svc.hc.PubProps(bindingID, props)
+	err := svc.hc.UpdateProps(bindingID, props)
 	// no use continuing if publishing fails
 	if err != nil {
 		err = fmt.Errorf("failed publishing ISY binding props: %w", err)
@@ -42,7 +42,7 @@ func (svc *IsyBinding) PublishNodeValues(onlyChanges bool) error {
 	}
 	props, events = svc.IsyGW.GetValues(onlyChanges)
 	if len(props) > 0 {
-		_ = svc.hc.PubProps(svc.IsyGW.GetID(), props)
+		_ = svc.hc.UpdateProps(svc.IsyGW.GetID(), props)
 		svc.PubEvents(svc.IsyGW.GetID(), events)
 	}
 
@@ -52,7 +52,7 @@ func (svc *IsyBinding) PublishNodeValues(onlyChanges bool) error {
 	for _, thing := range isyThings {
 		props = thing.GetPropValues(onlyChanges)
 		if len(props) > 0 {
-			_ = svc.hc.PubProps(thing.GetID(), props)
+			_ = svc.hc.UpdateProps(thing.GetID(), props)
 			// send an event for each of the changed values
 			if onlyChanges {
 				svc.PubEvents(thing.GetID(), props)

@@ -75,7 +75,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 			}
 		}
 		if len(propMap) > 0 {
-			err = svc.hc.PubProps(thingID, propMap)
+			err = svc.hc.UpdateProps(thingID, propMap)
 		}
 	}
 	return err

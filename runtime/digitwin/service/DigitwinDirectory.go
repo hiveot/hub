@@ -48,7 +48,7 @@ func (svc *DigitwinDirectoryService) MakeDigitalTwinTD(
 // QueryDTDs returns a list of JSON encoded TD documents
 func (svc *DigitwinDirectoryService) QueryDTDs(
 	senderID string, args digitwin.DirectoryQueryDTDsArgs) (tdDocuments []string, err error) {
-	//svc.dtwStore.QueryDTDs(args)
+	//svc.DtwStore.QueryDTDs(args)
 	return nil, fmt.Errorf("Not yet implemented")
 }
 
@@ -63,10 +63,10 @@ func (svc *DigitwinDirectoryService) ReadDTD(senderID string, dThingID string) (
 	return tdJSON, err
 }
 
-// ReadDTDs returns a batch of TD documents
+// ReadAllDTDs returns a batch of TD documents
 // This returns a list of JSON encoded digital twin TD documents
-func (svc *DigitwinDirectoryService) ReadDTDs(
-	senderID string, args digitwin.DirectoryReadDTDsArgs) (tdList []string, err error) {
+func (svc *DigitwinDirectoryService) ReadAllDTDs(
+	senderID string, args digitwin.DirectoryReadAllDTDsArgs) (tdList []string, err error) {
 
 	dtdList, err := svc.dtwStore.ReadDTDs(args.Offset, args.Limit)
 	if err == nil {

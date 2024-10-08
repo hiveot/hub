@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/cmd/tdd2api/src/tdd2go"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"os"
@@ -74,7 +75,7 @@ func HandleTdd2Go(sourceDir string, outDirBase string) error {
 		tdJSON, err := os.ReadFile(fullPath)
 		sizeKb := len(tdJSON) / 1024
 		if err == nil {
-			err = json.Unmarshal(tdJSON, &td)
+			err = jsoniter.Unmarshal(tdJSON, &td)
 			if err != nil {
 				err = fmt.Errorf("Unmarshal error in file '%s': %w",
 					fullPath, err)

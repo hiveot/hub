@@ -155,13 +155,13 @@ type IHubClient interface {
 	// This returns an error if the event cannot not be delivered to the hub
 	PubEvent(thingID string, name string, value any, messageID string) error
 
-	// PubProps publishes a property value update event to the hub.
+	// UpdateProps publishes a property value update event to the hub.
 	// It returns as soon as delivery to the hub is confirmed.
 	// This is intended for agents, not for consumers.
 	//
 	//	thingID is the native ID of the device (not including the digital twin ID)
 	//	props is the property name-value map to publish where value is the native value
-	PubProps(thingID string, props map[string]any) error
+	UpdateProps(thingID string, props map[string]any) error
 
 	// PubTD publishes a TD document to the Hub.
 	// It returns as soon as delivery to the hub is confirmed.
@@ -199,7 +199,7 @@ type IHubClient interface {
 	//
 	// Intended for agents that have processed an incoming action request asynchronously
 	// and need to send an update on further progress.
-	SendDeliveryUpdate(status string, messageID string)
+	SendDeliveryUpdate(stat DeliveryStatus)
 
 	// SetMessageHandler adds a handler for messages from the hub.
 	// This replaces any previously set handler.

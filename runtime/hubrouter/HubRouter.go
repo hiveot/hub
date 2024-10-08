@@ -5,6 +5,7 @@ import (
 	service2 "github.com/hiveot/hub/runtime/authn/service"
 	service3 "github.com/hiveot/hub/runtime/authz/service"
 	"github.com/hiveot/hub/runtime/digitwin/service"
+	"sync"
 )
 
 // HubRouter implements the action, event and property flows to and from the
@@ -16,9 +17,15 @@ type HubRouter struct {
 	dtwStore *service.DigitwinStore
 	tb       api.ITransportBinding
 	// internal services are directly invoked
-	dirAgent   *service.DigitwinAgent
+	dtwAgent   *service.DigitwinAgent
+	dtwService *service.DigitwinService
 	authnAgent *service2.AuthnAgent
 	authzAgent *service3.AuthzAgent
+
+	// in-memory cache of active actions lookup by messageID
+	activeCache map[string]*ActionFlowRecord
+	// cache map usage mux
+	mux sync.Mutex
 }
 
 // SetTransport sets the outgoing transport for adding Forms
@@ -32,17 +39,20 @@ func (svc *HubRouter) SetTransport(tb api.ITransportBinding) {
 //
 //	dtwStore is used to update the digital twin status
 //	tb is the transport binding for forwarding service requests
-func NewHubRouter(dtwStore *service.DigitwinStore,
+func NewHubRouter(
+	dtwService *service.DigitwinService,
 	dirAgent *service.DigitwinAgent,
 	authnAgent *service2.AuthnAgent,
 	authzAgent *service3.AuthzAgent,
 ) *HubRouter {
 	ar := &HubRouter{
-		dtwStore:   dtwStore,
-		tb:         nil,
-		authnAgent: authnAgent,
-		authzAgent: authzAgent,
-		dirAgent:   dirAgent,
+		dtwStore:    dtwService.DtwStore,
+		tb:          nil,
+		authnAgent:  authnAgent,
+		authzAgent:  authzAgent,
+		dtwAgent:    dirAgent,
+		dtwService:  dtwService,
+		activeCache: make(map[string]*ActionFlowRecord),
 	}
 	return ar
 }

@@ -127,7 +127,7 @@ func (svc *OWServerBinding) Start(hc hubclient.IHubClient) (err error) {
 			slog.String("err", err.Error()))
 	} else {
 		props := svc.GetBindingPropValues()
-		_ = svc.hc.PubProps(td.ID, props)
+		_ = svc.hc.UpdateProps(td.ID, props)
 	}
 
 	// last, start polling heartbeat

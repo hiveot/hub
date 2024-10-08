@@ -20,12 +20,9 @@ import (
 )
 
 func TestHttpsGetActions(t *testing.T) {
-	const agThing1ID = "thing1"
-	const key1 = "key1"
 	const agentID = "agent1"
 	const userID = "user1"
 	const data = "Hello world"
-	var dThing1ID = tdd.MakeDigiTwinThingID(agentID, agThing1ID)
 
 	r := startRuntime()
 	defer r.Stop()
@@ -36,26 +33,39 @@ func TestHttpsGetActions(t *testing.T) {
 	cl2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
 	defer cl2.Disconnect()
 
-	// step 1: agent publishes a TD
+	// step 1: agent publishes a TD: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
+	key1 := "action-0" // must match TD
 	td1JSON, _ := json.Marshal(td1)
-	err := digitwin.DirectoryUpdateDTD(cl1, string(td1JSON))
+	var dThing1ID = tdd.MakeDigiTwinThingID(agentID, td1.ID)
+	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+		stat.Completed(msg, data, nil)
+		return stat
+	})
+	err := cl1.PubTD(td1.ID, string(td1JSON))
 	require.NoError(t, err)
 
 	// step 2: consumer publish an action to the agent
+	cl2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+		return stat
+	})
 	stat := cl2.InvokeAction(dThing1ID, key1, data, "")
 	require.Empty(t, stat.Error)
 
 	// step 3: read the latest actions from the digital twin
 	// first gets its TD
+	var tdJSON = ""
 	var td tdd.TD
-	stat = cl2.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadDTDMethod, dThing1ID, "")
-	err, _ = stat.Decode(&td)
+
+	stat2 := cl2.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadDTDMethod, dThing1ID, "")
+	err, _ = stat2.Decode(&tdJSON)
+	err = json.Unmarshal([]byte(tdJSON), &td)
 	require.NoError(t, err)
 
 	// get the latest action values from the thing
 	// use the API generated from the digitwin TD document using tdd2api
-	valueList, err := digitwin.ValuesReadActions(cl2, nil, dThing1ID)
+	valueList, err := digitwin.ValuesReadAllActions(cl2, dThing1ID)
+	require.NoError(t, err)
 	valueMap := api.ActionListToMap(valueList)
 
 	// value must match that of the action in step 1 and match its messageID
@@ -67,78 +77,91 @@ func TestHttpsGetActions(t *testing.T) {
 // Get events from the outbox using the experimental http REST api
 func TestHttpsGetEvents(t *testing.T) {
 	const agentID = "agent1"
-	const agThingID = "thing1"
 	const key1 = "key1"
 	const userID = "user1"
 	const data = "Hello world"
-	var dThingID = tdd.MakeDigiTwinThingID(agentID, agThingID)
 
 	r := startRuntime()
 	defer r.Stop()
-	// agent publishes events
-	hc, _ := ts.AddConnectAgent(agentID)
-	defer hc.Disconnect()
 
-	err := hc.PubEvent(agThingID, key1, data, "")
-	assert.NoError(t, err)
+	// agent for publishing events
+	ag1, _ := ts.AddConnectAgent(agentID)
+	defer ag1.Disconnect()
+	// consumer for reading events
+	hc1, token := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	defer hc1.Disconnect()
 
-	// consumer reads the posted event
-	cl, token := ts.AddConnectUser(userID, authn.ClientRoleManager)
-	defer cl.Disconnect()
+	// step 1: agent publishes a TD first: dtw:agent1:thing-1
+	td1 := ts.CreateTestTD(0)
+	td1JSON, _ := json.Marshal(td1)
+	var dThing1ID = tdd.MakeDigiTwinThingID(agentID, td1.ID)
+	err := ag1.PubTD(td1.ID, string(td1JSON))
+	require.NoError(t, err)
+
+	err = ag1.PubEvent(td1.ID, key1, data, "")
+	require.NoError(t, err)
+
 	// read using a plain old http client
 	hostPort := fmt.Sprintf("localhost:%d", ts.Port)
 	tlsClient := tlsclient.NewTLSClient(hostPort, nil, ts.Certs.CaCert, time.Minute)
 	tlsClient.SetAuthToken(token)
 
 	// read latest using the http REST API
-	vars := map[string]string{"thingID": dThingID}
+	vars := map[string]string{"thingID": dThing1ID}
 	eventPath := utils.Substitute(httpsse.ReadAllEventsPath, vars)
 	reply, _, err := tlsClient.Get(eventPath)
 	require.NoError(t, err)
 	require.NotNil(t, reply)
 
-	tmm1 := hubclient.ThingMessageMap{}
-	err = json.Unmarshal(reply, &tmm1)
+	dtwValues := make([]digitwin.EventValue, 0)
+	err = json.Unmarshal(reply, &dtwValues)
 	require.NoError(t, err)
-	require.NotZero(t, len(tmm1))
+	require.NotZero(t, len(dtwValues))
 
-	// read latest using the generated client
-	valueList, err := digitwin.ValuesReadEvents(hc, nil, dThingID)
+	// read latest using the generated client api
+	valueList, err := digitwin.ValuesReadAllEvents(hc1, dThing1ID)
 	//resp, err := digitwin.OutboxReadLatest(hc, "", nil, "", dThingID)
 	require.NoError(t, err)
 	require.NotNil(t, valueList)
 	valueMap := api.EventListToMap(valueList)
-	require.Equal(t, len(tmm1), len(valueMap))
+	require.Equal(t, len(dtwValues), len(valueMap))
+	require.Equal(t, data, valueMap[key1].Data)
 }
 
 func TestHttpsGetProps(t *testing.T) {
 	const agentID = "agent1"
-	const agThingID = "thing1"
 	const key1 = "key1"
 	const key2 = "key2"
 	const userID = "user1"
 	const data1 = "Hello world"
 	const data2 = 25
-	var dThingID = tdd.MakeDigiTwinThingID(agentID, agThingID)
 
 	r := startRuntime()
 	defer r.Stop()
+
 	// agent publishes properties
-	hc, _ := ts.AddConnectAgent(agentID)
-	defer hc.Disconnect()
+	ag1, _ := ts.AddConnectAgent(agentID)
+	defer ag1.Disconnect()
+	// consumer reads properties
+	cl2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	defer cl2.Disconnect()
+
+	// step 1: agent publishes a TD first: dtw:agent1:thing-1
+	td1 := ts.CreateTestTD(0)
+	td1JSON, _ := json.Marshal(td1)
+	var dThingID = tdd.MakeDigiTwinThingID(agentID, td1.ID)
+	err := ag1.PubTD(td1.ID, string(td1JSON))
+	require.NoError(t, err)
 
 	propMap := map[string]any{}
 	propMap[key1] = data1
 	propMap[key2] = data2
-	err := hc.PubProps(agThingID, propMap)
+	err = ag1.UpdateProps(td1.ID, propMap)
 	require.NoError(t, err)
 	//
-	// consumer read properties
-	cl2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
-	defer cl2.Disconnect()
-	valueList, err := digitwin.ValuesReadProperties(hc, nil, dThingID)
+	valueList, err := digitwin.ValuesReadAllProperties(cl2, dThingID)
 	require.NoError(t, err)
-	require.NotNil(t, valueList)
+	require.Equal(t, len(propMap), len(valueList))
 	valueMap := api.PropertyListToMap(valueList)
 
 	// note: golang unmarshalls integers as float64.
@@ -148,8 +171,6 @@ func TestHttpsGetProps(t *testing.T) {
 
 func TestSubscribeValues(t *testing.T) {
 	t.Log("--- TestSubscribeValues tests receiving value update events ---")
-	const agThingID = "thing1"
-
 	const agentID = "agent1"
 	const userID = "user1"
 	const key1 = "key1"
@@ -162,11 +183,17 @@ func TestSubscribeValues(t *testing.T) {
 	defer r.Stop()
 	ag, _ := ts.AddConnectAgent(agentID)
 	defer ag.Disconnect()
-	hc, token := ts.AddConnectUser(userID, authn.ClientRoleManager)
-	_ = token
+	hc, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
 	defer hc.Disconnect()
 
+	// step 1: agent publishes a TD first: dtw:agent1:thing-1
+	td1 := ts.CreateTestTD(0)
+	td1JSON, _ := json.Marshal(td1)
+	//var dThingID = tdd.MakeDigiTwinThingID(agentID, td1.ID)
+	err := ag.PubTD(td1.ID, string(td1JSON))
+
 	// subscribe to events
+	hc.Subscribe("", "")
 	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		stat.Completed(msg, nil, nil)
 		if msg.Name == vocab.EventNameProperties {
@@ -180,14 +207,14 @@ func TestSubscribeValues(t *testing.T) {
 
 		return stat
 	})
-	err := hc.Subscribe("", "")
+	err = hc.Subscribe("", "")
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 100)
 
 	propMap := map[string]any{}
 	propMap[key1] = data1
 	propMap[key2] = data2
-	err = ag.PubProps(agThingID, propMap)
+	err = ag.UpdateProps(td1.ID, propMap)
 	require.NoError(t, err)
 
 	time.Sleep(time.Millisecond * 1000)

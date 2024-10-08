@@ -31,9 +31,9 @@ var testTDs = []struct {
 	NrActions  int
 }{
 	{ID: "thing-1", Title: "Environmental Sensor",
-		DeviceType: vocab.ThingSensorEnvironment, NrEvents: 1, NrProps: 1, NrActions: 0},
+		DeviceType: vocab.ThingSensorEnvironment, NrEvents: 1, NrProps: 1, NrActions: 3},
 	{ID: "thing-2", Title: "Light Switch",
-		DeviceType: vocab.ThingActuatorLight, NrEvents: 2, NrProps: 2, NrActions: 1},
+		DeviceType: vocab.ThingActuatorLight, NrEvents: 2, NrProps: 2, NrActions: 0},
 	{ID: "thing-3", Title: "Power meter",
 		DeviceType: vocab.ThingMeterElectric, NrEvents: 3, NrProps: 3, NrActions: 1},
 	{ID: "thing-4", Title: "Multisensor",
@@ -167,7 +167,12 @@ func (test *TestServer) AddTDs(agentID string, count int) {
 	}
 }
 
-// CreateTestTD returns a test TD.
+// CreateTestTD returns a test TD with ID "thing-{i}", and a variable
+// number of properties, events and actions.
+//
+//	properties are named "prop-{i}
+//	events are named "event-{i}
+//	actions are named "action-{i}
 //
 // The first 10 are predefined and always the same. A higher number generates at random.
 // i is the index.
@@ -186,11 +191,13 @@ func (test *TestServer) CreateTestTD(i int) (td *tdd.TD) {
 	}
 	// add random events
 	for n := 0; n < tdi.NrEvents; n++ {
-		td.AddProperty(fmt.Sprintf("prop-%d", n), EventTypes[n], "title-"+EventTypes[n], vocab.WoTDataTypeString)
+		td.AddEvent(fmt.Sprintf("event-%d", n), EventTypes[n], "title-"+EventTypes[n], "",
+			&tdd.DataSchema{Type: vocab.WoTDataTypeString})
 	}
 	// add random actions
 	for n := 0; n < tdi.NrActions; n++ {
-		td.AddProperty(fmt.Sprintf("prop-%d", n), ActionTypes[n], "title-"+ActionTypes[n], vocab.WoTDataTypeString)
+		td.AddAction(fmt.Sprintf("action-%d", n), ActionTypes[n], "title-"+ActionTypes[n], "",
+			&tdd.DataSchema{Type: vocab.WoTDataTypeString})
 	}
 
 	return td

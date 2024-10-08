@@ -28,6 +28,9 @@ func (dummy *DummyTransportBinding) PublishEvent(dThingID string, name string, v
 
 func (dummy *DummyTransportBinding) PublishProperty(dThingID string, name string, value any, messageID string) {
 }
+func (dummy *DummyTransportBinding) SendActionResult(connectionID string, messageID string, actionValue any) error {
+	return nil
+}
 
 func (dummy *DummyTransportBinding) WriteProperty(agentID string, thingID string, name string, value any, msgID string) (status string, err error) {
 	return digitwin.StatusPending, nil

@@ -8,10 +8,12 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -105,19 +107,44 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	if event.Type == hubclient.PingMessage {
 		return
 	}
+	messageID := event.LastEventID // this is the ID provided by the server
+	messageType := event.Type      // event, action, property, ping, custom event...
+	thingID := ""
+	name := ""
+
+	// event Type field contains: {eventType}[/{thingID}[/{name}]]
+	parts := strings.Split(event.Type, "/")
+	if len(parts) > 1 {
+		messageType = parts[0]
+		thingID = parts[1]
+		if len(parts) > 2 {
+			name = parts[2]
+		}
+	}
 
 	// ThingMessage is needed to pass messageID, messageType, thingID, name, and sender,
 	// as there is no facility in SSE to include metadata.
 	// SSE payload is json marshalled by the sse client
-	rxMsg := &hubclient.ThingMessage{}
-	err := cl.Unmarshal([]byte(event.Data), rxMsg)
-	if err != nil {
-		slog.Error("handleSSEEvent; Received non-ThingMessage sse event. Ignored",
-			"eventType", event.Type,
-			"LastEventID", event.LastEventID,
-			"err", err.Error())
-		return
+	var msgData any
+	jsoniter.Unmarshal([]byte(event.Data), &msgData)
+	rxMsg := &hubclient.ThingMessage{
+		ThingID:     thingID,
+		Name:        name,
+		MessageType: messageType,
+		SenderID:    "",
+		Created:     "",
+		Data:        msgData,
+		MessageID:   messageID,
 	}
+
+	//err := cl.Unmarshal([]byte(event.Data), rxMsg)
+	//if err != nil {
+	//	slog.Error("handleSSEEvent; Received non-ThingMessage sse event. Ignored",
+	//		"eventType", event.Type,
+	//		"LastEventID", event.LastEventID,
+	//		"err", err.Error())
+	//	return
+	//}
 	stat.MessageID = rxMsg.MessageID
 	slog.Debug("handleSSEEvent. Received message",
 		//slog.String("Comment", string(event.Comment)),
@@ -133,11 +160,12 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	if rxMsg.MessageType == vocab.MessageTypeEvent && rxMsg.Name == vocab.EventNameDeliveryUpdate {
 		// this client is receiving a delivery update from a previous action.
 		// The payload is a deliverystatus object
-		err = utils.DecodeAsObject(rxMsg.Data, &stat)
+		err := utils.DecodeAsObject(rxMsg.Data, &stat)
 		if err != nil || stat.MessageID == "" {
 			slog.Error("SSE message of type delivery update is missing messageID or not a DeliveryStatus ", "err", err)
 			return
 		}
+		rxMsg.Data = stat
 		//err = cl.Decode([]byte(rxMsg.Data), &stat)
 		cl.mux.RLock()
 		rChan, _ := cl._correlData[stat.MessageID]
@@ -178,12 +206,12 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 				slog.String("clientID", cl.ClientID()))
 			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
 		}
-		cl.SendDeliveryUpdate(stat.Progress, stat.MessageID)
+		cl.SendDeliveryUpdate(stat)
 	} else {
 		slog.Warn("handleSSEEvent, unknown message type. Message ignored.",
 			slog.String("message type", rxMsg.MessageType),
 			slog.String("clientID", cl.ClientID()))
 		stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
-		cl.SendDeliveryUpdate(stat.Progress, stat.MessageID)
+		cl.SendDeliveryUpdate(stat)
 	}
 }

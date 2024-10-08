@@ -28,7 +28,7 @@ import (
 // THIS WILL BE REMOVED AFTER THE PROTOCOL BINDING PUBLISHES THESE IN THE TDD.
 // The hub client will need the TD (ConsumedThing) to determine the paths.
 const (
-	ReadAllEventsPath = "/digitwin/{thingID}/events"
+	ReadAllEventsPath = "/digitwin/events/{thingID}"
 
 	ConnectSSEPath = "/ssesc"
 	// deprecated, use forms
@@ -36,15 +36,16 @@ const (
 	PostObservePropertiesPath = "/ssesc/digitwin/observe/{thingID}/{name}"
 	PostSubscribeEventPath    = "/ssesc/digitwin/subscribe/{thingID}/{name}"
 	PostUnsubscribeEventPath  = "/ssesc/digitwin/unsubscribe/{thingID}/{name}"
-	PutWritePropertyPath      = "/digitwin/properties/{thingID}/{name}"
+	PostWritePropertyPath     = "/digitwin/properties/{thingID}/{name}"
 
 	// Form paths for accessing TD directory
 	GetThingPath  = "/digitwin/directory/{thingID}"
 	GetThingsPath = "/digitwin/directory/+" // query param offset=, limit=
 
-	PostAgentPublishEventPath   = "/agent/event/{thingID}/{name}"
-	PostAgentUpdatePropertyPath = "/agent/property/{thingID}/{name}"
-	PostAgentUpdateTDDPath      = "/agent/tdd/{thingID}"
+	PostAgentPublishEventPath             = "/agent/event/{thingID}/{name}"
+	PostAgentUpdatePropertyPath           = "/agent/property/{thingID}/{name}"
+	PostAgentUpdateMultiplePropertiesPath = "/agent/properties/{thingID}"
+	PostAgentUpdateTDDPath                = "/agent/tdd/{thingID}"
 
 	// authn service - used in authn TD
 	PostLoginPath   = "/authn/login"
@@ -124,13 +125,14 @@ func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 		Password: password,
 	}
 	argsJSON, _ := json.Marshal(loginMessage)
-	resp, statusCode, _, err2 := cl.tlsClient.Invoke("POST", loginURL, argsJSON, "", nil)
+	resp, statusCode, _, _, err2 := cl.tlsClient.Invoke(
+		"POST", loginURL, argsJSON, "", nil)
 	if err2 != nil {
 		err = fmt.Errorf("%d: Login failed: %s", statusCode, err2)
 		return "", err
 	}
 	reply := authn.UserLoginResp{}
-	err = json.Unmarshal(resp, &reply)
+	err = cl.Unmarshal(resp, &reply)
 	if err != nil {
 		err = fmt.Errorf("ConnectWithPassword: Login to %s has unexpected response message: %s", loginURL, err)
 		cl.SetConnectionStatus(hubclient.ConnectFailed, err)
@@ -266,7 +268,7 @@ func (cl *HttpSSEClient) Marshal(data any) []byte {
 	return jsonData
 }
 
-// Publish an action, event or property message and return the delivery status
+// PubMessage an action, event or property message and return the delivery status
 //
 //	methodName is http.MethodPost for actions, http.MethodPut/MethodGet for properties
 //	path used to publish PostActionPath/PostEventPath/...
@@ -289,23 +291,35 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 	defer cl.mux.RUnlock()
 	if cl.tlsClient == nil {
 		stat.Progress = hubclient.DeliveryFailed
-		stat.Error = errors.New("HandleActionFlow. Client connection was closed")
-		slog.Error(stat.Error.Error())
+		stat.Error = "HandleActionFlow. Client connection was closed"
+		slog.Error(stat.Error)
 		return stat
 	}
 	//resp, err := cl.tlsClient.Post(messagePath, payload)
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, messagePath)
 	serData := cl.Marshal(data)
-	reply, respMsgID, httpStatus, err := cl.tlsClient.Invoke(methodName, serverURL, serData, messageID, queryParams)
-
+	reply, respMsgID, httpStatus, headers, err :=
+		cl.tlsClient.Invoke(methodName, serverURL, serData, messageID, queryParams)
+	_ = headers
 	// TODO: detect difference between not connected and unauthenticated
-	stat.Error = err
+	// FIXME: detect output vs DeliveryStatus result
+	dataSchema := ""
+	if headers != nil {
+		dataSchema = headers.Get("dataschema")
+	}
+	if dataSchema != "" {
+	}
+
 	stat.MessageID = respMsgID
 	if err != nil {
+		stat.Error = err.Error()
 		stat.Progress = hubclient.DeliveryFailed
 		if httpStatus == http.StatusUnauthorized {
 			err = errors.New("no longer authenticated")
 		}
+	} else if dataSchema == "DeliveryStatus" {
+		// return dataschema contains a progress envelope
+		err = cl.Unmarshal(reply, &stat)
 	} else if reply != nil && len(reply) > 0 {
 		// FIXME: why do you need a reply to be completed?
 		err = cl.Unmarshal(reply, &stat.Reply)
@@ -316,6 +330,7 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 	}
 	if err != nil {
 		slog.Error("PubMessage error", "err", err.Error())
+		stat.Error = err.Error()
 	}
 	return stat
 }
@@ -382,7 +397,10 @@ func (cl *HttpSSEClient) PubEvent(thingID string, name string, data any, message
 		slog.String("name", name),
 	)
 	stat := cl.PubMessage(http.MethodPost, PostAgentPublishEventPath, thingID, name, data, messageID, nil)
-	return stat.Error
+	if stat.Error != "" {
+		return errors.New(stat.Error)
+	}
+	return nil
 }
 
 // WriteProperty publishes a configuration change request
@@ -391,7 +409,7 @@ func (cl *HttpSSEClient) WriteProperty(thingID string, name string, data any) (
 	stat hubclient.DeliveryStatus) {
 
 	// FIXME: get message id
-	stat = cl.PubMessage(http.MethodPut, PutWritePropertyPath, thingID, name, data, "", nil)
+	stat = cl.PubMessage(http.MethodPut, PostWritePropertyPath, thingID, name, data, "", nil)
 	slog.Info("PubProperty",
 		slog.String("me", cl._status.ClientID),
 		slog.String("thingID", thingID),
@@ -402,10 +420,17 @@ func (cl *HttpSSEClient) WriteProperty(thingID string, name string, data any) (
 	return stat
 }
 
-// PubProps publishes a properties map event
+// UpdateProps publishes a properties map event
 // Intended for use by agents to publish all properties at once
-func (cl *HttpSSEClient) PubProps(thingID string, props map[string]any) error {
-	return cl.PubEvent(thingID, vocab.EventNameProperties, props, "")
+func (cl *HttpSSEClient) UpdateProps(thingID string, props map[string]any) error {
+	//return cl.PubEvent(thingID, vocab.EventNameProperties, props, "")
+	// FIXME: get path from forms?
+	stat := cl.PubMessage("POST", PostAgentUpdateMultiplePropertiesPath,
+		thingID, "", props, "", nil)
+	if stat.Error != "" {
+		return errors.New(stat.Error)
+	}
+	return nil
 }
 
 // PubTD publishes a TD event
@@ -425,13 +450,15 @@ func (cl *HttpSSEClient) RefreshToken(oldToken string) (newToken string, err err
 	}
 	data, _ := json.Marshal(args)
 	// the bearer token holds the old token
-	resp, messageID, httpStatus, err := cl.tlsClient.Invoke("POST", refreshURL, data, "", nil)
+	resp, messageID, httpStatus, headers, err := cl.tlsClient.Invoke(
+		"POST", refreshURL, data, "", nil)
 	_ = messageID
+	_ = headers
 
 	// set the new token as the bearer token
 	// FIXME: differentiate between not connected and unauthenticated
 	if err == nil {
-		err = json.Unmarshal(resp, &newToken)
+		err = cl.Unmarshal(resp, &newToken)
 
 		if err == nil {
 			// reconnect using the new token
@@ -487,12 +514,8 @@ func (cl *HttpSSEClient) Rpc(
 //
 // Intended for agents that have processed an incoming action request asynchronously
 // and need to send an update on further progress.
-func (cl *HttpSSEClient) SendDeliveryUpdate(progress string, messageID string) {
-	slog.Info("SendDeliveryUpdate",
-		slog.String("Progress", progress),
-		slog.String("MessageID", messageID),
-	)
-	cl.PubEvent(api.DigitwinServiceID, vocab.EventNameDeliveryUpdate, progress, messageID)
+func (cl *HttpSSEClient) SendDeliveryUpdate(stat hubclient.DeliveryStatus) {
+	cl.PubEvent(api.DigitwinServiceID, vocab.EventNameDeliveryUpdate, stat, stat.MessageID)
 }
 
 // SendOperation is temporary transition to support using TD forms

@@ -123,7 +123,7 @@ func (svc *OWServerBinding) PublishNodeTDs(nodes []*eds.OneWireNode) (err error)
 			err = err2
 		} else {
 			//props := svc.MakeNodePropValues(node)
-			//_ = svc.hc.PubProps(td.ID, props)
+			//_ = svc.hc.UpdateProps(td.ID, props)
 		}
 	}
 	return err

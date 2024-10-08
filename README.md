@@ -11,32 +11,29 @@ The Hub for the *Hive-of-Things* provides a secure [runtime](runtime/README-runt
 Status: The Hub core is currently being reworked to use the "[digital twins runtime](runtime/README-runtime.md)" with multiple concurrent protocol support. (May 2024). 
 
 TODO before alpha:
-1. Minimal web client  (bindings/hiveoview)
-   * dashboard 
-   * admin panel for managing users and devices
-   * admin panel for starting/stopping of services
-   * Only show option to edit config and send actions if the user has permissions
 1. Support for Forms sections in TDD documents describing the protocols to interact with a Thing.
 1. Revisit the vocabulary to integrate or adopt existing vocabularies where possible
+1. Test/fix security; token expiry, bad agents or consumers, rate-limiting, role authz
 
-Future Roadmap:
-1. improve the embedded protocol binding (for internal services)
-   * improve subscription support to reduce traffic/processing
-1. All services and bindings should send an event when started and stopped
-2. All services and bindings should support a ping method
+Roadmap:
+1. Add websockets sub-protocol binding
+1. Support for WoT discovery profile
 1. Support client certificate authentication
-2. Support websockets as return channel
-3. Support UDS for local services
-4. rework mqtt transport protocol
-5. rework the nats transport protocol
-6. support Action queues for delayed delivery to offline agents
-10. Javascript tdd2js client api generator
-11. Python tdd2py client api generator
+1. Support mqtt transport protocol
+2. Rework internal TD document format to improve WoT TD compatibility
+2. Add exposed-thing golang client
+1. Javascript tdd2js client api generator
+1. Python tdd2py client api generator
+
+Future:
+1. HiveOT inter-hive bridging service
+2. OAuth2 support
 
 
 Integrations
 
 It is a bit early to look at integrations, but some interesting candidates are:
+* interoperability with WoT clients
 * plc4go (https://plc4x.apache.org/users/getting-started/plc4go.html)
 * home assistant (https://www.home-assistant.io/)
 

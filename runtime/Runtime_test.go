@@ -65,8 +65,7 @@ func TestLogin(t *testing.T) {
 func TestActionWithDeliveryConfirmation(t *testing.T) {
 	const agentID = "agent1"
 	const userID = "user1"
-	const thingID = "thing1"
-	const actionID = "action1"
+	const actionID = "action-1" // match the test TD action
 	var actionPayload = "payload1"
 	var expectedReply = actionPayload + ".reply"
 	var rxMsg *hubclient.ThingMessage
@@ -77,6 +76,11 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	cl1, _ := ts.AddConnectAgent(agentID)
 	cl2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
 
+	// step 1: agent publishes a TD
+	td1 := ts.CreateTestTD(0)
+	thingID := td1.ID
+	ts.AddTD(agentID, td1)
+
 	// connect the agent and user clients
 	defer cl1.Disconnect()
 	defer cl2.Disconnect()
@@ -84,7 +88,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	// Agent receives action request which we'll handle here
 	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		rxMsg = msg
-		reply := msg.DataAsText() + ".reply"
+		reply := utils.DecodeAsString(msg.Data) + ".reply"
 		stat.Completed(msg, reply, nil)
 		//stat.Failed(msg, fmt.Errorf("failuretest"))
 		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "messageID", msg.MessageID)
@@ -107,7 +111,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	// client sends action to agent and expect a 'delivered' result
 	// The RPC method returns an error if no reply is received
 	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
-	stat2 := cl2.InvokeAction(dThingID, actionID, actionPayload, "")
+	stat2 := cl2.InvokeAction(dThingID, actionID, actionPayload, "testmsgid")
 	require.Empty(t, stat2.Error)
 
 	// wait for delivery completion
@@ -131,8 +135,6 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 func TestServiceReconnect(t *testing.T) {
 	const agentID = "agent1"
 	const userID = "user1"
-	const thingID = "thing1"
-	const actionID = "action1"
 	var rxMsg atomic.Pointer[*hubclient.ThingMessage]
 	var actionPayload = "payload1"
 	var expectedReply = actionPayload + ".reply"
@@ -145,6 +147,12 @@ func TestServiceReconnect(t *testing.T) {
 	cl1, cl1Token := ts.AddConnectAgent(agentID)
 	_ = cl1Token
 	defer cl1.Disconnect()
+
+	// step 1: ensure the thing TD exists
+	td1 := ts.CreateTestTD(0)
+	thingID := td1.ID
+	actionID := "action-1" // match the test TD action
+	ts.AddTD(agentID, td1)
 
 	// Agent receives action request which we'll handle here
 	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {

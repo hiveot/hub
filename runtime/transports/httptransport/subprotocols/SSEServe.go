@@ -15,14 +15,14 @@ import (
 
 type SSEEvent struct {
 	EventType string // type of message, eg event, action or other
-	ID        string // event ID
+	ID        string // message topic: {thingID}/{name}/{messageID}
 	Payload   string // message content
 }
 
 // SSEConnection of an authenticated SSE connection over http.
 // This is used for both the sse-sc and sse bindings.
 //
-// This implements the IProtocolConnection interface
+// This implements the IClientConnection interface
 type SSEConnection struct {
 	// connection ID of this session
 	connectionID string
@@ -52,39 +52,19 @@ type SSEConnection struct {
 	propSubscriptions []string
 }
 
-// _publish sends the property or event update to the connected consumer
-func (c *SSEConnection) _publish(messageType string,
-	dThingID, name string, data any, messageID string) {
-
-	var payload []byte = nil
-	if data != nil {
-		payload, _ = json.Marshal(data)
-	}
-	topic := fmt.Sprintf("%s/%s/%s", dThingID, name, messageID)
-	msg := SSEEvent{
-		EventType: messageType,
-		ID:        topic,
-		Payload:   string(payload),
-	}
-	c.mux.Lock()
-	defer c.mux.Unlock()
-	if c.sseChan != nil {
-		c.sseChan <- msg
-	}
-}
-
 // _send sends the action or write request for the thing to the agent
+// The SSE event type is: {messageType}/{agentID}/{thingID}/{name}
 func (c *SSEConnection) _send(messageType string,
-	agentID, thingID, name string, data any, messageID string) (status string, err error) {
+	thingID, name string, data any, messageID string) (status string, err error) {
 
 	var payload []byte = nil
 	if data != nil {
 		payload, _ = json.Marshal(data)
 	}
-	topic := fmt.Sprintf("%s/%s/%s/%s", agentID, thingID, name, messageID)
+	topic := fmt.Sprintf("%s/%s/%s", messageType, thingID, name)
 	msg := SSEEvent{
-		EventType: messageType,
-		ID:        topic,
+		EventType: topic,
+		ID:        messageID,
 		Payload:   string(payload),
 	}
 	c.mux.Lock()
@@ -111,10 +91,10 @@ func (c *SSEConnection) GetClientID() string {
 
 // InvokeAction sends the action request for the thing to the agent
 func (c *SSEConnection) InvokeAction(
-	agentID, thingID, name string, data any, messageID string) (
+	thingID, name string, data any, messageID string) (
 	status string, output any, err error) {
 
-	status, err = c._send(vocab.MessageTypeAction, agentID, thingID, name, data, messageID)
+	status, err = c._send(vocab.MessageTypeAction, thingID, name, data, messageID)
 	return status, nil, err
 }
 
@@ -136,20 +116,6 @@ func (c *SSEConnection) IsSubscribed(subs []string, dThingID string, name string
 	return false
 }
 
-// PublishEvent send an event to subscribers
-func (c *SSEConnection) PublishEvent(dThingID, name string, data any, messageID string) {
-	if c.IsSubscribed(c.eventSubscriptions, dThingID, name) {
-		c._publish(vocab.MessageTypeEvent, dThingID, name, data, messageID)
-	}
-}
-
-// PublishProperty send a property change update to subscribers
-func (c *SSEConnection) PublishProperty(dThingID, name string, data any, messageID string) {
-	if c.IsSubscribed(c.propSubscriptions, dThingID, name) {
-		c._publish(vocab.MessageTypeProperty, dThingID, name, data, messageID)
-	}
-}
-
 // ObserveProperty adds a subscription for a thing property
 func (c *SSEConnection) ObserveProperty(dThingID string, name string) {
 
@@ -164,6 +130,28 @@ func (c *SSEConnection) ObserveProperty(dThingID string, name string) {
 
 	subKey := fmt.Sprintf("%s.%s", dThingID, name)
 	c.propSubscriptions = append(c.propSubscriptions, subKey)
+}
+
+// PublishEvent send an event to subscribers
+func (c *SSEConnection) PublishEvent(dThingID, name string, data any, messageID string) {
+	if c.IsSubscribed(c.eventSubscriptions, dThingID, name) {
+		_, _ = c._send(vocab.MessageTypeEvent, dThingID, name, data, messageID)
+	}
+}
+
+// PublishProperty send a property change update to subscribers
+func (c *SSEConnection) PublishProperty(dThingID, name string, data any, messageID string) {
+	if c.IsSubscribed(c.propSubscriptions, dThingID, name) {
+		_, _ = c._send(vocab.MessageTypeProperty, dThingID, name, data, messageID)
+	}
+}
+
+// SendActionResult sends an action result to the client
+// If an error is provided this sends the error, otherwise the output value
+func (c *SSEConnection) SendActionResult(stat hubclient.DeliveryStatus) error {
+	_, err := c._send(vocab.MessageTypeEvent, "", vocab.EventNameDeliveryUpdate,
+		stat, stat.MessageID)
+	return err
 }
 
 // Serve serves SSE connections.
@@ -183,7 +171,7 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 	c.sseChan = make(chan SSEEvent, 1)
 
 	// Send a ping event as the go-sse client doesn't have a 'connected callback'
-	pingEvent := SSEEvent{EventType: hubclient.PingMessage}
+	pingEvent := SSEEvent{EventType: hubclient.PingMessage, ID: "pingID"}
 	c.sseChan <- pingEvent
 
 	slog.Info("SseConnection. New SSE connection",
@@ -267,6 +255,8 @@ func (c *SSEConnection) SubscribeEvent(dThingID string, name string) {
 	c.eventSubscriptions = append(c.eventSubscriptions, subKey)
 }
 
+//
+
 // UnsubscribeEvent removes an event subscription
 // dThingID and name must match those of ObserveProperty
 func (c *SSEConnection) UnsubscribeEvent(dThingID string, name string) {
@@ -309,9 +299,9 @@ func (c *SSEConnection) UnobserveProperty(dThingID string, name string) {
 
 // WriteProperty sends the property change request to the agent
 func (c *SSEConnection) WriteProperty(
-	agentID, thingID, name string, data any, messageID string) (status string, err error) {
+	thingID, name string, data any, messageID string) (status string, err error) {
 
-	status, err = c._send(vocab.MessageTypeProperty, agentID, thingID, name, data, messageID)
+	status, err = c._send(vocab.MessageTypeProperty, thingID, name, data, messageID)
 	return status, err
 }
 

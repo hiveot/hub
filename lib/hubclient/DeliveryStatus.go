@@ -54,7 +54,7 @@ type DeliveryStatus struct {
 	// Updated delivery progress
 	Progress string
 	// Error in case delivery or processing has failed
-	Error error
+	Error string
 	// Serialized reply in case delivery and processing has completed
 	Reply any
 }
@@ -81,7 +81,9 @@ func (stat *DeliveryStatus) Completed(msg *ThingMessage, reply any, err error) *
 	stat.Progress = DeliveryCompleted
 	stat.MessageID = msg.MessageID
 	stat.Reply = reply
-	stat.Error = err
+	if err != nil {
+		stat.Error = err.Error()
+	}
 	return stat
 }
 
@@ -93,7 +95,7 @@ func (stat *DeliveryStatus) Completed(msg *ThingMessage, reply any, err error) *
 func (stat *DeliveryStatus) Failed(msg *ThingMessage, err error) *DeliveryStatus {
 	stat.Progress = DeliveryFailed
 	stat.MessageID = msg.MessageID
-	stat.Error = err
+	stat.Error = err.Error()
 	return stat
 }
 

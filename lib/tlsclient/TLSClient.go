@@ -57,7 +57,8 @@ func (cl *TLSClient) Close() {
 func (cl *TLSClient) Delete(path string) (resp []byte, httpStatus int, err error) {
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	resp, _, httpStatus, err = cl.Invoke("DELETE", serverURL, nil, "", nil)
+	resp, _, httpStatus, _, err = cl.Invoke(
+		"DELETE", serverURL, nil, "", nil)
 	return resp, httpStatus, err
 
 }
@@ -68,7 +69,7 @@ func (cl *TLSClient) Delete(path string) (resp []byte, httpStatus int, err error
 //	path to invoke
 func (cl *TLSClient) Get(path string) (resp []byte, httpStatus int, err error) {
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	resp, _, httpStatus, err = cl.Invoke("GET", serverURL, nil, "", nil)
+	resp, _, httpStatus, _, err = cl.Invoke("GET", serverURL, nil, "", nil)
 	return resp, httpStatus, err
 }
 
@@ -91,14 +92,14 @@ func (cl *TLSClient) GetHttpClient() *http.Client {
 //
 // This returns the serialized response data, a response message ID, return status code or an error
 func (cl *TLSClient) Invoke(method string, requrl string, body []byte, messageID string, qParams map[string]string) (
-	resp []byte, respMessageID string, httpStatus int, err error) {
+	resp []byte, respMessageID string, httpStatus int, headers http.Header, err error) {
 
 	var req *http.Request
 	contentType := "application/json"
 
 	if cl == nil || cl.httpClient == nil {
 		err = fmt.Errorf("Invoke: '%s'. Client is not started", requrl)
-		return nil, "", http.StatusInternalServerError, err
+		return nil, "", http.StatusInternalServerError, nil, err
 	}
 	slog.Debug("TLSClient.Invoke", "method", method, "requrl", requrl)
 
@@ -113,7 +114,7 @@ func (cl *TLSClient) Invoke(method string, requrl string, body []byte, messageID
 		req.URL.RawQuery = qValues.Encode()
 	}
 	if err != nil {
-		return nil, "", http.StatusInternalServerError, err
+		return nil, "", http.StatusInternalServerError, nil, err
 	}
 
 	// set headers
@@ -126,7 +127,7 @@ func (cl *TLSClient) Invoke(method string, requrl string, body []byte, messageID
 	if err != nil {
 		err = fmt.Errorf("Invoke: %s %s: %w", method, requrl, err)
 		slog.Error(err.Error())
-		return nil, "", 500, err
+		return nil, "", 500, nil, err
 	}
 	respBody, err := io.ReadAll(httpResp.Body)
 	respMessageID = httpResp.Header.Get(HTTPMessageIDHeader)
@@ -149,7 +150,7 @@ func (cl *TLSClient) Invoke(method string, requrl string, body []byte, messageID
 	} else if err != nil {
 		err = fmt.Errorf("Invoke: Error %s %s: %w", method, requrl, err)
 	}
-	return respBody, respMessageID, httpStatus, err
+	return respBody, respMessageID, httpStatus, httpResp.Header, err
 }
 
 //// Logout from the server and end the session
@@ -170,7 +171,8 @@ func (cl *TLSClient) Patch(
 
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	resp, _, statusCode, err = cl.Invoke("PATCH", serverURL, body, "", nil)
+	resp, _, statusCode, _, err = cl.Invoke(
+		"PATCH", serverURL, body, "", nil)
 	return resp, statusCode, err
 }
 
@@ -181,11 +183,14 @@ func (cl *TLSClient) Patch(
 //	path to invoke
 //	body contains the serialized request body
 //	messageID optional field to link async requests and responses
-func (cl *TLSClient) Post(
-	path string, body []byte, messageID string) (resp []byte, respMessageID string, statusCode int, err error) {
+func (cl *TLSClient) Post(path string, body []byte, messageID string) (
+	resp []byte, respMessageID string, statusCode int, err error) {
+
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	return cl.Invoke("POST", serverURL, body, messageID, nil)
+	resp, messageID, statusCode, _, err = cl.Invoke(
+		"POST", serverURL, body, messageID, nil)
+	return resp, messageID, statusCode, err
 }
 
 // Put a message with json payload
@@ -200,7 +205,9 @@ func (cl *TLSClient) Put(path string, body []byte, messageID string) (
 
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	return cl.Invoke("PUT", serverURL, body, messageID, nil)
+	resp, messageID, statusCode, _, err = cl.Invoke(
+		"PUT", serverURL, body, messageID, nil)
+	return resp, messageID, statusCode, err
 }
 
 // SetAuthToken Sets login ID and secret for bearer token authentication using a

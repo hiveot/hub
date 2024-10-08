@@ -3,6 +3,7 @@ package transports
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/digitwin/service"
@@ -166,6 +167,17 @@ func (svc *TransportManager) PublishProperty(dThingID string, name string, value
 	}
 }
 
+// SendActionResult send the action status update to the client.
+// This fails if no binding has a connection with this client
+func (svc *TransportManager) SendActionResult(clientID string, stat hubclient.DeliveryStatus) (err error) {
+	if svc.httpTransport != nil {
+		err = svc.httpTransport.SendActionResult(clientID, stat)
+	} else {
+		err = fmt.Errorf("SendActionResult: No connection with consumer '%s'", clientID)
+	}
+	return err
+}
+
 // Stop the protocol servers
 func (svc *TransportManager) Stop() {
 	if svc.discoveryTransport != nil {
@@ -220,16 +232,13 @@ func StartTransportManager(cfg *ProtocolsConfig,
 	// the embedded transport protocol is required for the runtime
 	// Embedded services are: authn, authz, directory, inbox, outbox services
 	//svc.embeddedTransport = embedded.StartEmbeddedBinding()
-	if cfg.EnableDiscovery {
-		serverURL := svc.GetConnectURL()
-		svc.discoveryTransport = discotransport.StartDiscoveryTransport(
-			cfg.Discovery, serverURL)
-	}
+
 	if cfg.EnableHTTPS {
 		svc.httpTransport, err = httptransport.StartHttpTransport(
 			&cfg.HttpsTransport,
 			serverCert, caCert,
-			authenticator, hubRouter)
+			authenticator, hubRouter,
+			dtwService)
 	}
 	if cfg.EnableMQTT {
 		//svc.mqttTransport = mqtttransport.StartMqttTransport(
@@ -237,6 +246,10 @@ func StartTransportManager(cfg *ProtocolsConfig,
 		//	privKey, serverCert, caCert,
 		//	sessionAuth)
 	}
-
+	if cfg.EnableDiscovery {
+		serverURL := svc.GetConnectURL()
+		svc.discoveryTransport = discotransport.StartDiscoveryTransport(
+			cfg.Discovery, serverURL)
+	}
 	return svc, err
 }

@@ -1,6 +1,9 @@
 {
-	"@context":[ "https://www.w3.org/2022/wot/td/v1.1",
-		{"ht": "https://www.hiveot.net/vocab/v0.1"}
+	"@context": [
+		"https://www.w3.org/2022/wot/td/v1.1",
+		{
+			"ht": "https://www.hiveot.net/vocab/v0.1"
+		}
 	],
 	"@type": "Service",
 	"id": "dtw:digitwin:values",
@@ -12,7 +15,9 @@
 	"created": "2024-10-04T17:00:00.000Z",
 	"modified": "2024-10-04T17:00:00.000Z",
 	"support": "https://www.github.com/hiveot/hub",
-	"security": ["bearer"],
+	"security": [
+		"bearer"
+	],
 	"securityDefinitions": {
 		"bearer": {
 			"description": "HTTP protocol authentication",
@@ -23,7 +28,6 @@
 			"in": "header"
 		}
 	},
-
 	"schemaDefinitions": {
 		"ActionValue": {
 			"title": "Action Value",
@@ -156,7 +160,6 @@
 				}
 			}
 		}
-
 	},
 	"events": {
 		"valueUpdated": {
@@ -185,7 +188,7 @@
 		}
 	},
 	"actions": {
-		"readActions": {
+		"readAction": {
 			"@type": "ht:function",
 			"title": "Action status",
 			"description": "Read the latest action status",
@@ -193,79 +196,9 @@
 			"idempotent": true,
 			"input": {
 				"type": "object",
-				"required": ["thingID"],
-				"properties": {
-					"thingID": {
-						"title": "Thing ID",
-						"description": "ID of the Thing to read",
-						"type": "string"
-					},
-					"names": {
-						"title": "Action Names",
-						"description": "The action names to read or empty to read status of all actions",
-						"type": "array",
-						"items": {
-							"type": "string"
-						}
-					}
-				}
-			},
-			"output": {
-				"title": "Action value map",
-				"description": "map of action name to status objects",
-				"comment": "No idea how to describe it, yet",
-				"type": "array",
-				"items": {
-					"title": "values",
-					"type": "ActionValue"
-				}
-			}
-		},
-		"readProperties": {
-			"@type": "ht:function",
-			"title": "Read properties/event values",
-			"description": "Read the latest property or event value(s)",
-			"safe": true,
-			"idempotent": true,
-			"input": {
-				"type": "object",
-				"required": ["thingID"],
-				"properties": {
-					"thingID": {
-						"title": "Thing ID",
-						"description": "ID of the Thing to read",
-						"type": "string"
-					},
-					"names": {
-						"title": "Value Names",
-						"description": "The property/event names to read or empty to read all latest values",
-						"type": "array",
-						"items": {
-							"type": "string"
-						}
-					}
-				}
-			},
-			"output": {
-				"title": "Property value map",
-				"description": "map of name:propertyvalue objects",
-				"type": "array",
-				"items": {
-					"type": "PropertyValue",
-					"title": "PropertyValue"
-				}
-			}
-		},
-		"readEvents": {
-			"@type": "ht:function",
-			"title": "Read event values",
-			"description": "Read the latest event value(s)",
-			"safe": true,
-			"idempotent": true,
-			"input": {
-				"type": "object",
 				"required": [
-					"thingID"
+					"thingID",
+					"name"
 				],
 				"properties": {
 					"thingID": {
@@ -273,26 +206,144 @@
 						"description": "ID of the Thing to read",
 						"type": "string"
 					},
-					"names": {
-						"title": "Value Names",
-						"description": "The event names to read or empty to read all latest values",
-						"type": "array",
-						"items": {
-							"type": "string"
-						}
+					"name": {
+						"title": "Action Name",
+						"description": "The action name to read",
+						"type": "string"
 					}
 				}
 			},
 			"output": {
+				"title": "Action value",
+				"description": "The latest action value",
+				"comment": "defined in schemadefinitions",
+				"type": "ActionValue"
+			}
+		},
+		"readAllActions": {
+			"@type": "ht:function",
+			"title": "All actions",
+			"description": "Read the latest value for all actions",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"title": "Thing ID",
+				"description": "ID of the Thing to read",
+				"type": "string"
+			},
+			"output": {
+				"title": "Action values",
+				"description": "List with the latest known action value for all actions",
+				"comment": "defined in TD schemadefinitions",
+				"type": "array",
+				"items": {
+					"type": "ActionValue"
+				}
+			}
+		},
+		"readAllEvents": {
+			"@type": "ht:function",
+			"title": "Read all event values",
+			"description": "Read the latest known event values of a Thing",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"title": "Thing ID",
+				"description": "ID of the Thing to read",
+				"type": "string"
+			},
+			"output": {
 				"title": "Event values",
-				"description": "Most recent event value objects",
+				"description": "List with the most recent event value objects",
 				"type": "array",
 				"items": {
 					"type": "EventValue",
 					"title": "EventValue"
 				}
 			}
+		},
+		"readAllProperties": {
+			"@type": "ht:function",
+			"title": "Read all properties",
+			"description": "Read the latest known property values",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"title": "Thing ID",
+				"description": "Digital twin ID of the Thing to read",
+				"type": "string"
+			},
+			"output": {
+				"title": "Property values",
+				"description": "List of PropertyValue objects",
+				"type": "array",
+				"items": {
+					"type": "PropertyValue",
+					"title": "PropertyValue"
+				}
+			}
+		},
+		"readEvent": {
+			"@type": "ht:function",
+			"title": "Read event value",
+			"description": "Read the latest event value of a Thing",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"type": "object",
+				"required": [
+					"thingID",
+					"name"
+				],
+				"properties": {
+					"thingID": {
+						"title": "Thing ID",
+						"description": "ID of the Thing to read",
+						"type": "string"
+					},
+					"name": {
+						"title": "Event name",
+						"description": "Name of the event to read the latest values",
+						"type": "string"
+					}
+				}
+			},
+			"output": {
+				"title": "Event value",
+				"description": "Most recent event value",
+				"type": "EventValue"
+			}
+		},
+		"readProperty": {
+			"@type": "ht:function",
+			"title": "Read property value",
+			"description": "Read the latest property value",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"type": "object",
+				"required": [
+					"thingID",
+					"name"
+				],
+				"properties": {
+					"thingID": {
+						"title": "Thing ID",
+						"description": "ID of the Thing to read",
+						"type": "string"
+					},
+					"name": {
+						"title": "Property name",
+						"description": "The property name whose value to read",
+						"type": "string"
+					}
+				}
+			},
+			"output": {
+				"title": "Property values",
+				"description": "PropertyValue objects",
+				"type": "PropertyValue"
+			}
 		}
-	},
-	"links": []
+	}
 }

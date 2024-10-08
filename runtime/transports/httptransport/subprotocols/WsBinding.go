@@ -2,6 +2,7 @@ package subprotocols
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
 	"net/http"
@@ -65,6 +66,9 @@ func (b *WsBinding) PublishEvent(dThingID, name string, data any, messageID stri
 
 // PublishProperty send a property change update to subscribers
 func (b *WsBinding) PublishProperty(dThingID, name string, data any, messageID string) {
+}
+func (b *WsBinding) SendActionResult(clientID string, stat hubclient.DeliveryStatus) (err error) {
+	return fmt.Errorf("not implemented")
 }
 
 // WriteProperty sends the request to update the thing to the agent

@@ -92,8 +92,8 @@ func TestReadTDs(t *testing.T) {
 
 	// GetThings returns a serialized TD object
 	// 1. Use actions
-	args := digitwin.DirectoryReadDTDsArgs{Limit: 10}
-	stat := cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadDTDsMethod, args, "")
+	args := digitwin.DirectoryReadAllDTDsArgs{Limit: 10}
+	stat := cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadAllDTDsMethod, args, "")
 	require.Empty(t, stat.Error)
 	assert.NotNil(t, stat.Reply)
 	tdList1 := []string{}
@@ -103,7 +103,7 @@ func TestReadTDs(t *testing.T) {
 	require.True(t, len(tdList1) > 0)
 
 	// 2. Try it the easy way
-	tdList2, err := digitwin.DirectoryReadDTDs(cl, 333, 02)
+	tdList2, err := digitwin.DirectoryReadAllDTDs(cl, 333, 02)
 	require.NoError(t, err)
 	require.True(t, len(tdList2) > 0)
 }

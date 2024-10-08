@@ -97,7 +97,7 @@ func startHttpsTransport() (
 	}
 	svc, err := httptransport.StartHttpTransport(&config,
 		certBundle.ServerCert, certBundle.CaCert,
-		dummyAuthenticator, hubRouter)
+		dummyAuthenticator, hubRouter, dtwService)
 	if err != nil {
 		panic("failed to start binding: " + err.Error())
 	}

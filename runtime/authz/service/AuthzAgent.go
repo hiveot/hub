@@ -42,6 +42,13 @@ func (agent *AuthzAgent) HandleAction(consumerID string, dThingID string, action
 	return status, output, err
 }
 
+// HasPermission is a convenience function to check if the sender has permission
+// to pub/sub events, actions or properties. This invokes HasPermission on the service.
+func (agent *AuthzAgent) HasPermission(
+	senderID, messageType, dThingID string, isPub bool) bool {
+	return agent.svc.HasPermission(senderID, messageType, dThingID, isPub)
+}
+
 // StartAuthzAgent creates a new instance of the agent handling authorization service requests
 // If hc is nil then use the HandleMessage method directly to pass messages to the agent,
 // for example when testing.
@@ -53,6 +60,7 @@ func StartAuthzAgent(svc *AuthzService) (*AuthzAgent, error) {
 	agent := AuthzAgent{
 		adminHandler: authz.NewHandleAdminAction(svc),
 		userHandler:  authz.NewHandleUserAction(svc),
+		svc:          svc,
 	}
 
 	// set permissions for using the authn services as authz wasn't yet running

@@ -2,6 +2,15 @@ package utils
 
 // helper functions to work with arrays
 
+// Map2Array makes an array from a map
+func Map2Array[T comparable](m map[string]T) []T {
+	arr := make([]T, 0, len(m))
+	for _, v := range m {
+		arr = append(arr, v)
+	}
+	return arr
+}
+
 // Remove removes a row from the slice while maintaining order.
 // This is slower than RemoveNoOrder but maintains order and does not modify
 // the original slice.

@@ -49,7 +49,7 @@ func (svc *IPNetBinding) Start(hc hubclient.IHubClient) (err error) {
 			slog.String("err", err.Error()))
 	} else {
 		props := svc.MakeBindingProps()
-		_ = svc.hc.PubProps(td.ID, props)
+		_ = svc.hc.UpdateProps(td.ID, props)
 	}
 
 	// start polling in the background

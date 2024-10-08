@@ -9,24 +9,23 @@ import (
 )
 
 type DigitwinAgent struct {
-	svc        *DigitwinService
-	dirHandler api.ActionHandler
+	svc           *DigitwinService
+	dirHandler    api.ActionHandler
+	valuesHandler api.ActionHandler
 }
 
-// HandleAction authn services action request
+// HandleAction digitwin services request
 func (agent *DigitwinAgent) HandleAction(
 	consumerID string, dThingID string, actionName string, input any, messageID string) (
 	status string, output any, err error) {
 
 	if dThingID == digitwin2.DirectoryDThingID {
 		status, output, err = agent.dirHandler(consumerID, dThingID, actionName, input, messageID)
-		//} else if dThingID == digitwin2.ServiceDThingID {
-		//	status, output, err = agent.svcHandler(consumerID, dThingID, actionName, input, messageID)
+	} else if dThingID == digitwin2.ValuesDThingID {
+		status, output, err = agent.valuesHandler(consumerID, dThingID, actionName, input, messageID)
 	} else {
 		slog.Warn("HandleAction: dThingID is not a service capability", "dThingID", dThingID)
 		err = fmt.Errorf("%s is not a digitwin service capability", dThingID)
-	}
-	if err != nil {
 		status = digitwin.StatusFailed
 	}
 	return status, output, err
@@ -34,8 +33,9 @@ func (agent *DigitwinAgent) HandleAction(
 
 func NewDigitwinAgent(svc *DigitwinService) *DigitwinAgent {
 	agent := &DigitwinAgent{
-		svc:        svc,
-		dirHandler: digitwin2.NewHandleDirectoryAction(svc.DirSvc),
+		svc:           svc,
+		dirHandler:    digitwin2.NewHandleDirectoryAction(svc.DirSvc),
+		valuesHandler: digitwin2.NewHandleValuesAction(svc.ValuesSvc),
 	}
 	return agent
 }

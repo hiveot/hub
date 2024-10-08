@@ -1,6 +1,8 @@
 package runtime
 
 import (
+	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime/authn/service"
 	service2 "github.com/hiveot/hub/runtime/authz/service"
@@ -45,12 +47,21 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	if err != nil {
 		return err
 	}
-	// start authorization service and hook into the middleware
+	r.AuthnAgent = service.StartAuthnAgent(r.AuthnSvc)
+
+	// start authorization service and add its account
 	r.AuthzSvc, err = service2.StartAuthzService(&r.cfg.Authz, r.AuthnSvc.AuthnStore)
 	if err != nil {
 		return err
 	}
-	r.AuthnAgent = service.StartAuthnAgent(r.AuthnSvc)
+	// provide access to the authz agent
+	prof := authn.ClientProfile{
+		ClientID:   authz.AdminAgentID,
+		ClientType: authn.ClientTypeService,
+	}
+	_ = r.AuthnSvc.AuthnStore.Add(authz.AdminAgentID, prof)
+	_ = r.AuthnSvc.AuthnStore.SetRole(authz.AdminAgentID, authn.ClientRoleService)
+
 	r.AuthzAgent, err = service2.StartAuthzAgent(r.AuthzSvc)
 
 	// The digitwin service directs the message flow between agents and consumers
@@ -60,7 +71,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	dtwAgent := service4.NewDigitwinAgent(r.DigitwinSvc)
 	// The transport passes incoming messages on to the hub-router, which in
 	// turn updates the digital twin and forwards the requests.
-	r.HubRouter = hubrouter.NewHubRouter(r.dtwStore,
+	r.HubRouter = hubrouter.NewHubRouter(r.DigitwinSvc,
 		dtwAgent, r.AuthnAgent, r.AuthzAgent)
 
 	// the protocol manager receives messages from clients (source) and

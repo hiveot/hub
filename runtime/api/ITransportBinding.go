@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/wot/tdd"
 )
 
@@ -61,6 +62,17 @@ type ITransportBinding interface {
 	//	value is the raw property value as per property affordance data schema
 	//	messageID is the optional ID of a linked action
 	PublishProperty(dThingID string, name string, value any, messageID string)
+
+	// SendActionResult sends an action result update to a consumer.
+	//
+	// Intended for one-way client connections such as sse or for async actions
+	// that take time to execute.
+	//
+	//	clientID is the connection ID of a connected consumer that requested the action
+	//	messageID of the action to associate with
+	//	output result value as per TD if progress is completed, or error text if failed
+	//	err error if failed
+	SendActionResult(clientID string, stat hubclient.DeliveryStatus) error
 
 	// Start the protocol binding
 	//  handler is the handler that processes incoming messages

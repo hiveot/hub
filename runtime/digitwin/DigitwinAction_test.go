@@ -44,9 +44,10 @@ func TestActionFlow(t *testing.T) {
 	require.Equal(t, actionValue, v.Input)
 
 	// complete the action
-	err = dtwStore.UpdateActionProgress(agentID, thingID, actionName,
+	av, err := dtwStore.UpdateActionProgress(agentID, thingID, actionName,
 		digitwin.StatusCompleted, actionValue)
 	require.NoError(t, err)
+	require.Equal(t, msgID, av.MessageID)
 
 	// check status
 	v, err = svc.ReadAction(consumerID, dThingID, actionName)
@@ -114,12 +115,12 @@ func TestInvokeActionErrors(t *testing.T) {
 	assert.Error(t, err)
 
 	// complete the action on wrong thing
-	err = dtwStore.UpdateActionProgress(agentID, "badThingID", actionName,
+	_, err = dtwStore.UpdateActionProgress(agentID, "badThingID", actionName,
 		digitwin.StatusCompleted, actionValue)
 	assert.Error(t, err)
 
 	// complete the action on wrong action name
-	err = dtwStore.UpdateActionProgress(agentID, thingID, "badName",
+	_, err = dtwStore.UpdateActionProgress(agentID, thingID, "badName",
 		digitwin.StatusCompleted, actionValue)
 	assert.Error(t, err)
 }
