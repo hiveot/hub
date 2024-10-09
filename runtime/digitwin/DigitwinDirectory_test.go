@@ -32,8 +32,8 @@ func TestAddRemoveTD(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, tdd2JSON)
 
-	dtdList, err := dirSvc.ReadDTDs(consumerID,
-		digitwin.DirectoryReadDTDsArgs{Limit: 10})
+	dtdList, err := dirSvc.ReadAllDTDs(consumerID,
+		digitwin.DirectoryReadAllDTDsArgs{Limit: 10})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, dtdList)
 

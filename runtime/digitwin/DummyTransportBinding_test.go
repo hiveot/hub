@@ -1,6 +1,7 @@
 package digitwin_test
 
 import (
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/wot/tdd"
@@ -28,7 +29,7 @@ func (dummy *DummyTransportBinding) PublishEvent(dThingID string, name string, v
 
 func (dummy *DummyTransportBinding) PublishProperty(dThingID string, name string, value any, messageID string) {
 }
-func (dummy *DummyTransportBinding) SendActionResult(connectionID string, messageID string, actionValue any) error {
+func (dummy *DummyTransportBinding) PublishActionProgress(connectionID string, stat hubclient.DeliveryStatus) error {
 	return nil
 }
 

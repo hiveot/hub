@@ -18,6 +18,9 @@ func (svc *DummyRouter) HandleActionFlow(
 	return hubclient.DeliveryDelivered, output, reqID, nil
 }
 
+func (svc *DummyRouter) HandleActionProgress(agentID string, stat hubclient.DeliveryStatus) error {
+	return nil
+}
 func (svc *DummyRouter) HandleEventFlow(
 	agentID string, thingID string, name string, value any, messageID string) error {
 	if svc.OnEvent != nil {
@@ -28,6 +31,9 @@ func (svc *DummyRouter) HandleEventFlow(
 
 func (svc *DummyRouter) HandleUpdatePropertyFlow(
 	agentID string, thingID string, propName string, value any, reqID string) error {
+	return nil
+}
+func (svc *DummyRouter) HandleUpdateTDFlow(agentID string, tdJSON string) error {
 	return nil
 }
 

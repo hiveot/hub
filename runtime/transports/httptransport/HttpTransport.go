@@ -192,9 +192,9 @@ func (svc *HttpTransport) createRoutes(router chi.Router) http.Handler {
 
 		// digitwin directory actions. Are these operations or actions?
 		svc.AddGetOp(r, vocab.HTOpReadThing, false,
-			"/digitwin/things/{thingID}", svc.HandleReadThing)
+			"/digitwin/directory/{thingID}", svc.HandleReadThing)
 		svc.AddGetOp(r, vocab.HTOpReadAllThings, false,
-			"/digitwin/things", svc.HandleReadAllThings) // query params: offset,limit
+			"/digitwin/directory", svc.HandleReadAllThings) // query params: offset,limit
 
 		// handlers for other services. Operations to invoke actions.
 		// TODO: these probably belong with the digitwin service TD
@@ -213,59 +213,15 @@ func (svc *HttpTransport) createRoutes(router chi.Router) http.Handler {
 			"/agent/event/{thingID}/{name}", svc.HandlePublishEvent)
 		svc.AddPostOp(r, vocab.HTOpUpdateProperty, false,
 			"/agent/property/{thingID}/{name}", svc.HandleUpdateProperty)
-		svc.AddPostOp(r, vocab.HTOpUpdateProperties, true,
-			"/agent/properties/{thingID}", svc.HandleUpdateMultipleProperties)
+		svc.AddPostOp(r, "updateMultipleProperties", false,
+			"/agent/properties/{thingID}", svc.HandleUpdateProperty)
+		svc.AddPostOp(r, vocab.HTOpDelivery, false,
+			"/agent/delivery", svc.HandleActionProgress)
 
 	})
 
 	return router
 }
-
-//
-//// getRequestParams reads the client session, URL parameters and body payload from the request.
-////
-//// The session context is set by the http middleware. If the session is not available then
-//// this returns an error. Note that the session middleware handler will block any request
-//// that requires a session.
-////
-//// This protocol binding reads two variables, {thingID} and {name} in the path.
-////
-////	{thingID} is the agent or digital twin thing ID
-////	{name} is the property, event or action name. '+' means 'all'
-////	{messageType} is a legacy variable that is phased out
-//func (svc *HttpTransport) getRequestParams(r *http.Request) (
-//	session *sessions.ClientSession, messageType string, thingID string, name string, body []byte, err error) {
-//
-//	// get the required client session of this agent
-//	ctxSession := r.Context().Value(sessions.SessionContextID)
-//	if ctxSession == nil {
-//		// This is an internal error. The middleware session handler would have blocked
-//		// a request that required a session before getting here.
-//		err = fmt.Errorf("Missing session for request '%s' from '%s'",
-//			r.RequestURI, r.RemoteAddr)
-//		slog.Error(err.Error())
-//		return nil, messageType, "", "", nil, err
-//	}
-//	cs := ctxSession.(*sessions.ClientSession)
-//
-//	// build a message from the URL and payload
-//	// URLParam names are defined by the path variables set in the router.
-//	thingID = chi.URLParam(r, "thingID")
-//	name = chi.URLParam(r, "name")
-//	messageType = chi.URLParam(r, "messageType")
-//	body, _ = io.ReadAll(r.Body)
-//
-//	return cs, messageType, thingID, name, body, err
-//}
-
-// receive a message from a client and ensure it has a message ID
-// https transport apply a 'h-' messageID prefix for troubleshooting
-//func (svc *HttpTransport) handleMessage(msg *hubclient.ThingMessage) hubclient.DeliveryStatus {
-//	if msg.MessageID == "" {
-//		msg.MessageID = "h-" + shortid.MustGenerate()
-//	}
-//	return svc.handler(msg)
-//}
 
 // GetProtocolInfo returns info on the protocol supported by this binding
 func (svc *HttpTransport) GetProtocolInfo() api.ProtocolInfo {
@@ -304,6 +260,20 @@ func (svc *HttpTransport) InvokeAction(
 	return status, output, err
 }
 
+// PublishActionProgress sends the action update to the client
+func (svc *HttpTransport) PublishActionProgress(clientID string, stat hubclient.DeliveryStatus) (err error) {
+	if svc.ws != nil {
+		err = svc.ws.SendActionResult(clientID, stat)
+	}
+	if err != nil && svc.ssesc != nil {
+		err = svc.ssesc.SendActionResult(clientID, stat)
+	}
+	if err != nil && svc.sse != nil {
+		err = svc.sse.SendActionResult(clientID, stat)
+	}
+	return err
+}
+
 // PublishEvent sends an event message to subscribers of this event.
 // This passes it to SSE/WS sub-protocol handlers of active sessions
 func (svc *HttpTransport) PublishEvent(
@@ -332,20 +302,6 @@ func (svc *HttpTransport) PublishProperty(
 	if svc.sse != nil {
 		svc.sse.PublishProperty(dThingID, name, value, messageID)
 	}
-}
-
-// Send the action update to the client
-func (svc *HttpTransport) SendActionResult(clientID string, stat hubclient.DeliveryStatus) (err error) {
-	if svc.ws != nil {
-		err = svc.ws.SendActionResult(clientID, stat)
-	}
-	if err != nil && svc.ssesc != nil {
-		err = svc.ssesc.SendActionResult(clientID, stat)
-	}
-	if err != nil && svc.sse != nil {
-		err = svc.sse.SendActionResult(clientID, stat)
-	}
-	return err
 }
 
 // Stop the https server

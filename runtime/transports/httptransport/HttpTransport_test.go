@@ -2,8 +2,8 @@ package httptransport_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/tlsclient"
@@ -12,7 +12,6 @@ import (
 	"github.com/hiveot/hub/runtime/transports"
 	"github.com/hiveot/hub/runtime/transports/httptransport"
 	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/teris-io/shortid"
@@ -101,7 +100,7 @@ func startHttpsTransport() (
 	if err != nil {
 		panic("failed to start binding: " + err.Error())
 	}
-	dtwService.SetFormsHook(svc.AddTDForms)
+	dtwService.SetTransportHook(svc)
 	return svc, dtwService, hubRouter
 }
 
@@ -379,7 +378,7 @@ func TestRestart(t *testing.T) {
 	t.Log("--- Stopping the server ---")
 	svc.Stop()
 	svc, _, _ = startHttpsTransport()
-	dtwService.SetFormsHook(svc.AddTDForms)
+	dtwService.SetTransportHook(svc)
 
 	t.Log("--- Restarted the server ---")
 	require.NoError(t, err)
@@ -433,8 +432,13 @@ func TestReconnect(t *testing.T) {
 	dummyRouter.OnAction = func(agentID, thingID, name string, val any, msgID string) any {
 		// send a delivery status update asynchronously which uses the SSE return channel
 		go func() {
-			dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
-			svc.PublishEvent(dThingID, vocab.EventNameDeliveryUpdate, digitwin.StatusCompleted, msgID)
+			stat := hubclient.DeliveryStatus{
+				MessageID: msgID,
+				Progress:  digitwin.StatusCompleted,
+				Reply:     val,
+			}
+			err = svc.PublishActionProgress(testLogin, stat)
+			assert.NoError(t, err)
 		}()
 		return nil
 	}

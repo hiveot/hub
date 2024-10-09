@@ -87,7 +87,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		return err
 	}
 	// outgoing messages are handled by the sub-protocols of this transport
-	r.DigitwinSvc.SetFormsHook(r.TransportsMgr.AddTDForms)
+	r.DigitwinSvc.SetTransportHook(r.TransportsMgr)
 	r.HubRouter.SetTransport(r.TransportsMgr)
 	return err
 }

@@ -53,7 +53,7 @@ func (b *SseBinding) SendActionResult(clientID string, stat hubclient.DeliverySt
 	// determine which connection is of the consumer
 	//for _, sseConn := range b.connections {
 	//	if sseConn.GetClientID() == clientID {
-	//		return sseConn.SendActionResult(stat)
+	//		return sseConn.PublishActionProgress(stat)
 	//	}
 	//}
 	return fmt.Errorf("not implemented")

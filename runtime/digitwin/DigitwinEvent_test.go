@@ -2,6 +2,7 @@ package digitwin_test
 
 import (
 	"encoding/json"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
@@ -33,10 +34,13 @@ func TestAddReadEvent(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Read the event value and all events
-	ev2, err := svc.ReadEvent("user1", dThingID, eventName)
+	ev2, err := svc.ValuesSvc.ReadEvent("user1", digitwin.ValuesReadEventArgs{
+		ThingID: dThingID,
+		Name:    eventName,
+	})
 	assert.NoError(t, err)
 	assert.Equal(t, eventValue, ev2.Data)
-	evList, err := svc.ReadAllEvents("user1", dThingID)
+	evList, err := svc.ValuesSvc.ReadAllEvents("user1", dThingID)
 	assert.Equal(t, 1, len(evList))
 	assert.NoError(t, err)
 }
@@ -56,11 +60,17 @@ func TestEventReadFail(t *testing.T) {
 	err := svc.DirSvc.UpdateDTD(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
-	_, err = svc.ReadEvent("itsme", "badthingid", "someevent")
+	_, err = svc.ValuesSvc.ReadEvent("itsme", digitwin.ValuesReadEventArgs{
+		ThingID: "badthingid",
+		Name:    "someevent",
+	})
 	assert.Error(t, err)
-	_, err = svc.ReadEvent("itsme", dThingID, "badeventname")
+	_, err = svc.ValuesSvc.ReadEvent("itsme", digitwin.ValuesReadEventArgs{
+		ThingID: dThingID,
+		Name:    "badeventname",
+	})
 	assert.Error(t, err)
-	_, err = svc.ReadAllEvents("itsme", "badthingid")
+	_, err = svc.ValuesSvc.ReadAllEvents("itsme", "badthingid")
 	assert.Error(t, err)
 }
 

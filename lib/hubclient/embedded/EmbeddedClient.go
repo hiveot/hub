@@ -126,10 +126,12 @@ func (cl *EmbeddedClient) PubEvent(
 	return nil
 }
 
-// PubProps publishes a properties map
-func (cl *EmbeddedClient) PubProps(thingID string, props map[string]any) error {
+// PublishMultipleProperties publishes a properties name-value
+func (cl *EmbeddedClient) PublishMultipleProperties(thingID string, props map[string]any) hubclient.DeliveryStatus {
 	payload, _ := json.Marshal(props)
-	return cl.PubEvent(thingID, vocab.EventNameProperties, string(payload))
+	//return cl.PubEvent(thingID, vocab.EventNameProperties, string(payload))
+	msg := hubclient.NewThingMessage(vocab.MessageTypeProperty, thingID, "", payload, cl.clientID)
+	return cl.sendMessage(msg)
 }
 
 // PubTD publishes an agent's TD

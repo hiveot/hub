@@ -15,6 +15,7 @@ Operations:
     HTOpReadThing: "readThing"
     # agent operations
     HTOpUpdateThing: "updatething"
+    HTOpDelivery: "updatedelivery"
     HTOpPublishEvent: "publishevent"
     HTOpUpdateProperty: "updateproperty"
 
@@ -29,42 +30,30 @@ MessageTypes:
   namespace: "ht"
   vocab:
 
-    # action requests flow from a consumer to a thing agent via the digitwin inbox.
-    #
-    # Consumers send digitwin action requests to the digitwin inbox.
-    # The inbox converts the digitwin thing ID to the agent thing ID and
-    # forwards it to the agent.
-    # consumer [dtw action] -> inbox [thing action] -> agent
+    # action requests flow from a consumer to the digital twin and on to
+    # the thing's agent.
     MessageTypeAction:     "action"    # request an action - operators
 
-    # Thing events flow from an agent to digitwin subscribers via the outbox.
-    #
-    # Agents send events to the digitwin outbox.
-    # The outbox converts the thingID to the digitwin thingID, and forwards
-    # it to subscribers.
-    # agent [thing event] -> outbox [dtw event] => subscribers
+    # Thing events flow from an agent to digital twin, which forwards it to
+    # subscribers.
+    # agent [thing event] -> digitwin [dtw event] => subscribers
     MessageTypeEvent:      "event"
 
     # Delivery update message from an agent to the hub onwards to the sender
-    #
-    # agent [delivery status] -> inbox [dtw message] -> sender
-    #
-    # B. digitwin property updates flow from a consumer to thing agent via the inbox.
-    # consumer [dtw property] -> inbox [thing property] -> agent
+    # agent [delivery status] -> digitwin [dtw message] -> sender
     MessageTypeDeliveryUpdate:  "delivery"
 
-    # A. property updates flow from a thing agent to digitwin subscribers via the outbox:
-    # agent [thing property] -> outbox [dtw property] => subscribers
-    #
-    # B. digitwin property updates flow from a consumer to thing agent via the inbox.
-    # consumer [dtw property] -> inbox [thing property] -> agent
+    # Property value updates flow from a thing agent to the digital twin, which
+    # in turn updates observers of the property(ies).
+    # the message contains the property name and value as data
+    # if no name is given then data contains a map with property key-value pairs.
     MessageTypeProperty:  "property"
 
-    # are properties and TD a type of event? - yes
-    # are these described in the TD event? - no - this is a problem
-    EventNameDeliveryUpdate: "$delivery"
-    EventNameProperties:     "$properties"   # event with all thing property values
-    EventNameTD:             "$td"           # event a td is updated - agents
+    # TD updates flow from a thing agent to the digital twin directory, which in turn
+    # sends an thingUpdated event to directory event subscribers.
+    # This message type is for Agents only.
+    # TODO: should this be a directory service action instead? possibly
+    MessageTypeTD:  "td"
 
     # pub prop using   PATCH /thingID/property/propKey   by consumer
     # pub event using  PUT   /thingID/event/eventKey     by agent

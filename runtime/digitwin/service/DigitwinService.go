@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"os"
@@ -45,9 +46,10 @@ func (svc *DigitwinService) ReadAllDTDs(
 //	return dtd, err
 //}
 
-// SetFormsHook sets the hook at add transport forms
-func (svc *DigitwinService) SetFormsHook(addForms func(td *tdd.TD) error) {
-	svc.DirSvc.addTDForms = addForms
+// SetTransportHook sets the transport hook for reading forms and publishing
+// service events.
+func (svc *DigitwinService) SetTransportHook(tb api.ITransportBinding) {
+	svc.DirSvc.tb = tb
 }
 
 // Stop the service

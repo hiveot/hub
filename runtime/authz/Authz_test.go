@@ -99,10 +99,10 @@ func TestHasPermission(t *testing.T) {
 	assert.NoError(t, err)
 	// consumers have permission to publish actions and property requests
 	msg := hubclient.NewThingMessage(vocab.MessageTypeAction, thingID, key, "", senderID)
-	hasperm := svc.HasPermission(msg, true)
+	hasperm := svc.HasPermission(msg.SenderID, msg.MessageType, msg.ThingID, true)
 	assert.True(t, hasperm)
 
 	msg = hubclient.NewThingMessage(vocab.MessageTypeProperty, thingID, key, "", senderID)
-	hasperm = svc.HasPermission(msg, true)
+	hasperm = svc.HasPermission(msg.SenderID, msg.MessageType, msg.ThingID, true)
 	assert.True(t, hasperm)
 }

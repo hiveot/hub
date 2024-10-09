@@ -64,6 +64,9 @@ type EventHandler func(msg *ThingMessage) error
 type MessageHandler func(msg *ThingMessage) DeliveryStatus
 
 // IHubClient defines the interface of the client that connects to a messaging server.
+// Intended for use by both consumers and agents.
+//
+// TODO split this up in pure transport, consumed thing and exposed thing apis
 type IHubClient interface {
 	// ClientID returns the agent or user clientID for this hub client
 	ClientID() string
@@ -113,7 +116,7 @@ type IHubClient interface {
 	// Logout of the hub and invalidate the connected session token
 	Logout() error
 
-	// InvokeAction invokes an action request and returns as soon as the
+	// InvokeAction [consumer] invokes an action request and returns as soon as the
 	// request is delivered to the Hub.
 	//
 	// There are two main use-cases for this.
@@ -137,10 +140,21 @@ type IHubClient interface {
 	// This returns a delivery status with response data if delivered
 	InvokeAction(thingID string, name string, data any, messageID string) DeliveryStatus
 
-	// SendOperation is temporary transition to support using TD forms
-	SendOperation(href string, op tdd.Form, data any, messageID string) DeliveryStatus
+	// Observe [consumer] adds a subscription for properties from the given ThingID.
+	//
+	//  dThingID is the digital twin Thing ID of the Thing to observe.
+	//	name of the property to observe as described in the TD or "" for all properties
+	Observe(dThingID string, name string) error
 
-	// PubEvent publishes an event style message without a response.
+	// PubDeliveryUpdate [agent] sends a delivery progress update to the hub.
+	// The hub will update the status of the action in the digital twin and
+	// notify the original sender.
+	//
+	// Intended for agents that have processed an incoming action request asynchronously
+	// and need to send an update on further progress.
+	PubDeliveryUpdate(stat DeliveryStatus)
+
+	// PubEvent [agent] publishes an event style message without a response.
 	// It returns as soon as delivery to the hub is confirmed.
 	// This is intended for agents, not for consumers.
 	//
@@ -155,14 +169,6 @@ type IHubClient interface {
 	// This returns an error if the event cannot not be delivered to the hub
 	PubEvent(thingID string, name string, value any, messageID string) error
 
-	// UpdateProps publishes a property value update event to the hub.
-	// It returns as soon as delivery to the hub is confirmed.
-	// This is intended for agents, not for consumers.
-	//
-	//	thingID is the native ID of the device (not including the digital twin ID)
-	//	props is the property name-value map to publish where value is the native value
-	UpdateProps(thingID string, props map[string]any) error
-
 	// PubTD publishes a TD document to the Hub.
 	// It returns as soon as delivery to the hub is confirmed.
 	//
@@ -176,7 +182,8 @@ type IHubClient interface {
 	// The resulting token can be used with 'SetAuthToken'
 	RefreshToken(oldToken string) (newToken string, err error)
 
-	// Rpc makes a RPC call using an action and waits for a delivery confirmation event.
+	// Rpc [consumer] makes a RPC call using an action and waits for a delivery
+	// confirmation event.
 	//
 	// This is equivalent to use PubAction to send the request, use SetMessageHandler
 	// to receive the delivery confirmation event and match the 'messageID' from the
@@ -194,38 +201,42 @@ type IHubClient interface {
 	// This returns an error if delivery failed or an error was returned
 	Rpc(dThingID string, name string, args interface{}, resp interface{}) error
 
-	// SendDeliveryUpdate sends a delivery progress update to the hub.
-	// The hub's inbox will update the status of the action and notify the original sender.
-	//
-	// Intended for agents that have processed an incoming action request asynchronously
-	// and need to send an update on further progress.
-	SendDeliveryUpdate(stat DeliveryStatus)
+	// SendOperation [consumer] is form-based method of invoking an operation
+	// This is under development.
+	SendOperation(href string, op tdd.Form, data any, messageID string) DeliveryStatus
 
 	// SetMessageHandler adds a handler for messages from the hub.
 	// This replaces any previously set handler.
 	// The handler should return a DeliveryStatus response for action and
 	// property messages. This response is ignored for events.
 	//
-	// To receive events use the 'SubscribeEvent' method to set the events to listen for.
+	// To receive events use the 'Subscribe' method to set the events to listen for.
+	// To receive property updates use 'Observe'.
+	// For agents to receive actions, no subscription is necessary.
 	SetMessageHandler(cb MessageHandler)
 
 	// SetConnectHandler sets the notification handler of connection status changes
 	SetConnectHandler(cb func(status TransportStatus))
 
-	// Subscribe adds a subscription for events from the given ThingID.
-	//
-	// This is for events only. Actions directed to this client are automatically passed
-	// to this client's messageHandler.
+	// Subscribe [consumer] adds a subscription for events from the given ThingID.
 	//
 	//  dThingID is the digital twin Thing ID of the Thing to subscribe to.
 	//	name of the event to subscribe as described in the TD or "" for all events
 	Subscribe(dThingID string, name string) error
 
-	// Unsubscribe removes a previous event subscription.
+	// UpdateProps [agent] publishes a property value update event to the hub.
+	// It returns as soon as delivery to the hub is confirmed.
+	// This is intended for agents, not for consumers.
+	//
+	//	thingID is the native ID of the device (not including the digital twin ID)
+	//	props is the property name-value map to publish where value is the native value
+	UpdateProps(thingID string, props map[string]any) error
+
+	// Unsubscribe [consumer] removes a previous event subscription.
 	// dThingID and key must match that of Subscribe
 	Unsubscribe(dThingID string, name string) error
 
-	// WriteProperty publishes a property change request
+	// WriteProperty [consumer] publishes a property change request
 	//
 	//	dThingID is the digital twin thingID whose property to write
 	//	name is the name of the property to write

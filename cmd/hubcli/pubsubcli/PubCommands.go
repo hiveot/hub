@@ -1,6 +1,7 @@
 package pubsubcli
 
 import (
+	"errors"
 	"fmt"
 	"github.com/urfave/cli/v2"
 
@@ -34,9 +35,9 @@ func HandlePubActions(hc hubclient.IHubClient,
 	dThingID string, action string, args string) error {
 
 	stat := hc.InvokeAction(dThingID, action, args, "")
-	if stat.Error == nil {
+	if stat.Error == "" {
 		fmt.Printf("Successfully published action '%s' to Thing '%s'\n", action, dThingID)
 		return nil
 	}
-	return stat.Error
+	return errors.New(stat.Error)
 }

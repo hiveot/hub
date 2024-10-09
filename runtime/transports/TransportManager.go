@@ -144,6 +144,17 @@ func (svc *TransportManager) InvokeAction(
 	return status, output, err
 }
 
+// PublishActionProgress send the action status update to the client.
+// This fails if no binding has a connection with this client
+func (svc *TransportManager) PublishActionProgress(clientID string, stat hubclient.DeliveryStatus) (err error) {
+	if svc.httpTransport != nil {
+		err = svc.httpTransport.PublishActionProgress(clientID, stat)
+	} else {
+		err = fmt.Errorf("PublishActionProgress: No connection with consumer '%s'", clientID)
+	}
+	return err
+}
+
 // PublishEvent sends a event to all subscribers
 func (svc *TransportManager) PublishEvent(
 	dThingID string, name string, value any, messageID string) {
@@ -165,17 +176,6 @@ func (svc *TransportManager) PublishProperty(dThingID string, name string, value
 	if svc.httpTransport != nil {
 		svc.httpTransport.PublishProperty(dThingID, name, value, messageID)
 	}
-}
-
-// SendActionResult send the action status update to the client.
-// This fails if no binding has a connection with this client
-func (svc *TransportManager) SendActionResult(clientID string, stat hubclient.DeliveryStatus) (err error) {
-	if svc.httpTransport != nil {
-		err = svc.httpTransport.SendActionResult(clientID, stat)
-	} else {
-		err = fmt.Errorf("SendActionResult: No connection with consumer '%s'", clientID)
-	}
-	return err
 }
 
 // Stop the protocol servers

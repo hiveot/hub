@@ -122,7 +122,7 @@ func (svc *HubRouter) HandleActionFlow(
 	return status, output, messageID, err
 }
 
-// HandleDeliveryUpdate receives an action progress update event from an agent.
+// HandleActionProgress agent sends an action progress update.
 // The message payload contains a DeliveryStatus object
 //
 // This:
@@ -132,7 +132,7 @@ func (svc *HubRouter) HandleActionFlow(
 // 4: Updates the status of the active action cache
 //
 // If the message is no longer in the active cache then it is ignored.
-func (svc *HubRouter) HandleDeliveryUpdate(agentID string, stat hubclient.DeliveryStatus) {
+func (svc *HubRouter) HandleActionProgress(agentID string, stat hubclient.DeliveryStatus) error {
 
 	// 1: Validate this is an active action
 	svc.mux.Lock()
@@ -140,23 +140,23 @@ func (svc *HubRouter) HandleDeliveryUpdate(agentID string, stat hubclient.Delive
 	svc.mux.Unlock()
 	if !found {
 		err := fmt.Errorf(
-			"HandleDeliveryUpdate: Message '%s' from agent '%s' not in action cache. It is ignored",
+			"HandleActionProgress: Message '%s' from agent '%s' not in action cache. It is ignored",
 			stat.MessageID, agentID)
 		slog.Warn(err.Error())
-		return
+		return err
 	}
 	thingID := actionRecord.ThingID
 	actionName := actionRecord.Name
 	// the sender (agents) must be the thing agent
 	if agentID != actionRecord.AgentID {
 		err := fmt.Errorf(
-			"HandleDeliveryUpdate: status update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
+			"HandleActionProgress: status update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
 			stat.MessageID, thingID, actionRecord.AgentID, agentID)
 		slog.Warn(err.Error(), "agentID", agentID)
-		return
+		return err
 	}
 
-	slog.Info("HandleDeliveryUpdate ",
+	slog.Info("HandleActionProgress ",
 		slog.String("AgentID", agentID),
 		slog.String("ThingID", thingID),
 		slog.String("Name", actionName),
@@ -170,10 +170,10 @@ func (svc *HubRouter) HandleDeliveryUpdate(agentID string, stat hubclient.Delive
 	// 3: Forward the action update to the original sender
 	if err == nil {
 		// notify the action sender of the delivery update
-		err = svc.tb.SendActionResult(actionRecord.SenderID, stat)
+		err = svc.tb.PublishActionProgress(actionRecord.SenderID, stat)
 
 		if err != nil {
-			slog.Warn("HandleDeliveryUpdate. Forwarding to sender failed",
+			slog.Warn("HandleActionProgress. Forwarding to sender failed",
 				slog.String("senderID", actionRecord.SenderID),
 				slog.String("thingID", thingID),
 				slog.String("err", err.Error()),
@@ -189,6 +189,6 @@ func (svc *HubRouter) HandleDeliveryUpdate(agentID string, stat hubclient.Delive
 		svc.mux.Lock()
 		delete(svc.activeCache, stat.MessageID)
 		svc.mux.Unlock()
-
 	}
+	return nil
 }

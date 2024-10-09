@@ -50,7 +50,7 @@ func DirectoryListCommand(hc *hubclient.IHubClient) *cli.Command {
 // HandleListDirectory lists the directory content
 func HandleListDirectory(hc hubclient.IHubClient) (err error) {
 	// todo: iterate with offset and limit
-	tdListJson, err := digitwin.DirectoryReadDTDs(hc, 300, 0)
+	tdListJson, err := digitwin.DirectoryReadAllDTDs(hc, 300, 0)
 	tdList, err2 := tdd.UnmarshalTDList(tdListJson)
 
 	if err != nil || err2 != nil {
@@ -89,7 +89,7 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 	if err != nil || err2 != nil {
 		return err
 	}
-	propValueList, err := digitwin.ValuesReadProperties(hc, nil, thingID)
+	propValueList, err := digitwin.ValuesReadAllProperties(hc, thingID)
 	propValueMap := api.PropertyListToMap(propValueList)
 
 	if err != nil {
@@ -130,7 +130,7 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 	fmt.Println(utils.COYellow + "\nEvents:")
 	fmt.Println(" ID                             EventType                 Title                                    DataType   Value           Description")
 	fmt.Println(" -----------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
-	eventValueList, err := digitwin.ValuesReadEvents(hc, nil, thingID)
+	eventValueList, err := digitwin.ValuesReadAllEvents(hc, thingID)
 	eventValueMap := api.EventListToMap(eventValueList)
 	keys = utils.OrderedMapKeys(tdDoc.Events)
 	for _, key := range keys {
@@ -150,7 +150,7 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 	fmt.Println(utils.CORed + "\nActions:")
 	fmt.Println(" ID                             ActionType                Title                                    Arg(s)     Value           Description")
 	fmt.Println(" -----------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
-	actionValueList, err := digitwin.ValuesReadProperties(hc, nil, thingID)
+	actionValueList, err := digitwin.ValuesReadAllProperties(hc, thingID)
 	actionValueMap := api.PropertyListToMap(actionValueList)
 	keys = utils.OrderedMapKeys(tdDoc.Actions)
 	for _, key := range keys {

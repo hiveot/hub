@@ -85,6 +85,24 @@ func (svc *HttpTransport) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	svc.writeReply(w, &resp)
 }
 
+// HandleActionProgress sends a delivery update message to the digital twin
+func (svc *HttpTransport) HandleActionProgress(w http.ResponseWriter, r *http.Request) {
+	slog.Info("HandleActionProgress")
+	clientID, _, _, body, err := subprotocols.GetRequestParams(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	stat := hubclient.DeliveryStatus{}
+	err = jsoniter.Unmarshal(body, &stat)
+	if err == nil {
+		err = svc.hubRouter.HandleActionProgress(clientID, stat)
+	}
+	if err != nil {
+		svc.writeError(w, err, http.StatusBadRequest)
+	}
+}
+
 // HandleActionRequest requests an action from the digital twin
 // NOTE: This returns a header with a dataschema if a schema from
 // additionalResponses is returned.
@@ -185,22 +203,6 @@ func (svc *HttpTransport) HandlePublishEvent(w http.ResponseWriter, r *http.Requ
 	svc.writeReply(w, nil)
 }
 
-// HandleQueryAllActions returns a list of latest action requests of a Thing
-// Parameters: thingID
-func (svc *HttpTransport) HandleQueryAllActions(w http.ResponseWriter, r *http.Request) {
-	clientID, dThingID, _, _, err := subprotocols.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	actList, err := svc.dtwService.ValuesSvc.ReadAllActions(clientID, dThingID)
-	if err != nil {
-		svc.writeError(w, err, 0)
-		return
-	}
-	svc.writeReply(w, actList)
-}
-
 // HandleQueryAction returns a list of latest action requests of a Thing
 // Parameters: thingID
 func (svc *HttpTransport) HandleQueryAction(w http.ResponseWriter, r *http.Request) {
@@ -216,6 +218,22 @@ func (svc *HttpTransport) HandleQueryAction(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	svc.writeReply(w, evList)
+}
+
+// HandleQueryAllActions returns a list of latest action requests of a Thing
+// Parameters: thingID
+func (svc *HttpTransport) HandleQueryAllActions(w http.ResponseWriter, r *http.Request) {
+	clientID, dThingID, _, _, err := subprotocols.GetRequestParams(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	actList, err := svc.dtwService.ValuesSvc.ReadAllActions(clientID, dThingID)
+	if err != nil {
+		svc.writeError(w, err, 0)
+		return
+	}
+	svc.writeReply(w, actList)
 }
 
 // HandleReadAllEvents returns a list of latest event values from a Thing
@@ -274,7 +292,8 @@ func (svc *HttpTransport) HandleReadAllThings(w http.ResponseWriter, r *http.Req
 		offset32, _ := strconv.ParseInt(offsetStr, 10, 32)
 		offset = int(offset32)
 	}
-	thingsList, err := svc.dtwService.ReadAllDTDs(clientID, offset, limit)
+	thingsList, err := svc.dtwService.DirSvc.ReadAllDTDs(clientID,
+		digitwin.DirectoryReadAllDTDsArgs{Offset: offset, Limit: limit})
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return
@@ -365,13 +384,15 @@ func (svc *HttpTransport) HandleUpdateThing(w http.ResponseWriter, r *http.Reque
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = svc.dtwService.DirSvc.UpdateDTD(clientID, string(body))
+	tdJSON := ""
+	err = jsoniter.Unmarshal(body, &tdJSON)
+	err = svc.hubRouter.HandleUpdateTDFlow(clientID, tdJSON)
 	if err != nil {
 		svc.writeError(w, err, http.StatusBadRequest)
 	}
 }
 
-// HandleUpdateProperty agent sends property update notification
+// HandleUpdateProperty agent sends single or multiple property updates
 func (svc *HttpTransport) HandleUpdateProperty(w http.ResponseWriter, r *http.Request) {
 	clientID, thingID, name, body, err := subprotocols.GetRequestParams(r)
 	var value any
@@ -387,30 +408,6 @@ func (svc *HttpTransport) HandleUpdateProperty(w http.ResponseWriter, r *http.Re
 	}
 	messageID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
 	err = svc.hubRouter.HandleUpdatePropertyFlow(clientID, thingID, name, value, messageID)
-	if err != nil {
-		svc.writeError(w, err, 0)
-		return
-	}
-	svc.writeReply(w, nil)
-}
-
-// HandleUpdateMultipleProperties agent sends property update notification
-func (svc *HttpTransport) HandleUpdateMultipleProperties(w http.ResponseWriter, r *http.Request) {
-	clientID, thingID, _, body, err := subprotocols.GetRequestParams(r)
-	var propMap map[string]any
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	// expect a map of [key]value
-	if body != nil && len(body) > 0 {
-		err = json.Unmarshal(body, &propMap)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
-	}
-	messageID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
-	err = svc.hubRouter.HandleUpdatePropertyFlow(clientID, thingID, "", propMap, messageID)
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return

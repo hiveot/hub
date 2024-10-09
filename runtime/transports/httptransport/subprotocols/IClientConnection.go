@@ -24,6 +24,12 @@ type IClientConnection interface {
 	InvokeAction(thingID string, name string, input any, messageID string) (
 		status string, output any, err error)
 
+	// PublishActionProgress sends an action result value to this consumer.
+	// Intended for rpc style actions.
+	//
+	// Intended for receiving RPC results over 1-way bindings such as SSE.
+	PublishActionProgress(stat hubclient.DeliveryStatus) error
+
 	// PublishEvent publishes an event message to client, if subscribed
 	//
 	//	dThingID is the digital twin thingID that publishes the event
@@ -39,12 +45,6 @@ type IClientConnection interface {
 	//	value is the property value as per property affordance schema
 	//	messageID if the property update is associated with an action
 	PublishProperty(dThingID string, name string, value any, messageID string)
-
-	// SendActionResult sends an action result value to this consumer.
-	// Intended for rpc style actions.
-	//
-	// Intended for receiving RPC results over 1-way bindings such as SSE.
-	SendActionResult(stat hubclient.DeliveryStatus) error
 
 	// SubscribeEvent adds an event subscription for this client. Use "" for wildcard
 	SubscribeEvent(dThingID, name string)

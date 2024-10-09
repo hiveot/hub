@@ -169,8 +169,9 @@ func TestUpdateProps(t *testing.T) {
 	defer closeFn()
 	addValues(svc, 10, agent1ID, []string{thing1ID}, 3600*24*30)
 
-	err := svc.UpdatePropertyValue(agent1ID, thing1ID, prop1Name, prop1Value, "")
+	changed, err := svc.UpdatePropertyValue(agent1ID, thing1ID, prop1Name, prop1Value, "")
 	require.NoError(t, err)
+	require.True(t, changed)
 
 	p1val, err := svc.ReadProperty(dThingID1, prop1Name)
 	require.NoError(t, err)
@@ -184,6 +185,7 @@ func TestAddPropsFail(t *testing.T) {
 	_ = svc
 	defer closeFn()
 
-	err := svc.UpdatePropertyValue(agent1ID, thing1ID, "prop1", "val1", "")
+	changed, err := svc.UpdatePropertyValue(agent1ID, thing1ID, "prop1", "val1", "")
 	require.Error(t, err)
+	require.False(t, changed)
 }

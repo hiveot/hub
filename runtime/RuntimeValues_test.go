@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/tlsclient"
@@ -192,23 +191,14 @@ func TestSubscribeValues(t *testing.T) {
 	//var dThingID = tdd.MakeDigiTwinThingID(agentID, td1.ID)
 	err := ag.PubTD(td1.ID, string(td1JSON))
 
-	// subscribe to events
-	hc.Subscribe("", "")
-	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
-		stat.Completed(msg, nil, nil)
-		if msg.Name == vocab.EventNameProperties {
-			// decode the properties map
-			props := make(map[string]interface{})
-			err := utils.DecodeAsObject(msg.Data, &props)
-			assert.NoError(t, err)
-			assert.Equal(t, 2, len(props))
-			msgCount.Add(1)
-		}
-
-		return stat
-	})
+	// subscribe to events/properties
 	err = hc.Subscribe("", "")
 	require.NoError(t, err)
+	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+		stat.Completed(msg, nil, nil)
+		msgCount.Add(1)
+		return stat
+	})
 	time.Sleep(time.Millisecond * 100)
 
 	propMap := map[string]any{}

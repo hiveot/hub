@@ -39,7 +39,9 @@ func TestActionFlow(t *testing.T) {
 	require.NoError(t, err)
 
 	// check progress
-	v, err := svc.ReadAction(consumerID, dThingID, actionName)
+	v, err := svc.ValuesSvc.ReadAction(consumerID, digitwin2.ValuesReadActionArgs{
+		ThingID: dThingID,
+		Name:    actionName})
 	require.NoError(t, err)
 	require.Equal(t, actionValue, v.Input)
 
@@ -50,13 +52,16 @@ func TestActionFlow(t *testing.T) {
 	require.Equal(t, msgID, av.MessageID)
 
 	// check status
-	v, err = svc.ReadAction(consumerID, dThingID, actionName)
+	v, err = svc.ValuesSvc.ReadAction(consumerID, digitwin2.ValuesReadActionArgs{
+		ThingID: dThingID,
+		Name:    actionName})
+
 	require.NoError(t, err)
 	require.Equal(t, actionValue, v.Output)
 	require.Equal(t, digitwin.StatusCompleted, v.Status)
 
 	// read all actions
-	actList, err := svc.ReadAllActions(consumerID, dThingID)
+	actList, err := svc.ValuesSvc.ReadAllActions(consumerID, dThingID)
 	require.NoError(t, err)
 	require.NotZero(t, len(actList))
 }
@@ -75,11 +80,15 @@ func TestActionReadFail(t *testing.T) {
 	err := svc.DirSvc.UpdateDTD(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
-	_, err = svc.ReadAction("itsme", "badthingid", "someevent")
+	_, err = svc.ValuesSvc.ReadAction("itsme", digitwin2.ValuesReadActionArgs{
+		ThingID: "badthingid",
+		Name:    "someevent"})
 	assert.Error(t, err)
-	_, err = svc.ReadAction("itsme", dThingID, "badeventname")
+	_, err = svc.ValuesSvc.ReadAction("itsme", digitwin2.ValuesReadActionArgs{
+		ThingID: dThingID,
+		Name:    "badeventname"})
 	assert.Error(t, err)
-	_, err = svc.ReadAllActions("itsme", "badthingid")
+	_, err = svc.ValuesSvc.ReadAllActions("itsme", "badthingid")
 	assert.Error(t, err)
 }
 

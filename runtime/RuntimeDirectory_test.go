@@ -10,6 +10,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,6 +27,7 @@ func TestAddRemoveTD(t *testing.T) {
 	const userID = "user1"
 	const agThing1ID = "thing1"
 	var dtThing1ID = tdd.MakeDigiTwinThingID(agentID, agThing1ID)
+	var evCount atomic.Int32
 
 	r := startRuntime()
 	defer r.Stop()
@@ -37,15 +39,17 @@ func TestAddRemoveTD(t *testing.T) {
 	defer ag.Disconnect()
 	cl, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
 	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
-		// result is ignored for events
+		// expect 2 events, updated and removed
+		evCount.Add(1)
 		return stat
 	})
 	defer cl.Disconnect()
+	err := cl.Subscribe("", "")
 
 	// Add the TD by sending it as an event
 	td1 := tdd.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
 	td1JSON, _ := json.Marshal(td1)
-	err := ag.PubEvent(agThing1ID, vocab.EventNameTD, string(td1JSON), "")
+	err = ag.PubTD(agThing1ID, string(td1JSON))
 	assert.NoError(t, err)
 
 	// Get returns a serialized TD object
@@ -66,6 +70,9 @@ func TestAddRemoveTD(t *testing.T) {
 	stat = cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadDTDMethod, string(args4JSON), "")
 	require.NotEmpty(t, stat.Error)
 	require.Equal(t, hubclient.DeliveryCompleted, stat.Progress)
+
+	// expect 2 events to be received
+	require.Equal(t, int32(2), evCount.Load())
 }
 
 func TestReadTDs(t *testing.T) {
@@ -128,7 +135,7 @@ func TestReadTDsRest(t *testing.T) {
 	cl2 := tlsclient.NewTLSClient(serverURL, nil, ts.Certs.CaCert, time.Second*30)
 	cl2.SetAuthToken(token)
 
-	data, _, err := cl2.Get(httpsse.GetThingsPath)
+	data, _, err := cl2.Get(httpsse.GetAllThingsPath)
 	require.NoError(t, err)
 
 	// tds are sent as an array of JSON, first unpack the array of JSON strings
@@ -161,20 +168,13 @@ func TestTDEvent(t *testing.T) {
 	_ = token
 	defer cl.Disconnect()
 
-	// How to replace the message handler in the client?
-	// A: separate handlers for onwriteproperty, onevent, onaction, onproperty, ontd
-	// B: replace client with 'consumedThing' and 'exposedThing' instances
-	//     set handlers in these instances
-	// C: keep as-is for general purpose use
-	//    exposed and consumed thing instances use hubclient as a transport
-	//    hc converts the SSE,WS messages to a clientmessage and pass it to the handler
-	//    pro: fits existing clients
-	//    con: none?
-
-	// subscribe to TD events
+	// wait to directory TD updated events
 	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		stat.Completed(msg, nil, nil)
-		if msg.Name == vocab.EventNameTD {
+		if msg.MessageType == vocab.MessageTypeEvent &&
+			msg.ThingID == digitwin.DirectoryDThingID &&
+			msg.Name == service.ThingUpdatedEventName {
+
 			// decode the TD
 			td := tdd.TD{}
 			payload := msg.DataAsText()

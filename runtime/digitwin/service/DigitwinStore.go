@@ -440,9 +440,9 @@ func (svc *DigitwinStore) UpdateEventValue(
 //
 // agentID is the ID of the agent sending the update.
 // thingID is the ID of the original thing as managed by the agent.
-// propName is the name of the property whose value is updated.
+// propName is the name of the property whose value is updated or "" when value is a map
+// newValue of the property or a map of property name-value pairs
 // messageID provided by the agent, in response to an action or write
-// Invoked by agents
 //
 // This returns a flag indicating whether the property value has changed.
 func (svc *DigitwinStore) UpdatePropertyValue(
@@ -458,19 +458,42 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
 		return false, err
 	}
-	propValue, found := dtw.PropValues[propName]
-	if !found {
-		propValue = digitwin2.PropertyValue{}
+	if propName != "" {
+		propValue, found := dtw.PropValues[propName]
+		if !found {
+			propValue = digitwin2.PropertyValue{}
+		}
+		oldValue := propValue.Data
+		hasChanged = oldValue != propValue
+
+		propValue.Data = newValue
+		propValue.MessageID = messageID
+		propValue.Name = propName
+		propValue.Updated = time.Now().Format(utils.RFC3339Milli)
+
+		dtw.PropValues[propName] = propValue
+	} else {
+		propMap := make(map[string]any)
+		err = utils.Decode(newValue, &propMap)
+		if err != nil {
+			err = fmt.Errorf("UpdatePropertyValue: of dthing '%s'. Expected a property map: %w", dThingID, err)
+			return false, err
+		}
+		for propName, newValue = range propMap {
+			propValue, found := dtw.PropValues[propName]
+			if !found {
+				propValue = digitwin2.PropertyValue{}
+			}
+			oldValue := propValue.Data
+			hasChanged = oldValue != propValue
+
+			propValue.Data = newValue
+			propValue.MessageID = messageID
+			propValue.Name = propName
+			propValue.Updated = time.Now().Format(utils.RFC3339Milli)
+			dtw.PropValues[propName] = propValue
+		}
 	}
-	oldValue := propValue.Data
-	hasChanged = oldValue != propValue
-
-	propValue.Data = newValue
-	propValue.MessageID = messageID
-	propValue.Name = propName
-	propValue.Updated = time.Now().Format(utils.RFC3339Milli)
-
-	dtw.PropValues[propName] = propValue
 	svc.changedThings[dThingID] = hasChanged
 
 	return hasChanged, nil

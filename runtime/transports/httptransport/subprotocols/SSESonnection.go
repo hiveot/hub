@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/digitwin"
-	"golang.org/x/exp/slices"
+	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -43,13 +43,7 @@ type SSEConnection struct {
 
 	sseChan chan SSEEvent
 
-	// eventSubscriptions of this connection in the form {dThingID}.{name}
-	// This uses "+" as wildcards
-	eventSubscriptions []string
-
-	// propSubscriptions of this connection in the form {dThingID}.{name}
-	// This uses "+" as wildcards
-	propSubscriptions []string
+	subscriptions sessions.Subscriptions
 }
 
 // _send sends the action or write request for the thing to the agent
@@ -118,38 +112,28 @@ func (c *SSEConnection) IsSubscribed(subs []string, dThingID string, name string
 
 // ObserveProperty adds a subscription for a thing property
 func (c *SSEConnection) ObserveProperty(dThingID string, name string) {
-
-	c.mux.Lock()
-	defer c.mux.Unlock()
-	if dThingID == "" {
-		dThingID = "+"
-	}
-	if name == "" {
-		name = "+"
-	}
-
-	subKey := fmt.Sprintf("%s.%s", dThingID, name)
-	c.propSubscriptions = append(c.propSubscriptions, subKey)
+	c.subscriptions.Observe(dThingID, name)
 }
 
 // PublishEvent send an event to subscribers
 func (c *SSEConnection) PublishEvent(dThingID, name string, data any, messageID string) {
-	if c.IsSubscribed(c.eventSubscriptions, dThingID, name) {
+	if c.subscriptions.IsSubscribed(dThingID, name) {
 		_, _ = c._send(vocab.MessageTypeEvent, dThingID, name, data, messageID)
 	}
 }
 
 // PublishProperty send a property change update to subscribers
+// if name is empty then data contains a map of property key-value pairse
 func (c *SSEConnection) PublishProperty(dThingID, name string, data any, messageID string) {
-	if c.IsSubscribed(c.propSubscriptions, dThingID, name) {
+	if c.subscriptions.IsSubscribed(dThingID, name) {
 		_, _ = c._send(vocab.MessageTypeProperty, dThingID, name, data, messageID)
 	}
 }
 
-// SendActionResult sends an action result to the client
+// PublishActionProgress sends an action progress update to the client
 // If an error is provided this sends the error, otherwise the output value
-func (c *SSEConnection) SendActionResult(stat hubclient.DeliveryStatus) error {
-	_, err := c._send(vocab.MessageTypeEvent, "", vocab.EventNameDeliveryUpdate,
+func (c *SSEConnection) PublishActionProgress(stat hubclient.DeliveryStatus) error {
+	_, err := c._send(vocab.MessageTypeDeliveryUpdate, "", "",
 		stat, stat.MessageID)
 	return err
 }
@@ -241,60 +225,19 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 
 // SubscribeEvent handles a subscription request for an event
 func (c *SSEConnection) SubscribeEvent(dThingID string, name string) {
-
-	c.mux.Lock()
-	defer c.mux.Unlock()
-	if dThingID == "" {
-		dThingID = "+"
-	}
-	if name == "" {
-		name = "+"
-	}
-
-	subKey := fmt.Sprintf("%s.%s", dThingID, name)
-	c.eventSubscriptions = append(c.eventSubscriptions, subKey)
+	c.subscriptions.Subscribe(dThingID, name)
 }
-
-//
 
 // UnsubscribeEvent removes an event subscription
 // dThingID and name must match those of ObserveProperty
 func (c *SSEConnection) UnsubscribeEvent(dThingID string, name string) {
-
-	c.mux.Lock()
-	defer c.mux.Unlock()
-	if dThingID == "" {
-		dThingID = "+"
-	}
-	if name == "" {
-		name = "+"
-	}
-
-	subKey := fmt.Sprintf("%s.%s", dThingID, name)
-	i := slices.Index(c.eventSubscriptions, subKey)
-	if i >= 0 {
-		c.eventSubscriptions = slices.Delete(c.eventSubscriptions, i, i)
-	}
+	c.subscriptions.Unsubscribe(dThingID, name)
 }
 
 // UnobserveProperty removes a property subscription
 // dThingID and name must match those of ObserveProperty
 func (c *SSEConnection) UnobserveProperty(dThingID string, name string) {
-
-	c.mux.Lock()
-	defer c.mux.Unlock()
-	if dThingID == "" {
-		dThingID = "+"
-	}
-	if name == "" {
-		name = "+"
-	}
-
-	subKey := fmt.Sprintf("%s.%s", dThingID, name)
-	i := slices.Index(c.propSubscriptions, subKey)
-	if i >= 0 {
-		c.propSubscriptions = slices.Delete(c.propSubscriptions, i, i)
-	}
+	c.subscriptions.Unobserve(dThingID, name)
 }
 
 // WriteProperty sends the property change request to the agent
@@ -307,13 +250,12 @@ func (c *SSEConnection) WriteProperty(
 
 func NewSSEConnection(connectionID, sessionID, clientID string) *SSEConnection {
 	c := &SSEConnection{
-		connectionID:       connectionID,
-		sessionID:          sessionID,
-		clientID:           clientID,
-		lastActivity:       time.Time{},
-		mux:                sync.RWMutex{},
-		eventSubscriptions: make([]string, 0),
-		propSubscriptions:  make([]string, 0),
+		connectionID:  connectionID,
+		sessionID:     sessionID,
+		clientID:      clientID,
+		lastActivity:  time.Time{},
+		mux:           sync.RWMutex{},
+		subscriptions: sessions.Subscriptions{},
 	}
 	return c
 }

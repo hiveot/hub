@@ -8,12 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/teris-io/shortid"
 	"github.com/tmaxmax/go-sse"
@@ -39,10 +37,11 @@ const (
 	PostWritePropertyPath     = "/digitwin/properties/{thingID}/{name}"
 
 	// Form paths for accessing TD directory
-	GetThingPath  = "/digitwin/directory/{thingID}"
-	GetThingsPath = "/digitwin/directory/+" // query param offset=, limit=
+	GetThingPath     = "/digitwin/directory/{thingID}"
+	GetAllThingsPath = "/digitwin/directory" // query param offset=, limit=
 
 	PostAgentPublishEventPath             = "/agent/event/{thingID}/{name}"
+	PostAgentPublishDeliveryPath          = "/agent/delivery"
 	PostAgentUpdatePropertyPath           = "/agent/property/{thingID}/{name}"
 	PostAgentUpdateMultiplePropertiesPath = "/agent/properties/{thingID}"
 	PostAgentUpdateTDDPath                = "/agent/tdd/{thingID}"
@@ -268,12 +267,12 @@ func (cl *HttpSSEClient) Marshal(data any) []byte {
 	return jsonData
 }
 
-// PubMessage an action, event or property message and return the delivery status
+// PubMessage an action, event, property, td or delivery message and return the delivery status
 //
-//	methodName is http.MethodPost for actions, http.MethodPut/MethodGet for properties
+//	methodName is http.MethodPost for actions, http.MethodPost/MethodGet for properties
 //	path used to publish PostActionPath/PostEventPath/...
-//	thingID to publish as or to: events are published for the thing and actions to publish to the thingID
-//	name is the event/action/property name being published or modified
+//	thingID (optional) to publish as or to: events are published for the thing and actions to publish to the thingID
+//	name (optional) is the event/action/property name being published or modified
 //	data is the native message payload to transfer that will be serialized
 //	messageID optional 'message-id' header value
 //	queryParams optional name-value pairs to pass along as query parameters
@@ -298,8 +297,10 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 	//resp, err := cl.tlsClient.Post(messagePath, payload)
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, messagePath)
 	serData := cl.Marshal(data)
+
 	reply, respMsgID, httpStatus, headers, err :=
 		cl.tlsClient.Invoke(methodName, serverURL, serData, messageID, queryParams)
+
 	_ = headers
 	// TODO: detect difference between not connected and unauthenticated
 	// FIXME: detect output vs DeliveryStatus result
@@ -375,6 +376,22 @@ func (cl *HttpSSEClient) InvokeAction(thingID string, name string, data any, mes
 	return stat
 }
 
+// Observe subscribes to property updates
+// Use SetEventHandler to receive observed property updates
+// If name is empty then this observes all property changes
+func (cl *HttpSSEClient) Observe(thingID string, name string) error {
+	if thingID == "" {
+		thingID = "+"
+	}
+	if name == "" {
+		name = "+"
+	}
+	vars := map[string]string{"thingID": thingID, "name": name}
+	subscribePath := utils.Substitute(PostObservePropertiesPath, vars)
+	_, _, _, err := cl.tlsClient.Post(subscribePath, nil, "")
+	return err
+}
+
 // PubActionWithQueryParams publishes an action with query parameters
 func (cl *HttpSSEClient) PubActionWithQueryParams(
 	thingID string, name string, data any, messageID string, params map[string]string) (
@@ -401,6 +418,21 @@ func (cl *HttpSSEClient) PubEvent(thingID string, name string, data any, message
 		return errors.New(stat.Error)
 	}
 	return nil
+}
+
+// PubDeliveryUpdate agent publishes a delivery update message to the digital twin
+// The digital twin will update the action status and notify the sender.
+// This returns an error if the connection with the server is broken
+func (cl *HttpSSEClient) PubDeliveryUpdate(stat hubclient.DeliveryStatus) {
+	slog.Info("PubDelivery",
+		slog.String("me", cl._status.ClientID),
+		slog.String("progress", stat.Progress),
+		slog.String("messageID", stat.MessageID))
+
+	stat2 := cl.PubMessage(http.MethodPost, PostAgentPublishDeliveryPath, "", "", stat, stat.MessageID, nil)
+	if stat.Error != "" {
+		slog.Warn("PubDeliveryUpdate failed", "err", stat2.Error)
+	}
 }
 
 // WriteProperty publishes a configuration change request
@@ -433,10 +465,14 @@ func (cl *HttpSSEClient) UpdateProps(thingID string, props map[string]any) error
 	return nil
 }
 
-// PubTD publishes a TD event
+// PubTD publishes a TD update
 func (cl *HttpSSEClient) PubTD(thingID string, tdJSON string) error {
 	// TDs are published in JSON encoding as per spec
-	return cl.PubEvent(thingID, vocab.EventNameTD, tdJSON, "")
+	stat := cl.PubMessage("POST", PostAgentUpdateTDDPath, thingID, "", tdJSON, "", nil)
+	if stat.Error != "" {
+		return errors.New(stat.Error)
+	}
+	return nil
 }
 
 // RefreshToken refreshes the authentication token
@@ -507,15 +543,6 @@ func (cl *HttpSSEClient) Rpc(
 		err = utils.Decode(stat.Reply, resp)
 	}
 	return err
-}
-
-// SendDeliveryUpdate sends a delivery status update to the hub.
-// The hub's inbox will update the status of the action and notify the original sender.
-//
-// Intended for agents that have processed an incoming action request asynchronously
-// and need to send an update on further progress.
-func (cl *HttpSSEClient) SendDeliveryUpdate(stat hubclient.DeliveryStatus) {
-	cl.PubEvent(api.DigitwinServiceID, vocab.EventNameDeliveryUpdate, stat, stat.MessageID)
 }
 
 // SendOperation is temporary transition to support using TD forms

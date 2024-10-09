@@ -1,5 +1,7 @@
 package hubrouter
 
+import "github.com/hiveot/hub/lib/hubclient"
+
 // IHubRouter is the interface of the handler of action,event and property update
 // messages received from consumers and agents.
 type IHubRouter interface {
@@ -17,10 +19,17 @@ type IHubRouter interface {
 		consumerID string, dThingID string, actionName string, input any, reqID string) (
 		status string, output any, messageID string, err error)
 
+	// HandleActionProgress agent publishes an action progress update
+	// This updates the corresponding digital twin action status
+	HandleActionProgress(agentID string, stat hubclient.DeliveryStatus) error
+
 	// HandleEventFlow agent publishes an event
 	// This can contains a messageID if the event is a response to an action
 	// or property write, depending on the agent implementation.
 	HandleEventFlow(agentID string, thingID string, name string, value any, messageID string) error
+
+	// HandleUpdateTDFlow agent updates a TD
+	HandleUpdateTDFlow(agentID string, tdJSON string) error
 
 	// HandleUpdatePropertyFlow agent publishes a property change
 	// If the update is the result of a WriteProperty request then the messageID

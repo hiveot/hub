@@ -151,7 +151,7 @@ func (test *TestServer) AddTD(agentID string, td *tdd.TD) *tdd.TD {
 		td = test.CreateTestTD(i)
 	}
 	tdJSON, _ := json.Marshal(td)
-	err := test.Runtime.DigitwinSvc.DirSvc.UpdateDTD(agentID, string(tdJSON))
+	err := test.Runtime.HubRouter.HandleUpdateTDFlow(agentID, string(tdJSON))
 	//ag := test.Runtime.TransportsMgr.GetEmbedded().NewClient(agentID)
 	//err := ag.PubEvent(td.ID, vocab.EventNameTD, string(tdJSON))
 	if err != nil {

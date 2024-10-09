@@ -157,7 +157,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	)
 
 	// always handle rpc response
-	if rxMsg.MessageType == vocab.MessageTypeEvent && rxMsg.Name == vocab.EventNameDeliveryUpdate {
+	if rxMsg.MessageType == vocab.MessageTypeDeliveryUpdate {
 		// this client is receiving a delivery update from a previous action.
 		// The payload is a deliverystatus object
 		err := utils.DecodeAsObject(rxMsg.Data, &stat)
@@ -206,12 +206,12 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 				slog.String("clientID", cl.ClientID()))
 			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
 		}
-		cl.SendDeliveryUpdate(stat)
+		cl.PubDeliveryUpdate(stat)
 	} else {
 		slog.Warn("handleSSEEvent, unknown message type. Message ignored.",
 			slog.String("message type", rxMsg.MessageType),
 			slog.String("clientID", cl.ClientID()))
 		stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
-		cl.SendDeliveryUpdate(stat)
+		cl.PubDeliveryUpdate(stat)
 	}
 }

@@ -3,8 +3,9 @@ package pubsubcli
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/runtime/digitwin/service"
 	"time"
 
 	"github.com/araddon/dateparse"
@@ -55,13 +56,13 @@ func SubEventsCommand(hc *hubclient.IHubClient) *cli.Command {
 // HandleSubTD subscribes and prints TD publications
 func HandleSubTD(hc hubclient.IHubClient) error {
 
-	err := hc.Subscribe("", vocab.EventNameTD)
+	err := hc.Subscribe(digitwin.DirectoryDThingID, service.ThingUpdatedEventName)
 	if err != nil {
 		return err
 	}
 	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		// only look for TD events, ignore directed events
-		if msg.Name != vocab.EventNameTD {
+		if msg.Name != service.ThingUpdatedEventName {
 			return *stat.Completed(msg, nil, nil)
 		}
 
@@ -98,19 +99,20 @@ func HandleSubEvents(hc hubclient.IHubClient, thingID string, name string) error
 
 		valueStr := msg.DataAsText()
 
-		if msg.Name == vocab.EventNameProperties {
-			var props map[string]interface{}
-			_ = utils.DecodeAsObject(msg.Data, &props)
-
-			valueStr = fmt.Sprintf("%d properties", len(props))
-
-			// if its only a single property then show the value
-			if len(props) == 1 {
-				for key, val := range props {
-					valueStr = fmt.Sprintf("{%s=%v}", key, val)
-				}
-			}
-		} else if msg.Name == vocab.EventNameTD {
+		//if msg.Name == vocab.EventNameProperties {
+		//	var props map[string]interface{}
+		//	_ = utils.DecodeAsObject(msg.Data, &props)
+		//
+		//	valueStr = fmt.Sprintf("%d properties", len(props))
+		//
+		//	// if its only a single property then show the value
+		//	if len(props) == 1 {
+		//		for key, val := range props {
+		//			valueStr = fmt.Sprintf("{%s=%v}", key, val)
+		//		}
+		//	}
+		//}
+		if msg.ThingID == digitwin.DirectoryDThingID && msg.Name == service.ThingUpdatedEventName {
 			var td tdd.TD
 			tdJSON := msg.DataAsText()
 			json.Unmarshal([]byte(tdJSON), &td)

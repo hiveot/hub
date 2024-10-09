@@ -47,6 +47,17 @@ type ITransportBinding interface {
 	InvokeAction(agentID string, thingID string, name string, value any, messageID string) (
 		status string, output any, err error)
 
+	// PublishActionProgress sends an action result update to a consumer.
+	//
+	// Intended for one-way client connections such as sse or for async actions
+	// that take time to execute.
+	//
+	//	clientID is the connection ID of a connected consumer that requested the action
+	//	messageID of the action to associate with
+	//	output result value as per TD if progress is completed, or error text if failed
+	//	err error if failed
+	PublishActionProgress(clientID string, stat hubclient.DeliveryStatus) error
+
 	// PublishEvent publishes an event message to all subscribers of this protocol binding
 	//
 	//	dThingID is the Thing ID of the digital twin
@@ -62,17 +73,6 @@ type ITransportBinding interface {
 	//	value is the raw property value as per property affordance data schema
 	//	messageID is the optional ID of a linked action
 	PublishProperty(dThingID string, name string, value any, messageID string)
-
-	// SendActionResult sends an action result update to a consumer.
-	//
-	// Intended for one-way client connections such as sse or for async actions
-	// that take time to execute.
-	//
-	//	clientID is the connection ID of a connected consumer that requested the action
-	//	messageID of the action to associate with
-	//	output result value as per TD if progress is completed, or error text if failed
-	//	err error if failed
-	SendActionResult(clientID string, stat hubclient.DeliveryStatus) error
 
 	// Start the protocol binding
 	//  handler is the handler that processes incoming messages

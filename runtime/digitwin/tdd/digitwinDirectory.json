@@ -26,12 +26,12 @@
 	"properties": {
 	},
 	"events": {
-		"thingAdded": {
-			"title": "Thing Added",
-			"description": "A new Thing TD was added to the directory",
+		"thingUpdated": {
+			"title": "Thing Updated",
+			"description": "A digital twin Thing TD was updated in the directory",
 			"data": {
-				"title": "thingID",
-				"description": "ID of the Thing that was added",
+				"title": "TD",
+				"description": "JSON encoded TD of the Thing that updated",
 				"type": "string"
 			},
 			"scopes": ["*"]
