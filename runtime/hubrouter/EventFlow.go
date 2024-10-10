@@ -29,6 +29,6 @@ func (svc *HubRouter) HandleEventFlow(
 		return fmt.Errorf("HandleEventFlow: no transport binding")
 	}
 	// resubmit the event to subscribers of the digital twin in the background
-	go svc.tb.PublishEvent(dThingID, name, value, messageID)
+	go svc.tb.PublishEvent(dThingID, name, value, messageID, agentID)
 	return nil
 }

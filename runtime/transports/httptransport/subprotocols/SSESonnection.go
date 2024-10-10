@@ -48,14 +48,14 @@ type SSEConnection struct {
 
 // _send sends the action or write request for the thing to the agent
 // The SSE event type is: {messageType}/{agentID}/{thingID}/{name}
-func (c *SSEConnection) _send(messageType string,
-	thingID, name string, data any, messageID string) (status string, err error) {
+func (c *SSEConnection) _send(messageType string, thingID, name string,
+	data any, messageID string, senderID string) (status string, err error) {
 
 	var payload []byte = nil
 	if data != nil {
 		payload, _ = json.Marshal(data)
 	}
-	topic := fmt.Sprintf("%s/%s/%s", messageType, thingID, name)
+	topic := fmt.Sprintf("%s/%s/%s/%s", messageType, thingID, name, senderID)
 	msg := SSEEvent{
 		EventType: topic,
 		ID:        messageID,
@@ -85,10 +85,10 @@ func (c *SSEConnection) GetClientID() string {
 
 // InvokeAction sends the action request for the thing to the agent
 func (c *SSEConnection) InvokeAction(
-	thingID, name string, data any, messageID string) (
+	thingID, name string, data any, messageID string, senderID string) (
 	status string, output any, err error) {
 
-	status, err = c._send(vocab.MessageTypeAction, thingID, name, data, messageID)
+	status, err = c._send(vocab.MessageTypeAction, thingID, name, data, messageID, senderID)
 	return status, nil, err
 }
 
@@ -116,25 +116,29 @@ func (c *SSEConnection) ObserveProperty(dThingID string, name string) {
 }
 
 // PublishEvent send an event to subscribers
-func (c *SSEConnection) PublishEvent(dThingID, name string, data any, messageID string) {
+func (c *SSEConnection) PublishEvent(
+	dThingID, name string, data any, messageID string, agentID string) {
+
 	if c.subscriptions.IsSubscribed(dThingID, name) {
-		_, _ = c._send(vocab.MessageTypeEvent, dThingID, name, data, messageID)
+		_, _ = c._send(vocab.MessageTypeEvent, dThingID, name, data, messageID, agentID)
 	}
 }
 
 // PublishProperty send a property change update to subscribers
 // if name is empty then data contains a map of property key-value pairse
-func (c *SSEConnection) PublishProperty(dThingID, name string, data any, messageID string) {
+func (c *SSEConnection) PublishProperty(
+	dThingID, name string, data any, messageID string, agentID string) {
+
 	if c.subscriptions.IsSubscribed(dThingID, name) {
-		_, _ = c._send(vocab.MessageTypeProperty, dThingID, name, data, messageID)
+		_, _ = c._send(vocab.MessageTypeProperty, dThingID, name, data, messageID, agentID)
 	}
 }
 
 // PublishActionProgress sends an action progress update to the client
 // If an error is provided this sends the error, otherwise the output value
-func (c *SSEConnection) PublishActionProgress(stat hubclient.DeliveryStatus) error {
+func (c *SSEConnection) PublishActionProgress(stat hubclient.DeliveryStatus, agentID string) error {
 	_, err := c._send(vocab.MessageTypeDeliveryUpdate, "", "",
-		stat, stat.MessageID)
+		stat, stat.MessageID, agentID)
 	return err
 }
 
@@ -199,12 +203,12 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 			)
 			// write the message with or without messageID
 			if sseMsg.ID == "" {
-				_, err = fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
-					sseMsg.EventType, sseMsg.Payload)
-			} else {
-				_, err = fmt.Fprintf(w, "event: %s\nid:%s\ndata: %s\n\n",
-					sseMsg.EventType, sseMsg.ID, sseMsg.Payload)
+				// force a messageID to avoid go-sse injecting the last eventID,
+				// which can mess things up.
+				sseMsg.ID = "noid"
 			}
+			_, err = fmt.Fprintf(w, "event: %s\nid:%s\ndata: %s\n\n",
+				sseMsg.EventType, sseMsg.ID, sseMsg.Payload)
 			if err != nil {
 				// the connection might be closing.
 				// don't exit the loop until the receive channel is closed.
@@ -242,9 +246,9 @@ func (c *SSEConnection) UnobserveProperty(dThingID string, name string) {
 
 // WriteProperty sends the property change request to the agent
 func (c *SSEConnection) WriteProperty(
-	thingID, name string, data any, messageID string) (status string, err error) {
+	thingID, name string, data any, messageID string, senderID string) (status string, err error) {
 
-	status, err = c._send(vocab.MessageTypeProperty, thingID, name, data, messageID)
+	status, err = c._send(vocab.MessageTypeProperty, thingID, name, data, messageID, senderID)
 	return status, err
 }
 

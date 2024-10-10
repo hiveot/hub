@@ -115,7 +115,7 @@ func (ct *ConsumedThing) InvokeAction(name string, params InteractionInput) *Int
 	if err != nil {
 		slog.Warn("HandleActionFlow", "err", err.Error())
 	}
-	stat := ct.hc.SendOperation(href, actionForm, params)
+	stat := ct.hc.SendOperation(href, actionForm, params, nil)
 
 	o := NewInteractionOutputFromTM(tm, ct.td)
 	o.Progress = stat

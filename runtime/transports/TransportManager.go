@@ -126,7 +126,7 @@ func (svc *TransportManager) GetProtocolInfo() (pi api.ProtocolInfo) {
 
 // InvokeAction invokes an action on an agent's Thing
 func (svc *TransportManager) InvokeAction(
-	agentID, thingID string, name string, value any, messageID string) (
+	agentID, thingID string, name string, value any, messageID string, senderID string) (
 	status string, output any, err error) {
 
 	// send the action to the sub-protocol bindings until there is a match
@@ -135,7 +135,7 @@ func (svc *TransportManager) InvokeAction(
 	//}
 	if svc.httpTransport != nil {
 		status, output, err = svc.httpTransport.InvokeAction(
-			agentID, thingID, name, value, messageID)
+			agentID, thingID, name, value, messageID, senderID)
 	}
 	if err != nil && svc.mqttTransport != nil {
 		//	svc.mqttTransport.InvokeAction(agentID, thingID, name, value, messageID)
@@ -146,25 +146,27 @@ func (svc *TransportManager) InvokeAction(
 
 // PublishActionProgress send the action status update to the client.
 // This fails if no binding has a connection with this client
-func (svc *TransportManager) PublishActionProgress(clientID string, stat hubclient.DeliveryStatus) (err error) {
+func (svc *TransportManager) PublishActionProgress(
+	clientID string, stat hubclient.DeliveryStatus, agentID string) (found bool, err error) {
 	if svc.httpTransport != nil {
-		err = svc.httpTransport.PublishActionProgress(clientID, stat)
+		found, err = svc.httpTransport.PublishActionProgress(clientID, stat, agentID)
 	} else {
 		err = fmt.Errorf("PublishActionProgress: No connection with consumer '%s'", clientID)
+		found = false
 	}
-	return err
+	return found, err
 }
 
 // PublishEvent sends a event to all subscribers
 func (svc *TransportManager) PublishEvent(
-	dThingID string, name string, value any, messageID string) {
+	dThingID string, name string, value any, messageID string, agentID string) {
 
 	// simply send the event request to the protocol handlers
 	//if svc.embeddedTransport != nil {
 	//	svc.embeddedTransport.PublishEvent(dThingID, name, value, messageID)
 	//}
 	if svc.httpTransport != nil {
-		svc.httpTransport.PublishEvent(dThingID, name, value, messageID)
+		svc.httpTransport.PublishEvent(dThingID, name, value, messageID, agentID)
 	}
 	//if svc.mqttTransport != nil {
 	//	svc.mqttTransport.PublishEvent(dThingID, name, value, messageID)
@@ -172,9 +174,9 @@ func (svc *TransportManager) PublishEvent(
 }
 
 // PublishProperty passes it on to all property observers
-func (svc *TransportManager) PublishProperty(dThingID string, name string, value any, messageID string) {
+func (svc *TransportManager) PublishProperty(dThingID string, name string, value any, messageID string, agentID string) {
 	if svc.httpTransport != nil {
-		svc.httpTransport.PublishProperty(dThingID, name, value, messageID)
+		svc.httpTransport.PublishProperty(dThingID, name, value, messageID, agentID)
 	}
 }
 
@@ -197,20 +199,20 @@ func (svc *TransportManager) Stop() {
 }
 
 func (svc *TransportManager) WriteProperty(agentID string, thingID string, name string,
-	value any, messageID string) (status string, err error) {
+	value any, messageID string, senderID string) (found bool, status string, err error) {
 
 	// send the action to the sub-protocol bindings until there is a match
 	//if svc.embeddedTransport != nil {
 	//	 status,err = svc.embeddedTransport.WriteProperty(agentID, tThingID, name, value, messageID)
 	//}
 	if svc.httpTransport != nil {
-		status, err = svc.httpTransport.WriteProperty(
-			agentID, thingID, name, value, messageID)
+		found, status, err = svc.httpTransport.WriteProperty(
+			agentID, thingID, name, value, messageID, senderID)
 	}
-	if err != nil && svc.mqttTransport != nil {
+	if !found && svc.mqttTransport != nil {
 		//	status,err = svc.mqttTransport.WriteProperty(agentID, thingID, name, value, messageID)
 	}
-	return status, err
+	return found, status, err
 }
 
 // StartTransportManager starts a new instance of the transport manager.

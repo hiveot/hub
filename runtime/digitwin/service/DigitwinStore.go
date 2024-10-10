@@ -76,8 +76,8 @@ func (store *DigitwinStore) LoadCacheFromStore() error {
 	return nil
 }
 
-// ReadAction returns the last known action invocation status of the given name
-func (svc *DigitwinStore) ReadAction(
+// QueryAction returns the current status of the action
+func (svc *DigitwinStore) QueryAction(
 	dThingID string, name string) (v digitwin2.ActionValue, err error) {
 
 	svc.cacheMux.RLock()
@@ -94,8 +94,8 @@ func (svc *DigitwinStore) ReadAction(
 	return v, nil
 }
 
-// ReadAllActions returns all last known action invocation status of the given thing
-func (svc *DigitwinStore) ReadAllActions(dThingID string) (
+// QueryAllActions returns all last known action invocation status of the given thing
+func (svc *DigitwinStore) QueryAllActions(dThingID string) (
 	v map[string]digitwin2.ActionValue, err error) {
 
 	svc.cacheMux.RLock()
@@ -207,8 +207,7 @@ func (svc *DigitwinStore) ReadDThing(dThingID string) (dtd *tdd.TD, err error) {
 //
 // limit is the maximum number of records to return
 // offset is the offset of the first record to return
-func (svc *DigitwinStore) ReadDTDs(
-	offset int, limit int) (resp []*tdd.TD, err error) {
+func (svc *DigitwinStore) ReadDTDs(offset int, limit int) (resp []*tdd.TD, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
@@ -233,9 +232,11 @@ func (svc *DigitwinStore) ReadDTDs(
 }
 
 // RemoveDTW deletes the digitwin instance of an agent with the given ThingID
-func (svc *DigitwinStore) RemoveDTW(dThingID string) error {
+func (svc *DigitwinStore) RemoveDTW(dThingID string, senderID string) error {
 	// TBD: should we mark this as deleted instead? retain historical things?
-	slog.Info("RemoveDTD", slog.String("thingID", dThingID))
+	slog.Info("RemoveDTD",
+		slog.String("dThingID", dThingID),
+		slog.String("senderID", senderID))
 
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
@@ -326,7 +327,7 @@ func (svc *DigitwinStore) UpdateTD(
 // name is the name of the action whose progress is updated.
 // messageID is the request messageID
 func (svc *DigitwinStore) UpdateActionStart(
-	consumerID string, dThingID string, name string, input any, messageID string) error {
+	dThingID string, name string, input any, messageID string, senderID string) error {
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
@@ -346,7 +347,7 @@ func (svc *DigitwinStore) UpdateActionStart(
 		actionValue = digitwin2.ActionValue{}
 	}
 	actionValue.Name = name
-	actionValue.SenderID = consumerID
+	actionValue.SenderID = senderID
 	actionValue.Input = input
 	actionValue.Status = digitwin.StatusPending
 	actionValue.Updated = time.Now().Format(utils.RFC3339Milli)
@@ -501,14 +502,14 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 
 // WriteProperty updates a property value status with a write request
 //
-//	senderID ID of the consumer requesting the write
 //	dThingID is the digital twin ID
 //	propName is the name of the property to write
 //	data is the data to write as per TD
 //	status is the write delivery status: pending, delivered,...
 //	messageID of the write request
+//	senderID ID of the consumer requesting the write
 func (svc *DigitwinStore) WriteProperty(
-	consumerID string, dThingID string, propName string, data any, writeStatus string, messageID string) error {
+	dThingID string, propName string, data any, writeStatus string, messageID string, senderID string) error {
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
@@ -522,7 +523,7 @@ func (svc *DigitwinStore) WriteProperty(
 		propValue = digitwin2.PropertyValue{}
 	}
 	propValue.WriteData = data
-	propValue.WriteSenderID = consumerID
+	propValue.WriteSenderID = senderID
 	propValue.WriteUpdated = time.Now().Format(utils.RFC3339Milli)
 	propValue.WriteStatus = writeStatus
 	propValue.WriteMessageID = messageID

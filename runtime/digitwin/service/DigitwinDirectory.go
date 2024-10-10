@@ -30,6 +30,7 @@ func (svc *DigitwinDirectoryService) MakeDigitalTwinTD(
 	if err != nil {
 		return thingTD, dtwTD, err
 	}
+	// make a deep copy for the digital twin
 	_ = jsoniter.Unmarshal([]byte(tdJSON), &dtwTD)
 
 	dtwTD.ID = tdd.MakeDigiTwinThingID(agentID, thingTD.ID)
@@ -93,11 +94,11 @@ func (svc *DigitwinDirectoryService) ReadAllDTDs(
 // RemoveDTD removes a Thing TD document from the digital twin directory
 // FIXME: submit an event (as per TDD) that a TD has been removed
 func (svc *DigitwinDirectoryService) RemoveDTD(senderID string, dThingID string) error {
-	err := svc.dtwStore.RemoveDTW(dThingID)
+	err := svc.dtwStore.RemoveDTW(dThingID, senderID)
 	if err == nil && svc.tb != nil {
 		// publish the event in the background
 		go svc.tb.PublishEvent(
-			digitwin.DirectoryDThingID, ThingRemovedEventName, dThingID, "")
+			digitwin.DirectoryDThingID, ThingRemovedEventName, dThingID, "", senderID)
 	}
 	return err
 }
@@ -114,11 +115,11 @@ func (svc *DigitwinDirectoryService) UpdateDTD(agentID string, tdJson string) er
 	thingTD, digitalTwinTD, err := svc.MakeDigitalTwinTD(agentID, tdJson)
 	svc.dtwStore.UpdateTD(agentID, thingTD, digitalTwinTD)
 
-	dtdJSON, err := jsoniter.Marshal(digitalTwinTD)
 	if err == nil && svc.tb != nil {
+		dtdJSON, _ := jsoniter.Marshal(digitalTwinTD)
 		// publish the event in the background
 		go svc.tb.PublishEvent(
-			digitwin.DirectoryDThingID, ThingUpdatedEventName, string(dtdJSON), "")
+			digitwin.DirectoryDThingID, ThingUpdatedEventName, string(dtdJSON), "", agentID)
 	}
 	return err
 }

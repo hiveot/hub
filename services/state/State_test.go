@@ -190,23 +190,24 @@ func TestGetDifferentClientBuckets(t *testing.T) {
 	require.NotEmpty(t, token2)
 	defer hc2.Disconnect()
 
-	// both clients set a record
+	// both clients set a key-value
 	cl1 := stateclient.NewStateClient(hc1)
 	cl2 := stateclient.NewStateClient(hc2)
-
 	err := cl1.Set(key1, val1)
 	assert.NoError(t, err)
 	err = cl2.Set(key2, val2)
+	assert.NoError(t, err)
 
 	// clients cannot read the other's value
 	tmp1 := ""
 	tmp2 := ""
-	found1, err := cl1.Get(key2, &tmp1)
-	assert.NoError(t, err)
-	assert.False(t, found1)
-	found2, err := cl2.Get(key1, &tmp2)
+	found2, err := cl1.Get(key2, &tmp1)
 	assert.NoError(t, err)
 	assert.False(t, found2)
+
+	found1, err := cl2.Get(key1, &tmp2)
+	assert.NoError(t, err)
+	assert.False(t, found1)
 }
 
 //func TestCursor(t *testing.T) {

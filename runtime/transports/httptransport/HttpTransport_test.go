@@ -437,7 +437,7 @@ func TestReconnect(t *testing.T) {
 				Progress:  digitwin.StatusCompleted,
 				Reply:     val,
 			}
-			err = svc.PublishActionProgress(testLogin, stat)
+			_, err = svc.PublishActionProgress(testLogin, stat, agentID)
 			assert.NoError(t, err)
 		}()
 		return nil

@@ -110,6 +110,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	messageID := event.LastEventID // this is the ID provided by the server
 	messageType := event.Type      // event, action, property, ping, custom event...
 	thingID := ""
+	senderID := ""
 	name := ""
 
 	// event Type field contains: {eventType}[/{thingID}[/{name}]]
@@ -119,6 +120,9 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		thingID = parts[1]
 		if len(parts) > 2 {
 			name = parts[2]
+		}
+		if len(parts) > 3 {
+			senderID = parts[3]
 		}
 	}
 
@@ -131,7 +135,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		ThingID:     thingID,
 		Name:        name,
 		MessageType: messageType,
-		SenderID:    "",
+		SenderID:    senderID,
 		Created:     "",
 		Data:        msgData,
 		MessageID:   messageID,
@@ -158,7 +162,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 
 	// always handle rpc response
 	if rxMsg.MessageType == vocab.MessageTypeDeliveryUpdate {
-		// this client is receiving a delivery update from a previous action.
+		// this client is receiving a delivery update from an previously sent action.
 		// The payload is a deliverystatus object
 		err := utils.DecodeAsObject(rxMsg.Data, &stat)
 		if err != nil || stat.MessageID == "" {
@@ -187,26 +191,31 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 				"clientID", cl.ClientID())
 			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, delivery update ignored"))
 		}
-	} else if rxMsg.MessageType == vocab.MessageTypeEvent {
-		if cl._messageHandler != nil {
-			// pass event to handler, if set
-			_ = cl._messageHandler(rxMsg)
-		} else {
-			slog.Warn("handleSSEEvent, no event handler registered. Event ignored.",
-				slog.String("name", rxMsg.Name),
-				slog.String("clientID", cl.ClientID()))
-		}
-	} else if rxMsg.MessageType == vocab.MessageTypeAction || rxMsg.MessageType == vocab.MessageTypeProperty {
-		if cl._messageHandler != nil {
-			// pass action to agent for delivery to thing
-			stat = cl._messageHandler(rxMsg)
-		} else {
-			slog.Warn("handleSSEEvent, no action handler registered. Action ignored.",
-				slog.String("name", rxMsg.Name),
-				slog.String("clientID", cl.ClientID()))
-			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
-		}
+		return
+	}
+
+	if cl._messageHandler == nil {
+		slog.Warn("handleSSEEvent, no handler registered. Message ignored.",
+			slog.String("name", rxMsg.Name),
+			slog.String("clientID", cl.ClientID()))
+		return
+	}
+
+	if rxMsg.MessageType == vocab.MessageTypeEvent {
+		// pass event to handler, if set
+		_ = cl._messageHandler(rxMsg)
+	} else if rxMsg.MessageType == vocab.MessageTypeAction {
+		// agent receives action request
+		stat = cl._messageHandler(rxMsg)
 		cl.PubDeliveryUpdate(stat)
+	} else if rxMsg.MessageType == vocab.MessageTypeProperty {
+		// agent receives write property request
+		// or, consumer receives property update request
+		// FIXME: Need to differentiate!
+		//   property update messages are from agent->consumer and dont confirm delivery
+		//   while property write messages are consumer->agent and can confirm.
+		stat = cl._messageHandler(rxMsg)
+		//cl.PubDeliveryUpdate(stat)
 	} else {
 		slog.Warn("handleSSEEvent, unknown message type. Message ignored.",
 			slog.String("message type", rxMsg.MessageType),

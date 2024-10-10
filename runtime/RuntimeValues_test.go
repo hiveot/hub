@@ -10,6 +10,7 @@ import (
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
+	digitwin2 "github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,7 +64,7 @@ func TestHttpsGetActions(t *testing.T) {
 
 	// get the latest action values from the thing
 	// use the API generated from the digitwin TD document using tdd2api
-	valueList, err := digitwin.ValuesReadAllActions(cl2, dThing1ID)
+	valueList, err := digitwin.ValuesQueryAllActions(cl2, dThing1ID)
 	require.NoError(t, err)
 	valueMap := api.ActionListToMap(valueList)
 
@@ -191,7 +192,7 @@ func TestSubscribeValues(t *testing.T) {
 	//var dThingID = tdd.MakeDigiTwinThingID(agentID, td1.ID)
 	err := ag.PubTD(td1.ID, string(td1JSON))
 
-	// subscribe to events/properties
+	// consumer subscribes to events/properties
 	err = hc.Subscribe("", "")
 	require.NoError(t, err)
 	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
@@ -204,8 +205,59 @@ func TestSubscribeValues(t *testing.T) {
 	propMap := map[string]any{}
 	propMap[key1] = data1
 	propMap[key2] = data2
+	// FIXME: this is agent->consumer
+	// consumer SSE client should not send a delivery confirmation!
 	err = ag.UpdateProps(td1.ID, propMap)
 	require.NoError(t, err)
+
+	time.Sleep(time.Millisecond * 1000)
+	assert.Equal(t, int32(1), msgCount.Load())
+}
+
+func TestWriteProperties(t *testing.T) {
+	t.Log("--- TestWriteProperties ---")
+	const agentID = "agent1"
+	const userID = "user1"
+	const key1 = "key1"
+	const key2 = "key2"
+	const data1 = "Hello world"
+	const data2 = 25
+	var msgCount atomic.Int32
+
+	r := startRuntime()
+	defer r.Stop()
+	ag, _ := ts.AddConnectAgent(agentID)
+	defer ag.Disconnect()
+	cl, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	defer cl.Disconnect()
+
+	// step 1: agent publishes a TD first: dtw:agent1:thing-1
+	td1 := ts.CreateTestTD(0)
+	td1JSON, _ := json.Marshal(td1)
+	//var dThingID = tdd.MakeDigiTwinThingID(agentID, td1.ID)
+	err := ag.PubTD(td1.ID, string(td1JSON))
+
+	// agents subscribe to property write requests
+	ag.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+		stat.Completed(msg, nil, nil)
+		msgCount.Add(1)
+		return stat
+	})
+
+	// consumer subscribes to events/properties
+	err = cl.Subscribe("", "")
+	require.NoError(t, err)
+	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+		stat.Completed(msg, nil, nil)
+		msgCount.Add(1)
+		return stat
+	})
+	time.Sleep(time.Millisecond * 100)
+
+	dThingID := tdd.MakeDigiTwinThingID(agentID, td1.ID)
+	stat2 := cl.WriteProperty(dThingID, key1, data1)
+	require.Empty(t, stat2.Error)
+	require.Equal(t, digitwin2.StatusCompleted, stat2.Progress)
 
 	time.Sleep(time.Millisecond * 1000)
 	assert.Equal(t, int32(1), msgCount.Load())

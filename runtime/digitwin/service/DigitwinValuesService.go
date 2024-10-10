@@ -11,18 +11,18 @@ type DigitwinValuesService struct {
 	dtwStore *DigitwinStore
 }
 
-// ReadAction returns the last known action invocation status of the given name
-func (svc *DigitwinValuesService) ReadAction(
-	consumerID string, args digitwin.ValuesReadActionArgs) (v digitwin.ActionValue, err error) {
+// QueryAction returns the current status of the action
+func (svc *DigitwinValuesService) QueryAction(
+	consumerID string, args digitwin.ValuesQueryActionArgs) (v digitwin.ActionValue, err error) {
 
-	return svc.dtwStore.ReadAction(args.ThingID, args.Name)
+	return svc.dtwStore.QueryAction(args.ThingID, args.Name)
 }
 
-// ReadAllActions returns the map of the latest actions on the thing
-func (svc *DigitwinValuesService) ReadAllActions(
+// QueryAllActions returns the map of the latest actions on the thing
+func (svc *DigitwinValuesService) QueryAllActions(
 	consumerID string, dThingID string) ([]digitwin.ActionValue, error) {
 
-	actionMap, err := svc.dtwStore.ReadAllActions(dThingID)
+	actionMap, err := svc.dtwStore.QueryAllActions(dThingID)
 	return utils.Map2Array(actionMap), err
 }
 

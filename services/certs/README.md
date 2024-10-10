@@ -6,9 +6,10 @@ Manage certificates for authentication of hub clients.
 
 ## Status
 
-This service is reworked to work with the digital twin runtime. It is not functional.
+This service is reworked to work with the digital twin runtime. It is functional.
 
 Future:
+- Consider defining and publishing a TD for this service.
 - Support for lets encrypt to obtain client certificates
 
 ## Summary

@@ -241,66 +241,70 @@ func (svc *HttpTransport) GetProtocolInfo() api.ProtocolInfo {
 // InvokeAction sends a thing action request to the agent
 // This passes it to SSE/WS sub-protocol handlers of active sessions
 func (svc *HttpTransport) InvokeAction(
-	agentID string, thingID string, name string, input any, messageID string) (
+	agentID string, thingID string, name string, input any, messageID string, senderID string) (
 	status string, output any, err error) {
 
 	if svc.ws != nil {
-		status, output, err = svc.ws.InvokeAction(agentID, thingID, name, input, messageID)
+		status, output, err = svc.ws.InvokeAction(agentID, thingID, name, input, messageID, senderID)
 	}
 	if svc.ssesc != nil {
-		status, output, err = svc.ssesc.InvokeAction(agentID, thingID, name, input, messageID)
+		status, output, err = svc.ssesc.InvokeAction(agentID, thingID, name, input, messageID, senderID)
 	}
 	if err != nil && svc.sse != nil {
-		status, output, err = svc.sse.InvokeAction(agentID, thingID, name, input, messageID)
+		status, output, err = svc.sse.InvokeAction(agentID, thingID, name, input, messageID, senderID)
 	}
 	if err != nil {
 		status = digitwin.StatusFailed
-		err = fmt.Errorf("No sub-protocol bindings")
+		err = fmt.Errorf("InvokeAction: No sub-protocol bindings")
 	}
 	return status, output, err
 }
 
 // PublishActionProgress sends the action update to the client
-func (svc *HttpTransport) PublishActionProgress(clientID string, stat hubclient.DeliveryStatus) (err error) {
+func (svc *HttpTransport) PublishActionProgress(
+	clientID string, stat hubclient.DeliveryStatus, agentID string) (found bool, err error) {
+
+	found = false
 	if svc.ws != nil {
-		err = svc.ws.SendActionResult(clientID, stat)
+		found, err = svc.ws.SendActionResult(clientID, stat, agentID)
 	}
-	if err != nil && svc.ssesc != nil {
-		err = svc.ssesc.SendActionResult(clientID, stat)
+	if !found && svc.ssesc != nil {
+		found, err = svc.ssesc.SendActionResult(clientID, stat, agentID)
 	}
-	if err != nil && svc.sse != nil {
-		err = svc.sse.SendActionResult(clientID, stat)
+	if !found && svc.sse != nil {
+		found, err = svc.sse.SendActionResult(clientID, stat, agentID)
 	}
-	return err
+	return found, err
 }
 
 // PublishEvent sends an event message to subscribers of this event.
 // This passes it to SSE/WS sub-protocol handlers of active sessions
 func (svc *HttpTransport) PublishEvent(
-	dThingID string, name string, value any, messageID string) {
+	dThingID string, name string, value any, messageID string, agentID string) {
 	if svc.ws != nil {
-		svc.ws.PublishEvent(dThingID, name, value, messageID)
+		svc.ws.PublishEvent(dThingID, name, value, messageID, agentID)
 	}
 	if svc.ssesc != nil {
-		svc.ssesc.PublishEvent(dThingID, name, value, messageID)
+		svc.ssesc.PublishEvent(dThingID, name, value, messageID, agentID)
 	}
 	if svc.sse != nil {
-		svc.sse.PublishEvent(dThingID, name, value, messageID)
+		svc.sse.PublishEvent(dThingID, name, value, messageID, agentID)
 	}
 }
 
 // PublishProperty sends a property value update to observers of this property.
 // This passes it to SSE/WS sub-protocol handlers of active sessions
 func (svc *HttpTransport) PublishProperty(
-	dThingID string, name string, value any, messageID string) {
+	dThingID string, name string, value any, messageID string, agentID string) {
+
 	if svc.ws != nil {
-		svc.ws.PublishProperty(dThingID, name, value, messageID)
+		svc.ws.PublishProperty(dThingID, name, value, messageID, agentID)
 	}
 	if svc.ssesc != nil {
-		svc.ssesc.PublishProperty(dThingID, name, value, messageID)
+		svc.ssesc.PublishProperty(dThingID, name, value, messageID, agentID)
 	}
 	if svc.sse != nil {
-		svc.sse.PublishProperty(dThingID, name, value, messageID)
+		svc.sse.PublishProperty(dThingID, name, value, messageID, agentID)
 	}
 }
 
@@ -343,23 +347,20 @@ func (svc *HttpTransport) writeReply(w http.ResponseWriter, data any) {
 
 // WriteProperty sends a request to write a property to the agent with the given ID
 func (svc *HttpTransport) WriteProperty(
-	agentID string, thingID string, name string, input any, messageID string) (
-	status string, err error) {
+	agentID string, thingID string, name string, input any, messageID string, senderID string) (
+	found bool, status string, err error) {
 
+	found = false
 	if svc.ws != nil {
-		status, err = svc.ws.WriteProperty(agentID, thingID, name, input, messageID)
+		found, status, err = svc.ws.WriteProperty(agentID, thingID, name, input, messageID, senderID)
 	}
-	if svc.ssesc != nil {
-		status, err = svc.ssesc.WriteProperty(agentID, thingID, name, input, messageID)
+	if !found && svc.ssesc != nil {
+		found, status, err = svc.ssesc.WriteProperty(agentID, thingID, name, input, messageID, senderID)
 	}
-	if err != nil && svc.sse != nil {
-		status, err = svc.sse.WriteProperty(agentID, thingID, name, input, messageID)
+	if !found && svc.sse != nil {
+		found, status, err = svc.sse.WriteProperty(agentID, thingID, name, input, messageID, senderID)
 	}
-	if err != nil {
-		status = digitwin.StatusFailed
-		err = fmt.Errorf("No sub-protocol bindings")
-	}
-	return status, err
+	return found, status, err
 }
 
 // StartHttpTransport creates and starts a new instance of the HTTPS Server

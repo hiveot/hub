@@ -14,6 +14,16 @@ import (
 // PingMessage can be used by the server to ping the client that the connection is ready
 const PingMessage = "ping"
 
+// StatusHeader for transports that support headers can include a progress status field
+const StatusHeader = "status"
+
+// MessageIDHeader for transports that support headers can include a message-ID
+const MessageIDHeader = "message-id"
+
+// DataSchemaHeader for transports that support headers can include a dataschema
+// header to indicate an 'additionalresults' dataschema being returned.
+const DataSchemaHeader = "dataschema"
+
 type ConnectionStatus string
 
 const (

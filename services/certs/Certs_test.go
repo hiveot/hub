@@ -36,9 +36,9 @@ func startService() (cl *certsclient.CertsClient, stopFunc func()) {
 
 	//--- connect the certs client as admin
 	hc2, _ := ts.AddConnectUser("admin1", authn.ClientRoleAdmin)
-	certClient := certsclient.NewCertsClient(hc2)
+	certAdmin := certsclient.NewCertsClient(hc2)
 
-	return certClient, func() {
+	return certAdmin, func() {
 		hc2.Disconnect()
 		hc1.Disconnect()
 		svc.Stop()
@@ -56,23 +56,17 @@ func TestMain(m *testing.M) {
 	os.Exit(res)
 }
 
-//func TestStartStop(t *testing.T) {
-//	svc, cancelFunc := StartPlugin()
-//	defer cancelFunc()
-//	require.NotNil(t, svc)
-//}
-
 func TestCreateDeviceCert(t *testing.T) {
 	t.Log("--- TestCreateDeviceCert ---")
 	deviceID := "device1"
 
-	cl, cancelFunc := startService()
-	defer cancelFunc()
+	certAdmin, stopFunc := startService()
+	defer stopFunc()
 
 	k := keys.NewKey(keys.KeyTypeECDSA)
 	pubKeyPEM := k.ExportPublic()
 
-	deviceCertPEM, caCertPEM, err := cl.CreateDeviceCert(
+	deviceCertPEM, caCertPEM, err := certAdmin.CreateDeviceCert(
 		deviceID, pubKeyPEM, 1)
 	require.NoError(t, err)
 
@@ -84,9 +78,9 @@ func TestCreateDeviceCert(t *testing.T) {
 	require.NotNil(t, caCert2)
 
 	// verify certificate
-	err = cl.VerifyCert(deviceID, deviceCertPEM)
+	err = certAdmin.VerifyCert(deviceID, deviceCertPEM)
 	assert.NoError(t, err)
-	err = cl.VerifyCert("notanid", deviceCertPEM)
+	err = certAdmin.VerifyCert("notanid", deviceCertPEM)
 	assert.Error(t, err)
 
 	// verify certificate against CA
@@ -107,19 +101,19 @@ func TestDeviceCertBadParms(t *testing.T) {
 	deviceID := "device1"
 
 	// test creating hub certificate
-	cl, cancelFunc := startService()
-	defer cancelFunc()
+	certAdmin, stopFunc := startService()
+	defer stopFunc()
 
 	k := keys.NewKey(keys.KeyTypeECDSA)
 	pubKeyPEM := k.ExportPublic()
 
 	// missing device ID
-	certPEM, _, err := cl.CreateDeviceCert("", pubKeyPEM, 0)
+	certPEM, _, err := certAdmin.CreateDeviceCert("", pubKeyPEM, 0)
 	require.Error(t, err)
 	assert.Empty(t, certPEM)
 
 	// missing public key
-	certPEM, _, err = cl.CreateDeviceCert(deviceID, "", 1)
+	certPEM, _, err = certAdmin.CreateDeviceCert(deviceID, "", 1)
 	require.Error(t, err)
 	assert.Empty(t, certPEM)
 	t.Log("--- TestDeviceCertBadParms ended ---")
@@ -132,12 +126,12 @@ func TestCreateServiceCert(t *testing.T) {
 	const serviceID = "testService"
 	names := []string{"127.0.0.1", "localhost"}
 
-	cl, cancelFunc := startService()
-	defer cancelFunc()
+	certAdmin, stopFunc := startService()
+	defer stopFunc()
 	k := keys.NewKey(keys.KeyTypeECDSA)
 	pubKeyPEM := k.ExportPublic()
 
-	serviceCertPEM, caCertPEM, err := cl.CreateServiceCert(
+	serviceCertPEM, caCertPEM, err := certAdmin.CreateServiceCert(
 		serviceID, pubKeyPEM, names, 0)
 	require.NoError(t, err)
 	serviceCert, err := certs.X509CertFromPEM(serviceCertPEM)
@@ -146,7 +140,7 @@ func TestCreateServiceCert(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify service certificate against CA
-	err = cl.VerifyCert(serviceID, serviceCertPEM)
+	err = certAdmin.VerifyCert(serviceID, serviceCertPEM)
 	assert.NoError(t, err)
 
 	caCertPool := x509.NewCertPool()
@@ -166,8 +160,8 @@ func TestServiceCertBadParms(t *testing.T) {
 	const serviceID = "testService"
 	hostnames := []string{"127.0.0.1"}
 
-	svc, cancelFunc := startService()
-	defer cancelFunc()
+	certAdmin, stopFunc := startService()
+	defer stopFunc()
 
 	caCert, caKey, _ := certs.CreateCA("Test CA", 1)
 	k := keys.NewKey(keys.KeyTypeECDSA)
@@ -185,16 +179,16 @@ func TestServiceCertBadParms(t *testing.T) {
 	})
 
 	// missing service ID
-	//svc := selfsigned.NewSelfSignedCertsService(caCert, caKey, nil)
+	//certAdmin := selfsigned.NewSelfSignedCertsService(caCert, caKey, nil)
 
-	serviceCertPEM, _, err := svc.CreateServiceCert(
+	serviceCertPEM, _, err := certAdmin.CreateServiceCert(
 		"", pubKeyPEM, hostnames, 1)
 
 	require.Error(t, err)
 	require.Empty(t, serviceCertPEM)
 
 	// missing public key
-	serviceCertPEM, _, err = svc.CreateServiceCert(
+	serviceCertPEM, _, err = certAdmin.CreateServiceCert(
 		serviceID, "", hostnames, 1)
 	require.Error(t, err)
 	require.Empty(t, serviceCertPEM)

@@ -270,7 +270,7 @@ func (cl *HttpSSEClient) Marshal(data any) []byte {
 // PubMessage an action, event, property, td or delivery message and return the delivery status
 //
 //	methodName is http.MethodPost for actions, http.MethodPost/MethodGet for properties
-//	path used to publish PostActionPath/PostEventPath/...
+//	path used to publish PostActionPath/PostEventPath/... optionally with {thingID} and/or {name}
 //	thingID (optional) to publish as or to: events are published for the thing and actions to publish to the thingID
 //	name (optional) is the event/action/property name being published or modified
 //	data is the native message payload to transfer that will be serialized
@@ -282,6 +282,7 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 	thingID string, name string, data any, messageID string, queryParams map[string]string) (
 	stat hubclient.DeliveryStatus) {
 
+	progress := ""
 	vars := map[string]string{
 		"thingID": thingID,
 		"name":    name}
@@ -303,12 +304,12 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 
 	_ = headers
 	// TODO: detect difference between not connected and unauthenticated
-	// FIXME: detect output vs DeliveryStatus result
 	dataSchema := ""
 	if headers != nil {
-		dataSchema = headers.Get("dataschema")
-	}
-	if dataSchema != "" {
+		// set if an alternative output dataschema is used, eg DeliveryStatus result
+		dataSchema = headers.Get(hubclient.DataSchemaHeader)
+		// when progress is returned without a deliverystatus object
+		progress = headers.Get(hubclient.StatusHeader)
 	}
 
 	stat.MessageID = respMsgID
@@ -322,12 +323,14 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 		// return dataschema contains a progress envelope
 		err = cl.Unmarshal(reply, &stat)
 	} else if reply != nil && len(reply) > 0 {
-		// FIXME: why do you need a reply to be completed?
 		err = cl.Unmarshal(reply, &stat.Reply)
 		stat.Progress = hubclient.DeliveryCompleted
+	} else if progress != "" {
+		// progress status without delivery status output
+		stat.Progress = progress
 	} else {
-		// not an error and no reply. status is delivered
-		stat.Progress = hubclient.DeliveryPending
+		// not an progress result and no data. assume all went well
+		stat.Progress = hubclient.DeliveryCompleted
 	}
 	if err != nil {
 		slog.Error("PubMessage error", "err", err.Error())
@@ -353,7 +356,6 @@ func (cl *HttpSSEClient) pubFormMessage(op *tdd.Form,
 }
 
 // InvokeAction publishes an action message and waits for an answer or until timeout
-// In order to receive replies, an inbox subscription is added on the first request.
 // An error is returned if delivery failed or succeeded but the action itself failed
 func (cl *HttpSSEClient) InvokeAction(thingID string, name string, data any, messageID string) (
 	stat hubclient.DeliveryStatus) {
@@ -441,7 +443,7 @@ func (cl *HttpSSEClient) WriteProperty(thingID string, name string, data any) (
 	stat hubclient.DeliveryStatus) {
 
 	// FIXME: get message id
-	stat = cl.PubMessage(http.MethodPut, PostWritePropertyPath, thingID, name, data, "", nil)
+	stat = cl.PubMessage(http.MethodPost, PostWritePropertyPath, thingID, name, data, "", nil)
 	slog.Info("PubProperty",
 		slog.String("me", cl._status.ClientID),
 		slog.String("thingID", thingID),
@@ -534,9 +536,13 @@ func (cl *HttpSSEClient) Rpc(
 	delete(cl._correlData, messageID)
 	cl.mux.Unlock()
 
-	// when not completed return an error
-	if err == nil && stat.Progress != hubclient.DeliveryCompleted {
-		err = errors.New("Delivery not complete. Progress: " + stat.Progress)
+	// check for errors
+	if err == nil {
+		if stat.Error != "" {
+			err = errors.New(stat.Error)
+		} else if stat.Progress != hubclient.DeliveryCompleted {
+			err = errors.New("Delivery not complete. Progress: " + stat.Progress)
+		}
 	}
 	// only once completed will there be a reply as a result
 	if err == nil && resp != nil {

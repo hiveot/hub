@@ -35,15 +35,16 @@ func TestActionFlow(t *testing.T) {
 
 	// update the action
 	err = dtwStore.UpdateActionStart(
-		consumerID, dThingID, actionName, actionValue, msgID)
+		dThingID, actionName, actionValue, msgID, consumerID)
 	require.NoError(t, err)
 
 	// check progress
-	v, err := svc.ValuesSvc.ReadAction(consumerID, digitwin2.ValuesReadActionArgs{
+	v, err := svc.ValuesSvc.QueryAction(consumerID, digitwin2.ValuesQueryActionArgs{
 		ThingID: dThingID,
 		Name:    actionName})
 	require.NoError(t, err)
 	require.Equal(t, actionValue, v.Input)
+	require.Equal(t, msgID, v.MessageID)
 
 	// complete the action
 	av, err := dtwStore.UpdateActionProgress(agentID, thingID, actionName,
@@ -52,7 +53,7 @@ func TestActionFlow(t *testing.T) {
 	require.Equal(t, msgID, av.MessageID)
 
 	// check status
-	v, err = svc.ValuesSvc.ReadAction(consumerID, digitwin2.ValuesReadActionArgs{
+	v, err = svc.ValuesSvc.QueryAction(consumerID, digitwin2.ValuesQueryActionArgs{
 		ThingID: dThingID,
 		Name:    actionName})
 
@@ -61,7 +62,7 @@ func TestActionFlow(t *testing.T) {
 	require.Equal(t, digitwin.StatusCompleted, v.Status)
 
 	// read all actions
-	actList, err := svc.ValuesSvc.ReadAllActions(consumerID, dThingID)
+	actList, err := svc.ValuesSvc.QueryAllActions(consumerID, dThingID)
 	require.NoError(t, err)
 	require.NotZero(t, len(actList))
 }
@@ -80,15 +81,15 @@ func TestActionReadFail(t *testing.T) {
 	err := svc.DirSvc.UpdateDTD(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
-	_, err = svc.ValuesSvc.ReadAction("itsme", digitwin2.ValuesReadActionArgs{
+	_, err = svc.ValuesSvc.QueryAction("itsme", digitwin2.ValuesQueryActionArgs{
 		ThingID: "badthingid",
 		Name:    "someevent"})
 	assert.Error(t, err)
-	_, err = svc.ValuesSvc.ReadAction("itsme", digitwin2.ValuesReadActionArgs{
+	_, err = svc.ValuesSvc.QueryAction("itsme", digitwin2.ValuesQueryActionArgs{
 		ThingID: dThingID,
 		Name:    "badeventname"})
 	assert.Error(t, err)
-	_, err = svc.ValuesSvc.ReadAllActions("itsme", "badthingid")
+	_, err = svc.ValuesSvc.QueryAllActions("itsme", "badthingid")
 	assert.Error(t, err)
 }
 
@@ -115,12 +116,12 @@ func TestInvokeActionErrors(t *testing.T) {
 
 	// invoke the action with the wrong thing
 	err = dtwStore.UpdateActionStart(
-		consumerID, "badThingID", actionName, actionValue, msgID)
+		"badThingID", actionName, actionValue, msgID, consumerID)
 	assert.Error(t, err)
 
 	// invoke the action with the wrong name
 	err = dtwStore.UpdateActionStart(
-		consumerID, dThingID, "badName", actionValue, msgID)
+		dThingID, "badName", actionValue, msgID, consumerID)
 	assert.Error(t, err)
 
 	// complete the action on wrong thing

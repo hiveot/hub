@@ -276,7 +276,7 @@ func TestAddGetEvent(t *testing.T) {
 	releaseFn()
 }
 
-func TestAddPropertiesEvent(t *testing.T) {
+func TestAddProperties(t *testing.T) {
 	t.Log("--- TestAddPropertiesEvent ---")
 	//const clientID = "device0"
 	const thing1ID = thingIDPrefix + "0" // matches a percentage of the random things
@@ -330,10 +330,11 @@ func TestAddPropertiesEvent(t *testing.T) {
 	propsList[vocab.PropEnvCpuload] = 30
 	propsList[vocab.PropSwitchOnOff] = "off"
 	props1 := &hubclient.ThingMessage{
-		SenderID: agent1,
-		ThingID:  dThing1ID,
-		Name:     vocab.EventNameProperties,
-		Data:     propsList,
+		SenderID:    agent1,
+		ThingID:     dThing1ID,
+		Name:        "", // property list
+		Data:        propsList,
+		MessageType: vocab.MessageTypeProperty,
 	}
 
 	// in total add 5 properties

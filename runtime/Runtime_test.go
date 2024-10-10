@@ -90,6 +90,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 		rxMsg = msg
 		reply := utils.DecodeAsString(msg.Data) + ".reply"
 		stat.Completed(msg, reply, nil)
+		assert.Equal(t, cl2.ClientID(), msg.SenderID)
 		//stat.Failed(msg, fmt.Errorf("failuretest"))
 		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "messageID", msg.MessageID)
 		return stat
@@ -102,6 +103,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 			// delivery updates are only invoked on for non-rpc actions
 			err := utils.DecodeAsObject(msg.Data, &stat3)
 			require.NoError(t, err)
+			assert.Equal(t, cl1.ClientID(), msg.SenderID)
 			slog.Info(fmt.Sprintf("reply: %s", stat3.Reply))
 		}
 		defer deliveryCtxComplete()

@@ -162,13 +162,13 @@ func (b *SseScBinding) HandleUnsubscribeEvent(w http.ResponseWriter, r *http.Req
 
 // InvokeAction sends the action request for the thing to the agent
 func (b *SseScBinding) InvokeAction(
-	agentID, thingID, name string, data any, messageID string) (
+	agentID, thingID, name string, data any, messageID string, senderID string) (
 	status string, output any, err error) {
 
 	// determine which connection is of the agent
 	for _, c := range b.connections {
 		if c.GetClientID() == agentID {
-			return c.InvokeAction(thingID, name, data, messageID)
+			return c.InvokeAction(thingID, name, data, messageID, senderID)
 		}
 	}
 
@@ -177,42 +177,45 @@ func (b *SseScBinding) InvokeAction(
 }
 
 // PublishEvent send an event to subscribers
-func (b *SseScBinding) PublishEvent(dThingID, name string, data any, messageID string) {
+func (b *SseScBinding) PublishEvent(dThingID, name string, data any, messageID string, agentID string) {
 	for _, sseConn := range b.connections {
-		sseConn.PublishEvent(dThingID, name, data, messageID)
+		sseConn.PublishEvent(dThingID, name, data, messageID, agentID)
 	}
 }
 
 // PublishProperty send a property change update to subscribers
-func (b *SseScBinding) PublishProperty(dThingID, name string, data any, messageID string) {
+func (b *SseScBinding) PublishProperty(dThingID, name string, data any, messageID string, agentID string) {
 	for _, sseConn := range b.connections {
-		sseConn.PublishProperty(dThingID, name, data, messageID)
+		sseConn.PublishProperty(dThingID, name, data, messageID, agentID)
 	}
 }
-func (b *SseScBinding) SendActionResult(clientID string, stat hubclient.DeliveryStatus) (err error) {
+func (b *SseScBinding) SendActionResult(
+	clientID string, stat hubclient.DeliveryStatus, agentID string) (found bool, err error) {
 
 	// determine which connection is of the consumer
 	for _, sseConn := range b.connections {
 		if sseConn.GetClientID() == clientID {
-			return sseConn.PublishActionProgress(stat)
+			err = sseConn.PublishActionProgress(stat, agentID)
+			return true, err
 		}
 	}
-	return fmt.Errorf("not implemented")
+	return false, fmt.Errorf("not implemented")
 }
 
 // WriteProperty sends the write request for the thing property to the agent
 func (b *SseScBinding) WriteProperty(
-	agentID, thingID, name string, data any, messageID string) (
-	status string, err error) {
+	agentID, thingID, name string, data any, messageID string, senderID string) (
+	found bool, status string, err error) {
 
 	// determine which connection is of the agent
 	for _, sseConn := range b.connections {
 		if sseConn.GetClientID() == agentID {
-			return sseConn.WriteProperty(thingID, name, data, messageID)
+			status, err = sseConn.WriteProperty(thingID, name, data, messageID, senderID)
+			return true, status, err
 		}
 	}
 
-	return digitwin.StatusFailed,
+	return false, digitwin.StatusFailed,
 		fmt.Errorf("agent '%s' does not have a connection", agentID)
 }
 

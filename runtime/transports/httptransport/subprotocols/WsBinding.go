@@ -55,28 +55,29 @@ func (b *WsBinding) HandleUnsubscribeAllProperties(w http.ResponseWriter, r *htt
 
 // InvokeAction sends the action request for the thing to the agent
 func (b *WsBinding) InvokeAction(
-	agentID, thingID, name string, data any, messageID string) (
+	agentID, thingID, name string, data any, messageID string, senderID string) (
 	status string, output any, err error) {
 	return digitwin.StatusFailed, nil, fmt.Errorf("Not yet implemented")
 }
 
 // PublishEvent send an event to subscribers
-func (b *WsBinding) PublishEvent(dThingID, name string, data any, messageID string) {
+func (b *WsBinding) PublishEvent(dThingID, name string, data any, messageID string, agentID string) {
 }
 
 // PublishProperty send a property change update to subscribers
-func (b *WsBinding) PublishProperty(dThingID, name string, data any, messageID string) {
+func (b *WsBinding) PublishProperty(dThingID, name string, data any, messageID string, agentID string) {
 }
-func (b *WsBinding) SendActionResult(clientID string, stat hubclient.DeliveryStatus) (err error) {
-	return fmt.Errorf("not implemented")
+func (b *WsBinding) SendActionResult(clientID string, stat hubclient.DeliveryStatus, agentID string) (
+	found bool, err error) {
+	return false, fmt.Errorf("not implemented")
 }
 
 // WriteProperty sends the request to update the thing to the agent
 func (b *WsBinding) WriteProperty(
-	agentID, thingID, name string, data any, messageID string) (
-	status string, err error) {
+	agentID, thingID, name string, data any, messageID string, senderID string) (
+	found bool, status string, err error) {
 
-	return digitwin.StatusFailed, fmt.Errorf("Not yet implemented")
+	return false, digitwin.StatusFailed, fmt.Errorf("Not yet implemented")
 }
 
 // NewWsBinding returns a new websocket sub-protocol binding

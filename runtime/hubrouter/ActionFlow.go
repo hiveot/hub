@@ -82,23 +82,34 @@ func (svc *HubRouter) HandleActionFlow(
 	case api.DigitwinServiceID:
 		status, output, err = svc.dtwAgent.HandleAction(senderID, dThingID, actionName, input, messageID)
 	default:
+		// FIXME: RPC stateless services don't need a digital twin to be callable
+		// Action progress is stored in the digital twin. This is intended for
+		// stateful actions. RPC actions are not stored unless a digitwin exists.
+		// Intended for storing the last-known action progress.
+		// TODO: is storing actions in the store at all useful?
+		//  not if a property exists that represents its state.
+		//
+		// Is there is a use-case for reading the last known action input?
+		// maybe for presenting action-in-progress? or is it better to use a property
+		// for this as per Ben Francis recommendation? yeah, looks like it.
+		//
 		err = svc.dtwStore.UpdateActionStart(
-			senderID, dThingID, actionName, input, messageID)
-		if err != nil {
-			slog.Warn("HandleActionFlow failed.", "err", err.Error())
-			return digitwin.StatusFailed, nil, messageID, err
-		}
+			dThingID, actionName, input, messageID, senderID)
+		// if no digital twin exists for the thing or service, its progress
+		// will not be stored but still be tracked.
+		err = nil
 
 		// forward to external services/things and return its response
 		if svc.tb != nil {
 			status, output, err = svc.tb.InvokeAction(
-				agentID, thingID, actionName, input, messageID)
+				agentID, thingID, actionName, input, messageID, senderID)
 		} else {
 			err = fmt.Errorf("HandleActionFlow: Agent not reachable. Ignored")
 			status = digitwin.StatusFailed
 		}
 		// update action delivery status
-		_, _ = svc.dtwStore.UpdateActionProgress(agentID, thingID, actionName, status, output)
+		_, _ = svc.dtwStore.UpdateActionProgress(
+			agentID, thingID, actionName, status, output)
 
 		// possible response:
 		// * on failure: DeliveryStatus error response message; no output
@@ -164,23 +175,22 @@ func (svc *HubRouter) HandleActionProgress(agentID string, stat hubclient.Delive
 		slog.String("MessageID", stat.MessageID),
 	)
 
-	// 2: Update the status in the digital twin action record
-	_, err := svc.dtwStore.UpdateActionProgress(agentID, thingID, actionName, stat.Progress, stat.Reply)
+	// 2: Update the action status in the digital twin action record.
+	//   (for use with query actions)
+	_, _ = svc.dtwStore.UpdateActionProgress(agentID, thingID, actionName, stat.Progress, stat.Reply)
 
 	// 3: Forward the action update to the original sender
-	if err == nil {
-		// notify the action sender of the delivery update
-		err = svc.tb.PublishActionProgress(actionRecord.SenderID, stat)
+	// notify the action sender of the delivery update
+	found, err := svc.tb.PublishActionProgress(actionRecord.SenderID, stat, agentID)
 
-		if err != nil {
-			slog.Warn("HandleActionProgress. Forwarding to sender failed",
-				slog.String("senderID", actionRecord.SenderID),
-				slog.String("thingID", thingID),
-				slog.String("err", err.Error()),
-				slog.String("MessageID", stat.MessageID),
-			)
-			err = nil
-		}
+	if !found {
+		slog.Warn("HandleActionProgress. Forwarding to sender failed",
+			slog.String("senderID", actionRecord.SenderID),
+			slog.String("thingID", thingID),
+			slog.String("err", err.Error()),
+			slog.String("MessageID", stat.MessageID),
+		)
+		err = nil
 	}
 
 	// 4: Update the active action cache and remove the action when completed or failed

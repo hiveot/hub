@@ -142,13 +142,21 @@ func (svc *HttpTransport) HandleActionRequest(w http.ResponseWriter, r *http.Req
 	//                    "schema": "DeliveryStatus"
 	//                }]
 	//```
+	replyHeader := w.Header()
+	if replyHeader == nil {
+		// this happened a few times during testing. perhaps a broken connection while debugging?
+		err = fmt.Errorf("HandleActionRequest: Can't return result."+
+			" Write header is nil. This is unexpected. clientID='%s", clientID)
+		svc.writeError(w, err, http.StatusInternalServerError)
+		return
+	}
 	if messageID != "" {
-		w.Header().Set(tlsclient.HTTPMessageIDHeader, messageID)
+		replyHeader.Set(hubclient.MessageIDHeader, messageID)
 	}
 
 	// in case of error include the return data schema
 	if err != nil {
-		w.Header().Set("dataschema", "DeliveryStatus")
+		replyHeader.Set(hubclient.DataSchemaHeader, "DeliveryStatus")
 		resp := hubclient.DeliveryStatus{
 			MessageID: messageID,
 			Progress:  status,
@@ -157,10 +165,9 @@ func (svc *HttpTransport) HandleActionRequest(w http.ResponseWriter, r *http.Req
 		}
 		svc.writeReply(w, resp)
 		return
-	}
-	// if progress isn't completed then also return the delivery status
-	if status != digitwin2.StatusCompleted {
-		w.Header().Set("dataschema", "DeliveryStatus")
+	} else if status != digitwin2.StatusCompleted {
+		// if progress isn't completed then also return the delivery progress
+		replyHeader.Set(hubclient.DataSchemaHeader, "DeliveryStatus")
 		resp := hubclient.DeliveryStatus{
 			MessageID: messageID,
 			Progress:  status,
@@ -169,8 +176,10 @@ func (svc *HttpTransport) HandleActionRequest(w http.ResponseWriter, r *http.Req
 		svc.writeReply(w, resp)
 		return
 	}
+	// TODO: standardize headers
+	replyHeader.Set(hubclient.StatusHeader, status)
 
-	// success, write output
+	// request completed, write output
 	if output != nil {
 		svc.writeReply(w, output)
 	} else {
@@ -194,7 +203,7 @@ func (svc *HttpTransport) HandlePublishEvent(w http.ResponseWriter, r *http.Requ
 		}
 	}
 	// pass the event to the digitwin service for further processing
-	messageID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
+	messageID := r.Header.Get(hubclient.MessageIDHeader)
 	err = svc.hubRouter.HandleEventFlow(clientID, thingID, name, evValue, messageID)
 	if err != nil {
 		svc.writeError(w, err, 0)
@@ -211,8 +220,8 @@ func (svc *HttpTransport) HandleQueryAction(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	evList, err := svc.dtwService.ValuesSvc.ReadAction(clientID,
-		digitwin.ValuesReadActionArgs{ThingID: dThingID, Name: name})
+	evList, err := svc.dtwService.ValuesSvc.QueryAction(clientID,
+		digitwin.ValuesQueryActionArgs{ThingID: dThingID, Name: name})
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return
@@ -228,7 +237,7 @@ func (svc *HttpTransport) HandleQueryAllActions(w http.ResponseWriter, r *http.R
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	actList, err := svc.dtwService.ValuesSvc.ReadAllActions(clientID, dThingID)
+	actList, err := svc.dtwService.ValuesSvc.QueryAllActions(clientID, dThingID)
 	if err != nil {
 		svc.writeError(w, err, 0)
 		return

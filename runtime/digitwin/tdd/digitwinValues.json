@@ -188,10 +188,10 @@
 		}
 	},
 	"actions": {
-		"readAction": {
+		"queryAction": {
 			"@type": "ht:function",
 			"title": "Action status",
-			"description": "Read the latest action status",
+			"description": "Read the current action status",
 			"safe": true,
 			"idempotent": true,
 			"input": {
@@ -203,12 +203,12 @@
 				"properties": {
 					"thingID": {
 						"title": "Thing ID",
-						"description": "ID of the Thing to read",
+						"description": "ID of the Thing to query",
 						"type": "string"
 					},
 					"name": {
 						"title": "Action Name",
-						"description": "The action name to read",
+						"description": "The action name to query",
 						"type": "string"
 					}
 				}
@@ -220,15 +220,15 @@
 				"type": "ActionValue"
 			}
 		},
-		"readAllActions": {
+		"queryAllActions": {
 			"@type": "ht:function",
 			"title": "All actions",
-			"description": "Read the latest value for all actions",
+			"description": "Read the current status for all actions",
 			"safe": true,
 			"idempotent": true,
 			"input": {
 				"title": "Thing ID",
-				"description": "ID of the Thing to read",
+				"description": "ID of the Thing to query",
 				"type": "string"
 			},
 			"output": {

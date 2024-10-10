@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/teris-io/shortid"
 	"log/slog"
 )
 
@@ -28,11 +29,13 @@ func (svc *HubRouter) HandleUpdatePropertyFlow(
 	// probably multiple
 	changed, err2 := svc.dtwStore.UpdatePropertyValue(agentID, thingID, propName, value, messageID)
 	err = err2
+	// FIXME: property changed or last update was X ago
 	if changed {
 		// notify subscribers of digital twin property changes
 		dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
-		// FIXME: only when property changed
-		svc.tb.PublishProperty(dThingID, propName, value, messageID)
+		// FIXME: publishProperty does not expect a delivery update
+		// differentiate from write property in the client
+		svc.tb.PublishProperty(dThingID, propName, value, messageID, agentID)
 	}
 	return err
 }
@@ -43,21 +46,27 @@ func (svc *HubRouter) HandleWritePropertyFlow(
 	consumerID string, dThingID string, name string, newValue any) (
 	status string, messageID string, err error) {
 
+	var found bool
+
 	slog.Info("UpdatePropertyValue",
 		slog.String("consumerID", consumerID),
 		slog.String("dThingID", dThingID),
 		slog.String("name", name),
 		slog.String("newValue", fmt.Sprintf("%v", newValue)),
 	)
+	// assign a messageID if none given
+	messageID = "prop-" + shortid.MustGenerate()
+
 	status = digitwin.StatusPending
-	err = svc.dtwStore.WriteProperty(consumerID, dThingID, name, newValue, status, messageID)
+	err = svc.dtwStore.WriteProperty(dThingID, name, newValue, status, messageID, consumerID)
 
 	// forward the request to the thing's agent
 	agentID, thingID := tdd.SplitDigiTwinThingID(dThingID)
 	if svc.tb != nil {
-		status, err = svc.tb.WriteProperty(agentID, thingID, name, newValue, messageID)
+		found, status, err = svc.tb.WriteProperty(agentID, thingID, name, newValue, messageID, consumerID)
+		_ = found
 		// save the new status
-		_ = svc.dtwStore.WriteProperty(consumerID, dThingID, name, newValue, status, messageID)
+		_ = svc.dtwStore.WriteProperty(dThingID, name, newValue, status, messageID, consumerID)
 	} else {
 		status = digitwin.StatusFailed
 	}
