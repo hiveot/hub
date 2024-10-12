@@ -6,12 +6,12 @@ import (
 )
 
 // Action and write-property progress status
-const (
-	StatusPending   = "pending"   // by service
-	StatusApplied   = "applied"   // by agent
-	StatusCompleted = "completed" // by thing
-	StatusFailed    = "failed"
-)
+//const (
+//	StatusPending   = "pending"   // by service
+//	StatusApplied   = "applied"   // by agent
+//	StatusCompleted = "completed" // by thing
+//	StatusFailed    = "failed"
+//)
 
 //type DigitalTwinActionValue struct {
 //	// Action Status: StatusPending, StatusApplied, StatusCompleted, StatusFailed
@@ -88,9 +88,9 @@ type DigitalTwinInstance struct {
 	DtwTD *tdd.TD `json:"dtwTD" `
 
 	// Latest properties as received from the exposed Thing
-	PropValues map[string]digitwin.PropertyValue `json:"pv"`
+	PropValues map[string]digitwin.ThingValue `json:"pv"`
 	// Latest events as received from the exposed Thing
-	EventValues map[string]digitwin.EventValue `json:"ev"`
+	EventValues map[string]digitwin.ThingValue `json:"ev"`
 	// Latest 'unsafe' actions as requested with their status
 	ActionValues map[string]digitwin.ActionValue `json:"av"`
 }

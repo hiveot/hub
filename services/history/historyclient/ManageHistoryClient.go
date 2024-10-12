@@ -10,13 +10,14 @@ import (
 type ManageHistoryClient struct {
 	// service providing the history management capability
 	dThingID string
-	hc       hubclient.IHubClient
+	hc       hubclient.IConsumerClient
 }
 
 // GetRetentionRule returns the retention configuration of an event by name
 // This applies to events from any publishers and things
 // returns nil if there is no retention rule for the event
 //
+//	dThingID
 //	eventName whose retention to return
 func (cl *ManageHistoryClient) GetRetentionRule(dThingID string, name string) (*historyapi.RetentionRule, error) {
 	args := historyapi.GetRetentionRuleArgs{
@@ -43,7 +44,7 @@ func (cl *ManageHistoryClient) SetRetentionRules(rules historyapi.RetentionRuleS
 }
 
 // NewManageHistoryClient creates a new instance of the manage history client for use by authorized clients
-func NewManageHistoryClient(hc hubclient.IHubClient) *ManageHistoryClient {
+func NewManageHistoryClient(hc hubclient.IConsumerClient) *ManageHistoryClient {
 	agentID := historyapi.AgentID
 	mngCl := &ManageHistoryClient{
 		dThingID: tdd.MakeDigiTwinThingID(agentID, historyapi.ManageHistoryServiceID),

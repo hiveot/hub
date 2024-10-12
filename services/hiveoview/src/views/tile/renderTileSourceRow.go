@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/consumedthing"
 	"net/http"
 )
 
@@ -53,58 +51,24 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// obtain the TD and the event/action affordance to display
-	var unitSymbol string
 	var title string
-	var schema *tdd.DataSchema
-	var latestValue = "n/a"
-	var latestUpdated = "n/a"
 	var sourceRef = thingID + "/" + name
 
-	var eventAff *tdd.EventAffordance
 	cts := sess.GetConsumedThingsSession()
 	td := cts.GetTD(thingID)
-	if td != nil {
-		eventAff = td.GetEvent(name)
-		if eventAff != nil {
-			schema = &eventAff.Data
-			title = td.Title + ": " + eventAff.Title
-			unitSymbol = schema.UnitSymbol()
-		} else {
-			// tile source is an action. use the input schema if available
-			actionAff := td.GetAction(name)
-			if actionAff != nil {
-				schema = actionAff.Input
-				title = td.Title + ": " + actionAff.Title
-				unitSymbol = schema.UnitSymbol()
-			}
-		}
-	}
-	//if aff == nil {
-	//	err = fmt.Errorf("thingID '%s' or event '%s' not found",
-	//		thingID, key)
-	//	sess.WriteError(w, err, 0)
-	//	return
-	//}
 
 	// get the latest event values of this source
-	latestEvents, err := digitwin.OutboxReadLatest(
-		hc, vocab.MessageTypeEvent, []string{name}, "", thingID)
+	tv, err := digitwin.ValuesReadEvent(hc, name, thingID)
 	if err != nil {
 		sess.WriteError(w, err, 0)
 		return
 	}
-	evmap, err := hubclient.NewThingMessageMapFromSource(latestEvents)
-	if err != nil {
-		sess.WriteError(w, err, 0)
-		return
-	}
+	io := consumedthing.NewInteractionOutputFromValue(&tv, td)
 
-	tm := evmap[name]
 	// if no value was ever received then use n/a
-	if tm != nil {
-		latestValue = tm.DataAsText() + " " + unitSymbol
-		latestUpdated = tm.GetUpdated()
-	}
+	latestValue := io.Value.Text() + " " + io.Schema.UnitSymbol()
+	latestUpdated := io.GetUpdated()
+
 	// the input hidden hold the real source value
 	// this must match the list in RenderEditTile.gohtml
 	// FIXME: this is ridiculous htmx. Use JS to simplify it.

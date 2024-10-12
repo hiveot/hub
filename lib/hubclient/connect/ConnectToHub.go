@@ -38,7 +38,7 @@ const DefaultTimeout = time.Second * 3
 //	core optional core selection. Fallback is to auto determine based on URL.
 //	 password optional for a user login
 func ConnectToHub(fullURL string, clientID string, certDir string, password string) (
-	hc hubclient.IHubClient, err error) {
+	hc hubclient.IConsumerClient, err error) {
 
 	// 1. determine the actual address
 	if fullURL == "" {
@@ -81,7 +81,7 @@ func ConnectToHub(fullURL string, clientID string, certDir string, password stri
 // from file and connect to the server.
 //
 // keysDir is the directory with the {clientID}.key and {clientID}.token files.
-func ConnectWithTokenFile(hc hubclient.IHubClient, keysDir string) error {
+func ConnectWithTokenFile(hc hubclient.IConsumerClient, keysDir string) error {
 	var kp keys.IHiveKey
 
 	cid := hc.ClientID()
@@ -115,7 +115,7 @@ func ConnectWithTokenFile(hc hubclient.IHubClient, keysDir string) error {
 //   - fullURL of server to connect to.
 //   - clientID is the account/login ID of the client that will be connecting
 //   - caCert of server or nil to not verify server cert
-func NewHubClient(fullURL string, clientID string, caCert *x509.Certificate) (hc hubclient.IHubClient) {
+func NewHubClient(fullURL string, clientID string, caCert *x509.Certificate) (hc hubclient.IConsumerClient) {
 
 	parts, _ := url.Parse(fullURL)
 	clType := parts.Scheme

@@ -2,7 +2,7 @@ package certs_test
 
 import (
 	"crypto/x509"
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/logging"
@@ -35,7 +35,7 @@ func startService() (cl *certsclient.CertsClient, stopFunc func()) {
 	}
 
 	//--- connect the certs client as admin
-	hc2, _ := ts.AddConnectUser("admin1", authn.ClientRoleAdmin)
+	hc2, _ := ts.AddConnectUser("admin1", authz.ClientRoleAdmin)
 	certAdmin := certsclient.NewCertsClient(hc2)
 
 	return certAdmin, func() {

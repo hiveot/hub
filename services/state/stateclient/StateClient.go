@@ -12,7 +12,7 @@ type StateClient struct {
 	// dThingID digital twin service ID of the state management
 	dThingID string
 	// Connection to the hub
-	hc hubclient.IHubClient
+	hc hubclient.IConsumerClient
 }
 
 // Delete removes the record with the given key.
@@ -72,7 +72,7 @@ func (cl *StateClient) SetMultiple(kv map[string]string) error {
 //
 //	hc is the hub client connection to use.
 //	agentID is the instance name of the state agent. Use "" for default.
-func NewStateClient(hc hubclient.IHubClient) *StateClient {
+func NewStateClient(hc hubclient.IConsumerClient) *StateClient {
 	agentID := stateapi.AgentID
 	cl := StateClient{
 		hc:       hc,

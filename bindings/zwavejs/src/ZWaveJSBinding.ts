@@ -6,7 +6,7 @@ import {ZWAPI} from "./ZWAPI.js";
 import {parseController} from "./parseController";
 import {logVid} from "./logVid";
 import {getPropName} from "./getPropName";
-import * as vocab from "@hivelib/api/vocab/ht-vocab";
+import * as vocab from "@hivelib/api/vocab/vocab.js";
 import fs from "fs";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import {BindingConfig} from "./BindingConfig";

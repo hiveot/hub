@@ -2,8 +2,8 @@ package subprotocols
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
 	"log/slog"
 	"net/http"
@@ -172,7 +172,7 @@ func (b *SseScBinding) InvokeAction(
 		}
 	}
 
-	return digitwin.StatusFailed, nil,
+	return vocab.ProgressStatusFailed, nil,
 		fmt.Errorf("agent '%s' does not have a connection", agentID)
 }
 
@@ -215,7 +215,7 @@ func (b *SseScBinding) WriteProperty(
 		}
 	}
 
-	return false, digitwin.StatusFailed,
+	return false, vocab.ProgressStatusFailed,
 		fmt.Errorf("agent '%s' does not have a connection", agentID)
 }
 

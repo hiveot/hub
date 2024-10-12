@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -31,7 +30,7 @@ type SelfSignedCertsService struct {
 	caCertPool *x509.CertPool
 
 	// messaging client for receiving requests
-	hc hubclient.IHubClient
+	hc hubclient.IConsumerClient
 }
 
 // _createDeviceCert internal function to create a CA signed certificate for mutual authentication by IoT devices
@@ -201,7 +200,7 @@ func (svc *SelfSignedCertsService) CreateUserCert(
 // Start the service and listen for requests
 //
 //	hc is the connection to the hub with a service role. For testing it can be nil.
-func (svc *SelfSignedCertsService) Start(hc hubclient.IHubClient) (err error) {
+func (svc *SelfSignedCertsService) Start(hc hubclient.IConsumerClient) (err error) {
 	slog.Info("Starting certs service", "serviceID", hc.ClientID())
 	// for testing, hc can be nil
 	svc.hc = hc
@@ -210,7 +209,7 @@ func (svc *SelfSignedCertsService) Start(hc hubclient.IHubClient) (err error) {
 	err = authz.UserSetPermissions(svc.hc, authz.ThingPermissions{
 		AgentID: svc.hc.ClientID(),
 		ThingID: certsapi.CertsAdminThingID,
-		Allow:   []string{authn.ClientRoleAdmin},
+		Allow:   []authz.ClientRole{authz.ClientRoleAdmin},
 		Deny:    nil,
 	})
 

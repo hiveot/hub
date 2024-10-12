@@ -2,7 +2,7 @@
 
 import process from "node:process";
 import * as tslog from 'tslog';
-import {DeliveryProgress, DeliveryStatus} from './IHubClient';
+import {DeliveryProgress, DeliveryStatus} from './IAgentClient';
 import {ThingMessage} from "../things/ThingMessage";
 import {ConnectToHub} from "@hivelib/hubclient/ConnectToHub";
 import {EventTypeDeliveryUpdate, MessageTypeAction} from "@hivelib/api/vocab/ht-vocab";

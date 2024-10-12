@@ -28,6 +28,8 @@ func TestUpdateReadProperty(t *testing.T) {
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
 	err := svc.DirSvc.UpdateDTD(agent1ID, string(tdDoc1Json))
 
+	//
+
 	// agent provides a new property value
 	changed, err := dtwStore.UpdatePropertyValue(agent1ID, thing1ID, propName, propValue, "")
 	assert.NoError(t, err)
@@ -106,7 +108,10 @@ func TestPropertyUpdateFail(t *testing.T) {
 
 	//can't write a property that doesn't exist
 	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
-	err = dtwStore.WriteProperty(
-		dThingID, "unknownprop", 123, "", "", "user1")
+	err = dtwStore.WriteProperty(dThingID, digitwin.ThingValue{
+		Name:     "unknownprop",
+		Data:     123,
+		SenderID: "user1",
+	})
 	assert.NoError(t, err)
 }

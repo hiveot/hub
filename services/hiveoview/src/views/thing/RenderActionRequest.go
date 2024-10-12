@@ -37,7 +37,7 @@ type ActionRequestTemplateData struct {
 	InputValue *consumedthing.InteractionOutput
 
 	// the previous action request record
-	LastActionRecord *digitwin.InboxRecord
+	LastActionRecord *digitwin.ActionValue
 	// input value with previous action input (if any)
 	LastActionInput consumedthing.DataSchemaValue
 	// previous action timestamp (formatted)
@@ -50,10 +50,10 @@ type ActionRequestTemplateData struct {
 }
 
 // Return the action affordance
-func getActionAff(hc hubclient.IHubClient, thingID string, name string) (
+func getActionAff(hc hubclient.IConsumerClient, thingID string, name string) (
 	td *tdd.TD, actionAff *tdd.ActionAffordance, err error) {
 
-	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
+	tdJson, err := digitwin.DirectoryReadDTD(hc, thingID)
 	if err != nil {
 		return td, actionAff, err
 	}
@@ -75,7 +75,7 @@ func getActionAff(hc hubclient.IHubClient, thingID string, name string) (
 func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	name := chi.URLParam(r, "name")
-	var hc hubclient.IHubClient
+	var hc hubclient.IConsumerClient
 	//var lastAction *digitwin.InboxRecord
 
 	// Read the TD being displayed
@@ -115,9 +115,9 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 
 	// get last action request that was received
 	// reading a latest value is optional
-	lar, err := digitwin.InboxReadLatest(hc, name, thingID)
+	actionVal, err := digitwin.ValuesQueryAction(hc, name, thingID)
 	if err == nil {
-		data.LastActionRecord = &lar
+		data.LastActionRecord = &actionVal
 		//data.PrevValue = &lastActionRecord
 		updatedTime, _ := dateparse.ParseAny(data.LastActionRecord.Updated)
 		data.LastActionTime = updatedTime.Format(time.RFC1123)

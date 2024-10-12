@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
-	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/connect"
@@ -33,7 +32,7 @@ type LauncherService struct {
 	cmds []*exec.Cmd
 
 	// hub messaging client
-	hc hubclient.IHubClient
+	hc hubclient.IConsumerClient
 
 	// mutex to keep things safe
 	mux sync.Mutex
@@ -207,7 +206,7 @@ func (svc *LauncherService) Start() error {
 	err = authz.UserSetPermissions(svc.hc, authz.ThingPermissions{
 		AgentID: svc.hc.ClientID(),
 		ThingID: launcherapi.ManageServiceID,
-		Allow:   []string{authn.ClientRoleManager, authn.ClientRoleAdmin, authn.ClientRoleService},
+		Allow:   []authz.ClientRole{authz.ClientRoleManager, authz.ClientRoleAdmin, authz.ClientRoleService},
 		Deny:    nil,
 	})
 
@@ -279,7 +278,7 @@ func (svc *LauncherService) WatchPlugins() error {
 func NewLauncherService(
 	env plugin.AppEnvironment,
 	cfg config.LauncherConfig,
-	hc hubclient.IHubClient,
+	hc hubclient.IConsumerClient,
 ) *LauncherService {
 
 	ls := &LauncherService{

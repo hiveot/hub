@@ -64,7 +64,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 			} else if found && info.IsEvent {
 				value, changed := svc.GetValueChange(attrID, attr.Value, info, nodeTD)
 				if changed || force {
-					err = svc.hc.PubEvent(nodeTD.ID, attrID, value)
+					err = svc.hc.PubEvent(nodeTD.ID, attrID, value, "")
 				}
 			} else if !found || info.IsProp {
 				// first and unknown values are always changed
@@ -75,7 +75,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 			}
 		}
 		if len(propMap) > 0 {
-			err = svc.hc.UpdateProps(thingID, propMap)
+			err = svc.hc.PubProperties(thingID, propMap)
 		}
 	}
 	return err

@@ -63,7 +63,7 @@ func (d RenderTileTemplateData) GetValue(thingID string, name string) (iout *con
 	td := cs.GetThingDescription()
 	actionAff := td.GetAction(name)
 	if actionAff != nil && actionAff.Input != nil {
-		iout.Schema = *actionAff.Input
+		iout.Schema = actionAff.Input
 	}
 	return iout
 }

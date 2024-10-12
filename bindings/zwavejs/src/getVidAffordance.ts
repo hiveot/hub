@@ -1,6 +1,6 @@
 import type {ZWaveNode} from "zwave-js";
 import {CommandClasses, ValueID} from "@zwave-js/core";
-import * as vocab from "@hivelib/api/vocab/ht-vocab.js";
+import * as vocab from "@hivelib/api/vocab/vocab.js";
 
 
 // ValueID to TD event,action or property affordance type

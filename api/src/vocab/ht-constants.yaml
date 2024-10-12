@@ -22,6 +22,26 @@ Operations:
 
 
 
+# ProgressStatus
+ProgressStatus:
+  version: "0.1"
+  link: "github.com/hiveot/hub/api/vocab/ht-constants.yaml"
+  description: "Request progress status constants"
+  namespace: "ht"
+  vocab:
+    # action is pending delivery to the Thing
+    ProgressStatusPending: "pending"
+
+    # Request is delivered and waiting completion
+    ProgressStatusDelivered: "delivered"
+
+    # Request was completed, optionally with error
+    ProgressStatusCompleted: "completed"
+
+    # Request failed with error
+    ProgressStatusFailed: "failed"
+
+
 # MessageTypes is DEPRECATED. REPLACED BY FORMS
 MessageTypes:
   version: "0.1"

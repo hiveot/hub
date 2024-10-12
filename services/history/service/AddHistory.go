@@ -121,7 +121,7 @@ func (svc *AddHistory) AddProperties(msg *hubclient.ThingMessage) error {
 // These events must contain the digitwin thingID
 func (svc *AddHistory) AddEvent(msg *hubclient.ThingMessage) error {
 
-	if msg.Name == vocab.EventNameProperties {
+	if msg.MessageType == vocab.MessageTypeProperty {
 		return svc.AddProperties(msg)
 	}
 
@@ -167,11 +167,12 @@ func (svc *AddHistory) AddMessage(msg *hubclient.ThingMessage) error {
 		return svc.AddAction(msg)
 	}
 	if msg.MessageType == vocab.MessageTypeProperty {
-		return svc.AddAction(msg)
-	}
-	if msg.Name == vocab.EventNameProperties {
 		return svc.AddProperties(msg)
 	}
+	if msg.MessageType == vocab.MessageTypeEvent {
+		return svc.AddEvent(msg)
+	}
+	// anything else is added as an event
 	return svc.AddEvent(msg)
 }
 

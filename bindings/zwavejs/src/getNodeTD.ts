@@ -11,7 +11,7 @@ import {
 } from "zwave-js";
 import {CommandClasses, InterviewStage} from '@zwave-js/core';
 import {ActionAffordance, EventAffordance, PropertyAffordance, TD} from "@hivelib/things/TD";
-import * as vocab from "@hivelib/api/vocab/ht-vocab";
+import * as vocab from "@hivelib/api/vocab/vocab";
 import type {ZWAPI} from "./ZWAPI";
 import {logVid} from "./logVid";
 import {getPropName} from "./getPropName";
@@ -25,7 +25,7 @@ import {
     WoTDataTypeNone,
     WoTDataTypeNumber,
     WoTDataTypeString
-} from "@hivelib/api/vocab/wot-vocab";
+} from "@hivelib/api/vocab/vocab";
 
 
 // Add the ZWave value data to the TD as an action

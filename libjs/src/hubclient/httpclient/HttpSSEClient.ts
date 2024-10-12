@@ -1,44 +1,49 @@
 import {TD} from '../../things/TD.js';
 import {
     ConnectionStatus,
-    DeliveryStatus,
-    IHubClient,
+    IAgentClient,
     MessageHandler
-} from "../IHubClient.js";
+} from "../IAgentClient.js";
 import type {IHiveKey} from "@keys/IHiveKey";
 import * as tslog from 'tslog';
 import {
-     EventNameDeliveryUpdate,
-    EventNameProperties,
-    EventNameTD, MessageTypeAction, MessageTypeEvent, MessageTypeProperty,
-} from "@hivelib/api/vocab/ht-vocab";
+     MessageTypeDeliveryUpdate,
+    MessageTypeTD,  MessageTypeAction, MessageTypeEvent, MessageTypeProperty,
+} from "@hivelib/api/vocab/vocab.js";
 import * as http2 from "node:http2";
 import {connectSSE} from "@hivelib/hubclient/httpclient/connectSSE";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as https from "node:https";
+import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
 
 
 // Form paths that apply to all TDs at the top level
 // SYNC with HttpSSEClient.go
-const GetReadAllEventsPath= "/digitwin/events/{thingID}"
-const PostSubscribeEventsPath   = "/digitwin/subscribe/{thingID}/{name}"
-const PostUnsubscribeEventsPath = "/digitwin/unsubscribe/{thingID}/{name}"
-const ConnectSSEPath      = "/sse"
+// These are intended for use by agents - use forms instead
+//
+// FIXME: THESE WILL BE REMOVED WHEN SWITCHING TO FORMS
+//
+const ConnectSSEPath      = "/ssesc"
+// const PostSubscribeEventPath   = "/ssesc/digitwin/subscribe/{thingID}/{name}"
+// const PostUnsubscribeEventPath = "/ssesc/digitwin/unsubscribe/{thingID}/{name}"
 
 // paths for accessing TDD directory
-const GetThingPath= "/digitwin/directory/{thingID}"
-const GetThingsPath= "/digitwin/directory" // query param offset=, limit=
-const PostThingPath    = "/agent/tdd/{thingID}"
+// const GetThingPath= "/digitwin/directory/{thingID}"
+// const GetAllThingsPath= "/digitwin/directory" // query param offset=, limit=
+// const PostThingPath    = "/agent/tdd/{thingID}"
 
 // paths for accessing actions
 const PostInvokeActionPath   = "/digitwin/actions/{thingID}/{name}"
 
 // paths for accessing events
-const PostPublishEventPath    = "/agent/event/{thingID}/{name}"
+const PostAgentPublishEventPath    = "/agent/event/{thingID}/{name}"
+const PostAgentPublishProgressPath  = "/agent/progress"
+const PostAgentUpdatePropertyPath   = "/agent/property/{thingID}/{name}"
+const PostAgentUpdateMultiplePropertiesPath = "/agent/properties/{thingID}"
+const PostAgentUpdateTDDPath                = "/agent/tdd/{thingID}"
 
 // paths for accessing properties
-const GetReadAllPropertiesPath= "/digitwin/properties/{thingID}"
-const PostWritePropertyPath = "/digitwin/properties/{thingID}/{name}"
+// const PostWritePropertyPath = "/digitwin/properties/{thingID}/{name}"
 
 // authn service - used in authn
 const PostLoginPath   = "/authn/login"
@@ -50,7 +55,7 @@ const hclog = new tslog.Logger()
 
 // HubClient implements the javascript client for connecting to the hub
 // using HTTPS and SSE for the return channel.
-export class HttpSSEClient implements IHubClient {
+export class HttpSSEClient implements IAgentClient {
     _clientID: string;
     _baseURL: string;
     _caCertPem: string;
@@ -209,7 +214,7 @@ export class HttpSSEClient implements IHubClient {
             if (this.messageHandler) {
                 let stat = this.messageHandler(msg)
                 if (msg.messageType !== MessageTypeEvent && stat.progress && stat.messageID) {
-                    this.sendDeliveryUpdate(stat)
+                    this.pubProgressUpdate(stat)
                 }
             }
         } catch (e) {
@@ -217,7 +222,7 @@ export class HttpSSEClient implements IHubClient {
             hclog.warn(errText)
             let stat = new DeliveryStatus()
             stat.failed(msg, errText)
-            this.sendDeliveryUpdate(stat)
+            this.pubProgressUpdate(stat)
         }
     }
 
@@ -309,7 +314,7 @@ export class HttpSSEClient implements IHubClient {
         })
     }
 
-    // PubAction publishes a request for action from a Thing.
+    // invokeAction publishes a request for action from a Thing.
     //
     //	@param agentID: of the device or service that handles the action.
     //	@param thingID: is the destination thingID to whom the action applies.
@@ -317,7 +322,7 @@ export class HttpSSEClient implements IHubClient {
     //	payload is the optional action arguments to be serialized and transported
     //
     // This returns the serialized reply data or null in case of no reply data
-    async pubAction(thingID: string, name: string, payload: any): Promise<DeliveryStatus> {
+    async invokeAction(thingID: string, name: string, payload: any): Promise<DeliveryStatus> {
         hclog.info("pubAction. thingID:", thingID, ", name:", name)
 
         let actionPath = PostInvokeActionPath.replace("{thingID}", thingID)
@@ -328,18 +333,6 @@ export class HttpSSEClient implements IHubClient {
         return stat
     }
 
-    // pubProperty publishes a request for changing a Thing's property.
-    // The configuration is a writable property as defined in the Thing's TD.
-    async pubProperty(thingID: string, name: string, propValue: any): Promise<DeliveryStatus> {
-        hclog.info("pubProperty. thingID:", thingID, ", name:", name)
-
-        let propPath = PostWritePropertyPath.replace("{thingID}", thingID)
-        propPath = propPath.replace("{name}", name)
-
-        let resp = await this.pubMessage("PUT",propPath, propValue)
-        let stat: DeliveryStatus = JSON.parse(resp)
-        return stat
-    }
 
     // PubEvent publishes a Thing event. The payload is an event value as per TD document.
     // Intended for devices and services to notify of changes to the Things they are the agent for.
@@ -355,27 +348,37 @@ export class HttpSSEClient implements IHubClient {
     //	@param thingID: of the Thing whose event is published
     //	@param eventName: is one of the predefined events as described in the Thing TD
     //	@param payload: is the serialized event value, or nil if the event has no value
-    async pubEvent(thingID: string, name: string, payload: any): Promise<DeliveryStatus> {
+    pubEvent(thingID: string, name: string, payload: any) {
         hclog.info("pubEvent. thingID:", thingID, ", name:", name)
 
-        let eventPath = PostPublishEventPath.replace("{thingID}", thingID)
+        let eventPath = PostAgentPublishEventPath.replace("{thingID}", thingID)
         eventPath = eventPath.replace("{name}", name)
 
-        let resp = await this.pubMessage("POST",eventPath, payload)
-        let stat: DeliveryStatus = JSON.parse(resp)
-        return stat
+        this.pubMessage("POST",eventPath, payload)
     }
 
-    // Publish a Thing properties event
-    async pubProps(thingID: string, props: { [key: string]: any }): Promise<DeliveryStatus> {
-        return this.pubEvent(thingID, EventNameProperties, props);
+
+    // pubProgressUpdate sends a delivery status update back to the sender of the action
+    // @param msg: action message that was received
+    // @param stat: status to return
+    async pubProgressUpdate(stat: DeliveryStatus) {
+        let resp = await this.pubMessage("POST",PostAgentPublishProgressPath, stat)
+    }
+
+
+    // Publish thing properties update
+    async pubProperties(thingID: string, props: { [key: string]: any }) {
+        let postPath = PostAgentUpdateMultiplePropertiesPath.replace("{thingID}", thingID)
+
+        this.pubMessage("POST",postPath, props)
     }
 
     // PubTD publishes an event with a Thing TD document.
     // This serializes the TD into JSON as per WoT specification
     async pubTD(td: TD) {
         let tdJSON = JSON.stringify(td, null, ' ');
-        return this.pubEvent(td.id, EventNameTD, tdJSON);
+        let postPath = PostAgentUpdateTDDPath.replace("{thingID}", td.id)
+        this.pubMessage("POST",postPath, tdJSON)
     }
 
 
@@ -383,7 +386,7 @@ export class HttpSSEClient implements IHubClient {
     // Intended for users and services to invoke RPC to services.
     async rpc(dThingID: string, methodName: string, args: any): Promise<any> {
 
-        let stat = await this.pubAction(dThingID, methodName, args);
+        let stat = await this.invokeAction(dThingID, methodName, args);
         if (stat.error != "") {
             throw stat.error
         }
@@ -419,16 +422,6 @@ export class HttpSSEClient implements IHubClient {
         }
     }
 
-    // send a delivery status update back to the sender of the action
-    // @param msg: action message that was received
-    // @param stat: status to return
-    sendDeliveryUpdate(stat: DeliveryStatus): void {
-        // TODO: use the digitwin inbox ID
-        // thingID is ignored as the messageID is used to link to the sender
-        this.pubEvent("dtw:digitwin:inbox", EventNameDeliveryUpdate, stat)
-    }
-
-
     setConnectHandler(handler: (status: ConnectionStatus) => void): void {
         this.connectHandler = handler
     }
@@ -454,31 +447,43 @@ export class HttpSSEClient implements IHubClient {
     //
     // @param dThingID: optional filter of the thing whose events are published; "" for all things
     // @param name: optional filter on the event name; "" for all event names.
-    async subscribe(dThingID: string, name: string): Promise<void> {
+    // async subscribe(dThingID: string, name: string): Promise<void> {
+    //
+    //     if (!dThingID) {
+    //         dThingID = "+"
+    //     }
+    //     if (!name) {
+    //         name = "+"
+    //     }
+    //     let subscribePath = PostSubscribeEventPath.replace("{thingID}", dThingID)
+    //     subscribePath = subscribePath.replace("{name}", name)
+    //     await this.pubMessage("POST", subscribePath, "")
+    //
+    // }
+    //
+    // async unsubscribe(dThingID: string, name: string) {
+    //
+    //     if (!dThingID) {
+    //         dThingID = "+"
+    //     }
+    //     if (!name) {
+    //         name = "+"
+    //     }
+    //     let subscribePath = PostUnsubscribeEventPath.replace("{thingID}", dThingID)
+    //     subscribePath = subscribePath.replace("{name}", name)
+    //     await this.pubMessage("POST", subscribePath, "")
+    // }
 
-        if (!dThingID) {
-            dThingID = "+"
-        }
-        if (!name) {
-            name = "+"
-        }
-        let subscribePath = PostSubscribeEventsPath.replace("{thingID}", dThingID)
-        subscribePath = subscribePath.replace("{name}", name)
-        await this.pubMessage("POST", subscribePath, "")
-
-    }
-
-    async unsubscribe(dThingID: string, name: string) {
-
-        if (!dThingID) {
-            dThingID = "+"
-        }
-        if (!name) {
-            name = "+"
-        }
-        let subscribePath = PostUnsubscribeEventsPath.replace("{thingID}", dThingID)
-        subscribePath = subscribePath.replace("{name}", name)
-        await this.pubMessage("POST", subscribePath, "")
-    }
-
+    // writeProperty publishes a request for changing a Thing's property.
+    // The configuration is a writable property as defined in the Thing's TD.
+    // async writeProperty(thingID: string, name: string, propValue: any): Promise<DeliveryStatus> {
+    //     hclog.info("pubProperty. thingID:", thingID, ", name:", name)
+    //
+    //     let propPath = PostWritePropertyPath.replace("{thingID}", thingID)
+    //     propPath = propPath.replace("{name}", name)
+    //
+    //     let resp = await this.pubMessage("POST",propPath, propValue)
+    //     let stat: DeliveryStatus = JSON.parse(resp)
+    //     return stat
+    // }
 }

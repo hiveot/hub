@@ -2,37 +2,49 @@ package consumedthing
 
 import (
 	"github.com/araddon/dateparse"
+	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"time"
 )
 
+type InteractionOutputMap map[string]*InteractionOutput
+
 // InteractionOutput to expose the data returned from WoT Interactions to applications.
 // Use NewInteractionOutput to initialize
 type InteractionOutput struct {
 	// ID of the Thing whose output is exposed
-	ThingID string
+	ThingID string `json:"thing-id,omitempty"`
 	// The property, event or action name
-	Name string
+	Name string `json:"name,omitempty"`
 	// Title with the human name provided by the interaction affordance
-	Title string
+	Title string `json:"title,omitempty"`
+
 	// Schema describing the data from property, event or action affordance
-	Schema tdd.DataSchema
-	//Form *tdd.Form
+	Schema *tdd.DataSchema `json:"schema"`
+
 	// decoded data in its native format as described by the schema
 	// eg string, int, array, object
-	Value DataSchemaValue
-	// The interaction progress
-	Progress hubclient.DeliveryStatus
+	Value DataSchemaValue `json:"value"`
+
 	// RFC822 timestamp this was last updated.
 	// Use GetUpdated(format) to format.
-	Updated string
+	Updated string `json:"updated,omitempty"`
+
+	//--- non-WoT fields ---
+	// Type of output: MessageTypeEvent/Action/Property/TD
+	MessageType string `json:"messageType"`
+
+	// ID of the interaction flow of this output
+	MessageID string `json:"message-id,omitempty"`
+
+	// The interaction progress
+	Progress hubclient.DeliveryStatus `json:"progress"`
+
 	// senderID of last update
 	SenderID string
-
-	// tm contains the message with the value received for this output
-	tm hubclient.ThingMessage
 }
 
 // GetUpdated is a helper function to return the formatted time the data was last updated.
@@ -62,6 +74,47 @@ func (iout *InteractionOutput) GetUpdated(format ...string) (updated string) {
 	return updated
 }
 
+// UpdateSchemaFromTD updates the dataschema fields in this interaction output
+func (io *InteractionOutput) UpdateSchemaFromTD(td *tdd.TD) (found bool) {
+	// if name is that of an event then use it
+	eventAff, found := td.Events[io.Name]
+	if found {
+		io.Schema = eventAff.Data
+		io.Title = eventAff.Title
+		if len(eventAff.Forms) > 0 {
+			//io.Form = &eventAff.Forms[0]
+		}
+		return true
+	}
+	// if name is that of a property then use it
+	propAff, found := td.Properties[io.Name]
+	if found {
+		io.Schema = &propAff.DataSchema
+		io.Title = propAff.Title
+		if len(propAff.Forms) > 0 {
+			//io.Form = &propAff.Forms[0]
+		}
+		return true
+	}
+	// last, if name is that of an action then use its output schema
+	actionAff, found := td.Actions[io.Name]
+	if found {
+		if actionAff.Output != nil {
+			io.Schema = actionAff.Output
+		} else {
+			io.Schema = nil
+		}
+		io.Title = actionAff.Title
+		if len(actionAff.Forms) > 0 {
+			//io.Form = &actionAff.Forms[0]
+		}
+		return true
+	}
+	slog.Warn("UpdateSchemaFromTD: Name is not a known event, property or action",
+		"name", io.Name, "thingID", io.ThingID)
+	return false
+}
+
 // NewInteractionOutputFromTM creates a new immutable interaction output from
 // a thing message.
 //
@@ -70,45 +123,131 @@ func (iout *InteractionOutput) GetUpdated(format ...string) (updated string) {
 //
 //	tm is the received message with the data for this output
 //	td Thing Description document with schemas for the value. Use nil if schema is unknown.
-func NewInteractionOutputFromTM(tm *hubclient.ThingMessage, td *tdd.TD) *InteractionOutput {
+//func NewInteractionOutputFromTM(tm *hubclient.ThingMessage, td *tdd.TD) *InteractionOutput {
+//	io := &InteractionOutput{
+//		ThingID:  tm.ThingID,
+//		Name:     tm.Name,
+//		SenderID: tm.SenderID,
+//		Updated:  tm.Created,
+//		Value:    NewDataSchemaValue(tm.Data),
+//	}
+//	if td == nil {
+//		return io
+//	}
+//	// if name is that of an event then use it
+//	eventAff, found := td.Events[tm.Name]
+//	if found {
+//		io.Schema = eventAff.Data
+//		io.Title = eventAff.Title
+//		if len(eventAff.Forms) > 0 {
+//			//io.Form = &eventAff.Forms[0]
+//		}
+//		return io
+//	}
+//	// if name is that of a property then use it
+//	propAff, found := td.Properties[tm.Name]
+//	if found {
+//		io.Schema = &propAff.DataSchema
+//		io.Title = propAff.Title
+//		if len(propAff.Forms) > 0 {
+//			//io.Form = &propAff.Forms[0]
+//		}
+//		return io
+//	}
+//	// last, if name is that of an action then use its output schema
+//	actionAff, found := td.Actions[tm.Name]
+//	if found {
+//		if actionAff.Output != nil {
+//			io.Schema = actionAff.Output
+//		} else if actionAff.Input != nil {
+//			// Fallback to the input schema if no output is registed
+//			io.Schema = actionAff.Input
+//		}
+//		io.Title = actionAff.Title
+//		if len(actionAff.Forms) > 0 {
+//			//io.Form = &actionAff.Forms[0]
+//		}
+//		return io
+//	}
+//
+//	slog.Warn("message name not found in TD", "thingID", td.ID, "name", tm.Name, "messageType", tm.MessageType)
+//	return io
+//}
+
+// NewInteractionOutputFromValueList creates a new immutable interaction map from
+// a thing value list.
+//
+// This determines the dataschema by looking for the schema in the events, properties and
+// actions (output) section of the TD.
+//
+//	values is the property or event value map
+//	td Thing Description document with schemas for the value. Use nil if schema is unknown.
+func NewInteractionOutputFromValueList(values []digitwin.ThingValue, td *tdd.TD) InteractionOutputMap {
+	ioMap := make(map[string]*InteractionOutput)
+	for _, tv := range values {
+		io := NewInteractionOutputFromValue(&tv, td)
+		// property values only contain completed changes.
+		io.Progress.Progress = vocab.ProgressStatusCompleted
+		io.UpdateSchemaFromTD(td)
+		ioMap[tv.Name] = io
+
+	}
+	return ioMap
+}
+
+// NewInteractionOutputFromValue creates a new immutable interaction output from
+// a ThingValue and optionally its associated TD.
+//
+// If no td is available, this value conversion will still be usable but it won't
+// contain any schema information.
+//
+//	tv contains the thingValue data
+//	td is the associated thing description
+func NewInteractionOutputFromValue(tv *digitwin.ThingValue, td *tdd.TD) *InteractionOutput {
 	io := &InteractionOutput{
-		ThingID:  tm.ThingID,
-		Name:     tm.Name,
-		SenderID: tm.SenderID,
-		Updated:  tm.Created,
-		Value:    NewDataSchemaValue(tm.Data),
+		//ThingID:  td.ID,
+		MessageID: tv.MessageID,
+		Name:      tv.Name,
+		SenderID:  tv.SenderID,
+		Updated:   tv.Updated,
+		Value:     NewDataSchemaValue(tv.Data),
 	}
 	if td == nil {
 		return io
 	}
+	io.ThingID = td.ID
+
 	// if name is that of an event then use it
-	eventAff, found := td.Events[tm.Name]
+	eventAff, found := td.Events[tv.Name]
 	if found {
 		io.Schema = eventAff.Data
 		io.Title = eventAff.Title
+		io.MessageType = vocab.MessageTypeEvent
 		if len(eventAff.Forms) > 0 {
 			//io.Form = &eventAff.Forms[0]
 		}
 		return io
 	}
 	// if name is that of a property then use it
-	propAff, found := td.Properties[tm.Name]
+	propAff, found := td.Properties[tv.Name]
 	if found {
-		io.Schema = propAff.DataSchema
+		io.Schema = &propAff.DataSchema
 		io.Title = propAff.Title
+		io.MessageType = vocab.MessageTypeProperty
 		if len(propAff.Forms) > 0 {
 			//io.Form = &propAff.Forms[0]
 		}
 		return io
 	}
 	// last, if name is that of an action then use its output schema
-	actionAff, found := td.Actions[tm.Name]
+	actionAff, found := td.Actions[tv.Name]
 	if found {
+		io.MessageType = vocab.MessageTypeAction
 		if actionAff.Output != nil {
-			io.Schema = *actionAff.Output
+			io.Schema = actionAff.Output
 		} else if actionAff.Input != nil {
 			// Fallback to the input schema if no output is registed
-			io.Schema = *actionAff.Input
+			io.Schema = actionAff.Input
 		}
 		io.Title = actionAff.Title
 		if len(actionAff.Forms) > 0 {
@@ -117,7 +256,7 @@ func NewInteractionOutputFromTM(tm *hubclient.ThingMessage, td *tdd.TD) *Interac
 		return io
 	}
 
-	slog.Warn("message name not found in TD", "thingID", td.ID, "name", tm.Name, "messageType", tm.MessageType)
+	slog.Warn("value name not found in TD", "thingID", td.ID, "name", tv.Name)
 	return io
 }
 
@@ -141,7 +280,7 @@ func NewInteractionOutput(thingID string, key string, schema *tdd.DataSchema, ra
 		ThingID: thingID,
 		Name:    key,
 		Updated: created,
-		Schema:  *schema,
+		Schema:  schema,
 		Value:   NewDataSchemaValue(raw),
 	}
 	return io

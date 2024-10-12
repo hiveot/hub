@@ -1,7 +1,6 @@
 package authz
 
 import (
-	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/wot/tdd"
@@ -136,20 +135,20 @@ var managerPermissions = []RolePermission{
 var adminPermissions = append(managerPermissions)
 
 // DefaultRolePermissions contains the default pub/sub permissions for each user role
-var DefaultRolePermissions = map[string][]RolePermission{
-	authn.ClientRoleNone:     nil,
-	authn.ClientRoleAgent:    agentPermissions,
-	authn.ClientRoleService:  servicePermissions,
-	authn.ClientRoleViewer:   viewerPermissions,
-	authn.ClientRoleOperator: operatorPermissions,
-	authn.ClientRoleManager:  managerPermissions,
-	authn.ClientRoleAdmin:    adminPermissions,
+var DefaultRolePermissions = map[authz.ClientRole][]RolePermission{
+	authz.ClientRoleNone:     nil,
+	authz.ClientRoleAgent:    agentPermissions,
+	authz.ClientRoleService:  servicePermissions,
+	authz.ClientRoleViewer:   viewerPermissions,
+	authz.ClientRoleOperator: operatorPermissions,
+	authz.ClientRoleManager:  managerPermissions,
+	authz.ClientRoleAdmin:    adminPermissions,
 }
 
 // AuthzConfig holds the authorization permissions for client roles
 type AuthzConfig struct {
 	// map of role to permissions of that role
-	RolePermissions map[string][]RolePermission `yaml:"RolePermissions"`
+	RolePermissions map[authz.ClientRole][]RolePermission `yaml:"RolePermissions"`
 
 	// map of service dThingID  to the allow/deny roles that can invoke it
 	ThingPermissions map[string]authz.ThingPermissions `yaml:"ServicePermissions"`

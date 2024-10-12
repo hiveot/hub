@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const jsFile = "./api/js/vocab/ht-vocab.js"
+const jsFile = "./api/js/vocab/vocab.js"
 
 // GenVocabJS generates the vocabulary constants in javascript.
 func GenVocabJS(sourceDir string) error {

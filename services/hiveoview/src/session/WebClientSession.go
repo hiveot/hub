@@ -57,7 +57,7 @@ type WebClientSession struct {
 	lastError    error
 
 	// The associated hub client for pub/sub
-	hc hubclient.IHubClient
+	hc hubclient.IConsumerClient
 	// session mutex for updating sse and activity
 	mux sync.RWMutex
 
@@ -133,7 +133,7 @@ func (wcs *WebClientSession) GetClientData() *ClientDataModel {
 }
 
 // GetHubClient returns the hub client connection for use in pub/sub
-func (wcs *WebClientSession) GetHubClient() hubclient.IHubClient {
+func (wcs *WebClientSession) GetHubClient() hubclient.IConsumerClient {
 	return wcs.hc
 }
 
@@ -223,14 +223,14 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		slog.String("name", msg.Name),
 		slog.Any("data", msg.Data),
 		slog.String("messageID", msg.MessageID))
-	if msg.Name == vocab.EventNameTD {
+	if msg.MessageType == vocab.MessageTypeTD {
 		// Publish sse event indicating the Thing TD has changed.
 		// The UI that displays this event can use this as a trigger to reload the
 		// fragment that displays this TD:
 		//    hx-trigger="sse:{{.Thing.ThingID}}"
 		thingAddr := msg.ThingID
 		wcs.SendSSE(thingAddr, "")
-	} else if msg.Name == vocab.EventNameProperties {
+	} else if msg.MessageType == vocab.MessageTypeProperty {
 		// Publish a sse event for each of the properties
 		// The UI that displays this event can use this as a trigger to load the
 		// property value:
@@ -245,7 +245,7 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 				wcs.SendSSE(thingAddr, msg.GetUpdated())
 			}
 		}
-	} else if msg.Name == vocab.EventNameDeliveryUpdate {
+	} else if msg.MessageType == vocab.MessageTypeDeliveryUpdate {
 		// report unhandled delivery updates
 		// for now just pass it to the notification toaster
 		stat := hubclient.DeliveryStatus{}
@@ -255,7 +255,7 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		//  is the same (status changes from applied to delivered)
 		if stat.Error != "" {
 			wcs.SendNotify(NotifyError, stat.Error)
-		} else if stat.Progress == hubclient.DeliveryCompleted {
+		} else if stat.Progress == vocab.ProgressStatusCompleted {
 			wcs.SendNotify(NotifySuccess, "Action successful")
 		} else {
 			wcs.SendNotify(NotifyWarning, "Action delivery: "+stat.Progress)
@@ -295,7 +295,7 @@ func (wcs *WebClientSession) RemoveSSEClient(c chan SSEEvent) {
 }
 
 // ReplaceHubClient replaces this session's hub client
-func (wcs *WebClientSession) ReplaceHubClient(newHC hubclient.IHubClient) {
+func (wcs *WebClientSession) ReplaceHubClient(newHC hubclient.IConsumerClient) {
 	// ensure the old client is disconnected
 	if wcs.hc != nil {
 		wcs.hc.Disconnect()
@@ -394,7 +394,7 @@ func (wcs *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffer
 //
 // note that expiry is a placeholder for now used to refresh auth token.
 // it should be obtained from the login authentication/refresh.
-func NewClientSession(sessionID string, hc hubclient.IHubClient, remoteAddr string) *WebClientSession {
+func NewClientSession(sessionID string, hc hubclient.IConsumerClient, remoteAddr string) *WebClientSession {
 	cs := WebClientSession{
 		sessionID:    sessionID,
 		remoteAddr:   remoteAddr,

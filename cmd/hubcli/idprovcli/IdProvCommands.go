@@ -13,7 +13,7 @@ import (
 
 // ProvisionPreApproveCommand
 // prov preapprove  <deviceID> <pubKey> [<mac>]
-func ProvisionPreApproveCommand(hc *hubclient.IHubClient) *cli.Command {
+func ProvisionPreApproveCommand(hc *hubclient.IConsumerClient) *cli.Command {
 	return &cli.Command{
 		Name:      "idppreapprove",
 		Usage:     "Preapprove a device for automated provisioning",
@@ -35,7 +35,7 @@ func ProvisionPreApproveCommand(hc *hubclient.IHubClient) *cli.Command {
 
 // ProvisionApproveRequestCommand
 // prov approve <deviceID>
-func ProvisionApproveRequestCommand(hc *hubclient.IHubClient) *cli.Command {
+func ProvisionApproveRequestCommand(hc *hubclient.IConsumerClient) *cli.Command {
 	return &cli.Command{
 		Name:      "idpapprove",
 		Usage:     "Approve a pending provisioning request",
@@ -52,7 +52,7 @@ func ProvisionApproveRequestCommand(hc *hubclient.IHubClient) *cli.Command {
 	}
 }
 
-func ProvisionListCommand(hc *hubclient.IHubClient) *cli.Command {
+func ProvisionListCommand(hc *hubclient.IConsumerClient) *cli.Command {
 	return &cli.Command{
 		Name:     "idplist",
 		Usage:    "List provisioning requests",
@@ -64,7 +64,7 @@ func ProvisionListCommand(hc *hubclient.IHubClient) *cli.Command {
 	}
 }
 
-func ProvisionRequestCommand(hc *hubclient.IHubClient) *cli.Command {
+func ProvisionRequestCommand(hc *hubclient.IConsumerClient) *cli.Command {
 	return &cli.Command{
 		Name:      "idpsubmit",
 		Usage:     "Submit a provisioning request",
@@ -91,7 +91,7 @@ func ProvisionRequestCommand(hc *hubclient.IHubClient) *cli.Command {
 //
 //	deviceID is the ID of the device to pre-approve
 //	pubKey device's public key
-func HandlePreApprove(hc hubclient.IHubClient, deviceID string, pubKey string, mac string) error {
+func HandlePreApprove(hc hubclient.IConsumerClient, deviceID string, pubKey string, mac string) error {
 	cl := idprovclient.NewIdProvManageClient(hc)
 	approvals := []idprovapi.PreApprovedClient{{
 		ClientID:   deviceID,
@@ -107,14 +107,14 @@ func HandlePreApprove(hc hubclient.IHubClient, deviceID string, pubKey string, m
 // HandleApproveRequest
 //
 //	deviceID is the ID of the device to approve
-func HandleApproveRequest(hc hubclient.IHubClient, deviceID string) error {
+func HandleApproveRequest(hc hubclient.IConsumerClient, deviceID string) error {
 	cl := idprovclient.NewIdProvManageClient(hc)
 	err := cl.ApproveRequest(deviceID, authn.ClientTypeAgent)
 
 	return err
 }
 
-func HandleListRequests(hc hubclient.IHubClient) error {
+func HandleListRequests(hc hubclient.IConsumerClient) error {
 	cl := idprovclient.NewIdProvManageClient(hc)
 	provStatus, err := cl.GetRequests(true, false, false)
 	if err != nil {
@@ -152,7 +152,7 @@ func HandleListRequests(hc hubclient.IHubClient) error {
 //
 //	deviceID is the ID of the device requesting a token
 //	pubKey is the public key to use, or use \"" to accept device offered key
-func HandleSubmitRequest(hc hubclient.IHubClient, deviceID string, pubKey string, mac string) error {
+func HandleSubmitRequest(hc hubclient.IConsumerClient, deviceID string, pubKey string, mac string) error {
 	cl := idprovclient.NewIdProvManageClient(hc)
 	status, token, err := cl.SubmitRequest(deviceID, pubKey, mac)
 	_ = status

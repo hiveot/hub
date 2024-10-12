@@ -12,7 +12,7 @@ import (
 //
 //	svc is the service whose capabilities to expose
 //	hc is the hub client connected to the server protocol
-func StartCertsAgent(svc *SelfSignedCertsService, hc hubclient.IHubClient) *transports.AgentHandler {
+func StartCertsAgent(svc *SelfSignedCertsService, hc hubclient.IConsumerClient) *transports.AgentHandler {
 
 	methods := map[string]interface{}{
 		certsapi.CreateDeviceCertMethod:  svc.CreateDeviceCert,

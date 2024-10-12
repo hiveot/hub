@@ -3,7 +3,7 @@ package runtime_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -33,11 +33,11 @@ func TestAddRemoveTD(t *testing.T) {
 	defer r.Stop()
 	ag, _ := ts.AddConnectAgent(agentID)
 	ag.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
-		stat.Progress = hubclient.DeliveryCompleted
+		stat.Progress = vocab.ProgressStatusCompleted
 		return
 	})
 	defer ag.Disconnect()
-	cl, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	cl, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
 	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		// expect 2 events, updated and removed
 		evCount.Add(1)
@@ -69,7 +69,7 @@ func TestAddRemoveTD(t *testing.T) {
 	// after removal of the TD, getTD should return an error but delivery is successful
 	stat = cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadDTDMethod, string(args4JSON), "")
 	require.NotEmpty(t, stat.Error)
-	require.Equal(t, hubclient.DeliveryCompleted, stat.Progress)
+	require.Equal(t, vocab.ProgressStatusCompleted, stat.Progress)
 
 	// expect 2 events to be received
 	require.Equal(t, int32(2), evCount.Load())
@@ -87,7 +87,7 @@ func TestReadTDs(t *testing.T) {
 	defer r.Stop()
 	ag, _ := ts.AddConnectAgent(agentID)
 	defer ag.Disconnect()
-	cl, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	cl, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
 	defer cl.Disconnect()
 
 	// add a whole bunch of things
@@ -125,7 +125,7 @@ func TestReadTDsRest(t *testing.T) {
 	defer r.Stop()
 	ag, _ := ts.AddConnectAgent(agentID)
 	defer ag.Disconnect()
-	cl, token := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	cl, token := ts.AddConnectUser(userID, authz.ClientRoleManager)
 	defer cl.Disconnect()
 
 	// add a whole bunch of things
@@ -164,7 +164,7 @@ func TestTDEvent(t *testing.T) {
 	defer r.Stop()
 	ag, _ := ts.AddConnectAgent(agentID)
 	defer ag.Disconnect()
-	cl, token := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	cl, token := ts.AddConnectUser(userID, authz.ClientRoleManager)
 	_ = token
 	defer cl.Disconnect()
 

@@ -1,6 +1,4 @@
-{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/tile.RenderSelectSourcesTemplateData*/ -}}
-
-{{/*Show a list of agents containing things, containing events to select from*/}}
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/tile.RenderSelectSourcesTemplateData*/}}
 <h-modal show showClose style="z-index:99">
 	<article>
 		<header class="h-row-centered" style="height: 60px">
@@ -42,8 +40,8 @@
                     {{range $k,$v := .Events}}
                     {{- /*gotype: github.com/hiveot/hub/wot/tdd.EventAffordance*/ -}}
 										<li>
-											{{/*Get the html of the source to add to the list of sources*/}}
 											<div>
+                        {{/*Get the html of the source to add to the list of sources*/}}
 												<a href="#"
 											     hx-swap="beforeend scroll:bottom"
 											     hx-trigger="click"

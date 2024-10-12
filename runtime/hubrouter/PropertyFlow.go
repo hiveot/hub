@@ -3,10 +3,11 @@ package hubrouter
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/runtime/digitwin"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/teris-io/shortid"
 	"log/slog"
+	"time"
 )
 
 // HandleUpdatePropertyFlow agent updates the last known thing property value and
@@ -40,13 +41,21 @@ func (svc *HubRouter) HandleUpdatePropertyFlow(
 	return err
 }
 
-// HandleWritePropertyFlow consumer requests to write a new value to a property
+// HandleWritePropertyFlow A consumer requests to write a new value to a property.
+// After authorization, the request is forwarded to the Thing and a progress event
+// is sent with the progress update of the request.
+//
+//	write digitwin -> router -> write thing
+//	                         -> progress event
+//
+// event is sent with the progress update.
 // if name is empty then newValue contains a map of properties
 func (svc *HubRouter) HandleWritePropertyFlow(
 	consumerID string, dThingID string, name string, newValue any) (
 	status string, messageID string, err error) {
 
 	var found bool
+	//var statusInfo string
 
 	slog.Info("UpdatePropertyValue",
 		slog.String("consumerID", consumerID),
@@ -56,19 +65,33 @@ func (svc *HubRouter) HandleWritePropertyFlow(
 	)
 	// assign a messageID if none given
 	messageID = "prop-" + shortid.MustGenerate()
-
-	status = digitwin.StatusPending
-	err = svc.dtwStore.WriteProperty(dThingID, name, newValue, status, messageID, consumerID)
-
-	// forward the request to the thing's agent
 	agentID, thingID := tdd.SplitDigiTwinThingID(dThingID)
-	if svc.tb != nil {
-		found, status, err = svc.tb.WriteProperty(agentID, thingID, name, newValue, messageID, consumerID)
-		_ = found
-		// save the new status
-		_ = svc.dtwStore.WriteProperty(dThingID, name, newValue, status, messageID, consumerID)
-	} else {
-		status = digitwin.StatusFailed
+
+	// a transport is needed for this to continue
+	if svc.tb == nil {
+		status = vocab.ProgressStatusFailed
+		err = fmt.Errorf("no transport binding available")
+		return status, messageID, err
+	}
+	// TODO: authorize the request
+
+	// forward the request to the thing's agent and update status
+	found, status, err = svc.tb.WriteProperty(agentID, thingID, name, newValue, messageID, consumerID)
+	if !found {
+		status = vocab.ProgressStatusFailed
+		//statusInfo = "Thing agent not reachable"
+	} else if status != vocab.ProgressStatusCompleted && status != vocab.ProgressStatusFailed {
+		// store incomplete request by message ID to support sending progress updates to the sender
+		svc.activeCache[messageID] = &ActionFlowRecord{
+			MessageType: vocab.MessageTypeProperty,
+			AgentID:     agentID,
+			ThingID:     thingID,
+			MessageID:   messageID,
+			Name:        name,
+			SenderID:    consumerID,
+			Progress:    status,
+			Updated:     time.Now(),
+		}
 	}
 	return status, messageID, err
 }

@@ -2,8 +2,8 @@ package subprotocols
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
 	"net/http"
 )
@@ -37,7 +37,7 @@ func (b *SseBinding) HandleSubscribeAllEvents(w http.ResponseWriter, r *http.Req
 func (b *SseBinding) InvokeAction(
 	agentID, thingID, name string, data any, messageID string, senderID string) (
 	status string, output any, err error) {
-	return digitwin.StatusFailed, nil, fmt.Errorf("Not yet implemented")
+	return vocab.ProgressStatusFailed, nil, fmt.Errorf("Not yet implemented")
 }
 
 // PublishEvent send an event to subscribers
@@ -54,7 +54,7 @@ func (b *SseBinding) SendActionResult(
 	// determine which connection is of the consumer
 	//for _, sseConn := range b.connections {
 	//	if sseConn.GetClientID() == clientID {
-	//		return sseConn.PublishActionProgress(stat)
+	//		return sseConn.PublishProgressUpdate(stat)
 	//	}
 	//}
 	return false, fmt.Errorf("not implemented")
@@ -65,7 +65,7 @@ func (b *SseBinding) WriteProperty(
 	agentID, thingID, name string, data any, messageID string, senderID string) (
 	found bool, status string, err error) {
 
-	return false, digitwin.StatusFailed, fmt.Errorf("Not yet implemented")
+	return false, vocab.ProgressStatusFailed, fmt.Errorf("Not yet implemented")
 }
 
 // NewSseBinding returns a new SSE sub-protocol binding

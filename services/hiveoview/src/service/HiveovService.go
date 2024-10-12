@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/tlsserver"
@@ -53,7 +52,7 @@ type HiveovService struct {
 
 	// hc hub client of this service.
 	// This client's CA and URL is also used to establish client sessions.
-	hc hubclient.IHubClient
+	hc hubclient.IAgentClient
 
 	// cookie signing
 	signingKey *ecdsa.PrivateKey
@@ -173,7 +172,7 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 }
 
 // Start the web server and publish the service's own TD.
-func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
+func (svc *HiveovService) Start(hc hubclient.IAgentClient) error {
 	slog.Info("Starting HiveovService", "clientID", hc.ClientID())
 	svc.hc = hc
 
@@ -182,7 +181,7 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 	err := authz.UserSetPermissions(hc, authz.ThingPermissions{
 		AgentID: hc.ClientID(),
 		ThingID: src.HiveoviewServiceID,
-		Allow:   []string{authn.ClientRoleAdmin, authn.ClientRoleService},
+		Allow:   []authz.ClientRole{authz.ClientRoleAdmin, authz.ClientRoleService},
 	})
 	if err != nil {
 		slog.Error("failed to set the hiveoview service permissions", "err", err.Error())

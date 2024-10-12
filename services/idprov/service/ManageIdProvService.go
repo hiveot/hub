@@ -17,7 +17,7 @@ type ManageIdProvService struct {
 	requests map[string]idprovapi.ProvisionStatus
 
 	//
-	hc hubclient.IHubClient
+	hc hubclient.IConsumerClient
 	// mutex to guard access to maps
 	mux sync.RWMutex
 }
@@ -190,7 +190,7 @@ func (svc *ManageIdProvService) SubmitRequest(senderID string, args *idprovapi.P
 func (svc *ManageIdProvService) Stop() {
 }
 
-func StartManageIdProvService(hc hubclient.IHubClient) *ManageIdProvService {
+func StartManageIdProvService(hc hubclient.IConsumerClient) *ManageIdProvService {
 
 	svc := &ManageIdProvService{
 		// map of requests by SenderID

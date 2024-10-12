@@ -9,7 +9,7 @@ import (
 
 // StateAgent agent for the state storage services
 type StateAgent struct {
-	hc  hubclient.IHubClient
+	hc  hubclient.IConsumerClient
 	svc *StateService
 }
 
@@ -87,7 +87,7 @@ func NewStateAgent(svc *StateService) *StateAgent {
 //
 //	svc is the state service whose capabilities to expose
 //	hc is the messaging client used to register a message handler
-func StartStateAgent(svc *StateService, hc hubclient.IHubClient) *StateAgent {
+func StartStateAgent(svc *StateService, hc hubclient.IConsumerClient) *StateAgent {
 	agent := StateAgent{hc: hc, svc: svc}
 	if hc != nil {
 		agent.hc.SetMessageHandler(agent.HandleMessage)

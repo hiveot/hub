@@ -28,7 +28,7 @@ func (svc *DigitwinValuesService) QueryAllActions(
 
 // ReadAllEvents returns a list of known digitwin instance event values
 func (svc *DigitwinValuesService) ReadAllEvents(
-	consumerID string, dThingID string) ([]digitwin.EventValue, error) {
+	consumerID string, dThingID string) ([]digitwin.ThingValue, error) {
 
 	evMap, err := svc.dtwStore.ReadAllEvents(dThingID)
 	return utils.Map2Array(evMap), err
@@ -36,7 +36,7 @@ func (svc *DigitwinValuesService) ReadAllEvents(
 
 // ReadAllProperties returns a map of known digitwin instance property values
 func (svc *DigitwinValuesService) ReadAllProperties(
-	consumerID string, dThingID string) ([]digitwin.PropertyValue, error) {
+	consumerID string, dThingID string) ([]digitwin.ThingValue, error) {
 
 	propMap, err := svc.dtwStore.ReadAllProperties(dThingID)
 	return utils.Map2Array(propMap), err
@@ -44,7 +44,7 @@ func (svc *DigitwinValuesService) ReadAllProperties(
 
 // ReadEvent returns the latest event of a digitwin instance
 func (svc *DigitwinValuesService) ReadEvent(
-	consumerID string, args digitwin.ValuesReadEventArgs) (digitwin.EventValue, error) {
+	consumerID string, args digitwin.ValuesReadEventArgs) (digitwin.ThingValue, error) {
 
 	return svc.dtwStore.ReadEvent(args.ThingID, args.Name)
 }
@@ -53,7 +53,7 @@ func (svc *DigitwinValuesService) ReadEvent(
 // or an empty value if no value is known.
 // This returns an error if the dThingID doesn't exist.
 func (svc *DigitwinValuesService) ReadProperty(
-	consumerID string, args digitwin.ValuesReadPropertyArgs) (p digitwin.PropertyValue, err error) {
+	consumerID string, args digitwin.ValuesReadPropertyArgs) (p digitwin.ThingValue, err error) {
 
 	return svc.dtwStore.ReadProperty(args.ThingID, args.Name)
 }

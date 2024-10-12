@@ -11,18 +11,9 @@ func ActionListToMap(valueList []digitwin.ActionValue) map[string]digitwin.Actio
 	return valMap
 }
 
-// PropertyListToMap creates a map from a digitwin property list
-func PropertyListToMap(valueList []digitwin.PropertyValue) map[string]digitwin.PropertyValue {
-	valMap := make(map[string]digitwin.PropertyValue)
-	for _, value := range valueList {
-		valMap[value.Name] = value
-	}
-	return valMap
-}
-
-// EventListToMap creates a map from a digitwin event list
-func EventListToMap(valueList []digitwin.EventValue) map[string]digitwin.EventValue {
-	valMap := make(map[string]digitwin.EventValue)
+// ValueListToMap creates a map from a digitwin value list
+func ValueListToMap(valueList []digitwin.ThingValue) map[string]digitwin.ThingValue {
+	valMap := make(map[string]digitwin.ThingValue)
 	for _, value := range valueList {
 		valMap[value.Name] = value
 	}

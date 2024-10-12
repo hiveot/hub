@@ -6,7 +6,7 @@ import {
     ZWavePlusRoleType,
 } from "zwave-js";
 import {InterviewStage, SecurityClass} from '@zwave-js/core';
-import * as vocab from "@hivelib/api/vocab/ht-vocab";
+import * as vocab from "@hivelib/api/vocab/vocab.js";
 import {getPropName} from "./getPropName";
 import {getVidValue} from "@zwavejs/ZWAPI";
 

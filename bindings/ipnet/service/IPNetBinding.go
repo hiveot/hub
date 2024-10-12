@@ -14,7 +14,7 @@ import (
 type IPNetBinding struct {
 	config *config.IPNetConfig
 	// Hub connection
-	hc hubclient.IHubClient
+	hc hubclient.IAgentClient
 
 	// discovered devices
 	devicesMap      map[string]*IPDeviceInfo
@@ -29,7 +29,7 @@ func (svc *IPNetBinding) ActionHandler(msg *hubclient.ThingMessage) (stat hubcli
 }
 
 // Start the binding
-func (svc *IPNetBinding) Start(hc hubclient.IHubClient) (err error) {
+func (svc *IPNetBinding) Start(hc hubclient.IAgentClient) (err error) {
 	if svc.config.LogLevel != "" {
 		logging.SetLogging(svc.config.LogLevel, "")
 	}
@@ -49,7 +49,7 @@ func (svc *IPNetBinding) Start(hc hubclient.IHubClient) (err error) {
 			slog.String("err", err.Error()))
 	} else {
 		props := svc.MakeBindingProps()
-		_ = svc.hc.UpdateProps(td.ID, props)
+		_ = svc.hc.PubProperties(td.ID, props)
 	}
 
 	// start polling in the background
@@ -86,6 +86,5 @@ func NewIpNetBinding(cfg *config.IPNetConfig) *IPNetBinding {
 		config:     cfg,
 		devicesMap: make(map[string]*IPDeviceInfo),
 	}
-
 	return svc
 }

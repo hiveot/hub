@@ -48,7 +48,7 @@ func NewInteractionInput(td *tdd.TD, key string, defaultValue any) *InteractionI
 	}
 	eventAff, found := td.Events[key]
 	if found {
-		io.Schema = &eventAff.Data
+		io.Schema = eventAff.Data
 		io.Title = eventAff.Title
 		return io
 	}

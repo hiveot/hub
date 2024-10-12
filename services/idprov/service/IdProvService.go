@@ -3,7 +3,6 @@ package service
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
@@ -31,7 +30,7 @@ import (
 type IdProvService struct {
 
 	// Hub connection
-	hc hubclient.IHubClient
+	hc hubclient.IConsumerClient
 	// the manage service
 	ManageIdProv *ManageIdProvService
 
@@ -51,7 +50,7 @@ type IdProvService struct {
 // 3. Start the http request server
 // 4. start the security check for rogue DNS-SD records
 // 5. start DNS-SD discovery server
-func (svc *IdProvService) Start(hc hubclient.IHubClient) (err error) {
+func (svc *IdProvService) Start(hc hubclient.IConsumerClient) (err error) {
 	slog.Info("Starting the provisioning service", "clientID", hc.ClientID())
 	svc.hc = hc
 	//svc.Stop()
@@ -64,10 +63,10 @@ func (svc *IdProvService) Start(hc hubclient.IHubClient) (err error) {
 	err = authz.UserSetPermissions(hc, authz.ThingPermissions{
 		AgentID: hc.ClientID(),
 		ThingID: idprovapi.ManageServiceID,
-		Allow: []string{
-			authn.ClientRoleManager,
-			authn.ClientRoleAdmin,
-			authn.ClientRoleService},
+		Allow: []authz.ClientRole{
+			authz.ClientRoleManager,
+			authz.ClientRoleAdmin,
+			authz.ClientRoleService},
 	})
 	if err != nil {
 		return err

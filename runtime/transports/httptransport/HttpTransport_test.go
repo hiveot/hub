@@ -2,12 +2,12 @@ package httptransport_test
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/tlsclient"
-	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/transports"
 	"github.com/hiveot/hub/runtime/transports/httptransport"
@@ -434,10 +434,10 @@ func TestReconnect(t *testing.T) {
 		go func() {
 			stat := hubclient.DeliveryStatus{
 				MessageID: msgID,
-				Progress:  digitwin.StatusCompleted,
+				Progress:  vocab.ProgressStatusCompleted,
 				Reply:     val,
 			}
-			_, err = svc.PublishActionProgress(testLogin, stat, agentID)
+			_, err = svc.PublishProgressUpdate(testLogin, stat, agentID)
 			assert.NoError(t, err)
 		}()
 		return nil

@@ -24,7 +24,7 @@ import (
 //	}
 //}
 
-func HistoryListCommand(hc *hubclient.IHubClient) *cli.Command {
+func HistoryListCommand(hc *hubclient.IConsumerClient) *cli.Command {
 	limit := 100
 	return &cli.Command{
 		Name:      "hev",
@@ -53,7 +53,7 @@ func HistoryListCommand(hc *hubclient.IHubClient) *cli.Command {
 	}
 }
 
-//func HistoryLatestCommand(hc *hubclient.IHubClient) *cli.Command {
+//func HistoryLatestCommand(hc *hubclient.IConsumerClient) *cli.Command {
 //	return &cli.Command{
 //		Name:      "hla",
 //		Usage:     "History latest values of a things",
@@ -109,7 +109,7 @@ func HistoryListCommand(hc *hubclient.IHubClient) *cli.Command {
 //}
 
 // HandleListEvents lists the history content
-func HandleListEvents(hc hubclient.IHubClient, dThingID string, name string, limit int) error {
+func HandleListEvents(hc hubclient.IConsumerClient, dThingID string, name string, limit int) error {
 	rd := historyclient.NewReadHistoryClient(hc)
 
 	cursor, releaseFn, err := rd.GetCursor(dThingID, name)
@@ -178,7 +178,7 @@ func HandleListEvents(hc hubclient.IHubClient, dThingID string, name string, lim
 //}
 
 //func HandleListLatestEvents(
-//	hc hubclient.IHubClient, agentID string, thingID string) error {
+//	hc hubclient.IConsumerClient, agentID string, thingID string) error {
 //	rd := historyclient.NewReadHistoryClient(hc)
 //
 //	props, err := rd.GetLatest(agentID, thingID, nil)

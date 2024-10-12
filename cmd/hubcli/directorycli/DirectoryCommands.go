@@ -16,7 +16,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 )
 
-func DirectoryListCommand(hc *hubclient.IHubClient) *cli.Command {
+func DirectoryListCommand(hc *hubclient.IConsumerClient) *cli.Command {
 	var verbose = false
 	return &cli.Command{
 		Name:      "ld",
@@ -48,7 +48,7 @@ func DirectoryListCommand(hc *hubclient.IHubClient) *cli.Command {
 }
 
 // HandleListDirectory lists the directory content
-func HandleListDirectory(hc hubclient.IHubClient) (err error) {
+func HandleListDirectory(hc hubclient.IConsumerClient) (err error) {
 	// todo: iterate with offset and limit
 	tdListJson, err := digitwin.DirectoryReadAllDTDs(hc, 300, 0)
 	tdList, err2 := tdd.UnmarshalTDList(tdListJson)
@@ -83,14 +83,14 @@ func HandleListDirectory(hc hubclient.IHubClient) (err error) {
 }
 
 // HandleListThing lists details of a Thing in the directory
-func HandleListThing(hc hubclient.IHubClient, thingID string) error {
+func HandleListThing(hc hubclient.IConsumerClient, thingID string) error {
 	tdDocJson, err := digitwin.DirectoryReadDTD(hc, thingID)
 	tdDoc, err2 := tdd.UnmarshalTD(tdDocJson)
 	if err != nil || err2 != nil {
 		return err
 	}
 	propValueList, err := digitwin.ValuesReadAllProperties(hc, thingID)
-	propValueMap := api.PropertyListToMap(propValueList)
+	propValueMap := api.ValueListToMap(propValueList)
 
 	if err != nil {
 		slog.Error("Unable to read history:", "err", err)
@@ -131,7 +131,7 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 	fmt.Println(" ID                             EventType                 Title                                    DataType   Value           Description")
 	fmt.Println(" -----------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
 	eventValueList, err := digitwin.ValuesReadAllEvents(hc, thingID)
-	eventValueMap := api.EventListToMap(eventValueList)
+	eventValueMap := api.ValueListToMap(eventValueList)
 	keys = utils.OrderedMapKeys(tdDoc.Events)
 	for _, key := range keys {
 		ev := tdDoc.Events[key]
@@ -151,7 +151,7 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 	fmt.Println(" ID                             ActionType                Title                                    Arg(s)     Value           Description")
 	fmt.Println(" -----------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
 	actionValueList, err := digitwin.ValuesReadAllProperties(hc, thingID)
-	actionValueMap := api.PropertyListToMap(actionValueList)
+	actionValueMap := api.ValueListToMap(actionValueList)
 	keys = utils.OrderedMapKeys(tdDoc.Actions)
 	for _, key := range keys {
 		action := tdDoc.Actions[key]
@@ -169,7 +169,7 @@ func HandleListThing(hc hubclient.IHubClient, thingID string) error {
 }
 
 // HandleListThingVerbose lists a Thing full TD
-func HandleListThingVerbose(hc hubclient.IHubClient, thingID string) error {
+func HandleListThingVerbose(hc hubclient.IConsumerClient, thingID string) error {
 	tdJSON, err := digitwin.DirectoryReadDTD(hc, thingID)
 
 	if err != nil {

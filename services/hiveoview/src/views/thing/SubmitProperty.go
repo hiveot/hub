@@ -17,7 +17,7 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 	var newValue any
 	var td *tdd.TD
 	var propAff *tdd.PropertyAffordance
-	var hc hubclient.IHubClient
+	var hc hubclient.IConsumerClient
 	stat := hubclient.DeliveryStatus{}
 	thingID := chi.URLParam(r, "thingID")
 	propName := chi.URLParam(r, "name")
@@ -37,8 +37,7 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		newValue, err = tdd.ConvertToNative(valueStr, &propAff.DataSchema)
 
-		// don't make this an rpc as the response time isn't always known with sleeping devices
-		stat = hc.PubProperty(thingID, propName, newValue)
+		stat = hc.WriteProperty(thingID, propName, newValue)
 		if stat.Error != "" {
 			err = errors.New(stat.Error)
 		}

@@ -11,7 +11,7 @@ import (
 type ReadHistoryClient struct {
 	// ThingID of the service providing the read history capability
 	dThingID string
-	hc       hubclient.IHubClient
+	hc       hubclient.IConsumerClient
 }
 
 // GetCursor returns an iterator for ThingMessage objects containing historical events,tds or actions
@@ -60,7 +60,7 @@ func (cl *ReadHistoryClient) ReadHistory(thingID string, filterOnName string,
 }
 
 // NewReadHistoryClient returns an instance of the read history client using the given connection
-func NewReadHistoryClient(hc hubclient.IHubClient) *ReadHistoryClient {
+func NewReadHistoryClient(hc hubclient.IConsumerClient) *ReadHistoryClient {
 	agentID := historyapi.AgentID
 	histCl := ReadHistoryClient{
 		hc:       hc,

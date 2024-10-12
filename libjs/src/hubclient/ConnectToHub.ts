@@ -1,4 +1,4 @@
-import {IHubClient} from "@hivelib/hubclient/IHubClient";
+import {IAgentClient} from "@hivelib/hubclient/IAgentClient";
 import {locateHub} from "@hivelib/hubclient/locateHub";
 import path from "path";
 import {HttpSSEClient} from "@hivelib/hubclient/httpclient/HttpSSEClient";
@@ -22,7 +22,7 @@ import {HttpSSEClient} from "@hivelib/hubclient/httpclient/HttpSSEClient";
 //	certDir is the location of the CA cert and key/token files
 // This throws an error if a connection cannot be made
 export async function ConnectToHub(
-    baseURL: string, clientID: string, caCertPem: string, disableCertCheck: boolean): Promise<IHubClient> {
+    baseURL: string, clientID: string, caCertPem: string, disableCertCheck: boolean): Promise<IAgentClient> {
 
     // 1. determine the actual address
     if (baseURL == "") {

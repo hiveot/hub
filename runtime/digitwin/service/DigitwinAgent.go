@@ -3,8 +3,8 @@ package service
 import (
 	"fmt"
 	digitwin2 "github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/digitwin"
 	"log/slog"
 )
 
@@ -26,7 +26,7 @@ func (agent *DigitwinAgent) HandleAction(
 	} else {
 		slog.Warn("HandleAction: dThingID is not a service capability", "dThingID", dThingID)
 		err = fmt.Errorf("%s is not a digitwin service capability", dThingID)
-		status = digitwin.StatusFailed
+		status = vocab.ProgressStatusFailed
 	}
 	return status, output, err
 }

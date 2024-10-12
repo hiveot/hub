@@ -30,7 +30,7 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td *tdd.TD) {
 
 	l.Indent++
 	l.Add("var err error")
-	l.Add("var status string = \"completed\"")
+	l.Add("var status = vocab.ProgressStatusCompleted")
 	l.Add("var output any")
 
 	l.Add("switch actionName {")
@@ -40,7 +40,7 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td *tdd.TD) {
 	}
 	l.Add("default:")
 	l.Add("	err = errors.New(\"Unknown Method '\"+actionName+\"' of service '\"+dThingID+\"'\")")
-	l.Add("  status = \"failed\"")
+	l.Add("  status = vocab.ProgressStatusFailed")
 	l.Indent--
 	l.Add("}")
 

@@ -11,7 +11,6 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/hubrouter"
 	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
@@ -216,7 +215,7 @@ func (svc *HttpTransport) createRoutes(router chi.Router) http.Handler {
 		svc.AddPostOp(r, "updateMultipleProperties", false,
 			"/agent/properties/{thingID}", svc.HandleUpdateProperty)
 		svc.AddPostOp(r, vocab.HTOpDelivery, false,
-			"/agent/delivery", svc.HandleActionProgress)
+			"/agent/progress", svc.HandleProgressUpdate)
 
 	})
 
@@ -254,14 +253,14 @@ func (svc *HttpTransport) InvokeAction(
 		status, output, err = svc.sse.InvokeAction(agentID, thingID, name, input, messageID, senderID)
 	}
 	if err != nil {
-		status = digitwin.StatusFailed
+		status = vocab.ProgressStatusFailed
 		err = fmt.Errorf("InvokeAction: No sub-protocol bindings")
 	}
 	return status, output, err
 }
 
 // PublishActionProgress sends the action update to the client
-func (svc *HttpTransport) PublishActionProgress(
+func (svc *HttpTransport) PublishProgressUpdate(
 	clientID string, stat hubclient.DeliveryStatus, agentID string) (found bool, err error) {
 
 	found = false

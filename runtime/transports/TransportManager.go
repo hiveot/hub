@@ -146,12 +146,12 @@ func (svc *TransportManager) InvokeAction(
 
 // PublishActionProgress send the action status update to the client.
 // This fails if no binding has a connection with this client
-func (svc *TransportManager) PublishActionProgress(
+func (svc *TransportManager) PublishProgressUpdate(
 	clientID string, stat hubclient.DeliveryStatus, agentID string) (found bool, err error) {
 	if svc.httpTransport != nil {
-		found, err = svc.httpTransport.PublishActionProgress(clientID, stat, agentID)
+		found, err = svc.httpTransport.PublishProgressUpdate(clientID, stat, agentID)
 	} else {
-		err = fmt.Errorf("PublishActionProgress: No connection with consumer '%s'", clientID)
+		err = fmt.Errorf("PublishProgressUpdate: No connection with consumer '%s'", clientID)
 		found = false
 	}
 	return found, err

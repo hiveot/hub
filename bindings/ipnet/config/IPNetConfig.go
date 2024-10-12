@@ -15,6 +15,7 @@ type IPNetConfig struct {
 
 func NewIPNetConfig() *IPNetConfig {
 	cfg := IPNetConfig{
+		AgentID:      "ipnet",
 		LogLevel:     "warning",
 		PollInterval: 3600,
 		PortScan:     false,

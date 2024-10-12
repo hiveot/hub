@@ -1,7 +1,6 @@
 package service
 
 import (
-	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -27,7 +26,7 @@ type HistoryService struct {
 
 	agentID string
 	// the pubsub service to subscribe to event
-	hc hubclient.IHubClient
+	hc hubclient.IAgentClient
 	// optional handling of pubsub events. nil if not used
 	//subEventHandler *PubSubEventHandler
 	// handler that adds history to the store
@@ -41,7 +40,7 @@ func (svc *HistoryService) GetAddHistory() *AddHistory {
 }
 
 // Start using the history service
-func (svc *HistoryService) Start(hc hubclient.IHubClient) (err error) {
+func (svc *HistoryService) Start(hc hubclient.IAgentClient) (err error) {
 	slog.Info("Starting HistoryService", "clientID", hc.ClientID())
 
 	// setup
@@ -62,7 +61,7 @@ func (svc *HistoryService) Start(hc hubclient.IHubClient) (err error) {
 	err = authz.UserSetPermissions(hc, authz.ThingPermissions{
 		AgentID: hc.ClientID(),
 		ThingID: historyapi.ReadHistoryServiceID,
-		Deny:    []string{authn.ClientRoleNone},
+		Deny:    []authz.ClientRole{authz.ClientRoleNone},
 	})
 
 	//if err == nil {

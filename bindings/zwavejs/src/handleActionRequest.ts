@@ -3,11 +3,12 @@ import {InterviewStage,  ZWaveNode} from "zwave-js";
 import {getPropVid} from "./getPropName";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as tslog from 'tslog';
-import { DeliveryStatus, IHubClient} from "@hivelib/hubclient/IHubClient";
+import { IAgentClient} from "@hivelib/hubclient/IAgentClient";
 import {getVidValue, ZWAPI} from "@zwavejs/ZWAPI";
-import {MessageTypeProperty} from "@hivelib/api/vocab/ht-vocab";
+import {MessageTypeProperty} from "@hivelib/api/vocab/vocab.js";
 import {handleConfigRequest} from "@zwavejs/handleConfigRequest";
 import {setValue} from "@zwavejs/setValue";
+import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
 
 const log = new tslog.Logger()
 
@@ -17,7 +18,7 @@ const log = new tslog.Logger()
 // Normally this returns the delivery status to the caller.
 // If delivery is in progress then use 'hc' to send further status updates.
 export function  handleActionRequest(
-    msg: ThingMessage, zwapi: ZWAPI, hc: IHubClient): DeliveryStatus {
+    msg: ThingMessage, zwapi: ZWAPI, hc: IAgentClient): DeliveryStatus {
 
     let stat = new DeliveryStatus()
     let errMsg: string = ""
@@ -93,14 +94,14 @@ export function  handleActionRequest(
             node.checkLifelineHealth().then()
             break;
         case "ping":
-            stat.applied(msg)
+            stat.delivered(msg)
             let startTime = performance.now()
             node.ping().then((success:boolean)=>{
                 let endTime = performance.now()
                 let msec = Math.round(endTime-startTime)
                 stat.completed(msg, msec)
                 log.info("ping '"+msg.thingID+"': "+msec+" msec")
-                hc.sendDeliveryUpdate(stat)
+                hc.pubProgressUpdate(stat)
             })
             break;
         case "refreshinfo":
@@ -123,7 +124,7 @@ export function  handleActionRequest(
                     .then(stat => {
                         stat.messageID = msg.messageID
                         // async update
-                        hc.sendDeliveryUpdate(stat)
+                        hc.pubProgressUpdate(stat)
                         let newValue = getVidValue(node, propVid)
                         zwapi.onValueUpdate(node, propVid, newValue)
                     })

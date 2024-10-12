@@ -32,7 +32,7 @@ type OWServerBinding struct {
 	edsAPI *eds.EdsAPI
 
 	// hub client to publish TDs and values and receive actions
-	hc hubclient.IHubClient
+	hc hubclient.IAgentClient
 
 	// The discovered and publishable things, containing instructions on
 	// if and how properties and events are published
@@ -95,7 +95,7 @@ func (svc *OWServerBinding) GetBindingPropValues() map[string]any {
 // This publishes a TD for this binding, starts a background heartbeat.
 //
 //	hc is the connection with the hubClient to use.
-func (svc *OWServerBinding) Start(hc hubclient.IHubClient) (err error) {
+func (svc *OWServerBinding) Start(hc hubclient.IAgentClient) (err error) {
 	slog.Info("Starting OWServer binding")
 	if svc.config.LogLevel != "" {
 		logging.SetLogging(svc.config.LogLevel, "")
@@ -127,7 +127,7 @@ func (svc *OWServerBinding) Start(hc hubclient.IHubClient) (err error) {
 			slog.String("err", err.Error()))
 	} else {
 		props := svc.GetBindingPropValues()
-		_ = svc.hc.UpdateProps(td.ID, props)
+		_ = svc.hc.PubProperties(td.ID, props)
 	}
 
 	// last, start polling heartbeat

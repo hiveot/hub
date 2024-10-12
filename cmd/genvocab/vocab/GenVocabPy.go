@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const pyFile = "./api/py/vocab/ht-vocab.py"
+const pyFile = "./api/py/vocab/vocab.py"
 
 // GenVocabPy generates the vocabulary constants in python.
 func GenVocabPy(sourceDir string) error {

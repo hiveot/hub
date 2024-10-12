@@ -3,14 +3,14 @@ package runtime_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
-	digitwin2 "github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +30,7 @@ func TestHttpsGetActions(t *testing.T) {
 	cl1, _ := ts.AddConnectAgent(agentID)
 	defer cl1.Disconnect()
 	// consumer sends actions and receives events
-	cl2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	cl2, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
 	defer cl2.Disconnect()
 
 	// step 1: agent publishes a TD: dtw:agent1:thing-1
@@ -88,7 +88,7 @@ func TestHttpsGetEvents(t *testing.T) {
 	ag1, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
 	// consumer for reading events
-	hc1, token := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	hc1, token := ts.AddConnectUser(userID, authz.ClientRoleManager)
 	defer hc1.Disconnect()
 
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
@@ -113,7 +113,7 @@ func TestHttpsGetEvents(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, reply)
 
-	dtwValues := make([]digitwin.EventValue, 0)
+	dtwValues := make([]digitwin.ThingValue, 0)
 	err = json.Unmarshal(reply, &dtwValues)
 	require.NoError(t, err)
 	require.NotZero(t, len(dtwValues))
@@ -123,7 +123,7 @@ func TestHttpsGetEvents(t *testing.T) {
 	//resp, err := digitwin.OutboxReadLatest(hc, "", nil, "", dThingID)
 	require.NoError(t, err)
 	require.NotNil(t, valueList)
-	valueMap := api.EventListToMap(valueList)
+	valueMap := api.ValueListToMap(valueList)
 	require.Equal(t, len(dtwValues), len(valueMap))
 	require.Equal(t, data, valueMap[key1].Data)
 }
@@ -143,7 +143,7 @@ func TestHttpsGetProps(t *testing.T) {
 	ag1, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
 	// consumer reads properties
-	cl2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	cl2, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
 	defer cl2.Disconnect()
 
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
@@ -156,13 +156,13 @@ func TestHttpsGetProps(t *testing.T) {
 	propMap := map[string]any{}
 	propMap[key1] = data1
 	propMap[key2] = data2
-	err = ag1.UpdateProps(td1.ID, propMap)
+	err = ag1.PubProperties(td1.ID, propMap)
 	require.NoError(t, err)
 	//
 	valueList, err := digitwin.ValuesReadAllProperties(cl2, dThingID)
 	require.NoError(t, err)
 	require.Equal(t, len(propMap), len(valueList))
-	valueMap := api.PropertyListToMap(valueList)
+	valueMap := api.ValueListToMap(valueList)
 
 	// note: golang unmarshalls integers as float64.
 	data2raw := valueMap[key2].Data.(float64)
@@ -183,7 +183,7 @@ func TestSubscribeValues(t *testing.T) {
 	defer r.Stop()
 	ag, _ := ts.AddConnectAgent(agentID)
 	defer ag.Disconnect()
-	hc, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	hc, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
 	defer hc.Disconnect()
 
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
@@ -207,7 +207,7 @@ func TestSubscribeValues(t *testing.T) {
 	propMap[key2] = data2
 	// FIXME: this is agent->consumer
 	// consumer SSE client should not send a delivery confirmation!
-	err = ag.UpdateProps(td1.ID, propMap)
+	err = ag.PubProperties(td1.ID, propMap)
 	require.NoError(t, err)
 
 	time.Sleep(time.Millisecond * 1000)
@@ -219,37 +219,39 @@ func TestWriteProperties(t *testing.T) {
 	const agentID = "agent1"
 	const userID = "user1"
 	const key1 = "key1"
-	const key2 = "key2"
 	const data1 = "Hello world"
-	const data2 = 25
 	var msgCount atomic.Int32
 
 	r := startRuntime()
 	defer r.Stop()
 	ag, _ := ts.AddConnectAgent(agentID)
 	defer ag.Disconnect()
-	cl, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	cl, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
 	defer cl.Disconnect()
 
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
 	td1JSON, _ := json.Marshal(td1)
-	//var dThingID = tdd.MakeDigiTwinThingID(agentID, td1.ID)
 	err := ag.PubTD(td1.ID, string(td1JSON))
 
 	// agents subscribe to property write requests
 	ag.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
-		stat.Completed(msg, nil, nil)
-		msgCount.Add(1)
+		if msg.MessageType == vocab.MessageTypeProperty && msg.Name == key1 {
+			stat.Completed(msg, nil, nil)
+			msgCount.Add(1)
+		}
 		return stat
 	})
 
 	// consumer subscribes to events/properties
 	err = cl.Subscribe("", "")
 	require.NoError(t, err)
+	//var tv digitwin.ThingValue
 	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
-		stat.Completed(msg, nil, nil)
-		msgCount.Add(1)
+		if msg.Name == key1 {
+			stat.Completed(msg, nil, nil)
+			msgCount.Add(1)
+		}
 		return stat
 	})
 	time.Sleep(time.Millisecond * 100)
@@ -257,7 +259,7 @@ func TestWriteProperties(t *testing.T) {
 	dThingID := tdd.MakeDigiTwinThingID(agentID, td1.ID)
 	stat2 := cl.WriteProperty(dThingID, key1, data1)
 	require.Empty(t, stat2.Error)
-	require.Equal(t, digitwin2.StatusCompleted, stat2.Progress)
+	require.Equal(t, vocab.ProgressStatusCompleted, stat2.Progress)
 
 	time.Sleep(time.Millisecond * 1000)
 	assert.Equal(t, int32(1), msgCount.Load())

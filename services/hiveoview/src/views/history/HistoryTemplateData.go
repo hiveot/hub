@@ -115,7 +115,7 @@ func NewHistoryTemplateData(
 	// Get the current schema for the value to show
 	iout, _ := ct.GetValue(name)
 	if iout != nil {
-		hs.DataSchema = iout.Schema
+		hs.DataSchema = *iout.Schema
 		hs.Title = iout.Title + " of " + td.Title
 		hs.DataSchema.Title = hs.Title
 		hs.Stepped = (iout.Schema.Type == vocab.WoTDataTypeBool)

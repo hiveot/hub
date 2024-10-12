@@ -16,7 +16,7 @@ import (
 )
 
 // SubTDCommand shows TD publications
-func SubTDCommand(hc *hubclient.IHubClient) *cli.Command {
+func SubTDCommand(hc *hubclient.IConsumerClient) *cli.Command {
 	return &cli.Command{
 		Name:     "subtd",
 		Usage:    "SubscribeEvent to TD publications",
@@ -28,7 +28,7 @@ func SubTDCommand(hc *hubclient.IHubClient) *cli.Command {
 	}
 }
 
-func SubEventsCommand(hc *hubclient.IHubClient) *cli.Command {
+func SubEventsCommand(hc *hubclient.IConsumerClient) *cli.Command {
 	return &cli.Command{
 		Name:      "subev",
 		Usage:     "SubscribeEvent to Thing events",
@@ -54,7 +54,7 @@ func SubEventsCommand(hc *hubclient.IHubClient) *cli.Command {
 }
 
 // HandleSubTD subscribes and prints TD publications
-func HandleSubTD(hc hubclient.IHubClient) error {
+func HandleSubTD(hc hubclient.IConsumerClient) error {
 
 	err := hc.Subscribe(digitwin.DirectoryDThingID, service.ThingUpdatedEventName)
 	if err != nil {
@@ -86,7 +86,7 @@ func HandleSubTD(hc hubclient.IHubClient) error {
 }
 
 // HandleSubEvents subscribes and prints events
-func HandleSubEvents(hc hubclient.IHubClient, thingID string, name string) error {
+func HandleSubEvents(hc hubclient.IConsumerClient, thingID string, name string) error {
 	fmt.Printf("Subscribing to  thingID: '%s', name: '%s'\n\n", thingID, name)
 
 	fmt.Printf("Time             Agent ID        Thing ID                       Event Name                     Value\n")

@@ -18,7 +18,7 @@ func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	tdJSON := ""
 	td := tdd.TD{}
-	var hc hubclient.IHubClient
+	var hc hubclient.IConsumerClient
 
 	// get the hub client connection and read the existing TD
 	sess, hc, err := session2.GetSessionFromContext(r)
@@ -28,7 +28,7 @@ func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tdJSON, err = digitwin.DirectoryReadTD(hc, thingID)
+	tdJSON, err = digitwin.DirectoryReadDTD(hc, thingID)
 	if err == nil {
 		err = json.Unmarshal([]byte(tdJSON), &td)
 	}
@@ -36,7 +36,7 @@ func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 	// delete the TD
 	if err == nil {
 		slog.Info("Deleting TD", slog.String("thingID", thingID))
-		err = digitwin.DirectoryRemoveTD(hc, thingID)
+		err = digitwin.DirectoryRemoveDTD(hc, thingID)
 	}
 	cts := sess.GetConsumedThingsSession()
 	// reload the cached directory

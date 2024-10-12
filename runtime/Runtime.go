@@ -60,7 +60,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		ClientType: authn.ClientTypeService,
 	}
 	_ = r.AuthnSvc.AuthnStore.Add(authz.AdminAgentID, prof)
-	_ = r.AuthnSvc.AuthnStore.SetRole(authz.AdminAgentID, authn.ClientRoleService)
+	_ = r.AuthnSvc.AuthnStore.SetRole(authz.AdminAgentID, string(authz.ClientRoleService))
 
 	r.AuthzAgent, err = service2.StartAuthzAgent(r.AuthzSvc)
 

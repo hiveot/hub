@@ -39,7 +39,7 @@
       "output": {
         "title": "Role",
         "description": "Response with client role",
-        "type": "string"
+        "type": "ClientRole"
       }
     },
     "setClientRole": {
@@ -56,7 +56,7 @@
           },
           "role": {
             "title": "Client Role",
-            "type": "string"
+            "type": "ClientRole"
           }
         }
       }

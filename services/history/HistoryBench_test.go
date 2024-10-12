@@ -59,7 +59,7 @@ var DataSizeTable = []struct {
 }
 
 func BenchmarkAddEvents(b *testing.B) {
-	const agentID = "device1"
+	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0"
 	const timespanSec = 3600 * 24 * 10
 	var dThing0ID = tdd.MakeDigiTwinThingID(agentID, thing0ID)
@@ -71,7 +71,7 @@ func BenchmarkAddEvents(b *testing.B) {
 		svc, readHist, stopFn := startHistoryService(true)
 		time.Sleep(time.Millisecond)
 		// build a dataset in the store
-		addBulkHistory(svc, tbl.dataSize, 10, timespanSec)
+		addBulkHistory(svc, agentID, tbl.dataSize, 10, timespanSec)
 		addHist := svc.GetAddHistory()
 
 		// test adding records one by one

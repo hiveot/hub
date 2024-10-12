@@ -3,7 +3,7 @@ package history_test
 import (
 	"fmt"
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
@@ -70,7 +70,7 @@ func startHistoryService(clean bool) (
 	}
 
 	// create an end user client for testing
-	hc2, _ := ts.AddConnectUser(testClientID, authn.ClientRoleOperator)
+	hc2, _ := ts.AddConnectUser(testClientID, authz.ClientRoleOperator)
 	if err != nil {
 		panic("can't connect operator")
 	}
@@ -132,10 +132,9 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 	return valueBatch, highest
 }
 
-// add some history to the store using publisher 'device1'
-func addBulkHistory(svc *service.HistoryService, count int, nrThings int, timespanSec int) (highest map[string]*hubclient.ThingMessage) {
+// add some history to the store. This bypasses the check for thingID to exist.
+func addBulkHistory(svc *service.HistoryService, agentID string, count int, nrThings int, timespanSec int) (highest map[string]*hubclient.ThingMessage) {
 
-	const agentID = "device1"
 	var batchSize = 1000
 	if batchSize > count {
 		batchSize = count
@@ -178,7 +177,7 @@ func TestAddGetEvent(t *testing.T) {
 	t.Log("--- TestAddGetEvent ---")
 	const id1 = "thing1"
 	const id2 = "thing2"
-	const agent1ID = "device1"
+	const agent1ID = "agent1"
 	const thing1ID = id1
 	const thing2ID = id2
 	const evTemperature = "temperature"
@@ -189,7 +188,7 @@ func TestAddGetEvent(t *testing.T) {
 	// do not defer cancel as it will be closed and reopened in the test
 	fivemago := time.Now().Add(-time.Minute * 5)
 	fiftyfivemago := time.Now().Add(-time.Minute * 55)
-	addBulkHistory(svc, 20, 3, 3600)
+	addBulkHistory(svc, agent1ID, 20, 3, 3600)
 
 	// add thing1 temperature from 5 minutes ago
 	addHist := svc.GetAddHistory()
@@ -366,7 +365,7 @@ func TestAddProperties(t *testing.T) {
 	assert.NotEmpty(t, msg)
 	hasProps := false
 	for valid && err == nil {
-		if msg.Name == vocab.EventNameProperties {
+		if msg.MessageType == vocab.MessageTypeProperty {
 			hasProps = true
 			props := make(map[string]interface{})
 			err = utils.DecodeAsObject(msg.Data, &props)
@@ -383,14 +382,14 @@ func TestAddProperties(t *testing.T) {
 
 func TestGetInfo(t *testing.T) {
 	t.Log("--- TestGetInfo ---")
-	//const agentID = "device1"
+	const agentID = "agent1"
 	//const thing0ID = thingIDPrefix + "0"
 	//var dThing0ID = things.MakeDigiTwinThingID(agentID, thing0ID)
 
 	store, readHist, stopFn := startHistoryService(true)
 	defer stopFn()
 	_ = readHist
-	addBulkHistory(store, 1000, 5, 1000)
+	addBulkHistory(store, agentID, 1000, 5, 1000)
 
 	// TODO: add GetInfo for store statistics
 	//info := store.Info()
@@ -405,7 +404,7 @@ func TestGetInfo(t *testing.T) {
 func TestPrevNext(t *testing.T) {
 	t.Log("--- TestPrevNext ---")
 	const count = 1000
-	const agentID = "device1"
+	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
 	var dThing0ID = tdd.MakeDigiTwinThingID(agentID, thing0ID)
 
@@ -413,7 +412,7 @@ func TestPrevNext(t *testing.T) {
 	defer closeFn()
 
 	// 10 sensors -> 1 sample per minute, 60 per hour -> 600
-	_ = addBulkHistory(store, count, 1, 3600*24*30)
+	_ = addBulkHistory(store, agentID, count, 1, 3600*24*30)
 
 	cursor, releaseFn, _ := readHist.GetCursor(dThing0ID, "")
 	defer releaseFn()
@@ -464,15 +463,15 @@ func TestPrevNext(t *testing.T) {
 func TestPrevNextFiltered(t *testing.T) {
 	t.Log("--- TestPrevNextFiltered ---")
 	const count = 1000
-	const agent1ID = "device1"
+	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
-	var dThing0ID = tdd.MakeDigiTwinThingID(agent1ID, thing0ID)
+	var dThing0ID = tdd.MakeDigiTwinThingID(agentID, thing0ID)
 
 	svc, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
 
 	// 10 sensors -> 1 sample per minute, 60 per hour -> 600
-	_ = addBulkHistory(svc, count, 1, 3600*24*30)
+	_ = addBulkHistory(svc, agentID, count, 1, 3600*24*30)
 	propName := names[2] // names was used to generate the history
 
 	// A cursor with a filter on propName should only return results of propName
@@ -528,7 +527,7 @@ func TestPrevNextFiltered(t *testing.T) {
 func TestNextPrevUntil(t *testing.T) {
 	t.Log("--- TestNextUntil ---")
 	const count = 1000
-	const agentID = "device1"
+	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
 	var dThing0ID = tdd.MakeDigiTwinThingID(agentID, thing0ID)
 
@@ -536,7 +535,7 @@ func TestNextPrevUntil(t *testing.T) {
 	defer closeFn()
 
 	// 1 sensors -> 1000/24 hours is approx 41/hour
-	_ = addBulkHistory(store, count, 1, 3600*24)
+	_ = addBulkHistory(store, agentID, count, 1, 3600*24)
 
 	cursor, releaseFn, _ := readHist.GetCursor(dThing0ID, "")
 	defer releaseFn()
@@ -576,7 +575,7 @@ func TestReadHistory(t *testing.T) {
 	defer closeFn()
 
 	// 1 sensors -> 1000/24 hours is approx 41/hour
-	_ = addBulkHistory(store, count, 1, 3600*24)
+	_ = addBulkHistory(store, agentID, count, 1, 3600*24)
 
 	// start 20 hours ago and read an hour's worth
 	startTime := time.Now().Add(-20 * time.Hour)
@@ -600,22 +599,20 @@ func TestReadHistory(t *testing.T) {
 
 func TestPubSub(t *testing.T) {
 	const agent1ID = "device1"
-	const thing0ID = thingIDPrefix + "0"
-	var dThing0ID = tdd.MakeDigiTwinThingID(agent1ID, thing0ID)
 
 	t.Log("--- TestPubSub ---")
-	// start the pubsub server
-	//svcConfig.Retention = []history.RetentionRule{
-	//	{Name: vocab.VocabTemperature},
-	//	{Name: vocab.VocabBatteryLevel},
-	//}
 
-	svc, readHist, stopFn := startHistoryService(true)
+	_, readHist, stopFn := startHistoryService(true)
 	defer stopFn()
-	_ = svc
+	ag1, _ := ts.AddConnectService(agent1ID)
+	defer ag1.Disconnect()
 
-	hc1, _ := ts.AddConnectService(agent1ID)
-	defer hc1.Disconnect()
+	// Add the thing who is publishing events
+	td1 := ts.CreateTestTD(0)
+	ts.AddTD(agent1ID, td1)
+	thing0ID := td1.ID
+	dThing0ID := tdd.MakeDigiTwinThingID(agent1ID, thing0ID)
+
 	// publish events
 	names := []string{
 		vocab.PropEnvTemperature, vocab.PropSwitchOnOff,
@@ -629,7 +626,7 @@ func TestPubSub(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		val := strconv.Itoa(i + 1)
 		// events are published by the agent using their native thingID
-		err := hc1.PubEvent(thing0ID, names[i], val)
+		err := ag1.PubEvent(thing0ID, names[i], val, "")
 		assert.NoError(t, err)
 		// make sure timestamp differs
 		time.Sleep(time.Millisecond * 3)
@@ -656,20 +653,23 @@ func TestPubSub(t *testing.T) {
 func TestManageRetention(t *testing.T) {
 	t.Log("--- TestManageRetention ---")
 	const client1ID = "admin"
-	const device1ID = "newdevice" // should not match existing test devices
-	const thing0ID = thingIDPrefix + "0"
-	var dThing0ID = tdd.MakeDigiTwinThingID(device1ID, thing0ID)
+	const agentID = "agent1" // should not match existing test devices
 	const event1Name = "event1"
 	const event2Name = "notRetainedEvent"
 
 	// setup with some history
 	store, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
-	addBulkHistory(store, 1000, 5, 1000)
+	addBulkHistory(store, agentID, 1000, 5, 1000)
+
+	// make sure the TD whose retention rules are added exist
+	td0 := ts.CreateTestTD(0)
+	ts.AddTD(agentID, td0)
+	dThing0ID := tdd.MakeDigiTwinThingID(agentID, td0.ID)
 
 	// connect as an admin user
-	hc1, _ := ts.AddConnectUser(client1ID, authn.ClientRoleAdmin)
-	mngHist := historyclient.NewManageHistoryClient(hc1)
+	cl1, _ := ts.AddConnectUser(client1ID, authz.ClientRoleAdmin)
+	mngHist := historyclient.NewManageHistoryClient(cl1)
 
 	// should be able to read the current retention rules. Expect the default rules.
 	rules1, err := mngHist.GetRetentionRules()
@@ -695,13 +695,13 @@ func TestManageRetention(t *testing.T) {
 		assert.Equal(t, event1Name, rule.Name)
 	}
 
-	// connect as device1 and publish two events, one to be retained
-	hc2, _ := ts.AddConnectService(device1ID)
+	// connect as agent-1 and publish two events for thing0, one to be retained
+	ag1, _ := ts.AddConnectService(agentID)
 	require.NoError(t, err)
-	defer hc2.Disconnect()
-	err = hc2.PubEvent(thing0ID, event1Name, "hi)")
+	defer ag1.Disconnect()
+	err = ag1.PubEvent(td0.ID, event1Name, "event one", "")
 	assert.NoError(t, err)
-	err = hc2.PubEvent(thing0ID, event2Name, "hi)")
+	err = ag1.PubEvent(td0.ID, event2Name, "event two", "")
 	assert.NoError(t, err)
 	// give it some time to persist the bucket
 	time.Sleep(time.Millisecond * 100)
@@ -710,7 +710,7 @@ func TestManageRetention(t *testing.T) {
 	cursor, releaseFn, err := readHist.GetCursor(dThing0ID, "")
 	require.NoError(t, err)
 	histEv1, valid, _ := cursor.First()
-	assert.True(t, valid, "missing the first event")
+	require.True(t, valid, "missing the first event")
 	assert.Equal(t, event1Name, histEv1.Name)
 	histEv2, valid2, _ := cursor.Next()
 	assert.False(t, valid2, "second event should not be there")

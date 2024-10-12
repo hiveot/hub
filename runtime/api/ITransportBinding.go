@@ -57,7 +57,7 @@ type ITransportBinding interface {
 	//	messageID of the action to associate with
 	//	output result value as per TD if progress is completed, or error text if failed
 	//	err error if failed
-	PublishActionProgress(clientID string, stat hubclient.DeliveryStatus, agentID string) (
+	PublishProgressUpdate(clientID string, stat hubclient.DeliveryStatus, agentID string) (
 		found bool, err error)
 
 	// PublishEvent publishes an event message to all subscribers of this protocol binding
@@ -86,6 +86,7 @@ type ITransportBinding interface {
 	// WriteProperty sends a request to write a property to the agent with the given ID
 	//
 	// Only supported on bindings that support subscriptions
+	// This returns found is false if the agent is not connected.
 	WriteProperty(agentID string, thingID string, name string, value any, messageID string,
 		senderID string) (found bool, status string, err error)
 }

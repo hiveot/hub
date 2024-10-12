@@ -1,5 +1,5 @@
 import * as tslog from 'tslog';
-import {EventHandler} from "@hivelib/hubclient/IHubClient";
+import {EventHandler} from "@hivelib/hubclient/IAgentClient";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 // var EventSource = require('eventsource')
 import EventSource from 'eventsource'

@@ -100,7 +100,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	// as soon as data is received. The server could send a 'ping' event on connect.
 	if connStatus != hubclient.Connected {
 		// success!
-		slog.Warn("handleSSEEvent: connection re-established")
+		slog.Info("handleSSEEvent: connection re-established")
 		cl.SetConnectionStatus(hubclient.Connected, nil)
 	}
 	// no further processing of a ping needed
@@ -207,7 +207,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	} else if rxMsg.MessageType == vocab.MessageTypeAction {
 		// agent receives action request
 		stat = cl._messageHandler(rxMsg)
-		cl.PubDeliveryUpdate(stat)
+		cl.PubProgressUpdate(stat)
 	} else if rxMsg.MessageType == vocab.MessageTypeProperty {
 		// agent receives write property request
 		// or, consumer receives property update request
@@ -215,12 +215,12 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		//   property update messages are from agent->consumer and dont confirm delivery
 		//   while property write messages are consumer->agent and can confirm.
 		stat = cl._messageHandler(rxMsg)
-		//cl.PubDeliveryUpdate(stat)
+		cl.PubProgressUpdate(stat)
 	} else {
 		slog.Warn("handleSSEEvent, unknown message type. Message ignored.",
 			slog.String("message type", rxMsg.MessageType),
 			slog.String("clientID", cl.ClientID()))
 		stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
-		cl.PubDeliveryUpdate(stat)
+		cl.PubProgressUpdate(stat)
 	}
 }

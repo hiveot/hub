@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	digitwin2 "github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
@@ -48,7 +47,7 @@ func TestActionFlow(t *testing.T) {
 
 	// complete the action
 	av, err := dtwStore.UpdateActionProgress(agentID, thingID, actionName,
-		digitwin.StatusCompleted, actionValue)
+		vocab.ProgressStatusCompleted, actionValue)
 	require.NoError(t, err)
 	require.Equal(t, msgID, av.MessageID)
 
@@ -59,7 +58,7 @@ func TestActionFlow(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, actionValue, v.Output)
-	require.Equal(t, digitwin.StatusCompleted, v.Status)
+	require.Equal(t, vocab.ProgressStatusCompleted, v.Status)
 
 	// read all actions
 	actList, err := svc.ValuesSvc.QueryAllActions(consumerID, dThingID)
@@ -126,12 +125,12 @@ func TestInvokeActionErrors(t *testing.T) {
 
 	// complete the action on wrong thing
 	_, err = dtwStore.UpdateActionProgress(agentID, "badThingID", actionName,
-		digitwin.StatusCompleted, actionValue)
+		vocab.ProgressStatusPending, actionValue)
 	assert.Error(t, err)
 
 	// complete the action on wrong action name
 	_, err = dtwStore.UpdateActionProgress(agentID, thingID, "badName",
-		digitwin.StatusCompleted, actionValue)
+		vocab.ProgressStatusCompleted, actionValue)
 	assert.Error(t, err)
 }
 
@@ -165,7 +164,7 @@ func TestDigitwinAgentAction(t *testing.T) {
 		digitwin2.DirectoryDThingID, digitwin2.DirectoryReadDTDMethod, dThingID, msgID)
 	require.NoError(t, err)
 	require.NotEmpty(t, output)
-	require.Equal(t, digitwin.StatusCompleted, status)
+	require.Equal(t, vocab.ProgressStatusCompleted, status)
 
 	// last, a non-existing DTD should fail
 	status, output, err = ag.HandleAction(consumerID,

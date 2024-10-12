@@ -43,6 +43,7 @@ func GenGoAPIFromTD(td *tdd.TD, outFile string) (err error) {
 
 	l.Add("")
 	l.Add("import \"errors\"")
+	l.Add("import \"github.com/hiveot/hub/api/go/vocab\"")
 	l.Add("import \"github.com/hiveot/hub/lib/utils\"")
 	l.Add("import \"github.com/hiveot/hub/lib/hubclient\"")
 	l.Add("")

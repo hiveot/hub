@@ -16,7 +16,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	var td *tdd.TD
 	var actionAff *tdd.ActionAffordance
 	var newValue any
-	var hc hubclient.IHubClient
+	var hc hubclient.IConsumerClient
 
 	thingID := chi.URLParam(r, "thingID")
 	actionName := chi.URLParam(r, "name")

@@ -121,11 +121,11 @@ func GenSchemaDefOneOf(l *utils.SL, enumTypeName string, ds *tdd.DataSchema) {
 		l.Add("")
 		l.Add("// %s for %s", valueTitle, dsEnum.Title)
 		GenDescription(l, dsEnum.Description, dsEnum.Comments)
-		if ds.Type == "string" {
-			l.Add("%s = \"%s\"", valueTitle, enumValue)
-		} else {
-			l.Add("%s %s = %v", valueTitle, enumTypeName, enumValue)
-		}
+		//if ds.Type == "string" {
+		//	l.Add("%s = \"%s\"", valueTitle, enumValue)
+		//} else {
+		l.Add("%s %s = \"%v\"", valueTitle, enumTypeName, enumValue)
+		//}
 		//GenSchemaDefConst(l, enumValueName, &dsEnum)
 	}
 

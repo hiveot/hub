@@ -2,7 +2,7 @@ package launcher_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/services/launcher/config"
@@ -63,7 +63,7 @@ func startService() (l *launcherclient.LauncherClient, stopFn func()) {
 	//agent := service.StartLauncherAgent(svc, hc1)
 	//_ = agent
 	//--- connect the launcher user
-	hc2, _ := testServer.AddConnectUser(adminID, authn.ClientRoleAdmin)
+	hc2, _ := testServer.AddConnectUser(adminID, authz.ClientRoleAdmin)
 	cl := launcherclient.NewLauncherClient(launcherID, hc2)
 	return cl, func() {
 		hc2.Disconnect()
@@ -103,7 +103,7 @@ func TestList(t *testing.T) {
 	require.NoError(t, err)
 	assert.Greater(t, len(info), 10)
 
-	hc, _ := testServer.AddConnectUser(userID, authn.ClientRoleAdmin)
+	hc, _ := testServer.AddConnectUser(userID, authz.ClientRoleAdmin)
 	defer hc.Disconnect()
 	cl := launcherclient.NewLauncherClient("", hc)
 	info2, err := cl.List(false)
@@ -119,7 +119,7 @@ func TestListNoPermission(t *testing.T) {
 	defer cancelFunc()
 	require.NotNil(t, svc)
 
-	hc, _ := testServer.AddConnectUser(userID, authn.ClientRoleNone)
+	hc, _ := testServer.AddConnectUser(userID, authz.ClientRoleNone)
 	defer hc.Disconnect()
 	cl := launcherclient.NewLauncherClient("", hc)
 	info2, err := cl.List(false)

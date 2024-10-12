@@ -29,7 +29,7 @@ var nowrap bool
 // commandline:  hubcli command options
 
 func main() {
-	var hc hubclient.IHubClient
+	var hc hubclient.IConsumerClient
 	var verbose bool
 	var loginID = "admin"
 	var password = ""

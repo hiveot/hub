@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 )
@@ -16,7 +16,7 @@ import (
 // back to a reply message, if any.
 // The main entry point is the HandleMessage function.
 type AuthzAgent struct {
-	hc           hubclient.IHubClient
+	hc           hubclient.IConsumerClient
 	svc          *AuthzService
 	adminHandler api.ActionHandler
 	userHandler  api.ActionHandler
@@ -37,7 +37,7 @@ func (agent *AuthzAgent) HandleAction(consumerID string, dThingID string, action
 		err = fmt.Errorf("unknown authz service capability '%s'", dThingID)
 	}
 	if err != nil {
-		status = digitwin.StatusFailed
+		status = vocab.ProgressStatusFailed
 	}
 	return status, output, err
 }
@@ -67,14 +67,14 @@ func StartAuthzAgent(svc *AuthzService) (*AuthzAgent, error) {
 	err = svc.SetPermissions(authn.AdminAgentID, authz.ThingPermissions{
 		AgentID: authn.AdminAgentID,
 		ThingID: authn.AdminServiceID,
-		Allow:   []string{authn.ClientRoleService, authn.ClientRoleAdmin, authn.ClientRoleManager},
+		Allow:   []authz.ClientRole{authz.ClientRoleService, authz.ClientRoleAdmin, authz.ClientRoleManager},
 	})
 	if err == nil {
 		// all users with a role can GetProfile and refresh their token
 		err = svc.SetPermissions(authn.UserAgentID, authz.ThingPermissions{
 			AgentID: authn.UserAgentID,
 			ThingID: authn.UserServiceID,
-			Deny:    []string{authn.ClientRoleNone, ""},
+			Deny:    []authz.ClientRole{authz.ClientRoleNone, ""},
 		})
 	}
 
@@ -83,15 +83,15 @@ func StartAuthzAgent(svc *AuthzService) (*AuthzAgent, error) {
 		err = svc.SetPermissions(authz.AdminAgentID, authz.ThingPermissions{
 			AgentID: authz.AdminAgentID,
 			ThingID: authz.AdminServiceID,
-			Allow:   []string{authn.ClientRoleService, authn.ClientRoleAdmin, authn.ClientRoleManager},
+			Allow:   []authz.ClientRole{authz.ClientRoleService, authz.ClientRoleAdmin, authz.ClientRoleManager},
 		})
 	}
 	if err == nil {
 		err = svc.SetPermissions(authz.UserAgentID, authz.ThingPermissions{
 			AgentID: authz.UserAgentID,
 			ThingID: authz.UserServiceID,
-			Allow: []string{authn.ClientRoleAgent, authn.ClientRoleService,
-				authn.ClientRoleAdmin, authn.ClientRoleManager, authn.ClientRoleOperator},
+			Allow: []authz.ClientRole{authz.ClientRoleAgent, authz.ClientRoleService,
+				authz.ClientRoleAdmin, authz.ClientRoleManager, authz.ClientRoleOperator},
 		})
 	}
 	if err != nil {

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/tlsserver"
-	digitwin2 "github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
 	"github.com/hiveot/hub/runtime/transports/httptransport/subprotocols"
 	jsoniter "github.com/json-iterator/go"
@@ -85,9 +85,9 @@ func (svc *HttpTransport) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	svc.writeReply(w, &resp)
 }
 
-// HandleActionProgress sends a delivery update message to the digital twin
-func (svc *HttpTransport) HandleActionProgress(w http.ResponseWriter, r *http.Request) {
-	slog.Info("HandleActionProgress")
+// HandleProgressUpdate sends a delivery update message to the digital twin
+func (svc *HttpTransport) HandleProgressUpdate(w http.ResponseWriter, r *http.Request) {
+	slog.Info("HandleProgressUpdate")
 	clientID, _, _, body, err := subprotocols.GetRequestParams(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -96,7 +96,7 @@ func (svc *HttpTransport) HandleActionProgress(w http.ResponseWriter, r *http.Re
 	stat := hubclient.DeliveryStatus{}
 	err = jsoniter.Unmarshal(body, &stat)
 	if err == nil {
-		err = svc.hubRouter.HandleActionProgress(clientID, stat)
+		err = svc.hubRouter.HandleProgressUpdate(clientID, stat)
 	}
 	if err != nil {
 		svc.writeError(w, err, http.StatusBadRequest)
@@ -165,7 +165,7 @@ func (svc *HttpTransport) HandleActionRequest(w http.ResponseWriter, r *http.Req
 		}
 		svc.writeReply(w, resp)
 		return
-	} else if status != digitwin2.StatusCompleted {
+	} else if status != vocab.ProgressStatusCompleted {
 		// if progress isn't completed then also return the delivery progress
 		replyHeader.Set(hubclient.DataSchemaHeader, "DeliveryStatus")
 		resp := hubclient.DeliveryStatus{

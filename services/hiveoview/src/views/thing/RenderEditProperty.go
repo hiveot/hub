@@ -29,10 +29,10 @@ type RenderEditPropertyTemplateData struct {
 	SubmitPropertyPath string
 }
 
-func getPropAff(hc hubclient.IHubClient, thingID string, name string) (
+func getPropAff(hc hubclient.IConsumerClient, thingID string, name string) (
 	td *tdd.TD, propAff *tdd.PropertyAffordance, err error) {
 
-	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
+	tdJson, err := digitwin.DirectoryReadDTD(hc, thingID)
 	if err != nil {
 		return td, propAff, err
 	}
@@ -50,9 +50,7 @@ func getPropAff(hc hubclient.IHubClient, thingID string, name string) (
 // obtain a schema value instance from a thingID and key
 // this pulls the TD from the server (todo: consider using a local cache)
 func getConfigValue(
-	hc hubclient.IHubClient, thingID string, name string) (sv RenderEditPropertyTemplateData, err error) {
-	var valueStr string
-	var dataValue any
+	hc hubclient.IConsumerClient, thingID string, name string) (sv RenderEditPropertyTemplateData, err error) {
 
 	td, propAff, err := getPropAff(hc, thingID, name)
 	_ = td
@@ -60,38 +58,15 @@ func getConfigValue(
 		return sv, err
 	}
 
-	names := []string{name}
-	senderID := ""
-	updated := ""
-	propValues, err := digitwin.OutboxReadLatest(hc, "", names, "", thingID)
-	if err == nil {
-		// convert the property value to string for presentation
-		// TODO: make this simpler
-		tmRaw, found := propValues[name]
-		if found {
-			tm := hubclient.ThingMessage{}
-			tmJson, _ := json.Marshal(tmRaw)
-			_ = json.Unmarshal(tmJson, &tm)
-			dataValue = tm.Data
-			valueStr = fmt.Sprintf("%v", tm.Data)
-			senderID = tm.SenderID
-			updated = tm.GetUpdated()
-		}
-	}
+	propValue, err := digitwin.ValuesReadProperty(hc, name, thingID)
+	io := consumedthing.NewInteractionOutputFromValue(&propValue, td)
 	sv = RenderEditPropertyTemplateData{
 		//TD:         &td,
-		ThingID:    thingID,
-		Name:       name,
-		DataSchema: &propAff.DataSchema,
-		Value:      valueStr,
-		PropertyValue: consumedthing.InteractionOutput{
-			Name:     name,
-			Title:    propAff.Title,
-			Schema:   propAff.DataSchema,
-			Value:    consumedthing.NewDataSchemaValue(dataValue),
-			Updated:  updated,
-			SenderID: senderID,
-		},
+		ThingID:       thingID,
+		Name:          name,
+		DataSchema:    &propAff.DataSchema,
+		Value:         io.Value.Text(),
+		PropertyValue: *io,
 	}
 	return sv, nil
 }

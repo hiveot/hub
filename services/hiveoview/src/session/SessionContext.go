@@ -21,7 +21,7 @@ func AddSessionToContext() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var clientID string
-			var hc hubclient.IHubClient
+			var hc hubclient.IConsumerClient
 
 			// get the session
 			cs, claims, err := sessionmanager.GetSessionFromCookie(r)
@@ -71,7 +71,7 @@ func AddSessionToContext() func(next http.Handler) http.Handler {
 // This returns an error if the session is not found or is not active.
 // Intended for use by http handlers.
 // Note: This should not be used in an SSE session.
-func GetSessionFromContext(r *http.Request) (*WebClientSession, hubclient.IHubClient, error) {
+func GetSessionFromContext(r *http.Request) (*WebClientSession, hubclient.IConsumerClient, error) {
 	ctxSession := r.Context().Value(SessionContextID)
 	if ctxSession == nil {
 		return nil, nil, errors.New("no session in context")

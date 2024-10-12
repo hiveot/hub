@@ -16,7 +16,7 @@ import (
 // EmbeddedClient is a hub client that connects directly to the embedded protocol binding.
 // It can send messages to the hub and subscribe to actions and events from the hub.
 //
-// This implements the IHubClient interface for compatibility reasons so it can be
+// This implements the IConsumerClient interface for compatibility reasons so it can be
 // a drop-in replacement for services that use other transports.
 //
 // Since embedded clients are always connected, the Connect and Disconnect methods do nothing,
@@ -216,7 +216,7 @@ func (cl *EmbeddedClient) Unsubscribe(thingID string, name string) error {
 }
 
 // NewEmbeddedClient returns an embedded hub client for connecting to embedded services.
-// This implements the IHubClient interface.
+// This implements the IConsumerClient interface.
 //
 // The easiest way to connect this client to the server is to use the embedded server
 // NewClient() method instead of this method as it links client and server.

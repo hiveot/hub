@@ -1,8 +1,9 @@
 // ZWaveJSBinding.ts holds the entry point to the zwave binding along with its configuration
 import {SetValueStatus, TranslatedValueID, ValueMetadataNumeric, ZWaveNode} from "zwave-js";
 import * as tslog from 'tslog';
-import {DeliveryProgress, DeliveryStatus, IHubClient} from "@hivelib/hubclient/IHubClient";
 import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI";
+import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
+import {ProgressStatusDelivered, ProgressStatusFailed, ProgressStatusCompleted} from "@hivelib/api/vocab/vocab";
 
 const log = new tslog.Logger()
 
@@ -46,24 +47,24 @@ export async function setValue(node: ZWaveNode, vid: TranslatedValueID, value: a
                     // 0xff: success
                     switch (res.status) {
                         case SetValueStatus.Working:
-                            stat.progress = DeliveryProgress.DeliveryApplied
+                            stat.progress = ProgressStatusDelivered
                             break;
                         // TODO progress updates
                         case SetValueStatus.Success:
                         case SetValueStatus.SuccessUnsupervised:
-                            stat.progress = DeliveryProgress.DeliveryCompleted
+                            stat.progress = ProgressStatusCompleted
                             break;
                         case SetValueStatus.EndpointNotFound:
                         case SetValueStatus.NotImplemented:
-                            stat.progress = DeliveryProgress.DeliveryFailed
+                            stat.progress = ProgressStatusFailed
                             stat.error = res.message
                             break;
                         case SetValueStatus.InvalidValue:
-                            stat.progress = DeliveryProgress.DeliveryCompleted
+                            stat.progress = ProgressStatusCompleted
                             stat.error = res.message
                             break
                         default:
-                            stat.progress = DeliveryProgress.DeliveryApplied
+                            stat.progress = ProgressStatusDelivered
                     }
                     resolve(stat)
                 })

@@ -1,6 +1,8 @@
 package api
 
-import "github.com/hiveot/hub/api/go/authn"
+import (
+	"github.com/hiveot/hub/api/go/authn"
+)
 
 // AuthnEntry containing client profile and password hash
 // For internal use.

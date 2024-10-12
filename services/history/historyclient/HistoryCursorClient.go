@@ -15,7 +15,7 @@ type HistoryCursorClient struct {
 
 	// history cursor service ID
 	dThingID string
-	hc       hubclient.IHubClient
+	hc       hubclient.IConsumerClient
 }
 
 // First positions the cursor at the first key in the ordered list
@@ -119,7 +119,7 @@ func (cl *HistoryCursorClient) Seek(timeStamp time.Time) (
 //	hc connection to the Hub
 //	serviceID of the read capability
 //	cursorKey is the iterator key obtain when requesting the cursor
-func NewHistoryCursorClient(hc hubclient.IHubClient, cursorKey string) *HistoryCursorClient {
+func NewHistoryCursorClient(hc hubclient.IConsumerClient, cursorKey string) *HistoryCursorClient {
 	agentID := historyapi.AgentID
 	serviceID := historyapi.ReadHistoryServiceID
 	cl := &HistoryCursorClient{

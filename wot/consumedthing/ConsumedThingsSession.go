@@ -19,7 +19,7 @@ const ReadDirLimit = 1000
 // This maintains a single instance of each ConsumedThing and updates it when
 // an event and action progress updates are received.
 type ConsumedThingsSession struct {
-	hc hubclient.IHubClient
+	hc hubclient.IConsumerClient
 	// Things used by the client
 	consumedThings map[string]*ConsumedThing
 	// directory of TD documents
@@ -78,63 +78,66 @@ func (cts *ConsumedThingsSession) handleMessage(
 		}
 	}
 
-	if msg.MessageType == vocab.MessageTypeEvent {
-		if msg.Name == vocab.EventNameTD {
-			// reload the TD
-			td := &tdd.TD{}
-			err := json.Unmarshal([]byte(msg.DataAsText()), &td)
+	if msg.MessageType == vocab.MessageTypeTD {
+		// reload the TD
+		td := &tdd.TD{}
+		err := json.Unmarshal([]byte(msg.DataAsText()), &td)
+		if err != nil {
+			slog.Error("invalid payload for TD event. Ignored",
+				"thingID", msg.ThingID)
+			stat.Failed(msg, err)
+			return stat
+		}
+		cts.mux.Lock()
+		defer cts.mux.Unlock()
+		cts.directory[td.ID] = td
+		// update consumed thing, if existing
+		ct, found := cts.consumedThings[td.ID]
+		if found {
+			ct.td = td
+			//ct.OnEvent(msg)
+		}
+	} else if msg.MessageType == vocab.MessageTypeProperty {
+		// update consumed thing, if existing
+		cts.mux.Lock()
+		defer cts.mux.Unlock()
+		ct, found := cts.consumedThings[msg.ThingID]
+		if found {
+			props := make(map[string]interface{})
+			err := utils.DecodeAsObject(msg.Data, &props)
 			if err != nil {
-				slog.Error("invalid payload for TD event. Ignored",
+				slog.Error("invalid payload for properties event. Ignored",
 					"thingID", msg.ThingID)
-				stat.Failed(msg, err)
-				return stat
-			}
-			cts.mux.Lock()
-			defer cts.mux.Unlock()
-			cts.directory[td.ID] = td
-			// update consumed thing, if existing
-			ct, found := cts.consumedThings[td.ID]
-			if found {
-				ct.td = td
-				//ct.OnEvent(msg)
-			}
-		} else if msg.Name == vocab.EventNameProperties {
-			// update consumed thing, if existing
-			cts.mux.Lock()
-			defer cts.mux.Unlock()
-			ct, found := cts.consumedThings[msg.ThingID]
-			if found {
-				props := make(map[string]interface{})
-				err := utils.DecodeAsObject(msg.Data, &props)
-				if err != nil {
-					slog.Error("invalid payload for properties event. Ignored",
-						"thingID", msg.ThingID)
-				} else {
-					// update all property values
-					for k, v := range props {
-						propMsg := hubclient.NewThingMessage(
-							vocab.MessageTypeProperty, msg.ThingID, k, v, msg.SenderID)
-						ct.OnPropertyUpdate(propMsg)
-					}
+			} else {
+				// update all property values
+				for k, v := range props {
+					propValue := &digitwin.ThingValue{
+						Name: k, Data: v, MessageID: msg.MessageID,
+						SenderID: msg.SenderID, Updated: msg.Created}
+					ct.OnPropertyUpdate(propValue)
 				}
 			}
-		} else if msg.Name == vocab.EventNameDeliveryUpdate {
-			// delivery status updates refer to actions
-			cts.mux.RLock()
-			ct, found := cts.consumedThings[msg.ThingID]
-			cts.mux.RUnlock()
-			if found {
-				ct.OnDeliveryUpdate(msg)
-			}
-		} else {
-			// this is a regular value event
-			cts.mux.RLock()
-			ct, found := cts.consumedThings[msg.ThingID]
-			cts.mux.RUnlock()
-			if found {
-				ct.OnEvent(msg)
-			}
 		}
+	} else if msg.MessageType == vocab.MessageTypeDeliveryUpdate {
+		// delivery status updates refer to actions
+		cts.mux.RLock()
+		ct, found := cts.consumedThings[msg.ThingID]
+		cts.mux.RUnlock()
+		if found {
+			ct.OnDeliveryUpdate(msg)
+		}
+	} else {
+		// this is a regular value event
+		cts.mux.RLock()
+		ct, found := cts.consumedThings[msg.ThingID]
+		cts.mux.RUnlock()
+		if found {
+			tv := &digitwin.ThingValue{
+				Name: msg.Name, MessageID: msg.MessageID, SenderID: msg.SenderID,
+				Updated: msg.Created, Data: msg.Data}
+			ct.OnEvent(tv)
+		}
+
 	}
 	// pass it on to chained handler
 	if cts.eventHandler != nil {
@@ -177,7 +180,7 @@ func (cts *ConsumedThingsSession) ReadDirectory(force bool) (map[string]*tdd.TD,
 	newDir := make(map[string]*tdd.TD)
 
 	// TODO: support for reading in pages
-	thingsList, err := digitwin.DirectoryReadTDs(cts.hc, ReadDirLimit, 0)
+	thingsList, err := digitwin.DirectoryReadAllDTDs(cts.hc, ReadDirLimit, 0)
 	if err != nil {
 		return newDir, err
 	}
@@ -199,7 +202,7 @@ func (cts *ConsumedThingsSession) ReadDirectory(force bool) (map[string]*tdd.TD,
 func (cts *ConsumedThingsSession) ReadTD(thingID string) (*tdd.TD, error) {
 	// request the TD from the Hub
 	td := &tdd.TD{}
-	tdJson, err := digitwin.DirectoryReadTD(cts.hc, thingID)
+	tdJson, err := digitwin.DirectoryReadDTD(cts.hc, thingID)
 	if err == nil {
 		err = json.Unmarshal([]byte(tdJson), &td)
 	}
@@ -228,7 +231,7 @@ func (cts *ConsumedThingsSession) SetEventHandler(handler func(message *hubclien
 //
 // This will subscribe to events from the Hub using the provided hub client.
 // This will receive any prior event subscriber.
-func NewConsumedThingsSession(hc hubclient.IHubClient) *ConsumedThingsSession {
+func NewConsumedThingsSession(hc hubclient.IConsumerClient) *ConsumedThingsSession {
 	ctm := ConsumedThingsSession{
 		hc:             hc,
 		consumedThings: make(map[string]*ConsumedThing),

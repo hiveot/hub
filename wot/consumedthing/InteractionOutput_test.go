@@ -1,8 +1,7 @@
 package consumedthing
 
 import (
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/logging"
 	"log/slog"
 	"testing"
@@ -18,8 +17,8 @@ func TestNilSchema(t *testing.T) {
 	slog.Info("--- TestNilSchema ---")
 	data1 := "text"
 
-	tm := hubclient.NewThingMessage(vocab.MessageTypeEvent, thing1ID, key1ID, data1, "")
-	io := NewInteractionOutputFromTM(tm, nil)
+	tv := &digitwin.ThingValue{Name: key1ID, Data: data1}
+	io := NewInteractionOutputFromValue(tv, nil)
 
 	asValue := io.Value.Text()
 	assert.Equal(t, data1, asValue)
@@ -28,16 +27,16 @@ func TestNilSchema(t *testing.T) {
 
 func TestArray(t *testing.T) {
 	data1 := []string{"item 1", "item 2"}
-	tm := hubclient.NewThingMessage(vocab.MessageTypeEvent, thing1ID, key1ID, data1, "")
-	io := NewInteractionOutputFromTM(tm, nil)
+	tv := &digitwin.ThingValue{Name: key1ID, Data: data1}
+	io := NewInteractionOutputFromValue(tv, nil)
 	asArray := io.Value.Array()
 	assert.Len(t, asArray, 2)
 }
 
 func TestBool(t *testing.T) {
 	data1 := true
-	tm := hubclient.NewThingMessage(vocab.MessageTypeEvent, thing1ID, key1ID, data1, "")
-	io := NewInteractionOutputFromTM(tm, nil)
+	tv := &digitwin.ThingValue{Name: key1ID, Data: data1}
+	io := NewInteractionOutputFromValue(tv, nil)
 	asBool := io.Value.Boolean()
 	assert.Equal(t, true, asBool)
 	asString := io.Value.Text()
@@ -48,8 +47,8 @@ func TestBool(t *testing.T) {
 
 func TestInt(t *testing.T) {
 	data1 := 42
-	tm := hubclient.NewThingMessage(vocab.MessageTypeEvent, thing1ID, key1ID, data1, "")
-	io := NewInteractionOutputFromTM(tm, nil)
+	tv := &digitwin.ThingValue{Name: key1ID, Data: data1}
+	io := NewInteractionOutputFromValue(tv, nil)
 	asInt := io.Value.Integer()
 	assert.Equal(t, 42, asInt)
 	asString := io.Value.Text()
@@ -58,8 +57,8 @@ func TestInt(t *testing.T) {
 
 func TestString(t *testing.T) {
 	data1 := "Hello world"
-	tm := hubclient.NewThingMessage(vocab.MessageTypeEvent, thing1ID, key1ID, data1, "")
-	io := NewInteractionOutputFromTM(tm, nil)
+	tv := &digitwin.ThingValue{Name: key1ID, Data: data1}
+	io := NewInteractionOutputFromValue(tv, nil)
 	asString := io.Value.Text()
 	assert.Equal(t, data1, asString)
 }
@@ -73,8 +72,8 @@ func TestObject(t *testing.T) {
 		LastLoginAt string
 	}
 	data1 := User{Name: "Bob", Age: 10, Active: true, LastLoginAt: "today"}
-	tm := hubclient.NewThingMessage(vocab.MessageTypeEvent, thing1ID, key1ID, data1, "")
-	io := NewInteractionOutputFromTM(tm, nil)
+	tv := &digitwin.ThingValue{Name: key1ID, Data: data1}
+	io := NewInteractionOutputFromValue(tv, nil)
 	asMap := io.Value.Map()
 	assert.Equal(t, data1.Name, asMap["Name"])
 }

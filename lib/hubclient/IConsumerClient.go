@@ -73,11 +73,10 @@ type EventHandler func(msg *ThingMessage) error
 // As events are broadcast, the delivery status is that of delivery to at least one subscriber.
 type MessageHandler func(msg *ThingMessage) DeliveryStatus
 
-// IHubClient defines the interface of the client that connects to a messaging server.
-// Intended for use by both consumers and agents.
+// IConsumerClient defines the interface of the client that connects to a messaging server.
 //
 // TODO split this up in pure transport, consumed thing and exposed thing apis
-type IHubClient interface {
+type IConsumerClient interface {
 	// ClientID returns the agent or user clientID for this hub client
 	ClientID() string
 
@@ -156,38 +155,6 @@ type IHubClient interface {
 	//	name of the property to observe as described in the TD or "" for all properties
 	Observe(dThingID string, name string) error
 
-	// PubDeliveryUpdate [agent] sends a delivery progress update to the hub.
-	// The hub will update the status of the action in the digital twin and
-	// notify the original sender.
-	//
-	// Intended for agents that have processed an incoming action request asynchronously
-	// and need to send an update on further progress.
-	PubDeliveryUpdate(stat DeliveryStatus)
-
-	// PubEvent [agent] publishes an event style message without a response.
-	// It returns as soon as delivery to the hub is confirmed.
-	// This is intended for agents, not for consumers.
-	//
-	// Events are published by agents using their native ID, not the digital twin ID.
-	// The Hub outbox broadcasts this event using the digital twin ID.
-	//
-	//	thingID native ID of the thing as used by the agent
-	//	name of the event to publish as described in the TD
-	//	value with native data to publish, as per TD dataschema
-	//	messageID if the event is in response to a request
-	//
-	// This returns an error if the event cannot not be delivered to the hub
-	PubEvent(thingID string, name string, value any, messageID string) error
-
-	// PubTD publishes a TD document to the Hub.
-	// It returns as soon as delivery to the hub is confirmed.
-	//
-	// This is intended for agents, not for consumers.
-	//	id is the Thing ID as seen by the agent (not the digitwin ID)
-	//	td is the Thing Description document describing the Thing
-	//PubTD(td *tdd.TD) error
-	PubTD(thingID string, tdJSON string) error
-
 	// RefreshToken refreshes the authentication token
 	// The resulting token can be used with 'SetAuthToken'
 	RefreshToken(oldToken string) (newToken string, err error)
@@ -233,14 +200,6 @@ type IHubClient interface {
 	//  dThingID is the digital twin Thing ID of the Thing to subscribe to.
 	//	name of the event to subscribe as described in the TD or "" for all events
 	Subscribe(dThingID string, name string) error
-
-	// UpdateProps [agent] publishes a property value update event to the hub.
-	// It returns as soon as delivery to the hub is confirmed.
-	// This is intended for agents, not for consumers.
-	//
-	//	thingID is the native ID of the device (not including the digital twin ID)
-	//	props is the property name-value map to publish where value is the native value
-	UpdateProps(thingID string, props map[string]any) error
 
 	// Unsubscribe [consumer] removes a previous event subscription.
 	// dThingID and key must match that of Subscribe

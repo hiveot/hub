@@ -3,6 +3,7 @@ package idprov_test
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/keys"
@@ -30,7 +31,7 @@ var ts *testenv.TestServer
 // Create a new store, delete if it already exists
 func newIdProvService() (
 	svc *service.IdProvService,
-	hc hubclient.IHubClient,
+	hc hubclient.IConsumerClient,
 	stopFn func()) {
 
 	ts = testenv.StartTestServer(true)
@@ -46,7 +47,7 @@ func newIdProvService() (
 	//_ = ag
 
 	// create an end user client for testing
-	hc2, token2 := ts.AddConnectUser("test-client", authn.ClientRoleManager)
+	hc2, token2 := ts.AddConnectUser("test-client", authz.ClientRoleManager)
 	_ = token2
 	if err != nil {
 		panic("can't connect operator")

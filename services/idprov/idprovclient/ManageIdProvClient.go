@@ -11,7 +11,7 @@ import (
 // service using the message bus.
 // This requires admin permissions.
 type ManageIdProvClient struct {
-	hc hubclient.IHubClient
+	hc hubclient.IConsumerClient
 	// thingID digital twin service ID of this capability (digitwin version with agent prefix)
 	dThingID string
 }
@@ -80,7 +80,7 @@ func (cl *ManageIdProvClient) SubmitRequest(
 	return &resp.Status, resp.Token, err
 }
 
-func NewIdProvManageClient(hc hubclient.IHubClient) *ManageIdProvClient {
+func NewIdProvManageClient(hc hubclient.IConsumerClient) *ManageIdProvClient {
 	agentID := idprovapi.AgentID
 	cl := &ManageIdProvClient{
 		hc:       hc,

@@ -38,14 +38,14 @@ func TestMain(m *testing.M) {
 func TestStartStop(t *testing.T) {
 	t.Log("--- TestStartStop ---")
 	const device1ID = "device1"
-	cfg := config.IPNetConfig{
-		PortScan:   false,
-		ScanAsRoot: false,
-	}
-	svc := service.NewIpNetBinding(&cfg)
-	hc, _ := ts.AddConnectService("ipnet")
-	defer hc.Disconnect()
-	err := svc.Start(hc)
+	cfg := config.NewIPNetConfig()
+	cfg.PortScan = false
+	cfg.ScanAsRoot = false
+
+	svc := service.NewIpNetBinding(cfg)
+	ag, _ := ts.AddConnectService("ipnet")
+	defer ag.Disconnect()
+	err := svc.Start(ag)
 
 	require.NoError(t, err)
 	defer svc.Stop()

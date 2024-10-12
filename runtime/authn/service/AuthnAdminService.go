@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/api"
@@ -97,7 +98,7 @@ func (svc *AuthnAdminService) AddAgent(senderID string,
 		}
 		err = svc.authnStore.Add(args.ClientID, prof)
 		if err == nil {
-			err = svc.authnStore.SetRole(args.ClientID, authn.ClientRoleAgent)
+			err = svc.authnStore.SetRole(args.ClientID, string(authz.ClientRoleAgent))
 		}
 	}
 	if err == nil {
@@ -142,7 +143,7 @@ func (svc *AuthnAdminService) AddService(senderID string,
 		}
 		err = svc.authnStore.Add(args.ClientID, prof)
 		if err == nil {
-			err = svc.authnStore.SetRole(args.ClientID, authn.ClientRoleService)
+			err = svc.authnStore.SetRole(args.ClientID, string(authz.ClientRoleService))
 		}
 	}
 	if err == nil {

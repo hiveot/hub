@@ -3,6 +3,7 @@ package authnstore_test
 import (
 	"fmt"
 	authn2 "github.com/hiveot/hub/api/go/authn"
+	authz2 "github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/config"
@@ -378,7 +379,7 @@ func TestUpdate(t *testing.T) {
 
 func TestSetRole(t *testing.T) {
 	const user1 = "user1"
-	const role1 = authn2.ClientRoleAgent
+	const role1 string = string(authz2.ClientRoleAgent)
 
 	_ = os.Remove(unpwFilePath)
 	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath, "")

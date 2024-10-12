@@ -1,6 +1,9 @@
 package transports
 
-import "github.com/hiveot/hub/lib/hubclient"
+import (
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/hubclient"
+)
 
 // DummyRouter for implementing test hooks defined in IHubRouter
 type DummyRouter struct {
@@ -15,10 +18,10 @@ func (svc *DummyRouter) HandleActionFlow(
 	if svc.OnAction != nil {
 		output = svc.OnAction(consumerID, dThingID, actionName, input, messageID)
 	}
-	return hubclient.DeliveryDelivered, output, reqID, nil
+	return vocab.ProgressStatusDelivered, output, reqID, nil
 }
 
-func (svc *DummyRouter) HandleActionProgress(agentID string, stat hubclient.DeliveryStatus) error {
+func (svc *DummyRouter) HandleProgressUpdate(agentID string, stat hubclient.DeliveryStatus) error {
 	return nil
 }
 func (svc *DummyRouter) HandleEventFlow(

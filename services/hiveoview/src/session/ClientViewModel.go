@@ -1,7 +1,6 @@
 package session
 
 import (
-	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/wot/tdd"
 	"sort"
@@ -19,7 +18,7 @@ type AgentThings struct {
 // ClientViewModel for querying and transforming server data for presentation
 type ClientViewModel struct {
 	// connection with the hub
-	hc hubclient.IHubClient
+	hc hubclient.IConsumerClient
 
 	// TODO cache TDs and values
 	//tds map[string]*tdd.TD
@@ -38,20 +37,18 @@ type ClientViewModel struct {
 //}
 
 // GetLatest returns a map with the latest property values of a thing or nil if failed
-// TODO: The generated API doesnt know return types because WoT TD has no
-// place to define them. Find a better solution.
-func (v *ClientViewModel) GetLatest(thingID string) (hubclient.ThingMessageMap, error) {
-	valuesMap := hubclient.NewThingMessageMap()
-	tvsJson, err := digitwin.OutboxReadLatest(v.hc, "", nil, "", thingID)
-	if err != nil {
-		return valuesMap, err
-	}
-	tvs, _ := hubclient.NewThingMessageMapFromSource(tvsJson)
-	for _, tv := range tvs {
-		valuesMap.Set(tv.Name, tv)
-	}
-	return valuesMap, nil
-}
+//func (v *ClientViewModel) GetLatest(thingID string) (hubclient.ThingMessageMap, error) {
+//	valuesMap := hubclient.NewThingMessageMap()
+//	propValues, err := digitwin.ValuesReadAllProperties(v.hc, thingID)
+//	if err != nil {
+//		return valuesMap, err
+//	}
+//	tvs, _ := hubclient.NewThingMessageMapFromSource(propValues)
+//	for _, tv := range tvs {
+//		valuesMap.Set(tv.Name, tv)
+//	}
+//	return valuesMap, nil
+//}
 
 // GetLatestValue returns the latest value of a Thing event
 //func (v *ClientViewModel) GetLatestValue(thingID string, key string) (tm *hubclient.ThingMessage) {
@@ -150,7 +147,7 @@ func (v *ClientViewModel) SortThingsByTitle(tds []*tdd.TD) {
 	})
 }
 
-func NewClientViewModel(hc hubclient.IHubClient) *ClientViewModel {
+func NewClientViewModel(hc hubclient.IConsumerClient) *ClientViewModel {
 	v := &ClientViewModel{hc: hc}
 	return v
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
 	"log/slog"
 	"net/http"
@@ -66,7 +65,9 @@ func (c *SSEConnection) _send(messageType string, thingID, name string,
 	if c.sseChan != nil {
 		c.sseChan <- msg
 	}
-	return digitwin.StatusPending, nil
+	// as long as the channel exists, delivery will take place
+	// todo: detect race conditions; or accept the small risk of delivery to a closing connection?
+	return vocab.ProgressStatusDelivered, nil
 }
 
 // Close closes the connection and ends the read loop

@@ -1,13 +1,11 @@
 package history
 
 import (
-	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/wot/consumedthing"
 	"net/http"
 )
 
@@ -45,24 +43,22 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//latestValues, err := thing.GetLatest(thingID, hc)
-	latestEvents, err := digitwin.OutboxReadLatest(
-		hc, vocab.MessageTypeEvent, []string{name}, "", thingID)
+	latestValue, err := digitwin.ValuesReadEvent(hc, name, thingID)
+	if err != nil {
+		latestValue, err = digitwin.ValuesReadProperty(hc, name, thingID)
+	}
 	if err != nil {
 		mySession.WriteError(w, err, 0)
 		return
 	}
-	evmap, err := hubclient.NewThingMessageMapFromSource(latestEvents)
+	iout := consumedthing.NewInteractionOutputFromValue(&latestValue, nil)
 	if err == nil {
-		tm := evmap[name]
-		if tm != nil {
-			// TODO: get unit symbol
-			fragment := fmt.Sprintf(addRowTemplate,
-				tm.GetUpdated("WT"), tm.Data, "")
+		// TODO: get unit symbol
+		fragment := fmt.Sprintf(addRowTemplate,
+			iout.GetUpdated("WT"), latestValue.Data, "")
 
-			_, _ = w.Write([]byte(fragment))
-			return
-		}
-		err = errors.New("cant find name: " + name)
+		_, _ = w.Write([]byte(fragment))
+		return
 	}
 	mySession.WriteError(w, err, 0)
 }

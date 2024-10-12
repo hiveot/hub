@@ -65,7 +65,7 @@ type TestServer struct {
 // and returns a hub client and a new session token.
 // In case of error this panics.
 func (test *TestServer) AddConnectUser(
-	clientID string, clientRole string) (cl hubclient.IHubClient, token string) {
+	clientID string, clientRole authz.ClientRole) (cl hubclient.IConsumerClient, token string) {
 
 	password := clientID
 	err := test.Runtime.AuthnSvc.AdminSvc.AddConsumer(clientID,
@@ -92,14 +92,14 @@ func (test *TestServer) AddConnectUser(
 // Agents use non-session tokens and survive a server restart.
 // This returns the agent's connection token.
 func (test *TestServer) AddConnectAgent(
-	agentID string) (cl hubclient.IHubClient, token string) {
+	agentID string) (cl hubclient.IAgentClient, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(agentID,
 		authn.AdminAddAgentArgs{agentID, "agent name", ""})
 
 	if err == nil {
 		err = test.Runtime.AuthzSvc.SetClientRole(agentID,
-			authz.AdminSetClientRoleArgs{agentID, authn.ClientRoleAgent})
+			authz.AdminSetClientRoleArgs{agentID, authz.ClientRoleAgent})
 	}
 	if err != nil {
 		panic("AddConnectAgent: Failed adding client:" + err.Error())
@@ -121,13 +121,13 @@ func (test *TestServer) AddConnectAgent(
 //
 // clientType can be one of ClientTypeAgent or ClientTypeService
 func (test *TestServer) AddConnectService(serviceID string) (
-	cl hubclient.IHubClient, token string) {
+	cl hubclient.IAgentClient, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddService(serviceID,
 		authn.AdminAddServiceArgs{serviceID, "service name", ""})
 	if err == nil {
 		err = test.Runtime.AuthzSvc.SetClientRole(serviceID,
-			authz.AdminSetClientRoleArgs{serviceID, authn.ClientRoleService})
+			authz.AdminSetClientRoleArgs{serviceID, authz.ClientRoleService})
 	}
 	if err != nil {
 		panic("AddConnectService: Failed adding client:" + err.Error())

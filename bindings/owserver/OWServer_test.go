@@ -1,7 +1,7 @@
 package owserver_test
 
 import (
-	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/config"
@@ -87,7 +87,7 @@ func TestPoll(t *testing.T) {
 	t.Log("--- TestPoll ---")
 	hc, _ := ts.AddConnectAgent(agentID)
 	defer hc.Disconnect()
-	hc2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	hc2, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
 	defer hc2.Disconnect()
 	svc := service.NewOWServerBinding(&owsConfig)
 
@@ -96,7 +96,7 @@ func TestPoll(t *testing.T) {
 	require.NoError(t, err)
 	hc2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		slog.Info("received event", "id", msg.Name)
-		if msg.Name == vocab.EventNameProperties {
+		if msg.MessageType == vocab.MessageTypeProperty {
 			var value map[string]interface{}
 			err2 := utils.DecodeAsObject(msg.Data, &value)
 			assert.NoError(t, err2)
@@ -106,7 +106,7 @@ func TestPoll(t *testing.T) {
 			assert.NoError(t, err2)
 		}
 		tdCount.Add(1)
-		return stat.Completed(msg, nil, nil)
+		return *stat.Completed(msg, nil, nil)
 	})
 	assert.NoError(t, err)
 
@@ -121,9 +121,9 @@ func TestPoll(t *testing.T) {
 	// the simulation file contains 3 things. The service is 1 Thing.
 	assert.GreaterOrEqual(t, tdCount.Load(), int32(4))
 
-	// get events from the outbox
+	// get events from the digitwin
 	dThingID := tdd.MakeDigiTwinThingID(agentID, device1ID)
-	events, err := digitwin.OutboxReadLatest(hc2, vocab.MessageTypeEvent, nil, "", dThingID)
+	events, err := digitwin.ValuesReadAllEvents(hc2, dThingID)
 	require.NoError(t, err)
 	require.True(t, len(events) > 1)
 }
@@ -168,7 +168,7 @@ func TestAction(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	hc2, _ := ts.AddConnectUser(user1ID, authn.ClientRoleOperator)
+	hc2, _ := ts.AddConnectUser(user1ID, authz.ClientRoleOperator)
 	require.NoError(t, err)
 	defer hc2.Disconnect()
 	err = hc2.Rpc(dThingID, actionName, &actionValue, nil)
@@ -196,7 +196,7 @@ func TestConfig(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	hc2, _ := ts.AddConnectUser(user1ID, authn.ClientRoleManager)
+	hc2, _ := ts.AddConnectUser(user1ID, authz.ClientRoleManager)
 	defer hc2.Disconnect()
 	dThingID := tdd.MakeDigiTwinThingID(agentID, device1ID)
 	err = hc2.Rpc(dThingID, configName, &configValue, nil)

@@ -17,7 +17,7 @@ import (
 //	svc is the history service whose capabilities to expose
 //	hc is the optional message client connected to the server protocol
 func StartHistoryAgent(
-	svc *HistoryService, hc hubclient.IHubClient) {
+	svc *HistoryService, hc hubclient.IConsumerClient) {
 
 	// TODO: load latest retention rules from state store
 	manageHistoryMethods := map[string]interface{}{
@@ -39,6 +39,7 @@ func StartHistoryAgent(
 	}
 	rah := transports.NewAgentHandler(historyapi.ReadHistoryServiceID, readHistoryMethods)
 	mah := transports.NewAgentHandler(historyapi.ManageHistoryServiceID, manageHistoryMethods)
+
 	// receive messages for events and agent requests
 	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		if msg.MessageType == vocab.MessageTypeAction || msg.MessageType == vocab.MessageTypeProperty {
@@ -49,7 +50,7 @@ func StartHistoryAgent(
 			}
 		} else if msg.MessageType == vocab.MessageTypeEvent {
 			err := svc.addHistory.AddEvent(msg)
-			return stat.Completed(msg, nil, err)
+			return *stat.Completed(msg, nil, err)
 		}
 		stat.Failed(msg, fmt.Errorf("Unhandled message"))
 		return stat

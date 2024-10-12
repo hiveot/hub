@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/tlsclient"
@@ -41,7 +42,7 @@ const (
 	GetAllThingsPath = "/digitwin/directory" // query param offset=, limit=
 
 	PostAgentPublishEventPath             = "/agent/event/{thingID}/{name}"
-	PostAgentPublishDeliveryPath          = "/agent/delivery"
+	PostAgentPublishProgressPath          = "/agent/progress"
 	PostAgentUpdatePropertyPath           = "/agent/property/{thingID}/{name}"
 	PostAgentUpdateMultiplePropertiesPath = "/agent/properties/{thingID}"
 	PostAgentUpdateTDDPath                = "/agent/tdd/{thingID}"
@@ -53,7 +54,7 @@ const (
 )
 
 // HttpSSEClient manages the connection to the hub server using http/2.
-// This implements the IHubClient interface.
+// This implements the IConsumerClient interface.
 // This client creates two http/2 connections, one for posting messages and
 // one for a sse connection to establish a return channel.
 //
@@ -290,7 +291,7 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 	cl.mux.RLock()
 	defer cl.mux.RUnlock()
 	if cl.tlsClient == nil {
-		stat.Progress = hubclient.DeliveryFailed
+		stat.Progress = vocab.ProgressStatusFailed
 		stat.Error = "HandleActionFlow. Client connection was closed"
 		slog.Error(stat.Error)
 		return stat
@@ -315,7 +316,7 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 	stat.MessageID = respMsgID
 	if err != nil {
 		stat.Error = err.Error()
-		stat.Progress = hubclient.DeliveryFailed
+		stat.Progress = vocab.ProgressStatusFailed
 		if httpStatus == http.StatusUnauthorized {
 			err = errors.New("no longer authenticated")
 		}
@@ -324,13 +325,13 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 		err = cl.Unmarshal(reply, &stat)
 	} else if reply != nil && len(reply) > 0 {
 		err = cl.Unmarshal(reply, &stat.Reply)
-		stat.Progress = hubclient.DeliveryCompleted
+		stat.Progress = vocab.ProgressStatusCompleted
 	} else if progress != "" {
 		// progress status without delivery status output
 		stat.Progress = progress
 	} else {
 		// not an progress result and no data. assume all went well
-		stat.Progress = hubclient.DeliveryCompleted
+		stat.Progress = vocab.ProgressStatusCompleted
 	}
 	if err != nil {
 		slog.Error("PubMessage error", "err", err.Error())
@@ -411,8 +412,8 @@ func (cl *HttpSSEClient) PubActionWithQueryParams(
 // This returns an error if the connection with the server is broken
 func (cl *HttpSSEClient) PubEvent(thingID string, name string, data any, messageID string) error {
 	slog.Info("PubEvent",
-		slog.String("me", cl._status.ClientID),
-		slog.String("device thingID", thingID),
+		slog.String("agentID", cl._status.ClientID),
+		slog.String("thingID", thingID),
 		slog.String("name", name),
 	)
 	stat := cl.PubMessage(http.MethodPost, PostAgentPublishEventPath, thingID, name, data, messageID, nil)
@@ -422,41 +423,24 @@ func (cl *HttpSSEClient) PubEvent(thingID string, name string, data any, message
 	return nil
 }
 
-// PubDeliveryUpdate agent publishes a delivery update message to the digital twin
-// The digital twin will update the action status and notify the sender.
+// PubProgressUpdate agent publishes a request progress update message to the digital twin
+// The digital twin will update the request status and notify the sender.
 // This returns an error if the connection with the server is broken
-func (cl *HttpSSEClient) PubDeliveryUpdate(stat hubclient.DeliveryStatus) {
+func (cl *HttpSSEClient) PubProgressUpdate(stat hubclient.DeliveryStatus) {
 	slog.Info("PubDelivery",
 		slog.String("me", cl._status.ClientID),
 		slog.String("progress", stat.Progress),
 		slog.String("messageID", stat.MessageID))
 
-	stat2 := cl.PubMessage(http.MethodPost, PostAgentPublishDeliveryPath, "", "", stat, stat.MessageID, nil)
+	stat2 := cl.PubMessage(http.MethodPost, PostAgentPublishProgressPath, "", "", stat, stat.MessageID, nil)
 	if stat.Error != "" {
-		slog.Warn("PubDeliveryUpdate failed", "err", stat2.Error)
+		slog.Warn("PubProgressUpdate failed", "err", stat2.Error)
 	}
 }
 
-// WriteProperty publishes a configuration change request
-// This is similar to invoking an action but only affects properties.
-func (cl *HttpSSEClient) WriteProperty(thingID string, name string, data any) (
-	stat hubclient.DeliveryStatus) {
-
-	// FIXME: get message id
-	stat = cl.PubMessage(http.MethodPost, PostWritePropertyPath, thingID, name, data, "", nil)
-	slog.Info("PubProperty",
-		slog.String("me", cl._status.ClientID),
-		slog.String("thingID", thingID),
-		slog.String("name", name),
-		//slog.String("value", value),
-		slog.String("progress", stat.Progress),
-	)
-	return stat
-}
-
-// UpdateProps publishes a properties map event
+// PubProperties agent publishes a properties map event
 // Intended for use by agents to publish all properties at once
-func (cl *HttpSSEClient) UpdateProps(thingID string, props map[string]any) error {
+func (cl *HttpSSEClient) PubProperties(thingID string, props map[string]any) error {
 	//return cl.PubEvent(thingID, vocab.EventNameProperties, props, "")
 	// FIXME: get path from forms?
 	stat := cl.PubMessage("POST", PostAgentUpdateMultiplePropertiesPath,
@@ -526,7 +510,7 @@ func (cl *HttpSSEClient) Rpc(
 
 	// Intermediate status update such as 'applied' are not errors. Wait longer.
 	for {
-		if stat.Progress == hubclient.DeliveryCompleted || stat.Progress == hubclient.DeliveryFailed {
+		if stat.Progress == vocab.ProgressStatusCompleted || stat.Progress == vocab.ProgressStatusFailed {
 			break
 		}
 		// wait at most cl.timeout or until delivery completes or fails
@@ -540,7 +524,7 @@ func (cl *HttpSSEClient) Rpc(
 	if err == nil {
 		if stat.Error != "" {
 			err = errors.New(stat.Error)
-		} else if stat.Progress != hubclient.DeliveryCompleted {
+		} else if stat.Progress != vocab.ProgressStatusCompleted {
 			err = errors.New("Delivery not complete. Progress: " + stat.Progress)
 		}
 	}
@@ -650,6 +634,22 @@ func (cl *HttpSSEClient) WaitForStatusUpdate(
 	}
 
 	return stat, err
+}
+
+// WriteProperty posts a configuration change request
+func (cl *HttpSSEClient) WriteProperty(thingID string, name string, data any) (
+	stat hubclient.DeliveryStatus) {
+
+	// FIXME: get message id
+	stat = cl.PubMessage(http.MethodPost, PostWritePropertyPath, thingID, name, data, "", nil)
+	slog.Info("WriteProperty",
+		slog.String("me", cl._status.ClientID),
+		slog.String("thingID", thingID),
+		slog.String("name", name),
+		//slog.String("value", value),
+		slog.String("progress", stat.Progress),
+	)
+	return stat
 }
 
 // NewHttpSSEClient creates a new instance of the htpp client with a SSE return-channel.

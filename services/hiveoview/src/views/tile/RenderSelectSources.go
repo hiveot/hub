@@ -1,9 +1,10 @@
 package tile
 
 import (
-	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/api/go/digitwin"
 	session2 "github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
+	"github.com/hiveot/hub/wot/consumedthing"
 	"net/http"
 )
 
@@ -12,33 +13,35 @@ const RenderSelectSourceTemplateFile = "RenderSelectSources.gohtml"
 type RenderSelectSourcesTemplateData struct {
 	AgentThings []*session2.AgentThings
 	// map of thing latest event values
-	Values map[string]hubclient.ThingMessageMap
+	//Values map[string]hubclient.ThingMessageMap
+	// Map of thingID to thing interaction affordances
+	IOValues map[string]consumedthing.InteractionOutputMap
 }
 
 // GetUpdated returns the update timestamp of the latest event value
 func (data RenderSelectSourcesTemplateData) GetUpdated(thingID string, key string) string {
-	tv, found := data.Values[thingID]
+	ioMap, found := data.IOValues[thingID]
 	if !found {
 		return ""
 	}
-	tm, found := tv[key]
+	io, found := ioMap[key]
 	if !found {
 		return ""
 	}
-	return tm.GetUpdated()
+	return io.GetUpdated()
 }
 
 // GetValue returns the string value of a thing event
 func (data RenderSelectSourcesTemplateData) GetValue(thingID string, key string) string {
-	tv, found := data.Values[thingID]
+	ioMap, found := data.IOValues[thingID]
 	if !found {
 		return ""
 	}
-	tm, found := tv[key]
+	io, found := ioMap[key]
 	if !found {
 		return ""
 	}
-	return tm.DataAsText()
+	return io.Value.Text()
 }
 
 // RenderSelectSources renders the selection of Tile sources for adding to a tile
@@ -46,7 +49,7 @@ func (data RenderSelectSourcesTemplateData) GetValue(thingID string, key string)
 // TODO: split into properties, events and actions
 func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 
-	sess, _, err := session2.GetSessionFromContext(r)
+	sess, hc, err := session2.GetSessionFromContext(r)
 	if err != nil {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
@@ -64,12 +67,18 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 	// this gets all values of all things. Maybe more efficient
 	// to establish a shared cache?
 	data := RenderSelectSourcesTemplateData{
-		Values: make(map[string]hubclient.ThingMessageMap),
+		//Values: make(map[string]hubclient.ThingMessageMap),
+		IOValues: make(map[string]consumedthing.InteractionOutputMap),
 	}
 	data.AgentThings = vm.GroupByAgent(tds)
-	for thingID, _ := range tds {
-		tm, _ := vm.GetLatest(thingID)
-		data.Values[thingID] = tm
+	for thingID, td := range tds {
+		propValues, err := digitwin.ValuesReadAllProperties(hc, thingID)
+		if err != nil {
+			data.IOValues[thingID] = consumedthing.NewInteractionOutputFromValueList(propValues, td)
+		}
+		//tm, _ := vm.GetLatest(thingID)
+		//data.Values[thingID] = tm
+		//data.IOValues = consumedthing.NewInteractionOutputFromTM(tm, td)
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderSelectSourceTemplateFile, data)
 

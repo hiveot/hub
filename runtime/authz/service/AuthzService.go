@@ -58,15 +58,15 @@ type AuthzService struct {
 //}
 
 // GetClientRole returns the role assigned to the client or an error
-func (svc *AuthzService) GetClientRole(senderID string, clientID string) (string, error) {
+func (svc *AuthzService) GetClientRole(senderID string, clientID string) (authz2.ClientRole, error) {
 	// this simply returns the default role stored with the client
 	// in future more roles could be added in which case authz will need its own store.
 	role, err := svc.authnStore.GetRole(clientID)
-	return role, err
+	return authz2.ClientRole(role), err
 }
 
 // GetRolePermissions returns the permissions for the given role
-func (svc *AuthzService) GetRolePermissions(senderID string, role string) ([]authz.RolePermission, bool) {
+func (svc *AuthzService) GetRolePermissions(senderID string, role authz2.ClientRole) ([]authz.RolePermission, bool) {
 	rolePerm, found := svc.cfg.RolePermissions[role]
 	return rolePerm, found
 }
@@ -74,7 +74,7 @@ func (svc *AuthzService) GetRolePermissions(senderID string, role string) ([]aut
 // SetClientRole sets the role of a client in the authz store
 func (svc *AuthzService) SetClientRole(senderID string, args authz2.AdminSetClientRoleArgs) error {
 	// okay, we lied, it uses the authn store
-	return svc.authnStore.SetRole(args.ClientID, args.Role)
+	return svc.authnStore.SetRole(args.ClientID, string(args.Role))
 }
 
 // SetPermissions sets the client roles that are allowed to use an agent's service.
@@ -94,7 +94,7 @@ func (svc *AuthzService) SetPermissions(senderID string, perms authz2.ThingPermi
 	role, _ := svc.authnStore.GetRole(senderID)
 	if err != nil {
 		return err
-	} else if role == authn.ClientRoleAdmin {
+	} else if authz2.ClientRole(role) == authz2.ClientRoleAdmin {
 		// administrators can set permissions for others
 		slog.Info("Administrator setting role")
 	} else if senderID != perms.AgentID {

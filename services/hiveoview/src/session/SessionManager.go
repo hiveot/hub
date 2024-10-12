@@ -31,7 +31,7 @@ type SessionManager struct {
 	// Hub CA certificate
 	caCert *x509.Certificate
 	// hub client for publishing events
-	hc hubclient.IHubClient
+	hc hubclient.IAgentClient
 }
 
 // ActivateNewSession (re)activates a new session for a newly connected hub client.
@@ -44,7 +44,7 @@ type SessionManager struct {
 //
 // This returns the new session instance or nil with an error if a session could not be created.
 func (sm *SessionManager) ActivateNewSession(
-	w http.ResponseWriter, r *http.Request, hc hubclient.IHubClient, authToken string) (*WebClientSession, error) {
+	w http.ResponseWriter, r *http.Request, hc hubclient.IConsumerClient, authToken string) (*WebClientSession, error) {
 	var cs *WebClientSession
 	var sessionID string
 
@@ -88,7 +88,7 @@ func (sm *SessionManager) ActivateNewSession(
 	err = SetSessionCookie(w, sessionID, hc.ClientID(), authToken, maxAge, sm.signingKey)
 
 	// 5. publish nr sessions
-	go sm.hc.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
+	go sm.hc.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions, "")
 
 	return cs, err
 
@@ -109,7 +109,7 @@ func (sm *SessionManager) Close(sessionID string) error {
 	nrSessions := len(sm.sessions)
 
 	// 5. publish new nr of sessions
-	go sm.hc.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
+	go sm.hc.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions, "")
 
 	return nil
 }
@@ -117,7 +117,7 @@ func (sm *SessionManager) Close(sessionID string) error {
 // ConnectWithPassword creates a new hub client and connect it to the hub using password login
 // This returns a new token for future logins
 func (sm *SessionManager) ConnectWithPassword(loginID string, password string) (
-	hc hubclient.IHubClient, newToken string, err error) {
+	hc hubclient.IConsumerClient, newToken string, err error) {
 
 	hc = connect.NewHubClient(sm.hubURL, loginID, sm.caCert)
 	newToken, err = hc.ConnectWithPassword(password)
@@ -126,7 +126,7 @@ func (sm *SessionManager) ConnectWithPassword(loginID string, password string) (
 }
 
 // ConnectWithToken creates a new hub client and connect it to the hub using token login
-func (sm *SessionManager) ConnectWithToken(loginID string, authToken string) (hubclient.IHubClient, error) {
+func (sm *SessionManager) ConnectWithToken(loginID string, authToken string) (hubclient.IConsumerClient, error) {
 	hc := connect.NewHubClient(sm.hubURL, loginID, sm.caCert)
 	_, err := hc.ConnectWithToken(authToken)
 	return hc, err
@@ -172,7 +172,7 @@ func (sm *SessionManager) GetSessionFromCookie(r *http.Request) (*WebClientSessi
 //	caCert of the messaging server
 //	hc hub client to publish service events
 func (sm *SessionManager) Init(
-	hubURL string, signingKey *ecdsa.PrivateKey, caCert *x509.Certificate, hc hubclient.IHubClient) {
+	hubURL string, signingKey *ecdsa.PrivateKey, caCert *x509.Certificate, hc hubclient.IAgentClient) {
 	sm.hubURL = hubURL
 	sm.caCert = caCert
 	sm.signingKey = signingKey

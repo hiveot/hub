@@ -3,8 +3,8 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/wot/tdd"
 )
 
@@ -28,7 +28,7 @@ func (agent *AuthnAgent) HandleAction(
 		err = fmt.Errorf("unknown authn service capability '%s'", dThingID)
 	}
 	if err != nil {
-		status = digitwin.StatusFailed
+		status = vocab.ProgressStatusFailed
 	}
 	return status, output, err
 }

@@ -3,9 +3,10 @@ import {SetValueStatus, TranslatedValueID, ValueMetadataNumeric, ZWaveNode} from
 import {getPropVid} from "./getPropName";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as tslog from 'tslog';
-import {DeliveryProgress, DeliveryStatus, IHubClient} from "@hivelib/hubclient/IHubClient";
+import {IAgentClient} from "@hivelib/hubclient/IAgentClient";
 import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI";
 import {setValue} from "@zwavejs/setValue";
+import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
 
 const log = new tslog.Logger()
 
@@ -14,14 +15,14 @@ const log = new tslog.Logger()
 // handle configuration requests as defined in the TD
 // @param msg is the incoming message with the 'key' containing the property to set
 export function handleConfigRequest(
-    msg: ThingMessage, node: ZWaveNode, zwapi: ZWAPI, hc: IHubClient):  DeliveryStatus {
+    msg: ThingMessage, node: ZWaveNode, zwapi: ZWAPI, hc: IAgentClient):  DeliveryStatus {
     let stat = new DeliveryStatus()
     let errMsg: Error | undefined
 
     let propKey = msg.name
     let propValue = msg.data
 
-    stat.applied(msg)
+    stat.delivered(msg)
 
     log.info("handleConfigRequest: node '" + node.nodeId + "' setting prop '" + propKey + "' to value: " + propValue)
 
@@ -50,7 +51,7 @@ export function handleConfigRequest(
             .then(stat => {
                 stat.messageID = msg.messageID
                 // notify the sender of the update (with messageID)
-                hc.sendDeliveryUpdate(stat)
+                hc.pubProgressUpdate(stat)
                 // notify everyone else (no messageID)
                 let newValue = getVidValue(node, propVid)
                 zwapi.onValueUpdate(node, propValue, newValue)

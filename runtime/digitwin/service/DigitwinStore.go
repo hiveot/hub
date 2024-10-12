@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	digitwin2 "github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/digitwin"
@@ -110,7 +111,7 @@ func (svc *DigitwinStore) QueryAllActions(dThingID string) (
 
 // ReadAllEvents returns all last known action invocation status of the given thing
 func (svc *DigitwinStore) ReadAllEvents(dThingID string) (
-	v map[string]digitwin2.EventValue, err error) {
+	v map[string]digitwin2.ThingValue, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
@@ -124,7 +125,7 @@ func (svc *DigitwinStore) ReadAllEvents(dThingID string) (
 
 // ReadAllProperties returns all last known property values of the given thing
 func (svc *DigitwinStore) ReadAllProperties(dThingID string) (
-	v map[string]digitwin2.PropertyValue, err error) {
+	v map[string]digitwin2.ThingValue, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
@@ -138,7 +139,7 @@ func (svc *DigitwinStore) ReadAllProperties(dThingID string) (
 
 // ReadEvent returns the last known event status of the given name
 func (svc *DigitwinStore) ReadEvent(
-	dThingID string, name string) (v digitwin2.EventValue, err error) {
+	dThingID string, name string) (v digitwin2.ThingValue, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
@@ -162,7 +163,7 @@ func (svc *DigitwinStore) ReadEvent(
 // or an empty value if no value is known.
 // This returns an error if the dThingID doesn't exist.
 func (svc *DigitwinStore) ReadProperty(
-	dThingID string, name string) (v digitwin2.PropertyValue, err error) {
+	dThingID string, name string) (v digitwin2.ThingValue, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
@@ -308,8 +309,8 @@ func (svc *DigitwinStore) UpdateTD(
 		dtw = &digitwin.DigitalTwinInstance{
 			AgentID:      agentID,
 			ID:           dThingID,
-			PropValues:   make(map[string]digitwin2.PropertyValue),
-			EventValues:  make(map[string]digitwin2.EventValue),
+			PropValues:   make(map[string]digitwin2.ThingValue),
+			EventValues:  make(map[string]digitwin2.ThingValue),
 			ActionValues: make(map[string]digitwin2.ActionValue),
 		}
 		svc.dtwCache[dThingID] = dtw
@@ -349,7 +350,7 @@ func (svc *DigitwinStore) UpdateActionStart(
 	actionValue.Name = name
 	actionValue.SenderID = senderID
 	actionValue.Input = input
-	actionValue.Status = digitwin.StatusPending
+	actionValue.Status = vocab.ProgressStatusPending
 	actionValue.Updated = time.Now().Format(utils.RFC3339Milli)
 	actionValue.MessageID = messageID
 	dtw.ActionValues[name] = actionValue
@@ -358,7 +359,7 @@ func (svc *DigitwinStore) UpdateActionStart(
 	return nil
 }
 
-// UpdateActionProgress updates the progress of the last invoked action
+// UpdateActionProgress updates the progress of the last invoked action or property write
 //
 //	agentID is the ID of the agent sending the update.
 //	thingID is the ID of the original thing as managed by the agent.
@@ -378,26 +379,30 @@ func (svc *DigitwinStore) UpdateActionProgress(
 		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
 		return actionValue, err
 	}
-	// action affordance must exist
-	aff, found := dtw.DtwTD.Actions[name]
-	_ = aff
-	if !found {
-		return actionValue, fmt.Errorf("UpdateActionProgress: Action '%s' not found in digital twin '%s'", name, dThingID)
-	}
-	// action value should exist. recover if it doesn't
-	actionValue, found = dtw.ActionValues[name]
-	if !found {
-		actionValue = digitwin2.ActionValue{}
-	}
-	actionValue.Status = status
-	actionValue.Updated = time.Now().Format(utils.RFC3339Milli)
-	if status == digitwin.StatusCompleted {
-		actionValue.Output = output
-	}
-	dtw.ActionValues[name] = actionValue
-	svc.changedThings[dThingID] = true
+	// action affordance or property affordance must exist
+	_, found = dtw.DtwTD.Actions[name]
+	if found {
+		// handle action progress
+		// action value should exist. recover if it doesn't
+		actionValue, found = dtw.ActionValues[name]
+		if !found {
+			actionValue = digitwin2.ActionValue{}
+		}
+		actionValue.Status = status
+		actionValue.Updated = time.Now().Format(utils.RFC3339Milli)
+		if status == vocab.ProgressStatusCompleted {
+			actionValue.Output = output
+		}
+		dtw.ActionValues[name] = actionValue
+		svc.changedThings[dThingID] = true
 
-	return actionValue, nil
+		return actionValue, nil
+	} else {
+		// property write progress is ignored as the thing should simply update
+		//the property value after applying the write.
+	}
+	return actionValue, fmt.Errorf("UpdateActionProgress: Action '%s' not found in digital twin '%s'", name, dThingID)
+
 }
 
 // UpdateEventValue updates the last known thing event value.
@@ -425,7 +430,7 @@ func (svc *DigitwinStore) UpdateEventValue(
 		slog.Info("UpdateEventValue unknown thing iD", "dThingID", dThingID)
 		return dThingID, err
 	}
-	eventValue := digitwin2.EventValue{
+	eventValue := digitwin2.ThingValue{
 		Data:      data,
 		Updated:   time.Now().Format(utils.RFC3339Milli),
 		MessageID: messageID,
@@ -462,7 +467,7 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 	if propName != "" {
 		propValue, found := dtw.PropValues[propName]
 		if !found {
-			propValue = digitwin2.PropertyValue{}
+			propValue = digitwin2.ThingValue{}
 		}
 		oldValue := propValue.Data
 		hasChanged = oldValue != propValue
@@ -483,7 +488,7 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 		for propName, newValue = range propMap {
 			propValue, found := dtw.PropValues[propName]
 			if !found {
-				propValue = digitwin2.PropertyValue{}
+				propValue = digitwin2.ThingValue{}
 			}
 			oldValue := propValue.Data
 			hasChanged = oldValue != propValue
@@ -500,16 +505,12 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 	return hasChanged, nil
 }
 
-// WriteProperty updates a property value status with a write request
+// WriteProperty stores a new  property value
+// This sets the 'updated' timestamp if empty
 //
 //	dThingID is the digital twin ID
-//	propName is the name of the property to write
-//	data is the data to write as per TD
-//	status is the write delivery status: pending, delivered,...
-//	messageID of the write request
-//	senderID ID of the consumer requesting the write
-func (svc *DigitwinStore) WriteProperty(
-	dThingID string, propName string, data any, writeStatus string, messageID string, senderID string) error {
+//	tv is the new thing value of the property
+func (svc *DigitwinStore) WriteProperty(dThingID string, tv digitwin2.ThingValue) error {
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
@@ -518,17 +519,10 @@ func (svc *DigitwinStore) WriteProperty(
 		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
 		return err
 	}
-	propValue, found := dtw.PropValues[propName]
-	if !found {
-		propValue = digitwin2.PropertyValue{}
+	if tv.Updated == "" {
+		tv.Updated = time.Now().Format(utils.RFC3339Milli)
 	}
-	propValue.WriteData = data
-	propValue.WriteSenderID = senderID
-	propValue.WriteUpdated = time.Now().Format(utils.RFC3339Milli)
-	propValue.WriteStatus = writeStatus
-	propValue.WriteMessageID = messageID
-
-	dtw.PropValues[propName] = propValue
+	dtw.PropValues[tv.Name] = tv
 	svc.changedThings[dThingID] = true
 
 	return nil

@@ -19,9 +19,9 @@ type IHubRouter interface {
 		consumerID string, dThingID string, actionName string, input any, reqID string) (
 		status string, output any, messageID string, err error)
 
-	// HandleActionProgress agent publishes an action progress update
+	// HandleProgressUpdate agent publishes a progress update message
 	// This updates the corresponding digital twin action status
-	HandleActionProgress(agentID string, stat hubclient.DeliveryStatus) error
+	HandleProgressUpdate(agentID string, stat hubclient.DeliveryStatus) error
 
 	// HandleEventFlow agent publishes an event
 	// This can contains a messageID if the event is a response to an action

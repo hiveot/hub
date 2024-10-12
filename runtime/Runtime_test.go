@@ -47,7 +47,7 @@ func TestLogin(t *testing.T) {
 	const clientID = "user1"
 
 	r := startRuntime()
-	cl, token := ts.AddConnectUser(clientID, authn.ClientRoleManager)
+	cl, token := ts.AddConnectUser(clientID, authz.ClientRoleManager)
 	_ = token
 	t2, err := cl.RefreshToken(token)
 	require.NoError(t, err)
@@ -74,7 +74,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 	cl1, _ := ts.AddConnectAgent(agentID)
-	cl2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	cl2, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
 
 	// step 1: agent publishes a TD
 	td1 := ts.CreateTestTD(0)
@@ -123,7 +123,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// verify final result
-	require.Equal(t, hubclient.DeliveryCompleted, stat3.Progress)
+	require.Equal(t, vocab.ProgressStatusCompleted, stat3.Progress)
 	require.Empty(t, stat3.Error)
 	require.NotNil(t, rxMsg)
 	assert.Equal(t, expectedReply, stat3.Reply)
@@ -177,7 +177,7 @@ func TestServiceReconnect(t *testing.T) {
 	require.NoError(t, err)
 	defer r.Stop()
 
-	cl2, _ := ts.AddConnectUser(userID, authn.ClientRoleManager)
+	cl2, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
 	defer cl2.Disconnect()
 	// FIXME: detect a reconnect
 	time.Sleep(time.Second * 3)
@@ -200,7 +200,7 @@ func TestAccess(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 
-	hc, token := ts.AddConnectUser(clientID, authn.ClientRoleViewer)
+	hc, token := ts.AddConnectUser(clientID, authz.ClientRoleViewer)
 	defer hc.Disconnect()
 	_ = token
 

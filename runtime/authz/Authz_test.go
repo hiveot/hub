@@ -42,7 +42,7 @@ func TestStartStop(t *testing.T) {
 // Test Get/Set role
 func TestSetRole(t *testing.T) {
 	const client1ID = "client1"
-	const client1Role = authn.ClientRoleAgent
+	const client1Role = authz2.ClientRoleAgent
 	// start the authz server
 	cfg := authz.NewAuthzConfig()
 	authnStore := authnstore.NewAuthnFileStore(passwordFile, "")
@@ -81,7 +81,7 @@ func TestSetRole(t *testing.T) {
 
 func TestHasPermission(t *testing.T) {
 	const senderID = "sender-1"
-	const client1Role = authn.ClientRoleOperator
+	const client1Role = authz2.ClientRoleOperator
 	const thingID = ""
 	const key = ""
 	cfg := authz.NewAuthzConfig()

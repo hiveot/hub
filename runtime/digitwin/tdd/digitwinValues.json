@@ -29,6 +29,7 @@
 		}
 	},
 	"schemaDefinitions": {
+
 		"ActionValue": {
 			"title": "Action Value",
 			"description": "Input value of the last action",
@@ -58,15 +59,8 @@
 					"type": "string"
 				},
 				"status": {
-					"title": "Write progress",
-					"description": "The last write request progress",
-					"enum": [
-						"pending",
-						"delivered",
-						"completed",
-						"rejected",
-						"aborted"
-					],
+					"title": "Action update status",
+					"description": "The action progress",
 					"type": "string"
 				},
 				"updated": {
@@ -76,49 +70,24 @@
 				}
 			}
 		},
-		"EventValue": {
-			"title": "Event Value",
-			"description": "Value and update data of an event",
+		"ThingValue": {
+			"title": "Thing Value",
+			"description": "Property or event value",
 			"type": "object",
 			"properties": {
 				"data": {
-					"title": "Event payload",
-					"description": "Data in format as described by the thing's affordance",
-					"type": "any"
-				},
-				"name": {
-					"title": "Event name",
-					"type": "string"
-				},
-				"messageID": {
-					"title": "Message ID",
-					"description": "link to action or property triggering the event",
-					"type": "string"
-				},
-				"updated": {
-					"title": "Updated time",
-					"description": "Time the value was last updated",
-					"type": "dateTime"
-				}
-			}
-		},
-		"PropertyValue": {
-			"title": "Property Value",
-			"description": "Value and update data of a property",
-			"type": "object",
-			"properties": {
-				"data": {
-					"title": "Property value",
+					"title": "Payload",
 					"description": "Data in format as described by the thing's property affordance",
 					"type": "any"
 				},
-				"messageID": {
-					"title": "Message ID",
-					"description": "link to action or property triggering the change",
+				"name": {
+					"title": "Name",
+					"description":"Name of the property holding the value",
 					"type": "string"
 				},
-				"name": {
-					"title": "Property name",
+				"messageID": {
+					"title": "Message ID",
+					"description": "link to property write or action that caused the value to change",
 					"type": "string"
 				},
 				"updated": {
@@ -126,61 +95,61 @@
 					"description": "Time the value was last updated",
 					"type": "dateTime"
 				},
-				"writeData": {
-					"title": "Input",
-					"description": "Input data requested by the sender",
-					"type": "any"
-				},
-				"writeMessageID": {
-					"title": "Write message ID",
-					"description": "MessageID of the write request",
+				"senderID": {
+					"title": "Sender ID",
+					"description": "ID of the sender updating the value",
 					"type": "string"
-				},
-				"writeSenderID": {
-					"title": "Write sender",
-					"description": "ID of the sender writing the property",
-					"type": "string"
-				},
-				"writeStatus": {
-					"title": "Write progress",
-					"description": "The last write request progress",
-					"enum": [
-						"pending",
-						"delivered",
-						"completed",
-						"rejected",
-						"aborted"
-					],
-					"type": "string"
-				},
-				"writeUpdated": {
-					"title": "Write time",
-					"description": "Time the last write was requested",
-					"type": "dateTime"
 				}
 			}
 		}
 	},
 	"events": {
-		"valueUpdated": {
-			"title": "Thing property updated",
-			"description": "A Thing's property value was updated",
+		"progress": {
+			"title": "Progress",
+			"description": "Progress notification of a property write or thing action request",
 			"data": {
 				"type": "object",
 				"properties": {
-					"thingID": {
+					"id": {
 						"title": "Thing ID",
-						"description": "ID of the Thing that was updated",
+						"description": "Thing ID of thing whose value is updated",
 						"type": "string"
 					},
 					"name": {
 						"title": "Property name",
-						"description": "ID of the property that was updated",
+						"description": "Name of the property or action the notification applies to",
+						"comment": "An action without a corresponding property definition can have an 'automatic' property that represents the action output",
 						"type": "string"
 					},
-					"value": {
-						"title": "New value",
-						"description": "The new value of the property",
+					"data": {
+						"title": "Data",
+						"description": "Input value in format as described by the thing's property affordance",
+						"comment": "This is the requested write value and can differ from the current value if status is not completed",
+						"type": "any"
+					},
+					"messageID": {
+						"title": "Message ID",
+						"description": "link to action or property write that triggered the update",
+						"type": "string"
+					},
+					"messageType": {
+						"title": "Message Type",
+						"description": "Type of change request",
+						"type": "string",
+						"enum": ["action", "property"]
+					},
+					"senderID": {
+						"title": "Sender ID",
+						"description": "ID of the sender of the request",
+						"type": "string"
+					},
+					"status": {
+						"title": "Progress status",
+						"description": "The new status of the update progress.",
+						"type": "string"
+					},
+					"statusInfo": {
+						"title": "Additional status information",
 						"type": "string"
 					}
 				}
@@ -191,7 +160,7 @@
 		"queryAction": {
 			"@type": "ht:function",
 			"title": "Action status",
-			"description": "Read the current action status",
+			"description": "Read the current action status of a Thing",
 			"safe": true,
 			"idempotent": true,
 			"input": {
@@ -220,10 +189,11 @@
 				"type": "ActionValue"
 			}
 		},
+
 		"queryAllActions": {
 			"@type": "ht:function",
 			"title": "All actions",
-			"description": "Read the current status for all actions",
+			"description": "Read the current status for all actions of a Thing",
 			"safe": true,
 			"idempotent": true,
 			"input": {
@@ -241,6 +211,7 @@
 				}
 			}
 		},
+
 		"readAllEvents": {
 			"@type": "ht:function",
 			"title": "Read all event values",
@@ -257,11 +228,13 @@
 				"description": "List with the most recent event value objects",
 				"type": "array",
 				"items": {
-					"type": "EventValue",
-					"title": "EventValue"
+					"type": "ThingValue",
+					"comment": "defined in schemadefinitions",
+					"title": "Event value"
 				}
 			}
 		},
+
 		"readAllProperties": {
 			"@type": "ht:function",
 			"title": "Read all properties",
@@ -275,14 +248,16 @@
 			},
 			"output": {
 				"title": "Property values",
-				"description": "List of PropertyValue objects",
+				"description": "List of ThingValue objects",
 				"type": "array",
 				"items": {
-					"type": "PropertyValue",
-					"title": "PropertyValue"
+					"type": "ThingValue",
+					"comment": "defined in schemadefinitions",
+					"title": "Property Value"
 				}
 			}
 		},
+
 		"readEvent": {
 			"@type": "ht:function",
 			"title": "Read event value",
@@ -311,9 +286,11 @@
 			"output": {
 				"title": "Event value",
 				"description": "Most recent event value",
-				"type": "EventValue"
+				"comment": "defined in schemadefinitions",
+				"type": "ThingValue"
 			}
 		},
+
 		"readProperty": {
 			"@type": "ht:function",
 			"title": "Read property value",
@@ -340,9 +317,10 @@
 				}
 			},
 			"output": {
-				"title": "Property values",
-				"description": "PropertyValue objects",
-				"type": "PropertyValue"
+				"title": "Property value",
+				"description": "Most recent property value",
+				"comment": "defined in schemadefinitions",
+				"type": "ThingValue"
 			}
 		}
 	}

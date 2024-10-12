@@ -2,6 +2,7 @@
 import type {IHiveKey} from "@keys/IHiveKey";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import {TD} from "@hivelib/things/TD";
+import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
 
 
 export enum ConnectionStatus {
@@ -28,88 +29,17 @@ export enum ConnectionStatus {
 //     NotConnected = "notConnected"
 // }
 
-export enum DeliveryProgress {
-    // DeliveredToInbox the request is delivery to the digitwin inbox
-    DeliveredToInbox = "inbox",
-
-    // DeliveryToAgent the request is delivered to the Thing's agent by the inbox.
-    // The agent is expected to send a delivery update.
-    DeliveryToAgent = "received",
-
-    // DeliveryApplied is a step where the request has been applied to the Thing by the
-    // agent.
-    // If the device is busy processing then a confirmation 'DeliverySuccess'
-    // is sent when the device confirms execution.
-    // If the device fails to execute the request an error is included and the
-    // workflow has ended.
-    DeliveryApplied = "applied",
-
-    // DeliverySuccess the request has been applied by the agent and the device
-    // has executed the request successfully.
-    // Obtaining a result is not always possible for example when a device is asleep.
-    // In that case 'applied' is the last known status sent.
-    //
-    // Issue: if a node asynchronously notifies that an update changed a value without
-    // a link to the request, then how to update the status of the request to completed?
-    // Should the inbox that sees a value event for an action that is in state
-    // 'applied' change it to 'result'?
-    //
-    DeliveryCompleted = "completed",
-
-    // DeliveryFailed the request could not be delivered to the agent or the agent can
-    // not deliver the request to the Thing. This ends the delivery process.
-    // The error field contains the error message describing the failure.
-    DeliveryFailed = "failed",
-
-}
-
-// DeliveryStatus holds the progress of action request delivery
-export class DeliveryStatus extends Object{
-    // Request ID
-    messageID: string = ""
-    // Updated delivery status
-    progress: DeliveryProgress|undefined
-    // Error in case delivery status has ended without completion.
-    error?: string =""
-    // Reply in case delivery status is completed
-    reply?: any =""
-
-    completed(msg: ThingMessage, reply?:any, err?: Error) {
-        this.messageID = msg.messageID
-        this.reply = reply
-        this.progress = DeliveryProgress.DeliveryCompleted
-        if (err) {
-            this.error = err.name + ": " + err.message
-        }
-    }
-    // set status update to applied. A final status update is expected
-    applied(msg: ThingMessage) {
-        this.messageID = msg.messageID
-        this.progress = DeliveryProgress.DeliveryApplied
-        this.error = undefined
-    }
-    failed(msg: ThingMessage, err: Error|string|undefined) {
-        this.messageID = msg.messageID
-        this.progress = DeliveryProgress.DeliveryFailed
-        if (err instanceof Error) {
-            this.error = err.name + ": " + err.message
-        } else {
-            this.error = err
-        }
-    }
-}
-
 export type EventHandler = (msg:ThingMessage)=>void;
 
 export type MessageHandler = (msg:ThingMessage)=>DeliveryStatus;
 
-// IHubClient defines the interface of the hub transport client.
-export interface IHubClient {
+// IAgentClient defines the interface of the hub agent transport.
+export interface IAgentClient {
 
     // ConnectWithPassword connects to the hub using password authentication.
     // @param password is created when registering the user with the auth service.
     // This returns an authentication token that can be used in refresh and connectWithToken.
-    connectWithPassword(password: string): Promise<string>;
+    // connectWithPassword(password: string): Promise<string>;
 
     // ConnectWithToken connects to the messaging server using an authentication token
     // and pub/private keys provided when creating an instance of the hub client.
@@ -123,14 +53,14 @@ export interface IHubClient {
     // Disconnect from the message bus.
     disconnect(): void;
 
-    // PubAction publishes an action request and returns as soon as the request is delivered
+    // invokeAction publishes an action request and returns as soon as the request is delivered
     // to the Hub inbox.
     //
     //	@param dThingID the digital twin ID for whom the action is intended
     //	@param key is the action ID or method name of the action to invoke
     //	@param payload to publish in native format as per TD
     //
-    pubAction(dThingID: string, key: string, payload: any): Promise<DeliveryStatus>;
+    // invokeAction(dThingID: string, key: string, payload: any): Promise<DeliveryStatus>;
 
     // getStatus returns the current transport connection status
     // getStatus(): HubTransportStatus
@@ -146,30 +76,23 @@ export interface IHubClient {
     //	@param payload to publish in native format as per TD
     //
     // This throws an error if the event cannot not be delivered to the hub
-    pubEvent(thingID: string, key:string, payload: any): Promise<DeliveryStatus>;
+    pubEvent(thingID: string, key:string, payload: any): void
 
-    // pubProperty publishes a configuration change request for a property
-    //  @param dThingID is the digitwin thingID is provided by the directory
-    //	@param key ID of the property
-    //	@param payload to publish in native format as per TD
-    pubProperty(dThingID: string, key: string, payload: any): Promise<DeliveryStatus>;
-
-    // PubProps publishes a property values event.
+    // pubProperties agent updates property values. (not for consumers)
     // It returns as soon as delivery to the hub is confirmed.
-    // This is intended for agents, not for consumers.
     //
     // @param thingID is the native thingID of the device (not including the digital twin ID)
     // @param props is the property key-value map to publish where value is their native format
     //
     // This throws an error if the event cannot not be delivered to the hub
-    pubProps(thingID: string, props: {[key:string]:any}): Promise<DeliveryStatus>;
+    pubProperties(thingID: string, props: {[key:string]:any}): void
 
     // PubTD publishes an TD document event.
     // It returns as soon as delivery to the hub is confirmed.
     // This is intended for agents, not for consumers.
     //
     // @param td is the Thing Description document describing the Thing
-    pubTD(td: TD): Promise<DeliveryStatus>
+    pubTD(td: TD): void
 
     // RefreshToken refreshes the authentication token
     // The resulting token can be used with 'ConnectWithJWT'
@@ -192,12 +115,12 @@ export interface IHubClient {
     // This returns the data or throws an error if failed
     rpc(dThingID: string, key: string, args: any): Promise<any>
 
-    // SendDeliveryUpdate sends a delivery progress update event to the hub.
-    // The hub's inbox will update the status of the action and notify the original sender.
-    //
+    // pubProgressUpdate [agent] sends a delivery progress update to the hub.
+    // The hub will update the status of the action in the digital twin and
+    // notify the original sender.
     // Intended for agents that have processed an incoming action request asynchronously
     // and need to send an update on further progress.
-    sendDeliveryUpdate(stat: DeliveryStatus):void
+    pubProgressUpdate(stat: DeliveryStatus):void
 
 
     // set handler that is notified of changes in connection status and an error in
@@ -228,9 +151,15 @@ export interface IHubClient {
     //
     //  dThingID is the digital twin ID of the Thing to subscribe to. ""  for any
     //	key is the type of event to subscribe to or "" for all events, "" for any
-    subscribe(dThingID: string, key:string): Promise<void>;
+    // subscribe(dThingID: string, key:string): Promise<void>;
 
 // Unsubscribe removes a previous event subscription.
 // No more events or requests will be received after Unsubscribe.
-    unsubscribe(dThingID: string, key: string): void;
+//     unsubscribe(dThingID: string, key: string): void;
+
+    // writeProperty consumer requests a configuration change
+    //  @param dThingID is the digitwin thingID is provided by the directory
+    //	@param name ID of the property
+    //	@param payload to publish in native format as per TD
+    // writeProperty(dThingID: string, name: string, payload: any): Promise<DeliveryStatus>;
 }
