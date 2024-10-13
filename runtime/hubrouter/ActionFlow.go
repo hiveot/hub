@@ -47,9 +47,10 @@ type ActionFlowRecord struct {
 // SSE, WS, MQTT bindings must use a correlation-id to match request-response messages.
 // this is not well-defined in the WoT specs and up to the protocol binding implementation.
 func (svc *HubRouter) HandleActionFlow(
-	senderID string, dThingID string, actionName string, input any, reqID string) (
+	dThingID string, actionName string, input any, reqID string, senderID string) (
 	status string, output any, messageID string, err error) {
-	slog.Info("HandleActionFlow",
+
+	slog.Info("HandleActionFlow (from consumer/agent)",
 		slog.String("senderID", senderID),
 		slog.String("dThingID", dThingID),
 		slog.String("actionName", actionName),
@@ -101,36 +102,39 @@ func (svc *HubRouter) HandleActionFlow(
 		// will not be stored but still be tracked.
 		err = nil
 
+		// store a new action progress by message ID to support sending replies to the sender
+		actionRecord := &ActionFlowRecord{
+			MessageType: vocab.MessageTypeAction,
+			AgentID:     agentID,
+			ThingID:     thingID,
+			MessageID:   messageID,
+			Name:        actionName,
+			SenderID:    senderID,
+			Progress:    status,
+			Updated:     time.Now(),
+		}
+		svc.activeCache[messageID] = actionRecord
+
 		// forward to external services/things and return its response
+		found := false
 		if svc.tb != nil {
-			status, output, err = svc.tb.InvokeAction(
+			found, status, output, err = svc.tb.InvokeAction(
 				agentID, thingID, actionName, input, messageID, senderID)
-		} else {
-			err = fmt.Errorf("HandleActionFlow: Agent not reachable. Ignored")
+		}
+		// Update the action status
+		actionRecord.Progress = status
+
+		if !found {
+			err = fmt.Errorf("HandleActionFlow: Agent '%s' not reachable. Ignored", agentID)
 			status = vocab.ProgressStatusFailed
 		}
 		// update action delivery status
 		_, _ = svc.dtwStore.UpdateActionProgress(
 			agentID, thingID, actionName, status, output)
 
-		// possible response:
-		// * on failure: DeliveryStatus error response message; no output
-		// * on success: output as per TD
-		// * not completed: DeliveryStatus progress response; no output
-		//
-		//
-		if status != vocab.ProgressStatusCompleted && status != vocab.ProgressStatusFailed {
-			// store incomplete actions by message ID to support sending updates to the sender
-			svc.activeCache[messageID] = &ActionFlowRecord{
-				MessageType: vocab.MessageTypeAction,
-				AgentID:     agentID,
-				ThingID:     thingID,
-				MessageID:   messageID,
-				Name:        actionName,
-				SenderID:    senderID,
-				Progress:    status,
-				Updated:     time.Now(),
-			}
+		// remove the action if completed
+		if status == vocab.ProgressStatusCompleted || status == vocab.ProgressStatusFailed {
+			delete(svc.activeCache, messageID)
 		}
 	}
 
@@ -165,7 +169,7 @@ func (svc *HubRouter) HandleProgressUpdate(agentID string, stat hubclient.Delive
 	// the sender (agents) must be the thing agent
 	if agentID != actionRecord.AgentID {
 		err := fmt.Errorf(
-			"HandleProgressUpdate: status update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
+			"HandleProgressUpdate: progress update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
 			stat.MessageID, thingID, actionRecord.AgentID, agentID)
 		slog.Warn(err.Error(), "agentID", agentID)
 		return err

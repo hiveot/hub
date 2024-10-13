@@ -149,7 +149,8 @@ type IConsumerClient interface {
 	// This returns a delivery status with response data if delivered
 	InvokeAction(thingID string, name string, data any, messageID string) DeliveryStatus
 
-	// Observe [consumer] adds a subscription for properties from the given ThingID.
+	// Observe adds a subscription for properties from the given ThingID.
+	// Use SetMessageHandler to receive property update messages.
 	//
 	//  dThingID is the digital twin Thing ID of the Thing to observe.
 	//	name of the property to observe as described in the TD or "" for all properties
@@ -195,7 +196,8 @@ type IConsumerClient interface {
 	// SetConnectHandler sets the notification handler of connection status changes
 	SetConnectHandler(cb func(status TransportStatus))
 
-	// Subscribe [consumer] adds a subscription for events from the given ThingID.
+	// Subscribe adds a subscription for events from the given ThingID.
+	// Use SetMessageHandler to receive the event messages
 	//
 	//  dThingID is the digital twin Thing ID of the Thing to subscribe to.
 	//	name of the event to subscribe as described in the TD or "" for all events

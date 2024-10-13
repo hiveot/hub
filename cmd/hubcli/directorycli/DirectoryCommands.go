@@ -93,7 +93,7 @@ func HandleListThing(hc hubclient.IConsumerClient, thingID string) error {
 	propValueMap := api.ValueListToMap(propValueList)
 
 	if err != nil {
-		slog.Error("Unable to read history:", "err", err)
+		slog.Error("Unable to read directory:", "err", err)
 	}
 	fmt.Printf("%sTD of %s    %s\n", utils.COBlue, thingID, utils.COReset)
 	fmt.Printf(" title:       %s\n", tdDoc.Title)
@@ -109,8 +109,8 @@ func HandleListThing(hc hubclient.IConsumerClient, thingID string) error {
 	for _, key := range keys {
 		prop, found := tdDoc.Properties[key]
 		if found && prop.ReadOnly {
-			value := propValueMap[key]
-			fmt.Printf(" %-30s %-40.40s %s%-15.15v%s %-.80s\n",
+			value := utils.DecodeAsString(propValueMap[key])
+			fmt.Printf(" %-30s %-40.40s %s%-15.15s%s %-.80s\n",
 				key, prop.Title, utils.COGreen, value, utils.COReset, prop.Description)
 		}
 	}

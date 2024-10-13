@@ -18,7 +18,7 @@ import (
 // TokenFileExt defines the filename extension under which client tokens are stored
 // in the keys directory.
 const TokenFileExt = ".token"
-const DefaultTimeout = time.Second * 3
+const DefaultTimeout = time.Second * 300 // Default is 3
 
 // ConnectToHub helper function to connect to the Hub using existing token and key files.
 // This assumes that CA cert, user keys and auth token have already been set up and
@@ -38,7 +38,7 @@ const DefaultTimeout = time.Second * 3
 //	core optional core selection. Fallback is to auto determine based on URL.
 //	 password optional for a user login
 func ConnectToHub(fullURL string, clientID string, certDir string, password string) (
-	hc hubclient.IConsumerClient, err error) {
+	hc hubclient.IAgentClient, err error) {
 
 	// 1. determine the actual address
 	if fullURL == "" {
@@ -58,7 +58,7 @@ func ConnectToHub(fullURL string, clientID string, certDir string, password stri
 		return nil, err
 	}
 	// 3. Determine which protocol to use and setup the key and token filenames
-	hc = NewHubClient(fullURL, clientID, caCert)
+	hc = NewAgentClient(fullURL, clientID, caCert)
 	if hc == nil {
 		return nil, fmt.Errorf("unable to create hub client for URL: %s", fullURL)
 	}
@@ -105,7 +105,7 @@ func ConnectWithTokenFile(hc hubclient.IConsumerClient, keysDir string) error {
 	return err
 }
 
-// NewHubClient returns a new Hub Client instance depending on the URL scheme.
+// NewAgentClient returns a new Hub agent client instance
 //
 // The keyPair string is optional. If not provided a new set of keys will be created.
 // Use GetKeyPair to retrieve it for saving to file.
@@ -115,7 +115,7 @@ func ConnectWithTokenFile(hc hubclient.IConsumerClient, keysDir string) error {
 //   - fullURL of server to connect to.
 //   - clientID is the account/login ID of the client that will be connecting
 //   - caCert of server or nil to not verify server cert
-func NewHubClient(fullURL string, clientID string, caCert *x509.Certificate) (hc hubclient.IConsumerClient) {
+func NewAgentClient(fullURL string, clientID string, caCert *x509.Certificate) (hc hubclient.IAgentClient) {
 
 	parts, _ := url.Parse(fullURL)
 	clType := parts.Scheme

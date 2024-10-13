@@ -15,33 +15,19 @@ import (
 // The TD document must be a digital twin received version
 func GenServiceClient(l *utils.SL, serviceTitle string, td *tdd.TD) {
 
-	//l.Add("// %sClient client for talking to the '%s' service", serviceTitle, td.ID)
-	//l.Add("type %sClient struct {", serviceTitle)
-	//l.Add("   dThingID string")
-	//l.Add("   hc hubclient.IHubClient")
-	//l.Add("}")
-
 	actionKeys := utils.OrderedMapKeys(td.Actions)
 	for _, key := range actionKeys {
 		action := td.Actions[key]
 		GenActionMethod(l, serviceTitle, key, action)
 	}
 	l.Add("")
-	//l.Add("// New%sClient creates a new client for invoking %s methods.", serviceTitle, td.Title)
-	//l.Add("func New%sClient(hc hubclient.IHubClient) *%sClient {", serviceTitle, serviceTitle)
-	//l.Add("	cl := %sClient {", serviceTitle)
-	//l.Add("		hc: hc,")
-	//l.Add("		dThingID: \"%s\",", td.ID)
-	//l.Add("	}")
-	//l.Add("	return &cl")
-	//l.Add("}")
 
 }
 
 // GenActionMethod generates a client function from an action affordance.
 //
 // For multi-arguments the format of the generated client is:
-// > func(hc hubclient.IHubClient, arg1 type, arg2 type, ...)(resp type, err error) {
+// > func(hc hubclient.IConsumerlient, arg1 type, arg2 type, ...)(resp type, err error) {
 // >   var args = ArgTypeNameArgs{arg1, arg2, ...}
 // >   err = hc.Rpc(DThingID, MethodName, &args, &resp)
 // >   return
@@ -51,7 +37,7 @@ func GenServiceClient(l *utils.SL, serviceTitle string, td *tdd.TD) {
 //	key with the service action method.
 //	action affordance describing the input and output parameters
 func GenActionMethod(l *utils.SL, serviceTitle string, key string, action *tdd.ActionAffordance) {
-	argsString := "hc hubclient.IHubClient"
+	argsString := "hc hubclient.IConsumerClient"
 	respString := "err error"
 	invokeArgs := "nil"
 	invokeResp := "nil"

@@ -50,7 +50,7 @@ type IdProvService struct {
 // 3. Start the http request server
 // 4. start the security check for rogue DNS-SD records
 // 5. start DNS-SD discovery server
-func (svc *IdProvService) Start(hc hubclient.IConsumerClient) (err error) {
+func (svc *IdProvService) Start(hc hubclient.IAgentClient) (err error) {
 	slog.Info("Starting the provisioning service", "clientID", hc.ClientID())
 	svc.hc = hc
 	//svc.Stop()

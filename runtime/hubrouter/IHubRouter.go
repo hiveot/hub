@@ -16,7 +16,7 @@ type IHubRouter interface {
 	// The status response is 'failed' if the action cannot be passed to the agent
 	// The status response is 'pending' if the agent is offline and the action is queued for delivery - when supported.
 	HandleActionFlow(
-		consumerID string, dThingID string, actionName string, input any, reqID string) (
+		dThingID string, actionName string, input any, reqID string, consumerID string) (
 		status string, output any, messageID string, err error)
 
 	// HandleProgressUpdate agent publishes a progress update message
@@ -41,6 +41,6 @@ type IHubRouter interface {
 	// HandleWritePropertyFlow consumer sends request to write a property.
 	// This returns the delivery status and an optional messageID to link related updates.
 	HandleWritePropertyFlow(
-		consumerID string, dThingID string, name string, newValue any) (
+		dThingID string, name string, newValue any, consumerID string) (
 		status string, messageID string, err error)
 }

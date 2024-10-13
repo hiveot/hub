@@ -1,13 +1,13 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"strconv"
 	"time"
@@ -20,7 +20,7 @@ type AddHistory struct {
 	// store with a bucket for each Thing
 	store buckets.IBucketStore
 	// onAddedValue is a callback to invoke after a value is added. Intended for tracking most recent values.
-	onAddedValue func(ev *hubclient.ThingMessage)
+	//onAddedValue func(ev *hubclient.ThingMessage)
 	//
 	retentionMgr *ManageHistory
 	// Maximum message size in bytes.
@@ -53,13 +53,12 @@ func (svc *AddHistory) encodeValue(msg *hubclient.ThingMessage) (storageKey stri
 	}
 	storageKey = storageKey + "/" + msg.SenderID
 	//if msg.Data != nil {
-	data, _ = json.Marshal(msg.Data)
+	data, _ = jsoniter.Marshal(msg.Data)
 	//}
 	return storageKey, data
 }
 
 // AddAction adds a Thing action with the given name and value to the action history
-// value is json encoded. Optionally include a 'created' ISO8601 timestamp
 func (svc *AddHistory) AddAction(actionValue *hubclient.ThingMessage) error {
 	slog.Info("AddAction",
 		slog.String("senderID", actionValue.SenderID),
@@ -81,9 +80,9 @@ func (svc *AddHistory) AddAction(actionValue *hubclient.ThingMessage) error {
 	bucket := svc.store.GetBucket(dThingID)
 	err = bucket.Set(storageKey, val)
 	_ = bucket.Close()
-	if svc.onAddedValue != nil {
-		svc.onAddedValue(actionValue)
-	}
+	//if svc.onAddedValue != nil {
+	//	svc.onAddedValue(actionValue)
+	//}
 	return err
 }
 
@@ -152,12 +151,12 @@ func (svc *AddHistory) AddEvent(msg *hubclient.ThingMessage) error {
 
 	err = bucket.Set(storageKey, data)
 	if err != nil {
-		slog.Error("AddMessage storage error", "err", err)
+		slog.Error("AddEvent storage error", "err", err)
 	}
 	_ = bucket.Close()
-	if svc.onAddedValue != nil {
-		svc.onAddedValue(msg)
-	}
+	//if svc.onAddedValue != nil {
+	//	svc.onAddedValue(msg)
+	//}
 	return err
 }
 
@@ -197,16 +196,16 @@ func (svc *AddHistory) AddMessages(msgList []*hubclient.ThingMessage) (err error
 		}
 		retain, err := svc.validateValue(eventValue)
 		if err != nil {
-			slog.Warn("Invalid event value", slog.String("name", eventValue.Name))
+			slog.Warn("AddMessages: Invalid event value", slog.String("name", eventValue.Name))
 			return err
 		}
 		if retain {
 			key, value := svc.encodeValue(eventValue)
 			kvpairs[key] = []byte(value)
 			// notify owner to update things properties
-			if svc.onAddedValue != nil {
-				svc.onAddedValue(eventValue)
-			}
+			//if svc.onAddedValue != nil {
+			//	svc.onAddedValue(eventValue)
+			//}
 		}
 	}
 	// adding in bulk, opening and closing buckets only once for each things address
@@ -250,15 +249,11 @@ func (svc *AddHistory) validateValue(tv *hubclient.ThingMessage) (retained bool,
 //
 //	store with a bucket for each Thing
 //	retentionMgr is optional and used to apply constraints to the events to add
-//	onAddedValue is optional and invoked after the value is added to the bucket.
 func NewAddHistory(
-	store buckets.IBucketStore,
-	retentionMgr *ManageHistory,
-	onAddedValue func(value *hubclient.ThingMessage)) *AddHistory {
+	store buckets.IBucketStore, retentionMgr *ManageHistory) *AddHistory {
 	svc := &AddHistory{
 		store:          store,
 		retentionMgr:   retentionMgr,
-		onAddedValue:   onAddedValue,
 		MaxMessageSize: DefaultMaxMessageSize,
 	}
 

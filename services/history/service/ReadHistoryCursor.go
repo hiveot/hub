@@ -1,13 +1,13 @@
 package service
 
 import (
-	"encoding/json"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyapi"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -29,20 +29,26 @@ const filterContextKey = "name"
 //	bc         buckets.IBucketCursor // the iteration
 //}
 
-// convert the storage key and raw data to a things value object
+// decodeValue convert the storage key and raw data to a things value object
 // this must match the encoding done in AddHistory
+//
+// If this returns an error with valid true, then the caller should ignore
+// this entry and continue with the next value (if any).
 //
 //	bucketID is the ID of the bucket, which is the digital twin thingID
 //	storageKey is the value's key, which is defined as timestamp/valueKey
 //	raw is the serialized message data
 //
 // This returns the value, or nil if the key is invalid
-func decodeValue(bucketID string, storageKey string, raw []byte) (thingValue *hubclient.ThingMessage, valid bool) {
+// If the json in the store is invalid this returns an error
+func decodeValue(bucketID string, storageKey string, raw []byte) (
+	thingValue *hubclient.ThingMessage, valid bool, err error) {
 
 	// key is constructed as  timestamp/name/{a|e|c}/sender, where sender can be omitted
 	parts := strings.Split(storageKey, "/")
 	if len(parts) < 2 {
-		return thingValue, false
+		// the key is invalid so return no-more-data
+		return thingValue, false, nil
 	}
 	createdMsec, _ := strconv.ParseInt(parts[0], 10, 64)
 	createdTime := time.UnixMilli(createdMsec)
@@ -62,9 +68,12 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (thingValue *hu
 	// FIXME: keep the messageID? serialize the ThingMessage
 	messageID := ""
 	var data interface{}
-	err := json.Unmarshal(raw, &data)
+	err = jsoniter.Unmarshal(raw, &data)
 	if err != nil {
-		slog.Error("decodeValue, unmarshal failure",
+		// the stored data cannot be unmarshalled. This is unexpected!
+		// the caller should continue with the next record as the rest of the
+		// history might still be valid.
+		slog.Error("decodeValue, stored data cannot be unmarshalled",
 			"thingID", bucketID, "name", name, "err", err.Error())
 	}
 
@@ -77,7 +86,7 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (thingValue *hu
 		MessageType: messageType,
 		SenderID:    senderID,
 	}
-	return thingValue, true
+	return thingValue, true, err
 }
 
 // First returns the oldest value in the history
@@ -94,7 +103,7 @@ func (svc *ReadHistory) First(senderID string, args historyapi.CursorArgs) (*his
 		return nil, nil
 	}
 
-	tm, valid := decodeValue(cursor.BucketID(), k, raw)
+	tm, valid, err := decodeValue(cursor.BucketID(), k, raw)
 	filterName := ci.Filter
 	if valid && filterName != "" && tm.Name != filterName {
 		tm, valid = svc.next(cursor, filterName, until)
@@ -126,10 +135,11 @@ func (svc *ReadHistory) Last(senderID string, args historyapi.CursorArgs) (*hist
 		// bucket is empty
 		return resp, nil
 	}
-	thingValue, valid := decodeValue(cursor.BucketID(), k, raw)
+	thingValue, valid, err := decodeValue(cursor.BucketID(), k, raw)
 	filterName := ci.Filter
-	if valid && filterName != "" && thingValue.Name != filterName {
-		// search back to the last valid value
+
+	// search back to the last valid value without an error
+	if (valid || err != nil) && filterName != "" && thingValue.Name != filterName {
 		thingValue, valid = svc.prev(cursor, filterName, until)
 	}
 	resp.Value = thingValue
@@ -174,8 +184,11 @@ func (svc *ReadHistory) next(
 			}
 			if name == "" || name == parts[1] {
 				// found a match. Decode and return it
-				thingValue, found = decodeValue(cursor.BucketID(), k, raw)
-				return thingValue, found
+				thingValue, found, err := decodeValue(cursor.BucketID(), k, raw)
+				if err == nil {
+					return thingValue, found
+				}
+				// the data was invalid. ignore this entry
 			}
 			// name doesn't match. Skip this entry
 		}
@@ -255,11 +268,11 @@ func (svc *ReadHistory) NextN(senderID string, args historyapi.CursorNArgs) (*hi
 // This returns the previous value, or nil if the value was not found.
 //
 //	cursor is a valid bucket cursor
-//	key is the event key to match or "" for all keys
+//	name is the value name (event,prop,action) to match or "" for all keys
 //	until is the limit of the time to read. Intended for time-range queries and
 //	to avoid unnecessary iteration in range queries
 func (svc *ReadHistory) prev(
-	cursor buckets.IBucketCursor, key string, until time.Time) (
+	cursor buckets.IBucketCursor, name string, until time.Time) (
 	thingValue *hubclient.ThingMessage, found bool) {
 
 	untilMilli := until.UnixMilli()
@@ -284,10 +297,13 @@ func (svc *ReadHistory) prev(
 				return nil, false
 			}
 
-			if key == "" || key == parts[1] {
+			if name == "" || name == parts[1] {
 				// found a match. Decode and return it
-				thingValue, found = decodeValue(cursor.BucketID(), k, raw)
-				return thingValue, found
+				thingValue, found, err := decodeValue(cursor.BucketID(), k, raw)
+				if err == nil {
+					return thingValue, found
+				}
+				// the data was invalid for unknown reason. Skip this entry.
 			}
 			// filter doesn't match. Skip this entry
 		}
@@ -379,8 +395,11 @@ func (svc *ReadHistory) seek(cursor buckets.IBucketCursor, ts time.Time, key str
 		// bucket is empty, no error
 		return nil, valid
 	}
-	thingValue, valid := decodeValue(cursor.BucketID(), k, raw)
-	if valid && key != "" && thingValue.Name != key {
+	thingValue, valid, err := decodeValue(cursor.BucketID(), k, raw)
+	if err != nil {
+		// the value cannot be decoded, skip this entry
+		thingValue, valid = svc.next(cursor, key, until)
+	} else if valid && key != "" && thingValue.Name != key {
 		thingValue, valid = svc.next(cursor, key, until)
 	}
 	return thingValue, valid

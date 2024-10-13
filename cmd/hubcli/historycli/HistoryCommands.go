@@ -137,7 +137,6 @@ func HandleListEvents(hc hubclient.IConsumerClient, dThingID string, name string
 			value,
 		)
 	}
-	cursor.Release()
 	return err
 }
 

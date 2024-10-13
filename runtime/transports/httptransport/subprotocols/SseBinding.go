@@ -36,8 +36,9 @@ func (b *SseBinding) HandleSubscribeAllEvents(w http.ResponseWriter, r *http.Req
 // InvokeAction sends the action request for the thing to the agent
 func (b *SseBinding) InvokeAction(
 	agentID, thingID, name string, data any, messageID string, senderID string) (
-	status string, output any, err error) {
-	return vocab.ProgressStatusFailed, nil, fmt.Errorf("Not yet implemented")
+	found bool, status string, output any, err error) {
+
+	return false, vocab.ProgressStatusFailed, nil, fmt.Errorf("Not yet implemented")
 }
 
 // PublishEvent send an event to subscribers

@@ -34,6 +34,7 @@ func (svc *HttpTransport) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	}
 	cs := ctxSession.(*sessions.ClientSession)
 	// logout closes the session which invalidates it
+	slog.Info("HandleLogout", slog.String("clientID", cs.GetClientID()))
 	cs.Close()
 }
 
@@ -87,7 +88,7 @@ func (svc *HttpTransport) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 // HandleProgressUpdate sends a delivery update message to the digital twin
 func (svc *HttpTransport) HandleProgressUpdate(w http.ResponseWriter, r *http.Request) {
-	slog.Info("HandleProgressUpdate")
+	slog.Debug("HandleProgressUpdate")
 	clientID, _, _, body, err := subprotocols.GetRequestParams(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -110,6 +111,7 @@ func (svc *HttpTransport) HandleActionRequest(w http.ResponseWriter, r *http.Req
 	clientID, dThingID, name, body, err := subprotocols.GetRequestParams(r)
 	var input any
 
+	slog.Debug("HandleActionRequest", slog.String("ClientID", clientID))
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -126,7 +128,7 @@ func (svc *HttpTransport) HandleActionRequest(w http.ResponseWriter, r *http.Req
 	reqID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
 
 	status, output, messageID, err := svc.hubRouter.HandleActionFlow(
-		clientID, dThingID, name, input, reqID)
+		dThingID, name, input, reqID, clientID)
 
 	// there are 3 possible results:
 	// on status completed; return output
@@ -192,6 +194,8 @@ func (svc *HttpTransport) HandleActionRequest(w http.ResponseWriter, r *http.Req
 func (svc *HttpTransport) HandlePublishEvent(w http.ResponseWriter, r *http.Request) {
 	clientID, thingID, name, body, err := subprotocols.GetRequestParams(r)
 	var evValue any
+
+	slog.Debug("HandlePublishEvent", slog.String("clientID", clientID))
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -220,6 +224,8 @@ func (svc *HttpTransport) HandleQueryAction(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+
+	slog.Debug("HandleQueryAction", slog.String("ClientID", clientID))
 	evList, err := svc.dtwService.ValuesSvc.QueryAction(clientID,
 		digitwin.ValuesQueryActionArgs{ThingID: dThingID, Name: name})
 	if err != nil {
@@ -237,6 +243,7 @@ func (svc *HttpTransport) HandleQueryAllActions(w http.ResponseWriter, r *http.R
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+	slog.Debug("HandleQueryAllActions", slog.String("ClientID", clientID))
 	actList, err := svc.dtwService.ValuesSvc.QueryAllActions(clientID, dThingID)
 	if err != nil {
 		svc.writeError(w, err, 0)
@@ -253,6 +260,7 @@ func (svc *HttpTransport) HandleReadAllEvents(w http.ResponseWriter, r *http.Req
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+	slog.Debug("HandleReadAllEvents", slog.String("ClientID", clientID))
 	evList, err := svc.dtwService.ValuesSvc.ReadAllEvents(clientID, dThingID)
 	if err != nil {
 		svc.writeError(w, err, 0)
@@ -268,6 +276,7 @@ func (svc *HttpTransport) HandleReadAllProperties(w http.ResponseWriter, r *http
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+	slog.Debug("HandleReadAllProperties", slog.String("ClientID", clientID))
 	thing, err := svc.dtwService.ValuesSvc.ReadAllProperties(clientID, dThingID)
 	if err != nil {
 		svc.writeError(w, err, 0)
@@ -288,6 +297,7 @@ func (svc *HttpTransport) HandleReadAllThings(w http.ResponseWriter, r *http.Req
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+	slog.Debug("HandleReadAllThings", slog.String("ClientID", clientID))
 	// this request can simply be turned into an action message for the directory.
 	limit := 100
 	offset := 0
@@ -319,6 +329,7 @@ func (svc *HttpTransport) HandleReadEvent(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	slog.Debug("HandleReadEvent", slog.String("ClientID", clientID))
 	evList, err := svc.dtwService.ValuesSvc.ReadEvent(clientID,
 		digitwin.ValuesReadEventArgs{ThingID: dThingID, Name: name})
 	if err != nil {
@@ -334,6 +345,7 @@ func (svc *HttpTransport) HandleReadProperty(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+	slog.Debug("HandleReadProperty", slog.String("clientID", clientID))
 	thing, err := svc.dtwService.ValuesSvc.ReadProperty(clientID,
 		digitwin.ValuesReadPropertyArgs{ThingID: dThingID, Name: name})
 	if err != nil {
@@ -346,11 +358,14 @@ func (svc *HttpTransport) HandleReadProperty(w http.ResponseWriter, r *http.Requ
 // HandleReadThing returns the TD of a thing in the directory
 // URL parameter {thingID}
 func (svc *HttpTransport) HandleReadThing(w http.ResponseWriter, r *http.Request) {
+
 	clientID, thingID, _, _, err := subprotocols.GetRequestParams(r)
 	if err != nil {
 		svc.writeError(w, err, http.StatusUnauthorized)
 		return
 	}
+
+	slog.Debug("HandleReadThing", slog.String("clientID", clientID))
 	thing, err := svc.dtwService.DirSvc.ReadDTD(clientID, thingID)
 	if err != nil {
 		svc.writeError(w, err, 0)
@@ -370,6 +385,7 @@ func (svc *HttpTransport) HandleRefresh(w http.ResponseWriter, r *http.Request) 
 	if err == nil {
 		err = json.Unmarshal(data, &args)
 	}
+	slog.Debug("HandleRefresh", slog.String("clientID", args.ClientID))
 	// the session owner must match the token requested client ID
 	if err != nil || clientID != args.ClientID {
 		http.Error(w, "bad login", http.StatusUnauthorized)
@@ -387,7 +403,7 @@ func (svc *HttpTransport) HandleRefresh(w http.ResponseWriter, r *http.Request) 
 
 // HandleUpdateThing agent sends a new TD document
 func (svc *HttpTransport) HandleUpdateThing(w http.ResponseWriter, r *http.Request) {
-	slog.Info("HandleUpdateThing")
+	slog.Debug("HandleUpdateThing")
 	clientID, _, _, body, err := subprotocols.GetRequestParams(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -403,8 +419,12 @@ func (svc *HttpTransport) HandleUpdateThing(w http.ResponseWriter, r *http.Reque
 
 // HandleUpdateProperty agent sends single or multiple property updates
 func (svc *HttpTransport) HandleUpdateProperty(w http.ResponseWriter, r *http.Request) {
+
 	clientID, thingID, name, body, err := subprotocols.GetRequestParams(r)
 	var value any
+
+	slog.Debug("HandleUpdateProperty", slog.String("clientID", clientID))
+
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -428,8 +448,9 @@ func (svc *HttpTransport) HandleUpdateProperty(w http.ResponseWriter, r *http.Re
 func (svc *HttpTransport) HandleWriteProperty(w http.ResponseWriter, r *http.Request) {
 
 	clientID, dThingID, name, body, err := subprotocols.GetRequestParams(r)
-	slog.Info("HandleWritePropertyFlow",
-		"consumerID", clientID, "dThingID", dThingID, "name", name)
+	slog.Debug("HandleWriteProperty",
+		slog.String("consumerID", clientID),
+		slog.String("dThingID", dThingID), slog.String("name", name))
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
@@ -439,7 +460,7 @@ func (svc *HttpTransport) HandleWriteProperty(w http.ResponseWriter, r *http.Req
 	var messageID string
 	err = json.Unmarshal(body, &newValue)
 	if err == nil {
-		_, messageID, err = svc.hubRouter.HandleWritePropertyFlow(clientID, dThingID, name, newValue)
+		_, messageID, err = svc.hubRouter.HandleWritePropertyFlow(dThingID, name, newValue, clientID)
 	}
 	if err != nil {
 		svc.writeError(w, err, 0)

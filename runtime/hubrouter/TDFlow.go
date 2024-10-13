@@ -7,7 +7,7 @@ import (
 
 // HandleUpdateTDFlow agent updates a TD
 func (svc *HubRouter) HandleUpdateTDFlow(agentID string, tdJSON string) error {
-	slog.Info("HandleTDUpdate", slog.String("agentID", agentID))
+	slog.Info("HandleUpdateTDFlow (from agent)", slog.String("agentID", agentID))
 
 	err := svc.dtwService.DirSvc.UpdateDTD(agentID, tdJSON)
 	if err != nil {

@@ -17,10 +17,11 @@ type IClientConnection interface {
 	// GetClientID returns the ID of connected agent or consumer
 	GetClientID() string
 
-	// InvokeAction an action on this agent and return result if available.
+	// InvokeAction invokes an action on the Thing's agent and return result if available.
 	//
 	// On uni-directional connections like SSE the result will be sent as a delivery
 	// update event. This is non-WoT standard as WoT doesn't support this feature.
+	//
 	InvokeAction(thingID string, name string, input any, messageID string, senderID string) (
 		status string, output any, err error)
 

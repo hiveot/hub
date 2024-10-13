@@ -127,34 +127,21 @@ func (svc *TransportManager) GetProtocolInfo() (pi api.ProtocolInfo) {
 // InvokeAction invokes an action on an agent's Thing
 func (svc *TransportManager) InvokeAction(
 	agentID, thingID string, name string, value any, messageID string, senderID string) (
-	status string, output any, err error) {
+	found bool, status string, output any, err error) {
 
 	// send the action to the sub-protocol bindings until there is a match
 	//if svc.embeddedTransport != nil {
 	//	return svc.embeddedTransport.InvokeAction(agentID, tThingID, name, value, messageID)
 	//}
 	if svc.httpTransport != nil {
-		status, output, err = svc.httpTransport.InvokeAction(
+		found, status, output, err = svc.httpTransport.InvokeAction(
 			agentID, thingID, name, value, messageID, senderID)
 	}
 	if err != nil && svc.mqttTransport != nil {
 		//	svc.mqttTransport.InvokeAction(agentID, thingID, name, value, messageID)
 		//}
 	}
-	return status, output, err
-}
-
-// PublishActionProgress send the action status update to the client.
-// This fails if no binding has a connection with this client
-func (svc *TransportManager) PublishProgressUpdate(
-	clientID string, stat hubclient.DeliveryStatus, agentID string) (found bool, err error) {
-	if svc.httpTransport != nil {
-		found, err = svc.httpTransport.PublishProgressUpdate(clientID, stat, agentID)
-	} else {
-		err = fmt.Errorf("PublishProgressUpdate: No connection with consumer '%s'", clientID)
-		found = false
-	}
-	return found, err
+	return found, status, output, err
 }
 
 // PublishEvent sends a event to all subscribers
@@ -171,6 +158,19 @@ func (svc *TransportManager) PublishEvent(
 	//if svc.mqttTransport != nil {
 	//	svc.mqttTransport.PublishEvent(dThingID, name, value, messageID)
 	//}
+}
+
+// PublishProgressUpdate send the action status update to the client.
+// This fails if no binding has a connection with this client
+func (svc *TransportManager) PublishProgressUpdate(
+	clientID string, stat hubclient.DeliveryStatus, agentID string) (found bool, err error) {
+	if svc.httpTransport != nil {
+		found, err = svc.httpTransport.PublishProgressUpdate(clientID, stat, agentID)
+	} else {
+		err = fmt.Errorf("PublishProgressUpdate: No connection with consumer '%s'", clientID)
+		found = false
+	}
+	return found, err
 }
 
 // PublishProperty passes it on to all property observers
@@ -198,8 +198,9 @@ func (svc *TransportManager) Stop() {
 
 }
 
-func (svc *TransportManager) WriteProperty(agentID string, thingID string, name string,
-	value any, messageID string, senderID string) (found bool, status string, err error) {
+func (svc *TransportManager) WriteProperty(
+	agentID string, thingID string, name string, value any, messageID string, senderID string) (
+	found bool, status string, err error) {
 
 	// send the action to the sub-protocol bindings until there is a match
 	//if svc.embeddedTransport != nil {

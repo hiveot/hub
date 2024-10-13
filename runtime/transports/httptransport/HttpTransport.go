@@ -241,28 +241,66 @@ func (svc *HttpTransport) GetProtocolInfo() api.ProtocolInfo {
 // This passes it to SSE/WS sub-protocol handlers of active sessions
 func (svc *HttpTransport) InvokeAction(
 	agentID string, thingID string, name string, input any, messageID string, senderID string) (
-	status string, output any, err error) {
+	found bool, status string, output any, err error) {
 
+	slog.Info("InvokeAction (to agent)",
+		slog.String("agentID", agentID),
+		slog.String("thingID", thingID),
+		slog.String("name", name),
+		slog.String("messageID", messageID),
+		slog.String("senderID", senderID),
+	)
 	if svc.ws != nil {
-		status, output, err = svc.ws.InvokeAction(agentID, thingID, name, input, messageID, senderID)
+		found, status, output, err = svc.ws.InvokeAction(
+			agentID, thingID, name, input, messageID, senderID)
 	}
-	if svc.ssesc != nil {
-		status, output, err = svc.ssesc.InvokeAction(agentID, thingID, name, input, messageID, senderID)
+	if !found && svc.ssesc != nil {
+		found, status, output, err = svc.ssesc.InvokeAction(
+			agentID, thingID, name, input, messageID, senderID)
 	}
-	if err != nil && svc.sse != nil {
-		status, output, err = svc.sse.InvokeAction(agentID, thingID, name, input, messageID, senderID)
+	if !found && svc.sse != nil {
+		found, status, output, err = svc.sse.InvokeAction(
+			agentID, thingID, name, input, messageID, senderID)
 	}
-	if err != nil {
-		status = vocab.ProgressStatusFailed
-		err = fmt.Errorf("InvokeAction: No sub-protocol bindings")
+	if !found {
+		err = fmt.Errorf("No connection to agent '%s' for thingID '%s' and action '%s",
+			agentID, thingID, name)
 	}
-	return status, output, err
+	return found, status, output, err
 }
 
-// PublishActionProgress sends the action update to the client
+// PublishEvent broadcasts an event message to subscribers of this event.
+// This passes it to SSE/WS sub-protocol handlers of active sessions
+func (svc *HttpTransport) PublishEvent(
+	dThingID string, name string, value any, messageID string, agentID string) {
+
+	slog.Info("PublishEvent (to subscribers)",
+		slog.String("dThingID", dThingID),
+		slog.String("name", name),
+		slog.String("messageID", messageID),
+		slog.String("agentID", agentID),
+	)
+	if svc.ws != nil {
+		svc.ws.PublishEvent(dThingID, name, value, messageID, agentID)
+	}
+	if svc.ssesc != nil {
+		svc.ssesc.PublishEvent(dThingID, name, value, messageID, agentID)
+	}
+	if svc.sse != nil {
+		svc.sse.PublishEvent(dThingID, name, value, messageID, agentID)
+	}
+}
+
+// PublishProgressUpdate sends the action update to the client
 func (svc *HttpTransport) PublishProgressUpdate(
 	clientID string, stat hubclient.DeliveryStatus, agentID string) (found bool, err error) {
 
+	slog.Info("PublishProgressUpdate (to client)",
+		slog.String("clientID", clientID),
+		slog.String("progress", stat.Progress),
+		slog.String("messageID", stat.MessageID),
+		slog.String("agentID", agentID),
+	)
 	found = false
 	if svc.ws != nil {
 		found, err = svc.ws.SendActionResult(clientID, stat, agentID)
@@ -276,26 +314,17 @@ func (svc *HttpTransport) PublishProgressUpdate(
 	return found, err
 }
 
-// PublishEvent sends an event message to subscribers of this event.
-// This passes it to SSE/WS sub-protocol handlers of active sessions
-func (svc *HttpTransport) PublishEvent(
-	dThingID string, name string, value any, messageID string, agentID string) {
-	if svc.ws != nil {
-		svc.ws.PublishEvent(dThingID, name, value, messageID, agentID)
-	}
-	if svc.ssesc != nil {
-		svc.ssesc.PublishEvent(dThingID, name, value, messageID, agentID)
-	}
-	if svc.sse != nil {
-		svc.sse.PublishEvent(dThingID, name, value, messageID, agentID)
-	}
-}
-
-// PublishProperty sends a property value update to observers of this property.
+// PublishProperty broadcasts a property value update to observers of the property.
 // This passes it to SSE/WS sub-protocol handlers of active sessions
 func (svc *HttpTransport) PublishProperty(
 	dThingID string, name string, value any, messageID string, agentID string) {
 
+	slog.Info("PublishProperty (to observers)",
+		slog.String("dThingID", dThingID),
+		slog.String("name", name),
+		slog.String("messageID", messageID),
+		slog.String("agentID", agentID),
+	)
 	if svc.ws != nil {
 		svc.ws.PublishProperty(dThingID, name, value, messageID, agentID)
 	}
@@ -349,6 +378,13 @@ func (svc *HttpTransport) WriteProperty(
 	agentID string, thingID string, name string, input any, messageID string, senderID string) (
 	found bool, status string, err error) {
 
+	slog.Info("WriteProperty (to agent)",
+		slog.String("agentID", agentID),
+		slog.String("thingID", thingID),
+		slog.String("name", name),
+		slog.String("messageID", messageID),
+		slog.String("senderID", senderID),
+	)
 	found = false
 	if svc.ws != nil {
 		found, status, err = svc.ws.WriteProperty(agentID, thingID, name, input, messageID, senderID)

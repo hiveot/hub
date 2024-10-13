@@ -15,7 +15,7 @@ import (
 // a delivery update.
 func (svc *HubRouter) HandleEventFlow(
 	agentID string, thingID string, name string, value any, messageID string) error {
-	slog.Info("HandleEventFlow",
+	slog.Info("HandleEventFlow (from agent)",
 		slog.String("agentID", agentID),
 		slog.String("thingID", thingID),
 		slog.String("eventName", name),

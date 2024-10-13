@@ -119,7 +119,7 @@ func (sm *SessionManager) Close(sessionID string) error {
 func (sm *SessionManager) ConnectWithPassword(loginID string, password string) (
 	hc hubclient.IConsumerClient, newToken string, err error) {
 
-	hc = connect.NewHubClient(sm.hubURL, loginID, sm.caCert)
+	hc = connect.NewAgentClient(sm.hubURL, loginID, sm.caCert)
 	newToken, err = hc.ConnectWithPassword(password)
 	// subscribe to updates
 	return hc, newToken, err
@@ -127,7 +127,7 @@ func (sm *SessionManager) ConnectWithPassword(loginID string, password string) (
 
 // ConnectWithToken creates a new hub client and connect it to the hub using token login
 func (sm *SessionManager) ConnectWithToken(loginID string, authToken string) (hubclient.IConsumerClient, error) {
-	hc := connect.NewHubClient(sm.hubURL, loginID, sm.caCert)
+	hc := connect.NewAgentClient(sm.hubURL, loginID, sm.caCert)
 	_, err := hc.ConnectWithToken(authToken)
 	return hc, err
 }

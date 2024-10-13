@@ -45,10 +45,20 @@ type ITransportBinding interface {
 	//	name is the name of the action as per thing action affordance
 	//	value is the raw value to encode and send to the thing
 	//	messageID is optional ID of the action. Used in linked events and property updates.
+	//
+	// This returns found false if the agent isn't connected with this binding
 	InvokeAction(agentID, thingID, name string, value any, messageID string, senderID string) (
-		status string, output any, err error)
+		found bool, status string, output any, err error)
 
-	// PublishActionProgress sends an action result update to a consumer.
+	// PublishEvent publishes an event message to all subscribers of this protocol binding
+	//
+	//	dThingID is the Thing ID of the digital twin
+	//	name is the name of the event as per digital twin event affordance
+	//	value is the raw event value as per event affordance data schema
+	//	messageID is the optional ID of a linked action
+	PublishEvent(dThingID string, name string, value any, messageID string, agentID string)
+
+	// PublishProgressUpdate sends an action result update to a consumer.
 	//
 	// Intended for one-way client connections such as sse or for async actions
 	// that take time to execute.
@@ -59,14 +69,6 @@ type ITransportBinding interface {
 	//	err error if failed
 	PublishProgressUpdate(clientID string, stat hubclient.DeliveryStatus, agentID string) (
 		found bool, err error)
-
-	// PublishEvent publishes an event message to all subscribers of this protocol binding
-	//
-	//	dThingID is the Thing ID of the digital twin
-	//	name is the name of the event as per digital twin event affordance
-	//	value is the raw event value as per event affordance data schema
-	//	messageID is the optional ID of a linked action
-	PublishEvent(dThingID string, name string, value any, messageID string, agentID string)
 
 	// PublishProperty publishes a new property value to observers of the property
 	//

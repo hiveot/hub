@@ -16,8 +16,7 @@ import (
 //
 //	svc is the history service whose capabilities to expose
 //	hc is the optional message client connected to the server protocol
-func StartHistoryAgent(
-	svc *HistoryService, hc hubclient.IConsumerClient) {
+func StartHistoryAgent(svc *HistoryService, hc hubclient.IConsumerClient) {
 
 	// TODO: load latest retention rules from state store
 	manageHistoryMethods := map[string]interface{}{

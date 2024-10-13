@@ -71,42 +71,17 @@ func (svc *HistoryService) Start(hc hubclient.IAgentClient) (err error) {
 
 	// subscribe to events to add to the history store
 	if err == nil && svc.hc != nil {
-		// the onAddedValue callback is used to update the 'latest' properties
-		svc.addHistory = NewAddHistory(svc.bucketStore, svc.manageHistSvc, nil)
 
-		// add events to the history filtered through the retention manager
-		err = svc.hc.Subscribe("", "")
-		// agent receives the messages instead
-		//svc.hc.SetMessageHandler(func(msg *things.ThingMessage) (stat hubclient.DeliveryStatus) {
-		//	if msg.MessageType == vocab.MessageTypeEvent {
-		//		slog.Debug("received event",
-		//			slog.String("senderID", msg.SenderID),
-		//			slog.String("thingID", msg.ThingID),
-		//			slog.String("name", msg.Name),
-		//			slog.Int64("createdMSec", msg.CreatedMSec))
-		//		err = svc.addHistory.AddEvent(msg)
-		//		stat.Completed(msg, err)
-		//	} else {
-		//
-		//	}
-		//	return stat
-		//})
+		// handler of adding events to the history
+		svc.addHistory = NewAddHistory(svc.bucketStore, svc.manageHistSvc)
 
 		// register the history service methods
 		StartHistoryAgent(svc, svc.hc)
 
-		// add actions to the history, filtered through retention manager
-		// FIXME: this needs the ability to subscribe to actions for other agents
+		// TODO: add actions to the history, filtered through retention manager
+		// FIXME: this needs the ability to subscribe to actions from other agents
 
-		//svc.actionSub, err = svc.hc.SubActions("", "", "",
-		//	func(msg *things.ThingMessage) {
-		//		slog.Info("received action", slog.String("name", msg.Name))
-		//		_ = svc.addHistory.AddAction(msg)
-		//	})
-
-		// TODO: add action history. Note that the agent also subscribes to actions,
-		// so if we subscribe here we must invoke the agent from here
-
+		// subscribe to receive the events to add to the history, filtered through the retention manager
 		err = svc.hc.Subscribe("", "")
 	}
 

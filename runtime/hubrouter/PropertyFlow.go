@@ -21,10 +21,11 @@ import (
 func (svc *HubRouter) HandleUpdatePropertyFlow(
 	agentID string, thingID string, propName string, value any, messageID string) (err error) {
 
-	slog.Info("UpdatePropertyValue",
+	slog.Info("HandleUpdatePropertyFlow (from agent)",
 		slog.String("agentID", agentID),
 		slog.String("thingID", thingID),
 		slog.String("propName", propName),
+		slog.String("messageID", messageID),
 		slog.String("value", fmt.Sprintf("%v", value)),
 	)
 	// probably multiple
@@ -51,13 +52,13 @@ func (svc *HubRouter) HandleUpdatePropertyFlow(
 // event is sent with the progress update.
 // if name is empty then newValue contains a map of properties
 func (svc *HubRouter) HandleWritePropertyFlow(
-	consumerID string, dThingID string, name string, newValue any) (
+	dThingID string, name string, newValue any, consumerID string) (
 	status string, messageID string, err error) {
 
 	var found bool
 	//var statusInfo string
 
-	slog.Info("UpdatePropertyValue",
+	slog.Info("HandleWritePropertyFlow (from consumer)",
 		slog.String("consumerID", consumerID),
 		slog.String("dThingID", dThingID),
 		slog.String("name", name),

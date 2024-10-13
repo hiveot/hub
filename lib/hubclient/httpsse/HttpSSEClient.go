@@ -361,21 +361,16 @@ func (cl *HttpSSEClient) pubFormMessage(op *tdd.Form,
 func (cl *HttpSSEClient) InvokeAction(thingID string, name string, data any, messageID string) (
 	stat hubclient.DeliveryStatus) {
 
-	slog.Debug("PubAction",
-		slog.String("thingID", thingID),
-		slog.String("name", name))
-
-	// FIXME: use TD form for this action
-	// FIXME: track message-ID's using headers instead of message envelope
-	stat = cl.PubMessage(http.MethodPost, PostInvokeActionPath, thingID, name, data, messageID, nil)
-	slog.Info("PubAction",
+	slog.Info("InvokeAction",
 		slog.String("me", cl._status.ClientID),
 		slog.String("thingID", thingID),
 		slog.String("name", name),
 		slog.String("messageID", messageID),
-		//slog.String("data", data),
-		slog.String("progress", stat.Progress),
 	)
+	// FIXME: use TD form for this action
+	// FIXME: track message-ID's using headers instead of message envelope
+	stat = cl.PubMessage(http.MethodPost, PostInvokeActionPath, thingID, name, data, messageID, nil)
+
 	return stat
 }
 
@@ -396,17 +391,17 @@ func (cl *HttpSSEClient) Observe(thingID string, name string) error {
 }
 
 // PubActionWithQueryParams publishes an action with query parameters
-func (cl *HttpSSEClient) PubActionWithQueryParams(
-	thingID string, name string, data any, messageID string, params map[string]string) (
-	stat hubclient.DeliveryStatus) {
-
-	slog.Info("PubActionWithQueryParams",
-		slog.String("thingID", thingID),
-		slog.String("name", name),
-	)
-	stat = cl.PubMessage(http.MethodPost, PostInvokeActionPath, thingID, name, data, messageID, params)
-	return stat
-}
+//func (cl *HttpSSEClient) PubActionWithQueryParams(
+//	thingID string, name string, data any, messageID string, params map[string]string) (
+//	stat hubclient.DeliveryStatus) {
+//
+//	slog.Info("PubActionWithQueryParams",
+//		slog.String("thingID", thingID),
+//		slog.String("name", name),
+//	)
+//	stat = cl.PubMessage(http.MethodPost, PostInvokeActionPath, thingID, name, data, messageID, params)
+//	return stat
+//}
 
 // PubEvent publishes an event message and returns
 // This returns an error if the connection with the server is broken
@@ -415,6 +410,7 @@ func (cl *HttpSSEClient) PubEvent(thingID string, name string, data any, message
 		slog.String("agentID", cl._status.ClientID),
 		slog.String("thingID", thingID),
 		slog.String("name", name),
+		slog.String("messageID", messageID),
 	)
 	stat := cl.PubMessage(http.MethodPost, PostAgentPublishEventPath, thingID, name, data, messageID, nil)
 	if stat.Error != "" {
@@ -427,7 +423,7 @@ func (cl *HttpSSEClient) PubEvent(thingID string, name string, data any, message
 // The digital twin will update the request status and notify the sender.
 // This returns an error if the connection with the server is broken
 func (cl *HttpSSEClient) PubProgressUpdate(stat hubclient.DeliveryStatus) {
-	slog.Info("PubDelivery",
+	slog.Debug("PubProgressUpdate",
 		slog.String("me", cl._status.ClientID),
 		slog.String("progress", stat.Progress),
 		slog.String("messageID", stat.MessageID))
@@ -441,7 +437,8 @@ func (cl *HttpSSEClient) PubProgressUpdate(stat hubclient.DeliveryStatus) {
 // PubProperties agent publishes a properties map event
 // Intended for use by agents to publish all properties at once
 func (cl *HttpSSEClient) PubProperties(thingID string, props map[string]any) error {
-	//return cl.PubEvent(thingID, vocab.EventNameProperties, props, "")
+	slog.Info("PubProperties", slog.String("thingID", thingID))
+
 	// FIXME: get path from forms?
 	stat := cl.PubMessage("POST", PostAgentUpdateMultiplePropertiesPath,
 		thingID, "", props, "", nil)
@@ -453,6 +450,8 @@ func (cl *HttpSSEClient) PubProperties(thingID string, props map[string]any) err
 
 // PubTD publishes a TD update
 func (cl *HttpSSEClient) PubTD(thingID string, tdJSON string) error {
+	slog.Info("PubTD", slog.String("thingID", thingID))
+
 	// TDs are published in JSON encoding as per spec
 	stat := cl.PubMessage("POST", PostAgentUpdateTDDPath, thingID, "", tdJSON, "", nil)
 	if stat.Error != "" {
@@ -464,6 +463,7 @@ func (cl *HttpSSEClient) PubTD(thingID string, tdJSON string) error {
 // RefreshToken refreshes the authentication token
 // The resulting token can be used with 'ConnectWithJWT'
 func (cl *HttpSSEClient) RefreshToken(oldToken string) (newToken string, err error) {
+	slog.Info("RefreshToken", slog.String("clientID", cl.ClientID()))
 	refreshURL := fmt.Sprintf("https://%s%s", cl.hostPort, PostRefreshPath)
 
 	args := authn.UserRefreshTokenArgs{
@@ -500,6 +500,13 @@ func (cl *HttpSSEClient) Rpc(
 
 	// a messageID is needed before the action is published in order to match it with the reply
 	messageID := "rpc-" + shortid.MustGenerate()
+
+	slog.Info("Rpc (request)", slog.String("clientID", cl.ClientID()),
+		slog.String("thingID", thingID),
+		slog.String("name", name),
+		slog.String("messageID", messageID),
+	)
+
 	rChan := make(chan *hubclient.DeliveryStatus)
 	cl.mux.Lock()
 	cl._correlData[messageID] = rChan
@@ -514,11 +521,22 @@ func (cl *HttpSSEClient) Rpc(
 			break
 		}
 		// wait at most cl.timeout or until delivery completes or fails
+		slog.Info("Rpc (wait)",
+			slog.String("clientID", cl.ClientID()),
+			slog.String("messageID", messageID),
+		)
 		stat, err = cl.WaitForStatusUpdate(rChan, messageID, cl.timeout)
 	}
 	cl.mux.Lock()
 	delete(cl._correlData, messageID)
 	cl.mux.Unlock()
+	slog.Info("Rpc (result)",
+		slog.String("clientID", cl.ClientID()),
+		slog.String("thingID", thingID),
+		slog.String("name", name),
+		slog.String("messageID", messageID),
+		slog.String("status", stat.Progress),
+	)
 
 	// check for errors
 	if err == nil {
@@ -546,6 +564,11 @@ func (cl *HttpSSEClient) SendOperation(
 
 // SetConnectionStatus updates the current connection status
 func (cl *HttpSSEClient) SetConnectionStatus(cstat hubclient.ConnectionStatus, err error) {
+
+	slog.Info("SetConnectionStatus",
+		slog.String("clientID", cl.ClientID()),
+		slog.String("cstat", string(cstat)))
+
 	cl.mux.Lock()
 	if cl._status.ConnectionStatus == cstat {
 		cl.mux.Unlock()
@@ -582,6 +605,11 @@ func (cl *HttpSSEClient) SetMessageHandler(cb hubclient.MessageHandler) {
 // Subscribe subscribes to a single event of one or more thing.
 // Use SetEventHandler to receive subscribed events or SetRequestHandler for actions
 func (cl *HttpSSEClient) Subscribe(thingID string, name string) error {
+	slog.Info("Subscribe",
+		slog.String("clientID", cl.ClientID()),
+		slog.String("thingID", thingID),
+		slog.String("name", name))
+
 	if thingID == "" {
 		thingID = "+"
 	}
@@ -602,6 +630,11 @@ func (cl *HttpSSEClient) Unmarshal(raw []byte, reply interface{}) error {
 
 // Unsubscribe from thing event(s)
 func (cl *HttpSSEClient) Unsubscribe(thingID string, name string) error {
+	slog.Info("Unsubscribe",
+		slog.String("clientID", cl.ClientID()),
+		slog.String("thingID", thingID),
+		slog.String("name", name))
+
 	if thingID == "" {
 		thingID = "+"
 	}
@@ -614,11 +647,8 @@ func (cl *HttpSSEClient) Unsubscribe(thingID string, name string) error {
 	return err
 }
 
-// WaitForStatusUpdate waits for an async status update or until timeout
-// This returns the status or an error if the messageID doesn't exist
-//
-// FIXME: this is currently broken as DeliveryStatus is removed.
-// This could still be supported in a non-wot way using $delivery events
+// WaitForStatusUpdate waits for an async progress update message or until timeout
+// This returns the status or an error if the timeout has passed
 func (cl *HttpSSEClient) WaitForStatusUpdate(
 	statChan chan *hubclient.DeliveryStatus, messageID string, timeout time.Duration) (
 	stat hubclient.DeliveryStatus, err error) {
@@ -640,15 +670,13 @@ func (cl *HttpSSEClient) WaitForStatusUpdate(
 func (cl *HttpSSEClient) WriteProperty(thingID string, name string, data any) (
 	stat hubclient.DeliveryStatus) {
 
-	// FIXME: get message id
-	stat = cl.PubMessage(http.MethodPost, PostWritePropertyPath, thingID, name, data, "", nil)
 	slog.Info("WriteProperty",
 		slog.String("me", cl._status.ClientID),
 		slog.String("thingID", thingID),
 		slog.String("name", name),
-		//slog.String("value", value),
-		slog.String("progress", stat.Progress),
 	)
+
+	stat = cl.PubMessage(http.MethodPost, PostWritePropertyPath, thingID, name, data, "", nil)
 	return stat
 }
 

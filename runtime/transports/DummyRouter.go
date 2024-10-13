@@ -12,7 +12,7 @@ type DummyRouter struct {
 }
 
 func (svc *DummyRouter) HandleActionFlow(
-	consumerID string, dThingID string, actionName string, input any, reqID string) (
+	dThingID string, actionName string, input any, reqID string, consumerID string) (
 	status string, output any, messageID string, err error) {
 	// if a hook is provided, call it first
 	if svc.OnAction != nil {
@@ -41,7 +41,7 @@ func (svc *DummyRouter) HandleUpdateTDFlow(agentID string, tdJSON string) error 
 }
 
 func (svc *DummyRouter) HandleWritePropertyFlow(
-	consumerID string, dThingID string, name string, newValue any) (
+	dThingID string, name string, newValue any, consumerID string) (
 	status string, messageID string, err error) {
 
 	return "", "", nil

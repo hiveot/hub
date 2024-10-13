@@ -163,16 +163,17 @@ func (b *SseScBinding) HandleUnsubscribeEvent(w http.ResponseWriter, r *http.Req
 // InvokeAction sends the action request for the thing to the agent
 func (b *SseScBinding) InvokeAction(
 	agentID, thingID, name string, data any, messageID string, senderID string) (
-	status string, output any, err error) {
+	found bool, status string, output any, err error) {
 
 	// determine which connection is of the agent
 	for _, c := range b.connections {
 		if c.GetClientID() == agentID {
-			return c.InvokeAction(thingID, name, data, messageID, senderID)
+			status, output, err = c.InvokeAction(thingID, name, data, messageID, senderID)
+			return true, status, output, err
 		}
 	}
 
-	return vocab.ProgressStatusFailed, nil,
+	return false, vocab.ProgressStatusFailed, nil,
 		fmt.Errorf("agent '%s' does not have a connection", agentID)
 }
 
