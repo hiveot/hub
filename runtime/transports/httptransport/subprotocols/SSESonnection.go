@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
+	"github.com/hiveot/hub/runtime/transports/sessions"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -23,13 +23,13 @@ type SSEEvent struct {
 //
 // This implements the IClientConnection interface
 type SSEConnection struct {
-	// connection ID of this session
+	// connection ID (from header)
 	connectionID string
 
 	// connection belongs to this session
 	sessionID string
 
-	// ClientID is the login ID of the agent or consumer
+	// ClientID is the account ID of the agent or consumer
 	clientID string
 
 	// RemoteAddr of the user
@@ -76,12 +76,23 @@ func (c *SSEConnection) Close() {
 	defer c.mux.Unlock()
 	if c.sseChan != nil {
 		close(c.sseChan)
+		c.sseChan = nil
 	}
 }
 
-// GetClientID returns the client's connection ID
+// GetClientID returns the client's account ID
 func (c *SSEConnection) GetClientID() string {
 	return c.clientID
+}
+
+// GetConnectionID returns the clients connection ID unique within the sessions
+func (c *SSEConnection) GetConnectionID() string {
+	return c.connectionID
+}
+
+// GetSessionID returns the client's authentication session ID
+func (c *SSEConnection) GetSessionID() string {
+	return c.sessionID
 }
 
 // InvokeAction sends the action request for the thing to the agent
@@ -156,6 +167,9 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Content-Type", "text/event-stream")
 
+	// determine the optional connection-ID
+	c.connectionID = r.Header.Get(hubclient.ConnectionIDHeader)
+
 	// establish a client event channel for sending messages back to the client
 	c.sseChan = make(chan SSEEvent, 1)
 
@@ -204,9 +218,9 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 			)
 			// write the message with or without messageID
 			if sseMsg.ID == "" {
-				// force a messageID to avoid go-sse injecting the last eventID,
+				// force a messageID to avoid go-sse client injecting the last eventID,
 				// which can mess things up.
-				sseMsg.ID = "noid"
+				sseMsg.ID = "-"
 			}
 			_, err = fmt.Fprintf(w, "event: %s\nid:%s\ndata: %s\n\n",
 				sseMsg.EventType, sseMsg.ID, sseMsg.Payload)

@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/hiveot/hub/lib/hubclient"
 	"golang.org/x/net/publicsuffix"
 	"io"
 	"log/slog"
@@ -33,6 +34,9 @@ type TLSClient struct {
 	// JWT bearer token after login, refresh, or external source
 	// Invoke will use this if set.
 	bearerToken string
+
+	// headers to include in each request
+	headers map[string]string
 }
 
 // Certificate returns the client auth certificate or nil if none is used
@@ -42,7 +46,7 @@ func (cl *TLSClient) Certificate() *tls.Certificate {
 
 // Close the connection with the server
 func (cl *TLSClient) Close() {
-	slog.Info("TLSClient.Close: Closing client connection")
+	slog.Info("TLSClient.Remove: Closing client connection")
 
 	if cl.httpClient != nil {
 		cl.httpClient.CloseIdleConnections()
@@ -121,6 +125,9 @@ func (cl *TLSClient) Invoke(method string, requrl string, body []byte, messageID
 	req.Header.Set("Content-Type", contentType)
 	if messageID != "" {
 		req.Header.Set(HTTPMessageIDHeader, messageID)
+	}
+	for k, v := range cl.headers {
+		req.Header.Set(k, v)
 	}
 
 	httpResp, err := cl.httpClient.Do(req)
@@ -218,21 +225,32 @@ func (cl *TLSClient) SetAuthToken(token string) {
 	cl.bearerToken = token
 }
 
+// SetHeader sets a header to include in each request
+// use an empty value to remove the header
+func (cl *TLSClient) SetHeader(name string, val string) {
+	if val == "" {
+		delete(cl.headers, name)
+	} else {
+		cl.headers[name] = val
+	}
+}
+
 //// SetBearerToken sets the authentication token for the http header
 //func (cl *TLSClient) SetBearerToken(token string) {
 //	cl.bearerToken = token
 //}
 
 // NewTLSClient creates a new TLS Client instance.
-// Use setup/Close to open and close connections
+// Use setup/Remove to open and close connections
 //
 //	hostPort is the server hostname or IP address and port to setup to
 //	clientCert is an option client certificate used to connect
 //	caCert with the x509 CA certificate, nil if not available
 //	timeout duration of the request or 0 for default of 10 seconds
+//	cid is the recommended connection ID to include as a header
 //
 // returns TLS client for submitting requests
-func NewTLSClient(hostPort string, clientCert *tls.Certificate, caCert *x509.Certificate, timeout time.Duration) *TLSClient {
+func NewTLSClient(hostPort string, clientCert *tls.Certificate, caCert *x509.Certificate, timeout time.Duration, cid string) *TLSClient {
 	if timeout == 0 {
 		timeout = DefaultClientTimeout
 	}
@@ -287,6 +305,10 @@ func NewTLSClient(hostPort string, clientCert *tls.Certificate, caCert *x509.Cer
 		timeout:    timeout,
 		clientCert: clientCert,
 		caCert:     caCert,
+		headers:    make(map[string]string),
+	}
+	if cid != "" {
+		cl.headers[hubclient.ConnectionIDHeader] = cid
 	}
 
 	return cl

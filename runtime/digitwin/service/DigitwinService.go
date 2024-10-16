@@ -3,7 +3,7 @@ package service
 import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
-	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/transports/sessions"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"os"
@@ -28,8 +28,6 @@ type DigitwinService struct {
 	ValuesSvc *DigitwinValuesService
 
 	mux sync.RWMutex
-	//// The transport binding (manager) to communicate with agents and consumers
-	//tb api.ITransportBinding
 }
 
 // ReadAllDTDs returns a list digitwin TDs
@@ -46,10 +44,10 @@ func (svc *DigitwinService) ReadAllDTDs(
 //	return dtd, err
 //}
 
-// SetTransportHook sets the transport hook for reading forms and publishing
+// SetFormsHook sets the transport hook for reading forms and publishing
 // service events.
-func (svc *DigitwinService) SetTransportHook(tb api.ITransportBinding) {
-	svc.DirSvc.tb = tb
+func (svc *DigitwinService) SetFormsHook(addFormsHandler func(*tdd.TD) error) {
+	svc.DirSvc.addFormsHandler = addFormsHandler
 }
 
 // Stop the service
@@ -66,8 +64,8 @@ func (svc *DigitwinService) Stop() {
 // by this service.
 //
 // storesDir is the directory where to create the digitwin storage
-// tb is the protocol binding or manager used to send messages to clients
-func StartDigitwinService(storesDir string) (
+// cm is the connection manager used to send messages to clients
+func StartDigitwinService(storesDir string, cm *sessions.ConnectionManager) (
 	svc *DigitwinService, store *DigitwinStore, err error) {
 
 	sPath := path.Join(storesDir, "digitwin")
@@ -80,7 +78,7 @@ func StartDigitwinService(storesDir string) (
 	if err == nil {
 		dtwStore, err = OpenDigitwinStore(bucketStore)
 	}
-	dirSvc := NewDigitwinDirectoryService(dtwStore, nil)
+	dirSvc := NewDigitwinDirectoryService(dtwStore, cm)
 	valuesSvc := NewDigitwinValuesService(dtwStore)
 	if err == nil {
 		svc = &DigitwinService{

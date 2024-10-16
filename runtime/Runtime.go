@@ -9,6 +9,7 @@ import (
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/hubrouter"
 	"github.com/hiveot/hub/runtime/transports"
+	"github.com/hiveot/hub/runtime/transports/sessions"
 	"log/slog"
 )
 
@@ -27,6 +28,8 @@ type Runtime struct {
 	dtwStore      *service4.DigitwinStore
 	DigitwinSvc   *service4.DigitwinService
 	HubRouter     *hubrouter.HubRouter
+	cm            *sessions.ConnectionManager
+	sm            *sessions.SessionManager
 	TransportsMgr *transports.TransportManager
 }
 
@@ -67,12 +70,13 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	// The digitwin service directs the message flow between agents and consumers
 	// It receives messages from the middleware and uses the protocol manager
 	// to send messages to clients.
-	r.DigitwinSvc, r.dtwStore, err = service4.StartDigitwinService(env.StoresDir)
+	r.DigitwinSvc, r.dtwStore, err = service4.StartDigitwinService(env.StoresDir, r.cm)
+
 	dtwAgent := service4.NewDigitwinAgent(r.DigitwinSvc)
 	// The transport passes incoming messages on to the hub-router, which in
 	// turn updates the digital twin and forwards the requests.
 	r.HubRouter = hubrouter.NewHubRouter(r.DigitwinSvc,
-		dtwAgent, r.AuthnAgent, r.AuthzAgent)
+		dtwAgent, r.AuthnAgent, r.AuthzAgent, r.cm)
 
 	// the protocol manager receives messages from clients (source) and
 	// sends messages to connected clients (sink)
@@ -82,13 +86,14 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		r.cfg.CaCert,
 		r.AuthnSvc.SessionAuth,
 		r.HubRouter,
-		r.DigitwinSvc)
+		r.DigitwinSvc,
+		r.cm,
+		r.sm)
 	if err != nil {
 		return err
 	}
 	// outgoing messages are handled by the sub-protocols of this transport
-	r.DigitwinSvc.SetTransportHook(r.TransportsMgr)
-	r.HubRouter.SetTransport(r.TransportsMgr)
+	r.DigitwinSvc.SetFormsHook(r.TransportsMgr.AddTDForms)
 	return err
 }
 
@@ -111,6 +116,8 @@ func (r *Runtime) Stop() {
 func NewRuntime(cfg *RuntimeConfig) *Runtime {
 	r := &Runtime{
 		cfg: cfg,
+		sm:  sessions.NewSessionmanager(),
+		cm:  sessions.NewConnectionManager(),
 	}
 	return r
 }

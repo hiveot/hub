@@ -2,10 +2,11 @@
 
 import process from "node:process";
 import * as tslog from 'tslog';
-import {DeliveryProgress, DeliveryStatus} from './IAgentClient';
+import {DeliveryStatus} from './DeliveryStatus';
 import {ThingMessage} from "../things/ThingMessage";
 import {ConnectToHub} from "@hivelib/hubclient/ConnectToHub";
-import {EventTypeDeliveryUpdate, MessageTypeAction} from "@hivelib/api/vocab/ht-vocab";
+import {MessageTypeDeliveryUpdate, MessageTypeAction} from "@hivelib/api/vocab/vocab";
+import {ProgressStatusDelivered} from "@hivelib/api/vocab/vocab";
 
 const log = new tslog.Logger({name: "HCTest"})
 
@@ -60,12 +61,7 @@ async function test2() {
         throw(e)
     }
 
-    let stat = await hc.pubEvent("thing1", "event1", "hello world")
-    if (stat.error) {
-        log.error("pubEvent failed:",stat.error)
-    } else if (stat.progress != DeliveryProgress.DeliveryCompleted) {
-        log.error("pubEvent status not 'completed': progress=", stat.progress)
-    }
+    hc.pubEvent("thing1", "event1", "hello world")
     hc.disconnect()
 }
 
@@ -99,13 +95,13 @@ async function test3() {
         await hc.subscribe("", "")
 
         // publish an action request
-        let stat = await hc.pubAction(thingID, "action1", "1")
+        let stat = await hc.invokeAction(thingID, "action1", "1")
         if (stat.error != "") {
             throw ("pubAction failed: " + stat.error)
         }
 
         // publish a config request
-        stat = await hc.pubProperty("thing1", "prop1", "10")
+        stat = await hc.writeProperty("thing1", "prop1", "10")
         if (stat.error != "") {
             throw ("pubConfig failed: " + stat)
         }
@@ -161,7 +157,7 @@ async function test4() {
             if (tm.thingID == "dtw:testsvc:thing1") {
                 log.info("Received event: "+tm.name+"; data="+tm.data)
                 ev1Count++
-            } else if (tm.name == EventTypeDeliveryUpdate) {
+            } else if (tm.messageType == MessageTypeDeliveryUpdate) {
                 // FIXME: why is data base64 encoded? => data type in golang was []byte; changed to string
                 // let data = Buffer.from(tm.data,"base64").toString()
                 actionDelivery = JSON.parse(tm.data)
@@ -180,17 +176,14 @@ async function test4() {
     await new Promise(resolve => setTimeout(resolve, 100));
 
     // round 3, send a test event
-    let stat = await hcSvc.pubEvent("thing1", "event1", "hello world")
-    if (stat.error) {
-        log.error("failed publishing event: "+stat.error)
-    }
+    hcSvc.pubEvent("thing1", "event1", "hello world")
 
     // round 4, send an action to the digitwin thing of the test service
     let dtwThing1ID = "dtw:"+testSvcID+":thing1"
-    let stat2 = await hcCl.pubAction(dtwThing1ID,"action1", "how are you")
+    let stat2 = await hcCl.invokeAction(dtwThing1ID,"action1", "how are you")
     if (stat2.error) {
         log.error("failed publishing action: "+stat2.error)
-    } else if (stat2.progress != DeliveryProgress.DeliveryToAgent) {
+    } else if (stat2.progress != ProgressStatusDelivered) {
         log.error("unexpected reply: "+stat2.progress)
     }
 
@@ -204,7 +197,7 @@ async function test4() {
     }
     if (actionCount != 1) {
         log.error("received " + actionCount + " actions. Expected 1")
-    } else if (!actionDelivery || actionDelivery.progress != DeliveryProgress.DeliveryCompleted) {
+    } else if (!actionDelivery || actionDelivery.progress != ProgressStatusCompleted) {
         log.error("test4 action sent but missing delivery confirmation")
     } else {
         log.info("test4 action success. Received an action confirmation")

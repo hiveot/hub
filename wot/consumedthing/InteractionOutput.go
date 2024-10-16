@@ -115,65 +115,6 @@ func (io *InteractionOutput) UpdateSchemaFromTD(td *tdd.TD) (found bool) {
 	return false
 }
 
-// NewInteractionOutputFromTM creates a new immutable interaction output from
-// a thing message.
-//
-// This determines the dataschema by looking for the schema in the events, properties and
-// actions (output) section of the TD.
-//
-//	tm is the received message with the data for this output
-//	td Thing Description document with schemas for the value. Use nil if schema is unknown.
-//func NewInteractionOutputFromTM(tm *hubclient.ThingMessage, td *tdd.TD) *InteractionOutput {
-//	io := &InteractionOutput{
-//		ThingID:  tm.ThingID,
-//		Name:     tm.Name,
-//		SenderID: tm.SenderID,
-//		Updated:  tm.Created,
-//		Value:    NewDataSchemaValue(tm.Data),
-//	}
-//	if td == nil {
-//		return io
-//	}
-//	// if name is that of an event then use it
-//	eventAff, found := td.Events[tm.Name]
-//	if found {
-//		io.Schema = eventAff.Data
-//		io.Title = eventAff.Title
-//		if len(eventAff.Forms) > 0 {
-//			//io.Form = &eventAff.Forms[0]
-//		}
-//		return io
-//	}
-//	// if name is that of a property then use it
-//	propAff, found := td.Properties[tm.Name]
-//	if found {
-//		io.Schema = &propAff.DataSchema
-//		io.Title = propAff.Title
-//		if len(propAff.Forms) > 0 {
-//			//io.Form = &propAff.Forms[0]
-//		}
-//		return io
-//	}
-//	// last, if name is that of an action then use its output schema
-//	actionAff, found := td.Actions[tm.Name]
-//	if found {
-//		if actionAff.Output != nil {
-//			io.Schema = actionAff.Output
-//		} else if actionAff.Input != nil {
-//			// Fallback to the input schema if no output is registed
-//			io.Schema = actionAff.Input
-//		}
-//		io.Title = actionAff.Title
-//		if len(actionAff.Forms) > 0 {
-//			//io.Form = &actionAff.Forms[0]
-//		}
-//		return io
-//	}
-//
-//	slog.Warn("message name not found in TD", "thingID", td.ID, "name", tm.Name, "messageType", tm.MessageType)
-//	return io
-//}
-
 // NewInteractionOutputFromValueList creates a new immutable interaction map from
 // a thing value list.
 //

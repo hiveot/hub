@@ -2,11 +2,22 @@ package subprotocols
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
+	"github.com/hiveot/hub/lib/hubclient"
 	"io"
 	"log/slog"
 	"net/http"
 )
+
+// RequestParams contains the parameters read from the HTTP request
+type RequestParams struct {
+	ClientID  string
+	ThingID   string
+	MessageID string
+	Name      string
+	Body      []byte
+	SessionID string
+	ConnID    string
+}
 
 // GetRequestParams reads the client session, URL parameters and body payload from the request.
 //
@@ -18,25 +29,22 @@ import (
 //
 //	{thingID} is the agent or digital twin thing ID
 //	{name} is the property, event or action name. '+' means 'all'
-//	{messageType} is a legacy variable that is phased out
-func GetRequestParams(r *http.Request) (clientID string, thingID string, name string, body []byte, err error) {
+func GetRequestParams(r *http.Request) (reqParam RequestParams, err error) {
 
 	// get the required client session of this agent
-	sessID, clientID, err := sessions.GetSessionIdFromContext(r)
-	_ = sessID
+	reqParam.SessionID, reqParam.ClientID, err = GetSessionIdFromContext(r)
 	if err != nil {
 		// This is an internal error. The middleware session handler would have blocked
 		// a request that required a session before getting here.
 		slog.Error(err.Error())
-		return "", "", "", nil, err
+		return reqParam, err
 	}
-
+	reqParam.ConnID = r.Header.Get(hubclient.ConnectionIDHeader)
 	// build a message from the URL and payload
 	// URLParam names are defined by the path variables set in the router.
-	thingID = chi.URLParam(r, "thingID")
-	name = chi.URLParam(r, "name")
-	//messageType = chi.URLParam(r, "messageType")
-	body, _ = io.ReadAll(r.Body)
+	reqParam.ThingID = chi.URLParam(r, "thingID")
+	reqParam.Name = chi.URLParam(r, "name")
+	reqParam.Body, _ = io.ReadAll(r.Body)
 
-	return clientID, thingID, name, body, err
+	return reqParam, err
 }

@@ -37,7 +37,9 @@ type RenderTileTemplateData struct {
 func (dt RenderTileTemplateData) GetHistory(thingID string, name string) *history.HistoryTemplateData {
 	timestamp := time.Now()
 	ct, err := dt.cts.Consume(thingID)
-
+	if err != nil {
+		return nil
+	}
 	duration, _ := time.ParseDuration("-24h")
 	hsd, err := history.NewHistoryTemplateData(ct, name, timestamp, duration)
 	_ = err
@@ -49,21 +51,25 @@ func (dt RenderTileTemplateData) GetHistory(thingID string, name string) *histor
 // instead of the event value schema.
 func (d RenderTileTemplateData) GetValue(thingID string, name string) (iout *consumedthing.InteractionOutput) {
 
-	cs, err := d.cts.Consume(thingID)
-	if err != nil {
+	ct, _ := d.cts.Consume(thingID)
+	if ct == nil {
+		// Thing not found. return a dummy interaction output with a non-schema
+		iout = consumedthing.NewInteractionOutput(
+			thingID, name, nil, nil, "")
 		iout.Value = consumedthing.NewDataSchemaValue("n/a")
+		return iout
 	}
-	iout = cs.ReadEvent(name)
-	if iout == nil {
-		iout = consumedthing.NewInteractionOutput(thingID, name, nil, nil, "")
+	td := ct.GetThingDescription()
+	iout = ct.ReadEvent(name)
+	if iout != nil {
 		return iout
 	}
 	// if name is an action then get the input dataschema for allowing
 	// direct input of the action from the dashboard tile.
-	td := cs.GetThingDescription()
 	actionAff := td.GetAction(name)
 	if actionAff != nil && actionAff.Input != nil {
-		iout.Schema = actionAff.Input
+		iout = consumedthing.NewInteractionOutput(
+			thingID, name, actionAff.Input, nil, "")
 	}
 	return iout
 }

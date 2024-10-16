@@ -103,7 +103,7 @@ func TestHttpsGetEvents(t *testing.T) {
 
 	// read using a plain old http client
 	hostPort := fmt.Sprintf("localhost:%d", ts.Port)
-	tlsClient := tlsclient.NewTLSClient(hostPort, nil, ts.Certs.CaCert, time.Minute)
+	tlsClient := tlsclient.NewTLSClient(hostPort, nil, ts.Certs.CaCert, time.Minute, "")
 	tlsClient.SetAuthToken(token)
 
 	// read latest using the http REST API

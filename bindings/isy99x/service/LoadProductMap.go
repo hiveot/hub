@@ -195,9 +195,9 @@ Dev Cat,Sub Cat,Device Category Name,Model,Product Name
 0x09,0x0B,Energy Management,2477SA2,220/240V 30A Load Controller NC (DB)
 0x09,0x0D,Energy Management,2448A2,Energy Display
 0x0E,0x00,Window Coverings,318276I,Somfy Drape Controller RF Bridge
-0x0E,0x01,Window Coverings,2444-222,INSTEON Micro Open/Close (915 MHz)
-0x0E,0x02,Window Coverings,2444-422,INSTEON Micro Open/Close (869 MHz)
-0x0E,0x03,Window Coverings,2444-522,INSTEON Micro Open/Close (921 MHz)
+0x0E,0x01,Window Coverings,2444-222,INSTEON Micro Open/Remove (915 MHz)
+0x0E,0x02,Window Coverings,2444-422,INSTEON Micro Open/Remove (869 MHz)
+0x0E,0x03,Window Coverings,2444-522,INSTEON Micro Open/Remove (921 MHz)
 0x0F,0x00,Access Control,N/A,Weiland Doors Central Drive and Control
 0x0F,0x01,Access Control,N/A,Weiland Doors Secondary Central Drive
 0x0F,0x02,Access Control,N/A,Weiland Doors Assist Drive
@@ -207,11 +207,11 @@ Dev Cat,Sub Cat,Device Category Name,Model,Product Name
 0x0F,0x06,Access Control,2458A1,MorningLinc
 0x10,0x00,"Security, Health and Safety",N/A,First Alert ONELink RF to Insteon Bridge
 0x10,0x01,"Security, Health and Safety",2842-222,Motion Sensor - US (915 MHz)
-0x10,0x02,"Security, Health and Safety",2843-222,INSTEON Open/Close Sensor (915 MHz)
+0x10,0x02,"Security, Health and Safety",2843-222,INSTEON Open/Remove Sensor (915 MHz)
 0x10,0x04,"Security, Health and Safety",2842-422,INSTEON Motion Sensor (869 MHz)
 0x10,0x05,"Security, Health and Safety",2842-522,INSTEON Motion Sensor (921 MHz)
-0x10,0x06,"Security, Health and Safety",2843-422,INSTEON Open/Close Sensor (869 MHz)
-0x10,0x07,"Security, Health and Safety",2843-522,INSTEON Open/Close Sensor (921 MHz)
+0x10,0x06,"Security, Health and Safety",2843-422,INSTEON Open/Remove Sensor (869 MHz)
+0x10,0x07,"Security, Health and Safety",2843-522,INSTEON Open/Remove Sensor (921 MHz)
 0x10,0x08,"Security, Health and Safety",2852-222,Leak Sensor - US (915 MHz)
 0x10,0x0A,"Security, Health and Safety",2982-222,Smoke Bridge
 `

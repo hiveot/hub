@@ -34,7 +34,7 @@ import (
 //	}
 //
 // ```
-func (svc *HttpTransport) AddTDForms(td *tdd.TD) error {
+func (svc *HttpBinding) AddTDForms(td *tdd.TD) error {
 	svc.AddThingLevelForms(td)
 	//svc.AddPropertiesForms(td)
 	//svc.AddEventsForms(td)
@@ -44,7 +44,7 @@ func (svc *HttpTransport) AddTDForms(td *tdd.TD) error {
 
 // AddActionForms add forms Thing action affordance
 // intended for consumers of the digitwin Thing
-//func (svc *HttpTransport) AddActionForms(td *tdd.TD) {
+//func (svc *HttpBinding) AddActionForms(td *tdd.TD) {
 //for name, propAff := range td.Actions {
 //	params := map[string]string{"thingID": td.ID, "name": name}
 //	methodPath := utils.Substitute(httpsse.PostInvokeActionPath, params)
@@ -59,7 +59,7 @@ func (svc *HttpTransport) AddTDForms(td *tdd.TD) error {
 
 // AddEventsForms add forms to subscribe to Thing events
 // intended for consumers of the digitwin Thing
-//func (svc *HttpTransport) AddEventsForms(td *tdd.TD) {
+//func (svc *HttpBinding) AddEventsForms(td *tdd.TD) {
 //	for name, propAff := range td.Events {
 //		// the only allowed protocol method is to subscribe to events
 //		params := map[string]string{"thingID": td.ID, "name": name}
@@ -76,7 +76,7 @@ func (svc *HttpTransport) AddTDForms(td *tdd.TD) error {
 
 // AddPropertiesForms add forms to read Thing property affordance
 // intended for consumers of the digitwin Thing
-//func (svc *HttpTransport) AddPropertiesForms(td *tdd.TD) {
+//func (svc *HttpBinding) AddPropertiesForms(td *tdd.TD) {
 //for name, propAff := range td.Properties {
 //	propAff.Forms = make([]tdd.Form, 0)
 //
@@ -108,7 +108,7 @@ func (svc *HttpTransport) AddTDForms(td *tdd.TD) error {
 
 // AddThingLevelForms adds forms with protocol info to the TD, and its properties, events and actions
 // HiveOT mostly uses top level forms.
-func (svc *HttpTransport) AddThingLevelForms(td *tdd.TD) {
+func (svc *HttpBinding) AddThingLevelForms(td *tdd.TD) {
 	// iterate the thing level operations
 	params := map[string]string{"thingID": td.ID}
 	for _, opInfo := range svc.operations {

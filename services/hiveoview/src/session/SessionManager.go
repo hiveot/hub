@@ -101,7 +101,7 @@ func (sm *SessionManager) Close(sessionID string) error {
 
 	si, found := sm.sessions[sessionID]
 	if !found {
-		slog.Info("Close. Session was already closed.", "sessionID", sessionID)
+		slog.Info("Remove. Session was already closed.", "sessionID", sessionID)
 		return errors.New("Session not found")
 	}
 	si.Close()

@@ -164,11 +164,12 @@ func (svc *OWServerBinding) GetValueChange(
 }
 
 // RefreshPropertyValues polls the OWServer hub for changed Thing values
-func (svc *OWServerBinding) RefreshPropertyValues() error {
+// Set 'force' to force publishing values event when not changed
+func (svc *OWServerBinding) RefreshPropertyValues(force bool) error {
 	nodes, err := svc.edsAPI.PollNodes()
 	//nodeValueMap, err := svc.PollNodeValues()
 	if err == nil {
-		err = svc.PublishNodeValues(nodes, false)
+		err = svc.PublishNodeValues(nodes, force)
 	}
 	return err
 }

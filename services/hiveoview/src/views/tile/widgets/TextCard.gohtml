@@ -58,10 +58,12 @@
 
 					{{/* Show the value itself. Render booleans as switches*/}}
 					<td style="text-wrap:nowrap">
-							{{if $iout.Schema.ReadOnly}}
-                  {{template "RenderOutputValue.gohtml" $iout}}
-              {{else}}
-                  {{template "RenderCardInput.gohtml" $iout}}
+							{{if $iout}}
+								{{if and $iout.Schema $iout.Schema.ReadOnly}}
+                    {{template "RenderOutputValue.gohtml" $iout}}
+                {{else}}
+                    {{template "RenderCardInput.gohtml" $iout}}
+								{{end}}
 							{{end}}
 					</td>
 

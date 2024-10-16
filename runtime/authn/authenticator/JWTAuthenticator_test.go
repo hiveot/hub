@@ -23,15 +23,15 @@ func TestCreateSessionToken(t *testing.T) {
 	assert.NotEmpty(t, token1)
 
 	// decode it
-	cid2, sid2, err := svc.DecodeSessionToken(token1, "", "")
+	clientID2, sid2, err := svc.DecodeSessionToken(token1, "", "")
 	require.NoError(t, err)
-	require.Equal(t, clientID, cid2)
+	require.Equal(t, clientID, clientID2)
 	require.Equal(t, sessionID, sid2)
 
 	// validate the new token
-	cid3, sid3, err := svc.ValidateToken(token1)
+	clientID3, sid3, err := svc.ValidateToken(token1)
 	require.NoError(t, err)
-	require.Equal(t, clientID, cid3)
+	require.Equal(t, clientID, clientID3)
 	require.Equal(t, sessionID, sid3)
 }
 
@@ -55,9 +55,9 @@ func TestBadTokens(t *testing.T) {
 
 	// expired
 	token2 := svc.CreateSessionToken(clientID, sessionID, -100)
-	cid2, sid2, err := svc.ValidateToken(token2)
+	clientID2, sid2, err := svc.ValidateToken(token2)
 	require.Error(t, err)
-	assert.Equal(t, clientID, cid2)
+	assert.Equal(t, clientID, clientID2)
 	assert.Equal(t, sessionID, sid2)
 
 }

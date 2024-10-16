@@ -40,7 +40,7 @@ type BucketStoreInfo struct {
 type IBucketStore interface {
 	// GetBucket returns a bucket to use.
 	// This creates the bucket if it doesn't exist.
-	// Use bucket.Close() to close the bucket and release its resources.
+	// Use bucket.Remove() to close the bucket and release its resources.
 	GetBucket(bucketID string) (bucket IBucket)
 
 	// Close the store and release its resources
@@ -60,7 +60,7 @@ type IBucket interface {
 	Close() error
 
 	// Cursor creates a new bucket cursor for iterating the bucket
-	// cursor.Close must be called after use to release any read transactions
+	// cursor.Remove must be called after use to release any read transactions
 	Cursor() (cursor IBucketCursor, err error)
 
 	// Delete removes the key-value pair from the bucket store

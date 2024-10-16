@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/transports/sessions"
 	"github.com/hiveot/hub/wot/tdd"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -19,7 +19,9 @@ type DigitwinDirectoryService struct {
 
 	// transport binding for publishing directory events and getting forms
 	// to include in digital twin TDs.
-	tb api.ITransportBinding
+	//tb api.ITransportBinding
+	cm              *sessions.ConnectionManager
+	addFormsHandler func(*tdd.TD) error
 }
 
 // MakeDigitalTwinTD returns the digital twin from a agent provided TD
@@ -49,8 +51,8 @@ func (svc *DigitwinDirectoryService) MakeDigitalTwinTD(
 		aff.Forms = make([]tdd.Form, 0)
 	}
 
-	if svc.tb != nil {
-		err = svc.tb.AddTDForms(dtwTD)
+	if svc.addFormsHandler != nil {
+		err = svc.addFormsHandler(dtwTD)
 	}
 	return thingTD, dtwTD, err
 }
@@ -95,9 +97,9 @@ func (svc *DigitwinDirectoryService) ReadAllDTDs(
 // FIXME: submit an event (as per TDD) that a TD has been removed
 func (svc *DigitwinDirectoryService) RemoveDTD(senderID string, dThingID string) error {
 	err := svc.dtwStore.RemoveDTW(dThingID, senderID)
-	if err == nil && svc.tb != nil {
+	if err == nil && svc.cm != nil {
 		// publish the event in the background
-		go svc.tb.PublishEvent(
+		go svc.cm.PublishEvent(
 			digitwin.DirectoryDThingID, ThingRemovedEventName, dThingID, "", senderID)
 	}
 	return err
@@ -115,10 +117,10 @@ func (svc *DigitwinDirectoryService) UpdateDTD(agentID string, tdJson string) er
 	thingTD, digitalTwinTD, err := svc.MakeDigitalTwinTD(agentID, tdJson)
 	svc.dtwStore.UpdateTD(agentID, thingTD, digitalTwinTD)
 
-	if err == nil && svc.tb != nil {
+	if err == nil && svc.cm != nil {
 		dtdJSON, _ := jsoniter.Marshal(digitalTwinTD)
 		// publish the event in the background
-		go svc.tb.PublishEvent(
+		go svc.cm.PublishEvent(
 			digitwin.DirectoryDThingID, ThingUpdatedEventName, string(dtdJSON), "", agentID)
 	}
 	return err
@@ -129,10 +131,11 @@ func (svc *DigitwinDirectoryService) UpdateDTD(agentID string, tdJson string) er
 //
 // The transport binding can be supplied directly or set later by the parent service
 func NewDigitwinDirectoryService(
-	dtwStore *DigitwinStore, tb api.ITransportBinding) *DigitwinDirectoryService {
+	dtwStore *DigitwinStore, cm *sessions.ConnectionManager) *DigitwinDirectoryService {
+
 	dirSvc := &DigitwinDirectoryService{
 		dtwStore: dtwStore,
-		tb:       tb,
+		cm:       cm,
 	}
 
 	// verify service interface matches the TD generated interface

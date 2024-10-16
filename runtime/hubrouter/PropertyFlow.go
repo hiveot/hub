@@ -37,7 +37,7 @@ func (svc *HubRouter) HandleUpdatePropertyFlow(
 		dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
 		// FIXME: publishProperty does not expect a delivery update
 		// differentiate from write property in the client
-		svc.tb.PublishProperty(dThingID, propName, value, messageID, agentID)
+		svc.cm.PublishProperty(dThingID, propName, value, messageID, agentID)
 	}
 	return err
 }
@@ -55,9 +55,6 @@ func (svc *HubRouter) HandleWritePropertyFlow(
 	dThingID string, name string, newValue any, consumerID string) (
 	status string, messageID string, err error) {
 
-	var found bool
-	//var statusInfo string
-
 	slog.Info("HandleWritePropertyFlow (from consumer)",
 		slog.String("consumerID", consumerID),
 		slog.String("dThingID", dThingID),
@@ -68,20 +65,16 @@ func (svc *HubRouter) HandleWritePropertyFlow(
 	messageID = "prop-" + shortid.MustGenerate()
 	agentID, thingID := tdd.SplitDigiTwinThingID(dThingID)
 
-	// a transport is needed for this to continue
-	if svc.tb == nil {
-		status = vocab.ProgressStatusFailed
-		err = fmt.Errorf("no transport binding available")
-		return status, messageID, err
-	}
 	// TODO: authorize the request
 
 	// forward the request to the thing's agent and update status
-	found, status, err = svc.tb.WriteProperty(agentID, thingID, name, newValue, messageID, consumerID)
-	if !found {
-		status = vocab.ProgressStatusFailed
+	c := svc.cm.GetConnectionByClientID(agentID)
+	status = vocab.ProgressStatusFailed
+	if c != nil {
+		status, err = c.WriteProperty(thingID, name, newValue, messageID, consumerID)
 		//statusInfo = "Thing agent not reachable"
-	} else if status != vocab.ProgressStatusCompleted && status != vocab.ProgressStatusFailed {
+	}
+	if status != vocab.ProgressStatusCompleted && status != vocab.ProgressStatusFailed {
 		// store incomplete request by message ID to support sending progress updates to the sender
 		svc.activeCache[messageID] = &ActionFlowRecord{
 			MessageType: vocab.MessageTypeProperty,

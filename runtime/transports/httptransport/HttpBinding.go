@@ -1,472 +1,224 @@
 package httptransport
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/tlsclient"
+	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/lib/tlsserver"
-	"github.com/hiveot/hub/runtime/transports/httptransport/sessions"
+	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/digitwin/service"
+	"github.com/hiveot/hub/runtime/hubrouter"
 	"github.com/hiveot/hub/runtime/transports/httptransport/subprotocols"
-	jsoniter "github.com/json-iterator/go"
+	sessions2 "github.com/hiveot/hub/runtime/transports/sessions"
 	"io"
 	"log/slog"
 	"net/http"
-	"strconv"
 )
 
-// Http binding with form handler methods
+type HttpOperation struct {
+	op           string
+	method       string
+	subprotocol  string
+	url          string
+	handler      http.HandlerFunc
+	isThingLevel bool
+	sm           *sessions2.SessionManager
+}
 
-// HandleLogout removes client session
-func (svc *HttpTransport) HandleLogout(w http.ResponseWriter, r *http.Request) {
-	ctxSession := r.Context().Value(sessions.SessionContextID)
-	if ctxSession == nil {
+// HttpBinding is the Hub transport binding for HTTPS
+// This wraps the library's https server and add routes and middleware for use in the binding
+type HttpBinding struct {
+	// port and path configuration
+	config *HttpTransportConfig
+
+	// TLS server and router
+	httpServer *tlsserver.TLSServer
+	router     *chi.Mux
+
+	// subprotocol bindings
+	sse   *subprotocols.SseBinding
+	ssesc *subprotocols.SseScBinding
+	ws    *subprotocols.WsBinding
+
+	// authenticator for logging in and validating session tokens
+	authenticator api.IAuthenticator
+
+	// Thing level operations
+	operations []HttpOperation
+
+	// routing of action, event and property requests
+	hubRouter hubrouter.IHubRouter
+
+	// reading of digital twin info
+	dtwService *service.DigitwinService
+
+	// session manager for adding/removing sessions (login,logout)
+	sm *sessions2.SessionManager
+
+	// connection manager for adding/removing binding connections
+	cm *sessions2.ConnectionManager
+}
+
+// AddGetOp adds protocol binding operation with a URL and handler
+//
+// This is used to add Forms to the digitwin TDs
+func (svc *HttpBinding) AddGetOp(r chi.Router,
+	op string, thingLevel bool, opURL string, handler http.HandlerFunc) {
+
+	svc.operations = append(svc.operations, HttpOperation{
+		op:           op,
+		method:       http.MethodGet,
+		url:          opURL,
+		handler:      handler,
+		isThingLevel: thingLevel,
+	})
+	r.Get(opURL, handler)
+}
+
+// AddPostOp adds protocol binding operation with a URL and handler
+//
+// This is used to add Forms to the digitwin TDs
+func (svc *HttpBinding) AddPostOp(r chi.Router,
+	op string, isThingLevel bool, opURL string, handler http.HandlerFunc) {
+	svc.operations = append(svc.operations, HttpOperation{
+		op:           op,
+		method:       http.MethodPost,
+		url:          opURL,
+		handler:      handler,
+		isThingLevel: isThingLevel,
+	})
+	r.Post(opURL, handler)
+}
+
+// GetConnectionByCID returns the client connection for sending messages to a client
+func (svc *HttpBinding) GetConnectionByCID(cid string) sessions2.IClientConnection {
+	return svc.cm.GetConnectionByCID(cid)
+}
+
+// GetProtocolInfo returns info on the protocol supported by this binding
+func (svc *HttpBinding) GetProtocolInfo() api.ProtocolInfo {
+	hostName := svc.config.Host
+	if hostName == "" {
+		hostName = "localhost"
+	}
+	baseURL := fmt.Sprintf("https://%s:%d", hostName, svc.config.Port)
+	inf := api.ProtocolInfo{
+		BaseURL:   baseURL,
+		Schema:    "https",
+		Transport: "https",
+	}
+	return inf
+}
+
+// GetRequestParams reads the client session, URL parameters and body payload from the request.
+//
+// The session context is set by the http middleware. If the session is not available then
+// this returns an error. Note that the session middleware handler will block any request
+// that requires a session.
+//
+// This protocol binding reads two variables, {thingID} and {name} in the path.
+//
+//	{thingID} is the agent or digital twin thing ID
+//	{name} is the property, event or action name. '+' means 'all'
+func (svc *HttpBinding) GetRequestParams(r *http.Request) (clientID string, thingID string, name string, body []byte, err error) {
+
+	// get the required client session of this agent
+	sessID, clientID, err := subprotocols.GetSessionIdFromContext(r)
+	_ = sessID
+	if err != nil {
 		// This is an internal error. The middleware session handler would have blocked
 		// a request that required a session before getting here.
-		err := fmt.Errorf("Missing session for request '%s' from '%s'",
-			r.RequestURI, r.RemoteAddr)
 		slog.Error(err.Error())
-		svc.writeError(w, err, http.StatusUnauthorized)
-		return
+		return "", "", "", nil, err
 	}
-	cs := ctxSession.(*sessions.ClientSession)
-	// logout closes the session which invalidates it
-	slog.Info("HandleLogout", slog.String("clientID", cs.GetClientID()))
-	cs.Close()
+
+	// build a message from the URL and payload
+	// URLParam names are defined by the path variables set in the router.
+	thingID = chi.URLParam(r, "thingID")
+	name = chi.URLParam(r, "name")
+	body, _ = io.ReadAll(r.Body)
+
+	return clientID, thingID, name, body, err
 }
 
-// HandleLogin handles a login request and a new session, posted by a consumer
-// This uses the configured session authenticator.
-func (svc *HttpTransport) HandleLogin(w http.ResponseWriter, r *http.Request) {
-	sm := sessions.GetSessionManager()
+// Stop the https server
+func (svc *HttpBinding) Stop() {
+	slog.Info("Stopping HttpBinding")
 
-	args := authn.UserLoginArgs{}
-	resp := authn.UserLoginResp{}
-	// credentials are in a json payload
-	data, err := io.ReadAll(r.Body)
-	if err == nil {
-		err = json.Unmarshal(data, &args)
-	}
-	if err != nil {
-		slog.Warn("HandleLogin: parameter error", "err", err.Error())
-		svc.writeError(w, err, http.StatusUnauthorized)
-		return
-	}
-	token, sid, err := svc.authenticator.Login(args.ClientID, args.Password)
-	if err != nil {
-		if err != nil {
-			slog.Warn("HandleLogin: authentication error", "clientID", args.ClientID)
-			svc.writeError(w, err, http.StatusUnauthorized)
-			return
-		}
-	}
-	// remove existing session, if any
-	oldToken, err := tlsserver.GetBearerToken(r)
-	if err == nil {
-		_, oldSid, err := svc.authenticator.ValidateToken(oldToken)
-		if err == nil {
-			_ = sm.Close(oldSid)
-		}
-	}
-	// create the session for this token
-	_, err = sm.NewSession(args.ClientID, r.RemoteAddr, sid)
-	if err != nil {
-		slog.Warn("HandleLogin: session error", "err", err.Error())
-		svc.writeError(w, err, http.StatusUnauthorized)
-		return
-	}
-	resp.SessionID = sid
-	resp.Token = token
-	slog.Info("HandleLogin: success", "clientID", args.ClientID)
-	// TODO: set client session cookie for browser clients
-	//svc.sessionManager.SetSessionCookie(cs.sessionID,token)
-	svc.writeReply(w, &resp)
+	// Shutdown remaining sessions to avoid hanging.
+	// (closing the TLS server does not shut down active connections)
+	//sm := sessions.GetSessionManager()
+	//sm.RemoveAll()
+	svc.httpServer.Stop()
 }
 
-// HandleProgressUpdate sends a delivery update message to the digital twin
-func (svc *HttpTransport) HandleProgressUpdate(w http.ResponseWriter, r *http.Request) {
-	slog.Debug("HandleProgressUpdate")
-	clientID, _, _, body, err := subprotocols.GetRequestParams(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	stat := hubclient.DeliveryStatus{}
-	err = jsoniter.Unmarshal(body, &stat)
-	if err == nil {
-		err = svc.hubRouter.HandleProgressUpdate(clientID, stat)
+// writeError is a convenience function that logs and writes an error
+// If the reply has an error then write a bad request with the error as payload
+func (svc *HttpBinding) writeError(w http.ResponseWriter, err error, code int) {
+	if code == 0 {
+		code = http.StatusBadRequest
 	}
 	if err != nil {
-		svc.writeError(w, err, http.StatusBadRequest)
-	}
-}
-
-// HandleActionRequest requests an action from the digital twin
-// NOTE: This returns a header with a dataschema if a schema from
-// additionalResponses is returned.
-func (svc *HttpTransport) HandleActionRequest(w http.ResponseWriter, r *http.Request) {
-	clientID, dThingID, name, body, err := subprotocols.GetRequestParams(r)
-	var input any
-
-	slog.Debug("HandleActionRequest", slog.String("ClientID", clientID))
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	if body != nil && len(body) > 0 {
-		err = json.Unmarshal(body, &input)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-	}
-	// The client can provide a messageID for actions. Useful for associating
-	// RPC type actions with a response.
-	reqID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
-
-	status, output, messageID, err := svc.hubRouter.HandleActionFlow(
-		dThingID, name, input, reqID, clientID)
-
-	// there are 3 possible results:
-	// on status completed; return output
-	// on status failed: return http ok with DeliveryStatus containing error
-	// on status other: return  DeliveryStatus object with progress
-	//
-	// This means that the result is either out or a DeliveryStatus object
-	// Forms will have added:
-	// ```
-	//  "additionalResponses": [{
-	//                    "success": false,
-	//                    "contentType": "application/json",
-	//                    "schema": "DeliveryStatus"
-	//                }]
-	//```
-	replyHeader := w.Header()
-	if replyHeader == nil {
-		// this happened a few times during testing. perhaps a broken connection while debugging?
-		err = fmt.Errorf("HandleActionRequest: Can't return result."+
-			" Write header is nil. This is unexpected. clientID='%s", clientID)
-		svc.writeError(w, err, http.StatusInternalServerError)
-		return
-	}
-	if messageID != "" {
-		replyHeader.Set(hubclient.MessageIDHeader, messageID)
-	}
-
-	// in case of error include the return data schema
-	if err != nil {
-		replyHeader.Set(hubclient.DataSchemaHeader, "DeliveryStatus")
-		resp := hubclient.DeliveryStatus{
-			MessageID: messageID,
-			Progress:  status,
-			Error:     err.Error(),
-			Reply:     output,
-		}
-		svc.writeReply(w, resp)
-		return
-	} else if status != vocab.ProgressStatusCompleted {
-		// if progress isn't completed then also return the delivery progress
-		replyHeader.Set(hubclient.DataSchemaHeader, "DeliveryStatus")
-		resp := hubclient.DeliveryStatus{
-			MessageID: messageID,
-			Progress:  status,
-			Reply:     output,
-		}
-		svc.writeReply(w, resp)
-		return
-	}
-	// TODO: standardize headers
-	replyHeader.Set(hubclient.StatusHeader, status)
-
-	// request completed, write output
-	if output != nil {
-		svc.writeReply(w, output)
+		slog.Warn("Request error: ", "err", err.Error())
+		http.Error(w, err.Error(), code)
 	} else {
-		svc.writeReply(w, nil)
-	}
-	return
-}
-
-// HandlePublishEvent update digitwin with event published by agent
-func (svc *HttpTransport) HandlePublishEvent(w http.ResponseWriter, r *http.Request) {
-	clientID, thingID, name, body, err := subprotocols.GetRequestParams(r)
-	var evValue any
-
-	slog.Debug("HandlePublishEvent", slog.String("clientID", clientID))
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	if body != nil && len(body) > 0 {
-		err = jsoniter.Unmarshal(body, &evValue)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
-	}
-	// pass the event to the digitwin service for further processing
-	messageID := r.Header.Get(hubclient.MessageIDHeader)
-	err = svc.hubRouter.HandleEventFlow(clientID, thingID, name, evValue, messageID)
-	if err != nil {
-		svc.writeError(w, err, 0)
-		return
-	}
-	svc.writeReply(w, nil)
-}
-
-// HandleQueryAction returns a list of latest action requests of a Thing
-// Parameters: thingID
-func (svc *HttpTransport) HandleQueryAction(w http.ResponseWriter, r *http.Request) {
-	clientID, dThingID, name, _, err := subprotocols.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	slog.Debug("HandleQueryAction", slog.String("ClientID", clientID))
-	evList, err := svc.dtwService.ValuesSvc.QueryAction(clientID,
-		digitwin.ValuesQueryActionArgs{ThingID: dThingID, Name: name})
-	if err != nil {
-		svc.writeError(w, err, 0)
-		return
-	}
-	svc.writeReply(w, evList)
-}
-
-// HandleQueryAllActions returns a list of latest action requests of a Thing
-// Parameters: thingID
-func (svc *HttpTransport) HandleQueryAllActions(w http.ResponseWriter, r *http.Request) {
-	clientID, dThingID, _, _, err := subprotocols.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	slog.Debug("HandleQueryAllActions", slog.String("ClientID", clientID))
-	actList, err := svc.dtwService.ValuesSvc.QueryAllActions(clientID, dThingID)
-	if err != nil {
-		svc.writeError(w, err, 0)
-		return
-	}
-	svc.writeReply(w, actList)
-}
-
-// HandleReadAllEvents returns a list of latest event values from a Thing
-// Parameters: thingID
-func (svc *HttpTransport) HandleReadAllEvents(w http.ResponseWriter, r *http.Request) {
-	clientID, dThingID, _, _, err := subprotocols.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	slog.Debug("HandleReadAllEvents", slog.String("ClientID", clientID))
-	evList, err := svc.dtwService.ValuesSvc.ReadAllEvents(clientID, dThingID)
-	if err != nil {
-		svc.writeError(w, err, 0)
-		return
-	}
-	svc.writeReply(w, evList)
-}
-
-// HandleReadAllProperties was added to the top level TD form. Handle it here.
-func (svc *HttpTransport) HandleReadAllProperties(w http.ResponseWriter, r *http.Request) {
-	clientID, dThingID, _, _, err := subprotocols.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	slog.Debug("HandleReadAllProperties", slog.String("ClientID", clientID))
-	thing, err := svc.dtwService.ValuesSvc.ReadAllProperties(clientID, dThingID)
-	if err != nil {
-		svc.writeError(w, err, 0)
-		return
-	}
-	svc.writeReply(w, &thing)
-}
-
-// HandleReadAllThings returns a list of things in the directory
-//
-// Query params for paging:
-//
-//	limit=N, limit the number of results to N TD documents
-//	offset=N, skip the first N results in the result
-func (svc *HttpTransport) HandleReadAllThings(w http.ResponseWriter, r *http.Request) {
-	clientID, _, _, _, err := subprotocols.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	slog.Debug("HandleReadAllThings", slog.String("ClientID", clientID))
-	// this request can simply be turned into an action message for the directory.
-	limit := 100
-	offset := 0
-	if r.URL.Query().Has("limit") {
-		limitStr := r.URL.Query().Get("limit")
-		limit32, _ := strconv.ParseInt(limitStr, 10, 32)
-		limit = int(limit32)
-	}
-	if r.URL.Query().Has("offset") {
-		offsetStr := r.URL.Query().Get("offset")
-		offset32, _ := strconv.ParseInt(offsetStr, 10, 32)
-		offset = int(offset32)
-	}
-	thingsList, err := svc.dtwService.DirSvc.ReadAllDTDs(clientID,
-		digitwin.DirectoryReadAllDTDsArgs{Offset: offset, Limit: limit})
-	if err != nil {
-		svc.writeError(w, err, 0)
-		return
-	}
-	svc.writeReply(w, thingsList)
-}
-
-// HandleReadEvent returns the latest event value from a Thing
-// Parameters: {thingID}, {name}
-func (svc *HttpTransport) HandleReadEvent(w http.ResponseWriter, r *http.Request) {
-	clientID, dThingID, name, _, err := subprotocols.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	slog.Debug("HandleReadEvent", slog.String("ClientID", clientID))
-	evList, err := svc.dtwService.ValuesSvc.ReadEvent(clientID,
-		digitwin.ValuesReadEventArgs{ThingID: dThingID, Name: name})
-	if err != nil {
-		svc.writeError(w, err, 0)
-		return
-	}
-	svc.writeReply(w, evList)
-}
-
-func (svc *HttpTransport) HandleReadProperty(w http.ResponseWriter, r *http.Request) {
-	clientID, dThingID, name, _, err := subprotocols.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	slog.Debug("HandleReadProperty", slog.String("clientID", clientID))
-	thing, err := svc.dtwService.ValuesSvc.ReadProperty(clientID,
-		digitwin.ValuesReadPropertyArgs{ThingID: dThingID, Name: name})
-	if err != nil {
-		svc.writeError(w, err, 0)
-		return
-	}
-	svc.writeReply(w, &thing)
-}
-
-// HandleReadThing returns the TD of a thing in the directory
-// URL parameter {thingID}
-func (svc *HttpTransport) HandleReadThing(w http.ResponseWriter, r *http.Request) {
-
-	clientID, thingID, _, _, err := subprotocols.GetRequestParams(r)
-	if err != nil {
-		svc.writeError(w, err, http.StatusUnauthorized)
-		return
-	}
-
-	slog.Debug("HandleReadThing", slog.String("clientID", clientID))
-	thing, err := svc.dtwService.DirSvc.ReadDTD(clientID, thingID)
-	if err != nil {
-		svc.writeError(w, err, 0)
-		return
-	}
-	svc.writeReply(w, &thing)
-}
-
-// HandleRefresh refreshes the auth token using the session authenticator.
-// The session authenticator is that of the authn service. This allows testing with a dummy
-// authenticator without having to run the authn service.
-func (svc *HttpTransport) HandleRefresh(w http.ResponseWriter, r *http.Request) {
-	var newToken string
-
-	args := authn.UserRefreshTokenArgs{}
-	clientID, _, _, data, err := subprotocols.GetRequestParams(r)
-	if err == nil {
-		err = json.Unmarshal(data, &args)
-	}
-	slog.Debug("HandleRefresh", slog.String("clientID", args.ClientID))
-	// the session owner must match the token requested client ID
-	if err != nil || clientID != args.ClientID {
-		http.Error(w, "bad login", http.StatusUnauthorized)
-		return
-	}
-	newToken, err = svc.authenticator.RefreshToken(args.ClientID, args.OldToken)
-	if err != nil {
-		svc.writeError(w, err, 0)
-		return
-	}
-	svc.writeReply(w, newToken)
-	// TODO: update client session cookie with new token
-	//svc.sessionManager.SetSessionCookie(cs.sessionID,newToken)
-}
-
-// HandleUpdateThing agent sends a new TD document
-func (svc *HttpTransport) HandleUpdateThing(w http.ResponseWriter, r *http.Request) {
-	slog.Debug("HandleUpdateThing")
-	clientID, _, _, body, err := subprotocols.GetRequestParams(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	tdJSON := ""
-	err = jsoniter.Unmarshal(body, &tdJSON)
-	err = svc.hubRouter.HandleUpdateTDFlow(clientID, tdJSON)
-	if err != nil {
-		svc.writeError(w, err, http.StatusBadRequest)
+		w.WriteHeader(code)
 	}
 }
 
-// HandleUpdateProperty agent sends single or multiple property updates
-func (svc *HttpTransport) HandleUpdateProperty(w http.ResponseWriter, r *http.Request) {
-
-	clientID, thingID, name, body, err := subprotocols.GetRequestParams(r)
-	var value any
-
-	slog.Debug("HandleUpdateProperty", slog.String("clientID", clientID))
-
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	if body != nil && len(body) > 0 {
-		err = json.Unmarshal(body, &value)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
-	}
-	messageID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
-	err = svc.hubRouter.HandleUpdatePropertyFlow(clientID, thingID, name, value, messageID)
-	if err != nil {
-		svc.writeError(w, err, 0)
-		return
-	}
-	svc.writeReply(w, nil)
-}
-
-// HandleWriteProperty consumer requests to update a Thing property
-func (svc *HttpTransport) HandleWriteProperty(w http.ResponseWriter, r *http.Request) {
-
-	clientID, dThingID, name, body, err := subprotocols.GetRequestParams(r)
-	slog.Debug("HandleWriteProperty",
-		slog.String("consumerID", clientID),
-		slog.String("dThingID", dThingID), slog.String("name", name))
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-	var newValue any
-	var messageID string
-	err = json.Unmarshal(body, &newValue)
-	if err == nil {
-		_, messageID, err = svc.hubRouter.HandleWritePropertyFlow(dThingID, name, newValue, clientID)
-	}
-	if err != nil {
-		svc.writeError(w, err, 0)
-		return
+// writeReply is a convenience function that serializes the data and writes it as a response.
+func (svc *HttpBinding) writeReply(w http.ResponseWriter, data any) {
+	if data != nil {
+		// If no header is written then w.Write writes a StatusOK
+		payload, _ := json.Marshal(data)
+		_, _ = w.Write(payload)
 	} else {
-		w.Header().Set(tlsclient.HTTPMessageIDHeader, messageID)
+		// Only write header if no data is written
+		w.WriteHeader(http.StatusOK)
 	}
-	svc.writeReply(w, nil)
+}
+
+// StartHttpTransport creates and starts a new instance of the HTTPS Server
+// with JWT authentication and SSE/SSE-SC/WS sub-protocol bindings.
+//
+// Call stop to end the transport server.
+//
+//	config
+//	privKey
+//	caCert
+//	sessionAuth for creating and validating authentication tokens
+//	dtwService that handles digital thing requests
+func StartHttpTransport(config *HttpTransportConfig,
+	serverCert *tls.Certificate,
+	caCert *x509.Certificate,
+	authenticator api.IAuthenticator,
+	hubRouter hubrouter.IHubRouter,
+	dtwService *service.DigitwinService,
+	cm *sessions2.ConnectionManager,
+	sm *sessions2.SessionManager,
+) (*HttpBinding, error) {
+
+	httpServer, router := tlsserver.NewTLSServer(
+		config.Host, config.Port, serverCert, caCert)
+
+	svc := HttpBinding{
+		authenticator: authenticator,
+		config:        config,
+		// subprotocol bindings need session info
+		ws:         subprotocols.NewWsBinding(cm, sm),
+		sse:        subprotocols.NewSseBinding(cm, sm),
+		ssesc:      subprotocols.NewSseScBinding(cm, sm),
+		httpServer: httpServer,
+		router:     router,
+		hubRouter:  hubRouter,
+		dtwService: dtwService,
+		cm:         cm,
+		sm:         sm,
+	}
+
+	svc.createRoutes(svc.router)
+	err := svc.httpServer.Start()
+	return &svc, err
 }

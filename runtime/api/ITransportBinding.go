@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/runtime/transports/sessions"
 	"github.com/hiveot/hub/wot/tdd"
 )
 
@@ -20,6 +20,7 @@ type ProtocolInfo struct {
 }
 
 // ITransportBinding is the interface implemented by all transport protocol bindings
+// Intended to send messages to the connecting client.
 type ITransportBinding interface {
 
 	// AddTDForms adds the Forms for using this protocol bindings to the provided TD.
@@ -28,47 +29,18 @@ type ITransportBinding interface {
 	AddTDForms(td *tdd.TD) error
 
 	// GetProtocolInfo returns information on the protocol provided by the binding.
-	GetProtocolInfo() ProtocolInfo
+	//GetProtocolInfo() ProtocolInfo
 
-	// InvokeAction requests an action on an agent's Thing.
-	// This returns the delivery status and optionally an output value or an error
-	//
-	// Only supported on bindings that support subscriptions. Bindings that
-	// do not support subscription return an error.
-	//
-	// This returns a delivery status and output if delivery is completed,
-	// or it returns an error if the agent is not available through this binding.
-	//
-	//	senderID is the sender of the request
-	//	agentID is that of the agent that passes the request on to the thing
-	//	thingID is that of the thing as per agent (not the digital twin)
-	//	name is the name of the action as per thing action affordance
-	//	value is the raw value to encode and send to the thing
-	//	messageID is optional ID of the action. Used in linked events and property updates.
-	//
-	// This returns found false if the agent isn't connected with this binding
-	InvokeAction(agentID, thingID, name string, value any, messageID string, senderID string) (
-		found bool, status string, output any, err error)
+	// GetConnectionByCID returns the client connection for sending messages to a client
+	GetConnectionByCID(cid string) sessions.IClientConnection
 
-	// PublishEvent publishes an event message to all subscribers of this protocol binding
+	// PublishEvent publishes an event message to all connected subscribers
 	//
 	//	dThingID is the Thing ID of the digital twin
 	//	name is the name of the event as per digital twin event affordance
 	//	value is the raw event value as per event affordance data schema
 	//	messageID is the optional ID of a linked action
 	PublishEvent(dThingID string, name string, value any, messageID string, agentID string)
-
-	// PublishProgressUpdate sends an action result update to a consumer.
-	//
-	// Intended for one-way client connections such as sse or for async actions
-	// that take time to execute.
-	//
-	//	clientID is the connection ID of a connected consumer that requested the action
-	//	messageID of the action to associate with
-	//	output result value as per TD if progress is completed, or error text if failed
-	//	err error if failed
-	PublishProgressUpdate(clientID string, stat hubclient.DeliveryStatus, agentID string) (
-		found bool, err error)
 
 	// PublishProperty publishes a new property value to observers of the property
 	//
@@ -89,6 +61,8 @@ type ITransportBinding interface {
 	//
 	// Only supported on bindings that support subscriptions
 	// This returns found is false if the agent is not connected.
-	WriteProperty(agentID string, thingID string, name string, value any, messageID string,
-		senderID string) (found bool, status string, err error)
+	//
+	//
+	//WriteProperty(agentID string, thingID string, name string, value any, messageID string,
+	//	senderID string) (found bool, status string, err error)
 }

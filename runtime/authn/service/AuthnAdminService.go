@@ -269,7 +269,7 @@ func (svc *AuthnAdminService) UpdateClientProfile(
 // Stop the service, unsubscribe and disconnect from the server
 func (svc *AuthnAdminService) Stop() {
 	slog.Info("Stopping AuthnService")
-	//svc.authnStore.Close()
+	//svc.authnStore.Remove()
 }
 
 // NewAuthnAdminService creates an authentication service instance for use by administrators only.

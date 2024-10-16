@@ -143,8 +143,8 @@ func (svc *TemplateManager) RenderFragment(name string, data any) (
 	buff = new(bytes.Buffer)
 	slog.Info("RenderPartial", "template", name)
 
-	svc.renderMux.Lock()
-	defer svc.renderMux.Unlock()
+	//svc.renderMux.Lock()
+	//defer svc.renderMux.Unlock()
 	tpl, err := svc.GetTemplate(name)
 	if err != nil {
 		slog.Error(err.Error())
@@ -174,9 +174,9 @@ func (svc *TemplateManager) RenderFull(name string, data any) (
 	slog.Info("RenderFull", "template", name)
 	buff = new(bytes.Buffer)
 
-	// protect access to data?
-	svc.renderMux.Lock()
-	defer svc.renderMux.Unlock()
+	//// protect access to data?
+	//svc.renderMux.Lock()
+	//defer svc.renderMux.Unlock()
 	baseT, err := svc.GetTemplate(baseTemplateName)
 	//baseT := svc.allTemplates.Lookup(baseTemplateName)
 	if baseT == nil {

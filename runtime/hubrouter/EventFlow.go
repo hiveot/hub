@@ -1,4 +1,4 @@
-// Package service with digital twin event handling functions
+// Package hubrouter with digital twin event routing functions
 package hubrouter
 
 import (
@@ -10,9 +10,6 @@ import (
 //
 // This re-submits the event with the digital twin's thing ID in the background,
 // and stores it in the digital twin instance. Only the last event value is kept.
-//
-// Two special events are handled here: $td with a TD updated and $delivery with
-// a delivery update.
 func (svc *HubRouter) HandleEventFlow(
 	agentID string, thingID string, name string, value any, messageID string) error {
 	slog.Info("HandleEventFlow (from agent)",
@@ -25,10 +22,7 @@ func (svc *HubRouter) HandleEventFlow(
 	if err != nil {
 		return err
 	}
-	if svc.tb == nil {
-		return fmt.Errorf("HandleEventFlow: no transport binding")
-	}
 	// resubmit the event to subscribers of the digital twin in the background
-	go svc.tb.PublishEvent(dThingID, name, value, messageID, agentID)
+	go svc.cm.PublishEvent(dThingID, name, value, messageID, agentID)
 	return nil
 }

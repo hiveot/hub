@@ -1,4 +1,4 @@
-package subprotocols
+package sessions
 
 import "github.com/hiveot/hub/lib/hubclient"
 
@@ -11,11 +11,18 @@ import "github.com/hiveot/hub/lib/hubclient"
 // and defines messages for subscription.
 type IClientConnection interface {
 
-	// Close the connection
+	// Close the connection.
+	// It is allowed to close an already closed connection.
 	Close()
 
-	// GetClientID returns the ID of connected agent or consumer
+	// GetConnectionID returns the connection ID belonging to this endpoint
+	GetConnectionID() string
+
+	// GetClientID returns the authentication ID of connected agent or consumer
 	GetClientID() string
+
+	// GetSessionID returns the session ID of this connection
+	GetSessionID() string
 
 	// InvokeAction invokes an action on the Thing's agent and return result if available.
 	//

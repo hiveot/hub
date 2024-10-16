@@ -3,13 +3,7 @@ package hubclient
 import (
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/wot/tdd"
 )
-
-//// ISubscription interface to underlying subscription mechanism
-//type ISubscription interface {
-//	Unsubscribe() error
-//}
 
 // PingMessage can be used by the server to ping the client that the connection is ready
 const PingMessage = "ping"
@@ -19,6 +13,10 @@ const StatusHeader = "status"
 
 // MessageIDHeader for transports that support headers can include a message-ID
 const MessageIDHeader = "message-id"
+
+// ConnectionIDHeader identifies the client's connection in case of multiple
+// connections in the same session. Used to identify the connection for subscriptions.
+const ConnectionIDHeader = "cid"
 
 // DataSchemaHeader for transports that support headers can include a dataschema
 // header to indicate an 'additionalresults' dataschema being returned.
@@ -49,7 +47,7 @@ type TransportStatus struct {
 	// CA used to connect
 	CaCert *x509.Certificate
 	// the client ID to identify as
-	ClientID string
+	//ClientID string
 
 	// The current connection status
 	ConnectionStatus ConnectionStatus
@@ -77,9 +75,6 @@ type MessageHandler func(msg *ThingMessage) DeliveryStatus
 //
 // TODO split this up in pure transport, consumed thing and exposed thing apis
 type IConsumerClient interface {
-	// ClientID returns the agent or user clientID for this hub client
-	ClientID() string
-
 	// ConnectWithClientCert connects to the server using a client certificate.
 	// This authentication method is optional
 	//ConnectWithClientCert(kp keys.IHiveKey, cert *tls.Certificate) (err error)
@@ -114,6 +109,9 @@ type IConsumerClient interface {
 	// See Logout for invalidating existing sessions
 	Disconnect()
 
+	// GetClientID returns the agent or user clientID for this hub client
+	GetClientID() string
+
 	// GetStatus returns the current transport connection status
 	GetStatus() TransportStatus
 
@@ -121,9 +119,6 @@ type IConsumerClient interface {
 	// "https", "mqtt", "coap", ...
 	// See also: https://www.w3.org/TR/wot-binding-templates/#protocol-bindings-table
 	GetProtocolType() string
-
-	// Logout of the hub and invalidate the connected session token
-	Logout() error
 
 	// InvokeAction [consumer] invokes an action request and returns as soon as the
 	// request is delivered to the Hub.
@@ -148,6 +143,9 @@ type IConsumerClient interface {
 	//
 	// This returns a delivery status with response data if delivered
 	InvokeAction(thingID string, name string, data any, messageID string) DeliveryStatus
+
+	// Logout of the hub and invalidate the connected session token
+	Logout() error
 
 	// Observe adds a subscription for properties from the given ThingID.
 	// Use SetMessageHandler to receive property update messages.
@@ -181,7 +179,7 @@ type IConsumerClient interface {
 
 	// SendOperation [consumer] is form-based method of invoking an operation
 	// This is under development.
-	SendOperation(href string, op tdd.Form, data any, messageID string) DeliveryStatus
+	//SendOperation(href string, op tdd.Form, data any, messageID string) DeliveryStatus
 
 	// SetMessageHandler adds a handler for messages from the hub.
 	// This replaces any previously set handler.

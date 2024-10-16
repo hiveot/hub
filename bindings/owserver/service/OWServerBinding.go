@@ -161,8 +161,8 @@ func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
 				}
 				// publish changed values or periodically for publishing all values
 				forceRepublish := pollCountDown < 0
-				if pollCountDown <= 0 {
-					pollCountDown = svc.config.RepublishInterval
+				if republishCountDown <= 0 {
+					republishCountDown = svc.config.RepublishInterval
 				}
 				err = svc.PublishNodeValues(nodes, forceRepublish)
 			}

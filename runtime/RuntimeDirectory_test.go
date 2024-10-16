@@ -132,7 +132,7 @@ func TestReadTDsRest(t *testing.T) {
 	ts.AddTDs(agentID, 100)
 
 	serverURL := fmt.Sprintf("localhost:%d", ts.Port)
-	cl2 := tlsclient.NewTLSClient(serverURL, nil, ts.Certs.CaCert, time.Second*30)
+	cl2 := tlsclient.NewTLSClient(serverURL, nil, ts.Certs.CaCert, time.Second*30, "")
 	cl2.SetAuthToken(token)
 
 	data, _, err := cl2.Get(httpsse.GetAllThingsPath)

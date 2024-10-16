@@ -57,11 +57,11 @@ func (svc *OWServerBinding) HandleActionRequest(action *hubclient.ThingMessage) 
 
 	// read the result
 	time.Sleep(time.Second)
-	_ = svc.RefreshPropertyValues()
+	_ = svc.RefreshPropertyValues(false)
 
 	// Writing the EDS is slow, retry in case it was missed
 	time.Sleep(time.Second * 4)
-	_ = svc.RefreshPropertyValues()
+	_ = svc.RefreshPropertyValues(false)
 
 	if err != nil {
 		err = fmt.Errorf("action '%s' failed: %w", action.Name, err)

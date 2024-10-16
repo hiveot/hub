@@ -23,20 +23,21 @@ type ActionFlowRecord struct {
 	ThingID     string    // thingID as provided by the agent the action is for
 	Name        string    // name of the action as described in the TD
 	SenderID    string    // action sender that will receive progress messages
-	Progress    string    // current progress of the action
+	Progress    string    // current progress of the action:
 	Updated     time.Time // timestamp to handle expiry
+	CID         string    // ConnectionID from sender to publish progress update
 }
 
 // HandleActionFlow handles the request to invoke an action on a Thing.
 // This authorizes the request, tracks the progress in the digital twin store
 // and passes the action request to the thing agent.
 //
-// The digitwin acts as a proxy for the action and forwards the request to the
-// agent. This can lead to one of these flows:
-// 1: The agent is offline => return an error;
-// 2: The agent is online and rejects the request => return an error
+// The digitwin acts as a proxy for the action and forwards the request to the agent
+// identified in the dThingID. This can lead to one of these flows:
+// 1: The agent is offline => return an error and status Failed
+// 2: The agent is online and rejects the request => return an error and status Failed
 // 3: The agent is online and accepts the request but has no result yet
-// => return a delivery status of 'applied' and no output
+// => return a delivery status of 'pending' and no output
 // when result is available:
 // => update the corresponding property; or send an event with the output
 // 4: The agent is online and accepts the request and has a result
@@ -47,14 +48,14 @@ type ActionFlowRecord struct {
 // SSE, WS, MQTT bindings must use a correlation-id to match request-response messages.
 // this is not well-defined in the WoT specs and up to the protocol binding implementation.
 func (svc *HubRouter) HandleActionFlow(
-	dThingID string, actionName string, input any, reqID string, senderID string) (
+	dThingID string, actionName string, input any, reqID string, senderID string, cid string) (
 	status string, output any, messageID string, err error) {
 
 	slog.Info("HandleActionFlow (from consumer/agent)",
-		slog.String("senderID", senderID),
 		slog.String("dThingID", dThingID),
 		slog.String("actionName", actionName),
 		slog.String("messageID", reqID),
+		slog.String("senderID", senderID),
 	)
 
 	// check if consumer or agent has the right permissions
@@ -112,15 +113,19 @@ func (svc *HubRouter) HandleActionFlow(
 			SenderID:    senderID,
 			Progress:    status,
 			Updated:     time.Now(),
+			CID:         cid,
 		}
 		svc.activeCache[messageID] = actionRecord
 
 		// forward to external services/things and return its response
 		found := false
-		if svc.tb != nil {
-			found, status, output, err = svc.tb.InvokeAction(
-				agentID, thingID, actionName, input, messageID, senderID)
+
+		c := svc.cm.GetConnectionByClientID(agentID)
+		if c != nil {
+			found = true
+			status, output, err = c.InvokeAction(thingID, actionName, input, messageID, senderID)
 		}
+
 		// Update the action status
 		actionRecord.Progress = status
 
@@ -151,14 +156,14 @@ func (svc *HubRouter) HandleActionFlow(
 // 4: Updates the status of the active request cache
 //
 // If the message is no longer in the active cache then it is ignored.
-func (svc *HubRouter) HandleProgressUpdate(agentID string, stat hubclient.DeliveryStatus) error {
+func (svc *HubRouter) HandleProgressUpdate(agentID string, stat hubclient.DeliveryStatus) (err error) {
 
 	// 1: Validate this is an active action
 	svc.mux.Lock()
 	actionRecord, found := svc.activeCache[stat.MessageID]
 	svc.mux.Unlock()
 	if !found {
-		err := fmt.Errorf(
+		err = fmt.Errorf(
 			"HandleProgressUpdate: Message '%s' from agent '%s' not in action cache. It is ignored",
 			stat.MessageID, agentID)
 		slog.Warn(err.Error())
@@ -168,7 +173,7 @@ func (svc *HubRouter) HandleProgressUpdate(agentID string, stat hubclient.Delive
 	actionName := actionRecord.Name
 	// the sender (agents) must be the thing agent
 	if agentID != actionRecord.AgentID {
-		err := fmt.Errorf(
+		err = fmt.Errorf(
 			"HandleProgressUpdate: progress update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
 			stat.MessageID, thingID, actionRecord.AgentID, agentID)
 		slog.Warn(err.Error(), "agentID", agentID)
@@ -188,9 +193,14 @@ func (svc *HubRouter) HandleProgressUpdate(agentID string, stat hubclient.Delive
 	_, _ = svc.dtwStore.UpdateActionProgress(agentID, thingID, actionName, stat.Progress, stat.Reply)
 
 	// 3: Forward the progress update to the original sender
-	found, err := svc.tb.PublishProgressUpdate(actionRecord.SenderID, stat, agentID)
+	c := svc.cm.GetConnectionByCID(actionRecord.CID)
+	if c != nil {
+		err = c.PublishActionProgress(stat, agentID)
+	} else {
+		err = fmt.Errorf("Client '%s' not found", actionRecord.SenderID)
+	}
 
-	if !found {
+	if err != nil {
 		slog.Warn("HandleProgressUpdate. Forwarding to sender failed",
 			slog.String("senderID", actionRecord.SenderID),
 			slog.String("thingID", thingID),

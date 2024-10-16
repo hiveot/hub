@@ -98,9 +98,9 @@ func (svc *JWTAuthenticator) DecodeSessionToken(token string, signedNonce string
 		jwt.WithIssuer(signingKeyPubStr), // url encoded string
 		jwt.WithExpirationRequired(),
 	)
-	cid := claims["clientID"]
-	if cid != nil {
-		clientID = cid.(string)
+	claimsClientID := claims["clientID"]
+	if claimsClientID != nil {
+		clientID = claimsClientID.(string)
 	}
 	sid := claims["sessionID"]
 	if sid != nil {
@@ -168,10 +168,10 @@ func (svc *JWTAuthenticator) ValidatePassword(clientID, password string) (err er
 
 // ValidateToken the session token
 func (svc *JWTAuthenticator) ValidateToken(token string) (clientID string, sessionID string, err error) {
-	cid, sid, err := svc.DecodeSessionToken(token, "", "")
-	slog.Debug("ValidateToken", slog.String("clientID", cid))
+	clientID, sid, err := svc.DecodeSessionToken(token, "", "")
+	slog.Debug("ValidateToken", slog.String("clientID", clientID))
 
-	return cid, sid, err
+	return clientID, sid, err
 }
 
 // NewJWTAuthenticator returns a new instance of a JWT token authenticator

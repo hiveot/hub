@@ -15,25 +15,31 @@ import (
 // This is passed on to the client, which must return a delivery
 // applied, completed or error status.
 // This sends the delivery status to the hub using a delivery event.
-func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
+func (hc *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	var stat hubclient.DeliveryStatus
 
-	cl.mux.RLock()
-	connStatus := cl._status.ConnectionStatus
-	cl.mux.RUnlock()
+	hc.mux.RLock()
+	connStatus := hc._status.ConnectionStatus
+	hc.mux.RUnlock()
 	// WORKAROUND since go-sse has no callback for a successful reconnect, simulate one here
 	// as soon as data is received. The server could send a 'ping' event on connect.
 	if connStatus != hubclient.Connected {
 		// success!
 		slog.Info("handleSSEEvent: connection (re)established")
-		cl.SetConnectionStatus(hubclient.Connected, nil)
+		hc.SetConnectionStatus(hubclient.Connected, nil)
 	}
 	// no further processing of a ping needed
 	if event.Type == hubclient.PingMessage {
 		return
 	}
+	// we need the actual message ID and ignore '-'
+	// this isn't pretty. the sse server uses "-" to avoid go-sse injecting a 'previous id'.
+	// so, a messageID of "-" mean no id.
 	messageID := event.LastEventID // this is the ID provided by the server
-	messageType := event.Type      // event, action, property, ping, custom event...
+	if messageID == "-" {
+		messageID = ""
+	}
+	messageType := event.Type // event, action, property, ping, custom event...
 	thingID := ""
 	senderID := ""
 	name := ""
@@ -55,7 +61,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	// as there is no facility in SSE to include metadata.
 	// SSE payload is json marshalled by the sse client
 	var msgData any
-	jsoniter.Unmarshal([]byte(event.Data), &msgData)
+	_ = jsoniter.Unmarshal([]byte(event.Data), &msgData)
 	rxMsg := &hubclient.ThingMessage{
 		ThingID:     thingID,
 		Name:        name,
@@ -77,7 +83,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	stat.MessageID = rxMsg.MessageID
 	slog.Info("handleSSEEvent",
 		//slog.String("Comment", string(event.Comment)),
-		slog.String("me", cl._status.ClientID),
+		slog.String("me", hc.clientID),
 		slog.String("messageType", rxMsg.MessageType),
 		slog.String("thingID", rxMsg.ThingID),
 		slog.String("name", rxMsg.Name),
@@ -90,62 +96,68 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		// this client is receiving a delivery update from an previously sent action.
 		// The payload is a deliverystatus object
 		err := utils.DecodeAsObject(rxMsg.Data, &stat)
-		if err != nil || stat.MessageID == "" {
+		if err != nil || stat.MessageID == "" || stat.MessageID == "-" {
 			slog.Error("SSE message of type delivery update is missing messageID or not a DeliveryStatus ", "err", err)
 			return
 		}
 		rxMsg.Data = stat
 		//err = cl.Decode([]byte(rxMsg.Data), &stat)
-		cl.mux.RLock()
-		rChan, _ := cl._correlData[stat.MessageID]
-		cl.mux.RUnlock()
+		hc.mux.RLock()
+		rChan, _ := hc._correlData[stat.MessageID]
+		hc.mux.RUnlock()
 		if rChan != nil {
 			rChan <- &stat
 			// if status == DeliveryCompleted || status == Failed {
-			cl.mux.Lock()
-			delete(cl._correlData, rxMsg.MessageID)
-			cl.mux.Unlock()
+			hc.mux.Lock()
+			delete(hc._correlData, rxMsg.MessageID)
+			hc.mux.Unlock()
 			return
-		} else if cl._messageHandler != nil {
+		} else if hc._messageHandler != nil {
 			// pass event to client as this is an unsolicited event
 			// it could be a delayed confirmation of delivery
-			_ = cl._messageHandler(rxMsg)
+			_ = hc._messageHandler(rxMsg)
 		} else {
 			// missing rpc or message handler
 			slog.Error("handleSSEEvent, no handler registered for client",
-				"clientID", cl.ClientID())
+				"clientID", hc.clientID)
 			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, delivery update ignored"))
 		}
 		return
 	}
 
-	if cl._messageHandler == nil {
+	if hc._messageHandler == nil {
 		slog.Warn("handleSSEEvent, no handler registered. Message ignored.",
 			slog.String("name", rxMsg.Name),
-			slog.String("clientID", cl.ClientID()))
+			slog.String("clientID", hc.clientID))
 		return
 	}
 
 	if rxMsg.MessageType == vocab.MessageTypeEvent {
 		// pass event to handler, if set
-		_ = cl._messageHandler(rxMsg)
+		_ = hc._messageHandler(rxMsg)
 	} else if rxMsg.MessageType == vocab.MessageTypeAction {
 		// agent receives action request
-		stat = cl._messageHandler(rxMsg)
-		cl.PubProgressUpdate(stat) // send the result to the caller
+		stat = hc._messageHandler(rxMsg)
+		if stat.MessageID != "" {
+			hc.PubProgressUpdate(stat) // send the result to the caller
+		}
 	} else if rxMsg.MessageType == vocab.MessageTypeProperty {
 		// agent receives write property request
 		// or, consumer receives property update request
 		// FIXME: Need to differentiate!
 		//   property update messages are from agent->consumer and dont confirm delivery
 		//   while property write messages are consumer->agent and can confirm.
-		stat = cl._messageHandler(rxMsg)
-		cl.PubProgressUpdate(stat)
+		stat = hc._messageHandler(rxMsg)
+		if stat.MessageID != "" {
+			hc.PubProgressUpdate(stat)
+		}
 	} else {
 		slog.Warn("handleSSEEvent, unknown message type. Message ignored.",
 			slog.String("message type", rxMsg.MessageType),
-			slog.String("clientID", cl.ClientID()))
+			slog.String("clientID", hc.clientID))
 		stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
-		cl.PubProgressUpdate(stat)
+		if stat.MessageID != "" {
+			hc.PubProgressUpdate(stat)
+		}
 	}
 }

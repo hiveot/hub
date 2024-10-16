@@ -4,6 +4,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/transports/sessions"
 	"github.com/hiveot/hub/wot/tdd"
 )
 
@@ -13,6 +14,9 @@ type DummyTransportBinding struct {
 }
 
 func (dummy *DummyTransportBinding) AddTDForms(td *tdd.TD) error {
+	return nil
+}
+func (dummy *DummyTransportBinding) GetConnectionByCID(cid string) sessions.IClientConnection {
 	return nil
 }
 func (dummy *DummyTransportBinding) GetProtocolInfo() api.ProtocolInfo {

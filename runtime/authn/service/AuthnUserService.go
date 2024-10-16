@@ -102,8 +102,8 @@ func (svc *AuthnUserService) UpdatePubKey(senderID string, pubKeyPEM string) err
 func (svc *AuthnUserService) ValidateToken(senderID string, token string) (
 	resp authn.UserValidateTokenResp, err error) {
 
-	cid, sid, err := svc.sessionAuth.ValidateToken(token)
-	resp.ClientID = cid
+	clientID, sid, err := svc.sessionAuth.ValidateToken(token)
+	resp.ClientID = clientID
 	resp.SessionID = sid
 	resp.Error = err.Error()
 	return resp, nil

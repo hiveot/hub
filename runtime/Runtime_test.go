@@ -63,6 +63,7 @@ func TestLogin(t *testing.T) {
 }
 
 func TestActionWithDeliveryConfirmation(t *testing.T) {
+	t.Log("TestActionWithDeliveryConfirmation")
 	const agentID = "agent1"
 	const userID = "user1"
 	const actionID = "action-1" // match the test TD action
@@ -73,8 +74,8 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 
 	r := startRuntime()
 	defer r.Stop()
-	cl1, _ := ts.AddConnectAgent(agentID)
-	cl2, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
+	ag1, _ := ts.AddConnectAgent(agentID)
+	cl1, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
 
 	// step 1: agent publishes a TD
 	td1 := ts.CreateTestTD(0)
@@ -82,15 +83,15 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	ts.AddTD(agentID, td1)
 
 	// connect the agent and user clients
+	defer ag1.Disconnect()
 	defer cl1.Disconnect()
-	defer cl2.Disconnect()
 
 	// Agent receives action request which we'll handle here
-	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	ag1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		rxMsg = msg
 		reply := utils.DecodeAsString(msg.Data) + ".reply"
 		stat.Completed(msg, reply, nil)
-		assert.Equal(t, cl2.ClientID(), msg.SenderID)
+		assert.Equal(t, cl1.GetClientID(), msg.SenderID)
 		//stat.Failed(msg, fmt.Errorf("failuretest"))
 		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "messageID", msg.MessageID)
 		return stat
@@ -98,12 +99,12 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 
 	// users receives delivery updates when sending actions
 	deliveryCtx, deliveryCtxComplete := context.WithTimeout(context.Background(), time.Minute*1)
-	cl2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		if msg.MessageType == vocab.MessageTypeDeliveryUpdate {
 			// delivery updates are only invoked on for non-rpc actions
 			err := utils.DecodeAsObject(msg.Data, &stat3)
 			require.NoError(t, err)
-			assert.Equal(t, cl1.ClientID(), msg.SenderID)
+			assert.Equal(t, ag1.GetClientID(), msg.SenderID)
 			slog.Info(fmt.Sprintf("reply: %s", stat3.Reply))
 		}
 		defer deliveryCtxComplete()
@@ -113,7 +114,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	// client sends action to agent and expect a 'delivered' result
 	// The RPC method returns an error if no reply is received
 	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
-	stat2 := cl2.InvokeAction(dThingID, actionID, actionPayload, "testmsgid")
+	stat2 := cl1.InvokeAction(dThingID, actionID, actionPayload, "testmsgid")
 	require.Empty(t, stat2.Error)
 
 	// wait for delivery completion
@@ -135,6 +136,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 
 // Services and agents should auto-reconnect when server is restarted
 func TestServiceReconnect(t *testing.T) {
+	t.Log("TestServiceReconnect")
 	const agentID = "agent1"
 	const userID = "user1"
 	var rxMsg atomic.Pointer[*hubclient.ThingMessage]
@@ -195,6 +197,7 @@ func TestServiceReconnect(t *testing.T) {
 
 // test that regular users don't have admin access to authn, authz
 func TestAccess(t *testing.T) {
+	t.Log("TestAccess")
 	const clientID = "user1"
 
 	r := startRuntime()

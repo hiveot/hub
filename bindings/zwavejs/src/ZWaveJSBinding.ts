@@ -11,9 +11,10 @@ import fs from "fs";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import {BindingConfig} from "./BindingConfig";
 import * as tslog from 'tslog';
-import {DeliveryStatus, IHubClient} from "@hivelib/hubclient/IHubClient";
 import {handleActionRequest} from "@zwavejs/handleActionRequest";
 import {ValueID} from "@zwave-js/core";
+import {IAgentClient} from "@hivelib/hubclient/IAgentClient";
+import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
 
 const log = new tslog.Logger()
 
@@ -29,7 +30,7 @@ const log = new tslog.Logger()
 //
 export class ZwaveJSBinding {
     // id: string = "zwave";
-    hc: IHubClient;
+    hc: IAgentClient;
     zwapi: ZWAPI;
     // the last received values for each node by deviceID
     lastValues = new Map<string, NodeValues>(); // nodeId: ValueMap
@@ -40,7 +41,7 @@ export class ZwaveJSBinding {
 
     // @param hc: Hub client to publish and subscribe
     // @param config: binding configuration
-    constructor(hc: IHubClient, config: BindingConfig) {
+    constructor(hc: IAgentClient, config: BindingConfig) {
         this.hc = hc;
         this.config = config
         // zwapi handles the zwavejs specific details
@@ -101,7 +102,7 @@ export class ZwaveJSBinding {
             // diffValues = lastNodeValues.diffValues(newValues)
             diffValues = newValues.diffValues(lastNodeValues)
         }
-        this.hc.pubProps(thingTD.id, diffValues.values).then()
+        this.hc.pubProperties(thingTD.id, diffValues.values)
         this.lastValues.set(thingTD.id, newValues);
 
     }

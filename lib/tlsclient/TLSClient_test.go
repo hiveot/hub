@@ -206,7 +206,7 @@ func TestCert404(t *testing.T) {
 }
 
 func TestAuthJWT(t *testing.T) {
-	pathLogin1 := httpsse.PostLoginPath
+	pathLogin1 := httpssesc.PostLoginPath
 	pathLogin2 := "/login2"
 	path3 := "/test3"
 	path3Hit := 0
@@ -263,7 +263,7 @@ func TestAuthJWT(t *testing.T) {
 	srv, err := startTestServer(mux)
 	assert.NoError(t, err)
 	//
-	loginURL := fmt.Sprintf("https://%s%s", testAddress, httpsse.PostLoginPath)
+	loginURL := fmt.Sprintf("https://%s%s", testAddress, httpssesc.PostLoginPath)
 	loginMessage := authn.UserLoginArgs{
 		ClientID: user1,
 		Password: password1,

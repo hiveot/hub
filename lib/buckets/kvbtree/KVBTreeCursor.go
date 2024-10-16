@@ -114,7 +114,7 @@ func (cursor *KVBTreeCursor) Seek(searchKey string) (key string, value []byte, v
 }
 
 // NewKVCursor create a new bucket cursor for the KV store.
-// Cursor.Close() must be called to release the resources.
+// Cursor.Remove() must be called to release the resources.
 //
 //	bucket is the bucket holding the data
 //	orderedKeys is a snapshot of the keys in ascending order

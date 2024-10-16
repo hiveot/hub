@@ -36,7 +36,7 @@ func (agent *AgentHandler) HandleMessage(msg *hubclient.ThingMessage) (stat hubc
 		}
 	}
 	stat.Failed(msg, fmt.Errorf(
-		"Agent for service '%s' does not have method '%s'", agent.thingID, msg.Name))
+		"agent for service '%s' does not have method '%s'", agent.thingID, msg.Name))
 	return stat
 }
 

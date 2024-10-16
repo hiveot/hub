@@ -157,7 +157,7 @@ func TestTokenAuth(t *testing.T) {
 //	assert.NoError(t, err)
 //	assert.Equal(t, 1, path1Hit)
 //
-//	cl.Close()
+//	cl.Remove()
 //	srv.Stop()
 //}
 
@@ -197,7 +197,7 @@ func TestTokenAuth(t *testing.T) {
 //	assert.NoError(t, err)
 //	assert.Equal(t, 1, path2Hit)
 //
-//	cl.Close()
+//	cl.Remove()
 //	srv.Stop()
 //}
 

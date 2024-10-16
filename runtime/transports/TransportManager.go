@@ -3,19 +3,20 @@ package transports
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/hubrouter"
 	"github.com/hiveot/hub/runtime/transports/discotransport"
 	"github.com/hiveot/hub/runtime/transports/httptransport"
+	"github.com/hiveot/hub/runtime/transports/sessions"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 )
 
-// TransportManager aggregates multiple transport protocol bindings and manages the starting,
-// stopping and routing of protocol messages.
+// TransportManager aggregates multiple transport protocol bindings and manages
+// the connection and session management.
+//
 // This implements the ITransportBinding interface like the protocols it manages.
 // Incoming messages without an ID are assigned a new messageID
 type TransportManager struct {
@@ -23,7 +24,7 @@ type TransportManager struct {
 	// The embedded binding can be used directly with embedded services
 	discoveryTransport *discotransport.DiscoveryTransport
 	//embeddedTransport  *embedded.EmbeddedTransport
-	httpTransport *httptransport.HttpTransport
+	httpTransport *httptransport.HttpBinding
 	mqttTransport api.ITransportBinding
 	//natsTransport     api.ITransportBinding
 	//grpcTransport     api.ITransportBinding
@@ -31,6 +32,9 @@ type TransportManager struct {
 
 	// handler to pass incoming messages to
 	handler func(tv *hubclient.ThingMessage) hubclient.DeliveryStatus
+
+	sm *sessions.SessionManager
+	cm *sessions.ConnectionManager
 }
 
 // AddTDForms adds forms for all active transports
@@ -68,6 +72,11 @@ func (svc *TransportManager) GetProtocolInfo() (pi api.ProtocolInfo) {
 		return svc.httpTransport.GetProtocolInfo()
 	}
 	return
+}
+
+// GetConnectionByCID returns the client connection for sending messages to a client
+func (svc *TransportManager) GetConnectionByCID(cid string) sessions.IClientConnection {
+	return svc.cm.GetConnectionByCID(cid)
 }
 
 // receive a message and ensure it has a message ID
@@ -125,60 +134,57 @@ func (svc *TransportManager) GetProtocolInfo() (pi api.ProtocolInfo) {
 //}
 
 // InvokeAction invokes an action on an agent's Thing
-func (svc *TransportManager) InvokeAction(
-	agentID, thingID string, name string, value any, messageID string, senderID string) (
-	found bool, status string, output any, err error) {
-
-	// send the action to the sub-protocol bindings until there is a match
-	//if svc.embeddedTransport != nil {
-	//	return svc.embeddedTransport.InvokeAction(agentID, tThingID, name, value, messageID)
-	//}
-	if svc.httpTransport != nil {
-		found, status, output, err = svc.httpTransport.InvokeAction(
-			agentID, thingID, name, value, messageID, senderID)
-	}
-	if err != nil && svc.mqttTransport != nil {
-		//	svc.mqttTransport.InvokeAction(agentID, thingID, name, value, messageID)
-		//}
-	}
-	return found, status, output, err
-}
+//func (svc *TransportManager) InvokeAction(
+//	agentID, thingID string, name string, value any, messageID string, senderID string) (
+//	found bool, status string, output any, err error) {
+//
+//	c := svc.cm.GetConnection(agentID)
+//	if c == nil {
+//		err = fmt.Errorf("agent '%s has no active connection", agentID)
+//		slog.Warn("InvokeAction failed", "err", err.Error())
+//
+//		return false, vocab.ProgressStatusFailed, nil, err
+//	}
+//	status, output, err = c.InvokeAction(thingID, name, value, messageID, senderID)
+//	return found, status, output, err
+//}
 
 // PublishEvent sends a event to all subscribers
-func (svc *TransportManager) PublishEvent(
-	dThingID string, name string, value any, messageID string, agentID string) {
+//func (svc *TransportManager) PublishEvent(
+//	dThingID string, name string, value any, messageID string, agentID string) {
+//
+//	// simply send the event request to the connections, which will filter out the subscriptions
+//	svc.cm.ForEachConnection(func(c sessions.IClientConnection) {
+//		c.PublishEvent(dThingID, name, value, messageID, agentID)
+//	})
+//}
 
-	// simply send the event request to the protocol handlers
-	//if svc.embeddedTransport != nil {
-	//	svc.embeddedTransport.PublishEvent(dThingID, name, value, messageID)
-	//}
-	if svc.httpTransport != nil {
-		svc.httpTransport.PublishEvent(dThingID, name, value, messageID, agentID)
-	}
-	//if svc.mqttTransport != nil {
-	//	svc.mqttTransport.PublishEvent(dThingID, name, value, messageID)
-	//}
-}
+// PublishActionProgress send the action status update to the client.
+//
+////	cid is the connectionID used to publish the original action request
+//func (svc *TransportManager) PublishActionProgress(
+//	cid string, stat hubclient.DeliveryStatus, agentID string) error {
+//
+//	c := svc.cm.GetConnection(cid)
+//	if c == nil {
+//		err := fmt.Errorf("connection lost '%s'", cid)
+//		slog.Warn("PublishActionProgress failed. Connection was lost unexpectedly.",
+//			"cid", cid, "messageID", stat.MessageID)
+//		return err
+//	}
+//	err := c.PublishActionProgress(stat, agentID)
+//	return err
+//}
 
-// PublishProgressUpdate send the action status update to the client.
-// This fails if no binding has a connection with this client
-func (svc *TransportManager) PublishProgressUpdate(
-	clientID string, stat hubclient.DeliveryStatus, agentID string) (found bool, err error) {
-	if svc.httpTransport != nil {
-		found, err = svc.httpTransport.PublishProgressUpdate(clientID, stat, agentID)
-	} else {
-		err = fmt.Errorf("PublishProgressUpdate: No connection with consumer '%s'", clientID)
-		found = false
-	}
-	return found, err
-}
-
-// PublishProperty passes it on to all property observers
-func (svc *TransportManager) PublishProperty(dThingID string, name string, value any, messageID string, agentID string) {
-	if svc.httpTransport != nil {
-		svc.httpTransport.PublishProperty(dThingID, name, value, messageID, agentID)
-	}
-}
+//// PublishProperty passes it on to all property observers
+//func (svc *TransportManager) PublishProperty(
+//	dThingID string, name string, value any, messageID string, agentID string) {
+//
+//	// simply send the event request to the connections, which will filter out the subscriptions
+//	svc.cm.ForEachConnection(func(c sessions.IClientConnection) {
+//		c.PublishProperty(dThingID, name, value, messageID, agentID)
+//	})
+//}
 
 // Stop the protocol servers
 func (svc *TransportManager) Stop() {
@@ -198,23 +204,23 @@ func (svc *TransportManager) Stop() {
 
 }
 
-func (svc *TransportManager) WriteProperty(
-	agentID string, thingID string, name string, value any, messageID string, senderID string) (
-	found bool, status string, err error) {
-
-	// send the action to the sub-protocol bindings until there is a match
-	//if svc.embeddedTransport != nil {
-	//	 status,err = svc.embeddedTransport.WriteProperty(agentID, tThingID, name, value, messageID)
-	//}
-	if svc.httpTransport != nil {
-		found, status, err = svc.httpTransport.WriteProperty(
-			agentID, thingID, name, value, messageID, senderID)
-	}
-	if !found && svc.mqttTransport != nil {
-		//	status,err = svc.mqttTransport.WriteProperty(agentID, thingID, name, value, messageID)
-	}
-	return found, status, err
-}
+//func (svc *TransportManager) WriteProperty(
+//	agentID string, thingID string, name string, value any, messageID string, senderID string) (
+//	found bool, status string, err error) {
+//
+//	// send the action to the sub-protocol bindings until there is a match
+//	//if svc.embeddedTransport != nil {
+//	//	 status,err = svc.embeddedTransport.WriteProperty(agentID, tThingID, name, value, messageID)
+//	//}
+//	if svc.httpTransport != nil {
+//		found, status, err = svc.httpTransport.WriteProperty(
+//			agentID, thingID, name, value, messageID, senderID)
+//	}
+//	if !found && svc.mqttTransport != nil {
+//		//	status,err = svc.mqttTransport.WriteProperty(agentID, thingID, name, value, messageID)
+//	}
+//	return found, status, err
+//}
 
 // StartTransportManager starts a new instance of the transport manager.
 // This instantiates enabled protocol bindings, including the embedded binding
@@ -227,6 +233,8 @@ func StartTransportManager(cfg *ProtocolsConfig,
 	authenticator api.IAuthenticator,
 	hubRouter *hubrouter.HubRouter,
 	dtwService *service.DigitwinService,
+	cm *sessions.ConnectionManager,
+	sm *sessions.SessionManager,
 ) (svc *TransportManager, err error) {
 
 	svc = &TransportManager{
@@ -241,13 +249,13 @@ func StartTransportManager(cfg *ProtocolsConfig,
 			&cfg.HttpsTransport,
 			serverCert, caCert,
 			authenticator, hubRouter,
-			dtwService)
+			dtwService, cm, sm)
 	}
 	if cfg.EnableMQTT {
 		//svc.mqttTransport = mqtttransport.StartMqttTransport(
 		//	&cfg.MqttTransport,
 		//	privKey, serverCert, caCert,
-		//	sessionAuth)
+		//	sessionAuth,cm)
 	}
 	if cfg.EnableDiscovery {
 		serverURL := svc.GetConnectURL()

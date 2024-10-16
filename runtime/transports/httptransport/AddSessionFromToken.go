@@ -1,16 +1,15 @@
-package sessions
+package httptransport
 
 import (
 	"context"
-	"errors"
 	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/transports/httptransport/subprotocols"
+	sessions2 "github.com/hiveot/hub/runtime/transports/sessions"
 	"log/slog"
 	"net/http"
 	"time"
 )
-
-const SessionContextID = "session"
 
 // AddSessionFromToken middleware decodes the bearer session token in the authorization header
 // and adds the corresponding ClientSession object to the request context.
@@ -33,10 +32,10 @@ const SessionContextID = "session"
 // If no valid session is found this will reply with an unauthorized status code.
 //
 // pubKey is the public key from the keypair used in creating the session token.
-func AddSessionFromToken(userAuthn api.IAuthenticator) func(next http.Handler) http.Handler {
+func (b *HttpBinding) AddSessionFromToken(userAuthn api.IAuthenticator) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var cs *ClientSession
+			var cs *sessions2.ClientSession
 			bearerToken, err := tlsserver.GetBearerToken(r)
 			if err != nil {
 				errMsg := "AddSessionFromToken: " + err.Error()
@@ -45,13 +44,13 @@ func AddSessionFromToken(userAuthn api.IAuthenticator) func(next http.Handler) h
 				return
 			}
 			//check if the token is properly signed
-			cid, sid, err := userAuthn.ValidateToken(bearerToken)
-			if err != nil || cid == "" {
+			clientID, sid, err := userAuthn.ValidateToken(bearerToken)
+			if err != nil || clientID == "" {
 				errMsg := "Invalid session token"
 				http.Error(w, errMsg, http.StatusUnauthorized)
 
 				slog.Warn("Invalid session token:",
-					"err", err, "clientID", cid)
+					"err", err, "clientID", clientID)
 				return
 			}
 
@@ -59,13 +58,13 @@ func AddSessionFromToken(userAuthn api.IAuthenticator) func(next http.Handler) h
 				// service/devices don't have a session-id in their token. These tokens
 				// remain valid until they expire. Use the client-id as the session ID
 				// as only a single instance is allowed.
-				cs, err = sessionmanager.GetSession(cid)
+				cs, err = b.sm.GetSession(clientID)
 				if cs == nil {
-					cs, err = sessionmanager.NewSession(cid, r.RemoteAddr, cid)
+					cs, err = b.sm.AddSession(clientID, r.RemoteAddr, clientID)
 				}
 			} else {
 				// A token with session-id must have a known session created on login
-				cs, err = sessionmanager.GetSession(sid)
+				cs, err = b.sm.GetSession(sid)
 			}
 			if err != nil {
 				// If no session is found then the session token is invalid. This can
@@ -75,40 +74,30 @@ func AddSessionFromToken(userAuthn api.IAuthenticator) func(next http.Handler) h
 				return
 			}
 			// the session must belong to the client
-			if cs.clientID != cid {
+			if cs.GetClientID() != clientID {
 				slog.Error("AddSessionToContext: ClientID in session does not match jwt clientID",
-					"jwt clientID", cid,
-					"session clientID", cs.clientID)
+					"jwt clientID", clientID,
+					"session clientID", cs.GetClientID())
 				w.WriteHeader(http.StatusUnauthorized)
 				time.Sleep(time.Second)
 				return
 			}
 			// make session available in context
-			ctx := context.WithValue(r.Context(), SessionContextID, cs)
+			ctx := context.WithValue(r.Context(), subprotocols.SessionContextID, cs)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-// GetSessionFromContext returns the session object for the given request from the context.
 //
-// This should not be used in an SSE session.
-//func GetSessionFromContext(r *http.Request) (*ClientSession, error) {
+//// GetSessionIdFromContext returns the session and clientID for the given request
+////
+//// This should not be used in an SSE session.
+//func GetSessionIdFromContext(r *http.Request) (sessionID string, clientID string, err error) {
 //	ctxSession := r.Context().Value(SessionContextID)
 //	if ctxSession == nil {
-//		return nil, errors.New("no session in context")
+//		return "", "", errors.New("no session in context")
 //	}
-//	return ctxSession.(*ClientSession), nil
+//	cs := ctxSession.(*sessions2.ClientSession)
+//	return cs.GetSessionID(), cs.GetClientID(), nil
 //}
-
-// GetSessionIdFromContext returns the session and clientID for the given request
-//
-// This should not be used in an SSE session.
-func GetSessionIdFromContext(r *http.Request) (sessionID string, clientID string, err error) {
-	ctxSession := r.Context().Value(SessionContextID)
-	if ctxSession == nil {
-		return "", "", errors.New("no session in context")
-	}
-	cs := ctxSession.(*ClientSession)
-	return cs.sessionID, cs.clientID, nil
-}

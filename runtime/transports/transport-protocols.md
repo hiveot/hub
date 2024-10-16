@@ -12,30 +12,26 @@ To return the TD of a thing:
 > GET https://server/digitwin/td/{thingID}
 
 To read a Thing property value:
-> GET https://server/digitwin/property/{thingID}/{name}
+> GET https://server/digitwin/properties/{thingID}/{name}
  
-These operations can easily be described in a TD top level form as per [TD-1.1 specification](https://www.w3.org/TR/wot-thing-description11/#form):
+These operations are described in a TD top level form as per [TD-1.1 specification](https://www.w3.org/TR/wot-thing-description11/#form):
 ```json
 {
   "forms": [
     {
       "op": "readproperty",
-      "href": "/digitwin/property/dtw:agent1:thing1/{name}",
+      "href": "/digitwin/properties/dtw:agent1:thing1/{name}",
 	  "htv:methodName": "GET"
     }
   ]
 }
 ```
 
-The real challenge comes to support consumers subscribing to events and observing properties. In addition, in case of the HiveOT hub, Thing agents also need to receive actions and write-property requests, as they don't run servers.
+HTTP basic alone however is insufficient. To receive subscribe to events, observe properties and for agents to receive action requests and property write requests, a sub-protocol is needed that allows the server to push messages to the consumer or agent.    
 
 ### WoT SSE Sub-protocol (not yet supported)
 
-The WoT SSE subprotocol provides a method to return subscribed events and observed properties over the SSE connection.
-
-Note that every single subscription requires a new connection. This makes it virtually useless from browsers when connecting using http/1.1 as browsers have a 6 connection limit to a single endpoint.
-
-http/2 theoretically supports connection sharing and allow for many SSE connections to the same endpoint. Whether this is a wise thing to do is up for debate as it does take a large amount of resources. Especially in case of a hub or gateway, every consumer would require one or more SSE connections for every single Thing that is available on the hub or gateway. So, 1000 Things, 10 consumers, 1 subscribeallevents per thing and 1 observedallproperties adds up 20000 SSE connections. This, obviously, doesn't scale well.  
+The WoT SSE subprotocol provides a method to return subscribed events and observed properties over the SSE connection. 
 
 A form that could subscribe to all events of a Thing looks like:
 ```json
@@ -51,7 +47,9 @@ A form that could subscribe to all events of a Thing looks like:
 }
 ```
 
-Due to the mentioned limitations, and without an applicable use-case, HiveOT does not currently support the WoT SSE sub-protocol.
+Note that every single subscription requires a new connection. This makes it virtually useless for use in browsers when connecting using http/1.1 as browsers have a 6 connection limit to a single endpoint. Http/2 theoretically supports connection sharing and allow for many SSE connections to the same endpoint. Whether this is much better is debatable as every consumer would require one or more SSE connections for every single Thing that is available on the hub or gateway. So, 1000 Things, 10 consumers, 1 subscribeallevents per thing and 1 observedallproperties adds up 20000 SSE connections as a best-case scenario. This, obviously, doesn't scale well.
+
+Due to these mentioned limitations, HiveOT does not currently support the WoT SSE sub-protocol. As a minimum it should be possible to use the connection to receive messages from multiple things and support multiple subscriptions over this connection. 
 
 ### Http SSE-SC Sub-protocol
 
@@ -69,19 +67,22 @@ A form to subscribe to all events of a Thing could look like:
       "op": "sse:connect",
       "href": "/sse",
       "htv:methodName": "GET",
-      "subprotocol": "sse-sc"
+      "subprotocol": "ssesc",
+      "headers": ["cid"]
     },
     {
       "op": "subscribeallevents",
-      "href": "/sse-sc/digitwin/subscribe/dtw:agent1:thing1",
+      "href": "/ssesc/digitwin/subscribe/dtw:agent1:thing1",
       "htv:methodName": "POST",
-      "subprotocol": "sse-sc"
+      "subprotocol": "ssesc",
+      "headers": ["cid", "messageID"]
     },
     {
       "op": "unsubscribeallevents",
-      "href": "/sse-sc/digitwin/unsubscribe/dtw:agent1:thing1",
+      "href": "/ssesc/digitwin/unsubscribe/dtw:agent1:thing1",
       "htv:methodName": "POST",
-      "subprotocol": "sse-sc"
+      "subprotocol": "ssesc",
+      "headers": ["cid"]
     }
   ]
 }
@@ -89,6 +90,8 @@ A form to subscribe to all events of a Thing could look like:
 This introduces a 'connect' operation for establishing the sse connection. This operation is only needed once for all subscriptions. This establishes an SSE connection as per RFC or returns 401 when the consumer does not provide proper credentials connecting to the sse endpoint.
 
 To subscribe to events, post to the subscribe endpoint with the thingID. This returns with a 200 code on success or 401 when the consumer is not allowed subscriptions to this Thing.
+
+Optionally supply a 'cid' header field containing a connection-id. This is required for linking a subscription to a connection from the same client, as is the case in multiple browser tabs where each tab has its own connection using the authentication token in a shared cookie.
 
 
 ### Http WS Sub-protocol
@@ -113,7 +116,7 @@ A form to subscribe to all events of a Thing could look like:
 }
 ```
 
-The only available specification is the so-called 'strawman proposal' https://docs.google.com/document/d/1KWv-aQfMgsqBFg0v4rVqzcVvzzisC7y4X4CMUYGc8rE from Ben Francis See also webthings.io: https://webthings.io/api/#protocol-handshake. 
+This follows the specification from the 'strawman proposal' https://docs.google.com/document/d/1KWv-aQfMgsqBFg0v4rVqzcVvzzisC7y4X4CMUYGc8rE by Ben Francis. See also webthings.io: https://webthings.io/api/#protocol-handshake. 
 
 ```json
 {
@@ -131,25 +134,19 @@ Where topic is one of the four options describing the payload:
 * action is a message for Thing {thingID} with affordance name {name}.
 * td is a TD document from Thing {thingID}
 
+All messages are send via the websocket connection. Events are therefore sent to the websocket connection that passed the subscription request. 
 
-When subscribing, the consumed-thing client connects to the href URL if a connection doesn't yet exist.
-* the consumed thing returns a subscription object to the consumer which can be used to unsubscribe.
-* when observing or subscribing this provides the data as described by the property or event's dataschema. 
-* The payload contains:
-
-? yeah, how does this work?
-? use 'additional '
+This is under development.
 
 
-
-# HTTP Implementation
+# HTTP Implementation (under development)
 
 Http server listens on 8443
 register routes for http requests.
 - each request carries an auth token
 - auth token contains client ID and session ID
 
-sse-sc subprotocol:
+ssesc subprotocol:
 * http binding -> [N]sub-protocol bindings
 * -> ws binding
 * -> sse binding
@@ -191,7 +188,7 @@ sse-sc subprotocol:
 *          con: adding/removing a connection needs iteration of all subscriptions
     
 
-- [sessionid] -> []connection
+- [connection-id] -> []connection
 - or
 - binding: map[connectionID] -> connection
 -  multiple sessions per client

@@ -72,6 +72,7 @@ func (ct *ConsumedThing) GetValue(name string) (iout *InteractionOutput, found b
 		iout = &InteractionOutput{
 			ThingID: ct.td.ID,
 			Name:    name,
+			Schema:  &tdd.DataSchema{},
 		} // dummy
 		slog.Warn("Value not (yet) found for name ", "name", name, "thingID", ct.td.ID)
 	}
@@ -182,11 +183,33 @@ func (ct *ConsumedThing) OnPropertyUpdate(tv *digitwin.ThingValue) {
 	}
 }
 
-// ReadEvent returns the last known Thing event value
+// ReadEvent returns the last known Thing event value or nil if name is not an event
 // Call ReadAllEvents to refresh the values.
+//
+// If no value is yet known then create an affordance and read a value.
 func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
-	io, _ := ct.eventValues[name]
-	return io
+	ct.mux.RLock()
+	iout, _ := ct.eventValues[name]
+	ct.mux.RUnlock()
+	if iout == nil {
+		ct.mux.RLock()
+		aff, _ := ct.td.Events[name]
+		ct.mux.RUnlock()
+		if aff == nil {
+			return nil
+		}
+		td := ct.GetThingDescription()
+		tv, err := digitwin.ValuesReadEvent(ct.hc, ct.td.ID, name)
+		if err == nil {
+			iout = NewInteractionOutputFromValue(&tv, td)
+		} else {
+			iout = NewInteractionOutput(td.ID, name, aff.Data, nil, "")
+		}
+		ct.mux.Lock()
+		ct.eventValues[name] = iout
+		ct.mux.Unlock()
+	}
+	return iout
 }
 
 // ReadHistory returns the history for the given name
@@ -202,12 +225,31 @@ func (ct *ConsumedThing) ReadHistory(name string, timestamp time.Time, duration 
 	return values, itemsRemaining, err
 }
 
-// ReadProperty returns the last known Thing property value
+// ReadProperty returns the last known Thing property value or nil if name is not a property
 // Call ReadAllProperties to refresh the property values.
 func (ct *ConsumedThing) ReadProperty(name string) *InteractionOutput {
-	io, found := ct.propValues[name]
-	_ = found
-	return io
+	ct.mux.RLock()
+	iout, _ := ct.propValues[name]
+	ct.mux.RUnlock()
+	if iout == nil {
+		ct.mux.RLock()
+		aff, _ := ct.td.Properties[name]
+		ct.mux.RUnlock()
+		if aff == nil {
+			return nil
+		}
+		td := ct.GetThingDescription()
+		tv, err := digitwin.ValuesReadProperty(ct.hc, ct.td.ID, name)
+		if err == nil {
+			iout = NewInteractionOutputFromValue(&tv, td)
+		} else {
+			iout = NewInteractionOutput(td.ID, name, &aff.DataSchema, nil, "")
+		}
+		ct.mux.Lock()
+		ct.eventValues[name] = iout
+		ct.mux.Unlock()
+	}
+	return iout
 }
 
 // ReadAllEvents reads all Thing event values.

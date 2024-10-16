@@ -18,7 +18,7 @@ const watcherDebounceDelay = 50 // msec
 //     path to watch
 //     handler to invoke on change
 //
-// This returns the fsnotify watcher. Close it when done.
+// This returns the fsnotify watcher. Remove it when done.
 func WatchFile(path string,
 	handler func() error) (*fsnotify.Watcher, error) {
 

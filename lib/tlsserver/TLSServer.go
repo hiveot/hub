@@ -124,7 +124,7 @@ func (srv *TLSServer) Stop() {
 		ctx, cancelFn := context.WithTimeout(context.Background(), time.Second*3)
 		err := srv.httpServer.Shutdown(ctx)
 		if err != nil {
-			slog.Error("Stop: TLS server graceful shutdown failed. Forcing Close", "err", err.Error())
+			slog.Error("Stop: TLS server graceful shutdown failed. Forcing Remove", "err", err.Error())
 			_ = srv.httpServer.Close()
 		}
 		cancelFn()

@@ -59,7 +59,7 @@ func (store *BoltStore) Close() (err error) {
 	slog.Info("closing store", "storePath", store.storePath, "refCnt", br)
 	//close with wait until all transactions are completed ...
 	// so it might hang forever if not all transactions are released.
-	//err = store.boltDB.Close()
+	//err = store.boltDB.Remove()
 	err2 := make(chan error, 1)
 	go func() {
 		err2 <- store.boltDB.Close()

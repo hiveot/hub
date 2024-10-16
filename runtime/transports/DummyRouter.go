@@ -7,16 +7,16 @@ import (
 
 // DummyRouter for implementing test hooks defined in IHubRouter
 type DummyRouter struct {
-	OnAction func(senderID, dThingID, name string, val any, msgID string) any
+	OnAction func(senderID, dThingID, name string, val any, msgID string, cid string) any
 	OnEvent  func(agentID, thingID, name string, val any, msgID string)
 }
 
 func (svc *DummyRouter) HandleActionFlow(
-	dThingID string, actionName string, input any, reqID string, consumerID string) (
+	dThingID string, actionName string, input any, reqID string, senderID string, cid string) (
 	status string, output any, messageID string, err error) {
 	// if a hook is provided, call it first
 	if svc.OnAction != nil {
-		output = svc.OnAction(consumerID, dThingID, actionName, input, messageID)
+		output = svc.OnAction(senderID, dThingID, actionName, input, messageID, cid)
 	}
 	return vocab.ProgressStatusDelivered, output, reqID, nil
 }

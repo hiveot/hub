@@ -18,7 +18,7 @@ import (
 // TokenFileExt defines the filename extension under which client tokens are stored
 // in the keys directory.
 const TokenFileExt = ".token"
-const DefaultTimeout = time.Second * 300 // Default is 3
+const DefaultTimeout = time.Second * 30 // Default is 3
 
 // ConnectToHub helper function to connect to the Hub using existing token and key files.
 // This assumes that CA cert, user keys and auth token have already been set up and
@@ -84,13 +84,13 @@ func ConnectToHub(fullURL string, clientID string, certDir string, password stri
 func ConnectWithTokenFile(hc hubclient.IConsumerClient, keysDir string) error {
 	var kp keys.IHiveKey
 
-	cid := hc.ClientID()
+	clientID := hc.GetClientID()
 
 	slog.Info("ConnectWithTokenFile",
 		slog.String("keysDir", keysDir),
-		slog.String("clientID", cid))
-	keyFile := path.Join(keysDir, cid+keys.KPFileExt)
-	tokenFile := path.Join(keysDir, cid+TokenFileExt)
+		slog.String("clientID", clientID))
+	keyFile := path.Join(keysDir, clientID+keys.KPFileExt)
+	tokenFile := path.Join(keysDir, clientID+TokenFileExt)
 	token, err := os.ReadFile(tokenFile)
 	if err == nil && keyFile != "" {
 		kp, err = keys.NewKeyFromFile(keyFile)

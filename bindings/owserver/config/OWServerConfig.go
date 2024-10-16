@@ -31,7 +31,7 @@ type OWServerConfig struct {
 	PollInterval int `yaml:"pollInterval,omitempty"`
 
 	// RepublishInterval optional override interval that unmodified Thing values are republished, in seconds.
-	// Default is every 6 hours
+	// Default is every 30 minutes
 	RepublishInterval int `yaml:"republishInterval,omitempty"`
 }
 
@@ -41,9 +41,12 @@ func NewConfig() *OWServerConfig {
 
 	// ensure valid defaults
 	cfg.LogLevel = ""
-	cfg.TDInterval = 3600 * 24
+	// default re-publish the TD docs every 7 days
+	cfg.TDInterval = 3600 * 24 * 7
+	// poll for value updates every 60 seconds
 	cfg.PollInterval = 60
-	cfg.RepublishInterval = 3600 * 6
+	// republish same-value after 30 minutes
+	cfg.RepublishInterval = 60 * 30
 	//cfg.AuthTokenFile = "owserver.token"
 	//cfg.KeyFile = "owserver.key"
 	return &cfg

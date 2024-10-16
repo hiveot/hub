@@ -1,22 +1,36 @@
 package hubrouter
 
-import "github.com/hiveot/hub/lib/hubclient"
+import (
+	"github.com/hiveot/hub/lib/hubclient"
+)
+
+// ActionProgressHandler is the handler for return an action progress to sender.
+// Used by router HandleProgressUpdate to send the action result to the sender.
+type ActionProgressHandler func(stat hubclient.DeliveryStatus, agentID string) error
 
 // IHubRouter is the interface of the handler of action,event and property update
 // messages received from consumers and agents.
 type IHubRouter interface {
-	// HandleActionFlow consumer sends request to invoke an action on the digital twin.
+
+	// HandleActionFlow client (consumer or agent) sends request to invoke an action on the digital twin.
 	//
 	// The router will assign a message-ID if no request ID is given, update the digital
 	// twin with the pending request and forward it the agent if the agent is online.
 	// If the agent is not reachable this returns with the status failed.
 	//
+	//	dThingID is the digitwin ID of the thing whose action to invoke
+	//	actionName is the name of the action to invoke
+	//	input is the action input data as per schema defined in the Thing TD
+	//	reqID is the messageID of the request. Used to send an async reply.
+	//	senderID is the sender's account ID
+	//	cid is the sender's connection ID to be able to pass a progress update
+	//
 	// This returns a message ID for tracking the action flow
-	// The status response is 'delivered' if the action was handed over to the agent without error.
+	// The status response is 'pending' if the action was handed over to the agent without error.
 	// The status response is 'failed' if the action cannot be passed to the agent
-	// The status response is 'pending' if the agent is offline and the action is queued for delivery - when supported.
+	// The status response is 'queued' if the agent is offline and the action is queued for delivery - when supported.
 	HandleActionFlow(
-		dThingID string, actionName string, input any, reqID string, consumerID string) (
+		dThingID string, actionName string, input any, reqID string, senderID string, cid string) (
 		status string, output any, messageID string, err error)
 
 	// HandleProgressUpdate agent publishes a progress update message

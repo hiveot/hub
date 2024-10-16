@@ -24,4 +24,6 @@ func TestMain(m *testing.M) {
 func TestStartStop(t *testing.T) {
 	// API match check
 	var _ hubrouter.IHubRouter = &hubrouter.HubRouter{}
+	//r := hubrouter.NewHubRouter(dtwService, dirAgent, authnAgent, authzAgent)
+
 }
