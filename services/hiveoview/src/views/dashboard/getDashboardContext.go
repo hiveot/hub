@@ -35,7 +35,7 @@ func getDashboardContext(r *http.Request, createDashboard bool) (
 	if err != nil {
 		return sess, cdc, err
 	}
-	cdc.clientID = hc.ClientID()
+	cdc.clientID = hc.GetClientID()
 	cdc.clientModel = sess.GetClientData()
 	cdc.dashboardID = chi.URLParam(r, URLParamDashboardID)
 	if cdc.dashboardID == "" {

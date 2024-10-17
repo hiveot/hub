@@ -131,10 +131,7 @@ func (svc *HttpBinding) HandleActionRequest(w http.ResponseWriter, r *http.Reque
 	// The client can provide a messageID for actions. Useful for associating
 	// RPC type actions with a response.
 	reqID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
-
-	// prefix the connectionID with the sessionID to prevent connection hijacking
-	// this is matched with the cid created when the sub-protocol binding connected.
-	cid := rp.SessionID + "-" + rp.ConnID
+	cid := rp.ConnID
 
 	status, output, messageID, err := svc.hubRouter.HandleActionFlow(
 		rp.ThingID, rp.Name, input, reqID, rp.ClientID, cid)

@@ -94,7 +94,7 @@ func (svc *StateService) Start(hc hubclient.IAgentClient) (err error) {
 	}
 	// Anyone with a role can store their state
 	err = authz.UserSetPermissions(hc, authz.ThingPermissions{
-		AgentID: hc.ClientID(),
+		AgentID: hc.GetClientID(),
 		ThingID: stateapi.StorageServiceID,
 		Deny:    []authz.ClientRole{authz.ClientRoleNone},
 	})

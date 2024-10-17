@@ -90,7 +90,7 @@ func createTD(id string) *tdd.TD {
 	td.Events[vocab2.PropEnvTemperature] = &tdd.EventAffordance{
 		Title:       "Event 1",
 		Description: "ID of this event",
-		Data: tdd.DataSchema{
+		Data: &tdd.DataSchema{
 			Type:        vocab2.WoTDataTypeString,
 			Const:       "123",
 			Title:       "Event name data",
@@ -98,7 +98,7 @@ func createTD(id string) *tdd.TD {
 	}
 	td.Events[vocab2.PropDeviceBattery] = &tdd.EventAffordance{
 		Title: "Event 2",
-		Data: tdd.DataSchema{
+		Data: &tdd.DataSchema{
 			Type:        vocab2.WoTDataTypeInteger,
 			Title:       "Battery level",
 			Unit:        vocab2.UnitPercent,

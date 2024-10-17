@@ -48,7 +48,7 @@ func (sm *SessionManager) ActivateNewSession(
 	var cs *WebClientSession
 	var sessionID string
 
-	slog.Info("ActivateNewSession", slog.String("clientID", hc.ClientID()))
+	slog.Info("ActivateNewSession", slog.String("clientID", hc.GetClientID()))
 	// 1. close the existing session
 	claims, err := GetSessionCookie(r, &sm.signingKey.PublicKey)
 	if err == nil && claims.ID != "" {
@@ -85,7 +85,7 @@ func (sm *SessionManager) ActivateNewSession(
 
 	// 4. Keep the session for 14 days
 	maxAge := 3600 * 24 * 14
-	err = SetSessionCookie(w, sessionID, hc.ClientID(), authToken, maxAge, sm.signingKey)
+	err = SetSessionCookie(w, sessionID, hc.GetClientID(), authToken, maxAge, sm.signingKey)
 
 	// 5. publish nr sessions
 	go sm.hc.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions, "")

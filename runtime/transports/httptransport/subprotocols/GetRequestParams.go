@@ -39,7 +39,8 @@ func GetRequestParams(r *http.Request) (reqParam RequestParams, err error) {
 		slog.Error(err.Error())
 		return reqParam, err
 	}
-	reqParam.ConnID = r.Header.Get(hubclient.ConnectionIDHeader)
+	// the connection ID is the sessionID + provided connectionID
+	reqParam.ConnID = reqParam.SessionID + "-" + r.Header.Get(hubclient.ConnectionIDHeader)
 	// build a message from the URL and payload
 	// URLParam names are defined by the path variables set in the router.
 	reqParam.ThingID = chi.URLParam(r, "thingID")

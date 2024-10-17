@@ -3,7 +3,6 @@ package consumedthing
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyclient"
@@ -91,21 +90,22 @@ func (ct *ConsumedThing) InvokeAction(name string, params InteractionInput) *Int
 		return nil
 	}
 	// find the form that describes the protocol for invoking an action
-	actionForm := ct.td.GetForm(vocab.WotOpInvokeAction, name, ct.hc.GetProtocolType())
+	//actionForm := ct.td.GetForm(vocab.WotOpInvokeAction, name, ct.hc.GetProtocolType())
 
 	//tm := hubclient.NewThingMessage(
 	//	vocab.MessageTypeAction, ct.td.ID, name, params, ct.hc.ClientID())
 	//
 	////stat := ct.hc.HandleActionFlow(ct.td.ID, name, params)
-	urlParams := map[string]string{
-		"thingID": ct.td.ID,
-		"name":    name,
-	}
-	href, err := ct.td.GetFormHRef(actionForm, urlParams)
-	if err != nil {
-		slog.Warn("HandleActionFlow", "err", err.Error())
-	}
-	stat := ct.hc.SendOperation(href, actionForm, params.value, "")
+	//urlParams := map[string]string{
+	//	"thingID": ct.td.ID,
+	//	"name":    name,
+	//}
+	//href, err := ct.td.GetFormHRef(actionForm, urlParams)
+	//if err != nil {
+	//	slog.Warn("HandleActionFlow", "err", err.Error())
+	//}
+	//stat := ct.hc.SendOperation(href, actionForm, params.value, "")
+	stat := ct.hc.InvokeAction(ct.td.ID, name, params.value, "")
 
 	o := NewInteractionOutput(
 		ct.td.ID, name, params.Schema, params.value, "")

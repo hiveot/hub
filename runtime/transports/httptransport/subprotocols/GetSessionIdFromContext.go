@@ -2,7 +2,7 @@ package subprotocols
 
 import (
 	"errors"
-	sessions2 "github.com/hiveot/hub/runtime/transports/sessions"
+	sessions2 "github.com/hiveot/hub/runtime/sessions"
 	"net/http"
 )
 

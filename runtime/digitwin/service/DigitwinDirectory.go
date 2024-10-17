@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/runtime/transports/sessions"
+	"github.com/hiveot/hub/runtime/sessions"
 	"github.com/hiveot/hub/wot/tdd"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -111,10 +111,11 @@ func (svc *DigitwinDirectoryService) RemoveDTD(senderID string, dThingID string)
 // This returns the updated digital twin TD
 // FIXME: submit an event as per TDD that a TD has been updated
 func (svc *DigitwinDirectoryService) UpdateDTD(agentID string, tdJson string) error {
-	slog.Info("UpdateDTD")
 
 	// transform the agent provided TD into a digital twin's TD
 	thingTD, digitalTwinTD, err := svc.MakeDigitalTwinTD(agentID, tdJson)
+	slog.Info("UpdateDTD",
+		slog.String("agentID", agentID), slog.String("thingID", thingTD.ID))
 	svc.dtwStore.UpdateTD(agentID, thingTD, digitalTwinTD)
 
 	if err == nil && svc.cm != nil {

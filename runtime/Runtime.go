@@ -8,8 +8,8 @@ import (
 	service2 "github.com/hiveot/hub/runtime/authz/service"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/hubrouter"
+	sessions2 "github.com/hiveot/hub/runtime/sessions"
 	"github.com/hiveot/hub/runtime/transports"
-	"github.com/hiveot/hub/runtime/transports/sessions"
 	"log/slog"
 )
 
@@ -28,8 +28,8 @@ type Runtime struct {
 	dtwStore      *service4.DigitwinStore
 	DigitwinSvc   *service4.DigitwinService
 	HubRouter     *hubrouter.HubRouter
-	cm            *sessions.ConnectionManager
-	sm            *sessions.SessionManager
+	cm            *sessions2.ConnectionManager
+	sm            *sessions2.SessionManager
 	TransportsMgr *transports.TransportManager
 }
 
@@ -116,8 +116,8 @@ func (r *Runtime) Stop() {
 func NewRuntime(cfg *RuntimeConfig) *Runtime {
 	r := &Runtime{
 		cfg: cfg,
-		sm:  sessions.NewSessionmanager(),
-		cm:  sessions.NewConnectionManager(),
+		sm:  sessions2.NewSessionmanager(),
+		cm:  sessions2.NewConnectionManager(),
 	}
 	return r
 }

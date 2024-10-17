@@ -3,7 +3,7 @@ package service
 import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
-	"github.com/hiveot/hub/runtime/transports/sessions"
+	"github.com/hiveot/hub/runtime/sessions"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"os"
@@ -76,7 +76,7 @@ func StartDigitwinService(storesDir string, cm *sessions.ConnectionManager) (
 	var dtwStore *DigitwinStore
 	err = bucketStore.Open()
 	if err == nil {
-		dtwStore, err = OpenDigitwinStore(bucketStore)
+		dtwStore, err = OpenDigitwinStore(bucketStore, false)
 	}
 	dirSvc := NewDigitwinDirectoryService(dtwStore, cm)
 	valuesSvc := NewDigitwinValuesService(dtwStore)

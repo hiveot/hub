@@ -25,7 +25,7 @@ export interface IAgentClient extends IConsumerClient {
     //
     // Intended for agents that have processed an incoming action request asynchronously
     // and need to send an update on further progress.
-    PubProgressUpdate(stat: DeliveryStatus):void
+    pubProgressUpdate(stat: DeliveryStatus):void
 
     // pubProperties agent updates property values. (not for consumers)
     // It returns as soon as delivery to the hub is confirmed.

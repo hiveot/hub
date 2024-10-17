@@ -94,7 +94,7 @@ func (wcs *WebClientSession) Close() {
 
 // CloseSSEChan closes a previously created SSE channel and removes it.
 func (wcs *WebClientSession) CloseSSEChan(c chan SSEEvent) {
-	slog.Debug("DeleteSSEChan channel", "clientID", wcs.hc.ClientID())
+	slog.Debug("DeleteSSEChan channel", "clientID", wcs.hc.GetClientID())
 	wcs.mux.Lock()
 	defer wcs.mux.Unlock()
 	if wcs.sseClients != nil {
@@ -189,7 +189,7 @@ func (wcs *WebClientSession) onConnectChange(stat hubclient.TransportStatus) {
 		lastErrText = stat.LastError.Error()
 	}
 	slog.Info("onConnectChange",
-		slog.String("clientID", stat.ClientID),
+		//slog.String("clientID", stat.ClientID),
 		slog.String("status", string(stat.ConnectionStatus)),
 		slog.String("lastError", lastErrText))
 
@@ -414,7 +414,7 @@ func NewClientSession(sessionID string, hc hubclient.IConsumerClient, remoteAddr
 	err := cs.LoadState()
 	if err != nil {
 		slog.Warn("unable to load client state from state service",
-			"clientID", cs.hc.ClientID(), "err", err.Error())
+			"clientID", cs.hc.GetClientID(), "err", err.Error())
 		cs.SendNotify(NotifyWarning, "Unable to restore session: "+err.Error())
 		cs.lastError = err
 	}

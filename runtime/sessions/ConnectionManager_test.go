@@ -1,7 +1,7 @@
 package sessions_test
 
 import (
-	"github.com/hiveot/hub/runtime/transports/sessions"
+	sessions2 "github.com/hiveot/hub/runtime/sessions"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +15,7 @@ func TestAddRemoveConnection(t *testing.T) {
 	const session1ID = "sess1"
 	const session2ID = "sess2"
 
-	cm := sessions.NewConnectionManager()
+	cm := sessions2.NewConnectionManager()
 	c1 := NewDummyConnection(clientID, remoteAddr, session1ID)
 	err := cm.AddConnection(c1)
 	require.NoError(t, err)
@@ -59,7 +59,7 @@ func TestCloseClientConnection(t *testing.T) {
 	const session1ID = "sess1"
 	const session2ID = "sess2"
 
-	cm := sessions.NewConnectionManager()
+	cm := sessions2.NewConnectionManager()
 	c1 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	err := cm.AddConnection(c1)
 	require.NoError(t, err)
@@ -98,7 +98,7 @@ func TestForEachConnection(t *testing.T) {
 	const session1ID = "sess1"
 	const session2ID = "sess2"
 
-	cm := sessions.NewConnectionManager()
+	cm := sessions2.NewConnectionManager()
 	c1 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	err := cm.AddConnection(c1)
 	require.NoError(t, err)
@@ -108,7 +108,7 @@ func TestForEachConnection(t *testing.T) {
 	require.NoError(t, err)
 
 	count := 0
-	cm.ForEachConnection(func(c sessions.IClientConnection) {
+	cm.ForEachConnection(func(c sessions2.IClientConnection) {
 		count++
 	})
 	assert.Equal(t, 2, count)
@@ -121,7 +121,7 @@ func TestConnectionTwice(t *testing.T) {
 	const session1ID = "sess1"
 	const session2ID = "sess2"
 
-	cm := sessions.NewConnectionManager()
+	cm := sessions2.NewConnectionManager()
 	c1 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	err := cm.AddConnection(c1)
 	require.NoError(t, err)
@@ -147,7 +147,7 @@ func TestPublishEventProp(t *testing.T) {
 	var evCount = 0
 	var propCount = 0
 
-	cm := sessions.NewConnectionManager()
+	cm := sessions2.NewConnectionManager()
 	c1 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	c1.SubscribeEvent(dThingID, "")
 	c1.ObserveProperty(dThingID, "")
@@ -175,7 +175,7 @@ func TestPublishEventProp(t *testing.T) {
 	cm.PublishEvent(dThingID, evName, nil, "", agent1ID)
 	cm.PublishProperty(dThingID, propName, nil, "", agent1ID)
 
-	time.Sleep(time.Millisecond)
+	time.Sleep(time.Millisecond * 10)
 	// should receive 1 event and 1 property message
 	assert.Equal(t, 1, evCount)
 	assert.Equal(t, 1, propCount)

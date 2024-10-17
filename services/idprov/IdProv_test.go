@@ -29,10 +29,7 @@ var testPort = 23001
 var ts *testenv.TestServer
 
 // Create a new store, delete if it already exists
-func newIdProvService() (
-	svc *service.IdProvService,
-	hc hubclient.IConsumerClient,
-	stopFn func()) {
+func newIdProvService() (svc *service.IdProvService, hc hubclient.IAgentClient, stopFn func()) {
 
 	ts = testenv.StartTestServer(true)
 	hc, token1 := ts.AddConnectService(idprovapi.AgentID)
@@ -100,7 +97,7 @@ func TestAutomaticProvisioning(t *testing.T) {
 
 	// next, provisioning should succeed
 	idProvServerURL := fmt.Sprintf("localhost:%d", testPort)
-	tlsClient := tlsclient.NewTLSClient(idProvServerURL, nil, ts.Certs.CaCert, 0)
+	tlsClient := tlsclient.NewTLSClient(idProvServerURL, nil, ts.Certs.CaCert, 0, "")
 	//tlsClient.ConnectNoAuth()
 	status, token1, err := idprovclient.SubmitIdProvRequest(
 		device1ID, device1KP.ExportPublic(), "", tlsClient)
@@ -125,12 +122,12 @@ func TestAutomaticProvisioning(t *testing.T) {
 
 	// token should be used to connect
 	srvURL := ts.Runtime.TransportsMgr.GetConnectURL()
-	hc1 := connect.NewHubClient(srvURL, device1ID, ts.Certs.CaCert)
-	//hc1.SetRetryConnect(false)
-	newToken, err := hc1.ConnectWithToken(token1)
+	ag1 := connect.NewAgentClient(srvURL, device1ID, ts.Certs.CaCert)
+	//ag1.SetRetryConnect(false)
+	newToken, err := ag1.ConnectWithToken(token1)
 	require.NotEmpty(t, newToken)
 	require.NoError(t, err)
-	hc1.Disconnect()
+	ag1.Disconnect()
 }
 
 func TestAutomaticProvisioningBadParameters(t *testing.T) {
@@ -153,7 +150,7 @@ func TestAutomaticProvisioningBadParameters(t *testing.T) {
 
 	// test missing deviceID
 	idProvServerURL := "localhost:9002"
-	tlsClient := tlsclient.NewTLSClient(idProvServerURL, nil, ts.Certs.CaCert, 0)
+	tlsClient := tlsclient.NewTLSClient(idProvServerURL, nil, ts.Certs.CaCert, 0, "")
 	status, tokenEnc, err := idprovclient.SubmitIdProvRequest(
 		"", device1PubPEM, "", tlsClient)
 	assert.Error(t, err)
@@ -183,7 +180,7 @@ func TestManualProvisioning(t *testing.T) {
 
 	// request provisioning
 	idProvServerAddr := fmt.Sprintf("localhost:%d", testPort)
-	tlsClient := tlsclient.NewTLSClient(idProvServerAddr, nil, ts.Certs.CaCert, 0)
+	tlsClient := tlsclient.NewTLSClient(idProvServerAddr, nil, ts.Certs.CaCert, 0, "")
 	//tlsClient.ConnectNoAuth()
 	status, token, err := idprovclient.SubmitIdProvRequest(device1ID, device1PubPEM, "", tlsClient)
 	require.NoError(t, err)

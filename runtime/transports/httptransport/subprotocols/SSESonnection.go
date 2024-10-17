@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/runtime/transports/sessions"
+	"github.com/hiveot/hub/runtime/sessions"
 	"log/slog"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -40,7 +41,8 @@ type SSEConnection struct {
 	// mutex for controlling writing and closing
 	mux sync.RWMutex
 
-	sseChan chan SSEEvent
+	sseChan  chan SSEEvent
+	isClosed atomic.Bool
 
 	subscriptions sessions.Subscriptions
 }
@@ -62,7 +64,7 @@ func (c *SSEConnection) _send(messageType string, thingID, name string,
 	}
 	c.mux.Lock()
 	defer c.mux.Unlock()
-	if c.sseChan != nil {
+	if !c.isClosed.Load() {
 		c.sseChan <- msg
 	}
 	// as long as the channel exists, delivery will take place
@@ -74,9 +76,9 @@ func (c *SSEConnection) _send(messageType string, thingID, name string,
 func (c *SSEConnection) Close() {
 	c.mux.Lock()
 	defer c.mux.Unlock()
-	if c.sseChan != nil {
+	if !c.isClosed.Load() {
 		close(c.sseChan)
-		c.sseChan = nil
+		c.isClosed.Store(true)
 	}
 }
 
@@ -104,23 +106,23 @@ func (c *SSEConnection) InvokeAction(
 	return status, nil, err
 }
 
-// IsSubscribed returns true if subscription for thing and name exists
-// If dThingID or name are empty, then "+" is used as wildcard
-func (c *SSEConnection) IsSubscribed(subs []string, dThingID string, name string) bool {
-	if dThingID == "" {
-		dThingID = "+"
-	}
-	if name == "" {
-		name = "+"
-	}
-	subKey := dThingID + "." + name
-	for _, v := range subs {
-		if v == subKey {
-			return true
-		}
-	}
-	return false
-}
+//// IsSubscribed returns true if subscription for thing and name exists
+//// If dThingID or name are empty, then "+" is used as wildcard
+//func (c *SSEConnection) IsSubscribed(subs []string, dThingID string, name string) bool {
+//	if dThingID == "" {
+//		dThingID = "+"
+//	}
+//	if name == "" {
+//		name = "+"
+//	}
+//	subKey := dThingID + "." + name
+//	for _, v := range subs {
+//		if v == subKey {
+//			return true
+//		}
+//	}
+//	return false
+//}
 
 // ObserveProperty adds a subscription for a thing property
 func (c *SSEConnection) ObserveProperty(dThingID string, name string) {
@@ -167,9 +169,6 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Content-Type", "text/event-stream")
 
-	// determine the optional connection-ID
-	c.connectionID = r.Header.Get(hubclient.ConnectionIDHeader)
-
 	// establish a client event channel for sending messages back to the client
 	c.sseChan = make(chan SSEEvent, 1)
 
@@ -195,6 +194,7 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 			// close channel when no-one is writing
 			// in the meantime keep reading to prevent deadlock
 			c.Close()
+
 		}
 	}()
 

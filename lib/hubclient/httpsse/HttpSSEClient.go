@@ -38,6 +38,8 @@ const (
 	// deprecated, use forms
 	PostSubscribeEventPath = "/ssesc/digitwin/subscribe/{thingID}/{name}"
 	// deprecated, use forms
+	PostUnobservePropertyPath = "/ssesc/digitwin/unobserve/{thingID}/{name}"
+	// deprecated, use forms
 	PostUnsubscribeEventPath = "/ssesc/digitwin/unsubscribe/{thingID}/{name}"
 	// deprecated, use forms
 	PostWritePropertyPath = "/digitwin/properties/{thingID}/{name}"
@@ -134,7 +136,7 @@ func (hc *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 		Password: password,
 	}
 	argsJSON, _ := json.Marshal(loginMessage)
-	resp, statusCode, _, _, err2 := hc.tlsClient.Invoke(
+	resp, _, statusCode, _, err2 := hc.tlsClient.Invoke(
 		"POST", loginURL, argsJSON, "", nil)
 	if err2 != nil {
 		err = fmt.Errorf("%d: Login failed: %s", statusCode, err2)
@@ -447,7 +449,8 @@ func (hc *HttpSSEClient) PubProgressUpdate(stat hubclient.DeliveryStatus) {
 		slog.String("progress", stat.Progress),
 		slog.String("messageID", stat.MessageID))
 
-	stat2 := hc.PubMessage(http.MethodPost, PostAgentPublishProgressPath, "", "", stat, stat.MessageID, nil)
+	stat2 := hc.PubMessage(http.MethodPost, PostAgentPublishProgressPath,
+		"", "", stat, stat.MessageID, nil)
 	if stat.Error != "" {
 		slog.Warn("PubProgressUpdate failed", "err", stat2.Error)
 	}
@@ -573,13 +576,13 @@ func (hc *HttpSSEClient) Rpc(
 }
 
 // SendOperation is temporary transition to support using TD forms
-//func (cl *HttpSSEClient) SendOperation(
-//	href string, op tdd.Form, data any) (stat hubclient.DeliveryStatus) {
-//
-//	slog.Info("SendOperation", "href", href, "op", op)
-//	panic("Just a placeholder. Dont use this yet. Not implemented")
-//	return stat
-//}
+func (cl *HttpSSEClient) SendOperation(
+	href string, op tdd.Form, data any) (stat hubclient.DeliveryStatus) {
+
+	slog.Info("SendOperation", "href", href, "op", op)
+	panic("Just a placeholder. Dont use this yet. Not implemented")
+	return stat
+}
 
 // SetConnectionStatus updates the current connection status
 func (hc *HttpSSEClient) SetConnectionStatus(cstat hubclient.ConnectionStatus, err error) {
@@ -644,6 +647,25 @@ func (hc *HttpSSEClient) Subscribe(thingID string, name string) error {
 // Unmarshal decodes the wire format to native data
 func (hc *HttpSSEClient) Unmarshal(raw []byte, reply interface{}) error {
 	err := json.Unmarshal(raw, reply)
+	return err
+}
+
+// Unobserve thing properties
+func (hc *HttpSSEClient) Unobserve(thingID string, name string) error {
+	slog.Info("Unobserve",
+		slog.String("clientID", hc.clientID),
+		slog.String("thingID", thingID),
+		slog.String("name", name))
+
+	if thingID == "" {
+		thingID = "+"
+	}
+	if name == "" {
+		name = "+"
+	}
+	vars := map[string]string{"thingID": thingID, "name": name}
+	unsubscribePath := utils.Substitute(PostUnobservePropertyPath, vars)
+	_, _, _, err := hc.tlsClient.Post(unsubscribePath, nil, "")
 	return err
 }
 

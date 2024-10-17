@@ -173,13 +173,13 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 
 // Start the web server and publish the service's own TD.
 func (svc *HiveovService) Start(hc hubclient.IAgentClient) error {
-	slog.Info("Starting HiveovService", "clientID", hc.ClientID())
+	slog.Info("Starting HiveovService", "clientID", hc.GetClientID())
 	svc.hc = hc
 
 	// publish a TD for each service capability and set allowable roles
 	// in this case only a management capability is published
 	err := authz.UserSetPermissions(hc, authz.ThingPermissions{
-		AgentID: hc.ClientID(),
+		AgentID: hc.GetClientID(),
 		ThingID: src.HiveoviewServiceID,
 		Allow:   []authz.ClientRole{authz.ClientRoleAdmin, authz.ClientRoleService},
 	})

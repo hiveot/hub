@@ -10,8 +10,8 @@ import (
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/hubrouter"
+	"github.com/hiveot/hub/runtime/sessions"
 	"github.com/hiveot/hub/runtime/transports/httptransport/subprotocols"
-	sessions2 "github.com/hiveot/hub/runtime/transports/sessions"
 	"io"
 	"log/slog"
 	"net/http"
@@ -24,7 +24,7 @@ type HttpOperation struct {
 	url          string
 	handler      http.HandlerFunc
 	isThingLevel bool
-	sm           *sessions2.SessionManager
+	sm           *sessions.SessionManager
 }
 
 // HttpBinding is the Hub transport binding for HTTPS
@@ -55,10 +55,10 @@ type HttpBinding struct {
 	dtwService *service.DigitwinService
 
 	// session manager for adding/removing sessions (login,logout)
-	sm *sessions2.SessionManager
+	sm *sessions.SessionManager
 
 	// connection manager for adding/removing binding connections
-	cm *sessions2.ConnectionManager
+	cm *sessions.ConnectionManager
 }
 
 // AddGetOp adds protocol binding operation with a URL and handler
@@ -93,7 +93,7 @@ func (svc *HttpBinding) AddPostOp(r chi.Router,
 }
 
 // GetConnectionByCID returns the client connection for sending messages to a client
-func (svc *HttpBinding) GetConnectionByCID(cid string) sessions2.IClientConnection {
+func (svc *HttpBinding) GetConnectionByCID(cid string) sessions.IClientConnection {
 	return svc.cm.GetConnectionByCID(cid)
 }
 
@@ -196,8 +196,8 @@ func StartHttpTransport(config *HttpTransportConfig,
 	authenticator api.IAuthenticator,
 	hubRouter hubrouter.IHubRouter,
 	dtwService *service.DigitwinService,
-	cm *sessions2.ConnectionManager,
-	sm *sessions2.SessionManager,
+	cm *sessions.ConnectionManager,
+	sm *sessions.SessionManager,
 ) (*HttpBinding, error) {
 
 	httpServer, router := tlsserver.NewTLSServer(

@@ -90,7 +90,7 @@ func TestNoCA(t *testing.T) {
 	assert.NoError(t, err)
 
 	// certificate authentication but no CA
-	cl := tlsclient.NewTLSClient(testAddress, authBundle.ClientCert, nil, 0)
+	cl := tlsclient.NewTLSClient(testAddress, authBundle.ClientCert, nil, 0, "")
 	assert.NoError(t, err)
 
 	_, _, err = cl.Get(path1)
@@ -99,7 +99,7 @@ func TestNoCA(t *testing.T) {
 	cl.Close()
 
 	// No authentication
-	cl = tlsclient.NewTLSClient(testAddress, nil, nil, 0)
+	cl = tlsclient.NewTLSClient(testAddress, nil, nil, 0, "")
 
 	_, _, err = cl.Get(path1)
 	assert.NoError(t, err)
@@ -124,7 +124,7 @@ func TestAuthClientCert(t *testing.T) {
 		path1Hit++
 	})
 	//
-	cl := tlsclient.NewTLSClient(testAddress, authBundle.ClientCert, authBundle.CaCert, 0)
+	cl := tlsclient.NewTLSClient(testAddress, authBundle.ClientCert, authBundle.CaCert, 0, "")
 	assert.NoError(t, err)
 
 	clientCert := cl.Certificate()
@@ -159,13 +159,13 @@ func TestAuthClientCert(t *testing.T) {
 }
 
 func TestNotStarted(t *testing.T) {
-	cl := tlsclient.NewTLSClient(testAddress, nil, authBundle.CaCert, 0)
+	cl := tlsclient.NewTLSClient(testAddress, nil, authBundle.CaCert, 0, "")
 	_, _, err := cl.Get("/notstarted")
 	assert.Error(t, err)
 	cl.Close()
 }
 func TestNoClientCert(t *testing.T) {
-	cl := tlsclient.NewTLSClient(testAddress, nil, authBundle.CaCert, 3)
+	cl := tlsclient.NewTLSClient(testAddress, nil, authBundle.CaCert, 3, "")
 	cl.Close()
 }
 
@@ -177,7 +177,7 @@ func TestBadClientCert(t *testing.T) {
 	otherTLS := certs.X509CertToTLS(otherCert, authBundle.ClientKey)
 	assert.NoError(t, err)
 
-	cl := tlsclient.NewTLSClient(testAddress, otherTLS, authBundle.CaCert, 0)
+	cl := tlsclient.NewTLSClient(testAddress, otherTLS, authBundle.CaCert, 0, "")
 	// this should produce an error in the log
 	//assert.Error(t, err)
 	cl.Close()
@@ -186,7 +186,7 @@ func TestBadClientCert(t *testing.T) {
 func TestNoServer(t *testing.T) {
 	// setup server and client environm
 	//
-	cl := tlsclient.NewTLSClient(testAddress, authBundle.ClientCert, authBundle.CaCert, 0)
+	cl := tlsclient.NewTLSClient(testAddress, authBundle.ClientCert, authBundle.CaCert, 0, "")
 	_, _, err := cl.Get("/noserver")
 	assert.Error(t, err)
 	cl.Close()
@@ -196,7 +196,7 @@ func TestCert404(t *testing.T) {
 	srv, err := startTestServer(mux)
 	assert.NoError(t, err)
 
-	cl := tlsclient.NewTLSClient(testAddress, authBundle.ClientCert, authBundle.CaCert, 0)
+	cl := tlsclient.NewTLSClient(testAddress, authBundle.ClientCert, authBundle.CaCert, 0, "")
 
 	_, _, err = cl.Get("/pathnotfound")
 	assert.Error(t, err)
@@ -206,7 +206,7 @@ func TestCert404(t *testing.T) {
 }
 
 func TestAuthJWT(t *testing.T) {
-	pathLogin1 := httpssesc.PostLoginPath
+	pathLogin1 := httpsse.PostLoginPath
 	pathLogin2 := "/login2"
 	path3 := "/test3"
 	path3Hit := 0
@@ -263,14 +263,14 @@ func TestAuthJWT(t *testing.T) {
 	srv, err := startTestServer(mux)
 	assert.NoError(t, err)
 	//
-	loginURL := fmt.Sprintf("https://%s%s", testAddress, httpssesc.PostLoginPath)
+	loginURL := fmt.Sprintf("https://%s%s", testAddress, httpsse.PostLoginPath)
 	loginMessage := authn.UserLoginArgs{
 		ClientID: user1,
 		Password: password1,
 	}
-	cl := tlsclient.NewTLSClient(testAddress, nil, authBundle.CaCert, 0)
+	cl := tlsclient.NewTLSClient(testAddress, nil, authBundle.CaCert, 0, "")
 	jsonArgs, _ := json.Marshal(loginMessage)
-	resp, msgID2, _, err := cl.Invoke("POST", loginURL, jsonArgs, msgID1, nil)
+	resp, msgID2, _, _, err := cl.Invoke("POST", loginURL, jsonArgs, msgID1, nil)
 	require.NoError(t, err)
 	assert.Equal(t, msgID1, msgID2)
 	reply := authn.UserLoginResp{}
@@ -301,7 +301,7 @@ func TestAuthJWTFail(t *testing.T) {
 		resp.WriteHeader(http.StatusUnauthorized)
 	})
 	//
-	cl := tlsclient.NewTLSClient(testAddress, nil, authBundle.CaCert, 0)
+	cl := tlsclient.NewTLSClient(testAddress, nil, authBundle.CaCert, 0, "")
 	cl.SetAuthToken("badtoken")
 	resp, _, _, err := cl.Post(pathHello1, []byte("test"), messageID1)
 	assert.Empty(t, resp)

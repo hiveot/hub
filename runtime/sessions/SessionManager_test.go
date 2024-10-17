@@ -2,7 +2,7 @@ package sessions_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/runtime/transports/sessions"
+	"github.com/hiveot/hub/runtime/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"

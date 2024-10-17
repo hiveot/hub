@@ -19,7 +19,7 @@ func (svc *IsyBinding) PublishNodeValues(onlyChanges bool) error {
 
 	// publish the binding's property and event values
 	props, events := svc.GetBindingPropValues(onlyChanges)
-	bindingID := svc.hc.ClientID()
+	bindingID := svc.hc.GetClientID()
 	err := svc.hc.PubProperties(bindingID, props)
 	// no use continuing if publishing fails
 	if err != nil {

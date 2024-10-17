@@ -1,8 +1,6 @@
 import {TD} from '../../things/TD.js';
 import {
-    ConnectionStatus,
     IAgentClient,
-    MessageHandler
 } from "../IAgentClient.js";
 import type {IHiveKey} from "@keys/IHiveKey";
 import * as tslog from 'tslog';
@@ -15,6 +13,7 @@ import {connectSSE} from "@hivelib/hubclient/httpclient/connectSSE";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as https from "node:https";
 import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
+import {ConnectionStatus, MessageHandler} from "@hivelib/hubclient/IConsumerClient";
 
 
 // Form paths that apply to all TDs at the top level
@@ -24,8 +23,8 @@ import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
 // FIXME: THESE WILL BE REMOVED WHEN SWITCHING TO FORMS
 //
 const ConnectSSEPath      = "/ssesc"
-// const PostSubscribeEventPath   = "/ssesc/digitwin/subscribe/{thingID}/{name}"
-// const PostUnsubscribeEventPath = "/ssesc/digitwin/unsubscribe/{thingID}/{name}"
+const PostSubscribeEventPath   = "/ssesc/digitwin/subscribe/{thingID}/{name}"
+const PostUnsubscribeEventPath = "/ssesc/digitwin/unsubscribe/{thingID}/{name}"
 
 // paths for accessing TDD directory
 // const GetThingPath= "/digitwin/directory/{thingID}"
@@ -43,7 +42,7 @@ const PostAgentUpdateMultiplePropertiesPath = "/agent/properties/{thingID}"
 const PostAgentUpdateTDDPath                = "/agent/tdd/{thingID}"
 
 // paths for accessing properties
-// const PostWritePropertyPath = "/digitwin/properties/{thingID}/{name}"
+const PostWritePropertyPath = "/digitwin/properties/{thingID}/{name}"
 
 // authn service - used in authn
 const PostLoginPath   = "/authn/login"
@@ -447,43 +446,43 @@ export class HttpSSEClient implements IAgentClient {
     //
     // @param dThingID: optional filter of the thing whose events are published; "" for all things
     // @param name: optional filter on the event name; "" for all event names.
-    // async subscribe(dThingID: string, name: string): Promise<void> {
-    //
-    //     if (!dThingID) {
-    //         dThingID = "+"
-    //     }
-    //     if (!name) {
-    //         name = "+"
-    //     }
-    //     let subscribePath = PostSubscribeEventPath.replace("{thingID}", dThingID)
-    //     subscribePath = subscribePath.replace("{name}", name)
-    //     await this.pubMessage("POST", subscribePath, "")
-    //
-    // }
-    //
-    // async unsubscribe(dThingID: string, name: string) {
-    //
-    //     if (!dThingID) {
-    //         dThingID = "+"
-    //     }
-    //     if (!name) {
-    //         name = "+"
-    //     }
-    //     let subscribePath = PostUnsubscribeEventPath.replace("{thingID}", dThingID)
-    //     subscribePath = subscribePath.replace("{name}", name)
-    //     await this.pubMessage("POST", subscribePath, "")
-    // }
+    async subscribe(dThingID: string, name: string): Promise<void> {
+
+        if (!dThingID) {
+            dThingID = "+"
+        }
+        if (!name) {
+            name = "+"
+        }
+        let subscribePath = PostSubscribeEventPath.replace("{thingID}", dThingID)
+        subscribePath = subscribePath.replace("{name}", name)
+        await this.pubMessage("POST", subscribePath, "")
+
+    }
+
+    async unsubscribe(dThingID: string, name: string) {
+
+        if (!dThingID) {
+            dThingID = "+"
+        }
+        if (!name) {
+            name = "+"
+        }
+        let subscribePath = PostUnsubscribeEventPath.replace("{thingID}", dThingID)
+        subscribePath = subscribePath.replace("{name}", name)
+        await this.pubMessage("POST", subscribePath, "")
+    }
 
     // writeProperty publishes a request for changing a Thing's property.
     // The configuration is a writable property as defined in the Thing's TD.
-    // async writeProperty(thingID: string, name: string, propValue: any): Promise<DeliveryStatus> {
-    //     hclog.info("pubProperty. thingID:", thingID, ", name:", name)
-    //
-    //     let propPath = PostWritePropertyPath.replace("{thingID}", thingID)
-    //     propPath = propPath.replace("{name}", name)
-    //
-    //     let resp = await this.pubMessage("POST",propPath, propValue)
-    //     let stat: DeliveryStatus = JSON.parse(resp)
-    //     return stat
-    // }
+    async writeProperty(thingID: string, name: string, propValue: any): Promise<DeliveryStatus> {
+        hclog.info("pubProperty. thingID:", thingID, ", name:", name)
+
+        let propPath = PostWritePropertyPath.replace("{thingID}", thingID)
+        propPath = propPath.replace("{name}", name)
+
+        let resp = await this.pubMessage("POST",propPath, propValue)
+        let stat: DeliveryStatus = JSON.parse(resp)
+        return stat
+    }
 }

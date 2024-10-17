@@ -201,13 +201,13 @@ func (svc *SelfSignedCertsService) CreateUserCert(
 //
 //	hc is the connection to the hub with a service role. For testing it can be nil.
 func (svc *SelfSignedCertsService) Start(hc hubclient.IAgentClient) (err error) {
-	slog.Info("Starting certs service", "serviceID", hc.ClientID())
+	slog.Info("Starting certs service", "serviceID", hc.GetClientID())
 	// for testing, hc can be nil
 	svc.hc = hc
 
 	// permissions for using this service are for admin only
 	err = authz.UserSetPermissions(svc.hc, authz.ThingPermissions{
-		AgentID: svc.hc.ClientID(),
+		AgentID: svc.hc.GetClientID(),
 		ThingID: certsapi.CertsAdminThingID,
 		Allow:   []authz.ClientRole{authz.ClientRoleAdmin},
 		Deny:    nil,

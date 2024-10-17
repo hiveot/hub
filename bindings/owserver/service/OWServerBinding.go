@@ -101,7 +101,7 @@ func (svc *OWServerBinding) Start(hc hubclient.IAgentClient) (err error) {
 		logging.SetLogging(svc.config.LogLevel, "")
 	}
 	svc.hc = hc
-	svc.agentID = hc.ClientID()
+	svc.agentID = hc.GetClientID()
 	// Create the adapter for the OWServer 1-wire gateway
 	svc.edsAPI = eds.NewEdsAPI(
 		svc.config.OWServerURL, svc.config.OWServerLogin, svc.config.OWServerPassword)

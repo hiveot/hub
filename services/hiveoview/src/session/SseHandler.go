@@ -38,7 +38,7 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 	sseChan := cs.CreateSSEChan()
 	//sseChan := make(chan SSEEvent)
 	//cs.AddSSEClient(sseChan)
-	clientID := cs.GetHubClient().ClientID()
+	clientID := cs.GetHubClient().GetClientID()
 
 	slog.Info("SseHandler. New SSE connection",
 		slog.String("RemoteAddr", r.RemoteAddr),

@@ -84,10 +84,11 @@ func TestActionReadFail(t *testing.T) {
 		ThingID: "badthingid",
 		Name:    "someevent"})
 	assert.Error(t, err)
+	// query non-existing action is allowed if strict is set to false
 	_, err = svc.ValuesSvc.QueryAction("itsme", digitwin2.ValuesQueryActionArgs{
 		ThingID: dThingID,
 		Name:    "badeventname"})
-	assert.Error(t, err)
+	assert.NoError(t, err)
 	_, err = svc.ValuesSvc.QueryAllActions("itsme", "badthingid")
 	assert.Error(t, err)
 }

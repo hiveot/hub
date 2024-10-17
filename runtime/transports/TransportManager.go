@@ -7,9 +7,9 @@ import (
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/hubrouter"
+	sessions2 "github.com/hiveot/hub/runtime/sessions"
 	"github.com/hiveot/hub/runtime/transports/discotransport"
 	"github.com/hiveot/hub/runtime/transports/httptransport"
-	"github.com/hiveot/hub/runtime/transports/sessions"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 )
@@ -33,8 +33,8 @@ type TransportManager struct {
 	// handler to pass incoming messages to
 	handler func(tv *hubclient.ThingMessage) hubclient.DeliveryStatus
 
-	sm *sessions.SessionManager
-	cm *sessions.ConnectionManager
+	sm *sessions2.SessionManager
+	cm *sessions2.ConnectionManager
 }
 
 // AddTDForms adds forms for all active transports
@@ -75,7 +75,7 @@ func (svc *TransportManager) GetProtocolInfo() (pi api.ProtocolInfo) {
 }
 
 // GetConnectionByCID returns the client connection for sending messages to a client
-func (svc *TransportManager) GetConnectionByCID(cid string) sessions.IClientConnection {
+func (svc *TransportManager) GetConnectionByCID(cid string) sessions2.IClientConnection {
 	return svc.cm.GetConnectionByCID(cid)
 }
 
@@ -233,8 +233,8 @@ func StartTransportManager(cfg *ProtocolsConfig,
 	authenticator api.IAuthenticator,
 	hubRouter *hubrouter.HubRouter,
 	dtwService *service.DigitwinService,
-	cm *sessions.ConnectionManager,
-	sm *sessions.SessionManager,
+	cm *sessions2.ConnectionManager,
+	sm *sessions2.SessionManager,
 ) (svc *TransportManager, err error) {
 
 	svc = &TransportManager{

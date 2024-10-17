@@ -204,7 +204,7 @@ func (svc *LauncherService) Start() error {
 
 	// permissions for using this service
 	err = authz.UserSetPermissions(svc.hc, authz.ThingPermissions{
-		AgentID: svc.hc.ClientID(),
+		AgentID: svc.hc.GetClientID(),
 		ThingID: launcherapi.ManageServiceID,
 		Allow:   []authz.ClientRole{authz.ClientRoleManager, authz.ClientRoleAdmin, authz.ClientRoleService},
 		Deny:    nil,

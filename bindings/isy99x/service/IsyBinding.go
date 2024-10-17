@@ -139,7 +139,7 @@ func (svc *IsyBinding) HandleBindingConfig(action *hubclient.ThingMessage) error
 func (svc *IsyBinding) Start(hc hubclient.IAgentClient) (err error) {
 	slog.Info("Starting Isy99x binding")
 	svc.hc = hc
-	svc.thingID = hc.ClientID()
+	svc.thingID = hc.GetClientID()
 	if svc.config.LogLevel != "" {
 		logging.SetLogging(svc.config.LogLevel, "")
 	}

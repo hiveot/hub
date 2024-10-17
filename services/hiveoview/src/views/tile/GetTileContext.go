@@ -38,7 +38,7 @@ func GetTileContext(r *http.Request, mustExist bool) (
 	if err != nil {
 		return sess, ctc, err
 	}
-	ctc.clientID = hc.ClientID()
+	ctc.clientID = hc.GetClientID()
 	ctc.clientModel = sess.GetClientData()
 	ctc.dashboardID = chi.URLParam(r, URLParamDashboardID)
 	ctc.dashboard, found = ctc.clientModel.GetDashboard(ctc.dashboardID)

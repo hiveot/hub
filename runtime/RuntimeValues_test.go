@@ -234,7 +234,7 @@ func TestWriteProperties(t *testing.T) {
 	td1JSON, _ := json.Marshal(td1)
 	err := ag.PubTD(td1.ID, string(td1JSON))
 
-	// agents subscribe to property write requests
+	// agents listen for property write requests
 	ag.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 		if msg.MessageType == vocab.MessageTypeProperty && msg.Name == key1 {
 			stat.Completed(msg, nil, nil)
@@ -243,8 +243,8 @@ func TestWriteProperties(t *testing.T) {
 		return stat
 	})
 
-	// consumer subscribes to events/properties
-	err = cl.Subscribe("", "")
+	// consumer subscribes to events/properties changes
+	err = cl.Observe("", "")
 	require.NoError(t, err)
 	//var tv digitwin.ThingValue
 	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
@@ -263,4 +263,6 @@ func TestWriteProperties(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 1000)
 	assert.Equal(t, int32(1), msgCount.Load())
+	err = cl.Unobserve("", "")
+	assert.NoError(t, err)
 }

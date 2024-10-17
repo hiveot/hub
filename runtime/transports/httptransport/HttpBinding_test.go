@@ -7,11 +7,10 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/runtime/digitwin/service"
+	sessions2 "github.com/hiveot/hub/runtime/sessions"
 	"github.com/hiveot/hub/runtime/transports"
 	"github.com/hiveot/hub/runtime/transports/httptransport"
-	"github.com/hiveot/hub/runtime/transports/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/teris-io/shortid"
@@ -28,8 +27,8 @@ var certBundle = certs.CreateTestCertBundle()
 var hostPort = fmt.Sprintf("localhost:%d", testPort)
 var testDirFolder = path.Join(os.TempDir(), "test-transport")
 var digitwinStorePath = path.Join(testDirFolder, "digitwin.data")
-var sm *sessions.SessionManager
-var cm *sessions.ConnectionManager
+var sm *sessions2.SessionManager
+var cm *sessions2.ConnectionManager
 
 // ---------
 // Dummy sessionAuth for testing the binding
@@ -100,8 +99,8 @@ func startHttpsTransport() (
 	*httptransport.HttpBinding, *service.DigitwinService, *transports.DummyRouter) {
 
 	// globals in testing
-	sm = sessions.NewSessionmanager()
-	cm = sessions.NewConnectionManager()
+	sm = sessions2.NewSessionmanager()
+	cm = sessions2.NewConnectionManager()
 
 	var hubRouter = &transports.DummyRouter{}
 	config := httptransport.NewHttpTransportConfig()
@@ -123,22 +122,22 @@ func startHttpsTransport() (
 }
 
 // create and connect a client for testing
-func createConnectClient(clientID string) *tlsclient.TLSClient {
-	// 2a. create a session for connecting a client
-	// (normally this happens when a session token is issued on authentication)
-	cs, err := sm.AddSession(clientID, "remote addr", "")
-	_ = cs
-	if err != nil {
-		panic("error creating session:" + err.Error())
-	}
-
-	// 2b. connect a client
-	token, sessionID, err := dummyAuthenticator.Login(testLogin, testPassword)
-	_ = sessionID
-	cl := tlsclient.NewTLSClient(hostPort, nil, certBundle.CaCert, time.Second*120, "nocid")
-	cl.SetAuthToken(token)
-	return cl
-}
+//func createConnectClient(clientID string) *tlsclient.TLSClient {
+//	// 2a. create a session for connecting a client
+//	// (normally this happens when a session token is issued on authentication)
+//	cs, err := sm.AddSession(clientID, "remote addr", "")
+//	_ = cs
+//	if err != nil {
+//		panic("error creating session:" + err.Error())
+//	}
+//
+//	// 2b. connect a client
+//	token, sessionID, err := dummyAuthenticator.Login(testLogin, testPassword)
+//	_ = sessionID
+//	cl := tlsclient.NewTLSClient(hostPort, nil, certBundle.CaCert, time.Second*120, "nocid")
+//	cl.SetAuthToken(token)
+//	return cl
+//}
 
 // TestMain sets logging
 func TestMain(m *testing.M) {

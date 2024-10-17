@@ -195,8 +195,8 @@ func (cm *ConnectionManager) PublishProperty(
 // RemoveConnection removes the connection by its connectionID
 // Call this after the connection is closed or before closing.
 func (cm *ConnectionManager) RemoveConnection(cid string) {
-	cm.mux.RLock()
-	defer cm.mux.RUnlock()
+	cm.mux.Lock()
+	defer cm.mux.Unlock()
 
 	var clientID = ""
 	existingConn := cm.cidConnections[cid]

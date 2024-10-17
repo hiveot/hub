@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/digitwin/service"
+	"github.com/hiveot/hub/runtime/sessions"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,6 +16,7 @@ import (
 
 var testDirFolder = path.Join(os.TempDir(), "test-directory")
 var dirStorePath = path.Join(testDirFolder, "directory.data")
+var cm *sessions.ConnectionManager
 
 // startService initializes a service and a client
 // This doesn't use any transport.
@@ -23,10 +25,14 @@ func startService(clean bool) (
 	store *service.DigitwinStore,
 	stopFn func()) {
 
+	if cm == nil {
+		cm = sessions.NewConnectionManager()
+	}
 	if clean {
 		_ = os.RemoveAll(testDirFolder)
+		cm.CloseAll()
 	}
-	svc, store, err := service.StartDigitwinService(dirStorePath)
+	svc, store, err := service.StartDigitwinService(dirStorePath, cm)
 	if err != nil {
 		panic("unable to start the digitwin service")
 	}

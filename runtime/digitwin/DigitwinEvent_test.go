@@ -65,11 +65,12 @@ func TestEventReadFail(t *testing.T) {
 		Name:    "someevent",
 	})
 	assert.Error(t, err)
+	// if strict is set to false this can succeed with nil output
 	_, err = svc.ValuesSvc.ReadEvent("itsme", digitwin.ValuesReadEventArgs{
 		ThingID: dThingID,
 		Name:    "badeventname",
 	})
-	assert.Error(t, err)
+	assert.NoError(t, err)
 	_, err = svc.ValuesSvc.ReadAllEvents("itsme", "badthingid")
 	assert.Error(t, err)
 }

@@ -1,9 +1,5 @@
 package sessions
 
-import (
-	"time"
-)
-
 // ClientSession of an authenticated client connected over http.
 //
 // Each client session has a session-id from the authentication token.
@@ -18,7 +14,7 @@ type ClientSession struct {
 	remoteAddr string
 
 	// track last used time to auto-close inactive sessions
-	lastActivity time.Time
+	//lastActivity time.Time
 }
 
 func (cs *ClientSession) GetClientID() string {
@@ -33,7 +29,7 @@ func (cs *ClientSession) GetSessionID() string {
 
 // UpdateLastActivity sets the current time
 func (cs *ClientSession) UpdateLastActivity() {
-	cs.lastActivity = time.Now()
+	//cs.lastActivity = time.Now()
 }
 
 // NewClientSession creates a new client session
@@ -44,10 +40,10 @@ func (cs *ClientSession) UpdateLastActivity() {
 // it should be obtained from the login authentication/refresh.
 func NewClientSession(sessionID string, clientID string, remoteAddr string) *ClientSession {
 	cs := ClientSession{
-		sessionID:    sessionID,
-		clientID:     clientID,
-		remoteAddr:   remoteAddr,
-		lastActivity: time.Now(),
+		sessionID:  sessionID,
+		clientID:   clientID,
+		remoteAddr: remoteAddr,
+		//lastActivity: time.Now(),
 	}
 
 	return &cs

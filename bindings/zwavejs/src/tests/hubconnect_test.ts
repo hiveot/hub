@@ -30,10 +30,7 @@ async function test1() {
     let token = await hc.connectWithPassword(testPass)
 
     log.info("publishing hello world")
-    let stat = await hc.pubEvent("testthing", "event1", "hello world")
-    if (stat.messageID == "") {
-        log.error("pubEvent didn't return a messageID")
-    }
+    hc.pubEvent("testthing", "event1", "hello world")
     hc.disconnect()
 }
 
@@ -44,7 +41,7 @@ async function test2() {
     let token = await hc.connectWithPassword(testPass)
 
     // sending read directory request
-    let stat = await hc.pubAction(
+    let stat = await hc.invokeAction(
         "dtw:digitwin:directory", "readTDs", '{"limit":10}')
 
     if (stat.messageID == "") {

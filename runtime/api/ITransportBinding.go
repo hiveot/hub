@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/hiveot/hub/runtime/transports/sessions"
+	"github.com/hiveot/hub/runtime/sessions"
 	"github.com/hiveot/hub/wot/tdd"
 )
 

@@ -84,9 +84,7 @@ func TestAddProp(t *testing.T) {
 	tdoc := tdd.NewTD(thingID, "test TD", vocab2.ThingSensor)
 	tdoc.AddProperty("prop1", "", "test property", vocab2.WoTDataTypeBool)
 
-	go func() {
-		tdoc.AddProperty("prop2", "", "test property2", vocab2.WoTDataTypeString)
-	}()
+	tdoc.AddProperty("prop2", "", "test property2", vocab2.WoTDataTypeString)
 
 	prop := tdoc.GetProperty("prop1")
 	assert.NotNil(t, prop)
@@ -102,9 +100,7 @@ func TestAddPropBadIDs(t *testing.T) {
 	tdoc := tdd.NewTD(thingID, "test TD", vocab2.ThingSensor)
 	tdoc.AddProperty(propID, "", "test property", vocab2.WoTDataTypeBool)
 
-	go func() {
-		tdoc.AddProperty("prop2", "", "test property2", vocab2.WoTDataTypeString)
-	}()
+	tdoc.AddProperty("prop2", "", "test property2", vocab2.WoTDataTypeString)
 
 	prop := tdoc.GetProperty(propID)
 	assert.Nil(t, prop)
@@ -121,9 +117,7 @@ func TestAddEvent(t *testing.T) {
 	tdoc := tdd.NewTD(thingID, "test TD", vocab2.ThingSensor)
 	tdoc.AddEvent("event1", "", "Test Event", "", nil)
 
-	go func() {
-		tdoc.AddEvent("event2", "", "Test Event", "", nil)
-	}()
+	tdoc.AddEvent("event2", "", "Test Event", "", nil)
 
 	ev := tdoc.GetEvent("event1")
 	assert.NotNil(t, ev)
@@ -137,9 +131,7 @@ func TestAddAction(t *testing.T) {
 	tdoc := tdd.NewTD(thingID, "test TD", vocab2.ThingSensor)
 	tdoc.AddAction("action1", "test", "Test Action", "", nil)
 
-	go func() {
-		tdoc.AddAction("action2", "test", "test Action", "", nil)
-	}()
+	tdoc.AddAction("action2", "test", "test Action", "", nil)
 
 	action := tdoc.GetAction("action1")
 	assert.NotNil(t, action)

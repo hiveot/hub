@@ -41,11 +41,11 @@ func (svc *HistoryService) GetAddHistory() *AddHistory {
 
 // Start using the history service
 func (svc *HistoryService) Start(hc hubclient.IAgentClient) (err error) {
-	slog.Info("Starting HistoryService", "clientID", hc.ClientID())
+	slog.Info("Starting HistoryService", "clientID", hc.GetClientID())
 
 	// setup
 	svc.hc = hc
-	svc.agentID = hc.ClientID()
+	svc.agentID = hc.GetClientID()
 	svc.manageHistSvc = NewManageHistory(nil)
 	err = svc.manageHistSvc.Start()
 	if err == nil {
@@ -59,7 +59,7 @@ func (svc *HistoryService) Start(hc hubclient.IAgentClient) (err error) {
 	// Set the required permissions for using this service
 	// any user roles can view the history
 	err = authz.UserSetPermissions(hc, authz.ThingPermissions{
-		AgentID: hc.ClientID(),
+		AgentID: hc.GetClientID(),
 		ThingID: historyapi.ReadHistoryServiceID,
 		Deny:    []authz.ClientRole{authz.ClientRoleNone},
 	})

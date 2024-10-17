@@ -43,9 +43,9 @@ func startStateService(cleanStart bool) (
 	time.Sleep(time.Millisecond)
 	return svc, stateCl, func() {
 		hc2.Disconnect()
-		slog.Warn("Disconnected " + hc2.ClientID())
+		slog.Warn("Disconnected " + hc2.GetClientID())
 		hc1.Disconnect()
-		slog.Warn("Disconnected " + hc1.ClientID())
+		slog.Warn("Disconnected " + hc1.GetClientID())
 		svc.Stop()
 		ts.Stop()
 	}

@@ -205,6 +205,10 @@ type IConsumerClient interface {
 	// dThingID and key must match that of Subscribe
 	Unsubscribe(dThingID string, name string) error
 
+	// Unobserve [consumer] removes a previous property subscription.
+	// dThingID and key must match that of Observe
+	Unobserve(dThingID string, name string) error
+
 	// WriteProperty [consumer] publishes a property change request
 	//
 	//	dThingID is the digital twin thingID whose property to write

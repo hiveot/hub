@@ -1,17 +1,17 @@
 package subprotocols
 
 import (
-	"github.com/hiveot/hub/runtime/transports/sessions"
+	sessions2 "github.com/hiveot/hub/runtime/sessions"
 )
 
 // Websocket subprotocol binding
 type WsBinding struct {
-	cm *sessions.ConnectionManager
-	sm *sessions.SessionManager
+	cm *sessions2.ConnectionManager
+	sm *sessions2.SessionManager
 }
 
 // NewWsBinding returns a new websocket sub-protocol binding
-func NewWsBinding(cm *sessions.ConnectionManager, sm *sessions.SessionManager) *WsBinding {
+func NewWsBinding(cm *sessions2.ConnectionManager, sm *sessions2.SessionManager) *WsBinding {
 	wsBinding := &WsBinding{
 		cm: cm,
 		sm: sm,

@@ -3,7 +3,7 @@ package subprotocols
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/runtime/transports/sessions"
+	sessions2 "github.com/hiveot/hub/runtime/sessions"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -12,10 +12,10 @@ import (
 // SseScBinding is a subprotocol binding
 type SseScBinding struct {
 	// connection manager to add/remove connections
-	cm *sessions.ConnectionManager
+	cm *sessions2.ConnectionManager
 
 	// session manager
-	sm *sessions.SessionManager
+	sm *sessions2.SessionManager
 
 	// mutex for updating connections
 	mux sync.RWMutex
@@ -78,6 +78,9 @@ func (b *SseScBinding) HandleObserveProperty(w http.ResponseWriter, r *http.Requ
 	c := b.cm.GetConnectionByCID(rp.ConnID)
 	if c != nil {
 		c.ObserveProperty(rp.ThingID, rp.Name)
+	} else {
+		slog.Error("HandleObserveProperty: no matching connection found",
+			"clientID", rp.ClientID, "connID", rp.ConnID)
 	}
 }
 
@@ -102,6 +105,9 @@ func (b *SseScBinding) HandleSubscribeEvent(w http.ResponseWriter, r *http.Reque
 	c := b.cm.GetConnectionByCID(rp.ConnID)
 	if c != nil {
 		c.SubscribeEvent(rp.ThingID, rp.Name)
+	} else {
+		slog.Error("HandleSubscribeEvent: no matching connection found",
+			"clientID", rp.ClientID, "connID", rp.ConnID)
 	}
 }
 
@@ -150,7 +156,7 @@ func (b *SseScBinding) HandleUnsubscribeEvent(w http.ResponseWriter, r *http.Req
 }
 
 // NewSseScBinding returns a new SSE-SC sub-protocol binding
-func NewSseScBinding(cm *sessions.ConnectionManager, sm *sessions.SessionManager) *SseScBinding {
+func NewSseScBinding(cm *sessions2.ConnectionManager, sm *sessions2.SessionManager) *SseScBinding {
 	b := &SseScBinding{
 		cm: cm,
 		sm: sm,

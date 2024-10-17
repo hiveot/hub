@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
@@ -49,10 +48,6 @@ func (cl *EmbeddedClient) ConnectWithToken(token string) (string, error) {
 	return "dummytoken", nil
 }
 
-// ClientID returns the client's connection ID
-func (cl *EmbeddedClient) ClientID() string {
-	return cl.clientID
-}
 func (cl *EmbeddedClient) CreateKeyPair() (kp keys.IHiveKey) {
 	return nil
 }
@@ -65,9 +60,14 @@ func (cl *EmbeddedClient) GetProtocolType() string {
 }
 func (cl *EmbeddedClient) GetStatus() hubclient.TransportStatus {
 	return hubclient.TransportStatus{
-		ClientID:         cl.clientID,
+		//ClientID:         cl.clientID,
 		ConnectionStatus: hubclient.Connected,
 	}
+}
+
+// GetClientID returns the client's connection ID
+func (cl *EmbeddedClient) GetClientID() string {
+	return cl.clientID
 }
 
 // HandleMessage receives a message from the embedded transport for this client
@@ -136,7 +136,13 @@ func (cl *EmbeddedClient) PublishMultipleProperties(thingID string, props map[st
 
 // PubTD publishes an agent's TD
 func (cl *EmbeddedClient) PubTD(thingID string, tdJSON string) error {
-	return cl.PubEvent(thingID, vocab.EventNameTD, tdJSON)
+	//return cl.PubEvent(thingID, vocab.EventNameTD, tdJSON)
+	msg := hubclient.NewThingMessage(vocab.MessageTypeTD, thingID, "", tdJSON, cl.clientID)
+	stat := cl.sendMessage(msg)
+	if stat.Error != "" {
+		return errors.New(stat.Error)
+	}
+	return nil
 }
 
 // RefreshToken does nothing as tokens aren't used
@@ -167,14 +173,21 @@ func (cl *EmbeddedClient) Rpc(
 	return nil
 }
 
-func (cl *EmbeddedClient) SendDeliveryUpdate(stat hubclient.DeliveryStatus) {
+func (cl *EmbeddedClient) PubProgressUpdate(stat hubclient.DeliveryStatus) {
 	slog.Info("SendDeliveryUpdate",
 		slog.String("Progress", stat.Progress),
 		slog.String("MessageID", stat.MessageID),
 	)
 	statJSON, _ := json.Marshal(&stat)
 	// thing
-	_ = cl.PubEvent(digitwin.InboxDThingID, vocab.EventNameDeliveryUpdate, string(statJSON))
+	//_ = cl.PubEvent(digitwin.InboxDThingID, vocab.EventNameDeliveryUpdate, string(statJSON))
+	msg := hubclient.NewThingMessage(vocab.MessageTypeDeliveryUpdate,
+		"", "", statJSON, stat.MessageID)
+	stat2 := cl.sendMessage(msg)
+	if stat2.Error != "" {
+		slog.Warn("PubProgressUpdate failed",
+			"err", stat2.Error, "messageID", stat.MessageID)
+	}
 }
 
 // SendOperation is temporary transition to support using TD forms

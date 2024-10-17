@@ -31,7 +31,7 @@ func startLatestStore(clean bool) (
 	if err != nil {
 		panic("unable to open the digital twin bucket store")
 	}
-	svc, err = service.OpenDigitwinStore(store)
+	svc, err = service.OpenDigitwinStore(store, false)
 	if err != nil {
 		panic("unable to start the latest store service")
 	}
@@ -116,12 +116,14 @@ func TestStartStop(t *testing.T) {
 func TestGetEvents(t *testing.T) {
 	const count = 100
 	const agent1ID = "agent1"
-	const thing1ID = "thing1" // matches a percentage of the random things
+	const thing1ID = "thing1"       // matches a percentage of the random things
+	const valueName = "temperature" // from the list with names above
 	var dThingID1 = tdd.MakeDigiTwinThingID(agent1ID, thing1ID)
 
 	svc, closeFn := startLatestStore(true)
 	defer closeFn()
 
+	// add events using various names including temperature
 	addValues(svc, count, agent1ID, []string{thing1ID}, 3600*24*30)
 
 	t0 := time.Now()
@@ -140,10 +142,10 @@ func TestGetEvents(t *testing.T) {
 
 	assert.Less(t, d1, d0, "reading from cache is not faster?")
 
-	values3, err := svc.ReadAllEvents(dThingID1)
+	// reading a single event must have the same result
+	value3, err := svc.ReadEvent(dThingID1, valueName)
 	require.NoError(t, err)
-	require.NotNil(t, values3)
-	_ = values3
+	require.Equal(t, values2[valueName], value3)
 
 	// save and reload props
 	closeFn()

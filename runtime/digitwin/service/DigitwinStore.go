@@ -29,6 +29,9 @@ type DigitwinStore struct {
 
 	// mutex for read/writing the cache
 	cacheMux sync.RWMutex // mutex for the following two fields
+
+	// strict forces event and property checks against the TD
+	strict bool
 }
 
 // Close the digitwin store
@@ -78,6 +81,7 @@ func (store *DigitwinStore) LoadCacheFromStore() error {
 }
 
 // QueryAction returns the current status of the action
+// This returns an empty value if no action value is available
 func (svc *DigitwinStore) QueryAction(
 	dThingID string, name string) (v digitwin2.ActionValue, err error) {
 
@@ -88,10 +92,15 @@ func (svc *DigitwinStore) QueryAction(
 		err = fmt.Errorf("ReadAction: dThing with ID '%s' not found", dThingID)
 		return v, err
 	}
-	v, found = dtw.ActionValues[name]
-	if !found {
-		return v, fmt.Errorf("ReadAction: Action '%s' not found in digital twin '%s'", name, dThingID)
+	if svc.strict {
+		// affordance must exist
+		aff, found := dtw.DtwTD.Actions[name]
+		_ = aff
+		if !found {
+			return v, fmt.Errorf("QueryAction: Action '%s' not found in digital twin '%s'", name, dThingID)
+		}
 	}
+	v, found = dtw.ActionValues[name]
 	return v, nil
 }
 
@@ -138,6 +147,8 @@ func (svc *DigitwinStore) ReadAllProperties(dThingID string) (
 }
 
 // ReadEvent returns the last known event status of the given name
+// this returns an empty value if no last known event is found
+// If 'strict' is set then this fails with an error if the event is not in the TD.
 func (svc *DigitwinStore) ReadEvent(
 	dThingID string, name string) (v digitwin2.ThingValue, err error) {
 
@@ -148,11 +159,13 @@ func (svc *DigitwinStore) ReadEvent(
 		err = fmt.Errorf("ReadEvent: dThing with ID '%s' not found", dThingID)
 		return v, err
 	}
-	// affordance must exist
-	aff, found := dtw.DtwTD.Events[name]
-	_ = aff
-	if !found {
-		return v, fmt.Errorf("ReadEvent: Event '%s' not found in digital twin '%s'", name, dThingID)
+	if svc.strict {
+		// affordance must exist
+		aff, found := dtw.DtwTD.Events[name]
+		_ = aff
+		if !found {
+			return v, fmt.Errorf("ReadEvent: Event '%s' not found in digital twin '%s'", name, dThingID)
+		}
 	}
 	// event value might not exist
 	v, found = dtw.EventValues[name]
@@ -171,6 +184,14 @@ func (svc *DigitwinStore) ReadProperty(
 	if !found {
 		err = fmt.Errorf("ReadProperty: dThing with ID '%s' not found", dThingID)
 		return v, err
+	}
+	if svc.strict {
+		// affordance must exist
+		aff, found := dtw.DtwTD.Properties[name]
+		_ = aff
+		if !found {
+			return v, fmt.Errorf("ReadProperty: Property '%s' not found in digital twin '%s'", name, dThingID)
+		}
 	}
 	// value might not exist is optional
 	v, found = dtw.PropValues[name]
@@ -235,7 +256,7 @@ func (svc *DigitwinStore) ReadDTDs(offset int, limit int) (resp []*tdd.TD, err e
 // RemoveDTW deletes the digitwin instance of an agent with the given ThingID
 func (svc *DigitwinStore) RemoveDTW(dThingID string, senderID string) error {
 	// TBD: should we mark this as deleted instead? retain historical things?
-	slog.Info("RemoveDTD",
+	slog.Debug("RemoveDTD",
 		slog.String("dThingID", dThingID),
 		slog.String("senderID", senderID))
 
@@ -297,7 +318,7 @@ func (svc *DigitwinStore) SaveChanges() error {
 func (svc *DigitwinStore) UpdateTD(
 	agentID string, thingTD *tdd.TD, digitwinTD *tdd.TD) {
 
-	slog.Info("UpdateDTD",
+	slog.Debug("UpdateDTD",
 		slog.String("agentID", agentID),
 		slog.String("thingID", thingTD.ID))
 
@@ -427,7 +448,7 @@ func (svc *DigitwinStore) UpdateEventValue(
 	dtw, found := svc.dtwCache[dThingID]
 	if !found {
 		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
-		slog.Info("UpdateEventValue unknown thing iD", "dThingID", dThingID)
+		slog.Info("UpdateEventValue unknown thing ID", "dThingID", dThingID)
 		return dThingID, err
 	}
 	eventValue := digitwin2.ThingValue{
@@ -465,6 +486,13 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 		return false, err
 	}
 	if propName != "" {
+		if svc.strict {
+			aff := dtw.DtwTD.GetProperty(propName)
+			if aff == nil {
+				return false,
+					fmt.Errorf("UpdatePropertyValue: unknown property '%s' for thing '%s'", propName, dThingID)
+			}
+		}
 		propValue, found := dtw.PropValues[propName]
 		if !found {
 			propValue = digitwin2.ThingValue{}
@@ -479,6 +507,7 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 
 		dtw.PropValues[propName] = propValue
 	} else {
+		// no property name, expect a map with name-value pairs
 		propMap := make(map[string]any)
 		err = utils.Decode(newValue, &propMap)
 		if err != nil {
@@ -486,6 +515,13 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 			return false, err
 		}
 		for propName, newValue = range propMap {
+			if svc.strict {
+				aff := dtw.DtwTD.GetProperty(propName)
+				if aff == nil {
+					return false,
+						fmt.Errorf("UpdatePropertyValue: unknown property '%s' for thing '%s'", propName, dThingID)
+				}
+			}
 			propValue, found := dtw.PropValues[propName]
 			if !found {
 				propValue = digitwin2.ThingValue{}
@@ -533,7 +569,7 @@ func (svc *DigitwinStore) WriteProperty(dThingID string, tv digitwin2.ThingValue
 // The storage bucket will be closed when the store is closed.
 //
 //	store is the bucket store to store the data. This is opened by 'Start' and closed by 'Stop'
-func OpenDigitwinStore(bucketStore buckets.IBucketStore) (*DigitwinStore, error) {
+func OpenDigitwinStore(bucketStore buckets.IBucketStore, strict bool) (*DigitwinStore, error) {
 	bucket := bucketStore.GetBucket(DTWBucketName)
 
 	svc := &DigitwinStore{
@@ -541,6 +577,7 @@ func OpenDigitwinStore(bucketStore buckets.IBucketStore) (*DigitwinStore, error)
 		dtwCache:      make(map[string]*digitwin.DigitalTwinInstance),
 		changedThings: make(map[string]any),
 		thingKeys:     make([]string, 0),
+		strict:        strict,
 	}
 	// fill the in-memory cache
 	err := svc.LoadCacheFromStore()
