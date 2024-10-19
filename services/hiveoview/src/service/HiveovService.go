@@ -163,7 +163,7 @@ func (svc *HiveovService) createRoutes(router *chi.Mux, rootPath string) http.Ha
 		r.Get(src.RenderHistoryPagePath, history.RenderHistoryPage)
 		r.Get(src.RenderHistoryLatestValueRowPath, history.RenderLatestValueRow)
 
-		// Status components
+		// Progress components
 		r.Get(src.RenderStatusPath, status.RenderStatus)
 		r.Get(src.RenderConnectionStatusPath, app.RenderConnectStatus)
 	})

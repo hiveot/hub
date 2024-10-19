@@ -9,24 +9,25 @@ import (
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
 	"strings"
+	"time"
 )
 
 // handleSSEEvent processes the push-event received from the hub.
 // This is passed on to the client, which must return a delivery
 // applied, completed or error status.
 // This sends the delivery status to the hub using a delivery event.
-func (hc *HttpSSEClient) handleSSEEvent(event sse.Event) {
+func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	var stat hubclient.DeliveryStatus
 
-	hc.mux.RLock()
-	connStatus := hc._status.ConnectionStatus
-	hc.mux.RUnlock()
+	cl.mux.RLock()
+	connStatus := cl._status.ConnectionStatus
+	cl.mux.RUnlock()
 	// WORKAROUND since go-sse has no callback for a successful reconnect, simulate one here
 	// as soon as data is received. The server could send a 'ping' event on connect.
 	if connStatus != hubclient.Connected {
 		// success!
 		slog.Info("handleSSEEvent: connection (re)established")
-		hc.SetConnectionStatus(hubclient.Connected, nil)
+		cl.SetConnectionStatus(hubclient.Connected, nil)
 	}
 	// no further processing of a ping needed
 	if event.Type == hubclient.PingMessage {
@@ -67,7 +68,7 @@ func (hc *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		Name:        name,
 		MessageType: messageType,
 		SenderID:    senderID,
-		Created:     "",
+		Created:     time.Now().Format(utils.RFC3339Milli), // TODO: get the real timestamp
 		Data:        msgData,
 		MessageID:   messageID,
 	}
@@ -81,9 +82,9 @@ func (hc *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	//	return
 	//}
 	stat.MessageID = rxMsg.MessageID
-	slog.Info("handleSSEEvent",
+	slog.Debug("handleSSEEvent",
 		//slog.String("Comment", string(event.Comment)),
-		slog.String("me", hc.clientID),
+		slog.String("me", cl.clientID),
 		slog.String("messageType", rxMsg.MessageType),
 		slog.String("thingID", rxMsg.ThingID),
 		slog.String("name", rxMsg.Name),
@@ -102,62 +103,62 @@ func (hc *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		}
 		rxMsg.Data = stat
 		//err = cl.Decode([]byte(rxMsg.Data), &stat)
-		hc.mux.RLock()
-		rChan, _ := hc._correlData[stat.MessageID]
-		hc.mux.RUnlock()
+		cl.mux.RLock()
+		rChan, _ := cl._correlData[stat.MessageID]
+		cl.mux.RUnlock()
 		if rChan != nil {
 			rChan <- &stat
 			// if status == DeliveryCompleted || status == Failed {
-			hc.mux.Lock()
-			delete(hc._correlData, rxMsg.MessageID)
-			hc.mux.Unlock()
+			cl.mux.Lock()
+			delete(cl._correlData, rxMsg.MessageID)
+			cl.mux.Unlock()
 			return
-		} else if hc._messageHandler != nil {
+		} else if cl._messageHandler != nil {
 			// pass event to client as this is an unsolicited event
 			// it could be a delayed confirmation of delivery
-			_ = hc._messageHandler(rxMsg)
+			_ = cl._messageHandler(rxMsg)
 		} else {
 			// missing rpc or message handler
 			slog.Error("handleSSEEvent, no handler registered for client",
-				"clientID", hc.clientID)
+				"clientID", cl.clientID)
 			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, delivery update ignored"))
 		}
 		return
 	}
 
-	if hc._messageHandler == nil {
+	if cl._messageHandler == nil {
 		slog.Warn("handleSSEEvent, no handler registered. Message ignored.",
 			slog.String("name", rxMsg.Name),
-			slog.String("clientID", hc.clientID))
+			slog.String("clientID", cl.clientID))
 		return
 	}
 
 	if rxMsg.MessageType == vocab.MessageTypeEvent {
 		// pass event to handler, if set
-		_ = hc._messageHandler(rxMsg)
+		_ = cl._messageHandler(rxMsg)
 	} else if rxMsg.MessageType == vocab.MessageTypeAction {
 		// agent receives action request
-		stat = hc._messageHandler(rxMsg)
+		stat = cl._messageHandler(rxMsg)
 		if stat.MessageID != "" {
-			hc.PubProgressUpdate(stat) // send the result to the caller
+			cl.PubProgressUpdate(stat) // send the result to the caller
 		}
 	} else if rxMsg.MessageType == vocab.MessageTypeProperty {
 		// agent receives write property request
 		// or, consumer receives property update request
-		// FIXME: Need to differentiate!
-		//   property update messages are from agent->consumer and dont confirm delivery
-		//   while property write messages are consumer->agent and can confirm.
-		stat = hc._messageHandler(rxMsg)
-		if stat.MessageID != "" {
-			hc.PubProgressUpdate(stat)
-		}
+		// If this client is an agent then this is a property write request
+		// If this client is a consumer then this is am observed property update notification
+		_ = cl._messageHandler(rxMsg)
+		//stat = cl._messageHandler(rxMsg)
+		//if stat.MessageID != "" {
+		//	cl.PubProgressUpdate(stat)
+		//}
 	} else {
 		slog.Warn("handleSSEEvent, unknown message type. Message ignored.",
 			slog.String("message type", rxMsg.MessageType),
-			slog.String("clientID", hc.clientID))
+			slog.String("clientID", cl.clientID))
 		stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
 		if stat.MessageID != "" {
-			hc.PubProgressUpdate(stat)
+			cl.PubProgressUpdate(stat)
 		}
 	}
 }

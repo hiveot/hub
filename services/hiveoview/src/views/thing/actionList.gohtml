@@ -1,5 +1,5 @@
 <!--Thing actions list-->
-<!--@param '.' object of type thing.DetailsTemplateData -->
+<!--@param '.' object of type thing.ThingDetailsTemplateData -->
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/thing.ThingDetailsTemplateData*/ -}}
 
 <ul class="h-grid-table thing-actions" striped border>
@@ -13,7 +13,8 @@
 	</li>
 
     {{range $name := .ActionNames }}
-        {{$iout := $.GetValue $name}}
+				{{/* TBD: action state is kept in properties?*/}}
+        {{$iout := $.CT.GetPropValue $name}}
 				<li>
 
 					<div class="h-show-sm">{{/*icon*/}}</div>

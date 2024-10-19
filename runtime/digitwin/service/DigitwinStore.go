@@ -371,7 +371,7 @@ func (svc *DigitwinStore) UpdateActionStart(
 	actionValue.Name = name
 	actionValue.SenderID = senderID
 	actionValue.Input = input
-	actionValue.Status = vocab.ProgressStatusPending
+	actionValue.Progress = vocab.ProgressStatusPending
 	actionValue.Updated = time.Now().Format(utils.RFC3339Milli)
 	actionValue.MessageID = messageID
 	dtw.ActionValues[name] = actionValue
@@ -409,7 +409,7 @@ func (svc *DigitwinStore) UpdateActionProgress(
 		if !found {
 			actionValue = digitwin2.ActionValue{}
 		}
-		actionValue.Status = status
+		actionValue.Progress = status
 		actionValue.Updated = time.Now().Format(utils.RFC3339Milli)
 		if status == vocab.ProgressStatusCompleted {
 			actionValue.Output = output

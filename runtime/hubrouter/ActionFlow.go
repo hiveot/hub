@@ -51,13 +51,6 @@ func (svc *HubRouter) HandleActionFlow(
 	dThingID string, actionName string, input any, reqID string, senderID string, cid string) (
 	status string, output any, messageID string, err error) {
 
-	slog.Info("HandleActionFlow (from consumer/agent)",
-		slog.String("dThingID", dThingID),
-		slog.String("actionName", actionName),
-		slog.String("messageID", reqID),
-		slog.String("senderID", senderID),
-	)
-
 	// check if consumer or agent has the right permissions
 	hasPerm := svc.authzAgent.HasPermission(senderID, vocab.MessageTypeAction, dThingID, true)
 	if !hasPerm {
@@ -86,6 +79,14 @@ func (svc *HubRouter) HandleActionFlow(
 	case api.DigitwinServiceID:
 		status, output, err = svc.dtwAgent.HandleAction(senderID, dThingID, actionName, input, messageID)
 	default:
+
+		slog.Info("HandleActionFlow (to agent)",
+			slog.String("dThingID", dThingID),
+			slog.String("actionName", actionName),
+			slog.String("messageID", reqID),
+			slog.String("senderID", senderID),
+		)
+
 		// FIXME: RPC stateless services don't need a digital twin to be callable
 		// Action progress is stored in the digital twin. This is intended for
 		// stateful actions. RPC actions are not stored unless a digitwin exists.
@@ -129,6 +130,9 @@ func (svc *HubRouter) HandleActionFlow(
 		// Update the action status
 		actionRecord.Progress = status
 
+		// FIXME-1: connections arent removed
+		// FIXME-2: find agent not using agentID but cid
+
 		if !found {
 			err = fmt.Errorf("HandleActionFlow: Agent '%s' not reachable. Ignored", agentID)
 			status = vocab.ProgressStatusFailed
@@ -138,15 +142,34 @@ func (svc *HubRouter) HandleActionFlow(
 			agentID, thingID, actionName, status, output)
 
 		// remove the action if completed
-		if status == vocab.ProgressStatusCompleted || status == vocab.ProgressStatusFailed {
+		if status == vocab.ProgressStatusCompleted {
 			delete(svc.activeCache, messageID)
-		}
-	}
 
+			slog.Info("HandleActionFlow - finished",
+				slog.String("dThingID", dThingID),
+				slog.String("actionName", actionName),
+				slog.String("messageID", reqID),
+				slog.String("status", status),
+			)
+		} else if status == vocab.ProgressStatusFailed {
+			delete(svc.activeCache, messageID)
+
+			errText := ""
+			if err != nil {
+				errText = err.Error()
+			}
+			slog.Warn("HandleActionFlow - failed",
+				slog.String("dThingID", dThingID),
+				slog.String("actionName", actionName),
+				slog.String("messageID", reqID),
+				slog.String("err", errText))
+		}
+
+	}
 	return status, output, messageID, err
 }
 
-// HandleProgressUpdate agent sends a request progress update.
+// HandleActionProgress agent sends an action progress update.
 // The message payload contains a DeliveryStatus object
 //
 // This:
@@ -156,7 +179,7 @@ func (svc *HubRouter) HandleActionFlow(
 // 4: Updates the status of the active request cache
 //
 // If the message is no longer in the active cache then it is ignored.
-func (svc *HubRouter) HandleProgressUpdate(agentID string, stat hubclient.DeliveryStatus) (err error) {
+func (svc *HubRouter) HandleActionProgress(agentID string, stat hubclient.DeliveryStatus) (err error) {
 
 	// 1: Validate this is an active action
 	svc.mux.Lock()
@@ -164,7 +187,7 @@ func (svc *HubRouter) HandleProgressUpdate(agentID string, stat hubclient.Delive
 	svc.mux.Unlock()
 	if !found {
 		err = fmt.Errorf(
-			"HandleProgressUpdate: Message '%s' from agent '%s' not in action cache. It is ignored",
+			"HandleActionProgress: Message '%s' from agent '%s' not in action cache. It is ignored",
 			stat.MessageID, agentID)
 		slog.Warn(err.Error())
 		return err
@@ -174,23 +197,39 @@ func (svc *HubRouter) HandleProgressUpdate(agentID string, stat hubclient.Delive
 	// the sender (agents) must be the thing agent
 	if agentID != actionRecord.AgentID {
 		err = fmt.Errorf(
-			"HandleProgressUpdate: progress update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
+			"HandleActionProgress: progress update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
 			stat.MessageID, thingID, actionRecord.AgentID, agentID)
 		slog.Warn(err.Error(), "agentID", agentID)
 		return err
 	}
 
-	slog.Info("HandleProgressUpdate ",
-		slog.String("AgentID", agentID),
-		slog.String("ThingID", thingID),
-		slog.String("Name", actionName),
-		slog.String("Progress", stat.Progress),
-		slog.String("MessageID", stat.MessageID),
-	)
-
-	// 2: Update the action status in the digital twin action record.
+	// 2: Update the action status in the digital twin action record and log errors
 	//   (for use with query actions)
 	_, _ = svc.dtwStore.UpdateActionProgress(agentID, thingID, actionName, stat.Progress, stat.Reply)
+
+	if stat.Error != "" {
+		slog.Warn("HandleActionProgress - with error",
+			slog.String("AgentID", agentID),
+			slog.String("ThingID", thingID),
+			slog.String("Name", actionName),
+			slog.String("Progress", stat.Progress),
+			slog.String("MessageID", stat.MessageID),
+			slog.String("Error", stat.Error),
+		)
+	} else if stat.Progress == vocab.ProgressStatusCompleted {
+		slog.Info("HandleActionProgress - completed",
+			slog.String("ThingID", thingID),
+			slog.String("Name", actionName),
+			slog.String("MessageID", stat.MessageID),
+		)
+	} else {
+		slog.Info("HandleActionProgress - progress",
+			slog.String("ThingID", thingID),
+			slog.String("Name", actionName),
+			slog.String("MessageID", stat.MessageID),
+			slog.String("Progress", stat.Progress),
+		)
+	}
 
 	// 3: Forward the progress update to the original sender
 	c := svc.cm.GetConnectionByCID(actionRecord.CID)
@@ -201,7 +240,7 @@ func (svc *HubRouter) HandleProgressUpdate(agentID string, stat hubclient.Delive
 	}
 
 	if err != nil {
-		slog.Warn("HandleProgressUpdate. Forwarding to sender failed",
+		slog.Warn("HandleActionProgress. Forwarding to sender failed",
 			slog.String("senderID", actionRecord.SenderID),
 			slog.String("thingID", thingID),
 			slog.String("err", err.Error()),

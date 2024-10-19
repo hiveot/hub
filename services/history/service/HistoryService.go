@@ -83,6 +83,7 @@ func (svc *HistoryService) Start(hc hubclient.IAgentClient) (err error) {
 
 		// subscribe to receive the events to add to the history, filtered through the retention manager
 		err = svc.hc.Subscribe("", "")
+		err = svc.hc.Observe("", "")
 	}
 
 	return err

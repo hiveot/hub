@@ -14,7 +14,7 @@
 	</li>
 
 	{{range $name := .EventNames}}
-    {{$iout := $.GetValue $name}}
+    {{$iout := $.CT.GetEventValue $name}}
 
 		{{- /*auto reload row on event changes*/ -}}
 		<li>

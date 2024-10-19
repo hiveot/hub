@@ -88,9 +88,9 @@ func (svc *HttpBinding) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	svc.writeReply(w, &resp)
 }
 
-// HandleProgressUpdate sends a delivery update message to the digital twin
-func (svc *HttpBinding) HandleProgressUpdate(w http.ResponseWriter, r *http.Request) {
-	slog.Debug("HandleProgressUpdate")
+// HandleActionProgress sends an action progress update message to the digital twin
+func (svc *HttpBinding) HandleActionProgress(w http.ResponseWriter, r *http.Request) {
+	slog.Debug("HandleActionProgress")
 	rp, err := subprotocols.GetRequestParams(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -99,7 +99,7 @@ func (svc *HttpBinding) HandleProgressUpdate(w http.ResponseWriter, r *http.Requ
 	stat := hubclient.DeliveryStatus{}
 	err = jsoniter.Unmarshal(rp.Body, &stat)
 	if err == nil {
-		err = svc.hubRouter.HandleProgressUpdate(rp.ClientID, stat)
+		err = svc.hubRouter.HandleActionProgress(rp.ClientID, stat)
 	}
 	if err != nil {
 		svc.writeError(w, err, http.StatusBadRequest)

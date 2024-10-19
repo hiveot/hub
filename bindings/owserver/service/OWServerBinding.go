@@ -137,10 +137,14 @@ func (svc *OWServerBinding) Start(hc hubclient.IAgentClient) (err error) {
 
 // heartbeat polls the EDS server every X seconds and publishes TD and value updates
 func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
-	slog.Info("Starting heartBeat", "TD publish interval", svc.config.TDInterval, "polling", svc.config.PollInterval)
+	slog.Info("Starting heartBeat",
+		slog.Int("TD publish interval sec", svc.config.TDInterval),
+		slog.Int("polling interval sec", svc.config.PollInterval),
+		slog.Int("republish interval sec", svc.config.RepublishInterval),
+	)
 	var tdCountDown = 0
 	var pollCountDown = 0
-	var republishCountDown = svc.config.RepublishInterval
+	var republishCountDown = 0
 
 	stopFn = plugin.StartHeartbeat(time.Second, func() {
 		tdCountDown--
@@ -160,9 +164,10 @@ func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
 					tdCountDown = svc.config.TDInterval
 				}
 				// publish changed values or periodically for publishing all values
-				forceRepublish := pollCountDown < 0
+				forceRepublish := false
 				if republishCountDown <= 0 {
 					republishCountDown = svc.config.RepublishInterval
+					forceRepublish = true
 				}
 				err = svc.PublishNodeValues(nodes, forceRepublish)
 			}

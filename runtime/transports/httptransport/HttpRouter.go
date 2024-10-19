@@ -136,7 +136,7 @@ func (svc *HttpBinding) createRoutes(router chi.Router) http.Handler {
 		svc.AddPostOp(r, "updateMultipleProperties", false,
 			"/agent/properties/{thingID}", svc.HandleUpdateProperty)
 		svc.AddPostOp(r, vocab.HTOpDelivery, false,
-			"/agent/progress", svc.HandleProgressUpdate)
+			"/agent/progress", svc.HandleActionProgress)
 
 	})
 

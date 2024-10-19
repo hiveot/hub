@@ -105,10 +105,9 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 			thingID, name, actionAff.Input, nil, ""),
 		Description: actionAff.Description,
 	}
-	cv, found := ct.GetValue(name)
-	if found {
-		data.InputValue = cv
-	}
+	cv := ct.GetEventValue(name)
+	data.InputValue = cv
+
 	if data.Description == "" {
 		data.Description = actionAff.Title
 	}

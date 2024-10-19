@@ -41,7 +41,7 @@ func StartHistoryAgent(svc *HistoryService, hc hubclient.IConsumerClient) {
 
 	// receive messages for events and agent requests
 	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
-		if msg.MessageType == vocab.MessageTypeAction || msg.MessageType == vocab.MessageTypeProperty {
+		if msg.MessageType == vocab.MessageTypeAction {
 			if msg.ThingID == historyapi.ReadHistoryServiceID {
 				return rah.HandleMessage(msg)
 			} else if msg.ThingID == historyapi.ManageHistoryServiceID {
@@ -49,6 +49,9 @@ func StartHistoryAgent(svc *HistoryService, hc hubclient.IConsumerClient) {
 			}
 		} else if msg.MessageType == vocab.MessageTypeEvent {
 			err := svc.addHistory.AddEvent(msg)
+			return *stat.Completed(msg, nil, err)
+		} else if msg.MessageType == vocab.MessageTypeProperty {
+			err := svc.addHistory.AddProperties(msg)
 			return *stat.Completed(msg, nil, err)
 		}
 		stat.Failed(msg, fmt.Errorf("Unhandled message"))

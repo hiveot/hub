@@ -40,7 +40,7 @@ func (cts *ConsumedThingsSession) Consume(thingID string) (ct *ConsumedThing, er
 	cts.mux.RLock()
 	ct, found := cts.consumedThings[thingID]
 	cts.mux.RUnlock()
-	if !found {
+	if !found || true {
 		// if the TD is known then use it
 		cts.mux.RLock()
 		td, found2 := cts.directory[thingID]

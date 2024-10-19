@@ -59,7 +59,8 @@
 					{{/* Show the value itself. Render booleans as switches*/}}
 					<td style="text-wrap:nowrap">
 							{{if $iout}}
-								{{if and $iout.Schema $iout.Schema.ReadOnly}}
+							  {{/* boolean types are rendered enabled */}}
+								{{if or $iout.Schema.ReadOnly  (ne $iout.Schema.Type "boolean") }}
                     {{template "RenderOutputValue.gohtml" $iout}}
                 {{else}}
                     {{template "RenderCardInput.gohtml" $iout}}

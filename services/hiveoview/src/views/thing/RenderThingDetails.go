@@ -34,9 +34,10 @@ type ThingDetailsTemplateData struct {
 	EventNames  []string
 	ActionNames []string
 
-	// latest value of properties
-	Values map[string]*consumedthing.InteractionOutput
-	CT     *consumedthing.ConsumedThing
+	// latest value of events
+	//EventValues map[string]*consumedthing.InteractionOutput
+	//PropValues  map[string]*consumedthing.InteractionOutput
+	CT *consumedthing.ConsumedThing
 	//VM *session.ClientViewModel
 
 	// URLs
@@ -54,35 +55,35 @@ func (dt *ThingDetailsTemplateData) GetHistory(name string) *history.HistoryTemp
 }
 
 // GetSenderID returns the last sender of a value
-func (dt *ThingDetailsTemplateData) GetSenderID(name string) string {
-	io, found := dt.Values[name]
-	if !found {
-		return ""
-	}
-	return io.SenderID
-}
+//func (dt *ThingDetailsTemplateData) GetSenderID(name string) string {
+//	io, found := dt.EventValues[name]
+//	if !found {
+//		return ""
+//	}
+//	return io.SenderID
+//}
 
 // GetUpdated returns the timestamp the value was last updated
-func (dt *ThingDetailsTemplateData) GetUpdated(name string) string {
-	io, found := dt.Values[name]
-	if !found {
-		return ""
-	}
-	return io.Updated
-}
+//func (dt *ThingDetailsTemplateData) GetUpdated(name string) string {
+//	io, found := dt.Values[name]
+//	if !found {
+//		return ""
+//	}
+//	return "Z" + io.Updated
+//}
 
-// GetValue returns the interaction output of the last value of event or property
+// GetEventValue returns the interaction output of the last value of event or property
 // If the value is unknown, a dummy value is returned to avoid crashing.
-func (dt *ThingDetailsTemplateData) GetValue(name string) *consumedthing.InteractionOutput {
-	defer func() {
-		if r := recover(); r != nil {
-			slog.Error("PANIC RECOVERED", "name=", name)
-		}
-	}()
-	io, _ := dt.CT.GetValue(name)
-	//_ = found //
-	return io
-}
+//func (dt *ThingDetailsTemplateData) GetEventValue(name string) *consumedthing.InteractionOutput {
+//	defer func() {
+//		if r := recover(); r != nil {
+//			slog.Error("PANIC RECOVERED", "name=", name)
+//		}
+//	}()
+//	io, _ := dt.CT.GetEventValue(name)
+//	//_ = found //
+//	return io
+//}
 
 // GetRenderEditPropertyPath returns the URL path for editing a property
 func (dt *ThingDetailsTemplateData) GetRenderEditPropertyPath(name string) string {
@@ -180,12 +181,11 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	// get the latest event/property/action values
 	//propMap, err2 := vm.GetLatest(thingID)
 	//err = err2
-	valueMap := thingData.CT.ReadAllProperties()
-	eventValues := thingData.CT.ReadAllEvents()
-	for k, v := range eventValues {
-		valueMap[k] = v
-	}
-	thingData.Values = valueMap
+	// FIXME: properties and events can hold different values
+	//eventValues := thingData.CT.ReadAllEvents()
+	//propValues := thingData.CT.ReadAllProperties()
+	//thingData.EventValues = eventValues
+	//thingData.PropValues = propValues
 
 	thingData.DeviceType = td.AtType
 
@@ -198,19 +198,19 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	//if makeValue != nil {
 	//	thingData.MakeModel = makeValue.DataAsText() + ", "
 	//}
-	makeValue, found := valueMap[makeID]
-	if found {
+	makeValue := ct.GetPropValue(makeID)
+	if makeValue.Value.Text() != "" {
 		thingData.MakeModel = makeValue.Value.Text() + ", "
 	}
-	modelValue, found := valueMap[modelID]
-	if found {
+	modelValue := ct.GetPropValue(modelID)
+	if modelValue.Value.Text() != "" {
 		thingData.MakeModel = thingData.MakeModel + modelValue.Value.Text()
 	}
 	// use name from configuration if available. Fall back to title.
 	//thingData.ThingName = thingData.Values.ToString(vocab.PropDeviceTitle)
 	propID, _ := td.GetPropertyOfType(vocab.PropDeviceTitle)
-	deviceTitleValue, found := valueMap[propID]
-	if found {
+	deviceTitleValue := ct.GetPropValue(propID)
+	if deviceTitleValue.Value.Text() != "" {
 		thingData.ThingName = deviceTitleValue.Value.Text()
 	}
 	if thingData.ThingName == "" {

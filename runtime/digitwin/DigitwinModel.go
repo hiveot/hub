@@ -14,8 +14,8 @@ import (
 //)
 
 //type DigitalTwinActionValue struct {
-//	// Action Status: StatusPending, StatusApplied, StatusCompleted, StatusFailed
-//	Status string `json:"status"`
+//	// Action Progress: StatusPending, StatusApplied, StatusCompleted, StatusFailed
+//	Progress string `json:"status"`
 //
 //	// Last updated action status in RFC 3339milli
 //	Updated string `json:"updated"`

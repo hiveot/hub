@@ -125,7 +125,8 @@ func TestPoll(t *testing.T) {
 	dThingID := tdd.MakeDigiTwinThingID(agentID, device1ID)
 	events, err := digitwin.ValuesReadAllEvents(hc2, dThingID)
 	require.NoError(t, err)
-	require.True(t, len(events) > 1)
+	// only 1 event (temperature) is expected
+	require.True(t, len(events) == 1)
 }
 
 func TestPollInvalidEDSAddress(t *testing.T) {

@@ -58,7 +58,7 @@ func TestActionFlow(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, actionValue, v.Output)
-	require.Equal(t, vocab.ProgressStatusCompleted, v.Status)
+	require.Equal(t, vocab.ProgressStatusCompleted, v.Progress)
 
 	// read all actions
 	actList, err := svc.ValuesSvc.QueryAllActions(consumerID, dThingID)

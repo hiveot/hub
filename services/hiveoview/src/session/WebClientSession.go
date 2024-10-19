@@ -41,11 +41,14 @@ type WebClientSession struct {
 
 	// Client session data, loaded from the state service
 	clientState *ClientDataModel
+	// the error is used to retry loading if the client state is requested
+	clientStateError error
 
 	// Client view model for generating presentation data
 	viewModel *ClientViewModel
 
 	// Holder of consumed things for this session
+	// FIXME: if a tdd is not found initially then reload it
 	cts *consumedthing.ConsumedThingsSession
 
 	// ClientID is the login ID of the user
@@ -129,6 +132,12 @@ func (wcs *WebClientSession) CreateSSEChan() chan SSEEvent {
 
 // GetClientData returns the hiveoview data model of this client
 func (wcs *WebClientSession) GetClientData() *ClientDataModel {
+	// if loading previously failed then recover
+	if wcs.clientStateError != nil {
+		err := wcs.LoadState()
+		_ = err
+	}
+	// return something
 	return wcs.clientState
 }
 
@@ -174,9 +183,11 @@ func (wcs *WebClientSession) LoadState() error {
 
 	wcs.clientState = NewClientDataModel()
 	found, err := stateCl.Get(HiveOViewDataKey, &wcs.clientState)
+	wcs.clientStateError = err
 	_ = found
 	if err != nil {
 		wcs.lastError = err
+		//slog.Error("LoadState failed", "err", err.Error())
 		return err
 	}
 	return nil
@@ -222,6 +233,7 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		slog.String("thingID", msg.ThingID),
 		slog.String("name", msg.Name),
 		slog.Any("data", msg.Data),
+		slog.String("senderID", msg.SenderID),
 		slog.String("messageID", msg.MessageID))
 	if msg.MessageType == vocab.MessageTypeTD {
 		// Publish sse event indicating the Thing TD has changed.
@@ -235,12 +247,15 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		// The UI that displays this event can use this as a trigger to load the
 		// property value:
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{k}}"
-		props := make(map[string]string)
+		props := make(map[string]any)
 		err := utils.DecodeAsObject(msg.Data, &props)
-		if err == nil {
+		if err != nil {
+			slog.Warn("Failed decoding property", "name", msg.Name, "err", err.Error())
+		} else {
 			for k, v := range props {
 				thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, k)
-				wcs.SendSSE(thingAddr, v)
+				propVal := utils.DecodeAsString(v)
+				wcs.SendSSE(thingAddr, propVal)
 				thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, k)
 				wcs.SendSSE(thingAddr, msg.GetUpdated())
 			}
@@ -285,7 +300,8 @@ func (wcs *WebClientSession) RemoveSSEClient(c chan SSEEvent) {
 			break
 		}
 	}
-	if wcs.clientState.Changed() {
+	// if loading state previously failed then don't save
+	if wcs.clientStateError == nil && wcs.clientState.Changed() {
 		err := wcs.SaveState()
 		if err != nil {
 			wcs.lastError = err
@@ -325,12 +341,6 @@ func (wcs *WebClientSession) SaveState() error {
 	wcs.clientState.SetChanged(false)
 	return err
 }
-
-// SetClientData update the hiveoview data model of this client
-//func (cs *WebClientSession) SetClientData(data ClientDataModel) {
-//	cs.clientState = data
-//	cs.clientModelChanged = true
-//}
 
 // SendNotify sends a 'notify' event for showing in a toast popup.
 // To send an SSE event use SendSSE()
@@ -413,7 +423,7 @@ func NewClientSession(sessionID string, hc hubclient.IConsumerClient, remoteAddr
 	// restore the session data model
 	err := cs.LoadState()
 	if err != nil {
-		slog.Warn("unable to load client state from state service",
+		slog.Error("unable to load client state from state service",
 			"clientID", cs.hc.GetClientID(), "err", err.Error())
 		cs.SendNotify(NotifyWarning, "Unable to restore session: "+err.Error())
 		cs.lastError = err
@@ -421,6 +431,7 @@ func NewClientSession(sessionID string, hc hubclient.IConsumerClient, remoteAddr
 
 	// TODO: selectively subscribe instead of everything
 	err = hc.Subscribe("", "")
+	err = hc.Observe("", "")
 	if err != nil {
 		cs.lastError = err
 	}

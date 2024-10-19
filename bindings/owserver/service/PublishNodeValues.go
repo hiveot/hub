@@ -43,6 +43,8 @@ func (svc *OWServerBinding) setPrevValue(nodeID, attrName string, value any) {
 // All values are sent as text.
 func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bool) (err error) {
 
+	evCount := 0
+	propCount := 0
 	// Iterate the devices and their properties
 	for _, node := range nodes {
 		// send all changed property attributes in a single properties event
@@ -62,11 +64,17 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 			if found && info.Ignore {
 				// do nothing when ignore is set
 			} else if found && info.IsEvent {
+				// TODO: only publish events if they are in the TD
 				value, changed := svc.GetValueChange(attrID, attr.Value, info, nodeTD)
 				if changed || force {
+					slog.Info("PubEvent",
+						slog.String("attrID", attrID),
+						slog.String("value", attr.Value))
 					err = svc.hc.PubEvent(nodeTD.ID, attrID, value, "")
+					evCount++
 				}
 			} else if !found || info.IsProp {
+				// TODO: only publish properties if they are in the TD
 				// first and unknown values are always changed
 				value, changed := svc.GetValueChange(attrID, attr.Value, info, nodeTD)
 				if changed || force {
@@ -75,9 +83,16 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 			}
 		}
 		if len(propMap) > 0 {
+			slog.Info("PubProperties",
+				slog.Int("count", len(propMap)),
+			)
 			err = svc.hc.PubProperties(thingID, propMap)
+			propCount += len(propMap)
 		}
 	}
+	slog.Info("PublishNodeValues", "force", force,
+		slog.Int("nr events published", evCount),
+		slog.Int("nr props published", propCount))
 	return err
 }
 

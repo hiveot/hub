@@ -7,6 +7,23 @@ import (
 
 // define 1-wire node information
 
+type DeviceFamilyInfo struct {
+	Code        string
+	DeviceType  string // HiveOT device type
+	DeviceName  string
+	Description string
+}
+
+// TODO: more device info based on family
+var deviceFamilyMap = map[string]DeviceFamilyInfo{
+	"": {
+		Code:        "",
+		DeviceType:  vocab.ThingNetGateway, // Gateway has no family
+		DeviceName:  "Gateway",
+		Description: "",
+	},
+}
+
 // family to device type. See also: http://owfs.sourceforge.net/simple_family.html
 // Todo: get from config file so it is easy to update
 var deviceTypeMap = map[string]string{
@@ -76,100 +93,130 @@ type AttrConversion struct {
 // AttrConfig defines known property/configuration attribute conversion
 var AttrConfig = map[string]AttrConversion{
 	//"BarometricPressureHg":               vocab.PropNameAtmosphericPressure,                                                                                  // unit Hg
-	"BarometricPressureHg": {IsEvent: true, Ignore: true,
+	"BarometricPressureHg": {
+		IsEvent: true, Ignore: true,
 		Title:     "Atmospheric Pressure in Hg",
 		VocabType: vocab.PropEnvBarometer,
 		DataType:  vocab.WoTDataTypeNumber, Precision: 0, ChangeNotify: 3.0,
 		Unit: vocab.UnitMercury,
 	},
-	"BarometricPressureMb": {IsEvent: true,
+	"BarometricPressureMb": {
+		IsEvent: true, IsProp: true,
 		Title:     "Atmospheric Pressure",
 		VocabType: vocab.PropEnvBarometer,
 		DataType:  vocab.WoTDataTypeNumber, Precision: 0, ChangeNotify: 3.0,
 		Unit: vocab.UnitMillibar,
 	},
-	"BarometricPressureMbHighAlarmState": {IsEvent: true,
+	"BarometricPressureMbHighAlarmState": {
+		IsProp: true, Ignore: true,
 		Title:    "Pressure High Alarm",
 		DataType: vocab.WoTDataTypeBool,
 	},
-	"BarometricPressureMbLowAlarmState": {IsEvent: true,
+	"BarometricPressureMbLowAlarmState": {
+		IsProp: true, Ignore: true,
 		Title:    "Pressure Low Alarm",
 		DataType: vocab.WoTDataTypeBool,
 	},
 	// "BarometricPressureHg": vocab.PropNameAtmosphericPressure, // unit Hg
-	"ClearAlarms": {IsActuator: true,
+	"ClearAlarms": {
+		IsActuator: true, Ignore: true,
 		Title:    "Clear Alarms",
 		DataType: vocab.WoTDataTypeNone, // no data with this action
 	},
-	"Counter1": {IsProp: true, Ignore: true,
+	"Counter1": {
+		IsProp: true, Ignore: true,
 		Title: "Sample counter 1", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
 	},
-	"Counter2": {IsProp: true, Ignore: true,
+	"Counter2": {
+		IsProp: true, Ignore: true,
 		Title: "Sample counter 2", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
 	},
-	"DataErrorsChannel1": {IsProp: true,
-		Title: "Data Errors Channel 1", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
+	"DataErrorsChannel1": {
+		IsProp: true,
+		Title:  "Data Errors Channel 1", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
 	},
-	"DataErrorsChannel2": {IsProp: true,
-		Title: "Data Errors Channel 2", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
+	"DataErrorsChannel2": {
+		IsProp: true,
+		Title:  "Data Errors Channel 2", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
 	},
-	"DataErrorsChannel3": {IsProp: true,
-		Title: "Data Errors Channel 3", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
+	"DataErrorsChannel3": {
+		IsProp: true,
+		Title:  "Data Errors Channel 3", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
 	},
-	"DateTime": {IsProp: true, Ignore: true,
+	"DateTime": {
+		IsProp: true, Ignore: true,
 		Title: "Device date/time", DataType: vocab.WoTDataTypeDateTime,
 	},
-	"DevicesConnectedChannel1": {IsProp: true,
-		Title: "Nr Devices on Channel 1", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
+	"DevicesConnectedChannel1": {
+		IsProp: true,
+		Title:  "Nr Devices on Channel 1", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
 	},
-	"DevicesConnectedChannel2": {IsProp: true,
-		Title: "Nr Devices on Channel 2", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
+	"DevicesConnectedChannel2": {
+		IsProp: true,
+		Title:  "Nr Devices on Channel 2", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
 	},
-	"DevicesConnectedChannel3": {IsProp: true,
-		Title: "Nr Devices on Channel 3", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
+	"DevicesConnectedChannel3": {
+		IsProp: true,
+		Title:  "Nr Devices on Channel 3", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
 	},
 	"DewPoint": {
+		IsProp: true, Ignore: true,
 		Title:     "Dew point",
 		VocabType: vocab.PropEnvDewpoint,
 		DataType:  vocab.WoTDataTypeNumber, Precision: 1, ChangeNotify: 1.0,
 		Unit: vocab.UnitCelcius, //tbd
 	},
-	"Health": {IsEvent: true,
+	"Family": {
+		IsProp:   true,
+		Title:    "Family number as read from 1-wire device",
+		DataType: vocab.WoTDataTypeString,
+	},
+	"Health": {
+		IsProp:   true,
 		Title:    "Health 0-7",
 		DataType: vocab.WoTDataTypeNumber, Precision: 0, ChangeNotify: 1,
 	},
 	"HeatIndex": {Ignore: true},
-	"HostName": {IsProp: true,
+	"HostName": {
+		IsProp:    true,
 		VocabType: vocab.PropNetHostname,
 		Title:     "Hostname",
 		DataType:  vocab.WoTDataTypeString,
 	},
 	//"HeatIndex":  {VocabType: vocab.PropEnvHeatindex, Title: "Heat Index", DataType: vocab.WoTDataTypeNumber, Precision: 1},
-	"Humidity": {IsEvent: true,
+	"Humidity": {
+		IsEvent:   true,
 		Title:     "Humidity",
 		VocabType: vocab.PropEnvHumidity,
 		DataType:  vocab.WoTDataTypeNumber, Precision: 0, ChangeNotify: 5.0,
 		Unit: vocab.UnitPercent,
 	},
-	"Humidex": {IsEvent: true,
+	"Humidex": {
+		IsEvent:   true,
 		Title:     "Humidex",
 		VocabType: vocab.PropEnvHumidex,
 		DataType:  vocab.WoTDataTypeNumber, Precision: 0, ChangeNotify: 5.0,
 		Unit: vocab.UnitCelcius,
 	},
-	"HumidityHighAlarmState": {IsEvent: true,
+	"HumidityHighAlarmState": {
+		IsProp: true, Ignore: true,
 		Title:    "Humidity High Alarm",
 		DataType: vocab.WoTDataTypeBool,
 	},
-	"HumidityLowAlarmState": {IsEvent: true,
+	"HumidityLowAlarmState": {
+		IsProp: true, Ignore: true,
 		Title:    "Humidity Low Alarm",
 		DataType: vocab.WoTDataTypeBool,
 	},
-	"LED": {IsProp: true,
-		Title: "LED control", DataType: vocab.WoTDataTypeString,
+	"LED": {
+		IsProp:   true,
+		Title:    "LED",
+		DataType: vocab.WoTDataTypeBool, // On/Off
 	},
-	"LEDFunction": {IsProp: true,
-		Title: "LED function control", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
+	"LEDFunction": {
+		IsProp:   true,
+		Title:    "LED function control",
+		DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
 		Enum: []thing.DataSchema{
 			{Const: "0", Title: "On with alarms, off with no alarms"},
 			{Const: "1", Title: "On with alarms, Off with clear alarms command"},
@@ -177,44 +224,60 @@ var AttrConfig = map[string]AttrConversion{
 			{Const: "3", Title: "Always Off"},
 		},
 	},
-	"Light": {IsEvent: true,
+	"LEDState": {
+		IsActuator: true,
+		Title:      "LED Control",
+		DataType:   vocab.WoTDataTypeBool,
+	},
+	"Light": {
+		IsEvent:   true,
 		Title:     "Luminance",
 		VocabType: vocab.PropEnvLuminance,
 		DataType:  vocab.WoTDataTypeNumber, Precision: 0, ChangeNotify: 30.0,
 	},
-	"Manufacturer": {IsProp: true,
+	"Manufacturer": {
+		IsProp:    true,
 		Title:     "Manufacturer",
 		VocabType: vocab.PropDeviceMake, DataType: vocab.WoTDataTypeString,
 	},
-	"Model": {IsProp: true,
-		Title: "Model", VocabType: vocab.PropDeviceModel, DataType: vocab.WoTDataTypeString,
+	"Model": {
+		IsProp:    true,
+		Title:     "Model",
+		VocabType: vocab.PropDeviceModel, DataType: vocab.WoTDataTypeString,
 	},
-	"Name": {IsProp: true,
+	"Name": {
+		IsProp: true,
 		// the name seems to hold the model number
 		Title:     "Device name",
 		VocabType: vocab.PropDeviceModel, DataType: vocab.WoTDataTypeString,
 	},
-	"PollCount": {IsProp: true, Ignore: true,
+	"PollCount": {
+		IsProp: true, Ignore: true,
 		Title:    "Poll Count",
 		DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
 	},
-	"PrimaryValue": {IsProp: false, Ignore: true,
+	"PrimaryValue": {
+		IsProp: false, Ignore: true,
 		Title:    "Primary Value",
 		DataType: vocab.WoTDataTypeString,
 	},
-	"Resolution": {IsProp: true,
+	"Resolution": {
+		IsProp:   true,
 		Title:    "Resolution",
 		DataType: vocab.WoTDataTypeInteger, Unit: "bits", ChangeNotify: 1,
 	},
-	"RawData": {IsProp: true, Ignore: true,
+	"RawData": {
+		IsProp: true, Ignore: true,
 		Title:    "Raw Data",
 		DataType: vocab.WoTDataTypeString,
 	},
-	"Relay": {IsActuator: true,
-		Title:    "Relay control",
-		DataType: vocab.WoTDataTypeBool, VocabType: vocab.ActionSwitchOff,
+	"Relay": {
+		IsActuator: true,
+		Title:      "Relay control",
+		DataType:   vocab.WoTDataTypeBool, VocabType: vocab.ActionSwitchOff,
 	},
-	"RelayFunction": {IsProp: true,
+	"RelayFunction": {
+		IsProp:    true,
 		VocabType: vocab.PropStatusOnOff,
 		Title:     "Relay function control",
 		DataType:  vocab.WoTDataTypeInteger, ChangeNotify: 1,
@@ -225,41 +288,69 @@ var AttrConfig = map[string]AttrConversion{
 			{Const: "3", Title: "Always Off"},
 		},
 	},
-	"Temperature": {IsEvent: true,
+	"RelayState": {
+		IsProp:   true,
+		Title:    "Relay control",
+		DataType: vocab.WoTDataTypeBool, VocabType: vocab.ActionSwitchOff,
+	},
+	"ROMId": {
+		IsProp:   true,
+		Title:    "Device ROM ID",
+		DataType: vocab.WoTDataTypeString,
+	},
+	"Temperature": {
+		IsEvent:   true,
 		Title:     "Temperature",
 		VocabType: vocab.PropEnvTemperature,
 		DataType:  vocab.WoTDataTypeNumber, Precision: 1, ChangeNotify: 0.1,
 		Unit: vocab.UnitCelcius,
 	},
-	"TemperatureHighAlarmState": {IsEvent: true,
+	"TemperatureHighAlarmState": {
+		IsProp: true, Ignore: true,
 		Title:    "Temperature High Alarm",
 		DataType: vocab.WoTDataTypeBool,
 	},
-	"TemperatureLowAlarmState": {IsEvent: true,
+	"TemperatureLowAlarmState": {
+		IsProp: true, Ignore: true,
 		Title:    "Temperature Low Alarm",
 		DataType: vocab.WoTDataTypeBool,
 	},
-	"Version": {IsProp: true,
+	"UserByte1": {
+		IsProp: true, Ignore: true,
+		Title:    "User Byte 1",
+		DataType: vocab.WoTDataTypeInteger,
+	},
+	"UserByte2": {
+		IsProp: true, Ignore: true,
+		Title:    "User Byte 2",
+		DataType: vocab.WoTDataTypeInteger,
+	},
+	"Version": {
+		IsProp:    true,
 		VocabType: vocab.PropDeviceFirmwareVersion,
 		Title:     "Firmware version",
 		DataType:  vocab.WoTDataTypeString,
 	},
-	"VoltageChannel1": {IsProp: true,
+	"VoltageChannel1": {
+		IsProp:   true,
 		Title:    "Voltage Channel 1",
 		DataType: vocab.WoTDataTypeNumber,
 		Unit:     vocab.UnitVolt, Precision: 1, ChangeNotify: 0.1,
 	},
-	"VoltageChannel2": {IsProp: true,
+	"VoltageChannel2": {
+		IsProp:   true,
 		Title:    "Voltage Channel 2",
 		DataType: vocab.WoTDataTypeNumber,
 		Unit:     vocab.UnitVolt, Precision: 1, ChangeNotify: 0.1,
 	},
-	"VoltageChannel3": {IsProp: true,
+	"VoltageChannel3": {
+		IsProp:   true,
 		Title:    "Voltage Channel 3",
 		DataType: vocab.WoTDataTypeNumber,
 		Unit:     vocab.UnitVolt, Precision: 1, ChangeNotify: 0.1,
 	},
-	"VoltagePower": {IsProp: true,
+	"VoltagePower": {
+		IsProp:   true,
 		Title:    "Voltage powerline",
 		DataType: vocab.WoTDataTypeNumber,
 		Unit:     vocab.UnitVolt, Precision: 1, ChangeNotify: 0.1,

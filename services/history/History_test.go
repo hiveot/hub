@@ -107,27 +107,28 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 		//
 		thingID := thingIDPrefix + strconv.Itoa(randomID)
 		dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
+
+		randomMsgType := rand.Intn(2)
 		messageType := vocab.MessageTypeEvent
-		randomBool := rand.Intn(2)
-		if randomBool > 0 {
+		if randomMsgType == 1 {
 			messageType = vocab.MessageTypeProperty
 		}
 
-		ev := hubclient.NewThingMessage(messageType,
+		msg := hubclient.NewThingMessage(messageType,
 			dThingID, names[randomName],
 			fmt.Sprintf("%2.3f", randomValue), "",
 		)
-		ev.SenderID = agentID
-		ev.Created = randomTime.Format(utils.RFC3339Milli)
+		msg.SenderID = agentID
+		msg.Created = randomTime.Format(utils.RFC3339Milli)
 
 		// track the actual most recent event for the name for things 3
 		if randomID == 0 {
-			if _, exists := highest[ev.Name]; !exists ||
-				highest[ev.Name].Created < ev.Created {
-				highest[ev.Name] = ev
+			if _, exists := highest[msg.Name]; !exists ||
+				highest[msg.Name].Created < msg.Created {
+				highest[msg.Name] = msg
 			}
 		}
-		valueBatch = append(valueBatch, ev)
+		valueBatch = append(valueBatch, msg)
 	}
 	return valueBatch, highest
 }
@@ -597,7 +598,7 @@ func TestReadHistory(t *testing.T) {
 
 }
 
-func TestPubSub(t *testing.T) {
+func TestPubEvents(t *testing.T) {
 	const agent1ID = "device1"
 
 	t.Log("--- TestPubSub ---")

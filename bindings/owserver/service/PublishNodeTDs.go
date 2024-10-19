@@ -31,6 +31,7 @@ func CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing.TD) {
 
 	// Map node attribute to Thing properties and events
 	for attrID, attr := range node.Attr {
+		// The AttrInfo table determines what is in the TD as property, event or action
 		attrInfo, found := AttrConfig[attrID]
 
 		if !found || attrInfo.Ignore {
@@ -69,7 +70,6 @@ func CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing.TD) {
 					ReadOnly: true,
 				}
 			}
-			// Only attributes with a vocab type will be sent as events
 			// TODO: use a Number/Integerschema for numeric sensors
 			tdoc.AddEvent(attrID, attrInfo.VocabType, attrInfo.Title, "", evSchema)
 		}

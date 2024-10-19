@@ -23,7 +23,8 @@ type InteractionOutput struct {
 	Title string `json:"title,omitempty"`
 
 	// Schema describing the data from property, event or action affordance
-	Schema *tdd.DataSchema `json:"schema"`
+	// This is an empty schema without type, if none is known
+	Schema tdd.DataSchema `json:"schema"`
 
 	// decoded data in its native format as described by the schema
 	// eg string, int, array, object
@@ -79,7 +80,11 @@ func (io *InteractionOutput) UpdateSchemaFromTD(td *tdd.TD) (found bool) {
 	// if name is that of an event then use it
 	eventAff, found := td.Events[io.Name]
 	if found {
-		io.Schema = eventAff.Data
+		io.MessageType = vocab.MessageTypeEvent
+		// an event might not have data associated with it
+		if eventAff.Data != nil {
+			io.Schema = *eventAff.Data
+		}
 		io.Title = eventAff.Title
 		if len(eventAff.Forms) > 0 {
 			//io.Form = &eventAff.Forms[0]
@@ -89,7 +94,8 @@ func (io *InteractionOutput) UpdateSchemaFromTD(td *tdd.TD) (found bool) {
 	// if name is that of a property then use it
 	propAff, found := td.Properties[io.Name]
 	if found {
-		io.Schema = &propAff.DataSchema
+		io.MessageType = vocab.MessageTypeProperty
+		io.Schema = propAff.DataSchema
 		io.Title = propAff.Title
 		if len(propAff.Forms) > 0 {
 			//io.Form = &propAff.Forms[0]
@@ -99,10 +105,10 @@ func (io *InteractionOutput) UpdateSchemaFromTD(td *tdd.TD) (found bool) {
 	// last, if name is that of an action then use its output schema
 	actionAff, found := td.Actions[io.Name]
 	if found {
+		io.MessageType = vocab.MessageTypeAction
+		// an action might not have any output data
 		if actionAff.Output != nil {
-			io.Schema = actionAff.Output
-		} else {
-			io.Schema = nil
+			io.Schema = *actionAff.Output
 		}
 		io.Title = actionAff.Title
 		if len(actionAff.Forms) > 0 {
@@ -110,8 +116,8 @@ func (io *InteractionOutput) UpdateSchemaFromTD(td *tdd.TD) (found bool) {
 		}
 		return true
 	}
-	slog.Warn("UpdateSchemaFromTD: Name is not a known event, property or action",
-		"name", io.Name, "thingID", io.ThingID)
+	slog.Warn("UpdateSchemaFromTD: value without schema in the TD",
+		"thingID", io.ThingID, "name", io.Name)
 	return false
 }
 
@@ -157,47 +163,7 @@ func NewInteractionOutputFromValue(tv *digitwin.ThingValue, td *tdd.TD) *Interac
 		return io
 	}
 	io.ThingID = td.ID
-
-	// if name is that of an event then use it
-	eventAff, found := td.Events[tv.Name]
-	if found {
-		io.Schema = eventAff.Data
-		io.Title = eventAff.Title
-		io.MessageType = vocab.MessageTypeEvent
-		if len(eventAff.Forms) > 0 {
-			//io.Form = &eventAff.Forms[0]
-		}
-		return io
-	}
-	// if name is that of a property then use it
-	propAff, found := td.Properties[tv.Name]
-	if found {
-		io.Schema = &propAff.DataSchema
-		io.Title = propAff.Title
-		io.MessageType = vocab.MessageTypeProperty
-		if len(propAff.Forms) > 0 {
-			//io.Form = &propAff.Forms[0]
-		}
-		return io
-	}
-	// last, if name is that of an action then use its output schema
-	actionAff, found := td.Actions[tv.Name]
-	if found {
-		io.MessageType = vocab.MessageTypeAction
-		if actionAff.Output != nil {
-			io.Schema = actionAff.Output
-		} else if actionAff.Input != nil {
-			// Fallback to the input schema if no output is registed
-			io.Schema = actionAff.Input
-		}
-		io.Title = actionAff.Title
-		if len(actionAff.Forms) > 0 {
-			//io.Form = &actionAff.Forms[0]
-		}
-		return io
-	}
-
-	slog.Warn("value name not found in TD", "thingID", td.ID, "name", tv.Name)
+	io.UpdateSchemaFromTD(td)
 	return io
 }
 
@@ -208,7 +174,7 @@ func NewInteractionOutputFromValue(tv *digitwin.ThingValue, td *tdd.TD) *Interac
 // determine whether this is a property, event or action IO.
 //
 //	name is the interaction affordance name the output belongs to
-//	schema is the schema info for data
+//	schema is the schema info for data, or nil if not known
 //	raw is the raw data
 //	created is the timestamp the data is created
 func NewInteractionOutput(thingID string, key string, schema *tdd.DataSchema, raw any, created string) *InteractionOutput {
@@ -221,8 +187,11 @@ func NewInteractionOutput(thingID string, key string, schema *tdd.DataSchema, ra
 		ThingID: thingID,
 		Name:    key,
 		Updated: created,
-		Schema:  schema,
-		Value:   NewDataSchemaValue(raw),
+		//Schema:  schema,
+		Value: NewDataSchemaValue(raw),
+	}
+	if schema != nil {
+		io.Schema = *schema
 	}
 	return io
 }

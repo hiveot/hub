@@ -58,24 +58,40 @@ func (ct *ConsumedThing) buildInteractionOutput(tv *digitwin.ThingValue) *Intera
 	return iout
 }
 
-// GetValue returns the interaction output of the latest value of an event, property or
-// action output.
+// GetPropValue returns the interaction output of the latest property value.
 //
-// This returns an empty interactionoutput if not found
-func (ct *ConsumedThing) GetValue(name string) (iout *InteractionOutput, found bool) {
-	iout, found = ct.eventValues[name]
-	if !found {
-		iout, found = ct.propValues[name]
-	}
+// This returns an empty InteractionOutput if not found
+func (ct *ConsumedThing) GetPropValue(name string) (iout *InteractionOutput) {
+	iout, found := ct.propValues[name]
+	_ = found
 	if iout == nil {
+		// not a known prop value so create an empty io with a schema from the td
 		iout = &InteractionOutput{
 			ThingID: ct.td.ID,
 			Name:    name,
-			Schema:  &tdd.DataSchema{},
-		} // dummy
-		slog.Warn("Value not (yet) found for name ", "name", name, "thingID", ct.td.ID)
+		}
+		iout.UpdateSchemaFromTD(ct.td)
+		slog.Info("Value not (yet) found for property ", "name", name, "thingID", ct.td.ID)
 	}
-	return iout, found
+	return iout
+}
+
+// GetEventValue returns the interaction output of the latest value of an event
+//
+// This returns an empty InteractionOutput if not found
+func (ct *ConsumedThing) GetEventValue(name string) (iout *InteractionOutput) {
+	iout, found := ct.eventValues[name]
+	_ = found
+	if iout == nil {
+		// not a known event value so create an empty io with a schema from the td
+		iout = &InteractionOutput{
+			ThingID: ct.td.ID,
+			Name:    name,
+		}
+		iout.UpdateSchemaFromTD(ct.td)
+		slog.Info("Value not (yet) found for event ", "name", name, "thingID", ct.td.ID)
+	}
+	return iout
 }
 
 // GetThingDescription return the TD document that is represented here.
@@ -281,7 +297,7 @@ func (ct *ConsumedThing) ReadAllProperties() map[string]*InteractionOutput {
 		io.MessageID = v.MessageID
 		//io.SenderID = v.SenderID  // sender is agent of this thing
 		io.UpdateSchemaFromTD(ct.td)
-		ct.eventValues[v.Name] = io
+		ct.propValues[v.Name] = io
 	}
 	return ct.propValues
 }

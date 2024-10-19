@@ -5,7 +5,7 @@ import (
 )
 
 // ActionProgressHandler is the handler for return an action progress to sender.
-// Used by router HandleProgressUpdate to send the action result to the sender.
+// Used by router HandleActionProgress to send the action result to the sender.
 type ActionProgressHandler func(stat hubclient.DeliveryStatus, agentID string) error
 
 // IHubRouter is the interface of the handler of action,event and property update
@@ -33,9 +33,9 @@ type IHubRouter interface {
 		dThingID string, actionName string, input any, reqID string, senderID string, cid string) (
 		status string, output any, messageID string, err error)
 
-	// HandleProgressUpdate agent publishes a progress update message
+	// HandleActionProgress agent publishes a progress update message
 	// This updates the corresponding digital twin action status
-	HandleProgressUpdate(agentID string, stat hubclient.DeliveryStatus) error
+	HandleActionProgress(agentID string, stat hubclient.DeliveryStatus) error
 
 	// HandleEventFlow agent publishes an event
 	// This can contains a messageID if the event is a response to an action

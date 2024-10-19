@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
 	"slices"
 	"sync"
@@ -161,6 +162,10 @@ func (cm *ConnectionManager) GetConnectionByClientID(clientID string) (c IClient
 	}
 	// return the first connection of this client
 	c = cm.cidConnections[cList[0]]
+	if c == nil {
+		slog.Error("GetConnectionByClientID: the client's connection list has disconnected endpoints",
+			"clientID", clientID, "nr alleged connections", len(cList))
+	}
 	return c
 }
 
@@ -209,12 +214,22 @@ func (cm *ConnectionManager) RemoveConnection(cid string) {
 
 	// remove the cid from the client connection list
 	if clientID == "" {
+		slog.Error("RemoveConnection: existing connection has no clientID", "cid", cid)
 		return
 	}
 	clientCids := cm.clientConnections[clientID]
 	i := slices.Index(clientCids, cid)
-	if i >= 0 {
-		slices.Delete(clientCids, i, i)
+	if i < 0 {
+		slog.Error("RemoveConnection: existing connection not in client's cid list but is should have been",
+			"clientID", clientID, "cid", cid)
+
+		// TODO: considering the impact of this going wrong, is it better to recover?
+		// A: delete the bad entry and try the next connection
+		// B: close all client connections
+
+	} else {
+		clientCids = utils.Remove(clientCids, i)
+		cm.clientConnections[clientID] = clientCids
 	}
 }
 

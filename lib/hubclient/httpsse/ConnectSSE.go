@@ -19,7 +19,7 @@ import (
 // If the connection is interrupted, the sse connection retries with backoff period.
 // If an authentication error occurs then the onDisconnect handler is invoked with an error.
 // If the connection is cancelled then the onDisconnect is invoked without error
-func (hc *HttpSSEClient) ConnectSSE(
+func (cl *HttpSSEClient) ConnectSSE(
 	sseURL string, bearerToken string, httpClient *http.Client, onDisconnect func(error)) error {
 
 	slog.Info("ConnectSSE", slog.String("sseURL", sseURL))
@@ -32,21 +32,21 @@ func (hc *HttpSSEClient) ConnectSSE(
 		sseCancelFn()
 		return err
 	}
-	req.Header.Add(hubclient.ConnectionIDHeader, hc.cid)
+	req.Header.Add(hubclient.ConnectionIDHeader, cl.cid)
 	req.Header.Add("Authorization", "bearer "+bearerToken)
 	parts, _ := url.Parse(sseURL)
 	origin := fmt.Sprintf("%s://%s", parts.Scheme, parts.Host)
 	req.Header.Add("Origin", origin)
 	//req.Header.Add("Connection", "keep-alive")
 
-	hc.sseCancelFn = sseCancelFn
+	cl.sseCancelFn = sseCancelFn
 	sseClient := &sse.Client{
 		HTTPClient: httpClient,
 		OnRetry: func(err error, _ time.Duration) {
-			slog.Info("SSE Connection retry", "err", err, "clientID", hc.clientID)
+			slog.Info("SSE Connection retry", "err", err, "clientID", cl.clientID)
 			// TODO: how to be notified if the connection is restored?
 			//  workaround: in handleSSEEvent, update the connection status
-			hc.SetConnectionStatus(hubclient.Connecting, err)
+			cl.SetConnectionStatus(hubclient.Connecting, err)
 		},
 	}
 	conn := sseClient.NewConnection(req)
@@ -56,9 +56,9 @@ func (hc *HttpSSEClient) ConnectSSE(
 	//https://github.com/tmaxmax/go-sse/issues/32
 	newBuf := make([]byte, 0, 1024*65)
 	// TODO: make limit configurable
-	conn.Buffer(newBuf, hc._maxSSEMessageSize)
+	conn.Buffer(newBuf, cl._maxSSEMessageSize)
 
-	remover := conn.SubscribeToAll(hc.handleSSEEvent)
+	remover := conn.SubscribeToAll(cl.handleSSEEvent)
 	go func() {
 		// connect and report an error if connection ends due to reason other than context cancelled
 		err := conn.Connect()
@@ -66,7 +66,7 @@ func (hc *HttpSSEClient) ConnectSSE(
 		if connError, ok := err.(*sse.ConnectionError); ok {
 			// since sse retries, this is likely an authentication error
 			slog.Error("SSE connection failed (server shutdown or connection interrupted)",
-				"clientID", hc.clientID,
+				"clientID", cl.clientID,
 				"err", err.Error())
 			_ = connError
 			err = fmt.Errorf("Reconnect Failed: %w", connError.Err) //connError.Err

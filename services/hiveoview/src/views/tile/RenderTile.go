@@ -47,10 +47,14 @@ func (dt RenderTileTemplateData) GetHistory(thingID string, name string) *histor
 }
 
 // GetValue return the latest value of a tile source or nil if not found
-// If name is an action then include the action affordance input dataschema
-// instead of the event value schema.
+//
+//  1. If name is an event then use the latest event value. (read-only)
+//  2. If name is not an event but a property then use the property value. (read/write)
+//  3. If name is an action with an input schema then use this schema with the event/prop value
+//     what if the event/prop value type differs from action input type?
 func (d RenderTileTemplateData) GetValue(thingID string, name string) (iout *consumedthing.InteractionOutput) {
-
+	var rawValue any
+	var updated string
 	ct, _ := d.cts.Consume(thingID)
 	if ct == nil {
 		// Thing not found. return a dummy interaction output with a non-schema
@@ -60,16 +64,29 @@ func (d RenderTileTemplateData) GetValue(thingID string, name string) (iout *con
 		return iout
 	}
 	td := ct.GetThingDescription()
+	// assume this is an event
 	iout = ct.ReadEvent(name)
-	if iout != nil {
-		return iout
+	if iout == nil {
+		// if not an event get its property. properties might not update immediately
+		// so events are preferred.
+		iout = ct.ReadProperty(name)
 	}
-	// if name is an action then get the input dataschema for allowing
-	// direct input of the action from the dashboard tile.
+	// obtain the value to display from either event or property
+	if iout != nil {
+		rawValue = iout.Value.Raw()
+		updated = iout.Updated
+	}
+
+	// if name is also an action with an input schema, then get this schema with the event/prop value
 	actionAff := td.GetAction(name)
 	if actionAff != nil && actionAff.Input != nil {
+		if iout != nil && iout.Schema.Type != actionAff.Input.Type {
+			// FIXME: rawValue must be of the same type as the action input otherwise
+			//  it might not display correctly. Lets just roll with this for now
+			//  until a recovery solution is known.
+		}
 		iout = consumedthing.NewInteractionOutput(
-			thingID, name, actionAff.Input, nil, "")
+			thingID, name, actionAff.Input, rawValue, updated)
 	}
 	return iout
 }

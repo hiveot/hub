@@ -62,7 +62,7 @@ func GetConnectStatus(r *http.Request) *ConnectStatus {
 func RenderConnectStatus(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{}
 	status := GetConnectStatus(r)
-	data["Status"] = status
+	data["Progress"] = status
 	sess, _, _ := session.GetSessionFromContext(r)
 
 	// render with base or as fragment

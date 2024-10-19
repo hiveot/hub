@@ -58,9 +58,9 @@
 					"title": "Consumer ID",
 					"type": "string"
 				},
-				"status": {
-					"title": "Action update status",
-					"description": "The action progress",
+				"progress": {
+					"title": "Action progress",
+					"description": "Status of the action's progress",
 					"type": "string"
 				},
 				"updated": {

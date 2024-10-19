@@ -109,9 +109,10 @@ func HandleListThing(hc hubclient.IConsumerClient, thingID string) error {
 	for _, key := range keys {
 		prop, found := tdDoc.Properties[key]
 		if found && prop.ReadOnly {
-			value := utils.DecodeAsString(propValueMap[key])
+			value := propValueMap[key]
+			valueStr := utils.DecodeAsString(value.Data)
 			fmt.Printf(" %-30s %-40.40s %s%-15.15s%s %-.80s\n",
-				key, prop.Title, utils.COGreen, value, utils.COReset, prop.Description)
+				key, prop.Title, utils.COGreen, valueStr, utils.COReset, prop.Description)
 		}
 	}
 	fmt.Println()
@@ -122,14 +123,15 @@ func HandleListThing(hc hubclient.IConsumerClient, thingID string) error {
 		prop, found := tdDoc.Properties[key]
 		if found && !prop.ReadOnly {
 			value := propValueMap[key]
+			valueStr := utils.DecodeAsString(value.Data)
 			fmt.Printf(" %-30s %-40.40s %-10.10s %s%-15.15s%s %-.80s\n",
-				key, prop.Title, prop.Type, utils.COBlue, value, utils.COReset, prop.Description)
+				key, prop.Title, prop.Type, utils.COBlue, valueStr, utils.COReset, prop.Description)
 		}
 	}
 
 	fmt.Println(utils.COYellow + "\nEvents:")
-	fmt.Println(" ID                             EventType                 Title                                    DataType   Value           Description")
-	fmt.Println(" -----------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
+	fmt.Println(" ID                                  EventType                 Title                                    DataType   Value           Description")
+	fmt.Println(" ----------------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
 	eventValueList, err := digitwin.ValuesReadAllEvents(hc, thingID)
 	eventValueMap := api.ValueListToMap(eventValueList)
 	keys = utils.OrderedMapKeys(tdDoc.Events)
@@ -140,11 +142,12 @@ func HandleListThing(hc hubclient.IConsumerClient, thingID string) error {
 			dataType = ev.Data.Type
 		}
 		value := eventValueMap[key]
+		valueStr := utils.DecodeAsString(value.Data)
 		if ev.Data.Type != "" {
 			//initialValue = ev.Data.InitialValue
 		}
-		fmt.Printf(" %-30s %-25.25s %-40.40s %-10.10v %s%-15.15s%s %.80s\n",
-			key, ev.EventType, ev.Title, dataType, utils.COYellow, value, utils.COReset, ev.Description)
+		fmt.Printf(" %-35s %-25.25s %-40.40s %-10.10v %s%-15.15s%s %.80s\n",
+			key, ev.EventType, ev.Title, dataType, utils.COYellow, valueStr, utils.COReset, ev.Description)
 	}
 
 	fmt.Println(utils.CORed + "\nActions:")
@@ -157,12 +160,13 @@ func HandleListThing(hc hubclient.IConsumerClient, thingID string) error {
 		action := tdDoc.Actions[key]
 		dataType := "(n/a)"
 		value := actionValueMap[key]
+		valueStr := utils.DecodeAsString(value.Data)
 		if action.Input != nil {
 			dataType = action.Input.Type
 			//initialValue = action.Input.InitialValue
 		}
 		fmt.Printf(" %-30.30s %-25.25s %-40.40s %-10.10s %s%-15.15s%s %.80s\n",
-			key, action.ActionType, action.Title, dataType, utils.CORed, value, utils.COReset, action.Description)
+			key, action.ActionType, action.Title, dataType, utils.CORed, valueStr, utils.COReset, action.Description)
 	}
 	fmt.Println()
 	return err

@@ -66,6 +66,7 @@ func (svc *AddHistory) AddAction(actionValue *hubclient.ThingMessage) error {
 		slog.String("name", actionValue.Name))
 	// actions are always aimed at the digital twin ID
 	dThingID := actionValue.ThingID
+
 	retain, err := svc.validateValue(actionValue)
 	if err != nil {
 		slog.Info("AddAction value error", "err", err.Error())
@@ -86,43 +87,11 @@ func (svc *AddHistory) AddAction(actionValue *hubclient.ThingMessage) error {
 	return err
 }
 
-// AddProperties adds individual property values to the history
-// This splits the property map and adds then as individual name-value pairs
-func (svc *AddHistory) AddProperties(msg *hubclient.ThingMessage) error {
-	propMap := make(map[string]any)
-	err := utils.DecodeAsObject(msg.Data, &propMap)
-	if err != nil {
-		return err
-	}
-	thingAddr := msg.ThingID // the digitwin ID with the agent prefix
-	bucket := svc.store.GetBucket(thingAddr)
-
-	// turn each property into a ThingMessage object so they can be queried separately
-	for propName, propValue := range propMap {
-		propValueString := fmt.Sprint(propValue)
-		// store this as a property message to differentiate from events
-		tv := hubclient.NewThingMessage(vocab.MessageTypeProperty,
-			msg.ThingID, propName, propValueString, msg.SenderID)
-		tv.Created = msg.Created
-		//
-
-		storageKey, val := svc.encodeValue(msg)
-
-		err = bucket.Set(storageKey, val)
-	}
-	_ = bucket.Close()
-	return err
-}
-
 // AddEvent adds an event to the event history
 // Only events that pass retention rules are stored.
 // If the event has no created time, it will be set to 'now'
 // These events must contain the digitwin thingID
 func (svc *AddHistory) AddEvent(msg *hubclient.ThingMessage) error {
-
-	if msg.MessageType == vocab.MessageTypeProperty {
-		return svc.AddProperties(msg)
-	}
 
 	retain, err := svc.validateValue(msg)
 	if err != nil {
@@ -215,6 +184,51 @@ func (svc *AddHistory) AddMessages(msgList []*hubclient.ThingMessage) (err error
 		err = bucket.Close()
 	}
 	return nil
+}
+
+// AddProperties adds individual property values to the history
+// This splits the property map and adds then as individual name-value pairs
+func (svc *AddHistory) AddProperties(msg *hubclient.ThingMessage) (err error) {
+
+	propMap := make(map[string]any)
+	if msg.Name == "" {
+		err = utils.DecodeAsObject(msg.Data, &propMap)
+		if err != nil {
+			return err
+		}
+		// FIXME: check retained
+	} else {
+		retain, err := svc.validateValue(msg)
+		if err != nil {
+			slog.Info("AddProperties value error", "err", err.Error())
+			return err
+		}
+		if !retain {
+			slog.Debug("property value not retained", slog.String("name", msg.Name))
+			return nil
+		}
+		propMap[msg.Name] = msg.Data
+	}
+	// FIXME: what if msg is a straight name=key, data=value instead of a map?
+	if msg.Created == "" {
+		msg.Created = time.Now().Format(utils.RFC3339Milli)
+	}
+	thingAddr := msg.ThingID // the digitwin ID with the agent prefix
+	bucket := svc.store.GetBucket(thingAddr)
+
+	// turn each property into a ThingMessage object so they can be queried separately
+	for propName, propValue := range propMap {
+		propValueString := fmt.Sprint(propValue)
+		// store this as a property message to differentiate from events
+		tv := hubclient.NewThingMessage(vocab.MessageTypeProperty,
+			msg.ThingID, propName, propValueString, msg.SenderID)
+		tv.Created = msg.Created
+		//
+		storageKey, val := svc.encodeValue(tv)
+		err = bucket.Set(storageKey, val)
+	}
+	_ = bucket.Close()
+	return err
 }
 
 // validateValue checks the event has the right things address, adds a timestamp if missing and returns if it is retained

@@ -21,7 +21,7 @@ func (svc *DummyRouter) HandleActionFlow(
 	return vocab.ProgressStatusDelivered, output, reqID, nil
 }
 
-func (svc *DummyRouter) HandleProgressUpdate(agentID string, stat hubclient.DeliveryStatus) error {
+func (svc *DummyRouter) HandleActionProgress(agentID string, stat hubclient.DeliveryStatus) error {
 	return nil
 }
 func (svc *DummyRouter) HandleEventFlow(
