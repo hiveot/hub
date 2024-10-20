@@ -79,7 +79,9 @@
                                 {{.Title}}
 														</a>
 													</div>
-													<div>{{$data.GetValue $thing.ID $k}} {{if $v.Input}}{{$v.Input.UnitSymbol}}{{end}}</div>
+													<div>{{$data.GetValue $thing.ID $k}}
+															{{if $v.Input}}{{$v.Input.UnitSymbol}}{{end}}
+													</div>
 													<div>{{$data.GetUpdated $thing.ID $k}}</div>
 												</li>
                     {{end}}

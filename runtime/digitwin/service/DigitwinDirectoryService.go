@@ -10,7 +10,7 @@ import (
 )
 
 // TODO: use constants from TD generated API
-const ThingUpdatedEventName = "thingUpdated"
+const ThingUpdatedEventName = "$td"
 const ThingRemovedEventName = "thingRemoved"
 
 // Digital Twin Directory Service
@@ -30,6 +30,7 @@ func (svc *DigitwinDirectoryService) MakeDigitalTwinTD(
 
 	err = jsoniter.Unmarshal([]byte(tdJSON), &thingTD)
 	if err != nil {
+		slog.Error("MakeDigitalTwinTD. Bad TD", "err", err.Error())
 		return thingTD, dtwTD, err
 	}
 	// make a deep copy for the digital twin
@@ -94,13 +95,15 @@ func (svc *DigitwinDirectoryService) ReadAllDTDs(
 }
 
 // RemoveDTD removes a Thing TD document from the digital twin directory
-// FIXME: submit an event (as per TDD) that a TD has been removed
+// FIXME: only admins are allowed this
 func (svc *DigitwinDirectoryService) RemoveDTD(senderID string, dThingID string) error {
 	err := svc.dtwStore.RemoveDTW(dThingID, senderID)
 	if err == nil && svc.cm != nil {
-		// publish the event in the background
+		// notify subscribers that the digital twin thing was removed.
+		// payload is the digital twin's ID
 		go svc.cm.PublishEvent(
-			digitwin.DirectoryDThingID, ThingRemovedEventName, dThingID, "", senderID)
+			digitwin.DirectoryDThingID, ThingRemovedEventName, dThingID,
+			"", digitwin.DirectoryAgentID)
 	}
 	return err
 }
@@ -109,20 +112,26 @@ func (svc *DigitwinDirectoryService) RemoveDTD(senderID string, dThingID string)
 // This transforms the given TD into the digital twin instance, stores it in the directory
 // store and sends a thing-updated event as described in the TD.
 // This returns the updated digital twin TD
-// FIXME: submit an event as per TDD that a TD has been updated
+// FIXME: only agents are allowed this
 func (svc *DigitwinDirectoryService) UpdateDTD(agentID string, tdJson string) error {
 
 	// transform the agent provided TD into a digital twin's TD
 	thingTD, digitalTwinTD, err := svc.MakeDigitalTwinTD(agentID, tdJson)
 	slog.Info("UpdateDTD",
 		slog.String("agentID", agentID), slog.String("thingID", thingTD.ID))
+	// store both the original and digitwin TD documents
 	svc.dtwStore.UpdateTD(agentID, thingTD, digitalTwinTD)
 
+	// notify subscribers of TD updates
 	if err == nil && svc.cm != nil {
 		dtdJSON, _ := jsoniter.Marshal(digitalTwinTD)
-		// publish the event in the background
+		// FIXME: notify subscribers that the TD has been updated
+		//svc.cm.PublishTD()
+		//ForEachConnection
+
 		go svc.cm.PublishEvent(
-			digitwin.DirectoryDThingID, ThingUpdatedEventName, string(dtdJSON), "", agentID)
+			digitwin.DirectoryDThingID, ThingUpdatedEventName, string(dtdJSON),
+			"", digitwin.DirectoryAgentID)
 	}
 	return err
 }

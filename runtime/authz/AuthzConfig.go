@@ -63,17 +63,19 @@ type RolePermission struct {
 	AllowSub bool
 }
 
-// agents can publish events, replies and subscribe to their own actions and config
+// agents can publish actions, events, property updates, and subscribe to their own actions and config
 var agentPermissions = []RolePermission{
 	{
 		MsgType:  vocab.MessageTypeEvent,
 		AllowPub: true,
 	}, {
 		MsgType:  vocab.MessageTypeAction,
+		AllowPub: true, // only allow pub to select services
 		AllowSub: true,
 	}, {
 		MsgType:  vocab.MessageTypeProperty,
-		AllowSub: true,
+		AllowPub: true, // publish property updates
+		AllowSub: true, // receive property write requests
 	},
 }
 
@@ -85,9 +87,11 @@ var servicePermissions = []RolePermission{
 		AllowSub: true,
 	}, {
 		MsgType:  vocab.MessageTypeAction,
+		AllowSub: true,
 		AllowPub: true,
 	}, {
 		MsgType:  vocab.MessageTypeProperty,
+		AllowSub: true,
 		AllowPub: true,
 	},
 }

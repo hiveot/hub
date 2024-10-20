@@ -3,6 +3,7 @@ package runtime
 import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime/authn/service"
 	service2 "github.com/hiveot/hub/runtime/authz/service"
@@ -30,7 +31,7 @@ type Runtime struct {
 	HubRouter     *hubrouter.HubRouter
 	cm            *sessions2.ConnectionManager
 	sm            *sessions2.SessionManager
-	TransportsMgr *transports.TransportManager
+	TransportsMgr *transports.ProtocolManager
 }
 
 // Start the Hub runtime
@@ -80,7 +81,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 
 	// the protocol manager receives messages from clients (source) and
 	// sends messages to connected clients (sink)
-	r.TransportsMgr, err = transports.StartTransportManager(
+	r.TransportsMgr, err = transports.StartProtocolManager(
 		&r.cfg.Transports,
 		r.cfg.ServerCert,
 		r.cfg.CaCert,
@@ -94,6 +95,29 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	}
 	// outgoing messages are handled by the sub-protocols of this transport
 	r.DigitwinSvc.SetFormsHook(r.TransportsMgr.AddTDForms)
+
+	// add the TDs of the built-in services (authn,authz,directory,values) to the directory
+	_ = r.DigitwinSvc.DirSvc.UpdateDTD(authn.AdminAgentID, authn.AdminTD)
+	_ = r.DigitwinSvc.DirSvc.UpdateDTD(authn.UserAgentID, authn.UserTD)
+	_ = r.DigitwinSvc.DirSvc.UpdateDTD(authz.AdminAgentID, authz.AdminTD)
+	_ = r.DigitwinSvc.DirSvc.UpdateDTD(digitwin.DirectoryAgentID, digitwin.DirectoryTD)
+	_ = r.DigitwinSvc.DirSvc.UpdateDTD(digitwin.ValuesAgentID, digitwin.ValuesTD)
+
+	// agents can update to the directory
+	// fixme: authn.AdminServiceID is not correct but will have to do for now
+	_ = r.AuthzSvc.SetPermissions(authn.AdminServiceID, authz.ThingPermissions{
+		AgentID: digitwin.DirectoryAgentID,
+		ThingID: digitwin.DirectoryServiceID,
+		Allow:   []authz.ClientRole{authz.ClientRoleAgent, ""},
+	})
+	// anyone else can read the directory
+	// FIXME: differentiate per action based on TD default?
+	_ = r.AuthzSvc.SetPermissions(authn.AdminServiceID, authz.ThingPermissions{
+		AgentID: digitwin.DirectoryAgentID,
+		ThingID: digitwin.DirectoryServiceID,
+		Deny:    []authz.ClientRole{authz.ClientRoleNone, ""},
+	})
+
 	return err
 }
 

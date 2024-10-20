@@ -4,32 +4,13 @@
 
 The runtime is in alpha. It is functional but breaking changes can be expected.
 
-
-
-
 Todo phase 1 - refactor digital twin design  
 
-1. store digital twins as objects, why? - ok
-   * Need to store both dtwThing and thing for form support?
-     * forwarding action needs form from thing TD  
-       * does it? how do agents connect / receive actions?
-   * store state, not messages
-     * why? separation of concerns;
-     * digitwin is state representation while messaging methods change.
-   * keep related data together (tds, events, props, actions)
-     * ease of caching; tds, events and props are often used together
-
-2. Are events stored in the digital twin? How many?  => 1
-   Yes, they are a reflection of the last known thing that happened.
-   A: store latest event only. This is not a history store.
-   B: store recent history, to support 'catch up' of reconnected consumers. (eg outbox)
-    * events are consumer facing, who can query the history store
-    * protocol specific capabilities can be handled in the protocol binding
-
-3. How to implement the safe-action flow and track progress?
+3. How to implement the safe-action (stateless) flow and track progress?
    Safe actions are stateless and return output based on the provided input.
    Multiple safe actions can be in progress concurrently.
-   They are marked in the action affordance with the 'safe' flag.
+   They are marked in the action affordance with the 'safe' flag?
+   * 'safe' actions are not stored in the digitwin history?
    * The digitwin runtime forwards requests immediately to the Exposed Thing, and returns the output in the same request. Eg, rpc style.
    * Actions progress is not tracked. They are done on return.
    * A rate limit can be applied by middleware.
@@ -88,37 +69,42 @@ Todo phase 1 - refactor digital twin design
       pro: more accurate representation?
       con: repeat implementation with different behavior and attributes
 
-8. How to track the action progress itself?
-   stages: received, delivered, applied, completed, aborted, rejected
-   * digitwin starts with received, and upgrade to delivered state when request is passed to agent; Next status is upgraded to Agent's result.  
-   * agent sends property value updates to digitwin (observed property)
-      property value is used to update the digitwin action property 
-      pro: use existing observed property facility
-      pro: state is represented through properties
+8a. How to track the action progress?
+   stages: pending, delivered, completed, aborted, failed
+   * digitwin starts with pending, upgrades to delivered when request is passed to agent; agent sends progress update message completed, failed, or in-progress.
+   * use 'messageID' to link progress update messages with the action
+   * this requires a ActionProgress message type - non standard?
+     * protocol binding detail?
+8b. How to track property write progress?
+   * not at the moment. consumer watches for property updates
       pro: no need for messageID 
       con: exposed thing must define a property for every (unsafe) action
-   * is action progress the same as state change? => no
-      'progress' follows action state machine.
-      'action state' is the value describing the internal state of the Thing that is affected by the action. 
-   * how to track slow actions progress?
-      action properties indicates intermediary and final state
 
-9. add observe properties api to transport bindings
-  * protocol level implementation
-  * how does hub register for observe properties at agent?
-    A: don't. this is implied - non standard
-    B: thing includes url in Form
-  * how to agents send events and prop changes?
-    * digitwin has pubevent and updateprop operations?
+9. How to integrate agents with the Hub
+   Agents publish TD/Event/Property/Action requests to the Hub digitwin 'agent' service. 
+    * these are defined as 'agent operations'
+      * op:AgentUpdateProperty
+      * op:AgentPublishEvent
+      * op:AgentUpdateTD
+    * service actions are only authorized for agents
+        + compatible with WoT
+        + permissions can be controlled separately 
+        + no magic (hidden) endpoints needed
+        + define agent operations in digitwin agent service forms
+        - agents need to know this API. How?
+          * concept of agents is not specified in WoT
+          * hiveot defines digitwin agent operations 
+          * supported in ExposedThing implementation 
+
   * how do agents receive invokeaction and writeproperty requests?
-    * A: agent Thing includes this in Forms?
-      * use subprotocol for defining these ops (eg return channel msg)
-        * don't use SSE as it needs multiple connections for each Thing  
-    * B: push it down connection return channel inside an envelope
-      * this is proprietary
-  * how do agents receive requests for multiple things?
-    * include a different sub-protocol form path in each TD
-
+    * A: The hub agent service provides a subscribe-request operation?
+      * included in agent service forms
+      * protocol binding implements the mechanism
+        agent invokes operation and receives actions and property write requests
+      + matches the update operations workflow
+      + compatible with WoT TD
+      + agents already need to know the agent service TD for publishing stuff
+ 
 10. add sse as per spec
 
 
@@ -179,22 +165,19 @@ managing digital twin instances of IoT devices and services. It contains:
 * Transport manager that aggregates protocol bindings for communication with devices, services and consumers
 * Authentication service authenticates connections to the transport protocols
 * Authorization service for authorizing the sending and receiving of messages by authenticated clients
-* Digitwin inbox handles action requests from consumers and forwards it to the actual IoT devices and services
-* Digitwin outbox receives events from IoT devices and forwards it to eligible subscribers
-* Digitwin directory serves the inventory of available devices with their digital twin Thing Definition
+* HubRouter action flow handles action requests from consumers and forwards it to the actual IoT devices and services
+* HubRouter events flow receives events from IoT devices and forwards it to subscribers
+* HubRouter properties flow receives property updates from IoT devices and forwards them to  subscribers
+* Digitwin directory service serves the inventory of available devices with their digital twin Thing Definition
 
-The hub differentiates three types of clients: IoT agents, consumers and services. Agents are clients that 
-can operate on IoT devices or run stand-alone, and represent one or more IoT devices. They form a bridge
-between the native IoT device protocol and the Hub's WoT standards. Consumers are end-users that read information
-from the digital twins and send action requests to the digital twins. Services can act as agents and consumers.
+The hub differentiates three types of clients: IoT agents, consumers and services. Agents are clients that can operate on IoT devices or run stand-alone, and represent one or more IoT devices. They form a bridge between the native IoT device protocol and the Hub's WoT standards. Consumers are end-users that read information from the digital twins and send action requests to the digital twins. Services can act as agents and consumers.
 Services enrich information received from the digital twin devices and publish the results.
 
-The ditgital twin part of the runtime is designed around the W3C WoT standards and
+The digital twin part of the runtime is designed using the W3C WoT standards and
 handles Thing Description Documents, events, actions and properties.
 
 ### Events
-Event messages follow a publish/subscribe approach. Thing agents publish events while consumers
-subscribe to Thing events. Each can use their own protocol binding.
+Event messages follow a publish/subscribe approach. Thing agents publish events while consumers subscribe to Thing events. Each can use their own protocol binding.
 
 The general event flow is:
 > thing -> agent -> transport protocol -> [digital twin outbox]

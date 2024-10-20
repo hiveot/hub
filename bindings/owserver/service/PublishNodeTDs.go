@@ -35,7 +35,7 @@ func CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing.TD) {
 		attrInfo, found := AttrConfig[attrID]
 
 		if !found || attrInfo.Ignore {
-			// ignore
+			// exclude from the TD
 			continue
 		}
 		if attrInfo.IsProp {

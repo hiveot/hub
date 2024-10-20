@@ -17,6 +17,8 @@
     "bearer": {
     }
   },
+  "deny": ["none"],
+
   "links": [],
   "schemaDefinitions": {
 
@@ -93,6 +95,7 @@
       "description": "Login with password",
       "idempotent": false,
       "safe": false,
+      "deny": [],
       "input": {
         "type": "object",
         "properties": {

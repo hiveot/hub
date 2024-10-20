@@ -6,18 +6,24 @@ Hive of Things Viewer, written in golang, html/htmx, web components, and sse usi
 
 This viewer has reached alpha status with Phase 1-3 completed. The information below is subject to change.
 
+Update: phase 1 updated to switch from session to connection based consumed things 
+
+
 ### Phase 1: SSR infrastructure and session management [done]
+
+NEW: switch from session to connection based consumed things to solve multi-tab and caching problems 
+
 ### Phase 2: Directory view [done]
 ### Phase 3: Basic Dashboard [done]
 
 
 ### Phase 4: Enhancements [in progress]
 * Switch to use ConsumedThing for properties, events and actions [in progress]
-* Embed the templates in the binary build. 
-* Track action progress by linking events to action.
+* Track action progress by linking actions to properties (reflect action state).
 * Show progress of action in the same toast instead of a new toast
 * Re-usable DataSchema component/template with text,number,bool,enum,on-off 
 * only show edit button if the user has permissions to edit
+  * depends on the authz change to define roles in the TD
 * briefly fade in/out a highlight of a changed value (css transition?)
 * color value based on age - red is older than 3 days
 * redirect to login when SSE receives unauthorized error (after server restart)

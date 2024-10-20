@@ -17,8 +17,9 @@
     "bearer": {
     }
   },
-  "schemaDefinitions": {
+  "allow": ["admin"],
 
+  "schemaDefinitions": {
   },
   "properties": {
   },

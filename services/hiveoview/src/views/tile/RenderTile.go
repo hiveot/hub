@@ -28,7 +28,7 @@ type RenderTileTemplateData struct {
 
 	// viewmodel to draw live data from
 	//VM *session.ClientViewModel
-	cts *consumedthing.ConsumedThingsSession
+	cts *consumedthing.ConsumedThingsDirectory
 }
 
 // GetHistory returns the 24 hour history for the given key.

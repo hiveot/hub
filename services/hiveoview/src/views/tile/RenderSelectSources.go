@@ -72,9 +72,10 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 	}
 	data.AgentThings = vm.GroupByAgent(tds)
 	for thingID, td := range tds {
-		propValues, err := digitwin.ValuesReadAllProperties(hc, thingID)
-		if err != nil {
-			data.IOValues[thingID] = consumedthing.NewInteractionOutputFromValueList(propValues, td)
+		//propValues, err := digitwin.ValuesReadAllProperties(hc, thingID)
+		eventValues, err := digitwin.ValuesReadAllEvents(hc, thingID)
+		if err == nil {
+			data.IOValues[thingID] = consumedthing.NewInteractionOutputFromValueList(eventValues, td)
 		}
 		//tm, _ := vm.GetLatest(thingID)
 		//data.Values[thingID] = tm

@@ -61,24 +61,28 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 		for attrID, attr := range node.Attr {
 			// collect changes to property values
 			info, found := AttrConfig[attrID]
-			if found && info.Ignore {
+			if !found {
+				// these values are unlisted and ignored
+				//slog.Info("Ignored value", "name", attrID, "value", attr.Value)
+			} else if info.Ignore {
 				// do nothing when ignore is set
-			} else if found && info.IsEvent {
-				// TODO: only publish events if they are in the TD
-				value, changed := svc.GetValueChange(attrID, attr.Value, info, nodeTD)
-				if changed || force {
-					slog.Info("PubEvent",
-						slog.String("attrID", attrID),
-						slog.String("value", attr.Value))
-					err = svc.hc.PubEvent(nodeTD.ID, attrID, value, "")
-					evCount++
+			} else {
+				if info.IsEvent {
+					value, changed := svc.GetValueChange(attrID, attr.Value, info, nodeTD)
+					if changed || force {
+						slog.Info("PubEvent",
+							slog.String("attrID", attrID),
+							slog.String("value", attr.Value))
+						err = svc.hc.PubEvent(nodeTD.ID, attrID, value, "")
+						evCount++
+					}
 				}
-			} else if !found || info.IsProp {
-				// TODO: only publish properties if they are in the TD
-				// first and unknown values are always changed
-				value, changed := svc.GetValueChange(attrID, attr.Value, info, nodeTD)
-				if changed || force {
-					propMap[attrID] = value
+				if info.IsProp {
+					// first and unknown values are always changed
+					value, changed := svc.GetValueChange(attrID, attr.Value, info, nodeTD)
+					if changed || force {
+						propMap[attrID] = value
+					}
 				}
 			}
 		}

@@ -375,6 +375,7 @@ export class HttpSSEClient implements IAgentClient {
     // PubTD publishes an event with a Thing TD document.
     // This serializes the TD into JSON as per WoT specification
     async pubTD(td: TD) {
+        // FIXME: use action on the directory
         let tdJSON = JSON.stringify(td, null, ' ');
         let postPath = PostAgentUpdateTDDPath.replace("{thingID}", td.id)
         this.pubMessage("POST",postPath, tdJSON)

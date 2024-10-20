@@ -6,7 +6,9 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/wot/tdd"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"sync"
 )
@@ -14,11 +16,11 @@ import (
 // ReadDirLimit is the maximum amount of TDs to read in one call
 const ReadDirLimit = 1000
 
-// ConsumedThingsSession manages the consumed things of the Hub for a client session
+// ConsumedThingsDirectory manages the consumed things of the Hub for a client session
 //
 // This maintains a single instance of each ConsumedThing and updates it when
 // an event and action progress updates are received.
-type ConsumedThingsSession struct {
+type ConsumedThingsDirectory struct {
 	hc hubclient.IConsumerClient
 	// Things used by the client
 	consumedThings map[string]*ConsumedThing
@@ -36,7 +38,7 @@ type ConsumedThingsSession struct {
 // If an instance already exists it is returned, otherwise one is created using
 // the ThingDescription. If the TD is unknown then request it from the directory
 // This returns an error if a valid Thing cannot be found.
-func (cts *ConsumedThingsSession) Consume(thingID string) (ct *ConsumedThing, err error) {
+func (cts *ConsumedThingsDirectory) Consume(thingID string) (ct *ConsumedThing, err error) {
 	cts.mux.RLock()
 	ct, found := cts.consumedThings[thingID]
 	cts.mux.RUnlock()
@@ -62,8 +64,8 @@ func (cts *ConsumedThingsSession) Consume(thingID string) (ct *ConsumedThing, er
 	return ct, nil
 }
 
-// handleMessage updates the consumed things
-func (cts *ConsumedThingsSession) handleMessage(
+// handleMessage updates to consumed things
+func (cts *ConsumedThingsDirectory) handleMessage(
 	msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 
 	// if an event is received from an unknown Thing then (re)load its TD
@@ -71,6 +73,7 @@ func (cts *ConsumedThingsSession) handleMessage(
 	_, found := cts.directory[msg.ThingID]
 	cts.mux.RUnlock()
 	if !found {
+		// FIXME: the digitwin directory TD should be readable. It isnt.
 		_, err := cts.ReadTD(msg.ThingID)
 		if err != nil {
 			slog.Error("Received message with thingID that doesn't exist",
@@ -78,10 +81,14 @@ func (cts *ConsumedThingsSession) handleMessage(
 		}
 	}
 
-	if msg.MessageType == vocab.MessageTypeTD {
-		// reload the TD
+	// update the TD of a of consumed things
+	// the directory service publishes TD updates as events
+	if msg.MessageType == vocab.MessageTypeEvent &&
+		msg.ThingID == digitwin.DirectoryDThingID &&
+		msg.Name == service.ThingUpdatedEventName {
+		// decode the TD
 		td := &tdd.TD{}
-		err := json.Unmarshal([]byte(msg.DataAsText()), &td)
+		err := jsoniter.Unmarshal([]byte(msg.DataAsText()), &td)
 		if err != nil {
 			slog.Error("invalid payload for TD event. Ignored",
 				"thingID", msg.ThingID)
@@ -94,8 +101,8 @@ func (cts *ConsumedThingsSession) handleMessage(
 		// update consumed thing, if existing
 		ct, found := cts.consumedThings[td.ID]
 		if found {
-			ct.td = td
-			//ct.OnEvent(msg)
+			// FIXME: consumed thing interaction output schemas also need updating
+			ct.OnTDUpdate(td)
 		}
 	} else if msg.MessageType == vocab.MessageTypeProperty {
 		// update consumed thing, if existing
@@ -147,14 +154,14 @@ func (cts *ConsumedThingsSession) handleMessage(
 }
 
 // IsActive returns whether the session has a connection to the Hub or is in the process of connecting.
-//func (cs *ConsumedThingsSession) IsActive() bool {
+//func (cs *ConsumedThingsDirectory) IsActive() bool {
 //	status := cs.hc.GetStatus()
 //	return status.ConnectionStatus == hubclient.Connected ||
 //		status.ConnectionStatus == hubclient.Connecting
 //}
 
 // GetTD returns the TD in the session or nil if thingID isn't found
-func (cts *ConsumedThingsSession) GetTD(thingID string) *tdd.TD {
+func (cts *ConsumedThingsDirectory) GetTD(thingID string) *tdd.TD {
 	cts.mux.RLock()
 	defer cts.mux.RUnlock()
 	td := cts.directory[thingID]
@@ -167,7 +174,7 @@ func (cts *ConsumedThingsSession) GetTD(thingID string) *tdd.TD {
 //
 // Set force to force a reload of the directory instead of using any cached TD documents.
 // TODO: reload when things were added or removed
-func (cts *ConsumedThingsSession) ReadDirectory(force bool) (map[string]*tdd.TD, error) {
+func (cts *ConsumedThingsDirectory) ReadDirectory(force bool) (map[string]*tdd.TD, error) {
 	cts.mux.RLock()
 	fullDirectoryRead := cts.fullDirectoryRead
 	currentDir := cts.directory
@@ -199,7 +206,7 @@ func (cts *ConsumedThingsSession) ReadDirectory(force bool) (map[string]*tdd.TD,
 }
 
 // ReadTD reads a TD from the directory service and updates the directory cache.
-func (cts *ConsumedThingsSession) ReadTD(thingID string) (*tdd.TD, error) {
+func (cts *ConsumedThingsDirectory) ReadTD(thingID string) (*tdd.TD, error) {
 	// request the TD from the Hub
 	td := &tdd.TD{}
 	tdJson, err := digitwin.DirectoryReadDTD(cts.hc, thingID)
@@ -220,7 +227,7 @@ func (cts *ConsumedThingsSession) ReadTD(thingID string) (*tdd.TD, error) {
 // Intended for consumers such that need to pass all messages on, for example to
 // a UI frontend.
 // Currently only a single handler is supported.
-func (cts *ConsumedThingsSession) SetEventHandler(handler func(message *hubclient.ThingMessage)) {
+func (cts *ConsumedThingsDirectory) SetEventHandler(handler func(message *hubclient.ThingMessage)) {
 	cts.mux.Lock()
 	defer cts.mux.Unlock()
 	cts.eventHandler = handler
@@ -231,8 +238,8 @@ func (cts *ConsumedThingsSession) SetEventHandler(handler func(message *hubclien
 //
 // This will subscribe to events from the Hub using the provided hub client.
 // This will receive any prior event subscriber.
-func NewConsumedThingsSession(hc hubclient.IConsumerClient) *ConsumedThingsSession {
-	ctm := ConsumedThingsSession{
+func NewConsumedThingsSession(hc hubclient.IConsumerClient) *ConsumedThingsDirectory {
+	ctm := ConsumedThingsDirectory{
 		hc:             hc,
 		consumedThings: make(map[string]*ConsumedThing),
 		directory:      make(map[string]*tdd.TD),

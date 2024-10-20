@@ -21,6 +21,8 @@ export function getPropName(vid: ValueID): string {
     if (vid.propertyKey != undefined) {
         propName += "-" + String(vid.propertyKey)
     }
+    // property/event/action names cannot have spaces
+    propName = propName.replaceAll(" ", "_")
     key2vidMap.set(propName, vid)
     return propName
 }

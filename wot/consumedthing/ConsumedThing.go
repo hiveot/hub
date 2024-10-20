@@ -199,6 +199,18 @@ func (ct *ConsumedThing) OnPropertyUpdate(tv *digitwin.ThingValue) {
 	}
 }
 
+// OnTDUpdate handles receiving of an update to the TD document.
+// This affects newly created interaction outputs which will be created with
+// the updated affordance schema.
+//
+//	msg is the property message received from the hub. This isn't standard WoT so
+//	the objective is to remove the need for it.
+func (ct *ConsumedThing) OnTDUpdate(newTD *tdd.TD) {
+	ct.mux.Lock()
+	defer ct.mux.Unlock()
+	ct.td = newTD
+}
+
 // ReadEvent returns the last known Thing event value or nil if name is not an event
 // Call ReadAllEvents to refresh the values.
 //

@@ -51,7 +51,6 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// obtain the TD and the event/action affordance to display
-	var title string
 	var sourceRef = thingID + "/" + name
 
 	cts := sess.GetConsumedThingsSession()
@@ -68,6 +67,7 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 	// if no value was ever received then use n/a
 	latestValue := io.Value.Text() + " " + io.Schema.UnitSymbol()
 	latestUpdated := io.GetUpdated()
+	title := td.Title + " " + io.Title
 
 	// the input hidden hold the real source value
 	// this must match the list in RenderEditTile.gohtml

@@ -20,6 +20,8 @@
   "comment": "TODO: how to reference ClientProfile defined in the user service?",
   "links": [],
 
+  "allow": ["admin"],
+
   "properties": {
     "nrClients": {
       "title": "Number of clients",

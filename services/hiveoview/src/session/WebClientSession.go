@@ -49,7 +49,7 @@ type WebClientSession struct {
 
 	// Holder of consumed things for this session
 	// FIXME: if a tdd is not found initially then reload it
-	cts *consumedthing.ConsumedThingsSession
+	cts *consumedthing.ConsumedThingsDirectory
 
 	// ClientID is the login ID of the user
 	//clientID string
@@ -147,7 +147,7 @@ func (wcs *WebClientSession) GetHubClient() hubclient.IConsumerClient {
 }
 
 // GetConsumedThingsSession returns the consumed things model of this client
-func (wcs *WebClientSession) GetConsumedThingsSession() *consumedthing.ConsumedThingsSession {
+func (wcs *WebClientSession) GetConsumedThingsSession() *consumedthing.ConsumedThingsDirectory {
 	return wcs.cts
 }
 

@@ -41,4 +41,11 @@ type ActionAffordance struct {
 
 	// Indicate whether the action is idempotent, eg repeated calls with the same result
 	Idempotent bool `json:"idempotent,omitempty" default:"false"`
+
+	// Allow is a HiveOT extension to list which roles are allowed to invoke this action
+	// this overrides the default role permission
+	Allow []string `json:"allow,omitempty"`
+	// Deny is a HiveOT extension to list which roles are denied to invoke this action
+	// this overrides the default role permission
+	Deny []string `json:"deny,omitempty"`
 }

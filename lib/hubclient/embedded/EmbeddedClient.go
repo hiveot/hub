@@ -136,6 +136,7 @@ func (cl *EmbeddedClient) PublishMultipleProperties(thingID string, props map[st
 
 // PubTD publishes an agent's TD
 func (cl *EmbeddedClient) PubTD(thingID string, tdJSON string) error {
+	// FIXME: use directory action
 	//return cl.PubEvent(thingID, vocab.EventNameTD, tdJSON)
 	msg := hubclient.NewThingMessage(vocab.MessageTypeTD, thingID, "", tdJSON, cl.clientID)
 	stat := cl.sendMessage(msg)

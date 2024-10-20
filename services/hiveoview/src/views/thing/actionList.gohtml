@@ -6,10 +6,12 @@
 	<li>
 		<div class="h-show-sm">{{/*icon*/}}</div>
 		<div>Action Name</div>
-		<div class="h-show-lg">Type</div>
-		<div >Last Value</div>
-		<div class="h-show-lg">Description</div>
-		<div class="h-show-md">Updated</div>
+		<div class="h-show-sm">Stateful</div>
+		<div >Input</div>
+
+		<div class="h-show-md">Output</div>
+		<div class="h-show-xl">Description</div>
+		<div class="h-show-xl">Last Used</div>
 	</li>
 
     {{range $name := .ActionNames }}
@@ -17,12 +19,14 @@
         {{$iout := $.CT.GetPropValue $name}}
 				<li>
 
+            {{/* action icon*/}}
 					<div class="h-show-sm">{{/*icon*/}}</div>
 
+         {{/* Action title*/}}
 					<div title="name: {{$name}}">
 						<button class="outline" style="border:none;
 										display:inline-flex; gap: 5px;
-										align-items: center; padding:0"
+										text-align: left; padding:0"
 						        hx-trigger="click"
 						        hx-get="{{$.GetRenderActionPath $name}}"
 						        hx-target="#modalLevel1"
@@ -31,14 +35,21 @@
 						</button>
 					</div>
 
-					<div class="h-show-lg">{{$iout.Schema.Type}}</div>
-					<div class="h-row">
-            {{template "RenderOutputValue.gohtml" $iout}}
+          {{/* Stateful action*/}}
+					<div class="h-show-sm">$iout.Aff.Safe</div>
+
+          {{/* Input schema type*/}}
+					<div >{{$iout.Schema.Title}}</div>
+
+					{{/* Output schema type (if any)*/}}
+					<div class="h-row h-show-md" >
+						{{$iout.Schema.Title}}
 					</div>
 
-					<div class="h-show-lg">{{$iout.Schema.Description}}</div>
+					<div class="h-show-xl">{{$iout.Schema.Description}}</div>
 
-					<div class="h-show-md"
+          {{/*Last used*/}}
+					<div class="h-show-xl"
 					     sse-swap="{{$.ThingID}}/{{$name}}/updated"
 					     hx-swap="innerHTML"
 					     hx-target="this"
@@ -62,39 +73,42 @@
         .thing-actions {
             /*xs, show column 2, 4 */
             grid-template-columns:
-				            minmax(200px, max-content) /* ID/title */
-				            minmax(100px, 1fr); /*type*/
+				            minmax(200px, max-content) /* title */
+				            minmax(100px, 1fr); /*Input*/
         }
     }
 
     @media (width >= 576px) {
         .thing-actions {
-            /*sm, show column 1,2,4 */
+            /*sm, show column 1,2,3,4 */
             grid-template-columns:
 				            40px   /* icon*/
-				            minmax(200px, max-content) /*ID/title*/
-				            minmax(100px, 1fr); /*type*/
+				            minmax(200px, max-content) /*title*/
+				            200px   /* stateful*/
+				            minmax(100px, 1fr); /*Input*/
         }
     }
 
     @media (width >= 768px) {
         .thing-actions {
-            /*md,show column 1,2,4,6 */
+            /*md,show column 1,2,3,4,5,7 */
             grid-template-columns:
 				            40px  /*icon*/
-				            minmax(200px, max-content) /*ID/title*/
-				            minmax(100px, max-content) /*last action*/
+				            minmax(200px, max-content) /*title*/
+				            200px   /* stateful*/
+				            minmax(100px, max-content)/*Input*/
 				            minmax(100px, 1fr);        /*updated*/
         }
     }
 
-    @media (width >= 1024px) {
+    @media (width >= 1280px) {
         .thing-actions {
-            /*lg,show column 1-6 */
+            /*xl,show column 1-7 */
             grid-template-columns:
 				            40px/*icon*/
-				            minmax(200px, max-content) /*name*/
-				            minmax(100px, max-content)/*type*/
+				            minmax(200px, max-content) /*title*/
+				            200px   /* stateful*/
+				            minmax(100px, max-content)/*Input*/
 				            minmax(100px, max-content) /*last action*/
 				            minmax(100px, 1fr) /*description*/
 				            minmax(100px, max-content); /*date*/

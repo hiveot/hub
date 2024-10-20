@@ -6,10 +6,12 @@ Manage authorization of client requests based on their role.
 
 ## Status
 
-This service is functional but breaking changes should be expected.
+This service is functional. This changes to include authorization roles in the agent published TD.
 
 TODOs:
-* Authorization of actions and subscriptions is not yet hooked into the runtime.
+* Define authorization in the TD instead of some hidden mechanism
+  * Extend vocabulary with an 'authz' field for each action and event
+  * authz: [list of roles]
 * Implementation of custom roles is not yet complete.
 
 ## Summary

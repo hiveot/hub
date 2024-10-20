@@ -10,6 +10,9 @@ type ActionProgressHandler func(stat hubclient.DeliveryStatus, agentID string) e
 
 // IHubRouter is the interface of the handler of action,event and property update
 // messages received from consumers and agents.
+// TODO: IHubRouter is effectively the digitwin agent service API for connecting
+//
+//	agents with the hub. Only agents are allowed to use it.
 type IHubRouter interface {
 
 	// HandleActionFlow client (consumer or agent) sends request to invoke an action on the digital twin.

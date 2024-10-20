@@ -14,7 +14,7 @@ Operations:
     HTOpReadAllThings: "readAllThings"
     HTOpReadThing: "readThing"
     # agent operations
-    HTOpUpdateThing: "updatething"
+    HTOpUpdateThing: "updatething"  # directory operation
     HTOpDelivery: "updatedelivery"
     HTOpPublishEvent: "publishevent"
     HTOpUpdateProperty: "updateproperty"

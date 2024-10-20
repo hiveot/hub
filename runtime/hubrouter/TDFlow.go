@@ -6,6 +6,7 @@ import (
 )
 
 // HandleUpdateTDFlow agent updates a TD
+// This updates the thing TD in the directory
 func (svc *HubRouter) HandleUpdateTDFlow(agentID string, tdJSON string) error {
 	slog.Info("HandleUpdateTDFlow (from agent)", slog.String("agentID", agentID))
 

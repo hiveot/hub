@@ -144,8 +144,13 @@ var AttrConfig = map[string]AttrConversion{
 		Title:  "Data Errors Channel 3", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
 	},
 	"DateTime": {
-		IsProp: true, Ignore: true,
-		Title: "Device date/time", DataType: vocab.WoTDataTypeDateTime,
+		IsProp: true,
+		Title:  "Device date/time", DataType: vocab.WoTDataTypeDateTime,
+	},
+	"DeviceName": {
+		IsProp:    true,
+		Title:     "Device Name",
+		VocabType: vocab.PropDeviceTitle, DataType: vocab.WoTDataTypeString,
 	},
 	"DevicesConnectedChannel1": {
 		IsProp: true,
@@ -225,15 +230,20 @@ var AttrConfig = map[string]AttrConversion{
 		},
 	},
 	"LEDState": {
-		IsActuator: true,
-		Title:      "LED Control",
-		DataType:   vocab.WoTDataTypeBool,
+		IsActuator: true, IsProp: true,
+		Title:    "LED Control",
+		DataType: vocab.WoTDataTypeBool,
 	},
 	"Light": {
 		IsEvent:   true,
 		Title:     "Luminance",
 		VocabType: vocab.PropEnvLuminance,
 		DataType:  vocab.WoTDataTypeNumber, Precision: 0, ChangeNotify: 30.0,
+	},
+	"MACAddress": {
+		IsProp:    true,
+		Title:     "MAC Address",
+		VocabType: vocab.PropNetMAC, DataType: vocab.WoTDataTypeString,
 	},
 	"Manufacturer": {
 		IsProp:    true,
@@ -272,9 +282,9 @@ var AttrConfig = map[string]AttrConversion{
 		DataType: vocab.WoTDataTypeString,
 	},
 	"Relay": {
-		IsActuator: true,
-		Title:      "Relay control",
-		DataType:   vocab.WoTDataTypeBool, VocabType: vocab.ActionSwitchOff,
+		IsActuator: true, IsProp: true,
+		Title:    "Relay control",
+		DataType: vocab.WoTDataTypeBool, VocabType: vocab.ActionSwitchOff,
 	},
 	"RelayFunction": {
 		IsProp:    true,

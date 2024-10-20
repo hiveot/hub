@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/keys"
@@ -479,12 +480,8 @@ func (cl *HttpSSEClient) PubProperties(thingID string, props map[string]any) err
 func (cl *HttpSSEClient) PubTD(thingID string, tdJSON string) error {
 	slog.Info("PubTD", slog.String("thingID", thingID))
 
-	// TDs are published in JSON encoding as per spec
-	stat := cl.PubMessage("POST", PostAgentUpdateTDDPath, thingID, "", tdJSON, "", nil)
-	if stat.Error != "" {
-		return errors.New(stat.Error)
-	}
-	return nil
+	err := digitwin.DirectoryUpdateDTD(cl, tdJSON)
+	return err
 }
 
 // RefreshToken refreshes the authentication token
@@ -553,6 +550,7 @@ func (cl *HttpSSEClient) Rpc(
 			slog.Info("Rpc (wait)",
 				slog.Int("count", waitCount),
 				slog.String("clientID", cl.clientID),
+				slog.String("name", name),
 				slog.String("messageID", messageID),
 			)
 		}

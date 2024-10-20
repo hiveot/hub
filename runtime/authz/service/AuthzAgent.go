@@ -63,6 +63,7 @@ func StartAuthzAgent(svc *AuthzService) (*AuthzAgent, error) {
 		svc:          svc,
 	}
 
+	// FIXME: replace authz with TD based permissions
 	// set permissions for using the authn services as authz wasn't yet running
 	err = svc.SetPermissions(authn.AdminAgentID, authz.ThingPermissions{
 		AgentID: authn.AdminAgentID,

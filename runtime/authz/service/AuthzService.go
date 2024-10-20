@@ -78,11 +78,14 @@ func (svc *AuthzService) SetClientRole(senderID string, args authz2.AdminSetClie
 }
 
 // SetPermissions sets the client roles that are allowed to use an agent's service.
-// Intended for use by services and agents to set the roles that have access to it.
-// This fails if the caller is not a service or agent.
 //
-//	senderID is the agent or service that sets the permissions
-//	perms are the permissions being set
+// Intended for use by services to set the roles that have access to it.
+// This fails if the caller is not an agent and not an admin user.
+// Agents can only set permissions for themselves while admin users can set
+// permissions for others.
+//
+//	senderID is the client sets the permissions.
+//	perms are the permissions that apply to using this agent
 func (svc *AuthzService) SetPermissions(senderID string, perms authz2.ThingPermissions) error {
 	// the sender must be a service
 	slog.Info("SetPermissions",

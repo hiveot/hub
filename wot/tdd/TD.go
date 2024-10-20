@@ -32,6 +32,12 @@ const HiveOTContext = "https://www.hiveot.net/vocab/v0.1"
 //	 }
 type TD struct {
 
+	// Roles that are allowed to use this thing. Default (empty) is all roles.
+	Allow []string `json:"allow,omitempty"`
+
+	// Roles that are denied to use this thing. Default (empty or 'none') is no roles.
+	Deny []string `json:"deny,omitempty"`
+
 	// JSON-LD keyword to define shorthand names called terms that are used throughout a TD document. Required.
 	// in order to add the "ht" namespace, the context value can be a string or map
 	AtContext []any `json:"@context"`

@@ -23,6 +23,7 @@
 			"in": "header"
 		}
 	},
+	"deny": ["none"],
 	"properties": {
 	},
 	"events": {
@@ -31,7 +32,7 @@
 			"description": "A digital twin Thing TD was updated in the directory",
 			"data": {
 				"title": "TD",
-				"description": "JSON encoded TD of the Thing that updated",
+				"description": "JSON encoded TD of the digital twin Thing",
 				"type": "string"
 			},
 			"scopes": ["*"]
@@ -40,8 +41,8 @@
 			"title": "Thing Removed",
 			"description": "A Thing TD was removed from the directory",
 			"data": {
-				"title": "thingID",
-				"description": "ID of the Thing that was removed",
+				"title": "Thing ID",
+				"description": "ID of the digital twin Thing that was removed",
 				"type": "string"
 			},
 			"scopes": ["*"]
@@ -107,6 +108,8 @@
 			"description": "Remove a digital twin from the directory",
 			"safe": false,
 			"idempotent": true,
+			"allow": ["admin"],
+			"comment": "only admin can remove TDs",
 			"input": {
 				"title": "dThing ID",
 				"description": "Digital Twin Thing ID of the Thing to remove",
@@ -158,8 +161,9 @@
 			"@type": "ht:function",
 			"title": "Update DTD",
 			"description": "Update the Digital twin TD in the directory",
-			"comment": "Intended for use by agents to publish updates of their TDs",
 			"idempotent": true,
+			"allow": ["agent"],
+			"comment": "Only agents can update their TD",
 			"input": {
 				"title": "TD",
 				"description": "Device TD document in JSON format",
