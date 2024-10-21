@@ -358,7 +358,7 @@ func (cl *HttpSSEClient) PubEvent(thingID string, name string, data any, message
 	return nil
 }
 
-// PubMessage an action, event, property, td or delivery message and return the delivery status
+// PubMessage an action, event, property, td or progress message and return the delivery status
 //
 //	methodName is http.MethodPost for actions, http.MethodPost/MethodGet for properties
 //	path used to publish PostActionPath/PostEventPath/... optionally with {thingID} and/or {name}
@@ -410,6 +410,7 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 		if httpStatus == http.StatusUnauthorized {
 			err = errors.New("no longer authenticated")
 		}
+		// FIXME: use actual type
 	} else if dataSchema == "DeliveryStatus" {
 		// return dataschema contains a progress envelope
 		err = cl.Unmarshal(reply, &stat)
@@ -543,6 +544,9 @@ func (cl *HttpSSEClient) Rpc(
 	// Intermediate status update such as 'applied' are not errors. Wait longer.
 	for {
 		// wait at most cl.timeout or until delivery completes or fails
+		if time.Duration(waitCount)*time.Second > cl.timeout {
+			break
+		}
 		if stat.Progress == vocab.ProgressStatusCompleted || stat.Progress == vocab.ProgressStatusFailed {
 			break
 		}
@@ -554,7 +558,7 @@ func (cl *HttpSSEClient) Rpc(
 				slog.String("messageID", messageID),
 			)
 		}
-		stat, err = cl.WaitForStatusUpdate(rChan, messageID, cl.timeout)
+		stat, err = cl.WaitForStatusUpdate(rChan, messageID, time.Second)
 		waitCount++
 	}
 	cl.mux.Lock()

@@ -59,9 +59,9 @@ MessageTypes:
     # agent [thing event] -> digitwin [dtw event] => subscribers
     MessageTypeEvent:      "event"
 
-    # Delivery update message from an agent to the hub onwards to the sender
+    # Progress update message from an agent to the hub onwards to the sender
     # agent [delivery status] -> digitwin [dtw message] -> sender
-    MessageTypeDeliveryUpdate:  "delivery"
+    MessageTypeProgressUpdate:  "progress"
 
     # Property value updates flow from a thing agent to the digital twin, which
     # in turn updates observers of the property(ies).

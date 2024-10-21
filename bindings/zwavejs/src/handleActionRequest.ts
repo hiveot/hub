@@ -118,9 +118,10 @@ export function  handleActionRequest(
             // VID based configuration and actions
             //  currently propertyIDs are also accepted.
             // FIXME: only allow defined actions
+            // FIXME: convert actionValue to expected type
             let propVid = getPropVid(msg.name)
             if (propVid) {
-                setValue( node, propVid, actionValue)
+                setValue(node, propVid, actionValue)
                     .then(stat => {
                         stat.messageID = msg.messageID
                         // async update
@@ -128,7 +129,9 @@ export function  handleActionRequest(
                         let newValue = getVidValue(node, propVid)
                         zwapi.onValueUpdate(node, propVid, newValue)
                     })
-
+                    .catch(err => {
+                        errMsg = err.toString()
+                    })
                 found = true
                 break;
             }

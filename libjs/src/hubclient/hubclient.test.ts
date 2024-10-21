@@ -1,12 +1,10 @@
-// mqtt and nats transport testing
-
 import process from "node:process";
 import * as tslog from 'tslog';
 import {DeliveryStatus} from './DeliveryStatus';
 import {ThingMessage} from "../things/ThingMessage";
 import {ConnectToHub} from "@hivelib/hubclient/ConnectToHub";
-import {MessageTypeDeliveryUpdate, MessageTypeAction} from "@hivelib/api/vocab/vocab";
-import {ProgressStatusDelivered} from "@hivelib/api/vocab/vocab";
+import {MessageTypeProgressUpdate, MessageTypeAction} from "@hivelib/api/vocab/vocab.js";
+import {ProgressStatusCompleted, ProgressStatusDelivered} from "@hivelib/api/vocab/vocab.js";
 
 const log = new tslog.Logger({name: "HCTest"})
 
@@ -56,13 +54,13 @@ async function test2() {
     let hc = await ConnectToHub(baseURL, testSvcID, caCertPEM, true)
     try {
         token = await hc.connectWithPassword(testSvcPass)
+        await hc.pubEvent("thing1", "event1", "hello world")
     } catch(e) {
-        log.error("test2",e)
-        throw(e)
+        log.error("test2 - expected error",e)
+    } finally {
+        await hc.disconnect()
     }
 
-    hc.pubEvent("thing1", "event1", "hello world")
-    hc.disconnect()
 }
 
 // test reading directory
@@ -95,7 +93,8 @@ async function test3() {
         await hc.subscribe("", "")
 
         // publish an action request
-        let stat = await hc.invokeAction(thingID, "action1", "1")
+        let messageID = "test3a"
+        let stat = await hc.invokeAction(thingID, "action1",messageID, "1")
         if (stat.error != "") {
             throw ("pubAction failed: " + stat.error)
         }
@@ -128,15 +127,15 @@ async function test4() {
     let clToken = ""
     let ev1Count = 0
     let actionCount = 0
-    let actionDelivery: DeliveryStatus|undefined
+    let actionDelivery: DeliveryStatus | undefined
 
     // connect a service that sends events
     let hcSvc = await ConnectToHub(baseURL, testSvcID, caCertPEM, true)
     try {
         svcToken = await hcSvc.connectWithPassword(testSvcPass)
-    } catch(e) {
-        log.error("test4",e)
-        throw(e)
+    } catch (e) {
+        log.error("test4", e)
+        throw (e)
     }
 
     // connect a client that listens for events
@@ -150,14 +149,14 @@ async function test4() {
 
     //round 2, subscribe to events
     try {
-        await hcCl.subscribe("dtw:testsvc:thing1","")
+        await hcCl.subscribe("dtw:testsvc:thing1", "")
         // await hcCl.subscribe("","")
-        hcCl.setMessageHandler((tm: ThingMessage):DeliveryStatus=>{
+        hcCl.setMessageHandler((tm: ThingMessage): DeliveryStatus => {
             let stat = new DeliveryStatus()
             if (tm.thingID == "dtw:testsvc:thing1") {
-                log.info("Received event: "+tm.name+"; data="+tm.data)
+                log.info("Received event: " + tm.name + "; data=" + tm.data)
                 ev1Count++
-            } else if (tm.messageType == MessageTypeDeliveryUpdate) {
+            } else if (tm.messageType == MessageTypeProgressUpdate) {
                 // FIXME: why is data base64 encoded? => data type in golang was []byte; changed to string
                 // let data = Buffer.from(tm.data,"base64").toString()
                 actionDelivery = JSON.parse(tm.data)
@@ -168,7 +167,7 @@ async function test4() {
             stat.completed(tm)
             return stat
         })
-    } catch(e) {
+    } catch (e) {
         log.error("test1: Failed: " + e)
     }
 
@@ -176,34 +175,58 @@ async function test4() {
     await new Promise(resolve => setTimeout(resolve, 100));
 
     // round 3, send a test event
-    hcSvc.pubEvent("thing1", "event1", "hello world")
-
+    // FIXME: publish a TD for thing1 to create a digitwin
+    try {
+        await hcSvc.pubEvent("thing1", "event1", "hello world")
+    } catch (e) {
+        console.error("pubevent failed",e)
+    }
     // round 4, send an action to the digitwin thing of the test service
-    let dtwThing1ID = "dtw:"+testSvcID+":thing1"
-    let stat2 = await hcCl.invokeAction(dtwThing1ID,"action1", "how are you")
-    if (stat2.error) {
-        log.error("failed publishing action: "+stat2.error)
-    } else if (stat2.progress != ProgressStatusDelivered) {
-        log.error("unexpected reply: "+stat2.progress)
+    try {
+        hcSvc.setMessageHandler((msg: ThingMessage): DeliveryStatus => {
+            let stat = new DeliveryStatus()
+            // agents receive the thingID without prefix
+            if (msg.thingID == "thing1") {
+                console.info("success!")
+            } else {
+                console.error("not receiving action")
+            }
+            return stat
+        })
+
+        let dtwThing1ID = "dtw:" + testSvcID + ":thing1"
+        let messageID = "test4a"
+        let stat2 = await hcCl.invokeAction(dtwThing1ID, "action1", messageID, "how are you")
+        if (stat2.error) {
+            log.error("failed publishing action: " + stat2.error)
+        } else if (stat2.progress != ProgressStatusDelivered) {
+            log.error("unexpected reply: " + stat2.progress)
+        }
+    } catch (e) {
+        console.log("invokeAction failed")
     }
 
     // wait for events
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
-    if (ev1Count != 1) {
-        log.error("received " + ev1Count + " events. Expected 1")
-    } else {
-        log.info("test4 event success. Received an event")
+        if (ev1Count != 1) {
+            log.error("received " + ev1Count + " events. Expected 1")
+        } else {
+            log.info("test4 event success. Received an event")
+        }
+        if (actionCount != 1) {
+            log.error("received " + actionCount + " actions. Expected 1")
+        } else if (!actionDelivery || actionDelivery.progress != ProgressStatusCompleted) {
+            log.error("test4 action sent but missing delivery confirmation")
+        } else {
+            log.info("test4 action success. Received an action confirmation")
+        }
+        hcSvc.disconnect()
+        hcCl.disconnect()
+    } catch (e) {
+        console.error("wait for events failed")
     }
-    if (actionCount != 1) {
-        log.error("received " + actionCount + " actions. Expected 1")
-    } else if (!actionDelivery || actionDelivery.progress != ProgressStatusCompleted) {
-        log.error("test4 action sent but missing delivery confirmation")
-    } else {
-        log.info("test4 action success. Received an action confirmation")
-    }
-    hcSvc.disconnect()
-    hcCl.disconnect()
 }
 
 // jest isn't working with tsx yet. Once it does then lets change the tests
@@ -220,7 +243,9 @@ async function test4() {
 // })
 
 // These tests require a running test environment
-// test1()
-//  test2()
- // test3()
+// test1().then()
+// test2().then()
+//  test3()
 test4()
+
+console.log('done')

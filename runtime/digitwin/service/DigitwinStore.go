@@ -448,7 +448,7 @@ func (svc *DigitwinStore) UpdateEventValue(
 	dtw, found := svc.dtwCache[dThingID]
 	if !found {
 		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
-		slog.Info("UpdateEventValue unknown thing ID", "dThingID", dThingID)
+		slog.Info("UpdateEventValue Can't update state of an unknown Thing. Event ignored.", "dThingID", dThingID)
 		return dThingID, err
 	}
 	eventValue := digitwin2.ThingValue{

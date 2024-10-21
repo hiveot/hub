@@ -5,7 +5,7 @@ import {
 import type {IHiveKey} from "@keys/IHiveKey";
 import * as tslog from 'tslog';
 import {
-     MessageTypeDeliveryUpdate,
+     MessageTypeProgressUpdate,
     MessageTypeTD,  MessageTypeAction, MessageTypeEvent, MessageTypeProperty,
 } from "@hivelib/api/vocab/vocab.js";
 import * as http2 from "node:http2";
@@ -14,6 +14,12 @@ import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as https from "node:https";
 import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
 import {ConnectionStatus, MessageHandler} from "@hivelib/hubclient/IConsumerClient";
+import {nanoid} from "nanoid";
+import EventSource from "eventsource";
+
+// FIXME: import from vocab is not working
+const ProgressStatusCompleted = "completed"
+const ProgressStatusFailed = "failed"
 
 
 // Form paths that apply to all TDs at the top level
@@ -62,6 +68,7 @@ export class HttpSSEClient implements IAgentClient {
     _http2Session: http2.ClientHttp2Session | undefined;
     _ssePath: string;
     _sseClient: any;
+    _cid:string;
 
     isInitialized: boolean = false;
     connStatus: ConnectionStatus;
@@ -73,6 +80,9 @@ export class HttpSSEClient implements IAgentClient {
     // client handler for incoming messages from the hub.
     messageHandler: MessageHandler | null = null;
 
+    // map of messageID to delivery status update channel
+    _correlData: Map<string,(stat: DeliveryStatus)=>void>
+
     // Instantiate the Hub Client.
     //
     // The flag disableCertCheck is intended for use with self-signed certificate
@@ -83,13 +93,15 @@ export class HttpSSEClient implements IAgentClient {
     // @param caCertPem: verify server against this CA certificate
     // @param disableCertCheck: don't check the (self signed) server certificate
     constructor(hostPort: string, clientID: string, caCertPem: string, disableCertCheck: boolean) {
-        this._baseURL = hostPort
+        this._baseURL = hostPort;
         this._caCertPem = caCertPem;
         this._clientID = clientID;
         this._disableCertCheck = disableCertCheck;
-        this._ssePath = ConnectSSEPath
+        this._ssePath = ConnectSSEPath;
         this.connStatus = ConnectionStatus.Disconnected;
-        this.authToken = ""
+        this.authToken = "";
+        this._correlData = new Map();
+        this._cid = nanoid() // connection id
     }
 
     // ClientID the client is authenticated as to the server
@@ -124,7 +136,7 @@ export class HttpSSEClient implements IAgentClient {
             this.disconnect()
         });
         this._http2Session.on('connect', (ev) => {
-            hclog.info("connected to server");
+            hclog.info("connected to server, cid=",this._cid);
         });
         this._http2Session.on('error', (error) => {
             console.error("connection error: "+error);
@@ -153,12 +165,15 @@ export class HttpSSEClient implements IAgentClient {
             sessionID: "",
             token: ""
         }
-        let resp = await this.pubMessage("POST", PostLoginPath, loginArgs)
+        let resp = await this.pubMessage("POST", PostLoginPath,"", loginArgs)
         loginResp = JSON.parse(resp)
         this.authToken = loginResp.token
         // with the new auth token a SSE return channel can be established
-        this._sseClient = connectSSE(this._baseURL, this._ssePath, this.authToken,
-            this.onMessage.bind(this))
+        this._sseClient = await connectSSE(
+            this._baseURL, this._ssePath, this.authToken, this._cid,
+            this.onMessage.bind(this),
+            this.onProgress.bind(this),
+            this.onConnection.bind(this))
 
         return loginResp.token
     }
@@ -168,8 +183,11 @@ export class HttpSSEClient implements IAgentClient {
     async connectWithToken(jwtToken: string): Promise<string> {
         this.authToken = jwtToken
         await this.connect()
-        this._sseClient = connectSSE(this._baseURL, this._ssePath, this.authToken,
-            this.onMessage.bind(this))
+        this._sseClient = connectSSE(
+            this._baseURL, this._ssePath, this.authToken, this._cid,
+            this.onMessage.bind(this),
+            this.onProgress.bind(this),
+            this.onConnection.bind(this) )
         return ""
     }
 
@@ -199,20 +217,26 @@ export class HttpSSEClient implements IAgentClient {
     onConnection(status: ConnectionStatus) {
         this.connStatus = status
         if (this.connStatus === ConnectionStatus.Connected) {
-            hclog.info('HubClient connected');
+            hclog.info('HubClient connected to '+ this._baseURL+this._ssePath + ' as '+this._clientID);
         } else if (this.connStatus == ConnectionStatus.Connecting) {
-            hclog.info('HubClient attempt connecting');
+            hclog.warn('HubClient attempt connecting');
         } else {
-            hclog.info('HubClient disconnected');
+            hclog.warn('HubClient disconnected');
         }
     }
-
+    onProgress(stat:DeliveryStatus):void{
+        let cb = this._correlData.get(stat.messageID)
+        if (cb) {
+            cb(stat)
+        }
+    }
     // Handle incoming messages from the hub and pass them to handler
+    // after actions, send a progress update
     onMessage(msg: ThingMessage): void {
         try {
             if (this.messageHandler) {
                 let stat = this.messageHandler(msg)
-                if (msg.messageType !== MessageTypeEvent && stat.progress && stat.messageID) {
+                if (msg.messageType === MessageTypeAction && stat.progress && stat.messageID) {
                     this.pubProgressUpdate(stat)
                 }
             }
@@ -251,7 +275,7 @@ export class HttpSSEClient implements IAgentClient {
     // }
 
     // publish a request to the path with the given data
-    async pubMessage(methodName: string, path: string, data: any): Promise<string> {
+    async pubMessage(methodName: string, path: string, messageID:string, data: any): Promise<string> {
         // if the session is invalid, restart it
         if (this._http2Session?.closed) {
             // this._http2Client.
@@ -275,6 +299,8 @@ export class HttpSSEClient implements IAgentClient {
                     ":method": methodName,
                     "content-type": "application/json",
                     "content-length": Buffer.byteLength(payload),
+                    "message-id": messageID,
+                    "cid":this._cid,
                 })
 
                 req.setEncoding('utf8');
@@ -318,16 +344,17 @@ export class HttpSSEClient implements IAgentClient {
     //	@param agentID: of the device or service that handles the action.
     //	@param thingID: is the destination thingID to whom the action applies.
     //	name is the name of the action as described in the Thing's TD
+    //  messageID to include in the header
     //	payload is the optional action arguments to be serialized and transported
     //
     // This returns the serialized reply data or null in case of no reply data
-    async invokeAction(thingID: string, name: string, payload: any): Promise<DeliveryStatus> {
+    async invokeAction(thingID: string, name: string, messageID:string, payload: any): Promise<DeliveryStatus> {
         hclog.info("pubAction. thingID:", thingID, ", name:", name)
 
         let actionPath = PostInvokeActionPath.replace("{thingID}", thingID)
         actionPath = actionPath.replace("{name}", name)
 
-        let resp = await this.pubMessage("POST",actionPath, payload)
+        let resp = await this.pubMessage("POST",actionPath, messageID, payload)
         let stat: DeliveryStatus = JSON.parse(resp)
         return stat
     }
@@ -347,13 +374,13 @@ export class HttpSSEClient implements IAgentClient {
     //	@param thingID: of the Thing whose event is published
     //	@param eventName: is one of the predefined events as described in the Thing TD
     //	@param payload: is the serialized event value, or nil if the event has no value
-    pubEvent(thingID: string, name: string, payload: any) {
+    async pubEvent(thingID: string, name: string, payload: any) {
         hclog.info("pubEvent. thingID:", thingID, ", name:", name)
 
         let eventPath = PostAgentPublishEventPath.replace("{thingID}", thingID)
         eventPath = eventPath.replace("{name}", name)
 
-        this.pubMessage("POST",eventPath, payload)
+        await this.pubMessage("POST",eventPath, "", payload)
     }
 
 
@@ -361,7 +388,8 @@ export class HttpSSEClient implements IAgentClient {
     // @param msg: action message that was received
     // @param stat: status to return
     async pubProgressUpdate(stat: DeliveryStatus) {
-        let resp = await this.pubMessage("POST",PostAgentPublishProgressPath, stat)
+        let resp = await this.pubMessage(
+            "POST",PostAgentPublishProgressPath, stat.messageID, stat)
     }
 
 
@@ -369,7 +397,7 @@ export class HttpSSEClient implements IAgentClient {
     async pubProperties(thingID: string, props: { [key: string]: any }) {
         let postPath = PostAgentUpdateMultiplePropertiesPath.replace("{thingID}", thingID)
 
-        this.pubMessage("POST",postPath, props)
+        await this.pubMessage("POST",postPath, "", props)
     }
 
     // PubTD publishes an event with a Thing TD document.
@@ -378,19 +406,54 @@ export class HttpSSEClient implements IAgentClient {
         // FIXME: use action on the directory
         let tdJSON = JSON.stringify(td, null, ' ');
         let postPath = PostAgentUpdateTDDPath.replace("{thingID}", td.id)
-        this.pubMessage("POST",postPath, tdJSON)
+        await this.pubMessage("POST",postPath, "", tdJSON)
     }
 
 
     // Rpc publishes an RPC request to a service and waits for a response.
     // Intended for users and services to invoke RPC to services.
+    // This return the response data.
     async rpc(dThingID: string, methodName: string, args: any): Promise<any> {
+        return new Promise((resolve, reject) => {
 
-        let stat = await this.invokeAction(dThingID, methodName, args);
-        if (stat.error != "") {
-            throw stat.error
-        }
-        // TODO: wait for status update reply
+            // a messageID is needed before the action is published in order to match it with the reply
+            let messageID = "rpc-" + nanoid()
+
+            // handle timeout
+            let t1 = setTimeout(() => {
+                this._correlData.delete(messageID)
+                console.error("RPC",dThingID,methodName,"failed with timeout")
+                reject("timeout")
+            }, 30000)
+
+            // set the handler for progress messages
+            this._correlData.set(messageID, (stat:DeliveryStatus):void=> {
+                // console.log("delivery progress",stat.progress)
+                // Remove the rpc wait hook and resolve the rpc
+                clearTimeout(t1)
+                this._correlData.delete(messageID)
+                resolve(stat.reply)
+            })
+            this.invokeAction(dThingID, methodName, messageID, args)
+                .then((stat: DeliveryStatus) => {
+                    // complete the request if the result is returned, otherwise wait for
+                    // the callback from _correlData
+                    if (stat.progress == ProgressStatusCompleted || stat.progress == ProgressStatusFailed) {
+                        this._correlData.delete(messageID)
+                        resolve(stat.reply)
+                    }
+                })
+                .catch((e) => {
+                    console.error("RPC failed", e);
+                    reject(e)
+                })
+        })
+    }
+
+    async waitForResponse(messageID:string): Promise<DeliveryStatus> {
+        let stat = new DeliveryStatus()
+        stat.progress = ProgressStatusFailed
+        stat.error = "no response"
         return stat
     }
 
@@ -413,7 +476,7 @@ export class HttpSSEClient implements IAgentClient {
             oldToken: this.authToken,
         }
         try {
-            let resp = await this.pubMessage("POST",refreshPath, args);
+            let resp = await this.pubMessage("POST",refreshPath, "", args);
             this.authToken = JSON.parse(resp)
             return this.authToken
         } catch (e) {
@@ -455,9 +518,10 @@ export class HttpSSEClient implements IAgentClient {
         if (!name) {
             name = "+"
         }
+        // FIXME: a connectionID is required for subscriptions over SSE
         let subscribePath = PostSubscribeEventPath.replace("{thingID}", dThingID)
         subscribePath = subscribePath.replace("{name}", name)
-        await this.pubMessage("POST", subscribePath, "")
+        await this.pubMessage("POST", subscribePath,"", "")
 
     }
 
@@ -471,7 +535,7 @@ export class HttpSSEClient implements IAgentClient {
         }
         let subscribePath = PostUnsubscribeEventPath.replace("{thingID}", dThingID)
         subscribePath = subscribePath.replace("{name}", name)
-        await this.pubMessage("POST", subscribePath, "")
+        await this.pubMessage("POST", subscribePath, "","")
     }
 
     // writeProperty publishes a request for changing a Thing's property.
@@ -482,7 +546,7 @@ export class HttpSSEClient implements IAgentClient {
         let propPath = PostWritePropertyPath.replace("{thingID}", thingID)
         propPath = propPath.replace("{name}", name)
 
-        let resp = await this.pubMessage("POST",propPath, propValue)
+        let resp = await this.pubMessage("POST",propPath, "",propValue)
         let stat: DeliveryStatus = JSON.parse(resp)
         return stat
     }

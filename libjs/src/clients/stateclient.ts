@@ -1,4 +1,5 @@
 import {IAgentClient} from "@hivelib/hubclient/IAgentClient";
+import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
 
 // duplicated from stateapi.go
 const AgentID = "state"      // the state binding agentID
@@ -13,10 +14,12 @@ const SetMultipleMethod = "setMultiple"
 // Marshaller for invoke state service method using the given hub client
 export class StateClient {
     hc: IAgentClient
+    serviceID: string // digitwin ID of the state service
 
     constructor(hc: IAgentClient) {
         this.hc = hc
-        this.serviceID = makeDigitwinID(AgentID, StateStoreID)
+        // this.serviceID = makeDigiTwinThingID(AgentID, StateStoreID)
+        this.serviceID = "dtw:"+AgentID+":"+ StateStoreID
     }
 
     // Delete a key
@@ -24,7 +27,7 @@ export class StateClient {
         let args = {
             key: key
         }
-        return await this.hc.rpc(StateStoreID, DeleteMethod, args)
+        return await this.hc.rpc(this.serviceID, DeleteMethod, args)
     }
 
     // Get the value of a key
@@ -37,7 +40,13 @@ export class StateClient {
             found: boolean
             value: string
         }
-        let resp: RespType = await this.hc.rpc(StateStoreID, GetMethod, args)
+        let resp:RespType
+        try {
+            resp = await this.hc.rpc(this.serviceID, GetMethod, args)
+        } catch(e) {
+            console.error("state.Get error",e)
+            throw("state.Get error"+e)
+        }
         return { value: resp.value, found: resp.found }
     }
 
@@ -49,19 +58,19 @@ export class StateClient {
         type RespType = {
             kv: { [index: string]: string }
         }
-        let resp: RespType = await this.hc.rpc(StateStoreID, GetMultipleMethod, args)
+        let resp: RespType = await this.hc.rpc(this.serviceID, GetMultipleMethod, args)
 
         return resp.kv
     }
 
     // Set the value of a key
-    async Set(key: string, data: string) {
+    async Set(key: string, data: string):Promise<DeliveryStatus> {
         let args = {
             key: key,
             value: data
         }
-        let resp = await this.hc.rpc(StateStoreID, SetMethod, args)
-        return
+        let stat = await this.hc.rpc(this.serviceID, SetMethod, args)
+        return stat
     }
 
     // Set multiple values at once
@@ -69,8 +78,7 @@ export class StateClient {
         let args = {
             kv: kv
         }
-        let resp = await this.hc.rpc(StateStoreID, SetMultipleMethod, args)
-        return resp
+        return await this.hc.rpc(this.serviceID, SetMultipleMethod, args)
     }
 }
 

@@ -22,8 +22,6 @@ func SubmitDashboardLayout(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
-	slog.Info("SubmitDashboardLayout", "ClientID", cdc.clientID,
-		"dashboardID", cdc.dashboardID)
 
 	// Update the layout of the given breakpoint if given
 	// TODO: identify breakpoint used: sm, md, lg
@@ -42,6 +40,12 @@ func SubmitDashboardLayout(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			newLayoutSer, _ := json.Marshal(newLayout)
+			// TODO: fix unnecessary dashboard layout triggers by grid-stack
+			// probable cause is that dashboard tile switch in TextCardInput bubbles event even
+			// though hx-post is set.
+			if string(newLayoutSer) == cdc.dashboard.GridLayout {
+				return
+			}
 			cdc.dashboard.GridLayout = string(newLayoutSer)
 		}
 	}
@@ -50,6 +54,8 @@ func SubmitDashboardLayout(w http.ResponseWriter, r *http.Request) {
 			"dashboardID", cdc.dashboard.ID, "err", err.Error())
 		sess.WriteError(w, err, http.StatusBadRequest)
 	}
+	slog.Info("SubmitDashboardLayout", "ClientID", cdc.clientID,
+		"dashboardID", cdc.dashboardID)
 
 	// save the updated dashboard
 	cdc.clientModel.UpdateDashboard(&cdc.dashboard)

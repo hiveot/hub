@@ -33,28 +33,22 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	if event.Type == hubclient.PingMessage {
 		return
 	}
-	// we need the actual message ID and ignore '-'
-	// this isn't pretty. the sse server uses "-" to avoid go-sse injecting a 'previous id'.
-	// so, a messageID of "-" mean no id.
+	messageType := event.Type      // event, action, property, ping, custom event...
 	messageID := event.LastEventID // this is the ID provided by the server
-	if messageID == "-" {
-		messageID = ""
-	}
-	messageType := event.Type // event, action, property, ping, custom event...
 	thingID := ""
 	senderID := ""
 	name := ""
 
-	// event Type field contains: {eventType}[/{thingID}[/{name}]]
-	parts := strings.Split(event.Type, "/")
+	// event ID field contains: {thingID}/{name}/{senderID}/{messageID}
+	parts := strings.Split(event.LastEventID, "/")
 	if len(parts) > 1 {
-		messageType = parts[0]
-		thingID = parts[1]
+		thingID = parts[0]
+		name = parts[1]
 		if len(parts) > 2 {
-			name = parts[2]
+			senderID = parts[2]
 		}
 		if len(parts) > 3 {
-			senderID = parts[3]
+			messageID = parts[3]
 		}
 	}
 
@@ -93,7 +87,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	)
 
 	// always handle rpc response
-	if rxMsg.MessageType == vocab.MessageTypeDeliveryUpdate {
+	if rxMsg.MessageType == vocab.MessageTypeProgressUpdate {
 		// this client is receiving a delivery update from an previously sent action.
 		// The payload is a deliverystatus object
 		err := utils.DecodeAsObject(rxMsg.Data, &stat)

@@ -236,7 +236,10 @@ func (svc *HubRouter) HandleActionProgress(agentID string, stat hubclient.Delive
 	if c != nil {
 		err = c.PublishActionProgress(stat, agentID)
 	} else {
-		err = fmt.Errorf("Client '%s' not found", actionRecord.SenderID)
+		err = fmt.Errorf("connectionID '%s' not found for client '%s'",
+			actionRecord.CID, actionRecord.SenderID)
+		// try workaround
+
 	}
 
 	if err != nil {

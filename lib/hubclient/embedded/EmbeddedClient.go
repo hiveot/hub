@@ -182,7 +182,7 @@ func (cl *EmbeddedClient) PubProgressUpdate(stat hubclient.DeliveryStatus) {
 	statJSON, _ := json.Marshal(&stat)
 	// thing
 	//_ = cl.PubEvent(digitwin.InboxDThingID, vocab.EventNameDeliveryUpdate, string(statJSON))
-	msg := hubclient.NewThingMessage(vocab.MessageTypeDeliveryUpdate,
+	msg := hubclient.NewThingMessage(vocab.MessageTypeProgressUpdate,
 		"", "", statJSON, stat.MessageID)
 	stat2 := cl.sendMessage(msg)
 	if stat2.Error != "" {

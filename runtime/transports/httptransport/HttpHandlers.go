@@ -130,11 +130,17 @@ func (svc *HttpBinding) HandleActionRequest(w http.ResponseWriter, r *http.Reque
 	}
 	// The client can provide a messageID for actions. Useful for associating
 	// RPC type actions with a response.
-	reqID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
-	cid := rp.ConnID
+	reqMessageID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
+
+	// an action request should have a cid when used with SSE.
+	// for now just warn if its missing
+	if r.Header.Get(hubclient.ConnectionIDHeader) == "" {
+		slog.Warn("InvokeAction request without connectionID 'cid' header. This is needed for the SSE subprotocol",
+			"clientID", rp.ClientID)
+	}
 
 	status, output, messageID, err := svc.hubRouter.HandleActionFlow(
-		rp.ThingID, rp.Name, input, reqID, rp.ClientID, cid)
+		rp.ThingID, rp.Name, input, reqMessageID, rp.ClientID, rp.ConnID)
 
 	// there are 3 possible results:
 	// on status completed; return output

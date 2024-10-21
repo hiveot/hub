@@ -28,6 +28,7 @@ export enum ConnectionStatus {
 // }
 
 export type EventHandler = (msg:ThingMessage)=>void;
+export type ConnectionHandler = (status: ConnectionStatus)=>void;
 
 export type MessageHandler = (msg:ThingMessage)=>DeliveryStatus;
 
@@ -61,7 +62,7 @@ export interface IConsumerClient  {
     //	@param key is the action ID or method name of the action to invoke
     //	@param payload to publish in native format as per TD
     //
-    invokeAction(dThingID: string, key: string, payload: any): Promise<DeliveryStatus>;
+    invokeAction(dThingID: string, key: string, messageID: string, payload: any): Promise<DeliveryStatus>;
 
     // RefreshToken refreshes the authentication token
     // The resulting token can be used with 'ConnectWithJWT'

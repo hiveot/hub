@@ -40,8 +40,6 @@ This binding uses the VID to construct a key for properties, events and actions:
 Where propertyKey is omitted if not applicable. The endpoint is always provided and set to 0 for the default default.
 
 
-
-
 ## Building with esbuild
 
 This first step is just for testing the build process using esbuild. If this already fails then no use using pkg or the 'postject' node20+ injector. Note: one reason to take this step is to allow packages with es modules (axios) to work. pkg seems to not build correctly with code generated with tsc && tsc-alias.

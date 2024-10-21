@@ -9,10 +9,11 @@
     {{/*	=== Boolean Input ===*/}}
     {{/*    <h-switch name="value" off="Off" on="On" value="{{$iv}}"></h-switch>*/}}
 
-	      <input id="cb-1" type="checkbox" role="switch" name="{{.Name}}"
+{{/*	    FIXME: somehow grid-stack catches this click and update the dashboard layout. Event when event propagation is stopped.*/}}
+
+	      <input type="checkbox" role="switch" name="{{.Name}}"
 	             sse-swap="{{.ThingID}}/{{.Name}}"
 	             hx-on::sse-before-message="this.checked=event.detail.data == 'true'?true:false"
-
              hx-post="/action/{{.ThingID}}/{{.Name}}"
              hx-vals='{"switch":"doit"}'
              hx-params="{{.Name}}"
@@ -23,6 +24,7 @@
 
 						{{/* Submit when value is manually changed*/}}
         />
+
 {{else}}
 
   <input id="input-{{.Name}}" name="{{.Name}}"

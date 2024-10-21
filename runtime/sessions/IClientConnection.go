@@ -33,8 +33,6 @@ type IClientConnection interface {
 		status string, output any, err error)
 
 	// PublishActionProgress sends an action result value to this consumer.
-	// Intended for rpc style actions.
-	//
 	// Intended for receiving RPC results over 1-way bindings such as SSE.
 	PublishActionProgress(stat hubclient.DeliveryStatus, agentID string) error
 

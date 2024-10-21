@@ -260,7 +260,7 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 				wcs.SendSSE(thingAddr, msg.GetUpdated())
 			}
 		}
-	} else if msg.MessageType == vocab.MessageTypeDeliveryUpdate {
+	} else if msg.MessageType == vocab.MessageTypeProgressUpdate {
 		// report unhandled delivery updates
 		// for now just pass it to the notification toaster
 		stat := hubclient.DeliveryStatus{}

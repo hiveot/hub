@@ -24,14 +24,6 @@ export class ThingMessage extends Object {
     // Timestamp the value was created in unix time, msec since Epoch Jan 1st,1970 00:00 utc
     public createdMSec: number = 0
 
-    // Expiry time of the value in msec since epoc.
-    // Events expire based on their update interval.
-    // Actions expiry is used for queueing. 0 means the action expires immediately after receiving it and is not queued.
-    //expiry: bigint
-
-    // Sequence of the message from its creator. Intended to prevent replay attacks.
-    //sequence: bigint
-
     // Type of message: MessageTypeAction, MessageTypeEvent;
     // This is required.
     public messageType: string = ""

@@ -69,15 +69,19 @@ func (cts *ConsumedThingsDirectory) handleMessage(
 	msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
 
 	// if an event is received from an unknown Thing then (re)load its TD
-	cts.mux.RLock()
-	_, found := cts.directory[msg.ThingID]
-	cts.mux.RUnlock()
-	if !found {
-		// FIXME: the digitwin directory TD should be readable. It isnt.
-		_, err := cts.ReadTD(msg.ThingID)
-		if err != nil {
-			slog.Error("Received message with thingID that doesn't exist",
-				"thingID", msg.ThingID, "name", msg.Name, "senderID", msg.SenderID)
+	// progress updates don't count
+	if msg.MessageType != vocab.MessageTypeProgressUpdate {
+		cts.mux.RLock()
+		_, found := cts.directory[msg.ThingID]
+		cts.mux.RUnlock()
+		if !found {
+			// FIXME: the digitwin directory TD should be readable. It isnt.
+			_, err := cts.ReadTD(msg.ThingID)
+			if err != nil {
+				slog.Error("Received message with thingID that doesn't exist",
+					"messageType", msg.MessageType, "messageID", msg.MessageID,
+					"thingID", msg.ThingID, "name", msg.Name, "senderID", msg.SenderID)
+			}
 		}
 	}
 
@@ -125,7 +129,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(
 				}
 			}
 		}
-	} else if msg.MessageType == vocab.MessageTypeDeliveryUpdate {
+	} else if msg.MessageType == vocab.MessageTypeProgressUpdate {
 		// delivery status updates refer to actions
 		cts.mux.RLock()
 		ct, found := cts.consumedThings[msg.ThingID]

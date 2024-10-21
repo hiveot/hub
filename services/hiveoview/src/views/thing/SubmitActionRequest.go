@@ -48,7 +48,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 			slog.String("actionName", actionName),
 			slog.Any("newValue", newValue))
 
-		// don't make this an rpc as the response time isn't always known with sleeping devices
+		// FIXME: handle sleeping devices without timeout
 		//stat = hc.HandleActionFlow(thingID, actionName, newValue)
 		var resp interface{}
 		err = hc.Rpc(thingID, actionName, newValue, &resp)
@@ -60,7 +60,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err != nil {
-		slog.Warn("SubmitActionRequest failed",
+		slog.Warn("SubmitActionRequest error",
 			slog.String("remoteAddr", r.RemoteAddr),
 			slog.String("thingID", thingID),
 			slog.String("actionName", actionName),
@@ -68,8 +68,18 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 
 		// notify UI via SSE. This is handled by a toast component.
 		// todo, differentiate between server error, invalid value and unauthorized
-		err = fmt.Errorf("Thing '%s' is not reachable (%w)", td.Title, err)
-		mySession.WriteError(w, err, http.StatusInternalServerError)
+		// use human title from TD instead of action key to make error more presentable
+		actionTitle := ""
+		aff := td.GetAction(actionName)
+		if aff != nil {
+			actionTitle = aff.Title
+		}
+		if actionTitle == "" {
+			actionTitle = actionName
+		}
+
+		err = fmt.Errorf("action '%s' of Thing '%s' failed: %w", actionTitle, td.Title, err)
+		mySession.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 

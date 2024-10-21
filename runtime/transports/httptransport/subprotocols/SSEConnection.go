@@ -48,7 +48,8 @@ type SSEConnection struct {
 }
 
 // _send sends the action or write request for the thing to the agent
-// The SSE event type is: {messageType}/{agentID}/{thingID}/{name}
+// The SSE event type is: messageType, where
+// The event ID is {thingID}/{name}/{messageID}/{senderID}
 func (c *SSEConnection) _send(messageType string, thingID, name string,
 	data any, messageID string, senderID string) (status string, err error) {
 
@@ -56,18 +57,24 @@ func (c *SSEConnection) _send(messageType string, thingID, name string,
 	if data != nil {
 		payload, _ = json.Marshal(data)
 	}
-	topic := fmt.Sprintf("%s/%s/%s/%s", messageType, thingID, name, senderID)
+	eventID := fmt.Sprintf("%s/%s/%s/%s", thingID, name, senderID, messageID)
 	msg := SSEEvent{
-		EventType: topic,
-		ID:        messageID,
+		EventType: messageType,
+		ID:        eventID,
 		Payload:   string(payload),
 	}
 	c.mux.Lock()
 	defer c.mux.Unlock()
 	if !c.isClosed.Load() {
+		slog.Info("_send",
+			slog.String("to", c.clientID),
+			slog.String("EventType", messageType),
+			slog.String("eventID", eventID),
+		)
 		c.sseChan <- msg
 	}
 	// as long as the channel exists, delivery will take place
+	// FIXME: guarantee delivery
 	// todo: detect race conditions; or accept the small risk of delivery to a closing connection?
 	return vocab.ProgressStatusDelivered, nil
 }
@@ -151,7 +158,10 @@ func (c *SSEConnection) PublishProperty(
 // PublishActionProgress sends an action progress update to the client
 // If an error is provided this sends the error, otherwise the output value
 func (c *SSEConnection) PublishActionProgress(stat hubclient.DeliveryStatus, agentID string) error {
-	_, err := c._send(vocab.MessageTypeDeliveryUpdate, "", "",
+	if stat.MessageID == "" {
+		slog.Error("PublishActionProgress without messageID", "agentID", agentID)
+	}
+	_, err := c._send(vocab.MessageTypeProgressUpdate, "", "",
 		stat, stat.MessageID, agentID)
 	return err
 }
@@ -168,6 +178,7 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, no-cache, no-store, must-revalidate, max-age=0, no-transform")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Content-Encoding", "none") //https://stackoverflow.com/questions/76375157/client-not-receiving-server-sent-events-from-express-js-server
 
 	// establish a client event channel for sending messages back to the client
 	c.sseChan = make(chan SSEEvent, 1)
@@ -181,6 +192,7 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 		slog.String("clientID", c.clientID),
 		slog.String("protocol", r.Proto),
 		slog.String("sessionID", c.sessionID),
+		slog.String("cid", c.connectionID),
 	)
 	//var sseMsg SSEEvent
 
@@ -222,15 +234,27 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 				// which can mess things up.
 				sseMsg.ID = "-"
 			}
-			_, err = fmt.Fprintf(w, "event: %s\nid:%s\ndata: %s\n\n",
+			var n int
+			n, err = fmt.Fprintf(w, "event: %s\nid:%s\ndata: %s\n\n",
 				sseMsg.EventType, sseMsg.ID, sseMsg.Payload)
+			//_, err = fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
+			//	sseMsg.EventType, sseMsg.ID, sseMsg.Payload)
 			if err != nil {
 				// the connection might be closing.
 				// don't exit the loop until the receive channel is closed.
 				// just keep processing the message until that happens
 				// closed go channels panic when written to. So keep reading.
-				slog.Error("Error writing SSE event", "ID", sseMsg.ID,
-					"size", len(sseMsg.Payload))
+				slog.Error("Error writing SSE event",
+					slog.String("Event", sseMsg.EventType),
+					slog.String("SSE ID", sseMsg.ID),
+					slog.String("ClientID", c.clientID),
+					slog.Int("size", len(sseMsg.Payload)),
+				)
+			} else {
+				slog.Info("SSE write to client",
+					slog.String("ClientID", c.clientID),
+					slog.String("Event", sseMsg.EventType),
+					slog.Int("N bytes", n))
 			}
 			w.(http.Flusher).Flush()
 		}
@@ -239,6 +263,7 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 	slog.Info("SseConnection: sse connection closed",
 		slog.String("remote", r.RemoteAddr),
 		slog.String("clientID", c.clientID),
+		slog.String("cid", c.connectionID),
 	)
 }
 
