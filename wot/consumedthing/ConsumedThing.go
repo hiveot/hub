@@ -33,7 +33,7 @@ type ConsumedThing struct {
 	subscribers map[string]InteractionListener
 
 	// action status values
-	actionValues map[string]hubclient.DeliveryStatus
+	actionValues map[string]*hubclient.ActionProgress
 	// prop values
 	propValues map[string]*InteractionOutput
 	// event values
@@ -156,7 +156,7 @@ func (ct *ConsumedThing) OnDeliveryUpdate(msg *hubclient.ThingMessage) {
 			"action", msg.Name)
 		return
 	}
-	stat := hubclient.DeliveryStatus{}
+	stat := hubclient.ActionProgress{}
 	err := utils.DecodeAsObject(msg.Data, &stat)
 	if stat.Error != "" {
 		slog.Error("Delivery update invalid payload",
@@ -164,7 +164,7 @@ func (ct *ConsumedThing) OnDeliveryUpdate(msg *hubclient.ThingMessage) {
 			"action", msg.Name,
 			"err", err.Error())
 	}
-	ct.actionValues[msg.Name] = stat
+	ct.actionValues[msg.Name] = &stat
 }
 
 // OnEvent handles receiving of an event.
@@ -248,7 +248,7 @@ func (ct *ConsumedThing) ReadHistory(name string, timestamp time.Time, duration 
 
 	hist := historyclient.NewReadHistoryClient(ct.hc)
 	values, itemsRemaining, err = hist.ReadHistory(
-		ct.td.ID, name, timestamp, duration, 0)
+		ct.td.ID, name, timestamp, duration, 500)
 
 	return values, itemsRemaining, err
 }
@@ -331,7 +331,7 @@ func (ct *ConsumedThing) SubscribeEvent(name string, listener InteractionListene
 // Since writing a property can take some time, especially if the device is
 // asleep, the callback receives the first response containing a messageID.
 // If the request is not yet complete
-func (ct *ConsumedThing) WriteProperty(name string, value InteractionInput) hubclient.DeliveryStatus {
+func (ct *ConsumedThing) WriteProperty(name string, value InteractionInput) hubclient.ActionProgress {
 
 	stat := ct.hc.WriteProperty(ct.td.ID, name, value)
 	// TODO: receive updates
@@ -354,7 +354,7 @@ func NewConsumedThing(td *tdd.TD, hc hubclient.IConsumerClient) *ConsumedThing {
 		hc:           hc,
 		observers:    make(map[string]InteractionListener),
 		subscribers:  make(map[string]InteractionListener),
-		actionValues: make(map[string]hubclient.DeliveryStatus),
+		actionValues: make(map[string]*hubclient.ActionProgress),
 		eventValues:  make(map[string]*InteractionOutput),
 		propValues:   make(map[string]*InteractionOutput),
 	}

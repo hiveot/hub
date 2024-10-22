@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/lib/utils"
-	session2 "github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"net/http"
 )
 
 type ClientTileContext struct {
 	clientID    string
-	clientModel *session2.ClientDataModel
+	clientModel *session.ClientDataModel
 	dashboardID string
-	dashboard   session2.DashboardModel
+	dashboard   session.DashboardModel
 	tileID      string
-	tile        session2.DashboardTile
+	tile        session.DashboardTile
 }
 
 // URL parameters used
@@ -30,11 +30,11 @@ const URLParamTileID = "tileID"
 //   - if no tileID is given and mustExist is true then this fails
 //   - if no tile was found and mustExist is false then a new one is created
 func GetTileContext(r *http.Request, mustExist bool) (
-	*session2.WebClientSession, ClientTileContext, error) {
+	*session.WebClientSession, ClientTileContext, error) {
 
 	var found bool
 	ctc := ClientTileContext{}
-	sess, hc, err := session2.GetSessionFromContext(r)
+	sess, hc, err := session.GetSessionFromContext(r)
 	if err != nil {
 		return sess, ctc, err
 	}
@@ -54,7 +54,7 @@ func GetTileContext(r *http.Request, mustExist bool) (
 			err = fmt.Errorf("Tile with ID '%s' not found", ctc.tileID)
 			return sess, ctc, err
 		}
-		ctc.tile = ctc.dashboard.NewTile(ctc.tileID, "New Tile", session2.TileTypeText)
+		ctc.tile = ctc.dashboard.NewTile(ctc.tileID, "New Tile", session.TileTypeText)
 	}
 
 	return sess, ctc, nil

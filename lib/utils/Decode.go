@@ -14,6 +14,7 @@ import (
 func Decode(value any, arg interface{}) error {
 	if value == nil {
 		arg = nil
+		return nil
 	}
 	// the ugly workaround is to marshal/unmarshal using json.
 	// TODO: more efficient method to convert the any type to the given type.

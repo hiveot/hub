@@ -64,7 +64,7 @@ func RenderEditTile(w http.ResponseWriter, r *http.Request) {
 		ctc.tileID = shortid.MustGenerate()
 	}
 	vm := sess.GetViewModel()
-	cts := sess.GetConsumedThingsSession()
+	cts := sess.GetConsumedThingsDirectory()
 	// include the current values of the selected sources
 	// the template uses "thingID/name" to obtain the value
 	values := make(map[string]*consumedthing.InteractionOutput)

@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/wot/tdd"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -64,9 +63,9 @@ func (cts *ConsumedThingsDirectory) Consume(thingID string) (ct *ConsumedThing, 
 	return ct, nil
 }
 
-// handleMessage updates to consumed things
+// handleMessage updates the consumed things from subscriptions
 func (cts *ConsumedThingsDirectory) handleMessage(
-	msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 
 	// if an event is received from an unknown Thing then (re)load its TD
 	// progress updates don't count
@@ -89,7 +88,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(
 	// the directory service publishes TD updates as events
 	if msg.MessageType == vocab.MessageTypeEvent &&
 		msg.ThingID == digitwin.DirectoryDThingID &&
-		msg.Name == service.ThingUpdatedEventName {
+		msg.Name == digitwin.DirectoryEventThingUpdated {
 		// decode the TD
 		td := &tdd.TD{}
 		err := jsoniter.Unmarshal([]byte(msg.DataAsText()), &td)
@@ -235,6 +234,30 @@ func (cts *ConsumedThingsDirectory) SetEventHandler(handler func(message *hubcli
 	cts.mux.Lock()
 	defer cts.mux.Unlock()
 	cts.eventHandler = handler
+}
+
+// UpdateTD updates the TD document of a consumed thing
+// This returns the new consumed thing
+// If the consumed thing doesn't exist then ignore this and return nil as
+// it looks like it isn't used. ReadTD will read it if requested.
+//
+//	tdjson is the TD document in JSON format
+func (cts *ConsumedThingsDirectory) UpdateTD(tdJSON string) *ConsumedThing {
+	// convert the TD
+	var td tdd.TD
+	err := jsoniter.Unmarshal([]byte(tdJSON), &td)
+	if err != nil {
+		return nil
+	}
+	cts.mux.Lock()
+	defer cts.mux.Unlock()
+	// Replace the TD in the consumed thing
+	ct := cts.consumedThings[td.ID]
+	if ct == nil {
+		return nil
+	}
+	ct.td = &td
+	return ct
 }
 
 // NewConsumedThingsSession creates a new instance of the session managing

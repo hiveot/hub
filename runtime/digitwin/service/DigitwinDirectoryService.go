@@ -9,10 +9,6 @@ import (
 	"log/slog"
 )
 
-// TODO: use constants from TD generated API
-const ThingUpdatedEventName = "$td"
-const ThingRemovedEventName = "thingRemoved"
-
 // Digital Twin Directory Service
 type DigitwinDirectoryService struct {
 	dtwStore *DigitwinStore
@@ -102,7 +98,7 @@ func (svc *DigitwinDirectoryService) RemoveDTD(senderID string, dThingID string)
 		// notify subscribers that the digital twin thing was removed.
 		// payload is the digital twin's ID
 		go svc.cm.PublishEvent(
-			digitwin.DirectoryDThingID, ThingRemovedEventName, dThingID,
+			digitwin.DirectoryDThingID, digitwin.DirectoryEventThingRemoved, dThingID,
 			"", digitwin.DirectoryAgentID)
 	}
 	return err
@@ -130,7 +126,7 @@ func (svc *DigitwinDirectoryService) UpdateDTD(agentID string, tdJson string) er
 		//ForEachConnection
 
 		go svc.cm.PublishEvent(
-			digitwin.DirectoryDThingID, ThingUpdatedEventName, string(dtdJSON),
+			digitwin.DirectoryDThingID, digitwin.DirectoryEventThingUpdated, string(dtdJSON),
 			"", digitwin.DirectoryAgentID)
 	}
 	return err

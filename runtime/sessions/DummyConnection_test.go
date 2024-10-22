@@ -29,7 +29,7 @@ func (c *DummyConnection) InvokeAction(thingID string, name string, input any, m
 	return vocab.ProgressStatusCompleted, nil, nil
 }
 
-func (c *DummyConnection) PublishActionProgress(stat hubclient.DeliveryStatus, agentID string) error {
+func (c *DummyConnection) PublishActionProgress(stat hubclient.ActionProgress, agentID string) error {
 	return nil
 }
 

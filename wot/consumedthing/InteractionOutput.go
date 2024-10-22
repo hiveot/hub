@@ -42,7 +42,7 @@ type InteractionOutput struct {
 	MessageID string `json:"message-id,omitempty"`
 
 	// The interaction progress
-	Progress hubclient.DeliveryStatus `json:"progress"`
+	Progress hubclient.ActionProgress `json:"progress"`
 
 	// senderID of last update
 	SenderID string

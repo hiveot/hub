@@ -30,7 +30,7 @@ func GenServiceInterface(l *utils.SL, serviceTitle string, td *tdd.TD) {
 // The value is either a native type or a struct, based on the TDD definition
 func GenInterfaceMethod(l *utils.SL, serviceTitle string, name string, action *tdd.ActionAffordance) {
 	//attrs := GetSchemaAttrs("arg", action.Input)
-	methodName := Key2ID(name)
+	methodName := Name2ID(name)
 	argsString := "senderID string" // all methods receive the sender ID
 	if action.Input != nil {
 		argName := getParamName("args", action.Input)

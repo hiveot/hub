@@ -53,7 +53,7 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 	// obtain the TD and the event/action affordance to display
 	var sourceRef = thingID + "/" + name
 
-	cts := sess.GetConsumedThingsSession()
+	cts := sess.GetConsumedThingsDirectory()
 	td := cts.GetTD(thingID)
 
 	// get the latest event values of this source

@@ -11,7 +11,7 @@ import (
 )
 
 // HandleActionRequest handles requests to activate inputs
-func (svc *OWServerBinding) HandleActionRequest(action *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (svc *OWServerBinding) HandleActionRequest(action *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 	var attr eds.OneWireAttr
 	slog.Info("HandleActionRequest",
 		slog.String("thingID", action.ThingID),

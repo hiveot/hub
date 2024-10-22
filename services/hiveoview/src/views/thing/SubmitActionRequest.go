@@ -25,7 +25,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	newValue = valueStr
 	reply := ""
 
-	stat := hubclient.DeliveryStatus{}
+	stat := hubclient.ActionProgress{}
 	//
 	mySession, hc, err := session2.GetSessionFromContext(r)
 	if err != nil {
@@ -48,7 +48,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 			slog.String("actionName", actionName),
 			slog.Any("newValue", newValue))
 
-		// FIXME: handle sleeping devices without timeout
+		// FIXME: use async progress updates instead of RPC
 		//stat = hc.HandleActionFlow(thingID, actionName, newValue)
 		var resp interface{}
 		err = hc.Rpc(thingID, actionName, newValue, &resp)

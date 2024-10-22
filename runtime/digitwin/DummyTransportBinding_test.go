@@ -38,7 +38,7 @@ func (dummy *DummyTransportBinding) PublishProperty(
 	dThingID string, name string, value any, messageID string, agentID string) {
 }
 func (dummy *DummyTransportBinding) PublishProgressUpdate(
-	connectionID string, stat hubclient.DeliveryStatus, agentID string) (bool, error) {
+	connectionID string, stat hubclient.ActionProgress, agentID string) (bool, error) {
 	return false, nil
 }
 

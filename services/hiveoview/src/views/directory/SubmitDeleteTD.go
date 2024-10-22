@@ -38,7 +38,7 @@ func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 		slog.Info("Deleting TD", slog.String("thingID", thingID))
 		err = digitwin.DirectoryRemoveDTD(hc, thingID)
 	}
-	cts := sess.GetConsumedThingsSession()
+	cts := sess.GetConsumedThingsDirectory()
 	// reload the cached directory
 	cts.ReadDirectory(true)
 

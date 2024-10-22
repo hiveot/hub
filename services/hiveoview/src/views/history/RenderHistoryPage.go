@@ -41,7 +41,7 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, 0)
 		return
 	}
-	cts := sess.GetConsumedThingsSession()
+	cts := sess.GetConsumedThingsDirectory()
 	// read the TD
 	ct, err := cts.Consume(thingID)
 	if err != nil {

@@ -40,7 +40,7 @@ func StartHistoryAgent(svc *HistoryService, hc hubclient.IConsumerClient) {
 	mah := transports.NewAgentHandler(historyapi.ManageHistoryServiceID, manageHistoryMethods)
 
 	// receive messages for events and agent requests
-	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 		if msg.MessageType == vocab.MessageTypeAction {
 			if msg.ThingID == historyapi.ReadHistoryServiceID {
 				return rah.HandleMessage(msg)

@@ -32,13 +32,13 @@ func TestAddRemoveTD(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 	ag, _ := ts.AddConnectAgent(agentID)
-	ag.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	ag.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 		stat.Progress = vocab.ProgressStatusCompleted
 		return
 	})
 	defer ag.Disconnect()
 	cl, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
-	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 		// expect 2 events, updated and removed
 		evCount.Add(1)
 		return stat
@@ -169,7 +169,7 @@ func TestTDEvent(t *testing.T) {
 	defer cl.Disconnect()
 
 	// wait to directory TD updated events
-	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 		stat.Completed(msg, nil, nil)
 		if msg.MessageType == vocab.MessageTypeEvent &&
 			msg.ThingID == digitwin.DirectoryDThingID &&

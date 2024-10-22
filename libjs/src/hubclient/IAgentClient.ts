@@ -1,5 +1,5 @@
 import {TD} from "@hivelib/things/TD";
-import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
+import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
 import {IConsumerClient} from "@hivelib/hubclient/IConsumerClient";
 
 
@@ -25,7 +25,7 @@ export interface IAgentClient extends IConsumerClient {
     //
     // Intended for agents that have processed an incoming action request asynchronously
     // and need to send an update on further progress.
-    pubProgressUpdate(stat: DeliveryStatus):void
+    pubProgressUpdate(stat: ActionProgress):void
 
     // pubProperties agent updates property values. (not for consumers)
     // It returns as soon as delivery to the hub is confirmed.

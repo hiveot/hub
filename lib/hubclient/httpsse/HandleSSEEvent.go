@@ -17,7 +17,7 @@ import (
 // applied, completed or error status.
 // This sends the delivery status to the hub using a delivery event.
 func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
-	var stat hubclient.DeliveryStatus
+	var stat hubclient.ActionProgress
 
 	cl.mux.RLock()
 	connStatus := cl._status.ConnectionStatus
@@ -92,7 +92,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		// The payload is a deliverystatus object
 		err := utils.DecodeAsObject(rxMsg.Data, &stat)
 		if err != nil || stat.MessageID == "" || stat.MessageID == "-" {
-			slog.Error("SSE message of type delivery update is missing messageID or not a DeliveryStatus ", "err", err)
+			slog.Error("SSE message of type delivery update is missing messageID or not a ActionProgress ", "err", err)
 			return
 		}
 		rxMsg.Data = stat

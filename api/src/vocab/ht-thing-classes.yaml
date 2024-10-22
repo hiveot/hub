@@ -414,60 +414,61 @@ ThingClasses:
       description: "Electronic weigh scale"
 
     # ht:thing:service - Software that processes data and offers features of interest
+    # TBD
     ThingService:
       class: "ht:thing:service"
       title: "Service"
       description: "General service for processing data and offering features of interest"
-    ThingServiceAdapter:
-      class: "ht:thing:service:adapter"
-      title: "Protocol adapter"
-      description: "Protocol adapter/binding for integration with another protocol"
-    ThingServiceAuth:
-      class: "ht:thing:service:auth"
-      title: "Authentication service"
-      description: ""
-    ThingServiceAutomation:
-      class: "ht:thing:service:automation"
-      title: "Automation service"
-      description: ""
-    ThingServiceDirectory:
-      class: "ht:thing:service:directory"
-      title: "Directory service"
-      description: ""
-    ThingServiceHistory:
-      class: "ht:thing:service:history"
-      title: "History service"
-      description: ""
-    ThingServiceImage:
-      class: "ht:thing:service:image"
-      title: "Image classification"
-      description: ""
-    ThingServiceTTS:
-      class: "ht:thing:service:tts"
-      title: "Text to speech"
-      description: ""
-    ThingServiceSTT:
-      class: "ht:thing:service:stt"
-      title: "Speech to text"
-      description: ""
-    ThingServiceTranslation:
-      class: "ht:thing:service:translation"
-      title: "Language translation service"
-      description: ""
-    ThingServiceStore:
-      class: "ht:thing:service:store"
-      title: "Data storage"
-      description: ""
-    ThingServiceWeather:
-      class: "ht:thing:service:weather"
-      title: "Weather service"
-      description: "General weather service"
-    ThingServiceWeatherCurrent:
-      class: "ht:thing:service:weather:current"
-      title: "Current weather"
-      description: ""
-    ThingServiceWeatherForecast:
-      class: "ht:thing:service:weather:forecast"
-      title: "Weather forecast"
-      description: ""
-
+#    ThingServiceAdapter:
+#      class: "ht:thing:service:adapter"
+#      title: "Protocol adapter"
+#      description: "Protocol adapter/binding for integration with another protocol"
+#    ThingServiceAuth:
+#      class: "ht:thing:service:auth"
+#      title: "Authentication service"
+#      description: ""
+#    ThingServiceAutomation:
+#      class: "ht:thing:service:automation"
+#      title: "Automation service"
+#      description: ""
+#    ThingServiceDirectory:
+#      class: "ht:thing:service:directory"
+#      title: "Directory service"
+#      description: ""
+#    ThingServiceHistory:
+#      class: "ht:thing:service:history"
+#      title: "History service"
+#      description: ""
+#    ThingServiceImage:
+#      class: "ht:thing:service:image"
+#      title: "Image classification"
+#      description: ""
+#    ThingServiceTTS:
+#      class: "ht:thing:service:tts"
+#      title: "Text to speech"
+#      description: ""
+#    ThingServiceSTT:
+#      class: "ht:thing:service:stt"
+#      title: "Speech to text"
+#      description: ""
+#    ThingServiceTranslation:
+#      class: "ht:thing:service:translation"
+#      title: "Language translation service"
+#      description: ""
+#    ThingServiceStore:
+#      class: "ht:thing:service:store"
+#      title: "Data storage"
+#      description: ""
+#    ThingServiceWeather:
+#      class: "ht:thing:service:weather"
+#      title: "Weather service"
+#      description: "General weather service"
+#    ThingServiceWeatherCurrent:
+#      class: "ht:thing:service:weather:current"
+#      title: "Current weather"
+#      description: ""
+#    ThingServiceWeatherForecast:
+#      class: "ht:thing:service:weather:forecast"
+#      title: "Weather forecast"
+#      description: ""
+#

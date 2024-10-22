@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/runtime/digitwin/service"
 	"time"
 
 	"github.com/araddon/dateparse"
@@ -56,13 +55,13 @@ func SubEventsCommand(hc *hubclient.IConsumerClient) *cli.Command {
 // HandleSubTD subscribes and prints TD publications
 func HandleSubTD(hc hubclient.IConsumerClient) error {
 
-	err := hc.Subscribe(digitwin.DirectoryDThingID, service.ThingUpdatedEventName)
+	err := hc.Subscribe(digitwin.DirectoryDThingID, digitwin.DirectoryEventThingUpdated)
 	if err != nil {
 		return err
 	}
-	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 		// only look for TD events, ignore directed events
-		if msg.Name != service.ThingUpdatedEventName {
+		if msg.Name != digitwin.DirectoryEventThingUpdated {
 			return *stat.Completed(msg, nil, nil)
 		}
 
@@ -93,7 +92,7 @@ func HandleSubEvents(hc hubclient.IConsumerClient, thingID string, name string) 
 	fmt.Printf("---------------  --------------- -----------------------------  -----------------------------  ---------\n")
 
 	err := hc.Subscribe(thingID, name)
-	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 		createdTime, _ := dateparse.ParseAny(msg.Created)
 		timeStr := createdTime.Format("15:04:05.000")
 
@@ -112,7 +111,7 @@ func HandleSubEvents(hc hubclient.IConsumerClient, thingID string, name string) 
 		//		}
 		//	}
 		//}
-		if msg.ThingID == digitwin.DirectoryDThingID && msg.Name == service.ThingUpdatedEventName {
+		if msg.ThingID == digitwin.DirectoryDThingID && msg.Name == digitwin.DirectoryEventThingUpdated {
 			var td tdd.TD
 			tdJSON := msg.DataAsText()
 			json.Unmarshal([]byte(tdJSON), &td)

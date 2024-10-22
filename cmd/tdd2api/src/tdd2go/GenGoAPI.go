@@ -28,7 +28,8 @@ func GenGoAPIFromTD(td *tdd.TD, outFile string) (err error) {
 
 	dThingID := td.ID
 	agentID, serviceID := tdd.SplitDigiTwinThingID(dThingID)
-	serviceTitle := ToTitle(serviceID)
+	// the title-ID is the title-case identifier of the thing ID
+	thingTitleID := ToTitle(serviceID)
 
 	if agentID == "" {
 		return fmt.Errorf("TD thingID does not have an agent prefix")
@@ -47,28 +48,20 @@ func GenGoAPIFromTD(td *tdd.TD, outFile string) (err error) {
 	l.Add("import \"github.com/hiveot/hub/lib/utils\"")
 	l.Add("import \"github.com/hiveot/hub/lib/hubclient\"")
 	l.Add("")
-	l.Add("// %sAgentID is the connection ID of the agent managing the Thing.", serviceTitle)
-	l.Add("const %sAgentID = \"%s\"", serviceTitle, agentID)
-	l.Add("// %sServiceID is the internal thingID of the device/service as used by agents.", serviceTitle)
-	l.Add("// Agents use this to publish events and subscribe to actions")
-	l.Add("const %sServiceID = \"%s\"", serviceTitle, serviceID)
-	l.Add("// %sDThingID is the Digitwin thingID as used by agents. Digitwin adds the dtw:{agent} prefix to the serviceID", serviceTitle)
-	l.Add("// Consumers use this to publish actions and subscribe to events")
-	l.Add("const %sDThingID = \"%s\"", serviceTitle, dThingID)
-	l.Add("")
-	GenSchemaDefinitions(l, serviceTitle, td)
-	GenActionStructs(l, serviceTitle, td)
-	GenServiceClient(l, serviceTitle, td)
-	GenServiceInterface(l, serviceTitle, td)
-	GenServiceHandler(l, serviceTitle, td)
+	GenThingConstantsFromTD(l, thingTitleID, td)
+	GenSchemaDefinitions(l, thingTitleID, td)
+	GenActionStructs(l, thingTitleID, td)
+	GenServiceClient(l, thingTitleID, td)
+	GenServiceInterface(l, thingTitleID, td)
+	GenServiceHandler(l, thingTitleID, td)
 	// last, append the TD in json for publication
 	// yeah ugly. Revert the thingID to that of the service as seen by the agent
 	// this is needed to be able to publish the TD
 	td.ID = serviceID
 	tdDoc, _ := json.Marshal(td)
 	l.Add("")
-	l.Add("// %sTD contains the raw TD of this service for publication to the Hub", serviceTitle)
-	l.Add("const %sTD = `%s`", serviceTitle, tdDoc)
+	l.Add("// %sTD contains the raw TD of this service for publication to the Hub", thingTitleID)
+	l.Add("const %sTD = `%s`", thingTitleID, tdDoc)
 
 	if l.Size() > 0 {
 		outDir := path.Dir(outFile)

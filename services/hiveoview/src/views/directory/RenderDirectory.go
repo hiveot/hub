@@ -38,7 +38,7 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, 0)
 		return
 	}
-	cts := sess.GetConsumedThingsSession()
+	cts := sess.GetConsumedThingsDirectory()
 	v := sess.GetViewModel()
 
 	tdMap, err := cts.ReadDirectory(false)

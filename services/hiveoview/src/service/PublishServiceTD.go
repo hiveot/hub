@@ -13,7 +13,7 @@ func (svc *HiveovService) CreateHiveoviewTD() *tdd.TD {
 	title := "Web Server"
 	deviceType := vocab.ThingService
 	td := tdd.NewTD(src.HiveoviewServiceID, title, deviceType)
-	// TODO: add properties: uptime, max nr clients
+	//TODO: add properties or events for : uptime, nr connections, nr clients, etc
 
 	td.AddEvent(src.NrActiveSessionsEvent, "",
 		"Nr Sessions", "Number of active sessions",
@@ -22,10 +22,13 @@ func (svc *HiveovService) CreateHiveoviewTD() *tdd.TD {
 			Type: vocab.WoTDataTypeInteger,
 		})
 
+	td.AddProperty(vocab.PropNetPort, vocab.PropNetPort,
+		"UI Port", vocab.WoTDataTypeInteger)
+
 	return td
 }
 
-// PublishServiceTD create and publish the TD of this service
+// PublishServiceTD create and publish the TD of the hiveoview service
 func (svc *HiveovService) PublishServiceTD() error {
 
 	myTD := svc.CreateHiveoviewTD()
@@ -34,6 +37,18 @@ func (svc *HiveovService) PublishServiceTD() error {
 
 	if err != nil {
 		slog.Error("failed to publish the hiveoview service TD", "err", err.Error())
+	}
+	return err
+}
+
+// PublishServiceProps publishes the service properties
+func (svc *HiveovService) PublishServiceProps() error {
+	props := make(map[string]any)
+	props[vocab.PropNetPort] = svc.port
+	err := svc.hc.PubProperties(src.HiveoviewServiceID, props)
+
+	if err != nil {
+		slog.Error("failed to publish the hiveoview service properties", "err", err.Error())
 	}
 	return err
 }

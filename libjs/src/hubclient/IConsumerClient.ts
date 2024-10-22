@@ -1,6 +1,6 @@
 import type {IHiveKey} from "@keys/IHiveKey";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
-import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
+import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
 
 
 export enum ConnectionStatus {
@@ -27,10 +27,11 @@ export enum ConnectionStatus {
 //     NotConnected = "notConnected"
 // }
 
+export type ActionHandler = (msg:ThingMessage)=>ActionProgress;
 export type EventHandler = (msg:ThingMessage)=>void;
+export type PropertyHandler = (msg:ThingMessage)=>void;
 export type ConnectionHandler = (status: ConnectionStatus)=>void;
-
-export type MessageHandler = (msg:ThingMessage)=>DeliveryStatus;
+export type ProgressHandler = (progress:ActionProgress)=>void;
 
 // IAgentClient defines the interface of the hub agent transport.
 export interface IConsumerClient  {
@@ -62,7 +63,7 @@ export interface IConsumerClient  {
     //	@param key is the action ID or method name of the action to invoke
     //	@param payload to publish in native format as per TD
     //
-    invokeAction(dThingID: string, key: string, messageID: string, payload: any): Promise<DeliveryStatus>;
+    invokeAction(dThingID: string, key: string, messageID: string, payload: any): Promise<ActionProgress>;
 
     // RefreshToken refreshes the authentication token
     // The resulting token can be used with 'ConnectWithJWT'
@@ -99,10 +100,21 @@ export interface IConsumerClient  {
     // call disconnect(), followed by connectWithXyz().
     setConnectHandler(handler: (status: ConnectionStatus) => void): void
 
-
-    // Set the handler for incoming requests.
+    // Set the action handler for incoming requests.
     // This replaces any previously set handler.
-    setMessageHandler(cb: MessageHandler):void
+    setActionHandler(handler: ActionHandler):void
+
+    // Set the event handler
+    // This replaces any previously set handler.
+    setEventHandler(handler: EventHandler):void
+
+    // Set the property handler for incoming requests.
+    // This replaces any previously set handler.
+    setPropertyHandler(handler: PropertyHandler):void
+
+    // Set the progress handler
+    // This replaces any previously set handler.
+    setProgressHandler(handler: ProgressHandler):void
 
     // Subscribe adds a subscription for events from the given ThingID.
     //
@@ -118,5 +130,5 @@ export interface IConsumerClient  {
     //  @param dThingID is the digitwin thingID is provided by the directory
     //	@param name ID of the property
     //	@param payload to publish in native format as per TD
-    writeProperty(dThingID: string, name: string, payload: any): Promise<DeliveryStatus>;
+    writeProperty(dThingID: string, name: string, payload: any): Promise<ActionProgress>;
 }

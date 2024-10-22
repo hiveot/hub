@@ -55,7 +55,7 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	vm := sess.GetViewModel()
-	cts := sess.GetConsumedThingsSession()
+	cts := sess.GetConsumedThingsDirectory()
 	// provide a list of things for each agent and show a nested
 	// list of events per thing: agent -> thing title -> event title
 	// each list is sorted by title.

@@ -21,7 +21,6 @@ func GenServiceClient(l *utils.SL, serviceTitle string, td *tdd.TD) {
 		GenActionMethod(l, serviceTitle, key, action)
 	}
 	l.Add("")
-
 }
 
 // GenActionMethod generates a client function from an action affordance.
@@ -46,7 +45,7 @@ func GenActionMethod(l *utils.SL, serviceTitle string, key string, action *tdd.A
 	argStructLine := ""
 	serviceDigitwinID := serviceTitle + "DThingID" // as defined in GenGoAPI
 
-	methodName := serviceTitle + Key2ID(key)
+	methodName := serviceTitle + Name2ID(key)
 	// input arguments: none, single or multiple
 	if action.Input != nil {
 		argName := getParamName("args", action.Input)

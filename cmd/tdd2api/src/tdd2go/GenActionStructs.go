@@ -15,7 +15,7 @@ func GenActionStructs(l *utils.SL, serviceTitle string, td *tdd.TD) {
 	actionKeys := utils.OrderedMapKeys(td.Actions)
 	for _, key := range actionKeys {
 		action := td.Actions[key]
-		methodName := Key2ID(key)
+		methodName := Name2ID(key)
 		// define a constants for this action method name
 		l.Add("const %s%sMethod = \"%s\"", serviceTitle, methodName, key)
 		l.Add("")
@@ -33,7 +33,7 @@ func GenActionArgs(l *utils.SL, serviceTitle string, key string, action *tdd.Act
 	if action.Input == nil || action.Input.Type != "object" {
 		return
 	}
-	typeName := Key2ID(key)
+	typeName := Name2ID(key)
 	l.Indent = 0
 	l.Add("// %s%sArgs defines the arguments of the %s function", serviceTitle, typeName, key)
 	l.Add("// %s - %s", action.Title, action.Description)
@@ -62,7 +62,7 @@ func GenActionResp(l *utils.SL, serviceTitle string, key string, action *tdd.Act
 	if action.Output == nil || action.Output.Type != "object" {
 		return
 	}
-	typeName := Key2ID(key)
+	typeName := Name2ID(key)
 	l.Indent = 0
 	l.Add("// %s%sResp defines the response of the %s function", serviceTitle, typeName, key)
 	l.Add("// %s - %s", action.Title, action.Description)

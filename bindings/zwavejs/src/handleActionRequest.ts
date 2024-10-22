@@ -6,9 +6,9 @@ import * as tslog from 'tslog';
 import { IAgentClient} from "@hivelib/hubclient/IAgentClient";
 import {getVidValue, ZWAPI} from "@zwavejs/ZWAPI";
 import {MessageTypeProperty} from "@hivelib/api/vocab/vocab.js";
-import {handleConfigRequest} from "@zwavejs/handleConfigRequest";
+import {handleConfigWriteRequest} from "@zwavejs/handleConfigWriteRequest";
 import {setValue} from "@zwavejs/setValue";
-import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
+import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
 
 const log = new tslog.Logger()
 
@@ -18,9 +18,9 @@ const log = new tslog.Logger()
 // Normally this returns the delivery status to the caller.
 // If delivery is in progress then use 'hc' to send further status updates.
 export function  handleActionRequest(
-    msg: ThingMessage, zwapi: ZWAPI, hc: IAgentClient): DeliveryStatus {
+    msg: ThingMessage, zwapi: ZWAPI, hc: IAgentClient): ActionProgress {
 
-    let stat = new DeliveryStatus()
+    let stat = new ActionProgress()
     let errMsg: string = ""
     let actionLower = msg.name.toLowerCase()
     let targetNode: ZWaveNode | undefined
@@ -32,7 +32,7 @@ export function  handleActionRequest(
         return stat
     }
     if (msg.messageType == MessageTypeProperty) {
-        return handleConfigRequest(msg, node, zwapi, hc)
+        return handleConfigWriteRequest(msg, node, zwapi, hc)
     }
     // unmarshal the payload
     // FIXME: who does the (un)marshalling? If the form defines the

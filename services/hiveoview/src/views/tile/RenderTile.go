@@ -137,7 +137,7 @@ func RenderTile(w http.ResponseWriter, r *http.Request) {
 		RenderConfirmDeleteTilePath: utils.Substitute(src.RenderTileConfirmDeletePath, pathArgs),
 		ReRenderTilePath:            utils.Substitute(src.RenderTilePath, pathArgs),
 		TileUpdatedEvent:            utils.Substitute(src.TileUpdatedEvent, pathArgs),
-		cts:                         sess.GetConsumedThingsSession(),
+		cts:                         sess.GetConsumedThingsDirectory(),
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderTileTemplate, data)
 	sess.WritePage(w, buff, err)

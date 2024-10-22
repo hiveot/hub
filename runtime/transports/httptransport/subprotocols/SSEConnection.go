@@ -157,11 +157,11 @@ func (c *SSEConnection) PublishProperty(
 
 // PublishActionProgress sends an action progress update to the client
 // If an error is provided this sends the error, otherwise the output value
-func (c *SSEConnection) PublishActionProgress(stat hubclient.DeliveryStatus, agentID string) error {
+func (c *SSEConnection) PublishActionProgress(stat hubclient.ActionProgress, agentID string) error {
 	if stat.MessageID == "" {
 		slog.Error("PublishActionProgress without messageID", "agentID", agentID)
 	}
-	_, err := c._send(vocab.MessageTypeProgressUpdate, "", "",
+	_, err := c._send(vocab.MessageTypeProgressUpdate, stat.ThingID, stat.Name,
 		stat, stat.MessageID, agentID)
 	return err
 }

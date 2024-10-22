@@ -1,6 +1,6 @@
 import process from "node:process";
 import * as tslog from 'tslog';
-import {DeliveryStatus} from './DeliveryStatus';
+import {ActionProgress} from './ActionProgress';
 import {ThingMessage} from "../things/ThingMessage";
 import {ConnectToHub} from "@hivelib/hubclient/ConnectToHub";
 import {MessageTypeProgressUpdate, MessageTypeAction} from "@hivelib/api/vocab/vocab.js";
@@ -76,10 +76,10 @@ async function test3() {
     try {
         token = await hc.connectWithPassword(testPass)
 
-        hc.setMessageHandler((tv: ThingMessage):DeliveryStatus => {
-            log.info("Received message: type="+tv.messageType+"; key=" + tv.name)
-            let stat = new DeliveryStatus()
-            stat.completed(tv)
+        hc.setActionHandler((tm: ThingMessage):ActionProgress => {
+            log.info("Received message: type="+tm.messageType+"; key=" + tm.name)
+            let stat = new ActionProgress()
+            stat.completed(tm)
             return stat
         })
         token = await hc.refreshToken()
@@ -127,7 +127,7 @@ async function test4() {
     let clToken = ""
     let ev1Count = 0
     let actionCount = 0
-    let actionDelivery: DeliveryStatus | undefined
+    let actionDelivery: ActionProgress | undefined
 
     // connect a service that sends events
     let hcSvc = await ConnectToHub(baseURL, testSvcID, caCertPEM, true)
@@ -151,8 +151,8 @@ async function test4() {
     try {
         await hcCl.subscribe("dtw:testsvc:thing1", "")
         // await hcCl.subscribe("","")
-        hcCl.setMessageHandler((tm: ThingMessage): DeliveryStatus => {
-            let stat = new DeliveryStatus()
+        hcCl.setActionHandler((tm: ThingMessage): ActionProgress => {
+            let stat = new ActionProgress()
             if (tm.thingID == "dtw:testsvc:thing1") {
                 log.info("Received event: " + tm.name + "; data=" + tm.data)
                 ev1Count++
@@ -183,8 +183,8 @@ async function test4() {
     }
     // round 4, send an action to the digitwin thing of the test service
     try {
-        hcSvc.setMessageHandler((msg: ThingMessage): DeliveryStatus => {
-            let stat = new DeliveryStatus()
+        hcSvc.setActionHandler((msg: ThingMessage): ActionProgress => {
+            let stat = new ActionProgress()
             // agents receive the thingID without prefix
             if (msg.thingID == "thing1") {
                 console.info("success!")

@@ -120,7 +120,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 
 	// Read the TD being displayed and its latest values
 	sess, _, err := session2.GetSessionFromContext(r)
-	cts := sess.GetConsumedThingsSession()
+	cts := sess.GetConsumedThingsDirectory()
 	if err == nil {
 		ct, err = cts.Consume(thingID)
 	}

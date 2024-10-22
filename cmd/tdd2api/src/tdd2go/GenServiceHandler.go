@@ -55,7 +55,7 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td *tdd.TD) {
 // This unmarshal the request, invokes the service, and marshals the response
 // name  of the action affordance in the TD
 func GenActionHandler(l *utils.SL, serviceTitle string, name string, action *tdd.ActionAffordance) {
-	methodName := Key2ID(name)
+	methodName := Name2ID(name)
 	// build the argument string
 	argsString := "consumerID" // all handlers receive the sender ID
 	l.Add("case \"%s\":", name)

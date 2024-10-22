@@ -7,7 +7,7 @@ import (
 )
 
 // HandleConfigRequest handles requests to configure the service or devices
-func (svc *OWServerBinding) HandleConfigRequest(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (svc *OWServerBinding) HandleConfigRequest(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 	var err error
 	valueStr := msg.DataAsText()
 	slog.Info("HandleConfigRequest",

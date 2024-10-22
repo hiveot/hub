@@ -7,7 +7,10 @@ import (
 	"time"
 )
 
-// ThingMessage holds an event or action received from agents, services or consumers.
+// ThingMessage is an internal-use envelope, for an event, action or property message,
+// as received from agents, services or consumers.
+// This is not intended for wire transfer as each transport protocol handles this
+// its own way.
 type ThingMessage struct {
 	//--- required fields to be filled-in by the sender
 
@@ -15,34 +18,34 @@ type ThingMessage struct {
 	// For messages from/to agents this is the agent ThingID
 	// For messages to/from consumers this is the digitwin ThingID
 	// This is required.
-	ThingID string `json:"thingID"`
+	ThingID string
 
 	// Name of the event, action or property as defined in the TD property/event/action map.
 	// This is required.
-	Name string `json:"name"`
+	Name string
 
 	// Type of message this value was sent as: (MessageTypeEvent, MessageTypeAction...)
 	// This is required
-	MessageType string `json:"messageType"`
+	MessageType string
 
 	// SenderID is the account ID of the agent, service or user sending the message
 	// to the hub.
 	// This is required and used in authorization of the sender and routing of messages.
 	// The underlying protocol binding MUST set this to the authenticated client.
-	SenderID string `json:"senderID"`
+	SenderID string
 
 	//--- optional fields
 
 	// Timestamp the value was created using RFC3339milli
 	// Optional. This will be set to 'now' if omitted.
-	Created string `json:"created,omitempty"`
+	Created string
 
 	// Data in the native format as described in the TD affordance dataschema.
-	Data any `json:"data,omitempty"`
+	Data any
 
 	// MessageID of the message. Intended to detect duplicates and send replies.
 	// Optional. The hub will generate a unique messageID if omitted.
-	MessageID string `json:"messageID,omitempty"`
+	MessageID string
 }
 
 // DataAsText return a text representation of the data that is independent of

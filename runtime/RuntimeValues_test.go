@@ -38,7 +38,7 @@ func TestHttpsGetActions(t *testing.T) {
 	key1 := "action-0" // must match TD
 	td1JSON, _ := json.Marshal(td1)
 	var dThing1ID = tdd.MakeDigiTwinThingID(agentID, td1.ID)
-	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 		stat.Completed(msg, data, nil)
 		return stat
 	})
@@ -46,7 +46,7 @@ func TestHttpsGetActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// step 2: consumer publish an action to the agent
-	cl2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	cl2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 		return stat
 	})
 	stat := cl2.InvokeAction(dThing1ID, key1, data, "")
@@ -195,7 +195,7 @@ func TestSubscribeValues(t *testing.T) {
 	// consumer subscribes to events/properties
 	err = hc.Subscribe("", "")
 	require.NoError(t, err)
-	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 		stat.Completed(msg, nil, nil)
 		msgCount.Add(1)
 		return stat
@@ -235,7 +235,7 @@ func TestWriteProperties(t *testing.T) {
 	err := ag.PubTD(td1.ID, string(td1JSON))
 
 	// agents listen for property write requests
-	ag.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	ag.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 		if msg.MessageType == vocab.MessageTypeProperty && msg.Name == key1 {
 			stat.Completed(msg, nil, nil)
 			msgCount.Add(1)
@@ -247,7 +247,7 @@ func TestWriteProperties(t *testing.T) {
 	err = cl.Observe("", "")
 	require.NoError(t, err)
 	//var tv digitwin.ThingValue
-	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 		if msg.Name == key1 {
 			stat.Completed(msg, nil, nil)
 			msgCount.Add(1)

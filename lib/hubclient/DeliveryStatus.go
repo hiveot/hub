@@ -5,49 +5,72 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 )
 
-// DeliveryStatus holds the progress of action request delivery
-type DeliveryStatus struct {
+// ActionProgress holds the progress of action request delivery.
+// Intended for RPC updates and for asynchronously receiving action progress updates.
+// ThingID and Name are intended for the latter.
+
+// TBD: can progress updates be replaced by property updates?
+// A: no, property updates have no progress/error fields
+//    no, stateful action progress might not have any output value?
+//        stateless action progress should use rpc
+//        stateful action progress should have a corresponding state property
+
+type ActionProgress struct {
+	// ThingID of the thing handles the action.
+	ThingID string `json:"thingID"`
+	// The action name
+	Name string `json:"name"`
 	// Request ID
 	MessageID string `json:"messageID"`
 	// Updated delivery progress
 	Progress string `json:"progress"`
 	// Error in case delivery or processing has failed
 	Error string `json:"error"`
-	// Serialized reply in case delivery and processing has completed
+	// Native reply data in case delivery and processing has completed
 	Reply any `json:"reply"`
 }
 
-// Completed is a simple helper that sets the message delivery progress to completed,
-// associates the message and sets the reply data or error.
+// Completed sets the action process as completed. No more messages are send after this.
+// Optionally provide an error if it failed during processing by the Thing
 //
-// Use this when the processing has been completed without or with error
-// Primarily intended to make sure the messageID is not forgotten.
-func (stat *DeliveryStatus) Completed(msg *ThingMessage, reply any, err error) *DeliveryStatus {
+// msg is the internal thing message containing the action request that completed.
+func (stat *ActionProgress) Completed(msg *ThingMessage, reply any, err error) *ActionProgress {
 	stat.Progress = vocab.ProgressStatusCompleted
 	stat.MessageID = msg.MessageID
 	stat.Reply = reply
+	stat.ThingID = msg.ThingID
+	stat.Name = msg.Name
 	if err != nil {
 		stat.Error = err.Error()
 	}
 	return stat
 }
 
-// Delivered is a simple helper that sets the message delivery progress to delivered,
-// associates the message and sets the reply data or error.
+// Delivered sets the action process to delivered (to thing agent) using the internal message.
+// The agent will update the progress to completed or failed if it set the 'rpc' flag in the
+// TD action affordance.
 //
-// Use this when the request is delivered to the Thing
-// Primarily intended to make sure the messageID is not forgotten.
-func (stat *DeliveryStatus) Delivered(msg *ThingMessage) *DeliveryStatus {
+// After delivery to the agent, the progress can still fail if the agent is unable
+// to deliver the action request to the Thing itself. If execution fails this typically
+// returns the completed status with an error.
+//
+// msg is the internal thing message containing the action request that was delivered.
+func (stat *ActionProgress) Delivered(msg *ThingMessage) *ActionProgress {
+	stat.ThingID = msg.ThingID
+	stat.Name = msg.Name
 	stat.Progress = vocab.ProgressStatusDelivered
 	stat.MessageID = msg.MessageID
 	return stat
 }
 
-// Failed is a simple helper that sets the message delivery status to failed with error.
+// Failed sets the action process to failed. No more updates are sent after this.
+// This is intended to indicate a failure to deliver the action to the Thing itself.
 //
-// Use this if the messages cannot be delivered to the final destination.
-// Primarily intended to make sure the messageID is not forgotten.
-func (stat *DeliveryStatus) Failed(msg *ThingMessage, err error) *DeliveryStatus {
+//	msg is the internal thing message containing the action request that failed.
+//	err contains the cause of the failure.
+func (stat *ActionProgress) Failed(msg *ThingMessage, err error) *ActionProgress {
+	stat.ThingID = msg.ThingID
+	stat.Name = msg.Name
 	stat.Progress = vocab.ProgressStatusFailed
 	stat.MessageID = msg.MessageID
 	stat.Error = err.Error()
@@ -55,7 +78,7 @@ func (stat *DeliveryStatus) Failed(msg *ThingMessage, err error) *DeliveryStatus
 }
 
 // Decode converts the native type into the given data type
-func (stat *DeliveryStatus) Decode(reply interface{}) (error, bool) {
+func (stat *ActionProgress) Decode(reply interface{}) (error, bool) {
 	if stat.Reply == nil {
 		return nil, false
 	}

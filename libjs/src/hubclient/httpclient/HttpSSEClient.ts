@@ -6,14 +6,20 @@ import type {IHiveKey} from "@keys/IHiveKey";
 import * as tslog from 'tslog';
 import {
      MessageTypeProgressUpdate,
-    MessageTypeTD,  MessageTypeAction, MessageTypeEvent, MessageTypeProperty,
+    MessageTypeAction, MessageTypeEvent, MessageTypeProperty,
 } from "@hivelib/api/vocab/vocab.js";
 import * as http2 from "node:http2";
 import {connectSSE} from "@hivelib/hubclient/httpclient/connectSSE";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as https from "node:https";
-import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
-import {ConnectionStatus, MessageHandler} from "@hivelib/hubclient/IConsumerClient";
+import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
+import {
+    ActionHandler,
+    ConnectionStatus,
+    EventHandler,
+    ProgressHandler,
+    PropertyHandler
+} from "@hivelib/hubclient/IConsumerClient";
 import {nanoid} from "nanoid";
 import EventSource from "eventsource";
 
@@ -77,11 +83,17 @@ export class HttpSSEClient implements IAgentClient {
 
     // client handler for connection status change
     connectHandler: ((status: ConnectionStatus) => void) | null = null
-    // client handler for incoming messages from the hub.
-    messageHandler: MessageHandler | null = null;
+    // action handler for incoming messages from the hub.
+    actionHandler: ActionHandler | null = null;
+    // event handler
+    eventHandler: EventHandler | null = null;
+    // property write request (as agent) or property update (as consumer) handler
+    propertyHandler: PropertyHandler | null = null;
+    // progress handler receiving progress updates from agents
+    progressHandler: ProgressHandler | null = null;
 
     // map of messageID to delivery status update channel
-    _correlData: Map<string,(stat: DeliveryStatus)=>void>
+    _correlData: Map<string,(stat: ActionProgress)=>void>
 
     // Instantiate the Hub Client.
     //
@@ -224,28 +236,35 @@ export class HttpSSEClient implements IAgentClient {
             hclog.warn('HubClient disconnected');
         }
     }
-    onProgress(stat:DeliveryStatus):void{
+    onProgress(stat:ActionProgress):void{
         let cb = this._correlData.get(stat.messageID)
         if (cb) {
             cb(stat)
+        } else if (this.progressHandler ) {
+            this.progressHandler(stat)
         }
     }
-    // Handle incoming messages from the hub and pass them to handler
-    // after actions, send a progress update
+
+    // Handle incoming event or property messages from the hub and pass them to handler
     onMessage(msg: ThingMessage): void {
         try {
-            if (this.messageHandler) {
-                let stat = this.messageHandler(msg)
-                if (msg.messageType === MessageTypeAction && stat.progress && stat.messageID) {
-                    this.pubProgressUpdate(stat)
-                }
+            if (msg.messageType == MessageTypeAction && this.actionHandler) {
+                this.actionHandler(msg)
+            } else if (msg.messageType == MessageTypeEvent && this.eventHandler) {
+                this.eventHandler(msg)
+            } else if (msg.messageType == MessageTypeProperty && this.propertyHandler) {
+                 this.propertyHandler(msg)
+            } else {
+                hclog.warn(`onMessage unknown message type: ${msg.messageType}`)
             }
         } catch (e) {
             let errText = `Error handling hub message sender=${msg.senderID}, messageType=${msg.messageType}, thingID=${msg.thingID}, name=${msg.name}, error=${e}`
             hclog.warn(errText)
-            let stat = new DeliveryStatus()
-            stat.failed(msg, errText)
-            this.pubProgressUpdate(stat)
+            if (msg.messageType == MessageTypeAction) {
+                let stat = new ActionProgress()
+                stat.failed(msg, errText)
+                this.pubProgressUpdate(stat)
+            }
         }
     }
 
@@ -348,14 +367,14 @@ export class HttpSSEClient implements IAgentClient {
     //	payload is the optional action arguments to be serialized and transported
     //
     // This returns the serialized reply data or null in case of no reply data
-    async invokeAction(thingID: string, name: string, messageID:string, payload: any): Promise<DeliveryStatus> {
+    async invokeAction(thingID: string, name: string, messageID:string, payload: any): Promise<ActionProgress> {
         hclog.info("pubAction. thingID:", thingID, ", name:", name)
 
         let actionPath = PostInvokeActionPath.replace("{thingID}", thingID)
         actionPath = actionPath.replace("{name}", name)
 
         let resp = await this.pubMessage("POST",actionPath, messageID, payload)
-        let stat: DeliveryStatus = JSON.parse(resp)
+        let stat: ActionProgress = JSON.parse(resp)
         return stat
     }
 
@@ -387,7 +406,7 @@ export class HttpSSEClient implements IAgentClient {
     // pubProgressUpdate sends a delivery status update back to the sender of the action
     // @param msg: action message that was received
     // @param stat: status to return
-    async pubProgressUpdate(stat: DeliveryStatus) {
+    async pubProgressUpdate(stat: ActionProgress) {
         let resp = await this.pubMessage(
             "POST",PostAgentPublishProgressPath, stat.messageID, stat)
     }
@@ -427,7 +446,7 @@ export class HttpSSEClient implements IAgentClient {
             }, 30000)
 
             // set the handler for progress messages
-            this._correlData.set(messageID, (stat:DeliveryStatus):void=> {
+            this._correlData.set(messageID, (stat:ActionProgress):void=> {
                 // console.log("delivery progress",stat.progress)
                 // Remove the rpc wait hook and resolve the rpc
                 clearTimeout(t1)
@@ -435,7 +454,7 @@ export class HttpSSEClient implements IAgentClient {
                 resolve(stat.reply)
             })
             this.invokeAction(dThingID, methodName, messageID, args)
-                .then((stat: DeliveryStatus) => {
+                .then((stat: ActionProgress) => {
                     // complete the request if the result is returned, otherwise wait for
                     // the callback from _correlData
                     if (stat.progress == ProgressStatusCompleted || stat.progress == ProgressStatusFailed) {
@@ -450,8 +469,8 @@ export class HttpSSEClient implements IAgentClient {
         })
     }
 
-    async waitForResponse(messageID:string): Promise<DeliveryStatus> {
-        let stat = new DeliveryStatus()
+    async waitForResponse(messageID:string): Promise<ActionProgress> {
+        let stat = new ActionProgress()
         stat.progress = ProgressStatusFailed
         stat.error = "no response"
         return stat
@@ -496,8 +515,17 @@ export class HttpSSEClient implements IAgentClient {
     //
     // Event messages are not received until the subscribe method is invoked with
     // the event keys to subscribe to.
-    setMessageHandler(handler: MessageHandler) {
-        this.messageHandler = handler
+    setActionHandler(handler: ActionHandler) {
+        this.actionHandler = handler
+    }
+    setEventHandler(handler: EventHandler) {
+        this.eventHandler = handler
+    }
+    setPropertyHandler(handler: PropertyHandler) {
+        this.propertyHandler = handler
+    }
+    setProgressHandler(handler: ProgressHandler) {
+        this.progressHandler = handler
     }
 
     // Subscribe to events from things.
@@ -540,14 +568,14 @@ export class HttpSSEClient implements IAgentClient {
 
     // writeProperty publishes a request for changing a Thing's property.
     // The configuration is a writable property as defined in the Thing's TD.
-    async writeProperty(thingID: string, name: string, propValue: any): Promise<DeliveryStatus> {
+    async writeProperty(thingID: string, name: string, propValue: any): Promise<ActionProgress> {
         hclog.info("pubProperty. thingID:", thingID, ", name:", name)
 
         let propPath = PostWritePropertyPath.replace("{thingID}", thingID)
         propPath = propPath.replace("{name}", name)
 
         let resp = await this.pubMessage("POST",propPath, "",propValue)
-        let stat: DeliveryStatus = JSON.parse(resp)
+        let stat: ActionProgress = JSON.parse(resp)
         return stat
     }
 }

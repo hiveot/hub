@@ -21,14 +21,14 @@ type AgentHandler struct {
 }
 
 func (agent *AgentHandler) InvokeMethod(
-	method interface{}, msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	method interface{}, msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 
 	respData, err := hubclient.HandleRequestMessage(msg.SenderID, method, msg.Data)
 	stat.Completed(msg, respData, err)
 	return stat
 }
 
-func (agent *AgentHandler) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (agent *AgentHandler) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 	if msg.ThingID == agent.thingID {
 		method, found := agent.methods[msg.Name]
 		if found {

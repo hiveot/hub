@@ -22,23 +22,23 @@ Operations:
 
 
 
-# ProgressStatus
+# ProgressStatus for action progress
 ProgressStatus:
   version: "0.1"
   link: "github.com/hiveot/hub/api/vocab/ht-constants.yaml"
-  description: "Request progress status constants"
+  description: "Action progress status constants"
   namespace: "ht"
   vocab:
     # action is pending delivery to the Thing
     ProgressStatusPending: "pending"
 
-    # Request is delivered and waiting completion
+    # Request is delivered to the Thing agent and waiting completion
     ProgressStatusDelivered: "delivered"
 
-    # Request was completed, optionally with error
+    # Request was processed by the Thing and optionally returned an error
     ProgressStatusCompleted: "completed"
 
-    # Request failed with error
+    # Request failed delivery to the Thing
     ProgressStatusFailed: "failed"
 
 
@@ -68,20 +68,5 @@ MessageTypes:
     # the message contains the property name and value as data
     # if no name is given then data contains a map with property key-value pairs.
     MessageTypeProperty:  "property"
-
-    # TD updates flow from a thing agent to the digital twin directory, which in turn
-    # sends an thingUpdated event to directory event subscribers.
-    # This message type is for Agents only.
-    # TODO: should this be a directory service action instead? possibly
-    MessageTypeTD:  "td"
-
-    # pub prop using   PATCH /thingID/property/propKey   by consumer
-    # pub event using  PUT   /thingID/event/eventKey     by agent
-    # pub action using POST  /thingID/action/actionKey   by consumer
-    # pub td using     PUT   /thingID                    by agent
-
-    # notify prop change using PATCH /thingID/property/key  by agent
-    # notify event change using PATCH /thingID/event/key  by agent
-    # notify action n/a
 
 

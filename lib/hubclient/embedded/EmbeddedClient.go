@@ -71,7 +71,7 @@ func (cl *EmbeddedClient) GetClientID() string {
 }
 
 // HandleMessage receives a message from the embedded transport for this client
-//func (cl *EmbeddedClient) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+//func (cl *EmbeddedClient) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 //	if msg.MessageType == vocab.MessageTypeAction || msg.MessageType == vocab.MessageTypeProperty {
 //		if cl.messageHandler != nil {
 //			return cl.messageHandler(msg)
@@ -99,7 +99,7 @@ func (cl *EmbeddedClient) Logout() error {
 // InvokeAction publishes an action request.
 // Since this is a direct call, the response include a reply.
 func (cl *EmbeddedClient) InvokeAction(
-	thingID string, name string, data any) (stat hubclient.DeliveryStatus) {
+	thingID string, name string, data any) (stat hubclient.ActionProgress) {
 
 	msg := hubclient.NewThingMessage(vocab.MessageTypeAction, thingID, name, data, cl.clientID)
 	stat = cl.sendMessage(msg)
@@ -107,7 +107,7 @@ func (cl *EmbeddedClient) InvokeAction(
 }
 
 // PubProperty publishes a configuration change request
-func (cl *EmbeddedClient) PubProperty(thingID string, name string, data any) (stat hubclient.DeliveryStatus) {
+func (cl *EmbeddedClient) PubProperty(thingID string, name string, data any) (stat hubclient.ActionProgress) {
 
 	msg := hubclient.NewThingMessage(vocab.MessageTypeProperty, thingID, name, data, cl.clientID)
 	stat = cl.sendMessage(msg)
@@ -127,7 +127,7 @@ func (cl *EmbeddedClient) PubEvent(
 }
 
 // PublishMultipleProperties publishes a properties name-value
-func (cl *EmbeddedClient) PublishMultipleProperties(thingID string, props map[string]any) hubclient.DeliveryStatus {
+func (cl *EmbeddedClient) PublishMultipleProperties(thingID string, props map[string]any) hubclient.ActionProgress {
 	payload, _ := json.Marshal(props)
 	//return cl.PubEvent(thingID, vocab.EventNameProperties, string(payload))
 	msg := hubclient.NewThingMessage(vocab.MessageTypeProperty, thingID, "", payload, cl.clientID)
@@ -160,7 +160,7 @@ func (cl *EmbeddedClient) Rpc(
 	msg := hubclient.NewThingMessage(vocab.MessageTypeAction, thingID, name, args, cl.clientID)
 	// this sendMessage is synchronous
 	stat := cl.sendMessage(msg)
-	// the internal response format is a DeliveryStatus struct
+	// the internal response format is a ActionProgress struct
 	if stat.Error == "" {
 		// delivery might be completed but an unmarshal error causes it to fail
 		err, _ := stat.Decode(resp)
@@ -174,9 +174,11 @@ func (cl *EmbeddedClient) Rpc(
 	return nil
 }
 
-func (cl *EmbeddedClient) PubProgressUpdate(stat hubclient.DeliveryStatus) {
+func (cl *EmbeddedClient) PubProgressUpdate(stat hubclient.ActionProgress) {
 	slog.Info("SendDeliveryUpdate",
 		slog.String("Progress", stat.Progress),
+		slog.String("ThingID", stat.ThingID),
+		slog.String("Name", stat.Name),
 		slog.String("MessageID", stat.MessageID),
 	)
 	statJSON, _ := json.Marshal(&stat)
@@ -184,7 +186,8 @@ func (cl *EmbeddedClient) PubProgressUpdate(stat hubclient.DeliveryStatus) {
 	//_ = cl.PubEvent(digitwin.InboxDThingID, vocab.EventNameDeliveryUpdate, string(statJSON))
 	msg := hubclient.NewThingMessage(vocab.MessageTypeProgressUpdate,
 		"", "", statJSON, stat.MessageID)
-	stat2 := cl.sendMessage(msg)
+	// FIXME: broken on purpose as this transport is deprecated
+	stat2 := cl.sendMessage(stat)
 	if stat2.Error != "" {
 		slog.Warn("PubProgressUpdate failed",
 			"err", stat2.Error, "messageID", stat.MessageID)
@@ -193,7 +196,7 @@ func (cl *EmbeddedClient) PubProgressUpdate(stat hubclient.DeliveryStatus) {
 
 // SendOperation is temporary transition to support using TD forms
 func (cl *EmbeddedClient) SendOperation(
-	href string, op tdd.Form, data any) (stat hubclient.DeliveryStatus) {
+	href string, op tdd.Form, data any) (stat hubclient.ActionProgress) {
 
 	slog.Info("SendOperation", "href", href, "op", op)
 	return stat

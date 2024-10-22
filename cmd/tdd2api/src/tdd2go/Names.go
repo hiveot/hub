@@ -9,7 +9,7 @@ import (
 )
 
 // This file contains naming helper functions
-// * Key2ID turns a TD key into a valid identifier
+// * Name2ID turns a TD key into a valid identifier
 // * ToTitle turns words in a string into a valid title case
 // * GoTypeFromSchema converts a dataschema type into a golang type
 
@@ -55,9 +55,9 @@ func GoTypeFromSchema(ds *tdd.DataSchema) string {
 	}
 }
 
-// Key2ID turns a TD key into a valid identifier string
+// Name2ID turns a TD name into a valid identifier string
 // This removes invalid characters and capitalizes the result
-func Key2ID(key string) string {
+func Name2ID(key string) string {
 	keyAsBytes := []byte(key)
 	// keep only valid identifier chars
 	n := 0

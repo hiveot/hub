@@ -2,7 +2,7 @@
 import {SetValueStatus, TranslatedValueID, ValueMetadataNumeric, ZWaveNode} from "zwave-js";
 import * as tslog from 'tslog';
 import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI";
-import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
+import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
 import {ProgressStatusDelivered, ProgressStatusFailed, ProgressStatusCompleted} from "@hivelib/api/vocab/vocab";
 
 const log = new tslog.Logger()
@@ -14,10 +14,10 @@ const log = new tslog.Logger()
 // @param vid: valueID parameter to set
 // @param value: native value to set, if any
 // this returns a delivery status for returning to the hub
-export async function setValue(node: ZWaveNode, vid: TranslatedValueID, value: any): Promise<DeliveryStatus> {
-    return new Promise<DeliveryStatus>( (resolve, reject) => {
+export async function setValue(node: ZWaveNode, vid: TranslatedValueID, value: any): Promise<ActionProgress> {
+    return new Promise<ActionProgress>( (resolve, reject) => {
         let dataToSet: unknown
-        let stat = new DeliveryStatus()
+        let stat = new ActionProgress()
         try {
             let vidMeta = node.getValueMetadata(vid)
             dataToSet = value

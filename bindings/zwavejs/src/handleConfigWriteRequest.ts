@@ -6,17 +6,17 @@ import * as tslog from 'tslog';
 import {IAgentClient} from "@hivelib/hubclient/IAgentClient";
 import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI";
 import {setValue} from "@zwavejs/setValue";
-import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
+import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
 
 const log = new tslog.Logger()
 
 
 
-// handle configuration requests as defined in the TD
+// handle configuration write request as defined in the TD
 // @param msg is the incoming message with the 'key' containing the property to set
-export function handleConfigRequest(
-    msg: ThingMessage, node: ZWaveNode, zwapi: ZWAPI, hc: IAgentClient):  DeliveryStatus {
-    let stat = new DeliveryStatus()
+export function handleConfigWriteRequest(
+    msg: ThingMessage, node: ZWaveNode, zwapi: ZWAPI, hc: IAgentClient):  ActionProgress {
+    let stat = new ActionProgress()
     let errMsg: Error | undefined
 
     let propKey = msg.name

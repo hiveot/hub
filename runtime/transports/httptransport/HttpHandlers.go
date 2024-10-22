@@ -96,7 +96,7 @@ func (svc *HttpBinding) HandleActionProgress(w http.ResponseWriter, r *http.Requ
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	stat := hubclient.DeliveryStatus{}
+	stat := hubclient.ActionProgress{}
 	err = jsoniter.Unmarshal(rp.Body, &stat)
 	if err == nil {
 		err = svc.hubRouter.HandleActionProgress(rp.ClientID, stat)
@@ -144,16 +144,16 @@ func (svc *HttpBinding) HandleActionRequest(w http.ResponseWriter, r *http.Reque
 
 	// there are 3 possible results:
 	// on status completed; return output
-	// on status failed: return http ok with DeliveryStatus containing error
-	// on status other: return  DeliveryStatus object with progress
+	// on status failed: return http ok with ActionProgress containing error
+	// on status other: return  ActionProgress object with progress
 	//
-	// This means that the result is either out or a DeliveryStatus object
+	// This means that the result is either out or a ActionProgress object
 	// Forms will have added:
 	// ```
 	//  "additionalResponses": [{
 	//                    "success": false,
 	//                    "contentType": "application/json",
-	//                    "schema": "DeliveryStatus"
+	//                    "schema": "ActionProgress"
 	//                }]
 	//```
 	replyHeader := w.Header()
@@ -170,8 +170,8 @@ func (svc *HttpBinding) HandleActionRequest(w http.ResponseWriter, r *http.Reque
 
 	// in case of error include the return data schema
 	if err != nil {
-		replyHeader.Set(hubclient.DataSchemaHeader, "DeliveryStatus")
-		resp := hubclient.DeliveryStatus{
+		replyHeader.Set(hubclient.DataSchemaHeader, "ActionProgress")
+		resp := hubclient.ActionProgress{
 			MessageID: messageID,
 			Progress:  status,
 			Error:     err.Error(),
@@ -181,8 +181,8 @@ func (svc *HttpBinding) HandleActionRequest(w http.ResponseWriter, r *http.Reque
 		return
 	} else if status != vocab.ProgressStatusCompleted {
 		// if progress isn't completed then also return the delivery progress
-		replyHeader.Set(hubclient.DataSchemaHeader, "DeliveryStatus")
-		resp := hubclient.DeliveryStatus{
+		replyHeader.Set(hubclient.DataSchemaHeader, "ActionProgress")
+		resp := hubclient.ActionProgress{
 			MessageID: messageID,
 			Progress:  status,
 			Reply:     output,

@@ -146,8 +146,8 @@ func (wcs *WebClientSession) GetHubClient() hubclient.IConsumerClient {
 	return wcs.hc
 }
 
-// GetConsumedThingsSession returns the consumed things model of this client
-func (wcs *WebClientSession) GetConsumedThingsSession() *consumedthing.ConsumedThingsDirectory {
+// GetConsumedThingsDirectory returns the directory of consumed things of this client
+func (wcs *WebClientSession) GetConsumedThingsDirectory() *consumedthing.ConsumedThingsDirectory {
 	return wcs.cts
 }
 
@@ -224,6 +224,8 @@ func (wcs *WebClientSession) onConnectChange(stat hubclient.TransportStatus) {
 }
 
 // onMessage notifies SSE clients of incoming messages from the Hub
+// This is intended for notifying the client UI of the update to props, events or actions.
+// The consumed thing itself is already updated.
 func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 	wcs.mux.RLock()
 	defer wcs.mux.RUnlock()
@@ -235,14 +237,7 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		slog.Any("data", msg.Data),
 		slog.String("senderID", msg.SenderID),
 		slog.String("messageID", msg.MessageID))
-	if msg.MessageType == vocab.MessageTypeTD {
-		// Publish sse event indicating the Thing TD has changed.
-		// The UI that displays this event can use this as a trigger to reload the
-		// fragment that displays this TD:
-		//    hx-trigger="sse:{{.Thing.ThingID}}"
-		thingAddr := msg.ThingID
-		wcs.SendSSE(thingAddr, "")
-	} else if msg.MessageType == vocab.MessageTypeProperty {
+	if msg.MessageType == vocab.MessageTypeProperty {
 		// Publish a sse event for each of the properties
 		// The UI that displays this event can use this as a trigger to load the
 		// property value:
@@ -263,7 +258,7 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 	} else if msg.MessageType == vocab.MessageTypeProgressUpdate {
 		// report unhandled delivery updates
 		// for now just pass it to the notification toaster
-		stat := hubclient.DeliveryStatus{}
+		stat := hubclient.ActionProgress{}
 		_ = utils.DecodeAsObject(msg.Data, &stat)
 
 		// TODO: figure out a way to replace the existing notification if the messageID
@@ -275,6 +270,20 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		} else {
 			wcs.SendNotify(NotifyWarning, "Action delivery: "+stat.Progress)
 		}
+		//} else if msg.MessageType == vocab.MessageTypeEvent &&
+		//	msg.ThingID == digitwin.DirectoryDThingID &&
+		//	msg.Name == digitwin.DirectoryEventThingUpdated {
+
+		//// Update the TD in the consumed-thing if it exists
+		//cts := wcs.GetConsumedThingsDirectory()
+		//td := cts.UpdateTD(msg.Data)
+		//
+		//// Publish sse event to the UI to update their TD.
+		//// The UI that displays this event can use this as a trigger to reload the
+		//// fragment that displays this TD:
+		////    hx-trigger="sse:{{.Thing.ThingID}}"
+		//thingAddr := td.ID
+		//wcs.SendSSE(thingAddr, "")
 	} else {
 		// Publish sse event indicating the event affordance or value has changed.
 		// The UI that displays this event can use this as a trigger to reload the

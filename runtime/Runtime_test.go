@@ -70,7 +70,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	var actionPayload = "payload1"
 	var expectedReply = actionPayload + ".reply"
 	var rxMsg *hubclient.ThingMessage
-	var stat3 hubclient.DeliveryStatus
+	var stat3 hubclient.ActionProgress
 
 	r := startRuntime()
 	defer r.Stop()
@@ -87,7 +87,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	defer cl1.Disconnect()
 
 	// Agent receives action request which we'll handle here
-	ag1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	ag1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 		rxMsg = msg
 		reply := utils.DecodeAsString(msg.Data) + ".reply"
 		stat.Completed(msg, reply, nil)
@@ -99,7 +99,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 
 	// users receives delivery updates when sending actions
 	deliveryCtx, deliveryCtxComplete := context.WithTimeout(context.Background(), time.Minute*1)
-	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 		if msg.MessageType == vocab.MessageTypeProgressUpdate {
 			// delivery updates are only invoked on for non-rpc actions
 			err := utils.DecodeAsObject(msg.Data, &stat3)
@@ -159,7 +159,7 @@ func TestServiceReconnect(t *testing.T) {
 	ts.AddTD(agentID, td1)
 
 	// Agent receives action request which we'll handle here
-	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 		var req string
 		rxMsg.Store(&msg)
 		_ = utils.DecodeAsObject(msg.Data, &req)

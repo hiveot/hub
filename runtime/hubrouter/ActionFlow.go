@@ -170,7 +170,7 @@ func (svc *HubRouter) HandleActionFlow(
 }
 
 // HandleActionProgress agent sends an action progress update.
-// The message payload contains a DeliveryStatus object
+// The message payload contains a ActionProgress object
 //
 // This:
 // 1. Validates the request is still ongoing
@@ -179,7 +179,7 @@ func (svc *HubRouter) HandleActionFlow(
 // 4: Updates the status of the active request cache
 //
 // If the message is no longer in the active cache then it is ignored.
-func (svc *HubRouter) HandleActionProgress(agentID string, stat hubclient.DeliveryStatus) (err error) {
+func (svc *HubRouter) HandleActionProgress(agentID string, stat hubclient.ActionProgress) (err error) {
 
 	// 1: Validate this is an active action
 	svc.mux.Lock()
@@ -194,6 +194,9 @@ func (svc *HubRouter) HandleActionProgress(agentID string, stat hubclient.Delive
 	}
 	thingID := actionRecord.ThingID
 	actionName := actionRecord.Name
+	// Update the thingID to notify the sender with progress on the digital twin thing ID
+	stat.ThingID = tdd.MakeDigiTwinThingID(agentID, thingID)
+	stat.Name = actionName
 	// the sender (agents) must be the thing agent
 	if agentID != actionRecord.AgentID {
 		err = fmt.Errorf(

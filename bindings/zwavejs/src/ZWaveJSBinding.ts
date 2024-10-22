@@ -14,7 +14,8 @@ import * as tslog from 'tslog';
 import {handleActionRequest} from "@zwavejs/handleActionRequest";
 import {ValueID} from "@zwave-js/core";
 import {IAgentClient} from "@hivelib/hubclient/IAgentClient";
-import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
+import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
+import {handleConfigWriteRequest} from "@zwavejs/handleConfigWriteRequest";
 
 const log = new tslog.Logger()
 
@@ -161,9 +162,13 @@ export class ZwaveJSBinding {
             this.vidCsvFD = fs.openSync(this.config.vidCsvFile, "w+", 0o640)
             logVid(this.vidCsvFD)
         }
-        this.hc.setMessageHandler( (msg:ThingMessage):DeliveryStatus => {
+        this.hc.setActionHandler( (msg:ThingMessage):ActionProgress => {
             let stat = handleActionRequest(msg,this.zwapi, this.hc)
             return stat
+        })
+        this.hc.setPropertyHandler( (msg:ThingMessage):void => {
+            // todo, separate hadnler
+            handleActionRequest(msg,this.zwapi, this.hc)
         })
 
         await this.zwapi.connectLoop(this.config);

@@ -43,7 +43,7 @@ type IsyBinding struct {
 // CreateBindingTD generates a TD document for this binding containing properties,
 // event and action definitions.
 func (svc *IsyBinding) CreateBindingTD() *tdd.TD {
-	td := tdd.NewTD(svc.thingID, "ISY99x binding", vocab.ThingServiceAdapter)
+	td := tdd.NewTD(svc.thingID, "ISY99x binding", vocab.ThingService)
 
 	// binding attributes
 	prop := td.AddProperty("connectionStatus", "",

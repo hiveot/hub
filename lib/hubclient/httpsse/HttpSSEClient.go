@@ -98,7 +98,7 @@ type HttpSSEClient struct {
 	// client side handler that receives messages from the server
 	_messageHandler hubclient.MessageHandler
 	// map of messageID to delivery status update channel
-	_correlData map[string]chan *hubclient.DeliveryStatus
+	_correlData map[string]chan *hubclient.ActionProgress
 }
 
 func (cl *HttpSSEClient) connect() (err error) {
@@ -278,7 +278,7 @@ func (cl *HttpSSEClient) handleSSEDisconnect(err error) {
 // InvokeAction publishes an action message and waits for an answer or until timeout
 // An error is returned if delivery failed or succeeded but the action itself failed
 func (cl *HttpSSEClient) InvokeAction(thingID string, name string, data any, messageID string) (
-	stat hubclient.DeliveryStatus) {
+	stat hubclient.ActionProgress) {
 
 	slog.Info("InvokeAction",
 		slog.String("me", cl.clientID),
@@ -332,7 +332,7 @@ func (cl *HttpSSEClient) Observe(thingID string, name string) error {
 // PubActionWithQueryParams publishes an action with query parameters
 //func (cl *HttpSSEClient) PubActionWithQueryParams(
 //	thingID string, name string, data any, messageID string, params map[string]string) (
-//	stat hubclient.DeliveryStatus) {
+//	stat hubclient.ActionProgress) {
 //
 //	slog.Info("PubActionWithQueryParams",
 //		slog.String("thingID", thingID),
@@ -371,7 +371,7 @@ func (cl *HttpSSEClient) PubEvent(thingID string, name string, data any, message
 // This returns the response body and optional a response message with delivery status and messageID with a delivery status
 func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 	thingID string, name string, data any, messageID string, queryParams map[string]string) (
-	stat hubclient.DeliveryStatus) {
+	stat hubclient.ActionProgress) {
 
 	progress := ""
 	vars := map[string]string{
@@ -397,7 +397,7 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 	// TODO: detect difference between not connected and unauthenticated
 	dataSchema := ""
 	if headers != nil {
-		// set if an alternative output dataschema is used, eg DeliveryStatus result
+		// set if an alternative output dataschema is used, eg ActionProgress result
 		dataSchema = headers.Get(hubclient.DataSchemaHeader)
 		// when progress is returned without a deliverystatus object
 		progress = headers.Get(hubclient.StatusHeader)
@@ -411,7 +411,7 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 			err = errors.New("no longer authenticated")
 		}
 		// FIXME: use actual type
-	} else if dataSchema == "DeliveryStatus" {
+	} else if dataSchema == "ActionProgress" {
 		// return dataschema contains a progress envelope
 		err = cl.Unmarshal(reply, &stat)
 	} else if reply != nil && len(reply) > 0 {
@@ -440,7 +440,7 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 //		queryParams optional name-value pairs to pass along as query parameters
 func (cl *HttpSSEClient) pubFormMessage(op *tdd.Form,
 	dtThingID string, name string, data any, messageID string, queryParams map[string]string) (
-	stat hubclient.DeliveryStatus) {
+	stat hubclient.ActionProgress) {
 
 	messagePath, _ := (*op).GetHRef()
 	stat = cl.PubMessage(http.MethodPost, messagePath, dtThingID, name, data, messageID, queryParams)
@@ -450,9 +450,11 @@ func (cl *HttpSSEClient) pubFormMessage(op *tdd.Form,
 // PubProgressUpdate agent publishes a request progress update message to the digital twin
 // The digital twin will update the request status and notify the sender.
 // This returns an error if the connection with the server is broken
-func (cl *HttpSSEClient) PubProgressUpdate(stat hubclient.DeliveryStatus) {
+func (cl *HttpSSEClient) PubProgressUpdate(stat hubclient.ActionProgress) {
 	slog.Debug("PubProgressUpdate",
-		slog.String("me", cl.clientID),
+		slog.String("agentID", cl.clientID),
+		slog.String("thingID", stat.ThingID),
+		slog.String("name", stat.Name),
 		slog.String("progress", stat.Progress),
 		slog.String("messageID", stat.MessageID))
 
@@ -518,21 +520,23 @@ func (cl *HttpSSEClient) RefreshToken(oldToken string) (newToken string, err err
 	return newToken, err
 }
 
-// Rpc marshals arguments, invokes an action and unmarshal a response.
-// Intended to remove some boilerplate
+// Rpc publishes and action and waits for a completion or failed progress update.
+// This uses a messageID to link actions to progress updates. Only use this for actions
+// that support the 'rpc' capabilities (eg, the agent sends the progress update)
 func (cl *HttpSSEClient) Rpc(
 	thingID string, name string, args interface{}, resp interface{}) (err error) {
 
 	// a messageID is needed before the action is published in order to match it with the reply
 	messageID := "rpc-" + shortid.MustGenerate()
 
-	slog.Info("Rpc (request)", slog.String("clientID", cl.clientID),
+	slog.Info("Rpc (request)",
+		slog.String("clientID", cl.clientID),
 		slog.String("thingID", thingID),
 		slog.String("name", name),
 		slog.String("messageID", messageID),
 	)
 
-	rChan := make(chan *hubclient.DeliveryStatus)
+	rChan := make(chan *hubclient.ActionProgress)
 	cl.mux.Lock()
 	cl._correlData[messageID] = rChan
 	cl.mux.Unlock()
@@ -558,7 +562,7 @@ func (cl *HttpSSEClient) Rpc(
 				slog.String("messageID", messageID),
 			)
 		}
-		stat, err = cl.WaitForStatusUpdate(rChan, messageID, time.Second)
+		stat, err = cl.WaitForProgressUpdate(rChan, messageID, time.Second)
 		waitCount++
 	}
 	cl.mux.Lock()
@@ -589,7 +593,7 @@ func (cl *HttpSSEClient) Rpc(
 
 // SendOperation is temporary transition to support using TD forms
 func (cl *HttpSSEClient) SendOperation(
-	href string, op tdd.Form, data any) (stat hubclient.DeliveryStatus) {
+	href string, op tdd.Form, data any) (stat hubclient.ActionProgress) {
 
 	slog.Info("SendOperation", "href", href, "op", op)
 	panic("Just a placeholder. Dont use this yet. Not implemented")
@@ -700,11 +704,11 @@ func (cl *HttpSSEClient) Unsubscribe(thingID string, name string) error {
 	return err
 }
 
-// WaitForStatusUpdate waits for an async progress update message or until timeout
+// WaitForProgressUpdate waits for an async progress update message or until timeout
 // This returns the status or an error if the timeout has passed
-func (cl *HttpSSEClient) WaitForStatusUpdate(
-	statChan chan *hubclient.DeliveryStatus, messageID string, timeout time.Duration) (
-	stat hubclient.DeliveryStatus, err error) {
+func (cl *HttpSSEClient) WaitForProgressUpdate(
+	statChan chan *hubclient.ActionProgress, messageID string, timeout time.Duration) (
+	stat hubclient.ActionProgress, err error) {
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
@@ -721,7 +725,7 @@ func (cl *HttpSSEClient) WaitForStatusUpdate(
 
 // WriteProperty posts a configuration change request
 func (cl *HttpSSEClient) WriteProperty(thingID string, name string, data any) (
-	stat hubclient.DeliveryStatus) {
+	stat hubclient.ActionProgress) {
 
 	slog.Info("WriteProperty",
 		slog.String("me", cl.clientID),
@@ -782,7 +786,7 @@ func NewHttpSSEClient(hostPort string, clientID string,
 		hostPort:    hostPort,
 		ssePath:     ConnectSSEPath,
 		_sseChan:    make(chan *sse.Event),
-		_correlData: make(map[string]chan *hubclient.DeliveryStatus),
+		_correlData: make(map[string]chan *hubclient.ActionProgress),
 		// max message size for bulk reads is 10MB.
 		_maxSSEMessageSize: 1024 * 1024 * 10,
 	}

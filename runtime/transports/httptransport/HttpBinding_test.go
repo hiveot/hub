@@ -442,7 +442,7 @@ func TestReconnect(t *testing.T) {
 	dummyRouter.OnAction = func(agentID, thingID, name string, val any, msgID string, cid string) any {
 		// send a delivery status update asynchronously which uses the SSE return channel
 		go func() {
-			stat := hubclient.DeliveryStatus{
+			stat := hubclient.ActionProgress{
 				MessageID: msgID,
 				Progress:  vocab.ProgressStatusCompleted,
 				Reply:     val,

@@ -1,8 +1,15 @@
 import * as tslog from 'tslog';
-import {ConnectionHandler, ConnectionStatus, EventHandler} from "@hivelib/hubclient/IConsumerClient";
+import {
+    ConnectionHandler,
+    ConnectionStatus,
+    ActionHandler,
+    EventHandler,
+    ProgressHandler
+} from "@hivelib/hubclient/IConsumerClient";
+
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import EventSource from 'eventsource'
-import {DeliveryStatus} from "@hivelib/hubclient/DeliveryStatus";
+import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
 import {
     MessageTypeAction,
     MessageTypeEvent,
@@ -11,6 +18,9 @@ import {
 } from "@hivelib/api/vocab/vocab";
 
 const hclog = new tslog.Logger()
+
+export type MessageHandler = (msg:ThingMessage)=>void;
+
 
 function parseSSEEvent(e: MessageEvent) : ThingMessage {
     let tm = new ThingMessage()
@@ -35,13 +45,14 @@ function parseSSEEvent(e: MessageEvent) : ThingMessage {
     return tm
 }
 
+// Connect an EventSource to the SSE server and handle SSE events
 export async function  connectSSE(
     baseURL:string,
     ssePath:string,
     authToken:string,
     cid:string,
-    handler: EventHandler,
-    onProgress: (stat:DeliveryStatus)=>void,
+    onMessage: MessageHandler,
+    onProgress: ProgressHandler,
     onConnection: ConnectionHandler ):Promise<EventSource> {
 
     return new Promise((resolve, reject): void => {
@@ -55,8 +66,6 @@ export async function  connectSSE(
                 "cid": cid
             },
             https: {
-                // FIXME: encrypt:false seems to be needed to be able to receive messages!???
-                encrypt:false, // https://stackoverflow.com/questions/68528360/node10212dep0123deprecationwarningsetting-the-tls-servername-to-an-ipaddress
                 rejectUnauthorized: false
             }
         };
@@ -74,20 +83,20 @@ export async function  connectSSE(
         })
 
         source.addEventListener(MessageTypeProgressUpdate,(e:any)=>{
-            let stat: DeliveryStatus = JSON.parse(e.data)
+            let stat: ActionProgress = JSON.parse(e.data)
             onProgress(stat)
         })
         source.addEventListener(MessageTypeAction,(e:MessageEvent)=>{
            let msg = parseSSEEvent(e)
-            handler(msg)
+            onMessage(msg)
         })
         source.addEventListener(MessageTypeEvent,(e:any)=>{
             let msg = parseSSEEvent(e)
-            handler(msg)
+            onMessage(msg)
         })
         source.addEventListener(MessageTypeProperty,(e:any)=>{
             let msg = parseSSEEvent(e)
-            handler(msg)
+            onMessage(msg)
         })
         source.addEventListener("close",(e:any)=>{
             hclog.info("On close", e)

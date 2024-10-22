@@ -99,8 +99,9 @@ func (svc *HiveovService) Start(hc hubclient.IAgentClient) error {
 			}
 		}()
 	}
-	// last, publish this service's TD
+	// last, publish this service's TD and properties
 	_ = svc.PublishServiceTD()
+	_ = svc.PublishServiceProps()
 
 	return nil
 }

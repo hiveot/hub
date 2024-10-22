@@ -69,7 +69,7 @@ type EventHandler func(msg *ThingMessage) error
 //
 // As actions are targeted to an agent, the delivery status is that of delivery	to the agent.
 // As events are broadcast, the delivery status is that of delivery to at least one subscriber.
-type MessageHandler func(msg *ThingMessage) DeliveryStatus
+type MessageHandler func(msg *ThingMessage) ActionProgress
 
 // IConsumerClient defines the interface of the client that connects to a messaging server.
 //
@@ -142,7 +142,7 @@ type IConsumerClient interface {
 	//  data with action input as defined in its TD
 	//
 	// This returns a delivery status with response data if delivered
-	InvokeAction(thingID string, name string, data any, messageID string) DeliveryStatus
+	InvokeAction(thingID string, name string, data any, messageID string) ActionProgress
 
 	// Logout of the hub and invalidate the connected session token
 	Logout() error
@@ -179,11 +179,11 @@ type IConsumerClient interface {
 
 	// SendOperation [consumer] is form-based method of invoking an operation
 	// This is under development.
-	//SendOperation(href string, op tdd.Form, data any, messageID string) DeliveryStatus
+	//SendOperation(href string, op tdd.Form, data any, messageID string) ActionProgress
 
 	// SetMessageHandler adds a handler for messages from the hub.
 	// This replaces any previously set handler.
-	// The handler should return a DeliveryStatus response for action and
+	// The handler should return a ActionProgress response for action and
 	// property messages. This response is ignored for events.
 	//
 	// To receive events use the 'Subscribe' method to set the events to listen for.
@@ -215,5 +215,5 @@ type IConsumerClient interface {
 	//	name is the name of the property to write
 	//	Value is a value based on the PropertyAffordances in the TD
 	// This returns the delivery status and an error code if delivery fails
-	WriteProperty(dThingID string, name string, value any) DeliveryStatus
+	WriteProperty(dThingID string, name string, value any) ActionProgress
 }

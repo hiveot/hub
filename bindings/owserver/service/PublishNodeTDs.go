@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
-	thing "github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/tdd"
 )
 
 // CreateTDFromNode converts the 1-wire node into a TD that describes the node.
@@ -12,7 +12,7 @@ import (
 // - Writable non-sensors attributes are marked as writable configuration
 // - Sensors are also added as events.
 // - Writable sensors are also added as actions.
-func CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing.TD) {
+func CreateTDFromNode(node *eds.OneWireNode) (tdoc *tdd.TD) {
 
 	// Should we bother with the URI? In HiveOT things have pubsub addresses that include the ID. The ID is not the address.
 	//thingID := things.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
@@ -26,7 +26,7 @@ func CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing.TD) {
 		deviceType = vocab.ThingDevice
 	}
 
-	tdoc = thing.NewTD(thingID, node.Name, deviceType)
+	tdoc = tdd.NewTD(thingID, node.Name, deviceType)
 	tdoc.UpdateTitleDescription(node.Name, node.Description)
 
 	// Map node attribute to Thing properties and events
@@ -60,11 +60,11 @@ func CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing.TD) {
 			}
 		}
 		if attrInfo.IsEvent {
-			var evSchema *thing.DataSchema
+			var evSchema *tdd.DataSchema
 			// only add data schema if the event carries a value
 			if attrInfo.DataType != vocab.WoTDataTypeNone {
 				unit, _ := UnitNameVocab[attr.Unit]
-				evSchema = &thing.DataSchema{
+				evSchema = &tdd.DataSchema{
 					Type:     attrInfo.DataType,
 					Unit:     unit,
 					ReadOnly: true,
@@ -74,11 +74,11 @@ func CreateTDFromNode(node *eds.OneWireNode) (tdoc *thing.TD) {
 			tdoc.AddEvent(attrID, attrInfo.VocabType, attrInfo.Title, "", evSchema)
 		}
 		if attrInfo.IsActuator {
-			var inputSchema *thing.DataSchema
+			var inputSchema *tdd.DataSchema
 			// only add data schema if the action accepts parameters
 			if attrInfo.DataType != vocab.WoTDataTypeNone {
 				unit, _ := UnitNameVocab[attr.Unit]
-				inputSchema = &thing.DataSchema{
+				inputSchema = &tdd.DataSchema{
 					Type:      attrInfo.DataType,
 					Unit:      unit,
 					ReadOnly:  false,

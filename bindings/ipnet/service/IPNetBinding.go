@@ -22,7 +22,7 @@ type IPNetBinding struct {
 }
 
 // ActionHandler handle action requests
-func (svc *IPNetBinding) ActionHandler(msg *hubclient.ThingMessage) (stat hubclient.DeliveryStatus) {
+func (svc *IPNetBinding) ActionHandler(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 	stat.Completed(msg, nil, fmt.Errorf("unknown action '%s'", msg.Name))
 	slog.Warn(stat.Error)
 	return stat
