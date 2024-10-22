@@ -125,7 +125,7 @@ func TestConnectionTwice(t *testing.T) {
 	c1 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	err := cm.AddConnection(c1)
 	require.NoError(t, err)
-	// these two connections have the same connection ID
+	// these two connections have the same connection ID. This should fail
 	c2 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	err = cm.AddConnection(c2)
 	require.Error(t, err)
@@ -168,6 +168,7 @@ func TestPublishEventProp(t *testing.T) {
 	c2.PublishPropHandler = func(dThingID, name string, data any, messageID string, agentID string) {
 		assert.Fail(t, "Didn't expect property update without subscription")
 	}
+	// this fails as c2 has the same ID. events on c1 should fail
 	err = cm.AddConnection(c2)
 	require.Error(t, err)
 

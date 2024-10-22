@@ -3,8 +3,8 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/wot/tdd"
+	jsoniter "github.com/json-iterator/go"
 )
 
 // MakeBindingTD generates a TD document for this binding
@@ -50,7 +50,7 @@ func (svc *IPNetBinding) MakeDeviceTD(deviceInfo *IPDeviceInfo) *tdd.TD {
 
 func (svc *IPNetBinding) MakeDeviceProps(deviceInfo *IPDeviceInfo) map[string]string {
 	pv := make(map[string]string)
-	portListJSON, _ := ser.JsonMarshal(deviceInfo.Ports)
+	portListJSON, _ := jsoniter.Marshal(deviceInfo.Ports)
 	// TODO: Use the saved device name
 	pv[vocab.PropDeviceTitle] = deviceInfo.GetDefaultName()
 	pv[vocab.PropNetHostname] = deviceInfo.Hostname

@@ -1,10 +1,9 @@
 package hubclient_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/ser"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
@@ -79,7 +78,6 @@ func TestHandleRequestMessage(t *testing.T) {
 	m1resp, ok := data.(*M1Res)
 	require.True(t, ok)
 
-	//err = json.Unmarshal([]byte(data), &m1resp)
 	require.Equal(t, args.P1, m1resp.R1)
 
 	// pass args and response by value
@@ -147,7 +145,7 @@ func TestByteArrayArgs(t *testing.T) {
 	require.NoError(t, err)
 }
 func TestTwoArgsFail(t *testing.T) {
-	sargJson, _ := json.Marshal("Hello world")
+	sargJson, _ := jsoniter.Marshal("Hello world")
 	// this method has 2 args, we only pass 1. Does it blow up?
 	data, err := hubclient.HandleRequestMessage(senderID, Method8TwoArgs, string(sargJson))
 	assert.Error(t, err)
@@ -178,25 +176,25 @@ func Benchmark_Overhead(b *testing.B) {
 			}
 		})
 	t1 := time.Now()
-	// 2673 ns/op  (2.5 usec for marshalling)
+	// 2673 ns/op  (2.5 usec with json, 1.1 usec with jsoniter)
 	b.Run("direct call, with marshalling",
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				count1++
 				// a remote call would marshal and unmarshal the request parameters
-				argsJson, _ := ser.Marshal(m1args)
+				argsJson, _ := jsoniter.Marshal(m1args)
 				m1args2 := M1Args{}
-				_ = json.Unmarshal(argsJson, &m1args2)
+				_ = jsoniter.Unmarshal(argsJson, &m1args2)
 				m1res, err := Method1Ref(&m1args)
 				// a remote call would marshal and unmarshal the result
-				data, err := json.Marshal(m1res)
+				data, err := jsoniter.Marshal(m1res)
 				_ = err
 				_ = m1res
-				_ = json.Unmarshal(data, &m1res)
+				_ = jsoniter.Unmarshal(data, &m1res)
 			}
 		})
 	t2 := time.Now()
-	// 3545 ns/op (3.5 usec for reflection handling overhead
+	// 3545 ns/op (3.5 usec for reflection w json, 2.0 usec jsoniter)
 	b.Run("indirect call",
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {

@@ -1,12 +1,11 @@
 package tdd
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/utils"
+	jsoniter "github.com/json-iterator/go"
 	"net/url"
 	"strings"
 	"time"
@@ -291,8 +290,8 @@ func (tdoc *TD) AsMap() map[string]interface{} {
 	//defer tdoc.updateMutex.RUnlock()
 
 	var asMap map[string]interface{}
-	asJSON, _ := ser.Marshal(tdoc)
-	_ = ser.Unmarshal(asJSON, &asMap)
+	asJSON, _ := jsoniter.Marshal(tdoc)
+	_ = jsoniter.Unmarshal(asJSON, &asMap)
 	return asMap
 }
 
@@ -517,7 +516,7 @@ func (tdoc *TD) GetID() string {
 
 // LoadFromJSON loads this TD from the given JSON encoded string
 func (tdoc *TD) LoadFromJSON(tddJSON string) error {
-	err := json.Unmarshal([]byte(tddJSON), &tdoc)
+	err := jsoniter.UnmarshalFromString(tddJSON, &tdoc)
 	tdoc.EscapeKeys()
 	return err
 }

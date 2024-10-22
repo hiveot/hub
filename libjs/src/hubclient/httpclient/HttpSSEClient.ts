@@ -46,14 +46,14 @@ const PostUnsubscribeEventPath = "/ssesc/digitwin/unsubscribe/{thingID}/{name}"
 // paths for accessing actions
 const PostInvokeActionPath   = "/digitwin/actions/{thingID}/{name}"
 
-// paths for accessing events
+// paths for use by agents - TODO: agents should use forms from the digitwin agent TD
 const PostAgentPublishEventPath    = "/agent/event/{thingID}/{name}"
 const PostAgentPublishProgressPath  = "/agent/progress"
 const PostAgentUpdatePropertyPath   = "/agent/property/{thingID}/{name}"
 const PostAgentUpdateMultiplePropertiesPath = "/agent/properties/{thingID}"
 const PostAgentUpdateTDDPath                = "/agent/tdd/{thingID}"
 
-// paths for accessing properties
+// paths for accessing properties - TODO: MUST USE FORMS
 const PostWritePropertyPath = "/digitwin/properties/{thingID}/{name}"
 
 // authn service - used in authn
@@ -422,8 +422,9 @@ export class HttpSSEClient implements IAgentClient {
     // PubTD publishes an event with a Thing TD document.
     // This serializes the TD into JSON as per WoT specification
     async pubTD(td: TD) {
-        // FIXME: use action on the directory
+        // FIXME: use action on the directory?
         let tdJSON = JSON.stringify(td, null, ' ');
+
         let postPath = PostAgentUpdateTDDPath.replace("{thingID}", td.id)
         await this.pubMessage("POST",postPath, "", tdJSON)
     }
@@ -571,6 +572,7 @@ export class HttpSSEClient implements IAgentClient {
     async writeProperty(thingID: string, name: string, propValue: any): Promise<ActionProgress> {
         hclog.info("pubProperty. thingID:", thingID, ", name:", name)
 
+        // TODO: use url from TD forms
         let propPath = PostWritePropertyPath.replace("{thingID}", thingID)
         propPath = propPath.replace("{name}", name)
 

@@ -3,7 +3,7 @@ package hubclient
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/lib/ser"
+	jsoniter "github.com/json-iterator/go"
 	"reflect"
 )
 
@@ -45,8 +45,9 @@ func HandleRequestMessage(senderID string, method interface{}, data any) (respDa
 	argv := make([]reflect.Value, methodType.NumIn())
 	nrArgs := methodType.NumIn()
 
-	// TODO: IMPROVE ON THIS
-	payload, _ := ser.Marshal(data)
+	// TODO: IMPROVE ON THIS or replace it with tdd2go generated code
+	// this uses reflection and argument marshal/unmarshal to convert to the proper type
+	payload, _ := jsoniter.Marshal(data)
 
 	for i := 0; i < nrArgs; i++ {
 		// determine the type of argument, expect the senderID string as first arg
@@ -66,11 +67,11 @@ func HandleRequestMessage(senderID string, method interface{}, data any) (respDa
 			if argIsRef {
 				// n1El is a struct pointer value?
 				// for some reason, unmarshall still needs to receive the address of it
-				err = ser.Unmarshal([]byte(payload), n1El.Addr().Interface())
+				err = jsoniter.Unmarshal(payload, n1El.Addr().Interface())
 				argv[i] = reflect.ValueOf(n1El.Interface())
 			} else {
 				// n1El is the value, unmarshal to its address
-				err = ser.Unmarshal([]byte(payload), n1El.Addr().Interface())
+				err = jsoniter.Unmarshal(payload, n1El.Addr().Interface())
 				argv[i] = reflect.ValueOf(n1El.Interface())
 			}
 			if err != nil {

@@ -479,11 +479,12 @@ func (cl *HttpSSEClient) PubProperties(thingID string, props map[string]any) err
 	return nil
 }
 
-// PubTD publishes a TD update
+// PubTD publishes a TD update.
+// This is short for a digitwin directory updateTD action
 func (cl *HttpSSEClient) PubTD(thingID string, tdJSON string) error {
 	slog.Info("PubTD", slog.String("thingID", thingID))
 
-	err := digitwin.DirectoryUpdateDTD(cl, tdJSON)
+	err := digitwin.DirectoryUpdateTD(cl, tdJSON)
 	return err
 }
 

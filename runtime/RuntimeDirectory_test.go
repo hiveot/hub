@@ -10,8 +10,8 @@ import (
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/wot/tdd"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sync/atomic"
@@ -57,12 +57,12 @@ func TestAddRemoveTD(t *testing.T) {
 	td3Json, err := digitwin.DirectoryReadDTD(cl, dtThing1ID)
 	require.NoError(t, err)
 	var td3 tdd.TD
-	err = json.Unmarshal([]byte(td3Json), &td3)
+	err = jsoniter.UnmarshalFromString(td3Json, &td3)
 	require.NoError(t, err)
 	assert.Equal(t, dtThing1ID, td3.ID)
 
 	//stat = cl.Rpc(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
-	args4JSON, _ := json.Marshal(dtThing1ID)
+	args4JSON, _ := jsoniter.Marshal(dtThing1ID)
 	stat := cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryRemoveDTDMethod, string(args4JSON), "")
 	require.Empty(t, stat.Error)
 
@@ -140,7 +140,7 @@ func TestReadTDsRest(t *testing.T) {
 
 	// tds are sent as an array of JSON, first unpack the array of JSON strings
 	tdJSONList := []string{}
-	err = json.Unmarshal(data, &tdJSONList)
+	err = jsoniter.Unmarshal(data, &tdJSONList)
 	require.NoError(t, err)
 	tdList, err := tdd.UnmarshalTDList(tdJSONList)
 	require.NoError(t, err)
@@ -173,12 +173,12 @@ func TestTDEvent(t *testing.T) {
 		stat.Completed(msg, nil, nil)
 		if msg.MessageType == vocab.MessageTypeEvent &&
 			msg.ThingID == digitwin.DirectoryDThingID &&
-			msg.Name == service.ThingUpdatedEventName {
+			msg.Name == digitwin.DirectoryEventThingUpdated {
 
 			// decode the TD
 			td := tdd.TD{}
 			payload := msg.DataAsText()
-			err := json.Unmarshal([]byte(payload), &td)
+			err := jsoniter.UnmarshalFromString(payload, &td)
 			assert.NoError(t, err)
 			tdCount.Add(1)
 		}

@@ -79,7 +79,7 @@ func TestStartStopService(t *testing.T) {
 	for _, thingID := range thingIDs {
 		td := createTDDoc(thingID, 1, 1, 1)
 		tddjson, _ := json.Marshal(td)
-		err := svc.DirSvc.UpdateDTD("test", string(tddjson))
+		err := svc.DirSvc.UpdateTD("test", string(tddjson))
 		require.NoError(t, err)
 	}
 	tds1, err := svc.ReadAllDTDs("", 0, 10)

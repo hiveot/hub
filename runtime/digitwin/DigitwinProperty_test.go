@@ -26,7 +26,7 @@ func TestUpdateReadProperty(t *testing.T) {
 	tdDoc1 := createTDDoc(thing1ID, 5, 4, 3)
 	tdDoc1.AddPropertyAsInt(propName, "", title1)
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
-	err := svc.DirSvc.UpdateDTD(agent1ID, string(tdDoc1Json))
+	err := svc.DirSvc.UpdateTD(agent1ID, string(tdDoc1Json))
 
 	//
 
@@ -69,7 +69,7 @@ func TestPropertyReadFail(t *testing.T) {
 
 	tdDoc1 := createTDDoc(thingID, 4, 2, 1)
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
-	err := svc.DirSvc.UpdateDTD(agentID, string(tdDoc1Json))
+	err := svc.DirSvc.UpdateTD(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
 	_, err = svc.ValuesSvc.ReadProperty("itsme", digitwin.ValuesReadPropertyArgs{
@@ -93,7 +93,7 @@ func TestPropertyUpdateFail(t *testing.T) {
 	tdDoc1 := createTDDoc(thingID, 4, 2, 1)
 	tdDoc1.AddPropertyAsInt(propName, "", "property 1")
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
-	err := svc.DirSvc.UpdateDTD(agentID, string(tdDoc1Json))
+	err := svc.DirSvc.UpdateTD(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
 	changed, err := dtwStore.UpdatePropertyValue(

@@ -89,7 +89,7 @@ func (tm *ThingMessage) GetUpdated(format ...string) (updated string) {
 // the message action, event or rpc name, and the serialized value data.
 // This copies the value buffer.
 //
-//	messageType is the type of value: action, event, config, rpc request
+//	messageType is the type of value: action, event, property
 //	thingID is the thing the value applies to (destination of action or source of event)
 //	name is the property, event or action name as described in the thing TD
 //	data is the native message data as defined in the corresponding TD dataschema.

@@ -7,6 +7,7 @@ import (
 	authn2 "github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/config"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"os"
 	"path"
@@ -169,7 +170,7 @@ func (store *AuthnFileStore) Reload() error {
 		// nothing to do
 	} else {
 
-		err = json.Unmarshal(dataBytes, &entries)
+		err = jsoniter.Unmarshal(dataBytes, &entries)
 		if err != nil {
 			err := fmt.Errorf("error while parsing password file: %w", err)
 			return err

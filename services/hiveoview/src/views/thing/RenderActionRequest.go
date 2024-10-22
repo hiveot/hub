@@ -1,7 +1,6 @@
 package thing
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
@@ -13,6 +12,7 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/wot/consumedthing"
 	"github.com/hiveot/hub/wot/tdd"
+	jsoniter "github.com/json-iterator/go"
 	"net/http"
 	"time"
 )
@@ -57,7 +57,7 @@ func getActionAff(hc hubclient.IConsumerClient, thingID string, name string) (
 	if err != nil {
 		return td, actionAff, err
 	}
-	err = json.Unmarshal([]byte(tdJson), &td)
+	err = jsoniter.UnmarshalFromString(tdJson, &td)
 	if err != nil {
 		return td, actionAff, err
 	}

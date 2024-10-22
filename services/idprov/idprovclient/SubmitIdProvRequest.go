@@ -1,9 +1,9 @@
 package idprovclient
 
 import (
-	"github.com/hiveot/hub/lib/ser"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
+	jsoniter "github.com/json-iterator/go"
 )
 
 // IdProvUserClient is a marshaller for provisioning client messages over https
@@ -27,9 +27,9 @@ func SubmitIdProvRequest(clientID string, pubKey string, mac string, tlsClient *
 		PubKey:   pubKey,
 		MAC:      mac,
 	}
-	reqData, _ := ser.Marshal(req)
+	reqData, _ := jsoniter.Marshal(req)
 	respData, _, _, err := tlsClient.Post(idprovapi.ProvisionRequestPath, reqData, "")
 	resp := idprovapi.ProvisionRequestResp{}
-	err = ser.Unmarshal(respData, &resp)
+	err = jsoniter.Unmarshal(respData, &resp)
 	return resp.Status, resp.Token, err
 }

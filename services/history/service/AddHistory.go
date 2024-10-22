@@ -129,7 +129,7 @@ func (svc *AddHistory) AddEvent(msg *hubclient.ThingMessage) error {
 	return err
 }
 
-// AddMessage adds an event, action or properties to the history store
+// AddMessage adds an event, action or property message to the history store
 func (svc *AddHistory) AddMessage(msg *hubclient.ThingMessage) error {
 	if msg.MessageType == vocab.MessageTypeAction {
 		return svc.AddAction(msg)
@@ -187,6 +187,7 @@ func (svc *AddHistory) AddMessages(msgList []*hubclient.ThingMessage) (err error
 }
 
 // AddProperties adds individual property values to the history
+// If property name is empty then expect a property key-value map.
 // This splits the property map and adds then as individual name-value pairs
 func (svc *AddHistory) AddProperties(msg *hubclient.ThingMessage) (err error) {
 
@@ -218,10 +219,9 @@ func (svc *AddHistory) AddProperties(msg *hubclient.ThingMessage) (err error) {
 
 	// turn each property into a ThingMessage object so they can be queried separately
 	for propName, propValue := range propMap {
-		propValueString := fmt.Sprint(propValue)
 		// store this as a property message to differentiate from events
 		tv := hubclient.NewThingMessage(vocab.MessageTypeProperty,
-			msg.ThingID, propName, propValueString, msg.SenderID)
+			msg.ThingID, propName, propValue, msg.SenderID)
 		tv.Created = msg.Created
 		//
 		storageKey, val := svc.encodeValue(tv)

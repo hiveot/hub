@@ -29,7 +29,7 @@ func TestActionFlow(t *testing.T) {
 	actionSchema := &tdd.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
 	tdDoc1.AddAction(actionName, "", "action 1", "", actionSchema)
 	tddjson, _ := json.Marshal(tdDoc1)
-	err := svc.DirSvc.UpdateDTD(agentID, string(tddjson))
+	err := svc.DirSvc.UpdateTD(agentID, string(tddjson))
 	require.NoError(t, err)
 
 	// update the action
@@ -77,7 +77,7 @@ func TestActionReadFail(t *testing.T) {
 	// add a TD with an action
 	tdDoc1 := createTDDoc(thingID, 4, 2, 1)
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
-	err := svc.DirSvc.UpdateDTD(agentID, string(tdDoc1Json))
+	err := svc.DirSvc.UpdateTD(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
 	_, err = svc.ValuesSvc.QueryAction("itsme", digitwin2.ValuesQueryActionArgs{
@@ -111,7 +111,7 @@ func TestInvokeActionErrors(t *testing.T) {
 	actionSchema := &tdd.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
 	tdDoc1.AddAction(actionName, "", "action 1", "", actionSchema)
 	tddjson, _ := json.Marshal(tdDoc1)
-	err := svc.DirSvc.UpdateDTD(agentID, string(tddjson))
+	err := svc.DirSvc.UpdateTD(agentID, string(tddjson))
 	require.NoError(t, err)
 
 	// invoke the action with the wrong thing
@@ -153,7 +153,7 @@ func TestDigitwinAgentAction(t *testing.T) {
 	actionSchema := &tdd.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
 	tdDoc1.AddAction(actionName, "", "action 1", "", actionSchema)
 	tddJSON1, _ := json.Marshal(tdDoc1)
-	err := svc.DirSvc.UpdateDTD(agentID, string(tddJSON1))
+	err := svc.DirSvc.UpdateTD(agentID, string(tddJSON1))
 	require.NoError(t, err)
 	tddJson2, err := svc.DirSvc.ReadDTD(consumerID, dThingID)
 	require.NoError(t, err)

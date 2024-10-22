@@ -1,7 +1,6 @@
 package directory
 
 import (
-	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/utils"
@@ -9,6 +8,7 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/wot/tdd"
+	jsoniter "github.com/json-iterator/go"
 	"net/http"
 )
 
@@ -35,7 +35,7 @@ func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 
 	tdJson, err = digitwin.DirectoryReadDTD(hc, thingID)
 	if err == nil {
-		err = json.Unmarshal([]byte(tdJson), &td)
+		err = jsoniter.UnmarshalFromString(tdJson, &td)
 	}
 	if err != nil {
 		sess.WriteError(w, err, http.StatusBadRequest)

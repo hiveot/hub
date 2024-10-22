@@ -2,7 +2,6 @@ package selfsigned
 
 import (
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/runtime/transports"
 	"github.com/hiveot/hub/services/certs/certsapi"
 )
 
@@ -12,7 +11,7 @@ import (
 //
 //	svc is the service whose capabilities to expose
 //	hc is the hub client connected to the server protocol
-func StartCertsAgent(svc *SelfSignedCertsService, hc hubclient.IConsumerClient) *transports.AgentHandler {
+func StartCertsAgent(svc *SelfSignedCertsService, hc hubclient.IConsumerClient) *hubclient.AgentHandler {
 
 	methods := map[string]interface{}{
 		certsapi.CreateDeviceCertMethod:  svc.CreateDeviceCert,
@@ -21,7 +20,7 @@ func StartCertsAgent(svc *SelfSignedCertsService, hc hubclient.IConsumerClient) 
 		certsapi.VerifyCertMethod:        svc.VerifyCert,
 	}
 
-	ah := transports.NewAgentHandler(certsapi.CertsAdminThingID, methods)
+	ah := hubclient.NewAgentHandler(certsapi.CertsAdminThingID, methods)
 	hc.SetMessageHandler(ah.HandleMessage)
 	return ah
 }

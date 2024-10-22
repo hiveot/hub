@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/services/state/stateapi"
 	"github.com/hiveot/hub/wot/tdd"
+	jsoniter "github.com/json-iterator/go"
 )
 
 // StateClient is a the friendly client for service messages using a provided hub connection.
@@ -34,7 +35,7 @@ func (cl *StateClient) Get(key string, record interface{}) (found bool, err erro
 		return false, err
 	}
 	if resp.Found {
-		err = json.Unmarshal([]byte(resp.Value), record)
+		err = jsoniter.UnmarshalFromString(resp.Value, record)
 	}
 	return resp.Found, err
 }

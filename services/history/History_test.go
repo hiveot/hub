@@ -282,6 +282,7 @@ func TestAddProperties(t *testing.T) {
 	const thing1ID = thingIDPrefix + "0" // matches a percentage of the random things
 	const agent1 = "device1"
 	const temp1 = 55
+	const battTemp = 50
 
 	svc, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
@@ -326,7 +327,7 @@ func TestAddProperties(t *testing.T) {
 		Name:     "temperature",
 	}
 	propsList := make(map[string]interface{})
-	propsList[vocab.PropDeviceBattery] = 50
+	propsList[vocab.PropDeviceBattery] = battTemp
 	propsList[vocab.PropEnvCpuload] = 30
 	propsList[vocab.PropSwitchOnOff] = "off"
 	props1 := &hubclient.ThingMessage{
@@ -368,9 +369,14 @@ func TestAddProperties(t *testing.T) {
 	for valid && err == nil {
 		if msg.MessageType == vocab.MessageTypeProperty {
 			hasProps = true
-			props := make(map[string]interface{})
-			err = utils.DecodeAsObject(msg.Data, &props)
-			require.NoError(t, err)
+			require.NotEmpty(t, msg.Name)
+			require.NotEmpty(t, msg.Data)
+			if msg.Name == vocab.PropDeviceBattery {
+				assert.Equal(t, float64(battTemp), msg.Data)
+			}
+			//props := make(map[string]interface{})
+			//err = utils.DecodeAsObject(msg.Data, &props)
+			//require.NoError(t, err)
 		} else if msg.Name == vocab.PropEnvTemperature {
 			dataInt := utils.DecodeAsInt(msg.Data)
 			require.Equal(t, temp1, dataInt)

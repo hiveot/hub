@@ -3,6 +3,7 @@ package dashboard
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"net/http"
 )
@@ -31,7 +32,7 @@ func SubmitDashboardLayout(w http.ResponseWriter, r *http.Request) {
 		// id must be an existing tile
 		var proposedLayout []session.TileLayout
 		var newLayout []session.TileLayout
-		err = json.Unmarshal([]byte(proposedLayoutJSON), &proposedLayout)
+		err = jsoniter.UnmarshalFromString(proposedLayoutJSON, &proposedLayout)
 		if err == nil {
 			for _, tilePlacement := range proposedLayout {
 				_, found := cdc.dashboard.Tiles[tilePlacement.ID]

@@ -1,7 +1,6 @@
 package consumedthing
 
 import (
-	"encoding/json"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -91,7 +90,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(
 		msg.Name == digitwin.DirectoryEventThingUpdated {
 		// decode the TD
 		td := &tdd.TD{}
-		err := jsoniter.Unmarshal([]byte(msg.DataAsText()), &td)
+		err := jsoniter.UnmarshalFromString(msg.DataAsText(), &td)
 		if err != nil {
 			slog.Error("invalid payload for TD event. Ignored",
 				"thingID", msg.ThingID)
@@ -196,7 +195,7 @@ func (cts *ConsumedThingsDirectory) ReadDirectory(force bool) (map[string]*tdd.T
 	}
 	for _, tdJson := range thingsList {
 		td := tdd.TD{}
-		err = json.Unmarshal([]byte(tdJson), &td)
+		err = jsoniter.UnmarshalFromString(tdJson, &td)
 		if err == nil {
 			newDir[td.ID] = &td
 		}
@@ -214,7 +213,7 @@ func (cts *ConsumedThingsDirectory) ReadTD(thingID string) (*tdd.TD, error) {
 	td := &tdd.TD{}
 	tdJson, err := digitwin.DirectoryReadDTD(cts.hc, thingID)
 	if err == nil {
-		err = json.Unmarshal([]byte(tdJson), &td)
+		err = jsoniter.UnmarshalFromString(tdJson, &td)
 	}
 	if err != nil {
 		return nil, err
@@ -245,7 +244,7 @@ func (cts *ConsumedThingsDirectory) SetEventHandler(handler func(message *hubcli
 func (cts *ConsumedThingsDirectory) UpdateTD(tdJSON string) *ConsumedThing {
 	// convert the TD
 	var td tdd.TD
-	err := jsoniter.Unmarshal([]byte(tdJSON), &td)
+	err := jsoniter.UnmarshalFromString(tdJSON, &td)
 	if err != nil {
 		return nil
 	}

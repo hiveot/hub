@@ -72,8 +72,8 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	// It receives messages from the middleware and uses the protocol manager
 	// to send messages to clients.
 	r.DigitwinSvc, r.dtwStore, err = service4.StartDigitwinService(env.StoresDir, r.cm)
-
 	dtwAgent := service4.NewDigitwinAgent(r.DigitwinSvc)
+
 	// The transport passes incoming messages on to the hub-router, which in
 	// turn updates the digital twin and forwards the requests.
 	r.HubRouter = hubrouter.NewHubRouter(r.DigitwinSvc,
@@ -97,11 +97,11 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	r.DigitwinSvc.SetFormsHook(r.TransportsMgr.AddTDForms)
 
 	// add the TDs of the built-in services (authn,authz,directory,values) to the directory
-	_ = r.DigitwinSvc.DirSvc.UpdateDTD(authn.AdminAgentID, authn.AdminTD)
-	_ = r.DigitwinSvc.DirSvc.UpdateDTD(authn.UserAgentID, authn.UserTD)
-	_ = r.DigitwinSvc.DirSvc.UpdateDTD(authz.AdminAgentID, authz.AdminTD)
-	_ = r.DigitwinSvc.DirSvc.UpdateDTD(digitwin.DirectoryAgentID, digitwin.DirectoryTD)
-	_ = r.DigitwinSvc.DirSvc.UpdateDTD(digitwin.ValuesAgentID, digitwin.ValuesTD)
+	_ = r.DigitwinSvc.DirSvc.UpdateTD(authn.AdminAgentID, authn.AdminTD)
+	_ = r.DigitwinSvc.DirSvc.UpdateTD(authn.UserAgentID, authn.UserTD)
+	_ = r.DigitwinSvc.DirSvc.UpdateTD(authz.AdminAgentID, authz.AdminTD)
+	_ = r.DigitwinSvc.DirSvc.UpdateTD(digitwin.DirectoryAgentID, digitwin.DirectoryTD)
+	_ = r.DigitwinSvc.DirSvc.UpdateTD(digitwin.ValuesAgentID, digitwin.ValuesTD)
 
 	// agents can update to the directory
 	// fixme: authn.AdminServiceID is not correct but will have to do for now

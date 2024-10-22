@@ -34,8 +34,7 @@
 				"title": "TD",
 				"description": "JSON encoded TD of the digital twin Thing",
 				"type": "string"
-			},
-			"scopes": ["*"]
+			}
 		},
 		"thingRemoved": {
 			"title": "Thing Removed",
@@ -44,8 +43,7 @@
 				"title": "Thing ID",
 				"description": "ID of the digital twin Thing that was removed",
 				"type": "string"
-			},
-			"scopes": ["*"]
+			}
 		}
 	},
 	"actions": {
@@ -64,8 +62,7 @@
 				"title": "TD",
 				"description": "A JSON encoded Thing Description Document",
 				"type": "string"
-			},
-			"scopes": ["*"]
+			}
 		},
 		"readAllDTDs": {
 			"@type": "ht:function",
@@ -92,7 +89,6 @@
 					}
 				}
 			},
-			"scopes": ["*"],
 			"output": {
 				"title": "TD list",
 				"description": "List of JSON encoded TD documents",
@@ -114,8 +110,7 @@
 				"title": "dThing ID",
 				"description": "Digital Twin Thing ID of the Thing to remove",
 				"type": "string"
-			},
-			"scopes": ["admin", "service", "agent","manager"]
+			}
 		},
 		"queryDTDs": {
 			"@type": "ht:function",
@@ -154,23 +149,21 @@
 				"items": {
 					"type": "string"
 				}
-			},
-			"scopes": ["admin", "service", "agent","manager","operator","viewer"]
+			}
 		},
-		"updateDTD": {
+		"updateTD": {
 			"@type": "ht:function",
-			"title": "Update DTD",
-			"description": "Update the Digital twin TD in the directory",
+			"title": "Update TD",
+			"description": "Update the Thing TD in the directory. For use by agents only.",
 			"idempotent": true,
-			"allow": ["agent"],
+			"allow": ["agent","admin"],
 			"comment": "Only agents can update their TD",
 			"input": {
 				"title": "TD",
 				"description": "Device TD document in JSON format",
 				"comment": "The TD document will be upgraded to represent the digital twin",
 				"type": "string"
-			},
-			"scopes": ["service", "agent"]
+			}
 		}
 	},
 	"links": []

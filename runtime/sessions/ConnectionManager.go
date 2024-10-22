@@ -35,8 +35,10 @@ type ConnectionManager struct {
 	//sm *SessionManager
 }
 
-// AddConnection adds a new connection to a session
-// If an endpoint with this cid exists, it is forcibly closed first and an error is returned
+// AddConnection adds a new connection.
+// This requires the connection to have a unique connection ID (cid).
+// If an endpoint with this cid exists both connections are forcibly closed
+// and an error is returned.
 func (cm *ConnectionManager) AddConnection(c IClientConnection) error {
 	cm.mux.Lock()
 	defer cm.mux.Unlock()

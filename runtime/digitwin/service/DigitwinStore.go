@@ -65,7 +65,6 @@ func (store *DigitwinStore) LoadCacheFromStore() error {
 		tdmap, itemsRemaining := cursor.NextN(300)
 		for dThingID, dtwSer := range tdmap {
 			dtwInstance := &digitwin.DigitalTwinInstance{}
-			//err = json.Unmarshal(dtwSer, &dtwInstance)
 			err = jsoniter.Unmarshal(dtwSer, &dtwInstance)
 			//err = msgpack.Unmarshal(dtwSer, &dtwInstance)
 			if err == nil {

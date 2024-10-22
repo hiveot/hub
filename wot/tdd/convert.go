@@ -1,10 +1,10 @@
 package tdd
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -16,7 +16,7 @@ import (
 // UnmarshalTD unmarshals a JSON encoded TD
 func UnmarshalTD(tdJSON string) (td *TD, err error) {
 	td = &TD{}
-	err = json.Unmarshal([]byte(tdJSON), td)
+	err = jsoniter.UnmarshalFromString(tdJSON, td)
 	return td, err
 }
 
@@ -24,7 +24,7 @@ func UnmarshalTDList(tdListJSON []string) (tdList []*TD, err error) {
 	tdList = make([]*TD, 0, len(tdListJSON))
 	for _, tdJson := range tdListJSON {
 		td := TD{}
-		err = json.Unmarshal([]byte(tdJson), &td)
+		err = jsoniter.UnmarshalFromString(tdJson, &td)
 		if err == nil {
 			tdList = append(tdList, &td)
 		}
@@ -56,7 +56,7 @@ func ConvertToNative(strVal string, dataSchema *DataSchema) (val any, err error)
 		}
 		break
 	case vocab.WoTDataTypeArray:
-		err = json.Unmarshal([]byte(strVal), &val)
+		err = jsoniter.UnmarshalFromString(strVal, &val)
 		break
 	case vocab.WoTDataTypeDateTime:
 		val, err = dateparse.ParseAny(strVal)
@@ -71,7 +71,7 @@ func ConvertToNative(strVal string, dataSchema *DataSchema) (val any, err error)
 		val, err = strconv.ParseUint(strVal, 10, 64)
 		break
 	case vocab.WoTDataTypeObject:
-		err = json.Unmarshal([]byte(strVal), &val)
+		err = jsoniter.UnmarshalFromString(strVal, &val)
 		break
 	default:
 		val = strVal

@@ -1,9 +1,9 @@
 package src
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/wot/tdd"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/urfave/cli/v2"
 	"os"
 	"path"
@@ -46,7 +46,7 @@ func HandleListTDs(sourceDir string) error {
 		finfo, _ := entry.Info()
 		sizeKb := finfo.Size() / 1024
 		if err == nil {
-			err = json.Unmarshal(tdJSON, &td)
+			err = jsoniter.Unmarshal(tdJSON, &td)
 		}
 		if err != nil {
 			fmt.Printf("%-20.20s  %9d  ERROR: %s\n", entry.Name(), sizeKb, err.Error())

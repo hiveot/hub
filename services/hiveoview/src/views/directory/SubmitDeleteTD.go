@@ -1,7 +1,6 @@
 package directory
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
@@ -9,6 +8,7 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src"
 	session2 "github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/wot/tdd"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"net/http"
 )
@@ -30,7 +30,7 @@ func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 
 	tdJSON, err = digitwin.DirectoryReadDTD(hc, thingID)
 	if err == nil {
-		err = json.Unmarshal([]byte(tdJSON), &td)
+		err = jsoniter.UnmarshalFromString(tdJSON, &td)
 	}
 
 	// delete the TD

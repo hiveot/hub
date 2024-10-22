@@ -24,7 +24,7 @@ func TestAddRemoveTD(t *testing.T) {
 	// the digital twin ID using the given agent that owns the TD.
 	tdd1 := createTDDoc(thing1ID, 5, 4, 3)
 	tdd1JSON, _ := json.Marshal(tdd1)
-	err := dirSvc.UpdateDTD(agentID, string(tdd1JSON))
+	err := dirSvc.UpdateTD(agentID, string(tdd1JSON))
 	require.NoError(t, err)
 
 	dThingID := tdd.MakeDigiTwinThingID(agentID, thing1ID)

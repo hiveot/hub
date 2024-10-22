@@ -38,7 +38,7 @@ func BenchmarkUpdateDTW(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				for m := range 1000 {
 					tdDocJson := tddocs[m]
-					err = dirSvc.UpdateDTD(agent1ID, string(tdDocJson))
+					err = dirSvc.UpdateTD(agent1ID, string(tdDocJson))
 					assert.NoError(b, err)
 				}
 			}

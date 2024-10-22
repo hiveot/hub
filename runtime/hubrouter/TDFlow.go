@@ -7,10 +7,11 @@ import (
 
 // HandleUpdateTDFlow agent updates a TD
 // This updates the thing TD in the directory
+// Deprecated: use the directory service update action instead
 func (svc *HubRouter) HandleUpdateTDFlow(agentID string, tdJSON string) error {
 	slog.Info("HandleUpdateTDFlow (from agent)", slog.String("agentID", agentID))
 
-	err := svc.dtwService.DirSvc.UpdateDTD(agentID, tdJSON)
+	err := svc.dtwService.DirSvc.UpdateTD(agentID, tdJSON)
 	if err != nil {
 		slog.Warn("Updating TD failed:", "err", err.Error())
 		return err

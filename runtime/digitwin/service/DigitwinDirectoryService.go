@@ -24,13 +24,13 @@ type DigitwinDirectoryService struct {
 func (svc *DigitwinDirectoryService) MakeDigitalTwinTD(
 	agentID string, tdJSON string) (thingTD *tdd.TD, dtwTD *tdd.TD, err error) {
 
-	err = jsoniter.Unmarshal([]byte(tdJSON), &thingTD)
+	err = jsoniter.UnmarshalFromString(tdJSON, &thingTD)
 	if err != nil {
 		slog.Error("MakeDigitalTwinTD. Bad TD", "err", err.Error())
 		return thingTD, dtwTD, err
 	}
 	// make a deep copy for the digital twin
-	_ = jsoniter.Unmarshal([]byte(tdJSON), &dtwTD)
+	_ = jsoniter.UnmarshalFromString(tdJSON, &dtwTD)
 
 	dtwTD.ID = tdd.MakeDigiTwinThingID(agentID, thingTD.ID)
 
@@ -54,7 +54,6 @@ func (svc *DigitwinDirectoryService) MakeDigitalTwinTD(
 	return thingTD, dtwTD, err
 }
 
-// QueryDTDs returns a list of JSON encoded TD documents
 func (svc *DigitwinDirectoryService) QueryDTDs(
 	senderID string, args digitwin.DirectoryQueryDTDsArgs) (tdDocuments []string, err error) {
 	//svc.DtwStore.QueryDTDs(args)
@@ -104,12 +103,12 @@ func (svc *DigitwinDirectoryService) RemoveDTD(senderID string, dThingID string)
 	return err
 }
 
-// UpdateDTD updates the digitwin TD from an agent supplied TD
+// UpdateTD updates the digitwin TD from an agent supplied TD
 // This transforms the given TD into the digital twin instance, stores it in the directory
 // store and sends a thing-updated event as described in the TD.
 // This returns the updated digital twin TD
 // FIXME: only agents are allowed this
-func (svc *DigitwinDirectoryService) UpdateDTD(agentID string, tdJson string) error {
+func (svc *DigitwinDirectoryService) UpdateTD(agentID string, tdJson string) error {
 
 	// transform the agent provided TD into a digital twin's TD
 	thingTD, digitalTwinTD, err := svc.MakeDigitalTwinTD(agentID, tdJson)

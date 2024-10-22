@@ -1,10 +1,10 @@
 package pubsubcli
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/utils"
+	jsoniter "github.com/json-iterator/go"
 	"time"
 
 	"github.com/araddon/dateparse"
@@ -114,7 +114,7 @@ func HandleSubEvents(hc hubclient.IConsumerClient, thingID string, name string) 
 		if msg.ThingID == digitwin.DirectoryDThingID && msg.Name == digitwin.DirectoryEventThingUpdated {
 			var td tdd.TD
 			tdJSON := msg.DataAsText()
-			json.Unmarshal([]byte(tdJSON), &td)
+			jsoniter.UnmarshalFromString(tdJSON, &td)
 			valueStr = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
 				td.Title, td.AtType, len(td.Properties), len(td.Events), len(td.Actions))
 		}

@@ -46,6 +46,7 @@ type IHubRouter interface {
 	HandleEventFlow(agentID string, thingID string, name string, value any, messageID string) error
 
 	// HandleUpdateTDFlow agent updates a TD
+	// Deprecated: use the directory API instead
 	HandleUpdateTDFlow(agentID string, tdJSON string) error
 
 	// HandleUpdatePropertyFlow agent publishes a property change

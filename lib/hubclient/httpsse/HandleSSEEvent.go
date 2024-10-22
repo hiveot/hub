@@ -56,7 +56,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	// as there is no facility in SSE to include metadata.
 	// SSE payload is json marshalled by the sse client
 	var msgData any
-	_ = jsoniter.Unmarshal([]byte(event.Data), &msgData)
+	_ = jsoniter.UnmarshalFromString(event.Data, &msgData)
 	rxMsg := &hubclient.ThingMessage{
 		ThingID:     thingID,
 		Name:        name,
@@ -67,14 +67,6 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		MessageID:   messageID,
 	}
 
-	//err := cl.Unmarshal([]byte(event.Data), rxMsg)
-	//if err != nil {
-	//	slog.Error("handleSSEEvent; Received non-ThingMessage sse event. Ignored",
-	//		"eventType", event.Type,
-	//		"LastEventID", event.LastEventID,
-	//		"err", err.Error())
-	//	return
-	//}
 	stat.MessageID = rxMsg.MessageID
 	slog.Debug("handleSSEEvent",
 		//slog.String("Comment", string(event.Comment)),

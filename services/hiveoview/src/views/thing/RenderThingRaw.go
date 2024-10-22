@@ -5,6 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
+	jsoniter "github.com/json-iterator/go"
 	"net/http"
 )
 
@@ -21,7 +22,7 @@ func RenderThingRaw(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		// re-marshal with pretty-print JSON
 		var tdObj any
-		err = json.Unmarshal([]byte(tdJSON), &tdObj)
+		err = jsoniter.UnmarshalFromString(tdJSON, &tdObj)
 		tdPretty, _ = json.MarshalIndent(tdObj, "", "    ")
 	}
 	if err != nil {

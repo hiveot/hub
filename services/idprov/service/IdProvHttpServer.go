@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
+	jsoniter "github.com/json-iterator/go"
 	"io"
 	"log/slog"
 	"net/http"
@@ -30,7 +31,7 @@ func (srv *IdProvHttpServer) handleRequest(w http.ResponseWriter, req *http.Requ
 
 	args := idprovapi.ProvisionRequestArgs{}
 	data, err := io.ReadAll(req.Body)
-	err2 := json.Unmarshal(data, &args)
+	err2 := jsoniter.Unmarshal(data, &args)
 	if err != nil || err2 != nil {
 		slog.Warn("idprov handleRequest. bad request", "remoteAddr", req.RemoteAddr)
 		w.WriteHeader(http.StatusBadRequest)

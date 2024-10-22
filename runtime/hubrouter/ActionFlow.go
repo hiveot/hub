@@ -116,7 +116,9 @@ func (svc *HubRouter) HandleActionFlow(
 			Updated:     time.Now(),
 			CID:         cid,
 		}
+		svc.mux.Lock()
 		svc.activeCache[messageID] = actionRecord
+		svc.mux.Unlock()
 
 		// forward to external services/things and return its response
 		found := false
@@ -143,7 +145,9 @@ func (svc *HubRouter) HandleActionFlow(
 
 		// remove the action if completed
 		if status == vocab.ProgressStatusCompleted {
+			svc.mux.Lock()
 			delete(svc.activeCache, messageID)
+			svc.mux.Unlock()
 
 			slog.Info("HandleActionFlow - finished",
 				slog.String("dThingID", dThingID),
@@ -152,7 +156,9 @@ func (svc *HubRouter) HandleActionFlow(
 				slog.String("status", status),
 			)
 		} else if status == vocab.ProgressStatusFailed {
+			svc.mux.Lock()
 			delete(svc.activeCache, messageID)
+			svc.mux.Unlock()
 
 			errText := ""
 			if err != nil {

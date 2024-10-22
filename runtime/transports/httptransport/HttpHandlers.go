@@ -2,7 +2,6 @@
 package httptransport
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/digitwin"
@@ -46,7 +45,7 @@ func (svc *HttpBinding) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// credentials are in a json payload
 	data, err := io.ReadAll(r.Body)
 	if err == nil {
-		err = json.Unmarshal(data, &args)
+		err = jsoniter.Unmarshal(data, &args)
 	}
 	if err != nil {
 		slog.Warn("HandleLogin: parameter error", "err", err.Error())
@@ -122,7 +121,7 @@ func (svc *HttpBinding) HandleActionRequest(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if rp.Body != nil && len(rp.Body) > 0 {
-		err = json.Unmarshal(rp.Body, &input)
+		err = jsoniter.Unmarshal(rp.Body, &input)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -395,7 +394,7 @@ func (svc *HttpBinding) HandleRefresh(w http.ResponseWriter, r *http.Request) {
 	args := authn.UserRefreshTokenArgs{}
 	rp, err := subprotocols.GetRequestParams(r)
 	if err == nil {
-		err = json.Unmarshal(rp.Body, &args)
+		err = jsoniter.Unmarshal(rp.Body, &args)
 	}
 	slog.Debug("HandleRefresh", slog.String("clientID", args.ClientID))
 	// the session owner must match the token requested client ID
@@ -442,7 +441,7 @@ func (svc *HttpBinding) HandleUpdateProperty(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if rp.Body != nil && len(rp.Body) > 0 {
-		err = json.Unmarshal(rp.Body, &value)
+		err = jsoniter.Unmarshal(rp.Body, &value)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -470,7 +469,7 @@ func (svc *HttpBinding) HandleWriteProperty(w http.ResponseWriter, r *http.Reque
 	}
 	var newValue any
 	var messageID string
-	err = json.Unmarshal(rp.Body, &newValue)
+	err = jsoniter.Unmarshal(rp.Body, &newValue)
 	if err == nil {
 		_, messageID, err = svc.hubRouter.HandleWritePropertyFlow(rp.ThingID, rp.Name, newValue, rp.ClientID)
 	}

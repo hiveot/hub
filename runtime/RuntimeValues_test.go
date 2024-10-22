@@ -12,6 +12,7 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot/tdd"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sync/atomic"
@@ -59,7 +60,7 @@ func TestHttpsGetActions(t *testing.T) {
 
 	stat2 := cl2.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadDTDMethod, dThing1ID, "")
 	err, _ = stat2.Decode(&tdJSON)
-	err = json.Unmarshal([]byte(tdJSON), &td)
+	err = jsoniter.UnmarshalFromString(tdJSON, &td)
 	require.NoError(t, err)
 
 	// get the latest action values from the thing
@@ -114,7 +115,7 @@ func TestHttpsGetEvents(t *testing.T) {
 	require.NotNil(t, reply)
 
 	dtwValues := make([]digitwin.ThingValue, 0)
-	err = json.Unmarshal(reply, &dtwValues)
+	err = jsoniter.Unmarshal(reply, &dtwValues)
 	require.NoError(t, err)
 	require.NotZero(t, len(dtwValues))
 

@@ -19,7 +19,7 @@ type CertsClient struct {
 //func (cl *CertsClient) pubReq(action string, req interface{}, resp interface{}) error {
 //	var msg []byte
 //	if req != nil {
-//		msg, _ = ser.Marshal(req)
+//		msg, _ = jsoniter.Marshal(req)
 //	}
 //
 //	data, err := cl.hc.PubRPCRequest(

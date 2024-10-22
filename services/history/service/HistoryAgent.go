@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/runtime/transports"
 	"github.com/hiveot/hub/services/history/historyapi"
 )
 
@@ -36,8 +35,8 @@ func StartHistoryAgent(svc *HistoryService, hc hubclient.IConsumerClient) {
 		historyapi.GetCursorMethod:     svc.readHistSvc.GetCursor,
 		historyapi.ReadHistoryMethod:   svc.readHistSvc.ReadHistory,
 	}
-	rah := transports.NewAgentHandler(historyapi.ReadHistoryServiceID, readHistoryMethods)
-	mah := transports.NewAgentHandler(historyapi.ManageHistoryServiceID, manageHistoryMethods)
+	rah := hubclient.NewAgentHandler(historyapi.ReadHistoryServiceID, readHistoryMethods)
+	mah := hubclient.NewAgentHandler(historyapi.ManageHistoryServiceID, manageHistoryMethods)
 
 	// receive messages for events and agent requests
 	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {

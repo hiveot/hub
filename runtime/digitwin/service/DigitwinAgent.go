@@ -31,6 +31,8 @@ func (agent *DigitwinAgent) HandleAction(
 	return status, output, err
 }
 
+// NewDigitwinAgent creates the agent that passes messages to the service api.
+// This uses the tdd2go generated service action handlers.
 func NewDigitwinAgent(svc *DigitwinService) *DigitwinAgent {
 	agent := &DigitwinAgent{
 		svc:           svc,
