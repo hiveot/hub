@@ -50,7 +50,8 @@
                 {{/* input is required*/}}
                 {{if .Action.Input}}
                 <div>
-                    <label for="currValue">New value</label>
+                    {{/*FIXME: support object with multiple input fields*/}}
+                    <label for="currValue">{{.InputValue.Schema.Title}}</label>
                     {{template "RenderInputValue.gohtml" .InputValue}}
                 </div>
                 {{end}}

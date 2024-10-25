@@ -82,7 +82,7 @@ func TestStartStopService(t *testing.T) {
 		err := svc.DirSvc.UpdateTD("test", string(tddjson))
 		require.NoError(t, err)
 	}
-	tds1, err := svc.ReadAllDTDs("", 0, 10)
+	tds1, err := svc.ReadAllTDs("", 0, 10)
 	require.NoError(t, err)
 	require.Greater(t, len(tds1), 1)
 
@@ -91,6 +91,6 @@ func TestStartStopService(t *testing.T) {
 
 	svc, hc, stopFunc = startService(false)
 	defer stopFunc()
-	tds2, err := svc.ReadAllDTDs("", 0, 10)
+	tds2, err := svc.ReadAllTDs("", 0, 10)
 	assert.Equal(t, len(tds1), len(tds2))
 }

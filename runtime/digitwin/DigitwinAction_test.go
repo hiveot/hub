@@ -155,21 +155,21 @@ func TestDigitwinAgentAction(t *testing.T) {
 	tddJSON1, _ := json.Marshal(tdDoc1)
 	err := svc.DirSvc.UpdateTD(agentID, string(tddJSON1))
 	require.NoError(t, err)
-	tddJson2, err := svc.DirSvc.ReadDTD(consumerID, dThingID)
+	tddJson2, err := svc.DirSvc.ReadTD(consumerID, dThingID)
 	require.NoError(t, err)
 	require.NotEmpty(t, tddJson2)
 
 	// next, invoke the action to read the thing from the directory.
 	ag := service.NewDigitwinAgent(svc)
 	status, output, err := ag.HandleAction(consumerID,
-		digitwin.DirectoryDThingID, digitwin.DirectoryReadDTDMethod, dThingID, msgID)
+		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, dThingID, msgID)
 	require.NoError(t, err)
 	require.NotEmpty(t, output)
 	require.Equal(t, vocab.ProgressStatusCompleted, status)
 
 	// last, a non-existing DTD should fail
 	status, output, err = ag.HandleAction(consumerID,
-		digitwin.DirectoryDThingID, digitwin.DirectoryReadDTDMethod, "badid", msgID)
+		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, "badid", msgID)
 	require.Error(t, err)
 	// a non-existing method name should fail
 	status, output, err = ag.HandleAction(consumerID,
@@ -177,7 +177,7 @@ func TestDigitwinAgentAction(t *testing.T) {
 	require.Error(t, err)
 	// a non-existing serviceID should fail
 	status, output, err = ag.HandleAction(consumerID,
-		"badservicename", digitwin.DirectoryReadDTDMethod, dThingID, msgID)
+		"badservicename", digitwin.DirectoryReadTDMethod, dThingID, msgID)
 	require.Error(t, err)
 
 }

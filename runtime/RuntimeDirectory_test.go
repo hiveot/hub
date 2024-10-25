@@ -52,7 +52,7 @@ func TestAddRemoveTD(t *testing.T) {
 
 	// Get returns a serialized TD object
 	// use the helper directory client rpc method
-	td3Json, err := digitwin.DirectoryReadDTD(cl, dtThing1ID)
+	td3Json, err := digitwin.DirectoryReadTD(cl, dtThing1ID)
 	require.NoError(t, err)
 	var td3 tdd.TD
 	err = jsoniter.UnmarshalFromString(td3Json, &td3)
@@ -61,11 +61,11 @@ func TestAddRemoveTD(t *testing.T) {
 
 	//stat = cl.Rpc(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
 	args4JSON, _ := jsoniter.Marshal(dtThing1ID)
-	stat := cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryRemoveDTDMethod, string(args4JSON), "")
+	stat := cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryRemoveTDMethod, string(args4JSON), "")
 	require.Empty(t, stat.Error)
 
 	// after removal of the TD, getTD should return an error but delivery is successful
-	stat = cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadDTDMethod, string(args4JSON), "")
+	stat = cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, string(args4JSON), "")
 	require.NotEmpty(t, stat.Error)
 	require.Equal(t, vocab.ProgressStatusCompleted, stat.Progress)
 
@@ -97,8 +97,8 @@ func TestReadTDs(t *testing.T) {
 
 	// GetThings returns a serialized TD object
 	// 1. Use actions
-	args := digitwin.DirectoryReadAllDTDsArgs{Limit: 10}
-	stat := cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadAllDTDsMethod, args, "")
+	args := digitwin.DirectoryReadAllTDsArgs{Limit: 10}
+	stat := cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadAllTDsMethod, args, "")
 	require.Empty(t, stat.Error)
 	assert.NotNil(t, stat.Reply)
 	tdList1 := []string{}
@@ -108,7 +108,7 @@ func TestReadTDs(t *testing.T) {
 	require.True(t, len(tdList1) > 0)
 
 	// 2. Try it the easy way
-	tdList2, err := digitwin.DirectoryReadAllDTDs(cl, 333, 02)
+	tdList2, err := digitwin.DirectoryReadAllTDs(cl, 333, 02)
 	require.NoError(t, err)
 	require.True(t, len(tdList2) > 0)
 }
@@ -133,7 +133,7 @@ func TestReadTDsRest(t *testing.T) {
 	cl2 := tlsclient.NewTLSClient(serverURL, nil, ts.Certs.CaCert, time.Second*30, "")
 	cl2.SetAuthToken(token)
 
-	tdJSONList, err := digitwin.DirectoryReadAllDTDs(cl, 100, 0)
+	tdJSONList, err := digitwin.DirectoryReadAllTDs(cl, 100, 0)
 	require.NoError(t, err)
 
 	// tds are sent as an array of JSON, first unpack the array of JSON strings
@@ -142,7 +142,7 @@ func TestReadTDsRest(t *testing.T) {
 	require.Equal(t, 100, len(tdList)) // 100 is the given limit
 
 	// check reading a single td
-	tdJSON, err := digitwin.DirectoryReadDTD(cl, tdList[0].ID)
+	tdJSON, err := digitwin.DirectoryReadTD(cl, tdList[0].ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, tdJSON)
 }

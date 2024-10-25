@@ -28,7 +28,7 @@ func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tdJSON, err = digitwin.DirectoryReadDTD(hc, thingID)
+	tdJSON, err = digitwin.DirectoryReadTD(hc, thingID)
 	if err == nil {
 		err = jsoniter.UnmarshalFromString(tdJSON, &td)
 	}
@@ -36,7 +36,7 @@ func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 	// delete the TD
 	if err == nil {
 		slog.Info("Deleting TD", slog.String("thingID", thingID))
-		err = digitwin.DirectoryRemoveDTD(hc, thingID)
+		err = digitwin.DirectoryRemoveTD(hc, thingID)
 	}
 	cts := sess.GetConsumedThingsDirectory()
 	// reload the cached directory

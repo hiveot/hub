@@ -11,11 +11,11 @@ Operations:
     HTOpLogin: "login"
     HTOpLogout: "logout"
     HTOpRefresh: "refresh"
-    HTOpReadAllThings: "readAllThings"
-    HTOpReadThing: "readThing"
+    HTOpReadAllTDs: "readalltds"
+    HTOpReadTD: "readtd"
     # agent operations
-    HTOpUpdateThing: "updatething"  # directory operation
-    HTOpDelivery: "updatedelivery"
+    HTOpUpdateTD: "updatetd"  # directory operation
+#    HTOpDelivery: "updatedelivery"
     HTOpPublishEvent: "publishevent"
     HTOpUpdateProperty: "updateproperty"
 

@@ -18,7 +18,7 @@ func (svc *DigitwinValuesService) QueryAction(
 	return svc.dtwStore.QueryAction(args.ThingID, args.Name)
 }
 
-// QueryAllActions returns the map of the latest actions on the thing
+// QueryAllActions returns the list of the latest actions on the thing
 func (svc *DigitwinValuesService) QueryAllActions(
 	consumerID string, dThingID string) ([]digitwin.ActionValue, error) {
 

@@ -9,7 +9,7 @@
 > Use-case: When one or more property values have changed, consumers must be notified.
 * Sending them as an event would mean duplicating all properties in the TD as events which seems overkill and not the intended use.
 * Current solution: define a '$properties' event that contains a list of property values, similar to [webthings.io events resource](https://webthings.io/api/#events-resource).
-* New solution: define using the observeproperty Form operation
+* New solution: define using the observeproperty Form operation and let the protocol handle it
 
 3. How to updates multiple properties? [Answered]
 >  Use-case: user applies changes to multiple properties values in one request.
@@ -30,7 +30,7 @@
 * option1: send an event with the property value
 > Use-case 2: send an event if an action has completed to notify other consumers.
 * Current solution: property and actions keys refer to the same Thing state. When an action completes, a property with the same name updates with the action result. Note that the property value can have a different dataschema as the action result.
-* Answer: Officially, there is no intentional relationship between properties,actions and events. 
+* Answer: Officially, there is no intentional relationship between properties,actions and events. There is however a discussion to use properties to reflect state resulting from actions.
 
 7. How best to request reading the 'latest' value of an event? [Answered]
 * Answer: the Thing level form can include an operation 'readevent' and 'readallevents'. This is not standard WoT. Alternatively this can be defined as actions of the digital twin service TD.
@@ -45,7 +45,7 @@
 9. Would it be out of scope to use a TD to define a RPC service API? [Non-WoT Workaround]
  * The idea for hiveot is to define the directory, value storage, history storage, authentication and other services using a TD and generate the API with documentation from it.  
  * Answer: In HiveOT all services are defined through a TDD and tdd2go will generate golang code for it. Services calls behave exactly as any other action. However, linking async results to their request is not defined in WoT. 
-   * HiveOT implements an 'action result' message type to asynchrously deliver the action result. This use-case is not supported in WoT.
+   * HiveOT implements an 'action progress' message type to asynchrously send completion or failure of actions. This use-case is not supported in WoT.
    
   
 10. 5.3.3.1 SecurityScheme  [Ambiguous]
@@ -86,18 +86,15 @@ Answer: encoding is handled in the transport protocol. The forms in the TD conta
 
 15. How does the IoT device know what type the data is in? [Answered]
 * Answer: When receiving actions or properties, agents expect to receive inputs in the same format as was defined in the TD. Consumers receiving events and property values rely on the TD dataschema to interpret the data format for presentation or analysis.
-Eg, pass an integer as a boolean or vice versa. The transport protocol decodes the data into its native format. When receiving events, clients therefore can only receive data with the 'any' type for the value produced by the unmarshaller. That means that when handling this, it must be cast to its expected native type before use. If the type doesn't match then this would have to fail gracefully.
 
 16. Is it correct that the consumer must convert complex data types? [golang, workaround] 
 * ISSUE (golang): complex data types that are returned by actions (as defined in the TD) must be converted to the proper complex data type in the consumer. Unmarshalling to interface{} (golang) however returns a non compatible object as the unmarshaller doesn't know the actual data type. Thus, this doesn't work for goland.
 * Workaround: Return the wire format and provide an unmarshal method to the client where the client can provide the expected data type.
 
-17. How to define the ThingMessage envelope in SSE messages? [Non-WoT workaround]
-* When the server sends data to a client over SSE, it must include additional info such as senderID, thingID, affordance name and messageID. In http these can be put in the url and query parameters. With the SSE transport both the payload and metadata are embedded into a ThingMessage envelope. How to describe this?
-* Answer: message envelopes are not supported in WoT. 
-* Workaround 1: Use the additionalResponses field in a Form. However this has to be repeated for every single action/property/event. 
-* Workaround 2: Push this to the transport protocol. In case of SSE use the ID field: {thingID}/{name}/{messageID}
-* Recommendation: Support the use of 'metadata extra' fields in SSE/WS/MQTT protocol bindings to carry metadata. (MQTT-5 supports this but SSE doesn't). TBD: Is this really needed for interoperability? Maybe document some examples for handling these use-cases.
+17. How to include metadata (thingID, name, clientID) in SSE messages? [Non-WoT workaround]
+* use-case: agent receives an action for a Thing via its SSE connection (agents connect to the Hub). The SSE data is the input data as per TDD, but how to convey the thingID, action name and messageID?
+* Workaround 1: Encapsulate the message in an evelope and use the additionalResponses field in a Form to define the envelope schema. However this has to be repeated for every single action/property/event which is *very* wordy.
+* Workaround 2: Push this to the transport protocol. In case of SSE use the ID field: {thingID}/{name}/{messageID}. However, how can this be described in a Form? (chosen workaround)
 
 18. How to describe a map of objects in the action output dataschema? [Workaround]
 * Workaround: don't use maps, use arrays.
@@ -106,17 +103,21 @@ Eg, pass an integer as a boolean or vice versa. The transport protocol decodes t
 Use case: human consumers might be interested in some properties, events or actions but not all of them. The human consumer should be able to just look at the essential data without being overwhelmed with more advanced ones. Some zwave devices have close to 100 properties of which only a handful are useful to the regular consumer. How to differentiate them?
     * Note: also check out https://webthings.io/schemas/
     * option1: use the ht vocabulary to indicate basic properties. This is not compatible with anything.
-    * option2: add to the @context. Yeah ...
-    * option3: start an initiative to combine all existing ontologies into a single world wide accepted ontology, vocabulary and classification of the majority of IoT devices with their properties, events and actions. This looks like a lot of work...
+    * option2: add to the @context. Yeah ... in reality still not compatible with anything.
+    * option3: start an initiative to combine all existing ontologies into a single world wide accepted ontology, vocabulary and classification of the majority of IoT devices with their properties, events and actions. Great idea, ... but erm, this looks like a lot of work, unless you enjoy herding cats as a hobby.
     * Option4: push the problem to the client. Maybe use @type to identify which properties are considered important. This requires standardization of property @type which doesn't exist. 
 
 20. Can authorization rules (eg required roles) be applied to a TD? [not supported] 
 Use case: Only show allowed actions to a user based on their authorization. 
-Workaround: the authz service has actions to control the authorization rules. Role support is not part of WoT auth.
+* This is not supported in WoT TD
+* Option 1: Take a 'capabilities' approach. Split services in groups with each group allowing a role to use. For example, admin vs consumer roles. Each group is defined as a service Thing. The TD can include a custom field indicating which role a Thing allows.
+* Option 2: The service programmatically tells the authz service which roles can use a Thing it publishes. An admin can potentially override this in the authz service.
+* Option 3: Add custom 'allow' and 'deny' fields to each action that lists which roles are allowed/denied invoking an action.
 
 21. How does a client know if an output or alternative response is received? [Ambiguity]
 Use case: client invokes action and expects an output value. The TD describes a form with additionalResponses, for example to report an error. The client receives the response as per TD and needs to differentiate somehow between normal and additional responses. 
 Section "5.3.4.2.2 Response-related Terms Usage" describes a response name-value pair that can be used, but where is it described? How does this fit in the response data? 
-* Workaround 1: use on-of as the data schema and describe the output based on a flag. This leads to all action outputs to have a dataschema of type one-of. This defeats the purpose of additionalResponses as it doesn't use it.
+* Workaround 1: use one-of as the data schema and describe the output based on a flag. This leads to all action outputs to have a dataschema of type one-of. This defeats the purpose of additionalResponses as it doesn't use it.
 * Workaround 2: parse the expected output and on failure parse using the schemas from additionalResponses. There is no way of telling which one to use until one fails. 'Try it until it works' is not a specification.
+* Workaround 3: include a 'dataschema' metadata field in the transport that describes the dataschema used in the result.  
 

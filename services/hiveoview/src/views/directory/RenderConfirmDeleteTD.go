@@ -33,7 +33,7 @@ func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tdJson, err = digitwin.DirectoryReadDTD(hc, thingID)
+	tdJson, err = digitwin.DirectoryReadTD(hc, thingID)
 	if err == nil {
 		err = jsoniter.UnmarshalFromString(tdJson, &td)
 	}

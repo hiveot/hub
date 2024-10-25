@@ -79,41 +79,45 @@ func (svc *HttpBinding) createRoutes(router chi.Router) http.Handler {
 			"/digitwin/actions/{thingID}/{name}", svc.HandleInvokeAction)
 
 		// sse-sc subprotocol routes
-		svc.AddGetOp(r, "connect", true,
-			"/ssesc", svc.ssesc.HandleConnect)
-		svc.AddPostOp(r, vocab.WotOpObserveAllProperties, true,
-			"/ssesc/digitwin/observe/{thingID}", svc.ssesc.HandleObserveAllProperties)
-		svc.AddPostOp(r, vocab.WotOpSubscribeAllEvents, true,
-			"/ssesc/digitwin/subscribe/{thingID}", svc.ssesc.HandleSubscribeAllEvents)
-		svc.AddPostOp(r, vocab.WotOpSubscribeEvent, true,
-			"/ssesc/digitwin/subscribe/{thingID}/{name}", svc.ssesc.HandleSubscribeEvent)
-		svc.AddPostOp(r, vocab.WoTOpObserveProperty, true,
-			"/ssesc/digitwin/observe/{thingID}/{name}", svc.ssesc.HandleObserveProperty)
-		svc.AddPostOp(r, vocab.WotOpUnobserveAllProperties, true,
-			"/ssesc/digitwin/observe/{thingID}", svc.ssesc.HandleUnobserveAllProperties)
-		svc.AddPostOp(r, vocab.WoTOpUnobserveProperty, true,
-			"/ssesc/digitwin/unobserve/{thingID}/{name}", svc.ssesc.HandleUnobserveProperty)
-		svc.AddPostOp(r, vocab.WotOpUnsubscribeAllEvents, true,
-			"/ssesc/digitwin/unsubscribe/{thingID}", svc.ssesc.HandleUnsubscribeAllEvents)
-		svc.AddPostOp(r, vocab.WotOpUnsubscribeEvent, true,
-			"/ssesc/digitwin/unsubscribe/{thingID}/{name}", svc.ssesc.HandleUnsubscribeEvent)
+		if svc.ssesc != nil {
+			svc.AddGetOp(r, "connect", true,
+				"/ssesc", svc.ssesc.HandleConnect)
+			svc.AddPostOp(r, vocab.WotOpObserveAllProperties, true,
+				"/ssesc/digitwin/observe/{thingID}", svc.ssesc.HandleObserveAllProperties)
+			svc.AddPostOp(r, vocab.WotOpSubscribeAllEvents, true,
+				"/ssesc/digitwin/subscribe/{thingID}", svc.ssesc.HandleSubscribeAllEvents)
+			svc.AddPostOp(r, vocab.WotOpSubscribeEvent, true,
+				"/ssesc/digitwin/subscribe/{thingID}/{name}", svc.ssesc.HandleSubscribeEvent)
+			svc.AddPostOp(r, vocab.WoTOpObserveProperty, true,
+				"/ssesc/digitwin/observe/{thingID}/{name}", svc.ssesc.HandleObserveProperty)
+			svc.AddPostOp(r, vocab.WotOpUnobserveAllProperties, true,
+				"/ssesc/digitwin/observe/{thingID}", svc.ssesc.HandleUnobserveAllProperties)
+			svc.AddPostOp(r, vocab.WoTOpUnobserveProperty, true,
+				"/ssesc/digitwin/unobserve/{thingID}/{name}", svc.ssesc.HandleUnobserveProperty)
+			svc.AddPostOp(r, vocab.WotOpUnsubscribeAllEvents, true,
+				"/ssesc/digitwin/unsubscribe/{thingID}", svc.ssesc.HandleUnsubscribeAllEvents)
+			svc.AddPostOp(r, vocab.WotOpUnsubscribeEvent, true,
+				"/ssesc/digitwin/unsubscribe/{thingID}/{name}", svc.ssesc.HandleUnsubscribeEvent)
+		}
 
 		// ws subprotocol routes
-		//svc.AddPostOp(r, vocab.WotOpObserveAllProperties, true,
-		//	"/ws/digitwin/observe/{thingID}", svc.ws.HandleObserveAllProperties)
-		//svc.AddPostOp(r, vocab.WoTOpObserveProperty, true,
-		//	"/ws/digitwin/observe/{thingID}/{name}", svc.ws.HandleObserveProperty)
-		//
-		//// sse subprotocol routes
-		//svc.AddPostOp(r, vocab.WotOpSubscribeAllEvents, true,
-		//	"/sse/digitwin/subscribe/{thingID}", svc.sse.HandleSubscribeAllEvents)
-		//svc.AddPostOp(r, vocab.WotOpObserveAllProperties, true,
-		//	"/sse/digitwin/observe/{thingID}", svc.sse.HandleObserveAllProperties)
-
+		if svc.ws != nil {
+			//svc.AddPostOp(r, vocab.WotOpObserveAllProperties, true,
+			//	"/ws/digitwin/observe/{thingID}", svc.ws.HandleObserveAllProperties)
+			//svc.AddPostOp(r, vocab.WoTOpObserveProperty, true,
+			//	"/ws/digitwin/observe/{thingID}/{name}", svc.ws.HandleObserveProperty)
+		}
+		if svc.sse != nil {
+			//// sse subprotocol routes
+			//svc.AddPostOp(r, vocab.WotOpSubscribeAllEvents, true,
+			//	"/sse/digitwin/subscribe/{thingID}", svc.sse.HandleSubscribeAllEvents)
+			//svc.AddPostOp(r, vocab.WotOpObserveAllProperties, true,
+			//	"/sse/digitwin/observe/{thingID}", svc.sse.HandleObserveAllProperties)
+		}
 		// digitwin directory actions. These are just for convenience as actions are normally used
-		svc.AddGetOp(r, vocab.HTOpReadThing, false,
+		svc.AddGetOp(r, vocab.HTOpReadTD, false,
 			"/digitwin/directory/{thingID}", svc.HandleReadTD)
-		svc.AddGetOp(r, vocab.HTOpReadAllThings, false,
+		svc.AddGetOp(r, vocab.HTOpReadAllTDs, false,
 			"/digitwin/directory", svc.HandleReadAllTDs) // query params: offset,limit
 
 		// handlers for other services. Operations to invoke actions.
@@ -127,7 +131,7 @@ func (svc *HttpBinding) createRoutes(router chi.Router) http.Handler {
 
 		// handlers for requests by agents
 		// TODO: These should be included in the digitwin TD forms
-		svc.AddPostOp(r, vocab.HTOpUpdateThing, false,
+		svc.AddPostOp(r, vocab.HTOpUpdateTD, false,
 			"/agent/tdd/{thingID}", svc.HandlePublishTD)
 		svc.AddPostOp(r, vocab.HTOpPublishEvent, false,
 			"/agent/event/{thingID}/{name}", svc.HandlePublishEvent)
@@ -135,7 +139,7 @@ func (svc *HttpBinding) createRoutes(router chi.Router) http.Handler {
 			"/agent/property/{thingID}/{name}", svc.HandlePublishProperty)
 		svc.AddPostOp(r, "updateMultipleProperties", false,
 			"/agent/properties/{thingID}", svc.HandlePublishProperty)
-		svc.AddPostOp(r, vocab.HTOpDelivery, false,
+		svc.AddPostOp(r, "", false,
 			"/agent/progress", svc.HandleInvokeActionProgress)
 
 	})

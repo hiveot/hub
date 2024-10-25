@@ -53,7 +53,7 @@ type ActionRequestTemplateData struct {
 func getActionAff(hc hubclient.IConsumerClient, thingID string, name string) (
 	td *tdd.TD, actionAff *tdd.ActionAffordance, err error) {
 
-	tdJson, err := digitwin.DirectoryReadDTD(hc, thingID)
+	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
 	if err != nil {
 		return td, actionAff, err
 	}
@@ -105,9 +105,6 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 			thingID, name, actionAff.Input, nil, ""),
 		Description: actionAff.Description,
 	}
-	cv := ct.GetEventValue(name)
-	data.InputValue = cv
-
 	if data.Description == "" {
 		data.Description = actionAff.Title
 	}
@@ -115,7 +112,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 	// get last action request that was received
 	// reading a latest value is optional
 	actionVal, err := digitwin.ValuesQueryAction(hc, name, thingID)
-	if err == nil {
+	if err == nil && actionVal.Name != "" {
 		data.LastActionRecord = &actionVal
 		//data.PrevValue = &lastActionRecord
 		updatedTime, _ := dateparse.ParseAny(data.LastActionRecord.Updated)

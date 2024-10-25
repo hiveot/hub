@@ -189,7 +189,7 @@ func (cts *ConsumedThingsDirectory) ReadDirectory(force bool) (map[string]*tdd.T
 	newDir := make(map[string]*tdd.TD)
 
 	// TODO: support for reading in pages
-	thingsList, err := digitwin.DirectoryReadAllDTDs(cts.hc, ReadDirLimit, 0)
+	thingsList, err := digitwin.DirectoryReadAllTDs(cts.hc, ReadDirLimit, 0)
 	if err != nil {
 		return newDir, err
 	}
@@ -211,7 +211,7 @@ func (cts *ConsumedThingsDirectory) ReadDirectory(force bool) (map[string]*tdd.T
 func (cts *ConsumedThingsDirectory) ReadTD(thingID string) (*tdd.TD, error) {
 	// request the TD from the Hub
 	td := &tdd.TD{}
-	tdJson, err := digitwin.DirectoryReadDTD(cts.hc, thingID)
+	tdJson, err := digitwin.DirectoryReadTD(cts.hc, thingID)
 	if err == nil {
 		err = jsoniter.UnmarshalFromString(tdJson, &td)
 	}

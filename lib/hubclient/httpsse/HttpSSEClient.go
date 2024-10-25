@@ -425,7 +425,8 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 		stat.Progress = vocab.ProgressStatusCompleted
 	}
 	if err != nil {
-		slog.Error("PubMessage error", "err", err.Error())
+		slog.Error("PubMessage error",
+			"path", messagePath, "err", err.Error())
 		stat.Error = err.Error()
 	}
 	return stat

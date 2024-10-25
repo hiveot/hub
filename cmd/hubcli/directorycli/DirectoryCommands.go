@@ -50,7 +50,7 @@ func DirectoryListCommand(hc *hubclient.IConsumerClient) *cli.Command {
 // HandleListDirectory lists the directory content
 func HandleListDirectory(hc hubclient.IConsumerClient) (err error) {
 	// todo: iterate with offset and limit
-	tdListJson, err := digitwin.DirectoryReadAllDTDs(hc, 300, 0)
+	tdListJson, err := digitwin.DirectoryReadAllTDs(hc, 300, 0)
 	tdList, err2 := tdd.UnmarshalTDList(tdListJson)
 
 	if err != nil || err2 != nil {
@@ -84,7 +84,7 @@ func HandleListDirectory(hc hubclient.IConsumerClient) (err error) {
 
 // HandleListThing lists details of a Thing in the directory
 func HandleListThing(hc hubclient.IConsumerClient, thingID string) error {
-	tdDocJson, err := digitwin.DirectoryReadDTD(hc, thingID)
+	tdDocJson, err := digitwin.DirectoryReadTD(hc, thingID)
 	tdDoc, err2 := tdd.UnmarshalTD(tdDocJson)
 	if err != nil || err2 != nil {
 		return err
@@ -174,7 +174,7 @@ func HandleListThing(hc hubclient.IConsumerClient, thingID string) error {
 
 // HandleListThingVerbose lists a Thing full TD
 func HandleListThingVerbose(hc hubclient.IConsumerClient, thingID string) error {
-	tdJSON, err := digitwin.DirectoryReadDTD(hc, thingID)
+	tdJSON, err := digitwin.DirectoryReadTD(hc, thingID)
 
 	if err != nil {
 		return err

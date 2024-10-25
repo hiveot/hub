@@ -58,7 +58,7 @@ func TestHttpsGetActions(t *testing.T) {
 	var tdJSON = ""
 	var td tdd.TD
 
-	stat2 := cl2.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadDTDMethod, dThing1ID, "")
+	stat2 := cl2.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, dThing1ID, "")
 	err, _ = stat2.Decode(&tdJSON)
 	err = jsoniter.UnmarshalFromString(tdJSON, &td)
 	require.NoError(t, err)

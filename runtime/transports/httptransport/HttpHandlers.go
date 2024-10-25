@@ -257,8 +257,8 @@ func (svc *HttpBinding) HandleReadAllProperties(w http.ResponseWriter, r *http.R
 //		offset32, _ := strconv.ParseInt(offsetStr, 10, 32)
 //		offset = int(offset32)
 //	}
-//	thingsList, err := svc.dtwService.DirSvc.ReadAllDTDs(rp.ClientID,
-//		digitwin.DirectoryReadAllDTDsArgs{Offset: offset, Limit: limit})
+//	thingsList, err := svc.dtwService.DirSvc.ReadAllTDs(rp.ClientID,
+//		digitwin.DirectoryReadAllTDsArgs{Offset: offset, Limit: limit})
 //	if err != nil {
 //		svc.writeError(w, err, 0)
 //		return

@@ -5,9 +5,7 @@ import (
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
-	sessions2 "github.com/hiveot/hub/runtime/authn/sessions"
 	"github.com/hiveot/hub/runtime/connections"
-	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/hubrouter"
 	"github.com/hiveot/hub/runtime/transports/discotransport"
 	"github.com/hiveot/hub/runtime/transports/httptransport"
@@ -32,9 +30,7 @@ type ProtocolManager struct {
 
 	// handler to pass incoming messages to
 	handler func(tv *hubclient.ThingMessage) hubclient.ActionProgress
-
-	sm *sessions2.SessionManager
-	cm *connections.ConnectionManager
+	cm      *connections.ConnectionManager
 }
 
 // AddTDForms adds forms for all active transports
@@ -47,12 +43,6 @@ func (svc *ProtocolManager) AddTDForms(td *tdd.TD) (err error) {
 	//}
 	return err
 }
-
-// GetEmbedded returns the embedded transport protocol
-// Intended to receive messages from, and send to, embedded services
-//func (svc *ProtocolManager) GetEmbedded() *embedded.EmbeddedTransport {
-//	return svc.embeddedTransport
-//}
 
 // GetConnectURL returns URL of the first protocol that has a baseurl
 func (svc *ProtocolManager) GetConnectURL() (baseURL string) {
@@ -74,12 +64,6 @@ func (svc *ProtocolManager) GetProtocolInfo() (pi api.ProtocolInfo) {
 	return
 }
 
-//
-//// GetConnectionByCID returns the client connection for sending messages to a client
-//func (svc *ProtocolManager) GetConnectionByCID(cid string) sessions.IClientConnection {
-//	return svc.cm.GetConnectionByCID(cid)
-//}
-
 // Stop the protocol servers
 func (svc *ProtocolManager) Stop() {
 	if svc.discoveryTransport != nil {
@@ -98,24 +82,6 @@ func (svc *ProtocolManager) Stop() {
 
 }
 
-//func (svc *ProtocolManager) WriteProperty(
-//	agentID string, thingID string, name string, value any, messageID string, senderID string) (
-//	found bool, status string, err error) {
-//
-//	// send the action to the sub-protocol bindings until there is a match
-//	//if svc.embeddedTransport != nil {
-//	//	 status,err = svc.embeddedTransport.WriteProperty(agentID, tThingID, name, value, messageID)
-//	//}
-//	if svc.httpTransport != nil {
-//		found, status, err = svc.httpTransport.WriteProperty(
-//			agentID, thingID, name, value, messageID, senderID)
-//	}
-//	if !found && svc.mqttTransport != nil {
-//		//	status,err = svc.mqttTransport.WriteProperty(agentID, thingID, name, value, messageID)
-//	}
-//	return found, status, err
-//}
-
 // StartProtocolManager starts a new instance of the protocol manager.
 // This instantiates enabled protocol bindings, including the embedded binding
 // to be used to register embedded services.
@@ -126,9 +92,7 @@ func StartProtocolManager(cfg *ProtocolsConfig,
 	caCert *x509.Certificate,
 	authenticator api.IAuthenticator,
 	hubRouter *hubrouter.HubRouter,
-	dtwService *service.DigitwinService,
 	cm *connections.ConnectionManager,
-	sm *sessions2.SessionManager,
 ) (svc *ProtocolManager, err error) {
 
 	svc = &ProtocolManager{

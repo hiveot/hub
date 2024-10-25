@@ -32,7 +32,7 @@ type RenderEditPropertyTemplateData struct {
 func getPropAff(hc hubclient.IConsumerClient, thingID string, name string) (
 	td *tdd.TD, propAff *tdd.PropertyAffordance, err error) {
 
-	tdJson, err := digitwin.DirectoryReadDTD(hc, thingID)
+	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
 	if err != nil {
 		return td, propAff, err
 	}

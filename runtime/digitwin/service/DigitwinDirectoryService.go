@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/wot/tdd"
@@ -54,14 +53,14 @@ func (svc *DigitwinDirectoryService) MakeDigitalTwinTD(
 	return thingTD, dtwTD, err
 }
 
-func (svc *DigitwinDirectoryService) QueryDTDs(
-	senderID string, args digitwin.DirectoryQueryDTDsArgs) (tdDocuments []string, err error) {
-	//svc.DtwStore.QueryDTDs(args)
-	return nil, fmt.Errorf("Not yet implemented")
-}
+//func (svc *DigitwinDirectoryService) QueryDTDs(
+//	senderID string, args digitwin.DirectoryQueryTDsArgs) (tdDocuments []string, err error) {
+//	//svc.DtwStore.QueryDTDs(args)
+//	return nil, fmt.Errorf("Not yet implemented")
+//}
 
-// ReadDTD returns a JSON encoded TD document
-func (svc *DigitwinDirectoryService) ReadDTD(senderID string, dThingID string) (tdJSON string, err error) {
+// ReadTD returns a JSON encoded TD document
+func (svc *DigitwinDirectoryService) ReadTD(senderID string, dThingID string) (tdJSON string, err error) {
 	dtd, err := svc.dtwStore.ReadDThing(dThingID)
 	if err == nil {
 		var tdByte []byte
@@ -71,12 +70,12 @@ func (svc *DigitwinDirectoryService) ReadDTD(senderID string, dThingID string) (
 	return tdJSON, err
 }
 
-// ReadAllDTDs returns a batch of TD documents
+// ReadAllTDs returns a batch of TD documents
 // This returns a list of JSON encoded digital twin TD documents
-func (svc *DigitwinDirectoryService) ReadAllDTDs(
-	senderID string, args digitwin.DirectoryReadAllDTDsArgs) (tdList []string, err error) {
+func (svc *DigitwinDirectoryService) ReadAllTDs(
+	senderID string, args digitwin.DirectoryReadAllTDsArgs) (tdList []string, err error) {
 
-	dtdList, err := svc.dtwStore.ReadDTDs(args.Offset, args.Limit)
+	dtdList, err := svc.dtwStore.ReadTDs(args.Offset, args.Limit)
 	if err == nil {
 		tdList = make([]string, 0, len(dtdList))
 		for _, dtd := range dtdList {
@@ -89,9 +88,8 @@ func (svc *DigitwinDirectoryService) ReadAllDTDs(
 	return tdList, err
 }
 
-// RemoveDTD removes a Thing TD document from the digital twin directory
-// FIXME: only admins are allowed this
-func (svc *DigitwinDirectoryService) RemoveDTD(senderID string, dThingID string) error {
+// RemoveTD removes a Thing TD document from the digital twin directory
+func (svc *DigitwinDirectoryService) RemoveTD(senderID string, dThingID string) error {
 	err := svc.dtwStore.RemoveDTW(dThingID, senderID)
 	if err == nil && svc.cm != nil {
 		// notify subscribers that the digital twin thing was removed.

@@ -19,7 +19,7 @@ func (svc *HubRouter) HandlePublishTD(agentID string, args any) error {
 // HandleReadTD consumer reads a TD
 func (svc *HubRouter) HandleReadTD(consumerID string, args any) (reply any, err error) {
 	_, reply, err = svc.dtwAgent.HandleAction(
-		"", digitwin.DirectoryDThingID, digitwin.DirectoryActionReadDTD, args, "")
+		"", digitwin.DirectoryDThingID, digitwin.DirectoryActionReadTD, args, "")
 	return reply, err
 }
 
@@ -27,6 +27,6 @@ func (svc *HubRouter) HandleReadTD(consumerID string, args any) (reply any, err 
 func (svc *HubRouter) HandleReadAllTDs(consumerID string) (reply any, err error) {
 
 	_, reply, err = svc.dtwAgent.HandleAction(
-		"", digitwin.DirectoryDThingID, digitwin.DirectoryActionReadAllDTDs, nil, "")
+		"", digitwin.DirectoryDThingID, digitwin.DirectoryActionReadAllTDs, nil, "")
 	return reply, err
 }

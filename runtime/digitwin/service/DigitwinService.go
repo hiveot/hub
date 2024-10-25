@@ -30,10 +30,10 @@ type DigitwinService struct {
 	mux sync.RWMutex
 }
 
-// ReadAllDTDs returns a list digitwin TDs
-func (svc *DigitwinService) ReadAllDTDs(
+// ReadAllTDs returns a list digitwin TDs
+func (svc *DigitwinService) ReadAllTDs(
 	consumerID string, offset int, limit int) ([]*tdd.TD, error) {
-	dtlist, err := svc.DtwStore.ReadDTDs(offset, limit)
+	dtlist, err := svc.DtwStore.ReadTDs(offset, limit)
 	return dtlist, err
 }
 
@@ -90,5 +90,6 @@ func StartDigitwinService(storesDir string, cm *connections.ConnectionManager) (
 		}
 		slog.Info("Started DigitwinService")
 	}
+	//authz.UserSetPermissions(hc, authz.ThingPermissions{})
 	return svc, dtwStore, err
 }

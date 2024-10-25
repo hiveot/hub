@@ -28,20 +28,20 @@ func TestAddRemoveTD(t *testing.T) {
 	require.NoError(t, err)
 
 	dThingID := tdd.MakeDigiTwinThingID(agentID, thing1ID)
-	tdd2JSON, err := dirSvc.ReadDTD(consumerID, dThingID)
+	tdd2JSON, err := dirSvc.ReadTD(consumerID, dThingID)
 	require.NoError(t, err)
 	require.NotEmpty(t, tdd2JSON)
 
-	dtdList, err := dirSvc.ReadAllDTDs(consumerID,
-		digitwin.DirectoryReadAllDTDsArgs{Limit: 10})
+	dtdList, err := dirSvc.ReadAllTDs(consumerID,
+		digitwin.DirectoryReadAllTDsArgs{Limit: 10})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, dtdList)
 
 	// after removal, getTD should return nil
-	err = dirSvc.RemoveDTD("senderID", dThing1ID)
+	err = dirSvc.RemoveTD("senderID", dThing1ID)
 	assert.NoError(t, err)
 
-	td1c, err := dirSvc.ReadDTD(consumerID, dThingID)
+	td1c, err := dirSvc.ReadTD(consumerID, dThingID)
 	assert.Error(t, err)
 	assert.Empty(t, td1c)
 
@@ -55,13 +55,13 @@ func TestGetTDsFail(t *testing.T) {
 	dirSvc := svc.DirSvc
 
 	// bad clientID
-	td1, err := dirSvc.ReadDTD("", "badid")
+	td1, err := dirSvc.ReadTD("", "badid")
 	require.Error(t, err)
 	require.Empty(t, td1)
 
 	_ = svc
 	defer stopFunc()
-	tdList, err := svc.ReadAllDTDs("", 0, 10)
+	tdList, err := svc.ReadAllTDs("", 0, 10)
 	require.NoError(t, err)
 	require.Empty(t, tdList)
 

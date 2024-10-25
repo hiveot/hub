@@ -223,11 +223,11 @@ func (svc *DigitwinStore) ReadDThing(dThingID string) (dtd *tdd.TD, err error) {
 	return dtw.DtwTD, err
 }
 
-// ReadDTDs returns a list of digital twin TDs
+// ReadTDs returns a list of digital twin TDs
 //
 // limit is the maximum number of records to return
 // offset is the offset of the first record to return
-func (svc *DigitwinStore) ReadDTDs(offset int, limit int) (resp []*tdd.TD, err error) {
+func (svc *DigitwinStore) ReadTDs(offset int, limit int) (resp []*tdd.TD, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
@@ -254,7 +254,7 @@ func (svc *DigitwinStore) ReadDTDs(offset int, limit int) (resp []*tdd.TD, err e
 // RemoveDTW deletes the digitwin instance of an agent with the given ThingID
 func (svc *DigitwinStore) RemoveDTW(dThingID string, senderID string) error {
 	// TBD: should we mark this as deleted instead? retain historical things?
-	slog.Debug("RemoveDTD",
+	slog.Debug("RemoveTD",
 		slog.String("dThingID", dThingID),
 		slog.String("senderID", senderID))
 

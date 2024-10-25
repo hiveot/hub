@@ -2,7 +2,7 @@
 
 ## The HTTP transport protocol
 
-The HTTP transport protocol is divided in a basic and sub-protocols.
+The HTTP transport protocol supports multiple sub-protocols.
 
 ### HTTP Basic
 

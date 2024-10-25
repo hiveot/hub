@@ -42,7 +42,7 @@ async function test2() {
 
     // sending read directory request
     let stat = await hc.invokeAction(
-        "dtw:digitwin:directory", "readDTDs", "",'{"limit":10}')
+        "dtw:digitwin:directory", "ReadTDs", "",'{"limit":10}')
 
     if (stat.messageID == "") {
         log.error("readTDs didn't return a messageID")

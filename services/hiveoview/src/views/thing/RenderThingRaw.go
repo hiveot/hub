@@ -17,7 +17,7 @@ func RenderThingRaw(w http.ResponseWriter, r *http.Request) {
 	// Read the TD being displayed and its latest values
 	sess, hc, err := session.GetSessionFromContext(r)
 	if err == nil {
-		tdJSON, err = digitwin.DirectoryReadDTD(hc, thingID)
+		tdJSON, err = digitwin.DirectoryReadTD(hc, thingID)
 	}
 	if err == nil {
 		// re-marshal with pretty-print JSON

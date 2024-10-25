@@ -15,19 +15,16 @@ import (
 	"log/slog"
 )
 
-const DefaultDigiTwinStoreFilename = "digitwin.kvbtree"
-
 // Runtime is the Hub runtime. This is the bare-bone core of the hub that operates the
 // communication protocols with services for auth, inbox, outbox and directory.
 type Runtime struct {
 	cfg *RuntimeConfig
 
 	//AuthnStore api.IAuthnStore
-	AuthnSvc   *service.AuthnService
-	AuthzSvc   *service2.AuthzService
-	AuthnAgent *service.AuthnAgent
-	AuthzAgent *service2.AuthzAgent
-	//dtwStore      *service4.DigitwinStore
+	AuthnSvc      *service.AuthnService
+	AuthzSvc      *service2.AuthzService
+	AuthnAgent    *service.AuthnAgent
+	AuthzAgent    *service2.AuthzAgent
 	DigitwinSvc   *service4.DigitwinService
 	HubRouter     *hubrouter.HubRouter
 	cm            *connections.ConnectionManager
@@ -88,9 +85,8 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		r.cfg.CaCert,
 		r.AuthnSvc.SessionAuth,
 		r.HubRouter,
-		r.DigitwinSvc,
 		r.cm,
-		r.sm)
+	)
 	if err != nil {
 		return err
 	}

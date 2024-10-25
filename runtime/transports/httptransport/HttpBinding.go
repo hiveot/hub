@@ -168,10 +168,11 @@ func StartHttpTransport(config *HttpTransportConfig,
 	svc := HttpBinding{
 		authenticator: authenticator,
 		config:        config,
-		// subprotocol bindings need session info
-		ws:         subprotocols.NewWsBinding(cm),
-		sse:        subprotocols.NewSseBinding(cm),
-		ssesc:      subprotocols.NewSseScBinding(cm),
+
+		ws:    subprotocols.NewWsBinding(cm),
+		sse:   subprotocols.NewSseBinding(cm),
+		ssesc: subprotocols.NewSseScBinding(cm),
+
 		httpServer: httpServer,
 		router:     router,
 		hubRouter:  hubRouter,

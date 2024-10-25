@@ -21,7 +21,9 @@ import (
 const DefaultServerCertFile = "hubCert.pem"
 const DefaultServerKeyFile = "hubKey.pem"
 
-// RuntimeConfig holds the digital twin runtime and protocol bindings configuration
+// RuntimeConfig holds the digital twin runtime and protocol bindings configuration:
+// * determines the config, data and certificate storage paths
+// * load or generate the CA and server keys and certificates
 type RuntimeConfig struct {
 
 	// middleware and services config. These all work out of the box with their defaults.
@@ -104,12 +106,14 @@ func (cfg *RuntimeConfig) setupCerts(env *plugin.AppEnvironment) {
 	}
 
 	// 3: Load or create a new server private key if it doesn't exist
-	// As this key is used to sign tokens, save it after creation
+	// As this key is used to sign auth tokens, save it after creation
 	serverKeyPath := cfg.ServerKeyFile
 	if !path.IsAbs(serverKeyPath) {
 		serverKeyPath = path.Join(certsDir, serverKeyPath)
 	}
+
 	// load the server key if available
+	newServerKey := false
 	if cfg.ServerKey == nil {
 		slog.Info("Loading server key", "serverKeyPath", serverKeyPath)
 		cfg.ServerKey, err = keys.NewKeyFromFile(serverKeyPath)
@@ -118,6 +122,7 @@ func (cfg *RuntimeConfig) setupCerts(env *plugin.AppEnvironment) {
 		err = nil
 	}
 	if err != nil || cfg.ServerKey == nil {
+		newServerKey = true
 		slog.Warn("Creating server key")
 		cfg.ServerKey = keys.NewKey(cfg.CaKey.KeyType()) // use same key type as CA
 		err = cfg.ServerKey.ExportPrivateToFile(serverKeyPath)
@@ -125,14 +130,19 @@ func (cfg *RuntimeConfig) setupCerts(env *plugin.AppEnvironment) {
 			slog.Error("Unable to save the server key", "err", err)
 		}
 	}
-	// create a new server cert
+	// load or create a new server cert
 	serverCertPath := cfg.ServerCertFile
 	if !path.IsAbs(serverCertPath) {
 		serverCertPath = path.Join(certsDir, serverCertPath)
 	}
 	hostName, _ := os.Hostname()
+	if cfg.ServerCert == nil || !newServerKey {
+		cfg.ServerCert, err = certs.LoadTLSCertFromPEM(serverCertPath, serverKeyPath)
+		if err == nil {
+			slog.Info("loaded Server certificate and key")
+		}
+	}
 
-	// digital twin runtime
 	if cfg.ServerCert == nil {
 		serverID := "dtr-" + hostName
 		ou := "hiveot"
@@ -153,7 +163,6 @@ func (cfg *RuntimeConfig) setupCerts(env *plugin.AppEnvironment) {
 			slog.Error("writing server cert failed: ", "err", err)
 		}
 	}
-	//err = certs.SaveTLSCertToPEM(cfg.ServerCert, serverCertPath, serverKeyPath)
 }
 
 // setupDirectories creates missing directories
