@@ -1,4 +1,4 @@
-package sessions
+package connections
 
 import (
 	"github.com/hiveot/hub/lib/utils"

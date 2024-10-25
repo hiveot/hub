@@ -28,13 +28,16 @@ func (svc *AuthnUserService) GetProfile(
 }
 
 // Login with password and return a new session token
-func (svc *AuthnUserService) Login(_ string,
-	args authn.UserLoginArgs) (resp authn.UserLoginResp, err error) {
+func (svc *AuthnUserService) Login(_ string, args authn.UserLoginArgs) (token string, err error) {
 
-	token, sid, err := svc.sessionAuth.Login(args.ClientID, args.Password)
-	resp.Token = token
-	resp.SessionID = sid
-	return resp, err
+	token, err = svc.sessionAuth.Login(args.ClientID, args.Password)
+	return token, err
+}
+
+// Logout and remove the client session
+func (svc *AuthnUserService) Logout(senderID string) error {
+	svc.sessionAuth.Logout(senderID)
+	return nil
 }
 
 // RefreshToken requests a new token based on the old token
@@ -44,7 +47,7 @@ func (svc *AuthnUserService) RefreshToken(
 	if args.ClientID != senderID {
 		return "", fmt.Errorf("RefreshToken: Invalid parameters")
 	}
-	newToken, err = svc.sessionAuth.RefreshToken(args.ClientID, args.OldToken)
+	newToken, err = svc.sessionAuth.RefreshToken(senderID, args.ClientID, args.OldToken)
 	return newToken, err
 }
 
@@ -103,6 +106,9 @@ func (svc *AuthnUserService) ValidateToken(senderID string, token string) (
 	resp authn.UserValidateTokenResp, err error) {
 
 	clientID, sid, err := svc.sessionAuth.ValidateToken(token)
+	if err == nil && clientID != senderID {
+		err = fmt.Errorf("ClientID doesn't match senderID")
+	}
 	resp.ClientID = clientID
 	resp.SessionID = sid
 	resp.Error = err.Error()

@@ -3,16 +3,14 @@ package httptransport
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/digitwin/service"
+	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/runtime/hubrouter"
-	"github.com/hiveot/hub/runtime/sessions"
 	"github.com/hiveot/hub/runtime/transports/httptransport/subprotocols"
-	"io"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"net/http"
 )
@@ -24,7 +22,6 @@ type HttpOperation struct {
 	url          string
 	handler      http.HandlerFunc
 	isThingLevel bool
-	sm           *sessions.SessionManager
 }
 
 // HttpBinding is the Hub transport binding for HTTPS
@@ -51,14 +48,8 @@ type HttpBinding struct {
 	// routing of action, event and property requests
 	hubRouter hubrouter.IHubRouter
 
-	// reading of digital twin info
-	dtwService *service.DigitwinService
-
-	// session manager for adding/removing sessions (login,logout)
-	sm *sessions.SessionManager
-
 	// connection manager for adding/removing binding connections
-	cm *sessions.ConnectionManager
+	cm *connections.ConnectionManager
 }
 
 // AddGetOp adds protocol binding operation with a URL and handler
@@ -93,7 +84,7 @@ func (svc *HttpBinding) AddPostOp(r chi.Router,
 }
 
 // GetConnectionByCID returns the client connection for sending messages to a client
-func (svc *HttpBinding) GetConnectionByCID(cid string) sessions.IClientConnection {
+func (svc *HttpBinding) GetConnectionByCID(cid string) connections.IClientConnection {
 	return svc.cm.GetConnectionByCID(cid)
 }
 
@@ -110,37 +101,6 @@ func (svc *HttpBinding) GetProtocolInfo() api.ProtocolInfo {
 		Transport: "https",
 	}
 	return inf
-}
-
-// GetRequestParams reads the client session, URL parameters and body payload from the request.
-//
-// The session context is set by the http middleware. If the session is not available then
-// this returns an error. Note that the session middleware handler will block any request
-// that requires a session.
-//
-// This protocol binding reads two variables, {thingID} and {name} in the path.
-//
-//	{thingID} is the agent or digital twin thing ID
-//	{name} is the property, event or action name. '+' means 'all'
-func (svc *HttpBinding) GetRequestParams(r *http.Request) (clientID string, thingID string, name string, body []byte, err error) {
-
-	// get the required client session of this agent
-	sessID, clientID, err := subprotocols.GetSessionIdFromContext(r)
-	_ = sessID
-	if err != nil {
-		// This is an internal error. The middleware session handler would have blocked
-		// a request that required a session before getting here.
-		slog.Error(err.Error())
-		return "", "", "", nil, err
-	}
-
-	// build a message from the URL and payload
-	// URLParam names are defined by the path variables set in the router.
-	thingID = chi.URLParam(r, "thingID")
-	name = chi.URLParam(r, "name")
-	body, _ = io.ReadAll(r.Body)
-
-	return clientID, thingID, name, body, err
 }
 
 // Stop the https server
@@ -168,11 +128,15 @@ func (svc *HttpBinding) writeError(w http.ResponseWriter, err error, code int) {
 	}
 }
 
-// writeReply is a convenience function that serializes the data and writes it as a response.
-func (svc *HttpBinding) writeReply(w http.ResponseWriter, data any) {
-	if data != nil {
+// writeReply is a convenience function that serializes the data and writes it as a response,
+// optionally reporting an error with code BadRequest.
+func (svc *HttpBinding) writeReply(w http.ResponseWriter, data any, err error) {
+	if err != nil {
+		slog.Warn("Request error: ", "err", err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	} else if data != nil {
 		// If no header is written then w.Write writes a StatusOK
-		payload, _ := json.Marshal(data)
+		payload, _ := jsoniter.Marshal(data)
 		_, _ = w.Write(payload)
 	} else {
 		// Only write header if no data is written
@@ -195,9 +159,7 @@ func StartHttpTransport(config *HttpTransportConfig,
 	caCert *x509.Certificate,
 	authenticator api.IAuthenticator,
 	hubRouter hubrouter.IHubRouter,
-	dtwService *service.DigitwinService,
-	cm *sessions.ConnectionManager,
-	sm *sessions.SessionManager,
+	cm *connections.ConnectionManager,
 ) (*HttpBinding, error) {
 
 	httpServer, router := tlsserver.NewTLSServer(
@@ -207,15 +169,13 @@ func StartHttpTransport(config *HttpTransportConfig,
 		authenticator: authenticator,
 		config:        config,
 		// subprotocol bindings need session info
-		ws:         subprotocols.NewWsBinding(cm, sm),
-		sse:        subprotocols.NewSseBinding(cm, sm),
-		ssesc:      subprotocols.NewSseScBinding(cm, sm),
+		ws:         subprotocols.NewWsBinding(cm),
+		sse:        subprotocols.NewSseBinding(cm),
+		ssesc:      subprotocols.NewSseScBinding(cm),
 		httpServer: httpServer,
 		router:     router,
 		hubRouter:  hubRouter,
-		dtwService: dtwService,
 		cm:         cm,
-		sm:         sm,
 	}
 
 	svc.createRoutes(svc.router)

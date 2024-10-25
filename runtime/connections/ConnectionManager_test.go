@@ -1,7 +1,7 @@
-package sessions_test
+package connections_test
 
 import (
-	sessions2 "github.com/hiveot/hub/runtime/sessions"
+	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,11 +15,12 @@ func TestAddRemoveConnection(t *testing.T) {
 	const session1ID = "sess1"
 	const session2ID = "sess2"
 
-	cm := sessions2.NewConnectionManager()
+	cm := connections.NewConnectionManager()
 	c1 := NewDummyConnection(clientID, remoteAddr, session1ID)
 	err := cm.AddConnection(c1)
 	require.NoError(t, err)
 
+	//
 	c2 := NewDummyConnection(clientID, remoteAddr, session2ID)
 	err = cm.AddConnection(c2)
 	require.NoError(t, err)
@@ -37,15 +38,17 @@ func TestAddRemoveConnection(t *testing.T) {
 	c1c := cm.GetConnectionByCID(cid1)
 	require.Empty(t, c1c)
 
-	// close connections from session 1 should retain c2
+	// c2 should remain
 	cid2 := c2.GetConnectionID()
-	cm.CloseSessionConnections(clientID, session1ID)
 	c2a := cm.GetConnectionByCID(cid2)
 	require.NotEmpty(t, c2a)
 
-	// again but this time closing session 2
-	cm.CloseSessionConnections(clientID, session2ID)
-	c2b := cm.GetConnectionByCID(cid2)
+	// again but this time closing connection 2
+	c2b := cm.GetConnectionByClientID(clientID)
+	cm.RemoveConnection(cid2)
+	//isClosed := c2b.IsClosed()
+	//assert.True(t,isClosed)
+	c2b = cm.GetConnectionByCID(cid2)
 	require.Empty(t, c2b)
 
 	// close all
@@ -59,7 +62,7 @@ func TestCloseClientConnection(t *testing.T) {
 	const session1ID = "sess1"
 	const session2ID = "sess2"
 
-	cm := sessions2.NewConnectionManager()
+	cm := connections.NewConnectionManager()
 	c1 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	err := cm.AddConnection(c1)
 	require.NoError(t, err)
@@ -73,8 +76,7 @@ func TestCloseClientConnection(t *testing.T) {
 	require.NotNil(t, c1a)
 
 	// close the connection of user1
-	err = cm.CloseClientConnections(client1ID)
-	require.NoError(t, err)
+	cm.CloseAllClientConnections(client1ID)
 
 	// connection no longer exists
 	c1b := cm.GetConnectionByCID(c1.GetConnectionID())
@@ -98,7 +100,7 @@ func TestForEachConnection(t *testing.T) {
 	const session1ID = "sess1"
 	const session2ID = "sess2"
 
-	cm := sessions2.NewConnectionManager()
+	cm := connections.NewConnectionManager()
 	c1 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	err := cm.AddConnection(c1)
 	require.NoError(t, err)
@@ -108,7 +110,7 @@ func TestForEachConnection(t *testing.T) {
 	require.NoError(t, err)
 
 	count := 0
-	cm.ForEachConnection(func(c sessions2.IClientConnection) {
+	cm.ForEachConnection(func(c connections.IClientConnection) {
 		count++
 	})
 	assert.Equal(t, 2, count)
@@ -121,7 +123,7 @@ func TestConnectionTwice(t *testing.T) {
 	const session1ID = "sess1"
 	const session2ID = "sess2"
 
-	cm := sessions2.NewConnectionManager()
+	cm := connections.NewConnectionManager()
 	c1 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	err := cm.AddConnection(c1)
 	require.NoError(t, err)
@@ -147,7 +149,7 @@ func TestPublishEventProp(t *testing.T) {
 	var evCount = 0
 	var propCount = 0
 
-	cm := sessions2.NewConnectionManager()
+	cm := connections.NewConnectionManager()
 	c1 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	c1.SubscribeEvent(dThingID, "")
 	c1.ObserveProperty(dThingID, "")
@@ -160,17 +162,6 @@ func TestPublishEventProp(t *testing.T) {
 
 	err := cm.AddConnection(c1)
 	require.NoError(t, err)
-	// these two connections have the same connection ID
-	c2 := NewDummyConnection(client1ID, remoteAddr, session1ID)
-	c2.PublishEventHandler = func(dThingID, name string, data any, messageID string, agentID string) {
-		assert.Fail(t, "Didn't expect event without subscription")
-	}
-	c2.PublishPropHandler = func(dThingID, name string, data any, messageID string, agentID string) {
-		assert.Fail(t, "Didn't expect property update without subscription")
-	}
-	// this fails as c2 has the same ID. events on c1 should fail
-	err = cm.AddConnection(c2)
-	require.Error(t, err)
 
 	// publish
 	cm.PublishEvent(dThingID, evName, nil, "", agent1ID)

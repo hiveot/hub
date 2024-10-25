@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/config"
+	"github.com/hiveot/hub/runtime/authn/sessions"
 	"github.com/teris-io/shortid"
 	"log/slog"
 	"time"
@@ -25,12 +26,15 @@ type JWTAuthenticator struct {
 	AgentTokenValiditySec    int
 	ConsumerTokenValiditySec int
 	ServiceTokenValiditySec  int
+
+	// sessionmanager tracks session IDs
+	sm *sessions.SessionManager
 }
 
 // CreateSessionToken creates a new session token for the client
 //
 //	clientID is the account ID of a known client
-//	sessionID for which this token is valid. "" to not apply a sessionID.
+//	sessionID for which this token is valid. Use clientID to allow no session (agents)
 //	validitySec is the token validity period or 0 for default based on client type
 //
 // This returns the token
@@ -53,7 +57,7 @@ func (svc *JWTAuthenticator) CreateSessionToken(
 	claims := jwt.MapClaims{
 		//"alg": "ES256", // jwt.SigningMethodES256,
 		"typ": "JWT",
-		//"aud": authInfo.ClientID, // recipient of the jwt
+		//"aud": authInfo.SenderID, // recipient of the jwt
 		"sub": clientID,          // subject of the jwt, eg the client
 		"iss": signingKeyPubStr,  // issuer of the jwt (public key)
 		"exp": expiryTime.Unix(), // expiry time. Seconds since epoch
@@ -121,28 +125,48 @@ func (svc *JWTAuthenticator) DecodeSessionToken(token string, signedNonce string
 //	sessionID of the new session or "" to generate a new session ID
 //
 // This returns a session token, its session ID, or an error if failed
-func (svc *JWTAuthenticator) Login(clientID string, password string) (token string, sid string, err error) {
-
+func (svc *JWTAuthenticator) Login(clientID string, password string) (token string, err error) {
+	var sessionID string
 	// a user login always creates a session token
 	err = svc.ValidatePassword(clientID, password)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
-	// password login always uses the consumer token validity
-	sessionID := shortid.MustGenerate()
+	// check if this user has an existing session. Generate the token using its
+	// existing sessionID.
+	cs, found := svc.sm.GetSessionByClientID(clientID)
+	if found {
+		// use the existing session id and renew the session expiry
+		sessionID = cs.SessionID
+	} else {
+		// password login always uses the consumer token validity
+		sessionID = shortid.MustGenerate()
+	}
+	// create the session to allow token refresh
+	svc.sm.NewSession(clientID, sessionID)
 	token = svc.CreateSessionToken(clientID, sessionID, svc.ConsumerTokenValiditySec)
 
-	return token, sessionID, err
+	return token, err
+}
+
+// Logout removes the client session
+func (svc *JWTAuthenticator) Logout(clientID string) {
+	cs, found := svc.sm.GetSessionByClientID(clientID)
+	if found {
+		svc.sm.Remove(cs.SessionID)
+	}
 }
 
 // RefreshToken requests a new token based on the old token
+// This requires that the existing session is still valid
 func (svc *JWTAuthenticator) RefreshToken(
-	senderID string, oldToken string) (newToken string, err error) {
+	senderID string, clientID string, oldToken string) (newToken string, err error) {
 
-	clientID, sessionID, err := svc.ValidateToken(oldToken)
-	if err != nil || clientID != senderID {
-		return newToken, fmt.Errorf("ClientID mismatch")
+	// validation only succeeds if there is an active session
+	tokenClientID, sessionID, err := svc.ValidateToken(oldToken)
+	if err != nil || clientID != senderID || clientID != tokenClientID {
+		return newToken, fmt.Errorf("SenderID mismatch")
 	}
 	// must still be a valid client
 	prof, err := svc.authnStore.GetProfile(senderID)
@@ -167,11 +191,30 @@ func (svc *JWTAuthenticator) ValidatePassword(clientID, password string) (err er
 }
 
 // ValidateToken the session token
+// For agents, the sessionID equals the clientID and no session check will take place. (sessions are for consumers only)
 func (svc *JWTAuthenticator) ValidateToken(token string) (clientID string, sessionID string, err error) {
 	clientID, sid, err := svc.DecodeSessionToken(token, "", "")
-	slog.Debug("ValidateToken", slog.String("clientID", clientID))
-
-	return clientID, sid, err
+	if err != nil {
+		return clientID, sid, err
+	}
+	// agents don't require a session
+	// TBD: if agents do need sessions then the sessions need to be persisted and restored.
+	// This is a bit of a pain to manage so a future consideration.
+	if clientID == sid {
+		return clientID, sid, nil
+	}
+	cs, found := svc.sm.GetSessionBySessionID(sid)
+	if !found {
+		slog.Warn("ValidateToken. No session found for client", "clientID", clientID)
+		return clientID, sid, fmt.Errorf("Session is no longer valid")
+	}
+	// if the session has expired, remove it
+	if cs.Expiry.Before(time.Now()) {
+		svc.sm.Remove(sid)
+		slog.Warn("ValidateToken. Session has expired", "clientID", clientID)
+		return clientID, sid, fmt.Errorf("Session has expired")
+	}
+	return clientID, sid, nil
 }
 
 // NewJWTAuthenticator returns a new instance of a JWT token authenticator
@@ -183,6 +226,7 @@ func NewJWTAuthenticator(authnStore api.IAuthnStore, signingKey keys.IHiveKey) *
 		AgentTokenValiditySec:    config.DefaultAgentTokenValiditySec,
 		ConsumerTokenValiditySec: config.DefaultConsumerTokenValiditySec,
 		ServiceTokenValiditySec:  config.DefaultServiceTokenValiditySec,
+		sm:                       sessions.NewSessionmanager(),
 	}
 	return &svc
 }

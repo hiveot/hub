@@ -19,6 +19,7 @@ const bindingTDIntervalID = "tdPollInterval"
 const bindingValuePublishIntervalID = "valueRepublishInterval"
 const bindingOWServerAddressID = "owServerAddress"
 const bindingMake = "make"
+const deviceNameProp = "name"
 
 // OWServerBinding is the hub protocol binding plugin for capturing 1-wire OWServer V2 Data
 type OWServerBinding struct {

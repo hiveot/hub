@@ -3,7 +3,7 @@ package service
 import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
-	"github.com/hiveot/hub/runtime/sessions"
+	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"os"
@@ -65,7 +65,7 @@ func (svc *DigitwinService) Stop() {
 //
 // storesDir is the directory where to create the digitwin storage
 // cm is the connection manager used to send messages to clients
-func StartDigitwinService(storesDir string, cm *sessions.ConnectionManager) (
+func StartDigitwinService(storesDir string, cm *connections.ConnectionManager) (
 	svc *DigitwinService, store *DigitwinStore, err error) {
 
 	sPath := path.Join(storesDir, "digitwin")

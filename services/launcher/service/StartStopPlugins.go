@@ -100,14 +100,14 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 			svcCmd.Stdout = os.Stdout
 		}
 	}
-	// step 4: add the serviceID as a client and generate its credentials
+	// step 4: add the service account and generate its credentials
 	if pluginName != svc.cfg.RuntimeBin {
 		tokenPath := path.Join(svc.env.CertsDir, pluginName+".token")
 
 		slog.Info("Adding plugin service client with key and token",
 			"pluginName", pluginName, "certsDir", svc.env.CertsDir, "tokenPath", tokenPath)
 
-		// add a service account and generate a new token file in the keys directory
+		// add a service account. Authn admin generates a new token file in the keys directory
 		// the service must have read access to this directory, or the keys must be
 		// copied elsewhere by the administrator.
 		_, err = authn.AdminAddService(svc.hc, pluginName, pluginName, "")
@@ -116,7 +116,7 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 		}
 	}
 
-	// step 5: start the command and setup pluginInfo
+	// step 5: start the plugin
 	err = svcCmd.Start()
 	if err != nil {
 		pluginInfo.Status = fmt.Sprintf("failed starting '%s': %s", pluginName, err.Error())

@@ -4,11 +4,9 @@ import (
 	"context"
 	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/runtime/api"
-	sessions2 "github.com/hiveot/hub/runtime/sessions"
 	"github.com/hiveot/hub/runtime/transports/httptransport/subprotocols"
 	"log/slog"
 	"net/http"
-	"time"
 )
 
 // AddSessionFromToken middleware decodes the bearer session token in the authorization header
@@ -32,10 +30,10 @@ import (
 // If no valid session is found this will reply with an unauthorized status code.
 //
 // pubKey is the public key from the keypair used in creating the session token.
-func (b *HttpBinding) AddSessionFromToken(userAuthn api.IAuthenticator) func(next http.Handler) http.Handler {
+func (svc *HttpBinding) AddSessionFromToken(userAuthn api.IAuthenticator) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var cs *sessions2.ClientSession
+			//var cs *sessions2.ClientSession
 			bearerToken, err := tlsserver.GetBearerToken(r)
 			if err != nil {
 				errMsg := "AddSessionFromToken: " + err.Error()
@@ -54,18 +52,19 @@ func (b *HttpBinding) AddSessionFromToken(userAuthn api.IAuthenticator) func(nex
 				return
 			}
 
-			if sid == "" {
-				// service/devices don't have a session-id in their token. These tokens
-				// remain valid until they expire. Use the client-id as the session ID
-				// as only a single instance is allowed.
-				cs, err = b.sm.GetSession(clientID)
-				if cs == nil {
-					cs, err = b.sm.AddSession(clientID, r.RemoteAddr, clientID)
-				}
-			} else {
-				// A token with session-id must have a known session created on login
-				cs, err = b.sm.GetSession(sid)
-			}
+			//if sid == "" {
+			//	// service/devices don't have a session-id in their token. These tokens
+			//	// remain valid until they expire. Use the client-id as the session ID
+			//	// as only a single instance is allowed.
+			//	cs, err = b.sm.GetSession(clientID)
+			//	if cs == nil {
+			//		cs, err = b.sm.AddSession(clientID, r.RemoteAddr, clientID)
+			//	}
+			//} else {
+			//{
+			// A token with session-id must have a known session created on login
+			//cs, err = b.sm.GetSession(sid)
+			//}
 			if err != nil {
 				// If no session is found then the session token is invalid. This can
 				// happen after the user logs out.
@@ -73,17 +72,19 @@ func (b *HttpBinding) AddSessionFromToken(userAuthn api.IAuthenticator) func(nex
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			// the session must belong to the client
-			if cs.GetClientID() != clientID {
-				slog.Error("AddSessionToContext: ClientID in session does not match jwt clientID",
-					"jwt clientID", clientID,
-					"session clientID", cs.GetClientID())
-				w.WriteHeader(http.StatusUnauthorized)
-				time.Sleep(time.Second)
-				return
-			}
+			//// the session must belong to the client
+			//if cs.GetClientID() != clientID {
+			//	slog.Error("AddSessionToContext: SenderID in session does not match jwt clientID",
+			//		"jwt clientID", clientID,
+			//		"session clientID", cs.GetClientID())
+			//	w.WriteHeader(http.StatusUnauthorized)
+			//	time.Sleep(time.Second)
+			//	return
+			//}
 			// make session available in context
-			ctx := context.WithValue(r.Context(), subprotocols.SessionContextID, cs)
+			//ctx := context.WithValue(r.Context(), subprotocols.SessionContextID, cs)
+			ctx := context.WithValue(r.Context(), subprotocols.SessionContextID, sid)
+			ctx = context.WithValue(ctx, subprotocols.ContextClientID, clientID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

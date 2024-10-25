@@ -28,11 +28,19 @@ func TestCreateSessionToken(t *testing.T) {
 	require.Equal(t, clientID, clientID2)
 	require.Equal(t, sessionID, sid2)
 
-	// validate the new token
+	// validate the new token. Without a session this fails
 	clientID3, sid3, err := svc.ValidateToken(token1)
-	require.NoError(t, err)
+	require.Error(t, err)
 	require.Equal(t, clientID, clientID3)
 	require.Equal(t, sessionID, sid3)
+
+	// create a persistent session token (use clientID as sessionID)
+	token2 := svc.CreateSessionToken(clientID, clientID, 100)
+	clientID4, sid4, err := svc.ValidateToken(token2)
+	require.NoError(t, err)
+	require.Equal(t, clientID, clientID4)
+	require.Equal(t, clientID, sid4)
+
 }
 
 func TestBadTokens(t *testing.T) {

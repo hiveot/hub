@@ -76,7 +76,7 @@ func (svc *HttpBinding) createRoutes(router chi.Router) http.Handler {
 		svc.AddGetOp(r, vocab.WotOpQueryAction, true,
 			"/digitwin/actions/{thingID}/{name}", svc.HandleQueryAction)
 		svc.AddPostOp(r, vocab.WotOpInvokeAction, true,
-			"/digitwin/actions/{thingID}/{name}", svc.HandleActionRequest)
+			"/digitwin/actions/{thingID}/{name}", svc.HandleInvokeAction)
 
 		// sse-sc subprotocol routes
 		svc.AddGetOp(r, "connect", true,
@@ -110,33 +110,33 @@ func (svc *HttpBinding) createRoutes(router chi.Router) http.Handler {
 		//svc.AddPostOp(r, vocab.WotOpObserveAllProperties, true,
 		//	"/sse/digitwin/observe/{thingID}", svc.sse.HandleObserveAllProperties)
 
-		// digitwin directory actions. Are these operations or actions?
+		// digitwin directory actions. These are just for convenience as actions are normally used
 		svc.AddGetOp(r, vocab.HTOpReadThing, false,
-			"/digitwin/directory/{thingID}", svc.HandleReadThing)
+			"/digitwin/directory/{thingID}", svc.HandleReadTD)
 		svc.AddGetOp(r, vocab.HTOpReadAllThings, false,
-			"/digitwin/directory", svc.HandleReadAllThings) // query params: offset,limit
+			"/digitwin/directory", svc.HandleReadAllTDs) // query params: offset,limit
 
 		// handlers for other services. Operations to invoke actions.
 		// TODO: these probably belong with the digitwin service TD
 
 		// authn/authz service actions
 		svc.AddPostOp(r, vocab.HTOpRefresh, false,
-			"/authn/refresh", svc.HandleRefresh)
+			"/authn/refresh", svc.HandleLoginRefresh)
 		svc.AddPostOp(r, vocab.HTOpLogout, false,
 			"/authn/logout", svc.HandleLogout)
 
 		// handlers for requests by agents
 		// TODO: These should be included in the digitwin TD forms
 		svc.AddPostOp(r, vocab.HTOpUpdateThing, false,
-			"/agent/tdd/{thingID}", svc.HandleUpdateThing)
+			"/agent/tdd/{thingID}", svc.HandlePublishTD)
 		svc.AddPostOp(r, vocab.HTOpPublishEvent, false,
 			"/agent/event/{thingID}/{name}", svc.HandlePublishEvent)
 		svc.AddPostOp(r, vocab.HTOpUpdateProperty, false,
-			"/agent/property/{thingID}/{name}", svc.HandleUpdateProperty)
+			"/agent/property/{thingID}/{name}", svc.HandlePublishProperty)
 		svc.AddPostOp(r, "updateMultipleProperties", false,
-			"/agent/properties/{thingID}", svc.HandleUpdateProperty)
+			"/agent/properties/{thingID}", svc.HandlePublishProperty)
 		svc.AddPostOp(r, vocab.HTOpDelivery, false,
-			"/agent/progress", svc.HandleActionProgress)
+			"/agent/progress", svc.HandleInvokeActionProgress)
 
 	})
 

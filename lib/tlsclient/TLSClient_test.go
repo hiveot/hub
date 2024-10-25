@@ -221,15 +221,17 @@ func TestAuthJWT(t *testing.T) {
 	// Handle a jwt login
 	mux.HandleFunc(pathLogin1, func(resp http.ResponseWriter, req *http.Request) {
 		authMsg := authn.UserLoginArgs{}
-		loginResp := authn.UserLoginResp{}
 		slog.Info("TestAuthJWT: login")
 		body, err := io.ReadAll(req.Body)
 		assert.NoError(t, err)
 		err = json.Unmarshal(body, &authMsg)
+
+		// expect a messageID
 		msgID := req.Header.Get(tlsclient.HTTPMessageIDHeader)
 		assert.NoError(t, err)
 		assert.Equal(t, user1, authMsg.ClientID)
 		assert.Equal(t, password1, authMsg.Password)
+
 		if authMsg.ClientID == user1 {
 			claims := jwt.RegisteredClaims{
 				ID:      user1,
@@ -243,8 +245,7 @@ func TestAuthJWT(t *testing.T) {
 			newToken, err := token.SignedString(secret)
 			assert.NoError(t, err)
 			resp.Header().Set(tlsclient.HTTPMessageIDHeader, msgID)
-			loginResp = authn.UserLoginResp{Token: newToken}
-			data, _ := json.Marshal(loginResp)
+			data, _ := json.Marshal(newToken)
 			_, _ = resp.Write(data)
 		} else {
 			// write nothing
@@ -273,11 +274,11 @@ func TestAuthJWT(t *testing.T) {
 	resp, msgID2, _, _, err := cl.Invoke("POST", loginURL, jsonArgs, msgID1, nil)
 	require.NoError(t, err)
 	assert.Equal(t, msgID1, msgID2)
-	reply := authn.UserLoginResp{}
+	reply := ""
 	err = json.Unmarshal(resp, &reply)
 
 	// reconnect using the given token
-	cl.SetAuthToken(reply.Token)
+	cl.SetAuthToken(reply)
 	_, _, err = cl.Get(path3)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, path3Hit)

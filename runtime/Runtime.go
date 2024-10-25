@@ -6,10 +6,11 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime/authn/service"
+	"github.com/hiveot/hub/runtime/authn/sessions"
 	service2 "github.com/hiveot/hub/runtime/authz/service"
+	"github.com/hiveot/hub/runtime/connections"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/hubrouter"
-	sessions2 "github.com/hiveot/hub/runtime/sessions"
 	"github.com/hiveot/hub/runtime/transports"
 	"log/slog"
 )
@@ -22,15 +23,15 @@ type Runtime struct {
 	cfg *RuntimeConfig
 
 	//AuthnStore api.IAuthnStore
-	AuthnSvc      *service.AuthnService
-	AuthzSvc      *service2.AuthzService
-	AuthnAgent    *service.AuthnAgent
-	AuthzAgent    *service2.AuthzAgent
-	dtwStore      *service4.DigitwinStore
+	AuthnSvc   *service.AuthnService
+	AuthzSvc   *service2.AuthzService
+	AuthnAgent *service.AuthnAgent
+	AuthzAgent *service2.AuthzAgent
+	//dtwStore      *service4.DigitwinStore
 	DigitwinSvc   *service4.DigitwinService
 	HubRouter     *hubrouter.HubRouter
-	cm            *sessions2.ConnectionManager
-	sm            *sessions2.SessionManager
+	cm            *connections.ConnectionManager
+	sm            *sessions.SessionManager
 	TransportsMgr *transports.ProtocolManager
 }
 
@@ -71,7 +72,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	// The digitwin service directs the message flow between agents and consumers
 	// It receives messages from the middleware and uses the protocol manager
 	// to send messages to clients.
-	r.DigitwinSvc, r.dtwStore, err = service4.StartDigitwinService(env.StoresDir, r.cm)
+	r.DigitwinSvc, _, err = service4.StartDigitwinService(env.StoresDir, r.cm)
 	dtwAgent := service4.NewDigitwinAgent(r.DigitwinSvc)
 
 	// The transport passes incoming messages on to the hub-router, which in
@@ -140,8 +141,8 @@ func (r *Runtime) Stop() {
 func NewRuntime(cfg *RuntimeConfig) *Runtime {
 	r := &Runtime{
 		cfg: cfg,
-		sm:  sessions2.NewSessionmanager(),
-		cm:  sessions2.NewConnectionManager(),
+		sm:  sessions.NewSessionmanager(),
+		cm:  connections.NewConnectionManager(),
 	}
 	return r
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/runtime/sessions"
+	"github.com/hiveot/hub/runtime/connections"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -28,9 +28,9 @@ type SSEConnection struct {
 	connectionID string
 
 	// connection belongs to this session
-	sessionID string
+	//sessionID string
 
-	// ClientID is the account ID of the agent or consumer
+	// SenderID is the account ID of the agent or consumer
 	clientID string
 
 	// RemoteAddr of the user
@@ -44,7 +44,7 @@ type SSEConnection struct {
 	sseChan  chan SSEEvent
 	isClosed atomic.Bool
 
-	subscriptions sessions.Subscriptions
+	subscriptions connections.Subscriptions
 }
 
 // _send sends the action or write request for the thing to the agent
@@ -100,9 +100,9 @@ func (c *SSEConnection) GetConnectionID() string {
 }
 
 // GetSessionID returns the client's authentication session ID
-func (c *SSEConnection) GetSessionID() string {
-	return c.sessionID
-}
+//func (c *SSEConnection) GetSessionID() string {
+//	return c.sessionID
+//}
 
 // InvokeAction sends the action request for the thing to the agent
 func (c *SSEConnection) InvokeAction(
@@ -191,7 +191,7 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 		slog.String("RemoteAddr", r.RemoteAddr),
 		slog.String("clientID", c.clientID),
 		slog.String("protocol", r.Proto),
-		slog.String("sessionID", c.sessionID),
+		//slog.String("sessionID", c.sessionID),
 		slog.String("cid", c.connectionID),
 	)
 	//var sseMsg SSEEvent
@@ -224,7 +224,7 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			slog.Debug("SseConnection: sending sse event to client",
-				slog.String("sessionID", c.sessionID),
+				//slog.String("sessionID", c.sessionID),
 				slog.String("clientID", c.clientID),
 				slog.String("sse eventType", sseMsg.EventType),
 			)
@@ -247,12 +247,12 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 				slog.Error("Error writing SSE event",
 					slog.String("Event", sseMsg.EventType),
 					slog.String("SSE ID", sseMsg.ID),
-					slog.String("ClientID", c.clientID),
+					slog.String("SenderID", c.clientID),
 					slog.Int("size", len(sseMsg.Payload)),
 				)
 			} else {
 				slog.Info("SSE write to client",
-					slog.String("ClientID", c.clientID),
+					slog.String("SenderID", c.clientID),
 					slog.String("Event", sseMsg.EventType),
 					slog.Int("N bytes", n))
 			}
@@ -292,14 +292,13 @@ func (c *SSEConnection) WriteProperty(
 	return status, err
 }
 
-func NewSSEConnection(connectionID, sessionID, clientID string) *SSEConnection {
+func NewSSEConnection(connectionID, clientID string) *SSEConnection {
 	c := &SSEConnection{
 		connectionID:  connectionID,
-		sessionID:     sessionID,
 		clientID:      clientID,
 		lastActivity:  time.Time{},
 		mux:           sync.RWMutex{},
-		subscriptions: sessions.Subscriptions{},
+		subscriptions: connections.Subscriptions{},
 	}
 	return c
 }

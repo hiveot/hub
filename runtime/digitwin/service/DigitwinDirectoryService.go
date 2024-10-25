@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/runtime/sessions"
+	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/wot/tdd"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -16,7 +16,7 @@ type DigitwinDirectoryService struct {
 	// transport binding for publishing directory events and getting forms
 	// to include in digital twin TDs.
 	//tb api.ITransportBinding
-	cm              *sessions.ConnectionManager
+	cm              *connections.ConnectionManager
 	addFormsHandler func(*tdd.TD) error
 }
 
@@ -136,7 +136,7 @@ func (svc *DigitwinDirectoryService) UpdateTD(agentID string, tdJson string) err
 //
 // The transport binding can be supplied directly or set later by the parent service
 func NewDigitwinDirectoryService(
-	dtwStore *DigitwinStore, cm *sessions.ConnectionManager) *DigitwinDirectoryService {
+	dtwStore *DigitwinStore, cm *connections.ConnectionManager) *DigitwinDirectoryService {
 
 	dirSvc := &DigitwinDirectoryService{
 		dtwStore: dtwStore,

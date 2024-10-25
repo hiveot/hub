@@ -143,15 +143,15 @@ func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 		err = fmt.Errorf("%d: Login failed: %s", statusCode, err2)
 		return "", err
 	}
-	reply := authn.UserLoginResp{}
-	err = cl.Unmarshal(resp, &reply)
+	token := ""
+	err = cl.Unmarshal(resp, &token)
 	if err != nil {
 		err = fmt.Errorf("ConnectWithPassword: Login to %s has unexpected response message: %s", loginURL, err)
 		cl.SetConnectionStatus(hubclient.ConnectFailed, err)
 		return "", err
 	}
 	// store the bearer token further requests
-	cl.tlsClient.SetAuthToken(reply.Token)
+	cl.tlsClient.SetAuthToken(token)
 
 	// create a second client to establish the sse connection if a path is set
 	if cl.ssePath != "" {
@@ -160,11 +160,11 @@ func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 		//sseClient := cl.tlsClient.GetHttpClient()
 		sseClient := tlsclient.NewHttp2TLSClient(cl.caCert, nil, 0)
 		// If the server is reachable. Open the return channel using SSE
-		err = cl.ConnectSSE(sseURL, reply.Token, sseClient, cl.handleSSEDisconnect)
+		err = cl.ConnectSSE(sseURL, token, sseClient, cl.handleSSEDisconnect)
 	}
 	cl.SetConnectionStatus(hubclient.Connected, err)
 
-	return reply.Token, err
+	return token, err
 }
 
 // ConnectWithToken connects to the Hub server using a user JWT credentials secret

@@ -109,7 +109,7 @@ func (ct *ConsumedThing) InvokeAction(name string, params InteractionInput) *Int
 	//actionForm := ct.td.GetForm(vocab.WotOpInvokeAction, name, ct.hc.GetProtocolType())
 
 	//tm := hubclient.NewThingMessage(
-	//	vocab.MessageTypeAction, ct.td.ID, name, params, ct.hc.ClientID())
+	//	vocab.MessageTypeAction, ct.td.ID, name, params, ct.hc.SenderID())
 	//
 	////stat := ct.hc.HandleActionFlow(ct.td.ID, name, params)
 	//urlParams := map[string]string{

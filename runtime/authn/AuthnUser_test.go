@@ -54,19 +54,19 @@ func TestLoginRefresh(t *testing.T) {
 	err = svc.UserSvc.UpdatePassword(user1ID, tu1Pass)
 	require.NoError(t, err)
 
-	resp, err := svc.UserSvc.Login(user1ID, authn.UserLoginArgs{user1ID, tu1Pass})
+	token1, err := svc.UserSvc.Login(user1ID, authn.UserLoginArgs{user1ID, tu1Pass})
 	require.NoError(t, err)
 
-	cid2, sid2, err := svc.SessionAuth.ValidateToken(resp.Token)
+	cid2, sid2, err := svc.SessionAuth.ValidateToken(token1)
 	assert.Equal(t, user1ID, cid2)
 	assert.NotEmpty(t, sid2)
 	require.NoError(t, err)
 
 	// RefreshToken the token
 	token2, err := svc.UserSvc.RefreshToken(
-		user1ID, authn.UserRefreshTokenArgs{user1ID, resp.Token})
+		user1ID, authn.UserRefreshTokenArgs{user1ID, token1})
 	require.NoError(t, err)
-	require.NotEmpty(t, resp.Token)
+	require.NotEmpty(t, token2)
 
 	// ValidateToken the new token
 	cid3, sid3, err := svc.SessionAuth.ValidateToken(token2)

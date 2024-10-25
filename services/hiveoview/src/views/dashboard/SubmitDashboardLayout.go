@@ -55,7 +55,7 @@ func SubmitDashboardLayout(w http.ResponseWriter, r *http.Request) {
 			"dashboardID", cdc.dashboard.ID, "err", err.Error())
 		sess.WriteError(w, err, http.StatusBadRequest)
 	}
-	slog.Info("SubmitDashboardLayout", "ClientID", cdc.clientID,
+	slog.Info("SubmitDashboardLayout", "SenderID", cdc.clientID,
 		"dashboardID", cdc.dashboardID)
 
 	// save the updated dashboard

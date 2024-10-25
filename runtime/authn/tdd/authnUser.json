@@ -110,18 +110,17 @@
         }
       },
       "output": {
-        "type": "object",
-        "properties": {
-          "token": {
-            "title": "Token",
-            "type": "string"
-          },
-          "sessionID": {
-            "title": "SessionID",
-            "type": "string"
-          }
-        }
+        "title": "Token",
+        "type": "string"
       }
+    },
+
+    "logout": {
+      "@type": "ht:function",
+      "title": "Logout",
+      "description": "Logout from all devices",
+      "idempotent": true,
+      "safe": false
     },
 
     "refreshToken": {

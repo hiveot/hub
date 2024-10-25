@@ -1,4 +1,4 @@
-package sessions
+package connections
 
 import "github.com/hiveot/hub/lib/hubclient"
 
@@ -22,7 +22,7 @@ type IClientConnection interface {
 	GetClientID() string
 
 	// GetSessionID returns the session ID of this connection
-	GetSessionID() string
+	//GetSessionID() string
 
 	// InvokeAction invokes an action on the Thing's agent and return result if available.
 	//

@@ -51,7 +51,7 @@ type WebClientSession struct {
 	// FIXME: if a tdd is not found initially then reload it
 	cts *consumedthing.ConsumedThingsDirectory
 
-	// ClientID is the login ID of the user
+	// SenderID is the login ID of the user
 	//clientID string
 	// RemoteAddr of the user
 	remoteAddr string
@@ -200,7 +200,7 @@ func (wcs *WebClientSession) onConnectChange(stat hubclient.TransportStatus) {
 		lastErrText = stat.LastError.Error()
 	}
 	slog.Info("onConnectChange",
-		//slog.String("clientID", stat.ClientID),
+		//slog.String("clientID", stat.SenderID),
 		slog.String("status", string(stat.ConnectionStatus)),
 		slog.String("lastError", lastErrText))
 
@@ -234,7 +234,7 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		slog.String("type", msg.MessageType),
 		slog.String("thingID", msg.ThingID),
 		slog.String("name", msg.Name),
-		slog.Any("data", msg.Data),
+		//slog.Any("data", msg.Data),
 		slog.String("senderID", msg.SenderID),
 		slog.String("messageID", msg.MessageID))
 	if msg.MessageType == vocab.MessageTypeProperty {

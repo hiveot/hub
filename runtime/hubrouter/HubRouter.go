@@ -3,8 +3,8 @@ package hubrouter
 import (
 	service2 "github.com/hiveot/hub/runtime/authn/service"
 	service3 "github.com/hiveot/hub/runtime/authz/service"
+	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/runtime/digitwin/service"
-	"github.com/hiveot/hub/runtime/sessions"
 	"sync"
 )
 
@@ -27,7 +27,7 @@ type HubRouter struct {
 	// cache map usage mux
 	mux sync.Mutex
 	// connection manager for sending messages to agent or consumer
-	cm *sessions.ConnectionManager
+	cm *connections.ConnectionManager
 }
 
 // NewHubRouter instantiates a new hub messaging router
@@ -41,7 +41,7 @@ func NewHubRouter(
 	dirAgent *service.DigitwinAgent,
 	authnAgent *service2.AuthnAgent,
 	authzAgent *service3.AuthzAgent,
-	cm *sessions.ConnectionManager,
+	cm *connections.ConnectionManager,
 ) *HubRouter {
 	ar := &HubRouter{
 		dtwStore:    dtwService.DtwStore,

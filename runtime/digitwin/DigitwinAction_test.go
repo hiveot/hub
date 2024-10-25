@@ -2,7 +2,7 @@ package digitwin_test
 
 import (
 	"encoding/json"
-	digitwin2 "github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/wot/tdd"
@@ -38,7 +38,7 @@ func TestActionFlow(t *testing.T) {
 	require.NoError(t, err)
 
 	// check progress
-	v, err := svc.ValuesSvc.QueryAction(consumerID, digitwin2.ValuesQueryActionArgs{
+	v, err := svc.ValuesSvc.QueryAction(consumerID, digitwin.ValuesQueryActionArgs{
 		ThingID: dThingID,
 		Name:    actionName})
 	require.NoError(t, err)
@@ -52,7 +52,7 @@ func TestActionFlow(t *testing.T) {
 	require.Equal(t, msgID, av.MessageID)
 
 	// check status
-	v, err = svc.ValuesSvc.QueryAction(consumerID, digitwin2.ValuesQueryActionArgs{
+	v, err = svc.ValuesSvc.QueryAction(consumerID, digitwin.ValuesQueryActionArgs{
 		ThingID: dThingID,
 		Name:    actionName})
 
@@ -80,12 +80,12 @@ func TestActionReadFail(t *testing.T) {
 	err := svc.DirSvc.UpdateTD(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
-	_, err = svc.ValuesSvc.QueryAction("itsme", digitwin2.ValuesQueryActionArgs{
+	_, err = svc.ValuesSvc.QueryAction("itsme", digitwin.ValuesQueryActionArgs{
 		ThingID: "badthingid",
 		Name:    "someevent"})
 	assert.Error(t, err)
 	// query non-existing action is allowed if strict is set to false
-	_, err = svc.ValuesSvc.QueryAction("itsme", digitwin2.ValuesQueryActionArgs{
+	_, err = svc.ValuesSvc.QueryAction("itsme", digitwin.ValuesQueryActionArgs{
 		ThingID: dThingID,
 		Name:    "badeventname"})
 	assert.NoError(t, err)
@@ -162,22 +162,22 @@ func TestDigitwinAgentAction(t *testing.T) {
 	// next, invoke the action to read the thing from the directory.
 	ag := service.NewDigitwinAgent(svc)
 	status, output, err := ag.HandleAction(consumerID,
-		digitwin2.DirectoryDThingID, digitwin2.DirectoryReadDTDMethod, dThingID, msgID)
+		digitwin.DirectoryDThingID, digitwin.DirectoryReadDTDMethod, dThingID, msgID)
 	require.NoError(t, err)
 	require.NotEmpty(t, output)
 	require.Equal(t, vocab.ProgressStatusCompleted, status)
 
 	// last, a non-existing DTD should fail
 	status, output, err = ag.HandleAction(consumerID,
-		digitwin2.DirectoryDThingID, digitwin2.DirectoryReadDTDMethod, "badid", msgID)
+		digitwin.DirectoryDThingID, digitwin.DirectoryReadDTDMethod, "badid", msgID)
 	require.Error(t, err)
 	// a non-existing method name should fail
 	status, output, err = ag.HandleAction(consumerID,
-		digitwin2.DirectoryDThingID, "badmethod", dThingID, msgID)
+		digitwin.DirectoryDThingID, "badmethod", dThingID, msgID)
 	require.Error(t, err)
 	// a non-existing serviceID should fail
 	status, output, err = ag.HandleAction(consumerID,
-		"badservicename", digitwin2.DirectoryReadDTDMethod, dThingID, msgID)
+		"badservicename", digitwin.DirectoryReadDTDMethod, dThingID, msgID)
 	require.Error(t, err)
 
 }

@@ -1,4 +1,4 @@
-package sessions
+package connections
 
 import (
 	"fmt"
@@ -69,8 +69,8 @@ func (cm *ConnectionManager) AddConnection(c IClientConnection) error {
 	return nil
 }
 
-// CloseClientConnections closes all connections from the given client.
-func (cm *ConnectionManager) CloseClientConnections(clientID string) error {
+// CloseAllClientConnections closes all connections of the given client.
+func (cm *ConnectionManager) CloseAllClientConnections(clientID string) {
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
 
@@ -84,31 +84,6 @@ func (cm *ConnectionManager) CloseClientConnections(clientID string) error {
 		}
 	}
 	delete(cm.clientConnections, clientID)
-	return nil
-}
-
-// CloseSessionConnections closes all client connections of the given session
-func (cm *ConnectionManager) CloseSessionConnections(clientID, sessionID string) {
-	cm.mux.Lock()
-	defer cm.mux.Unlock()
-
-	cList := cm.clientConnections[clientID]
-	newCIDList := make([]string, 10)
-	for _, cid := range cList {
-		// force-close the connection
-		c := cm.cidConnections[cid]
-		if c != nil {
-			if c.GetSessionID() == sessionID {
-				delete(cm.cidConnections, cid)
-				c.Close()
-			} else {
-				// keep connection IDs from other sessions
-				newCIDList = append(newCIDList, cid)
-			}
-		}
-	}
-	cm.clientConnections[clientID] = newCIDList
-
 }
 
 // CloseAll force-closes all connections
@@ -151,7 +126,7 @@ func (cm *ConnectionManager) GetConnectionByCID(cid string) (c IClientConnection
 	return c
 }
 
-// GetConnectionByClientID locates the connection of the client using its account ID.
+// GetConnectionByClientID locates the first connection of the client using its account ID.
 // Intended to find agents which only have a single connection.
 // This returns nil if no connection was found with the given login
 func (cm *ConnectionManager) GetConnectionByClientID(clientID string) (c IClientConnection) {
@@ -200,6 +175,7 @@ func (cm *ConnectionManager) PublishProperty(
 }
 
 // RemoveConnection removes the connection by its connectionID
+// This will close the connnection if it isn't closed already.
 // Call this after the connection is closed or before closing.
 func (cm *ConnectionManager) RemoveConnection(cid string) {
 	cm.mux.Lock()

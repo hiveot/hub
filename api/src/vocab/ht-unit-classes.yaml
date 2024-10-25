@@ -18,7 +18,7 @@ UnitClasses:
       description: "Electrical current in Amperes based on the elementary charge flow per second"
     UnitCelcius:
       class: "ht:unit:celcius"
-      symbol: "C"
+      symbol: "°C"
       title: "Celcius"
       description: "Temperature in Celcius"
     UnitCandela:

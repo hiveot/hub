@@ -150,7 +150,7 @@ func TestUpdatePubKey(t *testing.T) {
 	assert.Equal(t, kp.ExportPublic(), profile2.PubKey)
 }
 
-func TestNewAuthToken(t *testing.T) {
+func TestNewAgentToken(t *testing.T) {
 	var tu1ID = "ag1ID"
 	var tu1Name = "agent 1"
 
@@ -163,7 +163,7 @@ func TestNewAuthToken(t *testing.T) {
 	require.NoError(t, err)
 
 	// get a new token
-	token, err := svc.AdminSvc.NewAuthToken(adminID, tu1ID)
+	token, err := svc.AdminSvc.NewAgentToken(adminID, tu1ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 

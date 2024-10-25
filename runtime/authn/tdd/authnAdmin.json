@@ -166,13 +166,13 @@
       }
     },
 
-    "newAuthToken": {
+    "newAgentToken": {
       "@type": "ht:function",
-      "title": "New Authentication Token",
+      "title": "New Agent Token",
       "description": "Obtain a new authentication token for an agent or service",
       "idempotent": false,
       "input": {
-        "title": "Client ID",
+        "title": "Agent ID",
         "type": "string"
       },
       "output": {

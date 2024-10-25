@@ -16,7 +16,7 @@ func SubmitConfigDashboard(w http.ResponseWriter, r *http.Request) {
 
 	newTitle := r.PostFormValue("title")
 
-	slog.Info("SubmitConfigDashboard", "ClientID", cdc.clientID,
+	slog.Info("SubmitConfigDashboard", "SenderID", cdc.clientID,
 		"dashboardID", cdc.dashboardID)
 
 	cdc.dashboard.Title = newTitle

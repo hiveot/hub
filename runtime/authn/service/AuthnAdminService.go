@@ -38,7 +38,7 @@ func (svc *AuthnAdminService) AddConsumer(senderID string, args authn.AdminAddCo
 	slog.Info("AddUser", slog.String("clientID", args.ClientID))
 
 	if args.ClientID == "" {
-		err = fmt.Errorf("AddClient: ClientID is missing")
+		err = fmt.Errorf("AddClient: SenderID is missing")
 		return err
 	}
 	if args.DisplayName == "" {
@@ -102,17 +102,19 @@ func (svc *AuthnAdminService) AddAgent(senderID string,
 		}
 	}
 	if err == nil {
-		// agent tokens are not restricted to a session
+		// agent tokens are not restricted to a session. If sessionID matches clientID then
+		// no additional session check will take place.
 		token = svc.sessionAuth.CreateSessionToken(
-			args.ClientID, "", svc.cfg.AgentTokenValiditySec)
+			args.ClientID, args.ClientID, svc.cfg.AgentTokenValiditySec)
 	}
 	return token, err
 }
 
 // AddService adds or updates a service account with the service role and key and auth token files.
 //
-// Services are provided with non-session auth tokens which survive a server restart.
-// Service keys and tokens are saved in the certs directory under the service name with
+// Notes:
+// * Services are provided with non-session auth tokens which survive a server restart.
+// * Service keys and tokens are saved in the certs directory under the service name with
 // the .key and .token extension.
 func (svc *AuthnAdminService) AddService(senderID string,
 	args authn.AdminAddServiceArgs) (token string, err error) {
@@ -147,9 +149,9 @@ func (svc *AuthnAdminService) AddService(senderID string,
 		}
 	}
 	if err == nil {
-		// service tokens are not restricted to a session
+		// service tokens are not linked to a session (sessionID equals clientID)
 		token = svc.sessionAuth.CreateSessionToken(
-			args.ClientID, "", svc.cfg.ServiceTokenValiditySec)
+			args.ClientID, args.ClientID, svc.cfg.ServiceTokenValiditySec)
 
 		// remove the readonly token file if it exists, to be able to overwrite
 		tokenFile := path.Join(svc.cfg.KeysDir, args.ClientID+connect.TokenFileExt)
@@ -181,11 +183,11 @@ func (svc *AuthnAdminService) GetProfiles(
 	return profiles, err
 }
 
-// NewAuthToken creates a new authentication token for a service or agent.
+// NewAgentToken creates a new authentication token for a service or agent.
 // This token is not tied to a session so should only be handed out to services or agents
-func (svc *AuthnAdminService) NewAuthToken(_ string, clientID string) (token string, err error) {
-
-	prof, err := svc.authnStore.GetProfile(clientID)
+func (svc *AuthnAdminService) NewAgentToken(senderID string, agentID string) (token string, err error) {
+	_ = senderID
+	prof, err := svc.authnStore.GetProfile(agentID)
 	_ = prof
 	if err == nil {
 		validitySec := 1
@@ -196,7 +198,7 @@ func (svc *AuthnAdminService) NewAuthToken(_ string, clientID string) (token str
 		} else {
 			validitySec = svc.cfg.ConsumerTokenValiditySec
 		}
-		token = svc.sessionAuth.CreateSessionToken(clientID, "", validitySec)
+		token = svc.sessionAuth.CreateSessionToken(agentID, agentID, validitySec)
 	}
 	return token, err
 }

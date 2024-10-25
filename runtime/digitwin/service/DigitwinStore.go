@@ -2,11 +2,10 @@ package service
 
 import (
 	"fmt"
-	digitwin2 "github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/runtime/digitwin"
 	"github.com/hiveot/hub/wot/tdd"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -19,7 +18,7 @@ type DigitwinStore struct {
 	dtwBucket buckets.IBucket
 
 	// in-memory cache of the digital twin Things by dThingID
-	dtwCache map[string]*digitwin.DigitalTwinInstance
+	dtwCache map[string]*DigitalTwinInstance
 
 	// map of changed digital thing IDs values
 	changedThings map[string]any
@@ -58,13 +57,13 @@ func (store *DigitwinStore) LoadCacheFromStore() error {
 		return err
 	}
 	store.thingKeys = make([]string, 0, 1000)
-	store.dtwCache = make(map[string]*digitwin.DigitalTwinInstance)
+	store.dtwCache = make(map[string]*DigitalTwinInstance)
 	store.changedThings = make(map[string]any)
 	for {
 		// read in batches of 300 TD documents
 		tdmap, itemsRemaining := cursor.NextN(300)
 		for dThingID, dtwSer := range tdmap {
-			dtwInstance := &digitwin.DigitalTwinInstance{}
+			dtwInstance := &DigitalTwinInstance{}
 			err = jsoniter.Unmarshal(dtwSer, &dtwInstance)
 			//err = msgpack.Unmarshal(dtwSer, &dtwInstance)
 			if err == nil {
@@ -82,7 +81,7 @@ func (store *DigitwinStore) LoadCacheFromStore() error {
 // QueryAction returns the current status of the action
 // This returns an empty value if no action value is available
 func (svc *DigitwinStore) QueryAction(
-	dThingID string, name string) (v digitwin2.ActionValue, err error) {
+	dThingID string, name string) (v digitwin.ActionValue, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
@@ -105,7 +104,7 @@ func (svc *DigitwinStore) QueryAction(
 
 // QueryAllActions returns all last known action invocation status of the given thing
 func (svc *DigitwinStore) QueryAllActions(dThingID string) (
-	v map[string]digitwin2.ActionValue, err error) {
+	v map[string]digitwin.ActionValue, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
@@ -119,7 +118,7 @@ func (svc *DigitwinStore) QueryAllActions(dThingID string) (
 
 // ReadAllEvents returns all last known action invocation status of the given thing
 func (svc *DigitwinStore) ReadAllEvents(dThingID string) (
-	v map[string]digitwin2.ThingValue, err error) {
+	v map[string]digitwin.ThingValue, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
@@ -133,7 +132,7 @@ func (svc *DigitwinStore) ReadAllEvents(dThingID string) (
 
 // ReadAllProperties returns all last known property values of the given thing
 func (svc *DigitwinStore) ReadAllProperties(dThingID string) (
-	v map[string]digitwin2.ThingValue, err error) {
+	v map[string]digitwin.ThingValue, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
@@ -149,7 +148,7 @@ func (svc *DigitwinStore) ReadAllProperties(dThingID string) (
 // this returns an empty value if no last known event is found
 // If 'strict' is set then this fails with an error if the event is not in the TD.
 func (svc *DigitwinStore) ReadEvent(
-	dThingID string, name string) (v digitwin2.ThingValue, err error) {
+	dThingID string, name string) (v digitwin.ThingValue, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
@@ -175,7 +174,7 @@ func (svc *DigitwinStore) ReadEvent(
 // or an empty value if no value is known.
 // This returns an error if the dThingID doesn't exist.
 func (svc *DigitwinStore) ReadProperty(
-	dThingID string, name string) (v digitwin2.ThingValue, err error) {
+	dThingID string, name string) (v digitwin.ThingValue, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
@@ -199,7 +198,7 @@ func (svc *DigitwinStore) ReadProperty(
 
 // ReadDTW returns the Digitwin instance.
 //func (svc *DigitwinStore) ReadDTW(
-//	dThingID string) (resp digitwin2.DigitalTwinInstance, err error) {
+//	dThingID string) (resp digitwin.DigitalTwinInstance, err error) {
 //
 //	svc.cacheMux.RLock()
 //	defer svc.cacheMux.RUnlock()
@@ -326,12 +325,12 @@ func (svc *DigitwinStore) UpdateTD(
 	dThingID := digitwinTD.ID
 	dtw, found := svc.dtwCache[dThingID]
 	if !found {
-		dtw = &digitwin.DigitalTwinInstance{
+		dtw = &DigitalTwinInstance{
 			AgentID:      agentID,
 			ID:           dThingID,
-			PropValues:   make(map[string]digitwin2.ThingValue),
-			EventValues:  make(map[string]digitwin2.ThingValue),
-			ActionValues: make(map[string]digitwin2.ActionValue),
+			PropValues:   make(map[string]digitwin.ThingValue),
+			EventValues:  make(map[string]digitwin.ThingValue),
+			ActionValues: make(map[string]digitwin.ActionValue),
 		}
 		svc.dtwCache[dThingID] = dtw
 		svc.thingKeys = append(svc.thingKeys, dThingID)
@@ -365,7 +364,7 @@ func (svc *DigitwinStore) UpdateActionStart(
 	}
 	actionValue, found := dtw.ActionValues[name]
 	if !found {
-		actionValue = digitwin2.ActionValue{}
+		actionValue = digitwin.ActionValue{}
 	}
 	actionValue.Name = name
 	actionValue.SenderID = senderID
@@ -388,7 +387,7 @@ func (svc *DigitwinStore) UpdateActionStart(
 //	output of the action. Only used when status is completed
 func (svc *DigitwinStore) UpdateActionProgress(
 	agentID string, thingID string, name string, status string, output any) (
-	actionValue digitwin2.ActionValue, err error) {
+	actionValue digitwin.ActionValue, err error) {
 
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
@@ -406,7 +405,7 @@ func (svc *DigitwinStore) UpdateActionProgress(
 		// action value should exist. recover if it doesn't
 		actionValue, found = dtw.ActionValues[name]
 		if !found {
-			actionValue = digitwin2.ActionValue{}
+			actionValue = digitwin.ActionValue{}
 		}
 		actionValue.Progress = status
 		actionValue.Updated = time.Now().Format(utils.RFC3339Milli)
@@ -450,7 +449,7 @@ func (svc *DigitwinStore) UpdateEventValue(
 		slog.Info("UpdateEventValue Can't update state of an unknown Thing. Event ignored.", "dThingID", dThingID)
 		return dThingID, err
 	}
-	eventValue := digitwin2.ThingValue{
+	eventValue := digitwin.ThingValue{
 		Data:      data,
 		Updated:   time.Now().Format(utils.RFC3339Milli),
 		MessageID: messageID,
@@ -494,7 +493,7 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 		}
 		propValue, found := dtw.PropValues[propName]
 		if !found {
-			propValue = digitwin2.ThingValue{}
+			propValue = digitwin.ThingValue{}
 		}
 		oldValue := propValue.Data
 		hasChanged = oldValue != propValue
@@ -523,7 +522,7 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 			}
 			propValue, found := dtw.PropValues[propName]
 			if !found {
-				propValue = digitwin2.ThingValue{}
+				propValue = digitwin.ThingValue{}
 			}
 			oldValue := propValue.Data
 			hasChanged = oldValue != propValue
@@ -545,7 +544,7 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 //
 //	dThingID is the digital twin ID
 //	tv is the new thing value of the property
-func (svc *DigitwinStore) WriteProperty(dThingID string, tv digitwin2.ThingValue) error {
+func (svc *DigitwinStore) WriteProperty(dThingID string, tv digitwin.ThingValue) error {
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
@@ -573,7 +572,7 @@ func OpenDigitwinStore(bucketStore buckets.IBucketStore, strict bool) (*Digitwin
 
 	svc := &DigitwinStore{
 		dtwBucket:     bucket,
-		dtwCache:      make(map[string]*digitwin.DigitalTwinInstance),
+		dtwCache:      make(map[string]*DigitalTwinInstance),
 		changedThings: make(map[string]any),
 		thingKeys:     make([]string, 0),
 		strict:        strict,

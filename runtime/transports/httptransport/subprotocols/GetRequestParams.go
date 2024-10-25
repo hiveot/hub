@@ -3,6 +3,7 @@ package subprotocols
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/lib/hubclient"
+	jsoniter "github.com/json-iterator/go"
 	"io"
 	"log/slog"
 	"net/http"
@@ -14,8 +15,7 @@ type RequestParams struct {
 	ThingID   string
 	MessageID string
 	Name      string
-	Body      []byte
-	SessionID string
+	Data      any
 	ConnID    string
 }
 
@@ -25,27 +25,40 @@ type RequestParams struct {
 // this returns an error. Note that the session middleware handler will block any request
 // that requires a session.
 //
-// This protocol binding reads two variables, {thingID} and {name} in the path.
+// This protocol binding determines two variables, {thingID} and {name} from the path.
+// It unmarshals the request body if given.
 //
 //	{thingID} is the agent or digital twin thing ID
 //	{name} is the property, event or action name. '+' means 'all'
 func GetRequestParams(r *http.Request) (reqParam RequestParams, err error) {
 
 	// get the required client session of this agent
-	reqParam.SessionID, reqParam.ClientID, err = GetSessionIdFromContext(r)
+	reqParam.ClientID, err = GetClientIdFromContext(r)
 	if err != nil {
 		// This is an internal error. The middleware session handler would have blocked
 		// a request that required a session before getting here.
 		slog.Error(err.Error())
 		return reqParam, err
 	}
-	// the connection ID is the sessionID + provided connectionID
-	reqParam.ConnID = reqParam.SessionID + "-" + r.Header.Get(hubclient.ConnectionIDHeader)
+	// the connection ID distinguishes between different connections from the same client.
+	// this is needed to correlate http requests with the sub-protocol connection.
+	// this is intended to solve for unidirectional SSE connections from multiple devices.
+	// if no connectionID is provided then only single device connections are allowed.
+	headerConnID := r.Header.Get(hubclient.ConnectionIDHeader)
+
+	// the connection ID is the clientID + provided connectionID
+	reqParam.ConnID = reqParam.ClientID + "-" + headerConnID
+
 	// build a message from the URL and payload
 	// URLParam names are defined by the path variables set in the router.
 	reqParam.ThingID = chi.URLParam(r, "thingID")
 	reqParam.Name = chi.URLParam(r, "name")
-	reqParam.Body, _ = io.ReadAll(r.Body)
+	if r.Body != nil {
+		payload, _ := io.ReadAll(r.Body)
+		if payload != nil && len(payload) > 0 {
+			jsoniter.Unmarshal(payload, &reqParam.Data)
+		}
+	}
 
 	return reqParam, err
 }

@@ -5,9 +5,10 @@ import (
 	"crypto/x509"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
+	sessions2 "github.com/hiveot/hub/runtime/authn/sessions"
+	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/hubrouter"
-	"github.com/hiveot/hub/runtime/sessions"
 	"github.com/hiveot/hub/runtime/transports/discotransport"
 	"github.com/hiveot/hub/runtime/transports/httptransport"
 	"github.com/hiveot/hub/wot/tdd"
@@ -27,13 +28,13 @@ type ProtocolManager struct {
 	httpTransport *httptransport.HttpBinding
 	mqttTransport api.ITransportBinding
 	//grpcTransport     api.ITransportBinding
-	dtwService *service.DigitwinService
+	//dtwService *service.DigitwinService
 
 	// handler to pass incoming messages to
 	handler func(tv *hubclient.ThingMessage) hubclient.ActionProgress
 
-	sm *sessions.SessionManager
-	cm *sessions.ConnectionManager
+	sm *sessions2.SessionManager
+	cm *connections.ConnectionManager
 }
 
 // AddTDForms adds forms for all active transports
@@ -126,12 +127,12 @@ func StartProtocolManager(cfg *ProtocolsConfig,
 	authenticator api.IAuthenticator,
 	hubRouter *hubrouter.HubRouter,
 	dtwService *service.DigitwinService,
-	cm *sessions.ConnectionManager,
-	sm *sessions.SessionManager,
+	cm *connections.ConnectionManager,
+	sm *sessions2.SessionManager,
 ) (svc *ProtocolManager, err error) {
 
 	svc = &ProtocolManager{
-		dtwService: dtwService,
+		//dtwService: dtwService,
 	}
 	// the embedded transport protocol is required for the runtime
 	// Embedded services are: authn, authz, directory, inbox, outbox services
@@ -142,7 +143,7 @@ func StartProtocolManager(cfg *ProtocolsConfig,
 			&cfg.HttpsTransport,
 			serverCert, caCert,
 			authenticator, hubRouter,
-			dtwService, cm, sm)
+			cm)
 	}
 	if cfg.EnableMQTT {
 		//svc.mqttTransport = mqtttransport.StartMqttTransport(

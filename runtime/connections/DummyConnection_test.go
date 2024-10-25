@@ -1,9 +1,9 @@
-package sessions_test
+package connections_test
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/runtime/sessions"
+	"github.com/hiveot/hub/runtime/connections"
 )
 
 // Dummy connection for testing connection manager
@@ -12,7 +12,7 @@ type DummyConnection struct {
 	sessID        string
 	clientID      string
 	remoteAddr    string
-	subscriptions sessions.Subscriptions
+	subscriptions connections.Subscriptions
 
 	PublishEventHandler func(dThingID string, name string, value any, messageID string, agentID string)
 	PublishPropHandler  func(dThingID string, name string, value any, messageID string, agentID string)

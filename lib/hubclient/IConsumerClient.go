@@ -47,7 +47,7 @@ type TransportStatus struct {
 	// CA used to connect
 	CaCert *x509.Certificate
 	// the client ID to identify as
-	//ClientID string
+	//SenderID string
 
 	// The current connection status
 	ConnectionStatus ConnectionStatus

@@ -7,8 +7,9 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/runtime/authn/sessions"
+	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/runtime/digitwin/service"
-	sessions2 "github.com/hiveot/hub/runtime/sessions"
 	"github.com/hiveot/hub/runtime/transports"
 	"github.com/hiveot/hub/runtime/transports/httptransport"
 	"github.com/stretchr/testify/assert"
@@ -27,8 +28,8 @@ var certBundle = certs.CreateTestCertBundle()
 var hostPort = fmt.Sprintf("localhost:%d", testPort)
 var testDirFolder = path.Join(os.TempDir(), "test-transport")
 var digitwinStorePath = path.Join(testDirFolder, "digitwin.data")
-var sm *sessions2.SessionManager
-var cm *sessions2.ConnectionManager
+var sm *sessions.SessionManager
+var cm *connections.ConnectionManager
 
 // ---------
 // Dummy sessionAuth for testing the binding
@@ -37,7 +38,7 @@ const testLogin = "testlogin"
 const testPassword = "testpass"
 const userToken = "usertoken"
 const serviceToken = "servicetoken"
-const testSessionID = "testSession"
+const testSessionID = "testsession"
 
 type DummyAuthenticator struct{}
 
@@ -50,32 +51,39 @@ func (d *DummyAuthenticator) CreateSessionToken(
 }
 
 func (d *DummyAuthenticator) Login(
-	clientID string, password string) (token string, sessionID string, err error) {
+	clientID string, password string) (token string, err error) {
 
 	if password == testPassword && clientID == testLogin {
-		return userToken, testSessionID, err
+		return userToken, nil
 	}
-	return token, sessionID, fmt.Errorf("Invalid login")
+	return token, fmt.Errorf("Invalid login")
 }
+
+func (d *DummyAuthenticator) Logout(clientID string) {
+}
+
 func (d *DummyAuthenticator) ValidatePassword(clientID string, password string) (err error) {
 	return nil
 }
 
 func (d *DummyAuthenticator) RefreshToken(
-	senderID string, oldToken string) (newToken string, err error) {
-	return oldToken, nil
+	senderID string, clientID string, oldToken string) (newToken string, err error) {
+	if senderID != testLogin || senderID != clientID ||
+		(oldToken != userToken && oldToken != serviceToken) {
+		err = fmt.Errorf("Invalid token, client or sender")
+	}
+	return oldToken, err
 }
 
-func (d *DummyAuthenticator) ValidateToken(
-	token string) (clientID string, sessionID string, err error) {
+func (d *DummyAuthenticator) ValidateToken(token string) (clientID string, sessionID string, err error) {
 
 	if token == userToken {
 		return testLogin, testSessionID, nil
 	} else if token == serviceToken {
-		return testLogin, "", nil
+		return testLogin, testSessionID, nil
 	}
 	err = fmt.Errorf("invalid login")
-	return clientID, sessionID, err
+	return clientID, testSessionID, err
 }
 
 var dummyAuthenticator = &DummyAuthenticator{}
@@ -99,10 +107,10 @@ func startHttpsTransport() (
 	*httptransport.HttpBinding, *service.DigitwinService, *transports.DummyRouter) {
 
 	// globals in testing
-	sm = sessions2.NewSessionmanager()
-	cm = sessions2.NewConnectionManager()
+	sm = sessions.NewSessionmanager()
+	cm = connections.NewConnectionManager()
 
-	var hubRouter = &transports.DummyRouter{}
+	var hubRouter = transports.NewDummyRouter(dummyAuthenticator)
 	config := httptransport.NewHttpTransportConfig()
 	config.Port = testPort
 
@@ -113,7 +121,7 @@ func startHttpsTransport() (
 	}
 	svc, err := httptransport.StartHttpTransport(&config,
 		certBundle.ServerCert, certBundle.CaCert,
-		dummyAuthenticator, hubRouter, dtwService, cm, sm)
+		dummyAuthenticator, hubRouter, cm)
 	if err != nil {
 		panic("failed to start binding: " + err.Error())
 	}
@@ -165,8 +173,8 @@ func TestLoginRefresh(t *testing.T) {
 
 	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, nil, certBundle.CaCert, time.Minute)
 	token, err := cl.ConnectWithPassword(testPassword)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, token)
+	require.NoError(t, err)
+	require.NotEmpty(t, token)
 
 	// refresh should succeed
 	newToken, err := cl.RefreshToken(token)
@@ -272,10 +280,8 @@ func TestPostEventAction(t *testing.T) {
 	defer tb.Stop()
 
 	// 2a. create a session for connecting a client
-	// (normally this happens when a session token is issued on authentication)
-	cs, err := sm.AddSession(agentID, "remote addr", "test")
-	assert.NoError(t, err)
-	assert.NotNil(t, cs)
+	// (normally this happens when a session token is issued on login)
+	sm.NewSession(agentID, "test")
 
 	// 2b. connect as an agent
 	cl := newAgentClient(testLogin)
@@ -369,40 +375,6 @@ func TestPubSubSSE(t *testing.T) {
 	rxMsg2 := evVal.Load()
 	require.NotNil(t, rxMsg2)
 	assert.Equal(t, testMsg, rxMsg2)
-}
-
-// Restarting the server should invalidate sessions
-func TestRestart(t *testing.T) {
-	t.Log("TestRestart")
-	//var rxMsg *hubclient.ThingMessage
-	var testMsg = "hello world"
-	var thingID = "thing1"
-	var eventKey = "event11"
-
-	// 1. start the binding
-	svc, dtwService, _ := startHttpsTransport()
-	_ = dtwService
-	// 2. connect as an agent
-	cl := newAgentClient(testLogin)
-	token, err := cl.ConnectWithPassword(testPassword)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, token)
-
-	// restart the server. This should invalidate session auth
-	t.Log("--- Stopping the server ---")
-	cm.CloseAll()
-	svc.Stop()
-	svc, _, _ = startHttpsTransport()
-	dtwService.SetFormsHook(svc.AddTDForms)
-
-	t.Log("--- Restarted the server ---")
-	require.NoError(t, err)
-	defer svc.Stop()
-
-	// 3. even though the login creds are still valid in the dummy authenticator,
-	//  the associated session should have been removed.
-	err = cl.PubEvent(thingID, eventKey, testMsg, "")
-	require.Error(t, err)
 }
 
 // Auto-reconnect using hub client and server

@@ -228,7 +228,7 @@ func HandleAddService(
 	//tokenFile := serviceID + ".token"
 	//tokenPath := path.Join(certsDir, tokenFile)
 	//if _, err = os.Stat(tokenPath); errors.Is(err, os.ErrNotExist) {
-	//	authToken, _ := authnAdmin.NewAuthToken(serviceID, 0)
+	//	authToken, _ := authnAdmin.NewAgentToken(serviceID, 0)
 	//	err = os.WriteFile(tokenPath, []byte(authToken), 0400)
 	//	fmt.Printf("Auth token written to file '%s'\n", tokenPath)
 	//} else {

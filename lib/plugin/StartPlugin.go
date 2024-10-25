@@ -23,7 +23,7 @@ type IPlugin interface {
 // and its config. This does not return until a signal is received.
 //
 // AppEnvironment sets the plugin clientID to the application executable name. It can
-// be changed by setting env.ClientID before invoking StartPlugin.
+// be changed by setting env.SenderID before invoking StartPlugin.
 // The plugin clientID is used to connect to the hub and lookup a keys and token files
 // with the same name in the env.CertsDir directory.
 //

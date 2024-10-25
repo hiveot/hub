@@ -3,7 +3,7 @@ package subprotocols
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
-	sessions2 "github.com/hiveot/hub/runtime/sessions"
+	"github.com/hiveot/hub/runtime/connections"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -12,10 +12,7 @@ import (
 // SseScBinding is a subprotocol binding
 type SseScBinding struct {
 	// connection manager to add/remove connections
-	cm *sessions2.ConnectionManager
-
-	// session manager
-	sm *sessions2.SessionManager
+	cm *connections.ConnectionManager
 
 	// mutex for updating connections
 	mux sync.RWMutex
@@ -27,7 +24,8 @@ func (b *SseScBinding) HandleConnect(w http.ResponseWriter, r *http.Request) {
 
 	//An active session is required before accepting the request. This is created on
 	//authentication/login.
-	sessID, clientID, err := GetSessionIdFromContext(r)
+	//sessID, clientID, err := GetSessionIdFromContext(r)
+	clientID, err := GetClientIdFromContext(r)
 
 	if err != nil {
 		slog.Warn("No session available yet, telling client to delay retry to 10 seconds")
@@ -42,13 +40,13 @@ func (b *SseScBinding) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// SSE-SC clients include a connection-ID header to link subscriptions to this
-	// connection. This is prefixed with "{sessionID}-" to ensure uniqueness and
+	// connection. This is prefixed with "{clientID}-" to ensure uniqueness and
 	// prevent connection hijacking.
 	connID := r.Header.Get(hubclient.ConnectionIDHeader)
-	connID = sessID + "-" + connID // -> must match subscribe/observe requests
+	connID = clientID + "-" + connID // -> must match subscribe/observe requests
 
 	// add the new sse connection
-	c := NewSSEConnection(connID, sessID, clientID)
+	c := NewSSEConnection(connID, clientID)
 
 	err = b.cm.AddConnection(c)
 	if err != nil {
@@ -156,10 +154,9 @@ func (b *SseScBinding) HandleUnsubscribeEvent(w http.ResponseWriter, r *http.Req
 }
 
 // NewSseScBinding returns a new SSE-SC sub-protocol binding
-func NewSseScBinding(cm *sessions2.ConnectionManager, sm *sessions2.SessionManager) *SseScBinding {
+func NewSseScBinding(cm *connections.ConnectionManager) *SseScBinding {
 	b := &SseScBinding{
 		cm: cm,
-		sm: sm,
 	}
 	return b
 }

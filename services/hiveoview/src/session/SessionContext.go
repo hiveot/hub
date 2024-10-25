@@ -55,7 +55,7 @@ func AddSessionToContext() func(next http.Handler) http.Handler {
 
 			//status := cs.GetStatus()
 			//slog.Info("found session",
-			//	slog.String("clientID", status.ClientID),
+			//	slog.String("clientID", status.SenderID),
 			//	slog.String("connected", string(status.ConnectionStatus)))
 
 			// make the session is available through the context

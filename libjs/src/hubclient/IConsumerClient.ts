@@ -60,10 +60,10 @@ export interface IConsumerClient  {
     // to the Hub inbox.
     //
     //	@param dThingID the digital twin ID for whom the action is intended
-    //	@param key is the action ID or method name of the action to invoke
+    //	@param name is the action or method name of the action to invoke
     //	@param payload to publish in native format as per TD
     //
-    invokeAction(dThingID: string, key: string, messageID: string, payload: any): Promise<ActionProgress>;
+    invokeAction(dThingID: string, name: string, messageID: string, payload: any): Promise<ActionProgress>;
 
     // RefreshToken refreshes the authentication token
     // The resulting token can be used with 'ConnectWithJWT'

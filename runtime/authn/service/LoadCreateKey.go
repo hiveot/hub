@@ -49,7 +49,7 @@ package service
 //			return "", err
 //		}
 //		token, err = svc.msgServer.CreateToken(msgserver.ClientAuthInfo{
-//			ClientID:     profile.ClientID,
+//			SenderID:     profile.SenderID,
 //			ClientType:   profile.ClientType,
 //			PubKey:       profile.PubKey,
 //			PasswordHash: "",

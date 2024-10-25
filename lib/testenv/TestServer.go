@@ -109,7 +109,7 @@ func (test *TestServer) AddConnectAgent(
 	cl = httpsse.NewHttpSSEClient(hostPort, agentID, nil, test.Certs.CaCert, time.Minute)
 	_, err = cl.ConnectWithToken(token)
 	if err != nil {
-		panic("AddConnectAgent: Failed connecting using token. ClientID=" + agentID)
+		panic("AddConnectAgent: Failed connecting using token. SenderID=" + agentID)
 	}
 
 	return cl, token
@@ -151,7 +151,7 @@ func (test *TestServer) AddTD(agentID string, td *tdd.TD) *tdd.TD {
 		td = test.CreateTestTD(i)
 	}
 	tdJSON, _ := json.Marshal(td)
-	err := test.Runtime.HubRouter.HandleUpdateTDFlow(agentID, string(tdJSON))
+	err := test.Runtime.HubRouter.HandlePublishTD(agentID, string(tdJSON))
 	//ag := test.Runtime.TransportsMgr.GetEmbedded().NewClient(agentID)
 	//err := ag.PubEvent(td.ID, vocab.EventNameTD, string(tdJSON))
 	if err != nil {

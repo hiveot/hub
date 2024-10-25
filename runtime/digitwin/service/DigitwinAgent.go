@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	digitwin2 "github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
@@ -19,9 +19,9 @@ func (agent *DigitwinAgent) HandleAction(
 	consumerID string, dThingID string, actionName string, input any, messageID string) (
 	status string, output any, err error) {
 
-	if dThingID == digitwin2.DirectoryDThingID {
+	if dThingID == digitwin.DirectoryDThingID {
 		status, output, err = agent.dirHandler(consumerID, dThingID, actionName, input, messageID)
-	} else if dThingID == digitwin2.ValuesDThingID {
+	} else if dThingID == digitwin.ValuesDThingID {
 		status, output, err = agent.valuesHandler(consumerID, dThingID, actionName, input, messageID)
 	} else {
 		slog.Warn("HandleAction: dThingID is not a service capability", "dThingID", dThingID)
@@ -36,8 +36,8 @@ func (agent *DigitwinAgent) HandleAction(
 func NewDigitwinAgent(svc *DigitwinService) *DigitwinAgent {
 	agent := &DigitwinAgent{
 		svc:           svc,
-		dirHandler:    digitwin2.NewHandleDirectoryAction(svc.DirSvc),
-		valuesHandler: digitwin2.NewHandleValuesAction(svc.ValuesSvc),
+		dirHandler:    digitwin.NewHandleDirectoryAction(svc.DirSvc),
+		valuesHandler: digitwin.NewHandleValuesAction(svc.ValuesSvc),
 	}
 	return agent
 }

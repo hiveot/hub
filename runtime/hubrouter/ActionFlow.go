@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
-	digitwinapi "github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/teris-io/shortid"
@@ -28,7 +29,7 @@ type ActionFlowRecord struct {
 	CID         string    // ConnectionID from sender to publish progress update
 }
 
-// HandleActionFlow handles the request to invoke an action on a Thing.
+// HandleInvokeAction handles the request to invoke an action on a Thing.
 // This authorizes the request, tracks the progress in the digital twin store
 // and passes the action request to the thing agent.
 //
@@ -47,8 +48,8 @@ type ActionFlowRecord struct {
 // even thought it uses a uni-directional channel for sending the request.
 // SSE, WS, MQTT bindings must use a correlation-id to match request-response messages.
 // this is not well-defined in the WoT specs and up to the protocol binding implementation.
-func (svc *HubRouter) HandleActionFlow(
-	dThingID string, actionName string, input any, reqID string, senderID string, cid string) (
+func (svc *HubRouter) HandleInvokeAction(
+	senderID string, dThingID string, actionName string, input any, reqID string, cid string) (
 	status string, output any, messageID string, err error) {
 
 	// check if consumer or agent has the right permissions
@@ -56,7 +57,7 @@ func (svc *HubRouter) HandleActionFlow(
 	if !hasPerm {
 		err = fmt.Errorf("Client '%s' does not have permission to invoke action '%s' on Thing '%s'",
 			senderID, actionName, dThingID)
-		slog.Warn("HandleActionFlow: " + err.Error())
+		slog.Warn("HandleInvokeAction: " + err.Error())
 		return vocab.ProgressStatusFailed, nil, messageID, err
 	}
 
@@ -70,7 +71,7 @@ func (svc *HubRouter) HandleActionFlow(
 	agentID, thingID := tdd.SplitDigiTwinThingID(dThingID)
 	// TODO: Consider injecting the internal services instead of having direct dependencies
 	switch agentID {
-	case digitwinapi.DirectoryAgentID:
+	case digitwin.DirectoryAgentID:
 		status, output, err = svc.dtwAgent.HandleAction(senderID, dThingID, actionName, input, messageID)
 	case authn.AdminAgentID:
 		status, output, err = svc.authnAgent.HandleAction(senderID, dThingID, actionName, input, messageID)
@@ -80,7 +81,7 @@ func (svc *HubRouter) HandleActionFlow(
 		status, output, err = svc.dtwAgent.HandleAction(senderID, dThingID, actionName, input, messageID)
 	default:
 
-		slog.Info("HandleActionFlow (to agent)",
+		slog.Info("HandleInvokeAction (to agent)",
 			slog.String("dThingID", dThingID),
 			slog.String("actionName", actionName),
 			slog.String("messageID", reqID),
@@ -136,7 +137,7 @@ func (svc *HubRouter) HandleActionFlow(
 		// FIXME-2: find agent not using agentID but cid
 
 		if !found {
-			err = fmt.Errorf("HandleActionFlow: Agent '%s' not reachable. Ignored", agentID)
+			err = fmt.Errorf("HandleInvokeAction: Agent '%s' not reachable. Ignored", agentID)
 			status = vocab.ProgressStatusFailed
 		}
 		// update action delivery status
@@ -149,7 +150,7 @@ func (svc *HubRouter) HandleActionFlow(
 			delete(svc.activeCache, messageID)
 			svc.mux.Unlock()
 
-			slog.Info("HandleActionFlow - finished",
+			slog.Info("HandleInvokeAction - finished",
 				slog.String("dThingID", dThingID),
 				slog.String("actionName", actionName),
 				slog.String("messageID", reqID),
@@ -164,7 +165,7 @@ func (svc *HubRouter) HandleActionFlow(
 			if err != nil {
 				errText = err.Error()
 			}
-			slog.Warn("HandleActionFlow - failed",
+			slog.Warn("HandleInvokeAction - failed",
 				slog.String("dThingID", dThingID),
 				slog.String("actionName", actionName),
 				slog.String("messageID", reqID),
@@ -175,7 +176,7 @@ func (svc *HubRouter) HandleActionFlow(
 	return status, output, messageID, err
 }
 
-// HandleActionProgress agent sends an action progress update.
+// HandleInvokeActionProgress agent sends an action progress update.
 // The message payload contains a ActionProgress object
 //
 // This:
@@ -185,7 +186,12 @@ func (svc *HubRouter) HandleActionFlow(
 // 4: Updates the status of the active request cache
 //
 // If the message is no longer in the active cache then it is ignored.
-func (svc *HubRouter) HandleActionProgress(agentID string, stat hubclient.ActionProgress) (err error) {
+func (svc *HubRouter) HandleInvokeActionProgress(agentID string, data any) (err error) {
+	var stat hubclient.ActionProgress
+	err = utils.Decode(data, &stat)
+	if err != nil {
+		return err
+	}
 
 	// 1: Validate this is an active action
 	svc.mux.Lock()
@@ -193,7 +199,7 @@ func (svc *HubRouter) HandleActionProgress(agentID string, stat hubclient.Action
 	svc.mux.Unlock()
 	if !found {
 		err = fmt.Errorf(
-			"HandleActionProgress: Message '%s' from agent '%s' not in action cache. It is ignored",
+			"HandleInvokeActionProgress: Message '%s' from agent '%s' not in action cache. It is ignored",
 			stat.MessageID, agentID)
 		slog.Warn(err.Error())
 		return err
@@ -206,7 +212,7 @@ func (svc *HubRouter) HandleActionProgress(agentID string, stat hubclient.Action
 	// the sender (agents) must be the thing agent
 	if agentID != actionRecord.AgentID {
 		err = fmt.Errorf(
-			"HandleActionProgress: progress update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
+			"HandleInvokeActionProgress: progress update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
 			stat.MessageID, thingID, actionRecord.AgentID, agentID)
 		slog.Warn(err.Error(), "agentID", agentID)
 		return err
@@ -217,7 +223,7 @@ func (svc *HubRouter) HandleActionProgress(agentID string, stat hubclient.Action
 	_, _ = svc.dtwStore.UpdateActionProgress(agentID, thingID, actionName, stat.Progress, stat.Reply)
 
 	if stat.Error != "" {
-		slog.Warn("HandleActionProgress - with error",
+		slog.Warn("HandleInvokeActionProgress - with error",
 			slog.String("AgentID", agentID),
 			slog.String("ThingID", thingID),
 			slog.String("Name", actionName),
@@ -226,13 +232,13 @@ func (svc *HubRouter) HandleActionProgress(agentID string, stat hubclient.Action
 			slog.String("Error", stat.Error),
 		)
 	} else if stat.Progress == vocab.ProgressStatusCompleted {
-		slog.Info("HandleActionProgress - completed",
+		slog.Info("HandleInvokeActionProgress - completed",
 			slog.String("ThingID", thingID),
 			slog.String("Name", actionName),
 			slog.String("MessageID", stat.MessageID),
 		)
 	} else {
-		slog.Info("HandleActionProgress - progress",
+		slog.Info("HandleInvokeActionProgress - progress",
 			slog.String("ThingID", thingID),
 			slog.String("Name", actionName),
 			slog.String("MessageID", stat.MessageID),
@@ -252,7 +258,7 @@ func (svc *HubRouter) HandleActionProgress(agentID string, stat hubclient.Action
 	}
 
 	if err != nil {
-		slog.Warn("HandleActionProgress. Forwarding to sender failed",
+		slog.Warn("HandleInvokeActionProgress. Forwarding to sender failed",
 			slog.String("senderID", actionRecord.SenderID),
 			slog.String("thingID", thingID),
 			slog.String("err", err.Error()),
@@ -269,4 +275,17 @@ func (svc *HubRouter) HandleActionProgress(agentID string, stat hubclient.Action
 		svc.mux.Unlock()
 	}
 	return nil
+}
+
+// HandleQueryAction returns the action status
+func (svc *HubRouter) HandleQueryAction(clientID string, dThingID string, name string) (reply any, err error) {
+	reply, err = svc.dtwService.ValuesSvc.QueryAction(clientID,
+		digitwin.ValuesQueryActionArgs{ThingID: dThingID, Name: name})
+	return reply, err
+}
+
+// HandleQueryAllAction returns the status of all actions of a Thing
+func (svc *HubRouter) HandleQueryAllActions(clientID string, dThingID string) (reply any, err error) {
+	reply, err = svc.dtwService.ValuesSvc.QueryAllActions(clientID, dThingID)
+	return reply, err
 }

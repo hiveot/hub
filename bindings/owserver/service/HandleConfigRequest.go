@@ -25,18 +25,24 @@ func (svc *OWServerBinding) HandleConfigRequest(msg *hubclient.ThingMessage) (st
 		stat.Failed(msg, err)
 		return
 	}
-	attr, found := node.Attr[msg.Name]
-	if !found {
-		err = fmt.Errorf("HandleConfigRequest: '%s not a property of Thing '%s' found",
-			msg.Name, msg.ThingID)
-		slog.Warn(err.Error())
-	} else if !attr.Writable {
-		err := fmt.Errorf(
-			"HandleConfigRequest: property '%s' of Thing '%s' is not writable",
-			msg.Name, msg.ThingID)
-		slog.Warn(err.Error())
+
+	// custom config. Configure the device name and save it in the state service.
+	if msg.Name == deviceNameProp {
+		// TODO: set device name configuration
 	} else {
-		err = svc.edsAPI.WriteData(msg.ThingID, msg.Name, valueStr)
+		attr, found := node.Attr[msg.Name]
+		if !found {
+			err = fmt.Errorf("HandleConfigRequest: '%s not a property of Thing '%s' found",
+				msg.Name, msg.ThingID)
+			slog.Warn(err.Error())
+		} else if !attr.Writable {
+			err := fmt.Errorf(
+				"HandleConfigRequest: property '%s' of Thing '%s' is not writable",
+				msg.Name, msg.ThingID)
+			slog.Warn(err.Error())
+		} else {
+			err = svc.edsAPI.WriteData(msg.ThingID, msg.Name, valueStr)
+		}
 	}
 	stat.Completed(msg, nil, err)
 	return

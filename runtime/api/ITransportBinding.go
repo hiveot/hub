@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/hiveot/hub/runtime/sessions"
+	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/wot/tdd"
 )
 
@@ -32,7 +32,7 @@ type ITransportBinding interface {
 	//GetProtocolInfo() ProtocolInfo
 
 	// GetConnectionByCID returns the client connection for sending messages to a client
-	GetConnectionByCID(cid string) sessions.IClientConnection
+	GetConnectionByCID(cid string) connections.IClientConnection
 
 	// PublishEvent publishes an event message to all connected subscribers
 	//
