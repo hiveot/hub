@@ -3,6 +3,7 @@ module github.com/hiveot/hub
 go 1.22.7
 
 require (
+	aidanwoods.dev/go-paseto v1.5.2
 	github.com/alexedwards/argon2id v1.0.0
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/cockroachdb/pebble v1.1.2
@@ -27,14 +28,15 @@ require (
 	github.com/tmaxmax/go-sse v0.9.0-pre.2
 	github.com/urfave/cli/v2 v2.27.4
 	go.etcd.io/bbolt v1.3.11
-	golang.org/x/crypto v0.27.0
+	golang.org/x/crypto v0.28.0
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 	golang.org/x/net v0.29.0
-	golang.org/x/sys v0.25.0
+	golang.org/x/sys v0.26.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
+	aidanwoods.dev/go-result v0.1.0 // indirect
 	github.com/DataDog/zstd v1.4.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
@@ -67,6 +69,6 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	golang.org/x/sync v0.8.0 // indirect
-	golang.org/x/text v0.18.0 // indirect
+	golang.org/x/text v0.19.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 )

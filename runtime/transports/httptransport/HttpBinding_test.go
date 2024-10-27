@@ -74,6 +74,9 @@ func (d *DummyAuthenticator) RefreshToken(
 	}
 	return oldToken, err
 }
+func (d *DummyAuthenticator) DecodeSessionToken(token string, signedNonce string, nonce string) (clientID string, sessionID string, err error) {
+	return d.ValidateToken(token)
+}
 
 func (d *DummyAuthenticator) ValidateToken(token string) (clientID string, sessionID string, err error) {
 

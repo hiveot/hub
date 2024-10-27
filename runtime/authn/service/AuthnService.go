@@ -55,8 +55,9 @@ func NewAuthnService(
 func StartAuthnService(cfg *config.AuthnConfig) (*AuthnService, error) {
 
 	authnStore := authnstore.NewAuthnFileStore(cfg.PasswordFile, cfg.Encryption)
-	sessionAuth := authenticator.NewJWTAuthenticatorFromFile(
-		authnStore, cfg.KeysDir, cfg.DefaultKeyType)
+	//sessionAuth := authenticator.NewJWTAuthenticatorFromFile(
+	//	authnStore, cfg.KeysDir, cfg.DefaultKeyType)
+	sessionAuth := authenticator.NewPasetoAuthenticatorFromFile(authnStore, cfg.KeysDir)
 	sessionAuth.AgentTokenValiditySec = cfg.AgentTokenValiditySec
 	sessionAuth.ConsumerTokenValiditySec = cfg.ConsumerTokenValiditySec
 	sessionAuth.ServiceTokenValiditySec = cfg.ServiceTokenValiditySec

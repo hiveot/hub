@@ -1,7 +1,6 @@
 package config
 
 import (
-	"github.com/hiveot/hub/lib/keys"
 	"log/slog"
 	"path"
 )
@@ -50,10 +49,9 @@ type AuthnConfig struct {
 
 	// predefined accounts
 	// Location of client keys and tokens
-	DefaultKeyType    keys.KeyType `yaml:"defaultKeyType,omitempty"` // keys.KeyTypeECDSA
-	KeysDir           string       `yaml:"certsDir,omitempty"`
-	AdminAccountID    string       `yaml:"adminAccountID,omitempty"`
-	LauncherAccountID string       `yaml:"launcherAccountID,omitempty"`
+	KeysDir           string `yaml:"certsDir,omitempty"`
+	AdminAccountID    string `yaml:"adminAccountID,omitempty"`
+	LauncherAccountID string `yaml:"launcherAccountID,omitempty"`
 	//AdminUserKeyFile   string `yaml:"adminUserKeyFile,omitempty"`   // default: admin.key
 	//AdminUserTokenFile string `yaml:"adminUserTokenFile,omitempty"` // default: admin.token
 	//
@@ -125,8 +123,6 @@ func (cfg *AuthnConfig) Setup(keysDir, storesDir string) {
 
 func NewAuthnConfig() AuthnConfig {
 	cfg := AuthnConfig{
-		// key to use for creating keys
-		DefaultKeyType: keys.KeyTypeECDSA,
 		// default password encryption method
 		Encryption: PWHASH_ARGON2id,
 	}

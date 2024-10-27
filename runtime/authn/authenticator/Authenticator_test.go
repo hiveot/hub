@@ -1,6 +1,7 @@
 package authenticator_test
 
 import (
+	"crypto/ed25519"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/authenticator"
@@ -11,13 +12,20 @@ import (
 
 var authnStore api.IAuthnStore
 
+func NewAuthenticator() api.IAuthenticator {
+	//signingKey := keys.NewEcdsaKey()
+	//svc := authenticator.NewJWTAuthenticator(authnStore, signingKey)
+	signingKey := keys.NewEd25519Key().PrivateKey().(ed25519.PrivateKey)
+	svc := authenticator.NewPasetoAuthenticator(authnStore, signingKey)
+	return svc
+}
+
 func TestCreateSessionToken(t *testing.T) {
 	const clientID = "user1"
 	//const clientType = authn.ClientTypeConsumer
 	sessionID := "session1"
 
-	signingKey := keys.NewEcdsaKey()
-	svc := authenticator.NewJWTAuthenticator(authnStore, signingKey)
+	svc := NewAuthenticator()
 
 	token1 := svc.CreateSessionToken(clientID, sessionID, 100)
 	assert.NotEmpty(t, token1)
@@ -48,8 +56,7 @@ func TestBadTokens(t *testing.T) {
 	//const clientType = authn.ClientTypeConsumer
 	sessionID := "session1"
 
-	signingKey := keys.NewEcdsaKey()
-	svc := authenticator.NewJWTAuthenticator(authnStore, signingKey)
+	svc := NewAuthenticator()
 
 	token1 := svc.CreateSessionToken(clientID, sessionID, 100)
 	assert.NotEmpty(t, token1)
@@ -65,7 +72,7 @@ func TestBadTokens(t *testing.T) {
 	token2 := svc.CreateSessionToken(clientID, sessionID, -100)
 	clientID2, sid2, err := svc.ValidateToken(token2)
 	require.Error(t, err)
-	assert.Equal(t, clientID, clientID2)
-	assert.Equal(t, sessionID, sid2)
+	assert.Empty(t, clientID2)
+	assert.Empty(t, sid2)
 
 }

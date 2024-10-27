@@ -1,10 +1,9 @@
 package authenticator
 
 import (
-	"crypto/x509"
-	"encoding/base64"
+	"aidanwoods.dev/go-paseto"
+	"crypto/ed25519"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/api"
@@ -15,11 +14,11 @@ import (
 	"time"
 )
 
-// JWTAuthenticator for generating and validating session tokens.
+// PasetoAuthenticator for generating and validating session tokens.
 // This implements the IAuthenticator interface
-type JWTAuthenticator struct {
+type PasetoAuthenticator struct {
 	// key used to create and verify session tokens
-	signingKey keys.IHiveKey
+	signingKey ed25519.PrivateKey
 	// authentication store for login verification
 	authnStore api.IAuthnStore
 	//
@@ -38,83 +37,59 @@ type JWTAuthenticator struct {
 //	validitySec is the token validity period or 0 for default based on client type
 //
 // This returns the token
-func (svc *JWTAuthenticator) CreateSessionToken(
+func (svc *PasetoAuthenticator) CreateSessionToken(
 	clientID string, sessionID string, validitySec int) (token string) {
 
 	// TODO: add support for nonce challenge with client pubkey
 
-	// CreateSessionToken creates a signed JWT session token for a client.
-	// The token is constructed with MapClaims containing "ID" as session ID and
-	// "clientID" identifying the connectied client.
+	// CreateSessionToken creates a signed Paseto session token for a client.
 	// The token is signed with the given signing key-pair and valid for the given duration.
-
 	validity := time.Second * time.Duration(validitySec)
 	expiryTime := time.Now().Add(validity)
-	signingKeyPub, _ := x509.MarshalPKIXPublicKey(svc.signingKey.PublicKey())
-	signingKeyPubStr := base64.StdEncoding.EncodeToString(signingKeyPub)
 
-	// Create the JWT claims, which includes the username, clientType and expiry time
-	claims := jwt.MapClaims{
-		//"alg": "ES256", // jwt.SigningMethodES256,
-		"typ": "JWT",
-		//"aud": authInfo.SenderID, // recipient of the jwt
-		"sub": clientID,          // subject of the jwt, eg the client
-		"iss": signingKeyPubStr,  // issuer of the jwt (public key)
-		"exp": expiryTime.Unix(), // expiry time. Seconds since epoch
-		"iat": time.Now().Unix(), // issued at. Seconds since epoch
+	pToken := paseto.NewToken()
+	pToken.SetIssuer("hiveot")
+	pToken.SetSubject(clientID)
+	pToken.SetExpiration(expiryTime)
+	pToken.SetIssuedAt(time.Now())
+	pToken.SetNotBefore(time.Now())
+	// custom claims
+	pToken.SetString("sessionID", sessionID)
+	pToken.SetString("clientID", clientID)
 
-		// custom claim fields
-		"clientID":  clientID,
-		"sessionID": sessionID,
+	secretKey, err := paseto.NewV4AsymmetricSecretKeyFromEd25519(svc.signingKey)
+	if err != nil {
+		slog.Error("failed making paseto secret key from ED25519")
+		secretKey = paseto.NewV4AsymmetricSecretKey()
 	}
+	signedToken := pToken.V4Sign(secretKey, nil)
 
-	// Declare the token with the algorithm used for signing, and the claims
-	claimsToken := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
-	sessionToken, _ := claimsToken.SignedString(svc.signingKey.PrivateKey())
-
-	return sessionToken
+	return signedToken
 }
 
-// DecodeSessionToken verifies the given JWT token and returns its claims.
-// optionally verify the signed nonce using the client's public key.
+// DecodeSessionToken verifies the given token and returns its claims.
+// optionally verify the signed nonce using the client's public key. (todo)
 // This returns the auth info stored in the token.
 //
 // nonce based verification to prevent replay attacks is intended for future version.
 //
-// token is the jwt token string containing a session token
+// token is the token string containing a session token
 // This returns the client info reconstructed from the token or an error if invalid
-func (svc *JWTAuthenticator) DecodeSessionToken(token string, signedNonce string, nonce string) (
+func (svc *PasetoAuthenticator) DecodeSessionToken(sessionKey string, signedNonce string, nonce string) (
 	clientID string, sessionID string, err error) {
 
-	signingKeyPub, _ := x509.MarshalPKIXPublicKey(svc.signingKey.PublicKey())
-	signingKeyPubStr := base64.StdEncoding.EncodeToString(signingKeyPub)
-
-	claims := jwt.MapClaims{}
-	jwtToken, err := jwt.ParseWithClaims(token, &claims,
-		func(token *jwt.Token) (interface{}, error) {
-			return svc.signingKey.PublicKey(), nil
-		}, jwt.WithValidMethods([]string{
-			jwt.SigningMethodES256.Name,
-			jwt.SigningMethodES384.Name,
-			jwt.SigningMethodES512.Name,
-			"EdDSA",
-		}),
-		jwt.WithIssuer(signingKeyPubStr), // url encoded string
-		jwt.WithExpirationRequired(),
-	)
-	claimsClientID := claims["clientID"]
-	if claimsClientID != nil {
-		clientID = claimsClientID.(string)
+	pasetoParser := paseto.NewParserForValidNow()
+	pubKey := svc.signingKey.Public().(ed25519.PublicKey)
+	v4PubKey, err := paseto.NewV4AsymmetricPublicKeyFromEd25519(pubKey)
+	pToken, err := pasetoParser.ParseV4Public(v4PubKey, sessionKey, nil)
+	if err != nil {
+		return "", "", err
 	}
-	sid := claims["sessionID"]
-	if sid != nil {
-		sessionID = sid.(string)
+	sessionID, err = pToken.GetString("sessionID")
+	if err == nil {
+		clientID, err = pToken.GetString("clientID")
 	}
-	if err != nil || jwtToken == nil || !jwtToken.Valid {
-		return clientID, sessionID,
-			fmt.Errorf("ValidateToken: %w", err)
-	}
-	return clientID, sessionID, nil
+	return clientID, sessionID, err
 }
 
 // Login with password and generate a session token
@@ -125,7 +100,7 @@ func (svc *JWTAuthenticator) DecodeSessionToken(token string, signedNonce string
 //	sessionID of the new session or "" to generate a new session ID
 //
 // This returns a session token, its session ID, or an error if failed
-func (svc *JWTAuthenticator) Login(clientID string, password string) (token string, err error) {
+func (svc *PasetoAuthenticator) Login(clientID string, password string) (token string, err error) {
 	var sessionID string
 	// a user login always creates a session token
 	err = svc.ValidatePassword(clientID, password)
@@ -151,7 +126,7 @@ func (svc *JWTAuthenticator) Login(clientID string, password string) (token stri
 }
 
 // Logout removes the client session
-func (svc *JWTAuthenticator) Logout(clientID string) {
+func (svc *PasetoAuthenticator) Logout(clientID string) {
 	cs, found := svc.sm.GetSessionByClientID(clientID)
 	if found {
 		svc.sm.Remove(cs.SessionID)
@@ -160,7 +135,7 @@ func (svc *JWTAuthenticator) Logout(clientID string) {
 
 // RefreshToken requests a new token based on the old token
 // This requires that the existing session is still valid
-func (svc *JWTAuthenticator) RefreshToken(
+func (svc *PasetoAuthenticator) RefreshToken(
 	senderID string, clientID string, oldToken string) (newToken string, err error) {
 
 	// validation only succeeds if there is an active session
@@ -184,7 +159,7 @@ func (svc *JWTAuthenticator) RefreshToken(
 	return newToken, err
 }
 
-func (svc *JWTAuthenticator) ValidatePassword(clientID, password string) (err error) {
+func (svc *PasetoAuthenticator) ValidatePassword(clientID, password string) (err error) {
 	clientProfile, err := svc.authnStore.VerifyPassword(clientID, password)
 	_ = clientProfile
 	return err
@@ -192,10 +167,10 @@ func (svc *JWTAuthenticator) ValidatePassword(clientID, password string) (err er
 
 // ValidateToken the session token
 // For agents, the sessionID equals the clientID and no session check will take place. (sessions are for consumers only)
-func (svc *JWTAuthenticator) ValidateToken(token string) (clientID string, sessionID string, err error) {
+func (svc *PasetoAuthenticator) ValidateToken(token string) (clientID string, sessionID string, err error) {
 	clientID, sid, err := svc.DecodeSessionToken(token, "", "")
 	if err != nil {
-		return "", "", err
+		return clientID, sid, err
 	}
 	// agents don't require a session
 	// TBD: if agents do need sessions then the sessions need to be persisted and restored.
@@ -206,20 +181,22 @@ func (svc *JWTAuthenticator) ValidateToken(token string) (clientID string, sessi
 	cs, found := svc.sm.GetSessionBySessionID(sid)
 	if !found {
 		slog.Warn("ValidateToken. No session found for client", "clientID", clientID)
-		return "", "", fmt.Errorf("Session is no longer valid")
+		return clientID, sid, fmt.Errorf("Session is no longer valid")
 	}
 	// if the session has expired, remove it
 	if cs.Expiry.Before(time.Now()) {
 		svc.sm.Remove(sid)
 		slog.Warn("ValidateToken. Session has expired", "clientID", clientID)
-		return "", "", fmt.Errorf("Session has expired")
+		return clientID, sid, fmt.Errorf("Session has expired")
 	}
 	return clientID, sid, nil
 }
 
-// NewJWTAuthenticator returns a new instance of a JWT token authenticator
-func NewJWTAuthenticator(authnStore api.IAuthnStore, signingKey keys.IHiveKey) *JWTAuthenticator {
-	svc := JWTAuthenticator{
+// NewPasetoAuthenticator returns a new instance of a Paseto token authenticator using the given signing key
+func NewPasetoAuthenticator(authnStore api.IAuthnStore, signingKey ed25519.PrivateKey) *PasetoAuthenticator {
+	paseto.NewV4AsymmetricSecretKey()
+
+	svc := PasetoAuthenticator{
 		signingKey: signingKey,
 		authnStore: authnStore,
 		// validity can be changed by user of this service
@@ -231,21 +208,21 @@ func NewJWTAuthenticator(authnStore api.IAuthnStore, signingKey keys.IHiveKey) *
 	return &svc
 }
 
-// NewJWTAuthenticatorFromFile returns a new instance of a JWT token authenticator
+// NewPasetoAuthenticatorFromFile returns a new instance of a Paseto token authenticator
 // loading a keypair from file or creating one if it doesn't exist.
 // This returns nil if no signing key can be loaded or created
-func NewJWTAuthenticatorFromFile(
-	authnStore api.IAuthnStore,
-	keysDir string, keyType keys.KeyType) *JWTAuthenticator {
+func NewPasetoAuthenticatorFromFile(authnStore api.IAuthnStore, keysDir string) *PasetoAuthenticator {
 
 	clientID := "authn"
-	signingKey, err := keys.LoadCreateKeyPair(clientID, keysDir, keyType)
+	authKey, err := keys.LoadCreateKeyPair(clientID, keysDir, keys.KeyTypeEd25519)
+
 	if err != nil {
-		slog.Error("NewJWTAuthenticatorFromFile failed creating key pair for client",
+		slog.Error("NewPasetoAuthenticatorFromFile failed creating key pair for client",
 			"err", err.Error(), "clientID", clientID)
 		return nil
 	}
+	signingKey := authKey.PrivateKey().(ed25519.PrivateKey)
 	_ = err
-	svc := NewJWTAuthenticator(authnStore, signingKey)
+	svc := NewPasetoAuthenticator(authnStore, signingKey)
 	return svc
 }
