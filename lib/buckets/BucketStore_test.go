@@ -349,10 +349,14 @@ func TestSeek(t *testing.T) {
 	require.NoError(t, err)
 	err = addDocs(store, testBucketID, docsCount)
 	require.NoError(t, err)
+
 	bucket := store.GetBucket(testBucketID)
 	require.NotNil(t, bucket)
 	defer store.Close()
 	defer bucket.Close()
+
+	// give this some time to settle so there isn't a modification during iteration
+	time.Sleep(time.Millisecond * 100)
 
 	// set cursor 'base' records forward
 	cursor, err := bucket.Cursor()

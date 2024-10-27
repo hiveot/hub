@@ -67,7 +67,7 @@ func (svc *HubRouter) HandleInvokeAction(
 		messageID = "action-" + shortid.MustGenerate()
 	}
 
-	// Forward the action to the agent
+	// Forward the action to the built-in services
 	agentID, thingID := tdd.SplitDigiTwinThingID(dThingID)
 	// TODO: Consider injecting the internal services instead of having direct dependencies
 	switch agentID {
@@ -80,7 +80,7 @@ func (svc *HubRouter) HandleInvokeAction(
 	case api.DigitwinServiceID:
 		status, output, err = svc.dtwAgent.HandleAction(senderID, dThingID, actionName, input, messageID)
 	default:
-
+		// Forward the action to external agents
 		slog.Info("HandleInvokeAction (to agent)",
 			slog.String("dThingID", dThingID),
 			slog.String("actionName", actionName),
@@ -88,21 +88,14 @@ func (svc *HubRouter) HandleInvokeAction(
 			slog.String("senderID", senderID),
 		)
 
-		// FIXME: RPC stateless services don't need a digital twin to be callable
-		// Action progress is stored in the digital twin. This is intended for
-		// stateful actions. RPC actions are not stored unless a digitwin exists.
-		// Intended for storing the last-known action progress.
-		// TODO: is storing actions in the store at all useful?
-		//  not if a property exists that represents its state.
-		//
-		// Is there is a use-case for reading the last known action input?
-		// maybe for presenting action-in-progress? or is it better to use a property
-		// for this as per Ben Francis recommendation? yeah, looks like it.
-		//
-		err = svc.dtwStore.UpdateActionStart(
-			dThingID, actionName, input, messageID, senderID)
-		// if no digital twin exists for the thing or service, its progress
-		// will not be stored but still be tracked.
+		// FIXME: Don't store RPC stateless actions for services. Only track stateful actions results.
+		//  Is there is a use-case for reading the last known action input?
+		//  Is there is a use-case for reading the last known action output or is
+		//  it better to link to a property value as per Ben Francis recommendation?
+		// Stateful actions do have a representation using properties although the
+		// schema may be different from the output.
+		err = svc.dtwStore.UpdateActionStart(dThingID, actionName, input, messageID, senderID)
+
 		err = nil
 
 		// store a new action progress by message ID to support sending replies to the sender
@@ -124,6 +117,7 @@ func (svc *HubRouter) HandleInvokeAction(
 		// forward to external services/things and return its response
 		found := false
 
+		// Note: agents should only have a single instance
 		c := svc.cm.GetConnectionByClientID(agentID)
 		if c != nil {
 			found = true
@@ -133,9 +127,6 @@ func (svc *HubRouter) HandleInvokeAction(
 		// Update the action status
 		actionRecord.Progress = status
 
-		// FIXME-1: connections arent removed
-		// FIXME-2: find agent not using agentID but cid
-
 		if !found {
 			err = fmt.Errorf("HandleInvokeAction: Agent '%s' not reachable. Ignored", agentID)
 			status = vocab.ProgressStatusFailed
@@ -144,7 +135,7 @@ func (svc *HubRouter) HandleInvokeAction(
 		_, _ = svc.dtwStore.UpdateActionProgress(
 			agentID, thingID, actionName, status, output)
 
-		// remove the action if completed
+		// remove the action when completed
 		if status == vocab.ProgressStatusCompleted {
 			svc.mux.Lock()
 			delete(svc.activeCache, messageID)
@@ -171,7 +162,6 @@ func (svc *HubRouter) HandleInvokeAction(
 				slog.String("messageID", reqID),
 				slog.String("err", errText))
 		}
-
 	}
 	return status, output, messageID, err
 }

@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
 )
@@ -26,9 +27,14 @@ func (svc *OWServerBinding) HandleConfigRequest(msg *hubclient.ThingMessage) (st
 		return
 	}
 
-	// custom config. Configure the device name and save it in the state service.
-	if msg.Name == deviceNameProp {
-		// TODO: set device name configuration
+	// custom config. Configure the device title and save it in the state service.
+	if msg.Name == vocab.PropDeviceTitle {
+		svc.customTitles[msg.ThingID] = valueStr
+		go svc.SaveState()
+		propMap := map[string]any{vocab.PropDeviceTitle: valueStr}
+		go svc.hc.PubProperties(msg.ThingID, propMap)
+		// republish the TD as its title changed (yeah its a bit over the top)
+		go svc.PublishNodeTD(node)
 	} else {
 		attr, found := node.Attr[msg.Name]
 		if !found {

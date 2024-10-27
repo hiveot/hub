@@ -142,8 +142,6 @@ func (cl *TLSClient) Invoke(method string, requrl string, body []byte, messageID
 	_ = httpResp.Body.Close()
 	httpStatus = httpResp.StatusCode
 
-	// FIXME: detect difference between connect and unauthenticated
-
 	if httpStatus == 401 {
 		err = fmt.Errorf("%s", httpResp.Status)
 	} else if httpStatus >= 400 && httpStatus < 500 {

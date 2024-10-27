@@ -342,10 +342,10 @@ func (svc *DigitwinStore) UpdateTD(
 
 // UpdateActionStart updates the action with a new start and pending status
 //
-// consumerID is the ID of the consumer requesting the action.
 // dThingID is the digital twin thingID
 // name is the name of the action whose progress is updated.
-// messageID is the request messageID
+// messageID is the request messageID used to correlate the async reply
+// senderID is the ID of the sender of the request
 func (svc *DigitwinStore) UpdateActionStart(
 	dThingID string, name string, input any, messageID string, senderID string) error {
 	svc.cacheMux.Lock()

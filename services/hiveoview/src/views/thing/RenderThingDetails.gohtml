@@ -24,7 +24,7 @@
 	<!--===Thing Summary header===-->
 
 		<summary id="detailsSummary" class="outline h-row" >
-				<h4 style="display:contents" >{{.TD.Title}}</h4>
+				<h3 style="display:contents" >{{.TD.Title}}</h3>
 				<div class="h-grow"></div>
 				<!--=== button to delete this TD ===-->
 				<button title="Delete TD" slot="button" class="h-icon-button  outline"
@@ -38,11 +38,6 @@
 		</summary>
 
 		<ul class="h-grid-table details-header">
-				<label for="deviceName">Title:</label>
-				<input id="deviceName" readonly
-				       style="margin: 0; text-overflow: ellipsis; background:none;"
-				       value="{{.ThingName}}"/>
-
 				<label for="manufacturer">Device Description:</label>
 				<input id="manufacturer" type="text" readonly
 				       style="margin: 0; text-overflow: ellipsis;"

@@ -8,7 +8,7 @@ The Hub for the *Hive-of-Things* provides a secure [runtime](runtime/README-runt
 
 ## Project Status
 
-Status: The Hub core is currently being reworked to use the "[digital twins runtime](runtime/README-runtime.md)" with multiple concurrent protocol support. (May 2024). 
+Status: The Hub core is currently being reworked to support the Web-of-things (WoT) Thing Description (TD) specification. (Oct 2024). 
 
 TODO before alpha:
 1. Support for Forms sections in TDD documents describing the protocols to interact with a Thing.

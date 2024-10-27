@@ -293,32 +293,6 @@ func (svc *LauncherService) updateStatus(svcInfo *launcherapi.PluginInfo) {
 			svcInfo.RSS = 0
 		}
 
-		// Option B: use go-osstat - slower
-		//cpuStat, err := cpu.Get()
-		//if err == nil {
-		//	svcInfo.CPU = cpuStat.CPUCount // FIXME: this is a counter, not %
-		//}
-		//memStat, err := memory.Get()
-		//if err == nil {
-		//	svcInfo.RSS = int(memStat.Used)
-		//}
-
-		//Option C: read statm directly. Fastest but only gets memory.
-		//path := fmt.Sprintf("/proc/%d/statm", svcInfo.PID)
-		//statm, err := ioutil.ReadFile(path)
-		//if err == nil {
-		//	fields := strings.Split(string(statm), " ")
-		//	if len(fields) < 2 {
-		//		// invalid data
-		//	} else {
-		//		rss, err := strconv.ParseInt(fields[1], 10, 64)
-		//		if err != nil {
-		//			// invalid data
-		//		} else {
-		//			svcInfo.RSS = int(rss * int64(os.Getpagesize()))
-		//		}
-		//	}
-		//}
 	}
 
 }

@@ -16,6 +16,8 @@ const DirectoryTemplate = "RenderDirectory.gohtml"
 //	Things  []*things.TD
 //}
 
+type DirectoryGroup session2.AgentThings
+
 type DirectoryTemplateData struct {
 	Groups []*session2.AgentThings
 	//PageNr      int

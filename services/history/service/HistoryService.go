@@ -79,8 +79,6 @@ func (svc *HistoryService) Start(hc hubclient.IAgentClient) (err error) {
 		StartHistoryAgent(svc, svc.hc)
 
 		// TODO: add actions to the history, filtered through retention manager
-		// FIXME: this needs the ability to subscribe to actions from other agents
-
 		// subscribe to receive the events to add to the history, filtered through the retention manager
 		err = svc.hc.Subscribe("", "")
 		err = svc.hc.Observe("", "")

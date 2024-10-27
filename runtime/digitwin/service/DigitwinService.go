@@ -57,7 +57,7 @@ func (svc *DigitwinService) Stop() {
 	svc.bucketStore.Close()
 }
 
-// StartDigitwinService creates and start the digitwin administration service.
+// StartDigitwinService creates and start the digitwin services.
 // This creates a bucket store for the directory, inbox, and outbox.
 //
 // Use SetFormsHook to set the outgoing transport protocol handler for use

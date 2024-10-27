@@ -69,20 +69,6 @@ type WebClientSession struct {
 	sseClients []chan SSEEvent
 }
 
-//func (cs *WebClientSession) AddSSEClient(c chan SSEEvent) {
-//	cs.mux.Lock()
-//	defer cs.mux.Unlock()
-//	cs.sseClients = append(cs.sseClients, c)
-//
-//	go func() {
-//		if cs.IsActive() {
-//			//cs.SendNotify(NotifySuccess, "Connected to the Hub")
-//		} else {
-//			cs.SendNotify(NotifyError, "Not connected to the Hub")
-//		}
-//	}()
-//}
-
 // Close the session.
 // This closes the hub connection and SSE data channels
 func (wcs *WebClientSession) Close() {

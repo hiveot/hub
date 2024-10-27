@@ -181,34 +181,6 @@
           "description": "Public Key in PEM format",
           "type": "string"
       }
-    },
-
-    "validateToken": {
-      "@type": "ht:function",
-      "title": "Validate Token",
-      "description": "Check if the given token is still valid",
-      "idempotent": true,
-      "input": {
-        "type": "string",
-        "title": "Token"
-      },
-      "output": {
-        "type": "object",
-        "properties": {
-          "clientID": {
-            "title": "Client ID",
-            "type": "string"
-          },
-          "sessionID": {
-            "title": "Session ID",
-            "type": "string"
-          },
-          "error": {
-            "title": "Validation error",
-            "type": "string"
-          }
-        }
-      }
     }
   }
 }

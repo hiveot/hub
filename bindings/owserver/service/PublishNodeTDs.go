@@ -12,7 +12,7 @@ import (
 // - Writable non-sensors attributes are marked as writable configuration
 // - Sensors are also added as events.
 // - Writable sensors are also added as actions.
-func CreateTDFromNode(node *eds.OneWireNode) (tdoc *tdd.TD) {
+func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *tdd.TD) {
 
 	// Should we bother with the URI? In HiveOT things have pubsub addresses that include the ID. The ID is not the address.
 	//thingID := things.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
@@ -25,9 +25,19 @@ func CreateTDFromNode(node *eds.OneWireNode) (tdoc *tdd.TD) {
 		// unknown device
 		deviceType = vocab.ThingDevice
 	}
+	// support for setting Thing TD title to the custom name instead of node name
+	thingTitle := node.Name
+	customTitle := svc.customTitles[thingID]
+	if customTitle != "" {
+		thingTitle = customTitle
+	}
+	tdoc = tdd.NewTD(thingID, thingTitle, deviceType)
+	tdoc.UpdateTitleDescription(thingTitle, node.Description)
 
-	tdoc = tdd.NewTD(thingID, node.Name, deviceType)
-	tdoc.UpdateTitleDescription(node.Name, node.Description)
+	// Add a writable 'title' property so consumer can edit the device's title.
+	// Since owserver doesn't support naming a device, the title is stored in the state service.
+	prop := tdoc.AddProperty(vocab.PropDeviceTitle, vocab.PropDeviceTitle, "Title", vocab.WoTDataTypeString)
+	prop.ReadOnly = false
 
 	// Map node attribute to Thing properties and events
 	for attrID, attr := range node.Attr {
@@ -110,20 +120,24 @@ func (svc *OWServerBinding) PollNodes() ([]*eds.OneWireNode, error) {
 	return nodes, err
 }
 
+// PublishNodeTD converts a node to TD documents and publishes it to the Hub.
+// This returns an error if the publications fail
+func (svc *OWServerBinding) PublishNodeTD(node *eds.OneWireNode) (err error) {
+	td := svc.CreateTDFromNode(node)
+	tdJSON, _ := json.Marshal(td)
+	svc.things[td.ID] = td
+	err = svc.hc.PubTD(td.ID, string(tdJSON))
+	return err
+}
+
 // PublishNodeTDs converts the nodes to TD documents and publishes these to the Hub.
 // TD's are stored to be used in publishing its attributes and events.
 // This returns an error if one or more publications fail
 func (svc *OWServerBinding) PublishNodeTDs(nodes []*eds.OneWireNode) (err error) {
 	for _, node := range nodes {
-		td := CreateTDFromNode(node)
-		tdJSON, _ := json.Marshal(td)
-		svc.things[td.ID] = td
-		err2 := svc.hc.PubTD(td.ID, string(tdJSON))
+		err2 := svc.PublishNodeTD(node)
 		if err2 != nil {
 			err = err2
-		} else {
-			//props := svc.MakeNodePropValues(node)
-			//_ = svc.hc.PubProperties(td.ID, props)
 		}
 	}
 	return err

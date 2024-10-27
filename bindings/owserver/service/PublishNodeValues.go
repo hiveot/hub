@@ -47,9 +47,9 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 	propCount := 0
 	// Iterate the devices and their properties
 	for _, node := range nodes {
+
 		// send all changed property attributes in a single properties event
 		propMap := make(map[string]any)
-		//thingID := things.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
 		thingID := node.ROMId
 		svc.mux.RLock()
 		nodeTD, found := svc.things[thingID]
@@ -58,6 +58,12 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 			continue
 		}
 
+		// inject the writable device title, if set. Default is model name.
+		deviceTitle := svc.customTitles[thingID]
+		if deviceTitle != "" {
+			propMap[vocab.PropDeviceTitle] = deviceTitle
+		}
+		// first and unknown values are always changed
 		for attrID, attr := range node.Attr {
 			// collect changes to property values
 			info, found := AttrConfig[attrID]
@@ -78,7 +84,6 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 					}
 				}
 				if info.IsProp {
-					// first and unknown values are always changed
 					value, changed := svc.GetValueChange(attrID, attr.Value, info, nodeTD)
 					if changed || force {
 						propMap[attrID] = value
@@ -101,7 +106,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 }
 
 // GetValueChange parses the attribute value and track changes to the
-// value using the attribute conversion settings.
+// value.
 func (svc *OWServerBinding) GetValueChange(
 	attrName string, attrValue string, info AttrConversion, td *tdd.TD) (
 	value any, changed bool) {
@@ -186,8 +191,9 @@ func (svc *OWServerBinding) GetValueChange(
 // Set 'force' to force publishing values event when not changed
 func (svc *OWServerBinding) RefreshPropertyValues(force bool) error {
 	nodes, err := svc.edsAPI.PollNodes()
-	//nodeValueMap, err := svc.PollNodeValues()
+
 	if err == nil {
+
 		err = svc.PublishNodeValues(nodes, force)
 	}
 	return err

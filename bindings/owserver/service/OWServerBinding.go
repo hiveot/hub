@@ -8,6 +8,7 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/services/state/stateclient"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"sync"
@@ -19,7 +20,9 @@ const bindingTDIntervalID = "tdPollInterval"
 const bindingValuePublishIntervalID = "valueRepublishInterval"
 const bindingOWServerAddressID = "owServerAddress"
 const bindingMake = "make"
-const deviceNameProp = "name"
+
+// the key under which custom Thing titles are stored in the state service
+const customTitlesKey = "customTitles"
 
 // OWServerBinding is the hub protocol binding plugin for capturing 1-wire OWServer V2 Data
 type OWServerBinding struct {
@@ -42,6 +45,9 @@ type OWServerBinding struct {
 	// track the last value for change detection
 	// map of [node/device ID] [attribute Title] value
 	values map[string]map[string]NodeValueStamp
+
+	// the user edited node names
+	customTitles map[string]string
 
 	// nodes by thingID. Used in handling action requests
 	nodes map[string]*eds.OneWireNode
@@ -92,6 +98,24 @@ func (svc *OWServerBinding) GetBindingPropValues() map[string]any {
 	return pv
 }
 
+// LoadState loads the client session state containing dashboard and other model data,
+// and clear 'clientModelChanged' status
+func (svc *OWServerBinding) LoadState() error {
+	stateCl := stateclient.NewStateClient(svc.hc)
+	found, err := stateCl.Get(customTitlesKey, &svc.customTitles)
+	if !found {
+		svc.customTitles = make(map[string]string)
+	}
+	return err
+}
+
+// SaveState stores the agent's custom settings using the state service,
+func (svc *OWServerBinding) SaveState() error {
+	stateCl := stateclient.NewStateClient(svc.hc)
+	err := stateCl.Set(customTitlesKey, &svc.customTitles)
+	return err
+}
+
 // Start the OWServer protocol binding
 // This publishes a TD for this binding, starts a background heartbeat.
 //
@@ -110,13 +134,11 @@ func (svc *OWServerBinding) Start(hc hubclient.IAgentClient) (err error) {
 	// subscribe to action and configuration requests
 	svc.hc.SetMessageHandler(svc.HandleActionRequest)
 
-	// tbd: set the default permissions for managing this binding. is this needed?
-	//authzClient := authzclient.NewAuthzClient(hc)
-	//err = authzClient.SetPermissions(svc.agentID, svc.agentID,
-	//	[]string{
-	//		api.ClientRoleManager,
-	//		api.ClientRoleAdmin,
-	//		api.ClientRoleService})
+	// load custom settings
+	err = svc.LoadState()
+	if err != nil {
+		slog.Error("Start: Unable to load the state including custom titles")
+	}
 
 	// publish this binding's TD document
 	td := svc.CreateBindingTD()
@@ -200,10 +222,11 @@ func NewOWServerBinding(config *config.OWServerConfig) *OWServerBinding {
 
 	// these are from hub configuration
 	svc := &OWServerBinding{
-		config: config,
-		values: make(map[string]map[string]NodeValueStamp),
-		nodes:  make(map[string]*eds.OneWireNode),
-		things: make(map[string]*tdd.TD),
+		config:       config,
+		values:       make(map[string]map[string]NodeValueStamp),
+		nodes:        make(map[string]*eds.OneWireNode),
+		things:       make(map[string]*tdd.TD),
+		customTitles: make(map[string]string),
 	}
 	return svc
 }

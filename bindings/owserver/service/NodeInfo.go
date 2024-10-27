@@ -147,6 +147,7 @@ var AttrConfig = map[string]AttrConversion{
 		IsProp: true,
 		Title:  "Device date/time", DataType: vocab.WoTDataTypeDateTime,
 	},
+	// gateway has 'DeviceName', nodes 'Name'
 	"DeviceName": {
 		IsProp:    true,
 		Title:     "Device Name",
@@ -258,7 +259,7 @@ var AttrConfig = map[string]AttrConversion{
 	"Name": {
 		IsProp: true,
 		// the name seems to hold the model number
-		Title:     "Device name",
+		Title:     "Device model",
 		VocabType: vocab.PropDeviceModel, DataType: vocab.WoTDataTypeString,
 	},
 	"PollCount": {

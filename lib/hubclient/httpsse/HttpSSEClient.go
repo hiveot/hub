@@ -466,12 +466,12 @@ func (cl *HttpSSEClient) PubProgressUpdate(stat hubclient.ActionProgress) {
 	}
 }
 
-// PubProperties agent publishes a properties map event
+// PubProperties agent publishes multiple properties
 // Intended for use by agents to publish all properties at once
 func (cl *HttpSSEClient) PubProperties(thingID string, props map[string]any) error {
 	slog.Info("PubProperties", slog.String("thingID", thingID))
 
-	// FIXME: get path from forms?
+	// FIXME: get path from forms
 	stat := cl.PubMessage("POST", PostAgentUpdateMultiplePropertiesPath,
 		thingID, "", props, "", nil)
 	if stat.Error != "" {
@@ -507,7 +507,6 @@ func (cl *HttpSSEClient) RefreshToken(oldToken string) (newToken string, err err
 	_ = headers
 
 	// set the new token as the bearer token
-	// FIXME: differentiate between not connected and unauthenticated
 	if err == nil {
 		err = cl.Unmarshal(resp, &newToken)
 
@@ -518,7 +517,6 @@ func (cl *HttpSSEClient) RefreshToken(oldToken string) (newToken string, err err
 	} else if httpStatus == http.StatusUnauthorized {
 		err = errors.New("Unauthenticated")
 	}
-	// FIXME: detect difference between connect and unauthenticated
 	return newToken, err
 }
 
@@ -585,6 +583,10 @@ func (cl *HttpSSEClient) Rpc(
 		} else if stat.Progress != vocab.ProgressStatusCompleted {
 			err = errors.New("Delivery not complete. Progress: " + stat.Progress)
 		}
+	}
+	if err != nil {
+		slog.Error("RPC failed",
+			"thingID", thingID, "name", name, "err", err.Error())
 	}
 	// only once completed will there be a reply as a result
 	if err == nil && resp != nil {

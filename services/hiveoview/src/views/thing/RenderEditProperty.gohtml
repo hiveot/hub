@@ -17,11 +17,11 @@
                      border:1px solid var(--pico-form-element-border-color);
                      padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
                      margin-bottom: var(--pico-spacing);"
-			><i>{{.DataSchema.Description}}</i></div>
+				><i>{{or .DataSchema.Description .DataSchema.Title}}</i>
+			</div>
 
-				<label for="config-input">{{.DataSchema.Title}}</label>
-
-        {{template "RenderInputValue.gohtml" .PropertyValue}}
+			<label>{{.DataSchema.Title}}</label>
+      {{template "RenderInputValue.gohtml" .PropertyValue}}
 
 		</form>
 

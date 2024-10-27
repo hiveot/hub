@@ -34,7 +34,6 @@ func (svc *IPNetBinding) MakeDeviceTD(deviceInfo *IPDeviceInfo) *tdd.TD {
 	td := tdd.NewTD(thingID, deviceName, vocab.ThingNet)
 
 	// these are configured through the configuration file.
-	// FIXME: what is the best way to include a port list?
 	prop := td.AddPropertyAsString("", vocab.PropDeviceTitle, "Device name")
 	prop.ReadOnly = true // TODO: allow edit and save the new device name
 	prop = td.AddProperty("", vocab.PropNetPort, "Ports", vocab.WoTDataTypeArray)

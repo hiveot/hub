@@ -51,9 +51,10 @@ func (svc *OWServerBinding) HandleActionRequest(action *hubclient.ThingMessage) 
 	// Determine the value.
 	// FIXME: when building the TD, Booleans are defined as enum integers
 	actionValue := action.DataAsText()
+	var err error
 
 	// the thingID is the device identifier, eg the ROMId
-	err := svc.edsAPI.WriteData(action.ThingID, edsName, string(actionValue))
+	err = svc.edsAPI.WriteData(action.ThingID, edsName, string(actionValue))
 
 	// read the result
 	time.Sleep(time.Second)
@@ -66,6 +67,7 @@ func (svc *OWServerBinding) HandleActionRequest(action *hubclient.ThingMessage) 
 	if err != nil {
 		err = fmt.Errorf("action '%s' failed: %w", action.Name, err)
 	}
+
 	stat.Completed(action, nil, err)
 	return stat
 }

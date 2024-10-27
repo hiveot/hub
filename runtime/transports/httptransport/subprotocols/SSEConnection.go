@@ -66,7 +66,7 @@ func (c *SSEConnection) _send(messageType string, thingID, name string,
 	c.mux.Lock()
 	defer c.mux.Unlock()
 	if !c.isClosed.Load() {
-		slog.Info("_send",
+		slog.Debug("_send",
 			slog.String("to", c.clientID),
 			slog.String("EventType", messageType),
 			slog.String("eventID", eventID),
@@ -251,7 +251,7 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 					slog.Int("size", len(sseMsg.Payload)),
 				)
 			} else {
-				slog.Info("SSE write to client",
+				slog.Debug("SSE write to client",
 					slog.String("SenderID", c.clientID),
 					slog.String("Event", sseMsg.EventType),
 					slog.Int("N bytes", n))

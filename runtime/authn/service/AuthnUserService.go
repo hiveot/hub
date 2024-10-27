@@ -102,18 +102,18 @@ func (svc *AuthnUserService) UpdatePubKey(senderID string, pubKeyPEM string) err
 }
 
 // ValidateToken verifies that the given token is valid
-func (svc *AuthnUserService) ValidateToken(senderID string, token string) (
-	resp authn.UserValidateTokenResp, err error) {
-
-	clientID, sid, err := svc.sessionAuth.ValidateToken(token)
-	if err == nil && clientID != senderID {
-		err = fmt.Errorf("ClientID doesn't match senderID")
-	}
-	resp.ClientID = clientID
-	resp.SessionID = sid
-	resp.Error = err.Error()
-	return resp, nil
-}
+//func (svc *AuthnUserService) ValidateToken(senderID string, token string) (
+//	resp authn.UserValidateTokenResp, err error) {
+//
+//	clientID, sid, err := svc.sessionAuth.ValidateToken(token)
+//	if err == nil && clientID != senderID {
+//		err = fmt.Errorf("ClientID doesn't match senderID")
+//	}
+//	resp.ClientID = clientID
+//	resp.SessionID = sid
+//	resp.Error = err.Error()
+//	return resp, nil
+//}
 
 // NewAuthnUserService creates an end-user authentication service instance for
 // logging in and managing a user's own profile. This service is accessible by any

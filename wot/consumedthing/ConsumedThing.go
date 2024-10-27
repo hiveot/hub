@@ -227,7 +227,8 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 			return nil
 		}
 		td := ct.GetThingDescription()
-		tv, err := digitwin.ValuesReadEvent(ct.hc, ct.td.ID, name)
+
+		tv, err := digitwin.ValuesReadEvent(ct.hc, name, ct.td.ID)
 		if err == nil {
 			iout = NewInteractionOutputFromValue(&tv, td)
 		} else {
