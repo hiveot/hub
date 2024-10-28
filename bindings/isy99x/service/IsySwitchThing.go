@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
 )
 
@@ -22,14 +23,15 @@ func (it *IsySwitchThing) GetPropValues(onlyChanges bool) map[string]any {
 func (it *IsySwitchThing) GetTD() *tdd.TD {
 	td := it.IsyThing.GetTD()
 	// value of switch property ID "ST" is "0" or "255"
-	td.AddEvent("ST", vocab.PropSwitchOnOff, "On/Off", "",
+	td.AddEvent("ST", vocab.ActionSwitchOnOff, "On/Off", "",
 		&tdd.DataSchema{Type: vocab.WoTDataTypeBool})
 
 	// AddSwitchEvent is short for adding an event for a switch
-	//td.AddSwitchEvent(vocab.PropSwitchOnOff, "On/Off changed")
-	td.AddSwitchAction(vocab.ActionSwitchOn, "Switch on")
-	td.AddSwitchAction(vocab.ActionSwitchOff, "Switch off")
-	td.AddSwitchAction(vocab.ActionSwitchToggle, "Toggle switch")
+	td.AddSwitchEvent(vocab.PropSwitchOnOff, "On/Off change")
+
+	td.AddSwitchAction(vocab.ActionSwitchOnOff, "Switch on/off")
+	//td.AddSwitchAction(vocab.ActionSwitchOff, "Switch off")
+	//td.AddSwitchAction(vocab.ActionSwitchToggle, "Toggle switch")
 
 	return td
 }
@@ -47,10 +49,12 @@ func (it *IsySwitchThing) HandleActionRequest(action *hubclient.ThingMessage) (e
 	var newValue = ""
 	// FIXME: action keys are the raw keys, not @type
 	// supported actions: on, off
-	if action.Name == vocab.ActionSwitchOn {
-		newValue = "DON"
-	} else if action.Name == vocab.ActionSwitchOff {
+	if action.Name == vocab.ActionSwitchOnOff {
+		newValueBool := utils.DecodeAsBool(action.Data)
 		newValue = "DOF"
+		if newValueBool {
+			newValue = "DON"
+		}
 	} else if action.Name == vocab.ActionSwitchToggle {
 		newValue = "DOF"
 		oldValue, found := it.propValues.GetValue(action.Name)

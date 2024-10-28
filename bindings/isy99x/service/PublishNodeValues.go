@@ -1,13 +1,16 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 )
 
 func (svc *IsyBinding) PubEvents(thingID string, evMap map[string]any) {
 	for k, v := range evMap {
+		slog.Info("PubEvents",
+			slog.String("thingID", thingID),
+			slog.String("name", k),
+			slog.Any("value", v))
 		_ = svc.hc.PubEvent(thingID, k, v, "")
 	}
 }
@@ -20,6 +23,10 @@ func (svc *IsyBinding) PublishNodeValues(onlyChanges bool) error {
 	// publish the binding's property and event values
 	props, events := svc.GetBindingPropValues(onlyChanges)
 	bindingID := svc.hc.GetClientID()
+	slog.Info("PublishNodeValues - properties",
+		slog.String("thingID", bindingID),
+		slog.Int("nrProps", len(props)),
+	)
 	err := svc.hc.PubProperties(bindingID, props)
 	// no use continuing if publishing fails
 	if err != nil {
@@ -27,11 +34,7 @@ func (svc *IsyBinding) PublishNodeValues(onlyChanges bool) error {
 		slog.Error(err.Error())
 		return err
 	}
-	for k, v := range events {
-		payload, _ := json.Marshal(v)
-		err = svc.hc.PubEvent(bindingID, k, string(payload), "")
-
-	}
+	svc.PubEvents(bindingID, events)
 
 	// publish the gateway device values
 	err = svc.IsyGW.ReadGatewayValues()

@@ -209,6 +209,7 @@ func (isyAPI *IsyAPI) SendRequest(method string, restPath string, body string, r
 		reqBody = bytes.NewReader([]byte(body))
 	}
 	req, err := http.NewRequest(method, isyURL, reqBody)
+	//req.Header.Set ("Content-Type", "application/json")
 
 	if err != nil {
 		return err
@@ -219,6 +220,11 @@ func (isyAPI *IsyAPI) SendRequest(method string, restPath string, body string, r
 
 	if err != nil {
 		slog.Error("isyRequest: Unable to read ISY device", "URL", isyURL, "err", err)
+		return err
+	} else if resp.StatusCode == 401 {
+		msg := fmt.Sprintf("isyRequest: Unauthorized")
+		slog.Warn(msg)
+		err = errors.New(msg)
 		return err
 	} else if resp.StatusCode != 200 {
 		msg := fmt.Sprintf("isyRequest: Error code return by ISY device %s: %v", isyURL, resp.Status)

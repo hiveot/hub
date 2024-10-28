@@ -82,14 +82,14 @@ ActionClasses:
       class: "ht:action:switch"
       title: "Switch"
       description: "General switch action"
-    ActionSwitchOff:
-      class: "ht:action:switch:off"
-      title: "Switch off"
-      description: "Action to turn the switch off"
-    ActionSwitchOn:
-      class: "ht:action:switch:on"
-      title: "Switch on"
-      description: "Action to turn the switch on"
+#    ActionSwitchOff:
+#      class: "ht:action:switch:off"
+#      title: "Switch off"
+#      description: "Action to turn the switch off"
+#    ActionSwitchOn:
+#      class: "ht:action:switch:on"
+#      title: "Switch on"
+#      description: "Action to turn the switch on"
     ActionSwitchOnOff:
       class: "ht:action:switch:onoff"
       title: "Set On/Off switch"

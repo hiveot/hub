@@ -285,7 +285,7 @@ var AttrConfig = map[string]AttrConversion{
 	"Relay": {
 		IsActuator: true, IsProp: true,
 		Title:    "Relay control",
-		DataType: vocab.WoTDataTypeBool, VocabType: vocab.ActionSwitchOff,
+		DataType: vocab.WoTDataTypeBool, VocabType: vocab.ActionSwitchOnOff,
 	},
 	"RelayFunction": {
 		IsProp:    true,
@@ -302,7 +302,7 @@ var AttrConfig = map[string]AttrConversion{
 	"RelayState": {
 		IsProp:   true,
 		Title:    "Relay control",
-		DataType: vocab.WoTDataTypeBool, VocabType: vocab.ActionSwitchOff,
+		DataType: vocab.WoTDataTypeBool, VocabType: vocab.ActionSwitchOnOff,
 	},
 	"ROMId": {
 		IsProp:   true,

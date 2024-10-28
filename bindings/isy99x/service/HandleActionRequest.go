@@ -20,7 +20,7 @@ func (svc *IsyBinding) handleActionRequest(action *hubclient.ThingMessage) (stat
 
 	if !svc.isyAPI.IsConnected() {
 		slog.Warn(stat.Error)
-		stat.Completed(action, nil, fmt.Errorf("No connection with the gateway"))
+		stat.Failed(action, fmt.Errorf("No connection with the gateway"))
 		return
 	}
 	isyThing := svc.IsyGW.GetIsyThing(action.ThingID)
@@ -31,5 +31,7 @@ func (svc *IsyBinding) handleActionRequest(action *hubclient.ThingMessage) (stat
 	}
 	err := isyThing.HandleActionRequest(action)
 	stat.Completed(action, nil, err)
-	return
+	// publish any changes that are the result of the action
+	go svc.PublishNodeValues(true)
+	return stat
 }

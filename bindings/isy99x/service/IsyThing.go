@@ -87,7 +87,7 @@ func (it *IsyThing) GetPropValues(onlyChanges bool) map[string]any {
 func (it *IsyThing) GetTD() *tdd.TD {
 	title := it.productInfo.ProductName
 	titleProp, _ := it.propValues.GetValue(vocab.PropDeviceTitle)
-	if titleProp == nil {
+	if titleProp != nil {
 		title, _ = titleProp.(string)
 	}
 	it.mux.RLock()
