@@ -30,7 +30,7 @@ type OWServerConfig struct {
 	// Default is 60 seconds
 	PollInterval int `yaml:"pollInterval,omitempty"`
 
-	// RepublishInterval optional override interval that unmodified Thing values are republished, in seconds.
+	// RepublishInterval interval that unmodified Thing values are republished, in seconds.
 	// Default is every 60 minutes
 	RepublishInterval int `yaml:"republishInterval,omitempty"`
 }
@@ -41,8 +41,8 @@ func NewConfig() *OWServerConfig {
 
 	// ensure valid defaults
 	cfg.LogLevel = ""
-	// default re-publish the TD docs every 7 days
-	cfg.TDInterval = 3600 * 24 * 7
+	// re-publish node TDs docs every 3 days
+	cfg.TDInterval = 3600 * 24 * 3
 	// poll for value updates every 60 seconds
 	cfg.PollInterval = 60
 	// republish same-value after 60 minutes

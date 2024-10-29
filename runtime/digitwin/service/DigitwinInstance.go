@@ -5,7 +5,15 @@ import (
 	"github.com/hiveot/hub/wot/tdd"
 )
 
-// DigitalTwinInstance contains the description and values of a digital twin Thing
+type ActionQueue struct {
+	actions []digitwin.ActionValue
+}
+type ValueQueue struct {
+	values   []digitwin.ThingValue
+	maxDepth int
+}
+
+// DigitalTwinInstance contains the digital twin of a device
 type DigitalTwinInstance struct {
 	// Agent that manages access to the exposed thing
 	AgentID string `json:"agentID" `
@@ -22,4 +30,9 @@ type DigitalTwinInstance struct {
 	EventValues map[string]digitwin.ThingValue `json:"ev"`
 	// Latest 'unsafe' actions as requested with their status
 	ActionValues map[string]digitwin.ActionValue `json:"av"`
+
+	// TBD: queue actions in the inbox of this device for timed delivery
+	//Inbox ActionQueue `json:"inbox"`
+	// TBD: queue events in the outbox to allow reading recent events on connecting
+	//Outbox ValueQueue `json:"outbox"`
 }

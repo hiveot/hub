@@ -83,9 +83,9 @@ func (it *IsySwitchThing) HandleValueUpdate(propID string, uom string, newValue 
 	defer it.mux.Unlock()
 	// convert the switch value to a boolean
 	if propID == "ST" {
-		boolValue := true
-		if newValue == "" || newValue == "0" {
-			boolValue = false
+		boolValue := false
+		if newValue == "1" || newValue == "255" {
+			boolValue = true
 		}
 		it.propValues.SetValueBool(propID, boolValue)
 	} else {

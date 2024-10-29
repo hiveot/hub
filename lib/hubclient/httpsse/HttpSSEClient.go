@@ -349,6 +349,7 @@ func (cl *HttpSSEClient) PubEvent(thingID string, name string, data any, message
 		slog.String("agentID", cl.clientID),
 		slog.String("thingID", thingID),
 		slog.String("name", name),
+		slog.Any("data", data),
 		//slog.String("messageID", messageID),
 	)
 	stat := cl.PubMessage(http.MethodPost, PostAgentPublishEventPath, thingID, name, data, messageID, nil)
@@ -469,8 +470,18 @@ func (cl *HttpSSEClient) PubProgressUpdate(stat hubclient.ActionProgress) {
 // PubProperties agent publishes multiple properties
 // Intended for use by agents to publish all properties at once
 func (cl *HttpSSEClient) PubProperties(thingID string, props map[string]any) error {
-	slog.Info("PubProperties", slog.String("thingID", thingID))
-
+	if len(props) == 1 {
+		for k, v := range props {
+			slog.Info("PubProperties",
+				slog.String("thingID", thingID),
+				slog.String("name", k),
+				slog.Any("value", v))
+		}
+	} else {
+		slog.Info("PubProperties",
+			slog.String("thingID", thingID),
+			slog.Int("count", len(props)))
+	}
 	// FIXME: get path from forms
 	stat := cl.PubMessage("POST", PostAgentUpdateMultiplePropertiesPath,
 		thingID, "", props, "", nil)

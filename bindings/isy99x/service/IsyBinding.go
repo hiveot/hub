@@ -28,12 +28,12 @@ type IsyBinding struct {
 
 	thingID string           // ID of the binding Thing
 	isyAPI  *isy.IsyAPI      // methods for communicating met ISY gateway device
-	IsyGW   *IsyGatewayThing // ISY gateway access
+	IsyGW   *IsyGatewayThing // device representing the ISY gateway
 
 	// is gateway currently reachable?
 	gwReachable bool
 
-	//// product identification map by {cat}.{subcat}
+	// product identification map by {cat}.{subcat}
 	prodMap map[string]InsteonProduct
 
 	mu              sync.Mutex
@@ -96,6 +96,7 @@ func (svc *IsyBinding) GetBindingPropValues(onlyChanges bool) (map[string]any, m
 	if svc.isyAPI.IsConnected() {
 		connStatus = "connected"
 	}
+	// FIXME: only send this event on change
 	events := make(map[string]any)
 	events[vocab.PropNetConnection] = connStatus
 	//
@@ -165,11 +166,17 @@ func (svc *IsyBinding) startHeartbeat() (stopFn func()) {
 
 	var tdCountDown = 0
 	var pollCountDown = 0
+	var republishCountDown = 0
 	var isConnected = false
-	var onlyChanges = false
+	var forceRepublish bool
 	var err error
 
 	stopFn = plugin.StartHeartbeat(time.Second, func() {
+		tdCountDown--
+		pollCountDown--
+		republishCountDown--
+		forceRepublish = false
+
 		// if no gateway connection exists, try to reestablish a connection to the gateway
 		isConnected = svc.isyAPI.IsConnected()
 		if !isConnected {
@@ -182,23 +189,25 @@ func (svc *IsyBinding) startHeartbeat() (stopFn func()) {
 		}
 
 		// publish node TDs and values
-		tdCountDown--
 		if isConnected && tdCountDown <= 0 {
 			err = svc.PublishNodeTDs()
 			tdCountDown = svc.config.TDInterval
 			// after publishing the TD, republish all values
-			onlyChanges = false
+			forceRepublish = true
 		}
 		// publish changes to sensor/actuator values
-		pollCountDown--
 		if isConnected && pollCountDown <= 0 {
-			err = svc.PublishNodeValues(onlyChanges)
+			// publish changed values or periodically for publishing all values
+			if republishCountDown <= 0 {
+				republishCountDown = svc.config.RepublishInterval
+				forceRepublish = true
+			}
+			err = svc.PublishNodeValues(!forceRepublish || true)
 			pollCountDown = svc.config.PollInterval
 			// slow down if this fails. Don't flood the logs
 			if err != nil {
 				pollCountDown = svc.config.PollInterval * 5
 			}
-			onlyChanges = true
 		}
 	})
 	return stopFn

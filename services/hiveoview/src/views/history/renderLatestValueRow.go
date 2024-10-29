@@ -31,9 +31,11 @@ const addRowTemplate = `
 //
 // @param thingID to view
 // @param key whose value to return
+// query param 'unit' with the unit to add to the row
 func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	name := chi.URLParam(r, "name")
+	unit := r.URL.Query().Get("unit")
 
 	// Read the TD being displayed and its latest values
 	mySession, hc, err := session.GetSessionFromContext(r)
@@ -55,7 +57,7 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		// TODO: get unit symbol
 		fragment := fmt.Sprintf(addRowTemplate,
-			iout.GetUpdated("WT"), latestValue.Data, "")
+			iout.GetUpdated("WT"), latestValue.Data, unit)
 
 		_, _ = w.Write([]byte(fragment))
 		return

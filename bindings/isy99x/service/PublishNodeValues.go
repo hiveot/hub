@@ -7,10 +7,6 @@ import (
 
 func (svc *IsyBinding) PubEvents(thingID string, evMap map[string]any) {
 	for k, v := range evMap {
-		slog.Info("PubEvents",
-			slog.String("thingID", thingID),
-			slog.String("name", k),
-			slog.Any("value", v))
 		_ = svc.hc.PubEvent(thingID, k, v, "")
 	}
 }
@@ -56,10 +52,6 @@ func (svc *IsyBinding) PublishNodeValues(onlyChanges bool) error {
 		props = thing.GetPropValues(onlyChanges)
 		if len(props) > 0 {
 			_ = svc.hc.PubProperties(thing.GetID(), props)
-			// send an event for each of the changed values
-			if onlyChanges {
-				svc.PubEvents(thing.GetID(), props)
-			}
 		}
 	}
 	return nil

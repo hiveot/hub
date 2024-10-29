@@ -4,7 +4,7 @@ package config
 const DefaultPollIntervalSec = 3 * 60
 
 // DefaultTDIntervalSec for republishing the node TDs
-const DefaultTDIntervalSec = 24 * 3600
+const DefaultTDIntervalSec = 24 * 3600 * 3
 
 // Isy99xConfig with overridable settings
 type Isy99xConfig struct {
@@ -16,9 +16,13 @@ type Isy99xConfig struct {
 	LogLevel string `yaml:"logLevel,omitempty"`
 
 	// Interval in seconds to poll and publish ISY99x values. 0 to not poll.
-	PollInterval int `yaml:"pollInterval"`
+	PollInterval int `yaml:"pollInterval,omitempty"`
 	// Interval in seconds to read and publish node TD documents
-	TDInterval int `yaml:"tdInterval"`
+	TDInterval int `yaml:"tdInterval,omitempty"`
+
+	// RepublishInterval interval that unmodified Thing values are republished, in seconds.
+	// Default is every 60 minutes
+	RepublishInterval int `yaml:"republishInterval,omitempty"`
 }
 
 func NewIsy99xConfig() *Isy99xConfig {
@@ -30,6 +34,8 @@ func NewIsy99xConfig() *Isy99xConfig {
 		PollInterval: DefaultPollIntervalSec,
 		// interval of republishing node TD documents. Default is 24 hours
 		TDInterval: DefaultTDIntervalSec,
+		// republish unchanged-values after 60 minutes
+		RepublishInterval: 60 * 60,
 	}
 	return cfg
 }

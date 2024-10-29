@@ -150,9 +150,10 @@ func (cm *ConnectionManager) GetConnectionByClientID(clientID string) (c IClient
 func (cm *ConnectionManager) PublishEvent(
 	dThingID string, name string, value any, messageID string, agentID string) {
 
-	slog.Info("PublishEvent (to subscribers)",
+	slog.Debug("PublishEvent (to subscribers)",
 		slog.String("dThingID", dThingID),
 		slog.String("name", name),
+		slog.Any("value", value),
 		slog.String("agentID", agentID),
 	)
 	cm.ForEachConnection(func(c IClientConnection) {
@@ -164,9 +165,10 @@ func (cm *ConnectionManager) PublishEvent(
 func (cm *ConnectionManager) PublishProperty(
 	dThingID string, name string, value any, messageID string, agentID string) {
 
-	slog.Info("PublishProperty (to subscribers)",
+	slog.Debug("PublishProperty (to subscribers)",
 		slog.String("dThingID", dThingID),
 		slog.String("name", name),
+		slog.Any("value", value),
 		slog.String("agentID", agentID),
 	)
 	cm.ForEachConnection(func(c IClientConnection) {

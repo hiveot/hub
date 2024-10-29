@@ -29,7 +29,7 @@ var deviceCatMap = map[string]string{
 type IIsyThing interface {
 	// GetID returns the thingID of the node
 	GetID() string
-	// GetValues returns the property values of the thing
+	// GetPropValues returns the property values of the thing
 	GetPropValues(onlyChanges bool) map[string]any
 	// GetTD returns the generated TD document describing the Thing
 	GetTD() *tdd.TD
