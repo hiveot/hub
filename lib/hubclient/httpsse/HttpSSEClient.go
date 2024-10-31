@@ -16,10 +16,11 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/teris-io/shortid"
-	"github.com/tmaxmax/go-sse"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -80,7 +81,9 @@ type HttpSSEClient struct {
 	ssePath  string
 	caCert   *x509.Certificate
 	clientID string
-	cid      string
+	// the cid header field to correlate request and return channel connections
+	// the server prefixes it with clientID to guarantee uniqueness.
+	cid string
 
 	timeout time.Duration // request timeout
 	// '_' variables are mux protected
@@ -89,12 +92,14 @@ type HttpSSEClient struct {
 	// sseClient is the TLS client with the SSE connection
 	//sseClient *tlsclient.TLSClient
 	// tlsClient is the TLS client used for posting events
-	tlsClient          *tlsclient.TLSClient
-	_maxSSEMessageSize int
-	_status            hubclient.TransportStatus
-	_sseChan           chan *sse.Event
-	_subscriptions     map[string]bool
-	_connectHandler    func(status hubclient.TransportStatus)
+	tlsClient         *tlsclient.TLSClient
+	maxSSEMessageSize int
+
+	_isConnected atomic.Bool
+	_lastError   atomic.Value
+
+	_subscriptions  map[string]bool
+	_connectHandler func(connected bool, err error)
 	// client side handler that receives messages from the server
 	_messageHandler hubclient.MessageHandler
 	// map of messageID to delivery status update channel
@@ -132,6 +137,7 @@ func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 	loginURL := fmt.Sprintf("https://%s%s", cl.hostPort, PostLoginPath)
 	cl.mux.Unlock()
 
+	slog.Info("ConnectWithPassword", "clientID", cl.clientID)
 	loginMessage := authn.UserLoginArgs{
 		ClientID: cl.GetClientID(),
 		Password: password,
@@ -147,7 +153,6 @@ func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 	err = cl.Unmarshal(resp, &token)
 	if err != nil {
 		err = fmt.Errorf("ConnectWithPassword: Login to %s has unexpected response message: %s", loginURL, err)
-		cl.SetConnectionStatus(hubclient.ConnectFailed, err)
 		return "", err
 	}
 	// store the bearer token further requests
@@ -160,9 +165,8 @@ func (cl *HttpSSEClient) ConnectWithPassword(password string) (newToken string, 
 		//sseClient := cl.tlsClient.GetHttpClient()
 		sseClient := tlsclient.NewHttp2TLSClient(cl.caCert, nil, 0)
 		// If the server is reachable. Open the return channel using SSE
-		err = cl.ConnectSSE(sseURL, token, sseClient, cl.handleSSEDisconnect)
+		err = cl.ConnectSSE(sseURL, token, sseClient, cl.handleSSEConnect)
 	}
-	cl.SetConnectionStatus(hubclient.Connected, err)
 
 	return token, err
 }
@@ -176,15 +180,15 @@ func (cl *HttpSSEClient) ConnectWithToken(token string) (newToken string, err er
 	if cl.tlsClient != nil {
 		cl.tlsClient.Close()
 	}
-	cl.tlsClient = tlsclient.NewTLSClient(cl.hostPort, nil, cl._status.CaCert, cl.timeout, cl.cid)
-	cl._status.HubURL = fmt.Sprintf("https://%s", cl.hostPort)
+	slog.Info("ConnectWithToken", "clientID", cl.clientID, "cid", cl.cid)
+	cl.tlsClient = tlsclient.NewTLSClient(cl.hostPort, nil, cl.caCert, cl.timeout, cl.cid)
+	//cl._status.HubURL = fmt.Sprintf("https://%s", cl.hostPort)
 	cl.mux.Unlock()
 	cl.tlsClient.SetAuthToken(token)
 
 	// Refresh the auth token and verify the connection works.
 	newToken, err = cl.RefreshToken(token)
 	if err != nil {
-		cl.SetConnectionStatus(hubclient.ConnectFailed, err)
 		return "", err
 	}
 	cl.tlsClient.SetAuthToken(newToken)
@@ -198,40 +202,36 @@ func (cl *HttpSSEClient) ConnectWithToken(token string) (newToken string, err er
 		// use a new http client instance to set an indefinite timeout for the sse connection
 		//httpClient := cl.tlsClient.GetHttpClient()
 		httpClient := tlsclient.NewHttp2TLSClient(cl.caCert, nil, 0)
-		err = cl.ConnectSSE(sseURL, newToken, httpClient, cl.handleSSEDisconnect)
+		err = cl.ConnectSSE(sseURL, newToken, httpClient, cl.handleSSEConnect)
 	}
-	cl.SetConnectionStatus(hubclient.Connected, err)
+	//cl.SetConnectionStatus(hubclient.Connected, err)
 
 	return newToken, err
 }
 
 // CreateKeyPair returns a new set of serialized public/private key pair
 func (cl *HttpSSEClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
-	k := keys.NewKey(keys.KeyTypeECDSA)
+	k := keys.NewKey(keys.KeyTypeEd25519)
 	return k
 }
 
-// Disconnect from the MQTT broker and unsubscribe from all topics and set
-// device state to disconnected
+// Disconnect from the server
 func (cl *HttpSSEClient) Disconnect() {
 	slog.Info("HttpSSEClient.Disconnect")
 
-	cl.SetConnectionStatus(hubclient.Disconnected, nil)
-
 	cl.mux.Lock()
-	defer cl.mux.Unlock()
+	sseCancelFn := cl.sseCancelFn
+	cl.sseCancelFn = nil
+	tlsClient := cl.tlsClient
+	cl.tlsClient = nil
+	cl.mux.Unlock()
 
-	if cl._sseChan != nil {
-		close(cl._sseChan)
-		cl._sseChan = nil
+	// the connection status will update, if changed, through the sse callback
+	if sseCancelFn != nil {
+		sseCancelFn()
 	}
-	if cl.sseCancelFn != nil {
-		cl.sseCancelFn()
-		cl.sseCancelFn = nil
-	}
-	if cl.tlsClient != nil {
-		cl.tlsClient.Close()
-		cl.tlsClient = nil
+	if tlsClient != nil {
+		tlsClient.Close()
 	}
 }
 
@@ -245,16 +245,23 @@ func (cl *HttpSSEClient) GetCID() string {
 	return cl.cid
 }
 
+func (cl *HttpSSEClient) GetConnectionStatus() (bool, error) {
+	var lastErr error
+	if cl._lastError.Load() != nil {
+		lastErr = cl._lastError.Load().(error)
+	}
+	return cl._isConnected.Load(), lastErr
+}
+
 // GetProtocolType returns the type of protocol this client supports
 func (cl *HttpSSEClient) GetProtocolType() string {
 	return "https"
 }
 
-// GetStatus Return the transport connection info
-func (cl *HttpSSEClient) GetStatus() hubclient.TransportStatus {
-	cl.mux.RLock()
-	defer cl.mux.RUnlock()
-	return cl._status
+// GetHubURL returns the schema://address:port of the hub connection
+func (cl *HttpSSEClient) GetHubURL() string {
+	hubURL := fmt.Sprintf("https://%s", cl.hostPort)
+	return hubURL
 }
 
 func (cl *HttpSSEClient) GetTlsClient() *tlsclient.TLSClient {
@@ -263,34 +270,81 @@ func (cl *HttpSSEClient) GetTlsClient() *tlsclient.TLSClient {
 	return cl.tlsClient
 }
 
-// handler when the SSE connection fails.
+// handler when the SSE connection is established or fails.
 // The SSE connection determines the connection status.
 // If the status is connected then set it to disconnected.
 // This invokes the optional callback if provided.
-func (cl *HttpSSEClient) handleSSEDisconnect(err error) {
+func (cl *HttpSSEClient) handleSSEConnect(connected bool, err error) {
+	errMsg := ""
 	if err != nil {
-		cl.SetConnectionStatus(hubclient.ConnectFailed, err)
-	} else {
-		cl.SetConnectionStatus(hubclient.Disconnected, nil)
+		errMsg = err.Error()
+	}
+	slog.Info("handleSSEConnect",
+		slog.String("clientID", cl.clientID),
+		slog.Bool("connected", connected),
+		slog.String("err", errMsg))
+
+	var connectionChanged bool = false
+	if cl._isConnected.Load() != connected {
+		connectionChanged = true
+	}
+	cl._isConnected.Store(connected)
+	if err != nil {
+		cl._lastError.Store(err)
+	}
+	cl.mux.RLock()
+	handler := cl._connectHandler
+	cl.mux.RUnlock()
+
+	if connectionChanged && handler != nil {
+		handler(connected, err)
 	}
 }
 
 // InvokeAction publishes an action message and waits for an answer or until timeout
 // An error is returned if delivery failed or succeeded but the action itself failed
-func (cl *HttpSSEClient) InvokeAction(thingID string, name string, data any, messageID string) (
+func (cl *HttpSSEClient) InvokeAction(
+	dThingID string, name string, input interface{}, output interface{}, messageID string) (
 	stat hubclient.ActionProgress) {
 
 	slog.Info("InvokeAction",
-		slog.String("me", cl.clientID),
-		slog.String("thingID", thingID),
+		slog.String("clientID (me)", cl.clientID),
+		slog.String("dThingID", dThingID),
 		slog.String("name", name),
 		slog.String("messageID", messageID),
+		slog.String("cid", cl.cid),
 	)
 	// FIXME: use TD form for this action
 	// FIXME: track message-ID's using headers instead of message envelope
-	stat = cl.PubMessage(http.MethodPost, PostInvokeActionPath, thingID, name, data, messageID, nil)
+	stat = cl.PubMessage(http.MethodPost, PostInvokeActionPath, dThingID, name, input, output, messageID)
 
 	return stat
+}
+
+// InvokeOperation gets the path from the form and makes the call
+func (cl *HttpSSEClient) InvokeOperation(
+	op tdd.Form, dThingID, name string, input interface{}, output interface{}) error {
+
+	urlPath, _ := op.GetHRef()
+	if urlPath == "" {
+		return fmt.Errorf("InvokeOperation. Missing href in form", "clientID", cl.clientID)
+	}
+	u, err := url.Parse(urlPath)
+	if err != nil {
+		return err
+	}
+	// TODO: how to get result of actions here?
+	methodName, _ := op.GetMethodName()
+	stat := cl.PubMessage(methodName, u.Path, dThingID, name, input, output, "")
+	if stat.Error != "" {
+		err = errors.New(stat.Error)
+	}
+	return err
+}
+
+// IsConnected return whether the return channel is connection, eg can receive data
+func (cl *HttpSSEClient) IsConnected() bool {
+	return cl._isConnected.Load()
 }
 
 // Logout from the server and end the session
@@ -352,7 +406,7 @@ func (cl *HttpSSEClient) PubEvent(thingID string, name string, data any, message
 		slog.Any("data", data),
 		//slog.String("messageID", messageID),
 	)
-	stat := cl.PubMessage(http.MethodPost, PostAgentPublishEventPath, thingID, name, data, messageID, nil)
+	stat := cl.PubMessage(http.MethodPost, PostAgentPublishEventPath, thingID, name, data, nil, messageID)
 	if stat.Error != "" {
 		return errors.New(stat.Error)
 	}
@@ -365,13 +419,13 @@ func (cl *HttpSSEClient) PubEvent(thingID string, name string, data any, message
 //	path used to publish PostActionPath/PostEventPath/... optionally with {thingID} and/or {name}
 //	thingID (optional) to publish as or to: events are published for the thing and actions to publish to the thingID
 //	name (optional) is the event/action/property name being published or modified
-//	data is the native message payload to transfer that will be serialized
+//	input is the native message payload to transfer that will be serialized
+//	output is optional destination for unmarshalling the payload
 //	messageID optional 'message-id' header value
-//	queryParams optional name-value pairs to pass along as query parameters
 //
 // This returns the response body and optional a response message with delivery status and messageID with a delivery status
 func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
-	thingID string, name string, data any, messageID string, queryParams map[string]string) (
+	thingID string, name string, input interface{}, output interface{}, messageID string) (
 	stat hubclient.ActionProgress) {
 
 	progress := ""
@@ -383,16 +437,16 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 	defer cl.mux.RUnlock()
 	if cl.tlsClient == nil {
 		stat.Progress = vocab.ProgressStatusFailed
-		stat.Error = "HandleActionFlow. Client connection was closed"
-		slog.Error(stat.Error)
+		stat.Error = "PubMessage. Client connection was closed"
+		slog.Warn(stat.Error, "clientID", cl.GetClientID(), "thingID", thingID, "name", name, "cid", cl.cid)
 		return stat
 	}
 	//resp, err := cl.tlsClient.Post(messagePath, payload)
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, messagePath)
-	serData := cl.Marshal(data)
+	serData := cl.Marshal(input)
 
 	reply, respMsgID, httpStatus, headers, err :=
-		cl.tlsClient.Invoke(methodName, serverURL, serData, messageID, queryParams)
+		cl.tlsClient.Invoke(methodName, serverURL, serData, messageID, nil)
 
 	_ = headers
 	// TODO: detect difference between not connected and unauthenticated
@@ -416,6 +470,7 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 		// return dataschema contains a progress envelope
 		err = cl.Unmarshal(reply, &stat)
 	} else if reply != nil && len(reply) > 0 {
+		// TODO: unmarshalling the reply here is useless as there is needs conversion to the correct type
 		err = cl.Unmarshal(reply, &stat.Reply)
 		stat.Progress = vocab.ProgressStatusCompleted
 	} else if progress != "" {
@@ -433,22 +488,6 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 	return stat
 }
 
-// Publish a message using a TD operation and return the delivery status
-//
-//	 op contains the TD operation for the http binding
-//		dThingID to publish as or to: events are published for the thing and actions to publish to the thingID
-//		name is the event/action/property name being published or modified
-//		data is the native message payload to transfer that will be serialized
-//		queryParams optional name-value pairs to pass along as query parameters
-func (cl *HttpSSEClient) pubFormMessage(op *tdd.Form,
-	dtThingID string, name string, data any, messageID string, queryParams map[string]string) (
-	stat hubclient.ActionProgress) {
-
-	messagePath, _ := (*op).GetHRef()
-	stat = cl.PubMessage(http.MethodPost, messagePath, dtThingID, name, data, messageID, queryParams)
-	return stat
-}
-
 // PubProgressUpdate agent publishes a request progress update message to the digital twin
 // The digital twin will update the request status and notify the sender.
 // This returns an error if the connection with the server is broken
@@ -461,7 +500,7 @@ func (cl *HttpSSEClient) PubProgressUpdate(stat hubclient.ActionProgress) {
 		slog.String("messageID", stat.MessageID))
 
 	stat2 := cl.PubMessage(http.MethodPost, PostAgentPublishProgressPath,
-		"", "", stat, stat.MessageID, nil)
+		"", "", stat, nil, stat.MessageID)
 	if stat.Error != "" {
 		slog.Warn("PubProgressUpdate failed", "err", stat2.Error)
 	}
@@ -484,7 +523,7 @@ func (cl *HttpSSEClient) PubProperties(thingID string, props map[string]any) err
 	}
 	// FIXME: get path from forms
 	stat := cl.PubMessage("POST", PostAgentUpdateMultiplePropertiesPath,
-		thingID, "", props, "", nil)
+		thingID, "", props, nil, "")
 	if stat.Error != "" {
 		return errors.New(stat.Error)
 	}
@@ -545,6 +584,7 @@ func (cl *HttpSSEClient) Rpc(
 		slog.String("thingID", thingID),
 		slog.String("name", name),
 		slog.String("messageID", messageID),
+		slog.String("cid", cl.cid),
 	)
 
 	rChan := make(chan *hubclient.ActionProgress)
@@ -553,13 +593,19 @@ func (cl *HttpSSEClient) Rpc(
 	cl.mux.Unlock()
 
 	// invoke with query parameters to provide the message ID
-	stat := cl.InvokeAction(thingID, name, args, messageID)
+	stat := cl.InvokeAction(thingID, name, args, resp, messageID)
 	waitCount := 0
 
 	// Intermediate status update such as 'applied' are not errors. Wait longer.
 	for {
+		// if the hub return channel doesnt exists then don't bother waiting for a result
+		if !cl.IsConnected() {
+			break
+		}
+
 		// wait at most cl.timeout or until delivery completes or fails
-		if time.Duration(waitCount)*time.Second > cl.timeout {
+		// if the connection breaks while waiting then tlsClient will be nil.
+		if time.Duration(waitCount)*time.Second > cl.timeout || cl.tlsClient == nil {
 			break
 		}
 		if stat.Progress == vocab.ProgressStatusCompleted || stat.Progress == vocab.ProgressStatusFailed {
@@ -584,6 +630,7 @@ func (cl *HttpSSEClient) Rpc(
 		slog.String("thingID", thingID),
 		slog.String("name", name),
 		slog.String("messageID", messageID),
+		slog.String("cid", cl.cid),
 		slog.String("status", stat.Progress),
 	)
 
@@ -601,6 +648,7 @@ func (cl *HttpSSEClient) Rpc(
 	}
 	// only once completed will there be a reply as a result
 	if err == nil && resp != nil {
+		// no choice but to decode
 		err = utils.Decode(stat.Reply, resp)
 	}
 	return err
@@ -615,34 +663,9 @@ func (cl *HttpSSEClient) SendOperation(
 	return stat
 }
 
-// SetConnectionStatus updates the current connection status
-func (cl *HttpSSEClient) SetConnectionStatus(cstat hubclient.ConnectionStatus, err error) {
-
-	slog.Info("SetConnectionStatus",
-		slog.String("clientID", cl.clientID),
-		slog.String("cstat", string(cstat)))
-
-	cl.mux.Lock()
-	if cl._status.ConnectionStatus == cstat {
-		cl.mux.Unlock()
-		return
-	}
-
-	cl._status.ConnectionStatus = cstat
-	if err != nil {
-		cl._status.LastError = err
-	}
-	handler := cl._connectHandler
-	newStatus := cl._status
-	cl.mux.Unlock()
-	if handler != nil {
-		handler(newStatus)
-	}
-}
-
 // SetConnectHandler sets the notification handler of connection failure
 // Intended to notify the client that a reconnect or relogin is needed.
-func (cl *HttpSSEClient) SetConnectHandler(cb func(status hubclient.TransportStatus)) {
+func (cl *HttpSSEClient) SetConnectHandler(cb func(connected bool, err error)) {
 	cl.mux.Lock()
 	cl._connectHandler = cb
 	cl.mux.Unlock()
@@ -748,7 +771,7 @@ func (cl *HttpSSEClient) WriteProperty(thingID string, name string, data any) (
 		slog.String("name", name),
 	)
 
-	stat = cl.PubMessage(http.MethodPost, PostWritePropertyPath, thingID, name, data, "", nil)
+	stat = cl.PubMessage(http.MethodPost, PostWritePropertyPath, thingID, name, data, nil, "")
 	return stat
 }
 
@@ -782,28 +805,28 @@ func NewHttpSSEClient(hostPort string, clientID string,
 		timeout = time.Second * 3
 	}
 	tp := HttpSSEClient{
-		_status: hubclient.TransportStatus{
-			HubURL:               fmt.Sprintf("https://%s", hostPort),
-			CaCert:               caCert,
-			ConnectionStatus:     hubclient.Disconnected,
-			LastError:            nil,
-			SupportsCertAuth:     false,
-			SupportsPasswordAuth: true,
-			SupportsKeysAuth:     false,
-			SupportsTokenAuth:    true,
-		},
+		//_status: hubclient.TransportStatus{
+		//	HubURL:               fmt.Sprintf("https://%s", hostPort),
+		//CaCert:               caCert,
+		//ConnectionStatus:     hubclient.Disconnected,
+		//LastError:            nil,
+		//SupportsCertAuth:     false,
+		//SupportsPasswordAuth: true,
+		//SupportsKeysAuth:     false,
+		//SupportsTokenAuth:    true,
+		//},
 		caCert:   caCert,
 		clientID: clientID,
 		cid:      shortid.MustGenerate(),
 
 		// max delay 3 seconds before a response is expected
-		timeout:     timeout,
-		hostPort:    hostPort,
-		ssePath:     ConnectSSEPath,
-		_sseChan:    make(chan *sse.Event),
+		timeout:  timeout,
+		hostPort: hostPort,
+		ssePath:  ConnectSSEPath,
+
 		_correlData: make(map[string]chan *hubclient.ActionProgress),
 		// max message size for bulk reads is 10MB.
-		_maxSSEMessageSize: 1024 * 1024 * 10,
+		maxSSEMessageSize: 1024 * 1024 * 10,
 	}
 	return &tp
 }

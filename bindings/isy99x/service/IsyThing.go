@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/wot/exposedthing"
 	"github.com/hiveot/hub/wot/tdd"
 	"strings"
 	"sync"
@@ -60,7 +61,7 @@ type IsyThing struct {
 	productInfo InsteonProduct
 
 	// propValues holds the values of the thing properties
-	propValues *tdd.PropertyValues
+	propValues *exposedthing.ThingValues
 
 	// protect access to property values
 	mux sync.RWMutex
@@ -176,12 +177,13 @@ func (it *IsyThing) Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prod
 	it.nodeID = node.Address
 	it.thingID = thingID
 	it.productInfo = prodInfo
-	it.propValues = tdd.NewPropertyValues()
+	it.propValues = exposedthing.NewThingValues()
 	enabledDisabled := "enabled"
 	if strings.ToLower(node.Enabled) != "true" {
 		enabledDisabled = "disabled"
 	}
-	pv := it.propValues
+	pv := exposedthing.NewThingValues()
+	it.propValues = pv
 	pv.SetValue("deviceType", it.deviceType)
 	pv.SetValue("flag", fmt.Sprintf("0x%X", node.Flag))
 	pv.SetValue(vocab.PropDeviceEnabledDisabled, enabledDisabled)

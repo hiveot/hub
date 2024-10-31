@@ -13,6 +13,12 @@ func (f Form) GetHRef() (string, bool) {
 	return val.(string), found
 }
 
+// GetMethodName returns the form's "htv:methodName" field
+func (f Form) GetMethodName() (string, bool) {
+	val, found := f["htv:methodName"]
+	return val.(string), found
+}
+
 //Href        string `json:"href"`
 //ContentType string `json:"contentType"`
 //

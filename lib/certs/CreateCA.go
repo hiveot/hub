@@ -14,7 +14,8 @@ import (
 const CertOrgName = "HiveOT"
 const CertOrgLocality = "HiveOT zone"
 
-// CreateCA creates a CA certificate with private key for self-signed server certificates
+// CreateCA creates a CA certificate with an private key for self-signed server certificates.
+// Browsers don't support ed25519 keys so use ecdsa for the certificate.
 // Source: https://shaneutt.com/blog/golang-ca-and-signed-cert-go/
 func CreateCA(cn string, validityDays int) (cert *x509.Certificate, key keys.IHiveKey, err error) {
 
@@ -50,7 +51,7 @@ func CreateCA(cn string, validityDays int) (cert *x509.Certificate, key keys.IHi
 		MaxPathLenZero:        true,
 	}
 
-	// Create the CA private key
+	// Create the CA private key. Browsers don't support ed25519 (2024) so use ecdsa
 	caKey := keys.NewKey(keys.KeyTypeECDSA)
 	privKey := caKey.PrivateKey().(*ecdsa.PrivateKey)
 	pubKey := caKey.PublicKey().(*ecdsa.PublicKey)

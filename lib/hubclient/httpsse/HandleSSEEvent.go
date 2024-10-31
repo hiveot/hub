@@ -8,26 +8,24 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
+
 	"strings"
 	"time"
 )
 
 // handleSSEEvent processes the push-event received from the hub.
-// This is passed on to the client, which must return a delivery
-// applied, completed or error status.
-// This sends the delivery status to the hub using a delivery event.
 func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	var stat hubclient.ActionProgress
 
-	cl.mux.RLock()
-	connStatus := cl._status.ConnectionStatus
-	cl.mux.RUnlock()
 	// WORKAROUND since go-sse has no callback for a successful reconnect, simulate one here
 	// as soon as data is received. The server could send a 'ping' event on connect.
-	if connStatus != hubclient.Connected {
+	if !cl._isConnected.Load() {
 		// success!
 		slog.Info("handleSSEEvent: connection (re)established")
-		cl.SetConnectionStatus(hubclient.Connected, nil)
+		// Note: this callback can send notifications to the client,
+		// so prevent deadlock by running in the background.
+		// (caught by readhistory failing for unknown reason)
+		go cl.handleSSEConnect(true, nil)
 	}
 	// no further processing of a ping needed
 	if event.Type == hubclient.PingMessage {
@@ -70,7 +68,8 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	stat.MessageID = rxMsg.MessageID
 	slog.Debug("handleSSEEvent",
 		//slog.String("Comment", string(event.Comment)),
-		slog.String("me", cl.clientID),
+		slog.String("clientID (me)", cl.clientID),
+		slog.String("cid", cl.cid),
 		slog.String("messageType", rxMsg.MessageType),
 		slog.String("thingID", rxMsg.ThingID),
 		slog.String("name", rxMsg.Name),

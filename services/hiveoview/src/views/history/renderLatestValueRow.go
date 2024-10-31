@@ -38,19 +38,20 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 	unit := r.URL.Query().Get("unit")
 
 	// Read the TD being displayed and its latest values
-	mySession, hc, err := session.GetSessionFromContext(r)
+	_, sess, err := session.GetSessionFromContext(r)
 	if err != nil {
-		mySession.WriteError(w, err, 0)
+		sess.WriteError(w, err, 0)
 		return
 	}
 
 	//latestValues, err := thing.GetLatest(thingID, hc)
-	latestValue, err := digitwin.ValuesReadEvent(hc, name, thingID)
+	latestValue, err := digitwin.ValuesReadEvent(sess.GetHubClient(), name, thingID)
 	if err != nil {
-		latestValue, err = digitwin.ValuesReadProperty(hc, name, thingID)
+		// hiveoview does not show property history so no event means no data
+		//latestValue, err = digitwin.ValuesReadProperty(hc, name, thingID)
 	}
 	if err != nil {
-		mySession.WriteError(w, err, 0)
+		sess.WriteError(w, err, 0)
 		return
 	}
 	iout := consumedthing.NewInteractionOutputFromValue(&latestValue, nil)
@@ -62,5 +63,5 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(fragment))
 		return
 	}
-	mySession.WriteError(w, err, 0)
+	sess.WriteError(w, err, 0)
 }

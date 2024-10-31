@@ -24,7 +24,7 @@ const DefaultServerCertValidityDays = 100
 //	* serviceID is the unique service ID used as the CN. for example hostname-serviceName
 //	* ou is the organizational unit of the certificate
 //	* validityDays is the duration the cert is valid for. Use 0 for default.
-//	* serverKey contains the server's public key
+//	* serverKey contains the server's public key (use ecdsa keys for browser certificates)
 //	* names are the SAN names to include with the certificate, localhost and 127.0.0.1 are always added
 //	* caCert is the CA certificate used to sign the certificate
 //	* caKey is the CA private key used to sign certificate
@@ -92,7 +92,7 @@ func CreateServerCert(
 		}
 	}
 	// Create the service private key
-	//certKey := certs.CreateECDSAKeys()
+
 	// and the certificate itself
 	pubKey := serverKey.PublicKey()
 	certDerBytes, err := x509.CreateCertificate(

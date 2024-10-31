@@ -11,13 +11,13 @@ func (svc *IsyBinding) PubEvents(thingID string, evMap map[string]any) {
 	}
 }
 
-// PublishNodeValues reads and publishes property/event values of the binding, gateway and nodes
-// Set onlyChanges to only publish changed values as events
+// PublishNodeValues reads and publishes the state of the binding, gateway and nodes.
+// Set onlyChanges to only publish changed values.
 func (svc *IsyBinding) PublishNodeValues(onlyChanges bool) error {
 	slog.Info("PublishNodeValues", slog.Bool("onlyChanges", onlyChanges))
 
 	// publish the binding's property and event values
-	props, events := svc.GetBindingPropValues(onlyChanges)
+	props := svc.GetBindingPropValues(onlyChanges)
 	bindingID := svc.hc.GetClientID()
 	slog.Info("PublishNodeValues - properties",
 		slog.String("thingID", bindingID),
@@ -30,19 +30,17 @@ func (svc *IsyBinding) PublishNodeValues(onlyChanges bool) error {
 		slog.Error(err.Error())
 		return err
 	}
-	svc.PubEvents(bindingID, events)
 
-	// publish the gateway device values
+	// publish the gateway device properties and events
 	err = svc.IsyGW.ReadGatewayValues()
 	if err != nil {
 		err = fmt.Errorf("failed reading ISY: %w", err)
 		slog.Error(err.Error())
 		return err
 	}
-	props, events = svc.IsyGW.GetValues(onlyChanges)
+	props = svc.IsyGW.GetPropertyValues(onlyChanges)
 	if len(props) > 0 {
 		_ = svc.hc.PubProperties(svc.IsyGW.GetID(), props)
-		svc.PubEvents(svc.IsyGW.GetID(), events)
 	}
 
 	// read and publish props of each node

@@ -16,10 +16,10 @@ const DirectoryTemplate = "RenderDirectory.gohtml"
 //	Things  []*things.TD
 //}
 
-type DirectoryGroup session2.AgentThings
+type DirectoryGroup AgentThings
 
 type DirectoryTemplateData struct {
-	Groups []*session2.AgentThings
+	Groups []*AgentThings
 	//PageNr      int
 }
 
@@ -35,13 +35,12 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	var buff *bytes.Buffer
 
 	// 1: get session
-	sess, _, err := session2.GetSessionFromContext(r)
+	_, sess, err := session2.GetSessionFromContext(r)
 	if err != nil {
 		sess.WriteError(w, err, 0)
 		return
 	}
 	cts := sess.GetConsumedThingsDirectory()
-	v := sess.GetViewModel()
 
 	tdMap, err := cts.ReadDirectory(false)
 	if err != nil {
@@ -50,7 +49,7 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 		sess.SendNotify(session2.NotifyError, err.Error())
 	}
 
-	agentGroups := v.GroupByAgent(tdMap)
+	agentGroups := GroupByAgent(tdMap)
 	data := DirectoryTemplateData{}
 	data.Groups = agentGroups
 

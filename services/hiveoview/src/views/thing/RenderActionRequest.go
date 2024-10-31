@@ -79,7 +79,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 	//var lastAction *digitwin.InboxRecord
 
 	// Read the TD being displayed
-	sess, hc, err := session.GetSessionFromContext(r)
+	_, sess, err := session.GetSessionFromContext(r)
 	if err != nil {
 		// TODO: redirect?
 		sess.WriteError(w, err, http.StatusBadRequest)

@@ -35,6 +35,7 @@ func CreateTestCertBundle() TestCertBundle {
 	if err != nil {
 		panic("CreateCertBundler failed: " + err.Error())
 	}
+	// browsers don't support certifate with ed25519 keys so use ecdsa
 	certBundle.ServerKey = keys.NewKey(keys.KeyTypeECDSA)
 	certBundle.ClientKey = keys.NewKey(keys.KeyTypeECDSA)
 

@@ -1,8 +1,9 @@
 package hubclient
 
 import (
-	"crypto/x509"
 	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/lib/tlsclient"
+	"github.com/hiveot/hub/wot/tdd"
 )
 
 // PingMessage can be used by the server to ping the client that the connection is ready
@@ -12,54 +13,37 @@ const PingMessage = "ping"
 const StatusHeader = "status"
 
 // MessageIDHeader for transports that support headers can include a message-ID
-const MessageIDHeader = "message-id"
+const MessageIDHeader = tlsclient.HTTPMessageIDHeader
 
 // ConnectionIDHeader identifies the client's connection in case of multiple
 // connections in the same session. Used to identify the connection for subscriptions.
-const ConnectionIDHeader = "cid"
+const ConnectionIDHeader = tlsclient.HTTPConnectionIDHeader
 
 // DataSchemaHeader for transports that support headers can include a dataschema
 // header to indicate an 'additionalresults' dataschema being returned.
 const DataSchemaHeader = "dataschema"
 
-type ConnectionStatus string
-
-const (
-	// Connecting attempting a (re)connection
-	Connecting ConnectionStatus = "connecting"
-	// Connected and authenticated successful
-	Connected ConnectionStatus = "connected"
-	// ConnectFailed after failure to connect
-	// Only used if retry has given up
-	ConnectFailed ConnectionStatus = "connectFailed"
-	// Disconnected by client or not yet connected
-	Disconnected ConnectionStatus = "disconnected"
-	// Expired authentication token
-	Expired ConnectionStatus = "expired"
-	// Unauthorized login name or password
-	Unauthorized ConnectionStatus = "unauthorized"
-)
-
 // TransportStatus connection status of a hub client transport
-type TransportStatus struct {
-	// URL of the hub
-	HubURL string
-	// CA used to connect
-	CaCert *x509.Certificate
-	// the client ID to identify as
-	//SenderID string
-
-	// The current connection status
-	ConnectionStatus ConnectionStatus
-	// The last connection error message, if any
-	LastError error
-
-	// flags indicating the supported protocols
-	SupportsCertAuth     bool
-	SupportsPasswordAuth bool
-	SupportsKeysAuth     bool
-	SupportsTokenAuth    bool
-}
+//type TransportStatus struct {
+//	// URL of the hub
+//	HubURL string
+//	// CA used to connect
+//	CaCert *x509.Certificate
+//	// the client ID to identify as
+//	//SenderID string
+//
+//	// The current connection status
+//	isConnected bool
+//
+//	// The last connection error message, if any
+//	LastError error
+//
+//	// flags indicating the supported protocols
+//	SupportsCertAuth     bool
+//	SupportsPasswordAuth bool
+//	SupportsKeysAuth     bool
+//	SupportsTokenAuth    bool
+//}
 
 // EventHandler processes an event without return value
 type EventHandler func(msg *ThingMessage) error
@@ -112,8 +96,12 @@ type IConsumerClient interface {
 	// GetClientID returns the agent or user clientID for this hub client
 	GetClientID() string
 
-	// GetStatus returns the current transport connection status
-	GetStatus() TransportStatus
+	// GetConnectionStatus returns the current two-way connection status
+	// If disconnected, the last error is included.
+	GetConnectionStatus() (bool, error)
+
+	// GetHubURL returns the schema://address:port of the hub
+	GetHubURL() string
 
 	// GetProtocolType returns the protocol type supported by this transport
 	// "https", "mqtt", "coap", ...
@@ -123,12 +111,14 @@ type IConsumerClient interface {
 	// InvokeAction [consumer] invokes an action request and returns as soon as the
 	// request is delivered to the Hub.
 	//
+	// This will become deprecated in favor of InvokeOperation using forms.
+	//
 	// There are two main use-cases for this.
 	// 1. Invoke an action on an IoT device and receive confirmation of delivery and
-	//    whether it was successful. The initial delivery 'delivered' status will be returned
+	//    whether it was successful. The initial progress 'delivered' status will be returned
 	//    immediately if the device agent is connected. The 'completed' status will be
 	//    sent asynchronously. This can take a while if the device is asleep.
-	// 2. Invoke a method on a service and retrieve a result.
+	// 2. Invoke an action on a service and retrieve a result.
 	//    In most cases it is recommended to use the 'Rpc' method for this as it waits
 	//    and correlates the delivery status event with the request and converts
 	//    the result to the appropriate type.
@@ -138,13 +128,21 @@ type IConsumerClient interface {
 	// Actions aimed to IoT devices and non embedded services will return a delivery status
 	// update separately through a delivery event.
 	//
-	//	url to invoke
-	//  data with action input as defined in its TD
+	//	dThingID digital twin thing ID whose action to invoke
+	//	name of the action to invoke
+	//	input data if the action has any
+	//	output data if the action has any. Only if the action is completed.
+	//  messageID to correlate action with progress
 	//
 	// This returns a delivery status with response data if delivered
-	InvokeAction(thingID string, name string, data any, messageID string) ActionProgress
+	InvokeAction(dThingID string, name string, input interface{}, output interface{}, messageID string) ActionProgress
 
-	// Logout of the hub and invalidate the connected session token
+	// InvokeOperation invokes the operation described in the form
+	// The output, if any, is unmarshalled in the given interface
+	InvokeOperation(f tdd.Form, dThingID, name string, input interface{}, result interface{}) error
+
+	// Logout of the hub and invalidate the connected session token.
+	//This will disconnect from the hub.
 	Logout() error
 
 	// Observe adds a subscription for properties from the given ThingID.
@@ -192,7 +190,7 @@ type IConsumerClient interface {
 	SetMessageHandler(cb MessageHandler)
 
 	// SetConnectHandler sets the notification handler of connection status changes
-	SetConnectHandler(cb func(status TransportStatus))
+	SetConnectHandler(cb func(connected bool, err error))
 
 	// Subscribe adds a subscription for events from the given ThingID.
 	// Use SetMessageHandler to receive the event messages

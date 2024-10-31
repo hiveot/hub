@@ -20,9 +20,12 @@ import (
 // If an authentication error occurs then the onDisconnect handler is invoked with an error.
 // If the connection is cancelled then the onDisconnect is invoked without error
 func (cl *HttpSSEClient) ConnectSSE(
-	sseURL string, bearerToken string, httpClient *http.Client, onDisconnect func(error)) error {
+	sseURL string, bearerToken string, httpClient *http.Client, onConnect func(bool, error)) error {
 
-	slog.Info("ConnectSSE", slog.String("sseURL", sseURL))
+	slog.Info("ConnectSSE - establish SSE connection with server",
+		slog.String("sseURL", sseURL),
+		slog.String("clientID", cl.clientID),
+		slog.String("cid", cl.cid))
 
 	// use context to disconnect the client
 	sseCtx, sseCancelFn := context.WithCancel(context.Background())
@@ -46,7 +49,7 @@ func (cl *HttpSSEClient) ConnectSSE(
 			slog.Info("SSE Connection retry", "err", err, "clientID", cl.clientID)
 			// TODO: how to be notified if the connection is restored?
 			//  workaround: in handleSSEEvent, update the connection status
-			cl.SetConnectionStatus(hubclient.Connecting, err)
+			cl.handleSSEConnect(false, err)
 		},
 	}
 	conn := sseClient.NewConnection(req)
@@ -56,12 +59,15 @@ func (cl *HttpSSEClient) ConnectSSE(
 	//https://github.com/tmaxmax/go-sse/issues/32
 	newBuf := make([]byte, 0, 1024*65)
 	// TODO: make limit configurable
-	conn.Buffer(newBuf, cl._maxSSEMessageSize)
+	conn.Buffer(newBuf, cl.maxSSEMessageSize)
 
 	remover := conn.SubscribeToAll(cl.handleSSEEvent)
 	go func() {
-		// connect and report an error if connection ends due to reason other than context cancelled
+		// connect and wait until the connection ends
+		// and report an error if connection ends due to reason other than context cancelled
+		onConnect(true, nil)
 		err := conn.Connect()
+		onConnect(false, err)
 
 		if connError, ok := err.(*sse.ConnectionError); ok {
 			// since sse retries, this is likely an authentication error
@@ -75,7 +81,6 @@ func (cl *HttpSSEClient) ConnectSSE(
 			err = nil
 		}
 		remover() // cleanup connection
-		onDisconnect(err)
 		//
 	}()
 	// FIXME: wait for the SSE connection to be established

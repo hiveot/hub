@@ -35,6 +35,7 @@ func main() {
 	// TODO: get server cert info from idprov config
 	serverCertPath := path.Join(env.CertsDir, runtime.DefaultServerCertFile)
 	serverKeyPath := path.Join(env.CertsDir, runtime.DefaultServerKeyFile)
+	// FYI, not all browsers support certificates with ed25519 keys, so this file contains a ecdsa key
 	serverCert, err := certs.LoadTLSCertFromPEM(serverCertPath, serverKeyPath)
 	if err != nil {
 		slog.Error("idprov: Failed loading server certificate", "err", err)

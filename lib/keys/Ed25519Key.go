@@ -25,11 +25,13 @@ func (k *Ed25519Key) ExportPrivate() string {
 	if k.privKey == nil {
 		panic("private key not initialized")
 	}
-	seed := k.privKey.Seed()
-	pemEnc = pem.EncodeToMemory(
-		&pem.Block{Type: "PRIVATE KEY",
-			Bytes: seed,
-		})
+	raw, err := x509.MarshalPKCS8PrivateKey(k.privKey)
+	block := &pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: raw,
+	}
+	pemEnc = pem.EncodeToMemory(block)
+	_ = err
 	return string(pemEnc)
 }
 
@@ -96,6 +98,16 @@ func (k *Ed25519Key) ImportPrivate(privatePEM string) (err error) {
 		err = fmt.Errorf("not a PEM or base64 encoded format")
 		return err
 	}
+	// try PKCS8 encoding
+	rawPrivateKey, err := x509.ParsePKCS8PrivateKey(derBytes)
+	ed25519PK, found := rawPrivateKey.(ed25519.PrivateKey)
+	if found {
+		k.privKey = ed25519PK
+		k.pubKey = k.privKey.Public().(ed25519.PublicKey)
+		return nil
+	}
+
+	// is it a ed25519 seed?
 	if len(derBytes) != ed25519.SeedSize {
 		err = fmt.Errorf("not a ED25519 seed")
 		return err

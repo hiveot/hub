@@ -21,7 +21,7 @@ func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 	var hc hubclient.IConsumerClient
 
 	// get the hub client connection and read the existing TD
-	sess, hc, err := session2.GetSessionFromContext(r)
+	_, sess, err := session2.GetSessionFromContext(r)
 	if err != nil {
 		// TODO: redirect to login?
 		sess.WriteError(w, err, http.StatusBadRequest)

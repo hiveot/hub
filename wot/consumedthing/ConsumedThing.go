@@ -3,6 +3,7 @@ package consumedthing
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyclient"
@@ -70,7 +71,7 @@ func (ct *ConsumedThing) GetPropValue(name string) (iout *InteractionOutput) {
 			ThingID: ct.td.ID,
 			Name:    name,
 		}
-		iout.UpdateSchemaFromTD(ct.td)
+		iout.SetSchemaFromTD(ct.td)
 		slog.Info("Value not (yet) found for property ", "name", name, "thingID", ct.td.ID)
 	}
 	return iout
@@ -88,7 +89,7 @@ func (ct *ConsumedThing) GetEventValue(name string) (iout *InteractionOutput) {
 			ThingID: ct.td.ID,
 			Name:    name,
 		}
-		iout.UpdateSchemaFromTD(ct.td)
+		iout.SetSchemaFromTD(ct.td)
 		slog.Info("Value not (yet) found for event ", "name", name, "thingID", ct.td.ID)
 	}
 	return iout
@@ -121,7 +122,7 @@ func (ct *ConsumedThing) InvokeAction(name string, params InteractionInput) *Int
 	//	slog.Warn("HandleActionFlow", "err", err.Error())
 	//}
 	//stat := ct.hc.SendOperation(href, actionForm, params.value, "")
-	stat := ct.hc.InvokeAction(ct.td.ID, name, params.value, "")
+	stat := ct.hc.InvokeAction(ct.td.ID, name, params.value, nil, "")
 
 	o := NewInteractionOutput(
 		ct.td.ID, name, params.Schema, params.value, "")
@@ -248,8 +249,9 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 func (ct *ConsumedThing) ReadHistory(name string, timestamp time.Time, duration time.Duration) (values []*hubclient.ThingMessage, itemsRemaining bool, err error) {
 
 	hist := historyclient.NewReadHistoryClient(ct.hc)
+	// FIXME: go-sse doesn't handle large payloads
 	values, itemsRemaining, err = hist.ReadHistory(
-		ct.td.ID, name, timestamp, duration, 500)
+		ct.td.ID, name, timestamp, duration, 100)
 
 	return values, itemsRemaining, err
 }
@@ -284,15 +286,25 @@ func (ct *ConsumedThing) ReadProperty(name string) *InteractionOutput {
 // ReadAllEvents reads all Thing event values.
 func (ct *ConsumedThing) ReadAllEvents() map[string]*InteractionOutput {
 	var err error
-	evList, err := digitwin.ValuesReadAllEvents(ct.hc, ct.td.ID)
+	var evList []digitwin.ThingValue
+
+	// TODO: use the TD Form to read all events
+	form := ct.td.GetForm(vocab.HTOpReadAllEvents, "", ct.hc.GetProtocolType())
+	if form != nil {
+		err = ct.hc.InvokeOperation(form, ct.td.ID, "", nil, &evList)
+	} else {
+		// fallback to the digitwin values-service
+		evList, err = digitwin.ValuesReadAllEvents(ct.hc, ct.td.ID)
+	}
 	if err != nil {
 		return nil
 	}
+	// TODO: no need to create interactionoutputs until they are requested
 	for _, v := range evList {
 		io := NewInteractionOutput(ct.td.ID, v.Name, nil, v.Data, v.Updated)
 		io.MessageID = v.MessageID
 		//io.SenderID = v.SenderID  // sender is agent of this thing
-		io.UpdateSchemaFromTD(ct.td)
+		io.SetSchemaFromTD(ct.td)
 		ct.eventValues[v.Name] = io
 	}
 	return ct.eventValues
@@ -309,7 +321,7 @@ func (ct *ConsumedThing) ReadAllProperties() map[string]*InteractionOutput {
 		io := NewInteractionOutput(ct.td.ID, v.Name, nil, v.Data, v.Updated)
 		io.MessageID = v.MessageID
 		//io.SenderID = v.SenderID  // sender is agent of this thing
-		io.UpdateSchemaFromTD(ct.td)
+		io.SetSchemaFromTD(ct.td)
 		ct.propValues[v.Name] = io
 	}
 	return ct.propValues

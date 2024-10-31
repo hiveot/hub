@@ -1,10 +1,10 @@
 package main
 
 import (
-	"crypto/ecdsa"
+	"crypto/ed25519"
 	"flag"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime"
@@ -16,6 +16,8 @@ import (
 
 const port = 8443 // default webserver TLS port
 const serverCertFile = runtime.DefaultServerCertFile
+
+// FYI, not all browsers support certificates with ed25519 keys, so this file contains a ecdsa key
 const serverKeyFile = runtime.DefaultServerKeyFile
 const TemplateRootPath = "services/hiveoview/src"
 
@@ -38,7 +40,7 @@ const TemplateRootPath = "services/hiveoview/src"
 // If the test user __hiveoview doesn't exist it will be added and a private key
 // generated.
 func main() {
-	var signingKey *ecdsa.PrivateKey
+	var signingKey ed25519.PrivateKey
 	serverPort := port
 	extfs := false
 
@@ -57,7 +59,10 @@ func main() {
 	// serve the hiveoview web pages
 	keyData, err := os.ReadFile(env.KeyFile)
 	if err == nil {
-		signingKey, err = jwt.ParseECPrivateKeyFromPEM(keyData)
+		k := keys.NewEd25519Key()
+		err = k.ImportPrivate(string(keyData))
+		signingKey = k.PrivateKey().(ed25519.PrivateKey)
+		//signingKey, err = jwt.ParseECPrivateKeyFromPEM(keyData)
 	}
 	// development only, serve files and parse templates from filesystem
 	rootPath := ""

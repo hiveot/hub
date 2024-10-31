@@ -12,7 +12,7 @@ const TemplateFile = "status.gohtml"
 // RenderStatus renders the client status page
 func RenderStatus(w http.ResponseWriter, r *http.Request) {
 	var buff *bytes.Buffer
-	sess, _, err := session.GetSessionFromContext(r)
+	_, sess, err := session.GetSessionFromContext(r)
 
 	status := app2.GetConnectStatus(r)
 

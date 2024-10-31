@@ -5,6 +5,7 @@ import (
 	"github.com/lmittmann/tint"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -33,6 +34,15 @@ func SetLogging(levelName string, logFile string) *slog.Logger {
 		AddSource:  true,
 		Level:      logLevel,
 		TimeFormat: "Jan _2 15:04:05.0000",
+		ReplaceAttr: func(groups []string, attr slog.Attr) slog.Attr {
+			if attr.Key == slog.SourceKey {
+				source := attr.Value.Any().(*slog.Source)
+				source.File = filepath.Base(source.File)
+				//sourcePath := fmt.Sprintf("%s:%d %s", src.File, src.Line, src.Function)
+				//return slog.String(slog.SourceKey, sourcePath)
+			}
+			return attr
+		},
 	}
 	handler := tint.NewHandler(os.Stdout, opts)
 	//opts := &slog.HandlerOptions{
@@ -42,5 +52,7 @@ func SetLogging(levelName string, logFile string) *slog.Logger {
 	//handler := slog.NewTextHandler(os.Stdout, opts)
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
+	//logLogger := slog.NewLogLogger(handler, logLevel)
+	//_ = http.Server{ErrorLog: logLogger}
 	return logger
 }

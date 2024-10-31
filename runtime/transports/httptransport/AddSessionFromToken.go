@@ -52,19 +52,6 @@ func (svc *HttpBinding) AddSessionFromToken(userAuthn api.IAuthenticator) func(n
 				return
 			}
 
-			//if sid == "" {
-			//	// service/devices don't have a session-id in their token. These tokens
-			//	// remain valid until they expire. Use the client-id as the session ID
-			//	// as only a single instance is allowed.
-			//	cs, err = b.sm.GetSession(clientID)
-			//	if cs == nil {
-			//		cs, err = b.sm.AddSession(clientID, r.RemoteAddr, clientID)
-			//	}
-			//} else {
-			//{
-			// A token with session-id must have a known session created on login
-			//cs, err = b.sm.GetSession(sid)
-			//}
 			if err != nil {
 				// If no session is found then the session token is invalid. This can
 				// happen after the user logs out.

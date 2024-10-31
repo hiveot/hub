@@ -27,7 +27,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 
 	stat := hubclient.ActionProgress{}
 	//
-	mySession, hc, err := session2.GetSessionFromContext(r)
+	_, mySession, err := session2.GetSessionFromContext(r)
 	if err != nil {
 		mySession.WriteError(w, err, http.StatusBadRequest)
 	}

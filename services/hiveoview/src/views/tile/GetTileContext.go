@@ -34,11 +34,11 @@ func GetTileContext(r *http.Request, mustExist bool) (
 
 	var found bool
 	ctc := ClientTileContext{}
-	sess, hc, err := session.GetSessionFromContext(r)
+	_, sess, err := session.GetSessionFromContext(r)
 	if err != nil {
 		return sess, ctc, err
 	}
-	ctc.clientID = hc.GetClientID()
+	ctc.clientID = sess.GetClientID()
 	ctc.clientModel = sess.GetClientData()
 	ctc.dashboardID = chi.URLParam(r, URLParamDashboardID)
 	ctc.dashboard, found = ctc.clientModel.GetDashboard(ctc.dashboardID)

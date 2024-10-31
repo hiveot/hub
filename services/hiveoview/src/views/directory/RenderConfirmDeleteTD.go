@@ -26,14 +26,14 @@ func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 	tdJson := ""
 
 	// Read the TD being displayed and its latest values
-	sess, hc, err := session.GetSessionFromContext(r)
+	_, sess, err := session.GetSessionFromContext(r)
 	if err != nil {
 		// TODO: redirect to login?
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 
-	tdJson, err = digitwin.DirectoryReadTD(hc, thingID)
+	tdJson, err = digitwin.DirectoryReadTD(sess.GetHubClient(), thingID)
 	if err == nil {
 		err = jsoniter.UnmarshalFromString(tdJson, &td)
 	}

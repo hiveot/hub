@@ -200,7 +200,7 @@ func (svc *SelfSignedCertsService) CreateUserCert(
 // Start the service and listen for requests
 //
 //	hc is the connection to the hub with a service role. For testing it can be nil.
-func (svc *SelfSignedCertsService) Start(hc hubclient.IAgentClient) (err error) {
+func (svc *SelfSignedCertsService) Start(hc hubclient.IHubClient) (err error) {
 	slog.Info("Starting certs service", "serviceID", hc.GetClientID())
 	// for testing, hc can be nil
 	svc.hc = hc

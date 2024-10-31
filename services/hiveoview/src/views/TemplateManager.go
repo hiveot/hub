@@ -51,7 +51,7 @@ func (svc *TemplateManager) GetTemplate(name string) (*template.Template, error)
 	// Reparse all templates
 	// TODO-1: parse only the files that are needed, but how to know which ones are?
 	// TODO-2: parse only if files have changed
-	slog.Info("GetTemplate, parsing files")
+	slog.Debug("GetTemplate, parsing files")
 	t := template.New("hiveot")
 	templateFS := os.DirFS(svc.templatePath)
 	err := svc.parseTemplateFiles(t, templateFS)

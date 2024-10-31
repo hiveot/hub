@@ -38,7 +38,7 @@ const DefaultTimeout = time.Second * 30 // Default is 3
 //	core optional core selection. Fallback is to auto determine based on URL.
 //	 password optional for a user login
 func ConnectToHub(fullURL string, clientID string, certDir string, password string) (
-	hc hubclient.IAgentClient, err error) {
+	hc hubclient.IHubClient, err error) {
 
 	// 1. determine the actual address
 	if fullURL == "" {
@@ -58,7 +58,7 @@ func ConnectToHub(fullURL string, clientID string, certDir string, password stri
 		return nil, err
 	}
 	// 3. Determine which protocol to use and setup the key and token filenames
-	hc = NewAgentClient(fullURL, clientID, caCert)
+	hc = NewHubClient(fullURL, clientID, caCert)
 	if hc == nil {
 		return nil, fmt.Errorf("unable to create hub client for URL: %s", fullURL)
 	}
@@ -105,7 +105,7 @@ func ConnectWithTokenFile(hc hubclient.IConsumerClient, keysDir string) error {
 	return err
 }
 
-// NewAgentClient returns a new Hub agent client instance
+// NewHubClient returns a new Hub agent client instance
 //
 // The keyPair string is optional. If not provided a new set of keys will be created.
 // Use GetKeyPair to retrieve it for saving to file.
@@ -115,7 +115,7 @@ func ConnectWithTokenFile(hc hubclient.IConsumerClient, keysDir string) error {
 //   - fullURL of server to connect to.
 //   - clientID is the account/login ID of the client that will be connecting
 //   - caCert of server or nil to not verify server cert
-func NewAgentClient(fullURL string, clientID string, caCert *x509.Certificate) (hc hubclient.IAgentClient) {
+func NewHubClient(fullURL string, clientID string, caCert *x509.Certificate) (hc hubclient.IHubClient) {
 
 	parts, _ := url.Parse(fullURL)
 	clType := parts.Scheme

@@ -4,11 +4,13 @@ package certs
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"github.com/hiveot/hub/lib/keys"
+	"log/slog"
 	"os"
 )
 
@@ -60,6 +62,7 @@ func LoadX509CertFromPEM(pemPath string) (cert *x509.Certificate, err error) {
 //
 // If loading fails, this returns nil as certificate pointer
 func LoadTLSCertFromPEM(certPEMPath, keyPEMPath string) (cert *tls.Certificate, err error) {
+	// FYI, not all browsers support certificates with ed25519 keys, so this file contains a ecdsa key
 	tlsCert, err := tls.LoadX509KeyPair(certPEMPath, keyPEMPath)
 	if err != nil {
 		return nil, err
@@ -85,24 +88,52 @@ func PublicKeyFromCert(cert *x509.Certificate) *ecdsa.PublicKey {
 //	cert is the obtained TLS certificate whose parts to save
 //	certPEMPath the file to save the X509 certificate to in PEM format
 //	keyPEMPath the file to save the private key to in PEM format
-//func SaveTLSCertToPEM(cert *tls.Certificate, certPEMPath, keyPEMPath string) error {
-//	slog.Info("Saving TLS cert to " + certPEMPath)
-//	b := pem.Block{Type: "CERTIFICATE", Bytes: cert.Certificate[0]}
-//	certPEM := pem.EncodeToMemory(&b)
-//	// remove existing cert since perm 0444 doesn't allow overwriting it
-//	_ = os.Remove(certPEMPath)
-//	_ = os.Remove(keyPEMPath)
-//	err := os.WriteFile(certPEMPath, certPEM, 0444)
-//	if err != nil {
-//		slog.Error("Failed writing server cert to file", "err", err)
-//		return err
-//	}
-//	k, err := keys.NewKeyFromEnc(cert.PrivateKey)
-//	if err == nil {
-//		err = k.ExportPrivateToFile(keyPEMPath)
-//	}
-//	return err
-//}
+func SaveTLSCertToPEM(cert *tls.Certificate, certPEMPath, keyPEMPath string) error {
+	//slog.Info("Saving TLS cert to " + certPEMPath)
+	b := pem.Block{Type: "CERTIFICATE", Bytes: cert.Certificate[0]}
+	certPEM := pem.EncodeToMemory(&b)
+	// remove existing cert since perm 0444 doesn't allow overwriting it
+	_ = os.Remove(certPEMPath)
+	_ = os.Remove(keyPEMPath)
+	err := os.WriteFile(certPEMPath, certPEM, 0444)
+	if err != nil {
+		slog.Error("Failed writing server cert to file", "err", err)
+		return err
+	}
+	ecdsaPK, found := cert.PrivateKey.(*ecdsa.PrivateKey)
+	if found {
+		k := keys.NewEcdsaKeyFromPrivate(ecdsaPK)
+		err = k.ExportPrivateToFile(keyPEMPath)
+		return err
+	}
+	ed25519PK, found := cert.PrivateKey.(ed25519.PrivateKey)
+	if found {
+		//raw, err := x509.MarshalPKCS8PrivateKey(ed25519PK)
+		//block := &pem.Block{
+		//	Type:  "PRIVATE KEY",
+		//	Bytes: raw,
+		//}
+		//err = os.WriteFile(keyPEMPath, pem.EncodeToMemory(block), 0600)
+		k := keys.NewEd25519KeyFromPrivate(ed25519PK)
+		err = k.ExportPrivateToFile(keyPEMPath)
+		return err
+	}
+
+	////cert.PrivateKey.
+	//privKey := cert.PrivateKey
+	//seed := privKey.Seed()
+	//pemEnc = pem.EncodeToMemory(
+	//	&pem.Block{Type: "PRIVATE KEY",
+	//		Bytes: seed,
+	//	})
+	//return string(pemEnc)
+
+	//k, err := keys.NewKeyFromEnc(ed25519PK)
+	if err == nil {
+		//err = k.ExportPrivateToFile(keyPEMPath)
+	}
+	return err
+}
 
 // SaveX509CertToPEM saves the x509 certificate to file in PEM format.
 // Clients that receive a client certificate from provisioning can use this

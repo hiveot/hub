@@ -92,7 +92,7 @@ func (d *DummyAuthenticator) ValidateToken(token string) (clientID string, sessi
 var dummyAuthenticator = &DummyAuthenticator{}
 
 // create a test client as an agent
-func newAgentClient(clientID string) hubclient.IAgentClient {
+func newAgentClient(clientID string) hubclient.IHubClient {
 	cl := httpsse.NewHttpSSEClient(hostPort, clientID, nil, certBundle.CaCert, time.Minute)
 	return cl
 }

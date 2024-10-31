@@ -13,10 +13,10 @@ import (
 
 const RenderHistoryTemplate = "RenderHistoryPage.gohtml"
 
-// RenderHistoryPage renders a table with historical values
+// RenderHistoryPage renders a table with historical event values
 // URL parameters:
 // @param thingID to view
-// @param key whose value to show
+// @param name of event whose value to show
 // @param timestamp the start or end time of the viewing period
 // @param duration number of seconds to view. default is -24 hours
 func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +36,7 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 	// key events are escaped as SSE doesn't allow spaces and slashes
 
 	// Read the TD being displayed and its latest values
-	sess, _, err := session.GetSessionFromContext(r)
+	_, sess, err := session.GetSessionFromContext(r)
 	if err != nil {
 		sess.WriteError(w, err, 0)
 		return

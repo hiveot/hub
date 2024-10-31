@@ -56,7 +56,7 @@ func DetermineKeyType(encKey string) KeyType {
 		switch rawPrivateKey.(type) {
 		case *ecdsa.PrivateKey:
 			return KeyTypeECDSA
-		case *ed25519.PrivateKey:
+		case ed25519.PrivateKey:
 			return KeyTypeEd25519
 		case *rsa.PrivateKey:
 			return KeyTypeRSA

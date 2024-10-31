@@ -1,7 +1,6 @@
-package session
+package directory
 
 import (
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/wot/tdd"
 	"sort"
 )
@@ -15,14 +14,8 @@ type AgentThings struct {
 	Things  []*tdd.TD
 }
 
-// ClientViewModel for querying and transforming server data for presentation
-type ClientViewModel struct {
-	// connection with the hub
-	hc hubclient.IConsumerClient
-}
-
 // GroupByAgent groups Things by agent and sorts them by Thing title
-func (v *ClientViewModel) GroupByAgent(tds map[string]*tdd.TD) []*AgentThings {
+func GroupByAgent(tds map[string]*tdd.TD) []*AgentThings {
 	agentMap := make(map[string]*AgentThings)
 	// first split the things by their agent
 	for thingID, td := range tds {
@@ -41,7 +34,7 @@ func (v *ClientViewModel) GroupByAgent(tds map[string]*tdd.TD) []*AgentThings {
 	agentsList := make([]*AgentThings, 0, len(agentMap))
 	for _, grp := range agentMap {
 		agentsList = append(agentsList, grp)
-		v.SortThingsByTitle(grp.Things)
+		SortThingsByTitle(grp.Things)
 	}
 	// last sort the agents
 	sort.Slice(agentsList, func(i, j int) bool {
@@ -50,36 +43,11 @@ func (v *ClientViewModel) GroupByAgent(tds map[string]*tdd.TD) []*AgentThings {
 	return agentsList
 }
 
-// ReadDirectory loads and decodes Things from the directory.
-// This currently limits the nr of things to ReadDirLimit.
-//func (v *ClientViewModel) ReadDirectory() (map[string]*tdd.TD, error) {
-//	newThings := make(map[string]*tdd.TD)
-//
-//	// TODO: support for paging
-//	thingsList, err := digitwin.DirectoryReadTDs(v.hc, ReadDirLimit, 0)
-//	if err != nil {
-//		return newThings, err
-//	}
-//	for _, tdJson := range thingsList {
-//		td := tdd.TD{}
-//		err = json.Unmarshal([]byte(tdJson), &td)
-//		if err == nil {
-//			newThings[td.ID] = &td
-//		}
-//	}
-//	return newThings, nil
-//}
-
 // SortThingsByTitle as the name suggests sorts the things in the given slice
-func (v *ClientViewModel) SortThingsByTitle(tds []*tdd.TD) {
+func SortThingsByTitle(tds []*tdd.TD) {
 	sort.Slice(tds, func(i, j int) bool {
 		tdI := tds[i]
 		tdJ := tds[j]
 		return tdI.Title < tdJ.Title
 	})
-}
-
-func NewClientViewModel(hc hubclient.IConsumerClient) *ClientViewModel {
-	v := &ClientViewModel{hc: hc}
-	return v
 }

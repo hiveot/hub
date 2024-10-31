@@ -79,9 +79,9 @@ func RenderEditProperty(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	propName := chi.URLParam(r, "name")
 
-	sess, hc, err := session.GetSessionFromContext(r)
+	_, sess, err := session.GetSessionFromContext(r)
 	if err == nil {
-		data, err = getConfigValue(hc, thingID, propName)
+		data, err = getConfigValue(sess.GetHubClient(), thingID, propName)
 	}
 	pathParams := map[string]string{"thingID": thingID, "name": propName}
 	data.SubmitPropertyPath = utils.Substitute(src.PostThingPropertyEditPath, pathParams)

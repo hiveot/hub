@@ -15,8 +15,9 @@ type IClientConnection interface {
 	// It is allowed to close an already closed connection.
 	Close()
 
-	// GetConnectionID returns the connection ID belonging to this endpoint
-	GetConnectionID() string
+	// GetCLCID returns the client's connection ID belonging to this endpoint
+	// this is a combination of the clientid and header cid field
+	GetCLCID() string
 
 	// GetClientID returns the authentication ID of connected agent or consumer
 	GetClientID() string

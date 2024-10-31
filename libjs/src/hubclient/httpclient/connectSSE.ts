@@ -46,6 +46,7 @@ function parseSSEEvent(e: MessageEvent) : ThingMessage {
 }
 
 // Connect an EventSource to the SSE server and handle SSE events
+// cid is the connection id field as used in all http requests. (eg, without the clientid)
 export async function  connectSSE(
     baseURL:string,
     ssePath:string,
@@ -63,7 +64,7 @@ export async function  connectSSE(
                 origin: baseURL,
                 "path": ssePath,
                 "content-Type": "application/json",
-                "cid": cid
+                "cid": cid // this header must match the ConnectionIDHeader field name on the server
             },
             https: {
                 rejectUnauthorized: false

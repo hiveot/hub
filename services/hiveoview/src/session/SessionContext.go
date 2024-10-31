@@ -3,47 +3,57 @@ package session
 import (
 	"context"
 	"errors"
-	"fmt"
-	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
 	"net/http"
 	"time"
 )
 
-const SessionContextID = "session"
+const ClientSessionContextID = "session"
+const SessionManagerContextID = "sm"
 
 // AddSessionToContext middleware adds a WebClientSession object to the request context.
 //
-// If no valid session is found and no cookie with auth token is present
-// then SessionLogout is invoked.
-// If an inactive session is found then try to activate it using the cookie's auth token.
-func AddSessionToContext() func(next http.Handler) http.Handler {
+// This uses the bearer token to identify the client ID and derive the connection-ID
+// using the cid header:  connectionID := {clientID}-{cid}
+//
+// If no valid session is found and no cookie with auth token is present then
+// invoke SessionLogout.
+func AddSessionToContext(sm *WebSessionManager) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var clientID string
-			var hc hubclient.IConsumerClient
+			//var hc hubclient.IConsumerClient
 
-			// get the session
-			cs, claims, err := sessionmanager.GetSessionFromCookie(r)
-			if cs != nil && cs.IsActive() {
+			// get the current connection object
+			cs, clientID, cid, authToken, err := sm.GetSessionFromCookie(r)
+			if err != nil {
+				slog.Warn("AddSessionToContext: No valid authentication. Redirect to login.",
+					slog.String("remoteAdd", r.RemoteAddr),
+					slog.String("url", r.URL.String()))
+				time.Sleep(time.Second)
+				SessionLogout(w, r)
+				return
+			}
+			if cs != nil {
+				if !cs.IsActive() {
+					slog.Error("Session available but it is disconnected from the hub")
+					http.Error(w, "session has no hub connection", http.StatusInternalServerError)
+					return
+				}
 				// active session exists. make it available in the context
-				ctx := context.WithValue(r.Context(), SessionContextID, cs)
+				ctx := context.WithValue(r.Context(), SessionManagerContextID, sm)
+				ctx = context.WithValue(ctx, ClientSessionContextID, cs)
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
-			// session doesn't exist. Attempt to reconnect if claims exist.
-			if claims == nil {
-				err = fmt.Errorf("AddSessionToContext: session doesn't exist: %w", err)
-			} else {
-				clientID, _ = claims.GetSubject()
-				authToken := claims.AuthToken
-
-				hc, err = sessionmanager.ConnectWithToken(clientID, authToken)
-			}
-			// activate the session with the new connection
-			if err == nil {
-				cs, err = sessionmanager.ActivateNewSession(w, r, hc, claims.AuthToken)
-			}
+			// Session doesn't exist with the given connection ID.
+			// Open a new session and reconnect to the hub using the given auth token
+			// This can also be the result of an SSE reconnect, in which case the followup Serve
+			// will link to this session.
+			slog.Info("AddSessionToContext. New webclient session. Authenticate using its bearer token",
+				slog.String("clientID", clientID),
+				slog.String("cid", cid),
+				slog.String("remoteAddr", r.RemoteAddr))
+			cs, err = sm.ConnectWithToken(w, r, clientID, cid, authToken)
 			if err != nil {
 				slog.Warn("AddSessionToContext: Session is no longer valid. Redirect to login.",
 					slog.String("remoteAdd", r.RemoteAddr),
@@ -52,14 +62,19 @@ func AddSessionToContext() func(next http.Handler) http.Handler {
 				SessionLogout(w, r)
 				return
 			}
-
 			//status := cs.GetStatus()
 			//slog.Info("found session",
 			//	slog.String("clientID", status.SenderID),
 			//	slog.String("connected", string(status.ConnectionStatus)))
+			if !cs.IsActive() {
+				slog.Error("Session just added but shows as disconnected from the hub")
+				http.Error(w, "session has no hub connection", http.StatusInternalServerError)
+				return
+			}
 
 			// make the session is available through the context
-			ctx := context.WithValue(r.Context(), SessionContextID, cs)
+			ctx := context.WithValue(r.Context(), SessionManagerContextID, sm)
+			ctx = context.WithValue(ctx, ClientSessionContextID, cs)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -67,19 +82,21 @@ func AddSessionToContext() func(next http.Handler) http.Handler {
 
 //
 
-// GetSessionFromContext returns the session object and hub client from the request context
-// This returns an error if the session is not found or is not active.
+// GetSessionFromContext returns the session manager and client session instance
+// from the request context.
+// This returns an error if the session manager is not found.
 // Intended for use by http handlers.
 // Note: This should not be used in an SSE session.
-func GetSessionFromContext(r *http.Request) (*WebClientSession, hubclient.IConsumerClient, error) {
-	ctxSession := r.Context().Value(SessionContextID)
-	if ctxSession == nil {
+func GetSessionFromContext(r *http.Request) (
+	*WebSessionManager, *WebClientSession, error) {
+
+	ctxSessionManager := r.Context().Value(SessionManagerContextID)
+	ctxClientSession := r.Context().Value(ClientSessionContextID)
+	if ctxSessionManager == nil || ctxClientSession == nil {
 		return nil, nil, errors.New("no session in context")
 	}
-	session := ctxSession.(*WebClientSession)
-	if !session.IsActive() {
-		return nil, nil, errors.New("session is not active")
-	}
-	hc := session.GetHubClient()
-	return session, hc, nil
+	clientSession := ctxClientSession.(*WebClientSession)
+	sm := ctxSessionManager.(*WebSessionManager)
+	//hc := session.GetHubClient()
+	return sm, clientSession, nil
 }

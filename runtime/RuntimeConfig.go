@@ -19,6 +19,8 @@ import (
 )
 
 const DefaultServerCertFile = "hubCert.pem"
+
+// FYI, not all browsers support certificates with ed25519 keys, so this file contains a ecdsa key
 const DefaultServerKeyFile = "hubKey.pem"
 
 // RuntimeConfig holds the digital twin runtime and protocol bindings configuration:
@@ -39,10 +41,12 @@ type RuntimeConfig struct {
 	DataDir string `yaml:"dataDir,omitempty"` // default is server default
 
 	// certificate file names or full path
-	CaCertFile     string `yaml:"caCertFile"`     // default: caCert.pem
+	CaCertFile string `yaml:"caCertFile"` // default: caCert.pem
+	// FYI, not all browsers support certificates with ed25519 keys, so this file contains a ecdsa key
 	CaKeyFile      string `yaml:"caKeyFile"`      // default: caKey.pem
 	ServerCertFile string `yaml:"serverCertFile"` // default: hubCert.pem
-	ServerKeyFile  string `yaml:"serverKeyFile"`  // default: hubKey.pem
+	// FYI, not all browsers support certificates with ed25519 keys, so this file contains a ecdsa key
+	ServerKeyFile string `yaml:"serverKeyFile"` // default: hubKey.pem
 	// The certs and keys to use by the runtime.
 	// These are set directly on startup.
 	CaCert     *x509.Certificate `yaml:"-"` // preset, load, or error

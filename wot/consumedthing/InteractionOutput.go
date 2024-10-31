@@ -75,8 +75,9 @@ func (iout *InteractionOutput) GetUpdated(format ...string) (updated string) {
 	return updated
 }
 
-// UpdateSchemaFromTD updates the dataschema fields in this interaction output
-func (io *InteractionOutput) UpdateSchemaFromTD(td *tdd.TD) (found bool) {
+// SetSchemaFromTD updates the dataschema fields in this interaction output
+// This first looks for events, then property then action output
+func (io *InteractionOutput) SetSchemaFromTD(td *tdd.TD) (found bool) {
 	// if name is that of an event then use it
 	eventAff, found := td.Events[io.Name]
 	if found {
@@ -116,7 +117,7 @@ func (io *InteractionOutput) UpdateSchemaFromTD(td *tdd.TD) (found bool) {
 		}
 		return true
 	}
-	slog.Warn("UpdateSchemaFromTD: value without schema in the TD",
+	slog.Warn("SetSchemaFromTD: value without schema in the TD",
 		"thingID", io.ThingID, "name", io.Name)
 	return false
 }
@@ -135,7 +136,7 @@ func NewInteractionOutputFromValueList(values []digitwin.ThingValue, td *tdd.TD)
 		io := NewInteractionOutputFromValue(&tv, td)
 		// property values only contain completed changes.
 		io.Progress.Progress = vocab.ProgressStatusCompleted
-		io.UpdateSchemaFromTD(td)
+		io.SetSchemaFromTD(td)
 		ioMap[tv.Name] = io
 
 	}
@@ -163,7 +164,7 @@ func NewInteractionOutputFromValue(tv *digitwin.ThingValue, td *tdd.TD) *Interac
 		return io
 	}
 	io.ThingID = td.ID
-	io.UpdateSchemaFromTD(td)
+	io.SetSchemaFromTD(td)
 	return io
 }
 

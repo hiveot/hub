@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -37,19 +38,24 @@ const DefaultExpiryHours = 72
 // WebClientSession manages the connection and state of a web client session.
 type WebClientSession struct {
 	// ID of this session
-	sessionID string
+	//sessionID string
+	cid string // connection-id as provided by the client
+
+	// the connection ID of this client for correlating requests
+	clcid string
 
 	// Client session data, loaded from the state service
-	clientState *ClientDataModel
+	clientData *ClientDataModel
 	// the error is used to retry loading if the client state is requested
 	clientStateError error
-
-	// Client view model for generating presentation data
-	viewModel *ClientViewModel
 
 	// Holder of consumed things for this session
 	// FIXME: if a tdd is not found initially then reload it
 	cts *consumedthing.ConsumedThingsDirectory
+
+	// flag, this session is active and can be used to send messages to
+	// the hub. If sseChan is set then the return channel is active too.
+	isActive atomic.Bool
 
 	// SenderID is the login ID of the user
 	//clientID string
@@ -64,83 +70,59 @@ type WebClientSession struct {
 	// session mutex for updating sse and activity
 	mux sync.RWMutex
 
-	// SSE event channels for this session
-	// Each SSE connection is added to this list
-	sseClients []chan SSEEvent
-}
+	// SSE event channel for calling back to the remote client
+	// This is nil if no-one is listening.
+	// Only use with mux
+	sseChan chan SSEEvent
 
-// Close the session.
-// This closes the hub connection and SSE data channels
-func (wcs *WebClientSession) Close() {
-	wcs.mux.Lock()
-	for _, sseChan := range wcs.sseClients {
-		close(sseChan)
-	}
-	wcs.sseClients = nil
-	wcs.mux.Unlock()
-	wcs.hc.Disconnect()
-}
-
-// CloseSSEChan closes a previously created SSE channel and removes it.
-func (wcs *WebClientSession) CloseSSEChan(c chan SSEEvent) {
-	slog.Debug("DeleteSSEChan channel", "clientID", wcs.hc.GetClientID())
-	wcs.mux.Lock()
-	defer wcs.mux.Unlock()
-	if wcs.sseClients != nil {
-		for i, sseClient := range wcs.sseClients {
-			if sseClient == c {
-				// FIXME: sometimes, when using the debugger, the channel is already closed.
-				wcs.sseClients = append(wcs.sseClients[:i], wcs.sseClients[i+1:]...)
-				close(c)
-				break
-			}
-		}
-	}
+	// session manager callback
+	onClosed func(*WebClientSession)
 }
 
 // Consume is short for consumedThingSession.Consume()
-func (wcs *WebClientSession) Consume(
+func (sess *WebClientSession) Consume(
 	thingID string) (ct *consumedthing.ConsumedThing, err error) {
-
-	return wcs.cts.Consume(thingID)
+	return sess.cts.Consume(thingID)
 }
 
-// CreateSSEChan creates a new SSE channel to communicate with.
-// The channel has a buffer of 1 to allow sending a ping message on connect.
-// Call CloseSSEClient to close and clean up
-func (wcs *WebClientSession) CreateSSEChan() chan SSEEvent {
-	wcs.mux.Lock()
-	defer wcs.mux.Unlock()
-	sseChan := make(chan SSEEvent, 1)
-	wcs.sseClients = append(wcs.sseClients, sseChan)
-	return sseChan
+// GetClientID returns the ID of this session's client
+func (sess *WebClientSession) GetClientID() string {
+	return sess.hc.GetClientID()
+}
+
+// GetCLCID returns the client-connection-id of this session
+func (sess *WebClientSession) GetCLCID() string {
+	return sess.clcid
 }
 
 // GetClientData returns the hiveoview data model of this client
-func (wcs *WebClientSession) GetClientData() *ClientDataModel {
+func (sess *WebClientSession) GetClientData() *ClientDataModel {
 	// if loading previously failed then recover
-	if wcs.clientStateError != nil {
-		err := wcs.LoadState()
+	sess.mux.RLock()
+	clientStateError := sess.clientStateError
+	sess.mux.RUnlock()
+	if clientStateError != nil {
+		err := sess.LoadState()
 		_ = err
 	}
 	// return something
-	return wcs.clientState
+	return sess.clientData
 }
 
 // GetHubClient returns the hub client connection for use in pub/sub
-func (wcs *WebClientSession) GetHubClient() hubclient.IConsumerClient {
-	return wcs.hc
+func (sess *WebClientSession) GetHubClient() hubclient.IConsumerClient {
+	return sess.hc
 }
 
 // GetConsumedThingsDirectory returns the directory of consumed things of this client
-func (wcs *WebClientSession) GetConsumedThingsDirectory() *consumedthing.ConsumedThingsDirectory {
-	return wcs.cts
+func (sess *WebClientSession) GetConsumedThingsDirectory() *consumedthing.ConsumedThingsDirectory {
+	return sess.cts
 }
 
 // GetViewModel returns the hiveoview view model of this client
-func (wcs *WebClientSession) GetViewModel() *ClientViewModel {
-	return wcs.viewModel
-}
+//func (sess *WebClientSession) GetViewModel() *ClientViewModel {
+//	return sess.viewModel
+//}
 
 // GetStatus returns the status of hub connection
 // This returns:
@@ -150,71 +132,160 @@ func (wcs *WebClientSession) GetViewModel() *ClientViewModel {
 //	 * connected when connected to the hub
 //	 * connecting or disconnected when not connected
 //	info with a human description
-func (wcs *WebClientSession) GetStatus() hubclient.TransportStatus {
-	status := wcs.hc.GetStatus()
-	return status
+func (sess *WebClientSession) GetStatus() (bool, error) {
+	return sess.hc.GetConnectionStatus()
+}
+
+// HandleWebConnectionClosed is called by the web server when a
+// web client sse connection closes.
+// Note this locks for writing so run as goroutine.
+//
+// This closes the SSE channel and removes it.
+//
+// If after 10 seconds a new SSE session has not been re-established, then
+// this will close the hub connection, which in turn will end this session.
+//
+// Note that refreshing the browser page will cause it to disconnect.
+// However, if the browser immediately reconnects using the same cid, then
+// this session will continue to operate.
+func (sess *WebClientSession) HandleWebConnectionClosed() {
+	slog.Info("HandleWebConnectionClosed - web client disconnected",
+		slog.String("ClientID", sess.GetClientID()),
+		slog.String("cid", sess.cid),
+		slog.String("remoteAddr", sess.remoteAddr),
+	)
+
+	// Two options.
+	// A: F5 should create a new cid (connection-id), ... as this is a new connection (duh)
+	// B: Use the same CID and don't close the session and hub connection. Pro is that
+	//  session data will be available.
+	//   A new CID is required for each tab so can it even be re-used?
+	//  how to create a unique CID? web client can use header in sse connection
+
+	sess.mux.Lock()
+	// cleanup the channel
+	if sess.sseChan != nil {
+		close(sess.sseChan)
+		sess.sseChan = nil
+	}
+	sess.mux.Unlock()
+
+	// if after X seconds a new SSE channel is not re-established then close
+	// the connection.
+	go func() {
+		time.Sleep(time.Second * 10)
+		sess.mux.RLock()
+		if sess.sseChan == nil {
+			// disconnect from the hub. This will call back into 'HandleHubConnectionClosed'
+			// which will end the session.
+			sess.hc.Disconnect()
+		}
+		sess.mux.RUnlock()
+	}()
+}
+
+// HandleHubConnectionClosed is called when the http connection to the hub has closed.
+// This will deactivate this session, remove it and notify a callback.
+// This will notify the browser client before disconnecting.
+// This can happen if the runtime restarts or if the user logs out from the hub.
+func (sess *WebClientSession) HandleHubConnectionClosed() {
+	slog.Info("HandleHubConnectionClosed",
+		slog.String("ClientID", sess.GetClientID()),
+		slog.String("cid", sess.cid),
+		slog.String("remoteAddr", sess.remoteAddr),
+	)
+	if sess.isActive.Swap(false) {
+
+		// notify session manager to remove this session
+		sess.onClosed(sess)
+
+		// if a web connection is still there then attempt to notify
+		sess.SendNotify(NotifyWarning, "Disconnected from the Hub")
+
+		// this will call back into HandleWebConnectionClosed, which will not do
+		// anything since the channel was already cleaned up.
+		sess.mux.Lock()
+		defer sess.mux.Unlock()
+		if sess.sseChan != nil {
+			close(sess.sseChan)
+		}
+		sess.sseChan = nil
+	}
 }
 
 // IsActive returns whether the session has a connection to the Hub or is in the process of connecting.
-func (wcs *WebClientSession) IsActive() bool {
-	status := wcs.hc.GetStatus()
-	return status.ConnectionStatus == hubclient.Connected ||
-		status.ConnectionStatus == hubclient.Connecting
+// This will be deprecated as the session is removed as soon as the hub or browser connection closes.
+// Right now it is useful to detect an internal state discrepancy.
+func (sess *WebClientSession) IsActive() bool {
+	return sess.isActive.Load()
 }
 
 // LoadState loads the client session state containing dashboard and other model data,
 // and clear 'clientModelChanged' status
-func (wcs *WebClientSession) LoadState() error {
-	stateCl := stateclient.NewStateClient(wcs.hc)
-
-	wcs.clientState = NewClientDataModel()
-	found, err := stateCl.Get(HiveOViewDataKey, &wcs.clientState)
-	wcs.clientStateError = err
+func (sess *WebClientSession) LoadState() error {
+	// load the stored view state from the state service
+	stateCl := stateclient.NewStateClient(sess.hc)
+	clientData := NewClientDataModel()
+	found, err := stateCl.Get(HiveOViewDataKey, &clientData)
 	_ = found
+
+	// then lock and load
+	sess.mux.Lock()
+	defer sess.mux.Unlock()
 	if err != nil {
-		wcs.lastError = err
+		sess.lastError = err
 		//slog.Error("LoadState failed", "err", err.Error())
 		return err
+	} else {
+		sess.clientData = clientData
 	}
 	return nil
 }
 
-// onConnectChange is invoked on disconnect/reconnect
-func (wcs *WebClientSession) onConnectChange(stat hubclient.TransportStatus) {
-	lastErrText := ""
-	if stat.LastError != nil {
-		lastErrText = stat.LastError.Error()
+// NewSseChan creates a new SSE return channel.
+// Intended for use by the sse connection handler.
+func (sess *WebClientSession) NewSseChan() chan SSEEvent {
+	slog.Info("NewSseChan", "clientID", sess.GetClientID(),
+		"cid", sess.cid, "remoteAddr", sess.remoteAddr)
+	sess.mux.Lock()
+	defer sess.mux.Unlock()
+	if !sess.isActive.Load() {
+		slog.Error("Adding a SSE channel to an inactive session. This is unexpected.")
+		return nil
 	}
-	slog.Info("onConnectChange",
+	if sess.sseChan != nil {
+		// this can happen if two client connects with the same cid.
+		slog.Error("The session already has a return channel. This is unexpected.")
+		return nil
+	}
+	sess.sseChan = make(chan SSEEvent, 0)
+	return sess.sseChan
+}
+
+// onHubConnectionChange is invoked on hub client disconnect/reconnect
+func (sess *WebClientSession) onHubConnectionChange(connected bool, err error) {
+	lastErrText := ""
+
+	slog.Info("onHubConnectionChange",
 		//slog.String("clientID", stat.SenderID),
-		slog.String("status", string(stat.ConnectionStatus)),
+		slog.Bool("connected", connected),
 		slog.String("lastError", lastErrText))
 
-	if stat.ConnectionStatus == hubclient.Connected {
-		wcs.SendNotify(NotifySuccess, "Connection established with the Hub")
-	} else if stat.ConnectionStatus == hubclient.Connecting {
-		wcs.SendNotify(NotifyWarning, "Reconnecting to the Hub... stand by")
-	} else if stat.ConnectionStatus == hubclient.ConnectFailed {
-		// this happens after a server restart as it invalidates user sessions
-		// redirect to the login page
-		wcs.SendNotify(NotifyWarning, "Connection with Hub refused")
-	} else if stat.ConnectionStatus == hubclient.Disconnected {
-		wcs.SendNotify(NotifyWarning, "Disconnected")
+	if connected {
+		sess.SendNotify(NotifySuccess, "Connection established with the Hub")
+	} else if err != nil {
+		//  a normal disconnect?
+		sess.SendNotify(NotifyWarning, "Connection with Hub failed: "+err.Error())
 	} else {
-		// catchall
-		wcs.SendNotify(NotifyWarning, "Connection failed: "+stat.LastError.Error())
+		// notify the client and close session
+		sess.HandleHubConnectionClosed()
 	}
-	// connectStatus triggers a reload of the connection status icon.
-	// If the connection is lost then the router in HiveovService will redirect to login instead.
-	wcs.SendSSE("connectStatus", string(stat.ConnectionStatus))
 }
 
 // onMessage notifies SSE clients of incoming messages from the Hub
 // This is intended for notifying the client UI of the update to props, events or actions.
 // The consumed thing itself is already updated.
-func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
-	wcs.mux.RLock()
-	defer wcs.mux.RUnlock()
+func (sess *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 
 	slog.Info("received message",
 		slog.String("type", msg.MessageType),
@@ -234,11 +305,12 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 			slog.Warn("Failed decoding property", "name", msg.Name, "err", err.Error())
 		} else {
 			for k, v := range props {
+				// notify the browser both of the property value and the timestamp
 				thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, k)
 				propVal := utils.DecodeAsString(v)
-				wcs.SendSSE(thingAddr, propVal)
+				sess.SendSSE(thingAddr, propVal)
 				thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, k)
-				wcs.SendSSE(thingAddr, msg.GetUpdated())
+				sess.SendSSE(thingAddr, msg.GetUpdated())
 			}
 		}
 	} else if msg.MessageType == vocab.MessageTypeProgressUpdate {
@@ -250,18 +322,18 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		// TODO: figure out a way to replace the existing notification if the messageID
 		//  is the same (status changes from applied to delivered)
 		if stat.Error != "" {
-			wcs.SendNotify(NotifyError, stat.Error)
+			sess.SendNotify(NotifyError, stat.Error)
 		} else if stat.Progress == vocab.ProgressStatusCompleted {
-			wcs.SendNotify(NotifySuccess, "Action successful")
+			sess.SendNotify(NotifySuccess, "Action successful")
 		} else {
-			wcs.SendNotify(NotifyWarning, "Action delivery: "+stat.Progress)
+			sess.SendNotify(NotifyWarning, "Action delivery: "+stat.Progress)
 		}
 		//} else if msg.MessageType == vocab.MessageTypeEvent &&
 		//	msg.ThingID == digitwin.DirectoryDThingID &&
 		//	msg.Name == digitwin.DirectoryEventThingUpdated {
 
 		//// Update the TD in the consumed-thing if it exists
-		//cts := wcs.GetConsumedThingsDirectory()
+		//cts := sess.GetConsumedThingsDirectory()
 		//td := cts.UpdateTD(msg.Data)
 		//
 		//// Publish sse event to the UI to update their TD.
@@ -269,7 +341,7 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		//// fragment that displays this TD:
 		////    hx-trigger="sse:{{.Thing.ThingID}}"
 		//thingAddr := td.ID
-		//wcs.SendSSE(thingAddr, "")
+		//sess.SendSSE(thingAddr, "")
 	} else {
 		// Publish sse event indicating the event affordance or value has changed.
 		// The UI that displays this event can use this as a trigger to reload the
@@ -277,63 +349,31 @@ func (wcs *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{$k}}"
 		// where $k is the event ID
 		eventName := fmt.Sprintf("%s/%s", msg.ThingID, msg.Name)
-		wcs.SendSSE(eventName, msg.DataAsText())
+		sess.SendSSE(eventName, msg.DataAsText())
 		eventName = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Name)
-		wcs.SendSSE(eventName, msg.GetUpdated())
+		sess.SendSSE(eventName, msg.GetUpdated())
 	}
-}
-
-// RemoveSSEClient removes a disconnected client from the session
-// If the session state has changed then store the session data
-func (wcs *WebClientSession) RemoveSSEClient(c chan SSEEvent) {
-	wcs.mux.Lock()
-	defer wcs.mux.Unlock()
-	for i, sseClient := range wcs.sseClients {
-		if sseClient == c {
-			// delete(wcs.sseClients,i)
-			wcs.sseClients = append(wcs.sseClients[:i], wcs.sseClients[i+1:]...)
-			break
-		}
-	}
-	// if loading state previously failed then don't save
-	if wcs.clientStateError == nil && wcs.clientState.Changed() {
-		err := wcs.SaveState()
-		if err != nil {
-			wcs.lastError = err
-		}
-
-	}
-}
-
-// ReplaceHubClient replaces this session's hub client
-func (wcs *WebClientSession) ReplaceHubClient(newHC hubclient.IConsumerClient) {
-	// ensure the old client is disconnected
-	if wcs.hc != nil {
-		wcs.hc.Disconnect()
-		wcs.hc.SetMessageHandler(nil)
-		wcs.hc.SetConnectHandler(nil)
-	}
-	wcs.hc = newHC
-	wcs.hc.SetConnectHandler(wcs.onConnectChange)
-	wcs.cts = consumedthing.NewConsumedThingsSession(wcs.hc)
 }
 
 // SaveState stores the current client session model using the state service,
 // if 'clientModelChanged' is set.
 //
 // This returns an error if the state service is not reachable.
-func (wcs *WebClientSession) SaveState() error {
-	if !wcs.clientState.Changed() {
+func (sess *WebClientSession) SaveState() error {
+	if !sess.clientData.Changed() {
 		return nil
 	}
+	sess.mux.RLock()
+	clientState := sess.clientData
+	sess.mux.RUnlock()
 
-	stateCl := stateclient.NewStateClient(wcs.GetHubClient())
-	err := stateCl.Set(HiveOViewDataKey, &wcs.clientState)
+	stateCl := stateclient.NewStateClient(sess.GetHubClient())
+	err := stateCl.Set(HiveOViewDataKey, &clientState)
 	if err != nil {
-		wcs.lastError = err
+		sess.lastError = err
 		return err
 	}
-	wcs.clientState.SetChanged(false)
+	sess.clientData.SetChanged(false)
 	return err
 }
 
@@ -341,22 +381,33 @@ func (wcs *WebClientSession) SaveState() error {
 // To send an SSE event use SendSSE()
 //
 //	ntype is the toast notification type: "info", "error", "warning"
-func (wcs *WebClientSession) SendNotify(ntype NotifyType, text string) {
-	wcs.mux.RLock()
-	defer wcs.mux.RUnlock()
-	for _, c := range wcs.sseClients {
-		c <- SSEEvent{Event: "notify", Payload: string(ntype) + ":" + text}
+func (sess *WebClientSession) SendNotify(ntype NotifyType, text string) {
+	sess.mux.RLock()
+	defer sess.mux.RUnlock()
+	if sess.sseChan != nil {
+		sess.sseChan <- SSEEvent{Event: "notify", Payload: string(ntype) + ":" + text}
+	} else {
+		// not neccesarily an error as a notification can be sent after the channel closes
+		//slog.Error("SendNotify. SSE channel is closed")
 	}
 }
 
 // SendSSE encodes and sends an SSE event to clients of this session
 // Intended to notify the browser of changes.
-func (wcs *WebClientSession) SendSSE(event string, content string) {
-	wcs.mux.RLock()
-	defer wcs.mux.RUnlock()
-	slog.Debug("sending sse event", "event", event, "nr clients", len(wcs.sseClients))
-	for _, c := range wcs.sseClients {
-		c <- SSEEvent{event, content}
+func (sess *WebClientSession) SendSSE(event string, content string) {
+
+	// change to not use sseChan as an indication the session is closed.
+	// sending sse return events should be ignored if no sse channel exists to
+	// prevent deadlock. Having a channel should simply mean a SSE connection exists
+	// use a 'closing' flag to shutdown the session and its connections.
+	sess.mux.RLock()
+	defer sess.mux.RUnlock()
+	if sess.sseChan != nil {
+		// FIXME: the channel gets blocked, which should never happen
+		sess.sseChan <- SSEEvent{event, content}
+	} else {
+		// not neccesarily an error as a notification can be sent after the channel closes
+		//slog.Error("SendSSE. SSE channel is closed")
 	}
 }
 
@@ -366,13 +417,13 @@ func (wcs *WebClientSession) SendSSE(event string, content string) {
 // If err is nil then write the httpCode result
 // If no httpCode is given then this renders an error message
 // If an httpCode is given then this returns the status code
-func (wcs *WebClientSession) WriteError(w http.ResponseWriter, err error, httpCode int) {
+func (sess *WebClientSession) WriteError(w http.ResponseWriter, err error, httpCode int) {
 	if err == nil {
 		w.WriteHeader(httpCode)
 		return
 	}
 	slog.Error(err.Error())
-	wcs.SendNotify(NotifyError, err.Error())
+	sess.SendNotify(NotifyError, err.Error())
 
 	if httpCode == 0 {
 		output := "Oops: " + err.Error()
@@ -386,34 +437,53 @@ func (wcs *WebClientSession) WriteError(w http.ResponseWriter, err error, httpCo
 
 // WritePage writes a rendered html page or reports the error
 // Errors are sent to the UI with the notify event.
-func (wcs *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffer, err error) {
+func (sess *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffer, err error) {
 	if err != nil {
-		wcs.WriteError(w, err, http.StatusInternalServerError)
+		sess.WriteError(w, err, http.StatusInternalServerError)
 	} else {
 		_, _ = buff.WriteTo(w)
 	}
 }
 
-// NewClientSession creates a new client session for the given Hub connection
+// NewWebClientSession creates a new client session for the given Hub connection
 // Intended for use by the session manager.
 //
-// note that expiry is a placeholder for now used to refresh auth token.
-// it should be obtained from the login authentication/refresh.
-func NewClientSession(sessionID string, hc hubclient.IConsumerClient, remoteAddr string) *WebClientSession {
+// A Web Client session is created on the first http request with a valid token, or
+// valid login. After a hub connection is established, this session can be created.
+// At this point there is not yet an SSE return channel.
+// The cid will be neccesary to link this connection with the expected incoming SSE connection.
+//
+// This session closes when A) the hub connection closes, or B) more likely, the web
+// browser SSE connection closes. This will result in a call to onClosed.
+// The call to onClosed takes place within a locked section, so it should never
+// call back into the session or a deadlock will occur.
+//
+//	cid is the web client provided connectionID used to associate http request with SSE clients
+//	hc is the establihsed hub connection
+//	remoteAddr is the web client remote address
+//	onClose is the callback to invoke when this session is closed.
+func NewWebClientSession(
+	cid string, hc hubclient.IConsumerClient, remoteAddr string,
+	onClosed func(*WebClientSession)) *WebClientSession {
+
 	cs := WebClientSession{
-		sessionID:    sessionID,
+		cid:          cid,
+		clcid:        hc.GetClientID() + "-" + cid,
 		remoteAddr:   remoteAddr,
 		hc:           hc,
-		sseClients:   make([]chan SSEEvent, 0),
 		lastActivity: time.Now(),
-		clientState:  NewClientDataModel(),
-		viewModel:    NewClientViewModel(hc),
-		cts:          consumedthing.NewConsumedThingsSession(hc),
+		clientData:   NewClientDataModel(),
+		//viewModel:    NewClientViewModel(hc),
+		cts:      consumedthing.NewConsumedThingsSession(hc),
+		onClosed: onClosed,
 	}
 	//hc.SetMessageHandler(cs.onMessage)
-	hc.SetConnectHandler(cs.onConnectChange)
+	hc.SetConnectHandler(cs.onHubConnectionChange)
 	// this is a bit quirky but its a transition period
 	cs.cts.SetEventHandler(cs.onMessage)
+
+	isConnected, _ := hc.GetConnectionStatus()
+	cs.isActive.Store(isConnected)
 
 	// restore the session data model
 	err := cs.LoadState()

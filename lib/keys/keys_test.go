@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const keyType = keys.KeyTypeECDSA
+const keyType = keys.KeyTypeEd25519
 
 // set in TestMain
 var TestKeysFolder string

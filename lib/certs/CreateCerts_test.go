@@ -31,7 +31,7 @@ func TestCreateCerts(t *testing.T) {
 	assert.NotEmpty(t, tlsCert)
 
 	// create a client cert
-	clientKey := keys.NewKey(keys.KeyTypeECDSA)
+	clientKey := keys.NewKey(keys.KeyTypeEd25519)
 	clientCert, err := certs.CreateClientCert(clientID, "", 0, clientKey, caCert, caKey)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, clientCert)

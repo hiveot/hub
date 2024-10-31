@@ -22,8 +22,8 @@ import (
 // to the connection, the http binding expects a connection-ID in the request header.
 // This problem is specific to the http binding and not a concern of this connection manager.
 type ConnectionManager struct {
-	// connections by connection-ID
-	cidConnections map[string]IClientConnection
+	// connections by client-cid
+	clcidConnections map[string]IClientConnection
 
 	// connection IDs by clientID
 	clientConnections map[string][]string
@@ -36,34 +36,34 @@ type ConnectionManager struct {
 }
 
 // AddConnection adds a new connection.
-// This requires the connection to have a unique connection ID (cid).
-// If an endpoint with this cid exists both connections are forcibly closed
+// This requires the connection to have a unique client connection ID (clcid).
+// If an endpoint with this clcid exists both connections are forcibly closed
 // and an error is returned.
 func (cm *ConnectionManager) AddConnection(c IClientConnection) error {
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
 
-	cid := c.GetConnectionID()
+	clcid := c.GetCLCID()
 	clientID := c.GetClientID()
 
 	// Refuse this if an existing connection with this ID exist
-	existingConn, _ := cm.cidConnections[cid]
+	existingConn, _ := cm.clcidConnections[clcid]
 	if existingConn != nil {
 		err := fmt.Errorf("AddConnection. The connection ID '%s' of client '%s' already exists",
-			cid, existingConn.GetClientID())
-		slog.Error("AddConnection: duplicate CID", "err", err.Error())
+			clcid, existingConn.GetClientID())
+		slog.Error("AddConnection: duplicate CLCID", "clcid", clcid, "err", err.Error())
 		existingConn.Close()
 		c.Close()
-		go cm.RemoveConnection(cid)
+		go cm.RemoveConnection(clcid)
 		return err
 	}
-	cm.cidConnections[cid] = c
+	cm.clcidConnections[clcid] = c
 	// update the client index
 	clientList := cm.clientConnections[clientID]
 	if clientList == nil {
-		clientList = []string{cid}
+		clientList = []string{clcid}
 	} else {
-		clientList = append(clientList, cid)
+		clientList = append(clientList, clcid)
 	}
 	cm.clientConnections[clientID] = clientList
 	return nil
@@ -77,9 +77,9 @@ func (cm *ConnectionManager) CloseAllClientConnections(clientID string) {
 	cList := cm.clientConnections[clientID]
 	for _, cid := range cList {
 		// force-close the connection
-		c := cm.cidConnections[cid]
+		c := cm.clcidConnections[cid]
 		if c != nil {
-			delete(cm.cidConnections, cid)
+			delete(cm.clcidConnections, cid)
 			c.Close()
 		}
 	}
@@ -91,12 +91,12 @@ func (cm *ConnectionManager) CloseAll() {
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
 
-	slog.Info("RemoveAll. Closing remaining connections", "count", len(cm.cidConnections))
-	for cid, c := range cm.cidConnections {
+	slog.Info("RemoveAll. Closing remaining connections", "count", len(cm.clcidConnections))
+	for cid, c := range cm.clcidConnections {
 		_ = cid
 		c.Close()
 	}
-	cm.cidConnections = make(map[string]IClientConnection)
+	cm.clcidConnections = make(map[string]IClientConnection)
 	cm.clientConnections = make(map[string][]string)
 }
 
@@ -106,7 +106,7 @@ func (cm *ConnectionManager) ForEachConnection(handler func(c IClientConnection)
 	// collect a list of connections
 	cm.mux.Lock()
 	connList := make([]IClientConnection, 0, len(cm.clientConnections))
-	for _, c := range cm.cidConnections {
+	for _, c := range cm.clcidConnections {
 		connList = append(connList, c)
 	}
 	cm.mux.Unlock()
@@ -116,13 +116,13 @@ func (cm *ConnectionManager) ForEachConnection(handler func(c IClientConnection)
 	}
 }
 
-// GetConnectionByCID locates the connection of the client using its connectionID
-// This returns nil if no connection was found with the given cid
-func (cm *ConnectionManager) GetConnectionByCID(cid string) (c IClientConnection) {
+// GetConnectionByCLCID locates the connection of the client using the client connectionID
+// This returns nil if no connection was found with the given clcid
+func (cm *ConnectionManager) GetConnectionByCLCID(clcid string) (c IClientConnection) {
 
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
-	c = cm.cidConnections[cid]
+	c = cm.clcidConnections[clcid]
 	return c
 }
 
@@ -138,7 +138,7 @@ func (cm *ConnectionManager) GetConnectionByClientID(clientID string) (c IClient
 		return nil
 	}
 	// return the first connection of this client
-	c = cm.cidConnections[cList[0]]
+	c = cm.clcidConnections[cList[0]]
 	if c == nil {
 		slog.Error("GetConnectionByClientID: the client's connection list has disconnected endpoints",
 			"clientID", clientID, "nr alleged connections", len(cList))
@@ -179,29 +179,29 @@ func (cm *ConnectionManager) PublishProperty(
 // RemoveConnection removes the connection by its connectionID
 // This will close the connnection if it isn't closed already.
 // Call this after the connection is closed or before closing.
-func (cm *ConnectionManager) RemoveConnection(cid string) {
+func (cm *ConnectionManager) RemoveConnection(clcid string) {
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
 
 	var clientID = ""
-	existingConn := cm.cidConnections[cid]
+	existingConn := cm.clcidConnections[clcid]
 	// force close the existing connection just in case
 	if existingConn != nil {
 		clientID = existingConn.GetClientID()
 		existingConn.Close()
-		delete(cm.cidConnections, cid)
+		delete(cm.clcidConnections, clcid)
 	}
 
 	// remove the cid from the client connection list
 	if clientID == "" {
-		slog.Error("RemoveConnection: existing connection has no clientID", "cid", cid)
+		slog.Error("RemoveConnection: existing connection has no clientID", "clcid", clcid)
 		return
 	}
 	clientCids := cm.clientConnections[clientID]
-	i := slices.Index(clientCids, cid)
+	i := slices.Index(clientCids, clcid)
 	if i < 0 {
 		slog.Error("RemoveConnection: existing connection not in client's cid list but is should have been",
-			"clientID", clientID, "cid", cid)
+			"clientID", clientID, "clcid", clcid)
 
 		// TODO: considering the impact of this going wrong, is it better to recover?
 		// A: delete the bad entry and try the next connection
@@ -217,7 +217,7 @@ func (cm *ConnectionManager) RemoveConnection(cid string) {
 func NewConnectionManager() *ConnectionManager {
 
 	cm := &ConnectionManager{
-		cidConnections:    make(map[string]IClientConnection),
+		clcidConnections:  make(map[string]IClientConnection),
 		clientConnections: make(map[string][]string),
 		mux:               sync.RWMutex{},
 	}

@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/hiveot/hub/lib/hubclient"
 	"golang.org/x/net/publicsuffix"
 	"io"
 	"log/slog"
@@ -19,6 +18,11 @@ const DefaultClientTimeout = time.Second * 30
 // HTTPMessageIDHeader defines the name of the HTTP message-id header field.
 // Intended for including a message ID in the request or response
 const HTTPMessageIDHeader = "message-id"
+
+// HTTPConnectionIDHeader defines the name of the HTTP 'cid' header field.
+// Intended for the client to include a connection-id to link asynchronous requests
+// to responses. TODO: does remoteaddr change between calls?
+const HTTPConnectionIDHeader = "cid"
 
 // TLSClient is a simple TLS Client with authentication using certificates or JWT authentication with login/pw
 type TLSClient struct {
@@ -306,7 +310,7 @@ func NewTLSClient(hostPort string, clientCert *tls.Certificate, caCert *x509.Cer
 		headers:    make(map[string]string),
 	}
 	if cid != "" {
-		cl.headers[hubclient.ConnectionIDHeader] = cid
+		cl.headers[HTTPConnectionIDHeader] = cid
 	}
 
 	return cl

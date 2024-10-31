@@ -41,22 +41,22 @@ func TestPublicKeyFromCert(t *testing.T) {
 	assert.NotEmpty(t, pubKey)
 }
 
-//func TestSaveLoadTLSCert(t *testing.T) {
-//	// hostnames := []string{"localhost"}
-//	certFile := path.Join(TestCertFolder, "tlscert.pem")
-//	keyFile := path.Join(TestCertFolder, "tlskey.pem")
-//
-//	testCerts := certs.CreateTestCertBundle()
-//
-//	// save the test x509 part of the TLS cert
-//	err := certs.SaveTLSCertToPEM(testCerts.ServerCert, certFile, keyFile)
-//	assert.NoError(t, err)
-//
-//	// load back the x509 part of the TLS cert
-//	cert, err := certs.LoadTLSCertFromPEM(certFile, keyFile)
-//	assert.NoError(t, err)
-//	assert.NotNil(t, cert)
-//}
+func TestSaveLoadTLSCert(t *testing.T) {
+	// hostnames := []string{"localhost"}
+	certFile := path.Join(TestCertFolder, "x509cert.pem")
+	keyFile := path.Join(TestCertFolder, "tlskey.pem")
+
+	testCerts := certs.CreateTestCertBundle()
+
+	// save the test x509 part of the TLS cert
+	err := certs.SaveTLSCertToPEM(testCerts.ServerCert, certFile, keyFile)
+	assert.NoError(t, err)
+
+	// load back the x509 part of the TLS cert
+	cert, err := certs.LoadTLSCertFromPEM(certFile, keyFile)
+	assert.NoError(t, err)
+	assert.NotNil(t, cert)
+}
 
 //func TestSaveLoadCertNoFile(t *testing.T) {
 //	certFile := "/root/notavalidcert.pem"

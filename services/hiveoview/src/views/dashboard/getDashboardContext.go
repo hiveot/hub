@@ -31,11 +31,11 @@ func getDashboardContext(r *http.Request, createDashboard bool) (
 
 	var found bool
 	cdc := ClientDashboardContext{}
-	sess, hc, err := session2.GetSessionFromContext(r)
+	_, sess, err := session2.GetSessionFromContext(r)
 	if err != nil {
 		return sess, cdc, err
 	}
-	cdc.clientID = hc.GetClientID()
+	cdc.clientID = sess.GetClientID()
 	cdc.clientModel = sess.GetClientData()
 	cdc.dashboardID = chi.URLParam(r, URLParamDashboardID)
 	if cdc.dashboardID == "" {

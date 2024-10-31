@@ -24,14 +24,14 @@ type SSEEvent struct {
 //
 // This implements the IClientConnection interface
 type SSEConnection struct {
-	// connection ID (from header)
-	connectionID string
-
-	// connection belongs to this session
-	//sessionID string
+	// connection ID (from header, without clientID prefix)
+	cid string
 
 	// SenderID is the account ID of the agent or consumer
 	clientID string
+
+	// connection remote address
+	remoteAddr string
 
 	// RemoteAddr of the user
 	//remoteAddr string
@@ -94,9 +94,9 @@ func (c *SSEConnection) GetClientID() string {
 	return c.clientID
 }
 
-// GetConnectionID returns the clients connection ID unique within the sessions
-func (c *SSEConnection) GetConnectionID() string {
-	return c.connectionID
+// GetCID returns the clients connection ID unique within the sessions
+func (c *SSEConnection) GetCLCID() string {
+	return c.cid
 }
 
 // GetSessionID returns the client's authentication session ID
@@ -104,7 +104,7 @@ func (c *SSEConnection) GetConnectionID() string {
 //	return c.sessionID
 //}
 
-// InvokeAction sends the action request for the thing to the agent
+// InvokeAction sends the action request for the thing to the agent over SSE
 func (c *SSEConnection) InvokeAction(
 	thingID, name string, data any, messageID string, senderID string) (
 	status string, output any, err error) {
@@ -192,7 +192,8 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 		slog.String("clientID", c.clientID),
 		slog.String("protocol", r.Proto),
 		//slog.String("sessionID", c.sessionID),
-		slog.String("cid", c.connectionID),
+		slog.String("cid", c.cid),
+		slog.String("remoteAddr", c.remoteAddr),
 	)
 	//var sseMsg SSEEvent
 
@@ -223,7 +224,7 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 				// ending the read loop and returning will close the connection
 				break
 			}
-			slog.Debug("SseConnection: sending sse event to client",
+			slog.Info("SseConnection: sending sse event to client",
 				//slog.String("sessionID", c.sessionID),
 				slog.String("clientID", c.clientID),
 				slog.String("sse eventType", sseMsg.EventType),
@@ -244,14 +245,14 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 				// don't exit the loop until the receive channel is closed.
 				// just keep processing the message until that happens
 				// closed go channels panic when written to. So keep reading.
-				slog.Error("Error writing SSE event",
+				slog.Error("SseConnection: Error writing SSE event",
 					slog.String("Event", sseMsg.EventType),
 					slog.String("SSE ID", sseMsg.ID),
 					slog.String("SenderID", c.clientID),
 					slog.Int("size", len(sseMsg.Payload)),
 				)
 			} else {
-				slog.Debug("SSE write to client",
+				slog.Debug("SseConnection: SSE write to client",
 					slog.String("SenderID", c.clientID),
 					slog.String("Event", sseMsg.EventType),
 					slog.Int("N bytes", n))
@@ -263,7 +264,7 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 	slog.Info("SseConnection: sse connection closed",
 		slog.String("remote", r.RemoteAddr),
 		slog.String("clientID", c.clientID),
-		slog.String("cid", c.connectionID),
+		slog.String("cid", c.cid),
 	)
 }
 
@@ -292,10 +293,11 @@ func (c *SSEConnection) WriteProperty(
 	return status, err
 }
 
-func NewSSEConnection(connectionID, clientID string) *SSEConnection {
+func NewSSEConnection(cid, clientID string, remoteAddr string) *SSEConnection {
 	c := &SSEConnection{
-		connectionID:  connectionID,
+		cid:           cid,
 		clientID:      clientID,
+		remoteAddr:    remoteAddr,
 		lastActivity:  time.Time{},
 		mux:           sync.RWMutex{},
 		subscriptions: connections.Subscriptions{},

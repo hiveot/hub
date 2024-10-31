@@ -3,7 +3,6 @@ package transports
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/runtime/hubrouter"
@@ -29,8 +28,8 @@ type ProtocolManager struct {
 	//dtwService *service.DigitwinService
 
 	// handler to pass incoming messages to
-	handler func(tv *hubclient.ThingMessage) hubclient.ActionProgress
-	cm      *connections.ConnectionManager
+	//handler func(tv *hubclient.ThingMessage) hubclient.ActionProgress
+	cm *connections.ConnectionManager
 }
 
 // AddTDForms adds forms for all active transports
@@ -91,7 +90,7 @@ func StartProtocolManager(cfg *ProtocolsConfig,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	authenticator api.IAuthenticator,
-	hubRouter *hubrouter.HubRouter,
+	hubRouter hubrouter.IHubRouter,
 	cm *connections.ConnectionManager,
 ) (svc *ProtocolManager, err error) {
 

@@ -40,25 +40,31 @@ func (svc *HttpBinding) HandleInvokeActionProgress(w http.ResponseWriter, r *htt
 func (svc *HttpBinding) HandleInvokeAction(w http.ResponseWriter, r *http.Request) {
 	rp, err := subprotocols.GetRequestParams(r)
 
-	slog.Debug("HandleActionRequest", slog.String("SenderID", rp.ClientID))
+	slog.Info("HandleActionRequest",
+		slog.String("SenderID", rp.ClientID),
+		slog.String("clcid", rp.CLCID),
+		slog.String("RemoteAddr", r.RemoteAddr),
+	)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	// The client can provide a messageID for actions. Useful for associating
-	// RPC type actions with a response.
-	reqMessageID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
-
 	// an action request should have a cid when used with SSE.
 	// for now just warn if its missing
 	if r.Header.Get(hubclient.ConnectionIDHeader) == "" {
-		slog.Warn("InvokeAction request without connectionID 'cid' header. This is needed for the SSE subprotocol",
+		slog.Warn("InvokeAction request without 'cid' header. This is needed for the SSE subprotocol",
 			"clientID", rp.ClientID)
 	}
 
+	// optionally provide a messageID. one is generated and returned if not provided
+	// really only needed for rpc's as the messageID must be known before
+	// this returns to avoid a race condition.
+	// TODO: maybe prefix this with the clientID to avoid hijacking of responses.
+	// eg two login attempts using the same messageID can conflict within
+	// the time period they are not yet completed.
 	status, output, messageID, err := svc.hubRouter.HandleInvokeAction(
-		rp.ClientID, rp.ThingID, rp.Name, rp.Data, reqMessageID, rp.ConnID)
+		rp.ClientID, rp.ThingID, rp.Name, rp.Data, rp.MessageID, rp.CLCID)
 
 	// there are 3 possible results:
 	// on status completed; return output
@@ -82,12 +88,12 @@ func (svc *HttpBinding) HandleInvokeAction(w http.ResponseWriter, r *http.Reques
 		svc.writeError(w, err, http.StatusInternalServerError)
 		return
 	}
-	if messageID != "" {
-		replyHeader.Set(hubclient.MessageIDHeader, messageID)
-	}
+	replyHeader.Set(hubclient.MessageIDHeader, messageID)
 
 	// in case of error include the return data schema
-	// TODO: use schema name from reply
+	// TODO: Use schema name from Forms. The action progress schema is in
+	// the forms definition as an additional response.
+	// right now the only response is an action progress.
 	if err != nil {
 		replyHeader.Set(hubclient.DataSchemaHeader, "ActionProgress")
 		resp := hubclient.ActionProgress{

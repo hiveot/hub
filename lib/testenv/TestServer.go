@@ -92,7 +92,7 @@ func (test *TestServer) AddConnectUser(
 // Agents use non-session tokens and survive a server restart.
 // This returns the agent's connection token.
 func (test *TestServer) AddConnectAgent(
-	agentID string) (cl hubclient.IAgentClient, token string) {
+	agentID string) (cl hubclient.IHubClient, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(agentID,
 		authn.AdminAddAgentArgs{agentID, "agent name", ""})
@@ -121,7 +121,7 @@ func (test *TestServer) AddConnectAgent(
 //
 // clientType can be one of ClientTypeAgent or ClientTypeService
 func (test *TestServer) AddConnectService(serviceID string) (
-	cl hubclient.IAgentClient, token string) {
+	cl hubclient.IHubClient, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddService(serviceID,
 		authn.AdminAddServiceArgs{serviceID, "service name", ""})

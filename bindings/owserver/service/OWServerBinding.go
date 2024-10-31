@@ -36,7 +36,7 @@ type OWServerBinding struct {
 	edsAPI *eds.EdsAPI
 
 	// hub client to publish TDs and values and receive actions
-	hc hubclient.IAgentClient
+	hc hubclient.IHubClient
 
 	// The discovered and publishable things, containing instructions on
 	// if and how properties and events are published
@@ -120,7 +120,7 @@ func (svc *OWServerBinding) SaveState() error {
 // This publishes a TD for this binding, starts a background heartbeat.
 //
 //	hc is the connection with the hubClient to use.
-func (svc *OWServerBinding) Start(hc hubclient.IAgentClient) (err error) {
+func (svc *OWServerBinding) Start(hc hubclient.IHubClient) (err error) {
 	slog.Info("Starting OWServer binding")
 	if svc.config.LogLevel != "" {
 		logging.SetLogging(svc.config.LogLevel, "")

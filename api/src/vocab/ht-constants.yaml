@@ -11,6 +11,7 @@ Operations:
     HTOpLogin: "login"
     HTOpLogout: "logout"
     HTOpRefresh: "refresh"
+    HTOpReadAllEvents: "readallevents"
     HTOpReadAllTDs: "readalltds"
     HTOpReadTD: "readtd"
     # agent operations

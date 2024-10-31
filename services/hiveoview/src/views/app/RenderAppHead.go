@@ -40,7 +40,7 @@ type AppHeadTemplateData struct {
 // RenderAppHead renders the app header fragment
 func RenderAppHead(w http.ResponseWriter, r *http.Request) {
 
-	sess, _, _ := session.GetSessionFromContext(r)
+	_, sess, _ := session.GetSessionFromContext(r)
 	cm := sess.GetClientData()
 
 	data := AppHeadTemplateData{

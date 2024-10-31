@@ -29,7 +29,7 @@ var testPort = 23001
 var ts *testenv.TestServer
 
 // Create a new store, delete if it already exists
-func newIdProvService() (svc *service.IdProvService, hc hubclient.IAgentClient, stopFn func()) {
+func newIdProvService() (svc *service.IdProvService, hc hubclient.IHubClient, stopFn func()) {
 
 	ts = testenv.StartTestServer(true)
 	hc, token1 := ts.AddConnectService(idprovapi.AgentID)
@@ -122,7 +122,7 @@ func TestAutomaticProvisioning(t *testing.T) {
 
 	// token should be used to connect
 	srvURL := ts.Runtime.TransportsMgr.GetConnectURL()
-	ag1 := connect.NewAgentClient(srvURL, device1ID, ts.Certs.CaCert)
+	ag1 := connect.NewHubClient(srvURL, device1ID, ts.Certs.CaCert)
 	//ag1.SetRetryConnect(false)
 	newToken, err := ag1.ConnectWithToken(token1)
 	require.NotEmpty(t, newToken)
@@ -133,7 +133,7 @@ func TestAutomaticProvisioning(t *testing.T) {
 func TestAutomaticProvisioningBadParameters(t *testing.T) {
 	const device1ID = "device1"
 
-	device1Keys := keys.NewKey(keys.KeyTypeECDSA)
+	device1Keys := keys.NewKey(keys.KeyTypeEd25519)
 	device1PubPEM := device1Keys.ExportPublic()
 
 	svc, hc, stopFn := newIdProvService()
@@ -170,7 +170,7 @@ func TestAutomaticProvisioningBadParameters(t *testing.T) {
 
 func TestManualProvisioning(t *testing.T) {
 	const device1ID = "device1"
-	device1Keys := keys.NewKey(keys.KeyTypeECDSA)
+	device1Keys := keys.NewKey(keys.KeyTypeEd25519)
 	device1PubPEM := device1Keys.ExportPublic()
 
 	svc, hc, stopFn := newIdProvService()

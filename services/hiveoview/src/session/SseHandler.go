@@ -18,10 +18,10 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 
 	// An active session is required before accepting the request
-	cs, claims, err := sessionmanager.GetSessionFromCookie(r)
-	_ = claims
-	if cs == nil || !cs.IsActive() || err != nil {
-		slog.Warn("SSE Connection attempt but no session exists. Delay retry to 10 seconds")
+	_, cs, err := GetSessionFromContext(r)
+	if cs == nil || err != nil {
+		slog.Warn("SSE Connection attempt but no session exists. Delay retry to 10 seconds",
+			"remoteAddr", r.RemoteAddr)
 
 		// set retry to a large number
 		// while this doesn't redirect, it does stop it from holding a connection.
@@ -34,16 +34,14 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// establish a client event channel
-	sseChan := cs.CreateSSEChan()
-	//sseChan := make(chan SSEEvent)
-	//cs.AddSSEClient(sseChan)
+	// request the session event channel
+	sseChan := cs.NewSseChan()
 	clientID := cs.GetHubClient().GetClientID()
 
-	slog.Info("SseHandler. New SSE connection",
-		slog.String("RemoteAddr", r.RemoteAddr),
+	slog.Info("SseHandler. New SSE incoming connection",
 		slog.String("clientID", clientID),
-		slog.Int("nr sse connections", len(cs.sseClients)),
+		slog.String("clcid", cs.clcid),
+		slog.String("RemoteAddr", r.RemoteAddr),
 	)
 	//var sseMsg SSEEvent
 
@@ -56,7 +54,7 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 			slog.Debug("Remote client disconnected (read context)")
 			// close channel in the background when no-one is writing
 			// in the meantime keep reading. (DeleteSSEChan uses mutex lock)
-			go cs.CloseSSEChan(sseChan)
+			go cs.HandleWebConnectionClosed()
 		}
 	}()
 
@@ -91,6 +89,5 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 	slog.Info("SseHandler: sse connection closed",
 		slog.String("remote", r.RemoteAddr),
 		slog.String("clientID", clientID),
-		slog.Int("nr sse connections", len(cs.sseClients)),
 	)
 }

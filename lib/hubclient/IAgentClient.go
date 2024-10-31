@@ -5,10 +5,10 @@ package hubclient
 //	Unsubscribe() error
 //}
 
-// IAgentClient defines the interface of a Thing agent that connects to a messaging server.
+// IHubClient defines the interface of a Thing agent that connects to a messaging server.
 //
 // TODO split this up in pure transport, consumed thing and exposed thing apis
-type IAgentClient interface {
+type IHubClient interface {
 	IConsumerClient
 
 	// PubEvent [agent] publishes a Thing event.

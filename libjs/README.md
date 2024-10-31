@@ -35,7 +35,7 @@ TODO:
 * hubclient: Client for publishing and subscribing of actions, events, td, and config
 	* ./transports/mqtttransport: transport for use with MQTT message bus
 	* ./transports/natstransport: transport for use with NATS message bus
-* keys: keys for authentication and signing, using ECDSA or nkeys.
+* keys: keys for authentication and signing, using ED25519 or nkeys.
 * things: building of W3C WoT TD documents
 * vocab: HiveOT vocabulary used to describe properties, events and actions 
 

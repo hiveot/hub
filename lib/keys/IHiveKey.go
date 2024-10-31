@@ -57,7 +57,7 @@ type IHiveKey interface {
 	ImportPublic(publicEnc string) error
 
 	// ImportPublicFromFile reads the public key from file.
-	// The encoding depends on the key type. ecdsa and rsa uses pem format.
+	// The encoding depends on the key type. ed25519, ecdsa and rsa uses pem format.
 	// Intended for verifying signatures using the public key.
 	// This returns an error if the file cannot be read or is not a valid public key
 	// Note that after ImportPublicFrom...(), the private key is not available.

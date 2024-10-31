@@ -88,7 +88,7 @@ func (ht HistoryTemplateData) CompareToday() int {
 	return diff
 }
 
-// NewHistoryTemplateData reads the event or property history for the given time range
+// NewHistoryTemplateData reads the event history for the given time range
 //
 //	ct is the consumed thing to read the data from
 //	name of the event or property in the TD

@@ -110,7 +110,7 @@ func (svc *DigitwinStore) QueryAllActions(dThingID string) (
 	defer svc.cacheMux.RUnlock()
 	dtw, found := svc.dtwCache[dThingID]
 	if !found {
-		err = fmt.Errorf("ReadAllActions: dThing with ID '%s' not found", dThingID)
+		err = fmt.Errorf("QueryAllActions: dThing with ID '%s' not found", dThingID)
 		return v, err
 	}
 	return dtw.ActionValues, err

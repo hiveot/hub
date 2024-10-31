@@ -44,7 +44,7 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	name := chi.URLParam(r, "name")
 
-	sess, hc, err := session.GetSessionFromContext(r)
+	_, sess, err := session.GetSessionFromContext(r)
 	if err != nil {
 		sess.WriteError(w, err, 0)
 		return
@@ -57,7 +57,7 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 	td := cts.GetTD(thingID)
 
 	// get the latest event values of this source
-	tv, err := digitwin.ValuesReadEvent(hc, name, thingID)
+	tv, err := digitwin.ValuesReadEvent(sess.GetHubClient(), name, thingID)
 	if err != nil {
 		sess.WriteError(w, err, 0)
 		return

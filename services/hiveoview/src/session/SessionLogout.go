@@ -5,15 +5,17 @@ import (
 )
 
 // SessionLogout logs out of the current session
-// This disconnects the session from the Hub and removes the auth cookie.
+// This removes the cookie and logs out from the hub.
 func SessionLogout(w http.ResponseWriter, r *http.Request) {
-	sm := GetSessionManager()
-	// in this case we need the cookie as the context might not be set
-	_, claims, _ := sm.GetSessionFromCookie(r)
-	if claims != nil {
-		_ = sm.Close(claims.ID)
+	_, cs, err := GetSessionFromContext(r)
+	if err != nil {
+		// this breaks redirect, so don't return a status code
+		//http.Error(w, err.Error(), http.StatusUnauthorized)
 	}
-
+	if cs != nil {
+		// logout will disconnect from the hub and remove the session.
+		_ = cs.hc.Logout()
+	}
 	RemoveSessionCookie(w, r)
 
 	// logout with a redirect
@@ -23,6 +25,6 @@ func SessionLogout(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("hx-redirect", "/login")
 		http.Redirect(w, r, "/login", http.StatusOK)
 	} else {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/login", http.StatusFound)
 	}
 }

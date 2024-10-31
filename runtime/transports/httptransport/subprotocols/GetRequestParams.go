@@ -16,7 +16,7 @@ type RequestParams struct {
 	MessageID string
 	Name      string
 	Data      any
-	ConnID    string
+	CLCID     string
 }
 
 // GetRequestParams reads the client session, URL parameters and body payload from the request.
@@ -43,11 +43,12 @@ func GetRequestParams(r *http.Request) (reqParam RequestParams, err error) {
 	// the connection ID distinguishes between different connections from the same client.
 	// this is needed to correlate http requests with the sub-protocol connection.
 	// this is intended to solve for unidirectional SSE connections from multiple devices.
-	// if no connectionID is provided then only single device connections are allowed.
-	headerConnID := r.Header.Get(hubclient.ConnectionIDHeader)
+	// if no connectionID is provided then only single device connection is allowed.
+	headerCID := r.Header.Get(hubclient.ConnectionIDHeader)
 
-	// the connection ID is the clientID + provided connectionID
-	reqParam.ConnID = reqParam.ClientID + "-" + headerConnID
+	// the connection ID is the clientID + provided cid
+	reqParam.CLCID = reqParam.ClientID + "-" + headerCID
+	reqParam.MessageID = r.Header.Get(hubclient.MessageIDHeader)
 
 	// build a message from the URL and payload
 	// URLParam names are defined by the path variables set in the router.
@@ -56,7 +57,7 @@ func GetRequestParams(r *http.Request) (reqParam RequestParams, err error) {
 	if r.Body != nil {
 		payload, _ := io.ReadAll(r.Body)
 		if payload != nil && len(payload) > 0 {
-			jsoniter.Unmarshal(payload, &reqParam.Data)
+			err = jsoniter.Unmarshal(payload, &reqParam.Data)
 		}
 	}
 

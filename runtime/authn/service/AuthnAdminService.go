@@ -80,7 +80,7 @@ func (svc *AuthnAdminService) AddAgent(senderID string,
 	// agents typically create their own key pair
 	// services typically don't and have their keys saved on (re)creation
 	if args.PubKey == "" {
-		kp, err2 := keys.LoadCreateKeyPair(args.ClientID, svc.cfg.KeysDir, keys.KeyTypeECDSA)
+		kp, err2 := keys.LoadCreateKeyPair(args.ClientID, svc.cfg.KeysDir, keys.KeyTypeEd25519)
 		err = err2
 		if err == nil {
 			args.PubKey = kp.ExportPublic()
@@ -126,7 +126,7 @@ func (svc *AuthnAdminService) AddService(senderID string,
 	// agents typically create their own key pair
 	// services typically don't and have their keys saved on (re)creation
 	if args.PubKey == "" {
-		kp, err2 := keys.LoadCreateKeyPair(args.ClientID, svc.cfg.KeysDir, keys.KeyTypeECDSA)
+		kp, err2 := keys.LoadCreateKeyPair(args.ClientID, svc.cfg.KeysDir, keys.KeyTypeEd25519)
 		err = err2
 		if err == nil {
 			args.PubKey = kp.ExportPublic()

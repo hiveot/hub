@@ -66,6 +66,15 @@ func (cts *ConsumedThingsDirectory) Consume(thingID string) (ct *ConsumedThing, 
 func (cts *ConsumedThingsDirectory) handleMessage(
 	msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 
+	slog.Debug("CTS.handleMessage",
+		slog.String("senderID", msg.SenderID),
+		slog.String("messageType", msg.MessageType),
+		slog.String("messageID", msg.MessageID),
+		slog.String("thingID", msg.ThingID),
+		slog.String("name", msg.Name),
+		slog.String("clientID (me)", cts.hc.GetClientID()),
+	)
+
 	// if an event is received from an unknown Thing then (re)load its TD
 	// progress updates don't count
 	if msg.MessageType != vocab.MessageTypeProgressUpdate {

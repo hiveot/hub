@@ -13,6 +13,7 @@ import (
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/stretchr/testify/require"
 	"io"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -39,6 +40,7 @@ func startTestServer(mux *http.ServeMux) (*http.Server, error) {
 		// Handler:   srv.router,
 		TLSConfig: serverTLSConf,
 		Handler:   mux,
+		ErrorLog:  log.Default(),
 	}
 	go func() {
 		err = httpServer.ListenAndServeTLS("", "")

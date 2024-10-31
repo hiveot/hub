@@ -26,7 +26,7 @@ type ActionFlowRecord struct {
 	SenderID    string    // action sender that will receive progress messages
 	Progress    string    // current progress of the action:
 	Updated     time.Time // timestamp to handle expiry
-	CID         string    // ConnectionID from sender to publish progress update
+	CLCID       string    // Client connection-id (senderID-cid) from sender to publish progress update
 }
 
 // HandleInvokeAction handles the request to invoke an action on a Thing.
@@ -49,7 +49,7 @@ type ActionFlowRecord struct {
 // SSE, WS, MQTT bindings must use a correlation-id to match request-response messages.
 // this is not well-defined in the WoT specs and up to the protocol binding implementation.
 func (svc *HubRouter) HandleInvokeAction(
-	senderID string, dThingID string, actionName string, input any, reqID string, cid string) (
+	senderID string, dThingID string, actionName string, input any, reqID string, clcid string) (
 	status string, output any, messageID string, err error) {
 
 	// check if consumer or agent has the right permissions
@@ -108,7 +108,7 @@ func (svc *HubRouter) HandleInvokeAction(
 			SenderID:    senderID,
 			Progress:    status,
 			Updated:     time.Now(),
-			CID:         cid,
+			CLCID:       clcid,
 		}
 		svc.mux.Lock()
 		svc.activeCache[messageID] = actionRecord
@@ -125,7 +125,9 @@ func (svc *HubRouter) HandleInvokeAction(
 		}
 
 		// Update the action status
+		svc.mux.Lock()
 		actionRecord.Progress = status
+		svc.mux.Unlock()
 
 		if !found {
 			err = fmt.Errorf("HandleInvokeAction: Agent '%s' not reachable. Ignored", agentID)
@@ -194,16 +196,21 @@ func (svc *HubRouter) HandleInvokeActionProgress(agentID string, data any) (err 
 		slog.Warn(err.Error())
 		return err
 	}
+	svc.mux.Lock()
+	arAgentID := actionRecord.AgentID
 	thingID := actionRecord.ThingID
 	actionName := actionRecord.Name
+	clcid := actionRecord.CLCID
+	senderID := actionRecord.SenderID
+	svc.mux.Unlock()
 	// Update the thingID to notify the sender with progress on the digital twin thing ID
 	stat.ThingID = tdd.MakeDigiTwinThingID(agentID, thingID)
 	stat.Name = actionName
 	// the sender (agents) must be the thing agent
-	if agentID != actionRecord.AgentID {
+	if agentID != arAgentID {
 		err = fmt.Errorf(
 			"HandleInvokeActionProgress: progress update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
-			stat.MessageID, thingID, actionRecord.AgentID, agentID)
+			stat.MessageID, thingID, arAgentID, agentID)
 		slog.Warn(err.Error(), "agentID", agentID)
 		return err
 	}
@@ -237,20 +244,20 @@ func (svc *HubRouter) HandleInvokeActionProgress(agentID string, data any) (err 
 	}
 
 	// 3: Forward the progress update to the original sender
-	c := svc.cm.GetConnectionByCID(actionRecord.CID)
+	c := svc.cm.GetConnectionByCLCID(clcid)
 	if c != nil {
 		err = c.PublishActionProgress(stat, agentID)
 	} else {
-		err = fmt.Errorf("connectionID '%s' not found for client '%s'",
-			actionRecord.CID, actionRecord.SenderID)
+		err = fmt.Errorf("client connection-id (clcid) '%s' not found for client '%s'", clcid, senderID)
 		// try workaround
 
 	}
 
 	if err != nil {
 		slog.Warn("HandleInvokeActionProgress. Forwarding to sender failed",
-			slog.String("senderID", actionRecord.SenderID),
+			slog.String("senderID", senderID),
 			slog.String("thingID", thingID),
+			slog.String("clcid", clcid),
 			slog.String("err", err.Error()),
 			slog.String("MessageID", stat.MessageID),
 		)
@@ -258,11 +265,12 @@ func (svc *HubRouter) HandleInvokeActionProgress(agentID string, data any) (err 
 	}
 
 	// 4: Update the active action cache and remove the action when completed or failed
+	svc.mux.Lock()
+	defer svc.mux.Unlock()
 	actionRecord.Progress = stat.Progress
+
 	if stat.Progress == vocab.ProgressStatusCompleted || stat.Progress == vocab.ProgressStatusFailed {
-		svc.mux.Lock()
 		delete(svc.activeCache, stat.MessageID)
-		svc.mux.Unlock()
 	}
 	return nil
 }

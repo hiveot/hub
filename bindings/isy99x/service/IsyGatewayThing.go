@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	"github.com/hiveot/hub/wot/exposedthing"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"strconv"
@@ -45,7 +46,7 @@ type IsyGatewayThing struct {
 	newNodeFound bool
 
 	// current property values of this thing
-	propValues *tdd.PropertyValues
+	propValues *exposedthing.ThingValues
 
 	// protect access to the 'things' map
 	mux sync.RWMutex
@@ -254,13 +255,12 @@ func (igw *IsyGatewayThing) GetIsyThings() []IIsyThing {
 	return thingList
 }
 
-// GetValues returns the current or changed property and event values.
-// onlyChanges only provides changed properties and event values
-func (igw *IsyGatewayThing) GetValues(onlyChanges bool) (map[string]any, map[string]any) {
+// GetPropertyValues returns the current or changed property values.
+// onlyChanges only provides changed properties
+func (igw *IsyGatewayThing) GetPropertyValues(onlyChanges bool) map[string]any {
 	values := igw.propValues.GetValues(onlyChanges)
 	// TODO: add event values. Currently the TD does not list events.
-	events := make(map[string]any)
-	return values, events
+	return values
 }
 
 // GetTD returns the Gateway TD document
@@ -314,7 +314,7 @@ func (igw *IsyGatewayThing) GetTD() *tdd.TD {
 
 	// TODO: any events?
 
-	// TODO: any actions?
+	// TODO: other actions?
 	action := td.AddAction("StartLinking", "", "Start Linking",
 		"1. Press and hold the 'Set' button on your Insteon device for 3-5 seconds.\n"+
 			"2. Repeat step 1 for as many devices as you would like to link.\n"+
@@ -334,7 +334,7 @@ func (igw *IsyGatewayThing) Init(ic *isy.IsyAPI) {
 	igw.ic = ic
 	igw.thingID = ic.GetID()
 	igw.things = make(map[string]IIsyThing)
-	igw.propValues = tdd.NewPropertyValues()
+	igw.propValues = exposedthing.NewThingValues()
 
 	// values are used in TD title and description
 	_ = igw.ReadGatewayValues()
@@ -454,7 +454,7 @@ func NewIsyGateway(prodMap map[string]InsteonProduct) *IsyGatewayThing {
 	isyGW := &IsyGatewayThing{
 		prodMap:    prodMap,
 		things:     make(map[string]IIsyThing),
-		propValues: tdd.NewPropertyValues(),
+		propValues: exposedthing.NewThingValues(),
 	}
 	return isyGW
 }

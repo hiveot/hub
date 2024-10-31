@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/tile"
+	"log/slog"
 	"net/http"
 )
 
@@ -41,6 +42,11 @@ func RenderDashboardPage(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, 0)
 		return
 	}
+	slog.Info("RenderDashboardPage",
+		slog.String("clientID", sess.GetClientID()),
+		slog.String("cid", sess.GetCLCID()),
+		slog.String("remoteAddr", r.RemoteAddr),
+	)
 	data := DashboardPageTemplateData{}
 	data.Dashboard = cdc.dashboard
 

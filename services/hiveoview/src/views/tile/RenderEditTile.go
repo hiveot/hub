@@ -18,8 +18,6 @@ type EditTileTemplateData struct {
 	Values map[string]*consumedthing.InteractionOutput
 	// human labels for each tile type
 	TileTypeLabels map[string]string
-	// client view model for everything else
-	VM *session2.ClientViewModel
 
 	// navigation paths
 	RenderSelectTileSourcesPath string // dialog for tile sources selector
@@ -63,7 +61,7 @@ func RenderEditTile(w http.ResponseWriter, r *http.Request) {
 	if ctc.tileID == "" {
 		ctc.tileID = shortid.MustGenerate()
 	}
-	vm := sess.GetViewModel()
+	//vm := sess.GetViewModel()
 	cts := sess.GetConsumedThingsDirectory()
 	// include the current values of the selected sources
 	// the template uses "thingID/name" to obtain the value
@@ -85,7 +83,7 @@ func RenderEditTile(w http.ResponseWriter, r *http.Request) {
 		RenderSelectTileSourcesPath: getTilePath(src.RenderTileSelectSourcesPath, ctc),
 		SubmitEditTilePath:          getTilePath(src.PostTileEditPath, ctc),
 		Values:                      values,
-		VM:                          vm,
+		//VM:                          vm,
 	}
 	buff, err := app.RenderAppOrFragment(r, EditTileTemplate, data)
 	sess.WritePage(w, buff, err)

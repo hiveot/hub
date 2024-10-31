@@ -59,11 +59,11 @@ func (svc *HiveovService) CreateRoutes(router *chi.Mux, rootPath string) http.Ha
 		r.Get("/static/*", staticFileServer.ServeHTTP)
 		r.Get("/webcomp/*", staticFileServer.ServeHTTP)
 		r.Get("/login", login.RenderLogin)
-		r.Post("/login", login.PostLogin)
+		r.Post("/login", login.PostLoginHandler(svc.sm))
 		r.Get("/logout", session.SessionLogout)
 
-		// sse has its own validation instead of using session context (which reconnects or redirects to /login)
-		r.Get("/sse", session.SseHandler)
+		//// sse has its own validation instead of using session context (which reconnects or redirects to /login)
+		//r.Get("/sse", session.SseHandler)
 
 	})
 
@@ -71,7 +71,10 @@ func (svc *HiveovService) CreateRoutes(router *chi.Mux, rootPath string) http.Ha
 	// NOTE: these paths must match those defined in the render functions
 	router.Group(func(r chi.Router) {
 		// these routes must be authenticated otherwise redirect to /login
-		r.Use(session.AddSessionToContext())
+		r.Use(session.AddSessionToContext(svc.sm))
+
+		// todo: validate this works
+		r.Get("/sse", session.SseHandler)
 
 		// see also:https://medium.com/gravel-engineering/i-find-it-hard-to-reuse-root-template-in-go-htmx-so-i-made-my-own-little-tools-to-solve-it-df881eed7e4d
 		// these render full page or fragments for non hx-boost hx-requests

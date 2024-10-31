@@ -7,9 +7,12 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/lmittmann/tint"
+	"log"
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -53,6 +56,9 @@ func (srv *TLSServer) Start() error {
 		MinVersion:         tls.VersionTLS12,
 		InsecureSkipVerify: false,
 	}
+	logHandler := tint.NewHandler(os.Stdout, &tint.Options{
+		AddSource: true, Level: slog.LevelInfo, TimeFormat: "Jan _2 15:04:05.0000"})
+	logger := slog.NewLogLogger(logHandler, slog.LevelDebug)
 
 	// handle CORS using the cors plugin
 	// see also: https://stackoverflow.com/questions/43871637/no-access-control-allow-origin-header-is-present-on-the-requested-resource-whe
@@ -84,6 +90,7 @@ func (srv *TLSServer) Start() error {
 		Debug:          false,
 		//Debug:            true, // the AllowOriginFunc above does the reporting
 		AllowCredentials: true,
+		Logger:           logger,
 	})
 	handler := c.Handler(srv.router)
 
@@ -93,6 +100,7 @@ func (srv *TLSServer) Start() error {
 		// WriteTimeout: 10 * time.Second,
 		Handler:   handler,
 		TLSConfig: serverTLSConf,
+		ErrorLog:  log.Default(),
 	}
 	l, err := net.Listen("tcp", srv.httpServer.Addr)
 	if err != nil {
@@ -155,10 +163,6 @@ func NewTLSServer(address string, port int,
 	}
 	//// support for CORS response headers
 	//srv.router.Use(mux.CORSMethodMiddleware(srv.router))
-
-	//issuerKey := serverCert.PrivateKey.(*ecdsa.PrivateKey)
-	//serverX509, _ := x509.ParseCertificate(serverCert.Certificate[0])
-	//pubKey := certsclient.PublicKeyFromCert(serverX509)
 
 	srv.address = address
 	srv.port = port

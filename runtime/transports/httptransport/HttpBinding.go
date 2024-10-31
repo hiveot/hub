@@ -83,9 +83,9 @@ func (svc *HttpBinding) AddPostOp(r chi.Router,
 	r.Post(opURL, handler)
 }
 
-// GetConnectionByCID returns the client connection for sending messages to a client
-func (svc *HttpBinding) GetConnectionByCID(cid string) connections.IClientConnection {
-	return svc.cm.GetConnectionByCID(cid)
+// GetConnectionByCLCID returns the client connection for sending messages to a client
+func (svc *HttpBinding) GetConnectionByCLCID(clcid string) connections.IClientConnection {
+	return svc.cm.GetConnectionByCLCID(clcid)
 }
 
 // GetProtocolInfo returns info on the protocol supported by this binding

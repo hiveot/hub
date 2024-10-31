@@ -379,61 +379,75 @@ func (tdoc *TD) GetEvent(eventName string) *EventAffordance {
 // 4. determine which form matches the available protocol binding(s)
 //
 //	operation is the operation as defined in TD forms
-//	name is the name of property, event or action whose form to get
-//	protocol to get, eg: http, mqtt, coap
+//	name is the name of property, event or action whose form to get or "" for the TD level operations
+//	protocol to get, eg: http, mqtt, coap, or "" for the first available protocol
 func (tdoc *TD) GetForm(operation string, name string, protocol string) Form {
 	var f []Form
 
-	switch operation {
-	case
-		vocab.WotOpInvokeAction,
-		vocab.WotOpCancelAction,
-		vocab.WotOpQueryAction,
-		vocab.WotOpQueryAllActions,
-		"readaction",
-		"readallactions":
-		aff, _ := tdoc.Actions[name]
-		if aff != nil {
-			f = aff.Forms
+	if name != "" {
+		// get the form from the affordance if a name is given
+
+		switch operation {
+		case
+			vocab.WotOpInvokeAction,
+			vocab.WotOpCancelAction,
+			vocab.WotOpQueryAction,
+			vocab.WotOpQueryAllActions:
+			aff, _ := tdoc.Actions[name]
+			if aff != nil {
+				f = aff.Forms
+			}
+
+		case
+			vocab.WotOpObserveAllProperties,
+			vocab.WoTOpObserveProperty,
+			vocab.WotOpReadAllProperties,
+			vocab.WoTOpReadProperty,
+			vocab.WotOpReadMultipleProperties,
+			vocab.WotOpUnobserveAllProperties,
+			vocab.WoTOpUnobserveProperty,
+			vocab.WoTOpWriteProperty,
+			vocab.WotOpWriteAllProperties,
+			vocab.WotOpWriteMultipleProperties:
+			aff, _ := tdoc.Properties[name]
+			if aff != nil {
+				f = aff.Forms
+			}
+
+		case
+			vocab.WotOpSubscribeAllEvents,
+			vocab.WotOpSubscribeEvent,
+			vocab.WotOpUnsubscribeAllEvents,
+			vocab.WotOpUnsubscribeEvent,
+			vocab.HTOpReadAllEvents:
+			aff, _ := tdoc.Events[name]
+			if aff != nil {
+				f = aff.Forms
+			}
 		}
 
-	case
-		vocab.WotOpObserveAllProperties,
-		vocab.WoTOpObserveProperty,
-		vocab.WotOpReadAllProperties,
-		vocab.WoTOpReadProperty,
-		vocab.WotOpReadMultipleProperties,
-		vocab.WotOpUnobserveAllProperties,
-		vocab.WoTOpUnobserveProperty,
-		vocab.WoTOpWriteProperty,
-		vocab.WotOpWriteAllProperties,
-		vocab.WotOpWriteMultipleProperties:
-		aff, _ := tdoc.Properties[name]
-		if aff != nil {
-			f = aff.Forms
-		}
-
-	case
-		vocab.WotOpSubscribeAllEvents,
-		vocab.WotOpSubscribeEvent,
-		vocab.WotOpUnsubscribeAllEvents,
-		vocab.WotOpUnsubscribeEvent,
-		"readallevents":
-		aff, _ := tdoc.Events[name]
-		if aff != nil {
-			f = aff.Forms
+		if f != nil {
+			// find the form for this operation that has the currently used transport type
+			for _, form := range f {
+				op, found := form["op"]
+				if found && op == operation {
+					href, found := form.GetHRef()
+					if found {
+						if protocol == "" || strings.HasPrefix(href, protocol) {
+							return form
+						}
+					}
+				}
+			}
 		}
 	}
-	if f == nil {
-		f = tdoc.Forms
-	}
-	// find the form for this operation that has the currently used transport type
-	for _, form := range f {
+	// still here? okay check the top level form
+	for _, form := range tdoc.Forms {
 		op, found := form["op"]
 		if found && op == operation {
 			href, found := form.GetHRef()
 			if found {
-				if strings.HasPrefix(href, protocol) {
+				if protocol == "" || strings.HasPrefix(href, protocol) {
 					return form
 				}
 			}

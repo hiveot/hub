@@ -1,7 +1,6 @@
 package app
 
 import (
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"net/http"
 )
@@ -24,7 +23,7 @@ type ConnectStatus struct {
 
 // GetConnectStatus returns the description of the connection status
 func GetConnectStatus(r *http.Request) *ConnectStatus {
-	cs, hc, _ := session.GetSessionFromContext(r)
+	_, cs, _ := session.GetSessionFromContext(r)
 	status := &ConnectStatus{
 		IconName:    "link-off",
 		Description: "disconnected",
@@ -34,24 +33,21 @@ func GetConnectStatus(r *http.Request) *ConnectStatus {
 	if cs == nil {
 		status.Description = "Session not established"
 	} else {
-		cStat := cs.GetStatus()
-		status.LoginID = hc.GetClientID()
-		if cStat.LastError != nil {
-			status.Error = cStat.LastError.Error()
+		isConnected, lastError := cs.GetStatus()
+		status.LoginID = cs.GetClientID()
+		if lastError != nil {
+			status.Error = lastError.Error()
 		}
-		if cStat.ConnectionStatus == hubclient.Connected {
+		if isConnected {
 			status.IconName = "link"
 			status.Description = "Connected to the Hub"
 			status.IsConnected = true
-		} else if cStat.ConnectionStatus == hubclient.ConnectFailed {
+		} else if lastError != nil {
 			status.IconName = "link-off"
-			status.Description = "Connection failed"
-		} else if cStat.ConnectionStatus == hubclient.Connecting {
-			status.IconName = "leak-off"
-			status.Description = "Reconnecting"
+			status.Description = "Connection failed: " + lastError.Error()
 		} else {
 			status.IconName = "link-off"
-			status.Description = "unknown"
+			status.Description = "Not Connected"
 		}
 	}
 	return status
@@ -63,7 +59,7 @@ func RenderConnectStatus(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{}
 	status := GetConnectStatus(r)
 	data["Progress"] = status
-	sess, _, _ := session.GetSessionFromContext(r)
+	_, sess, _ := session.GetSessionFromContext(r)
 
 	// render with base or as fragment
 	//views.TM.RenderTemplate(w, r, ConnectStatusTemplate, data)

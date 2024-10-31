@@ -1,8 +1,7 @@
 package service
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
@@ -39,38 +38,39 @@ type HiveovService struct {
 	serverCert *tls.Certificate
 	caCert     *x509.Certificate
 	tlsServer  *tlsserver.TLSServer
+	// a web session per connections
+	sm *session.WebSessionManager
 
 	// hc hub client of this service.
 	// This client's CA and URL is also used to establish client sessions.
-	hc hubclient.IAgentClient
+	hc hubclient.IHubClient
 
 	// cookie signing
-	signingKey *ecdsa.PrivateKey
+	signingKey ed25519.PrivateKey
 
 	// run in debug mode, extra logging and reload templates render
 	debug bool
 }
 
 // Start the web server and publish the service's own TD.
-func (svc *HiveovService) Start(hc hubclient.IAgentClient) error {
+func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 	slog.Info("Starting HiveovService", "clientID", hc.GetClientID())
 	svc.hc = hc
 
-	// publish a TD for each service capability and set allowable roles
-	// in this case only a management capability is published
+	// publish a TD for the service and set allowable roles in this case only a management capability is published
 	err := authz.UserSetPermissions(hc, authz.ThingPermissions{
 		AgentID: hc.GetClientID(),
 		ThingID: src.HiveoviewServiceID,
-		Allow:   []authz.ClientRole{authz.ClientRoleAdmin, authz.ClientRoleService},
+		Allow:   []authz.ClientRole{authz.ClientRoleAdmin, authz.ClientRoleService, authz.ClientRoleManager},
 	})
 	if err != nil {
 		slog.Error("failed to set the hiveoview service permissions", "err", err.Error())
 	}
 
 	// Setup the handling of incoming web sessions
-	sm := session.GetSessionManager()
-	connStat := hc.GetStatus()
-	sm.Init(connStat.HubURL, svc.signingKey, connStat.CaCert, hc)
+	// re-use the runtime connection manager
+	hubURL := hc.GetHubURL()
+	svc.sm = session.NewWebSessionManager(hubURL, svc.signingKey, svc.caCert, hc)
 
 	// parse the templates
 	svc.tm.ParseAllTemplates()
@@ -134,7 +134,7 @@ func (svc *HiveovService) Stop() {
 //	serverCert server TLS certificate
 //	caCert server CA certificate
 func NewHiveovService(serverPort int, debug bool,
-	signingKey *ecdsa.PrivateKey, rootPath string,
+	signingKey ed25519.PrivateKey, rootPath string,
 	serverCert *tls.Certificate, caCert *x509.Certificate,
 ) *HiveovService {
 	templatePath := rootPath
@@ -142,7 +142,7 @@ func NewHiveovService(serverPort int, debug bool,
 		templatePath = path.Join(rootPath, "views")
 	}
 	if signingKey == nil {
-		signingKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		_, signingKey, _ = ed25519.GenerateKey(rand.Reader)
 	}
 	tm := views.InitTemplateManager(templatePath)
 	svc := HiveovService{

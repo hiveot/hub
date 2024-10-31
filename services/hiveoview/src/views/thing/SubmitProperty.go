@@ -23,7 +23,7 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 	propName := chi.URLParam(r, "name")
 	valueStr := r.FormValue(propName)
 
-	mySession, hc, err := session.GetSessionFromContext(r)
+	_, mySession, err := session.GetSessionFromContext(r)
 	if err == nil {
 		td, propAff, err = getPropAff(hc, thingID, propName)
 		_ = td

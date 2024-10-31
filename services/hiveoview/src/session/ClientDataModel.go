@@ -10,7 +10,7 @@ type ClientDataModel struct {
 	mux         sync.RWMutex // mutex to protect the maps below
 	dataChanged bool
 
-	// client dashboard(s) - do not use directly
+	// client dashboard(s) - allow for serialization. do not use directly
 	Dashboards map[string]*DashboardModel `json:"dashboards"`
 
 	// UI preferences ...
