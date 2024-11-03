@@ -137,7 +137,7 @@ func (cl *HttpSSEClient) connectSSE(token string) (err error) {
 //	return err
 //}
 
-// invoke login using a form - temporary helper
+// ConnectWithLoginForm invokes login using a form - temporary helper
 // intended for testing a connection with a web server
 func (cl *HttpSSEClient) ConnectWithLoginForm(password string) error {
 	formMock := url.Values{}
@@ -160,7 +160,6 @@ func (cl *HttpSSEClient) ConnectWithLoginForm(password string) error {
 			}
 		}
 		//token := resp.Header.Get("token")
-		// todo: get the form
 		err = cl.connectSSE(token)
 	}
 	return err

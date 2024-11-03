@@ -36,8 +36,8 @@ type WebSessionManager struct {
 }
 
 // add a new session with the given clientID and send a session count event
-func (sm *WebSessionManager) _addSession(w http.ResponseWriter, r *http.Request,
-	cid string, hc hubclient.IConsumerClient, newToken string) (
+func (sm *WebSessionManager) _addSession(
+	r *http.Request, cid string, hc hubclient.IConsumerClient) (
 	cs *WebClientSession, err error) {
 
 	// if the browser does not provide a CID until after the first connection,
@@ -86,9 +86,9 @@ func (sm *WebSessionManager) _addSession(w http.ResponseWriter, r *http.Request,
 	nrSessions := len(sm.sessions)
 	sm.mux.Unlock()
 
-	// Update the session cookie with the new auth token (default 14 days)
-	maxAge := time.Hour * 24 * 14
-	err = SetSessionCookie(w, clientID, newToken, maxAge, sm.signingKey)
+	//Update the session cookie with the new auth token (default 14 days)
+	//maxAge := time.Hour * 24 * 14
+	//err = SetSessionCookie(w, clientID, newToken, maxAge, sm.signingKey)
 
 	// publish the new nr of sessions
 	sm.hc.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions, "")
@@ -132,72 +132,80 @@ func (sm *WebSessionManager) onClose(cs *WebClientSession) {
 }
 
 // PostLogin creates a hub connection for the client and adds a new session
-func (sm *WebSessionManager) PostLogin(w http.ResponseWriter, r *http.Request) {
-	// obtain login form fields
-	loginID := r.FormValue("loginID")
-	password := r.FormValue("password")
-	cid := r.Header.Get(hubclient.ConnectionIDHeader)
+//func (sm *WebSessionManager) PostLogin(w http.ResponseWriter, r *http.Request) {
+//	// obtain login form fields
+//	loginID := r.FormValue("loginID")
+//	password := r.FormValue("password")
+//	cid := r.Header.Get(hubclient.ConnectionIDHeader)
+//
+//	if loginID == "" && password == "" {
+//		http.Redirect(w, r, src.RenderLoginPath, http.StatusBadRequest)
+//		//w.WriteHeader(http.StatusBadRequest)
+//		return
+//	}
+//	_, err := sm.ConnectWithPassword(w, r, loginID, password, cid)
+//	if err != nil {
+//		http.Error(w, err.Error(), http.StatusUnauthorized)
+//	}
+//}
 
-	if loginID == "" && password == "" {
-		http.Redirect(w, r, src.RenderLoginPath, http.StatusBadRequest)
-		//w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	_, err := sm.ConnectWithPassword(w, r, loginID, password, cid)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-	}
-}
-
-// ConnectWithPassword creates a new hub client and connect it to the hub using password login
-// If successful this adds the session and updates a session cookie.
-// The cid is that of the incoming request and will be the session cid
+// ConnectWithPassword logs-in to the hub using the given password.
+// If successful this updates the secure cookie with a new auth token.
+// If a cid is provided it will create a session using it.
 func (sm *WebSessionManager) ConnectWithPassword(w http.ResponseWriter, r *http.Request,
-	loginID string, password string, cid string) (
-	cs *WebClientSession, err error) {
+	loginID string, password string, cid string) (err error) {
 
 	hc := connect.NewHubClient(sm.hubURL, loginID, sm.caCert)
 	newToken, err := hc.ConnectWithPassword(password)
 	if err == nil {
-		cs, err = sm._addSession(w, r, cid, hc, newToken)
+		if cid != "" {
+			_, err = sm._addSession(r, cid, hc)
+		} else {
+			hc.Disconnect()
+		}
+		// Update the session cookie with the new auth token (default 14 days)
+		maxAge := time.Hour * 24 * 14
+		err = SetSessionCookie(w, loginID, newToken, maxAge, sm.signingKey)
 	}
-	return cs, err
+	return err
 }
 
-// ConnectWithToken creates a new hub client and connect it to the hub using token login.
+// ConnectWithToken logs-in to the hub using the given valid auth token.
 //
-// On success add a client session for this connection and update the cookie with
-// the refreshed token.
+// If successful this updates the secure cookie with a new auth token.
 //
-// The 'cid' header is provided by the client and used to differentiate between
+// !! If a cid is provided it will create a session for it otherwise it must
+// be closed by the caller.
+//
+// The 'cid' field, provided by the client, is used to differentiate between
 // multiple client connections. Without it, only a single connection per client is
-// accepted. Used to link requests to the notification return channel.
+// accepted which will mess up browser tabs.
 //
-// Note that at this time there is not yet an SSE connection. Any notifications
-// for the web browser will be queued and not yet arrive until its SSE connection
-// is established.
+// Note that at this time there is not yet an SSE connection. Notifications
+// for the web browser will be discarded until a SSE connection is established.
 func (sm *WebSessionManager) ConnectWithToken(
 	w http.ResponseWriter, r *http.Request, loginID string, cid string, authToken string) (
 	cs *WebClientSession, err error) {
 
 	slog.Info("ConnectWithToken",
-		"clientID", loginID, "cid", cid,
-		"remoteAddr", r.RemoteAddr,
+		"clientID", loginID, "cid", cid, "remoteAddr", r.RemoteAddr,
 		"nr websessions", len(sm.sessions))
 
-	// TODO: need a consumerclient instance
 	hc := connect.NewHubClient(sm.hubURL, loginID, sm.caCert)
-	//hc := NewConsumerClient(sm.hubURL, loginID, sm.caCert)
 	newToken, err := hc.ConnectWithToken(authToken)
-	if err != nil {
-		slog.Warn("ConnectWithToken failed",
-			"loginID", loginID,
-			"err", err.Error())
-		return nil, err
+	if err == nil {
+		cs, err = sm._addSession(r, cid, hc)
+		// Update the session cookie with the new auth token (default 14 days)
+		maxAge := time.Hour * 24 * 14
+		err = SetSessionCookie(w, loginID, newToken, maxAge, sm.signingKey)
 	}
-	cs, err = sm._addSession(w, r, cid, hc, newToken)
 
 	return cs, err
+}
+func (sm *WebSessionManager) GetNrSessions() int {
+	sm.mux.RLock()
+	defer sm.mux.RUnlock()
+	return len(sm.sessions)
 }
 
 // GetSession returns the client session if available

@@ -134,9 +134,10 @@ func (r *Runtime) Stop() {
 		r.TransportsMgr.Stop()
 	}
 	r.CM.CloseAll()
-
-	slog.Warn(fmt.Sprintf(
-		"HiveOT Hub Runtime stopped. Force closed %d connections", nrConnections))
+	if nrConnections > 0 {
+		slog.Warn(fmt.Sprintf(
+			"HiveOT Hub Runtime stopped. Force closed %d connections", nrConnections))
+	}
 }
 
 func NewRuntime(cfg *RuntimeConfig) *Runtime {

@@ -60,7 +60,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 
 		// inject the writable device title, if set. Default is model name.
 		deviceTitle := svc.customTitles[thingID]
-		if deviceTitle != "" {
+		if deviceTitle != "" && force {
 			propMap[vocab.PropDeviceTitle] = deviceTitle
 		}
 		// first and unknown values are always changed
@@ -173,7 +173,10 @@ func (svc *OWServerBinding) GetValueChange(
 	default: // strings and other values
 		value = attrValue
 		if prevFound {
-			changed = value != prevValue.value.(string)
+			// don't report changes if disabled
+			if int(info.ChangeNotify) >= 0 {
+				changed = value != prevValue.value.(string)
+			}
 		} else {
 			changed = true
 		}

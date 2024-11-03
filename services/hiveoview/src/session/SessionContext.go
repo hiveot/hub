@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"errors"
+	"github.com/teris-io/shortid"
 	"log/slog"
 	"net/http"
 	"time"
@@ -46,9 +47,11 @@ func AddSessionToContext(sm *WebSessionManager) func(next http.Handler) http.Han
 				return
 			}
 			// Session doesn't exist with the given connection ID.
+			// generate a CID if one doesnt exist.
 			// Open a new session and reconnect to the hub using the given auth token
 			// This can also be the result of an SSE reconnect, in which case the followup Serve
 			// will link to this session.
+			cid = "WC-" + shortid.MustGenerate()
 			slog.Info("AddSessionToContext. New webclient session. Authenticate using its bearer token",
 				slog.String("clientID", clientID),
 				slog.String("cid", cid),

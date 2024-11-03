@@ -18,6 +18,7 @@ import (
 func PostLoginHandler(sm *session.WebSessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// obtain login form fields
+
 		loginID := r.FormValue("loginID")
 		password := r.FormValue("password")
 		if loginID == "" && password == "" {
@@ -29,11 +30,8 @@ func PostLoginHandler(sm *session.WebSessionManager) http.HandlerFunc {
 		slog.Info("PostLoginHandler",
 			"loginID", loginID,
 			"cid", cid)
-		// step 1: authenticate with the password
-		// FIXME: this connection becomes orphaned somehow as the web client
-		// does not have a way to disconnect it. We just need a token.
-		cs, err := sm.ConnectWithPassword(w, r, loginID, password, cid)
-		_ = cs
+
+		err := sm.ConnectWithPassword(w, r, loginID, password, cid)
 		if err != nil {
 			slog.Warn("PostLogin failed",
 				slog.String("remoteAddr", r.RemoteAddr),

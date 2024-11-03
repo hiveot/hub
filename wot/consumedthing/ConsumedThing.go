@@ -246,12 +246,14 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 // If the number of values exceed the maximum then this returns itemsRemaining
 // as true. An additional call can be made using the last returned timestamp to
 // get the remaining values.
-func (ct *ConsumedThing) ReadHistory(name string, timestamp time.Time, duration time.Duration) (values []*hubclient.ThingMessage, itemsRemaining bool, err error) {
+func (ct *ConsumedThing) ReadHistory(
+	name string, timestamp time.Time, duration time.Duration) (
+	values []*hubclient.ThingMessage, itemsRemaining bool, err error) {
 
 	hist := historyclient.NewReadHistoryClient(ct.hc)
-	// FIXME: go-sse doesn't handle large payloads
+	// todo: is there a need to read in batches? not for a single day.
 	values, itemsRemaining, err = hist.ReadHistory(
-		ct.td.ID, name, timestamp, duration, 100)
+		ct.td.ID, name, timestamp, duration, 500)
 
 	return values, itemsRemaining, err
 }

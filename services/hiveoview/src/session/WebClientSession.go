@@ -96,6 +96,11 @@ func (sess *WebClientSession) GetCLCID() string {
 	return sess.clcid
 }
 
+// GetCID returns the connection-id of this session provided by the remote client
+func (sess *WebClientSession) GetCID() string {
+	return sess.cid
+}
+
 // GetClientData returns the hiveoview data model of this client
 func (sess *WebClientSession) GetClientData() *ClientDataModel {
 	// if loading previously failed then recover
@@ -195,7 +200,9 @@ func (sess *WebClientSession) HandleHubConnectionClosed() {
 	if sess.isActive.Swap(false) {
 
 		// notify session manager to remove this session
-		sess.onClosed(sess)
+		if sess.onClosed != nil {
+			sess.onClosed(sess)
+		}
 
 		// if a web connection is still there then attempt to notify
 		sess.SendNotify(NotifyWarning, "Disconnected from the Hub")

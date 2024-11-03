@@ -44,7 +44,7 @@ func RenderDashboardPage(w http.ResponseWriter, r *http.Request) {
 	}
 	slog.Info("RenderDashboardPage",
 		slog.String("clientID", sess.GetClientID()),
-		slog.String("cid", sess.GetCLCID()),
+		slog.String("clcid", sess.GetCLCID()),
 		slog.String("remoteAddr", r.RemoteAddr),
 	)
 	data := DashboardPageTemplateData{}

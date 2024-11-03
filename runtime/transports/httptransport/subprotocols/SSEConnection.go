@@ -187,7 +187,9 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 
 	// Send a ping event as the go-sse client doesn't have a 'connected callback'
 	pingEvent := SSEEvent{EventType: hubclient.PingMessage, ID: "pingID"}
+	c.mux.Lock()
 	c.sseChan <- pingEvent
+	c.mux.Unlock()
 
 	slog.Debug("SseConnection.Serve new SSE connection",
 		slog.String("clientID", c.clientID),

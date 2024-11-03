@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views"
 	"github.com/teris-io/shortid"
 	"net/http"
@@ -11,9 +12,7 @@ const AppTemplate = "app.gohtml"
 
 // RenderApp is used to render the full app view without a specific page
 func RenderApp(w http.ResponseWriter, r *http.Request) {
-
-	// no specific fragment data
-	buff, err := RenderAppPages()
+	buff, err := RenderAppPages(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	} else {
@@ -21,12 +20,20 @@ func RenderApp(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// RenderAppPages renders the full application html without data.
+// RenderAppPages renders the full application html without data and injects
+// a cid header field.
 // Use this to load a new page or a boosted page.
 // Individual pages should trigger a hx-get once they are shown to
 // render themselves with data.
-func RenderAppPages() (buff *bytes.Buffer, err error) {
-	cid := "WC" + shortid.MustGenerate() // web client connect id
+func RenderAppPages(r *http.Request) (buff *bytes.Buffer, err error) {
+
+	cid := "TMP-" + shortid.MustGenerate()
+	// get the connectionID to inject back into the web page hx-header field
+	ctxClientSession := r.Context().Value(session.ClientSessionContextID)
+	if ctxClientSession != nil {
+		cs := ctxClientSession.(*session.WebClientSession)
+		cid = cs.GetCID()
+	}
 	data := map[string]string{"Cid": cid}
 	return views.TM.RenderFull(AppTemplate, data)
 }
@@ -78,7 +85,7 @@ func RenderAppOrFragment(r *http.Request, pageFragment string, data any) (
 	} else {
 		// just render the application layout without data, each page
 		// element will fetch its own data.
-		buff, err = RenderAppPages()
+		buff, err = RenderAppPages(r)
 	}
 	return buff, err
 }

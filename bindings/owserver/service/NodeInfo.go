@@ -110,14 +110,18 @@ var AttrConfig = map[string]AttrConversion{
 	"BarometricPressureMbHighAlarmState": {
 		IsProp: true, Ignore: true,
 		Title:    "Pressure High Alarm",
-		DataType: vocab.WoTDataTypeBool,
+		DataType: vocab.WoTDataTypeBool, ChangeNotify: 1,
 	},
 	"BarometricPressureMbLowAlarmState": {
 		IsProp: true, Ignore: true,
 		Title:    "Pressure Low Alarm",
-		DataType: vocab.WoTDataTypeBool,
+		DataType: vocab.WoTDataTypeBool, ChangeNotify: 1,
 	},
 	// "BarometricPressureHg": vocab.PropNameAtmosphericPressure, // unit Hg
+	"Channel": {
+		IsProp: true, Ignore: false,
+		Title: "Channel", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
+	},
 	"ClearAlarms": {
 		IsActuator: true, Ignore: true,
 		Title:    "Clear Alarms",
@@ -146,12 +150,13 @@ var AttrConfig = map[string]AttrConversion{
 	"DateTime": {
 		IsProp: true,
 		Title:  "Device date/time", DataType: vocab.WoTDataTypeDateTime,
+		ChangeNotify: -1, // do not report changes to time
 	},
 	// gateway has 'DeviceName', nodes 'Name'
 	"DeviceName": {
 		IsProp:    true,
 		Title:     "Device Name",
-		VocabType: vocab.PropDeviceTitle, DataType: vocab.WoTDataTypeString,
+		VocabType: vocab.PropDeviceTitle, DataType: vocab.WoTDataTypeString, ChangeNotify: 1,
 	},
 	"DevicesConnectedChannel1": {
 		IsProp: true,
@@ -187,7 +192,7 @@ var AttrConfig = map[string]AttrConversion{
 		IsProp:    true,
 		VocabType: vocab.PropNetHostname,
 		Title:     "Hostname",
-		DataType:  vocab.WoTDataTypeString,
+		DataType:  vocab.WoTDataTypeString, ChangeNotify: 1,
 	},
 	//"HeatIndex":  {VocabType: vocab.PropEnvHeatindex, Title: "Heat Index", DataType: vocab.WoTDataTypeNumber, Precision: 1},
 	"Humidity": {
@@ -207,17 +212,17 @@ var AttrConfig = map[string]AttrConversion{
 	"HumidityHighAlarmState": {
 		IsProp: true, Ignore: true,
 		Title:    "Humidity High Alarm",
-		DataType: vocab.WoTDataTypeBool,
+		DataType: vocab.WoTDataTypeBool, ChangeNotify: 1,
 	},
 	"HumidityLowAlarmState": {
 		IsProp: true, Ignore: true,
 		Title:    "Humidity Low Alarm",
-		DataType: vocab.WoTDataTypeBool,
+		DataType: vocab.WoTDataTypeBool, ChangeNotify: 1,
 	},
 	"LED": {
 		IsProp:   true,
 		Title:    "LED",
-		DataType: vocab.WoTDataTypeBool, // On/Off
+		DataType: vocab.WoTDataTypeBool, ChangeNotify: 1, // On/Off
 	},
 	"LEDFunction": {
 		IsProp:   true,
@@ -233,7 +238,7 @@ var AttrConfig = map[string]AttrConversion{
 	"LEDState": {
 		IsActuator: true, IsProp: true,
 		Title:    "LED Control",
-		DataType: vocab.WoTDataTypeBool,
+		DataType: vocab.WoTDataTypeBool, ChangeNotify: 1,
 	},
 	"Light": {
 		IsEvent:   true,
@@ -265,6 +270,11 @@ var AttrConfig = map[string]AttrConversion{
 	"PollCount": {
 		IsProp: true, Ignore: true,
 		Title:    "Poll Count",
+		DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
+	},
+	"PowerSource": {
+		IsProp:   true,
+		Title:    "Power Source",
 		DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
 	},
 	"PrimaryValue": {
@@ -302,7 +312,7 @@ var AttrConfig = map[string]AttrConversion{
 	"RelayState": {
 		IsProp:   true,
 		Title:    "Relay control",
-		DataType: vocab.WoTDataTypeBool, VocabType: vocab.ActionSwitchOnOff,
+		DataType: vocab.WoTDataTypeBool, VocabType: vocab.ActionSwitchOnOff, ChangeNotify: 1,
 	},
 	"ROMId": {
 		IsProp:   true,
@@ -319,22 +329,22 @@ var AttrConfig = map[string]AttrConversion{
 	"TemperatureHighAlarmState": {
 		IsProp: true, Ignore: true,
 		Title:    "Temperature High Alarm",
-		DataType: vocab.WoTDataTypeBool,
+		DataType: vocab.WoTDataTypeBool, ChangeNotify: 1,
 	},
 	"TemperatureLowAlarmState": {
 		IsProp: true, Ignore: true,
 		Title:    "Temperature Low Alarm",
-		DataType: vocab.WoTDataTypeBool,
+		DataType: vocab.WoTDataTypeBool, ChangeNotify: 1,
 	},
 	"UserByte1": {
-		IsProp: true, Ignore: true,
+		IsProp:   true, //Ignore: true,
 		Title:    "User Byte 1",
-		DataType: vocab.WoTDataTypeInteger,
+		DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
 	},
 	"UserByte2": {
-		IsProp: true, Ignore: true,
+		IsProp:   true, //Ignore: true,
 		Title:    "User Byte 2",
-		DataType: vocab.WoTDataTypeInteger,
+		DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
 	},
 	"Version": {
 		IsProp:    true,
