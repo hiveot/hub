@@ -70,7 +70,8 @@ func TestStartStop(t *testing.T) {
 	svc := service.NewOWServerBinding(&owsConfig)
 
 	hc, _ := ts.AddConnectAgent(agentID)
-	require.Equal(t, hubclient.Connected, hc.GetStatus().ConnectionStatus)
+	connected, _, _ := hc.GetConnectionStatus()
+	require.Equal(t, true, connected)
 	defer hc.Disconnect()
 
 	err := svc.Start(hc)

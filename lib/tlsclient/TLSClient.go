@@ -50,11 +50,11 @@ func (cl *TLSClient) Certificate() *tls.Certificate {
 
 // Close the connection with the server
 func (cl *TLSClient) Close() {
-	slog.Info("TLSClient.Remove: Closing client connection")
+	slog.Debug("TLSClient.Remove: Closing client connection")
 
 	if cl.httpClient != nil {
 		cl.httpClient.CloseIdleConnections()
-		cl.httpClient = nil
+		//cl.httpClient = nil
 	}
 }
 
@@ -290,7 +290,7 @@ func NewTLSClient(hostPort string, clientCert *tls.Certificate, caCert *x509.Cer
 
 	// add a cookie jar for storing cookies
 	// FIXME:
-	// 1 does this work if the server is connected using an IP address?
+	// 1 does this also work if the server is connected using an IP address?
 	// 2. How are cookies stored between sessions?
 	cjarOpts := &cookiejar.Options{PublicSuffixList: publicsuffix.List}
 	cjar, err := cookiejar.New(cjarOpts)

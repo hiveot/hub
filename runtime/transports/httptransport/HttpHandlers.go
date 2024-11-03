@@ -8,6 +8,7 @@ import (
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/runtime/transports/httptransport/subprotocols"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/teris-io/shortid"
 	"io"
 	"log/slog"
 	"net/http"
@@ -40,7 +41,7 @@ func (svc *HttpBinding) HandleInvokeActionProgress(w http.ResponseWriter, r *htt
 func (svc *HttpBinding) HandleInvokeAction(w http.ResponseWriter, r *http.Request) {
 	rp, err := subprotocols.GetRequestParams(r)
 
-	slog.Info("HandleActionRequest",
+	slog.Info("HandleInvokeAction",
 		slog.String("SenderID", rp.ClientID),
 		slog.String("clcid", rp.CLCID),
 		slog.String("RemoteAddr", r.RemoteAddr),
@@ -186,6 +187,9 @@ func (svc *HttpBinding) HandlePublishEvent(w http.ResponseWriter, r *http.Reques
 	}
 	// pass the event to the digitwin service for further processing
 	messageID := r.Header.Get(hubclient.MessageIDHeader)
+	if messageID == "" {
+		messageID = shortid.MustGenerate()
+	}
 	err = svc.hubRouter.HandlePublishEvent(rp.ClientID, rp.ThingID, rp.Name, rp.Data, messageID)
 	svc.writeReply(w, nil, err)
 }
@@ -328,6 +332,9 @@ func (svc *HttpBinding) HandlePublishProperty(w http.ResponseWriter, r *http.Req
 		return
 	}
 	messageID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
+	if messageID == "" {
+		messageID = shortid.MustGenerate()
+	}
 	err = svc.hubRouter.HandlePublishProperty(rp.ClientID, rp.ThingID, rp.Name, rp.Data, messageID)
 	svc.writeReply(w, nil, err)
 }

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -13,27 +14,37 @@ import (
 const SessionCookieID = "session"
 
 // GetSessionCookie retrieves the credentials from the browser cookie.
-// If no valid cookie is found then this returns an error.
+// If no valid cookie is found then the bearer token is checked, otherwise this returns an error.
 // Intended for use by middleware. Any updates to the session will not be available in the cookie
 // until the next request. In almost all cases use session from context as set by middleware.
 func GetSessionCookie(r *http.Request, pubKey ed25519.PublicKey) (clientID string, authToken string, err error) {
 	cookie, err := r.Cookie(SessionCookieID)
-	if err != nil {
-		slog.Debug("no session cookie", "remoteAddr", r.RemoteAddr)
-		return "", "", errors.New("no session cookie")
+	hasBearer := false
+
+	if err != nil || cookie.Valid() != nil {
+		// missing or invalid cookie
+		reqToken := r.Header.Get("Authorization")
+		hasBearer = strings.HasPrefix(strings.ToLower(reqToken), "bearer ")
+		if hasBearer {
+			authToken = reqToken[len("bearer "):]
+		} else {
+			// no cookie, no bearer. We are done here.
+			slog.Debug("missing or invalid session cookie", "remoteAddr", r.RemoteAddr)
+			return "", "", errors.New("no session cookie")
+		}
+	} else {
+		authToken = cookie.Value
 	}
-	// an invalid cookie means what?. A session might still exist so the session
-	if cookie.Valid() != nil {
-		slog.Info("invalid session cookie", "remoteAddr", r.RemoteAddr)
-		return "", "", errors.New("invalid session cookie")
-	}
+
 	pasetoParser := paseto.NewParserForValidNow()
 	v4PubKey, err := paseto.NewV4AsymmetricPublicKeyFromEd25519(pubKey)
-	pToken, err := pasetoParser.ParseV4Public(v4PubKey, cookie.Value, nil)
+	// validae the token
+	pToken, err := pasetoParser.ParseV4Public(v4PubKey, authToken, nil)
 	if err == nil {
 		clientID, err = pToken.GetSubject()
 	}
 	if err == nil {
+		// TODO: isn't this duplicate?
 		authToken, err = pToken.GetString("authToken")
 	}
 	return clientID, authToken, err
@@ -58,7 +69,7 @@ func GetSessionCookie(r *http.Request, pubKey ed25519.PublicKey) (clientID strin
 func SetSessionCookie(w http.ResponseWriter,
 	clientID string, authToken string, maxAge time.Duration, privKey ed25519.PrivateKey) error {
 
-	slog.Info("SetSessionCookie", "clientID", clientID)
+	slog.Debug("SetSessionCookie", "clientID", clientID)
 
 	pToken := paseto.NewToken()
 	pToken.SetIssuer("hiveoview")
@@ -94,7 +105,7 @@ func SetSessionCookie(w http.ResponseWriter,
 func RemoveSessionCookie(w http.ResponseWriter, r *http.Request) {
 	c, err := r.Cookie(SessionCookieID)
 	if err != nil {
-		slog.Info("No session cookie found", "url", r.URL.String())
+		slog.Debug("No session cookie found", "url", r.URL.String())
 		return
 	}
 	c.Value = ""

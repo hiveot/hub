@@ -3,9 +3,11 @@ package httpsse
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
 	"net/http"
@@ -13,19 +15,33 @@ import (
 	"time"
 )
 
-// ConnectSSE establishes a sse session over the Hub HTTPS connection.
+// maxSSEMessageSize allow this maximum size of an SSE message
+// go-sse allows this increase of allocation size on receiving messages
+const maxSSEMessageSize = 1024 * 1024 * 10
+
+// ConnectSSE establishes a sse session using the given HTTPS client.
 // All hub messages are send as type ThingMessage, containing thingID, name, payload and sender
 //
 // If the connection is interrupted, the sse connection retries with backoff period.
 // If an authentication error occurs then the onDisconnect handler is invoked with an error.
 // If the connection is cancelled then the onDisconnect is invoked without error
-func (cl *HttpSSEClient) ConnectSSE(
-	sseURL string, bearerToken string, httpClient *http.Client, onConnect func(bool, error)) error {
+func ConnectSSE(
+	clientID string, cid string,
+	sseURL string, bearerToken string,
+	caCert *x509.Certificate,
+	onConnect func(bool, error),
+	onMessage func(event sse.Event),
+) (cancelFn func(), err error) {
 
-	slog.Info("ConnectSSE - establish SSE connection with server",
-		slog.String("sseURL", sseURL),
-		slog.String("clientID", cl.clientID),
-		slog.String("cid", cl.cid))
+	// separate client with a long timeout for sse
+	// use a new http client instance to set an indefinite timeout for the sse connection
+	httpClient := tlsclient.NewHttp2TLSClient(caCert, nil, 0)
+
+	slog.Info("ConnectSSE (to hub) - establish SSE connection to server",
+		slog.String("URL", sseURL),
+		slog.String("clientID", clientID),
+		slog.String("cid", cid),
+	)
 
 	// use context to disconnect the client
 	sseCtx, sseCancelFn := context.WithCancel(context.Background())
@@ -33,23 +49,22 @@ func (cl *HttpSSEClient) ConnectSSE(
 	req, err := http.NewRequestWithContext(sseCtx, http.MethodGet, sseURL, bodyReader)
 	if err != nil {
 		sseCancelFn()
-		return err
+		return nil, err
 	}
-	req.Header.Add(hubclient.ConnectionIDHeader, cl.cid)
+	req.Header.Add(hubclient.ConnectionIDHeader, cid)
 	req.Header.Add("Authorization", "bearer "+bearerToken)
 	parts, _ := url.Parse(sseURL)
 	origin := fmt.Sprintf("%s://%s", parts.Scheme, parts.Host)
 	req.Header.Add("Origin", origin)
 	//req.Header.Add("Connection", "keep-alive")
 
-	cl.sseCancelFn = sseCancelFn
 	sseClient := &sse.Client{
 		HTTPClient: httpClient,
 		OnRetry: func(err error, _ time.Duration) {
-			slog.Info("SSE Connection retry", "err", err, "clientID", cl.clientID)
+			slog.Info("SSE Connection retry", "err", err, "clientID", clientID)
 			// TODO: how to be notified if the connection is restored?
 			//  workaround: in handleSSEEvent, update the connection status
-			cl.handleSSEConnect(false, err)
+			onConnect(false, err)
 		},
 	}
 	conn := sseClient.NewConnection(req)
@@ -59,9 +74,9 @@ func (cl *HttpSSEClient) ConnectSSE(
 	//https://github.com/tmaxmax/go-sse/issues/32
 	newBuf := make([]byte, 0, 1024*65)
 	// TODO: make limit configurable
-	conn.Buffer(newBuf, cl.maxSSEMessageSize)
+	conn.Buffer(newBuf, maxSSEMessageSize)
+	remover := conn.SubscribeToAll(onMessage)
 
-	remover := conn.SubscribeToAll(cl.handleSSEEvent)
 	go func() {
 		// connect and wait until the connection ends
 		// and report an error if connection ends due to reason other than context cancelled
@@ -72,7 +87,7 @@ func (cl *HttpSSEClient) ConnectSSE(
 		if connError, ok := err.(*sse.ConnectionError); ok {
 			// since sse retries, this is likely an authentication error
 			slog.Error("SSE connection failed (server shutdown or connection interrupted)",
-				"clientID", cl.clientID,
+				"clientID", clientID,
 				"err", err.Error())
 			_ = connError
 			err = fmt.Errorf("Reconnect Failed: %w", connError.Err) //connError.Err
@@ -80,11 +95,22 @@ func (cl *HttpSSEClient) ConnectSSE(
 			// context was cancelled. no error
 			err = nil
 		}
-		remover() // cleanup connection
+		// test if we're still receiving events after context is closed
+		_ = remover
+		//remover() // remove subscriptions connection
+		//req.Close()
 		//
 	}()
 	// FIXME: wait for the SSE connection to be established
 	// If an RPC action is sent too early then no reply will be received.
 	time.Sleep(time.Millisecond * 10)
-	return nil
+
+	// the connection closer
+
+	closeSSEFn := func() {
+		// any other cleanup?
+		sseCancelFn()
+	}
+
+	return closeSSEFn, nil
 }

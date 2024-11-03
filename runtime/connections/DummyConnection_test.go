@@ -8,8 +8,7 @@ import (
 
 // Dummy connection for testing connection manager
 type DummyConnection struct {
-	connID        string
-	sessID        string
+	clcid         string
 	clientID      string
 	remoteAddr    string
 	subscriptions connections.Subscriptions
@@ -20,9 +19,11 @@ type DummyConnection struct {
 
 func (c *DummyConnection) Close() {}
 
-func (c *DummyConnection) GetConnectionID() string { return c.connID }
+func (c *DummyConnection) GetConnectionID() string { return c.clcid }
 func (c *DummyConnection) GetClientID() string     { return c.clientID }
-func (c *DummyConnection) GetSessionID() string    { return c.sessID }
+func (c *DummyConnection) GetCLCID() string        { return c.clcid }
+
+//func (c *DummyConnection) GetSessionID() string    { return c.sessID }
 
 func (c *DummyConnection) InvokeAction(thingID string, name string, input any, messageID string, senderID string) (
 	status string, output any, err error) {
@@ -59,12 +60,11 @@ func (c *DummyConnection) WriteProperty(thingID, name string, value any, message
 	return "", nil
 }
 
-func NewDummyConnection(clientID, remoteAddr, sessionID string) *DummyConnection {
-	connID := clientID + "." + remoteAddr + "." + sessionID
+func NewDummyConnection(clientID, remoteAddr, cid string) *DummyConnection {
+	clcid := clientID + "." + remoteAddr + "." + cid
 	return &DummyConnection{
-		connID:     connID,
 		remoteAddr: remoteAddr,
-		sessID:     sessionID,
+		clcid:      clcid,
 		clientID:   clientID,
 	}
 }

@@ -178,7 +178,7 @@ func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
 			// Since this can take some time, check if client is closed before using it.
 			nodes, err := svc.PollNodes()
 			svc.mux.RLock()
-			isConnected := svc.hc.GetStatus().ConnectionStatus == hubclient.Connected
+			isConnected, _, _ := svc.hc.GetConnectionStatus()
 			svc.mux.RUnlock()
 			if err == nil && isConnected {
 				if tdCountDown <= 0 {

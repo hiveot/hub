@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/utils"
@@ -62,6 +63,88 @@ func TestLogin(t *testing.T) {
 	//time.Sleep(time.Millisecond * 100)
 }
 
+// test many connections from a single client and confirm they open close and receive messages properly.
+func TestMultiConnectSingleClient(t *testing.T) {
+	const clientID1 = "user1"
+	const agentID = "agent1"
+	const testConnections = int32(100)
+	const eventName = "event1"
+	var clients = make([]hubclient.IConsumerClient, 0)
+	var connectCount atomic.Int32
+	var disConnectCount atomic.Int32
+	var messageCount atomic.Int32
+	const waitafterconnect = time.Millisecond * 10
+
+	// 1: setup: start a runtime and connect N clients
+	r := startRuntime()
+	ag1, _ := ts.AddConnectAgent(agentID)
+	td1 := ts.AddTD(agentID, nil)
+	cl1, token1 := ts.AddConnectUser(clientID1, authz.ClientRoleOperator)
+
+	onConnection := func(connected bool, err error) {
+		if connected {
+			connectCount.Add(1)
+		} else {
+			disConnectCount.Add(1)
+		}
+	}
+	onMessage := func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+		messageCount.Add(1)
+		return stat
+	}
+	// 2: connect and subscribe clients and verify
+	for range testConnections {
+		serverURL := fmt.Sprintf("https://localhost:%d", ts.Port)
+		cl := connect.NewHubClient(serverURL, clientID1, ts.Certs.CaCert)
+		cl.SetConnectHandler(onConnection)
+		cl.SetMessageHandler(onMessage)
+		token, err := cl.ConnectWithToken(token1)
+		require.NoError(t, err)
+		// allow server to register its connection
+		time.Sleep(waitafterconnect)
+		err = cl.Subscribe("", "")
+		assert.NoError(t, err)
+		_ = token
+		clients = append(clients, cl)
+	}
+	// connection notification should have been received N times
+	time.Sleep(waitafterconnect)
+	require.Equal(t, testConnections, connectCount.Load(), "connect count mismatch")
+
+	// 3: agent publishes an event, which should be received N times
+	err := ag1.PubEvent(td1.ID, eventName, "a value", "message1")
+	require.NoError(t, err)
+
+	// event should have been received N times
+	time.Sleep(time.Millisecond * 100)
+	require.Equal(t, testConnections, messageCount.Load(), "missing events")
+
+	// 4: disconnect
+	for _, c := range clients {
+		c.Disconnect()
+	}
+	cl1.Disconnect()
+	// disconnection notification should have been received N times
+	time.Sleep(waitafterconnect)
+	require.Equal(t, testConnections, disConnectCount.Load(), "disconnect count mismatch")
+
+	// 5: no more messages should be received after disconnecting
+	messageCount.Store(0)
+	err = ag1.PubEvent(td1.ID, eventName, "a value", "message2")
+	require.NoError(t, err)
+	ag1.Disconnect()
+
+	// zero events should have been received
+	time.Sleep(time.Millisecond * 10)
+	assert.Equal(t, int32(0), messageCount.Load(), "still receiving events afer disconnect")
+
+	// last, the runtime connection manager should only have no connections
+	count, _ := r.CM.GetNrConnections()
+	assert.Equal(t, 0, count)
+	r.Stop()
+	//time.Sleep(time.Millisecond * 100)
+}
+
 func TestActionWithDeliveryConfirmation(t *testing.T) {
 	t.Log("TestActionWithDeliveryConfirmation")
 	const agentID = "agent1"
@@ -74,6 +157,8 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 
 	r := startRuntime()
 	defer r.Stop()
+	logging.SetLogging("warning", "")
+	//slog.SetLogLoggerLevel(slog.LevelWarn)
 	ag1, _ := ts.AddConnectAgent(agentID)
 	cl1, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
 
@@ -114,7 +199,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	// client sends action to agent and expect a 'delivered' result
 	// The RPC method returns an error if no reply is received
 	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
-	stat2 := cl1.InvokeAction(dThingID, actionID, actionPayload, "testmsgid")
+	stat2 := cl1.InvokeAction(dThingID, actionID, actionPayload, nil, "testmsgid")
 	require.Empty(t, stat2.Error)
 
 	// wait for delivery completion

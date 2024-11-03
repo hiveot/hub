@@ -38,7 +38,7 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 	sseChan := cs.NewSseChan()
 	clientID := cs.GetHubClient().GetClientID()
 
-	slog.Info("SseHandler. New SSE incoming connection",
+	slog.Debug("SseHandler. New SSE incoming connection",
 		slog.String("clientID", clientID),
 		slog.String("clcid", cs.clcid),
 		slog.String("RemoteAddr", r.RemoteAddr),
@@ -86,8 +86,8 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	slog.Info("SseHandler: sse connection closed",
-		slog.String("remote", r.RemoteAddr),
-		slog.String("clientID", clientID),
-	)
+	//slog.Info("SseHandler: sse connection closed",
+	//	slog.String("remote", r.RemoteAddr),
+	//	slog.String("clientID", clientID),
+	//)
 }

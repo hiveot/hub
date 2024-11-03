@@ -146,6 +146,13 @@ func (cm *ConnectionManager) GetConnectionByClientID(clientID string) (c IClient
 	return c
 }
 
+// GetNrConnections returns the number of client connections and nr of unique clients
+func (cm *ConnectionManager) GetNrConnections() (int, int) {
+	cm.mux.RLock()
+	defer cm.mux.RUnlock()
+	return len(cm.clcidConnections), len(cm.clientConnections)
+}
+
 // PublishEvent broadcasts an event message to subscribers of this event.
 func (cm *ConnectionManager) PublishEvent(
 	dThingID string, name string, value any, messageID string, agentID string) {

@@ -52,7 +52,10 @@ func AddSessionToContext(sm *WebSessionManager) func(next http.Handler) http.Han
 			slog.Info("AddSessionToContext. New webclient session. Authenticate using its bearer token",
 				slog.String("clientID", clientID),
 				slog.String("cid", cid),
-				slog.String("remoteAddr", r.RemoteAddr))
+				slog.String("remoteAddr", r.RemoteAddr),
+				slog.String("Method", r.Method),
+				slog.String("RequestURI", r.RequestURI),
+			)
 			cs, err = sm.ConnectWithToken(w, r, clientID, cid, authToken)
 			if err != nil {
 				slog.Warn("AddSessionToContext: Session is no longer valid. Redirect to login.",

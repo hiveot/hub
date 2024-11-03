@@ -13,11 +13,12 @@ import (
 // and stores it in the digital twin instance. Only the last event value is kept.
 func (svc *HubRouter) HandlePublishEvent(
 	agentID string, thingID string, name string, value any, messageID string) error {
-	slog.Info("HandlePublishEventFlow (from agent)",
+	slog.Debug("HandlePublishEventFlow (from agent)",
 		slog.String("agentID", agentID),
 		slog.String("thingID", thingID),
 		slog.String("eventName", name),
 		slog.String("value", fmt.Sprintf("%v", value)),
+		slog.String("messageID", messageID),
 	)
 	dThingID, err := svc.dtwStore.UpdateEventValue(agentID, thingID, name, value, messageID)
 	if err != nil {

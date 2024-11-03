@@ -62,7 +62,7 @@
 
 
 <!--hx-boost lets links with href's target #appPage destination without reload the whole page-->
-<body onload="showBody()" hidden hx-boost="true" >
+<body onload="showBody()" hidden hx-boost="true" hx-headers='{"cid":"{{.Cid}}"}' >
 
 {{/*Place to inject notification toasts (as in sse notifications in app.gohtml)*/}}
 <h-toast id="toast" vertical top duration="3000"></h-toast>

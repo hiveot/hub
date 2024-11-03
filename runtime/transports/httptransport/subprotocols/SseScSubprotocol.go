@@ -97,6 +97,7 @@ func (b *SseScBinding) HandleSubscribeEvent(w http.ResponseWriter, r *http.Reque
 	}
 	slog.Info("HandleSubscribe",
 		slog.String("clientID", rp.ClientID),
+		slog.String("clcid", rp.CLCID),
 		slog.String("thingID", rp.ThingID),
 		slog.String("name", rp.Name))
 

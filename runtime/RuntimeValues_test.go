@@ -50,7 +50,7 @@ func TestHttpsGetActions(t *testing.T) {
 	cl2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
 		return stat
 	})
-	stat := cl2.InvokeAction(dThing1ID, key1, data, "")
+	stat := cl2.InvokeAction(dThing1ID, key1, data, nil, "")
 	require.Empty(t, stat.Error)
 
 	// step 3: read the latest actions from the digital twin
@@ -58,7 +58,7 @@ func TestHttpsGetActions(t *testing.T) {
 	var tdJSON = ""
 	var td tdd.TD
 
-	stat2 := cl2.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, dThing1ID, "")
+	stat2 := cl2.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, dThing1ID, nil, "")
 	err, _ = stat2.Decode(&tdJSON)
 	err = jsoniter.UnmarshalFromString(tdJSON, &td)
 	require.NoError(t, err)

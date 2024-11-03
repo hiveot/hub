@@ -311,7 +311,7 @@ func TestPostEventAction(t *testing.T) {
 	assert.Equal(t, testMsg, evVal.Load())
 
 	// 5. publish an action
-	stat := cl.InvokeAction(thingID, actionKey, testMsg, "")
+	stat := cl.InvokeAction(thingID, actionKey, testMsg, nil, "")
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 100)
 	assert.NotEmpty(t, stat.Reply)
@@ -422,7 +422,7 @@ func TestReconnect(t *testing.T) {
 				Progress:  vocab.ProgressStatusCompleted,
 				Reply:     val,
 			}
-			c := svc.GetConnectionByCID(cid)
+			c := svc.GetConnectionByCLCID(cid)
 			require.NotNil(t, c)
 			err = c.PublishActionProgress(stat, agentID)
 			assert.NoError(t, err)

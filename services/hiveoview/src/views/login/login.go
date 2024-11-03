@@ -13,6 +13,7 @@ type LoginTemplateData struct {
 	LoginID       string
 	LoginError    string
 	PostLoginPath string
+	Cid           string // just for rendering the login page - no value expected
 }
 
 // RenderLogin renders the login form

@@ -76,7 +76,9 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		slog.String("messageID", rxMsg.MessageID),
 		slog.String("senderID", rxMsg.SenderID),
 	)
-
+	cl.mux.RLock()
+	msgHandler := cl._messageHandler
+	cl.mux.RUnlock()
 	// always handle rpc response
 	if rxMsg.MessageType == vocab.MessageTypeProgressUpdate {
 		// this client is receiving a delivery update from an previously sent action.
@@ -98,10 +100,10 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 			delete(cl._correlData, rxMsg.MessageID)
 			cl.mux.Unlock()
 			return
-		} else if cl._messageHandler != nil {
+		} else if msgHandler != nil {
 			// pass event to client as this is an unsolicited event
 			// it could be a delayed confirmation of delivery
-			_ = cl._messageHandler(rxMsg)
+			_ = msgHandler(rxMsg)
 		} else {
 			// missing rpc or message handler
 			slog.Error("handleSSEEvent, no handler registered for client",
@@ -111,7 +113,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		return
 	}
 
-	if cl._messageHandler == nil {
+	if msgHandler == nil {
 		slog.Warn("handleSSEEvent, no handler registered. Message ignored.",
 			slog.String("name", rxMsg.Name),
 			slog.String("clientID", cl.clientID))
@@ -120,10 +122,10 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 
 	if rxMsg.MessageType == vocab.MessageTypeEvent {
 		// pass event to handler, if set
-		_ = cl._messageHandler(rxMsg)
+		_ = msgHandler(rxMsg)
 	} else if rxMsg.MessageType == vocab.MessageTypeAction {
 		// agent receives action request
-		stat = cl._messageHandler(rxMsg)
+		stat = msgHandler(rxMsg)
 		if stat.MessageID != "" {
 			cl.PubProgressUpdate(stat) // send the result to the caller
 		}
@@ -132,16 +134,18 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		// or, consumer receives property update request
 		// If this client is an agent then this is a property write request
 		// If this client is a consumer then this is am observed property update notification
-		_ = cl._messageHandler(rxMsg)
-		//stat = cl._messageHandler(rxMsg)
+		_ = msgHandler(rxMsg)
+		//stat = msgHandler(rxMsg)
 		//if stat.MessageID != "" {
 		//	cl.PubProgressUpdate(stat)
 		//}
 	} else {
-		slog.Warn("handleSSEEvent, unknown message type. Message ignored.",
+		// for now, just pass it on to the handler
+		// might be useful for testing when substituting a web browser
+		slog.Debug("handleSSEEvent, unknown message type. Continuing anyways.",
 			slog.String("message type", rxMsg.MessageType),
 			slog.String("clientID", cl.clientID))
-		stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, message ignored"))
+		_ = msgHandler(rxMsg)
 		if stat.MessageID != "" {
 			cl.PubProgressUpdate(stat)
 		}

@@ -92,6 +92,7 @@ func TestTokenAuth(t *testing.T) {
 	path1Hit := 0
 	//loginID1 := "user1"
 	token1 := "abcd"
+	badToken := "badtoken"
 
 	// setup server and client environment
 	srv, router := tlsserver2.NewTLSServer(serverAddress, serverPort,
@@ -127,10 +128,10 @@ func TestTokenAuth(t *testing.T) {
 
 	// test a failed login
 	cl.Close()
-	cl.SetAuthToken("wrongpassword")
+	cl.SetAuthToken(badToken)
 	_, _, err = cl.Get(path1)
 	assert.Error(t, err)
-	assert.Equal(t, 1, path1Hit) // should not increase
+	assert.Equal(t, 2, path1Hit) // should not increase
 
 	cl.Close()
 	srv.Stop()

@@ -1,12 +1,12 @@
 package runtime
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime/authn/service"
-	"github.com/hiveot/hub/runtime/authn/sessions"
 	service2 "github.com/hiveot/hub/runtime/authz/service"
 	"github.com/hiveot/hub/runtime/connections"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
@@ -21,14 +21,14 @@ type Runtime struct {
 	cfg *RuntimeConfig
 
 	//AuthnStore api.IAuthnStore
-	AuthnSvc      *service.AuthnService
-	AuthzSvc      *service2.AuthzService
-	AuthnAgent    *service.AuthnAgent
-	AuthzAgent    *service2.AuthzAgent
-	DigitwinSvc   *service4.DigitwinService
-	HubRouter     *hubrouter.HubRouter
-	cm            *connections.ConnectionManager
-	sm            *sessions.SessionManager
+	AuthnSvc    *service.AuthnService
+	AuthzSvc    *service2.AuthzService
+	AuthnAgent  *service.AuthnAgent
+	AuthzAgent  *service2.AuthzAgent
+	DigitwinSvc *service4.DigitwinService
+	HubRouter   *hubrouter.HubRouter
+	CM          *connections.ConnectionManager
+	//sm            *sessions.SessionManager
 	TransportsMgr *transports.ProtocolManager
 }
 
@@ -69,13 +69,13 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	// The digitwin service directs the message flow between agents and consumers
 	// It receives messages from the middleware and uses the protocol manager
 	// to send messages to clients.
-	r.DigitwinSvc, _, err = service4.StartDigitwinService(env.StoresDir, r.cm)
+	r.DigitwinSvc, _, err = service4.StartDigitwinService(env.StoresDir, r.CM)
 	dtwAgent := service4.NewDigitwinAgent(r.DigitwinSvc)
 
 	// The transport passes incoming messages on to the hub-router, which in
 	// turn updates the digital twin and forwards the requests.
 	r.HubRouter = hubrouter.NewHubRouter(r.DigitwinSvc,
-		dtwAgent, r.AuthnAgent, r.AuthzAgent, r.cm)
+		dtwAgent, r.AuthnAgent, r.AuthzAgent, r.CM)
 
 	// the protocol manager receives messages from clients (source) and
 	// sends messages to connected clients (sink)
@@ -85,7 +85,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		r.cfg.CaCert,
 		r.AuthnSvc.SessionAuth,
 		r.HubRouter,
-		r.cm,
+		r.CM,
 	)
 	if err != nil {
 		return err
@@ -119,6 +119,8 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 }
 
 func (r *Runtime) Stop() {
+	nrConnections, _ := r.CM.GetNrConnections()
+
 	if r.AuthnSvc != nil {
 		r.AuthnSvc.Stop()
 	}
@@ -131,14 +133,16 @@ func (r *Runtime) Stop() {
 	if r.TransportsMgr != nil {
 		r.TransportsMgr.Stop()
 	}
-	slog.Info("HiveOT Hub Runtime Stopped")
+	r.CM.CloseAll()
+
+	slog.Warn(fmt.Sprintf(
+		"HiveOT Hub Runtime stopped. Force closed %d connections", nrConnections))
 }
 
 func NewRuntime(cfg *RuntimeConfig) *Runtime {
 	r := &Runtime{
 		cfg: cfg,
-		sm:  sessions.NewSessionmanager(),
-		cm:  connections.NewConnectionManager(),
+		CM:  connections.NewConnectionManager(),
 	}
 	return r
 }

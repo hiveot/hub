@@ -31,21 +31,57 @@ type WebSessionManager struct {
 	caCert *x509.Certificate
 	// hub client for publishing events
 	hc hubclient.IHubClient
+	// disable persistence from state service (for testing)
+	noState bool
 }
 
-// add a new session with the given clientID
+// add a new session with the given clientID and send a session count event
 func (sm *WebSessionManager) _addSession(w http.ResponseWriter, r *http.Request,
 	cid string, hc hubclient.IConsumerClient, newToken string) (
 	cs *WebClientSession, err error) {
 
+	// if the browser does not provide a CID until after the first connection,
+	// then browser refresh (F5) will replace this non-cid connection.
+	// (htmx sse-connect doesn't provide a cid in spite of hx-header field)
+	//
+	// FIXME: the first connection (without cid) doesn't shutdown until it gains
+	// a sse connection and loses it again.
 	clientID := hc.GetClientID()
-	cs = NewWebClientSession(cid, hc, r.RemoteAddr, sm.onClose)
-	slog.Info("_addSession",
-		slog.String("clientID", clientID),
-		slog.String("clcid", cs.clcid),
-		slog.String("remoteAdddr", r.RemoteAddr),
-	)
+
 	sm.mux.Lock()
+	clcid := clientID + "-" + cid
+	existingSession := sm.sessions[clcid]
+	if existingSession != nil {
+		// Ugly hack!
+		// this is an attempt to add a new connection using an existing cid.
+		// it can happen if a client invokes connect-with-password or token, and
+		// provides an existing or empty cid.
+		// Instead of throwing out the session, replace the connection.
+		cs = existingSession
+		_, exhccid, _ := existingSession.hc.GetConnectionStatus()
+		slog.Warn("session with clcid already exists. replace its connection.",
+			slog.String("clientID", clientID),
+			slog.String("clcid", cs.clcid),
+			slog.String("ex hc.cid", exhccid),
+			//slog.String("existing HC CID", existingSession.hc.GetCid()),
+		)
+
+		// WARNING: disconnect can take a while to call back into SM to remove the
+		// session (plus its waiting for a lock).
+		// If the connection has been replaced then it won't match so ignore the
+		// callback if the connection differs.
+		existingSession.ReplaceConnection(hc)
+	} else {
+		cs = NewWebClientSession(cid, hc, r.RemoteAddr, sm.noState, sm.onClose)
+		_, hccid, _ := hc.GetConnectionStatus()
+		slog.Info("_addSession",
+			slog.String("clientID", clientID),
+			slog.String("clcid", cs.clcid),
+			slog.String("remoteAdddr", r.RemoteAddr),
+			slog.String("hc.cid", hccid),
+			slog.Int("nr sessions", len(sm.sessions)),
+		)
+	}
 	sm.sessions[cs.clcid] = cs
 	nrSessions := len(sm.sessions)
 	sm.mux.Unlock()
@@ -54,26 +90,45 @@ func (sm *WebSessionManager) _addSession(w http.ResponseWriter, r *http.Request,
 	maxAge := time.Hour * 24 * 14
 	err = SetSessionCookie(w, clientID, newToken, maxAge, sm.signingKey)
 
-	// publish the new nr of connections
-	go sm.hc.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions, "")
+	// publish the new nr of sessions
+	sm.hc.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions, "")
 	return cs, err
+}
+
+// _removeSession removes the session  and sends a session event.
+// Make sure the connection is closed before calling this
+func (sm *WebSessionManager) _removeSession(cs *WebClientSession) {
+	// do not call back into cs as this callback takes place in a locked section.
+	isConnected, hccid, _ := cs.hc.GetConnectionStatus()
+	slog.Info("_removeSession",
+		slog.String("clientID", cs.GetClientID()),
+		slog.String("clcid", cs.GetCLCID()),
+		slog.Bool("isConnected", isConnected),
+		slog.String("hc.cid", hccid),
+	)
+	if isConnected {
+		slog.Warn("_removeSession. session still has a connection")
+	}
+
+	sm.mux.Lock()
+	_, hasSession := sm.sessions[cs.clcid]
+	if !hasSession {
+		slog.Error("_removeSession is missing",
+			"clientID", cs.GetClientID(),
+			"clcid", cs.clcid)
+	}
+
+	delete(sm.sessions, cs.clcid)
+	nrSessions := len(sm.sessions)
+	sm.mux.Unlock()
+
+	// 5. publish the new nr of sessions
+	go sm.hc.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions, "")
 }
 
 // onClose handles closing of the client connection
 func (sm *WebSessionManager) onClose(cs *WebClientSession) {
-	sm.mux.Lock()
-	defer sm.mux.Unlock()
-	// do not call back into cs as this callback takes place in a locked section.
-	slog.Info("onClose session",
-		slog.String("clientID", cs.GetClientID()),
-		slog.String("clcid", cs.GetCLCID()),
-	)
-
-	delete(sm.sessions, cs.clcid)
-	nrSessions := len(sm.sessions)
-
-	// 5. publish the new nr of sessions
-	go sm.hc.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions, "")
+	sm._removeSession(cs)
 }
 
 // PostLogin creates a hub connection for the client and adds a new session
@@ -96,6 +151,7 @@ func (sm *WebSessionManager) PostLogin(w http.ResponseWriter, r *http.Request) {
 
 // ConnectWithPassword creates a new hub client and connect it to the hub using password login
 // If successful this adds the session and updates a session cookie.
+// The cid is that of the incoming request and will be the session cid
 func (sm *WebSessionManager) ConnectWithPassword(w http.ResponseWriter, r *http.Request,
 	loginID string, password string, cid string) (
 	cs *WebClientSession, err error) {
@@ -124,11 +180,19 @@ func (sm *WebSessionManager) ConnectWithToken(
 	w http.ResponseWriter, r *http.Request, loginID string, cid string, authToken string) (
 	cs *WebClientSession, err error) {
 
+	slog.Info("ConnectWithToken",
+		"clientID", loginID, "cid", cid,
+		"remoteAddr", r.RemoteAddr,
+		"nr websessions", len(sm.sessions))
+
 	// TODO: need a consumerclient instance
 	hc := connect.NewHubClient(sm.hubURL, loginID, sm.caCert)
 	//hc := NewConsumerClient(sm.hubURL, loginID, sm.caCert)
 	newToken, err := hc.ConnectWithToken(authToken)
 	if err != nil {
+		slog.Warn("ConnectWithToken failed",
+			"loginID", loginID,
+			"err", err.Error())
 		return nil, err
 	}
 	cs, err = sm._addSession(w, r, cid, hc, newToken)
@@ -160,15 +224,25 @@ func (sm *WebSessionManager) GetSession(clientID, cid string) *WebClientSession 
 	return session
 }
 
-// GetSessionFromCookie returns the session object using the session cookie.
-// This should only be used from the middleware, as reconnecting to the hub can change the sessionID.
+// GetSessionFromCookie returns the websession and auth info
+// The authentication token comes from the cookie, or the authorization header.
+//
+// This should only be used from the middleware.
 //
 // If no session exists but a cookie is found then return the cookie claims.
 // If no valid cookie is found then return an error
 func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 	cs *WebClientSession, clientID string, cid string, authToken string, err error) {
 
+	// The UI is supposed to supply a cid header in sse requests. However,
+	// sse-connect ignores the hx-header that contains the cid. As a workaround
+	// also check query parameters.
+	// lets face it though, it is time to ditch SSE and switch to websockets :/
 	cid = r.Header.Get(hubclient.ConnectionIDHeader)
+	if cid == "" {
+		cid = r.URL.Query().Get("cid")
+	}
+
 	clientID, authToken, err = GetSessionCookie(r, sm.pubKey)
 	if err != nil {
 		return nil, clientID, cid, authToken, err
@@ -179,7 +253,8 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 }
 
 func NewWebSessionManager(hubURL string,
-	signingKey ed25519.PrivateKey, caCert *x509.Certificate, hc hubclient.IHubClient) *WebSessionManager {
+	signingKey ed25519.PrivateKey, caCert *x509.Certificate,
+	hc hubclient.IHubClient, noState bool) *WebSessionManager {
 	sm := &WebSessionManager{
 		sessions:   make(map[string]*WebClientSession),
 		mux:        sync.RWMutex{},
@@ -188,6 +263,7 @@ func NewWebSessionManager(hubURL string,
 		hubURL:     hubURL,
 		caCert:     caCert,
 		hc:         hc,
+		noState:    noState,
 	}
 	return sm
 }

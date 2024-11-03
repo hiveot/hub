@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/lmittmann/tint"
-	"log"
 	"log/slog"
 	"net"
 	"net/http"
@@ -100,7 +99,7 @@ func (srv *TLSServer) Start() error {
 		// WriteTimeout: 10 * time.Second,
 		Handler:   handler,
 		TLSConfig: serverTLSConf,
-		ErrorLog:  log.Default(),
+		//ErrorLog:  log.Default(),
 	}
 	l, err := net.Listen("tcp", srv.httpServer.Addr)
 	if err != nil {

@@ -2,7 +2,8 @@
 <!--javascript the regular get takes place-->
 
 {{/*SSE connect once user is logged in*/}}
-<div id="app" class="app" hx-ext="sse" sse-connect="/sse" >
+<div id="app" class="app" hx-headers='{"bob":"bob"}'
+     hx-ext="sse" sse-connect="/websse?cid={{.Cid}}" >
 
     {{/*	The notify event is displayed by the toast popup. content is "type:message" */}}
 		<div sse-swap="notify" hx-target="#toast" hx-swap="beforeend"></div>

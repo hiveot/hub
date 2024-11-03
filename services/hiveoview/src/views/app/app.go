@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"github.com/hiveot/hub/services/hiveoview/src/views"
+	"github.com/teris-io/shortid"
 	"net/http"
 )
 
@@ -25,8 +26,9 @@ func RenderApp(w http.ResponseWriter, r *http.Request) {
 // Individual pages should trigger a hx-get once they are shown to
 // render themselves with data.
 func RenderAppPages() (buff *bytes.Buffer, err error) {
-
-	return views.TM.RenderFull(AppTemplate, nil)
+	cid := "WC" + shortid.MustGenerate() // web client connect id
+	data := map[string]string{"Cid": cid}
+	return views.TM.RenderFull(AppTemplate, data)
 }
 
 // RenderAppOrFragment renders the page fragment, or the full app html frame

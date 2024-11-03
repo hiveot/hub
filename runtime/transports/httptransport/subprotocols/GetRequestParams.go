@@ -46,7 +46,7 @@ func GetRequestParams(r *http.Request) (reqParam RequestParams, err error) {
 	// if no connectionID is provided then only single device connection is allowed.
 	headerCID := r.Header.Get(hubclient.ConnectionIDHeader)
 
-	// the connection ID is the clientID + provided cid
+	// the connection ID is the clientID + provided clcid
 	reqParam.CLCID = reqParam.ClientID + "-" + headerCID
 	reqParam.MessageID = r.Header.Get(hubclient.MessageIDHeader)
 

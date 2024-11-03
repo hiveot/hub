@@ -25,7 +25,7 @@ type SSEEvent struct {
 // This implements the IClientConnection interface
 type SSEConnection struct {
 	// connection ID (from header, without clientID prefix)
-	cid string
+	clcid string
 
 	// SenderID is the account ID of the agent or consumer
 	clientID string
@@ -96,7 +96,7 @@ func (c *SSEConnection) GetClientID() string {
 
 // GetCID returns the clients connection ID unique within the sessions
 func (c *SSEConnection) GetCLCID() string {
-	return c.cid
+	return c.clcid
 }
 
 // GetSessionID returns the client's authentication session ID
@@ -181,18 +181,18 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Encoding", "none") //https://stackoverflow.com/questions/76375157/client-not-receiving-server-sent-events-from-express-js-server
 
 	// establish a client event channel for sending messages back to the client
+	c.mux.Lock()
 	c.sseChan = make(chan SSEEvent, 1)
+	c.mux.Unlock()
 
 	// Send a ping event as the go-sse client doesn't have a 'connected callback'
 	pingEvent := SSEEvent{EventType: hubclient.PingMessage, ID: "pingID"}
 	c.sseChan <- pingEvent
 
-	slog.Info("SseConnection. New SSE connection",
-		slog.String("RemoteAddr", r.RemoteAddr),
+	slog.Debug("SseConnection.Serve new SSE connection",
 		slog.String("clientID", c.clientID),
+		slog.String("clcid", c.clcid),
 		slog.String("protocol", r.Proto),
-		//slog.String("sessionID", c.sessionID),
-		slog.String("cid", c.cid),
 		slog.String("remoteAddr", c.remoteAddr),
 	)
 	//var sseMsg SSEEvent
@@ -224,9 +224,11 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 				// ending the read loop and returning will close the connection
 				break
 			}
-			slog.Info("SseConnection: sending sse event to client",
+			slog.Debug("SseConnection: sending sse event to client",
 				//slog.String("sessionID", c.sessionID),
 				slog.String("clientID", c.clientID),
+				slog.String("clcid", c.clcid),
+				slog.String("sseMsg", sseMsg.ID),
 				slog.String("sse eventType", sseMsg.EventType),
 			)
 			// write the message with or without messageID
@@ -261,10 +263,10 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	//cs.DeleteSSEChan(sseChan)
-	slog.Info("SseConnection: sse connection closed",
+	slog.Debug("SseConnection.Serve: sse connection closed",
 		slog.String("remote", r.RemoteAddr),
 		slog.String("clientID", c.clientID),
-		slog.String("cid", c.cid),
+		slog.String("clcid", c.clcid),
 	)
 }
 
@@ -293,9 +295,9 @@ func (c *SSEConnection) WriteProperty(
 	return status, err
 }
 
-func NewSSEConnection(cid, clientID string, remoteAddr string) *SSEConnection {
+func NewSSEConnection(clcid, clientID string, remoteAddr string) *SSEConnection {
 	c := &SSEConnection{
-		cid:           cid,
+		clcid:         clcid,
 		clientID:      clientID,
 		remoteAddr:    remoteAddr,
 		lastActivity:  time.Time{},

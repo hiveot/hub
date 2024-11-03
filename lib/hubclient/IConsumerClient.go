@@ -98,7 +98,7 @@ type IConsumerClient interface {
 
 	// GetConnectionStatus returns the current two-way connection status
 	// If disconnected, the last error is included.
-	GetConnectionStatus() (bool, error)
+	GetConnectionStatus() (connected bool, cid string, err error)
 
 	// GetHubURL returns the schema://address:port of the hub
 	GetHubURL() string

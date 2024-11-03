@@ -50,6 +50,14 @@ type HiveovService struct {
 
 	// run in debug mode, extra logging and reload templates render
 	debug bool
+	// don't use the state store for persistence
+	noState bool
+}
+
+// GetSM returns the web session manager
+// Intended for testing.
+func (svc *HiveovService) GetSM() *session.WebSessionManager {
+	return svc.sm
 }
 
 // Start the web server and publish the service's own TD.
@@ -70,7 +78,7 @@ func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
 	// Setup the handling of incoming web sessions
 	// re-use the runtime connection manager
 	hubURL := hc.GetHubURL()
-	svc.sm = session.NewWebSessionManager(hubURL, svc.signingKey, svc.caCert, hc)
+	svc.sm = session.NewWebSessionManager(hubURL, svc.signingKey, svc.caCert, hc, svc.noState)
 
 	// parse the templates
 	svc.tm.ParseAllTemplates()
@@ -133,9 +141,11 @@ func (svc *HiveovService) Stop() {
 //	rootPath containing the templates in the given folder or "" to use the embedded templates
 //	serverCert server TLS certificate
 //	caCert server CA certificate
+//	noState flag to not use the state service for persistance. Intended for testing.
 func NewHiveovService(serverPort int, debug bool,
 	signingKey ed25519.PrivateKey, rootPath string,
 	serverCert *tls.Certificate, caCert *x509.Certificate,
+	noState bool,
 ) *HiveovService {
 	templatePath := rootPath
 	if rootPath != "" {
@@ -154,6 +164,7 @@ func NewHiveovService(serverPort int, debug bool,
 		tm:           tm,
 		serverCert:   serverCert,
 		caCert:       caCert,
+		noState:      noState,
 	}
 	return &svc
 }

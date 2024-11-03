@@ -34,9 +34,13 @@ func PubActionCommand(hc *hubclient.IConsumerClient) *cli.Command {
 func HandlePubActions(hc hubclient.IConsumerClient,
 	dThingID string, action string, args string) error {
 
-	stat := hc.InvokeAction(dThingID, action, args, "")
+	var reply interface{}
+	stat := hc.InvokeAction(dThingID, action, args, &reply, "")
 	if stat.Error == "" {
 		fmt.Printf("Successfully published action '%s' to Thing '%s'\n", action, dThingID)
+		if reply != nil {
+			fmt.Printf("\n%v\n", reply)
+		}
 		return nil
 	}
 	return errors.New(stat.Error)
