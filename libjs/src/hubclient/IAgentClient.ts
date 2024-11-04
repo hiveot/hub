@@ -33,8 +33,18 @@ export interface IAgentClient extends IConsumerClient {
     // @param thingID is the native thingID of the device (not including the digital twin ID)
     // @param props is the property key-value map to publish where value is their native format
     //
-    // This throws an error if the event cannot not be delivered to the hub
+    // This throws an error if the message cannot not be delivered to the hub
     pubProperties(thingID: string, props: {[key:string]:any}): void
+
+    // pubProperty agent updates a property value. (not for consumers)
+    // It returns as soon as delivery to the hub is confirmed.
+    //
+    // @param thingID is the native thingID of the device (not including the digital twin ID)
+    // @param name is the property name as published in the TD
+    // @param value is the property value
+    //
+    // This throws an error if the message cannot not be delivered to the hub
+    pubProperty(thingID: string, name: string, value: any): void
 
     // PubTD publishes an TD document event.
     // It returns as soon as delivery to the hub is confirmed.

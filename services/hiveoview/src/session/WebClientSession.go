@@ -481,6 +481,11 @@ func (sess *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffe
 // The call to onClosed takes place within a locked section, so it should never
 // call back into the session or a deadlock will occur.
 //
+// If no SSE connection is established within 3 seconds then this session
+// closes itself to avoid being orphaned. Normally this session is cleaned up
+// after the SSE connection closes but if it is never established then it
+// can hang around indefinitely.
+//
 //	cid is the web client provided connectionID used to associate http request with SSE clients
 //	hc is the establihsed hub connection
 //	remoteAddr is the web client remote address
@@ -526,6 +531,16 @@ func NewWebClientSession(
 	if err != nil {
 		cs.lastError = err
 	}
+
+	// prevent orphaned sessions. Cleanup after 3 sec
+	// the number is arbitrary and not sensitive.
+	go func() {
+		time.Sleep(time.Second * 3)
+		if cs.sseChan == nil && cs.IsActive() {
+			slog.Info("Removing orphaned web-session (no sse connection) after 3 seconds", "cid", cs.cid)
+			cs.hc.Disconnect()
+		}
+	}()
 
 	return &cs
 }

@@ -152,7 +152,7 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     td.AddPropertyIf(node.keepAwake, "keepAwake", "","Keep Awake", WoTDataTypeBool,
         "Device stays awake a bit longer before sending it to sleep")
     td.AddPropertyIf(node.label, "nodeLabel", vocab.PropDeviceModel, "Manufacturer device label", WoTDataTypeString);
-    td.AddProperty("lastseen", "", "Last Seen", WoTDataTypeString)
+    td.AddProperty("lastSeen", "", "Last Seen", WoTDataTypeString)
         .description = "Time this node was last seen"
 
 

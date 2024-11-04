@@ -411,12 +411,19 @@ export class HttpSSEClient implements IAgentClient {
             "POST",PostAgentPublishProgressPath, stat.messageID, stat)
     }
 
-
     // Publish thing properties update
     async pubProperties(thingID: string, props: { [key: string]: any }) {
         let postPath = PostAgentUpdateMultiplePropertiesPath.replace("{thingID}", thingID)
 
         await this.pubMessage("POST",postPath, "", props)
+    }
+
+    // Publish thing property update
+    async pubProperty(thingID: string, name:string, value: any) {
+        let postPath = PostAgentUpdatePropertyPath.replace("{thingID}", thingID)
+         postPath = postPath.replace("{name}", name)
+
+        await this.pubMessage("POST",postPath, name, value)
     }
 
     // PubTD publishes an event with a Thing TD document.

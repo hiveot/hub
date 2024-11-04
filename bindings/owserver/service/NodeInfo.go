@@ -323,7 +323,8 @@ var AttrConfig = map[string]AttrConversion{
 		IsEvent:   true,
 		Title:     "Temperature",
 		VocabType: vocab.PropEnvTemperature,
-		DataType:  vocab.WoTDataTypeNumber, Precision: 1, ChangeNotify: 0.1,
+		// prevent a lot of events if temperature is on the edge of two values
+		DataType: vocab.WoTDataTypeNumber, Precision: 1, ChangeNotify: 0.2,
 		Unit: vocab.UnitCelcius,
 	},
 	"TemperatureHighAlarmState": {

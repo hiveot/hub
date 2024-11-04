@@ -339,9 +339,9 @@ export class ZWAPI {
             let newValue = getVidValue(node,args)
             this.onValueUpdate(node, args, newValue)
             tslog.info(`Node ${node.id} value metadata updated`,
-                "property", args.property,
-                "propertyKeyName", args.propertyKeyName,
-                "newValue", newValue,
+                "property=", args.property,
+                "propertyKeyName=", args.propertyKeyName,
+                "newValue=", newValue,
             );
         });
 

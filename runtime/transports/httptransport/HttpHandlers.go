@@ -44,7 +44,10 @@ func (svc *HttpBinding) HandleInvokeAction(w http.ResponseWriter, r *http.Reques
 	slog.Info("HandleInvokeAction",
 		slog.String("SenderID", rp.ClientID),
 		slog.String("clcid", rp.CLCID),
+		slog.String("dThingID", rp.ThingID),
+		slog.String("name", rp.Name),
 		slog.String("RemoteAddr", r.RemoteAddr),
+		slog.String("messageID", rp.MessageID),
 	)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)

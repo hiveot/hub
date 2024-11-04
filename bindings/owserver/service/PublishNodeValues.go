@@ -65,6 +65,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 		}
 		// first and unknown values are always changed
 		for attrID, attr := range node.Attr {
+
 			// collect changes to property values
 			info, found := AttrConfig[attrID]
 			if !found {

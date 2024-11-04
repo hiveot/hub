@@ -44,8 +44,9 @@ const overrideMap: Map<string, Partial<VidAffordance> | undefined> = new Map([
 ]);
 
 
-// Default rules to determine whether the vid is an attr, config, event, action or to be ignored
-// this returns
+// Default rules to determine whether the vid is an attr, config, event, action or
+// to be ignored.
+// This returns:
 //  action: the vid is writable and not readable
 //  event: the vid is a readonly command CC ?
 //  attr: the vid is read-only, not an event, and has a value or default

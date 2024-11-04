@@ -78,7 +78,7 @@ export class NodeValues {
         this.setIf("isSecure", node.isSecure);
         this.setIf("isRouting", node.isRouting);
         this.setIf("isControllerNode", node.isControllerNode)
-        this.setIf("lastSeen", node.statistics.lastSeen)
+        this.setIf("lastSeen", node.statistics.lastSeen?.toString())
         this.setIf("keepAwake", node.keepAwake);
 
         // this.setIf("label", node.deviceConfig?.label)

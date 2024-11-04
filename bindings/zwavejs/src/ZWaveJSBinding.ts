@@ -15,7 +15,7 @@ import {handleActionRequest} from "@zwavejs/handleActionRequest";
 import {ValueID} from "@zwave-js/core";
 import {IAgentClient} from "@hivelib/hubclient/IAgentClient";
 import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
-import {handleConfigWriteRequest} from "@zwavejs/handleConfigWriteRequest";
+import {getVidAffordance} from "@zwavejs/getVidAffordance";
 
 const log = new tslog.Logger()
 
@@ -119,18 +119,24 @@ export class ZwaveJSBinding {
         let valueMap = this.lastValues.get(deviceID);
         // update the map of recent values
         let lastValue = valueMap?.values[propID]
+        let va = getVidAffordance(node, vid, this.config.maxNrScenes)
+
         if (valueMap && (lastValue !== newValue || !this.config.publishOnlyChanges)) {
             // TODO: round the value using a precision
             // TODO: republish after some time even when unchanged
             // Determine if value changed enough to publish
             if (newValue != undefined) {
                 valueMap.values[propID] = newValue
-                log.info("handleValueUpdate: publish event for deviceID=" + deviceID + ", propID=" + propID + "")
-                this.hc.pubEvent(deviceID, propID, newValue)
+                if (va?.messageType === "attr" || va?.messageType === "config"){
+                    this.hc.pubProperty(deviceID, propID, newValue)
+                } else {
+                    log.debug("handleValueUpdate: publish event for deviceID=" + deviceID + ", propID=" + propID + "")
+                    this.hc.pubEvent(deviceID, propID, newValue)
+                }
             }
         } else {
             // for debugging
-            log.info("handleValueUpdate: unchanged value deviceID="+deviceID+", propID="+propID+" (ignored)" )
+            log.debug("handleValueUpdate: unchanged value deviceID="+deviceID+", propID="+propID+" (ignored)" )
 
         }
     }
