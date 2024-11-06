@@ -32,6 +32,11 @@ func (svc *IsyBinding) handleActionRequest(action *hubclient.ThingMessage) (stat
 	err := isyThing.HandleActionRequest(action)
 	stat.Completed(action, nil, err)
 	// publish any changes that are the result of the action
-	go svc.PublishNodeValues(true)
+	go func() {
+		values := isyThing.GetPropValues(true)
+		if len(values) > 0 {
+			_ = svc.hc.PubMultipleProperties(isyThing.GetID(), values)
+		}
+	}()
 	return stat
 }

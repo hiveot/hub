@@ -1,14 +1,12 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/wot/exposedthing"
 	"github.com/hiveot/hub/wot/tdd"
-	"log/slog"
 	"strings"
 	"sync"
 )
@@ -28,6 +26,9 @@ var deviceCatMap = map[string]string{
 	"0x09": "Energy management",
 }
 
+// IsyEventHandler is the callback to notify the binding of thing events
+type IsyEventHandler func(thingID, name string, value any, messageID string)
+
 // IIsyThing is the interface implemented by nodes that are things
 type IIsyThing interface {
 	// GetID returns the thingID of the node
@@ -44,10 +45,6 @@ type IIsyThing interface {
 	Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string)
 	// MakeTD returns the generated TD document describing the Thing
 	MakeTD() *tdd.TD
-	// PubPropValues publish a thing's property values
-	PubPropValues(hc hubclient.IHubClient, onlyChanges bool) error
-	// PubTD publishes the Thing's TD to the hub
-	PubTD(hc hubclient.IHubClient) error
 }
 
 // IsyThing is the generic base of Things constructed out of ISY Insteon nodes.
@@ -74,6 +71,9 @@ type IsyThing struct {
 
 	// REST/SOAP/WS connection to the ISY hub
 	isyAPI *isy.IsyAPI
+
+	// callback handler for events
+	evHandler IsyEventHandler
 }
 
 // GetID returns the ThingID for the node it represents.
@@ -201,31 +201,18 @@ func (it *IsyThing) MakeTD() *tdd.TD {
 }
 
 // PubPropValues gets the thing properties and publish them
-func (svc *IsyThing) PubPropValues(hc hubclient.IHubClient, onlyChanges bool) (err error) {
-	props := svc.GetPropValues(onlyChanges)
-	if len(props) > 0 {
-		err = hc.PubMultipleProperties(svc.thingID, props)
-	}
-	return err
-}
-
-// PubTD creates and publishes the thing's TD
-func (svc *IsyThing) PubTD(hc hubclient.IHubClient) (err error) {
-	td := svc.MakeTD()
-	tdJSON, _ := json.Marshal(td)
-	err = hc.PubTD(td.ID, string(tdJSON))
-	if err != nil {
-		err = fmt.Errorf("failed publishing ISY gateway TD: %w", err)
-		slog.Error(err.Error())
-		return err
-	}
-	return nil
-}
+//func (svc *IsyThing) PubPropValues(hc hubclient.IHubClient, onlyChanges bool) (err error) {
+//	props := svc.GetPropValues(onlyChanges)
+//	if len(props) > 0 {
+//		err = hc.PubMultipleProperties(svc.thingID, props)
+//	}
+//	return err
+//}
 
 // NewIsyThing constructs a general purpose ISY thing with basic properties
 // Intended to be used for 'unknown' nodes.
 // Init() must be called before use.
-func NewIsyThing() *IsyThing {
-	it := &IsyThing{}
+func NewIsyThing(evHandler IsyEventHandler) *IsyThing {
+	it := &IsyThing{evHandler: evHandler}
 	return it
 }

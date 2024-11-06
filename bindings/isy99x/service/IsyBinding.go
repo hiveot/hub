@@ -3,7 +3,6 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/config"
@@ -46,9 +45,57 @@ type IsyBinding struct {
 	stopHeartbeatFn func()
 }
 
-// CreateBindingTD generates a TD document for this binding containing properties,
+// GetBindingPropValues returns the property/event values of this binding
+func (svc *IsyBinding) GetBindingPropValues(onlyChanges bool) map[string]any {
+
+	// update the values
+	pv := svc.propValues
+	pv.SetValue(vocab.PropDevicePollinterval, svc.config.PollInterval)
+	pv.SetValue(vocab.PropNetAddress, svc.config.IsyAddress)
+	pv.SetValue("loginName", svc.config.LoginName)
+	pv.SetValue(vocab.PropDeviceMake, "Hive Of Things")
+	pv.SetValue(vocab.PropNetConnection, svc.isyAPI.IsConnected())
+
+	values := pv.GetValues(onlyChanges)
+	return values
+}
+
+// onIsyEvent publishes the event sent by one of the ISY thing.
+func (svc *IsyBinding) onIsyEvent(thingID string, evName string, value any, messageID string) {
+	_ = svc.hc.PubEvent(thingID, evName, value, messageID)
+}
+
+// HandleBindingConfig configures the binding.
+func (svc *IsyBinding) HandleBindingConfig(action *hubclient.ThingMessage) error {
+	err := fmt.Errorf("unknown configuration request '%s' from '%s'", action.Name, action.SenderID)
+	// connection settings to connect to the gateway
+	// FIXME: persist this configuration
+	switch action.Name {
+	case vocab.PropNetAddress:
+		svc.config.IsyAddress = action.DataAsText()
+		err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+		if err == nil {
+			svc.IsyGW.Init(svc.isyAPI)
+		}
+	case "loginName":
+		svc.config.LoginName = action.DataAsText()
+		err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+		if err == nil {
+			svc.IsyGW.Init(svc.isyAPI)
+		}
+	case "password":
+		svc.config.Password = action.DataAsText()
+		err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+		if err == nil {
+			svc.IsyGW.Init(svc.isyAPI)
+		}
+	}
+	return err
+}
+
+// MakeBindingTD generates a TD document for this binding containing properties,
 // event and action definitions.
-func (svc *IsyBinding) CreateBindingTD() *tdd.TD {
+func (svc *IsyBinding) MakeBindingTD() *tdd.TD {
 	td := tdd.NewTD(svc.thingID, "ISY99x binding", vocab.ThingService)
 
 	// binding attributes
@@ -83,69 +130,13 @@ func (svc *IsyBinding) CreateBindingTD() *tdd.TD {
 	prop.ReadOnly = false
 
 	// binding events
-	_ = td.AddEvent("", vocab.PropNetConnection,
+	td.AddEvent(vocab.PropNetConnection,
 		"Connection changed", "Connection with ISY gateway has changed",
-		&tdd.DataSchema{Type: vocab.WoTDataTypeBool})
+		&tdd.DataSchema{Type: vocab.WoTDataTypeBool},
+	).SetVocabType(vocab.PropNetConnection)
 
 	// no binding actions
 	return td
-}
-
-// HandleBindingConfig configures the binding.
-func (svc *IsyBinding) HandleBindingConfig(action *hubclient.ThingMessage) error {
-	err := fmt.Errorf("unknown configuration request '%s' from '%s'", action.Name, action.SenderID)
-	// connection settings to connect to the gateway
-	// FIXME: persist this configuration
-	switch action.Name {
-	case vocab.PropNetAddress:
-		svc.config.IsyAddress = action.DataAsText()
-		err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
-		if err == nil {
-			svc.IsyGW.Init(svc.isyAPI)
-		}
-	case "loginName":
-		svc.config.LoginName = action.DataAsText()
-		err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
-		if err == nil {
-			svc.IsyGW.Init(svc.isyAPI)
-		}
-	case "password":
-		svc.config.Password = action.DataAsText()
-		err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
-		if err == nil {
-			svc.IsyGW.Init(svc.isyAPI)
-		}
-	}
-	return err
-}
-
-// PubPropValues publishes the property/event values of this binding
-func (svc *IsyBinding) PubPropValues(onlyChanges bool) (err error) {
-
-	// update the values
-	pv := svc.propValues
-	pv.SetValue(vocab.PropDevicePollinterval, svc.config.PollInterval)
-	pv.SetValue(vocab.PropNetAddress, svc.config.IsyAddress)
-	pv.SetValue("loginName", svc.config.LoginName)
-	pv.SetValue(vocab.PropDeviceMake, "Hive Of Things")
-	pv.SetValue(vocab.PropNetConnection, svc.isyAPI.IsConnected())
-
-	values := pv.GetValues(onlyChanges)
-	err = svc.hc.PubMultipleProperties(svc.thingID, values)
-	return err
-}
-
-// PubTD publishes the binding's TD
-func (svc *IsyBinding) PubTD() (err error) {
-	td := svc.CreateBindingTD()
-	tdJSON, _ := json.Marshal(td)
-	err = svc.hc.PubTD(td.ID, string(tdJSON))
-	if err != nil {
-		err = fmt.Errorf("failed publishing thing TD: %w", err)
-		slog.Error(err.Error())
-		return err
-	}
-	return err
 }
 
 // Start the ISY99x protocol binding.
@@ -164,7 +155,7 @@ func (svc *IsyBinding) Start(hc hubclient.IHubClient) (err error) {
 
 	//// 'IsyThings' use the 'isy connection' to talk to the gateway
 	svc.isyAPI = isy.NewIsyAPI()
-	svc.IsyGW = NewIsyGateway(svc.prodMap)
+	svc.IsyGW = NewIsyGateway(svc.prodMap, svc.onIsyEvent)
 	_ = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
 	svc.IsyGW.Init(svc.isyAPI)
 
@@ -214,7 +205,7 @@ func (svc *IsyBinding) startHeartbeat() (stopFn func()) {
 
 		// publish node TDs and values
 		if isConnected && tdCountDown <= 0 {
-			err = svc.PublishNodeTDs()
+			err = svc.PublishTDs()
 			tdCountDown = svc.config.TDInterval
 			// after publishing the TD, republish all values
 			forceRepublish = true
@@ -226,7 +217,7 @@ func (svc *IsyBinding) startHeartbeat() (stopFn func()) {
 				republishCountDown = svc.config.RepublishInterval
 				forceRepublish = true
 			}
-			err = svc.PublishNodeValues(!forceRepublish)
+			err = svc.PublishAllThingValues(!forceRepublish)
 			pollCountDown = svc.config.PollInterval
 			// slow down if this fails. Don't flood the logs
 			if err != nil {

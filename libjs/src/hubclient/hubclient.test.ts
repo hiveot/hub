@@ -100,10 +100,7 @@ async function test3() {
         }
 
         // publish a config request
-        stat = await hc.writeProperty("thing1", "prop1", "10")
-        if (stat.error != "") {
-            throw ("pubConfig failed: " + stat)
-        }
+        await hc.writeProperty("thing1", "prop1", "10")
     } catch (err) {
         log.error("error subscribing and publishing: ", err)
     }

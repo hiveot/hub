@@ -15,7 +15,7 @@ func (svc *HiveovService) CreateHiveoviewTD() *tdd.TD {
 	td := tdd.NewTD(src.HiveoviewServiceID, title, deviceType)
 	//TODO: add properties or events for : uptime, nr connections, nr clients, etc
 
-	td.AddEvent(src.NrActiveSessionsEvent, "",
+	td.AddEvent(src.NrActiveSessionsEvent,
 		"Nr Sessions", "Number of active sessions",
 		&tdd.DataSchema{
 			//AtType: vocab.SessionCount,

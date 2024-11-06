@@ -56,7 +56,7 @@ func createTDDoc(thingID string, nrProps, nrEvents, nrActions int) *tdd.TD {
 	}
 	for range nrEvents {
 		name := utils.CreateRandomName("ev-", 0)
-		td.AddEvent(name, "", name, "",
+		td.AddEvent(name, name, "",
 			&tdd.DataSchema{
 				Type: vocab.WoTDataTypeInteger,
 			})

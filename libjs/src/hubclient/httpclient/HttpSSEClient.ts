@@ -126,7 +126,8 @@ export class HttpSSEClient implements IAgentClient {
         return {status: this.connStatus};
     }
 
-    // setup a TLS connection with the hub
+    // setup a TLS connection with the hub.
+    // This just creates a http2 connection. It does not establish an SSE, nor authenticates.
     async connect(): Promise<http2.ClientHttp2Session> {
 
         if (this._disableCertCheck) {
@@ -144,8 +145,8 @@ export class HttpSSEClient implements IAgentClient {
         // When an error occurs, show it.
         this._http2Session.on('close', () => {
             console.warn("connection has closed");
-            // cleanup
-            this.disconnect()
+            // don't do anything here. on the next post-message a reconnect will be attempted.
+            // this.disconnect()
         });
         this._http2Session.on('connect', (ev) => {
             console.warn("connected to server, cid=",this._cid);
@@ -157,7 +158,8 @@ export class HttpSSEClient implements IAgentClient {
             console.error(error);
         });
         this._http2Session.on('end', () => {
-            console.log('server ended the connection');
+            // TODO: determine when this gets called
+            console.log('server ended the connection?');
             this.disconnect()
         });
 
@@ -166,7 +168,7 @@ export class HttpSSEClient implements IAgentClient {
 
     // ConnectWithPassword connects to the Hub server using the clientID and password.
     async connectWithPassword(password: string): Promise<string> {
-        // establish a session
+        // establish an http/2 connection instance
         await this.connect()
         // invoke a login request
         let loginArgs = {
@@ -192,8 +194,8 @@ export class HttpSSEClient implements IAgentClient {
 
     // connect and login to the Hub gateway using a JWT token
     // host is the server address
-    async connectWithToken(jwtToken: string): Promise<string> {
-        this.authToken = jwtToken
+    async connectWithToken(authToken: string): Promise<string> {
+        this.authToken = authToken
         await this.connect()
         this._sseClient = await connectSSE(
             this._baseURL, this._ssePath, this.authToken, this._cid,
@@ -234,6 +236,7 @@ export class HttpSSEClient implements IAgentClient {
             hclog.warn('HubClient attempt connecting');
         } else {
             hclog.warn('HubClient disconnected');
+            // todo: retry connecting
         }
     }
     onProgress(stat:ActionProgress):void{
@@ -294,7 +297,8 @@ export class HttpSSEClient implements IAgentClient {
     // }
 
     // publish a request to the path with the given data
-    async pubMessage(methodName: string, path: string, messageID:string, data: any): Promise<string> {
+    // if the http/2 connection is closed, then try to initialize it again.
+    async pubMessage(methodName: string, path: string, messageID:string, data: any):Promise<string> {
         // if the session is invalid, restart it
         if (!this._http2Session || this._http2Session.closed) {
             // this._http2Client.
@@ -302,19 +306,16 @@ export class HttpSSEClient implements IAgentClient {
             await this.connect()
         }
 
-        return new Promise((resolve, reject) => {
+        return  new Promise((resolve, reject) => {
             let replyData: string = ""
             let statusCode: number
             let payload = JSON.stringify(data)
 
-            try {
-                if (!this._http2Session) {
-                    // for some reason this throw is not caught by the catch.
-                    // try something else
-                    // throw ("not connected")
-                    reject("not connected")
-                    return "aborted"
-                }
+            if (!this._http2Session || this._http2Session.closed) {
+                // getting here is weird. this._http2Session is undefined while
+                // the debugger shows a value.
+                reject(new Error("Unable to send. Connection was closed"))
+            } else {
                 let req = this._http2Session.request({
                     origin: this._baseURL,
                     authorization: "bearer " + this.authToken,
@@ -323,7 +324,7 @@ export class HttpSSEClient implements IAgentClient {
                     "content-type": "application/json",
                     "content-length": Buffer.byteLength(payload),
                     "message-id": messageID,
-                    "cid":this._cid,
+                    "cid": this._cid,
                 })
 
                 req.setEncoding('utf8');
@@ -343,10 +344,10 @@ export class HttpSSEClient implements IAgentClient {
                     req.destroy()
                     if (statusCode >= 400) {
                         hclog.warn(`pubMessage status code  ${statusCode}`)
-                        reject("Error " + statusCode + ": " + replyData)
+                        reject(new Error("Error " + statusCode + ": " + replyData))
                     } else {
                         // hclog.info(`pubMessage to ${path}. Received reply. size=` + replyData.length)
-                        resolve(replyData)
+                        reject(new Error(replyData))
                     }
                 });
                 req.on('error', (err) => {
@@ -355,9 +356,8 @@ export class HttpSSEClient implements IAgentClient {
                 });
                 // write the body and complete the request
                 req.end(payload)
-            } catch (e) {
-                hclog.warn(`pubMessage unexpected exception:`,e)
-                reject(e)
+
+                resolve(replyData)
             }
         })
     }
@@ -371,7 +371,9 @@ export class HttpSSEClient implements IAgentClient {
     //	payload is the optional action arguments to be serialized and transported
     //
     // This returns the serialized reply data or null in case of no reply data
-    async invokeAction(thingID: string, name: string, messageID:string, payload: any): Promise<ActionProgress> {
+    async invokeAction(thingID: string, name: string, messageID:string,
+                       payload: any): Promise<ActionProgress> {
+
         hclog.info("pubAction. thingID:", thingID, ", name:", name)
 
         let actionPath = PostInvokeActionPath.replace("{thingID}", thingID)
@@ -404,7 +406,6 @@ export class HttpSSEClient implements IAgentClient {
         eventPath = eventPath.replace("{name}", name)
 
         this.pubMessage("POST",eventPath, "", payload)
-            .then()
             .catch((e)=> {
                 hclog.warn("failed publishing event", e)
             }
@@ -416,7 +417,7 @@ export class HttpSSEClient implements IAgentClient {
     // @param msg: action message that was received
     // @param stat: status to return
     pubProgressUpdate(stat: ActionProgress) {
-        let resp = this.pubMessage(
+        this.pubMessage(
             "POST",PostAgentPublishProgressPath, stat.messageID, stat)
             .then().catch()
     }
@@ -425,7 +426,8 @@ export class HttpSSEClient implements IAgentClient {
     pubMultipleProperties(thingID: string, propMap: { [key: string]: any }) {
         let postPath = PostAgentUpdateMultiplePropertiesPath.replace("{thingID}", thingID)
 
-        this.pubMessage("POST",postPath, "", propMap).then().catch()
+        this.pubMessage("POST",postPath, "", propMap)
+            .then().catch()
     }
 
     // Publish thing property value update
@@ -433,7 +435,8 @@ export class HttpSSEClient implements IAgentClient {
         let postPath = PostAgentUpdatePropertyPath.replace("{thingID}", thingID)
          postPath = postPath.replace("{name}", name)
 
-        this.pubMessage("POST",postPath, name, value).then().catch()
+        this.pubMessage("POST",postPath, name, value)
+            .then().catch()
     }
 
     // PubTD publishes an event with a Thing TD document.
@@ -443,7 +446,8 @@ export class HttpSSEClient implements IAgentClient {
         let tdJSON = JSON.stringify(td, null, ' ');
 
         let postPath = PostAgentUpdateTDDPath.replace("{thingID}", td.id)
-        this.pubMessage("POST",postPath, "", tdJSON).then().catch
+        this.pubMessage("POST",postPath, "", tdJSON)
+            .then().catch()
     }
 
 
@@ -556,7 +560,7 @@ export class HttpSSEClient implements IAgentClient {
     //
     // @param dThingID: optional filter of the thing whose events are published; "" for all things
     // @param name: optional filter on the event name; "" for all event names.
-    async subscribe(dThingID: string, name: string): Promise<void> {
+    subscribe(dThingID: string, name: string):void {
         if (!dThingID) {
             dThingID = "+"
         }
@@ -566,11 +570,11 @@ export class HttpSSEClient implements IAgentClient {
         // FIXME: a connectionID is required for subscriptions over SSE
         let subscribePath = PostSubscribeEventPath.replace("{thingID}", dThingID)
         subscribePath = subscribePath.replace("{name}", name)
-        await this.pubMessage("POST", subscribePath,"", "")
-
+        this.pubMessage("POST", subscribePath,"", "")
+            .then().catch()
     }
 
-    async unsubscribe(dThingID: string, name: string) {
+    unsubscribe(dThingID: string, name: string) {
         if (!dThingID) {
             dThingID = "+"
         }
@@ -579,20 +583,20 @@ export class HttpSSEClient implements IAgentClient {
         }
         let subscribePath = PostUnsubscribeEventPath.replace("{thingID}", dThingID)
         subscribePath = subscribePath.replace("{name}", name)
-        await this.pubMessage("POST", subscribePath, "","")
+        this.pubMessage("POST", subscribePath, "", "")
+            .then().catch()
     }
 
     // writeProperty publishes a request for changing a Thing's property.
     // The configuration is a writable property as defined in the Thing's TD.
-    async writeProperty(thingID: string, name: string, propValue: any): Promise<ActionProgress> {
+    writeProperty(thingID: string, name: string, propValue: any) {
         hclog.info("writeProperty. thingID:", thingID, ", name:", name)
 
         // TODO: use url from TD forms
         let propPath = PostWritePropertyPath.replace("{thingID}", thingID)
         propPath = propPath.replace("{name}", name)
 
-        let resp = await this.pubMessage("POST",propPath, "",propValue)
-        let stat: ActionProgress = JSON.parse(resp)
-        return stat
+        this.pubMessage("POST",propPath, "",propValue)
+            .then().catch()
     }
 }

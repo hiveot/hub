@@ -53,6 +53,9 @@ type IsyGatewayThing struct {
 	// protect access to the 'things' map
 	mux sync.RWMutex
 
+	// callback handler for events
+	evHandler IsyEventHandler
+
 	//=== ISY Gateway Settings ===
 
 	// GET /rest/config
@@ -176,40 +179,40 @@ func (igw *IsyGatewayThing) AddIsyThing(node *isy.IsyNode) error {
 	//the category determines the high level device type
 	switch cat {
 	case 0: // general controller, tabletop/remote/touch panel
-		isyThing = NewIsyThing()
+		isyThing = NewIsyThing(igw.evHandler)
 		break
 	case 1: // dimmer control
-		isyThing = NewIsyDimmerThing()
+		isyThing = NewIsyDimmerThing(igw.evHandler)
 		break
 	case 2: // OnOff switch
-		isyThing = NewIsySwitchThing()
+		isyThing = NewIsySwitchThing(igw.evHandler)
 		break
 	case 3: // network bridge
-		isyThing = NewIsyThing()
+		isyThing = NewIsyThing(igw.evHandler)
 		break
 	case 4: // irrigation control
-		isyThing = NewIsyThing()
+		isyThing = NewIsyThing(igw.evHandler)
 		break
 	case 5: // climate control
-		isyThing = NewIsyThing()
+		isyThing = NewIsyThing(igw.evHandler)
 		break
 	case 6: // pool/spa control
-		isyThing = NewIsyThing()
+		isyThing = NewIsyThing(igw.evHandler)
 		break
 	case 7: // sensor switch
-		isyThing = NewIsySensorThing()
+		isyThing = NewIsySensorThing(igw.evHandler)
 		break
 	case 9: // energy meter/management
-		isyThing = NewIsyThing()
+		isyThing = NewIsyThing(igw.evHandler)
 		break
 	case 14: // window/blinds
-		isyThing = NewIsyThing()
+		isyThing = NewIsyThing(igw.evHandler)
 		break
 	case 15: // access control/ door lock
-		isyThing = NewIsyThing()
+		isyThing = NewIsyThing(igw.evHandler)
 		break
 	default: // unknown general purpose thing
-		isyThing = NewIsyThing()
+		isyThing = NewIsyThing(igw.evHandler)
 	}
 	if isyThing != nil {
 		thingID := nodeID2ThingID(node.Address)
@@ -342,12 +345,13 @@ func (igw *IsyGatewayThing) MakeTD() *tdd.TD {
 	return td
 }
 
-// PubPropValues gets the thing properties and publish them
-func (svc *IsyGatewayThing) PubPropValues(hc hubclient.IHubClient, onlyChanges bool) (err error) {
-	props := svc.GetPropValues(onlyChanges)
-	err = hc.PubMultipleProperties(svc.thingID, props)
-	return err
-}
+//
+//// PubPropValues gets the thing properties and publish them
+//func (svc *IsyGatewayThing) PubPropValues(hc hubclient.IHubClient, onlyChanges bool) (err error) {
+//	props := svc.GetPropValues(onlyChanges)
+//	err = hc.PubMultipleProperties(svc.thingID, props)
+//	return err
+//}
 
 // PubTD read and publishes the gateway's TD
 func (svc *IsyGatewayThing) PubTD(hc hubclient.IHubClient) (err error) {
@@ -471,9 +475,10 @@ func (igw *IsyGatewayThing) ReadIsyNodeValues() error {
 // NewIsyGateway creates a new instance of the ISY gateway device representation.
 // prodMap can be retrieved with LoadProductMapCSV()
 // Call Init() before use.
-func NewIsyGateway(prodMap map[string]InsteonProduct) *IsyGatewayThing {
+func NewIsyGateway(prodMap map[string]InsteonProduct, evHandler IsyEventHandler) *IsyGatewayThing {
 
 	isyGW := &IsyGatewayThing{
+		evHandler:  evHandler,
 		prodMap:    prodMap,
 		things:     make(map[string]IIsyThing),
 		propValues: exposedthing.NewThingValues(),

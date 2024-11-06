@@ -42,7 +42,9 @@ func (svc *IsyBinding) handleConfigRequest(action *hubclient.ThingMessage) (stat
 
 	// publish changed values after returning
 	go func() {
-		_ = svc.PublishNodeValues(true)
+		values := isyThing.GetPropValues(true)
+		_ = svc.hc.PubMultipleProperties(isyThing.GetID(), values)
+
 		// re-submit the TD if the title changes
 		if action.Name == vocab.PropDeviceTitle {
 			td := isyThing.MakeTD()

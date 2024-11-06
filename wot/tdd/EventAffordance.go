@@ -6,9 +6,9 @@ package tdd
 type EventAffordance struct {
 	//---InteractionAffordance starts
 
-	// EventType is the JSON-LD @type keyword to classify the event using standard vocabulary, or "" if not known
+	// VocabType is the JSON-LD @type keyword to classify the event using standard vocabulary, or "" if not known
 	// Intended for grouping and querying similar events, and standardized presentation such as icons
-	EventType string `json:"@type,omitempty"`
+	VocabType string `json:"@type,omitempty"`
 	// Provides a human-readable title in the default language
 	Title string `json:"title,omitempty"`
 	// Provides a multi-language human-readable titles
@@ -33,4 +33,9 @@ type EventAffordance struct {
 	// subscription is not applicable
 	// dataResponse is not applicable
 	// cancellation is not applicable
+}
+
+// SetVocabType sets the event @type field from the HT vocabulary
+func (aff *EventAffordance) SetVocabType(vocabType string) {
+	aff.VocabType = vocabType
 }

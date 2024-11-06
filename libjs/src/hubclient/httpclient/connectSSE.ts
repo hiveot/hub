@@ -109,7 +109,12 @@ export async function  connectSSE(
         //     hclog.warn("On message", msg)
         // }
         source.onerror = function (err: any) {
+            // TODO: differentiate between an auth error and a broken connection
             hclog.error("Connection error: " + err.message)
+            // source.close()
+            if (source.readyState == EventSource.CLOSED) {
+                onConnection(ConnectionStatus.Disconnected)
+            }
         }
     })
 }

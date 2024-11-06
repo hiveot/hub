@@ -191,8 +191,10 @@ func (test *TestServer) CreateTestTD(i int) (td *tdd.TD) {
 	}
 	// add random events
 	for n := 0; n < tdi.NrEvents; n++ {
-		td.AddEvent(fmt.Sprintf("event-%d", n), EventTypes[n], "title-"+EventTypes[n], "",
-			&tdd.DataSchema{Type: vocab.WoTDataTypeString})
+		evName := fmt.Sprintf("event-%d", n)
+		td.AddEvent(evName, "title-"+EventTypes[n], "",
+			&tdd.DataSchema{Type: vocab.WoTDataTypeString}).
+			SetVocabType(EventTypes[n])
 	}
 	// add random actions
 	for n := 0; n < tdi.NrActions; n++ {

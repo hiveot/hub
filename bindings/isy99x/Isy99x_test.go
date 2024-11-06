@@ -14,8 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//const appID = "isy99"
-
 // For testing, IsyGW.isyRequest simulates reading isy from file using the path:
 //
 //	gatewayaddress[7:]/restpath.xml, where restpath is the isy REST api path and
@@ -114,7 +112,7 @@ func TestIsyAppPoll(t *testing.T) {
 	require.NoError(t, err)
 	defer svc.Stop()
 
-	err = svc.PublishNodeTDs()
+	err = svc.PublishTDs()
 	assert.NoError(t, err)
 	time.Sleep(2 * time.Second)
 }
@@ -134,7 +132,7 @@ func TestSwitch(t *testing.T) {
 	require.NoError(t, err)
 	defer svc.Stop()
 
-	err = svc.PublishNodeTDs()
+	err = svc.PublishTDs()
 	assert.NoError(t, err)
 	// some time to publish stuff
 	time.Sleep(1 * time.Second)

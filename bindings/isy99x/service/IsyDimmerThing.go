@@ -23,7 +23,8 @@ func (it *IsyDimmerThing) GetValues(onlyChanges bool) map[string]any {
 func (it *IsyDimmerThing) MakeTD() *tdd.TD {
 	td := it.IsyThing.MakeTD()
 	// AddSwitchEvent is short for adding an event for a switch
-	td.AddDimmerEvent(vocab.PropSwitchDimmer)
+	// TODO: add dimmer change events
+	//td.AddDimmerEvent(vocab.PropSwitchDimmer)
 
 	a := td.AddDimmerAction(vocab.ActionDimmerSet)
 	a.Input.Unit = vocab.UnitPercent
@@ -79,7 +80,7 @@ func (it *IsyDimmerThing) HandleActionRequest(action *hubclient.ThingMessage) (e
 
 // NewIsyDimmerThing creates a new instance of an ISY dimmer.
 // Call Init() before use
-func NewIsyDimmerThing() *IsyDimmerThing {
-	thing := &IsyDimmerThing{}
+func NewIsyDimmerThing(evHandler IsyEventHandler) *IsyDimmerThing {
+	thing := &IsyDimmerThing{IsyThing{evHandler: evHandler}}
 	return thing
 }

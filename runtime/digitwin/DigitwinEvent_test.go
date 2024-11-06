@@ -21,7 +21,7 @@ func TestAddReadEvent(t *testing.T) {
 
 	// add a TD with an event
 	tdDoc1 := createTDDoc(thing1ID, 5, 3, 1)
-	tdDoc1.AddEvent(eventName, "", "event1", "Descr 1",
+	tdDoc1.AddEvent(eventName, "event1", "Descr 1",
 		&tdd.DataSchema{
 			Title: "type1",
 			Type:  vocab.WoTDataTypeInteger,
@@ -86,7 +86,7 @@ func TestEventUpdateFail(t *testing.T) {
 	// add a TD with an event
 
 	tdDoc1 := createTDDoc(thingID, 4, 2, 1)
-	tdDoc1.AddEvent(EventName, "", "event1", "Descr 1",
+	tdDoc1.AddEvent(EventName, "event1", "Descr 1",
 		&tdd.DataSchema{
 			Title: "type1",
 			Type:  vocab.WoTDataTypeInteger,

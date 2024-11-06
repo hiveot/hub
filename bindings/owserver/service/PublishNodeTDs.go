@@ -81,7 +81,8 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *tdd.T
 				}
 			}
 			// TODO: use a Number/Integerschema for numeric sensors
-			tdoc.AddEvent(attrID, attrInfo.VocabType, attrInfo.Title, "", evSchema)
+			tdoc.AddEvent(attrID, attrInfo.Title, "", evSchema).
+				SetVocabType(attrInfo.VocabType)
 		}
 		if attrInfo.IsActuator {
 			var inputSchema *tdd.DataSchema

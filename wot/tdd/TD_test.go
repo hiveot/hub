@@ -115,9 +115,9 @@ func TestAddPropBadIDs(t *testing.T) {
 func TestAddEvent(t *testing.T) {
 	thingID := "urn:thing1"
 	tdoc := tdd.NewTD(thingID, "test TD", vocab2.ThingSensor)
-	tdoc.AddEvent("event1", "", "Test Event", "", nil)
+	tdoc.AddEvent("event1", "Test Event", "", nil)
 
-	tdoc.AddEvent("event2", "", "Test Event", "", nil)
+	tdoc.AddEvent("event2", "Test Event", "", nil)
 
 	ev := tdoc.GetEvent("event1")
 	assert.NotNil(t, ev)

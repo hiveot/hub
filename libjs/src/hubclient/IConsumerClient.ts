@@ -120,7 +120,7 @@ export interface IConsumerClient  {
     //
     //  dThingID is the digital twin ID of the Thing to subscribe to. ""  for any
     //	name is the event name to subscribe to or "" for all events, "" for any
-    subscribe(dThingID: string, name:string): Promise<void>;
+    subscribe(dThingID: string, name:string): void;
 
 // Unsubscribe removes a previous event subscription.
 // No more events or requests will be received after Unsubscribe.
@@ -130,5 +130,5 @@ export interface IConsumerClient  {
     //  @param dThingID is the digitwin thingID is provided by the directory
     //	@param name ID of the property
     //	@param payload to publish in native format as per TD
-    writeProperty(dThingID: string, name: string, payload: any): Promise<ActionProgress>;
+    writeProperty(dThingID: string, name: string, payload: any):void;
 }

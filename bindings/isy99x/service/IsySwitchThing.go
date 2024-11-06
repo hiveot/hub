@@ -56,12 +56,13 @@ func (it *IsySwitchThing) HandleActionRequest(action *hubclient.ThingMessage) (e
 	err = it.isyAPI.SendRequest("GET", restPath, "", nil)
 	if err == nil {
 		// TODO: handle event from gateway using websockets. For now just assume this worked.
-		err = it.HandleValueUpdate(action.Name, "", newValue)
-		//it.currentProps[actionID] = newValue
+		//err = it.HandleValueUpdate(action.Name, "", newValue)
+
 	}
 	return err
 }
 
+// HandleValueUpdate receives a new value for the given property
 func (it *IsySwitchThing) HandleValueUpdate(propID string, uom string, newValue string) error {
 	it.mux.Lock()
 	defer it.mux.Unlock()
@@ -88,11 +89,10 @@ func (it *IsySwitchThing) Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode
 func (it *IsySwitchThing) MakeTD() *tdd.TD {
 	td := it.IsyThing.MakeTD()
 	// value of switch property ID "ST" is "0" or "255"
-	td.AddEvent("ST", vocab.ActionSwitchOnOff, "On/Off", "",
-		&tdd.DataSchema{Type: vocab.WoTDataTypeBool})
-
-	// AddSwitchEvent is short for adding an event for a switch
-	td.AddSwitchEvent(vocab.PropSwitchOnOff, "On/Off change")
+	// TODO: support for switch events
+	//td.AddEvent("ST", "On/Off", "",
+	//	&tdd.DataSchema{Type: vocab.WoTDataTypeBool}).
+	//	SetVocabType(vocab.ActionSwitchOnOff)
 
 	td.AddSwitchAction(vocab.ActionSwitchOnOff, "Switch on/off")
 	//td.AddSwitchAction(vocab.ActionSwitchOff, "Switch off")
@@ -103,7 +103,7 @@ func (it *IsySwitchThing) MakeTD() *tdd.TD {
 
 // NewIsySwitchThing creates a new instance of an ISY switch.
 // Call Init() before use
-func NewIsySwitchThing() *IsySwitchThing {
-	thing := &IsySwitchThing{}
+func NewIsySwitchThing(evHandler IsyEventHandler) *IsySwitchThing {
+	thing := &IsySwitchThing{IsyThing{evHandler: evHandler}}
 	return thing
 }

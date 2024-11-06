@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
 	jsoniter "github.com/json-iterator/go"
+	"log/slog"
 	"net/url"
 	"strings"
 	"time"
@@ -156,32 +157,32 @@ func (tdoc *TD) AddDimmerAction(actionID string) *ActionAffordance {
 //
 //	eventID is the instance ID of the event, unique within the Thing
 func (tdoc *TD) AddDimmerEvent(eventID string) *EventAffordance {
-	ev := tdoc.AddEvent(eventID, vocab.PropSwitchDimmer, "", "",
+	aff := tdoc.AddEvent(eventID, "", "",
 		&DataSchema{
 			AtType: vocab.PropSwitchDimmer,
 			Type:   vocab.WoTDataTypeInteger,
 		})
-	return ev
+	aff.SetVocabType(vocab.PropSwitchDimmer)
+	return aff
 }
 
 // AddEvent provides a simple way to add an event to the TD.
 // This returns the event affordance that can be augmented/modified directly.
+// To set a known vocabulary @type, use setVocabType on the result
 //
 // If the event returns data then set the .Data field to a DataSchema instance that describes it.
 //
 //	eventName is the name under which it is stored in the affordance map.
-//		If omitted, the eventType is used.
-//	eventType describes the type of event in HiveOT vocabulary if available, or "" if non-standard.
 //	title is the short display title of the event
 //	schema optional event data schema or nil if the event doesn't carry any data
 func (tdoc *TD) AddEvent(
-	eventName string, eventType string, title string, description string,
-	schema *DataSchema) *EventAffordance {
+	eventName string, title string, description string, schema *DataSchema) *EventAffordance {
+
 	if eventName == "" {
-		eventName = eventType
+		slog.Error("AddEvent: Missing event name for thing", "thingID", tdoc.ID)
+		return nil
 	}
 	evAff := &EventAffordance{
-		EventType:   eventType,
 		Title:       title,
 		Description: description,
 		//Data:        *schema,
@@ -265,23 +266,25 @@ func (tdoc *TD) AddSwitchAction(actionName string, title string) *ActionAffordan
 
 // AddSwitchEvent is short for adding an event for a switch
 func (tdoc *TD) AddSwitchEvent(eventName string, title string) *EventAffordance {
-	ev := tdoc.AddEvent(eventName, vocab.PropSwitchOnOff, title, "",
+	aff := tdoc.AddEvent(eventName, title, "",
 		&DataSchema{
 			AtType: vocab.PropSwitchOnOff,
 			Type:   vocab.WoTDataTypeBool,
 			Enum:   []interface{}{"on", "off"},
 		})
-	return ev
+	aff.SetVocabType(vocab.PropSwitchOnOff)
+	return aff
 }
 
 // AddSensorEvent is short for adding an event for a generic sensor
 func (tdoc *TD) AddSensorEvent(eventName string, title string) *EventAffordance {
-	ev := tdoc.AddEvent(eventName, vocab.PropEnv, title, "",
+	aff := tdoc.AddEvent(eventName, title, "",
 		&DataSchema{
 			AtType: vocab.PropEnv,
 			Type:   vocab.WoTDataTypeNumber,
 		})
-	return ev
+	aff.SetVocabType(vocab.PropEnv)
+	return aff
 }
 
 // AsMap returns the TD document as a key-value map
