@@ -4,7 +4,6 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -121,20 +120,10 @@ func (cts *ConsumedThingsDirectory) handleMessage(
 		defer cts.mux.Unlock()
 		ct, found := cts.consumedThings[msg.ThingID]
 		if found {
-			props := make(map[string]interface{})
-			err := utils.DecodeAsObject(msg.Data, &props)
-			if err != nil {
-				slog.Error("invalid payload for properties event. Ignored",
-					"thingID", msg.ThingID)
-			} else {
-				// update all property values
-				for k, v := range props {
-					propValue := &digitwin.ThingValue{
-						Name: k, Data: v, MessageID: msg.MessageID,
-						SenderID: msg.SenderID, Updated: msg.Created}
-					ct.OnPropertyUpdate(propValue)
-				}
-			}
+			propValue := &digitwin.ThingValue{
+				Name: msg.Name, Data: msg.Data, MessageID: msg.MessageID,
+				SenderID: msg.SenderID, Updated: msg.Created}
+			ct.OnPropertyUpdate(propValue)
 		}
 	} else if msg.MessageType == vocab.MessageTypeProgressUpdate {
 		// delivery status updates refer to actions

@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -11,9 +10,7 @@ import (
 func (svc *IsyBinding) PublishNodeTDs() (err error) {
 	slog.Info("PublishNodeTDs Gateway and Nodes")
 
-	td := svc.CreateBindingTD()
-	tdJSON, _ := json.Marshal(td)
-	err = svc.hc.PubTD(td.ID, string(tdJSON))
+	err = svc.PubTD()
 	if err != nil {
 		err = fmt.Errorf("failed publishing thing TD: %w", err)
 		slog.Error(err.Error())
@@ -23,16 +20,8 @@ func (svc *IsyBinding) PublishNodeTDs() (err error) {
 		return errors.New("not connected to the gateway")
 	}
 
-	td = svc.IsyGW.GetTD()
-	if td != nil {
-		tdJSON, _ = json.Marshal(td)
-		err = svc.hc.PubTD(td.ID, string(tdJSON))
-		if err != nil {
-			err = fmt.Errorf("failed publishing gateway TD: %w", err)
-			slog.Error(err.Error())
-			return err
-		}
-
+	err = svc.IsyGW.PubTD(svc.hc)
+	if err == nil {
 		// read and publish the node TDs
 		err = svc.IsyGW.ReadIsyThings()
 		if err != nil {
@@ -42,11 +31,9 @@ func (svc *IsyBinding) PublishNodeTDs() (err error) {
 		}
 		//things := svc.IsyGW.ReadThings()
 		for _, thing := range svc.IsyGW.GetIsyThings() {
-			td = thing.GetTD()
-			tdJSON, _ := json.Marshal(td)
-			err = svc.hc.PubTD(td.ID, string(tdJSON))
+			err = thing.PubTD(svc.hc)
 			if err != nil {
-				slog.Error("PollIsyTDs", "err", err)
+				slog.Error("failed publishing ISY Thing TD", "err", err)
 			}
 		}
 	}

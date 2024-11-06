@@ -16,9 +16,9 @@ import (
 	"time"
 )
 
-// ActionFlowRecord holds in progress actions and property writes
+// ActionFlowRecord holds in progress actions
 type ActionFlowRecord struct {
-	MessageType string    // MessageTypeAction or MessageTypeProperty
+	MessageType string    // MessageTypeAction
 	MessageID   string    // MessageID of the ongoing action
 	AgentID     string    // Agent that is handling the action request
 	ThingID     string    // thingID as provided by the agent the action is for

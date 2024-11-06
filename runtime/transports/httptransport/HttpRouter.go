@@ -135,10 +135,10 @@ func (svc *HttpBinding) createRoutes(router chi.Router) http.Handler {
 			"/agent/tdd/{thingID}", svc.HandlePublishTD)
 		svc.AddPostOp(r, vocab.HTOpPublishEvent, false,
 			"/agent/event/{thingID}/{name}", svc.HandlePublishEvent)
-		svc.AddPostOp(r, vocab.HTOpUpdateProperty, false,
+		svc.AddPostOp(r, vocab.HTOpPublishProperty, false,
 			"/agent/property/{thingID}/{name}", svc.HandlePublishProperty)
-		svc.AddPostOp(r, "updateMultipleProperties", false,
-			"/agent/properties/{thingID}", svc.HandlePublishProperty)
+		svc.AddPostOp(r, vocab.HTOpPublishMultipleProperties, false,
+			"/agent/properties/{thingID}", svc.HandlePublishMultipleProperties)
 		svc.AddPostOp(r, "", false,
 			"/agent/progress", svc.HandleInvokeActionProgress)
 

@@ -465,8 +465,8 @@ func (svc *DigitwinStore) UpdateEventValue(
 //
 // agentID is the ID of the agent sending the update.
 // thingID is the ID of the original thing as managed by the agent.
-// propName is the name of the property whose value is updated or "" when value is a map
-// newValue of the property or a map of property name-value pairs
+// propName is the name of the property whose value is updated
+// newValue of the property
 // messageID provided by the agent, in response to an action or write
 //
 // This returns a flag indicating whether the property value has changed.
@@ -483,60 +483,53 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
 		return false, err
 	}
-	if propName != "" {
-		if svc.strict {
-			aff := dtw.DtwTD.GetProperty(propName)
-			if aff == nil {
-				return false,
-					fmt.Errorf("UpdatePropertyValue: unknown property '%s' for thing '%s'", propName, dThingID)
-			}
-		}
-		propValue, found := dtw.PropValues[propName]
-		if !found {
-			propValue = digitwin.ThingValue{}
-		}
-		oldValue := propValue.Data
-		hasChanged = oldValue != propValue
-
-		propValue.Data = newValue
-		propValue.MessageID = messageID
-		propValue.Name = propName
-		propValue.Updated = time.Now().Format(utils.RFC3339Milli)
-
-		dtw.PropValues[propName] = propValue
-	} else {
-		// no property name, expect a map with name-value pairs
-		propMap := make(map[string]any)
-		err = utils.Decode(newValue, &propMap)
-		if err != nil {
-			err = fmt.Errorf("UpdatePropertyValue: of dthing '%s'. Expected a property map: %w", dThingID, err)
-			return false, err
-		}
-		for propName, newValue = range propMap {
-			if svc.strict {
-				aff := dtw.DtwTD.GetProperty(propName)
-				if aff == nil {
-					return false,
-						fmt.Errorf("UpdatePropertyValue: unknown property '%s' for thing '%s'", propName, dThingID)
-				}
-			}
-			propValue, found := dtw.PropValues[propName]
-			if !found {
-				propValue = digitwin.ThingValue{}
-			}
-			oldValue := propValue.Data
-			hasChanged = oldValue != propValue
-
-			propValue.Data = newValue
-			propValue.MessageID = messageID
-			propValue.Name = propName
-			propValue.Updated = time.Now().Format(utils.RFC3339Milli)
-			dtw.PropValues[propName] = propValue
+	if svc.strict {
+		aff := dtw.DtwTD.GetProperty(propName)
+		if aff == nil {
+			return false,
+				fmt.Errorf("UpdatePropertyValue: unknown property '%s' for thing '%s'", propName, dThingID)
 		}
 	}
+	propValue, found := dtw.PropValues[propName]
+	if !found {
+		propValue = digitwin.ThingValue{}
+	}
+	oldValue := propValue.Data
+	hasChanged = oldValue != propValue
+
+	propValue.Data = newValue
+	propValue.MessageID = messageID
+	propValue.Name = propName
+	propValue.Updated = time.Now().Format(utils.RFC3339Milli)
+
+	dtw.PropValues[propName] = propValue
 	svc.changedThings[dThingID] = hasChanged
 
 	return hasChanged, nil
+}
+
+// UpdateProperties updates the last known thing property values.
+//
+// This will bulk update all properties in the map. They are stored separately.
+//
+// agentID is the ID of the agent sending the update.
+// thingID is the ID of the original thing as managed by the agent.
+// propMap map of property name-value pairs
+// messageID provided by the agent, in response to an action or write
+//
+// This returns a map with changed property values.
+func (svc *DigitwinStore) UpdateProperties(
+	agentID string, thingID string, propMap map[string]any, messageID string) (
+	changes map[string]any, err error) {
+
+	changes = make(map[string]any)
+	for propName, newValue := range propMap {
+		changed, _ := svc.UpdatePropertyValue(agentID, thingID, propName, newValue, messageID)
+		if changed {
+			changes[propName] = newValue
+		}
+	}
+	return changes, nil
 }
 
 // WriteProperty stores a new  property value

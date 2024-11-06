@@ -14,7 +14,7 @@ const log = new tslog.Logger()
 
 // handle configuration write request as defined in the TD
 // @param msg is the incoming message with the 'key' containing the property to set
-export function handleConfigWriteRequest(
+export function handleWriteProperty(
     msg: ThingMessage, node: ZWaveNode, zwapi: ZWAPI, hc: IAgentClient):  ActionProgress {
     let stat = new ActionProgress()
     let errMsg: Error | undefined
@@ -26,7 +26,6 @@ export function handleConfigWriteRequest(
 
     log.info("handleConfigRequest: node '" + node.nodeId + "' setting prop '" + propKey + "' to value: " + propValue)
 
-    let configLower = propKey.toLowerCase()
     // FIXME: use of location CC to set name and location as per doc:
     //   https://zwave-js.github.io/node-zwave-js/#/api/node?id=name
     // This seems to be broken. Reading the location CC works but writing throws an error
@@ -54,7 +53,8 @@ export function handleConfigWriteRequest(
                 hc.pubProgressUpdate(stat)
                 // notify everyone else (no messageID)
                 let newValue = getVidValue(node, propVid)
-                zwapi.onValueUpdate(node, propValue, newValue)
+                // zwapi.onValueUpdate(node, propValue, newValue)
+                zwapi.onValueUpdate(node, propVid, newValue)
 
                 // TODO: intercept the value update and send it as a status update
             })

@@ -47,14 +47,21 @@ type IHubRouter interface {
 	// HandlePublishEvent agent publishes an event
 	// This can contain a messageID if the event is a response to an action
 	// or property write, depending on the agent implementation.
-	HandlePublishEvent(agentID string, thingID string, name string, value any, messageID string) error
+	HandlePublishEvent(
+		agentID string, thingID string, name string, value any, messageID string) error
+
+	// HandlePublishMultipleProperties agent publishes a batch of property changes.
+	//
+	HandlePublishMultipleProperties(
+		agentID string, thingID string, propMap map[string]any, messageID string) error
 
 	// HandlePublishProperty agent publishes a property change.
 	// If the update is the result of a WriteProperty request then the messageID
 	// contains the ID returned to the consumer by WriteProperty.
 	//
 	// Whether a messageID is included depends on the agent implementation.
-	HandlePublishProperty(agentID string, thingID string, name string, value any, messageID string) error
+	HandlePublishProperty(
+		agentID string, thingID string, name string, value any, messageID string) error
 
 	// HandlePublishTD agent publishes an updated TD
 	HandlePublishTD(agentID string, args any) error

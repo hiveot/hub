@@ -72,7 +72,7 @@ func (ct *ConsumedThing) GetPropValue(name string) (iout *InteractionOutput) {
 			Name:    name,
 		}
 		iout.SetSchemaFromTD(ct.td)
-		slog.Info("Value not (yet) found for property ", "name", name, "thingID", ct.td.ID)
+		slog.Debug("Value not (yet) published for property ", "name", name, "thingID", ct.td.ID)
 	}
 	return iout
 }

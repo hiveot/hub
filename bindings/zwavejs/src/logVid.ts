@@ -1,5 +1,3 @@
-// Log the given VID to a CSV file.
-// If vid is undefined, then write the header, otherwise the vid data
 import type { TranslatedValueID, ValueMetadataNumeric, ValueMetadataString, ZWaveNode } from "zwave-js";
 import type { ConfigurationMetadata, ValueMetadataBuffer } from "@zwave-js/core";
 import { CommandClasses, ConfigValueFormat } from "@zwave-js/core";
@@ -7,6 +5,9 @@ import type { VidAffordance } from "./getVidAffordance";
 import fs from "fs";
 import {getVidValue} from "@zwavejs/ZWAPI";
 
+// Log the given vid to a CSV file.
+// If vid is undefined, then write the header, otherwise the vid data.
+// Intended for gathering info on zwave devices.
 export function logVid(logFd: number | undefined, node?: ZWaveNode, vid?: TranslatedValueID,
     propID?: string, va?: VidAffordance) {
     if (!logFd) {

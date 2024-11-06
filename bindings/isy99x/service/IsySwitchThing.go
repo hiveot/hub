@@ -20,22 +20,6 @@ func (it *IsySwitchThing) GetPropValues(onlyChanges bool) map[string]any {
 	return propValues
 }
 
-func (it *IsySwitchThing) GetTD() *tdd.TD {
-	td := it.IsyThing.GetTD()
-	// value of switch property ID "ST" is "0" or "255"
-	td.AddEvent("ST", vocab.ActionSwitchOnOff, "On/Off", "",
-		&tdd.DataSchema{Type: vocab.WoTDataTypeBool})
-
-	// AddSwitchEvent is short for adding an event for a switch
-	td.AddSwitchEvent(vocab.PropSwitchOnOff, "On/Off change")
-
-	td.AddSwitchAction(vocab.ActionSwitchOnOff, "Switch on/off")
-	//td.AddSwitchAction(vocab.ActionSwitchOff, "Switch off")
-	//td.AddSwitchAction(vocab.ActionSwitchToggle, "Toggle switch")
-
-	return td
-}
-
 //func (it *IsySwitchThing) HandleConfigRequest(tv *things.ThingMessage) (err error) {
 //	err = it.IsyThing.HandleConfigRequest(tv)
 //	return err
@@ -99,6 +83,22 @@ func (it *IsySwitchThing) HandleValueUpdate(propID string, uom string, newValue 
 // product and model.
 func (it *IsySwitchThing) Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string) {
 	it.IsyThing.Init(ic, thingID, node, prodInfo, hwVersion)
+}
+
+func (it *IsySwitchThing) MakeTD() *tdd.TD {
+	td := it.IsyThing.MakeTD()
+	// value of switch property ID "ST" is "0" or "255"
+	td.AddEvent("ST", vocab.ActionSwitchOnOff, "On/Off", "",
+		&tdd.DataSchema{Type: vocab.WoTDataTypeBool})
+
+	// AddSwitchEvent is short for adding an event for a switch
+	td.AddSwitchEvent(vocab.PropSwitchOnOff, "On/Off change")
+
+	td.AddSwitchAction(vocab.ActionSwitchOnOff, "Switch on/off")
+	//td.AddSwitchAction(vocab.ActionSwitchOff, "Switch off")
+	//td.AddSwitchAction(vocab.ActionSwitchToggle, "Toggle switch")
+
+	return td
 }
 
 // NewIsySwitchThing creates a new instance of an ISY switch.

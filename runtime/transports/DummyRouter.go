@@ -51,6 +51,10 @@ func (svc *DummyRouter) HandlePublishEvent(
 	return nil
 }
 
+func (svc *DummyRouter) HandlePublishMultipleProperties(
+	agentID string, thingID string, propMap map[string]any, reqID string) error {
+	return nil
+}
 func (svc *DummyRouter) HandlePublishProperty(
 	agentID string, thingID string, propName string, value any, reqID string) error {
 	return nil

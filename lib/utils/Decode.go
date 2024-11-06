@@ -41,6 +41,9 @@ func DecodeAsString(value any) string {
 // If value is already a boolean then it is returned as-is.
 func DecodeAsBool(value any) bool {
 	b := false
+	if value == nil {
+		return b
+	}
 	switch value.(type) {
 	case bool:
 		b = value.(bool)

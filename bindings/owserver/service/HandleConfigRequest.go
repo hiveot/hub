@@ -31,8 +31,7 @@ func (svc *OWServerBinding) HandleConfigRequest(msg *hubclient.ThingMessage) (st
 	if msg.Name == vocab.PropDeviceTitle {
 		svc.customTitles[msg.ThingID] = valueStr
 		go svc.SaveState()
-		propMap := map[string]any{vocab.PropDeviceTitle: valueStr}
-		go svc.hc.PubProperties(msg.ThingID, propMap)
+		go svc.hc.PubProperty(msg.ThingID, vocab.PropDeviceTitle, valueStr)
 		// republish the TD as its title changed (yeah its a bit over the top)
 		go svc.PublishNodeTD(node)
 	} else {

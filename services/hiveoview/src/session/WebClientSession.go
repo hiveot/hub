@@ -305,24 +305,16 @@ func (sess *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		slog.String("messageID", msg.MessageID),
 	)
 	if msg.MessageType == vocab.MessageTypeProperty {
-		// Publish a sse event for each of the properties
+		// Publish a sse event for each property
 		// The UI that displays this event can use this as a trigger to load the
 		// property value:
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{k}}"
-		props := make(map[string]any)
-		err := utils.DecodeAsObject(msg.Data, &props)
-		if err != nil {
-			slog.Warn("Failed decoding property", "name", msg.Name, "err", err.Error())
-		} else {
-			for k, v := range props {
-				// notify the browser both of the property value and the timestamp
-				thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, k)
-				propVal := utils.DecodeAsString(v)
-				sess.SendSSE(thingAddr, propVal)
-				thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, k)
-				sess.SendSSE(thingAddr, msg.GetUpdated())
-			}
-		}
+		// notify the browser both of the property value and the timestamp
+		thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, msg.Name)
+		propVal := utils.DecodeAsString(msg.Data)
+		sess.SendSSE(thingAddr, propVal)
+		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Name)
+		sess.SendSSE(thingAddr, msg.GetUpdated())
 	} else if msg.MessageType == vocab.MessageTypeProgressUpdate {
 		// report unhandled delivery updates
 		// for now just pass it to the notification toaster
@@ -525,7 +517,7 @@ func NewWebClientSession(
 		}
 	}
 
-	// TODO: selectively subscribe instead of everything
+	// TODO: selectively subscribe instead of everything, but, based on what?
 	err = hc.Subscribe("", "")
 	err = hc.Observe("", "")
 	if err != nil {
@@ -536,7 +528,11 @@ func NewWebClientSession(
 	// the number is arbitrary and not sensitive.
 	go func() {
 		time.Sleep(time.Second * 3)
-		if cs.sseChan == nil && cs.IsActive() {
+		cs.mux.RLock()
+		hasSSE := cs.sseChan != nil
+		cs.mux.RUnlock()
+
+		if !hasSSE && cs.IsActive() {
 			slog.Info("Removing orphaned web-session (no sse connection) after 3 seconds", "cid", cs.cid)
 			cs.hc.Disconnect()
 		}

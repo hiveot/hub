@@ -58,8 +58,7 @@ const (
 	// deprecated, use forms
 	PostAgentPublishProgressPath = "/agent/progress"
 	// deprecated, use forms
-	PostAgentUpdatePropertyPath = "/agent/property/{thingID}/{name}"
-	// deprecated, use forms
+	PostAgentUpdatePropertyPath           = "/agent/property/{thingID}/{name}"
 	PostAgentUpdateMultiplePropertiesPath = "/agent/properties/{thingID}"
 	// deprecated, use forms
 	PostAgentUpdateTDDPath = "/agent/tdd/{thingID}"
@@ -522,6 +521,22 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 	return stat
 }
 
+// PubMulitpleProperties agent publishes a batch of property values.
+// Intended for use by agents
+func (cl *HttpSSEClient) PubMultipleProperties(thingID string, propMap map[string]any) error {
+	slog.Info("PubProperty",
+		slog.String("thingID", thingID),
+		slog.Int("nr props", len(propMap)),
+	)
+	// FIXME: get path from forms
+	stat := cl.PubMessage("POST", PostAgentUpdateMultiplePropertiesPath,
+		thingID, "", propMap, nil, "")
+	if stat.Error != "" {
+		return errors.New(stat.Error)
+	}
+	return nil
+}
+
 // PubProgressUpdate agent publishes a request progress update message to the digital twin
 // The digital twin will update the request status and notify the sender.
 // This returns an error if the connection with the server is broken
@@ -540,24 +555,17 @@ func (cl *HttpSSEClient) PubProgressUpdate(stat hubclient.ActionProgress) {
 	}
 }
 
-// PubProperties agent publishes multiple properties
-// Intended for use by agents to publish all properties at once
-func (cl *HttpSSEClient) PubProperties(thingID string, props map[string]any) error {
-	if len(props) == 1 {
-		for k, v := range props {
-			slog.Info("PubProperties",
-				slog.String("thingID", thingID),
-				slog.String("name", k),
-				slog.Any("value", v))
-		}
-	} else {
-		slog.Info("PubProperties",
-			slog.String("thingID", thingID),
-			slog.Int("count", len(props)))
-	}
+// PubProperty agent publishes a property value update.
+// Intended for use by agents to property changes
+func (cl *HttpSSEClient) PubProperty(thingID string, name string, value any) error {
+	slog.Info("PubProperty",
+		slog.String("thingID", thingID),
+		slog.String("name", name),
+		slog.Any("value", value))
+
 	// FIXME: get path from forms
-	stat := cl.PubMessage("POST", PostAgentUpdateMultiplePropertiesPath,
-		thingID, "", props, nil, "")
+	stat := cl.PubMessage("POST", PostAgentUpdatePropertyPath,
+		thingID, name, value, nil, "")
 	if stat.Error != "" {
 		return errors.New(stat.Error)
 	}

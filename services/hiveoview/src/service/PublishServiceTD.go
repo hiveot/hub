@@ -43,9 +43,7 @@ func (svc *HiveovService) PublishServiceTD() error {
 
 // PublishServiceProps publishes the service properties
 func (svc *HiveovService) PublishServiceProps() error {
-	props := make(map[string]any)
-	props[vocab.PropNetPort] = svc.port
-	err := svc.hc.PubProperties(src.HiveoviewServiceID, props)
+	err := svc.hc.PubProperty(src.HiveoviewServiceID, vocab.PropNetPort, svc.port)
 
 	if err != nil {
 		slog.Error("failed to publish the hiveoview service properties", "err", err.Error())

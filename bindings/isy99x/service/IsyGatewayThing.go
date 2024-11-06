@@ -1,9 +1,11 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/wot/exposedthing"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
@@ -255,17 +257,29 @@ func (igw *IsyGatewayThing) GetIsyThings() []IIsyThing {
 	return thingList
 }
 
-// GetPropertyValues returns the current or changed property values.
+// GetPropValues returns the current or changed property values.
 // onlyChanges only provides changed properties
-func (igw *IsyGatewayThing) GetPropertyValues(onlyChanges bool) map[string]any {
+func (igw *IsyGatewayThing) GetPropValues(onlyChanges bool) map[string]any {
 	values := igw.propValues.GetValues(onlyChanges)
 	// TODO: add event values. Currently the TD does not list events.
 	return values
 }
 
-// GetTD returns the Gateway TD document
+// Init re-initializes the gateway Thing for use and load the gateway configuration/
+// This removes prior use nodes for a fresh start.
+func (igw *IsyGatewayThing) Init(ic *isy.IsyAPI) {
+	igw.ic = ic
+	igw.thingID = ic.GetID()
+	igw.things = make(map[string]IIsyThing)
+	igw.propValues = exposedthing.NewThingValues()
+
+	// values are used in TD title and description
+	_ = igw.ReadGatewayValues()
+}
+
+// MakeTD returns the Gateway TD document
 // This returns nil if the gateway wasn't initialized
-func (igw *IsyGatewayThing) GetTD() *tdd.TD {
+func (igw *IsyGatewayThing) MakeTD() *tdd.TD {
 	if igw.ic == nil {
 		return nil
 	}
@@ -328,16 +342,24 @@ func (igw *IsyGatewayThing) GetTD() *tdd.TD {
 	return td
 }
 
-// Init re-initializes the gateway Thing for use and load the gateway configuration/
-// This removes prior use nodes for a fresh start.
-func (igw *IsyGatewayThing) Init(ic *isy.IsyAPI) {
-	igw.ic = ic
-	igw.thingID = ic.GetID()
-	igw.things = make(map[string]IIsyThing)
-	igw.propValues = exposedthing.NewThingValues()
+// PubPropValues gets the thing properties and publish them
+func (svc *IsyGatewayThing) PubPropValues(hc hubclient.IHubClient, onlyChanges bool) (err error) {
+	props := svc.GetPropValues(onlyChanges)
+	err = hc.PubMultipleProperties(svc.thingID, props)
+	return err
+}
 
-	// values are used in TD title and description
-	_ = igw.ReadGatewayValues()
+// PubTD read and publishes the gateway's TD
+func (svc *IsyGatewayThing) PubTD(hc hubclient.IHubClient) (err error) {
+	td := svc.MakeTD()
+	tdJSON, _ := json.Marshal(td)
+	err = hc.PubTD(td.ID, string(tdJSON))
+	if err != nil {
+		err = fmt.Errorf("failed publishing ISY gateway TD: %w", err)
+		slog.Error(err.Error())
+		return err
+	}
+	return nil
 }
 
 // ReadGatewayValues reads ISY gateway properties.

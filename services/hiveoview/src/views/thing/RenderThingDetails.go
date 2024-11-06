@@ -144,16 +144,19 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 
 	// get the value of a make & model properties, if they exist
 	// TODO: this is a bit of a pain to do. Is this a common problem?
-	makeID, _ := td.GetPropertyOfType(vocab.PropDeviceMake)
-	modelID, _ := td.GetPropertyOfType(vocab.PropDeviceModel)
-
-	makeValue := ct.GetPropValue(makeID)
-	if makeValue.Value.Text() != "" {
-		thingData.MakeModel = makeValue.Value.Text() + ", "
+	makeID, _ := td.GetPropertyOfAtType(vocab.PropDeviceMake)
+	if makeID != "" {
+		makeValue := ct.GetPropValue(makeID)
+		if makeValue.Value.Text() != "" {
+			thingData.MakeModel = makeValue.Value.Text() + ", "
+		}
 	}
-	modelValue := ct.GetPropValue(modelID)
-	if modelValue.Value.Text() != "" {
-		thingData.MakeModel = thingData.MakeModel + modelValue.Value.Text()
+	modelID, _ := td.GetPropertyOfAtType(vocab.PropDeviceModel)
+	if modelID != "" {
+		modelValue := ct.GetPropValue(modelID)
+		if modelValue.Value.Text() != "" {
+			thingData.MakeModel = thingData.MakeModel + modelValue.Value.Text()
+		}
 	}
 	// full render or fragment render
 	buff, err := app.RenderAppOrFragment(r, TemplateFile, thingData)

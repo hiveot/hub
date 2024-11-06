@@ -75,7 +75,6 @@ func getActionAff(hc hubclient.IConsumerClient, thingID string, name string) (
 func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	name := chi.URLParam(r, "name")
-	var hc hubclient.IConsumerClient
 	//var lastAction *digitwin.InboxRecord
 
 	// Read the TD being displayed
@@ -90,7 +89,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusBadRequest)
 	}
 
-	_, actionAff, err := getActionAff(hc, thingID, name)
+	_, actionAff, err := getActionAff(sess.GetHubClient(), thingID, name)
 	if err != nil {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
@@ -111,7 +110,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 
 	// get last action request that was received
 	// reading a latest value is optional
-	actionVal, err := digitwin.ValuesQueryAction(hc, name, thingID)
+	actionVal, err := digitwin.ValuesQueryAction(sess.GetHubClient(), name, thingID)
 	if err == nil && actionVal.Name != "" {
 		data.LastActionRecord = &actionVal
 		//data.PrevValue = &lastActionRecord

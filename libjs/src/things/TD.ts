@@ -56,6 +56,12 @@ export class ActionAffordance extends InteractionAffordance {
         super();
         this.input = dataSchema
     }
+
+    // set the action's vocabulary @type field
+    setVocabType(atType: string): ActionAffordance {
+        this["@type"] = atType
+        return this
+    }
 }
 
 /** Thing Description Event Affordance
@@ -70,6 +76,11 @@ export class EventAffordance extends InteractionAffordance {
         this.data = dataSchema
     }
 
+    // set the event's vocabulary @type field
+    setVocabType(atType: string): EventAffordance {
+        this["@type"] = atType
+        return this
+    }
 }
 
 /** Thing Description property affordance
@@ -85,6 +96,13 @@ export class PropertyAffordance extends DataSchema {
     // Optional nested properties. Map with PropertyAffordance
     // used when a property has multiple instances, each with their own name
     public properties: Map<string, PropertyAffordance> | undefined = undefined
+
+
+    // set the property's vocabulary @type field
+    setVocabType(atType: string): PropertyAffordance {
+        this["@type"] = atType
+        return this
+    }
 }
 
 
@@ -153,18 +171,15 @@ export class TD extends Object {
     //
     // If the action accepts input parameters then set the .Data field to a DataSchema instance that
     // describes the parameter(s).
+    // If the action has a vocabulary type then set .actionType to it
     //
     // @param id is the key under which it is stored in the action map.
-    // @param actionType one of the vocabulary ActionTypes. Use "" if not known
     // @param title is the short display title of the action.
     // @param description optional detailed description of the action
     // @param input with optional dataschema of the action input data
-    AddAction(id: string, actionType: string, title: string, description?: string, input?: DataSchema): ActionAffordance {
+    AddAction(id: string, title: string, description?: string, input?: DataSchema): ActionAffordance {
         let action = new ActionAffordance()
         action.id = id;
-        if (actionType) {
-            action["@type"] = actionType
-        }
         action.title = title
         action.description = description
         action.input = input
@@ -175,18 +190,16 @@ export class TD extends Object {
     // AddEvent provides a simple way to add an event definition to the TD.
     // This returns the event affordance that can be augmented/modified directly.
     //
+    // To set a known vocabulary @type, use setVocabType on the result
+    //
     // @param id is the event instance ID under which it is stored in the event map.
     //        This can be anything arbitrary as long as the TD and value event use the same ID.
-    // @param eventType one of the EventTypes from the vocabulary or "" if not known
     // @param title is the short display title of the action.
     // @param description optional detailed description of the action
     // @param dataSchema optional event data schema
-    AddEvent(id: string, eventType: string, title: string, description?: string, dataSchema?: DataSchema): EventAffordance {
+    AddEvent(id: string,  title: string, description?: string, dataSchema?: DataSchema): EventAffordance {
         let ev = new EventAffordance()
         ev.id = id;
-        if (eventType) {
-            ev["@type"] = eventType
-        }
         ev.title = title ? title : id;
         ev.description = description
         ev.data = dataSchema
@@ -200,22 +213,20 @@ export class TD extends Object {
     //
     // @param id is the instance ID under which it is stored in the property affordance map.
     //        if not provided then propType is used.
-    // @param propType is one of the PropertyTypes in the vocabulary or "" if not known
     // @param title is the title used in the property.
+    // @param description of the property
     // @param dataType is the type of data the property holds, DataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
-    // @param initialValue the value at time of creation, for testing and debugging
-    AddProperty(id: string, propType: string, title: string, dataType: string): PropertyAffordance {
+    // @param vocabType is the vocabulary type of this property, if known
+    AddProperty(id: string, title: string,  description:string,dataType: string, vocabType?:string): PropertyAffordance {
         let prop = new PropertyAffordance()
-        if (id == "") {
-            id = propType
-        }
         prop.id = id;
-        if (propType) {
-            prop["@type"] = propType
-        }
         prop.type = dataType;
         prop.title = title ? title : id;
         prop.readOnly = true;
+        prop.description = description
+        if (vocabType) {
+            prop.setVocabType(vocabType)
+        }
         this.properties[id] = prop;
         return prop
     }
@@ -225,15 +236,20 @@ export class TD extends Object {
     //
     // @param initialValue add the attribute if the initial value is not undefined
     // @param id is the instance ID under which it is stored in the property affordance map.
-    // @param propType is one of the PropertyTypes in the vocabulary or "" if not known
     // @param title is the title used in the property. Leave empty to use the name.
+    // @param description optional
     // @param dataType is the type of data the property holds, DataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
-    AddPropertyIf(initialValue: any, id: string, propType: string, title: string,
-                  dataType: string, description?:string): PropertyAffordance | undefined {
+    // @param vocabType optional vocabulary @type field
+    AddPropertyIf(initialValue: any, id: string,
+                  title: string, description:string,
+                  dataType: string, vocabType?:string): PropertyAffordance | undefined {
 
         if (initialValue != undefined) {
-            let prop =  this.AddProperty(id, propType, title, dataType)
-            prop.description = description
+            let prop =  this.AddProperty(id, title, description,dataType)
+            if (vocabType){
+                prop.setVocabType(vocabType)
+            }
+            return prop
         }
         return undefined
     }

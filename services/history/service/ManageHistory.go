@@ -6,20 +6,6 @@ import (
 	"log/slog"
 )
 
-// test if ID exists in the array of strings
-// returns true if array is empty, eg no values to match
-func inArray(arr []string, id string) bool {
-	if arr == nil || len(arr) == 0 {
-		return true
-	}
-	for _, s := range arr {
-		if s == id {
-			return true
-		}
-	}
-	return false
-}
-
 // ManageHistory provides the capability to manage how history is captured
 type ManageHistory struct {
 	// retention rules grouped by event ID

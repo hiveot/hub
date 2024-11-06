@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/teris-io/shortid"
 	"log/slog"
@@ -15,17 +16,18 @@ import (
 //
 // agentID is the ID of the agent sending the update
 // thingID is the ID of the original thing as managed by the agent.
-// propName in case value is that of a single property
-// value either property value or a map of property name-value pairs
+// propName name of the TD defined property
+// value property value
 func (svc *HubRouter) HandlePublishProperty(
 	agentID string, thingID string, propName string, value any, messageID string) (err error) {
 
+	propStrVal := utils.DecodeAsString(value)
 	slog.Info("HandlePublishProperty (from agent)",
 		slog.String("agentID", agentID),
 		slog.String("thingID", thingID),
 		slog.String("propName", propName),
 		slog.String("messageID", messageID),
-		slog.String("value", fmt.Sprintf("%v", value)),
+		slog.String("value", fmt.Sprintf("%-.20s", propStrVal)), // limit logging to 20 chars
 	)
 	// update the property in the digitwin and notify observers
 	changed, err2 := svc.dtwStore.UpdatePropertyValue(agentID, thingID, propName, value, messageID)
@@ -33,6 +35,33 @@ func (svc *HubRouter) HandlePublishProperty(
 	if changed {
 		dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
 		svc.cm.PublishProperty(dThingID, propName, value, messageID, agentID)
+	}
+	return err
+}
+
+// HandlePublishMultipleProperties agent publishes a batch with multiple property values.
+// This sends a property update to observers, for each of the properties in the map.
+//
+// agentID is the ID of the agent sending the update
+// thingID is the ID of the original thing as managed by the agent.
+// propMap map of property key-values
+func (svc *HubRouter) HandlePublishMultipleProperties(
+	agentID string, thingID string, propMap map[string]any, messageID string) (err error) {
+
+	slog.Info("HandlePublishMultipleProperties (from agent)",
+		slog.String("agentID", agentID),
+		slog.String("thingID", thingID),
+		slog.String("messageID", messageID),
+		slog.Int("nrprops", len(propMap)),
+	)
+	// update the property in the digitwin and notify observers for each change
+	changes, err2 := svc.dtwStore.UpdateProperties(agentID, thingID, propMap, messageID)
+	err = err2
+	if len(changes) > 0 {
+		dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
+		for k, v := range changes {
+			svc.cm.PublishProperty(dThingID, k, v, messageID, agentID)
+		}
 	}
 	return err
 }

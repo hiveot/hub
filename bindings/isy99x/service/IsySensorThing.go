@@ -17,16 +17,16 @@ func (it *IsySensorThing) GetPropValues(onlyChanges bool) map[string]any {
 	return propValues
 }
 
-// GetTD returns the TD document representing the node
-func (it *IsySensorThing) GetTD() *tdd.TD {
-	td := it.IsyThing.GetTD()
-	// TODO: add sensor properties and events
-	return td
-}
-
 func (it *IsySensorThing) HandleConfigRequest(action *hubclient.ThingMessage) (err error) {
 	// TODO: sensor configuration
 	return errors.New("unknown config: " + action.Name)
+}
+
+// MakeTD returns the TD document representing the node
+func (it *IsySensorThing) MakeTD() *tdd.TD {
+	td := it.IsyThing.MakeTD()
+	// TODO: add sensor properties and events
+	return td
 }
 
 // NewIsySensorThing creates a ISY sensor device instance.

@@ -17,13 +17,7 @@ func (svc *IsyBinding) PublishNodeValues(onlyChanges bool) error {
 	slog.Info("PublishNodeValues", slog.Bool("onlyChanges", onlyChanges))
 
 	// publish the binding's property and event values
-	props := svc.GetBindingPropValues(onlyChanges)
-	bindingID := svc.hc.GetClientID()
-	slog.Info("PublishNodeValues - properties",
-		slog.String("thingID", bindingID),
-		slog.Int("nrProps", len(props)),
-	)
-	err := svc.hc.PubProperties(bindingID, props)
+	err := svc.PubPropValues(onlyChanges)
 	// no use continuing if publishing fails
 	if err != nil {
 		err = fmt.Errorf("failed publishing ISY binding props: %w", err)
@@ -38,19 +32,13 @@ func (svc *IsyBinding) PublishNodeValues(onlyChanges bool) error {
 		slog.Error(err.Error())
 		return err
 	}
-	props = svc.IsyGW.GetPropertyValues(onlyChanges)
-	if len(props) > 0 {
-		_ = svc.hc.PubProperties(svc.IsyGW.GetID(), props)
-	}
+	err = svc.IsyGW.PubPropValues(svc.hc, onlyChanges)
 
 	// read and publish props of each node
 	_ = svc.IsyGW.ReadIsyNodeValues()
 	isyThings := svc.IsyGW.GetIsyThings()
 	for _, thing := range isyThings {
-		props = thing.GetPropValues(onlyChanges)
-		if len(props) > 0 {
-			_ = svc.hc.PubProperties(thing.GetID(), props)
-		}
+		_ = thing.PubPropValues(svc.hc, onlyChanges)
 	}
 	return nil
 }

@@ -17,15 +17,14 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 	var newValue any
 	var td *tdd.TD
 	var propAff *tdd.PropertyAffordance
-	var hc hubclient.IConsumerClient
 	stat := hubclient.ActionProgress{}
 	thingID := chi.URLParam(r, "thingID")
 	propName := chi.URLParam(r, "name")
 	valueStr := r.FormValue(propName)
 
-	_, mySession, err := session.GetSessionFromContext(r)
+	_, sess, err := session.GetSessionFromContext(r)
 	if err == nil {
-		td, propAff, err = getPropAff(hc, thingID, propName)
+		td, propAff, err = getPropAff(sess.GetHubClient(), thingID, propName)
 		_ = td
 	}
 	slog.Info("Updating config",
@@ -37,7 +36,7 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		newValue, err = tdd.ConvertToNative(valueStr, &propAff.DataSchema)
 
-		stat = hc.WriteProperty(thingID, propName, newValue)
+		stat = sess.GetHubClient().WriteProperty(thingID, propName, newValue)
 		if stat.Error != "" {
 			err = errors.New(stat.Error)
 		}
@@ -50,7 +49,7 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 			slog.String("err", err.Error()))
 
 		// todo, differentiate between error causes, eg 500 server error, 503 service not available, 400 invalid value and 401 unauthorized
-		mySession.WriteError(w, err, http.StatusServiceUnavailable)
+		sess.WriteError(w, err, http.StatusServiceUnavailable)
 		return
 	}
 

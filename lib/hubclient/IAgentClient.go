@@ -39,13 +39,22 @@ type IHubClient interface {
 	// and need to send an update on further progress.
 	PubProgressUpdate(stat ActionProgress)
 
-	// PubProperties [agent] publishes a property value update event to the hub.
+	// PubMultipleProperties [agent] publishes a batch of property values to the hub
 	// It returns as soon as delivery to the hub is confirmed.
 	// This is intended for agents, not for consumers.
 	//
 	//	thingID is the native ID of the device (not including the digital twin ID)
-	//	props is the property name-value map to publish where value is the native value
-	PubProperties(thingID string, props map[string]any) error
+	//	propMap is the property name-value map to publish where value is the native value
+	PubMultipleProperties(thingID string, propMap map[string]any) error
+
+	// PubProperty [agent] publishes a property value update to the hub.
+	// It returns as soon as delivery to the hub is confirmed.
+	// This is intended for agents, not for consumers.
+	//
+	//	thingID is the native ID of the device (not including the digital twin ID)
+	//	name is the property name
+	//	value is the property value
+	PubProperty(thingID string, name string, value any) error
 
 	// PubTD publishes a TD document to the Hub.
 	// It returns as soon as delivery to the hub is confirmed.

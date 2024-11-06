@@ -34,7 +34,7 @@ export class NodeValues {
     }
 
     // compare the current value map with an old map and return a new value map with the differences 
-    // This only returns values if they exist in the current map.
+    // This only returns values if they exist in the current map. (old values are irrelevant)
     diffValues(oldValues: NodeValues): NodeValues {
         let diffMap = new NodeValues()
         for (let name in Object(this.values)) {
@@ -63,8 +63,7 @@ export class NodeValues {
             // this.setIf("supportedCCs", node.deviceClass.generic.supportedCCs);
         }
         this.setIf("endpointCount", node.getEndpointCount());
-        // this.setIf("dc.firmwareVersion", node.deviceConfig?.firmwareVersion);
-        this.setIf(vocab.PropDeviceFirmwareVersion, node.firmwareVersion||"n/a");
+        this.setIf( vocab.PropDeviceFirmwareVersion, node.firmwareVersion||"n/a");
 
         if (node.getHighestSecurityClass()) {
             let classID = node.getHighestSecurityClass() as number
@@ -84,14 +83,13 @@ export class NodeValues {
         // this.setIf("label", node.deviceConfig?.label)
         this.setIf("nodeLabel", node.label)
         this.setIf("manufacturerId", node.manufacturerId);
-        this.setIf(vocab.PropDeviceMake, node.deviceConfig?.manufacturer);
+        this.setIf("manufacturerName", node.deviceConfig?.manufacturer);
 
         this.setIf("maxDataRate", node.maxDataRate)
         if (node.nodeType) {
-            this.setIf("nodeType", node.nodeType);
-            this.setIf("nodeTypName", getEnumMemberName(ZWavePlusNodeType, node.nodeType));
+            // this.setIf("nodeType", node.nodeType);
+            // this.setIf("nodeTypName", getEnumMemberName(ZWavePlusNodeType, node.nodeType));
         }
-        this.setIf("paramCount", node.deviceConfig?.paramInformation?.size);
         this.setIf("productId", node.productId);
         this.setIf("productType", node.productType);
         this.setIf("protocolVersion", node.protocolVersion);

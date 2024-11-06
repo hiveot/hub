@@ -488,9 +488,9 @@ func (tdoc *TD) GetProperty(propName string) *PropertyAffordance {
 	return propAffordance
 }
 
-// GetPropertyOfType returns the first property affordance with the given @type
+// GetPropertyOfAtType returns the first property affordance with the given @type
 // This returns the property ID and the property affordances, or nil if not found
-func (tdoc *TD) GetPropertyOfType(atType string) (string, *PropertyAffordance) {
+func (tdoc *TD) GetPropertyOfAtType(atType string) (string, *PropertyAffordance) {
 	//tdoc.updateMutex.RLock()
 	//defer tdoc.updateMutex.RUnlock()
 	for propID, prop := range tdoc.Properties {

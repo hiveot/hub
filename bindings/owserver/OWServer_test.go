@@ -3,7 +3,6 @@ package owserver_test
 import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -96,16 +95,11 @@ func TestPoll(t *testing.T) {
 	err := hc2.Subscribe("", "")
 	require.NoError(t, err)
 	hc2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
-		slog.Info("received event", "id", msg.Name)
-		if msg.MessageType == vocab.MessageTypeProperty {
-			var value map[string]interface{}
-			err2 := utils.DecodeAsObject(msg.Data, &value)
-			assert.NoError(t, err2)
-		} else {
-			var value interface{}
-			err2 := utils.DecodeAsObject(msg.Data, &value)
-			assert.NoError(t, err2)
-		}
+		slog.Info("received message", "type", msg.MessageType, "id", msg.Name)
+		var value interface{}
+		err2 := utils.DecodeAsObject(msg.Data, &value)
+		assert.NoError(t, err2)
+
 		tdCount.Add(1)
 		return *stat.Completed(msg, nil, nil)
 	})

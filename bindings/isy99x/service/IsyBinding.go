@@ -3,6 +3,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/config"
@@ -90,19 +91,6 @@ func (svc *IsyBinding) CreateBindingTD() *tdd.TD {
 	return td
 }
 
-// GetBindingPropValues returns the property/event values of this binding
-func (svc *IsyBinding) GetBindingPropValues(onlyChanges bool) map[string]any {
-
-	// update the values
-	pv := svc.propValues
-	pv.SetValue(vocab.PropDevicePollinterval, svc.config.PollInterval)
-	pv.SetValue(vocab.PropNetAddress, svc.config.IsyAddress)
-	pv.SetValue("loginName", svc.config.LoginName)
-	pv.SetValue(vocab.PropDeviceMake, "Hive Of Things")
-	pv.SetValue(vocab.PropNetConnection, svc.isyAPI.IsConnected())
-	return pv.GetValues(onlyChanges)
-}
-
 // HandleBindingConfig configures the binding.
 func (svc *IsyBinding) HandleBindingConfig(action *hubclient.ThingMessage) error {
 	err := fmt.Errorf("unknown configuration request '%s' from '%s'", action.Name, action.SenderID)
@@ -127,6 +115,35 @@ func (svc *IsyBinding) HandleBindingConfig(action *hubclient.ThingMessage) error
 		if err == nil {
 			svc.IsyGW.Init(svc.isyAPI)
 		}
+	}
+	return err
+}
+
+// PubPropValues publishes the property/event values of this binding
+func (svc *IsyBinding) PubPropValues(onlyChanges bool) (err error) {
+
+	// update the values
+	pv := svc.propValues
+	pv.SetValue(vocab.PropDevicePollinterval, svc.config.PollInterval)
+	pv.SetValue(vocab.PropNetAddress, svc.config.IsyAddress)
+	pv.SetValue("loginName", svc.config.LoginName)
+	pv.SetValue(vocab.PropDeviceMake, "Hive Of Things")
+	pv.SetValue(vocab.PropNetConnection, svc.isyAPI.IsConnected())
+
+	values := pv.GetValues(onlyChanges)
+	err = svc.hc.PubMultipleProperties(svc.thingID, values)
+	return err
+}
+
+// PubTD publishes the binding's TD
+func (svc *IsyBinding) PubTD() (err error) {
+	td := svc.CreateBindingTD()
+	tdJSON, _ := json.Marshal(td)
+	err = svc.hc.PubTD(td.ID, string(tdJSON))
+	if err != nil {
+		err = fmt.Errorf("failed publishing thing TD: %w", err)
+		slog.Error(err.Error())
+		return err
 	}
 	return err
 }

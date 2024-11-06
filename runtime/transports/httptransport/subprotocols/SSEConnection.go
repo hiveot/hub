@@ -145,7 +145,7 @@ func (c *SSEConnection) PublishEvent(
 	}
 }
 
-// PublishProperty send a property change update to subscribers
+// PublishProperty send a property change update to observers
 // if name is empty then data contains a map of property key-value pairse
 func (c *SSEConnection) PublishProperty(
 	dThingID, name string, data any, messageID string, agentID string) {

@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/tlsclient"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/transports/httptransport/subprotocols"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/teris-io/shortid"
@@ -325,6 +326,25 @@ func (svc *HttpBinding) HandleReadAllTDs(w http.ResponseWriter, r *http.Request)
 	}
 	reply, err := svc.hubRouter.HandleReadAllTDs(rp.ClientID)
 	svc.writeReply(w, reply, err)
+}
+
+// HandlePublishMultipleProperties agent sends a map with multiple property
+func (svc *HttpBinding) HandlePublishMultipleProperties(w http.ResponseWriter, r *http.Request) {
+	rp, err := subprotocols.GetRequestParams(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	messageID := r.Header.Get(tlsclient.HTTPMessageIDHeader)
+	if messageID == "" {
+		messageID = shortid.MustGenerate()
+	}
+	propMap := make(map[string]any)
+	err = utils.Decode(rp.Data, &propMap)
+	if err == nil {
+		err = svc.hubRouter.HandlePublishMultipleProperties(rp.ClientID, rp.ThingID, propMap, messageID)
+	}
+	svc.writeReply(w, nil, err)
 }
 
 // HandlePublishProperty agent sends single or multiple property updates

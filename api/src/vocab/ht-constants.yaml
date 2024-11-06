@@ -18,7 +18,8 @@ Operations:
     HTOpUpdateTD: "updatetd"  # directory operation
 #    HTOpDelivery: "updatedelivery"
     HTOpPublishEvent: "publishevent"
-    HTOpUpdateProperty: "updateproperty"
+    HTOpPublishMultipleProperties: "publishmultipleproperties"
+    HTOpPublishProperty: "publishproperty"
 
 
 

@@ -57,7 +57,7 @@ export async function  connectSSE(
     onConnection: ConnectionHandler ):Promise<EventSource> {
 
     return new Promise((resolve, reject): void => {
-        // FIXME: why is no data received?
+
         var eventSourceInitDict = {
             headers: {
                 authorization: 'bearer ' + authToken,

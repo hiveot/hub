@@ -154,15 +154,13 @@ func TestHttpsGetProps(t *testing.T) {
 	err := ag1.PubTD(td1.ID, string(td1JSON))
 	require.NoError(t, err)
 
-	propMap := map[string]any{}
-	propMap[key1] = data1
-	propMap[key2] = data2
-	err = ag1.PubProperties(td1.ID, propMap)
+	err = ag1.PubProperty(td1.ID, key1, data1)
+	err = ag1.PubProperty(td1.ID, key2, data2)
 	require.NoError(t, err)
 	//
 	valueList, err := digitwin.ValuesReadAllProperties(cl2, dThingID)
 	require.NoError(t, err)
-	require.Equal(t, len(propMap), len(valueList))
+	require.Equal(t, 2, len(valueList))
 	valueMap := api.ValueListToMap(valueList)
 
 	// note: golang unmarshalls integers as float64.
@@ -208,11 +206,12 @@ func TestSubscribeValues(t *testing.T) {
 	propMap[key2] = data2
 	// FIXME: this is agent->consumer
 	// consumer SSE client should not send a delivery confirmation!
-	err = ag.PubProperties(td1.ID, propMap)
+	err = ag.PubProperty(td1.ID, key1, data1)
+	err = ag.PubProperty(td1.ID, key2, data2)
 	require.NoError(t, err)
 
 	time.Sleep(time.Millisecond * 1000)
-	assert.Equal(t, int32(1), msgCount.Load())
+	assert.Equal(t, int32(2), msgCount.Load())
 }
 
 func TestWriteProperties(t *testing.T) {

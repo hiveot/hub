@@ -1,12 +1,14 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/wot/exposedthing"
 	"github.com/hiveot/hub/wot/tdd"
+	"log/slog"
 	"strings"
 	"sync"
 )
@@ -32,8 +34,6 @@ type IIsyThing interface {
 	GetID() string
 	// GetPropValues returns the property values of the thing
 	GetPropValues(onlyChanges bool) map[string]any
-	// GetTD returns the generated TD document describing the Thing
-	GetTD() *tdd.TD
 	// HandleActionRequest passes incoming actions to the Thing for execution
 	HandleActionRequest(tv *hubclient.ThingMessage) (err error)
 	// HandleConfigRequest passes configuration changes to the Thing for execution
@@ -42,6 +42,12 @@ type IIsyThing interface {
 	HandleValueUpdate(propID string, uom string, newValue string) error
 	// Init assigns the ISY connection and node this Thing represents
 	Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string)
+	// MakeTD returns the generated TD document describing the Thing
+	MakeTD() *tdd.TD
+	// PubPropValues publish a thing's property values
+	PubPropValues(hc hubclient.IHubClient, onlyChanges bool) error
+	// PubTD publishes the Thing's TD to the hub
+	PubTD(hc hubclient.IHubClient) error
 }
 
 // IsyThing is the generic base of Things constructed out of ISY Insteon nodes.
@@ -77,50 +83,10 @@ func (it *IsyThing) GetID() string {
 	return it.thingID
 }
 
-// GetPropValues returns the property values
+// GetPropValues returns the property values, set with read
 func (it *IsyThing) GetPropValues(onlyChanges bool) map[string]any {
 	propValues := it.propValues.GetValues(onlyChanges)
 	return propValues
-}
-
-// GetTD return a basic TD document that describes the Thing represented here.
-// The parent should add properties, events and actions specific to their capabilities.
-func (it *IsyThing) GetTD() *tdd.TD {
-	title := it.productInfo.ProductName
-	titleProp, _ := it.propValues.GetValue(vocab.PropDeviceTitle)
-	if titleProp != nil {
-		title, _ = titleProp.(string)
-	}
-	it.mux.RLock()
-	td := tdd.NewTD(it.thingID, title, it.deviceType)
-	it.mux.RUnlock()
-
-	//--- read-only properties
-	prop := td.AddPropertyAsInt("flag", "", "Node Flag")
-	prop.Description = "A bit mask: 0x01 -- Node is initialized (internal)," +
-		" 0x02 -- Node is going to be crawled (internal)," +
-		" 0x04 -- This is a group node," +
-		" 0x08 -- This is the root node for ISY, i.e. My Lighting," +
-		" 0x10 -- Device Communications Error," +
-		" 0x20 -- Brand new node," +
-		" 0x40 -- Node shall be deleted," +
-		" 0x80 -- Node is device root"
-	prop = td.AddPropertyAsString("nodeType", "", "Insteon device type")
-	prop.Description = "<device cat>.<sub cat>.<version>.<reserved>"
-	prop = td.AddPropertyAsString("", vocab.PropDeviceDescription, "Product description")
-	prop = td.AddPropertyAsString("", vocab.PropDeviceModel, "Product model")
-	prop = td.AddPropertyAsString("", vocab.PropDeviceHardwareVersion, "Device version")
-
-	//--- configuration
-	prop = td.AddPropertyAsString(vocab.PropDeviceEnabledDisabled,
-		vocab.PropDeviceEnabledDisabled, "Enabled/disabled")
-	prop.Description = "Whether or not the node is enabled (plugged in). Note: this feature only works on 99 Series"
-	prop.Enum = []interface{}{"enabled", "disabled"}
-	//prop.ReadOnly = false // TODO: support for enabled/disabled
-
-	prop = td.AddPropertyAsString("", vocab.PropDeviceTitle, "Title")
-	prop.ReadOnly = false
-	return td
 }
 
 // GetValue returns the default 'value' property
@@ -192,6 +158,68 @@ func (it *IsyThing) Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prod
 	pv.SetValue(vocab.PropDeviceModel, prodInfo.Model)
 	pv.SetValue(vocab.PropDeviceHardwareVersion, hwVersion)
 	pv.SetValue("nodeType", node.Type)
+}
+
+// MakeTD return a basic TD document that describes the Thing represented here.
+// The parent should add properties, events and actions specific to their capabilities.
+func (it *IsyThing) MakeTD() *tdd.TD {
+	title := it.productInfo.ProductName
+	titleProp, _ := it.propValues.GetValue(vocab.PropDeviceTitle)
+	if titleProp != nil {
+		title, _ = titleProp.(string)
+	}
+	it.mux.RLock()
+	td := tdd.NewTD(it.thingID, title, it.deviceType)
+	it.mux.RUnlock()
+
+	//--- read-only properties
+	prop := td.AddPropertyAsInt("flag", "", "Node Flag")
+	prop.Description = "A bit mask: 0x01 -- Node is initialized (internal)," +
+		" 0x02 -- Node is going to be crawled (internal)," +
+		" 0x04 -- This is a group node," +
+		" 0x08 -- This is the root node for ISY, i.e. My Lighting," +
+		" 0x10 -- Device Communications Error," +
+		" 0x20 -- Brand new node," +
+		" 0x40 -- Node shall be deleted," +
+		" 0x80 -- Node is device root"
+	prop = td.AddPropertyAsString("nodeType", "", "Insteon device type")
+	prop.Description = "<device cat>.<sub cat>.<version>.<reserved>"
+	prop = td.AddPropertyAsString("", vocab.PropDeviceDescription, "Product description")
+	prop = td.AddPropertyAsString("", vocab.PropDeviceModel, "Product model")
+	prop = td.AddPropertyAsString("", vocab.PropDeviceHardwareVersion, "Device version")
+
+	//--- configuration
+	prop = td.AddPropertyAsString(vocab.PropDeviceEnabledDisabled,
+		vocab.PropDeviceEnabledDisabled, "Enabled/disabled")
+	prop.Description = "Whether or not the node is enabled (plugged in). Note: this feature only works on 99 Series"
+	prop.Enum = []interface{}{"enabled", "disabled"}
+	//prop.ReadOnly = false // TODO: support for enabled/disabled
+
+	prop = td.AddPropertyAsString("", vocab.PropDeviceTitle, "Title")
+	prop.ReadOnly = false
+	return td
+}
+
+// PubPropValues gets the thing properties and publish them
+func (svc *IsyThing) PubPropValues(hc hubclient.IHubClient, onlyChanges bool) (err error) {
+	props := svc.GetPropValues(onlyChanges)
+	if len(props) > 0 {
+		err = hc.PubMultipleProperties(svc.thingID, props)
+	}
+	return err
+}
+
+// PubTD creates and publishes the thing's TD
+func (svc *IsyThing) PubTD(hc hubclient.IHubClient) (err error) {
+	td := svc.MakeTD()
+	tdJSON, _ := json.Marshal(td)
+	err = hc.PubTD(td.ID, string(tdJSON))
+	if err != nil {
+		err = fmt.Errorf("failed publishing ISY gateway TD: %w", err)
+		slog.Error(err.Error())
+		return err
+	}
+	return nil
 }
 
 // NewIsyThing constructs a general purpose ISY thing with basic properties

@@ -20,8 +20,8 @@ func (it *IsyDimmerThing) GetValues(onlyChanges bool) map[string]any {
 	return propValues
 }
 
-func (it *IsyDimmerThing) GetTD() *tdd.TD {
-	td := it.IsyThing.GetTD()
+func (it *IsyDimmerThing) MakeTD() *tdd.TD {
+	td := it.IsyThing.MakeTD()
 	// AddSwitchEvent is short for adding an event for a switch
 	td.AddDimmerEvent(vocab.PropSwitchDimmer)
 

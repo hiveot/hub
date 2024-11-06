@@ -11,7 +11,7 @@ import fs from "fs";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import {BindingConfig} from "./BindingConfig";
 import * as tslog from 'tslog';
-import {handleActionRequest} from "@zwavejs/handleActionRequest";
+import {handleInvokeAction} from "@zwavejs/handleInvokeAction";
 import {ValueID} from "@zwave-js/core";
 import {IAgentClient} from "@hivelib/hubclient/IAgentClient";
 import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
@@ -45,6 +45,7 @@ export class ZwaveJSBinding {
     constructor(hc: IAgentClient, config: BindingConfig) {
         this.hc = hc;
         this.config = config
+        log.settings.minLevel = 3 // info
         // zwapi handles the zwavejs specific details
         this.zwapi = new ZWAPI(
             this.handleNodeUpdate.bind(this),
@@ -103,7 +104,7 @@ export class ZwaveJSBinding {
             // diffValues = lastNodeValues.diffValues(newValues)
             diffValues = newValues.diffValues(lastNodeValues)
         }
-        this.hc.pubProperties(thingTD.id, diffValues.values)
+        this.hc.pubMultipleProperties(thingTD.id, diffValues.values)
         this.lastValues.set(thingTD.id, newValues);
 
     }
@@ -120,28 +121,31 @@ export class ZwaveJSBinding {
         // update the map of recent values
         let lastValue = valueMap?.values[propID]
         let va = getVidAffordance(node, vid, this.config.maxNrScenes)
-
-        if (valueMap && (lastValue !== newValue || !this.config.publishOnlyChanges)) {
-            // TODO: round the value using a precision
-            // TODO: republish after some time even when unchanged
-            // Determine if value changed enough to publish
-            if (newValue != undefined) {
-                valueMap.values[propID] = newValue
-                if (va?.messageType === "attr" || va?.messageType === "config"){
-                    this.hc.pubProperty(deviceID, propID, newValue)
-                } else {
-                    log.debug("handleValueUpdate: publish event for deviceID=" + deviceID + ", propID=" + propID + "")
-                    this.hc.pubEvent(deviceID, propID, newValue)
+        try {
+            if (valueMap && (lastValue !== newValue || !this.config.publishOnlyChanges)) {
+                // TODO: round the value using a precision
+                // TODO: republish after some time even when unchanged
+                // Determine if value changed enough to publish
+                if (newValue != undefined) {
+                    valueMap.values[propID] = newValue
+                    if (va?.messageType === "attr" || va?.messageType === "config") {
+                        this.hc.pubProperty(deviceID, propID, newValue)
+                    } else {
+                        log.debug("handleValueUpdate: publish event for deviceID=" + deviceID + ", propID=" + propID + "")
+                        this.hc.pubEvent(deviceID, propID, newValue)
+                    }
                 }
-            }
-        } else {
-            // for debugging
-            log.debug("handleValueUpdate: unchanged value deviceID="+deviceID+", propID="+propID+" (ignored)" )
+            } else {
+                // for debugging
+                log.debug("handleValueUpdate: unchanged value deviceID=" + deviceID + ", propID=" + propID + " (ignored)")
 
+            }
+        } catch (e) {
+            log.error("handleValueUpdate: caught exception", e)
         }
     }
 
-    // periodically publish the properties that have updated
+            // periodically publish the properties that have updated
     // publishPropertyUpdates() {
     //     for (let [deviceID, valueMap] of this.lastValues) {
     //         let node = this.zwapi.getNodeByDeviceID(deviceID)
@@ -169,12 +173,12 @@ export class ZwaveJSBinding {
             logVid(this.vidCsvFD)
         }
         this.hc.setActionHandler( (msg:ThingMessage):ActionProgress => {
-            let stat = handleActionRequest(msg,this.zwapi, this.hc)
+            let stat = handleInvokeAction(msg,this.zwapi, this.hc)
             return stat
         })
         this.hc.setPropertyHandler( (msg:ThingMessage):void => {
             // todo, separate hadnler
-            handleActionRequest(msg,this.zwapi, this.hc)
+            handleInvokeAction(msg,this.zwapi, this.hc)
         })
 
         await this.zwapi.connectLoop(this.config);

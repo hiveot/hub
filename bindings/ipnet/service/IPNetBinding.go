@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/bindings/ipnet/config"
 	"github.com/hiveot/hub/lib/hubclient"
@@ -41,15 +40,12 @@ func (svc *IPNetBinding) Start(hc hubclient.IHubClient) (err error) {
 	svc.hc.SetMessageHandler(svc.ActionHandler)
 
 	// publish this binding's TD document
-	td := svc.MakeBindingTD()
-	tdJSON, _ := json.Marshal(td)
-	err = svc.hc.PubTD(td.ID, string(tdJSON))
+	err = svc.PubBindingTD()
 	if err != nil {
 		slog.Error("failed publishing service TD. Continuing...",
 			slog.String("err", err.Error()))
 	} else {
-		props := svc.MakeBindingProps()
-		_ = svc.hc.PubProperties(td.ID, props)
+		svc.PubBindingProps()
 	}
 
 	// start polling in the background

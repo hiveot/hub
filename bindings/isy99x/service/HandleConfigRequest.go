@@ -45,7 +45,7 @@ func (svc *IsyBinding) handleConfigRequest(action *hubclient.ThingMessage) (stat
 		_ = svc.PublishNodeValues(true)
 		// re-submit the TD if the title changes
 		if action.Name == vocab.PropDeviceTitle {
-			td := isyThing.GetTD()
+			td := isyThing.MakeTD()
 			tdJSON, _ := json.Marshal(td)
 
 			_ = svc.hc.PubTD(td.ID, string(tdJSON))

@@ -15,7 +15,7 @@ import (
 )
 
 // key of filter by event/action name, stored in context
-const filterContextKey = "name"
+//const filterContextKey = "name"
 
 // The HistoryCursor contains the bucket instance created for a cursor.
 // It is created when a cursor is requested, stored in the cursorCache and

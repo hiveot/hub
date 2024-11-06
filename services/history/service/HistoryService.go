@@ -8,8 +8,6 @@ import (
 	"log/slog"
 )
 
-const PropertiesBucketName = "properties"
-
 // HistoryService provides storage for action and event history using the bucket store
 // Each Thing has a bucket with events and actions.
 // This implements the IHistoryService interface

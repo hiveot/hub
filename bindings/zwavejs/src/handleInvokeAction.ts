@@ -6,7 +6,7 @@ import * as tslog from 'tslog';
 import { IAgentClient} from "@hivelib/hubclient/IAgentClient";
 import {getVidValue, ZWAPI} from "@zwavejs/ZWAPI";
 import {MessageTypeProperty} from "@hivelib/api/vocab/vocab.js";
-import {handleConfigWriteRequest} from "@zwavejs/handleConfigWriteRequest";
+import {handleWriteProperty} from "@zwavejs/handleWriteProperty";
 import {setValue} from "@zwavejs/setValue";
 import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
 
@@ -17,7 +17,7 @@ const log = new tslog.Logger()
 // handle controller actions as defined in the TD
 // Normally this returns the delivery status to the caller.
 // If delivery is in progress then use 'hc' to send further status updates.
-export function  handleActionRequest(
+export function  handleInvokeAction(
     msg: ThingMessage, zwapi: ZWAPI, hc: IAgentClient): ActionProgress {
 
     let stat = new ActionProgress()
@@ -32,7 +32,7 @@ export function  handleActionRequest(
         return stat
     }
     if (msg.messageType == MessageTypeProperty) {
-        return handleConfigWriteRequest(msg, node, zwapi, hc)
+        return handleWriteProperty(msg, node, zwapi, hc)
     }
     // unmarshal the payload
     // FIXME: who does the (un)marshalling? If the form defines the

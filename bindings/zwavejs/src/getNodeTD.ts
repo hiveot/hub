@@ -35,8 +35,9 @@ function addAction(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string
     // actions without input have no schema. How to identify these?
     let schema = new DataSchema()
     SetDataSchema(schema, node, vid)
-    let action = td.AddAction(name, va.atType,
-        schema.title || name, schema.description, schema)
+    let action = td.AddAction(
+        name, schema.title || name, schema.description, schema)
+        .setVocabType(va.atType)
 
     if (action.input) {
         // The VID title, description belongs to the action, not the schema
@@ -50,7 +51,7 @@ function addAction(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string
 // Add the ZWave value data to the TD as an attribute property
 function addAttribute(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): PropertyAffordance {
 
-    let prop = td.AddProperty(name, va?.atType, "", WoTDataTypeNone)
+    let prop = td.AddProperty(name, va?.atType, WoTDataTypeNone, "")
     // SetDataSchema also sets the title and data type
     SetDataSchema(prop, node, vid)
     return prop
@@ -58,7 +59,7 @@ function addAttribute(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: str
 
 // Add the ZWave VID to the TD as a configuration property
 function addConfig(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): PropertyAffordance {
-    let prop = td.AddProperty(name, va.atType, "", WoTDataTypeNone)
+    let prop = td.AddProperty(name, va.atType, WoTDataTypeNone, "")
     prop.readOnly = false
     // SetDataSchema also sets the title and data type
     SetDataSchema(prop, node, vid)
@@ -73,9 +74,10 @@ function addEvent(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string,
     let schema = new DataSchema()
     SetDataSchema(schema, node, vid)
 
-    let ev = td.AddEvent(name, va.atType, schema.title || name, schema.description, schema)
+    let ev = td.AddEvent(name, schema.title || name, schema.description, schema)
+        .setVocabType(va.atType)
 
-    // SetDataSchema use the dataschema title, not the event data title
+        // SetDataSchema use the dataschema title, not the event data title
     if (ev.data) {
         ev.data.title = undefined
         ev.data.description = undefined
@@ -84,7 +86,7 @@ function addEvent(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string,
 
 }
 
-// parseNodeInfo convers a ZWave Node into a WoT TD document 
+// parseNodeInfo converts a ZWave Node into a WoT TD document
 // - extract available node attributes and configuration
 // - convert ZWave vocabulary to WoT/HiveOT vocabulary
 // - build a TD document containing properties, events and actions
@@ -119,117 +121,132 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     //--- Step 2: Add read-only attributes that are common to many nodes
     // since none of these have standard property names, use the ZWave name instead.
     // these names must match those used in parseNodeValues()
-    let prop = td.AddProperty("associationCount", "", "Association Count",
-        WoTDataTypeNumber);
+    td.AddProperty("associationCount", "Association Count","",WoTDataTypeNumber, );
 
-    td.AddPropertyIf(node.canSleep, "canSleep", "",
-        "Device sleeps to conserve battery", WoTDataTypeBool);
+    td.AddPropertyIf(node.canSleep, "canSleep","Can Sleep",
+        "Device sleeps to conserve battery",WoTDataTypeBool);
+    if (node.deviceClass) {
+        td.AddPropertyIf( node.deviceClass.basic,"deviceClassBasic",
+            node.deviceClass.basic.label, "", WoTDataTypeString);
+        td.AddPropertyIf(node.deviceClass.generic,"deviceClassGeneric",
+            node.deviceClass.generic.label,"", WoTDataTypeString);
+        td.AddPropertyIf(node.deviceClass.specific.label, "deviceClassSpecific",
+            node.deviceClass.specific.label,"", WoTDataTypeString);
+        // this.setIf("supportedCCs", node.deviceClass.generic.supportedCCs);
+    }
+    td.AddPropertyIf(node.deviceDatabaseUrl, "deviceDatabaseURL","Database URL",
+        "Link to database with device information", WoTDataTypeString,);
+    td.AddProperty(vocab.PropDeviceDescription,"Description",
+        "", WoTDataTypeString)
+        .setVocabType(vocab.PropDeviceDescription);
+    td.AddProperty("endpointCount", "Endpoints",
+        "Number of endpoints in this node",WoTDataTypeNumber);
+    td.AddProperty(vocab.PropDeviceFirmwareVersion,
+        "Device firmware version","", WoTDataTypeString, vocab.PropDeviceFirmwareVersion);
 
-    td.AddPropertyIf(node.deviceDatabaseUrl, "deviceDatabaseURL", "",
-        "Link to database with device information", WoTDataTypeString);
-    td.AddProperty("",vocab.PropDeviceDescription,
-        "Description", WoTDataTypeString);
-    td.AddProperty("endpointCount", "",
-        "Number of endpoints", WoTDataTypeNumber);
-    td.AddPropertyIf(node.firmwareVersion, "", vocab.PropDeviceFirmwareVersion,
-        "Device firmware version", WoTDataTypeString);
-    td.AddPropertyIf(node.getHighestSecurityClass(), "highestSecurityClass", "",
-        "", WoTDataTypeString);
-    td.AddPropertyIf(node.interviewAttempts, "interviewAttempts", "",
-        "Nr interview attempts", WoTDataTypeNumber);
+    td.AddPropertyIf(node.getHighestSecurityClass(), "highestSecurityClass",
+        "Security Class", "",WoTDataTypeString);
+    td.AddPropertyIf(node.interviewAttempts, "interviewAttempts",
+        "Nr interview attempts","",WoTDataTypeNumber);
     if (node.interviewStage) {
-        td.AddProperty("interviewStage", "",
-            "Device Interview Stage", WoTDataTypeString).SetAsEnum(InterviewStage)
+        td.AddProperty("interviewStage", "Device Interview Stage", "",
+            WoTDataTypeString).SetAsEnum(InterviewStage)
     }
-    td.AddPropertyIf(node.isListening, "isListening", "",
-        "Device always listens", WoTDataTypeBool);
-    td.AddPropertyIf(node.isSecure, "isSecure", "", "Secured",WoTDataTypeBool,
-        "Device communicates securely with controller", );
-    td.AddPropertyIf(node.isRouting, "isRouting", "", "Routing Device",WoTDataTypeBool,
-        "Device support message routing/forwarding (if listening)", );
-    td.AddPropertyIf(node.isControllerNode, "isControllerNode", "",
-        "Device is a ZWave controller", WoTDataTypeBool);
-    td.AddPropertyIf(node.keepAwake, "keepAwake", "","Keep Awake", WoTDataTypeBool,
-        "Device stays awake a bit longer before sending it to sleep")
-    td.AddPropertyIf(node.label, "nodeLabel", vocab.PropDeviceModel, "Manufacturer device label", WoTDataTypeString);
-    td.AddProperty("lastSeen", "", "Last Seen", WoTDataTypeString)
-        .description = "Time this node was last seen"
+    td.AddProperty("isListening", "Is Listening",
+        "The device is always listening and does not sleep", WoTDataTypeBool);
+    td.AddPropertyIf(node.isSecure, "isSecure","Secured",
+        "Device communicates securely with controller",WoTDataTypeBool );
+    td.AddPropertyIf(node.isRouting, "isRouting","Routing Device",
+        "Device support message routing/forwarding (if listening)", WoTDataTypeBool );
+    td.AddPropertyIf(node.isControllerNode, "isControllerNode",
+        "Controller Node", "Device is a ZWave controller", WoTDataTypeBool);
+    td.AddPropertyIf(node.keepAwake, "keepAwake","Keep Awake",
+        "Device stays awake a bit longer before sending it to sleep",WoTDataTypeBool)
+    td.AddPropertyIf(node.label, "nodeLabel","Node Label",
+        "Manufacturer device label",  WoTDataTypeString,vocab.PropDeviceModel);
+    td.AddProperty("lastSeen","Last Seen",
+        "Time this node was last seen", WoTDataTypeString)
 
 
-    td.AddPropertyIf(node.manufacturerId, "manufacturerId", "",
-        "Manufacturer ID", WoTDataTypeString);
-    td.AddPropertyIf(node.deviceConfig?.manufacturer, "", vocab.PropDeviceMake,
-        "Manufacturer", WoTDataTypeString);
-    td.AddPropertyIf(node.maxDataRate, "maxDataRate", "",
-         WoTDataTypeNumber,
-        "Device maximum communication data rate");
-    if (node.nodeType) {
-        td.AddProperty("nodeType", "", "ZWave node type", WoTDataTypeNumber).SetAsEnum(NodeType)
-    }
-    td.AddPropertyIf(node.productId, "productId", "",
-        "", WoTDataTypeNumber);
-    td.AddPropertyIf(node.protocolVersion, "protocolVersion", "",
-        "ZWave protocol version", WoTDataTypeString);
-
-    td.AddPropertyIf(node.sdkVersion, "", vocab.PropDeviceSoftwareVersion,
-        "SDK version", WoTDataTypeString);
-    if (node.status) {
-        td.AddProperty("", vocab.PropDeviceStatus,
-            "Node status", WoTDataTypeNumber).SetAsEnum(NodeStatus)
-    }
-    td.AddPropertyIf(node.supportedDataRates, "supportedDataRates", "",
-        "ZWave Data Speed", WoTDataTypeString);
-
-    td.AddPropertyIf(node.userIcon, "userIcon", "",
+    td.AddPropertyIf(node.manufacturerId, "manufacturerId","Manufacturer ID",
         "", WoTDataTypeString);
 
-    // always show whether this is ZWave+
-    td.AddProperty("zwavePlusNodeType", "",
-        "ZWave+ Node Type", WoTDataTypeNumber)
-    prop = td.AddProperty("zwavePlusNodeTypeName", "",
-        "ZWave+ Node Type Name", WoTDataTypeString)
-    if (node.zwavePlusNodeType != undefined) {
-        prop.SetAsEnum(ZWavePlusNodeType)
-    } else {
-        prop.description = "Z-Wave+ Command Class is not supported"
-    }
+    td.AddPropertyIf(node.deviceConfig?.manufacturer, "manufacturerName",
+        "Manufacturer Name","", WoTDataTypeString,vocab.PropDeviceMake);
 
+    td.AddPropertyIf(node.maxDataRate, "maxDataRate","Max data rate",
+        "Device maximum communication data rate", WoTDataTypeNumber);
+    if (node.nodeType) {
+        // td.AddProperty("nodeType", "ZWave node type",
+        //     "",WoTDataTypeNumber)
+        // td.AddProperty("nodeTypeName", "ZWave node type name",
+        //     "",WoTDataTypeString).SetAsEnum(NodeType)
+    }
+    td.AddPropertyIf(node.productId, "productId","Product ID",
+        "", WoTDataTypeNumber);
+    td.AddPropertyIf(node.productType, "productType","Product Type",
+        "", WoTDataTypeNumber);
+    td.AddPropertyIf(node.protocolVersion, "protocolVersion","ZWave protocol version",
+        "", WoTDataTypeString);
+
+    td.AddPropertyIf(node.sdkVersion, vocab.PropDeviceSoftwareVersion,"SDK version",
+        "", WoTDataTypeString,vocab.PropDeviceSoftwareVersion);
+    if (node.status) {
+        td.AddProperty(vocab.PropDeviceStatus,"Node status",
+            "", WoTDataTypeNumber, vocab.PropDeviceStatus)
+            .SetAsEnum(NodeStatus)
+    }
+    td.AddPropertyIf(node.supportedDataRates, "supportedDataRates","ZWave Data Speed",
+        "", WoTDataTypeString);
+
+    td.AddPropertyIf(node.userIcon, "userIcon","Icon",
+        "", WoTDataTypeString);
+
+    // show whether this is ZWave+
+    if (node.zwavePlusNodeType) {
+        td.AddProperty("zwavePlusNodeType", "ZWave+ Node Type",
+            "", WoTDataTypeNumber)
+        let prop = td.AddProperty("zwavePlusNodeTypeName", "ZWave+ Node Type Name",
+            "", WoTDataTypeString)
+        if (node.zwavePlusNodeType != undefined) {
+            prop.SetAsEnum(ZWavePlusNodeType)
+        } else {
+            prop.description = "Z-Wave+ Command Class is not supported"
+        }
+    }
     if (node.zwavePlusRoleType) {
-        td.AddProperty("zwavePlusRoleType", "",
-            "ZWave+ Role Type", WoTDataTypeNumber)
-        td.AddProperty("zwavePlusRoleTypeName", "",
-            "ZWave+ Role Type Name", WoTDataTypeString)
+        td.AddProperty("zwavePlusRoleType","ZWave+ Role Type",
+            "",  WoTDataTypeNumber)
+        td.AddProperty("zwavePlusRoleTypeName","ZWave+ Role Type Name",
+            "", WoTDataTypeString)
             .SetAsEnum(ZWavePlusRoleType)
     }
-    td.AddPropertyIf(node.zwavePlusVersion, "zwavePlusVersion", "",
-        "Z-Wave+ Version", WoTDataTypeNumber);
+    td.AddPropertyIf(node.zwavePlusVersion, "zwavePlusVersion","Z-Wave+ Version",
+        "",WoTDataTypeNumber);
 
     // actions
 
-    let action = td.AddAction("checkLifelineHealth", "",
-        "Check connection health", WoTDataTypeNone)
-    action.description = "Initiates tests to check the health of the connection between the controller and this node and returns the results. " +
-        "This should NOT be done while there is a lot of traffic on the network because it will negatively impact the test results"
+    td.AddAction("checkLifelineHealth", "Check connection health",
+        "Initiates tests to check the health of the connection between the controller and this node and returns the results. " +
+        "This should NOT be done while there is a lot of traffic on the network because it will negatively impact the test results")
 
-
-    action = td.AddAction("ping", "", "Ping", WoTDataTypeNone)
-    action.description = "Ping the device"
-    action.output=new DataSchema({
+    td.AddAction("ping", "Ping", "Ping the device").output=new DataSchema({
         "title": "Duration",
         "type": WoTDataTypeNumber,
         "unit": "msec"
     })
     // todo: what type of response is expected: latency in msec
 
-    action = td.AddAction("refreshInfo", "", "Refresh Device Info", WoTDataTypeNone)
-    action.description = "Resets (almost) all information about this node and forces a fresh interview. " +
-        "Ignored when interview is in progress. After this action, the node will no longer be ready. This can take a long time."
+    td.AddAction("refreshInfo",  "Refresh Device Info",
+        "Resets (almost) all information about this node and forces a fresh interview. " +
+        "Ignored when interview is in progress. After this action, the node will "+
+        "no longer be ready. This can take a long time.")
     // todo: what type of response is expected: progress status updates until completed
 
 
-    action = td.AddAction("refreshValues", "", "Refresh Device Values", WoTDataTypeNone)
-    action.description = "Refresh all non-static sensor and actuator values. " +
-        "Use sparingly. This can take a long time and generate a lot of traffic."
+    td.AddAction("refreshValues", "Refresh Device Values",
+        "Refresh all non-static sensor and actuator values. " +
+        "Use sparingly. This can take a long time and generate a lot of traffic.")
     // todo: what type of response is expected: progress status updates until completed
 
 
@@ -248,9 +265,9 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
         property: "name"
     }
     let titleKey = getPropName(nameVid)
-    prop = td.AddProperty(titleKey, vocab.PropDeviceTitle, "Device name", WoTDataTypeString);
+    let prop = td.AddProperty(titleKey,"Device name",
+        "Custom device name/title",  WoTDataTypeString, vocab.PropDeviceTitle);
     prop.readOnly = false
-    prop.description = "Custom device name/title"
 
     let locationVid = {
         commandClass: titleCC,
@@ -258,9 +275,9 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
         property: "location"
     }
     let locationKey = getPropName(locationVid)
-    prop = td.AddProperty(locationKey, vocab.PropLocation, "Device location",  WoTDataTypeString);
+    prop = td.AddProperty(locationKey,"Device location",
+        "Description of the device location",  WoTDataTypeString,vocab.PropLocation);
     prop.readOnly = false
-    prop.description = "Description of the device location"
 
     // now continue with the other vids
     let vids = node.getDefinedValueIDs()

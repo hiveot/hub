@@ -27,14 +27,14 @@ export interface IAgentClient extends IConsumerClient {
     // and need to send an update on further progress.
     pubProgressUpdate(stat: ActionProgress):void
 
-    // pubProperties agent updates property values. (not for consumers)
+    // pubMultipleProperties agent updates multiple property values. (not for consumers)
     // It returns as soon as delivery to the hub is confirmed.
     //
     // @param thingID is the native thingID of the device (not including the digital twin ID)
-    // @param props is the property key-value map to publish where value is their native format
+    // @param propMap is the property key-value map to publish where value is their native format
     //
     // This throws an error if the message cannot not be delivered to the hub
-    pubProperties(thingID: string, props: {[key:string]:any}): void
+    pubMultipleProperties(thingID: string, propMap: {[key:string]:any}): void
 
     // pubProperty agent updates a property value. (not for consumers)
     // It returns as soon as delivery to the hub is confirmed.

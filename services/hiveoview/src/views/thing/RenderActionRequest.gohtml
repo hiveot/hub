@@ -15,10 +15,9 @@
 
         <main>
             <form id="action-input-form">
-                <label for="actionDescription">Action</label>
+                <label>Action</label>
                 {{/* textarea doesnt resize so do this instead*/}}
-                <div id="actionDescription"
-                     style="color:gray;
+                <div style="color:gray;
                      border:1px solid var(--pico-form-element-border-color);
                      padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
                      margin-bottom: var(--pico-spacing);"
@@ -51,7 +50,8 @@
                 {{if .Action.Input}}
                 <div>
                     {{/*FIXME: support object with multiple input fields*/}}
-                    <label for="currValue">{{.InputValue.Schema.Title}}</label>
+                    {{/* the 'for' id must match that of RenderInputValue*/}}
+                    <label for="input-{{.Name}}">{{.InputValue.Schema.Title}}</label>
                     {{template "RenderInputValue.gohtml" .InputValue}}
                 </div>
                 {{end}}
