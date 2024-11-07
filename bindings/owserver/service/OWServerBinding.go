@@ -66,24 +66,23 @@ func (svc *OWServerBinding) CreateBindingTD() *tdd.TD {
 	td := tdd.NewTD(svc.agentID, "OWServer binding", vocab.ThingService)
 	td.Description = "Driver for the OWServer V2 Gateway 1-wire interface"
 
-	prop := td.AddProperty(bindingMake, vocab.PropDeviceMake,
-		"Developed By", vocab.WoTDataTypeString)
+	prop := td.AddProperty(bindingMake, "Developed By", "", vocab.WoTDataTypeString).
+		SetAtType(vocab.PropDeviceMake)
 
 	// these are configured through the configuration file.
-	prop = td.AddProperty(bindingValuePollIntervalID, vocab.PropDevicePollinterval,
-		"Value Polling Interval", vocab.WoTDataTypeInteger)
+	prop = td.AddProperty(bindingValuePollIntervalID, "Poll Interval", "Value polling", vocab.WoTDataTypeInteger).
+		SetAtType(vocab.PropDevicePollinterval)
 	prop.Unit = vocab.UnitSecond
 
-	prop = td.AddProperty(bindingValuePublishIntervalID, "",
-		"Value republish Interval", vocab.WoTDataTypeInteger)
+	prop = td.AddProperty(bindingValuePublishIntervalID, "Value republish Interval", "", vocab.WoTDataTypeInteger)
 	prop.Unit = vocab.UnitSecond
 
-	prop = td.AddProperty(bindingTDIntervalID, vocab.PropDevicePollinterval,
-		"TD Publication Interval", vocab.WoTDataTypeInteger)
+	prop = td.AddProperty(bindingTDIntervalID, "TD Publication Interval", "", vocab.WoTDataTypeInteger).
+		SetAtType(vocab.PropDevicePollinterval)
 	prop.Unit = vocab.UnitSecond
 
-	prop = td.AddProperty(bindingOWServerAddressID, vocab.PropNetAddress,
-		"OWServer gateway IP address", vocab.WoTDataTypeString)
+	prop = td.AddProperty(bindingOWServerAddressID, "IP Address", "OWServer gateway IP address",
+		vocab.WoTDataTypeString).SetAtType(vocab.PropNetAddress)
 	return td
 }
 

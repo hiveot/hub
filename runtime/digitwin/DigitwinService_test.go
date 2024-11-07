@@ -63,7 +63,7 @@ func createTDDoc(thingID string, nrProps, nrEvents, nrActions int) *tdd.TD {
 	}
 	for range nrActions {
 		name := utils.CreateRandomName("act-", 0)
-		td.AddAction(name, "", name, "",
+		td.AddAction(name, name, "",
 			&tdd.DataSchema{
 				Type: vocab.WoTDataTypeBool,
 			})

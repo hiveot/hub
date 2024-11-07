@@ -36,7 +36,8 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *tdd.T
 
 	// Add a writable 'title' property so consumer can edit the device's title.
 	// Since owserver doesn't support naming a device, the title is stored in the state service.
-	prop := tdoc.AddProperty(vocab.PropDeviceTitle, vocab.PropDeviceTitle, "Title", vocab.WoTDataTypeString)
+	prop := tdoc.AddProperty(vocab.PropDeviceTitle, "Title", "", vocab.WoTDataTypeString).
+		SetAtType(vocab.PropDeviceTitle)
 	prop.ReadOnly = false
 
 	// Map node attribute to Thing properties and events
@@ -53,7 +54,7 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *tdd.T
 			title := attrInfo.Title
 			dataType := attrInfo.DataType
 
-			prop := tdoc.AddProperty(attrID, propType, title, dataType)
+			prop = tdoc.AddProperty(attrID, title, "", dataType).SetAtType(propType)
 			unit := attrInfo.Unit
 			if attr.Unit != "" {
 				unitID, found := UnitNameVocab[attr.Unit]
@@ -82,7 +83,7 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *tdd.T
 			}
 			// TODO: use a Number/Integerschema for numeric sensors
 			tdoc.AddEvent(attrID, attrInfo.Title, "", evSchema).
-				SetVocabType(attrInfo.VocabType)
+				SetAtType(attrInfo.VocabType)
 		}
 		if attrInfo.IsActuator {
 			var inputSchema *tdd.DataSchema
@@ -96,7 +97,8 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *tdd.T
 					WriteOnly: false,
 				}
 			}
-			tdoc.AddAction(attrID, attrInfo.VocabType, attrInfo.Title, "", inputSchema)
+			aff := tdoc.AddAction(attrID, attrInfo.Title, "", inputSchema)
+			aff.SetAtType(attrInfo.VocabType)
 		}
 	}
 	return

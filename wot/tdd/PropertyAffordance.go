@@ -30,3 +30,9 @@ type PropertyAffordance struct {
 	// Optional nested properties. Map with PropertyAffordance
 	Properties map[string]PropertyAffordance `json:"properties,omitempty"`
 }
+
+// SetAtType sets the property @type field from the HT vocabulary
+func (aff *PropertyAffordance) SetAtType(atType string) *PropertyAffordance {
+	aff.AtType = atType
+	return aff
+}

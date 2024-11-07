@@ -16,6 +16,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	var td *tdd.TD
 	var actionAff *tdd.ActionAffordance
 	var newValue any
+	actionTitle := ""
 
 	thingID := chi.URLParam(r, "thingID")
 	actionName := chi.URLParam(r, "name")
@@ -68,7 +69,6 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 		// notify UI via SSE. This is handled by a toast component.
 		// todo, differentiate between server error, invalid value and unauthorized
 		// use human title from TD instead of action key to make error more presentable
-		actionTitle := ""
 		aff := td.GetAction(actionName)
 		if aff != nil {
 			actionTitle = aff.Title
@@ -80,6 +80,8 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 		err = fmt.Errorf("action '%s' of Thing '%s' failed: %w", actionTitle, td.Title, err)
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
+	} else {
+		actionTitle = actionAff.Title
 	}
 
 	// TODO: map delivery status to language
@@ -90,7 +92,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	if actionAff.Output != nil {
 		unit = actionAff.Output.Unit
 	}
-	notificationText := fmt.Sprintf("Action %s: %v %s", actionName, reply, unit)
+	notificationText := fmt.Sprintf("Action %s: %v %s", actionTitle, reply, unit)
 	sess.SendNotify(session2.NotifySuccess, notificationText)
 
 	w.WriteHeader(http.StatusOK)

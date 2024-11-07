@@ -10,12 +10,12 @@ import (
 
 // ActuatorTypeVocab maps OWServer names to IoT vocabulary
 //var ActuatorTypeVocab = map[string]struct {
-//	VocabType string // sensor type from vocabulary
+//	AtType string // sensor type from vocabulary
 //	Title        string
 //	DataType     string
 //}{
 //	// "BarometricPressureHg": vocab.PropNameAtmosphericPressure, // unit Hg
-//	"Relay": {VocabType: vocab.ActionSwitchOff, Title: "Relay", DataType: vocab.WoTDataTypeBool},
+//	"Relay": {AtType: vocab.ActionSwitchOff, Title: "Relay", DataType: vocab.WoTDataTypeBool},
 //}
 
 // EdsAPI EDS device API properties and methods

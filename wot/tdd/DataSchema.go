@@ -19,7 +19,7 @@ type DataSchema struct {
 	// For properties this would be the property type, eg temperature, humidity, etc.
 	// For action input this is the action parameter type
 	// For event data this is the event payload type
-	AtType string `json:"@type,omitempty"`
+	AtType any `json:"@type,omitempty"`
 	// Provides a human-readable title in the default language
 	Title string `json:"title,omitempty"`
 	// Provides a multi-language human-readable titles
@@ -40,16 +40,16 @@ type DataSchema struct {
 	// Provides a default value of any type as per data Schema
 	Default any `json:"default,omitempty"`
 
+	// Restricted set of values provided as an array.
+	//  for example: ["option1", "option2"]
+	Enum []any `json:"enum,omitempty"`
+
 	// Allows validation based on a format pattern such as "date-time", "email", "uri", etc.
 	// See vocab DataFormXyz "date-time", "email", "uri" (todo)
 	Format string `json:"format,omitempty"`
 
 	// OneOf provides constraint of data as one of the given data schemas
 	OneOf []DataSchema `json:"oneOf,omitempty"`
-
-	// Restricted set of values provided as an array.
-	//  for example: ["option1", "option2"]
-	Enum []any `json:"enum,omitempty"`
 
 	// Boolean value to indicate whether a property interaction / value is read-only (=true) or not (=false)
 	// the value true implies read-only.
@@ -124,6 +124,20 @@ type DataSchema struct {
 	// ContentMediaType specifies the MIME type of the contents of a string value, as described in RFC 2046.
 	// e.g., image/png, or audio/mpeg)
 	StringContentMediaType string `json:"contentMediaType,omitempty"`
+}
+
+// GetAtTypeString returns the @type field as a string.
+// If @type contains an array, the first element is returned.
+func (ds *DataSchema) GetAtTypeString() string {
+	switch t := ds.AtType.(type) {
+	case string:
+		return t
+	case []string:
+		if len(t) > 0 {
+			return t[0]
+		}
+	}
+	return ""
 }
 
 // SetEnumValues updates the data schema with restricted enum values.

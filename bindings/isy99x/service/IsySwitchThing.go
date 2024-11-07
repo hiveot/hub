@@ -33,18 +33,18 @@ func (it *IsySwitchThing) HandleActionRequest(action *hubclient.ThingMessage) (e
 	var newValue = ""
 	// FIXME: action keys are the raw keys, not @type
 	// supported actions: on, off
-	if action.Name == vocab.ActionSwitchOnOff {
+	if action.Name == "ST" {
 		newValueBool := utils.DecodeAsBool(action.Data)
 		newValue = "DOF"
 		if newValueBool {
 			newValue = "DON"
 		}
-	} else if action.Name == vocab.ActionSwitchToggle {
-		newValue = "DOF"
-		oldValue, found := it.propValues.GetValue(action.Name)
-		if !found || oldValue == "DOF" {
-			newValue = "DON"
-		}
+		//} else if action.Name == vocab.ActionSwitchToggle {
+		//	newValue = "DOF"
+		//	oldValue, found := it.propValues.GetValue(action.Name)
+		//	if !found || oldValue == "DOF" {
+		//		newValue = "DON"
+		//	}
 	} else {
 		// unknown action
 		newValue = ""
@@ -57,24 +57,23 @@ func (it *IsySwitchThing) HandleActionRequest(action *hubclient.ThingMessage) (e
 	if err == nil {
 		// TODO: handle event from gateway using websockets. For now just assume this worked.
 		//err = it.HandleValueUpdate(action.Name, "", newValue)
-
 	}
 	return err
 }
 
 // HandleValueUpdate receives a new value for the given property
-func (it *IsySwitchThing) HandleValueUpdate(propID string, uom string, newValue string) error {
+func (it *IsySwitchThing) HandleValueUpdate(propName string, uom string, newValue string) error {
 	it.mux.Lock()
 	defer it.mux.Unlock()
 	// convert the switch value to a boolean
-	if propID == "ST" {
+	if propName == "ST" {
 		boolValue := false
 		if newValue == "1" || newValue == "255" {
 			boolValue = true
 		}
-		it.propValues.SetValueBool(propID, boolValue)
+		it.propValues.SetValueBool(propName, boolValue)
 	} else {
-		it.propValues.SetValue(propID, newValue)
+		it.propValues.SetValue(propName, newValue)
 	}
 	return nil
 }
@@ -92,9 +91,10 @@ func (it *IsySwitchThing) MakeTD() *tdd.TD {
 	// TODO: support for switch events
 	//td.AddEvent("ST", "On/Off", "",
 	//	&tdd.DataSchema{Type: vocab.WoTDataTypeBool}).
-	//	SetVocabType(vocab.ActionSwitchOnOff)
+	//	SetAtType(vocab.ActionSwitchOnOff)
 
-	td.AddSwitchAction(vocab.ActionSwitchOnOff, "Switch on/off")
+	td.AddSwitchAction("ST", "Switch on/off", "").
+		SetAtType(vocab.ActionSwitchOnOff)
 	//td.AddSwitchAction(vocab.ActionSwitchOff, "Switch off")
 	//td.AddSwitchAction(vocab.ActionSwitchToggle, "Toggle switch")
 

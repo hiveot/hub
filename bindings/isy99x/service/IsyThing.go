@@ -57,7 +57,7 @@ type IsyThing struct {
 	// ThingID derived from the nodeID
 	thingID string
 
-	// device type derived from productInfo
+	// vocab device type derived from productInfo (@type)
 	deviceType string
 
 	// ISY device info
@@ -173,7 +173,7 @@ func (it *IsyThing) MakeTD() *tdd.TD {
 	it.mux.RUnlock()
 
 	//--- read-only properties
-	prop := td.AddPropertyAsInt("flag", "", "Node Flag")
+	prop := td.AddPropertyAsInt("flag", "Node Flag", "")
 	prop.Description = "A bit mask: 0x01 -- Node is initialized (internal)," +
 		" 0x02 -- Node is going to be crawled (internal)," +
 		" 0x04 -- This is a group node," +
@@ -182,20 +182,25 @@ func (it *IsyThing) MakeTD() *tdd.TD {
 		" 0x20 -- Brand new node," +
 		" 0x40 -- Node shall be deleted," +
 		" 0x80 -- Node is device root"
-	prop = td.AddPropertyAsString("nodeType", "", "Insteon device type")
+	prop = td.AddPropertyAsString("deviceType", "Hiveot device type", "")
+	prop = td.AddPropertyAsString("nodeType", "Insteon device type", "")
 	prop.Description = "<device cat>.<sub cat>.<version>.<reserved>"
-	prop = td.AddPropertyAsString("", vocab.PropDeviceDescription, "Product description")
-	prop = td.AddPropertyAsString("", vocab.PropDeviceModel, "Product model")
-	prop = td.AddPropertyAsString("", vocab.PropDeviceHardwareVersion, "Device version")
+	prop = td.AddPropertyAsString(vocab.PropDeviceDescription, "Product description", "").
+		SetAtType(vocab.PropDeviceDescription)
+	prop = td.AddPropertyAsString(vocab.PropDeviceModel, "Product model", "").
+		SetAtType(vocab.PropDeviceModel)
+	prop = td.AddPropertyAsString(vocab.PropDeviceHardwareVersion, "Hardware version", "Device hardware version").
+		SetAtType(vocab.PropDeviceHardwareVersion)
 
 	//--- configuration
-	prop = td.AddPropertyAsString(vocab.PropDeviceEnabledDisabled,
-		vocab.PropDeviceEnabledDisabled, "Enabled/disabled")
+	prop = td.AddPropertyAsString(vocab.PropDeviceEnabledDisabled, "Enabled/disabled", "")
+	prop.SetAtType(vocab.PropDeviceEnabledDisabled)
 	prop.Description = "Whether or not the node is enabled (plugged in). Note: this feature only works on 99 Series"
 	prop.Enum = []interface{}{"enabled", "disabled"}
 	//prop.ReadOnly = false // TODO: support for enabled/disabled
 
-	prop = td.AddPropertyAsString("", vocab.PropDeviceTitle, "Title")
+	prop = td.AddPropertyAsString(vocab.PropDeviceTitle, "Title", "").
+		SetAtType(vocab.PropDeviceTitle)
 	prop.ReadOnly = false
 	return td
 }

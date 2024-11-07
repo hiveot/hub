@@ -6,11 +6,9 @@ import {WoTDataTypeNone, WoTDataTypeString} from "@hivelib/api/vocab/vocab.js";
 
 // parseController adds controller actions and attributes to the Thing TD
 export function parseController(td: TD, ctl: ZWaveController) {
-    // td.AddProperty("sdkVersion", DataType.String, "Z-Wave SDK version", ctl.sdkVersion.toString());
-    // td.AddProperty("homeID", DataType.Number,"Network ID",  ctl.homeId.toString());
 
     if (ctl.rfRegion) {
-        td.AddProperty("rfRegion", "", WoTDataTypeString, "RF Region")
+        td.AddProperty("rfRegion",  "RF Region","Geographic region for RF emission rules",WoTDataTypeString)
             .SetAsEnum(RFRegion)
             .SetAsConfiguration()
             .SetDescription("RF Region the controller is set to")
@@ -66,7 +64,7 @@ export function parseController(td: TD, ctl: ZWaveController) {
             let title = propID
             let dataType = WoTDataTypeNone
             // FIXME: Include Data schema handle dataType, minValue, maxValue, options, unit, readOnly, writeOnly, unsigned
-            let prop = td.AddProperty(propID, "", dataType, title)
+            let prop = td.AddProperty(propID, dataType, title,"")
             prop.readOnly = false
         }
     }

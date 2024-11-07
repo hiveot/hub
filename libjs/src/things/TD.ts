@@ -90,8 +90,8 @@ export class EventAffordance extends InteractionAffordance {
  */
 export class PropertyAffordance extends DataSchema {
 
-    // id is the property ID in the map, so it is available when the properties are provided as an array
-    id: string = ""
+    // name is the property name in the map, so it is available when the properties are provided as an array
+    name: string = ""
 
     // Optional nested properties. Map with PropertyAffordance
     // used when a property has multiple instances, each with their own name
@@ -211,23 +211,22 @@ export class TD extends Object {
     // This returns the property affordance that can be augmented/modified directly
     // By default this property is read-only. (eg an attribute)
     //
-    // @param id is the instance ID under which it is stored in the property affordance map.
-    //        if not provided then propType is used.
+    // @param name is the instance name under which it is stored in the property affordance map.
     // @param title is the title used in the property.
     // @param description of the property
     // @param dataType is the type of data the property holds, DataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
     // @param vocabType is the vocabulary type of this property, if known
-    AddProperty(id: string, title: string,  description:string,dataType: string, vocabType?:string): PropertyAffordance {
+    AddProperty(name: string, title: string,  description:string,dataType: string, vocabType?:string): PropertyAffordance {
         let prop = new PropertyAffordance()
-        prop.id = id;
+        prop.name = name;
         prop.type = dataType;
-        prop.title = title ? title : id;
+        prop.title = title ? title : name;
         prop.readOnly = true;
         prop.description = description
         if (vocabType) {
             prop.setVocabType(vocabType)
         }
-        this.properties[id] = prop;
+        this.properties[name] = prop;
         return prop
     }
 
@@ -235,17 +234,17 @@ export class TD extends Object {
     // AddPropertyIf only adds the property if the first parameter is not undefined 
     //
     // @param initialValue add the attribute if the initial value is not undefined
-    // @param id is the instance ID under which it is stored in the property affordance map.
+    // @param name is the instance name under which it is stored in the property affordance map.
     // @param title is the title used in the property. Leave empty to use the name.
     // @param description optional
     // @param dataType is the type of data the property holds, DataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
     // @param vocabType optional vocabulary @type field
-    AddPropertyIf(initialValue: any, id: string,
+    AddPropertyIf(initialValue: any, name: string,
                   title: string, description:string,
                   dataType: string, vocabType?:string): PropertyAffordance | undefined {
 
         if (initialValue != undefined) {
-            let prop =  this.AddProperty(id, title, description,dataType)
+            let prop =  this.AddProperty(name, title, description,dataType)
             if (vocabType){
                 prop.setVocabType(vocabType)
             }

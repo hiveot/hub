@@ -31,34 +31,43 @@ const HiveOTContext = "https://www.hiveot.net/vocab/v0.1"
 //		forms: [...]
 //	 }
 type TD struct {
+	// All action-based interaction affordances of the things
+	Actions map[string]*ActionAffordance `json:"actions,omitempty"`
 
 	// Roles that are allowed to use this thing. Default (empty) is all roles.
 	Allow []string `json:"allow,omitempty"`
 
-	// Roles that are denied to use this thing. Default (empty or 'none') is no roles.
-	Deny []string `json:"deny,omitempty"`
-
 	// JSON-LD keyword to define shorthand names called terms that are used throughout a TD document. Required.
 	// in order to add the "ht" namespace, the context value can be a string or map
+	// Type: anyURO or Array
 	AtContext []any `json:"@context"`
 
 	// JSON-LD keyword to label the object with semantic tags (or types).
 	// in HiveOT this contains the device type defined in the vocabulary.
 	// Intended for grouping and querying similar devices, and standardized presentation such as icons
-	AtType  string `json:"@type,omitempty"`
-	AtTypes string `json:"@types,omitempty"`
+	AtType any `json:"@type,omitempty"`
 
-	// base: Define the base URI that is used for all relative URI references throughout a TD document.
-	//Base string `json:"base,omitempty"`
+	// Base: The base URI that is used for all relative URI references throughout a TD document.
+	Base string `json:"base,omitempty"`
 
 	// ISO8601 timestamp this document was first created. See also 'Modified'.
 	Created string `json:"created,omitempty"`
+
+	// Roles that are denied to use this thing. Default (empty or 'none') is no roles.
+	Deny []string `json:"deny,omitempty"`
 
 	// Describe the device in the default human-readable language.
 	// It is recommended to use the product description.
 	Description string `json:"description,omitempty"`
 	// Provides additional nulti-language information
 	Descriptions []string `json:"descriptions,omitempty"`
+
+	// All event-based interaction affordances of the things
+	Events map[string]*EventAffordance `json:"events,omitempty"`
+
+	// Form hypermedia controls to describe how an operation can be performed. Forms are serializations of
+	// Protocol Bindings. Thing-level forms are used to describe endpoints for a group of interaction affordances.
+	Forms []Form `json:"forms,omitempty"`
 
 	// Version information of the TD document (?not the device??)
 	//Version VersionInfo `json:"version,omitempty"` // todo
@@ -68,14 +77,30 @@ type TD struct {
 	//  ThingID format used: urn:agentID:deviceID
 	ID string `json:"id,omitempty"`
 
+	// links: todo
+
 	// ISO8601 timestamp this document was last modified. See also 'Created'.
 	Modified string `json:"modified,omitempty"`
 
-	// Base URI for all relative URI references
-	Base string `json:"base,omitempty"`
+	// Indicates the WoT Profile mechanisms followed by this Thing Description and
+	// the corresponding Thing implementation.
+	// Type: anyURI or Array of anyURI
+	Profile any `json:"profile,omitempty"`
 
-	// Information about the TD maintainer as URI scheme (e.g., mailto [RFC6068], tel [RFC3966], https).
-	Support string `json:"support,omitempty"`
+	// All properties-based interaction affordances of the things
+	Properties map[string]*PropertyAffordance `json:"properties,omitempty"`
+
+	SchemaDefinitions map[string]DataSchema `json:"schemaDefinitions,omitempty"`
+
+	// Security is a string or array of security definition names, chosen from those defined
+	// in securityDefinitions.
+	// In HiveOT security is handled by the Hub.
+	// Type: string or array of string
+	Security any `json:"security"`
+
+	// Set of named security configurations (definitions only).
+	// Not actually applied unless names are used in a security name-value pair. (why is this mandatory then?)
+	SecurityDefinitions map[string]SecurityScheme `json:"securityDefinitions"`
 
 	// Title is the name of the thing in human-readable in the default language. Required.
 	// The same name is provided through the properties configuration, where it can be changed.
@@ -84,32 +109,8 @@ type TD struct {
 	// Human-readable titles in the different languages
 	Titles map[string]string `json:"titles,omitempty"`
 
-	SchemaDefinitions map[string]DataSchema `json:"schemaDefinitions,omitempty"`
-
-	// All properties-based interaction affordances of the things
-	Properties map[string]*PropertyAffordance `json:"properties,omitempty"`
-	// All action-based interaction affordances of the things
-	Actions map[string]*ActionAffordance `json:"actions,omitempty"`
-	// All event-based interaction affordances of the things
-	Events map[string]*EventAffordance `json:"events,omitempty"`
-
-	// links: todo
-
-	// Form hypermedia controls to describe how an operation can be performed. Forms are serializations of
-	// Protocol Bindings. Thing-level forms are used to describe endpoints for a group of interaction affordances.
-	Forms []Form `json:"forms,omitempty"`
-
-	// Security is a string or array of security definition names, chosen from those defined
-	// in securityDefinitions.
-	// In HiveOT security is handled by the Hub. HiveOT Things will use the NoSecurityScheme type
-	//Security string `json:"security"`
-	// FIXME: make WoT compliant and include the transport protocols authentication
-	Security any `json:"security"`
-
-	// Set of named security configurations (definitions only).
-	// Not actually applied unless names are used in a security name-value pair. (why is this mandatory then?)
-	// FIXME: make WoT compliant and include the transport protocols authentication
-	SecurityDefinitions map[string]SecurityScheme `json:"securityDefinitions"`
+	// Provides information about the TD maintainer as URI scheme (e.g., mailto [RFC6068], tel [RFC3966], https [RFC9112]).
+	Support string `json:"support,omitempty"`
 
 	// for use to access writable data, when TD's are updated on the fly by agents.
 	//updateMutex sync.RWMutex
@@ -117,6 +118,7 @@ type TD struct {
 
 // AddAction provides a simple way to add an action affordance Schema to the TD.
 // This returns the action affordance that can be augmented/modified directly.
+// By default this is considered 'unsafe', it affects device state.
 //
 // If the action accepts input parameters then set the .Data field to a DataSchema instance that
 // describes the parameter(s).
@@ -126,14 +128,14 @@ type TD struct {
 //	title is the short display title of the action
 //	description optional explanation of the action
 //	input with dataschema of the action input data, if any
-func (tdoc *TD) AddAction(name string, actionType string, title string, description string,
+func (tdoc *TD) AddAction(name string, title string, description string,
 	input *DataSchema) *ActionAffordance {
 
 	actionAff := &ActionAffordance{
-		ActionType:  actionType,
 		Title:       title,
 		Description: description,
 		Input:       input,
+		Safe:        false,
 	}
 	tdoc.UpdateAction(name, actionAff)
 	return actionAff
@@ -142,13 +144,13 @@ func (tdoc *TD) AddAction(name string, actionType string, title string, descript
 // AddDimmerAction is short for adding an action to control a dimmer
 // This includes a data schema for integers
 //
-//	actionID is the instance ID of the action, unique within the Thing
-func (tdoc *TD) AddDimmerAction(actionID string) *ActionAffordance {
-	act := tdoc.AddAction(actionID, vocab.ActionDimmer, "", "",
+//	name is the name of the action, unique within the Thing
+func (tdoc *TD) AddDimmerAction(name string) *ActionAffordance {
+	act := tdoc.AddAction(name, "", "",
 		&DataSchema{
-			AtType: vocab.ActionDimmer,
-			Type:   vocab.WoTDataTypeInteger,
+			Type: vocab.WoTDataTypeInteger,
 		})
+	act.SetAtType(vocab.ActionDimmer)
 	return act
 }
 
@@ -162,7 +164,7 @@ func (tdoc *TD) AddDimmerEvent(eventID string) *EventAffordance {
 			AtType: vocab.PropSwitchDimmer,
 			Type:   vocab.WoTDataTypeInteger,
 		})
-	aff.SetVocabType(vocab.PropSwitchDimmer)
+	aff.SetAtType(vocab.PropSwitchDimmer)
 	return aff
 }
 
@@ -209,16 +211,13 @@ func (tdoc *TD) AddForms(forms []Form) {
 //	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
 //	title is the short display title of the property.
 //	dataType is the type of data the property holds, WoTDataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
-func (tdoc *TD) AddProperty(propName string, propType string, title string, dataType string) *PropertyAffordance {
-	if propName == "" {
-		propName = propType
-	}
+func (tdoc *TD) AddProperty(propName string, title string, description string, dataType string) *PropertyAffordance {
 	prop := &PropertyAffordance{
 		DataSchema: DataSchema{
-			AtType:   propType,
-			Title:    title,
-			Type:     dataType,
-			ReadOnly: true,
+			Title:       title,
+			Type:        dataType,
+			Description: description,
+			ReadOnly:    true,
 			//InitialValue: initialValue,
 		},
 	}
@@ -230,60 +229,60 @@ func (tdoc *TD) AddProperty(propName string, propType string, title string, data
 //
 //	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
 func (tdoc *TD) AddPropertyAsString(
-	propName string, propType string, title string) *PropertyAffordance {
+	propName string, title string, description string) *PropertyAffordance {
 
-	return tdoc.AddProperty(propName, propType, title, vocab.WoTDataTypeString)
+	return tdoc.AddProperty(propName, title, description, vocab.WoTDataTypeString)
 }
 
 // AddPropertyAsBool is short for adding a read-only boolean property
 //
 //	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
 func (tdoc *TD) AddPropertyAsBool(
-	propName string, propType string, title string) *PropertyAffordance {
+	propName string, title string, description string) *PropertyAffordance {
 
-	return tdoc.AddProperty(propName, propType, title, vocab.WoTDataTypeBool)
+	return tdoc.AddProperty(propName, title, description, vocab.WoTDataTypeBool)
 }
 
 // AddPropertyAsInt is short for adding a read-only integer property
 //
 //	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
 func (tdoc *TD) AddPropertyAsInt(
-	propName string, propType string, title string) *PropertyAffordance {
+	propName string, title string, description string) *PropertyAffordance {
 
-	return tdoc.AddProperty(propName, propType, title, vocab.WoTDataTypeInteger)
+	return tdoc.AddProperty(propName, title, description, vocab.WoTDataTypeInteger)
 }
 
 // AddSwitchAction is short for adding an action to control an on/off switch
-func (tdoc *TD) AddSwitchAction(actionName string, title string) *ActionAffordance {
-	act := tdoc.AddAction(actionName, vocab.ActionSwitchOnOff, title, "",
+func (tdoc *TD) AddSwitchAction(actionName string, title string, description string) *ActionAffordance {
+	act := tdoc.AddAction(actionName, title, description,
 		&DataSchema{
 			AtType: vocab.ActionSwitchOnOff,
 			Type:   vocab.WoTDataTypeBool,
 			Enum:   []interface{}{"on", "off"},
-		})
+		}).SetAtType(vocab.ActionSwitchOnOff)
 	return act
 }
 
 // AddSwitchEvent is short for adding an event for a switch
-func (tdoc *TD) AddSwitchEvent(eventName string, title string) *EventAffordance {
-	aff := tdoc.AddEvent(eventName, title, "",
+func (tdoc *TD) AddSwitchEvent(eventName string, title string, description string) *EventAffordance {
+	aff := tdoc.AddEvent(eventName, title, description,
 		&DataSchema{
 			AtType: vocab.PropSwitchOnOff,
 			Type:   vocab.WoTDataTypeBool,
 			Enum:   []interface{}{"on", "off"},
 		})
-	aff.SetVocabType(vocab.PropSwitchOnOff)
+	aff.SetAtType(vocab.PropSwitchOnOff)
 	return aff
 }
 
 // AddSensorEvent is short for adding an event for a generic sensor
-func (tdoc *TD) AddSensorEvent(eventName string, title string) *EventAffordance {
-	aff := tdoc.AddEvent(eventName, title, "",
+func (tdoc *TD) AddSensorEvent(eventName string, title string, description string) *EventAffordance {
+	aff := tdoc.AddEvent(eventName, title, description,
 		&DataSchema{
 			AtType: vocab.PropEnv,
 			Type:   vocab.WoTDataTypeNumber,
 		})
-	aff.SetVocabType(vocab.PropEnv)
+	aff.SetAtType(vocab.PropEnv)
 	return aff
 }
 
@@ -351,13 +350,19 @@ func (tdoc *TD) GetAction(actionName string) *ActionAffordance {
 //	return utils.Age(t)
 //}
 
-// GetAtTypeVocab return the vocab map of the @type
-func (tdoc *TD) GetAtTypeVocab() string {
-	atTypeVocab, found := vocab.ThingClassesMap[tdoc.AtType]
-	if !found {
-		return tdoc.AtType
+// GetAtTypeString return the @type field as a string
+// If @type contains an array then the first value is returned.
+func (tdoc *TD) GetAtTypeString() string {
+	switch t := tdoc.AtType.(type) {
+	case string:
+		return t
+	case []string:
+		if len(t) > 0 {
+			return t[0]
+		}
 	}
-	return atTypeVocab.Title
+	//atTypeVocab, found := vocab.ThingClassesMap[tdoc.AtType]
+	return ""
 }
 
 // GetEvent returns the Schema for the event or nil if the event doesn't exist
@@ -491,13 +496,13 @@ func (tdoc *TD) GetProperty(propName string) *PropertyAffordance {
 	return propAffordance
 }
 
-// GetPropertyOfAtType returns the first property affordance with the given @type
+// GetPropertyOfVocabType returns the first property affordance with the given @type
 // This returns the property ID and the property affordances, or nil if not found
-func (tdoc *TD) GetPropertyOfAtType(atType string) (string, *PropertyAffordance) {
+func (tdoc *TD) GetPropertyOfVocabType(vocabType string) (string, *PropertyAffordance) {
 	//tdoc.updateMutex.RLock()
 	//defer tdoc.updateMutex.RUnlock()
 	for propID, prop := range tdoc.Properties {
-		if prop.AtType == atType {
+		if prop.AtType == vocabType {
 			return propID, prop
 		}
 	}

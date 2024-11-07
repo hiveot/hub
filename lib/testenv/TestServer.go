@@ -187,19 +187,23 @@ func (test *TestServer) CreateTestTD(i int) (td *tdd.TD) {
 	td = tdd.NewTD(tdi.ID, tdi.Title, tdi.DeviceType)
 	// add random properties
 	for n := 0; n < tdi.NrProps; n++ {
-		td.AddProperty(fmt.Sprintf("prop-%d", n), PropTypes[n], "title-"+PropTypes[n], vocab.WoTDataTypeString)
+		propName := fmt.Sprintf("prop-%d", n)
+		td.AddProperty(propName, "title-"+PropTypes[n], "", vocab.WoTDataTypeString).
+			SetAtType(PropTypes[n])
 	}
 	// add random events
 	for n := 0; n < tdi.NrEvents; n++ {
 		evName := fmt.Sprintf("event-%d", n)
 		td.AddEvent(evName, "title-"+EventTypes[n], "",
 			&tdd.DataSchema{Type: vocab.WoTDataTypeString}).
-			SetVocabType(EventTypes[n])
+			SetAtType(EventTypes[n])
 	}
 	// add random actions
 	for n := 0; n < tdi.NrActions; n++ {
-		td.AddAction(fmt.Sprintf("action-%d", n), ActionTypes[n], "title-"+ActionTypes[n], "",
-			&tdd.DataSchema{Type: vocab.WoTDataTypeString})
+		actionName := fmt.Sprintf("action-%d", n)
+		td.AddAction(actionName, "title-"+ActionTypes[n], "",
+			&tdd.DataSchema{Type: vocab.WoTDataTypeString},
+		).SetAtType(ActionTypes[n])
 	}
 
 	return td

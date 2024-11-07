@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
+	"time"
 )
 
 // HandleConfigRequest handles requests to configure the service or devices
@@ -31,6 +32,7 @@ func (svc *OWServerBinding) HandleConfigRequest(msg *hubclient.ThingMessage) (st
 	if msg.Name == vocab.PropDeviceTitle {
 		svc.customTitles[msg.ThingID] = valueStr
 		go svc.SaveState()
+		// publish changed values after returning
 		go svc.hc.PubProperty(msg.ThingID, vocab.PropDeviceTitle, valueStr)
 		// republish the TD as its title changed (yeah its a bit over the top)
 		go svc.PublishNodeTD(node)
@@ -48,7 +50,14 @@ func (svc *OWServerBinding) HandleConfigRequest(msg *hubclient.ThingMessage) (st
 		} else {
 			err = svc.edsAPI.WriteData(msg.ThingID, msg.Name, valueStr)
 		}
+		// publish changed value after returning
+		go func() {
+			// owserver is slow to update
+			time.Sleep(time.Second * 5)
+			_ = svc.RefreshPropertyValues(false)
+		}()
 	}
+
 	stat.Completed(msg, nil, err)
 	return
 }

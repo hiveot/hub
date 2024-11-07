@@ -95,11 +95,12 @@ func HandleTdd2Go(sourceDir string, outDirBase string) error {
 			err = json.Unmarshal(tdJSON, &ds)
 
 			// FIXME: using @type as package/type name is an experiment
-			if ds.AtType != "" {
-				parts := strings.Split(ds.AtType, "/")
+			atType := ds.GetAtTypeString()
+			if atType != "" {
+				parts := strings.Split(atType, "/")
 				packageName = parts[0]
 				if len(parts) > 1 {
-					outFile = path.Join(outDirBase, ds.AtType+".go")
+					outFile = path.Join(outDirBase, atType+".go")
 					typeName = parts[1]
 				}
 			} else {

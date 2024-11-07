@@ -13,6 +13,7 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/views/login"
 	"github.com/hiveot/hub/services/hiveoview/src/views/status"
 	"github.com/hiveot/hub/services/hiveoview/src/views/thing"
+	"github.com/hiveot/hub/services/hiveoview/src/views/thingdetails"
 	"github.com/hiveot/hub/services/hiveoview/src/views/tile"
 	"net/http"
 	"time"
@@ -94,7 +95,7 @@ func (svc *HiveovService) CreateRoutes(router *chi.Mux, rootPath string) http.Ha
 		r.Delete(src.DeleteThingPath, directory.SubmitDeleteTD)
 
 		// Thing details view
-		r.Get(src.RenderThingDetailsPath, thing.RenderThingDetails)
+		r.Get(src.RenderThingDetailsPath, thingdetails.RenderThingDetails)
 		r.Get(src.RenderThingRawPath, thing.RenderThingRaw)
 
 		// Performing Thing Actions and Configuration

@@ -1,6 +1,6 @@
 <!--Thing attribute list-->
 <!--@param '.' object of type DetailsTemplateData -->
-{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/thing.ThingDetailsTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/thingdetails.ThingDetailsTemplateData*/ -}}
 
 <ul class="h-grid-table thing-attr " border striped>
 
@@ -18,10 +18,12 @@
 			<li>
 				<div class="h-show-sm">{{/*icon*/}}</div>
 
+        {{/* Attribute Name */}}
 				<div title="name: {{$name}}">
 					{{$v.Title}}
 				</div>
 
+				{{/* Value */}}
 				<div>
 					<span sse-swap="{{$.ThingID}}/{{$name}}"
 					      hx-swap="innerHTML"
@@ -29,7 +31,7 @@
 					>
               {{$v.Value.Text}}
 					</span>
-            {{$v.Schema.UnitSymbol}}
+          {{$v.Schema.UnitSymbol}}
 				</div>
 
 				<div class="h-show-lg">{{$v.Schema.Description}}</div>

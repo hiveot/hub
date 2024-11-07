@@ -99,33 +99,31 @@ func (svc *IsyBinding) MakeBindingTD() *tdd.TD {
 	td := tdd.NewTD(svc.thingID, "ISY99x binding", vocab.ThingService)
 
 	// binding attributes
-	prop := td.AddProperty("", vocab.PropNetConnection,
-		"Connected", vocab.WoTDataTypeBool)
+	prop := td.AddProperty(vocab.PropNetConnection, "Connected", "Device is connected", vocab.WoTDataTypeBool).
+		SetAtType(vocab.PropNetConnection)
 	prop.Description = "Whether the Binding has a connection to an ISY gateway"
 	//
-	prop = td.AddProperty(vocab.PropDeviceMake, vocab.PropDeviceMake,
-		"Manufacturer", vocab.WoTDataTypeString)
+	prop = td.AddProperty(vocab.PropDeviceMake, "Manufacturer", "Device Manufacturer", vocab.WoTDataTypeString).
+		SetAtType(vocab.PropDeviceMake)
 	prop.Description = "Developer of the binding"
 
 	// TODO: persist configuration
 	//binding config
-	prop = td.AddProperty(vocab.PropDevicePollinterval, vocab.PropDevicePollinterval,
-		"Poll Interval", vocab.WoTDataTypeInteger)
+	prop = td.AddProperty(vocab.PropDevicePollinterval, "Poll Interval", "Poll for updates in seconds", vocab.WoTDataTypeInteger).
+		SetAtType(vocab.PropDevicePollinterval)
 	prop.Description = "Interval the binding polls the gateway for data value updates."
 	prop.Unit = vocab.UnitSecond
 	prop.ReadOnly = false
 	//
-	prop = td.AddPropertyAsString("loginName", "", "Login name")
-	prop.Description = "ISY99x gateway login name."
+	prop = td.AddPropertyAsString("loginName", "Login name", "ISY99x gateway login name.")
 	prop.ReadOnly = false
 	//
-	prop = td.AddPropertyAsString("password", "", "Password")
-	prop.Description = "ISY99x gateway password."
+	prop = td.AddPropertyAsString("password", "Password", "ISY99x gateway password")
 	prop.ReadOnly = false
 	prop.WriteOnly = true
 	//
-	prop = td.AddProperty(vocab.PropNetAddress, vocab.PropNetAddress,
-		"Network Address", vocab.WoTDataTypeString)
+	prop = td.AddProperty(vocab.PropNetAddress, "Network Address", "", vocab.WoTDataTypeString).
+		SetAtType(vocab.PropNetAddress)
 	prop.Description = "ISY99x gateway IP address; empty to auto discover."
 	prop.ReadOnly = false
 
@@ -133,7 +131,7 @@ func (svc *IsyBinding) MakeBindingTD() *tdd.TD {
 	td.AddEvent(vocab.PropNetConnection,
 		"Connection changed", "Connection with ISY gateway has changed",
 		&tdd.DataSchema{Type: vocab.WoTDataTypeBool},
-	).SetVocabType(vocab.PropNetConnection)
+	).SetAtType(vocab.PropNetConnection)
 
 	// no binding actions
 	return td

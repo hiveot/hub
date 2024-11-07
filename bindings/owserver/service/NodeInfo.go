@@ -194,7 +194,7 @@ var AttrConfig = map[string]AttrConversion{
 		Title:     "Hostname",
 		DataType:  vocab.WoTDataTypeString, ChangeNotify: 1,
 	},
-	//"HeatIndex":  {VocabType: vocab.PropEnvHeatindex, Title: "Heat Index", DataType: vocab.WoTDataTypeNumber, Precision: 1},
+	//"HeatIndex":  {AtType: vocab.PropEnvHeatindex, Title: "Heat Index", DataType: vocab.WoTDataTypeNumber, Precision: 1},
 	"Humidity": {
 		IsEvent:   true,
 		Title:     "Humidity",

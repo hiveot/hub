@@ -27,7 +27,7 @@ func TestActionFlow(t *testing.T) {
 	// Create the native TD for invoking an action to
 	tdDoc1 := createTDDoc(thingID, 5, 4, 3)
 	actionSchema := &tdd.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
-	tdDoc1.AddAction(actionName, "", "action 1", "", actionSchema)
+	tdDoc1.AddAction(actionName, "action 1", "", actionSchema)
 	tddjson, _ := json.Marshal(tdDoc1)
 	err := svc.DirSvc.UpdateTD(agentID, string(tddjson))
 	require.NoError(t, err)
@@ -109,7 +109,7 @@ func TestInvokeActionErrors(t *testing.T) {
 	// Create the native TD for invoking an action to
 	tdDoc1 := createTDDoc(thingID, 5, 4, 3)
 	actionSchema := &tdd.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
-	tdDoc1.AddAction(actionName, "", "action 1", "", actionSchema)
+	tdDoc1.AddAction(actionName, "action 1", "", actionSchema)
 	tddjson, _ := json.Marshal(tdDoc1)
 	err := svc.DirSvc.UpdateTD(agentID, string(tddjson))
 	require.NoError(t, err)
@@ -151,7 +151,7 @@ func TestDigitwinAgentAction(t *testing.T) {
 	// Create the native TD for invoking an action to
 	tdDoc1 := createTDDoc(thingID, 5, 4, 3)
 	actionSchema := &tdd.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
-	tdDoc1.AddAction(actionName, "", "action 1", "", actionSchema)
+	tdDoc1.AddAction(actionName, "action 1", "", actionSchema)
 	tddJSON1, _ := json.Marshal(tdDoc1)
 	err := svc.DirSvc.UpdateTD(agentID, string(tddJSON1))
 	require.NoError(t, err)

@@ -13,11 +13,12 @@ func (svc *IPNetBinding) MakeBindingTD() *tdd.TD {
 	td := tdd.NewTD(svc.config.AgentID, "IPNet binding", vocab.ThingService)
 
 	// these are configured through the configuration file.
-	prop := td.AddPropertyAsInt(vocab.PropDevicePollinterval, vocab.PropDevicePollinterval, "Poll Interval")
+	prop := td.AddPropertyAsInt(vocab.PropDevicePollinterval, "Poll Interval", "")
+	prop.SetAtType(vocab.PropDevicePollinterval)
 	prop.Unit = vocab.UnitSecond
 
 	// nr of discovered devices is a readonly attr
-	prop = td.AddPropertyAsInt("deviceCount", "", "Nr discovered devices")
+	prop = td.AddPropertyAsInt("deviceCount", "Device Count", "Nr discovered devices")
 	return td
 }
 
@@ -28,14 +29,21 @@ func (svc *IPNetBinding) MakeDeviceTD(deviceInfo *IPDeviceInfo) *tdd.TD {
 	td := tdd.NewTD(thingID, deviceName, vocab.ThingNet)
 
 	// these are configured through the configuration file.
-	prop := td.AddPropertyAsString("", vocab.PropDeviceTitle, "Device name")
+	prop := td.AddPropertyAsString(vocab.PropDeviceTitle, "Device name", "").
+		SetAtType(vocab.PropDeviceTitle)
 	prop.ReadOnly = true // TODO: allow edit and save the new device name
-	prop = td.AddProperty("", vocab.PropNetPort, "Ports", vocab.WoTDataTypeArray)
-	prop = td.AddPropertyAsString("", vocab.PropNetHostname, "Hostname")
-	prop = td.AddPropertyAsString("", vocab.PropNetIP4, "IP4 address")
-	prop = td.AddPropertyAsString("", vocab.PropNetIP6, "IP6 address")
-	prop = td.AddPropertyAsString("", vocab.PropNetMAC, "MAC address")
-	prop = td.AddPropertyAsInt("", vocab.PropNetLatency, "Latency")
+	prop = td.AddProperty(vocab.PropNetPort, "Ports", "", vocab.WoTDataTypeArray).
+		SetAtType(vocab.PropNetPort)
+	prop = td.AddPropertyAsString(vocab.PropNetHostname, "Hostname", "").
+		SetAtType(vocab.PropNetHostname)
+	prop = td.AddPropertyAsString(vocab.PropNetIP4, "IP4 address", "").
+		SetAtType(vocab.PropNetIP4)
+	prop = td.AddPropertyAsString(vocab.PropNetIP6, "IP6 address", "").
+		SetAtType(vocab.PropNetIP6)
+	prop = td.AddPropertyAsString(vocab.PropNetMAC, "MAC address", "").
+		SetAtType(vocab.PropNetMAC)
+	prop = td.AddPropertyAsInt(vocab.PropNetLatency, "Latency", "").
+		SetAtType(vocab.PropNetLatency)
 	prop.Unit = vocab.UnitMilliSecond
 
 	return td

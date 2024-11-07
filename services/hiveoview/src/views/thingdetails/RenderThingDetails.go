@@ -1,4 +1,4 @@
-package thing
+package thingdetails
 
 import (
 	"github.com/go-chi/chi/v5"
@@ -140,18 +140,18 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 		return strings.ToLower(act1.Title) < strings.ToLower(act2.Title)
 	})
 
-	thingData.DeviceType = td.AtType
+	thingData.DeviceType = td.GetAtTypeString()
 
 	// get the value of a make & model properties, if they exist
 	// TODO: this is a bit of a pain to do. Is this a common problem?
-	makeID, _ := td.GetPropertyOfAtType(vocab.PropDeviceMake)
+	makeID, _ := td.GetPropertyOfVocabType(vocab.PropDeviceMake)
 	if makeID != "" {
 		makeValue := ct.GetPropValue(makeID)
 		if makeValue.Value.Text() != "" {
 			thingData.MakeModel = makeValue.Value.Text() + ", "
 		}
 	}
-	modelID, _ := td.GetPropertyOfAtType(vocab.PropDeviceModel)
+	modelID, _ := td.GetPropertyOfVocabType(vocab.PropDeviceModel)
 	if modelID != "" {
 		modelValue := ct.GetPropValue(modelID)
 		if modelValue.Value.Text() != "" {

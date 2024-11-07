@@ -147,7 +147,7 @@ func HandleListThing(hc hubclient.IConsumerClient, thingID string) error {
 			//initialValue = ev.Data.InitialValue
 		}
 		fmt.Printf(" %-35s %-25.25s %-40.40s %-10.10v %s%-15.15s%s %.80s\n",
-			key, ev.VocabType, ev.Title, dataType, utils.COYellow, valueStr, utils.COReset, ev.Description)
+			key, ev.GetAtTypeString(), ev.Title, dataType, utils.COYellow, valueStr, utils.COReset, ev.Description)
 	}
 
 	fmt.Println(utils.CORed + "\nActions:")
@@ -166,7 +166,7 @@ func HandleListThing(hc hubclient.IConsumerClient, thingID string) error {
 			//initialValue = action.Input.InitialValue
 		}
 		fmt.Printf(" %-30.30s %-25.25s %-40.40s %-10.10s %s%-15.15s%s %.80s\n",
-			key, action.ActionType, action.Title, dataType, utils.CORed, valueStr, utils.COReset, action.Description)
+			key, action.AtType, action.Title, dataType, utils.CORed, valueStr, utils.COReset, action.Description)
 	}
 	fmt.Println()
 	return err

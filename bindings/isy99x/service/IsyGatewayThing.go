@@ -291,53 +291,64 @@ func (igw *IsyGatewayThing) MakeTD() *tdd.TD {
 	td.Description = igw.Configuration.DeviceSpecs.Make + "-" + igw.Configuration.DeviceSpecs.Model
 
 	//--- device read-only attributes
-	td.AddPropertyAsString("", vocab.PropDeviceMake, "Manufacturer")               // Universal Devices Inc.
-	td.AddPropertyAsString("", vocab.PropDeviceModel, "Model")                     // ISY-C-99
-	td.AddPropertyAsString("", vocab.PropDeviceSoftwareVersion, "AppVersion")      // 3.2.6
-	td.AddPropertyAsString("", vocab.PropNetMAC, "MAC")                            // 00:21:xx:yy:... (mac)
-	td.AddPropertyAsString("", vocab.PropDeviceDescription, "Product description") // ISY 99i 256
-	td.AddPropertyAsString("ProductID", "", "Product ID")                          // 1020
-	prop := td.AddPropertyAsString(PropIDSunrise, "", "Sunrise")
-	prop = td.AddPropertyAsString(PropIDSunset, "", "Sunset")
+	td.AddPropertyAsString(vocab.PropDeviceMake, "Manufacturer", "").
+		SetAtType(vocab.PropDeviceMake) // Universal Devices Inc.
+	td.AddPropertyAsString(vocab.PropDeviceModel, "Model", "").
+		SetAtType(vocab.PropDeviceModel) // ISY-C-99
+	td.AddPropertyAsString(vocab.PropDeviceSoftwareVersion, "AppVersion", "").
+		SetAtType(vocab.PropDeviceSoftwareVersion) // 3.2.6
+	td.AddPropertyAsString(vocab.PropNetMAC, "MAC", "").
+		SetAtType(vocab.PropNetMAC) // 00:21:xx:yy:... (mac)
+	td.AddPropertyAsString(vocab.PropDeviceDescription, "Product description", "").
+		SetAtType(vocab.PropDeviceDescription) // ISY 99i 256
+	td.AddPropertyAsString("productID", "Product ID", "") // 1020
+	prop := td.AddPropertyAsString(PropIDSunrise, "Sunrise", "Current sunrise time").
+		SetAtType(PropIDSunrise)
+	prop = td.AddPropertyAsString(PropIDSunset, "Sunset", "Current sunset time").
+		SetAtType(PropIDSunset)
 
 	//--- device configuration
 	// custom name
-	prop = td.AddPropertyAsString("", vocab.PropDeviceTitle, "Title")
+	prop = td.AddPropertyAsString(vocab.PropDeviceTitle, "Title", "").
+		SetAtType(vocab.PropDeviceTitle)
+
 	prop.ReadOnly = false
 
 	// network config
-	prop = td.AddPropertyAsBool(PropIDDHCP, "", "DHCP enabled")
+	prop = td.AddPropertyAsBool(PropIDDHCP, "DHCP enabled", "")
 	prop.ReadOnly = false
-	prop = td.AddPropertyAsString("", vocab.PropNetIP4, "IP address")
+	prop = td.AddPropertyAsString(vocab.PropNetIP4, "IP4 address", "")
 	prop.Description = "Configure gateway fix IP address"
 	prop.ReadOnly = igw.Network.Interface.IsDHCP == false
-	prop = td.AddPropertyAsString(PropIDLogin, "", "Gateway login name")
+	prop = td.AddPropertyAsString(vocab.PropNetPort, "Port", "Gateway connection port")
+	prop.ReadOnly = igw.Network.Interface.IsDHCP == false
+	prop = td.AddPropertyAsString(PropIDLogin, "Login Name", "Gateway login name")
 	prop.ReadOnly = false
-	prop = td.AddPropertyAsString(PropIDPassword, "", "Gateway password (hidden)")
+	prop = td.AddPropertyAsString(PropIDPassword, "Password", "Gateway password (hidden)")
 	prop.ReadOnly = false
 	prop.WriteOnly = true
 
 	// time config
-	prop = td.AddPropertyAsString(PropIDNTPHost, "", "Network time host")
+	prop = td.AddPropertyAsString(PropIDNTPHost, "Network time host", "")
 	prop.ReadOnly = false
 	prop.Default = "pool.ntp.org"
-	prop = td.AddPropertyAsBool(PropIDNTPEnabled, "", "Use network time")
+	prop = td.AddPropertyAsBool(PropIDNTPEnabled, "Use network time", "")
 	prop.ReadOnly = false
-	prop = td.AddPropertyAsInt(PropIDTMZOffset, "", "Timezone Offset")
+	prop = td.AddPropertyAsInt(PropIDTMZOffset, "Timezone Offset", "")
 	prop.ReadOnly = false
 	prop.Unit = vocab.UnitSecond
-	prop = td.AddPropertyAsBool(PropIDDSTEnabled, "", "DST Enabled")
+	prop = td.AddPropertyAsBool(PropIDDSTEnabled, "DST Enabled", "")
 	prop.ReadOnly = false
 
 	// TODO: any events?
 
 	// TODO: other actions?
-	action := td.AddAction("StartLinking", "", "Start Linking",
+	action := td.AddAction("start-linking", "Start Linking",
 		"1. Press and hold the 'Set' button on your Insteon device for 3-5 seconds.\n"+
 			"2. Repeat step 1 for as many devices as you would like to link.\n"+
 			"3. When done, select 'Finish' on the menu.", nil)
 	_ = action
-	action = td.AddAction("RemoveLink", "", "Remove Link",
+	action = td.AddAction("remove-link", "Remove Link",
 		"1. Press and hold the 'Set' button on the Insteon device to unlink, for 3-5 seconds.\n"+
 			"2. Repeat step 1 for as many devices as you would like to remove.\n"+
 			"3. When done, select 'Finish' on the menu.", nil)
@@ -394,12 +405,11 @@ func (igw *IsyGatewayThing) ReadGatewayValues() (err error) {
 	pv.SetValue(vocab.PropDeviceSoftwareVersion, igw.Configuration.AppVersion)
 	pv.SetValue(vocab.PropNetMAC, igw.Configuration.Root.ID)
 	pv.SetValue(vocab.PropDeviceDescription, igw.Configuration.Product.Description)
-	//pv.SetValue(vocab.PropDeviceDescription, igw.Configuration.Product.Description)
 	pv.SetValue(vocab.PropDeviceTitle, igw.Configuration.Root.Name) // custom name
 	pv.SetValue(vocab.PropNetIP4, igw.Network.Interface.IP)
 	pv.SetValue(vocab.PropNetPort, igw.Network.WebServer.HttpPort)
 
-	pv.SetValue("ProductID", igw.Configuration.Product.ID)
+	pv.SetValue("productID", igw.Configuration.Product.ID)
 	pv.SetValue(PropIDDHCP, strconv.FormatBool(igw.Network.Interface.IsDHCP)) // true or false
 	//pv.SetValue(PropIDLogin, igw.Configuration.LoginName)
 

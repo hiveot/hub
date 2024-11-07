@@ -2,7 +2,9 @@ package thing
 
 import (
 	"errors"
+	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/wot/tdd"
@@ -42,6 +44,8 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err != nil {
+		sess.SendNotify(session.NotifyError, "Property update failed: "+err.Error())
+
 		slog.Warn("SubmitProperty failed",
 			slog.String("remoteAddr", r.RemoteAddr),
 			slog.String("thingID", thingID),
@@ -51,6 +55,14 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 		// todo, differentiate between error causes, eg 500 server error, 503 service not available, 400 invalid value and 401 unauthorized
 		sess.WriteError(w, err, http.StatusServiceUnavailable)
 		return
+	}
+
+	if stat.Progress == vocab.ProgressStatusCompleted {
+		notificationText := fmt.Sprintf("Configuration changed.")
+		sess.SendNotify(session.NotifySuccess, notificationText)
+	} else {
+		notificationText := fmt.Sprintf("Configuration request sent.")
+		sess.SendNotify(session.NotifyInfo, notificationText)
 	}
 
 	// the async reply will contain status update

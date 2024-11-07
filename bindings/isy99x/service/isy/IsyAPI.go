@@ -106,9 +106,9 @@ func (isyAPI *IsyAPI) Disconnect() {
 // If successful this returns the ISY99x gateway address, otherwise an error is returned.
 func (isyAPI *IsyAPI) Discover(timeout time.Duration) (addr string, err error) {
 	slog.Info("Starting discovery")
-	deviceType := "urn:udi-com:device:X_Insteon_Lighting_Device:1"
+	insteonDeviceType := "urn:udi-com:device:X_Insteon_Lighting_Device:1"
 	ctx, cancelFn := context.WithTimeout(context.Background(), timeout)
-	devices, err := goupnp.DiscoverDevicesCtx(ctx, deviceType /*ssdp.SSDPAll*/)
+	devices, err := goupnp.DiscoverDevicesCtx(ctx, insteonDeviceType /*ssdp.SSDPAll*/)
 	cancelFn()
 
 	if len(devices) == 0 {

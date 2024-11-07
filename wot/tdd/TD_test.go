@@ -82,9 +82,9 @@ func TestMissingAffordance(t *testing.T) {
 func TestAddProp(t *testing.T) {
 	thingID := "urn:thing1"
 	tdoc := tdd.NewTD(thingID, "test TD", vocab2.ThingSensor)
-	tdoc.AddProperty("prop1", "", "test property", vocab2.WoTDataTypeBool)
+	tdoc.AddProperty("prop1", "prop 1", "test property", vocab2.WoTDataTypeBool)
 
-	tdoc.AddProperty("prop2", "", "test property2", vocab2.WoTDataTypeString)
+	tdoc.AddProperty("prop2", "test property2", "", vocab2.WoTDataTypeString)
 
 	prop := tdoc.GetProperty("prop1")
 	assert.NotNil(t, prop)
@@ -98,9 +98,9 @@ func TestAddPropBadIDs(t *testing.T) {
 	thingID := "urn:thing 1"
 	propID := "prop 1"
 	tdoc := tdd.NewTD(thingID, "test TD", vocab2.ThingSensor)
-	tdoc.AddProperty(propID, "", "test property", vocab2.WoTDataTypeBool)
+	tdoc.AddProperty(propID, "test property", "", vocab2.WoTDataTypeBool)
 
-	tdoc.AddProperty("prop2", "", "test property2", vocab2.WoTDataTypeString)
+	tdoc.AddProperty("prop2", "test property2", "", vocab2.WoTDataTypeString)
 
 	prop := tdoc.GetProperty(propID)
 	assert.Nil(t, prop)
@@ -129,9 +129,9 @@ func TestAddEvent(t *testing.T) {
 func TestAddAction(t *testing.T) {
 	thingID := "urn:thing1"
 	tdoc := tdd.NewTD(thingID, "test TD", vocab2.ThingSensor)
-	tdoc.AddAction("action1", "test", "Test Action", "", nil)
+	tdoc.AddAction("action1", "test", "Test Action", nil)
 
-	tdoc.AddAction("action2", "test", "test Action", "", nil)
+	tdoc.AddAction("action2", "test", "test Action", nil)
 
 	action := tdoc.GetAction("action1")
 	assert.NotNil(t, action)

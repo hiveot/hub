@@ -1,27 +1,22 @@
 <!--Thing actions list-->
 <!--@param '.' object of type thing.ThingDetailsTemplateData -->
-{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/thing.ThingDetailsTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/thingdetails.ThingDetailsTemplateData*/ -}}
 
 <ul class="h-grid-table thing-actions" striped border>
 	<li>
-		<div class="h-show-sm">{{/*icon*/}}</div>
 		<div>Action Name</div>
 		<div class="h-show-sm">Stateful</div>
-		<div >Input</div>
-
-		<div class="h-show-md">Output</div>
-		<div class="h-show-xl">Description</div>
-		<div class="h-show-xl">Last Used</div>
+		<div>Input</div>
+		<div class="h-show-md">Description</div>
 	</li>
 
     {{range $name := .ActionNames }}
 				{{/* TBD: action state is kept in properties?*/}}
         {{$iout := $.CT.GetPropValue $name}}
+				{{$aff := $.TD.GetAction $name}}
 				<li>
-            {{/* action icon*/}}
-					<div class="h-show-sm">{{/*icon*/}}</div>
 
-         {{/* Action title*/}}
+         {{/* Action Name*/}}
 					<div title="name: {{$name}}">
 						<button class="outline" style="border:none;
 										display:inline-flex; gap: 5px;
@@ -34,27 +29,17 @@
 						</button>
 					</div>
 
-          {{/* Stateful action*/}}
-					<div class="h-show-sm">$iout.Aff.Safe</div>
+          {{/* 'safe' or 'unsafe' (stateful) action*/}}
+					<div class="h-show-sm">{{$aff.GetStateful}}</div>
 
           {{/* Input schema type*/}}
-					<div >{{$iout.Schema.Title}}</div>
-
-					{{/* Output schema type (if any)*/}}
-					<div class="h-row h-show-md" >
-						{{$iout.Schema.Title}}
+					<div>
+{{/*							FIXME: use non-technie presentation*/}}
+							{{if $aff.Input}} {{$aff.Input.Type}} {{end}}
 					</div>
 
-					<div class="h-show-xl">{{$iout.Schema.Description}}</div>
+					<div class="h-show-md">{{$iout.Schema.Description}}</div>
 
-          {{/*Last used*/}}
-					<div class="h-show-xl"
-					     sse-swap="{{$.ThingID}}/{{$name}}/updated"
-					     hx-swap="innerHTML"
-					     hx-target="this"
-					     title="Updated: {{$iout.GetUpdated}} by {{$iout.SenderID}}">
-              {{$iout.GetUpdated}}
-					</div>
 				</li>
     {{end}}
     {{if not .TD.Actions}}
@@ -70,7 +55,7 @@
 
     @media (width < 576px) {
         .thing-actions {
-            /*xs, show column 2, 4 */
+            /*xs, show column 1, 3 */
             grid-template-columns:
 				            minmax(200px, max-content) /* title */
 				            minmax(100px, 1fr); /*Input*/
@@ -79,9 +64,8 @@
 
     @media (width >= 576px) {
         .thing-actions {
-            /*sm, show column 1,2,3,4 */
+            /*sm, show column 1,2,3 */
             grid-template-columns:
-				            40px   /* icon*/
 				            minmax(200px, max-content) /*title*/
 				            200px   /* stateful*/
 				            minmax(100px, 1fr); /*Input*/
@@ -90,28 +74,14 @@
 
     @media (width >= 768px) {
         .thing-actions {
-            /*md,show column 1,2,3,4,5,7 */
+            /*md,show column 1,2,3,4 */
             grid-template-columns:
-				            40px  /*icon*/
 				            minmax(200px, max-content) /*title*/
 				            200px   /* stateful*/
 				            minmax(100px, max-content)/*Input*/
-				            minmax(100px, 1fr);        /*updated*/
+				            minmax(100px, 1fr) /*description*/
         }
     }
 
-    @media (width >= 1280px) {
-        .thing-actions {
-            /*xl,show column 1-7 */
-            grid-template-columns:
-				            40px/*icon*/
-				            minmax(200px, max-content) /*title*/
-				            200px   /* stateful*/
-				            minmax(100px, max-content)/*Input*/
-				            minmax(100px, max-content) /*last action*/
-				            minmax(100px, 1fr) /*description*/
-				            minmax(100px, max-content); /*date*/
-        }
-    }
 
 </style>
