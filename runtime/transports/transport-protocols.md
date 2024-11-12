@@ -75,7 +75,7 @@ A form to subscribe to all events of a Thing could look like:
       "href": "/ssesc/digitwin/subscribe/dtw:agent1:thing1",
       "htv:methodName": "POST",
       "subprotocol": "ssesc",
-      "headers": ["cid", "messageID"]
+      "headers": ["cid", "requestID"]
     },
     {
       "op": "unsubscribeallevents",

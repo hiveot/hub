@@ -8,7 +8,7 @@ import (
 )
 
 // HandleActionRequest passes the action request to the associated Thing.
-func (svc *IsyBinding) handleActionRequest(action *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+func (svc *IsyBinding) handleActionRequest(action *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 	if action.MessageType == vocab.MessageTypeProperty {
 		return svc.handleConfigRequest(action)
 	}

@@ -9,7 +9,7 @@ import (
 )
 
 // handleConfigRequest for handling binding, gateway and node configuration changes
-func (svc *IsyBinding) handleConfigRequest(action *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+func (svc *IsyBinding) handleConfigRequest(action *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 
 	slog.Info("handleConfigRequest",
 		slog.String("thingID", action.ThingID),

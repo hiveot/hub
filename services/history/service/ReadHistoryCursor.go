@@ -65,8 +65,8 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (
 	if len(parts) > 3 {
 		senderID = parts[3]
 	}
-	// FIXME: keep the messageID? serialize the ThingMessage
-	messageID := ""
+	// FIXME: keep the requestID? serialize the ThingMessage
+	requestID := ""
 	var data interface{}
 	err = jsoniter.Unmarshal(raw, &data)
 	if err != nil {
@@ -79,7 +79,7 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (
 
 	thingValue = &hubclient.ThingMessage{
 		ThingID:     bucketID, // digital twin thingID that includes the agent prefix
-		MessageID:   messageID,
+		RequestID:   requestID,
 		Name:        name,
 		Data:        data,
 		Created:     createdTime.Format(utils.RFC3339Milli),

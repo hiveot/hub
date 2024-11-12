@@ -26,10 +26,10 @@ type IHubClient interface {
 	//	thingID native ID of the thing as used by the agent. The thing must exist.
 	//	name of the event to publish as described in the TD.
 	//	value with native data to publish, as per TD DataSchema
-	//	messageID if the event is in response to a request
+	//	requestID if the event is in response to a request
 	//
 	// This returns an error if the event cannot not be delivered to the hub
-	PubEvent(thingID string, name string, value any, messageID string) error
+	PubEvent(thingID string, name string, value any, requestID string) error
 
 	// PubProgressUpdate [agent] sends a delivery progress update to the hub.
 	// The hub will update the status of the action in the digital twin and
@@ -37,7 +37,7 @@ type IHubClient interface {
 	//
 	// Intended for agents that have processed an incoming action request asynchronously
 	// and need to send an update on further progress.
-	PubProgressUpdate(stat ActionProgress)
+	PubProgressUpdate(stat RequestProgress)
 
 	// PubMultipleProperties [agent] publishes a batch of property values to the hub
 	// It returns as soon as delivery to the hub is confirmed.

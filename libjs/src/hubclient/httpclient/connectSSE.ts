@@ -9,7 +9,7 @@ import {
 
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import EventSource from 'eventsource'
-import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
+import {RequestProgress} from "@hivelib/hubclient/RequestProgress";
 import {
     MessageTypeAction,
     MessageTypeEvent,
@@ -35,7 +35,7 @@ function parseSSEEvent(e: MessageEvent) : ThingMessage {
         tm.senderID = parts[2]
     }
     if (parts.length > 3) {
-        tm.messageID = parts[3]
+        tm.requestID = parts[3]
     }
     // server json-encodes data
     if (e.data) {
@@ -84,7 +84,7 @@ export async function  connectSSE(
         })
 
         source.addEventListener(MessageTypeProgressUpdate,(e:any)=>{
-            let stat: ActionProgress = JSON.parse(e.data)
+            let stat: RequestProgress = JSON.parse(e.data)
             onProgress(stat)
         })
         source.addEventListener(MessageTypeAction,(e:MessageEvent)=>{

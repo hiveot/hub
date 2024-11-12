@@ -8,7 +8,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/httpsse"
+	"github.com/hiveot/hub/lib/hubclient/sse"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime"
 	"github.com/hiveot/hub/wot/tdd"
@@ -79,7 +79,7 @@ func (test *TestServer) AddConnectUser(
 	}
 
 	hostPort := fmt.Sprintf("localhost:%d", test.Port)
-	cl = httpsse.NewHttpSSEClient(hostPort, clientID, nil, test.Certs.CaCert, time.Minute)
+	cl = sse.NewHttpSSEClient(hostPort, clientID, nil, test.Certs.CaCert, time.Minute)
 	token, err = cl.ConnectWithPassword(password)
 
 	if err != nil {
@@ -106,7 +106,7 @@ func (test *TestServer) AddConnectAgent(
 	}
 
 	hostPort := fmt.Sprintf("localhost:%d", test.Port)
-	cl = httpsse.NewHttpSSEClient(hostPort, agentID, nil, test.Certs.CaCert, time.Minute)
+	cl = sse.NewHttpSSEClient(hostPort, agentID, nil, test.Certs.CaCert, time.Minute)
 	_, err = cl.ConnectWithToken(token)
 	if err != nil {
 		panic("AddConnectAgent: Failed connecting using token. SenderID=" + agentID)
@@ -134,7 +134,7 @@ func (test *TestServer) AddConnectService(serviceID string) (
 	}
 
 	hostPort := fmt.Sprintf("localhost:%d", test.Port)
-	cl = httpsse.NewHttpSSEClient(hostPort, serviceID, nil, test.Certs.CaCert, time.Minute)
+	cl = sse.NewHttpSSEClient(hostPort, serviceID, nil, test.Certs.CaCert, time.Minute)
 	_, err = cl.ConnectWithToken(token)
 	if err != nil {
 		panic("AddConnectService: Failed connecting using token. serviceID=" + serviceID)
@@ -151,7 +151,7 @@ func (test *TestServer) AddTD(agentID string, td *tdd.TD) *tdd.TD {
 		td = test.CreateTestTD(i)
 	}
 	tdJSON, _ := json.Marshal(td)
-	err := test.Runtime.HubRouter.HandlePublishTD(agentID, string(tdJSON))
+	err := test.Runtime.DigitwinRouter.HandlePublishTD(agentID, string(tdJSON))
 	//ag := test.Runtime.TransportsMgr.GetEmbedded().NewClient(agentID)
 	//err := ag.PubEvent(td.ID, vocab.EventNameTD, string(tdJSON))
 	if err != nil {

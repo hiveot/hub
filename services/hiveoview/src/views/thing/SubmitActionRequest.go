@@ -25,7 +25,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	newValue = valueStr
 	reply := ""
 
-	stat := hubclient.ActionProgress{}
+	stat := hubclient.RequestProgress{}
 	//
 	_, sess, err := session2.GetSessionFromContext(r)
 	if err != nil {

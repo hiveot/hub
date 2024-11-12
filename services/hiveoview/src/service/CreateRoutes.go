@@ -100,7 +100,7 @@ func (svc *HiveovService) CreateRoutes(router *chi.Mux, rootPath string) http.Ha
 
 		// Performing Thing Actions and Configuration
 		r.Get(src.RenderActionRequestPath, thing.RenderActionRequest)
-		r.Get(src.RenderActionStatusPath, thing.RenderActionProgress)
+		r.Get(src.RenderActionStatusPath, thing.RenderRequestProgress)
 		r.Get(src.RenderThingPropertyEditPath, thing.RenderEditProperty)
 		r.Post(src.PostActionRequestPath, thing.SubmitActionRequest)
 		r.Post(src.PostThingPropertyEditPath, thing.SubmitProperty)

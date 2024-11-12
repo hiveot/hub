@@ -5,7 +5,7 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 )
 
-// ActionProgress holds the progress of action request delivery.
+// RequestProgress holds the progress of action or write property request delivery.
 // Intended for RPC updates and for asynchronously receiving action progress updates.
 // ThingID and Name are intended for the latter.
 
@@ -15,13 +15,13 @@ import (
 //        stateless action progress should use rpc
 //        stateful action progress should have a corresponding state property
 
-type ActionProgress struct {
+type RequestProgress struct {
 	// ThingID of the thing handles the action.
 	ThingID string `json:"thingID"`
 	// The action name
 	Name string `json:"name"`
 	// Request ID
-	MessageID string `json:"messageID"`
+	RequestID string `json:"requestID"`
 	// Updated delivery progress
 	Progress string `json:"progress"`
 	// Error in case delivery or processing has failed
@@ -30,13 +30,13 @@ type ActionProgress struct {
 	Reply any `json:"reply"`
 }
 
-// Completed sets the action process as completed. No more messages are send after this.
+// Completed sets the progress as completed. No more messages are send after this.
 // Optionally provide an error if it failed during processing by the Thing
 //
-// msg is the internal thing message containing the action request that completed.
-func (stat *ActionProgress) Completed(msg *ThingMessage, reply any, err error) *ActionProgress {
-	stat.Progress = vocab.ProgressStatusCompleted
-	stat.MessageID = msg.MessageID
+// msg is the internal thing message containing the request that completed.
+func (stat *RequestProgress) Completed(msg *ThingMessage, reply any, err error) *RequestProgress {
+	stat.Progress = vocab.RequestCompleted
+	stat.RequestID = msg.RequestID
 	stat.Reply = reply
 	stat.ThingID = msg.ThingID
 	stat.Name = msg.Name
@@ -46,7 +46,7 @@ func (stat *ActionProgress) Completed(msg *ThingMessage, reply any, err error) *
 	return stat
 }
 
-// Delivered sets the action process to delivered (to thing agent) using the internal message.
+// Delivered sets the progress to delivered (to thing agent) using the internal message.
 // The agent will update the progress to completed or failed if it set the 'rpc' flag in the
 // TD action affordance.
 //
@@ -55,11 +55,11 @@ func (stat *ActionProgress) Completed(msg *ThingMessage, reply any, err error) *
 // returns the completed status with an error.
 //
 // msg is the internal thing message containing the action request that was delivered.
-func (stat *ActionProgress) Delivered(msg *ThingMessage) *ActionProgress {
+func (stat *RequestProgress) Delivered(msg *ThingMessage) *RequestProgress {
 	stat.ThingID = msg.ThingID
 	stat.Name = msg.Name
-	stat.Progress = vocab.ProgressStatusDelivered
-	stat.MessageID = msg.MessageID
+	stat.Progress = vocab.RequestDelivered
+	stat.RequestID = msg.RequestID
 	return stat
 }
 
@@ -68,17 +68,17 @@ func (stat *ActionProgress) Delivered(msg *ThingMessage) *ActionProgress {
 //
 //	msg is the internal thing message containing the action request that failed.
 //	err contains the cause of the failure.
-func (stat *ActionProgress) Failed(msg *ThingMessage, err error) *ActionProgress {
+func (stat *RequestProgress) Failed(msg *ThingMessage, err error) *RequestProgress {
 	stat.ThingID = msg.ThingID
 	stat.Name = msg.Name
-	stat.Progress = vocab.ProgressStatusFailed
-	stat.MessageID = msg.MessageID
+	stat.Progress = vocab.RequestFailed
+	stat.RequestID = msg.RequestID
 	stat.Error = err.Error()
 	return stat
 }
 
 // Decode converts the native type into the given data type
-func (stat *ActionProgress) Decode(reply interface{}) (error, bool) {
+func (stat *RequestProgress) Decode(reply interface{}) (error, bool) {
 	if stat.Reply == nil {
 		return nil, false
 	}

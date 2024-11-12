@@ -6,11 +6,12 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/service"
 	service2 "github.com/hiveot/hub/runtime/authz/service"
 	"github.com/hiveot/hub/runtime/connections"
+	"github.com/hiveot/hub/runtime/digitwin/router"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
-	"github.com/hiveot/hub/runtime/hubrouter"
 	"github.com/hiveot/hub/runtime/transports"
 	"log/slog"
 )
@@ -21,13 +22,13 @@ type Runtime struct {
 	cfg *RuntimeConfig
 
 	//AuthnStore api.IAuthnStore
-	AuthnSvc    *service.AuthnService
-	AuthzSvc    *service2.AuthzService
-	AuthnAgent  *service.AuthnAgent
-	AuthzAgent  *service2.AuthzAgent
-	DigitwinSvc *service4.DigitwinService
-	HubRouter   *hubrouter.HubRouter
-	CM          *connections.ConnectionManager
+	AuthnSvc       *service.AuthnService
+	AuthzSvc       *service2.AuthzService
+	AuthnAgent     *service.AuthnAgent
+	AuthzAgent     *service2.AuthzAgent
+	DigitwinSvc    *service4.DigitwinService
+	DigitwinRouter api.IDigitwinRouter
+	CM             *connections.ConnectionManager
 	//sm            *sessions.SessionManager
 	TransportsMgr *transports.ProtocolManager
 }
@@ -74,8 +75,13 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 
 	// The transport passes incoming messages on to the hub-router, which in
 	// turn updates the digital twin and forwards the requests.
-	r.HubRouter = hubrouter.NewHubRouter(r.DigitwinSvc,
-		dtwAgent, r.AuthnAgent, r.AuthzAgent, r.CM)
+	r.DigitwinRouter = router.NewDigitwinRouter(
+		r.DigitwinSvc,
+		dtwAgent.HandleAction,
+		r.AuthnAgent.HandleAction,
+		r.AuthzAgent.HandleAction,
+		r.AuthzAgent.HasPermission,
+		r.CM)
 
 	// the protocol manager receives messages from clients (source) and
 	// sends messages to connected clients (sink)
@@ -84,7 +90,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		r.cfg.ServerCert,
 		r.cfg.CaCert,
 		r.AuthnSvc.SessionAuth,
-		r.HubRouter,
+		r.DigitwinRouter,
 		r.CM,
 	)
 	if err != nil {

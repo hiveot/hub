@@ -88,7 +88,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 			disConnectCount.Add(1)
 		}
 	}
-	onMessage := func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+	onMessage := func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 		messageCount.Add(1)
 		return stat
 	}
@@ -153,7 +153,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	var actionPayload = "payload1"
 	var expectedReply = actionPayload + ".reply"
 	var rxMsg *hubclient.ThingMessage
-	var stat3 hubclient.ActionProgress
+	var stat3 hubclient.RequestProgress
 
 	r := startRuntime()
 	defer r.Stop()
@@ -172,19 +172,19 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	defer cl1.Disconnect()
 
 	// Agent receives action request which we'll handle here
-	ag1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+	ag1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 		rxMsg = msg
 		reply := utils.DecodeAsString(msg.Data) + ".reply"
 		stat.Completed(msg, reply, nil)
 		assert.Equal(t, cl1.GetClientID(), msg.SenderID)
 		//stat.Failed(msg, fmt.Errorf("failuretest"))
-		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "messageID", msg.MessageID)
+		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "requestID", msg.RequestID)
 		return stat
 	})
 
 	// users receives delivery updates when sending actions
 	deliveryCtx, deliveryCtxComplete := context.WithTimeout(context.Background(), time.Minute*1)
-	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 		if msg.MessageType == vocab.MessageTypeProgressUpdate {
 			// delivery updates are only invoked on for non-rpc actions
 			err := utils.DecodeAsObject(msg.Data, &stat3)
@@ -209,7 +209,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// verify final result
-	require.Equal(t, vocab.ProgressStatusCompleted, stat3.Progress)
+	require.Equal(t, vocab.RequestCompleted, stat3.Progress)
 	require.Empty(t, stat3.Error)
 	require.NotNil(t, rxMsg)
 	assert.Equal(t, expectedReply, stat3.Reply)
@@ -244,12 +244,12 @@ func TestServiceReconnect(t *testing.T) {
 	ts.AddTD(agentID, td1)
 
 	// Agent receives action request which we'll handle here
-	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 		var req string
 		rxMsg.Store(&msg)
 		_ = utils.DecodeAsObject(msg.Data, &req)
 		stat.Completed(msg, req+".reply", nil)
-		slog.Info("agent1 delivery complete", "messageID", msg.MessageID)
+		slog.Info("agent1 delivery complete", "requestID", msg.RequestID)
 		return stat
 	})
 

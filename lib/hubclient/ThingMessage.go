@@ -25,7 +25,8 @@ type ThingMessage struct {
 	Name string
 
 	// Type of message this value was sent as: (MessageTypeEvent, MessageTypeAction...)
-	// This is required
+	// This is required.
+	// TODO: should these become operations? worth considering
 	MessageType string
 
 	// SenderID is the account ID of the agent, service or user sending the message
@@ -43,9 +44,9 @@ type ThingMessage struct {
 	// Data in the native format as described in the TD affordance dataschema.
 	Data any
 
-	// MessageID of the message. Intended to detect duplicates and send replies.
-	// Optional. The hub will generate a unique messageID if omitted.
-	MessageID string
+	// RequestID of the message. Intended to detect duplicates and send replies.
+	// Optional. The hub will generate a unique requestID if omitted.
+	RequestID string
 }
 
 // DataAsText return a text representation of the data that is independent of

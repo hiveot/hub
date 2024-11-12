@@ -13,8 +13,8 @@ type DummyConnection struct {
 	remoteAddr    string
 	subscriptions connections.Subscriptions
 
-	PublishEventHandler func(dThingID string, name string, value any, messageID string, agentID string)
-	PublishPropHandler  func(dThingID string, name string, value any, messageID string, agentID string)
+	PublishEventHandler func(dThingID string, name string, value any, requestID string, agentID string)
+	PublishPropHandler  func(dThingID string, name string, value any, requestID string, agentID string)
 }
 
 func (c *DummyConnection) Close() {}
@@ -25,23 +25,23 @@ func (c *DummyConnection) GetCLCID() string        { return c.clcid }
 
 //func (c *DummyConnection) GetSessionID() string    { return c.sessID }
 
-func (c *DummyConnection) InvokeAction(thingID string, name string, input any, messageID string, senderID string) (
+func (c *DummyConnection) InvokeAction(thingID string, name string, input any, requestID string, senderID string) (
 	status string, output any, err error) {
-	return vocab.ProgressStatusCompleted, nil, nil
+	return vocab.RequestCompleted, nil, nil
 }
 
-func (c *DummyConnection) PublishActionProgress(stat hubclient.ActionProgress, agentID string) error {
+func (c *DummyConnection) PublishActionStatus(stat hubclient.RequestProgress, agentID string) error {
 	return nil
 }
 
-func (c *DummyConnection) PublishEvent(dThingID string, name string, value any, messageID string, agentID string) {
+func (c *DummyConnection) PublishEvent(dThingID string, name string, value any, requestID string, agentID string) {
 	if c.PublishEventHandler != nil && c.subscriptions.IsSubscribed(dThingID, name) {
-		c.PublishEventHandler(dThingID, name, value, messageID, agentID)
+		c.PublishEventHandler(dThingID, name, value, requestID, agentID)
 	}
 }
-func (c *DummyConnection) PublishProperty(dThingID string, name string, value any, messageID string, agentID string) {
+func (c *DummyConnection) PublishProperty(dThingID string, name string, value any, requestID string, agentID string) {
 	if c.PublishPropHandler != nil && c.subscriptions.IsSubscribed(dThingID, name) {
-		c.PublishPropHandler(dThingID, name, value, messageID, agentID)
+		c.PublishPropHandler(dThingID, name, value, requestID, agentID)
 	}
 }
 func (c *DummyConnection) SubscribeEvent(dThingID, name string) {
@@ -56,7 +56,7 @@ func (c *DummyConnection) UnsubscribeEvent(dThingID, name string) {
 func (c *DummyConnection) UnobserveProperty(dThingID, name string) {
 	c.subscriptions.Unobserve(dThingID, name)
 }
-func (c *DummyConnection) WriteProperty(thingID, name string, value any, messageID string, senderID string) (status string, err error) {
+func (c *DummyConnection) WriteProperty(thingID, name string, value any, requestID string, senderID string) (status string, err error) {
 	return "", nil
 }
 

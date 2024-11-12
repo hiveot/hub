@@ -3,6 +3,7 @@ package connections
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/runtime/api"
 	"log/slog"
 	"slices"
 	"sync"
@@ -23,7 +24,7 @@ import (
 // This problem is specific to the http binding and not a concern of this connection manager.
 type ConnectionManager struct {
 	// connections by client-cid
-	clcidConnections map[string]IClientConnection
+	clcidConnections map[string]api.IClientConnection
 
 	// connection IDs by clientID
 	clientConnections map[string][]string
@@ -39,7 +40,7 @@ type ConnectionManager struct {
 // This requires the connection to have a unique client connection ID (clcid).
 // If an endpoint with this clcid exists both connections are forcibly closed
 // and an error is returned.
-func (cm *ConnectionManager) AddConnection(c IClientConnection) error {
+func (cm *ConnectionManager) AddConnection(c api.IClientConnection) error {
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
 
@@ -96,16 +97,16 @@ func (cm *ConnectionManager) CloseAll() {
 		_ = cid
 		c.Close()
 	}
-	cm.clcidConnections = make(map[string]IClientConnection)
+	cm.clcidConnections = make(map[string]api.IClientConnection)
 	cm.clientConnections = make(map[string][]string)
 }
 
 // ForEachConnection invoke handler for each client connection
 // Intended for publishing event and property updates to subscribers
-func (cm *ConnectionManager) ForEachConnection(handler func(c IClientConnection)) {
+func (cm *ConnectionManager) ForEachConnection(handler func(c api.IClientConnection)) {
 	// collect a list of connections
 	cm.mux.Lock()
-	connList := make([]IClientConnection, 0, len(cm.clientConnections))
+	connList := make([]api.IClientConnection, 0, len(cm.clientConnections))
 	for _, c := range cm.clcidConnections {
 		connList = append(connList, c)
 	}
@@ -118,7 +119,7 @@ func (cm *ConnectionManager) ForEachConnection(handler func(c IClientConnection)
 
 // GetConnectionByCLCID locates the connection of the client using the client connectionID
 // This returns nil if no connection was found with the given clcid
-func (cm *ConnectionManager) GetConnectionByCLCID(clcid string) (c IClientConnection) {
+func (cm *ConnectionManager) GetConnectionByCLCID(clcid string) (c api.IClientConnection) {
 
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
@@ -129,7 +130,7 @@ func (cm *ConnectionManager) GetConnectionByCLCID(clcid string) (c IClientConnec
 // GetConnectionByClientID locates the first connection of the client using its account ID.
 // Intended to find agents which only have a single connection.
 // This returns nil if no connection was found with the given login
-func (cm *ConnectionManager) GetConnectionByClientID(clientID string) (c IClientConnection) {
+func (cm *ConnectionManager) GetConnectionByClientID(clientID string) (c api.IClientConnection) {
 
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
@@ -155,7 +156,7 @@ func (cm *ConnectionManager) GetNrConnections() (int, int) {
 
 // PublishEvent broadcasts an event message to subscribers of this event.
 func (cm *ConnectionManager) PublishEvent(
-	dThingID string, name string, value any, messageID string, agentID string) {
+	dThingID string, name string, value any, requestID string, agentID string) {
 
 	slog.Debug("PublishEvent (to subscribers)",
 		slog.String("dThingID", dThingID),
@@ -163,14 +164,14 @@ func (cm *ConnectionManager) PublishEvent(
 		slog.Any("value", value),
 		slog.String("agentID", agentID),
 	)
-	cm.ForEachConnection(func(c IClientConnection) {
-		c.PublishEvent(dThingID, name, value, messageID, agentID)
+	cm.ForEachConnection(func(c api.IClientConnection) {
+		c.PublishEvent(dThingID, name, value, requestID, agentID)
 	})
 }
 
 // PublishProperty broadcasts a property update to subscribers of this event.
 func (cm *ConnectionManager) PublishProperty(
-	dThingID string, name string, value any, messageID string, agentID string) {
+	dThingID string, name string, value any, requestID string, agentID string) {
 
 	slog.Debug("PublishProperty (to subscribers)",
 		slog.String("dThingID", dThingID),
@@ -178,8 +179,8 @@ func (cm *ConnectionManager) PublishProperty(
 		slog.Any("value", value),
 		slog.String("agentID", agentID),
 	)
-	cm.ForEachConnection(func(c IClientConnection) {
-		c.PublishProperty(dThingID, name, value, messageID, agentID)
+	cm.ForEachConnection(func(c api.IClientConnection) {
+		c.PublishProperty(dThingID, name, value, requestID, agentID)
 	})
 }
 
@@ -224,7 +225,7 @@ func (cm *ConnectionManager) RemoveConnection(clcid string) {
 func NewConnectionManager() *ConnectionManager {
 
 	cm := &ConnectionManager{
-		clcidConnections:  make(map[string]IClientConnection),
+		clcidConnections:  make(map[string]api.IClientConnection),
 		clientConnections: make(map[string][]string),
 		mux:               sync.RWMutex{},
 	}

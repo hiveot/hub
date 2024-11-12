@@ -12,7 +12,7 @@ import * as http2 from "node:http2";
 import {connectSSE} from "@hivelib/hubclient/httpclient/connectSSE";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as https from "node:https";
-import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
+import {RequestProgress} from "@hivelib/hubclient/RequestProgress";
 import {
     ActionHandler,
     ConnectionStatus,
@@ -24,8 +24,8 @@ import {nanoid} from "nanoid";
 import EventSource from "eventsource";
 
 // FIXME: import from vocab is not working
-const ProgressStatusCompleted = "completed"
-const ProgressStatusFailed = "failed"
+const RequestCompleted = "completed"
+const RequestFailed = "failed"
 
 
 // Form paths that apply to all TDs at the top level
@@ -92,8 +92,8 @@ export class HttpSSEClient implements IAgentClient {
     // progress handler receiving progress updates from agents
     progressHandler: ProgressHandler | null = null;
 
-    // map of messageID to delivery status update channel
-    _correlData: Map<string,(stat: ActionProgress)=>void>
+    // map of requestID to delivery status update channel
+    _correlData: Map<string,(stat: RequestProgress)=>void>
 
     // Instantiate the Hub Client.
     //
@@ -239,8 +239,8 @@ export class HttpSSEClient implements IAgentClient {
             // todo: retry connecting
         }
     }
-    onProgress(stat:ActionProgress):void{
-        let cb = this._correlData.get(stat.messageID)
+    onProgress(stat:RequestProgress):void{
+        let cb = this._correlData.get(stat.requestID)
         if (cb) {
             cb(stat)
         } else if (this.progressHandler ) {
@@ -264,7 +264,7 @@ export class HttpSSEClient implements IAgentClient {
             let errText = `Error handling hub message sender=${msg.senderID}, messageType=${msg.messageType}, thingID=${msg.thingID}, name=${msg.name}, error=${e}`
             hclog.warn(errText)
             if (msg.messageType == MessageTypeAction) {
-                let stat = new ActionProgress()
+                let stat = new RequestProgress()
                 stat.failed(msg, errText)
                 this.pubProgressUpdate(stat)
             }
@@ -298,7 +298,7 @@ export class HttpSSEClient implements IAgentClient {
 
     // publish a request to the path with the given data
     // if the http/2 connection is closed, then try to initialize it again.
-    async pubMessage(methodName: string, path: string, messageID:string, data: any):Promise<string> {
+    async pubMessage(methodName: string, path: string, requestID:string, data: any):Promise<string> {
         // if the session is invalid, restart it
         if (!this._http2Session || this._http2Session.closed) {
             // this._http2Client.
@@ -323,7 +323,7 @@ export class HttpSSEClient implements IAgentClient {
                     ":method": methodName,
                     "content-type": "application/json",
                     "content-length": Buffer.byteLength(payload),
-                    "message-id": messageID,
+                    "message-id": requestID,
                     "cid": this._cid,
                 })
 
@@ -367,20 +367,20 @@ export class HttpSSEClient implements IAgentClient {
     //	@param agentID: of the device or service that handles the action.
     //	@param thingID: is the destination thingID to whom the action applies.
     //	name is the name of the action as described in the Thing's TD
-    //  messageID to include in the header
+    //  requestID to include in the header
     //	payload is the optional action arguments to be serialized and transported
     //
     // This returns the serialized reply data or null in case of no reply data
-    async invokeAction(thingID: string, name: string, messageID:string,
-                       payload: any): Promise<ActionProgress> {
+    async invokeAction(thingID: string, name: string, requestID:string,
+                       payload: any): Promise<RequestProgress> {
 
         hclog.info("pubAction. thingID:", thingID, ", name:", name)
 
         let actionPath = PostInvokeActionPath.replace("{thingID}", thingID)
         actionPath = actionPath.replace("{name}", name)
 
-        let resp = await this.pubMessage("POST",actionPath, messageID, payload)
-        let stat: ActionProgress = JSON.parse(resp)
+        let resp = await this.pubMessage("POST",actionPath, requestID, payload)
+        let stat: RequestProgress = JSON.parse(resp)
         return stat
     }
 
@@ -416,9 +416,9 @@ export class HttpSSEClient implements IAgentClient {
     // pubProgressUpdate sends a delivery status update back to the sender of the action
     // @param msg: action message that was received
     // @param stat: status to return
-    pubProgressUpdate(stat: ActionProgress) {
+    pubProgressUpdate(stat: RequestProgress) {
         this.pubMessage(
-            "POST",PostAgentPublishProgressPath, stat.messageID, stat)
+            "POST",PostAgentPublishProgressPath, stat.requestID, stat)
             .then().catch()
     }
 
@@ -457,30 +457,30 @@ export class HttpSSEClient implements IAgentClient {
     async rpc(dThingID: string, methodName: string, args: any): Promise<any> {
         return new Promise((resolve, reject) => {
 
-            // a messageID is needed before the action is published in order to match it with the reply
-            let messageID = "rpc-" + nanoid()
+            // a requestID is needed before the action is published in order to match it with the reply
+            let requestID = "rpc-" + nanoid()
 
             // handle timeout
             let t1 = setTimeout(() => {
-                this._correlData.delete(messageID)
+                this._correlData.delete(requestID)
                 console.error("RPC",dThingID,methodName,"failed with timeout")
                 reject("timeout")
             }, 30000)
 
             // set the handler for progress messages
-            this._correlData.set(messageID, (stat:ActionProgress):void=> {
+            this._correlData.set(requestID, (stat:RequestProgress):void=> {
                 // console.log("delivery progress",stat.progress)
                 // Remove the rpc wait hook and resolve the rpc
                 clearTimeout(t1)
-                this._correlData.delete(messageID)
+                this._correlData.delete(requestID)
                 resolve(stat.reply)
             })
-            this.invokeAction(dThingID, methodName, messageID, args)
-                .then((stat: ActionProgress) => {
+            this.invokeAction(dThingID, methodName, requestID, args)
+                .then((stat: RequestProgress) => {
                     // complete the request if the result is returned, otherwise wait for
                     // the callback from _correlData
-                    if (stat.progress == ProgressStatusCompleted || stat.progress == ProgressStatusFailed) {
-                        this._correlData.delete(messageID)
+                    if (stat.progress == RequestCompleted || stat.progress == RequestFailed) {
+                        this._correlData.delete(requestID)
                         resolve(stat.reply)
                     }
                 })
@@ -491,9 +491,9 @@ export class HttpSSEClient implements IAgentClient {
         })
     }
 
-    async waitForResponse(messageID:string): Promise<ActionProgress> {
-        let stat = new ActionProgress()
-        stat.progress = ProgressStatusFailed
+    async waitForResponse(requestID:string): Promise<RequestProgress> {
+        let stat = new RequestProgress()
+        stat.progress = RequestFailed
         stat.error = "no response"
         return stat
     }

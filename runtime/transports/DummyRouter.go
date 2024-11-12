@@ -3,6 +3,7 @@ package transports
 import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
 )
@@ -17,15 +18,16 @@ type DummyRouter struct {
 
 func (svc *DummyRouter) HandleInvokeAction(
 	senderID string, dThingID string, actionName string, input any, reqID string, cid string) (
-	status string, output any, messageID string, err error) {
+	status string, output any, requestID string, err error) {
 	// if a hook is provided, call it first
 	if svc.OnAction != nil {
-		output = svc.OnAction(senderID, dThingID, actionName, input, messageID, cid)
+		output = svc.OnAction(senderID, dThingID, actionName, input, requestID, cid)
 	}
-	return vocab.ProgressStatusDelivered, output, reqID, nil
+	return vocab.RequestDelivered, output, reqID, nil
 }
 
-func (svc *DummyRouter) HandleInvokeActionProgress(agentID string, data any) error {
+func (svc *DummyRouter) HandlePublishRequestProgress(
+	agentID string, data hubclient.RequestProgress) error {
 	return nil
 }
 func (svc *DummyRouter) HandleLogin(data any) (reply any, err error) {
@@ -44,9 +46,9 @@ func (svc *DummyRouter) HandleLogout(clientID string) {
 }
 
 func (svc *DummyRouter) HandlePublishEvent(
-	agentID string, thingID string, name string, value any, messageID string) error {
+	agentID string, thingID string, name string, value any, requestID string) error {
 	if svc.OnEvent != nil {
-		svc.OnEvent(agentID, thingID, name, value, messageID)
+		svc.OnEvent(agentID, thingID, name, value, requestID)
 	}
 	return nil
 }
@@ -105,8 +107,8 @@ func (svc *DummyRouter) HandleReadAllTDs(consumerID string) (reply any, err erro
 }
 
 func (svc *DummyRouter) HandleWriteProperty(
-	dThingID string, name string, newValue any, consumerID string) (
-	status string, messageID string, err error) {
+	consumerID string, dThingID string, name string, newValue any) (
+	status string, requestID string, err error) {
 
 	return "", "", nil
 }

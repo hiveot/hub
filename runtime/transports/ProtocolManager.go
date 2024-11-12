@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/connections"
-	"github.com/hiveot/hub/runtime/hubrouter"
 	"github.com/hiveot/hub/runtime/transports/discotransport"
 	"github.com/hiveot/hub/runtime/transports/httptransport"
 	"github.com/hiveot/hub/wot/tdd"
@@ -16,7 +15,7 @@ import (
 // the connection and session management.
 //
 // This implements the ITransportBinding interface like the protocols it manages.
-// Incoming messages without an ID are assigned a new messageID
+// Incoming messages without an ID are assigned a new requestID
 type ProtocolManager struct {
 	// protocol transport bindings for events, actions and rpc requests
 	// The embedded binding can be used directly with embedded services
@@ -28,7 +27,7 @@ type ProtocolManager struct {
 	//dtwService *service.DigitwinService
 
 	// handler to pass incoming messages to
-	//handler func(tv *hubclient.ThingMessage) hubclient.ActionProgress
+	//handler func(tv *hubclient.ThingMessage) hubclient.RequestProgress
 	cm *connections.ConnectionManager
 }
 
@@ -90,7 +89,7 @@ func StartProtocolManager(cfg *ProtocolsConfig,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	authenticator api.IAuthenticator,
-	hubRouter hubrouter.IHubRouter,
+	digitwinRouter api.IDigitwinRouter,
 	cm *connections.ConnectionManager,
 ) (svc *ProtocolManager, err error) {
 
@@ -105,7 +104,7 @@ func StartProtocolManager(cfg *ProtocolsConfig,
 		svc.httpTransport, err = httptransport.StartHttpTransport(
 			&cfg.HttpsTransport,
 			serverCert, caCert,
-			authenticator, hubRouter,
+			authenticator, digitwinRouter,
 			cm)
 	}
 	if cfg.EnableMQTT {

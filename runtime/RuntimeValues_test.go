@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/httpsse"
+	"github.com/hiveot/hub/lib/hubclient/sse"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
@@ -39,7 +39,7 @@ func TestHttpsGetActions(t *testing.T) {
 	key1 := "action-0" // must match TD
 	td1JSON, _ := json.Marshal(td1)
 	var dThing1ID = tdd.MakeDigiTwinThingID(agentID, td1.ID)
-	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 		stat.Completed(msg, data, nil)
 		return stat
 	})
@@ -47,7 +47,7 @@ func TestHttpsGetActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// step 2: consumer publish an action to the agent
-	cl2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+	cl2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 		return stat
 	})
 	stat := cl2.InvokeAction(dThing1ID, key1, data, nil, "")
@@ -69,10 +69,10 @@ func TestHttpsGetActions(t *testing.T) {
 	require.NoError(t, err)
 	valueMap := api.ActionListToMap(valueList)
 
-	// value must match that of the action in step 1 and match its messageID
+	// value must match that of the action in step 1 and match its requestID
 	actVal := valueMap[key1]
 	assert.Equal(t, data, actVal.Input)
-	assert.Equal(t, stat.MessageID, actVal.MessageID)
+	assert.Equal(t, stat.RequestID, actVal.RequestID)
 }
 
 // Get events from the outbox using the experimental http REST api
@@ -109,7 +109,7 @@ func TestHttpsGetEvents(t *testing.T) {
 
 	// read latest using the http REST API
 	vars := map[string]string{"thingID": dThing1ID}
-	eventPath := utils.Substitute(httpsse.ReadAllEventsPath, vars)
+	eventPath := utils.Substitute(sse.ReadAllEventsPath, vars)
 	reply, _, err := tlsClient.Get(eventPath)
 	require.NoError(t, err)
 	require.NotNil(t, reply)
@@ -194,7 +194,7 @@ func TestSubscribeValues(t *testing.T) {
 	// consumer subscribes to events/properties
 	err = hc.Subscribe("", "")
 	require.NoError(t, err)
-	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 		stat.Completed(msg, nil, nil)
 		msgCount.Add(1)
 		return stat
@@ -235,7 +235,7 @@ func TestWriteProperties(t *testing.T) {
 	err := ag.PubTD(td1.ID, string(td1JSON))
 
 	// agents listen for property write requests
-	ag.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+	ag.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 		if msg.MessageType == vocab.MessageTypeProperty && msg.Name == key1 {
 			stat.Completed(msg, nil, nil)
 			msgCount.Add(1)
@@ -247,7 +247,7 @@ func TestWriteProperties(t *testing.T) {
 	err = cl.Observe("", "")
 	require.NoError(t, err)
 	//var tv digitwin.ThingValue
-	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 		if msg.Name == key1 {
 			stat.Completed(msg, nil, nil)
 			msgCount.Add(1)
@@ -259,7 +259,7 @@ func TestWriteProperties(t *testing.T) {
 	dThingID := tdd.MakeDigiTwinThingID(agentID, td1.ID)
 	stat2 := cl.WriteProperty(dThingID, key1, data1)
 	require.Empty(t, stat2.Error)
-	require.Equal(t, vocab.ProgressStatusCompleted, stat2.Progress)
+	require.Equal(t, vocab.RequestCompleted, stat2.Progress)
 
 	time.Sleep(time.Millisecond * 1000)
 	assert.Equal(t, int32(1), msgCount.Load())

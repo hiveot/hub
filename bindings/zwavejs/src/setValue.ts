@@ -2,8 +2,8 @@
 import {SetValueStatus, TranslatedValueID, ValueMetadataNumeric, ZWaveNode} from "zwave-js";
 import * as tslog from 'tslog';
 import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI";
-import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
-import {ProgressStatusDelivered, ProgressStatusFailed, ProgressStatusCompleted} from "@hivelib/api/vocab/vocab";
+import {RequestProgress} from "@hivelib/hubclient/RequestProgress";
+import {RequestDelivered, RequestFailed, RequestCompleted} from "@hivelib/api/vocab/vocab";
 
 const log = new tslog.Logger()
 
@@ -14,10 +14,10 @@ const log = new tslog.Logger()
 // @param vid: valueID parameter to set
 // @param value: native value to set, if any
 // this returns a delivery status for returning to the hub
-export async function setValue(node: ZWaveNode, vid: TranslatedValueID, value: any): Promise<ActionProgress> {
-    return new Promise<ActionProgress>( (resolve, reject) => {
+export async function setValue(node: ZWaveNode, vid: TranslatedValueID, value: any): Promise<RequestProgress> {
+    return new Promise<RequestProgress>( (resolve, reject) => {
         let dataToSet: unknown
-        let stat = new ActionProgress()
+        let stat = new RequestProgress()
         try {
             let vidMeta = node.getValueMetadata(vid)
             dataToSet = value
@@ -47,24 +47,24 @@ export async function setValue(node: ZWaveNode, vid: TranslatedValueID, value: a
                     // 0xff: success
                     switch (res.status) {
                         case SetValueStatus.Working:
-                            stat.progress = ProgressStatusDelivered
+                            stat.progress = RequestDelivered
                             break;
                         // TODO progress updates
                         case SetValueStatus.Success:
                         case SetValueStatus.SuccessUnsupervised:
-                            stat.progress = ProgressStatusCompleted
+                            stat.progress = RequestCompleted
                             break;
                         case SetValueStatus.EndpointNotFound:
                         case SetValueStatus.NotImplemented:
-                            stat.progress = ProgressStatusFailed
+                            stat.progress = RequestFailed
                             stat.error = res.message
                             break;
                         case SetValueStatus.InvalidValue:
-                            stat.progress = ProgressStatusCompleted
+                            stat.progress = RequestCompleted
                             stat.error = res.message
                             break
                         default:
-                            stat.progress = ProgressStatusDelivered
+                            stat.progress = RequestDelivered
                     }
                     resolve(stat)
                 })

@@ -27,7 +27,7 @@ var deviceCatMap = map[string]string{
 }
 
 // IsyEventHandler is the callback to notify the binding of thing events
-type IsyEventHandler func(thingID, name string, value any, messageID string)
+type IsyEventHandler func(thingID, name string, value any, requestID string)
 
 // IIsyThing is the interface implemented by nodes that are things
 type IIsyThing interface {

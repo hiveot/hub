@@ -8,7 +8,7 @@ import {getVidValue, ZWAPI} from "@zwavejs/ZWAPI";
 import {MessageTypeProperty} from "@hivelib/api/vocab/vocab.js";
 import {handleWriteProperty} from "@zwavejs/handleWriteProperty";
 import {setValue} from "@zwavejs/setValue";
-import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
+import {RequestProgress} from "@hivelib/hubclient/RequestProgress";
 
 const log = new tslog.Logger()
 
@@ -18,9 +18,9 @@ const log = new tslog.Logger()
 // Normally this returns the delivery status to the caller.
 // If delivery is in progress then use 'hc' to send further status updates.
 export function  handleInvokeAction(
-    msg: ThingMessage, zwapi: ZWAPI, hc: IAgentClient): ActionProgress {
+    msg: ThingMessage, zwapi: ZWAPI, hc: IAgentClient): RequestProgress {
 
-    let stat = new ActionProgress()
+    let stat = new RequestProgress()
     let errMsg: string = ""
     let actionLower = msg.name.toLowerCase()
     let targetNode: ZWaveNode | undefined
@@ -123,7 +123,7 @@ export function  handleInvokeAction(
             if (propVid) {
                 setValue(node, propVid, actionValue)
                     .then(stat => {
-                        stat.messageID = msg.messageID
+                        stat.requestID = msg.requestID
                         // async update
                         hc.pubProgressUpdate(stat)
                         let newValue = getVidValue(node, propVid)

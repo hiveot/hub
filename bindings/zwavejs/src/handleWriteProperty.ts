@@ -6,7 +6,7 @@ import * as tslog from 'tslog';
 import {IAgentClient} from "@hivelib/hubclient/IAgentClient";
 import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI";
 import {setValue} from "@zwavejs/setValue";
-import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
+import {RequestProgress} from "@hivelib/hubclient/RequestProgress";
 
 const log = new tslog.Logger()
 
@@ -15,8 +15,8 @@ const log = new tslog.Logger()
 // handle configuration write request as defined in the TD
 // @param msg is the incoming message with the 'key' containing the property to set
 export function handleWriteProperty(
-    msg: ThingMessage, node: ZWaveNode, zwapi: ZWAPI, hc: IAgentClient):  ActionProgress {
-    let stat = new ActionProgress()
+    msg: ThingMessage, node: ZWaveNode, zwapi: ZWAPI, hc: IAgentClient):  RequestProgress {
+    let stat = new RequestProgress()
     let errMsg: Error | undefined
 
     let propKey = msg.name
@@ -48,10 +48,10 @@ export function handleWriteProperty(
         // convert the value if this is an enum
         setValue(node, propVid, propValue)
             .then(stat => {
-                stat.messageID = msg.messageID
-                // notify the sender of the update (with messageID)
+                stat.requestID = msg.requestID
+                // notify the sender of the update (with requestID)
                 hc.pubProgressUpdate(stat)
-                // notify everyone else (no messageID)
+                // notify everyone else (no requestID)
                 let newValue = getVidValue(node, propVid)
                 // zwapi.onValueUpdate(node, propValue, newValue)
                 zwapi.onValueUpdate(node, propVid, newValue)

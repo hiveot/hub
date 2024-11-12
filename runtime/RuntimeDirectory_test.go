@@ -30,13 +30,13 @@ func TestAddRemoveTD(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 	ag, _ := ts.AddConnectAgent(agentID)
-	ag.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
-		stat.Progress = vocab.ProgressStatusCompleted
+	ag.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
+		stat.Progress = vocab.RequestCompleted
 		return
 	})
 	defer ag.Disconnect()
 	cl, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
-	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 		// expect 2 events, updated and removed
 		evCount.Add(1)
 		return stat
@@ -67,7 +67,7 @@ func TestAddRemoveTD(t *testing.T) {
 	// after removal of the TD, getTD should return an error but delivery is successful
 	stat = cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, string(args4JSON), nil, "")
 	require.NotEmpty(t, stat.Error)
-	require.Equal(t, vocab.ProgressStatusCompleted, stat.Progress)
+	require.Equal(t, vocab.RequestCompleted, stat.Progress)
 
 	// expect 2 events to be received
 	require.Equal(t, int32(2), evCount.Load())
@@ -163,7 +163,7 @@ func TestTDEvent(t *testing.T) {
 	defer cl.Disconnect()
 
 	// wait to directory TD updated events
-	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 		stat.Completed(msg, nil, nil)
 		if msg.MessageType == vocab.MessageTypeEvent &&
 			msg.ThingID == digitwin.DirectoryDThingID &&

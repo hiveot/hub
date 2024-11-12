@@ -16,19 +16,19 @@ type AuthnAgent struct {
 
 // HandleAction authn services action request
 func (agent *AuthnAgent) HandleAction(
-	consumerID string, dThingID string, actionName string, input any, messageID string) (
+	consumerID string, dThingID string, actionName string, input any, requestID string) (
 	status string, output any, err error) {
 
 	_, thingID := tdd.SplitDigiTwinThingID(dThingID)
 	if thingID == authn.AdminServiceID {
-		status, output, err = agent.adminHandler(consumerID, dThingID, actionName, input, messageID)
+		status, output, err = agent.adminHandler(consumerID, dThingID, actionName, input, requestID)
 	} else if thingID == authn.UserServiceID {
-		status, output, err = agent.userHandler(consumerID, dThingID, actionName, input, messageID)
+		status, output, err = agent.userHandler(consumerID, dThingID, actionName, input, requestID)
 	} else {
 		err = fmt.Errorf("unknown authn service capability '%s'", dThingID)
 	}
 	if err != nil {
-		status = vocab.ProgressStatusFailed
+		status = vocab.RequestFailed
 	}
 	return status, output, err
 }

@@ -50,8 +50,7 @@
   
 10. 5.3.3.1 SecurityScheme  [Ambiguous]
 > The forth paragraph: "Security schemes generally may require additional authentication parameters, such as a password or key. The location of this information is indicated by the value associated with the name in, often in combination with the value associated with name."
-   
-* It would be nice if this made sense. So-far however this has eluded me. It is quite ambiguous. When removing the second sentence, sense returns to some degree. If this is important however then please know that this important sentence is lost to this reader.  
+* Is this an example of security through obscurity?  
 
 11. How to add a description to enum values? [Non-WoT workaround]
 > Use-case: If an input has a restricted set of values, the consumer will have to select one of those values. Enum values however do not have a presentable title or description.
@@ -92,9 +91,9 @@ Answer: encoding is handled in the transport protocol. The forms in the TD conta
 * Workaround: Return the wire format and provide an unmarshal method to the client where the client can provide the expected data type.
 
 17. How to include metadata (thingID, name, clientID) in SSE messages? [Non-WoT workaround]
-* use-case: agent receives an action for a Thing via its SSE connection (agents connect to the Hub). The SSE data is the input data as per TDD, but how to convey the thingID, action name and messageID?
+* use-case: agent receives an action for a Thing via its SSE connection (agents connect to the Hub). The SSE data is the input data as per TDD, but how to convey the thingID, action name and requestID?
 * Workaround 1: Encapsulate the message in an evelope and use the additionalResponses field in a Form to define the envelope schema. However this has to be repeated for every single action/property/event which is *very* wordy.
-* Workaround 2: Push this to the transport protocol. In case of SSE use the ID field: {thingID}/{name}/{messageID}. However, how can this be described in a Form? (chosen workaround)
+* Workaround 2: Push this to the transport protocol. In case of SSE use the ID field: {thingID}/{name}/{requestID}. However, how can this be described in a Form? (chosen workaround)
 
 18. How to describe a map of objects in the action output dataschema? [Workaround]
 * Workaround: don't use maps, use arrays.

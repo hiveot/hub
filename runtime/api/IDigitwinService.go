@@ -11,7 +11,7 @@ type ProgressEvent struct {
 	ID          string `json:"ID"`
 	Name        string `json:"name"`
 	Data        any    `json:"data,omitempty"`
-	MessageID   string `json:"messageID"`
+	RequestID   string `json:"requestID"`
 	MessageType string `json:"messageType"`
 	SenderID    string `json:"senderID"`
 	Status      string `json:"status"`

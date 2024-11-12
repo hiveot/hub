@@ -23,21 +23,21 @@ type AuthzAgent struct {
 }
 
 // HandleAction authz service action handler
-func (agent *AuthzAgent) HandleAction(consumerID string, dThingID string, actionName string, input any, messageID string) (
+func (agent *AuthzAgent) HandleAction(consumerID string, dThingID string, actionName string, input any, requestID string) (
 	status string, output any, err error) {
 
 	// if the message has an authn agent prefix then remove it.
 	// This can happen if invoked directly through an embedded client
 	_, thingID := tdd.SplitDigiTwinThingID(dThingID)
 	if thingID == authz.AdminServiceID {
-		status, output, err = agent.adminHandler(consumerID, dThingID, actionName, input, messageID)
+		status, output, err = agent.adminHandler(consumerID, dThingID, actionName, input, requestID)
 	} else if thingID == authz.UserServiceID {
-		status, output, err = agent.userHandler(consumerID, dThingID, actionName, input, messageID)
+		status, output, err = agent.userHandler(consumerID, dThingID, actionName, input, requestID)
 	} else {
 		err = fmt.Errorf("unknown authz service capability '%s'", dThingID)
 	}
 	if err != nil {
-		status = vocab.ProgressStatusFailed
+		status = vocab.RequestFailed
 	}
 	return status, output, err
 }

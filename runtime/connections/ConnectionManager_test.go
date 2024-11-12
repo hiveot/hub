@@ -1,6 +1,7 @@
 package connections_test
 
 import (
+	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
@@ -110,7 +111,7 @@ func TestForEachConnection(t *testing.T) {
 	require.NoError(t, err)
 
 	count := 0
-	cm.ForEachConnection(func(c connections.IClientConnection) {
+	cm.ForEachConnection(func(c api.IClientConnection) {
 		count++
 	})
 	assert.Equal(t, 2, count)
@@ -153,10 +154,10 @@ func TestPublishEventProp(t *testing.T) {
 	c1 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	c1.SubscribeEvent(dThingID, "")
 	c1.ObserveProperty(dThingID, "")
-	c1.PublishEventHandler = func(dThingID, name string, data any, messageID string, agentID string) {
+	c1.PublishEventHandler = func(dThingID, name string, data any, requestID string, agentID string) {
 		evCount++
 	}
-	c1.PublishPropHandler = func(dThingID, name string, data any, messageID string, agentID string) {
+	c1.PublishPropHandler = func(dThingID, name string, data any, requestID string, agentID string) {
 		propCount++
 	}
 

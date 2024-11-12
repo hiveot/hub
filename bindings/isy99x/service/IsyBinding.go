@@ -61,8 +61,8 @@ func (svc *IsyBinding) GetBindingPropValues(onlyChanges bool) map[string]any {
 }
 
 // onIsyEvent publishes the event sent by one of the ISY thing.
-func (svc *IsyBinding) onIsyEvent(thingID string, evName string, value any, messageID string) {
-	_ = svc.hc.PubEvent(thingID, evName, value, messageID)
+func (svc *IsyBinding) onIsyEvent(thingID string, evName string, value any, requestID string) {
+	_ = svc.hc.PubEvent(thingID, evName, value, requestID)
 }
 
 // HandleBindingConfig configures the binding.

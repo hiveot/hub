@@ -94,7 +94,7 @@ func TestPoll(t *testing.T) {
 	// Count the number of received TD events
 	err := hc2.Subscribe("", "")
 	require.NoError(t, err)
-	hc2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+	hc2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 		slog.Info("received message", "type", msg.MessageType, "id", msg.Name)
 		var value interface{}
 		err2 := utils.DecodeAsObject(msg.Data, &value)

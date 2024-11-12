@@ -8,8 +8,9 @@ import (
 	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/connections"
-	"github.com/hiveot/hub/runtime/hubrouter"
-	"github.com/hiveot/hub/runtime/transports/httptransport/subprotocols"
+	"github.com/hiveot/hub/runtime/transports/httptransport/sse"
+	"github.com/hiveot/hub/runtime/transports/httptransport/ssesc"
+	"github.com/hiveot/hub/runtime/transports/httptransport/wss"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"net/http"
@@ -35,9 +36,9 @@ type HttpBinding struct {
 	router     *chi.Mux
 
 	// subprotocol bindings
-	sse   *subprotocols.SseBinding
-	ssesc *subprotocols.SseScBinding
-	ws    *subprotocols.WsBinding
+	sse   *sse.SseBinding
+	ssesc *ssesc.SseScBinding
+	ws    *wss.WssBinding
 
 	// authenticator for logging in and validating session tokens
 	authenticator api.IAuthenticator
@@ -46,7 +47,7 @@ type HttpBinding struct {
 	operations []HttpOperation
 
 	// routing of action, event and property requests
-	hubRouter hubrouter.IHubRouter
+	digitwinRouter api.IDigitwinRouter
 
 	// connection manager for adding/removing binding connections
 	cm *connections.ConnectionManager
@@ -84,7 +85,7 @@ func (svc *HttpBinding) AddPostOp(r chi.Router,
 }
 
 // GetConnectionByCLCID returns the client connection for sending messages to a client
-func (svc *HttpBinding) GetConnectionByCLCID(clcid string) connections.IClientConnection {
+func (svc *HttpBinding) GetConnectionByCLCID(clcid string) api.IClientConnection {
 	return svc.cm.GetConnectionByCLCID(clcid)
 }
 
@@ -158,25 +159,25 @@ func StartHttpTransport(config *HttpTransportConfig,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	authenticator api.IAuthenticator,
-	hubRouter hubrouter.IHubRouter,
+	digitwinRouter api.IDigitwinRouter,
 	cm *connections.ConnectionManager,
 ) (*HttpBinding, error) {
 
-	httpServer, router := tlsserver.NewTLSServer(
+	httpServer, httpRouter := tlsserver.NewTLSServer(
 		config.Host, config.Port, serverCert, caCert)
 
 	svc := HttpBinding{
 		authenticator: authenticator,
 		config:        config,
 
-		ws:    subprotocols.NewWsBinding(cm),
-		sse:   subprotocols.NewSseBinding(cm),
-		ssesc: subprotocols.NewSseScBinding(cm),
+		ws:    wss.NewWssBinding(cm),
+		sse:   sse.NewSseBinding(cm),
+		ssesc: ssesc.NewSseScBinding(cm),
 
-		httpServer: httpServer,
-		router:     router,
-		hubRouter:  hubRouter,
-		cm:         cm,
+		httpServer:     httpServer,
+		router:         httpRouter,
+		digitwinRouter: digitwinRouter,
+		cm:             cm,
 	}
 
 	svc.createRoutes(svc.router)

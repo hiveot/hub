@@ -4,6 +4,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/runtime/transports/httptransport/httpcontext"
 	"net/http"
 )
 
@@ -56,7 +57,7 @@ func (svc *HttpBinding) createRoutes(router chi.Router) http.Handler {
 			"text/html", "text/css", "text/javascript", "image/svg+xml"))
 
 		// client sessions authenticate the sender
-		r.Use(svc.AddSessionFromToken(svc.authenticator))
+		r.Use(httpcontext.AddSessionFromToken(svc.authenticator))
 
 		//- direct methods for digital twins
 		svc.AddGetOp(r, vocab.WotOpReadAllProperties, true,
@@ -102,10 +103,8 @@ func (svc *HttpBinding) createRoutes(router chi.Router) http.Handler {
 
 		// ws subprotocol routes
 		if svc.ws != nil {
-			//svc.AddPostOp(r, vocab.WotOpObserveAllProperties, true,
-			//	"/ws/digitwin/observe/{thingID}", svc.ws.HandleObserveAllProperties)
-			//svc.AddPostOp(r, vocab.WoTOpObserveProperty, true,
-			//	"/ws/digitwin/observe/{thingID}/{name}", svc.ws.HandleObserveProperty)
+			svc.AddPostOp(r, "websocket-connect", true,
+				"/wss", svc.ws.HandleConnect)
 		}
 		if svc.sse != nil {
 			//// sse subprotocol routes
@@ -140,7 +139,7 @@ func (svc *HttpBinding) createRoutes(router chi.Router) http.Handler {
 		svc.AddPostOp(r, vocab.HTOpPublishMultipleProperties, false,
 			"/agent/properties/{thingID}", svc.HandlePublishMultipleProperties)
 		svc.AddPostOp(r, "", false,
-			"/agent/progress", svc.HandleInvokeActionProgress)
+			"/agent/progress", svc.HandleInvokeRequestProgress)
 
 	})
 

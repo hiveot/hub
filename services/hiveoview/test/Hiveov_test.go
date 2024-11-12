@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/httpsse"
+	"github.com/hiveot/hub/lib/hubclient/sse"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/tlsclient"
@@ -37,11 +37,11 @@ var ts *testenv.TestServer
 // This returns a client. Call Close() when done.
 func WebLogin(clientID string,
 	onConnection func(bool, error),
-	onMessage func(message *hubclient.ThingMessage) hubclient.ActionProgress) (
-	*httpsse.HttpSSEClient, error) {
+	onMessage func(message *hubclient.ThingMessage) hubclient.RequestProgress) (
+	*sse.HttpSSEClient, error) {
 
 	hostPort := fmt.Sprintf("localhost:%d", servicePort)
-	sseCl := httpsse.NewHttpSSEClient(hostPort, clientID, nil, ts.Certs.CaCert, time.Minute*10)
+	sseCl := sse.NewHttpSSEClient(hostPort, clientID, nil, ts.Certs.CaCert, time.Minute*10)
 	sseCl.SetConnectHandler(onConnection)
 	sseCl.SetMessageHandler(onMessage)
 	sseCl.SetSSEPath("/websse")
@@ -132,7 +132,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	const agentID = "agent1"
 	const testConnections = int32(1)
 	const eventName = "event1"
-	var webClients = make([]*httpsse.HttpSSEClient, 0)
+	var webClients = make([]*sse.HttpSSEClient, 0)
 	var connectCount atomic.Int32
 	var disConnectCount atomic.Int32
 	var messageCount atomic.Int32
@@ -167,7 +167,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 			disConnectCount.Add(1)
 		}
 	}
-	onMessage := func(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+	onMessage := func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 		// the UI expects this format for triggering htmx
 		expectedType := fmt.Sprintf("dtw:%s:%s/%s", agentID, td1.ID, eventName)
 		if expectedType == msg.MessageType {

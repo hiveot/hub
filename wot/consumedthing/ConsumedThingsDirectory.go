@@ -63,12 +63,12 @@ func (cts *ConsumedThingsDirectory) Consume(thingID string) (ct *ConsumedThing, 
 
 // handleMessage updates the consumed things from subscriptions
 func (cts *ConsumedThingsDirectory) handleMessage(
-	msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+	msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 
 	slog.Debug("CTS.handleMessage",
 		slog.String("senderID", msg.SenderID),
 		slog.String("messageType", msg.MessageType),
-		slog.String("messageID", msg.MessageID),
+		slog.String("requestID", msg.RequestID),
 		slog.String("thingID", msg.ThingID),
 		slog.String("name", msg.Name),
 		slog.String("clientID (me)", cts.hc.GetClientID()),
@@ -85,7 +85,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(
 			_, err := cts.ReadTD(msg.ThingID)
 			if err != nil {
 				slog.Error("Received message with thingID that doesn't exist",
-					"messageType", msg.MessageType, "messageID", msg.MessageID,
+					"messageType", msg.MessageType, "requestID", msg.RequestID,
 					"thingID", msg.ThingID, "name", msg.Name, "senderID", msg.SenderID)
 			}
 		}
@@ -121,7 +121,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(
 		ct, found := cts.consumedThings[msg.ThingID]
 		if found {
 			propValue := &digitwin.ThingValue{
-				Name: msg.Name, Data: msg.Data, MessageID: msg.MessageID,
+				Name: msg.Name, Data: msg.Data, RequestID: msg.RequestID,
 				SenderID: msg.SenderID, Updated: msg.Created}
 			ct.OnPropertyUpdate(propValue)
 		}
@@ -140,7 +140,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(
 		cts.mux.RUnlock()
 		if found {
 			tv := &digitwin.ThingValue{
-				Name: msg.Name, MessageID: msg.MessageID, SenderID: msg.SenderID,
+				Name: msg.Name, RequestID: msg.RequestID, SenderID: msg.SenderID,
 				Updated: msg.Created, Data: msg.Data}
 			ct.OnEvent(tv)
 		}

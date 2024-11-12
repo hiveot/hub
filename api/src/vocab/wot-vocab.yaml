@@ -62,7 +62,7 @@ WoTVocab:
     WoTPSKSecurityScheme    : "PSKSecurityScheme"
     WoTOAuth2SecurityScheme : "OAuth2SecurityScheme"
 
-    #--- Form operations
+    #--- HTTP Protocol binding operations
     # Properties
     WotOpObserveAllProperties : "observeallproperties"
     WoTOpObserveProperty        : "observeproperty"
@@ -87,4 +87,12 @@ WoTVocab:
     WotOpQueryAllActions : "queryallactions"
     WotOpQueryAction : "queryaction"
 
-
+    # additional WSS operations that not in the TD-1.1 spec.
+    # From: https://docs.google.com/document/d/1KWv-aQfMgsqBFg0v4rVqzcVvzzisC7y4X4CMUYGc8rE/edit?tab=t.0
+    WotOpPublishActionStatus : "actionstatus"
+    WotOpPublishActionStatuses : "actionstatuses"
+    WotOpPublishError : "error"
+    WotOpPublishEvent : "event"
+    WotOpPublishProperty : "propertyreading"
+    WotOpPing : "ping"
+    WotOpPong : "pong"    # response message

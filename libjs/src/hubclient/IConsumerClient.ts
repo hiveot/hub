@@ -1,6 +1,6 @@
 import type {IHiveKey} from "@keys/IHiveKey";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
-import {ActionProgress} from "@hivelib/hubclient/ActionProgress";
+import {RequestProgress} from "@hivelib/hubclient/RequestProgress";
 
 
 export enum ConnectionStatus {
@@ -11,27 +11,12 @@ export enum ConnectionStatus {
     // Unauthorized login name or password
     Unauthorized = "unauthorized"
 }
-//
-// export enum ConnInfo {
-//     // connection successful
-//     Success = "success",
-//     // ConnInfoUnauthorized credentials invalid
-//     Unauthorized = "unauthorized",
-//     // ConnInfoUnreachable unable to reach the server during the initial connection attempt
-//     Unreachable = "unreachable",
-//     // ConnInfoServerDisconnected a server disconnect message was received.
-//     ServerDisconnected = "serverDisconnected",
-//     // NetworkDisconnected connection has dropped. Caused by disconnecting the network somewhere
-//     NetworkDisconnected = "networkDisconnected",
-//     // NotConnected means the client has yet to connect
-//     NotConnected = "notConnected"
-// }
 
-export type ActionHandler = (msg:ThingMessage)=>ActionProgress;
+export type ActionHandler = (msg:ThingMessage)=>RequestProgress;
 export type EventHandler = (msg:ThingMessage)=>void;
 export type PropertyHandler = (msg:ThingMessage)=>void;
 export type ConnectionHandler = (status: ConnectionStatus)=>void;
-export type ProgressHandler = (progress:ActionProgress)=>void;
+export type ProgressHandler = (progress:RequestProgress)=>void;
 
 // IAgentClient defines the interface of the hub agent transport.
 export interface IConsumerClient  {
@@ -63,7 +48,7 @@ export interface IConsumerClient  {
     //	@param name is the action or method name of the action to invoke
     //	@param payload to publish in native format as per TD
     //
-    invokeAction(dThingID: string, name: string, messageID: string, payload: any): Promise<ActionProgress>;
+    invokeAction(dThingID: string, name: string, requestID: string, payload: any): Promise<RequestProgress>;
 
     // RefreshToken refreshes the authentication token
     // The resulting token can be used with 'ConnectWithJWT'
@@ -72,7 +57,7 @@ export interface IConsumerClient  {
     // Rpc makes a RPC call using an action and waits for a delivery confirmation event.
     //
     // This is equivalent to use PubAction to send the request, use SetMessageHandler
-    // to receive the delivery confirmation event and match the 'messageID' from the
+    // to receive the delivery confirmation event and match the 'requestID' from the
     // delivery status event with the status returned by the action request.
     //
     // The arguments and responses are defined in structs (same approach as gRPC) which are

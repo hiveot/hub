@@ -85,7 +85,7 @@ A websocket sub-protocol is in the works.
 
 RPC support makes it a bit easier to invoke action requests on services and obtain a reply synchronously. 
 
-The HTTPS/SSE client implements RPC support by including a messageID and wait for a delivery status event containing that message ID. The agent that receives the action sends a delivery status event containing the same message ID. The digitwin service receives the delivery status event events and forwards it to the consumer that sent the action request. 
+The HTTPS/SSE client implements RPC support by including a requestID and wait for a delivery status event containing that message ID. The agent that receives the action sends a delivery status event containing the same message ID. The digitwin service receives the delivery status event events and forwards it to the consumer that sent the action request. 
 
 This RPC capability is not part of the WoT standard but does use WoT specified mechanism of actions and events.
 

@@ -15,9 +15,9 @@ import (
 
 const DefaultClientTimeout = time.Second * 30
 
-// HTTPMessageIDHeader defines the name of the HTTP message-id header field.
+// HTTPRequestIDHeader defines the name of the HTTP message-id header field.
 // Intended for including a message ID in the request or response
-const HTTPMessageIDHeader = "message-id"
+const HTTPRequestIDHeader = "message-id"
 
 // HTTPConnectionIDHeader defines the name of the HTTP 'cid' header field.
 // Intended for the client to include a connection-id to link asynchronous requests
@@ -95,12 +95,12 @@ func (cl *TLSClient) GetHttpClient() *http.Client {
 //	method: GET, PUT, POST, ...
 //	url: full URL to invoke
 //	body contains the serialized request body
-//	messageID: optional message ID to include in the request header
+//	requestID: optional message ID to include in the request header
 //	qParams: optional map with query parameters
 //
 // This returns the serialized response data, a response message ID, return status code or an error
-func (cl *TLSClient) Invoke(method string, requrl string, body []byte, messageID string, qParams map[string]string) (
-	resp []byte, respMessageID string, httpStatus int, headers http.Header, err error) {
+func (cl *TLSClient) Invoke(method string, requrl string, body []byte, requestID string, qParams map[string]string) (
+	resp []byte, respRequestID string, httpStatus int, headers http.Header, err error) {
 
 	var req *http.Request
 	contentType := "application/json"
@@ -127,8 +127,8 @@ func (cl *TLSClient) Invoke(method string, requrl string, body []byte, messageID
 
 	// set headers
 	req.Header.Set("Content-Type", contentType)
-	if messageID != "" {
-		req.Header.Set(HTTPMessageIDHeader, messageID)
+	if requestID != "" {
+		req.Header.Set(HTTPRequestIDHeader, requestID)
 	}
 	for k, v := range cl.headers {
 		req.Header.Set(k, v)
@@ -141,7 +141,7 @@ func (cl *TLSClient) Invoke(method string, requrl string, body []byte, messageID
 		return nil, "", 500, nil, err
 	}
 	respBody, err := io.ReadAll(httpResp.Body)
-	respMessageID = httpResp.Header.Get(HTTPMessageIDHeader)
+	respRequestID = httpResp.Header.Get(HTTPRequestIDHeader)
 	// response body MUST be closed
 	_ = httpResp.Body.Close()
 	httpStatus = httpResp.StatusCode
@@ -159,7 +159,7 @@ func (cl *TLSClient) Invoke(method string, requrl string, body []byte, messageID
 	} else if err != nil {
 		err = fmt.Errorf("Invoke: Error %s %s: %w", method, requrl, err)
 	}
-	return respBody, respMessageID, httpStatus, httpResp.Header, err
+	return respBody, respRequestID, httpStatus, httpResp.Header, err
 }
 
 //// Logout from the server and end the session
@@ -191,15 +191,15 @@ func (cl *TLSClient) Patch(
 //
 //	path to invoke
 //	body contains the serialized request body
-//	messageID optional field to link async requests and responses
-func (cl *TLSClient) Post(path string, body []byte, messageID string) (
-	resp []byte, respMessageID string, statusCode int, err error) {
+//	requestID optional field to link async requests and responses
+func (cl *TLSClient) Post(path string, body []byte, requestID string) (
+	resp []byte, respRequestID string, statusCode int, err error) {
 
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	resp, messageID, statusCode, _, err = cl.Invoke(
-		"POST", serverURL, body, messageID, nil)
-	return resp, messageID, statusCode, err
+	resp, requestID, statusCode, _, err = cl.Invoke(
+		"POST", serverURL, body, requestID, nil)
+	return resp, requestID, statusCode, err
 }
 
 // Put a message with json payload
@@ -208,15 +208,15 @@ func (cl *TLSClient) Post(path string, body []byte, messageID string) (
 //
 //	path to invoke
 //	body contains the serialized request body
-//	messageID optional field to link async requests and responses
-func (cl *TLSClient) Put(path string, body []byte, messageID string) (
-	resp []byte, respMessageID string, statusCode int, err error) {
+//	requestID optional field to link async requests and responses
+func (cl *TLSClient) Put(path string, body []byte, requestID string) (
+	resp []byte, respRequestID string, statusCode int, err error) {
 
 	// careful, a double // in the path causes a 301 and changes POST to GET
 	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, path)
-	resp, messageID, statusCode, _, err = cl.Invoke(
-		"PUT", serverURL, body, messageID, nil)
-	return resp, messageID, statusCode, err
+	resp, requestID, statusCode, _, err = cl.Invoke(
+		"PUT", serverURL, body, requestID, nil)
+	return resp, requestID, statusCode, err
 }
 
 // SetAuthToken Sets login ID and secret for bearer token authentication using a

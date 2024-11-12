@@ -28,8 +28,8 @@ export class ThingMessage extends Object {
     // This is required.
     public messageType: string = ""
 
-    // The message ID set by the runtime
-    public messageID:string = ""
+    // The request ID set by the runtime
+    public requestID:string = ""
 
     // senderID is the account ID of the agent, service or user sending the message
     // to the hub.

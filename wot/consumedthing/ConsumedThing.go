@@ -34,7 +34,7 @@ type ConsumedThing struct {
 	subscribers map[string]InteractionListener
 
 	// action status values
-	actionValues map[string]*hubclient.ActionProgress
+	actionValues map[string]*hubclient.RequestProgress
 	// prop values
 	propValues map[string]*InteractionOutput
 	// event values
@@ -157,7 +157,7 @@ func (ct *ConsumedThing) OnDeliveryUpdate(msg *hubclient.ThingMessage) {
 			"action", msg.Name)
 		return
 	}
-	stat := hubclient.ActionProgress{}
+	stat := hubclient.RequestProgress{}
 	err := utils.DecodeAsObject(msg.Data, &stat)
 	if stat.Error != "" {
 		slog.Error("Delivery update invalid payload",
@@ -304,7 +304,7 @@ func (ct *ConsumedThing) ReadAllEvents() map[string]*InteractionOutput {
 	// TODO: no need to create interactionoutputs until they are requested
 	for _, v := range evList {
 		io := NewInteractionOutput(ct.td.ID, v.Name, nil, v.Data, v.Updated)
-		io.MessageID = v.MessageID
+		io.RequestID = v.RequestID
 		//io.SenderID = v.SenderID  // sender is agent of this thing
 		io.SetSchemaFromTD(ct.td)
 		ct.eventValues[v.Name] = io
@@ -321,7 +321,7 @@ func (ct *ConsumedThing) ReadAllProperties() map[string]*InteractionOutput {
 	}
 	for _, v := range propList {
 		io := NewInteractionOutput(ct.td.ID, v.Name, nil, v.Data, v.Updated)
-		io.MessageID = v.MessageID
+		io.RequestID = v.RequestID
 		//io.SenderID = v.SenderID  // sender is agent of this thing
 		io.SetSchemaFromTD(ct.td)
 		ct.propValues[v.Name] = io
@@ -344,9 +344,9 @@ func (ct *ConsumedThing) SubscribeEvent(name string, listener InteractionListene
 // cb is invoked with the InteractionOutput containing the delivery progress.
 //
 // Since writing a property can take some time, especially if the device is
-// asleep, the callback receives the first response containing a messageID.
+// asleep, the callback receives the first response containing a requestID.
 // If the request is not yet complete
-func (ct *ConsumedThing) WriteProperty(name string, value InteractionInput) hubclient.ActionProgress {
+func (ct *ConsumedThing) WriteProperty(name string, value InteractionInput) hubclient.RequestProgress {
 
 	stat := ct.hc.WriteProperty(ct.td.ID, name, value)
 	// TODO: receive updates
@@ -369,7 +369,7 @@ func NewConsumedThing(td *tdd.TD, hc hubclient.IConsumerClient) *ConsumedThing {
 		hc:           hc,
 		observers:    make(map[string]InteractionListener),
 		subscribers:  make(map[string]InteractionListener),
-		actionValues: make(map[string]*hubclient.ActionProgress),
+		actionValues: make(map[string]*hubclient.RequestProgress),
 		eventValues:  make(map[string]*InteractionOutput),
 		propValues:   make(map[string]*InteractionOutput),
 	}

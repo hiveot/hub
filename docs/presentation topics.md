@@ -42,11 +42,11 @@
      * Forms per property, event, action add potentially unnecessary TD bloat. Not good for limited devices. (WIP)
        * Top level methods, eg 'getproperty' would suffice for interaction.
        * In a Hub scenario Forms are very similar as they all use the same transport.
-     * How to standardize definitions for metadata messageID, timestamp, sender in the transport protocols? (WIP)
+     * How to standardize definitions for metadata requestID, timestamp, sender in the transport protocols? (WIP)
        * HiveOT uses the 'Thing Message envelope' when sending events to agents and consumers. How to remove the need for it, or define this in the TD?
      * How to send action delivery/progress updates to senders? (WIP)
        * Update: Ege/Vignesh suggest to use properties to reflect action state and observe properties to receive it.  
-       * HiveOT currently uses a '$delivery' event message and the messageID to send progress updates to the sender. 
+       * HiveOT currently uses a '$delivery' event message and the requestID to send progress updates to the sender. 
        * WIP: change to observable properties. 
      * Linking events to actions that caused them. (WIP)
        * HiveOT treats identical event, action and property names are reflections of the same Thing state. 

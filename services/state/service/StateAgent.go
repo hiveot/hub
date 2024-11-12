@@ -14,7 +14,7 @@ type StateAgent struct {
 }
 
 // HandleMessage dispatches requests to the service capabilities
-func (agent *StateAgent) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+func (agent *StateAgent) HandleMessage(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 	if msg.ThingID == stateapi.StorageServiceID {
 		switch msg.Name {
 		case stateapi.DeleteMethod:
@@ -33,14 +33,14 @@ func (agent *StateAgent) HandleMessage(msg *hubclient.ThingMessage) (stat hubcli
 		"unknown action '%s' for service '%s'", msg.Name, msg.ThingID))
 	return stat
 }
-func (agent *StateAgent) Delete(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+func (agent *StateAgent) Delete(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 	args := stateapi.DeleteArgs{}
 	err := utils.DecodeAsObject(msg.Data, &args)
 	err = agent.svc.Delete(msg.SenderID, args.Key)
 	stat.Completed(msg, nil, err)
 	return stat
 }
-func (agent *StateAgent) Get(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+func (agent *StateAgent) Get(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 	args := stateapi.GetArgs{}
 	resp := stateapi.GetResp{}
 	err := utils.DecodeAsObject(msg.Data, &args)
@@ -49,7 +49,7 @@ func (agent *StateAgent) Get(msg *hubclient.ThingMessage) (stat hubclient.Action
 	stat.Completed(msg, resp, err)
 	return stat
 }
-func (agent *StateAgent) GetMultiple(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+func (agent *StateAgent) GetMultiple(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 	args := stateapi.GetMultipleArgs{}
 	resp := stateapi.GetMultipleResp{}
 	err := utils.DecodeAsObject(msg.Data, &args)
@@ -57,14 +57,14 @@ func (agent *StateAgent) GetMultiple(msg *hubclient.ThingMessage) (stat hubclien
 	stat.Completed(msg, resp, err)
 	return stat
 }
-func (agent *StateAgent) Set(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+func (agent *StateAgent) Set(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 	args := stateapi.SetArgs{}
 	err := utils.DecodeAsObject(msg.Data, &args)
 	err = agent.svc.Set(msg.SenderID, args.Key, args.Value)
 	stat.Completed(msg, nil, err)
 	return stat
 }
-func (agent *StateAgent) SetMultiple(msg *hubclient.ThingMessage) (stat hubclient.ActionProgress) {
+func (agent *StateAgent) SetMultiple(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
 	args := stateapi.SetMultipleArgs{}
 	err := utils.DecodeAsObject(msg.Data, &args)
 	err = agent.svc.SetMultiple(msg.SenderID, args.KV)

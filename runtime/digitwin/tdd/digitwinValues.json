@@ -41,7 +41,7 @@
 					"description": "Action input value",
 					"type": "any"
 				},
-				"messageID": {
+				"requestID": {
 					"title": "Message ID",
 					"description": "Message ID of the action",
 					"type": "string"
@@ -86,7 +86,7 @@
 					"description":"Name of the property holding the value",
 					"type": "string"
 				},
-				"messageID": {
+				"requestID": {
 					"title": "Message ID",
 					"description": "link to property write or action that caused the value to change",
 					"type": "string"
@@ -128,7 +128,7 @@
 						"comment": "This is the requested write value and can differ from the current value if status is not completed",
 						"type": "any"
 					},
-					"messageID": {
+					"requestID": {
 						"title": "Message ID",
 						"description": "link to action or property write that triggered the update",
 						"type": "string"

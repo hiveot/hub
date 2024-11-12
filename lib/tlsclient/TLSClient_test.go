@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubclient/httpsse"
+	"github.com/hiveot/hub/lib/hubclient/sse"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/stretchr/testify/require"
@@ -207,7 +207,7 @@ func TestCert404(t *testing.T) {
 }
 
 func TestAuthJWT(t *testing.T) {
-	pathLogin1 := httpsse.PostLoginPath
+	pathLogin1 := sse.PostLoginPath // this doesn't belong here
 	pathLogin2 := "/login2"
 	path3 := "/test3"
 	path3Hit := 0
@@ -227,8 +227,8 @@ func TestAuthJWT(t *testing.T) {
 		assert.NoError(t, err)
 		err = json.Unmarshal(body, &authMsg)
 
-		// expect a messageID
-		msgID := req.Header.Get(tlsclient.HTTPMessageIDHeader)
+		// expect a requestID
+		msgID := req.Header.Get(tlsclient.HTTPRequestIDHeader)
 		assert.NoError(t, err)
 		assert.Equal(t, user1, authMsg.ClientID)
 		assert.Equal(t, password1, authMsg.Password)
@@ -245,7 +245,7 @@ func TestAuthJWT(t *testing.T) {
 			token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 			newToken, err := token.SignedString(secret)
 			assert.NoError(t, err)
-			resp.Header().Set(tlsclient.HTTPMessageIDHeader, msgID)
+			resp.Header().Set(tlsclient.HTTPRequestIDHeader, msgID)
 			data, _ := json.Marshal(newToken)
 			_, _ = resp.Write(data)
 		} else {
@@ -265,7 +265,7 @@ func TestAuthJWT(t *testing.T) {
 	srv, err := startTestServer(mux)
 	assert.NoError(t, err)
 	//
-	loginURL := fmt.Sprintf("https://%s%s", testAddress, httpsse.PostLoginPath)
+	loginURL := fmt.Sprintf("https://%s%s", testAddress, sse.PostLoginPath)
 	loginMessage := authn.UserLoginArgs{
 		ClientID: user1,
 		Password: password1,
@@ -290,7 +290,7 @@ func TestAuthJWT(t *testing.T) {
 
 func TestAuthJWTFail(t *testing.T) {
 	pathHello1 := "/hello"
-	messageID1 := "msgid-1"
+	requestID1 := "msgid-1"
 
 	// setup server and client environment
 	mux := http.NewServeMux()
@@ -305,7 +305,7 @@ func TestAuthJWTFail(t *testing.T) {
 	//
 	cl := tlsclient.NewTLSClient(testAddress, nil, authBundle.CaCert, 0, "")
 	cl.SetAuthToken("badtoken")
-	resp, _, _, err := cl.Post(pathHello1, []byte("test"), messageID1)
+	resp, _, _, err := cl.Post(pathHello1, []byte("test"), requestID1)
 	assert.Empty(t, resp)
 	// unauthorized
 	assert.Error(t, err)

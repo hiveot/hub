@@ -39,10 +39,10 @@ type InteractionOutput struct {
 	MessageType string `json:"messageType"`
 
 	// ID of the interaction flow of this output
-	MessageID string `json:"message-id,omitempty"`
+	RequestID string `json:"message-id,omitempty"`
 
 	// The interaction progress
-	Progress hubclient.ActionProgress `json:"progress"`
+	Progress hubclient.RequestProgress `json:"progress"`
 
 	// senderID of last update
 	SenderID string
@@ -135,7 +135,7 @@ func NewInteractionOutputFromValueList(values []digitwin.ThingValue, td *tdd.TD)
 	for _, tv := range values {
 		io := NewInteractionOutputFromValue(&tv, td)
 		// property values only contain completed changes.
-		io.Progress.Progress = vocab.ProgressStatusCompleted
+		io.Progress.Progress = vocab.RequestCompleted
 		io.SetSchemaFromTD(td)
 		ioMap[tv.Name] = io
 
@@ -154,7 +154,7 @@ func NewInteractionOutputFromValueList(values []digitwin.ThingValue, td *tdd.TD)
 func NewInteractionOutputFromValue(tv *digitwin.ThingValue, td *tdd.TD) *InteractionOutput {
 	io := &InteractionOutput{
 		//ThingID:  td.ID,
-		MessageID: tv.MessageID,
+		RequestID: tv.RequestID,
 		Name:      tv.Name,
 		SenderID:  tv.SenderID,
 		Updated:   tv.Updated,

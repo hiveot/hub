@@ -44,8 +44,8 @@ async function test2() {
     let stat = await hc.invokeAction(
         "dtw:digitwin:directory", "ReadTDs", "",'{"limit":10}')
 
-    if (stat.messageID == "") {
-        log.error("readTDs didn't return a messageID")
+    if (stat.requestID == "") {
+        log.error("readTDs didn't return a requestID")
     } else if (!stat.reply)  {
         log.error("readTDs didn't return any data")
     } else {

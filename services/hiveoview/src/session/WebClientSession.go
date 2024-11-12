@@ -302,7 +302,7 @@ func (sess *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		//slog.Any("data", msg.Data),
 		slog.String("senderID", msg.SenderID),
 		slog.String("receiver cid", sess.cid),
-		slog.String("messageID", msg.MessageID),
+		slog.String("requestID", msg.RequestID),
 	)
 	if msg.MessageType == vocab.MessageTypeProperty {
 		// Publish a sse event for each property
@@ -318,14 +318,14 @@ func (sess *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 	} else if msg.MessageType == vocab.MessageTypeProgressUpdate {
 		// report unhandled delivery updates
 		// for now just pass it to the notification toaster
-		stat := hubclient.ActionProgress{}
+		stat := hubclient.RequestProgress{}
 		_ = utils.DecodeAsObject(msg.Data, &stat)
 
-		// TODO: figure out a way to replace the existing notification if the messageID
+		// TODO: figure out a way to replace the existing notification if the requestID
 		//  is the same (status changes from applied to delivered)
 		if stat.Error != "" {
 			sess.SendNotify(NotifyError, stat.Error)
-		} else if stat.Progress == vocab.ProgressStatusCompleted {
+		} else if stat.Progress == vocab.RequestCompleted {
 			sess.SendNotify(NotifySuccess, "Action successful")
 		} else {
 			sess.SendNotify(NotifyWarning, "Action delivery: "+stat.Progress)

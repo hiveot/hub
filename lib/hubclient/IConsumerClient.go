@@ -12,8 +12,8 @@ const PingMessage = "ping"
 // StatusHeader for transports that support headers can include a progress status field
 const StatusHeader = "status"
 
-// MessageIDHeader for transports that support headers can include a message-ID
-const MessageIDHeader = tlsclient.HTTPMessageIDHeader
+// RequestIDHeader for transports that support headers can include a message-ID
+const RequestIDHeader = tlsclient.HTTPRequestIDHeader
 
 // ConnectionIDHeader identifies the client's connection in case of multiple
 // connections in the same session. Used to identify the connection for subscriptions.
@@ -53,7 +53,7 @@ type EventHandler func(msg *ThingMessage) error
 //
 // As actions are targeted to an agent, the delivery status is that of delivery	to the agent.
 // As events are broadcast, the delivery status is that of delivery to at least one subscriber.
-type MessageHandler func(msg *ThingMessage) ActionProgress
+type MessageHandler func(msg *ThingMessage) RequestProgress
 
 // IConsumerClient defines the interface of the client that connects to a messaging server.
 //
@@ -132,10 +132,10 @@ type IConsumerClient interface {
 	//	name of the action to invoke
 	//	input data if the action has any
 	//	output data if the action has any. Only if the action is completed.
-	//  messageID to correlate action with progress
+	//  requestID to correlate action with progress
 	//
 	// This returns a delivery status with response data if delivered
-	InvokeAction(dThingID string, name string, input interface{}, output interface{}, messageID string) ActionProgress
+	InvokeAction(dThingID string, name string, input interface{}, output interface{}, requestID string) RequestProgress
 
 	// InvokeOperation invokes the operation described in the form
 	// The output, if any, is unmarshalled in the given interface
@@ -160,7 +160,7 @@ type IConsumerClient interface {
 	// confirmation event.
 	//
 	// This is equivalent to use PubAction to send the request, use SetMessageHandler
-	// to receive the delivery confirmation event and match the 'messageID' from the
+	// to receive the delivery confirmation event and match the 'requestID' from the
 	// delivery status event with the status returned by the action request.
 	//
 	// The arguments and responses are defined in structs (same approach as gRPC) which are
@@ -177,11 +177,11 @@ type IConsumerClient interface {
 
 	// SendOperation [consumer] is form-based method of invoking an operation
 	// This is under development.
-	//SendOperation(href string, op tdd.Form, data any, messageID string) ActionProgress
+	//SendOperation(href string, op tdd.Form, data any, requestID string) RequestProgress
 
 	// SetMessageHandler adds a handler for messages from the hub.
 	// This replaces any previously set handler.
-	// The handler should return a ActionProgress response for action and
+	// The handler should return a RequestProgress response for action and
 	// property messages. This response is ignored for events.
 	//
 	// To receive events use the 'Subscribe' method to set the events to listen for.
@@ -213,5 +213,5 @@ type IConsumerClient interface {
 	//	name is the name of the property to write
 	//	Value is a value based on the PropertyAffordances in the TD
 	// This returns the delivery status and an error code if delivery fails
-	WriteProperty(dThingID string, name string, value any) ActionProgress
+	WriteProperty(dThingID string, name string, value any) RequestProgress
 }

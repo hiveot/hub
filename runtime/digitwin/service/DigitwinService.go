@@ -4,6 +4,7 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/runtime/connections"
+	"github.com/hiveot/hub/runtime/digitwin/store"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"os"
@@ -11,21 +12,19 @@ import (
 	"sync"
 )
 
-const DTWBucketName = "dtw"
-
 // The DigitwinService orchestrates the flow of properties, events and actions
 // between Thing agents and consumers.
 // It stores digital twin things, property values and the latest event and action.
 type DigitwinService struct {
 	// underlying store for the digital twin objects
 	bucketStore buckets.IBucketStore
-	DtwStore    *DigitwinStore
+	DtwStore    *store.DigitwinStore
 
 	// Directory service for reading and updating TDs
-	DirSvc *DigitwinDirectoryService
+	DirSvc *DirectoryService
 
 	// service for reading latest values
-	ValuesSvc *DigitwinValuesService
+	ValuesSvc *ValuesService
 
 	mux sync.RWMutex
 }
@@ -66,24 +65,23 @@ func (svc *DigitwinService) Stop() {
 // storesDir is the directory where to create the digitwin storage
 // cm is the connection manager used to send messages to clients
 func StartDigitwinService(storesDir string, cm *connections.ConnectionManager) (
-	svc *DigitwinService, store *DigitwinStore, err error) {
+	svc *DigitwinService, digitwinStore *store.DigitwinStore, err error) {
 
 	sPath := path.Join(storesDir, "digitwin")
 	err = os.MkdirAll(sPath, 0700)
-	storePath := path.Join(sPath, "digitwin.store")
+	storePath := path.Join(sPath, "digitwinStore")
 
 	bucketStore := kvbtree.NewKVStore(storePath)
-	var dtwStore *DigitwinStore
 	err = bucketStore.Open()
 	if err == nil {
-		dtwStore, err = OpenDigitwinStore(bucketStore, false)
+		digitwinStore, err = store.OpenDigitwinStore(bucketStore, false)
 	}
-	dirSvc := NewDigitwinDirectoryService(dtwStore, cm)
-	valuesSvc := NewDigitwinValuesService(dtwStore)
+	dirSvc := NewDigitwinDirectoryService(digitwinStore, cm)
+	valuesSvc := NewDigitwinValuesService(digitwinStore)
 	if err == nil {
 		svc = &DigitwinService{
 			bucketStore: bucketStore,
-			DtwStore:    dtwStore,
+			DtwStore:    digitwinStore,
 			mux:         sync.RWMutex{},
 			DirSvc:      dirSvc,
 			ValuesSvc:   valuesSvc,
@@ -91,5 +89,5 @@ func StartDigitwinService(storesDir string, cm *connections.ConnectionManager) (
 		slog.Info("Started DigitwinService")
 	}
 	//authz.UserSetPermissions(hc, authz.ThingPermissions{})
-	return svc, dtwStore, err
+	return svc, digitwinStore, err
 }

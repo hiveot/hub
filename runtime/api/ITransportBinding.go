@@ -1,13 +1,25 @@
 package api
 
 import (
-	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/wot/tdd"
 )
 
-// API for service action handling
-type ActionHandler func(consumerID string, dThingID string, actionName string, input any, messageID string) (
+// ActionHandler is the API for service action handling
+type ActionHandler func(consumerID string, dThingID string, actionName string, input any, requestID string) (
 	status string, output any, err error)
+
+// PermissionHandler is the handler that authorizes the sender to invoke an action,
+// event or property request.
+//
+//	senderID is the account ID of the consumer or agent
+//	messageType is one of MessageTypeAction|Event|Property
+//	dThingID is the ID of the digital twin Thing the request applies to
+//	isPub is true if the request is to publish to the Thing or false to read from it
+//
+// TODO: are there benefits to use operations instead of event/action/props message types?
+// it would seem consistent with the TD specification to authorize operations while
+// maintaining extensibility for custom operations.
+type PermissionHandler func(senderID, messageType, dThingID string, isPub bool) bool
 
 // ProtocolInfo contains information provided by the binding
 type ProtocolInfo struct {
@@ -32,23 +44,23 @@ type ITransportBinding interface {
 	//GetProtocolInfo() ProtocolInfo
 
 	// GetConnectionByCID returns the client connection for sending messages to a client
-	GetConnectionByCID(cid string) connections.IClientConnection
+	GetConnectionByCID(cid string) IClientConnection
 
 	// PublishEvent publishes an event message to all connected subscribers
 	//
 	//	dThingID is the Thing ID of the digital twin
 	//	name is the name of the event as per digital twin event affordance
 	//	value is the raw event value as per event affordance data schema
-	//	messageID is the optional ID of a linked action
-	PublishEvent(dThingID string, name string, value any, messageID string, agentID string)
+	//	requestID is the optional ID of a linked action
+	PublishEvent(dThingID string, name string, value any, requestID string, agentID string)
 
 	// PublishProperty publishes a new property value to observers of the property
 	//
 	//	dThingID is the Thing ID of the digital twin
 	//	name is the name of the property as per digital twin property affordance
 	//	value is the raw property value as per property affordance data schema
-	//	messageID is the optional ID of a linked action
-	PublishProperty(dThingID string, name string, value any, messageID string, agentID string)
+	//	requestID is the optional ID of a linked action
+	PublishProperty(dThingID string, name string, value any, requestID string, agentID string)
 
 	// Start the protocol binding
 	//  handler is the handler that processes incoming messages
@@ -63,6 +75,6 @@ type ITransportBinding interface {
 	// This returns found is false if the agent is not connected.
 	//
 	//
-	//WriteProperty(agentID string, thingID string, name string, value any, messageID string,
+	//WriteProperty(agentID string, thingID string, name string, value any, requestID string,
 	//	senderID string) (found bool, status string, err error)
 }

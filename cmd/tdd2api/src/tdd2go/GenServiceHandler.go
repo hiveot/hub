@@ -11,7 +11,7 @@ import (
 // The signature is: NewHandle<ThingID>Action(service I...Service) *HandleAction
 //
 //	func (agent *...)NewHandleAction(
-//	  consumerID string, dThingID string, actionName string, input any, messageID string
+//	  consumerID string, dThingID string, actionName string, input any, requestID string
 func GenServiceHandler(l *utils.SL, serviceTitle string, td *tdd.TD) {
 	// ServiceType is the type of the service implementation that handles the messages
 	//serviceType := ToTitle(td.GetID()) + "Service"
@@ -24,13 +24,13 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td *tdd.TD) {
 	l.Add("// that implements the corresponding interface method.")
 	l.Add("// ")
 	l.Add("// This returns the marshalled response data or an error.")
-	l.Add("func NewHandle%sAction(svc %s)(func(consumerID, dThingID, name string, input any, messageID string) (string, any, error)) {", serviceTitle, interfaceName)
+	l.Add("func NewHandle%sAction(svc %s)(func(consumerID, dThingID, name string, input any, requestID string) (string, any, error)) {", serviceTitle, interfaceName)
 	l.Indent++
-	l.Add("return func(consumerID, dThingID, actionName string, input any, messageID string) (string, any, error) {")
+	l.Add("return func(consumerID, dThingID, actionName string, input any, requestID string) (string, any, error) {")
 
 	l.Indent++
 	l.Add("var err error")
-	l.Add("var status = vocab.ProgressStatusCompleted")
+	l.Add("var status = vocab.RequestCompleted")
 	l.Add("var output any")
 
 	l.Add("switch actionName {")
@@ -40,7 +40,7 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td *tdd.TD) {
 	}
 	l.Add("default:")
 	l.Add("	err = errors.New(\"Unknown Method '\"+actionName+\"' of service '\"+dThingID+\"'\")")
-	l.Add("  status = vocab.ProgressStatusFailed")
+	l.Add("  status = vocab.RequestFailed")
 	l.Indent--
 	l.Add("}")
 

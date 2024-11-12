@@ -56,6 +56,7 @@
       "title": "Add Agent",
       "description": "Create an account for IoT device agents",
       "idempotent": true,
+      "safe": false,
       "input": {
         "type": "object",
         "title": "Agent Info",
@@ -86,6 +87,7 @@
       "title": "Add Consumer",
       "description": "Add an end-user client",
       "idempotent": true,
+      "safe": false,
       "input": {
         "type": "object",
         "title": "Consumer Info",
@@ -111,6 +113,7 @@
       "title": "Add Service",
       "description": "Add a service account",
       "idempotent": true,
+      "safe": false,
       "input": {
         "type": "object",
         "Title": "Service Info",
@@ -141,6 +144,7 @@
       "title": "Get Client Profile",
       "description": "Get the profile information describing a client",
       "idempotent": true,
+      "safe": true,
       "input": {
           "title": "Client ID",
           "type": "string"
@@ -156,6 +160,7 @@
       "title": "Get Profiles",
       "description": "Get a list of all client profiles",
       "idempotent": true,
+      "safe": true,
       "output": {
         "type": "array",
         "title": "Client Profiles",

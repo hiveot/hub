@@ -19,7 +19,7 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 	var newValue any
 	var td *tdd.TD
 	var propAff *tdd.PropertyAffordance
-	stat := hubclient.ActionProgress{}
+	stat := hubclient.RequestProgress{}
 	thingID := chi.URLParam(r, "thingID")
 	propName := chi.URLParam(r, "name")
 	valueStr := r.FormValue(propName)
@@ -57,7 +57,7 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if stat.Progress == vocab.ProgressStatusCompleted {
+	if stat.Progress == vocab.RequestCompleted {
 		notificationText := fmt.Sprintf("Configuration changed.")
 		sess.SendNotify(session.NotifySuccess, notificationText)
 	} else {

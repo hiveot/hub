@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/discovery"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/httpsse"
+	"github.com/hiveot/hub/lib/hubclient/sse"
 	"github.com/hiveot/hub/lib/keys"
 	"log/slog"
 	"net/url"
@@ -131,7 +131,7 @@ func NewHubClient(fullURL string, clientID string, caCert *x509.Certificate) (hc
 	} else if clType == "uds" {
 		// FIXME: add support UDS connections for local services
 	} else if clType == "https" || clType == "tls" {
-		hc = httpsse.NewHttpSSEClient(parts.Host, clientID, nil, caCert, DefaultTimeout)
+		hc = sse.NewHttpSSEClient(parts.Host, clientID, nil, caCert, DefaultTimeout)
 	} else if clType == "" {
 		// use NewClient on the embedded server
 		//hc = embedded.NewEmbeddedClient(clientID, nil)

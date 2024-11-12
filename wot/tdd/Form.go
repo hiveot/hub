@@ -13,7 +13,13 @@ func (f Form) GetHRef() (string, bool) {
 	return val.(string), found
 }
 
-// GetMethodName returns the form's "htv:methodName" field
+// GetOperation returns the form's operation name
+func (f Form) GetOperation() string {
+	val, _ := f["op"]
+	return val.(string)
+}
+
+// GetMethodName returns the form's HTTP "htv:methodName" field
 func (f Form) GetMethodName() (string, bool) {
 	val, found := f["htv:methodName"]
 	return val.(string), found
