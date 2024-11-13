@@ -29,7 +29,7 @@ var testPort = 23001
 var ts *testenv.TestServer
 
 // Create a new store, delete if it already exists
-func newIdProvService() (svc *service.IdProvService, hc hubclient.IHubClient, stopFn func()) {
+func newIdProvService() (svc *service.IdProvService, hc hubclient.IAgentClient, stopFn func()) {
 
 	ts = testenv.StartTestServer(true)
 	hc, token1 := ts.AddConnectService(idprovapi.AgentID)

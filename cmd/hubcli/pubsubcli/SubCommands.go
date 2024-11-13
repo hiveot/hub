@@ -59,10 +59,10 @@ func HandleSubTD(hc hubclient.IConsumerClient) error {
 	if err != nil {
 		return err
 	}
-	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
+	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) {
 		// only look for TD events, ignore directed events
 		if msg.Name != digitwin.DirectoryEventThingUpdated {
-			return *stat.Completed(msg, nil, nil)
+			return
 		}
 
 		var td tdd.TD
@@ -75,7 +75,7 @@ func HandleSubTD(hc hubclient.IConsumerClient) error {
 			fmt.Printf("%-20.20s %-35.35s %-30.30s %-30.30s %-30.30s\n",
 				msg.SenderID, msg.ThingID, td.Title, td.AtType, timeStr)
 		}
-		return *stat.Completed(msg, nil, nil)
+		return
 	})
 	fmt.Printf("Sender ID            Thing ID                            Title                          @type                          Updated                       \n")
 	fmt.Printf("-------------------  ----------------------------------  -----------------------------  -----------------------------  ------------------------------\n")
@@ -92,7 +92,7 @@ func HandleSubEvents(hc hubclient.IConsumerClient, thingID string, name string) 
 	fmt.Printf("---------------  --------------- -----------------------------  -----------------------------  ---------\n")
 
 	err := hc.Subscribe(thingID, name)
-	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
+	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) {
 		createdTime, _ := dateparse.ParseAny(msg.Created)
 		timeStr := createdTime.Format("15:04:05.000")
 
@@ -121,7 +121,7 @@ func HandleSubEvents(hc hubclient.IConsumerClient, thingID string, name string) 
 
 		fmt.Printf("%-16.16s %-15.15s %-30.30s %-30.30s %-40.40s\n",
 			timeStr, msg.SenderID, msg.ThingID, msg.Name, valueStr)
-		return *stat.Completed(msg, nil, nil)
+		return
 	})
 	if err != nil {
 		return err

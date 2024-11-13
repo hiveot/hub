@@ -24,9 +24,9 @@ export class ThingMessage extends Object {
     // Timestamp the value was created in unix time, msec since Epoch Jan 1st,1970 00:00 utc
     public createdMSec: number = 0
 
-    // Type of message: MessageTypeAction, MessageTypeEvent;
+    // Message operation. Eg: WotOpInvokeAction, WotOpPublishEvent, ...
     // This is required.
-    public messageType: string = ""
+    public operation: string = ""
 
     // The request ID set by the runtime
     public requestID:string = ""

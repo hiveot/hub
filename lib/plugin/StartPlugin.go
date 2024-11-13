@@ -15,7 +15,7 @@ type PluginConfig struct {
 type IPlugin interface {
 	// Start the plugin with the given environment settings and hub connection
 	//	hc is the hub connection for publishing and subscribing
-	Start(hc hubclient.IHubClient) error
+	Start(hc hubclient.IAgentClient) error
 	Stop()
 }
 

@@ -1,4 +1,4 @@
-package service_test
+package authn_test
 
 import (
 	"github.com/hiveot/hub/lib/certs"

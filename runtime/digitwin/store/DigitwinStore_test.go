@@ -93,7 +93,7 @@ func TestStartStop(t *testing.T) {
 
 	addValues(svc, 100, agentID, thingIDs, 100)
 
-	//valList1, err := svc.ReadLatest(vocab.MessageTypeEvent, thingIDs[1], nil, "")
+	//valList1, err := svc.ReadLatest(vocab.WotOpPublishEvent, thingIDs[1], nil, "")
 	dthingID := tdd.MakeDigiTwinThingID(agentID, thingIDs[1])
 	valList1, err := svc.ReadAllEvents(dthingID)
 	assert.NoError(t, err)

@@ -13,7 +13,7 @@ import (
 type IPNetBinding struct {
 	config *config.IPNetConfig
 	// Hub connection
-	hc hubclient.IHubClient
+	hc hubclient.IAgentClient
 
 	// discovered devices
 	devicesMap      map[string]*IPDeviceInfo
@@ -21,14 +21,14 @@ type IPNetBinding struct {
 }
 
 // ActionHandler handle action requests
-func (svc *IPNetBinding) ActionHandler(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
+func (svc *IPNetBinding) ActionHandler(msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
 	stat.Completed(msg, nil, fmt.Errorf("unknown action '%s'", msg.Name))
 	slog.Warn(stat.Error)
 	return stat
 }
 
 // Start the binding
-func (svc *IPNetBinding) Start(hc hubclient.IHubClient) (err error) {
+func (svc *IPNetBinding) Start(hc hubclient.IAgentClient) (err error) {
 	if svc.config.LogLevel != "" {
 		logging.SetLogging(svc.config.LogLevel, "")
 	}
@@ -37,7 +37,7 @@ func (svc *IPNetBinding) Start(hc hubclient.IHubClient) (err error) {
 	svc.hc = hc
 
 	// register the action handler
-	svc.hc.SetMessageHandler(svc.ActionHandler)
+	svc.hc.SetRequestHandler(svc.ActionHandler)
 
 	// publish this binding's TD document
 	err = svc.PubBindingTD()

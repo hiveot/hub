@@ -35,14 +35,14 @@ type InteractionOutput struct {
 	Updated string `json:"updated,omitempty"`
 
 	//--- non-WoT fields ---
-	// Type of output: MessageTypeEvent/Action/Property/TD
+	// Type of output: WotOpPublishEvent/Action/Property/TD
 	MessageType string `json:"messageType"`
 
 	// ID of the interaction flow of this output
 	RequestID string `json:"message-id,omitempty"`
 
 	// The interaction progress
-	Progress hubclient.RequestProgress `json:"progress"`
+	Progress hubclient.RequestStatus `json:"progress"`
 
 	// senderID of last update
 	SenderID string
@@ -81,7 +81,7 @@ func (io *InteractionOutput) SetSchemaFromTD(td *tdd.TD) (found bool) {
 	// if name is that of an event then use it
 	eventAff, found := td.Events[io.Name]
 	if found {
-		io.MessageType = vocab.MessageTypeEvent
+		io.MessageType = vocab.WotOpPublishEvent
 		// an event might not have data associated with it
 		if eventAff.Data != nil {
 			io.Schema = *eventAff.Data
@@ -95,7 +95,7 @@ func (io *InteractionOutput) SetSchemaFromTD(td *tdd.TD) (found bool) {
 	// if name is that of a property then use it
 	propAff, found := td.Properties[io.Name]
 	if found {
-		io.MessageType = vocab.MessageTypeProperty
+		io.MessageType = vocab.WotOpPublishProperty
 		io.Schema = propAff.DataSchema
 		io.Title = propAff.Title
 		if len(propAff.Forms) > 0 {
@@ -106,7 +106,7 @@ func (io *InteractionOutput) SetSchemaFromTD(td *tdd.TD) (found bool) {
 	// last, if name is that of an action then use its output schema
 	actionAff, found := td.Actions[io.Name]
 	if found {
-		io.MessageType = vocab.MessageTypeAction
+		io.MessageType = vocab.WotOpInvokeAction
 		// an action might not have any output data
 		if actionAff.Output != nil {
 			io.Schema = *actionAff.Output

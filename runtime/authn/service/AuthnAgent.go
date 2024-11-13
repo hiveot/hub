@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot/tdd"
 )
@@ -15,22 +15,18 @@ type AuthnAgent struct {
 }
 
 // HandleAction authn services action request
-func (agent *AuthnAgent) HandleAction(
-	consumerID string, dThingID string, actionName string, input any, requestID string) (
-	status string, output any, err error) {
+func (agent *AuthnAgent) HandleAction(msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
 
-	_, thingID := tdd.SplitDigiTwinThingID(dThingID)
+	_, thingID := tdd.SplitDigiTwinThingID(msg.ThingID)
 	if thingID == authn.AdminServiceID {
-		status, output, err = agent.adminHandler(consumerID, dThingID, actionName, input, requestID)
+		stat = agent.adminHandler(msg)
 	} else if thingID == authn.UserServiceID {
-		status, output, err = agent.userHandler(consumerID, dThingID, actionName, input, requestID)
+		stat = agent.userHandler(msg)
 	} else {
-		err = fmt.Errorf("unknown authn service capability '%s'", dThingID)
+		err := fmt.Errorf("unknown authn service capability '%s'", msg.ThingID)
+		stat.Failed(msg, err)
 	}
-	if err != nil {
-		status = vocab.RequestFailed
-	}
-	return status, output, err
+	return stat
 }
 
 // StartAuthnAgent returns a new instance of the agent for the authentication services.

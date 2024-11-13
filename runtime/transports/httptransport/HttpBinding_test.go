@@ -2,10 +2,10 @@ package httptransport_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/sse"
+	"github.com/hiveot/hub/lib/hubclient/httpsse"
+	wssclient "github.com/hiveot/hub/lib/hubclient/httpwss"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/runtime/authn/sessions"
 	"github.com/hiveot/hub/runtime/connections"
@@ -30,6 +30,8 @@ var testDirFolder = path.Join(os.TempDir(), "test-transport")
 var digitwinStorePath = path.Join(testDirFolder, "digitwin.data")
 var sm *sessions.SessionManager
 var cm *connections.ConnectionManager
+
+var useWSS bool = false // testing using the wss sub-protocol
 
 // ---------
 // Dummy sessionAuth for testing the binding
@@ -92,14 +94,19 @@ func (d *DummyAuthenticator) ValidateToken(token string) (clientID string, sessi
 var dummyAuthenticator = &DummyAuthenticator{}
 
 // create a test client as an agent
-func newAgentClient(clientID string) hubclient.IHubClient {
-	cl := sse.NewHttpSSEClient(hostPort, clientID, nil, certBundle.CaCert, time.Minute)
+func newAgentClient(clientID string) (cl hubclient.IAgentClient) {
+	wssURL := fmt.Sprintf("wss://%s/wss", hostPort)
+	if useWSS {
+		cl = wssclient.NewWSSClient(wssURL, clientID, nil, certBundle.CaCert, time.Minute)
+	} else {
+		cl = httpsse.NewHttpSSEClient(hostPort, clientID, nil, certBundle.CaCert, time.Minute)
+	}
 	return cl
 }
 
 // create a test client as a consumer
 func newConsumerClient(clientID string) hubclient.IConsumerClient {
-	cl := sse.NewHttpSSEClient(hostPort, clientID, nil, certBundle.CaCert, time.Minute)
+	cl := httpsse.NewHttpSSEClient(hostPort, clientID, nil, certBundle.CaCert, time.Minute)
 	return cl
 }
 
@@ -174,15 +181,15 @@ func TestLoginRefresh(t *testing.T) {
 	_ = dtwService
 	defer tb.Stop()
 
-	cl := sse.NewHttpSSEClient(hostPort, testLogin, nil, certBundle.CaCert, time.Minute)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, nil, certBundle.CaCert, time.Minute)
 	token, err := cl.ConnectWithPassword(testPassword)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 
 	// refresh should succeed
 	newToken, err := cl.RefreshToken(token)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, newToken)
+	require.NoError(t, err)
+	require.NotEmpty(t, newToken)
 
 	// end the session
 	cl.Disconnect()
@@ -209,7 +216,7 @@ func TestBadLogin(t *testing.T) {
 	defer tb.Stop()
 
 	// check if this test still works with a valid login
-	cl := sse.NewHttpSSEClient(hostPort, testLogin, nil, certBundle.CaCert, time.Minute)
+	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, nil, certBundle.CaCert, time.Minute)
 	//cl := tlsclient.NewTLSClient(hostPort, certBundle.CaCert, time.Second*120)
 	token, err := cl.ConnectWithPassword(testPassword)
 	assert.NoError(t, err)
@@ -226,7 +233,7 @@ func TestBadLogin(t *testing.T) {
 	cl.Disconnect()
 
 	// bad client ID
-	cl2 := sse.NewHttpSSEClient(hostPort, "badID", nil, certBundle.CaCert, time.Minute)
+	cl2 := httpsse.NewHttpSSEClient(hostPort, "badID", nil, certBundle.CaCert, time.Minute)
 	token, err = cl2.ConnectWithPassword(testPassword)
 	assert.Error(t, err)
 	assert.Empty(t, token)
@@ -293,12 +300,13 @@ func TestPostEventAction(t *testing.T) {
 	require.NotEmpty(t, token)
 
 	// 3. register the handler for events
-	handler.OnEvent = func(agentID, thingID, name string, val any, msgID string) {
-		evVal.Store(val)
+	handler.OnEvent = func(msg *hubclient.ThingMessage) {
+		evVal.Store(msg.Data)
 	}
-	handler.OnAction = func(agentID, thingID, name string, val any, msgID string, cid string) any {
-		actVal.Store(val)
-		return val
+	handler.OnAction = func(msg *hubclient.ThingMessage, replyTo string) (stat hubclient.RequestStatus) {
+		actVal.Store(msg.Data)
+		stat.Completed(msg, msg.Data, nil)
+		return stat
 	}
 	// 3. publish two events
 	err = cl.PubEvent(thingID, eventKey, testMsg, "")
@@ -314,7 +322,7 @@ func TestPostEventAction(t *testing.T) {
 	stat := cl.InvokeAction(thingID, actionKey, testMsg, nil, "")
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 100)
-	assert.NotEmpty(t, stat.Reply)
+	assert.NotEmpty(t, stat.Output)
 	assert.Equal(t, testMsg, actVal.Load())
 	cl.Disconnect()
 }
@@ -362,8 +370,8 @@ func TestPubSubSSE(t *testing.T) {
 	time.Sleep(time.Millisecond * 3)
 
 	// 3. register the handler for events
-	handler.OnEvent = func(agentID, thingID, name string, val any, msgID string) {
-		evVal.Store(val)
+	handler.OnEvent = func(msg *hubclient.ThingMessage) {
+		evVal.Store(msg.Data)
 	}
 
 	err = cl.Subscribe(thingID, "")
@@ -411,24 +419,22 @@ func TestReconnect(t *testing.T) {
 	cm.CloseAll()
 
 	// reply to requests after a restart
-	dummyRouter.OnEvent = func(agentID, thingID, name string, val any, msgID string) {
-		return
+	dummyRouter.OnEvent = func(msg *hubclient.ThingMessage) {
 	}
-	dummyRouter.OnAction = func(agentID, thingID, name string, val any, msgID string, cid string) any {
+	dummyRouter.OnAction = func(msg *hubclient.ThingMessage, replyTo string) (stat hubclient.RequestStatus) {
 		// send a delivery status update asynchronously which uses the SSE return channel
 		go func() {
-			stat := hubclient.RequestProgress{
-				RequestID: msgID,
-				Progress:  vocab.RequestCompleted,
-				Reply:     val,
-			}
-			c := svc.GetConnectionByCLCID(cid)
+			stat2 := hubclient.RequestStatus{}
+			c := svc.GetConnectionByCLCID(replyTo)
 			require.NotNil(t, c)
-			err = c.PublishActionStatus(stat, agentID)
+			stat2.Completed(msg, nil, nil)
+			err = c.PublishActionStatus(stat2, agentID)
 			assert.NoError(t, err)
 		}()
-		return nil
+		stat.Delivered(msg)
+		return stat
 	}
+
 	require.NoError(t, err)
 
 	// give client time to reconnect

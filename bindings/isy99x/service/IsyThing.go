@@ -206,7 +206,7 @@ func (it *IsyThing) MakeTD() *tdd.TD {
 }
 
 // PubPropValues gets the thing properties and publish them
-//func (svc *IsyThing) PubPropValues(hc hubclient.IHubClient, onlyChanges bool) (err error) {
+//func (svc *IsyThing) PubPropValues(hc hubclient.IAgentClient, onlyChanges bool) (err error) {
 //	props := svc.GetPropValues(onlyChanges)
 //	if len(props) > 0 {
 //		err = hc.PubMultipleProperties(svc.thingID, props)

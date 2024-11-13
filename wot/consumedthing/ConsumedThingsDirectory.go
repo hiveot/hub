@@ -62,12 +62,11 @@ func (cts *ConsumedThingsDirectory) Consume(thingID string) (ct *ConsumedThing, 
 }
 
 // handleMessage updates the consumed things from subscriptions
-func (cts *ConsumedThingsDirectory) handleMessage(
-	msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
+func (cts *ConsumedThingsDirectory) handleMessage(msg *hubclient.ThingMessage) {
 
 	slog.Debug("CTS.handleMessage",
 		slog.String("senderID", msg.SenderID),
-		slog.String("messageType", msg.MessageType),
+		slog.String("operation", msg.Operation),
 		slog.String("requestID", msg.RequestID),
 		slog.String("thingID", msg.ThingID),
 		slog.String("name", msg.Name),
@@ -76,7 +75,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(
 
 	// if an event is received from an unknown Thing then (re)load its TD
 	// progress updates don't count
-	if msg.MessageType != vocab.MessageTypeProgressUpdate {
+	if msg.Operation != vocab.WotOpPublishActionStatus {
 		cts.mux.RLock()
 		_, found := cts.directory[msg.ThingID]
 		cts.mux.RUnlock()
@@ -85,15 +84,14 @@ func (cts *ConsumedThingsDirectory) handleMessage(
 			_, err := cts.ReadTD(msg.ThingID)
 			if err != nil {
 				slog.Error("Received message with thingID that doesn't exist",
-					"messageType", msg.MessageType, "requestID", msg.RequestID,
+					"operation", msg.Operation, "requestID", msg.RequestID,
 					"thingID", msg.ThingID, "name", msg.Name, "senderID", msg.SenderID)
 			}
 		}
 	}
-
 	// update the TD of a of consumed things
 	// the directory service publishes TD updates as events
-	if msg.MessageType == vocab.MessageTypeEvent &&
+	if msg.Operation == vocab.WotOpPublishEvent &&
 		msg.ThingID == digitwin.DirectoryDThingID &&
 		msg.Name == digitwin.DirectoryEventThingUpdated {
 		// decode the TD
@@ -102,8 +100,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(
 		if err != nil {
 			slog.Error("invalid payload for TD event. Ignored",
 				"thingID", msg.ThingID)
-			stat.Failed(msg, err)
-			return stat
+			return
 		}
 		cts.mux.Lock()
 		defer cts.mux.Unlock()
@@ -114,7 +111,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(
 			// FIXME: consumed thing interaction output schemas also need updating
 			ct.OnTDUpdate(td)
 		}
-	} else if msg.MessageType == vocab.MessageTypeProperty {
+	} else if msg.Operation == vocab.WotOpPublishProperty {
 		// update consumed thing, if existing
 		cts.mux.Lock()
 		defer cts.mux.Unlock()
@@ -125,7 +122,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(
 				SenderID: msg.SenderID, Updated: msg.Created}
 			ct.OnPropertyUpdate(propValue)
 		}
-	} else if msg.MessageType == vocab.MessageTypeProgressUpdate {
+	} else if msg.Operation == vocab.WotOpPublishActionStatus {
 		// delivery status updates refer to actions
 		cts.mux.RLock()
 		ct, found := cts.consumedThings[msg.ThingID]
@@ -150,7 +147,6 @@ func (cts *ConsumedThingsDirectory) handleMessage(
 	if cts.eventHandler != nil {
 		cts.eventHandler(msg)
 	}
-	return stat
 }
 
 // IsActive returns whether the session has a connection to the Hub or is in the process of connecting.

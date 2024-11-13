@@ -7,6 +7,15 @@ import (
 	"time"
 )
 
+// MessageHandler processes a message without expecting a return value
+type MessageHandler func(msg *ThingMessage)
+
+// RequestHandler processes an request and progress status.
+//
+// As actions are targeted to an agent, the delivery status is that of delivery	to the agent.
+// As events are broadcast, the delivery status is that of delivery to at least one subscriber.
+type RequestHandler func(msg *ThingMessage) RequestStatus
+
 // ThingMessage is an internal-use envelope, for an event, action or property message,
 // as received from agents, services or consumers.
 // This is not intended for wire transfer as each transport protocol handles this
@@ -16,7 +25,7 @@ type ThingMessage struct {
 
 	// ThingID of the thing this value applies to.
 	// For messages from/to agents this is the agent ThingID
-	// For messages to/from consumers this is the digitwin ThingID
+	// For messages to/from consumers this is the digitwin dThingID
 	// This is required.
 	ThingID string
 
@@ -24,10 +33,8 @@ type ThingMessage struct {
 	// This is required.
 	Name string
 
-	// Type of message this value was sent as: (MessageTypeEvent, MessageTypeAction...)
-	// This is required.
-	// TODO: should these become operations? worth considering
-	MessageType string
+	// The operation for this message
+	Operation string
 
 	// SenderID is the account ID of the agent, service or user sending the message
 	// to the hub.
@@ -37,14 +44,14 @@ type ThingMessage struct {
 
 	//--- optional fields
 
-	// Timestamp the value was created using RFC3339milli
+	// Timestamp the data was created using RFC3339milli
 	// Optional. This will be set to 'now' if omitted.
 	Created string
 
 	// Data in the native format as described in the TD affordance dataschema.
 	Data any
 
-	// RequestID of the message. Intended to detect duplicates and send replies.
+	// RequestID of the message. Intended to track progress and detect duplicates.
 	// Optional. The hub will generate a unique requestID if omitted.
 	RequestID string
 }
@@ -90,18 +97,18 @@ func (tm *ThingMessage) GetUpdated(format ...string) (updated string) {
 // the message action, event or rpc name, and the serialized value data.
 // This copies the value buffer.
 //
-//	messageType is the type of value: action, event, property
+//	operation is the message operation WoTOp... or HTOp...
 //	thingID is the thing the value applies to (destination of action or source of event)
 //	name is the property, event or action name as described in the thing TD
 //	data is the native message data as defined in the corresponding TD dataschema.
 //	senderID is the accountID of the creator of the value
-func NewThingMessage(messageType, thingID, name string, data any, senderID string) *ThingMessage {
+func NewThingMessage(operation string, thingID, name string, data any, senderID string) *ThingMessage {
 	return &ThingMessage{
-		Created:     time.Now().Format(utils.RFC3339Milli),
-		Data:        data,
-		Name:        name,
-		MessageType: messageType,
-		SenderID:    senderID,
-		ThingID:     thingID,
+		Created:   time.Now().Format(utils.RFC3339Milli),
+		Data:      data,
+		Name:      name,
+		Operation: operation,
+		SenderID:  senderID,
+		ThingID:   thingID,
 	}
 }

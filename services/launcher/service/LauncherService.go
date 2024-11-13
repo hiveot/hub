@@ -32,7 +32,7 @@ type LauncherService struct {
 	cmds []*exec.Cmd
 
 	// hub messaging client
-	hc hubclient.IConsumerClient
+	hc hubclient.IAgentClient
 
 	// mutex to keep things safe
 	mux sync.Mutex
@@ -278,7 +278,7 @@ func (svc *LauncherService) WatchPlugins() error {
 func NewLauncherService(
 	env plugin.AppEnvironment,
 	cfg config.LauncherConfig,
-	hc hubclient.IConsumerClient,
+	hc hubclient.IAgentClient,
 ) *LauncherService {
 
 	ls := &LauncherService{

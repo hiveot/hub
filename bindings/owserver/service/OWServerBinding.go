@@ -36,7 +36,7 @@ type OWServerBinding struct {
 	edsAPI *eds.EdsAPI
 
 	// hub client to publish TDs and values and receive actions
-	hc hubclient.IHubClient
+	hc hubclient.IAgentClient
 
 	// The discovered and publishable things, containing instructions on
 	// if and how properties and events are published
@@ -97,10 +97,11 @@ func (svc *OWServerBinding) GetBindingPropValues() map[string]any {
 	return pv
 }
 
-// LoadState loads the client session state containing dashboard and other model data,
+// LoadState loads the custom node names (owserver doesn't support saving node names)
 // and clear 'clientModelChanged' status
 func (svc *OWServerBinding) LoadState() error {
 	stateCl := stateclient.NewStateClient(svc.hc)
+	// load user edited node names
 	found, err := stateCl.Get(customTitlesKey, &svc.customTitles)
 	if !found {
 		svc.customTitles = make(map[string]string)
@@ -108,7 +109,7 @@ func (svc *OWServerBinding) LoadState() error {
 	return err
 }
 
-// SaveState stores the agent's custom settings using the state service,
+// SaveState stores the custom node names
 func (svc *OWServerBinding) SaveState() error {
 	stateCl := stateclient.NewStateClient(svc.hc)
 	err := stateCl.Set(customTitlesKey, &svc.customTitles)
@@ -119,7 +120,7 @@ func (svc *OWServerBinding) SaveState() error {
 // This publishes a TD for this binding, starts a background heartbeat.
 //
 //	hc is the connection with the hubClient to use.
-func (svc *OWServerBinding) Start(hc hubclient.IHubClient) (err error) {
+func (svc *OWServerBinding) Start(hc hubclient.IAgentClient) (err error) {
 	slog.Info("Starting OWServer binding")
 	if svc.config.LogLevel != "" {
 		logging.SetLogging(svc.config.LogLevel, "")
@@ -131,7 +132,7 @@ func (svc *OWServerBinding) Start(hc hubclient.IHubClient) (err error) {
 		svc.config.OWServerURL, svc.config.OWServerLogin, svc.config.OWServerPassword)
 
 	// subscribe to action and configuration requests
-	svc.hc.SetMessageHandler(svc.HandleActionRequest)
+	svc.hc.SetRequestHandler(svc.HandleActionRequest)
 
 	// load custom settings
 	err = svc.LoadState()

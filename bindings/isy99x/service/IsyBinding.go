@@ -25,7 +25,7 @@ type IsyBinding struct {
 
 	// Configuration of this protocol binding
 	config *config.Isy99xConfig
-	hc     hubclient.IHubClient
+	hc     hubclient.IAgentClient
 
 	thingID      string           // ID of the binding Thing
 	isyAPI       *isy.IsyAPI      // methods for communicating met ISY gateway device
@@ -142,7 +142,7 @@ func (svc *IsyBinding) MakeBindingTD() *tdd.TD {
 // If no connection can be made the heartbeat will retry periodically until stopped.
 //
 // This publishes a TD for this binding, starts a background polling heartbeat.
-func (svc *IsyBinding) Start(hc hubclient.IHubClient) (err error) {
+func (svc *IsyBinding) Start(hc hubclient.IAgentClient) (err error) {
 	slog.Info("Starting Isy99x binding")
 	svc.hc = hc
 	svc.thingID = hc.GetClientID()
@@ -158,7 +158,7 @@ func (svc *IsyBinding) Start(hc hubclient.IHubClient) (err error) {
 	svc.IsyGW.Init(svc.isyAPI)
 
 	// subscribe to action requests
-	svc.hc.SetMessageHandler(svc.handleActionRequest)
+	svc.hc.SetRequestHandler(svc.handleActionRequest)
 
 	// last, start polling heartbeat
 	svc.stopHeartbeatFn = svc.startHeartbeat()

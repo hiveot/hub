@@ -109,9 +109,9 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 		dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
 
 		randomMsgType := rand.Intn(2)
-		messageType := vocab.MessageTypeEvent
+		messageType := vocab.WotOpPublishEvent
 		if randomMsgType == 1 {
-			messageType = vocab.MessageTypeProperty
+			messageType = vocab.WotOpPublishProperty
 		}
 
 		msg := hubclient.NewThingMessage(messageType,
@@ -195,16 +195,16 @@ func TestAddGetEvent(t *testing.T) {
 	addHist := svc.GetAddHistory()
 	dThing1ID := tdd.MakeDigiTwinThingID(agent1ID, thing1ID)
 	ev1_1 := &hubclient.ThingMessage{
-		MessageType: vocab.MessageTypeEvent,
-		SenderID:    agent1ID, ThingID: dThing1ID, Name: evTemperature,
+		Operation: vocab.WotOpPublishEvent,
+		SenderID:  agent1ID, ThingID: dThing1ID, Name: evTemperature,
 		Data: "12.5", Created: fivemago.Format(utils.RFC3339Milli),
 	}
 	err := addHist.AddEvent(ev1_1)
 	assert.NoError(t, err)
 	// add thing1 humidity from 55 minutes ago
 	ev1_2 := &hubclient.ThingMessage{
-		MessageType: vocab.MessageTypeEvent,
-		SenderID:    agent1ID, ThingID: dThing1ID, Name: evHumidity,
+		Operation: vocab.WotOpPublishEvent,
+		SenderID:  agent1ID, ThingID: dThing1ID, Name: evHumidity,
 		Data: "70", Created: fiftyfivemago.Format(utils.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev1_2)
@@ -213,8 +213,8 @@ func TestAddGetEvent(t *testing.T) {
 	// add thing2 humidity from 5 minutes ago
 	dThing2ID := tdd.MakeDigiTwinThingID(agent1ID, thing2ID)
 	ev2_1 := &hubclient.ThingMessage{
-		MessageType: vocab.MessageTypeEvent,
-		SenderID:    agent1ID, ThingID: dThing2ID, Name: evHumidity,
+		Operation: vocab.WotOpPublishEvent,
+		SenderID:  agent1ID, ThingID: dThing2ID, Name: evHumidity,
 		Data: "50", Created: fivemago.Format(utils.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev2_1)
@@ -222,8 +222,8 @@ func TestAddGetEvent(t *testing.T) {
 
 	// add thing2 temperature from 55 minutes ago
 	ev2_2 := &hubclient.ThingMessage{
-		MessageType: vocab.MessageTypeEvent,
-		SenderID:    agent1ID, ThingID: dThing2ID, Name: evTemperature,
+		Operation: vocab.WotOpPublishEvent,
+		SenderID:  agent1ID, ThingID: dThing2ID, Name: evTemperature,
 		Data: "17.5", Created: fiftyfivemago.Format(utils.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev2_2)
@@ -289,37 +289,37 @@ func TestAddProperties(t *testing.T) {
 
 	dThing1ID := tdd.MakeDigiTwinThingID(agent1, thing1ID)
 	action1 := &hubclient.ThingMessage{
-		SenderID:    agent1,
-		ThingID:     dThing1ID,
-		Name:        vocab.ActionSwitchOnOff,
-		Data:        "on",
-		MessageType: vocab.MessageTypeAction,
+		SenderID:  agent1,
+		ThingID:   dThing1ID,
+		Name:      vocab.ActionSwitchOnOff,
+		Data:      "on",
+		Operation: vocab.WotOpInvokeAction,
 	}
 	event1 := &hubclient.ThingMessage{
-		SenderID:    agent1,
-		ThingID:     dThing1ID,
-		Name:        vocab.PropEnvTemperature,
-		Data:        temp1,
-		MessageType: vocab.MessageTypeEvent,
+		SenderID:  agent1,
+		ThingID:   dThing1ID,
+		Name:      vocab.PropEnvTemperature,
+		Data:      temp1,
+		Operation: vocab.WotOpPublishEvent,
 	}
 	badEvent1 := &hubclient.ThingMessage{
-		SenderID:    agent1,
-		ThingID:     dThing1ID,
-		Name:        "", // missing name
-		MessageType: vocab.MessageTypeEvent,
+		SenderID:  agent1,
+		ThingID:   dThing1ID,
+		Name:      "", // missing name
+		Operation: vocab.WotOpPublishEvent,
 	}
 	badEvent2 := &hubclient.ThingMessage{
-		SenderID:    "", // missing publisher
-		ThingID:     dThing1ID,
-		Name:        "name",
-		MessageType: vocab.MessageTypeEvent,
+		SenderID:  "", // missing publisher
+		ThingID:   dThing1ID,
+		Name:      "name",
+		Operation: vocab.WotOpPublishEvent,
 	}
 	badEvent3 := &hubclient.ThingMessage{
-		SenderID:    agent1,
-		ThingID:     dThing1ID,
-		Name:        "baddate",
-		Created:     "-1",
-		MessageType: vocab.MessageTypeEvent,
+		SenderID:  agent1,
+		ThingID:   dThing1ID,
+		Name:      "baddate",
+		Created:   "-1",
+		Operation: vocab.WotOpPublishEvent,
 	}
 	badEvent4 := &hubclient.ThingMessage{
 		SenderID: agent1,
@@ -331,11 +331,11 @@ func TestAddProperties(t *testing.T) {
 	propsList[vocab.PropEnvCpuload] = 30
 	propsList[vocab.PropSwitchOnOff] = "off"
 	props1 := &hubclient.ThingMessage{
-		SenderID:    agent1,
-		ThingID:     dThing1ID,
-		Name:        "", // property list
-		Data:        propsList,
-		MessageType: vocab.MessageTypeProperty,
+		SenderID:  agent1,
+		ThingID:   dThing1ID,
+		Name:      "", // property list
+		Data:      propsList,
+		Operation: vocab.WotOpPublishProperties,
 	}
 
 	// in total add 5 properties
@@ -344,7 +344,7 @@ func TestAddProperties(t *testing.T) {
 	assert.NoError(t, err)
 	err = addHist.AddMessage(event1)
 	assert.NoError(t, err)
-	err = addHist.AddMessage(props1) // props has 3 values
+	err = addHist.AddMessage(props1)
 	assert.NoError(t, err)
 
 	// and some bad values
@@ -367,7 +367,7 @@ func TestAddProperties(t *testing.T) {
 	assert.NotEmpty(t, msg)
 	hasProps := false
 	for valid && err == nil {
-		if msg.MessageType == vocab.MessageTypeProperty {
+		if msg.Operation == vocab.WotOpPublishProperty {
 			hasProps = true
 			require.NotEmpty(t, msg.Name)
 			require.NotEmpty(t, msg.Data)

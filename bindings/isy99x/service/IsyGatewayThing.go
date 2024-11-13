@@ -358,14 +358,14 @@ func (igw *IsyGatewayThing) MakeTD() *tdd.TD {
 
 //
 //// PubPropValues gets the thing properties and publish them
-//func (svc *IsyGatewayThing) PubPropValues(hc hubclient.IHubClient, onlyChanges bool) (err error) {
+//func (svc *IsyGatewayThing) PubPropValues(hc hubclient.IAgentClient, onlyChanges bool) (err error) {
 //	props := svc.GetPropValues(onlyChanges)
 //	err = hc.PubMultipleProperties(svc.thingID, props)
 //	return err
 //}
 
 // PubTD read and publishes the gateway's TD
-func (svc *IsyGatewayThing) PubTD(hc hubclient.IHubClient) (err error) {
+func (svc *IsyGatewayThing) PubTD(hc hubclient.IAgentClient) (err error) {
 	td := svc.MakeTD()
 	tdJSON, _ := json.Marshal(td)
 	err = hc.PubTD(td.ID, string(tdJSON))

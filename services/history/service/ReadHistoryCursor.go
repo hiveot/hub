@@ -54,12 +54,12 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (
 	createdTime := time.UnixMilli(createdMsec)
 	name := parts[1]
 	senderID := ""
-	messageType := vocab.MessageTypeEvent
+	operation := vocab.WotOpPublishEvent
 	if len(parts) >= 2 {
 		if parts[2] == "a" {
-			messageType = vocab.MessageTypeAction
+			operation = vocab.WotOpInvokeAction
 		} else if parts[2] == "p" {
-			messageType = vocab.MessageTypeProperty
+			operation = vocab.WotOpPublishProperty
 		}
 	}
 	if len(parts) > 3 {
@@ -78,13 +78,13 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (
 	}
 
 	thingValue = &hubclient.ThingMessage{
-		ThingID:     bucketID, // digital twin thingID that includes the agent prefix
-		RequestID:   requestID,
-		Name:        name,
-		Data:        data,
-		Created:     createdTime.Format(utils.RFC3339Milli),
-		MessageType: messageType,
-		SenderID:    senderID,
+		ThingID:   bucketID, // digital twin thingID that includes the agent prefix
+		RequestID: requestID,
+		Name:      name,
+		Data:      data,
+		Created:   createdTime.Format(utils.RFC3339Milli),
+		Operation: operation,
+		SenderID:  senderID,
 	}
 	return thingValue, true, err
 }

@@ -49,98 +49,85 @@ const DefaultAclFilename = "authz.acl"
 // RolePermission defines authorization for a role.
 // Each permission defines the source/things the user can pub/sub to.
 type RolePermission struct {
-	//// device or service publishing the Thing data, or "" for all
+	// device or service publishing the Thing data, or "" for all
 	//AgentID string
 	// thingID or capability, or "" for all
 	ThingID string
-	// rpc, event, action, config, or "" for all message types
-	MsgType string
+	// WotOpSubscribeEvent,... action, config, or "" for all message types
+	Operations []string
 	// action name or "" for all actions
-	MsgKey string
-	// allow publishing of this message
-	AllowPub bool
-	// allow subscribing to this message
-	AllowSub bool
+	//MsgKey string
 }
 
-// agents can publish actions, events, property updates, and subscribe to their own actions and config
-var agentPermissions = []RolePermission{
-	{
-		MsgType:  vocab.MessageTypeEvent,
-		AllowPub: true,
-	}, {
-		MsgType:  vocab.MessageTypeAction,
-		AllowPub: true, // only allow pub to select services
-		AllowSub: true,
-	}, {
-		MsgType:  vocab.MessageTypeProperty,
-		AllowPub: true, // publish property updates
-		AllowSub: true, // receive property write requests
+// agents can publish actions, events, property updates,
+// and subscribe to their own actions and config
+var agentPermissions = RolePermission{
+	Operations: []string{
+		vocab.WotOpInvokeAction,
+		vocab.WotOpPublishActionStatus,
+		vocab.WotOpPublishEvent,
+		vocab.WotOpPublishProperties,
+		vocab.WotOpPublishProperty,
+		vocab.HTOpUpdateTD,
 	},
 }
 
 // services can pub/sub anything
-var servicePermissions = []RolePermission{
-	{
-		MsgType:  vocab.MessageTypeEvent,
-		AllowPub: true,
-		AllowSub: true,
-	}, {
-		MsgType:  vocab.MessageTypeAction,
-		AllowSub: true,
-		AllowPub: true,
-	}, {
-		MsgType:  vocab.MessageTypeProperty,
-		AllowSub: true,
-		AllowPub: true,
+var servicePermissions = RolePermission{
+
+	Operations: []string{
+		vocab.WotOpInvokeAction,
+		vocab.WotOpObserveProperty,
+		vocab.WotOpObserveAllProperties,
+		vocab.WotOpPublishActionStatus,
+		vocab.WotOpPublishEvent,
+		vocab.WotOpPublishProperties,
+		vocab.WotOpPublishProperty,
+		vocab.WotOpSubscribeEvent,
+		vocab.WotOpSubscribeAllEvents,
+		vocab.HTOpUpdateTD,
 	},
 }
 
 // viewers can subscribe to events from all things
-var viewerPermissions = []RolePermission{{
-	MsgType:  vocab.MessageTypeEvent,
-	AllowSub: true,
-}}
+var viewerPermissions = RolePermission{
+	Operations: []string{
+		vocab.WotOpObserveProperty,
+		vocab.WotOpSubscribeEvent,
+	},
+}
 
 // operators can subscribe to events and publish things actions
 // operators cannot configure things
-var operatorPermissions = []RolePermission{
-	{
-		MsgType:  vocab.MessageTypeEvent,
-		AllowSub: true,
-	}, {
-		// action to change properties is not allowed
-		MsgType:  vocab.MessageTypeProperty,
-		AllowPub: true,
-	}, {
-		// any other actions are allowed
-		MsgType:  vocab.MessageTypeAction,
-		AllowPub: true,
+var operatorPermissions = RolePermission{
+	Operations: []string{
+		vocab.WotOpInvokeAction,
+		vocab.WotOpObserveProperty,
+		vocab.WotOpObserveAllProperties,
+		vocab.WotOpSubscribeEvent,
+		vocab.WotOpSubscribeAllEvents,
 	},
 }
 
 // managers can sub all events and pub all actions
-var managerPermissions = []RolePermission{
-	{
-		MsgType:  vocab.MessageTypeEvent,
-		AllowSub: true,
-	}, {
-		// action to change properties is not allowed
-		MsgType:  vocab.MessageTypeProperty,
-		AllowPub: true,
-	}, {
-		MsgType:  vocab.MessageTypeAction,
-		AllowPub: true,
+var managerPermissions = RolePermission{
+	Operations: []string{
+		vocab.WotOpInvokeAction,
+		vocab.WotOpObserveProperty,
+		vocab.WotOpObserveAllProperties,
+		vocab.WotOpSubscribeEvent,
+		vocab.WotOpSubscribeAllEvents,
+		vocab.WotOpWriteProperty,
 	},
 }
 
 // administrators are like managers.
 // Services will add their role authorization on startup
-var adminPermissions = append(managerPermissions)
+var adminPermissions = managerPermissions
 
-// DefaultRolePermissions contains the default pub/sub permissions for each user role
-var DefaultRolePermissions = map[authz.ClientRole][]RolePermission{
-	authz.ClientRoleNone:     nil,
+// DefaultRolePermissions contains the default pub/sub permissions for each role
+var DefaultRolePermissions = map[authz.ClientRole]RolePermission{
+	authz.ClientRoleNone:     {},
 	authz.ClientRoleAgent:    agentPermissions,
 	authz.ClientRoleService:  servicePermissions,
 	authz.ClientRoleViewer:   viewerPermissions,
@@ -152,7 +139,7 @@ var DefaultRolePermissions = map[authz.ClientRole][]RolePermission{
 // AuthzConfig holds the authorization permissions for client roles
 type AuthzConfig struct {
 	// map of role to permissions of that role
-	RolePermissions map[authz.ClientRole][]RolePermission `yaml:"RolePermissions"`
+	RolePermissions map[authz.ClientRole]RolePermission `yaml:"RolePermissions"`
 
 	// map of service dThingID  to the allow/deny roles that can invoke it
 	ThingPermissions map[string]authz.ThingPermissions `yaml:"ServicePermissions"`

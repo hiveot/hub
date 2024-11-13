@@ -44,9 +44,10 @@ func (svc *AddHistory) encodeValue(msg *hubclient.ThingMessage) (storageKey stri
 	// the index uses milliseconds for timestamp
 	timestamp := createdTime.UnixMilli()
 	storageKey = strconv.FormatInt(timestamp, 10) + "/" + msg.Name
-	if msg.MessageType == vocab.MessageTypeAction {
+	if msg.Operation == vocab.WotOpInvokeAction {
+		// TODO: actions subscriptions are currently not supported. This would be useful though.
 		storageKey = storageKey + "/a"
-	} else if msg.MessageType == vocab.MessageTypeProperty {
+	} else if msg.Operation == vocab.WotOpPublishProperty {
 		storageKey = storageKey + "/p"
 	} else {
 		storageKey = storageKey + "/e"
@@ -131,13 +132,13 @@ func (svc *AddHistory) AddEvent(msg *hubclient.ThingMessage) error {
 
 // AddMessage adds an event, action or property message to the history store
 func (svc *AddHistory) AddMessage(msg *hubclient.ThingMessage) error {
-	if msg.MessageType == vocab.MessageTypeAction {
+	if msg.Operation == vocab.WotOpInvokeAction {
 		return svc.AddAction(msg)
 	}
-	if msg.MessageType == vocab.MessageTypeProperty {
-		return svc.AddProperties(msg)
+	if msg.Operation == vocab.WotOpPublishProperty || msg.Operation == vocab.WotOpPublishProperties {
+		return svc.AddProperty(msg)
 	}
-	if msg.MessageType == vocab.MessageTypeEvent {
+	if msg.Operation == vocab.WotOpPublishEvent {
 		return svc.AddEvent(msg)
 	}
 	// anything else is added as an event
@@ -186,10 +187,11 @@ func (svc *AddHistory) AddMessages(msgList []*hubclient.ThingMessage) (err error
 	return nil
 }
 
-// AddProperties adds individual property values to the history
+// AddProperty adds a single property value to the history
+//
 // If property name is empty then expect a property key-value map.
 // This splits the property map and adds then as individual name-value pairs
-func (svc *AddHistory) AddProperties(msg *hubclient.ThingMessage) (err error) {
+func (svc *AddHistory) AddProperty(msg *hubclient.ThingMessage) (err error) {
 
 	propMap := make(map[string]any)
 	if msg.Name == "" {
@@ -197,20 +199,9 @@ func (svc *AddHistory) AddProperties(msg *hubclient.ThingMessage) (err error) {
 		if err != nil {
 			return err
 		}
-		// FIXME: check retained
 	} else {
-		retain, err := svc.validateValue(msg)
-		if err != nil {
-			slog.Info("AddProperties value error", "err", err.Error())
-			return err
-		}
-		if !retain {
-			slog.Debug("property value not retained", slog.String("name", msg.Name))
-			return nil
-		}
 		propMap[msg.Name] = msg.Data
 	}
-	// FIXME: what if msg is a straight name=key, data=value instead of a map?
 	if msg.Created == "" {
 		msg.Created = time.Now().Format(utils.RFC3339Milli)
 	}
@@ -219,13 +210,21 @@ func (svc *AddHistory) AddProperties(msg *hubclient.ThingMessage) (err error) {
 
 	// turn each property into a ThingMessage object so they can be queried separately
 	for propName, propValue := range propMap {
-		// store this as a property message to differentiate from events
-		tv := hubclient.NewThingMessage(vocab.MessageTypeProperty,
+		tv := hubclient.NewThingMessage(vocab.WotOpPublishProperty,
 			msg.ThingID, propName, propValue, msg.SenderID)
 		tv.Created = msg.Created
-		//
-		storageKey, val := svc.encodeValue(tv)
-		err = bucket.Set(storageKey, val)
+
+		retain, err := svc.validateValue(tv)
+		if err != nil {
+			slog.Info("AddProperty value error", "err", err.Error())
+			return err
+		}
+		// only store properties marked as retained. (default all)
+		if retain {
+			//
+			storageKey, val := svc.encodeValue(tv)
+			err = bucket.Set(storageKey, val)
+		}
 	}
 	_ = bucket.Close()
 	return err

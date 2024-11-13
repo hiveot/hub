@@ -22,7 +22,7 @@ type ProtocolManager struct {
 	discoveryTransport *discotransport.DiscoveryTransport
 	//embeddedTransport  *embedded.EmbeddedTransport
 	httpTransport *httptransport.HttpBinding
-	mqttTransport api.ITransportBinding
+	//mqttTransport api.ITransportBinding
 	//grpcTransport     api.ITransportBinding
 	//dtwService *service.DigitwinService
 

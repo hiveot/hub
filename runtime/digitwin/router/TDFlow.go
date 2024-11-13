@@ -3,30 +3,35 @@ package router
 
 import (
 	"github.com/hiveot/hub/api/go/digitwin"
-	"log/slog"
+	"github.com/hiveot/hub/lib/hubclient"
 )
 
-// HandlePublishTD agent updates a TD
-// This updates the thing TD in the directory
-func (svc *DigitwinRouter) HandlePublishTD(agentID string, args any) error {
-	slog.Info("HandlePublishTD (from agent)", slog.String("agentID", agentID))
+// HandleUpdateTD agent updates a TD.
+// This converts the operation in an action for the directory service.
+func (svc *DigitwinRouter) HandleUpdateTD(msg *hubclient.ThingMessage) {
 
-	_, _, err := svc.digitwinAction(
-		agentID, digitwin.DirectoryDThingID, digitwin.DirectoryUpdateTDMethod, args, "")
-	return err
+	dirMsg := *msg
+	dirMsg.ThingID = digitwin.DirectoryDThingID
+	dirMsg.Name = digitwin.DirectoryUpdateTDMethod
+	_ = svc.digitwinAction(&dirMsg)
 }
 
 // HandleReadTD consumer reads a TD
-func (svc *DigitwinRouter) HandleReadTD(consumerID string, args any) (reply any, err error) {
-	_, reply, err = svc.digitwinAction(
-		"", digitwin.DirectoryDThingID, digitwin.DirectoryActionReadTD, args, "")
-	return reply, err
+// This converts the operation in an action for the directory service.
+func (svc *DigitwinRouter) HandleReadTD(msg *hubclient.ThingMessage) hubclient.RequestStatus {
+	dirMsg := *msg
+	dirMsg.ThingID = digitwin.DirectoryDThingID
+	dirMsg.Name = digitwin.DirectoryActionReadTD
+	stat := svc.digitwinAction(&dirMsg)
+	return stat
 }
 
 // HandleReadAllTDs consumer reads all TDs
-func (svc *DigitwinRouter) HandleReadAllTDs(consumerID string) (reply any, err error) {
-
-	_, reply, err = svc.digitwinAction(
-		"", digitwin.DirectoryDThingID, digitwin.DirectoryActionReadAllTDs, nil, "")
-	return reply, err
+// This converts the operation in an action for the directory service.
+func (svc *DigitwinRouter) HandleReadAllTDs(msg *hubclient.ThingMessage) hubclient.RequestStatus {
+	dirMsg := *msg
+	dirMsg.ThingID = digitwin.DirectoryDThingID
+	dirMsg.Name = digitwin.DirectoryActionReadAllTDs
+	stat := svc.digitwinAction(&dirMsg)
+	return stat
 }

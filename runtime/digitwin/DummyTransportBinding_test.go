@@ -1,4 +1,4 @@
-package service_test
+package digitwin_test
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
@@ -37,7 +37,7 @@ func (dummy *DummyTransportBinding) PublishProperty(
 	dThingID string, name string, value any, requestID string, agentID string) {
 }
 func (dummy *DummyTransportBinding) PublishProgressUpdate(
-	connectionID string, stat hubclient.RequestProgress, agentID string) (bool, error) {
+	connectionID string, stat hubclient.RequestStatus, agentID string) (bool, error) {
 	return false, nil
 }
 
@@ -48,7 +48,7 @@ func (dummy *DummyTransportBinding) WriteProperty(
 	return false, vocab.RequestPending, nil
 }
 
-func NewDummyTransportBinding() api.ITransportBinding {
+func NewDummyTransportBinding() *DummyTransportBinding {
 	dummy := DummyTransportBinding{}
 	return &dummy
 }

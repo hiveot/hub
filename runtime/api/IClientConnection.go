@@ -39,7 +39,7 @@ type IClientConnection interface {
 	// PublishActionStatus sends an action progress update to the consumer.
 	// Intended for receiving RPC results over 1-way bindings such as SSE and to
 	// respond to QueryAction requests.
-	PublishActionStatus(stat hubclient.RequestProgress, agentID string) error
+	PublishActionStatus(stat hubclient.RequestStatus, agentID string) error
 
 	// PublishEvent publishes an event message to client. If the client is not
 	// subscribed to the event then the connection will ignore the event.

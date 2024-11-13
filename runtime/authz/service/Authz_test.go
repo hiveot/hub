@@ -80,7 +80,7 @@ func TestSetRole(t *testing.T) {
 }
 
 func TestHasPermission(t *testing.T) {
-	const senderID = "sender-1"
+	const operatorID = "operator-1"
 	const client1Role = authz2.ClientRoleOperator
 	const thingID = ""
 	const key = ""
@@ -92,17 +92,18 @@ func TestHasPermission(t *testing.T) {
 	require.NoError(t, err)
 	defer svc.Stop()
 
-	err = authnStore.Add(senderID,
-		authn.ClientProfile{ClientID: senderID, ClientType: authn.ClientTypeConsumer})
+	err = authnStore.Add(operatorID,
+		authn.ClientProfile{ClientID: operatorID, ClientType: authn.ClientTypeConsumer})
 	require.NoError(t, err)
-	err = svc.SetClientRole(senderID, authz2.AdminSetClientRoleArgs{senderID, client1Role})
+	err = svc.SetClientRole(operatorID, authz2.AdminSetClientRoleArgs{operatorID, client1Role})
 	assert.NoError(t, err)
-	// consumers have permission to publish actions and property requests
-	msg := hubclient.NewThingMessage(vocab.MessageTypeAction, thingID, key, "", senderID)
-	hasperm := svc.HasPermission(msg.SenderID, msg.MessageType, msg.ThingID, true)
-	assert.True(t, hasperm)
+	// consumers have permission to publish actions and write-property requests
+	msg := hubclient.NewThingMessage(vocab.WotOpInvokeAction, thingID, key, "", operatorID)
+	hasPerm := svc.HasPermission(msg.SenderID, msg.Operation, msg.ThingID)
+	assert.True(t, hasPerm)
 
-	msg = hubclient.NewThingMessage(vocab.MessageTypeProperty, thingID, key, "", senderID)
-	hasperm = svc.HasPermission(msg.SenderID, msg.MessageType, msg.ThingID, true)
-	assert.True(t, hasperm)
+	// operators cannot publish property values
+	msg = hubclient.NewThingMessage(vocab.WotOpPublishProperty, thingID, key, "", operatorID)
+	hasPerm = svc.HasPermission(msg.SenderID, msg.Operation, msg.ThingID)
+	assert.False(t, hasPerm)
 }

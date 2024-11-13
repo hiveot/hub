@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
-	"github.com/teris-io/shortid"
 	"log/slog"
 	"time"
 )
@@ -18,115 +18,103 @@ import (
 // thingID is the ID of the original thing as managed by the agent.
 // propName name of the TD defined property
 // value property value
-func (svc *DigitwinRouter) HandlePublishProperty(
-	agentID string, thingID string, propName string, value any, requestID string) (err error) {
+func (svc *DigitwinRouter) HandlePublishProperty(msg *hubclient.ThingMessage) {
 
-	propStrVal := utils.DecodeAsString(value)
-	slog.Info("HandlePublishProperty (from agent)",
-		slog.String("agentID", agentID),
-		slog.String("thingID", thingID),
-		slog.String("propName", propName),
-		slog.String("requestID", requestID),
-		slog.String("value", fmt.Sprintf("%-.20s", propStrVal)), // limit logging to 20 chars
-	)
-	// update the property in the digitwin and notify observers
-	changed, err2 := svc.dtwStore.UpdatePropertyValue(agentID, thingID, propName, value, requestID)
-	err = err2
+	// update the property in the digitwin store and notify observers
+	changed, _ := svc.dtwStore.UpdatePropertyValue(
+		msg.SenderID, msg.ThingID, msg.Name, msg.Data, msg.RequestID)
 	if changed {
-		dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
-		svc.cm.PublishProperty(dThingID, propName, value, requestID, agentID)
+		dThingID := tdd.MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
+		svc.cm.PublishProperty(dThingID, msg.Name, msg.Data, msg.RequestID, msg.SenderID)
 	}
-	return err
 }
 
 // HandlePublishMultipleProperties agent publishes a batch with multiple property values.
-// This sends a property update to observers, for each of the properties in the map.
+// This sends individual property updates to observers.
 //
 // agentID is the ID of the agent sending the update
 // thingID is the ID of the original thing as managed by the agent.
 // propMap map of property key-values
-func (svc *DigitwinRouter) HandlePublishMultipleProperties(
-	agentID string, thingID string, propMap map[string]any, requestID string) (err error) {
-
-	slog.Info("HandlePublishMultipleProperties (from agent)",
-		slog.String("agentID", agentID),
-		slog.String("thingID", thingID),
-		slog.String("requestID", requestID),
-		slog.Int("nrprops", len(propMap)),
-	)
+func (svc *DigitwinRouter) HandlePublishMultipleProperties(msg *hubclient.ThingMessage) {
+	propMap := make(map[string]any)
+	err := utils.Decode(msg.Data, &propMap)
+	if err != nil {
+		slog.Warn("HandlePublishMultipleProperties: error decoding property map", "err", err.Error())
+		return
+	}
 	// update the property in the digitwin and notify observers for each change
-	changes, err2 := svc.dtwStore.UpdateProperties(agentID, thingID, propMap, requestID)
-	err = err2
+	changes, err := svc.dtwStore.UpdateProperties(
+		msg.SenderID, msg.ThingID, propMap, msg.RequestID)
 	if len(changes) > 0 {
-		dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
+		dThingID := tdd.MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
 		for k, v := range changes {
-			svc.cm.PublishProperty(dThingID, k, v, requestID, agentID)
+			svc.cm.PublishProperty(dThingID, k, v, msg.RequestID, msg.SenderID)
 		}
 	}
-	return err
 }
 
-// HandleReadProperty handles reading a digital twin thing's property value
+// HandleReadProperty consumer requests a digital twin thing's property value
 func (svc *DigitwinRouter) HandleReadProperty(
-	consumerID string, dThingID string, name string) (reply any, err error) {
+	msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
 
-	reply, err = svc.dtwService.ValuesSvc.ReadProperty(consumerID,
-		digitwin.ValuesReadPropertyArgs{ThingID: dThingID, Name: name})
-	return reply, err
+	reply, err := svc.dtwService.ValuesSvc.ReadProperty(msg.SenderID,
+		digitwin.ValuesReadPropertyArgs{ThingID: msg.ThingID, Name: msg.Name})
+
+	stat.Completed(msg, reply, err)
+	return stat
 }
 
-// HandleReadAllProperties handles reading all digital twin thing's property values
+// HandleReadAllProperties consumer requests reading all digital twin's property values
 func (svc *DigitwinRouter) HandleReadAllProperties(
-	consumerID string, dThingID string) (reply any, err error) {
+	msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
 
-	reply, err = svc.dtwService.ValuesSvc.ReadAllProperties(consumerID, dThingID)
-	return reply, err
+	reply, err := svc.dtwService.ValuesSvc.ReadAllProperties(msg.SenderID, msg.ThingID)
+	stat.Completed(msg, reply, err)
+	return stat
 }
 
 // HandleWriteProperty A consumer requests to write a new value to a property.
-// After authorization, the request is forwarded to the Thing and a progress event
-// is sent with the progress update of the request.
+// The request is forwarded to the Thing and a progress event is sent with the
+// progress update of the request.
 //
 //	write digitwin -> router -> write thing
 //	                         -> progress event
 //
-// event is sent with the progress update.
 // if name is empty then newValue contains a map of properties
-func (svc *DigitwinRouter) HandleWriteProperty(
-	consumerID string, dThingID string, name string, newValue any) (
-	status string, requestID string, err error) {
+func (svc *DigitwinRouter) HandleWriteProperty(msg *hubclient.ThingMessage, replyTo string) (
+	stat hubclient.RequestStatus) {
 
-	slog.Info("HandleWritePropertyFlow (from consumer)",
-		slog.String("consumerID", consumerID),
-		slog.String("dThingID", dThingID),
-		slog.String("name", name),
-		slog.String("newValue", fmt.Sprintf("%v", newValue)),
-	)
 	// assign a requestID if none given
-	requestID = "prop-" + shortid.MustGenerate()
-	agentID, thingID := tdd.SplitDigiTwinThingID(dThingID)
-
-	// TODO: authorize the request
+	agentID, thingID := tdd.SplitDigiTwinThingID(msg.ThingID)
 
 	// forward the request to the thing's agent and update status
 	c := svc.cm.GetConnectionByClientID(agentID)
-	status = vocab.RequestFailed
 	if c != nil {
-		status, err = c.WriteProperty(thingID, name, newValue, requestID, consumerID)
-		//statusInfo = "Thing agent not reachable"
-	}
-	if status != vocab.RequestCompleted && status != vocab.RequestFailed {
-		// store incomplete request by message ID to support sending progress updates to the sender
-		svc.activeCache[requestID] = &ActionFlowRecord{
-			MessageType: vocab.MessageTypeProperty,
-			AgentID:     agentID,
-			ThingID:     thingID,
-			RequestID:   requestID,
-			Name:        name,
-			SenderID:    consumerID,
-			Progress:    status,
-			Updated:     time.Now(),
+		status, err := c.WriteProperty(thingID, msg.Name, msg.Data, msg.RequestID, msg.SenderID)
+		if err != nil {
+			stat.Failed(msg, err)
+		} else {
+			stat.Delivered(msg)
+			stat.Progress = status
 		}
+	} else {
+		stat.Failed(msg, fmt.Errorf("Agent '%s' not reachable", agentID))
 	}
-	return status, requestID, err
+	if stat.Progress != vocab.RequestCompleted && stat.Progress != vocab.RequestFailed {
+		// the request is not yet finished. Track it in the active cache.
+		svc.mux.Lock()
+		svc.activeCache[msg.RequestID] = ActionFlowRecord{
+			Operation: msg.Operation,
+			AgentID:   agentID,
+			ThingID:   thingID,
+			RequestID: msg.RequestID,
+			ReplyTo:   replyTo,
+			Name:      msg.Name,
+			SenderID:  msg.SenderID,
+			Progress:  stat.Progress,
+			Updated:   time.Now(),
+		}
+		svc.mux.Unlock()
+	}
+	return stat
 }

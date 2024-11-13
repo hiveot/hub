@@ -296,7 +296,7 @@ func (sess *WebClientSession) onHubConnectionChange(connected bool, err error) {
 func (sess *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 
 	slog.Debug("received message",
-		slog.String("type", msg.MessageType),
+		slog.String("operation", msg.Operation),
 		slog.String("thingID", msg.ThingID),
 		slog.String("name", msg.Name),
 		//slog.Any("data", msg.Data),
@@ -304,7 +304,7 @@ func (sess *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		slog.String("receiver cid", sess.cid),
 		slog.String("requestID", msg.RequestID),
 	)
-	if msg.MessageType == vocab.MessageTypeProperty {
+	if msg.Operation == vocab.WotOpPublishProperty {
 		// Publish a sse event for each property
 		// The UI that displays this event can use this as a trigger to load the
 		// property value:
@@ -315,10 +315,10 @@ func (sess *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		sess.SendSSE(thingAddr, propVal)
 		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Name)
 		sess.SendSSE(thingAddr, msg.GetUpdated())
-	} else if msg.MessageType == vocab.MessageTypeProgressUpdate {
+	} else if msg.Operation == vocab.WotOpPublishActionStatus {
 		// report unhandled delivery updates
 		// for now just pass it to the notification toaster
-		stat := hubclient.RequestProgress{}
+		stat := hubclient.RequestStatus{}
 		_ = utils.DecodeAsObject(msg.Data, &stat)
 
 		// TODO: figure out a way to replace the existing notification if the requestID
@@ -330,7 +330,7 @@ func (sess *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		} else {
 			sess.SendNotify(NotifyWarning, "Action delivery: "+stat.Progress)
 		}
-		//} else if msg.MessageType == vocab.MessageTypeEvent &&
+		//} else if msg.MessageType == vocab.WotOpPublishEvent &&
 		//	msg.ThingID == digitwin.DirectoryDThingID &&
 		//	msg.Name == digitwin.DirectoryEventThingUpdated {
 

@@ -29,45 +29,44 @@ func TestAddRemoveTD(t *testing.T) {
 
 	r := startRuntime()
 	defer r.Stop()
-	ag, _ := ts.AddConnectAgent(agentID)
-	ag.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
+	ag1, _ := ts.AddConnectAgent(agentID)
+	ag1.SetRequestHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
 		stat.Progress = vocab.RequestCompleted
 		return
 	})
-	defer ag.Disconnect()
-	cl, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
-	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
+	defer ag1.Disconnect()
+	cl1, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
+	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) {
 		// expect 2 events, updated and removed
 		evCount.Add(1)
-		return stat
 	})
-	defer cl.Disconnect()
-	err := cl.Subscribe("", "")
+	defer cl1.Disconnect()
+	err := cl1.Subscribe("", "")
 
 	// Add the TD by sending it as an event
 	td1 := tdd.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
 	td1JSON, _ := json.Marshal(td1)
-	err = ag.PubTD(agThing1ID, string(td1JSON))
+	err = ag1.PubTD(agThing1ID, string(td1JSON))
 	assert.NoError(t, err)
 
 	// Get returns a serialized TD object
 	// use the helper directory client rpc method
-	td3Json, err := digitwin.DirectoryReadTD(cl, dtThing1ID)
+	td3Json, err := digitwin.DirectoryReadTD(cl1, dtThing1ID)
 	require.NoError(t, err)
 	var td3 tdd.TD
 	err = jsoniter.UnmarshalFromString(td3Json, &td3)
 	require.NoError(t, err)
 	assert.Equal(t, dtThing1ID, td3.ID)
 
-	//stat = cl.Rpc(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
+	//stat = cl1.Rpc(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
 	args4JSON, _ := jsoniter.Marshal(dtThing1ID)
-	stat := cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryRemoveTDMethod, string(args4JSON), nil, "")
+	stat := cl1.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryRemoveTDMethod, string(args4JSON), nil, "")
 	require.Empty(t, stat.Error)
 
 	// after removal of the TD, getTD should return an error but delivery is successful
-	stat = cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, string(args4JSON), nil, "")
+	stat = cl1.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, string(args4JSON), nil, "")
 	require.NotEmpty(t, stat.Error)
-	require.Equal(t, vocab.RequestCompleted, stat.Progress)
+	require.Equal(t, vocab.RequestFailed, stat.Progress)
 
 	// expect 2 events to be received
 	require.Equal(t, int32(2), evCount.Load())
@@ -100,7 +99,7 @@ func TestReadTDs(t *testing.T) {
 	args := digitwin.DirectoryReadAllTDsArgs{Limit: 10}
 	stat := cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadAllTDsMethod, args, nil, "")
 	require.Empty(t, stat.Error)
-	assert.NotNil(t, stat.Reply)
+	assert.NotNil(t, stat.Output)
 	tdList1 := []string{}
 	err, hasData := stat.Decode(&tdList1)
 	require.NoError(t, err)
@@ -156,16 +155,15 @@ func TestTDEvent(t *testing.T) {
 
 	r := startRuntime()
 	defer r.Stop()
-	ag, _ := ts.AddConnectAgent(agentID)
-	defer ag.Disconnect()
-	cl, token := ts.AddConnectUser(userID, authz.ClientRoleManager)
+	ag1, _ := ts.AddConnectAgent(agentID)
+	defer ag1.Disconnect()
+	cl1, token := ts.AddConnectUser(userID, authz.ClientRoleManager)
 	_ = token
-	defer cl.Disconnect()
+	defer cl1.Disconnect()
 
 	// wait to directory TD updated events
-	cl.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
-		stat.Completed(msg, nil, nil)
-		if msg.MessageType == vocab.MessageTypeEvent &&
+	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) {
+		if msg.Operation == vocab.WotOpPublishEvent &&
 			msg.ThingID == digitwin.DirectoryDThingID &&
 			msg.Name == digitwin.DirectoryEventThingUpdated {
 
@@ -176,10 +174,8 @@ func TestTDEvent(t *testing.T) {
 			assert.NoError(t, err)
 			tdCount.Add(1)
 		}
-
-		return stat
 	})
-	err := cl.Subscribe("", "")
+	err := cl1.Subscribe("", "")
 	time.Sleep(time.Millisecond * 100)
 	require.NoError(t, err)
 

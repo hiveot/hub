@@ -65,15 +65,15 @@ WoTVocab:
     #--- HTTP Protocol binding operations
     # Properties
     WotOpObserveAllProperties : "observeallproperties"
-    WoTOpObserveProperty        : "observeproperty"
+    WotOpObserveProperty        : "observeproperty"
     WotOpReadAllProperties      : "readallproperties"
     WotOpReadMultipleProperties : "readmultipleproperties"
-    WoTOpReadProperty           : "readproperty"
+    WotOpReadProperty           : "readproperty"
     WotOpWriteAllProperties     : "writeallproperties"
     WotOpWriteMultipleProperties : "writemultipleproperties"
-    WoTOpWriteProperty          : "writeproperty"
+    WotOpWriteProperty          : "writeproperty"
     WotOpUnobserveAllProperties : "unobserveallproperties"
-    WoTOpUnobserveProperty      : "unobserveroperty"
+    WotOpUnobserveProperty      : "unobserveroperty"
 
     # Events
     WotOpSubscribeAllEvents : "subscribeallevents"
@@ -93,6 +93,7 @@ WoTVocab:
     WotOpPublishActionStatuses : "actionstatuses"
     WotOpPublishError : "error"
     WotOpPublishEvent : "event"
-    WotOpPublishProperty : "propertyreading"
+    WotOpPublishProperty : "property"
+    WotOpPublishProperties : "properties"
     WotOpPing : "ping"
     WotOpPong : "pong"    # response message

@@ -8,8 +8,8 @@ import (
 )
 
 // HandleActionRequest passes the action request to the associated Thing.
-func (svc *IsyBinding) handleActionRequest(action *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
-	if action.MessageType == vocab.MessageTypeProperty {
+func (svc *IsyBinding) handleActionRequest(action *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
+	if action.Operation == vocab.WotOpWriteProperty {
 		return svc.handleConfigRequest(action)
 	}
 

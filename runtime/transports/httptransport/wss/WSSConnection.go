@@ -7,7 +7,7 @@ import (
 	"github.com/coder/websocket/wsjson"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	httpsse "github.com/hiveot/hub/lib/hubclient/wss"
+	wssclient "github.com/hiveot/hub/lib/hubclient/httpwss"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/connections"
 	"github.com/teris-io/shortid"
@@ -88,7 +88,7 @@ func (c *WSSConnection) GetClientID() string {
 func (c *WSSConnection) InvokeAction(
 	thingID, name string, input any, requestID string, senderID string) (
 	status string, output any, err error) {
-	msg := httpsse.InvokeActionMessage{
+	msg := wssclient.InvokeActionMessage{
 		ThingID:   thingID,
 		Operation: vocab.WotOpInvokeAction,
 		Name:      name,
@@ -102,18 +102,18 @@ func (c *WSSConnection) InvokeAction(
 
 // PublishActionStatus sends an action status update to the client.
 // If an error is provided this sends the error, otherwise the output value
-func (c *WSSConnection) PublishActionStatus(stat hubclient.RequestProgress, agentID string) error {
+func (c *WSSConnection) PublishActionStatus(stat hubclient.RequestStatus, agentID string) error {
 	if stat.RequestID == "" {
 		err := fmt.Errorf("PublishActionStatus by '%s' without requestID", agentID)
 		return err
 	}
-	msg := httpsse.ActionStatusMessage{
+	msg := wssclient.ActionStatusMessage{
 		ThingID:   stat.ThingID,
 		Operation: vocab.WotOpPublishActionStatus,
 		Name:      stat.Name,
 		Progress:  stat.Progress,
 		RequestID: stat.RequestID,
-		Output:    stat.Reply,
+		Output:    stat.Output,
 		Timestamp: time.Now().Format(utils.RFC3339Milli),
 	}
 	_, err := c._send(msg)
@@ -125,7 +125,7 @@ func (c *WSSConnection) PublishEvent(
 	dThingID, name string, data any, requestID string, agentID string) {
 
 	if c.subscriptions.IsSubscribed(dThingID, name) {
-		msg := httpsse.EventMessage{
+		msg := wssclient.EventMessage{
 			ThingID:   dThingID,
 			Operation: vocab.WotOpPublishEvent,
 			Name:      name,
@@ -142,7 +142,7 @@ func (c *WSSConnection) PublishProperty(
 	dThingID string, name string, data any, requestID string, agentID string) {
 
 	if c.subscriptions.IsSubscribed(dThingID, name) {
-		msg := httpsse.PropertyMessage{
+		msg := wssclient.PropertyMessage{
 			ThingID:   dThingID,
 			Operation: vocab.WotOpPublishProperty,
 			Name:      name,

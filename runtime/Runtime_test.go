@@ -88,9 +88,8 @@ func TestMultiConnectSingleClient(t *testing.T) {
 			disConnectCount.Add(1)
 		}
 	}
-	onMessage := func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
+	onMessage := func(msg *hubclient.ThingMessage) {
 		messageCount.Add(1)
-		return stat
 	}
 	// 2: connect and subscribe clients and verify
 	for range testConnections {
@@ -153,7 +152,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	var actionPayload = "payload1"
 	var expectedReply = actionPayload + ".reply"
 	var rxMsg *hubclient.ThingMessage
-	var stat3 hubclient.RequestProgress
+	var stat3 hubclient.RequestStatus
 
 	r := startRuntime()
 	defer r.Stop()
@@ -172,7 +171,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	defer cl1.Disconnect()
 
 	// Agent receives action request which we'll handle here
-	ag1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
+	ag1.SetRequestHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
 		rxMsg = msg
 		reply := utils.DecodeAsString(msg.Data) + ".reply"
 		stat.Completed(msg, reply, nil)
@@ -182,18 +181,17 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 		return stat
 	})
 
-	// users receives delivery updates when sending actions
+	// users receives status updates when sending actions
 	deliveryCtx, deliveryCtxComplete := context.WithTimeout(context.Background(), time.Minute*1)
-	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
-		if msg.MessageType == vocab.MessageTypeProgressUpdate {
+	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) {
+		if msg.Operation == vocab.WotOpPublishActionStatus {
 			// delivery updates are only invoked on for non-rpc actions
 			err := utils.DecodeAsObject(msg.Data, &stat3)
 			require.NoError(t, err)
 			assert.Equal(t, ag1.GetClientID(), msg.SenderID)
-			slog.Info(fmt.Sprintf("reply: %s", stat3.Reply))
+			slog.Info(fmt.Sprintf("reply: %s", stat3.Output))
 		}
 		defer deliveryCtxComplete()
-		return stat
 	})
 	time.Sleep(time.Millisecond * 10)
 	// client sends action to agent and expect a 'delivered' result
@@ -212,10 +210,10 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	require.Equal(t, vocab.RequestCompleted, stat3.Progress)
 	require.Empty(t, stat3.Error)
 	require.NotNil(t, rxMsg)
-	assert.Equal(t, expectedReply, stat3.Reply)
+	assert.Equal(t, expectedReply, stat3.Output)
 	assert.Equal(t, thingID, rxMsg.ThingID)
 	assert.Equal(t, actionID, rxMsg.Name)
-	assert.Equal(t, vocab.MessageTypeAction, rxMsg.MessageType)
+	assert.Equal(t, vocab.WotOpInvokeAction, rxMsg.Operation)
 
 }
 
@@ -233,9 +231,9 @@ func TestServiceReconnect(t *testing.T) {
 	// give server time to start up before connecting
 	time.Sleep(time.Millisecond * 10)
 
-	cl1, cl1Token := ts.AddConnectAgent(agentID)
+	ag1, cl1Token := ts.AddConnectAgent(agentID)
 	_ = cl1Token
-	defer cl1.Disconnect()
+	defer ag1.Disconnect()
 
 	// step 1: ensure the thing TD exists
 	td1 := ts.CreateTestTD(0)
@@ -244,7 +242,7 @@ func TestServiceReconnect(t *testing.T) {
 	ts.AddTD(agentID, td1)
 
 	// Agent receives action request which we'll handle here
-	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
+	ag1.SetRequestHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
 		var req string
 		rxMsg.Store(&msg)
 		_ = utils.DecodeAsObject(msg.Data, &req)
@@ -256,7 +254,7 @@ func TestServiceReconnect(t *testing.T) {
 	// give connection time to be established before stopping the server
 	time.Sleep(time.Millisecond * 10)
 
-	// after restarting the server, cl1's connection should automatically be re-established
+	// after restarting the server, ag1's connection should automatically be re-established
 	// TBD what is the go-sse reconnect algorithm? How to know it triggered?
 	r.Stop()
 	time.Sleep(time.Millisecond * 10)

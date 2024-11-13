@@ -408,13 +408,13 @@ func (tdoc *TD) GetForm(operation string, name string, protocol string) Form {
 
 		case
 			vocab.WotOpObserveAllProperties,
-			vocab.WoTOpObserveProperty,
+			vocab.WotOpObserveProperty,
 			vocab.WotOpReadAllProperties,
-			vocab.WoTOpReadProperty,
+			vocab.WotOpReadProperty,
 			vocab.WotOpReadMultipleProperties,
 			vocab.WotOpUnobserveAllProperties,
-			vocab.WoTOpUnobserveProperty,
-			vocab.WoTOpWriteProperty,
+			vocab.WotOpUnobserveProperty,
+			vocab.WotOpWriteProperty,
 			vocab.WotOpWriteAllProperties,
 			vocab.WotOpWriteMultipleProperties:
 			aff, _ := tdoc.Properties[name]

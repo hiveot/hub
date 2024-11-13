@@ -34,7 +34,7 @@ type ConsumedThing struct {
 	subscribers map[string]InteractionListener
 
 	// action status values
-	actionValues map[string]*hubclient.RequestProgress
+	actionValues map[string]*hubclient.RequestStatus
 	// prop values
 	propValues map[string]*InteractionOutput
 	// event values
@@ -110,7 +110,7 @@ func (ct *ConsumedThing) InvokeAction(name string, params InteractionInput) *Int
 	//actionForm := ct.td.GetForm(vocab.WotOpInvokeAction, name, ct.hc.GetProtocolType())
 
 	//tm := hubclient.NewThingMessage(
-	//	vocab.MessageTypeAction, ct.td.ID, name, params, ct.hc.SenderID())
+	//	vocab.WotOpInvokeAction, ct.td.ID, name, params, ct.hc.SenderID())
 	//
 	////stat := ct.hc.HandleActionFlow(ct.td.ID, name, params)
 	//urlParams := map[string]string{
@@ -157,7 +157,7 @@ func (ct *ConsumedThing) OnDeliveryUpdate(msg *hubclient.ThingMessage) {
 			"action", msg.Name)
 		return
 	}
-	stat := hubclient.RequestProgress{}
+	stat := hubclient.RequestStatus{}
 	err := utils.DecodeAsObject(msg.Data, &stat)
 	if stat.Error != "" {
 		slog.Error("Delivery update invalid payload",
@@ -346,7 +346,7 @@ func (ct *ConsumedThing) SubscribeEvent(name string, listener InteractionListene
 // Since writing a property can take some time, especially if the device is
 // asleep, the callback receives the first response containing a requestID.
 // If the request is not yet complete
-func (ct *ConsumedThing) WriteProperty(name string, value InteractionInput) hubclient.RequestProgress {
+func (ct *ConsumedThing) WriteProperty(name string, value InteractionInput) hubclient.RequestStatus {
 
 	stat := ct.hc.WriteProperty(ct.td.ID, name, value)
 	// TODO: receive updates
@@ -369,7 +369,7 @@ func NewConsumedThing(td *tdd.TD, hc hubclient.IConsumerClient) *ConsumedThing {
 		hc:           hc,
 		observers:    make(map[string]InteractionListener),
 		subscribers:  make(map[string]InteractionListener),
-		actionValues: make(map[string]*hubclient.RequestProgress),
+		actionValues: make(map[string]*hubclient.RequestStatus),
 		eventValues:  make(map[string]*InteractionOutput),
 		propValues:   make(map[string]*InteractionOutput),
 	}

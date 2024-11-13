@@ -15,7 +15,7 @@ import (
 //
 //	svc is the history service whose capabilities to expose
 //	hc is the optional message client connected to the server protocol
-func StartHistoryAgent(svc *HistoryService, hc hubclient.IConsumerClient) {
+func StartHistoryAgent(svc *HistoryService, hc hubclient.IAgentClient) {
 
 	// TODO: load latest retention rules from state store
 	manageHistoryMethods := map[string]interface{}{
@@ -38,20 +38,25 @@ func StartHistoryAgent(svc *HistoryService, hc hubclient.IConsumerClient) {
 	rah := hubclient.NewAgentHandler(historyapi.ReadHistoryServiceID, readHistoryMethods)
 	mah := hubclient.NewAgentHandler(historyapi.ManageHistoryServiceID, manageHistoryMethods)
 
-	// receive messages for events and agent requests
-	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
-		if msg.MessageType == vocab.MessageTypeAction {
+	// receive subscribed updates for events and properties
+	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) {
+		if msg.Operation == vocab.WotOpPublishEvent {
+			_ = svc.addHistory.AddEvent(msg)
+		} else if msg.Operation == vocab.WotOpPublishProperty {
+			_ = svc.addHistory.AddProperty(msg)
+		} else {
+			//ignore the rest
+		}
+	})
+
+	// handle service requests
+	hc.SetRequestHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
+		if msg.Operation == vocab.WotOpInvokeAction {
 			if msg.ThingID == historyapi.ReadHistoryServiceID {
-				return rah.HandleMessage(msg)
+				return rah.HandleRequest(msg)
 			} else if msg.ThingID == historyapi.ManageHistoryServiceID {
-				return mah.HandleMessage(msg)
+				return mah.HandleRequest(msg)
 			}
-		} else if msg.MessageType == vocab.MessageTypeEvent {
-			err := svc.addHistory.AddEvent(msg)
-			return *stat.Completed(msg, nil, err)
-		} else if msg.MessageType == vocab.MessageTypeProperty {
-			err := svc.addHistory.AddProperties(msg)
-			return *stat.Completed(msg, nil, err)
 		}
 		stat.Failed(msg, fmt.Errorf("Unhandled message"))
 		return stat

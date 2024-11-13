@@ -13,10 +13,12 @@ const PingMessage = "ping"
 const StatusHeader = "status"
 
 // RequestIDHeader for transports that support headers can include a message-ID
+// TODO: move to the http client
 const RequestIDHeader = tlsclient.HTTPRequestIDHeader
 
 // ConnectionIDHeader identifies the client's connection in case of multiple
 // connections in the same session. Used to identify the connection for subscriptions.
+// TODO: move to the http client
 const ConnectionIDHeader = tlsclient.HTTPConnectionIDHeader
 
 // DataSchemaHeader for transports that support headers can include a dataschema
@@ -44,16 +46,6 @@ const DataSchemaHeader = "dataschema"
 //	SupportsKeysAuth     bool
 //	SupportsTokenAuth    bool
 //}
-
-// EventHandler processes an event without return value
-type EventHandler func(msg *ThingMessage) error
-
-// MessageHandler defines the method that processes an action or event message and
-// returns a delivery status.
-//
-// As actions are targeted to an agent, the delivery status is that of delivery	to the agent.
-// As events are broadcast, the delivery status is that of delivery to at least one subscriber.
-type MessageHandler func(msg *ThingMessage) RequestProgress
 
 // IConsumerClient defines the interface of the client that connects to a messaging server.
 //
@@ -124,7 +116,7 @@ type IConsumerClient interface {
 	//    the result to the appropriate type.
 	//
 	// Embedded services respond with a completed status and the unmarshalled
-	// result in the Reply field.
+	// result in the Output field.
 	// Actions aimed to IoT devices and non embedded services will return a delivery status
 	// update separately through a delivery event.
 	//
@@ -135,7 +127,7 @@ type IConsumerClient interface {
 	//  requestID to correlate action with progress
 	//
 	// This returns a delivery status with response data if delivered
-	InvokeAction(dThingID string, name string, input interface{}, output interface{}, requestID string) RequestProgress
+	InvokeAction(dThingID string, name string, input interface{}, output interface{}, requestID string) RequestStatus
 
 	// InvokeOperation invokes the operation described in the form
 	// The output, if any, is unmarshalled in the given interface
@@ -177,12 +169,10 @@ type IConsumerClient interface {
 
 	// SendOperation [consumer] is form-based method of invoking an operation
 	// This is under development.
-	//SendOperation(href string, op tdd.Form, data any, requestID string) RequestProgress
+	//SendOperation(href string, op tdd.Form, data any, requestID string) RequestStatus
 
 	// SetMessageHandler adds a handler for messages from the hub.
 	// This replaces any previously set handler.
-	// The handler should return a RequestProgress response for action and
-	// property messages. This response is ignored for events.
 	//
 	// To receive events use the 'Subscribe' method to set the events to listen for.
 	// To receive property updates use 'Observe'.
@@ -207,11 +197,14 @@ type IConsumerClient interface {
 	// dThingID and key must match that of Observe
 	Unobserve(dThingID string, name string) error
 
-	// WriteProperty [consumer] publishes a property change request
+	// WriteProperty [consumer] publishes a property write request
+	//
+	// An async actionstatus response is sent if the property has been written,
+	// or a property update message can be returned.
 	//
 	//	dThingID is the digital twin thingID whose property to write
 	//	name is the name of the property to write
 	//	Value is a value based on the PropertyAffordances in the TD
 	// This returns the delivery status and an error code if delivery fails
-	WriteProperty(dThingID string, name string, value any) RequestProgress
+	WriteProperty(dThingID string, name string, value any) RequestStatus
 }

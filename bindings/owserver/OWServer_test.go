@@ -64,7 +64,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
-	t.Log("--- TestStartStop ---")
+	t.Log("--- TestStartStop (without state service) ---")
 
 	svc := service.NewOWServerBinding(&owsConfig)
 
@@ -84,29 +84,29 @@ func TestPoll(t *testing.T) {
 	var tdCount atomic.Int32
 	const userID = "user1"
 
-	t.Log("--- TestPoll ---")
-	hc, _ := ts.AddConnectAgent(agentID)
-	defer hc.Disconnect()
-	hc2, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
-	defer hc2.Disconnect()
+	t.Log("--- TestPoll (without state service)  ---")
+	ag1, _ := ts.AddConnectAgent(agentID)
+	defer ag1.Disconnect()
+	cl1, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
+	defer cl1.Disconnect()
 	svc := service.NewOWServerBinding(&owsConfig)
 
 	// Count the number of received TD events
-	err := hc2.Subscribe("", "")
+	err := cl1.Subscribe("", "")
 	require.NoError(t, err)
-	hc2.SetMessageHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestProgress) {
-		slog.Info("received message", "type", msg.MessageType, "id", msg.Name)
+	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) {
+		slog.Info("received message", "Operation", msg.Operation, "id", msg.Name)
 		var value interface{}
 		err2 := utils.DecodeAsObject(msg.Data, &value)
 		assert.NoError(t, err2)
 
 		tdCount.Add(1)
-		return *stat.Completed(msg, nil, nil)
+		return
 	})
 	assert.NoError(t, err)
 
 	// start the service which publishes TDs
-	err = svc.Start(hc)
+	err = svc.Start(ag1)
 	require.NoError(t, err)
 
 	// give heartbeat a chance to run. stop will wait for it to complete
@@ -118,7 +118,7 @@ func TestPoll(t *testing.T) {
 
 	// get events from the digitwin
 	dThingID := tdd.MakeDigiTwinThingID(agentID, device1ID)
-	events, err := digitwin.ValuesReadAllEvents(hc2, dThingID)
+	events, err := digitwin.ValuesReadAllEvents(cl1, dThingID)
 	require.NoError(t, err)
 	// only 1 event (temperature) is expected
 	require.True(t, len(events) == 1)
@@ -145,7 +145,7 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 }
 
 func TestAction(t *testing.T) {
-	t.Log("--- TestAction ---")
+	t.Log("--- TestAction (without state service)  ---")
 	const user1ID = "operator1"
 	// node in test data
 	var dThingID = tdd.MakeDigiTwinThingID(agentID, device1ID)
@@ -175,7 +175,7 @@ func TestAction(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) {
-	t.Log("--- TestConfig ---")
+	t.Log("--- TestConfig (without state service)  ---")
 	const user1ID = "manager1"
 	var configName = "LEDFunction"
 	var configValue = ([]byte)("1")

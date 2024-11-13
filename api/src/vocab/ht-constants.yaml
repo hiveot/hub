@@ -11,15 +11,16 @@ Operations:
     HTOpLogin: "login"
     HTOpLogout: "logout"
     HTOpRefresh: "refresh"
+    HTOpReadEvent: "readevent"
     HTOpReadAllEvents: "readallevents"
     HTOpReadAllTDs: "readalltds"
     HTOpReadTD: "readtd"
     # agent operations
     HTOpUpdateTD: "updatetd"  # directory operation
 #    HTOpDelivery: "updatedelivery"
-    HTOpPublishEvent: "publishevent"
-    HTOpPublishMultipleProperties: "publishmultipleproperties"
-    HTOpPublishProperty: "publishproperty"
+#    HTOpPublishEvent: "publishevent"
+#    HTOpPublishMultipleProperties: "publishmultipleproperties"
+#    HTOpPublishProperty: "publishproperty"
 
 
 
@@ -42,33 +43,4 @@ RequestProgressStatus:
 
     # Request failed delivery to the Thing
     RequestFailed: "failed"
-
-
-# MessageTypes is DEPRECATED. REPLACED BY FORMS
-MessageTypes:
-  version: "0.1"
-  link: "github.com/hiveot/hub/api/vocab/ht-constants.yaml"
-  description: "Message types used throughout the Hub and its clients"
-  namespace: "ht"
-  vocab:
-
-    # action requests flow from a consumer to the digital twin and on to
-    # the thing's agent.
-    MessageTypeAction:     "action"    # request an action - operators
-
-    # Thing events flow from an agent to digital twin, which forwards it to
-    # subscribers.
-    # agent [thing event] -> digitwin [dtw event] => subscribers
-    MessageTypeEvent:      "event"
-
-    # Progress update message from an agent to the hub onwards to the sender
-    # agent [delivery status] -> digitwin [dtw message] -> sender
-    MessageTypeProgressUpdate:  "progress"
-
-    # Property value updates flow from a thing agent to the digital twin, which
-    # in turn updates observers of the property(ies).
-    # the message contains the property name and value as data
-    # if no name is given then data contains a map with property key-value pairs.
-    MessageTypeProperty:  "property"
-
 

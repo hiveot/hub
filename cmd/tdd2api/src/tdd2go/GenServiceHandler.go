@@ -24,27 +24,27 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td *tdd.TD) {
 	l.Add("// that implements the corresponding interface method.")
 	l.Add("// ")
 	l.Add("// This returns the marshalled response data or an error.")
-	l.Add("func NewHandle%sAction(svc %s)(func(consumerID, dThingID, name string, input any, requestID string) (string, any, error)) {", serviceTitle, interfaceName)
+	l.Add("func NewHandle%sAction(svc %s)(func(msg *hubclient.ThingMessage) hubclient.RequestStatus) {", serviceTitle, interfaceName)
 	l.Indent++
-	l.Add("return func(consumerID, dThingID, actionName string, input any, requestID string) (string, any, error) {")
+	l.Add("return func(msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {")
 
 	l.Indent++
 	l.Add("var err error")
-	l.Add("var status = vocab.RequestCompleted")
+	l.Add("stat.Completed(msg,nil,nil)")
 	l.Add("var output any")
 
-	l.Add("switch actionName {")
+	l.Add("switch msg.Name {")
 	l.Indent++
 	for name, action := range td.Actions {
 		GenActionHandler(l, serviceTitle, name, action)
 	}
 	l.Add("default:")
-	l.Add("	err = errors.New(\"Unknown Method '\"+actionName+\"' of service '\"+dThingID+\"'\")")
-	l.Add("  status = vocab.RequestFailed")
+	l.Add("	err = errors.New(\"Unknown Method '\"+msg.Name+\"' of service '\"+msg.ThingID+\"'\")")
 	l.Indent--
 	l.Add("}")
 
-	l.Add("return status, output, err")
+	l.Add("stat.Completed(msg,output,err)")
+	l.Add("return stat")
 	l.Indent--
 	l.Add("}")
 	l.Indent--
@@ -57,7 +57,7 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td *tdd.TD) {
 func GenActionHandler(l *utils.SL, serviceTitle string, name string, action *tdd.ActionAffordance) {
 	methodName := Name2ID(name)
 	// build the argument string
-	argsString := "consumerID" // all handlers receive the sender ID
+	argsString := "msg.SenderID" // all handlers receive the sender ID
 	l.Add("case \"%s\":", name)
 	l.Indent++
 	if action.Input != nil {
@@ -69,7 +69,7 @@ func GenActionHandler(l *utils.SL, serviceTitle string, name string, action *tdd
 			goType := GoTypeFromSchema(action.Input)
 			l.Add("var args %s", goType)
 		}
-		l.Add("err = utils.DecodeAsObject(input, &args)")
+		l.Add("err = utils.DecodeAsObject(msg.Data, &args)")
 
 		argsString += ", args"
 	}

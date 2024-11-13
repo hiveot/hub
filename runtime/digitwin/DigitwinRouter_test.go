@@ -1,4 +1,4 @@
-package router_test
+package digitwin_test
 
 import (
 	"github.com/hiveot/hub/lib/logging"

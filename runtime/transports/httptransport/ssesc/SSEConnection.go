@@ -48,7 +48,7 @@ type SSEConnection struct {
 // _send sends the action or write request for the thing to the agent
 // The SSE event type is: messageType, where
 // The event ID is {thingID}/{name}/{requestID}/{senderID}
-func (c *SSEConnection) _send(messageType string, thingID, name string,
+func (c *SSEConnection) _send(operation string, thingID, name string,
 	data any, requestID string, senderID string) (status string, err error) {
 
 	var payload []byte = nil
@@ -57,7 +57,7 @@ func (c *SSEConnection) _send(messageType string, thingID, name string,
 	}
 	eventID := fmt.Sprintf("%s/%s/%s/%s", thingID, name, senderID, requestID)
 	msg := SSEEvent{
-		EventType: messageType,
+		EventType: operation,
 		ID:        eventID,
 		Payload:   string(payload),
 	}
@@ -66,7 +66,7 @@ func (c *SSEConnection) _send(messageType string, thingID, name string,
 	if !c.isClosed.Load() {
 		slog.Debug("_send",
 			slog.String("to", c.clientID),
-			slog.String("EventType", messageType),
+			slog.String("Operation", operation),
 			slog.String("eventID", eventID),
 		)
 		c.sseChan <- msg
@@ -107,7 +107,7 @@ func (c *SSEConnection) InvokeAction(
 	thingID, name string, data any, requestID string, senderID string) (
 	status string, output any, err error) {
 
-	status, err = c._send(vocab.MessageTypeAction, thingID, name, data, requestID, senderID)
+	status, err = c._send(vocab.WotOpInvokeAction, thingID, name, data, requestID, senderID)
 	return status, nil, err
 }
 
@@ -136,11 +136,11 @@ func (c *SSEConnection) ObserveProperty(dThingID string, name string) {
 
 // PublishActionStatus sends an action progress update to the client
 // If an error is provided this sends the error, otherwise the output value
-func (c *SSEConnection) PublishActionStatus(stat hubclient.RequestProgress, agentID string) error {
+func (c *SSEConnection) PublishActionStatus(stat hubclient.RequestStatus, agentID string) error {
 	if stat.RequestID == "" {
 		slog.Error("PublishRequestProgress without requestID", "agentID", agentID)
 	}
-	_, err := c._send(vocab.MessageTypeProgressUpdate, stat.ThingID, stat.Name,
+	_, err := c._send(vocab.WotOpPublishActionStatus, stat.ThingID, stat.Name,
 		stat, stat.RequestID, agentID)
 	return err
 }
@@ -150,7 +150,7 @@ func (c *SSEConnection) PublishEvent(
 	dThingID, name string, data any, requestID string, agentID string) {
 
 	if c.subscriptions.IsSubscribed(dThingID, name) {
-		_, _ = c._send(vocab.MessageTypeEvent, dThingID, name, data, requestID, agentID)
+		_, _ = c._send(vocab.WotOpPublishEvent, dThingID, name, data, requestID, agentID)
 	}
 }
 
@@ -160,7 +160,7 @@ func (c *SSEConnection) PublishProperty(
 	dThingID, name string, data any, requestID string, agentID string) {
 
 	if c.subscriptions.IsSubscribed(dThingID, name) {
-		_, _ = c._send(vocab.MessageTypeProperty, dThingID, name, data, requestID, agentID)
+		_, _ = c._send(vocab.WotOpPublishProperty, dThingID, name, data, requestID, agentID)
 	}
 }
 
@@ -289,11 +289,11 @@ func (c *SSEConnection) UnobserveProperty(dThingID string, name string) {
 func (c *SSEConnection) WriteProperty(
 	thingID, name string, data any, requestID string, senderID string) (status string, err error) {
 
-	status, err = c._send(vocab.MessageTypeProperty, thingID, name, data, requestID, senderID)
+	status, err = c._send(vocab.WotOpWriteProperty, thingID, name, data, requestID, senderID)
 	return status, err
 }
 
-// Create a new SSE connection instance.
+// NewSSEConnection creates a new SSE connection instance.
 // This implements the IClientConnection interface.
 func NewSSEConnection(clientID string, cid string, remoteAddr string) *SSEConnection {
 	clcid := clientID + "-" + cid // -> must match subscribe/observe requests

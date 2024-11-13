@@ -169,7 +169,7 @@ func (cm *ConnectionManager) PublishEvent(
 	})
 }
 
-// PublishProperty broadcasts a property update to subscribers of this event.
+// PublishProperty broadcasts a property update to observers of this property.
 func (cm *ConnectionManager) PublishProperty(
 	dThingID string, name string, value any, requestID string, agentID string) {
 

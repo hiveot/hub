@@ -3,7 +3,7 @@ import * as tslog from 'tslog';
 import {RequestProgress} from './RequestProgress';
 import {ThingMessage} from "../things/ThingMessage";
 import {ConnectToHub} from "@hivelib/hubclient/ConnectToHub";
-import {MessageTypeProgressUpdate, MessageTypeAction} from "@hivelib/api/vocab/vocab.js";
+import {WotOpPublishActionStatus, WotOpInvokeAction} from "@hivelib/api/vocab/vocab.js";
 import {RequestCompleted, RequestDelivered} from "@hivelib/api/vocab/vocab.js";
 
 const log = new tslog.Logger({name: "HCTest"})
@@ -77,7 +77,7 @@ async function test3() {
         token = await hc.connectWithPassword(testPass)
 
         hc.setActionHandler((tm: ThingMessage):RequestProgress => {
-            log.info("Received message: type="+tm.messageType+"; key=" + tm.name)
+            log.info("Received message: type="+tm.operation+"; key=" + tm.name)
             let stat = new RequestProgress()
             stat.completed(tm)
             return stat
@@ -153,11 +153,11 @@ async function test4() {
             if (tm.thingID == "dtw:testsvc:thing1") {
                 log.info("Received event: " + tm.name + "; data=" + tm.data)
                 ev1Count++
-            } else if (tm.messageType == MessageTypeProgressUpdate) {
+            } else if (tm.operation == WotOpPublishActionStatus) {
                 // FIXME: why is data base64 encoded? => data type in golang was []byte; changed to string
                 // let data = Buffer.from(tm.data,"base64").toString()
                 actionDelivery = JSON.parse(tm.data)
-            } else if (tm.messageType == MessageTypeAction) {
+            } else if (tm.operation == WotOpInvokeAction) {
                 actionCount++
                 stat.reply = "success"
             }

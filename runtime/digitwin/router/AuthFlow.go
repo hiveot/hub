@@ -3,35 +3,37 @@ package router
 
 import (
 	"github.com/hiveot/hub/api/go/authn"
-	"log/slog"
+	"github.com/hiveot/hub/lib/hubclient"
 )
 
-func (svc *DigitwinRouter) HandleLogin(data any) (reply any, err error) {
-	slog.Info("HandleLogin")
+// HandleLogin converts the login operation into an authn service action
+func (svc *DigitwinRouter) HandleLogin(msg *hubclient.ThingMessage) hubclient.RequestStatus {
+	authnMsg := *msg
+	authnMsg.ThingID = authn.UserDThingID
+	authnMsg.Name = authn.UserLoginMethod
 
-	//token, sid, err := svc.authenticator.Login(args.ClientID, args.Password)
-
-	// first, verify the
-	_, reply, err = svc.authnAction(
-		"", authn.UserDThingID, authn.UserLoginMethod, data, "")
-	return reply, err
+	stat := svc.authnAction(&authnMsg)
+	return stat
 }
 
-func (svc *DigitwinRouter) HandleLoginRefresh(senderID string, data any) (reply any, err error) {
-	slog.Info("HandleLoginRefresh", slog.String("clientID", senderID))
-	_, reply, err = svc.authnAction(
-		senderID, authn.UserDThingID, authn.UserRefreshTokenMethod, data, "")
-	return reply, err
+// HandleLoginRefresh converts the token refresh operation into an authn service action
+func (svc *DigitwinRouter) HandleLoginRefresh(msg *hubclient.ThingMessage) hubclient.RequestStatus {
+	authnMsg := *msg
+	authnMsg.ThingID = authn.UserDThingID
+	authnMsg.Name = authn.UserRefreshTokenMethod
+
+	stat := svc.authnAction(&authnMsg)
+	return stat
 }
 
-func (svc *DigitwinRouter) HandleLogout(senderID string) {
-	slog.Info("HandleLogout", slog.String("senderID", senderID))
-	// authn will invalidate the client session
-	_, _, err := svc.authnAction(
-		senderID, authn.UserDThingID, authn.UserLogoutMethod, nil, "")
+// HandleLogout converts the logout operation into an authn service action
+func (svc *DigitwinRouter) HandleLogout(msg *hubclient.ThingMessage) hubclient.RequestStatus {
+	authnMsg := *msg
+	authnMsg.ThingID = authn.UserDThingID
+	authnMsg.Name = authn.UserLogoutMethod
 
-	if err != nil {
-		// close all active client connections
-		svc.cm.CloseAllClientConnections(senderID)
-	}
+	stat := svc.authnAction(&authnMsg)
+	// logout and close all existing connections
+	svc.cm.CloseAllClientConnections(msg.SenderID)
+	return stat
 }

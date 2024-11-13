@@ -1,9 +1,10 @@
-package service_test
+package digitwin_test
 
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
@@ -161,23 +162,33 @@ func TestDigitwinAgentAction(t *testing.T) {
 
 	// next, invoke the action to read the thing from the directory.
 	ag := service.NewDigitwinAgent(svc)
-	status, output, err := ag.HandleAction(consumerID,
-		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, dThingID, msgID)
-	require.NoError(t, err)
-	require.NotEmpty(t, output)
-	require.Equal(t, vocab.RequestCompleted, status)
+	msg := hubclient.NewThingMessage(
+		vocab.WotOpInvokeAction, digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, dThingID, consumerID)
+	msg.RequestID = msgID
+	stat := ag.HandleAction(msg)
+	require.Empty(t, stat.Error)
+	require.NotEmpty(t, stat.Output)
+	require.Equal(t, vocab.RequestCompleted, stat.Progress)
 
-	// last, a non-existing DTD should fail
-	status, output, err = ag.HandleAction(consumerID,
-		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, "badid", msgID)
-	require.Error(t, err)
+	// a non-existing DTD should fail
+	msg = hubclient.NewThingMessage(
+		vocab.WotOpInvokeAction, digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, "badid", consumerID)
+	msg.RequestID = msgID
+	stat = ag.HandleAction(msg)
+	require.NotEmpty(t, stat.Error)
+
 	// a non-existing method name should fail
-	status, output, err = ag.HandleAction(consumerID,
-		digitwin.DirectoryDThingID, "badmethod", dThingID, msgID)
-	require.Error(t, err)
+	msg = hubclient.NewThingMessage(
+		vocab.WotOpInvokeAction, digitwin.DirectoryDThingID, "badMethod", dThingID, consumerID)
+	msg.RequestID = msgID
+	stat = ag.HandleAction(msg)
+	require.NotEmpty(t, stat.Error)
+
 	// a non-existing serviceID should fail
-	status, output, err = ag.HandleAction(consumerID,
-		"badservicename", digitwin.DirectoryReadTDMethod, dThingID, msgID)
-	require.Error(t, err)
+	msg = hubclient.NewThingMessage(
+		vocab.WotOpInvokeAction, "badservicename", digitwin.DirectoryReadTDMethod, dThingID, consumerID)
+	msg.RequestID = msgID
+	stat = ag.HandleAction(msg)
+	require.NotEmpty(t, stat.Error)
 
 }

@@ -1,4 +1,4 @@
-package service_test
+package digitwin_test
 
 import (
 	"encoding/json"

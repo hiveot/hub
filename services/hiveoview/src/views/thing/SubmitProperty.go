@@ -19,7 +19,7 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 	var newValue any
 	var td *tdd.TD
 	var propAff *tdd.PropertyAffordance
-	stat := hubclient.RequestProgress{}
+	stat := hubclient.RequestStatus{}
 	thingID := chi.URLParam(r, "thingID")
 	propName := chi.URLParam(r, "name")
 	valueStr := r.FormValue(propName)

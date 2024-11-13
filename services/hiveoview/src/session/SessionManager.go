@@ -30,7 +30,7 @@ type WebSessionManager struct {
 	// Hub CA certificate
 	caCert *x509.Certificate
 	// hub client for publishing events
-	hc hubclient.IHubClient
+	hc hubclient.IAgentClient
 	// disable persistence from state service (for testing)
 	noState bool
 }
@@ -262,7 +262,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 
 func NewWebSessionManager(hubURL string,
 	signingKey ed25519.PrivateKey, caCert *x509.Certificate,
-	hc hubclient.IHubClient, noState bool) *WebSessionManager {
+	hc hubclient.IAgentClient, noState bool) *WebSessionManager {
 	sm := &WebSessionManager{
 		sessions:   make(map[string]*WebClientSession),
 		mux:        sync.RWMutex{},

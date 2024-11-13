@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot/tdd"
@@ -23,30 +22,27 @@ type AuthzAgent struct {
 }
 
 // HandleAction authz service action handler
-func (agent *AuthzAgent) HandleAction(consumerID string, dThingID string, actionName string, input any, requestID string) (
-	status string, output any, err error) {
+func (agent *AuthzAgent) HandleAction(msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
 
 	// if the message has an authn agent prefix then remove it.
 	// This can happen if invoked directly through an embedded client
-	_, thingID := tdd.SplitDigiTwinThingID(dThingID)
+	_, thingID := tdd.SplitDigiTwinThingID(msg.ThingID)
 	if thingID == authz.AdminServiceID {
-		status, output, err = agent.adminHandler(consumerID, dThingID, actionName, input, requestID)
+		stat = agent.adminHandler(msg)
 	} else if thingID == authz.UserServiceID {
-		status, output, err = agent.userHandler(consumerID, dThingID, actionName, input, requestID)
+		stat = agent.userHandler(msg)
 	} else {
-		err = fmt.Errorf("unknown authz service capability '%s'", dThingID)
+		err := fmt.Errorf("unknown authz service capability '%s'", msg.ThingID)
+		stat.Failed(msg, err)
 	}
-	if err != nil {
-		status = vocab.RequestFailed
-	}
-	return status, output, err
+	return stat
 }
 
 // HasPermission is a convenience function to check if the sender has permission
 // to pub/sub events, actions or properties. This invokes HasPermission on the service.
 func (agent *AuthzAgent) HasPermission(
-	senderID, messageType, dThingID string, isPub bool) bool {
-	return agent.svc.HasPermission(senderID, messageType, dThingID, isPub)
+	senderID, operation, dThingID string) bool {
+	return agent.svc.HasPermission(senderID, operation, dThingID)
 }
 
 // StartAuthzAgent creates a new instance of the agent handling authorization service requests

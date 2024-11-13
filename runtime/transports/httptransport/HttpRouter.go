@@ -62,9 +62,9 @@ func (svc *HttpBinding) createRoutes(router chi.Router) http.Handler {
 		//- direct methods for digital twins
 		svc.AddGetOp(r, vocab.WotOpReadAllProperties, true,
 			"/digitwin/properties/{thingID}", svc.HandleReadAllProperties)
-		svc.AddGetOp(r, vocab.WoTOpReadProperty, true,
+		svc.AddGetOp(r, vocab.WotOpReadProperty, true,
 			"/digitwin/properties/{thingID}/{name}", svc.HandleReadProperty)
-		svc.AddPostOp(r, vocab.WoTOpWriteProperty, true,
+		svc.AddPostOp(r, vocab.WotOpWriteProperty, true,
 			"/digitwin/properties/{thingID}/{name}", svc.HandleWriteProperty)
 
 		svc.AddGetOp(r, "readallevents", true,
@@ -89,11 +89,11 @@ func (svc *HttpBinding) createRoutes(router chi.Router) http.Handler {
 				"/ssesc/digitwin/subscribe/{thingID}", svc.ssesc.HandleSubscribeAllEvents)
 			svc.AddPostOp(r, vocab.WotOpSubscribeEvent, true,
 				"/ssesc/digitwin/subscribe/{thingID}/{name}", svc.ssesc.HandleSubscribeEvent)
-			svc.AddPostOp(r, vocab.WoTOpObserveProperty, true,
+			svc.AddPostOp(r, vocab.WotOpObserveProperty, true,
 				"/ssesc/digitwin/observe/{thingID}/{name}", svc.ssesc.HandleObserveProperty)
 			svc.AddPostOp(r, vocab.WotOpUnobserveAllProperties, true,
 				"/ssesc/digitwin/observe/{thingID}", svc.ssesc.HandleUnobserveAllProperties)
-			svc.AddPostOp(r, vocab.WoTOpUnobserveProperty, true,
+			svc.AddPostOp(r, vocab.WotOpUnobserveProperty, true,
 				"/ssesc/digitwin/unobserve/{thingID}/{name}", svc.ssesc.HandleUnobserveProperty)
 			svc.AddPostOp(r, vocab.WotOpUnsubscribeAllEvents, true,
 				"/ssesc/digitwin/unsubscribe/{thingID}", svc.ssesc.HandleUnsubscribeAllEvents)
@@ -132,15 +132,14 @@ func (svc *HttpBinding) createRoutes(router chi.Router) http.Handler {
 		// TODO: These should be included in the digitwin TD forms
 		svc.AddPostOp(r, vocab.HTOpUpdateTD, false,
 			"/agent/tdd/{thingID}", svc.HandlePublishTD)
-		svc.AddPostOp(r, vocab.HTOpPublishEvent, false,
+		svc.AddPostOp(r, vocab.WotOpPublishEvent, false,
 			"/agent/event/{thingID}/{name}", svc.HandlePublishEvent)
-		svc.AddPostOp(r, vocab.HTOpPublishProperty, false,
+		svc.AddPostOp(r, vocab.WotOpPublishProperty, false,
 			"/agent/property/{thingID}/{name}", svc.HandlePublishProperty)
-		svc.AddPostOp(r, vocab.HTOpPublishMultipleProperties, false,
+		svc.AddPostOp(r, vocab.WotOpPublishProperties, false,
 			"/agent/properties/{thingID}", svc.HandlePublishMultipleProperties)
 		svc.AddPostOp(r, "", false,
-			"/agent/progress", svc.HandleInvokeRequestProgress)
-
+			"/agent/progress", svc.HandlePublishRequestProgress)
 	})
 
 	return router

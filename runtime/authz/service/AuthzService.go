@@ -35,25 +35,25 @@ type AuthzService struct {
 //
 //// CanPubAction checks if the given client can publish actions
 //func (svc *AuthzService) CanPubAction(clientID string) bool {
-//	hasPerm := svc.HasPermission(clientID, vocab.MessageTypeAction, true)
+//	hasPerm := svc.HasPermission(clientID, vocab.WotOpInvokeAction, true)
 //	return hasPerm
 //}
 //
 //// CanPubEvent checks if the given client can publish events
 //func (svc *AuthzService) CanPubEvent(clientID string) bool {
-//	hasPerm := svc.HasPermission(clientID, vocab.MessageTypeEvent, true)
+//	hasPerm := svc.HasPermission(clientID, vocab.WotOpPublishEvent, true)
 //	return hasPerm
 //}
 //
 //// CanSubAction checks if the given client can subscribe to actions
 //func (svc *AuthzService) CanSubAction(clientID string) bool {
-//	hasPerm := svc.HasPermission(clientID, vocab.MessageTypeAction, false)
+//	hasPerm := svc.HasPermission(clientID, vocab.WotOpInvokeAction, false)
 //	return hasPerm
 //}
 //
 //// CanSubEvent checks if the given client can subscribe to events
 //func (svc *AuthzService) CanSubEvent(clientID string) bool {
-//	hasPerm := svc.HasPermission(clientID, vocab.MessageTypeEvent, false)
+//	hasPerm := svc.HasPermission(clientID, vocab.WotOpPublishEvent, false)
 //	return hasPerm
 //}
 
@@ -66,7 +66,7 @@ func (svc *AuthzService) GetClientRole(senderID string, clientID string) (authz2
 }
 
 // GetRolePermissions returns the permissions for the given role
-func (svc *AuthzService) GetRolePermissions(senderID string, role authz2.ClientRole) ([]authz.RolePermission, bool) {
+func (svc *AuthzService) GetRolePermissions(senderID string, role authz2.ClientRole) (authz.RolePermission, bool) {
 	rolePerm, found := svc.cfg.RolePermissions[role]
 	return rolePerm, found
 }

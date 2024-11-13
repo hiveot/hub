@@ -126,6 +126,7 @@ func (svc *AuthnUserService) UpdatePubKey(senderID string, pubKeyPEM string) err
 // must be operational before using this service.
 //
 //	authnStore is the client and credentials store. Must be opened before starting this service.
+//	cm is the connection manager used to close all connections on logout
 //	sessionAuth is the authenticator returned by the admin service.
 func NewAuthnUserService(
 	cfg *config.AuthnConfig,

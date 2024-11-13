@@ -2,11 +2,10 @@
 package httptransport
 
 import (
+	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/tlsclient"
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/transports/httptransport/httpcontext"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/teris-io/shortid"
@@ -17,44 +16,30 @@ import (
 
 // Http binding with form handler methods
 
-// HandleInvokeRequestProgress sends an action progress update message to the digital twin
-func (svc *HttpBinding) HandleInvokeRequestProgress(w http.ResponseWriter, r *http.Request) {
-	slog.Debug("HandlePublishRequestProgress")
+func (svc *HttpBinding) _handleMessage(op string, w http.ResponseWriter, r *http.Request) {
 	rp, err := httpcontext.GetRequestParams(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Error(err.Error())
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	if err == nil {
-		var progressMsg hubclient.RequestProgress
-		err = utils.Decode(rp.Data, &progressMsg)
-		if err == nil {
-			err = svc.digitwinRouter.HandlePublishRequestProgress(rp.ClientID, progressMsg)
-		}
+	// pass the event to the digitwin service for further processing
+	requestID := r.Header.Get(hubclient.RequestIDHeader)
+	if requestID == "" {
+		requestID = shortid.MustGenerate()
 	}
-	if err != nil {
-		svc.writeError(w, err, http.StatusBadRequest)
-	}
+	msg := hubclient.NewThingMessage(op, rp.ThingID, rp.Name, rp.Data, rp.ClientID)
+	svc.digitwinRouter.HandleMessage(msg)
+	svc.writeReply(w, nil, nil)
 }
 
-// HandleInvokeAction requests an action from the digital twin
-// NOTE: This returns a header with a dataschema if a schema from
-// additionalResponses is returned.
-//
-// The sender must include the connection-id header of the connection it wants to
-// receive the response.
-func (svc *HttpBinding) HandleInvokeAction(w http.ResponseWriter, r *http.Request) {
+// _handleRequest provides the boilerplate code for reading headers,
+// unmarshalling the arguments and returning a response. If no immediate
+// result is available this returns an alternative RequestStatus result object.
+func (svc *HttpBinding) _handleRequest(op string, w http.ResponseWriter, r *http.Request) {
 	rp, err := httpcontext.GetRequestParams(r)
-
-	slog.Info("HandleInvokeAction",
-		slog.String("SenderID", rp.ClientID),
-		slog.String("clcid", rp.CLCID),
-		slog.String("dThingID", rp.ThingID),
-		slog.String("name", rp.Name),
-		slog.String("RemoteAddr", r.RemoteAddr),
-		slog.String("requestID", rp.RequestID),
-	)
 	if err != nil {
+		slog.Error(err.Error())
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -66,29 +51,31 @@ func (svc *HttpBinding) HandleInvokeAction(w http.ResponseWriter, r *http.Reques
 			"clientID", rp.ClientID)
 	}
 
-	// optionally provide a requestID. one is generated and returned if not provided
-	// really only needed for rpc's as the requestID must be known before
-	// this returns to avoid a race condition.
-	// TODO: maybe prefix this with the clientID to avoid hijacking of responses.
-	// eg two login attempts using the same requestID can conflict within
-	// the time period they are not yet completed.
-	status, output, requestID, err := svc.digitwinRouter.HandleInvokeAction(
-		rp.ClientID, rp.ThingID, rp.Name, rp.Data, rp.RequestID, rp.CLCID)
+	// pass the event to the digitwin service for further processing
+	requestID := r.Header.Get(hubclient.RequestIDHeader)
+	if requestID == "" {
+		requestID = shortid.MustGenerate()
+	}
 
 	// there are 3 possible results:
 	// on status completed; return output
-	// on status failed: return http ok with RequestProgress containing error
-	// on status other: return  RequestProgress object with progress
+	// on status failed: return http ok with RequestStatus containing error
+	// on status other: return  RequestStatus object with progress
 	//
-	// This means that the result is either out or a RequestProgress object
+	// This means that the result is either out or a RequestStatus object
 	// Forms will have added:
 	// ```
 	//  "additionalResponses": [{
 	//                    "success": false,
 	//                    "contentType": "application/json",
-	//                    "schema": "RequestProgress"
+	//                    "schema": "RequestStatus"
 	//                }]
 	//```
+	msg := hubclient.NewThingMessage(op, rp.ThingID, rp.Name, rp.Data, rp.ClientID)
+	msg.RequestID = requestID
+	stat := svc.digitwinRouter.HandleRequest(msg, rp.CLCID)
+
+	//
 	replyHeader := w.Header()
 	if replyHeader == nil {
 		// this happened a few times during testing. perhaps a broken connection while debugging?
@@ -104,36 +91,42 @@ func (svc *HttpBinding) HandleInvokeAction(w http.ResponseWriter, r *http.Reques
 	// the forms definition as an additional response.
 	// right now the only response is an action progress.
 	if err != nil {
-		replyHeader.Set(hubclient.DataSchemaHeader, "RequestProgress")
-		resp := hubclient.RequestProgress{
-			RequestID: requestID,
-			Progress:  status,
-			Error:     err.Error(),
-			Reply:     output,
-		}
-		svc.writeReply(w, resp, nil)
+		replyHeader.Set(hubclient.StatusHeader, vocab.RequestFailed)
+		svc.writeReply(w, nil, err)
 		return
-	} else if status != vocab.RequestCompleted {
+	} else if stat.Error != "" {
+		replyHeader.Set(hubclient.StatusHeader, vocab.RequestFailed)
+		svc.writeReply(w, nil, errors.New(stat.Error))
+		return
+	} else if stat.Progress != vocab.RequestCompleted {
 		// if progress isn't completed then also return the delivery progress
-		replyHeader.Set(hubclient.DataSchemaHeader, "RequestProgress")
-		// FIXME: shouldn't this be the reply from the action?
-		resp := hubclient.RequestProgress{
-			RequestID: requestID,
-			Progress:  status,
-			Reply:     output,
-		}
-		svc.writeReply(w, resp, nil)
+		replyHeader.Set(hubclient.StatusHeader, stat.Progress)
+		replyHeader.Set(hubclient.DataSchemaHeader, "RequestStatus")
+		svc.writeReply(w, stat, nil)
 		return
 	}
-	// TODO: standardize headers
-	replyHeader.Set(hubclient.StatusHeader, status)
-
-	// request completed, write output
-	svc.writeReply(w, output, nil)
-	return
+	// progress is complete, return the default output
+	svc.writeReply(w, stat.Output, nil)
 }
 
-// HandleLogin handles a login request and a new session, posted by a consumer
+// HandlePublishRequestProgress sends an action progress update message to the digital twin
+func (svc *HttpBinding) HandlePublishRequestProgress(w http.ResponseWriter, r *http.Request) {
+	svc._handleMessage(vocab.WotOpPublishActionStatus, w, r)
+}
+
+// HandleInvokeAction requests an action from the digital twin.
+// NOTE: This returns a header with a dataschema if a schema from
+// additionalResponses is returned.
+//
+// The sender must include the connection-id header of the connection it wants to
+// receive the response.
+func (svc *HttpBinding) HandleInvokeAction(w http.ResponseWriter, r *http.Request) {
+
+	svc._handleRequest(vocab.WotOpInvokeAction, w, r)
+}
+
+// HandleLogin handles a login request, posted by a consumer.
+//
 // This uses the configured session authenticator.
 func (svc *HttpBinding) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	var reply any
@@ -144,7 +137,13 @@ func (svc *HttpBinding) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		err = jsoniter.Unmarshal(payload, &data)
 	}
 	if err == nil {
-		reply, err = svc.digitwinRouter.HandleLogin(data)
+		//token := svc.authenticator.Login(clientID,password)
+		msg := hubclient.NewThingMessage(vocab.HTOpLogin, "", "", data, "")
+		stat := svc.digitwinRouter.HandleRequest(msg, "")
+		if stat.Error != "" {
+			err = errors.New(stat.Error)
+		}
+		reply = stat.Output
 	}
 	if err != nil {
 		slog.Warn("HandleLogin failed:", "err", err.Error())
@@ -160,93 +159,40 @@ func (svc *HttpBinding) HandleLogin(w http.ResponseWriter, r *http.Request) {
 // The session authenticator is that of the authn service. This allows testing with a dummy
 // authenticator without having to run the authn service.
 func (svc *HttpBinding) HandleLoginRefresh(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext.GetRequestParams(r)
-	clientID, err := httpcontext.GetClientIdFromContext(r)
-	if err != nil {
-		svc.writeError(w, err, http.StatusBadRequest)
-		return
-	}
-	reply, err := svc.digitwinRouter.HandleLoginRefresh(clientID, rp.Data)
-	svc.writeReply(w, reply, err)
+	svc._handleRequest(vocab.HTOpRefresh, w, r)
 }
 
 // HandleLogout ends the session and closes all client connections
 func (svc *HttpBinding) HandleLogout(w http.ResponseWriter, r *http.Request) {
-	clientID, err := httpcontext.GetClientIdFromContext(r)
-	if err != nil {
-		// This is an internal error. The middleware session handler would have blocked
-		// a request that required a session before getting here.
-		err := fmt.Errorf("missing session for request '%s' from '%s'",
-			r.RequestURI, r.RemoteAddr)
-		slog.Error(err.Error())
-		svc.writeError(w, err, http.StatusInternalServerError)
-		return
-	}
-	svc.digitwinRouter.HandleLogout(clientID)
-	svc.writeReply(w, nil, nil)
+	svc._handleMessage(vocab.HTOpLogout, w, r)
 }
 
 // HandlePublishEvent update digitwin with event published by agent
 func (svc *HttpBinding) HandlePublishEvent(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	// pass the event to the digitwin service for further processing
-	requestID := r.Header.Get(hubclient.RequestIDHeader)
-	if requestID == "" {
-		requestID = shortid.MustGenerate()
-	}
-	err = svc.digitwinRouter.HandlePublishEvent(rp.ClientID, rp.ThingID, rp.Name, rp.Data, requestID)
-	svc.writeReply(w, nil, err)
+	svc._handleMessage(vocab.WotOpPublishEvent, w, r)
 }
 
 // HandleQueryAction returns a list of latest action requests of a Thing
 // Parameters: thingID
 func (svc *HttpBinding) HandleQueryAction(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	reply, err := svc.digitwinRouter.HandleQueryAction(rp.ClientID, rp.ThingID, rp.Name)
-	svc.writeReply(w, reply, err)
+	svc._handleRequest(vocab.WotOpQueryAction, w, r)
 }
 
 // HandleQueryAllActions returns a list of latest action requests of a Thing
 // Parameters: thingID
 func (svc *HttpBinding) HandleQueryAllActions(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	reply, err := svc.digitwinRouter.HandleQueryAllActions(rp.ClientID, rp.ThingID)
-	svc.writeReply(w, reply, err)
+	svc._handleRequest(vocab.WotOpQueryAllActions, w, r)
 }
 
 // HandleReadAllEvents returns a list of latest event values from a Thing
 // Parameters: thingID
 func (svc *HttpBinding) HandleReadAllEvents(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	reply, err := svc.digitwinRouter.HandleReadAllEvents(rp.ClientID, rp.ThingID)
-	svc.writeReply(w, reply, err)
+	svc._handleRequest(vocab.HTOpReadAllEvents, w, r)
 }
 
 // HandleReadAllProperties was added to the top level TD form. Handle it here.
 func (svc *HttpBinding) HandleReadAllProperties(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	reply, err := svc.digitwinRouter.HandleReadAllProperties(rp.ClientID, rp.ThingID)
-	svc.writeReply(w, reply, err)
+	svc._handleRequest(vocab.WotOpReadAllProperties, w, r)
 }
 
 // HandleReadAllThings returns a list of things in the directory
@@ -287,106 +233,41 @@ func (svc *HttpBinding) HandleReadAllProperties(w http.ResponseWriter, r *http.R
 // HandleReadEvent returns the latest event value from a Thing
 // Parameters: {thingID}, {name}
 func (svc *HttpBinding) HandleReadEvent(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	slog.Debug("HandleReadEvent", slog.String("SenderID", rp.ClientID))
-	reply, err := svc.digitwinRouter.HandleReadEvent(rp.ClientID, rp.ThingID, rp.Name)
-	svc.writeReply(w, reply, err)
+	svc._handleRequest(vocab.HTOpReadEvent, w, r)
 }
 
 func (svc *HttpBinding) HandleReadProperty(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	slog.Debug("HandleReadProperty", slog.String("SenderID", rp.ClientID))
-	reply, err := svc.digitwinRouter.HandleReadProperty(rp.ClientID, rp.ThingID, rp.Name)
-	svc.writeReply(w, reply, err)
+	svc._handleRequest(vocab.WotOpReadProperty, w, r)
 }
 
 // HandleReadTD returns the TD of a thing in the directory
 // URL parameter {thingID}
 func (svc *HttpBinding) HandleReadTD(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext.GetRequestParams(r)
-	if err != nil {
-		svc.writeError(w, err, http.StatusUnauthorized)
-		return
-	}
-	reply, err := svc.digitwinRouter.HandleReadTD(rp.ClientID, rp.ThingID)
-	svc.writeReply(w, reply, err)
+	svc._handleRequest(vocab.HTOpReadTD, w, r)
 }
 
 // HandleReadAllTDs returns the list of digital twin TDs in the directory.
 // this is a REST api for convenience. Consider using directory action instead.
 func (svc *HttpBinding) HandleReadAllTDs(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext.GetRequestParams(r)
-	if err != nil {
-		svc.writeError(w, err, http.StatusUnauthorized)
-		return
-	}
-	reply, err := svc.digitwinRouter.HandleReadAllTDs(rp.ClientID)
-	svc.writeReply(w, reply, err)
+	svc._handleRequest(vocab.HTOpReadAllTDs, w, r)
 }
 
 // HandlePublishMultipleProperties agent sends a map with multiple property
 func (svc *HttpBinding) HandlePublishMultipleProperties(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	requestID := r.Header.Get(tlsclient.HTTPRequestIDHeader)
-	if requestID == "" {
-		requestID = shortid.MustGenerate()
-	}
-	propMap := make(map[string]any)
-	err = utils.Decode(rp.Data, &propMap)
-	if err == nil {
-		err = svc.digitwinRouter.HandlePublishMultipleProperties(rp.ClientID, rp.ThingID, propMap, requestID)
-	}
-	svc.writeReply(w, nil, err)
+	svc._handleMessage(vocab.WotOpPublishProperties, w, r)
 }
 
 // HandlePublishProperty agent sends single or multiple property updates
 func (svc *HttpBinding) HandlePublishProperty(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext.GetRequestParams(r)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	requestID := r.Header.Get(tlsclient.HTTPRequestIDHeader)
-	if requestID == "" {
-		requestID = shortid.MustGenerate()
-	}
-	err = svc.digitwinRouter.HandlePublishProperty(rp.ClientID, rp.ThingID, rp.Name, rp.Data, requestID)
-	svc.writeReply(w, nil, err)
+	svc._handleMessage(vocab.WotOpPublishProperty, w, r)
 }
 
 // HandlePublishTD agent sends a new TD document
 func (svc *HttpBinding) HandlePublishTD(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext.GetRequestParams(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-	err = svc.digitwinRouter.HandlePublishTD(rp.ClientID, rp.Data)
-	svc.writeReply(w, nil, err)
+	svc._handleMessage(vocab.HTOpUpdateTD, w, r)
 }
 
 // HandleWriteProperty consumer requests to update a Thing property
 func (svc *HttpBinding) HandleWriteProperty(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext.GetRequestParams(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-	status, requestID, err := svc.digitwinRouter.HandleWriteProperty(
-		rp.ClientID, rp.ThingID, rp.Name, rp.Data)
-
-	w.Header().Set(tlsclient.HTTPRequestIDHeader, requestID)
-	svc.writeReply(w, status, nil)
+	svc._handleRequest(vocab.WotOpWriteProperty, w, r)
 }

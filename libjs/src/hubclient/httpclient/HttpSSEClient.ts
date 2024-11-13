@@ -5,8 +5,8 @@ import {
 import type {IHiveKey} from "@keys/IHiveKey";
 import * as tslog from 'tslog';
 import {
-     MessageTypeProgressUpdate,
-    MessageTypeAction, MessageTypeEvent, MessageTypeProperty,
+     WotOpPublishActionStatus,
+    WotOpInvokeAction, WotOpPublishEvent, WotOpPublishProperty,
 } from "@hivelib/api/vocab/vocab.js";
 import * as http2 from "node:http2";
 import {connectSSE} from "@hivelib/hubclient/httpclient/connectSSE";
@@ -251,19 +251,19 @@ export class HttpSSEClient implements IAgentClient {
     // Handle incoming event or property messages from the hub and pass them to handler
     onMessage(msg: ThingMessage): void {
         try {
-            if (msg.messageType == MessageTypeAction && this.actionHandler) {
+            if (msg.operation == WotOpInvokeAction && this.actionHandler) {
                 this.actionHandler(msg)
-            } else if (msg.messageType == MessageTypeEvent && this.eventHandler) {
+            } else if (msg.operation == WotOpPublishEvent && this.eventHandler) {
                 this.eventHandler(msg)
-            } else if (msg.messageType == MessageTypeProperty && this.propertyHandler) {
+            } else if (msg.operation == WotOpPublishProperty && this.propertyHandler) {
                  this.propertyHandler(msg)
             } else {
-                hclog.warn(`onMessage unknown message type: ${msg.messageType}`)
+                hclog.warn(`onMessage unknown message type: ${msg.operation}`)
             }
         } catch (e) {
-            let errText = `Error handling hub message sender=${msg.senderID}, messageType=${msg.messageType}, thingID=${msg.thingID}, name=${msg.name}, error=${e}`
+            let errText = `Error handling hub message sender=${msg.senderID}, messageType=${msg.operation}, thingID=${msg.thingID}, name=${msg.name}, error=${e}`
             hclog.warn(errText)
-            if (msg.messageType == MessageTypeAction) {
+            if (msg.operation == WotOpInvokeAction) {
                 let stat = new RequestProgress()
                 stat.failed(msg, errText)
                 this.pubProgressUpdate(stat)

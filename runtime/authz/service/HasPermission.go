@@ -1,17 +1,15 @@
 package service
 
 import (
-	"fmt"
-	"github.com/hiveot/hub/lib/hubclient"
 	"golang.org/x/exp/slices"
-	"log/slog"
 )
 
-// HasRolePermission returns whether the client has pub/sub permission based on their role.
+// HasRolePermission returns whether the client has permission for an
+// operation based on their role.
 //
 // This returns true if the client has permission, false if the client does not have the permission
 // See also HasServicePermissions to check if clients can invoke specific services
-func (svc *AuthzService) HasRolePermission(senderID, messageType string, isPub bool) bool {
+func (svc *AuthzService) HasRolePermission(senderID, operation string) bool {
 	role, err := svc.GetClientRole(senderID, senderID)
 	if err != nil || role == "" {
 		// unknown client or missing role
@@ -23,15 +21,8 @@ func (svc *AuthzService) HasRolePermission(senderID, messageType string, isPub b
 	if !found {
 		return false
 	}
-	// pick the first match. This doesn't check for agent, thing/interface, or key/method
-	for _, perm := range rolePerms {
-		if isPub && perm.AllowPub &&
-			messageType == perm.MsgType {
-			return true
-		} else if !isPub && perm.AllowSub &&
-			messageType == perm.MsgType {
-			return true
-		}
+	if slices.Contains(rolePerms.Operations, operation) {
+		return true
 	}
 	return false
 }
@@ -39,11 +30,11 @@ func (svc *AuthzService) HasRolePermission(senderID, messageType string, isPub b
 // HasThingPermission returns whether the client has permission to use a requested thing.
 // This only applies if permissions for the Thing (service or device) is set.
 //
-//	 msg contains the sender, thingID and key to validate
-//		isPub true to check for publish permissions, false for subscribe permission
+//	senderID contains the sender, thingID and key to validate
+//	thingID whose permission to check
 //
 // This returns true if the client has permission, false if the client does not have the permission
-func (svc *AuthzService) HasThingPermission(senderID string, thingID string, isPub bool) bool {
+func (svc *AuthzService) HasThingPermission(senderID string, thingID string) bool {
 	sp, found := svc.cfg.GetPermissions(thingID)
 	if !found {
 		return false
@@ -69,8 +60,8 @@ func (svc *AuthzService) HasThingPermission(senderID string, thingID string, isP
 	return false
 }
 
-// HasPermission returns whether the sender has permission to pub or sub a
-// message type for a IoT or a Thing.
+// HasPermission returns whether the sender has permission to perform an operation
+// on a Thing.
 //
 // This returns true if the client has permission, false if the client does not
 // have the permission.
@@ -79,14 +70,14 @@ func (svc *AuthzService) HasThingPermission(senderID string, thingID string, isP
 // set permissions rather than the sender's role permissions.
 //
 //	senderID the login ID of the sender
-//	messageType MessageTypeAction/Event/Property,
-func (svc *AuthzService) HasPermission(senderID, messageType, dThingID string, isPub bool) (hasPerm bool) {
+//	messageType WotOpInvokeAction/Event/Property,
+func (svc *AuthzService) HasPermission(senderID, operation, dThingID string) (hasPerm bool) {
 	//If a permission record is set for a service Thing then it has priority.
 	_, found := svc.cfg.GetPermissions(dThingID)
 	if found {
-		hasPerm = svc.HasThingPermission(senderID, dThingID, isPub)
+		hasPerm = svc.HasThingPermission(senderID, dThingID)
 	} else {
-		hasPerm = svc.HasRolePermission(senderID, messageType, isPub)
+		hasPerm = svc.HasRolePermission(senderID, operation)
 	}
 	return hasPerm
 }
@@ -94,24 +85,24 @@ func (svc *AuthzService) HasPermission(senderID, messageType, dThingID string, i
 // HasPubPermission returns whether a sender can publish the given message
 //
 // This returns an error if the client doesn't have permission
-func (svc *AuthzService) HasPubPermission(msg *hubclient.ThingMessage) (*hubclient.ThingMessage, error) {
-	var hasPerm bool
-	//If a thing permission exists then it has priority
-	_, found := svc.cfg.GetPermissions(msg.ThingID)
-	if found {
-		// the publish is for known thing, set with SetPermission()
-		hasPerm = svc.HasThingPermission(msg.SenderID, msg.ThingID, true)
-	} else {
-		hasPerm = svc.HasRolePermission(msg.SenderID, msg.MessageType, true)
-	}
-	if !hasPerm {
-		slog.Warn("Sender has no permissions to publish",
-			slog.String("senderID", msg.SenderID),
-			slog.String("messageType", msg.MessageType),
-			slog.String("thingID", msg.ThingID),
-			slog.String("name", msg.Name),
-		)
-		return msg, fmt.Errorf("Permission denied")
-	}
-	return msg, nil
-}
+//func (svc *AuthzService) HasPubPermission(msg *hubclient.ThingMessage) (*hubclient.ThingMessage, error) {
+//	var hasPerm bool
+//	//If a thing permission exists then it has priority
+//	_, found := svc.cfg.GetPermissions(msg.ThingID)
+//	if found {
+//		// the publish is for known thing, set with SetPermission()
+//		hasPerm = svc.HasThingPermission(msg.SenderID, msg.ThingID, true)
+//	} else {
+//		hasPerm = svc.HasRolePermission(msg.SenderID, msg.MessageType, true)
+//	}
+//	if !hasPerm {
+//		slog.Warn("Sender has no permissions to publish",
+//			slog.String("senderID", msg.SenderID),
+//			slog.String("messageType", msg.MessageType),
+//			slog.String("thingID", msg.ThingID),
+//			slog.String("name", msg.Name),
+//		)
+//		return msg, fmt.Errorf("Permission denied")
+//	}
+//	return msg, nil
+//}

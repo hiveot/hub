@@ -36,9 +36,9 @@ func addRecords(stateCl *stateclient.StateClient, count int) {
 	}
 }
 
-// Benchmark with use of capnp. Note timing in msec
+// Benchmark with use of cap'n proto. Note timing in msec  (http invocation take much more time)
 //
-//              DB size   records        kv (ms)       pebble (ms)     bbolt (ms)
+//              DB size  #records        kv (ms)       pebble (ms)     bbolt (ms)
 // SetState        1K,       1             0.1            0.1              5.0
 //               100K,       1             0.1            0.1              7.1
 //                 1K      1000          120            140             4900   (4.9 sec!)

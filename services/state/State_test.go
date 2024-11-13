@@ -10,7 +10,6 @@ import (
 	"github.com/hiveot/hub/services/state/stateclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"log/slog"
 	"os"
 	"path"
 	"testing"
@@ -43,9 +42,9 @@ func startStateService(cleanStart bool) (
 	time.Sleep(time.Millisecond)
 	return svc, stateCl, func() {
 		hc2.Disconnect()
-		slog.Warn("Disconnected " + hc2.GetClientID())
+		//slog.Warn("Disconnected " + hc2.GetClientID())
 		hc1.Disconnect()
-		slog.Warn("Disconnected " + hc1.GetClientID())
+		//slog.Warn("Disconnected " + hc1.GetClientID())
 		svc.Stop()
 		ts.Stop()
 	}

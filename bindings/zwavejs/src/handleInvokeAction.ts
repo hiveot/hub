@@ -5,7 +5,7 @@ import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as tslog from 'tslog';
 import { IAgentClient} from "@hivelib/hubclient/IAgentClient";
 import {getVidValue, ZWAPI} from "@zwavejs/ZWAPI";
-import {MessageTypeProperty} from "@hivelib/api/vocab/vocab.js";
+import {WotOpPublishProperty} from "@hivelib/api/vocab/vocab.js";
 import {handleWriteProperty} from "@zwavejs/handleWriteProperty";
 import {setValue} from "@zwavejs/setValue";
 import {RequestProgress} from "@hivelib/hubclient/RequestProgress";
@@ -31,7 +31,7 @@ export function  handleInvokeAction(
         log.error(errMsg)
         return stat
     }
-    if (msg.messageType == MessageTypeProperty) {
+    if (msg.operation == WotOpPublishProperty) {
         return handleWriteProperty(msg, node, zwapi, hc)
     }
     // unmarshal the payload

@@ -13,7 +13,7 @@ import (
 //
 //	svc is the service whose capabilities to expose
 //	hc is the optional message client connected to the server protocol
-func StartIdProvAgent(svc *ManageIdProvService, hc hubclient.IConsumerClient) *hubclient.AgentHandler {
+func StartIdProvAgent(svc *ManageIdProvService, hc hubclient.IAgentClient) *hubclient.AgentHandler {
 
 	methods := map[string]interface{}{
 		idprovapi.ApproveRequestMethod:    svc.ApproveRequest,
@@ -23,7 +23,7 @@ func StartIdProvAgent(svc *ManageIdProvService, hc hubclient.IConsumerClient) *h
 		idprovapi.SubmitRequestMethod:     svc.SubmitRequest,
 	}
 	ah := hubclient.NewAgentHandler(idprovapi.ManageServiceID, methods)
-	hc.SetMessageHandler(ah.HandleMessage)
+	hc.SetRequestHandler(ah.HandleRequest)
 
 	return ah
 }

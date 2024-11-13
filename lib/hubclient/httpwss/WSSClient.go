@@ -12,7 +12,7 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/sse"
+	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
@@ -43,13 +43,16 @@ type WSSClient struct {
 	//tlsClient *tlsclient.TLSClient
 
 	isConnected atomic.Bool
+	lastError   atomic.Pointer[error]
 
 	subscriptions  map[string]bool
 	connectHandler func(connected bool, err error)
-	// client side handler that receives messages from the server
+	// client side handler that receives consumer facing messages from the hub
 	messageHandler hubclient.MessageHandler
+	// client side handler that receives agent requests from the hub
+	requestHandler hubclient.RequestHandler
 	// map of requestID to delivery status update channel
-	correlData map[string]chan *hubclient.RequestProgress
+	correlData map[string]chan *hubclient.RequestStatus
 }
 
 // ConnectWithLoginForm invokes login using a form - temporary helper
@@ -101,7 +104,9 @@ func (cl *WSSClient) ConnectWithPassword(password string) (newToken string, err 
 	//cl.tlsClient = tlsclient.NewTLSClient(
 	//	cl.hostPort, nil, cl.caCert, cl.timeout, cl.cid)
 	wssURI, err := url.Parse(cl.wssURL)
-	loginURL := fmt.Sprintf("https://%s%s", wssURI.Host, sse.PostLoginPath)
+	loginURL := fmt.Sprintf("https://%s%s",
+		wssURI.Host,
+		httpsse.PostLoginPath)
 	//cl.mux.Unlock()
 
 	slog.Info("ConnectWithPassword", "clientID", cl.clientID)
@@ -183,6 +188,16 @@ func (cl *WSSClient) GetClientID() string {
 	return cl.clientID
 }
 
+func (cl *WSSClient) GetConnectionStatus() (bool, string, error) {
+	var lastErr error = nil
+	// lastError is stored as pointer because atomic.Value cannot switch between error and nil type
+	if cl.lastError.Load() != nil {
+		lastErrPtr := cl.lastError.Load()
+		lastErr = *lastErrPtr
+	}
+	return cl.isConnected.Load(), "", lastErr
+}
+
 // GetProtocolType returns the type of protocol this client supports
 func (cl *WSSClient) GetProtocolType() string {
 	return "https"
@@ -198,7 +213,7 @@ func (cl *WSSClient) GetHubURL() string {
 // An error is returned if delivery failed or succeeded but the action itself failed
 func (cl *WSSClient) InvokeAction(
 	dThingID string, name string, input interface{}, output interface{}, requestID string) (
-	stat hubclient.RequestProgress) {
+	stat hubclient.RequestStatus) {
 
 	slog.Info("InvokeAction",
 		slog.String("clientID (me)", cl.clientID),
@@ -223,6 +238,10 @@ func (cl *WSSClient) InvokeAction(
 		stat.Error = err.Error()
 	}
 	return stat
+}
+func (cl *WSSClient) InvokeOperation(
+	op tdd.Form, dThingID, name string, input interface{}, output interface{}) error {
+	return fmt.Errorf("not implemented")
 }
 
 // IsConnected return whether the return channel is connection, eg can receive data
@@ -258,7 +277,7 @@ func (cl *WSSClient) Observe(thingID string, name string) error {
 	}
 	msg := ObservePropertyMessage{
 		ThingID:   thingID,
-		Operation: vocab.WoTOpObserveProperty,
+		Operation: vocab.WotOpObserveProperty,
 		Name:      name,
 	}
 	err := cl._send(msg)
@@ -268,8 +287,8 @@ func (cl *WSSClient) Observe(thingID string, name string) error {
 // PubProgressUpdate agent publishes a progress update message to the digital twin
 // The digital twin will update the request status and notify the sender.
 // This returns an error if the connection with the server is broken
-func (cl *WSSClient) PubProgressUpdate(stat hubclient.RequestProgress) error {
-	slog.Debug("PubProgressUpdate",
+func (cl *WSSClient) PubRequestStatus(stat hubclient.RequestStatus) {
+	slog.Debug("PubRequestStatus",
 		slog.String("agentID", cl.clientID),
 		slog.String("thingID", stat.ThingID),
 		slog.String("name", stat.Name),
@@ -282,14 +301,13 @@ func (cl *WSSClient) PubProgressUpdate(stat hubclient.RequestProgress) error {
 		RequestID: stat.RequestID,
 		Progress:  stat.Progress,
 		Error:     stat.Error,
-		Output:    stat.Reply,
+		Output:    stat.Output,
 		Timestamp: time.Now().Format(utils.RFC3339Milli),
 	}
-	err := cl._send(msg)
-	return err
+	_ = cl._send(msg)
 }
 
-// PubEvent publishes an event message and return
+// PubEvent agent publishes an event message and returns
 // This returns an error if the connection with the server is broken
 func (cl *WSSClient) PubEvent(
 	thingID string, name string, data any, requestID string) error {
@@ -303,7 +321,7 @@ func (cl *WSSClient) PubEvent(
 	)
 	msg := EventMessage{
 		ThingID:   thingID,
-		Operation: vocab.WoTOpObserveProperty,
+		Operation: vocab.WotOpPublishEvent,
 		Name:      name,
 		Data:      data,
 		RequestID: requestID,
@@ -375,7 +393,7 @@ func (cl *WSSClient) Rpc(
 		slog.String("requestID", requestID),
 	)
 
-	rChan := make(chan *hubclient.RequestProgress)
+	rChan := make(chan *hubclient.RequestStatus)
 	cl.mux.Lock()
 	cl.correlData[requestID] = rChan
 	cl.mux.Unlock()
@@ -436,14 +454,14 @@ func (cl *WSSClient) Rpc(
 	// only once completed will there be a reply as a result
 	if err == nil && resp != nil {
 		// no choice but to decode
-		err = utils.Decode(stat.Reply, resp)
+		err = utils.Decode(stat.Output, resp)
 	}
 	return err
 }
 
 // SendOperation is temporary transition to support using TD forms
 func (cl *WSSClient) SendOperation(
-	thingID string, name string, op tdd.Form, data any) (stat hubclient.RequestProgress) {
+	thingID string, name string, op tdd.Form, data any) (stat hubclient.RequestStatus) {
 
 	requestID := ""
 	slog.Info("InvokeOperation",
@@ -480,10 +498,19 @@ func (cl *WSSClient) SetConnectHandler(cb func(connected bool, err error)) {
 	cl.mux.Unlock()
 }
 
-// SetMessageHandler set the single handler that receives all messages from the hub.
+// SetMessageHandler set the handler that receives all consumer facing messages
+// from the hub. (events, property updates)
 func (cl *WSSClient) SetMessageHandler(cb hubclient.MessageHandler) {
 	cl.mux.Lock()
 	cl.messageHandler = cb
+	cl.mux.Unlock()
+}
+
+// SetRequestHandler set the handler that receives all agent facing messages
+// from the hub. (write property and invoke action)
+func (cl *WSSClient) SetRequestHandler(cb hubclient.RequestHandler) {
+	cl.mux.Lock()
+	cl.requestHandler = cb
 	cl.mux.Unlock()
 }
 
@@ -523,11 +550,55 @@ func (cl *WSSClient) Unmarshal(raw []byte, reply interface{}) error {
 	return err
 }
 
+// Unobserve sends an unobserve request to the server
+func (cl *WSSClient) Unobserve(thingID string, name string) error {
+	slog.Info("Unobserve",
+		slog.String("clientID", cl.clientID),
+		slog.String("thingID", thingID),
+		slog.String("name", name))
+
+	if thingID == "" {
+		thingID = "+"
+	}
+	if name == "" {
+		name = "+"
+	}
+	msg := ObservePropertyMessage{
+		ThingID:   thingID,
+		Operation: vocab.WotOpUnobserveProperty,
+		Name:      name,
+	}
+	err := cl._send(msg)
+	return err
+}
+
+// Unsubscribe sends an unsubscribe request to the server
+func (cl *WSSClient) Unsubscribe(thingID string, name string) error {
+	slog.Info("Unsubscribe",
+		slog.String("clientID", cl.clientID),
+		slog.String("thingID", thingID),
+		slog.String("name", name))
+
+	if thingID == "" {
+		thingID = "+"
+	}
+	if name == "" {
+		name = "+"
+	}
+	msg := SubscribeMessage{
+		ThingID:   thingID,
+		Operation: vocab.WotOpUnsubscribeEvent,
+		Name:      name,
+	}
+	err := cl._send(msg)
+	return err
+}
+
 // WaitForProgressUpdate waits for an async progress update message or until timeout
 // This returns the status or an error if the timeout has passed
 func (cl *WSSClient) WaitForProgressUpdate(
-	statChan chan *hubclient.RequestProgress, requestID string, timeout time.Duration) (
-	stat hubclient.RequestProgress, err error) {
+	statChan chan *hubclient.RequestStatus, requestID string, timeout time.Duration) (
+	stat hubclient.RequestStatus, err error) {
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
@@ -540,6 +611,36 @@ func (cl *WSSClient) WaitForProgressUpdate(
 	}
 
 	return stat, err
+}
+
+// WriteProperty writes a configuration change request
+func (cl *WSSClient) WriteProperty(thingID string, name string, data any) (
+	stat hubclient.RequestStatus) {
+
+	slog.Info("WriteProperty",
+		slog.String("me", cl.clientID),
+		slog.String("thingID", thingID),
+		slog.String("name", name),
+	)
+	requestID := shortid.MustGenerate()
+	msg := PropertyMessage{
+		ThingID:   thingID,
+		Operation: vocab.WotOpWriteProperty,
+		Name:      name,
+		Data:      data,
+		RequestID: requestID,
+		Timestamp: time.Now().Format(utils.RFC3339Milli),
+	}
+	err := cl._send(msg)
+	stat.ThingID = thingID
+	stat.Name = name
+	stat.RequestID = requestID
+	stat.Progress = vocab.RequestDelivered
+	if err != nil {
+		stat.Error = err.Error()
+	}
+
+	return stat
 }
 
 // NewWSSClient creates a new instance of the websocket hub client.
@@ -576,7 +677,7 @@ func NewWSSClient(wssURL string, clientID string,
 		// max delay 3 seconds before a response is expected
 		timeout: timeout,
 
-		correlData: make(map[string]chan *hubclient.RequestProgress),
+		correlData: make(map[string]chan *hubclient.RequestStatus),
 		// max message size for bulk reads is 10MB.
 	}
 

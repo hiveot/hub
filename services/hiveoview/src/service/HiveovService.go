@@ -43,7 +43,7 @@ type HiveovService struct {
 
 	// hc hub client of this service.
 	// This client's CA and URL is also used to establish client sessions.
-	hc hubclient.IHubClient
+	hc hubclient.IAgentClient
 
 	// cookie signing
 	signingKey ed25519.PrivateKey
@@ -61,7 +61,7 @@ func (svc *HiveovService) GetSM() *session.WebSessionManager {
 }
 
 // Start the web server and publish the service's own TD.
-func (svc *HiveovService) Start(hc hubclient.IHubClient) error {
+func (svc *HiveovService) Start(hc hubclient.IAgentClient) error {
 	slog.Info("Starting HiveovService", "clientID", hc.GetClientID())
 	svc.hc = hc
 
